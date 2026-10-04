@@ -79,6 +79,8 @@ export function MoonyLinesChart({
   const tk = useMemo(chartTokens, []);
   const [hovered, setHovered] = useState<string | null>(null);
   const n = series[0]?.values.length ?? 0;
+  // A series that vanished under the pointer (a filter changed) leaves no mouseleave behind
+  const active = series.some((s) => s.id === hovered) ? hovered : null;
   const gutter = labelMode === 'legend' ? TICK_GUTTER : LABEL_GUTTER;
 
   const data = useMemo(
@@ -211,7 +213,7 @@ export function MoonyLinesChart({
                 stroke={colorOf.get(s.id)}
                 strokeWidth={s.reference || s.id !== firstSolidId ? 2 : 2.25}
                 strokeDasharray={s.reference ? '4 4' : undefined}
-                strokeOpacity={hovered && hovered !== s.id ? 0.35 : 1}
+                strokeOpacity={active && active !== s.id ? 0.35 : 1}
                 // Round caps would shrink the 4 px gaps of the dashes to 2 px
                 strokeLinecap={s.reference ? 'butt' : 'round'}
                 strokeLinejoin="round"

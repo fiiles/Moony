@@ -3,7 +3,7 @@ import { useCallback, useSyncExternalStore } from 'react';
 const supported = () => typeof window !== 'undefined' && typeof window.matchMedia === 'function';
 
 /**
- * Whether the viewport matches a CSS media query (`'(min-width: 1240px)'`), kept in sync as the
+ * Whether the viewport matches a CSS media query (`'(min-width: 1360px)'`), kept in sync as the
  * window is resized. Without a window (server render, tests) it is `false`.
  */
 export function useMediaQuery(query: string): boolean {

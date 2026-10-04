@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Link } from 'wouter';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -92,6 +92,7 @@ export default function StocksAnalysis() {
   const wideRing = useMediaQuery(WIDE_RING_QUERY);
 
   const [filters, setFilters] = useState<Record<string, string>>({});
+  const chipsRef = useRef<HTMLDivElement>(null);
   const [query, setQuery] = useState('');
   const [period, setPeriod] = useState<Period>('ytd');
   const [chartGroupChoice, setChartGroupChoice] = useState<string | null>(null);
@@ -210,7 +211,9 @@ export default function StocksAnalysis() {
   });
 
   // TWR as an index (100 = start of the period) on a shared date grid; the whole portfolio is the
-  // reference line and its return for the period goes to the card head
+  // reference line and its return for the period goes to the card head. The tag lines come from
+  // the payload itself, so while the previous one stays up (dimmed) it is never mixed with the
+  // tags of the next selection.
   const twrChart = useMemo(() => {
     const dates = Array.from(new Set(twr.flatMap((s) => s.data.map((p) => p.date)))).sort();
     if (dates.length < 2) return null;
@@ -219,9 +222,8 @@ export default function StocksAnalysis() {
       return dates.map((d) => (byDate.has(d) ? 100 + (byDate.get(d) ?? 0) : null));
     };
     const series: LineSeries[] = [];
-    for (const tag of chartTags) {
-      const s = twr.find((x) => x.tag?.id === tag.id);
-      if (s) series.push({ id: tag.id, name: tag.name, values: indexOn(s) });
+    for (const s of twr) {
+      if (s.tag) series.push({ id: s.tag.id, name: s.tag.name, values: indexOn(s) });
     }
     const portfolio = twr.find((x) => !x.tag && !x.isUntagged);
     let portfolioReturn: number | null = null;
@@ -245,7 +247,7 @@ export default function StocksAnalysis() {
       return fmt.day(dateTs(dates[idx]), { month: 'short' });
     });
     return { series, dates, axisLabels, dateTs, portfolioReturn };
-  }, [twr, chartTags, t, tc, fmt]);
+  }, [twr, t, tc, fmt]);
 
   // Derived figures (the stats stay portfolio-wide)
   const totalValue = stocks.reduce((s, x) => s + x.currentValue, 0);
@@ -419,7 +421,7 @@ export default function StocksAnalysis() {
       </Stats>
 
       {filterGroups.length > 0 && (
-        <div className="mb-[18px] flex flex-wrap gap-5">
+        <div ref={chipsRef} className="mb-[18px] flex flex-wrap gap-5">
           {filterGroups.map((g) => {
             // The chosen tag of the group; a choice that no longer exists reads as "all"
             const chosen = g.tags.find((x) => chosenIds.includes(x.id))?.id ?? FILTER_ALL;
@@ -448,7 +450,11 @@ export default function StocksAnalysis() {
             <button
               type="button"
               className="self-center text-caption font-650 text-ink-2 underline-offset-[3px] hover:text-ink hover:underline"
-              onClick={() => setFilters({})}
+              onClick={() => {
+                setFilters({});
+                // The link goes away with the filter: keep keyboard focus among the chips
+                chipsRef.current?.querySelector('button')?.focus();
+              }}
             >
               {t('stocksAnalysis.filters.clear')}
             </button>

@@ -36,6 +36,9 @@ describe('twrTickDigits', () => {
     expect(twrTickDigits(97.5)).toBe(1);
     expect(twrTickDigits(100.2)).toBe(1);
     expect(twrTickDigits(100.25)).toBe(2);
+    // The steps of an axis that spans about 0.1 percentage points
+    expect(twrTickDigits(100.025)).toBe(3);
+    expect(twrTickDigits(100.075)).toBe(3);
   });
 
   it('ignores floating point noise', () => {

@@ -15,13 +15,14 @@ export function twrPercent(index: number): number {
 /**
  * Fraction digits the axis tick at `index` needs: a whole percentage reads "+5 %", the half or
  * quarter steps of a tight axis "+2.5 %" (rounding them to "+3 %" would put a wrong number on
- * the axis).
+ * the axis). Up to three digits: the nice steps of an axis that spans about 0.1 percentage points
+ * are 0.025 apart.
  */
 export function twrTickDigits(index: number): number {
   const percent = index - 100;
-  for (const digits of [0, 1]) {
+  for (const digits of [0, 1, 2]) {
     const scaled = percent * 10 ** digits;
     if (Math.abs(scaled - Math.round(scaled)) < 1e-6) return digits;
   }
-  return 2;
+  return 3;
 }

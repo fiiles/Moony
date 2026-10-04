@@ -1660,11 +1660,12 @@ mod tests {
         conn
     }
 
-    /// Five positions over two days, constant quantities (no cash flows), values in CZK:
+    /// Six positions over two days, constant quantities (no cash flows), values in CZK:
     /// AAPL 1000 -> 1100 (+10 %), MSFT 1000 -> 1000, NVDA 1000 -> 900 (-10 %), GOLD 1000 -> 1300
-    /// (+30 %) and SOLD, a closed position (quantity 0) that jumps 1000 -> 3000 and must never
-    /// count. Tags: growth = AAPL + MSFT + SOLD, value = NVDA, unused = nothing; GOLD is untagged.
-    /// Whole portfolio: 4000 -> 4300 (+7.5 %); growth: 2000 -> 2100 (+5 %).
+    /// (+30 %), and two closed positions (quantity 0) that jump 1000 -> 3000 (SOLD, tagged) and
+    /// 1000 -> 5000 (GONE, untagged) and must never count. Tags: growth = AAPL + MSFT + SOLD,
+    /// value = NVDA, unused = nothing; GOLD and GONE are untagged.
+    /// Whole portfolio: 4000 -> 4300 (+7.5 %); growth: 2000 -> 2100 (+5 %); untagged: +30 %.
     fn seed_twr_series(conn: &rusqlite::Connection) -> (i64, i64) {
         let day0: i64 = 1_700_000_000 / 86400 * 86400;
         let day1 = day0 + 86400;
@@ -1674,6 +1675,7 @@ mod tests {
             ("inv-nvda", "NVDA", "10"),
             ("inv-gold", "GOLD", "10"),
             ("inv-sold", "SOLD", "0"),
+            ("inv-gone", "GONE", "0"),
         ] {
             conn.execute(
                 "INSERT INTO stock_investments (id, ticker, quantity) VALUES (?1, ?2, ?3)",
@@ -1687,6 +1689,7 @@ mod tests {
             ("NVDA", [1000, 900]),
             ("GOLD", [1000, 1300]),
             ("SOLD", [1000, 3000]),
+            ("GONE", [1000, 5000]),
         ] {
             for (i, value) in values.iter().enumerate() {
                 conn.execute(
@@ -1778,7 +1781,7 @@ mod tests {
             series_kinds(&series),
             ["portfolio", "growth", "value", "untagged"]
         );
-        // Closed positions (SOLD) take part in nothing
+        // Closed positions (SOLD in a tag, GONE without one) take part in nothing
         assert!((final_twr(series_of(&series, "portfolio")) - 7.5).abs() < 1e-6);
         assert!((final_twr(series_of(&series, "growth")) - 5.0).abs() < 1e-6);
         assert!((final_twr(series_of(&series, "value")) + 10.0).abs() < 1e-6);

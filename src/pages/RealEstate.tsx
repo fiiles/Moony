@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useMemo, useState } from 'react';
 import { Link, useLocation } from 'wouter';
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -28,7 +28,6 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input, InputWrap } from '@/components/ui/input';
-import { Progress } from '@/components/ui/progress';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -70,7 +69,7 @@ interface PropertyRow {
   excluded: boolean;
 }
 
-type SortColumn = 'name' | 'purchase' | 'value' | 'appreciation' | 'rent' | 'equity';
+type SortColumn = 'name' | 'value' | 'appreciation' | 'rent' | 'equity';
 type Modal = 'edit' | 'revalue' | 'delete' | null;
 
 const czk = (amount: string | number | null | undefined, currency: string | null | undefined) =>
@@ -203,9 +202,6 @@ export default function RealEstatePage() {
         case 'name':
           c = a.property.name.localeCompare(b.property.name, undefined, { sensitivity: 'base' });
           break;
-        case 'purchase':
-          c = a.purchaseCzk - b.purchaseCzk;
-          break;
         case 'value':
           c = a.valueCzk - b.valueCzk;
           break;
@@ -232,6 +228,8 @@ export default function RealEstatePage() {
     setSelected(null);
   };
 
+  // Head of a fixed-layout column: a label that does not fit ends in "…" (the full text is
+  // in the title) and the sort icon keeps its place, instead of the label widening the column.
   const SortHead = ({
     column,
     children,
@@ -239,7 +237,7 @@ export default function RealEstatePage() {
     className,
   }: {
     column: SortColumn;
-    children: ReactNode;
+    children: string;
     align?: 'left' | 'right';
     className?: string;
   }) => {
@@ -251,21 +249,31 @@ export default function RealEstatePage() {
           type="button"
           onClick={() => handleSort(column)}
           aria-sort={active ? (sortDirection === 'asc' ? 'ascending' : 'descending') : undefined}
+          title={children}
           className={cn(
-            'inline-flex items-center gap-1 rounded-r1 text-thead uppercase transition-colors duration-fast hover:text-ink focus-visible:outline-none focus-visible:shadow-focus',
+            'inline-flex max-w-full items-center gap-1 rounded-r1 text-thead uppercase transition-colors duration-fast hover:text-ink focus-visible:outline-none focus-visible:shadow-focus',
             active && 'text-ink'
           )}
         >
-          {children}
-          <Icon className={cn('size-3', !active && 'opacity-60')} aria-hidden />
+          <span className="truncate">{children}</span>
+          <Icon className={cn('size-3 shrink-0', !active && 'opacity-60')} aria-hidden />
         </button>
       </TableHead>
     );
   };
 
   const isEmpty = !isLoading && properties.length === 0;
+  /** First line of a numeric cell: one line, the full text in the title. */
+  const main = (text: string, className?: string) => (
+    <span className={cn('block truncate', className)} title={text}>
+      {text}
+    </span>
+  );
+  /** Muted second line of a cell: one line, the full text in the title. */
   const sub = (text: string) => (
-    <small className="mt-[3px] block text-micro font-500 text-ink-4">{text}</small>
+    <small className="mt-[3px] block truncate text-micro font-500 text-ink-4" title={text}>
+      {text}
+    </small>
   );
 
   return (
@@ -385,19 +393,34 @@ export default function RealEstatePage() {
                 />
               </InputWrap>
             </CardHeader>
-            <Table>
+            {/*
+              Fixed layout, so the table never scrolls sideways: a column keeps its width and long
+              text ends in "…" (the full text stays in the title). The card is 718 px wide in the
+              1080 px minimum window and 1,038 px in the default 1,400 px one. The four figure
+              columns are sized for the widest content they show (an 8-digit amount, the longest
+              header): 77 % of the table in a window narrower than 1,240 px, 65 % from there on.
+              The name column takes the rest, ≈ 17 % compact and ≈ 30 % wide; compact, the logo
+              and the badge step aside so the name keeps ≈ 95 px.
+            */}
+            <Table className="table-fixed">
               <TableHeader>
                 <TableRow>
-                  <SortHead column="name" align="left" className="w-[24%]">
+                  <SortHead column="name" align="left">
                     {t('table.property')}
                   </SortHead>
-                  <TableHead>{t('table.type')}</TableHead>
-                  <SortHead column="purchase">{t('table.purchasePrice')}</SortHead>
-                  <SortHead column="value">{t('table.marketValue')}</SortHead>
-                  <SortHead column="appreciation">{t('table.appreciation')}</SortHead>
-                  <SortHead column="rent">{t('table.rentYield')}</SortHead>
-                  <SortHead column="equity">{t('table.equity')}</SortHead>
-                  <TableHead className="w-10">
+                  <SortHead column="value" className="w-[22.5%] min-[1240px]:w-[18.5%]">
+                    {t('table.marketValue')}
+                  </SortHead>
+                  <SortHead column="appreciation" className="w-[18.2%] min-[1240px]:w-[15.5%]">
+                    {t('table.appreciation')}
+                  </SortHead>
+                  <SortHead column="rent" className="w-[19.7%] min-[1240px]:w-[16.5%]">
+                    {t('table.rentYield')}
+                  </SortHead>
+                  <SortHead column="equity" className="w-[16.3%] min-[1240px]:w-[14.5%]">
+                    {t('table.equity')}
+                  </SortHead>
+                  <TableHead className="w-11">
                     <span className="sr-only">{t('table.actions')}</span>
                   </TableHead>
                 </TableRow>
@@ -405,7 +428,7 @@ export default function RealEstatePage() {
               <TableBody>
                 {visible.length === 0 ? (
                   <TableRow className="hover:bg-transparent">
-                    <TableCell colSpan={8} className="py-12">
+                    <TableCell colSpan={6} className="py-12">
                       <div className="grid place-items-center text-center text-ink-3">
                         <Search className="mb-3 size-7 text-ink-5" aria-hidden />
                         <h3 className="mb-1.5 text-h3 text-ink">{t('table.noResults.title')}</h3>
@@ -421,7 +444,7 @@ export default function RealEstatePage() {
                     return (
                       <TableRow
                         key={p.id}
-                        className={cn('h-[66px] cursor-pointer', r.excluded && 'text-ink-4')}
+                        className={cn('cursor-pointer', r.excluded && 'text-ink-4')}
                         onClick={() => setLocation(`/real-estate/${p.id}`)}
                         tabIndex={0}
                         onKeyDown={(e) => {
@@ -434,39 +457,40 @@ export default function RealEstatePage() {
                               ticker={p.name}
                               type="stock"
                               variant={r.excluded ? 'soft' : 'series'}
+                              className="hidden min-[1240px]:grid"
                             />
                             <div className="min-w-0">
-                              <b
-                                className={cn(
-                                  'block truncate text-table font-650',
-                                  r.excluded ? 'text-ink-3' : 'text-ink'
+                              <div className="flex items-center gap-[6px]">
+                                <b
+                                  className={cn(
+                                    'truncate text-table font-650',
+                                    r.excluded ? 'text-ink-3' : 'text-ink'
+                                  )}
+                                  title={r.excluded ? `${p.name} · ${t('table.excluded')}` : p.name}
+                                >
+                                  {p.name}
+                                </b>
+                                {r.excluded && (
+                                  <Badge
+                                    variant="outline"
+                                    className="-my-px hidden shrink-0 min-[1240px]:inline-flex"
+                                  >
+                                    {t('table.excluded')}
+                                  </Badge>
                                 )}
-                              >
-                                {p.name}
-                              </b>
-                              <small className="mt-[3px] block truncate text-micro font-500 text-ink-4">
-                                {p.address}
-                              </small>
+                              </div>
+                              {sub([t(`types.${p.type}`), p.address].filter(Boolean).join(' · '))}
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell>
-                          {r.excluded ? (
-                            <Badge variant="outline">{t('table.excluded')}</Badge>
-                          ) : (
-                            <Badge>{t(`types.${p.type}`)}</Badge>
-                          )}
-                        </TableCell>
                         <TableCell className="text-right num">
-                          {formatCurrency(r.purchaseCzk)}
-                        </TableCell>
-                        <TableCell
-                          className={cn(
-                            'text-right font-650 num',
-                            r.excluded ? 'text-ink-3' : 'text-ink'
+                          {main(
+                            formatCurrency(r.valueCzk),
+                            cn('font-650', r.excluded ? 'text-ink-3' : 'text-ink')
                           )}
-                        >
-                          {formatCurrency(r.valueCzk)}
+                          {/* A purchase price of 0 is the form's "not entered" */}
+                          {r.purchaseCzk > 0 &&
+                            sub(t('table.boughtFor', { amount: formatCurrency(r.purchaseCzk) }))}
                         </TableCell>
                         <TableCell
                           className={cn(
@@ -474,7 +498,7 @@ export default function RealEstatePage() {
                             !r.excluded && (r.appreciation >= 0 ? 'text-gain' : 'text-loss')
                           )}
                         >
-                          <span className="font-650">{formatCurrencySigned(r.appreciation)}</span>
+                          {main(formatCurrencySigned(r.appreciation), 'font-650')}
                           {sub(
                             fmt.percent(r.purchaseCzk > 0 ? r.appreciation / r.purchaseCzk : 0, 1, {
                               signed: true,
@@ -484,43 +508,27 @@ export default function RealEstatePage() {
                         <TableCell className="text-right num">
                           {r.rentYearCzk > 0 ? (
                             <>
-                              {formatCurrency(r.rentYearCzk / 12)}
+                              {main(formatCurrency(r.rentYearCzk / 12))}
                               {sub(
                                 t('table.monthlyYield', { yield: fmt.percent(r.grossYield, 1) })
                               )}
                             </>
                           ) : (
-                            <span className="text-ink-4">{t('table.noRent')}</span>
+                            main(t('table.noRent'), 'text-ink-4')
                           )}
                         </TableCell>
                         <TableCell className="text-right num">
-                          {r.loansCzk > 0 ? (
-                            <>
-                              <span className="inline-flex items-center justify-end gap-2">
-                                <Progress value={(1 - r.ltv) * 100} className="w-[54px]" />
-                                <span className="font-650 text-ink">
-                                  {formatCurrency(r.equityCzk)}
-                                </span>
-                              </span>
-                              {sub(
-                                t('table.loanNote', {
-                                  amount: formatCurrency(r.loansCzk),
-                                  ltv: fmt.percent(r.ltv, 0),
-                                })
-                              )}
-                            </>
-                          ) : (
-                            <>
-                              <span
-                                className={cn('font-650', r.excluded ? 'text-ink-3' : 'text-ink')}
-                              >
-                                {formatCurrency(r.equityCzk)}
-                              </span>
-                              {sub(t('table.noLoan'))}
-                            </>
+                          {main(
+                            formatCurrency(r.equityCzk),
+                            cn('font-650', r.excluded ? 'text-ink-3' : 'text-ink')
+                          )}
+                          {sub(
+                            r.loansCzk > 0
+                              ? t('table.ltv', { ltv: fmt.percent(r.ltv, 0) })
+                              : t('table.noLoan')
                           )}
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="px-1.5 text-right">
                           <div data-row-actions onClick={(e) => e.stopPropagation()}>
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>

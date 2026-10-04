@@ -175,7 +175,7 @@ function ParamsForm({
                 <InputWrap unit={currencyCode} className="w-[128px]">
                   <Input
                     type="number"
-                    step="100"
+                    step="any"
                     min="0"
                     inputMode="numeric"
                     className="h-8 pr-[42px] text-right text-caption num"

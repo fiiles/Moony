@@ -1345,4 +1345,127 @@ mod tests {
             "unixepoch() default: {created_at}"
         );
     }
+
+    /// The stock import services run on the schema the chain really produces
+    /// (the service tests use hand-written minimal schemas): foreign keys on,
+    /// real tag tables, real `app_config`.
+    #[test]
+    fn a_stock_import_round_trips_on_the_migrated_schema() {
+        use crate::services::investments::{bulk_create_stock_transactions, BulkStockRow};
+        use crate::services::stock_import::simulate::test_db::{
+            buy, config, day, parsed, sell, with_id,
+        };
+        use crate::services::stock_import::{batches, formats, import, preview};
+
+        let mut conn = Connection::open_in_memory().expect("in-memory db");
+        conn.execute_batch("PRAGMA foreign_keys = ON;")
+            .expect("foreign keys");
+        run_migrations(&conn).expect("migrate");
+
+        // A position that exists before the import: 5 MSFT, bought by hand.
+        bulk_create_stock_transactions(
+            &mut conn,
+            &[BulkStockRow {
+                ticker: "MSFT".into(),
+                company_name: Some("Microsoft".into()),
+                tx_type: "buy".into(),
+                quantity: "5".into(),
+                price_per_unit: "300".into(),
+                currency: "USD".into(),
+                transaction_date: day(-10),
+                external_id: None,
+                allow_duplicate: false,
+            }],
+            None,
+        )
+        .expect("existing position");
+
+        let file = || {
+            parsed(vec![
+                with_id(buy(2, day(0), "AAPL", 10.0, 100.0), "1"),
+                with_id(sell(3, day(2), "AAPL", 4.0, 120.0), "2"),
+                with_id(buy(4, day(1), "MSFT", 3.0, 310.0), "3"),
+                with_id(buy(5, day(-10), "MSFT", 5.0, 300.0), "9"), // the hand-made one
+            ])
+        };
+        let cfg = config("xtb");
+
+        let dry_run = preview::preview(&conn, &file(), &cfg).expect("preview");
+        assert_eq!(dry_run.counts.will_import, 3);
+        assert_eq!(dry_run.counts.duplicates, 1);
+        assert_eq!(
+            rows_in(&conn, "stock_import_batches"),
+            0,
+            "a preview writes nothing"
+        );
+
+        let result = import::import(&mut conn, &file(), &cfg, "xtb.csv").expect("import");
+        assert_eq!(result.imported, 3);
+        assert_eq!(result.duplicates, 1);
+        assert_eq!(result.new_positions, vec!["AAPL"]);
+        assert_eq!(result.updated_positions, vec!["MSFT"]);
+        let batch_id = result.batch_id.expect("batch");
+        let stamped: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM investment_transactions
+                 WHERE import_batch_id = ?1 AND external_id LIKE 'xtb:%'",
+                [&batch_id],
+                |r| r.get(0),
+            )
+            .expect("stamped rows");
+        assert_eq!(stamped, 3);
+        fn quantity(conn: &Connection, ticker: &str) -> String {
+            conn.query_row(
+                "SELECT quantity FROM stock_investments WHERE ticker = ?1",
+                [ticker],
+                |r| r.get(0),
+            )
+            .expect("position")
+        }
+        assert_eq!(quantity(&conn, "AAPL"), "6");
+        assert_eq!(quantity(&conn, "MSFT"), "8");
+
+        // The same file again: only duplicates, no new batch.
+        let again = import::import(&mut conn, &file(), &cfg, "xtb.csv").expect("re-import");
+        assert_eq!((again.imported, again.duplicates), (0, 4));
+        assert_eq!(again.batch_id, None);
+        assert_eq!(batches::list_batches(&conn).expect("batches").len(), 1);
+
+        // Undo: the position the import created goes with its tags, the other stays.
+        conn.execute(
+            "INSERT INTO stock_tags (id, name) VALUES ('tag-1', 'Growth')",
+            [],
+        )
+        .expect("tag");
+        conn.execute(
+            "INSERT INTO stock_investment_tags (investment_id, tag_id)
+             SELECT id, 'tag-1' FROM stock_investments",
+            [],
+        )
+        .expect("tag both positions");
+        let undone = batches::undo_batch(&mut conn, &batch_id).expect("undo");
+        assert_eq!(undone.removed, 3);
+        assert_eq!(undone.removed_positions, vec!["AAPL"]);
+        assert_eq!(undone.tickers, vec!["AAPL", "MSFT"]);
+        assert_eq!(undone.earliest_day, Some(day(0)));
+        assert_eq!(rows_in(&conn, "stock_investments"), 1);
+        assert_eq!(
+            rows_in(&conn, "stock_investment_tags"),
+            1,
+            "only the survivor's"
+        );
+        assert_eq!(rows_in(&conn, "stock_import_batches"), 0);
+        assert_eq!(rows_in(&conn, "investment_transactions"), 1);
+        assert_eq!(quantity(&conn, "MSFT"), "5");
+
+        // Saved formats live in the real app_config.
+        let headers = vec!["Date".to_string(), "Ticker".to_string()];
+        let saved = formats::save_format(&conn, "Mine", &headers, &config("custom")).expect("save");
+        assert_eq!(
+            formats::list_formats(&conn).expect("list"),
+            vec![saved.clone()]
+        );
+        formats::delete_format(&conn, &saved.id).expect("delete");
+        assert!(formats::list_formats(&conn).expect("list").is_empty());
+    }
 }

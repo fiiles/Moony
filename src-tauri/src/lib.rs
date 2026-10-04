@@ -88,7 +88,6 @@ pub async fn run() {
             commands::investments::delete_investment_transaction,
             commands::investments::delete_investment_transactions,
             commands::investments::update_investment_transaction,
-            commands::investments::import_investment_transactions,
             commands::investments::set_manual_price,
             commands::investments::delete_manual_price,
             commands::investments::set_manual_dividend,

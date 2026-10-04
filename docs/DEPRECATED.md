@@ -39,6 +39,17 @@ primitives cover every case they handled.
 | `.page-title`, `.page-subtitle`, `card-hover` CSS roles | Interim roles for the transition | `PageHead`, the card's own hover state |
 | Per-component `AlertDialog` delete confirmations | Each dialog restated the same two buttons and the red button class | `ConfirmDeleteDialog` (destructive settings dialogs keep `AlertDialog` with the solid `AlertDialogAction`) |
 
+## Removed with the stock import wizard (do not re-add)
+
+The one-table stock import was replaced by the broker-aware wizard
+(`docs/specs/2026-10-04-stock-csv-import-wizard-design.md`).
+
+| Removed | Why it was dead | Use instead |
+|---|---|---|
+| `src/components/stocks/ImportInvestmentsModal.tsx` | Six hand-picked columns, no presets, no preview, no duplicate check, no undo; split the CSV in the webview with a naive parser, guessed the date format per row, and stored numbers such as `1,234.50` as text that later read as 0 | `src/components/stocks/import/StockImportDialog.tsx` over `src-tauri/src/services/stock_import/` |
+| `import_investment_transactions` (command), `investmentsApi.importTransactions`, the `stock-import-progress` event | Wrote row by row without a transaction, returned English error prose with row numbers that did not match the file, and skipped part of the mutation contract | `import_stock_csv` (`commands/stock_import.rs`), `stockImportApi.import`, `src/hooks/use-stock-import-mutations.ts` |
+| `stocks.import.*` locale keys | Orphaned with the modal | `stocks.importWizard.*` |
+
 ## Deprecated type sources
 
 | Path | Why deprecated | Use instead |

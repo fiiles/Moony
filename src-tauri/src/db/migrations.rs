@@ -1183,8 +1183,22 @@ mod tests {
         .expect("unknown name");
         assert!(!has_pending(&conn, &chain).expect("unknown names"));
     }
+}
 
-    // ---- 003_stock_import_batches ------------------------------------------
+/// Tests of `003_stock_import_batches`. A module of its own so they do not
+/// share a hunk with the tests of the migrations added around it.
+#[cfg(test)]
+mod stock_import_batch_tests {
+    use super::*;
+
+    fn table_exists(conn: &Connection, name: &str) -> bool {
+        conn.query_row(
+            "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?1",
+            [name],
+            |_| Ok(true),
+        )
+        .unwrap_or(false)
+    }
 
     /// A database as it was before `003`: every migration that comes earlier in
     /// the chain, with foreign keys on, as the app opens it.

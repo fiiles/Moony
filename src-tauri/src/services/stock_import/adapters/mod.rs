@@ -128,12 +128,8 @@ pub(super) fn decimal_of(rows: &[Vec<String>], columns: &[usize]) -> String {
 }
 
 /// The date format of one column of the sample rows and whether day and month
-/// could be told apart. `fallback` when no sample reads as a date.
-pub(super) fn date_format_of(
-    rows: &[Vec<String>],
-    column: usize,
-    fallback: &str,
-) -> (String, bool) {
+/// could be told apart; `None` when no sample reads as a date.
+pub(super) fn detect_column_date(rows: &[Vec<String>], column: usize) -> Option<(String, bool)> {
     let samples: Vec<&str> = rows
         .iter()
         .filter_map(|row| row.get(column))
@@ -144,11 +140,16 @@ pub(super) fn date_format_of(
     let backed = samples
         .iter()
         .any(|s| date_parser::parse_date_strict(s, &detected.format).is_some());
-    if backed {
-        (detected.format, detected.ambiguous)
-    } else {
-        (fallback.to_string(), false)
-    }
+    backed.then_some((detected.format, detected.ambiguous))
+}
+
+/// [`detect_column_date`], or `fallback` (not ambiguous) when nothing reads.
+pub(super) fn date_format_of(
+    rows: &[Vec<String>],
+    column: usize,
+    fallback: &str,
+) -> (String, bool) {
+    detect_column_date(rows, column).unwrap_or_else(|| (fallback.to_string(), false))
 }
 
 #[cfg(test)]

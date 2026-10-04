@@ -241,7 +241,7 @@
     "twr": {
       "title": "Tag performance (TWR)",
       "sub": "Cumulative time-weighted return since the start of the period",
-      "referenceNote": "dashed is always the whole portfolio",
+      "referenceNote": "dashed: whole portfolio",
       "portfolio": "Whole portfolio",
       "period": {
         "3m": "3M",

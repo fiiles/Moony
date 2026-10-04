@@ -253,7 +253,7 @@
     "twr": {
       "title": "Výkonnost štítků (TWR)",
       "sub": "Kumulativní časově vážený výnos od začátku období",
-      "referenceNote": "čárkovaně vždy celé portfolio",
+      "referenceNote": "čárkovaně celé portfolio",
       "portfolio": "Celé portfolio",
       "period": {
         "3m": "3M",

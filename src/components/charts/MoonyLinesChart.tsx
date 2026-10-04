@@ -258,7 +258,8 @@ export function MoonyLinesChart({
         ))}
       </div>
       {labelMode === 'legend' && (
-        <div className="mt-2.5" style={{ minHeight: LEGEND_MIN_HEIGHT }}>
+        // px-1 takes the legend back in line with the card text: charts sit 4 px outside it (-mx-1)
+        <div className="mt-2.5 px-1" style={{ minHeight: LEGEND_MIN_HEIGHT }}>
           <ChartLegend items={legendItems} className="mt-0 gap-y-1.5" />
         </div>
       )}

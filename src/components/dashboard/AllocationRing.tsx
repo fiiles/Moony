@@ -20,7 +20,10 @@ interface AllocationRingProps {
   otherSegment?: AllocationSegment;
   formatValue: (value: number) => string;
   formatPercent: (ratio: number) => string;
-  /** `lg` fills a card as tall as the "Poslední pohyby" list on the dashboard. */
+  /**
+   * `lg` fills a card that stretches to a taller neighbor: "Poslední pohyby" on the dashboard, the
+   * TWR chart on the stocks analysis (wide windows only, its legend needs the room).
+   */
   size?: 'md' | 'lg';
   className?: string;
 }

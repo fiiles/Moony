@@ -299,6 +299,8 @@
             "address": "Adresa",
             "addressPlaceholder": "Plná adresa",
             "purchasePrice": "Nákupní cena",
+            "purchaseDate": "Datum koupě",
+            "purchaseDateHelp": "Od tohoto dne začíná graf hodnoty na detailu nemovitosti.",
             "marketPrice": "Tržní cena",
             "monthlyRent": "Měsíční nájemné",
             "currency": "Měna",

@@ -215,6 +215,7 @@
     "balanceAnchorBeforeStart": "Datum zůstatku nemůže předcházet datu zahájení úvěru",
     "assetRequired": "Vyberte aktivum",
     "invalidDate": "Neplatné datum",
+    "purchaseDateInFuture": "Datum koupě nemůže být v budoucnosti",
     "loanRequired": "Vyberte úvěr",
     "loanEventKindInvalid": "Neznámý typ události úvěru",
     "loanEventBeforeStart": "Událost nemůže být před začátkem úvěru",

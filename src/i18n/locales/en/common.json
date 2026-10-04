@@ -215,6 +215,7 @@
     "balanceAnchorBeforeStart": "The balance date cannot be before the loan start date",
     "assetRequired": "Choose an asset",
     "invalidDate": "Invalid date",
+    "purchaseDateInFuture": "The purchase date cannot be in the future",
     "loanRequired": "Choose a loan",
     "loanEventKindInvalid": "Unknown loan event kind",
     "loanEventBeforeStart": "The event cannot be before the loan starts",

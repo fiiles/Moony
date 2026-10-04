@@ -623,7 +623,13 @@ export type InsertOtherAssetTransaction = { assetId: string | null; type: string
 /**
  * Data for creating/updating real estate
  */
-export type InsertRealEstate = { name: string; address: string; type: string; purchasePrice: string | null; purchasePriceCurrency: string | null; marketPrice: string | null; marketPriceCurrency: string | null; monthlyRent: string | null; monthlyRentCurrency: string | null; recurringCosts: RecurringCost[] | null; photos: string[] | null; notes: string | null }
+export type InsertRealEstate = { name: string; address: string; type: string; purchasePrice: string | null; purchasePriceCurrency: string | null; 
+/**
+ * Unix seconds of the day the property was bought, never after today.
+ * Stored as the UTC midnight of that day; absent clears a stored date
+ * (an update replaces the whole record).
+ */
+purchaseDate: number | null; marketPrice: string | null; marketPriceCurrency: string | null; monthlyRent: string | null; monthlyRentCurrency: string | null; recurringCosts: RecurringCost[] | null; photos: string[] | null; notes: string | null }
 
 /**
  * Data for creating stock investment. Quantity and average price are not
@@ -884,7 +890,11 @@ monthlyContribution: string; contributionCurrency: string; enabled: boolean; cre
 /**
  * Real estate property
  */
-export type RealEstate = { id: string; name: string; address: string; type: string; purchasePrice: string; purchasePriceCurrency: string; marketPrice: string; marketPriceCurrency: string; monthlyRent: string | null; monthlyRentCurrency: string | null; recurringCosts: RecurringCost[]; photos: string[]; notes: string | null; createdAt: number; updatedAt: number }
+export type RealEstate = { id: string; name: string; address: string; type: string; purchasePrice: string; purchasePriceCurrency: string; 
+/**
+ * UTC day the property was bought (ADR 0008); `None` while unknown.
+ */
+purchaseDate: number | null; marketPrice: string; marketPriceCurrency: string; monthlyRent: string | null; monthlyRentCurrency: string | null; recurringCosts: RecurringCost[]; photos: string[]; notes: string | null; createdAt: number; updatedAt: number }
 
 /**
  * Real estate document (attached contracts, deeds, etc.)

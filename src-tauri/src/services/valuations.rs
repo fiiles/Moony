@@ -69,6 +69,15 @@ fn columns(kind: ValuationKind) -> String {
     )
 }
 
+/// Is this price a real estimate? Zero, negative and non-numeric prices are
+/// not: an asset created without a price has no estimate yet.
+fn is_estimate(value: &str) -> bool {
+    value
+        .trim()
+        .parse::<f64>()
+        .is_ok_and(|price| price.is_finite() && price > 0.0)
+}
+
 /// A row about to be written to a valuation log.
 struct NewRow<'a> {
     asset_id: &'a str,
@@ -288,6 +297,10 @@ pub fn record_price_change(
     let value = value.trim();
     let currency = currency.trim().to_uppercase();
     let latest = latest_valuation(conn, kind, asset_id)?;
+    // A log starts with a real estimate: an unpriced asset has none to record yet.
+    if latest.is_none() && !is_estimate(value) {
+        return Ok(false);
+    }
     let same = |v: &AssetValuation| {
         v.value.trim().parse::<f64>().ok() == value.parse::<f64>().ok()
             && v.currency.eq_ignore_ascii_case(&currency)
@@ -336,10 +349,7 @@ pub fn record_initial_valuation(
     day: i64,
 ) -> Result<bool> {
     let value = value.trim();
-    if !value
-        .parse::<f64>()
-        .is_ok_and(|price| price.is_finite() && price > 0.0)
-    {
+    if !is_estimate(value) {
         return Ok(false);
     }
     insert_row(
@@ -521,6 +531,45 @@ mod tests {
         assert_eq!(rows.len(), 1);
         assert_eq!(rows[0].value, "3650000");
         assert_eq!(rows[0].valued_at, today);
+    }
+
+    /// Saving an unpriced property (price 0) must not start its log with a
+    /// zero estimate: the trace would open at 0. Zeroing a priced one is real.
+    #[test]
+    fn record_price_change_does_not_start_a_log_with_a_zero_price() {
+        let conn = setup_test_db();
+        let today = 20_100 * DAY;
+        for value in ["0", "0.00", "", "abc"] {
+            assert!(
+                !record_price_change(&conn, ValuationKind::RealEstate, "re1", value, "CZK", today)
+                    .unwrap(),
+                "{value:?}"
+            );
+        }
+        assert!(list_valuations(&conn, ValuationKind::RealEstate, "re1")
+            .unwrap()
+            .is_empty());
+
+        record_initial_valuation(
+            &conn,
+            ValuationKind::RealEstate,
+            "re1",
+            "3480000",
+            "CZK",
+            today - 30 * DAY,
+        )
+        .unwrap();
+        assert!(
+            record_price_change(&conn, ValuationKind::RealEstate, "re1", "0", "CZK", today)
+                .unwrap(),
+            "zeroing an estimate is a change"
+        );
+        assert_eq!(
+            list_valuations(&conn, ValuationKind::RealEstate, "re1")
+                .unwrap()
+                .len(),
+            2
+        );
     }
 
     #[test]

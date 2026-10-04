@@ -214,6 +214,8 @@ export interface RealEstate {
   type: string;
   purchasePrice: string;
   purchasePriceCurrency: string;
+  /** UTC-midnight day the property was bought; null while unknown (ADR 0008) */
+  purchaseDate: number | null;
   marketPrice: string;
   marketPriceCurrency: string;
   monthlyRent: string | null;
@@ -530,6 +532,8 @@ export const insertRealEstateSchema = z.object({
   type: z.string().min(1),
   purchasePrice: z.string().optional(),
   purchasePriceCurrency: z.string().optional(),
+  /** Day of the purchase as UTC-midnight unix seconds; never in the future */
+  purchaseDate: z.number().optional().nullable(),
   marketPrice: z.string().optional(),
   marketPriceCurrency: z.string().optional(),
   monthlyRent: z.string().optional().nullable(),

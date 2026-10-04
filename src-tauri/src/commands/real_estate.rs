@@ -7,6 +7,7 @@ use crate::models::{
     InsurancePolicy, Loan, RealEstate, RealEstateDocument, RealEstateOneTimeCost, RealEstatePhoto,
     RealEstatePhotoBatch, UpdatePhotoBatch,
 };
+use crate::services::real_estate as real_estate_service;
 use std::fs;
 use std::path::PathBuf;
 use tauri::{Manager, State};
@@ -15,84 +16,13 @@ use uuid::Uuid;
 /// Get all real estate
 #[tauri::command]
 pub async fn get_all_real_estate(db: State<'_, Database>) -> Result<Vec<RealEstate>> {
-    db.with_conn(|conn| {
-        let mut stmt = conn.prepare(
-            "SELECT id, name, address, type, purchase_price, purchase_price_currency,
-                    market_price, market_price_currency, monthly_rent, monthly_rent_currency,
-                    recurring_costs, photos, notes, created_at, updated_at
-             FROM real_estate ORDER BY name",
-        )?;
-
-        let properties = stmt
-            .query_map([], |row| {
-                let rc_json: String = row.get(10)?;
-                let photos_json: String = row.get(11)?;
-
-                Ok(RealEstate {
-                    id: row.get(0)?,
-                    name: row.get(1)?,
-                    address: row.get(2)?,
-                    property_type: row.get(3)?,
-                    purchase_price: row.get(4)?,
-                    purchase_price_currency: row.get(5)?,
-                    market_price: row.get(6)?,
-                    market_price_currency: row.get(7)?,
-                    monthly_rent: row.get(8)?,
-                    monthly_rent_currency: row.get(9)?,
-                    recurring_costs: serde_json::from_str(&rc_json).unwrap_or_default(),
-                    photos: serde_json::from_str(&photos_json).unwrap_or_default(),
-                    notes: row.get(12)?,
-                    created_at: row.get(13)?,
-                    updated_at: row.get(14)?,
-                })
-            })?
-            .filter_map(|r| r.ok())
-            .collect();
-
-        Ok(properties)
-    })
+    db.with_conn(real_estate_service::list_properties)
 }
 
 /// Get single real estate
 #[tauri::command]
 pub async fn get_real_estate(db: State<'_, Database>, id: String) -> Result<Option<RealEstate>> {
-    db.with_conn(|conn| {
-        let result = conn.query_row(
-            "SELECT id, name, address, type, purchase_price, purchase_price_currency,
-                    market_price, market_price_currency, monthly_rent, monthly_rent_currency,
-                    recurring_costs, photos, notes, created_at, updated_at
-             FROM real_estate WHERE id = ?1",
-            [&id],
-            |row| {
-                let rc_json: String = row.get(10)?;
-                let photos_json: String = row.get(11)?;
-
-                Ok(RealEstate {
-                    id: row.get(0)?,
-                    name: row.get(1)?,
-                    address: row.get(2)?,
-                    property_type: row.get(3)?,
-                    purchase_price: row.get(4)?,
-                    purchase_price_currency: row.get(5)?,
-                    market_price: row.get(6)?,
-                    market_price_currency: row.get(7)?,
-                    monthly_rent: row.get(8)?,
-                    monthly_rent_currency: row.get(9)?,
-                    recurring_costs: serde_json::from_str(&rc_json).unwrap_or_default(),
-                    photos: serde_json::from_str(&photos_json).unwrap_or_default(),
-                    notes: row.get(12)?,
-                    created_at: row.get(13)?,
-                    updated_at: row.get(14)?,
-                })
-            },
-        );
-
-        match result {
-            Ok(re) => Ok(Some(re)),
-            Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
-            Err(e) => Err(e.into()),
-        }
-    })
+    db.with_conn(|conn| real_estate_service::get_property(conn, &id))
 }
 
 /// Create real estate
@@ -101,89 +31,25 @@ pub async fn create_real_estate(
     db: State<'_, Database>,
     data: InsertRealEstate,
 ) -> Result<RealEstate> {
-    let id = db.with_conn(|conn| crate::services::real_estate::create_property(conn, &data))?;
-
-    get_real_estate(db, id)
-        .await?
-        .ok_or_else(|| AppError::Internal("Failed to retrieve created property".into()))
+    db.with_conn(|conn| {
+        let id = real_estate_service::create_property(conn, &data)?;
+        real_estate_service::get_property(conn, &id)?
+            .ok_or_else(|| AppError::Internal("Failed to retrieve created property".into()))
+    })
 }
 
-/// Update real estate
+/// Update real estate (replaces the whole record, see the service)
 #[tauri::command]
 pub async fn update_real_estate(
     db: State<'_, Database>,
     id: String,
     data: InsertRealEstate,
 ) -> Result<RealEstate> {
-    // Validate inputs at the trust boundary
-    data.validate()?;
-
-    let now = chrono::Utc::now().timestamp();
-
     db.with_conn(|conn| {
-        // Lowercase each recurring cost's frequency, same as create_property —
-        // validate() accepts mixed case, but the UI's exact-match display
-        // logic (=== 'quarterly') needs the stored JSON to always be lowercase.
-        let rc_json = data
-            .recurring_costs
-            .map(|mut rc| {
-                for cost in &mut rc {
-                    cost.frequency = cost.frequency.to_lowercase();
-                }
-                rc
-            })
-            .and_then(|rc| serde_json::to_string(&rc).ok());
-        let photos_json = data.photos.and_then(|p| serde_json::to_string(&p).ok());
-
-        conn.execute(
-            "UPDATE real_estate SET name = ?1, address = ?2, type = ?3,
-             purchase_price = COALESCE(?4, purchase_price),
-             purchase_price_currency = COALESCE(?5, purchase_price_currency),
-             market_price = COALESCE(?6, market_price),
-             market_price_currency = COALESCE(?7, market_price_currency),
-             monthly_rent = ?8, monthly_rent_currency = ?9,
-             recurring_costs = COALESCE(?10, recurring_costs),
-             photos = COALESCE(?11, photos), notes = ?12, updated_at = ?13
-             WHERE id = ?14",
-            rusqlite::params![
-                data.name,
-                data.address,
-                data.property_type,
-                data.purchase_price,
-                data.purchase_price_currency,
-                data.market_price,
-                data.market_price_currency,
-                data.monthly_rent,
-                data.monthly_rent_currency,
-                rc_json,
-                photos_json,
-                data.notes,
-                now,
-                id
-            ],
-        )?;
-        // A changed market price is an estimate too: keep the valuation log complete
-        if data.market_price.is_some() {
-            let (price, currency): (String, String) = conn.query_row(
-                "SELECT market_price, market_price_currency FROM real_estate WHERE id = ?1",
-                [&id],
-                |row| Ok((row.get(0)?, row.get(1)?)),
-            )?;
-            crate::services::valuations::record_price_change(
-                conn,
-                crate::services::valuations::ValuationKind::RealEstate,
-                &id,
-                &price,
-                &currency,
-                crate::services::loan_amortization::today_utc_day(),
-            )?;
-        }
-        Ok(())
-    })?;
-
-    get_real_estate(db, id)
-        .await?
-        .ok_or_else(|| AppError::NotFound("Real estate not found".into()))
+        real_estate_service::update_property(conn, &id, &data, chrono::Utc::now().timestamp())?;
+        real_estate_service::get_property(conn, &id)?
+            .ok_or_else(|| AppError::NotFound("Real estate not found".into()))
+    })
 }
 
 /// Delete real estate

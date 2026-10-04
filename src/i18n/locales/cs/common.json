@@ -352,7 +352,7 @@
     "daysAgo_one": "Před 1 dnem",
     "refresh": "Aktualizovat ceny",
     "refreshing": "Aktualizuji...",
-    "unknownRates": "Neznámý směnný kurz pro: {{currencies}} — hodnoty se počítají 1:1 vůči základní měně",
+    "unknownRates": "Neznámý směnný kurz pro: {{currencies}} — součty, které je obsahují, nejsou přesné",
     "fresh": "Data aktuální"
   },
   "notFound": {

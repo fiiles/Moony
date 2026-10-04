@@ -351,7 +351,7 @@
     "daysAgo_one": "1 day ago",
     "refresh": "Refresh Prices",
     "refreshing": "Refreshing...",
-    "unknownRates": "Unknown exchange rate for: {{currencies}} — values counted 1:1 to the base currency",
+    "unknownRates": "Unknown exchange rate for: {{currencies}} — totals that include them are not accurate",
     "fresh": "Data up to date"
   },
   "notFound": {

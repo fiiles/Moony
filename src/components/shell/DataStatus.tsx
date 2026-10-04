@@ -57,8 +57,9 @@ export function DataStatus({ override }: { override?: ShellStatus }) {
     staleTime: 30000,
   });
 
-  // Currencies with no known exchange rate (converted 1:1 to CZK — values are
-  // wrong). The backend reports the ones it met in a conversion; the display
+  // Currencies with no known exchange rate (internally counted 1:1 against
+  // CZK, the base currency, so totals that include them are inaccurate). The
+  // backend reports the ones it met in a conversion; the display
   // currency is converted on the frontend, so a non-ECB display currency is
   // added here once the rates have loaded.
   const { currencyCode: displayCurrency, ratesTimestamp } = useCurrency();

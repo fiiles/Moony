@@ -412,6 +412,7 @@ export default function Dashboard() {
           <Card variant="flat" className="flex flex-1 items-center">
             <CardContent className="w-full pt-5">
               <AllocationRing
+                size="lg"
                 segments={allocation}
                 centerLabel={t('allocation.center')}
                 centerValue={fmt.number(display.assets, {

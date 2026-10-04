@@ -20,11 +20,37 @@ interface AllocationRingProps {
   otherSegment?: AllocationSegment;
   formatValue: (value: number) => string;
   formatPercent: (ratio: number) => string;
+  /** `lg` fills a card as tall as the "Poslední pohyby" list on the dashboard. */
+  size?: 'md' | 'lg';
   className?: string;
 }
 
 const SERIES = ['var(--s1)', 'var(--s2)', 'var(--s3)', 'var(--s4)'];
 const OTHER = 'var(--s-other)';
+
+const SIZES = {
+  md: {
+    root: 'grid-cols-[156px_1fr] gap-3',
+    ring: 'size-[130px] after:inset-[22px]',
+    centerLabel: 'text-[9px]',
+    centerValue: 'text-[14px]',
+    list: 'gap-[11px]',
+    row: 'text-caption',
+    amount: 'text-micro',
+    percent: 'text-caption',
+  },
+  lg: {
+    root: 'grid-cols-[184px_1fr] gap-9',
+    ring: 'size-[184px] after:inset-[28px]',
+    centerLabel: 'text-micro',
+    centerValue: 'text-[19px]',
+    // Rows divided like the "Poslední pohyby" list next to it
+    list: '[&>li]:border-b [&>li]:border-line-soft [&>li]:py-[10px] [&>li:last-child]:border-0',
+    row: 'text-table',
+    amount: 'text-caption',
+    percent: 'text-table',
+  },
+} as const;
 
 /**
  * Allocation ring (design system §8): a conic ring in s1…s4 plus "Ostatní",
@@ -39,8 +65,10 @@ export function AllocationRing({
   otherSegment,
   formatValue,
   formatPercent,
+  size = 'md',
   className,
 }: AllocationRingProps) {
+  const sz = SIZES[size];
   const { slices, total } = useMemo(() => {
     const positive = segments.filter((s) => s.value > 0).sort((a, b) => b.value - a.value);
     const extra = otherSegment && otherSegment.value > 0 ? otherSegment : null;
@@ -78,25 +106,36 @@ export function AllocationRing({
   }, [slices, total]);
 
   return (
-    <div className={cn('grid grid-cols-[156px_1fr] items-center gap-3', className)}>
+    <div className={cn('grid items-center', sz.root, className)}>
       <div
-        className="relative size-[130px] rounded-full after:absolute after:inset-[22px] after:rounded-full after:bg-paper after:content-['']"
+        className={cn(
+          "relative rounded-full after:absolute after:rounded-full after:bg-paper after:content-['']",
+          sz.ring
+        )}
         style={{ background: gradient }}
         role="img"
         aria-label={slices.map((s) => `${s.label} ${formatPercent(s.percent / 100)}`).join(', ')}
       >
-        <div className="absolute inset-0 z-[1] grid place-content-center text-center text-[9px] font-600 text-ink-4">
+        <div
+          className={cn(
+            'absolute inset-0 z-[1] grid place-content-center text-center font-600 text-ink-4',
+            sz.centerLabel
+          )}
+        >
           {centerLabel}
-          <b className="mt-[3px] block text-[14px] tracking-[-0.04em] text-ink num">
+          <b className={cn('mt-[3px] block tracking-[-0.04em] text-ink num', sz.centerValue)}>
             {centerValue}
           </b>
         </div>
       </div>
-      <ul className="m-0 grid list-none gap-[11px] p-0">
+      <ul className={cn('m-0 grid list-none p-0', sz.list)}>
         {slices.map((s) => (
           <li
             key={s.key}
-            className="grid grid-cols-[8px_1fr_auto_auto] items-center gap-[10px] text-caption text-ink-2"
+            className={cn(
+              'grid grid-cols-[8px_1fr_auto_auto] items-center gap-[10px] text-ink-2',
+              sz.row
+            )}
           >
             <i
               aria-hidden
@@ -104,8 +143,10 @@ export function AllocationRing({
               style={{ background: s.color }}
             />
             <span>{s.label}</span>
-            <span className="text-micro font-500 text-ink-4 num">{formatValue(s.value)}</span>
-            <b className="text-caption font-650 text-ink num">{formatPercent(s.percent / 100)}</b>
+            <span className={cn('font-500 text-ink-4 num', sz.amount)}>{formatValue(s.value)}</span>
+            <b className={cn('font-650 text-ink num', sz.percent)}>
+              {formatPercent(s.percent / 100)}
+            </b>
           </li>
         ))}
       </ul>

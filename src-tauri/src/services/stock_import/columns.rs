@@ -14,8 +14,9 @@
 //! against *normalised* text.
 //!
 //! Every header is claimed by at most one role and every role takes one
-//! header: all matches are ranked by confidence, then role order, then column
-//! (the leftmost wins a tie) and assigned greedily.
+//! header: all matches are ranked by confidence, then role order, then the
+//! role's preferred headers, then column (the leftmost wins a tie) and
+//! assigned greedily.
 
 use std::sync::LazyLock;
 
@@ -81,6 +82,10 @@ struct RoleSpec {
     exact: &'static [&'static str],
     contains: &'static [&'static str],
     exclude: &'static [&'static str],
+    /// Headers (whole, normalised) that win a tie with other headers of the
+    /// same confidence before the leftmost does: a direction column
+    /// ("Buy / Sell") over a "Type" that only says order or dividend.
+    prefer: &'static [&'static str],
 }
 
 static SPECS: &[RoleSpec] = &[
@@ -109,6 +114,7 @@ static SPECS: &[RoleSpec] = &[
             // DE
             "handelsdatum",
             "handelstag",
+            "geschaftstag",
             "ausfuhrungsdatum",
             "ausfuhrungstag",
             "transaktionsdatum",
@@ -153,6 +159,8 @@ static SPECS: &[RoleSpec] = &[
             "zeit",
             "heure",
             "ora",
+            // The booking day follows the trade day: only when nothing better.
+            "buchungstag",
         ],
         exclude: &[
             "settle",
@@ -167,6 +175,7 @@ static SPECS: &[RoleSpec] = &[
             "birth",
             "due",
         ],
+        prefer: &[],
     },
     RoleSpec {
         role: StockRole::Type,
@@ -233,6 +242,18 @@ static SPECS: &[RoleSpec] = &[
             "price",
             "fee",
         ],
+        prefer: &[
+            "buy sell",
+            "buy or sell",
+            "buysell",
+            "b s",
+            "side",
+            "direction",
+            "action",
+            "kauf verkauf",
+            "smer",
+            "kierunek",
+        ],
     },
     RoleSpec {
         role: StockRole::Symbol,
@@ -256,6 +277,7 @@ static SPECS: &[RoleSpec] = &[
         ],
         contains: &["symbol", "ticker"],
         exclude: &["currency", "name", "type", "exchange", "description", "id"],
+        prefer: &[],
     },
     RoleSpec {
         role: StockRole::Isin,
@@ -273,6 +295,7 @@ static SPECS: &[RoleSpec] = &[
         ],
         contains: &["isin"],
         exclude: &[],
+        prefer: &[],
     },
     RoleSpec {
         role: StockRole::Name,
@@ -320,6 +343,7 @@ static SPECS: &[RoleSpec] = &[
         ],
         contains: &[],
         exclude: &[],
+        prefer: &[],
     },
     RoleSpec {
         role: StockRole::Quantity,
@@ -345,6 +369,8 @@ static SPECS: &[RoleSpec] = &[
             "menge",
             "stuck",
             "stucke",
+            "stuck nominal",
+            "nominal",
             // NL / PL / ES / IT / FR
             "aantal",
             "ilosc",
@@ -362,6 +388,7 @@ static SPECS: &[RoleSpec] = &[
             "cantidad", "quantita", "quantite",
         ],
         exclude: &["remaining", "original", "total", "cumulative", "open"],
+        prefer: &[],
     },
     RoleSpec {
         role: StockRole::Price,
@@ -375,6 +402,7 @@ static SPECS: &[RoleSpec] = &[
             "trade price",
             "tradeprice",
             "execution price",
+            "average price",
             // CZ
             "cena",
             "cena za kus",
@@ -385,6 +413,8 @@ static SPECS: &[RoleSpec] = &[
             "kurs",
             "preis",
             "stuckpreis",
+            "ausfuhrungskurs",
+            "ausfuhrungspreis",
             "koers",
             // FR / ES / IT / PL
             "prix",
@@ -402,8 +432,9 @@ static SPECS: &[RoleSpec] = &[
         ],
         exclude: &[
             "limit", "stop", "close", "closing", "market", "total", "last", "average", "avg",
-            "currency", "exchange",
+            "strike", "currency", "exchange",
         ],
+        prefer: &[],
     },
     RoleSpec {
         role: StockRole::Currency,
@@ -414,6 +445,9 @@ static SPECS: &[RoleSpec] = &[
             "curr",
             "trade currency",
             "price currency",
+            "instrument currency",
+            "security currency",
+            "listing currency",
             "currencyprimary",
             "currency primary",
             // CZ
@@ -447,6 +481,7 @@ static SPECS: &[RoleSpec] = &[
             "total",
             "base",
         ],
+        prefer: &[],
     },
     RoleSpec {
         role: StockRole::ExternalId,
@@ -502,6 +537,7 @@ static SPECS: &[RoleSpec] = &[
         exclude: &[
             "currency", "account", "client", "user", "customer", "security", "conid",
         ],
+        prefer: &[],
     },
     RoleSpec {
         role: StockRole::Fee,
@@ -559,6 +595,7 @@ static SPECS: &[RoleSpec] = &[
             "oplaty",
         ],
         exclude: &[],
+        prefer: &[],
     },
 ];
 
@@ -568,6 +605,7 @@ struct CompiledSpec {
     exact: Regex,
     contains: Option<Regex>,
     exclude: Option<Regex>,
+    prefer: &'static [&'static str],
 }
 
 /// `(?:^| )(?:a|b)(?: |$)`: the words as whole words (or phrases).
@@ -597,6 +635,7 @@ static COMPILED: LazyLock<Vec<CompiledSpec>> = LazyLock::new(|| {
                 exact,
                 contains: words_regex(spec.contains),
                 exclude: words_regex(spec.exclude),
+                prefer: spec.prefer,
             })
         })
         .collect()
@@ -622,24 +661,30 @@ fn confidence(spec: &CompiledSpec, normalized: &str) -> Option<f64> {
 pub fn suggest_stock_columns(headers: &[String]) -> Vec<StockColumnSuggestion> {
     let normalized: Vec<String> = headers.iter().map(|h| normalize_header(h)).collect();
 
-    // Every (confidence, role, column) that matches, best first.
-    let mut candidates: Vec<(f64, usize, usize)> = Vec::new();
+    // Every (confidence, role, preferred, column) that matches, best first.
+    let mut candidates: Vec<(f64, usize, bool, usize)> = Vec::new();
     for (role_index, spec) in COMPILED.iter().enumerate() {
         for (column, text) in normalized.iter().enumerate() {
             if text.is_empty() {
                 continue;
             }
             if let Some(conf) = confidence(spec, text) {
-                candidates.push((conf, role_index, column));
+                let preferred = spec.prefer.contains(&text.as_str());
+                candidates.push((conf, role_index, preferred, column));
             }
         }
     }
-    candidates.sort_by(|a, b| b.0.total_cmp(&a.0).then(a.1.cmp(&b.1)).then(a.2.cmp(&b.2)));
+    candidates.sort_by(|a, b| {
+        b.0.total_cmp(&a.0)
+            .then(a.1.cmp(&b.1))
+            .then(b.2.cmp(&a.2))
+            .then(a.3.cmp(&b.3))
+    });
 
     let mut role_taken = vec![false; COMPILED.len()];
     let mut column_taken = vec![false; headers.len()];
     let mut chosen: Vec<(usize, StockColumnSuggestion)> = Vec::new();
-    for (conf, role_index, column) in candidates {
+    for (conf, role_index, _, column) in candidates {
         if role_taken[role_index] || column_taken[column] {
             continue;
         }
@@ -768,7 +813,7 @@ mod tests {
         // A word written with capitals, diacritics or punctuation can never
         // match a normalised header.
         for spec in SPECS {
-            for list in [spec.exact, spec.contains, spec.exclude] {
+            for list in [spec.exact, spec.contains, spec.exclude, spec.prefer] {
                 for pattern in list {
                     assert_eq!(
                         &normalize_header(pattern),
@@ -1140,6 +1185,86 @@ mod tests {
         assert_eq!(col(&m, "symbol"), Some(2));
         assert_eq!(col(&m, "quantity"), Some(3));
         assert_eq!(col(&m, "currency"), Some(5));
+    }
+
+    #[test]
+    fn headers_of_brokers_without_a_preset() {
+        // Revolut
+        let m = mapped(&[
+            "Date",
+            "Ticker",
+            "Type",
+            "Quantity",
+            "Price per share",
+            "Total Amount",
+            "Currency",
+            "FX Rate",
+        ]);
+        assert_eq!(col(&m, "symbol"), Some(1));
+        assert_eq!(col(&m, "price"), Some(4));
+        assert_eq!(col(&m, "currency"), Some(6));
+        // Freetrade: the price is in the instrument's currency, not the
+        // account's.
+        let m = mapped(&[
+            "Title",
+            "Type",
+            "Timestamp",
+            "Account Currency",
+            "Total Amount",
+            "Buy / Sell",
+            "Ticker",
+            "ISIN",
+            "Quantity",
+            "Order ID",
+            "Instrument Currency",
+            "Price per Share",
+        ]);
+        assert_eq!(col(&m, "date"), Some(2));
+        assert_eq!(col(&m, "currency"), Some(10));
+        assert_eq!(col(&m, "type"), Some(5), "Buy / Sell is the direction");
+        assert_eq!(col(&m, "externalId"), Some(9));
+        // A lone account currency is still better than none.
+        assert_eq!(
+            col(&mapped(&["Date", "Account Currency"]), "currency"),
+            Some(1)
+        );
+        // comdirect's securities statement: the trade day, not the booking day.
+        let m = mapped(&[
+            "Buchungstag",
+            "Geschäftstag",
+            "Stück / Nominal",
+            "Bezeichnung",
+            "WKN",
+            "Währung",
+            "Ausführungskurs",
+            "Gebühren",
+        ]);
+        assert_eq!(col(&m, "date"), Some(1));
+        assert_eq!(col(&m, "quantity"), Some(2));
+        assert_eq!(col(&m, "name"), Some(3));
+        assert_eq!(col(&m, "currency"), Some(5));
+        assert_eq!(col(&m, "price"), Some(6));
+        assert_eq!(col(&m, "fee"), Some(7));
+        // The booking day alone still reads as a date.
+        assert_eq!(col(&mapped(&["Buchungstag", "Anzahl"]), "date"), Some(0));
+        // Tastytrade: an option's strike is not the price of the trade.
+        let m = mapped(&[
+            "Date",
+            "Type",
+            "Action",
+            "Symbol",
+            "Quantity",
+            "Average Price",
+            "Strike Price",
+            "Currency",
+        ]);
+        assert_eq!(col(&m, "price"), Some(5));
+        assert_eq!(
+            col(&m, "type"),
+            Some(2),
+            "the action says buy or sell, the type does not"
+        );
+        assert!(!mapped(&["Strike Price"]).contains_key("price"));
     }
 
     #[test]

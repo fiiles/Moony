@@ -20,7 +20,7 @@ components not covered by the package managers: SQLCipher (BSD-3-Clause, compile
 | Ecosystem | Packages |
 | --- | ---: |
 | npm | 230 |
-| Rust | 685 |
+| Rust | 672 |
 
 ### npm — packages per licence
 
@@ -41,17 +41,17 @@ components not covered by the package managers: SQLCipher (BSD-3-Clause, compile
 
 | Licence | Packages |
 | --- | ---: |
-| MIT OR Apache-2.0 | 347 |
-| MIT | 165 |
+| MIT OR Apache-2.0 | 340 |
+| MIT | 160 |
 | Apache-2.0 OR MIT | 64 |
 | Unicode-3.0 | 18 |
 | Zlib OR Apache-2.0 OR MIT | 18 |
 | Unlicense OR MIT | 9 |
 | BSD-3-Clause | 7 |
 | MIT OR Apache-2.0 OR Zlib | 6 |
-| Apache-2.0 | 5 |
 | Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT | 5 |
 | MPL-2.0 | 5 |
+| Apache-2.0 | 4 |
 | BSD-2-Clause | 4 |
 | Apache-2.0 OR ISC OR MIT | 3 |
 | ISC | 3 |
@@ -493,10 +493,8 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | flate2 | 1.1.9 | MIT OR Apache-2.0 |
 | fnv | 1.0.7 | Apache-2.0 OR MIT |
 | foldhash | 0.2.0 | Zlib |
-| foreign-types | 0.3.2 | MIT OR Apache-2.0 |
 | foreign-types | 0.5.0 | MIT OR Apache-2.0 |
 | foreign-types-macros | 0.2.4 | MIT OR Apache-2.0 |
-| foreign-types-shared | 0.1.1 | MIT OR Apache-2.0 |
 | foreign-types-shared | 0.3.1 | MIT OR Apache-2.0 |
 | form_urlencoded | 1.2.2 | MIT OR Apache-2.0 |
 | fs_extra | 1.3.0 | MIT |
@@ -554,7 +552,6 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | hybrid-array | 0.4.14 | MIT OR Apache-2.0 |
 | hyper | 1.11.0 | MIT |
 | hyper-rustls | 0.27.9 | Apache-2.0 OR ISC OR MIT |
-| hyper-tls | 0.6.0 | MIT OR Apache-2.0 |
 | hyper-util | 0.1.20 | MIT |
 | iana-time-zone | 0.1.65 | MIT OR Apache-2.0 |
 | iana-time-zone-haiku | 0.1.2 | MIT OR Apache-2.0 |
@@ -625,11 +622,9 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | mio | 1.2.2 | MIT |
 | moxcms | 0.8.1 | BSD-3-Clause OR Apache-2.0 |
 | muda | 0.19.3 | Apache-2.0 OR MIT |
-| native-tls | 0.2.18 | MIT OR Apache-2.0 |
 | ndk | 0.9.0 | MIT OR Apache-2.0 |
 | ndk-sys | 0.6.0+11769913 | MIT OR Apache-2.0 |
 | new_debug_unreachable | 1.0.6 | MIT |
-| nix | 0.31.3 | MIT |
 | no_std_io2 | 0.9.4 | Apache-2.0 OR MIT |
 | nom | 8.0.0 | MIT |
 | noop_proc_macro | 0.3.0 | MIT |
@@ -663,13 +658,9 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | objc2-web-kit | 0.3.2 | Zlib OR Apache-2.0 OR MIT |
 | once_cell | 1.21.4 | MIT OR Apache-2.0 |
 | open | 5.4.1 | MIT |
-| openssl | 0.10.81 | Apache-2.0 |
-| openssl-macros | 0.1.1 | MIT OR Apache-2.0 |
 | openssl-probe | 0.2.1 | MIT OR Apache-2.0 |
-| openssl-sys | 0.9.117 | MIT |
 | option-ext | 0.2.0 | MPL-2.0 |
 | ordered-stream | 0.2.0 | MIT OR Apache-2.0 |
-| os_info | 3.15.0 | MIT |
 | osakit | 0.3.1 | MIT OR Apache-2.0 |
 | pango | 0.18.3 | MIT |
 | pango-sys | 0.18.0 | MIT |
@@ -740,7 +731,6 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | regex | 1.13.1 | MIT OR Apache-2.0 |
 | regex-automata | 0.4.18 | MIT OR Apache-2.0 |
 | regex-syntax | 0.8.11 | MIT OR Apache-2.0 |
-| reqwest | 0.12.28 | MIT OR Apache-2.0 |
 | reqwest | 0.13.4 | MIT OR Apache-2.0 |
 | rfd | 0.16.0 | MIT |
 | rgb | 0.8.53 | MIT |
@@ -823,7 +813,6 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | syn | 3.0.3 | MIT OR Apache-2.0 |
 | sync_wrapper | 1.0.2 | Apache-2.0 |
 | synstructure | 0.13.2 | MIT |
-| sys-locale | 0.3.2 | MIT OR Apache-2.0 |
 | system-configuration | 0.7.0 | MIT OR Apache-2.0 |
 | system-configuration-sys | 0.6.0 | MIT OR Apache-2.0 |
 | system-deps | 6.2.2 | MIT OR Apache-2.0 |
@@ -836,7 +825,6 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | tauri-codegen | 2.6.3 | Apache-2.0 OR MIT |
 | tauri-macros | 2.6.3 | Apache-2.0 OR MIT |
 | tauri-plugin | 2.6.3 | Apache-2.0 OR MIT |
-| tauri-plugin-aptabase | 1.0.0 | MIT |
 | tauri-plugin-dialog | 2.7.2 | Apache-2.0 OR MIT |
 | tauri-plugin-fs | 2.5.1 | Apache-2.0 OR MIT |
 | tauri-plugin-log | 2.9.2 | Apache-2.0 OR MIT |
@@ -862,7 +850,6 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | tinyvec_macros | 0.1.1 | MIT OR Apache-2.0 OR Zlib |
 | tokio | 1.53.1 | MIT |
 | tokio-macros | 2.7.2 | MIT |
-| tokio-native-tls | 0.3.1 | MIT |
 | tokio-rustls | 0.26.4 | MIT OR Apache-2.0 |
 | tokio-stream | 0.1.19 | MIT |
 | tokio-util | 0.7.19 | MIT |

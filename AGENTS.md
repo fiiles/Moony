@@ -81,7 +81,6 @@ Full policy including the thin-command amendment: `docs/standards/testing.md`.
 | Rust service business logic in `src-tauri/src/services/` | React components and hooks (out of scope) |
 | | `shared/generated-types.ts` and `shared/schema.ts` (types only) |
 | | `src/lib/tauri-api.ts` (thin invoke wrappers) |
-| | `src/lib/analytics.ts` (side-effectful, requires jsdom + mocks) |
 
 ### Rust test DB pattern
 
@@ -130,5 +129,5 @@ if the checked-in file is out of sync.
 
 ## Environment variables
 
-See `.env.example`. The `npm run tauri` script uses dotenv to load `.env` before running the
-Tauri CLI.
+Moony needs none (see `.env.example`). The `npm run tauri` script still uses dotenv to load a
+`.env` before running the Tauri CLI.

@@ -187,7 +187,7 @@ The full, checkable version is in **[PRIVACY.md](./PRIVACY.md)**; vulnerabilitie
 - **Local only** — all records are stored in an AES-256 encrypted SQLite database (SQLCipher) in your user profile. There is no account, no cloud and no sync.
 - **What leaves your computer** — only what is needed for market data: the stock tickers, crypto IDs and currencies you track are sent to Yahoo Finance, CoinGecko and ECB/Frankfurter when prices are refreshed. Balances, amounts, names and documents are never sent. Moony works offline too; prices and rates just go stale.
 - **Update check** — after you unlock, Moony asks GitHub Releases whether a newer version exists.
-- **Optional analytics** — anonymous screen-view statistics (Aptabase), only with your consent, off by default, toggle in Settings. Only official release builds contain analytics.
+- **No telemetry** — no analytics, no usage statistics and no crash reports; the only requests Moony makes are the ones listed above.
 - **Attachments** — documents and photos you attach are stored as plain files in the data folder (**not encrypted**); encrypting them is on the roadmap.
 - **Password + recovery key** — the database key is protected by your password and, as a fallback, by a 24-character recovery key. Both unlock the same key files in the data folder; keep a backup of the whole folder. There is no backdoor: without the password and the recovery key nobody can open your data.
 
@@ -368,9 +368,9 @@ For other Linux distributions, see the [Tauri Linux prerequisites](https://v2.ta
    npm run tauri build
    ```
 
-Builds from source contain no analytics unless you provide your own Aptabase key (see
-`.env.example`). The checks to run before committing, the demo profile and the browser dev
-bridge are described in [CONTRIBUTING.md](./CONTRIBUTING.md).
+Builds from source are identical to the official releases: Moony sends no telemetry. The
+checks to run before committing, the demo profile and the browser dev bridge are described in
+[CONTRIBUTING.md](./CONTRIBUTING.md).
 
 ### Project Structure
 

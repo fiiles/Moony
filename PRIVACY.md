@@ -32,7 +32,7 @@ Be aware of these, because the "encrypted database" claim does not cover them:
 | Photos and documents you attach (real-estate photos and documents, insurance documents) | `real_estate_photos/`, `real_estate_documents/`, `insurance_documents/` in the data folder | Stored as ordinary files. Encrypting attachments is on the roadmap. Anyone who can read your user profile can open them. |
 | Backups you create | The `.zip` you choose in Settings → Data and backups | The database inside is still encrypted and the key files need your password or recovery key, but **the attachments inside the archive are plain files**. |
 | "Export all data (JSON)" | The file you choose | A plain-text JSON dump of your data (API keys and the MCP token are left out). Handle it like a bank statement. |
-| UI preferences | The operating system's WebView profile (`localStorage`) | Theme, analytics consent, device-level settings such as auto-lock. No financial data. |
+| UI preferences | The operating system's WebView profile (`localStorage`) | Theme and device-level settings such as auto-lock. No financial data. |
 | Application logs | The log folder (About → Open logs) | Meant for troubleshooting. They can contain technical details such as ticker symbols and file paths. Read them before attaching them to a public bug report. |
 
 Full-disk encryption (FileVault, BitLocker, LUKS) is the right complement to all of the above.
@@ -49,18 +49,10 @@ address to the service that receives it, as any internet request does.
 | **European Central Bank** (`www.ecb.europa.eu`) | Nothing about you; it is a download of the public daily reference rates. | When exchange rates are stale. | Yes — rates then simply go stale. Currencies the ECB does not publish never get an automatic rate (Settings → General → Currency explains this). |
 | **Frankfurter** (`api.frankfurter.dev`, serves ECB historical rates) | The date range from your oldest transaction to today and the list of currencies used in your transactions. | When you enter or import transactions in a currency whose history is missing, and on rate refresh. Best effort: failures are ignored. | Yes — without it historical conversions fall back to current rates. |
 | **GitHub** (`github.com`, `objects.githubusercontent.com`) | A plain request for `latest.json` of the latest release; the updater adds its user agent (app name and version, operating system, CPU architecture). If you accept an update, the installer is downloaded from GitHub and its signature is verified against the public key built into the app. | Once per app start, after you unlock. | Yes — Settings has a switch for the automatic check. |
-| **Aptabase** (analytics) | **Only if you agree.** Two event kinds: `app_started` and `screen_view` with the name of the screen (for example `dashboard` or `settings`). The analytics plugin adds the app version, operating system name and version, UI language, WebView engine version, a random per-session ID and a debug flag. | On start and on each navigation, after consent. | Off by default; decide in the first-run consent and change it any time in Settings → Account → Privacy & Analytics. |
 | **Your AI client** (MCP, optional) | Whatever the client asks for and the tools return — potentially your full financial data. | Only while the MCP server is enabled, the app is unlocked and a client connected with your token. | Off by default; see below. |
 
 Notes:
 
-- **Analytics are compiled in only for official release builds.** The Aptabase key is injected
-  at build time. A build from source, or a fork, has no analytics unless you provide your own
-  key (see `.env.example`). A build without a key shows neither the consent prompt nor the
-  analytics switch in Settings, and nothing is sent.
-- Moony does not store the IP address that Aptabase sees at delivery and does not use it to
-  identify you; what Aptabase does with it on its side is governed by
-  [Aptabase's own privacy policy](https://aptabase.com).
 - The web view that renders the interface is restricted by a content-security policy to its
   own files: it does not load fonts, scripts, logos or images from any website.
 - All data requests go through the Rust backend; the interface itself makes no network calls.
@@ -81,7 +73,7 @@ trust, and regenerate the token when you stop using one.
 ## What Moony does not do
 
 - No account, login or registration, and no server operated by the project.
-- No crash reporting and no tracking SDKs other than the opt-in analytics above.
+- No telemetry: no crash reporting, no analytics, no tracking SDKs.
 - No advertising, no cookies, no third-party fonts, images or logos.
 - No remote configuration, no remote code and no way for anyone to read your data remotely.
 

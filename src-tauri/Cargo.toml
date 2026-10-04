@@ -88,8 +88,6 @@ specta-typescript = "=0.0.9"
 # Text normalization (diacritics folding for rule matching)
 unicode-normalization = "0.1"
 
-tauri-plugin-aptabase = "1.0.0"
-
 # Local HTTP server for MCP API
 axum = { version = "0.8", features = ["tokio"] }
 

@@ -800,8 +800,6 @@ export const dataApi = {
 export const systemApi = {
   /** Opens the application log folder in the OS file manager. */
   openLogsFolder: () => tauriInvoke<void>('open_logs_folder'),
-  /** True when the build carries an analytics key; builds from source normally do not. */
-  hasAnalytics: () => tauriInvoke<boolean>('has_analytics'),
 };
 
 // ============================================================================

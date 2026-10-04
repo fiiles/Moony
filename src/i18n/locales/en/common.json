@@ -335,19 +335,6 @@
     "noData": "No Data",
     "noDataDescription": "There is no data to export."
   },
-  "analytics": {
-    "consentTitle": "Help Improve Moony",
-    "consentDescription": "We would like to collect anonymous usage data to understand how you use the app and improve your experience.",
-    "dataCollected": "What we collect",
-    "dataPoints": {
-      "screens": "Which screens you visit",
-      "device": "App version, OS version, and language"
-    },
-    "privacyNote": "Privacy First",
-    "privacyDetail": "No personal or financial data is ever included. Like every internet request, the analytics service (Aptabase) sees your IP address when the event is delivered; Moony does not store it and does not use it to identify you.",
-    "allow": "Allow Analytics",
-    "decline": "Decline"
-  },
   "priceStatus": {
     "title": "Price Data Status",
     "description": "Some prices may be outdated. This can happen when offline or due to API rate limits.",

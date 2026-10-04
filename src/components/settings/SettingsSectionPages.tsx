@@ -11,7 +11,6 @@ import { ApiKeysCard } from '@/components/settings/ApiKeysCard';
 import { McpServerCard } from '@/components/settings/McpServerCard';
 import { RulePacksCard } from '@/components/settings/RulePacksCard';
 import { CategorizationRulesLinkCard } from '@/components/settings/CategorizationRulesLinkCard';
-import { PrivacyCard } from '@/components/settings/PrivacyCard';
 import { DangerZoneCard } from '@/components/settings/DangerZoneCard';
 
 /** /settings */
@@ -65,10 +64,5 @@ export function CategorizationSection() {
 
 /** /settings/account */
 export function AccountSection() {
-  return (
-    <>
-      <PrivacyCard />
-      <DangerZoneCard />
-    </>
-  );
+  return <DangerZoneCard />;
 }

@@ -30,7 +30,6 @@ logic (see `docs/standards/workflow.md`).
 | Rust service business logic in `src-tauri/src/services/` | React components and hooks (out of scope) |
 | | `shared/generated-types.ts` and `shared/schema.ts` (types only) |
 | | `src/lib/tauri-api.ts` (thin invoke wrappers) |
-| | `src/lib/analytics.ts` (side-effectful, requires jsdom+mocks) |
 
 ### The thin-command amendment
 

@@ -20,7 +20,7 @@ Every feature follows this path — no layer-skipping:
 ```
 UI component (src/pages/, src/components/<domain>/)
   → hook: src/hooks/use-<domain>.ts (useQuery) + use-<domain>-mutations.ts (useMutation)
-    → src/lib/tauri-api.ts — <domain>Api namespace (the only place app commands are invoked; src/lib/analytics.ts calls the aptabase plugin directly)
+    → src/lib/tauri-api.ts — <domain>Api namespace (the only place app commands are invoked)
       → #[tauri::command] in src-tauri/src/commands/<domain>.rs (thin)
         → business logic in src-tauri/src/services/<domain>.rs (takes &Connection)
           → SQLCipher SQLite

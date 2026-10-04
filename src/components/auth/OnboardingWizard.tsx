@@ -46,7 +46,6 @@ import { useBankAccountMutations } from '@/hooks/use-bank-account-mutations';
 import { useFormat } from '@/lib/use-format';
 import { authApi, categorizationApi, onboardingApi } from '@/lib/tauri-api';
 import { translateApiError } from '@/lib/translate-api-error';
-import { setConsent, markConsentAsked, useAnalyticsAvailable } from '@/lib/analytics';
 import { cn } from '@/lib/utils';
 import {
   RULE_PACK_COUNTRY_IDS,
@@ -110,13 +109,7 @@ export function OnboardingWizard({ language, onFinished }: OnboardingWizardProps
   const [country, setCountry] = useState<string>(
     () => packIdForRegion(systemRegion, [...RULE_PACK_COUNTRY_IDS]) ?? NONE
   );
-  const [analytics, setAnalytics] = useState(false);
-  // A build without an analytics key has nothing to ask about: no bullet, no checkbox.
-  const analyticsAvailable = useAnalyticsAvailable();
-  const privacyPoints =
-    analyticsAvailable === false
-      ? (['encryption', 'localOnly', 'marketData'] as const)
-      : (['encryption', 'localOnly', 'marketData', 'analytics'] as const);
+  const privacyPoints = ['encryption', 'localOnly', 'marketData'] as const;
 
   const countryOptions = useMemo(
     () => countryOptionsFromPacks([...RULE_PACK_COUNTRY_IDS], language),
@@ -323,7 +316,7 @@ export function OnboardingWizard({ language, onFinished }: OnboardingWizardProps
                   </div>
                 ))}
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="mb-5 grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label>{t('onboarding.welcome.currency')}</Label>
                   <CurrencyCombobox
@@ -355,27 +348,9 @@ export function OnboardingWizard({ language, onFinished }: OnboardingWizardProps
                   </p>
                 </div>
               </div>
-              {analyticsAvailable !== false && (
-                <label className="mb-5 mt-4 flex cursor-pointer items-start gap-[9px] text-table font-500 text-ink-2">
-                  <Checkbox
-                    id="onboarding-analytics"
-                    className="mt-0.5"
-                    checked={analytics}
-                    onCheckedChange={(checked) => setAnalytics(checked === true)}
-                  />
-                  {t('onboarding.welcome.analytics')}
-                </label>
-              )}
               {nav(
                 null,
-                <Button
-                  data-testid="onboarding-continue"
-                  onClick={() => {
-                    setConsent(analyticsAvailable === false ? false : analytics);
-                    markConsentAsked();
-                    setStep('account');
-                  }}
-                >
+                <Button data-testid="onboarding-continue" onClick={() => setStep('account')}>
                   {tc('buttons.continue')}
                 </Button>
               )}

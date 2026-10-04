@@ -27,18 +27,8 @@ pub async fn run() {
     let categorization_engine = Arc::new(CategorizationEngine::new_empty());
 
     // The log plugin goes first so every other plugin's `log` output is captured.
-    let builder = tauri::Builder::default().plugin(logging::plugin());
-
-    // Initialize Aptabase if key is present at compile time
-    // Workaround for issue: https://github.com/aptabase/tauri-plugin-aptabase/issues/22
-    // Using async run() with #[tokio::main] allows the plugin to initialize correctly
-    let builder = if let Some(key) = std::option_env!("VITE_APTABASE_KEY") {
-        builder.plugin(tauri_plugin_aptabase::Builder::new(key).build())
-    } else {
-        builder
-    };
-
-    builder
+    tauri::Builder::default()
+        .plugin(logging::plugin())
         .setup(|_app| {
             logging::log_startup_banner();
             Ok(())
@@ -66,7 +56,6 @@ pub async fn run() {
             commands::backup::open_data_folder,
             // System (services::logging)
             commands::system::open_logs_folder,
-            commands::system::has_analytics,
             // Auth commands
             commands::auth::check_setup,
             commands::auth::prepare_setup,

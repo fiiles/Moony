@@ -14,7 +14,7 @@
       "data": "Kde jsou vaše data uložená a jak si uchovat jejich kopii.",
       "integrations": "API klíče pro ceny a lokální MCP server pro AI asistenty.",
       "categorization": "Balíčky pravidel, kategorie a vlastní pravidla kategorizace.",
-      "account": "Soukromí, analytika a smazání dat."
+      "account": "Smazání vašich dat z tohoto počítače."
     }
   },
   "profile": {
@@ -79,13 +79,6 @@
     "description": "Přizpůsobte, co se zobrazuje na vašem přehledu.",
     "excludeRealEstate": "Vyloučit osobní nemovitosti z přehledů",
     "excludeRealEstateHint": "Osobní nemovitosti nebudou zahrnuty do výpočtů čistého jmění a celkových aktiv"
-  },
-  "privacy": {
-    "title": "Soukromí a analytika",
-    "description": "Spravujte, jak se používají vaše data.",
-    "analytics": "Odesílat anonymní statistiky používání",
-    "analyticsHint": "Pomáhá nám vylepšovat aplikaci. Zahrnuje zobrazení obrazovek a verzi aplikace. Žádné osobní ani finanční údaje.",
-    "analyticsUnavailable": "Toto sestavení vzniklo bez analytického klíče, nic se neodesílá a není co zapnout."
   },
   "mcpServer": {
     "title": "AI Asistent (MCP Server)",

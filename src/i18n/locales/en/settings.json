@@ -14,7 +14,7 @@
       "data": "Where your data lives and how to keep a copy of it.",
       "integrations": "API keys for prices and the local MCP server for AI assistants.",
       "categorization": "Rule packs, categories and your own categorization rules.",
-      "account": "Privacy, analytics and deleting your data."
+      "account": "Deleting your data from this computer."
     }
   },
   "profile": {
@@ -121,13 +121,6 @@
     "deleteAll": "Delete all data",
     "deleteAllHint": "Removes the profile and the whole database on this computer. Backups saved outside the app stay.",
     "deleteButton": "Delete data…"
-  },
-  "privacy": {
-    "title": "Privacy & Analytics",
-    "description": "Manage how your data is used.",
-    "analytics": "Send anonymous usage statistics",
-    "analyticsHint": "Helps us improve the app. Includes screen views and app version. No personal or financial data.",
-    "analyticsUnavailable": "This build was made without an analytics key, so nothing is sent and there is nothing to switch on."
   },
   "toast": {
     "profileUpdated": "Profile updated",

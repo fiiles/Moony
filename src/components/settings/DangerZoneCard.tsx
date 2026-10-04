@@ -37,7 +37,7 @@ export function DangerZoneCard() {
       await authApi.deleteAccount();
     },
     onSuccess: () => {
-      // Consent flags and UI preferences belong to the deleted account
+      // UI preferences belong to the deleted account
       localStorage.clear();
       window.location.reload();
     },

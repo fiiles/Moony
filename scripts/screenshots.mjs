@@ -7,8 +7,8 @@
  *                                [--account <bankAccountId>] [--fixture <csv path>]
  *
  * The app must be unlocked (the bridge relays commands to the Tauri window). Each page is
- * loaded in a fresh headless profile with the analytics consent already answered, waited
- * for until its data is on screen, and captured at 1440 × 900 CSS px with a 2× scale.
+ * loaded in a fresh headless profile (English UI), waited for until its data is on screen,
+ * and captured at 1440 × 900 CSS px with a 2× scale.
  * No dependencies: it talks to Chrome over the DevTools protocol with Node's WebSocket.
  */
 import { spawn } from 'node:child_process';
@@ -93,8 +93,6 @@ if (opt.account) {
 }
 
 const seed = {
-  'moony-analytics-consent': 'false',
-  'moony-analytics-consent-asked-version': '1',
   'moony-language': 'en',
 };
 

@@ -336,19 +336,6 @@
     "noData": "Žádná data",
     "noDataDescription": "Nejsou žádná data k exportu."
   },
-  "analytics": {
-    "consentTitle": "Pomozte zlepšit Moony",
-    "consentDescription": "Rádi bychom sbírali anonymní data o používání, abychom pochopili, jak aplikaci používáte, a mohli ji vylepšovat.",
-    "dataCollected": "Co sbíráme",
-    "dataPoints": {
-      "screens": "Které obrazovky navštěvujete",
-      "device": "Verze aplikace, verze OS a jazyk"
-    },
-    "privacyNote": "Soukromí na prvním místě",
-    "privacyDetail": "Nikdy nejsou zahrnuta žádná osobní ani finanční data. Stejně jako každý internetový požadavek vidí i analytická služba (Aptabase) při doručení události vaši IP adresu; Moony ji neukládá a nepoužívá k vaší identifikaci.",
-    "allow": "Povolit analytiku",
-    "decline": "Odmítnout"
-  },
   "priceStatus": {
     "title": "Stav cenových dat",
     "description": "Některé ceny mohou být zastaralé. To může nastat při práci offline nebo kvůli limitům API.",

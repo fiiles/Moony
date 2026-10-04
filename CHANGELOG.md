@@ -22,7 +22,8 @@ local tool). Everything below is new to the public.
 - **Local and encrypted.** All records live in one SQLCipher (AES-256) database in your user
   profile, protected by your password and a 24-character recovery key. No account, no cloud,
   no sync. Market data is the only thing fetched from the internet (Yahoo Finance, CoinGecko,
-  ECB and Frankfurter exchange rates); see `PRIVACY.md` for the exact list.
+  ECB and Frankfurter exchange rates); see `PRIVACY.md` for the exact list. Moony sends no
+  telemetry: no analytics, no usage statistics and no crash reports.
 - **Bank statements.** CSV import with bank presets detected from the header row (Revolut,
   Wise, N26, Fio, Česká spořitelna, Komerční banka, Air Bank, ČSOB, mBank, Raiffeisenbank,
   Moneta, Chase, Sparkasse, DKB, ING Germany and a generic UK debit/credit layout), multilingual

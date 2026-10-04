@@ -1,7 +1,4 @@
 import { Switch, Route, useLocation } from 'wouter';
-import { useEffect } from 'react';
-import { trackEvent, useScreenTracking } from '@/lib/analytics';
-import { AnalyticsConsentModal } from '@/components/common/AnalyticsConsentModal';
 import { queryClient } from './lib/queryClient';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@/components/ui/toaster';
@@ -84,7 +81,6 @@ function Router() {
 
 function AppLayout() {
   const [location] = useLocation();
-  useScreenTracking();
   // Inert while locked (no user) and when the setting is off; see docs/architecture/overview.md.
   useAutoLock();
 
@@ -94,7 +90,6 @@ function AppLayout() {
 
   return (
     <>
-      <AnalyticsConsentModal />
       <UpdateNotification />
       <AppShell>
         <Router />
@@ -104,10 +99,6 @@ function AppLayout() {
 }
 
 export default function App() {
-  useEffect(() => {
-    trackEvent('app_started');
-  }, []);
-
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>

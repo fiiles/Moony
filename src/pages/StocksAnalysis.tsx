@@ -160,7 +160,7 @@ export default function StocksAnalysis() {
         id: 'portfolio',
         name: t('stocksAnalysis.twr.portfolio'),
         values: dates.map((d) => (byDate.has(d) ? 100 + (byDate.get(d) ?? 0) : null)),
-        dashed: true,
+        reference: true,
       });
     }
     const dateTs = (d: string) =>

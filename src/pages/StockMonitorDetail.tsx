@@ -478,13 +478,28 @@ export default function StockMonitorDetail() {
           note={
             isFinite(low) && isFinite(high) && isFinite(current) ? (
               <RangeWithLabels
-                className="mt-1 w-full [&>span:nth-child(2)]:w-full"
+                fluid
+                className="mt-1"
                 low={low}
                 high={high}
                 current={current}
                 target={hasTarget ? targetValue : null}
                 lowLabel={t('detail.stats.min')}
                 highLabel={t('detail.stats.max')}
+                label={
+                  hasTarget
+                    ? t('detail.stats.rangeLabelTarget', {
+                        low: plain(low),
+                        high: plain(high),
+                        current: plain(current),
+                        target: plain(targetValue),
+                      })
+                    : t('detail.stats.rangeLabel', {
+                        low: plain(low),
+                        high: plain(high),
+                        current: plain(current),
+                      })
+                }
               />
             ) : undefined
           }

@@ -38,23 +38,31 @@ export function RangeBar({ low, high, current, target, className, label }: Range
   );
 }
 
-/** The bar between its two bounds, as the table and the stat show it. */
+/**
+ * The bar between its two bounds, as the table and the stat show it. By default it is as wide as
+ * its content (the 92 px bar plus both labels, which a table cell can hold). `fluid` fills the
+ * container instead: the labels keep their width and the bar takes what is left, so the row can
+ * never be wider than a narrow card.
+ */
 export function RangeWithLabels({
   lowLabel,
   highLabel,
+  fluid = false,
   className,
   ...bar
-}: RangeBarProps & { lowLabel: string; highLabel: string }) {
+}: RangeBarProps & { lowLabel: string; highLabel: string; fluid?: boolean }) {
+  const labelClass = fluid ? 'shrink-0' : undefined;
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-2 text-[10px] font-600 text-ink-4 num',
+        'items-center gap-2 text-[10px] font-600 text-ink-4 num',
+        fluid ? 'flex w-full' : 'inline-flex',
         className
       )}
     >
-      <span>{lowLabel}</span>
-      <RangeBar {...bar} />
-      <span>{highLabel}</span>
+      <span className={labelClass}>{lowLabel}</span>
+      <RangeBar {...bar} className={fluid ? 'w-auto min-w-0 flex-1 shrink' : undefined} />
+      <span className={labelClass}>{highLabel}</span>
     </span>
   );
 }

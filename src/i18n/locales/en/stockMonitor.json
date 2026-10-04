@@ -90,7 +90,9 @@
       "dividendNote": "{{amount}} a year per share",
       "range": "52W range",
       "min": "min",
-      "max": "max"
+      "max": "max",
+      "rangeLabel": "52-week range {{low}} – {{high}}, current price {{current}}",
+      "rangeLabelTarget": "52-week range {{low}} – {{high}}, current price {{current}}, target {{target}}"
     },
     "keyData": "Key data",
     "kv": {

@@ -51,6 +51,12 @@ const DAY = 86_400;
  * width decides how many lines the TWR legend keeps room for.
  */
 const WIDE_QUERY = '(min-width: 1360px)';
+/**
+ * Narrow window: the ring card keeps the height of a full stacked ring, so a selection that drops
+ * a legend row (or all of them) does not resize it. Body padding 12 + 20, ring 140, gap 16, five
+ * legend rows of 32.6 (the most it shows) minus the last border.
+ */
+const RING_BODY_MIN_HEIGHT = 12 + 20 + 140 + 16 + 5 * 32.6 - 1;
 const TWR_CHART_HEIGHT = 190;
 /**
  * The TWR chart block: plot, date row (20), then the legend with its gap (10) and room for
@@ -475,7 +481,10 @@ export default function StocksAnalysis() {
           <CardHeader className="items-start pb-1">
             <div>
               <CardTitle className="text-[16px]">{t('stocksAnalysis.allocation.title')}</CardTitle>
-              <CardDescription>{allocationSub}</CardDescription>
+              {/* Narrow: the subtitle wraps to two lines unfiltered, to one with the selection */}
+              <CardDescription className={cn(!wide && 'min-h-[28px]')}>
+                {allocationSub}
+              </CardDescription>
             </div>
             {filterGroups.length > 1 && (
               <Segmented
@@ -487,7 +496,10 @@ export default function StocksAnalysis() {
             )}
           </CardHeader>
           {/* The ring centers in the height the TWR card sets */}
-          <div className="flex flex-1 items-center px-[21px] pb-5 pt-3">
+          <div
+            className="flex flex-1 items-center px-[21px] pb-5 pt-3"
+            style={wide ? undefined : { minHeight: RING_BODY_MIN_HEIGHT }}
+          >
             {selected.length === 0 ? (
               <p className="w-full text-center text-table text-ink-3">
                 {t('stocksAnalysis.holdings.emptyFilter.description')}

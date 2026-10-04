@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react';
 import { useLocation } from 'wouter';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { subDays, startOfYear } from 'date-fns';
 import { Landmark, Plus, Target, Wallet } from 'lucide-react';
 import type { PortfolioMetricsHistory } from '@shared/schema';
 import { portfolioApi } from '@/lib/tauri-api';
@@ -13,6 +12,7 @@ import { useLanguage } from '@/i18n/I18nProvider';
 import { useHistoricalDisplayValues } from '@/hooks/use-historical-display-values';
 import { useRecentMoves } from '@/hooks/use-recent-moves';
 import { utcDayFloor } from '@/utils/chart-axis';
+import { CHART_PERIODS, chartPeriodStart } from '@/utils/period';
 import { vocative } from '@/utils/vocative';
 import TimePeriodSelector, { type Period } from '@/components/cashflow/TimePeriodSelector';
 import { PageHead, SectionHead } from '@/components/shell/PageHead';
@@ -26,9 +26,6 @@ import { GettingStartedCard } from '@/components/dashboard/GettingStartedCard';
 import { AllocationRing } from '@/components/dashboard/AllocationRing';
 import { shortHistoryBaseDay } from '@/utils/change-base';
 import { RecentMoves } from '@/components/dashboard/RecentMoves';
-
-/** The overview offers the four periods of the prototype (design system §7). */
-const PERIODS: readonly Period[] = ['30D', '90D', '1Y', 'All'];
 
 type AssetClass = 'investments' | 'savings' | 'bonds' | 'crypto' | 'otherAssets' | 'realEstate';
 const ASSET_CLASSES: AssetClass[] = [
@@ -75,34 +72,13 @@ export default function Dashboard() {
     date: fmt.date(new Date(), { day: 'numeric', month: 'long', year: 'numeric' }),
   });
 
-  // Date range of the selected period
-  const dateRange = useMemo(() => {
-    const now = new Date();
-    switch (selectedPeriod) {
-      case '30D':
-        return { start: subDays(now, 30), end: now };
-      case '90D':
-        return { start: subDays(now, 90), end: now };
-      case 'YTD':
-        return { start: startOfYear(now), end: now };
-      case '1Y':
-        return { start: subDays(now, 365), end: now };
-      case '5Y':
-        return { start: subDays(now, 365 * 5), end: now };
-      case 'All':
-        return { start: undefined, end: now };
-      default:
-        return { start: subDays(now, 30), end: now };
-    }
-  }, [selectedPeriod]);
+  // First UTC day of the selected period (open for "All"). It only changes with
+  // the day, so it can key the query; the end is read when the query runs.
+  const periodStartSeconds = chartPeriodStart(selectedPeriod, Date.now() / 1000);
 
   const { data: portfolioHistory } = useQuery<PortfolioMetricsHistory[]>({
-    queryKey: ['portfolio-history', dateRange.start?.toISOString(), dateRange.end.toISOString()],
-    queryFn: async () => {
-      const startDate = dateRange.start ? Math.floor(dateRange.start.getTime() / 1000) : undefined;
-      const endDate = Math.floor(dateRange.end.getTime() / 1000);
-      return portfolioApi.getHistory(startDate, endDate);
-    },
+    queryKey: ['portfolio-history', 'dashboard', periodStartSeconds ?? 'all'],
+    queryFn: () => portfolioApi.getHistory(periodStartSeconds, Math.floor(Date.now() / 1000)),
     staleTime: 0,
     refetchOnMount: 'always',
   });
@@ -207,9 +183,6 @@ export default function Dashboard() {
   const oldest = convertedHistory[0];
   // What the change is measured against: the period, or — when the
   // history is shorter than the range — the oldest recorded day.
-  const periodStartSeconds = dateRange.start
-    ? Math.floor(dateRange.start.getTime() / 1000)
-    : undefined;
   const shortHistoryBase = shortHistoryBaseDay(periodStartSeconds, oldest?.recordedAt);
   const changeLabel =
     shortHistoryBase === null
@@ -279,7 +252,7 @@ export default function Dashboard() {
           <TimePeriodSelector
             value={selectedPeriod}
             onChange={setSelectedPeriod}
-            options={PERIODS}
+            options={CHART_PERIODS}
             size="lg"
             labels="long"
           />
@@ -296,7 +269,7 @@ export default function Dashboard() {
           <div className="skeleton h-3 w-24" />
           <div className="skeleton mt-3 h-10 w-64" />
           <div className="skeleton mt-3 h-3 w-48" />
-          <div className="skeleton mt-6 h-[170px] w-full" />
+          <div className="skeleton mt-6 h-[220px] w-full" />
         </Card>
         <Stats columns={3} className="mt-[15px]">
           <StatSkeleton />
@@ -353,7 +326,7 @@ export default function Dashboard() {
           <MoonyLineChart
             points={points}
             zeroBaseline={selectedPeriod === 'All'}
-            height={170}
+            height={220}
             className="mt-[18px] -mx-1"
             formatValue={(v) => formatCurrencyRaw(v)}
             renderTip={(p) => ({ title: formatCurrencyRaw(p.value), lines: [fmt.day(p.t)] })}
@@ -427,10 +400,7 @@ export default function Dashboard() {
           </Card>
         </section>
         <section className="flex flex-col">
-          <SectionHead
-            title={t('moves.title')}
-            link={{ href: '/bank-accounts', label: t('moves.all') }}
-          />
+          <SectionHead title={t('moves.title')} />
           <Card variant="flat" className="flex-1">
             <CardContent className="pb-2 pt-2">
               <RecentMoves moves={moves} isLoading={movesLoading} />

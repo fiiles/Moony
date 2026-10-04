@@ -1,0 +1,13 @@
+Action,Time,ISIN,Ticker,Name,No. of shares,Price / share,Currency (Price / share),Exchange rate,Result,Currency (Result),Total,Currency (Total),Withholding tax,Currency (Withholding tax),Notes,ID,Currency conversion fee,Currency (Currency conversion fee)
+Deposit,2023-12-18 11:45:06.326,,,,,,,,,,31.00,"EUR",,,"Transaction ID: 7f3a9c10-0000-4000-8000-000000000001",8d3b8c00-aaaa-4000-8000-000000000001,,
+Market buy,2023-12-18 14:30:03.613,US17275R1023,CSCO,"Cisco Systems",0.0290530000,49.96,USD,1.09303,,"EUR",1.33,"EUR",,,,EOF7504196256,,
+Limit buy,2023-12-19 15:12:44.002,US0378331005,AAPL,"Apple",2.0000000000,194.50,USD,1.09810,,"EUR",354.25,"EUR",,,,EOF7504200017,0.53,"EUR"
+Limit buy,2023-12-20 09:05:11.500,IE00B3XXRP09,VUSA,"Vanguard S&P 500 UCITS ETF",3.0000000000,81.35,EUR,1.00000,,"EUR",244.05,"EUR",,,,EOF7504212345,,
+Market buy,2023-12-21 09:10:00.100,GB00BH4HKS39,VOD,"Vodafone Group",50.0000000000,68.52,GBX,0.00116,,"EUR",39.74,"EUR",,,,EOF7504213456,,
+Interest on cash,2023-12-31 02:00:00,,,,,,,,,,0.04,"EUR",,,"Interest on cash",9d0c0000-bbbb-4000-8000-000000000002,,
+Dividend (Ordinary),2024-01-15 12:05:25,US0378331005,AAPL,"Apple",2.0000000000,0.24,USD,Not available,,,0.44,"EUR",0.07,"USD",,,,
+Market sell,2024-01-26 14:30:05.104,US17275R1023,CSCO,"Cisco Systems",0.0290530000,50.10,USD,1.08650,0.03,"EUR",1.34,"EUR",,,,EOF7802023054,,
+Stop limit sell,2024-02-02 16:01:09.730,US0378331005,AAPL,"Apple",1.0000000000,187.20,USD,1.08790,-4.12,"EUR",172.07,"EUR",,,,EOF7810001122,,
+Currency conversion,2024-02-05 10:00:00,,,,,,,,,,-100.00,"EUR",,,,c1c1c1c1-0000-4000-8000-000000000003,0.15,"EUR"
+Withdrawal,2024-02-10 11:00:00,,,,,,,,,,-50.00,"EUR",,,"Transaction ID: 2",d2d2d2d2-0000-4000-8000-000000000004,,
+Market sell,2024-02-12 15:20:31.411,GB00BH4HKS39,VOD,"Vodafone Group",20.0000000000,70.10,GBX,0.00117,,"EUR",16.40,"EUR",,,,EOF7820002233,,

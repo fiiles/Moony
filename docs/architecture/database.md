@@ -101,7 +101,7 @@ Grouped by owning domain (see the domain map in `overview.md`).
 
 | Table | Purpose | Notable columns / constraints |
 |---|---|---|
-| `app_config` | Key-value app settings incl. recovery-key hash | `key TEXT PRIMARY KEY`, `value TEXT`; the CoinGecko API key (`api_key_coingecko`) is the only API key still read |
+| `app_config` | Key-value app settings incl. recovery-key hash | `key TEXT PRIMARY KEY`, `value TEXT`; the CoinGecko API key (`api_key_coingecko`) is the only API key still read; `stock_import_formats` holds the custom stock CSV mappings (JSON array, newest first, at most 20; `services/stock_import/formats.rs`) |
 | `user_profile` | Single-row user profile and preferences | `INTEGER AUTOINCREMENT` PK (convention exception); `currency DEFAULT 'CZK'`, `language`, `menu_preferences` JSON, `coingecko_modal_dismissed`, `mcp_server_enabled` gates the local API server, `mcp_server_token` TEXT (NULL until the server is first enabled), `mcp_server_port` INTEGER (NULL = default 41414) |
 
 ### Bank accounts
@@ -133,11 +133,12 @@ Grouped by owning domain (see the domain map in `overview.md`).
 | Table | Purpose | Notable columns / constraints |
 |---|---|---|
 | `stock_investments` | One row per held ticker (position) | `ticker TEXT UNIQUE`; `quantity` TEXT; `currency`. No stored average price: cost basis and average price derive from `investment_transactions` at each transaction day's rate (`services/cost_basis.rs`) |
-| `investment_transactions` | Buy/sell transactions per stock position | FK `investment_id` ON DELETE CASCADE; `type`, `price_per_unit`, `currency`, `transaction_date`; index on `ticker` (for MCP import dedup) |
-| `stock_data` | Fetched Yahoo Finance quote + company metadata cache | `ticker UNIQUE`; `previous_close`, `sector`, `industry`, `pe_ratio`, `market_cap`, `beta`, 52-week range, dividend fields, `metadata_fetched_at` |
+| `investment_transactions` | Buy/sell transactions per stock position | FK `investment_id` ON DELETE CASCADE; `type`, `price_per_unit`, `currency`, `transaction_date`; index on `ticker` (for MCP import dedup); `import_batch_id` FK → `stock_import_batches` ON DELETE SET NULL (NULL for hand-made and MCP-created rows; editing a transaction keeps it in its batch) and `external_id` TEXT (`<source>:<broker's transaction id>`, NULL when the file had none; duplicate rule 1 of the CSV import), each indexed (migration 003) |
+| `stock_import_batches` | One row per stock CSV import, so it can be undone | `file_name`, `source` (`xtb`, `trading212`, `degiro`, `ibkr`, `moony`, `custom` or `format:<uuid>`), `trade_count` (rows written), `created_at`. Written in the same SQL transaction as the imported rows and only when something was written; undo deletes the batch's transactions, the positions left without any, then the row (`services/stock_import/batches.rs`) |
+| `stock_data` | Fetched Yahoo Finance quote + company metadata cache | `ticker UNIQUE`; `currency` is the currency `original_price` is stored in, the one Yahoo reports for the quote (its minor units are converted: `GBp` pence are stored as GBP, a hundredth); the ticker suffix only stands in for a response that names none; `quote_currency` TEXT is the code Yahoo reported with the last quote, as it came (NULL until the first refresh after migration 004), kept to find tickers whose stored history was written in another unit (`services/quote_unit.rs`); `previous_close`, `sector`, `industry`, `pe_ratio`, `market_cap`, `beta`, 52-week range, dividend fields, `metadata_fetched_at` |
 | `watched_stocks` | Stock Monitor watchlist: followed tickers with optional target price and markdown notes; prices come from `stock_data` via JOIN | `ticker UNIQUE`; `target_price` money-as-TEXT in native currency, a plain informative reference (no direction, no "reached" signal); never enters net worth |
 | `stock_price_overrides` | Manual price overrides (win over `stock_data`) | `ticker UNIQUE`; `currency DEFAULT 'CZK'` |
-| `dividend_data` | Fetched yearly dividend sums per ticker | `ticker UNIQUE`; `yearly_dividend_sum` TEXT |
+| `dividend_data` | Fetched yearly dividend sums per ticker | `ticker UNIQUE`; `yearly_dividend_sum` TEXT in `currency` (converted from the quote unit like a price) |
 | `dividend_overrides` | Manual dividend overrides (win over `dividend_data`) | `ticker UNIQUE` |
 | `stock_tags` | User tags for grouping investments | `name UNIQUE`; `group_id` FK ON DELETE SET NULL |
 | `stock_investment_tags` | Investment ↔ tag many-to-many join | Composite PK `(investment_id, tag_id)`; both FKs ON DELETE CASCADE |

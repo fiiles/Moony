@@ -48,6 +48,17 @@ primitives cover every case they handled.
 | `PortfolioTrendCard` `transactionMarkers` / `TransactionMarker` | Only its earliest date was used, and its default array changed the query key every render (a request loop) | `earliest` (first day with data) and `chartPeriodStart` |
 | `AddInvestmentModal` `onImportCsv` | Import moved to the stocks page head | The page-head "Importovat CSV" button |
 
+## Removed with the stock import wizard (do not re-add)
+
+The one-table stock import was replaced by the broker-aware wizard
+(`docs/specs/2026-10-04-stock-csv-import-wizard-design.md`).
+
+| Removed | Why it was dead | Use instead |
+|---|---|---|
+| `src/components/stocks/ImportInvestmentsModal.tsx` | Six hand-picked columns, no presets, no preview, no duplicate check, no undo; split the CSV in the webview with a naive parser, guessed the date format per row, and stored numbers such as `1,234.50` as text that later read as 0 | `src/components/stocks/import/StockImportDialog.tsx` over `src-tauri/src/services/stock_import/` |
+| `import_investment_transactions` (command), `investmentsApi.importTransactions`, the `stock-import-progress` event | Wrote row by row without a transaction, returned English error prose with row numbers that did not match the file, and skipped part of the mutation contract | `import_stock_csv` (`commands/stock_import.rs`), `stockImportApi.import`, `src/hooks/use-stock-import-mutations.ts` |
+| `stocks.import.*` locale keys | Orphaned with the modal | `stocks.importWizard.*` |
+
 ## Deprecated type sources
 
 | Path | Why deprecated | Use instead |

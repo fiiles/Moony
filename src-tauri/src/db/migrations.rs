@@ -64,6 +64,8 @@ fn all_migrations() -> Vec<(&'static str, &'static str)> {
     vec![
         ("001_initial_schema", MIGRATION_001),
         ("002_real_estate_purchase_date", MIGRATION_002),
+        ("003_stock_import_batches", MIGRATION_003),
+        ("004_stock_quote_currency", MIGRATION_004),
     ]
 }
 
@@ -915,6 +917,45 @@ WHERE CAST(a.market_price AS REAL) > 0
   AND NOT EXISTS (SELECT 1 FROM other_asset_valuations v WHERE v.asset_id = a.id);
 "#;
 
+/// `003_stock_import_batches`: stock CSV imports are recorded as batches (so
+/// they can be undone) and a transaction keeps the id its broker gave it (so a
+/// re-imported file is recognised).
+const MIGRATION_003: &str = r#"
+-- One row per stock CSV import: which file, which source (broker preset or
+-- saved format) and how many trades it wrote.
+CREATE TABLE IF NOT EXISTS stock_import_batches (
+    id TEXT PRIMARY KEY,
+    file_name TEXT NOT NULL,
+    source TEXT NOT NULL,
+    trade_count INTEGER NOT NULL,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch())
+);
+
+-- NULL for every transaction that exists today and for hand-made ones. The
+-- batch row may go without its transactions (they stay, unbatched). A
+-- REFERENCES column added to an existing table must default to NULL, which
+-- both do.
+ALTER TABLE investment_transactions ADD COLUMN import_batch_id TEXT REFERENCES stock_import_batches(id) ON DELETE SET NULL;
+
+-- `<source>:<broker's own transaction id>`, NULL when the file had none.
+ALTER TABLE investment_transactions ADD COLUMN external_id TEXT;
+
+CREATE INDEX IF NOT EXISTS idx_investment_transactions_batch ON investment_transactions(import_batch_id);
+CREATE INDEX IF NOT EXISTS idx_investment_transactions_external ON investment_transactions(external_id);
+"#;
+
+/// `004_stock_quote_currency`: the currency code Yahoo reported with a stock's last quote, so a
+/// refresh can tell that a ticker's stored history was written in another unit.
+const MIGRATION_004: &str = r#"
+-- The code Yahoo reported with the last quote of a ticker, as it came ("GBp" for pence, "USD"
+-- for a dollar ETF listed in London); NULL until the first refresh after this migration. A
+-- refresh compares it with the code of the new quote: a different unit means the stored
+-- history was valued wrongly (earlier versions guessed the currency from the ticker suffix, and
+-- stored pence as pounds) and is rebuilt. `currency` stays the currency the price is stored in
+-- ("GBp" is stored as GBP, a hundredth of the quote).
+ALTER TABLE stock_data ADD COLUMN quote_currency TEXT;
+"#;
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1421,5 +1462,377 @@ mod tests {
         run_migrations(&conn).expect("fresh database");
         assert_eq!(count_rows(&conn, "real_estate_valuations"), 0);
         assert_eq!(count_rows(&conn, "other_asset_valuations"), 0);
+    }
+}
+
+/// Tests of `003_stock_import_batches`. A module of its own so they do not
+/// share a hunk with the tests of the migrations added around it.
+#[cfg(test)]
+mod stock_import_batch_tests {
+    use super::*;
+
+    fn table_exists(conn: &Connection, name: &str) -> bool {
+        conn.query_row(
+            "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?1",
+            [name],
+            |_| Ok(true),
+        )
+        .unwrap_or(false)
+    }
+
+    /// A database as it was before `003`: every migration that comes earlier in
+    /// the chain, with foreign keys on, as the app opens it.
+    fn database_before_003() -> Connection {
+        let conn = Connection::open_in_memory().expect("in-memory db");
+        conn.execute_batch("PRAGMA foreign_keys = ON;")
+            .expect("foreign keys");
+        let earlier: Vec<(&str, &str)> = all_migrations()
+            .into_iter()
+            .filter(|(name, _)| *name < "003_stock_import_batches")
+            .collect();
+        run_chain(&conn, &earlier).expect("earlier migrations");
+        conn
+    }
+
+    fn rows_in(conn: &Connection, table: &str) -> i64 {
+        conn.query_row(&format!("SELECT COUNT(*) FROM {table}"), [], |r| r.get(0))
+            .expect("count")
+    }
+
+    fn add_position(conn: &Connection, id: &str, ticker: &str) {
+        conn.execute(
+            "INSERT INTO stock_investments (id, ticker, company_name, quantity, currency)
+             VALUES (?1, ?2, ?2, '10', 'USD')",
+            rusqlite::params![id, ticker],
+        )
+        .expect("insert position");
+    }
+
+    fn add_transaction(conn: &Connection, id: &str, position: &str) -> rusqlite::Result<usize> {
+        conn.execute(
+            "INSERT INTO investment_transactions
+                 (id, investment_id, type, ticker, company_name, quantity, price_per_unit, currency, transaction_date)
+             VALUES (?1, ?2, 'buy', 'AAPL', 'Apple', '10', '100', 'USD', 1700000000)",
+            rusqlite::params![id, position],
+        )
+    }
+
+    fn column_names(conn: &Connection, table: &str) -> Vec<String> {
+        let mut stmt = conn
+            .prepare(&format!("SELECT name FROM pragma_table_info('{table}')"))
+            .expect("table_info");
+        let rows = stmt.query_map([], |r| r.get::<_, String>(0)).expect("rows");
+        rows.map(|r| r.expect("name")).collect()
+    }
+
+    fn index_exists(conn: &Connection, name: &str) -> bool {
+        conn.query_row(
+            "SELECT 1 FROM sqlite_master WHERE type = 'index' AND name = ?1",
+            [name],
+            |_| Ok(true),
+        )
+        .unwrap_or(false)
+    }
+
+    #[test]
+    fn batch_columns_are_added_and_existing_transactions_stay_unbatched() {
+        let conn = database_before_003();
+        add_position(&conn, "pos-1", "AAPL");
+        add_transaction(&conn, "tx-1", "pos-1").expect("existing transaction");
+        assert!(!table_exists(&conn, "stock_import_batches"));
+
+        run_migrations(&conn).expect("migrate to the current chain");
+
+        assert!(table_exists(&conn, "stock_import_batches"));
+        assert_eq!(rows_in(&conn, "stock_import_batches"), 0);
+        let columns = column_names(&conn, "investment_transactions");
+        assert!(
+            columns.contains(&"import_batch_id".to_string()),
+            "{columns:?}"
+        );
+        assert!(columns.contains(&"external_id".to_string()), "{columns:?}");
+        assert!(index_exists(&conn, "idx_investment_transactions_batch"));
+        assert!(index_exists(&conn, "idx_investment_transactions_external"));
+
+        // The transaction written before the migration is untouched and has no batch.
+        let (quantity, batch, external): (String, Option<String>, Option<String>) = conn
+            .query_row(
+                "SELECT quantity, import_batch_id, external_id FROM investment_transactions WHERE id = 'tx-1'",
+                [],
+                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+            )
+            .expect("existing row");
+        assert_eq!(quantity, "10");
+        assert_eq!(batch, None);
+        assert_eq!(external, None);
+        assert_eq!(rows_in(&conn, "investment_transactions"), 1);
+        assert_eq!(
+            applied_migration_names(&conn).expect("applied"),
+            known_migration_names()
+        );
+    }
+
+    #[test]
+    fn a_transaction_needs_an_existing_batch_and_outlives_its_deletion() {
+        let conn = Connection::open_in_memory().expect("in-memory db");
+        conn.execute_batch("PRAGMA foreign_keys = ON;")
+            .expect("foreign keys");
+        run_migrations(&conn).expect("migrate");
+        add_position(&conn, "pos-1", "AAPL");
+
+        // A batch that does not exist cannot be referenced.
+        let err = conn
+            .execute(
+                "INSERT INTO investment_transactions
+                     (id, investment_id, type, ticker, company_name, quantity, price_per_unit, currency, transaction_date, import_batch_id)
+                 VALUES ('tx-bad', 'pos-1', 'buy', 'AAPL', 'Apple', '1', '1', 'USD', 1700000000, 'no-such-batch')",
+                [],
+            )
+            .expect_err("dangling batch reference");
+        assert!(err.to_string().contains("FOREIGN KEY"), "{err}");
+
+        conn.execute(
+            "INSERT INTO stock_import_batches (id, file_name, source, trade_count) VALUES ('b-1', 'xtb.csv', 'xtb', 1)",
+            [],
+        )
+        .expect("batch");
+        conn.execute(
+            "INSERT INTO investment_transactions
+                 (id, investment_id, type, ticker, company_name, quantity, price_per_unit, currency, transaction_date, import_batch_id, external_id)
+             VALUES ('tx-1', 'pos-1', 'buy', 'AAPL', 'Apple', '1', '1', 'USD', 1700000000, 'b-1', 'xtb:123')",
+            [],
+        )
+        .expect("batched transaction");
+
+        // Deleting the batch row keeps the transaction and clears the link.
+        conn.execute("DELETE FROM stock_import_batches WHERE id = 'b-1'", [])
+            .expect("delete batch");
+        let (batch, external): (Option<String>, Option<String>) = conn
+            .query_row(
+                "SELECT import_batch_id, external_id FROM investment_transactions WHERE id = 'tx-1'",
+                [],
+                |r| Ok((r.get(0)?, r.get(1)?)),
+            )
+            .expect("transaction survives");
+        assert_eq!(batch, None, "ON DELETE SET NULL");
+        assert_eq!(external.as_deref(), Some("xtb:123"));
+    }
+
+    #[test]
+    fn a_batch_row_stamps_its_creation_time() {
+        let conn = Connection::open_in_memory().expect("in-memory db");
+        run_migrations(&conn).expect("migrate");
+        conn.execute(
+            "INSERT INTO stock_import_batches (id, file_name, source, trade_count) VALUES ('b-1', 'file.csv', 'custom', 0)",
+            [],
+        )
+        .expect("batch");
+        let created_at: i64 = conn
+            .query_row(
+                "SELECT created_at FROM stock_import_batches WHERE id = 'b-1'",
+                [],
+                |r| r.get(0),
+            )
+            .expect("created_at");
+        assert!(
+            created_at > 1_700_000_000,
+            "unixepoch() default: {created_at}"
+        );
+    }
+
+    /// The stock import services run on the schema the chain really produces
+    /// (the service tests use hand-written minimal schemas): foreign keys on,
+    /// real tag tables, real `app_config`.
+    #[test]
+    fn a_stock_import_round_trips_on_the_migrated_schema() {
+        use crate::services::investments::{bulk_create_stock_transactions, BulkStockRow};
+        use crate::services::stock_import::simulate::test_db::{
+            buy, config, day, parsed, sell, with_id,
+        };
+        use crate::services::stock_import::{batches, formats, import, preview};
+
+        let mut conn = Connection::open_in_memory().expect("in-memory db");
+        conn.execute_batch("PRAGMA foreign_keys = ON;")
+            .expect("foreign keys");
+        run_migrations(&conn).expect("migrate");
+
+        // A position that exists before the import: 5 MSFT, bought by hand.
+        bulk_create_stock_transactions(
+            &mut conn,
+            &[BulkStockRow {
+                ticker: "MSFT".into(),
+                company_name: Some("Microsoft".into()),
+                tx_type: "buy".into(),
+                quantity: "5".into(),
+                price_per_unit: "300".into(),
+                currency: "USD".into(),
+                transaction_date: day(-10),
+                external_id: None,
+                allow_duplicate: false,
+            }],
+            None,
+        )
+        .expect("existing position");
+
+        let file = || {
+            parsed(vec![
+                with_id(buy(2, day(0), "AAPL", 10.0, 100.0), "1"),
+                with_id(sell(3, day(2), "AAPL", 4.0, 120.0), "2"),
+                with_id(buy(4, day(1), "MSFT", 3.0, 310.0), "3"),
+                with_id(buy(5, day(-10), "MSFT", 5.0, 300.0), "9"), // the hand-made one
+            ])
+        };
+        let cfg = config("xtb");
+
+        let dry_run = preview::preview(&conn, &file(), &cfg).expect("preview");
+        assert_eq!(dry_run.counts.will_import, 3);
+        assert_eq!(dry_run.counts.duplicates, 1);
+        assert_eq!(
+            rows_in(&conn, "stock_import_batches"),
+            0,
+            "a preview writes nothing"
+        );
+
+        let result = import::import(&mut conn, &file(), &cfg, "xtb.csv").expect("import");
+        assert_eq!(result.imported, 3);
+        assert_eq!(result.duplicates, 1);
+        assert_eq!(result.new_positions, vec!["AAPL"]);
+        assert_eq!(result.updated_positions, vec!["MSFT"]);
+        let batch_id = result.batch_id.expect("batch");
+        let stamped: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM investment_transactions
+                 WHERE import_batch_id = ?1 AND external_id LIKE 'xtb:%'",
+                [&batch_id],
+                |r| r.get(0),
+            )
+            .expect("stamped rows");
+        assert_eq!(stamped, 3);
+        fn quantity(conn: &Connection, ticker: &str) -> String {
+            conn.query_row(
+                "SELECT quantity FROM stock_investments WHERE ticker = ?1",
+                [ticker],
+                |r| r.get(0),
+            )
+            .expect("position")
+        }
+        assert_eq!(quantity(&conn, "AAPL"), "6");
+        assert_eq!(quantity(&conn, "MSFT"), "8");
+
+        // The same file again: only duplicates, no new batch.
+        let again = import::import(&mut conn, &file(), &cfg, "xtb.csv").expect("re-import");
+        assert_eq!((again.imported, again.duplicates), (0, 4));
+        assert_eq!(again.batch_id, None);
+        assert_eq!(batches::list_batches(&conn).expect("batches").len(), 1);
+
+        // Undo: the position the import created goes with its tags, the other stays.
+        conn.execute(
+            "INSERT INTO stock_tags (id, name) VALUES ('tag-1', 'Growth')",
+            [],
+        )
+        .expect("tag");
+        conn.execute(
+            "INSERT INTO stock_investment_tags (investment_id, tag_id)
+             SELECT id, 'tag-1' FROM stock_investments",
+            [],
+        )
+        .expect("tag both positions");
+        let undone = batches::undo_batch(&mut conn, &batch_id).expect("undo");
+        assert_eq!(undone.removed, 3);
+        assert_eq!(undone.removed_positions, vec!["AAPL"]);
+        assert_eq!(undone.tickers, vec!["AAPL", "MSFT"]);
+        assert_eq!(undone.earliest_day, Some(day(0)));
+        assert_eq!(rows_in(&conn, "stock_investments"), 1);
+        assert_eq!(
+            rows_in(&conn, "stock_investment_tags"),
+            1,
+            "only the survivor's"
+        );
+        assert_eq!(rows_in(&conn, "stock_import_batches"), 0);
+        assert_eq!(rows_in(&conn, "investment_transactions"), 1);
+        assert_eq!(quantity(&conn, "MSFT"), "5");
+
+        // Saved formats live in the real app_config.
+        let headers = vec!["Date".to_string(), "Ticker".to_string()];
+        let saved = formats::save_format(&conn, "Mine", &headers, &config("custom")).expect("save");
+        assert_eq!(
+            formats::list_formats(&conn).expect("list"),
+            vec![saved.clone()]
+        );
+        formats::delete_format(&conn, &saved.id).expect("delete");
+        assert!(formats::list_formats(&conn).expect("list").is_empty());
+    }
+}
+
+/// Tests of `004_stock_quote_currency`. A module of its own, like the one above.
+#[cfg(test)]
+mod stock_quote_currency_tests {
+    use super::*;
+
+    /// A database as it was before `004`: every migration that comes earlier in the chain.
+    fn database_before_004() -> Connection {
+        let conn = Connection::open_in_memory().expect("in-memory db");
+        let earlier: Vec<(&str, &str)> = all_migrations()
+            .into_iter()
+            .filter(|(name, _)| *name < "004_stock_quote_currency")
+            .collect();
+        run_chain(&conn, &earlier).expect("earlier migrations");
+        conn
+    }
+
+    fn quote_currency(conn: &Connection, ticker: &str) -> Option<String> {
+        conn.query_row(
+            "SELECT quote_currency FROM stock_data WHERE ticker = ?1",
+            [ticker],
+            |r| r.get(0),
+        )
+        .expect("quote_currency exists")
+    }
+
+    #[test]
+    fn the_column_is_added_and_empty_for_quotes_stored_before() {
+        let conn = database_before_004();
+        conn.execute(
+            "INSERT INTO stock_data (id, ticker, original_price, currency, price_date)
+             VALUES ('sd1', 'BARC.L', '443.65', 'GBP', 1700000000)",
+            [],
+        )
+        .expect("a quote stored by an earlier version");
+        assert!(
+            conn.prepare("SELECT quote_currency FROM stock_data")
+                .is_err(),
+            "the column does not exist yet"
+        );
+
+        run_migrations(&conn).expect("migrate to the current chain");
+
+        // Nothing is known about the unit of that quote: NULL, not a guess.
+        assert_eq!(quote_currency(&conn, "BARC.L"), None);
+        let (price, currency): (String, String) = conn
+            .query_row(
+                "SELECT original_price, currency FROM stock_data WHERE ticker = 'BARC.L'",
+                [],
+                |r| Ok((r.get(0)?, r.get(1)?)),
+            )
+            .expect("the quote itself is untouched");
+        assert_eq!((price.as_str(), currency.as_str()), ("443.65", "GBP"));
+        assert!(known_migration_names().contains(&"004_stock_quote_currency"));
+        assert_eq!(
+            applied_migration_names(&conn).expect("applied"),
+            known_migration_names()
+        );
+    }
+
+    #[test]
+    fn a_new_quote_row_can_record_the_code_as_reported() {
+        let conn = database_before_004();
+        run_migrations(&conn).expect("migrate");
+        conn.execute(
+            "INSERT INTO stock_data (id, ticker, original_price, currency, price_date, quote_currency)
+             VALUES ('sd1', 'CSPX.L', '832.99', 'USD', 1700000000, 'USD')",
+            [],
+        )
+        .expect("insert");
+        assert_eq!(quote_currency(&conn, "CSPX.L").as_deref(), Some("USD"));
     }
 }

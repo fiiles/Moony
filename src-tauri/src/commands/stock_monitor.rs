@@ -1,16 +1,20 @@
 //! Stock Monitor (watchlist) commands — thin wrappers per rust-backend rules.
 //!
 //! Spec D10: these commands never call update_todays_snapshot — the watchlist
-//! has zero effect on portfolio value.
+//! has zero effect on portfolio value. The one thing they share with the portfolio refresh is
+//! the history rebuild after a quote unit change (a followed ticker can be a held one, and the
+//! refresh reports a change only once), see `rebuild_history_for_unit_changes`.
 
+use crate::commands::price_api::rebuild_history_for_unit_changes;
 use crate::db::Database;
 use crate::error::Result;
 use crate::models::stock_monitor::{
     InsertWatchedStock, StockMonitorDetail, StockPricePoint, WatchedStock, WatchedStockRow,
 };
+use crate::services::history_recalc::HistoryRecalc;
 use crate::services::price_api::{self, StockPriceRefreshResult};
 use crate::services::stock_monitor;
-use tauri::State;
+use tauri::{AppHandle, State};
 
 /// Watchlist price staleness TTL (spec D3); portfolio keeps its 4 h TTL
 const WATCHLIST_PRICE_TTL_SECONDS: i64 = 15 * 60;
@@ -21,20 +25,28 @@ pub async fn get_watched_stocks(db: State<'_, Database>) -> Result<Vec<WatchedSt
 }
 
 #[tauri::command]
-pub async fn follow_stock(db: State<'_, Database>, ticker: String) -> Result<WatchedStock> {
+pub async fn follow_stock(
+    app: AppHandle,
+    db: State<'_, Database>,
+    recalc: State<'_, HistoryRecalc>,
+    ticker: String,
+) -> Result<WatchedStock> {
     let data = InsertWatchedStock { ticker };
     data.validate()?;
     let watched = db.with_conn(|conn| stock_monitor::follow_stock(conn, &data))?;
     // Populate the cache right away so the new row has price + metadata.
     // Fetch errors are ignored: following offline is fine (spec §8).
     let tickers = vec![watched.ticker.clone()];
-    let _ = price_api::refresh_stock_prices_yahoo_with_ttl(
+    if let Ok(result) = price_api::refresh_stock_prices_yahoo_with_ttl(
         &db,
         tickers.clone(),
         false,
         WATCHLIST_PRICE_TTL_SECONDS,
     )
-    .await;
+    .await
+    {
+        rebuild_history_for_unit_changes(&app, &db, &recalc, &result);
+    }
     let _ = price_api::refresh_stock_metadata_yahoo(&db, tickers, false).await;
     Ok(watched)
 }
@@ -50,16 +62,23 @@ pub async fn get_portfolio_follow_candidates(db: State<'_, Database>) -> Result<
 /// price/metadata cache for the newly added tickers in one batch (fetch
 /// failures are ignored: following offline is fine, the poll fills them in).
 #[tauri::command]
-pub async fn follow_portfolio_stocks(db: State<'_, Database>) -> Result<Vec<String>> {
+pub async fn follow_portfolio_stocks(
+    app: AppHandle,
+    db: State<'_, Database>,
+    recalc: State<'_, HistoryRecalc>,
+) -> Result<Vec<String>> {
     let added = db.with_conn(stock_monitor::follow_portfolio_stocks)?;
     if !added.is_empty() {
-        let _ = price_api::refresh_stock_prices_yahoo_with_ttl(
+        if let Ok(result) = price_api::refresh_stock_prices_yahoo_with_ttl(
             &db,
             added.clone(),
             false,
             WATCHLIST_PRICE_TTL_SECONDS,
         )
-        .await;
+        .await
+        {
+            rebuild_history_for_unit_changes(&app, &db, &recalc, &result);
+        }
         let _ = price_api::refresh_stock_metadata_yahoo(&db, added.clone(), false).await;
     }
     Ok(added)
@@ -92,7 +111,9 @@ pub async fn update_watched_notes(
 /// watched tickers. force_refresh bypasses the price TTL (manual button).
 #[tauri::command]
 pub async fn refresh_watched_stock_prices(
+    app: AppHandle,
     db: State<'_, Database>,
+    recalc: State<'_, HistoryRecalc>,
     force_refresh: Option<bool>,
 ) -> Result<StockPriceRefreshResult> {
     let tickers: Vec<String> = db.with_conn(|conn| {
@@ -108,6 +129,7 @@ pub async fn refresh_watched_stock_prices(
             updated: vec![],
             remaining_tickers: vec![],
             rate_limit_hit: false,
+            unit_changed: vec![],
         });
     }
     let force = force_refresh.unwrap_or(false);
@@ -118,6 +140,7 @@ pub async fn refresh_watched_stock_prices(
         WATCHLIST_PRICE_TTL_SECONDS,
     )
     .await?;
+    rebuild_history_for_unit_changes(&app, &db, &recalc, &result);
     // Manual refresh forces metadata too, so corrected fields (e.g. a fixed
     // dividend yield) heal immediately instead of after the 24 h TTL.
     let _ = price_api::refresh_stock_metadata_yahoo(&db, tickers, force).await;
@@ -128,7 +151,9 @@ pub async fn refresh_watched_stock_prices(
 /// (both fetches TTL-guarded and failure-tolerant), then reads from the DB.
 #[tauri::command]
 pub async fn get_stock_monitor_detail(
+    app: AppHandle,
     db: State<'_, Database>,
+    recalc: State<'_, HistoryRecalc>,
     ticker: String,
     force_refresh: Option<bool>,
 ) -> Result<StockMonitorDetail> {
@@ -138,13 +163,16 @@ pub async fn get_stock_monitor_detail(
     data.validate()?;
     let force = force_refresh.unwrap_or(false);
     let t = ticker.trim().to_uppercase();
-    let _ = price_api::refresh_stock_prices_yahoo_with_ttl(
+    if let Ok(result) = price_api::refresh_stock_prices_yahoo_with_ttl(
         &db,
         vec![t.clone()],
         force,
         WATCHLIST_PRICE_TTL_SECONDS,
     )
-    .await;
+    .await
+    {
+        rebuild_history_for_unit_changes(&app, &db, &recalc, &result);
+    }
     let _ = price_api::refresh_stock_metadata_yahoo(&db, vec![t.clone()], force).await;
     db.with_conn(|conn| stock_monitor::get_stock_monitor_detail(conn, &t))
 }

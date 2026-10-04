@@ -163,14 +163,18 @@ pub fn slice_from_line(content: &str, line: usize) -> &str {
     ""
 }
 
-/// 0-based line index of the header row.
+/// 0-based line index of the first line (within the first
+/// [`HEADER_SCAN_LINES`]) whose cells `is_header` accepts. `is_header` gets the
+/// trimmed cells of the line, blank cells included. Falls back to line 0 when
+/// nothing qualifies.
 ///
-/// The header is the first line that splits into ≥ 3 fields and whose cells
-/// match ≥ 2 known column roles, at least one of them a date or an amount
-/// (debit/credit). Bank preambles (account number, period, balances) have two
-/// fields per line or no date/amount words, so they are skipped. Falls back to
-/// line 0 when nothing qualifies, which is the pre-v2 behaviour.
-pub fn detect_header_row(content: &str, delimiter: char) -> usize {
+/// The scan is shared by the bank import ([`detect_header_row`]) and the stock
+/// import, which decide differently what a header looks like.
+pub fn detect_header_row_by(
+    content: &str,
+    delimiter: char,
+    is_header: impl Fn(&[String]) -> bool,
+) -> usize {
     let index = LineIndex::new(content);
     let mut reader = csv_reader(content, delimiter);
     for record in reader.records() {
@@ -185,18 +189,31 @@ pub fn detect_header_row(content: &str, delimiter: char) -> usize {
             break;
         }
         let fields: Vec<String> = record.iter().map(|f| f.trim().to_string()).collect();
-        if fields.iter().filter(|f| !f.is_empty()).count() < 3 {
-            continue;
-        }
-        let roles = suggest_column_mappings(&fields);
-        let has_core = ["date", "amount", "debit", "credit"]
-            .iter()
-            .any(|k| roles.contains_key(*k));
-        if roles.len() >= 2 && has_core {
+        if is_header(&fields) {
             return line.saturating_sub(1);
         }
     }
     0
+}
+
+/// 0-based line index of the header row.
+///
+/// The header is the first line that splits into ≥ 3 fields and whose cells
+/// match ≥ 2 known column roles, at least one of them a date or an amount
+/// (debit/credit). Bank preambles (account number, period, balances) have two
+/// fields per line or no date/amount words, so they are skipped. Falls back to
+/// line 0 when nothing qualifies, which is the pre-v2 behaviour.
+pub fn detect_header_row(content: &str, delimiter: char) -> usize {
+    detect_header_row_by(content, delimiter, |fields| {
+        if fields.iter().filter(|f| !f.is_empty()).count() < 3 {
+            return false;
+        }
+        let roles = suggest_column_mappings(fields);
+        let has_core = ["date", "amount", "debit", "credit"]
+            .iter()
+            .any(|k| roles.contains_key(*k));
+        roles.len() >= 2 && has_core
+    })
 }
 
 /// The header cells of the record at `header_row`, BOM and whitespace trimmed.
@@ -325,6 +342,50 @@ mod tests {
             read_headers(content, ';', 2),
             vec!["Date", "Amount", "Description"]
         );
+    }
+
+    #[test]
+    fn header_row_by_uses_the_callers_predicate() {
+        let content = "Report;generated;by broker\nDate;Ticker;Qty\n2026-09-01;AAPL;3\n";
+        // A predicate that wants a "Ticker" cell skips the preamble line.
+        let row = detect_header_row_by(content, ';', |fields| fields.iter().any(|f| f == "Ticker"));
+        assert_eq!(row, 1);
+        // The first line wins when the predicate accepts it.
+        assert_eq!(detect_header_row_by(content, ';', |_| true), 0);
+    }
+
+    #[test]
+    fn header_row_by_receives_trimmed_cells_with_blanks_kept() {
+        let content = "x;y\n A ; ;C\n";
+        let mut seen: Vec<Vec<String>> = Vec::new();
+        let seen_cell = std::cell::RefCell::new(&mut seen);
+        let row = detect_header_row_by(content, ';', |fields| {
+            seen_cell.borrow_mut().push(fields.to_vec());
+            fields.len() == 3
+        });
+        assert_eq!(row, 1);
+        assert_eq!(seen[1], vec!["A", "", "C"]);
+    }
+
+    #[test]
+    fn header_row_by_falls_back_to_the_first_line_and_stops_scanning() {
+        assert_eq!(detect_header_row_by("a;b;c\n1;2;3\n", ';', |_| false), 0);
+        assert_eq!(detect_header_row_by("", ';', |_| true), 0);
+        // A match beyond the scanned lines is not found.
+        let mut content = "p;q;r\n".repeat(HEADER_SCAN_LINES);
+        content.push_str("Date;Amount;Description\n");
+        assert_eq!(
+            detect_header_row_by(&content, ';', |f| f.first().is_some_and(|c| c == "Date")),
+            0
+        );
+    }
+
+    #[test]
+    fn bank_header_detection_is_the_generic_helper_with_the_bank_rule() {
+        // Same answers as before the refactor, including the < 3 fields rule.
+        let content = "accountId;2900000001\nDate;Description;Amount\n2026-09-01;x;1\n";
+        assert_eq!(detect_header_row(content, ';'), 1);
+        assert_eq!(detect_header_row("Date;Amount\n2026-09-01;1\n", ';'), 0);
     }
 
     #[test]

@@ -100,19 +100,22 @@ import type {
   CategorizationOverview,
   RulePackInfo,
   PackRuleInfo,
+  SavedStockImportFormat,
+  StockCsvInspectOptions,
+  StockCsvInspection,
+  StockImportBatch,
+  StockImportConfig,
+  StockImportPreview,
+  StockImportResult,
+  StockImportUndoResult,
+  StockInstrumentQuery,
+  StockInstrumentResolution,
 } from '../../shared/schema';
 import type {
   StockInvestmentWithPrice,
   CryptoInvestmentWithPrice,
   InvestmentWithDetails,
 } from '../../shared/types/extended-types';
-
-// Import result from backend
-interface ImportResult {
-  success: number;
-  imported: string[];
-  errors: string[];
-}
 
 // Per-ticker value history record
 export interface TickerValueHistory {
@@ -254,12 +257,6 @@ export const investmentsApi = {
     tauriInvoke<void>('set_manual_dividend', { ticker, amount, currency }),
 
   deleteManualDividend: (ticker: string) => tauriInvoke<void>('delete_manual_dividend', { ticker }),
-
-  importTransactions: (
-    transactions: Record<string, string | number | boolean | null | undefined>[],
-    defaultCurrency: string
-  ) =>
-    tauriInvoke<ImportResult>('import_investment_transactions', { transactions, defaultCurrency }),
 
   /** Company data cached from Yahoo Finance; `refresh` fetches it first when it is over a day old. */
   getCompanyInfo: (ticker: string, refresh: boolean) =>
@@ -894,6 +891,25 @@ export const bankAccountsApi = {
 // ============================================================================
 // Stock Tags API
 // ============================================================================
+
+/** Stock CSV import wizard (Rust `commands/stock_import.rs`); files are read by path. */
+export const stockImportApi = {
+  inspect: (filePath: string, options: StockCsvInspectOptions = {}) =>
+    tauriInvoke<StockCsvInspection>('inspect_stock_csv', { filePath, options }),
+  resolveInstruments: (queries: StockInstrumentQuery[]) =>
+    tauriInvoke<StockInstrumentResolution[]>('resolve_stock_instruments', { queries }),
+  preview: (filePath: string, config: StockImportConfig) =>
+    tauriInvoke<StockImportPreview>('preview_stock_csv_import', { filePath, config }),
+  import: (filePath: string, config: StockImportConfig) =>
+    tauriInvoke<StockImportResult>('import_stock_csv', { filePath, config }),
+  listBatches: () => tauriInvoke<StockImportBatch[]>('list_stock_import_batches'),
+  undoBatch: (batchId: string) =>
+    tauriInvoke<StockImportUndoResult>('undo_stock_import_batch', { batchId }),
+  listFormats: () => tauriInvoke<SavedStockImportFormat[]>('list_stock_import_formats'),
+  saveFormat: (name: string, headers: string[], config: StockImportConfig) =>
+    tauriInvoke<SavedStockImportFormat>('save_stock_import_format', { name, headers, config }),
+  deleteFormat: (id: string) => tauriInvoke<void>('delete_stock_import_format', { id }),
+};
 
 export const stockTagsApi = {
   getAll: () => tauriInvoke<StockTag[]>('get_all_stock_tags'),

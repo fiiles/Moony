@@ -1,0 +1,8 @@
+Date,Type,Ticker,Name,Quantity,Price,Currency
+2023-03-14,buy,AAPL,Apple Inc.,10,152.8,USD
+2023-04-02,buy,VWCE.DE,Vanguard FTSE All-World UCITS ETF,5.5,98.42,EUR
+2023-06-20,buy,CEZ.PR,ČEZ,20,948,CZK
+2023-09-05,sell,AAPL,Apple Inc.,4,189.7,USD
+2023-10-12,dividend,AAPL,Apple Inc.,1,0.24,USD
+2024-01-08,sell,CEZ.PR,ČEZ,10,1010.5,CZK
+2024-02-19,buy,MSFT,Microsoft Corporation,2,402.65,USD

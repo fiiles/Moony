@@ -1492,3 +1492,226 @@ export interface OnboardingProgress {
   checklistDismissed: boolean;
   completedAt: number | null;
 }
+
+// ============================================================================
+// Stock CSV import (src-tauri/src/services/stock_import/types.rs)
+// Columns are 0-based indexes into the header row.
+// ============================================================================
+
+export type StockTradeDirection = 'buy' | 'sell';
+export type StockTypeValueAction = 'buy' | 'sell' | 'skip';
+export type StockCurrencyMode = 'column' | 'fixed' | 'instrument';
+export type StockDirectionMode = 'typeColumn' | 'quantitySign';
+
+/** Built-in sources; a hand mapping is `custom`, a saved format `format:<id>`. */
+export type StockImportSourceId = 'xtb' | 'trading212' | 'degiro' | 'ibkr' | 'moony' | 'custom';
+
+export interface StockTypeValueMapping {
+  value: string;
+  action: StockTypeValueAction;
+}
+
+export interface StockImportTransforms {
+  xtbComment?: boolean;
+  xtbSymbols?: boolean;
+  assetClassColumn?: number | null;
+  assetClassAllowed?: string[];
+  /** Degiro: the broker's id is the order's, shared by its fills (kept by a remembered format). */
+  brokerIdPerOrder?: boolean;
+}
+
+export interface StockInstrumentOverride {
+  key: string;
+  ticker?: string | null;
+  name?: string | null;
+  /**
+   * The currency of trades whose file names none (instrument currency mode); a currency the file
+   * states is never overridden. `GBX`: the file's prices are in pence, stored as GBP ÷ 100.
+   */
+  currency?: string | null;
+  skip?: boolean;
+}
+
+export interface StockImportConfig {
+  source: string;
+  delimiter: string;
+  encoding: string;
+  headerRow: number;
+  skipRows?: number;
+  dateColumn: number;
+  dateFormat: string;
+  symbolColumn?: number | null;
+  isinColumn?: number | null;
+  nameColumn?: number | null;
+  quantityColumn: number;
+  priceColumn: number;
+  currencyMode: StockCurrencyMode;
+  currencyColumn?: number | null;
+  fixedCurrency?: string | null;
+  directionMode: StockDirectionMode;
+  typeColumn?: number | null;
+  typeValues?: StockTypeValueMapping[];
+  decimalSeparator: string;
+  externalIdColumn?: number | null;
+  transforms?: StockImportTransforms;
+  instrumentOverrides?: StockInstrumentOverride[];
+  importAnywayLines?: number[];
+}
+
+export interface StockCsvInspectOptions {
+  source?: string | null;
+  headerRow?: number | null;
+  skipRows?: number | null;
+  encoding?: string | null;
+  delimiter?: string | null;
+}
+
+/** Roles: date, type, symbol, isin, name, quantity, price, currency, externalId, fee. */
+export interface StockColumnSuggestion {
+  role: string;
+  column: number;
+  confidence: number;
+}
+
+export interface StockTypeValueStat {
+  value: string;
+  count: number;
+  firstLine: number;
+  suggested: StockTypeValueAction;
+}
+
+export interface StockColumnValues {
+  column: number;
+  values: StockTypeValueStat[];
+}
+
+export interface StockCsvInspection {
+  fileName: string;
+  encoding: string;
+  delimiter: string;
+  headerRow: number;
+  headers: string[];
+  sampleRows: string[][];
+  rowCount: number;
+  detectedSource: string | null;
+  config: StockImportConfig | null;
+  suggestions: StockColumnSuggestion[];
+  columnValues: StockColumnValues[];
+  dateFormat: string | null;
+  dateFormatAmbiguous: boolean;
+  decimalSeparator: string;
+  hasFeeColumn: boolean;
+}
+
+export type StockRowStatus = 'new' | 'duplicate' | 'skipped' | 'error';
+
+export interface StockRowMessage {
+  line: number;
+  key: string;
+  detail: string | null;
+}
+
+export interface StockPreviewRow {
+  line: number;
+  day: number | null;
+  direction: StockTradeDirection | null;
+  instrumentKey: string | null;
+  ticker: string | null;
+  quantity: string | null;
+  price: string | null;
+  currency: string | null;
+  status: StockRowStatus;
+  message: StockRowMessage | null;
+}
+
+export type StockInstrumentStatus = 'existing' | 'new' | 'missingSymbol' | 'skipped';
+
+export interface StockImportInstrument {
+  key: string;
+  symbol: string | null;
+  isin: string | null;
+  name: string | null;
+  currency: string | null;
+  tradeCount: number;
+  ticker: string | null;
+  status: StockInstrumentStatus;
+  positionCurrency: string | null;
+}
+
+export interface StockImportCounts {
+  total: number;
+  willImport: number;
+  duplicates: number;
+  skipped: number;
+  errors: number;
+}
+
+export interface StockImportPreview {
+  instruments: StockImportInstrument[];
+  rows: StockPreviewRow[];
+  counts: StockImportCounts;
+  dateRange: CsvDateRange | null;
+  hasFeeColumn: boolean;
+}
+
+export interface StockInstrumentQuery {
+  key: string;
+  symbol: string | null;
+  isin: string | null;
+  name: string | null;
+  currency: string | null;
+}
+
+export interface StockInstrumentCandidate {
+  symbol: string;
+  name: string;
+  exchange: string;
+  /**
+   * What Yahoo reports for the quote of the chosen listing (`best`); the guess from the exchange
+   * suffix for the other candidates. `GBX` stands for pence: prices are a hundredth of GBP.
+   */
+  currency: string;
+}
+
+export interface StockInstrumentResolution {
+  key: string;
+  candidates: StockInstrumentCandidate[];
+  best: StockInstrumentCandidate | null;
+  lookupFailed: boolean;
+}
+
+export interface StockImportResult {
+  batchId: string | null;
+  imported: number;
+  duplicates: number;
+  skipped: number;
+  errors: number;
+  newPositions: string[];
+  updatedPositions: string[];
+  messages: StockRowMessage[];
+  earliestDay: number | null;
+}
+
+export interface StockImportBatch {
+  id: string;
+  fileName: string;
+  source: string;
+  tradeCount: number;
+  remainingCount: number;
+  createdAt: number;
+}
+
+export interface StockImportUndoResult {
+  removed: number;
+  removedPositions: string[];
+  tickers: string[];
+  earliestDay: number | null;
+}
+
+export interface SavedStockImportFormat {
+  id: string;
+  name: string;
+  headerSignature: string;
+  config: StockImportConfig;
+  createdAt: number;
+}

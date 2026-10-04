@@ -22,6 +22,7 @@ pub mod portfolio;
 pub mod price_api;
 pub mod projection;
 pub mod real_estate;
+pub mod stock_import;
 pub mod stock_monitor;
 pub mod stock_tags;
 pub mod system;

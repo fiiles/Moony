@@ -8,6 +8,13 @@ All notable changes to Moony are documented in this file. The format follows
 
 ### Added
 
+- **Stock import from brokers.** A wizard (file, columns, review, done) replaces the old import
+  table. It reads exports from XTB, Trading 212, Degiro and Interactive Brokers, and your own
+  table made in Excel (Czech or English headers, any delimiter and encoding); other layouts are
+  mapped column by column and can be remembered. Before anything is written it confirms the
+  securities on Yahoo Finance, shows what happens to every row and catches duplicates (by the
+  broker's trade ID, the same values, or a trade you entered by hand with a rounded price) and
+  sells above the holding. Every import is recorded and can be undone. Fees are not imported.
 - **Year to date.** The dashboard, the list trend cards and the stock, crypto and bank account
   charts offer the horizons 30 days · 3 months · This year · Year · All, bounded on UTC days.
 - **Cash over time.** Bank accounts get a trend card with the recorded cash history, the same
@@ -17,7 +24,8 @@ All notable changes to Moony are documented in this file. The format follows
 - **New loans on the debt trajectory.** Each loan start is marked where the debt steps up (paid-off
   loans included), and the step is drawn as a step instead of a ramp.
 - **Purchase date for real estate.** An optional purchase date starts the value trace with the
-  purchase; the first estimate of a new property or other asset is recorded when it is created.
+  purchase and is part of the real estate CSV export; the first estimate of a new property or
+  other asset is recorded when it is created.
 - **Company data on the position detail.** Sector, industry, P/E, market cap and the other key
   figures of a holding are downloaded (at most once a day) and shown on the stock detail.
 
@@ -56,6 +64,13 @@ All notable changes to Moony are documented in this file. The format follows
 
 ### Fixed
 
+- **London-listed stocks were valued in the wrong currency.** A quote was labelled with the
+  currency its ticker suffix suggests, so a London share quoted in pence (BARC.L, LLOY.L) was a
+  hundred times too high and a dollar ETF listed in London (CSPX.L, VWRA.L, IWDA.L, EIMI.L) was
+  valued as pounds. Prices, the previous close, dividends, the charts and the 52-week range now
+  use the currency Yahoo reports, and the value history of the affected holdings is rebuilt once
+  in the background. If you entered the purchase prices of such a holding in pence to match the
+  old display, edit them to pounds.
 - **Chart tooltips froze after a buy or sell mark.** On every chart with marks the price tooltip
   kept showing the first day while the cursor moved; it now follows the cursor, and a mark's own
   tooltip appears on hover and stays inside the card at the edges.

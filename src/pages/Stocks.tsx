@@ -33,7 +33,7 @@ import { AddInvestmentModal } from '@/components/stocks/AddInvestmentModal';
 import { BuyInvestmentModal } from '@/components/stocks/BuyInvestmentModal';
 import { SellInvestmentModal } from '@/components/stocks/SellInvestmentModal';
 import { ManualPriceModal } from '@/components/stocks/ManualPriceModal';
-import { ImportInvestmentsModal } from '@/components/stocks/ImportInvestmentsModal';
+import { StockImportDialog } from '@/components/stocks/import/StockImportDialog';
 import { InvestmentsSummary } from '@/components/stocks/InvestmentsSummary';
 import { InvestmentsTable } from '@/components/stocks/InvestmentsTable';
 
@@ -331,7 +331,7 @@ export default function Stocks() {
       <AddInvestmentModal open={addOpen} onOpenChange={setAddOpen} />
       {/* One instance for both layouts: after the import the table replaces the empty
           state, and the result screen must survive that switch */}
-      <ImportInvestmentsModal open={importOpen} onOpenChange={setImportOpen} />
+      <StockImportDialog open={importOpen} onOpenChange={setImportOpen} />
       <BuyInvestmentModal
         investment={selected}
         open={rowModal === 'buy'}

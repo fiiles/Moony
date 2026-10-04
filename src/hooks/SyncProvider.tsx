@@ -170,7 +170,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
 
             if (domain === 'stocks') {
               // Newly imported tickers have no dividend data until this runs
-              // too (mirrors ImportInvestmentsModal's background refresh chain).
+              // too (mirrors the background refresh after a stock CSV import).
               return priceApi.refreshDividends().then(() => {
                 queryClient.invalidateQueries({ queryKey: ['investments'] });
                 queryClient.invalidateQueries({ queryKey: ['dividend-summary'] });

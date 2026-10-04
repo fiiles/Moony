@@ -1,13 +1,38 @@
 //! Price API commands for stock and crypto price fetching
 
+use crate::commands::portfolio;
 use crate::db::Database;
 use crate::error::Result;
+use crate::services::history_recalc::{self, HistoryRecalc};
 use crate::services::price_api::{
     self, ApiKeys, CoinGeckoSearchResult, CryptoPriceResult, DividendResult,
     StockPriceRefreshResult, StockSearchResult,
 };
 use std::collections::HashMap;
-use tauri::State;
+use tauri::{AppHandle, State};
+
+/// Queue the history rebuild a stock price refresh asks for. The tickers in
+/// `result.unit_changed` have a stored history that was valued in another unit than the quotes
+/// now are (earlier versions guessed the currency from the ticker suffix; see
+/// `quote_unit::unit_changed`), so each is rebuilt from its earliest transaction; the rebuild also
+/// re-derives the portfolio history of those days. A ticker without transactions (a watchlist
+/// ticker) has no history. Every command that runs the refresh calls this, because the refresh
+/// records the new unit and would not report the change again. Never fails: the refresh itself
+/// went through, so a problem is only logged.
+pub fn rebuild_history_for_unit_changes(
+    app: &AppHandle,
+    db: &Database,
+    recalc: &HistoryRecalc,
+    result: &StockPriceRefreshResult,
+) {
+    if result.unit_changed.is_empty() {
+        return;
+    }
+    match db.with_conn(|conn| history_recalc::rebuild_jobs(conn, &result.unit_changed)) {
+        Ok(jobs) => portfolio::schedule_stock_history_rebuild(app, db, recalc, jobs),
+        Err(e) => log::warn!("[RECALC] Could not queue the rebuild after a quote unit change: {e}"),
+    }
+}
 
 /// Get all API keys
 #[tauri::command]
@@ -26,7 +51,9 @@ pub async fn set_api_keys(db: State<'_, Database>, keys: ApiKeys) -> Result<()> 
 /// No API key required
 #[tauri::command]
 pub async fn refresh_stock_prices(
+    app: AppHandle,
     db: State<'_, Database>,
+    recalc: State<'_, HistoryRecalc>,
     force_refresh: Option<bool>,
 ) -> Result<StockPriceRefreshResult> {
     // Get all tickers from investments
@@ -44,12 +71,16 @@ pub async fn refresh_stock_prices(
             updated: vec![],
             remaining_tickers: vec![],
             rate_limit_hit: false,
+            unit_changed: vec![],
         });
     }
 
     // Fetch prices using Yahoo Finance (batched request, no API key needed)
     let result =
         price_api::refresh_stock_prices_yahoo(&db, tickers, force_refresh.unwrap_or(false)).await?;
+
+    // Before the snapshot: it can fail, and the unit change is not reported a second time.
+    rebuild_history_for_unit_changes(&app, &db, &recalc, &result);
 
     // Update portfolio snapshot
     crate::commands::portfolio::update_todays_snapshot(&db).await?;

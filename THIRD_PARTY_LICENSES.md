@@ -19,14 +19,14 @@ components not covered by the package managers: SQLCipher (BSD-3-Clause, compile
 
 | Ecosystem | Packages |
 | --- | ---: |
-| npm | 235 |
+| npm | 230 |
 | Rust | 685 |
 
 ### npm — packages per licence
 
 | Licence | Packages |
 | --- | ---: |
-| MIT | 210 |
+| MIT | 205 |
 | ISC | 13 |
 | MIT OR Apache-2.0 | 5 |
 | 0BSD | 1 |
@@ -152,7 +152,6 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | @reduxjs/toolkit | 2.12.0 | MIT |
 | @standard-schema/spec | 1.1.0 | MIT |
 | @standard-schema/utils | 0.3.0 | MIT |
-| @tailwindcss/typography | 0.5.20 | MIT |
 | @tanstack/query-core | 5.101.4 | MIT |
 | @tanstack/react-query | 5.101.4 | MIT |
 | @tauri-apps/api | 2.11.1 | Apache-2.0 OR MIT |
@@ -191,7 +190,6 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | clsx | 2.1.1 | MIT |
 | cmdk | 1.1.1 | MIT |
 | comma-separated-tokens | 2.0.3 | MIT |
-| cssesc | 3.0.0 | MIT |
 | d3-array | 3.2.4 | ISC |
 | d3-color | 3.1.0 | ISC |
 | d3-ease | 3.0.1 | BSD-3-Clause |
@@ -283,7 +281,6 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | motion-utils | 13.0.0 | MIT |
 | ms | 2.1.3 | MIT |
 | parse-entities | 4.0.2 | MIT |
-| postcss-selector-parser | 6.0.10 | MIT |
 | property-information | 7.2.0 | MIT |
 | react | 19.2.8 | MIT |
 | react-dom | 19.2.8 | MIT |
@@ -310,7 +307,6 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | style-to-js | 1.1.21 | MIT |
 | style-to-object | 1.0.14 | MIT |
 | tailwind-merge | 3.6.0 | MIT |
-| tailwindcss-animate | 1.0.7 | MIT |
 | tiny-invariant | 1.3.3 | MIT |
 | trim-lines | 3.0.1 | MIT |
 | trough | 2.2.0 | MIT |
@@ -324,7 +320,6 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | use-callback-ref | 1.3.3 | MIT |
 | use-sidecar | 1.1.3 | MIT |
 | use-sync-external-store | 1.6.0 | MIT |
-| util-deprecate | 1.0.2 | MIT |
 | vfile | 6.0.3 | MIT |
 | vfile-message | 4.0.3 | MIT |
 | victory-vendor | 37.3.6 | MIT AND ISC |
@@ -370,8 +365,8 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | av-scenechange | 0.14.1 | MIT |
 | av1-grain | 0.2.5 | BSD-2-Clause |
 | avif-serialize | 0.8.9 | BSD-3-Clause |
-| aws-lc-rs | 1.17.3 | ISC AND (Apache-2.0 OR ISC) |
-| aws-lc-sys | 0.43.0 | ISC AND (Apache-2.0 OR ISC) AND Apache-2.0 AND MIT AND BSD-3-Clause AND (Apache-2.0 OR ISC OR MIT) AND (Apache-2.0 OR ISC OR MIT-0) |
+| aws-lc-rs | 1.18.1 | ISC AND (Apache-2.0 OR ISC) |
+| aws-lc-sys | 0.45.0 | ISC AND (Apache-2.0 OR ISC) AND Apache-2.0 AND MIT AND BSD-3-Clause AND (Apache-2.0 OR ISC OR MIT) AND (Apache-2.0 OR ISC OR MIT-0) |
 | axum | 0.8.9 | MIT |
 | axum-core | 0.5.6 | MIT |
 | base64 | 0.21.7 | MIT OR Apache-2.0 |
@@ -538,7 +533,7 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | gtk | 0.18.2 | MIT |
 | gtk-sys | 0.18.2 | MIT |
 | gtk3-macros | 0.18.2 | MIT |
-| h2 | 0.4.15 | MIT |
+| h2 | 0.4.19 | MIT |
 | half | 2.7.1 | MIT OR Apache-2.0 |
 | hashbrown | 0.12.3 | MIT OR Apache-2.0 |
 | hashbrown | 0.16.1 | MIT OR Apache-2.0 |
@@ -757,12 +752,12 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | rustc_version | 0.4.1 | MIT OR Apache-2.0 |
 | rustc-hash | 2.1.3 | Apache-2.0 OR MIT |
 | rustix | 1.1.4 | Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT |
-| rustls | 0.23.43 | Apache-2.0 OR ISC OR MIT |
+| rustls | 0.23.45 | Apache-2.0 OR ISC OR MIT |
 | rustls-native-certs | 0.8.4 | Apache-2.0 OR ISC OR MIT |
 | rustls-pki-types | 1.15.1 | MIT OR Apache-2.0 |
 | rustls-platform-verifier | 0.7.0 | MIT OR Apache-2.0 |
 | rustls-platform-verifier-android | 0.1.1 | MIT OR Apache-2.0 |
-| rustls-webpki | 0.103.13 | ISC |
+| rustls-webpki | 0.103.15 | ISC |
 | rustversion | 1.0.23 | MIT OR Apache-2.0 |
 | ryu | 1.0.23 | Apache-2.0 OR BSL-1.0 |
 | salsa20 | 0.11.0 | MIT OR Apache-2.0 |

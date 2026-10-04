@@ -146,7 +146,10 @@ export interface DebtSeriesInput {
 
 /**
  * Sum of several loan paths on a shared time grid (every reading of every loan,
- * thinned when there are many). A loan counts as 0 before its first reading.
+ * thinned when there are many). A loan counts as 0 before its first reading, and
+ * every loan that starts after the earliest one also gets a reading the day
+ * before, so its drawdown is a one-day step and not a ramp from the previous
+ * reading (usually the last due day, a month back).
  */
 export function debtSeries(items: readonly DebtSeriesInput[], today: number): TrajectoryPoint[] {
   const day = dayFloor(today);
@@ -154,14 +157,17 @@ export function debtSeries(items: readonly DebtSeriesInput[], today: number): Tr
     points: [...item.trajectory.past, ...item.trajectory.future],
     rate: item.rate,
   }));
-  const stamps = new Set<number>([day]);
+  const firsts = series.flatMap((s) => (s.points.length > 0 ? [s.points[0].t] : []));
+  // Every start after the earliest gets a reading the day before (the sum holds, then jumps);
+  // the earliest start is where the series begins, so nothing precedes it.
+  const earliest = Math.min(...firsts);
+  const steps = firsts.filter((t) => t > earliest).map((t) => Math.max(earliest, t - DAY));
+  const stamps = new Set<number>([day, ...steps]);
   for (const s of series) for (const p of s.points) stamps.add(p.t);
   let grid = [...stamps].sort((a, b) => a - b);
   if (grid.length > MAX_SERIES_POINTS) {
-    const keep = new Set<number>([day]);
+    const keep = new Set<number>([day, ...firsts, ...steps]);
     for (const item of items) {
-      const first = item.trajectory.past[0];
-      if (first) keep.add(first.t);
       if (item.trajectory.payoffDay !== null) keep.add(item.trajectory.payoffDay);
     }
     const stride = Math.ceil(grid.length / MAX_SERIES_POINTS);

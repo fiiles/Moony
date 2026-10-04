@@ -241,6 +241,10 @@ export default function Stocks() {
                 {t('refreshPrices')}
               </Button>
               <ExportButton exportFn={exportApi.stockTransactions} label={t('export')} />
+              <Button variant="outline" onClick={() => setImportOpen(true)}>
+                <Upload />
+                {t('importCSV')}
+              </Button>
               <Button onClick={() => setAddOpen(true)}>
                 <Plus />
                 {t('addInvestment')}
@@ -316,11 +320,7 @@ export default function Stocks() {
         </>
       )}
 
-      <AddInvestmentModal
-        open={addOpen}
-        onOpenChange={setAddOpen}
-        onImportCsv={() => setImportOpen(true)}
-      />
+      <AddInvestmentModal open={addOpen} onOpenChange={setAddOpen} />
       {/* One instance for both layouts: after the import the table replaces the empty
           state, and the result screen must survive that switch */}
       <ImportInvestmentsModal open={importOpen} onOpenChange={setImportOpen} />

@@ -343,96 +343,408 @@
       "rates": "Ceny v {{currency}} kurzem k datu transakce"
     }
   },
-  "import": {
-    "title": "Importovat investice",
-    "description": "Importujte investiční transakce z CSV souboru.",
-    "csvFormatTitle": "Formát CSV",
-    "csvColumnHeader": "Sloupec",
-    "csvRequiredHeader": "Povinný",
-    "csvExamplesHeader": "Příklady hodnot",
-    "csvOptional": "volitelný",
-    "columnMappingHint": "Názvy sloupců nemusí přesně odpovídat — namapujete je v dalším kroku.",
-    "nameAutoLoaded": "Název společnosti se načte automaticky z Yahoo Finance.",
-    "tickerFormatHint": "Jaký formát tickeru použít?",
-    "downloadTemplate": "Stáhnout ukázkovou šablonu CSV",
-    "clickToUpload": "Klikněte sem pro výběr CSV souboru",
-    "dragAndDrop": "Pouze soubory CSV",
-    "cancel": "Zrušit",
-    "back": "Zpět",
-    "error": "Chyba",
+  "importWizard": {
+    "title": "Import obchodů z CSV",
+    "lead": "Export z brokera nebo vlastní tabulka. Duplicity poznáme a před zápisem uvidíte, co se naimportuje.",
+    "steps": {
+      "file": "Soubor",
+      "mapping": "Sloupce",
+      "review": "Kontrola",
+      "done": "Hotovo"
+    },
+    "next": "Zkontrolovat obchody",
+    "importButton_one": "Importovat {{count}} obchod",
+    "importButton_few": "Importovat {{count}} obchody",
+    "importButton_other": "Importovat {{count}} obchodů",
+    "importButtonIdle": "Importovat",
+    "unsupportedFile": "Importovat lze jen soubory CSV a TXT. Excel nebo jinou tabulku nejdřív uložte jako CSV.",
+    "direction": {
+      "buy": "Nákup",
+      "sell": "Prodej"
+    },
+    "roles": {
+      "date": "Datum",
+      "direction": "Směr",
+      "type": "Typ",
+      "symbol": "Symbol",
+      "isin": "ISIN",
+      "name": "Název",
+      "quantity": "Počet kusů",
+      "price": "Cena za kus",
+      "quantityPrice": "Počet a cena",
+      "currency": "Měna",
+      "externalId": "ID obchodu"
+    },
+    "file": {
+      "sourceHeading": "Odkud je export",
+      "savedTag": "uložený",
+      "howToExport": "Návod k exportu: {{name}}",
+      "dropTitle": "Přetáhněte sem soubor s obchody",
+      "dropActive": "Pusťte soubor a otevře se",
+      "or": "nebo",
+      "choose": "Vybrat soubor…",
+      "dropNote": ".csv nebo .txt · Excel nejdřív uložte jako CSV",
+      "sample": "Stáhnout vzorový soubor",
+      "sampleSaved": "Vzorový soubor uložen",
+      "sampleFailed": "Vzorový soubor se nepodařilo uložit",
+      "helpFailed": "Nápovědu se nepodařilo otevřít"
+    },
+    "sources": {
+      "xtb": {
+        "name": "XTB",
+        "guideTitle": "Jak získat export",
+        "guide": "V xStation otevřete Historie účtu → Peněžní operace, zvolte období od prvního obchodu, klikněte na Exportovat a vyberte formát CSV.",
+        "note": "Soubor obsahuje i vklady, dividendy a poplatky – naimportují se jen nákupy a prodeje akcií a ETF. Měnu doplníme podle burzy."
+      },
+      "trading212": {
+        "name": "Trading 212",
+        "guideTitle": "Jak získat export",
+        "guide": "V aplikaci otevřete Historie → ikona exportu, zaškrtněte Objednávky, zvolte období a stáhněte CSV.",
+        "note": "Jeden export pokryje nejvýš 12 měsíců – nahrajte více souborů, duplicity poznáme."
+      },
+      "degiro": {
+        "name": "Degiro",
+        "guideTitle": "Jak získat export",
+        "guide": "Na webu otevřete Aktivita → Transakce, nastavte období od prvního obchodu a klikněte na Export → CSV. Výpis z účtu (Account statement) nepoužívejte."
+      },
+      "ibkr": {
+        "name": "Interactive Brokers",
+        "guideTitle": "Jak získat export",
+        "guide": "V Client Portal otevřete Performance & Reports → Flex Queries, vytvořte Activity Flex Query se sekcí Trades a poli Symbol, ISIN, TradeDate, Buy/Sell, Quantity, TradePrice, CurrencyPrimary, AssetClass a TradeID, formát CSV, a spusťte ho pro celé období."
+      },
+      "moony": {
+        "name": "Vlastní tabulka (vzor Moony)",
+        "guideTitle": "Jak vyplnit tabulku",
+        "guide": "Stáhněte vzor, vyplňte ho v Excelu nebo jiné tabulce a uložte jako CSV.",
+        "excel": "Soubor z Excelu v jakémkoli jazyce přečteme bez nastavování – oddělovač, kódování i desetinnou čárku poznáme sami. Stejný formát má i export z Moony (Akcie → Export).",
+        "columns": {
+          "date": {
+            "label": "Datum",
+            "hint": "15.01.2024 nebo 2024-01-15"
+          },
+          "type": {
+            "label": "Typ",
+            "hint": "nákup / prodej nebo buy / sell"
+          },
+          "symbol": {
+            "label": "Symbol",
+            "hint": "jako na Yahoo Finance, např. AAPL, VWCE.DE"
+          },
+          "quantity": {
+            "label": "Počet",
+            "hint": "počet kusů, např. 10 nebo 0,5"
+          },
+          "price": {
+            "label": "Cena za kus",
+            "hint": "v měně obchodu, např. 180,50"
+          },
+          "currency": {
+            "label": "Měna",
+            "hint": "např. USD, EUR, CZK"
+          },
+          "name": {
+            "label": "Název",
+            "hint": "nepovinný"
+          }
+        }
+      },
+      "custom": {
+        "name": "Jiný broker",
+        "guideTitle": "Co soubor potřebuje",
+        "guide": "Potřebujeme jeden řádek na obchod: datum, směr, symbol nebo ISIN, počet kusů, cenu za kus a měnu. Sloupce přiřadíte v dalším kroku a Moony si mapování zapamatuje."
+      },
+      "saved": {
+        "title": "Uložený formát",
+        "guide": "Soubor se stejnými sloupci poznáme sami a mapování použijeme znovu.",
+        "delete": "Smazat formát",
+        "deleteTitle": "Smazat formát?",
+        "deleteDescription": "Formát „{{name}}“ se přestane rozpoznávat. Už naimportované obchody se nezmění."
+      },
+      "savedFallback": "Uložený formát"
+    },
+    "recent": {
+      "title": "Poslední importy",
+      "undo": "Vrátit",
+      "undoFor": "Vrátit import {{file}}",
+      "trades_one": "{{count}} obchod",
+      "trades_few": "{{count}} obchody",
+      "trades_other": "{{count}} obchodů",
+      "tradesOf": "{{remaining}} z {{total}} obchodů",
+      "showAll": "Zobrazit všechny ({{count}})",
+      "showLess": "Zobrazit méně"
+    },
+    "filebar": {
+      "rows_one": "{{count}} řádek",
+      "rows_few": "{{count}} řádky",
+      "rows_other": "{{count}} řádků",
+      "detected": "rozpoznáno",
+      "format": "Oddělovač „{{delimiter}}“ · kódování {{encoding}}",
+      "tab": "tabulátor"
+    },
+    "mismatch": {
+      "other": "Vybrali jste {{chosen}}, soubor ale vypadá jako {{detected}}. Použili jsme mapování pro {{detected}}.",
+      "unknown": "Soubor neodpovídá formátu {{chosen}}. Sloupce přiřaďte ručně."
+    },
     "mapping": {
-      "description": "Namapujte sloupce CSV na požadovaná pole",
-      "changeFile": "Změnit soubor",
-      "rows": "řádků",
-      "requiredSection": "Povinné sloupce",
-      "optionalSection": "Volitelné sloupce",
-      "dateColumn": "Sloupec s datem",
-      "dateFormat": "Formát data",
-      "typeColumn": "Sloupec s typem",
-      "tickerColumn": "Sloupec s tickerem",
-      "quantityColumn": "Sloupec s množstvím",
-      "priceColumn": "Sloupec s cenou",
+      "selectColumn": "Vyberte sloupec",
+      "columnNone": "— nepoužít —",
+      "blankColumn": "Sloupec {{position}}",
+      "blankColumnAfter": "Sloupec {{position}} (za „{{after}}“)",
+      "example": "Např. {{values}}",
+      "summary": {
+        "title": "Mapování: {{source}}",
+        "hint": "Hotové mapování tohoto formátu. Většinou stačí pokračovat.",
+        "sign": "znaménko počtu kusů",
+        "instrument": "podle burzy",
+        "comment": "{{column}} (z textu)",
+        "values": "Hodnoty ve sloupci {{column}}",
+        "more_one": "+{{count}} další",
+        "more_few": "+{{count}} další",
+        "more_other": "+{{count}} dalších"
+      },
+      "edit": "Upravit mapování",
+      "backToPreset": "Zpět na mapování {{source}}",
+      "required": "Povinné sloupce",
+      "optional": "Volitelné sloupce",
+      "direction": "Směr obchodu",
+      "format": "Formát",
+      "symbolOrIsin": "Stačí symbol nebo ISIN. Podle ISIN najdeme symbol na Yahoo Finance.",
+      "currencyMode": {
+        "column": "Ze sloupce",
+        "fixed": "Jedna měna",
+        "instrument": "Podle burzy"
+      },
       "currencyColumn": "Sloupec s měnou",
-      "defaultCurrency": "Výchozí měna",
-      "selectColumn": "Vyberte sloupec...",
-      "previewData": "Náhled CSV dat",
-      "columns": "sloupců",
-      "next": "Další"
+      "currencyFixed": "Měna celého souboru",
+      "currencyFixedHint": "Všechny obchody v souboru jsou v této měně.",
+      "currencyInstrumentHint": "Měnu doplníme podle burzy, na které se cenný papír obchoduje.",
+      "directionMode": {
+        "typeColumn": "Podle sloupce s typem",
+        "quantitySign": "Podle znaménka počtu"
+      },
+      "directionSignHint": "Záporný počet kusů je prodej, kladný nákup.",
+      "typeColumn": "Sloupec s typem",
+      "typeValue": "Hodnota",
+      "typeCount": "Řádků",
+      "typeLine": "První řádek",
+      "typeMeaning": "Význam",
+      "typeTooMany": "Tento sloupec má příliš mnoho různých hodnot na tabulku. Vyberte jiný sloupec nebo čtěte směr ze znaménka počtu.",
+      "typeNoTrade": "Přiřaďte aspoň jednu hodnotu k nákupu nebo prodeji, jinak se nic nenaimportuje.",
+      "typeCommentNote": "U XTB určuje směr text v komentáři. Hodnoty typu rozhodují jen o tom, které řádky jsou obchody.",
+      "action": {
+        "buy": "Nákup",
+        "sell": "Prodej",
+        "skip": "Přeskočit"
+      },
+      "externalIdHint": "Pomáhá poznat duplicity při dalších importech.",
+      "dateFormat": "Formát data",
+      "dateFormatChoose": "Vyberte formát",
+      "dateFormatAmbiguous": "V tomto souboru nelze rozlišit pořadí dne, měsíce a roku, je proto jen odhad. Zkontrolujte data v náhledu níže nebo zvolte formát sami.",
+      "decimalSeparator": "Desetinný oddělovač",
+      "decimalAuto": "Automaticky ({{separator}})",
+      "decimalComma": "Čárka (1 234,56)",
+      "decimalDot": "Tečka (1,234.56)",
+      "headerRow": "Řádek záhlaví",
+      "skipRows": "Přeskočit řádky za záhlavím",
+      "layoutHelp": "Řádek záhlaví je řádek s názvy sloupců, řádky nad ním se ignorují. Přeskočené řádky jsou datové řádky hned za záhlavím.",
+      "remember": "Zapamatovat mapování pro tento formát",
+      "rememberHint": "Soubor se stejnými sloupci pak poznáme sami.",
+      "formatName": "Název formátu",
+      "formatNamePlaceholder": "např. Můj broker",
+      "formatNameRequired": "Zadejte název formátu.",
+      "missing": "Chybí: {{fields}}",
+      "field": {
+        "date": "datum",
+        "dateFormat": "formát data",
+        "symbol": "symbol nebo ISIN",
+        "quantity": "počet kusů",
+        "price": "cena za kus",
+        "currency": "měna",
+        "type": "sloupec s typem"
+      },
+      "rawData": "Náhled dat z CSV",
+      "rawCounts": "Sloupců: {{columns}} · Řádků: {{rows}}"
     },
-    "tickerReview": {
-      "description": "Ověřování tickerů přes Yahoo Finance",
-      "verifying": "Ověřování {{done}} z {{total}} tickerů...",
-      "allVerified": "Všechny tickery ověřeny",
-      "retryFailed": "Opakovat neúspěšné",
-      "tickerLabel": "Ticker",
-      "nameLabel": "Název",
-      "nameRequired": "Zadejte název",
-      "found": "Nalezeno",
-      "notFound": "Nenalezeno — opravte ticker nebo zadejte název ručně",
-      "failed": "Nelze ověřit — zadejte název ručně nebo zkuste znovu"
+    "review": {
+      "incomplete": "Dokončete mapování sloupců, aby se zobrazila kontrola.",
+      "loading": "Čtu soubor…",
+      "failed": "S tímto nastavením nelze soubor zkontrolovat",
+      "summary": {
+        "willImport": "K importu {{count}}",
+        "duplicates": "Duplicity {{count}}",
+        "skipped": "Přeskočeno {{count}}",
+        "errors": "Chyby {{count}}"
+      },
+      "feeNote": "Poplatky se neimportují",
+      "nothingToImport": "Nic k importu: všechny řádky jsou duplicity, přeskočené nebo chybné.",
+      "statusNew": "Nový",
+      "statusSkipped": "Přeskočeno",
+      "statusError": "Chyba",
+      "statusDuplicate": "Duplicita",
+      "duplicateImportAnyway": "importovat i tak",
+      "instruments": {
+        "title": "Cenné papíry",
+        "security": "Cenný papír",
+        "currency": "Měna",
+        "trades": "Obchodů",
+        "status": "Stav",
+        "actions": "Akce",
+        "progress": "Ověřuji na Yahoo Finance… {{done}} z {{total}}",
+        "skipVerification": "Přeskočit ověřování",
+        "retry": "Ověřit znovu",
+        "checking": "Ověřuji…",
+        "inFile": "v souboru {{symbol}}",
+        "edit": "Upravit",
+        "skip": "Přeskočit",
+        "include": "Zahrnout",
+        "editFor": "Upravit {{name}}",
+        "skipFor": "Přeskočit {{name}}",
+        "includeFor": "Zahrnout {{name}}",
+        "state": {
+          "existing": "Existující pozice",
+          "new": "Nová pozice",
+          "unverified": "Neověřeno",
+          "missingSymbol": "Chybí symbol",
+          "skipped": "Přeskočeno"
+        },
+        "reason": {
+          "failed": "Yahoo Finance neodpověděla",
+          "notFound": "Na Yahoo Finance nenalezeno",
+          "unmatched": "Symbol není mezi nalezenými"
+        },
+        "missingReason": {
+          "enter": "Zadejte symbol ručně",
+          "failed": "Yahoo Finance neodpověděla – zadejte symbol ručně",
+          "notFound": "Na Yahoo Finance nenalezeno – zadejte symbol ručně"
+        },
+        "positionCurrency": "Pozice je vedena v {{currency}}",
+        "missingHint_one": "Doplňte symbol u {{count}} cenného papíru, nebo ho přeskočte.",
+        "missingHint_few": "Doplňte symbol u {{count}} cenných papírů, nebo je přeskočte.",
+        "missingHint_other": "Doplňte symbol u {{count}} cenných papírů, nebo je přeskočte.",
+        "unverifiedHint_one": "{{count}} cenný papír se nepodařilo ověřit. Importovat ho můžete i tak, ceny se ale nemusí aktualizovat.",
+        "unverifiedHint_few": "{{count}} cenné papíry se nepodařilo ověřit. Importovat je můžete i tak, ceny se ale nemusí aktualizovat.",
+        "unverifiedHint_other": "{{count}} cenných papírů se nepodařilo ověřit. Importovat je můžete i tak, ceny se ale nemusí aktualizovat."
+      },
+      "rows": {
+        "title": "Řádky",
+        "line": "Ř.",
+        "date": "Datum",
+        "direction": "Směr",
+        "symbol": "Symbol",
+        "quantity": "Počet",
+        "price": "Cena",
+        "currency": "Měna",
+        "status": "Stav",
+        "footer": "Prvních {{shown}} z {{total}} řádků",
+        "footerAll_one": "{{count}} řádek",
+        "footerAll_few": "{{count}} řádky",
+        "footerAll_other": "{{count}} řádků",
+        "showAll": "Zobrazit vše",
+        "showLess": "Zobrazit méně",
+        "none": "S tímto nastavením soubor neobsahuje žádné řádky.",
+        "truncated": "Tabulka ukazuje nejvýš {{shown}} řádků, počty nahoře platí pro celý soubor."
+      }
     },
-    "complete": "Import dokončen",
-    "processed_one": "Zpracován {{count}} řádek.",
-    "processed_few": "Zpracovány {{count}} řádky.",
-    "processed_other": "Zpracováno {{count}} řádků.",
-    "successful_one": "{{count}} úspěšný",
-    "successful_few": "{{count}} úspěšné",
-    "successful_other": "{{count}} úspěšných",
-    "skipped": "{{count}} přeskočeno",
-    "importRecords_one": "Importovat {{count}} záznam",
-    "importRecords_few": "Importovat {{count}} záznamy",
-    "importRecords_other": "Importovat {{count}} záznamů",
-    "close": "Zavřít",
-    "status": {
-      "processing": "Zpracovávám transakce...",
-      "loadingDetails": "Hledám podrobnosti, načítám historické ceny...",
-      "starting": "Importuji záznamy (celkem {{total}})…",
-      "progress": "{{current}} / {{total}} · {{ticker}}",
-      "lookup": "Vyhledávám názvy společností: {{current}} / {{total}}",
-      "keepOpen": "Nechte toto okno otevřené, dokud import neskončí."
+    "editor": {
+      "apply": "Použít",
+      "searchResults": "Výsledky hledání na Yahoo Finance",
+      "found": "Nalezeno na Yahoo Finance",
+      "searching": "Hledám…",
+      "searchError": "Hledání se nezdařilo",
+      "noResults": "Nic nenalezeno. Zkuste jiný název nebo symbol."
     },
-    "exchangeHeader": "Burza",
-    "suffixHeader": "Přípona",
-    "exampleHeader": "Příklad",
-    "exchanges": {
-      "us": "USA (NYSE / NASDAQ)",
-      "germany": "Německo (XETRA)",
-      "london": "Londýn (LSE)",
-      "paris": "Paříž (Euronext)",
-      "amsterdam": "Amsterdam",
-      "milan": "Milán",
-      "swiss": "Švýcarská burza",
-      "prague": "Praha (PSE)",
-      "hongKong": "Hongkong",
-      "tokyo": "Tokio",
-      "toronto": "Toronto",
-      "australia": "Austrálie (ASX)"
+    "result": {
+      "title": "Obchody naimportovány",
+      "titleNothing": "Nic se nenaimportovalo",
+      "nothing": "Všechny řádky souboru jsou duplicity, přeskočené nebo chybné. Podrobnosti najdete níže.",
+      "summary_one": "{{count}} obchod od {{from}} do {{to}}.",
+      "summary_few": "{{count}} obchody od {{from}} do {{to}}.",
+      "summary_other": "{{count}} obchodů od {{from}} do {{to}}.",
+      "summaryCount_one": "Naimportován {{count}} obchod.",
+      "summaryCount_few": "Naimportovány {{count}} obchody.",
+      "summaryCount_other": "Naimportováno {{count}} obchodů.",
+      "imported": "Importováno",
+      "duplicates": "Duplicity",
+      "skipped": "Přeskočeno",
+      "errors": "Chyby",
+      "newPositions": "Nové pozice:",
+      "updatedPositions": "Doplněno k existujícím:",
+      "moreTickers_one": "+{{count}} další",
+      "moreTickers_few": "+{{count}} další",
+      "moreTickers_other": "+{{count}} dalších",
+      "recalculating": "Přepočítávám historii hodnoty portfolia…",
+      "showDuplicates": "Zobrazit duplicity",
+      "showSkipped": "Zobrazit přeskočené řádky",
+      "showErrors": "Zobrazit chyby",
+      "line": "Řádek {{line}}: {{message}}",
+      "whatNext": "Co dál",
+      "next": {
+        "show": "Zobrazit akcie",
+        "showHint": "Nové a doplněné pozice najdete v tabulce.",
+        "showAction": "Zobrazit",
+        "tags": "Přiřadit štítky",
+        "tagsHint": "Nové pozice zatím štítky nemají. Přiřadíte je v analýze akcií.",
+        "tagsAction": "Přiřadit",
+        "another": "Importovat další soubor",
+        "anotherHint": "Například starší období nebo jiný účet.",
+        "anotherAction": "Vybrat soubor",
+        "undo": "Vrátit import",
+        "undoHint_one": "Smaže {{count}} obchod z tohoto souboru.",
+        "undoHint_few": "Smaže {{count}} obchody z tohoto souboru.",
+        "undoHint_other": "Smaže {{count}} obchodů z tohoto souboru.",
+        "undoAction": "Vrátit"
+      }
     },
-    "dateFormatOption": "{{pattern}} (např. {{example}})",
-    "parseFailed": "Soubor CSV se nepodařilo zpracovat: {{message}}",
-    "csvEmpty": "Soubor CSV je prázdný",
-    "noDataRows": "Nebyly nalezeny žádné datové řádky",
-    "failed": "Import selhal"
+    "undone": {
+      "title": "Import vrácen",
+      "summary_one": "Smazán {{count}} obchod z importu „{{file}}“.",
+      "summary_few": "Smazány {{count}} obchody z importu „{{file}}“.",
+      "summary_other": "Smazáno {{count}} obchodů z importu „{{file}}“.",
+      "removedPositions": "Odstraněné pozice:"
+    },
+    "undo": {
+      "title": "Vrátit import?",
+      "description_one": "Smažeme {{count}} obchod z importu „{{file}}“.",
+      "description_few": "Smažeme {{count}} obchody z importu „{{file}}“.",
+      "description_other": "Smažeme {{count}} obchodů z importu „{{file}}“.",
+      "consequences": "Pozice, které po tom zůstanou bez obchodů, se odstraní. Obchody z tohoto importu, které jste mezitím upravili, se smažou také.",
+      "confirm": "Vrátit import"
+    },
+    "toast": {
+      "inspectFailed": "Soubor se nepodařilo přečíst",
+      "importFailed": "Import se nezdařil",
+      "undone_one": "Import vrácen: smazán {{count}} obchod",
+      "undone_few": "Import vrácen: smazány {{count}} obchody",
+      "undone_other": "Import vrácen: smazáno {{count}} obchodů",
+      "undoFailed": "Import se nepodařilo vrátit",
+      "formatSaved": "Formát „{{name}}“ uložen",
+      "formatSaveFailed": "Mapování se nepodařilo zapamatovat",
+      "formatDeleted": "Formát smazán",
+      "formatDeleteFailed": "Formát se nepodařilo smazat"
+    },
+    "row": {
+      "notATrade": "Nejde o nákup ani prodej",
+      "zeroQuantity": "Nulový počet kusů",
+      "assetClass": "Jiný druh aktiva",
+      "instrumentSkipped": "Cenný papír je přeskočen",
+      "dateUnparseable": "Datum se nepodařilo přečíst",
+      "numberUnparseable": "Číslo se nepodařilo přečíst",
+      "commentUnparseable": "Komentář se nepodařilo přečíst",
+      "symbolMissing": "Chybí symbol",
+      "symbolMissingIsin": "Chybí symbol a ISIN „{{detail}}“ není platný",
+      "tickerInvalid": "Neplatný symbol",
+      "currencyMissing": "Chybí měna",
+      "currencyInvalid": "Neplatná měna",
+      "priceMissing": "Chybí cena",
+      "sellExceedsHoldings": "Prodej přesahuje držbu k tomuto dni",
+      "sellExceedsHoldingsHeld": "Prodej přesahuje držbu k tomuto dni (držíte {{detail}} ks)",
+      "currencyMismatch": "Měna se liší od měny pozice",
+      "currencyMismatchPosition": "Měna se liší od měny pozice ({{detail}})",
+      "duplicate": "Stejný obchod už v Moony je",
+      "duplicateById": "Obchod se stejným ID u brokera už v Moony je",
+      "cannotParse": "Řádek se nepodařilo přečíst",
+      "writeFailed": "Obchod se nepodařilo zapsat"
+    }
   },
   "eyebrow": "Portfolio",
   "export": "Export"

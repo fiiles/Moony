@@ -115,13 +115,6 @@ import type {
   InvestmentWithDetails,
 } from '../../shared/types/extended-types';
 
-// Import result from backend
-interface ImportResult {
-  success: number;
-  imported: string[];
-  errors: string[];
-}
-
 // Per-ticker value history record
 export interface TickerValueHistory {
   ticker: string;
@@ -262,12 +255,6 @@ export const investmentsApi = {
     tauriInvoke<void>('set_manual_dividend', { ticker, amount, currency }),
 
   deleteManualDividend: (ticker: string) => tauriInvoke<void>('delete_manual_dividend', { ticker }),
-
-  importTransactions: (
-    transactions: Record<string, string | number | boolean | null | undefined>[],
-    defaultCurrency: string
-  ) =>
-    tauriInvoke<ImportResult>('import_investment_transactions', { transactions, defaultCurrency }),
 
   refreshMetadata: (ticker: string) => tauriInvoke<boolean>('refresh_stock_metadata', { ticker }),
 

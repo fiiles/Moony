@@ -49,7 +49,7 @@ When building something new, copy these — never the outliers:
 | crypto | `crypto_investments`, `crypto_transactions`, `crypto_prices`, `crypto_price_overrides`, `crypto_value_history` | `commands/crypto.rs` + `services/{crypto,crypto_investments}.rs` | `Crypto.tsx`, `CryptoDetail.tsx` |
 | bonds | `bonds` | `commands/bonds.rs` | `Bonds.tsx`, `use-bond*.ts` |
 | loans | `loans` — valued at the amortized outstanding balance (annuity from the principal at the start date, or from the user's manual balance anchor), never at the static principal | `commands/loans.rs` + `services/{loans,loan_amortization}.rs` (the maths is mirrored in `shared/calculations/loan-amortization.ts`, pinned by one fixture) | `Loans.tsx`, `LoanDetail.tsx` (repayment schedule), `AnnuityCalculator.tsx`, `src/utils/annuity.ts` |
-| real estate | `real_estate` plus its child tables | `commands/real_estate.rs` | `RealEstate*.tsx`, `EstateCalculator.tsx`, `components/real-estate/` |
+| real estate | `real_estate` plus its child tables, `real_estate_valuations` | `commands/real_estate.rs` + `services/{real_estate,valuations}.rs` (property list/get/create/update and the valuation log — every property and other asset has an estimate from its creation; costs, photos, documents and links are still inline in the command file) | `RealEstate*.tsx`, `EstateCalculator.tsx`, `components/real-estate/`, `src/utils/valuation-trace.ts` |
 | insurance | `insurance_policies`, `insurance_documents` | `commands/insurance.rs` | `Insurance*.tsx` |
 | other assets | `other_assets`, `other_asset_transactions` | `commands/other_assets.rs` | `OtherAssets.tsx` |
 | portfolio/net-worth | `portfolio_metrics_history`, `stock_value_history`, `crypto_value_history` | `commands/portfolio.rs` (also hosts the exchange-rate commands) | `Dashboard.tsx`, `SyncProvider.tsx`, `PortfolioValueTrendChart.tsx`, `shared/calculations/` |
@@ -91,7 +91,7 @@ Fat command files hold logic that belongs in services (link, don't fix):
 
 - `portfolio.rs`
 - `projection.rs`
-- `real_estate.rs`
+- `real_estate.rs` (costs, photos, documents and links)
 - `cashflow.rs`
 
 See `docs/DEPRECATED.md` for patterns not to copy.

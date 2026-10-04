@@ -68,6 +68,6 @@ primitives cover every case they handled.
 | Path / pattern | What's wrong | Do this instead |
 |---|---|---|
 | `src-tauri/src/commands/categorization.rs` error style | Returns `Result<_, String>` | Return `crate::error::AppError` (see `docs/standards/rust-backend.md` §2) |
-| Fat command files: `portfolio.rs`, `projection.rs`, `cashflow.rs`, `real_estate.rs` | Business logic inside command handlers | Logic belongs in `src-tauri/src/services/`; commands stay thin |
+| Fat command files: `portfolio.rs`, `projection.rs`, `cashflow.rs`, `real_estate.rs` (costs, photos, documents, links) | Business logic inside command handlers | Logic belongs in `src-tauri/src/services/`; commands stay thin |
 | Inline `useMutation` in stock/crypto/real-estate/insurance modals | Mutations defined inside components, bypassing shared cache-invalidation | Put mutations in domain hooks (`src/hooks/use-*.ts`) |
 | `src/hooks/useCategorization.ts` | camelCase hook filename | Kebab-case: `use-<domain>.ts` |

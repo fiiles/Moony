@@ -156,8 +156,11 @@ pub(super) fn date_format_of(
 mod tests {
     use super::test_support::*;
     use super::*;
+    use crate::services::stock_import::inspect::inspect;
+    use crate::services::stock_import::parse::parse_file;
     use crate::services::stock_import::types::{
-        SOURCE_DEGIRO, SOURCE_IBKR, SOURCE_MOONY, SOURCE_TRADING212, SOURCE_XTB,
+        StockCsvInspectOptions, StockImportConfig, TradeDirection, SOURCE_DEGIRO, SOURCE_IBKR,
+        SOURCE_MOONY, SOURCE_TRADING212, SOURCE_XTB,
     };
 
     #[test]
@@ -313,5 +316,419 @@ mod tests {
             date_format_of(&[], 0, "%d-%m-%Y"),
             ("%d-%m-%Y".into(), false)
         );
+    }
+
+    // ===================================================================
+    // Fixtures: every adapter detects its own file and nobody else's
+    // ===================================================================
+
+    /// What the first trade of a fixture must be.
+    struct Trade {
+        line: usize,
+        day: i64,
+        direction: TradeDirection,
+        key: &'static str,
+        symbol: Option<&'static str>,
+        isin: Option<&'static str>,
+        name: Option<&'static str>,
+        quantity: f64,
+        price: f64,
+        currency: Option<&'static str>,
+        external_id: Option<&'static str>,
+    }
+
+    struct Fixture {
+        file: &'static str,
+        source: &'static str,
+        /// Data rows of the file.
+        rows: usize,
+        buys: usize,
+        sells: usize,
+        skipped: usize,
+        first: Trade,
+    }
+
+    /// One entry per `stocks-*.csv` fixture of a source. Adding a broker adds a
+    /// line here (the guard below fails for a fixture without one).
+    fn fixtures() -> Vec<Fixture> {
+        use TradeDirection::Buy;
+        vec![
+            Fixture {
+                file: "stocks-xtb.csv",
+                source: SOURCE_XTB,
+                rows: 11,
+                buys: 4,
+                sells: 2,
+                skipped: 5,
+                first: Trade {
+                    line: 3,
+                    day: 1704326400, // 04.01.2024
+                    direction: Buy,
+                    key: "symbol:AAPL",
+                    symbol: Some("AAPL"),
+                    isin: None,
+                    name: None,
+                    quantity: 3.0,
+                    price: 185.5,
+                    currency: None,
+                    external_id: Some("610000002"),
+                },
+            },
+            Fixture {
+                file: "stocks-trading212.csv",
+                source: SOURCE_TRADING212,
+                rows: 12,
+                buys: 4,
+                sells: 3,
+                skipped: 5,
+                first: Trade {
+                    line: 3,
+                    day: 1702857600, // 2023-12-18
+                    direction: Buy,
+                    key: "isin:US17275R1023",
+                    symbol: Some("CSCO"),
+                    isin: Some("US17275R1023"),
+                    name: Some("Cisco Systems"),
+                    quantity: 0.029053,
+                    price: 49.96,
+                    currency: Some("USD"),
+                    external_id: Some("EOF7504196256"),
+                },
+            },
+            Fixture {
+                file: "stocks-degiro.csv",
+                source: SOURCE_DEGIRO,
+                rows: 7,
+                buys: 5,
+                sells: 2,
+                skipped: 0,
+                first: Trade {
+                    line: 2,
+                    day: 1705276800, // 15-01-2024
+                    direction: Buy,
+                    key: "isin:IE00B3XXRP09",
+                    symbol: None,
+                    isin: Some("IE00B3XXRP09"),
+                    name: Some("VANGUARD S&P 500 UCITS ETF"),
+                    quantity: 5.0,
+                    price: 78.22,
+                    currency: Some("EUR"),
+                    external_id: Some("6f1c2c9a-4a8e-4d5b-9c1e-2b7a1d9e0f11"),
+                },
+            },
+            Fixture {
+                file: "stocks-ibkr.csv",
+                source: SOURCE_IBKR,
+                rows: 9,
+                buys: 4,
+                sells: 2,
+                skipped: 3,
+                first: Trade {
+                    line: 3,
+                    day: 1684713600, // 20230522
+                    direction: Buy,
+                    key: "isin:US0378331005",
+                    symbol: Some("AAPL"),
+                    isin: Some("US0378331005"),
+                    name: None,
+                    quantity: 3.0,
+                    price: 172.4,
+                    currency: Some("USD"),
+                    external_id: Some("3001001"),
+                },
+            },
+            Fixture {
+                file: "stocks-moony.csv",
+                source: SOURCE_MOONY,
+                rows: 7,
+                buys: 4,
+                sells: 2,
+                skipped: 1,
+                first: Trade {
+                    line: 2,
+                    day: 1678752000, // 2023-03-14
+                    direction: Buy,
+                    key: "symbol:AAPL",
+                    symbol: Some("AAPL"),
+                    isin: None,
+                    name: Some("Apple Inc."),
+                    quantity: 10.0,
+                    price: 152.8,
+                    currency: Some("USD"),
+                    external_id: None,
+                },
+            },
+            Fixture {
+                file: "stocks-handmade-cz.csv",
+                source: SOURCE_MOONY,
+                rows: 7,
+                buys: 4,
+                sells: 2,
+                skipped: 1,
+                first: Trade {
+                    line: 2,
+                    day: 1705276800, // 15.1.2024
+                    direction: Buy,
+                    key: "symbol:AAPL",
+                    symbol: Some("AAPL"),
+                    isin: None,
+                    name: Some("Apple Inc."),
+                    quantity: 10.0,
+                    price: 185.5,
+                    currency: Some("USD"),
+                    external_id: None,
+                },
+            },
+        ]
+    }
+
+    /// Fixtures that are not the file of a built-in source: the generic
+    /// mapping's (see the tests below).
+    const GENERIC_FIXTURES: [&str; 2] = ["stocks-messy.csv", "stocks-template.csv"];
+
+    #[test]
+    fn all_stock_adapters_detect_their_fixture() {
+        for fixture in fixtures() {
+            let name = fixture.file;
+            let bytes = fixture_bytes(name);
+            let inspection = inspect(&bytes, name, &StockCsvInspectOptions::default(), &[])
+                .unwrap_or_else(|e| panic!("{name}: {e}"));
+
+            // Detected as its own source ...
+            assert_eq!(
+                inspection.detected_source.as_deref(),
+                Some(fixture.source),
+                "{name}"
+            );
+            // ... and claimed by no other adapter.
+            for adapter in &ADAPTERS {
+                assert_eq!(
+                    (adapter.detect)(&inspection.headers, &inspection.sample_rows),
+                    adapter.source == fixture.source,
+                    "{name}: {}",
+                    adapter.source
+                );
+            }
+
+            // The ready configuration reads the whole file without an error.
+            let config = inspection
+                .config
+                .as_ref()
+                .unwrap_or_else(|| panic!("{name}: no ready config"));
+            assert_eq!(config.source, fixture.source, "{name}");
+            config.validate().unwrap_or_else(|e| panic!("{name}: {e}"));
+            assert!(
+                !inspection.date_format_ambiguous,
+                "{name}: the format is known"
+            );
+            // It crosses the wire unchanged.
+            let json = serde_json::to_string(config).unwrap_or_else(|e| panic!("{name}: {e}"));
+            let back: StockImportConfig =
+                serde_json::from_str(&json).unwrap_or_else(|e| panic!("{name}: {e}"));
+            assert_eq!(&back, config, "{name}");
+
+            let parsed = parse_file(&bytes, config).unwrap_or_else(|e| panic!("{name}: {e}"));
+            assert!(parsed.errors.is_empty(), "{name}: {:?}", parsed.errors);
+            assert_eq!(inspection.row_count, fixture.rows, "{name}");
+            assert_eq!(parsed.total_rows, fixture.rows, "{name}");
+            assert_eq!(
+                parsed.skipped.len(),
+                fixture.skipped,
+                "{name}: {:?}",
+                parsed.skipped
+            );
+            let buys = parsed
+                .trades
+                .iter()
+                .filter(|t| t.direction == TradeDirection::Buy)
+                .count();
+            assert_eq!(buys, fixture.buys, "{name}: purchases");
+            assert_eq!(parsed.trades.len() - buys, fixture.sells, "{name}: sales");
+            assert_eq!(
+                parsed.trades.len() + parsed.skipped.len(),
+                fixture.rows,
+                "{name}: every row is a trade or skipped"
+            );
+
+            let want = &fixture.first;
+            let got = &parsed.trades[0];
+            assert_eq!(got.line, want.line, "{name}");
+            assert_eq!(got.day, want.day, "{name}");
+            assert_eq!(got.direction, want.direction, "{name}");
+            assert_eq!(got.instrument_key, want.key, "{name}");
+            assert_eq!(got.symbol.as_deref(), want.symbol, "{name}");
+            assert_eq!(got.isin.as_deref(), want.isin, "{name}");
+            assert_eq!(got.name.as_deref(), want.name, "{name}");
+            assert_eq!(
+                (got.quantity, got.price),
+                (want.quantity, want.price),
+                "{name}"
+            );
+            assert_eq!(got.currency.as_deref(), want.currency, "{name}");
+            assert_eq!(got.external_id.as_deref(), want.external_id, "{name}");
+        }
+    }
+
+    #[test]
+    fn every_stock_fixture_has_a_guard_entry() {
+        let mut on_disk: Vec<String> = std::fs::read_dir(FIXTURE_DIR)
+            .expect("fixture directory")
+            .filter_map(|entry| entry.ok())
+            .map(|entry| entry.file_name().to_string_lossy().into_owned())
+            .filter(|name| name.starts_with("stocks-") && name.ends_with(".csv"))
+            .collect();
+        on_disk.sort();
+        let mut guarded: Vec<String> = fixtures()
+            .iter()
+            .map(|f| f.file)
+            .chain(GENERIC_FIXTURES)
+            .map(str::to_string)
+            .collect();
+        guarded.sort();
+        assert_eq!(
+            on_disk, guarded,
+            "a stocks-*.csv fixture without a guard entry"
+        );
+    }
+
+    #[test]
+    fn the_excel_table_is_really_windows_1250_with_windows_line_ends() {
+        let bytes = fixture_bytes("stocks-handmade-cz.csv");
+        assert!(String::from_utf8(bytes.clone()).is_err(), "not UTF-8");
+        assert!(bytes.windows(2).any(|w| w == b"\r\n"));
+        let i = inspect(&bytes, "t.csv", &StockCsvInspectOptions::default(), &[]).expect("inspect");
+        assert_eq!(i.encoding, "windows-1250");
+        assert_eq!(
+            (i.delimiter.as_str(), i.decimal_separator.as_str()),
+            (";", ",")
+        );
+        assert_eq!(i.headers[3], "Název");
+        let config = i.config.expect("config");
+        let parsed = parse_file(&bytes, &config).expect("parse");
+        // A non-breaking space between thousands, the type words in Czech.
+        let kb = parsed
+            .trades
+            .iter()
+            .find(|t| t.symbol.as_deref() == Some("KOMB.PR"))
+            .expect("Komerční banka");
+        assert_eq!((kb.quantity, kb.price), (50.0, 1056.0));
+        assert_eq!(kb.name.as_deref(), Some("Komerční banka"));
+        assert_eq!(kb.direction, TradeDirection::Buy, "Nákup");
+        let vwce = parsed
+            .trades
+            .iter()
+            .find(|t| t.symbol.as_deref() == Some("VWCE.DE"));
+        assert_eq!(
+            vwce.map(|t| t.direction),
+            Some(TradeDirection::Buy),
+            "koupě"
+        );
+    }
+
+    #[test]
+    fn london_prices_in_pence_are_pounds() {
+        for (file, line) in [("stocks-trading212.csv", 6), ("stocks-degiro.csv", 7)] {
+            let bytes = fixture_bytes(file);
+            let config = inspect(&bytes, file, &StockCsvInspectOptions::default(), &[])
+                .expect("inspect")
+                .config
+                .expect("config");
+            let parsed = parse_file(&bytes, &config).expect("parse");
+            let vodafone = parsed.trades.iter().find(|t| t.line == line).expect(file);
+            assert_eq!(vodafone.isin.as_deref(), Some("GB00BH4HKS39"), "{file}");
+            assert_eq!(vodafone.currency.as_deref(), Some("GBP"), "{file}");
+            assert_eq!(vodafone.price, 0.6852, "{file}: 68.52 pence");
+        }
+    }
+
+    #[test]
+    fn xtb_symbols_are_yahoo_symbols_and_prices_have_no_currency() {
+        let bytes = fixture_bytes("stocks-xtb.csv");
+        let config = inspect(&bytes, "x.csv", &StockCsvInspectOptions::default(), &[])
+            .expect("inspect")
+            .config
+            .expect("config");
+        let parsed = parse_file(&bytes, &config).expect("parse");
+        let symbols: Vec<&str> = parsed
+            .trades
+            .iter()
+            .filter_map(|t| t.symbol.as_deref())
+            .collect();
+        assert_eq!(
+            symbols,
+            ["AAPL", "VUSA.L", "AAPL", "SPYL.DE", "CEZ.PR", "VUSA.L"]
+        );
+        assert!(parsed.trades.iter().all(|t| t.currency.is_none()));
+        let directions: Vec<TradeDirection> = parsed.trades.iter().map(|t| t.direction).collect();
+        use TradeDirection::{Buy, Sell};
+        assert_eq!(directions, [Buy, Buy, Sell, Buy, Buy, Sell]);
+    }
+
+    #[test]
+    fn the_ibkr_trailer_and_non_stock_rows_are_skipped_not_errors() {
+        let bytes = fixture_bytes("stocks-ibkr.csv");
+        let i = inspect(&bytes, "i.csv", &StockCsvInspectOptions::default(), &[]).expect("inspect");
+        assert_eq!(i.header_row, 1, "the BOF record is no header");
+        let config = i.config.expect("config");
+        let parsed = parse_file(&bytes, &config).expect("parse");
+        let skipped: Vec<(usize, &str, Option<&str>)> = parsed
+            .skipped
+            .iter()
+            .map(|m| (m.line, m.key.as_str(), m.detail.as_deref()))
+            .collect();
+        assert_eq!(
+            skipped,
+            [
+                (7, "importWizard.row.assetClass", Some("OPT")),
+                (8, "importWizard.row.assetClass", Some("CASH")),
+                (11, "importWizard.row.notATrade", None),
+            ]
+        );
+    }
+
+    #[test]
+    fn the_old_template_is_the_moony_table_without_a_name() {
+        let bytes = fixture_bytes("stocks-template.csv");
+        let i = inspect(&bytes, "t.csv", &StockCsvInspectOptions::default(), &[]).expect("inspect");
+        assert_eq!(i.detected_source.as_deref(), Some(SOURCE_MOONY));
+        let config = i.config.expect("config");
+        assert_eq!(config.name_column, None);
+        let parsed = parse_file(&bytes, &config).expect("parse");
+        assert_eq!(
+            (
+                parsed.trades.len(),
+                parsed.skipped.len(),
+                parsed.errors.len()
+            ),
+            (5, 0, 0)
+        );
+        assert_eq!(parsed.trades[3].symbol.as_deref(), Some("EUNL.DE"));
+        assert_eq!(parsed.trades[2].direction, TradeDirection::Sell);
+    }
+
+    #[test]
+    fn a_file_of_another_broker_is_mapped_generically() {
+        let bytes = fixture_bytes("stocks-messy.csv");
+        let i = inspect(&bytes, "m.csv", &StockCsvInspectOptions::default(), &[]).expect("inspect");
+        assert_eq!(i.detected_source, None);
+        let config = i.config.expect("a complete suggestion from the headers");
+        assert_eq!(config.source, "custom");
+        assert_eq!(
+            (
+                config.decimal_separator.as_str(),
+                config.date_format.as_str()
+            ),
+            (",", "%d.%m.%Y")
+        );
+        let parsed = parse_file(&bytes, &config).expect("parse");
+        assert_eq!(parsed.errors, []);
+        let symbols: Vec<&str> = parsed
+            .trades
+            .iter()
+            .filter_map(|t| t.symbol.as_deref())
+            .collect();
+        assert_eq!(symbols, ["AAPL", "AAPL", "NOTATICKER123"]);
+        assert_eq!(parsed.trades[1].direction, TradeDirection::Sell);
+        assert_eq!(parsed.skipped.len(), 1, "the dividend");
     }
 }

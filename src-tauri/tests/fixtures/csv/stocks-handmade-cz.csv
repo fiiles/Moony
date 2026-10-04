@@ -1,0 +1,8 @@
+Datum;Typ;Symbol;Název;Poèet;Cena;Mìna
+15.1.2024;nákup;AAPL;Apple Inc.;10;185,50;USD
+05.02.2024;nákup;CEZ.PR;ÈEZ;20;950,00;CZK
+20.02.2024;prodej;AAPL;Apple Inc.;4;190,25;USD
+01.03.2024;koupì;VWCE.DE;Vanguard FTSE All-World;3;112,34;EUR
+15.03.2024;dividenda;CEZ.PR;ÈEZ;20;45,00;CZK
+02.04.2024;Nákup;KOMB.PR;Komerèní banka;50;1 056,00;CZK
+18.04.2024;prodej;CEZ.PR;ÈEZ;5;1 012,50;CZK

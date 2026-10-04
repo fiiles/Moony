@@ -1,19 +1,20 @@
 //! Reading every row of a file with a configuration.
 //!
-//! Every data row ends in exactly one of `trades`, `skipped` (not a trade, or
-//! excluded on purpose) and `errors` (cannot be read), each with its 1-based
-//! file line and an i18n key plus the raw value it is about; blank lines are
-//! not rows. Dates are read strictly with the file's one format, numbers with
+//! Every data row ends in exactly one of `trades`, `skipped` (not a trade) and
+//! `errors` (cannot be read), each with its 1-based file line and an i18n key
+//! plus the raw value it is about; blank lines are not rows. Dates are read strictly with the file's one format, numbers with
 //! the file's decimal separator (thousands separators and currency signs are
 //! fine), quantity and price are absolute values (the direction carries the
 //! sign), symbols, ISINs and currencies are uppercase and prices in pence
 //! (`GBX`, `GBp`) are converted to pounds, whatever the source.
 //!
 //! What a row needs the database for (duplicates, holdings, currency of the
-//! position) is not decided here, nor are the instrument overrides other than
-//! "skip".
+//! position) is not decided here, nor are the instrument overrides, `skip`
+//! included: the rows of an instrument the user skipped stay trades, so the
+//! preview still lists the instrument and the user can bring it back; the
+//! simulation excludes them.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 use csv::StringRecord;
 
@@ -34,7 +35,6 @@ use super::types::{
 pub const ROW_NOT_A_TRADE: &str = "importWizard.row.notATrade";
 pub const ROW_ZERO_QUANTITY: &str = "importWizard.row.zeroQuantity";
 pub const ROW_ASSET_CLASS: &str = "importWizard.row.assetClass";
-pub const ROW_INSTRUMENT_SKIPPED: &str = "importWizard.row.instrumentSkipped";
 pub const ROW_DATE_UNPARSEABLE: &str = "importWizard.row.dateUnparseable";
 pub const ROW_NUMBER_UNPARSEABLE: &str = "importWizard.row.numberUnparseable";
 pub const ROW_COMMENT_UNPARSEABLE: &str = "importWizard.row.commentUnparseable";
@@ -129,7 +129,6 @@ struct RowReader<'a> {
     config: &'a StockImportConfig,
     decimal: char,
     types: TypeMap,
-    skipped_instruments: HashSet<&'a str>,
 }
 
 impl<'a> RowReader<'a> {
@@ -138,12 +137,6 @@ impl<'a> RowReader<'a> {
             config,
             decimal,
             types: TypeMap::new(&config.type_values),
-            skipped_instruments: config
-                .instrument_overrides
-                .iter()
-                .filter(|o| o.skip)
-                .map(|o| o.key.as_str())
-                .collect(),
         }
     }
 
@@ -196,9 +189,6 @@ impl<'a> RowReader<'a> {
             (None, Some(symbol)) => format!("symbol:{symbol}"),
             (None, None) => return Err(fail(ROW_SYMBOL_MISSING, isin_cell)),
         };
-        if self.skipped_instruments.contains(instrument_key.as_str()) {
-            return Err(skip(ROW_INSTRUMENT_SKIPPED, None));
-        }
 
         // When.
         let raw_date = cell(c.date_column);
@@ -816,7 +806,7 @@ nedatum;nákup;AAPL;1;185,50;USD\n\
     }
 
     #[test]
-    fn a_skipped_instrument_excludes_its_rows_before_anything_else_is_checked() {
+    fn instrument_overrides_are_left_to_the_simulation() {
         let mut c = config();
         c.instrument_overrides = vec![
             StockInstrumentOverride {
@@ -834,24 +824,25 @@ nedatum;nákup;AAPL;1;185,50;USD\n\
                 skip: false,
             },
         ];
-        // A bad date on a skipped instrument is no error: the user dropped it.
-        let parsed = parse_with(
-            "15.01.2024;nákup;msft;1;1;USD\nnedatum;nákup;MSFT;1;1;USD\n16.01.2024;nákup;AAPL;1;1;USD\n",
-            &c,
-        );
+        let rows = "15.01.2024;nákup;msft;1;1;USD\n16.01.2024;nákup;AAPL;1;1;USD\n17.01.2024;prodej;MSFT;1;2;USD\n";
+        let with_overrides = parse_with(rows, &c);
+        // The rows of a skipped instrument stay trades: the preview lists the
+        // instruments of the trades, and the user must be able to un-skip one.
+        // Skip, ticker, name and currency are all applied later.
+        assert_eq!(with_overrides, parse(rows));
+        assert_eq!(with_overrides.trades.len(), 3);
+        assert!(with_overrides.skipped.is_empty() && with_overrides.errors.is_empty());
+        assert_eq!(with_overrides.trades[0].instrument_key, "symbol:MSFT");
+        assert_eq!(with_overrides.trades[1].instrument_key, "symbol:AAPL");
+        assert_eq!(with_overrides.trades[1].currency.as_deref(), Some("USD"));
+        assert_eq!(with_overrides.total_rows, 3);
+        // A row that cannot be read is an error, skipped instrument or not.
+        let bad = parse_with("nedatum;nákup;MSFT;1;1;USD\n", &c);
         assert_eq!(
-            parsed.skipped,
-            [
-                note(2, "importWizard.row.instrumentSkipped", None),
-                note(3, "importWizard.row.instrumentSkipped", None),
-            ]
+            bad.errors,
+            [note(2, "importWizard.row.dateUnparseable", Some("nedatum"))]
         );
-        assert!(parsed.errors.is_empty());
-        // The other override fields are applied later, not here.
-        assert_eq!(parsed.trades.len(), 1);
-        assert_eq!(parsed.trades[0].instrument_key, "symbol:AAPL");
-        assert_eq!(parsed.trades[0].currency.as_deref(), Some("USD"));
-        assert_eq!(parsed.total_rows, 3);
+        assert!(bad.trades.is_empty() && bad.skipped.is_empty());
     }
 
     // ===================================================================

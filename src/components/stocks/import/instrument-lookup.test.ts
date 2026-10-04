@@ -257,13 +257,14 @@ describe('createInstrumentLookup', () => {
     const first = lookup.verify(query);
     await flush();
     calls[0].settle([found('symbol:A')]);
-    await first;
+    // The answer comes back to the caller too (it says what the listing is quoted in).
+    expect(await first).toEqual(found('symbol:A'));
     expect(last().resolutions['symbol:A'].lookupFailed).toBe(false);
 
     const second = lookup.verify(query);
     await flush();
     calls[1].fail(new Error('offline'));
-    await second;
+    expect(await second).toEqual(unansweredFor('symbol:A'));
     expect(last().resolutions['symbol:A'].lookupFailed).toBe(true);
   });
 
@@ -280,7 +281,7 @@ describe('createInstrumentLookup', () => {
     await flush();
     lookup.reset();
     calls[0].settle([found('symbol:A')]);
-    await pending;
+    expect(await pending).toBeUndefined();
     expect(last().resolutions).toEqual({});
   });
 });

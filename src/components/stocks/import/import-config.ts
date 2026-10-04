@@ -384,6 +384,30 @@ export function isCurrencyCode(code: string): boolean {
   return /^[A-Za-z]{3}$/.test(code.trim());
 }
 
+/**
+ * Whether a currency code means pence: `GBX` in any case, or `GBp` — the code of Yahoo Finance's
+ * London quotes. `GBP` is pounds; the two differ only by the case of one letter. A file whose
+ * prices are in pence is imported as GBP ÷ 100 (the backend does that for an instrument whose
+ * currency is `GBX`).
+ */
+export function isPenceCode(code: string | null | undefined): boolean {
+  const trimmed = (code ?? '').trim();
+  return trimmed === 'GBp' || trimmed.toUpperCase() === 'GBX';
+}
+
+/**
+ * A currency as it is shown to the user: the code, except `GBX`, which says nothing by itself —
+ * `penceLabel` is its explanation ("GBX (pence, stored as GBP ÷ 100)").
+ */
+export function currencyLabel(code: string, penceLabel: string): string {
+  return isPenceCode(code) ? penceLabel : code;
+}
+
+/** A currency code the way an override carries it: upper case, and `GBX` for any pence code. */
+function overrideCurrency(code: string): string {
+  return isPenceCode(code) ? 'GBX' : code.trim().toUpperCase();
+}
+
 export type MappingField =
   'date' | 'dateFormat' | 'symbol' | 'quantity' | 'price' | 'currency' | 'type';
 
@@ -804,44 +828,102 @@ export function instrumentQuery(instrument: StockImportInstrument): StockInstrum
   };
 }
 
-/** Instruments whose symbol still has to be confirmed on Yahoo Finance. */
-export function needsLookup(instrument: StockImportInstrument): boolean {
-  return instrument.status === 'new' || instrument.status === 'missingSymbol';
+/**
+ * Instruments to look up on Yahoo Finance: those whose symbol still has to be confirmed. When the
+ * currency comes from the listing (instrument currency mode) the existing positions too: the
+ * quote says what unit the file's prices are in (pence), and that a position in dollars is not
+ * in pounds because the symbol ends in `.L`.
+ */
+export function needsLookup(
+  instrument: StockImportInstrument,
+  currencyMode?: StockCurrencyMode
+): boolean {
+  return (
+    instrument.status === 'new' ||
+    instrument.status === 'missingSymbol' ||
+    (currencyMode === 'instrument' && instrument.status === 'existing')
+  );
 }
 
 /**
  * The override the listing the backend chose (`best`: the exact symbol in the
  * trade currency, else any listing in it, else the exact symbol, else the first)
  * implies: its symbol when that is not the one the trades would be stored under,
- * its name when the file has none. Null when there is nothing to change.
+ * its name when the file has none and — when the file names no currency (instrument
+ * currency mode) — its currency when that differs from the instrument's: the quote
+ * of VUSD.L is in dollars, that of BARC.L in pence (`GBX`). A position that exists
+ * keeps its ticker and name; only its currency can come from the lookup. Null when
+ * there is nothing to change.
  */
 export function autoOverrideFor(
   instrument: StockImportInstrument,
-  resolution: StockInstrumentResolution
+  resolution: StockInstrumentResolution,
+  currencyMode?: StockCurrencyMode
 ): StockInstrumentOverride | null {
   if (resolution.lookupFailed) return null;
   const candidate = resolution.best;
   // A symbol the backend would reject makes the whole preview fail: leave it to the user.
   if (!candidate || !isValidTicker(candidate.symbol)) return null;
   const override: StockInstrumentOverride = { key: instrument.key };
-  if (!sameSymbol(instrument.ticker, candidate.symbol)) {
-    override.ticker = candidate.symbol.trim().toUpperCase();
+  if (instrument.status !== 'existing') {
+    if (!sameSymbol(instrument.ticker, candidate.symbol)) {
+      override.ticker = candidate.symbol.trim().toUpperCase();
+    }
+    if (!instrument.name?.trim() && candidate.name.trim()) override.name = candidate.name.trim();
   }
-  if (!instrument.name?.trim() && candidate.name.trim()) override.name = candidate.name.trim();
+  // The currency is the listing's, so it only counts when the trades are stored under that
+  // listing: its symbol is the one set above, or the instrument already has it.
+  const storedUnderListing =
+    override.ticker != null || sameSymbol(instrument.ticker, candidate.symbol);
+  if (currencyMode === 'instrument' && storedUnderListing && isCurrencyCode(candidate.currency)) {
+    const currency = overrideCurrency(candidate.currency);
+    if (currency !== overrideCurrency(instrument.currency ?? '')) override.currency = currency;
+  }
   return hasOverrideContent(override) ? override : null;
 }
 
 /**
+ * The currency to give an instrument whose symbol the user typed or picked, once the lookup has
+ * answered for that symbol: what the quote of that listing is in (`GBX` for pence). Only in
+ * instrument currency mode, where the currency is the listing's; null when the answer failed, is
+ * missing, or is for another listing.
+ */
+export function currencyOverrideFor(
+  ticker: string,
+  resolution: StockInstrumentResolution | undefined,
+  currencyMode: StockCurrencyMode
+): string | null {
+  if (currencyMode !== 'instrument' || !resolution || resolution.lookupFailed) return null;
+  const best = resolution.best;
+  if (!best || !sameSymbol(best.symbol, ticker) || !isCurrencyCode(best.currency)) return null;
+  return overrideCurrency(best.currency);
+}
+
+/**
  * Adds the automatic overrides to the user's. What the user already chose for
- * an instrument is never replaced by a lookup result that arrives later.
+ * an instrument is never replaced by a lookup result that arrives later. The one
+ * exception is the currency: it says what unit the quote of the file's symbol is
+ * in, so it still reaches an instrument the user only skipped or renamed (not one
+ * whose symbol or currency they chose: that is another quote).
  */
 export function mergeAutoOverrides(
   current: readonly StockInstrumentOverride[],
   automatic: readonly StockInstrumentOverride[]
 ): StockInstrumentOverride[] {
   const taken = new Set(current.filter(hasOverrideContent).map((o) => o.key));
+  // Only a currency that belongs to the symbol the instrument has: one that came with another
+  // symbol (a `ticker` in the same override) is that listing's.
+  const currencies = new Map(
+    automatic
+      .filter((o) => o.currency && !o.ticker && taken.has(o.key))
+      .map((o) => [o.key, o.currency])
+  );
+  const updated = current.map((o) => {
+    const currency = currencies.get(o.key);
+    return currency && hasOverrideContent(o) && !o.ticker && !o.currency ? { ...o, currency } : o;
+  });
   const added = automatic.filter((o) => hasOverrideContent(o) && !taken.has(o.key));
-  return added.length === 0 ? [...current] : [...current, ...added];
+  return added.length === 0 ? updated : [...updated, ...added];
 }
 
 /** How far an instrument's symbol is confirmed. */

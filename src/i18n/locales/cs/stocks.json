@@ -667,7 +667,11 @@
       "found": "Nalezeno na Yahoo Finance",
       "searching": "Hledám…",
       "searchError": "Hledání se nezdařilo",
-      "noResults": "Nic nenalezeno. Zkuste jiný název nebo symbol."
+      "noResults": "Nic nenalezeno. Zkuste jiný název nebo symbol.",
+      "currencyFromFile": "Podle souboru"
+    },
+    "currency": {
+      "gbx": "GBX (pence, uloží se jako GBP ÷ 100)"
     },
     "result": {
       "title": "Obchody naimportovány",

@@ -650,7 +650,11 @@
       "found": "Found on Yahoo Finance",
       "searching": "Searching…",
       "searchError": "The search failed",
-      "noResults": "Nothing found. Try another name or symbol."
+      "noResults": "Nothing found. Try another name or symbol.",
+      "currencyFromFile": "From the file"
+    },
+    "currency": {
+      "gbx": "GBX (pence, stored as GBP ÷ 100)"
     },
     "result": {
       "title": "Trades imported",

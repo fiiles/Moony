@@ -15,6 +15,7 @@ import { useLanguage } from '@/i18n/I18nProvider';
 import { useFormat } from '@/lib/use-format';
 import { cn } from '@/lib/utils';
 import type {
+  StockCurrencyMode,
   StockImportInstrument,
   StockImportPreview,
   StockInstrumentOverride,
@@ -39,6 +40,8 @@ interface ReviewStepProps {
   importAnywayLines: readonly number[];
   onToggleImportAnyway: (line: number, checked: boolean) => void;
   overrides: readonly StockInstrumentOverride[];
+  /** Where the currency of the trades comes from (the mapping's currency mode). */
+  currencyMode: StockCurrencyMode;
   resolutions: Readonly<Record<string, StockInstrumentResolution>>;
   progress: LookupProgress;
   isResolving: boolean;
@@ -69,6 +72,7 @@ export function ReviewStep({
   importAnywayLines,
   onToggleImportAnyway,
   overrides,
+  currencyMode,
   resolutions,
   progress,
   isResolving,
@@ -195,6 +199,7 @@ export function ReviewStep({
       <InstrumentsPanel
         instruments={preview.instruments}
         overrides={overrides}
+        currencyMode={currencyMode}
         resolutions={resolutions}
         progress={progress}
         isResolving={isResolving}

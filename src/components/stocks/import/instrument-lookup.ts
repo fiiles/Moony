@@ -144,8 +144,14 @@ export function createInstrumentLookup(options: InstrumentLookupOptions) {
     store([resolution]);
   };
 
-  /** Confirm one symbol the user typed. */
-  const verify = async (query: StockInstrumentQuery) => {
+  /**
+   * Confirm one symbol the user typed or picked. The answer is kept and also returned, so the
+   * caller can act on what it says (the currency of the listing); `undefined` when the file was
+   * reset meanwhile.
+   */
+  const verify = async (
+    query: StockInstrumentQuery
+  ): Promise<StockInstrumentResolution | undefined> => {
     asked.add(query.key);
     const run = generation;
     let answer: StockInstrumentResolution | undefined;
@@ -154,8 +160,10 @@ export function createInstrumentLookup(options: InstrumentLookupOptions) {
     } catch (error) {
       console.error('Instrument lookup failed:', error);
     }
-    if (run !== generation) return;
-    store([answer?.key === query.key ? answer : unanswered(query.key)]);
+    if (run !== generation) return undefined;
+    const stored = answer?.key === query.key ? answer : unanswered(query.key);
+    store([stored]);
+    return stored;
   };
 
   return {

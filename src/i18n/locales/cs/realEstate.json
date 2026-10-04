@@ -143,6 +143,7 @@
         "editItem": "Upravit {{name}}",
         "deleteItem": "Smazat {{name}}",
         "boughtFor": "koupeno za {{amount}}",
+        "boughtOnFor": "koupeno {{date}} za {{amount}}",
         "rented": "Pronajato · nájem {{rent}} měsíčně",
         "notRented": "Bez nájmu",
         "mortgage": "{{name}} {{amount}}",
@@ -161,6 +162,7 @@
         "chart": {
             "value": "Tržní hodnota",
             "purchase": "Kupní cena",
+            "bought": "Koupě",
             "revaluation": "Přecenění",
             "first": "První odhad",
             "note_one": "{{count}} přecenění od prvního odhadu",

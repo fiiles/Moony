@@ -141,6 +141,7 @@
         "editItem": "Edit {{name}}",
         "deleteItem": "Delete {{name}}",
         "boughtFor": "bought for {{amount}}",
+        "boughtOnFor": "bought {{date}} for {{amount}}",
         "rented": "Rented · rent {{rent}} a month",
         "notRented": "Not rented",
         "mortgage": "{{name}} {{amount}}",
@@ -159,6 +160,7 @@
         "chart": {
             "value": "Market value",
             "purchase": "Purchase price",
+            "bought": "Purchase",
             "revaluation": "Revaluation",
             "first": "First estimate",
             "note_one": "{{count}} revaluation since the first estimate",

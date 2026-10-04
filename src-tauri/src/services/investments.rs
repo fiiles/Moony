@@ -1891,9 +1891,10 @@ mod tests {
     fn identical_rows_are_skipped_unless_they_allow_a_duplicate() {
         let mut conn = setup_test_db();
         let first = bulk_row("aapl", "buy", "10", "100", D0);
-        bulk_create_stock_transactions(&mut conn, &[first.clone()], None).unwrap();
+        bulk_create_stock_transactions(&mut conn, std::slice::from_ref(&first), None).unwrap();
 
-        let skipped = bulk_create_stock_transactions(&mut conn, &[first.clone()], None).unwrap();
+        let skipped =
+            bulk_create_stock_transactions(&mut conn, std::slice::from_ref(&first), None).unwrap();
         assert_eq!(skipped.created, 0);
         assert_eq!(skipped.skipped_duplicates.len(), 1);
         assert_eq!(skipped.skipped_duplicates[0].index, 0);
@@ -1911,7 +1912,7 @@ mod tests {
     fn no_batch_is_recorded_when_every_row_is_skipped() {
         let mut conn = setup_test_db();
         let row = bulk_row("aapl", "buy", "10", "100", D0);
-        bulk_create_stock_transactions(&mut conn, &[row.clone()], None).unwrap();
+        bulk_create_stock_transactions(&mut conn, std::slice::from_ref(&row), None).unwrap();
 
         let report =
             bulk_create_stock_transactions(&mut conn, &[row], Some(&batch("again.csv"))).unwrap();

@@ -50,6 +50,7 @@ import { utcDayFloor } from '@/utils/chart-axis';
 import { isCzechIBAN, ibanToBBAN, formatAccountNumber } from '@/utils/iban-utils';
 import { formatAmountWithCode, formatAmountInCurrency } from '@/utils/format-amount';
 import {
+  MOVEMENT_FLOOR_BASE,
   movementThreshold,
   reconstructBalance,
   significantMovements,
@@ -596,8 +597,8 @@ export default function BankAccountDetail() {
     }));
   }, [chartTxs, chartFrom, today, balance, convert, accountCurrency, currencyCode]);
 
-  const tenThousandInAccount = convert(10_000, 'CZK', accountCurrency);
-  const threshold = movementThreshold(balance, tenThousandInAccount);
+  const floorInAccount = convert(MOVEMENT_FLOOR_BASE, 'CZK', accountCurrency);
+  const threshold = movementThreshold(balance, floorInAccount);
   const events = useMemo<BalanceEvent[]>(
     () =>
       significantMovements(chartTxs, threshold).map((move) => ({

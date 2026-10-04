@@ -80,7 +80,7 @@ describe('reconstructBalance', () => {
 });
 
 describe('movements (README §9 threshold)', () => {
-  it('uses the larger of 10 000 Kč and 10 % of the balance', () => {
+  it('uses the larger of the floor and 10 % of the balance', () => {
     expect(movementThreshold(50_000, 10_000)).toBe(10_000);
     expect(movementThreshold(500_000, 10_000)).toBe(50_000);
     expect(movementThreshold(-500_000, 10_000)).toBe(50_000);

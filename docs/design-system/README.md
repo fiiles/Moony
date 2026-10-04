@@ -206,7 +206,7 @@ discrete events are drawn on the value line:
 Behavior: hovering a mark shows the event tooltip (type, quantity, price, total, date); hovering a row in
 the history table highlights its mark (`is-hot`, scale 1.35); clicking a mark scrolls to the row. Only
 events inside the selected period are drawn. Aggregate charts (net worth, whole portfolio, cashflow) never
-draw events. Bank accounts mark only movements above a threshold (10 000 Kč or 10 % of balance). If more
+draw events. Bank accounts mark only movements above a threshold (an absolute floor of about 400 EUR, or 10 % of balance). If more
 than ~24 events fall in view, cluster neighbors into one mark with a count ("3 nákupy").
 
 ## 10. Copy and formatting

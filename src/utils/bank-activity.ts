@@ -116,12 +116,19 @@ export interface MovementEvent {
 }
 
 /**
- * Threshold for a movement to be drawn on the balance line (README §9):
- * 10 000 Kč (given here in the account currency) or 10 % of the balance,
- * whichever is larger.
+ * Absolute floor for a movement to be drawn on the balance line, in the base
+ * currency (CZK, roughly 400 EUR). The caller converts it to the account
+ * currency before passing it to `movementThreshold`.
  */
-export function movementThreshold(balance: number, tenThousandInCurrency: number): number {
-  return Math.max(tenThousandInCurrency, Math.abs(balance) * 0.1);
+export const MOVEMENT_FLOOR_BASE = 10_000;
+
+/**
+ * Threshold for a movement to be drawn on the balance line (README §9):
+ * the base-currency floor (MOVEMENT_FLOOR_BASE) in the account currency, or
+ * 10 % of the balance, whichever is larger.
+ */
+export function movementThreshold(balance: number, floorInCurrency: number): number {
+  return Math.max(floorInCurrency, Math.abs(balance) * 0.1);
 }
 
 export function significantMovements(

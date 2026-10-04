@@ -9,6 +9,7 @@ import type { OtherAsset } from '@shared/schema';
 import { currencyCodeSchema, type CurrencyCode } from '@shared/currencies';
 import { otherAssetsApi, portfolioApi } from '@/lib/tauri-api';
 import { translateApiError } from '@/lib/translate-api-error';
+import { useCurrency } from '@/lib/currency';
 import {
   Dialog,
   DialogContent,
@@ -62,10 +63,11 @@ export function EditOtherAssetModal({ asset, open, onOpenChange }: EditOtherAsse
   const { t } = useTranslation('otherAssets');
   const { t: tc } = useTranslation('common');
   const queryClient = useQueryClient();
+  const { currencyCode } = useCurrency();
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: { name: '', currency: 'CZK', yieldType: 'none', yieldValue: '' },
+    defaultValues: { name: '', currency: currencyCode, yieldType: 'none', yieldValue: '' },
   });
 
   useEffect(() => {

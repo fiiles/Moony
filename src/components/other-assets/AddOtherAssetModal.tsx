@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { currencyCodeSchema, type CurrencyCode } from '@shared/currencies';
 import { otherAssetsApi, portfolioApi } from '@/lib/tauri-api';
 import { useFormat } from '@/lib/use-format';
+import { useCurrency } from '@/lib/currency';
 import { translateApiError } from '@/lib/translate-api-error';
 import {
   Dialog,
@@ -66,12 +67,13 @@ export function AddOtherAssetModal({ open, onOpenChange }: AddOtherAssetModalPro
   const { t: tc } = useTranslation('common');
   const queryClient = useQueryClient();
   const fmt = useFormat();
+  const { currencyCode } = useCurrency();
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: '',
-      currency: 'CZK',
+      currency: currencyCode,
       marketPrice: '',
       initialQuantity: '',
       initialPrice: '',

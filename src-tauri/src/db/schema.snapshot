@@ -52,6 +52,12 @@ CREATE INDEX idx_erh_currency_date ON exchange_rate_history(currency, date)
 == index idx_insurance_documents ==
 CREATE INDEX idx_insurance_documents ON insurance_documents(insurance_id)
 
+== index idx_investment_transactions_batch ==
+CREATE INDEX idx_investment_transactions_batch ON investment_transactions(import_batch_id)
+
+== index idx_investment_transactions_external ==
+CREATE INDEX idx_investment_transactions_external ON investment_transactions(external_id)
+
 == index idx_investment_transactions_ticker ==
 CREATE INDEX idx_investment_transactions_ticker ON investment_transactions(ticker)
 
@@ -379,7 +385,7 @@ CREATE TABLE investment_transactions (
     currency TEXT NOT NULL,
     transaction_date INTEGER NOT NULL,
     created_at INTEGER NOT NULL DEFAULT (unixepoch())
-)
+, import_batch_id TEXT REFERENCES stock_import_batches(id) ON DELETE SET NULL, external_id TEXT)
 
 == table learned_payees ==
 CREATE TABLE learned_payees (
@@ -607,6 +613,15 @@ CREATE TABLE stock_data (
     quote_type TEXT,
     metadata_fetched_at INTEGER,
     previous_close TEXT
+)
+
+== table stock_import_batches ==
+CREATE TABLE stock_import_batches (
+    id TEXT PRIMARY KEY,
+    file_name TEXT NOT NULL,
+    source TEXT NOT NULL,
+    trade_count INTEGER NOT NULL,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch())
 )
 
 == table stock_investment_tags ==

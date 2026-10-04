@@ -61,7 +61,10 @@ fn has_unknown_name(applied: &[String], migrations: &[(&str, &str)]) -> bool {
 
 /// The append-only migration chain, in application order.
 fn all_migrations() -> Vec<(&'static str, &'static str)> {
-    vec![("001_initial_schema", MIGRATION_001)]
+    vec![
+        ("001_initial_schema", MIGRATION_001),
+        ("003_stock_import_batches", MIGRATION_003),
+    ]
 }
 
 /// Names of every migration this build knows, in application order.
@@ -879,6 +882,33 @@ CREATE TABLE IF NOT EXISTS projection_settings (
 );
 "#;
 
+/// `003_stock_import_batches`: stock CSV imports are recorded as batches (so
+/// they can be undone) and a transaction keeps the id its broker gave it (so a
+/// re-imported file is recognised).
+const MIGRATION_003: &str = r#"
+-- One row per stock CSV import: which file, which source (broker preset or
+-- saved format) and how many trades it wrote.
+CREATE TABLE IF NOT EXISTS stock_import_batches (
+    id TEXT PRIMARY KEY,
+    file_name TEXT NOT NULL,
+    source TEXT NOT NULL,
+    trade_count INTEGER NOT NULL,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch())
+);
+
+-- NULL for every transaction that exists today and for hand-made ones. The
+-- batch row may go without its transactions (they stay, unbatched). A
+-- REFERENCES column added to an existing table must default to NULL, which
+-- both do.
+ALTER TABLE investment_transactions ADD COLUMN import_batch_id TEXT REFERENCES stock_import_batches(id) ON DELETE SET NULL;
+
+-- `<source>:<broker's own transaction id>`, NULL when the file had none.
+ALTER TABLE investment_transactions ADD COLUMN external_id TEXT;
+
+CREATE INDEX IF NOT EXISTS idx_investment_transactions_batch ON investment_transactions(import_batch_id);
+CREATE INDEX IF NOT EXISTS idx_investment_transactions_external ON investment_transactions(external_id);
+"#;
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -951,16 +981,17 @@ mod tests {
         out
     }
 
-    /// A second migration that only exists inside tests, appended to the real
-    /// chain to exercise the "known names, run the pending ones" path.
-    const FAKE_SECOND: (&str, &str) = (
-        "002_fake_for_tests",
+    /// A migration that only exists inside tests, appended to the real chain
+    /// to exercise the "known names, run the pending ones" path. Its number is
+    /// far beyond the real chain so the two can never collide.
+    const FAKE_NEXT: (&str, &str) = (
+        "999_fake_for_tests",
         "CREATE TABLE fake_for_tests (id TEXT PRIMARY KEY);",
     );
 
-    fn chain_with_fake_second() -> Vec<(&'static str, &'static str)> {
+    fn chain_with_fake_next() -> Vec<(&'static str, &'static str)> {
         let mut chain = all_migrations();
-        chain.push(FAKE_SECOND);
+        chain.push(FAKE_NEXT);
         chain
     }
 
@@ -1033,15 +1064,14 @@ mod tests {
         )
         .expect("delete a system category");
 
-        let chain = chain_with_fake_second();
+        let chain = chain_with_fake_next();
         let applied = applied_migration_names(&conn).expect("applied");
         apply_pending(&conn, &chain, &applied).expect("pending");
 
         assert!(table_exists(&conn, "fake_for_tests"));
-        assert_eq!(
-            applied_migration_names(&conn).expect("applied"),
-            vec!["001_initial_schema", "002_fake_for_tests"]
-        );
+        let mut expected = known_migration_names();
+        expected.push("999_fake_for_tests");
+        assert_eq!(applied_migration_names(&conn).expect("applied"), expected);
         let travel: i64 = conn
             .query_row(
                 "SELECT COUNT(*) FROM transaction_categories WHERE id = 'cat_travel'",
@@ -1137,7 +1167,7 @@ mod tests {
         assert!(!has_pending_migrations(&conn).expect("current"));
 
         // A later migration appears in the chain: the opener must take a backup first.
-        let chain = chain_with_fake_second();
+        let chain = chain_with_fake_next();
         assert!(has_pending(&conn, &chain).expect("outdated"));
 
         // Once applied, nothing is pending any more.
@@ -1152,5 +1182,167 @@ mod tests {
         )
         .expect("unknown name");
         assert!(!has_pending(&conn, &chain).expect("unknown names"));
+    }
+
+    // ---- 003_stock_import_batches ------------------------------------------
+
+    /// A database as it was before `003`: every migration that comes earlier in
+    /// the chain, with foreign keys on, as the app opens it.
+    fn database_before_003() -> Connection {
+        let conn = Connection::open_in_memory().expect("in-memory db");
+        conn.execute_batch("PRAGMA foreign_keys = ON;")
+            .expect("foreign keys");
+        let earlier: Vec<(&str, &str)> = all_migrations()
+            .into_iter()
+            .filter(|(name, _)| *name < "003_stock_import_batches")
+            .collect();
+        run_chain(&conn, &earlier).expect("earlier migrations");
+        conn
+    }
+
+    fn rows_in(conn: &Connection, table: &str) -> i64 {
+        conn.query_row(&format!("SELECT COUNT(*) FROM {table}"), [], |r| r.get(0))
+            .expect("count")
+    }
+
+    fn add_position(conn: &Connection, id: &str, ticker: &str) {
+        conn.execute(
+            "INSERT INTO stock_investments (id, ticker, company_name, quantity, currency)
+             VALUES (?1, ?2, ?2, '10', 'USD')",
+            rusqlite::params![id, ticker],
+        )
+        .expect("insert position");
+    }
+
+    fn add_transaction(conn: &Connection, id: &str, position: &str) -> rusqlite::Result<usize> {
+        conn.execute(
+            "INSERT INTO investment_transactions
+                 (id, investment_id, type, ticker, company_name, quantity, price_per_unit, currency, transaction_date)
+             VALUES (?1, ?2, 'buy', 'AAPL', 'Apple', '10', '100', 'USD', 1700000000)",
+            rusqlite::params![id, position],
+        )
+    }
+
+    fn column_names(conn: &Connection, table: &str) -> Vec<String> {
+        let mut stmt = conn
+            .prepare(&format!("SELECT name FROM pragma_table_info('{table}')"))
+            .expect("table_info");
+        let rows = stmt.query_map([], |r| r.get::<_, String>(0)).expect("rows");
+        rows.map(|r| r.expect("name")).collect()
+    }
+
+    fn index_exists(conn: &Connection, name: &str) -> bool {
+        conn.query_row(
+            "SELECT 1 FROM sqlite_master WHERE type = 'index' AND name = ?1",
+            [name],
+            |_| Ok(true),
+        )
+        .unwrap_or(false)
+    }
+
+    #[test]
+    fn batch_columns_are_added_and_existing_transactions_stay_unbatched() {
+        let conn = database_before_003();
+        add_position(&conn, "pos-1", "AAPL");
+        add_transaction(&conn, "tx-1", "pos-1").expect("existing transaction");
+        assert!(!table_exists(&conn, "stock_import_batches"));
+
+        run_migrations(&conn).expect("migrate to the current chain");
+
+        assert!(table_exists(&conn, "stock_import_batches"));
+        assert_eq!(rows_in(&conn, "stock_import_batches"), 0);
+        let columns = column_names(&conn, "investment_transactions");
+        assert!(
+            columns.contains(&"import_batch_id".to_string()),
+            "{columns:?}"
+        );
+        assert!(columns.contains(&"external_id".to_string()), "{columns:?}");
+        assert!(index_exists(&conn, "idx_investment_transactions_batch"));
+        assert!(index_exists(&conn, "idx_investment_transactions_external"));
+
+        // The transaction written before the migration is untouched and has no batch.
+        let (quantity, batch, external): (String, Option<String>, Option<String>) = conn
+            .query_row(
+                "SELECT quantity, import_batch_id, external_id FROM investment_transactions WHERE id = 'tx-1'",
+                [],
+                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+            )
+            .expect("existing row");
+        assert_eq!(quantity, "10");
+        assert_eq!(batch, None);
+        assert_eq!(external, None);
+        assert_eq!(rows_in(&conn, "investment_transactions"), 1);
+        assert_eq!(
+            applied_migration_names(&conn).expect("applied"),
+            known_migration_names()
+        );
+    }
+
+    #[test]
+    fn a_transaction_needs_an_existing_batch_and_outlives_its_deletion() {
+        let conn = Connection::open_in_memory().expect("in-memory db");
+        conn.execute_batch("PRAGMA foreign_keys = ON;")
+            .expect("foreign keys");
+        run_migrations(&conn).expect("migrate");
+        add_position(&conn, "pos-1", "AAPL");
+
+        // A batch that does not exist cannot be referenced.
+        let err = conn
+            .execute(
+                "INSERT INTO investment_transactions
+                     (id, investment_id, type, ticker, company_name, quantity, price_per_unit, currency, transaction_date, import_batch_id)
+                 VALUES ('tx-bad', 'pos-1', 'buy', 'AAPL', 'Apple', '1', '1', 'USD', 1700000000, 'no-such-batch')",
+                [],
+            )
+            .expect_err("dangling batch reference");
+        assert!(err.to_string().contains("FOREIGN KEY"), "{err}");
+
+        conn.execute(
+            "INSERT INTO stock_import_batches (id, file_name, source, trade_count) VALUES ('b-1', 'xtb.csv', 'xtb', 1)",
+            [],
+        )
+        .expect("batch");
+        conn.execute(
+            "INSERT INTO investment_transactions
+                 (id, investment_id, type, ticker, company_name, quantity, price_per_unit, currency, transaction_date, import_batch_id, external_id)
+             VALUES ('tx-1', 'pos-1', 'buy', 'AAPL', 'Apple', '1', '1', 'USD', 1700000000, 'b-1', 'xtb:123')",
+            [],
+        )
+        .expect("batched transaction");
+
+        // Deleting the batch row keeps the transaction and clears the link.
+        conn.execute("DELETE FROM stock_import_batches WHERE id = 'b-1'", [])
+            .expect("delete batch");
+        let (batch, external): (Option<String>, Option<String>) = conn
+            .query_row(
+                "SELECT import_batch_id, external_id FROM investment_transactions WHERE id = 'tx-1'",
+                [],
+                |r| Ok((r.get(0)?, r.get(1)?)),
+            )
+            .expect("transaction survives");
+        assert_eq!(batch, None, "ON DELETE SET NULL");
+        assert_eq!(external.as_deref(), Some("xtb:123"));
+    }
+
+    #[test]
+    fn a_batch_row_stamps_its_creation_time() {
+        let conn = Connection::open_in_memory().expect("in-memory db");
+        run_migrations(&conn).expect("migrate");
+        conn.execute(
+            "INSERT INTO stock_import_batches (id, file_name, source, trade_count) VALUES ('b-1', 'file.csv', 'custom', 0)",
+            [],
+        )
+        .expect("batch");
+        let created_at: i64 = conn
+            .query_row(
+                "SELECT created_at FROM stock_import_batches WHERE id = 'b-1'",
+                [],
+                |r| r.get(0),
+            )
+            .expect("created_at");
+        assert!(
+            created_at > 1_700_000_000,
+            "unixepoch() default: {created_at}"
+        );
     }
 }

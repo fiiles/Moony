@@ -126,10 +126,11 @@ impl SimulatedTrade {
         )
     }
 
-    /// Why the row is not written: its message (duplicates carry theirs).
-    pub fn left_out_message(&self) -> Option<StockRowMessage> {
+    /// The row's own message: why it is a duplicate (also when it is imported
+    /// anyway), skipped or an error. `None` for a plain new row.
+    pub fn message(&self) -> Option<StockRowMessage> {
         match &self.outcome {
-            TradeOutcome::New | TradeOutcome::Duplicate { forced: true, .. } => None,
+            TradeOutcome::New => None,
             TradeOutcome::Duplicate { kind, .. } => Some(StockRowMessage {
                 line: self.line,
                 key: kind.key().to_string(),
@@ -139,6 +140,15 @@ impl SimulatedTrade {
                 },
             }),
             TradeOutcome::Skipped(message) | TradeOutcome::Error(message) => Some(message.clone()),
+        }
+    }
+
+    /// Why the row is not written; `None` for a row that is.
+    pub fn left_out_message(&self) -> Option<StockRowMessage> {
+        if self.will_import() {
+            None
+        } else {
+            self.message()
         }
     }
 

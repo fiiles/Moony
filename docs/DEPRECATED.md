@@ -39,6 +39,15 @@ primitives cover every case they handled.
 | `.page-title`, `.page-subtitle`, `card-hover` CSS roles | Interim roles for the transition | `PageHead`, the card's own hover state |
 | Per-component `AlertDialog` delete confirmations | Each dialog restated the same two buttons and the red button class | `ConfirmDeleteDialog` (destructive settings dialogs keep `AlertDialog` with the solid `AlertDialogAction`) |
 
+## Removed in the overview polish (do not re-add)
+
+| Removed | Why it was dead | Use instead |
+|---|---|---|
+| `investmentsApi.refreshMetadata` (`refresh_stock_metadata`) | Invoked a command that never existed | `investmentsApi.getCompanyInfo(ticker, refresh)` (`get_stock_company_info`) |
+| Company metadata on `StockInvestmentWithPrice` (`sector`, `peRatio`, `marketCap`, …) | Typed but never sent by `get_investment`, so the stock detail showed dashes | `StockCompanyInfo` from `getCompanyInfo` |
+| `PortfolioTrendCard` `transactionMarkers` / `TransactionMarker` | Only its earliest date was used, and its default array changed the query key every render (a request loop) | `earliest` (first day with data) and `chartPeriodStart` |
+| `AddInvestmentModal` `onImportCsv` | Import moved to the stocks page head | The page-head "Importovat CSV" button |
+
 ## Deprecated type sources
 
 | Path | Why deprecated | Use instead |

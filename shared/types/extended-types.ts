@@ -37,19 +37,6 @@ export interface StockInvestmentWithPrice extends StockInvestment {
   isManualDividend?: boolean;
   /** Currency of the current market price (e.g., USD, EUR) */
   currency?: string;
-  // Yahoo Finance metadata (cached in stock_data table)
-  sector?: string;
-  industry?: string;
-  // Financial metrics
-  peRatio?: string;
-  forwardPe?: string;
-  marketCap?: string;
-  beta?: string;
-  fiftyTwoWeekHigh?: string;
-  fiftyTwoWeekLow?: string;
-  trailingDividendRate?: string;
-  trailingDividendYield?: string;
-  metadataFetchedAt?: number;
 }
 
 /**

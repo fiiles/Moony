@@ -26,6 +26,9 @@ pub struct RealEstate {
     pub purchase_price: String,
     #[serde(rename = "purchasePriceCurrency")]
     pub purchase_price_currency: String,
+    /// UTC day the property was bought (ADR 0008); `None` while unknown.
+    #[serde(rename = "purchaseDate")]
+    pub purchase_date: Option<i64>,
     #[serde(rename = "marketPrice")]
     pub market_price: String,
     #[serde(rename = "marketPriceCurrency")]
@@ -55,6 +58,11 @@ pub struct InsertRealEstate {
     pub purchase_price: Option<String>,
     #[serde(rename = "purchasePriceCurrency")]
     pub purchase_price_currency: Option<String>,
+    /// Unix seconds of the day the property was bought, never after today.
+    /// Stored as the UTC midnight of that day; absent clears a stored date
+    /// (an update replaces the whole record).
+    #[serde(rename = "purchaseDate")]
+    pub purchase_date: Option<i64>,
     #[serde(rename = "marketPrice")]
     pub market_price: Option<String>,
     #[serde(rename = "marketPriceCurrency")]
@@ -173,6 +181,12 @@ use crate::error::{AppError, Result};
 impl InsertRealEstate {
     /// Validate input data at the trust boundary
     pub fn validate(&self) -> Result<()> {
+        self.validate_at(chrono::Utc::now().timestamp())
+    }
+
+    /// `validate` with the current time passed in (unix seconds), so the
+    /// "not in the future" rule can be tested without a clock.
+    pub fn validate_at(&self, now: i64) -> Result<()> {
         // Name validation
         if self.name.is_empty() {
             return Err(AppError::Validation(
@@ -228,6 +242,16 @@ impl InsertRealEstate {
                 if rent_val < 0.0 {
                     return Err(AppError::Validation("validation.rentNonNegative".into()));
                 }
+            }
+        }
+
+        // Purchase date: a day up to and including today, compared as UTC
+        // calendar days (ADR 0008), so a later hour of today is still today.
+        if let Some(purchase_date) = self.purchase_date {
+            if purchase_date.div_euclid(86_400) > now.div_euclid(86_400) {
+                return Err(AppError::Validation(
+                    "validation.purchaseDateInFuture".into(),
+                ));
             }
         }
 
@@ -315,5 +339,81 @@ impl InsertRealEstateDocument {
         }
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const DAY: i64 = 86_400;
+    /// 2026-10-04 14:30 UTC.
+    const NOW: i64 = 1_791_124_200;
+
+    fn property() -> InsertRealEstate {
+        InsertRealEstate {
+            name: "Flat".into(),
+            address: "Main St 1".into(),
+            property_type: "personal".into(),
+            purchase_price: None,
+            purchase_price_currency: None,
+            purchase_date: None,
+            market_price: None,
+            market_price_currency: None,
+            monthly_rent: None,
+            monthly_rent_currency: None,
+            recurring_costs: None,
+            photos: None,
+            notes: None,
+        }
+    }
+
+    fn with_purchase_date(date: Option<i64>) -> InsertRealEstate {
+        InsertRealEstate {
+            purchase_date: date,
+            ..property()
+        }
+    }
+
+    #[test]
+    fn the_purchase_date_is_optional() {
+        assert!(with_purchase_date(None).validate_at(NOW).is_ok());
+    }
+
+    #[test]
+    fn a_purchase_date_up_to_today_is_valid() {
+        let today = NOW.div_euclid(DAY) * DAY;
+        for date in [today - 3_650 * DAY, today - DAY, today] {
+            assert!(with_purchase_date(Some(date)).validate_at(NOW).is_ok());
+        }
+        // A later hour of today is still today; the stored value is the day anyway.
+        assert!(with_purchase_date(Some(NOW + 3_600))
+            .validate_at(NOW)
+            .is_ok());
+        // Before 1970 is a valid day too (an inherited family house).
+        assert!(with_purchase_date(Some(-3_000 * DAY))
+            .validate_at(NOW)
+            .is_ok());
+    }
+
+    #[test]
+    fn a_purchase_date_after_today_is_rejected() {
+        let tomorrow = (NOW.div_euclid(DAY) + 1) * DAY;
+        for date in [tomorrow, tomorrow + 3_600, NOW + 400 * DAY] {
+            let err = with_purchase_date(Some(date))
+                .validate_at(NOW)
+                .expect_err("a future date must be rejected");
+            assert!(
+                matches!(&err, AppError::Validation(key) if key == "validation.purchaseDateInFuture"),
+                "{err:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn validate_uses_the_clock() {
+        let now = chrono::Utc::now().timestamp();
+        assert!(with_purchase_date(Some(now - DAY)).validate().is_ok());
+        assert!(with_purchase_date(Some(now + 2 * DAY)).validate().is_err());
     }
 }

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import {
   insertRealEstateSchema,
@@ -21,6 +22,7 @@ import {
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -45,7 +47,27 @@ import { useCurrency } from '@/lib/currency';
 import { CurrencyCombobox } from '@/components/common/CurrencyCombobox';
 import { useFormat } from '@/lib/use-format';
 import { realEstateApi, loansApi, insuranceApi } from '@/lib/tauri-api';
+import { isoDateFromUtcTimestamp, todayIsoUtc, utcDayStart } from '@/utils/period';
 import { useTranslation } from 'react-i18next';
+
+/**
+ * The shared schema, with the purchase day as the ISO string an `<input type="date">` holds
+ * ('' = unknown): it becomes the UTC-midnight epoch on submit (ADR 0008). A day after today is
+ * refused here with a visible message, because native `max` validation can block a submit
+ * silently in some webviews; the backend refuses it too.
+ */
+const realEstateFormSchema = insertRealEstateSchema.extend({
+  purchaseDate: z
+    .string()
+    .optional()
+    .refine((iso) => !iso || iso <= todayIsoUtc(), 'validation.purchaseDateInFuture'),
+});
+type RealEstateFormValues = z.infer<typeof realEstateFormSchema>;
+
+const purchaseDateInput = (realEstate?: RealEstate) =>
+  typeof realEstate?.purchaseDate === 'number'
+    ? isoDateFromUtcTimestamp(realEstate.purchaseDate)
+    : '';
 
 interface AddRealEstateModalProps {
   realEstate?: RealEstate;
@@ -74,14 +96,15 @@ export function AddRealEstateModal({
   const { currencyCode: userCurrency } = useCurrency();
   const fmt = useFormat();
 
-  const form = useForm<InsertRealEstate>({
-    resolver: zodResolver(insertRealEstateSchema),
+  const form = useForm<RealEstateFormValues>({
+    resolver: zodResolver(realEstateFormSchema),
     defaultValues: {
       name: realEstate?.name || '',
       address: realEstate?.address || '',
       type: realEstate?.type || 'personal',
       purchasePrice: realEstate?.purchasePrice?.toString() || '0',
       purchasePriceCurrency: realEstate?.purchasePriceCurrency || userCurrency,
+      purchaseDate: purchaseDateInput(realEstate),
       marketPrice: realEstate?.marketPrice?.toString() || '0',
       marketPriceCurrency: realEstate?.marketPriceCurrency || userCurrency,
       monthlyRent: realEstate?.monthlyRent?.toString() || '0',
@@ -105,6 +128,7 @@ export function AddRealEstateModal({
         type: realEstate.type,
         purchasePrice: realEstate.purchasePrice.toString(),
         purchasePriceCurrency: realEstate.purchasePriceCurrency || userCurrency,
+        purchaseDate: purchaseDateInput(realEstate),
         marketPrice: realEstate.marketPrice.toString(),
         marketPriceCurrency: realEstate.marketPriceCurrency || userCurrency,
         monthlyRent: realEstate.monthlyRent?.toString() || '0',
@@ -124,6 +148,7 @@ export function AddRealEstateModal({
         type: 'personal',
         purchasePrice: '0',
         purchasePriceCurrency: userCurrency,
+        purchaseDate: '',
         marketPrice: '0',
         marketPriceCurrency: userCurrency,
         monthlyRent: '0',
@@ -255,9 +280,11 @@ export function AddRealEstateModal({
 
       return savedRealEstate;
     },
-    onSuccess: () => {
+    onSuccess: (saved) => {
       queryClient.invalidateQueries({ queryKey: ['real-estate'] });
       queryClient.invalidateQueries({ queryKey: ['portfolio-metrics'] });
+      // A changed market price writes an estimate: the value trace must show it.
+      queryClient.invalidateQueries({ queryKey: ['real-estate-valuations', saved.id] });
       if (realEstate) {
         queryClient.invalidateQueries({ queryKey: ['real-estate', realEstate.id] });
         queryClient.invalidateQueries({ queryKey: ['real-estate-loans', realEstate.id] });
@@ -279,10 +306,11 @@ export function AddRealEstateModal({
     },
   });
 
-  const onSubmit = (data: InsertRealEstate) => {
-    const formattedData = {
+  const onSubmit = (data: RealEstateFormValues) => {
+    const formattedData: InsertRealEstate = {
       ...data,
       purchasePrice: (data.purchasePrice || '0').toString(),
+      purchaseDate: data.purchaseDate ? utcDayStart(data.purchaseDate) : null,
       marketPrice: (data.marketPrice || '0').toString(),
       monthlyRent: data.monthlyRent?.toString() || null,
     };
@@ -397,6 +425,26 @@ export function AddRealEstateModal({
                         <FormControl>
                           <CurrencyCombobox value={field.value} onChange={field.onChange} />
                         </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid grid-cols-3 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="purchaseDate"
+                    render={({ field }) => (
+                      <FormItem className="col-span-2">
+                        <FormLabel className="flex justify-between">
+                          <span>{t('modal.add.purchaseDate')}</span>
+                          <span className="font-500 text-ink-5">{tc('labels.optional')}</span>
+                        </FormLabel>
+                        <FormControl>
+                          <Input type="date" {...field} value={field.value ?? ''} />
+                        </FormControl>
+                        <FormDescription>{t('modal.add.purchaseDateHelp')}</FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}

@@ -372,7 +372,8 @@ pub async fn get_insurance_real_estate(
         let result = conn.query_row(
             "SELECT r.id, r.name, r.address, r.type, r.purchase_price, r.purchase_price_currency,
                     r.market_price, r.market_price_currency, r.monthly_rent, r.monthly_rent_currency,
-                    r.recurring_costs, r.photos, r.notes, r.created_at, r.updated_at
+                    r.recurring_costs, r.photos, r.notes, r.created_at, r.updated_at,
+                    r.purchase_date
              FROM real_estate r
              INNER JOIN real_estate_insurances rei ON r.id = rei.real_estate_id
              WHERE rei.insurance_id = ?1",
@@ -388,6 +389,7 @@ pub async fn get_insurance_real_estate(
                     property_type: row.get(3)?,
                     purchase_price: row.get(4)?,
                     purchase_price_currency: row.get(5)?,
+                    purchase_date: row.get(15)?,
                     market_price: row.get(6)?,
                     market_price_currency: row.get(7)?,
                     monthly_rent: row.get(8)?,

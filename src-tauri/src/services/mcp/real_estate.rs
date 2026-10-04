@@ -23,7 +23,7 @@ pub fn real_estate_list(conn: &Connection) -> Result<Value> {
     let mut stmt = conn.prepare(
         "SELECT id, name, address, type, purchase_price, purchase_price_currency,
                 market_price, market_price_currency, monthly_rent, monthly_rent_currency,
-                recurring_costs, notes, created_at, updated_at
+                recurring_costs, notes, created_at, updated_at, purchase_date
          FROM real_estate ORDER BY name",
     )?;
     let rows: Vec<Value> = stmt.query_map([], |row| Ok(serde_json::json!({
@@ -41,6 +41,7 @@ pub fn real_estate_list(conn: &Connection) -> Result<Value> {
         "notes": sql_to_json(row.get::<_, rusqlite::types::Value>(11).unwrap_or(rusqlite::types::Value::Null)),
         "createdAt": row.get::<_, i64>(12)?,
         "updatedAt": row.get::<_, i64>(13)?,
+        "purchaseDate": row.get::<_, Option<i64>>(14)?,
     })))?.filter_map(|r| r.ok()).collect();
     Ok(Value::Array(rows))
 }
@@ -50,7 +51,7 @@ pub fn real_estate_detail(conn: &Connection, id: &str) -> Result<Value> {
     let prop = conn.query_row(
         "SELECT id, name, address, type, purchase_price, purchase_price_currency,
                 market_price, market_price_currency, monthly_rent, monthly_rent_currency,
-                recurring_costs, notes, created_at, updated_at
+                recurring_costs, notes, created_at, updated_at, purchase_date
          FROM real_estate WHERE id = ?",
         [&id],
         |row| Ok(serde_json::json!({
@@ -68,6 +69,7 @@ pub fn real_estate_detail(conn: &Connection, id: &str) -> Result<Value> {
             "notes": sql_to_json(row.get::<_, rusqlite::types::Value>(11).unwrap_or(rusqlite::types::Value::Null)),
             "createdAt": row.get::<_, i64>(12)?,
             "updatedAt": row.get::<_, i64>(13)?,
+            "purchaseDate": row.get::<_, Option<i64>>(14)?,
         })),
     );
     match prop {
@@ -118,6 +120,11 @@ pub struct RealEstateCreateArgs {
     pub purchase_price: Option<String>,
     #[serde(rename = "purchasePriceCurrency")]
     pub purchase_price_currency: Option<String>,
+    #[serde(rename = "purchaseDate")]
+    #[schemars(
+        description = "Day the property was bought, as unix seconds (the UTC midnight of that day, e.g. 1700000000 is 2023-11-14); optional, never in the future. The detail chart of the property starts its value trace there"
+    )]
+    pub purchase_date: Option<i64>,
     #[serde(rename = "marketPrice")]
     pub market_price: Option<String>,
     #[serde(rename = "marketPriceCurrency")]
@@ -180,6 +187,7 @@ pub fn real_estate_create(conn: &Connection, args: &RealEstateCreateArgs) -> Res
             conn,
             args.purchase_price_currency.as_deref(),
         )?),
+        purchase_date: args.purchase_date,
         market_price: args.market_price.clone(),
         market_price_currency: Some(currency_or_main(
             conn,
@@ -225,7 +233,8 @@ mod tests {
                 photos TEXT DEFAULT '[]',
                 notes TEXT,
                 created_at INTEGER NOT NULL DEFAULT (unixepoch()),
-                updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+                updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
+                purchase_date INTEGER
             );
             CREATE TABLE real_estate_one_time_costs (
                 id TEXT PRIMARY KEY,
@@ -235,6 +244,15 @@ mod tests {
                 amount TEXT NOT NULL,
                 currency TEXT NOT NULL DEFAULT 'CZK',
                 date INTEGER NOT NULL,
+                created_at INTEGER NOT NULL DEFAULT (unixepoch())
+            );
+            CREATE TABLE real_estate_valuations (
+                id TEXT PRIMARY KEY,
+                real_estate_id TEXT NOT NULL REFERENCES real_estate(id) ON DELETE CASCADE,
+                value TEXT NOT NULL,
+                currency TEXT NOT NULL DEFAULT 'CZK',
+                valued_at INTEGER NOT NULL,
+                note TEXT,
                 created_at INTEGER NOT NULL DEFAULT (unixepoch())
             );
         "#,
@@ -287,6 +305,7 @@ mod tests {
             property_type: "apartment".into(),
             purchase_price: Some("4000000".into()),
             purchase_price_currency: None,
+            purchase_date: None,
             market_price: Some("4500000".into()),
             market_price_currency: None,
             monthly_rent: None,
@@ -304,6 +323,77 @@ mod tests {
         assert_eq!(value["purchasePrice"], "4000000");
         // Detail shape includes the costs array even for a brand-new property.
         assert!(value["costs"].as_array().unwrap().is_empty());
+    }
+
+    /// ADR 0007: the MCP tool and the UI share one creation path, so a property
+    /// created through the tool also starts its valuation log.
+    #[test]
+    fn create_writes_the_first_estimate_like_the_ui_path() {
+        let conn = setup_test_db();
+        let value = real_estate_create(&conn, &create_args("Byt Brno")).unwrap();
+        let id = value["id"].as_str().unwrap();
+
+        let (estimate, currency): (String, String) = conn
+            .query_row(
+                "SELECT value, currency FROM real_estate_valuations WHERE real_estate_id = ?1",
+                [id],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .expect("exactly one valuation row");
+        assert_eq!(estimate, "4500000");
+        assert_eq!(currency, "CZK");
+    }
+
+    #[test]
+    fn create_stores_the_purchase_date_and_reads_it_back() {
+        let conn = setup_test_db();
+        let day = chrono::Utc::now().timestamp().div_euclid(86_400) * 86_400 - 400 * 86_400;
+        let mut args = create_args("Byt Plzeň");
+        args.purchase_date = Some(day + 3_600);
+
+        let created = real_estate_create(&conn, &args).unwrap();
+
+        assert_eq!(created["purchaseDate"], day, "stored as the UTC day");
+        let id = created["id"].as_str().unwrap();
+        assert_eq!(real_estate_detail(&conn, id).unwrap()["purchaseDate"], day);
+        let listed = real_estate_list(&conn).unwrap();
+        let row = listed
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|row| row["id"] == id)
+            .expect("listed");
+        assert_eq!(row["purchaseDate"], day);
+    }
+
+    #[test]
+    fn a_property_without_a_purchase_date_reports_null() {
+        let conn = setup_test_db();
+        // The seeded property predates the column's use: no date known.
+        assert_eq!(
+            real_estate_detail(&conn, "re-1").unwrap()["purchaseDate"],
+            Value::Null
+        );
+        let created = real_estate_create(&conn, &create_args("Byt Ostrava")).unwrap();
+        assert_eq!(created["purchaseDate"], Value::Null);
+    }
+
+    #[test]
+    fn create_rejects_a_purchase_date_in_the_future() {
+        let conn = setup_test_db();
+        let mut args = create_args("Byt Liberec");
+        args.purchase_date = Some(chrono::Utc::now().timestamp() + 3 * 86_400);
+
+        let err = real_estate_create(&conn, &args).unwrap_err();
+
+        assert!(
+            matches!(&err, AppError::Validation(key) if key == "validation.purchaseDateInFuture"),
+            "{err:?}"
+        );
+        let count: i64 = conn
+            .query_row("SELECT COUNT(*) FROM real_estate", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(count, 1, "only the seeded property exists");
     }
 
     #[test]

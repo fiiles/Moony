@@ -10,6 +10,8 @@ import { realEstateUpdatePayload } from '@/utils/real-estate-payload';
  * Real-estate writes that do not go through the full property form.
  * Follows the mutation contract: domain keys + portfolio-metrics + cashflow-report,
  * then a fresh snapshot and portfolio-history (reference: use-bank-account-mutations.ts).
+ * A property save can write a valuation (a changed market price), so the property's
+ * valuation log, which the detail chart reads, is refreshed with it.
  */
 export function useRealEstateMutations() {
   const queryClient = useQueryClient();
@@ -31,6 +33,7 @@ export function useRealEstateMutations() {
     onSuccess: async (_data, { realEstate }) => {
       queryClient.invalidateQueries({ queryKey: ['real-estate'] });
       queryClient.invalidateQueries({ queryKey: ['real-estate', realEstate.id] });
+      queryClient.invalidateQueries({ queryKey: ['real-estate-valuations', realEstate.id] });
       queryClient.invalidateQueries({ queryKey: ['portfolio-metrics'] });
       queryClient.invalidateQueries({ queryKey: ['cashflow-report'] });
       // The update already succeeded; a failed snapshot must not turn it into an error.
@@ -57,6 +60,7 @@ export function useRealEstateMutations() {
     onSuccess: (_data, { realEstate }) => {
       queryClient.invalidateQueries({ queryKey: ['real-estate'] });
       queryClient.invalidateQueries({ queryKey: ['real-estate', realEstate.id] });
+      queryClient.invalidateQueries({ queryKey: ['real-estate-valuations', realEstate.id] });
       toast(tc('status.success'), { description: t('toast.notesSaved') });
     },
     onError: (error: Error) => {

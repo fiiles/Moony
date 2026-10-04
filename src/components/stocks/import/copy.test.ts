@@ -101,6 +101,7 @@ describe('stocks.importWizard copy', () => {
       'currencyMismatchPosition',
       'duplicate',
       'duplicateById',
+      'duplicateSimilar',
     ];
     for (const flat of [cs, en]) {
       for (const key of keys) expect(flat[`row.${key}`], key).toBeTruthy();

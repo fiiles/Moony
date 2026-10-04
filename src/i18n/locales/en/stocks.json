@@ -738,6 +738,7 @@
       "currencyMismatchPosition": "The currency differs from the position's ({{detail}})",
       "duplicate": "The same trade is already in Moony",
       "duplicateById": "A trade with the same broker ID is already in Moony",
+      "duplicateSimilar": "A similar trade is already in Moony: same day and quantity, price within 0.5 %",
       "cannotParse": "The row could not be read",
       "writeFailed": "The trade could not be written"
     }

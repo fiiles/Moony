@@ -13,7 +13,8 @@ All notable changes to Moony are documented in this file. The format follows
   table made in Excel (Czech or English headers, any delimiter and encoding); other layouts are
   mapped column by column and can be remembered. Before anything is written it confirms the
   securities on Yahoo Finance, shows what happens to every row and catches duplicates (by the
-  broker's trade ID or the same values) and sells above the holding. Every import is recorded
+  broker's trade ID, the same values, or a trade you entered by hand with a rounded price) and
+  sells above the holding. Every import is recorded
   and can be undone. Fees are not imported.
 - **Year to date.** The dashboard, the list trend cards and the stock, crypto and bank account
   charts offer the horizons 30 days · 3 months · This year · Year · All, bounded on UTC days.

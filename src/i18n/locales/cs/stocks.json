@@ -762,6 +762,7 @@
       "currencyMismatchPosition": "Měna se liší od měny pozice ({{detail}})",
       "duplicate": "Stejný obchod už v Moony je",
       "duplicateById": "Obchod se stejným ID u brokera už v Moony je",
+      "duplicateSimilar": "Podobný obchod už v Moony je: stejný den a počet kusů, cena se liší nejvýš o 0,5 %",
       "cannotParse": "Řádek se nepodařilo přečíst",
       "writeFailed": "Obchod se nepodařilo zapsat"
     }

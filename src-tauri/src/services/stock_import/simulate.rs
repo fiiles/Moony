@@ -48,6 +48,11 @@
 //!   sources cannot be compared, e.g. a preset import before its layout was
 //!   saved as a format). A row without one also matches an earlier accepted
 //!   row of its file.
+//! - Rule 3, a similar trade: the stored transactions rule 2 compares with
+//!   (never the rows of the file) also match when ticker, day, direction and
+//!   quantity are the same and the price is within 0.5 %: a price entered by
+//!   hand is often rounded. Such a row is a duplicate of its own kind, which the
+//!   user can still import.
 //!
 //! Stored transactions are not "used up" by a match: re-importing a file is
 //! idempotent whatever it repeats.
@@ -73,6 +78,9 @@ use crate::services::quote_unit::{is_pence, pence_to_pounds};
 pub const KEY_DUPLICATE: &str = "importWizard.row.duplicate";
 /// A transaction with the same broker id exists (detail: the broker's id).
 pub const KEY_DUPLICATE_BY_ID: &str = "importWizard.row.duplicateById";
+/// A transaction of the same day, direction and quantity at a price within
+/// [`SIMILAR_PRICE_TOLERANCE`] exists, e.g. one entered by hand (no detail).
+pub const KEY_DUPLICATE_SIMILAR: &str = "importWizard.row.duplicateSimilar";
 /// A sell above the holding at its day (detail: the quantity held).
 pub const KEY_SELL_EXCEEDS_HOLDINGS: &str = "importWizard.row.sellExceedsHoldings";
 /// The position is in another currency (detail: the position's currency).
@@ -89,6 +97,9 @@ pub const KEY_TICKER_INVALID: &str = "validation.tickerInvalid";
 const SECONDS_PER_DAY: i64 = 86_400;
 const QUANTITY_TOLERANCE: f64 = 1e-9;
 const PRICE_TOLERANCE: f64 = 1e-6;
+/// How far apart (relative) the prices of a similar trade may be: a price entered by hand is
+/// often rounded (185.50 for 185.4975, 11.75 for 11.748).
+const SIMILAR_PRICE_TOLERANCE: f64 = 0.005;
 /// Broker ids per `IN (...)` query (SQLite caps the number of variables).
 const ID_CHUNK: usize = 500;
 
@@ -99,6 +110,9 @@ pub enum DuplicateKind {
     BrokerId,
     /// Same ticker, day, direction, quantity and price.
     Identical,
+    /// Same ticker, day, direction and quantity, the price within
+    /// [`SIMILAR_PRICE_TOLERANCE`] of a stored one.
+    Similar,
 }
 
 impl DuplicateKind {
@@ -107,6 +121,7 @@ impl DuplicateKind {
         match self {
             DuplicateKind::BrokerId => KEY_DUPLICATE_BY_ID,
             DuplicateKind::Identical => KEY_DUPLICATE,
+            DuplicateKind::Similar => KEY_DUPLICATE_SIMILAR,
         }
     }
 }
@@ -166,7 +181,7 @@ impl SimulatedTrade {
                 key: kind.key().to_string(),
                 detail: match kind {
                     DuplicateKind::BrokerId => self.broker_id.clone(),
-                    DuplicateKind::Identical => None,
+                    DuplicateKind::Identical | DuplicateKind::Similar => None,
                 },
             }),
             TradeOutcome::Skipped(message) | TradeOutcome::Error(message) => Some(message.clone()),
@@ -328,6 +343,18 @@ impl Stored {
         self.direction == Some(trade.direction)
             && self.day == trade.day
             && self.same_quantity_and_price(trade)
+    }
+
+    /// The same day, direction and quantity at a price within [`SIMILAR_PRICE_TOLERANCE`].
+    fn similar_trade(&self, trade: &ParsedTrade) -> bool {
+        self.direction == Some(trade.direction)
+            && self.day == trade.day
+            && self
+                .quantity
+                .is_some_and(|q| close(q, trade.quantity, QUANTITY_TOLERANCE))
+            && self
+                .price
+                .is_some_and(|p| close(p, trade.price, SIMILAR_PRICE_TOLERANCE))
     }
 }
 
@@ -519,14 +546,17 @@ impl Run<'_> {
         // an id of another source (an import before the layout was saved as a
         // format, a custom mapping), can only be compared by its values.
         let source_prefix = format!("{}:", self.config.source);
-        let stored_alike = state.stored.iter().any(|s| {
-            s.same_trade(trade)
-                && (external_id.is_none()
-                    || !s
-                        .external_id
-                        .as_deref()
-                        .is_some_and(|id| id.starts_with(&source_prefix)))
-        });
+        let comparable = |s: &Stored| {
+            external_id.is_none()
+                || !s
+                    .external_id
+                    .as_deref()
+                    .is_some_and(|id| id.starts_with(&source_prefix))
+        };
+        let stored_alike = state
+            .stored
+            .iter()
+            .any(|s| comparable(s) && s.same_trade(trade));
         let repeated_in_file = external_id.is_none()
             && state.accepted.iter().any(|a| {
                 a.day == trade.day
@@ -534,7 +564,17 @@ impl Run<'_> {
                     && close(a.quantity, trade.quantity, QUANTITY_TOLERANCE)
                     && close(a.price, trade.price, PRICE_TOLERANCE)
             });
-        (stored_alike || repeated_in_file).then_some(DuplicateKind::Identical)
+        if stored_alike || repeated_in_file {
+            return Some(DuplicateKind::Identical);
+        }
+        // A stored trade entered by hand (or exported elsewhere) may carry a rounded price.
+        // Rows of one file are never compared this way: two buys of a day at nearby prices
+        // are two trades.
+        state
+            .stored
+            .iter()
+            .any(|s| comparable(s) && s.similar_trade(trade))
+            .then_some(DuplicateKind::Similar)
     }
 
     fn evaluate(
@@ -1515,7 +1555,7 @@ mod tests {
                 buy(2, day(0), "AAPL", 10.0, 100.0),
                 buy(3, day(1), "AAPL", 10.0, 100.0), // another day
                 sell(4, day(0), "AAPL", 10.0, 100.0), // another direction
-                buy(5, day(0), "AAPL", 10.0, 100.5), // another price
+                buy(5, day(0), "AAPL", 10.0, 101.0), // another price (1 % apart)
             ],
             &config("custom"),
         );
@@ -1555,9 +1595,11 @@ mod tests {
             TradeOutcome::New,
             "quantity off by 1e-6"
         );
+        // A price off by more than the exact tolerance is no identical trade, but within 0.5 %
+        // it is a similar one (rule 3).
         assert_eq!(
             sim.trades[2].outcome,
-            TradeOutcome::New,
+            duplicate(DuplicateKind::Similar),
             "price off by 1e-4"
         );
     }
@@ -1848,6 +1890,78 @@ mod tests {
 
         // Degiro's order id is shared by the fills of an order: equal fills are two trades.
         let sim = run(&conn, rows(), &config(SOURCE_DEGIRO));
+        assert_eq!(outcomes(&sim), vec![TradeOutcome::New, TradeOutcome::New]);
+    }
+
+    /// A trade entered by hand before the import carries a rounded price: the
+    /// same day, direction and quantity with a price within 0.5 % is shown as a
+    /// similar trade (a duplicate the user can still import), not written twice.
+    #[test]
+    fn a_hand_entered_trade_with_a_rounded_price_is_a_similar_duplicate() {
+        let conn = db();
+        add_stored(&conn, "AAPL", "buy", "10", "185.50", day(0), None);
+        let sim = run(
+            &conn,
+            vec![
+                buy(2, day(0), "AAPL", 10.0, 185.4975),
+                with_id(buy(3, day(0), "AAPL", 10.0, 185.4975), "777"),
+            ],
+            &config("ibkr"),
+        );
+        assert_eq!(sim.trades[0].outcome, duplicate(DuplicateKind::Similar));
+        assert_eq!(sim.trades[1].outcome, duplicate(DuplicateKind::Similar));
+        let message = sim.trades[0].message().expect("message");
+        assert_eq!(message.key, KEY_DUPLICATE_SIMILAR);
+        assert_eq!(message.detail, None);
+    }
+
+    #[test]
+    fn a_similar_trade_needs_the_same_quantity_and_a_price_within_half_a_percent() {
+        let conn = db();
+        add_stored(&conn, "AAPL", "buy", "10", "185.50", day(0), None);
+        let sim = run(
+            &conn,
+            vec![
+                buy(2, day(0), "AAPL", 10.0, 187.40), // 1 % apart: another trade
+                buy(3, day(0), "AAPL", 11.0, 185.50), // another quantity
+                buy(4, day(1), "AAPL", 10.0, 185.50), // another day
+                sell(5, day(0), "AAPL", 10.0, 185.50), // another direction
+            ],
+            &config("custom"),
+        );
+        assert!(
+            sim.trades.iter().all(|t| t.outcome == TradeOutcome::New),
+            "{:?}",
+            outcomes(&sim)
+        );
+    }
+
+    /// A broker id of the same source tells two trades apart, however alike they look.
+    #[test]
+    fn an_id_of_the_same_source_is_never_a_similar_trade() {
+        let conn = db();
+        add_stored(&conn, "AAPL", "buy", "10", "185.50", day(0), Some("xtb:1"));
+        let sim = run(
+            &conn,
+            vec![with_id(buy(2, day(0), "AAPL", 10.0, 185.4975), "2")],
+            &config("xtb"),
+        );
+        assert_eq!(sim.trades[0].outcome, TradeOutcome::New);
+    }
+
+    /// Rows of one file are compared exactly: two buys of a day at nearby
+    /// prices are two trades.
+    #[test]
+    fn rows_of_one_file_are_never_similar_to_each_other() {
+        let conn = db();
+        let sim = run(
+            &conn,
+            vec![
+                buy(2, day(0), "AAPL", 1.0, 185.50),
+                buy(3, day(0), "AAPL", 1.0, 185.70),
+            ],
+            &config("custom"),
+        );
         assert_eq!(outcomes(&sim), vec![TradeOutcome::New, TradeOutcome::New]);
     }
 

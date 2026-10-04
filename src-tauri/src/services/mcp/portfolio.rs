@@ -6,6 +6,7 @@ use rusqlite::Connection;
 use serde::Deserialize;
 use serde_json::Value;
 
+use super::money::MoneyContext;
 use crate::error::Result;
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
@@ -29,28 +30,9 @@ pub struct PortfolioMetricsArgs {
 
 pub fn portfolio_metrics(conn: &Connection, exclude_personal_real_estate: bool) -> Result<Value> {
     let exclude = exclude_personal_real_estate;
-    // Exchange rates
-    let rates: Vec<(String, f64)> = {
-        let mut stmt = conn.prepare("SELECT currency, rate FROM exchange_rates")?;
-        let result = stmt
-            .query_map([], |row| {
-                Ok((row.get::<_, String>(0)?, row.get::<_, f64>(1)?))
-            })?
-            .filter_map(|r| r.ok())
-            .collect();
-        result
-    };
-    let czk_rate = |currency: &str, amount: f64| -> f64 {
-        if currency == "CZK" {
-            return amount;
-        }
-        let rate = rates
-            .iter()
-            .find(|(c, _)| c == currency)
-            .map(|(_, r)| *r)
-            .unwrap_or(1.0);
-        amount * rate
-    };
+    // One MoneyContext per call: all arithmetic stays in CZK, converted to the
+    // main currency only when the response is built.
+    let ctx = MoneyContext::load(conn)?;
 
     // Bank accounts (savings)
     let savings: f64 = {
@@ -62,7 +44,7 @@ pub fn portfolio_metrics(conn: &Connection, exclude_personal_real_estate: bool) 
                 Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
             })?
             .filter_map(|r| r.ok())
-            .map(|(bal, cur)| czk_rate(&cur, bal.parse::<f64>().unwrap_or(0.0)))
+            .map(|(bal, cur)| ctx.to_czk(bal.parse::<f64>().unwrap_or(0.0), &cur))
             .sum();
         result
     };
@@ -73,7 +55,7 @@ pub fn portfolio_metrics(conn: &Connection, exclude_personal_real_estate: bool) 
         crate::services::loan_amortization::today_utc_day(),
     )?
     .into_iter()
-    .map(|(currency, balance)| czk_rate(&currency, balance))
+    .map(|(currency, balance)| ctx.to_czk(balance, &currency))
     .sum();
 
     // Stocks
@@ -97,7 +79,7 @@ pub fn portfolio_metrics(conn: &Connection, exclude_personal_real_estate: bool) 
             .filter_map(|r| r.ok())
             .map(|(q, cp, cc)| {
                 let val = q.parse::<f64>().unwrap_or(0.0) * cp.parse::<f64>().unwrap_or(0.0);
-                czk_rate(&cc, val)
+                ctx.to_czk(val, &cc)
             })
             .sum();
         result
@@ -123,7 +105,7 @@ pub fn portfolio_metrics(conn: &Connection, exclude_personal_real_estate: bool) 
             .filter_map(|r| r.ok())
             .map(|(q, cp, cc)| {
                 let val = q.parse::<f64>().unwrap_or(0.0) * cp.parse::<f64>().unwrap_or(0.0);
-                czk_rate(&cc, val)
+                ctx.to_czk(val, &cc)
             })
             .sum();
         result
@@ -143,7 +125,7 @@ pub fn portfolio_metrics(conn: &Connection, exclude_personal_real_estate: bool) 
             .filter_map(|r| r.ok())
             .map(|(cv, q, c)| {
                 let val = cv.parse::<f64>().unwrap_or(0.0) * q.parse::<f64>().unwrap_or(0.0);
-                czk_rate(&c, val)
+                ctx.to_czk(val, &c)
             })
             .sum();
         result
@@ -167,7 +149,7 @@ pub fn portfolio_metrics(conn: &Connection, exclude_personal_real_estate: bool) 
         let mut personal = 0.0_f64;
         let mut investment = 0.0_f64;
         for (price, cur, typ) in rows {
-            let val = czk_rate(&cur, price.parse::<f64>().unwrap_or(0.0));
+            let val = ctx.to_czk(price.parse::<f64>().unwrap_or(0.0), &cur);
             if typ == "personal" {
                 personal += val;
             } else {
@@ -193,7 +175,7 @@ pub fn portfolio_metrics(conn: &Connection, exclude_personal_real_estate: bool) 
             .filter_map(|r| r.ok())
             .map(|(q, mp, c)| {
                 let val = q.parse::<f64>().unwrap_or(0.0) * mp.parse::<f64>().unwrap_or(0.0);
-                czk_rate(&c, val)
+                ctx.to_czk(val, &c)
             })
             .sum();
         result
@@ -203,21 +185,25 @@ pub fn portfolio_metrics(conn: &Connection, exclude_personal_real_estate: bool) 
         savings + investments + crypto + bonds + re_personal_final + re_investment + other;
     let net_worth = total_assets - loans;
 
+    // Amounts are converted to the user's main currency here, once, at
+    // serialisation time.
+    let money = |czk: f64| format!("{:.2}", ctx.czk_to_main(czk));
+
     Ok(serde_json::json!({
-        "net_worth_czk": format!("{:.2}", net_worth),
-        "total_assets_czk": format!("{:.2}", total_assets),
-        "total_liabilities_czk": format!("{:.2}", loans),
+        "mainCurrency": ctx.main_currency(),
+        "net_worth": money(net_worth),
+        "total_assets": money(total_assets),
+        "total_liabilities": money(loans),
         "breakdown": {
-            "savings_czk": format!("{:.2}", savings),
-            "investments_czk": format!("{:.2}", investments),
-            "crypto_czk": format!("{:.2}", crypto),
-            "bonds_czk": format!("{:.2}", bonds),
-            "real_estate_personal_czk": format!("{:.2}", re_personal_final),
-            "real_estate_investment_czk": format!("{:.2}", re_investment),
-            "other_assets_czk": format!("{:.2}", other),
-            "loans_czk": format!("{:.2}", loans),
+            "savings": money(savings),
+            "investments": money(investments),
+            "crypto": money(crypto),
+            "bonds": money(bonds),
+            "real_estate_personal": money(re_personal_final),
+            "real_estate_investment": money(re_investment),
+            "other_assets": money(other),
+            "loans": money(loans),
         },
-        "note": "All values in CZK."
     }))
 }
 
@@ -270,4 +256,146 @@ pub fn portfolio_history(
         .filter_map(|r| r.ok())
         .collect();
     Ok(Value::Array(rows))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Minimal schema for `portfolio_metrics`: every table it reads, plus the
+    /// rates and the profile that the money context needs.
+    fn setup_db(main_currency: &str) -> Connection {
+        let conn = Connection::open_in_memory().expect("in-memory db");
+        conn.execute_batch(
+            r#"
+            CREATE TABLE exchange_rates (
+                currency TEXT PRIMARY KEY,
+                rate REAL NOT NULL,
+                fetched_at INTEGER NOT NULL
+            );
+            CREATE TABLE user_profile (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                currency TEXT NOT NULL DEFAULT 'CZK'
+            );
+            CREATE TABLE bank_accounts (
+                id TEXT PRIMARY KEY,
+                balance TEXT NOT NULL,
+                currency TEXT NOT NULL,
+                exclude_from_balance INTEGER NOT NULL DEFAULT 0
+            );
+            CREATE TABLE loans (
+                id TEXT PRIMARY KEY,
+                principal TEXT NOT NULL,
+                currency TEXT NOT NULL DEFAULT 'CZK',
+                interest_rate TEXT NOT NULL DEFAULT '0',
+                monthly_payment TEXT NOT NULL DEFAULT '0',
+                start_date INTEGER NOT NULL DEFAULT (unixepoch()),
+                end_date INTEGER,
+                balance_anchor_amount TEXT,
+                balance_anchor_date INTEGER
+            );
+            CREATE TABLE stock_investments (ticker TEXT PRIMARY KEY, quantity TEXT NOT NULL);
+            CREATE TABLE stock_data (
+                ticker TEXT PRIMARY KEY,
+                original_price TEXT,
+                currency TEXT,
+                fetched_at INTEGER
+            );
+            CREATE TABLE stock_price_overrides (
+                ticker TEXT PRIMARY KEY,
+                price TEXT NOT NULL,
+                currency TEXT NOT NULL,
+                updated_at INTEGER NOT NULL
+            );
+            CREATE TABLE crypto_investments (ticker TEXT PRIMARY KEY, quantity TEXT NOT NULL);
+            CREATE TABLE crypto_prices (
+                symbol TEXT PRIMARY KEY,
+                price TEXT,
+                currency TEXT,
+                fetched_at INTEGER
+            );
+            CREATE TABLE crypto_price_overrides (
+                symbol TEXT PRIMARY KEY,
+                price TEXT NOT NULL,
+                currency TEXT NOT NULL,
+                updated_at INTEGER NOT NULL
+            );
+            CREATE TABLE bonds (
+                id TEXT PRIMARY KEY,
+                coupon_value TEXT NOT NULL,
+                quantity TEXT NOT NULL,
+                currency TEXT NOT NULL
+            );
+            CREATE TABLE real_estate (
+                id TEXT PRIMARY KEY,
+                market_price TEXT NOT NULL,
+                market_price_currency TEXT NOT NULL,
+                type TEXT NOT NULL
+            );
+            CREATE TABLE other_assets (
+                id TEXT PRIMARY KEY,
+                quantity TEXT NOT NULL,
+                market_price TEXT NOT NULL,
+                currency TEXT NOT NULL
+            );
+
+            INSERT INTO exchange_rates (currency, rate, fetched_at) VALUES
+                ('EUR', 25.0, 0), ('USD', 20.0, 0);
+            -- 2000 EUR (50 000 CZK) + 25 000 CZK = 75 000 CZK of savings
+            INSERT INTO bank_accounts (id, balance, currency) VALUES
+                ('b1', '2000', 'EUR'), ('b2', '25000', 'CZK');
+            -- 5 x 10 USD = 1 000 CZK
+            INSERT INTO other_assets (id, quantity, market_price, currency)
+                VALUES ('o1', '5', '10', 'USD');
+            -- 100 USD = 2 000 CZK of personal real estate
+            INSERT INTO real_estate (id, market_price, market_price_currency, type)
+                VALUES ('r1', '100', 'USD', 'personal');
+            "#,
+        )
+        .expect("schema + seed");
+        conn.execute(
+            "INSERT INTO user_profile (currency) VALUES (?1)",
+            [main_currency],
+        )
+        .expect("profile");
+        conn
+    }
+
+    #[test]
+    fn portfolio_metrics_reports_net_worth_in_the_main_currency() {
+        let conn = setup_db("EUR");
+
+        let result = portfolio_metrics(&conn, false).expect("metrics");
+
+        assert_eq!(result["mainCurrency"], "EUR");
+        // 78 000 CZK / 25
+        assert_eq!(result["net_worth"], "3120.00");
+        assert_eq!(result["total_assets"], "3120.00");
+        assert_eq!(result["breakdown"]["savings"], "3000.00");
+        assert_eq!(result["breakdown"]["other_assets"], "40.00");
+        assert_eq!(result["breakdown"]["real_estate_personal"], "80.00");
+        assert!(result.get("net_worth_czk").is_none());
+        assert!(result.get("note").is_none());
+    }
+
+    #[test]
+    fn portfolio_metrics_honours_exclude_personal_real_estate() {
+        let conn = setup_db("EUR");
+
+        let result = portfolio_metrics(&conn, true).expect("metrics");
+
+        assert_eq!(result["net_worth"], "3040.00");
+        assert_eq!(result["breakdown"]["real_estate_personal"], "0.00");
+    }
+
+    #[test]
+    fn portfolio_metrics_stays_in_czk_for_a_czk_main_currency() {
+        let conn = setup_db("CZK");
+
+        let result = portfolio_metrics(&conn, false).expect("metrics");
+
+        assert_eq!(result["mainCurrency"], "CZK");
+        assert_eq!(result["net_worth"], "78000.00");
+        assert_eq!(result["breakdown"]["savings"], "75000.00");
+    }
 }

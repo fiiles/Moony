@@ -15,6 +15,7 @@ pub mod exchange_rates;
 pub mod insurance;
 pub mod investments;
 pub mod loans;
+pub mod money;
 pub mod other_assets;
 pub mod portfolio;
 pub mod real_estate;
@@ -289,7 +290,7 @@ impl MoonyMcp {
     }
 
     #[tool(
-        description = "Get current portfolio metrics: net worth breakdown by asset class (savings, investments, crypto, bonds, real estate, other assets, liabilities). All monetary values are in CZK."
+        description = "Get current portfolio metrics: net worth breakdown by asset class (savings, investments, crypto, bonds, real estate, other assets, liabilities). All monetary values are in the user's main currency, given as `mainCurrency`."
     )]
     fn portfolio_get_metrics(
         &self,
@@ -494,7 +495,7 @@ impl MoonyMcp {
     }
 
     #[tool(
-        description = "Get an income vs expenses cashflow report based on user-defined cashflow items (recurring income/expenses), loan payments, insurance premiums, and savings account interest. View as monthly or yearly totals."
+        description = "Get an income vs expenses cashflow report based on user-defined cashflow items (recurring income/expenses), loan payments, insurance premiums, and savings account interest. View as monthly or yearly totals. Amounts are in the user's main currency, given as `mainCurrency`."
     )]
     fn cashflow_report(
         &self,
@@ -507,7 +508,7 @@ impl MoonyMcp {
     }
 
     #[tool(
-        description = "Get a budget vs actual spending report by category for a given time period. Shows how much was spent vs budget goals."
+        description = "Get a budget vs actual spending report by category for a given time period. Shows how much was spent vs budget goals. Amounts are in the user's main currency, given as `mainCurrency`."
     )]
     fn budgeting_report(
         &self,
@@ -524,14 +525,14 @@ impl MoonyMcp {
     }
 
     #[tool(
-        description = "Get all stock investments with their current value, gain/loss, dividend yield, and tag groupings."
+        description = "Get all stock investments with their current value, gain/loss, dividend yield, and tag groupings. Amounts are in the user's main currency, given as `mainCurrency`."
     )]
     fn stocks_analysis(&self) -> Result<CallToolResult, McpError> {
         to_result(self.db.with_conn(analytics::stocks_analysis))
     }
 
     #[tool(
-        description = "Get aggregated portfolio metrics grouped by stock tag. Shows total value, cost basis, gain/loss, and dividend yield per tag."
+        description = "Get aggregated portfolio metrics grouped by stock tag. Shows total value, cost basis, gain/loss, and dividend yield per tag. Amounts are in the user's main currency, given as `mainCurrency`."
     )]
     fn tag_metrics(
         &self,
@@ -759,9 +760,10 @@ impl ServerHandler for MoonyMcp {
             .with_instructions(
                 "Query Moony personal finance data (read tools), import parsed exports (bulk \
                  *_create write tools — always show the user the parsed data and get their \
-                 confirmation first), and categorize bank payments. All monetary values are in \
-                 CZK unless a currency field says otherwise; money amounts are decimal strings; \
-                 dates are Unix timestamps in seconds."
+                 confirmation first), and categorize bank payments. Monetary values are in the \
+                 user's main currency (the `mainCurrency` field) unless a currency field says \
+                 otherwise; money amounts are decimal strings; dates are Unix timestamps in \
+                 seconds."
                     .to_string(),
             )
     }

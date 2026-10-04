@@ -6,6 +6,7 @@ use rusqlite::Connection;
 use serde::Deserialize;
 use serde_json::Value;
 
+use super::money::MoneyContext;
 use crate::error::Result;
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
@@ -38,28 +39,22 @@ pub struct TagMetricsArgs {
     pub tag_ids: Option<Vec<String>>,
 }
 
+/// One recurring cashflow line, normalised to a monthly amount in CZK.
+struct CashflowLine {
+    name: String,
+    category: String,
+    monthly_czk: f64,
+}
+
 pub fn cashflow_report(conn: &Connection, view_type: Option<String>) -> Result<Value> {
     let view_type = view_type.unwrap_or_else(|| "monthly".to_string());
     let multiplier: f64 = if view_type == "yearly" { 12.0 } else { 1.0 };
 
-    let rates: std::collections::HashMap<String, f64> = {
-        let mut stmt = conn.prepare("SELECT currency, rate FROM exchange_rates")?;
-        let result = stmt
-            .query_map([], |row| {
-                Ok((row.get::<_, String>(0)?, row.get::<_, f64>(1)?))
-            })?
-            .filter_map(|r| r.ok())
-            .collect();
-        result
-    };
-    let czk = |currency: &str, amount: f64| -> f64 {
-        if currency == "CZK" {
-            return amount;
-        }
-        amount * rates.get(currency).copied().unwrap_or(1.0)
-    };
+    // One MoneyContext per call: all arithmetic stays in CZK, converted to the
+    // main currency only when the response is built.
+    let ctx = MoneyContext::load(conn)?;
     let to_monthly = |amount: f64, currency: &str, frequency: &str| -> f64 {
-        let v = czk(currency, amount);
+        let v = ctx.to_czk(amount, currency);
         match frequency {
             "monthly" => v,
             "quarterly" => v / 3.0,
@@ -71,8 +66,8 @@ pub fn cashflow_report(conn: &Connection, view_type: Option<String>) -> Result<V
         }
     };
 
-    let mut income: Vec<Value> = Vec::new();
-    let mut expenses: Vec<Value> = Vec::new();
+    let mut income: Vec<CashflowLine> = Vec::new();
+    let mut expenses: Vec<CashflowLine> = Vec::new();
 
     // Cashflow items
     {
@@ -97,12 +92,15 @@ pub fn cashflow_report(conn: &Connection, view_type: Option<String>) -> Result<V
                 continue;
             }
             let monthly = to_monthly(amount, &currency, &frequency);
-            let entry =
-                serde_json::json!({ "name": name, "monthly_czk": monthly, "category": category });
+            let line = CashflowLine {
+                name,
+                category,
+                monthly_czk: monthly,
+            };
             if item_type == "income" {
-                income.push(entry);
+                income.push(line);
             } else {
-                expenses.push(entry);
+                expenses.push(line);
             }
         }
     }
@@ -119,9 +117,13 @@ pub fn cashflow_report(conn: &Connection, view_type: Option<String>) -> Result<V
             .filter_map(|r| r.ok())
             .collect();
         for (name, payment, currency) in items {
-            let monthly = czk(&currency, payment);
+            let monthly = ctx.to_czk(payment, &currency);
             if monthly > 0.0 {
-                expenses.push(serde_json::json!({ "name": format!("Loan: {}", name), "monthly_czk": monthly, "category": "loan_payment" }));
+                expenses.push(CashflowLine {
+                    name: format!("Loan: {}", name),
+                    category: "loan_payment".to_string(),
+                    monthly_czk: monthly,
+                });
             }
         }
     }
@@ -138,7 +140,11 @@ pub fn cashflow_report(conn: &Connection, view_type: Option<String>) -> Result<V
         for (name, payment, currency, frequency) in items {
             let monthly = to_monthly(payment, &currency, &frequency);
             if monthly > 0.0 {
-                expenses.push(serde_json::json!({ "name": format!("Insurance: {}", name), "monthly_czk": monthly, "category": "insurance" }));
+                expenses.push(CashflowLine {
+                    name: format!("Insurance: {}", name),
+                    category: "insurance".to_string(),
+                    monthly_czk: monthly,
+                });
             }
         }
     }
@@ -158,51 +164,46 @@ pub fn cashflow_report(conn: &Connection, view_type: Option<String>) -> Result<V
             .filter_map(|r| r.ok())
             .collect();
         for (name, balance, currency, rate) in items {
-            let balance_czk = czk(&currency, balance);
+            let balance_czk = ctx.to_czk(balance, &currency);
             let monthly = balance_czk * (rate / 100.0) / 12.0;
             if monthly > 0.0 {
-                income.push(serde_json::json!({ "name": format!("Interest: {}", name), "monthly_czk": monthly, "category": "interest" }));
+                income.push(CashflowLine {
+                    name: format!("Interest: {}", name),
+                    category: "interest".to_string(),
+                    monthly_czk: monthly,
+                });
             }
         }
     }
 
-    let total_income: f64 = income
-        .iter()
-        .filter_map(|v| v["monthly_czk"].as_f64())
-        .sum();
-    let total_expenses: f64 = expenses
-        .iter()
-        .filter_map(|v| v["monthly_czk"].as_f64())
-        .sum();
+    let total_income: f64 = income.iter().map(|l| l.monthly_czk).sum();
+    let total_expenses: f64 = expenses.iter().map(|l| l.monthly_czk).sum();
 
-    let fmt_income: Vec<Value> = income
-        .iter()
-        .map(|v| {
-            serde_json::json!({
-                "name": v["name"], "category": v["category"],
-                "amount_czk": format!("{:.2}", v["monthly_czk"].as_f64().unwrap_or(0.0) * multiplier)
+    // Amounts are converted to the user's main currency here, once, at
+    // serialisation time.
+    let money = |czk: f64| format!("{:.2}", ctx.czk_to_main(czk));
+    let fmt_lines = |lines: &[CashflowLine]| -> Vec<Value> {
+        lines
+            .iter()
+            .map(|l| {
+                serde_json::json!({
+                    "name": l.name, "category": l.category,
+                    "amount": money(l.monthly_czk * multiplier)
+                })
             })
-        })
-        .collect();
-    let fmt_expenses: Vec<Value> = expenses
-        .iter()
-        .map(|v| {
-            serde_json::json!({
-                "name": v["name"], "category": v["category"],
-                "amount_czk": format!("{:.2}", v["monthly_czk"].as_f64().unwrap_or(0.0) * multiplier)
-            })
-        })
-        .collect();
+            .collect()
+    };
 
     Ok(serde_json::json!({
+        "mainCurrency": ctx.main_currency(),
         "viewType": view_type,
         "summary": {
-            "totalIncomeCzk": format!("{:.2}", total_income * multiplier),
-            "totalExpensesCzk": format!("{:.2}", total_expenses * multiplier),
-            "netCashflowCzk": format!("{:.2}", (total_income - total_expenses) * multiplier),
+            "totalIncome": money(total_income * multiplier),
+            "totalExpenses": money(total_expenses * multiplier),
+            "netCashflow": money((total_income - total_expenses) * multiplier),
         },
-        "income": fmt_income,
-        "expenses": fmt_expenses,
+        "income": fmt_lines(&income),
+        "expenses": fmt_lines(&expenses),
     }))
 }
 
@@ -216,22 +217,9 @@ pub fn budgeting_report(
     let start_date = start_date.unwrap_or(0);
     let end_date = end_date.unwrap_or(i64::MAX);
 
-    let rates: std::collections::HashMap<String, f64> = {
-        let mut stmt = conn.prepare("SELECT currency, rate FROM exchange_rates")?;
-        let result = stmt
-            .query_map([], |row| {
-                Ok((row.get::<_, String>(0)?, row.get::<_, f64>(1)?))
-            })?
-            .filter_map(|r| r.ok())
-            .collect();
-        result
-    };
-    let czk = |currency: &str, amount: f64| -> f64 {
-        if currency == "CZK" {
-            return amount;
-        }
-        amount * rates.get(currency).copied().unwrap_or(1.0)
-    };
+    // One MoneyContext per call: all arithmetic stays in CZK, converted to the
+    // main currency only when the response is built.
+    let ctx = MoneyContext::load(conn)?;
 
     // Goals
     let goals: Vec<(String, String, f64, String)> = {
@@ -272,46 +260,52 @@ pub fn budgeting_report(
 
     let mut spending_map: std::collections::HashMap<String, f64> = std::collections::HashMap::new();
     for (cat_id, amount, currency) in spending {
-        *spending_map.entry(cat_id).or_insert(0.0) += czk(&currency, amount);
+        *spending_map.entry(cat_id).or_insert(0.0) += ctx.to_czk(amount, &currency);
     }
 
+    // Amounts are converted to the user's main currency here, once, at
+    // serialisation time; the usage ratio is currency-invariant.
+    let money = |czk: f64| format!("{:.2}", ctx.czk_to_main(czk));
     let report: Vec<Value> = goals
         .iter()
         .map(|(cat_id, cat_name, goal_amount, goal_currency)| {
-            let budget_czk = czk(goal_currency, *goal_amount);
+            let budget_czk = ctx.to_czk(*goal_amount, goal_currency);
             let actual_czk = spending_map.get(cat_id).copied().unwrap_or(0.0);
             serde_json::json!({
                 "categoryId": cat_id,
                 "categoryName": cat_name,
-                "budgetCzk": format!("{:.2}", budget_czk),
-                "actualCzk": format!("{:.2}", actual_czk),
-                "remainingCzk": format!("{:.2}", budget_czk - actual_czk),
+                "budget": money(budget_czk),
+                "actual": money(actual_czk),
+                "remaining": money(budget_czk - actual_czk),
                 "usagePercent": if budget_czk > 0.0 { format!("{:.1}", (actual_czk / budget_czk) * 100.0) } else { "N/A".to_string() },
                 "overBudget": actual_czk > budget_czk,
             })
         })
         .collect();
 
-    Ok(serde_json::json!({ "timeframe": timeframe, "budgetCategories": report }))
+    Ok(serde_json::json!({
+        "mainCurrency": ctx.main_currency(),
+        "timeframe": timeframe,
+        "budgetCategories": report,
+    }))
+}
+
+/// One stock holding as read from the DB (prices and dividends in their own currencies).
+struct StockRow {
+    id: String,
+    ticker: String,
+    company: String,
+    qty: f64,
+    curr_price: f64,
+    price_currency: String,
+    yearly_div: f64,
+    div_currency: String,
 }
 
 pub fn stocks_analysis(conn: &Connection) -> Result<Value> {
-    let rates: std::collections::HashMap<String, f64> = {
-        let mut stmt = conn.prepare("SELECT currency, rate FROM exchange_rates")?;
-        let result = stmt
-            .query_map([], |row| {
-                Ok((row.get::<_, String>(0)?, row.get::<_, f64>(1)?))
-            })?
-            .filter_map(|r| r.ok())
-            .collect();
-        result
-    };
-    let czk = |currency: &str, amount: f64| -> f64 {
-        if currency == "CZK" {
-            return amount;
-        }
-        amount * rates.get(currency).copied().unwrap_or(1.0)
-    };
+    // One MoneyContext per call: all arithmetic stays in CZK, converted to the
+    // main currency only when the response is built.
+    let ctx = MoneyContext::load(conn)?;
 
     let cost_map = crate::services::cost_basis::cost_basis_for_all(
         conn,
@@ -331,80 +325,80 @@ pub fn stocks_analysis(conn: &Connection) -> Result<Value> {
          LEFT JOIN dividend_overrides do2 ON si.ticker = do2.ticker",
     )?;
 
-    let stocks: Vec<Value> = stmt
+    let rows: Vec<StockRow> = stmt
         .query_map([], |row| {
-            let id: String = row.get(0)?;
-            let ticker: String = row.get(1)?;
-            let company: String = row.get(2)?;
-            let qty: f64 = row.get::<_, String>(3)?.parse().unwrap_or(0.0);
-            let curr_price: f64 = row.get::<_, String>(4)?.parse().unwrap_or(0.0);
-            let price_currency: String = row.get(5)?;
-            let yearly_div: f64 = row.get::<_, String>(6)?.parse().unwrap_or(0.0);
-            let div_currency: String = row.get(7)?;
-            Ok((
-                id,
-                ticker,
-                company,
-                qty,
-                curr_price,
-                price_currency,
-                yearly_div,
-                div_currency,
-            ))
+            Ok(StockRow {
+                id: row.get(0)?,
+                ticker: row.get(1)?,
+                company: row.get(2)?,
+                qty: row.get::<_, String>(3)?.parse().unwrap_or(0.0),
+                curr_price: row.get::<_, String>(4)?.parse().unwrap_or(0.0),
+                price_currency: row.get(5)?,
+                yearly_div: row.get::<_, String>(6)?.parse().unwrap_or(0.0),
+                div_currency: row.get(7)?,
+            })
         })?
         .filter_map(|r| r.ok())
-        .map(
-            |(id, ticker, company, qty, curr_price, price_currency, yearly_div, div_currency)| {
-                let curr_val_czk = czk(&price_currency, qty * curr_price);
-                // Historical cost: every transaction at its own day's rate
-                // (ADR 0001) — never the stored scalar at today's rate.
-                let cost_czk = cost_map.get(&id).map(|p| p.cost_basis_czk).unwrap_or(0.0);
-                let gain_czk = curr_val_czk - cost_czk;
-                let gain_pct = if cost_czk > 0.0 {
-                    (gain_czk / cost_czk) * 100.0
-                } else {
-                    0.0
-                };
-                let div_czk = czk(&div_currency, qty * yearly_div);
-                let div_yield = if curr_val_czk > 0.0 {
-                    (div_czk / curr_val_czk) * 100.0
-                } else {
-                    0.0
-                };
-                serde_json::json!({
-                    "id": id,
-                    "ticker": ticker,
-                    "companyName": company,
-                    "quantity": qty,
-                    "currentValueCzk": format!("{:.2}", curr_val_czk),
-                    "costBasisCzk": format!("{:.2}", cost_czk),
-                    "gainLossCzk": format!("{:.2}", gain_czk),
-                    "gainLossPct": format!("{:.2}", gain_pct),
-                    "annualDividendCzk": format!("{:.2}", div_czk),
-                    "dividendYieldPct": format!("{:.2}", div_yield),
-                })
-            },
-        )
         .collect();
 
-    let total_val: f64 = stocks
-        .iter()
-        .filter_map(|v| v["currentValueCzk"].as_str()?.parse::<f64>().ok())
-        .sum();
-    let total_gain: f64 = stocks
-        .iter()
-        .filter_map(|v| v["gainLossCzk"].as_str()?.parse::<f64>().ok())
-        .sum();
-    let total_div: f64 = stocks
-        .iter()
-        .filter_map(|v| v["annualDividendCzk"].as_str()?.parse::<f64>().ok())
-        .sum();
+    // Amounts are converted to the user's main currency here, once, at
+    // serialisation time; ratios are currency-invariant.
+    let money = |czk: f64| format!("{:.2}", ctx.czk_to_main(czk));
+
+    let mut stocks: Vec<Value> = Vec::new();
+    let mut total_val_czk = 0.0_f64;
+    let mut total_gain_czk = 0.0_f64;
+    let mut total_div_czk = 0.0_f64;
+    for StockRow {
+        id,
+        ticker,
+        company,
+        qty,
+        curr_price,
+        price_currency,
+        yearly_div,
+        div_currency,
+    } in rows
+    {
+        let curr_val_czk = ctx.to_czk(qty * curr_price, &price_currency);
+        // Historical cost: every transaction at its own day's rate
+        // (ADR 0001) — never the stored scalar at today's rate.
+        let cost_czk = cost_map.get(&id).map(|p| p.cost_basis_czk).unwrap_or(0.0);
+        let gain_czk = curr_val_czk - cost_czk;
+        let gain_pct = if cost_czk > 0.0 {
+            (gain_czk / cost_czk) * 100.0
+        } else {
+            0.0
+        };
+        let div_czk = ctx.to_czk(qty * yearly_div, &div_currency);
+        let div_yield = if curr_val_czk > 0.0 {
+            (div_czk / curr_val_czk) * 100.0
+        } else {
+            0.0
+        };
+        total_val_czk += curr_val_czk;
+        total_gain_czk += gain_czk;
+        total_div_czk += div_czk;
+        stocks.push(serde_json::json!({
+            "id": id,
+            "ticker": ticker,
+            "companyName": company,
+            "quantity": qty,
+            "currentValue": money(curr_val_czk),
+            "costBasis": money(cost_czk),
+            "gainLoss": money(gain_czk),
+            "gainLossPct": format!("{:.2}", gain_pct),
+            "annualDividend": money(div_czk),
+            "dividendYieldPct": format!("{:.2}", div_yield),
+        }));
+    }
 
     Ok(serde_json::json!({
+        "mainCurrency": ctx.main_currency(),
         "summary": {
-            "totalValueCzk": format!("{:.2}", total_val),
-            "totalGainLossCzk": format!("{:.2}", total_gain),
-            "annualDividendsCzk": format!("{:.2}", total_div),
+            "totalValue": money(total_val_czk),
+            "totalGainLoss": money(total_gain_czk),
+            "annualDividends": money(total_div_czk),
         },
         "stocks": stocks,
     }))
@@ -415,22 +409,9 @@ pub fn tag_metrics(conn: &Connection, tag_ids: Option<Vec<String>>) -> Result<Va
         conn,
         crate::services::cost_basis::TxTable::Stocks,
     )?;
-    let rates: std::collections::HashMap<String, f64> = {
-        let mut stmt = conn.prepare("SELECT currency, rate FROM exchange_rates")?;
-        let result = stmt
-            .query_map([], |row| {
-                Ok((row.get::<_, String>(0)?, row.get::<_, f64>(1)?))
-            })?
-            .filter_map(|r| r.ok())
-            .collect();
-        result
-    };
-    let czk = |currency: &str, amount: f64| -> f64 {
-        if currency == "CZK" {
-            return amount;
-        }
-        amount * rates.get(currency).copied().unwrap_or(1.0)
-    };
+    // One MoneyContext per call: all arithmetic stays in CZK, converted to the
+    // main currency only when the response is built.
+    let ctx = MoneyContext::load(conn)?;
 
     let tags: Vec<(String, String)> = if let Some(ref ids) = tag_ids {
         let placeholders = ids.iter().map(|_| "?").collect::<Vec<_>>().join(",");
@@ -457,6 +438,10 @@ pub fn tag_metrics(conn: &Connection, tag_ids: Option<Vec<String>>) -> Result<Va
             .collect();
         result
     };
+
+    // Amounts are converted to the user's main currency here, once, at
+    // serialisation time; ratios are currency-invariant.
+    let money = |czk: f64| format!("{:.2}", ctx.czk_to_main(czk));
 
     let result: Vec<Value> = tags
         .iter()
@@ -498,9 +483,9 @@ pub fn tag_metrics(conn: &Connection, tag_ids: Option<Vec<String>>) -> Result<Va
             let mut cost = 0.0_f64;
             let mut div = 0.0_f64;
             for (id, qty, cp, cc, yd, dc) in &stocks {
-                val += czk(cc, qty * cp);
+                val += ctx.to_czk(qty * cp, cc);
                 cost += cost_map.get(id).map(|p| p.cost_basis_czk).unwrap_or(0.0);
-                div += czk(dc, qty * yd);
+                div += ctx.to_czk(qty * yd, dc);
             }
             let gain = val - cost;
             let gain_pct = if cost > 0.0 { (gain / cost) * 100.0 } else { 0.0 };
@@ -510,17 +495,20 @@ pub fn tag_metrics(conn: &Connection, tag_ids: Option<Vec<String>>) -> Result<Va
                 "tagId": tag_id,
                 "tagName": tag_name,
                 "stockCount": stocks.len(),
-                "totalValueCzk": format!("{:.2}", val),
-                "costBasisCzk": format!("{:.2}", cost),
-                "gainLossCzk": format!("{:.2}", gain),
+                "totalValue": money(val),
+                "costBasis": money(cost),
+                "gainLoss": money(gain),
                 "gainLossPct": format!("{:.2}", gain_pct),
-                "annualDividendCzk": format!("{:.2}", div),
+                "annualDividend": money(div),
                 "dividendYieldPct": format!("{:.2}", div_yield),
             }))
         })
         .collect();
 
-    Ok(Value::Array(result))
+    Ok(serde_json::json!({
+        "mainCurrency": ctx.main_currency(),
+        "tags": result,
+    }))
 }
 
 #[cfg(test)]
@@ -532,10 +520,13 @@ mod tests {
     const D1: i64 = 1_700_006_400;
     const D2: i64 = D1 + DAY;
 
-    /// Minimal schema for the stocks analytics paths (post-migration-008:
-    /// no stored `average_price`). Cost basis must come from transactions at
-    /// their day's rates.
-    fn setup_db() -> Connection {
+    /// Minimal schema for the analytics paths (post-migration-008: no stored
+    /// `average_price`; cost basis must come from transactions at their day's
+    /// rates), plus the rates and profile the money context reads.
+    ///
+    /// The cashflow/budgeting amounts are REAL here because those queries read
+    /// them with `get::<f64>`.
+    fn setup_db(main_currency: &str) -> Connection {
         let conn = Connection::open_in_memory().expect("in-memory db");
         conn.execute_batch(&format!(
             r#"
@@ -568,6 +559,10 @@ mod tests {
                 currency TEXT PRIMARY KEY,
                 rate REAL NOT NULL,
                 fetched_at INTEGER NOT NULL
+            );
+            CREATE TABLE user_profile (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                currency TEXT NOT NULL DEFAULT 'CZK'
             );
             CREATE TABLE stock_data (
                 ticker TEXT PRIMARY KEY,
@@ -602,8 +597,53 @@ mod tests {
                 investment_id TEXT NOT NULL,
                 tag_id TEXT NOT NULL
             );
+            CREATE TABLE cashflow_items (
+                name TEXT NOT NULL,
+                amount REAL NOT NULL,
+                currency TEXT NOT NULL,
+                frequency TEXT NOT NULL,
+                item_type TEXT NOT NULL,
+                category TEXT NOT NULL
+            );
+            CREATE TABLE loans (
+                name TEXT NOT NULL,
+                monthly_payment REAL NOT NULL,
+                currency TEXT NOT NULL
+            );
+            CREATE TABLE insurance_policies (
+                policy_name TEXT NOT NULL,
+                regular_payment REAL NOT NULL,
+                regular_payment_currency TEXT NOT NULL,
+                payment_frequency TEXT NOT NULL,
+                status TEXT NOT NULL
+            );
+            CREATE TABLE bank_accounts (
+                name TEXT NOT NULL,
+                balance REAL NOT NULL,
+                currency TEXT NOT NULL,
+                interest_rate REAL,
+                exclude_from_balance INTEGER NOT NULL DEFAULT 0
+            );
+            CREATE TABLE transaction_categories (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL
+            );
+            CREATE TABLE budget_goals (
+                category_id TEXT NOT NULL,
+                timeframe TEXT NOT NULL,
+                amount REAL NOT NULL,
+                currency TEXT NOT NULL
+            );
+            CREATE TABLE bank_transactions (
+                category_id TEXT,
+                amount TEXT NOT NULL,
+                currency TEXT NOT NULL,
+                booking_date INTEGER NOT NULL,
+                tx_type TEXT NOT NULL
+            );
 
-            INSERT INTO exchange_rates (currency, rate, fetched_at) VALUES ('USD', 23.0, 0);
+            INSERT INTO exchange_rates (currency, rate, fetched_at) VALUES
+                ('USD', 23.0, 0), ('EUR', 25.0, 0);
             INSERT INTO exchange_rate_history (date, currency, rate) VALUES
                 ({d1}, 'USD', 25.0), ({d2}, 'USD', 20.0);
             INSERT INTO stock_investments (id, ticker, company_name, quantity, currency)
@@ -614,6 +654,7 @@ mod tests {
                 ('t1', 'inv-a', 'buy', 'AAA', 'A Corp', '10', '100', 'USD', {d1}),
                 ('t2', 'inv-a', 'buy', 'AAA', 'A Corp', '10', '100', 'USD', {d2});
             INSERT INTO stock_data (ticker, original_price, currency) VALUES ('AAA', '110', 'USD');
+            INSERT INTO dividend_data (ticker, yearly_dividend_sum, currency) VALUES ('AAA', '2', 'USD');
             INSERT INTO stock_tags (id, name) VALUES ('tag-1', 'Tech');
             INSERT INTO stock_investment_tags (investment_id, tag_id) VALUES ('inv-a', 'tag-1');
             "#,
@@ -621,33 +662,175 @@ mod tests {
             d2 = D2,
         ))
         .expect("schema + seed");
+        conn.execute(
+            "INSERT INTO user_profile (currency) VALUES (?1)",
+            [main_currency],
+        )
+        .expect("profile");
         conn
     }
 
     #[test]
     fn stocks_analysis_cost_basis_uses_transaction_day_rates() {
-        let conn = setup_db();
+        let conn = setup_db("CZK");
 
         let result = stocks_analysis(&conn).expect("analysis");
 
+        assert_eq!(result["mainCurrency"], "CZK");
         let stock = &result["stocks"][0];
         // 10×100×25 + 10×100×20 — NOT 20×100×23 (avg × today's rate).
-        assert_eq!(stock["costBasisCzk"], "45000.00");
+        assert_eq!(stock["costBasis"], "45000.00");
         // Current value stays at today's rate: 20 × 110 × 23.
-        assert_eq!(stock["currentValueCzk"], "50600.00");
-        assert_eq!(stock["gainLossCzk"], "5600.00");
-        assert_eq!(result["summary"]["totalGainLossCzk"], "5600.00");
+        assert_eq!(stock["currentValue"], "50600.00");
+        assert_eq!(stock["gainLoss"], "5600.00");
+        assert_eq!(result["summary"]["totalGainLoss"], "5600.00");
+    }
+
+    #[test]
+    fn stocks_analysis_reports_amounts_in_the_main_currency() {
+        let conn = setup_db("EUR");
+
+        let result = stocks_analysis(&conn).expect("analysis");
+
+        assert_eq!(result["mainCurrency"], "EUR");
+        let stock = &result["stocks"][0];
+        // CZK 45 000 / 50 600 / 5 600 / 920 at 25 CZK per EUR.
+        assert_eq!(stock["costBasis"], "1800.00");
+        assert_eq!(stock["currentValue"], "2024.00");
+        assert_eq!(stock["gainLoss"], "224.00");
+        assert_eq!(stock["annualDividend"], "36.80");
+        // Ratios do not depend on the currency.
+        assert_eq!(stock["gainLossPct"], "12.44");
+        assert_eq!(stock["dividendYieldPct"], "1.82");
+        assert_eq!(result["summary"]["totalValue"], "2024.00");
+        assert_eq!(result["summary"]["totalGainLoss"], "224.00");
+        assert_eq!(result["summary"]["annualDividends"], "36.80");
+        assert!(stock.get("currentValueCzk").is_none());
     }
 
     #[test]
     fn tag_metrics_cost_basis_uses_transaction_day_rates() {
-        let conn = setup_db();
+        let conn = setup_db("CZK");
 
         let result = tag_metrics(&conn, None).expect("tag metrics");
 
-        let tag = &result[0];
-        assert_eq!(tag["costBasisCzk"], "45000.00");
-        assert_eq!(tag["totalValueCzk"], "50600.00");
-        assert_eq!(tag["gainLossCzk"], "5600.00");
+        assert_eq!(result["mainCurrency"], "CZK");
+        let tag = &result["tags"][0];
+        assert_eq!(tag["costBasis"], "45000.00");
+        assert_eq!(tag["totalValue"], "50600.00");
+        assert_eq!(tag["gainLoss"], "5600.00");
+    }
+
+    #[test]
+    fn tag_metrics_reports_amounts_in_the_main_currency() {
+        let conn = setup_db("EUR");
+
+        let result = tag_metrics(&conn, None).expect("tag metrics");
+
+        assert_eq!(result["mainCurrency"], "EUR");
+        let tag = &result["tags"][0];
+        assert_eq!(tag["costBasis"], "1800.00");
+        assert_eq!(tag["totalValue"], "2024.00");
+        assert_eq!(tag["gainLoss"], "224.00");
+        assert_eq!(tag["annualDividend"], "36.80");
+        assert_eq!(tag["gainLossPct"], "12.44");
+        assert_eq!(tag["stockCount"], 1);
+    }
+
+    fn seed_cashflow(conn: &Connection) {
+        conn.execute_batch(
+            r#"
+            INSERT INTO cashflow_items (name, amount, currency, frequency, item_type, category) VALUES
+                ('Salary', 50000, 'CZK', 'monthly', 'income', 'salary'),
+                ('Rent', 400, 'EUR', 'monthly', 'expense', 'housing'),
+                ('Bonus', 9999, 'CZK', 'one_time', 'income', 'salary');
+            INSERT INTO loans (name, monthly_payment, currency) VALUES ('Mortgage', 10000, 'CZK');
+            INSERT INTO bank_accounts (name, balance, currency, interest_rate)
+                VALUES ('Savings', 100000, 'CZK', 3);
+            "#,
+        )
+        .expect("seed cashflow");
+    }
+
+    #[test]
+    fn cashflow_report_reports_amounts_in_the_main_currency() {
+        let conn = setup_db("EUR");
+        seed_cashflow(&conn);
+
+        let result = cashflow_report(&conn, None).expect("cashflow");
+
+        assert_eq!(result["mainCurrency"], "EUR");
+        assert_eq!(result["viewType"], "monthly");
+        // Income 50 000 + interest 250 = 50 250 CZK; expenses 10 000 (rent) + 10 000 (loan).
+        assert_eq!(result["summary"]["totalIncome"], "2010.00");
+        assert_eq!(result["summary"]["totalExpenses"], "800.00");
+        assert_eq!(result["summary"]["netCashflow"], "1210.00");
+        let income = result["income"].as_array().expect("income");
+        assert_eq!(income[0]["name"], "Salary");
+        assert_eq!(income[0]["amount"], "2000.00");
+        assert_eq!(income[1]["name"], "Interest: Savings");
+        assert_eq!(income[1]["amount"], "10.00");
+        let expenses = result["expenses"].as_array().expect("expenses");
+        assert_eq!(expenses[0]["name"], "Rent");
+        assert_eq!(expenses[0]["amount"], "400.00");
+        assert_eq!(expenses[1]["name"], "Loan: Mortgage");
+        assert_eq!(expenses[1]["amount"], "400.00");
+        assert!(result["summary"].get("totalIncomeCzk").is_none());
+    }
+
+    #[test]
+    fn cashflow_report_yearly_view_scales_the_main_currency_amounts() {
+        let conn = setup_db("EUR");
+        seed_cashflow(&conn);
+
+        let result = cashflow_report(&conn, Some("yearly".to_string())).expect("cashflow");
+
+        assert_eq!(result["mainCurrency"], "EUR");
+        assert_eq!(result["viewType"], "yearly");
+        assert_eq!(result["summary"]["totalIncome"], "24120.00");
+        assert_eq!(result["income"][0]["amount"], "24000.00");
+    }
+
+    #[test]
+    fn cashflow_report_stays_in_czk_for_a_czk_main_currency() {
+        let conn = setup_db("CZK");
+        seed_cashflow(&conn);
+
+        let result = cashflow_report(&conn, None).expect("cashflow");
+
+        assert_eq!(result["mainCurrency"], "CZK");
+        assert_eq!(result["summary"]["totalIncome"], "50250.00");
+        assert_eq!(result["expenses"][0]["amount"], "10000.00");
+    }
+
+    #[test]
+    fn budgeting_report_reports_amounts_in_the_main_currency() {
+        let conn = setup_db("EUR");
+        conn.execute_batch(
+            r#"
+            INSERT INTO transaction_categories (id, name) VALUES ('cat-food', 'Groceries');
+            INSERT INTO budget_goals (category_id, timeframe, amount, currency)
+                VALUES ('cat-food', 'monthly', 400, 'EUR');
+            INSERT INTO bank_transactions (category_id, amount, currency, booking_date, tx_type) VALUES
+                ('cat-food', '5000', 'CZK', 100, 'debit'),
+                ('cat-food', '100', 'EUR', 200, 'debit'),
+                ('cat-food', '9999', 'CZK', 100000, 'debit');
+            "#,
+        )
+        .expect("seed budgeting");
+
+        let result = budgeting_report(&conn, Some(0), Some(1000), None).expect("budgeting");
+
+        assert_eq!(result["mainCurrency"], "EUR");
+        assert_eq!(result["timeframe"], "monthly");
+        let cat = &result["budgetCategories"][0];
+        assert_eq!(cat["categoryName"], "Groceries");
+        // Budget 400 EUR = 10 000 CZK; spent 5 000 CZK + 100 EUR = 7 500 CZK.
+        assert_eq!(cat["budget"], "400.00");
+        assert_eq!(cat["actual"], "300.00");
+        assert_eq!(cat["remaining"], "100.00");
+        assert_eq!(cat["usagePercent"], "75.0");
+        assert_eq!(cat["overBudget"], false);
+        assert!(cat.get("budgetCzk").is_none());
     }
 }

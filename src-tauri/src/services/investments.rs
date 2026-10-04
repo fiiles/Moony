@@ -6,6 +6,7 @@
 
 use crate::error::{AppError, Result};
 use crate::models::{InsertInvestmentTransaction, InvestmentTransaction, StockInvestment};
+use crate::services::dedup;
 use chrono::DateTime;
 use rusqlite::params_from_iter;
 use rusqlite::types::Value;
@@ -187,6 +188,16 @@ pub fn delete_transactions(
     Ok(earliest_by_ticker.into_iter().collect())
 }
 
+/// Where a stock transaction came from. Hand-made and MCP-created ones have
+/// neither field; a CSV import sets both (migration 003).
+#[derive(Debug, Clone, Copy, Default)]
+pub struct TransactionOrigin<'a> {
+    /// `stock_import_batches.id` of the import that wrote the row.
+    pub import_batch_id: Option<&'a str>,
+    /// `<source>:<the broker's own transaction id>`.
+    pub external_id: Option<&'a str>,
+}
+
 /// Internal function to create a transaction record
 /// Used by both single-create, add transaction, and bulk import
 /// This is the SINGLE SOURCE OF TRUTH for transaction creation
@@ -201,6 +212,7 @@ pub fn create_transaction_internal(
     price_per_unit: &str,
     currency: &str,
     transaction_date: i64,
+    origin: TransactionOrigin<'_>,
 ) -> Result<InvestmentTransaction> {
     let tx_id = Uuid::new_v4().to_string();
     let now = chrono::Utc::now().timestamp();
@@ -208,8 +220,8 @@ pub fn create_transaction_internal(
 
     conn.execute(
         "INSERT INTO investment_transactions
-         (id, investment_id, type, ticker, company_name, quantity, price_per_unit, currency, transaction_date, created_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+         (id, investment_id, type, ticker, company_name, quantity, price_per_unit, currency, transaction_date, created_at, import_batch_id, external_id)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
         rusqlite::params![
             tx_id,
             investment_id,
@@ -221,6 +233,8 @@ pub fn create_transaction_internal(
             currency_upper,
             transaction_date,
             now,
+            origin.import_batch_id,
+            origin.external_id,
         ],
     )?;
 
@@ -337,6 +351,50 @@ pub fn import_single_transaction(
     currency: &str,
     transaction_date: i64,
 ) -> Result<(String, i64, String)> {
+    let written = import_single_transaction_with_origin(
+        conn,
+        ticker,
+        company_name,
+        tx_type,
+        quantity,
+        price_per_unit,
+        currency,
+        transaction_date,
+        TransactionOrigin::default(),
+    )?;
+    Ok((
+        written.description,
+        written.transaction_date,
+        written.ticker,
+    ))
+}
+
+/// What [`import_single_transaction_with_origin`] wrote.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ImportedTransaction {
+    pub description: String,
+    pub transaction_date: i64,
+    /// Uppercase ticker of the position the row went to.
+    pub ticker: String,
+    /// The row was the first of its position, which it created.
+    pub position_created: bool,
+}
+
+/// [`import_single_transaction`] that also records where the row came from.
+/// Business rules (all fail with `AppError::Validation`): a sell needs an
+/// existing position, and a position keeps the currency of its first buy.
+#[allow(clippy::too_many_arguments)]
+pub fn import_single_transaction_with_origin(
+    conn: &rusqlite::Connection,
+    ticker: &str,
+    company_name: &str,
+    tx_type: &str,
+    quantity: &str,
+    price_per_unit: &str,
+    currency: &str,
+    transaction_date: i64,
+    origin: TransactionOrigin<'_>,
+) -> Result<ImportedTransaction> {
     let ticker_upper = ticker.to_uppercase();
     let tx_type_lower = tx_type.to_lowercase();
 
@@ -366,6 +424,7 @@ pub fn import_single_transaction(
     }
 
     // Get or create investment
+    let position_created = existing.is_none();
     let investment_id = match existing {
         Some(id) => {
             // Validate currency matches for existing investment
@@ -407,13 +466,14 @@ pub fn import_single_transaction(
         price_per_unit,
         currency,
         transaction_date,
+        origin,
     )?;
 
     // Recalculate metrics
     recalculate_investment_metrics(conn, &investment_id)?;
 
-    Ok((
-        format!(
+    Ok(ImportedTransaction {
+        description: format!(
             "{} {} {} @ {}",
             tx_type_lower.to_uppercase(),
             quantity,
@@ -421,8 +481,224 @@ pub fn import_single_transaction(
             price_per_unit
         ),
         transaction_date,
-        ticker_upper,
-    ))
+        ticker: ticker_upper,
+        position_created,
+    })
+}
+
+/// One row of a bulk stock write ([`bulk_create_stock_transactions`]).
+#[derive(Debug, Clone)]
+pub struct BulkStockRow {
+    pub ticker: String,
+    /// Used when the write creates the position; defaults to the ticker.
+    pub company_name: Option<String>,
+    /// `buy` or `sell` (any case).
+    pub tx_type: String,
+    /// Positive decimal text.
+    pub quantity: String,
+    /// Positive decimal text, in `currency`.
+    pub price_per_unit: String,
+    /// 3-letter ISO code.
+    pub currency: String,
+    /// Unix seconds (UTC midnight of the trade day for imports).
+    pub transaction_date: i64,
+    /// `<source>:<the broker's own transaction id>` of a CSV import row.
+    pub external_id: Option<String>,
+    /// Write the row even when an identical transaction exists. The CSV import
+    /// decides duplicates itself (its preview shows them) and sets this on
+    /// every row it hands over.
+    pub allow_duplicate: bool,
+}
+
+/// The recorded import a bulk write belongs to (`stock_import_batches`).
+#[derive(Debug, Clone)]
+pub struct NewStockImportBatch {
+    pub file_name: String,
+    /// `xtb`, `trading212`, `degiro`, `ibkr`, `moony`, `custom` or `format:<uuid>`.
+    pub source: String,
+}
+
+/// A row of a bulk write that was left out or rejected: `index` is its
+/// position in the rows handed to [`bulk_create_stock_transactions`].
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BulkRowIssue {
+    pub index: usize,
+    pub message: String,
+}
+
+/// What [`bulk_create_stock_transactions`] did. `errors` non-empty implies
+/// `created == 0` and nothing was written, whether a row failed field
+/// validation or a business rule rolled the whole batch back.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct BulkStockWriteReport {
+    pub created: usize,
+    pub skipped_duplicates: Vec<BulkRowIssue>,
+    pub errors: Vec<BulkRowIssue>,
+    /// The recorded batch: only when one was requested and a row was written.
+    pub batch_id: Option<String>,
+    /// Tickers whose position this write created, in creation order.
+    pub created_positions: Vec<String>,
+    /// Every ticker that received a row, in first-write order.
+    pub written_tickers: Vec<String>,
+}
+
+fn validate_bulk_row(row: &BulkStockRow) -> Result<()> {
+    InsertInvestmentTransaction {
+        investment_id: None,
+        tx_type: row.tx_type.clone(),
+        ticker: row.ticker.clone(),
+        company_name: row
+            .company_name
+            .clone()
+            .unwrap_or_else(|| row.ticker.clone()),
+        quantity: row.quantity.clone(),
+        price_per_unit: row.price_per_unit.clone(),
+        currency: row.currency.clone(),
+        transaction_date: row.transaction_date,
+    }
+    .validate()
+}
+
+/// The one bulk writer for stock transactions (ADR 0007): the MCP tool
+/// `stock_transactions_create` and the CSV import both call it.
+///
+/// Two phases. Phase 1: every row is field-validated, nothing is written and
+/// every failure is reported when any row is invalid. Phase 2: one SQL
+/// transaction; rows are written in date order, buys before sells within a day
+/// (a sell may need a position created earlier in the same batch); a row that
+/// is identical to an existing transaction is skipped and reported unless it
+/// has `allow_duplicate`; a business-rule failure (sell without position,
+/// currency mismatch) rolls the WHOLE batch back and is reported as that
+/// row's error.
+///
+/// With a `batch`, its `stock_import_batches` row is written in the same
+/// transaction and every written row carries its id; no batch is recorded when
+/// no row ends up written. Every row stores its `external_id`.
+pub fn bulk_create_stock_transactions(
+    conn: &mut rusqlite::Connection,
+    rows: &[BulkStockRow],
+    batch: Option<&NewStockImportBatch>,
+) -> Result<BulkStockWriteReport> {
+    let errors: Vec<BulkRowIssue> = rows
+        .iter()
+        .enumerate()
+        .filter_map(|(index, row)| {
+            validate_bulk_row(row).err().map(|e| BulkRowIssue {
+                index,
+                message: e.to_string(),
+            })
+        })
+        .collect();
+    if !errors.is_empty() {
+        return Ok(BulkStockWriteReport {
+            errors,
+            ..BulkStockWriteReport::default()
+        });
+    }
+
+    // Stable sort: rows of one day and direction keep the order they came in.
+    let mut order: Vec<usize> = (0..rows.len()).collect();
+    order.sort_by_key(|&i| {
+        let row = &rows[i];
+        (
+            row.transaction_date,
+            if row.tx_type.eq_ignore_ascii_case("buy") {
+                0
+            } else {
+                1
+            },
+        )
+    });
+
+    let tx = conn.transaction()?;
+    // The batch row goes in first: the transactions reference it.
+    let batch_id = match batch {
+        Some(batch) if !rows.is_empty() => {
+            let id = Uuid::new_v4().to_string();
+            tx.execute(
+                "INSERT INTO stock_import_batches (id, file_name, source, trade_count)
+                 VALUES (?1, ?2, ?3, 0)",
+                rusqlite::params![id, batch.file_name, batch.source],
+            )?;
+            Some(id)
+        }
+        _ => None,
+    };
+
+    let mut report = BulkStockWriteReport::default();
+    for &i in &order {
+        let row = &rows[i];
+        if !row.allow_duplicate {
+            if let Some(reason) = dedup::find_duplicate_stock_transaction(
+                &tx,
+                &row.ticker.to_uppercase(),
+                row.transaction_date,
+                &row.tx_type.to_lowercase(),
+                &row.quantity,
+                &row.price_per_unit,
+            )? {
+                report.skipped_duplicates.push(BulkRowIssue {
+                    index: i,
+                    message: reason,
+                });
+                continue;
+            }
+        }
+        let external_id = row
+            .external_id
+            .as_deref()
+            .map(str::trim)
+            .filter(|id| !id.is_empty());
+        match import_single_transaction_with_origin(
+            &tx,
+            &row.ticker,
+            row.company_name.as_deref().unwrap_or(&row.ticker),
+            &row.tx_type,
+            &row.quantity,
+            &row.price_per_unit,
+            &row.currency,
+            row.transaction_date,
+            TransactionOrigin {
+                import_batch_id: batch_id.as_deref(),
+                external_id,
+            },
+        ) {
+            Ok(written) => {
+                report.created += 1;
+                if written.position_created {
+                    report.created_positions.push(written.ticker.clone());
+                }
+                if !report.written_tickers.contains(&written.ticker) {
+                    report.written_tickers.push(written.ticker);
+                }
+            }
+            Err(e) => {
+                // Roll everything back (batch row included); report the failing row.
+                drop(tx);
+                return Ok(BulkStockWriteReport {
+                    errors: vec![BulkRowIssue {
+                        index: i,
+                        message: e.to_string(),
+                    }],
+                    ..BulkStockWriteReport::default()
+                });
+            }
+        }
+    }
+
+    if let Some(id) = batch_id {
+        if report.created == 0 {
+            tx.execute("DELETE FROM stock_import_batches WHERE id = ?1", [&id])?;
+        } else {
+            tx.execute(
+                "UPDATE stock_import_batches SET trade_count = ?1 WHERE id = ?2",
+                rusqlite::params![report.created as i64, id],
+            )?;
+            report.batch_id = Some(id);
+        }
+    }
+    tx.commit()?;
+    Ok(report)
 }
 
 /// Create investment with optional initial transaction
@@ -455,6 +731,7 @@ pub fn create_investment_with_transaction(
             &tx.price_per_unit,
             &tx.currency,
             tx.transaction_date,
+            TransactionOrigin::default(),
         )?;
 
         // Recalculate metrics from the transaction
@@ -506,6 +783,7 @@ pub fn add_transaction_to_investment(
         &data.price_per_unit,
         &data.currency,
         data.transaction_date,
+        TransactionOrigin::default(),
     )?;
 
     recalculate_investment_metrics(conn, investment_id)?;
@@ -857,6 +1135,14 @@ mod tests {
                 PRIMARY KEY (date, currency)
             );
 
+            CREATE TABLE stock_import_batches (
+                id TEXT PRIMARY KEY,
+                file_name TEXT NOT NULL,
+                source TEXT NOT NULL,
+                trade_count INTEGER NOT NULL,
+                created_at INTEGER NOT NULL DEFAULT (unixepoch())
+            );
+
             CREATE TABLE investment_transactions (
                 id TEXT PRIMARY KEY,
                 investment_id TEXT NOT NULL,
@@ -867,7 +1153,9 @@ mod tests {
                 price_per_unit TEXT NOT NULL,
                 currency TEXT NOT NULL,
                 transaction_date INTEGER NOT NULL,
-                created_at INTEGER NOT NULL
+                created_at INTEGER NOT NULL,
+                import_batch_id TEXT REFERENCES stock_import_batches(id) ON DELETE SET NULL,
+                external_id TEXT
             );
             "#,
         )
@@ -1490,5 +1778,253 @@ mod tests {
         .unwrap();
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].twr, 0.0);
+    }
+
+    // ---- the shared bulk writer (ADR 0007) --------------------------------
+
+    const DAY: i64 = 86_400;
+    const D0: i64 = 1_700_000_000 - 1_700_000_000 % DAY;
+
+    fn bulk_row(ticker: &str, kind: &str, qty: &str, price: &str, date: i64) -> BulkStockRow {
+        BulkStockRow {
+            ticker: ticker.to_string(),
+            company_name: None,
+            tx_type: kind.to_string(),
+            quantity: qty.to_string(),
+            price_per_unit: price.to_string(),
+            currency: "USD".to_string(),
+            transaction_date: date,
+            external_id: None,
+            allow_duplicate: false,
+        }
+    }
+
+    fn batch(file: &str) -> NewStockImportBatch {
+        NewStockImportBatch {
+            file_name: file.to_string(),
+            source: "xtb".to_string(),
+        }
+    }
+
+    fn count(conn: &Connection, table: &str) -> i64 {
+        conn.query_row(&format!("SELECT COUNT(*) FROM {table}"), [], |r| r.get(0))
+            .unwrap()
+    }
+
+    /// `(import_batch_id, external_id)` of every transaction, oldest rowid first.
+    fn provenance(conn: &Connection) -> Vec<(Option<String>, Option<String>)> {
+        let mut stmt = conn
+            .prepare(
+                "SELECT import_batch_id, external_id FROM investment_transactions ORDER BY rowid",
+            )
+            .unwrap();
+        let rows = stmt.query_map([], |r| Ok((r.get(0)?, r.get(1)?))).unwrap();
+        rows.map(|r| r.unwrap()).collect()
+    }
+
+    #[test]
+    fn a_bulk_write_with_a_batch_records_it_and_stamps_every_row() {
+        let mut conn = setup_test_db();
+        let mut a = bulk_row("aapl", "buy", "10", "100", D0);
+        a.external_id = Some("xtb:111".into());
+        let mut b = bulk_row("aapl", "sell", "4", "110", D0 + DAY);
+        b.external_id = Some("xtb:112".into());
+        let c = bulk_row("msft", "buy", "2", "300", D0 + DAY); // no broker id
+
+        let report =
+            bulk_create_stock_transactions(&mut conn, &[a, b, c], Some(&batch("xtb.csv"))).unwrap();
+
+        assert_eq!(report.created, 3, "{report:?}");
+        assert!(report.errors.is_empty());
+        let batch_id = report.batch_id.clone().expect("a batch is recorded");
+        assert_eq!(report.created_positions, vec!["AAPL", "MSFT"]);
+        assert_eq!(report.written_tickers, vec!["AAPL", "MSFT"]);
+
+        let (file, source, trades): (String, String, i64) = conn
+            .query_row(
+                "SELECT file_name, source, trade_count FROM stock_import_batches WHERE id = ?1",
+                [&batch_id],
+                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+            )
+            .unwrap();
+        assert_eq!(
+            (file.as_str(), source.as_str(), trades),
+            ("xtb.csv", "xtb", 3)
+        );
+        assert_eq!(count(&conn, "stock_import_batches"), 1);
+        // Written in date order, buys first within a day: a, then the MSFT buy, then the sell.
+        assert_eq!(
+            provenance(&conn),
+            vec![
+                (Some(batch_id.clone()), Some("xtb:111".to_string())),
+                (Some(batch_id.clone()), None),
+                (Some(batch_id), Some("xtb:112".to_string())),
+            ]
+        );
+    }
+
+    #[test]
+    fn a_bulk_write_without_a_batch_leaves_both_columns_empty() {
+        let mut conn = setup_test_db();
+        let report = bulk_create_stock_transactions(
+            &mut conn,
+            &[bulk_row("aapl", "buy", "1", "1", D0)],
+            None,
+        )
+        .unwrap();
+        assert_eq!(report.created, 1);
+        assert_eq!(report.batch_id, None);
+        assert_eq!(provenance(&conn), vec![(None, None)]);
+        assert_eq!(count(&conn, "stock_import_batches"), 0);
+    }
+
+    #[test]
+    fn a_blank_external_id_is_stored_as_none() {
+        let mut conn = setup_test_db();
+        let mut row = bulk_row("aapl", "buy", "1", "1", D0);
+        row.external_id = Some("   ".into());
+        bulk_create_stock_transactions(&mut conn, &[row], None).unwrap();
+        assert_eq!(provenance(&conn), vec![(None, None)]);
+    }
+
+    #[test]
+    fn identical_rows_are_skipped_unless_they_allow_a_duplicate() {
+        let mut conn = setup_test_db();
+        let first = bulk_row("aapl", "buy", "10", "100", D0);
+        bulk_create_stock_transactions(&mut conn, &[first.clone()], None).unwrap();
+
+        let skipped = bulk_create_stock_transactions(&mut conn, &[first.clone()], None).unwrap();
+        assert_eq!(skipped.created, 0);
+        assert_eq!(skipped.skipped_duplicates.len(), 1);
+        assert_eq!(skipped.skipped_duplicates[0].index, 0);
+        assert_eq!(count(&conn, "investment_transactions"), 1);
+
+        let mut forced = first;
+        forced.allow_duplicate = true;
+        let written = bulk_create_stock_transactions(&mut conn, &[forced], None).unwrap();
+        assert_eq!(written.created, 1);
+        assert!(written.skipped_duplicates.is_empty());
+        assert_eq!(count(&conn, "investment_transactions"), 2);
+    }
+
+    #[test]
+    fn no_batch_is_recorded_when_every_row_is_skipped() {
+        let mut conn = setup_test_db();
+        let row = bulk_row("aapl", "buy", "10", "100", D0);
+        bulk_create_stock_transactions(&mut conn, &[row.clone()], None).unwrap();
+
+        let report =
+            bulk_create_stock_transactions(&mut conn, &[row], Some(&batch("again.csv"))).unwrap();
+
+        assert_eq!(report.created, 0);
+        assert_eq!(report.skipped_duplicates.len(), 1);
+        assert_eq!(report.batch_id, None);
+        assert_eq!(
+            count(&conn, "stock_import_batches"),
+            0,
+            "no empty batch is left behind"
+        );
+    }
+
+    #[test]
+    fn an_empty_write_records_no_batch() {
+        let mut conn = setup_test_db();
+        let report =
+            bulk_create_stock_transactions(&mut conn, &[], Some(&batch("empty.csv"))).unwrap();
+        assert_eq!(report, BulkStockWriteReport::default());
+        assert_eq!(count(&conn, "stock_import_batches"), 0);
+    }
+
+    #[test]
+    fn a_rule_failure_rolls_back_the_rows_and_the_batch() {
+        let mut conn = setup_test_db();
+        let rows = [
+            bulk_row("aapl", "buy", "10", "100", D0),
+            bulk_row("msft", "sell", "1", "300", D0 + DAY), // no MSFT position
+        ];
+
+        let report =
+            bulk_create_stock_transactions(&mut conn, &rows, Some(&batch("bad.csv"))).unwrap();
+
+        assert_eq!(report.created, 0);
+        assert_eq!(report.batch_id, None);
+        assert!(report.created_positions.is_empty());
+        assert_eq!(report.errors.len(), 1);
+        assert_eq!(report.errors[0].index, 1);
+        assert!(
+            report.errors[0].message.contains("Cannot sell"),
+            "{:?}",
+            report.errors
+        );
+        assert_eq!(count(&conn, "stock_investments"), 0);
+        assert_eq!(count(&conn, "investment_transactions"), 0);
+        assert_eq!(count(&conn, "stock_import_batches"), 0);
+    }
+
+    #[test]
+    fn field_validation_reports_every_bad_row_and_writes_nothing() {
+        let mut conn = setup_test_db();
+        let mut bad_type = bulk_row("aapl", "banana", "1", "1", D0);
+        bad_type.tx_type = "banana".into();
+        let bad_quantity = bulk_row("msft", "buy", "0", "1", D0);
+        let good = bulk_row("goog", "buy", "1", "1", D0);
+
+        let report = bulk_create_stock_transactions(
+            &mut conn,
+            &[bad_type, bad_quantity, good],
+            Some(&batch("x.csv")),
+        )
+        .unwrap();
+
+        assert_eq!(report.created, 0);
+        let indexes: Vec<usize> = report.errors.iter().map(|e| e.index).collect();
+        assert_eq!(indexes, vec![0, 1]);
+        assert_eq!(count(&conn, "stock_investments"), 0);
+        assert_eq!(count(&conn, "stock_import_batches"), 0);
+    }
+
+    #[test]
+    fn rows_are_written_in_date_order_with_buys_first_within_a_day() {
+        let mut conn = setup_test_db();
+        // The sell is listed first, on the same day as the buy it depends on.
+        let rows = [
+            bulk_row("aapl", "sell", "4", "110", D0),
+            bulk_row("aapl", "buy", "10", "100", D0),
+        ];
+        let report = bulk_create_stock_transactions(&mut conn, &rows, None).unwrap();
+        assert_eq!(report.created, 2, "{report:?}");
+        assert_eq!(
+            report.created_positions,
+            vec!["AAPL"],
+            "only the first buy creates it"
+        );
+        let types: Vec<String> = conn
+            .prepare("SELECT type FROM investment_transactions ORDER BY rowid")
+            .unwrap()
+            .query_map([], |r| r.get(0))
+            .unwrap()
+            .map(|r| r.unwrap())
+            .collect();
+        assert_eq!(types, vec!["buy", "sell"]);
+    }
+
+    #[test]
+    fn a_later_write_to_an_existing_position_reports_no_created_position() {
+        let mut conn = setup_test_db();
+        bulk_create_stock_transactions(
+            &mut conn,
+            &[bulk_row("aapl", "buy", "10", "100", D0)],
+            None,
+        )
+        .unwrap();
+        let report = bulk_create_stock_transactions(
+            &mut conn,
+            &[bulk_row("aapl", "buy", "5", "105", D0 + DAY)],
+            Some(&batch("more.csv")),
+        )
+        .unwrap();
+        assert_eq!(report.created, 1);
+        assert!(report.created_positions.is_empty());
+        assert_eq!(report.written_tickers, vec!["AAPL"]);
     }
 }

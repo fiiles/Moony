@@ -7,7 +7,7 @@ use serde::Deserialize;
 use serde_json::Value;
 
 use crate::error::Result;
-use crate::services::{dedup, investments as investment_service};
+use crate::services::investments as investment_service;
 
 use super::{
     sql_to_json, ticker_value_history, BulkWriteReport, RowError, SkippedRow, MAX_BULK_ROWS,
@@ -256,110 +256,51 @@ pub struct StockTransactionsCreateArgs {
     pub transactions: Vec<StockTransactionRow>,
 }
 
-fn validate_stock_row(row: &StockTransactionRow) -> Result<()> {
-    let insert = crate::models::InsertInvestmentTransaction {
-        investment_id: None,
-        tx_type: row.tx_type.clone(),
-        ticker: row.ticker.clone(),
-        company_name: row
-            .company_name
-            .clone()
-            .unwrap_or_else(|| row.ticker.clone()),
-        quantity: row.quantity.clone(),
-        price_per_unit: row.price_per_unit.clone(),
-        currency: row.currency.clone(),
-        transaction_date: row.transaction_date,
-    };
-    insert.validate()
-}
-
-/// Two-phase bulk import. Phase 1: every row field-validates. Phase 2: one SQL
-/// transaction; rows sorted by date (buys before sells within a date — a sell
-/// may need a position created earlier in the same batch); duplicates skipped;
-/// business-rule failures mid-batch (sell without position, currency mismatch)
-/// roll the WHOLE batch back and are reported as that row's error.
+/// Two-phase bulk import through the shared writer
+/// (`services::investments::bulk_create_stock_transactions`, ADR 0007). Phase
+/// 1: every row field-validates. Phase 2: one SQL transaction; rows sorted by
+/// date (buys before sells within a date — a sell may need a position created
+/// earlier in the same batch); duplicates skipped; business-rule failures
+/// mid-batch (sell without position, currency mismatch) roll the WHOLE batch
+/// back and are reported as that row's error.
 pub fn stock_transactions_create(
     conn: &mut rusqlite::Connection,
     args: &StockTransactionsCreateArgs,
 ) -> Result<BulkWriteReport> {
     super::check_bulk_size(args.transactions.len())?;
 
-    let mut errors: Vec<RowError> = Vec::new();
-    for (i, row) in args.transactions.iter().enumerate() {
-        if let Err(e) = validate_stock_row(row) {
-            errors.push(RowError {
-                index: i,
-                message: e.to_string(),
-            });
-        }
-    }
-    if !errors.is_empty() {
-        return Ok(BulkWriteReport {
-            created: 0,
-            skipped_duplicates: vec![],
-            errors,
-        });
-    }
-
-    let mut order: Vec<usize> = (0..args.transactions.len()).collect();
-    order.sort_by_key(|&i| {
-        let r = &args.transactions[i];
-        (
-            r.transaction_date,
-            if r.tx_type.to_lowercase() == "buy" {
-                0
-            } else {
-                1
-            },
-        )
-    });
-
-    let tx = conn.transaction()?;
-    let mut created = 0usize;
-    let mut skipped: Vec<SkippedRow> = Vec::new();
-    for &i in &order {
-        let row = &args.transactions[i];
-        let ticker_upper = row.ticker.to_uppercase();
-        if let Some(reason) = dedup::find_duplicate_stock_transaction(
-            &tx,
-            &ticker_upper,
-            row.transaction_date,
-            &row.tx_type.to_lowercase(),
-            &row.quantity,
-            &row.price_per_unit,
-        )? {
-            skipped.push(SkippedRow::new(i, reason));
-            continue;
-        }
-        if let Err(e) = investment_service::import_single_transaction(
-            &tx,
-            &row.ticker,
-            row.company_name.as_deref().unwrap_or(&row.ticker),
-            &row.tx_type,
-            &row.quantity,
-            &row.price_per_unit,
-            &row.currency,
-            row.transaction_date,
-        ) {
-            // roll back everything; report the failing row
-            drop(tx);
-            return Ok(BulkWriteReport {
-                created: 0,
-                skipped_duplicates: vec![],
-                errors: vec![RowError {
-                    index: i,
-                    message: e.to_string(),
-                }],
-            });
-        }
-        created += 1;
-    }
-    tx.commit()?;
+    let rows: Vec<investment_service::BulkStockRow> = args
+        .transactions
+        .iter()
+        .map(|row| investment_service::BulkStockRow {
+            ticker: row.ticker.clone(),
+            company_name: row.company_name.clone(),
+            tx_type: row.tx_type.clone(),
+            quantity: row.quantity.clone(),
+            price_per_unit: row.price_per_unit.clone(),
+            currency: row.currency.clone(),
+            transaction_date: row.transaction_date,
+            external_id: None,
+            allow_duplicate: false,
+        })
+        .collect();
+    let report = investment_service::bulk_create_stock_transactions(conn, &rows, None)?;
 
     Ok(BulkWriteReport {
-        created,
-        skipped_duplicates: skipped,
-        errors: vec![],
+        created: report.created,
+        skipped_duplicates: report
+            .skipped_duplicates
+            .into_iter()
+            .map(|row| SkippedRow::new(row.index, row.message))
+            .collect(),
+        errors: report
+            .errors
+            .into_iter()
+            .map(|row| RowError {
+                index: row.index,
+                message: row.message,
+            })
+            .collect(),
     })
 }
 
@@ -405,6 +346,14 @@ mod bulk_tests {
                 PRIMARY KEY (date, currency)
             );
 
+            CREATE TABLE stock_import_batches (
+                id TEXT PRIMARY KEY,
+                file_name TEXT NOT NULL,
+                source TEXT NOT NULL,
+                trade_count INTEGER NOT NULL,
+                created_at INTEGER NOT NULL DEFAULT (unixepoch())
+            );
+
             CREATE TABLE investment_transactions (
                 id TEXT PRIMARY KEY,
                 investment_id TEXT NOT NULL REFERENCES stock_investments(id) ON DELETE CASCADE,
@@ -415,7 +364,9 @@ mod bulk_tests {
                 price_per_unit TEXT NOT NULL,
                 currency TEXT NOT NULL,
                 transaction_date INTEGER NOT NULL,
-                created_at INTEGER NOT NULL DEFAULT (unixepoch())
+                created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+                import_batch_id TEXT REFERENCES stock_import_batches(id) ON DELETE SET NULL,
+                external_id TEXT
             );
             "#,
         )

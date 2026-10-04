@@ -366,6 +366,22 @@ pub fn parse_date_to_timestamp(
         })
 }
 
+/// The separator-less date format (Interactive Brokers `yyyyMMdd`).
+const COMPACT_DATE_FORMAT: &str = "%Y%m%d";
+
+/// A `yyyyMMdd` date: exactly eight digits, a real date, year 1900–2100.
+///
+/// chrono would also read "2023052" with `%Y%m%d` (as 2023-05-02): with no
+/// separators the width of month and day is the only thing that tells the
+/// fields apart, so it is checked here.
+fn parse_compact_date(sample: &str) -> Option<NaiveDate> {
+    if sample.len() != 8 || !sample.bytes().all(|b| b.is_ascii_digit()) {
+        return None;
+    }
+    let date = NaiveDate::parse_from_str(sample, COMPACT_DATE_FORMAT).ok()?;
+    (1900..=2100).contains(&date.year()).then_some(date)
+}
+
 /// Parse `date_str` with exactly `format` — no fallback to other formats and no
 /// day/month guessing. A time component in the value is ignored, a time part in
 /// the format is tolerated (`%Y-%m-%d %H:%M:%S` reads "2026-09-02 08:00:01").
@@ -378,6 +394,9 @@ pub fn parse_date_strict(date_str: &str, format: &str) -> Option<NaiveDate> {
     let stripped = strip_time_component(date_str);
     if stripped.is_empty() {
         return None;
+    }
+    if date_only_format(format) == COMPACT_DATE_FORMAT {
+        return parse_compact_date(stripped);
     }
     let date = parse_date_with_format(stripped, format)?;
     (1900..=2100).contains(&date.year()).then_some(date)
@@ -471,10 +490,21 @@ fn sample_parts(sample: &str) -> Option<SampleParts> {
 /// Infer one date format for a whole column. Builds on
 /// `detect_date_format_from_samples` for the field order and adds the
 /// separator and the year width. Samples that cannot be read are ignored; with
-/// none left the result is `%Y-%m-%d` flagged ambiguous.
+/// none left the result is `%Y-%m-%d` flagged ambiguous. A column of
+/// separator-less `yyyyMMdd` dates (and nothing separated) is `%Y%m%d`.
 pub fn detect_date_format(samples: &[&str]) -> DetectedDateFormat {
     let parts: Vec<SampleParts> = samples.iter().filter_map(|s| sample_parts(s)).collect();
     if parts.is_empty() {
+        // Separator-less dates have no parts to split; their order is fixed.
+        if samples
+            .iter()
+            .any(|s| parse_compact_date(strip_time_component(s)).is_some())
+        {
+            return DetectedDateFormat {
+                format: COMPACT_DATE_FORMAT.to_string(),
+                ambiguous: false,
+            };
+        }
         return DetectedDateFormat {
             format: "%Y-%m-%d".to_string(),
             ambiguous: true,
@@ -936,12 +966,82 @@ mod tests {
     }
 
     #[test]
+    fn detect_format_reads_separator_less_dates() {
+        // Interactive Brokers writes `yyyyMMdd`: nothing to confuse, nothing
+        // to confirm.
+        assert_eq!(
+            detected(&["20230522", "20231231"]),
+            ("%Y%m%d".into(), false)
+        );
+        // A time after the date does not matter.
+        assert_eq!(
+            detected(&["20230522 09:30:00", "20230523T093000Z"]),
+            ("%Y%m%d".into(), false)
+        );
+        // Unreadable cells are ignored, as for every other format.
+        assert_eq!(detected(&["20230522", "", "n/a"]), ("%Y%m%d".into(), false));
+    }
+
+    #[test]
+    fn eight_digits_that_are_not_a_date_are_not_a_format() {
+        // Month 13, day 32, an out-of-range year and a plain number.
+        for sample in ["20231301", "20230532", "18990101", "21010101", "12345678"] {
+            assert_eq!(
+                detected(&[sample]),
+                ("%Y-%m-%d".into(), true),
+                "{sample} must not read as yyyyMMdd"
+            );
+        }
+        // Seven and nine digits are no dates either.
+        assert_eq!(detected(&["2023052"]), ("%Y-%m-%d".into(), true));
+        assert_eq!(detected(&["202305221"]), ("%Y-%m-%d".into(), true));
+    }
+
+    #[test]
+    fn separated_dates_win_over_stray_compact_ones() {
+        // One compact cell among separated ones is the odd one out.
+        assert_eq!(
+            detected(&["20230522", "2023-05-23", "2023-05-24"]),
+            ("%Y-%m-%d".into(), false)
+        );
+        assert_eq!(
+            detected(&["20230522", "25.05.2023"]),
+            ("%d.%m.%Y".into(), false)
+        );
+    }
+
+    #[test]
+    fn strict_parse_reads_separator_less_dates() {
+        let expected = NaiveDate::from_ymd_opt(2023, 5, 22).unwrap();
+        assert_eq!(parse_date_strict("20230522", "%Y%m%d"), Some(expected));
+        assert_eq!(
+            parse_date_strict("20230522 09:30:00", "%Y%m%d"),
+            Some(expected)
+        );
+        assert_eq!(
+            parse_date_strict("20230522T093000Z", "%Y%m%d"),
+            Some(expected)
+        );
+        // Impossible dates, other layouts and a year out of range are errors.
+        assert_eq!(parse_date_strict("20230230", "%Y%m%d"), None);
+        assert_eq!(parse_date_strict("2023-05-22", "%Y%m%d"), None);
+        assert_eq!(parse_date_strict("20230522", "%Y-%m-%d"), None);
+        assert_eq!(parse_date_strict("18990101", "%Y%m%d"), None);
+        assert_eq!(parse_date_strict("2023052", "%Y%m%d"), None);
+        assert_eq!(
+            parse_date_to_timestamp_strict("20230522", "%Y%m%d"),
+            Some(1684713600)
+        );
+    }
+
+    #[test]
     fn detected_format_parses_its_own_samples() {
         for samples in [
             vec!["09/02/2026", "09/13/2026"],
             vec!["01.09.26", "30.09.26"],
             vec!["2026-09-01 10:12:33"],
             vec!["14. 1. 2026", "1. 12. 2025"],
+            vec!["20260901", "20260930"],
         ] {
             let d = detect_date_format(&samples);
             for s in &samples {

@@ -53,7 +53,6 @@
   },
   "moves": {
     "title": "Recent moves",
-    "all": "Show all",
     "empty": "Bank transactions, buys and sells will appear here.",
     "kind": {
       "bankIn": "Incoming payment",

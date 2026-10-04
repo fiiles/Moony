@@ -270,8 +270,8 @@ export default function RealEstatePage() {
     </span>
   );
   /** Muted second line of a cell: one line, the full text in the title. */
-  const sub = (text: string) => (
-    <small className="mt-[3px] block truncate text-micro font-500 text-ink-4" title={text}>
+  const sub = (text: string, title: string = text) => (
+    <small className="mt-[3px] block truncate text-micro font-500 text-ink-4" title={title}>
       {text}
     </small>
   );
@@ -396,11 +396,11 @@ export default function RealEstatePage() {
             {/*
               Fixed layout, so the table never scrolls sideways: a column keeps its width and long
               text ends in "…" (the full text stays in the title). The card is 718 px wide in the
-              1080 px minimum window and 1,038 px in the default 1,400 px one. The four figure
-              columns are sized for the widest content they show (an 8-digit amount, the longest
-              header): 77 % of the table in a window narrower than 1,240 px, 65 % from there on.
-              The name column takes the rest, ≈ 17 % compact and ≈ 30 % wide; compact, the logo
-              and the badge step aside so the name keeps ≈ 95 px.
+              1080 px minimum window and 1,038 px in the default 1,400 px one. The figure columns
+              are sized for the widest content they show (an 8-digit amount, the longest header).
+              Narrower than 1,240 px the rent column steps aside (rent and yield are in the stats
+              above), so the name column keeps ≈ 37 % and the property stays readable; from
+              1,240 px all four figure columns take 65 % and the name ≈ 30 %.
             */}
             <Table className="table-fixed">
               <TableHeader>
@@ -414,7 +414,7 @@ export default function RealEstatePage() {
                   <SortHead column="appreciation" className="w-[18.2%] min-[1240px]:w-[15.5%]">
                     {t('table.appreciation')}
                   </SortHead>
-                  <SortHead column="rent" className="w-[19.7%] min-[1240px]:w-[16.5%]">
+                  <SortHead column="rent" className="hidden w-[16.5%] min-[1240px]:table-cell">
                     {t('table.rentYield')}
                   </SortHead>
                   <SortHead column="equity" className="w-[16.3%] min-[1240px]:w-[14.5%]">
@@ -457,7 +457,6 @@ export default function RealEstatePage() {
                               ticker={p.name}
                               type="stock"
                               variant={r.excluded ? 'soft' : 'series'}
-                              className="hidden min-[1240px]:grid"
                             />
                             <div className="min-w-0">
                               <div className="flex items-center gap-[6px]">
@@ -471,10 +470,7 @@ export default function RealEstatePage() {
                                   {p.name}
                                 </b>
                                 {r.excluded && (
-                                  <Badge
-                                    variant="outline"
-                                    className="-my-px hidden shrink-0 min-[1240px]:inline-flex"
-                                  >
+                                  <Badge variant="outline" className="-my-px shrink-0">
                                     {t('table.excluded')}
                                   </Badge>
                                 )}
@@ -489,8 +485,17 @@ export default function RealEstatePage() {
                             cn('font-650', r.excluded ? 'text-ink-3' : 'text-ink')
                           )}
                           {/* A purchase price of 0 is the form's "not entered" */}
+                          {/* The purchase date only goes to the tooltip: the column has no room */}
                           {r.purchaseCzk > 0 &&
-                            sub(t('table.boughtFor', { amount: formatCurrency(r.purchaseCzk) }))}
+                            sub(
+                              t('table.boughtFor', { amount: formatCurrency(r.purchaseCzk) }),
+                              p.purchaseDate !== null
+                                ? t('detail.boughtOnFor', {
+                                    date: fmt.day(p.purchaseDate),
+                                    amount: formatCurrency(r.purchaseCzk),
+                                  })
+                                : undefined
+                            )}
                         </TableCell>
                         <TableCell
                           className={cn(
@@ -505,7 +510,7 @@ export default function RealEstatePage() {
                             })
                           )}
                         </TableCell>
-                        <TableCell className="text-right num">
+                        <TableCell className="hidden text-right num min-[1240px]:table-cell">
                           {r.rentYearCzk > 0 ? (
                             <>
                               {main(formatCurrency(r.rentYearCzk / 12))}

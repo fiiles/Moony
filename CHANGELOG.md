@@ -14,8 +14,7 @@ All notable changes to Moony are documented in this file. The format follows
   mapped column by column and can be remembered. Before anything is written it confirms the
   securities on Yahoo Finance, shows what happens to every row and catches duplicates (by the
   broker's trade ID, the same values, or a trade you entered by hand with a rounded price) and
-  sells above the holding. Every import is recorded
-  and can be undone. Fees are not imported.
+  sells above the holding. Every import is recorded and can be undone. Fees are not imported.
 - **Year to date.** The dashboard, the list trend cards and the stock, crypto and bank account
   charts offer the horizons 30 days · 3 months · This year · Year · All, bounded on UTC days.
 - **Cash over time.** Bank accounts get a trend card with the recorded cash history, the same
@@ -70,7 +69,8 @@ All notable changes to Moony are documented in this file. The format follows
   hundred times too high and a dollar ETF listed in London (CSPX.L, VWRA.L, IWDA.L, EIMI.L) was
   valued as pounds. Prices, the previous close, dividends, the charts and the 52-week range now
   use the currency Yahoo reports, and the value history of the affected holdings is rebuilt once
-  in the background.
+  in the background. If you entered the purchase prices of such a holding in pence to match the
+  old display, edit them to pounds.
 - **Chart tooltips froze after a buy or sell mark.** On every chart with marks the price tooltip
   kept showing the first day while the cursor moved; it now follows the cursor, and a mark's own
   tooltip appears on hover and stays inside the card at the edges.

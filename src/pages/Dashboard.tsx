@@ -403,13 +403,14 @@ export default function Dashboard() {
       </Stats>
 
       <div className="mt-9 grid grid-cols-[1.15fr_0.85fr] gap-[18px]">
-        <section>
+        <section className="flex flex-col">
           <SectionHead
             title={t('allocation.title')}
             link={{ href: '/stocks', label: t('allocation.open') }}
           />
-          <Card variant="flat">
-            <CardContent className="pt-5">
+          {/* Stretches to the height of "Poslední pohyby"; the ring centers vertically */}
+          <Card variant="flat" className="flex flex-1 items-center">
+            <CardContent className="w-full pt-5">
               <AllocationRing
                 segments={allocation}
                 centerLabel={t('allocation.center')}
@@ -424,12 +425,12 @@ export default function Dashboard() {
             </CardContent>
           </Card>
         </section>
-        <section>
+        <section className="flex flex-col">
           <SectionHead
             title={t('moves.title')}
             link={{ href: '/bank-accounts', label: t('moves.all') }}
           />
-          <Card variant="flat">
+          <Card variant="flat" className="flex-1">
             <CardContent className="pb-2 pt-2">
               <RecentMoves moves={moves} isLoading={movesLoading} />
             </CardContent>

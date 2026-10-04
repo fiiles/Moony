@@ -147,7 +147,7 @@
       "growth": "Growth a year",
       "contribution": "Contribution a month",
       "active": "Active",
-      "hint": "Contributions are added every month in CZK. Loans follow their own schedule and have no parameters.",
+      "hint": "Contributions are added every month. Loans follow their own schedule and have no parameters.",
       "save": "Save parameters",
       "saved": "Projection parameters saved",
       "blankHint": "A blank growth keeps the default: for bank accounts and bonds the weighted rate of your own accounts and bonds."

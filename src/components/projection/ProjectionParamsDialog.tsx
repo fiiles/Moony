@@ -13,8 +13,9 @@ import { Input, InputWrap } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useCurrency } from '@/lib/currency';
 import type { ClassParams } from '@/components/projection/projection-classes';
-import { rateToStore } from '@/utils/projection-assumptions';
+import { contributionToStore, rateToStore } from '@/utils/projection-assumptions';
 
 interface Draft {
   rate: string;
@@ -64,13 +65,18 @@ export function ProjectionParamsDialog({
   );
 }
 
-function initialDraft(params: ClassParams[]): Record<string, Draft> {
+/** `toDisplay` converts a stored CZK amount into the display currency. */
+function initialDraft(
+  params: ClassParams[],
+  toDisplay: (czk: number) => number
+): Record<string, Draft> {
   const next: Record<string, Draft> = {};
   for (const p of params) {
     next[p.cls.key] = {
       // A default rate stays blank (the placeholder shows it), so the class keeps following its default
       rate: p.derived ? '' : (Math.round(p.rate * 100) / 100).toString(),
-      contribution: Math.round(p.contribution).toString(),
+      // The stored contribution is CZK; the field shows the display currency
+      contribution: Math.round(toDisplay(p.contribution)).toString(),
       enabled: p.enabled,
     };
   }
@@ -90,7 +96,12 @@ function ParamsForm({
 }) {
   const { t } = useTranslation('reports');
   const { t: tc } = useTranslation('common');
-  const [draft, setDraft] = useState<Record<string, Draft>>(() => initialDraft(params));
+  const { currencyCode, convert } = useCurrency();
+  // Kept so submit can tell an untouched contribution (stored CZK value kept as is) from an edited one
+  const [initial] = useState<Record<string, Draft>>(() =>
+    initialDraft(params, (czk) => convert(czk, 'CZK', currencyCode))
+  );
+  const [draft, setDraft] = useState<Record<string, Draft>>(initial);
 
   const update = (key: string, patch: Partial<Draft>) =>
     setDraft((d) => ({ ...d, [key]: { ...d[key], ...patch } }));
@@ -103,10 +114,16 @@ function ParamsForm({
         assetType: p.cls.key,
         // '' = keep the class default, '0' = an explicit 0 %
         yearlyGrowthRate: rateToStore(draft[p.cls.key]?.rate ?? ''),
-        monthlyContribution: String(
-          p.cls.hasContribution ? parseFloat(draft[p.cls.key]?.contribution ?? '') || 0 : 0
-        ),
-        // The backend sums contributions in CZK (see get_settings_map)
+        monthlyContribution: p.cls.hasContribution
+          ? contributionToStore(
+              draft[p.cls.key]?.contribution ?? '',
+              initial[p.cls.key]?.contribution ?? '',
+              p.contribution,
+              (v) => convert(v, currencyCode, 'CZK')
+            )
+          : '0',
+        // Stored in CZK, the base currency (the backend sums it as CZK, see get_settings_map);
+        // the dialog converts from the display currency above
         contributionCurrency: 'CZK',
         enabled: draft[p.cls.key]?.enabled ?? true,
       }))
@@ -155,7 +172,7 @@ function ParamsForm({
             </div>
             <div className={cn(cell, 'justify-end')}>
               {p.cls.hasContribution ? (
-                <InputWrap unit="CZK" className="w-[128px]">
+                <InputWrap unit={currencyCode} className="w-[128px]">
                   <Input
                     type="number"
                     step="100"

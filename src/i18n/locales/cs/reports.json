@@ -157,7 +157,7 @@
       "growth": "Růst ročně",
       "contribution": "Vklad měsíčně",
       "active": "Aktivní",
-      "hint": "Vklady se v projekci připisují každý měsíc v korunách. Úvěry se splácejí podle svého kalendáře a nemají parametry.",
+      "hint": "Vklady se v projekci připisují každý měsíc. Úvěry se splácejí podle svého kalendáře a nemají parametry.",
       "save": "Uložit parametry",
       "saved": "Parametry projekce uloženy",
       "blankHint": "Prázdné tempo růstu znamená výchozí hodnotu: u bankovních účtů a dluhopisů vážený úrok z vašich účtů a dluhopisů."

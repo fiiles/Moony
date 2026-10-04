@@ -13,9 +13,11 @@ const PROPERTY_COLUMNS: &str = "id, name, address, type, purchase_price, purchas
      purchase_date, market_price, market_price_currency, monthly_rent, monthly_rent_currency,
      recurring_costs, photos, notes, created_at, updated_at";
 
+/// The JSON list columns are nullable: a NULL reads as an empty list, so one
+/// such row never fails the whole list.
 fn property_from_row(row: &Row) -> rusqlite::Result<RealEstate> {
-    let recurring_costs: String = row.get(11)?;
-    let photos: String = row.get(12)?;
+    let recurring_costs: String = row.get::<_, Option<String>>(11)?.unwrap_or_default();
+    let photos: String = row.get::<_, Option<String>>(12)?.unwrap_or_default();
     Ok(RealEstate {
         id: row.get(0)?,
         name: row.get(1)?,
@@ -83,7 +85,9 @@ pub fn create_property(conn: &Connection, data: &InsertRealEstate) -> Result<Str
         .clone()
         .unwrap_or_else(|| "CZK".to_string());
 
-    conn.execute(
+    // The property and its first estimate are saved together or not at all
+    let tx = conn.unchecked_transaction()?;
+    tx.execute(
         "INSERT INTO real_estate (id, name, address, type, purchase_price, purchase_price_currency,
          market_price, market_price_currency, monthly_rent, monthly_rent_currency,
          recurring_costs, photos, notes, created_at, updated_at, purchase_date)
@@ -112,13 +116,14 @@ pub fn create_property(conn: &Connection, data: &InsertRealEstate) -> Result<Str
     )?;
 
     valuations::record_initial_valuation(
-        conn,
+        &tx,
         ValuationKind::RealEstate,
         &id,
         &market_price,
         &market_price_currency,
         now,
     )?;
+    tx.commit()?;
 
     Ok(id)
 }
@@ -158,7 +163,9 @@ pub fn update_property(
         .map(serde_json::to_string)
         .transpose()?;
 
-    let changed = conn.execute(
+    // The record and the estimate it implies are saved together or not at all
+    let tx = conn.unchecked_transaction()?;
+    let changed = tx.execute(
         "UPDATE real_estate SET name = ?1, address = ?2, type = ?3,
          purchase_price = COALESCE(?4, purchase_price),
          purchase_price_currency = COALESCE(?5, purchase_price_currency),
@@ -192,13 +199,13 @@ pub fn update_property(
     }
 
     if data.market_price.is_some() {
-        let (price, currency): (String, String) = conn.query_row(
+        let (price, currency): (String, String) = tx.query_row(
             "SELECT market_price, market_price_currency FROM real_estate WHERE id = ?1",
             [id],
             |row| Ok((row.get(0)?, row.get(1)?)),
         )?;
         valuations::record_price_change(
-            conn,
+            &tx,
             ValuationKind::RealEstate,
             id,
             &price,
@@ -206,6 +213,7 @@ pub fn update_property(
             day_floor(now),
         )?;
     }
+    tx.commit()?;
     Ok(())
 }
 
@@ -392,6 +400,68 @@ mod tests {
             .map(|row| row.0)
             .collect();
         assert_eq!(values, ["3480000", "3650000"]);
+    }
+
+    /// The cost and photo columns are nullable; a row with NULL in them is read
+    /// as having none, never as an error that would empty the whole list.
+    #[test]
+    fn a_property_without_stored_costs_or_photos_is_still_read() {
+        let conn = setup_test_db();
+        conn.execute(
+            "INSERT INTO real_estate (id, name, address, type, recurring_costs, photos)
+             VALUES ('re-null', 'Barn', 'Village 7', 'personal', NULL, NULL)",
+            [],
+        )
+        .unwrap();
+
+        let listed = list_properties(&conn).unwrap();
+        assert_eq!(listed.len(), 1);
+        assert!(listed[0].recurring_costs.is_empty());
+        assert!(listed[0].photos.is_empty());
+        let read = get_property(&conn, "re-null").unwrap().expect("property");
+        assert!(read.recurring_costs.is_empty());
+    }
+
+    /// Makes every write to the valuation log fail, as a full disk would.
+    fn fail_valuation_writes(conn: &Connection) {
+        conn.execute_batch(
+            "CREATE TRIGGER fail_valuation_insert BEFORE INSERT ON real_estate_valuations
+             BEGIN SELECT RAISE(ABORT, 'valuation write failed'); END;
+             CREATE TRIGGER fail_valuation_update BEFORE UPDATE ON real_estate_valuations
+             BEGIN SELECT RAISE(ABORT, 'valuation write failed'); END;",
+        )
+        .expect("triggers");
+    }
+
+    /// The property and its first estimate are saved together or not at all: a
+    /// failed estimate must not leave a property behind that a retry duplicates.
+    #[test]
+    fn create_property_saves_nothing_when_the_first_estimate_fails() {
+        let conn = setup_test_db();
+        fail_valuation_writes(&conn);
+        let mut data = valid_insert();
+        data.market_price = Some("3480000".into());
+
+        assert!(create_property(&conn, &data).is_err());
+        assert!(list_properties(&conn).unwrap().is_empty());
+    }
+
+    #[test]
+    fn update_property_keeps_the_stored_record_when_the_estimate_fails() {
+        let conn = setup_test_db();
+        let mut data = valid_insert();
+        data.market_price = Some("3480000".into());
+        let id = create_property(&conn, &data).unwrap();
+        fail_valuation_writes(&conn);
+
+        let mut changed = data.clone();
+        changed.name = "Renamed".into();
+        changed.market_price = Some("3650000".into());
+        assert!(update_property(&conn, &id, &changed, chrono::Utc::now().timestamp()).is_err());
+
+        let stored = get_property(&conn, &id).unwrap().expect("property");
+        assert_eq!(stored.name, "Cottage");
+        assert_eq!(stored.market_price, "3480000");
     }
 
     // ---- purchase date, reads and the update ------------------------------

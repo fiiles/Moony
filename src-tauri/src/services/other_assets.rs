@@ -89,7 +89,9 @@ pub fn create_asset(
     let market_price = data.market_price.clone().unwrap_or_else(|| "0".to_string());
     let currency = data.currency.clone().unwrap_or_else(|| "CZK".to_string());
 
-    conn.execute(
+    // The asset, its first estimate and its initial transaction are saved together or not at all
+    let db_tx = conn.unchecked_transaction()?;
+    db_tx.execute(
         "INSERT INTO other_assets
          (id, name, quantity, market_price, currency, average_purchase_price, yield_type, yield_value, created_at, updated_at)
          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?9)",
@@ -109,7 +111,7 @@ pub fn create_asset(
     )?;
 
     valuations::record_initial_valuation(
-        conn,
+        &db_tx,
         ValuationKind::OtherAsset,
         &id,
         &market_price,
@@ -123,7 +125,7 @@ pub fn create_asset(
         // both recalculate_asset_totals's exact "buy"/"sell" comparisons and
         // the dedup queries (mirrors services/bank_accounts.rs::create_transaction).
         let tx_type = tx.tx_type.to_lowercase();
-        conn.execute(
+        db_tx.execute(
             "INSERT INTO other_asset_transactions
              (id, asset_id, type, quantity, price_per_unit, currency, transaction_date, created_at)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
@@ -139,6 +141,7 @@ pub fn create_asset(
             ],
         )?;
     }
+    db_tx.commit()?;
 
     conn.query_row(
         "SELECT id, name, quantity, market_price, currency, average_purchase_price,
@@ -361,6 +364,27 @@ mod tests {
         blank.market_price = Some("".into());
         let asset = create_asset(&conn, &blank, None).unwrap();
         assert!(valuation_rows(&conn, &asset.id).is_empty());
+    }
+
+    /// The asset, its first estimate and its initial transaction are saved
+    /// together or not at all: a failed write must not leave an asset behind
+    /// that a retry duplicates.
+    #[test]
+    fn create_asset_saves_nothing_when_a_write_fails() {
+        let conn = setup_test_db();
+        conn.execute_batch(
+            "CREATE TRIGGER fail_valuation_insert BEFORE INSERT ON other_asset_valuations
+             BEGIN SELECT RAISE(ABORT, 'valuation write failed'); END;",
+        )
+        .expect("trigger");
+        let mut data = valid_asset();
+        data.market_price = Some("62000".into());
+
+        assert!(create_asset(&conn, &data, None).is_err());
+        let assets: i64 = conn
+            .query_row("SELECT COUNT(*) FROM other_assets", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(assets, 0);
     }
 
     #[test]

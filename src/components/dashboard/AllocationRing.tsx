@@ -20,7 +20,11 @@ interface AllocationRingProps {
   otherSegment?: AllocationSegment;
   formatValue: (value: number) => string;
   formatPercent: (ratio: number) => string;
-  /** `lg` fills a card as tall as the "Poslední pohyby" list on the dashboard. */
+  /**
+   * `lg` puts a 184 px ring beside its legend and fills a card that stretches to a taller
+   * neighbor: "Poslední pohyby" on the dashboard, the TWR chart on the stocks analysis (wide
+   * windows only). `md` is the narrow card: a 140 px ring above a full-width legend.
+   */
   size?: 'md' | 'lg';
   className?: string;
 }
@@ -29,15 +33,17 @@ const SERIES = ['var(--s1)', 'var(--s2)', 'var(--s3)', 'var(--s4)'];
 const OTHER = 'var(--s-other)';
 
 const SIZES = {
+  // Narrow cards: the legend goes under the ring and gets the whole width (beside it, amounts of
+  // seven digits push the percentages out of the card)
   md: {
-    root: 'grid-cols-[156px_1fr] gap-3',
-    ring: 'size-[130px] after:inset-[22px]',
+    root: 'justify-items-center gap-4',
+    ring: 'size-[140px] after:inset-[24px]',
     centerLabel: 'text-[9px]',
-    centerValue: 'text-[14px]',
-    list: 'gap-[11px]',
-    row: 'text-caption',
-    amount: 'text-micro',
-    percent: 'text-caption',
+    centerValue: 'text-[15px]',
+    list: 'w-full [&>li]:border-b [&>li]:border-line-soft [&>li]:py-2 [&>li:last-child]:border-0',
+    row: 'text-table',
+    amount: 'text-caption',
+    percent: 'text-table',
   },
   lg: {
     root: 'grid-cols-[184px_1fr] gap-9',

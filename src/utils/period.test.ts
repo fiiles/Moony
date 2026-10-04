@@ -116,10 +116,15 @@ describe('chartPeriodStart', () => {
     expect(chartPeriodStart('5Y', now)).toBe(today - 5 * 365 * 86_400);
   });
 
-  it('starts YTD on 1 January UTC, also on New Year and on New Year eve', () => {
+  it('starts YTD on 1 January UTC, also on New Year eve', () => {
     expect(chartPeriodStart('YTD', now)).toBe(utc(2026, 1, 1));
-    expect(chartPeriodStart('YTD', Date.UTC(2026, 0, 1, 0, 30) / 1000)).toBe(utc(2026, 1, 1));
+    expect(chartPeriodStart('YTD', Date.UTC(2026, 0, 2, 9, 0) / 1000)).toBe(utc(2026, 1, 1));
     expect(chartPeriodStart('YTD', Date.UTC(2025, 11, 31, 23, 59) / 1000)).toBe(utc(2025, 1, 1));
+  });
+
+  it('reaches back to the year end on New Year, so YTD is never a one-day window', () => {
+    expect(chartPeriodStart('YTD', Date.UTC(2026, 0, 1, 0, 30) / 1000)).toBe(utc(2025, 12, 31));
+    expect(chartPeriodStart('YTD', Date.UTC(2026, 0, 1, 23, 59) / 1000)).toBe(utc(2025, 12, 31));
   });
 
   it('leaves "All" open without data and starts it on the first day with data', () => {

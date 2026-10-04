@@ -7,7 +7,6 @@ import {
   ReferenceDot,
   ReferenceLine,
   ResponsiveContainer,
-  Scatter,
   Tooltip,
   XAxis,
   YAxis,
@@ -70,6 +69,9 @@ export interface MoonyLineChartProps<E extends ChartEvent = ChartEvent> {
   projectedFrom?: number;
   className?: string;
 }
+
+/** Above Recharts' active dot (1200) and cursor line (1100), below labels (2000). */
+const MARK_Z_INDEX = 1300;
 
 interface Row extends LinePoint {
   cost?: number;
@@ -166,11 +168,23 @@ export function MoonyLineChart<E extends ChartEvent = ChartEvent>({
   };
   const tip = renderTip ?? defaultTip;
 
+  const clearHover = () => {
+    setHover(null);
+    onHotEventChange?.(null);
+  };
+
   if (data.length === 0) return <div className={className} style={{ height }} />;
 
   return (
     <div className={cn('relative', className)}>
-      <div style={{ height }} className="[&_.recharts-surface]:overflow-visible">
+      <div
+        style={{ height }}
+        className="[&_.recharts-surface]:overflow-visible"
+        onMouseLeave={() => {
+          // Safety net: a mark that vanished under the pointer never fires its own leave.
+          if (hover) clearHover();
+        }}
+      >
         <ResponsiveContainer width="100%" height="100%" onResize={(w) => setWidth(w)} debounce={50}>
           <ComposedChart data={data} margin={{ top: 14, right: 0, bottom: 6, left: 0 }}>
             <defs>
@@ -290,42 +304,45 @@ export function MoonyLineChart<E extends ChartEvent = ChartEvent>({
                 ifOverflow="visible"
               />
             )}
-            {markers.length > 0 && (
-              <Scatter
-                data={markers}
-                dataKey="y"
-                isAnimationActive={false}
-                shape={(props: unknown) => {
-                  const { cx, cy, payload } = props as {
-                    cx: number;
-                    cy: number;
-                    payload: (typeof markers)[number];
-                  };
-                  const cluster = payload.cluster;
-                  const hot =
-                    hover?.cluster.id === cluster.id ||
-                    (hotEventId !== null && cluster.events.some((e) => e.id === hotEventId));
-                  return (
-                    <EventMark
-                      cx={cx}
-                      cy={cy}
-                      type={cluster.type}
-                      count={cluster.events.length}
-                      hot={hot}
-                      onEnter={() => {
-                        setHover({ cluster, x: cx, y: cy });
-                        onHotEventChange?.(cluster.events[0].id);
-                      }}
-                      onLeave={() => {
-                        setHover(null);
-                        onHotEventChange?.(null);
-                      }}
-                      onClick={() => onEventClick?.(cluster)}
-                    />
-                  );
-                }}
-              />
-            )}
+            {/* Marks are reference dots, not a Scatter: in Recharts 3 a graphical item with its
+                own `data` replaces the chart data as the axis data, so the tooltip would resolve
+                against the marks and stop following the line. Reference elements hold no data.
+                They sit above the active dot (z-index 1200), which would otherwise cover a mark
+                that falls on a data point and swallow its hover. */}
+            {markers.map(({ t, y, cluster }) => {
+              const hot =
+                hover?.cluster.id === cluster.id ||
+                (hotEventId !== null && cluster.events.some((e) => e.id === hotEventId));
+              return (
+                <ReferenceDot
+                  key={cluster.id}
+                  x={t}
+                  y={y}
+                  r={8}
+                  ifOverflow="visible"
+                  zIndex={MARK_Z_INDEX}
+                  shape={({ cx, cy }) =>
+                    cx === undefined || cy === undefined ? (
+                      <g />
+                    ) : (
+                      <EventMark
+                        cx={cx}
+                        cy={cy}
+                        type={cluster.type}
+                        count={cluster.events.length}
+                        hot={hot}
+                        onEnter={() => {
+                          setHover({ cluster, x: cx, y: cy });
+                          onHotEventChange?.(cluster.events[0].id);
+                        }}
+                        onLeave={clearHover}
+                        onClick={() => onEventClick?.(cluster)}
+                      />
+                    )
+                  }
+                />
+              );
+            })}
           </ComposedChart>
         </ResponsiveContainer>
         {hover && renderEventTip && (

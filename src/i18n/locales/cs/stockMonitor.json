@@ -91,7 +91,9 @@
       "dividendNote": "{{amount}} ročně na akcii",
       "range": "52T rozpětí",
       "min": "min",
-      "max": "max"
+      "max": "max",
+      "rangeLabel": "52T rozpětí {{low}} – {{high}}, aktuální cena {{current}}",
+      "rangeLabelTarget": "52T rozpětí {{low}} – {{high}}, aktuální cena {{current}}, cíl {{target}}"
     },
     "keyData": "Klíčová data",
     "kv": {

@@ -211,6 +211,8 @@ pub async fn run() {
             commands::stock_monitor::refresh_watched_stock_prices,
             commands::stock_monitor::get_stock_monitor_detail,
             commands::stock_monitor::get_stock_price_range,
+            // Company data (services::company_info)
+            commands::company_info::get_stock_company_info,
             // Cashflow commands
             commands::cashflow::get_cashflow_report,
             commands::cashflow::get_cashflow_actuals,

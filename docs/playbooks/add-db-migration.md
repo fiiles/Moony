@@ -8,9 +8,8 @@ is the execution checklist only.
 
 1. **Find the next number.** Open `src-tauri/src/db/migrations.rs` and read the
    entries returned by `all_migrations()`. Yours is the next number after the last
-   one — zero-padded, sequential, never reused. Today the chain is the single
-   baseline `001_initial_schema` (`MIGRATION_001`), so the first migration you add
-   is `002`. Use the same number in the const name and the name string.
+   one — zero-padded, sequential, never reused (the chain starts with the baseline
+   `001_initial_schema`). Use the same number in the const name and the name string.
 2. **Define the const.** Add `const MIGRATION_0NN: &str = r#"..."#;` with inline SQL
    (there are no `.sql` files). Follow the storage conventions in
    `docs/architecture/database.md`: TEXT UUID primary keys, INTEGER unix-epoch

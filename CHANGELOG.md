@@ -6,7 +6,36 @@ All notable changes to Moony are documented in this file. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **Year to date.** The dashboard, the list trend cards and the stock, crypto and bank account
+  charts offer the horizons 30 days · 3 months · This year · Year · All, bounded on UTC days.
+- **Cash over time.** Bank accounts get a trend card with the recorded cash history, the same
+  data that feeds net worth.
+- **Buys and sells on the stocks trend.** The portfolio chart on Stocks marks each trading day
+  (tickers and amount in the tooltip), as Crypto already did.
+- **New loans on the debt trajectory.** Each loan start is marked where the debt steps up (paid-off
+  loans included), and the step is drawn as a step instead of a ramp.
+- **Purchase date for real estate.** An optional purchase date starts the value trace with the
+  purchase; the first estimate of a new property or other asset is recorded when it is created.
+- **Company data on the position detail.** Sector, industry, P/E, market cap and the other key
+  figures of a holding are downloaded (at most once a day) and shown on the stock detail.
+
 ### Changed
+
+- **Charts.** The net worth chart is taller (220 px) and every list-page trend card shares one
+  card and a 170 px chart (Stocks, Crypto, Real estate, Other assets, Bank accounts, Loans, Bonds,
+  Insurance).
+- **Stocks analysis.** The tag chips filter everything below them (allocation, TWR per tag, tag
+  and holdings tables); the two cards are equally tall; TWR is shown in percent with the whole
+  portfolio as a dark dashed reference and its return in the card head.
+- **Insurance and real estate tables** have fewer, denser columns (type and insurer, type and
+  address, the purchase price under the market value) and never scroll horizontally.
+- **Recent moves** on the dashboard no longer has a "Show all" link that opened bank accounts.
+- **Import CSV** is a button in the head of the Stocks page instead of the footer of the add
+  dialog.
+- **Bank accounts total** leaves out accounts excluded from net worth, as the dashboard does; the
+  excluded amount is shown next to it.
 
 - **Amounts follow the main currency.** Gain, yield, appreciation, rent and savings totals on
   Other assets, Real estate, Cashflow, Cashflow planning and Projection were shown in CZK
@@ -27,6 +56,23 @@ All notable changes to Moony are documented in this file. The format follows
 
 ### Fixed
 
+- **Chart tooltips froze after a buy or sell mark.** On every chart with marks the price tooltip
+  kept showing the first day while the cursor moved; it now follows the cursor, and a mark's own
+  tooltip appears on hover and stays inside the card at the edges.
+- **Real estate and other assets value charts showed a single point** and asked the database for
+  the history about 34 times a second; they now load the history once per day and horizon.
+- **A first revaluation lost the original estimate.** Every property and other asset now has a
+  valuation log from its creation (existing ones are seeded once with their current value), so
+  the trace shows each estimate; same-day revaluations no longer scramble the line.
+- **Company data on the stock detail was always empty**; it was only downloaded for watched
+  stocks and never read for holdings.
+- **The 52-week range overflowed its card** on the watchlist detail.
+- **Stocks analysis switches did nothing visible**: the tag chips only filtered the holdings table
+  at the bottom of the page; the whole-portfolio TWR line was drawn in nearly the colour of a tag.
+- **Net worth history after saving a property.** Adding or editing a property now records
+  today's snapshot right away, as every other change does, instead of waiting for the next one.
+- **Insurance limits in another currency** were labelled as Czech crowns in the policies table
+  and ranked by their raw amount (a yen limit above a euro one) there and on the policy detail.
 - **MCP cashflow and budget reports.** The `cashflow_report` and `budgeting_report` tools
   returned empty lists because they read money stored as text as numbers.
 - **Loading a property into the investment calculator brings its loans.** The loan amount,

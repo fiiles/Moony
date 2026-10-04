@@ -5,9 +5,9 @@ import { bondLadder, nearestMaturity } from '@/utils/bonds';
 import { useCurrency } from '@/lib/currency';
 import { useFormat } from '@/lib/use-format';
 import { Badge } from '@/components/ui/badge';
-import { Card } from '@/components/ui/card';
 import { MoonyBarChart } from '@/components/charts/MoonyBarChart';
 import { ChartLegend } from '@/components/charts/ChartLegend';
+import { TREND_CHART_HEIGHT, TrendCard } from '@/components/charts/TrendCard';
 
 interface BondsLadderCardProps {
   bonds: Bond[];
@@ -37,19 +37,28 @@ export function BondsLadderCard({ bonds, today }: BondsLadderCardProps) {
   if (ladder.length === 0) return null;
 
   return (
-    <Card className='relative mb-7 overflow-hidden px-[21px] pb-[14px] pt-5 after:pointer-events-none after:absolute after:-right-[100px] after:-top-[120px] after:h-[180px] after:w-[340px] after:rounded-full after:bg-hero-orb after:content-[""]'>
-      <div className="relative z-[1] flex items-center justify-between gap-6">
-        <div>
-          <h3 className="m-0 text-h3 text-ink">{t('ladder.title')}</h3>
-          <p className="mt-[5px] text-micro font-500 text-ink-4">{t('ladder.subtitle')}</p>
-        </div>
-        <Badge variant="outline">{t('ladder.badge')}</Badge>
-      </div>
+    <TrendCard
+      title={t('ladder.title')}
+      subtitle={t('ladder.subtitle')}
+      aside={<Badge variant="outline">{t('ladder.badge')}</Badge>}
+      legend={
+        <ChartLegend
+          items={[
+            { label: t('ladder.principal'), swatch: { kind: 'block', color: 'var(--s1)' } },
+            { label: t('ladder.coupons'), swatch: { kind: 'block', color: 'var(--s3)' } },
+          ]}
+          note={t('ladder.note', {
+            year: ladder[ladder.length - 1].year,
+            principal: formatCurrency(totals.principal),
+            coupons: formatCurrency(totals.coupons),
+          })}
+        />
+      }
+    >
       <MoonyBarChart
-        className="relative z-[1] -mx-1 mt-[14px]"
         bars={ladder.map((y) => ({ label: String(y.year), a: y.principal, b: y.coupons }))}
         stacked
-        height={170}
+        height={TREND_CHART_HEIGHT}
         names={[t('ladder.principal'), t('ladder.coupons')]}
         formatValue={(v) => formatCurrency(v)}
         marks={
@@ -67,19 +76,6 @@ export function BondsLadderCard({ bonds, today }: BondsLadderCardProps) {
             : []
         }
       />
-      <div className="relative z-[1]">
-        <ChartLegend
-          items={[
-            { label: t('ladder.principal'), swatch: { kind: 'block', color: 'var(--s1)' } },
-            { label: t('ladder.coupons'), swatch: { kind: 'block', color: 'var(--s3)' } },
-          ]}
-          note={t('ladder.note', {
-            year: ladder[ladder.length - 1].year,
-            principal: formatCurrency(totals.principal),
-            coupons: formatCurrency(totals.coupons),
-          })}
-        />
-      </div>
-    </Card>
+    </TrendCard>
   );
 }

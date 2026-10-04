@@ -1,4 +1,4 @@
-import type { InsertInsurancePolicy, InsurancePolicy } from '@shared/schema';
+import type { InsertInsurancePolicy, InsuranceLimit, InsurancePolicy } from '@shared/schema';
 import { convertToCzK, type CurrencyCode } from '@shared/currencies';
 import {
   annualizeAmount,
@@ -105,6 +105,36 @@ export function nextAnniversary(policy: InsurancePolicy, today: number): number 
   return null;
 }
 
+/**
+ * Limits from the most to the least valuable in CZK (equal ones keep their order). Limits are in
+ * their own currencies, so they are ranked by the converted value, never by the raw amount.
+ */
+export function limitsByValue(
+  limits: readonly InsuranceLimit[] | null | undefined
+): InsuranceLimit[] {
+  return (limits ?? [])
+    .map((limit, index) => ({ limit, index, value: czk(limit.amount, limit.currency) }))
+    .sort((a, b) => b.value - a.value || a.index - b.index)
+    .map(({ limit }) => limit);
+}
+
+/**
+ * The limit worth the most in CZK (the first one on a tie), or null without limits. Limits are in
+ * their own currencies, so they are ranked by the converted value, never by the raw amount.
+ */
+function largestLimit(limits: readonly InsuranceLimit[]): InsuranceLimit | null {
+  let top: InsuranceLimit | null = null;
+  let best = -Infinity;
+  for (const limit of limits) {
+    const value = czk(limit.amount, limit.currency);
+    if (value > best) {
+      top = limit;
+      best = value;
+    }
+  }
+  return top;
+}
+
 /** One policy with the numbers the list and detail show (CZK). */
 export interface InsuranceRow {
   policy: InsurancePolicy;
@@ -115,6 +145,9 @@ export interface InsuranceRow {
   yearlyCzk: number;
   oneTimeCzk: number;
   coverageCzk: number;
+  /** The largest limit by its CZK value, in its own currency; null without limits. */
+  topLimit: InsuranceLimit | null;
+  limitCount: number;
   nextPayment: number | null;
   anniversary: number | null;
   endDay: number | null;
@@ -125,6 +158,7 @@ export function insuranceRow(policy: InsurancePolicy, today: number): InsuranceR
   const ended = isEnded(policy, today);
   const regularCzk = czk(policy.regularPayment, policy.regularPaymentCurrency);
   const oneTimeCzk = czk(policy.oneTimePayment, policy.oneTimePaymentCurrency);
+  const limits = policy.limits ?? [];
   return {
     policy,
     frequency,
@@ -132,7 +166,9 @@ export function insuranceRow(policy: InsurancePolicy, today: number): InsuranceR
     premiumCzk: frequency === 'one_time' ? oneTimeCzk : regularCzk,
     yearlyCzk: annualizeAmount(regularCzk, policy.paymentFrequency),
     oneTimeCzk,
-    coverageCzk: (policy.limits ?? []).reduce((s, l) => s + czk(l.amount, l.currency), 0),
+    coverageCzk: limits.reduce((s, l) => s + czk(l.amount, l.currency), 0),
+    topLimit: largestLimit(limits),
+    limitCount: limits.length,
     nextPayment: ended ? null : nextPaymentDay(policy, today),
     anniversary: ended ? null : nextAnniversary(policy, today),
     endDay: policy.endDate !== null ? dayFloor(policy.endDate) : null,

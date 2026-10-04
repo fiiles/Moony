@@ -147,6 +147,9 @@ pub fn collect_types() -> TypeCollection {
     types.register::<crate::models::InsertWatchedStock>();
     types.register::<crate::models::StockPricePoint>();
 
+    // Company data models
+    types.register::<crate::models::company_info::StockCompanyInfo>();
+
     // Cashflow models
     types.register::<crate::models::CashflowItem>();
     types.register::<crate::models::InsertCashflowItem>();

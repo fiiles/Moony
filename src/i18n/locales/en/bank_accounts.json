@@ -543,6 +543,10 @@
     "clusterTitle_one": "{{count}} movement",
     "clusterTitle_other": "{{count}} movements"
   },
+  "trend": {
+    "title": "Cash over time",
+    "subtitle": "From the balances recorded in Moony. The account detail shows the movements from transactions."
+  },
   "ledger": {
     "subGrouped": "Grouped by day · newest first",
     "subSorted": "Sorted by the chosen column · click the header again to return to dates",

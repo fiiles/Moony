@@ -63,6 +63,7 @@ fn has_unknown_name(applied: &[String], migrations: &[(&str, &str)]) -> bool {
 fn all_migrations() -> Vec<(&'static str, &'static str)> {
     vec![
         ("001_initial_schema", MIGRATION_001),
+        ("002_real_estate_purchase_date", MIGRATION_002),
         ("003_stock_import_batches", MIGRATION_003),
     ]
 }
@@ -882,6 +883,39 @@ CREATE TABLE IF NOT EXISTS projection_settings (
 );
 "#;
 
+/// `002_real_estate_purchase_date`: the day a property was bought, and the
+/// first estimate of every asset whose valuation log is still empty.
+const MIGRATION_002: &str = r#"
+-- A property remembers the day it was bought: the UTC midnight of that day,
+-- NULL while unknown. The detail chart starts its value trace there.
+ALTER TABLE real_estate ADD COLUMN purchase_date INTEGER;
+
+-- One-time seed of the valuation logs. Creating an asset used to write no row,
+-- so the first revaluation overwrote the only record of the original estimate.
+-- Every priced asset that has no row yet gets its current price as the first
+-- estimate, dated at the UTC day it was created. Assets that already have a log
+-- are left alone, and so are unpriced ones.
+--
+-- The ids are lowercase UUID v4 built in SQL: randomblob() is evaluated for
+-- every row, '4' is the version nibble and `random() & 3` picks the variant
+-- nibble out of 8, 9, a, b (an & cannot overflow the way abs() can).
+INSERT INTO real_estate_valuations (id, real_estate_id, value, currency, valued_at, note, created_at)
+SELECT lower(hex(randomblob(4)) || '-' || hex(randomblob(2)) || '-4' || substr(hex(randomblob(2)), 2) || '-' || substr('89ab', 1 + (random() & 3), 1) || substr(hex(randomblob(2)), 2) || '-' || hex(randomblob(6))),
+       r.id, trim(r.market_price), upper(r.market_price_currency),
+       (r.created_at / 86400) * 86400, NULL, unixepoch()
+FROM real_estate r
+WHERE CAST(r.market_price AS REAL) > 0
+  AND NOT EXISTS (SELECT 1 FROM real_estate_valuations v WHERE v.real_estate_id = r.id);
+
+INSERT INTO other_asset_valuations (id, asset_id, value, currency, valued_at, note, created_at)
+SELECT lower(hex(randomblob(4)) || '-' || hex(randomblob(2)) || '-4' || substr(hex(randomblob(2)), 2) || '-' || substr('89ab', 1 + (random() & 3), 1) || substr(hex(randomblob(2)), 2) || '-' || hex(randomblob(6))),
+       a.id, trim(a.market_price), upper(a.currency),
+       (a.created_at / 86400) * 86400, NULL, unixepoch()
+FROM other_assets a
+WHERE CAST(a.market_price AS REAL) > 0
+  AND NOT EXISTS (SELECT 1 FROM other_asset_valuations v WHERE v.asset_id = a.id);
+"#;
+
 /// `003_stock_import_batches`: stock CSV imports are recorded as batches (so
 /// they can be undone) and a transaction keeps the id its broker gave it (so a
 /// re-imported file is recognised).
@@ -1182,6 +1216,239 @@ mod tests {
         )
         .expect("unknown name");
         assert!(!has_pending(&conn, &chain).expect("unknown names"));
+    }
+
+    // ---- 002_real_estate_purchase_date ------------------------------------
+
+    /// A database as 0.9.0 left it: the baseline only, nothing newer applied.
+    fn database_at_baseline() -> Connection {
+        let conn = Connection::open_in_memory().expect("in-memory db");
+        run_chain(&conn, &all_migrations()[..1]).expect("baseline");
+        conn
+    }
+
+    fn add_property(conn: &Connection, id: &str, price: &str, currency: &str, created_at: i64) {
+        conn.execute(
+            "INSERT INTO real_estate (id, name, address, type, market_price, market_price_currency, created_at, updated_at)
+             VALUES (?1, ?1, 'Somewhere 1', 'investment', ?2, ?3, ?4, ?4)",
+            rusqlite::params![id, price, currency, created_at],
+        )
+        .expect("insert property");
+    }
+
+    fn add_other_asset(conn: &Connection, id: &str, price: &str, currency: &str, created_at: i64) {
+        conn.execute(
+            "INSERT INTO other_assets (id, name, market_price, currency, created_at, updated_at)
+             VALUES (?1, ?1, ?2, ?3, ?4, ?4)",
+            rusqlite::params![id, price, currency, created_at],
+        )
+        .expect("insert other asset");
+    }
+
+    /// One valuation row as `(id, value, currency, valued_at, note, created_at)`.
+    type ValuationRow = (String, String, String, i64, Option<String>, i64);
+
+    fn valuation_rows(
+        conn: &Connection,
+        table: &str,
+        fk: &str,
+        asset_id: &str,
+    ) -> Vec<ValuationRow> {
+        let mut stmt = conn
+            .prepare(&format!(
+                "SELECT id, value, currency, valued_at, note, created_at FROM {table}
+                 WHERE {fk} = ?1 ORDER BY valued_at, created_at"
+            ))
+            .expect("prepare valuation query");
+        let rows = stmt
+            .query_map([asset_id], |row| {
+                Ok((
+                    row.get(0)?,
+                    row.get(1)?,
+                    row.get(2)?,
+                    row.get(3)?,
+                    row.get(4)?,
+                    row.get(5)?,
+                ))
+            })
+            .expect("query valuations");
+        rows.map(|r| r.expect("valuation row")).collect()
+    }
+
+    fn count_rows(conn: &Connection, table: &str) -> i64 {
+        conn.query_row(&format!("SELECT COUNT(*) FROM {table}"), [], |r| r.get(0))
+            .expect("count")
+    }
+
+    const RE_LOG: (&str, &str) = ("real_estate_valuations", "real_estate_id");
+    const OA_LOG: (&str, &str) = ("other_asset_valuations", "asset_id");
+
+    #[test]
+    fn purchase_date_column_is_added_and_empty_for_existing_properties() {
+        let conn = database_at_baseline();
+        add_property(&conn, "flat", "3480000", "CZK", 1_700_000_123);
+
+        run_migrations(&conn).expect("migrate to the current chain");
+
+        let purchase_date: Option<i64> = conn
+            .query_row(
+                "SELECT purchase_date FROM real_estate WHERE id = 'flat'",
+                [],
+                |r| r.get(0),
+            )
+            .expect("purchase_date exists");
+        assert_eq!(
+            purchase_date, None,
+            "an existing property has no known purchase date"
+        );
+        assert!(known_migration_names().contains(&"002_real_estate_purchase_date"));
+        assert_eq!(
+            applied_migration_names(&conn).expect("applied"),
+            known_migration_names()
+        );
+    }
+
+    /// The reported bug: nothing wrote a row when an asset was created, so the
+    /// first revaluation overwrote the only record of the original estimate.
+    #[test]
+    fn seed_writes_the_first_estimate_of_priced_assets_without_a_log() {
+        let conn = database_at_baseline();
+        // 2023-11-14 22:15:23 UTC: the seeded estimate belongs to that day's midnight.
+        let created = 1_700_000_123;
+        let day = 1_699_920_000;
+        add_property(&conn, "flat", " 3480000.50 ", "eur", created);
+        add_other_asset(&conn, "gold", "62000", "CZK", created);
+
+        run_migrations(&conn).expect("migrate");
+
+        let flat = valuation_rows(&conn, RE_LOG.0, RE_LOG.1, "flat");
+        assert_eq!(flat.len(), 1);
+        let (_, value, currency, valued_at, note, created_at) = &flat[0];
+        assert_eq!(
+            value, "3480000.50",
+            "the price is stored trimmed, like add_valuation does"
+        );
+        assert_eq!(currency, "EUR");
+        assert_eq!(
+            *valued_at, day,
+            "dated at the UTC day the asset was created"
+        );
+        assert_eq!(*note, None);
+        assert!(
+            *created_at > created,
+            "the row itself is created by the migration, now"
+        );
+
+        let gold = valuation_rows(&conn, OA_LOG.0, OA_LOG.1, "gold");
+        assert_eq!(gold.len(), 1);
+        assert_eq!(gold[0].1, "62000");
+        assert_eq!(gold[0].2, "CZK");
+        assert_eq!(gold[0].3, day);
+    }
+
+    #[test]
+    fn seed_leaves_existing_logs_untouched_and_skips_unpriced_assets() {
+        let conn = database_at_baseline();
+        let created = 1_700_000_123;
+        add_property(&conn, "logged", "5000000", "CZK", created);
+        add_property(&conn, "zero", "0", "CZK", created);
+        add_property(&conn, "blank", "", "CZK", created);
+        add_other_asset(&conn, "logged-asset", "70000", "CZK", created);
+        add_other_asset(&conn, "zero-asset", "0", "CZK", created);
+        // A revaluation written by 0.9.0: it must survive as the only row of its asset.
+        conn.execute(
+            "INSERT INTO real_estate_valuations (id, real_estate_id, value, currency, valued_at, note, created_at)
+             VALUES ('old-row', 'logged', '5000000', 'CZK', 1799971200, 'my estimate', 1800000000)",
+            [],
+        )
+        .expect("existing valuation");
+        conn.execute(
+            "INSERT INTO other_asset_valuations (id, asset_id, value, currency, valued_at, note, created_at)
+             VALUES ('old-asset-row', 'logged-asset', '70000', 'CZK', 1749945600, NULL, 1750000000)",
+            [],
+        )
+        .expect("existing asset valuation");
+
+        run_migrations(&conn).expect("migrate");
+
+        let logged = valuation_rows(&conn, RE_LOG.0, RE_LOG.1, "logged");
+        assert_eq!(
+            logged.len(),
+            1,
+            "a property that has a log gets no second row"
+        );
+        assert_eq!(logged[0].0, "old-row");
+        assert_eq!(logged[0].4.as_deref(), Some("my estimate"));
+        assert_eq!(valuation_rows(&conn, RE_LOG.0, RE_LOG.1, "zero").len(), 0);
+        assert_eq!(valuation_rows(&conn, RE_LOG.0, RE_LOG.1, "blank").len(), 0);
+
+        let logged_asset = valuation_rows(&conn, OA_LOG.0, OA_LOG.1, "logged-asset");
+        assert_eq!(logged_asset.len(), 1);
+        assert_eq!(logged_asset[0].0, "old-asset-row");
+        assert_eq!(
+            valuation_rows(&conn, OA_LOG.0, OA_LOG.1, "zero-asset").len(),
+            0
+        );
+
+        assert_eq!(count_rows(&conn, "real_estate_valuations"), 1);
+        assert_eq!(count_rows(&conn, "other_asset_valuations"), 1);
+
+        // The migration is recorded: a second start does not seed again.
+        run_migrations(&conn).expect("second run is a no-op");
+        assert_eq!(count_rows(&conn, "real_estate_valuations"), 1);
+    }
+
+    #[test]
+    fn seeded_ids_are_distinct_lowercase_uuid_v4s() {
+        let conn = database_at_baseline();
+        for i in 0..40 {
+            add_property(
+                &conn,
+                &format!("flat-{i}"),
+                "1000000",
+                "CZK",
+                1_700_000_000 + i,
+            );
+            add_other_asset(
+                &conn,
+                &format!("asset-{i}"),
+                "100",
+                "CZK",
+                1_700_000_000 + i,
+            );
+        }
+
+        run_migrations(&conn).expect("migrate");
+
+        let mut ids: Vec<String> = Vec::new();
+        for table in ["real_estate_valuations", "other_asset_valuations"] {
+            let mut stmt = conn
+                .prepare(&format!("SELECT id FROM {table}"))
+                .expect("prepare");
+            let rows = stmt.query_map([], |r| r.get::<_, String>(0)).expect("ids");
+            ids.extend(rows.map(|r| r.expect("id")));
+        }
+        assert_eq!(ids.len(), 80);
+        for id in &ids {
+            let parsed = uuid::Uuid::parse_str(id).expect("a UUID");
+            assert_eq!(parsed.get_version_num(), 4, "{id}");
+            assert_eq!(parsed.get_variant(), uuid::Variant::RFC4122, "{id}");
+            assert_eq!(
+                &parsed.hyphenated().to_string(),
+                id,
+                "lowercase, hyphenated: {id}"
+            );
+        }
+        let distinct: std::collections::HashSet<&String> = ids.iter().collect();
+        assert_eq!(distinct.len(), ids.len(), "every row gets its own id");
+    }
+
+    #[test]
+    fn seed_runs_on_an_empty_database_without_rows_to_seed() {
+        let conn = Connection::open_in_memory().expect("in-memory db");
+        run_migrations(&conn).expect("fresh database");
+        assert_eq!(count_rows(&conn, "real_estate_valuations"), 0);
+        assert_eq!(count_rows(&conn, "other_asset_valuations"), 0);
     }
 }
 

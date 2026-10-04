@@ -468,8 +468,9 @@ export default function StockMonitorDetail() {
           label={t('detail.stats.range')}
           value={
             isFinite(low) && isFinite(high) ? (
-              <span className="text-[16px]">
-                {plain(low)} – {plain(high)} {currency ?? ''}
+              // The currency is in the page eyebrow; without it the range fits one line at 1080 px
+              <span className="whitespace-nowrap text-[16px]">
+                {plain(low)} – {plain(high)}
               </span>
             ) : (
               '—'
@@ -478,13 +479,28 @@ export default function StockMonitorDetail() {
           note={
             isFinite(low) && isFinite(high) && isFinite(current) ? (
               <RangeWithLabels
-                className="mt-1 w-full [&>span:nth-child(2)]:w-full"
+                fluid
+                className="mt-1"
                 low={low}
                 high={high}
                 current={current}
                 target={hasTarget ? targetValue : null}
                 lowLabel={t('detail.stats.min')}
                 highLabel={t('detail.stats.max')}
+                label={
+                  hasTarget
+                    ? t('detail.stats.rangeLabelTarget', {
+                        low: plain(low),
+                        high: plain(high),
+                        current: plain(current),
+                        target: plain(targetValue),
+                      })
+                    : t('detail.stats.rangeLabel', {
+                        low: plain(low),
+                        high: plain(high),
+                        current: plain(current),
+                      })
+                }
               />
             ) : undefined
           }

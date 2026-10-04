@@ -9,6 +9,7 @@ const property: RealEstate = {
   type: 'rental',
   purchasePrice: '5000000',
   purchasePriceCurrency: 'CZK',
+  purchaseDate: 1_699_920_000,
   marketPrice: '6500000',
   marketPriceCurrency: 'CZK',
   monthlyRent: '20000',
@@ -18,7 +19,7 @@ const property: RealEstate = {
   notes: 'old note',
   createdAt: 1,
   updatedAt: 2,
-} as RealEstate;
+};
 
 describe('realEstateUpdatePayload', () => {
   it('sends every field back unchanged (the backend update replaces the whole property)', () => {
@@ -28,6 +29,7 @@ describe('realEstateUpdatePayload', () => {
       type: 'rental',
       purchasePrice: '5000000',
       purchasePriceCurrency: 'CZK',
+      purchaseDate: 1_699_920_000,
       marketPrice: '6500000',
       marketPriceCurrency: 'CZK',
       monthlyRent: '20000',
@@ -48,6 +50,24 @@ describe('realEstateUpdatePayload', () => {
   it('turns empty notes into "no notes" instead of storing an empty string', () => {
     expect(realEstateUpdatePayload(property, { notes: '   ' }).notes).toBeUndefined();
     expect(realEstateUpdatePayload({ ...property, notes: null }).notes).toBeUndefined();
+  });
+
+  it('sends the purchase date back, because the backend update clears a missing one', () => {
+    expect(realEstateUpdatePayload(property).purchaseDate).toBe(1_699_920_000);
+    expect(realEstateUpdatePayload(property, { notes: 'new note' }).purchaseDate).toBe(
+      1_699_920_000
+    );
+  });
+
+  it('keeps an unknown purchase date unknown (null)', () => {
+    expect(realEstateUpdatePayload({ ...property, purchaseDate: null }).purchaseDate).toBeNull();
+  });
+
+  it('lets an override set or clear the purchase date', () => {
+    expect(realEstateUpdatePayload(property, { purchaseDate: 1_600_000_000 }).purchaseDate).toBe(
+      1_600_000_000
+    );
+    expect(realEstateUpdatePayload(property, { purchaseDate: null }).purchaseDate).toBeNull();
   });
 
   it('keeps a missing rent currency undefined', () => {

@@ -26,7 +26,12 @@ export function ChartTip({
   );
 }
 
-/** Positions a ChartTip above a point inside a `relative` chart container. */
+/**
+ * Positions a ChartTip above a point inside a `relative` chart container. The
+ * tip slides along its own width with the point (centred in the middle, flush
+ * left at the left edge, flush right at the right edge), so a mark near an
+ * edge never pushes it out of a card that clips its content.
+ */
 export function FloatingTip({
   x,
   y,
@@ -40,10 +45,11 @@ export function FloatingTip({
   children: ReactNode;
 }) {
   const clampedX = Math.max(8, Math.min(width - 8, x));
+  const shift = width > 0 ? Math.max(0, Math.min(100, (clampedX / width) * 100)) : 50;
   return (
     <div
       className="pointer-events-none absolute z-[6]"
-      style={{ left: clampedX, top: y - 12, transform: 'translate(-50%, -100%)' }}
+      style={{ left: clampedX, top: y - 12, transform: `translate(-${shift}%, -100%)` }}
     >
       {children}
     </div>

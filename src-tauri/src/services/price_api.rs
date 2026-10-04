@@ -251,7 +251,7 @@ pub async fn refresh_stock_prices_yahoo_with_ttl(
 }
 
 /// Get currency from ticker suffix
-fn get_currency_from_ticker(ticker: &str) -> &'static str {
+pub(crate) fn get_currency_from_ticker(ticker: &str) -> &'static str {
     if let Some(suffix) = ticker.split('.').nth(1) {
         match suffix.to_uppercase().as_str() {
             "L" | "LON" => "GBP",          // London

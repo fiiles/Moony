@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { InsurancePolicy } from '@shared/schema';
+import { convertToCzK } from '@shared/currencies';
 import {
   insuranceMetrics,
   insuranceRow,
@@ -113,6 +114,46 @@ describe('insuranceRow / insuranceMetrics', () => {
     expect(m.nextPayment).toEqual({ day: day(2026, 11, 1), amountCzk: 1150, rows: [life] });
     expect(m.nextDate?.day).toBe(day(2027, 1, 15));
     expect(m.nextDate?.kind).toBe('anniversary');
+  });
+});
+
+describe('insuranceRow limits', () => {
+  // The raw amounts rank the JPY limit first; in CZK the EUR limit is the largest.
+  const jpy = { title: 'Škoda na majetku', amount: 5_000_000, currency: 'JPY' };
+  const crown = { title: 'Smrt', amount: 1_000_000, currency: 'CZK' };
+  const eur = { title: 'Odpovědnost', amount: 100_000, currency: 'EUR' };
+
+  it('picks the largest limit after conversion to CZK and counts them all', () => {
+    expect(jpy.amount).toBeGreaterThan(eur.amount);
+    expect(convertToCzK(eur.amount, 'EUR')).toBeGreaterThan(convertToCzK(jpy.amount, 'JPY'));
+    expect(convertToCzK(jpy.amount, 'JPY')).toBeLessThan(crown.amount);
+
+    const row = insuranceRow(policy({ limits: [jpy, crown, eur] }), TODAY);
+    expect(row.topLimit).toEqual(eur);
+    expect(row.limitCount).toBe(3);
+    // the limit keeps its own currency; only the ranking is in CZK
+    expect(row.topLimit?.currency).toBe('EUR');
+  });
+
+  it('keeps the first of equal limits and reads a blank currency as CZK', () => {
+    const row = insuranceRow(
+      policy({
+        limits: [
+          { title: 'První', amount: 500_000, currency: '' },
+          { title: 'Druhý', amount: 500_000, currency: 'CZK' },
+        ],
+      }),
+      TODAY
+    );
+    expect(row.topLimit?.title).toBe('První');
+    expect(row.limitCount).toBe(2);
+  });
+
+  it('has no top limit for a policy without limits', () => {
+    const row = insuranceRow(policy({ limits: [] }), TODAY);
+    expect(row.topLimit).toBeNull();
+    expect(row.limitCount).toBe(0);
+    expect(row.coverageCzk).toBe(0);
   });
 });
 

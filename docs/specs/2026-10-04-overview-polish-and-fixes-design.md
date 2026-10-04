@@ -19,9 +19,12 @@ it opens the existing import modal.
 ### Owner decisions (2026-10-04)
 
 - The tag-group chips on the stocks analysis page filter the whole analysis below them.
-- Proposals accepted without change: the cash chart is reconstructed from transactions, all list
-  trend cards share one card at 170 px, the same five horizons on every value chart, TWR in
-  percent with a prominent whole-portfolio line, an optional purchase date for real estate.
+- The cash chart on bank accounts uses the recorded balance history, not a reconstruction from
+  transactions: users who keep an account without transactions and only update its balance by hand
+  must see that history (owner review of the first draft).
+- Proposals accepted without change: all list trend cards share one card at 170 px, the same five
+  horizons on every value chart, TWR in percent with a prominent whole-portfolio line, an optional
+  purchase date for real estate.
 
 ## 2. Findings
 
@@ -92,11 +95,16 @@ is stable for the whole day (fixes F2 by construction). Labels exist in both loc
 
 - A `TrendCard` "Vývoj hotovosti" between the stats and the table, five horizons, 170 px, no
   marks (aggregate chart, design system §9).
-- Series: for every account counted in net worth, `reconstructBalance` (the account detail's
-  tested walk-back from the stored balance through its transactions) over the selected span, each
-  day converted to the display currency at today's rate (as the account detail does), summed per
-  day. Transactions are loaded per account with `useQueries` (`dateFrom` = period start; "Vše" from
-  the earliest transaction). The subtitle says it is reconstructed from transactions.
+- Series: the same source as the dashboard and the other list pages — the recorded cash of the
+  portfolio history (`totalSavings` / `savingsByCurrency`, each day at its own rate) plus today's
+  live total (`PortfolioTrendCard` gains the type `cash`). Every balance change is recorded with a
+  snapshot, so an account kept without transactions shows its manual updates as steps, and the
+  chart always agrees with the cash inside net worth.
+- Subtitle: "Podle zůstatků zaznamenaných v Moony. Pohyby podle transakcí ukazuje detail účtu."
+- Known limitation, stated in the spec and left for a follow-up: an imported statement adds no
+  past days to this aggregate (nor to net worth); the balance set after the import shows from that
+  day on. Telling apart accounts kept by transactions and by hand per day needs a per-account
+  balance history (a new table), which is out of scope here.
 - Totals become consistent with the dashboard: "Celkem na účtech" sums accounts counted in net
   worth; when some are excluded the note adds "(+ X vyloučeno)" (existing key `excludedHint`).
 
@@ -253,3 +261,5 @@ Demo profile (`moony-demo`), English and Czech, at 1440 and 1080 px:
 - A per-asset valuation trace for other assets (the README §7 claim stays a gap).
 - Responsive review of the other list tables (stocks, crypto, bonds, loans, other assets); checked
   at 1080 px during verification and reported, not changed.
+- Per-account balance history (manual anchors plus transactions) that would let imported
+  statements fill the aggregate cash history.

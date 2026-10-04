@@ -16,9 +16,12 @@ a file path, presets, dry-run preview, duplicate detection, import batches with 
 
 ### Owner decisions (2026-10-04)
 
-- Presets for **XTB, Trading 212, Degiro and Interactive Brokers**, plus Moony's own export and a
+- Presets for **XTB, Trading 212, Degiro and Interactive Brokers**, plus Moony's own format and a
   generic "other broker" mapping. No sample files were provided; adapters are built from the
   brokers' documented export formats with synthetic fixtures, and real files can be added later.
+- A hand-made file must stay a first-class path: a user with an unsupported broker fills a simple
+  table in Excel (or any spreadsheet), saves it as CSV and imports it (owner review of the first
+  draft).
 - **Undo** of an import, with a migration (batch id on stock transactions).
 - **Fees are not imported** (as today); purchase prices exclude them. The preview says so when the
   file has a fee column.
@@ -31,7 +34,7 @@ a file path, presets, dry-run preview, duplicate detection, import batches with 
 | Trading 212 | History → Export, CSV (at most 12 months per file) | `,`, `Action,Time,ISIN,Ticker,Name,No. of shares,Price / share,Currency (Price / share),…,ID,…`; actions `Market buy`, `Limit sell`, … mixed with `Deposit`, `Dividend (…)`, `Interest on cash`, `Currency conversion`; `yyyy-MM-dd HH:mm:ss(.SSS)`; tickers without exchange suffix; `GBX` prices | Action value mapping, ISIN-based symbol resolution for non-US listings, GBX → GBP (÷ 100), broker id for duplicates, several files per history |
 | Degiro | Activity → Transactions → Export, CSV (not the account statement) | Headers in the UI language; `Date,Time,Product,ISIN,Reference exchange,Venue,Quantity,Price,,Local value,,…,Order ID`; the price currency is the unnamed column right after Price; `dd-MM-yyyy`; sells have a negative quantity; decimal comma in some locales | Header matching in several languages, column addressed relative to Price, direction by quantity sign, ISIN-based symbol resolution |
 | Interactive Brokers | Flex Query (Activity, section Trades), CSV | User-selected fields with stable names: `Symbol, ISIN, TradeDate, Buy/Sell, Quantity, TradePrice, CurrencyPrimary, AssetClass, TradeID`; `yyyyMMdd` or `yyyy-MM-dd`; sells negative; options and FX rows present | Guide lists the fields to tick; non-stock asset classes skipped; separator-less dates |
-| Moony | Stocks → Export | `Date,Type,Ticker,Name,Quantity,Price,Currency` | Round trip |
+| Moony | Stocks → Export, or the sample file filled in by hand | `Date,Type,Ticker,Name,Quantity,Price,Currency` (`Name` optional) | Round trip; the hand-made table path (§3) |
 
 Sources used for the formats: the public sample exports of the Apache-2.0 project
 Export-To-Ghostfolio and the brokers' help pages.
@@ -43,12 +46,22 @@ empty state. Steps: **1 Soubor · 2 Sloupce · 3 Kontrola · 4 Hotovo** (`Wizard
 
 ### Step 1 — Soubor
 
-- Left column, "Odkud je export": XTB, Trading 212, Degiro, Interactive Brokers, Export z Moony,
-  saved custom formats, "Jiný broker". The selected source shows **"Jak získat export"**: numbered
-  steps (where to click, which report, which period, which format), the broker's caveats
-  ("Trading 212 exportuje nejvýš 12 měsíců – nahrajte víc souborů, duplicity poznáme") and a link
-  to the broker's help page. "Jiný broker" shows what the file must contain: one row per trade with
-  date, direction, symbol or ISIN, quantity, price and currency.
+- Left column, "Odkud je export": XTB, Trading 212, Degiro, Interactive Brokers, **Vlastní
+  tabulka (vzor Moony)**, saved custom formats, "Jiný broker". The selected source shows **"Jak
+  získat export"**: numbered steps (where to click, which report, which period, which format), the
+  broker's caveats ("Trading 212 exportuje nejvýš 12 měsíců – nahrajte víc souborů, duplicity
+  poznáme") and a link to the broker's help page.
+- **Vlastní tabulka (vzor Moony)** is the path for unsupported brokers and hand-kept records:
+  "Stáhněte vzor, vyplňte ho v Excelu nebo jiné tabulce a uložte jako CSV." The guide lists the
+  columns with an example row (Datum `15.01.2024` or `2024-01-15`; Typ `nákup`/`prodej` or
+  `buy`/`sell`; Symbol as on Yahoo Finance, e.g. `AAPL`, `VWCE.DE`; Počet; Cena za kus; Měna;
+  Název optional). Files saved by Excel in any locale are accepted: comma, semicolon or tab,
+  UTF-8 or Windows-1250/1252, decimal comma or point, thousands separators, Czech or English
+  headers. Moony's own export is the same format, so it is recognised automatically and needs no
+  mapping.
+- "Jiný broker" is for any other layout: it shows what the file must contain (one row per trade
+  with date, direction, symbol or ISIN, quantity, price and currency) and leads to the mapping form
+  in step 2; the mapping can be remembered for the next file.
 - Right column: drop zone + "Vybrat soubor…" (Tauri dialog and drag and drop, as the bank wizard),
   `.csv`/`.txt`; "Stáhnout vzorový soubor" (Moony format). Excel files get the hint to save them as
   CSV.
@@ -123,7 +136,10 @@ like the bank wizard.
   signatures (with language variants), the config they produce for the file (columns resolved to
   the file's own header positions) and the transforms the generic config cannot express (XTB
   comment extraction and suffix mapping, Degiro price-currency column, IBKR asset-class filter,
-  GBX normalisation). Adding a broker = one module + fixture + guide text.
+  GBX normalisation). The `moony` adapter is the hand-made table: English or Czech headers
+  (`Date/Datum`, `Type/Typ`, `Ticker/Symbol`, `Name/Název`, `Quantity/Počet`, `Price/Cena`,
+  `Currency/Měna`), `Name` optional, type words in both languages. Adding a broker = one module +
+  fixture + guide text.
 - `config` — `StockImportConfig` (validated, `validation.*` keys): delimiter, encoding, header row,
   skipped rows, source id, date column/format, symbol and/or ISIN column, name column, quantity
   column, price column, currency mode (column / fixed / instrument), direction mode (type column +
@@ -189,8 +205,9 @@ time (the data changed in between) aborts the whole import with that row's messa
 ## 5. Testing
 
 - Rust: one fixture per adapter in `src-tauri/tests/fixtures/csv/` (synthetic, the brokers' real
-  shapes) and a guard test that every adapter detects its fixture, is not shadowed by another, and
-  parses it with zero errors and the expected trades; parse tests (numbers with thousands
+  shapes), plus a hand-made table as Czech Excel saves it (semicolon, Windows-1250, decimal comma,
+  Czech headers and type words), and a guard test that every adapter detects its fixture, is not
+  shadowed by another, and parses it with zero errors and the expected trades; parse tests (numbers with thousands
   separators, decimal comma, currency signs, GBX, sign direction, XTB comment, separator-less
   dates, blank headers); duplicate rules; holdings and currency simulation; atomic import and
   rollback; undo (orphan positions removed, others kept); the moved bulk writer keeps the nine MCP

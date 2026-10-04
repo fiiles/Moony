@@ -18,7 +18,7 @@ import TimePeriodSelector from '@/components/cashflow/TimePeriodSelector';
 import { MoonyLineChart, type LineTip } from '@/components/charts/MoonyLineChart';
 import { TREND_CHART_HEIGHT, TrendCard } from '@/components/charts/TrendCard';
 
-type TrendType = 'investments' | 'crypto' | 'realEstate' | 'otherAssets';
+type TrendType = 'investments' | 'crypto' | 'realEstate' | 'otherAssets' | 'cash';
 
 interface PortfolioTrendCardProps<E extends ChartEvent> {
   type: TrendType;
@@ -34,12 +34,13 @@ interface PortfolioTrendCardProps<E extends ChartEvent> {
   legend?: ReactNode;
 }
 
-/** The namespace whose `chart.title` and `chart.subtitle` head the card of each type. */
-const NAMESPACES: Record<TrendType, string> = {
-  investments: 'stocks',
-  crypto: 'crypto',
-  realEstate: 'realEstate',
-  otherAssets: 'otherAssets',
+/** Where each type finds its heading: the keys `<group>.title` and `<group>.subtitle`. */
+const TEXTS: Record<TrendType, { namespace: string; group: string }> = {
+  investments: { namespace: 'stocks', group: 'chart' },
+  crypto: { namespace: 'crypto', group: 'chart' },
+  realEstate: { namespace: 'realEstate', group: 'chart' },
+  otherAssets: { namespace: 'otherAssets', group: 'chart' },
+  cash: { namespace: 'bank_accounts', group: 'trend' },
 };
 
 /** The part of a history row a trend of `type` shows, in the display currency of that day. */
@@ -55,6 +56,8 @@ function historyValue(
       return convertPoint(h.recordedAt, h.cryptoByCurrency, Number(h.totalCrypto || 0));
     case 'otherAssets':
       return convertPoint(h.recordedAt, h.otherAssetsByCurrency, Number(h.totalOtherAssets || 0));
+    case 'cash':
+      return convertPoint(h.recordedAt, h.savingsByCurrency, Number(h.totalSavings || 0));
     case 'realEstate':
       return convertPoint(
         h.recordedAt,
@@ -68,7 +71,10 @@ function historyValue(
  * Compact trend of a whole asset class (design system §7 List: "optional
  * trend card") on the shared `TrendCard`: title, one sentence, the five
  * horizons and a 170 px value line from the recorded portfolio history. The
- * stocks and crypto lists add their buy and sell days as events.
+ * stocks and crypto lists add their buy and sell days as events; the bank
+ * accounts list shows the recorded cash (every balance change is snapshotted,
+ * so a hand-kept account appears as steps and the line ends at the cash in
+ * net worth).
  */
 export default function PortfolioTrendCard<E extends ChartEvent = ChartEvent>({
   type,
@@ -80,7 +86,8 @@ export default function PortfolioTrendCard<E extends ChartEvent = ChartEvent>({
   legend,
 }: PortfolioTrendCardProps<E>) {
   const { formatCurrencyRaw } = useCurrency();
-  const { t } = useTranslation(NAMESPACES[type]);
+  const { namespace, group } = TEXTS[type];
+  const { t } = useTranslation(namespace);
   const fmt = useFormat();
   const queryClient = useQueryClient();
   const { lastResult } = useSyncStatus();
@@ -135,8 +142,8 @@ export default function PortfolioTrendCard<E extends ChartEvent = ChartEvent>({
 
   return (
     <TrendCard
-      title={t('chart.title')}
-      subtitle={t('chart.subtitle')}
+      title={t(`${group}.title`)}
+      subtitle={t(`${group}.subtitle`)}
       aside={<TimePeriodSelector value={period} onChange={setPeriod} options={CHART_PERIODS} />}
       legend={legend}
       dimmed={isRefreshing}

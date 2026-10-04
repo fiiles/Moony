@@ -25,6 +25,7 @@ import { useShellPage } from '@/components/shell/shell-context';
 import { utcDayFloor } from '@/utils/chart-axis';
 import { PageHead } from '@/components/shell/PageHead';
 import { Stat, StatSkeleton, Stats } from '@/components/common/Stat';
+import PortfolioTrendCard from '@/components/common/PortfolioTrendCard';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ConfirmDeleteDialog } from '@/components/common/ConfirmDeleteDialog';
 import { Button } from '@/components/ui/button';
@@ -345,6 +346,8 @@ export default function BankAccounts() {
               }
             />
           </Stats>
+
+          <PortfolioTrendCard type="cash" currentValue={totals.balance} />
 
           <Card variant="table">
             <CardHeader>

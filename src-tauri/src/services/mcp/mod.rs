@@ -362,7 +362,7 @@ impl MoonyMcp {
     }
 
     #[tool(
-        description = "Get stored currency exchange rates. Rates are relative to Moony's internal base currency CZK (rate = 1.0): multiply an amount by its currency's rate to get CZK. The user's main currency is given as `mainCurrency`; the other tools already report amounts in it. Rates are fetched from the European Central Bank and cached locally."
+        description = "Get stored currency exchange rates. Rates are relative to Moony's internal base currency CZK (rate = 1.0): multiply an amount by its currency's rate to get CZK. The user's main currency is given as `mainCurrency`; the aggregate tools (portfolio, history, reports, analysis) report amounts in it, while list tools report each record in its own currency. Rates are fetched from the European Central Bank and cached locally."
     )]
     fn exchange_rates_list(&self) -> Result<CallToolResult, McpError> {
         to_result(self.db.with_conn(exchange_rates::exchange_rates_list))

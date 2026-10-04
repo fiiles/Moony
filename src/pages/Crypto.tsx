@@ -17,16 +17,15 @@ import { cryptoApi, exportApi, priceApi } from '@/lib/tauri-api';
 import { useCurrency } from '@/lib/currency';
 import { useFormat } from '@/lib/use-format';
 import { useDatedConvert } from '@/hooks/use-dated-convert';
-import { utcDayFloor } from '@/utils/chart-axis';
 import type { EventCluster } from '@/utils/chart-scale';
-import { tradeDayEvents, type TradeDayEvent } from '@/utils/trade-events';
+import { firstTradeDay, tradeDayEvents, type TradeDayEvent } from '@/utils/trade-events';
 import { PageHead } from '@/components/shell/PageHead';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ExportButton } from '@/components/common/ExportButton';
 import { ConfirmDeleteDialog } from '@/components/common/ConfirmDeleteDialog';
 import { StatSkeleton, Stats } from '@/components/common/Stat';
-import PortfolioTrendCard, { type TransactionMarker } from '@/components/common/PortfolioTrendCard';
+import PortfolioTrendCard from '@/components/common/PortfolioTrendCard';
 import { ChartLegend } from '@/components/charts/ChartLegend';
 import { AddCryptoModal } from '@/components/crypto/AddCryptoModal';
 import { BuyCryptoModal } from '@/components/crypto/BuyCryptoModal';
@@ -77,12 +76,8 @@ export default function Crypto() {
     return map;
   }, [allTransactions]);
 
-  // Earliest transaction bounds the "Vše" period of the trend card
-  const transactionMarkers = useMemo((): TransactionMarker[] => {
-    if (!allTransactions || allTransactions.length === 0) return [];
-    const earliest = Math.min(...allTransactions.map((tx) => tx.transactionDate));
-    return [{ date: utcDayFloor(earliest), buyAmount: 0, sellAmount: 0 }];
-  }, [allTransactions]);
+  // No horizon of the trend card starts before the first transaction
+  const earliest = useMemo(() => firstTradeDay(allTransactions ?? []), [allTransactions]);
 
   // Buy and sell days as events on the aggregate trend (prototype crypto.html):
   // one marker per day and type, listing the coins and the day's total.
@@ -300,7 +295,7 @@ export default function Crypto() {
             type="crypto"
             currentValue={metrics.totalValue}
             isRefreshing={refreshPricesMutation.isPending}
-            transactionMarkers={transactionMarkers}
+            earliest={earliest}
             events={trendEvents}
             renderEventTip={trendEventTip}
             legend={

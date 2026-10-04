@@ -13,13 +13,14 @@ import { useCurrency } from '@/lib/currency';
 import { useStockTagsByInvestment } from '@/hooks/use-stock-tags';
 import { useDatedConvert } from '@/hooks/use-dated-convert';
 import { mapInvestmentToHolding, calculateMetrics, type HoldingData } from '@/utils/stocks';
+import { firstTradeDay } from '@/utils/trade-events';
 import { PageHead } from '@/components/shell/PageHead';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ExportButton } from '@/components/common/ExportButton';
 import { ConfirmDeleteDialog } from '@/components/common/ConfirmDeleteDialog';
 import { StatSkeleton, Stats } from '@/components/common/Stat';
-import PortfolioTrendCard, { type TransactionMarker } from '@/components/common/PortfolioTrendCard';
+import PortfolioTrendCard from '@/components/common/PortfolioTrendCard';
 import { AddInvestmentModal } from '@/components/stocks/AddInvestmentModal';
 import { BuyInvestmentModal } from '@/components/stocks/BuyInvestmentModal';
 import { SellInvestmentModal } from '@/components/stocks/SellInvestmentModal';
@@ -69,12 +70,8 @@ export default function Stocks() {
     return map;
   }, [allTransactions]);
 
-  // Earliest transaction bounds the "Vše" period of the trend card
-  const transactionMarkers = useMemo((): TransactionMarker[] => {
-    if (!allTransactions || allTransactions.length === 0) return [];
-    const earliest = Math.min(...allTransactions.map((tx) => tx.transactionDate));
-    return [{ date: Math.floor(earliest / 86400) * 86400, buyAmount: 0, sellAmount: 0 }];
-  }, [allTransactions]);
+  // No horizon of the trend card starts before the first transaction
+  const earliest = useMemo(() => firstTradeDay(allTransactions ?? []), [allTransactions]);
 
   // Realized gains (WAC) in total and per position, each leg at its day's rate
   const realizedGain = useMemo(() => {
@@ -260,7 +257,7 @@ export default function Stocks() {
             type="investments"
             currentValue={metrics.totalValue}
             isRefreshing={refreshPricesMutation.isPending}
-            transactionMarkers={transactionMarkers}
+            earliest={earliest}
           />
 
           <InvestmentsTable

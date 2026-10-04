@@ -58,7 +58,7 @@ export default function Projection() {
   const { t } = useTranslation('reports');
   const { t: tc } = useTranslation('common');
   const fmt = useFormat();
-  const { formatCurrency, formatCurrencyShort } = useCurrency();
+  const { formatCurrency, formatCurrencyShort, formatCurrencySigned } = useCurrency();
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
@@ -339,7 +339,7 @@ export default function Projection() {
           label={t('projection.hero.label', { count: years })}
           value={money(projected)}
           tone={delta >= 0 ? 'gain' : 'loss'}
-          delta={`${delta >= 0 ? '↗' : '↘'} ${fmt.money(delta, 'CZK', { signed: true, decimals: 0 })}`}
+          delta={`${delta >= 0 ? '↗' : '↘'} ${formatCurrencySigned(delta)}`}
           deltaNote={t('projection.hero.deltaNote', { lo: short(lastLo), hi: short(lastHi) })}
         />
       </HeroCard>
@@ -361,7 +361,7 @@ export default function Projection() {
         />
         <Stat
           label={t('projection.stats.growth')}
-          value={fmt.money(returns, 'CZK', { signed: true, decimals: 0 })}
+          value={formatCurrencySigned(returns)}
           tone={returns > 0 ? 'gain' : returns < 0 ? 'loss' : 'neutral'}
           noteTone="neutral"
           note={

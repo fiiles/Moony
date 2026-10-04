@@ -47,7 +47,7 @@ interface Row {
 export default function Cashflow() {
   const { t } = useTranslation('reports');
   const { t: tBank } = useTranslation('bank_accounts');
-  const { formatCurrency } = useCurrency();
+  const { formatCurrency, formatCurrencySigned, convert, currencyCode } = useCurrency();
   const fmt = useFormat();
   const [range, setRange] = useState<CashflowRange>('12m');
 
@@ -146,20 +146,28 @@ export default function Cashflow() {
 
   const exportCsv = async () => {
     if (!data) return { csv: '', filename: 'cashflow.csv', count: 0 };
+    // Amounts are CZK; the file carries them in the main currency, like the page
+    const suffix = currencyCode.toLowerCase();
+    const inMain = (v: string | number) =>
+      Math.round(convert(czk(v), 'CZK', currencyCode) * 100) / 100;
     const lines = [
-      ['month', 'income_czk', 'expenses_czk'].join(';'),
+      ['month', `income_${suffix}`, `expenses_${suffix}`].join(';'),
       ...data.months.map((m) =>
-        [fmt.day(m.month, { year: 'numeric', month: '2-digit' }), m.income, m.expenses].join(';')
+        [
+          fmt.day(m.month, { year: 'numeric', month: '2-digit' }),
+          inMain(m.income),
+          inMain(m.expenses),
+        ].join(';')
       ),
       '',
-      ['expense_category', 'amount_czk', 'previous_czk', 'transactions'].join(';'),
+      ['expense_category', `amount_${suffix}`, `previous_${suffix}`, 'transactions'].join(';'),
       ...data.expenseCategories.map((g) =>
-        [groupLabel(g, 'expense'), g.amount, g.previousAmount, g.count].join(';')
+        [groupLabel(g, 'expense'), inMain(g.amount), inMain(g.previousAmount), g.count].join(';')
       ),
       '',
-      ['income_source', 'amount_czk', 'previous_czk', 'transactions'].join(';'),
+      ['income_source', `amount_${suffix}`, `previous_${suffix}`, 'transactions'].join(';'),
       ...data.incomeSources.map((g) =>
-        [groupLabel(g, 'income'), g.amount, g.previousAmount, g.count].join(';')
+        [groupLabel(g, 'income'), inMain(g.amount), inMain(g.previousAmount), g.count].join(';')
       ),
     ];
     return {
@@ -327,7 +335,7 @@ export default function Cashflow() {
         />
         <Stat
           label={t('actuals.stats.avgSavings')}
-          value={fmt.money(avgSavings, 'CZK', { signed: true, decimals: 0 })}
+          value={formatCurrencySigned(avgSavings)}
           tone={avgSavings > 0 ? 'gain' : avgSavings < 0 ? 'loss' : 'neutral'}
           noteTone="neutral"
           note={
@@ -362,7 +370,7 @@ export default function Cashflow() {
           height={200}
           formatValue={money}
           renderExtra={(bar) =>
-            `${t('actuals.chart.balance')} ${fmt.money(bar.a - bar.b, 'CZK', { signed: true, decimals: 0 })}`
+            `${t('actuals.chart.balance')} ${formatCurrencySigned(bar.a - bar.b)}`
           }
         />
       </Card>

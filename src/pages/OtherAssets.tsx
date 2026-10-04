@@ -37,7 +37,7 @@ export default function OtherAssets() {
   const { t } = useTranslation('otherAssets');
   const { t: tc } = useTranslation('common');
   const queryClient = useQueryClient();
-  const { formatCurrency } = useCurrency();
+  const { formatCurrency, formatCurrencySigned } = useCurrency();
   const fmt = useFormat();
   const [modal, setModal] = useState<Modal>(null);
   const [selected, setSelected] = useState<OtherAsset | null>(null);
@@ -152,7 +152,7 @@ export default function OtherAssets() {
             />
             <Stat
               label={t('summary.gain')}
-              value={fmt.money(gain, 'CZK', { signed: true, decimals: 0 })}
+              value={formatCurrencySigned(gain)}
               tone={gain > 0 ? 'gain' : gain < 0 ? 'loss' : 'neutral'}
               note={
                 totals.cost > 0
@@ -162,7 +162,7 @@ export default function OtherAssets() {
             />
             <Stat
               label={t('summary.yearlyYield')}
-              value={fmt.money(totals.yield, 'CZK', { signed: true, decimals: 0 })}
+              value={formatCurrencySigned(totals.yield)}
               tone={totals.yield > 0 ? 'gain' : 'neutral'}
               noteTone="neutral"
               note={

@@ -99,6 +99,13 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
     return fmt.money(convertedValue, currencyCode, { decimals: decimalsFrom(opts, 0) });
   }
 
+  /** Convert a CZK value to the display currency and format it with an explicit sign, 0 decimals. */
+  function formatCurrencySigned(value: number) {
+    if (value === null || value === undefined || Number.isNaN(Number(value))) return '';
+    const convertedValue = convertFromCzK(value, currencyCode);
+    return fmt.money(convertedValue, currencyCode, { signed: true, decimals: 0 });
+  }
+
   /**
    * Format a value that's already in the user's preferred currency (no conversion)
    * Use this for:
@@ -143,6 +150,7 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
         currency,
         setCurrency,
         formatCurrency,
+        formatCurrencySigned,
         formatCurrencyRaw,
         formatCurrencyShort,
         formatPrice,

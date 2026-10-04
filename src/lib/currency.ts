@@ -6,6 +6,8 @@ export type CurrencyContextValue = {
   currency: CurrencyDef;
   setCurrency: (c: CurrencyCode) => void;
   formatCurrency: (value: number, opts?: Intl.NumberFormatOptions) => string;
+  /** Convert a CZK value to the display currency and format it with an explicit sign, 0 decimals. */
+  formatCurrencySigned: (value: number) => string;
   formatCurrencyRaw: (value: number, opts?: Intl.NumberFormatOptions) => string;
   formatCurrencyShort: (value: number) => string;
   /** Format a price with smart rounding: the currency's decimals below 1000, 0 decimals from 1000 up */

@@ -60,7 +60,7 @@ const SOURCE_BY_CATEGORY: Record<string, string> = {
 export default function CashflowPlanning() {
   const { t } = useTranslation('reports');
   const { t: tc } = useTranslation('common');
-  const { formatCurrency } = useCurrency();
+  const { formatCurrency, formatCurrencySigned } = useCurrency();
   const fmt = useFormat();
   const queryClient = useQueryClient();
 
@@ -130,7 +130,6 @@ export default function CashflowPlanning() {
   };
 
   const money = (amount: number) => formatCurrency(Math.abs(amount) < 0.01 ? 0 : amount);
-  const signed = (amount: number) => fmt.money(amount, 'CZK', { signed: true, decimals: 0 });
 
   const sectionOf = (id: SectionId): CashflowSection | undefined =>
     id === 'personal' ? report?.personal : report?.investments;
@@ -239,7 +238,7 @@ export default function CashflowPlanning() {
                 : t('planning.table.perMonth')}
           </TableCell>
           <TableCell className={cn('text-right font-650 num', isIncome ? 'text-gain' : 'text-ink')}>
-            {signed(isIncome ? item.amount : -item.amount)}
+            {formatCurrencySigned(isIncome ? item.amount : -item.amount)}
           </TableCell>
           <TableCell className="text-right">
             {item.isUserDefined ? (
@@ -306,7 +305,7 @@ export default function CashflowPlanning() {
                 section.netCashflow >= 0 ? 'text-gain' : 'text-loss'
               )}
             >
-              {signed(section.netCashflow)}
+              {formatCurrencySigned(section.netCashflow)}
             </b>
           </div>
         </CardHeader>
@@ -430,7 +429,7 @@ export default function CashflowPlanning() {
         />
         <Stat
           label={t('planning.stats.net')}
-          value={signed(report.netCashflow)}
+          value={formatCurrencySigned(report.netCashflow)}
           tone={report.netCashflow > 0 ? 'gain' : report.netCashflow < 0 ? 'loss' : 'neutral'}
           noteTone="neutral"
           note={

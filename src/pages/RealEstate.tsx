@@ -87,7 +87,7 @@ export default function RealEstatePage() {
   const { t: tc } = useTranslation('common');
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
-  const { formatCurrency } = useCurrency();
+  const { formatCurrency, formatCurrencySigned } = useCurrency();
   const fmt = useFormat();
   const { user } = useAuth();
   const excludePersonal = user?.excludePersonalRealEstate ?? false;
@@ -333,10 +333,7 @@ export default function RealEstatePage() {
             />
             <Stat
               label={t('summary.appreciationTitle')}
-              value={fmt.money(totals.value - totals.purchase, 'CZK', {
-                signed: true,
-                decimals: 0,
-              })}
+              value={formatCurrencySigned(totals.value - totals.purchase)}
               tone={totals.value - totals.purchase >= 0 ? 'gain' : 'loss'}
               note={`${fmt.percent(totals.purchase > 0 ? (totals.value - totals.purchase) / totals.purchase : 0, 1, { signed: true })} ${t('summary.vsPurchase', { amount: formatCurrency(totals.purchase) })}`}
             />
@@ -354,7 +351,7 @@ export default function RealEstatePage() {
             />
             <Stat
               label={t('summary.grossRentYear')}
-              value={fmt.money(totals.rent, 'CZK', { signed: true, decimals: 0 })}
+              value={formatCurrencySigned(totals.rent)}
               tone={totals.rent > 0 ? 'gain' : 'neutral'}
               noteTone="neutral"
               note={
@@ -477,9 +474,7 @@ export default function RealEstatePage() {
                             !r.excluded && (r.appreciation >= 0 ? 'text-gain' : 'text-loss')
                           )}
                         >
-                          <span className="font-650">
-                            {fmt.money(r.appreciation, 'CZK', { signed: true, decimals: 0 })}
-                          </span>
+                          <span className="font-650">{formatCurrencySigned(r.appreciation)}</span>
                           {sub(
                             fmt.percent(r.purchaseCzk > 0 ? r.appreciation / r.purchaseCzk : 0, 1, {
                               signed: true,

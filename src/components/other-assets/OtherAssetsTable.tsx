@@ -65,7 +65,7 @@ export function OtherAssetsTable({
   onDelete,
 }: OtherAssetsTableProps) {
   const { t } = useTranslation('otherAssets');
-  const { formatCurrency } = useCurrency();
+  const { formatCurrency, formatCurrencySigned } = useCurrency();
   const fmt = useFormat();
   const [search, setSearch] = useState('');
   const [sortColumn, setSortColumn] = useState<SortColumn>('value');
@@ -250,9 +250,7 @@ export function OtherAssetsTable({
                       t('table.noChange')
                     ) : (
                       <>
-                        <span className="font-650">
-                          {fmt.money(r.gainCzk, 'CZK', { signed: true, decimals: 0 })}
-                        </span>
+                        <span className="font-650">{formatCurrencySigned(r.gainCzk)}</span>
                         {sub(fmt.percent(r.gainPct, 1, { signed: true }))}
                       </>
                     )}
@@ -261,7 +259,7 @@ export function OtherAssetsTable({
                     {r.yieldCzk > 0 ? (
                       <>
                         <span className="font-650 text-gain">
-                          {fmt.money(r.yieldCzk, 'CZK', { signed: true, decimals: 0 })}
+                          {formatCurrencySigned(r.yieldCzk)}
                         </span>
                         {sub(yieldLabel(a))}
                       </>

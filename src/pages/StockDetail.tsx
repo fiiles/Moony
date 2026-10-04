@@ -111,20 +111,25 @@ export default function StockDetail() {
     enabled: !!id,
   });
 
-  // Company data comes from Yahoo through the stock_data cache; `refresh` lets the backend fetch
-  // it first when it is missing or over a day old.
+  // Company data comes from Yahoo through the stock_data cache. The stored record shows at once;
+  // the second query lets the backend fetch it first when it is missing or over a day old, so a
+  // slow Yahoo answer never holds back what is already known.
   const ticker = investment?.ticker;
-  const {
-    data: companyInfo,
-    isPending: companyPending,
-    isFetching: companyFetching,
-    refetch: refetchCompanyInfo,
-  } = useQuery<StockCompanyInfo>({
-    queryKey: ['stock-company-info', ticker],
+  const storedCompanyInfo = useQuery<StockCompanyInfo>({
+    queryKey: ['stock-company-info', ticker, 'stored'],
+    queryFn: () => investmentsApi.getCompanyInfo(ticker!, false),
+    enabled: !!ticker,
+    staleTime: COMPANY_INFO_STALE_TIME_MS,
+  });
+  const freshCompanyInfo = useQuery<StockCompanyInfo>({
+    queryKey: ['stock-company-info', ticker, 'fresh'],
     queryFn: () => investmentsApi.getCompanyInfo(ticker!, true),
     enabled: !!ticker,
     staleTime: COMPANY_INFO_STALE_TIME_MS,
   });
+  const companyInfo = freshCompanyInfo.data ?? storedCompanyInfo.data;
+  const companyFetching = freshCompanyInfo.isFetching;
+  const refetchCompanyInfo = freshCompanyInfo.refetch;
 
   // Date-aware conversion over the transactions' range (ADR 0001).
   const convertAt = useDatedConvert(transactions);
@@ -339,20 +344,12 @@ export default function StockDetail() {
       : []
   ).filter((row): row is [string, string] => row[1] !== null);
 
+  const hasCompanyData = companyProfile !== '' || companyRows.length > 0;
+  // Nothing to show yet and the refresh has not answered: placeholder rows, not "unavailable"
+  const companyPending = !hasCompanyData && (freshCompanyInfo.isPending || companyFetching);
+
   const renderCompanyInfo = () => {
-    if (companyPending) {
-      return [0, 1, 2, 3, 4].map((row) => (
-        <div
-          key={row}
-          aria-hidden
-          className="flex items-center justify-between border-b border-line-soft py-[13px]"
-        >
-          <div className="skeleton h-3 w-2/5" />
-          <div className="skeleton h-3 w-1/5" />
-        </div>
-      ));
-    }
-    if (companyProfile || companyRows.length > 0) {
+    if (hasCompanyData) {
       return (
         <>
           {companyProfile && (
@@ -367,6 +364,18 @@ export default function StockDetail() {
           ))}
         </>
       );
+    }
+    if (companyPending) {
+      return [0, 1, 2, 3, 4].map((row) => (
+        <div
+          key={row}
+          aria-hidden
+          className="flex items-center justify-between border-b border-line-soft py-[13px]"
+        >
+          <div className="skeleton h-3 w-2/5" />
+          <div className="skeleton h-3 w-1/5" />
+        </div>
+      ));
     }
     if (companyInfo?.quoteType === 'ETF') {
       return (

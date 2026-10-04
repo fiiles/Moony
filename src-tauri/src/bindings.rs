@@ -111,6 +111,29 @@ pub fn collect_types() -> TypeCollection {
     types.register::<crate::services::csv_import::CsvRowStatus>();
     types.register::<crate::services::csv_import::CsvDateRange>();
 
+    // Stock CSV import
+    types.register::<crate::services::stock_import::StockImportConfig>();
+    types.register::<crate::services::stock_import::StockImportTransforms>();
+    types.register::<crate::services::stock_import::StockTypeValueMapping>();
+    types.register::<crate::services::stock_import::StockInstrumentOverride>();
+    types.register::<crate::services::stock_import::StockCsvInspectOptions>();
+    types.register::<crate::services::stock_import::StockCsvInspection>();
+    types.register::<crate::services::stock_import::StockColumnSuggestion>();
+    types.register::<crate::services::stock_import::StockColumnValues>();
+    types.register::<crate::services::stock_import::StockTypeValueStat>();
+    types.register::<crate::services::stock_import::StockImportPreview>();
+    types.register::<crate::services::stock_import::StockPreviewRow>();
+    types.register::<crate::services::stock_import::StockRowMessage>();
+    types.register::<crate::services::stock_import::StockImportInstrument>();
+    types.register::<crate::services::stock_import::StockImportCounts>();
+    types.register::<crate::services::stock_import::StockInstrumentQuery>();
+    types.register::<crate::services::stock_import::StockInstrumentCandidate>();
+    types.register::<crate::services::stock_import::StockInstrumentResolution>();
+    types.register::<crate::services::stock_import::StockImportResult>();
+    types.register::<crate::services::stock_import::StockImportBatch>();
+    types.register::<crate::services::stock_import::StockImportUndoResult>();
+    types.register::<crate::services::stock_import::SavedStockImportFormat>();
+
     // Stock tags models
     types.register::<crate::models::StockTag>();
     types.register::<crate::models::InsertStockTag>();

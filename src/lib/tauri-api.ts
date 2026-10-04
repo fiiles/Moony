@@ -98,6 +98,16 @@ import type {
   CategorizationOverview,
   RulePackInfo,
   PackRuleInfo,
+  SavedStockImportFormat,
+  StockCsvInspectOptions,
+  StockCsvInspection,
+  StockImportBatch,
+  StockImportConfig,
+  StockImportPreview,
+  StockImportResult,
+  StockImportUndoResult,
+  StockInstrumentQuery,
+  StockInstrumentResolution,
 } from '../../shared/schema';
 import type {
   StockInvestmentWithPrice,
@@ -884,6 +894,25 @@ export const bankAccountsApi = {
 // ============================================================================
 // Stock Tags API
 // ============================================================================
+
+/** Stock CSV import wizard (Rust `commands/stock_import.rs`); files are read by path. */
+export const stockImportApi = {
+  inspect: (filePath: string, options: StockCsvInspectOptions = {}) =>
+    tauriInvoke<StockCsvInspection>('inspect_stock_csv', { filePath, options }),
+  resolveInstruments: (queries: StockInstrumentQuery[]) =>
+    tauriInvoke<StockInstrumentResolution[]>('resolve_stock_instruments', { queries }),
+  preview: (filePath: string, config: StockImportConfig) =>
+    tauriInvoke<StockImportPreview>('preview_stock_csv_import', { filePath, config }),
+  import: (filePath: string, config: StockImportConfig) =>
+    tauriInvoke<StockImportResult>('import_stock_csv', { filePath, config }),
+  listBatches: () => tauriInvoke<StockImportBatch[]>('list_stock_import_batches'),
+  undoBatch: (batchId: string) =>
+    tauriInvoke<StockImportUndoResult>('undo_stock_import_batch', { batchId }),
+  listFormats: () => tauriInvoke<SavedStockImportFormat[]>('list_stock_import_formats'),
+  saveFormat: (name: string, headers: string[], config: StockImportConfig) =>
+    tauriInvoke<SavedStockImportFormat>('save_stock_import_format', { name, headers, config }),
+  deleteFormat: (id: string) => tauriInvoke<void>('delete_stock_import_format', { id }),
+};
 
 export const stockTagsApi = {
   getAll: () => tauriInvoke<StockTag[]>('get_all_stock_tags'),

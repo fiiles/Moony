@@ -478,6 +478,23 @@ export type CsvRowStatus =
 "skipped"
 
 /**
+ * Where the price currency of a trade comes from.
+ */
+export type CurrencyMode = 
+/**
+ * A column of the file (`currencyColumn`).
+ */
+"column" | 
+/**
+ * One currency for the whole file (`fixedCurrency`).
+ */
+"fixed" | 
+/**
+ * The currency of the instrument's listing (XTB exports carry none).
+ */
+"instrument"
+
+/**
  * Where the data lives on this machine.
  */
 export type DataLocation = { dataDir: string; dbPath: string; totalBytes: number }
@@ -486,6 +503,19 @@ export type DataLocation = { dataDir: string; dbPath: string; totalBytes: number
  * Data source for accounts and transactions
  */
 export type DataSource = "manual" | "csv_import" | "api_sync"
+
+/**
+ * How the direction of a trade is read.
+ */
+export type DirectionMode = 
+/**
+ * From `typeColumn` through `typeValues`.
+ */
+"typeColumn" | 
+/**
+ * From the sign of the quantity (Degiro, IBKR): negative is a sell.
+ */
+"quantitySign"
 
 /**
  * User dividend override
@@ -957,6 +987,15 @@ amount: string; currency: string; categoryId: string | null }
 export type RulePackInfo = { packId: string; country: string; version: number; ruleCount: number; enabled: boolean }
 
 /**
+ * A custom mapping remembered for files with the same headers (TS `SavedStockImportFormat`).
+ */
+export type SavedStockImportFormat = { id: string; name: string; 
+/**
+ * `header_signature` of the file it was saved from.
+ */
+headerSignature: string; config: StockImportConfig; createdAt: number }
+
+/**
  * Interest rate zone (tier) of a bank account
  */
 export type SavingsAccountZone = { id: string; savingsAccountId: string; fromAmount: string; toAmount: string | null; interestRate: string; createdAt: number }
@@ -966,6 +1005,300 @@ export type SourceCount = {
  * `rule`, `exact_match`, `own_account`, `mcp`, `manual` (a category without a recorded source).
  */
 source: string; count: number }
+
+/**
+ * A column suggested for a role (TS `StockColumnSuggestion`). Roles: `date`,
+ * `type`, `symbol`, `isin`, `name`, `quantity`, `price`, `currency`,
+ * `externalId`, `fee`.
+ */
+export type StockColumnSuggestion = { role: string; column: number; 
+/**
+ * 0.0–1.0 (1.0 when a source's adapter set it).
+ */
+confidence: number }
+
+/**
+ * Distinct values of one column, for the type-value table (TS `StockColumnValues`).
+ * Only columns with at most 30 distinct non-empty values are listed.
+ */
+export type StockColumnValues = { column: number; values: StockTypeValueStat[] }
+
+/**
+ * Options of an inspection (TS `StockCsvInspectOptions`).
+ */
+export type StockCsvInspectOptions = { 
+/**
+ * Use this source instead of detecting one.
+ */
+source?: string | null; headerRow?: number | null; skipRows?: number | null; encoding?: string | null; delimiter?: string | null }
+
+/**
+ * What a file looks like and how it would be read (TS `StockCsvInspection`).
+ */
+export type StockCsvInspection = { fileName: string; encoding: string; delimiter: string; headerRow: number; 
+/**
+ * Header cells as in the file (a blank cell stays empty; the UI labels it
+ * by position).
+ */
+headers: string[]; 
+/**
+ * The first data rows (at most 8), each padded to `headers.len()`.
+ */
+sampleRows: string[][]; 
+/**
+ * Data rows after the header (and skipped rows).
+ */
+rowCount: number; 
+/**
+ * Built-in source or saved format the headers belong to.
+ */
+detectedSource: string | null; 
+/**
+ * Ready configuration: the detected source's, or a complete suggestion
+ * from the headers; `None` when a required column is still unknown.
+ */
+config: StockImportConfig | null; suggestions: StockColumnSuggestion[]; columnValues: StockColumnValues[]; 
+/**
+ * Detected format of the date column, when one is known.
+ */
+dateFormat: string | null; 
+/**
+ * Every sampled date reads both day-first and month-first.
+ */
+dateFormatAmbiguous: boolean; decimalSeparator: string; 
+/**
+ * The file has a fee/commission column (fees are not imported).
+ */
+hasFeeColumn: boolean }
+
+/**
+ * One recorded import (TS `StockImportBatch`).
+ */
+export type StockImportBatch = { id: string; fileName: string; source: string; tradeCount: number; 
+/**
+ * Transactions of the batch still present (edits keep them, deletes do not).
+ */
+remainingCount: number; createdAt: number }
+
+/**
+ * Configuration of one preview or import (TS `StockImportConfig`).
+ */
+export type StockImportConfig = { 
+/**
+ * `xtb`, `trading212`, `degiro`, `ibkr`, `moony`, `custom` or `format:<id>`.
+ */
+source: string; 
+/**
+ * One character: `,`, `;` or a tab.
+ */
+delimiter: string; 
+/**
+ * Text encoding name as `inspect` reports it (`UTF-8`, `windows-1250`, …).
+ */
+encoding: string; 
+/**
+ * 0-based line of the header row.
+ */
+headerRow: number; 
+/**
+ * Data rows to skip after the header row.
+ */
+skipRows?: number; dateColumn: number; 
+/**
+ * chrono format of the date part (`%d.%m.%Y`, `%Y%m%d`); text after the
+ * date (a time) is ignored. Parsed strictly: a row that does not match is
+ * an error, never re-read in another order.
+ */
+dateFormat: string; symbolColumn?: number | null; isinColumn?: number | null; nameColumn?: number | null; quantityColumn: number; priceColumn: number; currencyMode: CurrencyMode; currencyColumn?: number | null; fixedCurrency?: string | null; directionMode: DirectionMode; typeColumn?: number | null; 
+/**
+ * Meaning of each type value; a value not listed is skipped.
+ */
+typeValues?: StockTypeValueMapping[]; 
+/**
+ * `","` or `"."`.
+ */
+decimalSeparator: string; 
+/**
+ * The broker's own transaction id (duplicate rule 1).
+ */
+externalIdColumn?: number | null; transforms?: StockImportTransforms; instrumentOverrides?: StockInstrumentOverride[]; 
+/**
+ * 1-based file lines of duplicate rows to import anyway.
+ */
+importAnywayLines?: number[] }
+
+/**
+ * Row counts of a preview, over the whole file (TS `StockImportCounts`).
+ */
+export type StockImportCounts = { total: number; willImport: number; duplicates: number; skipped: number; errors: number }
+
+/**
+ * One security of the file (TS `StockImportInstrument`).
+ */
+export type StockImportInstrument = { 
+/**
+ * `isin:<ISIN>` when the file has an ISIN, otherwise `symbol:<SYMBOL>`.
+ */
+key: string; 
+/**
+ * Symbol as read from the file (after the source's transforms).
+ */
+symbol: string | null; isin: string | null; name: string | null; 
+/**
+ * Currency of its trades (file or override); `None` while unknown.
+ */
+currency: string | null; tradeCount: number; 
+/**
+ * Ticker the trades will be stored under (override, else file symbol).
+ */
+ticker: string | null; status: StockInstrumentStatus; 
+/**
+ * Currency of the existing position when it differs (its trades are errors).
+ */
+positionCurrency: string | null }
+
+/**
+ * Dry run of an import (TS `StockImportPreview`).
+ */
+export type StockImportPreview = { instruments: StockImportInstrument[]; 
+/**
+ * The first `PREVIEW_ROWS` rows in file order.
+ */
+rows: StockPreviewRow[]; counts: StockImportCounts; 
+/**
+ * Trade days of the rows that will be imported.
+ */
+dateRange: CsvDateRange | null; hasFeeColumn: boolean }
+
+/**
+ * Outcome of an import (TS `StockImportResult`).
+ */
+export type StockImportResult = { 
+/**
+ * `None` when nothing was imported (no batch is recorded).
+ */
+batchId: string | null; imported: number; duplicates: number; skipped: number; errors: number; 
+/**
+ * Tickers of positions the import created.
+ */
+newPositions: string[]; 
+/**
+ * Tickers of existing positions that received trades.
+ */
+updatedPositions: string[]; 
+/**
+ * Duplicate, skip and error messages in file order.
+ */
+messages: StockRowMessage[]; 
+/**
+ * Earliest imported trade day (history rebuild start).
+ */
+earliestDay: number | null }
+
+/**
+ * Transforms a plain column mapping cannot express. Adapters set them; saved
+ * formats keep them (TS `StockImportTransforms`).
+ */
+export type StockImportTransforms = { 
+/**
+ * XTB: quantity and price are read from the comment held in the quantity
+ * and price columns ("OPEN BUY 34/42.5658 @ 11.7480": 34 at 11.748).
+ */
+xtbComment?: boolean; 
+/**
+ * XTB: symbols carry XTB suffixes (`.US`, `.UK`, `.DE`, …) that are
+ * mapped to Yahoo Finance symbols (`AAPL`, `VUSA.L`, `SPYL.DE`).
+ */
+xtbSymbols?: boolean; 
+/**
+ * IBKR: a row is skipped unless this column holds one of
+ * `assetClassAllowed` (e.g. `STK`).
+ */
+assetClassColumn?: number | null; assetClassAllowed?: string[] }
+
+/**
+ * Outcome of undoing a batch (TS `StockImportUndoResult`).
+ */
+export type StockImportUndoResult = { removed: number; 
+/**
+ * Positions deleted because no transaction was left.
+ */
+removedPositions: string[]; 
+/**
+ * Every ticker the batch touched (history rebuild).
+ */
+tickers: string[]; earliestDay: number | null }
+
+/**
+ * A Yahoo Finance listing (TS `StockInstrumentCandidate`).
+ */
+export type StockInstrumentCandidate = { symbol: string; name: string; exchange: string; 
+/**
+ * Currency of the listing, from the symbol's exchange suffix.
+ */
+currency: string }
+
+/**
+ * The user's choice for one instrument in the preview (TS `StockInstrumentOverride`).
+ */
+export type StockInstrumentOverride = { 
+/**
+ * `StockImportInstrument.key`.
+ */
+key: string; 
+/**
+ * Yahoo Finance symbol the trades are stored under.
+ */
+ticker?: string | null; name?: string | null; 
+/**
+ * ISO 4217 code; needed with `CurrencyMode::Instrument` when the
+ * instrument could not be resolved.
+ */
+currency?: string | null; 
+/**
+ * Exclude every trade of this instrument.
+ */
+skip?: boolean }
+
+/**
+ * What to look up on Yahoo Finance for one instrument (TS `StockInstrumentQuery`).
+ */
+export type StockInstrumentQuery = { key: string; symbol: string | null; isin: string | null; name: string | null; 
+/**
+ * Currency of the trades; prefers a listing in it.
+ */
+currency: string | null }
+
+/**
+ * Result of looking up one instrument (TS `StockInstrumentResolution`).
+ */
+export type StockInstrumentResolution = { key: string; candidates: StockInstrumentCandidate[]; 
+/**
+ * The exact symbol, else the listing in the trade currency, else the first.
+ */
+best: StockInstrumentCandidate | null; 
+/**
+ * The lookup failed (offline, rate limit): unverified, not unknown.
+ */
+lookupFailed: boolean }
+
+export type StockInstrumentStatus = 
+/**
+ * The ticker is an existing Moony position.
+ */
+"existing" | 
+/**
+ * A new position will be created under `ticker`.
+ */
+"new" | 
+/**
+ * Only an ISIN is known and no symbol was chosen yet.
+ */
+"missingSymbol" | 
+/**
+ * Excluded by the user.
+ */
+"skipped"
 
 /**
  * Stock investment holding
@@ -992,6 +1325,23 @@ trailingDividendYield: string | null; exchange: string | null; priceFetchedAt: n
 followedAt: number | null }
 
 /**
+ * One row of the preview table (TS `StockPreviewRow`).
+ */
+export type StockPreviewRow = { line: number; 
+/**
+ * UTC day (unix seconds), when the date parsed.
+ */
+day: number | null; direction: TradeDirection | null; instrumentKey: string | null; 
+/**
+ * Ticker the trade would be stored under.
+ */
+ticker: string | null; 
+/**
+ * Decimal text, as it would be stored.
+ */
+quantity: string | null; price: string | null; currency: string | null; status: StockRowStatus; message: StockRowMessage | null }
+
+/**
  * User price override
  */
 export type StockPriceOverride = { id: string; ticker: string; price: string; currency: string; updatedAt: number }
@@ -1000,6 +1350,35 @@ export type StockPriceOverride = { id: string; ticker: string; price: string; cu
  * Chart data point (transient, never persisted — f64 like HistoricalPrice)
  */
 export type StockPricePoint = { timestamp: number; price: number; currency: string }
+
+/**
+ * A per-row note or problem. Never English prose: `key` is an i18n key
+ * (`importWizard.row.*` in the `stocks` namespace, `validation.*` in
+ * `common`) and `detail` the raw value it is about.
+ */
+export type StockRowMessage = { 
+/**
+ * 1-based file line of the row.
+ */
+line: number; key: string; detail: string | null }
+
+export type StockRowStatus = 
+/**
+ * Will be imported.
+ */
+"new" | 
+/**
+ * Matches an existing transaction; skipped unless imported anyway.
+ */
+"duplicate" | 
+/**
+ * Not a trade, or excluded on purpose (see `message`).
+ */
+"skipped" | 
+/**
+ * Cannot be imported (see `message`).
+ */
+"error"
 
 /**
  * Stock tag for categorizing investments (e.g., Growth, Value, Dividend)
@@ -1012,9 +1391,33 @@ export type StockTag = { id: string; name: string; color: string | null; groupId
 export type StockTagGroup = { id: string; name: string; description: string | null; createdAt: number }
 
 /**
+ * One value of the type column and what it means (TS `StockTypeValueMapping`).
+ */
+export type StockTypeValueMapping = { 
+/**
+ * The trimmed cell text as it appears in the file.
+ */
+value: string; action: TypeValueAction }
+
+/**
+ * A distinct value of a low-cardinality column (TS `StockTypeValueStat`).
+ */
+export type StockTypeValueStat = { value: string; count: number; 
+/**
+ * 1-based file line of the first row with this value.
+ */
+firstLine: number; 
+/**
+ * Meaning suggested from keywords in several languages.
+ */
+suggested: TypeValueAction }
+
+/**
  * Per-ticker value history record
  */
 export type TickerValueHistory = { ticker: string; recordedAt: number; valueCzk: string; quantity: string; price: string; currency: string }
+
+export type TradeDirection = "buy" | "sell"
 
 /**
  * Transaction category
@@ -1066,6 +1469,15 @@ tag: StockTag | null;
  * True when this series represents stocks with no tags assigned.
  */
 is_untagged: boolean; data: TwrDataPoint[] }
+
+/**
+ * What a value of the type column means.
+ */
+export type TypeValueAction = "buy" | "sell" | 
+/**
+ * Not a trade (deposit, dividend, fee, …): the row is skipped.
+ */
+"skip"
 
 /**
  * Data for editing a category's definition. A field that is absent (`None`)

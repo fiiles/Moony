@@ -39,6 +39,7 @@ pub mod price_api;
 pub mod pricing;
 pub mod projection_math;
 pub mod real_estate;
+pub mod stock_import;
 pub mod stock_monitor;
 pub mod ticker_history;
 pub mod valuations;

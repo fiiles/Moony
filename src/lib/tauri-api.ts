@@ -267,17 +267,23 @@ export const investmentsApi = {
   backfillHistory: (ticker: string) =>
     tauriInvoke<BackfillResult>('backfill_stock_ticker_history', { ticker }),
 
+  /**
+   * Time-weighted return per tag and for the whole portfolio. `investmentIds` narrows every tag
+   * series to those positions; the whole-portfolio series is never narrowed.
+   */
   getStockTwr: (
     tagIds: string[],
     includePortfolio: boolean,
     includeUntagged: boolean,
     fromTs: number,
-    toTs: number
+    toTs: number,
+    investmentIds?: string[]
   ) =>
     tauriInvoke<TwrSeries[]>('get_stock_twr', {
       tagIds,
       includePortfolio,
       includeUntagged,
+      investmentIds,
       fromTs,
       toTs,
     }),

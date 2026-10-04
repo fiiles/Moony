@@ -18,7 +18,8 @@ import { useCurrency } from '@/lib/currency';
 import { useFormat } from '@/lib/use-format';
 import { useDatedConvert } from '@/hooks/use-dated-convert';
 import { utcDayFloor } from '@/utils/chart-axis';
-import type { ChartEvent, EventCluster } from '@/utils/chart-scale';
+import type { EventCluster } from '@/utils/chart-scale';
+import { tradeDayEvents, type TradeDayEvent } from '@/utils/trade-events';
 import { PageHead } from '@/components/shell/PageHead';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/common/EmptyState';
@@ -36,13 +37,6 @@ import { CryptoSummary } from '@/components/crypto/CryptoSummary';
 import { CryptoTable, type CryptoRow } from '@/components/crypto/CryptoTable';
 
 type RowModal = 'buy' | 'sell' | 'price' | 'delete' | null;
-
-/** One buy or sell day on the aggregate trend; several coins on one day share a marker. */
-interface TrendEvent extends ChartEvent {
-  tickers: string[];
-  /** Total of that day's transactions of this type, in CZK. */
-  amountCzk: number;
-}
 
 export default function Crypto() {
   const { t } = useTranslation('crypto');
@@ -92,32 +86,15 @@ export default function Crypto() {
 
   // Buy and sell days as events on the aggregate trend (prototype crypto.html):
   // one marker per day and type, listing the coins and the day's total.
-  const trendEvents = useMemo((): TrendEvent[] => {
-    const byDay = new Map<string, TrendEvent>();
-    for (const tx of allTransactions || []) {
-      const type = tx.type === 'sell' ? 'sell' : 'buy';
-      const day = utcDayFloor(tx.transactionDate);
-      const key = `${type}-${day}`;
-      const quantity = parseFloat(tx.quantity) || 0;
-      const price = parseFloat(tx.pricePerUnit) || 0;
-      const amountCzk = convertAt(
-        quantity * price,
-        (tx.currency || 'CZK') as CurrencyCode,
-        'CZK',
-        tx.transactionDate
-      );
-      const existing = byDay.get(key);
-      if (existing) {
-        existing.amountCzk += amountCzk;
-        if (!existing.tickers.includes(tx.ticker)) existing.tickers.push(tx.ticker);
-      } else {
-        byDay.set(key, { id: key, t: day, type, tickers: [tx.ticker], amountCzk });
-      }
-    }
-    return Array.from(byDay.values()).sort((a, b) => a.t - b.t);
-  }, [allTransactions, convertAt]);
+  const trendEvents = useMemo(
+    () =>
+      tradeDayEvents(allTransactions ?? [], (amount, currency, date) =>
+        convertAt(amount, currency as CurrencyCode, 'CZK', date)
+      ),
+    [allTransactions, convertAt]
+  );
 
-  const trendEventTip = (cluster: EventCluster<TrendEvent>) => {
+  const trendEventTip = (cluster: EventCluster<TradeDayEvent>) => {
     if (cluster.events.length > 1) {
       const first = cluster.events[0].t;
       const last = cluster.events[cluster.events.length - 1].t;
@@ -319,7 +296,7 @@ export default function Crypto() {
 
           <CoinGeckoApiKeyBanner />
 
-          <PortfolioTrendCard<TrendEvent>
+          <PortfolioTrendCard<TradeDayEvent>
             type="crypto"
             currentValue={metrics.totalValue}
             isRefreshing={refreshPricesMutation.isPending}

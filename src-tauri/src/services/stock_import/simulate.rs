@@ -849,18 +849,14 @@ pub(crate) mod test_db {
         day: i64,
         external_id: Option<&str>,
     ) -> String {
-        let position = format!("pos-{ticker}");
-        let exists: bool = conn
+        let position: String = conn
             .query_row(
-                "SELECT 1 FROM stock_investments WHERE id = ?1",
-                [&position],
-                |_| Ok(true),
+                "SELECT id FROM stock_investments WHERE ticker = ?1",
+                [ticker],
+                |r| r.get(0),
             )
-            .unwrap_or(false);
-        if !exists {
-            add_position(conn, ticker, ticker, "USD");
-        }
-        let id = format!("tx-{}", rand_suffix(conn));
+            .unwrap_or_else(|_| add_position(conn, ticker, ticker, "USD"));
+        let id = format!("tx-{}", next_number(conn));
         conn.execute(
             "INSERT INTO investment_transactions
                  (id, investment_id, type, ticker, company_name, quantity, price_per_unit, currency, transaction_date, external_id)
@@ -871,7 +867,7 @@ pub(crate) mod test_db {
         id
     }
 
-    fn rand_suffix(conn: &Connection) -> i64 {
+    fn next_number(conn: &Connection) -> i64 {
         conn.query_row(
             "SELECT COUNT(*) + 1 FROM investment_transactions",
             [],

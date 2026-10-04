@@ -56,6 +56,12 @@ All notable changes to Moony are documented in this file. The format follows
 
 ### Fixed
 
+- **London-listed stocks were valued in the wrong currency.** A quote was labelled with the
+  currency its ticker suffix suggests, so a London share quoted in pence (BARC.L, LLOY.L) was a
+  hundred times too high and a dollar ETF listed in London (CSPX.L, VWRA.L, IWDA.L, EIMI.L) was
+  valued as pounds. Prices, the previous close, dividends, the charts and the 52-week range now
+  use the currency Yahoo reports, and the value history of the affected holdings is rebuilt once
+  in the background.
 - **Chart tooltips froze after a buy or sell mark.** On every chart with marks the price tooltip
   kept showing the first day while the cursor moved; it now follows the cursor, and a mark's own
   tooltip appears on hover and stays inside the card at the edges.

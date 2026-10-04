@@ -6,7 +6,7 @@
 use crate::db::Database;
 use crate::error::{AppError, Result};
 use crate::models::stock_monitor::StockPricePoint;
-use crate::services::quote_unit::{quote_unit, QuoteUnit};
+use crate::services::quote_unit::{quote_unit, unit_changed as quote_unit_changed, QuoteUnit};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use yahoo_finance_api::{YResponse, YahooError};
@@ -137,6 +137,91 @@ fn fmt_price(unit: &QuoteUnit, quoted: Option<f64>) -> Option<String> {
 }
 
 // ============================================================================
+// Storing a quote
+// ============================================================================
+
+/// What storing a quote did.
+#[derive(Debug, PartialEq)]
+struct StoredQuote {
+    /// The price as stored, in `currency`.
+    price: f64,
+    currency: String,
+    /// The unit differs from the one the ticker's history was written in
+    /// (`quote_unit::unit_changed`): that history has to be rebuilt.
+    unit_changed: bool,
+}
+
+/// Store a ticker's latest quote: the price and previous close in the unit the response
+/// reported, the raw code beside them, and whether the unit differs from the stored history's.
+///
+/// A response without a currency keeps the unit recorded at the last refresh instead of falling
+/// back to the suffix guess, so one thin answer cannot turn a pence quote into pounds. When the
+/// unit did change, what was stored in the old one is dropped with it: the previous close, the
+/// 52-week range (the company data is fetched again) and the cached dividends (fetched again at
+/// the next dividend refresh).
+fn store_stock_quote(
+    conn: &rusqlite::Connection,
+    ticker: &str,
+    quote: &ChartQuote,
+    now: i64,
+) -> Result<StoredQuote> {
+    use rusqlite::OptionalExtension;
+
+    let tx = conn.unchecked_transaction()?;
+    let recorded: Option<String> = tx
+        .query_row(
+            "SELECT quote_currency FROM stock_data WHERE ticker = ?1",
+            [ticker],
+            |row| row.get(0),
+        )
+        .optional()?
+        .flatten();
+    let reported = quote.currency.as_deref().or(recorded.as_deref());
+    let unit = quote_unit(reported, ticker);
+    let unit_changed = quote_unit_changed(recorded.as_deref(), &unit, ticker);
+    let price = unit.apply(quote.price);
+    let previous_close = quote.previous_close.map(|p| unit.price_text(unit.apply(p)));
+
+    tx.execute(
+        "INSERT INTO stock_data (id, ticker, original_price, currency, price_date, fetched_at, previous_close, quote_currency)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?5, ?6, ?7)
+         ON CONFLICT(ticker) DO UPDATE SET
+           original_price = ?3, currency = ?4, price_date = ?5, fetched_at = ?5,
+           previous_close = CASE WHEN ?8 THEN ?6 ELSE COALESCE(?6, previous_close) END,
+           quote_currency = ?7",
+        rusqlite::params![
+            uuid::Uuid::new_v4().to_string(),
+            ticker,
+            unit.price_text(price),
+            &unit.currency,
+            now,
+            previous_close,
+            reported,
+            unit_changed,
+        ],
+    )?;
+    if unit_changed {
+        tx.execute(
+            "UPDATE stock_data SET fifty_two_week_high = NULL, fifty_two_week_low = NULL,
+                                   metadata_fetched_at = NULL
+             WHERE ticker = ?1",
+            [ticker],
+        )?;
+        tx.execute(
+            "UPDATE dividend_data SET last_fetched_at = 0 WHERE ticker = ?1",
+            [ticker],
+        )?;
+    }
+    tx.commit()?;
+
+    Ok(StoredQuote {
+        price,
+        currency: unit.currency,
+        unit_changed,
+    })
+}
+
+// ============================================================================
 // CoinGecko API Types
 // ============================================================================
 
@@ -181,6 +266,11 @@ pub struct StockPriceRefreshResult {
     pub updated: Vec<StockPriceResult>,
     pub remaining_tickers: Vec<String>,
     pub rate_limit_hit: bool,
+    /// Tickers whose quote unit differs from the one their stored history was written in (earlier
+    /// versions guessed it from the ticker suffix; see `quote_unit::unit_changed`). The command
+    /// that ran the refresh queues a history rebuild for them. Not part of the wire contract.
+    #[serde(skip)]
+    pub unit_changed: Vec<String>,
 }
 
 /// Refresh stock prices from Yahoo Finance using yahoo_finance_api crate
@@ -207,10 +297,12 @@ pub async fn refresh_stock_prices_yahoo_with_ttl(
             updated: vec![],
             remaining_tickers: vec![],
             rate_limit_hit: false,
+            unit_changed: vec![],
         });
     }
 
     let mut updated_prices = Vec::new();
+    let mut unit_changed: Vec<String> = Vec::new();
     let mut failed_tickers: Vec<(String, String)> = Vec::new();
     let now = unix_timestamp_now();
 
@@ -271,44 +363,30 @@ pub async fn refresh_stock_prices_yahoo_with_ttl(
         match provider.get_quote_range(ticker, "5m", "1d").await {
             Ok(response) => match read_chart_quote(&response) {
                 Some(quote) => {
-                    // The price is stored in the unit the response reports (pence become
-                    // pounds), never in the one the ticker's suffix suggests.
-                    let unit = quote_unit(quote.currency.as_deref(), ticker);
-                    let price = unit.apply(quote.price);
-                    let previous_close =
-                        quote.previous_close.map(|p| unit.price_text(unit.apply(p)));
-                    if previous_close.is_none() {
+                    if quote.previous_close.is_none() {
                         log::debug!(
                             "[YAHOO FINANCE] {} - no previous_close in response; keeping stored value",
                             ticker_upper
                         );
                     }
-                    if let Err(e) = db.with_conn(|conn| {
-                        conn.execute(
-                            "INSERT INTO stock_data (id, ticker, original_price, currency, price_date, fetched_at, previous_close)
-                             VALUES (?1, ?2, ?3, ?4, ?5, ?5, ?6)
-                             ON CONFLICT(ticker) DO UPDATE SET
-                               original_price = ?3, currency = ?4, price_date = ?5, fetched_at = ?5,
-                               previous_close = COALESCE(?6, previous_close)",
-                            rusqlite::params![
-                                uuid::Uuid::new_v4().to_string(),
-                                &ticker_upper,
-                                unit.price_text(price),
-                                &unit.currency,
-                                now,
-                                previous_close,
-                            ],
-                        )?;
-                        Ok(())
-                    }) {
-                        failed_tickers.push((ticker.clone(), format!("DB error: {}", e)));
-                        continue;
+                    // Stored in the unit the response reports (pence become pounds), never in
+                    // the one the ticker's suffix suggests.
+                    match db.with_conn(|conn| store_stock_quote(conn, &ticker_upper, &quote, now)) {
+                        Ok(stored) => {
+                            if stored.unit_changed {
+                                unit_changed.push(ticker_upper.clone());
+                            }
+                            updated_prices.push(StockPriceResult {
+                                ticker: ticker_upper,
+                                price: stored.price,
+                                currency: stored.currency,
+                            });
+                        }
+                        Err(e) => {
+                            failed_tickers.push((ticker.clone(), format!("DB error: {}", e)));
+                            continue;
+                        }
                     }
-                    updated_prices.push(StockPriceResult {
-                        ticker: ticker_upper,
-                        price,
-                        currency: unit.currency,
-                    });
                 }
                 None => {
                     failed_tickers.push((ticker.clone(), "price unavailable".to_string()));
@@ -327,6 +405,13 @@ pub async fn refresh_stock_prices_yahoo_with_ttl(
         let updated_list: Vec<_> = updated_prices.iter().map(|p| p.ticker.as_str()).collect();
         log::debug!("[YAHOO FINANCE] Successfully updated: {:?}", updated_list);
     }
+    if !unit_changed.is_empty() {
+        log::info!(
+            "[YAHOO FINANCE] Quote unit changed for {} tickers; their history is rebuilt",
+            unit_changed.len()
+        );
+        log::debug!("[YAHOO FINANCE] Unit changed: {:?}", unit_changed);
+    }
     if !failed_tickers.is_empty() {
         log::warn!("[YAHOO FINANCE] Failed: {} tickers", failed_tickers.len());
         for (ticker, reason) in &failed_tickers {
@@ -339,6 +424,7 @@ pub async fn refresh_stock_prices_yahoo_with_ttl(
         updated: updated_prices,
         remaining_tickers: vec![],
         rate_limit_hit: false,
+        unit_changed,
     })
 }
 
@@ -1727,6 +1813,293 @@ mod tests {
         let empty = YResponse::from_json(json!({ "chart": { "result": null, "error": null } }))
             .expect("a response without a result");
         assert_eq!(dividend_sum(&empty, &unit("USD", "CSPX.L")), None);
+    }
+
+    // ---- storing a quote ---------------------------------------------------------------
+
+    fn quotes_db() -> rusqlite::Connection {
+        let conn = rusqlite::Connection::open_in_memory().expect("in-memory db");
+        conn.execute_batch(
+            r#"
+            CREATE TABLE stock_data (
+                id TEXT PRIMARY KEY, ticker TEXT NOT NULL UNIQUE, original_price TEXT NOT NULL,
+                currency TEXT NOT NULL DEFAULT 'USD', price_date INTEGER NOT NULL,
+                fetched_at INTEGER NOT NULL DEFAULT 0, previous_close TEXT, quote_currency TEXT,
+                fifty_two_week_high TEXT, fifty_two_week_low TEXT, metadata_fetched_at INTEGER
+            );
+            CREATE TABLE dividend_data (
+                id TEXT PRIMARY KEY, ticker TEXT NOT NULL UNIQUE, yearly_dividend_sum TEXT NOT NULL,
+                currency TEXT NOT NULL, last_fetched_at INTEGER NOT NULL
+            );
+            "#,
+        )
+        .expect("schema");
+        conn
+    }
+
+    fn quote(price: f64, previous_close: Option<f64>, currency: Option<&str>) -> ChartQuote {
+        ChartQuote {
+            price,
+            previous_close,
+            currency: currency.map(str::to_string),
+        }
+    }
+
+    /// `(price, currency, previous close, quote currency)` of a ticker's stored row.
+    type Row = (String, String, Option<String>, Option<String>);
+
+    fn row(conn: &rusqlite::Connection, ticker: &str) -> Row {
+        conn.query_row(
+            "SELECT original_price, currency, previous_close, quote_currency
+             FROM stock_data WHERE ticker = ?1",
+            [ticker],
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)),
+        )
+        .expect("a stored quote")
+    }
+
+    fn store(conn: &rusqlite::Connection, ticker: &str, quote: &ChartQuote) -> StoredQuote {
+        store_stock_quote(conn, ticker, quote, 1_790_000_000).expect("stored")
+    }
+
+    fn text(value: &str) -> Option<String> {
+        Some(value.to_string())
+    }
+
+    #[test]
+    fn a_pence_quote_is_stored_in_pounds_beside_the_raw_code() {
+        let conn = quotes_db();
+        let stored = store(&conn, "BARC.L", &quote(443.65, Some(438.95), Some("GBp")));
+
+        assert_eq!(
+            stored,
+            StoredQuote {
+                price: 4.4365,
+                currency: "GBP".to_string(),
+                unit_changed: true
+            }
+        );
+        assert_eq!(
+            row(&conn, "BARC.L"),
+            (
+                "4.4365".to_string(),
+                "GBP".to_string(),
+                text("4.3895"),
+                text("GBp")
+            )
+        );
+    }
+
+    #[test]
+    fn a_dollar_etf_listed_in_london_is_stored_in_dollars() {
+        let conn = quotes_db();
+        let stored = store(&conn, "CSPX.L", &quote(832.99, Some(822.67), Some("USD")));
+
+        assert_eq!((stored.price, stored.currency.as_str()), (832.99, "USD"));
+        assert!(stored.unit_changed, "earlier versions stored it as GBP");
+        assert_eq!(
+            row(&conn, "CSPX.L"),
+            (
+                "832.99".to_string(),
+                "USD".to_string(),
+                text("822.67"),
+                text("USD")
+            )
+        );
+    }
+
+    #[test]
+    fn a_quote_the_suffix_guessed_right_needs_no_repair() {
+        let conn = quotes_db();
+        for (ticker, code) in [
+            ("VUSA.L", "GBP"),
+            ("SXR8.DE", "EUR"),
+            ("CEZ.PR", "CZK"),
+            ("AAPL", "USD"),
+        ] {
+            let stored = store(&conn, ticker, &quote(100.0, Some(99.0), Some(code)));
+            assert!(!stored.unit_changed, "{ticker}");
+            assert_eq!(row(&conn, ticker).3.as_deref(), Some(code), "{ticker}");
+        }
+    }
+
+    #[test]
+    fn an_unchanged_unit_is_reported_once() {
+        let conn = quotes_db();
+        assert!(store(&conn, "BARC.L", &quote(443.65, None, Some("GBp"))).unit_changed);
+        assert!(!store(&conn, "BARC.L", &quote(450.0, None, Some("GBp"))).unit_changed);
+        // Yahoo naming the same unit another way is no change either.
+        assert!(!store(&conn, "BARC.L", &quote(451.0, None, Some("GBX"))).unit_changed);
+        assert_eq!(row(&conn, "BARC.L").3.as_deref(), Some("GBX"));
+        assert_eq!(row(&conn, "BARC.L").0, "4.51");
+    }
+
+    #[test]
+    fn a_ticker_stored_before_the_code_was_recorded_is_compared_with_the_suffix_guess() {
+        let conn = quotes_db();
+        // A row as the earlier version wrote it: the guess, no code.
+        conn.execute(
+            "INSERT INTO stock_data (id, ticker, original_price, currency, price_date)
+             VALUES ('a', 'CSPX.L', '832.99', 'GBP', 1), ('b', 'VUSA.L', '74.12', 'GBP', 1)",
+            [],
+        )
+        .expect("old rows");
+
+        assert!(store(&conn, "CSPX.L", &quote(833.0, None, Some("USD"))).unit_changed);
+        assert!(!store(&conn, "VUSA.L", &quote(74.5, None, Some("GBP"))).unit_changed);
+    }
+
+    #[test]
+    fn a_change_of_unit_after_the_code_was_recorded_is_reported() {
+        let conn = quotes_db();
+        store(&conn, "CSPX.L", &quote(832.99, None, Some("USD")));
+        assert!(store(&conn, "CSPX.L", &quote(650.0, None, Some("GBP"))).unit_changed);
+        assert_eq!(row(&conn, "CSPX.L").1, "GBP");
+    }
+
+    #[test]
+    fn a_response_without_a_currency_keeps_the_recorded_unit() {
+        let conn = quotes_db();
+        store(&conn, "BARC.L", &quote(443.65, Some(438.95), Some("GBp")));
+
+        // One thin answer must not turn the pence quote into pounds.
+        let stored = store(&conn, "BARC.L", &quote(450.0, Some(444.0), None));
+        assert_eq!((stored.price, stored.currency.as_str()), (4.5, "GBP"));
+        assert!(!stored.unit_changed);
+        assert_eq!(
+            row(&conn, "BARC.L"),
+            (
+                "4.50".to_string(),
+                "GBP".to_string(),
+                text("4.44"),
+                text("GBp")
+            )
+        );
+    }
+
+    #[test]
+    fn a_response_without_a_currency_for_a_ticker_never_recorded_keeps_the_old_guess() {
+        let conn = quotes_db();
+        let stored = store(&conn, "CSPX.L", &quote(832.99, None, None));
+        assert_eq!((stored.price, stored.currency.as_str()), (832.99, "GBP"));
+        assert!(!stored.unit_changed, "nothing learned, nothing to repair");
+        assert_eq!(row(&conn, "CSPX.L").3, None, "no code is made up");
+    }
+
+    fn seed_old_unit_data(conn: &rusqlite::Connection) {
+        conn.execute(
+            "INSERT INTO stock_data (id, ticker, original_price, currency, price_date,
+                                     previous_close, fifty_two_week_high, fifty_two_week_low,
+                                     metadata_fetched_at)
+             VALUES ('a', 'BARC.L', '443.65', 'GBP', 1, '438.95', '538.30', '353.55', 1790000000)",
+            [],
+        )
+        .expect("a quote of the earlier version");
+        conn.execute(
+            "INSERT INTO dividend_data (id, ticker, yearly_dividend_sum, currency, last_fetched_at)
+             VALUES ('d', 'BARC.L', '11.50', 'GBP', 1790000000)",
+            [],
+        )
+        .expect("its dividends");
+    }
+
+    #[test]
+    fn a_changed_unit_drops_what_was_stored_in_the_old_one() {
+        let conn = quotes_db();
+        seed_old_unit_data(&conn);
+
+        // The response has no previous close: the old one (pence) must not survive as pounds.
+        let stored = store(&conn, "BARC.L", &quote(443.65, None, Some("GBp")));
+        assert!(stored.unit_changed);
+
+        let (previous_close, high, low, metadata_at): (
+            Option<String>,
+            Option<String>,
+            Option<String>,
+            Option<i64>,
+        ) = conn
+            .query_row(
+                "SELECT previous_close, fifty_two_week_high, fifty_two_week_low, metadata_fetched_at
+                 FROM stock_data WHERE ticker = 'BARC.L'",
+                [],
+                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)),
+            )
+            .expect("row");
+        assert_eq!(
+            (previous_close, high, low, metadata_at),
+            (None, None, None, None),
+            "the figures quoted in pence are gone and the company data is due again"
+        );
+        let dividends_fetched_at: i64 = conn
+            .query_row(
+                "SELECT last_fetched_at FROM dividend_data WHERE ticker = 'BARC.L'",
+                [],
+                |r| r.get(0),
+            )
+            .expect("dividends");
+        assert_eq!(
+            dividends_fetched_at, 0,
+            "the cached dividends are due again"
+        );
+    }
+
+    #[test]
+    fn an_unchanged_unit_keeps_what_is_stored() {
+        let conn = quotes_db();
+        seed_old_unit_data(&conn);
+        store(&conn, "BARC.L", &quote(443.65, Some(438.95), Some("GBp")));
+        // Make the stored company data and dividends the ones of the new unit.
+        conn.execute(
+            "UPDATE stock_data SET fifty_two_week_high = '5.383', fifty_two_week_low = '3.5355',
+                                   metadata_fetched_at = 1790000000",
+            [],
+        )
+        .expect("company data in pounds");
+        conn.execute("UPDATE dividend_data SET last_fetched_at = 1790000000", [])
+            .expect("dividends in pounds");
+
+        // The next refresh finds no previous close, as thin answers do: the stored one stays.
+        let stored = store(&conn, "BARC.L", &quote(450.0, None, Some("GBp")));
+        assert!(!stored.unit_changed);
+
+        let (previous_close, high, metadata_at): (Option<String>, Option<String>, Option<i64>) =
+            conn.query_row(
+                "SELECT previous_close, fifty_two_week_high, metadata_fetched_at
+                 FROM stock_data WHERE ticker = 'BARC.L'",
+                [],
+                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+            )
+            .expect("row");
+        assert_eq!(previous_close.as_deref(), Some("4.3895"));
+        assert_eq!(high.as_deref(), Some("5.383"));
+        assert_eq!(metadata_at, Some(1_790_000_000));
+        let dividends_fetched_at: i64 = conn
+            .query_row(
+                "SELECT last_fetched_at FROM dividend_data WHERE ticker = 'BARC.L'",
+                [],
+                |r| r.get(0),
+            )
+            .expect("dividends");
+        assert_eq!(dividends_fetched_at, 1_790_000_000);
+    }
+
+    #[test]
+    fn the_refresh_result_keeps_its_wire_shape() {
+        let result = StockPriceRefreshResult {
+            updated: vec![],
+            remaining_tickers: vec![],
+            rate_limit_hit: false,
+            unit_changed: vec!["BARC.L".to_string()],
+        };
+        let json = serde_json::to_value(&result).expect("serialize");
+        let mut keys: Vec<&str> = json
+            .as_object()
+            .expect("object")
+            .keys()
+            .map(String::as_str)
+            .collect();
+        keys.sort_unstable();
+        assert_eq!(keys, vec!["rate_limit_hit", "remaining_tickers", "updated"]);
     }
 
     #[test]

@@ -65,6 +65,7 @@ fn all_migrations() -> Vec<(&'static str, &'static str)> {
         ("001_initial_schema", MIGRATION_001),
         ("002_real_estate_purchase_date", MIGRATION_002),
         ("003_stock_import_batches", MIGRATION_003),
+        ("004_stock_quote_currency", MIGRATION_004),
     ]
 }
 
@@ -943,6 +944,18 @@ CREATE INDEX IF NOT EXISTS idx_investment_transactions_batch ON investment_trans
 CREATE INDEX IF NOT EXISTS idx_investment_transactions_external ON investment_transactions(external_id);
 "#;
 
+/// `004_stock_quote_currency`: the currency code Yahoo reported with a stock's last quote, so a
+/// refresh can tell that a ticker's stored history was written in another unit.
+const MIGRATION_004: &str = r#"
+-- The code Yahoo reported with the last quote of a ticker, as it came ("GBp" for pence, "USD"
+-- for a dollar ETF listed in London); NULL until the first refresh after this migration. A
+-- refresh compares it with the code of the new quote: a different unit means the stored
+-- history was valued wrongly (earlier versions guessed the currency from the ticker suffix, and
+-- stored pence as pounds) and is rebuilt. `currency` stays the currency the price is stored in
+-- ("GBp" is stored as GBP, a hundredth of the quote).
+ALTER TABLE stock_data ADD COLUMN quote_currency TEXT;
+"#;
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1748,5 +1761,78 @@ mod stock_import_batch_tests {
         );
         formats::delete_format(&conn, &saved.id).expect("delete");
         assert!(formats::list_formats(&conn).expect("list").is_empty());
+    }
+}
+
+/// Tests of `004_stock_quote_currency`. A module of its own, like the one above.
+#[cfg(test)]
+mod stock_quote_currency_tests {
+    use super::*;
+
+    /// A database as it was before `004`: every migration that comes earlier in the chain.
+    fn database_before_004() -> Connection {
+        let conn = Connection::open_in_memory().expect("in-memory db");
+        let earlier: Vec<(&str, &str)> = all_migrations()
+            .into_iter()
+            .filter(|(name, _)| *name < "004_stock_quote_currency")
+            .collect();
+        run_chain(&conn, &earlier).expect("earlier migrations");
+        conn
+    }
+
+    fn quote_currency(conn: &Connection, ticker: &str) -> Option<String> {
+        conn.query_row(
+            "SELECT quote_currency FROM stock_data WHERE ticker = ?1",
+            [ticker],
+            |r| r.get(0),
+        )
+        .expect("quote_currency exists")
+    }
+
+    #[test]
+    fn the_column_is_added_and_empty_for_quotes_stored_before() {
+        let conn = database_before_004();
+        conn.execute(
+            "INSERT INTO stock_data (id, ticker, original_price, currency, price_date)
+             VALUES ('sd1', 'BARC.L', '443.65', 'GBP', 1700000000)",
+            [],
+        )
+        .expect("a quote stored by an earlier version");
+        assert!(
+            conn.prepare("SELECT quote_currency FROM stock_data")
+                .is_err(),
+            "the column does not exist yet"
+        );
+
+        run_migrations(&conn).expect("migrate to the current chain");
+
+        // Nothing is known about the unit of that quote: NULL, not a guess.
+        assert_eq!(quote_currency(&conn, "BARC.L"), None);
+        let (price, currency): (String, String) = conn
+            .query_row(
+                "SELECT original_price, currency FROM stock_data WHERE ticker = 'BARC.L'",
+                [],
+                |r| Ok((r.get(0)?, r.get(1)?)),
+            )
+            .expect("the quote itself is untouched");
+        assert_eq!((price.as_str(), currency.as_str()), ("443.65", "GBP"));
+        assert!(known_migration_names().contains(&"004_stock_quote_currency"));
+        assert_eq!(
+            applied_migration_names(&conn).expect("applied"),
+            known_migration_names()
+        );
+    }
+
+    #[test]
+    fn a_new_quote_row_can_record_the_code_as_reported() {
+        let conn = database_before_004();
+        run_migrations(&conn).expect("migrate");
+        conn.execute(
+            "INSERT INTO stock_data (id, ticker, original_price, currency, price_date, quote_currency)
+             VALUES ('sd1', 'CSPX.L', '832.99', 'USD', 1700000000, 'USD')",
+            [],
+        )
+        .expect("insert");
+        assert_eq!(quote_currency(&conn, "CSPX.L").as_deref(), Some("USD"));
     }
 }

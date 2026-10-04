@@ -231,16 +231,19 @@ export default function Stocks() {
         actions={
           !isEmpty && (
             <>
+              {/* Four actions: below 1280 px refresh and export show only their icons */}
               <Button
                 variant="outline"
                 onClick={() => refreshPricesMutation.mutate()}
                 disabled={refreshPricesMutation.isPending}
                 loading={refreshPricesMutation.isPending}
+                title={t('refreshPrices')}
+                className="max-xl:px-[11px]"
               >
                 <RefreshCw />
-                {t('refreshPrices')}
+                <span className="max-xl:sr-only">{t('refreshPrices')}</span>
               </Button>
-              <ExportButton exportFn={exportApi.stockTransactions} label={t('export')} />
+              <ExportButton exportFn={exportApi.stockTransactions} label={t('export')} compact />
               <Button variant="outline" onClick={() => setImportOpen(true)}>
                 <Upload />
                 {t('importCSV')}

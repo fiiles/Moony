@@ -1,0 +1,216 @@
+//! Company data of a stock for the position detail.
+//!
+//! The data lives in `stock_data`, filled by `price_api::refresh_stock_metadata_yahoo`; this
+//! module reads it and decides when it is old enough to ask Yahoo again. Functions take a plain
+//! `&Connection` (rust-backend rule 1) so the command can keep the network call outside the
+//! database lock.
+
+use crate::error::Result;
+use crate::models::company_info::StockCompanyInfo;
+use rusqlite::{Connection, OptionalExtension};
+
+/// How long stored company data counts as current. Company data moves slowly, so one day is
+/// enough. `price_api::refresh_stock_metadata_yahoo` applies the same 24 h TTL itself
+/// (`METADATA_CACHE_HOURS`); keep the two in step.
+const METADATA_MAX_AGE_SECONDS: i64 = 24 * 60 * 60;
+
+/// Whether stored metadata is due for a refresh: it was never fetched, or at least a day ago.
+/// A timestamp in the future (the clock moved back) counts as fresh, so the card does not ask
+/// Yahoo on every open.
+pub fn metadata_is_stale(fetched_at: Option<i64>, now: i64) -> bool {
+    match fetched_at {
+        None => true,
+        Some(at) => now.saturating_sub(at) >= METADATA_MAX_AGE_SECONDS,
+    }
+}
+
+/// Company data stored for a ticker (matched without case or surrounding whitespace). A ticker
+/// without a `stock_data` row yields an empty record (every field `None` but the ticker), so
+/// "nothing stored" is data for the caller, not an error.
+pub fn read_company_info(conn: &Connection, ticker: &str) -> Result<StockCompanyInfo> {
+    let ticker = ticker.trim().to_uppercase();
+    let stored = conn
+        .query_row(
+            "SELECT sector, industry, pe_ratio, forward_pe, market_cap, beta,
+                    fifty_two_week_high, fifty_two_week_low,
+                    trailing_dividend_rate, trailing_dividend_yield,
+                    quote_type, currency, metadata_fetched_at
+             FROM stock_data WHERE ticker = ?1",
+            [&ticker],
+            |r| {
+                Ok(StockCompanyInfo {
+                    ticker: ticker.clone(),
+                    sector: r.get(0)?,
+                    industry: r.get(1)?,
+                    pe_ratio: r.get(2)?,
+                    forward_pe: r.get(3)?,
+                    market_cap: r.get(4)?,
+                    beta: r.get(5)?,
+                    fifty_two_week_high: r.get(6)?,
+                    fifty_two_week_low: r.get(7)?,
+                    dividend_rate: r.get(8)?,
+                    dividend_yield: r.get(9)?,
+                    quote_type: r.get(10)?,
+                    currency: r.get(11)?,
+                    metadata_fetched_at: r.get(12)?,
+                })
+            },
+        )
+        .optional()?;
+    Ok(stored.unwrap_or_else(|| StockCompanyInfo {
+        ticker,
+        ..Default::default()
+    }))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Only the `stock_data` columns this service reads (the real table has more).
+    fn setup_test_db() -> Connection {
+        let conn = Connection::open_in_memory().expect("in-memory db");
+        conn.execute_batch(
+            r#"
+            CREATE TABLE stock_data (
+                id TEXT PRIMARY KEY,
+                ticker TEXT NOT NULL UNIQUE,
+                currency TEXT NOT NULL DEFAULT 'USD',
+                sector TEXT,
+                industry TEXT,
+                pe_ratio TEXT,
+                forward_pe TEXT,
+                market_cap TEXT,
+                beta TEXT,
+                fifty_two_week_high TEXT,
+                fifty_two_week_low TEXT,
+                trailing_dividend_rate TEXT,
+                trailing_dividend_yield TEXT,
+                quote_type TEXT,
+                metadata_fetched_at INTEGER
+            );
+        "#,
+        )
+        .expect("schema");
+        conn
+    }
+
+    /// A row as the Yahoo metadata refresh leaves it.
+    fn insert_full_row(conn: &Connection, ticker: &str) {
+        conn.execute(
+            "INSERT INTO stock_data (
+                 id, ticker, currency, sector, industry, pe_ratio, forward_pe, market_cap, beta,
+                 fifty_two_week_high, fifty_two_week_low, trailing_dividend_rate,
+                 trailing_dividend_yield, quote_type, metadata_fetched_at
+             ) VALUES (?1, ?2, 'USD', 'Technology', 'Consumer Electronics', '31.52', '28.10',
+                       '3120000000000', '1.245', '288.62', '169.21', '1.04', '0.003400',
+                       'EQUITY', 1700000000)",
+            rusqlite::params![format!("id-{ticker}"), ticker],
+        )
+        .expect("insert full row");
+    }
+
+    #[test]
+    fn reads_the_stored_metadata_of_a_ticker() {
+        let conn = setup_test_db();
+        insert_full_row(&conn, "AAPL");
+
+        let info = read_company_info(&conn, "AAPL").expect("read");
+
+        assert_eq!(info.ticker, "AAPL");
+        assert_eq!(info.sector.as_deref(), Some("Technology"));
+        assert_eq!(info.industry.as_deref(), Some("Consumer Electronics"));
+        assert_eq!(info.pe_ratio.as_deref(), Some("31.52"));
+        assert_eq!(info.forward_pe.as_deref(), Some("28.10"));
+        assert_eq!(info.market_cap.as_deref(), Some("3120000000000"));
+        assert_eq!(info.beta.as_deref(), Some("1.245"));
+        assert_eq!(info.fifty_two_week_high.as_deref(), Some("288.62"));
+        assert_eq!(info.fifty_two_week_low.as_deref(), Some("169.21"));
+        // Stored in the trailing_* columns, reported as plain dividend figures
+        assert_eq!(info.dividend_rate.as_deref(), Some("1.04"));
+        assert_eq!(info.dividend_yield.as_deref(), Some("0.003400"));
+        assert_eq!(info.quote_type.as_deref(), Some("EQUITY"));
+        assert_eq!(info.currency.as_deref(), Some("USD"));
+        assert_eq!(info.metadata_fetched_at, Some(1_700_000_000));
+    }
+
+    #[test]
+    fn a_row_without_metadata_reports_nothing_but_its_currency() {
+        let conn = setup_test_db();
+        // What the price refresh inserts: the quote, no company data yet
+        conn.execute(
+            "INSERT INTO stock_data (id, ticker, currency) VALUES ('id-1', 'MSFT', 'USD')",
+            [],
+        )
+        .expect("insert");
+
+        let info = read_company_info(&conn, "MSFT").expect("read");
+
+        assert_eq!(info.ticker, "MSFT");
+        assert_eq!(info.currency.as_deref(), Some("USD"));
+        assert!(info.sector.is_none());
+        assert!(info.industry.is_none());
+        assert!(info.pe_ratio.is_none());
+        assert!(info.forward_pe.is_none());
+        assert!(info.market_cap.is_none());
+        assert!(info.beta.is_none());
+        assert!(info.fifty_two_week_high.is_none());
+        assert!(info.fifty_two_week_low.is_none());
+        assert!(info.dividend_rate.is_none());
+        assert!(info.dividend_yield.is_none());
+        assert!(info.quote_type.is_none());
+        assert!(info.metadata_fetched_at.is_none());
+    }
+
+    #[test]
+    fn a_missing_ticker_is_an_empty_record_not_an_error() {
+        let conn = setup_test_db();
+        insert_full_row(&conn, "AAPL");
+
+        let info = read_company_info(&conn, "NOPE").expect("read");
+
+        assert_eq!(info.ticker, "NOPE");
+        assert!(info.currency.is_none());
+        assert!(info.sector.is_none());
+        assert!(info.pe_ratio.is_none());
+        assert!(info.metadata_fetched_at.is_none());
+    }
+
+    #[test]
+    fn the_ticker_is_matched_without_case_or_surrounding_whitespace() {
+        let conn = setup_test_db();
+        insert_full_row(&conn, "BMW.DE");
+
+        let info = read_company_info(&conn, "  bmw.de ").expect("read");
+
+        assert_eq!(info.ticker, "BMW.DE");
+        assert_eq!(info.sector.as_deref(), Some("Technology"));
+    }
+
+    #[test]
+    fn metadata_that_was_never_fetched_is_stale() {
+        assert!(metadata_is_stale(None, 1_700_000_000));
+    }
+
+    #[test]
+    fn metadata_is_fresh_for_less_than_a_day() {
+        let fetched = 1_700_000_000;
+        assert!(!metadata_is_stale(Some(fetched), fetched));
+        assert!(!metadata_is_stale(Some(fetched), fetched + 3_600));
+        assert!(!metadata_is_stale(Some(fetched), fetched + 24 * 3_600 - 1));
+    }
+
+    #[test]
+    fn metadata_goes_stale_after_a_day() {
+        let fetched = 1_700_000_000;
+        assert!(metadata_is_stale(Some(fetched), fetched + 24 * 3_600));
+        assert!(metadata_is_stale(Some(fetched), fetched + 30 * 24 * 3_600));
+    }
+
+    #[test]
+    fn metadata_stamped_in_the_future_is_not_stale() {
+        // A clock that moved backwards must not trigger a refresh on every open
+        let now = 1_700_000_000;
+        assert!(!metadata_is_stale(Some(now + 3_600), now));
+    }
+}

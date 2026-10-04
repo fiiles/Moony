@@ -85,6 +85,8 @@ import type {
   WatchedStockRow,
   StockMonitorDetail,
   StockPricePoint,
+  // Company data types
+  StockCompanyInfo,
   // Categorization types
   CategorizationResult,
   TransactionInput,
@@ -259,7 +261,9 @@ export const investmentsApi = {
   ) =>
     tauriInvoke<ImportResult>('import_investment_transactions', { transactions, defaultCurrency }),
 
-  refreshMetadata: (ticker: string) => tauriInvoke<boolean>('refresh_stock_metadata', { ticker }),
+  /** Company data cached from Yahoo Finance; `refresh` fetches it first when it is over a day old. */
+  getCompanyInfo: (ticker: string, refresh: boolean) =>
+    tauriInvoke<StockCompanyInfo>('get_stock_company_info', { ticker, refresh }),
 
   getHistory: (ticker: string, startDate?: number, endDate?: number) =>
     tauriInvoke<TickerValueHistory[]>('get_stock_value_history', { ticker, startDate, endDate }),

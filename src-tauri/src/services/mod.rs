@@ -11,6 +11,7 @@ pub mod budgeting;
 pub mod cashflow_actuals;
 pub mod categories;
 pub mod categorization;
+pub mod company_info;
 pub mod cost_basis;
 pub mod crypto;
 pub mod crypto_investments;

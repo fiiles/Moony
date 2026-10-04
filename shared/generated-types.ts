@@ -968,6 +968,36 @@ export type SourceCount = {
 source: string; count: number }
 
 /**
+ * Company metadata stored for one ticker. Every field except `ticker` is `None` when nothing
+ * is stored (no `stock_data` row yet, or Yahoo has no data for the instrument).
+ */
+export type StockCompanyInfo = { ticker: string; sector: string | null; industry: string | null; peRatio: string | null; forwardPe: string | null; 
+/**
+ * Whole number in the listing currency.
+ */
+marketCap: string | null; beta: string | null; fiftyTwoWeekHigh: string | null; fiftyTwoWeekLow: string | null; 
+/**
+ * Annual dividend per share in the listing currency.
+ */
+dividendRate: string | null; 
+/**
+ * Raw Yahoo fraction ("0.033100" = 3.31 %); multiply by 100 for display.
+ */
+dividendYield: string | null; 
+/**
+ * Yahoo instrument class ("EQUITY", "ETF", …).
+ */
+quoteType: string | null; 
+/**
+ * Currency of the prices and figures above (the listing currency).
+ */
+currency: string | null; 
+/**
+ * When the metadata was last fetched (unix seconds); `None` when it never was.
+ */
+metadataFetchedAt: number | null }
+
+/**
  * Stock investment holding
  */
 export type StockInvestment = { id: string; ticker: string; companyName: string; quantity: string; averagePrice: string; 

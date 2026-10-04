@@ -219,7 +219,12 @@
     "loanEventKindInvalid": "Neznámý typ události úvěru",
     "loanEventBeforeStart": "Událost nemůže být před začátkem úvěru",
     "invalidRegex": "Regulární výraz není platný",
-    "ruleTypeInvalid": "Neznámý typ pravidla"
+    "ruleTypeInvalid": "Neznámý typ pravidla",
+    "stockImportSymbolRequired": "Vyberte sloupec se symbolem nebo s ISIN.",
+    "stockImportCurrencyRequired": "Vyberte sloupec s měnou.",
+    "stockImportTypeRequired": "Vyberte sloupec s typem obchodu.",
+    "dateFormatRequired": "Zadejte formát data.",
+    "csvDelimiterInvalid": "Oddělovač musí být čárka, středník nebo tabulátor."
   },
   "auth": {
     "wrongPassword": "Zadané heslo je nesprávné. Zkuste to prosím znovu.",

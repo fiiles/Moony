@@ -423,6 +423,384 @@
     "noDataRows": "No data rows found",
     "failed": "Import failed"
   },
+  "importWizard": {
+    "title": "Import trades from CSV",
+    "lead": "A broker export or your own table. We spot duplicates, and you see what will be imported before anything is written.",
+    "steps": {
+      "file": "File",
+      "mapping": "Columns",
+      "review": "Review",
+      "done": "Done"
+    },
+    "next": "Review trades",
+    "importButton_one": "Import {{count}} trade",
+    "importButton_other": "Import {{count}} trades",
+    "importButtonIdle": "Import",
+    "unsupportedFile": "Only .csv and .txt files can be imported. Save an Excel or other spreadsheet as CSV first.",
+    "direction": {
+      "buy": "Buy",
+      "sell": "Sell"
+    },
+    "roles": {
+      "date": "Date",
+      "direction": "Direction",
+      "type": "Type",
+      "symbol": "Symbol",
+      "isin": "ISIN",
+      "name": "Name",
+      "quantity": "Quantity",
+      "price": "Price per share",
+      "quantityPrice": "Quantity and price",
+      "currency": "Currency",
+      "externalId": "Trade ID"
+    },
+    "file": {
+      "sourceHeading": "Where the export is from",
+      "savedTag": "saved",
+      "howToExport": "How to export from {{name}}",
+      "dropTitle": "Drop the file with your trades here",
+      "dropActive": "Release the file to open it",
+      "or": "or",
+      "choose": "Choose file…",
+      "dropNote": ".csv or .txt · save Excel files as CSV first",
+      "sample": "Download a sample file",
+      "sampleSaved": "Sample file saved",
+      "sampleFailed": "The sample file could not be saved",
+      "helpFailed": "The help page could not be opened"
+    },
+    "sources": {
+      "xtb": {
+        "name": "XTB",
+        "guideTitle": "How to get the export",
+        "guide": "In xStation open Account history → Cash operations, choose a period starting at your first trade, click Export and pick the CSV format.",
+        "note": "The file also contains deposits, dividends and fees – only purchases and sales of stocks and ETFs are imported. We fill in the currency from the exchange."
+      },
+      "trading212": {
+        "name": "Trading 212",
+        "guideTitle": "How to get the export",
+        "guide": "In the app open History → the export icon, tick Orders, choose a period and download the CSV.",
+        "note": "One export covers at most 12 months – upload several files, we recognise duplicates."
+      },
+      "degiro": {
+        "name": "Degiro",
+        "guideTitle": "How to get the export",
+        "guide": "On the website open Activity → Transactions, set a period starting at your first trade and click Export → CSV. Do not use the account statement (Account statement)."
+      },
+      "ibkr": {
+        "name": "Interactive Brokers",
+        "guideTitle": "How to get the export",
+        "guide": "In Client Portal open Performance & Reports → Flex Queries, create an Activity Flex Query with the Trades section and the fields Symbol, ISIN, TradeDate, Buy/Sell, Quantity, TradePrice, CurrencyPrimary, AssetClass and TradeID, format CSV, and run it for the whole period."
+      },
+      "moony": {
+        "name": "Your own table (Moony template)",
+        "guideTitle": "How to fill in the table",
+        "guide": "Download the template, fill it in in Excel or another spreadsheet and save it as CSV.",
+        "excel": "A file saved by Excel in any language works as it is – we detect the delimiter, the encoding and the decimal mark. Moony's own export (Stocks → Export) has the same format.",
+        "columns": {
+          "date": {
+            "label": "Date",
+            "hint": "2024-01-15 or 15.01.2024"
+          },
+          "type": {
+            "label": "Type",
+            "hint": "buy / sell or nákup / prodej"
+          },
+          "symbol": {
+            "label": "Symbol",
+            "hint": "as on Yahoo Finance, e.g. AAPL, VWCE.DE"
+          },
+          "quantity": {
+            "label": "Quantity",
+            "hint": "number of shares, e.g. 10 or 0.5"
+          },
+          "price": {
+            "label": "Price per share",
+            "hint": "in the currency of the trade, e.g. 180.50"
+          },
+          "currency": {
+            "label": "Currency",
+            "hint": "e.g. USD, EUR, CZK"
+          },
+          "name": {
+            "label": "Name",
+            "hint": "optional"
+          }
+        }
+      },
+      "custom": {
+        "name": "Other broker",
+        "guideTitle": "What the file needs",
+        "guide": "We need one row per trade: date, direction, symbol or ISIN, quantity, price per share and currency. You assign the columns in the next step and Moony remembers the mapping."
+      },
+      "saved": {
+        "title": "Saved format",
+        "guide": "A file with the same columns is recognised on its own and the mapping is used again.",
+        "delete": "Delete format",
+        "deleteTitle": "Delete this format?",
+        "deleteDescription": "The format \"{{name}}\" will no longer be recognised. Trades that were already imported do not change."
+      },
+      "savedFallback": "Saved format"
+    },
+    "recent": {
+      "title": "Recent imports",
+      "undo": "Undo",
+      "trades_one": "{{count}} trade",
+      "trades_other": "{{count}} trades",
+      "tradesOf": "{{remaining}} of {{total}} trades",
+      "showAll": "Show all ({{count}})",
+      "showLess": "Show less"
+    },
+    "filebar": {
+      "rows_one": "{{count}} row",
+      "rows_other": "{{count}} rows",
+      "detected": "recognized",
+      "format": "Delimiter \"{{delimiter}}\" · encoding {{encoding}}",
+      "tab": "tab"
+    },
+    "mismatch": {
+      "other": "You chose {{chosen}}, but the file looks like {{detected}}. We used the mapping for {{detected}}.",
+      "unknown": "The file does not match the {{chosen}} format. Assign the columns by hand.",
+      "useChosen": "Use {{chosen}} anyway"
+    },
+    "mapping": {
+      "selectColumn": "Select column",
+      "columnNone": "— not used —",
+      "blankColumn": "Column {{position}}",
+      "blankColumnAfter": "Column {{position}} (after \"{{after}}\")",
+      "example": "E.g. {{values}}",
+      "summary": {
+        "title": "Mapping: {{source}}",
+        "hint": "The ready-made mapping of this format. Usually you can just continue.",
+        "sign": "sign of the quantity",
+        "instrument": "from the exchange",
+        "comment": "{{column}} (from the text)",
+        "values": "Values in the column {{column}}",
+        "more_one": "+{{count}} more",
+        "more_other": "+{{count}} more"
+      },
+      "edit": "Edit mapping",
+      "backToPreset": "Back to the {{source}} mapping",
+      "required": "Required columns",
+      "optional": "Optional columns",
+      "direction": "Direction of the trade",
+      "format": "Format",
+      "symbolOrIsin": "A symbol or an ISIN is enough. From an ISIN we find the symbol on Yahoo Finance.",
+      "currencyMode": {
+        "column": "From a column",
+        "fixed": "One currency",
+        "instrument": "From the exchange"
+      },
+      "currencyColumn": "Currency column",
+      "currencyFixed": "Currency of the whole file",
+      "currencyFixedHint": "Every trade in the file is in this currency.",
+      "currencyInstrumentHint": "We fill in the currency from the exchange the security trades on.",
+      "directionMode": {
+        "typeColumn": "From a type column",
+        "quantitySign": "From the sign of the quantity"
+      },
+      "directionSignHint": "A negative quantity is a sale, a positive one a purchase.",
+      "typeColumn": "Type column",
+      "typeValue": "Value",
+      "typeCount": "Rows",
+      "typeLine": "First row",
+      "typeMeaning": "Meaning",
+      "typeTooMany": "This column has too many different values for a table. Pick another column or read the direction from the sign of the quantity.",
+      "typeNoTrade": "Assign at least one value to a purchase or a sale, otherwise nothing is imported.",
+      "typeCommentNote": "With XTB the text of the comment decides the direction. The type values only decide which rows are trades.",
+      "action": {
+        "buy": "Buy",
+        "sell": "Sell",
+        "skip": "Skip"
+      },
+      "externalIdHint": "Helps to recognise duplicates in later imports.",
+      "dateFormat": "Date format",
+      "dateFormatChoose": "Choose a format",
+      "dateFormatAmbiguous": "The order of day, month and year cannot be told apart in this file, so it is a guess. Check the dates in the preview below or pick the format yourself.",
+      "decimalSeparator": "Decimal separator",
+      "decimalAuto": "Auto-detect ({{separator}})",
+      "decimalComma": "Comma (1 234,56)",
+      "decimalDot": "Dot (1,234.56)",
+      "headerRow": "Header row",
+      "skipRows": "Skip rows after header",
+      "layoutHelp": "The header row is the line with the column names; lines above it are ignored. Skipped rows are data rows right after the header.",
+      "remember": "Remember the mapping for this format",
+      "rememberHint": "A file with the same columns is then recognised on its own.",
+      "formatName": "Format name",
+      "formatNamePlaceholder": "e.g. My broker",
+      "formatNameRequired": "Enter a name for the format.",
+      "missing": "Missing: {{fields}}",
+      "field": {
+        "date": "date",
+        "dateFormat": "date format",
+        "symbol": "symbol or ISIN",
+        "quantity": "quantity",
+        "price": "price per share",
+        "currency": "currency",
+        "type": "type column"
+      },
+      "rawData": "Preview CSV data",
+      "rawCounts": "Columns: {{columns}} · Rows: {{rows}}"
+    },
+    "review": {
+      "incomplete": "Finish the column mapping to see the review.",
+      "loading": "Reading the file…",
+      "failed": "The file cannot be reviewed with these settings",
+      "summary": {
+        "willImport": "To import {{count}}",
+        "duplicates": "Duplicates {{count}}",
+        "skipped": "Skipped {{count}}",
+        "errors": "Errors {{count}}"
+      },
+      "feeNote": "Fees are not imported",
+      "statusNew": "New",
+      "statusSkipped": "Skipped",
+      "statusError": "Error",
+      "duplicateImportAnyway": "duplicate · import anyway",
+      "instruments": {
+        "title": "Securities",
+        "security": "Security",
+        "currency": "Currency",
+        "trades": "Trades",
+        "status": "Status",
+        "actions": "Actions",
+        "progress": "Checking on Yahoo Finance… {{done}} of {{total}}",
+        "skipVerification": "Skip checking",
+        "checking": "Checking…",
+        "inFile": "in the file {{symbol}}",
+        "edit": "Edit",
+        "skip": "Skip",
+        "include": "Include",
+        "state": {
+          "existing": "Existing position",
+          "new": "New position",
+          "unverified": "Not verified",
+          "missingSymbol": "Symbol missing",
+          "skipped": "Skipped"
+        },
+        "reason": {
+          "failed": "Yahoo Finance did not answer",
+          "notFound": "Not found on Yahoo Finance",
+          "unmatched": "The symbol is not among those found"
+        },
+        "missingReason": {
+          "enter": "Enter the symbol by hand",
+          "failed": "Yahoo Finance did not answer – enter the symbol by hand",
+          "notFound": "Not found on Yahoo Finance – enter the symbol by hand"
+        },
+        "positionCurrency": "The position is held in {{currency}}",
+        "missingHint_one": "Enter a symbol for {{count}} security, or skip it.",
+        "missingHint_other": "Enter a symbol for {{count}} securities, or skip them.",
+        "unverifiedHint_one": "{{count}} security could not be verified. You can still import it, but its prices may not update.",
+        "unverifiedHint_other": "{{count}} securities could not be verified. You can still import them, but their prices may not update."
+      },
+      "rows": {
+        "title": "Rows",
+        "line": "Ln.",
+        "date": "Date",
+        "direction": "Direction",
+        "symbol": "Symbol",
+        "quantity": "Quantity",
+        "price": "Price",
+        "currency": "Currency",
+        "status": "Status",
+        "footer": "First {{shown}} of {{total}} rows",
+        "footerAll_one": "{{count}} row",
+        "footerAll_other": "{{count}} rows",
+        "showAll": "Show all",
+        "showLess": "Show less",
+        "none": "With these settings the file has no rows.",
+        "truncated": "The table shows at most {{shown}} rows; the counts above cover the whole file."
+      }
+    },
+    "editor": {
+      "apply": "Apply",
+      "searchResults": "Search results on Yahoo Finance",
+      "found": "Found on Yahoo Finance",
+      "searching": "Searching…",
+      "searchError": "The search failed",
+      "noResults": "Nothing found. Try another name or symbol."
+    },
+    "result": {
+      "title": "Trades imported",
+      "titleNothing": "Nothing was imported",
+      "nothing": "Every row of the file is a duplicate, skipped or has an error. Details are below.",
+      "summary_one": "{{count}} trade from {{from}} to {{to}}.",
+      "summary_other": "{{count}} trades from {{from}} to {{to}}.",
+      "summaryCount_one": "{{count}} trade imported.",
+      "summaryCount_other": "{{count}} trades imported.",
+      "imported": "Imported",
+      "duplicates": "Duplicates",
+      "skipped": "Skipped",
+      "errors": "Errors",
+      "newPositions": "New positions:",
+      "updatedPositions": "Added to existing:",
+      "moreTickers_one": "+{{count}} more",
+      "moreTickers_other": "+{{count}} more",
+      "recalculating": "Recalculating the portfolio value history…",
+      "showDuplicates": "Show duplicates",
+      "showSkipped": "Show skipped rows",
+      "showErrors": "Show errors",
+      "line": "Row {{line}}: {{message}}",
+      "whatNext": "What next",
+      "next": {
+        "show": "Show stocks",
+        "showHint": "The new and extended positions are in the table.",
+        "showAction": "Show",
+        "tags": "Assign tags",
+        "tagsHint": "The new positions have no tags yet. Assign them in the stock analysis.",
+        "tagsAction": "Assign",
+        "another": "Import another file",
+        "anotherHint": "For example an earlier period or another account.",
+        "anotherAction": "Choose file",
+        "undo": "Undo the import",
+        "undoHint_one": "Deletes {{count}} trade from this file.",
+        "undoHint_other": "Deletes {{count}} trades from this file.",
+        "undoAction": "Undo"
+      }
+    },
+    "undone": {
+      "title": "Import undone",
+      "summary_one": "{{count}} trade from the import \"{{file}}\" was deleted.",
+      "summary_other": "{{count}} trades from the import \"{{file}}\" were deleted.",
+      "removedPositions": "Removed positions:"
+    },
+    "undo": {
+      "title": "Undo this import?",
+      "description_one": "We will delete {{count}} trade from the import \"{{file}}\".",
+      "description_other": "We will delete {{count}} trades from the import \"{{file}}\".",
+      "consequences": "Positions left without any trade are removed. Trades from this import that you have edited since are deleted too.",
+      "confirm": "Undo the import"
+    },
+    "toast": {
+      "inspectFailed": "The file could not be read",
+      "importFailed": "The import failed",
+      "undone_one": "Import undone: {{count}} trade deleted",
+      "undone_other": "Import undone: {{count}} trades deleted",
+      "undoFailed": "The import could not be undone",
+      "formatSaved": "Format \"{{name}}\" saved",
+      "formatSaveFailed": "The mapping could not be remembered",
+      "formatDeleted": "Format deleted",
+      "formatDeleteFailed": "The format could not be deleted"
+    },
+    "row": {
+      "notATrade": "Not a purchase or a sale",
+      "zeroQuantity": "Zero quantity",
+      "assetClass": "Another asset class",
+      "instrumentSkipped": "The security is skipped",
+      "dateUnparseable": "The date could not be read",
+      "numberUnparseable": "The number could not be read",
+      "commentUnparseable": "The comment could not be read",
+      "symbolMissing": "Symbol missing",
+      "currencyMissing": "Currency missing",
+      "currencyInvalid": "Invalid currency",
+      "priceMissing": "Price missing",
+      "sellExceedsHoldings": "The sale exceeds the holding on that day",
+      "sellExceedsHoldingsHeld": "The sale exceeds the holding on that day ({{detail}} held)",
+      "currencyMismatch": "The currency differs from the position's",
+      "currencyMismatchPosition": "The currency differs from the position's ({{detail}})",
+      "duplicate": "The same trade is already in Moony"
+    }
+  },
   "eyebrow": "Portfolio",
   "export": "Export"
 }

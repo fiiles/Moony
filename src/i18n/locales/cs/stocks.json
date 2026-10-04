@@ -240,6 +240,7 @@
     },
     "companyInfo": {
       "title": "Informace o společnosti",
+      "sectorIndustry": "Sektor · odvětví",
       "peRatio": "P/E poměr",
       "forwardPe": "Forward P/E",
       "marketCap": "Tržní kapitalizace",
@@ -247,7 +248,10 @@
       "fiftyTwoWeekHigh": "52T maximum",
       "fiftyTwoWeekLow": "52T minimum",
       "dividendRate": "Dividendová sazba",
-      "dividendYield": "Div. výnos"
+      "dividendYield": "Div. výnos",
+      "etfNote": "Pro ETF Yahoo Finance tyto údaje neuvádí",
+      "unavailable": "Údaje se nepodařilo načíst",
+      "retry": "Zkusit znovu"
     },
     "transactions": {
       "title": "Historie transakcí",
@@ -274,8 +278,6 @@
       "save": "Uložit název"
     },
     "nameUpdated": "Název společnosti aktualizován",
-    "refreshMetadata": "Obnovit data",
-    "metadataRefreshed": "Data společnosti obnovena",
     "openInMonitor": "Otevřít ve sledování akcií",
     "sharesCount_one": "{{count}} akcie",
     "sharesCount_few": "{{count}} akcie",

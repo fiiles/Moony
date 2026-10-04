@@ -528,9 +528,10 @@ pub struct BulkRowIssue {
 
 /// What [`bulk_create_stock_transactions`] did. `errors` non-empty implies
 /// `created == 0` and nothing was written, whether a row failed field
-/// validation or a business rule rolled the whole batch back.
+/// validation or a business rule rolled the whole batch back. (The MCP tool
+/// turns it into its own wire type, `services::mcp::BulkWriteReport`.)
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub struct BulkStockWriteReport {
+pub struct BulkWriteReport {
     pub created: usize,
     pub skipped_duplicates: Vec<BulkRowIssue>,
     pub errors: Vec<BulkRowIssue>,
@@ -578,7 +579,7 @@ pub fn bulk_create_stock_transactions(
     conn: &mut rusqlite::Connection,
     rows: &[BulkStockRow],
     batch: Option<&NewStockImportBatch>,
-) -> Result<BulkStockWriteReport> {
+) -> Result<BulkWriteReport> {
     let errors: Vec<BulkRowIssue> = rows
         .iter()
         .enumerate()
@@ -590,9 +591,9 @@ pub fn bulk_create_stock_transactions(
         })
         .collect();
     if !errors.is_empty() {
-        return Ok(BulkStockWriteReport {
+        return Ok(BulkWriteReport {
             errors,
-            ..BulkStockWriteReport::default()
+            ..BulkWriteReport::default()
         });
     }
 
@@ -625,7 +626,7 @@ pub fn bulk_create_stock_transactions(
         _ => None,
     };
 
-    let mut report = BulkStockWriteReport::default();
+    let mut report = BulkWriteReport::default();
     for &i in &order {
         let row = &rows[i];
         if !row.allow_duplicate {
@@ -675,12 +676,12 @@ pub fn bulk_create_stock_transactions(
             Err(e) => {
                 // Roll everything back (batch row included); report the failing row.
                 drop(tx);
-                return Ok(BulkStockWriteReport {
+                return Ok(BulkWriteReport {
                     errors: vec![BulkRowIssue {
                         index: i,
                         message: e.to_string(),
                     }],
-                    ..BulkStockWriteReport::default()
+                    ..BulkWriteReport::default()
                 });
             }
         }
@@ -1932,7 +1933,7 @@ mod tests {
         let mut conn = setup_test_db();
         let report =
             bulk_create_stock_transactions(&mut conn, &[], Some(&batch("empty.csv"))).unwrap();
-        assert_eq!(report, BulkStockWriteReport::default());
+        assert_eq!(report, BulkWriteReport::default());
         assert_eq!(count(&conn, "stock_import_batches"), 0);
     }
 

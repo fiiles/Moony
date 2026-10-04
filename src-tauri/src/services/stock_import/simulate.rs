@@ -51,13 +51,25 @@ use crate::error::Result;
 use crate::services::csv_import::amounts::amount_to_text;
 use crate::services::price_api;
 
+// Row message keys of the simulation (`StockRowMessage.key`, `stocks`
+// namespace except the last, which is in `common`); `detail` is what each one
+// is about.
+
+/// A transaction with the same values exists (no detail).
 pub const KEY_DUPLICATE: &str = "importWizard.row.duplicate";
+/// A transaction with the same broker id exists (detail: the broker's id).
 pub const KEY_DUPLICATE_BY_ID: &str = "importWizard.row.duplicateById";
+/// A sell above the holding at its day (detail: the quantity held).
 pub const KEY_SELL_EXCEEDS_HOLDINGS: &str = "importWizard.row.sellExceedsHoldings";
+/// The position is in another currency (detail: the position's currency).
 pub const KEY_CURRENCY_MISMATCH: &str = "importWizard.row.currencyMismatch";
+/// The instrument has no symbol yet (an ISIN only; no detail).
 pub const KEY_SYMBOL_MISSING: &str = "importWizard.row.symbolMissing";
+/// The trade has no currency and none can be derived (no detail).
 pub const KEY_CURRENCY_MISSING: &str = "importWizard.row.currencyMissing";
+/// The user excluded the instrument (no detail).
 pub const KEY_INSTRUMENT_SKIPPED: &str = "importWizard.row.instrumentSkipped";
+/// The symbol cannot be a ticker, e.g. `BRK B` (detail: the symbol).
 pub const KEY_TICKER_INVALID: &str = "validation.tickerInvalid";
 
 const SECONDS_PER_DAY: i64 = 86_400;

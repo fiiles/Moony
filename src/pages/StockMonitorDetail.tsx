@@ -468,8 +468,9 @@ export default function StockMonitorDetail() {
           label={t('detail.stats.range')}
           value={
             isFinite(low) && isFinite(high) ? (
-              <span className="text-[16px]">
-                {plain(low)} – {plain(high)} {currency ?? ''}
+              // The currency is in the page eyebrow; without it the range fits one line at 1080 px
+              <span className="whitespace-nowrap text-[16px]">
+                {plain(low)} – {plain(high)}
               </span>
             ) : (
               '—'

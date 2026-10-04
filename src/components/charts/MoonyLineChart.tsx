@@ -70,6 +70,9 @@ export interface MoonyLineChartProps<E extends ChartEvent = ChartEvent> {
   className?: string;
 }
 
+/** Above Recharts' active dot (1200) and cursor line (1100), below labels (2000). */
+const MARK_Z_INDEX = 1300;
+
 interface Row extends LinePoint {
   cost?: number;
   /** The actual part of the series (all of it without `projectedFrom`). */
@@ -303,7 +306,9 @@ export function MoonyLineChart<E extends ChartEvent = ChartEvent>({
             )}
             {/* Marks are reference dots, not a Scatter: in Recharts 3 a graphical item with its
                 own `data` replaces the chart data as the axis data, so the tooltip would resolve
-                against the marks and stop following the line. Reference elements hold no data. */}
+                against the marks and stop following the line. Reference elements hold no data.
+                They sit above the active dot (z-index 1200), which would otherwise cover a mark
+                that falls on a data point and swallow its hover. */}
             {markers.map(({ t, y, cluster }) => {
               const hot =
                 hover?.cluster.id === cluster.id ||
@@ -315,6 +320,7 @@ export function MoonyLineChart<E extends ChartEvent = ChartEvent>({
                   y={y}
                   r={8}
                   ifOverflow="visible"
+                  zIndex={MARK_Z_INDEX}
                   shape={({ cx, cy }) =>
                     cx === undefined || cy === undefined ? (
                       <g />

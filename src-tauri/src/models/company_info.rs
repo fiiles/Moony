@@ -1,7 +1,8 @@
 //! Company data of a stock for the position detail ("About the company").
 //!
 //! Read from the `stock_data` cache that `price_api::refresh_stock_metadata_yahoo` fills; money
-//! and ratios are TEXT strings per ADR 0001. A field is `None` when Yahoo never reported it.
+//! and ratios are TEXT strings per ADR 0001. A figure is `None` when Yahoo never reported it or
+//! reported 0 for something that does not apply (no market cap for a fund, no dividend).
 
 use serde::{Deserialize, Serialize};
 use specta::Type;

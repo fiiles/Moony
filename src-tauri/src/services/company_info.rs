@@ -24,6 +24,18 @@ pub fn metadata_is_stale(fetched_at: Option<i64>, now: i64) -> bool {
     }
 }
 
+/// A figure that is positive by nature (ratios, prices, market cap, yield), or `None`. Yahoo
+/// reports 0 where a figure does not apply (no market cap for most funds, a dividend rate of 0
+/// for a company that pays none), and a stored string that is not a number is no figure either;
+/// neither may reach the card as a value.
+fn positive_figure(value: Option<String>) -> Option<String> {
+    value.filter(|v| {
+        v.trim()
+            .parse::<f64>()
+            .is_ok_and(|n| n.is_finite() && n > 0.0)
+    })
+}
+
 /// Company data stored for a ticker (matched without case or surrounding whitespace). A ticker
 /// without a `stock_data` row yields an empty record (every field `None` but the ticker), so
 /// "nothing stored" is data for the caller, not an error.
@@ -42,14 +54,15 @@ pub fn read_company_info(conn: &Connection, ticker: &str) -> Result<StockCompany
                     ticker: ticker.clone(),
                     sector: r.get(0)?,
                     industry: r.get(1)?,
-                    pe_ratio: r.get(2)?,
-                    forward_pe: r.get(3)?,
-                    market_cap: r.get(4)?,
+                    pe_ratio: positive_figure(r.get(2)?),
+                    forward_pe: positive_figure(r.get(3)?),
+                    market_cap: positive_figure(r.get(4)?),
+                    // Zero and negative betas are real, so no filter here
                     beta: r.get(5)?,
-                    fifty_two_week_high: r.get(6)?,
-                    fifty_two_week_low: r.get(7)?,
-                    dividend_rate: r.get(8)?,
-                    dividend_yield: r.get(9)?,
+                    fifty_two_week_high: positive_figure(r.get(6)?),
+                    fifty_two_week_low: positive_figure(r.get(7)?),
+                    dividend_rate: positive_figure(r.get(8)?),
+                    dividend_yield: positive_figure(r.get(9)?),
                     quote_type: r.get(10)?,
                     currency: r.get(11)?,
                     metadata_fetched_at: r.get(12)?,
@@ -185,6 +198,51 @@ mod tests {
 
         assert_eq!(info.ticker, "BMW.DE");
         assert_eq!(info.sector.as_deref(), Some("Technology"));
+    }
+
+    #[test]
+    fn figures_that_do_not_apply_are_not_reported() {
+        let conn = setup_test_db();
+        // How Yahoo describes a fund (no market cap) and a company that pays no dividend
+        conn.execute(
+            "INSERT INTO stock_data (
+                 id, ticker, currency, pe_ratio, forward_pe, market_cap, beta,
+                 fifty_two_week_high, fifty_two_week_low, trailing_dividend_rate,
+                 trailing_dividend_yield, quote_type, metadata_fetched_at
+             ) VALUES ('id-1', 'VWCE.DE', 'EUR', '0.00', '0.00', '0', '0.000',
+                       '135.40', '0.00', '0.00', '0.000000', 'ETF', 1700000000)",
+            [],
+        )
+        .expect("insert");
+
+        let info = read_company_info(&conn, "VWCE.DE").expect("read");
+
+        assert!(info.pe_ratio.is_none());
+        assert!(info.forward_pe.is_none());
+        assert!(info.market_cap.is_none());
+        assert!(info.fifty_two_week_low.is_none());
+        assert!(info.dividend_rate.is_none());
+        assert!(info.dividend_yield.is_none());
+        // Real values and the beta (zero is a legitimate beta) pass through
+        assert_eq!(info.fifty_two_week_high.as_deref(), Some("135.40"));
+        assert_eq!(info.beta.as_deref(), Some("0.000"));
+        assert_eq!(info.quote_type.as_deref(), Some("ETF"));
+    }
+
+    #[test]
+    fn a_stored_figure_that_is_not_a_number_is_not_reported() {
+        let conn = setup_test_db();
+        conn.execute(
+            "INSERT INTO stock_data (id, ticker, currency, pe_ratio, market_cap)
+             VALUES ('id-1', 'ODD', 'USD', 'n/a', 'NaN')",
+            [],
+        )
+        .expect("insert");
+
+        let info = read_company_info(&conn, "ODD").expect("read");
+
+        assert!(info.pe_ratio.is_none());
+        assert!(info.market_cap.is_none());
     }
 
     #[test]

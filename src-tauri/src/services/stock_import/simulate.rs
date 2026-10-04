@@ -221,6 +221,14 @@ fn parse_stored_decimal(text: &str) -> Option<f64> {
         .filter(|v| v.is_finite())
 }
 
+/// A quantity for a message: eight decimals at most, no trailing zeros, so a
+/// sum of fractional trades does not show float noise (`0.3`, not
+/// `0.30000000000000004`).
+fn rounded_quantity(quantity: f64) -> String {
+    let text = format!("{quantity:.8}");
+    text.trim_end_matches('0').trim_end_matches('.').to_string()
+}
+
 /// The UTC midnight of the day `timestamp` falls on. Stored dates are day
 /// stamps, but a transaction created without a date carries the time it was
 /// made; it belongs to that day all the same.
@@ -538,7 +546,7 @@ impl Run<'_> {
                 return TradeOutcome::Error(message(
                     line,
                     KEY_SELL_EXCEEDS_HOLDINGS,
-                    Some(amount_to_text(held)),
+                    Some(rounded_quantity(held)),
                 ));
             }
         }
@@ -1505,6 +1513,28 @@ mod tests {
             TradeOutcome::Error(m) => assert_eq!(m.line, 3),
             _ => unreachable!(),
         }
+    }
+
+    #[test]
+    fn the_held_quantity_in_a_message_has_no_float_noise() {
+        let conn = db();
+        let sim = run(
+            &conn,
+            vec![
+                buy(2, day(0), "AAPL", 0.1, 1.0),
+                buy(3, day(0), "AAPL", 0.2, 1.0),
+                sell(4, day(1), "AAPL", 1.0, 1.0),
+            ],
+            &config("custom"),
+        );
+        assert_eq!(
+            error_key(&sim.trades[2].outcome),
+            (KEY_SELL_EXCEEDS_HOLDINGS, Some("0.3"))
+        );
+        assert_eq!(rounded_quantity(0.0), "0");
+        assert_eq!(rounded_quantity(1000.0), "1000");
+        assert_eq!(rounded_quantity(12.345_678_9), "12.3456789");
+        assert_eq!(rounded_quantity(0.000_000_001), "0");
     }
 
     #[test]

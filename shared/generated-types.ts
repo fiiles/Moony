@@ -1274,7 +1274,11 @@ tickers: string[]; earliestDay: number | null }
  */
 export type StockInstrumentCandidate = { symbol: string; name: string; exchange: string; 
 /**
- * Currency of the listing, from the symbol's exchange suffix.
+ * Currency of the listing. For the listing the lookup chose (`best`) it is what Yahoo
+ * reports for its quote, so a London ETF in dollars reads `USD`; every other candidate, and
+ * a `best` whose quote could not be looked up, carries the guess from the symbol's exchange
+ * suffix. `GBX` stands for pence: the quote, and so the prices of a file that follows it,
+ * are a hundredth of `GBP`.
  */
 currency: string }
 
@@ -1291,8 +1295,10 @@ key: string;
  */
 ticker?: string | null; name?: string | null; 
 /**
- * ISO 4217 code; needed with `CurrencyMode::Instrument` when the
- * instrument could not be resolved.
+ * ISO 4217 code, or `GBX` when the file's prices are in pence (they are stored as pounds).
+ * It is the currency of the trades that name none (`CurrencyMode::Instrument`; needed when
+ * the instrument could not be resolved); a currency the file states, in a column or for the
+ * whole file, is never overridden.
  */
 currency?: string | null; 
 /**

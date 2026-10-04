@@ -43,6 +43,7 @@ import {
   EMPTY_MAPPING,
   autoOverrideFor,
   buildStockImportConfig,
+  currencyOverrideFor,
   fileStem,
   formatConfig,
   instrumentQuery,
@@ -164,16 +165,17 @@ export function StockImportDialog({ open, onOpenChange }: StockImportDialogProps
       const byKey = new Map(answers.map((answer) => [answer.key, answer]));
       const automatic = asked.flatMap((instrument) => {
         const answer = byKey.get(instrument.key);
-        const override = answer ? autoOverrideFor(instrument, answer) : null;
+        const override = answer ? autoOverrideFor(instrument, answer, mapping.currencyMode) : null;
         return override ? [override] : [];
       });
       if (automatic.length > 0) setOverrides((current) => mergeAutoOverrides(current, automatic));
     },
-    []
+    [mapping.currencyMode]
   );
   const resolution = useInstrumentResolution({
     enabled: open && step === 'review',
     instruments: preview?.instruments,
+    currencyMode: mapping.currencyMode,
     onResolved: handleResolved,
   });
 
@@ -295,6 +297,21 @@ export function StockImportDialog({ open, onOpenChange }: StockImportDialogProps
         ...(edit.currency ? { currency: edit.currency.toUpperCase() } : {}),
       })
     );
+    // In instrument currency mode the quote of the symbol the user chose says what its prices are
+    // in (pence for BARC.L): that is applied once the lookup answers, unless the user typed the
+    // symbol and picked a currency themselves.
+    const fromListing = mapping.currencyMode === 'instrument';
+    const applyListingCurrency = (answer: StockInstrumentResolution | undefined) => {
+      if (edit.currency && !edit.picked) return;
+      const currency = currencyOverrideFor(ticker, answer, mapping.currencyMode);
+      if (currency) {
+        setOverrides((current) => updateOverride(current, instrument.key, { currency }));
+      }
+    };
+    const verifyChosen = () =>
+      void resolution
+        .verify({ ...instrumentQuery(instrument), symbol: ticker })
+        .then(applyListingCurrency);
     if (edit.picked) {
       resolution.remember({
         key: instrument.key,
@@ -302,8 +319,10 @@ export function StockImportDialog({ open, onOpenChange }: StockImportDialogProps
         best: edit.picked,
         lookupFailed: false,
       });
+      // A listing from the search carries the exchange's currency, a guess: ask for its quote.
+      if (fromListing) verifyChosen();
     } else if (ticker !== (instrument.ticker ?? '').toUpperCase()) {
-      void resolution.verify({ ...instrumentQuery(instrument), symbol: ticker });
+      verifyChosen();
     }
   };
 
@@ -502,6 +521,7 @@ export function StockImportDialog({ open, onOpenChange }: StockImportDialogProps
                 importAnywayLines={importAnywayLines}
                 onToggleImportAnyway={toggleImportAnyway}
                 overrides={overrides}
+                currencyMode={mapping.currencyMode}
                 resolutions={resolution.resolutions}
                 progress={resolution.progress}
                 isResolving={resolution.isResolving}

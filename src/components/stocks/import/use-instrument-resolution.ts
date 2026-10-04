@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { stockImportApi } from '@/lib/tauri-api';
-import type { StockImportInstrument, StockInstrumentResolution } from '@shared/schema';
+import type {
+  StockCurrencyMode,
+  StockImportInstrument,
+  StockInstrumentResolution,
+} from '@shared/schema';
 import { EMPTY_LOOKUP_STATE, createInstrumentLookup, type LookupState } from './instrument-lookup';
 import { needsLookup } from './import-config';
 
@@ -9,6 +13,8 @@ interface UseInstrumentResolutionOptions {
   enabled: boolean;
   /** The instruments of the latest preview. */
   instruments: readonly StockImportInstrument[] | undefined;
+  /** Where the currency of the trades comes from: with `instrument`, positions are looked up too. */
+  currencyMode: StockCurrencyMode;
   /** Called with every answer and the instruments it is about (to apply what was found). */
   onResolved: (
     instruments: readonly StockImportInstrument[],
@@ -26,6 +32,7 @@ interface UseInstrumentResolutionOptions {
 export function useInstrumentResolution({
   enabled,
   instruments,
+  currencyMode,
   onResolved,
 }: UseInstrumentResolutionOptions) {
   const [state, setState] = useState<LookupState>(EMPTY_LOOKUP_STATE);
@@ -46,11 +53,12 @@ export function useInstrumentResolution({
     []
   );
 
-  // Every instrument that is new or has no symbol is looked up once per file.
+  // Every instrument that is new or has no symbol is looked up once per file (and, when the
+  // currency comes from the listing, the existing positions too).
   useEffect(() => {
     if (!enabled || !instruments) return;
-    lookup.enqueue(instruments.filter(needsLookup));
-  }, [enabled, instruments, lookup]);
+    lookup.enqueue(instruments.filter((instrument) => needsLookup(instrument, currencyMode)));
+  }, [enabled, instruments, currencyMode, lookup]);
 
   return {
     resolutions: state.resolutions,

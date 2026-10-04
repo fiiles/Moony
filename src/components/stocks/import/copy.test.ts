@@ -134,6 +134,14 @@ describe('stocks.importWizard copy', () => {
     }
   });
 
+  it('explains GBX, which says nothing by itself, wherever it is shown', () => {
+    for (const flat of [cs, en]) {
+      expect(flat['currency.gbx']).toContain('GBX');
+      expect(flat['currency.gbx']).toContain('GBP ÷ 100');
+      expect(flat['editor.currencyFromFile']).toBeTruthy();
+    }
+  });
+
   it('keeps the Czech guides of the brokers short enough to read at a glance', () => {
     for (const id of ['xtb', 'trading212', 'degiro', 'ibkr', 'moony', 'custom']) {
       expect(cs[`sources.${id}.guide`].length, id).toBeLessThan(420);

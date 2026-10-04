@@ -19,6 +19,8 @@ import {
   classifyResultMessage,
   columnOptions,
   columnToSelectValue,
+  currencyLabel,
+  currencyOverrideFor,
   dateFormatChoices,
   dateFormatLabel,
   directionModePatch,
@@ -36,6 +38,7 @@ import {
   isCurrencyCode,
   isDateFormatGuess,
   isMappingComplete,
+  isPenceCode,
   isSavedFormatSource,
   isSkipped,
   isSourceId,
@@ -898,6 +901,71 @@ describe('instrument overrides', () => {
       { key: 'b', ticker: 'B.DE' },
     ]);
   });
+
+  it('lets the currency of a lookup through to an instrument that was only skipped or renamed', () => {
+    // The currency says what the quote of the instrument is in; a name or a skip changes nothing
+    // about that, and without it pence would be stored as pounds.
+    const merged = mergeAutoOverrides(
+      [
+        { key: 'a', skip: true },
+        { key: 'b', name: 'Mine' },
+      ],
+      [
+        { key: 'a', currency: 'GBX' },
+        { key: 'b', name: 'Theirs', currency: 'GBX' },
+      ]
+    );
+    expect(merged).toEqual([
+      { key: 'a', skip: true, currency: 'GBX' },
+      { key: 'b', name: 'Mine', currency: 'GBX' },
+    ]);
+  });
+
+  it('does not give an instrument the currency of another listing than its own symbol', () => {
+    // The lookup chose BARC.DE for the file's BARC.L, but the user's name edit keeps the symbol
+    // the file has: the euro of BARC.DE is not the currency of BARC.L.
+    const merged = mergeAutoOverrides(
+      [{ key: 'a', name: 'Mine' }],
+      [{ key: 'a', ticker: 'BARC.DE', currency: 'EUR' }]
+    );
+    expect(merged).toEqual([{ key: 'a', name: 'Mine' }]);
+  });
+
+  it('keeps what the user chose about the symbol or the currency of an instrument', () => {
+    // Another symbol is another quote: what the lookup found belongs to the file's symbol.
+    const merged = mergeAutoOverrides(
+      [
+        { key: 'a', ticker: 'MINE.DE' },
+        { key: 'b', currency: 'EUR' },
+      ],
+      [
+        { key: 'a', currency: 'GBX' },
+        { key: 'b', currency: 'GBX' },
+      ]
+    );
+    expect(merged).toEqual([
+      { key: 'a', ticker: 'MINE.DE' },
+      { key: 'b', currency: 'EUR' },
+    ]);
+  });
+});
+
+describe('pence', () => {
+  it('explains GBX and leaves every other code as it is', () => {
+    const explained = 'GBX (pence, stored as GBP ÷ 100)';
+    expect(currencyLabel('GBX', explained)).toBe(explained);
+    expect(currencyLabel('GBp', explained)).toBe(explained);
+    expect(currencyLabel('GBP', explained)).toBe('GBP');
+    expect(currencyLabel('USD', explained)).toBe('USD');
+  });
+
+  it('knows the codes that mean pence and not the pound', () => {
+    for (const code of ['GBX', 'gbx', 'GBx', 'GBp', ' GBX '])
+      expect(isPenceCode(code), code).toBe(true);
+    for (const code of ['GBP', 'gbp', 'USD', 'ZAc', '', null, undefined]) {
+      expect(isPenceCode(code), String(code)).toBe(false);
+    }
+  });
 });
 
 describe('lookups on Yahoo Finance', () => {
@@ -918,6 +986,16 @@ describe('lookups on Yahoo Finance', () => {
     expect(needsLookup(instrument({ status: 'missingSymbol' }))).toBe(true);
     expect(needsLookup(instrument({ status: 'existing' }))).toBe(false);
     expect(needsLookup(instrument({ status: 'skipped' }))).toBe(false);
+  });
+
+  it('also looks up the existing positions when the currency comes from the listing', () => {
+    // Their quote unit is what the file's prices follow, and their position may be in another
+    // currency than the suffix guesses (CSPX.L is in dollars).
+    expect(needsLookup(instrument({ status: 'existing' }), 'instrument')).toBe(true);
+    expect(needsLookup(instrument({ status: 'existing' }), 'column')).toBe(false);
+    expect(needsLookup(instrument({ status: 'existing' }), 'fixed')).toBe(false);
+    expect(needsLookup(instrument({ status: 'skipped' }), 'instrument')).toBe(false);
+    expect(needsLookup(instrument({ status: 'new' }), 'column')).toBe(true);
   });
 
   describe('autoOverrideFor', () => {
@@ -972,6 +1050,119 @@ describe('lookups on Yahoo Finance', () => {
     it('changes nothing when the lookup failed or found nothing', () => {
       expect(autoOverrideFor(instrument(), resolution([], { lookupFailed: true }))).toBeNull();
       expect(autoOverrideFor(instrument(), resolution([]))).toBeNull();
+    });
+
+    describe('the currency of the listing, in instrument currency mode', () => {
+      const barclays = instrument({
+        key: 'symbol:BARC.L',
+        symbol: 'BARC.L',
+        ticker: 'BARC.L',
+        name: 'Barclays',
+        currency: 'GBP', // the suffix guess
+      });
+      const answer = (symbol: string, currency: string, key = 'symbol:BARC.L') => ({
+        ...chosen(symbol, currency, 'Barclays'),
+        key,
+      });
+
+      it('sets the currency the quote reported when it differs from the instrument', () => {
+        // The quote of BARC.L is in pence, which the lookup reports as GBX.
+        expect(autoOverrideFor(barclays, answer('BARC.L', 'GBX'), 'instrument')).toEqual({
+          key: 'symbol:BARC.L',
+          currency: 'GBX',
+        });
+      });
+
+      it('corrects a guess to the real currency', () => {
+        // VUSD.L is a London listing of a dollar ETF.
+        const vusd = instrument({
+          key: 'symbol:VUSD.L',
+          symbol: 'VUSD.L',
+          ticker: 'VUSD.L',
+          name: 'Vanguard S&P 500',
+          currency: 'GBP',
+        });
+        expect(
+          autoOverrideFor(vusd, answer('VUSD.L', 'USD', 'symbol:VUSD.L'), 'instrument')
+        ).toEqual({ key: 'symbol:VUSD.L', currency: 'USD' });
+      });
+
+      it('sets nothing when the currency is already the instrument’s, in any case', () => {
+        expect(autoOverrideFor(barclays, answer('BARC.L', 'GBP'), 'instrument')).toBeNull();
+        expect(autoOverrideFor(barclays, answer('BARC.L', 'gbp'), 'instrument')).toBeNull();
+      });
+
+      it('leaves the currency alone in every other mode', () => {
+        for (const mode of ['column', 'fixed', undefined] as const) {
+          expect(autoOverrideFor(barclays, answer('BARC.L', 'GBX'), mode), String(mode)).toBeNull();
+        }
+      });
+
+      it('writes the pence code GBX however the lookup spells it', () => {
+        expect(autoOverrideFor(barclays, answer('BARC.L', 'GBp'), 'instrument')?.currency).toBe(
+          'GBX'
+        );
+        expect(autoOverrideFor(barclays, answer('BARC.L', 'gbx'), 'instrument')?.currency).toBe(
+          'GBX'
+        );
+      });
+
+      it('sends no code the backend would reject', () => {
+        expect(autoOverrideFor(barclays, answer('BARC.L', 'GB'), 'instrument')).toBeNull();
+        expect(autoOverrideFor(barclays, answer('BARC.L', ''), 'instrument')).toBeNull();
+      });
+
+      it('comes with the symbol and the name of the same listing', () => {
+        const bare = instrument({ ...barclays, symbol: 'BARC', ticker: 'BARC', name: null });
+        expect(autoOverrideFor(bare, answer('BARC.L', 'GBX'), 'instrument')).toEqual({
+          key: 'symbol:BARC.L',
+          ticker: 'BARC.L',
+          name: 'Barclays',
+          currency: 'GBX',
+        });
+      });
+
+      it('takes only the currency for a position that exists', () => {
+        const existing = instrument({ ...barclays, status: 'existing', name: null });
+        // A position is matched by its ticker and keeps its name: the lookup only tells the unit.
+        expect(autoOverrideFor(existing, answer('barc.l', 'GBX'), 'instrument')).toEqual({
+          key: 'symbol:BARC.L',
+          currency: 'GBX',
+        });
+        expect(autoOverrideFor(existing, answer('BARC.L', 'GBP'), 'instrument')).toBeNull();
+      });
+
+      it('ignores another listing than the position’s: its currency is not the position’s', () => {
+        const existing = instrument({ ...barclays, status: 'existing' });
+        expect(autoOverrideFor(existing, answer('BARC.DE', 'EUR'), 'instrument')).toBeNull();
+      });
+    });
+  });
+
+  describe('currencyOverrideFor', () => {
+    const quoted = (symbol: string, currency: string) =>
+      resolution([candidate(symbol, currency)], { key: `symbol:${symbol}` });
+
+    it('is what the quote of the chosen listing is in, in instrument currency mode', () => {
+      expect(currencyOverrideFor('barc.l', quoted('BARC.L', 'GBX'), 'instrument')).toBe('GBX');
+      expect(currencyOverrideFor('VUSD.L', quoted('VUSD.L', 'USD'), 'instrument')).toBe('USD');
+      expect(currencyOverrideFor('BARC.L', quoted('BARC.L', 'GBp'), 'instrument')).toBe('GBX');
+    });
+
+    it('is nothing where the currency is the file’s own', () => {
+      for (const mode of ['column', 'fixed'] as const) {
+        expect(currencyOverrideFor('BARC.L', quoted('BARC.L', 'GBX'), mode), mode).toBeNull();
+      }
+    });
+
+    it('is nothing without an answer for that very listing', () => {
+      expect(currencyOverrideFor('BARC.L', undefined, 'instrument')).toBeNull();
+      expect(
+        currencyOverrideFor('BARC.L', resolution([], { lookupFailed: true }), 'instrument')
+      ).toBeNull();
+      expect(currencyOverrideFor('BARC.L', resolution([]), 'instrument')).toBeNull();
+      expect(currencyOverrideFor('BARC.L', quoted('LLOY.L', 'GBX'), 'instrument')).toBeNull();
+      expect(currencyOverrideFor('BARC.L', quoted('BARC.L', 'GB'), 'instrument')).toBeNull();
     });
   });
 

@@ -125,7 +125,7 @@ mod tests {
         KEY_DUPLICATE, KEY_INSTRUMENT_SKIPPED, KEY_SELL_EXCEEDS_HOLDINGS,
     };
     use super::super::types::{
-        ParsedTrade, StockInstrumentOverride, StockRowMessage, StockRowStatus,
+        CurrencyMode, ParsedTrade, StockInstrumentOverride, StockRowMessage, StockRowStatus,
     };
     use super::*;
 
@@ -402,24 +402,36 @@ mod tests {
         assert_eq!(position(&conn, "AAPL").unwrap().1, "10");
     }
 
-    #[test]
-    fn overrides_decide_the_ticker_name_and_currency_of_a_new_position() {
-        let mut conn = db();
-        let mut cfg = config("degiro");
-        cfg.instrument_overrides = vec![StockInstrumentOverride {
+    fn isin_trade() -> ParsedTrade {
+        let mut t = buy(2, day(0), "X", 3.0, 100.0);
+        t.instrument_key = "isin:IE00B3RBWM25".into();
+        t.symbol = None;
+        t.isin = Some("IE00B3RBWM25".into());
+        t
+    }
+
+    fn vwrl_override() -> StockInstrumentOverride {
+        StockInstrumentOverride {
             key: "isin:IE00B3RBWM25".into(),
             ticker: Some("vwrl.as".into()),
             name: Some("Vanguard FTSE All-World".into()),
             currency: Some("eur".into()),
             skip: false,
-        }];
-        let mut t = buy(2, day(0), "X", 3.0, 100.0);
-        t.instrument_key = "isin:IE00B3RBWM25".into();
-        t.symbol = None;
-        t.isin = Some("IE00B3RBWM25".into());
-        t.currency = Some("USD".into()); // overridden
+        }
+    }
 
-        let result = import(&mut conn, &file(vec![t]), &cfg, "degiro.csv").unwrap();
+    #[test]
+    fn overrides_decide_the_ticker_name_and_currency_of_a_new_position() {
+        // XTB-style file: the rows name no currency, so the user's choice (or the lookup's) is it.
+        let mut conn = db();
+        let mut cfg = config("xtb");
+        cfg.currency_mode = CurrencyMode::Instrument;
+        cfg.currency_column = None;
+        cfg.instrument_overrides = vec![vwrl_override()];
+        let mut t = isin_trade();
+        t.currency = None;
+
+        let result = import(&mut conn, &file(vec![t]), &cfg, "xtb.csv").unwrap();
 
         assert_eq!(result.new_positions, vec!["VWRL.AS"]);
         let p = position(&conn, "VWRL.AS").unwrap();
@@ -427,6 +439,66 @@ mod tests {
             (p.0.as_str(), p.2.as_str()),
             ("Vanguard FTSE All-World", "EUR")
         );
+    }
+
+    #[test]
+    fn an_override_relabels_nothing_the_file_states_in_its_own_currency() {
+        // Degiro-style file: the cell says USD; the override only decides ticker and name.
+        let mut conn = db();
+        let mut cfg = config("degiro");
+        cfg.instrument_overrides = vec![vwrl_override()];
+        let mut t = isin_trade();
+        t.currency = Some("USD".into());
+
+        import(&mut conn, &file(vec![t]), &cfg, "degiro.csv").unwrap();
+
+        let p = position(&conn, "VWRL.AS").unwrap();
+        assert_eq!(
+            (p.0.as_str(), p.2.as_str()),
+            ("Vanguard FTSE All-World", "USD")
+        );
+        let rows = stored(&conn);
+        assert_eq!((rows[0].3.as_str(), rows[0].4.as_str()), ("100", "USD"));
+    }
+
+    #[test]
+    fn a_pence_file_is_written_in_pounds_and_a_second_import_finds_all_of_it_again() {
+        let mut conn = db();
+        let mut cfg = config("xtb");
+        cfg.currency_mode = CurrencyMode::Instrument;
+        cfg.currency_column = None;
+        cfg.instrument_overrides = vec![StockInstrumentOverride {
+            currency: Some("GBX".into()),
+            ..over("symbol:BARC.L")
+        }];
+        let pence_file = || {
+            let mut rows = vec![
+                buy(2, day(0), "BARC.L", 10.0, 443.65),
+                sell(3, day(1), "BARC.L", 4.0, 4912.35),
+            ];
+            for t in &mut rows {
+                t.currency = None;
+            }
+            file(rows)
+        };
+
+        let first = import(&mut conn, &pence_file(), &cfg, "xtb.csv").unwrap();
+        assert_eq!((first.imported, first.duplicates), (2, 0));
+        let rows = stored(&conn);
+        let written: Vec<(&str, &str, &str)> = rows
+            .iter()
+            .map(|r| (r.1.as_str(), r.3.as_str(), r.4.as_str()))
+            .collect();
+        assert_eq!(
+            written,
+            vec![("buy", "4.4365", "GBP"), ("sell", "49.1235", "GBP")],
+            "pounds, as the quote of the position is"
+        );
+        assert_eq!(position(&conn, "BARC.L").unwrap().2, "GBP");
+
+        let again = import(&mut conn, &pence_file(), &cfg, "xtb.csv").unwrap();
+        assert_eq!((again.imported, again.duplicates), (0, 2));
+        assert_eq!(count(&conn, "investment_transactions"), 2);
     }
 
     #[test]

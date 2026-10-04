@@ -613,7 +613,7 @@ CREATE TABLE stock_data (
     quote_type TEXT,
     metadata_fetched_at INTEGER,
     previous_close TEXT
-)
+, quote_currency TEXT)
 
 == table stock_import_batches ==
 CREATE TABLE stock_import_batches (

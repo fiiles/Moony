@@ -9,14 +9,24 @@ import { CurrencyCombobox } from '@/components/common/CurrencyCombobox';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { priceApi, type StockSearchResult } from '@/lib/tauri-api';
 import { exchangeName, resolveTickerCurrency } from '@/utils/exchange-names';
-import type { StockImportInstrument, StockInstrumentCandidate } from '@shared/schema';
-import { isCurrencyCode, isValidTicker, normalizeTicker } from './import-config';
+import type {
+  StockCurrencyMode,
+  StockImportInstrument,
+  StockInstrumentCandidate,
+} from '@shared/schema';
+import {
+  currencyLabel,
+  isCurrencyCode,
+  isPenceCode,
+  isValidTicker,
+  normalizeTicker,
+} from './import-config';
 
 /** What the user decided in the editor of one instrument. */
 export interface InstrumentEdit {
   ticker: string;
   name: string;
-  /** Only with a currency taken from the listing; null leaves it as it is. */
+  /** Only with a currency taken from the listing (instrument mode); null leaves it as it is. */
   currency: string | null;
   /** The listing the user picked from the results (already confirmed on Yahoo Finance). */
   picked: StockInstrumentCandidate | null;
@@ -33,6 +43,17 @@ interface InstrumentEditorProps {
   instrument: StockImportInstrument;
   /** The name now shown for the instrument (the user's, the file's or Yahoo Finance's). */
   name: string;
+  /**
+   * The currency now in effect for the instrument's trades: the override's (`GBX` when the file's
+   * prices are in pence), else the instrument's own.
+   */
+  currency: string | null;
+  /**
+   * Where the currency of the trades comes from. Only in `instrument` mode is it the listing's,
+   * and so a choice made here; with a currency column or one currency for the whole file it is the
+   * file's own, shown but never overridden.
+   */
+  currencyMode: StockCurrencyMode;
   /** Listings Yahoo Finance offered for this instrument, to pick from without typing. */
   candidates: readonly StockInstrumentCandidate[];
   onApply: (edit: InstrumentEdit) => void;
@@ -42,21 +63,24 @@ interface InstrumentEditorProps {
 /**
  * Inline editor of one instrument (spec §3, step 3): the symbol, with the
  * Yahoo Finance search the Add investment dialog uses, the name and — when the
- * currency comes from the listing — the currency. A change applies to every
- * trade of the instrument.
+ * currency comes from the listing — the currency; otherwise the file's own
+ * currency is only shown. A change applies to every trade of the instrument.
  */
 export function InstrumentEditor({
   instrument,
   name,
+  currency: currentCurrency,
+  currencyMode,
   candidates,
   onApply,
   onCancel,
 }: InstrumentEditorProps) {
   const { t } = useTranslation('stocks');
   const { t: tc } = useTranslation('common');
+  const fromListing = currencyMode === 'instrument';
   const [ticker, setTicker] = useState(instrument.ticker ?? instrument.symbol ?? '');
   const [typedName, setTypedName] = useState(name);
-  const [currency, setCurrency] = useState<string | null>(instrument.currency);
+  const [currency, setCurrency] = useState<string | null>(currentCurrency);
   const [picked, setPicked] = useState<StockInstrumentCandidate | null>(null);
   // Whatever was typed last in either field is what the search looks for.
   const [searchText, setSearchText] = useState('');
@@ -91,7 +115,7 @@ export function InstrumentEditor({
   const tickerValid = isValidTicker(ticker);
   // An empty field is not an error yet, only a reason the button waits.
   const tickerInvalid = ticker.trim() !== '' && !tickerValid;
-  const currencyValid = currency == null || isCurrencyCode(currency);
+  const currencyValid = !fromListing || currency == null || isCurrencyCode(currency);
   const canApply = tickerValid && currencyValid;
 
   const typeSearch = (value: string) => {
@@ -103,7 +127,8 @@ export function InstrumentEditor({
   const pick = (candidate: StockInstrumentCandidate) => {
     setTicker(candidate.symbol);
     setTypedName(candidate.name);
-    setCurrency(candidate.currency);
+    // A listing's currency is the instrument's only when it comes from the listing.
+    if (fromListing) setCurrency(candidate.currency);
     setPicked(candidate);
     setSearchText('');
     setListOpen(false);
@@ -114,8 +139,12 @@ export function InstrumentEditor({
     onApply({
       ticker: normalizeTicker(ticker),
       name: typedName,
-      // Only a change of the currency is an override: the file's own stays as it is.
-      currency: currency && currency !== instrument.currency ? currency : null,
+      // Only a change of the currency is an override, and only where the currency is the
+      // listing's: the file's own stays as it is.
+      currency:
+        fromListing && currency && currency.toUpperCase() !== (currentCurrency ?? '').toUpperCase()
+          ? currency
+          : null,
       picked,
     });
   };
@@ -173,12 +202,30 @@ export function InstrumentEditor({
         </div>
         <div className="grid gap-1.5">
           <Label>{t('importWizard.roles.currency')}</Label>
-          <CurrencyCombobox
-            value={currency && isCurrencyCode(currency) ? currency : ''}
-            onChange={setCurrency}
-            showName={false}
-            aria-label={t('importWizard.roles.currency')}
-          />
+          {fromListing ? (
+            <>
+              <CurrencyCombobox
+                value={currency && isCurrencyCode(currency) ? currency : ''}
+                onChange={setCurrency}
+                showName={false}
+                aria-label={t('importWizard.roles.currency')}
+              />
+              {isPenceCode(currency) && (
+                <p className="m-0 text-micro font-500 text-ink-4">
+                  {currencyLabel(currency ?? '', t('importWizard.currency.gbx'))}
+                </p>
+              )}
+            </>
+          ) : (
+            <>
+              <p className="m-0 flex h-9 items-center text-table font-500 text-ink num">
+                {instrument.currency ?? '—'}
+              </p>
+              <p className="m-0 text-micro font-500 text-ink-4">
+                {t('importWizard.editor.currencyFromFile')}
+              </p>
+            </>
+          )}
         </div>
       </div>
 
@@ -215,7 +262,8 @@ export function InstrumentEditor({
                     <b className="w-20 shrink-0 font-650 num">{candidate.symbol}</b>
                     <span className="min-w-0 flex-1 truncate text-ink-2">{candidate.name}</span>
                     <span className="shrink-0 text-micro font-500 text-ink-4">
-                      {exchangeName(candidate.exchange)} · {candidate.currency}
+                      {exchangeName(candidate.exchange)} ·{' '}
+                      {currencyLabel(candidate.currency, t('importWizard.currency.gbx'))}
                     </span>
                   </button>
                 </li>

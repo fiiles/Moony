@@ -9,7 +9,10 @@
 //! The symbol is searched first and the ISIN when the symbol found nothing (or
 //! there is none). The listings found come with the currency their exchange
 //! suffix implies, and `best` is the one the import should store the trades
-//! under; see [`choose_best`].
+//! under; see [`choose_best`]. The chosen listing then costs one more request, its
+//! quote, which names the currency it really trades in (see [`listing_currency`]);
+//! the other listings keep the guess. Every request, searches and quotes alike, is
+//! paced by [`LOOKUP_DELAY`].
 
 use std::future::Future;
 use std::time::Duration;
@@ -17,6 +20,7 @@ use std::time::Duration;
 use super::types::{StockInstrumentCandidate, StockInstrumentQuery, StockInstrumentResolution};
 use crate::error::Result;
 use crate::services::price_api::{self, StockSearchResult};
+use crate::services::quote_unit::{is_pence, quote_unit};
 
 /// Pause between two Yahoo Finance requests.
 const LOOKUP_DELAY: Duration = Duration::from_millis(250);
@@ -34,9 +38,12 @@ const MAX_CONSECUTIVE_FAILURES: usize = 3;
 pub async fn resolve_instruments(
     queries: Vec<StockInstrumentQuery>,
 ) -> Vec<StockInstrumentResolution> {
-    resolve_with(queries, LOOKUP_DELAY, |term: String| async move {
-        price_api::search_stock_tickers(&term).await
-    })
+    resolve_with(
+        queries,
+        LOOKUP_DELAY,
+        |term: String| async move { price_api::search_stock_tickers(&term).await },
+        |symbol: String| async move { price_api::get_quote_currency(&symbol).await },
+    )
     .await
 }
 
@@ -93,6 +100,17 @@ fn candidates_of(found: Vec<StockSearchResult>) -> Vec<StockInstrumentCandidate>
     candidates
 }
 
+/// The currency a chosen listing is shown, and its trades stored, in: what Yahoo reports for its
+/// quote. Pence (`GBp`, `GBX`) are `GBX`, the code that tells the simulation the file's prices are
+/// in pence; every other unit is the currency itself, and without a reported code the suffix
+/// guess stands.
+fn listing_currency(reported: Option<&str>, symbol: &str) -> String {
+    if reported.map(str::trim).is_some_and(is_pence) {
+        return "GBX".to_string();
+    }
+    quote_unit(reported, symbol).currency
+}
+
 /// The listing the trades should be stored under.
 ///
 /// In order: the exact symbol (case-insensitive) in the trade currency; any
@@ -124,20 +142,24 @@ pub(crate) fn choose_best(
         .cloned()
 }
 
-/// [`resolve_instruments`] with the search injected (tests, and the delay).
-async fn resolve_with<F, Fut>(
+/// [`resolve_instruments`] with the search and the quote lookup injected (tests, and the delay).
+async fn resolve_with<F, Fut, Q, QFut>(
     queries: Vec<StockInstrumentQuery>,
     delay: Duration,
     mut search: F,
+    mut quote: Q,
 ) -> Vec<StockInstrumentResolution>
 where
     F: FnMut(String) -> Fut,
     Fut: Future<Output = Result<Vec<StockSearchResult>>>,
+    Q: FnMut(String) -> QFut,
+    QFut: Future<Output = Result<Option<String>>>,
 {
     let mut resolutions = Vec::with_capacity(queries.len());
     let mut looked_up = 0usize;
     let mut requests = 0usize;
     let mut failures_in_a_row = 0usize;
+    let mut quote_failures_in_a_row = 0usize;
 
     for query in queries {
         if looked_up >= MAX_QUERIES || failures_in_a_row >= MAX_CONSECUTIVE_FAILURES {
@@ -180,7 +202,7 @@ where
         }
         failures_in_a_row = if failed { failures_in_a_row + 1 } else { 0 };
 
-        let best = if failed {
+        let mut best = if failed {
             None
         } else {
             choose_best(
@@ -189,6 +211,37 @@ where
                 &candidates,
             )
         };
+
+        // One more request, for the listing that was chosen: its quote names the currency it
+        // really trades in. A listing's exchange suffix only guesses it (VUSD.L is in dollars,
+        // not pounds), and it is the guess the ranking above went by: asking every candidate
+        // would multiply the requests. A failed lookup keeps the guess and is no failure of the
+        // instrument; a run of them stops the lookups, as a run of failed searches stops all.
+        if let Some(chosen) = best.as_mut() {
+            if quote_failures_in_a_row < MAX_CONSECUTIVE_FAILURES {
+                if requests > 0 {
+                    tokio::time::sleep(delay).await;
+                }
+                requests += 1;
+                match quote(chosen.symbol.clone()).await {
+                    Ok(reported) => {
+                        quote_failures_in_a_row = 0;
+                        let currency = listing_currency(reported.as_deref(), &chosen.symbol);
+                        if let Some(listed) =
+                            candidates.iter_mut().find(|c| c.symbol == chosen.symbol)
+                        {
+                            listed.currency = currency.clone();
+                        }
+                        chosen.currency = currency;
+                    }
+                    Err(e) => {
+                        log::debug!("[STOCK IMPORT] Quote currency lookup failed: {e}");
+                        quote_failures_in_a_row += 1;
+                    }
+                }
+            }
+        }
+
         resolutions.push(StockInstrumentResolution {
             key: query.key,
             candidates: if failed { Vec::new() } else { candidates },
@@ -205,6 +258,24 @@ mod tests {
 
     use super::*;
     use crate::error::AppError;
+
+    /// What a quote lookup that has nothing to say answers.
+    async fn no_quote(_symbol: String) -> Result<Option<String>> {
+        Ok(None)
+    }
+
+    /// [`resolve_with`] for the tests of the search: no quote is looked up.
+    async fn resolve_without_quotes<F, Fut>(
+        queries: Vec<StockInstrumentQuery>,
+        delay: Duration,
+        search: F,
+    ) -> Vec<StockInstrumentResolution>
+    where
+        F: FnMut(String) -> Fut,
+        Fut: Future<Output = Result<Vec<StockSearchResult>>>,
+    {
+        resolve_with(queries, delay, search, no_quote).await
+    }
 
     fn candidate(symbol: &str, currency: &str) -> StockInstrumentCandidate {
         StockInstrumentCandidate {
@@ -372,7 +443,7 @@ mod tests {
     #[tokio::test]
     async fn the_symbol_is_looked_up_and_the_best_listing_chosen() {
         let mut asked: Vec<String> = Vec::new();
-        let resolutions = resolve_with(
+        let resolutions = resolve_without_quotes(
             vec![query(
                 "symbol:VUSA",
                 Some("VUSA"),
@@ -398,7 +469,7 @@ mod tests {
     #[tokio::test]
     async fn the_isin_is_searched_when_there_is_no_symbol_or_it_found_nothing() {
         let mut asked: Vec<String> = Vec::new();
-        let resolutions = resolve_with(
+        let resolutions = resolve_without_quotes(
             vec![
                 query("isin:A", None, Some("ie00b3rbwm25"), None),
                 query("symbol:ZZZ", Some("ZZZ"), Some("US0378331005"), None),
@@ -430,7 +501,7 @@ mod tests {
 
     #[tokio::test]
     async fn an_instrument_nothing_was_found_for_is_unknown_not_failed() {
-        let resolutions = resolve_with(
+        let resolutions = resolve_without_quotes(
             vec![query("symbol:ZZZ", Some("ZZZ"), None, None)],
             NO_DELAY,
             |_| async { Ok(vec![]) },
@@ -444,7 +515,7 @@ mod tests {
     #[tokio::test]
     async fn a_query_with_neither_symbol_nor_isin_makes_no_request() {
         let mut requests = 0;
-        let resolutions = resolve_with(
+        let resolutions = resolve_without_quotes(
             vec![
                 query("x", Some("  "), None, None),
                 query("y", None, Some(""), None),
@@ -464,7 +535,7 @@ mod tests {
 
     #[tokio::test]
     async fn a_failed_lookup_marks_only_that_instrument() {
-        let resolutions = resolve_with(
+        let resolutions = resolve_without_quotes(
             vec![
                 query("a", Some("AAA"), None, None),
                 query("b", Some("BBB"), None, None),
@@ -496,7 +567,7 @@ mod tests {
         let queries: Vec<StockInstrumentQuery> = (0..8)
             .map(|i| query(&format!("k{i}"), Some(&format!("S{i}")), None, None))
             .collect();
-        let resolutions = resolve_with(queries, NO_DELAY, |_| {
+        let resolutions = resolve_without_quotes(queries, NO_DELAY, |_| {
             requests += 1;
             async { Err(AppError::ExternalApi("offline".into())) }
         })
@@ -516,7 +587,7 @@ mod tests {
             .map(|i| query(&format!("k{i}"), Some(&format!("S{i}")), None, None))
             .collect();
         // every third lookup works
-        let resolutions = resolve_with(queries, NO_DELAY, |term| {
+        let resolutions = resolve_without_quotes(queries, NO_DELAY, |term| {
             requests += 1;
             let works = requests % 3 == 0;
             async move {
@@ -538,7 +609,7 @@ mod tests {
         let queries: Vec<StockInstrumentQuery> = (0..MAX_QUERIES + 5)
             .map(|i| query(&format!("k{i}"), Some(&format!("S{i}")), None, None))
             .collect();
-        let resolutions = resolve_with(queries, NO_DELAY, |term| {
+        let resolutions = resolve_without_quotes(queries, NO_DELAY, |term| {
             requests += 1;
             async move { Ok(vec![found(&term)]) }
         })
@@ -555,7 +626,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn requests_are_spaced_by_the_delay() {
+    async fn requests_are_spaced_by_the_delay_quote_lookups_included() {
         let delay = Duration::from_millis(20);
         let started = Instant::now();
         resolve_with(
@@ -566,12 +637,286 @@ mod tests {
             ],
             delay,
             |term| async move { Ok(vec![found(&term)]) },
+            no_quote,
         )
         .await;
         assert!(
-            started.elapsed() >= delay * 2,
-            "three requests wait twice: {:?}",
+            started.elapsed() >= delay * 5,
+            "three searches and three quotes wait five times: {:?}",
             started.elapsed()
+        );
+    }
+
+    // ---- the quote lookup --------------------------------------------------------------
+
+    /// One instrument: the search finds `listing`, the quote lookup answers `answer` (`Err`: it
+    /// failed).
+    async fn resolve_one(
+        listing: &'static str,
+        answer: std::result::Result<Option<&'static str>, ()>,
+    ) -> StockInstrumentResolution {
+        resolve_with(
+            vec![query("k", Some("SYM"), None, None)],
+            NO_DELAY,
+            |_| async move { Ok(vec![found(listing)]) },
+            |_| async move {
+                answer
+                    .map(|code| code.map(str::to_string))
+                    .map_err(|()| AppError::ExternalApi("offline".into()))
+            },
+        )
+        .await
+        .remove(0)
+    }
+
+    fn best_currency(resolution: &StockInstrumentResolution) -> Option<&str> {
+        resolution.best.as_ref().map(|c| c.currency.as_str())
+    }
+
+    #[test]
+    fn a_listing_is_shown_in_the_currency_its_quote_reports() {
+        assert_eq!(listing_currency(Some("GBP"), "VUSA.L"), "GBP");
+        assert_eq!(listing_currency(Some("USD"), "CSPX.L"), "USD");
+        assert_eq!(listing_currency(Some("eur"), "SXR8.DE"), "EUR");
+        // Pence are GBX, whichever way Yahoo spells them.
+        assert_eq!(listing_currency(Some("GBp"), "BARC.L"), "GBX");
+        assert_eq!(listing_currency(Some("GBX"), "BARC.L"), "GBX");
+        // The other minor units are shown as their currency.
+        assert_eq!(listing_currency(Some("ZAc"), "NPN.JO"), "ZAR");
+        assert_eq!(listing_currency(Some("ILA"), "TEVA.TA"), "ILS");
+        // Nothing reported: the suffix guess.
+        assert_eq!(listing_currency(None, "VUSA.L"), "GBP");
+        assert_eq!(listing_currency(Some(" "), "SXR8.DE"), "EUR");
+    }
+
+    #[tokio::test]
+    async fn the_chosen_listings_currency_is_the_one_its_quote_reports() {
+        // Degiro's ISIN IE00B3XXRP09 is VUSD on the London exchange, and it trades in dollars.
+        let mut quoted: Vec<String> = Vec::new();
+        let resolutions = resolve_with(
+            vec![query(
+                "isin:IE00B3XXRP09",
+                None,
+                Some("IE00B3XXRP09"),
+                Some("USD"),
+            )],
+            NO_DELAY,
+            |_| async { Ok(vec![found("VUSD.L")]) },
+            |symbol| {
+                quoted.push(symbol);
+                async { Ok(Some("USD".to_string())) }
+            },
+        )
+        .await;
+
+        assert_eq!(quoted, vec!["VUSD.L"]);
+        let r = &resolutions[0];
+        assert!(!r.lookup_failed);
+        let best = r.best.as_ref().expect("a best listing");
+        assert_eq!(
+            (best.symbol.as_str(), best.currency.as_str()),
+            ("VUSD.L", "USD")
+        );
+        assert_eq!(r.candidates[0].currency, "USD", "the list shows the same");
+    }
+
+    #[tokio::test]
+    async fn the_unit_a_quote_reports_decides_the_code() {
+        // (listing, reported by Yahoo, shown as)
+        for (listing, reported, shown) in [
+            ("VUSA.L", "GBP", "GBP"),
+            ("CSPX.L", "USD", "USD"),
+            ("SXR8.DE", "EUR", "EUR"),
+            ("BARC.L", "GBp", "GBX"),
+            ("LLOY.L", "GBX", "GBX"),
+            ("NPN.JO", "ZAc", "ZAR"),
+        ] {
+            let r = resolve_one(listing, Ok(Some(reported))).await;
+            assert_eq!(best_currency(&r), Some(shown), "{listing} {reported}");
+        }
+    }
+
+    #[tokio::test]
+    async fn a_failed_quote_keeps_the_suffix_guess_and_the_instrument_stays_verified() {
+        let r = resolve_one("VUSD.L", Err(())).await;
+        assert!(!r.lookup_failed, "the symbol was found all the same");
+        assert_eq!(best_currency(&r), Some("GBP"), "the guess");
+        assert_eq!(r.candidates.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn a_quote_that_names_no_currency_keeps_the_suffix_guess() {
+        let r = resolve_one("SXR8.DE", Ok(None)).await;
+        assert!(!r.lookup_failed);
+        assert_eq!(best_currency(&r), Some("EUR"));
+    }
+
+    #[tokio::test]
+    async fn only_the_chosen_listing_is_asked_for_its_quote() {
+        // The trades are in euros, so VUSA.AS is chosen; only that listing costs a request.
+        let mut quoted: Vec<String> = Vec::new();
+        let resolutions = resolve_with(
+            vec![query("symbol:VUSA", Some("VUSA"), None, Some("EUR"))],
+            NO_DELAY,
+            |_| async { Ok(vec![found("VUSA.L"), found("VUSA.AS"), found("VUSA.DE")]) },
+            |symbol| {
+                quoted.push(symbol);
+                async { Ok(Some("EUR".to_string())) }
+            },
+        )
+        .await;
+
+        assert_eq!(quoted, vec!["VUSA.AS"]);
+        let currencies: Vec<(&str, &str)> = resolutions[0]
+            .candidates
+            .iter()
+            .map(|c| (c.symbol.as_str(), c.currency.as_str()))
+            .collect();
+        assert_eq!(
+            currencies,
+            vec![("VUSA.L", "GBP"), ("VUSA.AS", "EUR"), ("VUSA.DE", "EUR")],
+            "the other listings keep the suffix guess"
+        );
+    }
+
+    #[tokio::test]
+    async fn the_ranking_still_compares_the_trade_currency_with_the_suffix_guesses() {
+        // Known limit, kept to bound the requests: the listing is chosen by the guessed currency
+        // of every candidate, and only the winner's quote is asked. Here the trades are in
+        // dollars, no listing is guessed to be in dollars, so the first one wins (VUSD.AS) even
+        // though VUSD.L is the dollar listing.
+        let mut quoted: Vec<String> = Vec::new();
+        let resolutions = resolve_with(
+            vec![query("symbol:VUSD", Some("VUSD"), None, Some("USD"))],
+            NO_DELAY,
+            |_| async { Ok(vec![found("VUSD.AS"), found("VUSD.L")]) },
+            |symbol| {
+                quoted.push(symbol);
+                async { Ok(Some("EUR".to_string())) }
+            },
+        )
+        .await;
+
+        assert_eq!(quoted, vec!["VUSD.AS"]);
+        assert_eq!(
+            resolutions[0].best.as_ref().map(|c| c.symbol.as_str()),
+            Some("VUSD.AS")
+        );
+    }
+
+    #[tokio::test]
+    async fn an_instrument_without_a_chosen_listing_asks_for_no_quote() {
+        let mut quotes = 0;
+        let resolutions = resolve_with(
+            vec![
+                query("a", Some("AAA"), None, None),
+                query("b", Some("BBB"), None, None),
+                query("c", None, None, None),
+            ],
+            NO_DELAY,
+            |term| async move {
+                if term == "AAA" {
+                    Err(AppError::ExternalApi("offline".into()))
+                } else {
+                    Ok(vec![])
+                }
+            },
+            |_| {
+                quotes += 1;
+                async { Ok(Some("USD".to_string())) }
+            },
+        )
+        .await;
+
+        assert_eq!(
+            quotes, 0,
+            "a failed search, nothing found, nothing to search"
+        );
+        assert!(resolutions[0].lookup_failed);
+        assert!(resolutions.iter().all(|r| r.best.is_none()));
+    }
+
+    #[tokio::test]
+    async fn after_a_run_of_failed_quotes_no_more_quotes_are_asked() {
+        let mut searches = 0;
+        let mut quotes = 0;
+        let queries: Vec<StockInstrumentQuery> = (0..8)
+            .map(|i| query(&format!("k{i}"), Some(&format!("S{i}")), None, None))
+            .collect();
+        let resolutions = resolve_with(
+            queries,
+            NO_DELAY,
+            |term| {
+                searches += 1;
+                async move { Ok(vec![found(&term)]) }
+            },
+            |_| {
+                quotes += 1;
+                async { Err(AppError::ExternalApi("rate limit".into())) }
+            },
+        )
+        .await;
+
+        assert_eq!(quotes, MAX_CONSECUTIVE_FAILURES);
+        assert_eq!(searches, 8, "the symbol checks go on without them");
+        assert!(resolutions
+            .iter()
+            .all(|r| !r.lookup_failed && r.best.is_some()));
+    }
+
+    #[tokio::test]
+    async fn a_quote_that_works_resets_the_run_of_failed_quotes() {
+        let mut quotes = 0;
+        // German listings: the guess is EUR, so the dollars come from a quote that worked.
+        let queries: Vec<StockInstrumentQuery> = (0..8)
+            .map(|i| query(&format!("k{i}"), Some(&format!("S{i}.DE")), None, None))
+            .collect();
+        // every third quote works
+        let resolutions = resolve_with(
+            queries,
+            NO_DELAY,
+            |term| async move { Ok(vec![found(&term)]) },
+            |_| {
+                quotes += 1;
+                let works = quotes % 3 == 0;
+                async move {
+                    if works {
+                        Ok(Some("USD".to_string()))
+                    } else {
+                        Err(AppError::ExternalApi("rate limit".into()))
+                    }
+                }
+            },
+        )
+        .await;
+
+        assert_eq!(quotes, 8, "never three failures in a row");
+        let usd = resolutions
+            .iter()
+            .filter(|r| best_currency(r) == Some("USD"))
+            .count();
+        assert_eq!(usd, 2, "the two that worked");
+    }
+
+    #[tokio::test]
+    async fn at_most_fifty_quotes_are_looked_up_per_call() {
+        let mut quotes = 0;
+        let queries: Vec<StockInstrumentQuery> = (0..MAX_QUERIES + 5)
+            .map(|i| query(&format!("k{i}"), Some(&format!("S{i}")), None, None))
+            .collect();
+        resolve_with(
+            queries,
+            NO_DELAY,
+            |term| async move { Ok(vec![found(&term)]) },
+            |_| {
+                quotes += 1;
+                async { Ok(Some("USD".to_string())) }
+            },
+        )
+        .await;
+        assert_eq!(
+            quotes, MAX_QUERIES,
+            "one per instrument looked up, none beyond the cap"
         );
     }
 

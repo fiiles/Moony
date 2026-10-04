@@ -235,6 +235,23 @@ async fn run_batch(
     notify(Notice::BatchComplete);
 }
 
+/// Where a rebuild of each ticker starts: the date of its earliest transaction. A ticker without
+/// transactions (a watchlist ticker) has no history to rebuild and is left out. The order of
+/// `tickers` is kept.
+pub fn rebuild_jobs(conn: &rusqlite::Connection, tickers: &[String]) -> Result<Vec<(String, i64)>> {
+    let mut earliest = conn
+        .prepare("SELECT MIN(transaction_date) FROM investment_transactions WHERE ticker = ?1")?;
+    let mut jobs = Vec::new();
+    for ticker in tickers {
+        // MIN over no rows is one row holding NULL.
+        let from: Option<i64> = earliest.query_row([ticker], |row| row.get(0))?;
+        if let Some(from) = from {
+            jobs.push((ticker.clone(), from));
+        }
+    }
+    Ok(jobs)
+}
+
 /// Held tickers (outside `batch`) that have no history row in `from..=until`.
 fn tickers_without_history(
     db: &Database,
@@ -414,6 +431,59 @@ mod tests {
             queue.enqueue(jobs(&[("AAPL", DAY)])),
             "a new worker is needed"
         );
+    }
+
+    fn transactions_db() -> rusqlite::Connection {
+        let conn = rusqlite::Connection::open_in_memory().expect("in-memory db");
+        conn.execute_batch(
+            "CREATE TABLE investment_transactions (
+                id TEXT PRIMARY KEY, ticker TEXT NOT NULL, transaction_date INTEGER NOT NULL
+            );",
+        )
+        .expect("schema");
+        conn
+    }
+
+    fn add_transaction(conn: &rusqlite::Connection, id: &str, ticker: &str, date: i64) {
+        conn.execute(
+            "INSERT INTO investment_transactions (id, ticker, transaction_date) VALUES (?1, ?2, ?3)",
+            rusqlite::params![id, ticker, date],
+        )
+        .expect("transaction");
+    }
+
+    fn tickers(names: &[&str]) -> Vec<String> {
+        names.iter().map(|t| t.to_string()).collect()
+    }
+
+    #[test]
+    fn a_rebuild_starts_at_the_earliest_transaction_of_each_ticker() {
+        let conn = transactions_db();
+        add_transaction(&conn, "t1", "CSPX.L", 300 * DAY);
+        add_transaction(&conn, "t2", "CSPX.L", 100 * DAY);
+        add_transaction(&conn, "t3", "BARC.L", 200 * DAY);
+        add_transaction(&conn, "t4", "AAPL", 50 * DAY);
+
+        let jobs = rebuild_jobs(&conn, &tickers(&["CSPX.L", "BARC.L"])).expect("jobs");
+        assert_eq!(
+            jobs,
+            vec![
+                ("CSPX.L".to_string(), 100 * DAY),
+                ("BARC.L".to_string(), 200 * DAY)
+            ],
+            "AAPL was not asked for"
+        );
+    }
+
+    #[test]
+    fn a_ticker_without_transactions_has_nothing_to_rebuild() {
+        let conn = transactions_db();
+        add_transaction(&conn, "t1", "CSPX.L", 100 * DAY);
+
+        // A watchlist ticker, and one asked for twice.
+        let jobs = rebuild_jobs(&conn, &tickers(&["WATCH.L", "CSPX.L", "WATCH.L"])).expect("jobs");
+        assert_eq!(jobs, vec![("CSPX.L".to_string(), 100 * DAY)]);
+        assert!(rebuild_jobs(&conn, &[]).expect("none").is_empty());
     }
 
     #[test]

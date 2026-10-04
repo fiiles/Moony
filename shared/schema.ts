@@ -1522,6 +1522,10 @@ export interface StockInstrumentOverride {
   key: string;
   ticker?: string | null;
   name?: string | null;
+  /**
+   * The currency of trades whose file names none (instrument currency mode); a currency the file
+   * states is never overridden. `GBX`: the file's prices are in pence, stored as GBP ÷ 100.
+   */
   currency?: string | null;
   skip?: boolean;
 }
@@ -1660,6 +1664,10 @@ export interface StockInstrumentCandidate {
   symbol: string;
   name: string;
   exchange: string;
+  /**
+   * What Yahoo reports for the quote of the chosen listing (`best`); the guess from the exchange
+   * suffix for the other candidates. `GBX` stands for pence: prices are a hundredth of GBP.
+   */
   currency: string;
 }
 

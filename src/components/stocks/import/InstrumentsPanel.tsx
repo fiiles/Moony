@@ -15,17 +15,26 @@ import {
 import { cn } from '@/lib/utils';
 import { exchangeName } from '@/utils/exchange-names';
 import type {
+  StockCurrencyMode,
   StockImportInstrument,
   StockInstrumentOverride,
   StockInstrumentResolution,
 } from '@shared/schema';
 import { InstrumentEditor, type InstrumentEdit } from './InstrumentEditor';
-import { instrumentCheck, needsLookup, type InstrumentCheck } from './import-config';
+import {
+  currencyLabel,
+  instrumentCheck,
+  isPenceCode,
+  needsLookup,
+  type InstrumentCheck,
+} from './import-config';
 import type { LookupProgress } from './instrument-lookup';
 
 interface InstrumentsPanelProps {
   instruments: readonly StockImportInstrument[];
   overrides: readonly StockInstrumentOverride[];
+  /** Where the currency of the trades comes from: only with `instrument` is it the listing's. */
+  currencyMode: StockCurrencyMode;
   resolutions: Readonly<Record<string, StockInstrumentResolution>>;
   progress: LookupProgress;
   isResolving: boolean;
@@ -44,12 +53,14 @@ interface InstrumentsPanelProps {
  * "Cenné papíry" (spec §3, step 3): one row per security of the file with its
  * state — an existing position, a new one confirmed on Yahoo Finance, one that
  * could not be confirmed, or one that still needs a symbol. Resolution runs by
- * itself when the step opens; symbol, name and currency can be edited inline
- * and an instrument can be skipped as a whole.
+ * itself when the step opens; symbol and name can be edited inline (and the
+ * currency, when it is the listing's rather than the file's own) and an instrument
+ * can be skipped as a whole.
  */
 export function InstrumentsPanel({
   instruments,
   overrides,
+  currencyMode,
   resolutions,
   progress,
   isResolving,
@@ -73,7 +84,7 @@ export function InstrumentsPanel({
   const missing = instruments.filter((i) => i.status === 'missingSymbol').length;
   // Instruments Yahoo Finance did not answer for (offline, rate limit): worth asking again.
   const answerless = instruments.filter(
-    (i) => needsLookup(i) && checks.get(i.key)?.state === 'failed'
+    (i) => needsLookup(i, currencyMode) && checks.get(i.key)?.state === 'failed'
   ).length;
   const unverified = instruments.filter((i) => {
     const state = checks.get(i.key)?.state;
@@ -139,6 +150,10 @@ export function InstrumentsPanel({
                     key={instrument.key}
                     instrument={instrument}
                     name={name}
+                    // What the user (or the lookup) chose is what is in effect: `GBX` for
+                    // pence, which the instrument itself reports as the pounds it is stored in.
+                    currency={override?.currency?.trim() || instrument.currency}
+                    currencyMode={currencyMode}
                     check={checks.get(instrument.key) ?? { state: 'pending' }}
                     isResolving={isResolving}
                     skipped={skipped}
@@ -190,6 +205,9 @@ export function InstrumentsPanel({
 interface InstrumentRowsProps {
   instrument: StockImportInstrument;
   name: string;
+  /** The currency in effect for the instrument's trades (the override's, else the file's). */
+  currency: string | null;
+  currencyMode: StockCurrencyMode;
   check: InstrumentCheck;
   isResolving: boolean;
   skipped: boolean;
@@ -205,6 +223,8 @@ interface InstrumentRowsProps {
 function InstrumentRows({
   instrument,
   name,
+  currency,
+  currencyMode,
   check,
   isResolving,
   skipped,
@@ -241,7 +261,12 @@ function InstrumentRows({
             </span>
           )}
         </TableCell>
-        <TableCell className="num">{instrument.currency ?? '—'}</TableCell>
+        <TableCell
+          className="num"
+          title={isPenceCode(instrument.currency) ? t('importWizard.currency.gbx') : undefined}
+        >
+          {instrument.currency ?? '—'}
+        </TableCell>
         <TableCell className="text-right num">{instrument.tradeCount}</TableCell>
         <TableCell>
           <div className="flex flex-col items-start gap-1">
@@ -295,6 +320,8 @@ function InstrumentRows({
             <InstrumentEditor
               instrument={instrument}
               name={name}
+              currency={currency}
+              currencyMode={currencyMode}
               candidates={candidates}
               onApply={onApply}
               onCancel={onCancelEdit}
@@ -356,7 +383,9 @@ function instrumentState(
           {t('importWizard.review.instruments.state.new')}
         </Badge>
       ),
-      detail: [exchangeName(exchange), currency].filter(Boolean).join(' · '),
+      detail: [exchangeName(exchange), currencyLabel(currency, t('importWizard.currency.gbx'))]
+        .filter(Boolean)
+        .join(' · '),
     };
   }
   if (waiting || check.state === 'pending') {

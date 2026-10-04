@@ -181,8 +181,8 @@ mod tests {
     use crate::services::stock_import::inspect::inspect;
     use crate::services::stock_import::parse::parse_file;
     use crate::services::stock_import::types::{
-        StockCsvInspectOptions, StockImportConfig, TradeDirection, SOURCE_DEGIRO, SOURCE_IBKR,
-        SOURCE_MOONY, SOURCE_TRADING212, SOURCE_XTB,
+        StockCsvInspectOptions, StockImportConfig, StockInstrumentOverride, TradeDirection,
+        SOURCE_DEGIRO, SOURCE_IBKR, SOURCE_MOONY, SOURCE_TRADING212, SOURCE_XTB,
     };
 
     #[test]
@@ -723,6 +723,90 @@ mod tests {
         let directions: Vec<TradeDirection> = parsed.trades.iter().map(|t| t.direction).collect();
         use TradeDirection::{Buy, Sell};
         assert_eq!(directions, [Buy, Buy, Sell, Buy, Buy, Sell]);
+    }
+
+    /// An XTB export of a London share in pence (BARC.UK: XTB's prices follow the exchange line's
+    /// quote unit) and of one in pounds, read the way the wizard reads it end to end.
+    const XTB_PENCE_FILE: &str = "ID;Type;Time;Symbol;Comment;Amount\n\
+        1;Stocks/ETF purchase;04.01.2024 15:31:18;BARC.UK;OPEN BUY 100 @ 443.6500;-443.65\n\
+        2;Stocks/ETF sale;15.04.2024 09:30:10;BARC.UK;CLOSE BUY 40 @ 491.2350;196.49\n\
+        3;Stocks/ETF purchase;04.01.2024 15:32:00;VUSA.UK;OPEN BUY 10 @ 78.2200;-782.20\n";
+
+    #[test]
+    fn an_xtb_file_in_pence_is_stored_in_pounds_when_the_listing_says_gbx() {
+        use crate::services::stock_import::simulate::test_db::db;
+        use crate::services::stock_import::types::CurrencyMode;
+        use crate::services::stock_import::{import, preview};
+
+        let bytes = XTB_PENCE_FILE.as_bytes();
+        let mut config = inspect(bytes, "x.csv", &StockCsvInspectOptions::default(), &[])
+            .expect("inspect")
+            .config
+            .expect("config");
+        assert_eq!(config.currency_mode, CurrencyMode::Instrument);
+        // What the wizard sets from the lookup: BARC.L is quoted in pence, VUSA.L in pounds.
+        config.instrument_overrides = vec![
+            StockInstrumentOverride {
+                key: "symbol:BARC.L".into(),
+                ticker: None,
+                name: None,
+                currency: Some("GBX".into()),
+                skip: false,
+            },
+            StockInstrumentOverride {
+                key: "symbol:VUSA.L".into(),
+                ticker: None,
+                name: None,
+                currency: Some("GBP".into()),
+                skip: false,
+            },
+        ];
+        let parsed = parse_file(bytes, &config).expect("parse");
+        let mut conn = db();
+
+        let review = preview::preview(&conn, &parsed, &config).expect("preview");
+        let rows: Vec<(usize, &str, &str)> = review
+            .rows
+            .iter()
+            .map(|r| {
+                (
+                    r.line,
+                    r.price.as_deref().unwrap_or("-"),
+                    r.currency.as_deref().unwrap_or("-"),
+                )
+            })
+            .collect();
+        assert_eq!(
+            rows,
+            vec![
+                (2, "4.4365", "GBP"),
+                (3, "4.91235", "GBP"),
+                (4, "78.22", "GBP")
+            ]
+        );
+        assert_eq!(review.counts.will_import, 3);
+
+        let first = import::import(&mut conn, &parsed, &config, "x.csv").expect("import");
+        assert_eq!(first.imported, 3);
+        let again = import::import(&mut conn, &parsed, &config, "x.csv").expect("again");
+        assert_eq!((again.imported, again.duplicates), (0, 3));
+    }
+
+    #[test]
+    fn without_the_gbx_override_the_pence_stay_what_the_file_says() {
+        // The suffix guess knows nothing of pence: this is what the lookup's override prevents.
+        use crate::services::stock_import::preview;
+        use crate::services::stock_import::simulate::test_db::db;
+
+        let bytes = XTB_PENCE_FILE.as_bytes();
+        let config = inspect(bytes, "x.csv", &StockCsvInspectOptions::default(), &[])
+            .expect("inspect")
+            .config
+            .expect("config");
+        let parsed = parse_file(bytes, &config).expect("parse");
+        let review = preview::preview(&db(), &parsed, &config).expect("preview");
+        assert_eq!(review.rows[0].price.as_deref(), Some("443.65"));
+        assert_eq!(review.rows[0].currency.as_deref(), Some("GBP"));
     }
 
     #[test]

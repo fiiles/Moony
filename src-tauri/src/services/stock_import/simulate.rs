@@ -6,6 +6,16 @@
 //! The preview shows the result and the import writes exactly the rows it
 //! accepts, so what the preview promises is what the import does.
 //!
+//! The currency of a trade is the one its file states (a currency column, or one
+//! currency for the whole file; the parser has already turned a pence cell into
+//! pounds): that is a fact no override relabels. Only a trade without one (an
+//! `Instrument` mode file such as XTB's) takes its instrument's: the override, which the
+//! lookup sets and the user can change, else the guess from the listing's ticker
+//! suffix. An instrument currency of `GBX` (or `GBp`) means the file's prices are
+//! pence: they are divided by 100 and the trade is in `GBP`, before any rule below
+//! sees it, so what is compared, previewed and written is the pound price the
+//! position is valued in.
+//!
 //! Rows are replayed in date order, buys before sells within a day, per
 //! ticker, starting from the transactions the ticker already has. A row is
 //! decided in this order:
@@ -53,6 +63,7 @@ use super::types::{
 use crate::error::Result;
 use crate::services::csv_import::amounts::amount_to_text;
 use crate::services::price_api;
+use crate::services::quote_unit::{is_pence, pence_to_pounds};
 
 // Row message keys of the simulation (`StockRowMessage.key`, `stocks`
 // namespace except the last, which is in `common`); `detail` is what each one
@@ -204,10 +215,15 @@ fn close(a: f64, b: f64, tolerance: f64) -> bool {
     (a - b).abs() <= tolerance * a.abs().max(b.abs())
 }
 
-fn normalized_currency(code: &str) -> Option<String> {
+/// A currency code as it was typed (trimmed) when it has the shape of one: three letters.
+/// The case is kept: `GBp` (pence) is not `GBP` (pounds).
+fn currency_code(code: &str) -> Option<&str> {
     let code = code.trim();
-    (code.len() == 3 && code.chars().all(|c| c.is_ascii_alphabetic()))
-        .then(|| code.to_ascii_uppercase())
+    (code.len() == 3 && code.chars().all(|c| c.is_ascii_alphabetic())).then_some(code)
+}
+
+fn normalized_currency(code: &str) -> Option<String> {
+    currency_code(code).map(str::to_ascii_uppercase)
 }
 
 /// The same shape `StockImportConfig::validate` accepts for an override.
@@ -451,6 +467,7 @@ struct InstrumentPlan {
     invalid_symbol: Option<String>,
     skipped: bool,
     override_name: Option<String>,
+    /// As typed (trimmed): `GBp` and `GBP` differ only by case.
     override_currency: Option<String>,
     position: Option<Position>,
     /// Currency of the first trade that has one.
@@ -462,6 +479,8 @@ struct TradePlan {
     instrument: usize,
     ticker: Option<String>,
     currency: Option<String>,
+    /// The price as it is stored, in `currency` (pence converted).
+    price: f64,
     broker_id: Option<String>,
     external_id: Option<String>,
     company_name: Option<String>,
@@ -633,7 +652,8 @@ fn plan_instruments(
         plan.override_name = over.and_then(|o| non_empty(o.name.as_deref()));
         plan.override_currency = over
             .and_then(|o| o.currency.as_deref())
-            .and_then(normalized_currency);
+            .and_then(currency_code)
+            .map(str::to_string);
         let wanted = over
             .and_then(|o| non_empty(o.ticker.as_deref()))
             .map(|t| t.to_uppercase())
@@ -645,6 +665,33 @@ fn plan_instruments(
         }
     }
     (plans, instrument_of_trade)
+}
+
+/// A trade's currency and its price in that currency, as they are stored.
+fn priced(
+    trade: &ParsedTrade,
+    plan: &InstrumentPlan,
+    config: &StockImportConfig,
+) -> (Option<String>, f64) {
+    // What the file states is a fact: an override must not relabel prices it does not convert.
+    if let Some(own) = trade.currency.as_deref().and_then(normalized_currency) {
+        return (Some(own), trade.price);
+    }
+    let listing = plan.override_currency.clone().or_else(|| {
+        (config.currency_mode == CurrencyMode::Instrument)
+            .then(|| {
+                plan.ticker
+                    .as_deref()
+                    .map(|t| price_api::get_currency_from_ticker(t).to_string())
+            })
+            .flatten()
+    });
+    match listing {
+        // The prices follow the exchange's quote unit: pence, stored as pounds.
+        Some(code) if is_pence(&code) => (Some("GBP".to_string()), pence_to_pounds(trade.price)),
+        Some(code) => (normalized_currency(&code), trade.price),
+        None => (None, trade.price),
+    }
 }
 
 /// Replay `parsed` against the database: apply the instrument overrides, then
@@ -679,24 +726,13 @@ pub fn simulate(
         .zip(&instrument_of_trade)
         .map(|(trade, &instrument)| {
             let plan = &plans[instrument];
-            let currency = plan
-                .override_currency
-                .clone()
-                .or_else(|| trade.currency.as_deref().and_then(normalized_currency))
-                .or_else(|| {
-                    (config.currency_mode == CurrencyMode::Instrument)
-                        .then(|| {
-                            plan.ticker
-                                .as_deref()
-                                .map(|t| price_api::get_currency_from_ticker(t).to_string())
-                        })
-                        .flatten()
-                });
+            let (currency, price) = priced(trade, plan, config);
             let broker_id = non_empty(trade.external_id.as_deref());
             TradePlan {
                 instrument,
                 ticker: plan.ticker.clone(),
                 currency,
+                price,
                 external_id: broker_id
                     .as_ref()
                     .map(|id| format!("{}:{}", config.source, id)),
@@ -717,6 +753,17 @@ pub fn simulate(
             plan.currency = trade_plan.currency.clone();
         }
     }
+    // From here on every rule sees the price as it is stored: pence converted to pounds, so
+    // duplicates are compared against the stored pound rows.
+    let priced_trades: Vec<ParsedTrade> = trades
+        .iter()
+        .zip(&trade_plans)
+        .map(|(trade, plan)| ParsedTrade {
+            price: plan.price,
+            ..trade.clone()
+        })
+        .collect();
+    let trades = &priced_trades;
 
     let mut ids: Vec<String> = trade_plans
         .iter()
@@ -1099,7 +1146,7 @@ mod tests {
     }
 
     #[test]
-    fn overrides_replace_ticker_name_and_currency() {
+    fn overrides_replace_ticker_and_name_but_not_the_currency_a_file_states() {
         let conn = db();
         let mut cfg = config("custom");
         cfg.instrument_overrides = vec![StockInstrumentOverride {
@@ -1127,11 +1174,15 @@ mod tests {
         assert_eq!(t.outcome, TradeOutcome::New);
         assert_eq!(t.ticker.as_deref(), Some("VUSA.L"));
         assert_eq!(t.company_name.as_deref(), Some("Vanguard S&P 500"));
-        assert_eq!(t.currency.as_deref(), Some("GBP"));
+        assert_eq!(
+            t.currency.as_deref(),
+            Some("EUR"),
+            "the file's own currency is a fact: relabelling its prices would convert nothing"
+        );
         let i = &sim.instruments[0];
         assert_eq!(i.ticker.as_deref(), Some("VUSA.L"));
         assert_eq!(i.name.as_deref(), Some("Vanguard S&P 500"));
-        assert_eq!(i.currency.as_deref(), Some("GBP"));
+        assert_eq!(i.currency.as_deref(), Some("EUR"));
         assert_eq!(
             i.symbol.as_deref(),
             Some("VUSA"),
@@ -1225,6 +1276,230 @@ mod tests {
             .collect();
         assert_eq!(currencies, vec!["GBP", "USD", "EUR", "CHF"]);
         assert!(sim.trades.iter().all(|t| t.outcome == TradeOutcome::New));
+    }
+
+    // ---- the file's currency, the listing's currency and pence ------------------
+
+    fn instrument_mode() -> StockImportConfig {
+        let mut cfg = config("xtb");
+        cfg.currency_mode = CurrencyMode::Instrument;
+        cfg.currency_column = None;
+        cfg
+    }
+
+    /// A trade as an Instrument-mode parse returns it: the file names no currency.
+    fn unpriced(mut trade: ParsedTrade) -> ParsedTrade {
+        trade.currency = None;
+        trade
+    }
+
+    fn with_currency_override(key: &str, currency: &str) -> Vec<StockInstrumentOverride> {
+        vec![StockInstrumentOverride {
+            currency: Some(currency.into()),
+            ..over(key)
+        }]
+    }
+
+    #[test]
+    fn the_currency_a_file_states_wins_in_every_mode_that_has_one() {
+        // Column and Fixed: the cell, or the one currency of the file, is a fact.
+        for mode in [CurrencyMode::Column, CurrencyMode::Fixed] {
+            let conn = db();
+            let mut cfg = config("custom");
+            cfg.currency_mode = mode;
+            cfg.instrument_overrides = with_currency_override("symbol:VUSA", "gbp");
+            let sim = run(
+                &conn,
+                vec![trade(
+                    2,
+                    day(0),
+                    TradeDirection::Buy,
+                    "VUSA",
+                    3.0,
+                    70.0,
+                    "EUR",
+                )],
+                &cfg,
+            );
+            assert_eq!(sim.trades[0].currency.as_deref(), Some("EUR"), "{mode:?}");
+            assert_eq!(sim.trades[0].price, 70.0, "{mode:?}");
+            assert_eq!(sim.instruments[0].currency.as_deref(), Some("EUR"));
+            assert_eq!(sim.trades[0].outcome, TradeOutcome::New);
+        }
+    }
+
+    #[test]
+    fn an_override_cannot_turn_a_price_the_file_states_into_pence() {
+        // A Trading 212 pence cell reaches the simulation as GBP already divided by 100: an
+        // override of GBX on top of it converts nothing a second time.
+        let conn = db();
+        let mut cfg = config("trading212");
+        cfg.instrument_overrides = with_currency_override("symbol:VOD.L", "GBX");
+        let sim = run(
+            &conn,
+            vec![trade(
+                2,
+                day(0),
+                TradeDirection::Buy,
+                "VOD.L",
+                100.0,
+                0.6852,
+                "GBP",
+            )],
+            &cfg,
+        );
+        let t = &sim.trades[0];
+        assert_eq!((t.price, t.currency.as_deref()), (0.6852, Some("GBP")));
+        assert_eq!(t.price_text(), "0.6852");
+    }
+
+    #[test]
+    fn in_instrument_mode_the_override_applies_before_the_listing_guess() {
+        let conn = db();
+        let mut cfg = instrument_mode();
+        cfg.instrument_overrides = with_currency_override("symbol:VUSD.L", "usd");
+        let sim = run(
+            &conn,
+            vec![
+                unpriced(buy(2, day(0), "VUSD.L", 1.0, 100.0)),
+                unpriced(buy(3, day(0), "VUSA.L", 1.0, 100.0)),
+            ],
+            &cfg,
+        );
+        let currencies: Vec<&str> = sim
+            .trades
+            .iter()
+            .map(|t| t.currency.as_deref().unwrap_or("-"))
+            .collect();
+        assert_eq!(
+            currencies,
+            vec!["USD", "GBP"],
+            "the .L guess only where nothing says better"
+        );
+    }
+
+    #[test]
+    fn a_gbx_override_makes_the_prices_pence_and_stores_them_as_pounds() {
+        for code in ["GBX", "gbx", "GBx", "GBp", " GBX "] {
+            let conn = db();
+            let mut cfg = instrument_mode();
+            cfg.instrument_overrides = with_currency_override("symbol:BARC.L", code);
+            let sim = run(
+                &conn,
+                vec![
+                    unpriced(buy(2, day(0), "BARC.L", 10.0, 443.65)),
+                    unpriced(sell(3, day(1), "BARC.L", 4.0, 4912.35)),
+                ],
+                &cfg,
+            );
+
+            assert_eq!(
+                outcomes(&sim),
+                vec![TradeOutcome::New, TradeOutcome::New],
+                "{code}"
+            );
+            for t in &sim.trades {
+                assert_eq!(t.currency.as_deref(), Some("GBP"), "{code}");
+            }
+            assert_eq!(sim.trades[0].price, 4.4365, "{code}");
+            assert_eq!(sim.trades[0].price_text(), "4.4365", "{code}");
+            assert_eq!(sim.trades[1].price_text(), "49.1235", "{code}");
+            assert_eq!(
+                sim.instruments[0].currency.as_deref(),
+                Some("GBP"),
+                "the instrument is held in pounds"
+            );
+        }
+    }
+
+    #[test]
+    fn a_pound_override_leaves_the_prices_alone() {
+        for code in ["GBP", "gbp"] {
+            let conn = db();
+            let mut cfg = instrument_mode();
+            cfg.instrument_overrides = with_currency_override("symbol:VUSA.L", code);
+            let sim = run(
+                &conn,
+                vec![unpriced(buy(2, day(0), "VUSA.L", 1.0, 74.12))],
+                &cfg,
+            );
+            assert_eq!(sim.trades[0].price, 74.12, "{code}");
+            assert_eq!(sim.trades[0].currency.as_deref(), Some("GBP"));
+        }
+    }
+
+    #[test]
+    fn pence_are_converted_before_the_currency_of_the_position_is_compared() {
+        let conn = db();
+        add_position(&conn, "BARC.L", "Barclays", "GBP");
+        let mut cfg = instrument_mode();
+        cfg.instrument_overrides = with_currency_override("symbol:BARC.L", "GBX");
+        let sim = run(
+            &conn,
+            vec![unpriced(buy(2, day(0), "BARC.L", 10.0, 443.65))],
+            &cfg,
+        );
+        assert_eq!(
+            sim.trades[0].outcome,
+            TradeOutcome::New,
+            "GBX is not GBP's mismatch"
+        );
+        assert_eq!(sim.instruments[0].position_currency, None);
+
+        // A position in another currency still mismatches, against the stored currency GBP.
+        add_position(&conn, "LLOY.L", "Lloyds", "EUR");
+        cfg.instrument_overrides = with_currency_override("symbol:LLOY.L", "GBX");
+        let sim = run(
+            &conn,
+            vec![unpriced(buy(2, day(0), "LLOY.L", 1.0, 104.0))],
+            &cfg,
+        );
+        assert_eq!(
+            error_key(&sim.trades[0].outcome),
+            (KEY_CURRENCY_MISMATCH, Some("EUR"))
+        );
+        assert_eq!(sim.instruments[0].currency.as_deref(), Some("GBP"));
+    }
+
+    #[test]
+    fn a_pence_file_imported_again_finds_its_duplicates_against_the_stored_pound_rows() {
+        let conn = db();
+        // What the first import wrote: the prices in pounds.
+        add_position(&conn, "BARC.L", "Barclays", "GBP");
+        add_stored(&conn, "BARC.L", "buy", "10", "4.4365", day(0), None);
+        add_stored(&conn, "BARC.L", "sell", "4", "49.1235", day(1), None);
+        let mut cfg = instrument_mode();
+        cfg.instrument_overrides = with_currency_override("symbol:BARC.L", "GBX");
+
+        let sim = run(
+            &conn,
+            vec![
+                unpriced(buy(2, day(0), "BARC.L", 10.0, 443.65)), // 4.4365 pounds, stored
+                unpriced(sell(3, day(1), "BARC.L", 4.0, 4912.35)), // 49.1235 pounds, stored
+                unpriced(buy(4, day(2), "BARC.L", 1.0, 450.0)),   // new
+            ],
+            &cfg,
+        );
+
+        assert_eq!(sim.trades[0].outcome, duplicate(DuplicateKind::Identical));
+        assert_eq!(sim.trades[1].outcome, duplicate(DuplicateKind::Identical));
+        assert_eq!(sim.trades[2].outcome, TradeOutcome::New);
+        assert!(!sim.trades[0].will_import() && sim.trades[2].will_import());
+    }
+
+    #[test]
+    fn the_same_file_in_pence_and_without_the_override_is_not_a_duplicate() {
+        // Without the override the 443.65 stays pounds: another price, another trade.
+        let conn = db();
+        add_position(&conn, "BARC.L", "Barclays", "GBP");
+        add_stored(&conn, "BARC.L", "buy", "10", "4.4365", day(0), None);
+        let sim = run(
+            &conn,
+            vec![unpriced(buy(2, day(0), "BARC.L", 10.0, 443.65))],
+            &instrument_mode(),
+        );
+        assert_eq!(sim.trades[0].outcome, TradeOutcome::New);
+        assert_eq!(sim.trades[0].price, 443.65);
     }
 
     // ---- duplicates --------------------------------------------------------

@@ -6,8 +6,10 @@
 use crate::db::Database;
 use crate::error::{AppError, Result};
 use crate::models::stock_monitor::StockPricePoint;
+use crate::services::quote_unit::{quote_unit, unit_changed as quote_unit_changed, QuoteUnit};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use yahoo_finance_api::{YResponse, YahooError};
 
 /// Get current Unix timestamp. Uses expect() because system clock
 /// being before Unix epoch indicates a fundamentally broken system.
@@ -25,6 +27,205 @@ fn yahoo_connector(
     yahoo_finance_api::YahooConnector::builder()
         .timeout(std::time::Duration::from_secs(15))
         .build()
+}
+
+// ============================================================================
+// Reading a Yahoo chart response
+// ============================================================================
+//
+// Every price in a response is in the unit its metadata names (`quote_unit`), not the one the
+// ticker's suffix suggests; the readers below turn them into the stored unit in one place.
+
+/// The unit of a chart response: the currency its metadata reports, else the suffix guess.
+fn unit_of(response: &YResponse, ticker: &str) -> QuoteUnit {
+    let reported = response.metadata().ok().and_then(|meta| meta.currency);
+    quote_unit(reported.as_deref(), ticker)
+}
+
+/// The currency a chart response reports for its prices, as it came (`GBp`, `USD`), trimmed;
+/// `None` when it names none.
+fn reported_currency(response: &YResponse) -> Option<String> {
+    response
+        .metadata()
+        .ok()
+        .and_then(|meta| meta.currency)
+        .map(|code| code.trim().to_string())
+        .filter(|code| !code.is_empty())
+}
+
+/// What a 1d chart response says about the latest price, in the quote's own unit.
+#[derive(Debug, PartialEq)]
+struct ChartQuote {
+    price: f64,
+    previous_close: Option<f64>,
+    /// `meta.currency` as Yahoo reported it (`GBp`, `USD`); `None` when the response names none.
+    currency: Option<String>,
+}
+
+/// The latest price (the metadata's regular market price, else the last quote's close), the
+/// previous session's close and the reported currency; `None` without a positive price.
+fn read_chart_quote(response: &YResponse) -> Option<ChartQuote> {
+    // Prefer regular_market_price from metadata (reflects current price), fall back to
+    // last_quote().close if metadata price is unavailable.
+    let meta = response.metadata().ok();
+    let price = meta
+        .as_ref()
+        .and_then(|m| m.regular_market_price)
+        .filter(|&p| p > 0.0)
+        .or_else(|| {
+            response
+                .last_quote()
+                .ok()
+                .map(|q| q.close)
+                .filter(|&p| p > 0.0)
+        })?;
+    // Yesterday's close for the day-change calc (spec D4).
+    let previous_close = meta
+        .as_ref()
+        .and_then(|m| m.previous_close.or(m.chart_previous_close))
+        .filter(|&p| p > 0.0);
+    Some(ChartQuote {
+        price,
+        previous_close,
+        currency: reported_currency(response),
+    })
+}
+
+/// The closes of a chart response in the stored unit.
+fn history_points(
+    response: &YResponse,
+    ticker: &str,
+) -> std::result::Result<Vec<HistoricalPrice>, YahooError> {
+    let quotes = response.quotes()?;
+    let unit = unit_of(response, ticker);
+    Ok(quotes
+        .iter()
+        .map(|q| HistoricalPrice {
+            timestamp: q.timestamp,
+            price: unit.apply(q.close),
+            currency: unit.currency.clone(),
+        })
+        .collect())
+}
+
+/// The positive closes of a chart response in the stored unit, for the Stock Monitor chart.
+fn range_points(
+    response: &YResponse,
+    ticker: &str,
+) -> std::result::Result<Vec<StockPricePoint>, YahooError> {
+    let quotes = response.quotes()?;
+    let unit = unit_of(response, ticker);
+    Ok(quotes
+        .iter()
+        .filter(|q| q.close > 0.0)
+        .map(|q| StockPricePoint {
+            timestamp: q.timestamp,
+            price: unit.apply(q.close),
+            currency: unit.currency.clone(),
+        })
+        .collect())
+}
+
+/// The dividends of a chart response summed in the stored unit; `None` when the response holds no
+/// result at all. Yahoo reports them in the quote unit, like the prices (BARC.L: 5.6 and 5.9
+/// pence). A year without dividends sums to a positive zero: `Iterator::sum` of nothing is -0.0,
+/// which would be stored as "-0.00".
+fn dividend_sum(response: &YResponse, unit: &QuoteUnit) -> Option<f64> {
+    let dividends = response.dividends().ok()?;
+    let sum = dividends.iter().fold(0.0, |sum, d| sum + d.amount);
+    Some(unit.apply(sum))
+}
+
+/// A price figure of a Yahoo response as stored text; `None` when absent or not finite.
+fn fmt_price(unit: &QuoteUnit, quoted: Option<f64>) -> Option<String> {
+    quoted
+        .filter(|price| price.is_finite())
+        .map(|price| unit.price_text(unit.apply(price)))
+}
+
+// ============================================================================
+// Storing a quote
+// ============================================================================
+
+/// What storing a quote did.
+#[derive(Debug, PartialEq)]
+struct StoredQuote {
+    /// The price as stored, in `currency`.
+    price: f64,
+    currency: String,
+    /// The unit differs from the one the ticker's history was written in
+    /// (`quote_unit::unit_changed`): that history has to be rebuilt.
+    unit_changed: bool,
+}
+
+/// Store a ticker's latest quote: the price and previous close in the unit the response
+/// reported, the raw code beside them, and whether the unit differs from the stored history's.
+///
+/// A response without a currency keeps the unit recorded at the last refresh instead of falling
+/// back to the suffix guess, so one thin answer cannot turn a pence quote into pounds. When the
+/// unit did change, what was stored in the old one is dropped with it: the previous close, the
+/// 52-week range (the company data is fetched again) and the cached dividends (fetched again at
+/// the next dividend refresh).
+fn store_stock_quote(
+    conn: &rusqlite::Connection,
+    ticker: &str,
+    quote: &ChartQuote,
+    now: i64,
+) -> Result<StoredQuote> {
+    use rusqlite::OptionalExtension;
+
+    let tx = conn.unchecked_transaction()?;
+    let recorded: Option<String> = tx
+        .query_row(
+            "SELECT quote_currency FROM stock_data WHERE ticker = ?1",
+            [ticker],
+            |row| row.get(0),
+        )
+        .optional()?
+        .flatten();
+    let reported = quote.currency.as_deref().or(recorded.as_deref());
+    let unit = quote_unit(reported, ticker);
+    let unit_changed = quote_unit_changed(recorded.as_deref(), &unit, ticker);
+    let price = unit.apply(quote.price);
+    let previous_close = quote.previous_close.map(|p| unit.price_text(unit.apply(p)));
+
+    tx.execute(
+        "INSERT INTO stock_data (id, ticker, original_price, currency, price_date, fetched_at, previous_close, quote_currency)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?5, ?6, ?7)
+         ON CONFLICT(ticker) DO UPDATE SET
+           original_price = ?3, currency = ?4, price_date = ?5, fetched_at = ?5,
+           previous_close = CASE WHEN ?8 THEN ?6 ELSE COALESCE(?6, previous_close) END,
+           quote_currency = ?7",
+        rusqlite::params![
+            uuid::Uuid::new_v4().to_string(),
+            ticker,
+            unit.price_text(price),
+            &unit.currency,
+            now,
+            previous_close,
+            reported,
+            unit_changed,
+        ],
+    )?;
+    if unit_changed {
+        tx.execute(
+            "UPDATE stock_data SET fifty_two_week_high = NULL, fifty_two_week_low = NULL,
+                                   metadata_fetched_at = NULL
+             WHERE ticker = ?1",
+            [ticker],
+        )?;
+        tx.execute(
+            "UPDATE dividend_data SET last_fetched_at = 0 WHERE ticker = ?1",
+            [ticker],
+        )?;
+    }
+    tx.commit()?;
+
+    Ok(StoredQuote {
+        price,
+        currency: unit.currency,
+        unit_changed,
+    })
 }
 
 // ============================================================================
@@ -72,6 +273,11 @@ pub struct StockPriceRefreshResult {
     pub updated: Vec<StockPriceResult>,
     pub remaining_tickers: Vec<String>,
     pub rate_limit_hit: bool,
+    /// Tickers whose quote unit differs from the one their stored history was written in (earlier
+    /// versions guessed it from the ticker suffix; see `quote_unit::unit_changed`). The command
+    /// that ran the refresh queues a history rebuild for them. Not part of the wire contract.
+    #[serde(skip)]
+    pub unit_changed: Vec<String>,
 }
 
 /// Refresh stock prices from Yahoo Finance using yahoo_finance_api crate
@@ -98,10 +304,12 @@ pub async fn refresh_stock_prices_yahoo_with_ttl(
             updated: vec![],
             remaining_tickers: vec![],
             rate_limit_hit: false,
+            unit_changed: vec![],
         });
     }
 
     let mut updated_prices = Vec::new();
+    let mut unit_changed: Vec<String> = Vec::new();
     let mut failed_tickers: Vec<(String, String)> = Vec::new();
     let now = unix_timestamp_now();
 
@@ -160,68 +368,37 @@ pub async fn refresh_stock_prices_yahoo_with_ttl(
         // (verified live: AAPL meta gave 333.74 vs the real previous close
         // 305.93 → a -8.43 % "day" change that was actually the monthly move).
         match provider.get_quote_range(ticker, "5m", "1d").await {
-            Ok(response) => {
-                // Prefer regular_market_price from metadata (reflects current price),
-                // fall back to last_quote().close if metadata price is unavailable.
-                let meta = response.metadata().ok();
-                let price = meta
-                    .as_ref()
-                    .and_then(|m| m.regular_market_price)
-                    .filter(|&p| p > 0.0)
-                    .or_else(|| {
-                        response
-                            .last_quote()
-                            .ok()
-                            .map(|q| q.close)
-                            .filter(|&p| p > 0.0)
-                    });
-                // Yesterday's close for the day-change calc (spec D4).
-                let previous_close = meta
-                    .as_ref()
-                    .and_then(|m| m.previous_close.or(m.chart_previous_close))
-                    .filter(|&p| p > 0.0)
-                    .map(|p| format!("{:.2}", p));
-                if previous_close.is_none() {
-                    log::debug!(
-                        "[YAHOO FINANCE] {} - no previous_close in response; keeping stored value",
-                        ticker_upper
-                    );
-                }
-                match price {
-                    Some(price) => {
-                        let currency = get_currency_from_ticker(ticker);
-                        if let Err(e) = db.with_conn(|conn| {
-                            conn.execute(
-                                "INSERT INTO stock_data (id, ticker, original_price, currency, price_date, fetched_at, previous_close)
-                                 VALUES (?1, ?2, ?3, ?4, ?5, ?5, ?6)
-                                 ON CONFLICT(ticker) DO UPDATE SET
-                                   original_price = ?3, currency = ?4, price_date = ?5, fetched_at = ?5,
-                                   previous_close = COALESCE(?6, previous_close)",
-                                rusqlite::params![
-                                    uuid::Uuid::new_v4().to_string(),
-                                    &ticker_upper,
-                                    format!("{:.2}", price),
-                                    &currency,
-                                    now,
-                                    previous_close,
-                                ],
-                            )?;
-                            Ok(())
-                        }) {
+            Ok(response) => match read_chart_quote(&response) {
+                Some(quote) => {
+                    if quote.previous_close.is_none() {
+                        log::debug!(
+                            "[YAHOO FINANCE] {} - no previous_close in response; keeping stored value",
+                            ticker_upper
+                        );
+                    }
+                    // Stored in the unit the response reports (pence become pounds), never in
+                    // the one the ticker's suffix suggests.
+                    match db.with_conn(|conn| store_stock_quote(conn, &ticker_upper, &quote, now)) {
+                        Ok(stored) => {
+                            if stored.unit_changed {
+                                unit_changed.push(ticker_upper.clone());
+                            }
+                            updated_prices.push(StockPriceResult {
+                                ticker: ticker_upper,
+                                price: stored.price,
+                                currency: stored.currency,
+                            });
+                        }
+                        Err(e) => {
                             failed_tickers.push((ticker.clone(), format!("DB error: {}", e)));
                             continue;
                         }
-                        updated_prices.push(StockPriceResult {
-                            ticker: ticker_upper,
-                            price,
-                            currency: currency.to_string(),
-                        });
-                    }
-                    None => {
-                        failed_tickers.push((ticker.clone(), "price unavailable".to_string()));
                     }
                 }
-            }
+                None => {
+                    failed_tickers.push((ticker.clone(), "price unavailable".to_string()));
+                }
+            },
             Err(e) => {
                 failed_tickers.push((ticker.clone(), format!("{}", e)));
             }
@@ -235,6 +412,13 @@ pub async fn refresh_stock_prices_yahoo_with_ttl(
         let updated_list: Vec<_> = updated_prices.iter().map(|p| p.ticker.as_str()).collect();
         log::debug!("[YAHOO FINANCE] Successfully updated: {:?}", updated_list);
     }
+    if !unit_changed.is_empty() {
+        log::info!(
+            "[YAHOO FINANCE] Quote unit changed for {} tickers; their history is rebuilt",
+            unit_changed.len()
+        );
+        log::debug!("[YAHOO FINANCE] Unit changed: {:?}", unit_changed);
+    }
     if !failed_tickers.is_empty() {
         log::warn!("[YAHOO FINANCE] Failed: {} tickers", failed_tickers.len());
         for (ticker, reason) in &failed_tickers {
@@ -247,6 +431,7 @@ pub async fn refresh_stock_prices_yahoo_with_ttl(
         updated: updated_prices,
         remaining_tickers: vec![],
         rate_limit_hit: false,
+        unit_changed,
     })
 }
 
@@ -602,11 +787,12 @@ pub async fn refresh_dividends(db: &Database, tickers: Vec<String>) -> Result<Ve
 
         match provider.get_quote_history(&ticker, start, end).await {
             Ok(response) => {
-                // Get dividends from the response - dividends() returns Result, not Option
-                match response.dividends() {
-                    Ok(div_data) => {
-                        let yearly_sum: f64 = div_data.iter().map(|d| d.amount).sum();
-                        let currency = get_currency_from_ticker(&ticker).to_string();
+                // Dividends come in the quote unit of the response (pence for GBp), so they are
+                // converted exactly like its prices.
+                let unit = unit_of(&response, &ticker);
+                match dividend_sum(&response, &unit) {
+                    Some(yearly_sum) => {
+                        let currency = unit.currency.clone();
 
                         // Store in database
                         if let Err(e) = db.with_conn(|conn| {
@@ -618,7 +804,7 @@ pub async fn refresh_dividends(db: &Database, tickers: Vec<String>) -> Result<Ve
                                 rusqlite::params![
                                     uuid::Uuid::new_v4().to_string(),
                                     &ticker,
-                                    format!("{:.2}", yearly_sum),
+                                    unit.price_text(yearly_sum),
                                     &currency,
                                     now,
                                 ],
@@ -635,9 +821,9 @@ pub async fn refresh_dividends(db: &Database, tickers: Vec<String>) -> Result<Ve
                             currency,
                         });
                     }
-                    Err(_) => {
+                    None => {
                         // No dividends found - store as 0
-                        let currency = get_currency_from_ticker(&ticker).to_string();
+                        let currency = unit.currency.clone();
 
                         db.with_conn(|conn| {
                             conn.execute(
@@ -752,19 +938,9 @@ pub async fn get_historical_stock_prices_yahoo(
         for ticker in chunk {
             match provider.get_quote_history(ticker, start, end).await {
                 Ok(response) => {
-                    // quotes() returns a Result, not an Option
-                    match response.quotes() {
-                        Ok(quotes) => {
-                            let currency = get_currency_from_ticker(ticker).to_string();
-                            let prices: Vec<HistoricalPrice> = quotes
-                                .iter()
-                                .map(|q| HistoricalPrice {
-                                    timestamp: q.timestamp,
-                                    price: q.close,
-                                    currency: currency.clone(),
-                                })
-                                .collect();
-
+                    // The closes are in the unit the response reports (pence become pounds)
+                    match history_points(&response, ticker) {
+                        Ok(prices) => {
                             if !prices.is_empty() {
                                 log::debug!(
                                     "[YAHOO HISTORICAL] {} - got {} historical prices",
@@ -1138,8 +1314,16 @@ pub async fn refresh_stock_metadata_yahoo(
                 .and_then(|s| s.market_cap)
                 .map(|v| v.to_string());
             let beta = fmt_f64(sd.as_ref().and_then(|s| s.beta), 3);
-            let high_52w = fmt_f64(sd.as_ref().and_then(|s| s.fifty_two_week_high), 2);
-            let low_52w = fmt_f64(sd.as_ref().and_then(|s| s.fifty_two_week_low), 2);
+            // The 52-week range is quoted in the unit of the price (pence for BARC.L), so it is
+            // stored in the same unit as the price. The dividend rate and the market cap below
+            // are in the currency itself (verified live: BARC.L 0.12 pounds a year, 52 weeks
+            // 353-538 pence).
+            let unit = quote_unit(
+                sd.as_ref().and_then(|s| s.currency.as_deref()),
+                &ticker_upper,
+            );
+            let high_52w = fmt_price(&unit, sd.as_ref().and_then(|s| s.fifty_two_week_high));
+            let low_52w = fmt_price(&unit, sd.as_ref().and_then(|s| s.fifty_two_week_low));
             // Forward dividend fields are currency-consistent; trailing ones are
             // not for ADRs (see sane_dividend_yield). Rate follows the same rule.
             let div_rate = fmt_f64(
@@ -1221,6 +1405,25 @@ pub async fn refresh_stock_metadata_yahoo(
 }
 
 // ============================================================================
+// Quote Currency Lookup (stock import)
+// ============================================================================
+
+/// The currency Yahoo reports for a ticker's quote, as it came (`GBp` for pence, `USD` for a
+/// dollar ETF listed in London); `None` when the response names none. One chart request; the
+/// stock import asks it for the listing it chose, to show that listing in its real currency.
+/// A failed request is an error here and the caller's to interpret (the suffix guess stays).
+pub async fn get_quote_currency(ticker: &str) -> Result<Option<String>> {
+    log::debug!("[QUOTE CURRENCY] Looking up {}", ticker);
+    let provider = yahoo_connector()
+        .map_err(|e| AppError::ExternalApi(format!("Yahoo connector failed: {}", e)))?;
+    let response = provider
+        .get_quote_range(ticker.trim(), "1d", "1d")
+        .await
+        .map_err(|e| AppError::ExternalApi(format!("Yahoo Finance quote failed: {}", e)))?;
+    Ok(reported_currency(&response))
+}
+
+// ============================================================================
 // Chart Range Fetching (Stock Monitor detail chart, spec D9)
 // ============================================================================
 
@@ -1278,32 +1481,9 @@ pub async fn get_stock_price_range(ticker: &str, period: &str) -> Result<Vec<Sto
         }
     };
 
-    // Yahoo reports LSE quotes in pence as "GBp"/"GBX"; the rest of the app
-    // stores these tickers as "GBP" (get_currency_from_ticker), so normalize
-    // to keep chart and table consistent for the same stock.
-    let currency = response
-        .metadata()
-        .ok()
-        .and_then(|m| m.currency)
-        .map(|c| {
-            if c.eq_ignore_ascii_case("gbp") || c.eq_ignore_ascii_case("gbx") {
-                "GBP".to_string()
-            } else {
-                c
-            }
-        })
-        .unwrap_or_else(|| get_currency_from_ticker(&ticker_upper).to_string());
-
-    let points = match response.quotes() {
-        Ok(quotes) => quotes
-            .iter()
-            .filter(|q| q.close > 0.0)
-            .map(|q| StockPricePoint {
-                timestamp: q.timestamp,
-                price: q.close,
-                currency: currency.clone(),
-            })
-            .collect(),
+    // The chart is in the unit the response reports (pence become pounds), as the stored quote is.
+    let points = match range_points(&response, &ticker_upper) {
+        Ok(points) => points,
         Err(e) => {
             log::debug!("[YAHOO RANGE] {} - no quotes: {}", ticker_upper, e);
             vec![]
@@ -1395,5 +1575,582 @@ mod tests {
         assert_eq!(sane_dividend_yield(Some(-0.01), None), None);
         assert_eq!(sane_dividend_yield(Some(f64::NAN), None), None);
         assert_eq!(sane_dividend_yield(None, None), None);
+    }
+
+    // ---- Yahoo chart responses ---------------------------------------------------------
+    //
+    // Shaped like live answers (2026-10-04): BARC.L quotes in "GBp" (pence), CSPX.L in "USD"
+    // although it is a London listing, VWRL.L in "GBP".
+
+    use serde_json::json;
+
+    /// A chart response with one day per close, the unit in `meta.currency` (when given),
+    /// `extra_meta` merged into the metadata and a dividend event per amount.
+    fn chart(
+        currency: Option<&str>,
+        closes: &[f64],
+        dividends: &[f64],
+        extra_meta: serde_json::Value,
+    ) -> YResponse {
+        let period = |start: u32, end: u32| json!({ "timezone": "BST", "start": start, "end": end, "gmtoffset": 3600 });
+        let mut meta = json!({
+            "symbol": "BARC.L", "instrumentType": "EQUITY", "exchangeName": "LSE",
+            "fullExchangeName": "LSE", "gmtoffset": 3600, "timezone": "BST",
+            "exchangeTimezoneName": "Europe/London", "hasPrePostMarketData": false,
+            "priceHint": 2, "dataGranularity": "1d", "range": "1d", "validRanges": ["1d", "5d"],
+            "currentTradingPeriod": {
+                "pre": period(1, 2), "regular": period(2, 3), "post": period(3, 4)
+            },
+        });
+        if let Some(currency) = currency {
+            meta["currency"] = json!(currency);
+        }
+        for (key, value) in extra_meta.as_object().into_iter().flatten() {
+            meta[key] = value.clone();
+        }
+        let timestamps: Vec<i64> = (0..closes.len() as i64)
+            .map(|i| 1_790_000_000 + i * 86_400)
+            .collect();
+        let mut block = json!({
+            "meta": meta,
+            "timestamp": timestamps,
+            "indicators": { "quote": [{
+                "open": closes, "high": closes, "low": closes, "close": closes,
+                "volume": vec![1_000_u64; closes.len()],
+            }] },
+        });
+        if !dividends.is_empty() {
+            let events: serde_json::Map<String, serde_json::Value> = dividends
+                .iter()
+                .enumerate()
+                .map(|(i, amount)| {
+                    let date = 1_780_000_000 + i as i64 * 7_776_000;
+                    (date.to_string(), json!({ "amount": amount, "date": date }))
+                })
+                .collect();
+            block["events"] = json!({ "dividends": events });
+        }
+        YResponse::from_json(json!({ "chart": { "result": [block], "error": null } }))
+            .expect("a valid chart response")
+    }
+
+    fn unit(reported: &str, ticker: &str) -> QuoteUnit {
+        quote_unit(Some(reported), ticker)
+    }
+
+    #[test]
+    fn a_response_is_in_the_unit_its_metadata_reports() {
+        let pence = chart(Some("GBp"), &[443.65], &[], json!({}));
+        assert_eq!(unit_of(&pence, "BARC.L"), unit("GBp", "BARC.L"));
+        assert_eq!(unit_of(&pence, "BARC.L").currency, "GBP");
+
+        // A London listing of a dollar ETF: the suffix says GBP, the response says USD.
+        let dollars = chart(Some("USD"), &[832.99], &[], json!({}));
+        assert_eq!(unit_of(&dollars, "CSPX.L").currency, "USD");
+        assert_eq!(unit_of(&dollars, "CSPX.L").scale, 1.0);
+    }
+
+    #[test]
+    fn a_response_without_a_currency_falls_back_to_the_suffix() {
+        let nameless = chart(None, &[100.0], &[], json!({}));
+        let fallback = unit_of(&nameless, "VUSA.L");
+        assert_eq!((fallback.currency.as_str(), fallback.scale), ("GBP", 1.0));
+        assert_eq!(unit_of(&nameless, "AAPL").currency, "USD");
+    }
+
+    #[test]
+    fn the_latest_quote_is_read_in_the_quotes_own_unit() {
+        let response = chart(
+            Some("GBp"),
+            &[440.0],
+            &[],
+            json!({ "regularMarketPrice": 443.65, "chartPreviousClose": 438.95 }),
+        );
+        assert_eq!(
+            read_chart_quote(&response),
+            Some(ChartQuote {
+                price: 443.65,
+                previous_close: Some(438.95),
+                currency: Some("GBp".to_string()),
+            })
+        );
+    }
+
+    #[test]
+    fn the_previous_close_of_the_metadata_wins_over_the_chart_one() {
+        let response = chart(
+            Some("USD"),
+            &[830.0],
+            &[],
+            json!({
+                "regularMarketPrice": 832.99, "previousClose": 822.67, "chartPreviousClose": 800.0
+            }),
+        );
+        let quote = read_chart_quote(&response).expect("a quote");
+        assert_eq!(quote.previous_close, Some(822.67));
+    }
+
+    #[test]
+    fn the_last_close_stands_in_for_a_missing_market_price() {
+        let response = chart(Some("USD"), &[100.0, 101.5], &[], json!({}));
+        let quote = read_chart_quote(&response).expect("a quote");
+        assert_eq!(quote.price, 101.5);
+        assert_eq!(quote.previous_close, None);
+    }
+
+    #[test]
+    fn a_response_without_a_positive_price_is_no_quote() {
+        let zero = chart(
+            Some("USD"),
+            &[0.0],
+            &[],
+            json!({ "regularMarketPrice": 0.0 }),
+        );
+        assert_eq!(read_chart_quote(&zero), None);
+    }
+
+    #[test]
+    fn a_response_that_names_no_currency_reports_none() {
+        let nameless = chart(None, &[100.0], &[], json!({}));
+        assert_eq!(reported_currency(&nameless), None);
+        let pence = chart(Some("GBp"), &[100.0], &[], json!({}));
+        assert_eq!(reported_currency(&pence).as_deref(), Some("GBp"));
+    }
+
+    #[test]
+    fn the_reported_currency_is_trimmed_and_a_blank_one_is_none() {
+        let padded = chart(
+            Some(" USD "),
+            &[1.0],
+            &[],
+            json!({ "regularMarketPrice": 1.0 }),
+        );
+        assert_eq!(
+            read_chart_quote(&padded)
+                .and_then(|q| q.currency)
+                .as_deref(),
+            Some("USD")
+        );
+        let blank = chart(
+            Some("  "),
+            &[1.0],
+            &[],
+            json!({ "regularMarketPrice": 1.0 }),
+        );
+        assert_eq!(read_chart_quote(&blank).and_then(|q| q.currency), None);
+    }
+
+    #[test]
+    fn history_in_pence_is_stored_in_pounds() {
+        let response = chart(Some("GBp"), &[443.65, 450.0], &[], json!({}));
+        let points = history_points(&response, "BARC.L").expect("points");
+        let seen: Vec<(f64, &str)> = points
+            .iter()
+            .map(|p| (p.price, p.currency.as_str()))
+            .collect();
+        assert_eq!(seen, vec![(4.4365, "GBP"), (4.5, "GBP")]);
+        assert_eq!(points[0].timestamp, 1_790_000_000);
+        assert_eq!(points[1].timestamp, 1_790_086_400);
+    }
+
+    #[test]
+    fn history_of_a_dollar_etf_listed_in_london_is_in_dollars() {
+        let response = chart(Some("USD"), &[832.99, 830.5], &[], json!({}));
+        let points = history_points(&response, "CSPX.L").expect("points");
+        let seen: Vec<(f64, &str)> = points
+            .iter()
+            .map(|p| (p.price, p.currency.as_str()))
+            .collect();
+        assert_eq!(seen, vec![(832.99, "USD"), (830.5, "USD")]);
+    }
+
+    #[test]
+    fn history_in_pounds_is_not_scaled() {
+        // `GBP` and `GBp` differ by the case of one letter; pounds stay pounds.
+        let response = chart(Some("GBP"), &[74.12], &[], json!({}));
+        let points = history_points(&response, "VWRL.L").expect("points");
+        assert_eq!(
+            (points[0].price, points[0].currency.as_str()),
+            (74.12, "GBP")
+        );
+    }
+
+    #[test]
+    fn history_without_a_currency_uses_the_suffix_at_scale_one() {
+        let response = chart(None, &[100.0], &[], json!({}));
+        let points = history_points(&response, "SXR8.DE").expect("points");
+        assert_eq!(
+            (points[0].price, points[0].currency.as_str()),
+            (100.0, "EUR")
+        );
+    }
+
+    #[test]
+    fn history_without_quotes_is_an_error_not_an_empty_series() {
+        let response = chart(Some("GBp"), &[], &[], json!({}));
+        assert!(history_points(&response, "BARC.L").is_err());
+    }
+
+    #[test]
+    fn the_range_chart_drops_empty_closes_and_scales_the_rest() {
+        let response = chart(Some("GBp"), &[0.0, 443.65, 104.0], &[], json!({}));
+        let points = range_points(&response, "BARC.L").expect("points");
+        let seen: Vec<(f64, &str)> = points
+            .iter()
+            .map(|p| (p.price, p.currency.as_str()))
+            .collect();
+        assert_eq!(seen, vec![(4.4365, "GBP"), (1.04, "GBP")]);
+    }
+
+    #[test]
+    fn the_range_chart_of_a_dollar_etf_in_london_is_in_dollars() {
+        let response = chart(Some("USD"), &[832.99], &[], json!({}));
+        let points = range_points(&response, "CSPX.L").expect("points");
+        assert_eq!(
+            (points[0].price, points[0].currency.as_str()),
+            (832.99, "USD")
+        );
+    }
+
+    #[test]
+    fn dividends_in_pence_are_summed_in_pounds() {
+        // BARC.L paid 5.6p and 5.9p: 11.5p, i.e. 0.115 pounds.
+        let response = chart(Some("GBp"), &[443.65], &[5.6000004, 5.9], json!({}));
+        let sum = dividend_sum(&response, &unit_of(&response, "BARC.L")).expect("dividends");
+        assert!((sum - 0.115).abs() < 1e-6, "{sum}");
+    }
+
+    #[test]
+    fn dividends_in_the_quote_currency_are_summed_as_they_are() {
+        let response = chart(
+            Some("GBP"),
+            &[74.12],
+            &[0.407582, 0.342574, 0.683298, 0.406941],
+            json!({}),
+        );
+        let sum = dividend_sum(&response, &unit_of(&response, "VWRL.L")).expect("dividends");
+        assert!((sum - 1.840395).abs() < 1e-9, "{sum}");
+    }
+
+    #[test]
+    fn a_year_without_dividends_sums_to_a_positive_zero() {
+        for (currency, ticker) in [("USD", "CSPX.L"), ("GBp", "BARC.L")] {
+            let response = chart(Some(currency), &[832.99], &[], json!({}));
+            let sum = dividend_sum(&response, &unit_of(&response, ticker)).expect("a sum");
+            // Not -0.0: that is stored as "-0.00".
+            assert_eq!(sum.to_bits(), 0.0_f64.to_bits(), "{ticker}");
+        }
+    }
+
+    #[test]
+    fn a_response_without_a_result_has_no_dividend_sum() {
+        let empty = YResponse::from_json(json!({ "chart": { "result": null, "error": null } }))
+            .expect("a response without a result");
+        assert_eq!(dividend_sum(&empty, &unit("USD", "CSPX.L")), None);
+    }
+
+    // ---- storing a quote ---------------------------------------------------------------
+
+    fn quotes_db() -> rusqlite::Connection {
+        let conn = rusqlite::Connection::open_in_memory().expect("in-memory db");
+        conn.execute_batch(
+            r#"
+            CREATE TABLE stock_data (
+                id TEXT PRIMARY KEY, ticker TEXT NOT NULL UNIQUE, original_price TEXT NOT NULL,
+                currency TEXT NOT NULL DEFAULT 'USD', price_date INTEGER NOT NULL,
+                fetched_at INTEGER NOT NULL DEFAULT 0, previous_close TEXT, quote_currency TEXT,
+                fifty_two_week_high TEXT, fifty_two_week_low TEXT, metadata_fetched_at INTEGER
+            );
+            CREATE TABLE dividend_data (
+                id TEXT PRIMARY KEY, ticker TEXT NOT NULL UNIQUE, yearly_dividend_sum TEXT NOT NULL,
+                currency TEXT NOT NULL, last_fetched_at INTEGER NOT NULL
+            );
+            "#,
+        )
+        .expect("schema");
+        conn
+    }
+
+    fn quote(price: f64, previous_close: Option<f64>, currency: Option<&str>) -> ChartQuote {
+        ChartQuote {
+            price,
+            previous_close,
+            currency: currency.map(str::to_string),
+        }
+    }
+
+    /// `(price, currency, previous close, quote currency)` of a ticker's stored row.
+    type Row = (String, String, Option<String>, Option<String>);
+
+    fn row(conn: &rusqlite::Connection, ticker: &str) -> Row {
+        conn.query_row(
+            "SELECT original_price, currency, previous_close, quote_currency
+             FROM stock_data WHERE ticker = ?1",
+            [ticker],
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)),
+        )
+        .expect("a stored quote")
+    }
+
+    fn store(conn: &rusqlite::Connection, ticker: &str, quote: &ChartQuote) -> StoredQuote {
+        store_stock_quote(conn, ticker, quote, 1_790_000_000).expect("stored")
+    }
+
+    fn text(value: &str) -> Option<String> {
+        Some(value.to_string())
+    }
+
+    #[test]
+    fn a_pence_quote_is_stored_in_pounds_beside_the_raw_code() {
+        let conn = quotes_db();
+        let stored = store(&conn, "BARC.L", &quote(443.65, Some(438.95), Some("GBp")));
+
+        assert_eq!(
+            stored,
+            StoredQuote {
+                price: 4.4365,
+                currency: "GBP".to_string(),
+                unit_changed: true
+            }
+        );
+        assert_eq!(
+            row(&conn, "BARC.L"),
+            (
+                "4.4365".to_string(),
+                "GBP".to_string(),
+                text("4.3895"),
+                text("GBp")
+            )
+        );
+    }
+
+    #[test]
+    fn a_dollar_etf_listed_in_london_is_stored_in_dollars() {
+        let conn = quotes_db();
+        let stored = store(&conn, "CSPX.L", &quote(832.99, Some(822.67), Some("USD")));
+
+        assert_eq!((stored.price, stored.currency.as_str()), (832.99, "USD"));
+        assert!(stored.unit_changed, "earlier versions stored it as GBP");
+        assert_eq!(
+            row(&conn, "CSPX.L"),
+            (
+                "832.99".to_string(),
+                "USD".to_string(),
+                text("822.67"),
+                text("USD")
+            )
+        );
+    }
+
+    #[test]
+    fn a_quote_the_suffix_guessed_right_needs_no_repair() {
+        let conn = quotes_db();
+        for (ticker, code) in [
+            ("VUSA.L", "GBP"),
+            ("SXR8.DE", "EUR"),
+            ("CEZ.PR", "CZK"),
+            ("AAPL", "USD"),
+        ] {
+            let stored = store(&conn, ticker, &quote(100.0, Some(99.0), Some(code)));
+            assert!(!stored.unit_changed, "{ticker}");
+            assert_eq!(row(&conn, ticker).3.as_deref(), Some(code), "{ticker}");
+        }
+    }
+
+    #[test]
+    fn an_unchanged_unit_is_reported_once() {
+        let conn = quotes_db();
+        assert!(store(&conn, "BARC.L", &quote(443.65, None, Some("GBp"))).unit_changed);
+        assert!(!store(&conn, "BARC.L", &quote(450.0, None, Some("GBp"))).unit_changed);
+        // Yahoo naming the same unit another way is no change either.
+        assert!(!store(&conn, "BARC.L", &quote(451.0, None, Some("GBX"))).unit_changed);
+        assert_eq!(row(&conn, "BARC.L").3.as_deref(), Some("GBX"));
+        assert_eq!(row(&conn, "BARC.L").0, "4.51");
+    }
+
+    #[test]
+    fn a_ticker_stored_before_the_code_was_recorded_is_compared_with_the_suffix_guess() {
+        let conn = quotes_db();
+        // A row as the earlier version wrote it: the guess, no code.
+        conn.execute(
+            "INSERT INTO stock_data (id, ticker, original_price, currency, price_date)
+             VALUES ('a', 'CSPX.L', '832.99', 'GBP', 1), ('b', 'VUSA.L', '74.12', 'GBP', 1)",
+            [],
+        )
+        .expect("old rows");
+
+        assert!(store(&conn, "CSPX.L", &quote(833.0, None, Some("USD"))).unit_changed);
+        assert!(!store(&conn, "VUSA.L", &quote(74.5, None, Some("GBP"))).unit_changed);
+    }
+
+    #[test]
+    fn a_change_of_unit_after_the_code_was_recorded_is_reported() {
+        let conn = quotes_db();
+        store(&conn, "CSPX.L", &quote(832.99, None, Some("USD")));
+        assert!(store(&conn, "CSPX.L", &quote(650.0, None, Some("GBP"))).unit_changed);
+        assert_eq!(row(&conn, "CSPX.L").1, "GBP");
+    }
+
+    #[test]
+    fn a_response_without_a_currency_keeps_the_recorded_unit() {
+        let conn = quotes_db();
+        store(&conn, "BARC.L", &quote(443.65, Some(438.95), Some("GBp")));
+
+        // One thin answer must not turn the pence quote into pounds.
+        let stored = store(&conn, "BARC.L", &quote(450.0, Some(444.0), None));
+        assert_eq!((stored.price, stored.currency.as_str()), (4.5, "GBP"));
+        assert!(!stored.unit_changed);
+        assert_eq!(
+            row(&conn, "BARC.L"),
+            (
+                "4.50".to_string(),
+                "GBP".to_string(),
+                text("4.44"),
+                text("GBp")
+            )
+        );
+    }
+
+    #[test]
+    fn a_response_without_a_currency_for_a_ticker_never_recorded_keeps_the_old_guess() {
+        let conn = quotes_db();
+        let stored = store(&conn, "CSPX.L", &quote(832.99, None, None));
+        assert_eq!((stored.price, stored.currency.as_str()), (832.99, "GBP"));
+        assert!(!stored.unit_changed, "nothing learned, nothing to repair");
+        assert_eq!(row(&conn, "CSPX.L").3, None, "no code is made up");
+    }
+
+    fn seed_old_unit_data(conn: &rusqlite::Connection) {
+        conn.execute(
+            "INSERT INTO stock_data (id, ticker, original_price, currency, price_date,
+                                     previous_close, fifty_two_week_high, fifty_two_week_low,
+                                     metadata_fetched_at)
+             VALUES ('a', 'BARC.L', '443.65', 'GBP', 1, '438.95', '538.30', '353.55', 1790000000)",
+            [],
+        )
+        .expect("a quote of the earlier version");
+        conn.execute(
+            "INSERT INTO dividend_data (id, ticker, yearly_dividend_sum, currency, last_fetched_at)
+             VALUES ('d', 'BARC.L', '11.50', 'GBP', 1790000000)",
+            [],
+        )
+        .expect("its dividends");
+    }
+
+    #[test]
+    fn a_changed_unit_drops_what_was_stored_in_the_old_one() {
+        let conn = quotes_db();
+        seed_old_unit_data(&conn);
+
+        // The response has no previous close: the old one (pence) must not survive as pounds.
+        let stored = store(&conn, "BARC.L", &quote(443.65, None, Some("GBp")));
+        assert!(stored.unit_changed);
+
+        let (previous_close, high, low, metadata_at): (
+            Option<String>,
+            Option<String>,
+            Option<String>,
+            Option<i64>,
+        ) = conn
+            .query_row(
+                "SELECT previous_close, fifty_two_week_high, fifty_two_week_low, metadata_fetched_at
+                 FROM stock_data WHERE ticker = 'BARC.L'",
+                [],
+                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)),
+            )
+            .expect("row");
+        assert_eq!(
+            (previous_close, high, low, metadata_at),
+            (None, None, None, None),
+            "the figures quoted in pence are gone and the company data is due again"
+        );
+        let dividends_fetched_at: i64 = conn
+            .query_row(
+                "SELECT last_fetched_at FROM dividend_data WHERE ticker = 'BARC.L'",
+                [],
+                |r| r.get(0),
+            )
+            .expect("dividends");
+        assert_eq!(
+            dividends_fetched_at, 0,
+            "the cached dividends are due again"
+        );
+    }
+
+    #[test]
+    fn an_unchanged_unit_keeps_what_is_stored() {
+        let conn = quotes_db();
+        seed_old_unit_data(&conn);
+        store(&conn, "BARC.L", &quote(443.65, Some(438.95), Some("GBp")));
+        // Make the stored company data and dividends the ones of the new unit.
+        conn.execute(
+            "UPDATE stock_data SET fifty_two_week_high = '5.383', fifty_two_week_low = '3.5355',
+                                   metadata_fetched_at = 1790000000",
+            [],
+        )
+        .expect("company data in pounds");
+        conn.execute("UPDATE dividend_data SET last_fetched_at = 1790000000", [])
+            .expect("dividends in pounds");
+
+        // The next refresh finds no previous close, as thin answers do: the stored one stays.
+        let stored = store(&conn, "BARC.L", &quote(450.0, None, Some("GBp")));
+        assert!(!stored.unit_changed);
+
+        let (previous_close, high, metadata_at): (Option<String>, Option<String>, Option<i64>) =
+            conn.query_row(
+                "SELECT previous_close, fifty_two_week_high, metadata_fetched_at
+                 FROM stock_data WHERE ticker = 'BARC.L'",
+                [],
+                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+            )
+            .expect("row");
+        assert_eq!(previous_close.as_deref(), Some("4.3895"));
+        assert_eq!(high.as_deref(), Some("5.383"));
+        assert_eq!(metadata_at, Some(1_790_000_000));
+        let dividends_fetched_at: i64 = conn
+            .query_row(
+                "SELECT last_fetched_at FROM dividend_data WHERE ticker = 'BARC.L'",
+                [],
+                |r| r.get(0),
+            )
+            .expect("dividends");
+        assert_eq!(dividends_fetched_at, 1_790_000_000);
+    }
+
+    #[test]
+    fn the_refresh_result_keeps_its_wire_shape() {
+        let result = StockPriceRefreshResult {
+            updated: vec![],
+            remaining_tickers: vec![],
+            rate_limit_hit: false,
+            unit_changed: vec!["BARC.L".to_string()],
+        };
+        let json = serde_json::to_value(&result).expect("serialize");
+        let mut keys: Vec<&str> = json
+            .as_object()
+            .expect("object")
+            .keys()
+            .map(String::as_str)
+            .collect();
+        keys.sort_unstable();
+        assert_eq!(keys, vec!["rate_limit_hit", "remaining_tickers", "updated"]);
+    }
+
+    #[test]
+    fn price_figures_are_stored_in_the_unit_of_the_price() {
+        let dollars = unit("USD", "AAPL");
+        assert_eq!(fmt_price(&dollars, Some(538.3)).as_deref(), Some("538.30"));
+        assert_eq!(fmt_price(&dollars, None), None);
+        assert_eq!(fmt_price(&dollars, Some(f64::NAN)), None);
+        assert_eq!(fmt_price(&dollars, Some(f64::INFINITY)), None);
+
+        // The 52-week range of BARC.L is quoted in pence like its price.
+        let pence = unit("GBp", "BARC.L");
+        assert_eq!(fmt_price(&pence, Some(538.3)).as_deref(), Some("5.383"));
+        assert_eq!(fmt_price(&pence, Some(353.55)).as_deref(), Some("3.5355"));
+        assert_eq!(
+            fmt_price(&unit("ZAc", "NPN.JO"), Some(130635.0)).as_deref(),
+            Some("1306.35")
+        );
     }
 }

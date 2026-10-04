@@ -207,6 +207,19 @@ pub fn portfolio_metrics(conn: &Connection, exclude_personal_real_estate: bool) 
     }))
 }
 
+/// The CZK total columns of `portfolio_metrics_history` and their response
+/// keys, in the order the query selects them (columns 1 through 8).
+const HISTORY_TOTALS: [&str; 8] = [
+    "totalSavings",
+    "totalLoansPrincipal",
+    "totalInvestments",
+    "totalCrypto",
+    "totalBonds",
+    "totalRealEstatePersonal",
+    "totalRealEstateInvestment",
+    "totalOtherAssets",
+];
+
 pub fn portfolio_history(
     conn: &Connection,
     start_date: Option<i64>,
@@ -238,24 +251,45 @@ pub fn portfolio_history(
     p.push(Box::new(limit));
     let refs: Vec<&dyn rusqlite::ToSql> = p.iter().map(|x| x.as_ref()).collect();
     let mut stmt = conn.prepare(&sql)?;
-    let rows: Vec<Value> = stmt
+    let snapshots: Vec<(String, Vec<rusqlite::types::Value>, i64)> = stmt
         .query_map(refs.as_slice(), |row| {
-            Ok(serde_json::json!({
-                "id": row.get::<_, String>(0)?,
-                "totalSavings": row.get::<_, String>(1)?,
-                "totalLoansPrincipal": row.get::<_, String>(2)?,
-                "totalInvestments": row.get::<_, String>(3)?,
-                "totalCrypto": row.get::<_, String>(4)?,
-                "totalBonds": row.get::<_, String>(5)?,
-                "totalRealEstatePersonal": row.get::<_, String>(6)?,
-                "totalRealEstateInvestment": row.get::<_, String>(7)?,
-                "totalOtherAssets": row.get::<_, String>(8)?,
-                "recordedAt": row.get::<_, i64>(9)?,
-            }))
+            let totals = (1..=HISTORY_TOTALS.len())
+                .map(|i| row.get::<_, rusqlite::types::Value>(i))
+                .collect::<rusqlite::Result<Vec<_>>>()?;
+            Ok((
+                row.get::<_, String>(0)?,
+                totals,
+                row.get::<_, i64>(HISTORY_TOTALS.len() + 1)?,
+            ))
         })?
         .filter_map(|r| r.ok())
         .collect();
-    Ok(Value::Array(rows))
+
+    // The snapshot totals are CZK. Each row converts at the rates of its own
+    // day (ADR 0001), one rates query for the whole span.
+    let ctx = MoneyContext::load(conn)?;
+    let days: Vec<i64> = snapshots.iter().map(|(_, _, day)| *day).collect();
+    let day_rates = ctx.day_rates_for(conn, &days);
+
+    let rows: Vec<Value> = snapshots
+        .into_iter()
+        .map(|(id, totals, recorded_at)| {
+            let mut row = serde_json::Map::new();
+            row.insert("id".to_string(), Value::String(id));
+            for (key, cell) in HISTORY_TOTALS.iter().zip(totals) {
+                row.insert(
+                    (*key).to_string(),
+                    ctx.stored_czk_to_main_on(cell, recorded_at, &day_rates),
+                );
+            }
+            row.insert("recordedAt".to_string(), serde_json::json!(recorded_at));
+            Value::Object(row)
+        })
+        .collect();
+    Ok(serde_json::json!({
+        "mainCurrency": ctx.main_currency(),
+        "history": rows,
+    }))
 }
 
 #[cfg(test)]
@@ -276,6 +310,24 @@ mod tests {
             CREATE TABLE user_profile (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 currency TEXT NOT NULL DEFAULT 'CZK'
+            );
+            CREATE TABLE exchange_rate_history (
+                date INTEGER NOT NULL,
+                currency TEXT NOT NULL,
+                rate REAL NOT NULL,
+                PRIMARY KEY (date, currency)
+            );
+            CREATE TABLE portfolio_metrics_history (
+                id TEXT PRIMARY KEY,
+                total_savings TEXT NOT NULL,
+                total_loans_principal TEXT NOT NULL,
+                total_investments TEXT NOT NULL,
+                total_crypto TEXT NOT NULL DEFAULT '0',
+                total_bonds TEXT NOT NULL,
+                total_real_estate_personal TEXT NOT NULL,
+                total_real_estate_investment TEXT NOT NULL,
+                recorded_at INTEGER NOT NULL DEFAULT (unixepoch()),
+                total_other_assets TEXT NOT NULL DEFAULT '0'
             );
             CREATE TABLE bank_accounts (
                 id TEXT PRIMARY KEY,
@@ -397,5 +449,101 @@ mod tests {
         assert_eq!(result["mainCurrency"], "CZK");
         assert_eq!(result["net_worth"], "78000.00");
         assert_eq!(result["breakdown"]["savings"], "75000.00");
+    }
+
+    const DAY: i64 = 86_400;
+
+    fn add_snapshot(conn: &Connection, id: &str, day: i64, savings_czk: &str) {
+        conn.execute(
+            "INSERT INTO portfolio_metrics_history
+                (id, total_savings, total_loans_principal, total_investments, total_crypto,
+                 total_bonds, total_real_estate_personal, total_real_estate_investment,
+                 recorded_at, total_other_assets)
+             VALUES (?1, ?2, '1200', '0', '0', '0', '0', '0', ?3, '0')",
+            rusqlite::params![id, savings_czk, day],
+        )
+        .expect("snapshot");
+    }
+
+    fn add_day_rate(conn: &Connection, day: i64, currency: &str, rate: f64) {
+        conn.execute(
+            "INSERT INTO exchange_rate_history (date, currency, rate) VALUES (?1, ?2, ?3)",
+            rusqlite::params![day, currency, rate],
+        )
+        .expect("day rate");
+    }
+
+    #[test]
+    fn portfolio_history_converts_each_row_at_its_own_day_rate() {
+        let conn = setup_db("EUR");
+        add_day_rate(&conn, 100 * DAY, "EUR", 24.0);
+        add_day_rate(&conn, 101 * DAY, "EUR", 26.0);
+        // The same CZK total on both days: only the day's rate differs.
+        add_snapshot(&conn, "s1", 100 * DAY, "2400");
+        add_snapshot(&conn, "s2", 101 * DAY, "2400");
+
+        let result = portfolio_history(&conn, None, None, 365).expect("history");
+
+        assert_eq!(result["mainCurrency"], "EUR");
+        let rows = result["history"].as_array().expect("history array");
+        assert_eq!(rows.len(), 2);
+        // Newest first, as before.
+        assert_eq!(rows[0]["id"], "s2");
+        assert_eq!(rows[0]["totalSavings"], "92.31");
+        assert_eq!(rows[0]["totalLoansPrincipal"], "46.15");
+        assert_eq!(rows[1]["id"], "s1");
+        assert_eq!(rows[1]["totalSavings"], "100.00");
+        assert_eq!(rows[1]["totalLoansPrincipal"], "50.00");
+        assert_eq!(rows[1]["recordedAt"], 100 * DAY);
+    }
+
+    #[test]
+    fn portfolio_history_row_without_a_snapshot_uses_the_closest_earlier_day() {
+        let conn = setup_db("EUR");
+        add_day_rate(&conn, 100 * DAY, "EUR", 24.0);
+        // Three days after the only snapshot (a weekend, say).
+        add_snapshot(&conn, "s1", 103 * DAY, "2400");
+
+        let result = portfolio_history(&conn, None, None, 365).expect("history");
+
+        assert_eq!(result["history"][0]["totalSavings"], "100.00");
+    }
+
+    #[test]
+    fn portfolio_history_keeps_the_stored_czk_text_for_a_czk_main_currency() {
+        let conn = setup_db("CZK");
+        add_day_rate(&conn, 100 * DAY, "EUR", 24.0);
+        add_snapshot(&conn, "s1", 100 * DAY, "2400.126");
+
+        let result = portfolio_history(&conn, None, None, 365).expect("history");
+
+        assert_eq!(result["mainCurrency"], "CZK");
+        assert_eq!(result["history"][0]["totalSavings"], "2400.126");
+    }
+
+    #[test]
+    fn portfolio_history_applies_the_date_filters_and_limit() {
+        let conn = setup_db("EUR");
+        add_snapshot(&conn, "s1", 100 * DAY, "2500");
+        add_snapshot(&conn, "s2", 101 * DAY, "2500");
+        add_snapshot(&conn, "s3", 102 * DAY, "2500");
+
+        let windowed =
+            portfolio_history(&conn, Some(101 * DAY), Some(102 * DAY), 365).expect("history");
+        assert_eq!(windowed["history"].as_array().expect("array").len(), 2);
+
+        let limited = portfolio_history(&conn, None, None, 1).expect("history");
+        assert_eq!(limited["history"][0]["id"], "s3");
+        assert_eq!(limited["history"].as_array().expect("array").len(), 1);
+    }
+
+    #[test]
+    fn portfolio_history_without_rows_still_names_the_main_currency() {
+        let conn = setup_db("EUR");
+
+        let result = portfolio_history(&conn, None, None, 365).expect("history");
+
+        assert_eq!(result["mainCurrency"], "EUR");
+        assert_eq!(result["history"], serde_json::json!([]));
     }
 }

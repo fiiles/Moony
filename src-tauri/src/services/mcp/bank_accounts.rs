@@ -11,6 +11,7 @@ use crate::models::InsertBankTransaction;
 use crate::services::categorization::CategorizationEngine;
 use crate::services::{bank_accounts as bank_service, dedup};
 
+use super::money::currency_or_main;
 use super::{sql_to_json, BulkWriteReport, RowError, SkippedRow, MAX_BULK_ROWS};
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
@@ -270,7 +271,7 @@ pub struct BankAccountCreateArgs {
     pub account_type: Option<String>,
     pub iban: Option<String>,
     pub bban: Option<String>,
-    #[schemars(description = "3-letter ISO currency code, defaults to CZK")]
+    #[schemars(description = "3-letter ISO currency code, defaults to the user's main currency")]
     pub currency: Option<String>,
     #[schemars(description = "Opening balance as a numeric string, defaults to \"0\"")]
     pub balance: Option<String>,
@@ -304,7 +305,9 @@ pub fn bank_account_create(conn: &Connection, args: &BankAccountCreateArgs) -> R
         account_type: args.account_type.clone(),
         iban: args.iban.clone(),
         bban: args.bban.clone(),
-        currency: args.currency.clone(),
+        // The services default to CZK for the UI path (ADR 0007); an MCP client
+        // that leaves the currency out means the user's own currency.
+        currency: Some(currency_or_main(conn, args.currency.as_deref())?),
         balance: args.balance.clone(),
         institution_id: None,
         interest_rate: args.interest_rate.clone(),
@@ -554,6 +557,11 @@ mod tests {
                 exclude_from_balance INTEGER NOT NULL DEFAULT 0,
                 created_at INTEGER NOT NULL DEFAULT 0,
                 updated_at INTEGER NOT NULL DEFAULT 0
+            );
+
+            CREATE TABLE user_profile (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                currency TEXT NOT NULL DEFAULT 'CZK'
             );
 
             CREATE TABLE transaction_categories (
@@ -1487,5 +1495,29 @@ mod tests {
         );
         assert_eq!(report.errors.len(), 1);
         assert!(report.errors[0].message.contains("ghost-tx"));
+    }
+
+    #[test]
+    fn account_create_defaults_a_missing_currency_to_the_main_currency() {
+        let conn = setup_test_db();
+        conn.execute("INSERT INTO user_profile (currency) VALUES ('EUR')", [])
+            .expect("profile");
+
+        let value = bank_account_create(&conn, &account_args("Euro account", None)).unwrap();
+
+        assert_eq!(value["currency"], "EUR");
+    }
+
+    #[test]
+    fn account_create_keeps_an_explicit_currency() {
+        let conn = setup_test_db();
+        conn.execute("INSERT INTO user_profile (currency) VALUES ('EUR')", [])
+            .expect("profile");
+        let mut args = account_args("Dollar account", None);
+        args.currency = Some("USD".into());
+
+        let value = bank_account_create(&conn, &args).unwrap();
+
+        assert_eq!(value["currency"], "USD");
     }
 }

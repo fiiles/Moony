@@ -9,6 +9,7 @@ use serde_json::Value;
 use crate::error::{AppError, Result};
 use crate::services::{dedup, other_assets as other_assets_service};
 
+use super::money::currency_or_main;
 use super::{sql_to_json, BulkWriteReport, RowError, SkippedRow, MAX_BULK_ROWS};
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
@@ -108,8 +109,11 @@ pub fn other_asset_create(conn: &Connection, args: &OtherAssetCreateArgs) -> Res
         )));
     }
     let initial_transaction = args.initial_transaction.as_ref().map(row_to_insert);
-    let asset =
-        other_assets_service::create_asset(conn, &args.asset, initial_transaction.as_ref())?;
+    // The service defaults to CZK for the UI path (ADR 0007); an MCP client
+    // that leaves the currency out means the user's own currency.
+    let mut data = args.asset.clone();
+    data.currency = Some(currency_or_main(conn, data.currency.as_deref())?);
+    let asset = other_assets_service::create_asset(conn, &data, initial_transaction.as_ref())?;
     Ok(serde_json::to_value(asset)?)
 }
 
@@ -227,6 +231,10 @@ mod tests {
         let conn = Connection::open_in_memory().expect("in-memory db");
         conn.execute_batch(
             r#"
+            CREATE TABLE user_profile (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                currency TEXT NOT NULL DEFAULT 'CZK'
+            );
             CREATE TABLE other_assets (
                 id TEXT PRIMARY KEY,
                 name TEXT NOT NULL,
@@ -324,6 +332,44 @@ mod tests {
         assert_eq!(value["name"], "Gold coins");
         assert_eq!(value["currency"], "CZK");
         assert_eq!(value["yieldType"], "none");
+    }
+
+    #[test]
+    fn asset_create_defaults_a_missing_currency_to_the_main_currency() {
+        let conn = setup_test_db();
+        conn.execute("INSERT INTO user_profile (currency) VALUES ('EUR')", [])
+            .unwrap();
+
+        let value = other_asset_create(
+            &conn,
+            &OtherAssetCreateArgs {
+                asset: valid_asset("Silver bars"),
+                initial_transaction: None,
+            },
+        )
+        .unwrap();
+
+        assert_eq!(value["currency"], "EUR");
+    }
+
+    #[test]
+    fn asset_create_keeps_an_explicit_currency() {
+        let conn = setup_test_db();
+        conn.execute("INSERT INTO user_profile (currency) VALUES ('EUR')", [])
+            .unwrap();
+        let mut asset = valid_asset("Dollar art");
+        asset.currency = Some("USD".into());
+
+        let value = other_asset_create(
+            &conn,
+            &OtherAssetCreateArgs {
+                asset,
+                initial_transaction: None,
+            },
+        )
+        .unwrap();
+
+        assert_eq!(value["currency"], "USD");
     }
 
     #[test]

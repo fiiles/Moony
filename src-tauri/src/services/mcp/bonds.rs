@@ -5,6 +5,7 @@ use crate::error::{AppError, Result};
 use rusqlite::{Connection, OptionalExtension};
 use serde_json::Value;
 
+use super::money::currency_or_main;
 use super::sql_to_json;
 
 pub fn bonds_list(conn: &Connection) -> Result<Value> {
@@ -51,7 +52,11 @@ pub fn bond_create(conn: &Connection, data: &crate::models::InsertBond) -> Resul
             id
         )));
     }
-    let bond = crate::services::bonds::create_bond(conn, data)?;
+    // The service defaults to CZK for the UI path (ADR 0007); an MCP client
+    // that leaves the currency out means the user's own currency.
+    let mut data = data.clone();
+    data.currency = Some(currency_or_main(conn, data.currency.as_deref())?);
+    let bond = crate::services::bonds::create_bond(conn, &data)?;
     Ok(serde_json::to_value(bond)?)
 }
 
@@ -64,6 +69,10 @@ mod tests {
         let conn = Connection::open_in_memory().expect("in-memory db");
         conn.execute_batch(
             r#"
+            CREATE TABLE user_profile (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                currency TEXT NOT NULL DEFAULT 'CZK'
+            );
             CREATE TABLE bonds (
                 id TEXT PRIMARY KEY,
                 name TEXT NOT NULL,
@@ -116,5 +125,29 @@ mod tests {
             ),
             other => panic!("expected Validation error, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn create_defaults_a_missing_currency_to_the_main_currency() {
+        let conn = setup_test_db();
+        conn.execute("INSERT INTO user_profile (currency) VALUES ('EUR')", [])
+            .unwrap();
+
+        let value = bond_create(&conn, &valid_bond("Euro bond")).unwrap();
+
+        assert_eq!(value["currency"], "EUR");
+    }
+
+    #[test]
+    fn create_keeps_an_explicit_currency() {
+        let conn = setup_test_db();
+        conn.execute("INSERT INTO user_profile (currency) VALUES ('EUR')", [])
+            .unwrap();
+        let mut bond = valid_bond("Dollar bond");
+        bond.currency = Some("USD".into());
+
+        let value = bond_create(&conn, &bond).unwrap();
+
+        assert_eq!(value["currency"], "USD");
     }
 }

@@ -5,6 +5,8 @@ use crate::error::{AppError, Result};
 use rusqlite::{Connection, OptionalExtension};
 use serde_json::Value;
 
+use super::money::currency_or_main;
+
 pub fn loans_list(conn: &Connection) -> Result<Value> {
     // Through the loans service so every loan carries its amortized balance as
     // of today; the shape stays the one the tool always returned.
@@ -55,7 +57,11 @@ pub fn loan_create(conn: &Connection, data: &crate::models::InsertLoan) -> Resul
             id
         )));
     }
-    let loan = crate::services::loans::create_loan(conn, data)?;
+    // The service defaults to CZK for the UI path (ADR 0007); an MCP client
+    // that leaves the currency out means the user's own currency.
+    let mut data = data.clone();
+    data.currency = Some(currency_or_main(conn, data.currency.as_deref())?);
+    let loan = crate::services::loans::create_loan(conn, &data)?;
     Ok(serde_json::to_value(loan)?)
 }
 
@@ -68,6 +74,10 @@ mod tests {
         let conn = Connection::open_in_memory().expect("in-memory db");
         conn.execute_batch(
             r#"
+            CREATE TABLE user_profile (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                currency TEXT NOT NULL DEFAULT 'CZK'
+            );
             CREATE TABLE loans (
                 id TEXT PRIMARY KEY,
                 name TEXT NOT NULL,
@@ -110,6 +120,30 @@ mod tests {
         let value = loan_create(&conn, &valid_loan("Mortgage - main flat")).unwrap();
         assert_eq!(value["name"], "Mortgage - main flat");
         assert_eq!(value["currency"], "CZK");
+    }
+
+    #[test]
+    fn create_defaults_a_missing_currency_to_the_main_currency() {
+        let conn = setup_test_db();
+        conn.execute("INSERT INTO user_profile (currency) VALUES ('EUR')", [])
+            .unwrap();
+
+        let value = loan_create(&conn, &valid_loan("Euro loan")).unwrap();
+
+        assert_eq!(value["currency"], "EUR");
+    }
+
+    #[test]
+    fn create_keeps_an_explicit_currency() {
+        let conn = setup_test_db();
+        conn.execute("INSERT INTO user_profile (currency) VALUES ('EUR')", [])
+            .unwrap();
+        let mut loan = valid_loan("Dollar loan");
+        loan.currency = Some("USD".into());
+
+        let value = loan_create(&conn, &loan).unwrap();
+
+        assert_eq!(value["currency"], "USD");
     }
 
     #[test]

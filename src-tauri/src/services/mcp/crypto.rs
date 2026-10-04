@@ -9,7 +9,9 @@ use serde_json::Value;
 use crate::error::Result;
 use crate::services::{crypto_investments as crypto_service, dedup};
 
-use super::{sql_to_json, BulkWriteReport, RowError, SkippedRow, MAX_BULK_ROWS};
+use super::{
+    sql_to_json, ticker_value_history, BulkWriteReport, RowError, SkippedRow, MAX_BULK_ROWS,
+};
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct CryptoTransactionsArgs {
@@ -132,33 +134,7 @@ pub fn crypto_value_history(
     start_date: Option<i64>,
     end_date: Option<i64>,
 ) -> Result<Value> {
-    let mut conditions = vec!["ticker = ?".to_string()];
-    let mut p: Vec<Box<dyn rusqlite::ToSql>> = vec![Box::new(ticker.to_string())];
-    if let Some(s) = start_date {
-        conditions.push("recorded_at >= ?".into());
-        p.push(Box::new(s));
-    }
-    if let Some(e) = end_date {
-        conditions.push("recorded_at <= ?".into());
-        p.push(Box::new(e));
-    }
-    let sql = format!(
-        "SELECT id, ticker, recorded_at, value_czk, quantity, price, currency
-         FROM crypto_value_history WHERE {} ORDER BY recorded_at ASC",
-        conditions.join(" AND ")
-    );
-    let refs: Vec<&dyn rusqlite::ToSql> = p.iter().map(|x| x.as_ref()).collect();
-    let mut stmt = conn.prepare(&sql)?;
-    let rows: Vec<Value> = stmt.query_map(refs.as_slice(), |row| Ok(serde_json::json!({
-        "id": row.get::<_, String>(0)?,
-        "ticker": row.get::<_, String>(1)?,
-        "recordedAt": row.get::<_, i64>(2)?,
-        "valueCzk": sql_to_json(row.get::<_, rusqlite::types::Value>(3).unwrap_or(rusqlite::types::Value::Null)),
-        "quantity": sql_to_json(row.get::<_, rusqlite::types::Value>(4).unwrap_or(rusqlite::types::Value::Null)),
-        "price": sql_to_json(row.get::<_, rusqlite::types::Value>(5).unwrap_or(rusqlite::types::Value::Null)),
-        "currency": sql_to_json(row.get::<_, rusqlite::types::Value>(6).unwrap_or(rusqlite::types::Value::Null)),
-    })))?.filter_map(|r| r.ok()).collect();
-    Ok(Value::Array(rows))
+    ticker_value_history(conn, "crypto_value_history", ticker, start_date, end_date)
 }
 
 // ============================================================================
@@ -733,5 +709,123 @@ mod bulk_tests {
             ],
         };
         assert_eq!(earliest_date(&args), Some(100));
+    }
+}
+
+#[cfg(test)]
+mod value_history_tests {
+    use super::*;
+
+    const DAY: i64 = 86_400;
+
+    /// Production column types: every money cell is TEXT.
+    fn setup_db(main_currency: &str) -> Connection {
+        let conn = Connection::open_in_memory().expect("in-memory db");
+        conn.execute_batch(
+            r#"
+            CREATE TABLE exchange_rates (
+                currency TEXT PRIMARY KEY,
+                rate REAL NOT NULL,
+                fetched_at INTEGER NOT NULL
+            );
+            CREATE TABLE user_profile (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                currency TEXT NOT NULL DEFAULT 'CZK'
+            );
+            CREATE TABLE exchange_rate_history (
+                date INTEGER NOT NULL,
+                currency TEXT NOT NULL,
+                rate REAL NOT NULL,
+                PRIMARY KEY (date, currency)
+            );
+            CREATE TABLE crypto_value_history (
+                id TEXT PRIMARY KEY,
+                ticker TEXT NOT NULL,
+                recorded_at INTEGER NOT NULL,
+                value_czk TEXT NOT NULL,
+                quantity TEXT NOT NULL,
+                price TEXT NOT NULL,
+                currency TEXT NOT NULL,
+                is_stale INTEGER NOT NULL DEFAULT 0,
+                UNIQUE(ticker, recorded_at)
+            );
+            INSERT INTO exchange_rates (currency, rate, fetched_at) VALUES ('EUR', 25.0, 0);
+            INSERT INTO exchange_rate_history (date, currency, rate) VALUES
+                (100 * 86400, 'EUR', 24.0), (101 * 86400, 'EUR', 26.0);
+            -- the same 2400 CZK value on two days: only the day rate differs
+            INSERT INTO crypto_value_history (id, ticker, recorded_at, value_czk, quantity, price, currency)
+                VALUES ('v1', 'BTC', 100 * 86400, '2400', '10', '12', 'USD'),
+                       ('v2', 'BTC', 101 * 86400, '2400', '10', '12', 'USD'),
+                       ('v3', 'OTHER', 101 * 86400, '9999', '1', '1', 'USD');
+            "#,
+        )
+        .expect("schema + seed");
+        conn.execute(
+            "INSERT INTO user_profile (currency) VALUES (?1)",
+            [main_currency],
+        )
+        .expect("profile");
+        conn
+    }
+
+    #[test]
+    fn value_history_converts_each_row_at_its_own_day_rate() {
+        let conn = setup_db("EUR");
+
+        let result = crypto_value_history(&conn, "BTC", None, None).expect("history");
+
+        assert_eq!(result["mainCurrency"], "EUR");
+        let rows = result["history"].as_array().expect("history array");
+        assert_eq!(rows.len(), 2);
+        // Oldest first, as before.
+        assert_eq!(rows[0]["recordedAt"], 100 * DAY);
+        assert_eq!(rows[0]["value"], "100.00");
+        assert_eq!(rows[1]["recordedAt"], 101 * DAY);
+        assert_eq!(rows[1]["value"], "92.31");
+    }
+
+    #[test]
+    fn value_history_keeps_the_native_price_and_currency() {
+        let conn = setup_db("EUR");
+
+        let result = crypto_value_history(&conn, "BTC", None, None).expect("history");
+
+        let first = &result["history"][0];
+        assert_eq!(first["price"], "12");
+        assert_eq!(first["currency"], "USD");
+        assert_eq!(first["quantity"], "10");
+        assert!(first.get("valueCzk").is_none());
+    }
+
+    #[test]
+    fn value_history_stays_in_czk_for_a_czk_main_currency() {
+        let conn = setup_db("CZK");
+
+        let result = crypto_value_history(&conn, "BTC", None, None).expect("history");
+
+        assert_eq!(result["mainCurrency"], "CZK");
+        assert_eq!(result["history"][0]["value"], "2400");
+        assert_eq!(result["history"][1]["value"], "2400");
+    }
+
+    #[test]
+    fn value_history_applies_the_date_window() {
+        let conn = setup_db("EUR");
+
+        let result = crypto_value_history(&conn, "BTC", Some(101 * DAY), None).expect("history");
+
+        let rows = result["history"].as_array().expect("history array");
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0]["recordedAt"], 101 * DAY);
+    }
+
+    #[test]
+    fn value_history_of_an_unknown_ticker_is_empty_but_names_the_currency() {
+        let conn = setup_db("EUR");
+
+        let result = crypto_value_history(&conn, "NOPE", None, None).expect("history");
+
+        assert_eq!(result["mainCurrency"], "EUR");
+        assert_eq!(result["history"], serde_json::json!([]));
     }
 }

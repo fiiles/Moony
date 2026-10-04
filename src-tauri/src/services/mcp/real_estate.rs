@@ -10,6 +10,7 @@ use serde_json::Value;
 
 use crate::error::{AppError, Result};
 
+use super::money::currency_or_main;
 use super::sql_to_json;
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
@@ -144,17 +145,49 @@ pub fn real_estate_create(conn: &Connection, args: &RealEstateCreateArgs) -> Res
             id
         )));
     }
+    // The service defaults to CZK for the UI path (ADR 0007); an MCP client that
+    // leaves a currency out means the user's own currency. The rent currency and
+    // the recurring costs' currencies would otherwise be stored empty and read
+    // back as CZK, so they are filled too, but only where there is an amount.
+    let monthly_rent_currency = if args.monthly_rent.is_some() {
+        Some(currency_or_main(
+            conn,
+            args.monthly_rent_currency.as_deref(),
+        )?)
+    } else {
+        args.monthly_rent_currency.clone()
+    };
+    let recurring_costs = args
+        .recurring_costs
+        .as_ref()
+        .map(|costs| {
+            costs
+                .iter()
+                .map(|cost| {
+                    let mut cost = cost.clone();
+                    cost.currency = Some(currency_or_main(conn, cost.currency.as_deref())?);
+                    Ok(cost)
+                })
+                .collect::<Result<Vec<_>>>()
+        })
+        .transpose()?;
     let data = crate::models::InsertRealEstate {
         name: args.name.clone(),
         address: args.address.clone(),
         property_type: args.property_type.clone(),
         purchase_price: args.purchase_price.clone(),
-        purchase_price_currency: args.purchase_price_currency.clone(),
+        purchase_price_currency: Some(currency_or_main(
+            conn,
+            args.purchase_price_currency.as_deref(),
+        )?),
         market_price: args.market_price.clone(),
-        market_price_currency: args.market_price_currency.clone(),
+        market_price_currency: Some(currency_or_main(
+            conn,
+            args.market_price_currency.as_deref(),
+        )?),
         monthly_rent: args.monthly_rent.clone(),
-        monthly_rent_currency: args.monthly_rent_currency.clone(),
-        recurring_costs: args.recurring_costs.clone(),
+        monthly_rent_currency,
+        recurring_costs,
         photos: None,
         notes: args.notes.clone(),
     };
@@ -173,6 +206,10 @@ mod tests {
         let conn = Connection::open_in_memory().expect("in-memory db");
         conn.execute_batch(
             r#"
+            CREATE TABLE user_profile (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                currency TEXT NOT NULL DEFAULT 'CZK'
+            );
             CREATE TABLE real_estate (
                 id TEXT PRIMARY KEY,
                 name TEXT NOT NULL,
@@ -281,5 +318,67 @@ mod tests {
             ),
             other => panic!("expected Validation error, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn create_defaults_missing_currencies_to_the_main_currency() {
+        let conn = setup_test_db();
+        conn.execute("INSERT INTO user_profile (currency) VALUES ('EUR')", [])
+            .unwrap();
+        let mut args = create_args("Byt Vídeň");
+        args.monthly_rent = Some("900".into());
+        args.recurring_costs = Some(vec![
+            crate::models::RecurringCost {
+                name: "Fond oprav".into(),
+                amount: 80.0,
+                frequency: "monthly".into(),
+                currency: None,
+            },
+            crate::models::RecurringCost {
+                name: "Pojištění".into(),
+                amount: 300.0,
+                frequency: "yearly".into(),
+                currency: Some("CZK".into()),
+            },
+        ]);
+
+        let value = real_estate_create(&conn, &args).unwrap();
+
+        assert_eq!(value["purchasePriceCurrency"], "EUR");
+        assert_eq!(value["marketPriceCurrency"], "EUR");
+        assert_eq!(value["monthlyRentCurrency"], "EUR");
+        let costs: Value = serde_json::from_str(value["recurringCosts"].as_str().unwrap()).unwrap();
+        assert_eq!(costs[0]["currency"], "EUR");
+        assert_eq!(costs[1]["currency"], "CZK");
+    }
+
+    #[test]
+    fn create_keeps_explicit_currencies() {
+        let conn = setup_test_db();
+        conn.execute("INSERT INTO user_profile (currency) VALUES ('EUR')", [])
+            .unwrap();
+        let mut args = create_args("Byt Praha 2");
+        args.purchase_price_currency = Some("CZK".into());
+        args.market_price_currency = Some("USD".into());
+        args.monthly_rent = Some("900".into());
+        args.monthly_rent_currency = Some("GBP".into());
+
+        let value = real_estate_create(&conn, &args).unwrap();
+
+        assert_eq!(value["purchasePriceCurrency"], "CZK");
+        assert_eq!(value["marketPriceCurrency"], "USD");
+        assert_eq!(value["monthlyRentCurrency"], "GBP");
+    }
+
+    #[test]
+    fn create_leaves_the_rent_currency_empty_when_there_is_no_rent() {
+        let conn = setup_test_db();
+        conn.execute("INSERT INTO user_profile (currency) VALUES ('EUR')", [])
+            .unwrap();
+
+        let value = real_estate_create(&conn, &create_args("Byt bez nájmu")).unwrap();
+
+        assert_eq!(value["monthlyRent"], serde_json::Value::Null);
+        assert_eq!(value["monthlyRentCurrency"], serde_json::Value::Null);
     }
 }

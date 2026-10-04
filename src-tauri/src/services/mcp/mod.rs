@@ -58,6 +58,85 @@ pub(crate) fn sql_to_json(v: rusqlite::types::Value) -> Value {
     }
 }
 
+/// Daily value history of one ticker (`stock_value_history` /
+/// `crypto_value_history`), oldest first. The stored `value_czk` is converted
+/// into the user's main currency at each row's own day rate (ADR 0001) and
+/// returned as `value`; `price` and `currency` stay native. `table` is one of
+/// the two fixed table names, never user input.
+pub(crate) fn ticker_value_history(
+    conn: &rusqlite::Connection,
+    table: &'static str,
+    ticker: &str,
+    start_date: Option<i64>,
+    end_date: Option<i64>,
+) -> crate::error::Result<Value> {
+    let mut conditions = vec!["ticker = ?".to_string()];
+    let mut p: Vec<Box<dyn rusqlite::ToSql>> = vec![Box::new(ticker.to_string())];
+    if let Some(s) = start_date {
+        conditions.push("recorded_at >= ?".into());
+        p.push(Box::new(s));
+    }
+    if let Some(e) = end_date {
+        conditions.push("recorded_at <= ?".into());
+        p.push(Box::new(e));
+    }
+    let sql = format!(
+        "SELECT id, ticker, recorded_at, value_czk, quantity, price, currency
+         FROM {} WHERE {} ORDER BY recorded_at ASC",
+        table,
+        conditions.join(" AND ")
+    );
+    let refs: Vec<&dyn rusqlite::ToSql> = p.iter().map(|x| x.as_ref()).collect();
+    let mut stmt = conn.prepare(&sql)?;
+    let cell = |row: &rusqlite::Row, i: usize| {
+        row.get::<_, rusqlite::types::Value>(i)
+            .unwrap_or(rusqlite::types::Value::Null)
+    };
+    let stored: Vec<[rusqlite::types::Value; 7]> = stmt
+        .query_map(refs.as_slice(), |row| {
+            Ok([
+                cell(row, 0),
+                cell(row, 1),
+                cell(row, 2),
+                cell(row, 3),
+                cell(row, 4),
+                cell(row, 5),
+                cell(row, 6),
+            ])
+        })?
+        .filter_map(|r| r.ok())
+        .collect();
+
+    let ctx = money::MoneyContext::load(conn)?;
+    let day_of = |cells: &[rusqlite::types::Value; 7]| match cells[2] {
+        rusqlite::types::Value::Integer(day) => day,
+        _ => 0,
+    };
+    let days: Vec<i64> = stored.iter().map(day_of).collect();
+    let day_rates = ctx.day_rates_for(conn, &days);
+
+    let rows: Vec<Value> = stored
+        .into_iter()
+        .map(|cells| {
+            let day = day_of(&cells);
+            let [id, ticker, recorded_at, value_czk, quantity, price, currency] = cells;
+            serde_json::json!({
+                "id": sql_to_json(id),
+                "ticker": sql_to_json(ticker),
+                "recordedAt": sql_to_json(recorded_at),
+                "value": ctx.stored_czk_to_main_on(value_czk, day, &day_rates),
+                "quantity": sql_to_json(quantity),
+                "price": sql_to_json(price),
+                "currency": sql_to_json(currency),
+            })
+        })
+        .collect();
+    Ok(serde_json::json!({
+        "mainCurrency": ctx.main_currency(),
+        "history": rows,
+    }))
+}
+
 /// Uniform result mapping, matching the Node server's behavior: success is the
 /// JSON pretty-printed into one text block; an AppError becomes an isError
 /// tool result carrying the error message (never a protocol-level error).
@@ -283,7 +362,7 @@ impl MoonyMcp {
     }
 
     #[tool(
-        description = "Get stored currency exchange rates. The base currency is CZK (rate = 1.0). Rates are fetched from the European Central Bank and cached locally."
+        description = "Get stored currency exchange rates. Rates are relative to Moony's internal base currency CZK (rate = 1.0): multiply an amount by its currency's rate to get CZK. The user's main currency is given as `mainCurrency`; the other tools already report amounts in it. Rates are fetched from the European Central Bank and cached locally."
     )]
     fn exchange_rates_list(&self) -> Result<CallToolResult, McpError> {
         to_result(self.db.with_conn(exchange_rates::exchange_rates_list))
@@ -304,7 +383,7 @@ impl MoonyMcp {
     }
 
     #[tool(
-        description = "Get historical portfolio snapshots showing net worth over time. Each record contains per-asset-class totals in CZK. Useful for trend analysis."
+        description = "Get historical portfolio snapshots showing net worth over time. Each record contains per-asset-class totals in the user's main currency (the `mainCurrency` field), each snapshot converted at its own day's exchange rate. Useful for trend analysis."
     )]
     fn portfolio_get_history(
         &self,
@@ -352,7 +431,7 @@ impl MoonyMcp {
     }
 
     #[tool(
-        description = "Get historical value snapshots for a specific stock ticker. Values are in CZK."
+        description = "Get historical value snapshots for a specific stock ticker. Each snapshot's `value` is in the user's main currency (the `mainCurrency` field) at that day's exchange rate; `price` and `currency` are the native quote."
     )]
     fn stock_value_history(
         &self,
@@ -385,7 +464,7 @@ impl MoonyMcp {
     }
 
     #[tool(
-        description = "Get historical value snapshots for a specific cryptocurrency ticker. Values are in CZK."
+        description = "Get historical value snapshots for a specific cryptocurrency ticker. Each snapshot's `value` is in the user's main currency (the `mainCurrency` field) at that day's exchange rate; `price` and `currency` are the native quote."
     )]
     fn crypto_value_history(
         &self,
@@ -482,7 +561,7 @@ impl MoonyMcp {
     }
 
     #[tool(
-        description = "Create a new insurance policy in Moony.\n\nCall this only after presenting the extracted data to the user and receiving their confirmation.\n\nValid values:\n- type: life | health | property | vehicle | travel | liability | accident | other\n- paymentFrequency: monthly | quarterly | semi_annually | annually | one_time\n- status: active | inactive (defaults to active)\n- Dates: Unix timestamps in seconds\n- Payments: numeric strings e.g. \"1200\"\n- Currencies: 3-letter ISO codes e.g. \"CZK\", \"EUR\", \"USD\""
+        description = "Create a new insurance policy in Moony.\n\nCall this only after presenting the extracted data to the user and receiving their confirmation.\n\nValid values:\n- type: life | health | property | vehicle | travel | liability | accident | other\n- paymentFrequency: monthly | quarterly | semi_annually | annually | one_time\n- status: active | inactive (defaults to active)\n- Dates: Unix timestamps in seconds\n- Payments: numeric strings e.g. \"1200\"\n- Currencies: 3-letter ISO codes e.g. \"CZK\", \"EUR\", \"USD\"; a missing currency defaults to the user's main currency"
     )]
     fn insurance_create(
         &self,
@@ -545,7 +624,7 @@ impl MoonyMcp {
     }
 
     #[tool(
-        description = "Create a bank account in Moony.\n\nCall this only after presenting the parsed data to the user and receiving their confirmation.\nValid accountType values: checking | savings | credit_card | investment. Amounts are numeric strings; currencies are 3-letter ISO codes."
+        description = "Create a bank account in Moony.\n\nCall this only after presenting the parsed data to the user and receiving their confirmation.\nValid accountType values: checking | savings | credit_card | investment. Amounts are numeric strings; currencies are 3-letter ISO codes (currency defaults to the user's main currency)."
     )]
     fn bank_account_create(
         &self,
@@ -615,7 +694,7 @@ impl MoonyMcp {
     }
 
     #[tool(
-        description = "Create a bond holding in Moony.\n\nCall this only after presenting the parsed data to the user and receiving their confirmation.\nAmounts are numeric strings; currency is a 3-letter ISO code (default CZK); maturityDate is a Unix timestamp (seconds); ISIN, when provided, must be 12 characters."
+        description = "Create a bond holding in Moony.\n\nCall this only after presenting the parsed data to the user and receiving their confirmation.\nAmounts are numeric strings; currency is a 3-letter ISO code (defaults to the user's main currency); maturityDate is a Unix timestamp (seconds); ISIN, when provided, must be 12 characters."
     )]
     fn bond_create(
         &self,
@@ -626,7 +705,7 @@ impl MoonyMcp {
     }
 
     #[tool(
-        description = "Create a loan (mortgage, personal loan, …) in Moony.\n\nCall this only after presenting the parsed data to the user and receiving their confirmation.\nprincipal is the original amount and must be positive; interestRate is a percent 0–100; startDate/endDate are Unix timestamps (seconds); endDate must be after startDate. The balance is amortized from principal at startDate; optionally pass balanceAnchorAmount together with balanceAnchorDate (Unix seconds, not before startDate) to start from a real balance instead."
+        description = "Create a loan (mortgage, personal loan, …) in Moony.\n\nCall this only after presenting the parsed data to the user and receiving their confirmation.\nprincipal is the original amount and must be positive; currency is a 3-letter ISO code (defaults to the user's main currency); interestRate is a percent 0–100; startDate/endDate are Unix timestamps (seconds); endDate must be after startDate. The balance is amortized from principal at startDate; optionally pass balanceAnchorAmount together with balanceAnchorDate (Unix seconds, not before startDate) to start from a real balance instead."
     )]
     fn loan_create(
         &self,
@@ -637,7 +716,7 @@ impl MoonyMcp {
     }
 
     #[tool(
-        description = "Create a real estate property in Moony (photos can only be added in the app UI).\n\nCall this only after presenting the parsed data to the user and receiving their confirmation.\nPrices/rent are numeric strings with 3-letter ISO currency codes (default CZK); recurringCosts entries are {name, amount, frequency, currency?}."
+        description = "Create a real estate property in Moony (photos can only be added in the app UI).\n\nCall this only after presenting the parsed data to the user and receiving their confirmation.\nPrices/rent are numeric strings with 3-letter ISO currency codes (a missing currency defaults to the user's main currency); recurringCosts entries are {name, amount, frequency, currency?}."
     )]
     fn real_estate_create(
         &self,
@@ -650,7 +729,7 @@ impl MoonyMcp {
     }
 
     #[tool(
-        description = "Create an other-asset holding (precious metals, art, collectibles, …) in Moony, optionally with an initial buy transaction.\n\nCall this only after presenting the parsed data to the user and receiving their confirmation.\nyieldType: none | percentage | fixed. Amounts are numeric strings; dates are Unix timestamps (seconds). quantity and averagePurchasePrice are derived from transactions (via this call's initialTransaction or a later other_asset_transactions_create import) — any value passed for them is overwritten by the first import, so leave them unset."
+        description = "Create an other-asset holding (precious metals, art, collectibles, …) in Moony, optionally with an initial buy transaction.\n\nCall this only after presenting the parsed data to the user and receiving their confirmation.\nyieldType: none | percentage | fixed. Amounts are numeric strings; currency is a 3-letter ISO code (defaults to the user's main currency); dates are Unix timestamps (seconds). quantity and averagePurchasePrice are derived from transactions (via this call's initialTransaction or a later other_asset_transactions_create import) — any value passed for them is overwritten by the first import, so leave them unset."
     )]
     fn other_asset_create(
         &self,

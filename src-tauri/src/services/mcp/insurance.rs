@@ -8,6 +8,7 @@ use serde_json::Value;
 
 use crate::error::Result;
 
+use super::money::currency_or_main;
 use super::sql_to_json;
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
@@ -101,8 +102,22 @@ pub fn insurance_detail(conn: &Connection, id: &str) -> Result<Value> {
 
 pub fn insurance_create(
     conn: &Connection,
-    body: crate::models::InsertInsurancePolicy,
+    mut body: crate::models::InsertInsurancePolicy,
 ) -> Result<Value> {
+    // The service defaults the regular payment to CZK for the UI path (ADR 0007);
+    // an MCP client that leaves a currency out means the user's own currency.
+    // A one-time payment without a currency would otherwise be stored without
+    // one, so it is filled too, but only when there is a payment to describe.
+    body.regular_payment_currency = Some(currency_or_main(
+        conn,
+        body.regular_payment_currency.as_deref(),
+    )?);
+    if body.one_time_payment.is_some() {
+        body.one_time_payment_currency = Some(currency_or_main(
+            conn,
+            body.one_time_payment_currency.as_deref(),
+        )?);
+    }
     let policy = crate::services::insurance::create_policy(conn, &body)?;
     Ok(serde_json::to_value(policy)?)
 }
@@ -116,6 +131,10 @@ mod tests {
         let conn = Connection::open_in_memory().expect("in-memory db");
         conn.execute_batch(
             r#"
+            CREATE TABLE user_profile (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                currency TEXT NOT NULL DEFAULT 'CZK'
+            );
             CREATE TABLE insurance_policies (
                 id TEXT PRIMARY KEY,
                 type TEXT NOT NULL,
@@ -199,5 +218,49 @@ mod tests {
 
         let rows = insurance_list(&conn).unwrap();
         assert_eq!(rows.as_array().unwrap()[0]["limits"], serde_json::json!([]));
+    }
+
+    #[test]
+    fn create_defaults_missing_payment_currencies_to_the_main_currency() {
+        let conn = setup_test_db();
+        conn.execute("INSERT INTO user_profile (currency) VALUES ('EUR')", [])
+            .unwrap();
+        let mut body = valid_insert();
+        body.regular_payment = Some("30".into());
+        body.one_time_payment = Some("100".into());
+
+        let created = insurance_create(&conn, body).unwrap();
+
+        assert_eq!(created["regularPaymentCurrency"], "EUR");
+        assert_eq!(created["oneTimePaymentCurrency"], "EUR");
+    }
+
+    #[test]
+    fn create_keeps_explicit_payment_currencies() {
+        let conn = setup_test_db();
+        conn.execute("INSERT INTO user_profile (currency) VALUES ('EUR')", [])
+            .unwrap();
+        let mut body = valid_insert();
+        body.regular_payment = Some("30".into());
+        body.regular_payment_currency = Some("CZK".into());
+        body.one_time_payment = Some("100".into());
+        body.one_time_payment_currency = Some("USD".into());
+
+        let created = insurance_create(&conn, body).unwrap();
+
+        assert_eq!(created["regularPaymentCurrency"], "CZK");
+        assert_eq!(created["oneTimePaymentCurrency"], "USD");
+    }
+
+    #[test]
+    fn create_leaves_the_one_time_currency_empty_without_a_one_time_payment() {
+        let conn = setup_test_db();
+        conn.execute("INSERT INTO user_profile (currency) VALUES ('EUR')", [])
+            .unwrap();
+
+        let created = insurance_create(&conn, valid_insert()).unwrap();
+
+        assert_eq!(created["regularPaymentCurrency"], "EUR");
+        assert_eq!(created["oneTimePaymentCurrency"], serde_json::Value::Null);
     }
 }

@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { getUtcPeriodRange, utcDayStart, utcDayEnd, isoDateFromUtcTimestamp } from './period';
+import {
+  CHART_PERIODS,
+  chartPeriodStart,
+  getUtcPeriodRange,
+  isoDateFromUtcTimestamp,
+  utcDayEnd,
+  utcDayStart,
+} from './period';
 
 const utc = (y: number, m: number, d: number) => Date.UTC(y, m - 1, d) / 1000;
 
@@ -90,5 +97,49 @@ describe('isoDateFromUtcTimestamp', () => {
   it('formats a UTC-midnight timestamp as its calendar day', () => {
     expect(isoDateFromUtcTimestamp(utc(2026, 9, 30))).toBe('2026-09-30');
     expect(isoDateFromUtcTimestamp(utc(2026, 12, 31) + 3600)).toBe('2026-12-31');
+  });
+});
+
+describe('chartPeriodStart', () => {
+  // 2026-10-04T15:20:00Z
+  const now = Date.UTC(2026, 9, 4, 15, 20) / 1000;
+  const today = utc(2026, 10, 4);
+
+  it('offers five horizons in display order', () => {
+    expect(CHART_PERIODS).toEqual(['30D', '90D', 'YTD', '1Y', 'All']);
+  });
+
+  it('counts rolling periods back from the UTC day of now', () => {
+    expect(chartPeriodStart('30D', now)).toBe(today - 30 * 86_400);
+    expect(chartPeriodStart('90D', now)).toBe(today - 90 * 86_400);
+    expect(chartPeriodStart('1Y', now)).toBe(today - 365 * 86_400);
+    expect(chartPeriodStart('5Y', now)).toBe(today - 5 * 365 * 86_400);
+  });
+
+  it('starts YTD on 1 January UTC, also on New Year and on New Year eve', () => {
+    expect(chartPeriodStart('YTD', now)).toBe(utc(2026, 1, 1));
+    expect(chartPeriodStart('YTD', Date.UTC(2026, 0, 1, 0, 30) / 1000)).toBe(utc(2026, 1, 1));
+    expect(chartPeriodStart('YTD', Date.UTC(2025, 11, 31, 23, 59) / 1000)).toBe(utc(2025, 1, 1));
+  });
+
+  it('leaves "All" open without data and starts it on the first day with data', () => {
+    expect(chartPeriodStart('All', now)).toBeUndefined();
+    expect(chartPeriodStart('All', now, utc(2024, 3, 15) + 4000)).toBe(utc(2024, 3, 15));
+  });
+
+  it('never starts before the first day with data', () => {
+    const earliest = today - 10 * 86_400 + 1234;
+    expect(chartPeriodStart('30D', now, earliest)).toBe(today - 10 * 86_400);
+    expect(chartPeriodStart('YTD', now, earliest)).toBe(today - 10 * 86_400);
+    // An earlier first day does not move the window
+    expect(chartPeriodStart('30D', now, utc(2020, 1, 1))).toBe(today - 30 * 86_400);
+  });
+
+  it('is stable within one UTC day, so a query key built from it does not churn', () => {
+    const morning = Date.UTC(2026, 9, 4, 0, 0, 1) / 1000;
+    const evening = Date.UTC(2026, 9, 4, 23, 59, 59) / 1000;
+    for (const period of CHART_PERIODS) {
+      expect(chartPeriodStart(period, morning)).toBe(chartPeriodStart(period, evening));
+    }
   });
 });

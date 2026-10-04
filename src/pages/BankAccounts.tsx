@@ -77,7 +77,7 @@ export default function BankAccounts() {
   const [, setLocation] = useLocation();
   const { accounts, isLoading } = useBankAccounts();
   const { createAccount, updateAccount, deleteAccount } = useBankAccountMutations();
-  const { formatCurrency, formatCurrencyRaw, convert, currencyCode } = useCurrency();
+  const { formatCurrencyRaw, convert, currencyCode } = useCurrency();
   const fmt = useFormat();
   const queryClient = useQueryClient();
   const activity = useBankAccountActivity(accounts);
@@ -92,9 +92,12 @@ export default function BankAccounts() {
   const toDisplay = (amount: number, currency: string) =>
     convert(amount, (currency || 'CZK') as CurrencyCode, currencyCode);
 
-  // Totals and the 30-day picture across accounts, in the display currency
+  // Totals and the 30-day money flow across the accounts counted in net worth,
+  // in the display currency. Excluded accounts stay out of them like they do on
+  // the dashboard (so the total is its cash) and are reported apart.
   const totals = useMemo(() => {
     let balance = 0;
+    let excluded = 0;
     let income = 0;
     let expense = 0;
     let uncategorized = 0;
@@ -102,15 +105,35 @@ export default function BankAccounts() {
     const currencies = new Set<string>();
     for (const account of accounts) {
       currencies.add(account.currency || 'CZK');
-      balance += toDisplay(parseFloat(account.balance || '0'), account.currency);
+      const accountBalance = toDisplay(parseFloat(account.balance || '0'), account.currency);
       const a = activity.get(account.id);
-      if (!a) continue;
-      income += toDisplay(a.last30.income, account.currency);
-      expense += toDisplay(a.last30.expense, account.currency);
-      uncategorized += a.last30.uncategorized;
-      if (a.last && (latest === null || a.last.bookingDate > latest)) latest = a.last.bookingDate;
+      // Transactions to categorize and the newest movement concern every account
+      if (a) {
+        uncategorized += a.last30.uncategorized;
+        if (a.last && (latest === null || a.last.bookingDate > latest)) {
+          latest = a.last.bookingDate;
+        }
+      }
+      if (account.excludeFromBalance) {
+        excluded += accountBalance;
+        continue;
+      }
+      balance += accountBalance;
+      if (a) {
+        income += toDisplay(a.last30.income, account.currency);
+        expense += toDisplay(a.last30.expense, account.currency);
+      }
     }
-    return { balance, income, expense, net: income - expense, uncategorized, currencies, latest };
+    return {
+      balance,
+      excluded,
+      income,
+      expense,
+      net: income - expense,
+      uncategorized,
+      currencies,
+      latest,
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accounts, activity, currencyCode]);
 
@@ -209,6 +232,10 @@ export default function BankAccounts() {
   }, null);
 
   const foreign = [...totals.currencies].filter((c) => c !== currencyCode);
+  const excludedNote =
+    totals.excluded !== 0
+      ? t('metrics.excludedHint', { amount: formatCurrencyRaw(totals.excluded) })
+      : null;
   const isEmpty = !isLoading && accounts.length === 0;
 
   return (
@@ -272,7 +299,12 @@ export default function BankAccounts() {
             <Stat
               label={t('metrics.totalOnAccounts')}
               value={formatCurrencyRaw(totals.balance)}
-              note={`${t('metrics.accounts', { count: accounts.length })} · ${t('metrics.currencies', { count: totals.currencies.size })}`}
+              note={[
+                `${t('metrics.accounts', { count: accounts.length })} · ${t('metrics.currencies', { count: totals.currencies.size })}`,
+                excludedNote,
+              ]
+                .filter(Boolean)
+                .join(' ')}
             />
             <Stat
               label={t('metrics.change30')}
@@ -501,7 +533,8 @@ export default function BankAccounts() {
             <div className="flex items-center justify-between border-t border-line px-[14px] py-3 text-micro font-500 text-ink-4">
               <span>
                 {t('metrics.accounts', { count: rows.length })} · {t('table.total')}{' '}
-                <span className="num">{formatCurrency(totals.balance)}</span>
+                <span className="num">{formatCurrencyRaw(totals.balance)}</span>
+                {excludedNote && ` ${excludedNote}`}
               </span>
               <span className="num">
                 {foreign.length > 0

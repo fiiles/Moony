@@ -2,10 +2,10 @@
 //! without writing anything. The decisions come from [`simulate`], the same
 //! replay the import runs, so the preview is what the import does.
 
-use super::simulate::{simulate, SimulatedTrade, Simulation, TradeOutcome, KEY_INSTRUMENT_SKIPPED};
+use super::simulate::{simulate, SimulatedTrade, Simulation, TradeOutcome};
 use super::types::{
-    ParsedFile, StockImportConfig, StockImportCounts, StockImportInstrument, StockImportPreview,
-    StockInstrumentStatus, StockPreviewRow, StockRowMessage, StockRowStatus, PREVIEW_ROWS,
+    ParsedFile, StockImportConfig, StockImportCounts, StockImportPreview, StockPreviewRow,
+    StockRowMessage, StockRowStatus, PREVIEW_ROWS,
 };
 use crate::error::Result;
 use crate::services::csv_import::CsvDateRange;
@@ -24,15 +24,8 @@ pub fn preview(
 ) -> Result<StockImportPreview> {
     let simulation = simulate(conn, parsed, config)?;
 
-    let mut instruments = simulation.instruments.clone();
-    instruments.extend(instruments_skipped_by_the_parser(
-        parsed,
-        config,
-        &simulation,
-    ));
-
     Ok(StockImportPreview {
-        instruments,
+        instruments: simulation.instruments.clone(),
         rows: preview_rows(parsed, &simulation),
         counts: counts(parsed, &simulation),
         date_range: date_range(&simulation),
@@ -141,64 +134,10 @@ fn trade_row(trade: &SimulatedTrade) -> StockPreviewRow {
     }
 }
 
-/// The parser drops the rows of a skipped instrument (`instrumentSkipped`), so
-/// the instruments seen in the trades no longer include it. Every skipping
-/// override that matches none of them is listed anyway, as `skipped`, so the
-/// user can bring the instrument back; its trade count is unknown (0) and its
-/// symbol or ISIN comes from the key. Nothing is added when the parser skipped
-/// no instrument rows: the override then belongs to another file.
-fn instruments_skipped_by_the_parser(
-    parsed: &ParsedFile,
-    config: &StockImportConfig,
-    simulation: &Simulation,
-) -> Vec<StockImportInstrument> {
-    if !parsed
-        .skipped
-        .iter()
-        .any(|m| m.key == KEY_INSTRUMENT_SKIPPED)
-    {
-        return Vec::new();
-    }
-    let mut listed: Vec<StockImportInstrument> = Vec::new();
-    for over in config.instrument_overrides.iter().filter(|o| o.skip) {
-        let known = simulation.instruments.iter().any(|i| i.key == over.key)
-            || listed.iter().any(|i| i.key == over.key);
-        if known {
-            continue;
-        }
-        let (symbol, isin) = match over.key.split_once(':') {
-            Some(("symbol", symbol)) => (Some(symbol.to_string()), None),
-            Some(("isin", isin)) => (None, Some(isin.to_string())),
-            _ => (None, None),
-        };
-        let text = |value: &Option<String>| {
-            value
-                .as_deref()
-                .map(str::trim)
-                .filter(|v| !v.is_empty())
-                .map(str::to_string)
-        };
-        listed.push(StockImportInstrument {
-            key: over.key.clone(),
-            symbol,
-            isin,
-            name: text(&over.name),
-            currency: text(&over.currency).map(|c| c.to_uppercase()),
-            trade_count: 0,
-            ticker: text(&over.ticker).map(|t| t.to_uppercase()),
-            status: StockInstrumentStatus::Skipped,
-            position_currency: None,
-        });
-    }
-    listed
-}
-
 #[cfg(test)]
 mod tests {
     use super::super::simulate::test_db::*;
-    use super::super::simulate::{
-        KEY_DUPLICATE, KEY_INSTRUMENT_SKIPPED, KEY_SELL_EXCEEDS_HOLDINGS,
-    };
+    use super::super::simulate::{KEY_DUPLICATE, KEY_SELL_EXCEEDS_HOLDINGS};
     use super::super::types::{
         ParsedTrade, StockImportInstrument, StockInstrumentOverride, StockInstrumentStatus,
         StockPreviewRow, StockRowMessage, StockRowStatus, TradeDirection, PREVIEW_ROWS,
@@ -458,51 +397,6 @@ mod tests {
             instrument(&preview, "symbol:NVDA").status,
             StockInstrumentStatus::New
         );
-    }
-
-    #[test]
-    fn an_instrument_skipped_by_the_parser_is_still_listed() {
-        // The parser drops the rows of a skipped instrument into `skipped`; the
-        // override keeps a row in the list so the user can bring it back.
-        let conn = db();
-        let mut cfg = config("custom");
-        cfg.instrument_overrides = vec![
-            StockInstrumentOverride {
-                skip: true,
-                name: Some("Some option".into()),
-                ..over("isin:US0378331005")
-            },
-            StockInstrumentOverride {
-                skip: true,
-                ..over("symbol:OPT")
-            },
-            over("symbol:AAPL"), // not skipped: not synthesized
-        ];
-        let mut file = parsed(vec![buy(2, day(0), "MSFT", 1.0, 1.0)]);
-        file.skipped = vec![
-            message(3, KEY_INSTRUMENT_SKIPPED, None),
-            message(4, KEY_INSTRUMENT_SKIPPED, None),
-        ];
-        file.total_rows = 3;
-
-        let preview = preview(&conn, &file, &cfg).unwrap();
-
-        let keys: Vec<&str> = preview.instruments.iter().map(|i| i.key.as_str()).collect();
-        assert_eq!(keys, vec!["symbol:MSFT", "isin:US0378331005", "symbol:OPT"]);
-        let isin = instrument(&preview, "isin:US0378331005");
-        assert_eq!(isin.status, StockInstrumentStatus::Skipped);
-        assert_eq!(isin.isin.as_deref(), Some("US0378331005"));
-        assert_eq!(isin.symbol, None);
-        assert_eq!(isin.name.as_deref(), Some("Some option"));
-        assert_eq!(
-            isin.trade_count, 0,
-            "unknown: its rows were dropped by the parser"
-        );
-        assert_eq!(
-            instrument(&preview, "symbol:OPT").symbol.as_deref(),
-            Some("OPT")
-        );
-        assert_eq!(preview.counts.skipped, 2);
     }
 
     #[test]

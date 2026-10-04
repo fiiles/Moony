@@ -22,12 +22,14 @@ import {
   dateFormatChoices,
   dateFormatLabel,
   directionModePatch,
+  hasTradeValue,
   incompleteFields,
   isDateFormatGuess,
   isCurrencyCode,
   setTypeValueAction,
   suggestionConfidence,
   typeColumnPatch,
+  typeValueRows,
   type ColumnOption,
   type DecimalSetting,
   type MappingState,
@@ -129,7 +131,11 @@ export function MappingForm({
   const missing = incompleteFields(mapping);
   const dateFormats = dateFormatChoices(mapping.dateFormat, inspection.dateFormat);
   const dateFormatIsGuess = isDateFormatGuess(inspection, mapping);
-  const typeStats = inspection.columnValues.find((entry) => entry.column === mapping.typeColumn);
+  // The mapping lists every value; where the column was counted the file's own values lead.
+  const typeRows = typeValueRows(
+    mapping.typeValues,
+    inspection.columnValues.find((entry) => entry.column === mapping.typeColumn)?.values
+  );
   const nameEmpty = remember?.enabled === true && remember.name.trim() === '';
 
   const h4 = (text: string) => (
@@ -278,11 +284,11 @@ export function MappingForm({
                 />
                 {mapping.typeColumn != null && (
                   <TypeValuesTable
-                    stats={typeStats?.values}
-                    typeValues={mapping.typeValues}
-                    onChange={(value, action) =>
+                    rows={typeRows}
+                    hasTradeValue={hasTradeValue(mapping.typeValues)}
+                    onChange={(entryValue, action) =>
                       onChange({
-                        typeValues: setTypeValueAction(mapping.typeValues, value, action),
+                        typeValues: setTypeValueAction(mapping.typeValues, entryValue, action),
                       })
                     }
                     commentDecidesDirection={mapping.transforms.xtbComment === true}

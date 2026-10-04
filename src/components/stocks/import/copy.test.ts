@@ -88,14 +88,19 @@ describe('stocks.importWizard copy', () => {
       'numberUnparseable',
       'commentUnparseable',
       'symbolMissing',
+      'symbolMissingIsin',
+      'tickerInvalid',
       'currencyMissing',
       'currencyInvalid',
       'priceMissing',
+      'cannotParse',
+      'writeFailed',
       'sellExceedsHoldings',
       'sellExceedsHoldingsHeld',
       'currencyMismatch',
       'currencyMismatchPosition',
       'duplicate',
+      'duplicateById',
     ];
     for (const flat of [cs, en]) {
       for (const key of keys) expect(flat[`row.${key}`], key).toBeTruthy();
@@ -104,11 +109,16 @@ describe('stocks.importWizard copy', () => {
     for (const flat of [cs, en]) {
       expect(flat['row.sellExceedsHoldingsHeld']).toContain('{{detail}}');
       expect(flat['row.currencyMismatchPosition']).toContain('{{detail}}');
+      expect(flat['row.symbolMissingIsin']).toContain('{{detail}}');
     }
   });
 
-  it('translates the validation keys of the stock import config', () => {
+  it('translates the validation keys the stock import commands can return', () => {
     const keys = [
+      'csvEmptyFile',
+      'nameRequired',
+      'nameTooLong',
+      'sellExceedsHoldings',
       'csvDelimiterInvalid',
       'csvDecimalSeparatorInvalid',
       'dateFormatRequired',

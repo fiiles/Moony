@@ -16,7 +16,6 @@ import {
   autoOverrideFor,
   buildSampleCsv,
   buildStockImportConfig,
-  chooseCandidate,
   classifyResultMessage,
   columnOptions,
   columnToSelectValue,
@@ -24,6 +23,7 @@ import {
   dateFormatLabel,
   directionModePatch,
   fileStem,
+  findTypeValue,
   formatConfig,
   formatDecimalText,
   groupResultMessages,
@@ -58,6 +58,7 @@ import {
   summarizePreview,
   typeColumnPatch,
   typeValueAction,
+  typeValueRows,
   typeValuesForColumn,
   undoableBatches,
   updateOverride,
@@ -213,23 +214,20 @@ describe('sources', () => {
 
 describe('sourceMismatch', () => {
   it('claims nothing when the file is what the user picked', () => {
-    expect(sourceMismatch('xtb', null, 'xtb')).toBe('none');
-    expect(sourceMismatch('format:abc', null, 'format:abc')).toBe('none');
+    expect(sourceMismatch('xtb', 'xtb')).toBe('none');
+    expect(sourceMismatch('format:abc', 'format:abc')).toBe('none');
   });
 
-  it('claims nothing when the user picked nothing, "other broker" or insisted', () => {
-    expect(sourceMismatch(null, null, 'degiro')).toBe('none');
-    expect(sourceMismatch('custom', null, 'degiro')).toBe('none');
-    expect(sourceMismatch('custom', null, null)).toBe('none');
-    expect(sourceMismatch('xtb', 'xtb', 'degiro')).toBe('none');
-    expect(sourceMismatch('xtb', 'xtb', null)).toBe('none');
+  it('claims nothing when the user picked nothing or "other broker"', () => {
+    expect(sourceMismatch(null, 'degiro')).toBe('none');
+    expect(sourceMismatch('custom', 'degiro')).toBe('none');
+    expect(sourceMismatch('custom', null)).toBe('none');
   });
 
   it('tells a file of another source from one that is none of them', () => {
-    expect(sourceMismatch('xtb', null, 'degiro')).toBe('other');
-    expect(sourceMismatch('moony', null, 'format:abc')).toBe('other');
-    expect(sourceMismatch('xtb', null, null)).toBe('unknown');
-    expect(sourceMismatch('xtb', 'degiro', null)).toBe('unknown');
+    expect(sourceMismatch('xtb', 'degiro')).toBe('other');
+    expect(sourceMismatch('moony', 'format:abc')).toBe('other');
+    expect(sourceMismatch('xtb', null)).toBe('unknown');
   });
 });
 
@@ -678,12 +676,67 @@ describe('type values', () => {
     });
   });
 
+  it('groups what the mapping lists when the column was not counted', () => {
+    // a heavy user's action column has more than 30 distinct values: no counts, the mapping is complete
+    expect(groupTypeValues(mapping(), inspection({ columnValues: [] }))).toEqual({
+      buy: ['Market buy'],
+      sell: ['Market sell'],
+      skip: ['Deposit'],
+    });
+  });
+
   it('has no groups when the sign decides the direction', () => {
     expect(groupTypeValues(mapping({ directionMode: 'quantitySign' }), inspection())).toEqual({
       buy: [],
       sell: [],
       skip: [],
     });
+  });
+});
+
+describe('type value rows', () => {
+  const entries = [
+    { value: 'Market buy', action: 'buy' as const },
+    { value: 'Limit buy', action: 'buy' as const },
+    { value: 'Market sell', action: 'sell' as const },
+    { value: 'Deposit', action: 'skip' as const },
+  ];
+
+  it('finds an entry by the value as written, then by the same word in another spelling', () => {
+    expect(findTypeValue(entries, 'Market buy')?.value).toBe('Market buy');
+    expect(findTypeValue(entries, ' MARKET BUY ')?.value).toBe('Market buy');
+    expect(findTypeValue(entries, 'Dividend')).toBeUndefined();
+  });
+
+  it('lists the values of the file, most frequent first, with their counts', () => {
+    const rows = typeValueRows(entries, [
+      { value: 'Deposit', count: 9, firstLine: 7, suggested: 'skip' },
+      { value: 'market buy', count: 4, firstLine: 2, suggested: 'buy' },
+      { value: 'Dividend', count: 1, firstLine: 12, suggested: 'skip' },
+    ]);
+    expect(rows).toEqual([
+      { value: 'Deposit', entryValue: 'Deposit', action: 'skip', count: 9, firstLine: 7 },
+      // another spelling of an entry: shown as the file writes it, changed through the entry
+      { value: 'market buy', entryValue: 'Market buy', action: 'buy', count: 4, firstLine: 2 },
+      // a value the mapping does not list is skipped
+      { value: 'Dividend', entryValue: 'Dividend', action: 'skip', count: 1, firstLine: 12 },
+    ]);
+  });
+
+  it('leaves out what the mapping knows and the file does not once the file was counted', () => {
+    const rows = typeValueRows(entries, [
+      { value: 'Market buy', count: 3, firstLine: 2, suggested: 'buy' },
+    ]);
+    expect(rows.map((r) => r.value)).toEqual(['Market buy']);
+  });
+
+  it('is the mapping itself, without counts, for a column that was not counted', () => {
+    const rows = typeValueRows(entries, undefined);
+    expect(rows.map((r) => r.value)).toEqual(['Market buy', 'Limit buy', 'Market sell', 'Deposit']);
+    expect(rows.every((r) => r.count === null && r.firstLine === null)).toBe(true);
+    expect(rows[2]).toMatchObject({ entryValue: 'Market sell', action: 'sell' });
+    expect(typeValueRows(entries, [])).toHaveLength(4);
+    expect(typeValueRows([], undefined)).toEqual([]);
   });
 });
 
@@ -761,51 +814,26 @@ describe('date formats', () => {
 });
 
 describe('summarizePreview', () => {
-  const row = (line: number, status: StockPreviewRow['status']): StockPreviewRow => ({
-    line,
-    day: 1_700_000_000,
-    direction: 'buy',
-    instrumentKey: 'symbol:AAPL',
-    ticker: 'AAPL',
-    quantity: '1',
-    price: '1',
-    currency: 'USD',
-    status,
-    message: null,
-  });
-  const preview = (
-    rows: StockPreviewRow[],
-    counts: Partial<StockImportPreview['counts']> = {}
-  ): StockImportPreview => ({
-    instruments: [],
-    rows,
+  const preview = (counts: Partial<StockImportPreview['counts']> = {}) => ({
     counts: { total: 10, willImport: 6, duplicates: 2, skipped: 1, errors: 1, ...counts },
-    dateRange: null,
-    hasFeeColumn: false,
   });
 
   it('passes the counts of the whole file through', () => {
-    expect(summarizePreview(preview([]), [])).toEqual({
+    expect(summarizePreview(preview())).toEqual({
       willImport: 6,
       duplicates: 2,
       skipped: 1,
       errors: 1,
       total: 10,
-      forcedDuplicates: 0,
     });
   });
 
-  it('counts a forced duplicate once when the backend already turned it into a new row', () => {
-    const summary = summarizePreview(
-      preview([row(4, 'new'), row(5, 'duplicate')], { willImport: 7, duplicates: 1 }),
-      [4]
-    );
-    expect(summary).toMatchObject({ willImport: 7, duplicates: 1, forcedDuplicates: 0 });
-  });
-
-  it('moves a forced duplicate the backend still reports as one over to the rows to import', () => {
-    const summary = summarizePreview(preview([row(4, 'duplicate'), row(5, 'duplicate')]), [4, 99]);
-    expect(summary).toMatchObject({ willImport: 7, duplicates: 1, forcedDuplicates: 1 });
+  it('takes the backend at its word about duplicates imported anyway', () => {
+    // 7 to import = 6 new + 1 duplicate ticked; the duplicate is no longer counted as left out
+    expect(summarizePreview(preview({ willImport: 7, duplicates: 1 }))).toMatchObject({
+      willImport: 7,
+      duplicates: 1,
+    });
   });
 
   it('counts the instruments that still need a symbol', () => {
@@ -892,46 +920,12 @@ describe('lookups on Yahoo Finance', () => {
     expect(needsLookup(instrument({ status: 'skipped' }))).toBe(false);
   });
 
-  describe('chooseCandidate', () => {
-    const asml = [
-      candidate('ASML', 'USD'),
-      candidate('ASML.AS', 'EUR'),
-      candidate('ASML.MI', 'EUR'),
-    ];
-
-    it('prefers the listing in the trade currency over the same symbol in another currency', () => {
-      expect(chooseCandidate(resolution(asml), 'EUR', 'ASML')?.symbol).toBe('ASML.AS');
-    });
-
-    it('prefers the exact symbol among the listings in the trade currency', () => {
-      const list = [
-        candidate('IWDA.L', 'EUR'),
-        candidate('IWDA', 'EUR'),
-        candidate('IWDA.AS', 'EUR'),
-      ];
-      expect(chooseCandidate(resolution(list), 'eur', 'iwda')?.symbol).toBe('IWDA');
-    });
-
-    it('takes the exact symbol, then the backend pick, when the trade currency is unknown', () => {
-      expect(chooseCandidate(resolution(asml), null, 'asml')?.symbol).toBe('ASML');
-      expect(
-        chooseCandidate(resolution(asml, { best: asml[2] }), null, 'something-else')?.symbol
-      ).toBe('ASML.MI');
-      expect(chooseCandidate(resolution(asml, { best: null }), null, null)?.symbol).toBe('ASML');
-    });
-
-    it('falls back to the other listings when none trades in the currency', () => {
-      expect(chooseCandidate(resolution(asml), 'JPY', 'ASML')?.symbol).toBe('ASML');
-    });
-
-    it('has nothing to choose when Yahoo Finance knows nothing', () => {
-      expect(chooseCandidate(resolution([]), 'EUR', 'X')).toBeNull();
-      const best = candidate('Y', 'EUR');
-      expect(chooseCandidate({ candidates: [], best }, 'EUR', 'X')).toBe(best);
-    });
-  });
-
   describe('autoOverrideFor', () => {
+    const chosen = (symbol: string, currency: string, name = `${symbol} Inc.`) => {
+      const best = candidate(symbol, currency, { name });
+      return resolution([candidate('OTHER', 'USD'), best], { best });
+    };
+
     it('sets the symbol of an instrument that has none', () => {
       const result = autoOverrideFor(
         instrument({
@@ -941,15 +935,15 @@ describe('lookups on Yahoo Finance', () => {
           status: 'missingSymbol',
           currency: 'EUR',
         }),
-        resolution([candidate('ASML.AS', 'EUR', { name: '' })], { key: 'isin:X' })
+        { ...chosen('ASML.AS', 'EUR', ''), key: 'isin:X' }
       );
       expect(result).toEqual({ key: 'isin:X', ticker: 'ASML.AS' });
     });
 
-    it('replaces the file symbol with the listing in the trade currency', () => {
+    it('replaces the file symbol with the listing the backend chose', () => {
       const result = autoOverrideFor(
         instrument({ symbol: 'ASML', ticker: 'ASML', currency: 'EUR', name: 'ASML' }),
-        resolution([candidate('ASML', 'USD'), candidate('ASML.AS', 'EUR')])
+        chosen('ASML.AS', 'EUR')
       );
       expect(result).toEqual({ key: 'symbol:AAPL', ticker: 'ASML.AS' });
     });
@@ -957,22 +951,20 @@ describe('lookups on Yahoo Finance', () => {
     it('fills in the name when the file has none', () => {
       const result = autoOverrideFor(
         instrument({ name: null }),
-        resolution([candidate('AAPL', 'USD', { name: ' Apple Inc. ' })])
+        chosen('AAPL', 'USD', ' Apple Inc. ')
       );
       expect(result).toEqual({ key: 'symbol:AAPL', name: 'Apple Inc.' });
     });
 
     it('changes nothing when the symbol is already right and the file names it', () => {
-      expect(
-        autoOverrideFor(instrument({ name: 'Apple' }), resolution([candidate('aapl', 'USD')]))
-      ).toBeNull();
+      expect(autoOverrideFor(instrument({ name: 'Apple' }), chosen('aapl', 'USD'))).toBeNull();
     });
 
     it('leaves a listing whose symbol the backend would reject to the user', () => {
       expect(
         autoOverrideFor(
           instrument({ ticker: null, symbol: null, status: 'missingSymbol' }),
-          resolution([candidate('BAD SYMBOL', 'USD')])
+          chosen('BAD SYMBOL', 'USD')
         )
       ).toBeNull();
     });

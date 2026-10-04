@@ -20,7 +20,7 @@ import type {
   StockInstrumentResolution,
 } from '@shared/schema';
 import { InstrumentEditor, type InstrumentEdit } from './InstrumentEditor';
-import { instrumentCheck, type InstrumentCheck } from './import-config';
+import { instrumentCheck, needsLookup, type InstrumentCheck } from './import-config';
 import type { LookupProgress } from './instrument-lookup';
 
 interface InstrumentsPanelProps {
@@ -31,8 +31,8 @@ interface InstrumentsPanelProps {
   isResolving: boolean;
   /** Stop waiting for Yahoo Finance; what is left stays unverified. */
   onSkipVerification: () => void;
-  /** The currency of the trades comes from the listing, so it can be edited. */
-  currencyEditable: boolean;
+  /** Look the instruments again that Yahoo Finance did not answer for. */
+  onRetryVerification: () => void;
   /** Exclude (or include again) every trade of an instrument. */
   onToggleSkip: (instrument: StockImportInstrument, skip: boolean) => void;
   onEdit: (instrument: StockImportInstrument, edit: InstrumentEdit) => void;
@@ -54,7 +54,7 @@ export function InstrumentsPanel({
   progress,
   isResolving,
   onSkipVerification,
-  currencyEditable,
+  onRetryVerification,
   onToggleSkip,
   onEdit,
   isUpdating,
@@ -71,6 +71,10 @@ export function InstrumentsPanel({
     ])
   );
   const missing = instruments.filter((i) => i.status === 'missingSymbol').length;
+  // Instruments Yahoo Finance did not answer for (offline, rate limit): worth asking again.
+  const answerless = instruments.filter(
+    (i) => needsLookup(i) && checks.get(i.key)?.state === 'failed'
+  ).length;
   const unverified = instruments.filter((i) => {
     const state = checks.get(i.key)?.state;
     return (
@@ -140,7 +144,6 @@ export function InstrumentsPanel({
                     skipped={skipped}
                     editing={editing}
                     candidates={resolution?.candidates ?? []}
-                    currencyEditable={currencyEditable}
                     onEdit={() => setEditingKey(instrument.key)}
                     onCancelEdit={() => setEditingKey(null)}
                     onApply={(edit) => {
@@ -162,9 +165,22 @@ export function InstrumentsPanel({
           {t('importWizard.review.instruments.missingHint', { count: missing })}
         </p>
       )}
-      {unverified > 0 && !isResolving && (
-        <p className="mb-0 mt-2 text-micro font-500 text-ink-4">
-          {t('importWizard.review.instruments.unverifiedHint', { count: unverified })}
+      {(unverified > 0 || answerless > 0) && !isResolving && (
+        <p className="mb-0 mt-2 flex flex-wrap items-baseline gap-x-3 text-micro font-500 text-ink-4">
+          {unverified > 0 && (
+            <span>
+              {t('importWizard.review.instruments.unverifiedHint', { count: unverified })}
+            </span>
+          )}
+          {answerless > 0 && (
+            <button
+              type="button"
+              className="font-600 text-ink-3 underline underline-offset-[3px] hover:text-ink"
+              onClick={onRetryVerification}
+            >
+              {t('importWizard.review.instruments.retry')}
+            </button>
+          )}
         </p>
       )}
     </section>
@@ -179,7 +195,6 @@ interface InstrumentRowsProps {
   skipped: boolean;
   editing: boolean;
   candidates: StockInstrumentResolution['candidates'];
-  currencyEditable: boolean;
   onEdit: () => void;
   onCancelEdit: () => void;
   onApply: (edit: InstrumentEdit) => void;
@@ -195,7 +210,6 @@ function InstrumentRows({
   skipped,
   editing,
   candidates,
-  currencyEditable,
   onEdit,
   onCancelEdit,
   onApply,
@@ -282,7 +296,6 @@ function InstrumentRows({
               instrument={instrument}
               name={name}
               candidates={candidates}
-              currencyEditable={currencyEditable}
               onApply={onApply}
               onCancel={onCancelEdit}
             />

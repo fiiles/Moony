@@ -107,6 +107,18 @@ export function createInstrumentLookup(options: InstrumentLookupOptions) {
       });
   };
 
+  /** Ask again about the instruments Yahoo Finance did not answer for (offline, rate limit). */
+  const retryFailed = (instruments: readonly StockImportInstrument[]) => {
+    const failed = instruments.filter((i) => resolutions[i.key]?.lookupFailed === true);
+    if (failed.length === 0) return;
+    for (const instrument of failed) {
+      asked.delete(instrument.key);
+      answered.delete(instrument.key);
+      delete resolutions[instrument.key];
+    }
+    enqueue(failed);
+  };
+
   /** Stop waiting: what has no answer yet stays unverified. */
   const skip = () => {
     generation += 1;
@@ -146,7 +158,15 @@ export function createInstrumentLookup(options: InstrumentLookupOptions) {
     store([answer?.key === query.key ? answer : unanswered(query.key)]);
   };
 
-  return { enqueue, skip, reset, remember, verify, hasAsked: (key: string) => asked.has(key) };
+  return {
+    enqueue,
+    retryFailed,
+    skip,
+    reset,
+    remember,
+    verify,
+    hasAsked: (key: string) => asked.has(key),
+  };
 }
 
 export type InstrumentLookup = ReturnType<typeof createInstrumentLookup>;

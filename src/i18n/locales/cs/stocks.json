@@ -483,8 +483,7 @@
     },
     "mismatch": {
       "other": "Vybrali jste {{chosen}}, soubor ale vypadá jako {{detected}}. Použili jsme mapování pro {{detected}}.",
-      "unknown": "Soubor neodpovídá formátu {{chosen}}. Sloupce přiřaďte ručně.",
-      "useChosen": "Použít {{chosen}} přesto"
+      "unknown": "Soubor neodpovídá formátu {{chosen}}. Sloupce přiřaďte ručně."
     },
     "mapping": {
       "selectColumn": "Vyberte sloupec",
@@ -581,7 +580,8 @@
       "statusNew": "Nový",
       "statusSkipped": "Přeskočeno",
       "statusError": "Chyba",
-      "duplicateImportAnyway": "duplicita · importovat i tak",
+      "statusDuplicate": "Duplicita",
+      "duplicateImportAnyway": "importovat i tak",
       "instruments": {
         "title": "Cenné papíry",
         "security": "Cenný papír",
@@ -591,6 +591,7 @@
         "actions": "Akce",
         "progress": "Ověřuji na Yahoo Finance… {{done}} z {{total}}",
         "skipVerification": "Přeskočit ověřování",
+        "retry": "Ověřit znovu",
         "checking": "Ověřuji…",
         "inFile": "v souboru {{symbol}}",
         "edit": "Upravit",
@@ -730,6 +731,8 @@
       "numberUnparseable": "Číslo se nepodařilo přečíst",
       "commentUnparseable": "Komentář se nepodařilo přečíst",
       "symbolMissing": "Chybí symbol",
+      "symbolMissingIsin": "Chybí symbol a ISIN „{{detail}}“ není platný",
+      "tickerInvalid": "Neplatný symbol",
       "currencyMissing": "Chybí měna",
       "currencyInvalid": "Neplatná měna",
       "priceMissing": "Chybí cena",
@@ -737,7 +740,10 @@
       "sellExceedsHoldingsHeld": "Prodej přesahuje držbu k tomuto dni (držíte {{detail}} ks)",
       "currencyMismatch": "Měna se liší od měny pozice",
       "currencyMismatchPosition": "Měna se liší od měny pozice ({{detail}})",
-      "duplicate": "Stejný obchod už v Moony je"
+      "duplicate": "Stejný obchod už v Moony je",
+      "duplicateById": "Obchod se stejným ID u brokera už v Moony je",
+      "cannotParse": "Řádek se nepodařilo přečíst",
+      "writeFailed": "Obchod se nepodařilo zapsat"
     }
   },
   "eyebrow": "Portfolio",

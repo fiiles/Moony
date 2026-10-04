@@ -29,6 +29,7 @@ import type {
   StockRowStatus,
   StockTypeValueAction,
   StockTypeValueMapping,
+  StockTypeValueStat,
 } from '@shared/schema';
 
 /** Radix `Select` cannot hold an empty value, so "no column" is a sentinel. */
@@ -99,17 +100,11 @@ export type SourceMismatch = 'none' | 'other' | 'unknown';
 /**
  * Whether the file contradicts the source the user picked on step 1: `other`
  * when its headers belong to another known source or saved format, `unknown`
- * when they belong to none. Nothing is claimed when the user picked nothing,
- * "Jiný broker" (anything goes), or insisted on the source.
+ * when they belong to none. Nothing is claimed when the user picked nothing or
+ * "Jiný broker" (anything goes).
  */
-export function sourceMismatch(
-  chosen: string | null,
-  forced: string | null,
-  detected: string | null
-): SourceMismatch {
-  if (chosen == null || chosen === 'custom' || forced === chosen || detected === chosen) {
-    return 'none';
-  }
+export function sourceMismatch(chosen: string | null, detected: string | null): SourceMismatch {
+  if (chosen == null || chosen === 'custom' || detected === chosen) return 'none';
   return detected != null ? 'other' : 'unknown';
 }
 
@@ -493,18 +488,73 @@ function normalizeTypeValue(value: string): string {
 }
 
 /**
- * The meaning of a type value; a value that is not listed is skipped. The
- * value as it is written in the file wins, a listing of the same word in
- * another spelling ("Buy" for "buy", "Nákup" for "nakup") is the fallback.
+ * The entry of the mapping that decides a type value: the value as it is
+ * written in the file wins, a listing of the same word in another spelling
+ * ("Buy" for "buy", "Nákup" for "nakup") is the fallback (the parser reads it
+ * the same way: exactly first, then by folded text).
  */
+export function findTypeValue(
+  typeValues: readonly StockTypeValueMapping[],
+  value: string
+): StockTypeValueMapping | undefined {
+  const exact = typeValues.find((entry) => entry.value === value);
+  if (exact) return exact;
+  const wanted = normalizeTypeValue(value);
+  return typeValues.find((entry) => normalizeTypeValue(entry.value) === wanted);
+}
+
+/** The meaning of a type value; a value that is not listed is skipped. */
 export function typeValueAction(
   typeValues: readonly StockTypeValueMapping[],
   value: string
 ): StockTypeValueAction {
-  const exact = typeValues.find((entry) => entry.value === value);
-  if (exact) return exact.action;
-  const wanted = normalizeTypeValue(value);
-  return typeValues.find((entry) => normalizeTypeValue(entry.value) === wanted)?.action ?? 'skip';
+  return findTypeValue(typeValues, value)?.action ?? 'skip';
+}
+
+/** One line of the type value table. */
+export interface TypeValueRow {
+  /** The value as the file writes it (or, without counts, as the mapping lists it). */
+  value: string;
+  /** The entry of the mapping this line reads from and changes: its own spelling. */
+  entryValue: string;
+  action: StockTypeValueAction;
+  /** Rows of the file with this value; null when the file was not counted for the column. */
+  count: number | null;
+  /** 1-based file line of the first of them. */
+  firstLine: number | null;
+}
+
+/**
+ * The lines of the type value table. The mapping (`config.typeValues`) is
+ * complete — every value of the column in the file, up to 200 — but also lists
+ * the values a broker's adapter knows that this file lacks. Where the
+ * inspection counted the column (at most 30 distinct values) those counts say
+ * what is really in the file, most frequent first; for a column with more
+ * values the mapping itself is the table, without counts.
+ */
+export function typeValueRows(
+  typeValues: readonly StockTypeValueMapping[],
+  stats: readonly StockTypeValueStat[] | undefined
+): TypeValueRow[] {
+  if (!stats || stats.length === 0) {
+    return typeValues.map((entry) => ({
+      value: entry.value,
+      entryValue: entry.value,
+      action: entry.action,
+      count: null,
+      firstLine: null,
+    }));
+  }
+  return stats.map((stat) => {
+    const entry = findTypeValue(typeValues, stat.value);
+    return {
+      value: stat.value,
+      entryValue: entry?.value ?? stat.value,
+      action: entry?.action ?? 'skip',
+      count: stat.count,
+      firstLine: stat.firstLine,
+    };
+  });
 }
 
 /** `typeValues` with one value set to a meaning. */
@@ -581,9 +631,9 @@ export function summarizeMapping(
 }
 
 /**
- * The values of the type column in the file, grouped by what they mean
- * ("Market buy, Limit buy → Nákup"). Values the file does not contain are left
- * out; those it has but the mapping does not list are skipped.
+ * The values of the type column, grouped by what they mean ("Market buy, Limit
+ * buy → Nákup"): those the file has where the file was counted, else all the
+ * mapping lists.
  */
 export function groupTypeValues(
   mapping: MappingState,
@@ -592,8 +642,9 @@ export function groupTypeValues(
   const groups: Record<StockTypeValueAction, string[]> = { buy: [], sell: [], skip: [] };
   if (mapping.directionMode !== 'typeColumn' || mapping.typeColumn == null) return groups;
   const stats = inspection.columnValues.find((entry) => entry.column === mapping.typeColumn);
-  const values = stats ? stats.values.map((v) => v.value) : mapping.typeValues.map((v) => v.value);
-  for (const value of values) groups[typeValueAction(mapping.typeValues, value)].push(value);
+  for (const row of typeValueRows(mapping.typeValues, stats?.values)) {
+    groups[row.action].push(row.value);
+  }
   return groups;
 }
 
@@ -671,39 +722,28 @@ export function isDateFormatGuess(
 // ── Preview ─────────────────────────────────────────────────────────────────
 
 export interface PreviewSummary {
-  /** Rows that will be written, forced duplicates included. */
+  /** Rows that will be written, duplicates the user chose to import anyway included. */
   willImport: number;
+  /** Duplicates that are left out. */
   duplicates: number;
   skipped: number;
   errors: number;
   total: number;
-  /** Duplicates the user chose to import anyway. */
-  forcedDuplicates: number;
 }
 
 /**
- * Counts for the strip above the review table. Whether the backend turns a
- * forced duplicate into a `new` row or keeps it a `duplicate`, the user's ticks
- * end up counted once: the ones still reported as duplicates are moved over
- * here. Only the first 200 rows are listed — and so tickable — which makes
- * counting them in `rows` exact.
+ * Counts for the strip above the review table: those of the whole file, as the
+ * backend counts them. A duplicate the user ticked to import anyway stays a
+ * `duplicate` row but is counted in `willImport`, not in `duplicates`.
  */
-export function summarizePreview(
-  preview: StockImportPreview,
-  importAnywayLines: readonly number[]
-): PreviewSummary {
-  const forced = new Set(importAnywayLines);
-  const stillDuplicate = preview.rows.filter(
-    (row) => row.status === 'duplicate' && forced.has(row.line)
-  ).length;
+export function summarizePreview(preview: Pick<StockImportPreview, 'counts'>): PreviewSummary {
   const { counts } = preview;
   return {
-    willImport: counts.willImport + stillDuplicate,
-    duplicates: Math.max(0, counts.duplicates - stillDuplicate),
+    willImport: counts.willImport,
+    duplicates: counts.duplicates,
     skipped: counts.skipped,
     errors: counts.errors,
     total: counts.total,
-    forcedDuplicates: stillDuplicate,
   };
 }
 
@@ -770,38 +810,17 @@ export function needsLookup(instrument: StockImportInstrument): boolean {
 }
 
 /**
- * The listing to use for an instrument. The trade currency decides before the
- * symbol does: a broker's `ASML` in euro is the Amsterdam listing, not the
- * Nasdaq one that happens to share the symbol. Without a trade currency the
- * exact symbol wins, then the backend's pick, then the first result.
- */
-export function chooseCandidate(
-  resolution: Pick<StockInstrumentResolution, 'candidates' | 'best'>,
-  tradeCurrency: string | null,
-  symbol: string | null
-): StockInstrumentCandidate | null {
-  const { candidates, best } = resolution;
-  if (candidates.length === 0) return best;
-  if (tradeCurrency) {
-    const inCurrency = candidates.filter((c) => sameSymbol(c.currency, tradeCurrency));
-    const exact = inCurrency.find((c) => sameSymbol(c.symbol, symbol));
-    if (exact) return exact;
-    if (inCurrency.length > 0) return inCurrency[0];
-  }
-  return candidates.find((c) => sameSymbol(c.symbol, symbol)) ?? best ?? candidates[0];
-}
-
-/**
- * The override a found listing implies: its symbol when that is not the one the
- * trades would be stored under, its name when the file has none. Null when
- * there is nothing to change.
+ * The override the listing the backend chose (`best`: the exact symbol in the
+ * trade currency, else any listing in it, else the exact symbol, else the first)
+ * implies: its symbol when that is not the one the trades would be stored under,
+ * its name when the file has none. Null when there is nothing to change.
  */
 export function autoOverrideFor(
   instrument: StockImportInstrument,
   resolution: StockInstrumentResolution
 ): StockInstrumentOverride | null {
   if (resolution.lookupFailed) return null;
-  const candidate = chooseCandidate(resolution, instrument.currency, instrument.symbol);
+  const candidate = resolution.best;
   // A symbol the backend would reject makes the whole preview fail: leave it to the user.
   if (!candidate || !isValidTicker(candidate.symbol)) return null;
   const override: StockInstrumentOverride = { key: instrument.key };

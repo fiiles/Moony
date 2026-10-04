@@ -35,8 +35,6 @@ interface InstrumentEditorProps {
   name: string;
   /** Listings Yahoo Finance offered for this instrument, to pick from without typing. */
   candidates: readonly StockInstrumentCandidate[];
-  /** The currency of the trades comes from the listing, so it can be set here. */
-  currencyEditable: boolean;
   onApply: (edit: InstrumentEdit) => void;
   onCancel: () => void;
 }
@@ -51,7 +49,6 @@ export function InstrumentEditor({
   instrument,
   name,
   candidates,
-  currencyEditable,
   onApply,
   onCancel,
 }: InstrumentEditorProps) {
@@ -94,7 +91,7 @@ export function InstrumentEditor({
   const tickerValid = isValidTicker(ticker);
   // An empty field is not an error yet, only a reason the button waits.
   const tickerInvalid = ticker.trim() !== '' && !tickerValid;
-  const currencyValid = !currencyEditable || currency == null || isCurrencyCode(currency);
+  const currencyValid = currency == null || isCurrencyCode(currency);
   const canApply = tickerValid && currencyValid;
 
   const typeSearch = (value: string) => {
@@ -106,7 +103,7 @@ export function InstrumentEditor({
   const pick = (candidate: StockInstrumentCandidate) => {
     setTicker(candidate.symbol);
     setTypedName(candidate.name);
-    if (currencyEditable) setCurrency(candidate.currency);
+    setCurrency(candidate.currency);
     setPicked(candidate);
     setSearchText('');
     setListOpen(false);
@@ -117,7 +114,8 @@ export function InstrumentEditor({
     onApply({
       ticker: normalizeTicker(ticker),
       name: typedName,
-      currency: currencyEditable ? currency : null,
+      // Only a change of the currency is an override: the file's own stays as it is.
+      currency: currency && currency !== instrument.currency ? currency : null,
       picked,
     });
   };
@@ -126,13 +124,7 @@ export function InstrumentEditor({
 
   return (
     <div className="rounded-r3 border border-line bg-paper px-4 py-3.5">
-      <div
-        className={
-          currencyEditable
-            ? 'grid grid-cols-[1fr_1.4fr_1fr] gap-3'
-            : 'grid grid-cols-[1fr_1.4fr] gap-3'
-        }
-      >
+      <div className="grid grid-cols-[1fr_1.4fr_1fr] gap-3">
         <div className="grid gap-1.5">
           <Label htmlFor={`edit-symbol-${instrument.key}`}>{t('importWizard.roles.symbol')}</Label>
           <InputWrap
@@ -179,17 +171,15 @@ export function InstrumentEditor({
             }}
           />
         </div>
-        {currencyEditable && (
-          <div className="grid gap-1.5">
-            <Label>{t('importWizard.roles.currency')}</Label>
-            <CurrencyCombobox
-              value={currency && isCurrencyCode(currency) ? currency : ''}
-              onChange={setCurrency}
-              showName={false}
-              aria-label={t('importWizard.roles.currency')}
-            />
-          </div>
-        )}
+        <div className="grid gap-1.5">
+          <Label>{t('importWizard.roles.currency')}</Label>
+          <CurrencyCombobox
+            value={currency && isCurrencyCode(currency) ? currency : ''}
+            onChange={setCurrency}
+            showName={false}
+            aria-label={t('importWizard.roles.currency')}
+          />
+        </div>
       </div>
 
       {showList && (

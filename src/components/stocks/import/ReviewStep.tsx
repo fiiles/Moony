@@ -43,8 +43,8 @@ interface ReviewStepProps {
   progress: LookupProgress;
   isResolving: boolean;
   onSkipVerification: () => void;
-  /** The currency of the trades comes from the listing, so it can be edited. */
-  currencyEditable: boolean;
+  /** Look the instruments again that Yahoo Finance did not answer for. */
+  onRetryVerification: () => void;
   onToggleSkip: (instrument: StockImportInstrument, skip: boolean) => void;
   onEditInstrument: (instrument: StockImportInstrument, edit: InstrumentEdit) => void;
 }
@@ -73,7 +73,7 @@ export function ReviewStep({
   progress,
   isResolving,
   onSkipVerification,
-  currencyEditable,
+  onRetryVerification,
   onToggleSkip,
   onEditInstrument,
 }: ReviewStepProps) {
@@ -112,24 +112,30 @@ export function ReviewStep({
     );
   }
 
-  const summary = summarizePreview(preview, importAnywayLines);
+  const summary = summarizePreview(preview);
   const rows = showAll ? preview.rows : preview.rows.slice(0, PREVIEW_COLLAPSED_ROWS);
   const context = { t, tc, locale };
 
   const statusCell = (row: StockPreviewRow) => {
-    // A duplicate the user ticked stays tickable: the backend may already call it new.
-    if (row.status === 'duplicate' || (row.status === 'new' && forced.has(row.line))) {
+    const message = row.message ? rowMessageText(row.message, context) : null;
+    // A duplicate stays a duplicate when the user ticks it; the reason stays under the tick.
+    if (row.status === 'duplicate') {
       return (
-        <label className="flex cursor-pointer items-center gap-2 text-micro font-500 text-ink-3">
-          <Checkbox
-            checked={forced.has(row.line)}
-            onCheckedChange={(checked) => onToggleImportAnyway(row.line, checked === true)}
-          />
-          {t('importWizard.review.duplicateImportAnyway')}
-        </label>
+        <span className="flex flex-col items-start gap-1">
+          <span className="flex items-center gap-2">
+            <Badge>{t('importWizard.review.statusDuplicate')}</Badge>
+            <label className="flex cursor-pointer items-center gap-1.5 text-micro font-500 text-ink-3">
+              <Checkbox
+                checked={forced.has(row.line)}
+                onCheckedChange={(checked) => onToggleImportAnyway(row.line, checked === true)}
+              />
+              {t('importWizard.review.duplicateImportAnyway')}
+            </label>
+          </span>
+          {message && <span className="text-micro text-ink-4">{message}</span>}
+        </span>
       );
     }
-    const message = row.message ? rowMessageText(row.message, context) : null;
     switch (row.status) {
       case 'new':
         return <Badge variant="gain">{t('importWizard.review.statusNew')}</Badge>;
@@ -193,7 +199,7 @@ export function ReviewStep({
         progress={progress}
         isResolving={isResolving}
         onSkipVerification={onSkipVerification}
-        currencyEditable={currencyEditable}
+        onRetryVerification={onRetryVerification}
         onToggleSkip={onToggleSkip}
         onEdit={onEditInstrument}
         isUpdating={isUpdating}

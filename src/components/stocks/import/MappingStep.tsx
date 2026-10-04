@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FileText, TriangleAlert } from 'lucide-react';
-import { Alert, AlertActions } from '@/components/ui/alert';
+import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { fileNameFromPath } from '@/components/bank-accounts/csv-import/import-config';
@@ -42,10 +42,6 @@ interface MappingStepProps {
   isInspecting: boolean;
   /** The source the user picked on step 1, if they picked one. */
   chosenSource: string | null;
-  /** The source the user insisted on after a mismatch. */
-  forcedSource: string | null;
-  /** Read the file as this source whatever its headers say. */
-  onForceSource: (source: string) => void;
   formats: readonly SavedStockImportFormat[];
   /** The full form is open (otherwise a known source shows its summary). */
   editing: boolean;
@@ -72,8 +68,6 @@ export function MappingStep({
   inspectRevision,
   isInspecting,
   chosenSource,
-  forcedSource,
-  onForceSource,
   formats,
   editing,
   onEditingChange,
@@ -96,7 +90,7 @@ export function MappingStep({
   const mapped = useMemo(() => mappedColumns(mapping), [mapping]);
 
   const detected = inspection.detectedSource;
-  const mismatch = sourceMismatch(chosenSource, forcedSource, detected);
+  const mismatch = sourceMismatch(chosenSource, detected);
   const summarize = !editing && inspection.config != null && detected != null;
 
   return (
@@ -136,19 +130,6 @@ export function MappingStep({
                 })
               : t('importWizard.mismatch.unknown', { chosen: sourceLabel(chosenSource) })}
           </p>
-          {mismatch === 'other' && (
-            <AlertActions>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                disabled={isInspecting}
-                onClick={() => onForceSource(chosenSource)}
-              >
-                {t('importWizard.mismatch.useChosen', { chosen: sourceLabel(chosenSource) })}
-              </Button>
-            </AlertActions>
-          )}
         </Alert>
       )}
 

@@ -107,8 +107,6 @@ export function StockImportDialog({ open, onOpenChange }: StockImportDialogProps
   // (an untouched default must not argue with what the file turns out to be).
   const [chosenSource, setChosenSource] = useState(DEFAULT_SOURCE);
   const [sourceTouched, setSourceTouched] = useState(false);
-  // The source the user insisted on after the file looked like another one.
-  const [forcedSource, setForcedSource] = useState<string | null>(null);
   // The full mapping form instead of the summary of a known source.
   const [editing, setEditing] = useState(false);
   const [remember, setRemember] = useState<RememberFormat>({ enabled: false, name: '' });
@@ -158,7 +156,7 @@ export function StockImportDialog({ open, onOpenChange }: StockImportDialogProps
     config,
     enabled: open && (step === 'mapping' || step === 'review'),
   });
-  const summary = preview ? summarizePreview(preview, importAnywayLines) : null;
+  const summary = preview ? summarizePreview(preview) : null;
 
   // What Yahoo Finance knows about the instruments is applied as soon as it arrives.
   const handleResolved = useCallback(
@@ -183,20 +181,19 @@ export function StockImportDialog({ open, onOpenChange }: StockImportDialogProps
 
   /**
    * Reads the file and (re)starts step 2 from what was found. `options` are the
-   * manual overrides the backend accepts: a source to force, the header line,
-   * the data rows to skip. Reading the same file again with another layout
-   * keeps the form the user has open and what they decided about remembering it.
+   * manual overrides the backend accepts: the header line and the data rows to
+   * skip. Reading the same file again with another layout keeps the form the
+   * user has open and what they decided about remembering it.
    */
   const inspectFile = async (
     path: string,
-    options: { source?: string; headerRow?: number; skipRows?: number } = {},
+    options: { headerRow?: number; skipRows?: number } = {},
     sameFile = false
   ) => {
     const requestId = ++inspectRequest.current;
     setIsInspecting(true);
     try {
       const inspected = await stockImportApi.inspect(path, {
-        source: options.source ?? null,
         headerRow: options.headerRow ?? null,
         skipRows: options.skipRows ?? null,
       });
@@ -205,8 +202,8 @@ export function StockImportDialog({ open, onOpenChange }: StockImportDialogProps
       setFilePath(path);
       setInspection(inspected);
       setMapping(mappingFromInspection(inspected));
-      setSkipRows(options.skipRows ?? 0);
-      setForcedSource(options.source ?? null);
+      // A remembered format brings the rows to skip it was saved with.
+      setSkipRows(options.skipRows ?? inspected.config?.skipRows ?? 0);
       if (!sameFile) {
         setEditing(false);
         // A file nothing recognised is a new format: remembering it is the default.
@@ -266,11 +263,7 @@ export function StockImportDialog({ open, onOpenChange }: StockImportDialogProps
   });
 
   const handleLayoutChange = (layout: { headerRow: number; skipRows: number }) => {
-    void inspectFile(filePath, { source: forcedSource ?? undefined, ...layout }, true);
-  };
-
-  const handleForceSource = (source: string) => {
-    void inspectFile(filePath, { source });
+    void inspectFile(filePath, layout, true);
   };
 
   const handleResetMapping = () => {
@@ -321,7 +314,6 @@ export function StockImportDialog({ open, onOpenChange }: StockImportDialogProps
     setInspection(null);
     setMapping(EMPTY_MAPPING);
     setSkipRows(0);
-    setForcedSource(null);
     setEditing(false);
     setRemember({ enabled: false, name: '' });
     setImportAnywayLines([]);
@@ -491,8 +483,6 @@ export function StockImportDialog({ open, onOpenChange }: StockImportDialogProps
                 inspectRevision={inspectRevision}
                 isInspecting={isInspecting}
                 chosenSource={sourceTouched ? chosenSource : null}
-                forcedSource={forcedSource}
-                onForceSource={handleForceSource}
                 formats={formats}
                 editing={editing}
                 onEditingChange={setEditing}
@@ -516,7 +506,7 @@ export function StockImportDialog({ open, onOpenChange }: StockImportDialogProps
                 progress={resolution.progress}
                 isResolving={resolution.isResolving}
                 onSkipVerification={resolution.skip}
-                currencyEditable={mapping.currencyMode === 'instrument'}
+                onRetryVerification={resolution.retry}
                 onToggleSkip={toggleInstrumentSkip}
                 onEditInstrument={editInstrument}
               />

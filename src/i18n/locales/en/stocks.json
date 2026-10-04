@@ -472,8 +472,7 @@
     },
     "mismatch": {
       "other": "You chose {{chosen}}, but the file looks like {{detected}}. We used the mapping for {{detected}}.",
-      "unknown": "The file does not match the {{chosen}} format. Assign the columns by hand.",
-      "useChosen": "Use {{chosen}} anyway"
+      "unknown": "The file does not match the {{chosen}} format. Assign the columns by hand."
     },
     "mapping": {
       "selectColumn": "Select column",
@@ -569,7 +568,8 @@
       "statusNew": "New",
       "statusSkipped": "Skipped",
       "statusError": "Error",
-      "duplicateImportAnyway": "duplicate · import anyway",
+      "statusDuplicate": "Duplicate",
+      "duplicateImportAnyway": "import anyway",
       "instruments": {
         "title": "Securities",
         "security": "Security",
@@ -579,6 +579,7 @@
         "actions": "Actions",
         "progress": "Checking on Yahoo Finance… {{done}} of {{total}}",
         "skipVerification": "Skip checking",
+        "retry": "Check again",
         "checking": "Checking…",
         "inFile": "in the file {{symbol}}",
         "edit": "Edit",
@@ -708,6 +709,8 @@
       "numberUnparseable": "The number could not be read",
       "commentUnparseable": "The comment could not be read",
       "symbolMissing": "Symbol missing",
+      "symbolMissingIsin": "Symbol missing, and the ISIN \"{{detail}}\" is not valid",
+      "tickerInvalid": "Invalid symbol",
       "currencyMissing": "Currency missing",
       "currencyInvalid": "Invalid currency",
       "priceMissing": "Price missing",
@@ -715,7 +718,10 @@
       "sellExceedsHoldingsHeld": "The sale exceeds the holding on that day ({{detail}} held)",
       "currencyMismatch": "The currency differs from the position's",
       "currencyMismatchPosition": "The currency differs from the position's ({{detail}})",
-      "duplicate": "The same trade is already in Moony"
+      "duplicate": "The same trade is already in Moony",
+      "duplicateById": "A trade with the same broker ID is already in Moony",
+      "cannotParse": "The row could not be read",
+      "writeFailed": "The trade could not be written"
     }
   },
   "eyebrow": "Portfolio",

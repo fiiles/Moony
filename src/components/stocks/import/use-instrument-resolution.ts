@@ -30,8 +30,10 @@ export function useInstrumentResolution({
 }: UseInstrumentResolutionOptions) {
   const [state, setState] = useState<LookupState>(EMPTY_LOOKUP_STATE);
   const onResolvedRef = useRef(onResolved);
+  const instrumentsRef = useRef(instruments);
   useEffect(() => {
     onResolvedRef.current = onResolved;
+    instrumentsRef.current = instruments;
   });
 
   const lookup = useMemo(
@@ -55,6 +57,7 @@ export function useInstrumentResolution({
     progress: state.progress,
     isResolving: state.progress.done < state.progress.total,
     skip: lookup.skip,
+    retry: () => lookup.retryFailed(instrumentsRef.current ?? []),
     reset: lookup.reset,
     remember: lookup.remember,
     verify: lookup.verify,

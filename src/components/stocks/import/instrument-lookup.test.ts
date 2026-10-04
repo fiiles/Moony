@@ -18,6 +18,13 @@ const instrument = (key: string): StockImportInstrument => ({
   positionCurrency: null,
 });
 
+const unansweredFor = (key: string): StockInstrumentResolution => ({
+  key,
+  candidates: [],
+  best: null,
+  lookupFailed: true,
+});
+
 const found = (key: string): StockInstrumentResolution => ({
   key,
   candidates: [{ symbol: key.replace('symbol:', ''), name: key, exchange: 'NMS', currency: 'USD' }],
@@ -174,6 +181,40 @@ describe('createInstrumentLookup', () => {
     await flush();
     expect(last().resolutions['symbol:B'].lookupFailed).toBe(false);
     expect(last().progress).toEqual({ done: 2, total: 2 });
+  });
+
+  it('asks again about the instruments Yahoo Finance did not answer for', async () => {
+    const { resolve, calls } = controlledResolver();
+    const lookup = make(resolve, 5);
+    const all = [instrument('symbol:A'), instrument('symbol:B'), instrument('symbol:C')];
+    lookup.enqueue(all);
+    await flush();
+    calls[0].settle([found('symbol:A'), unansweredFor('symbol:B'), unansweredFor('symbol:C')]);
+    await flush();
+    expect(last().resolutions['symbol:B'].lookupFailed).toBe(true);
+
+    lookup.retryFailed(all);
+    expect(last().progress).toEqual({ done: 1, total: 3 });
+    expect(last().resolutions['symbol:B']).toBeUndefined();
+    await flush();
+    expect(calls).toHaveLength(2);
+    expect(calls[1].queries.map((q) => q.key)).toEqual(['symbol:B', 'symbol:C']);
+    calls[1].settle([found('symbol:B'), found('symbol:C')]);
+    await flush();
+    expect(last().resolutions['symbol:B'].lookupFailed).toBe(false);
+    expect(last().progress).toEqual({ done: 3, total: 3 });
+  });
+
+  it('has nothing to retry when every answer came', async () => {
+    const { resolve, calls } = controlledResolver();
+    const lookup = make(resolve, 5);
+    lookup.enqueue([instrument('symbol:A')]);
+    await flush();
+    calls[0].settle([found('symbol:A')]);
+    await flush();
+    lookup.retryFailed([instrument('symbol:A')]);
+    await flush();
+    expect(calls).toHaveLength(1);
   });
 
   it('forgets everything on reset, answers still in flight included', async () => {

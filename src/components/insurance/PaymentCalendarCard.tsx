@@ -5,9 +5,9 @@ import { paymentCalendar, type InsuranceRow } from '@/utils/insurance';
 import { useCurrency } from '@/lib/currency';
 import { useFormat } from '@/lib/use-format';
 import { Badge } from '@/components/ui/badge';
-import { Card } from '@/components/ui/card';
 import { MoonyBarChart } from '@/components/charts/MoonyBarChart';
 import { ChartLegend } from '@/components/charts/ChartLegend';
+import { TrendCard, TREND_CHART_HEIGHT } from '@/components/charts/TrendCard';
 
 interface PaymentCalendarCardProps {
   rows: InsuranceRow[];
@@ -41,36 +41,13 @@ export function PaymentCalendarCard({ rows, today }: PaymentCalendarCardProps) {
   };
 
   return (
-    <Card className='relative mb-7 overflow-hidden px-[21px] pb-[14px] pt-5 after:pointer-events-none after:absolute after:-right-[100px] after:-top-[120px] after:h-[180px] after:w-[340px] after:rounded-full after:bg-hero-orb after:content-[""]'>
-      <div className="relative z-[1] flex items-center justify-between gap-6">
-        <div>
-          <h3 className="m-0 text-h3 text-ink">{t('calendar.title')}</h3>
-          <p className="mt-[5px] text-micro font-500 text-ink-4">{t('calendar.subtitle')}</p>
-        </div>
+    <TrendCard
+      title={t('calendar.title')}
+      subtitle={t('calendar.subtitle')}
+      aside={
         <Badge variant="outline">{t('calendar.total', { amount: formatCurrency(total) })}</Badge>
-      </div>
-      <MoonyBarChart
-        className="relative z-[1] -mx-1 mt-[14px]"
-        bars={months.map((m) => ({
-          label: monthLabel(m.month),
-          a: toDisplay(m.monthly),
-          b: toDisplay(m.other),
-        }))}
-        stacked
-        height={150}
-        names={[t('calendar.monthly'), t('calendar.other')]}
-        formatValue={(v) => fmt.money(v, currencyCode, { decimals: 0 })}
-        marks={months.flatMap((m, index) =>
-          m.anniversaries.map((r) => ({
-            index,
-            title: t('calendar.anniversary', { name: r.policy.policyName }),
-            lines: [
-              `${fmt.day(r.anniversary!)} · ${formatCurrency(r.yearlyCzk)} ${t('table.perYearShort')}`,
-            ],
-          }))
-        )}
-      />
-      <div className="relative z-[1]">
+      }
+      legend={
         <ChartLegend
           items={[
             { label: t('calendar.monthly'), swatch: { kind: 'block', color: 'var(--s1)' } },
@@ -85,7 +62,28 @@ export function PaymentCalendarCard({ rows, today }: PaymentCalendarCardProps) {
                 })
           }
         />
-      </div>
-    </Card>
+      }
+    >
+      <MoonyBarChart
+        bars={months.map((m) => ({
+          label: monthLabel(m.month),
+          a: toDisplay(m.monthly),
+          b: toDisplay(m.other),
+        }))}
+        stacked
+        height={TREND_CHART_HEIGHT}
+        names={[t('calendar.monthly'), t('calendar.other')]}
+        formatValue={(v) => fmt.money(v, currencyCode, { decimals: 0 })}
+        marks={months.flatMap((m, index) =>
+          m.anniversaries.map((r) => ({
+            index,
+            title: t('calendar.anniversary', { name: r.policy.policyName }),
+            lines: [
+              `${fmt.day(r.anniversary!)} · ${formatCurrency(r.yearlyCzk)} ${t('table.perYearShort')}`,
+            ],
+          }))
+        )}
+      />
+    </TrendCard>
   );
 }

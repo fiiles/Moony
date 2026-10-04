@@ -81,7 +81,7 @@ pub fn quote_unit(reported: Option<&str>, ticker: &str) -> QuoteUnit {
     };
     // `GBp` is the only code that needs its case: `GBP` is a currency of its own. `GBX`, `ZAC`
     // and `ILA` are not ISO codes in any spelling, so they are read in any case.
-    if code == "GBp" || code.eq_ignore_ascii_case("GBX") {
+    if is_pence(code) {
         hundredth("GBP")
     } else if code.eq_ignore_ascii_case("ZAc") {
         hundredth("ZAR")
@@ -93,6 +93,17 @@ pub fn quote_unit(reported: Option<&str>, ticker: &str) -> QuoteUnit {
             scale: 1.0,
         }
     }
+}
+
+/// Whether a currency code means pence: `GBp` (exactly) or `GBX` in any case. `GBP` is pounds.
+pub fn is_pence(code: &str) -> bool {
+    code == "GBp" || code.eq_ignore_ascii_case("GBX")
+}
+
+/// A price in pence as a price in pounds. Rounded to ten decimals, so 4912.35 pence are
+/// 49.1235 pounds, not 49.12350000000001.
+pub fn pence_to_pounds(pence: f64) -> f64 {
+    (pence / 100.0 * DECIMALS_FACTOR).round() / DECIMALS_FACTOR
 }
 
 /// Whether history stored before a refresh was written in another unit than the refresh's.
@@ -245,6 +256,28 @@ mod tests {
         assert_eq!(pence.price_text(12.0), "12.00");
         assert_eq!(pence.price_text(0.000525), "0.000525");
         assert_eq!(pence.price_text(0.115), "0.115");
+    }
+
+    // ---- pence in the stock import ----------------------------------------------------
+
+    #[test]
+    fn only_gbp_in_lower_case_p_and_gbx_are_pence() {
+        for code in ["GBp", "GBX", "GBx", "gbx", "gBX"] {
+            assert!(is_pence(code), "{code}");
+        }
+        for code in ["GBP", "gbp", "Gbp", "USD", "ZAc", "ILA", "", "GB", "GBXX"] {
+            assert!(!is_pence(code), "{code:?}");
+        }
+    }
+
+    #[test]
+    fn pence_become_pounds_rounded_to_ten_decimals() {
+        assert_eq!(pence_to_pounds(4912.35), 49.1235);
+        assert_eq!(pence_to_pounds(443.65), 4.4365);
+        assert_eq!(pence_to_pounds(68.52), 0.6852);
+        assert_eq!(pence_to_pounds(100.0), 1.0);
+        assert_eq!(pence_to_pounds(0.5), 0.005);
+        assert_eq!(pence_to_pounds(4912.35).to_string(), "49.1235");
     }
 
     // ---- unit_changed ------------------------------------------------------------------

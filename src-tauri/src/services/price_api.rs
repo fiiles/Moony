@@ -42,6 +42,17 @@ fn unit_of(response: &YResponse, ticker: &str) -> QuoteUnit {
     quote_unit(reported.as_deref(), ticker)
 }
 
+/// The currency a chart response reports for its prices, as it came (`GBp`, `USD`), trimmed;
+/// `None` when it names none.
+fn reported_currency(response: &YResponse) -> Option<String> {
+    response
+        .metadata()
+        .ok()
+        .and_then(|meta| meta.currency)
+        .map(|code| code.trim().to_string())
+        .filter(|code| !code.is_empty())
+}
+
 /// What a 1d chart response says about the latest price, in the quote's own unit.
 #[derive(Debug, PartialEq)]
 struct ChartQuote {
@@ -73,14 +84,10 @@ fn read_chart_quote(response: &YResponse) -> Option<ChartQuote> {
         .as_ref()
         .and_then(|m| m.previous_close.or(m.chart_previous_close))
         .filter(|&p| p > 0.0);
-    let currency = meta
-        .and_then(|m| m.currency)
-        .map(|code| code.trim().to_string())
-        .filter(|code| !code.is_empty());
     Some(ChartQuote {
         price,
         previous_close,
-        currency,
+        currency: reported_currency(response),
     })
 }
 
@@ -1398,6 +1405,25 @@ pub async fn refresh_stock_metadata_yahoo(
 }
 
 // ============================================================================
+// Quote Currency Lookup (stock import)
+// ============================================================================
+
+/// The currency Yahoo reports for a ticker's quote, as it came (`GBp` for pence, `USD` for a
+/// dollar ETF listed in London); `None` when the response names none. One chart request; the
+/// stock import asks it for the listing it chose, to show that listing in its real currency.
+/// A failed request is an error here and the caller's to interpret (the suffix guess stays).
+pub async fn get_quote_currency(ticker: &str) -> Result<Option<String>> {
+    log::debug!("[QUOTE CURRENCY] Looking up {}", ticker);
+    let provider = yahoo_connector()
+        .map_err(|e| AppError::ExternalApi(format!("Yahoo connector failed: {}", e)))?;
+    let response = provider
+        .get_quote_range(ticker.trim(), "1d", "1d")
+        .await
+        .map_err(|e| AppError::ExternalApi(format!("Yahoo Finance quote failed: {}", e)))?;
+    Ok(reported_currency(&response))
+}
+
+// ============================================================================
 // Chart Range Fetching (Stock Monitor detail chart, spec D9)
 // ============================================================================
 
@@ -1681,6 +1707,14 @@ mod tests {
             json!({ "regularMarketPrice": 0.0 }),
         );
         assert_eq!(read_chart_quote(&zero), None);
+    }
+
+    #[test]
+    fn a_response_that_names_no_currency_reports_none() {
+        let nameless = chart(None, &[100.0], &[], json!({}));
+        assert_eq!(reported_currency(&nameless), None);
+        let pence = chart(Some("GBp"), &[100.0], &[], json!({}));
+        assert_eq!(reported_currency(&pence).as_deref(), Some("GBp"));
     }
 
     #[test]

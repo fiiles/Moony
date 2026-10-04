@@ -22,6 +22,7 @@ use crate::error::{AppError, Result};
 use crate::services::csv_import::amounts::{clean_and_parse_amount, AmountError};
 use crate::services::csv_import::decode::{decode_csv_content, read_headers};
 use crate::services::date_parser;
+use crate::services::quote_unit::{is_pence, pence_to_pounds};
 
 use super::adapters::xtb;
 use super::columns::{fold_value, has_fee_column};
@@ -108,7 +109,7 @@ impl TypeMap {
 /// are pence of the pound (`GBp` differs from `GBP` by one letter's case).
 fn read_currency(raw: &str) -> std::result::Result<(String, bool), Note> {
     let raw = raw.trim();
-    if raw == "GBp" || raw.eq_ignore_ascii_case("GBX") {
+    if is_pence(raw) {
         return Ok(("GBP".to_string(), true));
     }
     if raw.len() == 3 && raw.bytes().all(|b| b.is_ascii_alphabetic()) {
@@ -116,12 +117,6 @@ fn read_currency(raw: &str) -> std::result::Result<(String, bool), Note> {
     } else {
         Err(fail(CURRENCY_INVALID, non_empty(raw)))
     }
-}
-
-/// Pence to pounds without the float noise of a plain division (49.1235, not
-/// 49.12350000000001): the result is rounded to ten decimals.
-fn pence_to_pounds(pence: f64) -> f64 {
-    (pence / 100.0 * 1e10).round() / 1e10
 }
 
 /// A configuration prepared for reading rows.

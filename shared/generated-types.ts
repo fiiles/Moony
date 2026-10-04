@@ -1274,7 +1274,11 @@ tickers: string[]; earliestDay: number | null }
  */
 export type StockInstrumentCandidate = { symbol: string; name: string; exchange: string; 
 /**
- * Currency of the listing, from the symbol's exchange suffix.
+ * Currency of the listing. For the listing the lookup chose (`best`) it is what Yahoo
+ * reports for its quote, so a London ETF in dollars reads `USD`; every other candidate, and
+ * a `best` whose quote could not be looked up, carries the guess from the symbol's exchange
+ * suffix. `GBX` stands for pence: the quote, and so the prices of a file that follows it,
+ * are a hundredth of `GBP`.
  */
 currency: string }
 

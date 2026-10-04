@@ -1660,6 +1660,10 @@ export interface StockInstrumentCandidate {
   symbol: string;
   name: string;
   exchange: string;
+  /**
+   * What Yahoo reports for the quote of the chosen listing (`best`); the guess from the exchange
+   * suffix for the other candidates. `GBX` stands for pence: prices are a hundredth of GBP.
+   */
   currency: string;
 }
 

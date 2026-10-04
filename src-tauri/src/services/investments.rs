@@ -1117,7 +1117,7 @@ mod tests {
         assert_eq!(history.len(), 1); // Only 2000
     }
 
-    fn setup_test_db() -> Connection {
+    pub(super) fn setup_test_db() -> Connection {
         let conn = Connection::open_in_memory().expect("in-memory db");
         conn.execute_batch(
             r#"
@@ -1780,8 +1780,15 @@ mod tests {
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].twr, 0.0);
     }
+}
 
-    // ---- the shared bulk writer (ADR 0007) --------------------------------
+/// Tests of the shared bulk writer (ADR 0007). A module of its own, after the
+/// tests of the rest of this file.
+#[cfg(test)]
+mod bulk_writer_tests {
+    use super::tests::setup_test_db;
+    use super::*;
+    use rusqlite::Connection;
 
     const DAY: i64 = 86_400;
     const D0: i64 = 1_700_000_000 - 1_700_000_000 % DAY;

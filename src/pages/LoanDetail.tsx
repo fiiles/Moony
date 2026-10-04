@@ -304,7 +304,7 @@ function LoanDetailBody({
       {
         id: 'drawdown',
         t: startDay,
-        type: 'mark',
+        type: 'buy',
         title: t('detail.chart.events.drawdown', { amount: money(principal) }),
         lines: [fmt.day(startDay)],
       },
@@ -495,7 +495,11 @@ function LoanDetailBody({
                   cluster.events.length === 1
                     ? { title: cluster.events[0].title, lines: cluster.events[0].lines }
                     : {
-                        title: t('chart.milestones.several', { count: cluster.events.length }),
+                        // Only milestones fold into "N milestones"; the drawdown or an extra
+                        // payment among them makes it events
+                        title: cluster.events.every((e) => e.type === 'mark')
+                          ? t('chart.milestones.several', { count: cluster.events.length })
+                          : t('chart.events.several', { count: cluster.events.length }),
                         lines: cluster.events.map((e) => e.title),
                       }
                 }
@@ -506,6 +510,10 @@ function LoanDetailBody({
                   {
                     label: t('detail.chart.legend.schedule'),
                     swatch: { kind: 'dash', color: 'var(--chart-line)' },
+                  },
+                  {
+                    label: t('detail.chart.legend.drawdown'),
+                    swatch: { kind: 'event', type: 'buy' },
                   },
                   {
                     label: t('detail.chart.legend.extraPayment'),

@@ -72,7 +72,7 @@ pub fn cashflow_report(conn: &Connection, view_type: Option<String>) -> Result<V
     // Cashflow items
     {
         let mut stmt = conn.prepare(
-            "SELECT name, amount, currency, frequency, item_type, category FROM cashflow_items",
+            "SELECT name, CAST(amount AS REAL), currency, frequency, item_type, category FROM cashflow_items",
         )?;
         let items: Vec<(String, f64, String, String, String, String)> = stmt
             .query_map([], |row| {
@@ -108,7 +108,7 @@ pub fn cashflow_report(conn: &Connection, view_type: Option<String>) -> Result<V
     // Loan payments
     {
         let mut stmt = conn.prepare(
-            "SELECT name, monthly_payment, currency FROM loans WHERE monthly_payment > 0",
+            "SELECT name, CAST(monthly_payment AS REAL), currency FROM loans WHERE CAST(monthly_payment AS REAL) > 0",
         )?;
         let items: Vec<(String, f64, String)> = stmt
             .query_map([], |row| {
@@ -130,7 +130,7 @@ pub fn cashflow_report(conn: &Connection, view_type: Option<String>) -> Result<V
 
     // Insurance premiums
     {
-        let mut stmt = conn.prepare("SELECT policy_name, regular_payment, regular_payment_currency, payment_frequency FROM insurance_policies WHERE status = 'active' AND regular_payment > 0")?;
+        let mut stmt = conn.prepare("SELECT policy_name, CAST(regular_payment AS REAL), regular_payment_currency, payment_frequency FROM insurance_policies WHERE status = 'active' AND CAST(regular_payment AS REAL) > 0")?;
         let items: Vec<(String, f64, String, String)> = stmt
             .query_map([], |row| {
                 Ok((row.get(0)?, row.get::<_, f64>(1)?, row.get(2)?, row.get(3)?))
@@ -151,7 +151,7 @@ pub fn cashflow_report(conn: &Connection, view_type: Option<String>) -> Result<V
 
     // Savings interest
     {
-        let mut stmt = conn.prepare("SELECT name, balance, currency, interest_rate FROM bank_accounts WHERE interest_rate IS NOT NULL AND CAST(interest_rate AS REAL) > 0 AND exclude_from_balance = 0")?;
+        let mut stmt = conn.prepare("SELECT name, CAST(balance AS REAL), currency, CAST(interest_rate AS REAL) FROM bank_accounts WHERE interest_rate IS NOT NULL AND CAST(interest_rate AS REAL) > 0 AND exclude_from_balance = 0")?;
         let items: Vec<(String, f64, String, f64)> = stmt
             .query_map([], |row| {
                 Ok((
@@ -224,7 +224,7 @@ pub fn budgeting_report(
     // Goals
     let goals: Vec<(String, String, f64, String)> = {
         let mut stmt = conn.prepare(
-            "SELECT bg.category_id, tc.name, bg.amount, bg.currency
+            "SELECT bg.category_id, tc.name, CAST(bg.amount AS REAL), bg.currency
              FROM budget_goals bg JOIN transaction_categories tc ON bg.category_id = tc.id
              WHERE bg.timeframe = ?",
         )?;
@@ -522,10 +522,8 @@ mod tests {
 
     /// Minimal schema for the analytics paths (post-migration-008: no stored
     /// `average_price`; cost basis must come from transactions at their day's
-    /// rates), plus the rates and profile the money context reads.
-    ///
-    /// The cashflow/budgeting amounts are REAL here because those queries read
-    /// them with `get::<f64>`.
+    /// rates), plus the rates and profile the money context reads. Money
+    /// columns are TEXT exactly as migrations.rs declares them.
     fn setup_db(main_currency: &str) -> Connection {
         let conn = Connection::open_in_memory().expect("in-memory db");
         conn.execute_batch(&format!(
@@ -599,7 +597,7 @@ mod tests {
             );
             CREATE TABLE cashflow_items (
                 name TEXT NOT NULL,
-                amount REAL NOT NULL,
+                amount TEXT NOT NULL,
                 currency TEXT NOT NULL,
                 frequency TEXT NOT NULL,
                 item_type TEXT NOT NULL,
@@ -607,21 +605,21 @@ mod tests {
             );
             CREATE TABLE loans (
                 name TEXT NOT NULL,
-                monthly_payment REAL NOT NULL,
+                monthly_payment TEXT NOT NULL DEFAULT '0',
                 currency TEXT NOT NULL
             );
             CREATE TABLE insurance_policies (
                 policy_name TEXT NOT NULL,
-                regular_payment REAL NOT NULL,
+                regular_payment TEXT NOT NULL DEFAULT '0',
                 regular_payment_currency TEXT NOT NULL,
                 payment_frequency TEXT NOT NULL,
                 status TEXT NOT NULL
             );
             CREATE TABLE bank_accounts (
                 name TEXT NOT NULL,
-                balance REAL NOT NULL,
+                balance TEXT NOT NULL DEFAULT '0',
                 currency TEXT NOT NULL,
-                interest_rate REAL,
+                interest_rate TEXT,
                 exclude_from_balance INTEGER NOT NULL DEFAULT 0
             );
             CREATE TABLE transaction_categories (
@@ -631,7 +629,7 @@ mod tests {
             CREATE TABLE budget_goals (
                 category_id TEXT NOT NULL,
                 timeframe TEXT NOT NULL,
-                amount REAL NOT NULL,
+                amount TEXT NOT NULL,
                 currency TEXT NOT NULL
             );
             CREATE TABLE bank_transactions (
@@ -741,12 +739,18 @@ mod tests {
         conn.execute_batch(
             r#"
             INSERT INTO cashflow_items (name, amount, currency, frequency, item_type, category) VALUES
-                ('Salary', 50000, 'CZK', 'monthly', 'income', 'salary'),
-                ('Rent', 400, 'EUR', 'monthly', 'expense', 'housing'),
-                ('Bonus', 9999, 'CZK', 'one_time', 'income', 'salary');
-            INSERT INTO loans (name, monthly_payment, currency) VALUES ('Mortgage', 10000, 'CZK');
+                ('Salary', '50000', 'CZK', 'monthly', 'income', 'salary'),
+                ('Rent', '400.00', 'EUR', 'monthly', 'expense', 'housing'),
+                ('Bonus', '9999', 'CZK', 'one_time', 'income', 'salary');
+            INSERT INTO loans (name, monthly_payment, currency)
+                VALUES ('Mortgage', '10000.00', 'CZK');
+            INSERT INTO insurance_policies
+                (policy_name, regular_payment, regular_payment_currency, payment_frequency, status)
+            VALUES
+                ('Car', '1200.00', 'CZK', 'quarterly', 'active'),
+                ('Old policy', '999', 'CZK', 'monthly', 'inactive');
             INSERT INTO bank_accounts (name, balance, currency, interest_rate)
-                VALUES ('Savings', 100000, 'CZK', 3);
+                VALUES ('Savings', '100000', 'CZK', '3');
             "#,
         )
         .expect("seed cashflow");
@@ -761,10 +765,11 @@ mod tests {
 
         assert_eq!(result["mainCurrency"], "EUR");
         assert_eq!(result["viewType"], "monthly");
-        // Income 50 000 + interest 250 = 50 250 CZK; expenses 10 000 (rent) + 10 000 (loan).
+        // Income 50 000 + interest 250 = 50 250 CZK; expenses 10 000 (rent)
+        // + 10 000 (loan) + 400 (quarterly insurance, 1 200 / 3) = 20 400 CZK.
         assert_eq!(result["summary"]["totalIncome"], "2010.00");
-        assert_eq!(result["summary"]["totalExpenses"], "800.00");
-        assert_eq!(result["summary"]["netCashflow"], "1210.00");
+        assert_eq!(result["summary"]["totalExpenses"], "816.00");
+        assert_eq!(result["summary"]["netCashflow"], "1194.00");
         let income = result["income"].as_array().expect("income");
         assert_eq!(income[0]["name"], "Salary");
         assert_eq!(income[0]["amount"], "2000.00");
@@ -775,6 +780,8 @@ mod tests {
         assert_eq!(expenses[0]["amount"], "400.00");
         assert_eq!(expenses[1]["name"], "Loan: Mortgage");
         assert_eq!(expenses[1]["amount"], "400.00");
+        assert_eq!(expenses[2]["name"], "Insurance: Car");
+        assert_eq!(expenses[2]["amount"], "16.00");
         assert!(result["summary"].get("totalIncomeCzk").is_none());
     }
 
@@ -800,7 +807,26 @@ mod tests {
 
         assert_eq!(result["mainCurrency"], "CZK");
         assert_eq!(result["summary"]["totalIncome"], "50250.00");
+        assert_eq!(result["summary"]["totalExpenses"], "20400.00");
         assert_eq!(result["expenses"][0]["amount"], "10000.00");
+    }
+
+    /// Regression: production stores these money columns as TEXT; the queries
+    /// used to read them with `get::<f64>`, which rejects TEXT, so every row was
+    /// silently dropped and the report came back empty.
+    #[test]
+    fn cashflow_report_reads_money_stored_as_text() {
+        let conn = setup_db("CZK");
+        seed_cashflow(&conn);
+
+        let result = cashflow_report(&conn, None).expect("cashflow");
+
+        // Salary + savings interest; rent + mortgage + the active insurance.
+        assert_eq!(result["income"].as_array().expect("income").len(), 2);
+        assert_eq!(result["expenses"].as_array().expect("expenses").len(), 3);
+        assert_eq!(result["income"][1]["amount"], "250.00");
+        assert_eq!(result["expenses"][1]["amount"], "10000.00");
+        assert_eq!(result["expenses"][2]["amount"], "400.00");
     }
 
     #[test]
@@ -810,7 +836,7 @@ mod tests {
             r#"
             INSERT INTO transaction_categories (id, name) VALUES ('cat-food', 'Groceries');
             INSERT INTO budget_goals (category_id, timeframe, amount, currency)
-                VALUES ('cat-food', 'monthly', 400, 'EUR');
+                VALUES ('cat-food', 'monthly', '400.00', 'EUR');
             INSERT INTO bank_transactions (category_id, amount, currency, booking_date, tx_type) VALUES
                 ('cat-food', '5000', 'CZK', 100, 'debit'),
                 ('cat-food', '100', 'EUR', 200, 'debit'),
@@ -823,6 +849,14 @@ mod tests {
 
         assert_eq!(result["mainCurrency"], "EUR");
         assert_eq!(result["timeframe"], "monthly");
+        // The goal is stored as TEXT; it must not be silently dropped.
+        assert_eq!(
+            result["budgetCategories"]
+                .as_array()
+                .expect("categories")
+                .len(),
+            1
+        );
         let cat = &result["budgetCategories"][0];
         assert_eq!(cat["categoryName"], "Groceries");
         // Budget 400 EUR = 10 000 CZK; spent 5 000 CZK + 100 EUR = 7 500 CZK.

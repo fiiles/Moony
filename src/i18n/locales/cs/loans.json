@@ -1,0 +1,338 @@
+{
+  "title": "Úvěry",
+  "eyebrow": "Závazky",
+  "subtitle": "Hypotéky a spotřebitelské úvěry, zůstatky podle splátkového kalendáře.",
+  "status": "Zůstatky amortizované k {{date}}",
+  "loading": "Načítání vašich úvěrů...",
+  "export": "Export",
+  "empty": {
+    "title": "Zatím žádné úvěry",
+    "description": "Přidejte první úvěr a uvidíte, kolik dlužíte, kolik vás stojí úroky a kdy budete bez dluhů."
+  },
+  "addLoan": "Přidat úvěr",
+  "loans_one": "{{count}} úvěr",
+  "loans_few": "{{count}} úvěry",
+  "loans_other": "{{count}} úvěrů",
+  "summary": {
+    "outstanding": "Nesplaceno celkem",
+    "repaidOf": "splaceno {{percent}} z půjčených {{principal}}",
+    "payments": "Měsíční splátky",
+    "paymentsAfter": "od {{month}} jen {{amount}} · {{name}} bude splacený",
+    "paymentsYear": "{{amount}} ročně",
+    "rate": "Prům. úroková sazba",
+    "rateNote": "váženo zůstatkem · úroky příštích 12 měsíců {{interest}}",
+    "fixation": "Konec fixace",
+    "fixationNote": "za {{duration}} · {{name}} {{rate}}",
+    "fixationExpired": "fixace {{name}} skončila {{month}} – doplňte novou sazbu",
+    "noFixation": "žádná sazba nemá konec platnosti"
+  },
+  "chart": {
+    "title": "Vývoj dluhu",
+    "subtitle": "Dosavadní zůstatky plně, budoucí podle splátkových kalendářů čárkovaně.",
+    "horizon": {
+      "5": "5 let",
+      "10": "10 let",
+      "all": "Do splacení"
+    },
+    "legend": {
+      "outstanding": "Nesplaceno",
+      "schedule": "Podle kalendáře",
+      "milestone": "Milník"
+    },
+    "tipSchedule": "podle kalendáře",
+    "note": "Dnes {{today}} · za {{duration}} {{amount}}",
+    "noteDebtFree": "Dnes {{today}} · za {{duration}} bez dluhů",
+    "noteNoPayoff": "Dnes {{today}} · při současných splátkách se dluh nesplatí",
+    "milestones": {
+      "paidOff": "{{name}} splacen",
+      "paidOffPayments": "splátky klesnou o {{amount}} měsíčně",
+      "debtFree": "bez dluhů",
+      "fixationEnd": "Konec fixace · {{name}}",
+      "half": "Polovina splacena · {{name}}",
+      "balance": "zůstatek {{amount}}",
+      "several_one": "{{count}} milník",
+      "several_few": "{{count}} milníky",
+      "several_other": "{{count}} milníků"
+    }
+  },
+  "table": {
+    "title": "Úvěry",
+    "subtitle": "Seřazeno podle zůstatku",
+    "subtitleHidden": "Seřazeno podle zůstatku · splacené úvěry skryté",
+    "showMatured": "Zobrazit splacené",
+    "loan": "Úvěr",
+    "outstanding": "Nesplaceno",
+    "principal": "Jistina",
+    "rate": "Sazba",
+    "payment": "Splátka",
+    "payoff": "Splaceno bude",
+    "actions": "Akce",
+    "since": "od {{month}}",
+    "repaid": "splaceno {{percent}}",
+    "matured": "splaceno",
+    "fixedUntil": "fixace do {{month}}",
+    "fixationEnded": "fixace skončila {{month}}",
+    "fixedRate": "pevná sazba",
+    "monthly": "měsíčně",
+    "noPayment": "bez splátky",
+    "in": "za {{duration}}",
+    "soonYear": "do roka",
+    "soon": "do 18 měsíců",
+    "noPayoff": "při současné splátce se nesplatí",
+    "capped": "déle než 50 let",
+    "balanceAtEnd": "k datu ukončení zůstane {{amount}}",
+    "noResults": {
+      "title": "Žádné aktivní úvěry",
+      "description": "Všechny úvěry jsou splacené. Zobrazíte je zaškrtnutím „Zobrazit splacené“."
+    },
+    "footer": {
+      "count_one": "{{count}} aktivní úvěr",
+      "count_few": "{{count}} aktivní úvěry",
+      "count_other": "{{count}} aktivních úvěrů",
+      "outstanding": "nesplaceno {{amount}}",
+      "payments": "splátky {{amount}} měsíčně",
+      "note": "Zůstatek = jistina umořená splátkami k dnešku, nebo váš zadaný zůstatek k datu"
+    }
+  },
+  "duration": {
+    "years_one": "{{count}} rok",
+    "years_few": "{{count}} roky",
+    "years_other": "{{count}} let",
+    "months_one": "{{count}} měsíc",
+    "months_few": "{{count}} měsíce",
+    "months_other": "{{count}} měsíců"
+  },
+  "form": {
+    "addTitle": "Přidat úvěr",
+    "editTitle": "Upravit úvěr",
+    "submit": "Přidat úvěr",
+    "name": "Název úvěru",
+    "namePlaceholder": "např. Hypotéka na byt",
+    "originalAmount": "Jistina",
+    "interestRate": "Úroková sazba",
+    "monthlyPayment": "Měsíční splátka",
+    "startDate": "Datum zahájení",
+    "endDate": "Datum ukončení",
+    "balance": {
+      "title": "Nesplacený zůstatek",
+      "help": "Moony snižuje zůstatek každou měsíční splátkou. Pokud znáte skutečný zůstatek, například z výpisu z banky, zadejte ho i s datem a výpočet bude pokračovat od něj.",
+      "setManual": "Zadat zůstatek k datu",
+      "amount": "Nesplacená částka",
+      "date": "K datu",
+      "estimate": "Odhadovaný zůstatek dnes: {{amount}}",
+      "noPayment": "Bez měsíční splátky se zůstatek nesnižuje."
+    }
+  },
+  "actions": {
+    "edit": "Upravit",
+    "delete": "Smazat úvěr",
+    "open": "Otevřít",
+    "extraPayment": "Mimořádná splátka",
+    "balanceCheck": "Ověřit zůstatek výpisem",
+    "rateChange": "Zapsat změnu sazby"
+  },
+  "confirmDelete": {
+    "title": "Smazat úvěr",
+    "description": "Opravdu chcete smazat „{{name}}“? Smažou se i jeho události a vazby na nemovitosti. Tuto akci nelze vrátit zpět."
+  },
+  "toast": {
+    "added": "Úvěr přidán",
+    "updated": "Úvěr upraven",
+    "deleted": "Úvěr smazán",
+    "eventAdded": "Událost zapsána, kalendář přepočten",
+    "eventDeleted": "Událost odstraněna"
+  },
+  "modal": {
+    "addDescription": "Jistina, sazba a splátka stačí; zůstatek se dopočítá podle kalendáře.",
+    "editDescription": "Upravte podmínky úvěru; zůstatek se přepočítá.",
+    "endDateHelp": "Kdy má být úvěr podle smlouvy splacen",
+    "rateValidity": "Platnost sazby (konec fixace)",
+    "rateValidityHelp": "Kdy končí fixace současné sazby",
+    "startDateHelp": "Od tohoto data se zůstatek umořuje; splátky připadají na stejný den každého měsíce"
+  },
+  "valuation": {
+    "automatic": "Umořováno od {{date}} ({{amount}}) při úroku {{rate}} a splátce {{payment}} měsíčně.",
+    "manual": "Vychází ze zadaného zůstatku {{amount}} k {{date}}, umořováno při úroku {{rate}} a splátce {{payment}} měsíčně.",
+    "static": "Není zadaná měsíční splátka, zůstatek se proto nesnižuje: {{amount}} k {{date}}.",
+    "belowInterest": "Splátka nepokrývá úrok, zůstatek proto neklesá."
+  },
+  "detail": {
+    "backToLoans": "Zpět na úvěry",
+    "loading": "Načítání úvěru...",
+    "notFound": "Tento úvěr už neexistuje.",
+    "eyebrow": "Úvěr",
+    "description": "Jistina {{principal}} od {{month}} · {{rate}}{{fixation}} · splátka {{payment}} měsíčně",
+    "descriptionNoPayment": "Jistina {{principal}} od {{month}} · {{rate}} · bez měsíční splátky",
+    "withFixation": " s fixací do {{month}}",
+    "status": {
+      "automatic": "Zůstatek podle kalendáře",
+      "manual": "Zůstatek podle kalendáře · od {{date}} z vašeho zůstatku",
+      "static": "Bez měsíční splátky · zůstatek se nesnižuje"
+    },
+    "hero": {
+      "outstanding": "Nesplaceno",
+      "delta12": "za posledních 12 měsíců · splaceno {{percent}} jistiny",
+      "deltaSinceStart": "od čerpání · splaceno {{percent}} jistiny",
+      "payoff": "Splaceno bude",
+      "payoffNote": "za {{duration}} při stávající splátce",
+      "paidOff": "Splaceno",
+      "noPayoff": "při současné splátce se nesplatí",
+      "noPayment": "bez splátky se zůstatek nesnižuje",
+      "balanceAtEnd": "do {{month}} · k datu ukončení zůstane {{amount}}"
+    },
+    "horizon": {
+      "past": "Dosud",
+      "5": "5 let",
+      "all": "Do splacení"
+    },
+    "chart": {
+      "legend": {
+        "balance": "Zůstatek",
+        "schedule": "Podle kalendáře",
+        "extraPayment": "Mimořádná splátka",
+        "milestones": "Fixace a milníky"
+      },
+      "tipBalance": "zůstatek",
+      "tipSchedule": "podle kalendáře",
+      "notePast": "Od {{date}} splaceno {{principal}} jistiny a zaplaceno {{interest}} na úrocích",
+      "note5": "Za 5 let zůstatek {{amount}}",
+      "note5Fixation": "Za 5 let zůstatek {{amount}} · fixace končí {{month}}",
+      "noteAll": "Do splacení zaplatíte ještě {{total}}, z toho úroky {{interest}}",
+      "noteNoPayoff": "Při současné splátce se úvěr nesplatí",
+      "events": {
+        "drawdown": "Čerpání {{amount}}",
+        "extraPayment": "Mimořádná splátka {{amount}}",
+        "rateChange": "Změna sazby na {{rate}}",
+        "newPayment": "splátka {{amount}}",
+        "balanceCheck": "Zůstatek ověřen výpisem",
+        "fixationEnd": "Konec fixace",
+        "half": "Polovina jistiny splacena",
+        "payoff": "Úvěr splacen",
+        "balance": "zůstatek {{amount}}"
+      }
+    },
+    "stats": {
+      "interest": "Zaplacené úroky",
+      "interestNote": "od {{date}} · {{share}} ze zaplacených splátek",
+      "principal": "Splaceno z jistiny",
+      "principalNote": "{{percent}} jistiny",
+      "principalExtra": "z toho mimořádně {{amount}}",
+      "remaining": "Zbývá splátek",
+      "remainingNote": "{{duration}} · úroky ještě {{interest}}",
+      "remainingNone": "při současné splátce se nesplatí",
+      "paidOff": "úvěr je splacen",
+      "fixation": "Konec fixace",
+      "fixationNote": "za {{duration}} · při {{up}} splátka {{upPayment}}, při {{down}} {{downPayment}}",
+      "nextPayment": "Příští splátka",
+      "nextPaymentNote": "úrok {{interest}} · jistina {{principal}}",
+      "noSchedule": "bez kalendáře",
+      "remainingToEnd": "do {{month}} · zůstane {{amount}} · úroky ještě {{interest}}"
+    },
+    "schedule": {
+      "title": "Splátkový kalendář",
+      "subtitle": "Úrok a jistina v každé splátce · zůstatek po splátce",
+      "modes": {
+        "next12": "Příštích 12",
+        "years": "Po letech",
+        "all": "Vše"
+      },
+      "payment": "Splátka",
+      "amount": "Částka",
+      "interest": "Úrok",
+      "principal": "Jistina",
+      "balanceAfter": "Zůstatek po",
+      "year": "Rok",
+      "payments": "Splátky",
+      "interestTotal": "Úroky",
+      "balanceEnd": "Zůstatek na konci",
+      "next": "příští",
+      "footNext12": "Příštích 12 splátek: úroky {{interest}} · jistina {{principal}}",
+      "footYears_one": "{{count}} rok · podíl úroků klesá z {{from}} na {{to}} v posledním roce",
+      "footYears_few": "{{count}} roky · podíl úroků klesá z {{from}} na {{to}} v posledním roce",
+      "footYears_other": "{{count}} let · podíl úroků klesá z {{from}} na {{to}} v posledním roce",
+      "footAll": "{{count}} splátek od {{date}} · uplynulé ztlumeně",
+      "empty": "Splátkový kalendář zatím není. Zadejte měsíční splátku (Upravit) a zobrazí se.",
+      "paidOff": "Tento úvěr je splacen.",
+      "method": "Úrok = zůstatek × sazba ÷ 12, jedna splátka měsíčně ve stejný den"
+    },
+    "whatIf": {
+      "title": "Mimořádná splátka",
+      "subtitle": "Co by udělala s dobou splácení a úroky",
+      "amount": "Částka",
+      "hint": "Porovnejte obě možnosti, které banky nabízejí.",
+      "modes": {
+        "term": "Zkrátit dobu",
+        "payment": "Snížit splátku"
+      },
+      "termResult": "Splaceno o {{duration}} dříve",
+      "termNote": "Na úrocích ušetříte {{interest}} · splátka zůstane {{payment}} · konec {{month}}",
+      "paymentResult": "Splátka klesne o {{amount}} měsíčně",
+      "paymentNote": "Nová splátka {{payment}} · doba zůstane do {{month}} · úroky nižší o {{interest}}",
+      "noEffect": "Zadejte částku do výše zůstatku {{amount}}.",
+      "noPayment": "Bez měsíční splátky nelze dopad spočítat – doplňte ji v úpravě úvěru.",
+      "record": "Zapsat jako provedenou"
+    },
+    "events": {
+      "title": "Události",
+      "extraPayment": "Mimořádná splátka {{amount}}",
+      "extraPaymentNote": "kalendář pokračuje ze sníženého zůstatku",
+      "newPayment": "nová splátka {{amount}}",
+      "rateChange": "Změna sazby na {{rate}}",
+      "rateChangeNote": "kalendář pokračuje ze zůstatku k tomuto dni",
+      "balanceCheck": "Zůstatek ověřen výpisem",
+      "balanceCheckNote": "kalendář se od tohoto data počítá znovu",
+      "drawdown": "Čerpání {{amount}}",
+      "drawdownNote": "začátek úvěru",
+      "delete": "Odstranit událost",
+      "confirmDelete": {
+        "title": "Odstranit událost",
+        "description": "Záznam zmizí z grafu i ze seznamu. Zůstatek, který událost nastavila, zůstane v platnosti."
+      }
+    },
+    "warnings": {
+      "noPayment": "Není zadaná měsíční splátka, zůstatek se proto nesnižuje. Upravte úvěr a doplňte splátku, aby se umořoval automaticky.",
+      "paymentBelowInterest": "Měsíční splátka nepokrývá úrok (zhruba {{interest}} měsíčně), zůstatek proto neklesá. Zkontrolujte splátku a úrokovou sazbu.",
+      "balanceAtEndDate": "K datu ukončení ({{date}}) by zůstávalo nesplaceno {{amount}}. Zkontrolujte splátku, úrokovou sazbu a datum ukončení.",
+      "scheduleTruncated": "Kalendář je zkrácen po {{count}} splátkách."
+    }
+  },
+  "eventDialog": {
+    "note": "Poznámka",
+    "extraPayment": {
+      "title": "Mimořádná splátka",
+      "description": "Sníží zůstatek k datu a přepočítá kalendář; objeví se v grafu jako událost.",
+      "amount": "Částka",
+      "date": "Datum",
+      "usedFor": "Banka použila splátku na",
+      "term": "Zkrácení doby",
+      "payment": "Snížení splátky",
+      "alertTitle": "Zůstatek klesne na {{amount}}",
+      "alertTerm": "Splaceno bude o {{duration}} dříve, na úrocích ušetříte {{interest}}.",
+      "alertPayment": "Nová splátka {{payment}} měsíčně, doba zůstane do {{month}}.",
+      "alertTooMuch": "Částka je vyšší než zůstatek {{amount}}.",
+      "alertEmpty": "Zadejte částku a uvidíte dopad.",
+      "submit": "Zapsat splátku"
+    },
+    "rateChange": {
+      "title": "Změna sazby",
+      "description": "Od zadaného dne se úročí novou sazbou; kalendář pokračuje ze zůstatku k tomu dni.",
+      "rate": "Nová sazba",
+      "payment": "Nová splátka",
+      "paymentHint": "Prázdné = splátka zůstává {{amount}}",
+      "date": "Platí od",
+      "alertTitle": "Měsíční úrok {{from}} → {{to}}",
+      "alertNote": "Při splátce {{payment}} bude úvěr splacen {{month}}.",
+      "alertNoPayoff": "Splátka {{payment}} nepokryje úrok, zůstatek by neklesal.",
+      "submit": "Zapsat změnu"
+    },
+    "balanceCheck": {
+      "title": "Ověřit zůstatek výpisem",
+      "description": "Zadejte zůstatek z výpisu; kalendář se od toho dne počítá znovu.",
+      "amount": "Zůstatek podle výpisu",
+      "date": "K datu",
+      "alertTitle": "Kalendář počítal s {{amount}}",
+      "alertNote": "Rozdíl {{delta}} · od {{date}} se kalendář počítá z vašeho zůstatku.",
+      "submit": "Uložit zůstatek"
+    }
+  }
+}

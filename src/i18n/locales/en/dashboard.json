@@ -1,0 +1,114 @@
+{
+  "eyebrow": "Your financial picture",
+  "greeting": {
+    "morning": "Good morning, {{name}}.",
+    "day": "Good afternoon, {{name}}.",
+    "evening": "Good evening, {{name}}."
+  },
+  "welcomeFirst": "Welcome, {{name}}.",
+  "asOf": "Net worth as of {{date}}",
+  "loading": "Loading your portfolio…",
+  "hero": {
+    "label": "Net worth"
+  },
+  "insight": {
+    "up": "Value is rising. Largest share of the change: {{class}}.",
+    "down": "Value is falling. Largest share of the change: {{class}}.",
+    "flat": "Value is holding. Largest movement: {{class}}.",
+    "noHistory": "The trend appears after the first few daily snapshots."
+  },
+  "stats": {
+    "netWorth": "Net worth",
+    "totalAssets": "Total assets",
+    "totalLiabilities": "Liabilities",
+    "freeCash": "Free cash",
+    "freeCashNote": "on bank accounts",
+    "unchanged": "unchanged over the period",
+    "noHistory": "no history yet"
+  },
+  "cards": {
+    "investments": "Stocks",
+    "savings": "Cash",
+    "bonds": "Bonds",
+    "liabilities": "Liabilities",
+    "crypto": "Crypto",
+    "realEstate": "Real estate",
+    "otherAssets": "Other assets",
+    "other": "Other",
+    "ofTotal": "{{percent}} of total"
+  },
+  "classes": {
+    "investments": "stocks",
+    "savings": "cash",
+    "bonds": "bonds",
+    "liabilities": "liabilities",
+    "crypto": "crypto",
+    "realEstate": "real estate",
+    "otherAssets": "other assets"
+  },
+  "allocation": {
+    "title": "Asset allocation",
+    "open": "Open investments",
+    "center": "Assets"
+  },
+  "moves": {
+    "title": "Recent moves",
+    "all": "Show all",
+    "empty": "Bank transactions, buys and sells will appear here.",
+    "kind": {
+      "bankIn": "Incoming payment",
+      "bankOut": "Outgoing payment",
+      "buy": "Buy",
+      "sell": "Sell",
+      "cryptoBuy": "Crypto buy",
+      "cryptoSell": "Crypto sell"
+    }
+  },
+  "changePeriod": {
+    "30D": "over the last 30 days",
+    "90D": "over the last 90 days",
+    "YTD": "since the start of the year",
+    "1Y": "over the last year",
+    "5Y": "over the last 5 years",
+    "All": "since the first record"
+  },
+  "empty": {
+    "title": "Your net worth will show up here",
+    "description": "Add an account or an investment and Moony builds your overview, charts and trends from it. Everything stays on this computer.",
+    "addAccount": "Add a bank account and import a statement",
+    "addInvestment": "Add an investment",
+    "setBudget": "Set a budget"
+  },
+  "gettingStarted": {
+    "title": "Getting started",
+    "subtitle": "Four steps that make Moony useful. This card disappears when you are done.",
+    "importStatement": "Import a bank statement",
+    "importStatementHint": "Add an account and import a CSV from your bank.",
+    "addInvestment": "Add an investment",
+    "addInvestmentHint": "Stocks, ETFs or crypto with live prices.",
+    "setBudget": "Set a budget",
+    "setBudgetHint": "Monthly limits per spending category.",
+    "makeBackup": "Make a backup",
+    "makeBackupHint": "One file with everything, in Settings → Data and backups.",
+    "dismiss": "Dismiss",
+    "done": "Done"
+  },
+  "welcome": "Welcome back, {{name}}!",
+  "overview": "Here's your financial overview for today.",
+  "charts": {
+    "netWorthTrend": "Net Worth Trend",
+    "assetAllocation": "Asset Allocation",
+    "assetsVsLiabilities": "Assets vs Liabilities",
+    "assetsToLiabilitiesRatio": "Assets to Liabilities ratio",
+    "assetClassTrend": "Net Worth by Asset Class",
+    "noHistoricalData": "No historical data available",
+    "estimatedBackfilled": "estimated (backfilled)",
+    "estimatedLegend": "Dashed: estimated days. Bank accounts, bonds, real estate and loans are carried over from the nearest recorded day."
+  },
+  "tooltips": {
+    "netWorth": "Net Worth",
+    "totalAssets": "Total Assets",
+    "totalLiabilities": "Total Liabilities"
+  },
+  "changeSince": "vs {{date}}"
+}

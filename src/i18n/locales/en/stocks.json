@@ -1,0 +1,428 @@
+{
+  "title": "Stocks and ETFs",
+  "subtitle": "Your long-term positions in one place.",
+  "loading": "Loading your stocks...",
+  "empty": {
+    "title": "No positions yet",
+    "description": "Add your first stock or ETF, or import your trades from a broker CSV (date, type, ticker, quantity, price, currency)."
+  },
+  "addInvestment": "Add investment",
+  "refreshPrices": "Refresh Prices",
+  "refreshing": "Refreshing...",
+  "importCSV": "Import CSV",
+  "summary": {
+    "totalValue": "Portfolio value",
+    "totalGainLoss": "Unrealized Gain/Loss",
+    "unrealizedGain": "Unrealized gain",
+    "unrealizedLoss": "Unrealized loss",
+    "realizedGain": "Realized Gain",
+    "realizedLoss": "Realized Loss",
+    "estimatedDividend": "Dividend estimate",
+    "topPerformer": "Top Performer",
+    "basedOnLastYear": "Based on last year dividends",
+    "lastUpdated": "Last updated: {{date}}",
+    "realizedGainLoss": "Realized gain/loss",
+    "positions_one": "{{count}} position",
+    "positions_other": "{{count}} positions",
+    "updatedToday": "updated today",
+    "updatedOn": "updated {{date}}",
+    "notUpdated": "prices not fetched yet",
+    "vsInvested": "against invested",
+    "realizedNote": "realized {{amount}}",
+    "next12Months": "over the next 12 months",
+    "topPosition": "Best position",
+    "overall": "overall",
+    "noPositions": "no open position"
+  },
+  "table": {
+    "title": "Positions",
+    "search": "Search by name or ticker",
+    "investment": "Investment",
+    "quantity": "Quantity",
+    "avgCost": "Average price",
+    "marketPrice": "Market price",
+    "marketValue": "Value",
+    "totalGainLoss": "Unrealized Gain/Loss",
+    "estDividend": "Est. Dividend",
+    "actions": "Actions",
+    "noHoldings": "No holdings found. Add your first stock to get started.",
+    "showZeroPositions": "Show zero positions",
+    "hideZeroPositions": "Hide zero",
+    "return": "Return",
+    "dividend": "Dividend",
+    "unit": "pcs",
+    "realized": "{{amount}} realized",
+    "noResults": {
+      "title": "Nothing found",
+      "description": "Try another name or ticker.",
+      "zeroHidden": "Try another name or ticker. Zero positions are hidden."
+    },
+    "footer": {
+      "count_one": "{{count}} position",
+      "count_other": "{{count}} positions",
+      "total": "total",
+      "largest": "largest position {{percent}} of the portfolio",
+      "rates": "Values in {{currency}} at today's rate"
+    },
+    "showClosedPositions": "Show closed positions",
+    "hideClosedPositions": "Hide closed positions",
+    "closedPositionsHint": "Positions whose quantity is 0",
+    "manageTags": "Manage tags",
+    "noMatches": "No holdings match “{{query}}”.",
+    "onlyClosedPositions": "Only closed positions here. Turn on “Show closed positions” to see them."
+  },
+  "actions": {
+    "viewTransactions": "View Transactions",
+    "buy": "Buy",
+    "sell": "Sell",
+    "updatePrice": "Edit price",
+    "updateDividend": "Update Dividend Estimate",
+    "delete": "Delete",
+    "deletePosition": "Delete position"
+  },
+  "badges": {
+    "manual": "Manual"
+  },
+  "tooltips": {
+    "manualPrice": "Manual price override",
+    "manualDividend": "Manual dividend override"
+  },
+  "modals": {
+    "add": {
+      "title": "Add New Stock",
+      "searchLabel": "Search for a stock",
+      "searchPlaceholder": "e.g., AAPL or Apple",
+      "quantity": "Quantity",
+      "purchasePrice": "Purchase Price",
+      "purchaseDate": "Purchase Date",
+      "notes": "Notes"
+    },
+    "buy": {
+      "title": "Buy More Shares",
+      "quantity": "Quantity",
+      "price": "Price per Share",
+      "date": "Purchase Date",
+      "fee": "Transaction Fee"
+    },
+    "sell": {
+      "title": "Sell Shares",
+      "quantityToSell": "Quantity to Sell",
+      "availableQuantity": "Available: {{quantity}} shares",
+      "price": "Sale Price per Share",
+      "date": "Sale Date",
+      "fee": "Transaction Fee"
+    },
+    "updatePrice": {
+      "title": "Update Price Manually",
+      "currentPrice": "Current Price",
+      "newPrice": "New Price",
+      "description": "Set a manual price override for this holding."
+    },
+    "updateDividend": {
+      "title": "Update Dividend Estimate",
+      "annualDividend": "Annual Dividend per Share",
+      "description": "Set a manual annual dividend per share for this holding."
+    },
+    "transactions": {
+      "title": "Transaction History",
+      "noTransactions": "No transactions found"
+    },
+    "manualFormula": "Formula: {{value}} × {{quantity}} shares"
+  },
+  "confirmDelete": {
+    "title": "Delete position?",
+    "description": "{{name}} and all its transactions will be removed for good. This cannot be undone."
+  },
+  "modal": {
+    "add": {
+      "title": "Add investment",
+      "description": "The new position appears in the table and is valued at its market price.",
+      "companyDetails": "Company Details",
+      "companyName": "Name",
+      "ticker": "Ticker",
+      "financialDetails": "Financial Details",
+      "pricePerShare": "Price per share",
+      "quantity": "Quantity",
+      "selectTicker": "Select Ticker",
+      "multipleResults": "Multiple results found. Please select the correct ticker symbol:",
+      "noTickerFound": "No ticker symbols found for this company name",
+      "searchError": "Failed to search for ticker symbol",
+      "selected": "Selected",
+      "search": "Search Yahoo Finance",
+      "searchHint": "Searches Yahoo Finance; if nothing is found, type the name yourself.",
+      "purchaseDate": "Purchase date",
+      "searchByName": "Search by company name",
+      "searchByTicker": "Search by ticker",
+      "searching": "Searching..."
+    },
+    "buy": {
+      "title": "Buy",
+      "description": "Record a purchase transaction for",
+      "quantity": "Quantity",
+      "pricePerShare": "Price per Share",
+      "addPurchase": "Add Purchase"
+    },
+    "sell": {
+      "title": "Sell",
+      "description": "Record a sale transaction for this holding.",
+      "transactionDetails": "Transaction Details",
+      "pricePerShare": "Price per Share",
+      "quantity": "Quantity",
+      "sellInvestment": "Sell stock"
+    },
+    "edit": {
+      "title": "Edit Transaction ({{type}})",
+      "description": "Modify the details of this transaction.",
+      "transactionDetails": "Transaction Details",
+      "submit": "Update Transaction"
+    }
+  },
+  "toast": {
+    "added": "Investment added",
+    "updated": "Stock updated successfully",
+    "deleted": "Position deleted",
+    "pricesRefreshed_one": "Updated {{count}} stock price",
+    "pricesRefreshed_other": "Updated {{count}} stock prices",
+    "pricesRefreshedDescription": "Successfully fetched latest prices from Yahoo Finance",
+    "rateLimitReached": "Rate limit reached",
+    "rateLimitDescription": "Updated {{updated}} prices, {{remaining}} remaining. Try again in a minute.",
+    "refreshFailed": "Price refresh failed",
+    "noResults": "No results found",
+    "tickerFound": "Ticker found",
+    "searchFailed": "Search failed",
+    "manualPriceDeleted": "Manual price override removed",
+    "manualDividendDeleted": "Manual dividend override removed"
+  },
+  "chart": {
+    "title": "Portfolio value over time",
+    "positionTitle": "Position value over time",
+    "bought": "Bought",
+    "sold": "Sold",
+    "subtitle": "Including contributions and market movement."
+  },
+  "detail": {
+    "backToList": "Back to stocks",
+    "notFound": "Holding not found",
+    "deleted": "Position deleted",
+    "transactionDeleted": "Transaction deleted",
+    "transactionUpdated": "Transaction updated",
+    "pricesRefreshed": "Prices refreshed",
+    "manualPrice": "Manual price override",
+    "refresh": "Refresh",
+    "currentValue": "Current Value",
+    "shares": "shares",
+    "totalInvested": "Total Invested",
+    "avgPrice": "avg",
+    "unrealizedPnL": "Unrealized gain/loss",
+    "dividendYield": "Dividend Yield",
+    "year": "year",
+    "noDividend": "no dividend data",
+    "manual": "manual",
+    "updatePrice": "Update Price",
+    "updateDividend": "Update Dividend",
+    "tabs": {
+      "position": "Position",
+      "transactions": "Transactions"
+    },
+    "position": {
+      "title": "Position Details",
+      "quantity": "Quantity",
+      "avgPrice": "Average Price",
+      "currentPrice": "Current Price",
+      "priceUpdated": "Price Updated"
+    },
+    "companyInfo": {
+      "title": "Company Information",
+      "peRatio": "P/E Ratio",
+      "forwardPe": "Forward P/E",
+      "marketCap": "Market Cap",
+      "beta": "Beta",
+      "fiftyTwoWeekHigh": "52-week high",
+      "fiftyTwoWeekLow": "52-week low",
+      "dividendRate": "Dividend Rate",
+      "dividendYield": "Div. Yield"
+    },
+    "transactions": {
+      "title": "Transaction History",
+      "date": "Date",
+      "type": "Type",
+      "quantity": "Quantity",
+      "originalPrice": "Original Price",
+      "price": "Price",
+      "total": "Total",
+      "empty": "No transactions yet"
+    },
+    "confirmDelete": {
+      "title": "Delete position?",
+      "description": "{{name}} ({{ticker}}) and all its transactions will be removed for good. This cannot be undone."
+    },
+    "confirmDeleteTransaction": {
+      "title": "Delete transaction?",
+      "description": "This will permanently delete the {{type}} transaction ({{quantity}} × {{ticker}}, {{date}}, {{amount}}). This action cannot be undone."
+    },
+    "editName": {
+      "title": "Edit name",
+      "description": "The new name shows in the list, the detail and the overview.",
+      "label": "Name",
+      "save": "Save name"
+    },
+    "nameUpdated": "Company name updated",
+    "refreshMetadata": "Refresh Data",
+    "metadataRefreshed": "Company data refreshed",
+    "openInMonitor": "Open in Stock Monitor",
+    "dividendYieldTooltip": "Estimated annual dividends divided by the current market value of this position.",
+    "priceNative": "Price ({{currency}})",
+    "priceNativeMixed": "Price (original currency)",
+    "priceConverted": "Price ({{currency}}, FX of the day)",
+    "sharesCount_one": "{{count}} share",
+    "sharesCount_other": "{{count}} shares",
+    "avgBuyPrice": "average purchase price {{price}}",
+    "lastBuy": "last buy {{date}}",
+    "positionValue": "Position value",
+    "sinceBuy": "since purchase",
+    "currentPrice": "Current price",
+    "invested": "Invested",
+    "avgShort": "average {{price}}",
+    "unrealized": "Unrealized return",
+    "vsInvested": "against invested",
+    "realized": "Realized return",
+    "sells_one": "{{count}} sale",
+    "sells_other": "{{count}} sales",
+    "noSells": "no sale yet",
+    "dividends": "Dividends",
+    "dividendNote": "estimate per year · yield {{percent}}",
+    "refreshPrices": "Refresh prices",
+    "buy": "Buy",
+    "sell": "Sell",
+    "about": "About the company",
+    "source": "Yahoo Finance",
+    "deleteTransaction": "Delete transaction",
+    "menu": {
+      "editPrice": "Edit price",
+      "editDividend": "Edit dividend estimate",
+      "editName": "Edit name"
+    },
+    "status": {
+      "pricesUpdated": "Prices updated {{when}}",
+      "todayAt": "today at {{time}}"
+    },
+    "legend": {
+      "value": "Position value",
+      "invested": "invested",
+      "investedLong": "Invested (purchase price)",
+      "return": "return",
+      "buy": "Buy",
+      "sell": "Sell"
+    },
+    "events": {
+      "buy": "Buy {{quantity}} at {{price}}",
+      "sell": "Sell {{quantity}} at {{price}}",
+      "total": "total {{amount}}",
+      "cluster_one": "{{count}} event",
+      "cluster_other": "{{count}} events"
+    },
+    "ledger": {
+      "sub_one": "{{count}} event · hover a row to highlight it in the chart",
+      "sub_other": "{{count}} events · hover a row to highlight it in the chart",
+      "filter": {
+        "all": "All",
+        "buys": "Buys",
+        "sells": "Sells"
+      },
+      "footer_one": "{{count}} event",
+      "footer_other": "{{count}} events",
+      "since": "since {{date}}",
+      "rates": "Prices in {{currency}} at the rate of the transaction day"
+    }
+  },
+  "import": {
+    "title": "Import Investments",
+    "description": "Import investment transactions from a CSV file.",
+    "csvFormatTitle": "CSV Format",
+    "csvColumnHeader": "Column",
+    "csvRequiredHeader": "Required",
+    "csvExamplesHeader": "Example values",
+    "csvOptional": "optional",
+    "columnMappingHint": "Column names don't need to match exactly — you'll map them in the next step.",
+    "nameAutoLoaded": "Company name is loaded automatically from Yahoo Finance — no Name column needed.",
+    "tickerFormatHint": "Which ticker format to use?",
+    "downloadTemplate": "Download example CSV template",
+    "clickToUpload": "Click here to select a CSV file",
+    "dragAndDrop": "CSV files only",
+    "cancel": "Cancel",
+    "back": "Back",
+    "error": "Error",
+    "mapping": {
+      "description": "Map your CSV columns to the required fields",
+      "changeFile": "Change file",
+      "rows": "rows",
+      "requiredSection": "Required Columns",
+      "optionalSection": "Optional Columns",
+      "dateColumn": "Date Column",
+      "dateFormat": "Date Format",
+      "typeColumn": "Type Column",
+      "tickerColumn": "Ticker Column",
+      "quantityColumn": "Quantity Column",
+      "priceColumn": "Price Column",
+      "currencyColumn": "Currency Column",
+      "defaultCurrency": "Default Currency",
+      "selectColumn": "Select column...",
+      "previewData": "Preview CSV Data",
+      "columns": "columns",
+      "next": "Next"
+    },
+    "tickerReview": {
+      "description": "Verifying tickers against Yahoo Finance",
+      "verifying": "Verifying {{done}} of {{total}} tickers...",
+      "allVerified": "All tickers verified",
+      "retryFailed": "Retry failed",
+      "tickerLabel": "Ticker",
+      "nameLabel": "Name",
+      "nameRequired": "Enter name",
+      "found": "Found",
+      "notFound": "Not found — correct the ticker or enter a name manually",
+      "failed": "Could not verify — enter a name manually or retry"
+    },
+    "complete": "Import Complete",
+    "processed_one": "Processed {{count}} row.",
+    "processed_other": "Processed {{count}} rows.",
+    "successful_one": "{{count}} Successful",
+    "successful_other": "{{count}} Successful",
+    "skipped": "{{count}} Skipped",
+    "importRecords_one": "Import {{count}} Record",
+    "importRecords_other": "Import {{count}} Records",
+    "close": "Close",
+    "status": {
+      "processing": "Processing transactions...",
+      "loadingDetails": "Looking for details, loading historical prices...",
+      "starting": "Importing {{total}} records…",
+      "progress": "{{current}} / {{total}} · {{ticker}}",
+      "lookup": "Looking up company names: {{current}} / {{total}}",
+      "keepOpen": "Please keep this window open until the import finishes."
+    },
+    "exchangeHeader": "Exchange",
+    "suffixHeader": "Suffix",
+    "exampleHeader": "Example",
+    "exchanges": {
+      "us": "US (NYSE / NASDAQ)",
+      "germany": "Germany (XETRA)",
+      "london": "London (LSE)",
+      "paris": "Paris (Euronext)",
+      "amsterdam": "Amsterdam",
+      "milan": "Milan",
+      "swiss": "Swiss Exchange",
+      "prague": "Prague (PSE)",
+      "hongKong": "Hong Kong",
+      "tokyo": "Tokyo",
+      "toronto": "Toronto",
+      "australia": "Australia (ASX)"
+    },
+    "dateFormatOption": "{{pattern}} (e.g. {{example}})",
+    "parseFailed": "Failed to parse the CSV file: {{message}}",
+    "csvEmpty": "The CSV file is empty",
+    "noDataRows": "No data rows found",
+    "failed": "Import failed"
+  },
+  "eyebrow": "Portfolio",
+  "export": "Export"
+}

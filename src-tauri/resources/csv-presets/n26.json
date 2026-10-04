@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "id": "n26",
+  "bankName": "N26",
+  "country": "DE",
+  "matchHeaders": ["Booking Date", "Value Date", "Partner Name", "Partner Iban", "Payment Reference", "Amount (EUR)"],
+  "delimiter": ",",
+  "encoding": "UTF-8",
+  "dateColumn": "Booking Date",
+  "dateFormat": "%Y-%m-%d",
+  "amountColumn": "Amount (EUR)",
+  "descriptionColumns": ["Payment Reference", "Partner Name"],
+  "counterpartyColumn": "Partner Name",
+  "counterpartyIbanColumn": "Partner Iban",
+  "exportHelpUrl": "https://support.n26.com/en-eu/payments-transfers-and-withdrawals/balance-and-limits/how-to-get-bank-statement-n26",
+  "sampleFixture": "n26.csv"
+}

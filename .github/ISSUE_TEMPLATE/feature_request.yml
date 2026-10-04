@@ -1,0 +1,55 @@
+name: Feature request
+description: Suggest an idea or improvement for Moony
+title: '[Feature]: '
+labels: ['enhancement']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the idea. Moony is a small, privacy-focused, local-only project, so please
+        describe the problem first — it makes it easier to find a solution that fits.
+
+        Check the existing issues and discussions before opening a new one. Larger features are
+        discussed here before any code is written.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem are you trying to solve?
+      description: Who is affected and what is hard or impossible today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: How could Moony help? Sketches, example files or screenshots are welcome.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives and workarounds
+      description: What do you do today, and what else did you consider?
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Bank accounts and CSV import (including a new bank format)
+        - Investments (stocks, crypto, bonds)
+        - Real estate, loans, insurance, other assets
+        - Budgets, cashflow and projections
+        - Categorization
+        - Data, backup and export
+        - Language and localization
+        - AI assistant (MCP)
+        - Other
+    validations:
+      required: true
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy
+      options:
+        - label: This idea does not need Moony to send my financial data to an online service (or the issue explains why it would and how it stays opt-in).
+          required: true

@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "packId": "kw",
+  "country": "Kuwait",
+  "version": 1,
+  "rules": [
+    { "id": "kw/sultan-center", "name": "The Sultan Center", "ruleType": "contains", "pattern": "sultan center", "categoryId": "cat_groceries", "priority": 50 },
+    { "id": "kw/lulu", "name": "LuLu Hypermarket", "ruleType": "word", "pattern": "lulu", "categoryId": "cat_groceries", "priority": 50 },
+    { "id": "kw/talabat", "name": "Talabat", "ruleType": "contains", "pattern": "talabat", "categoryId": "cat_dining", "priority": 50 },
+    { "id": "kw/carriage", "name": "Carriage", "ruleType": "contains", "pattern": "carriage", "categoryId": "cat_dining", "priority": 50 },
+    { "id": "kw/knpc", "name": "KNPC", "ruleType": "word", "pattern": "knpc", "categoryId": "cat_transport", "priority": 50 },
+    { "id": "kw/zain", "name": "Zain", "ruleType": "word", "pattern": "zain", "categoryId": "cat_utilities", "priority": 50 },
+    { "id": "kw/ooredoo", "name": "Ooredoo", "ruleType": "contains", "pattern": "ooredoo", "categoryId": "cat_utilities", "priority": 50 },
+    { "id": "kw/stc", "name": "stc", "ruleType": "word", "pattern": "stc", "categoryId": "cat_utilities", "priority": 50 },
+    { "id": "kw/jazeera-airways", "name": "Jazeera Airways", "ruleType": "contains", "pattern": "jazeera airways", "categoryId": "cat_travel", "priority": 50 },
+    { "id": "kw/kuwait-airways", "name": "Kuwait Airways", "ruleType": "contains", "pattern": "kuwait airways", "categoryId": "cat_travel", "priority": 50 },
+    { "id": "kw/kuwait-insurance", "name": "Kuwait Insurance Company", "ruleType": "contains", "pattern": "kuwait insurance", "categoryId": "cat_insurance", "priority": 50 },
+    { "id": "kw/salary", "name": "Salary", "ruleType": "contains", "pattern": "salary", "categoryId": "cat_income", "priority": 60 },
+    { "id": "kw/payroll", "name": "Payroll", "ruleType": "contains", "pattern": "payroll", "categoryId": "cat_income", "priority": 60 },
+    { "id": "kw/atm-withdrawal", "name": "ATM Withdrawal", "ruleType": "contains", "pattern": "atm withdrawal", "categoryId": "cat_internal_transfers", "priority": 40 },
+    { "id": "kw/cash-withdrawal", "name": "Cash Withdrawal", "ruleType": "contains", "pattern": "cash withdrawal", "categoryId": "cat_internal_transfers", "priority": 40 }
+  ]
+}

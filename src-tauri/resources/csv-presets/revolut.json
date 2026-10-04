@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "revolut",
+  "bankName": "Revolut",
+  "country": "GB",
+  "institutionId": "inst_revolut",
+  "matchHeaders": ["Completed Date", "Started Date", "State", "Amount"],
+  "delimiter": ",",
+  "encoding": "UTF-8",
+  "dateColumn": "Completed Date",
+  "dateFormat": "%Y-%m-%d %H:%M:%S",
+  "amountColumn": "Amount",
+  "descriptionColumns": ["Description"],
+  "currencyColumn": "Currency",
+  "balanceColumn": "Balance",
+  "rowFilter": { "column": "State", "equals": "COMPLETED" },
+  "exportHelpUrl": "https://help.revolut.com/help/profile-and-plan/managing-my-account/account-statement-per-chosen-currency/",
+  "sampleFixture": "revolut.csv"
+}

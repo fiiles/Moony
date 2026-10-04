@@ -1,0 +1,117 @@
+{
+  "title": "Dluhopisy",
+  "eyebrow": "Portfolio",
+  "subtitle": "Státní a korporátní dluhopisy držené do splatnosti, výnos z pevných kupónů.",
+  "status": "Oceněno nominální hodnotou · bez naběhlého úroku",
+  "loading": "Načítání vašich dluhopisů...",
+  "empty": {
+    "title": "Zatím žádné dluhopisy",
+    "description": "Přidejte první emisi: nominál, počet kusů, kupón a splatnost. Žebřík splatností se postaví sám."
+  },
+  "addBond": "Přidat dluhopis",
+  "export": "Export",
+  "summary": {
+    "nominal": "Nominální hodnota",
+    "issues_one": "{{count}} emise",
+    "issues_few": "{{count}} emise",
+    "issues_other": "{{count}} emisí",
+    "currencies_few": "{{count}} měny",
+    "currencies_other": "{{count}} měn",
+    "yearlyCoupon": "Roční kupón",
+    "weightedRate": "vážený průměr {{rate}} p.a.",
+    "nearestMaturity": "Nejbližší splatnost",
+    "returns": "vrátí {{amount}}",
+    "noMaturity": "žádná emise nemá splatnost",
+    "avgToMaturity": "Průměrně do splatnosti",
+    "years": "{{value}} roku",
+    "lastMaturity": "váženo nominálem · poslední {{date}}",
+    "noneLive": "žádná aktivní emise"
+  },
+  "until": {
+    "in": "za {{duration}}",
+    "soon": "do měsíce",
+    "past": "splaceno {{date}}"
+  },
+  "duration": {
+    "years_one": "{{count}} rok",
+    "years_few": "{{count}} roky",
+    "years_other": "{{count}} let",
+    "months_one": "{{count}} měsíc",
+    "months_few": "{{count}} měsíce",
+    "months_other": "{{count}} měsíců"
+  },
+  "ladder": {
+    "title": "Splatnosti a kupóny",
+    "subtitle": "Kolik se v kterém roce vrátí: splacený nominál a roční kupóny.",
+    "badge": "kupón ročně k výročí splatnosti",
+    "principal": "Splacený nominál",
+    "coupons": "Kupóny",
+    "nearest": "Nejbližší splatnost",
+    "note": "Do roku {{year}} se vrátí {{principal}} nominálu a {{coupons}} na kupónech."
+  },
+  "table": {
+    "title": "Emise",
+    "subtitle": "Seřazeno podle splatnosti · nejbližší nahoře",
+    "search": "Hledat podle názvu nebo ISIN",
+    "showMatured": "Zobrazit splacené",
+    "bond": "Dluhopis",
+    "nominal": "Nominál / ks",
+    "quantity": "Počet",
+    "units": "ks",
+    "value": "Hodnota",
+    "coupon": "Kupón",
+    "yearly": "Ročně",
+    "maturity": "Splatnost",
+    "actions": "Akce",
+    "withinYear": "do roka",
+    "matured": "splaceno",
+    "noMaturity": "bez splatnosti",
+    "noResults": {
+      "title": "Nic nenalezeno",
+      "description": "Zkuste jiný název nebo ISIN.",
+      "maturedHidden": "Zkuste jiný název nebo ISIN. Splacené emise jsou skryté."
+    },
+    "footer": {
+      "count_one": "{{count}} emise",
+      "count_few": "{{count}} emise",
+      "count_other": "{{count}} emisí",
+      "nominal": "nominál {{amount}}",
+      "coupons": "kupóny {{amount}} ročně",
+      "valuation": "Hodnota = nominál × počet · tržní cena se nesleduje"
+    }
+  },
+  "actions": {
+    "edit": "Upravit",
+    "delete": "Smazat"
+  },
+  "form": {
+    "addTitle": "Přidat dluhopis",
+    "editTitle": "Upravit dluhopis",
+    "addDescription": "Hodnota se počítá z nominálu a počtu kusů, výnos z kupónové sazby.",
+    "editDescription": "Změny se promítnou do hodnoty i do žebříku splatností.",
+    "name": "Název",
+    "namePlaceholder": "např. ČR státní dluhopis 2031",
+    "isin": "ISIN",
+    "isinHint": "12 znaků z emisních podmínek, usnadní párování s výpisy.",
+    "nominal": "Nominální hodnota 1 ks",
+    "quantity": "Počet kusů",
+    "rate": "Kupón ročně",
+    "maturity": "Datum splatnosti",
+    "maturityHint": "Po splatnosti se emise přesune mezi splacené a přestane se počítat do jmění.",
+    "summaryValue": "Hodnota {{value}} · kupón {{coupon}} ročně",
+    "summaryNext": "Příští výročí splatnosti {{date}}.",
+    "summaryMatures": "Emise je splatná v tomto roce, další kupón už nepřijde.",
+    "summaryNoMaturity": "Bez splatnosti – kupón se počítá každý rok.",
+    "submitAdd": "Přidat dluhopis",
+    "submitEdit": "Uložit změny"
+  },
+  "confirmDelete": {
+    "title": "Smazat dluhopis?",
+    "description": "„{{name}}“ bude trvale odstraněn. Tuto akci nelze vrátit zpět."
+  },
+  "toast": {
+    "added": "Dluhopis přidán",
+    "updated": "Dluhopis upraven",
+    "deleted": "Dluhopis smazán"
+  }
+}

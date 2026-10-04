@@ -1,0 +1,439 @@
+{
+  "title": "Akcie a ETF",
+  "subtitle": "Vaše dlouhodobé pozice na jednom místě.",
+  "loading": "Načítání vašich akcií...",
+  "empty": {
+    "title": "Zatím žádné pozice",
+    "description": "Přidejte první akcii nebo ETF, nebo naimportujte obchody z CSV od brokera (datum, typ, ticker, množství, cena, měna)."
+  },
+  "addInvestment": "Přidat investici",
+  "refreshPrices": "Aktualizovat ceny",
+  "refreshing": "Aktualizuji...",
+  "importCSV": "Importovat CSV",
+  "summary": {
+    "totalValue": "Hodnota portfolia",
+    "totalGainLoss": "Nerealizovaný zisk/ztráta",
+    "unrealizedGain": "Nerealizovaný výnos",
+    "unrealizedLoss": "Nerealizovaná ztráta",
+    "realizedGain": "Realizovaný zisk",
+    "realizedLoss": "Realizovaná ztráta",
+    "realizedGainLoss": "Realizovaný zisk/ztráta",
+    "estimatedDividend": "Odhad dividend",
+    "topPerformer": "Nejvýkonnější",
+    "basedOnLastYear": "Dle dividend z minulého roku",
+    "lastUpdated": "Aktualizováno: {{date}}",
+    "positions_one": "{{count}} pozice",
+    "positions_few": "{{count}} pozice",
+    "positions_other": "{{count}} pozic",
+    "updatedToday": "aktualizováno dnes",
+    "updatedOn": "aktualizováno {{date}}",
+    "notUpdated": "ceny zatím nestaženy",
+    "vsInvested": "oproti vloženému",
+    "realizedNote": "realizováno {{amount}}",
+    "next12Months": "za příštích 12 měsíců",
+    "topPosition": "Nejlepší pozice",
+    "overall": "celkem",
+    "noPositions": "žádná otevřená pozice"
+  },
+  "table": {
+    "title": "Pozice",
+    "search": "Hledat podle názvu nebo tickeru",
+    "investment": "Investice",
+    "quantity": "Množství",
+    "avgCost": "Průměrná cena",
+    "marketPrice": "Tržní cena",
+    "marketValue": "Hodnota",
+    "totalGainLoss": "Nerealizovaný zisk/ztráta",
+    "estDividend": "Odh. dividenda",
+    "actions": "Akce",
+    "noHoldings": "Žádné pozice nenalezeny. Přidejte svou první akcii.",
+    "showZeroPositions": "Zobrazit nulové pozice",
+    "hideZeroPositions": "Skrýt nulové",
+    "return": "Výnos",
+    "dividend": "Dividenda",
+    "unit": "ks",
+    "realized": "{{amount}} realizováno",
+    "noResults": {
+      "title": "Nic nenalezeno",
+      "description": "Zkuste jiný název nebo ticker.",
+      "zeroHidden": "Zkuste jiný název nebo ticker. Nulové pozice jsou skryté."
+    },
+    "footer": {
+      "count_one": "{{count}} pozice",
+      "count_few": "{{count}} pozice",
+      "count_other": "{{count}} pozic",
+      "total": "celkem",
+      "largest": "největší pozice {{percent}} portfolia",
+      "rates": "Hodnoty v {{currency}} aktuálním kurzem"
+    },
+    "showClosedPositions": "Zobrazit uzavřené pozice",
+    "hideClosedPositions": "Skrýt uzavřené pozice",
+    "closedPositionsHint": "Pozice s nulovým množstvím",
+    "manageTags": "Spravovat štítky",
+    "noMatches": "Žádná pozice neodpovídá „{{query}}“.",
+    "onlyClosedPositions": "Jsou tu jen uzavřené pozice. Zapněte „Zobrazit uzavřené pozice“, abyste je viděli."
+  },
+  "actions": {
+    "viewTransactions": "Zobrazit transakce",
+    "buy": "Koupit",
+    "sell": "Prodat",
+    "updatePrice": "Upravit cenu",
+    "updateDividend": "Aktualizovat odhad dividendy",
+    "delete": "Smazat",
+    "deletePosition": "Smazat pozici"
+  },
+  "badges": {
+    "manual": "Ručně"
+  },
+  "tooltips": {
+    "manualPrice": "Ručně nastavená cena",
+    "manualDividend": "Ručně nastavený odhad dividendy"
+  },
+  "modals": {
+    "add": {
+      "title": "Přidat novou akcii",
+      "searchLabel": "Vyhledat akcii",
+      "searchPlaceholder": "např. AAPL nebo Apple",
+      "quantity": "Množství",
+      "purchasePrice": "Nákupní cena",
+      "purchaseDate": "Datum nákupu",
+      "notes": "Poznámky"
+    },
+    "buy": {
+      "title": "Dokoupit akcie",
+      "quantity": "Množství",
+      "price": "Cena za akcii",
+      "date": "Datum nákupu",
+      "fee": "Transakční poplatek"
+    },
+    "sell": {
+      "title": "Prodat akcie",
+      "quantityToSell": "Množství k prodeji",
+      "availableQuantity": "Dostupné: {{quantity}} akcií",
+      "price": "Prodejní cena za akcii",
+      "date": "Datum prodeje",
+      "fee": "Transakční poplatek"
+    },
+    "updatePrice": {
+      "title": "Ručně aktualizovat cenu",
+      "currentPrice": "Aktuální cena",
+      "newPrice": "Nová cena",
+      "description": "Nastavte ruční cenu pro tuto pozici."
+    },
+    "updateDividend": {
+      "title": "Aktualizovat odhad dividendy",
+      "annualDividend": "Roční dividenda na akcii",
+      "description": "Nastavte ruční roční dividendu na akcii pro tuto pozici."
+    },
+    "transactions": {
+      "title": "Historie transakcí",
+      "noTransactions": "Žádné transakce nenalezeny"
+    },
+    "manualFormula": "Vzorec: {{value}} × {{quantity}} ks"
+  },
+  "confirmDelete": {
+    "title": "Smazat pozici?",
+    "description": "{{name}} a všechny její transakce budou trvale odstraněny. Tuto akci nelze vrátit zpět."
+  },
+  "modal": {
+    "add": {
+      "title": "Přidat investici",
+      "description": "Nová pozice se objeví v tabulce a začne se oceňovat tržní cenou.",
+      "companyDetails": "Údaje o společnosti",
+      "companyName": "Název",
+      "ticker": "Ticker",
+      "financialDetails": "Finanční údaje",
+      "pricePerShare": "Cena za kus",
+      "quantity": "Množství",
+      "selectTicker": "Vyberte ticker",
+      "multipleResults": "Bylo nalezeno více výsledků. Vyberte správný ticker:",
+      "noTickerFound": "Pro tento název společnosti nebyly nalezeny žádné tickery",
+      "searchError": "Hledání tickeru se nezdařilo",
+      "selected": "Vybráno",
+      "search": "Vyhledat v Yahoo Finance",
+      "searchHint": "Vyhledává v Yahoo Finance. Nenajde-li se, zadejte název ručně.",
+      "purchaseDate": "Datum nákupu",
+      "searchByName": "Hledat podle názvu společnosti",
+      "searchByTicker": "Hledat podle tickeru",
+      "searching": "Hledám..."
+    },
+    "buy": {
+      "title": "Nákup",
+      "description": "Zaznamenejte nákupní transakci pro",
+      "quantity": "Množství",
+      "pricePerShare": "Cena za akcii",
+      "addPurchase": "Přidat nákup"
+    },
+    "sell": {
+      "title": "Prodej",
+      "description": "Zaznamenejte prodejní transakci pro tuto pozici.",
+      "transactionDetails": "Detaily transakce",
+      "pricePerShare": "Cena za akcii",
+      "quantity": "Množství",
+      "sellInvestment": "Prodej akcií"
+    },
+    "edit": {
+      "title": "Upravit transakci ({{type}})",
+      "description": "Upravte údaje této transakce.",
+      "transactionDetails": "Detaily transakce",
+      "submit": "Upravit transakci"
+    }
+  },
+  "toast": {
+    "added": "Investice přidána",
+    "updated": "Akcie úspěšně aktualizována",
+    "deleted": "Pozice smazána",
+    "pricesRefreshed_one": "Aktualizována {{count}} cena akcie",
+    "pricesRefreshed_few": "Aktualizovány {{count}} ceny akcií",
+    "pricesRefreshed_other": "Aktualizováno {{count}} cen akcií",
+    "pricesRefreshedDescription": "Úspěšně načteny aktuální ceny z Yahoo Finance",
+    "rateLimitReached": "Dosažen limit volání",
+    "rateLimitDescription": "Aktualizováno {{updated}} cen, zbývá {{remaining}}. Zkuste to za minutu.",
+    "refreshFailed": "Aktualizace cen selhala",
+    "noResults": "Žádné výsledky",
+    "tickerFound": "Ticker nalezen",
+    "searchFailed": "Hledání selhalo",
+    "manualPriceDeleted": "Ruční cena odebrána",
+    "manualDividendDeleted": "Ruční dividenda odebrána"
+  },
+  "chart": {
+    "title": "Vývoj hodnoty portfolia",
+    "positionTitle": "Vývoj hodnoty pozice",
+    "bought": "Nakoupeno",
+    "sold": "Prodáno",
+    "subtitle": "Včetně vložených prostředků a tržního vývoje."
+  },
+  "detail": {
+    "backToList": "Zpět na akcie",
+    "notFound": "Pozice nenalezena",
+    "deleted": "Pozice smazána",
+    "transactionDeleted": "Transakce smazána",
+    "transactionUpdated": "Transakce upravena",
+    "pricesRefreshed": "Ceny aktualizovány",
+    "manualPrice": "Ručně nastavená cena",
+    "refresh": "Aktualizovat",
+    "currentValue": "Aktuální hodnota",
+    "shares": "akcií",
+    "totalInvested": "Celkem investováno",
+    "avgPrice": "prům.",
+    "unrealizedPnL": "Nerealizovaný zisk/ztráta",
+    "dividendYield": "Dividendový výnos",
+    "dividendYieldTooltip": "Odhadované roční dividendy vydělené aktuální tržní hodnotou této pozice.",
+    "year": "rok",
+    "noDividend": "bez údajů o dividendě",
+    "manual": "ručně",
+    "priceNative": "Cena ({{currency}})",
+    "priceNativeMixed": "Cena (původní měna)",
+    "priceConverted": "Cena ({{currency}}, kurz dne)",
+    "updatePrice": "Upravit cenu",
+    "updateDividend": "Upravit dividendu",
+    "tabs": {
+      "position": "Pozice",
+      "transactions": "Transakce"
+    },
+    "position": {
+      "title": "Detail pozice",
+      "quantity": "Množství",
+      "avgPrice": "Průměrná cena",
+      "currentPrice": "Aktuální cena",
+      "priceUpdated": "Cena aktualizována"
+    },
+    "companyInfo": {
+      "title": "Informace o společnosti",
+      "peRatio": "P/E poměr",
+      "forwardPe": "Forward P/E",
+      "marketCap": "Tržní kapitalizace",
+      "beta": "Beta",
+      "fiftyTwoWeekHigh": "52T maximum",
+      "fiftyTwoWeekLow": "52T minimum",
+      "dividendRate": "Dividendová sazba",
+      "dividendYield": "Div. výnos"
+    },
+    "transactions": {
+      "title": "Historie transakcí",
+      "date": "Datum",
+      "type": "Typ",
+      "quantity": "Množství",
+      "originalPrice": "Původní cena",
+      "price": "Cena",
+      "total": "Celkem",
+      "empty": "Zatím žádné transakce"
+    },
+    "confirmDelete": {
+      "title": "Smazat pozici?",
+      "description": "{{name}} ({{ticker}}) a všechny její transakce budou trvale odstraněny. Tuto akci nelze vrátit zpět."
+    },
+    "confirmDeleteTransaction": {
+      "title": "Smazat transakci?",
+      "description": "Tím trvale smažete transakci typu {{type}} ({{quantity}} × {{ticker}}, {{date}}, {{amount}}). Tuto akci nelze vrátit zpět."
+    },
+    "editName": {
+      "title": "Upravit název",
+      "description": "Nový název se zobrazí v seznamu, detailu i přehledu.",
+      "label": "Název",
+      "save": "Uložit název"
+    },
+    "nameUpdated": "Název společnosti aktualizován",
+    "refreshMetadata": "Obnovit data",
+    "metadataRefreshed": "Data společnosti obnovena",
+    "openInMonitor": "Otevřít ve sledování akcií",
+    "sharesCount_one": "{{count}} akcie",
+    "sharesCount_few": "{{count}} akcie",
+    "sharesCount_other": "{{count}} akcií",
+    "avgBuyPrice": "průměrná nákupní cena {{price}}",
+    "lastBuy": "poslední nákup {{date}}",
+    "positionValue": "Hodnota pozice",
+    "sinceBuy": "od nákupu",
+    "currentPrice": "Aktuální cena",
+    "invested": "Vloženo",
+    "avgShort": "průměr {{price}}",
+    "unrealized": "Nerealizovaný výnos",
+    "vsInvested": "oproti vloženému",
+    "realized": "Realizovaný výnos",
+    "sells_one": "{{count}} prodej",
+    "sells_few": "{{count}} prodeje",
+    "sells_other": "{{count}} prodejů",
+    "noSells": "zatím žádný prodej",
+    "dividends": "Dividendy",
+    "dividendNote": "odhad za rok · výnos {{percent}}",
+    "refreshPrices": "Obnovit ceny",
+    "buy": "Koupit",
+    "sell": "Prodat",
+    "about": "O společnosti",
+    "source": "Yahoo Finance",
+    "deleteTransaction": "Smazat transakci",
+    "menu": {
+      "editPrice": "Upravit cenu",
+      "editDividend": "Upravit odhad dividendy",
+      "editName": "Upravit název"
+    },
+    "status": {
+      "pricesUpdated": "Ceny aktualizovány {{when}}",
+      "todayAt": "dnes v {{time}}"
+    },
+    "legend": {
+      "value": "Hodnota pozice",
+      "invested": "vloženo",
+      "investedLong": "Vloženo (nákupní cena)",
+      "return": "výnos",
+      "buy": "Nákup",
+      "sell": "Prodej"
+    },
+    "events": {
+      "buy": "Nákup {{quantity}} za {{price}}",
+      "sell": "Prodej {{quantity}} za {{price}}",
+      "total": "celkem {{amount}}",
+      "cluster_one": "{{count}} událost",
+      "cluster_few": "{{count}} události",
+      "cluster_other": "{{count}} událostí"
+    },
+    "ledger": {
+      "sub_one": "{{count}} událost · najetím na řádek se zvýrazní v grafu",
+      "sub_few": "{{count}} události · najetím na řádek se zvýrazní v grafu",
+      "sub_other": "{{count}} událostí · najetím na řádek se zvýrazní v grafu",
+      "filter": {
+        "all": "Vše",
+        "buys": "Nákupy",
+        "sells": "Prodeje"
+      },
+      "footer_one": "{{count}} událost",
+      "footer_few": "{{count}} události",
+      "footer_other": "{{count}} událostí",
+      "since": "od {{date}}",
+      "rates": "Ceny v {{currency}} kurzem k datu transakce"
+    }
+  },
+  "import": {
+    "title": "Importovat investice",
+    "description": "Importujte investiční transakce z CSV souboru.",
+    "csvFormatTitle": "Formát CSV",
+    "csvColumnHeader": "Sloupec",
+    "csvRequiredHeader": "Povinný",
+    "csvExamplesHeader": "Příklady hodnot",
+    "csvOptional": "volitelný",
+    "columnMappingHint": "Názvy sloupců nemusí přesně odpovídat — namapujete je v dalším kroku.",
+    "nameAutoLoaded": "Název společnosti se načte automaticky z Yahoo Finance.",
+    "tickerFormatHint": "Jaký formát tickeru použít?",
+    "downloadTemplate": "Stáhnout ukázkovou šablonu CSV",
+    "clickToUpload": "Klikněte sem pro výběr CSV souboru",
+    "dragAndDrop": "Pouze soubory CSV",
+    "cancel": "Zrušit",
+    "back": "Zpět",
+    "error": "Chyba",
+    "mapping": {
+      "description": "Namapujte sloupce CSV na požadovaná pole",
+      "changeFile": "Změnit soubor",
+      "rows": "řádků",
+      "requiredSection": "Povinné sloupce",
+      "optionalSection": "Volitelné sloupce",
+      "dateColumn": "Sloupec s datem",
+      "dateFormat": "Formát data",
+      "typeColumn": "Sloupec s typem",
+      "tickerColumn": "Sloupec s tickerem",
+      "quantityColumn": "Sloupec s množstvím",
+      "priceColumn": "Sloupec s cenou",
+      "currencyColumn": "Sloupec s měnou",
+      "defaultCurrency": "Výchozí měna",
+      "selectColumn": "Vyberte sloupec...",
+      "previewData": "Náhled CSV dat",
+      "columns": "sloupců",
+      "next": "Další"
+    },
+    "tickerReview": {
+      "description": "Ověřování tickerů přes Yahoo Finance",
+      "verifying": "Ověřování {{done}} z {{total}} tickerů...",
+      "allVerified": "Všechny tickery ověřeny",
+      "retryFailed": "Opakovat neúspěšné",
+      "tickerLabel": "Ticker",
+      "nameLabel": "Název",
+      "nameRequired": "Zadejte název",
+      "found": "Nalezeno",
+      "notFound": "Nenalezeno — opravte ticker nebo zadejte název ručně",
+      "failed": "Nelze ověřit — zadejte název ručně nebo zkuste znovu"
+    },
+    "complete": "Import dokončen",
+    "processed_one": "Zpracován {{count}} řádek.",
+    "processed_few": "Zpracovány {{count}} řádky.",
+    "processed_other": "Zpracováno {{count}} řádků.",
+    "successful_one": "{{count}} úspěšný",
+    "successful_few": "{{count}} úspěšné",
+    "successful_other": "{{count}} úspěšných",
+    "skipped": "{{count}} přeskočeno",
+    "importRecords_one": "Importovat {{count}} záznam",
+    "importRecords_few": "Importovat {{count}} záznamy",
+    "importRecords_other": "Importovat {{count}} záznamů",
+    "close": "Zavřít",
+    "status": {
+      "processing": "Zpracovávám transakce...",
+      "loadingDetails": "Hledám podrobnosti, načítám historické ceny...",
+      "starting": "Importuji záznamy (celkem {{total}})…",
+      "progress": "{{current}} / {{total}} · {{ticker}}",
+      "lookup": "Vyhledávám názvy společností: {{current}} / {{total}}",
+      "keepOpen": "Nechte toto okno otevřené, dokud import neskončí."
+    },
+    "exchangeHeader": "Burza",
+    "suffixHeader": "Přípona",
+    "exampleHeader": "Příklad",
+    "exchanges": {
+      "us": "USA (NYSE / NASDAQ)",
+      "germany": "Německo (XETRA)",
+      "london": "Londýn (LSE)",
+      "paris": "Paříž (Euronext)",
+      "amsterdam": "Amsterdam",
+      "milan": "Milán",
+      "swiss": "Švýcarská burza",
+      "prague": "Praha (PSE)",
+      "hongKong": "Hongkong",
+      "tokyo": "Tokio",
+      "toronto": "Toronto",
+      "australia": "Austrálie (ASX)"
+    },
+    "dateFormatOption": "{{pattern}} (např. {{example}})",
+    "parseFailed": "Soubor CSV se nepodařilo zpracovat: {{message}}",
+    "csvEmpty": "Soubor CSV je prázdný",
+    "noDataRows": "Nebyly nalezeny žádné datové řádky",
+    "failed": "Import selhal"
+  },
+  "eyebrow": "Portfolio",
+  "export": "Export"
+}

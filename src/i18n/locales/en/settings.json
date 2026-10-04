@@ -1,0 +1,210 @@
+{
+  "title": "Settings",
+  "sections": {
+    "navLabel": "Settings sections",
+    "general": "General",
+    "security": "Security",
+    "data": "Data and backups",
+    "integrations": "Integrations",
+    "categorization": "Categorization",
+    "account": "Account",
+    "description": {
+      "general": "Profile, language, currency and what the menu shows.",
+      "security": "Password, auto-lock and app updates.",
+      "data": "Where your data lives and how to keep a copy of it.",
+      "integrations": "API keys for prices and the local MCP server for AI assistants.",
+      "categorization": "Rule packs, categories and your own categorization rules.",
+      "account": "Privacy, analytics and deleting your data."
+    }
+  },
+  "profile": {
+    "title": "Profile",
+    "description": "Your name appears in the greeting on the overview.",
+    "name": "Name",
+    "surname": "Surname",
+    "email": "Email",
+    "save": "Save Changes",
+    "saving": "Saving..."
+  },
+  "password": {
+    "title": "Change Password",
+    "description": "Changing the password gives you a new recovery key; the old one stops working.",
+    "current": "Current Password",
+    "new": "New Password",
+    "confirm": "Confirm New Password",
+    "update": "Update Password",
+    "updating": "Updating...",
+    "saving": "Saving...",
+    "recoveryKeyTitle": "Save Your New Recovery Key",
+    "recoveryKeyDescription": "Your password will be changed and a new recovery key will be generated.",
+    "oldKeyInvalid": "Your old recovery key will no longer work!",
+    "confirmHint": "Make sure you've written down or copied your recovery key before confirming. The password change will only happen after you click the button above."
+  },
+  "apiKeys": {
+    "title": "API Keys",
+    "description": "Configure the optional API key used for cryptocurrency price fetching. Stock prices need no key.",
+    "coingecko": {
+      "label": "CoinGecko API key",
+      "getDemoKey": "Get demo key",
+      "placeholder": "Optional - free tier works without key",
+      "hint": "Used for crypto prices and search (free tier does not allow loading historical prices)",
+      "hint2": "Free tier does not allow loading historical prices"
+    },
+    "save": "Save API Keys",
+    "saving": "Saving...",
+    "saved": "API keys saved",
+    "savedDescription": "Your API keys have been updated.",
+    "optional": "optional",
+    "show": "Show key",
+    "hide": "Hide key"
+  },
+  "currency": {
+    "title": "Currency",
+    "description": "Choose which currency should be used across the app.",
+    "example": "e.g. {{example}}",
+    "noRateHint": "Exchange rates are updated automatically only for currencies the ECB publishes. For other currencies (for example AED or SAR) no rate is available and amounts are counted 1:1 against CZK.",
+    "main": "Main currency",
+    "mainHint": "Every value is converted into this currency."
+  },
+  "language": {
+    "title": "Language and formats",
+    "description": "Numbers and dates follow the interface language."
+  },
+  "menuVisibility": {
+    "title": "Menu visibility",
+    "description": "Hide the asset types you do not use."
+  },
+  "dashboardPreferences": {
+    "title": "Dashboard Preferences",
+    "description": "Customize what appears in your dashboard overview.",
+    "excludeRealEstate": "Exclude personal real estate from overviews",
+    "excludeRealEstateHint": "Personal properties won't be included in Net Worth and Total Assets calculations"
+  },
+  "mcpServer": {
+    "title": "AI Assistant (MCP Server)",
+    "description": "Lets AI assistants (e.g. Claude) read and, for selected tools, write your financial data via the standard MCP protocol. The server is built into Moony and listens on this computer only (127.0.0.1). Note: whatever an AI client reads will be processed by that client — usually in its provider's cloud. Enable only for clients you trust. The app must be unlocked, because the database is encrypted.",
+    "enable": "Enable MCP Server",
+    "enableHint": "Serves MCP at a local URL, accessible only while Moony is unlocked",
+    "statusRunning": "MCP server running at {{url}}",
+    "statusError": "MCP server failed to start: {{error}}",
+    "endpoint": "Endpoint URL",
+    "token": "Access token",
+    "tokenHint": "Sent as an Authorization: Bearer header. Treat it like a password.",
+    "regenerate": "Regenerate",
+    "regenerateHint": "Regenerating invalidates every client configuration that uses the current token.",
+    "tokenRegenerated": "Token regenerated — update your client configurations",
+    "port": "Port",
+    "portHint": "Change only if the default port conflicts with another app. Valid range 1024–65535.",
+    "applyPort": "Apply",
+    "portUpdated": "Port updated",
+    "setupHeading": "Connect a client:",
+    "setupClaudeCode": "Claude Code (run in a terminal)",
+    "setupClaudeDesktop": "Claude Desktop (claude_desktop_config.json)",
+    "setupJson": "Other MCP clients (JSON config)",
+    "desktopNote": "Claude Desktop cannot reach local HTTP servers directly, so this config uses the standard mcp-remote bridge (requires Node.js).",
+    "jsonNote": "For clients with native HTTP transport support (e.g. .mcp.json in Claude Code projects).",
+    "updateFailed": "Failed to update MCP server setting",
+    "advancedBadge": "For advanced users",
+    "summary": "Connect AI assistants such as Claude to your data through a local server. Optional.",
+    "expand": "Show",
+    "collapse": "Hide"
+  },
+  "dangerZone": {
+    "title": "Danger Zone",
+    "description": "These actions cannot be undone.",
+    "deleteAccount": "Delete Account",
+    "confirmTitle": "Are you absolutely sure?",
+    "confirmDescription": "This action cannot be undone. This will permanently delete your account and remove all your data from this device. Since Moony is a local-only app, there is no data on our servers to delete.",
+    "deleting": "Deleting...",
+    "backupFirst": "Tip: make a backup first (Settings → Data and backups) — it is the only way to get this data back.",
+    "confirmLabel": "Type {{word}} to confirm",
+    "deleteAll": "Delete all data",
+    "deleteAllHint": "Removes the profile and the whole database on this computer. Backups saved outside the app stay.",
+    "deleteButton": "Delete data…"
+  },
+  "privacy": {
+    "title": "Privacy & Analytics",
+    "description": "Manage how your data is used.",
+    "analytics": "Send anonymous usage statistics",
+    "analyticsHint": "Helps us improve the app. Includes screen views and app version. No personal or financial data.",
+    "analyticsUnavailable": "This build was made without an analytics key, so nothing is sent and there is nothing to switch on."
+  },
+  "toast": {
+    "profileUpdated": "Profile updated",
+    "profileUpdatedDesc": "Your profile details have been saved.",
+    "passwordChanged": "Password changed",
+    "passwordChangedDesc": "Your password has been updated successfully. Make sure to keep your new recovery key safe!",
+    "preferencesUpdated": "Preferences updated",
+    "preferencesUpdatedDesc": "Menu visibility settings saved.",
+    "verificationFailed": "Verification failed",
+    "updateFailed": "Update failed",
+    "deletionFailed": "Deletion failed",
+    "languageChanged": "Language changed"
+  },
+  "rulePacks": {
+    "title": "Categorization Rule Packs",
+    "description": "Built-in merchant rules per country. Enable the packs matching where you bank; matched transactions are categorized automatically on import.",
+    "globalPack": "Global brands",
+    "rulesCount_one": "{{count}} rule",
+    "rulesCount_other": "{{count}} rules",
+    "updateFailed": "Failed to update rule packs"
+  },
+  "categorizationRules": {
+    "title": "Categorization rules",
+    "description": "Review, edit and add the rules that assign categories to your transactions.",
+    "open": "Manage rules",
+    "rowLabel": "Your rules",
+    "rowHint": "They take precedence over the rule packs."
+  },
+  "data": {
+    "title": "Data and backups",
+    "description": "Where your data lives and how to keep a copy of it.",
+    "location": "Data folder",
+    "size": "{{size}} on disk",
+    "openFolder": "Open folder",
+    "backupNow": "Back up now",
+    "backupSaved": "Backup saved",
+    "backupSavedDescription_one": "{{count}} file written to {{path}}.",
+    "backupSavedDescription_other": "{{count}} files written to {{path}}.",
+    "restore": "Restore from backup…",
+    "restoreConfirmTitle": "Replace your data with this backup?",
+    "restoreConfirmDescription": "Backup from {{date}} (Moony {{version}}, {{attachments}} attachments, {{size}}). Your current data is moved to a \"pre-restore\" folder inside the data folder, not deleted. Moony will lock afterwards; unlock with the password that was in use when the backup was created.",
+    "restoreNewer": "This backup was created by a newer version of Moony and cannot be restored with this version.",
+    "restoreConfirm": "Restore",
+    "restoring": "Restoring…",
+    "restored": "Backup restored",
+    "restoredDescription": "Moony will now lock. Unlock with the backup's password.",
+    "exportAll": "Export all data (JSON)",
+    "exportSaved": "Export saved",
+    "exportSavedDescription": "{{tables}} tables, {{rows}} rows written to {{path}}.",
+    "verify": "Verify database",
+    "verifyOk": "Database is healthy",
+    "verifyFailed": "Database check found problems",
+    "hint": "A backup contains the encrypted database, the key files (salt, key.enc, recovery.enc) and your attachments. It can only be opened with your password or recovery key — keep it somewhere safe, for example an external drive or your own cloud storage.",
+    "backupRow": "Backup",
+    "exportRow": "Export",
+    "exportHint": "Every table in one JSON file.",
+    "exportButton": "Export JSON",
+    "verifyRow": "Database check",
+    "verifyHint": "Checks the integrity of the encrypted database."
+  },
+  "autoLock": {
+    "title": "Auto-lock",
+    "description": "Lock Moony after a period without activity, so an unattended computer does not leave your finances open. This setting applies to this device only.",
+    "label": "Lock automatically after inactivity",
+    "off": "Never",
+    "minutes_one": "{{count}} minute",
+    "minutes_other": "{{count}} minutes",
+    "hint": "Moony also locks when the computer wakes from sleep after that time. You can always lock it by hand from the sidebar."
+  },
+  "updates": {
+    "title": "Updates",
+    "description": "Moony can ask GitHub whether a newer version is available. None of your financial data is sent.",
+    "autoCheck": "Check for updates automatically",
+    "autoCheckHint": "Checks once per session, after you unlock Moony. This setting applies to this device only.",
+    "checkNow": "Check now",
+    "manualCheck": "Manual check"
+  },
+  "eyebrow": "Application",
+  "status": "Database encrypted · {{size}} on disk"
+}

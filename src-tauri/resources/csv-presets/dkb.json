@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "id": "dkb",
+  "bankName": "DKB",
+  "country": "DE",
+  "matchHeaders": ["Buchungsdatum", "Wertstellung", "Status", "Zahlungsempfänger*in", "Verwendungszweck", "Betrag (€)"],
+  "delimiter": ";",
+  "encoding": "UTF-8",
+  "dateColumn": "Buchungsdatum",
+  "dateFormat": "%d.%m.%y",
+  "amountColumn": "Betrag (€)",
+  "descriptionColumns": ["Verwendungszweck"],
+  "counterpartyColumn": "Zahlungsempfänger*in",
+  "counterpartyIbanColumn": "IBAN",
+  "rowFilter": { "column": "Status", "equals": "Gebucht" }
+}

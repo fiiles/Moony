@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "id": "chase",
+  "bankName": "Chase (US)",
+  "country": "US",
+  "matchHeaders": ["Details", "Posting Date", "Description", "Amount", "Type", "Balance"],
+  "delimiter": ",",
+  "encoding": "UTF-8",
+  "dateColumn": "Posting Date",
+  "dateFormat": "%m/%d/%Y",
+  "amountColumn": "Amount",
+  "descriptionColumns": ["Description"],
+  "balanceColumn": "Balance",
+  "sampleFixture": "us-chase.csv"
+}

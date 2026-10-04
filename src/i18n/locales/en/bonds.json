@@ -1,0 +1,112 @@
+{
+  "title": "Bonds",
+  "eyebrow": "Portfolio",
+  "subtitle": "Government and corporate bonds held to maturity, return from fixed coupons.",
+  "status": "Valued at face value · no accrued interest",
+  "loading": "Loading your bonds...",
+  "empty": {
+    "title": "No bonds yet",
+    "description": "Add the first issue: face value, number of units, coupon and maturity. The maturity ladder builds itself."
+  },
+  "addBond": "Add bond",
+  "export": "Export",
+  "summary": {
+    "nominal": "Face value",
+    "issues_one": "{{count}} issue",
+    "issues_other": "{{count}} issues",
+    "currencies_other": "{{count}} currencies",
+    "yearlyCoupon": "Yearly coupon",
+    "weightedRate": "weighted average {{rate}} p.a.",
+    "nearestMaturity": "Nearest maturity",
+    "returns": "returns {{amount}}",
+    "noMaturity": "no issue has a maturity",
+    "avgToMaturity": "Average time to maturity",
+    "years": "{{value}} years",
+    "lastMaturity": "weighted by face value · last {{date}}",
+    "noneLive": "no active issue"
+  },
+  "until": {
+    "in": "in {{duration}}",
+    "soon": "within a month",
+    "past": "repaid {{date}}"
+  },
+  "duration": {
+    "years_one": "{{count}} year",
+    "years_other": "{{count}} years",
+    "months_one": "{{count}} month",
+    "months_other": "{{count}} months"
+  },
+  "ladder": {
+    "title": "Maturities and coupons",
+    "subtitle": "How much comes back in which year: repaid face value and yearly coupons.",
+    "badge": "coupon yearly on the maturity anniversary",
+    "principal": "Repaid face value",
+    "coupons": "Coupons",
+    "nearest": "Nearest maturity",
+    "note": "By {{year}} you get back {{principal}} of face value and {{coupons}} in coupons."
+  },
+  "table": {
+    "title": "Issues",
+    "subtitle": "Sorted by maturity · nearest first",
+    "search": "Search by name or ISIN",
+    "showMatured": "Show repaid",
+    "bond": "Bond",
+    "nominal": "Face value / unit",
+    "quantity": "Units",
+    "units": "pcs",
+    "value": "Value",
+    "coupon": "Coupon",
+    "yearly": "Yearly",
+    "maturity": "Maturity",
+    "actions": "Actions",
+    "withinYear": "within a year",
+    "matured": "repaid",
+    "noMaturity": "no maturity",
+    "noResults": {
+      "title": "Nothing found",
+      "description": "Try another name or ISIN.",
+      "maturedHidden": "Try another name or ISIN. Repaid issues are hidden."
+    },
+    "footer": {
+      "count_one": "{{count}} issue",
+      "count_other": "{{count}} issues",
+      "nominal": "face value {{amount}}",
+      "coupons": "coupons {{amount}} a year",
+      "valuation": "Value = face value × units · market price is not tracked"
+    }
+  },
+  "actions": {
+    "edit": "Edit",
+    "delete": "Delete"
+  },
+  "form": {
+    "addTitle": "Add bond",
+    "editTitle": "Edit bond",
+    "addDescription": "The value comes from face value × units, the return from the coupon rate.",
+    "editDescription": "Changes show in the value and in the maturity ladder.",
+    "name": "Name",
+    "namePlaceholder": "e.g. Czech government bond 2031",
+    "isin": "ISIN",
+    "isinHint": "12 characters from the terms of issue; helps match statements.",
+    "nominal": "Face value of 1 unit",
+    "quantity": "Units",
+    "rate": "Coupon per year",
+    "maturity": "Maturity date",
+    "maturityHint": "After maturity the issue moves to repaid and stops counting towards net worth.",
+    "summaryValue": "Value {{value}} · coupon {{coupon}} a year",
+    "summaryNext": "Next maturity anniversary {{date}}.",
+    "summaryMatures": "The issue matures this year; no further coupon.",
+    "summaryNoMaturity": "No maturity – the coupon counts every year.",
+    "submitAdd": "Add bond",
+    "submitEdit": "Save changes"
+  },
+  "confirmDelete": {
+    "title": "Delete bond?",
+    "description": "“{{name}}” will be removed permanently. This cannot be undone."
+  },
+  "toast": {
+    "added": "Bond added",
+    "updated": "Bond updated",
+    "deleted": "Bond deleted"
+  }
+}

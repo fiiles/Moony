@@ -1,0 +1,9 @@
+{
+    "github-actions.workflows.pinned.workflows": [
+        ".github/workflows/release.yml"
+    ],
+    "css.lint.unknownAtRules": "ignore",
+    "rust-analyzer.linkedProjects": [
+        "src-tauri/Cargo.toml"
+    ]
+}

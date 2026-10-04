@@ -1,0 +1,54 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "moony-dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "tauri",
+        "dev"
+      ],
+      "port": 1420
+    },
+    {
+      "name": "moony-demo",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": [
+        "-c",
+        "HOME=\"$PWD/demo-home\" RUSTUP_HOME=\"${RUSTUP_HOME:-$HOME/.rustup}\" CARGO_HOME=\"${CARGO_HOME:-$HOME/.cargo}\" npm run tauri dev -- --config '{\"app\":{\"windows\":[{\"title\":\"Moony\",\"width\":1400,\"height\":850,\"minWidth\":1024,\"minHeight\":700,\"backgroundThrottling\":\"disabled\"}]}}'"
+      ],
+      "port": 1420
+    },
+    {
+      "name": "moony-firstrun",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": [
+        "-c",
+        "mkdir -p firstrun-home && HOME=\"$PWD/firstrun-home\" RUSTUP_HOME=\"${RUSTUP_HOME:-$HOME/.rustup}\" CARGO_HOME=\"${CARGO_HOME:-$HOME/.cargo}\" npm run tauri dev -- --config '{\"app\":{\"windows\":[{\"title\":\"Moony\",\"width\":1400,\"height\":850,\"minWidth\":1024,\"minHeight\":700,\"backgroundThrottling\":\"disabled\"}]}}'"
+      ],
+      "port": 1420
+    },
+    {
+      "name": "design-system",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8765",
+        "--directory",
+        "docs/design-system"
+      ],
+      "port": 8765
+    },
+    {
+      "name": "moony-demo-alt",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": [
+        "-c",
+        "mkdir -p demo-home && HOME=\"$PWD/demo-home\" RUSTUP_HOME=\"${RUSTUP_HOME:-$HOME/.rustup}\" CARGO_HOME=\"${CARGO_HOME:-$HOME/.cargo}\" npm run tauri dev -- --config '{\"build\":{\"devUrl\":\"http://localhost:1421\",\"beforeDevCommand\":\"npm run dev -- --port 1421 --strictPort\"}}'"
+      ],
+      "port": 1421
+    }
+  ]
+}

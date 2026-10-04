@@ -1,0 +1,38 @@
+# cargo-audit configuration. cargo-audit reads `.cargo/audit.toml` from the directory it is run
+# in; CI runs it from the repository root:
+#
+#   cargo audit --file src-tauri/Cargo.lock --deny warnings
+#
+# Vulnerabilities, unsound crates and yanked crates fail the build. The advisories below are the
+# only exceptions: all are "unmaintained" / "unsound" notices (no known exploit) for crates that
+# are pulled in by Tauri or by the `image` crate and cannot be removed from this repository.
+# Review the list on every Tauri / image upgrade and delete entries that are gone.
+
+[advisories]
+ignore = [
+  # gtk-rs GTK3 bindings are unmaintained (RUSTSEC-2024-0411 … 0420). Used by Tauri's Linux
+  # window stack (tao / wry / webkit2gtk); upstream has to move to GTK4.
+  "RUSTSEC-2024-0411", # gdkwayland-sys
+  "RUSTSEC-2024-0412", # gdk
+  "RUSTSEC-2024-0413", # atk
+  "RUSTSEC-2024-0414", # gdkx11-sys
+  "RUSTSEC-2024-0415", # gtk
+  "RUSTSEC-2024-0416", # atk-sys
+  "RUSTSEC-2024-0417", # gdkx11
+  "RUSTSEC-2024-0418", # gdk-sys
+  "RUSTSEC-2024-0419", # gtk3-macros
+  "RUSTSEC-2024-0420", # gtk-sys
+  # glib 0.18: unsound Iterator impls of `glib::VariantStrIter`. Same GTK3 stack; Moony does
+  # not call that API and only the Linux build links glib.
+  "RUSTSEC-2024-0429",
+  # proc-macro-error: unmaintained, build-time only, via glib-macros / gtk3-macros.
+  "RUSTSEC-2024-0370",
+  # unic-* crates: unmaintained, via tauri-utils -> urlpattern.
+  "RUSTSEC-2025-0075", # unic-char-range
+  "RUSTSEC-2025-0080", # unic-common
+  "RUSTSEC-2025-0081", # unic-char-property
+  "RUSTSEC-2025-0098", # unic-ucd-version
+  "RUSTSEC-2025-0100", # unic-ucd-ident
+  # paste: unmaintained proc-macro, via the image crate's AVIF / EXR codecs (rav1e, pulp).
+  "RUSTSEC-2024-0436",
+]

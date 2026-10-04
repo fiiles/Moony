@@ -1,0 +1,197 @@
+{
+  "annuity": {
+    "title": "Anuitní kalkulačka",
+    "subtitle": "Splátka, celkový úrok a splátkový kalendář pro libovolný úvěr. Hodnoty se přepočítávají při psaní.",
+    "eyebrow": "Kalkulačka",
+    "status": "Výpočet probíhá lokálně, nic se neukládá",
+    "actions": {
+      "loadLoan": "Načíst z mých úvěrů",
+      "export": "Export"
+    },
+    "form": {
+      "title": "Parametry úvěru",
+      "amount": "Výše úvěru",
+      "years": "Doba splácení",
+      "yearsUnit": "let",
+      "rate": "Roční úroková sazba",
+      "frequency": "Frekvence splátek",
+      "frequencies": {
+        "monthly": "Měsíčně",
+        "quarterly": "Čtvrtletně",
+        "semiAnnually": "Pololetně",
+        "annually": "Ročně"
+      },
+      "extra": "Mimořádná splátka ročně",
+      "optional": "nepovinné",
+      "extraHint": "Jednou za rok navíc k pravidelným splátkám, bez sankce."
+    },
+    "insight": {
+      "extraYearly": "{{extra}} navíc ročně",
+      "shortens": "zkrátí splácení o {{years}} a ušetří",
+      "onInterest": "na úrocích. Kalendář níže ukazuje variantu bez mimořádných splátek.",
+      "noExtra": "Zadejte mimořádnou splátku a uvidíte, o kolik let a kolik na úrocích ušetříte."
+    },
+    "hero": {
+      "payment": {
+        "monthly": "Měsíční splátka",
+        "quarterly": "Čtvrtletní splátka",
+        "semiAnnually": "Pololetní splátka",
+        "annually": "Roční splátka"
+      },
+      "total": "celkem {{amount}}",
+      "interestShare": "z toho úrok {{amount}} · {{percent}}",
+      "view": {
+        "years": "Po letech",
+        "share": "Podíl úroku"
+      }
+    },
+    "legend": {
+      "principal": "Jistina",
+      "interest": "Úrok",
+      "milestone": "Milník"
+    },
+    "milestones": {
+      "cross": "Jistina převýší úrok",
+      "half": "Polovina dluhu splacena",
+      "year": "rok {{year}}"
+    },
+    "years_one": "{{count}} rok",
+    "years_few": "{{count}} roky",
+    "years_other": "{{count}} let",
+    "payments_one": "{{count}} splátka",
+    "payments_few": "{{count}} splátky",
+    "payments_other": "{{count}} splátek",
+    "stats": {
+      "totalPaid": "Celkem zaplatíte",
+      "totalInterest": "Celkový úrok",
+      "totalInterestNote": "{{percent}} z půjčené částky",
+      "withExtra": "S mimořádnou splátkou",
+      "withExtraNote": "úspora na úrocích · hotovo za {{short}} místo {{long}}",
+      "firstShare": "Podíl úroku v první splátce",
+      "firstShareNote": "v poslední {{percent}}"
+    },
+    "table": {
+      "title": "Splátkový kalendář",
+      "subYears": "Součty po letech · bez mimořádných splátek",
+      "subPeriods": "Jednotlivé splátky · bez mimořádných splátek",
+      "granularity": {
+        "years": "Ročně"
+      },
+      "year": "Rok",
+      "period": "Období",
+      "payments": "Splátky",
+      "principal": "Jistina",
+      "interest": "Úrok",
+      "balance": "Zbývající dluh",
+      "footer": "{{shown}} z {{total}} řádků",
+      "showAll": "Zobrazit celý kalendář",
+      "showLess": "Zobrazit jen začátek",
+      "periodLabel": "{{year}} · {{n}}. období"
+    },
+    "empty": "Zadejte výši úvěru, dobu a sazbu."
+  },
+  "estate": {
+    "title": "Výnos z nemovitosti",
+    "subtitle": "Vyhodnoťte investiční nemovitost s úvěrem: cashflow, výnos z vlastního kapitálu a projekce do prodeje.",
+    "eyebrow": "Kalkulačka",
+    "status": "Výpočet probíhá lokálně, nic se neukládá",
+    "actions": {
+      "loadProperty": "Načíst z mých nemovitostí"
+    },
+    "yearsUnit": "let",
+    "years_one": "{{count}} rok",
+    "years_few": "{{count}} roky",
+    "years_other": "{{count}} let",
+    "purchase": {
+      "title": "Nákup",
+      "price": "Kupní cena",
+      "loan": "Výše úvěru",
+      "years": "Doba splácení",
+      "rate": "Úroková sazba",
+      "equity": "Vlastní kapitál",
+      "ltv": "LTV",
+      "payment": "Měsíční splátka"
+    },
+    "rent": {
+      "title": "Pronájem",
+      "rent": "Očekávaný měsíční nájem",
+      "costs": "Měsíční náklady",
+      "vacancy": "Neobsazenost",
+      "vacancyUnit": "měs./rok",
+      "hint": "Náklady: údržba, daň, pojištění, fond oprav."
+    },
+    "projection": {
+      "title": "Projekce",
+      "rentGrowth": "Růst nájmu",
+      "costsGrowth": "Růst nákladů",
+      "priceGrowth": "Růst ceny",
+      "perYear": "%/rok",
+      "years": "Délka investice",
+      "oneTime": "Jednorázové náklady"
+    },
+    "sale": {
+      "title_one": "Prodej po {{count}} roce",
+      "title_few": "Prodej po {{count}} letech",
+      "title_other": "Prodej po {{count}} letech",
+      "finalPrice": "Konečná cena",
+      "remainingLoan": "Zbývající úvěr",
+      "repaid": "Splacená jistina",
+      "cumulative": "Kumulativní cashflow",
+      "equity": "Váš podíl při prodeji",
+      "totalReturn": "Celkový výnos",
+      "pa": "{{percent}} p.a.",
+      "formula": "Výnos = (konečná cena − zbývající úvěr − vlastní kapitál + kumulativní cashflow) / vlastní kapitál. Bez daní a nákladů prodeje."
+    },
+    "hero": {
+      "label": "Celkový výnos z vlastního kapitálu",
+      "value": "{{percent}} ročně",
+      "total": "celkem {{percent}} za {{years}}",
+      "components": "cashflow {{cashflow}} · splácení jistiny · růst ceny {{growth}}",
+      "cashflow": "Čisté cashflow",
+      "cashflowNote": "měsíčně v 1. roce · hrubé {{gross}}"
+    },
+    "legend": {
+      "equity": "Váš podíl (hodnota − úvěr + cashflow)",
+      "band": "Růst ceny ± 1 p. b.",
+      "invested": "Vložený kapitál",
+      "milestone": "Milník"
+    },
+    "chart": {
+      "purchase": "Nákup",
+      "tipRow": "{{year}} · hodnota {{value}} · úvěr {{loan}} · cashflow kumul. {{cumulative}}",
+      "tipStart": "{{year}} · vložený kapitál {{invested}}"
+    },
+    "milestones": {
+      "positive": "Kladné roční cashflow",
+      "positiveLine": "od roku {{year}}",
+      "half": "Polovina úvěru splacena",
+      "halfLine": "rok {{year}}",
+      "sale": "Prodej",
+      "saleLine": "{{year}} · cena {{price}} · úvěr {{loan}}"
+    },
+    "stats": {
+      "equity": "Vlastní kapitál",
+      "equityNote": "{{equity}} + jednorázové náklady {{once}}",
+      "grossYield": "Hrubý výnos z nájmu",
+      "grossYieldNote": "roční nájem / kupní cena",
+      "cashflow": "Roční čisté cashflow",
+      "cashflowNote": "v 1. roce · {{percent}} z vlastního kapitálu",
+      "saleGain": "Výnos z prodeje",
+      "saleGainNote": "cena − úvěr − vlastní kapitál · po {{years}}"
+    },
+    "table": {
+      "title": "Roční shrnutí",
+      "sub": "Nájem a náklady rostou zadaným tempem, splátka je pevná",
+      "year": "Rok",
+      "rent": "Nájem",
+      "costs": "Náklady",
+      "payments": "Splátky",
+      "cashflow": "Čistý CF",
+      "balance": "Zbývající úvěr",
+      "value": "Hodnota",
+      "footer": "{{years}} · kumulativní čisté cashflow {{cumulative}}",
+      "vacancyNote": "Neobsazenost se odečítá z nájmu"
+    },
+    "empty": "Zadejte kupní cenu a nájem."
+  }
+}

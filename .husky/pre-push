@@ -1,0 +1,6 @@
+# Heavy tier: full test suites + clippy, once per push (see docs/standards/workflow.md).
+npm test
+
+cd src-tauri
+cargo clippy -- -D warnings
+cargo test

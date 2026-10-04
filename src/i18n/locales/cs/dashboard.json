@@ -1,0 +1,114 @@
+{
+  "eyebrow": "Váš finanční obraz",
+  "greeting": {
+    "morning": "Dobré ráno, {{name}}.",
+    "day": "Dobrý den, {{name}}.",
+    "evening": "Dobrý večer, {{name}}."
+  },
+  "welcomeFirst": "Vítejte, {{name}}.",
+  "asOf": "Stav majetku k {{date}}",
+  "loading": "Načítání vašeho portfolia…",
+  "hero": {
+    "label": "Čisté jmění"
+  },
+  "insight": {
+    "up": "Hodnota roste. Největší podíl na změně: {{class}}.",
+    "down": "Hodnota klesá. Největší podíl na změně: {{class}}.",
+    "flat": "Hodnota se drží. Největší pohyb: {{class}}.",
+    "noHistory": "Vývoj se ukáže po prvních několika denních snímcích."
+  },
+  "stats": {
+    "netWorth": "Čisté jmění",
+    "totalAssets": "Celková aktiva",
+    "totalLiabilities": "Závazky",
+    "freeCash": "Volné prostředky",
+    "freeCashNote": "na bankovních účtech",
+    "unchanged": "beze změny za období",
+    "noHistory": "zatím bez historie"
+  },
+  "cards": {
+    "investments": "Akcie",
+    "savings": "Hotovost",
+    "bonds": "Dluhopisy",
+    "liabilities": "Závazky",
+    "crypto": "Krypto",
+    "realEstate": "Nemovitosti",
+    "otherAssets": "Ostatní aktiva",
+    "other": "Ostatní",
+    "ofTotal": "{{percent}} z celku"
+  },
+  "classes": {
+    "investments": "akcie",
+    "savings": "hotovost",
+    "bonds": "dluhopisy",
+    "liabilities": "závazky",
+    "crypto": "krypto",
+    "realEstate": "nemovitosti",
+    "otherAssets": "ostatní aktiva"
+  },
+  "allocation": {
+    "title": "Rozložení majetku",
+    "open": "Otevřít investice",
+    "center": "Aktiva"
+  },
+  "moves": {
+    "title": "Poslední pohyby",
+    "all": "Zobrazit vše",
+    "empty": "Tady se objeví bankovní transakce, nákupy a prodeje.",
+    "kind": {
+      "bankIn": "Příchozí platba",
+      "bankOut": "Odchozí platba",
+      "buy": "Nákup",
+      "sell": "Prodej",
+      "cryptoBuy": "Nákup krypta",
+      "cryptoSell": "Prodej krypta"
+    }
+  },
+  "changePeriod": {
+    "30D": "za posledních 30 dní",
+    "90D": "za posledních 90 dní",
+    "YTD": "od začátku roku",
+    "1Y": "za poslední rok",
+    "5Y": "za posledních 5 let",
+    "All": "od prvního záznamu"
+  },
+  "empty": {
+    "title": "Tady se zobrazí vaše čisté jmění",
+    "description": "Přidejte účet nebo investici a Moony z nich sestaví přehled, grafy a vývoj. Všechna data zůstávají v tomto počítači.",
+    "addAccount": "Přidat bankovní účet a naimportovat výpis",
+    "addInvestment": "Přidat investici",
+    "setBudget": "Nastavit rozpočet"
+  },
+  "gettingStarted": {
+    "title": "Začínáme",
+    "subtitle": "Čtyři kroky, po kterých Moony začne dávat smysl. Karta zmizí, až budete hotovi.",
+    "importStatement": "Importovat bankovní výpis",
+    "importStatementHint": "Přidejte účet a importujte CSV ze své banky.",
+    "addInvestment": "Přidat investici",
+    "addInvestmentHint": "Akcie, ETF nebo krypto s aktuálními cenami.",
+    "setBudget": "Nastavit rozpočet",
+    "setBudgetHint": "Měsíční limity pro jednotlivé kategorie výdajů.",
+    "makeBackup": "Udělat zálohu",
+    "makeBackupHint": "Jeden soubor se vším, v Nastavení → Data a zálohy.",
+    "dismiss": "Skrýt",
+    "done": "Hotovo"
+  },
+  "welcome": "Vítejte zpět, {{name}}!",
+  "overview": "Zde je váš finanční přehled pro dnešní den.",
+  "charts": {
+    "netWorthTrend": "Vývoj čistého jmění",
+    "assetAllocation": "Alokace aktiv",
+    "assetsVsLiabilities": "Aktiva vs závazky",
+    "assetsToLiabilitiesRatio": "Poměr aktiv k závazkům",
+    "assetClassTrend": "Čisté jmění dle tříd aktiv",
+    "noHistoricalData": "Žádná historická data k dispozici",
+    "estimatedBackfilled": "odhad (dopočteno)",
+    "estimatedLegend": "Čárkovaně: odhadované dny. Bankovní účty, dluhopisy, nemovitosti a závazky jsou převzaty z nejbližšího zaznamenaného dne."
+  },
+  "tooltips": {
+    "netWorth": "Čisté jmění",
+    "totalAssets": "Celková aktiva",
+    "totalLiabilities": "Celkové závazky"
+  },
+  "changeSince": "od {{date}}"
+}

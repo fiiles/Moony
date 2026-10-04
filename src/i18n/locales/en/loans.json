@@ -1,0 +1,332 @@
+{
+  "title": "Loans",
+  "eyebrow": "Liabilities",
+  "subtitle": "Mortgages and consumer loans, balances by the repayment schedule.",
+  "status": "Balances amortized as of {{date}}",
+  "loading": "Loading your loans...",
+  "export": "Export",
+  "empty": {
+    "title": "No loans yet",
+    "description": "Add your first loan to see what you owe, what the interest costs you and when you will be debt-free."
+  },
+  "addLoan": "Add loan",
+  "loans_one": "{{count}} loan",
+  "loans_other": "{{count}} loans",
+  "summary": {
+    "outstanding": "Total outstanding",
+    "repaidOf": "{{percent}} repaid of {{principal}} borrowed",
+    "payments": "Monthly payments",
+    "paymentsAfter": "from {{month}} only {{amount}} · {{name}} will be paid off",
+    "paymentsYear": "{{amount}} a year",
+    "rate": "Avg. interest rate",
+    "rateNote": "weighted by balance · interest over the next 12 months {{interest}}",
+    "fixation": "Fixation ends",
+    "fixationNote": "in {{duration}} · {{name}} {{rate}}",
+    "fixationExpired": "{{name}}'s fixation ended {{month}} – enter the new rate",
+    "noFixation": "no rate has an end of validity"
+  },
+  "chart": {
+    "title": "Debt trajectory",
+    "subtitle": "Balances so far solid, the future by the repayment schedules dashed.",
+    "horizon": {
+      "5": "5 years",
+      "10": "10 years",
+      "all": "Until paid off"
+    },
+    "legend": {
+      "outstanding": "Outstanding",
+      "schedule": "By schedule",
+      "milestone": "Milestone"
+    },
+    "tipSchedule": "by schedule",
+    "note": "Today {{today}} · in {{duration}} {{amount}}",
+    "noteDebtFree": "Today {{today}} · debt-free in {{duration}}",
+    "noteNoPayoff": "Today {{today}} · at the current payments the debt is never paid off",
+    "milestones": {
+      "paidOff": "{{name}} paid off",
+      "paidOffPayments": "payments drop by {{amount}} a month",
+      "debtFree": "debt-free",
+      "fixationEnd": "Fixation ends · {{name}}",
+      "half": "Half repaid · {{name}}",
+      "balance": "balance {{amount}}",
+      "several_one": "{{count}} milestone",
+      "several_other": "{{count}} milestones"
+    }
+  },
+  "table": {
+    "title": "Loans",
+    "subtitle": "Sorted by balance",
+    "subtitleHidden": "Sorted by balance · paid-off loans hidden",
+    "showMatured": "Show paid off",
+    "loan": "Loan",
+    "outstanding": "Outstanding",
+    "principal": "Principal",
+    "rate": "Rate",
+    "payment": "Payment",
+    "payoff": "Paid off by",
+    "actions": "Actions",
+    "since": "since {{month}}",
+    "repaid": "{{percent}} repaid",
+    "matured": "paid off",
+    "fixedUntil": "fixed until {{month}}",
+    "fixationEnded": "fixation ended {{month}}",
+    "fixedRate": "fixed rate",
+    "monthly": "monthly",
+    "noPayment": "no payment",
+    "in": "in {{duration}}",
+    "soonYear": "within a year",
+    "soon": "within 18 months",
+    "noPayoff": "never at the current payment",
+    "capped": "more than 50 years",
+    "balanceAtEnd": "{{amount}} left at the end date",
+    "noResults": {
+      "title": "No active loans",
+      "description": "Every loan is paid off. Tick \"Show paid off\" to see them."
+    },
+    "footer": {
+      "count_one": "{{count}} active loan",
+      "count_other": "{{count}} active loans",
+      "outstanding": "outstanding {{amount}}",
+      "payments": "payments {{amount}} a month",
+      "note": "Balance = principal amortized by the payments to date, or the balance you entered as of a date"
+    }
+  },
+  "duration": {
+    "years_one": "{{count}} year",
+    "years_other": "{{count}} years",
+    "months_one": "{{count}} month",
+    "months_other": "{{count}} months"
+  },
+  "form": {
+    "addTitle": "Add loan",
+    "editTitle": "Edit loan",
+    "submit": "Add loan",
+    "name": "Loan name",
+    "namePlaceholder": "e.g. Home mortgage",
+    "originalAmount": "Principal",
+    "interestRate": "Interest rate",
+    "monthlyPayment": "Monthly payment",
+    "startDate": "Start date",
+    "endDate": "End date",
+    "balance": {
+      "title": "Outstanding balance",
+      "help": "Moony reduces the balance with every monthly payment. If you know the real balance, for example from a bank statement, enter it with its date and the calculation continues from there.",
+      "setManual": "Set the balance as of a date",
+      "amount": "Outstanding amount",
+      "date": "As of date",
+      "estimate": "Estimated balance today: {{amount}}",
+      "noPayment": "Without a monthly payment the balance is not reduced."
+    }
+  },
+  "actions": {
+    "edit": "Edit",
+    "delete": "Delete loan",
+    "open": "Open",
+    "extraPayment": "Extra payment",
+    "balanceCheck": "Verify balance by statement",
+    "rateChange": "Record a rate change"
+  },
+  "confirmDelete": {
+    "title": "Delete loan",
+    "description": "Delete \"{{name}}\"? Its events and property links go with it. This cannot be undone."
+  },
+  "toast": {
+    "added": "Loan added",
+    "updated": "Loan updated",
+    "deleted": "Loan deleted",
+    "eventAdded": "Event recorded, schedule recalculated",
+    "eventDeleted": "Event removed"
+  },
+  "modal": {
+    "addDescription": "Principal, rate and payment are enough; the balance follows the schedule.",
+    "editDescription": "Change the loan terms; the balance is recalculated.",
+    "endDateHelp": "When the loan is contractually due",
+    "rateValidity": "Rate validity (fixation end)",
+    "rateValidityHelp": "When the current rate's fixation ends",
+    "startDateHelp": "The balance is amortized from this date; payments fall on the same day of each month"
+  },
+  "valuation": {
+    "automatic": "Amortized from {{date}} ({{amount}}) at {{rate}} with {{payment}} per month.",
+    "manual": "From your balance of {{amount}} on {{date}}, amortized at {{rate}} with {{payment}} per month.",
+    "static": "No monthly payment is set, so the balance is not reduced: {{amount}} as of {{date}}.",
+    "belowInterest": "The payment does not cover the interest, so the balance does not fall."
+  },
+  "detail": {
+    "backToLoans": "Back to loans",
+    "loading": "Loading loan...",
+    "notFound": "This loan no longer exists.",
+    "eyebrow": "Loan",
+    "description": "Principal {{principal}} since {{month}} · {{rate}}{{fixation}} · payment {{payment}} a month",
+    "descriptionNoPayment": "Principal {{principal}} since {{month}} · {{rate}} · no monthly payment",
+    "withFixation": " fixed until {{month}}",
+    "status": {
+      "automatic": "Balance by schedule",
+      "manual": "Balance by schedule · from your balance as of {{date}}",
+      "static": "No monthly payment · the balance does not fall"
+    },
+    "hero": {
+      "outstanding": "Outstanding",
+      "delta12": "over the last 12 months · {{percent}} of the principal repaid",
+      "deltaSinceStart": "since drawdown · {{percent}} of the principal repaid",
+      "payoff": "Paid off by",
+      "payoffNote": "in {{duration}} at the current payment",
+      "paidOff": "Paid off",
+      "noPayoff": "never at the current payment",
+      "noPayment": "without a payment the balance does not fall",
+      "balanceAtEnd": "until {{month}} · {{amount}} left at the end date"
+    },
+    "horizon": {
+      "past": "So far",
+      "5": "5 years",
+      "all": "Until paid off"
+    },
+    "chart": {
+      "legend": {
+        "balance": "Balance",
+        "schedule": "By schedule",
+        "extraPayment": "Extra payment",
+        "milestones": "Fixation and milestones"
+      },
+      "tipBalance": "balance",
+      "tipSchedule": "by schedule",
+      "notePast": "Since {{date}}: {{principal}} of principal repaid and {{interest}} paid in interest",
+      "note5": "Balance in 5 years {{amount}}",
+      "note5Fixation": "Balance in 5 years {{amount}} · fixation ends {{month}}",
+      "noteAll": "Until paid off you still pay {{total}}, of which {{interest}} is interest",
+      "noteNoPayoff": "At the current payment the loan is never paid off",
+      "events": {
+        "drawdown": "Drawdown {{amount}}",
+        "extraPayment": "Extra payment {{amount}}",
+        "rateChange": "Rate changed to {{rate}}",
+        "newPayment": "payment {{amount}}",
+        "balanceCheck": "Balance verified by statement",
+        "fixationEnd": "Fixation ends",
+        "half": "Half of the principal repaid",
+        "payoff": "Loan paid off",
+        "balance": "balance {{amount}}"
+      }
+    },
+    "stats": {
+      "interest": "Interest paid",
+      "interestNote": "since {{date}} · {{share}} of the payments made",
+      "principal": "Principal repaid",
+      "principalNote": "{{percent}} of the principal",
+      "principalExtra": "of which {{amount}} in extra payments",
+      "remaining": "Payments left",
+      "remainingNote": "{{duration}} · {{interest}} of interest still to pay",
+      "remainingNone": "never at the current payment",
+      "paidOff": "the loan is paid off",
+      "fixation": "Fixation ends",
+      "fixationNote": "in {{duration}} · at {{up}} the payment is {{upPayment}}, at {{down}} {{downPayment}}",
+      "nextPayment": "Next payment",
+      "nextPaymentNote": "interest {{interest}} · principal {{principal}}",
+      "noSchedule": "no schedule",
+      "remainingToEnd": "until {{month}} · {{amount}} left · {{interest}} of interest still to pay"
+    },
+    "schedule": {
+      "title": "Repayment schedule",
+      "subtitle": "Interest and principal in every payment · balance after it",
+      "modes": {
+        "next12": "Next 12",
+        "years": "By year",
+        "all": "All"
+      },
+      "payment": "Payment",
+      "amount": "Amount",
+      "interest": "Interest",
+      "principal": "Principal",
+      "balanceAfter": "Balance after",
+      "year": "Year",
+      "payments": "Payments",
+      "interestTotal": "Interest",
+      "balanceEnd": "Balance at year end",
+      "next": "next",
+      "footNext12": "Next 12 payments: interest {{interest}} · principal {{principal}}",
+      "footYears_one": "{{count}} year · the interest share falls from {{from}} to {{to}} in the last year",
+      "footYears_other": "{{count}} years · the interest share falls from {{from}} to {{to}} in the last year",
+      "footAll": "{{count}} payments since {{date}} · past ones muted",
+      "empty": "There is no schedule yet. Set a monthly payment (Edit) to see one.",
+      "paidOff": "This loan is paid off.",
+      "method": "Interest = balance × rate ÷ 12, one payment a month on the same day"
+    },
+    "whatIf": {
+      "title": "Extra payment",
+      "subtitle": "What it would do to the term and the interest",
+      "amount": "Amount",
+      "hint": "Compare the two options banks offer.",
+      "modes": {
+        "term": "Shorten the term",
+        "payment": "Lower the payment"
+      },
+      "termResult": "Paid off {{duration}} earlier",
+      "termNote": "You save {{interest}} in interest · the payment stays {{payment}} · ends {{month}}",
+      "paymentResult": "Payment drops by {{amount}} a month",
+      "paymentNote": "New payment {{payment}} · the term stays until {{month}} · interest lower by {{interest}}",
+      "noEffect": "Enter an amount up to the balance of {{amount}}.",
+      "noPayment": "Without a monthly payment the effect cannot be calculated – add it by editing the loan.",
+      "record": "Record as made"
+    },
+    "events": {
+      "title": "Events",
+      "extraPayment": "Extra payment {{amount}}",
+      "extraPaymentNote": "the schedule continues from the reduced balance",
+      "newPayment": "new payment {{amount}}",
+      "rateChange": "Rate changed to {{rate}}",
+      "rateChangeNote": "the schedule continues from the balance on this day",
+      "balanceCheck": "Balance verified by statement",
+      "balanceCheckNote": "the schedule restarts from this date",
+      "drawdown": "Drawdown {{amount}}",
+      "drawdownNote": "start of the loan",
+      "delete": "Remove event",
+      "confirmDelete": {
+        "title": "Remove event",
+        "description": "The entry disappears from the chart and the list. The balance the event set stays in effect."
+      }
+    },
+    "warnings": {
+      "noPayment": "No monthly payment is set, so the balance is not reduced. Edit the loan and add the payment to amortize it automatically.",
+      "paymentBelowInterest": "The monthly payment does not cover the interest (about {{interest}} per month), so the balance does not fall. Check the payment and the interest rate.",
+      "balanceAtEndDate": "At the end date ({{date}}) {{amount}} would still be outstanding. Check the payment, the interest rate and the end date.",
+      "scheduleTruncated": "The schedule is cut off after {{count}} payments."
+    }
+  },
+  "eventDialog": {
+    "note": "Note",
+    "extraPayment": {
+      "title": "Extra payment",
+      "description": "Lowers the balance on the day and recalculates the schedule; it appears in the chart as an event.",
+      "amount": "Amount",
+      "date": "Date",
+      "usedFor": "The bank used the payment to",
+      "term": "Shorten the term",
+      "payment": "Lower the payment",
+      "alertTitle": "The balance drops to {{amount}}",
+      "alertTerm": "Paid off {{duration}} earlier, saving {{interest}} in interest.",
+      "alertPayment": "New payment {{payment}} a month, the term stays until {{month}}.",
+      "alertTooMuch": "The amount exceeds the balance of {{amount}}.",
+      "alertEmpty": "Enter an amount to see the effect.",
+      "submit": "Record payment"
+    },
+    "rateChange": {
+      "title": "Rate change",
+      "description": "From the given day the new rate applies; the schedule continues from that day's balance.",
+      "rate": "New rate",
+      "payment": "New payment",
+      "paymentHint": "Empty = the payment stays {{amount}}",
+      "date": "Valid from",
+      "alertTitle": "Monthly interest {{from}} → {{to}}",
+      "alertNote": "At a payment of {{payment}} the loan is paid off {{month}}.",
+      "alertNoPayoff": "A payment of {{payment}} does not cover the interest; the balance would not fall.",
+      "submit": "Record change"
+    },
+    "balanceCheck": {
+      "title": "Verify balance by statement",
+      "description": "Enter the balance from your statement; the schedule restarts from that day.",
+      "amount": "Balance per statement",
+      "date": "As of",
+      "alertTitle": "The schedule assumed {{amount}}",
+      "alertNote": "Difference {{delta}} · from {{date}} the schedule uses your balance.",
+      "submit": "Save balance"
+    }
+  }
+}

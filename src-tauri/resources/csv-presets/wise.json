@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "wise",
+  "bankName": "Wise",
+  "country": "GB",
+  "matchHeaders": ["TransferWise ID", "Date", "Amount", "Currency", "Description"],
+  "delimiter": ",",
+  "encoding": "UTF-8",
+  "dateColumn": "Date",
+  "dateFormat": "%d-%m-%Y",
+  "amountColumn": "Amount",
+  "descriptionColumns": ["Description", "Payment Reference"],
+  "counterpartyColumn": "Payee Name",
+  "counterpartyIbanColumn": "Payee Account Number",
+  "currencyColumn": "Currency",
+  "balanceColumn": "Running Balance",
+  "transactionIdColumn": "TransferWise ID",
+  "exportHelpUrl": "https://wise.com/help/articles/2736049/how-do-i-download-a-statement",
+  "sampleFixture": "wise.csv"
+}

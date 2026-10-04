@@ -1,0 +1,14 @@
+accountId;2900000001
+bankId;2010
+currency;CZK
+iban;CZ7920100000002900000001
+bic;FIOBCZPPXXX
+openingBalance;10 000,00
+closingBalance;12 345,67
+dateStart;01.09.2026
+dateEnd;30.09.2026
+
+ID operace;Datum;Objem;Měna;Protiúčet;Název protiúčtu;Kód banky;Název banky;KS;VS;SS;Uživatelská identifikace;Zpráva pro příjemce;Typ;Provedl;Upřesnění;Komentář;BIC;ID pokynu
+26000000001;01.09.2026;25000,00;CZK;123456789;Firma a.s.;0100;Komerční banka;;2026;;Mzda;Mzda září;Příjem převodem uvnitř banky;;;;;
+26000000002;03.09.2026;-456,70;CZK;;;;;;;;Lidl;Lidl Praha;Platba kartou;Filip Král;;;;
+26000000003;05.09.2026;-12000,00;CZK;987654321;Pronajímatel;0300;ČSOB;;;;Nájem;Nájem 9/2026;Platba převodem uvnitř banky;;;;;

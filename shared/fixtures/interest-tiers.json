@@ -1,0 +1,80 @@
+{
+  "description": "Cross-check cases for the progressive interest tiers of a bank account. Read by the Rust service (services/interest_tiers.rs) and by the TypeScript mirror (src/utils/bank-account-zones.ts) so both must produce the same yearly interest. Tiers use the wire format of a zone: money as strings, a missing / empty / \"0\" toAmount means unlimited.",
+  "cases": [
+    {
+      "name": "audit example: non-contiguous tiers, balance inside the gap",
+      "balance": 150000,
+      "tiers": [
+        { "fromAmount": "0", "toAmount": "100000", "interestRate": "5" },
+        { "fromAmount": "200000", "toAmount": null, "interestRate": "1" }
+      ],
+      "yearlyInterest": 5000
+    },
+    {
+      "name": "non-contiguous tiers, balance above the gap",
+      "balance": 250000,
+      "tiers": [
+        { "fromAmount": "0", "toAmount": "100000", "interestRate": "5" },
+        { "fromAmount": "200000", "toAmount": null, "interestRate": "1" }
+      ],
+      "yearlyInterest": 5500
+    },
+    {
+      "name": "contiguous tiers",
+      "balance": 250000,
+      "tiers": [
+        { "fromAmount": "0", "toAmount": "100000", "interestRate": "2" },
+        { "fromAmount": "100000", "toAmount": null, "interestRate": "3" }
+      ],
+      "yearlyInterest": 6500
+    },
+    {
+      "name": "balance inside the first tier",
+      "balance": 50000,
+      "tiers": [
+        { "fromAmount": "0", "toAmount": "100000", "interestRate": "2" },
+        { "fromAmount": "100000", "toAmount": null, "interestRate": "3" }
+      ],
+      "yearlyInterest": 1000
+    },
+    {
+      "name": "tiers given in any order",
+      "balance": 250000,
+      "tiers": [
+        { "fromAmount": "100000", "toAmount": null, "interestRate": "3" },
+        { "fromAmount": "0", "toAmount": "100000", "interestRate": "2" }
+      ],
+      "yearlyInterest": 6500
+    },
+    {
+      "name": "unlimited tier stored as an empty string",
+      "balance": 200000,
+      "tiers": [{ "fromAmount": "0", "toAmount": "", "interestRate": "4" }],
+      "yearlyInterest": 8000
+    },
+    {
+      "name": "unlimited tier stored as \"0\" (legacy)",
+      "balance": 200000,
+      "tiers": [{ "fromAmount": "0", "toAmount": "0", "interestRate": "4" }],
+      "yearlyInterest": 8000
+    },
+    {
+      "name": "zero balance earns nothing",
+      "balance": 0,
+      "tiers": [{ "fromAmount": "0", "toAmount": null, "interestRate": "4" }],
+      "yearlyInterest": 0
+    },
+    {
+      "name": "negative balance earns nothing",
+      "balance": -500,
+      "tiers": [{ "fromAmount": "0", "toAmount": null, "interestRate": "4" }],
+      "yearlyInterest": 0
+    },
+    {
+      "name": "no tiers",
+      "balance": 1000,
+      "tiers": [],
+      "yearlyInterest": 0
+    }
+  ]
+}

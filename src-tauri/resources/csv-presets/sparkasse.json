@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "id": "sparkasse",
+  "bankName": "Sparkasse",
+  "country": "DE",
+  "matchHeaders": ["Buchungstag", "Verwendungszweck", "Beguenstigter/Zahlungspflichtiger", "Betrag"],
+  "delimiter": ";",
+  "encoding": "Windows-1252",
+  "dateColumn": "Buchungstag",
+  "dateFormat": "%d.%m.%y",
+  "amountColumn": "Betrag",
+  "descriptionColumns": ["Verwendungszweck", "Buchungstext"],
+  "counterpartyColumn": "Beguenstigter/Zahlungspflichtiger",
+  "counterpartyIbanColumn": "Kontonummer/IBAN",
+  "currencyColumn": "Waehrung",
+  "sampleFixture": "de-sparkasse.csv"
+}

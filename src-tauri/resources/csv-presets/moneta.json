@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "id": "moneta",
+  "bankName": "MONETA Money Bank",
+  "country": "CZ",
+  "institutionId": "inst_moneta",
+  "matchHeaders": ["Datum zaúčtování", "Částka", "Poznámka", "Název protistrany"],
+  "delimiter": ";",
+  "encoding": "Windows-1250",
+  "dateColumn": "Datum zaúčtování",
+  "dateFormat": "%d.%m.%Y",
+  "amountColumn": "Částka",
+  "descriptionColumns": ["Poznámka"],
+  "counterpartyColumn": "Název protistrany",
+  "currencyColumn": "Měna"
+}

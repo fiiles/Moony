@@ -1,0 +1,5 @@
+﻿Datum zaúčtování;Částka;Měna;Název protiúčtu;Číslo protiúčtu;Zpráva pro příjemce;Variabilní symbol;Typ transakce
+01.09.2026;45 000,00;CZK;ZAMĚSTNAVATEL S.R.O.;123456789/0800;Mzda 9/2026;202609;Příchozí platba
+02.09.2026;-15 500,00;CZK;SVJ Dlouhá 12;987654321/0100;Nájem;;Odchozí platba
+03.09.2026;-1 234,50;CZK;ALBERT;;Nákup;;Platba kartou
+06.09.2026;-89,00;CZK;Spotify;;;;Platba kartou

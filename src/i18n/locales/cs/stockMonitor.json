@@ -1,0 +1,190 @@
+{
+  "title": "Sledování akcií",
+  "subtitle": "Akcie, které zvažujete: ceny v původní měně, cílové ceny a vaše poznámky.",
+  "cancel": "Zrušit",
+  "search": {
+    "placeholder": "Hledat akcii (symbol nebo název) a začít sledovat",
+    "noResults": "Žádné akcie nenalezeny",
+    "searching": "Vyhledávání…"
+  },
+  "table": {
+    "stock": "Akcie",
+    "price": "Cena",
+    "fiftyTwoWeekLow": "52t minimum",
+    "fiftyTwoWeekHigh": "52t maximum",
+    "targetPrice": "Cíl",
+    "change": "Změna",
+    "changePct": "Změna %",
+    "held": "V portfoliu",
+    "pricesUpdatedAt": "Ceny aktualizovány {{time}}",
+    "pricesNeverUpdated": "Ceny ještě nebyly načteny",
+    "title": "Sledované",
+    "sub": "Změna proti včerejšímu závěru · 52T rozpětí s aktuální cenou a cílem",
+    "sort": {
+      "name": "Podle názvu",
+      "change": "Podle změny",
+      "target": "Podle cíle"
+    },
+    "changeToday": "Změna dnes",
+    "range": "52T rozpětí",
+    "target": "Cíl",
+    "setTarget": "Nastavit cíl",
+    "targetReached": "Cíl {{price}} dosažen",
+    "toTarget": "{{pct}} k cíli",
+    "footer_one": "{{count}} akcie · ceny v původní měně, bez přepočtu",
+    "footer_few": "{{count}} akcie · ceny v původní měně, bez přepočtu",
+    "footer_other": "{{count}} akcií · ceny v původní měně, bez přepočtu",
+    "source": "Zdroj Yahoo Finance · zpoždění do 15 minut"
+  },
+  "empty": {
+    "title": "Žádné sledované akcie",
+    "description": "Vyhledejte akcii výše a začněte ji sledovat."
+  },
+  "actions": {
+    "follow": "Sledovat",
+    "unfollow": "Přestat sledovat",
+    "refresh": "Aktualizovat ceny",
+    "followPortfolio": "Sledovat {{count}} z portfolia",
+    "refreshShort": "Aktualizovat",
+    "buy": "Koupit do portfolia",
+    "openInPortfolio": "Otevřít v portfoliu",
+    "setTarget": "Nastavit cíl",
+    "editTarget": "Upravit cíl",
+    "notes": "Poznámky"
+  },
+  "unfollowConfirm": {
+    "title": "Přestat sledovat {{ticker}}?",
+    "description": "Cílová cena a poznámky k této akcii budou smazány."
+  },
+  "detail": {
+    "marketCap": "Tržní kapitalizace",
+    "dividendYield": "Dividendový výnos",
+    "peRatio": "P/E poměr",
+    "fiftyTwoWeekLow": "52t minimum",
+    "fiftyTwoWeekHigh": "52t maximum",
+    "previousClose": "Předchozí závěr",
+    "noData": "Cenová data nejsou k dispozici (offline?)",
+    "notFollowed": "Tuto akcii zatím nesledujete.",
+    "backToOverview": "Zpět na přehled",
+    "periodStart": "Začátek období {{period}}: {{price}}",
+    "openInPortfolio": "Otevřít v portfoliu",
+    "back": "Zpět na sledování",
+    "followedSince": "Sledujete od {{date}}",
+    "notFollowedShort": "Zatím nesledujete",
+    "held": "v portfoliu",
+    "notHeld": "není v portfoliu",
+    "price": "Cena",
+    "today": "{{change}} dnes · závěr {{close}}",
+    "target": "Cílová cena",
+    "toTarget": "zbývá {{pct}}",
+    "targetReached": "cíl dosažen",
+    "periodChange": "změna {{change}}",
+    "legend": {
+      "price": "Cena",
+      "target": "Cílová cena",
+      "watchStart": "Začátek sledování"
+    },
+    "watchStartTarget": "cíl {{price}}",
+    "stats": {
+      "exchangeNote": "na burze {{exchange}}",
+      "peNote": "cena ku zisku za posledních 12 měsíců",
+      "dividendNote": "{{amount}} ročně na akcii",
+      "range": "52T rozpětí",
+      "min": "min",
+      "max": "max"
+    },
+    "keyData": "Klíčová data",
+    "kv": {
+      "previousClose": "Předchozí závěr",
+      "changeToday": "Změna dnes",
+      "low": "52T minimum",
+      "high": "52T maximum",
+      "marketCap": "Tržní kapitalizace",
+      "pe": "P/E poměr",
+      "dividend": "Dividendový výnos",
+      "exchange": "Burza",
+      "updated": "Ceny aktualizovány"
+    },
+    "since": {
+      "title": "Od začátku sledování",
+      "text": "Za {{days}} se cena změnila z {{price}} o",
+      "toTarget": "K cíli zbývá {{amount}}.",
+      "noData": "Sledujete {{days}}; cena z té doby zatím není k dispozici.",
+      "days_one": "{{count}} den",
+      "days_few": "{{count}} dny",
+      "days_other": "{{count}} dní"
+    },
+    "followPrompt": "Sledováním získáte cílovou cenu, poznámky a značku začátku sledování v grafu."
+  },
+  "target": {
+    "label": "Cílová cena",
+    "set": "Nastavit cíl",
+    "edit": "Upravit",
+    "clear": "Smazat cíl",
+    "save": "Uložit cíl",
+    "cancel": "Zrušit",
+    "toTarget": "{{pct}} k cíli",
+    "placeholder": "např. 250.00",
+    "title": "Cílová cena",
+    "description": "Při dosažení se cíl zvýrazní v tabulce sledovaných akcií.",
+    "field": "Cíl",
+    "hintCurrent": "Aktuální cena {{price}}",
+    "hintHigh": "52T maximum {{price}}"
+  },
+  "notes": {
+    "title": "Poznámky",
+    "edit": "Upravit",
+    "write": "Psát",
+    "preview": "Náhled",
+    "save": "Uložit",
+    "cancel": "Zrušit",
+    "empty": "Zatím žádné poznámky. Klikněte na Upravit a přidejte poznámky (markdown je podporován).",
+    "placeholder": "Pište poznámky v markdownu…",
+    "toolbar": {
+      "bold": "Tučně",
+      "italic": "Kurzíva",
+      "heading": "Nadpis",
+      "list": "Odrážkový seznam",
+      "orderedList": "Číslovaný seznam",
+      "link": "Odkaz"
+    },
+    "sub": "Markdown · upravitelné i přes asistenta (MCP)",
+    "paragraphs_one": "{{count}} odstavec",
+    "paragraphs_few": "{{count}} odstavce",
+    "paragraphs_other": "{{count}} odstavců",
+    "markdownHint": "Markdown"
+  },
+  "chart": {
+    "noData": "Pro toto období nejsou k dispozici žádná data",
+    "currentPrice": "Aktuální cena",
+    "targetLabel": "Cíl {{price}}"
+  },
+  "toast": {
+    "followed": "Nyní sledujete {{ticker}}",
+    "unfollowed": "Přestali jste sledovat {{ticker}}",
+    "followedPortfolio_one": "Nyní sledujete 1 akcii z portfolia",
+    "followedPortfolio_few": "Nyní sledujete {{count}} akcie z portfolia",
+    "followedPortfolio_many": "Nyní sledujete {{count}} akcií z portfolia",
+    "followedPortfolio_other": "Nyní sledujete {{count}} akcií z portfolia"
+  },
+  "eyebrow": "Watchlist",
+  "status": {
+    "updated": "Ceny aktualizovány {{time}} · obnovují se každých 5 minut",
+    "updatedShort": "Ceny aktualizovány {{time}}",
+    "never": "Ceny ještě nebyly načteny"
+  },
+  "stats": {
+    "watched": "Sledované akcie",
+    "heldNote_one": "{{count}} z nich držíte v portfoliu",
+    "heldNote_few": "{{count}} z nich držíte v portfoliu",
+    "heldNote_other": "{{count}} z nich držíte v portfoliu",
+    "heldNoteNone": "žádnou z nich nedržíte v portfoliu",
+    "atTarget": "U cílové ceny",
+    "targetReached": "cíl {{price}} dosažen",
+    "toTarget": "{{pct}} k cíli",
+    "noTargets": "zatím bez cílových cen",
+    "topToday": "Dnes nejvíc",
+    "worstNote": "nejméně {{name}} {{change}}",
+    "noChanges": "bez dnešní změny"
+  }
+}

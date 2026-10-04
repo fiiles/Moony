@@ -1,0 +1,328 @@
+{
+  "title": "Pojištění",
+  "eyebrow": "Ochrana",
+  "subtitle": "Co máte pojištěné, kolik to stojí a kdy přijdou platby a výročí smluv.",
+  "loading": "Načítání vašich pojistných smluv...",
+  "export": "Export",
+  "status": {
+    "nextPayment": "Příští platba {{date}} · {{amount}}",
+    "none": "Bez pravidelných plateb",
+    "ended": "Pojistka je ukončená"
+  },
+  "empty": {
+    "title": "Zatím žádné pojistky",
+    "description": "Přidejte první smlouvu a uvidíte, co máte kryté, kolik za to platíte a kdy přijdou platby."
+  },
+  "addPolicy": "Přidat pojistku",
+  "policies_one": "{{count}} aktivní pojistka",
+  "policies_few": "{{count}} aktivní pojistky",
+  "policies_other": "{{count}} aktivních pojistek",
+  "payments_one": "{{count}} platba",
+  "payments_few": "{{count}} platby",
+  "payments_other": "{{count}} plateb",
+  "risks_one": "{{count}} riziko",
+  "risks_few": "{{count}} rizika",
+  "risks_other": "{{count}} rizik",
+  "documentsCount_one": "{{count}} dokument",
+  "documentsCount_few": "{{count}} dokumenty",
+  "documentsCount_other": "{{count}} dokumentů",
+  "duration": {
+    "years_one": "{{count}} rok",
+    "years_few": "{{count}} roky",
+    "years_other": "{{count}} let",
+    "months_one": "{{count}} měsíc",
+    "months_few": "{{count}} měsíce",
+    "months_other": "{{count}} měsíců",
+    "days_one": "{{count}} den",
+    "days_few": "{{count}} dny",
+    "days_other": "{{count}} dní"
+  },
+  "summary": {
+    "yearly": "Roční pojistné",
+    "yearlyNote": "{{monthly}} měsíčně · {{policies}}",
+    "nextPayment": "Příští platba",
+    "nextPaymentNote": "{{amount}} · {{policies}}",
+    "noPayments": "žádná pravidelná platba nečeká",
+    "coverage": "Pojistné krytí",
+    "coverageNote": "součet limitů · {{breakdown}}",
+    "noCoverage": "limity krytí zatím nejsou zadané",
+    "anniversary": "Nejbližší výročí",
+    "anniversaryNote": "{{name}} · za {{duration}} · čas porovnat nabídky",
+    "endNote": "{{name}} · konec smlouvy za {{duration}}",
+    "noAnniversary": "žádná aktivní smlouva"
+  },
+  "calendar": {
+    "title": "Kalendář plateb na 12 měsíců",
+    "subtitle": "Z frekvence a data začátku každé smlouvy · roční platby vyčnívají.",
+    "total": "celkem {{amount}}",
+    "monthly": "Měsíční pojistné",
+    "other": "Čtvrtletní a roční platby",
+    "anniversary": "Výročí · {{name}}",
+    "peakNote": "Nejvyšší platby čekají v období {{month}}: {{amount}} – připravte si rezervu.",
+    "evenNote": "Platby jsou rovnoměrné · {{amount}} měsíčně"
+  },
+  "table": {
+    "title": "Pojistky",
+    "subtitle": "Aktivní smlouvy",
+    "subtitleHidden": "Aktivní smlouvy · ukončené skryté",
+    "showEnded": "Zobrazit ukončené",
+    "allTypes": "Všechny typy",
+    "policy": "Pojistka",
+    "type": "Typ",
+    "provider": "Pojišťovna",
+    "premium": "Pojistné",
+    "coverage": "Krytí",
+    "nextPayment": "Příští platba",
+    "anniversary": "Výročí / konec",
+    "actions": "Akce",
+    "perYear": "{{amount}} ročně",
+    "perYearShort": "ročně",
+    "moreLimits": "+{{count}} další",
+    "ended": "ukončeno",
+    "endedOn": "skončilo",
+    "endOn": "konec smlouvy",
+    "anniversaryShort": "výročí smlouvy",
+    "in": "za {{duration}}",
+    "noResults": {
+      "title": "Žádná pojistka tohoto typu",
+      "description": "Zkuste jiný filtr nebo přidejte novou smlouvu."
+    },
+    "footer": {
+      "yearly": "{{amount}} ročně",
+      "coverage": "krytí {{amount}}",
+      "note": "Výročí = další rok smlouvy od data začátku · konec = sjednané datum"
+    }
+  },
+  "types": {
+    "life": "Životní pojištění",
+    "health": "Zdravotní pojištění",
+    "property": "Pojištění majetku",
+    "vehicle": "Pojištění vozidla",
+    "travel": "Cestovní pojištění",
+    "liability": "Pojištění odpovědnosti",
+    "accident": "Úrazové pojištění",
+    "other": "Jiné",
+    "allTypes": "Všechny typy"
+  },
+  "typeShort": {
+    "life": "Životní",
+    "health": "Zdravotní",
+    "property": "Majetek",
+    "vehicle": "Vozidlo",
+    "travel": "Cestovní",
+    "liability": "Odpovědnost",
+    "accident": "Úrazové",
+    "other": "Jiné"
+  },
+  "frequencyShort": {
+    "monthly": "měsíčně",
+    "quarterly": "čtvrtletně",
+    "semi_annually": "pololetně",
+    "annually": "ročně",
+    "one_time": "jednorázově"
+  },
+  "form": {
+    "addTitle": "Přidat pojistku",
+    "editTitle": "Upravit pojistku",
+    "name": "Název pojistky",
+    "namePlaceholder": "např. Pojištění domácnosti",
+    "provider": "Pojišťovna",
+    "providerPlaceholder": "např. Název pojišťovny",
+    "type": "Typ pojistky",
+    "premium": "Roční pojistné",
+    "coverage": "Výše krytí",
+    "currency": "Měna",
+    "startDate": "Datum zahájení",
+    "expiryDate": "Datum expirace",
+    "policyNumber": "Číslo pojistky",
+    "notes": "Poznámky"
+  },
+  "actions": {
+    "open": "Otevřít",
+    "edit": "Upravit",
+    "end": "Ukončit pojistku",
+    "reactivate": "Obnovit pojistku",
+    "delete": "Smazat pojistku",
+    "addDocument": "Přidat dokument"
+  },
+  "endDialog": {
+    "title": "Ukončit pojistku · {{name}}",
+    "description": "Smlouva zůstane v historii, přestane se počítat do pojistného a kalendáře plateb.",
+    "date": "Konec smlouvy",
+    "alertTitle": "Pojistka se přesune mezi ukončené",
+    "alertNote": "Kdykoli ji můžete obnovit z nabídky „···“; dokumenty a limity zůstávají.",
+    "submit": "Ukončit pojistku"
+  },
+  "confirmDelete": {
+    "title": "Smazat pojistku",
+    "description": "Opravdu chcete smazat „{{name}}“? Smažou se i její dokumenty. Tuto akci nelze vrátit zpět."
+  },
+  "toast": {
+    "added": "Pojistka přidána",
+    "updated": "Pojistka upravena",
+    "deleted": "Pojistka smazána",
+    "ended": "Pojistka ukončena",
+    "reactivated": "Pojistka obnovena"
+  },
+  "modal": {
+    "basicInfo": "Základní informace",
+    "paymentDetails": "Platební údaje",
+    "additionalInfo": "Doplňující informace",
+    "selectType": "Vyberte typ",
+    "selectStatus": "Vyberte stav",
+    "addDescription": "Základ smlouvy, platby a limity krytí; dokumenty přidáte v detailu.",
+    "editDescription": "Upravte údaje pojistné smlouvy.",
+    "policyName": "Název pojistky",
+    "policyNamePlaceholder": "např. Pojištění domova 2024",
+    "provider": "Pojišťovna",
+    "providerPlaceholder": "např. Allianz",
+    "policyNumber": "Číslo smlouvy",
+    "policyNumberPlaceholder": "Číslo smlouvy",
+    "paymentFrequency": "Frekvence platby",
+    "selectFrequency": "Vyberte frekvenci",
+    "oneTimePayment": "Jednorázová platba (volitelné)",
+    "oneTimePaymentRequired": "Jednorázová platba",
+    "regularPayment": "Pravidelná platba",
+    "endDateOptional": "Datum ukončení (volitelné)",
+    "coverageLimits": "Limity krytí",
+    "addLimit": "Přidat limit",
+    "removeLimit": "Odebrat limit",
+    "limitTitle": "Název limitu",
+    "notesPlaceholder": "Speciální podmínky, kontakty...",
+    "createPolicy": "Vytvořit pojistku",
+    "updatePolicy": "Aktualizovat pojistku",
+    "status": {
+      "active": "aktivní",
+      "inactive": "neaktivní"
+    },
+    "frequency": {
+      "monthly": "Měsíčně",
+      "quarterly": "Čtvrtletně",
+      "semi_annually": "Pololetně",
+      "annually": "Ročně",
+      "one_time": "Jednorázově"
+    },
+    "linkRealEstate": "Připojit k nemovitosti",
+    "selectRealEstate": "Vyberte nemovitost (volitelné)",
+    "noRealEstateAvailable": "Žádná nemovitost k dispozici"
+  },
+  "detail": {
+    "backToList": "Zpět na pojištění",
+    "notFound": "Tato pojistka už neexistuje.",
+    "policyNumber": "č. {{number}}",
+    "description": "Od {{start}} {{end}} · {{premium}} {{frequency}}",
+    "descriptionOneTime": "Od {{start}} {{end}} · jednorázově {{premium}}",
+    "noEnd": "bez sjednaného konce",
+    "until": "do {{date}}",
+    "statusActive": "aktivní",
+    "statusEnded": "ukončená",
+    "period": {
+      "year": "1R",
+      "all": "Od začátku"
+    },
+    "hero": {
+      "paid": "Zaplaceno na pojistném",
+      "paidNote": "{{payments}} od {{month}} · {{yearly}} ročně",
+      "paidNoteOneTime": "jednorázová platba při sjednání {{date}}",
+      "coverage": "Krytí celkem",
+      "coverageRatio": "{{ratio}}× ročního pojistného",
+      "coverageOneTime": "součet sjednaných limitů",
+      "noCoverage": "limity krytí nejsou zadané"
+    },
+    "chart": {
+      "paid": "Zaplaceno celkem",
+      "next12": "Příštích 12 plateb",
+      "tipPaid": "zaplaceno celkem",
+      "tipPlanned": "plánovaná platba",
+      "note": "{{payments}} · {{yearly}} ročně",
+      "noteOneTime": "Jednorázová platba {{date}}, bez dalších plateb"
+    },
+    "stats": {
+      "yearly": "Roční náklady",
+      "yearlyNote": "{{premium}} {{frequency}} · {{share}} vašeho pojistného",
+      "yearlyOneTime": "jednorázové pojistné, bez ročních nákladů",
+      "nextPayment": "Příští platba",
+      "nextPaymentNote": "za {{in}} · {{amount}} · pak {{next}}",
+      "noNextPayment": "bez dalších plateb",
+      "anniversary": "Výročí smlouvy",
+      "anniversaryNote": "za {{in}} · možnost upravit krytí nebo porovnat nabídky",
+      "end": "Konec smlouvy",
+      "endNote": "za {{in}} · sjednané datum ukončení",
+      "endedNote": "smlouva skončila {{date}}",
+      "duration": "Trvání smlouvy",
+      "durationNote": "bez sjednaného konce · {{docs}}",
+      "durationEnd": "do {{date}} · {{docs}}"
+    },
+    "limits": {
+      "title": "Limity krytí",
+      "subtitle": "Co a v jaké výši smlouva kryje",
+      "edit": "Upravit limity",
+      "risk": "Riziko",
+      "limit": "Limit",
+      "footer": "{{risks}} · krytí celkem {{amount}}",
+      "empty": "Limity krytí zatím nejsou zadané. Doplňte je v úpravě pojistky."
+    },
+    "contract": {
+      "title": "Smlouva",
+      "provider": "Pojišťovna",
+      "number": "Číslo smlouvy",
+      "type": "Typ",
+      "start": "Začátek",
+      "end": "Konec",
+      "endNone": "neurčitý",
+      "frequency": "Frekvence",
+      "premium": "Pojistné",
+      "oneTime": "Jednorázová platba",
+      "oneTimeNone": "žádná",
+      "property": "Nemovitost"
+    },
+    "notes": {
+      "title": "Poznámky",
+      "edit": "Upravit",
+      "empty": "Žádné poznámky – kontakty, podmínky a připomínky doplníte v úpravě pojistky.",
+      "updated": "Upraveno {{date}}"
+    },
+    "documents": "Dokumenty"
+  },
+  "documents": {
+    "subtitle": "Uložené v šifrované složce aplikace",
+    "columns": {
+      "document": "Dokument",
+      "type": "Typ",
+      "uploaded": "Nahráno"
+    },
+    "description": "Přiložte smlouvy, certifikáty a další dokumenty",
+    "add": "Přidat dokument",
+    "addFirst": "Přidat první dokument",
+    "addTitle": "Přidat dokument",
+    "noDocuments": "Zatím nejsou přiloženy žádné dokumenty",
+    "file": "Soubor",
+    "clickToSelect": "Klikněte pro výběr souboru",
+    "type": "Typ dokumentu",
+    "selectType": "Vyberte typ",
+    "namePlaceholder": "např. Pojistná smlouva 2024",
+    "descriptionPlaceholder": "Další poznámky k tomuto dokumentu...",
+    "uploading": "Nahrávám...",
+    "upload": "Nahrát dokument",
+    "open": "Otevřít",
+    "delete": "Smazat",
+    "added": "Dokument přidán",
+    "deleted": "Dokument smazán",
+    "optional": "volitelné",
+    "types": {
+      "contract": "Smlouva",
+      "certificate": "Certifikát",
+      "claim": "Pojistná událost",
+      "other": "Jiný"
+    },
+    "deleteConfirm": {
+      "title": "Smazat dokument",
+      "description": "Opravdu chcete smazat „{{name}}“? Soubor bude trvale odstraněn."
+    }
+  },
+  "mcp": {
+    "tipSummary": "Nechce se vám vše přepisovat? AI asistent umí pojistky přidat ze smlouvy.",
+    "bannerBody": "Spusť MCP server, nahraj smlouvu, nabídku nebo shrnutí pojistky do Claude a požádej ho, ať pojistku přidá za tebe.",
+    "setupLink": "Nastavit MCP server"
+  }
+}

@@ -1,0 +1,360 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Moony — design systém v1</title>
+<link rel="stylesheet" href="moony.css">
+<style>
+  body { min-width: 960px; }
+  .doc { display: grid; grid-template-columns: 220px 1fr; gap: 48px; max-width: 1380px; margin: 0 auto; padding: 40px 48px 120px; }
+  .toc { position: sticky; top: 40px; align-self: start; display: grid; gap: 2px; }
+  .toc a { padding: 6px 10px; border-radius: var(--r-1); color: var(--ink-3); font-size: var(--fs-table); font-weight: 600; }
+  .toc a:hover { background: rgba(41,40,34,.05); color: var(--ink); }
+  .toc .toc__title { margin: 0 10px 12px; }
+  .toc .toc__title b { display: block; font-size: 18px; letter-spacing: -.07em; }
+  .toc .toc__title small { color: var(--ink-4); font-size: var(--fs-micro); }
+  .doc-head { margin-bottom: 44px; }
+  .doc-head p { max-width: 640px; color: var(--ink-3); font-size: 14px; line-height: 1.55; }
+  section.part { margin-bottom: 64px; scroll-margin-top: 32px; }
+  .part > h2 { margin: 0 0 6px; font-size: 24px; font-weight: 600; letter-spacing: -.05em; }
+  .part > p.lead { margin: 0 0 20px; max-width: 680px; color: var(--ink-3); line-height: 1.55; }
+  .rules { margin: 0 0 20px; padding-left: 18px; max-width: 760px; color: var(--ink-2); line-height: 1.55; }
+  .rules li { margin-bottom: 4px; }
+  .rules b { font-weight: 650; color: var(--ink); }
+  .spec { padding: 24px; border: 1px solid var(--line); border-radius: var(--r-4); background: var(--canvas); }
+  .spec + .spec { margin-top: 14px; }
+  .spec--paper { background: var(--paper); }
+  .spec__title { margin: 0 0 14px; color: var(--ink-4); font-size: var(--fs-eyebrow); font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+  .swatches { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; }
+  .swatch { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--paper); }
+  .swatch i { display: block; height: 54px; }
+  .swatch div { padding: 8px 10px; }
+  .swatch b { display: block; font-size: var(--fs-caption); font-weight: 650; }
+  .swatch code { display: block; margin-top: 2px; color: var(--ink-4); font-size: var(--fs-micro); font-family: ui-monospace, SF Mono, Menlo, monospace; }
+  .swatch small { display: block; margin-top: 4px; color: var(--ink-3); font-size: var(--fs-micro); line-height: 1.4; }
+  .type-row { display: grid; grid-template-columns: 220px 1fr; gap: 24px; align-items: baseline; padding: 14px 0; border-bottom: 1px solid var(--line-soft); }
+  .type-row:last-child { border: 0; }
+  .type-row code { color: var(--ink-4); font-size: var(--fs-micro); font-family: ui-monospace, SF Mono, Menlo, monospace; line-height: 1.5; }
+  .type-row code b { display: block; color: var(--ink-2); font-size: var(--fs-caption); font-family: var(--font); }
+  .elev { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; align-items: end; }
+  .elev div { height: 92px; padding: 12px; border-radius: var(--r-3); font-size: var(--fs-caption); font-weight: 600; color: var(--ink-3); }
+  .elev small { display: block; margin-top: 4px; color: var(--ink-4); font-weight: 500; font-size: var(--fs-micro); }
+  .row-wrap { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  .sidebar-demo { position: static; height: 560px; width: 264px; border-radius: var(--r-4); border: 1px solid var(--line); overflow: hidden; }
+  .space { display: flex; gap: 10px; align-items: flex-end; }
+  .space i { display: block; background: var(--s3); border-radius: 2px; }
+  .space span { display: block; margin-top: 6px; color: var(--ink-4); font-size: var(--fs-micro); text-align: center; }
+  .radii { display: flex; gap: 14px; }
+  .radii i { display: grid; place-items: center; width: 64px; height: 44px; border: 1px solid var(--line-strong); background: var(--paper); color: var(--ink-4); font-size: var(--fs-micro); font-weight: 600; }
+  .demo-table .table__head, .demo-table .table__row { grid-template-columns: 2fr 1fr 1fr 1fr 40px; }
+  .btn.demo-focus { border-color: var(--focus-border); box-shadow: var(--focus-ring); }
+  .btn.demo-hover { background: var(--paper); box-shadow: 0 1px 3px rgba(52,46,34,.1); color: var(--ink); }
+  .input.demo-focus { border-color: var(--focus-border); box-shadow: var(--focus-ring); }
+  .modal-static { position: static; transform: none; margin: 0 auto; }
+  .chart-demo { height: 150px; }
+  .kbd { display: inline-block; padding: 1px 6px; border: 1px solid var(--line-strong); border-radius: 5px; background: var(--paper); font-size: var(--fs-micro); font-weight: 600; }
+  .fmt { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 24px; font-size: var(--fs-body); }
+  .fmt div { padding: 8px 0; border-bottom: 1px solid var(--line-soft); }
+  .fmt .bad { color: var(--loss); text-decoration: line-through; text-decoration-color: rgba(148,92,77,.5); }
+  .fmt .ok { font-weight: 650; }
+  .num-demo { font-size: 28px; font-weight: 580; letter-spacing: -.06em; }
+</style>
+</head>
+<body>
+<div class="doc">
+  <nav class="toc">
+    <div class="toc__title"><b>moony</b><small>Design systém · v1 · návrh k revizi</small></div>
+    <a href="#principy">Principy</a><a href="#barvy">Barvy</a><a href="#typografie">Typografie</a><a href="#vrstveni">Vrstvení</a><a href="#rozestupy">Rozestupy a rádiusy</a><a href="#navigace">Navigace</a><a href="#tlacitka">Tlačítka</a><a href="#formulare">Formuláře</a><a href="#stitky">Přepínače a štítky</a><a href="#karty">Karty a statistiky</a><a href="#tabulky">Tabulky</a><a href="#modaly">Modály</a><a href="#grafy">Grafy a časová stopa</a><a href="#stavy">Stavy</a><a href="#text">Čísla a text</a><a href="#otevrene">Otevřené otázky</a>
+  </nav>
+  <main>
+    <div class="doc-head">
+      <div class="eyebrow">Design systém · verze 1 · 2. října 2026</div>
+      <h1>Klidný, precizní finanční nástroj</h1>
+      <p>Moony se opírá o typografii, proporce a materiál, ne o barvu. Teplé neutrální plátno, papírově bílé pracovní plochy, grafitový inkoust. Zelená říká jen „přibylo“, červenohnědá jen „ubylo“. Všechno ostatní je ticho, aby čísla mluvila.</p>
+    </div>
+
+    <section class="part" id="principy">
+      <h2>Principy</h2>
+      <ol class="rules">
+        <li><b>Jedno dominantní číslo na stránce.</b> Každá stránka má jednu hlavní hodnotu (čisté jmění, hodnota pozice, zůstatek) a ta dostává nejvíc prostoru a nejnižší šum okolo.</li>
+        <li><b>Hloubka vzniká povrchy, ne hranicemi.</b> Plátno je o tón tmavší než obsah; sidebar, karty a tabulka jsou vrstvy s měkkým světlem. Žádné rámečky kolem všeho.</li>
+        <li><b>Barva nese význam, nikdy náladu.</b> Zelená = kladná změna, červenohnědá = záporná změna, destrukce a chyba. Datové série jsou monochromatické.</li>
+        <li><b>Hodnoty mají vztah k času.</b> Kde to dává smysl, graf nese „časovou stopu“: události (nákup, prodej, dividenda, větší pohyb), které vysvětlují, proč se hodnota změnila.</li>
+        <li><b>Text pracuje.</b> Popisek popisuje, tlačítko říká, co se stane, prázdný stav říká, co udělat. Věty v první osobě množného čísla nepoužíváme; rozhraní mluví věcně.</li>
+      </ol>
+    </section>
+
+    <section class="part" id="barvy">
+      <h2>Barvy</h2>
+      <p class="lead">Všechny hodnoty jsou v <code>tokens.css</code>. Komponenty nikdy nepoužívají surový hex. Světlé téma je jediné definované; tmavé je otevřená otázka.</p>
+      <div class="spec spec--paper"><p class="spec__title">Povrchy</p><div class="swatches" id="sw-surfaces"></div></div>
+      <div class="spec spec--paper"><p class="spec__title">Linky a inkoust</p><div class="swatches" id="sw-ink"></div></div>
+      <div class="spec spec--paper"><p class="spec__title">Tmavý materiál a sémantika</p><div class="swatches" id="sw-sem"></div></div>
+      <div class="spec spec--paper"><p class="spec__title">Datové série (max. 4 + Ostatní)</p><div class="swatches" id="sw-series"></div>
+        <ul class="rules" style="margin:16px 0 0">
+          <li>Série se přiřazují v pevném pořadí s1 → s4 podle velikosti podílu; pátá a další kategorie se slučují do <b>Ostatní</b>.</li>
+          <li>Sousední odstíny mají ověřený rozdíl ΔE ≥ 15 (OKLab), tj. rozlišitelné i bez barevného vidění. Světlé odstíny mají nízký kontrast vůči papíru, proto <b>každá série má vždy přímý popisek nebo legendu s hodnotou</b>.</li>
+          <li>Zisk a ztráta jsou pro deuteranopii téměř totožné (ΔE 3,8). Proto <b>znaménko nebo šipka je povinná vždy</b>: „+ 60 110 Kč“, „− 15 200 Kč“, „↗ 2,8 %“. Barva sama nikdy nenese směr.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="part" id="typografie">
+      <h2>Typografie</h2>
+      <p class="lead">Inter Variable, přibalený v aplikaci (žádné síťové fonty — aplikace je offline a soukromá). Mezistupně vah (570, 580, 620, 650) vyžadují variabilní font; bez něj se zaokrouhlí na 500/600/700. Číslice v tabulkách a statistikách jsou vždy <code>tabular-nums</code>.</p>
+      <div class="spec spec--paper">
+        <div class="type-row"><code><b>Hero číslo</b>42 px · 580 · −0,08 em</code><span class="hero__value num" style="margin:0">2 846 900 Kč</span></div>
+        <div class="type-row"><code><b>H1 stránky</b>36 px · 570 · −0,07 em</code><h1>Akcie a ETF</h1></div>
+        <div class="type-row"><code><b>Titul modálu</b>21 px · 600 · −0,05 em</code><span style="font-size:21px;font-weight:600;letter-spacing:-.05em">Přidat bankovní účet</span></div>
+        <div class="type-row"><code><b>Hodnota statistiky</b>22 px · 580 · −0,06 em</code><span class="stat__value" style="margin:0">+ 182 400 Kč</span></div>
+        <div class="type-row"><code><b>H2 karty / tabulky</b>18 px · 650 · −0,045 em</code><span class="card__title">Historie transakcí</span></div>
+        <div class="type-row"><code><b>H3 sekce v kartě</b>16 px · 620 · −0,04 em</code><h3>Vývoj hodnoty portfolia</h3></div>
+        <div class="type-row"><code><b>Navigace</b>14 px · 600 · −0,015 em</code><span style="font-size:14px;font-weight:600;letter-spacing:-.015em">Bankovní účty</span></div>
+        <div class="type-row"><code><b>Tělo</b>13 px · 450 · 1,5</code><span>Vaše dlouhodobé pozice na jednom místě. Nápověda a popisy stránek.</span></div>
+        <div class="type-row"><code><b>Název v tabulce</b>12 px · 650</code><span style="font-size:12px;font-weight:650">Vanguard FTSE All-World</span></div>
+        <div class="type-row"><code><b>Hodnota v tabulce</b>12 px · 480 · tabular</code><span class="num" style="font-size:12px;font-weight:480;color:var(--ink-2)">774 840 Kč</span></div>
+        <div class="type-row"><code><b>Popisek / caption</b>11 px · 500 · ink-3</code><span class="muted" style="font-size:11px;font-weight:500">4 pozice · aktualizováno dnes</span></div>
+        <div class="type-row"><code><b>Mikro</b>10 px · 600 · ink-4</code><span class="faint" style="font-size:10px;font-weight:600">za příštích 12 měsíců</span></div>
+        <div class="type-row"><code><b>Eyebrow</b>10 px · 700 · +0,12 em · verzálky</code><span class="eyebrow" style="margin:0">Portfolio · AAPL · NASDAQ</span></div>
+        <div class="type-row"><code><b>Hlavička tabulky</b>10 px · 750 · +0,08 em · verzálky</code><span style="font-size:10px;font-weight:750;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)">Průměrná cena</span></div>
+      </div>
+    </section>
+
+    <section class="part" id="vrstveni">
+      <h2>Vrstvení</h2>
+      <p class="lead">Šest úrovní. Rozdíl mezi nimi dělá hlavně povrch a jemné světlo, stíny jsou měkké a teplé (hnědošedé, ne černé). Tabulka jako hlavní pracovní plocha je nejvýš z obsahu; nad ní jsou jen vyskakovací prvky.</p>
+      <div class="spec"><div class="elev">
+        <div style="background:var(--canvas);border:1px dashed var(--line-strong)">E0 plátno<small>canvas</small></div>
+        <div style="background:var(--sidebar);border:1px solid var(--line-sidebar);box-shadow:var(--sh-sidebar)">E1 sidebar<small>linka + 7/22 px stín</small></div>
+        <div class="stat" style="height:92px">E1 statistika<small>sh-1</small></div>
+        <div class="card" style="height:92px">E2 karta<small>sh-2 · gradient papíru</small></div>
+        <div class="card card--table" style="height:92px;padding:12px">E3 tabulka<small>sh-3 · čistý papír</small></div>
+      </div>
+      <div class="elev" style="margin-top:14px;grid-template-columns:repeat(5,1fr)">
+        <div class="menu" style="position:static;height:92px">E4 menu, tooltip<small>sh-pop</small></div>
+        <div style="background:var(--paper);box-shadow:var(--sh-modal);border:1px solid var(--line-strong)">E5 modál<small>sh-modal nad rozostřeným scrimem</small></div>
+        <div style="background:var(--dark-grad);box-shadow:var(--sh-dark);color:#fff">Tmavý materiál<small style="color:var(--ink-inverse-2)">aktivní navigace, primární akce</small></div>
+      </div></div>
+    </section>
+
+    <section class="part" id="rozestupy">
+      <h2>Rozestupy a rádiusy</h2>
+      <p class="lead">Základ 4 px. Stránka má maximální šířku 1480 px, odsazení 32 px nahoře a 48 px po stranách; sidebar 264 px. Rádius roste s velikostí prvku.</p>
+      <div class="spec spec--paper"><div class="row-wrap" style="gap:32px">
+        <div class="space">
+          <div><i style="width:4px;height:4px"></i><span>4</span></div><div><i style="width:8px;height:8px"></i><span>8</span></div><div><i style="width:12px;height:12px"></i><span>12</span></div><div><i style="width:16px;height:16px"></i><span>16</span></div><div><i style="width:20px;height:20px"></i><span>20</span></div><div><i style="width:24px;height:24px"></i><span>24</span></div><div><i style="width:32px;height:32px"></i><span>32</span></div><div><i style="width:40px;height:40px"></i><span>40</span></div><div><i style="width:48px;height:48px"></i><span>48</span></div>
+        </div>
+        <div class="radii"><i style="border-radius:6px">6 · pole</i><i style="border-radius:8px">8 · tlačítko</i><i style="border-radius:13px">13 · stat</i><i style="border-radius:15px">15 · karta</i><i style="border-radius:17px">17 · modál</i><i style="border-radius:50%">50 %</i></div>
+      </div></div>
+    </section>
+
+    <section class="part" id="navigace">
+      <h2>Navigace</h2>
+      <p class="lead">Souvislý sidebar bez bloků. Sekce odlišuje jen mezera a malý verzálkový popisek. Strom přebírá reálnou IA aplikace (<code>nav-config.ts</code>): Přehled · Peníze · Investice · Závazky a pojištění · Nástroje · Nastavení.</p>
+      <ul class="rules">
+        <li>Řádek položky 36 px, 14 px / 600, ikona Lucide 16 px (stroke 1,75) v ink-3. Aktivní řádek je tmavý materiál s bílým textem a bílou ikonou.</li>
+        <li>Hover je 5% inkoustu na pozadí, bez rámečku. Počet (např. 3 účty) stojí vpravo v mikro velikosti.</li>
+        <li>Skupiny jsou sbalitelné (šipka se objeví při najetí na popisek), stav se pamatuje; <b>Nástroje</b> jsou sbalené ve výchozím stavu, aby se 17 položek vešlo na 900 px výšky. Prostřední část sidebaru roluje, Nastavení a účet jsou přišpendlené dole nad vlasovou linkou.</li>
+        <li>Horní lišta stránky má drobečky vlevo a stav dat vpravo (zelený bod = čerstvé, červenohnědý = zastaralé ceny).</li>
+      </ul>
+      <div class="spec"><div class="row-wrap" style="align-items:flex-start;gap:32px"><aside class="sidebar sidebar-demo"></aside>
+        <div style="flex:1;min-width:360px">
+          <div class="topbar" style="margin-bottom:20px"><span class="crumb"><a href="#">Investice</a><i>/</i><a href="#">Akcie</a><i>/</i><b>Apple Inc.</b></span><span class="status status--fresh">Ceny aktualizovány dnes v 10:32</span></div>
+          <div class="topbar" style="margin-bottom:20px"><span class="crumb"><b>Přehled</b><i>/</i><span>celkový obraz</span></span><span class="status status--stale">Ceny jsou 3 dny staré</span></div>
+          <a class="back" href="#" id="back-demo"></a>
+          <div class="page-head"><div><div class="eyebrow">Portfolio</div><h1>Akcie a ETF</h1><p>Eyebrow, H1 a jedna věta. Akce vpravo: nejvýš jedna primární.</p></div><div class="actions"><button class="btn">Export</button><button class="btn btn--primary">Přidat investici</button></div></div>
+        </div>
+      </div></div>
+    </section>
+
+    <section class="part" id="tlacitka">
+      <h2>Tlačítka</h2>
+      <ul class="rules">
+        <li>Výška 36 px (malé 32 px), rádius 8, text 11 px / 650. Popisek je sloveso: „Přidat účet“, „Uložit cenu“, „Obnovit ceny“. Nikdy „OK“ nebo „Odeslat“.</li>
+        <li><b>Primární</b> je tmavý materiál; na stránce je nejvýš jedno. <b>Sekundární</b> je papír s linkou a 1px stínem. <b>Textové</b> pro zrušení a odkazové akce. <b>Destruktivní</b> je textové červenohnědé; plné jen v potvrzovacím dialogu.</li>
+        <li>Fokus z klávesnice: tmavší linka + 3px prstenec. Načítání točí ikonu, text zůstává. Zakázané má 45 % krytí a nereaguje.</li>
+      </ul>
+      <div class="spec spec--paper"><div class="row-wrap" id="btns"></div></div>
+    </section>
+
+    <section class="part" id="formulare">
+      <h2>Formuláře</h2>
+      <ul class="rules">
+        <li>Popisek nad polem (11 px / 700), nepovinnost se píše za popisek slabě. Nápověda jen když má konkrétní přínos. Chyba nahrazuje nápovědu, je červenohnědá s ikonou a říká, co udělat.</li>
+        <li>Pole 39 px, rádius 8, jednotka vpravo uvnitř pole (Kč, ks, USD). Související dvojice jsou v jednom řádku (zůstatek + měna, množství + cena).</li>
+        <li>Žádné vnořené karty uvnitř formuláře. Přepínač typu (Příjem / Výdaj) je segmentovaný přepínač, ne radio.</li>
+      </ul>
+      <div class="spec spec--paper"><div class="grid-2">
+        <div>
+          <div class="field"><label class="field__label" for="f1">Název účtu</label><input class="input" id="f1" value="Spořicí účet"><div class="field__hint">Například „Běžný účet“ nebo „Rezerva“.</div></div>
+          <div class="row-2 row-2--narrow"><div class="field"><label class="field__label" for="f2">Aktuální zůstatek</label><div class="input-wrap"><input class="input demo-focus" id="f2" value="184 600" style="padding-left:11px"><span class="unit">Kč</span></div></div><div class="field"><label class="field__label" for="f3">Měna</label><div class="select-wrap"><select class="select" id="f3"><option>CZK</option><option>EUR</option></select></div></div></div>
+          <div class="field"><label class="field__label" for="f4">Množství</label><div class="input-wrap"><input class="input is-invalid" id="f4" value="40" style="padding-left:11px"><span class="unit">ks</span></div><div class="field__error" id="err-demo"></div></div>
+        </div>
+        <div>
+          <div class="field"><label class="field__label" for="f5">Instituce <span class="opt">nepovinné</span></label><input class="input" id="f5" placeholder="Například Česká spořitelna"></div>
+          <div class="field"><label class="field__label" for="f6">Zakázané pole</label><input class="input" id="f6" value="Nelze upravit" disabled></div>
+          <div class="field"><label class="field__label">Typ transakce</label><div class="seg seg--lg" style="display:flex"><button type="button" class="seg__btn" style="flex:1">Příjem</button><button type="button" class="seg__btn is-active" style="flex:1">Výdaj</button></div></div>
+          <div class="row-wrap" style="gap:24px"><label class="check"><input type="checkbox" checked> Opakovat každý měsíc</label><label class="check"><input type="checkbox"> Zobrazit nulové pozice</label><label class="switch"><input type="checkbox" checked></label><div class="search input-wrap" id="search-demo"><input class="input" placeholder="Hledat podle názvu nebo tickeru"></div></div>
+        </div>
+      </div></div>
+    </section>
+
+    <section class="part" id="stitky">
+      <h2>Přepínače a štítky</h2>
+      <ul class="rules">
+        <li><b>Segmentovaný přepínač</b> pro období (1M · 3M · 1R · Vše) a filtry s 2–4 hodnotami. Aktivní segment je papír se stínem na šedé stopě.</li>
+        <li><b>Štítek (badge)</b> je 20 px, bez rámečku; zelený jen pro kladný stav, červenohnědý jen pro záporný. Tmavý pro typ „Nákup“, čárkovaný pro „Prodej“ a „Nezařazeno“.</li>
+        <li><b>Kategorie</b> se značí tečkou v šedé sérii, ne barevnými pastelkami.</li>
+      </ul>
+      <div class="spec spec--paper"><div class="row-wrap" style="gap:16px">
+        <div class="seg"><button class="seg__btn">1M</button><button class="seg__btn">3M</button><button class="seg__btn is-active">1R</button><button class="seg__btn">Vše</button></div>
+        <div class="seg seg--lg"><button class="seg__btn is-active">30 dní</button><button class="seg__btn">3 měsíce</button><button class="seg__btn">Rok</button></div>
+        <span class="badge">Neutrální</span><span class="badge badge--gain">V pořádku</span><span class="badge badge--loss">Překročeno o 820 Kč</span><span class="badge badge--dark">Nákup</span><span class="badge badge--outline">Prodej</span><span class="badge badge--outline" id="badge-unc"></span>
+        <span class="chip is-active">Vše</span><span class="chip">Bydlení</span><span class="chip">Potraviny</span>
+        <span class="status status--fresh">Čerstvé</span><span class="status">Neutrální</span><span class="status status--stale">Zastaralé</span>
+      </div></div>
+    </section>
+
+    <section class="part" id="karty">
+      <h2>Karty a statistiky</h2>
+      <ul class="rules">
+        <li><b>Hero karta</b> (E2) nese dominantní číslo, změnu se znaménkem a kontextem, vpravo nahoře přepínač období, pod tím graf. Dekorativní kruh v rohu je součást materiálu, ne ilustrace.</li>
+        <li><b>Statistika</b> (E1): popisek 11 px, hodnota 22 px, poznámka 10 px. Tři nebo čtyři v řadě, nikdy víc. Hodnota v zelené / červenohnědé jen když jde o změnu.</li>
+        <li>Sekce mimo karty mají vlastní nadpis 17 px a textový odkaz vpravo („Otevřít detail →“).</li>
+      </ul>
+      <div class="spec">
+        <div class="stats stats--3" style="margin:0 0 14px"><div class="stat"><span class="stat__label">Celková aktiva <i class="dot"></i></span><strong class="stat__value">3 198 900 Kč</strong><span class="stat__note">+ 76 200 Kč tento měsíc</span></div><div class="stat"><span class="stat__label">Nerealizovaný výnos</span><strong class="stat__value gain">+ 182 400 Kč</strong><span class="stat__note gain">+ 14,0 % oproti vloženému</span></div><div class="stat"><span class="stat__label">Bilance měsíce</span><strong class="stat__value loss">− 11 900 Kč</strong><span class="stat__note">v září + 6 400 Kč</span></div></div>
+        <section class="card hero"><div class="hero__head"><div><div class="hero__label">Čisté jmění</div><span class="hero__value num">2 846 900 Kč</span><div class="hero__delta gain">↗ + 2,8 %<span>+ 77 500 Kč za posledních 30 dní</span></div></div><div class="seg"><button class="seg__btn is-active">1M</button><button class="seg__btn">3M</button><button class="seg__btn">1R</button><button class="seg__btn">Vše</button></div></div><div class="chart chart-demo" id="chart-hero" style="margin:16px -4px 0"></div><div class="chart__axis" id="axis-hero"></div></section>
+      </div>
+    </section>
+
+    <section class="part" id="tabulky">
+      <h2>Tabulky</h2>
+      <ul class="rules">
+        <li>Tabulka je karta E3 s titulem a nástroji v hlavičce (hledání 240 px, přepínače, zaškrtávátko). Hlavička sloupců 40 px na světlé stopě, 10 px verzálky.</li>
+        <li>Řádky 56 px (hustší seznamy 46–52 px), dělené vlasovou linkou; hover je stopa <code>well</code>. Celý řádek je odkaz do detailu, akce „···“ se objeví až při najetí.</li>
+        <li>Čísla vpravo, tabulární; název entity vlevo s kulatým logem v šedé sérii a podtitulem (ticker · burza). Denní skupiny mají 10px verzálkový řádek. Patička nese součet vlevo a poznámku o kurzu vpravo.</li>
+        <li>Žádné zebrování, žádné svislé linky, žádné barevné pozadí buněk.</li>
+      </ul>
+      <div class="spec"><section class="card card--table demo-table">
+        <div class="card__head"><h2 class="card__title">Pozice</h2><div class="toolbar"><label class="check"><input type="checkbox"> Zobrazit nulové</label><div class="search input-wrap" id="search-demo2"><input class="input" placeholder="Hledat"></div></div></div>
+        <div class="table">
+          <div class="table__head"><div><span class="sortable">Investice ↕</span></div><div class="cell--num">Množství</div><div class="cell--num"><span class="sortable">Hodnota ↓</span></div><div class="cell--num">Výnos</div><div></div></div>
+          <div class="table__group">Dnes</div>
+          <div class="table__row is-hot"><div class="entity"><i class="logo">A</i><div><b>Apple Inc.</b><small>AAPL · NASDAQ</small></div></div><div class="cell--num">36 ks</div><div class="cell--num cell--name">204 660 Kč</div><div class="cell--num gain delta">+ 41,6 %</div><div class="cell--num row-actions" style="opacity:1"><button class="btn btn--ghost btn--icon btn--sm" id="dots-demo"></button></div></div>
+          <div class="table__row"><div class="entity"><i class="logo logo--2">M</i><div><b>Microsoft Corp.</b><small>MSFT · NASDAQ</small></div></div><div class="cell--num">24 ks</div><div class="cell--num cell--name">252 480 Kč</div><div class="cell--num gain delta">+ 32,5 %</div><div></div></div>
+          <div class="table__group">Včera</div>
+          <div class="table__row"><div class="entity"><i class="logo logo--soft" id="logo-soft"></i><div><b>Hypotéka – splátka</b><small>Trvalý příkaz · Česká spořitelna</small></div></div><div><span class="badge badge--outline">Nezařazeno</span></div><div class="cell--num cell--name">− 15 200 Kč</div><div class="cell--num faint">—</div><div></div></div>
+        </div>
+        <div class="table__foot"><span>3 položky · celkem 441 940 Kč</span><span>Hodnoty v Kč aktuálním kurzem</span></div>
+      </section></div>
+    </section>
+
+    <section class="part" id="modaly">
+      <h2>Modály</h2>
+      <ul class="rules">
+        <li>Šířka 560 px (potvrzení 440 px), rádius 17, nad scrimem 63 % inkoustu s rozostřením 4 px. Otevření: 180 ms posun o 10 px a zvětšení z 98,5 %.</li>
+        <li>Hlavička: titul 21 px + jedna věta, co akce udělá. Tělo bez karet. Patička na stopě <code>well</code>: vlevo textové „Zrušit“, vpravo primární akce pojmenovaná stejně jako titul („Přidat účet“). <span class="kbd">Esc</span> zavírá, první pole dostane fokus.</li>
+        <li>Potvrzení destrukce: titul s otazníkem, text popisuje, co přesně zmizí a že to nejde vrátit, plné červenohnědé tlačítko se slovesem („Smazat pozici“).</li>
+      </ul>
+      <div class="spec" style="display:grid;grid-template-columns:1fr auto;gap:24px;align-items:start">
+        <form class="modal modal-static" onsubmit="return false"><div class="modal__head"><div><h2>Přidat bankovní účet</h2><p>Účet se objeví v přehledu a v celkovém jmění.</p></div><button type="button" class="modal__close" aria-label="Zavřít"></button></div><div class="modal__body"><div class="field"><label class="field__label">Název účtu</label><input class="input" value="Spořicí účet"></div><div class="row-2 row-2--narrow"><div class="field"><label class="field__label">Aktuální zůstatek</label><input class="input" value="184 600"></div><div class="field"><label class="field__label">Měna</label><div class="select-wrap"><select class="select"><option>CZK</option></select></div></div></div></div><div class="modal__foot"><button type="button" class="btn btn--ghost">Zrušit</button><div class="actions"><button type="button" class="btn btn--primary">Přidat účet</button></div></div></form>
+        <div class="modal modal--sm modal-static"><div class="modal__head"><div><h2>Smazat pozici?</h2><p>Apple Inc. (AAPL) a všech 12 transakcí bude trvale odstraněno. Tuto akci nelze vrátit zpět.</p></div></div><div class="modal__foot" style="margin-top:4px"><button type="button" class="btn btn--ghost">Zrušit</button><div class="actions"><button type="button" class="btn btn--destructive">Smazat pozici</button></div></div></div>
+      </div>
+    </section>
+
+    <section class="part" id="grafy">
+      <h2>Grafy a časová stopa</h2>
+      <ul class="rules">
+        <li><b>Jedna osa.</b> Nikdy dvě svislé škály. Mřížka je světlá (<code>chart-grid</code>), popisky hodnot vpravo 10 px v <code>chart-axis</code>, časová osa pod grafem s pěti popisky, poslední je „Dnes“.</li>
+        <li><b>Linka hodnoty</b> 2,25 px v <code>chart-line</code>, pod ní plocha s přechodem do průhledna, poslední bod je bílý kroužek. <b>Vloženo</b> je čárkovaná schodová linka v <code>chart-cost</code>; mezera mezi linkami je výnos.</li>
+        <li><b>Sloupce</b> (cashflow): příjmy s1, výdaje s3, zaoblené konce 3 px, mezera 2 px, bez okrajů. <b>Rozložení</b> je prstenec ze sérií s1–s4 + Ostatní, vždy s legendou s hodnotami.</li>
+        <li><b>Hover</b> je samozřejmost: nitkový kříž + tooltip (tmavý materiál, 10 px) na linkách, tooltip na sloupci.</li>
+        <li><b>Časová stopa</b> (schváleno): na grafech <i>jedné entity</i> (pozice, účet, úvěr, nemovitost) se do linky kreslí události – nákup ▲ (plný), prodej ▽ (obrys), dividenda / příjem ○ (zelený prstenec), větší výdaj ○ (tmavý prstenec). Najetí ukáže detail události, najetí na řádek historie zvýrazní odpovídající značku. Na agregovaných grafech (čisté jmění, celé portfolio) se události nekreslí – bylo by to šum. Na účtech se značí jen pohyby nad prahem (10 % zůstatku nebo 10 000 Kč).</li>
+      </ul>
+      <div class="spec"><div class="grid-2">
+        <div class="card" style="padding:18px"><h3>Pozice s časovou stopou</h3><div class="chart chart-demo" id="chart-trace" style="margin-top:12px"></div><div class="chart__axis" id="axis-trace"></div><div class="legend"><span class="legend__item"><i class="legend__swatch"></i>Hodnota</span><span class="legend__item"><i class="legend__swatch legend__swatch--dash"></i>Vloženo</span><span class="legend__item"><svg width="10" height="10"><polygon points="5,0 10,10 0,10" fill="var(--chart-line)"/></svg>Nákup</span><span class="legend__item"><svg width="10" height="10"><polygon points="0,0 10,0 5,10" fill="#fff" stroke="var(--chart-line)" stroke-width="1.5"/></svg>Prodej</span><span class="legend__item"><i class="legend__swatch legend__swatch--dot" style="border:1.5px solid var(--gain);background:#fff"></i>Dividenda</span></div></div>
+        <div class="card" style="padding:18px"><h3>Příjmy a výdaje</h3><div class="chart chart-demo" id="chart-bars" style="margin-top:12px"></div><div class="chart__axis" id="axis-bars" style="justify-content:space-around"></div><div class="legend"><span class="legend__item"><i class="legend__swatch legend__swatch--block" style="background:var(--s1)"></i>Příjmy</span><span class="legend__item"><i class="legend__swatch legend__swatch--block" style="background:var(--s3)"></i>Výdaje</span></div></div>
+      </div></div>
+    </section>
+
+    <section class="part" id="stavy">
+      <h2>Stavy</h2>
+      <ul class="rules">
+        <li><b>Prázdný stav</b> je pozvánka: ikona v ink-5, titul, jedna věta co udělat, tlačítko. Nikdy smajlík, nikdy „Jejda“.</li>
+        <li><b>Načítání</b> jsou skeletony ve tvaru výsledného obsahu (řádky tabulky, statistika), ne spinner uprostřed stránky. Spinner jen v tlačítku.</li>
+        <li><b>Chyba</b> je inline pruh u místa, kde vznikla, říká co se stalo a nabízí akci. Toasty potvrzují hotové akce (2,6 s, vpravo dole, sloveso v minulém čase: „Účet přidán“).</li>
+      </ul>
+      <div class="spec"><div class="grid-3">
+        <div class="card card--table"><div class="empty" id="empty-demo"></div></div>
+        <div class="card card--table" style="padding:16px"><div class="skeleton" style="height:14px;width:40%;margin-bottom:14px"></div><div class="skeleton" style="height:12px;width:90%;margin-bottom:10px"></div><div class="skeleton" style="height:12px;width:80%;margin-bottom:10px"></div><div class="skeleton" style="height:12px;width:85%;margin-bottom:22px"></div><div class="skeleton" style="height:22px;width:50%"></div></div>
+        <div style="display:grid;gap:12px"><div class="alert alert--error" id="alert-demo"></div><div class="toast is-on" style="position:static;transform:none" id="toast-demo"></div><div class="tip" style="position:static;display:inline-block"><b>Nákup 20 ks za 4 190 Kč</b><small>20. 1. 2025 · celkem 83 800 Kč</small></div><div class="menu" style="position:static;width:200px" id="menu-demo"></div></div>
+      </div></div>
+    </section>
+
+    <section class="part" id="text">
+      <h2>Čísla a text</h2>
+      <ul class="rules">
+        <li>Peníze: tisíce oddělené nezlomitelnou mezerou, desetinná čárka, jednotka za číslem s nezlomitelnou mezerou. Změny mají znaménko s úzkou mezerou. Velká čísla v popiscích os se zkracují (tis., mil.).</li>
+        <li>Data: „2. 10. 2026“, v seznamech „Dnes“, „Včera“, „30. zář“. Časy „10:32“.</li>
+        <li>Velká písmena jen v eyebrow a hlavičce tabulky. Všude jinde věta s velkým písmenem na začátku. Žádné vykřičníky.</li>
+        <li>Formátování vždy podle jazyka rozhraní přes <code>useFormat()</code> – nikdy ručně.</li>
+      </ul>
+      <div class="spec spec--paper"><div class="fmt">
+        <div><span class="ok num">2 846 900 Kč</span> &nbsp; <span class="bad">2846900 Kč</span> &nbsp; <span class="bad">2,846,900 CZK</span></div>
+        <div><span class="ok num gain">+ 60 110 Kč</span> &nbsp; <span class="ok num loss">− 15 200 Kč</span> &nbsp; <span class="bad">-15200Kč</span></div>
+        <div><span class="ok num">+ 41,6 %</span> &nbsp; <span class="bad">41.6%</span></div>
+        <div><span class="ok num">247,30 USD</span> &nbsp; <span class="bad">$247.3</span></div>
+        <div><span class="ok">20. 1. 2025</span> &nbsp; <span class="bad">2025-01-20</span> &nbsp; <span class="bad">20.01.2025</span></div>
+        <div><span class="ok">Přidat účet</span> &nbsp; <span class="bad">OK</span> &nbsp; <span class="bad">Odeslat</span> &nbsp; <span class="bad">PŘIDAT ÚČET</span></div>
+      </div></div>
+    </section>
+
+    <section class="part" id="otevrene">
+      <h2>Rozhodnutí a otevřené otázky</h2>
+      <ol class="rules">
+        <li><b>Tmavé téma</b> – rozhodnuto 2. 10. 2026: pro v1 vypuštěno, aplikace je jen světlá.</li>
+        <li><b>Časová stopa</b> – schválena v podobě popsané výše, na všech detailech jedné entity.</li>
+        <li><b>Font</b> – Inter Variable se přibalí do aplikace.</li>
+        <li><b>Prahy pro události na účtech</b> a kdy události slučovat do skupin („3 nákupy“), až bude vidět reálná hustota dat.</li>
+      </ol>
+    </section>
+  </main>
+</div>
+<script src="icons.js"></script>
+<script src="shell.js"></script>
+<script src="charts.js"></script>
+<script>
+function swatches(el, list) { document.getElementById(el).innerHTML = list.map(function (s) { return '<div class="swatch"><i style="background:' + s[1] + (s[3] ? ";" + s[3] : "") + '"></i><div><b>' + s[0] + "</b><code>" + s[1] + "</code><small>" + s[2] + "</small></div></div>"; }).join(""); }
+swatches("sw-surfaces", [["canvas", "#eeece7", "vnější plátno"], ["canvas-glow", "#fbfaf7", "radiální světlo vpravo nahoře"], ["sidebar", "#f8f7f3", "vrstva sidebaru"], ["paper", "#ffffff", "karty, tabulky, modály"], ["well", "#f7f6f2", "hlavička tabulky, patička modálu, hover řádku"], ["well-2", "#e9e7e1", "stopa přepínače, štítek, avatar"]]);
+swatches("sw-ink", [["line", "#e2dfd7", "rámečky karet a tabulek"], ["line-soft", "#efede8", "dělení řádků, mřížka grafu"], ["ink", "#292822", "nadpisy, hodnoty, názvy"], ["ink-2", "#504d46", "tělo, hodnoty tabulky, menu"], ["ink-3", "#817e75", "sekundární text"], ["ink-4", "#98948b", "popisky, eyebrow, mikro"]]);
+swatches("sw-sem", [["dark", "#2c2a25", "aktivní navigace, primární tlačítko (gradient 3b3932 → 27251f)"], ["gain", "#50745f", "pouze kladná změna"], ["gain-soft", "#e9efeb", "podklad kladného štítku"], ["loss", "#945c4d", "záporná změna, destrukce, chyba"], ["loss-soft", "#f3e9e6", "podklad záporného štítku, chybový pruh"], ["focus", "#57544d", "linka fokusu + prstenec 10 % inkoustu"]]);
+swatches("sw-series", [["s1", "#2b2a25", "1. série, linka hodnoty"], ["s2", "#66635b", "2. série"], ["s3", "#9d9990", "3. série, výdaje"], ["s4", "#d2cfc7", "4. série"], ["s-other", "#ebe9e3", "Ostatní (vždy s popiskem)", "border-bottom:1px solid #e2dfd7"], ["chart-cost", "#a8a49b", "čárkovaná linka Vloženo"]]);
+document.getElementById("btns").innerHTML = '<button class="btn btn--primary">' + icon("plus", 14) + 'Přidat účet</button><button class="btn">' + icon("refresh-cw", 14) + 'Obnovit ceny</button><button class="btn demo-hover">Hover</button><button class="btn demo-focus">Fokus</button><button class="btn btn--ghost">Zrušit</button><button class="btn btn--danger">' + icon("trash-2", 14) + 'Smazat</button><button class="btn btn--destructive">Smazat pozici</button><button class="btn btn--icon" aria-label="Více">' + icon("ellipsis", 16) + '</button><button class="btn btn--sm">Malé</button><button class="btn btn--primary btn--sm">Malé primární</button><button class="btn btn--primary is-loading">' + icon("refresh-cw", 14) + 'Ukládám…</button><button class="btn" disabled>Zakázané</button>';
+document.getElementById("err-demo").innerHTML = icon("circle-alert", 12) + "Můžete prodat nejvýše 36 akcií.";
+document.getElementById("back-demo").innerHTML = icon("arrow-left", 14) + "Zpět na akcie";
+["search-demo", "search-demo2"].forEach(function (id) { document.getElementById(id).insertAdjacentHTML("afterbegin", icon("search", 14)); });
+document.querySelectorAll(".select-wrap").forEach(function (w) { w.insertAdjacentHTML("beforeend", icon("chevron-down", 14)); });
+document.querySelectorAll(".modal__close").forEach(function (b) { b.innerHTML = icon("x", 15); });
+document.getElementById("badge-unc").innerHTML = icon("circle-alert", 11) + "Nezařazeno";
+document.getElementById("dots-demo").innerHTML = icon("ellipsis", 14);
+document.getElementById("logo-soft").innerHTML = icon("receipt", 14);
+document.getElementById("empty-demo").innerHTML = icon("trending-up", 28) + "<h3>Zatím žádné pozice</h3><p>Přidejte první akcii nebo ETF, nebo naimportujte výpis od brokera.</p><button class=\"btn btn--primary\">Přidat investici</button>";
+document.getElementById("alert-demo").innerHTML = icon("circle-alert", 15) + "<div><b>Ceny se nepodařilo stáhnout</b>Yahoo Finance neodpovídá. Zobrazují se ceny z 29. 9.</div><div class=\"actions\"><button class=\"btn btn--sm\">Zkusit znovu</button></div>";
+document.getElementById("toast-demo").innerHTML = icon("check", 14) + "<span>Účet přidán</span>";
+document.getElementById("menu-demo").innerHTML = '<button class="menu__item">' + icon("pencil", 14) + 'Upravit cenu</button><button class="menu__item">' + icon("chart-candlestick", 14) + 'Otevřít ve sledování</button><div class="menu__sep"></div><button class="menu__item menu__item--danger">' + icon("trash-2", 14) + 'Smazat pozici</button>';
+renderShell({ active: "stocks" });
+// charts
+var END = new Date(2026, 9, 2), pts = [], v = 2700000;
+for (var i = 30; i >= 0; i--) { var d = new Date(END); d.setDate(d.getDate() - i); v += 4000 + Math.sin(i * 0.7) * 6000; pts.push({ date: d, value: v }); }
+drawLine(document.getElementById("chart-hero"), pts, { axisEl: document.getElementById("axis-hero") });
+var tp = [], tv = 120000; for (var j = 90; j >= 0; j--) { var dd = new Date(END); dd.setDate(dd.getDate() - j); tv += 600 + Math.sin(j * 0.4) * 1800 + (j === 60 ? 42000 : 0) - (j === 30 ? 24000 : 0); tp.push({ date: dd, value: tv }); }
+var e1 = new Date(END); e1.setDate(e1.getDate() - 60); var e2 = new Date(END); e2.setDate(e2.getDate() - 30); var e3 = new Date(END); e3.setDate(e3.getDate() - 12);
+drawLine(document.getElementById("chart-trace"), tp, { axisEl: document.getElementById("axis-trace"), events: [{ date: e1, type: "buy", html: "<b>Nákup 10 ks za 4 190 Kč</b><small>" + fmtDay(e1) + "</small>" }, { date: e2, type: "sell", html: "<b>Prodej 6 ks za 4 560 Kč</b><small>" + fmtDay(e2) + "</small>" }, { date: e3, type: "div", html: "<b>Dividenda 224 Kč</b><small>" + fmtDay(e3) + "</small>" }] });
+drawBars(document.getElementById("chart-bars"), [["kvě", 58900, 45800], ["čvn", 61400, 49100], ["čvc", 58900, 58200], ["srp", 58900, 44700], ["zář", 62300, 50900], ["říj", 62300, 31650]].map(function (b) { return { label: b[0], a: b[1], b: b[2] }; }), { axisEl: document.getElementById("axis-bars"), names: ["Příjmy", "Výdaje"] });
+</script>
+</body>
+</html>

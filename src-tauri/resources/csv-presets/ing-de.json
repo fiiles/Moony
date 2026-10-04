@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "id": "ing-de",
+  "bankName": "ING (Germany)",
+  "country": "DE",
+  "matchHeaders": ["Buchung", "Valuta", "Auftraggeber/Empfänger", "Buchungstext", "Verwendungszweck", "Saldo", "Betrag"],
+  "delimiter": ";",
+  "encoding": "Windows-1252",
+  "dateColumn": "Buchung",
+  "dateFormat": "%d.%m.%Y",
+  "amountColumn": "Betrag",
+  "descriptionColumns": ["Verwendungszweck", "Buchungstext"],
+  "counterpartyColumn": "Auftraggeber/Empfänger",
+  "currencyColumn": "Währung",
+  "balanceColumn": "Saldo"
+}

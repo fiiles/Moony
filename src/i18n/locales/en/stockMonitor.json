@@ -1,0 +1,184 @@
+{
+  "title": "Stock Monitor",
+  "subtitle": "Stocks you are considering: prices in their own currency, target prices and your notes.",
+  "cancel": "Cancel",
+  "search": {
+    "placeholder": "Search a stock (symbol or name) to start following",
+    "noResults": "No stocks found",
+    "searching": "Searching…"
+  },
+  "table": {
+    "stock": "Stock",
+    "price": "Price",
+    "fiftyTwoWeekLow": "52-week low",
+    "targetPrice": "Target",
+    "change": "Change",
+    "changePct": "Change %",
+    "held": "In portfolio",
+    "pricesUpdatedAt": "Prices updated at {{time}}",
+    "pricesNeverUpdated": "Prices have not been fetched yet",
+    "fiftyTwoWeekHigh": "52-wk high",
+    "title": "Watched",
+    "sub": "Change against the previous close · 52-week range with the current price and the target",
+    "sort": {
+      "name": "By name",
+      "change": "By change",
+      "target": "By target"
+    },
+    "changeToday": "Change today",
+    "range": "52W range",
+    "target": "Target",
+    "setTarget": "Set target",
+    "targetReached": "Target {{price}} reached",
+    "toTarget": "{{pct}} to target",
+    "footer_one": "{{count}} stock · prices in their own currency, no conversion",
+    "footer_other": "{{count}} stocks · prices in their own currency, no conversion",
+    "source": "Source Yahoo Finance · up to 15 minutes delayed"
+  },
+  "empty": {
+    "title": "No followed stocks",
+    "description": "Search for a stock above and follow it to start monitoring."
+  },
+  "actions": {
+    "follow": "Follow",
+    "unfollow": "Unfollow",
+    "refresh": "Refresh prices",
+    "followPortfolio": "Follow {{count}} from portfolio",
+    "refreshShort": "Refresh",
+    "buy": "Buy into portfolio",
+    "openInPortfolio": "Open in portfolio",
+    "setTarget": "Set target",
+    "editTarget": "Edit target",
+    "notes": "Notes"
+  },
+  "unfollowConfirm": {
+    "title": "Unfollow {{ticker}}?",
+    "description": "The target price and notes for this stock will be deleted."
+  },
+  "detail": {
+    "marketCap": "Market cap",
+    "dividendYield": "Dividend yield",
+    "peRatio": "P/E ratio",
+    "fiftyTwoWeekLow": "52-week low",
+    "fiftyTwoWeekHigh": "52-week high",
+    "previousClose": "Previous close",
+    "noData": "No price data available (offline?)",
+    "notFollowed": "You are not following this stock yet.",
+    "backToOverview": "Back to Overview",
+    "periodStart": "Start of {{period}}: {{price}}",
+    "openInPortfolio": "Open in portfolio",
+    "back": "Back to watchlist",
+    "followedSince": "Following since {{date}}",
+    "notFollowedShort": "Not followed yet",
+    "held": "in your portfolio",
+    "notHeld": "not in your portfolio",
+    "price": "Price",
+    "today": "{{change}} today · close {{close}}",
+    "target": "Target price",
+    "toTarget": "{{pct}} to go",
+    "targetReached": "target reached",
+    "periodChange": "change {{change}}",
+    "legend": {
+      "price": "Price",
+      "target": "Target price",
+      "watchStart": "Watch start"
+    },
+    "watchStartTarget": "target {{price}}",
+    "stats": {
+      "exchangeNote": "on {{exchange}}",
+      "peNote": "price to earnings over the last 12 months",
+      "dividendNote": "{{amount}} a year per share",
+      "range": "52W range",
+      "min": "min",
+      "max": "max"
+    },
+    "keyData": "Key data",
+    "kv": {
+      "previousClose": "Previous close",
+      "changeToday": "Change today",
+      "low": "52W low",
+      "high": "52W high",
+      "marketCap": "Market cap",
+      "pe": "P/E ratio",
+      "dividend": "Dividend yield",
+      "exchange": "Exchange",
+      "updated": "Prices updated"
+    },
+    "since": {
+      "title": "Since you started following",
+      "text": "Over {{days}} the price moved from {{price}} by",
+      "toTarget": "{{amount}} to the target.",
+      "noData": "Following for {{days}}; the price from that day is not available yet.",
+      "days_one": "{{count}} day",
+      "days_other": "{{count}} days"
+    },
+    "followPrompt": "Following gives you a target price, notes and the watch-start mark on the chart."
+  },
+  "target": {
+    "label": "Target price",
+    "set": "Set target",
+    "edit": "Edit",
+    "clear": "Delete target",
+    "save": "Save target",
+    "cancel": "Cancel",
+    "toTarget": "{{pct}} to target",
+    "placeholder": "e.g. 250.00",
+    "title": "Target price",
+    "description": "When reached, the target is highlighted in the watchlist table.",
+    "field": "Target",
+    "hintCurrent": "Current price {{price}}",
+    "hintHigh": "52W high {{price}}"
+  },
+  "notes": {
+    "title": "Notes",
+    "edit": "Edit",
+    "write": "Write",
+    "preview": "Preview",
+    "save": "Save",
+    "cancel": "Cancel",
+    "empty": "No notes yet. Click Edit to add research notes (markdown supported).",
+    "placeholder": "Write markdown notes…",
+    "toolbar": {
+      "bold": "Bold",
+      "italic": "Italic",
+      "heading": "Heading",
+      "list": "Bullet list",
+      "orderedList": "Numbered list",
+      "link": "Link"
+    },
+    "sub": "Markdown · also editable through the assistant (MCP)",
+    "paragraphs_one": "{{count}} paragraph",
+    "paragraphs_other": "{{count}} paragraphs",
+    "markdownHint": "Markdown"
+  },
+  "chart": {
+    "noData": "No chart data for this period",
+    "currentPrice": "Current Price",
+    "targetLabel": "Target {{price}}"
+  },
+  "toast": {
+    "followed": "Now following {{ticker}}",
+    "unfollowed": "Unfollowed {{ticker}}",
+    "followedPortfolio_one": "Now following 1 stock from your portfolio",
+    "followedPortfolio_other": "Now following {{count}} stocks from your portfolio"
+  },
+  "eyebrow": "Watchlist",
+  "status": {
+    "updated": "Prices updated {{time}} · refreshed every 5 minutes",
+    "updatedShort": "Prices updated {{time}}",
+    "never": "Prices not loaded yet"
+  },
+  "stats": {
+    "watched": "Watched stocks",
+    "heldNote_one": "{{count}} of them is in your portfolio",
+    "heldNote_other": "{{count}} of them are in your portfolio",
+    "heldNoteNone": "none of them is in your portfolio",
+    "atTarget": "At target price",
+    "targetReached": "target {{price}} reached",
+    "toTarget": "{{pct}} to target",
+    "noTargets": "no target prices yet",
+    "topToday": "Most today",
+    "worstNote": "least {{name}} {{change}}",
+    "noChanges": "no change today"
+  }
+}

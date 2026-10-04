@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "packId": "om",
+  "country": "Oman",
+  "version": 1,
+  "rules": [
+    { "id": "om/lulu", "name": "LuLu Hypermarket", "ruleType": "word", "pattern": "lulu", "categoryId": "cat_groceries", "priority": 50 },
+    { "id": "om/carrefour-maf", "name": "Carrefour Oman (Majid Al Futtaim)", "ruleType": "contains", "pattern": "majid al futtaim", "categoryId": "cat_groceries", "priority": 50 },
+    { "id": "om/nesto", "name": "Nesto Hypermarket", "ruleType": "word", "pattern": "nesto", "categoryId": "cat_groceries", "priority": 50 },
+    { "id": "om/talabat", "name": "Talabat", "ruleType": "contains", "pattern": "talabat", "categoryId": "cat_dining", "priority": 50 },
+    { "id": "om/oman-oil", "name": "Oman Oil", "ruleType": "contains", "pattern": "oman oil", "categoryId": "cat_transport", "priority": 50 },
+    { "id": "om/mwasalat", "name": "Mwasalat", "ruleType": "contains", "pattern": "mwasalat", "categoryId": "cat_transport", "priority": 50 },
+    { "id": "om/omantel", "name": "Omantel", "ruleType": "contains", "pattern": "omantel", "categoryId": "cat_utilities", "priority": 50 },
+    { "id": "om/ooredoo", "name": "Ooredoo Oman", "ruleType": "contains", "pattern": "ooredoo", "categoryId": "cat_utilities", "priority": 50 },
+    { "id": "om/oman-post", "name": "Oman Post", "ruleType": "contains", "pattern": "oman post", "categoryId": "cat_utilities", "priority": 50 },
+    { "id": "om/oman-air", "name": "Oman Air", "ruleType": "contains", "pattern": "oman air", "categoryId": "cat_travel", "priority": 50 },
+    { "id": "om/salamair", "name": "SalamAir", "ruleType": "contains", "pattern": "salamair", "categoryId": "cat_travel", "priority": 50 },
+    { "id": "om/salary", "name": "Salary", "ruleType": "contains", "pattern": "salary", "categoryId": "cat_income", "priority": 60 },
+    { "id": "om/payroll", "name": "Payroll", "ruleType": "contains", "pattern": "payroll", "categoryId": "cat_income", "priority": 60 },
+    { "id": "om/atm-withdrawal", "name": "ATM Withdrawal", "ruleType": "contains", "pattern": "atm withdrawal", "categoryId": "cat_internal_transfers", "priority": 40 },
+    { "id": "om/cash-withdrawal", "name": "Cash Withdrawal", "ruleType": "contains", "pattern": "cash withdrawal", "categoryId": "cat_internal_transfers", "priority": 40 }
+  ]
+}

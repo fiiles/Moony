@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "id": "csob",
+  "bankName": "ČSOB",
+  "country": "CZ",
+  "institutionId": "inst_csob",
+  "matchHeaders": ["datum zaúčtování", "částka", "měna", "název protiúčtu", "zpráva pro příjemce", "zůstatek", "označení operace"],
+  "delimiter": ";",
+  "encoding": "Windows-1250",
+  "dateColumn": "datum zaúčtování",
+  "dateFormat": "%d.%m.%Y",
+  "amountColumn": "částka",
+  "descriptionColumns": ["zpráva pro příjemce", "poznámka"],
+  "counterpartyColumn": "název protiúčtu",
+  "counterpartyIbanColumn": "číslo protiúčtu",
+  "currencyColumn": "měna",
+  "balanceColumn": "zůstatek"
+}

@@ -1,0 +1,5 @@
+Date,Description,Amount,Currency,Counterparty,IBAN
+2026-09-25,Restaurant,-45.80,EUR,Trattoria Roma,
+2026-09-30,Interest,1.23,EUR,Bank,
+2026-10-01,Salary October,3200.00,EUR,ACME GmbH,DE89370400440532013000
+2026-10-02,Rent,-1150.00,EUR,Landlord Ltd,DE02120300000000202051

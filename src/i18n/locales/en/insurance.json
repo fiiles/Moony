@@ -1,0 +1,321 @@
+{
+  "title": "Insurance",
+  "eyebrow": "Protection",
+  "subtitle": "What you have covered, what it costs and when payments and anniversaries come.",
+  "loading": "Loading your insurance policies...",
+  "export": "Export",
+  "status": {
+    "nextPayment": "Next payment {{date}} · {{amount}}",
+    "none": "No regular payments",
+    "ended": "The policy has ended"
+  },
+  "empty": {
+    "title": "No insurance policies yet",
+    "description": "Add your first contract to see what is covered, what you pay for it and when payments are due."
+  },
+  "addPolicy": "Add policy",
+  "policies_one": "{{count}} active policy",
+  "policies_other": "{{count}} active policies",
+  "payments_one": "{{count}} payment",
+  "payments_other": "{{count}} payments",
+  "risks_one": "{{count}} risk",
+  "risks_other": "{{count}} risks",
+  "documentsCount_one": "{{count}} document",
+  "documentsCount_other": "{{count}} documents",
+  "duration": {
+    "years_one": "{{count}} year",
+    "years_other": "{{count}} years",
+    "months_one": "{{count}} month",
+    "months_other": "{{count}} months",
+    "days_one": "{{count}} day",
+    "days_other": "{{count}} days"
+  },
+  "summary": {
+    "yearly": "Annual premium",
+    "yearlyNote": "{{monthly}} a month · {{policies}}",
+    "nextPayment": "Next payment",
+    "nextPaymentNote": "{{amount}} · {{policies}}",
+    "noPayments": "no regular payment is due",
+    "coverage": "Total coverage",
+    "coverageNote": "sum of limits · {{breakdown}}",
+    "noCoverage": "no coverage limits entered yet",
+    "anniversary": "Nearest anniversary",
+    "anniversaryNote": "{{name}} · in {{duration}} · time to compare offers",
+    "endNote": "{{name}} · contract ends in {{duration}}",
+    "noAnniversary": "no active contract"
+  },
+  "calendar": {
+    "title": "Payment calendar, next 12 months",
+    "subtitle": "From each contract's frequency and start date · annual payments stand out.",
+    "total": "total {{amount}}",
+    "monthly": "Monthly premiums",
+    "other": "Quarterly and annual payments",
+    "anniversary": "Anniversary · {{name}}",
+    "peakNote": "The heaviest month is {{month}}: {{amount}} – set a reserve aside.",
+    "evenNote": "Payments are even · {{amount}} a month"
+  },
+  "table": {
+    "title": "Policies",
+    "subtitle": "Active contracts",
+    "subtitleHidden": "Active contracts · ended ones hidden",
+    "showEnded": "Show ended",
+    "allTypes": "All types",
+    "policy": "Policy",
+    "type": "Type",
+    "provider": "Insurer",
+    "premium": "Premium",
+    "coverage": "Coverage",
+    "nextPayment": "Next payment",
+    "anniversary": "Anniversary / end",
+    "actions": "Actions",
+    "perYear": "{{amount}} a year",
+    "perYearShort": "a year",
+    "moreLimits": "+{{count}} more",
+    "ended": "ended",
+    "endedOn": "ended",
+    "endOn": "contract end",
+    "anniversaryShort": "contract anniversary",
+    "in": "in {{duration}}",
+    "noResults": {
+      "title": "No policy of this type",
+      "description": "Try another filter or add a new contract."
+    },
+    "footer": {
+      "yearly": "{{amount}} a year",
+      "coverage": "coverage {{amount}}",
+      "note": "Anniversary = the next contract year from the start date · end = the agreed date"
+    }
+  },
+  "types": {
+    "life": "Life Insurance",
+    "health": "Health Insurance",
+    "property": "Property Insurance",
+    "vehicle": "Vehicle Insurance",
+    "travel": "Travel Insurance",
+    "liability": "Liability Insurance",
+    "accident": "Accident Insurance",
+    "other": "Other",
+    "allTypes": "All Types"
+  },
+  "typeShort": {
+    "life": "Life",
+    "health": "Health",
+    "property": "Property",
+    "vehicle": "Vehicle",
+    "travel": "Travel",
+    "liability": "Liability",
+    "accident": "Accident",
+    "other": "Other"
+  },
+  "frequencyShort": {
+    "monthly": "monthly",
+    "quarterly": "quarterly",
+    "semi_annually": "semi-annually",
+    "annually": "annually",
+    "one_time": "one-time"
+  },
+  "form": {
+    "addTitle": "Add Insurance Policy",
+    "editTitle": "Edit Insurance Policy",
+    "name": "Policy Name",
+    "namePlaceholder": "e.g., Home Insurance",
+    "provider": "Insurance Provider",
+    "providerPlaceholder": "e.g., Insurance Company",
+    "type": "Policy Type",
+    "premium": "Annual Premium",
+    "coverage": "Coverage Amount",
+    "currency": "Currency",
+    "startDate": "Start Date",
+    "expiryDate": "Expiry Date",
+    "policyNumber": "Policy Number",
+    "notes": "Notes"
+  },
+  "actions": {
+    "open": "Open",
+    "edit": "Edit",
+    "end": "End policy",
+    "reactivate": "Reactivate policy",
+    "delete": "Delete policy",
+    "addDocument": "Add document"
+  },
+  "endDialog": {
+    "title": "End policy · {{name}}",
+    "description": "The contract stays in the history and leaves the premium total and the payment calendar.",
+    "date": "Contract end",
+    "alertTitle": "The policy moves to the ended ones",
+    "alertNote": "You can reactivate it any time from the \"···\" menu; documents and limits stay.",
+    "submit": "End policy"
+  },
+  "confirmDelete": {
+    "title": "Delete policy",
+    "description": "Delete \"{{name}}\"? Its documents go with it. This cannot be undone."
+  },
+  "toast": {
+    "added": "Policy added",
+    "updated": "Policy updated",
+    "deleted": "Policy deleted",
+    "ended": "Policy ended",
+    "reactivated": "Policy reactivated"
+  },
+  "modal": {
+    "basicInfo": "Basic Information",
+    "paymentDetails": "Payment Details",
+    "additionalInfo": "Additional Information",
+    "selectType": "Select type",
+    "selectStatus": "Select status",
+    "addDescription": "The contract basics, payments and coverage limits; documents are added in the detail.",
+    "editDescription": "Edit insurance policy details.",
+    "policyName": "Policy Name",
+    "policyNamePlaceholder": "e.g. Home Insurance 2024",
+    "provider": "Provider",
+    "providerPlaceholder": "e.g. Allianz",
+    "policyNumber": "Policy Number",
+    "policyNumberPlaceholder": "Contract number",
+    "paymentFrequency": "Payment Frequency",
+    "selectFrequency": "Select frequency",
+    "oneTimePayment": "One-Time Payment (Optional)",
+    "oneTimePaymentRequired": "One-Time Payment",
+    "regularPayment": "Regular Payment",
+    "endDateOptional": "End Date (Optional)",
+    "coverageLimits": "Coverage Limits",
+    "addLimit": "Add Limit",
+    "removeLimit": "Remove limit",
+    "limitTitle": "Limit Title",
+    "notesPlaceholder": "Special conditions, contacts...",
+    "createPolicy": "Create Policy",
+    "updatePolicy": "Update Policy",
+    "status": {
+      "active": "Active",
+      "inactive": "Inactive"
+    },
+    "frequency": {
+      "monthly": "Monthly",
+      "quarterly": "Quarterly",
+      "semi_annually": "Semi-annually",
+      "annually": "Annually",
+      "one_time": "One Time"
+    },
+    "linkRealEstate": "Link to Real Estate",
+    "selectRealEstate": "Select Real Estate (optional)",
+    "noRealEstateAvailable": "No real estate available"
+  },
+  "detail": {
+    "backToList": "Back to insurance",
+    "notFound": "This policy no longer exists.",
+    "policyNumber": "no. {{number}}",
+    "description": "Since {{start}} {{end}} · {{premium}} {{frequency}}",
+    "descriptionOneTime": "Since {{start}} {{end}} · one-time {{premium}}",
+    "noEnd": "with no agreed end",
+    "until": "until {{date}}",
+    "statusActive": "active",
+    "statusEnded": "ended",
+    "period": {
+      "year": "1Y",
+      "all": "Since start"
+    },
+    "hero": {
+      "paid": "Premiums paid",
+      "paidNote": "{{payments}} since {{month}} · {{yearly}} a year",
+      "paidNoteOneTime": "one-time payment at signing on {{date}}",
+      "coverage": "Total coverage",
+      "coverageRatio": "{{ratio}}× the annual premium",
+      "coverageOneTime": "sum of the agreed limits",
+      "noCoverage": "no coverage limits entered"
+    },
+    "chart": {
+      "paid": "Paid in total",
+      "next12": "Next 12 payments",
+      "tipPaid": "paid in total",
+      "tipPlanned": "planned payment",
+      "note": "{{payments}} · {{yearly}} a year",
+      "noteOneTime": "One-time payment on {{date}}, no further payments"
+    },
+    "stats": {
+      "yearly": "Yearly cost",
+      "yearlyNote": "{{premium}} {{frequency}} · {{share}} of your premiums",
+      "yearlyOneTime": "one-time premium, no yearly cost",
+      "nextPayment": "Next payment",
+      "nextPaymentNote": "in {{in}} · {{amount}} · then {{next}}",
+      "noNextPayment": "no further payments",
+      "anniversary": "Contract anniversary",
+      "anniversaryNote": "in {{in}} · a chance to adjust the coverage or compare offers",
+      "end": "Contract end",
+      "endNote": "in {{in}} · the agreed end date",
+      "endedNote": "the contract ended {{date}}",
+      "duration": "Contract duration",
+      "durationNote": "no agreed end · {{docs}}",
+      "durationEnd": "until {{date}} · {{docs}}"
+    },
+    "limits": {
+      "title": "Coverage limits",
+      "subtitle": "What the contract covers and up to how much",
+      "edit": "Edit limits",
+      "risk": "Risk",
+      "limit": "Limit",
+      "footer": "{{risks}} · total coverage {{amount}}",
+      "empty": "No coverage limits entered yet. Add them by editing the policy."
+    },
+    "contract": {
+      "title": "Contract",
+      "provider": "Insurer",
+      "number": "Contract number",
+      "type": "Type",
+      "start": "Start",
+      "end": "End",
+      "endNone": "open-ended",
+      "frequency": "Frequency",
+      "premium": "Premium",
+      "oneTime": "One-time payment",
+      "oneTimeNone": "none",
+      "property": "Property"
+    },
+    "notes": {
+      "title": "Notes",
+      "edit": "Edit",
+      "empty": "No notes – add contacts, conditions and reminders by editing the policy.",
+      "updated": "Edited {{date}}"
+    },
+    "documents": "Documents"
+  },
+  "documents": {
+    "subtitle": "Stored in the app's encrypted folder",
+    "columns": {
+      "document": "Document",
+      "type": "Type",
+      "uploaded": "Uploaded"
+    },
+    "description": "Attach contracts, certificates and other documents",
+    "add": "Add document",
+    "addFirst": "Add first document",
+    "addTitle": "Add document",
+    "noDocuments": "No documents attached yet",
+    "file": "File",
+    "clickToSelect": "Click to select a file",
+    "type": "Document type",
+    "selectType": "Select type",
+    "namePlaceholder": "e.g. Insurance contract 2024",
+    "descriptionPlaceholder": "Additional notes about this document...",
+    "uploading": "Uploading...",
+    "upload": "Upload document",
+    "open": "Open",
+    "delete": "Delete",
+    "added": "Document added",
+    "deleted": "Document deleted",
+    "optional": "optional",
+    "types": {
+      "contract": "Contract",
+      "certificate": "Certificate",
+      "claim": "Claim",
+      "other": "Other"
+    },
+    "deleteConfirm": {
+      "title": "Delete document",
+      "description": "Delete \"{{name}}\"? The file will be removed permanently."
+    }
+  },
+  "mcp": {
+    "tipSummary": "Don't feel like typing it all in? The AI assistant can add policies from a contract.",
+    "bannerBody": "Start the MCP server, upload the contract, offer or policy summary to Claude and ask it to add the policy for you.",
+    "setupLink": "Set up MCP server"
+  }
+}

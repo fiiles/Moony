@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "id": "uk-debit-credit",
+  "bankName": "UK banks (Debit / Credit columns)",
+  "country": "GB",
+  "matchHeaders": ["Date", "Description", "Debit", "Credit"],
+  "delimiter": ",",
+  "encoding": "UTF-8",
+  "dateColumn": "Date",
+  "dateFormat": "%d/%m/%Y",
+  "debitColumn": "Debit",
+  "creditColumn": "Credit",
+  "descriptionColumns": ["Description"],
+  "balanceColumn": "Balance",
+  "sampleFixture": "uk-debit-credit.csv"
+}

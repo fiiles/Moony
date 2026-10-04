@@ -1,0 +1,16 @@
+﻿Date,Description,Amount,Currency,Counterparty
+2026-09-01,"Comma, inside quotes",-10.00,EUR,"Shop ""Quoted"" Name"
+2026-09-01,"Comma, inside quotes",-10.00,EUR,"Shop ""Quoted"" Name"
+2026-09-02,Thousands separator,"1,234.56",EUR,Payer
+2026-09-03,Parentheses negative,(12.34),EUR,Payee
+2026-09-04,Zero amount,0.00,EUR,Nobody
+2026-09-05,Empty amount,,EUR,Nobody
+31-02-2026,Invalid date,-5.00,EUR,X
+2030-01-01,Future date,-5.00,EUR,X
+2026-09-06,Huge amount,123456789012.99,EUR,Lottery
+2026-09-07,Trailing spaces   ,-7.00 ,EUR ,Payee   
+26/09/06,Two digit year,-8.00,EUR,X
+2026-09-08,Unknown currency,-9.00,XYZ,X
+2026-09-09,Emoji 🍕 description,-11.00,EUR,Pizzeria 🍕
+2026-09-10,"Multi
+line",-13.00,EUR,X

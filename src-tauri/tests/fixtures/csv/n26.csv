@@ -1,0 +1,5 @@
+"Booking Date","Value Date","Partner Name","Partner Iban","Type","Payment Reference","Account Name","Amount (EUR)","Original Amount","Original Currency","Exchange Rate"
+"2026-09-01","2026-09-01","Lidl","","MasterCard Payment","","Main Account","-34.10","-34.10","EUR","1.0"
+"2026-09-02","2026-09-02","Max Mustermann","DE75512108001245126199","Outgoing Transfer","Dinner","Main Account","-20.00","-20.00","EUR","1.0"
+"2026-09-05","2026-09-05","Employer AG","DE02100100100006820101","Income","Salary 09/2026","Main Account","2500.00","2500.00","EUR","1.0"
+"2026-09-09","2026-09-09","Amazon","","MasterCard Payment","","Main Account","-57.42","-62.00","USD","1.08"

@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "ceska-sporitelna",
+  "bankName": "Česká spořitelna",
+  "country": "CZ",
+  "institutionId": "inst_ceska_sporitelna",
+  "matchHeaders": ["Datum zaúčtování", "Částka", "Měna", "Název protiúčtu", "Zpráva pro příjemce"],
+  "delimiter": ";",
+  "encoding": "Windows-1250",
+  "dateColumn": "Datum zaúčtování",
+  "dateFormat": "%d.%m.%Y",
+  "amountColumn": "Částka",
+  "descriptionColumns": ["Zpráva pro příjemce"],
+  "counterpartyColumn": "Název protiúčtu",
+  "counterpartyIbanColumn": "Číslo protiúčtu",
+  "currencyColumn": "Měna",
+  "exportHelpUrl": "https://www.csas.cz/cs/caste-dotazy/jak-z-george-exportovat-transakce",
+  "sampleFixture": "ceska-sporitelna.csv"
+}

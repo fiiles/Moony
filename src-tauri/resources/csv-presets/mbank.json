@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "mbank",
+  "bankName": "mBank",
+  "country": "CZ",
+  "matchHeaders": ["#Datum operace", "#Částka", "#Popis operace"],
+  "delimiter": ";",
+  "encoding": "UTF-8",
+  "dateColumn": "#Datum operace",
+  "dateFormat": "%d-%m-%Y",
+  "amountColumn": "#Částka",
+  "descriptionColumns": ["#Popis operace"],
+  "counterpartyColumn": "#Příjemce/plátce"
+}

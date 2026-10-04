@@ -1,0 +1,146 @@
+{
+    "title": "Other Assets",
+    "subtitle": "Gold, collections, stakes and loans – everything without a market price that you value yourself.",
+    "loading": "Loading your other assets...",
+    "empty": {
+        "title": "No assets yet",
+        "description": "Add gold, a collection or a stake: name, price per unit and an optional first purchase. Revaluations then draw the estimate over time."
+    },
+    "addAsset": "Add asset",
+    "summary": {
+        "totalValue": "Total Value",
+        "assetCount": "Assets",
+        "totalGainLoss": "Overall Gain/Loss",
+        "value": "Value",
+        "assets_one": "{{count}} asset",
+        "assets_other": "{{count}} assets",
+        "gain": "Gain against purchase",
+        "vsCost": "vs. purchase cost {{amount}}",
+        "noCost": "no purchase cost",
+        "yearlyYield": "Yearly yield",
+        "yieldNote_one": "{{percent}} · from {{count}} yielding asset",
+        "yieldNote_other": "{{percent}} · from {{count}} yielding assets",
+        "noYield": "no asset yields anything",
+        "lastChange": "Last change"
+    },
+    "table": {
+        "title": "Assets",
+        "search": "Search assets",
+        "name": "Name",
+        "category": "Category",
+        "purchasePrice": "Purchase Price",
+        "marketPrice": "Market Price",
+        "avgPurchasePrice": "Avg. Purchase Price",
+        "totalValue": "Total Value",
+        "currentValue": "Current Value",
+        "purchaseDate": "Purchase Date",
+        "gainLoss": "Gain/Loss",
+        "actions": "Actions",
+        "noAssets": "No assets found. Add your first asset to get started.",
+        "subtitle": "Value = quantity × your latest price estimate",
+        "asset": "Asset",
+        "quantity": "Quantity",
+        "unit": "pcs",
+        "price": "Price / unit",
+        "avgPurchase": "Purchase / unit",
+        "value": "Value",
+        "gain": "Gain",
+        "yearly": "Yearly",
+        "updated": "Updated",
+        "noChange": "no change",
+        "yieldFixed": "fixed amount",
+        "yieldPercentPurchase": "{{value}} % of purchase cost",
+        "yieldPercentMarket": "{{value}} % of value",
+        "noResults": {
+            "title": "Nothing found",
+            "description": "Try another name."
+        },
+        "footer": {
+            "count_one": "{{count}} asset",
+            "count_other": "{{count}} assets",
+            "value": "value {{amount}}",
+            "cost": "purchase cost {{amount}}",
+            "yieldNote": "Yearly yield by the chosen type: fixed amount, % of purchase or % of value"
+        }
+    },
+    "actions": {
+        "edit": "Edit",
+        "delete": "Delete",
+        "transactions": "Transactions",
+        "buy": "Buy",
+        "sell": "Sell",
+        "revalue": "Revalue"
+    },
+    "confirmDelete": {
+        "title": "Delete asset?",
+        "description": "“{{name}}” and all its transactions will be removed permanently. This cannot be undone."
+    },
+    "confirmDeleteTransaction": {
+        "title": "Delete transaction?",
+        "description": "This will permanently delete the {{type}} transaction ({{quantity}} × {{price}}, {{date}}). This action cannot be undone."
+    },
+    "toast": {
+        "added": "Asset added",
+        "updated": "Asset updated",
+        "deleted": "Asset deleted",
+        "deleteError": "Failed to delete the asset"
+    },
+    "modal": {
+        "add": {
+            "title": "Add Other Asset",
+            "basicInfo": "Asset Information",
+            "assetName": "Asset Name",
+            "assetNamePlaceholder": "e.g. Gold Bars",
+            "marketPrice": "Current Market Price (per unit)",
+            "initialPurchase": "Initial Purchase (Optional)",
+            "pricePerUnit": "Price / Unit",
+            "initialPurchaseHint": "If filled, this will add a 'Buy' transaction.",
+            "yieldConfig": "Yield (optional)",
+            "yieldConfigDescription": "Income this asset generates each year, for example rent or interest.",
+            "submit": "Add Asset",
+            "description": "Add a new custom asset to your portfolio.",
+            "yieldType": "Yield type",
+            "yieldValue": "Yield value",
+            "yieldTypes": {
+                "none": "None",
+                "fixed": "Fixed amount (yearly)",
+                "percentPurchase": "% of purchase price",
+                "percentMarket": "% of market price"
+            },
+            "marketPriceHint": "Your estimate per unit today; change it later by revaluing.",
+            "total": "First purchase at today's price"
+        },
+        "buy": {
+            "title": "Buy More",
+            "description": "Add more quantity to your asset.",
+            "pricePerUnit": "Price per Unit",
+            "submit": "Add Transaction"
+        },
+        "sell": {
+            "title": "Sell",
+            "description": "Record a sale transaction for this asset.",
+            "pricePerUnit": "Price per Unit",
+            "submit": "Sell Asset"
+        },
+        "transactions": {
+            "title": "Transaction History",
+            "noTransactions": "No transactions found"
+        },
+        "edit": {
+            "title": "Edit · {{name}}",
+            "description": "Name, currency and yield. Change the price by revaluing, the quantity with buys and sells.",
+            "currencyHint": "Currency of the price and the purchase average.",
+            "priceHint": "Change the market price with Revalue – it leaves a trace in the chart."
+        }
+    },
+    "eyebrow": "Portfolio",
+    "export": "Export",
+    "status": {
+        "latest": "Last change {{date}}",
+        "manual": "Valued manually"
+    },
+    "chart": {
+        "title": "Estimated value over time",
+        "subtitle": "Flat between revaluations – the jumps are your estimates and purchases, not the market."
+    }
+}

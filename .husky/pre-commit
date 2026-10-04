@@ -1,0 +1,7 @@
+# Fast tier (<10s): staged-file lint/format, typecheck, Rust format.
+# Heavy checks (tests, clippy) run in .husky/pre-push and CI.
+npx lint-staged
+npm run typecheck
+
+cd src-tauri
+cargo fmt --check

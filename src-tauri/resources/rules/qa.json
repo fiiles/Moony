@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "packId": "qa",
+  "country": "Qatar",
+  "version": 1,
+  "rules": [
+    { "id": "qa/lulu", "name": "LuLu Hypermarket", "ruleType": "word", "pattern": "lulu", "categoryId": "cat_groceries", "priority": 50 },
+    { "id": "qa/carrefour-maf", "name": "Carrefour Qatar (Majid Al Futtaim)", "ruleType": "contains", "pattern": "majid al futtaim", "categoryId": "cat_groceries", "priority": 50 },
+    { "id": "qa/al-meera", "name": "Al Meera", "ruleType": "contains", "pattern": "al meera", "categoryId": "cat_groceries", "priority": 50 },
+    { "id": "qa/talabat", "name": "Talabat", "ruleType": "contains", "pattern": "talabat", "categoryId": "cat_dining", "priority": 50 },
+    { "id": "qa/snoonu", "name": "Snoonu", "ruleType": "contains", "pattern": "snoonu", "categoryId": "cat_dining", "priority": 50 },
+    { "id": "qa/woqod", "name": "Woqod", "ruleType": "word", "pattern": "woqod", "categoryId": "cat_transport", "priority": 50 },
+    { "id": "qa/karwa", "name": "Karwa", "ruleType": "word", "pattern": "karwa", "categoryId": "cat_transport", "priority": 50 },
+    { "id": "qa/doha-metro", "name": "Doha Metro", "ruleType": "contains", "pattern": "doha metro", "categoryId": "cat_transport", "priority": 50 },
+    { "id": "qa/kahramaa", "name": "Kahramaa", "ruleType": "contains", "pattern": "kahramaa", "categoryId": "cat_utilities", "priority": 50 },
+    { "id": "qa/vodafone-qatar", "name": "Vodafone Qatar", "ruleType": "contains", "pattern": "vodafone", "categoryId": "cat_utilities", "priority": 50 },
+    { "id": "qa/ooredoo", "name": "Ooredoo", "ruleType": "contains", "pattern": "ooredoo", "categoryId": "cat_utilities", "priority": 50 },
+    { "id": "qa/qatar-post", "name": "Qatar Post", "ruleType": "contains", "pattern": "qatar post", "categoryId": "cat_utilities", "priority": 50 },
+    { "id": "qa/qatar-airways", "name": "Qatar Airways", "ruleType": "contains", "pattern": "qatar airways", "categoryId": "cat_travel", "priority": 50 },
+    { "id": "qa/qatar-insurance", "name": "Qatar Insurance Company", "ruleType": "contains", "pattern": "qatar insurance", "categoryId": "cat_insurance", "priority": 50 },
+    { "id": "qa/ezdan", "name": "Ezdan Holding", "ruleType": "word", "pattern": "ezdan", "categoryId": "cat_housing", "priority": 50 },
+    { "id": "qa/salary", "name": "Salary", "ruleType": "contains", "pattern": "salary", "categoryId": "cat_income", "priority": 60 },
+    { "id": "qa/payroll", "name": "Payroll", "ruleType": "contains", "pattern": "payroll", "categoryId": "cat_income", "priority": 60 },
+    { "id": "qa/atm-withdrawal", "name": "ATM Withdrawal", "ruleType": "contains", "pattern": "atm withdrawal", "categoryId": "cat_internal_transfers", "priority": 40 },
+    { "id": "qa/cash-withdrawal", "name": "Cash Withdrawal", "ruleType": "contains", "pattern": "cash withdrawal", "categoryId": "cat_internal_transfers", "priority": 40 }
+  ]
+}

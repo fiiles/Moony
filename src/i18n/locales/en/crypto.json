@@ -1,0 +1,249 @@
+{
+  "title": "Cryptocurrencies",
+  "eyebrow": "Portfolio",
+  "subtitle": "Crypto positions at the current rate, cost by weighted average.",
+  "loading": "Loading your crypto portfolio...",
+  "empty": {
+    "title": "No cryptocurrencies yet",
+    "description": "Add your first coin: we look it up on CoinGecko and the rate keeps itself up to date."
+  },
+  "addCrypto": "Add cryptocurrency",
+  "refreshPrices": "Refresh rates",
+  "export": "Export",
+  "summary": {
+    "value": "Crypto value",
+    "positions_one": "{{count}} open position",
+    "positions_other": "{{count}} open positions",
+    "updatedToday": "rates updated today",
+    "updatedOn": "rates from {{date}}",
+    "notUpdated": "rates not fetched yet",
+    "unrealizedGain": "Unrealized return",
+    "unrealizedLoss": "Unrealized loss",
+    "vsInvested": "vs. {{amount}} invested",
+    "realized": "Realized return",
+    "sells_one": "{{count}} sale · weighted average",
+    "sells_other": "{{count}} sales · weighted average",
+    "noSells": "no sales yet",
+    "largest": "Largest position",
+    "largestNote": "{{share}} of crypto value · {{change}} since purchase",
+    "noPositions": "no open position"
+  },
+  "chart": {
+    "title": "Crypto value over time",
+    "subtitle": "Buys and sells right on the chart – every jump has an explanation.",
+    "legend": {
+      "value": "Crypto value",
+      "buy": "Buy",
+      "sell": "Sell"
+    },
+    "events": {
+      "buy": "Bought {{tickers}}",
+      "sell": "Sold {{tickers}}",
+      "cluster_one": "{{count}} transaction",
+      "cluster_other": "{{count}} transactions"
+    }
+  },
+  "table": {
+    "title": "Positions",
+    "subtitle": "Rates converted to {{currency}} at today's FX · manual rates are marked",
+    "search": "Search by name or ticker",
+    "asset": "Asset",
+    "quantity": "Quantity",
+    "avgCost": "Avg. cost",
+    "rate": "Rate",
+    "value": "Value",
+    "share": "Share",
+    "return": "Return",
+    "actions": "Actions",
+    "showClosed": "Show closed positions",
+    "source": "CoinGecko",
+    "manualSource": "manual rate",
+    "closed": "closed {{date}}",
+    "realized": "{{amount}} realized",
+    "noResults": {
+      "title": "Nothing found",
+      "description": "Try another name or ticker.",
+      "closedHidden": "Try another name or ticker. Closed positions are hidden."
+    },
+    "footer": {
+      "count_one": "{{count}} position",
+      "count_other": "{{count}} positions",
+      "total": "total",
+      "rates": "Values in {{currency}} at today's rate",
+      "closed_one": "{{count}} closed position",
+      "closed_other": "{{count}} closed positions"
+    }
+  },
+  "actions": {
+    "buy": "Buy",
+    "sell": "Sell",
+    "updatePrice": "Set rate manually",
+    "delete": "Delete position"
+  },
+  "badges": {
+    "manual": "manual"
+  },
+  "tooltip": {
+    "manualPrice": "Manually set rate – overrides CoinGecko until you remove it."
+  },
+  "modal": {
+    "add": {
+      "title": "Add cryptocurrency",
+      "description": "Look the coin up on CoinGecko; its rate then updates automatically.",
+      "coin": "Cryptocurrency",
+      "ticker": "Ticker",
+      "search": "Search CoinGecko",
+      "searchHint": "Type a name or ticker to see CoinGecko matches.",
+      "searching": "Searching CoinGecko…",
+      "searchError": "Search failed. Check your connection or the CoinGecko key in Settings.",
+      "noResults": "No coin matches. You can fill in the ticker and name by hand.",
+      "rank": "#{{rank}}",
+      "quantity": "Quantity",
+      "pricePerUnit": "Price per unit",
+      "purchaseDate": "Purchase date",
+      "total": "Purchase total",
+      "submit": "Add position"
+    },
+    "buy": {
+      "title": "Buy {{name}}",
+      "description": "The purchase raises the quantity and recalculates the average cost.",
+      "quantity": "Quantity",
+      "pricePerUnit": "Rate per 1 {{ticker}}",
+      "rateHint": "Prefilled with the current rate.",
+      "total": "Purchase total",
+      "submit": "Record purchase"
+    },
+    "sell": {
+      "title": "Sell {{name}}",
+      "description": "The realized return is measured against the average cost.",
+      "quantity": "Quantity",
+      "all": "all ({{quantity}})",
+      "tooMuch": "You only hold {{quantity}}.",
+      "pricePerUnit": "Rate per 1 {{ticker}}",
+      "proceeds": "Proceeds {{amount}} · realized return",
+      "proceedsEmpty": "Proceeds and realized return",
+      "submit": "Record sale"
+    },
+    "updatePrice": {
+      "title": "Manual rate · {{name}}",
+      "description": "Overrides the CoinGecko rate until you remove the manual one.",
+      "price": "Rate per 1 {{ticker}}",
+      "total": "Position value ({{quantity}} {{ticker}})",
+      "remove": "Remove manual rate",
+      "submit": "Save rate"
+    }
+  },
+  "confirmDelete": {
+    "title": "Delete position?",
+    "description": "{{name}} ({{ticker}}) and all its transactions will be removed permanently. This cannot be undone."
+  },
+  "toast": {
+    "added": "Cryptocurrency added, fetching the rate",
+    "bought": "Purchase recorded",
+    "sold": "Sale recorded",
+    "deleted": "Position deleted",
+    "priceUpdated": "Manual rate saved",
+    "manualPriceDeleted": "Manual rate removed",
+    "pricesRefreshed_one": "Updated {{count}} rate from CoinGecko",
+    "pricesRefreshed_other": "Updated {{count}} rates from CoinGecko",
+    "pricesRefreshedDescription": "Current rates fetched from CoinGecko",
+    "refreshFailed": "Rate refresh failed",
+    "addFailed": "Adding the cryptocurrency failed"
+  },
+  "detail": {
+    "backToList": "Back to crypto",
+    "notFound": "Position not found",
+    "source": "CoinGecko",
+    "manualSource": "manual rate",
+    "quantityUnits": "{{quantity}} {{ticker}}",
+    "avgBuyPrice": "average cost {{price}}",
+    "lastBuy": "last purchase {{date}}",
+    "refreshPrices": "Refresh rate",
+    "buy": "Buy",
+    "sell": "Sell",
+    "menu": {
+      "editPrice": "Set rate manually",
+      "delete": "Delete position"
+    },
+    "status": {
+      "rateUpdated": "Rate updated {{when}}",
+      "todayAt": "today at {{time}}"
+    },
+    "positionValue": "Position value",
+    "vsInvested": "vs. invested",
+    "rate": "Rate",
+    "invested": "Invested",
+    "avgShort": "average {{price}}",
+    "unrealized": "Unrealized return",
+    "realized": "Realized return",
+    "sells_one": "{{count}} sale",
+    "sells_other": "{{count}} sales",
+    "noSells": "no sales yet",
+    "held": "Held for",
+    "heldSince": "since {{date}}",
+    "shareOfCrypto": "{{share}} of crypto value",
+    "duration": {
+      "years_one": "{{count}} year",
+      "years_other": "{{count}} years",
+      "months_one": "{{count}} month",
+      "months_other": "{{count}} months",
+      "lessThanMonth": "less than a month"
+    },
+    "transactions": {
+      "title": "Transaction history",
+      "date": "Date",
+      "type": "Type",
+      "quantity": "Quantity",
+      "price": "Rate",
+      "total": "Total",
+      "empty": "No transactions yet"
+    },
+    "priceNative": "Rate ({{currency}})",
+    "priceNativeMixed": "Rate (original currency)",
+    "realizedRow": "realized {{amount}}",
+    "ledger": {
+      "sub_one": "{{count}} transaction · hover a row to highlight it in the chart",
+      "sub_other": "{{count}} transactions · hover a row to highlight it in the chart",
+      "filter": {
+        "all": "All",
+        "buys": "Buys",
+        "sells": "Sells"
+      },
+      "footer_one": "{{count}} transaction",
+      "footer_other": "{{count}} transactions",
+      "bought": "bought {{amount}}",
+      "sold": "sold {{amount}}",
+      "rates": "Rates in {{currency}} at the CNB rate of the transaction day"
+    },
+    "position": {
+      "title": "Position",
+      "quantity": "Quantity",
+      "avgPrice": "Average cost",
+      "currentPrice": "Current rate",
+      "nativePrice": "Rate in {{currency}}",
+      "shareOfCrypto": "Share of crypto",
+      "priceUpdated": "Rate updated",
+      "setManual": "Set rate manually",
+      "removeManual": "Remove manual rate"
+    },
+    "sinceFirst": {
+      "title": "Since the first purchase",
+      "text": "Over {{duration}} the {{ticker}} rate moved {{rateChange}} from {{firstPrice}}. Your position returned {{positionChange}}{{realizedPart}}.",
+      "realizedPart": "; sales realized {{amount}}",
+      "none": "No purchase yet."
+    },
+    "deleteTransaction": "Delete transaction",
+    "transactionDeleted": "Transaction deleted",
+    "pricesRefreshed": "Rate updated",
+    "confirmDeleteTransaction": {
+      "title": "Delete transaction?",
+      "description": "This permanently deletes the {{type}} transaction ({{quantity}} × {{ticker}}, {{date}}, {{amount}}). This cannot be undone."
+    }
+  },
+  "coingeckoBanner": {
+    "title": "CoinGecko API key (optional)",
+    "message": "Rates work without a key. A free CoinGecko key added in Settings also loads rate history for the charts.",
+    "goToSettings": "Open Settings",
+    "dismiss": "Dismiss"
+  }
+}

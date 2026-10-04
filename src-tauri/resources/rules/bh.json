@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "packId": "bh",
+  "country": "Bahrain",
+  "version": 1,
+  "rules": [
+    { "id": "bh/lulu", "name": "LuLu Hypermarket", "ruleType": "word", "pattern": "lulu", "categoryId": "cat_groceries", "priority": 50 },
+    { "id": "bh/carrefour-maf", "name": "Carrefour Bahrain (Majid Al Futtaim)", "ruleType": "contains", "pattern": "majid al futtaim", "categoryId": "cat_groceries", "priority": 50 },
+    { "id": "bh/alosra", "name": "Alosra Market", "ruleType": "contains", "pattern": "alosra", "categoryId": "cat_groceries", "priority": 50 },
+    { "id": "bh/mega-mart", "name": "Mega Mart", "ruleType": "contains", "pattern": "mega mart", "categoryId": "cat_groceries", "priority": 50 },
+    { "id": "bh/talabat", "name": "Talabat", "ruleType": "contains", "pattern": "talabat", "categoryId": "cat_dining", "priority": 50 },
+    { "id": "bh/bapco", "name": "Bapco", "ruleType": "word", "pattern": "bapco", "categoryId": "cat_transport", "priority": 50 },
+    { "id": "bh/ewa", "name": "EWA (Electricity & Water Authority)", "ruleType": "word", "pattern": "ewa", "categoryId": "cat_utilities", "priority": 50 },
+    { "id": "bh/batelco", "name": "Batelco", "ruleType": "contains", "pattern": "batelco", "categoryId": "cat_utilities", "priority": 50 },
+    { "id": "bh/stc", "name": "stc", "ruleType": "word", "pattern": "stc", "categoryId": "cat_utilities", "priority": 50 },
+    { "id": "bh/zain", "name": "Zain", "ruleType": "word", "pattern": "zain", "categoryId": "cat_utilities", "priority": 50 },
+    { "id": "bh/gulf-air", "name": "Gulf Air", "ruleType": "contains", "pattern": "gulf air", "categoryId": "cat_travel", "priority": 50 },
+    { "id": "bh/salary", "name": "Salary", "ruleType": "contains", "pattern": "salary", "categoryId": "cat_income", "priority": 60 },
+    { "id": "bh/payroll", "name": "Payroll", "ruleType": "contains", "pattern": "payroll", "categoryId": "cat_income", "priority": 60 },
+    { "id": "bh/atm-withdrawal", "name": "ATM Withdrawal", "ruleType": "contains", "pattern": "atm withdrawal", "categoryId": "cat_internal_transfers", "priority": 40 },
+    { "id": "bh/cash-withdrawal", "name": "Cash Withdrawal", "ruleType": "contains", "pattern": "cash withdrawal", "categoryId": "cat_internal_transfers", "priority": 40 }
+  ]
+}

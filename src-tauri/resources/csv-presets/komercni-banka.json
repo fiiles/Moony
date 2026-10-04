@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "id": "komercni-banka",
+  "bankName": "Komerční banka",
+  "country": "CZ",
+  "institutionId": "inst_komercni_banka",
+  "matchHeaders": ["Datum splatnosti", "Částka", "Popis příkazce"],
+  "delimiter": ";",
+  "encoding": "Windows-1250",
+  "dateColumn": "Datum splatnosti",
+  "dateFormat": "%d.%m.%Y",
+  "amountColumn": "Částka",
+  "descriptionColumns": ["Popis příkazce", "Popis pro příjemce"],
+  "counterpartyColumn": "Název protiúčtu",
+  "counterpartyIbanColumn": "Číslo protiúčtu",
+  "currencyColumn": "Měna"
+}

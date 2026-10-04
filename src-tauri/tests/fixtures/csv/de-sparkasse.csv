@@ -1,0 +1,4 @@
+"Auftragskonto";"Buchungstag";"Valutadatum";"Buchungstext";"Verwendungszweck";"Beguenstigter/Zahlungspflichtiger";"Kontonummer/IBAN";"BIC (SWIFT-Code)";"Betrag";"Waehrung";"Info"
+"DE12500105170648489890";"01.09.26";"01.09.26";"LOHN/GEHALT";"Gehalt September";"Musterfirma GmbH";"DE89370400440532013000";"COBADEFFXXX";"2.750,00";"EUR";"Umsatz gebucht"
+"DE12500105170648489890";"02.09.26";"02.09.26";"LASTSCHRIFT";"Miete 09/2026";"Hausverwaltung Meier";"DE02120300000000202051";"BYLADEM1001";"-980,00";"EUR";"Umsatz gebucht"
+"DE12500105170648489890";"04.09.26";"04.09.26";"KARTENZAHLUNG";"EDEKA SAGT DANKE";"EDEKA";"";"";"-43,27";"EUR";"Umsatz gebucht"

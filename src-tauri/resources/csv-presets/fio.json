@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "fio",
+  "bankName": "Fio banka",
+  "country": "CZ",
+  "institutionId": "inst_fio",
+  "matchHeaders": ["ID operace", "Datum", "Objem", "Měna"],
+  "delimiter": ";",
+  "encoding": "UTF-8",
+  "dateColumn": "Datum",
+  "dateFormat": "%d.%m.%Y",
+  "amountColumn": "Objem",
+  "descriptionColumns": ["Zpráva pro příjemce", "Uživatelská identifikace", "Komentář"],
+  "counterpartyColumn": "Název protiúčtu",
+  "counterpartyIbanColumn": "Protiúčet",
+  "currencyColumn": "Měna",
+  "transactionIdColumn": "ID operace",
+  "exportHelpUrl": "https://www.fio.cz/bankovni-sluzby/internetbanking/funkce",
+  "sampleFixture": "fio.csv"
+}

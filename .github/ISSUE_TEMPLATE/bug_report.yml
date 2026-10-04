@@ -1,0 +1,79 @@
+name: Bug report
+description: Something in Moony does not work as expected
+title: '[Bug]: '
+labels: ['bug']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug.
+
+        **Please do not paste real financial data** (account numbers, balances, statements)
+        into this form — use made-up values or the demo profile (see "Demo data" in
+        CONTRIBUTING.md) to reproduce the problem. If you found a **security problem**, do not
+        file it here; follow the security policy (SECURITY.md in the repository, or the
+        "Security" tab).
+  - type: input
+    id: version
+    attributes:
+      label: Moony version
+      description: Click the (i) About button in the top bar of the app and copy the version number.
+      placeholder: e.g. 0.9.0
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: Operating system and version
+      description: Include the CPU type for macOS (Apple Silicon or Intel) and Linux distribution.
+      placeholder: e.g. macOS 15.1 (Apple Silicon), Windows 11 23H2, Ubuntu 24.04
+    validations:
+      required: true
+  - type: dropdown
+    id: install
+    attributes:
+      label: How did you install Moony?
+      options:
+        - Downloaded from GitHub Releases
+        - Built from source
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: What did you click or import, in order? A tiny sample CSV with fake values helps a lot.
+      placeholder: |
+        1. Open Bank accounts
+        2. Click Import
+        3. …
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What did you expect to happen?
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: What happened instead? Add the exact error message and screenshots if you can (blur anything private).
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: |
+        Open the (i) About dialog, click **Open logs**, and paste the relevant lines from the newest
+        log file. Logs can contain ticker symbols and file paths — read them before posting.
+      render: text
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else?
+      description: Language (English/Czech), display currency, whether it happens every time, workarounds.

@@ -1,0 +1,75 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Moony",
+  "version": "0.9.0",
+  "identifier": "com.filipkral.moony",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Moony",
+        "width": 1400,
+        "height": 850,
+        "minWidth": 1024,
+        "minHeight": 700
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: asset:; connect-src 'self'",
+      "assetProtocol": {
+        "enable": true,
+        "scope": [
+          "$APPDATA/real_estate_photos/**"
+        ]
+      }
+    }
+  },
+  "bundle": {
+    "active": true,
+    "publisher": "Filip Král",
+    "copyright": "Copyright © 2024-2026 Filip Král",
+    "category": "Finance",
+    "shortDescription": "Private personal finance manager with an encrypted local database",
+    "longDescription": "Moony is a privacy-focused personal wealth manager. Track bank accounts, stocks, crypto, bonds, loans, real estate and insurance in one place. Your data stays on your device in an AES-256 encrypted SQLCipher database; there is no cloud sync.",
+    "licenseFile": "../LICENSE",
+    "targets": ["app", "dmg", "nsis", "deb", "rpm", "appimage"],
+    "createUpdaterArtifacts": true,
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "resources": [],
+    "macOS": {
+      "dmg": {
+        "appPosition": {
+          "x": 180,
+          "y": 170
+        },
+        "applicationFolderPosition": {
+          "x": 480,
+          "y": 170
+        },
+        "windowSize": {
+          "width": 660,
+          "height": 400
+        }
+      }
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEZFMUQ1Q0M4QUZFNjFCQkQKUldTOUcrYXZ5RndkL2xrN1E1ZVFpMW1ySjJ6NUdoVnI5ME9WT0hkNEJlZGhhaXJWOGQ3RDlmK3MK",
+      "endpoints": [
+        "https://github.com/fiiles/Moony/releases/latest/download/latest.json"
+      ]
+    }
+  }
+}

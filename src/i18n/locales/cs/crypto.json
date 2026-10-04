@@ -1,0 +1,260 @@
+{
+  "title": "Kryptoměny",
+  "eyebrow": "Portfolio",
+  "subtitle": "Pozice v kryptoměnách oceněné aktuálním kurzem, náklady podle váženého průměru.",
+  "loading": "Načítání vašeho krypto portfolia...",
+  "empty": {
+    "title": "Zatím žádné kryptoměny",
+    "description": "Přidejte první minci: vyhledáme ji na CoinGecko a kurz se bude aktualizovat sám."
+  },
+  "addCrypto": "Přidat kryptoměnu",
+  "refreshPrices": "Obnovit kurzy",
+  "export": "Export",
+  "summary": {
+    "value": "Hodnota krypta",
+    "positions_one": "{{count}} otevřená pozice",
+    "positions_few": "{{count}} otevřené pozice",
+    "positions_other": "{{count}} otevřených pozic",
+    "updatedToday": "kurzy aktualizovány dnes",
+    "updatedOn": "kurzy z {{date}}",
+    "notUpdated": "kurzy zatím nestaženy",
+    "unrealizedGain": "Nerealizovaný výnos",
+    "unrealizedLoss": "Nerealizovaná ztráta",
+    "vsInvested": "oproti vloženým {{amount}}",
+    "realized": "Realizovaný výnos",
+    "sells_one": "{{count}} prodej · vážený průměr",
+    "sells_few": "{{count}} prodeje · vážený průměr",
+    "sells_other": "{{count}} prodejů · vážený průměr",
+    "noSells": "zatím žádný prodej",
+    "largest": "Největší pozice",
+    "largestNote": "{{share}} hodnoty krypta · {{change}} od nákupu",
+    "noPositions": "žádná otevřená pozice"
+  },
+  "chart": {
+    "title": "Vývoj hodnoty krypta",
+    "subtitle": "Nákupy a prodeje přímo v grafu – každý skok má vysvětlení.",
+    "legend": {
+      "value": "Hodnota krypta",
+      "buy": "Nákup",
+      "sell": "Prodej"
+    },
+    "events": {
+      "buy": "Nákup {{tickers}}",
+      "sell": "Prodej {{tickers}}",
+      "cluster_one": "{{count}} transakce",
+      "cluster_few": "{{count}} transakce",
+      "cluster_other": "{{count}} transakcí"
+    }
+  },
+  "table": {
+    "title": "Pozice",
+    "subtitle": "Kurz přepočtený do {{currency}} aktuálním kurzem · ruční kurzy označeny",
+    "search": "Hledat podle názvu nebo tickeru",
+    "asset": "Aktivum",
+    "quantity": "Množství",
+    "avgCost": "Prům. cena",
+    "rate": "Kurz",
+    "value": "Hodnota",
+    "share": "Podíl",
+    "return": "Výnos",
+    "actions": "Akce",
+    "showClosed": "Zobrazit uzavřené pozice",
+    "source": "CoinGecko",
+    "manualSource": "ruční kurz",
+    "closed": "uzavřeno {{date}}",
+    "realized": "{{amount}} realizováno",
+    "noResults": {
+      "title": "Nic nenalezeno",
+      "description": "Zkuste jiný název nebo ticker.",
+      "closedHidden": "Zkuste jiný název nebo ticker. Uzavřené pozice jsou skryté."
+    },
+    "footer": {
+      "count_one": "{{count}} pozice",
+      "count_few": "{{count}} pozice",
+      "count_other": "{{count}} pozic",
+      "total": "celkem",
+      "rates": "Hodnoty v {{currency}} aktuálním kurzem",
+      "closed_one": "{{count}} uzavřená pozice",
+      "closed_few": "{{count}} uzavřené pozice",
+      "closed_other": "{{count}} uzavřených pozic"
+    }
+  },
+  "actions": {
+    "buy": "Koupit",
+    "sell": "Prodat",
+    "updatePrice": "Zadat kurz ručně",
+    "delete": "Smazat pozici"
+  },
+  "badges": {
+    "manual": "ručně"
+  },
+  "tooltip": {
+    "manualPrice": "Kurz zadaný ručně – přepisuje CoinGecko, dokud ho neodeberete."
+  },
+  "modal": {
+    "add": {
+      "title": "Přidat kryptoměnu",
+      "description": "Vyhledejte minci na CoinGecko, kurz se pak bude aktualizovat automaticky.",
+      "coin": "Kryptoměna",
+      "ticker": "Ticker",
+      "search": "Hledat na CoinGecko",
+      "searchHint": "Napište název nebo ticker, nabídneme shody z CoinGecko.",
+      "searching": "Hledám na CoinGecko…",
+      "searchError": "Hledání selhalo. Zkontrolujte připojení, případně klíč CoinGecko v nastavení.",
+      "noResults": "Žádná mince neodpovídá. Ticker a název můžete vyplnit ručně.",
+      "rank": "#{{rank}}",
+      "quantity": "Množství",
+      "pricePerUnit": "Cena za jednotku",
+      "purchaseDate": "Datum nákupu",
+      "total": "Celkem za nákup",
+      "submit": "Přidat pozici"
+    },
+    "buy": {
+      "title": "Koupit {{name}}",
+      "description": "Nákup zvýší množství a přepočítá průměrnou cenu.",
+      "quantity": "Množství",
+      "pricePerUnit": "Kurz za 1 {{ticker}}",
+      "rateHint": "Předvyplněn aktuální kurz.",
+      "total": "Celkem za nákup",
+      "submit": "Zapsat nákup"
+    },
+    "sell": {
+      "title": "Prodat {{name}}",
+      "description": "Realizovaný výnos se počítá z průměrné nákupní ceny.",
+      "quantity": "Množství",
+      "all": "vše ({{quantity}})",
+      "tooMuch": "Držíte jen {{quantity}}.",
+      "pricePerUnit": "Kurz za 1 {{ticker}}",
+      "proceeds": "Výtěžek {{amount}} · realizovaný výnos",
+      "proceedsEmpty": "Výtěžek a realizovaný výnos",
+      "submit": "Zapsat prodej"
+    },
+    "updatePrice": {
+      "title": "Ruční kurz · {{name}}",
+      "description": "Přepíše kurz z CoinGecko, dokud ruční kurz neodeberete.",
+      "price": "Kurz za 1 {{ticker}}",
+      "total": "Hodnota pozice ({{quantity}} {{ticker}})",
+      "remove": "Odebrat ruční kurz",
+      "submit": "Uložit kurz"
+    }
+  },
+  "confirmDelete": {
+    "title": "Smazat pozici?",
+    "description": "{{name}} ({{ticker}}) a všechny její transakce budou trvale odstraněny. Tuto akci nelze vrátit zpět."
+  },
+  "toast": {
+    "added": "Kryptoměna přidána, kurz se stahuje",
+    "bought": "Nákup zapsán",
+    "sold": "Prodej zapsán",
+    "deleted": "Pozice smazána",
+    "priceUpdated": "Ruční kurz uložen",
+    "manualPriceDeleted": "Ruční kurz odebrán",
+    "pricesRefreshed_one": "Aktualizován {{count}} kurz z CoinGecko",
+    "pricesRefreshed_few": "Aktualizovány {{count}} kurzy z CoinGecko",
+    "pricesRefreshed_other": "Aktualizováno {{count}} kurzů z CoinGecko",
+    "pricesRefreshedDescription": "Aktuální kurzy načteny z CoinGecko",
+    "refreshFailed": "Aktualizace kurzů selhala",
+    "addFailed": "Přidání kryptoměny selhalo"
+  },
+  "detail": {
+    "backToList": "Zpět na krypto",
+    "notFound": "Pozice nenalezena",
+    "source": "CoinGecko",
+    "manualSource": "ruční kurz",
+    "quantityUnits": "{{quantity}} {{ticker}}",
+    "avgBuyPrice": "průměrná nákupní cena {{price}}",
+    "lastBuy": "poslední nákup {{date}}",
+    "refreshPrices": "Obnovit kurz",
+    "buy": "Koupit",
+    "sell": "Prodat",
+    "menu": {
+      "editPrice": "Zadat kurz ručně",
+      "delete": "Smazat pozici"
+    },
+    "status": {
+      "rateUpdated": "Kurz aktualizován {{when}}",
+      "todayAt": "dnes v {{time}}"
+    },
+    "positionValue": "Hodnota pozice",
+    "vsInvested": "oproti vloženému",
+    "rate": "Kurz",
+    "invested": "Vloženo",
+    "avgShort": "průměr {{price}}",
+    "unrealized": "Nerealizovaný výnos",
+    "realized": "Realizovaný výnos",
+    "sells_one": "{{count}} prodej",
+    "sells_few": "{{count}} prodeje",
+    "sells_other": "{{count}} prodejů",
+    "noSells": "zatím žádný prodej",
+    "held": "Držíte",
+    "heldSince": "od {{date}}",
+    "shareOfCrypto": "{{share}} hodnoty krypta",
+    "duration": {
+      "years_one": "{{count}} rok",
+      "years_few": "{{count}} roky",
+      "years_other": "{{count}} let",
+      "months_one": "{{count}} měsíc",
+      "months_few": "{{count}} měsíce",
+      "months_other": "{{count}} měsíců",
+      "lessThanMonth": "méně než měsíc"
+    },
+    "transactions": {
+      "title": "Historie transakcí",
+      "date": "Datum",
+      "type": "Typ",
+      "quantity": "Množství",
+      "price": "Kurz",
+      "total": "Celkem",
+      "empty": "Zatím žádné transakce"
+    },
+    "priceNative": "Kurz ({{currency}})",
+    "priceNativeMixed": "Kurz (původní měna)",
+    "realizedRow": "realizováno {{amount}}",
+    "ledger": {
+      "sub_one": "{{count}} transakce · najetím na řádek se zvýrazní v grafu",
+      "sub_few": "{{count}} transakce · najetím na řádek se zvýrazní v grafu",
+      "sub_other": "{{count}} transakcí · najetím na řádek se zvýrazní v grafu",
+      "filter": {
+        "all": "Vše",
+        "buys": "Nákupy",
+        "sells": "Prodeje"
+      },
+      "footer_one": "{{count}} transakce",
+      "footer_few": "{{count}} transakce",
+      "footer_other": "{{count}} transakcí",
+      "bought": "nakoupeno {{amount}}",
+      "sold": "prodáno {{amount}}",
+      "rates": "Kurzy v {{currency}} kurzem ČNB k datu transakce"
+    },
+    "position": {
+      "title": "Pozice",
+      "quantity": "Množství",
+      "avgPrice": "Průměrná nákupní cena",
+      "currentPrice": "Aktuální kurz",
+      "nativePrice": "Kurz v {{currency}}",
+      "shareOfCrypto": "Podíl na kryptu",
+      "priceUpdated": "Kurz aktualizován",
+      "setManual": "Zadat kurz ručně",
+      "removeManual": "Odebrat ruční kurz"
+    },
+    "sinceFirst": {
+      "title": "Od prvního nákupu",
+      "text": "Za {{duration}} se kurz {{ticker}} změnil o {{rateChange}} z {{firstPrice}}. Vaše pozice získala {{positionChange}}{{realizedPart}}.",
+      "realizedPart": "; prodeje realizovaly {{amount}}",
+      "none": "Zatím žádný nákup."
+    },
+    "deleteTransaction": "Smazat transakci",
+    "transactionDeleted": "Transakce smazána",
+    "pricesRefreshed": "Kurz aktualizován",
+    "confirmDeleteTransaction": {
+      "title": "Smazat transakci?",
+      "description": "Tím trvale smažete transakci typu {{type}} ({{quantity}} × {{ticker}}, {{date}}, {{amount}}). Tuto akci nelze vrátit zpět."
+    }
+  },
+  "coingeckoBanner": {
+    "title": "Klíč CoinGecko API (volitelný)",
+    "message": "Kurzy fungují i bez klíče. Bezplatný klíč CoinGecko přidaný v nastavení načte i historii kurzů do grafů.",
+    "goToSettings": "Otevřít nastavení",
+    "dismiss": "Zavřít"
+  }
+}

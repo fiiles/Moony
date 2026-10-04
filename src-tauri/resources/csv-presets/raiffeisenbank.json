@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "id": "raiffeisenbank",
+  "bankName": "Raiffeisenbank",
+  "country": "CZ",
+  "institutionId": "inst_raiffeisenbank",
+  "matchHeaders": ["Datum zaúčtování", "Zaúčtovaná částka", "Měna účtu"],
+  "delimiter": ";",
+  "encoding": "UTF-8",
+  "dateColumn": "Datum zaúčtování",
+  "dateFormat": "%d.%m.%Y",
+  "amountColumn": "Zaúčtovaná částka",
+  "descriptionColumns": ["Zpráva pro příjemce", "Zpráva", "Poznámka"],
+  "counterpartyColumn": "Název protiúčtu",
+  "counterpartyIbanColumn": "Číslo protiúčtu",
+  "currencyColumn": "Měna účtu",
+  "transactionIdColumn": "Id transakce"
+}

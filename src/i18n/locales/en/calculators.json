@@ -1,0 +1,193 @@
+{
+  "annuity": {
+    "title": "Annuity calculator",
+    "subtitle": "Payment, total interest and the repayment schedule for any loan. Values update as you type.",
+    "eyebrow": "Calculator",
+    "status": "Calculated locally, nothing is saved",
+    "actions": {
+      "loadLoan": "Load from my loans",
+      "export": "Export"
+    },
+    "form": {
+      "title": "Loan parameters",
+      "amount": "Loan amount",
+      "years": "Term",
+      "yearsUnit": "years",
+      "rate": "Annual interest rate",
+      "frequency": "Payment frequency",
+      "frequencies": {
+        "monthly": "Monthly",
+        "quarterly": "Quarterly",
+        "semiAnnually": "Semi-annually",
+        "annually": "Annually"
+      },
+      "extra": "Extra payment a year",
+      "optional": "optional",
+      "extraHint": "Once a year on top of the regular payments, without a penalty."
+    },
+    "insight": {
+      "extraYearly": "{{extra}} extra a year",
+      "shortens": "shortens the loan by {{years}} and saves",
+      "onInterest": "in interest. The schedule below shows the variant without extra payments.",
+      "noExtra": "Enter an extra payment to see how many years and how much interest you save."
+    },
+    "hero": {
+      "payment": {
+        "monthly": "Monthly payment",
+        "quarterly": "Quarterly payment",
+        "semiAnnually": "Semi-annual payment",
+        "annually": "Annual payment"
+      },
+      "total": "total {{amount}}",
+      "interestShare": "of which interest {{amount}} · {{percent}}",
+      "view": {
+        "years": "By year",
+        "share": "Interest share"
+      }
+    },
+    "legend": {
+      "principal": "Principal",
+      "interest": "Interest",
+      "milestone": "Milestone"
+    },
+    "milestones": {
+      "cross": "Principal overtakes interest",
+      "half": "Half of the debt repaid",
+      "year": "year {{year}}"
+    },
+    "years_one": "{{count}} year",
+    "years_other": "{{count}} years",
+    "payments_one": "{{count}} payment",
+    "payments_other": "{{count}} payments",
+    "stats": {
+      "totalPaid": "You pay in total",
+      "totalInterest": "Total interest",
+      "totalInterestNote": "{{percent}} of the amount borrowed",
+      "withExtra": "With the extra payment",
+      "withExtraNote": "interest saved · done in {{short}} instead of {{long}}",
+      "firstShare": "Interest share of the first payment",
+      "firstShareNote": "in the last one {{percent}}"
+    },
+    "table": {
+      "title": "Repayment schedule",
+      "subYears": "Totals per year · without extra payments",
+      "subPeriods": "Individual payments · without extra payments",
+      "granularity": {
+        "years": "Yearly"
+      },
+      "year": "Year",
+      "period": "Period",
+      "payments": "Payments",
+      "principal": "Principal",
+      "interest": "Interest",
+      "balance": "Remaining debt",
+      "footer": "{{shown}} of {{total}} rows",
+      "showAll": "Show the whole schedule",
+      "showLess": "Show only the start",
+      "periodLabel": "{{year}} · period {{n}}"
+    },
+    "empty": "Enter the loan amount, term and rate."
+  },
+  "estate": {
+    "title": "Rental property yield",
+    "subtitle": "Evaluate an investment property with a loan: cashflow, return on your equity and the projection until the sale.",
+    "eyebrow": "Calculator",
+    "status": "Calculated locally, nothing is saved",
+    "actions": {
+      "loadProperty": "Load from my properties"
+    },
+    "yearsUnit": "years",
+    "years_one": "{{count}} year",
+    "years_other": "{{count}} years",
+    "purchase": {
+      "title": "Purchase",
+      "price": "Purchase price",
+      "loan": "Loan amount",
+      "years": "Term",
+      "rate": "Interest rate",
+      "equity": "Own equity",
+      "ltv": "LTV",
+      "payment": "Monthly payment"
+    },
+    "rent": {
+      "title": "Rental",
+      "rent": "Expected monthly rent",
+      "costs": "Monthly costs",
+      "vacancy": "Vacancy",
+      "vacancyUnit": "mo./year",
+      "hint": "Costs: maintenance, tax, insurance, repair fund."
+    },
+    "projection": {
+      "title": "Projection",
+      "rentGrowth": "Rent growth",
+      "costsGrowth": "Costs growth",
+      "priceGrowth": "Price growth",
+      "perYear": "%/year",
+      "years": "Holding period",
+      "oneTime": "One-time costs"
+    },
+    "sale": {
+      "title_one": "Sale after {{count}} year",
+      "title_other": "Sale after {{count}} years",
+      "finalPrice": "Final price",
+      "remainingLoan": "Remaining loan",
+      "repaid": "Principal repaid",
+      "cumulative": "Cumulative cashflow",
+      "equity": "Your share at the sale",
+      "totalReturn": "Total return",
+      "pa": "{{percent}} p.a.",
+      "formula": "Return = (final price − remaining loan − own equity + cumulative cashflow) / own equity. Before taxes and selling costs."
+    },
+    "hero": {
+      "label": "Total return on your equity",
+      "value": "{{percent}} a year",
+      "total": "total {{percent}} over {{years}}",
+      "components": "cashflow {{cashflow}} · principal repayment · price growth {{growth}}",
+      "cashflow": "Net cashflow",
+      "cashflowNote": "a month in year 1 · gross {{gross}}"
+    },
+    "legend": {
+      "equity": "Your share (value − loan + cashflow)",
+      "band": "Price growth ± 1 p.p.",
+      "invested": "Invested capital",
+      "milestone": "Milestone"
+    },
+    "chart": {
+      "purchase": "Purchase",
+      "tipRow": "{{year}} · value {{value}} · loan {{loan}} · cumulative cashflow {{cumulative}}",
+      "tipStart": "{{year}} · invested capital {{invested}}"
+    },
+    "milestones": {
+      "positive": "Positive yearly cashflow",
+      "positiveLine": "from {{year}}",
+      "half": "Half of the loan repaid",
+      "halfLine": "year {{year}}",
+      "sale": "Sale",
+      "saleLine": "{{year}} · price {{price}} · loan {{loan}}"
+    },
+    "stats": {
+      "equity": "Own equity",
+      "equityNote": "{{equity}} + one-time costs {{once}}",
+      "grossYield": "Gross rental yield",
+      "grossYieldNote": "annual rent / purchase price",
+      "cashflow": "Annual net cashflow",
+      "cashflowNote": "in year 1 · {{percent}} of own equity",
+      "saleGain": "Gain from the sale",
+      "saleGainNote": "price − loan − own equity · after {{years}}"
+    },
+    "table": {
+      "title": "Yearly summary",
+      "sub": "Rent and costs grow at the given rates, the payment is fixed",
+      "year": "Year",
+      "rent": "Rent",
+      "costs": "Costs",
+      "payments": "Payments",
+      "cashflow": "Net CF",
+      "balance": "Remaining loan",
+      "value": "Value",
+      "footer": "{{years}} · cumulative net cashflow {{cumulative}}",
+      "vacancyNote": "Vacancy is deducted from the rent"
+    },
+    "empty": "Enter the purchase price and the rent."
+  }
+}

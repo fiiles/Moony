@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "id": "air-bank",
+  "bankName": "Air Bank",
+  "country": "CZ",
+  "institutionId": "inst_air_bank",
+  "matchHeaders": ["Datum provedení", "Částka v měně účtu", "Název protistrany"],
+  "delimiter": ";",
+  "encoding": "UTF-8",
+  "dateColumn": "Datum provedení",
+  "dateFormat": "%d.%m.%Y",
+  "amountColumn": "Částka v měně účtu",
+  "descriptionColumns": ["Poznámka k platbě", "Zpráva pro příjemce"],
+  "counterpartyColumn": "Název protistrany",
+  "counterpartyIbanColumn": "Číslo účtu protistrany",
+  "currencyColumn": "Měna účtu",
+  "exportHelpUrl": "https://www.airbank.cz/co-vas-nejvic-zajima/export-vypisu/"
+}

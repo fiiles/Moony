@@ -1,0 +1,149 @@
+{
+    "title": "Ostatní aktiva",
+    "subtitle": "Zlato, sbírky, podíly a zápůjčky – vše, co nemá tržní kurz a oceňujete to sami.",
+    "loading": "Načítání vašich ostatních aktiv...",
+    "empty": {
+        "title": "Zatím žádná aktiva",
+        "description": "Přidejte zlato, sbírku nebo podíl: název, cenu za kus a případný první nákup. Přecenění pak kreslí vývoj odhadu."
+    },
+    "addAsset": "Přidat aktivum",
+    "summary": {
+        "totalValue": "Celková hodnota",
+        "assetCount": "Počet aktiv",
+        "totalGainLoss": "Celkový zisk/ztráta",
+        "value": "Hodnota",
+        "assets_one": "{{count}} aktivum",
+        "assets_few": "{{count}} aktiva",
+        "assets_other": "{{count}} aktiv",
+        "gain": "Výnos oproti nákupu",
+        "vsCost": "oproti nákupní ceně {{amount}}",
+        "noCost": "bez nákupní ceny",
+        "yearlyYield": "Roční výnos",
+        "yieldNote_one": "{{percent}} · z {{count}} aktiva s výnosem",
+        "yieldNote_few": "{{percent}} · ze {{count}} aktiv s výnosem",
+        "yieldNote_other": "{{percent}} · z {{count}} aktiv s výnosem",
+        "noYield": "žádné aktivum nenese výnos",
+        "lastChange": "Poslední úprava"
+    },
+    "table": {
+        "title": "Aktiva",
+        "search": "Hledat aktivum",
+        "name": "Název",
+        "category": "Kategorie",
+        "purchasePrice": "Nákupní cena",
+        "marketPrice": "Tržní cena",
+        "avgPurchasePrice": "Prům. nákupní cena",
+        "totalValue": "Celková hodnota",
+        "currentValue": "Aktuální hodnota",
+        "purchaseDate": "Datum nákupu",
+        "gainLoss": "Zisk/ztráta",
+        "actions": "Akce",
+        "noAssets": "Žádná aktiva nenalezena. Přidejte své první aktivum.",
+        "subtitle": "Hodnota = množství × váš poslední odhad ceny",
+        "asset": "Aktivum",
+        "quantity": "Množství",
+        "unit": "ks",
+        "price": "Cena / ks",
+        "avgPurchase": "Nákup / ks",
+        "value": "Hodnota",
+        "gain": "Výnos",
+        "yearly": "Ročně",
+        "updated": "Upraveno",
+        "noChange": "beze změny",
+        "yieldFixed": "pevná částka",
+        "yieldPercentPurchase": "{{value}} % z nákupní ceny",
+        "yieldPercentMarket": "{{value}} % z hodnoty",
+        "noResults": {
+            "title": "Nic nenalezeno",
+            "description": "Zkuste jiný název."
+        },
+        "footer": {
+            "count_one": "{{count}} aktivum",
+            "count_few": "{{count}} aktiva",
+            "count_other": "{{count}} aktiv",
+            "value": "hodnota {{amount}}",
+            "cost": "nákupní cena {{amount}}",
+            "yieldNote": "Výnos ročně podle nastaveného typu: pevná částka, % z nákupu nebo % z hodnoty"
+        }
+    },
+    "actions": {
+        "edit": "Upravit",
+        "delete": "Smazat",
+        "transactions": "Transakce",
+        "buy": "Koupit",
+        "sell": "Prodat",
+        "revalue": "Přecenit"
+    },
+    "confirmDelete": {
+        "title": "Smazat aktivum?",
+        "description": "„{{name}}“ a všechny jeho transakce budou trvale odstraněny. Tuto akci nelze vrátit zpět."
+    },
+    "confirmDeleteTransaction": {
+        "title": "Smazat transakci?",
+        "description": "Tím trvale smažete transakci typu {{type}} ({{quantity}} × {{price}}, {{date}}). Tuto akci nelze vrátit zpět."
+    },
+    "toast": {
+        "added": "Aktivum přidáno",
+        "updated": "Aktivum upraveno",
+        "deleted": "Aktivum smazáno",
+        "deleteError": "Aktivum se nepodařilo smazat"
+    },
+    "modal": {
+        "add": {
+            "title": "Přidat ostatní aktivum",
+            "basicInfo": "Informace o aktivu",
+            "assetName": "Název aktiva",
+            "assetNamePlaceholder": "např. Zlaté slitky",
+            "marketPrice": "Aktuální tržní cena (za jednotku)",
+            "initialPurchase": "Počáteční nákup (volitelné)",
+            "pricePerUnit": "Cena / Jednotka",
+            "initialPurchaseHint": "Pokud vyplníte, bude přidána transakce 'Nákup'.",
+            "yieldConfig": "Výnos (volitelné)",
+            "yieldConfigDescription": "Roční příjem z aktiva, například nájem nebo úroky.",
+            "submit": "Přidat aktivum",
+            "description": "Přidejte do portfolia nové vlastní aktivum.",
+            "yieldType": "Typ výnosu",
+            "yieldValue": "Hodnota výnosu",
+            "yieldTypes": {
+                "none": "Žádný",
+                "fixed": "Pevná částka (ročně)",
+                "percentPurchase": "% z pořizovací ceny",
+                "percentMarket": "% z tržní ceny"
+            },
+            "marketPriceHint": "Váš dnešní odhad za jednotku; později ho měníte přeceněním.",
+            "total": "Hodnota prvního nákupu dnešní cenou"
+        },
+        "buy": {
+            "title": "Dokoupit",
+            "description": "Přidejte další množství k vašemu aktivu.",
+            "pricePerUnit": "Cena za jednotku",
+            "submit": "Přidat transakci"
+        },
+        "sell": {
+            "title": "Prodat",
+            "description": "Zaznamenejte prodejní transakci pro toto aktivum.",
+            "pricePerUnit": "Cena za jednotku",
+            "submit": "Prodat aktivum"
+        },
+        "transactions": {
+            "title": "Historie transakcí",
+            "noTransactions": "Žádné transakce nenalezeny"
+        },
+        "edit": {
+            "title": "Upravit · {{name}}",
+            "description": "Název, měna a výnos. Cenu měníte přeceněním, množství nákupy a prodeji.",
+            "currencyHint": "Měna ceny i nákupního průměru.",
+            "priceHint": "Tržní cenu změníte akcí Přecenit – zůstane po ní stopa v grafu."
+        }
+    },
+    "eyebrow": "Portfolio",
+    "export": "Export",
+    "status": {
+        "latest": "Poslední úprava {{date}}",
+        "manual": "Oceněno ručně"
+    },
+    "chart": {
+        "title": "Vývoj odhadu hodnoty",
+        "subtitle": "Mezi přeceněními je hodnota rovná – skoky jsou vaše odhady a nákupy, ne trh."
+    }
+}

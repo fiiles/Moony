@@ -1,0 +1,130 @@
+name: Release
+
+# Runs for tags of the form vX.Y.Z. A tag with a hyphen (v1.0.0-rc.1) is published as a
+# pre-release. The release is created as a draft that the owner reviews and publishes by hand.
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+jobs:
+  check-version:
+    name: Check version
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Tag must equal the version in all three manifests
+        # A pre-release suffix (v1.0.0-rc.1, v0.9.0-test.1) is ignored for the comparison:
+        # the manifests carry the plain version, the hyphen only marks the GitHub pre-release.
+        run: |
+          expected="${GITHUB_REF_NAME#v}"
+          expected="${expected%%-*}"
+          status=0
+          check() {
+            echo "$1: $2"
+            if [ "$2" != "$expected" ]; then
+              echo "::error::$1 has version '$2', but the tag $GITHUB_REF_NAME requires '$expected'. Bump the version before tagging (docs/playbooks/release.md)."
+              status=1
+            fi
+          }
+          check package.json "$(jq -r .version package.json)"
+          check src-tauri/tauri.conf.json "$(jq -r .version src-tauri/tauri.conf.json)"
+          check src-tauri/Cargo.toml "$(grep -m1 '^version = ' src-tauri/Cargo.toml | sed -E 's/^version = "([^"]*)".*/\1/')"
+          exit "$status"
+
+  build:
+    name: Build (${{ matrix.platform }})
+    needs: check-version
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-latest
+            args: --target aarch64-apple-darwin
+          - platform: macos-15
+            args: --target x86_64-apple-darwin
+          - platform: ubuntu-24.04
+            args: ''
+          - platform: windows-latest
+            args: ''
+
+    runs-on: ${{ matrix.platform }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ contains(matrix.platform, 'macos') && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+          key: ${{ matrix.platform }}${{ matrix.args }}
+
+      - name: Install dependencies (Ubuntu)
+        if: matrix.platform == 'ubuntu-24.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf
+
+      - name: Install OpenSSL (Windows)
+        if: matrix.platform == 'windows-latest'
+        run: |
+          vcpkg install openssl:x64-windows-static-md
+          echo "OPENSSL_DIR=$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static-md" >> $env:GITHUB_ENV
+          echo "OPENSSL_STATIC=1" >> $env:GITHUB_ENV
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build the app
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          VITE_APTABASE_KEY: ${{ secrets.VITE_APTABASE_KEY }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: 'Moony v__VERSION__'
+          releaseBody: |
+            What is in this release is listed in the [changelog](https://github.com/fiiles/Moony/blob/main/CHANGELOG.md).
+
+            ### Download
+
+            | Platform | File |
+            |----------|------|
+            | macOS (Apple Silicon) | `_aarch64.dmg` |
+            | macOS (Intel) | `_x64.dmg` |
+            | Windows | `_x64-setup.exe` |
+            | Linux | `.AppImage`, `.deb` or `.rpm` |
+
+            ### Unsigned builds
+
+            The installers are not signed by Apple or Microsoft, so the first launch needs one extra step:
+
+            - **macOS** may show the app as damaged. Run `xattr -cr /Applications/Moony.app` in Terminal once, or use *Open Anyway* in System Settings → Privacy & Security.
+            - **Windows** SmartScreen may block the installer. Click *More info*, then *Run anyway*.
+
+            More in the [install section of the README](https://github.com/fiiles/Moony#install).
+          releaseDraft: true
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          args: ${{ matrix.args }}

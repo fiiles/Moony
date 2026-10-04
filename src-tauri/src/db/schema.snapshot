@@ -1,0 +1,745 @@
+== index idx_bank_accounts_institution ==
+CREATE INDEX idx_bank_accounts_institution ON bank_accounts(institution_id)
+
+== index idx_bank_accounts_type ==
+CREATE INDEX idx_bank_accounts_type ON bank_accounts(account_type)
+
+== index idx_bank_transactions_account ==
+CREATE INDEX idx_bank_transactions_account ON bank_transactions(bank_account_id)
+
+== index idx_bank_transactions_batch ==
+CREATE INDEX idx_bank_transactions_batch ON bank_transactions(import_batch_id)
+
+== index idx_bank_transactions_category ==
+CREATE INDEX idx_bank_transactions_category ON bank_transactions(category_id)
+
+== index idx_bank_transactions_date ==
+CREATE INDEX idx_bank_transactions_date ON bank_transactions(booking_date)
+
+== index idx_batches_real_estate ==
+CREATE INDEX idx_batches_real_estate ON real_estate_photo_batches(real_estate_id)
+
+== index idx_budget_goals_category ==
+CREATE INDEX idx_budget_goals_category ON budget_goals(category_id)
+
+== index idx_budget_goals_timeframe ==
+CREATE INDEX idx_budget_goals_timeframe ON budget_goals(timeframe)
+
+== index idx_categorization_rules_iban ==
+CREATE INDEX idx_categorization_rules_iban ON categorization_rules(iban_pattern) WHERE iban_pattern IS NOT NULL
+
+== index idx_categorization_rules_priority ==
+CREATE INDEX idx_categorization_rules_priority ON categorization_rules(priority DESC, is_active)
+
+== index idx_crypto_transactions_ticker ==
+CREATE INDEX idx_crypto_transactions_ticker ON crypto_transactions(ticker)
+
+== index idx_crypto_value_history_date ==
+CREATE INDEX idx_crypto_value_history_date ON crypto_value_history(recorded_at)
+
+== index idx_crypto_value_history_ticker ==
+CREATE INDEX idx_crypto_value_history_ticker ON crypto_value_history(ticker)
+
+== index idx_crypto_value_history_ticker_date ==
+CREATE INDEX idx_crypto_value_history_ticker_date ON crypto_value_history(ticker, recorded_at)
+
+== index idx_csv_import_batches_account ==
+CREATE INDEX idx_csv_import_batches_account ON csv_import_batches(bank_account_id)
+
+== index idx_erh_currency_date ==
+CREATE INDEX idx_erh_currency_date ON exchange_rate_history(currency, date)
+
+== index idx_insurance_documents ==
+CREATE INDEX idx_insurance_documents ON insurance_documents(insurance_id)
+
+== index idx_investment_transactions_ticker ==
+CREATE INDEX idx_investment_transactions_ticker ON investment_transactions(ticker)
+
+== index idx_learned_payees_composite ==
+CREATE UNIQUE INDEX idx_learned_payees_composite ON learned_payees(normalized_payee, counterparty_iban)
+
+== index idx_learned_payees_iban_only ==
+CREATE INDEX idx_learned_payees_iban_only ON learned_payees(counterparty_iban) WHERE normalized_payee IS NULL
+
+== index idx_learned_payees_iban_partial ==
+CREATE INDEX idx_learned_payees_iban_partial ON learned_payees(counterparty_iban)
+
+== index idx_learned_payees_payee_default ==
+CREATE INDEX idx_learned_payees_payee_default ON learned_payees(normalized_payee) WHERE counterparty_iban IS NULL
+
+== index idx_loan_events_loan ==
+CREATE INDEX idx_loan_events_loan ON loan_events(loan_id, event_day)
+
+== index idx_other_asset_transactions_asset ==
+CREATE INDEX idx_other_asset_transactions_asset ON other_asset_transactions(asset_id)
+
+== index idx_other_asset_valuations_asset ==
+CREATE INDEX idx_other_asset_valuations_asset ON other_asset_valuations(asset_id, valued_at)
+
+== index idx_photos_batch ==
+CREATE INDEX idx_photos_batch ON real_estate_photos(batch_id)
+
+== index idx_portfolio_metrics_history_recorded_at ==
+CREATE INDEX idx_portfolio_metrics_history_recorded_at ON portfolio_metrics_history(recorded_at)
+
+== index idx_real_estate_documents ==
+CREATE INDEX idx_real_estate_documents ON real_estate_documents(real_estate_id)
+
+== index idx_real_estate_valuations_asset ==
+CREATE INDEX idx_real_estate_valuations_asset ON real_estate_valuations(real_estate_id, valued_at)
+
+== index idx_stock_investment_tags_investment ==
+CREATE INDEX idx_stock_investment_tags_investment ON stock_investment_tags(investment_id)
+
+== index idx_stock_investment_tags_tag ==
+CREATE INDEX idx_stock_investment_tags_tag ON stock_investment_tags(tag_id)
+
+== index idx_stock_tags_group ==
+CREATE INDEX idx_stock_tags_group ON stock_tags(group_id)
+
+== index idx_stock_value_history_date ==
+CREATE INDEX idx_stock_value_history_date ON stock_value_history(recorded_at)
+
+== index idx_stock_value_history_ticker ==
+CREATE INDEX idx_stock_value_history_ticker ON stock_value_history(ticker)
+
+== index idx_stock_value_history_ticker_date ==
+CREATE INDEX idx_stock_value_history_ticker_date ON stock_value_history(ticker, recorded_at)
+
+== table app_config ==
+CREATE TABLE app_config (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+)
+
+== table bank_account_zones ==
+CREATE TABLE bank_account_zones (
+    id TEXT PRIMARY KEY,
+    bank_account_id TEXT NOT NULL REFERENCES bank_accounts(id) ON DELETE CASCADE,
+    from_amount TEXT NOT NULL,
+    to_amount TEXT,
+    interest_rate TEXT NOT NULL,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch())
+)
+
+== table bank_accounts ==
+CREATE TABLE bank_accounts (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    account_type TEXT NOT NULL DEFAULT 'checking',
+    iban TEXT,
+    bban TEXT,
+    currency TEXT NOT NULL DEFAULT 'CZK',
+    balance TEXT NOT NULL DEFAULT '0',
+    institution_id TEXT REFERENCES institutions(id),
+    external_account_id TEXT,
+    data_source TEXT NOT NULL DEFAULT 'manual',
+    last_synced_at INTEGER,
+    interest_rate TEXT,
+    has_zone_designation INTEGER NOT NULL DEFAULT 0,
+    termination_date INTEGER,
+    exclude_from_balance INTEGER NOT NULL DEFAULT 0,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+)
+
+== table bank_transactions ==
+CREATE TABLE bank_transactions (
+    id TEXT PRIMARY KEY,
+    bank_account_id TEXT NOT NULL REFERENCES bank_accounts(id) ON DELETE CASCADE,
+    transaction_id TEXT,
+    tx_type TEXT NOT NULL,
+    amount TEXT NOT NULL,
+    currency TEXT NOT NULL,
+    description TEXT,
+    counterparty_name TEXT,
+    counterparty_iban TEXT,
+    booking_date INTEGER NOT NULL,
+    value_date INTEGER,
+    category_id TEXT REFERENCES transaction_categories(id),
+    merchant_category_code TEXT,
+    remittance_info TEXT,
+    status TEXT NOT NULL DEFAULT 'booked',
+    data_source TEXT NOT NULL DEFAULT 'manual',
+    created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    import_batch_id TEXT REFERENCES csv_import_batches(id) ON DELETE CASCADE,
+    categorization_source TEXT,
+    suggested_category_id TEXT REFERENCES transaction_categories(id),
+    UNIQUE(bank_account_id, transaction_id)
+)
+
+== table bonds ==
+CREATE TABLE bonds (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    isin TEXT,
+    coupon_value TEXT NOT NULL,
+    interest_rate TEXT NOT NULL DEFAULT '0',
+    maturity_date INTEGER,
+    currency TEXT NOT NULL DEFAULT 'CZK',
+    quantity TEXT NOT NULL DEFAULT '1',
+    created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+)
+
+== table budget_goals ==
+CREATE TABLE budget_goals (
+    id TEXT PRIMARY KEY,
+    category_id TEXT NOT NULL REFERENCES transaction_categories(id) ON DELETE CASCADE,
+    timeframe TEXT NOT NULL, -- 'monthly', 'quarterly', 'yearly'
+    amount TEXT NOT NULL,
+    currency TEXT NOT NULL DEFAULT 'CZK',
+    created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    UNIQUE(category_id, timeframe)
+)
+
+== table cashflow_items ==
+CREATE TABLE cashflow_items (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    amount TEXT NOT NULL,
+    currency TEXT NOT NULL DEFAULT 'CZK',
+    frequency TEXT NOT NULL,
+    item_type TEXT NOT NULL,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    category TEXT NOT NULL DEFAULT 'income'
+)
+
+== table categorization_rules ==
+CREATE TABLE categorization_rules (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    rule_type TEXT NOT NULL,
+    pattern TEXT NOT NULL,
+    category_id TEXT NOT NULL,
+    priority INTEGER NOT NULL DEFAULT 50,
+    is_active INTEGER NOT NULL DEFAULT 1,
+    stop_processing INTEGER NOT NULL DEFAULT 0,
+    is_system INTEGER NOT NULL DEFAULT 0,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    iban_pattern TEXT,
+    FOREIGN KEY (category_id) REFERENCES transaction_categories(id)
+)
+
+== table crypto_investments ==
+CREATE TABLE crypto_investments (
+    id TEXT PRIMARY KEY,
+    ticker TEXT NOT NULL UNIQUE,
+    coingecko_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    quantity TEXT NOT NULL,
+    currency TEXT NOT NULL DEFAULT 'CZK'
+)
+
+== table crypto_price_overrides ==
+CREATE TABLE crypto_price_overrides (
+    id TEXT PRIMARY KEY,
+    symbol TEXT NOT NULL UNIQUE,
+    price TEXT NOT NULL,
+    currency TEXT NOT NULL DEFAULT 'USD',
+    updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+)
+
+== table crypto_prices ==
+CREATE TABLE crypto_prices (
+    id TEXT PRIMARY KEY,
+    symbol TEXT NOT NULL UNIQUE,
+    coingecko_id TEXT,
+    price TEXT NOT NULL,
+    currency TEXT NOT NULL DEFAULT 'USD',
+    fetched_at INTEGER NOT NULL DEFAULT (unixepoch())
+)
+
+== table crypto_transactions ==
+CREATE TABLE crypto_transactions (
+    id TEXT PRIMARY KEY,
+    investment_id TEXT NOT NULL REFERENCES crypto_investments(id) ON DELETE CASCADE,
+    type TEXT NOT NULL,
+    ticker TEXT NOT NULL,
+    name TEXT NOT NULL,
+    quantity TEXT NOT NULL,
+    price_per_unit TEXT NOT NULL,
+    currency TEXT NOT NULL,
+    transaction_date INTEGER NOT NULL,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch())
+)
+
+== table crypto_value_history ==
+CREATE TABLE crypto_value_history (
+    id TEXT PRIMARY KEY,
+    ticker TEXT NOT NULL,
+    recorded_at INTEGER NOT NULL,
+    value_czk TEXT NOT NULL,
+    quantity TEXT NOT NULL,
+    price TEXT NOT NULL,
+    currency TEXT NOT NULL,
+    is_stale INTEGER NOT NULL DEFAULT 0,
+    UNIQUE(ticker, recorded_at)
+)
+
+== table csv_import_batches ==
+CREATE TABLE csv_import_batches (
+    id TEXT PRIMARY KEY,
+    bank_account_id TEXT NOT NULL REFERENCES bank_accounts(id) ON DELETE CASCADE,
+    file_name TEXT NOT NULL,
+    imported_count INTEGER NOT NULL DEFAULT 0,
+    duplicate_count INTEGER NOT NULL DEFAULT 0,
+    error_count INTEGER NOT NULL DEFAULT 0,
+    imported_at INTEGER NOT NULL DEFAULT (unixepoch())
+)
+
+== table dividend_data ==
+CREATE TABLE dividend_data (
+    id TEXT PRIMARY KEY,
+    ticker TEXT NOT NULL UNIQUE,
+    yearly_dividend_sum TEXT NOT NULL DEFAULT '0',
+    currency TEXT NOT NULL DEFAULT 'USD',
+    last_fetched_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    created_at INTEGER NOT NULL DEFAULT (unixepoch())
+)
+
+== table dividend_overrides ==
+CREATE TABLE dividend_overrides (
+    id TEXT PRIMARY KEY,
+    ticker TEXT NOT NULL UNIQUE,
+    yearly_dividend_sum TEXT NOT NULL,
+    currency TEXT NOT NULL DEFAULT 'CZK',
+    updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+)
+
+== table exchange_rate_history ==
+CREATE TABLE exchange_rate_history (
+    date INTEGER NOT NULL,
+    currency TEXT NOT NULL,
+    rate REAL NOT NULL,
+    PRIMARY KEY (date, currency)
+)
+
+== table exchange_rates ==
+CREATE TABLE exchange_rates (
+    currency TEXT PRIMARY KEY,
+    rate REAL NOT NULL,
+    fetched_at INTEGER NOT NULL
+)
+
+== table institutions ==
+CREATE TABLE institutions (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    bic TEXT,
+    country TEXT,
+    logo_url TEXT,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch())
+)
+
+== table insurance_documents ==
+CREATE TABLE insurance_documents (
+    id TEXT PRIMARY KEY,
+    insurance_id TEXT NOT NULL REFERENCES insurance_policies(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    description TEXT,
+    file_path TEXT NOT NULL,
+    file_type TEXT NOT NULL DEFAULT 'other',
+    file_size INTEGER,
+    uploaded_at INTEGER NOT NULL DEFAULT (unixepoch())
+)
+
+== table insurance_policies ==
+CREATE TABLE insurance_policies (
+    id TEXT PRIMARY KEY,
+    type TEXT NOT NULL,
+    provider TEXT NOT NULL,
+    policy_name TEXT NOT NULL,
+    policy_number TEXT NOT NULL,
+    start_date INTEGER NOT NULL,
+    end_date INTEGER,
+    payment_frequency TEXT NOT NULL,
+    one_time_payment TEXT,
+    one_time_payment_currency TEXT DEFAULT 'CZK',
+    regular_payment TEXT NOT NULL DEFAULT '0',
+    regular_payment_currency TEXT NOT NULL DEFAULT 'CZK',
+    limits TEXT DEFAULT '[]',
+    notes TEXT,
+    status TEXT NOT NULL DEFAULT 'active',
+    created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+)
+
+== table investment_transactions ==
+CREATE TABLE investment_transactions (
+    id TEXT PRIMARY KEY,
+    investment_id TEXT NOT NULL REFERENCES stock_investments(id) ON DELETE CASCADE,
+    type TEXT NOT NULL,
+    ticker TEXT NOT NULL,
+    company_name TEXT NOT NULL,
+    quantity TEXT NOT NULL,
+    price_per_unit TEXT NOT NULL,
+    currency TEXT NOT NULL,
+    transaction_date INTEGER NOT NULL,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch())
+)
+
+== table learned_payees ==
+CREATE TABLE learned_payees (
+    id TEXT PRIMARY KEY,
+    normalized_payee TEXT,
+    original_payee TEXT,
+    counterparty_iban TEXT,
+    category_id TEXT NOT NULL,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    FOREIGN KEY (category_id) REFERENCES transaction_categories(id)
+)
+
+== table loan_events ==
+CREATE TABLE loan_events (
+    id TEXT PRIMARY KEY,
+    loan_id TEXT NOT NULL REFERENCES loans(id) ON DELETE CASCADE,
+    kind TEXT NOT NULL CHECK (kind IN ('extra_payment', 'rate_change', 'balance_check')),
+    event_day INTEGER NOT NULL,
+    amount TEXT,
+    rate TEXT,
+    monthly_payment TEXT,
+    note TEXT,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch())
+)
+
+== table loans ==
+CREATE TABLE loans (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    principal TEXT NOT NULL,
+    currency TEXT NOT NULL DEFAULT 'CZK',
+    interest_rate TEXT NOT NULL DEFAULT '0',
+    interest_rate_validity_date INTEGER,
+    monthly_payment TEXT NOT NULL DEFAULT '0',
+    start_date INTEGER NOT NULL DEFAULT (unixepoch()),
+    end_date INTEGER,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    balance_anchor_amount TEXT,
+    balance_anchor_date INTEGER
+)
+
+== table other_asset_transactions ==
+CREATE TABLE other_asset_transactions (
+    id TEXT PRIMARY KEY,
+    asset_id TEXT NOT NULL REFERENCES other_assets(id) ON DELETE CASCADE,
+    type TEXT NOT NULL,
+    quantity TEXT NOT NULL,
+    price_per_unit TEXT NOT NULL,
+    currency TEXT NOT NULL,
+    transaction_date INTEGER NOT NULL,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch())
+)
+
+== table other_asset_valuations ==
+CREATE TABLE other_asset_valuations (
+    id TEXT PRIMARY KEY,
+    asset_id TEXT NOT NULL REFERENCES other_assets(id) ON DELETE CASCADE,
+    value TEXT NOT NULL,
+    currency TEXT NOT NULL DEFAULT 'CZK',
+    valued_at INTEGER NOT NULL,
+    note TEXT,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch())
+)
+
+== table other_assets ==
+CREATE TABLE other_assets (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    quantity TEXT NOT NULL DEFAULT '0',
+    market_price TEXT NOT NULL DEFAULT '0',
+    currency TEXT NOT NULL DEFAULT 'CZK',
+    average_purchase_price TEXT NOT NULL DEFAULT '0',
+    yield_type TEXT NOT NULL DEFAULT 'none',
+    yield_value TEXT,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+)
+
+== table portfolio_metrics_history ==
+CREATE TABLE portfolio_metrics_history (
+    id TEXT PRIMARY KEY,
+    total_savings TEXT NOT NULL,
+    total_loans_principal TEXT NOT NULL,
+    total_investments TEXT NOT NULL,
+    total_crypto TEXT NOT NULL DEFAULT '0',
+    total_bonds TEXT NOT NULL,
+    total_real_estate_personal TEXT NOT NULL,
+    total_real_estate_investment TEXT NOT NULL,
+    recorded_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    total_other_assets TEXT NOT NULL DEFAULT '0',
+    is_stale INTEGER NOT NULL DEFAULT 0,
+    investments_by_currency TEXT NOT NULL DEFAULT '{}',
+    crypto_by_currency TEXT NOT NULL DEFAULT '{}',
+    savings_by_currency TEXT NOT NULL DEFAULT '{}',
+    bonds_by_currency TEXT NOT NULL DEFAULT '{}',
+    real_estate_by_currency TEXT NOT NULL DEFAULT '{}',
+    loans_by_currency TEXT NOT NULL DEFAULT '{}',
+    other_assets_by_currency TEXT NOT NULL DEFAULT '{}',
+    source TEXT NOT NULL DEFAULT 'live'
+)
+
+== table projection_settings ==
+CREATE TABLE projection_settings (
+    id TEXT PRIMARY KEY,
+    asset_type TEXT NOT NULL UNIQUE,
+    yearly_growth_rate TEXT NOT NULL DEFAULT '0',
+    monthly_contribution TEXT NOT NULL DEFAULT '0',
+    contribution_currency TEXT NOT NULL DEFAULT 'CZK',
+    enabled INTEGER NOT NULL DEFAULT 1,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+)
+
+== table real_estate ==
+CREATE TABLE real_estate (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    address TEXT NOT NULL,
+    type TEXT NOT NULL,
+    purchase_price TEXT NOT NULL DEFAULT '0',
+    purchase_price_currency TEXT NOT NULL DEFAULT 'CZK',
+    market_price TEXT NOT NULL DEFAULT '0',
+    market_price_currency TEXT NOT NULL DEFAULT 'CZK',
+    monthly_rent TEXT,
+    monthly_rent_currency TEXT DEFAULT 'CZK',
+    recurring_costs TEXT DEFAULT '[]',
+    photos TEXT DEFAULT '[]',
+    notes TEXT,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+)
+
+== table real_estate_documents ==
+CREATE TABLE real_estate_documents (
+    id TEXT PRIMARY KEY,
+    real_estate_id TEXT NOT NULL REFERENCES real_estate(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    description TEXT,
+    file_path TEXT NOT NULL,
+    file_type TEXT NOT NULL DEFAULT 'other',
+    file_size INTEGER,
+    uploaded_at INTEGER NOT NULL DEFAULT (unixepoch())
+)
+
+== table real_estate_insurances ==
+CREATE TABLE real_estate_insurances (
+    real_estate_id TEXT NOT NULL REFERENCES real_estate(id) ON DELETE CASCADE,
+    insurance_id TEXT NOT NULL REFERENCES insurance_policies(id) ON DELETE CASCADE,
+    PRIMARY KEY (real_estate_id, insurance_id)
+)
+
+== table real_estate_loans ==
+CREATE TABLE real_estate_loans (
+    real_estate_id TEXT NOT NULL REFERENCES real_estate(id) ON DELETE CASCADE,
+    loan_id TEXT NOT NULL REFERENCES loans(id) ON DELETE CASCADE,
+    PRIMARY KEY (real_estate_id, loan_id)
+)
+
+== table real_estate_one_time_costs ==
+CREATE TABLE real_estate_one_time_costs (
+    id TEXT PRIMARY KEY,
+    real_estate_id TEXT NOT NULL REFERENCES real_estate(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    description TEXT,
+    amount TEXT NOT NULL,
+    currency TEXT NOT NULL DEFAULT 'CZK',
+    date INTEGER NOT NULL,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch())
+)
+
+== table real_estate_photo_batches ==
+CREATE TABLE real_estate_photo_batches (
+    id TEXT PRIMARY KEY,
+    real_estate_id TEXT NOT NULL REFERENCES real_estate(id) ON DELETE CASCADE,
+    photo_date INTEGER NOT NULL,
+    description TEXT,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch())
+)
+
+== table real_estate_photos ==
+CREATE TABLE real_estate_photos (
+    id TEXT PRIMARY KEY,
+    batch_id TEXT NOT NULL REFERENCES real_estate_photo_batches(id) ON DELETE CASCADE,
+    file_path TEXT NOT NULL,
+    thumbnail_path TEXT NOT NULL,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch())
+)
+
+== table real_estate_valuations ==
+CREATE TABLE real_estate_valuations (
+    id TEXT PRIMARY KEY,
+    real_estate_id TEXT NOT NULL REFERENCES real_estate(id) ON DELETE CASCADE,
+    value TEXT NOT NULL,
+    currency TEXT NOT NULL DEFAULT 'CZK',
+    valued_at INTEGER NOT NULL,
+    note TEXT,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch())
+)
+
+== table stock_data ==
+CREATE TABLE stock_data (
+    id TEXT PRIMARY KEY,
+    ticker TEXT NOT NULL UNIQUE,
+    original_price TEXT NOT NULL,
+    currency TEXT NOT NULL DEFAULT 'USD',
+    price_date INTEGER NOT NULL,
+    fetched_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    short_name TEXT,
+    long_name TEXT,
+    sector TEXT,
+    industry TEXT,
+    pe_ratio TEXT,
+    forward_pe TEXT,
+    market_cap TEXT,
+    beta TEXT,
+    fifty_two_week_high TEXT,
+    fifty_two_week_low TEXT,
+    trailing_dividend_rate TEXT,
+    trailing_dividend_yield TEXT,
+    ex_dividend_date INTEGER,
+    description TEXT,
+    exchange TEXT,
+    quote_type TEXT,
+    metadata_fetched_at INTEGER,
+    previous_close TEXT
+)
+
+== table stock_investment_tags ==
+CREATE TABLE stock_investment_tags (
+    investment_id TEXT NOT NULL REFERENCES stock_investments(id) ON DELETE CASCADE,
+    tag_id TEXT NOT NULL REFERENCES stock_tags(id) ON DELETE CASCADE,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    PRIMARY KEY (investment_id, tag_id)
+)
+
+== table stock_investments ==
+CREATE TABLE stock_investments (
+    id TEXT PRIMARY KEY,
+    ticker TEXT NOT NULL UNIQUE,
+    company_name TEXT NOT NULL,
+    quantity TEXT NOT NULL,
+    currency TEXT NOT NULL DEFAULT 'CZK'
+)
+
+== table stock_price_overrides ==
+CREATE TABLE stock_price_overrides (
+    id TEXT PRIMARY KEY,
+    ticker TEXT NOT NULL UNIQUE,
+    price TEXT NOT NULL,
+    currency TEXT NOT NULL DEFAULT 'CZK',
+    updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+)
+
+== table stock_tag_groups ==
+CREATE TABLE stock_tag_groups (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE,
+    description TEXT,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch())
+)
+
+== table stock_tags ==
+CREATE TABLE stock_tags (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE,
+    color TEXT,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    group_id TEXT REFERENCES stock_tag_groups(id) ON DELETE SET NULL
+)
+
+== table stock_value_history ==
+CREATE TABLE stock_value_history (
+    id TEXT PRIMARY KEY,
+    ticker TEXT NOT NULL,
+    recorded_at INTEGER NOT NULL,
+    value_czk TEXT NOT NULL,
+    quantity TEXT NOT NULL,
+    price TEXT NOT NULL,
+    currency TEXT NOT NULL,
+    is_stale INTEGER NOT NULL DEFAULT 0,
+    UNIQUE(ticker, recorded_at)
+)
+
+== table transaction_categories ==
+CREATE TABLE transaction_categories (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    icon TEXT,
+    color TEXT,
+    parent_id TEXT REFERENCES transaction_categories(id),
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    is_system INTEGER NOT NULL DEFAULT 0,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch())
+)
+
+== table user_profile ==
+CREATE TABLE user_profile (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    surname TEXT NOT NULL,
+    email TEXT NOT NULL,
+    menu_preferences TEXT DEFAULT '{"loans":true,"insurance":true,"investments":true,"bonds":true,"realEstate":true}',
+    currency TEXT NOT NULL DEFAULT 'CZK',
+    exclude_personal_real_estate INTEGER NOT NULL DEFAULT 0,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    language TEXT NOT NULL DEFAULT 'en',
+    coingecko_modal_dismissed INTEGER NOT NULL DEFAULT 0,
+    mcp_server_enabled INTEGER NOT NULL DEFAULT 0,
+    mcp_server_token TEXT,
+    mcp_server_port INTEGER
+)
+
+== table watched_stocks ==
+CREATE TABLE watched_stocks (
+    id TEXT PRIMARY KEY,
+    ticker TEXT NOT NULL UNIQUE,
+    target_price TEXT,
+    notes TEXT NOT NULL DEFAULT '',
+    created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+)
+
+== data transaction_categories ==
+cat_dining | Dining & Restaurants | utensils | #FF9800 | NULL | 2 | 1
+cat_entertainment | Entertainment | film | #E91E63 | NULL | 5 | 1
+cat_groceries | Groceries | shopping-cart | #4CAF50 | NULL | 1 | 1
+cat_health | Health & Medical | heart | #F44336 | NULL | 7 | 1
+cat_housing | Housing | home | #F59E0B | NULL | 14 | 1
+cat_income | Income | trending-up | #8BC34A | NULL | 9 | 1
+cat_insurance | Insurance | shield | #8B5CF6 | NULL | 16 | 1
+cat_internal_transfers | Internal Transfers | arrows-right-left | #94A3B8 | NULL | 13 | 1
+cat_investments | Investments | line-chart | #6366F1 | NULL | 11 | 1
+cat_loan_payments | Loan Payments | credit-card | #EF4444 | NULL | 17 | 1
+cat_other | Other | more-horizontal | #9E9E9E | NULL | 99 | 1
+cat_savings | Savings | piggy-bank | #22C55E | NULL | 12 | 1
+cat_shopping | Shopping | shopping-bag | #00BCD4 | NULL | 6 | 1
+cat_taxes | Taxes | landmark | #DC2626 | NULL | 15 | 1
+cat_transport | Transportation | car | #2196F3 | NULL | 3 | 1
+cat_travel | Travel | plane | #3F51B5 | NULL | 8 | 1
+cat_utilities | Utilities | zap | #9C27B0 | NULL | 4 | 1
+
+== data institutions ==
+inst_air_bank | Air Bank | AIRACZPP | CZ | /bank-logos/air-bank.svg
+inst_ceska_sporitelna | Česká spořitelna | GIBACZPX | CZ | /bank-logos/ceska-sporitelna.svg
+inst_creditas | Banka CREDITAS | CTASCZ22 | CZ | /bank-logos/creditas.svg
+inst_csob | ČSOB | CEKOCZPP | CZ | /bank-logos/csob.svg
+inst_fio | Fio banka | FIOBCZPP | CZ | /bank-logos/fio.svg
+inst_ing | ING Bank | INGBCZPP | CZ | /bank-logos/ing.svg
+inst_jt_banka | J&T Banka | JTBPCZPP | CZ | /bank-logos/jt-banka.svg
+inst_komercni_banka | Komerční banka | KOMBCZPP | CZ | /bank-logos/komercni-banka.svg
+inst_max_banka | MAX banka | EXPNCZPP | CZ | /bank-logos/max-banka.svg
+inst_moneta | MONETA Money Bank | AGBACZPP | CZ | /bank-logos/moneta.svg
+inst_nrb | Národní rozvojová banka | NROZCZPP | CZ | /bank-logos/nrb.svg
+inst_other | Other | NULL | NULL | NULL
+inst_ppf | PPF banka | PMBPCZPP | CZ | /bank-logos/ppf.svg
+inst_raiffeisenbank | Raiffeisenbank | RZBCCZPP | CZ | /bank-logos/raiffeisenbank.svg
+inst_revolut | Revolut | REVOGB21 | GB | /bank-logos/revolut.svg
+inst_trinity | Trinity Bank | MCEKCZPP | CZ | /bank-logos/trinity.svg
+inst_unicredit | UniCredit Bank | BACXCZPP | CZ | /bank-logos/unicredit.svg
+inst_wise | Wise | TRWIBEB1XXX | BE | /bank-logos/wise.svg
+

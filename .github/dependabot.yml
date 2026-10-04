@@ -1,0 +1,69 @@
+version: 2
+# Security updates: Dependabot opens a pull request for every vulnerable dependency, grouped
+# per ecosystem (enable "Dependabot security updates" in the repository's Code security
+# settings; the groups below only shape the pull requests, and the schedule does not delay them).
+#
+# Version updates: kept deliberately quiet. npm and Cargo get one pull request per month with
+# all minor and patch bumps, GitHub Actions one per week, and a low cap limits open pull
+# requests. Major bumps of npm and Cargo packages are never proposed automatically; they are
+# planned by hand. Dependabot is the only dependency tracker, there is no separate report or
+# summary issue.
+updates:
+  # JavaScript / TypeScript dependencies
+  - package-ecosystem: 'npm'
+    directory: '/'
+    schedule:
+      interval: 'monthly'
+    open-pull-requests-limit: 3
+    labels: ['dependencies']
+    commit-message:
+      prefix: 'chore(deps)'
+    groups:
+      npm-security:
+        applies-to: security-updates
+        patterns: ['*']
+      npm-minor-and-patch:
+        applies-to: version-updates
+        update-types: ['minor', 'patch']
+        patterns: ['*']
+    ignore:
+      - dependency-name: '*'
+        update-types: ['version-update:semver-major']
+
+  # Rust dependencies
+  - package-ecosystem: 'cargo'
+    directory: '/src-tauri'
+    schedule:
+      interval: 'monthly'
+    open-pull-requests-limit: 3
+    labels: ['dependencies']
+    commit-message:
+      prefix: 'chore(deps)'
+    groups:
+      cargo-security:
+        applies-to: security-updates
+        patterns: ['*']
+      cargo-minor-and-patch:
+        applies-to: version-updates
+        update-types: ['minor', 'patch']
+        patterns: ['*']
+    ignore:
+      - dependency-name: '*'
+        update-types: ['version-update:semver-major']
+
+  # GitHub Actions used by the workflows (majors included: runners drop old Node versions)
+  - package-ecosystem: 'github-actions'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+    open-pull-requests-limit: 2
+    labels: ['dependencies']
+    commit-message:
+      prefix: 'ci(deps)'
+    groups:
+      actions:
+        applies-to: version-updates
+        patterns: ['*']
+      actions-security:
+        applies-to: security-updates
+        patterns: ['*']

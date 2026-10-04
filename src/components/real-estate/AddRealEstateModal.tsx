@@ -46,7 +46,7 @@ import { FormSection } from '@/components/ui/form-section';
 import { useCurrency } from '@/lib/currency';
 import { CurrencyCombobox } from '@/components/common/CurrencyCombobox';
 import { useFormat } from '@/lib/use-format';
-import { realEstateApi, loansApi, insuranceApi } from '@/lib/tauri-api';
+import { realEstateApi, loansApi, insuranceApi, portfolioApi } from '@/lib/tauri-api';
 import { isoDateFromUtcTimestamp, todayIsoUtc, utcDayStart } from '@/utils/period';
 import { useTranslation } from 'react-i18next';
 
@@ -280,9 +280,10 @@ export function AddRealEstateModal({
 
       return savedRealEstate;
     },
-    onSuccess: (saved) => {
+    onSuccess: async (saved) => {
       queryClient.invalidateQueries({ queryKey: ['real-estate'] });
       queryClient.invalidateQueries({ queryKey: ['portfolio-metrics'] });
+      queryClient.invalidateQueries({ queryKey: ['cashflow-report'] });
       // A changed market price writes an estimate: the value trace must show it.
       queryClient.invalidateQueries({ queryKey: ['real-estate-valuations', saved.id] });
       if (realEstate) {
@@ -300,6 +301,14 @@ export function AddRealEstateModal({
       toast(tc('status.success'), {
         description: realEstate ? t('toast.updated') : t('toast.added'),
       });
+      // Today's snapshot carries the new value; the save already succeeded, so a failed
+      // snapshot must not turn it into an error.
+      try {
+        await portfolioApi.recordSnapshot();
+        queryClient.invalidateQueries({ queryKey: ['portfolio-history'] });
+      } catch (error) {
+        console.error('Failed to record portfolio snapshot:', error);
+      }
     },
     onError: (error) => {
       toast.error(tc('status.error'), { description: error.message });

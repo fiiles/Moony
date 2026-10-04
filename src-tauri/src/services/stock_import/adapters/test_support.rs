@@ -112,3 +112,48 @@ pub const MOONY_HEADERS_EN: [&str; 7] = [
 
 pub const MOONY_HEADERS_CS: [&str; 7] =
     ["Datum", "Typ", "Symbol", "Název", "Počet", "Cena", "Měna"];
+
+/// Degiro's other UI languages translate the names and keep the layout.
+pub const DEGIRO_HEADERS_NL: [&str; 19] = [
+    "Datum",
+    "Tijd",
+    "Product",
+    "ISIN",
+    "Beurs",
+    "Uitvoeringsplaats",
+    "Aantal",
+    "Koers",
+    "",
+    "Lokale waarde",
+    "",
+    "Waarde",
+    "",
+    "Wisselkoers",
+    "Transactiekosten en/of kosten van derden",
+    "",
+    "Totaal",
+    "",
+    "Order ID",
+];
+
+pub const DEGIRO_HEADERS_CS: [&str; 19] = [
+    "Datum",
+    "Čas",
+    "Produkt",
+    "ISIN",
+    "Referenční burza",
+    "Místo provedení",
+    "Počet",
+    "Cena",
+    "",
+    "Místní hodnota",
+    "",
+    "Hodnota",
+    "",
+    "Směnný kurz",
+    "Transakční poplatky a/nebo poplatky třetích stran",
+    "",
+    "Celkem",
+    "",
+    "ID objednávky",
+];

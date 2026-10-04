@@ -1,4 +1,5 @@
-//! Header-row detection for stock exports, and the records after the header.
+//! Header-row detection for stock exports, the records after the header and
+//! the small cell readers every stage shares.
 //!
 //! Brokers write a title, a period or a header record before the column names
 //! (Interactive Brokers' optional `BOF` line), so the header is found by what
@@ -31,6 +32,24 @@ pub fn is_stock_header(fields: &[String]) -> bool {
 /// bank import's fallback).
 pub fn detect_stock_header_row(content: &str, delimiter: char) -> usize {
     detect_header_row_by(content, delimiter, is_stock_header)
+}
+
+/// The date of a date cell. What follows a `;` is a time (Interactive
+/// Brokers' `20230522;093000`); a time after a space or a `T` is left to the
+/// date parser, which drops it.
+pub fn date_part(cell: &str) -> &str {
+    let cell = cell.trim();
+    cell.split_once(';').map_or(cell, |(date, _)| date).trim()
+}
+
+/// Whether `value` has the shape of an ISIN: two letters, nine letters or
+/// digits and a check digit (the digit itself is not verified).
+pub fn is_isin(value: &str) -> bool {
+    let bytes = value.as_bytes();
+    bytes.len() == 12
+        && bytes[..2].iter().all(u8::is_ascii_alphabetic)
+        && bytes[2..11].iter().all(u8::is_ascii_alphanumeric)
+        && bytes[11].is_ascii_digit()
 }
 
 /// Data records of `content` after the header row and `skip_rows`, with the
@@ -128,6 +147,45 @@ mod tests {
     fn nothing_that_looks_like_a_header_falls_back_to_the_first_line() {
         assert_eq!(detect_stock_header_row("foo,bar,baz\n1,2,3\n", ','), 0);
         assert_eq!(detect_stock_header_row("", ','), 0);
+    }
+
+    #[test]
+    fn the_date_of_a_cell_is_what_comes_before_a_semicolon() {
+        // Interactive Brokers' DateTime: date;time.
+        assert_eq!(date_part("20230522;093000"), "20230522");
+        assert_eq!(date_part("  20230522 ; 093000 "), "20230522");
+        // Everything else is left to the date parser, which drops a time.
+        assert_eq!(
+            date_part(" 2023-12-18 11:45:06.326 "),
+            "2023-12-18 11:45:06.326"
+        );
+        assert_eq!(date_part("12.04.2024 13:01:45"), "12.04.2024 13:01:45");
+        assert_eq!(date_part(""), "");
+        assert_eq!(date_part(";x"), "");
+    }
+
+    #[test]
+    fn an_isin_is_two_letters_nine_alphanumerics_and_a_digit() {
+        for isin in [
+            "US0378331005",
+            "IE00B3XXRP09",
+            "GB00BH4HKS39",
+            "us0378331005",
+        ] {
+            assert!(is_isin(isin), "{isin}");
+        }
+        for not_isin in [
+            "",
+            "US037833100",   // eleven characters
+            "US03783310055", // thirteen
+            "0S0378331005",  // starts with a digit
+            "US037833100X",  // does not end in a digit
+            "US0378-31005",  // punctuation
+            "AAPL",
+            "ÚS0378331005",
+        ] {
+            assert!(!is_isin(not_isin), "{not_isin}");
+        }
     }
 
     fn lines(content: &str, header_row: usize, skip_rows: usize) -> Vec<(usize, Vec<String>)> {

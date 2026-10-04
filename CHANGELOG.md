@@ -6,6 +6,27 @@ All notable changes to Moony are documented in this file. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- **Amounts follow the main currency.** Gain, yield, appreciation, rent and savings totals on
+  Other assets, Real estate, Cashflow, Cashflow planning and Projection were shown in CZK
+  whatever main currency you chose; they now follow it. The cashflow CSV export writes its
+  amounts in the main currency and its headers end in the currency code (for example
+  `income_eur`). The projection's monthly contributions are entered in the main currency, and
+  new other-asset forms default to it.
+- **MCP server (breaking for MCP clients).** The aggregate tools report amounts in your main
+  currency and name it in a top-level `mainCurrency` field. The `*_czk` / `*Czk` keys lost the
+  suffix (for example `net_worth_czk` is now `net_worth`, `valueCzk` is now `value`). History
+  tools convert each day at that day's exchange rate. `tag_metrics`, `portfolio_get_history`,
+  `stock_value_history` and `crypto_value_history` now return an object (`{mainCurrency, tags}`
+  or `{mainCurrency, history}`) instead of a bare array. Create tools default a missing
+  currency to the main currency.
+
+### Fixed
+
+- **MCP cashflow and budget reports.** The `cashflow_report` and `budgeting_report` tools
+  returned empty lists because they read money stored as text as numbers.
+
 ## [0.9.0] - 2026-10-04
 
 First public release of Moony, published as a pre-1.0 version for a round of testing on all

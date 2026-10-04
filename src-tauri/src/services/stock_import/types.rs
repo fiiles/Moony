@@ -117,8 +117,10 @@ pub struct StockInstrumentOverride {
     pub ticker: Option<String>,
     #[serde(default)]
     pub name: Option<String>,
-    /// ISO 4217 code; needed with `CurrencyMode::Instrument` when the
-    /// instrument could not be resolved.
+    /// ISO 4217 code, or `GBX` when the file's prices are in pence (they are stored as pounds).
+    /// It is the currency of the trades that name none (`CurrencyMode::Instrument`; needed when
+    /// the instrument could not be resolved); a currency the file states, in a column or for the
+    /// whole file, is never overridden.
     #[serde(default)]
     pub currency: Option<String>,
     /// Exclude every trade of this instrument.

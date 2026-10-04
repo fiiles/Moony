@@ -1522,6 +1522,10 @@ export interface StockInstrumentOverride {
   key: string;
   ticker?: string | null;
   name?: string | null;
+  /**
+   * The currency of trades whose file names none (instrument currency mode); a currency the file
+   * states is never overridden. `GBX`: the file's prices are in pence, stored as GBP ÷ 100.
+   */
   currency?: string | null;
   skip?: boolean;
 }

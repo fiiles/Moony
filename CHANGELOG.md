@@ -24,7 +24,8 @@ All notable changes to Moony are documented in this file. The format follows
 - **New loans on the debt trajectory.** Each loan start is marked where the debt steps up (paid-off
   loans included), and the step is drawn as a step instead of a ramp.
 - **Purchase date for real estate.** An optional purchase date starts the value trace with the
-  purchase; the first estimate of a new property or other asset is recorded when it is created.
+  purchase and is part of the real estate CSV export; the first estimate of a new property or
+  other asset is recorded when it is created.
 - **Company data on the position detail.** Sector, industry, P/E, market cap and the other key
   figures of a holding are downloaded (at most once a day) and shown on the stock detail.
 

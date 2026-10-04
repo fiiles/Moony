@@ -197,11 +197,13 @@ pub fn export_bonds(db: State<'_, Database>) -> Result<ExportResult> {
 /// Export real estate as CSV
 #[tauri::command]
 pub fn export_real_estate(db: State<'_, Database>) -> Result<ExportResult> {
+    use chrono::{TimeZone, Utc};
+
     db.with_conn(|conn| {
         let mut stmt = conn.prepare(
             "SELECT name, address, type, purchase_price, purchase_price_currency,
                     market_price, market_price_currency, monthly_rent, monthly_rent_currency,
-                    recurring_costs, notes
+                    recurring_costs, notes, purchase_date
             FROM real_estate
             ORDER BY name"
         )?;
@@ -217,19 +219,27 @@ pub fn export_real_estate(db: State<'_, Database>) -> Result<ExportResult> {
                 row.get::<_, String>(6)?,
                 row.get::<_, Option<String>>(7)?,
                 row.get::<_, Option<String>>(8)?,
-                row.get::<_, String>(9)?,  // recurring_costs JSON
+                // recurring_costs JSON; the column is nullable
+                row.get::<_, Option<String>>(9)?.unwrap_or_default(),
                 row.get::<_, Option<String>>(10)?,
+                row.get::<_, Option<i64>>(11)?, // purchase_date, a UTC day
             ))
         })?;
 
-        let mut csv = String::from("name,address,type,purchase_price,purchase_price_currency,market_price,market_price_currency,monthly_rent,monthly_rent_currency,recurring_costs,notes\n");
+        let mut csv = String::from("name,address,type,purchase_price,purchase_price_currency,purchase_date,market_price,market_price_currency,monthly_rent,monthly_rent_currency,recurring_costs,notes\n");
         let mut count = 0;
 
         for row in rows {
-            let (name, address, prop_type, pp, ppc, mp, mpc, rent, rent_c, costs, notes) = row?;
+            let (name, address, prop_type, pp, ppc, mp, mpc, rent, rent_c, costs, notes, bought) =
+                row?;
+            // YYYY-MM-DD like the transaction exports; empty while unknown
+            let bought = bought
+                .and_then(|day| Utc.timestamp_opt(day, 0).single())
+                .map(|dt| dt.format("%Y-%m-%d").to_string())
+                .unwrap_or_default();
             csv.push_str(&format!(
-                "\"{}\",\"{}\",{},{},{},{},{},{},{},\"{}\",\"{}\"\n",
-                escape_csv(&name), escape_csv(&address), prop_type, pp, ppc, mp, mpc,
+                "\"{}\",\"{}\",{},{},{},{},{},{},{},{},\"{}\",\"{}\"\n",
+                escape_csv(&name), escape_csv(&address), prop_type, pp, ppc, bought, mp, mpc,
                 rent.unwrap_or_default(), rent_c.unwrap_or_default(),
                 escape_csv(&costs), escape_csv(&notes.unwrap_or_default())
             ));

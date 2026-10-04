@@ -12,13 +12,15 @@ interface ExportButtonProps {
   title?: string;
   /** Visible label ("Export"); without it the button is icon-only. */
   label?: string;
+  /** Show only the icon below 1280 px, where a page head with several actions runs out of room. */
+  compact?: boolean;
 }
 
 /**
  * Reusable export button component that exports data to CSV.
  * Displayed as an icon button matching the import button style.
  */
-export function ExportButton({ exportFn, title, label }: ExportButtonProps) {
+export function ExportButton({ exportFn, title, label, compact = false }: ExportButtonProps) {
   const [isExporting, setIsExporting] = useState(false);
   const { t } = useTranslation('common');
 
@@ -66,9 +68,10 @@ export function ExportButton({ exportFn, title, label }: ExportButtonProps) {
       loading={isExporting}
       title={title || t('export.button')}
       aria-label={label ? undefined : title || t('export.button')}
+      className={compact && label ? 'max-xl:px-[11px]' : undefined}
     >
       {isExporting ? <Loader2 /> : <Download />}
-      {label}
+      {label && <span className={compact ? 'max-xl:sr-only' : undefined}>{label}</span>}
     </Button>
   );
 }

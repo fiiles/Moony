@@ -10,7 +10,6 @@ use crate::models::{
 use crate::services::currency::convert_to_czk;
 use crate::services::history_recalc::HistoryRecalc;
 use crate::services::investments as investment_service;
-use rusqlite::OptionalExtension;
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, State};
 use uuid::Uuid;
@@ -1005,6 +1004,8 @@ pub async fn get_stock_value_history(
 /// `tag_ids`: IDs of tags to compute separate series for.
 /// `include_portfolio`: if true, also include a whole-portfolio series.
 /// `include_untagged`: if true, include a series for stocks with no tags assigned.
+/// `investment_ids`: when given, every tag (and untagged) series covers only these positions;
+/// the whole-portfolio series is never narrowed.
 /// `from_ts` / `to_ts`: Unix timestamps (seconds, midnight UTC) for the date range.
 ///
 /// When `tag_ids` is empty and `include_untagged` is false, only the portfolio series is returned.
@@ -1014,81 +1015,19 @@ pub async fn get_stock_twr(
     tag_ids: Vec<String>,
     include_portfolio: bool,
     include_untagged: bool,
+    investment_ids: Option<Vec<String>>,
     from_ts: i64,
     to_ts: i64,
 ) -> Result<Vec<TwrSeries>> {
-    db.with_conn(move |conn| {
-        let mut series: Vec<TwrSeries> = Vec::new();
-
-        let any_filter = !tag_ids.is_empty() || include_untagged;
-
-        // Whole portfolio series (always when no filter, optional when filters selected)
-        if !any_filter || include_portfolio {
-            let all_tickers: Vec<String> = conn
-                .prepare("SELECT ticker FROM stock_investments WHERE CAST(quantity AS REAL) > 0 ORDER BY ticker")?
-                .query_map([], |row| row.get(0))?
-                .collect::<rusqlite::Result<_>>()?;
-            let data =
-                investment_service::compute_twr_for_tickers(conn, &all_tickers, from_ts, to_ts)?;
-            series.push(TwrSeries { tag: None, is_untagged: false, data });
-        }
-
-        // Per-tag series
-        for tag_id in &tag_ids {
-            let tag: Option<StockTag> = conn
-                .query_row(
-                    "SELECT id, name, color, group_id, created_at \
-                     FROM stock_tags WHERE id = ?1",
-                    [tag_id],
-                    |row| {
-                        Ok(StockTag {
-                            id: row.get(0)?,
-                            name: row.get(1)?,
-                            color: row.get(2)?,
-                            group_id: row.get(3)?,
-                            created_at: row.get(4)?,
-                        })
-                    },
-                )
-                .optional()?;
-
-            if let Some(tag) = tag {
-                let tickers: Vec<String> = conn
-                    .prepare(
-                        "SELECT si.ticker FROM stock_investments si \
-                         JOIN stock_investment_tags sit ON sit.investment_id = si.id \
-                         WHERE sit.tag_id = ?1 AND CAST(si.quantity AS REAL) > 0 ORDER BY si.ticker",
-                    )?
-                    .query_map([tag_id], |row| row.get(0))?
-                    .collect::<rusqlite::Result<_>>()?;
-
-                let data =
-                    investment_service::compute_twr_for_tickers(conn, &tickers, from_ts, to_ts)?;
-                series.push(TwrSeries {
-                    tag: Some(tag),
-                    is_untagged: false,
-                    data,
-                });
-            }
-        }
-
-        // Untagged series: stocks that have no tag assignments
-        if include_untagged {
-            let tickers: Vec<String> = conn
-                .prepare(
-                    "SELECT si.ticker FROM stock_investments si \
-                     WHERE CAST(si.quantity AS REAL) > 0 \
-                     AND NOT EXISTS (SELECT 1 FROM stock_investment_tags sit WHERE sit.investment_id = si.id) \
-                     ORDER BY si.ticker",
-                )?
-                .query_map([], |row| row.get(0))?
-                .collect::<rusqlite::Result<_>>()?;
-
-            let data =
-                investment_service::compute_twr_for_tickers(conn, &tickers, from_ts, to_ts)?;
-            series.push(TwrSeries { tag: None, is_untagged: true, data });
-        }
-
-        Ok(series)
+    db.with_conn(|conn| {
+        investment_service::twr_series(
+            conn,
+            &tag_ids,
+            include_portfolio,
+            include_untagged,
+            investment_ids.as_deref(),
+            from_ts,
+            to_ts,
+        )
     })
 }

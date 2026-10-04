@@ -37,6 +37,7 @@
     "legend": {
       "outstanding": "Nesplaceno",
       "schedule": "Podle kalendáře",
+      "newLoan": "Nový úvěr",
       "milestone": "Milník"
     },
     "tipSchedule": "podle kalendáře",
@@ -50,9 +51,16 @@
       "fixationEnd": "Konec fixace · {{name}}",
       "half": "Polovina splacena · {{name}}",
       "balance": "zůstatek {{amount}}",
+      "newLoan": "Nový úvěr · {{name}}",
       "several_one": "{{count}} milník",
       "several_few": "{{count}} milníky",
       "several_other": "{{count}} milníků"
+    },
+    "events": {
+      "several_one": "{{count}} událost",
+      "several_few": "{{count}} události",
+      "several_many": "{{count}} události",
+      "several_other": "{{count}} událostí"
     }
   },
   "table": {
@@ -189,6 +197,7 @@
       "legend": {
         "balance": "Zůstatek",
         "schedule": "Podle kalendáře",
+        "drawdown": "Čerpání",
         "extraPayment": "Mimořádná splátka",
         "milestones": "Fixace a milníky"
       },

@@ -36,6 +36,7 @@
     "legend": {
       "outstanding": "Outstanding",
       "schedule": "By schedule",
+      "newLoan": "New loan",
       "milestone": "Milestone"
     },
     "tipSchedule": "by schedule",
@@ -49,8 +50,13 @@
       "fixationEnd": "Fixation ends · {{name}}",
       "half": "Half repaid · {{name}}",
       "balance": "balance {{amount}}",
+      "newLoan": "New loan · {{name}}",
       "several_one": "{{count}} milestone",
       "several_other": "{{count}} milestones"
+    },
+    "events": {
+      "several_one": "{{count}} event",
+      "several_other": "{{count}} events"
     }
   },
   "table": {
@@ -184,6 +190,7 @@
       "legend": {
         "balance": "Balance",
         "schedule": "By schedule",
+        "drawdown": "Drawdown",
         "extraPayment": "Extra payment",
         "milestones": "Fixation and milestones"
       },

@@ -156,22 +156,22 @@ implementations.
 | Archetype | Pages | Structure |
 |---|---|---|
 | Overview | Dashboard | Greeting H1, period segment, hero (net worth + chart), 3 stats, allocation ring + recent moves. |
-| List | Stocks, bank accounts | 3–4 stats, optional trend card, table card with search and toggles, add modal. |
+| List | Stocks, bank accounts | 3–4 stats, a trend card (`TrendCard`: title, one sentence, horizon segment, chart 170 px, legend; the same chrome and height on every list page), table card with search and toggles, add modal. Tables use a fixed layout so long text ends with an ellipsis instead of widening the table; no horizontal scroll at the minimum width. |
 | Detail | Stock detail, bank account detail | Back link, eyebrow, H1, action row, hero with time trace, 3–4 stats, ledger table + aside cards, modals. |
 | Report | Cashflow | Actual monthly income and expenses from bank transactions: stats, bar chart card, breakdown by category and by source with change versus the previous period. |
 | Plan | Cashflow planning | Planned recurring items in personal and investment sections, items derived from Úvěry / Pojištění / Nemovitosti / Akcie marked as automatic, monthly / yearly switch, a 100 % flow bar instead of a Sankey diagram. |
 | Planning | Budgets | Month navigation, stats, overview progress, category table with progress bars and state badges. |
 | Settings | Settings | Left sub-navigation (existing routes), stacked flat cards, danger zone last. |
 | Outlook | Projection | Horizon segment, hero with expected line, ± 2 p.p. scenario band, dashed "today + contributions" reference and future milestones (mortgage payoff, round net-worth marks), asset-class table, three scenarios, parameters modal. |
-| Analysis | Stocks analysis | Tag groups as chip filters, allocation ring by strategy, TWR comparison per tag with the portfolio as a dashed reference, tag table, holdings with tags, manage and assign modals. |
+| Analysis | Stocks analysis | Tag groups as chip filters that narrow everything below them (ring, TWR tag series, tag table, holdings; the stats stay portfolio-wide), allocation ring by strategy and the TWR card at equal height, TWR in percent per tag with the whole portfolio as the dark dashed reference and its return in the card head, legend with values under the chart, tag table, holdings with tags, manage and assign modals. |
 | Watchlist | Stock monitor and its detail | Native-currency prices, day change vs previous close, inline 52-week range bar with current price and target tick, target state badge; detail with target line on the chart, watch-start marker, markdown notes, key data. |
 | Calculator | Annuity calculator, real estate investment calculator | Inputs in flat cards left, live hero result right, chart with milestones (principal overtakes interest, half repaid; positive cashflow, half of loan, sale), yearly tables. Annuity adds an optional extra yearly payment with the saving it brings. |
-| Crypto | Crypto, crypto detail | List archetype of Stocks with a share column and buy/sell markers on the aggregate trend; the detail mirrors Stock detail: cost-basis step line, buy/sell events, realized gain, holding period, "since first buy" card. |
+| Crypto | Crypto, crypto detail | List archetype of Stocks with a share column and buy/sell markers on the aggregate trend (stocks show the same trade days); the detail mirrors Stock detail: cost-basis step line, buy/sell events, realized gain, holding period, "since first buy" card. |
 | Bonds | Bonds | Nearest maturity and weighted time to maturity as stats, a maturity-and-coupon ladder (principal returned and coupons per year), per-bond yearly coupon, "do roka" badge, matured issues behind a toggle. |
-| Real estate | Real estate, real estate detail | Appreciation, rental yield and equity / LTV per property, value-vs-equity trend; the detail has a valuation trace (purchase, revaluations and rent changes as events), cash-on-cash return, an annual balance that separates principal paydown from cashflow, a link to the real estate investment calculator and a "Přecenit" modal. |
+| Real estate | Real estate, real estate detail | Appreciation, rental yield and equity / LTV per property, value-vs-equity trend; the detail has a valuation trace starting with the purchase (optional purchase date) followed by every estimate (the first estimate is recorded when the property is created), revaluations as events, cash-on-cash return, an annual balance that separates principal paydown from cashflow, a link to the real estate investment calculator and a "Přecenit" modal. |
 | Other assets | Other assets | Gain/loss stat, per-row gain and annual yield, "oceněno" date, valuation-history trace shared with real estate, edit action. |
-| Loans | Loans, loan detail | Debt trajectory (actual solid, schedule dashed) with milestones (car paid off, fixation end, half repaid, payoff) and repaid progress per loan; the detail adds the schedule table (next 12 / per year), an extra-payment what-if (shorten the term or lower the payment) and an events list. |
-| Insurance | Insurance, insurance detail | Next payment and anniversary per policy, coverage totals, a 12-month payment calendar; the detail has a cumulative-premiums trace with contract changes, a limits table, documents and a contract card. |
+| Loans | Loans, loan detail | Debt trajectory (actual solid, schedule dashed) with every new loan marked ▲ where the debt steps up and milestones (car paid off, fixation end, half repaid, payoff), repaid progress per loan; the detail adds the schedule table (next 12 / per year), an extra-payment what-if (shorten the term or lower the payment) and an events list. |
+| Insurance | Insurance, insurance detail | Policy (type · insurer underneath), premium, coverage total with the largest limit, next payment and anniversary per policy, a 12-month payment calendar; the detail has a cumulative-premiums trace with contract changes, a limits table, documents and a contract card. |
 | Onboarding | First run | Two-column first run: the step form on the left, a live preview of the future overview on the right that reacts to the chosen areas. |
 | Lock screen | Lock screen | One card: unlock with a decrypting state and inline error, a three-step recovery flow, language segment. |
 | CSV import | CSV import wizard | Four-step wizard in a wide modal; the preview step shows duplicates and the category each row would get, uncategorized rows are fixed inline before the import; the done step lists next steps. |
@@ -187,7 +187,7 @@ Charts use Recharts with these rules (`charts.js` draws the same shapes by hand 
   "Vloženo" (cost basis) is a dashed step line in `chart-cost`; the gap between lines is the return.
 - Bars: income `s1`, expense `s3`, 3 px rounded ends, 2 px gap, no borders, zero baseline.
 - Allocation ring: `s1`–`s4` + `s-other`, legend with amounts and percentages, never color alone.
-- Hover always: crosshair + tooltip on lines, tooltip on bars. Tooltip is `.tip`.
+- Hover always: crosshair + tooltip on lines, tooltip on bars. Tooltip is `.tip`. Value charts offer the horizons 30 dní · 3 měsíce · Letos · Rok · Vše, bounded on UTC days.
 - Baseline: zero for "Vše" and bars; truncated for short periods with 15 % headroom below.
 - Only one hue family per chart; green/red-brown never appear in series.
 
@@ -205,8 +205,9 @@ discrete events are drawn on the value line:
 
 Behavior: hovering a mark shows the event tooltip (type, quantity, price, total, date); hovering a row in
 the history table highlights its mark (`is-hot`, scale 1.35); clicking a mark scrolls to the row. Only
-events inside the selected period are drawn. Aggregate charts (net worth, whole portfolio, cashflow) never
-draw events. Bank accounts mark only movements above a threshold (an absolute floor of about 400 EUR, or 10 % of balance). If more
+events inside the selected period are drawn. Aggregate charts (net worth, cashflow) never draw events; the
+exceptions are the stocks and crypto list trends (one mark per trade day and direction, explaining the
+jumps a buy or a sell causes) and the loans trajectory (new loans and milestones). Bank accounts mark only movements above a threshold (an absolute floor of about 400 EUR, or 10 % of balance). If more
 than ~24 events fall in view, cluster neighbors into one mark with a count ("3 nákupy").
 
 ## 10. Copy and formatting
@@ -247,7 +248,9 @@ than ~24 events fall in view, cluster neighbors into one mark with a count ("3 n
   focus management and accessibility come from Radix; the look comes from `cva` variants and classes that
   use the tokens. react-hook-form + zod, sonner (restyled), Recharts (wrapped) and lucide-react stay.
 - **Charts.** `MoonyLineChart` and `MoonyBarChart` (`src/components/charts/`) wrap Recharts and implement
-  §8; an event-markers layer (`EventMarkers.tsx`) implements §9.
+  §8; an event-markers layer (`EventMarkers.tsx`) implements §9. Marks are drawn as Recharts reference dots,
+  never as a graphical item with its own data (Recharts 3 would then resolve the tooltip against the marks).
+  `TrendCard` is the list-page chart card.
 - **Font.** `@fontsource-variable/inter`, imported once in `src/main.tsx`.
 - **Two-column pages.** The shorter column receives the content that would otherwise sit below both
   columns (see the two calculators), never an empty stretch.

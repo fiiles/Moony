@@ -20,13 +20,14 @@ import { useFormat } from '@/lib/use-format';
 import { translateApiError } from '@/lib/translate-api-error';
 import { formatAmountWithCode } from '@/utils/format-amount';
 import type { ChartEvent, EventCluster } from '@/utils/chart-scale';
+import { dailyValuations, valuationTrace } from '@/utils/valuation-trace';
 import { useShellPage } from '@/components/shell/shell-context';
 import { BackLink, PageHead } from '@/components/shell/PageHead';
 import { HeroCard, HeroValue } from '@/components/common/HeroCard';
 import { Stat, Stats } from '@/components/common/Stat';
 import { ConfirmDeleteDialog } from '@/components/common/ConfirmDeleteDialog';
 import { MoonyLineChart } from '@/components/charts/MoonyLineChart';
-import { ChartLegend } from '@/components/charts/ChartLegend';
+import { ChartLegend, type LegendItem } from '@/components/charts/ChartLegend';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -61,9 +62,14 @@ import { cn } from '@/lib/utils';
 type Period = '12' | '36' | 'all';
 const DAY = 86_400;
 
-interface ValuationEvent extends ChartEvent {
-  valuation: AssetValuation;
-  first: boolean;
+/** A mark on the value trace: the purchase (`buy`) or an estimate (`mark`). */
+interface TraceEvent extends ChartEvent {
+  kind: 'purchase' | 'estimate';
+  /** In the display currency. */
+  value: number;
+  note?: string | null;
+  /** The earliest estimate: the one that starts the log. */
+  first?: boolean;
 }
 
 const czk = (amount: string | number | null | undefined, currency: string | null | undefined) =>
@@ -83,8 +89,9 @@ function yearlyFactor(frequency: string | undefined): number {
 
 /**
  * Property detail (design system §7 Detail, prototype real-estate-detail.html):
- * valuation trace with revaluations as events and the purchase price as the
- * reference, four stats (gross yield, net cashflow, principal repaid by the
+ * valuation trace (the purchase when its day is known, every estimate, today)
+ * with the purchase and the revaluations as events and the purchase price as
+ * the reference, four stats (gross yield, net cashflow, principal repaid by the
  * tenant, return on equity), finance tab with linked loans and policies and
  * the annual balance, then costs, gallery, documents and notes.
  */
@@ -301,62 +308,83 @@ export default function RealEstateDetail() {
   );
 
   // ---- valuation trace ----
-  const sortedValuations = useMemo(
-    () => [...valuations].sort((a, b) => a.valuedAt - b.valuedAt || a.createdAt - b.createdAt),
-    [valuations]
-  );
-  const displayValue = (v: AssetValuation) =>
-    convert(
-      Number(v.value) || 0,
-      (v.currency || 'CZK') as CurrencyCode,
-      currencyCode as CurrencyCode
-    );
-  const purchaseDisplay = convert(purchaseCzk, 'CZK', currencyCode as CurrencyCode);
-  const points = useMemo(() => {
-    const pts: { t: number; value: number }[] = [];
-    sortedValuations.forEach((v, i) => {
-      if (i > 0) pts.push({ t: v.valuedAt - DAY, value: displayValue(sortedValuations[i - 1]) });
-      pts.push({ t: v.valuedAt, value: displayValue(v) });
-    });
-    if (sortedValuations.length > 0) {
-      pts.push({ t: nowSec, value: displayValue(sortedValuations[sortedValuations.length - 1]) });
-    }
-    const start = period === 'all' ? 0 : nowSec - (period === '12' ? 365 : 3 * 365) * DAY;
-    if (start === 0) return pts;
-    const before = pts.filter((p) => p.t < start);
-    const after = pts.filter((p) => p.t >= start);
-    return before.length > 0
-      ? [{ t: start, value: before[before.length - 1].value }, ...after]
-      : after;
-    // displayValue depends on convert/currencyCode, stable per render
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sortedValuations, period, nowSec, currencyCode]);
-  const events = useMemo<ValuationEvent[]>(
+  const purchaseDisplay = convert(purchaseCzk, 'CZK', currencyCode);
+  // The purchase is on the trace only when both its day and its price are known.
+  const purchaseDay = realEstate?.purchaseDate ?? null;
+  const purchaseKnown = purchaseDay !== null && purchaseDisplay > 0;
+  // One estimate per day (the newest one), in the display currency.
+  const estimates = useMemo(
     () =>
-      sortedValuations.map((v, i) => ({
-        id: v.id,
-        t: v.valuedAt,
-        type: 'mark' as const,
-        valuation: v,
-        first: i === 0,
-      })),
-    [sortedValuations]
+      dailyValuations(
+        valuations.map((v) => ({
+          id: v.id,
+          t: v.valuedAt,
+          value: convert(Number(v.value) || 0, (v.currency || 'CZK') as CurrencyCode, currencyCode),
+          createdAt: v.createdAt,
+          note: v.note,
+        }))
+      ),
+    [valuations, convert, currencyCode]
   );
-  const eventTip = (cluster: EventCluster<ValuationEvent>) => {
+  // The window opens on a UTC day (ADR 0008).
+  const windowStart =
+    period === 'all' ? undefined : today - (period === '12' ? 365 : 3 * 365) * DAY;
+  const points = useMemo(
+    () =>
+      valuationTrace({
+        valuations: estimates,
+        purchase: purchaseKnown ? { t: purchaseDay, value: purchaseDisplay } : null,
+        now: nowSec,
+        start: windowStart,
+      }),
+    [estimates, purchaseKnown, purchaseDay, purchaseDisplay, nowSec, windowStart]
+  );
+  const events = useMemo<TraceEvent[]>(() => {
+    const marks = estimates
+      .map<TraceEvent>((e, i) => ({
+        id: e.id,
+        t: e.t,
+        type: 'mark',
+        kind: 'estimate',
+        value: e.value,
+        note: e.note,
+        first: i === 0,
+      }))
+      // The purchase mark wins where an estimate falls on the same day: they would overlap.
+      .filter((e) => !(purchaseKnown && e.t === purchaseDay));
+    return purchaseKnown
+      ? [
+          {
+            id: 'purchase',
+            t: purchaseDay,
+            type: 'buy',
+            kind: 'purchase',
+            value: purchaseDisplay,
+          },
+          ...marks,
+        ]
+      : marks;
+  }, [estimates, purchaseKnown, purchaseDay, purchaseDisplay]);
+  const eventTip = (cluster: EventCluster<TraceEvent>) => {
     const e = cluster.events[0];
-    const v = e.valuation;
+    const label =
+      e.kind === 'purchase'
+        ? t('detail.chart.bought')
+        : e.first
+          ? t('detail.chart.first')
+          : t('detail.chart.revaluation');
     return {
-      title: `${e.first ? t('detail.chart.first') : t('detail.chart.revaluation')} · ${fmt.money(displayValue(v), currencyCode, { decimals: 0 })}`,
-      lines: [fmt.day(v.valuedAt), v.note ?? ''].filter(Boolean),
+      title: `${label} · ${fmt.money(e.value, currencyCode, { decimals: 0 })}`,
+      lines: [fmt.day(e.t), e.note ?? ''].filter(Boolean),
     };
   };
-  const latestValuation = sortedValuations[sortedValuations.length - 1];
+  const latestEstimate = estimates[estimates.length - 1];
 
   useShellPage({
     crumb: realEstate?.name,
-    status: latestValuation
+    status: latestEstimate
       ? {
-          text: t('detail.statusValuation', { date: fmt.day(latestValuation.valuedAt) }),
+          text: t('detail.statusValuation', { date: fmt.day(latestEstimate.t) }),
           tone: 'neutral',
         }
       : undefined,
@@ -416,6 +444,17 @@ export default function RealEstateDetail() {
   const sub = (text: string) => (
     <small className="mt-[3px] block text-micro font-500 text-ink-4">{text}</small>
   );
+  const legendItems: LegendItem[] = [
+    { label: t('detail.chart.value'), swatch: { kind: 'line' } },
+    { label: t('detail.chart.purchase'), swatch: { kind: 'dash' } },
+  ];
+  if (purchaseKnown) {
+    legendItems.push({ label: t('detail.chart.bought'), swatch: { kind: 'event', type: 'buy' } });
+  }
+  legendItems.push({
+    label: t('detail.chart.revaluation'),
+    swatch: { kind: 'event', type: 'mark' },
+  });
   const mortgageText = linkedLoans
     .map((l) =>
       t('detail.mortgage', {
@@ -432,7 +471,12 @@ export default function RealEstateDetail() {
         eyebrow={[
           t(`types.${realEstate.type}`),
           realEstate.address,
-          t('detail.boughtFor', { amount: formatCurrency(purchaseCzk) }),
+          purchaseDay !== null
+            ? t('detail.boughtOnFor', {
+                date: fmt.day(purchaseDay),
+                amount: formatCurrency(purchaseCzk),
+              })
+            : t('detail.boughtFor', { amount: formatCurrency(purchaseCzk) }),
         ]}
         title={realEstate.name}
         description={[
@@ -483,8 +527,8 @@ export default function RealEstateDetail() {
             value={period}
             onValueChange={setPeriod}
             options={[
-              { value: '12', label: '1R' },
-              { value: '36', label: '3R' },
+              { value: '12', label: tc('periods.1Y') },
+              { value: '36', label: tc('periods.3Y') },
               { value: 'all', label: tc('periods.All') },
             ]}
           />
@@ -492,7 +536,7 @@ export default function RealEstateDetail() {
         chart={
           points.length > 0 ? (
             <>
-              <MoonyLineChart<ValuationEvent>
+              <MoonyLineChart<TraceEvent>
                 className="-mx-1 mt-[18px]"
                 points={points}
                 height={210}
@@ -518,15 +562,14 @@ export default function RealEstateDetail() {
                 renderEventTip={eventTip}
               />
               <ChartLegend
-                items={[
-                  { label: t('detail.chart.value'), swatch: { kind: 'line' } },
-                  { label: t('detail.chart.purchase'), swatch: { kind: 'dash' } },
-                  { label: t('detail.chart.revaluation'), swatch: { kind: 'event', type: 'mark' } },
-                ]}
+                items={legendItems}
                 note={
-                  sortedValuations.length > 1
-                    ? t('detail.chart.note', { count: sortedValuations.length - 1 })
-                    : t('detail.chart.hint')
+                  estimates.length > 1
+                    ? t('detail.chart.note', { count: estimates.length - 1 })
+                    : // With the purchase on the trace there is already a trend to read
+                      purchaseKnown
+                      ? undefined
+                      : t('detail.chart.hint')
                 }
               />
             </>

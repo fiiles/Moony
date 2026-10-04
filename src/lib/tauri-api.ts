@@ -85,6 +85,8 @@ import type {
   WatchedStockRow,
   StockMonitorDetail,
   StockPricePoint,
+  // Company data types
+  StockCompanyInfo,
   // Categorization types
   CategorizationResult,
   TransactionInput,
@@ -259,7 +261,9 @@ export const investmentsApi = {
   ) =>
     tauriInvoke<ImportResult>('import_investment_transactions', { transactions, defaultCurrency }),
 
-  refreshMetadata: (ticker: string) => tauriInvoke<boolean>('refresh_stock_metadata', { ticker }),
+  /** Company data cached from Yahoo Finance; `refresh` fetches it first when it is over a day old. */
+  getCompanyInfo: (ticker: string, refresh: boolean) =>
+    tauriInvoke<StockCompanyInfo>('get_stock_company_info', { ticker, refresh }),
 
   getHistory: (ticker: string, startDate?: number, endDate?: number) =>
     tauriInvoke<TickerValueHistory[]>('get_stock_value_history', { ticker, startDate, endDate }),
@@ -267,17 +271,23 @@ export const investmentsApi = {
   backfillHistory: (ticker: string) =>
     tauriInvoke<BackfillResult>('backfill_stock_ticker_history', { ticker }),
 
+  /**
+   * Time-weighted return per tag and for the whole portfolio. `investmentIds` narrows every tag
+   * series to those positions; the whole-portfolio series is never narrowed.
+   */
   getStockTwr: (
     tagIds: string[],
     includePortfolio: boolean,
     includeUntagged: boolean,
     fromTs: number,
-    toTs: number
+    toTs: number,
+    investmentIds?: string[]
   ) =>
     tauriInvoke<TwrSeries[]>('get_stock_twr', {
       tagIds,
       includePortfolio,
       includeUntagged,
+      investmentIds,
       fromTs,
       toTs,
     }),

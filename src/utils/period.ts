@@ -83,3 +83,59 @@ export function isoDateFromUtcTimestamp(ts: number): string {
 export function todayIsoUtc(now: Date = new Date()): string {
   return now.toISOString().slice(0, 10);
 }
+
+/** Every horizon a value-over-time chart can offer, in display order. */
+export const ALL_CHART_PERIODS = ['30D', '90D', 'YTD', '1Y', '5Y', 'All'] as const;
+export type ChartPeriod = (typeof ALL_CHART_PERIODS)[number];
+
+/**
+ * The horizons of every value-over-time chart: the dashboard, the list trend
+ * cards and the position and account details.
+ */
+export const CHART_PERIODS: readonly ChartPeriod[] = ['30D', '90D', 'YTD', '1Y', 'All'];
+
+const DAY = 86_400;
+
+/**
+ * First UTC day (unix seconds) a chart of `period` shows. Rolling periods
+ * count whole days back from today's UTC day, YTD starts on 1 January UTC (on
+ * 1 January itself on 31 December, so the window is never a single day) and
+ * "All" starts on `earliest` (open, `undefined`, without it). The start never
+ * precedes `earliest`, the first day with data. The result only changes when
+ * the UTC day does, so query keys built from it stay stable.
+ */
+export function chartPeriodStart(
+  period: ChartPeriod,
+  nowSec: number,
+  earliest?: number
+): number | undefined {
+  const today = Math.floor(nowSec / DAY) * DAY;
+  const floor = earliest !== undefined ? Math.floor(earliest / DAY) * DAY : undefined;
+  let start: number | undefined;
+  switch (period) {
+    case '30D':
+      start = today - 30 * DAY;
+      break;
+    case '90D':
+      start = today - 90 * DAY;
+      break;
+    case 'YTD':
+      // On 1 January the year has no day behind it yet: show it against the year end
+      start = Math.min(
+        Date.UTC(new Date(today * SECOND).getUTCFullYear(), 0, 1) / SECOND,
+        today - DAY
+      );
+      break;
+    case '1Y':
+      start = today - 365 * DAY;
+      break;
+    case '5Y':
+      start = today - 5 * 365 * DAY;
+      break;
+    case 'All':
+      start = undefined;
+      break;
+  }
+  if (start === undefined) return floor;
+  return floor !== undefined && floor > start ? floor : start;
+}

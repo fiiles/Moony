@@ -1,8 +1,8 @@
 import { useTranslation } from 'react-i18next';
 import { Segmented } from '@/components/ui/segmented';
+import { ALL_CHART_PERIODS, type ChartPeriod } from '@/utils/period';
 
-const periods = ['30D', '90D', 'YTD', '1Y', '5Y', 'All'] as const;
-export type Period = (typeof periods)[number];
+export type Period = ChartPeriod;
 
 interface TimePeriodSelectorProps {
   value: Period;
@@ -10,7 +10,7 @@ interface TimePeriodSelectorProps {
   /** Subset and order of the segments (default: all six). */
   options?: readonly Period[];
   size?: 'sm' | 'lg';
-  /** `long` reads "30 dní · 3 měsíce · Rok · Vše" (page heads); `short` "1M · 3M · 1R · Vše". */
+  /** `long` reads "30 dní · 3 měsíce · Letos · Rok · Vše" (page heads); `short` "30D · 90D · YTD · 1R · Vše". */
   labels?: 'short' | 'long';
   className?: string;
 }
@@ -19,7 +19,7 @@ interface TimePeriodSelectorProps {
 export default function TimePeriodSelector({
   value,
   onChange,
-  options = periods,
+  options = ALL_CHART_PERIODS,
   size = 'sm',
   labels = 'short',
   className,

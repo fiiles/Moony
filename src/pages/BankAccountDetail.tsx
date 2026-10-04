@@ -40,6 +40,8 @@ import { translateApiError } from '@/lib/translate-api-error';
 import { useShellPage } from '@/components/shell/shell-context';
 import { calculateZonedInterest } from '@/utils/bank-account-zones';
 import {
+  CHART_PERIODS,
+  chartPeriodStart,
   getUtcPeriodRange,
   isoDateFromUtcTimestamp,
   utcDayStart,
@@ -115,7 +117,6 @@ type SortColumn = 'date' | 'description' | 'category' | 'amount';
 type Kind = 'all' | 'income' | 'outcome';
 type BalanceEvent = ChartEvent & { move: MovementEvent };
 
-const CHART_PERIODS: readonly Period[] = ['30D', '90D', '1Y', 'All'];
 const DAY = 86400;
 
 export default function BankAccountDetail() {
@@ -248,14 +249,7 @@ export default function BankAccountDetail() {
 
   // Transactions behind the balance chart (the chart span)
   const today = utcDayFloor(Date.now() / 1000);
-  const chartFrom =
-    chartPeriod === '30D'
-      ? today - 30 * DAY
-      : chartPeriod === '90D'
-        ? today - 90 * DAY
-        : chartPeriod === '1Y'
-          ? today - 365 * DAY
-          : undefined;
+  const chartFrom = chartPeriodStart(chartPeriod, today);
   const { data: chartResult } = useQuery({
     queryKey: ['bank-transactions', accountId, 'chart', chartFrom ?? 'all'],
     queryFn: () =>

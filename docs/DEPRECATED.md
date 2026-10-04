@@ -39,6 +39,15 @@ primitives cover every case they handled.
 | `.page-title`, `.page-subtitle`, `card-hover` CSS roles | Interim roles for the transition | `PageHead`, the card's own hover state |
 | Per-component `AlertDialog` delete confirmations | Each dialog restated the same two buttons and the red button class | `ConfirmDeleteDialog` (destructive settings dialogs keep `AlertDialog` with the solid `AlertDialogAction`) |
 
+## Removed in the overview polish (do not re-add)
+
+| Removed | Why it was dead | Use instead |
+|---|---|---|
+| `investmentsApi.refreshMetadata` (`refresh_stock_metadata`) | Invoked a command that never existed | `investmentsApi.getCompanyInfo(ticker, refresh)` (`get_stock_company_info`) |
+| Company metadata on `StockInvestmentWithPrice` (`sector`, `peRatio`, `marketCap`, …) | Typed but never sent by `get_investment`, so the stock detail showed dashes | `StockCompanyInfo` from `getCompanyInfo` |
+| `PortfolioTrendCard` `transactionMarkers` / `TransactionMarker` | Only its earliest date was used, and its default array changed the query key every render (a request loop) | `earliest` (first day with data) and `chartPeriodStart` |
+| `AddInvestmentModal` `onImportCsv` | Import moved to the stocks page head | The page-head "Importovat CSV" button |
+
 ## Deprecated type sources
 
 | Path | Why deprecated | Use instead |
@@ -59,6 +68,6 @@ primitives cover every case they handled.
 | Path / pattern | What's wrong | Do this instead |
 |---|---|---|
 | `src-tauri/src/commands/categorization.rs` error style | Returns `Result<_, String>` | Return `crate::error::AppError` (see `docs/standards/rust-backend.md` §2) |
-| Fat command files: `portfolio.rs`, `projection.rs`, `cashflow.rs`, `real_estate.rs` | Business logic inside command handlers | Logic belongs in `src-tauri/src/services/`; commands stay thin |
+| Fat command files: `portfolio.rs`, `projection.rs`, `cashflow.rs`, `real_estate.rs` (costs, photos, documents, links) | Business logic inside command handlers | Logic belongs in `src-tauri/src/services/`; commands stay thin |
 | Inline `useMutation` in stock/crypto/real-estate/insurance modals | Mutations defined inside components, bypassing shared cache-invalidation | Put mutations in domain hooks (`src/hooks/use-*.ts`) |
 | `src/hooks/useCategorization.ts` | camelCase hook filename | Kebab-case: `use-<domain>.ts` |

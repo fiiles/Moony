@@ -201,7 +201,20 @@
     "positionTitle": "Vývoj hodnoty pozice",
     "bought": "Nakoupeno",
     "sold": "Prodáno",
-    "subtitle": "Včetně vložených prostředků a tržního vývoje."
+    "subtitle": "Včetně vložených prostředků a tržního vývoje.",
+    "legend": {
+      "value": "Hodnota",
+      "buy": "Nákup",
+      "sell": "Prodej"
+    },
+    "events": {
+      "buy": "Nákup {{tickers}}",
+      "sell": "Prodej {{tickers}}",
+      "cluster_one": "{{count}} transakce",
+      "cluster_few": "{{count}} transakce",
+      "cluster_many": "{{count}} transakce",
+      "cluster_other": "{{count}} transakcí"
+    }
   },
   "detail": {
     "backToList": "Zpět na akcie",
@@ -240,6 +253,7 @@
     },
     "companyInfo": {
       "title": "Informace o společnosti",
+      "sectorIndustry": "Sektor · odvětví",
       "peRatio": "P/E poměr",
       "forwardPe": "Forward P/E",
       "marketCap": "Tržní kapitalizace",
@@ -247,7 +261,11 @@
       "fiftyTwoWeekHigh": "52T maximum",
       "fiftyTwoWeekLow": "52T minimum",
       "dividendRate": "Dividendová sazba",
-      "dividendYield": "Div. výnos"
+      "dividendYield": "Div. výnos",
+      "etfNote": "Pro ETF Yahoo Finance tyto údaje neuvádí",
+      "noData": "Yahoo Finance k této akcii žádné údaje neuvádí",
+      "unavailable": "Údaje se nepodařilo načíst",
+      "retry": "Zkusit znovu"
     },
     "transactions": {
       "title": "Historie transakcí",
@@ -274,8 +292,6 @@
       "save": "Uložit název"
     },
     "nameUpdated": "Název společnosti aktualizován",
-    "refreshMetadata": "Obnovit data",
-    "metadataRefreshed": "Data společnosti obnovena",
     "openInMonitor": "Otevřít ve sledování akcií",
     "sharesCount_one": "{{count}} akcie",
     "sharesCount_few": "{{count}} akcie",

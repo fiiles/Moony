@@ -293,6 +293,7 @@ pub struct TwrSeries {
     /// The tag this series belongs to. None = whole portfolio or untagged.
     pub tag: Option<StockTag>,
     /// True when this series represents stocks with no tags assigned.
+    #[serde(rename = "isUntagged")]
     pub is_untagged: bool,
     pub data: Vec<TwrDataPoint>,
 }

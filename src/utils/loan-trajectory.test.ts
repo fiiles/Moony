@@ -119,6 +119,74 @@ describe('debtSeries', () => {
     expect(at(day(2024, 5, 1))).toBe(80_000 + 0);
     expect(sum[sum.length - 1].value).toBe(0);
   });
+
+  describe('the day a later loan starts', () => {
+    const today = day(2024, 6, 15);
+    /** A debtSeries input at rate 1, the terms over the zero-rate loan above. */
+    const item = (terms: Partial<LoanTerms>) => ({
+      trajectory: loanTrajectory({ ...zeroRate, ...terms }, today),
+      rate: 1,
+    });
+    const laterStart = day(2024, 3, 20);
+    const later = { principal: 60_000, monthlyPayment: 5_000, startDay: laterStart };
+
+    it('steps up vertically instead of ramping from the previous reading', () => {
+      // The first loan is due on the 1st, the later one on the 20th: without a reading the
+      // day before, the sum would climb from the 1 March reading to 20 March.
+      const sum = debtSeries([item({}), item(later)], today);
+      const at = (t: number) => sum.find((p) => p.t === t)?.value;
+      // February and March are paid on the first loan; the later one does not exist yet...
+      expect(at(laterStart - DAY)).toBe(100_000);
+      // ...and counts in full the next day, with no reading in between
+      expect(at(laterStart)).toBe(100_000 + 60_000);
+      const i = sum.findIndex((p) => p.t === laterStart);
+      expect(sum[i - 1].t).toBe(laterStart - DAY);
+    });
+
+    it('steps for a loan that starts after today too', () => {
+      const futureStart = day(2024, 9, 20);
+      const sum = debtSeries(
+        [item({}), item({ principal: 60_000, monthlyPayment: 5_000, startDay: futureStart })],
+        today
+      );
+      const at = (t: number) => sum.find((p) => p.t === t)?.value;
+      // Eight payments (February to September) leave 40 000 on the first loan
+      expect(at(futureStart - DAY)).toBe(40_000);
+      expect(at(futureStart)).toBe(40_000 + 60_000);
+    });
+
+    it('adds no step before the earliest loan, where the series begins', () => {
+      const sum = debtSeries([item({}), item(later)], today);
+      expect(sum[0]).toEqual({ t: START, value: 120_000 });
+      // Loans that share the earliest day do not step either
+      const together = debtSeries([item({}), item({ principal: 60_000 })], today);
+      expect(together[0]).toEqual({ t: START, value: 180_000 });
+      expect(together.some((p) => p.t === START - DAY)).toBe(false);
+    });
+
+    it('keeps the step readings when a long grid is thinned', () => {
+      // Three 30-year loans due on three different days: about 1 100 distinct readings,
+      // far above the 480-point budget, so most of the grid is dropped on a stride.
+      const thirtyYears = { principal: 3_600_000, monthlyPayment: 10_000 };
+      const secondStart = day(2024, 2, 10);
+      const sum = debtSeries(
+        [
+          item(thirtyYears),
+          item({ ...thirtyYears, startDay: secondStart }),
+          item({ ...thirtyYears, startDay: laterStart }),
+        ],
+        today
+      );
+      expect(sum.length).toBeLessThan(600);
+      const at = (t: number) => sum.find((p) => p.t === t)?.value;
+      // 1 Feb is paid once (3 590 000 left); the second loan does not exist yet
+      expect(at(secondStart - DAY)).toBe(3_590_000);
+      expect(at(secondStart)).toBe(3_590_000 + 3_600_000);
+      // 1 Mar is paid twice (3 580 000) and 10 Mar once (3 590 000); the third does not exist yet
+      expect(at(laterStart - DAY)).toBe(3_580_000 + 3_590_000);
+      expect(at(laterStart)).toBe(3_580_000 + 3_590_000 + 3_600_000);
+    });
+  });
 });
 
 describe('extraPaymentWhatIf', () => {

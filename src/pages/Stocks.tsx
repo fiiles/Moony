@@ -10,16 +10,25 @@ import type { CurrencyCode } from '@shared/currencies';
 import { calculatePositionCostBasis, calculateRealizedGains } from '@shared/calculations';
 import { exportApi, investmentsApi, priceApi } from '@/lib/tauri-api';
 import { useCurrency } from '@/lib/currency';
+import { useFormat } from '@/lib/use-format';
 import { useStockTagsByInvestment } from '@/hooks/use-stock-tags';
 import { useDatedConvert } from '@/hooks/use-dated-convert';
 import { mapInvestmentToHolding, calculateMetrics, type HoldingData } from '@/utils/stocks';
+import type { EventCluster } from '@/utils/chart-scale';
+import {
+  firstTradeDay,
+  tickerSummary,
+  tradeDayEvents,
+  type TradeDayEvent,
+} from '@/utils/trade-events';
 import { PageHead } from '@/components/shell/PageHead';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ExportButton } from '@/components/common/ExportButton';
 import { ConfirmDeleteDialog } from '@/components/common/ConfirmDeleteDialog';
 import { StatSkeleton, Stats } from '@/components/common/Stat';
-import PortfolioTrendCard, { type TransactionMarker } from '@/components/common/PortfolioTrendCard';
+import PortfolioTrendCard from '@/components/common/PortfolioTrendCard';
+import { ChartLegend } from '@/components/charts/ChartLegend';
 import { AddInvestmentModal } from '@/components/stocks/AddInvestmentModal';
 import { BuyInvestmentModal } from '@/components/stocks/BuyInvestmentModal';
 import { SellInvestmentModal } from '@/components/stocks/SellInvestmentModal';
@@ -36,7 +45,8 @@ export default function Stocks() {
   const { t: tc } = useTranslation('common');
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
-  const { convert, currencyCode } = useCurrency();
+  const { convert, currencyCode, formatCurrency } = useCurrency();
+  const fmt = useFormat();
   const [addOpen, setAddOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [rowModal, setRowModal] = useState<RowModal>(null);
@@ -69,12 +79,36 @@ export default function Stocks() {
     return map;
   }, [allTransactions]);
 
-  // Earliest transaction bounds the "Vše" period of the trend card
-  const transactionMarkers = useMemo((): TransactionMarker[] => {
-    if (!allTransactions || allTransactions.length === 0) return [];
-    const earliest = Math.min(...allTransactions.map((tx) => tx.transactionDate));
-    return [{ date: Math.floor(earliest / 86400) * 86400, buyAmount: 0, sellAmount: 0 }];
-  }, [allTransactions]);
+  // No horizon of the trend card starts before the first transaction
+  const earliest = useMemo(() => firstTradeDay(allTransactions ?? []), [allTransactions]);
+
+  // Buy and sell days as events on the aggregate trend, like the crypto list:
+  // one marker per day and direction, listing the tickers and the day's total.
+  const trendEvents = useMemo(
+    () =>
+      tradeDayEvents(allTransactions ?? [], (amount, currency, date) =>
+        convertAt(amount, currency as CurrencyCode, 'CZK', date)
+      ),
+    [allTransactions, convertAt]
+  );
+
+  const trendEventTip = (cluster: EventCluster<TradeDayEvent>) => {
+    if (cluster.events.length > 1) {
+      const first = cluster.events[0].t;
+      const last = cluster.events[cluster.events.length - 1].t;
+      return {
+        title: t('chart.events.cluster', { count: cluster.events.length }),
+        lines: [`${fmt.day(first)} – ${fmt.day(last)}`],
+      };
+    }
+    const event = cluster.events[0];
+    return {
+      title: t(event.type === 'sell' ? 'chart.events.sell' : 'chart.events.buy', {
+        tickers: tickerSummary(event.tickers),
+      }),
+      lines: [`${fmt.day(event.t)} · ${formatCurrency(event.amountCzk)}`],
+    };
+  };
 
   // Realized gains (WAC) in total and per position, each leg at its day's rate
   const realizedGain = useMemo(() => {
@@ -202,16 +236,23 @@ export default function Stocks() {
         actions={
           !isEmpty && (
             <>
+              {/* Four actions: below 1280 px refresh and export show only their icons */}
               <Button
                 variant="outline"
                 onClick={() => refreshPricesMutation.mutate()}
                 disabled={refreshPricesMutation.isPending}
                 loading={refreshPricesMutation.isPending}
+                title={t('refreshPrices')}
+                className="max-xl:px-[11px]"
               >
                 <RefreshCw />
-                {t('refreshPrices')}
+                <span className="max-xl:sr-only">{t('refreshPrices')}</span>
               </Button>
-              <ExportButton exportFn={exportApi.stockTransactions} label={t('export')} />
+              <ExportButton exportFn={exportApi.stockTransactions} label={t('export')} compact />
+              <Button variant="outline" onClick={() => setImportOpen(true)}>
+                <Upload />
+                {t('importCSV')}
+              </Button>
               <Button onClick={() => setAddOpen(true)}>
                 <Plus />
                 {t('addInvestment')}
@@ -256,11 +297,22 @@ export default function Stocks() {
             latestFetchedAt={latestFetchedAt}
           />
 
-          <PortfolioTrendCard
+          <PortfolioTrendCard<TradeDayEvent>
             type="investments"
             currentValue={metrics.totalValue}
             isRefreshing={refreshPricesMutation.isPending}
-            transactionMarkers={transactionMarkers}
+            earliest={earliest}
+            events={trendEvents}
+            renderEventTip={trendEventTip}
+            legend={
+              <ChartLegend
+                items={[
+                  { label: t('chart.legend.value'), swatch: { kind: 'line' } },
+                  { label: t('chart.legend.buy'), swatch: { kind: 'event', type: 'buy' } },
+                  { label: t('chart.legend.sell'), swatch: { kind: 'event', type: 'sell' } },
+                ]}
+              />
+            }
           />
 
           <InvestmentsTable
@@ -276,11 +328,7 @@ export default function Stocks() {
         </>
       )}
 
-      <AddInvestmentModal
-        open={addOpen}
-        onOpenChange={setAddOpen}
-        onImportCsv={() => setImportOpen(true)}
-      />
+      <AddInvestmentModal open={addOpen} onOpenChange={setAddOpen} />
       {/* One instance for both layouts: after the import the table replaces the empty
           state, and the result screen must survive that switch */}
       <ImportInvestmentsModal open={importOpen} onOpenChange={setImportOpen} />

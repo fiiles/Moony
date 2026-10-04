@@ -11,6 +11,7 @@ pub mod bonds;
 pub mod budgeting;
 pub mod cashflow;
 pub mod cashflow_actuals;
+pub mod company_info;
 pub mod crypto;
 pub mod currency;
 pub mod frequency;

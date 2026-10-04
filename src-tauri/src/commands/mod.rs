@@ -10,6 +10,7 @@ pub mod budgeting;
 pub mod cashflow;
 pub mod categories;
 pub mod categorization;
+pub mod company_info;
 pub mod crypto;
 pub mod export;
 pub mod insurance;

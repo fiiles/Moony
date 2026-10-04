@@ -198,7 +198,18 @@
     "positionTitle": "Position value over time",
     "bought": "Bought",
     "sold": "Sold",
-    "subtitle": "Including contributions and market movement."
+    "subtitle": "Including contributions and market movement.",
+    "legend": {
+      "value": "Value",
+      "buy": "Buy",
+      "sell": "Sell"
+    },
+    "events": {
+      "buy": "Bought {{tickers}}",
+      "sell": "Sold {{tickers}}",
+      "cluster_one": "{{count}} transaction",
+      "cluster_other": "{{count}} transactions"
+    }
   },
   "detail": {
     "backToList": "Back to stocks",
@@ -233,14 +244,19 @@
     },
     "companyInfo": {
       "title": "Company Information",
-      "peRatio": "P/E Ratio",
+      "sectorIndustry": "Sector · industry",
+      "peRatio": "P/E ratio",
       "forwardPe": "Forward P/E",
-      "marketCap": "Market Cap",
+      "marketCap": "Market cap",
       "beta": "Beta",
       "fiftyTwoWeekHigh": "52-week high",
       "fiftyTwoWeekLow": "52-week low",
-      "dividendRate": "Dividend Rate",
-      "dividendYield": "Div. Yield"
+      "dividendRate": "Dividend rate",
+      "dividendYield": "Dividend yield",
+      "etfNote": "Yahoo Finance does not report these figures for ETFs",
+      "noData": "Yahoo Finance reports no company data for this stock",
+      "unavailable": "Company data could not be loaded",
+      "retry": "Try again"
     },
     "transactions": {
       "title": "Transaction History",
@@ -267,8 +283,6 @@
       "save": "Save name"
     },
     "nameUpdated": "Company name updated",
-    "refreshMetadata": "Refresh Data",
-    "metadataRefreshed": "Company data refreshed",
     "openInMonitor": "Open in Stock Monitor",
     "dividendYieldTooltip": "Estimated annual dividends divided by the current market value of this position.",
     "priceNative": "Price ({{currency}})",

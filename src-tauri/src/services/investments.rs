@@ -781,6 +781,134 @@ pub fn compute_twr_for_tickers(
     Ok(result)
 }
 
+/// Which held positions one TWR series covers.
+enum TwrScope<'a> {
+    /// Every position still held.
+    Portfolio,
+    /// The held positions carrying this tag.
+    Tag(&'a str),
+    /// The held positions without any tag.
+    Untagged,
+}
+
+/// Tickers of the held positions (quantity > 0) in `scope`, ordered by ticker. With `only`, a
+/// position whose investment id is not in the set is left out.
+fn twr_scope_tickers(
+    conn: &rusqlite::Connection,
+    scope: TwrScope<'_>,
+    only: Option<&std::collections::HashSet<&str>>,
+) -> Result<Vec<String>> {
+    let (sql, tag_id) = match scope {
+        TwrScope::Portfolio => (
+            "SELECT id, ticker FROM stock_investments \
+             WHERE CAST(quantity AS REAL) > 0 ORDER BY ticker",
+            None,
+        ),
+        TwrScope::Tag(tag_id) => (
+            "SELECT si.id, si.ticker FROM stock_investments si \
+             JOIN stock_investment_tags sit ON sit.investment_id = si.id \
+             WHERE sit.tag_id = ?1 AND CAST(si.quantity AS REAL) > 0 ORDER BY si.ticker",
+            Some(tag_id),
+        ),
+        TwrScope::Untagged => (
+            "SELECT si.id, si.ticker FROM stock_investments si \
+             WHERE CAST(si.quantity AS REAL) > 0 \
+             AND NOT EXISTS (SELECT 1 FROM stock_investment_tags sit WHERE sit.investment_id = si.id) \
+             ORDER BY si.ticker",
+            None,
+        ),
+    };
+
+    let mut stmt = conn.prepare(sql)?;
+    let rows = stmt.query_map(params_from_iter(tag_id), |row| {
+        Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+    })?;
+    let mut tickers = Vec::new();
+    for row in rows {
+        let (investment_id, ticker) = row?;
+        if only.is_none_or(|ids| ids.contains(investment_id.as_str())) {
+            tickers.push(ticker);
+        }
+    }
+    Ok(tickers)
+}
+
+/// Time-weighted return series for the stocks analysis page: the whole portfolio, one series per
+/// tag and one for the positions without a tag.
+///
+/// - `tag_ids`: one series per tag, in this order; ids that match no tag are skipped.
+/// - `include_portfolio`: add the whole-portfolio series (first). It is also returned when
+///   neither tags nor `include_untagged` were asked for, so a call never comes back empty.
+/// - `include_untagged`: add a series for the held positions without any tag (last).
+/// - `investment_ids`: narrows every tag series and the untagged series to these positions (the
+///   intersection with the tag's own positions); `None` leaves them whole, an empty list leaves
+///   them with nothing to chart (one flat point). The whole-portfolio series is the benchmark the
+///   others are read against, so it is never narrowed.
+/// - `from_ts` / `to_ts`: Unix timestamps (seconds, midnight UTC) of the date range.
+pub fn twr_series(
+    conn: &rusqlite::Connection,
+    tag_ids: &[String],
+    include_portfolio: bool,
+    include_untagged: bool,
+    investment_ids: Option<&[String]>,
+    from_ts: i64,
+    to_ts: i64,
+) -> Result<Vec<crate::models::TwrSeries>> {
+    let only: Option<std::collections::HashSet<&str>> =
+        investment_ids.map(|ids| ids.iter().map(String::as_str).collect());
+    let mut series = Vec::new();
+
+    // Whole portfolio: always when nothing else was asked for, optional next to filters
+    let any_filter = !tag_ids.is_empty() || include_untagged;
+    if !any_filter || include_portfolio {
+        let tickers = twr_scope_tickers(conn, TwrScope::Portfolio, None)?;
+        series.push(crate::models::TwrSeries {
+            tag: None,
+            is_untagged: false,
+            data: compute_twr_for_tickers(conn, &tickers, from_ts, to_ts)?,
+        });
+    }
+
+    // Per-tag series
+    for tag_id in tag_ids {
+        let tag = conn
+            .query_row(
+                "SELECT id, name, color, group_id, created_at FROM stock_tags WHERE id = ?1",
+                [tag_id],
+                |row| {
+                    Ok(crate::models::StockTag {
+                        id: row.get(0)?,
+                        name: row.get(1)?,
+                        color: row.get(2)?,
+                        group_id: row.get(3)?,
+                        created_at: row.get(4)?,
+                    })
+                },
+            )
+            .optional()?;
+        let Some(tag) = tag else { continue };
+
+        let tickers = twr_scope_tickers(conn, TwrScope::Tag(tag_id), only.as_ref())?;
+        series.push(crate::models::TwrSeries {
+            tag: Some(tag),
+            is_untagged: false,
+            data: compute_twr_for_tickers(conn, &tickers, from_ts, to_ts)?,
+        });
+    }
+
+    // Positions that carry no tag
+    if include_untagged {
+        let tickers = twr_scope_tickers(conn, TwrScope::Untagged, only.as_ref())?;
+        series.push(crate::models::TwrSeries {
+            tag: None,
+            is_untagged: true,
+            data: compute_twr_for_tickers(conn, &tickers, from_ts, to_ts)?,
+        });
+    }
+
+    Ok(series)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1490,5 +1618,330 @@ mod tests {
         .unwrap();
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].twr, 0.0);
+    }
+
+    /// The wire contract (`shared/schema.ts`) names the flag `isUntagged`. Without its
+    /// rename Rust sent `is_untagged`, so the frontend always read `undefined`.
+    #[test]
+    fn twr_series_serializes_the_untagged_flag_in_camel_case() {
+        let series = crate::models::TwrSeries {
+            tag: None,
+            is_untagged: true,
+            data: vec![],
+        };
+        let json = serde_json::to_value(&series).unwrap();
+        assert_eq!(json["isUntagged"], serde_json::Value::Bool(true));
+        assert!(json.get("is_untagged").is_none());
+    }
+
+    /// `stock_value_history` plus the position and tag tables `twr_series` reads.
+    fn setup_twr_series_db() -> rusqlite::Connection {
+        let conn = setup_twr_db();
+        conn.execute_batch(
+            "CREATE TABLE stock_investments (
+                id TEXT PRIMARY KEY,
+                ticker TEXT NOT NULL UNIQUE,
+                quantity TEXT NOT NULL
+            );
+            CREATE TABLE stock_tags (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL UNIQUE,
+                color TEXT,
+                created_at INTEGER NOT NULL DEFAULT 0,
+                group_id TEXT
+            );
+            CREATE TABLE stock_investment_tags (
+                investment_id TEXT NOT NULL,
+                tag_id TEXT NOT NULL,
+                PRIMARY KEY (investment_id, tag_id)
+            );",
+        )
+        .unwrap();
+        conn
+    }
+
+    /// Six positions over two days, constant quantities (no cash flows), values in CZK:
+    /// AAPL 1000 -> 1100 (+10 %), MSFT 1000 -> 1000, NVDA 1000 -> 900 (-10 %), GOLD 1000 -> 1300
+    /// (+30 %), and two closed positions (quantity 0) that jump 1000 -> 3000 (SOLD, tagged) and
+    /// 1000 -> 5000 (GONE, untagged) and must never count. Tags: growth = AAPL + MSFT + SOLD,
+    /// value = NVDA, unused = nothing; GOLD and GONE are untagged.
+    /// Whole portfolio: 4000 -> 4300 (+7.5 %); growth: 2000 -> 2100 (+5 %); untagged: +30 %.
+    fn seed_twr_series(conn: &rusqlite::Connection) -> (i64, i64) {
+        let day0: i64 = 1_700_000_000 / 86400 * 86400;
+        let day1 = day0 + 86400;
+        for (id, ticker, held) in [
+            ("inv-aapl", "AAPL", "10"),
+            ("inv-msft", "MSFT", "10"),
+            ("inv-nvda", "NVDA", "10"),
+            ("inv-gold", "GOLD", "10"),
+            ("inv-sold", "SOLD", "0"),
+            ("inv-gone", "GONE", "0"),
+        ] {
+            conn.execute(
+                "INSERT INTO stock_investments (id, ticker, quantity) VALUES (?1, ?2, ?3)",
+                rusqlite::params![id, ticker, held],
+            )
+            .unwrap();
+        }
+        for (ticker, values) in [
+            ("AAPL", [1000, 1100]),
+            ("MSFT", [1000, 1000]),
+            ("NVDA", [1000, 900]),
+            ("GOLD", [1000, 1300]),
+            ("SOLD", [1000, 3000]),
+            ("GONE", [1000, 5000]),
+        ] {
+            for (i, value) in values.iter().enumerate() {
+                conn.execute(
+                    "INSERT INTO stock_value_history
+                     (id, ticker, recorded_at, value_czk, quantity, price, currency)
+                     VALUES (?1, ?2, ?3, ?4, '10', '1', 'CZK')",
+                    rusqlite::params![
+                        format!("{ticker}-{i}"),
+                        ticker,
+                        day0 + i as i64 * 86400,
+                        value.to_string()
+                    ],
+                )
+                .unwrap();
+            }
+        }
+        for tag in ["growth", "value", "unused"] {
+            conn.execute(
+                "INSERT INTO stock_tags (id, name) VALUES (?1, ?2)",
+                rusqlite::params![tag, tag],
+            )
+            .unwrap();
+        }
+        for (investment, tag) in [
+            ("inv-aapl", "growth"),
+            ("inv-msft", "growth"),
+            ("inv-sold", "growth"),
+            ("inv-nvda", "value"),
+        ] {
+            conn.execute(
+                "INSERT INTO stock_investment_tags (investment_id, tag_id) VALUES (?1, ?2)",
+                rusqlite::params![investment, tag],
+            )
+            .unwrap();
+        }
+        (day0, day1)
+    }
+
+    fn strings(list: &[&str]) -> Vec<String> {
+        list.iter().map(|s| s.to_string()).collect()
+    }
+
+    /// "portfolio", "untagged" or the tag id: what a series stands for.
+    fn series_kinds(series: &[crate::models::TwrSeries]) -> Vec<String> {
+        series
+            .iter()
+            .map(|s| match (&s.tag, s.is_untagged) {
+                (Some(tag), _) => tag.id.clone(),
+                (None, true) => "untagged".to_string(),
+                (None, false) => "portfolio".to_string(),
+            })
+            .collect()
+    }
+
+    fn series_of<'a>(
+        series: &'a [crate::models::TwrSeries],
+        kind: &str,
+    ) -> &'a crate::models::TwrSeries {
+        let at = series_kinds(series)
+            .iter()
+            .position(|k| k == kind)
+            .unwrap_or_else(|| panic!("no {kind} series"));
+        &series[at]
+    }
+
+    /// Cumulative return of a series at its last point, in percent.
+    fn final_twr(series: &crate::models::TwrSeries) -> f64 {
+        series.data.last().expect("a point").twr
+    }
+
+    #[test]
+    fn twr_series_covers_the_portfolio_every_tag_and_the_untagged_positions() {
+        let conn = setup_twr_series_db();
+        let (day0, day1) = seed_twr_series(&conn);
+
+        let series = twr_series(
+            &conn,
+            &strings(&["growth", "value"]),
+            true,
+            true,
+            None,
+            day0,
+            day1,
+        )
+        .unwrap();
+
+        // The portfolio first, the tags in the requested order, the untagged last
+        assert_eq!(
+            series_kinds(&series),
+            ["portfolio", "growth", "value", "untagged"]
+        );
+        // Closed positions (SOLD in a tag, GONE without one) take part in nothing
+        assert!((final_twr(series_of(&series, "portfolio")) - 7.5).abs() < 1e-6);
+        assert!((final_twr(series_of(&series, "growth")) - 5.0).abs() < 1e-6);
+        assert!((final_twr(series_of(&series, "value")) + 10.0).abs() < 1e-6);
+        assert!((final_twr(series_of(&series, "untagged")) - 30.0).abs() < 1e-6);
+        // The tag objects travel with their series
+        assert_eq!(
+            series_of(&series, "growth").tag.as_ref().unwrap().name,
+            "growth"
+        );
+        assert!(series_of(&series, "untagged").is_untagged);
+    }
+
+    #[test]
+    fn twr_series_without_filters_returns_only_the_portfolio() {
+        let conn = setup_twr_series_db();
+        let (day0, day1) = seed_twr_series(&conn);
+
+        // Even with `include_portfolio` off: nothing else was asked for
+        let series = twr_series(&conn, &[], false, false, None, day0, day1).unwrap();
+
+        assert_eq!(series_kinds(&series), ["portfolio"]);
+    }
+
+    #[test]
+    fn twr_series_leaves_the_portfolio_out_when_a_filter_is_given_without_it() {
+        let conn = setup_twr_series_db();
+        let (day0, day1) = seed_twr_series(&conn);
+
+        let series =
+            twr_series(&conn, &strings(&["value"]), false, false, None, day0, day1).unwrap();
+
+        assert_eq!(series_kinds(&series), ["value"]);
+    }
+
+    #[test]
+    fn twr_series_skips_unknown_tags() {
+        let conn = setup_twr_series_db();
+        let (day0, day1) = seed_twr_series(&conn);
+
+        let series = twr_series(
+            &conn,
+            &strings(&["missing", "value"]),
+            false,
+            false,
+            None,
+            day0,
+            day1,
+        )
+        .unwrap();
+
+        assert_eq!(series_kinds(&series), ["value"]);
+    }
+
+    #[test]
+    fn twr_series_for_a_tag_without_positions_is_one_flat_point() {
+        let conn = setup_twr_series_db();
+        let (day0, day1) = seed_twr_series(&conn);
+
+        let series =
+            twr_series(&conn, &strings(&["unused"]), false, false, None, day0, day1).unwrap();
+
+        let unused = series_of(&series, "unused");
+        assert_eq!(unused.data.len(), 1);
+        assert_eq!(unused.data[0].twr, 0.0);
+    }
+
+    #[test]
+    fn twr_series_restricts_tag_series_to_the_given_investments() {
+        let conn = setup_twr_series_db();
+        let (day0, day1) = seed_twr_series(&conn);
+
+        // growth = AAPL + MSFT; with only AAPL selected its return is AAPL's (+10 %, not +5 %)
+        let only_aapl = strings(&["inv-aapl"]);
+        let series = twr_series(
+            &conn,
+            &strings(&["growth"]),
+            false,
+            false,
+            Some(&only_aapl),
+            day0,
+            day1,
+        )
+        .unwrap();
+        assert_eq!(series_kinds(&series), ["growth"]);
+        assert!((final_twr(series_of(&series, "growth")) - 10.0).abs() < 1e-6);
+
+        // The restriction intersects: NVDA is not in growth, so it adds nothing
+        let aapl_and_nvda = strings(&["inv-aapl", "inv-nvda"]);
+        let series = twr_series(
+            &conn,
+            &strings(&["growth", "value"]),
+            false,
+            false,
+            Some(&aapl_and_nvda),
+            day0,
+            day1,
+        )
+        .unwrap();
+        assert!((final_twr(series_of(&series, "growth")) - 10.0).abs() < 1e-6);
+        assert!((final_twr(series_of(&series, "value")) + 10.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn twr_series_never_restricts_the_portfolio() {
+        let conn = setup_twr_series_db();
+        let (day0, day1) = seed_twr_series(&conn);
+        let tags = strings(&["growth"]);
+
+        let unrestricted = twr_series(&conn, &tags, true, false, None, day0, day1).unwrap();
+        let only_msft = strings(&["inv-msft"]);
+        let restricted =
+            twr_series(&conn, &tags, true, false, Some(&only_msft), day0, day1).unwrap();
+
+        // growth narrows to MSFT (flat), the whole portfolio stays what it was
+        assert!((final_twr(series_of(&restricted, "growth")) - 0.0).abs() < 1e-6);
+        let before = &series_of(&unrestricted, "portfolio").data;
+        let after = &series_of(&restricted, "portfolio").data;
+        assert_eq!(before.len(), after.len());
+        for (a, b) in before.iter().zip(after) {
+            assert_eq!(a.date, b.date);
+            assert_eq!(a.twr, b.twr);
+        }
+        assert!((final_twr(series_of(&restricted, "portfolio")) - 7.5).abs() < 1e-6);
+    }
+
+    #[test]
+    fn twr_series_restriction_also_narrows_the_untagged_series() {
+        let conn = setup_twr_series_db();
+        let (day0, day1) = seed_twr_series(&conn);
+
+        let only_gold = strings(&["inv-gold"]);
+        let with_gold = twr_series(&conn, &[], false, true, Some(&only_gold), day0, day1).unwrap();
+        assert!((final_twr(series_of(&with_gold, "untagged")) - 30.0).abs() < 1e-6);
+
+        // GOLD is the only untagged position: selecting another one leaves nothing to chart
+        let only_aapl = strings(&["inv-aapl"]);
+        let without_gold =
+            twr_series(&conn, &[], false, true, Some(&only_aapl), day0, day1).unwrap();
+        assert_eq!(series_of(&without_gold, "untagged").data.len(), 1);
+        assert_eq!(final_twr(series_of(&without_gold, "untagged")), 0.0);
+    }
+
+    #[test]
+    fn twr_series_with_an_empty_restriction_leaves_every_tag_series_flat() {
+        let conn = setup_twr_series_db();
+        let (day0, day1) = seed_twr_series(&conn);
+
+        let series = twr_series(
+            &conn,
+            &strings(&["growth", "value"]),
+            true,
+            false,
+            Some(&[]),
+            day0,
+            day1,
+        )
+        .unwrap();
+
+        assert_eq!(series_of(&series, "growth").data.len(), 1);
+        assert_eq!(series_of(&series, "value").data.len(), 1);
+        assert!((final_twr(series_of(&series, "portfolio")) - 7.5).abs() < 1e-6);
     }
 }

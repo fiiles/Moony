@@ -53,7 +53,6 @@
   },
   "moves": {
     "title": "Poslední pohyby",
-    "all": "Zobrazit vše",
     "empty": "Tady se objeví bankovní transakce, nákupy a prodeje.",
     "kind": {
       "bankIn": "Příchozí platba",

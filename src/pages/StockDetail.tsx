@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import { useLocation, useRoute } from 'wouter';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -14,7 +14,7 @@ import {
   Tag,
   Trash2,
 } from 'lucide-react';
-import type { InvestmentTransaction } from '@shared/schema';
+import type { InvestmentTransaction, StockCompanyInfo } from '@shared/schema';
 import type { StockInvestmentWithPrice } from '@shared/types/extended-types';
 import { type CurrencyCode, priceDecimals } from '@shared/currencies';
 import { calculatePositionCostBasis, calculateRealizedGains } from '@shared/calculations';
@@ -27,6 +27,7 @@ import { useShellPage } from '@/components/shell/shell-context';
 import { formatAmountWithCode } from '@/utils/format-amount';
 import { mapInvestmentToHolding } from '@/utils/stocks';
 import { utcDayFloor } from '@/utils/chart-axis';
+import { formatMarketCap } from '@/utils/stock-monitor';
 import { BackLink, PageHead } from '@/components/shell/PageHead';
 import { HeroValue } from '@/components/common/HeroCard';
 import { Stat, Stats } from '@/components/common/Stat';
@@ -70,6 +71,10 @@ import { PositionHero } from '@/components/stocks/PositionHero';
 
 type LedgerFilter = 'all' | 'buy' | 'sell';
 
+/** Company data moves slowly and the backend asks Yahoo at most once a day, so within the hour
+ *  a repeat visit reuses what the card already has. */
+const COMPANY_INFO_STALE_TIME_MS = 60 * 60 * 1000;
+
 export default function StockDetail() {
   const [, params] = useRoute('/stocks/:id');
   const [, setLocation] = useLocation();
@@ -105,6 +110,26 @@ export default function StockDetail() {
     queryFn: () => investmentsApi.getTransactions(id!),
     enabled: !!id,
   });
+
+  // Company data comes from Yahoo through the stock_data cache. The stored record shows at once;
+  // the second query lets the backend fetch it first when it is missing or over a day old, so a
+  // slow Yahoo answer never holds back what is already known.
+  const ticker = investment?.ticker;
+  const storedCompanyInfo = useQuery<StockCompanyInfo>({
+    queryKey: ['stock-company-info', ticker, 'stored'],
+    queryFn: () => investmentsApi.getCompanyInfo(ticker!, false),
+    enabled: !!ticker,
+    staleTime: COMPANY_INFO_STALE_TIME_MS,
+  });
+  const freshCompanyInfo = useQuery<StockCompanyInfo>({
+    queryKey: ['stock-company-info', ticker, 'fresh'],
+    queryFn: () => investmentsApi.getCompanyInfo(ticker!, true),
+    enabled: !!ticker,
+    staleTime: COMPANY_INFO_STALE_TIME_MS,
+  });
+  const companyInfo = freshCompanyInfo.data ?? storedCompanyInfo.data;
+  const companyFetching = freshCompanyInfo.isFetching;
+  const refetchCompanyInfo = freshCompanyInfo.refetch;
 
   // Date-aware conversion over the transactions' range (ADR 0001).
   const convertAt = useDatedConvert(transactions);
@@ -142,6 +167,9 @@ export default function StockDetail() {
       await priceApi.refreshStockPrices();
       await queryClient.invalidateQueries({ queryKey: ['investment', id] });
       await queryClient.invalidateQueries({ queryKey: ['investments'] });
+      // A first price creates the stock_data row the company data is stored in. Not awaited: a
+      // Yahoo round trip must not keep the refresh button spinning.
+      void queryClient.invalidateQueries({ queryKey: ['stock-company-info'] });
       toast(t('detail.pricesRefreshed'));
     } catch (error) {
       toast.error(tc('status.error'), { description: String(error) });
@@ -273,12 +301,116 @@ export default function StockDetail() {
       <b className="font-600 text-ink num">{value || '—'}</b>
     </div>
   );
-  const kvNum = (v: string | undefined, decimals = 2) =>
-    v ? fmt.number(Number(v), { maximumFractionDigits: decimals }) : undefined;
-  const kvPrice = (v: string | undefined) =>
-    v
-      ? fmt.money(Number(v), stockCurrency, { decimals: priceDecimals(Number(v), stockCurrency) })
-      : undefined;
+
+  // "About the company": only what Yahoo reported. The stored figures are in the listing currency,
+  // which differs from the active price's currency when that price was set by hand.
+  const companyCurrency = companyInfo?.currency ?? stockCurrency;
+  const figureText = (raw: string | null | undefined, format: (n: number) => string) => {
+    const n = raw ? Number(raw) : NaN;
+    return Number.isFinite(n) ? format(n) : null;
+  };
+  const ratioText = (n: number) => fmt.number(n, { maximumFractionDigits: 1 });
+  const priceText = (n: number) =>
+    fmt.money(n, companyCurrency, { decimals: priceDecimals(n, companyCurrency) });
+  const companyProfile = [companyInfo?.sector, companyInfo?.industry].filter(Boolean).join(' · ');
+  const companyRows = (
+    companyInfo
+      ? [
+          [t('detail.companyInfo.peRatio'), figureText(companyInfo.peRatio, ratioText)],
+          [t('detail.companyInfo.forwardPe'), figureText(companyInfo.forwardPe, ratioText)],
+          [
+            t('detail.companyInfo.marketCap'),
+            formatMarketCap(companyInfo.marketCap, companyCurrency, fmt.locale),
+          ],
+          [
+            t('detail.companyInfo.beta'),
+            figureText(companyInfo.beta, (n) => fmt.number(n, { maximumFractionDigits: 2 })),
+          ],
+          [
+            t('detail.companyInfo.fiftyTwoWeekHigh'),
+            figureText(companyInfo.fiftyTwoWeekHigh, priceText),
+          ],
+          [
+            t('detail.companyInfo.fiftyTwoWeekLow'),
+            figureText(companyInfo.fiftyTwoWeekLow, priceText),
+          ],
+          [t('detail.companyInfo.dividendRate'), figureText(companyInfo.dividendRate, priceText)],
+          [
+            t('detail.companyInfo.dividendYield'),
+            // A raw fraction: 0.0331 is 3.31 %
+            figureText(companyInfo.dividendYield, (n) => fmt.percent(n, 2)),
+          ],
+        ]
+      : []
+  ).filter((row): row is [string, string] => row[1] !== null);
+
+  const hasCompanyData = companyProfile !== '' || companyRows.length > 0;
+  // Nothing to show yet and the refresh has not answered: placeholder rows, not "unavailable"
+  const companyPending = !hasCompanyData && (freshCompanyInfo.isPending || companyFetching);
+
+  const renderCompanyInfo = () => {
+    if (hasCompanyData) {
+      return (
+        <>
+          {companyProfile && (
+            // Stacked: sector and industry names are long, the aside card is narrow
+            <div className="border-b border-line-soft py-[9px] text-table text-ink-3">
+              <span>{t('detail.companyInfo.sectorIndustry')}</span>
+              <b className="mt-1 block font-600 text-ink">{companyProfile}</b>
+            </div>
+          )}
+          {companyRows.map(([label, value]) => (
+            <Fragment key={label}>{kv(label, value)}</Fragment>
+          ))}
+        </>
+      );
+    }
+    if (companyPending) {
+      return [0, 1, 2, 3, 4].map((row) => (
+        <div
+          key={row}
+          aria-hidden
+          className="flex items-center justify-between border-b border-line-soft py-[13px]"
+        >
+          <div className="skeleton h-3 w-2/5" />
+          <div className="skeleton h-3 w-1/5" />
+        </div>
+      ));
+    }
+    if (companyInfo?.quoteType === 'ETF') {
+      return (
+        <p className="m-0 py-[9px] text-table leading-[1.5] text-ink-3">
+          {t('detail.companyInfo.etfNote')}
+        </p>
+      );
+    }
+    // Yahoo answered and had nothing for this ticker; it is asked again only after a day, so a
+    // retry could not change anything
+    if (companyInfo?.metadataFetchedAt != null) {
+      return (
+        <p className="m-0 py-[9px] text-table leading-[1.5] text-ink-3">
+          {t('detail.companyInfo.noData')}
+        </p>
+      );
+    }
+    return (
+      <div className="py-[9px]">
+        <p className="m-0 text-table leading-[1.5] text-ink-3">
+          {t('detail.companyInfo.unavailable')}
+        </p>
+        <Button
+          variant="outline"
+          size="sm"
+          className="mt-2.5"
+          onClick={() => refetchCompanyInfo()}
+          loading={companyFetching}
+        >
+          <RefreshCw />
+          {t('detail.companyInfo.retry')}
+        </Button>
+      </div>
+    );
+  };
 
   return (
     <>
@@ -596,25 +728,8 @@ export default function StockDetail() {
               <CardTitle className="text-h3">{t('detail.about')}</CardTitle>
               <Badge variant="outline">{t('detail.source')}</Badge>
             </CardHeader>
-            <CardContent>
-              {kv(t('detail.companyInfo.peRatio'), kvNum(investment.peRatio, 1))}
-              {kv(t('detail.companyInfo.forwardPe'), kvNum(investment.forwardPe, 1))}
-              {kv(
-                t('detail.companyInfo.marketCap'),
-                investment.marketCap
-                  ? `${fmt.number(Number(investment.marketCap), { notation: 'compact', maximumFractionDigits: 2 })} ${stockCurrency}`
-                  : undefined
-              )}
-              {kv(t('detail.companyInfo.beta'), kvNum(investment.beta, 2))}
-              {kv(t('detail.companyInfo.fiftyTwoWeekHigh'), kvPrice(investment.fiftyTwoWeekHigh))}
-              {kv(t('detail.companyInfo.fiftyTwoWeekLow'), kvPrice(investment.fiftyTwoWeekLow))}
-              {kv(t('detail.companyInfo.dividendRate'), kvPrice(investment.trailingDividendRate))}
-              {kv(
-                t('detail.companyInfo.dividendYield'),
-                investment.trailingDividendYield
-                  ? fmt.percent(Number(investment.trailingDividendYield), 2)
-                  : undefined
-              )}
+            <CardContent aria-busy={companyPending}>
+              {renderCompanyInfo()}
               <button
                 type="button"
                 onClick={() =>

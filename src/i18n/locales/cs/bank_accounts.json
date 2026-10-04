@@ -565,6 +565,10 @@
     "clusterTitle_few": "{{count}} pohyby",
     "clusterTitle_other": "{{count}} pohybů"
   },
+  "trend": {
+    "title": "Vývoj hotovosti",
+    "subtitle": "Podle zůstatků zaznamenaných v Moony. Pohyby podle transakcí ukazuje detail účtu."
+  },
   "ledger": {
     "subGrouped": "Seskupené podle dne · nejnovější nahoře",
     "subSorted": "Seřazené podle sloupce · dalším kliknutím zpět podle data",

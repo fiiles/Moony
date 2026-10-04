@@ -512,7 +512,7 @@ CREATE TABLE real_estate (
     notes TEXT,
     created_at INTEGER NOT NULL DEFAULT (unixepoch()),
     updated_at INTEGER NOT NULL DEFAULT (unixepoch())
-)
+, purchase_date INTEGER)
 
 == table real_estate_documents ==
 CREATE TABLE real_estate_documents (

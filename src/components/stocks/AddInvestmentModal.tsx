@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { Loader2, Search, Upload } from 'lucide-react';
+import { Loader2, Search } from 'lucide-react';
 import { requiredNumber } from '@/utils/form-schemas';
 import { investmentsApi, priceApi, type StockSearchResult } from '@/lib/tauri-api';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
@@ -51,8 +51,6 @@ const SEARCH_STALE_MS = 5 * 60 * 1000;
 interface AddInvestmentModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** Opens the CSV import wizard from the footer ("Importovat CSV"). */
-  onImportCsv?: () => void;
   /** Prefill when buying a watched stock ("Koupit do portfolia"). */
   initial?: { ticker: string; companyName?: string | null; currency?: string | null };
 }
@@ -60,15 +58,9 @@ interface AddInvestmentModalProps {
 /**
  * "Přidat investici" (design system §6 Modal, prototype stocks.html): ticker
  * search against Yahoo Finance fills the name, then date + quantity and
- * price + currency in paired rows; the footer offers the CSV import as the
- * secondary way in.
+ * price + currency in paired rows.
  */
-export function AddInvestmentModal({
-  open,
-  onOpenChange,
-  onImportCsv,
-  initial,
-}: AddInvestmentModalProps) {
+export function AddInvestmentModal({ open, onOpenChange, initial }: AddInvestmentModalProps) {
   const { t } = useTranslation('stocks');
   const { t: tc } = useTranslation('common');
   const queryClient = useQueryClient();
@@ -398,19 +390,6 @@ export function AddInvestmentModal({
           <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
             {tc('buttons.cancel')}
           </Button>
-          {onImportCsv && (
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                onOpenChange(false);
-                onImportCsv();
-              }}
-            >
-              <Upload />
-              {t('importCSV')}
-            </Button>
-          )}
           <Button
             type="submit"
             form="add-investment-form"

@@ -595,6 +595,45 @@ nedatum;nákup;AAPL;1;185,50;USD\n\
     }
 
     #[test]
+    fn currency_signs_and_codes_around_a_number_are_ignored() {
+        let c = config();
+        for (cell, want) in [
+            ("€ 78,22", 78.22),
+            ("78,22 €", 78.22),
+            ("Kč 950,00", 950.0),
+            ("950,00 Kč", 950.0),
+            ("USD 185,50", 185.5),
+            ("(12,50)", 12.5),
+        ] {
+            let t = only_trade(&format!("15.01.2024;nákup;AAPL;1;{cell};USD\n"), &c);
+            assert_eq!(t.price, want, "{cell}");
+        }
+        let mut point = config();
+        point.decimal_separator = ".".into();
+        let t = only_trade("15.01.2024;nákup;AAPL;1;$1,234.50;USD\n", &point);
+        assert_eq!(t.price, 1234.5);
+        // Letters inside a number are not decoration.
+        assert_eq!(
+            only_error("15.01.2024;nákup;AAPL;1;12a5;USD\n", &c).key,
+            "importWizard.row.numberUnparseable"
+        );
+    }
+
+    #[test]
+    fn czech_dates_written_with_spaces_after_the_dots() {
+        let mut c = config();
+        c.date_format = "%d. %m. %Y".into();
+        assert_eq!(
+            only_trade("15. 1. 2024;nákup;AAPL;1;1;USD\n", &c).day,
+            1705276800
+        );
+        assert_eq!(
+            only_trade("05. 02. 2024;nákup;AAPL;1;1;USD\n", &c).day,
+            1707091200
+        );
+    }
+
+    #[test]
     fn quantity_and_price_are_absolute_values() {
         let c = config();
         let t = only_trade("15.01.2024;prodej;AAPL;-5;-190,25;USD\n", &c);

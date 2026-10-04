@@ -270,6 +270,17 @@ mod tests {
     }
 
     #[test]
+    fn czech_dates_with_spaces_after_the_dots_are_a_format_of_their_own() {
+        let data = rows(&[
+            &["15. 1. 2024", "nákup", "AAPL", "", "1", "100,5", "USD"],
+            &["3. 12. 2024", "prodej", "AAPL", "", "1", "101,5", "USD"],
+        ]);
+        let adapter = config(&headers(&MOONY_HEADERS_CS), &data).expect("config");
+        assert_eq!(adapter.config.date_format, "%d. %m. %Y");
+        assert!(!adapter.date_ambiguous);
+    }
+
+    #[test]
     fn an_unclear_day_month_order_is_flagged() {
         let data = rows(&[
             &["01.02.2024", "nákup", "AAPL", "", "1", "100,5", "USD"],

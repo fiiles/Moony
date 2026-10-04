@@ -555,9 +555,10 @@ mod tests {
     use super::*;
     use crate::services::stock_import::adapters::test_support::*;
     use crate::services::stock_import::adapters::{degiro, trading212};
+    use crate::services::stock_import::parse::parse_file;
     use crate::services::stock_import::types::{
         header_signature, CurrencyMode, DirectionMode, StockImportConfig, StockImportTransforms,
-        StockInstrumentOverride, TypeValueAction,
+        StockInstrumentOverride, TradeDirection, TypeValueAction,
     };
 
     const TRADING212_FILE: &str = "Action,Time,ISIN,Ticker,Name,No. of shares,Price / share,Currency (Price / share),Exchange rate,Result,Currency (Result),Total,Currency (Total),Withholding tax,Currency (Withholding tax),Notes,ID,Currency conversion fee,Currency (Currency conversion fee)\n\
@@ -774,6 +775,50 @@ Dividend (Ordinary),2023-12-27 12:05:25,US56035L1044,MAIN,\"Main Street Capital\
         assert_eq!(action(c, "nákup"), Some(TypeValueAction::Buy));
         assert_eq!(action(c, "prodej"), Some(TypeValueAction::Sell));
         assert!(c.validate().is_ok());
+    }
+
+    #[test]
+    fn an_xtb_file_with_a_bom_windows_line_ends_and_a_trailing_delimiter() {
+        let content = "\u{feff}ID;Type;Time;Symbol;Comment;Amount;\r\n\
+610000002;Stocks/ETF purchase;04.01.2024 15:31:18;AAPL.US;OPEN BUY 3/3 @ 185.5000;-556.50;\r\n\
+610000007;Stocks/ETF sale;21.03.2024 16:45:09;AAPL.US;CLOSE BUY 1 @ 172.4000;172.40;\r\n";
+        let mut bytes = vec![0xEF, 0xBB, 0xBF];
+        bytes.extend_from_slice(content.trim_start_matches('\u{feff}').as_bytes());
+        let i = inspect(&bytes, "xtb.csv", &options(), &[]).expect("inspect");
+        assert_eq!((i.delimiter.as_str(), i.encoding.as_str()), (";", "UTF-8"));
+        assert_eq!(
+            i.headers.len(),
+            7,
+            "the trailing delimiter is an empty column"
+        );
+        assert_eq!(i.headers[0], "ID");
+        assert_eq!(i.detected_source.as_deref(), Some("xtb"));
+        assert_eq!(i.row_count, 2);
+        let parsed = parse_file(&bytes, config_of(&i)).expect("parse");
+        assert_eq!((parsed.trades.len(), parsed.errors.len()), (2, 0));
+        assert_eq!(parsed.trades[1].direction, TradeDirection::Sell);
+    }
+
+    #[test]
+    fn excels_unicode_text_is_utf_16_with_tabs() {
+        let text = "Datum\tTyp\tSymbol\tNázev\tPočet\tCena\tMěna\r\n15.1.2024\tnákup\tAAPL\tApple Inc.\t10\t185,50\tUSD\r\n20.02.2024\tprodej\tAAPL\tApple Inc.\t4\t190,25\tUSD\r\n";
+        let mut bytes = vec![0xFF, 0xFE];
+        for unit in text.encode_utf16() {
+            bytes.extend_from_slice(&unit.to_le_bytes());
+        }
+        let i = inspect(&bytes, "tabulka.txt", &options(), &[]).expect("inspect");
+        assert_eq!(
+            (i.encoding.as_str(), i.delimiter.as_str()),
+            ("UTF-16LE", "\t")
+        );
+        assert_eq!(i.detected_source.as_deref(), Some("moony"));
+        let c = config_of(&i);
+        assert_eq!(c.delimiter, "\t");
+        assert!(c.validate().is_ok());
+        let parsed = parse_file(&bytes, c).expect("parse");
+        assert_eq!((parsed.trades.len(), parsed.errors.len()), (2, 0));
+        assert_eq!(parsed.trades[0].name.as_deref(), Some("Apple Inc."));
+        assert_eq!(parsed.trades[0].price, 185.5);
     }
 
     #[test]

@@ -57,7 +57,7 @@ When building something new, copy these — never the outliers:
 | cashflow/projection | `cashflow_items`, `projection_settings` | `commands/cashflow.rs` (planned report and actual flows via `services/cashflow_actuals.rs`), `commands/projection.rs` | `CashflowPlanning.tsx` (planned items), `Cashflow.tsx` (actual flows from bank transactions), `Projection.tsx` |
 | stock monitor | `watched_stocks` ⋈ `stock_data`; never enters net worth | `commands/stock_monitor.rs` + `services/stock_monitor.rs` | `StockMonitor.tsx`, `StockMonitorDetail.tsx`, `use-stock-monitor*.ts`, `components/stock-monitor/` |
 | backup / data | — (files in the app data dir: `moony.db`, `salt`, `key.enc`, `recovery.enc`, attachment dirs) | `commands/backup.rs` + `services/backup.rs` — zip backup (`VACUUM INTO` snapshot), inspect/restore with `pre-restore-<ts>/` safety copy, full JSON export, `PRAGMA quick_check` | `components/settings/DataSection.tsx` (`dataApi`) |
-| export/local API | — | `commands/export.rs`; `services/local_api.rs` + `services/mcp/` — embedded MCP server (rmcp Streamable HTTP at `/mcp`, fixed port, stable token), off by default, enabled via `user_profile.mcp_server_enabled` + write tools (ADR 0007) | — |
+| export/local API | — | `commands/export.rs`; `services/local_api.rs` + `services/mcp/` — embedded MCP server (rmcp Streamable HTTP at `/mcp`, fixed port, stable token), off by default, enabled via `user_profile.mcp_server_enabled` + write tools (ADR 0007); amounts are reported in the user's main currency with a `mainCurrency` field (`services/mcp/money.rs`), history rows at their day's rate | — |
 
 ## Bootstrap & Auth
 

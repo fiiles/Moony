@@ -564,6 +564,7 @@
         "errors": "Errors {{count}}"
       },
       "feeNote": "Fees are not imported",
+      "nothingToImport": "Nothing to import: every row is a duplicate, skipped or has an error.",
       "statusNew": "New",
       "statusSkipped": "Skipped",
       "statusError": "Error",

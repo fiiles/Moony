@@ -26,7 +26,7 @@ import type { InstrumentEdit } from './InstrumentEditor';
 import { InstrumentsPanel } from './InstrumentsPanel';
 import { PREVIEW_COLLAPSED_ROWS, formatDecimalText, summarizePreview } from './import-config';
 import { rowMessageText } from './row-messages';
-import type { ResolutionProgress } from './use-instrument-resolution';
+import type { LookupProgress } from './instrument-lookup';
 
 interface ReviewStepProps {
   /** The mapping is complete, so there is something to review. */
@@ -40,7 +40,7 @@ interface ReviewStepProps {
   onToggleImportAnyway: (line: number, checked: boolean) => void;
   overrides: readonly StockInstrumentOverride[];
   resolutions: Readonly<Record<string, StockInstrumentResolution>>;
-  progress: ResolutionProgress;
+  progress: LookupProgress;
   isResolving: boolean;
   onSkipVerification: () => void;
   /** The currency of the trades comes from the listing, so it can be edited. */
@@ -179,6 +179,12 @@ export function ReviewStep({
           </span>
         )}
       </div>
+
+      {summary.willImport === 0 && (
+        <p className="mb-4 mt-0 text-caption font-600 text-ink-3">
+          {t('importWizard.review.nothingToImport')}
+        </p>
+      )}
 
       <InstrumentsPanel
         instruments={preview.instruments}

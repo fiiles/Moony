@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { useLanguage } from '@/i18n/I18nProvider';
 import { cn } from '@/lib/utils';
 import type { SavedStockImportFormat, StockImportBatch } from '@shared/schema';
 import { RecentImports } from './RecentImports';
@@ -53,7 +54,9 @@ export function SourceStep({
   isLoading,
   isDragging,
 }: SourceStepProps) {
-  const { t, i18n } = useTranslation('stocks');
+  const { t } = useTranslation('stocks');
+  // The supported UI language (`cs` or `en`), whatever the detector found first.
+  const { language } = useLanguage();
 
   const downloadSample = async () => {
     try {
@@ -62,7 +65,7 @@ export function SourceStep({
         filters: [{ name: 'CSV', extensions: ['csv'] }],
       });
       if (!path) return;
-      await writeTextFile(path, buildSampleCsv(i18n.language));
+      await writeTextFile(path, buildSampleCsv(language));
       toast(t('importWizard.file.sampleSaved'));
     } catch (error) {
       console.error('Could not save the sample CSV:', error);
@@ -87,7 +90,7 @@ export function SourceStep({
     entry('custom'),
   ];
   const selectedFormat = formats.find((format) => format.id === source);
-  const helpUrl = sourceHelpUrl(source, i18n.language);
+  const helpUrl = sourceHelpUrl(source, language);
   const brokerName = isSourceId(source) ? t(`importWizard.sources.${source}.name`) : '';
 
   const row = (item: { id: string; label: string; saved?: boolean }) => {

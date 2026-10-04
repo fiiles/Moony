@@ -21,13 +21,13 @@ import type {
 } from '@shared/schema';
 import { InstrumentEditor, type InstrumentEdit } from './InstrumentEditor';
 import { instrumentCheck, type InstrumentCheck } from './import-config';
-import type { ResolutionProgress } from './use-instrument-resolution';
+import type { LookupProgress } from './instrument-lookup';
 
 interface InstrumentsPanelProps {
   instruments: readonly StockImportInstrument[];
   overrides: readonly StockInstrumentOverride[];
   resolutions: Readonly<Record<string, StockInstrumentResolution>>;
-  progress: ResolutionProgress;
+  progress: LookupProgress;
   isResolving: boolean;
   /** Stop waiting for Yahoo Finance; what is left stays unverified. */
   onSkipVerification: () => void;

@@ -481,12 +481,28 @@ export function formatConfig(config: StockImportConfig): StockImportConfig {
 
 // ── Type values ─────────────────────────────────────────────────────────────
 
-/** The meaning of a type value; a value that is not listed is skipped. */
+/** Case, diacritics and surrounding spaces do not tell two spellings of a type word apart. */
+function normalizeTypeValue(value: string): string {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase();
+}
+
+/**
+ * The meaning of a type value; a value that is not listed is skipped. The
+ * value as it is written in the file wins, a listing of the same word in
+ * another spelling ("Buy" for "buy", "Nákup" for "nakup") is the fallback.
+ */
 export function typeValueAction(
   typeValues: readonly StockTypeValueMapping[],
   value: string
 ): StockTypeValueAction {
-  return typeValues.find((entry) => entry.value === value)?.action ?? 'skip';
+  const exact = typeValues.find((entry) => entry.value === value);
+  if (exact) return exact.action;
+  const wanted = normalizeTypeValue(value);
+  return typeValues.find((entry) => normalizeTypeValue(entry.value) === wanted)?.action ?? 'skip';
 }
 
 /** `typeValues` with one value set to a meaning. */
@@ -784,7 +800,8 @@ export function autoOverrideFor(
 ): StockInstrumentOverride | null {
   if (resolution.lookupFailed) return null;
   const candidate = chooseCandidate(resolution, instrument.currency, instrument.symbol);
-  if (!candidate) return null;
+  // A symbol the backend would reject makes the whole preview fail: leave it to the user.
+  if (!candidate || !isValidTicker(candidate.symbol)) return null;
   const override: StockInstrumentOverride = { key: instrument.key };
   if (!sameSymbol(instrument.ticker, candidate.symbol)) {
     override.ticker = candidate.symbol.trim().toUpperCase();

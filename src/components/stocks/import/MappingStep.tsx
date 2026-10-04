@@ -224,7 +224,8 @@ function MappingSummary({
     ? t(`importWizard.sources.${sourceKey}.note`, { defaultValue: '' })
     : '';
   const actions: StockTypeValueAction[] = ['buy', 'sell', 'skip'];
-  const hasValues = actions.some((action) => groups[action].length > 0);
+  // Only worth showing when some value is read as a trade; otherwise the review shows the truth.
+  const hasValues = groups.buy.length + groups.sell.length > 0;
 
   const valueText = (item: MappingSummaryItem) => {
     switch (item.kind) {

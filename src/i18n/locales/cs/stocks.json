@@ -576,6 +576,7 @@
         "errors": "Chyby {{count}}"
       },
       "feeNote": "Poplatky se neimportují",
+      "nothingToImport": "Nic k importu: všechny řádky jsou duplicity, přeskočené nebo chybné.",
       "statusNew": "Nový",
       "statusSkipped": "Přeskočeno",
       "statusError": "Chyba",

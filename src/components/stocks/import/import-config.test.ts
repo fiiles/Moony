@@ -625,6 +625,26 @@ describe('type values', () => {
     expect(typeValueAction(values, 'Dividend')).toBe('skip');
   });
 
+  it('falls back to the same word in another spelling', () => {
+    const listed = [
+      { value: 'buy', action: 'buy' as const },
+      { value: 'prodej', action: 'sell' as const },
+    ];
+    expect(typeValueAction(listed, 'Buy')).toBe('buy');
+    expect(typeValueAction(listed, ' BUY ')).toBe('buy');
+    expect(typeValueAction(listed, 'Prodéj')).toBe('sell');
+    expect(typeValueAction(listed, 'Dividend')).toBe('skip');
+  });
+
+  it('prefers the exact value over the fallback', () => {
+    const listed = [
+      { value: 'Buy', action: 'sell' as const },
+      { value: 'buy', action: 'buy' as const },
+    ];
+    expect(typeValueAction(listed, 'Buy')).toBe('sell');
+    expect(typeValueAction(listed, 'buy')).toBe('buy');
+  });
+
   it('changes a value in place and adds a new one', () => {
     const changed = setTypeValueAction(values, 'Deposit', 'buy');
     expect(changed.map((v) => v.action)).toEqual(['buy', 'sell', 'buy']);
@@ -944,6 +964,15 @@ describe('lookups on Yahoo Finance', () => {
     it('changes nothing when the symbol is already right and the file names it', () => {
       expect(
         autoOverrideFor(instrument({ name: 'Apple' }), resolution([candidate('aapl', 'USD')]))
+      ).toBeNull();
+    });
+
+    it('leaves a listing whose symbol the backend would reject to the user', () => {
+      expect(
+        autoOverrideFor(
+          instrument({ ticker: null, symbol: null, status: 'missingSymbol' }),
+          resolution([candidate('BAD SYMBOL', 'USD')])
+        )
       ).toBeNull();
     });
 

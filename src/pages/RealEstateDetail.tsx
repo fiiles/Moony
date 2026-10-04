@@ -566,7 +566,10 @@ export default function RealEstateDetail() {
                 note={
                   estimates.length > 1
                     ? t('detail.chart.note', { count: estimates.length - 1 })
-                    : t('detail.chart.hint')
+                    : // With the purchase on the trace there is already a trend to read
+                      purchaseKnown
+                      ? undefined
+                      : t('detail.chart.hint')
                 }
               />
             </>

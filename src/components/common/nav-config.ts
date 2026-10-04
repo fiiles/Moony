@@ -137,8 +137,8 @@ export const NAV_GROUPS: NavGroup[] = [
         icon: Calculator,
       },
       {
-        id: 'rentalCalculator',
-        labelKey: 'nav.rentalCalculator',
+        id: 'estateCalculator',
+        labelKey: 'nav.estateCalculator',
         url: '/calculators/estate',
         icon: Building,
       },

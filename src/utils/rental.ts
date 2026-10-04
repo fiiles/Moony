@@ -1,9 +1,12 @@
 /**
- * Rental property calculator (design system §7 Calculator, prototype
+ * Real estate investment calculator (design system §7 Calculator, prototype
  * `rental-calculator.html`): cashflow, equity and the sale after N years,
  * with the price growth shifted for the scenario band. Pure functions.
  */
+import type { Loan } from '@shared/schema';
 import { calculateAnnuityPayment } from '@/utils/annuity';
+
+const SECONDS_PER_YEAR = 365.25 * 86_400;
 
 export interface RentalInput {
   price: number;
@@ -135,5 +138,62 @@ export function rentalResult(input: RentalInput): RentalResult {
     annualReturn,
     positiveCashflowYear: positive >= 0 ? positive + 1 : null,
     halfLoanYear: input.loan > 0 && half >= 0 ? half + 1 : null,
+  };
+}
+
+/** Loan fields of the calculator, prefilled from a property's linked loans. */
+export interface LinkedLoanInput {
+  /** Sum of the original principals in the display currency (0 without loans). */
+  loan: number;
+  /** Principal-weighted term in years; null when no loan has a known term. */
+  loanYears: number | null;
+  /** Principal-weighted annual rate in percent; null without loans. */
+  rate: number | null;
+}
+
+/**
+ * Contractual term of a loan in years: start to end date, else the number of
+ * payments that repay the principal (null when the payment does not cover the interest).
+ */
+function loanTermYears(loan: Loan): number | null {
+  if (loan.endDate !== null && loan.endDate > loan.startDate) {
+    return (loan.endDate - loan.startDate) / SECONDS_PER_YEAR;
+  }
+  const principal = Number(loan.principal) || 0;
+  const payment = Number(loan.monthlyPayment) || 0;
+  const monthlyRate = (Number(loan.interestRate) || 0) / 100 / 12;
+  if (principal <= 0 || payment <= 0) return null;
+  if (monthlyRate === 0) return principal / payment / 12;
+  if (payment <= principal * monthlyRate) return null;
+  return -Math.log(1 - (monthlyRate * principal) / payment) / Math.log(1 + monthlyRate) / 12;
+}
+
+/**
+ * The calculator's loan from the loans linked to a property: the principals
+ * summed in the display currency (the purchase price is the purchase-time
+ * figure too), the rate and the term weighted by principal.
+ */
+export function linkedLoanInput(
+  loans: Loan[],
+  toDisplay: (amount: number, currency: string) => number
+): LinkedLoanInput {
+  let loan = 0;
+  let rateSum = 0;
+  let termSum = 0;
+  let termWeight = 0;
+  for (const l of loans) {
+    const principal = toDisplay(Number(l.principal) || 0, l.currency || 'CZK');
+    loan += principal;
+    rateSum += principal * (Number(l.interestRate) || 0);
+    const term = loanTermYears(l);
+    if (term !== null) {
+      termSum += principal * term;
+      termWeight += principal;
+    }
+  }
+  return {
+    loan,
+    loanYears: termWeight > 0 ? termSum / termWeight : null,
+    rate: loan > 0 ? rateSum / loan : null,
   };
 }

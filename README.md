@@ -151,7 +151,7 @@ You can switch the automatic check off in Settings; see [PRIVACY.md](./PRIVACY.m
 ### 🧮 Calculators
 
 - **🧮 Annuity Calculator** - Calculate loan payments with amortization schedules
-- **🏢 Rental Property Calculator** - Evaluate property investments with ROI analysis
+- **🏢 Real Estate Investment Calculator** - Evaluate a property as a whole investment: rental cashflow, loan, price growth and the sale; loads your properties with their linked loans
 
 ---
 

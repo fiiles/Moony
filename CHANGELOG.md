@@ -21,11 +21,24 @@ All notable changes to Moony are documented in this file. The format follows
   `stock_value_history` and `crypto_value_history` now return an object (`{mainCurrency, tags}`
   or `{mainCurrency, history}`) instead of a bare array. Create tools default a missing
   currency to the main currency.
+- **Real estate investment calculator.** The rental property calculator is now called the real
+  estate investment calculator ("Investice do nemovitosti" in Czech), since it values the whole
+  investment: rent and cashflow, loan repayment, price growth and the gain from a future sale.
 
 ### Fixed
 
 - **MCP cashflow and budget reports.** The `cashflow_report` and `budgeting_report` tools
   returned empty lists because they read money stored as text as numbers.
+- **Loading a property into the investment calculator brings its loans.** The loan amount,
+  term and interest rate now come from the loans linked to the property (summed, rate and term
+  weighted by principal); a property without a linked loan sets the loan to 0 instead of
+  keeping the example mortgage. Prices, rent, costs and loans are converted to the main
+  currency.
+- **Calculator numbers in English.** The annuity and real estate calculators read
+  "5,400,000" as 5.4, so amounts loaded from a loan or a property were wrong in the English
+  interface; thousands separators of the interface language are now understood.
+- **Real estate calculator chart amounts.** The sale milestone and the chart tooltips converted
+  the calculator's amounts from CZK a second time when the main currency was not CZK.
 
 ## [0.9.0] - 2026-10-04
 

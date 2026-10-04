@@ -144,7 +144,7 @@
         "rented": "Rented · rent {{rent}} a month",
         "notRented": "Not rented",
         "mortgage": "{{name}} {{amount}}",
-        "openCalculator": "Open in the rental calculator",
+        "openCalculator": "Open in the investment calculator",
         "revalue": "Revalue",
         "menu": {
             "edit": "Edit details",

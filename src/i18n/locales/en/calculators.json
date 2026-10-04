@@ -89,8 +89,8 @@
     "empty": "Enter the loan amount, term and rate."
   },
   "estate": {
-    "title": "Rental property yield",
-    "subtitle": "Evaluate an investment property with a loan: cashflow, return on your equity and the projection until the sale.",
+    "title": "Real estate investment return",
+    "subtitle": "Evaluate a property as a whole investment: rent and cashflow, loan repayment, price growth and the gain from a future sale.",
     "eyebrow": "Calculator",
     "status": "Calculated locally, nothing is saved",
     "actions": {

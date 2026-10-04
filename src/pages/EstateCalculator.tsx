@@ -1,14 +1,15 @@
 import { useMemo, useState } from 'react';
 import { useSearch } from 'wouter';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { ChevronDown } from 'lucide-react';
-import type { RealEstate } from '@shared/schema';
+import type { Loan, RealEstate } from '@shared/schema';
+import type { CurrencyCode } from '@shared/currencies';
 import { realEstateApi } from '@/lib/tauri-api';
 import { useCurrency } from '@/lib/currency';
 import { useFormat } from '@/lib/use-format';
 import { useShellPage } from '@/components/shell/shell-context';
-import { rentalResult, rentalSeries, type RentalInput } from '@/utils/rental';
+import { linkedLoanInput, rentalResult, rentalSeries, type RentalInput } from '@/utils/rental';
 import { horizonAxisLabels } from '@/utils/projection-milestones';
 import { PageHead } from '@/components/shell/PageHead';
 import { Button } from '@/components/ui/button';
@@ -48,27 +49,48 @@ function monthlyCost(cost: RealEstate['recurringCosts'][number]): number {
   return cost.amount;
 }
 
+/** Field texts a property prefills, in the display currency (null keeps the field). */
+interface PropertyDefaults {
+  price: string;
+  rent: string | null;
+  costs: string | null;
+  loan: string;
+  loanYears: string | null;
+  rate: string | null;
+}
+
 /**
- * Rental property calculator (design system §7 Calculator, prototype
- * `rental-calculator.html`): purchase, rent and projection inputs in flat
- * cards left; the equity hero with the ± 1 p.p. price-growth band, the
- * invested-capital reference and milestones, four stats and the yearly
- * summary right; the sale after N years under the inputs.
+ * Values a property prefills: purchase price, rent, the monthly recurring
+ * costs and its linked loans (principal, term, rate), converted to the
+ * display currency the calculator works in.
  */
-/** Values a property prefills: purchase price, rent and the monthly recurring costs. */
-function propertyDefaults(p: RealEstate, format: (v: number) => string) {
-  const monthly = p.recurringCosts.reduce((s, c) => s + monthlyCost(c), 0);
+function propertyDefaults(
+  p: RealEstate,
+  loans: Loan[],
+  toDisplay: (amount: number, currency: string) => number,
+  format: (v: number, decimals?: number) => string
+): PropertyDefaults {
+  const monthly = p.recurringCosts.reduce(
+    (s, c) => s + toDisplay(monthlyCost(c), c.currency || 'CZK'),
+    0
+  );
+  const linked = linkedLoanInput(loans, toDisplay);
   return {
-    price: format(parseFloat(p.purchasePrice ?? '') || 0),
-    rent: p.monthlyRent ? format(parseFloat(p.monthlyRent) || 0) : null,
+    price: format(toDisplay(parseFloat(p.purchasePrice ?? '') || 0, p.purchasePriceCurrency)),
+    rent: p.monthlyRent
+      ? format(toDisplay(parseFloat(p.monthlyRent) || 0, p.monthlyRentCurrency || 'CZK'))
+      : null,
     costs: monthly > 0 ? format(monthly) : null,
+    loan: format(linked.loan),
+    loanYears: linked.loanYears !== null ? format(linked.loanYears, 1) : null,
+    rate: linked.rate !== null ? format(linked.rate, 2) : null,
   };
 }
 
 /**
- * Entry: `?property=<id>` (the property detail's "Otevřít v kalkulačce pronájmu")
- * prefills the calculator once the property is loaded; the key remounts the
- * calculator with fresh state per property.
+ * Entry: `?property=<id>` (the property detail's "Otevřít v investiční kalkulačce")
+ * prefills the calculator once the property and its linked loans are loaded;
+ * the key remounts the calculator with fresh state per property.
  */
 export default function EstateCalculator() {
   const search = useSearch();
@@ -78,27 +100,50 @@ export default function EstateCalculator() {
     queryFn: () => realEstateApi.getAll(),
     enabled: !!propertyId,
   });
-  if (propertyId && isLoading) return <></>;
+  const { data: loans, isLoading: loansLoading } = useQuery({
+    queryKey: ['real-estate-loans', propertyId],
+    queryFn: () => realEstateApi.getLoans(propertyId as string),
+    enabled: !!propertyId,
+  });
+  if (propertyId && (isLoading || loansLoading)) return <></>;
   const initial = propertyId ? properties?.find((p) => p.id === propertyId) : undefined;
-  return <Calculator key={propertyId ?? 'blank'} initial={initial} />;
+  return (
+    <Calculator
+      key={propertyId ?? 'blank'}
+      initial={initial ? { property: initial, loans: loans ?? [] } : undefined}
+    />
+  );
 }
 
-function Calculator({ initial }: { initial?: RealEstate }) {
+/**
+ * Real estate investment calculator (design system §7 Calculator, prototype
+ * `rental-calculator.html`): purchase, rent and projection inputs in flat
+ * cards left; the equity hero with the ± 1 p.p. price-growth band, the
+ * invested-capital reference and milestones, four stats and the yearly
+ * summary right; the sale after N years under the inputs.
+ */
+function Calculator({ initial }: { initial?: { property: RealEstate; loans: Loan[] } }) {
   const { t } = useTranslation('calculators');
-  const { formatCurrencyRaw, formatCurrencyShort, currencyCode } = useCurrency();
+  const { formatCurrencyRaw, convert, currencyCode } = useCurrency();
   const fmt = useFormat();
+  const queryClient = useQueryClient();
   const { data: properties = [] } = useQuery({
     queryKey: ['real-estate'],
     queryFn: () => realEstateApi.getAll(),
   });
 
-  const initialValues = initial
-    ? propertyDefaults(initial, (v) => fmt.number(v, { maximumFractionDigits: 0 }))
-    : null;
+  const defaults = (p: RealEstate, loans: Loan[]) =>
+    propertyDefaults(
+      p,
+      loans,
+      (amount, currency) => convert(amount, currency as CurrencyCode, currencyCode),
+      (v, decimals = 0) => fmt.number(v, { maximumFractionDigits: decimals })
+    );
+  const initialValues = initial ? defaults(initial.property, initial.loans) : null;
   const [price, setPrice] = useState(initialValues?.price ?? '5 400 000');
-  const [loan, setLoan] = useState('3 000 000');
-  const [loanYears, setLoanYears] = useState('30');
-  const [rate, setRate] = useState('4,1');
+  const [loan, setLoan] = useState(initialValues?.loan ?? '3 000 000');
+  const [loanYears, setLoanYears] = useState(initialValues?.loanYears ?? '30');
+  const [rate, setRate] = useState(initialValues?.rate ?? '4,1');
   const [rent, setRent] = useState(initialValues?.rent ?? '21 500');
   const [costs, setCosts] = useState(initialValues?.costs ?? '3 000');
   const [vacancy, setVacancy] = useState('0,5');
@@ -112,18 +157,18 @@ function Calculator({ initial }: { initial?: RealEstate }) {
 
   const input = useMemo<RentalInput>(
     () => ({
-      price: parseCalcNumber(price),
-      loan: parseCalcNumber(loan),
-      loanYears: parseCalcNumber(loanYears),
-      rate: parseCalcNumber(rate),
-      monthlyRent: parseCalcNumber(rent),
-      monthlyCosts: parseCalcNumber(costs),
-      vacancyMonths: parseCalcNumber(vacancy),
-      rentGrowth: parseCalcNumber(rentGrowth),
-      costsGrowth: parseCalcNumber(costsGrowth),
-      priceGrowth: parseCalcNumber(priceGrowth),
-      years: Math.max(1, Math.round(parseCalcNumber(years))),
-      oneTimeCosts: parseCalcNumber(oneTime),
+      price: parseCalcNumber(price, fmt.locale),
+      loan: parseCalcNumber(loan, fmt.locale),
+      loanYears: parseCalcNumber(loanYears, fmt.locale),
+      rate: parseCalcNumber(rate, fmt.locale),
+      monthlyRent: parseCalcNumber(rent, fmt.locale),
+      monthlyCosts: parseCalcNumber(costs, fmt.locale),
+      vacancyMonths: parseCalcNumber(vacancy, fmt.locale),
+      rentGrowth: parseCalcNumber(rentGrowth, fmt.locale),
+      costsGrowth: parseCalcNumber(costsGrowth, fmt.locale),
+      priceGrowth: parseCalcNumber(priceGrowth, fmt.locale),
+      years: Math.max(1, Math.round(parseCalcNumber(years, fmt.locale))),
+      oneTimeCosts: parseCalcNumber(oneTime, fmt.locale),
     }),
     [
       price,
@@ -138,6 +183,7 @@ function Calculator({ initial }: { initial?: RealEstate }) {
       priceGrowth,
       years,
       oneTime,
+      fmt.locale,
     ]
   );
   const result = useMemo(() => rentalResult(input), [input]);
@@ -145,6 +191,11 @@ function Calculator({ initial }: { initial?: RealEstate }) {
   const hi = useMemo(() => rentalSeries(input, 1), [input]);
 
   const money = (v: number) => formatCurrencyRaw(v);
+  // Calculator amounts are already in the display currency: no conversion from CZK.
+  const short = (v: number) =>
+    Math.abs(v) < 1000
+      ? fmt.money(v, currencyCode, { decimals: 0 })
+      : fmt.money(v, currencyCode, { compact: true });
   const signed = (v: number) => fmt.money(v, currencyCode, { signed: true, decimals: 0 });
   const startYear = new Date().getFullYear();
   const yearLabel = (y: number) => String(startYear + y);
@@ -195,18 +246,25 @@ function Calculator({ initial }: { initial?: RealEstate }) {
       lines: [
         t('estate.milestones.saleLine', {
           year: yearLabel(D),
-          price: formatCurrencyShort(last.value),
-          loan: formatCurrencyShort(last.balance),
+          price: short(last.value),
+          loan: short(last.balance),
         }),
       ],
     });
   }
 
-  const loadProperty = (p: RealEstate) => {
-    const values = propertyDefaults(p, (v) => fmt.number(v, { maximumFractionDigits: 0 }));
+  const loadProperty = async (p: RealEstate) => {
+    const loans = await queryClient.fetchQuery({
+      queryKey: ['real-estate-loans', p.id],
+      queryFn: () => realEstateApi.getLoans(p.id),
+    });
+    const values = defaults(p, loans);
     setPrice(values.price);
     if (values.rent) setRent(values.rent);
     if (values.costs) setCosts(values.costs);
+    setLoan(values.loan);
+    if (values.loanYears) setLoanYears(values.loanYears);
+    if (values.rate) setRate(values.rate);
   };
 
   const annualPct = fmt.percent(result.annualReturn, 1);
@@ -248,7 +306,7 @@ function Calculator({ initial }: { initial?: RealEstate }) {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 {properties.map((p) => (
-                  <DropdownMenuItem key={p.id} onSelect={() => loadProperty(p)}>
+                  <DropdownMenuItem key={p.id} onSelect={() => void loadProperty(p)}>
                     {p.name}
                     <span className="ml-auto pl-4 text-micro text-ink-4 num">
                       {fmt.money(parseFloat(p.purchasePrice) || 0, p.purchasePriceCurrency, {
@@ -454,8 +512,8 @@ function Calculator({ initial }: { initial?: RealEstate }) {
                             })
                           : t('estate.chart.tipRow', {
                               year: yearLabel(p.x),
-                              value: formatCurrencyShort(result.years[p.x - 1]?.value ?? 0),
-                              loan: formatCurrencyShort(result.years[p.x - 1]?.balance ?? 0),
+                              value: short(result.years[p.x - 1]?.value ?? 0),
+                              loan: short(result.years[p.x - 1]?.balance ?? 0),
                               cumulative: signed(result.years[p.x - 1]?.cumulative ?? 0),
                             }),
                       ],

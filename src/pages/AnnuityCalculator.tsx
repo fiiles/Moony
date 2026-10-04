@@ -79,10 +79,10 @@ export default function AnnuityCalculator() {
 
   useShellPage({ status: { text: t('annuity.status'), tone: 'neutral' } });
 
-  const L = parseCalcNumber(amount);
-  const Y = parseCalcNumber(years);
-  const R = parseCalcNumber(rate);
-  const X = parseCalcNumber(extra);
+  const L = parseCalcNumber(amount, fmt.locale);
+  const Y = parseCalcNumber(years, fmt.locale);
+  const R = parseCalcNumber(rate, fmt.locale);
+  const X = parseCalcNumber(extra, fmt.locale);
   const k = getPeriodsPerYear(frequency);
 
   const base = useMemo(

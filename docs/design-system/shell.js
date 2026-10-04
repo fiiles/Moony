@@ -23,7 +23,7 @@
         { id: "stocksAnalysis", label: "Analýza akcií", icon: "tag" },
         { id: "stockMonitor", label: "Sledování akcií", icon: "chart-candlestick" },
         { id: "annuityCalculator", label: "Anuitní kalkulačka", icon: "calculator" },
-        { id: "rentalCalculator", label: "Kalkulačka pronájmu", icon: "building" } ] }
+        { id: "estateCalculator", label: "Investice do nemovitosti", icon: "building" } ] }
     ],
     settings: { id: "settings", label: "Nastavení", icon: "settings" }
   };

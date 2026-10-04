@@ -3,11 +3,16 @@
 
 use crate::error::Result;
 use crate::models::InsertRealEstate;
+use crate::services::valuations::{self, ValuationKind};
 use uuid::Uuid;
 
 /// Create a new real estate property. SINGLE SOURCE OF TRUTH for property
 /// creation. Returns the new row's id; callers re-read the full record
 /// (e.g. via `commands::real_estate::get_real_estate`).
+///
+/// A priced property also gets the first row of its valuation log, dated at
+/// the creation day, so the first revaluation does not overwrite the only
+/// record of the original estimate.
 pub fn create_property(conn: &rusqlite::Connection, data: &InsertRealEstate) -> Result<String> {
     data.validate()?;
 
@@ -22,6 +27,11 @@ pub fn create_property(conn: &rusqlite::Connection, data: &InsertRealEstate) -> 
     }
     let rc_json = serde_json::to_string(&recurring_costs)?;
     let photos_json = serde_json::to_string(&data.photos.clone().unwrap_or_default())?;
+    let market_price = data.market_price.clone().unwrap_or_else(|| "0".to_string());
+    let market_price_currency = data
+        .market_price_currency
+        .clone()
+        .unwrap_or_else(|| "CZK".to_string());
 
     conn.execute(
         "INSERT INTO real_estate (id, name, address, type, purchase_price, purchase_price_currency,
@@ -39,10 +49,8 @@ pub fn create_property(conn: &rusqlite::Connection, data: &InsertRealEstate) -> 
             data.purchase_price_currency
                 .clone()
                 .unwrap_or_else(|| "CZK".to_string()),
-            data.market_price.clone().unwrap_or_else(|| "0".to_string()),
-            data.market_price_currency
-                .clone()
-                .unwrap_or_else(|| "CZK".to_string()),
+            market_price,
+            market_price_currency,
             data.monthly_rent,
             data.monthly_rent_currency,
             rc_json,
@@ -50,6 +58,15 @@ pub fn create_property(conn: &rusqlite::Connection, data: &InsertRealEstate) -> 
             data.notes,
             now,
         ],
+    )?;
+
+    valuations::record_initial_valuation(
+        conn,
+        ValuationKind::RealEstate,
+        &id,
+        &market_price,
+        &market_price_currency,
+        now,
     )?;
 
     Ok(id)
@@ -81,10 +98,35 @@ mod tests {
                 created_at INTEGER NOT NULL DEFAULT (unixepoch()),
                 updated_at INTEGER NOT NULL DEFAULT (unixepoch())
             );
+            CREATE TABLE real_estate_valuations (
+                id TEXT PRIMARY KEY,
+                real_estate_id TEXT NOT NULL REFERENCES real_estate(id) ON DELETE CASCADE,
+                value TEXT NOT NULL,
+                currency TEXT NOT NULL DEFAULT 'CZK',
+                valued_at INTEGER NOT NULL,
+                note TEXT,
+                created_at INTEGER NOT NULL DEFAULT (unixepoch())
+            );
             "#,
         )
         .expect("schema");
         conn
+    }
+
+    /// `(value, currency, valued_at)` of every valuation of a property, oldest first.
+    fn valuation_rows(conn: &Connection, property_id: &str) -> Vec<(String, String, i64)> {
+        let mut stmt = conn
+            .prepare(
+                "SELECT value, currency, valued_at FROM real_estate_valuations
+                 WHERE real_estate_id = ?1 ORDER BY valued_at, created_at",
+            )
+            .unwrap();
+        let rows = stmt
+            .query_map([property_id], |row| {
+                Ok((row.get(0)?, row.get(1)?, row.get(2)?))
+            })
+            .unwrap();
+        rows.map(|r| r.unwrap()).collect()
     }
 
     fn valid_insert() -> InsertRealEstate {
@@ -148,6 +190,70 @@ mod tests {
         assert!(recurring_costs.is_empty());
         let photos: Vec<serde_json::Value> = serde_json::from_str(&photos_json).unwrap();
         assert!(photos.is_empty());
+    }
+
+    /// The reported bug: creating a property wrote no valuation row, so the
+    /// first revaluation overwrote the only record of the original estimate.
+    #[test]
+    fn create_property_writes_the_first_estimate() {
+        let conn = setup_test_db();
+        let mut data = valid_insert();
+        data.market_price = Some("3480000".into());
+        data.market_price_currency = Some("EUR".into());
+
+        let before = crate::services::loan_amortization::today_utc_day();
+        let id = create_property(&conn, &data).unwrap();
+        let after = crate::services::loan_amortization::today_utc_day();
+
+        let rows = valuation_rows(&conn, &id);
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].0, "3480000");
+        assert_eq!(rows[0].1, "EUR");
+        assert!(
+            rows[0].2 == before || rows[0].2 == after,
+            "dated at the UTC day of the creation"
+        );
+    }
+
+    #[test]
+    fn create_property_without_a_market_price_has_no_estimate_yet() {
+        let conn = setup_test_db();
+        let id = create_property(&conn, &valid_insert()).unwrap();
+        assert!(valuation_rows(&conn, &id).is_empty());
+
+        let mut zero = valid_insert();
+        zero.name = "Plot".into();
+        zero.market_price = Some("0".into());
+        let id = create_property(&conn, &zero).unwrap();
+        assert!(valuation_rows(&conn, &id).is_empty());
+    }
+
+    #[test]
+    fn first_revaluation_of_a_new_property_keeps_the_original_estimate() {
+        let conn = setup_test_db();
+        let mut data = valid_insert();
+        data.market_price = Some("3480000".into());
+        let id = create_property(&conn, &data).unwrap();
+
+        let revalued_at = crate::services::loan_amortization::today_utc_day() + 100 * 86_400;
+        crate::services::valuations::add_valuation(
+            &conn,
+            crate::services::valuations::ValuationKind::RealEstate,
+            &crate::models::InsertAssetValuation {
+                asset_id: id.clone(),
+                value: "3650000".into(),
+                currency: Some("CZK".into()),
+                valued_at: revalued_at,
+                note: None,
+            },
+        )
+        .unwrap();
+
+        let values: Vec<String> = valuation_rows(&conn, &id)
+            .into_iter()
+            .map(|row| row.0)
+            .collect();
+        assert_eq!(values, ["3480000", "3650000"]);
     }
 
     #[test]

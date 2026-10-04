@@ -6,6 +6,7 @@ use crate::error::{AppError, Result};
 use crate::models::{
     InsertOtherAsset, InsertOtherAssetTransaction, OtherAsset, OtherAssetTransaction,
 };
+use crate::services::valuations::{self, ValuationKind};
 use rusqlite::OptionalExtension;
 use uuid::Uuid;
 
@@ -63,7 +64,10 @@ pub fn recalculate_asset_totals(conn: &rusqlite::Connection, asset_id: &str) -> 
 }
 
 /// Create a new other asset, optionally with an initial buy/sell
-/// transaction. SINGLE SOURCE OF TRUTH for other-asset creation.
+/// transaction. SINGLE SOURCE OF TRUTH for other-asset creation. A priced
+/// asset also gets the first row of its valuation log (price per unit, dated
+/// at the creation day), so the first revaluation does not overwrite the only
+/// record of the original estimate.
 ///
 /// Quirk preserved from the original command: totals are NOT recalculated
 /// after the initial transaction, so `quantity`/`averagePurchasePrice` on the
@@ -82,6 +86,8 @@ pub fn create_asset(
 
     let id = Uuid::new_v4().to_string();
     let now = chrono::Utc::now().timestamp();
+    let market_price = data.market_price.clone().unwrap_or_else(|| "0".to_string());
+    let currency = data.currency.clone().unwrap_or_else(|| "CZK".to_string());
 
     conn.execute(
         "INSERT INTO other_assets
@@ -91,8 +97,8 @@ pub fn create_asset(
             id,
             data.name,
             data.quantity.clone().unwrap_or_else(|| "0".to_string()),
-            data.market_price.clone().unwrap_or_else(|| "0".to_string()),
-            data.currency.clone().unwrap_or_else(|| "CZK".to_string()),
+            market_price,
+            currency,
             data.average_purchase_price
                 .clone()
                 .unwrap_or_else(|| "0".to_string()),
@@ -100,6 +106,15 @@ pub fn create_asset(
             data.yield_value,
             now,
         ],
+    )?;
+
+    valuations::record_initial_valuation(
+        conn,
+        ValuationKind::OtherAsset,
+        &id,
+        &market_price,
+        &currency,
+        now,
     )?;
 
     if let Some(tx) = initial_transaction {
@@ -249,6 +264,16 @@ mod tests {
                 transaction_date INTEGER NOT NULL,
                 created_at INTEGER NOT NULL DEFAULT (unixepoch())
             );
+
+            CREATE TABLE other_asset_valuations (
+                id TEXT PRIMARY KEY,
+                asset_id TEXT NOT NULL REFERENCES other_assets(id) ON DELETE CASCADE,
+                value TEXT NOT NULL,
+                currency TEXT NOT NULL DEFAULT 'CZK',
+                valued_at INTEGER NOT NULL,
+                note TEXT,
+                created_at INTEGER NOT NULL DEFAULT (unixepoch())
+            );
             "#,
         )
         .expect("schema");
@@ -286,6 +311,56 @@ mod tests {
         assert_eq!(asset.currency, "CZK");
         assert_eq!(asset.yield_type, "none");
         assert_eq!(asset.average_purchase_price, "0");
+    }
+
+    /// `(value, currency, valued_at)` of every valuation of an asset, oldest first.
+    fn valuation_rows(conn: &Connection, asset_id: &str) -> Vec<(String, String, i64)> {
+        let mut stmt = conn
+            .prepare(
+                "SELECT value, currency, valued_at FROM other_asset_valuations
+                 WHERE asset_id = ?1 ORDER BY valued_at, created_at",
+            )
+            .unwrap();
+        let rows = stmt
+            .query_map([asset_id], |row| {
+                Ok((row.get(0)?, row.get(1)?, row.get(2)?))
+            })
+            .unwrap();
+        rows.map(|r| r.unwrap()).collect()
+    }
+
+    #[test]
+    fn create_asset_writes_the_first_estimate() {
+        let conn = setup_test_db();
+        let mut data = valid_asset();
+        data.market_price = Some("62000".into());
+        data.currency = Some("EUR".into());
+
+        let before = crate::services::loan_amortization::today_utc_day();
+        let asset = create_asset(&conn, &data, None).unwrap();
+        let after = crate::services::loan_amortization::today_utc_day();
+
+        let rows = valuation_rows(&conn, &asset.id);
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].0, "62000");
+        assert_eq!(rows[0].1, "EUR");
+        assert!(
+            rows[0].2 == before || rows[0].2 == after,
+            "dated at the UTC day of the creation"
+        );
+    }
+
+    #[test]
+    fn create_asset_without_a_price_has_no_estimate_yet() {
+        let conn = setup_test_db();
+        let asset = create_asset(&conn, &valid_asset(), None).unwrap();
+        assert!(valuation_rows(&conn, &asset.id).is_empty());
+
+        let mut blank = valid_asset();
+        blank.name = "Stamps".into();
+        blank.market_price = Some("".into());
+        let asset = create_asset(&conn, &blank, None).unwrap();
+        assert!(valuation_rows(&conn, &asset.id).is_empty());
     }
 
     #[test]

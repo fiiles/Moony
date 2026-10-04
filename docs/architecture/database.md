@@ -12,8 +12,13 @@ grouping below follows the domain map in `docs/architecture/overview.md`.
 - The chain starts with `001_initial_schema` (`MIGRATION_001`): the whole data
   model, grouped by domain and commented, plus the seed rows of
   `transaction_categories` and `institutions` (ADR 0010).
-- To add one: define `const MIGRATION_002: &str = r#"..."#;` (next free
-  number) and append a `("002_short_name", MIGRATION_002)` entry to the `Vec`
+- `002_real_estate_purchase_date` (`MIGRATION_002`) adds the nullable
+  `real_estate.purchase_date` and seeds the empty valuation logs once: every
+  real estate and every other asset with a price above zero and no valuation row
+  gets its current price as the first estimate, dated at the UTC day of its
+  `created_at` (ids are UUID v4 built in SQL). Existing logs are untouched.
+- To add one: define `const MIGRATION_003: &str = r#"..."#;` (next free
+  number) and append a `("003_short_name", MIGRATION_003)` entry to the `Vec`
   returned by `all_migrations()`. Numbers are zero-padded, sequential, never
   reused.
 - Applied migrations are tracked by name in the `_migrations` table. On every
@@ -166,9 +171,9 @@ Grouped by owning domain (see the domain map in `overview.md`).
 
 | Table | Purpose | Notable columns / constraints |
 |---|---|---|
-| `real_estate` | Properties (personal or investment) | `type`; purchase/market price each with own currency column; `monthly_rent`; `recurring_costs` JSON `'[]'`, `photos` JSON `'[]'` |
+| `real_estate` | Properties (personal or investment) | `type`; purchase/market price each with own currency column; `purchase_date` INTEGER (UTC day, nullable = unknown; migration 002) where the value trace on the detail page starts; `monthly_rent`; `recurring_costs` JSON `'[]'`, `photos` JSON `'[]'` |
 | `real_estate_one_time_costs` | One-off costs per property | FK `real_estate_id` ON DELETE CASCADE; `amount` TEXT, `date` |
-| `real_estate_valuations` | Dated market-value estimates per property | FK `real_estate_id` ON DELETE CASCADE; `value` TEXT, `currency`, `valued_at` INTEGER (UTC day), `note`; index `(real_estate_id, valued_at)`. The newest row is mirrored into `real_estate.market_price` (`services/valuations.rs`) |
+| `real_estate_valuations` | Dated market-value estimates per property | FK `real_estate_id` ON DELETE CASCADE; `value` TEXT, `currency`, `valued_at` INTEGER (UTC day), `note`; index `(real_estate_id, valued_at)`. The newest row is mirrored into `real_estate.market_price` (`services/valuations.rs`). A priced property has a log from day one: `create_property` writes the first row (`record_initial_valuation`) and migration 002 seeded the properties that were created before |
 | `real_estate_loans` | Property ↔ loan join | Composite PK `(real_estate_id, loan_id)`; both FKs ON DELETE CASCADE |
 | `real_estate_insurances` | Property ↔ insurance policy join | Composite PK `(real_estate_id, insurance_id)`; both FKs ON DELETE CASCADE |
 | `real_estate_photo_batches` | Photo uploads grouped by date + description | FK `real_estate_id` ON DELETE CASCADE; indexed |
@@ -188,7 +193,7 @@ Grouped by owning domain (see the domain map in `overview.md`).
 |---|---|---|
 | `other_assets` | Miscellaneous assets (gold, art, …) | `quantity`, `market_price`, `average_purchase_price` TEXT; `yield_type DEFAULT 'none'` + `yield_value` |
 | `other_asset_transactions` | Buy/sell transactions per other asset | FK `asset_id` ON DELETE CASCADE; index on `asset_id` (for MCP import dedup) |
-| `other_asset_valuations` | Dated price-per-unit estimates per other asset | FK `asset_id` ON DELETE CASCADE; `value` TEXT, `currency`, `valued_at` INTEGER (UTC day), `note`; index `(asset_id, valued_at)`. The newest row is mirrored into `other_assets.market_price` |
+| `other_asset_valuations` | Dated price-per-unit estimates per other asset | FK `asset_id` ON DELETE CASCADE; `value` TEXT, `currency`, `valued_at` INTEGER (UTC day), `note`; index `(asset_id, valued_at)`. The newest row is mirrored into `other_assets.market_price`. A priced asset has a log from day one: `create_asset` writes the first row and migration 002 seeded the older ones |
 
 ### Portfolio / net worth
 

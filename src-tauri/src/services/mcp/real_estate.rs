@@ -237,6 +237,15 @@ mod tests {
                 date INTEGER NOT NULL,
                 created_at INTEGER NOT NULL DEFAULT (unixepoch())
             );
+            CREATE TABLE real_estate_valuations (
+                id TEXT PRIMARY KEY,
+                real_estate_id TEXT NOT NULL REFERENCES real_estate(id) ON DELETE CASCADE,
+                value TEXT NOT NULL,
+                currency TEXT NOT NULL DEFAULT 'CZK',
+                valued_at INTEGER NOT NULL,
+                note TEXT,
+                created_at INTEGER NOT NULL DEFAULT (unixepoch())
+            );
         "#,
         )
         .expect("schema");
@@ -304,6 +313,25 @@ mod tests {
         assert_eq!(value["purchasePrice"], "4000000");
         // Detail shape includes the costs array even for a brand-new property.
         assert!(value["costs"].as_array().unwrap().is_empty());
+    }
+
+    /// ADR 0007: the MCP tool and the UI share one creation path, so a property
+    /// created through the tool also starts its valuation log.
+    #[test]
+    fn create_writes_the_first_estimate_like_the_ui_path() {
+        let conn = setup_test_db();
+        let value = real_estate_create(&conn, &create_args("Byt Brno")).unwrap();
+        let id = value["id"].as_str().unwrap();
+
+        let (estimate, currency): (String, String) = conn
+            .query_row(
+                "SELECT value, currency FROM real_estate_valuations WHERE real_estate_id = ?1",
+                [id],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .expect("exactly one valuation row");
+        assert_eq!(estimate, "4500000");
+        assert_eq!(currency, "CZK");
     }
 
     #[test]

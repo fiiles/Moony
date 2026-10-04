@@ -2,9 +2,11 @@
 //!
 //! Each estimate is a dated row; the newest row is mirrored into the parent's
 //! `market_price` so every existing reader (net worth, snapshots, lists) keeps
-//! working unchanged. Editing the market price through the parent's update
-//! command writes a row dated today (`record_price_change`), so the log is
-//! complete whichever path the user takes.
+//! working unchanged. Creating a priced asset writes its first row
+//! (`record_initial_valuation`) and editing the market price through the
+//! parent's update command writes a row dated today (`record_price_change`), so
+//! the log is complete whichever path the user takes and a revaluation never
+//! overwrites the original estimate.
 
 use crate::error::{AppError, Result};
 use crate::models::{AssetValuation, InsertAssetValuation};
@@ -65,6 +67,42 @@ fn columns(kind: ValuationKind) -> String {
         "id, {fk}, value, currency, valued_at, note, created_at",
         fk = kind.fk()
     )
+}
+
+/// A row about to be written to a valuation log.
+struct NewRow<'a> {
+    asset_id: &'a str,
+    value: &'a str,
+    currency: &'a str,
+    /// Already floored to the UTC day.
+    valued_at: i64,
+    note: Option<&'a str>,
+    created_at: i64,
+}
+
+/// Insert one row of an asset's log and return its new id. Neither the
+/// parent's price nor anything else is touched.
+fn insert_row(conn: &Connection, kind: ValuationKind, row: &NewRow) -> Result<String> {
+    let id = Uuid::new_v4().to_string();
+    let sql = format!(
+        "INSERT INTO {table} (id, {fk}, value, currency, valued_at, note, created_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+        table = kind.table(),
+        fk = kind.fk()
+    );
+    conn.execute(
+        &sql,
+        rusqlite::params![
+            id,
+            row.asset_id,
+            row.value,
+            row.currency,
+            row.valued_at,
+            row.note,
+            row.created_at
+        ],
+    )?;
+    Ok(id)
 }
 
 /// Does the parent row exist?
@@ -182,7 +220,6 @@ pub fn add_valuation(
     if !parent_exists(conn, kind, &data.asset_id)? {
         return Err(AppError::NotFound("Asset not found".into()));
     }
-    let id = Uuid::new_v4().to_string();
     let now = chrono::Utc::now().timestamp();
     let currency = data
         .currency
@@ -196,23 +233,17 @@ pub fn add_valuation(
         .map(str::trim)
         .filter(|n| !n.is_empty())
         .map(str::to_string);
-    let sql = format!(
-        "INSERT INTO {table} (id, {fk}, value, currency, valued_at, note, created_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
-        table = kind.table(),
-        fk = kind.fk()
-    );
-    conn.execute(
-        &sql,
-        rusqlite::params![
-            id,
-            data.asset_id,
-            data.value.trim(),
-            currency,
-            day,
-            note,
-            now
-        ],
+    let id = insert_row(
+        conn,
+        kind,
+        &NewRow {
+            asset_id: &data.asset_id,
+            value: data.value.trim(),
+            currency: &currency,
+            valued_at: day,
+            note: note.as_deref(),
+            created_at: now,
+        },
     )?;
     sync_parent_price(conn, kind, &data.asset_id)?;
     Ok(AssetValuation {
@@ -275,23 +306,54 @@ pub fn record_price_change(
             rusqlite::params![value, currency, now, row.id],
         )?;
     } else {
-        conn.execute(
-            &format!(
-                "INSERT INTO {table} (id, {fk}, value, currency, valued_at, note, created_at)
-                 VALUES (?1, ?2, ?3, ?4, ?5, NULL, ?6)",
-                table = kind.table(),
-                fk = kind.fk()
-            ),
-            rusqlite::params![
-                Uuid::new_v4().to_string(),
+        insert_row(
+            conn,
+            kind,
+            &NewRow {
                 asset_id,
                 value,
-                currency,
-                today,
-                now
-            ],
+                currency: &currency,
+                valued_at: today,
+                note: None,
+                created_at: now,
+            },
         )?;
     }
+    Ok(true)
+}
+
+/// Write the first row of an asset's log when the asset is created, so the
+/// original estimate survives the first revaluation. A price that is zero,
+/// negative or not a number writes nothing: the asset has no estimate yet.
+/// The parent already holds this price, so nothing is mirrored back. Returns
+/// true when a row was written.
+pub fn record_initial_valuation(
+    conn: &Connection,
+    kind: ValuationKind,
+    asset_id: &str,
+    value: &str,
+    currency: &str,
+    day: i64,
+) -> Result<bool> {
+    let value = value.trim();
+    if !value
+        .parse::<f64>()
+        .is_ok_and(|price| price.is_finite() && price > 0.0)
+    {
+        return Ok(false);
+    }
+    insert_row(
+        conn,
+        kind,
+        &NewRow {
+            asset_id,
+            value,
+            currency: &currency.trim().to_uppercase(),
+            valued_at: crate::services::loan_amortization::day_floor(day),
+            note: None,
+            created_at: chrono::Utc::now().timestamp(),
+        },
+    )?;
     Ok(true)
 }
 
@@ -514,6 +576,94 @@ mod tests {
             value_at_day(&conn, ValuationKind::OtherAsset, "none", 20_000 * DAY).unwrap(),
             None
         );
+    }
+
+    #[test]
+    fn initial_valuation_starts_the_log_and_leaves_the_parent_alone() {
+        let conn = setup_test_db();
+        let written = record_initial_valuation(
+            &conn,
+            ValuationKind::RealEstate,
+            "re1",
+            " 3480000 ",
+            "czk",
+            20_000 * DAY + 3_600,
+        )
+        .unwrap();
+        assert!(written);
+
+        let rows = list_valuations(&conn, ValuationKind::RealEstate, "re1").unwrap();
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].value, "3480000");
+        assert_eq!(rows[0].currency, "CZK");
+        assert_eq!(rows[0].valued_at, 20_000 * DAY, "floored to the UTC day");
+        assert_eq!(rows[0].note, None);
+        assert_eq!(market_price(&conn, "real_estate", "re1"), "3480000");
+    }
+
+    #[test]
+    fn initial_valuation_skips_an_asset_without_a_price() {
+        let conn = setup_test_db();
+        for value in ["0", "0.00", "", "   ", "abc", "-5", "NaN", "inf"] {
+            let written = record_initial_valuation(
+                &conn,
+                ValuationKind::RealEstate,
+                "re1",
+                value,
+                "CZK",
+                20_000 * DAY,
+            )
+            .unwrap();
+            assert!(!written, "{value:?} is not an estimate");
+        }
+        assert!(list_valuations(&conn, ValuationKind::RealEstate, "re1")
+            .unwrap()
+            .is_empty());
+    }
+
+    /// The reported bug: without a first row, the first revaluation overwrote
+    /// the only record of the original estimate and the chart had one point.
+    #[test]
+    fn first_revaluation_keeps_the_original_estimate() {
+        let conn = setup_test_db();
+        record_initial_valuation(
+            &conn,
+            ValuationKind::RealEstate,
+            "re1",
+            "3480000",
+            "CZK",
+            20_000 * DAY,
+        )
+        .unwrap();
+        add_valuation(
+            &conn,
+            ValuationKind::RealEstate,
+            &insert("re1", "3650000", 20_100 * DAY),
+        )
+        .unwrap();
+
+        let rows = list_valuations(&conn, ValuationKind::RealEstate, "re1").unwrap();
+        let values: Vec<&str> = rows.iter().map(|r| r.value.as_str()).collect();
+        assert_eq!(values, ["3480000", "3650000"]);
+        assert_eq!(market_price(&conn, "real_estate", "re1"), "3650000");
+    }
+
+    #[test]
+    fn initial_valuation_of_an_other_asset_is_a_price_per_unit() {
+        let conn = setup_test_db();
+        assert!(record_initial_valuation(
+            &conn,
+            ValuationKind::OtherAsset,
+            "oa1",
+            "62000",
+            "CZK",
+            20_000 * DAY
+        )
+        .unwrap());
+        let rows = list_valuations(&conn, ValuationKind::OtherAsset, "oa1").unwrap();
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].value, "62000");
+        assert_eq!(rows[0].asset_id, "oa1");
     }
 
     #[test]

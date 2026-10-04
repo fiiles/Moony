@@ -92,6 +92,13 @@ jobs:
           echo "OPENSSL_DIR=$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static-md" >> $env:GITHUB_ENV
           echo "OPENSSL_STATIC=1" >> $env:GITHUB_ENV
 
+      - name: Version for the release notes
+        # v1.0.0-rc.1 -> 1.0.0: the file names carry the plain version from the manifests
+        shell: bash
+        run: |
+          v="${GITHUB_REF_NAME#v}"
+          echo "VERSION=${v%%-*}" >> "$GITHUB_ENV"
+
       - name: Install frontend dependencies
         run: npm ci
 
@@ -105,25 +112,53 @@ jobs:
           tagName: ${{ github.ref_name }}
           releaseName: 'Moony v__VERSION__'
           releaseBody: |
-            What is in this release is listed in the [changelog](https://github.com/fiiles/Moony/blob/main/CHANGELOG.md).
+            Moony is a private personal finance app: your records stay on your computer, in an encrypted database. What changed in this version is in the [changelog](https://github.com/fiiles/Moony/blob/main/CHANGELOG.md).
 
-            ### Download
+            ## Download
 
-            | Platform | File |
-            |----------|------|
-            | macOS (Apple Silicon) | `_aarch64.dmg` |
-            | macOS (Intel) | `_x64.dmg` |
-            | Windows | `_x64-setup.exe` |
-            | Linux | `.AppImage`, `.deb` or `.rpm` |
+            | Your computer | File |
+            |---|---|
+            | Mac with Apple Silicon (M1, M2, M3, M4 …) | `Moony_${{ env.VERSION }}_aarch64.dmg` |
+            | Mac with an Intel processor | `Moony_${{ env.VERSION }}_x64.dmg` |
+            | Windows 10 or 11, 64-bit | `Moony_${{ env.VERSION }}_x64-setup.exe` |
+            | Linux, any distribution | `Moony_${{ env.VERSION }}_amd64.AppImage` |
+            | Debian, Ubuntu | `Moony_${{ env.VERSION }}_amd64.deb` |
+            | Fedora, openSUSE | `Moony-${{ env.VERSION }}-1.x86_64.rpm` |
 
-            ### Unsigned builds
+            Not sure which Mac you have? Apple menu → **About This Mac**: the *Chip* line says *Apple M…* or *Intel*.
 
-            The installers are not signed by Apple or Microsoft, so the first launch needs one extra step:
+            The `.tar.gz`, `.sig` and `latest.json` files are for the built-in updater; you do not need to download them.
 
-            - **macOS** may show the app as damaged. Run `xattr -cr /Applications/Moony.app` in Terminal once, or use *Open Anyway* in System Settings → Privacy & Security.
-            - **Windows** SmartScreen may block the installer. Click *More info*, then *Run anyway*.
+            ## First launch: the installers are not signed yet
 
-            More in the [install section of the README](https://github.com/fiiles/Moony#install).
+            Moony is not yet signed by Apple or Microsoft, so your system warns you the first time you open it. The app is not damaged. You need the step below once, for the copy you downloaded in your browser.
+
+            ### macOS
+
+            1. Open the `.dmg` and drag **Moony** into **Applications**.
+            2. Open **Terminal** (Applications → Utilities → Terminal), paste this line and press Return:
+               ```
+               xattr -cr /Applications/Moony.app
+               ```
+               It removes the "downloaded from the internet" mark that makes macOS say *"Moony is damaged and can't be opened"*.
+            3. Open Moony as usual.
+
+            If macOS instead says that it *cannot verify the developer*, you can also skip Terminal: try to open Moony once, then go to **System Settings → Privacy & Security**, scroll to *Security* and click **Open Anyway** next to Moony.
+
+            ### Windows
+
+            1. If the browser says the file is not commonly downloaded, keep it. In Edge: **⋯ → Keep → Show more → Keep anyway**.
+            2. Run the installer. When SmartScreen shows *"Windows protected your PC"*, click **More info**, then **Run anyway**.
+
+            ### Linux
+
+            - **AppImage:** `chmod +x Moony_${{ env.VERSION }}_amd64.AppImage`, then run it. Some distributions need the `libfuse2` package first.
+            - **Debian / Ubuntu:** `sudo apt install ./Moony_${{ env.VERSION }}_amd64.deb`
+            - **Fedora / openSUSE:** `sudo dnf install ./Moony-${{ env.VERSION }}-1.x86_64.rpm`
+
+            ## After installing
+
+            Moony asks for a password and shows a **recovery key** on the first start; save the key somewhere safe. Later versions arrive through the built-in updater after you unlock the app (you can switch the check off in Settings → Security). More in the [README](https://github.com/fiiles/Moony#install).
           releaseDraft: true
           prerelease: ${{ contains(github.ref_name, '-') }}
           args: ${{ matrix.args }}

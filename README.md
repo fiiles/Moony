@@ -50,21 +50,28 @@ Download the installer for your system from the
 
 1. Download `Moony_<version>_aarch64.dmg` for Apple Silicon (M1 and newer) or
    `Moony_<version>_x64.dmg` for Intel Macs.
+   Not sure which Mac you have? Apple menu → **About This Mac**: the *Chip* line says
+   *Apple M…* or *Intel*.
 2. Open the `.dmg` and drag **Moony** into **Applications**.
-3. The first launch may say *"Moony is damaged and can't be opened"* or *"cannot be opened
-   because the developer cannot be verified"* (Gatekeeper). Do one of these:
-   - In Terminal run `xattr -cr /Applications/Moony.app` (removes the download quarantine
-     flag), then open Moony normally; or
-   - Open **System Settings → Privacy & Security**, scroll to the *Security* section and click
-     **Open Anyway** next to Moony; or
-   - On macOS 14 and older: right-click (Control-click) Moony in Applications and choose
-     **Open**, then confirm. This shortcut no longer works on macOS 15 and later.
+3. Open **Terminal** (Applications → Utilities) and run this once:
+
+   ```bash
+   xattr -cr /Applications/Moony.app
+   ```
+
+   It removes the "downloaded from the internet" mark that makes macOS say *"Moony is damaged
+   and can't be opened"* (Gatekeeper). Then open Moony as usual.
+
+   If macOS instead says it *cannot verify the developer*, you can also go to **System
+   Settings → Privacy & Security**, scroll to *Security* and click **Open Anyway** next to
+   Moony.
 
 ### Windows
 
-1. Download `Moony_<version>_x64-setup.exe` and run it.
-2. Windows SmartScreen may show *"Windows protected your PC"*. Click **More info**, then
-   **Run anyway**.
+1. Download `Moony_<version>_x64-setup.exe`. If the browser says the file is not commonly
+   downloaded, keep it (in Edge: **⋯ → Keep → Show more → Keep anyway**).
+2. Run it. Windows SmartScreen may show *"Windows protected your PC"*. Click **More info**,
+   then **Run anyway**.
 3. Moony needs the Microsoft Edge WebView2 runtime, which is preinstalled on Windows 10 and 11;
    the installer fetches it if it is missing.
 

@@ -157,9 +157,11 @@ delete the draft under *Releases*, then the tag
 1. Open *Releases* and edit the draft.
 2. Check the attached files: one installer per platform, the update archives with their
    `.sig` files, and `latest.json`.
-3. Check the body. `release.yml` writes a link to `CHANGELOG.md`, the download table and the
-   notes on unsigned builds; add a short highlights paragraph on top if the release deserves
-   one. A tag with a hyphen must show as a pre-release.
+3. Check the body. `release.yml` writes a link to `CHANGELOG.md`, a download table with the
+   exact file names, and first-launch steps for unsigned builds on macOS (`xattr`), Windows
+   (browser warning and SmartScreen) and Linux; keep those sections and add a short
+   highlights paragraph on top if the release deserves one. A tag with a hyphen must show as
+   a pre-release.
 4. Install the artifacts on clean machines — at least one macOS, one Windows and one Linux
    — and confirm the first-run wizard, unlock and the About version. Expect the Gatekeeper /
    SmartScreen warnings described in the README for as long as builds are unsigned.

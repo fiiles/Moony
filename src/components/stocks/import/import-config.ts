@@ -469,11 +469,12 @@ export function buildStockImportConfig(
 }
 
 /**
- * The config a remembered format keeps: the mapping alone. What belongs to one
- * file (skipped rows, instrument choices, duplicates to import) is left out.
+ * The config a remembered format keeps: the mapping and the layout (header row
+ * and the rows to skip after it, which the next file of this kind has too).
+ * What belongs to one file (instrument choices, duplicates to import) is left out.
  */
 export function formatConfig(config: StockImportConfig): StockImportConfig {
-  return { ...config, skipRows: 0, instrumentOverrides: [], importAnywayLines: [] };
+  return { ...config, instrumentOverrides: [], importAnywayLines: [] };
 }
 
 // ── Type values ─────────────────────────────────────────────────────────────

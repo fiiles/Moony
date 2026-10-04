@@ -598,20 +598,20 @@ describe('buildStockImportConfig', () => {
     expect(built?.transforms).toEqual({ xtbComment: true, xtbSymbols: true });
   });
 
-  it('leaves what belongs to one file out of a remembered format', () => {
+  it('keeps the layout in a remembered format but not what belongs to one file', () => {
     const built = buildStockImportConfig(mapping(), settings, {
       skipRows: 4,
       importAnywayLines: [3],
       instrumentOverrides: [{ key: 'isin:A', ticker: 'ASML.AS' }],
     }) as StockImportConfig;
     const saved = formatConfig(built);
+    // The rows to skip after the header are part of the layout, like the header row.
     expect(saved).toMatchObject({
-      skipRows: 0,
+      skipRows: 4,
       importAnywayLines: [],
       instrumentOverrides: [],
       dateColumn: 1,
     });
-    expect(built.skipRows).toBe(4);
   });
 });
 

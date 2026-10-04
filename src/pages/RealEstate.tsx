@@ -255,7 +255,8 @@ export default function RealEstatePage() {
             active && 'text-ink'
           )}
         >
-          <span className="truncate">{children}</span>
+          {/* leading-4: the ellipsis clip must not cut the accents of Czech capitals (Í, Á, Ž) */}
+          <span className="truncate leading-4">{children}</span>
           <Icon className={cn('size-3 shrink-0', !active && 'opacity-60')} aria-hidden />
         </button>
       </TableHead>

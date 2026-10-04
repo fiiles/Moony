@@ -10,10 +10,12 @@ import type { CurrencyCode } from '@shared/currencies';
 import { calculatePositionCostBasis, calculateRealizedGains } from '@shared/calculations';
 import { exportApi, investmentsApi, priceApi } from '@/lib/tauri-api';
 import { useCurrency } from '@/lib/currency';
+import { useFormat } from '@/lib/use-format';
 import { useStockTagsByInvestment } from '@/hooks/use-stock-tags';
 import { useDatedConvert } from '@/hooks/use-dated-convert';
 import { mapInvestmentToHolding, calculateMetrics, type HoldingData } from '@/utils/stocks';
-import { firstTradeDay } from '@/utils/trade-events';
+import type { EventCluster } from '@/utils/chart-scale';
+import { firstTradeDay, tradeDayEvents, type TradeDayEvent } from '@/utils/trade-events';
 import { PageHead } from '@/components/shell/PageHead';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/common/EmptyState';
@@ -21,6 +23,7 @@ import { ExportButton } from '@/components/common/ExportButton';
 import { ConfirmDeleteDialog } from '@/components/common/ConfirmDeleteDialog';
 import { StatSkeleton, Stats } from '@/components/common/Stat';
 import PortfolioTrendCard from '@/components/common/PortfolioTrendCard';
+import { ChartLegend } from '@/components/charts/ChartLegend';
 import { AddInvestmentModal } from '@/components/stocks/AddInvestmentModal';
 import { BuyInvestmentModal } from '@/components/stocks/BuyInvestmentModal';
 import { SellInvestmentModal } from '@/components/stocks/SellInvestmentModal';
@@ -37,7 +40,8 @@ export default function Stocks() {
   const { t: tc } = useTranslation('common');
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
-  const { convert, currencyCode } = useCurrency();
+  const { convert, currencyCode, formatCurrency } = useCurrency();
+  const fmt = useFormat();
   const [addOpen, setAddOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [rowModal, setRowModal] = useState<RowModal>(null);
@@ -72,6 +76,34 @@ export default function Stocks() {
 
   // No horizon of the trend card starts before the first transaction
   const earliest = useMemo(() => firstTradeDay(allTransactions ?? []), [allTransactions]);
+
+  // Buy and sell days as events on the aggregate trend, like the crypto list:
+  // one marker per day and direction, listing the tickers and the day's total.
+  const trendEvents = useMemo(
+    () =>
+      tradeDayEvents(allTransactions ?? [], (amount, currency, date) =>
+        convertAt(amount, currency as CurrencyCode, 'CZK', date)
+      ),
+    [allTransactions, convertAt]
+  );
+
+  const trendEventTip = (cluster: EventCluster<TradeDayEvent>) => {
+    if (cluster.events.length > 1) {
+      const first = cluster.events[0].t;
+      const last = cluster.events[cluster.events.length - 1].t;
+      return {
+        title: t('chart.events.cluster', { count: cluster.events.length }),
+        lines: [`${fmt.day(first)} – ${fmt.day(last)}`],
+      };
+    }
+    const event = cluster.events[0];
+    return {
+      title: t(event.type === 'sell' ? 'chart.events.sell' : 'chart.events.buy', {
+        tickers: event.tickers.join(', '),
+      }),
+      lines: [`${fmt.day(event.t)} · ${formatCurrency(event.amountCzk)}`],
+    };
+  };
 
   // Realized gains (WAC) in total and per position, each leg at its day's rate
   const realizedGain = useMemo(() => {
@@ -253,11 +285,22 @@ export default function Stocks() {
             latestFetchedAt={latestFetchedAt}
           />
 
-          <PortfolioTrendCard
+          <PortfolioTrendCard<TradeDayEvent>
             type="investments"
             currentValue={metrics.totalValue}
             isRefreshing={refreshPricesMutation.isPending}
             earliest={earliest}
+            events={trendEvents}
+            renderEventTip={trendEventTip}
+            legend={
+              <ChartLegend
+                items={[
+                  { label: t('chart.legend.value'), swatch: { kind: 'line' } },
+                  { label: t('chart.legend.buy'), swatch: { kind: 'event', type: 'buy' } },
+                  { label: t('chart.legend.sell'), swatch: { kind: 'event', type: 'sell' } },
+                ]}
+              />
+            }
           />
 
           <InvestmentsTable

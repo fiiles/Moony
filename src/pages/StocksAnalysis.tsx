@@ -45,14 +45,19 @@ type Period = (typeof PERIODS)[number];
 const UNGROUPED = '__ungrouped__';
 const DAY = 86_400;
 /**
- * The allocation ring grows to `lg` (184 px ring, 36 px gap) from this viewport width. The legend
- * then keeps 230 px, as on the dashboard: (1360 − 264 sidebar − 96 padding − 18 gap) / 2 − 42 card
- * padding − 220. Narrower, the `md` ring leaves the legend more room.
+ * From this viewport width the allocation ring sits beside its legend (`lg`: 184 px ring, 36 px
+ * gap). The legend then keeps 230 px, as on the dashboard: (1360 − 264 sidebar − 96 padding − 18
+ * gap) / 2 − 42 card padding − 220. Narrower, the ring (`md`) has its legend under it. The same
+ * width decides how many lines the TWR legend keeps room for.
  */
-const WIDE_RING_QUERY = '(min-width: 1360px)';
+const WIDE_QUERY = '(min-width: 1360px)';
 const TWR_CHART_HEIGHT = 190;
-/** Chart 190 + date row 20 + legend of two rows 44: what the card keeps while the chart is empty. */
-const TWR_BLOCK_HEIGHT = 254;
+/**
+ * The TWR chart block: plot, date row (20), then the legend with its gap (10) and room for
+ * `rows` lines (14 px, 6 px apart) — what the card keeps while the chart is empty. Keep in step
+ * with MoonyLinesChart.
+ */
+const twrBlockHeight = (rows: number) => TWR_CHART_HEIGHT + 20 + 10 + rows * 14 + (rows - 1) * 6;
 
 /** UTC-midnight bounds of a TWR period ending today. */
 function periodBounds(period: Period): { from: number; to: number } {
@@ -89,7 +94,9 @@ export default function StocksAnalysis() {
   const { t: tc } = useTranslation('common');
   const { formatCurrency, formatCurrencyShort } = useCurrency();
   const fmt = useFormat();
-  const wideRing = useMediaQuery(WIDE_RING_QUERY);
+  const wide = useMediaQuery(WIDE_QUERY);
+  // Five series (four tags and the portfolio) need three lines of legend in a narrow card
+  const legendRows = wide ? 2 : 3;
 
   const [filters, setFilters] = useState<Record<string, string>>({});
   const chipsRef = useRef<HTMLDivElement>(null);
@@ -480,7 +487,7 @@ export default function StocksAnalysis() {
             )}
           </CardHeader>
           {/* The ring centers in the height the TWR card sets */}
-          <div className="flex flex-1 items-center px-[21px] pb-5 pt-1">
+          <div className="flex flex-1 items-center px-[21px] pb-5 pt-3">
             {selected.length === 0 ? (
               <p className="w-full text-center text-table text-ink-3">
                 {t('stocksAnalysis.holdings.emptyFilter.description')}
@@ -488,7 +495,7 @@ export default function StocksAnalysis() {
             ) : (
               <AllocationRing
                 className="w-full"
-                size={wideRing ? 'lg' : 'md'}
+                size={wide ? 'lg' : 'md'}
                 segments={ringSegments.segments}
                 otherSegment={{
                   key: 'untagged',
@@ -555,6 +562,7 @@ export default function StocksAnalysis() {
                 axisLabels={twrChart.axisLabels}
                 height={TWR_CHART_HEIGHT}
                 labels="legend"
+                legendRows={legendRows}
                 formatValue={(v) => fmt.percent(twrPercent(v), 1, { signed: true })}
                 formatTick={(v) => fmt.percent(twrPercent(v), twrTickDigits(v), { signed: true })}
                 tipLabel={(i) => fmt.day(twrChart.dateTs(twrChart.dates[i] ?? twrChart.dates[0]))}
@@ -562,7 +570,7 @@ export default function StocksAnalysis() {
             ) : (
               <p
                 className="mt-[14px] grid place-items-center text-table text-ink-3"
-                style={{ height: TWR_BLOCK_HEIGHT }}
+                style={{ height: twrBlockHeight(legendRows) }}
               >
                 {twrLoading ? tc('status.loading') : t('stocksAnalysis.twr.empty')}
               </p>

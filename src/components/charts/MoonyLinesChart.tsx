@@ -41,6 +41,11 @@ export interface MoonyLinesChartProps {
    * away from the value axis.
    */
   labels?: 'end' | 'legend';
+  /**
+   * `legend` mode: lines of legend the chart keeps room for (default 2). A filter that changes
+   * how many series are drawn then does not resize the card around the chart.
+   */
+  legendRows?: number;
   className?: string;
 }
 
@@ -51,11 +56,9 @@ const TICK_GUTTER = 58;
 const PAD_TOP = 14;
 const PAD_BOTTOM = 6;
 const LABEL_STEP = 13;
-/**
- * Two legend rows (14 px lines, 6 px apart): a legend that wraps differently after a filter
- * changed the number of series must not resize the card around the chart.
- */
-const LEGEND_MIN_HEIGHT = 34;
+/** One legend line (`text-micro`), and the gap between wrapped lines. */
+const LEGEND_LINE = 14;
+const LEGEND_LINE_GAP = 6;
 
 function lastValueOf(s: LineSeries): number | undefined {
   return [...s.values].reverse().find((v): v is number => v !== null);
@@ -74,6 +77,7 @@ export function MoonyLinesChart({
   formatTick,
   height = 180,
   labels: labelMode = 'end',
+  legendRows = 2,
   className,
 }: MoonyLinesChartProps) {
   const tk = useMemo(chartTokens, []);
@@ -261,7 +265,10 @@ export function MoonyLinesChart({
       </div>
       {labelMode === 'legend' && (
         // px-1 takes the legend back in line with the card text: charts sit 4 px outside it (-mx-1)
-        <div className="mt-2.5 px-1" style={{ minHeight: LEGEND_MIN_HEIGHT }}>
+        <div
+          className="mt-2.5 px-1"
+          style={{ minHeight: legendRows * LEGEND_LINE + (legendRows - 1) * LEGEND_LINE_GAP }}
+        >
           <ChartLegend items={legendItems} className="mt-0 gap-y-1.5" />
         </div>
       )}

@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { subDays } from 'date-fns';
 import { listen } from '@tauri-apps/api/event';
 import type { CurrencyCode } from '@shared/currencies';
 import { priceDecimals } from '@shared/currencies';
@@ -12,6 +11,7 @@ import { useCurrency } from '@/lib/currency';
 import { useFormat } from '@/lib/use-format';
 import { utcDayFloor } from '@/utils/chart-axis';
 import { nearestIndex, type ChartEvent, type EventCluster } from '@/utils/chart-scale';
+import { CHART_PERIODS, chartPeriodStart } from '@/utils/period';
 import TimePeriodSelector, { type Period } from '@/components/cashflow/TimePeriodSelector';
 import { HeroCard } from '@/components/common/HeroCard';
 import { MoonyLineChart } from '@/components/charts/MoonyLineChart';
@@ -49,8 +49,6 @@ interface PositionHeroProps {
   /** Unit for the event tooltip ("ks"). */
   unit: string;
 }
-
-const PERIODS: readonly Period[] = ['30D', '90D', '1Y', 'All'];
 
 /**
  * Hero of a single position (design system §7 Detail, §9 time trace): the
@@ -105,34 +103,17 @@ export function PositionHero({
     run();
   }, [type, ticker, queryClient]);
 
-  const dateRange = useMemo(() => {
-    const now = new Date();
-    switch (period) {
-      case '30D':
-        return { start: subDays(now, 30), end: now };
-      case '90D':
-        return { start: subDays(now, 90), end: now };
-      case '1Y':
-        return { start: subDays(now, 365), end: now };
-      default:
-        return { start: undefined, end: now };
-    }
-  }, [period]);
+  // First UTC day of the selected period (open for "All"). It only changes with
+  // the day, so it can key the query; the end is read when the query runs.
+  const periodStart = chartPeriodStart(period, Date.now() / 1000);
 
   const { data: history } = useQuery<TickerValueHistory[]>({
-    queryKey: [
-      'ticker-history',
-      type,
-      ticker,
-      dateRange.start?.toISOString(),
-      dateRange.end.toISOString(),
-    ],
+    queryKey: ['ticker-history', type, ticker, periodStart ?? 'all'],
     queryFn: () => {
-      const start = dateRange.start ? Math.floor(dateRange.start.getTime() / 1000) : undefined;
-      const end = Math.floor(dateRange.end.getTime() / 1000);
+      const end = Math.floor(Date.now() / 1000);
       return type === 'stock'
-        ? investmentsApi.getHistory(ticker, start, end)
-        : cryptoApi.getHistory(ticker, start, end);
+        ? investmentsApi.getHistory(ticker, periodStart, end)
+        : cryptoApi.getHistory(ticker, periodStart, end);
     },
     staleTime: 0,
     refetchOnMount: 'always',
@@ -217,7 +198,7 @@ export function PositionHero({
   return (
     <HeroCard
       className={isRefreshing ? 'opacity-50 transition-opacity duration-base' : undefined}
-      aside={<TimePeriodSelector value={period} onChange={setPeriod} options={PERIODS} />}
+      aside={<TimePeriodSelector value={period} onChange={setPeriod} options={CHART_PERIODS} />}
       chart={
         <>
           <MoonyLineChart<PositionEvent>

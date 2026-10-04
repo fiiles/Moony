@@ -98,7 +98,8 @@ const DAY = 86_400;
 
 /**
  * First UTC day (unix seconds) a chart of `period` shows. Rolling periods
- * count whole days back from today's UTC day, YTD starts on 1 January UTC and
+ * count whole days back from today's UTC day, YTD starts on 1 January UTC (on
+ * 1 January itself on 31 December, so the window is never a single day) and
  * "All" starts on `earliest` (open, `undefined`, without it). The start never
  * precedes `earliest`, the first day with data. The result only changes when
  * the UTC day does, so query keys built from it stay stable.
@@ -119,7 +120,11 @@ export function chartPeriodStart(
       start = today - 90 * DAY;
       break;
     case 'YTD':
-      start = Date.UTC(new Date(today * SECOND).getUTCFullYear(), 0, 1) / SECOND;
+      // On 1 January the year has no day behind it yet: show it against the year end
+      start = Math.min(
+        Date.UTC(new Date(today * SECOND).getUTCFullYear(), 0, 1) / SECOND,
+        today - DAY
+      );
       break;
     case '1Y':
       start = today - 365 * DAY;

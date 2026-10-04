@@ -24,14 +24,17 @@
 //!
 //! Duplicates, as in the bank import (`csv_import`): a row repeats an
 //! existing transaction, or an earlier accepted row of the same file.
-//! - Rule 1, the broker's own id (stored as `<source>:<id>`): the id exists
-//!   already, under any ticker. Degiro's order id is shared by the fills of an
-//!   order, so there the quantity and price must match too.
-//! - Rule 2, the same values: same ticker, day, direction, quantity (within
+//! - Rule 1, the broker's own id (stored as `<source>:<id>`): a stored
+//!   transaction has it, under any ticker, or an earlier accepted row of the
+//!   file has it. Degiro's order id is shared by the fills of an order, so
+//!   there the quantity and price must match too and the rows of a file are
+//!   never compared with each other.
+//! - Rule 2, the same values: same ticker, UTC day, direction, quantity (within
 //!   1e-9 relative) and price (within 1e-6 relative). A row that has a broker
 //!   id is distinguished from stored transactions that have another one, and
 //!   from the other rows of its file; it only matches stored transactions
 //!   without a broker id (an earlier import before ids, a hand-made trade).
+//!   A row without one also matches an earlier accepted row of its file.
 //!
 //! Stored transactions are not "used up" by a match: re-importing a file is
 //! idempotent whatever it repeats.
@@ -57,6 +60,7 @@ pub const KEY_CURRENCY_MISSING: &str = "importWizard.row.currencyMissing";
 pub const KEY_INSTRUMENT_SKIPPED: &str = "importWizard.row.instrumentSkipped";
 pub const KEY_TICKER_INVALID: &str = "validation.tickerInvalid";
 
+const SECONDS_PER_DAY: i64 = 86_400;
 const QUANTITY_TOLERANCE: f64 = 1e-9;
 const PRICE_TOLERANCE: f64 = 1e-6;
 /// Broker ids per `IN (...)` query (SQLite caps the number of variables).
@@ -217,6 +221,13 @@ fn parse_stored_decimal(text: &str) -> Option<f64> {
         .filter(|v| v.is_finite())
 }
 
+/// The UTC midnight of the day `timestamp` falls on. Stored dates are day
+/// stamps, but a transaction created without a date carries the time it was
+/// made; it belongs to that day all the same.
+fn utc_day(timestamp: i64) -> i64 {
+    timestamp.div_euclid(SECONDS_PER_DAY) * SECONDS_PER_DAY
+}
+
 fn direction_rank(direction: TradeDirection) -> u8 {
     match direction {
         TradeDirection::Buy => 0,
@@ -252,7 +263,7 @@ impl Stored {
             },
             quantity: parse_stored_decimal(&quantity),
             price: parse_stored_decimal(&price),
-            day: row.get(3)?,
+            day: utc_day(row.get(3)?),
             external_id: row.get(4)?,
         })
     }
@@ -1818,6 +1829,23 @@ mod tests {
         let sim = run(&conn, vec![buy(2, day(0), "AAPL", 10.0, 100.0)], &cfg);
         assert!(sim.trades[0].will_import());
         assert_eq!(sim.trades[0].left_out_message(), None);
+    }
+
+    #[test]
+    fn a_stored_date_with_a_time_of_day_still_belongs_to_its_day() {
+        let conn = db();
+        // Made without a date: stamped with the time of creation, 14:00 UTC.
+        add_stored(&conn, "AAPL", "buy", "10", "100", day(0) + 14 * 3_600, None);
+        let sim = run(
+            &conn,
+            vec![
+                buy(2, day(0), "AAPL", 10.0, 100.0),  // the same trade
+                sell(3, day(0), "AAPL", 10.0, 100.0), // held at the end of that day
+            ],
+            &config("custom"),
+        );
+        assert_eq!(sim.trades[0].outcome, duplicate(DuplicateKind::Identical));
+        assert_eq!(sim.trades[1].outcome, TradeOutcome::New);
     }
 
     #[test]

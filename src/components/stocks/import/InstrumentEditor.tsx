@@ -92,6 +92,8 @@ export function InstrumentEditor({
     : [...candidates];
 
   const tickerValid = isValidTicker(ticker);
+  // An empty field is not an error yet, only a reason the button waits.
+  const tickerInvalid = ticker.trim() !== '' && !tickerValid;
   const currencyValid = !currencyEditable || currency == null || isCurrencyCode(currency);
   const canApply = tickerValid && currencyValid;
 
@@ -142,7 +144,7 @@ export function InstrumentEditor({
               autoFocus
               autoComplete="off"
               spellCheck={false}
-              aria-invalid={!tickerValid || undefined}
+              aria-invalid={tickerInvalid || undefined}
               onChange={(e) => {
                 setTicker(e.target.value);
                 typeSearch(e.target.value);
@@ -155,7 +157,7 @@ export function InstrumentEditor({
               }}
             />
           </InputWrap>
-          {!tickerValid && (
+          {tickerInvalid && (
             <p className="m-0 text-micro font-600 text-loss">{tc('validation.tickerInvalid')}</p>
           )}
         </div>

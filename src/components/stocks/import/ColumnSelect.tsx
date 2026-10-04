@@ -88,7 +88,12 @@ export function ColumnSelect({
       >
         <SelectTrigger id={id}>
           <SelectValue placeholder={t('importWizard.mapping.selectColumn')}>
-            {optionLabel(options, value)}
+            {/* "Not used" is a value of its own, so the placeholder never shows for it. */}
+            {value == null
+              ? optional
+                ? t('importWizard.mapping.columnNone')
+                : undefined
+              : optionLabel(options, value)}
           </SelectValue>
         </SelectTrigger>
         <SelectContent>

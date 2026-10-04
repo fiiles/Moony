@@ -224,21 +224,25 @@
     },
     "filters": {
       "all": "All",
-      "ungrouped": "Tags"
+      "ungrouped": "Tags",
+      "clear": "Clear filter"
     },
+    "selection": "Selected positions: {{shown}} of {{total}}",
     "allocation": {
       "title": "Allocation by tag",
       "sub": "{{group}} · share of portfolio value",
       "subNoGroup": "Share of portfolio value",
       "groupSwitch": "Tag group",
       "center": "Portfolio",
+      "centerSelected": "Selection",
       "untagged": "Untagged",
       "other": "Other"
     },
     "twr": {
       "title": "Tag performance (TWR)",
-      "sub": "Index 100 = start of the period · time-weighted return",
-      "portfolio": "Portfolio",
+      "sub": "Cumulative time-weighted return since the start of the period",
+      "referenceNote": "dashed is always the whole portfolio",
+      "portfolio": "Whole portfolio",
       "period": {
         "3m": "3M",
         "ytd": "YTD",
@@ -249,6 +253,7 @@
     "tagsTable": {
       "title": "Tags",
       "sub": "Totals over tagged positions · a position can carry several tags",
+      "selectedNote": "share is always of the whole portfolio",
       "tag": "Tag",
       "positions": "Positions",
       "value": "Value",

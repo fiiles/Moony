@@ -236,21 +236,25 @@
     },
     "filters": {
       "all": "Vše",
-      "ungrouped": "Štítky"
+      "ungrouped": "Štítky",
+      "clear": "Zrušit filtr"
     },
+    "selection": "Vybrané pozice: {{shown}} z {{total}}",
     "allocation": {
       "title": "Rozdělení podle štítků",
       "sub": "{{group}} · podíl na hodnotě portfolia",
       "subNoGroup": "Podíl na hodnotě portfolia",
       "groupSwitch": "Skupina štítků",
       "center": "Portfolio",
+      "centerSelected": "Výběr",
       "untagged": "Bez štítku",
       "other": "Ostatní"
     },
     "twr": {
       "title": "Výkonnost štítků (TWR)",
-      "sub": "Index 100 = začátek období · časově vážený výnos",
-      "portfolio": "Portfolio",
+      "sub": "Kumulativní časově vážený výnos od začátku období",
+      "referenceNote": "čárkovaně vždy celé portfolio",
+      "portfolio": "Celé portfolio",
       "period": {
         "3m": "3M",
         "ytd": "YTD",
@@ -261,6 +265,7 @@
     "tagsTable": {
       "title": "Štítky",
       "sub": "Součty za pozice se štítkem · pozice může mít víc štítků",
+      "selectedNote": "podíl vždy z celého portfolia",
       "tag": "Štítek",
       "positions": "Pozice",
       "value": "Hodnota",

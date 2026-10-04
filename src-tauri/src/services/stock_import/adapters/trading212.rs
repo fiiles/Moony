@@ -11,7 +11,9 @@
 
 use crate::services::stock_import::types::{CurrencyMode, SOURCE_TRADING212};
 
-use super::{base_config, decimal_of, find_header_exact, AdapterConfig, StockAdapter};
+use super::{
+    base_config, decimal_of, find_header_exact, known_date_format, AdapterConfig, StockAdapter,
+};
 
 pub const ADAPTER: StockAdapter = StockAdapter {
     source: SOURCE_TRADING212,
@@ -52,9 +54,10 @@ pub fn detect(headers: &[String], _rows: &[Vec<String>]) -> bool {
 
 pub fn config(headers: &[String], rows: &[Vec<String>]) -> Option<AdapterConfig> {
     let cols = columns(headers)?;
+    let (date_format, date_ambiguous) = known_date_format(rows, cols.time, "%Y-%m-%d");
     let mut config = base_config(SOURCE_TRADING212);
     config.date_column = cols.time;
-    config.date_format = "%Y-%m-%d".to_string();
+    config.date_format = date_format;
     config.isin_column = Some(cols.isin);
     config.symbol_column = Some(cols.ticker);
     config.name_column = Some(cols.name);
@@ -67,7 +70,7 @@ pub fn config(headers: &[String], rows: &[Vec<String>]) -> Option<AdapterConfig>
     config.decimal_separator = decimal_of(rows, &[cols.shares, cols.price]);
     Some(AdapterConfig {
         config,
-        date_ambiguous: false,
+        date_ambiguous,
     })
 }
 
@@ -200,6 +203,22 @@ mod tests {
             "inspect reads the values of the file"
         );
         assert!(!adapter.date_ambiguous);
+    }
+
+    #[test]
+    fn the_timestamp_is_iso_unless_the_file_says_otherwise() {
+        let h = headers(&TRADING212_HEADERS);
+        let mut data = sample_rows();
+        // 2023-12-18 and 2023-12-18: ISO, however few days there are.
+        let adapter = config(&h, &data).expect("config");
+        assert_eq!(
+            (adapter.config.date_format.as_str(), adapter.date_ambiguous),
+            ("%Y-%m-%d", false)
+        );
+        data[0][1] = "18.12.2023 14:30:03".into();
+        data[1][1] = "17.12.2023 11:45:06".into();
+        let adapter = config(&h, &data).expect("config");
+        assert_eq!(adapter.config.date_format, "%d.%m.%Y");
     }
 
     #[test]

@@ -1270,7 +1270,7 @@ Dividend (Ordinary),2023-12-27 12:05:25,US56035L1044,MAIN,\"Main Street Capital\
         let moony = run("Date;Type;Symbol;Quantity;Price;Currency\n");
         assert_eq!(moony.detected_source.as_deref(), Some("moony"));
         assert_eq!(moony.date_format.as_deref(), Some("%Y-%m-%d"));
-        let t212 = run(&TRADING212_FILE.lines().next().unwrap_or("").to_string());
+        let t212 = run(TRADING212_FILE.lines().next().unwrap_or(""));
         assert_eq!(t212.detected_source.as_deref(), Some("trading212"));
         assert_eq!(config_of(&t212).date_format, "%Y-%m-%d");
     }

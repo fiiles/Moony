@@ -143,6 +143,28 @@ pub(super) fn detect_column_date(rows: &[Vec<String>], column: usize) -> Option<
     backed.then_some((detected.format, detected.ambiguous))
 }
 
+/// For a source with a known date format: `known` when every sample reads with
+/// it (never ambiguous, however few days there are to tell), else what the
+/// samples say, flagged when they cannot tell day from month. A locale variant
+/// of an export must not be read in the wrong order.
+pub(super) fn known_date_format(
+    rows: &[Vec<String>],
+    column: usize,
+    known: &str,
+) -> (String, bool) {
+    let all_read = rows
+        .iter()
+        .filter_map(|row| row.get(column))
+        .map(|cell| date_part(cell))
+        .filter(|cell| !cell.is_empty())
+        .all(|cell| date_parser::parse_date_strict(cell, known).is_some());
+    if all_read {
+        (known.to_string(), false)
+    } else {
+        date_format_of(rows, column, known)
+    }
+}
+
 /// [`detect_column_date`], or `fallback` (not ambiguous) when nothing reads.
 pub(super) fn date_format_of(
     rows: &[Vec<String>],
@@ -280,6 +302,45 @@ mod tests {
         assert_eq!(decimal_of(&[], &[1, 2]), ".");
         // A column that does not exist is ignored.
         assert_eq!(decimal_of(&data, &[9]), ".");
+    }
+
+    #[test]
+    fn a_known_date_format_is_kept_while_the_samples_read_with_it() {
+        // Every day is at most 12: detection would call this ambiguous, but
+        // the source's own format is known.
+        let few_days = rows(&[&["01.02.2024 10:00:00"], &["03.04.2024 11:00:00"]]);
+        assert_eq!(
+            known_date_format(&few_days, 0, "%d.%m.%Y"),
+            ("%d.%m.%Y".into(), false)
+        );
+        // No samples: the known format.
+        assert_eq!(
+            known_date_format(&[], 0, "%d.%m.%Y"),
+            ("%d.%m.%Y".into(), false)
+        );
+        // A variant of the export: what the samples say.
+        let iso = rows(&[&["2024-02-01 10:00:00"], &["2024-04-03 11:00:00"]]);
+        assert_eq!(
+            known_date_format(&iso, 0, "%d.%m.%Y"),
+            ("%Y-%m-%d".into(), false)
+        );
+        let slashes = rows(&[&["13/04/2024"], &["02/05/2024"]]);
+        assert_eq!(
+            known_date_format(&slashes, 0, "%d.%m.%Y"),
+            ("%d/%m/%Y".into(), false)
+        );
+        // ... flagged when they cannot tell day from month.
+        let unclear = rows(&[&["01/02/2024"], &["03/04/2024"]]);
+        assert_eq!(
+            known_date_format(&unclear, 0, "%d.%m.%Y"),
+            ("%d/%m/%Y".into(), true)
+        );
+        // Unreadable samples: the known format again.
+        let junk = rows(&[&["n/a"]]);
+        assert_eq!(
+            known_date_format(&junk, 0, "%d.%m.%Y"),
+            ("%d.%m.%Y".into(), false)
+        );
     }
 
     #[test]

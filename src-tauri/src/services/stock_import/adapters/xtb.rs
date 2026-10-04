@@ -18,7 +18,7 @@ use regex::Regex;
 use crate::services::csv_import::amounts::{clean_and_parse_amount, detect_decimal_separator};
 use crate::services::stock_import::types::{CurrencyMode, TradeDirection, SOURCE_XTB};
 
-use super::{base_config, find_header, AdapterConfig, StockAdapter};
+use super::{base_config, find_header, known_date_format, AdapterConfig, StockAdapter};
 
 pub const ADAPTER: StockAdapter = StockAdapter {
     source: SOURCE_XTB,
@@ -96,9 +96,10 @@ pub fn detect(headers: &[String], rows: &[Vec<String>]) -> bool {
 
 pub fn config(headers: &[String], rows: &[Vec<String>]) -> Option<AdapterConfig> {
     let cols = columns(headers)?;
+    let (date_format, date_ambiguous) = known_date_format(rows, cols.time, "%d.%m.%Y");
     let mut config = base_config(SOURCE_XTB);
     config.date_column = cols.time;
-    config.date_format = "%d.%m.%Y".to_string();
+    config.date_format = date_format;
     config.symbol_column = Some(cols.symbol);
     // The comment holds both numbers.
     config.quantity_column = cols.comment;
@@ -119,7 +120,7 @@ pub fn config(headers: &[String], rows: &[Vec<String>]) -> Option<AdapterConfig>
 
     Some(AdapterConfig {
         config,
-        date_ambiguous: false,
+        date_ambiguous,
     })
 }
 
@@ -309,6 +310,29 @@ mod tests {
             !adapter.date_ambiguous,
             "the XTB format is known, not guessed"
         );
+    }
+
+    #[test]
+    fn a_locale_variant_of_the_date_is_read_in_its_own_order() {
+        let dated = |time: &str| {
+            rows(&[&[
+                "1",
+                "Stocks/ETF purchase",
+                time,
+                "A.US",
+                "OPEN BUY 1 @ 2",
+                "-2",
+            ]])
+        };
+        let h = headers(&XTB_HEADERS);
+        let read = |time: &str| {
+            let adapter = config(&h, &dated(time)).expect("config");
+            (adapter.config.date_format, adapter.date_ambiguous)
+        };
+        assert_eq!(read("01.02.2024 10:00:00"), ("%d.%m.%Y".into(), false));
+        assert_eq!(read("2024-02-01 10:00:00"), ("%Y-%m-%d".into(), false));
+        assert_eq!(read("13/02/2024 10:00:00"), ("%d/%m/%Y".into(), false));
+        assert_eq!(read("01/02/2024 10:00:00"), ("%d/%m/%Y".into(), true));
     }
 
     #[test]

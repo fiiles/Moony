@@ -776,7 +776,8 @@ pub fn simulate(
         by_external: load_rows_by_external_id(conn, &ids)?,
         states,
         seen_ids: HashSet::new(),
-        ids_are_unique: config.source != SOURCE_DEGIRO,
+        // A remembered Degiro mapping has a source of its own: the flag travels with it.
+        ids_are_unique: !config.transforms.broker_id_per_order && config.source != SOURCE_DEGIRO,
     };
 
     let mut order: Vec<usize> = (0..trades.len()).collect();
@@ -1848,6 +1849,60 @@ mod tests {
         // Degiro's order id is shared by the fills of an order: equal fills are two trades.
         let sim = run(&conn, rows(), &config(SOURCE_DEGIRO));
         assert_eq!(outcomes(&sim), vec![TradeOutcome::New, TradeOutcome::New]);
+    }
+
+    /// A Degiro mapping the user edited and remembered imports under its own
+    /// source (`format:<id>`); the rule that its ids are order ids travels with
+    /// the mapping, so the second fill of an order is still a trade.
+    #[test]
+    fn a_remembered_degiro_mapping_keeps_order_ids_per_fill() {
+        let conn = db();
+        let mut cfg = config("format:3f2a");
+        cfg.transforms.broker_id_per_order = true;
+        let sim = run(
+            &conn,
+            vec![
+                with_id(buy(2, day(0), "AAPL", 3.0, 81.20), "ord-1"),
+                with_id(buy(3, day(0), "AAPL", 2.0, 81.25), "ord-1"),
+            ],
+            &cfg,
+        );
+        assert_eq!(outcomes(&sim), vec![TradeOutcome::New, TradeOutcome::New]);
+
+        // Once imported, each fill is found again by its id, quantity and price.
+        add_stored(
+            &conn,
+            "AAPL",
+            "buy",
+            "3",
+            "81.20",
+            day(0),
+            Some("format:3f2a:ord-1"),
+        );
+        add_stored(
+            &conn,
+            "AAPL",
+            "buy",
+            "2",
+            "81.25",
+            day(0),
+            Some("format:3f2a:ord-1"),
+        );
+        let sim = run(
+            &conn,
+            vec![
+                with_id(buy(2, day(0), "AAPL", 3.0, 81.20), "ord-1"),
+                with_id(buy(3, day(0), "AAPL", 2.0, 81.25), "ord-1"),
+            ],
+            &cfg,
+        );
+        assert_eq!(
+            outcomes(&sim),
+            vec![
+                duplicate(DuplicateKind::BrokerId),
+                duplicate(DuplicateKind::BrokerId)
+            ]
+        );
     }
 
     // ---- holdings ----------------------------------------------------------

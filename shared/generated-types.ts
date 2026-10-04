@@ -1254,7 +1254,13 @@ xtbSymbols?: boolean;
  * IBKR: a row is skipped unless this column holds one of
  * `assetClassAllowed` (e.g. `STK`).
  */
-assetClassColumn?: number | null; assetClassAllowed?: string[] }
+assetClassColumn?: number | null; assetClassAllowed?: string[]; 
+/**
+ * Degiro: the broker's id is the order's, shared by its fills. A row then
+ * repeats a stored trade by id only with the same quantity and price, and
+ * the rows of one file are never compared by id.
+ */
+brokerIdPerOrder?: boolean }
 
 /**
  * Outcome of undoing a batch (TS `StockImportUndoResult`).

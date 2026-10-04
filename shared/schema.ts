@@ -1516,6 +1516,8 @@ export interface StockImportTransforms {
   xtbSymbols?: boolean;
   assetClassColumn?: number | null;
   assetClassAllowed?: string[];
+  /** Degiro: the broker's id is the order's, shared by its fills (kept by a remembered format). */
+  brokerIdPerOrder?: boolean;
 }
 
 export interface StockInstrumentOverride {

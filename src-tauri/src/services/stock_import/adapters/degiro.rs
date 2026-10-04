@@ -95,6 +95,8 @@ pub fn config(headers: &[String], rows: &[Vec<String>]) -> Option<AdapterConfig>
     // The order id closes the row (after the optional AutoFX column moved
     // everything else by one).
     config.external_id_column = headers.iter().rposition(|h| !h.trim().is_empty());
+    // ...and is shared by the fills of the order.
+    config.transforms.broker_id_per_order = true;
     config.decimal_separator = decimal_of(rows, &[QUANTITY_COLUMN, PRICE_COLUMN]);
     Some(AdapterConfig {
         config,
@@ -107,6 +109,16 @@ mod tests {
     use super::*;
     use crate::services::stock_import::adapters::test_support::*;
     use crate::services::stock_import::types::{CurrencyMode, DirectionMode};
+
+    /// Degiro's order id is shared by the fills of an order; the flag says so
+    /// and travels with a mapping the user remembers.
+    #[test]
+    fn the_order_id_is_marked_as_shared_by_the_fills() {
+        let config = config(&headers(&DEGIRO_HEADERS), &sample_rows())
+            .expect("degiro")
+            .config;
+        assert!(config.transforms.broker_id_per_order);
+    }
 
     /// A purchase and a sale (negative quantity), decimal commas as in the
     /// Dutch and Czech exports.

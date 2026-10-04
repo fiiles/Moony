@@ -105,6 +105,11 @@ pub struct StockImportTransforms {
     pub asset_class_column: Option<usize>,
     #[serde(rename = "assetClassAllowed", default)]
     pub asset_class_allowed: Vec<String>,
+    /// Degiro: the broker's id is the order's, shared by its fills. A row then
+    /// repeats a stored trade by id only with the same quantity and price, and
+    /// the rows of one file are never compared by id.
+    #[serde(rename = "brokerIdPerOrder", default)]
+    pub broker_id_per_order: bool,
 }
 
 /// The user's choice for one instrument in the preview (TS `StockInstrumentOverride`).

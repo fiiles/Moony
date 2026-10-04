@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils';
 /**
  * Time-trace marks (design system §9): buy ▲ filled with a white ring, sell
  * ▽ outlined, income ○ gain ring, expense/payment ○ dark ring. 12 px, hover
- * or `hot` scales to 1.35. Rendered as the Recharts Scatter `shape`.
+ * or `hot` scales to 1.35. Rendered as the `shape` of a Recharts ReferenceDot.
  */
 export interface EventMarkProps {
   cx: number;

@@ -263,6 +263,61 @@ needs no manual column mapping.
 Column names the generic detector does not know yet (a new language) are added to
 `src-tauri/src/services/csv_import/columns.rs`, with a test next to them.
 
+### Adding a broker format
+
+Stock exports are read by one adapter per source (XTB, Trading 212, Degiro, Interactive
+Brokers and Moony's own table), each a module under
+[`src-tauri/src/services/stock_import/adapters/`](./src-tauri/src/services/stock_import/adapters/).
+An adapter recognises a file from its headers and produces the configuration the generic
+parser reads it with, so a user with that broker's export needs no manual column mapping.
+Everything else (preview, duplicates, holdings checks, import, undo) is shared. The design is
+in [`docs/specs/2026-10-04-stock-csv-import-wizard-design.md`](./docs/specs/2026-10-04-stock-csv-import-wizard-design.md).
+
+1. Get an export from the broker (a few trades, deposits and dividends included, personal data
+   replaced by fake values) and save it as `src-tauri/tests/fixtures/csv/stocks-<id>.csv`.
+   Delimiter, encoding, line endings and number and date formats must be what the broker really
+   writes. Never commit real data.
+2. Add the module `adapters/<id>.rs` with `detect(headers, sample_rows) -> bool` and
+   `config(headers, sample_rows) -> StockImportConfig`, and register it in `adapters/mod.rs`.
+   - `detect` looks at the headers (with the broker's language variants), and where the headers
+     alone are ambiguous at a few sample values. Detection order matters: specific adapters come
+     before generic ones, and an adapter whose headers are a subset of another's is shadowed by it,
+     so the guard test below fails for it.
+   - `config` addresses columns by their 0-based position in the file's own header row (broker
+     files have blank and repeated header cells), and sets the date format (a chrono format,
+     applied strictly), the decimal separator, how the direction is read (a type column with a
+     value table, or the sign of the quantity), where the currency comes from (a column, one
+     fixed currency, or the instrument's listing) and the broker's own transaction id when the
+     file has one (it feeds duplicate detection).
+   - A quirk the generic configuration cannot express (a quantity and price hidden in a comment,
+     symbol suffixes that differ from Yahoo Finance's, rows of other asset classes) becomes a
+     field of `StockImportTransforms`. That is a change of the wire contract: follow
+     `docs/standards/type-contract.md` (the Rust type in `services/stock_import/types.rs`, the
+     mirror in `shared/schema.ts`, `cargo test generate_bindings -- --ignored`) and implement it
+     in `parse.rs`.
+   - Add the source id as a `SOURCE_<ID>` constant in `types.rs` and to `StockImportSourceId` in
+     `shared/schema.ts`.
+3. Add the fixture to the guard test `all_stock_adapters_detect_their_fixture`. It checks that
+   the file is detected as its own source and as no other, that `parse_file` of the detected
+   configuration yields no errors, and the number of trades, their directions and the values of
+   the first one. Add parse tests for what is special about the format (thousands separators,
+   decimal comma, currency signs, `GBX` prices, dates without separators, blank headers).
+4. Header words the generic detector does not know yet (a new language) go to
+   `services/stock_import/columns.rs`, with a test next to them.
+5. Add the source to the wizard:
+   - `SOURCE_IDS`, the `BrokerId` union and `SOURCE_HELP_URLS` in
+     `src/components/stocks/import/import-config.ts` (the help link opens the broker's own page
+     about exporting a history; the test next to it checks every broker has one);
+   - `stocks.importWizard.sources.<id>` in **both** `src/i18n/locales/cs/stocks.json` and
+     `en/stocks.json`: `name`, `guideTitle`, `guide` (where to click, which report, which period,
+     which format, in one or two sentences) and an optional `note` for the broker's caveats (a
+     file with deposits and dividends in it, a limit on the period). The note is shown again on
+     the mapping step.
+6. Run `cd src-tauri && cargo test stock_import` and `npm test`.
+
+Row messages (`importWizard.row.*`) are i18n keys, never English prose: a new kind of skipped
+row or error needs its key in both locale files and a case in the parser.
+
 ## Code Style
 
 Follow the standards in [`docs/standards/`](./docs/standards/). Highlights:

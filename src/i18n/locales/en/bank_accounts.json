@@ -37,7 +37,7 @@
     "rateTooltip": "1 {{from}} = {{rate}} {{to}} (ECB, updated {{date}})",
     "rateTooltipNoDate": "1 {{from}} = {{rate}} {{to}} (ECB)",
     "noRate": "No exchange rate",
-    "noRateTooltip": "There is no exchange rate for {{currency}}: the converted amount cannot be shown, and totals count it 1:1 against CZK."
+    "noRateTooltip": "There is no exchange rate for {{currency}}: the converted amount cannot be shown, and totals that include it are not accurate."
   },
   "form": {
     "basicInfo": "Basic Information",

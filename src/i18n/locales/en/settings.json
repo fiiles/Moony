@@ -62,7 +62,7 @@
     "title": "Currency",
     "description": "Choose which currency should be used across the app.",
     "example": "e.g. {{example}}",
-    "noRateHint": "Exchange rates are updated automatically only for currencies the ECB publishes. For other currencies (for example AED or SAR) no rate is available and amounts are counted 1:1 against CZK.",
+    "noRateHint": "Exchange rates are updated automatically only for currencies the ECB publishes. Other currencies (for example AED or SAR) have no rate, so totals that include them are not accurate.",
     "main": "Main currency",
     "mainHint": "Every value is converted into this currency."
   },

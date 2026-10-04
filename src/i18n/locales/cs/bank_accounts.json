@@ -38,7 +38,7 @@
     "rateTooltip": "1 {{from}} = {{rate}} {{to}} (ECB, aktualizováno {{date}})",
     "rateTooltipNoDate": "1 {{from}} = {{rate}} {{to}} (ECB)",
     "noRate": "Bez směnného kurzu",
-    "noRateTooltip": "Pro měnu {{currency}} není směnný kurz: přepočtenou částku nelze zobrazit a v součtech se počítá 1:1 vůči CZK."
+    "noRateTooltip": "Pro měnu {{currency}} není směnný kurz: přepočtenou částku nelze zobrazit a součty, které ji obsahují, nejsou přesné."
   },
   "form": {
     "basicInfo": "Základní informace",

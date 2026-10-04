@@ -62,7 +62,7 @@
     "title": "Měna",
     "description": "Zvolte měnu, která bude použita v celé aplikaci.",
     "example": "příklad {{example}}",
-    "noRateHint": "Směnné kurzy se aktualizují automaticky jen u měn, které zveřejňuje ECB. U ostatních měn (např. AED nebo SAR) kurz k dispozici není a částky se počítají 1:1 vůči CZK.",
+    "noRateHint": "Směnné kurzy se aktualizují automaticky jen u měn, které zveřejňuje ECB. Ostatní měny (např. AED nebo SAR) kurz nemají, takže součty, které je obsahují, nejsou přesné.",
     "main": "Hlavní měna",
     "mainHint": "Všechny hodnoty se přepočítávají do této měny."
   },

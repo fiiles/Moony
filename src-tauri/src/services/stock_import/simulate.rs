@@ -1351,6 +1351,53 @@ mod tests {
     }
 
     #[test]
+    fn broker_ids_are_looked_up_in_chunks_without_missing_any() {
+        let conn = db();
+        // More ids than one query carries: the first 700 exist already.
+        let stored = 700;
+        let file_rows = 1_300;
+        for i in 0..stored {
+            add_stored(
+                &conn,
+                "AAPL",
+                "buy",
+                "1",
+                "1",
+                day(i),
+                Some(&format!("xtb:{i}")),
+            );
+        }
+        let trades: Vec<ParsedTrade> = (0..file_rows)
+            .map(|i| {
+                with_id(
+                    buy(i as usize + 2, day(i), "AAPL", 1.0, 1.0),
+                    &i.to_string(),
+                )
+            })
+            .collect();
+
+        let sim = run(&conn, trades, &config("xtb"));
+
+        let duplicates = sim
+            .trades
+            .iter()
+            .filter(|t| t.outcome == duplicate(DuplicateKind::BrokerId))
+            .count();
+        let new = sim
+            .trades
+            .iter()
+            .filter(|t| t.outcome == TradeOutcome::New)
+            .count();
+        assert_eq!(
+            (duplicates, new),
+            (stored as usize, (file_rows - stored) as usize)
+        );
+        assert!(sim.trades[..stored as usize]
+            .iter()
+            .all(|t| t.outcome == duplicate(DuplicateKind::BrokerId)));
+    }
+
+    #[test]
     fn degiro_ids_also_need_the_same_quantity_and_price() {
         let conn = db();
         // One order, two fills: the order id is on both.

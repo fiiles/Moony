@@ -1414,6 +1414,31 @@ export interface StockPricePoint {
   currency: string;
 }
 
+// Company data of a stock for the position detail (src-tauri/src/models/company_info.rs).
+// Read from the stock_data cache; a field is null when Yahoo never reported it.
+export interface StockCompanyInfo {
+  ticker: string;
+  sector: string | null;
+  industry: string | null;
+  peRatio: string | null;
+  forwardPe: string | null;
+  /** Whole number in the listing currency. */
+  marketCap: string | null;
+  beta: string | null;
+  fiftyTwoWeekHigh: string | null;
+  fiftyTwoWeekLow: string | null;
+  /** Annual dividend per share in the listing currency. */
+  dividendRate: string | null;
+  /** Raw Yahoo fraction (0.0331 = 3.31 %); multiply by 100 for display. */
+  dividendYield: string | null;
+  /** Yahoo instrument class ("EQUITY", "ETF", …). */
+  quoteType: string | null;
+  /** Currency of the prices and figures above (the listing currency). */
+  currency: string | null;
+  /** When the metadata was last fetched (unix seconds); null when it never was. */
+  metadataFetchedAt: number | null;
+}
+
 // Backup / restore / export (src-tauri/src/models/backup.rs)
 export interface BackupFileEntry {
   path: string;

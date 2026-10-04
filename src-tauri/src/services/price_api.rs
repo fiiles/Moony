@@ -1033,7 +1033,9 @@ fn fmt_f64(v: Option<f64>, decimals: usize) -> Option<String> {
 /// Refresh company metadata (name, market cap, P/E, 52-week range, dividend
 /// yield, sector, exchange) into stock_data. UPDATE-only: rows are created by
 /// the price refresh; a missing row is skipped and retried next time.
-/// Returns the number of tickers updated. Never fails on per-ticker errors.
+/// Returns the number of tickers updated. Never fails on per-ticker errors;
+/// those are counted and logged at warn (tickers and Yahoo's error text only
+/// at debug, rust-backend rule 8).
 pub async fn refresh_stock_metadata_yahoo(
     db: &Database,
     tickers: Vec<String>,
@@ -1047,6 +1049,8 @@ pub async fn refresh_stock_metadata_yahoo(
         .map_err(|e| AppError::ExternalApi(format!("Yahoo connector failed: {}", e)))?;
 
     let mut updated = 0usize;
+    let mut attempted = 0usize;
+    let mut failed = 0usize;
     for (batch_idx, chunk) in tickers.chunks(5).enumerate() {
         if batch_idx > 0 {
             tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
@@ -1079,10 +1083,12 @@ pub async fn refresh_stock_metadata_yahoo(
             if !should_fetch {
                 continue;
             }
+            attempted += 1;
 
             let summary = match provider.get_ticker_info(&ticker_upper).await {
                 Ok(s) => s,
                 Err(e) => {
+                    failed += 1;
                     log::debug!("[YAHOO METADATA] {} - error: {}", ticker_upper, e);
                     continue;
                 }
@@ -1098,6 +1104,7 @@ pub async fn refresh_stock_metadata_yahoo(
                     }
                 })
             else {
+                failed += 1;
                 log::debug!("[YAHOO METADATA] {} - empty quoteSummary", ticker_upper);
                 continue;
             };
@@ -1196,6 +1203,13 @@ pub async fn refresh_stock_metadata_yahoo(
                 );
             }
         }
+    }
+    if failed > 0 {
+        log::warn!(
+            "[YAHOO METADATA] Could not fetch company data for {} of {} tickers",
+            failed,
+            attempted
+        );
     }
     Ok(updated)
 }

@@ -244,14 +244,18 @@
     },
     "companyInfo": {
       "title": "Company Information",
-      "peRatio": "P/E Ratio",
+      "sectorIndustry": "Sector · industry",
+      "peRatio": "P/E ratio",
       "forwardPe": "Forward P/E",
-      "marketCap": "Market Cap",
+      "marketCap": "Market cap",
       "beta": "Beta",
       "fiftyTwoWeekHigh": "52-week high",
       "fiftyTwoWeekLow": "52-week low",
-      "dividendRate": "Dividend Rate",
-      "dividendYield": "Div. Yield"
+      "dividendRate": "Dividend rate",
+      "dividendYield": "Dividend yield",
+      "etfNote": "Yahoo Finance does not report these figures for ETFs",
+      "unavailable": "Company data could not be loaded",
+      "retry": "Try again"
     },
     "transactions": {
       "title": "Transaction History",
@@ -278,8 +282,6 @@
       "save": "Save name"
     },
     "nameUpdated": "Company name updated",
-    "refreshMetadata": "Refresh Data",
-    "metadataRefreshed": "Company data refreshed",
     "openInMonitor": "Open in Stock Monitor",
     "dividendYieldTooltip": "Estimated annual dividends divided by the current market value of this position.",
     "priceNative": "Price ({{currency}})",

@@ -4,6 +4,7 @@ import { convertToCzK } from '@shared/currencies';
 import {
   insuranceMetrics,
   insuranceRow,
+  limitsByValue,
   isEnded,
   nextAnniversary,
   nextPaymentDay,
@@ -147,6 +148,12 @@ describe('insuranceRow limits', () => {
     );
     expect(row.topLimit?.title).toBe('První');
     expect(row.limitCount).toBe(2);
+  });
+
+  it('orders all limits by their CZK value, ties in their original order', () => {
+    const second = { title: 'Druhý', amount: 1_000_000, currency: 'CZK' };
+    expect(limitsByValue([jpy, crown, eur, second])).toEqual([eur, crown, second, jpy]);
+    expect(limitsByValue(undefined)).toEqual([]);
   });
 
   it('has no top limit for a policy without limits', () => {

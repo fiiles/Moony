@@ -8,7 +8,7 @@ import type { CurrencyCode } from '@shared/currencies';
 import { insuranceApi } from '@/lib/tauri-api';
 import { useCurrency } from '@/lib/currency';
 import { useFormat } from '@/lib/use-format';
-import { nextPaymentDay, paidSeries } from '@/utils/insurance';
+import { limitsByValue, nextPaymentDay, paidSeries } from '@/utils/insurance';
 import { clipSeries } from '@/utils/loan-trajectory';
 import { useInsurance, useInsuranceMutations } from '@/hooks/use-insurance';
 import { useDurationText } from '@/hooks/use-duration-text';
@@ -158,7 +158,8 @@ export default function InsuranceDetail() {
     </div>
   );
 
-  const limits = [...(policy.limits ?? [])].sort((a, b) => b.amount - a.amount);
+  // Ranked by their CZK value: limits are in their own currencies
+  const limits = limitsByValue(policy.limits);
 
   return (
     <>

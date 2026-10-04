@@ -106,6 +106,19 @@ export function nextAnniversary(policy: InsurancePolicy, today: number): number 
 }
 
 /**
+ * Limits from the most to the least valuable in CZK (equal ones keep their order). Limits are in
+ * their own currencies, so they are ranked by the converted value, never by the raw amount.
+ */
+export function limitsByValue(
+  limits: readonly InsuranceLimit[] | null | undefined
+): InsuranceLimit[] {
+  return (limits ?? [])
+    .map((limit, index) => ({ limit, index, value: czk(limit.amount, limit.currency) }))
+    .sort((a, b) => b.value - a.value || a.index - b.index)
+    .map(({ limit }) => limit);
+}
+
+/**
  * The limit worth the most in CZK (the first one on a tie), or null without limits. Limits are in
  * their own currencies, so they are ranked by the converted value, never by the raw amount.
  */

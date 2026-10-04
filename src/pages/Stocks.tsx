@@ -15,7 +15,12 @@ import { useStockTagsByInvestment } from '@/hooks/use-stock-tags';
 import { useDatedConvert } from '@/hooks/use-dated-convert';
 import { mapInvestmentToHolding, calculateMetrics, type HoldingData } from '@/utils/stocks';
 import type { EventCluster } from '@/utils/chart-scale';
-import { firstTradeDay, tradeDayEvents, type TradeDayEvent } from '@/utils/trade-events';
+import {
+  firstTradeDay,
+  tickerSummary,
+  tradeDayEvents,
+  type TradeDayEvent,
+} from '@/utils/trade-events';
 import { PageHead } from '@/components/shell/PageHead';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/common/EmptyState';
@@ -99,7 +104,7 @@ export default function Stocks() {
     const event = cluster.events[0];
     return {
       title: t(event.type === 'sell' ? 'chart.events.sell' : 'chart.events.buy', {
-        tickers: event.tickers.join(', '),
+        tickers: tickerSummary(event.tickers),
       }),
       lines: [`${fmt.day(event.t)} · ${formatCurrency(event.amountCzk)}`],
     };

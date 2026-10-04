@@ -68,3 +68,12 @@ export function firstTradeDay(trades: readonly { transactionDate: number }[]): n
   }
   return earliest === undefined ? undefined : utcDayFloor(earliest);
 }
+
+/**
+ * Up to `max` tickers joined by ", " and the rest counted as "+N", so the tooltip of a day with
+ * many trades (an imported history) stays one short line.
+ */
+export function tickerSummary(tickers: readonly string[], max = 4): string {
+  if (tickers.length <= max) return tickers.join(', ');
+  return `${tickers.slice(0, max).join(', ')} +${tickers.length - max}`;
+}

@@ -18,7 +18,12 @@ import { useCurrency } from '@/lib/currency';
 import { useFormat } from '@/lib/use-format';
 import { useDatedConvert } from '@/hooks/use-dated-convert';
 import type { EventCluster } from '@/utils/chart-scale';
-import { firstTradeDay, tradeDayEvents, type TradeDayEvent } from '@/utils/trade-events';
+import {
+  firstTradeDay,
+  tickerSummary,
+  tradeDayEvents,
+  type TradeDayEvent,
+} from '@/utils/trade-events';
 import { PageHead } from '@/components/shell/PageHead';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/common/EmptyState';
@@ -101,7 +106,7 @@ export default function Crypto() {
     const event = cluster.events[0];
     return {
       title: t(event.type === 'sell' ? 'chart.events.sell' : 'chart.events.buy', {
-        tickers: event.tickers.join(', '),
+        tickers: tickerSummary(event.tickers),
       }),
       lines: [`${fmt.day(event.t)} · ${formatCurrency(event.amountCzk)}`],
     };

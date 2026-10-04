@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { firstTradeDay, tradeDayEvents, type TradeLike } from './trade-events';
+import { firstTradeDay, tickerSummary, tradeDayEvents, type TradeLike } from './trade-events';
 import { utcDayStart } from './period';
 
 const DAY = 86_400;
@@ -195,5 +195,17 @@ describe('firstTradeDay', () => {
 
   it('is undefined without trades', () => {
     expect(firstTradeDay([])).toBeUndefined();
+  });
+});
+
+describe('tickerSummary', () => {
+  it('lists up to four tickers and counts the rest', () => {
+    expect(tickerSummary([])).toBe('');
+    expect(tickerSummary(['AAPL'])).toBe('AAPL');
+    expect(tickerSummary(['AAPL', 'MSFT', 'NVDA', 'VOO'])).toBe('AAPL, MSFT, NVDA, VOO');
+    expect(tickerSummary(['AAPL', 'MSFT', 'NVDA', 'VOO', 'ASML', 'SAP', 'BTC'])).toBe(
+      'AAPL, MSFT, NVDA, VOO +3'
+    );
+    expect(tickerSummary(['AAPL', 'MSFT', 'NVDA'], 2)).toBe('AAPL, MSFT +1');
   });
 });

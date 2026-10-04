@@ -67,7 +67,10 @@ All notable changes to Moony are documented in this file. The format follows
 - **Company data on the stock detail was always empty**; it was only downloaded for watched
   stocks and never read for holdings.
 - **The 52-week range overflowed its card** on the watchlist detail.
-- **Insurance limits in another currency** were labelled as Czech crowns in the policies table.
+- **Stocks analysis switches did nothing visible**: the tag chips only filtered the holdings table
+  at the bottom of the page; the whole-portfolio TWR line was drawn in nearly the colour of a tag.
+- **Insurance limits in another currency** were labelled as Czech crowns in the policies table
+  and ranked by their raw amount (a yen limit above a euro one) there and on the policy detail.
 - **MCP cashflow and budget reports.** The `cashflow_report` and `budgeting_report` tools
   returned empty lists because they read money stored as text as numbers.
 - **Loading a property into the investment calculator brings its loans.** The loan amount,

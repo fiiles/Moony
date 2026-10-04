@@ -1105,7 +1105,7 @@ tag: StockTag | null;
 /**
  * True when this series represents stocks with no tags assigned.
  */
-is_untagged: boolean; data: TwrDataPoint[] }
+isUntagged: boolean; data: TwrDataPoint[] }
 
 /**
  * Data for editing a category's definition. A field that is absent (`None`)

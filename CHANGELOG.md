@@ -8,6 +8,13 @@ All notable changes to Moony are documented in this file. The format follows
 
 ### Added
 
+- **Stock import from brokers.** A wizard (file, columns, review, done) replaces the old import
+  table. It reads exports from XTB, Trading 212, Degiro and Interactive Brokers, and your own
+  table made in Excel (Czech or English headers, any delimiter and encoding); other layouts are
+  mapped column by column and can be remembered. Before anything is written it confirms the
+  securities on Yahoo Finance, shows what happens to every row and catches duplicates (by the
+  broker's trade ID or the same values) and sells above the holding. Every import is recorded
+  and can be undone. Fees are not imported.
 - **Year to date.** The dashboard, the list trend cards and the stock, crypto and bank account
   charts offer the horizons 30 days · 3 months · This year · Year · All, bounded on UTC days.
 - **Cash over time.** Bank accounts get a trend card with the recorded cash history, the same

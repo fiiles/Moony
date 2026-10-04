@@ -254,6 +254,7 @@
       "dividendRate": "Dividend rate",
       "dividendYield": "Dividend yield",
       "etfNote": "Yahoo Finance does not report these figures for ETFs",
+      "noData": "Yahoo Finance reports no company data for this stock",
       "unavailable": "Company data could not be loaded",
       "retry": "Try again"
     },

@@ -1106,6 +1106,12 @@ pub async fn refresh_stock_metadata_yahoo(
             else {
                 failed += 1;
                 log::debug!("[YAHOO METADATA] {} - empty quoteSummary", ticker_upper);
+                // Yahoo answered and has nothing for this ticker: count the attempt as a fetch so
+                // the ticker is not sent again within the TTL. A connection error (above) is not
+                // counted, so going back online fetches at once.
+                db.with_conn(|conn| {
+                    crate::services::company_info::mark_metadata_checked(conn, &ticker_upper, now)
+                })?;
                 continue;
             };
 

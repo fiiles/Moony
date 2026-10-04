@@ -263,6 +263,7 @@
       "dividendRate": "Dividendová sazba",
       "dividendYield": "Div. výnos",
       "etfNote": "Pro ETF Yahoo Finance tyto údaje neuvádí",
+      "noData": "Yahoo Finance k této akcii žádné údaje neuvádí",
       "unavailable": "Údaje se nepodařilo načíst",
       "retry": "Zkusit znovu"
     },

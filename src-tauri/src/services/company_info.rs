@@ -24,6 +24,18 @@ pub fn metadata_is_stale(fetched_at: Option<i64>, now: i64) -> bool {
     }
 }
 
+/// Record that Yahoo was asked for a ticker's company data and answered without any (it does not
+/// know the ticker, or keeps no profile for it). The attempt counts as a fetch, so the ticker is
+/// not sent again before `METADATA_MAX_AGE_SECONDS` have passed (PRIVACY.md promises at most once
+/// a day); stored figures stay as they are. A ticker without a `stock_data` row is left alone.
+pub fn mark_metadata_checked(conn: &Connection, ticker: &str, now: i64) -> Result<()> {
+    conn.execute(
+        "UPDATE stock_data SET metadata_fetched_at = ?2 WHERE ticker = ?1",
+        rusqlite::params![ticker.trim().to_uppercase(), now],
+    )?;
+    Ok(())
+}
+
 /// A figure that is positive by nature (ratios, prices, market cap, yield), or `None`. Yahoo
 /// reports 0 where a figure does not apply (no market cap for most funds, a dividend rate of 0
 /// for a company that pays none), and a stored string that is not a number is no figure either;
@@ -243,6 +255,36 @@ mod tests {
 
         assert!(info.pe_ratio.is_none());
         assert!(info.market_cap.is_none());
+    }
+
+    /// Yahoo answered and had nothing for the ticker: the attempt counts as a fetch, so the
+    /// ticker is not sent again before the day is over (PRIVACY.md), and nothing stored is lost.
+    #[test]
+    fn an_answer_without_data_counts_as_a_fetch() {
+        let conn = setup_test_db();
+        conn.execute(
+            "INSERT INTO stock_data (id, ticker, currency, sector) VALUES ('id-1', 'GONE', 'USD', 'Energy')",
+            [],
+        )
+        .expect("insert");
+        let now = 1_700_000_000;
+
+        mark_metadata_checked(&conn, " gone ", now).expect("mark");
+
+        let info = read_company_info(&conn, "GONE").expect("read");
+        assert_eq!(info.metadata_fetched_at, Some(now));
+        assert!(!metadata_is_stale(info.metadata_fetched_at, now + 3_600));
+        assert_eq!(info.sector.as_deref(), Some("Energy"));
+    }
+
+    #[test]
+    fn marking_a_ticker_without_a_row_changes_nothing() {
+        let conn = setup_test_db();
+        mark_metadata_checked(&conn, "NOPE", 1_700_000_000).expect("mark");
+        let rows: i64 = conn
+            .query_row("SELECT COUNT(*) FROM stock_data", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(rows, 0);
     }
 
     #[test]

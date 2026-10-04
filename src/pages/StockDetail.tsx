@@ -384,6 +384,15 @@ export default function StockDetail() {
         </p>
       );
     }
+    // Yahoo answered and had nothing for this ticker; it is asked again only after a day, so a
+    // retry could not change anything
+    if (companyInfo?.metadataFetchedAt != null) {
+      return (
+        <p className="m-0 py-[9px] text-table leading-[1.5] text-ink-3">
+          {t('detail.companyInfo.noData')}
+        </p>
+      );
+    }
     return (
       <div className="py-[9px]">
         <p className="m-0 text-table leading-[1.5] text-ink-3">

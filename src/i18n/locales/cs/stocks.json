@@ -465,6 +465,7 @@
     "recent": {
       "title": "Poslední importy",
       "undo": "Vrátit",
+      "undoFor": "Vrátit import {{file}}",
       "trades_one": "{{count}} obchod",
       "trades_few": "{{count}} obchody",
       "trades_other": "{{count}} obchodů",
@@ -595,6 +596,9 @@
         "edit": "Upravit",
         "skip": "Přeskočit",
         "include": "Zahrnout",
+        "editFor": "Upravit {{name}}",
+        "skipFor": "Přeskočit {{name}}",
+        "includeFor": "Zahrnout {{name}}",
         "state": {
           "existing": "Existující pozice",
           "new": "Nová pozice",

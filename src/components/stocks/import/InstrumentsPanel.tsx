@@ -245,11 +245,29 @@ function InstrumentRows({
         <TableCell>
           <div className="flex justify-end gap-1">
             {!skipped && (
-              <Button type="button" variant="ghost" size="sm" onClick={onEdit} disabled={editing}>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={onEdit}
+                disabled={editing}
+                aria-label={t('importWizard.review.instruments.editFor', { name: primary })}
+              >
                 {t('importWizard.review.instruments.edit')}
               </Button>
             )}
-            <Button type="button" variant="ghost" size="sm" onClick={onToggleSkip}>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={onToggleSkip}
+              aria-label={t(
+                skipped
+                  ? 'importWizard.review.instruments.includeFor'
+                  : 'importWizard.review.instruments.skipFor',
+                { name: primary }
+              )}
+            >
               {skipped
                 ? t('importWizard.review.instruments.include')
                 : t('importWizard.review.instruments.skip')}

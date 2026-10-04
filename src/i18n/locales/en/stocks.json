@@ -456,6 +456,7 @@
     "recent": {
       "title": "Recent imports",
       "undo": "Undo",
+      "undoFor": "Undo the import {{file}}",
       "trades_one": "{{count}} trade",
       "trades_other": "{{count}} trades",
       "tradesOf": "{{remaining}} of {{total}} trades",
@@ -583,6 +584,9 @@
         "edit": "Edit",
         "skip": "Skip",
         "include": "Include",
+        "editFor": "Edit {{name}}",
+        "skipFor": "Skip {{name}}",
+        "includeFor": "Include {{name}}",
         "state": {
           "existing": "Existing position",
           "new": "New position",

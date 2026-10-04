@@ -55,7 +55,13 @@ export function RecentImports({ batches, formats, onUndo }: RecentImportsProps) 
                   : t('importWizard.recent.trades', { count: batch.tradeCount })}
               </small>
             </span>
-            <Button type="button" variant="ghost" size="sm" onClick={() => onUndo(batch)}>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => onUndo(batch)}
+              aria-label={t('importWizard.recent.undoFor', { file: batch.fileName })}
+            >
               {t('importWizard.recent.undo')}
             </Button>
           </li>

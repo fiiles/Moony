@@ -31,10 +31,13 @@
 //!   never compared with each other.
 //! - Rule 2, the same values: same ticker, UTC day, direction, quantity (within
 //!   1e-9 relative) and price (within 1e-6 relative). A row that has a broker
-//!   id is distinguished from stored transactions that have another one, and
-//!   from the other rows of its file; it only matches stored transactions
-//!   without a broker id (an earlier import before ids, a hand-made trade).
-//!   A row without one also matches an earlier accepted row of its file.
+//!   id is distinguished from stored transactions that have another id of the
+//!   same source, and from the other rows of its file; it matches stored
+//!   transactions without a broker id (an earlier import before ids, a
+//!   hand-made trade) and those whose id comes from another source (ids of two
+//!   sources cannot be compared, e.g. a preset import before its layout was
+//!   saved as a format). A row without one also matches an earlier accepted
+//!   row of its file.
 //!
 //! Stored transactions are not "used up" by a match: re-importing a file is
 //! idempotent whatever it repeats.
@@ -492,12 +495,19 @@ impl Run<'_> {
                 return Some(DuplicateKind::BrokerId);
             }
         }
-        // Rows with a broker id are told apart by it: only stored transactions
-        // without one can be the same trade.
-        let stored_alike = state
-            .stored
-            .iter()
-            .any(|s| s.same_trade(trade) && (external_id.is_none() || s.external_id.is_none()));
+        // Rows with a broker id are told apart by it: a stored transaction with
+        // an id of the same source is another trade. One without an id, or with
+        // an id of another source (an import before the layout was saved as a
+        // format, a custom mapping), can only be compared by its values.
+        let source_prefix = format!("{}:", self.config.source);
+        let stored_alike = state.stored.iter().any(|s| {
+            s.same_trade(trade)
+                && (external_id.is_none()
+                    || !s
+                        .external_id
+                        .as_deref()
+                        .is_some_and(|id| id.starts_with(&source_prefix)))
+        });
         let repeated_in_file = external_id.is_none()
             && state.accepted.iter().any(|a| {
                 a.day == trade.day
@@ -1462,6 +1472,29 @@ mod tests {
             &config("xtb"),
         );
         assert_eq!(sim.trades[0].outcome, duplicate(DuplicateKind::Identical));
+    }
+
+    /// Ids of another source (a preset before the user saved its layout as a
+    /// format, or a custom mapping) cannot be compared with the file's, so the
+    /// values decide: re-importing the same statement under a saved format
+    /// must not write every trade twice.
+    #[test]
+    fn a_stored_row_with_an_id_of_another_source_is_compared_by_its_values() {
+        let conn = db();
+        add_stored(&conn, "AAPL", "buy", "10", "100", day(0), Some("xtb:111"));
+        add_stored(&conn, "AAPL", "buy", "5", "120", day(1), Some("xtb:112"));
+        let sim = run(
+            &conn,
+            vec![
+                with_id(buy(2, day(0), "AAPL", 10.0, 100.0), "111"),
+                with_id(buy(3, day(1), "AAPL", 5.0, 120.0), "112"),
+                with_id(buy(4, day(2), "AAPL", 1.0, 130.0), "113"),
+            ],
+            &config("format:2b9c"),
+        );
+        assert_eq!(sim.trades[0].outcome, duplicate(DuplicateKind::Identical));
+        assert_eq!(sim.trades[1].outcome, duplicate(DuplicateKind::Identical));
+        assert_eq!(sim.trades[2].outcome, TradeOutcome::New);
     }
 
     #[test]

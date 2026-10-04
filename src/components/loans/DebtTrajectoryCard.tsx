@@ -9,14 +9,15 @@ import type { ChartEvent, EventCluster } from '@/utils/chart-scale';
 import { useCurrency } from '@/lib/currency';
 import { useFormat } from '@/lib/use-format';
 import { useLoanText } from '@/hooks/use-loan-text';
-import { Card } from '@/components/ui/card';
 import { Segmented } from '@/components/ui/segmented';
 import { MoonyLineChart } from '@/components/charts/MoonyLineChart';
 import { ChartLegend } from '@/components/charts/ChartLegend';
+import { TREND_CHART_HEIGHT, TrendCard } from '@/components/charts/TrendCard';
 
 type Horizon = '5' | '10' | 'all';
 
-interface Milestone extends ChartEvent {
+/** A mark on the trace: the start of a loan (`buy`) or a milestone ahead (`mark`). */
+interface DebtEvent extends ChartEvent {
   title: string;
   lines: string[];
 }
@@ -29,8 +30,9 @@ interface DebtTrajectoryCardProps {
 
 /**
  * Debt trajectory (prototype loans.html): the sum of all balances, actual solid
- * from the first drawdown, the schedules dashed after today, with payoffs,
- * fixation ends and half-repaid marks as milestones.
+ * from the first drawdown, the schedules dashed after today. Every loan marks
+ * its start (the ▲ where the line steps up), payoffs, fixation ends and
+ * half-repaid days are the milestones.
  */
 export function DebtTrajectoryCard({ rows, metrics, today }: DebtTrajectoryCardProps) {
   const { t } = useTranslation('loans');
@@ -60,9 +62,20 @@ export function DebtTrajectoryCard({ rows, metrics, today }: DebtTrajectoryCardP
       ? Math.max(metrics.debtFreeDay ?? lastT, today + 86_400)
       : dueDay(today, Number(horizon) * 12);
   const points = useMemo(() => clipSeries(series, 0, end), [series, end]);
+  const start = points[0]?.t ?? today;
 
-  const milestones = useMemo<Milestone[]>(() => {
-    const out: Milestone[] = [];
+  const events = useMemo<DebtEvent[]>(() => {
+    const out: DebtEvent[] = [];
+    // Every loan, paid-off ones too: the mark says why the line steps up there
+    for (const r of rows) {
+      out.push({
+        id: `start-${r.loan.id}`,
+        t: r.terms.startDay,
+        type: 'buy',
+        title: t('chart.milestones.newLoan', { name: r.loan.name }),
+        lines: [`${fmt.day(r.terms.startDay)} · ${formatCurrency(r.principalCzk)}`],
+      });
+    }
     for (const r of active) {
       if (r.payoffDay !== null && r.payoffDay > today) {
         const isLast = metrics.debtFreeDay === r.payoffDay;
@@ -114,10 +127,10 @@ export function DebtTrajectoryCard({ rows, metrics, today }: DebtTrajectoryCardP
         });
       }
     }
-    return out.filter((m) => m.t <= end).sort((a, b) => a.t - b.t);
-    // formatters are stable per locale/currency
+    return out.filter((e) => e.t >= start && e.t <= end).sort((a, b) => a.t - b.t);
+    // `text` and `formatCurrency` are rebuilt every render but only follow the locale and currency
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active, metrics.debtFreeDay, today, end, currencyCode]);
+  }, [t, fmt, rows, active, metrics.debtFreeDay, today, start, end, currencyCode]);
 
   if (series.length < 2) return null;
 
@@ -139,12 +152,10 @@ export function DebtTrajectoryCard({ rows, metrics, today }: DebtTrajectoryCardP
         });
 
   return (
-    <Card className='relative mb-7 overflow-hidden px-[21px] pb-[14px] pt-5 after:pointer-events-none after:absolute after:-right-[100px] after:-top-[120px] after:h-[180px] after:w-[340px] after:rounded-full after:bg-hero-orb after:content-[""]'>
-      <div className="relative z-[1] flex items-center justify-between gap-6">
-        <div>
-          <h3 className="m-0 text-h3 text-ink">{t('chart.title')}</h3>
-          <p className="mt-[5px] text-micro font-500 text-ink-4">{t('chart.subtitle')}</p>
-        </div>
+    <TrendCard
+      title={t('chart.title')}
+      subtitle={t('chart.subtitle')}
+      aside={
         <Segmented
           value={horizon}
           onValueChange={setHorizon}
@@ -154,29 +165,8 @@ export function DebtTrajectoryCard({ rows, metrics, today }: DebtTrajectoryCardP
             { value: 'all', label: t('chart.horizon.all') },
           ]}
         />
-      </div>
-      <MoonyLineChart<Milestone>
-        className="relative z-[1] -mx-1 mt-[14px]"
-        points={points}
-        height={170}
-        zeroBaseline
-        projectedFrom={today}
-        formatValue={money}
-        renderTip={(p) => ({
-          title: money(p.value),
-          lines: [`${text.monthYear(p.t)}${p.t > today ? ` · ${t('chart.tipSchedule')}` : ''}`],
-        })}
-        events={milestones}
-        renderEventTip={(cluster: EventCluster<Milestone>) =>
-          cluster.events.length === 1
-            ? { title: cluster.events[0].title, lines: cluster.events[0].lines }
-            : {
-                title: t('chart.milestones.several', { count: cluster.events.length }),
-                lines: cluster.events.map((e) => e.title),
-              }
-        }
-      />
-      <div className="relative z-[1]">
+      }
+      legend={
         <ChartLegend
           items={[
             { label: t('chart.legend.outstanding'), swatch: { kind: 'line' } },
@@ -184,11 +174,36 @@ export function DebtTrajectoryCard({ rows, metrics, today }: DebtTrajectoryCardP
               label: t('chart.legend.schedule'),
               swatch: { kind: 'dash', color: 'var(--chart-line)' },
             },
+            { label: t('chart.legend.newLoan'), swatch: { kind: 'event', type: 'buy' } },
             { label: t('chart.legend.milestone'), swatch: { kind: 'ring' } },
           ]}
           note={note}
         />
-      </div>
-    </Card>
+      }
+    >
+      <MoonyLineChart<DebtEvent>
+        points={points}
+        height={TREND_CHART_HEIGHT}
+        zeroBaseline
+        projectedFrom={today}
+        formatValue={money}
+        renderTip={(p) => ({
+          title: money(p.value),
+          lines: [`${text.monthYear(p.t)}${p.t > today ? ` · ${t('chart.tipSchedule')}` : ''}`],
+        })}
+        events={events}
+        renderEventTip={(cluster: EventCluster<DebtEvent>) =>
+          cluster.events.length === 1
+            ? { title: cluster.events[0].title, lines: cluster.events[0].lines }
+            : {
+                // Only milestones fold into "N milestones"; a new loan among them makes it events
+                title: cluster.events.every((e) => e.type === 'mark')
+                  ? t('chart.milestones.several', { count: cluster.events.length })
+                  : t('chart.events.several', { count: cluster.events.length }),
+                lines: cluster.events.map((e) => e.title),
+              }
+        }
+      />
+    </TrendCard>
   );
 }

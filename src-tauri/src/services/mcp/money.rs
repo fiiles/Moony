@@ -28,10 +28,11 @@ pub fn load_main_currency(conn: &Connection) -> Result<String> {
 }
 
 /// A currency argument of an MCP write tool: the given code, or the user's
-/// main currency when the argument is missing. Applied in the MCP layer only;
+/// main currency when the argument is missing or blank (an empty or
+/// whitespace-only string counts as missing). Applied in the MCP layer only;
 /// the shared services keep their own CZK default for the UI path (ADR 0007).
 pub fn currency_or_main(conn: &Connection, currency: Option<&str>) -> Result<String> {
-    match currency {
+    match currency.filter(|code| !code.trim().is_empty()) {
         Some(code) => Ok(code.to_string()),
         None => load_main_currency(conn),
     }
@@ -380,6 +381,14 @@ mod tests {
 
         assert_eq!(currency_or_main(&conn, Some("USD")).expect("given"), "USD");
         assert_eq!(currency_or_main(&conn, None).expect("missing"), "EUR");
+    }
+
+    #[test]
+    fn a_blank_currency_counts_as_missing() {
+        let conn = setup_db(Some("EUR"));
+
+        assert_eq!(currency_or_main(&conn, Some("")).expect("empty"), "EUR");
+        assert_eq!(currency_or_main(&conn, Some("  ")).expect("blank"), "EUR");
     }
 
     #[test]

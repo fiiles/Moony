@@ -6,7 +6,7 @@ import { useLanguage } from '@/i18n/I18nProvider';
 import { useFormat } from '@/lib/use-format';
 import { cn } from '@/lib/utils';
 import type { CsvDateRange, StockImportResult, StockImportUndoResult } from '@shared/schema';
-import { groupResultMessages } from './import-config';
+import { groupResultMessages, type RowStatusByLine } from './import-config';
 import { rowMessageLine } from './row-messages';
 
 /** Tickers named in a sentence before "+N". */
@@ -83,6 +83,8 @@ interface ResultStepProps {
   fileName: string;
   /** Days of the trades that were imported (from the review). */
   dateRange: CsvDateRange | null;
+  /** What the review said about each row it listed, to sort the messages by. */
+  reviewed: RowStatusByLine;
   /** The history of portfolio value is being rebuilt in the background. */
   recalculating: boolean;
   /** Set once the import was undone from here. */
@@ -104,6 +106,7 @@ export function ResultStep({
   result,
   fileName,
   dateRange,
+  reviewed,
   recalculating,
   undone,
   isUndoing,
@@ -118,7 +121,10 @@ export function ResultStep({
   const fmt = useFormat();
   const locale = getLocale();
 
-  const groups = useMemo(() => groupResultMessages(result.messages), [result.messages]);
+  const groups = useMemo(
+    () => groupResultMessages(result.messages, reviewed),
+    [result.messages, reviewed]
+  );
   const lines = useMemo(() => {
     const context = { t, tc, locale };
     return {

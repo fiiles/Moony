@@ -47,6 +47,7 @@ import {
   needsLookup,
   normalizeTicker,
   optionLabel,
+  rowStatusByLine,
   selectValueToColumn,
   setTypeValueAction,
   sourceHelpUrl,
@@ -1037,6 +1038,31 @@ describe('result messages', () => {
     expect(classifyResultMessage(message('importWizard.row.dateUnparseable'))).toBe('errors');
     expect(classifyResultMessage(message('validation.currencyInvalid'))).toBe('errors');
     expect(classifyResultMessage(message('something.unknown'))).toBe('errors');
+  });
+
+  it('lists a row the review showed as what it was there, whatever its key says', () => {
+    const reviewed = rowStatusByLine([
+      { line: 3, status: 'duplicate' },
+      { line: 4, status: 'skipped' },
+      { line: 5, status: 'error' },
+      { line: 6, status: 'new' },
+    ] as StockPreviewRow[]);
+    expect(classifyResultMessage(message('importWizard.row.alreadyThere', 3), reviewed)).toBe(
+      'duplicates'
+    );
+    expect(classifyResultMessage(message('importWizard.row.somethingNew', 4), reviewed)).toBe(
+      'skipped'
+    );
+    expect(classifyResultMessage(message('importWizard.row.notATrade', 5), reviewed)).toBe(
+      'errors'
+    );
+    // a row that was new in the review falls back to its key; a row beyond the review too
+    expect(classifyResultMessage(message('importWizard.row.notATrade', 6), reviewed)).toBe(
+      'skipped'
+    );
+    expect(classifyResultMessage(message('importWizard.row.duplicate', 900), reviewed)).toBe(
+      'duplicates'
+    );
   });
 
   it('groups the messages and keeps the file order within a group', () => {

@@ -24,7 +24,9 @@ import type {
   StockInstrumentOverride,
   StockInstrumentQuery,
   StockInstrumentResolution,
+  StockPreviewRow,
   StockRowMessage,
+  StockRowStatus,
   StockTypeValueAction,
   StockTypeValueMapping,
 } from '@shared/schema';
@@ -869,22 +871,42 @@ const SKIPPED_KEYS: ReadonlySet<string> = new Set([
 
 const DUPLICATE_KEY_PREFIX = 'importWizard.row.duplicate';
 
-/** Which list of the result step a row message belongs to. */
-export function classifyResultMessage(message: Pick<StockRowMessage, 'key'>): ResultMessageGroup {
+/** What each row of the review was, by file line: the result is read against it. */
+export type RowStatusByLine = ReadonlyMap<number, StockRowStatus>;
+
+export function rowStatusByLine(rows: readonly StockPreviewRow[]): RowStatusByLine {
+  return new Map(rows.map((row) => [row.line, row.status]));
+}
+
+/**
+ * Which list of the result step a row message belongs to. A row the user saw in
+ * the review (the first 200) is listed as what it was there; for the rest the
+ * key decides: skipped rows have a few known keys, duplicates share a prefix and
+ * anything else is a problem.
+ */
+export function classifyResultMessage(
+  message: Pick<StockRowMessage, 'key' | 'line'>,
+  reviewed?: RowStatusByLine
+): ResultMessageGroup {
+  const status = reviewed?.get(message.line);
+  if (status === 'duplicate') return 'duplicates';
+  if (status === 'skipped') return 'skipped';
+  if (status === 'error') return 'errors';
   if (message.key.startsWith(DUPLICATE_KEY_PREFIX)) return 'duplicates';
   if (SKIPPED_KEYS.has(message.key)) return 'skipped';
   return 'errors';
 }
 
 export function groupResultMessages(
-  messages: readonly StockRowMessage[]
+  messages: readonly StockRowMessage[],
+  reviewed?: RowStatusByLine
 ): Record<ResultMessageGroup, StockRowMessage[]> {
   const groups: Record<ResultMessageGroup, StockRowMessage[]> = {
     duplicates: [],
     skipped: [],
     errors: [],
   };
-  for (const message of messages) groups[classifyResultMessage(message)].push(message);
+  for (const message of messages) groups[classifyResultMessage(message, reviewed)].push(message);
   return groups;
 }
 

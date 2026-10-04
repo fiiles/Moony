@@ -52,9 +52,11 @@ import {
   mergeAutoOverrides,
   missingSymbolCount,
   normalizeTicker,
+  rowStatusByLine,
   summarizePreview,
   updateOverride,
   type MappingState,
+  type RowStatusByLine,
 } from './import-config';
 import { importErrorText } from './row-messages';
 import { useInstrumentResolution } from './use-instrument-resolution';
@@ -120,6 +122,8 @@ export function StockImportDialog({ open, onOpenChange }: StockImportDialogProps
   const [isImporting, setIsImporting] = useState(false);
   const [result, setResult] = useState<StockImportResult | null>(null);
   const [importedRange, setImportedRange] = useState<CsvDateRange | null>(null);
+  // What the review said about each row, kept for the result (its query is cleared by the import).
+  const [reviewedRows, setReviewedRows] = useState<RowStatusByLine>(new Map());
   const [undone, setUndone] = useState<StockImportUndoResult | null>(null);
   const [pendingUndo, setPendingUndo] = useState<PendingUndo | null>(null);
   const [pendingFormatDelete, setPendingFormatDelete] = useState<SavedStockImportFormat | null>(
@@ -327,6 +331,7 @@ export function StockImportDialog({ open, onOpenChange }: StockImportDialogProps
     setIsImporting(false);
     setResult(null);
     setImportedRange(null);
+    setReviewedRows(new Map());
     setUndone(null);
   };
 
@@ -350,6 +355,7 @@ export function StockImportDialog({ open, onOpenChange }: StockImportDialogProps
       const imported = await mutations.importCsv.mutateAsync({ filePath, config });
       setResult(imported);
       setImportedRange(preview.dateRange);
+      setReviewedRows(rowStatusByLine(preview.rows));
       setUndone(null);
       setStep('done');
 
@@ -521,6 +527,7 @@ export function StockImportDialog({ open, onOpenChange }: StockImportDialogProps
                 result={result}
                 fileName={fileNameFromPath(filePath)}
                 dateRange={importedRange}
+                reviewed={reviewedRows}
                 recalculating={recalculating}
                 undone={undone}
                 isUndoing={mutations.undoBatch.isPending}

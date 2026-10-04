@@ -5,11 +5,24 @@
 //! (Interactive Brokers' optional `BOF` line), so the header is found by what
 //! its cells mean, with the stock column roles instead of the bank's.
 
+use crate::error::{AppError, Result};
 use crate::services::csv_import::decode::{
     csv_reader, detect_header_row_by, slice_from_line, LineIndex,
 };
 
 use super::columns::{suggest_stock_columns, StockRole};
+
+/// The delimiter of a configuration or an option: `,`, `;` or a tab.
+pub fn delimiter_char(delimiter: &str) -> Result<char> {
+    match delimiter {
+        "," => Ok(','),
+        ";" => Ok(';'),
+        "\t" => Ok('\t'),
+        _ => Err(AppError::Validation(
+            "validation.csvDelimiterInvalid".to_string(),
+        )),
+    }
+}
 
 /// Whether `fields` (the trimmed cells of a line) are a stock header: at least
 /// three non-empty cells, matching at least two stock roles, one of them the
@@ -147,6 +160,20 @@ mod tests {
     fn nothing_that_looks_like_a_header_falls_back_to_the_first_line() {
         assert_eq!(detect_stock_header_row("foo,bar,baz\n1,2,3\n", ','), 0);
         assert_eq!(detect_stock_header_row("", ','), 0);
+    }
+
+    #[test]
+    fn the_delimiter_is_one_of_three() {
+        assert_eq!(delimiter_char(",").ok(), Some(','));
+        assert_eq!(delimiter_char(";").ok(), Some(';'));
+        assert_eq!(delimiter_char("\t").ok(), Some('\t'));
+        for bad in ["", "|", ";;", " ", "tab"] {
+            let err = delimiter_char(bad).expect_err(bad);
+            assert!(
+                matches!(&err, AppError::Validation(key) if key == "validation.csvDelimiterInvalid"),
+                "{bad:?}"
+            );
+        }
     }
 
     #[test]

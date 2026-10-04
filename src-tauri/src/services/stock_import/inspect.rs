@@ -20,7 +20,7 @@ use super::adapters::{
 use super::columns::{
     column_for, fold_value, suggest_stock_columns, suggest_type_action, StockRole,
 };
-use super::detect::{data_records, detect_stock_header_row};
+use super::detect::{data_records, delimiter_char, detect_stock_header_row};
 use super::types::{
     header_signature, CurrencyMode, DirectionMode, SavedStockImportFormat, StockColumnSuggestion,
     StockColumnValues, StockCsvInspectOptions, StockCsvInspection, StockImportConfig,
@@ -124,17 +124,6 @@ fn walk_rows(
         }
     }
     walk
-}
-
-fn parse_delimiter(delimiter: &str) -> Result<char> {
-    match delimiter {
-        "," => Ok(','),
-        ";" => Ok(';'),
-        "\t" => Ok('\t'),
-        _ => Err(AppError::Validation(
-            "validation.csvDelimiterInvalid".into(),
-        )),
-    }
 }
 
 /// A saved format whose headers are the file's.
@@ -448,7 +437,7 @@ pub fn inspect(
     let decoded = decode_csv_content(bytes, options.encoding.as_deref());
     let content = decoded.text.as_str();
     let delimiter = match options.delimiter.as_deref() {
-        Some(delimiter) => parse_delimiter(delimiter)?,
+        Some(delimiter) => delimiter_char(delimiter)?,
         None => detect_csv_delimiter(content),
     };
     let mut header_row = options

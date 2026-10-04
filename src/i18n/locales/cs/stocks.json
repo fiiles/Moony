@@ -201,7 +201,20 @@
     "positionTitle": "Vývoj hodnoty pozice",
     "bought": "Nakoupeno",
     "sold": "Prodáno",
-    "subtitle": "Včetně vložených prostředků a tržního vývoje."
+    "subtitle": "Včetně vložených prostředků a tržního vývoje.",
+    "legend": {
+      "value": "Hodnota",
+      "buy": "Nákup",
+      "sell": "Prodej"
+    },
+    "events": {
+      "buy": "Nákup {{tickers}}",
+      "sell": "Prodej {{tickers}}",
+      "cluster_one": "{{count}} transakce",
+      "cluster_few": "{{count}} transakce",
+      "cluster_many": "{{count}} transakce",
+      "cluster_other": "{{count}} transakcí"
+    }
   },
   "detail": {
     "backToList": "Zpět na akcie",

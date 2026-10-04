@@ -198,7 +198,18 @@
     "positionTitle": "Position value over time",
     "bought": "Bought",
     "sold": "Sold",
-    "subtitle": "Including contributions and market movement."
+    "subtitle": "Including contributions and market movement.",
+    "legend": {
+      "value": "Value",
+      "buy": "Buy",
+      "sell": "Sell"
+    },
+    "events": {
+      "buy": "Bought {{tickers}}",
+      "sell": "Sold {{tickers}}",
+      "cluster_one": "{{count}} transaction",
+      "cluster_other": "{{count}} transactions"
+    }
   },
   "detail": {
     "backToList": "Back to stocks",

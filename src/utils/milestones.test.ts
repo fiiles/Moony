@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import type { TFunction } from 'i18next';
 import type { Milestone, MilestoneKind } from '@shared/schema';
 import {
   MILESTONE_GROUP_IDS,
@@ -12,6 +13,7 @@ import {
   relativeLabel,
   splitMilestones,
   upcomingDeadlines,
+  upkeepShort,
 } from './milestones';
 
 const DAY = 86_400;
@@ -178,5 +180,26 @@ describe('daysBetween and relativeLabel', () => {
     expect(relativeLabel(150)).toEqual({ key: 'inMonths', count: 5 });
     expect(relativeLabel(-41)).toEqual({ key: 'daysAgo', count: 41 });
     expect(relativeLabel(-400)).toEqual({ key: 'monthsAgo', count: 13 });
+  });
+});
+
+describe('upkeepShort', () => {
+  /** A stand-in for t() that echoes the key and its interpolation values. */
+  const t = ((key: string, options?: Record<string, unknown>) =>
+    `${key}|${JSON.stringify(options)}`) as unknown as TFunction<'milestones'>;
+
+  it('counts accounts for stale balances and names the item for the rest', () => {
+    expect(upkeepShort(m({ kind: 'balances_stale', title: 'Účty', count: 3 }), t)).toBe(
+      'short.balances_stale|{"count":3}'
+    );
+    expect(upkeepShort(m({ kind: 'balances_stale', count: null }), t)).toBe(
+      'short.balances_stale|{"count":0}'
+    );
+    expect(upkeepShort(m({ kind: 'valuation_stale', title: 'Byt 3+kk' }), t)).toBe(
+      'short.valuation_stale|{"title":"Byt 3+kk"}'
+    );
+    expect(upkeepShort(m({ kind: 'backup_stale', title: '' }), t)).toBe(
+      'short.backup_stale|{"title":""}'
+    );
   });
 });

@@ -8,13 +8,13 @@ import { MILESTONE_GROUP_IDS, kindsOf } from '@/utils/milestones';
 /** Settings → Obecné → Připomínky na přehledu: one switch per reminder group. */
 export function MilestoneSettingsCard() {
   const { t } = useTranslation('milestones');
-  const { data: muted = [] } = useMilestoneMutedKinds();
+  const { data: muted } = useMilestoneMutedKinds();
   const { setGroupMuted } = useMilestoneActions();
 
   return (
     <SettingsCard title={t('settings.title')} description={t('settings.description')}>
       {MILESTONE_GROUP_IDS.map((group) => {
-        const on = !kindsOf(group).every((kind) => muted.includes(kind));
+        const on = !kindsOf(group).every((kind) => muted?.includes(kind));
         return (
           <SettingsRow
             key={group}
@@ -25,6 +25,8 @@ export function MilestoneSettingsCard() {
             <Switch
               id={`milestone-group-${group}`}
               checked={on}
+              // Until the muted list has loaded the switches would flash ON and then flip.
+              disabled={muted === undefined}
               onCheckedChange={(checked) => setGroupMuted(group, !checked)}
             />
           </SettingsRow>

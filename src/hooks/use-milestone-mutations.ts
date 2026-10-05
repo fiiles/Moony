@@ -49,7 +49,10 @@ export function useMilestoneActions() {
   // a row calling the hook can unmount when its item disappears, which drops call-level callbacks.
   const setMuted = useMutation({
     mutationFn: ({ kinds }: MutedVariables) => milestonesApi.setMutedKinds(kinds),
-    onSuccess: (_data, { mutedGroup }) => {
+    onSuccess: (storedKinds, { mutedGroup }) => {
+      // The command returns the list it stored: write it to the cache at once (the next change
+      // is built from it), then refetch to confirm.
+      queryClient.setQueryData(['milestone-muted-kinds'], storedKinds);
       void queryClient.invalidateQueries({ queryKey: ['milestone-muted-kinds'] });
       if (mutedGroup) {
         toast(t('toast.muted', { group: t(`groups.${mutedGroup}.label`) }), {
@@ -60,8 +63,10 @@ export function useMilestoneActions() {
     onError,
   });
 
-  // Built from the cache, not from the render closure: two quick changes (or an undo after
-  // another switch) must not overwrite each other with a stale list.
+  // Built from the cached list, which every successful write refreshes with the stored list,
+  // not from the render closure (stale in a toast's undo or in a row that stayed mounted).
+  // Two changes issued before the first write has returned still read the same list; the
+  // second one then wins.
   const withGroup = (group: MilestoneGroupId, on: boolean): MilestoneKind[] => {
     const current = queryClient.getQueryData<MilestoneKind[]>(['milestone-muted-kinds']) ?? muted;
     const kinds = kindsOf(group);

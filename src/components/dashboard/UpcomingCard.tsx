@@ -3,10 +3,10 @@ import { useTranslation } from 'react-i18next';
 import { Wrench } from 'lucide-react';
 import { SectionHead } from '@/components/shell/PageHead';
 import { Card, CardContent } from '@/components/ui/card';
-import { AgendaRow, UpkeepRow, upkeepShort } from '@/components/milestones/MilestoneList';
+import { AgendaRow, UpkeepRow } from '@/components/milestones/MilestoneList';
 import { useMilestones } from '@/hooks/use-milestones';
 import { utcDayFloor } from '@/utils/chart-axis';
-import { columns, splitMilestones } from '@/utils/milestones';
+import { columns, splitMilestones, upkeepShort } from '@/utils/milestones';
 
 /** Agenda rows shown before "Zobrazit vše" (three per column). */
 const COLLAPSED_ROWS = 6;

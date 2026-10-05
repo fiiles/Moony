@@ -10,7 +10,7 @@
     "upkeepHide": "Sbalit",
     "today": "Dnes",
     "target": "cíl",
-    "rowMenu": "Možnosti připomínky"
+    "rowMenu": "Možnosti připomínky: {{title}}"
   },
   "status": {
     "deadline": "{{title}} · {{when}}",
@@ -135,6 +135,6 @@
   },
   "settings": {
     "title": "Připomínky na přehledu",
-    "description": "Co připomíná karta Co vás čeká a horní lišta. Vypnuté druhy se nezobrazí nikde."
+    "description": "Co připomíná karta „Co vás čeká“ na přehledu a horní lišta. Vypnuté druhy se nezobrazí nikde."
   }
 }

@@ -1,6 +1,5 @@
 import { Link } from 'wouter';
 import { useTranslation } from 'react-i18next';
-import type { TFunction } from 'i18next';
 import {
   BellOff,
   Clock,
@@ -45,19 +44,19 @@ const UPKEEP_ICONS: Partial<Record<MilestoneKind, LucideIcon>> = {
   loan_fixation_expired: Percent,
 };
 
-/** "Byt 3+kk Vinohrady přecenit": one item of the folded upkeep line. */
-// eslint-disable-next-line react-refresh/only-export-components -- shares the row sub-line copy with the card
-export function upkeepShort(m: Milestone, t: TFunction<'milestones'>): string {
-  if (m.kind === 'balances_stale') return t('short.balances_stale', { count: m.count ?? 0 });
-  return t(`short.${m.kind}`, { title: m.title });
-}
-
 /** The sub-line of a row: what happens; the date chip already says when. */
 function useSubLine() {
   const { t } = useTranslation('milestones');
   const fmt = useFormat();
-  const day = (d: number | null) =>
-    d === null ? '' : fmt.day(d, { day: 'numeric', month: 'numeric' });
+  const thisYear = new Date(utcDayFloor(Date.now() / 1000) * 1000).getUTCFullYear();
+  // Day and month inside the current year, the full date otherwise: "17. 4." for a valuation
+  // from this spring, "17. 4. 2024" for one from two years ago.
+  const day = (d: number | null) => {
+    if (d === null) return '';
+    return new Date(d * 1000).getUTCFullYear() === thisYear
+      ? fmt.day(d, { day: 'numeric', month: 'numeric' })
+      : fmt.day(d);
+  };
   const money = (m: Milestone) =>
     m.amount === null ? '' : fmt.money(Number(m.amount), m.currency ?? 'CZK');
   const price = (m: Milestone, value: string | null) =>
@@ -96,7 +95,7 @@ function useSubLine() {
 }
 
 /** "···": hide, remind later, mute the group. */
-export function MilestoneMenu({ m }: { m: Milestone }) {
+export function MilestoneMenu({ m, title }: { m: Milestone; title: string }) {
   const { t } = useTranslation('milestones');
   const { hide, remindLater, muteGroup } = useMilestoneActions();
   const group = groupOf(m.kind);
@@ -106,7 +105,7 @@ export function MilestoneMenu({ m }: { m: Milestone }) {
         <Button
           variant="ghost"
           size="icon-sm"
-          aria-label={t('card.rowMenu')}
+          aria-label={t('card.rowMenu', { title })}
           className="shrink-0 text-ink-4 hover:text-ink data-[state=open]:text-ink"
         >
           <Ellipsis />
@@ -152,7 +151,7 @@ export function AgendaRow({ m, onNavigate }: { m: Milestone; onNavigate?: () => 
       <Link
         href={milestoneHref(m)}
         onClick={onNavigate}
-        className="grid min-w-0 flex-1 grid-cols-[50px_1fr] items-center gap-3 py-2.5 text-ink hover:text-ink focus-visible:outline-none focus-visible:shadow-focus"
+        className="grid min-w-0 flex-1 grid-cols-[60px_1fr] items-center gap-3 py-2.5 text-ink hover:text-ink focus-visible:outline-none focus-visible:shadow-focus"
       >
         <span
           className={cn(
@@ -160,12 +159,12 @@ export function AgendaRow({ m, onNavigate }: { m: Milestone; onNavigate?: () => 
             urgent ? 'bg-dark-grad text-ink-inverse shadow-dark' : 'bg-well text-ink'
           )}
         >
-          <b className="block text-table font-650 num">
+          <b className="block whitespace-nowrap text-table font-650 num">
             {target ? t('card.today') : fmt.day(day, { day: 'numeric', month: 'numeric' })}
           </b>
           <small
             className={cn(
-              'block text-micro font-500',
+              'block whitespace-nowrap text-micro font-500',
               urgent ? 'text-ink-inverse-2' : 'text-ink-4'
             )}
           >
@@ -179,7 +178,7 @@ export function AgendaRow({ m, onNavigate }: { m: Milestone; onNavigate?: () => 
           </small>
         </span>
       </Link>
-      <MilestoneMenu m={m} />
+      <MilestoneMenu m={m} title={m.title} />
     </li>
   );
 }
@@ -207,7 +206,7 @@ export function UpkeepRow({ m }: { m: Milestone }) {
           </small>
         </span>
       </Link>
-      <MilestoneMenu m={m} />
+      <MilestoneMenu m={m} title={title} />
     </li>
   );
 }

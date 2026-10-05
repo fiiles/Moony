@@ -10,7 +10,7 @@
     "upkeepHide": "Collapse",
     "today": "Today",
     "target": "target",
-    "rowMenu": "Reminder options"
+    "rowMenu": "Reminder options: {{title}}"
   },
   "status": {
     "deadline": "{{title}} · {{when}}",
@@ -129,6 +129,6 @@
   },
   "settings": {
     "title": "Overview reminders",
-    "description": "What the What's coming up card and the top bar remind you of. Turned-off kinds show nowhere."
+    "description": "What the “What's coming up” card and the top bar remind you of. Turned-off kinds show nowhere."
   }
 }

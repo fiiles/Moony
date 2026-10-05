@@ -1,3 +1,4 @@
+import type { TFunction } from 'i18next';
 import type { Milestone, MilestoneKind } from '@shared/schema';
 
 const DAY = 86_400;
@@ -180,4 +181,10 @@ export function relativeLabel(days: number): { key: RelativeKey; count: number }
   return days <= 60
     ? { key: 'inDays', count: days }
     : { key: 'inMonths', count: Math.round(days / 30) };
+}
+
+/** "Byt 3+kk Vinohrady přecenit": one item of the folded upkeep line. */
+export function upkeepShort(m: Milestone, t: TFunction<'milestones'>): string {
+  if (m.kind === 'balances_stale') return t('short.balances_stale', { count: m.count ?? 0 });
+  return t(`short.${m.kind}`, { title: m.title });
 }

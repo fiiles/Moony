@@ -44,7 +44,6 @@ pub(super) fn build(conn: &Connection, today: i64) -> Result<Vec<Milestone>> {
                     &loan.name,
                 );
                 m.due_day = Some(validity);
-                m.can_dismiss = false;
                 out.push(m);
             }
         }
@@ -74,12 +73,11 @@ pub(super) fn build(conn: &Connection, today: i64) -> Result<Vec<Milestone>> {
         if checked < today - BALANCE_CHECK_DAYS * DAY {
             let mut m = milestone(
                 "loan_balance_check",
-                format!("loan_balance_check:{}", loan.id),
+                format!("loan_balance_check:{}:{checked}", loan.id),
                 Some(&loan.id),
                 &loan.name,
             );
             m.since_day = Some(checked);
-            m.can_dismiss = false;
             out.push(m);
         }
     }
@@ -147,7 +145,7 @@ mod tests {
     }
 
     #[test]
-    fn an_expired_fixation_asks_for_the_new_rate_and_cannot_be_dismissed() {
+    fn an_expired_fixation_asks_for_the_new_rate() {
         let conn = setup();
         loan(
             &conn,
@@ -162,7 +160,6 @@ mod tests {
             .iter()
             .find(|m| m.kind == "loan_fixation_expired")
             .expect("expired");
-        assert!(!expired.can_dismiss);
         assert_eq!(expired.due_day, Some(day(2026, 9, 1)));
     }
 
@@ -206,7 +203,10 @@ mod tests {
         assert_eq!(checks.len(), 1);
         assert_eq!(checks[0].source_id.as_deref(), Some("old"));
         assert_eq!(checks[0].since_day, Some(day(2020, 1, 1)));
-        assert!(!checks[0].can_dismiss);
+        assert_eq!(
+            checks[0].key,
+            format!("loan_balance_check:old:{}", day(2020, 1, 1))
+        );
     }
 
     #[test]

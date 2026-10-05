@@ -81,11 +81,16 @@ pub(super) fn build(conn: &Connection, today: i64) -> Result<Vec<Milestone>> {
             oldest = Some(oldest.map_or(updated, |o| o.min(updated)));
         }
     }
-    if stale > 0 {
-        let mut m = milestone("balances_stale", "balances_stale".to_string(), None, "");
+    // `oldest` is set exactly when `stale > 0`.
+    if let Some(oldest_day) = oldest {
+        let mut m = milestone(
+            "balances_stale",
+            format!("balances_stale:{oldest_day}"),
+            None,
+            "",
+        );
         m.count = Some(stale);
-        m.since_day = oldest;
-        m.can_dismiss = false;
+        m.since_day = Some(oldest_day);
         out.push(m);
     }
     Ok(out)
@@ -148,6 +153,6 @@ mod tests {
         assert_eq!(list[0].kind, "balances_stale");
         assert_eq!(list[0].count, Some(2));
         assert_eq!(list[0].since_day, Some(day(2026, 7, 1)));
-        assert!(!list[0].can_dismiss);
+        assert_eq!(list[0].key, format!("balances_stale:{}", day(2026, 7, 1)));
     }
 }

@@ -3,6 +3,7 @@ import { CategoriesCard } from '@/components/settings/CategoriesCard';
 import { ProfileCard } from '@/components/settings/ProfileCard';
 import { LanguageCard } from '@/components/settings/LanguageCard';
 import { DashboardPreferencesCard } from '@/components/settings/DashboardPreferencesCard';
+import { MilestoneSettingsCard } from '@/components/settings/MilestoneSettingsCard';
 import { MenuVisibilityCard } from '@/components/settings/MenuVisibilityCard';
 import { ChangePasswordCard } from '@/components/settings/ChangePasswordCard';
 import { AutoLockSlot } from '@/components/settings/AutoLockSlot';
@@ -20,6 +21,7 @@ export function GeneralSection() {
       <ProfileCard />
       <LanguageCard />
       <DashboardPreferencesCard />
+      <MilestoneSettingsCard />
       <MenuVisibilityCard />
     </>
   );

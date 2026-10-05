@@ -101,7 +101,7 @@ Grouped by owning domain (see the domain map in `overview.md`).
 
 | Table | Purpose | Notable columns / constraints |
 |---|---|---|
-| `app_config` | Key-value app settings incl. recovery-key hash | `key TEXT PRIMARY KEY`, `value TEXT`; the CoinGecko API key (`api_key_coingecko`) is the only API key still read; `stock_import_formats` holds the custom stock CSV mappings (JSON array, newest first, at most 20; `services/stock_import/formats.rs`) |
+| `app_config` | Key-value app settings incl. recovery-key hash | `key TEXT PRIMARY KEY`, `value TEXT`; the CoinGecko API key (`api_key_coingecko`) is the only API key still read; `stock_import_formats` holds the custom stock CSV mappings (JSON array, newest first, at most 20; `services/stock_import/formats.rs`); `milestones.mutedKinds` holds the milestone kinds the user turned off (JSON array of kind names; `services/milestones/`) |
 | `user_profile` | Single-row user profile and preferences | `INTEGER AUTOINCREMENT` PK (convention exception); `currency DEFAULT 'CZK'`, `language`, `menu_preferences` JSON, `coingecko_modal_dismissed`, `mcp_server_enabled` gates the local API server, `mcp_server_token` TEXT (NULL until the server is first enabled), `mcp_server_port` INTEGER (NULL = default 41414) |
 
 ### Bank accounts
@@ -222,7 +222,7 @@ Grouped by owning domain (see the domain map in `overview.md`).
 
 | Table | Purpose | Notable columns / constraints |
 |---|---|---|
-| `milestone_states` | Done/snoozed state of milestone occurrences, keyed by occurrence key | `key TEXT PRIMARY KEY` (e.g. `insurance_anniversary:<policy id>:<day>`, so the next year's occurrence is a new key); `state` CHECK (`done`/`snoozed`); `until_day` INTEGER (UTC day a snooze ends, NULL for `done`); `updated_at` (migration 005) |
+| `milestone_states` | Hidden (`done`) or snoozed state of milestone occurrences, keyed by occurrence key | `key TEXT PRIMARY KEY` (e.g. `insurance_anniversary:<policy id>:<day>`, so the next year's occurrence is a new key; upkeep keys carry the date of their data, e.g. `backup_stale:<last backup day or never>`, so a hidden upkeep item returns once the data changes); `state` CHECK (`done`/`snoozed`); `until_day` INTEGER (UTC day a snooze ends, NULL for `done`; 7 days, upkeep snoozes 30 days); `updated_at` (migration 005) |
 
 ## Data folder artefacts
 

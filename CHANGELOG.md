@@ -28,13 +28,20 @@ All notable changes to Moony are documented in this file. The format follows
   other asset is recorded when it is created.
 - **Company data on the position detail.** Sector, industry, P/E, market cap and the other key
   figures of a holding are downloaded (at most once a day) and shown on the stock detail.
-- **Upcoming items on the overview.** A "Co vás čeká" card on the dashboard and an "N k vyřízení"
-  indicator in the top bar list what needs you and what is coming: insurance anniversaries with
-  the last day to give notice, contract ends and larger insurance payments, fixed-rate ends,
-  loan payoff, bond maturity and coupons, term-account and promotional-rate ends, upkeep (a stale
-  backup, bank balances, property valuations, loan balances to compare with a statement) and
-  watchlist targets the price has reached. "Odložit" hides an item for a week, "Vyřízeno" for
-  good, and both can be undone.
+- **Upcoming items on the overview.** A "Co vás čeká" card on the dashboard is an agenda of what
+  is coming: each item has a date chip with the day and how far away it is (dark only for a deadline
+  at most a week off), in two columns, six at first and "Zobrazit vše" for the rest. It covers
+  insurance anniversaries with the last day to give notice, contract ends and larger insurance
+  payments, fixed-rate ends, loan payoff, bond maturity and coupons, term-account and
+  promotional-rate ends, and watchlist targets the price has reached. Information (insurance
+  payments, bond coupons, loan payoff) appears only inside its reminder window. Data upkeep (a stale
+  backup, bank balances, property valuations, loan balances to compare with a statement) is folded
+  into one quiet line under it. The "···" menu of every item offers "Skrýt" (until the data changes,
+  for upkeep), "Připomenout za týden" (not for an item at most a week off; "za měsíc" for upkeep)
+  and "Nepřipomínat …" for a whole group, each confirmed by a toast with "Vrátit". Settings → Obecné
+  has a card "Připomínky na přehledu" to turn a group back on. The top bar shows only a deadline
+  (notice, contract or fixed-rate end, maturity, account or promotional-rate end) at most 14 days
+  away, as "Spořicí účet · za 10 dní".
 - **Rate valid until on bank accounts.** An account can carry the date its promotional rate ends
   ("Sazba platí do"); it shows up among the upcoming items.
 - **Watchlist targets that wait for a dip or a rise.** A target now remembers whether it waits for

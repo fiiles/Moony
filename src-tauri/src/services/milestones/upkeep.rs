@@ -39,9 +39,12 @@ fn backup(conn: &Connection, today: i64) -> Result<Option<Milestone>> {
             }
         }
     };
-    let mut m = milestone("backup_stale", "backup_stale".to_string(), None, "");
+    let key = format!(
+        "backup_stale:{}",
+        since_day.map_or_else(|| "never".to_string(), |d| d.to_string())
+    );
+    let mut m = milestone("backup_stale", key, None, "");
     m.since_day = since_day;
-    m.can_dismiss = false;
     Ok(Some(m))
 }
 
@@ -69,12 +72,11 @@ fn valuations(conn: &Connection, today: i64) -> Result<Vec<Milestone>> {
         if last < today - VALUATION_STALE_DAYS * DAY {
             let mut m = milestone(
                 "valuation_stale",
-                format!("valuation_stale:{id}"),
+                format!("valuation_stale:{id}:{last}"),
                 Some(&id),
                 &name,
             );
             m.since_day = Some(last);
-            m.can_dismiss = false;
             out.push(m);
         }
     }
@@ -114,6 +116,7 @@ mod tests {
         assert_eq!(list.len(), 1);
         assert_eq!(list[0].kind, "backup_stale");
         assert_eq!(list[0].since_day, Some(day(2026, 8, 24)));
+        assert_eq!(list[0].key, format!("backup_stale:{}", day(2026, 8, 24)));
         conn.execute(
             "UPDATE app_config SET value = ?1",
             [day(2026, 9, 20).to_string()],
@@ -134,6 +137,7 @@ mod tests {
         let list = build(&conn, day(2026, 10, 9)).unwrap();
         assert_eq!(list[0].kind, "backup_stale");
         assert_eq!(list[0].since_day, None);
+        assert_eq!(list[0].key, "backup_stale:never");
     }
 
     #[test]
@@ -160,5 +164,9 @@ mod tests {
         assert_eq!(list[0].kind, "valuation_stale");
         assert_eq!(list[0].source_id.as_deref(), Some("old"));
         assert_eq!(list[0].since_day, Some(day(2025, 3, 12)));
+        assert_eq!(
+            list[0].key,
+            format!("valuation_stale:old:{}", day(2025, 3, 12))
+        );
     }
 }

@@ -1,7 +1,8 @@
 //! Milestones gathered from every domain (spec 2026-10-05-milestones-design): contract
 //! dates, payments, data upkeep and crossed watchlist targets. Each domain has a builder;
-//! this module gives dated items their stage, drops the occurrences the user marked done or
-//! still snoozes, and orders the list for the dashboard card and the top-bar indicator.
+//! this module gives dated items their stage, drops the occurrences the user hid (done or
+//! still snoozed) and the kinds the user muted, and orders the list for the dashboard card
+//! and the top-bar indicator.
 
 mod accounts;
 mod bonds;
@@ -14,16 +15,28 @@ mod watchlist;
 
 use std::collections::HashMap;
 
-use rusqlite::{params, Connection};
+use rusqlite::{params, Connection, OptionalExtension};
 
-use crate::error::Result;
-use crate::models::{Milestone, MILESTONE_STATE_DONE, MILESTONE_STATE_SNOOZED};
+use crate::error::{AppError, Result};
+use crate::models::{Milestone, MILESTONE_KINDS, MILESTONE_STATE_DONE, MILESTONE_STATE_SNOOZED};
 
 pub(crate) const DAY: i64 = 86_400;
 /// `soon` covers events up to this many days ahead.
 const SOON_HORIZON_DAYS: i64 = 90;
 /// "Odložit" hides an occurrence for a week.
 const SNOOZE_DAYS: i64 = 7;
+/// Upkeep is snoozed for a month: a weekly reminder to revalue a flat is noise.
+const UPKEEP_SNOOZE_DAYS: i64 = 30;
+/// Data-upkeep kinds: snoozed for a month; their keys carry the date of their data.
+const UPKEEP_KINDS: [&str; 5] = [
+    "backup_stale",
+    "balances_stale",
+    "valuation_stale",
+    "loan_balance_check",
+    "loan_fixation_expired",
+];
+/// `app_config` key holding the muted kinds as a JSON array.
+const MUTED_KINDS_KEY: &str = "milestones.mutedKinds";
 
 pub(crate) const STAGE_NOW: &str = "now";
 pub(crate) const STAGE_SOON: &str = "soon";
@@ -44,7 +57,7 @@ pub(crate) fn dated_stage(today: i64, due_day: i64, remind_from: i64) -> Option<
     }
 }
 
-/// A milestone with every optional field empty: `now`, `action`, dismissable.
+/// A milestone with every optional field empty: `now`, `action`.
 pub(crate) fn milestone(
     kind: &str,
     key: String,
@@ -66,7 +79,6 @@ pub(crate) fn milestone(
         reference_amount: None,
         direction: None,
         count: None,
-        can_dismiss: true,
     }
 }
 
@@ -97,7 +109,7 @@ pub(crate) fn money_text(value: f64) -> String {
 }
 
 /// Every milestone as of `today` (UTC day), without the occurrences marked done or still
-/// snoozed, in display order.
+/// snoozed and without the muted kinds, in display order.
 pub fn list_milestones(conn: &Connection, today: i64) -> Result<Vec<Milestone>> {
     let builders: [(&str, Builder); 6] = [
         ("insurance", insurance::build),
@@ -115,6 +127,8 @@ pub fn list_milestones(conn: &Connection, today: i64) -> Result<Vec<Milestone>> 
             Err(e) => log::warn!("[MILESTONES] {name} skipped: {e}"),
         }
     }
+    let muted = muted_kinds(conn)?;
+    all.retain(|m| !muted.contains(&m.kind));
     let states = load_states(conn)?;
     all.retain(|m| match states.get(&m.key) {
         Some((state, _)) if state == MILESTONE_STATE_DONE => false,
@@ -156,16 +170,49 @@ fn load_states(conn: &Connection) -> Result<HashMap<String, (String, Option<i64>
     Ok(rows.collect::<std::result::Result<HashMap<_, _>, _>>()?)
 }
 
-/// Mark one occurrence done (hidden for good) or snoozed (hidden for a week from `today`).
-/// Callers validate the arguments first (`validate_milestone_state`).
+/// Last day an occurrence is still worth showing, read from its key
+/// (`<kind>:<source_id>:<due_day>`): the notice deadline of an insurance anniversary while it
+/// can be met, otherwise the due day. None for upkeep (its key carries the date of its data)
+/// and for keys without a day (`watch_target:…:below`).
+fn last_shown_day(key: &str, today: i64) -> Option<i64> {
+    let kind = key.split(':').next().unwrap_or_default();
+    if UPKEEP_KINDS.contains(&kind) {
+        return None;
+    }
+    let due: i64 = key.rsplit(':').next()?.parse().ok()?;
+    if kind == "insurance_anniversary" {
+        let notice_deadline = due - insurance::NOTICE_DAYS * DAY;
+        // Past the notice deadline the anniversary is information until its own day.
+        return Some(if notice_deadline >= today {
+            notice_deadline
+        } else {
+            due
+        });
+    }
+    Some(due)
+}
+
+/// Mark one occurrence done (hidden for good) or snoozed (hidden for a week from `today`, a
+/// month for upkeep kinds, never past the item's last day). Callers validate the arguments
+/// first (`validate_milestone_state`).
 pub fn set_milestone_state(conn: &Connection, key: &str, state: &str, today: i64) -> Result<()> {
-    let until = (state == MILESTONE_STATE_SNOOZED).then_some(today + SNOOZE_DAYS * DAY);
+    let key = key.trim();
+    let kind = key.split(':').next().unwrap_or_default();
+    let days = if UPKEEP_KINDS.contains(&kind) {
+        UPKEEP_SNOOZE_DAYS
+    } else {
+        SNOOZE_DAYS
+    };
+    let until = (state == MILESTONE_STATE_SNOOZED).then(|| {
+        let until = today + days * DAY;
+        last_shown_day(key, today).map_or(until, |last| until.min(last))
+    });
     conn.execute(
         "INSERT INTO milestone_states (key, state, until_day, updated_at)
          VALUES (?1, ?2, ?3, unixepoch())
          ON CONFLICT(key) DO UPDATE SET state = excluded.state, until_day = excluded.until_day,
              updated_at = excluded.updated_at",
-        params![key.trim(), state, until],
+        params![key, state, until],
     )?;
     Ok(())
 }
@@ -174,6 +221,47 @@ pub fn set_milestone_state(conn: &Connection, key: &str, state: &str, today: i64
 pub fn clear_milestone_state(conn: &Connection, key: &str) -> Result<()> {
     conn.execute("DELETE FROM milestone_states WHERE key = ?1", [key.trim()])?;
     Ok(())
+}
+
+/// Kinds the user turned off ("Nepřipomínat …"), sorted; empty when none or unreadable.
+pub fn muted_kinds(conn: &Connection) -> Result<Vec<String>> {
+    let raw: Option<String> = conn
+        .query_row(
+            "SELECT value FROM app_config WHERE key = ?1",
+            [MUTED_KINDS_KEY],
+            |r| r.get(0),
+        )
+        .optional()?;
+    let mut kinds: Vec<String> = match raw {
+        None => Vec::new(),
+        Some(json) => serde_json::from_str(&json).unwrap_or_else(|e| {
+            log::warn!("[MILESTONES] muted kinds unreadable: {e}");
+            Vec::new()
+        }),
+    };
+    // A kind this version does not emit (an older or newer build wrote it) mutes nothing.
+    kinds.retain(|k| MILESTONE_KINDS.contains(&k.as_str()));
+    Ok(kinds)
+}
+
+/// Replace the muted kinds (callers validate them first). Stored trimmed, sorted and without
+/// duplicates; an empty list removes the setting. Returns what was stored.
+pub fn set_muted_kinds(conn: &Connection, kinds: &[String]) -> Result<Vec<String>> {
+    let mut kinds: Vec<String> = kinds.iter().map(|k| k.trim().to_string()).collect();
+    kinds.sort();
+    kinds.dedup();
+    if kinds.is_empty() {
+        conn.execute("DELETE FROM app_config WHERE key = ?1", [MUTED_KINDS_KEY])?;
+    } else {
+        let json = serde_json::to_string(&kinds)
+            .map_err(|e| AppError::Internal(format!("muted kinds: {e}")))?;
+        conn.execute(
+            "INSERT INTO app_config (key, value) VALUES (?1, ?2)
+             ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            params![MUTED_KINDS_KEY, json],
+        )?;
+    }
+    Ok(kinds)
 }
 
 #[cfg(test)]
@@ -383,5 +471,146 @@ mod tests {
             vec!["insurance_anniversary", "watch_target", "backup_stale"]
         );
         assert!(list.iter().all(|m| m.stage == STAGE_NOW));
+    }
+
+    #[test]
+    fn hiding_an_upkeep_item_lasts_until_the_data_changes() {
+        let conn = setup();
+        conn.execute(
+            "INSERT INTO user_profile (name, created_at) VALUES ('F', ?1)",
+            [day(2026, 1, 1)],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO app_config (key, value) VALUES ('backup.lastCreatedAt', ?1)",
+            [day(2026, 8, 1).to_string()],
+        )
+        .unwrap();
+        let today = day(2026, 10, 5);
+        let first = list_milestones(&conn, today).unwrap();
+        assert_eq!(first[0].key, format!("backup_stale:{}", day(2026, 8, 1)));
+        set_milestone_state(&conn, &first[0].key, MILESTONE_STATE_DONE, today).unwrap();
+        assert!(list_milestones(&conn, today).unwrap().is_empty());
+        // A newer backup that grows old again is a new occurrence.
+        conn.execute(
+            "UPDATE app_config SET value = ?1 WHERE key = 'backup.lastCreatedAt'",
+            [day(2026, 8, 20).to_string()],
+        )
+        .unwrap();
+        let again = list_milestones(&conn, today).unwrap();
+        assert_eq!(again.len(), 1);
+        assert_eq!(again[0].key, format!("backup_stale:{}", day(2026, 8, 20)));
+    }
+
+    #[test]
+    fn upkeep_snoozes_for_a_month_and_dates_for_a_week() {
+        let conn = setup();
+        let today = day(2026, 10, 5);
+        let dated = format!("insurance_end:p1:{}", day(2026, 11, 1));
+        set_milestone_state(&conn, "backup_stale:never", MILESTONE_STATE_SNOOZED, today).unwrap();
+        set_milestone_state(&conn, &dated, MILESTONE_STATE_SNOOZED, today).unwrap();
+        let until = |key: &str| -> i64 {
+            conn.query_row(
+                "SELECT until_day FROM milestone_states WHERE key = ?1",
+                [key],
+                |r| r.get(0),
+            )
+            .unwrap()
+        };
+        assert_eq!(until("backup_stale:never"), today + 30 * DAY);
+        assert_eq!(until(&dated), today + 7 * DAY);
+    }
+
+    fn snoozed_until(conn: &Connection, key: &str) -> i64 {
+        conn.query_row(
+            "SELECT until_day FROM milestone_states WHERE key = ?1",
+            [key],
+            |r| r.get(0),
+        )
+        .unwrap()
+    }
+
+    #[test]
+    fn a_snooze_never_outlives_the_deadline() {
+        let conn = setup();
+        let today = day(2026, 10, 5);
+        let snooze = |key: &str| {
+            set_milestone_state(&conn, key, MILESTONE_STATE_SNOOZED, today).unwrap();
+            snoozed_until(&conn, key)
+        };
+
+        // A contract end three days away: visible again on its last day.
+        let end = format!("insurance_end:p1:{}", today + 3 * DAY);
+        assert_eq!(snooze(&end), today + 3 * DAY);
+
+        // An anniversary: the notice deadline (43 days before it) is the last actionable day.
+        let anniversary = format!("insurance_anniversary:p1:{}", today + (43 + 3) * DAY);
+        assert_eq!(snooze(&anniversary), today + 3 * DAY);
+
+        // Past the notice deadline the anniversary itself is the last day that is shown.
+        let passed = format!("insurance_anniversary:p2:{}", today + 20 * DAY);
+        assert_eq!(snooze(&passed), today + 7 * DAY);
+        let passed_soon = format!("insurance_anniversary:p3:{}", today + 5 * DAY);
+        assert_eq!(snooze(&passed_soon), today + 5 * DAY);
+
+        // Far-off items keep the full week; upkeep keys (their last part is the data's date,
+        // in the past) and keys without a day are not capped.
+        let far = format!("loan_fixation_end:l1:{}", today + 60 * DAY);
+        assert_eq!(snooze(&far), today + 7 * DAY);
+        let upkeep = format!("valuation_stale:r1:{}", today - 100 * DAY);
+        assert_eq!(snooze(&upkeep), today + 30 * DAY);
+        assert_eq!(snooze("watch_target:AAPL:600:below"), today + 7 * DAY);
+    }
+
+    #[test]
+    fn muted_kinds_are_left_out_and_round_trip() {
+        let conn = setup();
+        policy(&conn, "y", day(2025, 10, 20), None, "annually", "4200");
+        let today = day(2026, 10, 6);
+        assert!(list_milestones(&conn, today)
+            .unwrap()
+            .iter()
+            .any(|m| m.kind == "insurance_payment"));
+        let stored = set_muted_kinds(
+            &conn,
+            &[
+                "insurance_payment".to_string(),
+                " insurance_payment ".to_string(),
+            ],
+        )
+        .unwrap();
+        assert_eq!(stored, vec!["insurance_payment".to_string()]);
+        assert_eq!(muted_kinds(&conn).unwrap(), stored);
+        assert!(list_milestones(&conn, today)
+            .unwrap()
+            .iter()
+            .all(|m| m.kind != "insurance_payment"));
+        assert!(set_muted_kinds(&conn, &[]).unwrap().is_empty());
+        assert!(muted_kinds(&conn).unwrap().is_empty());
+    }
+
+    #[test]
+    fn unknown_stored_muted_kinds_are_dropped_on_read() {
+        let conn = setup();
+        conn.execute(
+            "INSERT INTO app_config (key, value) VALUES ('milestones.mutedKinds', ?1)",
+            [r#"["watch_target","gone"]"#],
+        )
+        .unwrap();
+        assert_eq!(
+            muted_kinds(&conn).unwrap(),
+            vec!["watch_target".to_string()]
+        );
+    }
+
+    #[test]
+    fn unreadable_muted_kinds_mute_nothing() {
+        let conn = setup();
+        conn.execute(
+            "INSERT INTO app_config (key, value) VALUES ('milestones.mutedKinds', 'not json')",
+            [],
+        )
+        .unwrap();
+        assert!(muted_kinds(&conn).unwrap().is_empty());
     }
 }

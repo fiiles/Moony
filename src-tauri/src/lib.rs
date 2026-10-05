@@ -50,6 +50,8 @@ pub async fn run() {
             commands::milestones::get_milestones,
             commands::milestones::set_milestone_state,
             commands::milestones::clear_milestone_state,
+            commands::milestones::get_milestone_muted_kinds,
+            commands::milestones::set_milestone_muted_kinds,
             // Backup / restore / export (services::backup)
             commands::backup::create_backup,
             commands::backup::inspect_backup,

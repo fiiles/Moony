@@ -1,24 +1,33 @@
 import { describe, expect, it } from 'vitest';
-import type { Milestone } from '@shared/schema';
+import type { TFunction } from 'i18next';
+import type { Milestone, MilestoneKind } from '@shared/schema';
 import {
-  attentionCount,
+  MILESTONE_GROUP_IDS,
+  agendaDay,
+  canRemindLater,
+  columns,
   daysBetween,
-  groupMilestones,
+  groupOf,
+  isUrgent,
+  kindsOf,
   milestoneHref,
-  referenceDay,
   relativeLabel,
+  splitMilestones,
+  upcomingDeadlines,
+  upkeepShort,
 } from './milestones';
 
 const DAY = 86_400;
+const TODAY = 20_000 * DAY;
 
 function m(overrides: Partial<Milestone>): Milestone {
   return {
     key: 'k',
-    kind: 'insurance_anniversary',
+    kind: 'insurance_end',
     stage: 'now',
     tone: 'action',
     sourceId: 'p1',
-    title: 'Úrazová pojistka',
+    title: 'Pojistka',
     dueDay: null,
     actionDay: null,
     sinceDay: null,
@@ -27,34 +36,199 @@ function m(overrides: Partial<Milestone>): Milestone {
     referenceAmount: null,
     direction: null,
     count: null,
-    canDismiss: true,
     ...overrides,
   };
 }
 
-describe('groupMilestones', () => {
-  it('puts now + action items under "act now" and everything else under "soon", keeping order', () => {
-    const a = m({ key: 'a' });
-    const b = m({ key: 'b', stage: 'soon' });
-    const c = m({ key: 'c', tone: 'info' });
-    const d = m({ key: 'd' });
-    const { now, soon } = groupMilestones([a, b, c, d]);
-    expect(now.map((x) => x.key)).toEqual(['a', 'd']);
-    expect(soon.map((x) => x.key)).toEqual(['b', 'c']);
-    expect(attentionCount([a, b, c, d])).toBe(2);
-  });
+const ALL_KINDS: MilestoneKind[] = [
+  'insurance_anniversary',
+  'insurance_end',
+  'insurance_payment',
+  'loan_fixation_end',
+  'loan_fixation_expired',
+  'loan_payoff',
+  'loan_balance_check',
+  'bond_maturity',
+  'bond_coupon',
+  'account_termination',
+  'savings_rate_end',
+  'balances_stale',
+  'backup_stale',
+  'valuation_stale',
+  'watch_target',
+];
 
-  it('orders "soon" by date even when a now+info item comes earlier from the backend', () => {
-    const payoff = m({ key: 'payoff', kind: 'loan_payoff', tone: 'info', dueDay: 25 * DAY });
-    const coupon = m({
-      key: 'coupon',
+describe('agendaDay', () => {
+  it('is the notice deadline while it can be met, else the event, and today for a target', () => {
+    const anniversary = m({
+      kind: 'insurance_anniversary',
+      dueDay: TODAY + 66 * DAY,
+      actionDay: TODAY + 23 * DAY,
+    });
+    expect(agendaDay(anniversary, TODAY)).toBe(TODAY + 23 * DAY);
+    expect(agendaDay({ ...anniversary, tone: 'info' }, TODAY)).toBe(TODAY + 66 * DAY);
+    expect(agendaDay(m({ kind: 'watch_target' }), TODAY)).toBe(TODAY);
+  });
+});
+
+describe('splitMilestones', () => {
+  it('sorts the agenda by its day and folds upkeep apart, keeping the backend order of upkeep', () => {
+    const payment = m({
+      key: 'pay',
+      kind: 'insurance_payment',
+      tone: 'action',
+      dueDay: TODAY + 60 * DAY,
+    });
+    const deadline = m({ key: 'end', kind: 'insurance_end', dueDay: TODAY + 10 * DAY });
+    const target = m({ key: 'aapl', kind: 'watch_target' });
+    const backup = m({ key: 'b', kind: 'backup_stale', sinceDay: TODAY - 40 * DAY });
+    const valuation = m({ key: 'v', kind: 'valuation_stale', sinceDay: TODAY - 400 * DAY });
+    const { agenda, upkeep } = splitMilestones(
+      [payment, backup, deadline, valuation, target],
+      TODAY
+    );
+    expect(agenda.map((x) => x.key)).toEqual(['aapl', 'end', 'pay']);
+    expect(upkeep.map((x) => x.key)).toEqual(['b', 'v']);
+  });
+});
+
+describe('splitMilestones information items', () => {
+  it('keeps information (payments, coupons, payoff) only inside its reminder window', () => {
+    const nowPayment = m({
+      key: 'pay-now',
+      kind: 'insurance_payment',
+      stage: 'now',
+      tone: 'info',
+      dueDay: TODAY + 10 * DAY,
+    });
+    const soonPayment = m({
+      key: 'pay-soon',
+      kind: 'insurance_payment',
+      stage: 'soon',
+      tone: 'info',
+      dueDay: TODAY + 40 * DAY,
+    });
+    const soonCoupon = m({
+      key: 'coupon-soon',
       kind: 'bond_coupon',
       stage: 'soon',
       tone: 'info',
-      dueDay: 10 * DAY,
+      dueDay: TODAY + 30 * DAY,
     });
-    const { soon } = groupMilestones([payoff, coupon]);
-    expect(soon.map((x) => x.key)).toEqual(['coupon', 'payoff']);
+    const soonPayoff = m({
+      key: 'payoff-soon',
+      kind: 'loan_payoff',
+      stage: 'soon',
+      tone: 'info',
+      dueDay: TODAY + 80 * DAY,
+    });
+    const nowPayoff = m({
+      key: 'payoff-now',
+      kind: 'loan_payoff',
+      stage: 'now',
+      tone: 'info',
+      dueDay: TODAY + 20 * DAY,
+    });
+    const soonDeadline = m({
+      key: 'maturity-soon',
+      kind: 'bond_maturity',
+      stage: 'soon',
+      dueDay: TODAY + 70 * DAY,
+    });
+    const { agenda } = splitMilestones(
+      [soonPayment, nowPayment, soonCoupon, soonPayoff, nowPayoff, soonDeadline],
+      TODAY
+    );
+    expect(agenda.map((x) => x.key)).toEqual(['pay-now', 'payoff-now', 'maturity-soon']);
+  });
+});
+
+describe('canRemindLater', () => {
+  it('offers a week only when the item is more than 7 days away; upkeep always', () => {
+    expect(canRemindLater(m({ kind: 'backup_stale', sinceDay: TODAY - 40 * DAY }), TODAY)).toBe(
+      true
+    );
+    expect(canRemindLater(m({ kind: 'insurance_end', dueDay: TODAY + 3 * DAY }), TODAY)).toBe(
+      false
+    );
+    expect(canRemindLater(m({ kind: 'insurance_end', dueDay: TODAY + 7 * DAY }), TODAY)).toBe(
+      false
+    );
+    expect(canRemindLater(m({ kind: 'insurance_end', dueDay: TODAY + 8 * DAY }), TODAY)).toBe(true);
+    expect(canRemindLater(m({ kind: 'watch_target', sourceId: 'AAPL' }), TODAY)).toBe(false);
+  });
+
+  it('measures an anniversary by its notice deadline while it can be met', () => {
+    const anniversary = m({
+      kind: 'insurance_anniversary',
+      dueDay: TODAY + 50 * DAY,
+      actionDay: TODAY + 7 * DAY,
+    });
+    expect(canRemindLater(anniversary, TODAY)).toBe(false);
+    expect(canRemindLater({ ...anniversary, actionDay: TODAY + 8 * DAY }, TODAY)).toBe(true);
+    expect(
+      canRemindLater({ ...anniversary, tone: 'info', actionDay: TODAY - 1 * DAY }, TODAY)
+    ).toBe(true);
+  });
+});
+
+describe('upcomingDeadlines and isUrgent', () => {
+  it('keeps deadlines up to 14 days ahead, never information, upkeep or targets', () => {
+    const soon = m({ key: 'rate', kind: 'savings_rate_end', dueDay: TODAY + 10 * DAY });
+    const later = m({ key: 'fix', kind: 'loan_fixation_end', dueDay: TODAY + 15 * DAY });
+    const info = m({ key: 'coupon', kind: 'bond_coupon', tone: 'info', dueDay: TODAY + 3 * DAY });
+    const passed = m({
+      key: 'ann',
+      kind: 'insurance_anniversary',
+      tone: 'info',
+      dueDay: TODAY + 5 * DAY,
+      actionDay: TODAY - 1 * DAY,
+    });
+    const target = m({ key: 't', kind: 'watch_target' });
+    const backup = m({ key: 'b', kind: 'backup_stale' });
+    const first = m({ key: 'end', kind: 'insurance_end', dueDay: TODAY + 2 * DAY });
+    expect(
+      upcomingDeadlines([soon, later, info, passed, target, backup, first], TODAY).map((x) => x.key)
+    ).toEqual(['end', 'rate']);
+    expect(isUrgent(first, TODAY)).toBe(true);
+    expect(isUrgent(soon, TODAY)).toBe(false);
+    expect(isUrgent(info, TODAY)).toBe(false);
+  });
+});
+
+describe('upcomingDeadlines and isUrgent edges', () => {
+  it('includes a deadline exactly 14 days ahead and excludes one a day in the past', () => {
+    const edge = m({ key: 'edge', kind: 'insurance_end', dueDay: TODAY + 14 * DAY });
+    const overdue = m({ key: 'late', kind: 'insurance_end', dueDay: TODAY - 1 * DAY });
+    const today = m({ key: 'today', kind: 'insurance_end', dueDay: TODAY });
+    expect(upcomingDeadlines([edge, overdue, today], TODAY).map((x) => x.key)).toEqual([
+      'today',
+      'edge',
+    ]);
+  });
+
+  it('is urgent at 7 days and not at 8', () => {
+    expect(isUrgent(m({ kind: 'insurance_end', dueDay: TODAY + 7 * DAY }), TODAY)).toBe(true);
+    expect(isUrgent(m({ kind: 'insurance_end', dueDay: TODAY + 8 * DAY }), TODAY)).toBe(false);
+  });
+});
+
+describe('groups', () => {
+  it('every kind belongs to exactly one group', () => {
+    const grouped = MILESTONE_GROUP_IDS.flatMap((g) => kindsOf(g));
+    expect([...grouped].sort()).toEqual([...ALL_KINDS].sort());
+    expect(groupOf('loan_fixation_expired')).toBe('loanChecks');
+    expect(groupOf('insurance_payment')).toBe('insurancePayments');
+  });
+});
+
+describe('columns', () => {
+  it('fills the first column first', () => {
+    expect(columns([1, 2, 3, 4, 5])).toEqual([
+      [1, 2, 3],
+      [4, 5],
+    ]);
+    expect(columns([])).toEqual([[], []]);
   });
 });
 
@@ -75,17 +249,6 @@ describe('milestoneHref', () => {
   });
 });
 
-describe('referenceDay', () => {
-  it('measures to the deadline while acting is possible, else to the event or the last update', () => {
-    expect(referenceDay(m({ dueDay: 100 * DAY, actionDay: 58 * DAY }))).toBe(58 * DAY);
-    expect(referenceDay(m({ dueDay: 100 * DAY, actionDay: 58 * DAY, tone: 'info' }))).toBe(
-      100 * DAY
-    );
-    expect(referenceDay(m({ kind: 'backup_stale', sinceDay: 7 * DAY }))).toBe(7 * DAY);
-    expect(referenceDay(m({ kind: 'backup_stale' }))).toBeNull();
-  });
-});
-
 describe('daysBetween and relativeLabel', () => {
   it('counts whole UTC days', () => {
     expect(daysBetween(10 * DAY + 3_600, 12 * DAY)).toBe(2);
@@ -98,5 +261,26 @@ describe('daysBetween and relativeLabel', () => {
     expect(relativeLabel(150)).toEqual({ key: 'inMonths', count: 5 });
     expect(relativeLabel(-41)).toEqual({ key: 'daysAgo', count: 41 });
     expect(relativeLabel(-400)).toEqual({ key: 'monthsAgo', count: 13 });
+  });
+});
+
+describe('upkeepShort', () => {
+  /** A stand-in for t() that echoes the key and its interpolation values. */
+  const t = ((key: string, options?: Record<string, unknown>) =>
+    `${key}|${JSON.stringify(options)}`) as unknown as TFunction<'milestones'>;
+
+  it('counts accounts for stale balances and names the item for the rest', () => {
+    expect(upkeepShort(m({ kind: 'balances_stale', title: 'Účty', count: 3 }), t)).toBe(
+      'short.balances_stale|{"count":3}'
+    );
+    expect(upkeepShort(m({ kind: 'balances_stale', count: null }), t)).toBe(
+      'short.balances_stale|{"count":0}'
+    );
+    expect(upkeepShort(m({ kind: 'valuation_stale', title: 'Byt 3+kk' }), t)).toBe(
+      'short.valuation_stale|{"title":"Byt 3+kk"}'
+    );
+    expect(upkeepShort(m({ kind: 'backup_stale', title: '' }), t)).toBe(
+      'short.backup_stale|{"title":""}'
+    );
   });
 });

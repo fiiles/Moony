@@ -1,57 +1,99 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Wrench } from 'lucide-react';
 import { SectionHead } from '@/components/shell/PageHead';
 import { Card, CardContent } from '@/components/ui/card';
-import { MilestoneList } from '@/components/milestones/MilestoneList';
+import { AgendaRow, UpkeepRow } from '@/components/milestones/MilestoneRows';
 import { useMilestones } from '@/hooks/use-milestones';
-import { useMilestoneActions } from '@/hooks/use-milestone-mutations';
-import { groupMilestones } from '@/utils/milestones';
+import { utcDayFloor } from '@/utils/chart-axis';
+import { columns, splitMilestones, upkeepShort } from '@/utils/milestones';
 
-/** Rows shown before "Zobrazit vše"; "Teď jednat" fills them first. */
+/** Agenda rows shown before "Zobrazit vše" (three per column). */
 const COLLAPSED_ROWS = 6;
 
 /**
- * "Co vás čeká" (spec 2026-10-05 §7): contract dates, payments, upkeep and
- * crossed targets in two groups. Hidden when nothing is coming up.
+ * "Co vás čeká" (spec 2026-10-05-milestones-agenda): a two-column agenda with date chips,
+ * filled top to bottom, and data upkeep folded into one line under it. Hidden when empty.
  */
 export function UpcomingCard() {
   const { t } = useTranslation('milestones');
   const { data: milestones = [] } = useMilestones();
-  const { markDone, snooze } = useMilestoneActions();
   const [expanded, setExpanded] = useState(false);
+  const [upkeepOpen, setUpkeepOpen] = useState(false);
 
   if (milestones.length === 0) return null;
 
-  const { now, soon } = groupMilestones(milestones);
-  const limit = expanded ? Infinity : COLLAPSED_ROWS;
-  const shownNow = now.slice(0, limit);
-  const shownSoon = soon.slice(0, Math.max(0, limit - shownNow.length));
+  const today = utcDayFloor(Date.now() / 1000);
+  const { agenda, upkeep } = splitMilestones(milestones, today);
+  const agendaColumns = columns(expanded ? agenda : agenda.slice(0, COLLAPSED_ROWS));
+  const upkeepColumns = columns(upkeep);
 
   return (
     <section className="mt-9">
-      <SectionHead title={t('card.title')} />
+      <SectionHead
+        title={t('card.title')}
+        link={{ href: '/settings', label: t('card.settingsLink') }}
+      />
       <Card variant="flat">
-        <CardContent className="pb-2 pt-4">
-          {shownNow.length > 0 && (
-            <div>
-              <div className="text-eyebrow uppercase text-ink-4">{t('card.now')}</div>
-              <MilestoneList milestones={shownNow} onDone={markDone} onSnooze={snooze} />
+        <CardContent className="pb-3 pt-2">
+          {agenda.length === 0 ? (
+            <p className="m-0 py-3 text-table text-ink-3">{t('card.nothingDue')}</p>
+          ) : (
+            <div className="grid grid-cols-2 gap-x-7">
+              {agendaColumns.map((column, i) => (
+                <ul key={i} className="m-0 list-none p-0">
+                  {column.map((m) => (
+                    <AgendaRow key={m.key} m={m} />
+                  ))}
+                </ul>
+              ))}
             </div>
           )}
-          {shownSoon.length > 0 && (
-            <div className={shownNow.length > 0 ? 'mt-4' : undefined}>
-              <div className="text-eyebrow uppercase text-ink-4">{t('card.soon')}</div>
-              <MilestoneList milestones={shownSoon} onDone={markDone} onSnooze={snooze} />
-            </div>
-          )}
-          {milestones.length > COLLAPSED_ROWS && (
+          {agenda.length > COLLAPSED_ROWS && (
             <button
               type="button"
               onClick={() => setExpanded((v) => !v)}
-              className="mb-1 mt-2 text-caption font-650 text-ink-2 underline-offset-[3px] hover:text-ink hover:underline"
+              className="mt-2 text-caption font-650 text-ink-2 underline-offset-[3px] hover:text-ink hover:underline"
             >
-              {expanded ? t('card.showLess') : t('card.showAll', { count: milestones.length })}
+              {expanded ? t('card.showLess') : t('card.showAll', { count: agenda.length })}
             </button>
+          )}
+          {upkeep.length > 0 && (
+            <div className="mt-2 border-t border-line-soft pt-2.5">
+              <button
+                type="button"
+                aria-expanded={upkeepOpen}
+                onClick={() => setUpkeepOpen((v) => !v)}
+                className="flex w-full min-w-0 items-center gap-2.5 text-left text-caption font-500 text-ink-3 hover:text-ink-2 focus-visible:outline-none focus-visible:shadow-focus"
+              >
+                <Wrench
+                  className="size-[14px] shrink-0 text-ink-4"
+                  strokeWidth={1.75}
+                  aria-hidden
+                />
+                <span className="min-w-0 flex-1 truncate">
+                  <b className="font-650 text-ink-2">{t('card.upkeep')}</b>
+                  {' · '}
+                  {upkeep.map((m) => upkeepShort(m, t)).join(' · ')}
+                </span>
+                <span className="shrink-0 font-650 text-ink-2">
+                  {upkeepOpen
+                    ? t('card.upkeepHide')
+                    : t('card.upkeepShow', { count: upkeep.length })}
+                </span>
+              </button>
+              {upkeepOpen && (
+                <div className="mt-1 grid grid-cols-2 gap-x-7">
+                  {upkeepColumns.map((column, i) => (
+                    <ul key={i} className="m-0 list-none p-0">
+                      {column.map((m) => (
+                        <UpkeepRow key={m.key} m={m} />
+                      ))}
+                    </ul>
+                  ))}
+                </div>
+              )}
+            </div>
           )}
         </CardContent>
       </Card>

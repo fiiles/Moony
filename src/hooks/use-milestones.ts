@@ -15,3 +15,11 @@ export function useMilestones() {
     refetchInterval: 5 * 60_000,
   });
 }
+
+/** Kinds muted in settings or through "Nepřipomínat …". */
+export function useMilestoneMutedKinds() {
+  return useQuery({
+    queryKey: ['milestone-muted-kinds'],
+    queryFn: () => milestonesApi.mutedKinds(),
+  });
+}

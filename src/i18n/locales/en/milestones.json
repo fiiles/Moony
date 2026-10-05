@@ -1,33 +1,42 @@
 {
   "card": {
     "title": "What's coming up",
-    "now": "Act now",
-    "soon": "Coming up",
+    "settingsLink": "Edit reminders",
     "showAll": "Show all ({{count}})",
-    "showLess": "Show less"
+    "showLess": "Show less",
+    "nothingDue": "No upcoming dates.",
+    "upkeep": "Data upkeep",
+    "upkeepShow": "Show {{count}}",
+    "upkeepHide": "Collapse",
+    "today": "Today",
+    "target": "target",
+    "rowMenu": "Reminder options: {{title}}"
   },
   "status": {
-    "count_one": "{{count}} to handle",
-    "count_other": "{{count}} to handle",
-    "title": "Act now",
+    "deadline": "{{title}} · {{when}}",
+    "more": "+{{count}}",
+    "title": "Deadlines in the next 14 days",
     "openOverview": "Open overview"
   },
   "actions": {
-    "snooze": "Snooze for a week",
-    "done": "Mark as done",
+    "hide": "Hide",
+    "remindWeek": "Remind me in a week",
+    "remindMonth": "Remind me in a month",
     "undo": "Undo"
   },
   "toast": {
-    "done": "Marked as done",
-    "snoozed": "Snoozed for a week"
+    "hidden": "Hidden",
+    "snoozedWeek": "Snoozed for a week",
+    "snoozedMonth": "Snoozed for a month",
+    "muted": "Reminders off · {{group}}"
   },
   "relative": {
-    "today": "Today",
-    "tomorrow": "Tomorrow",
-    "inDays_one": "In {{count}} day",
-    "inDays_other": "In {{count}} days",
-    "inMonths_one": "In {{count}} month",
-    "inMonths_other": "In {{count}} months",
+    "today": "today",
+    "tomorrow": "tomorrow",
+    "inDays_one": "in {{count}} day",
+    "inDays_other": "in {{count}} days",
+    "inMonths_one": "in {{count}} month",
+    "inMonths_other": "in {{count}} months",
     "daysAgo_one": "{{count}} day ago",
     "daysAgo_other": "{{count}} days ago",
     "monthsAgo_one": "{{count}} month ago",
@@ -38,24 +47,88 @@
     "balances_stale": "Account balances"
   },
   "sub": {
-    "insurance_anniversary": "Anniversary {{date}} · cancel by {{deadline}}",
-    "insurance_anniversary_passed": "Anniversary {{date}} · the notice period has passed",
-    "insurance_end": "Contract ends {{date}}",
-    "insurance_payment": "Payment {{amount}} · {{date}}",
-    "loan_fixation_end": "Fixed rate ends {{date}} · time to compare offers",
+    "insurance_anniversary": "Last day to cancel · anniversary {{date}}",
+    "insurance_anniversary_passed": "Contract anniversary · the notice period has passed",
+    "insurance_end": "Contract ends",
+    "insurance_payment": "Payment {{amount}}",
+    "loan_fixation_end": "Fixed rate ends · time to compare offers",
+    "loan_payoff": "Last payment",
+    "bond_maturity": "Matures · {{amount}} comes back",
+    "bond_coupon": "Coupon {{amount}}",
+    "account_termination": "Account ends",
+    "savings_rate_end": "Promotional rate ends",
+    "watch_target_below": "Price {{price}} fell to the target {{target}}",
+    "watch_target_above": "Price {{price}} reached the target {{target}}",
     "loan_fixation_expired": "Fixed rate ended {{date}} · enter the new rate",
-    "loan_payoff": "Last payment {{date}}",
     "loan_balance_check": "Balance not checked since {{date}} · compare with a statement",
-    "bond_maturity": "Matures {{date}} · {{amount}} comes back",
-    "bond_coupon": "Coupon {{amount}} · {{date}}",
-    "account_termination": "Account ends {{date}}",
-    "savings_rate_end": "Promotional rate ends {{date}}",
+    "valuation_stale": "No new valuation since {{date}} · revalue it",
     "backup_stale": "Last backup {{date}}",
     "backup_never": "No backup yet",
     "balances_stale_one": "{{count}} account not updated for over 30 days",
-    "balances_stale_other": "{{count}} accounts not updated for over 30 days",
-    "valuation_stale": "No new valuation since {{date}} · revalue it",
-    "watch_target_below": "Price {{price}} fell to the target {{target}}",
-    "watch_target_above": "Price {{price}} reached the target {{target}}"
+    "balances_stale_other": "{{count}} accounts not updated for over 30 days"
+  },
+  "short": {
+    "backup_stale": "back up your data",
+    "balances_stale_one": "update {{count}} balance",
+    "balances_stale_other": "update {{count}} balances",
+    "valuation_stale": "revalue {{title}}",
+    "loan_balance_check": "check the balance of {{title}}",
+    "loan_fixation_expired": "enter the new rate of {{title}}"
+  },
+  "groups": {
+    "insuranceDates": {
+      "label": "Insurance anniversaries and ends",
+      "hint": "On the overview up to 3 months ahead; anniversaries with the last day to cancel.",
+      "mute": "Don't remind me about insurance anniversaries and ends"
+    },
+    "insurancePayments": {
+      "label": "Insurance payments",
+      "hint": "Quarterly, half-yearly and yearly payments 14 days ahead.",
+      "mute": "Don't remind me about insurance payments"
+    },
+    "loans": {
+      "label": "Fixed-rate ends and loan payoffs",
+      "hint": "A fixed-rate end 6 months ahead, the last payment a month ahead.",
+      "mute": "Don't remind me about fixed rates and payoffs"
+    },
+    "bonds": {
+      "label": "Bond maturities and coupons",
+      "hint": "A maturity up to 3 months ahead, a coupon a week ahead.",
+      "mute": "Don't remind me about maturities and coupons"
+    },
+    "accounts": {
+      "label": "Account and promotional rate ends",
+      "hint": "An account or promotional rate end up to 3 months ahead.",
+      "mute": "Don't remind me about account and rate ends"
+    },
+    "targets": {
+      "label": "Stock target prices",
+      "hint": "When the price reaches the target in its direction.",
+      "mute": "Don't remind me about target prices"
+    },
+    "backup": {
+      "label": "Data backups",
+      "hint": "When the last backup is older than 30 days.",
+      "mute": "Don't remind me about backups"
+    },
+    "balances": {
+      "label": "Balance updates",
+      "hint": "When an account balance has not been updated for over 30 days.",
+      "mute": "Don't remind me about account balances"
+    },
+    "valuations": {
+      "label": "Property valuations",
+      "hint": "When a property valuation is older than a year.",
+      "mute": "Don't remind me about property valuations"
+    },
+    "loanChecks": {
+      "label": "Loan checks",
+      "hint": "A yearly balance check and the new rate after a fixed rate ends.",
+      "mute": "Don't remind me about loan checks"
+    }
+  },
+  "settings": {
+    "title": "Overview reminders",
+    "description": "What the “What's coming up” card and the top bar remind you of. Turned-off kinds show nowhere."
   }
 }

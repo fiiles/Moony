@@ -1529,7 +1529,7 @@ export interface Milestone {
   key: string;
   kind: MilestoneKind;
   stage: MilestoneStage;
-  /** `action` counts in the top-bar indicator; `info` is shown on the card only. */
+  /** `action` = something to do; `info` = nothing to do. */
   tone: MilestoneTone;
   /** Policy, loan, bond, account or property id; the ticker for targets. */
   sourceId: string | null;
@@ -1549,8 +1549,6 @@ export interface Milestone {
   direction: TargetDirection | null;
   /** Number of stale accounts. */
   count: number | null;
-  /** False when only "Odložit" is offered. */
-  canDismiss: boolean;
 }
 
 // ============================================================================

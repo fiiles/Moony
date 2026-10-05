@@ -14,6 +14,8 @@ import type {
   LoanEvent,
   InsertLoanEvent,
   OnboardingProgress,
+  Milestone,
+  MilestoneState,
   BackupManifest,
   BackupInspection,
   DataLocation,
@@ -81,6 +83,7 @@ import type {
   TwrSeries,
   McpServerStatus,
   // Stock Monitor types
+  TargetDirection,
   WatchedStock,
   WatchedStockRow,
   StockMonitorDetail,
@@ -671,8 +674,16 @@ export const stockMonitorApi = {
 
   followPortfolio: () => tauriInvoke<string[]>('follow_portfolio_stocks'),
 
-  setTargetPrice: (ticker: string, targetPrice: string | null) =>
-    tauriInvoke<WatchedStock>('set_watched_target_price', { ticker, targetPrice }),
+  setTargetPrice: (
+    ticker: string,
+    targetPrice: string | null,
+    targetDirection: TargetDirection | null
+  ) =>
+    tauriInvoke<WatchedStock>('set_watched_target_price', {
+      ticker,
+      targetPrice,
+      targetDirection,
+    }),
 
   updateNotes: (ticker: string, notes: string) =>
     tauriInvoke<WatchedStock>('update_watched_notes', { ticker, notes }),
@@ -784,6 +795,17 @@ export const onboardingApi = {
     key: 'onboarding.completedAt' | 'onboarding.checklistDismissed',
     value: string | null
   ) => tauriInvoke<void>('set_onboarding_flag', { key, value }),
+};
+
+// ============================================================================
+// Milestones API — "Co vás čeká" card and the top-bar indicator
+// ============================================================================
+
+export const milestonesApi = {
+  list: () => tauriInvoke<Milestone[]>('get_milestones'),
+  setState: (key: string, state: MilestoneState) =>
+    tauriInvoke<void>('set_milestone_state', { key, state }),
+  clearState: (key: string) => tauriInvoke<void>('clear_milestone_state', { key }),
 };
 
 // ============================================================================
@@ -1204,6 +1226,7 @@ export const api = {
   stockTags: stockTagsApi,
   categorization: categorizationApi,
   budgeting: budgetingApi,
+  milestones: milestonesApi,
 };
 
 export default api;

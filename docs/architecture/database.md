@@ -109,7 +109,7 @@ Grouped by owning domain (see the domain map in `overview.md`).
 | Table | Purpose | Notable columns / constraints |
 |---|---|---|
 | `institutions` | Banks/financial institutions, pre-seeded with Czech banks | Readable seeded IDs (`inst_fio`, `inst_csob`, …); `bic`, `logo_url` |
-| `bank_accounts` | All bank/savings accounts | `account_type DEFAULT 'checking'`, `institution_id` FK, `iban`/`bban`, `data_source DEFAULT 'manual'`, `has_zone_designation`, `exclude_from_balance`, `interest_rate` TEXT |
+| `bank_accounts` | All bank/savings accounts | `account_type DEFAULT 'checking'`, `institution_id` FK, `iban`/`bban`, `data_source DEFAULT 'manual'`, `has_zone_designation`, `exclude_from_balance`, `interest_rate` TEXT, `interest_rate_valid_until` INTEGER (UTC day the promotional rate ends, nullable; migration 005) |
 | `bank_account_zones` | Tiered interest-rate zones per account | FK `bank_account_id` ON DELETE CASCADE; `from_amount`/`to_amount`/`interest_rate` TEXT. Tiers are bands of the balance (not contiguous, not sorted); the one interest model is `services/interest_tiers.rs`, mirrored for display by `src/utils/bank-account-zones.ts` and cross-checked through `shared/fixtures/interest-tiers.json`; an empty / `0` `to_amount` is unlimited |
 | `bank_transactions` | Imported/manual bank transactions | `UNIQUE(bank_account_id, transaction_id)` dedupes imports (`services/dedup.rs`: a bank-side id is the only key when present; id-less rows fall back to an exact date/amount/type/description match, which the MCP import reports as `possibleDuplicate` and `importAnyway` overrides); `category_id` FK, `categorization_source`, `import_batch_id` FK ON DELETE CASCADE, `suggested_category_id` FK (MCP-suggested category awaiting confirmation); indexes on account, date, category, batch |
 | `csv_import_batches` | One row per CSV upload with import stats | FK `bank_account_id` ON DELETE CASCADE; `imported_count`/`duplicate_count`/`error_count` |
@@ -136,7 +136,7 @@ Grouped by owning domain (see the domain map in `overview.md`).
 | `investment_transactions` | Buy/sell transactions per stock position | FK `investment_id` ON DELETE CASCADE; `type`, `price_per_unit`, `currency`, `transaction_date`; index on `ticker` (for MCP import dedup); `import_batch_id` FK → `stock_import_batches` ON DELETE SET NULL (NULL for hand-made and MCP-created rows; editing a transaction keeps it in its batch) and `external_id` TEXT (`<source>:<broker's transaction id>`, NULL when the file had none; duplicate rule 1 of the CSV import), each indexed (migration 003) |
 | `stock_import_batches` | One row per stock CSV import, so it can be undone | `file_name`, `source` (`xtb`, `trading212`, `degiro`, `ibkr`, `moony`, `custom` or `format:<uuid>`), `trade_count` (rows written), `created_at`. Written in the same SQL transaction as the imported rows and only when something was written; undo deletes the batch's transactions, the positions left without any, then the row (`services/stock_import/batches.rs`) |
 | `stock_data` | Fetched Yahoo Finance quote + company metadata cache | `ticker UNIQUE`; `currency` is the currency `original_price` is stored in, the one Yahoo reports for the quote (its minor units are converted: `GBp` pence are stored as GBP, a hundredth); the ticker suffix only stands in for a response that names none; `quote_currency` TEXT is the code Yahoo reported with the last quote, as it came (NULL until the first refresh after migration 004), kept to find tickers whose stored history was written in another unit (`services/quote_unit.rs`); `previous_close`, `sector`, `industry`, `pe_ratio`, `market_cap`, `beta`, 52-week range, dividend fields, `metadata_fetched_at` |
-| `watched_stocks` | Stock Monitor watchlist: followed tickers with optional target price and markdown notes; prices come from `stock_data` via JOIN | `ticker UNIQUE`; `target_price` money-as-TEXT in native currency, a plain informative reference (no direction, no "reached" signal); never enters net worth |
+| `watched_stocks` | Stock Monitor watchlist: followed tickers with optional target price and markdown notes; prices come from `stock_data` via JOIN | `ticker UNIQUE`; `target_price` money-as-TEXT in native currency; `target_direction` TEXT CHECK (`below` = waiting for the price to fall to the target, `above` = waiting for it to rise; NULL without a target; migration 005 sets it for existing targets from the stored price, `above` when none is known); never enters net worth |
 | `stock_price_overrides` | Manual price overrides (win over `stock_data`) | `ticker UNIQUE`; `currency DEFAULT 'CZK'` |
 | `dividend_data` | Fetched yearly dividend sums per ticker | `ticker UNIQUE`; `yearly_dividend_sum` TEXT in `currency` (converted from the quote unit like a price) |
 | `dividend_overrides` | Manual dividend overrides (win over `dividend_data`) | `ticker UNIQUE` |
@@ -217,6 +217,12 @@ Grouped by owning domain (see the domain map in `overview.md`).
 |---|---|---|
 | `cashflow_items` | User-defined recurring income/expense items | `amount` TEXT, `frequency`, `item_type`, `category` |
 | `projection_settings` | Growth/contribution assumptions per asset class | `asset_type UNIQUE`; `yearly_growth_rate`, `monthly_contribution` TEXT |
+
+### Milestones
+
+| Table | Purpose | Notable columns / constraints |
+|---|---|---|
+| `milestone_states` | Done/snoozed state of milestone occurrences, keyed by occurrence key | `key TEXT PRIMARY KEY` (e.g. `insurance_anniversary:<policy id>:<day>`, so the next year's occurrence is a new key); `state` CHECK (`done`/`snoozed`); `until_day` INTEGER (UTC day a snooze ends, NULL for `done`); `updated_at` (migration 005) |
 
 ## Data folder artefacts
 

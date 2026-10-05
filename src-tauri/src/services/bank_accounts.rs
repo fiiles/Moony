@@ -28,7 +28,7 @@ pub fn get_account_by_id(conn: &rusqlite::Connection, id: &str) -> Result<BankAc
     let account = conn.query_row(
         "SELECT id, name, account_type, iban, bban, currency, balance, institution_id,
          external_account_id, data_source, last_synced_at, interest_rate, has_zone_designation,
-         termination_date, created_at, updated_at, exclude_from_balance
+         termination_date, created_at, updated_at, exclude_from_balance, interest_rate_valid_until
          FROM bank_accounts WHERE id = ?1",
         [id],
         |row| {
@@ -47,6 +47,7 @@ pub fn get_account_by_id(conn: &rusqlite::Connection, id: &str) -> Result<BankAc
                 interest_rate: row.get(11)?,
                 has_zone_designation: row.get::<_, i32>(12)? != 0,
                 termination_date: row.get(13)?,
+                interest_rate_valid_until: row.get(17)?,
                 exclude_from_balance: row.get::<_, i32>(16)? != 0,
                 created_at: row.get(14)?,
                 updated_at: row.get(15)?,
@@ -79,8 +80,9 @@ pub fn create_account(
         "INSERT INTO bank_accounts (
             id, name, account_type, iban, bban, currency, balance,
             institution_id, data_source, interest_rate, has_zone_designation,
-            termination_date, created_at, updated_at, exclude_from_balance
-        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)",
+            termination_date, created_at, updated_at, exclude_from_balance,
+            interest_rate_valid_until
+        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)",
         params![
             id,
             data.name,
@@ -97,6 +99,7 @@ pub fn create_account(
             now,
             now,
             exclude as i32,
+            data.interest_rate_valid_until,
         ],
     )?;
 
@@ -115,6 +118,7 @@ pub fn create_account(
         interest_rate: data.interest_rate.clone(),
         has_zone_designation: has_zone,
         termination_date: data.termination_date,
+        interest_rate_valid_until: data.interest_rate_valid_until,
         exclude_from_balance: exclude,
         created_at: now,
         updated_at: now,
@@ -147,8 +151,9 @@ pub fn update_account(
         "UPDATE bank_accounts SET 
             name = ?1, account_type = ?2, iban = ?3, bban = ?4, currency = ?5,
             balance = ?6, institution_id = ?7, interest_rate = ?8, has_zone_designation = ?9,
-            termination_date = ?10, exclude_from_balance = ?11, updated_at = ?12
-        WHERE id = ?13",
+            termination_date = ?10, exclude_from_balance = ?11, updated_at = ?12,
+            interest_rate_valid_until = ?13
+        WHERE id = ?14",
         params![
             data.name,
             account_type,
@@ -162,6 +167,7 @@ pub fn update_account(
             data.termination_date,
             exclude as i32,
             now,
+            data.interest_rate_valid_until,
             id,
         ],
     )?;
@@ -181,6 +187,7 @@ pub fn update_account(
         interest_rate: data.interest_rate.clone(),
         has_zone_designation: has_zone,
         termination_date: data.termination_date,
+        interest_rate_valid_until: data.interest_rate_valid_until,
         exclude_from_balance: exclude,
         created_at: existing.created_at,
         updated_at: now,
@@ -411,6 +418,7 @@ mod tests {
                 interest_rate TEXT,
                 has_zone_designation INTEGER NOT NULL DEFAULT 0,
                 termination_date INTEGER,
+                interest_rate_valid_until INTEGER,
                 exclude_from_balance INTEGER NOT NULL DEFAULT 0,
                 created_at INTEGER NOT NULL DEFAULT 0,
                 updated_at INTEGER NOT NULL DEFAULT 0
@@ -478,6 +486,7 @@ mod tests {
             interest_rate: None,
             has_zone_designation: None,
             termination_date: None,
+            interest_rate_valid_until: None,
             exclude_from_balance: None,
         }
     }
@@ -544,6 +553,24 @@ mod tests {
         let keep = minimal_insert("Joint account");
         let kept = update_account(&conn, &created.id, &keep).expect("update");
         assert!(kept.exclude_from_balance);
+    }
+
+    #[test]
+    fn the_promo_rate_end_is_stored_and_updated() {
+        let conn = setup_test_db();
+        let mut data = minimal_insert("Spořák");
+        data.interest_rate_valid_until = Some(1_790_000_000);
+        let created = create_account(&conn, &data).expect("create");
+        assert_eq!(created.interest_rate_valid_until, Some(1_790_000_000));
+        assert_eq!(
+            get_account_by_id(&conn, &created.id)
+                .expect("read")
+                .interest_rate_valid_until,
+            Some(1_790_000_000)
+        );
+        data.interest_rate_valid_until = None;
+        let updated = update_account(&conn, &created.id, &data).expect("update");
+        assert_eq!(updated.interest_rate_valid_until, None);
     }
 
     #[test]

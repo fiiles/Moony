@@ -66,6 +66,7 @@ fn all_migrations() -> Vec<(&'static str, &'static str)> {
         ("002_real_estate_purchase_date", MIGRATION_002),
         ("003_stock_import_batches", MIGRATION_003),
         ("004_stock_quote_currency", MIGRATION_004),
+        ("005_milestones", MIGRATION_005),
     ]
 }
 
@@ -956,6 +957,38 @@ const MIGRATION_004: &str = r#"
 ALTER TABLE stock_data ADD COLUMN quote_currency TEXT;
 "#;
 
+/// `005_milestones`: the direction a watchlist target waits for, the end of an account's
+/// promotional rate, and the "done" / "snoozed" state of milestone occurrences
+/// (spec 2026-10-05-milestones-design).
+const MIGRATION_005: &str = r#"
+-- 'below' = waiting for the price to fall to the target (buy / buy more),
+-- 'above' = waiting for it to rise (sell); NULL while there is no target.
+ALTER TABLE watched_stocks ADD COLUMN target_direction TEXT CHECK (target_direction IN ('below', 'above'));
+
+-- Existing targets: below the stored price means a dip; above it, or no price known,
+-- keeps the meaning every earlier version used ("reached" = price at or above).
+UPDATE watched_stocks
+SET target_direction = CASE
+    WHEN (SELECT CAST(sd.original_price AS REAL) FROM stock_data sd WHERE sd.ticker = watched_stocks.ticker)
+         > CAST(target_price AS REAL) THEN 'below'
+    ELSE 'above'
+END
+WHERE target_price IS NOT NULL;
+
+-- UTC day an account's promotional interest rate ends; NULL when unknown.
+ALTER TABLE bank_accounts ADD COLUMN interest_rate_valid_until INTEGER;
+
+-- One row per milestone occurrence the user marked done (for good) or snoozed
+-- (until `until_day`). The key names the occurrence, e.g.
+-- 'insurance_anniversary:<policy id>:<day>', so next year's anniversary is a new key.
+CREATE TABLE IF NOT EXISTS milestone_states (
+    key TEXT PRIMARY KEY,
+    state TEXT NOT NULL CHECK (state IN ('done', 'snoozed')),
+    until_day INTEGER,
+    updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+);
+"#;
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1834,5 +1867,83 @@ mod stock_quote_currency_tests {
         )
         .expect("insert");
         assert_eq!(quote_currency(&conn, "CSPX.L").as_deref(), Some("USD"));
+    }
+}
+
+/// Tests of `005_milestones`. A module of its own, like the ones above.
+#[cfg(test)]
+mod migration_005 {
+    use super::*;
+
+    /// A database as it was before `005`: every migration that comes earlier in the chain.
+    fn database_before_005() -> Connection {
+        let conn = Connection::open_in_memory().expect("in-memory db");
+        let earlier: Vec<(&str, &str)> = all_migrations()
+            .into_iter()
+            .filter(|(name, _)| *name < "005_milestones")
+            .collect();
+        run_chain(&conn, &earlier).expect("earlier migrations");
+        conn
+    }
+
+    fn direction(conn: &Connection, ticker: &str) -> Option<String> {
+        conn.query_row(
+            "SELECT target_direction FROM watched_stocks WHERE ticker = ?1",
+            [ticker],
+            |r| r.get(0),
+        )
+        .expect("watched row")
+    }
+
+    #[test]
+    fn existing_targets_get_a_direction_from_the_stored_price() {
+        let conn = database_before_005();
+        conn.execute_batch(
+            "INSERT INTO stock_data (id, ticker, original_price, currency, price_date) VALUES
+                ('sd1', 'CAT', '845', 'USD', 1700000000),
+                ('sd2', 'AAPL', '200', 'USD', 1700000000);
+             INSERT INTO watched_stocks (id, ticker, target_price) VALUES
+                ('w1', 'CAT', '600'),
+                ('w2', 'AAPL', '250'),
+                ('w3', 'NOPRICE', '10'),
+                ('w4', 'NOTARGET', NULL);",
+        )
+        .expect("rows written by an earlier version");
+
+        run_migrations(&conn).expect("migrate to the current chain");
+
+        // Below the price: waiting for a dip. Above it, or no price known: the old meaning.
+        assert_eq!(direction(&conn, "CAT").as_deref(), Some("below"));
+        assert_eq!(direction(&conn, "AAPL").as_deref(), Some("above"));
+        assert_eq!(direction(&conn, "NOPRICE").as_deref(), Some("above"));
+        assert_eq!(direction(&conn, "NOTARGET"), None);
+    }
+
+    #[test]
+    fn promo_rate_end_and_milestone_states_exist() {
+        let conn = database_before_005();
+        run_migrations(&conn).expect("migrate");
+        conn.execute(
+            "INSERT INTO bank_accounts (id, name, interest_rate_valid_until) VALUES ('a1', 'Spořák', 1790000000)",
+            [],
+        )
+        .expect("the promo rate end column exists");
+        conn.execute(
+            "INSERT INTO milestone_states (key, state, until_day) VALUES ('backup_stale', 'snoozed', 1790000000)",
+            [],
+        )
+        .expect("a snoozed state");
+        assert!(
+            conn.execute(
+                "INSERT INTO milestone_states (key, state) VALUES ('x', 'forgotten')",
+                [],
+            )
+            .is_err(),
+            "unknown states are rejected"
+        );
+        assert_eq!(
+            applied_migration_names(&conn).expect("applied"),
+            known_migration_names()
+        );
     }
 }

@@ -15,6 +15,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { SettingsCard, SettingsRow } from '@/components/settings/SettingsCard';
+import { queryClient } from '@/lib/queryClient';
 import { dataApi } from '@/lib/tauri-api';
 import { translateApiError } from '@/lib/translate-api-error';
 import { useFormat } from '@/lib/use-format';
@@ -67,6 +68,7 @@ export function DataSection() {
       if (!path) return;
       setBusy('backup');
       const manifest = await dataApi.createBackup(path);
+      void queryClient.invalidateQueries({ queryKey: ['milestones'] });
       toast(t('data.backupSaved'), {
         description: t('data.backupSavedDescription', { count: manifest.files.length, path }),
       });

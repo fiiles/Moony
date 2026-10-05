@@ -5,7 +5,8 @@
 
 use crate::error::{AppError, Result};
 use crate::models::stock_monitor::{
-    validate_target_price, InsertWatchedStock, StockMonitorDetail, WatchedStock, WatchedStockRow,
+    validate_target_direction, validate_target_price, InsertWatchedStock, StockMonitorDetail,
+    WatchedStock, WatchedStockRow, TARGET_ABOVE, TARGET_BELOW,
 };
 use rusqlite::{Connection, OptionalExtension};
 
@@ -31,7 +32,7 @@ pub fn get_watched(conn: &Connection, ticker: &str) -> Result<Option<WatchedStoc
     let ticker = ticker.trim().to_uppercase();
     let row = conn
         .query_row(
-            "SELECT id, ticker, target_price, notes, created_at, updated_at
+            "SELECT id, ticker, target_price, target_direction, notes, created_at, updated_at
              FROM watched_stocks WHERE ticker = ?1",
             [&ticker],
             |r| {
@@ -39,9 +40,10 @@ pub fn get_watched(conn: &Connection, ticker: &str) -> Result<Option<WatchedStoc
                     id: r.get(0)?,
                     ticker: r.get(1)?,
                     target_price: r.get(2)?,
-                    notes: r.get(3)?,
-                    created_at: r.get(4)?,
-                    updated_at: r.get(5)?,
+                    target_direction: r.get(3)?,
+                    notes: r.get(4)?,
+                    created_at: r.get(5)?,
+                    updated_at: r.get(6)?,
                 })
             },
         )
@@ -58,17 +60,49 @@ pub fn unfollow_stock(conn: &Connection, ticker: &str) -> Result<()> {
     Ok(())
 }
 
+/// `below` when the target sits under the current price (waiting for a dip to buy),
+/// otherwise `above` (waiting for a rise; also when no price is known yet).
+pub fn infer_target_direction(target: f64, current_price: Option<f64>) -> &'static str {
+    match current_price {
+        Some(price) if price > 0.0 && target < price => TARGET_BELOW,
+        _ => TARGET_ABOVE,
+    }
+}
+
 pub fn set_target_price(
     conn: &Connection,
     ticker: &str,
     target_price: Option<String>,
+    target_direction: Option<String>,
 ) -> Result<WatchedStock> {
     validate_target_price(&target_price)?;
+    validate_target_direction(&target_direction)?;
     let ticker = ticker.trim().to_uppercase();
     let normalized = target_price.map(|t| t.trim().to_string());
+    let direction = match &normalized {
+        None => None,
+        Some(target) => Some(match target_direction {
+            Some(explicit) => explicit,
+            None => {
+                let price: Option<f64> = conn
+                    .query_row(
+                        "SELECT original_price FROM stock_data WHERE ticker = ?1",
+                        [&ticker],
+                        |r| r.get::<_, Option<String>>(0),
+                    )
+                    .optional()?
+                    .flatten()
+                    .and_then(|p| p.trim().parse().ok());
+                // validate_target_price guarantees a positive decimal.
+                let target: f64 = target.parse().unwrap_or(0.0);
+                infer_target_direction(target, price).to_string()
+            }
+        }),
+    };
     let n = conn.execute(
-        "UPDATE watched_stocks SET target_price = ?1, updated_at = unixepoch() WHERE ticker = ?2",
-        rusqlite::params![normalized, ticker],
+        "UPDATE watched_stocks SET target_price = ?1, target_direction = ?2, updated_at = unixepoch()
+         WHERE ticker = ?3",
+        rusqlite::params![normalized, direction, ticker],
     )?;
     if n == 0 {
         return Err(AppError::NotFound(format!("watched stock {ticker}")));
@@ -165,7 +199,7 @@ pub fn follow_portfolio_stocks(conn: &Connection) -> Result<Vec<String>> {
 /// Overview table: every watchlist entry, enriched from stock_data when present
 pub fn list_watched_stocks(conn: &Connection) -> Result<Vec<WatchedStockRow>> {
     let mut stmt = conn.prepare(
-        "SELECT w.id, w.ticker, w.target_price, w.notes,
+        "SELECT w.id, w.ticker, w.target_price, w.target_direction, w.notes,
                 sd.short_name, sd.long_name, sd.currency, sd.original_price,
                 sd.previous_close, sd.fifty_two_week_low, sd.fifty_two_week_high,
                 sd.exchange, sd.fetched_at,
@@ -177,24 +211,25 @@ pub fn list_watched_stocks(conn: &Connection) -> Result<Vec<WatchedStockRow>> {
     )?;
     let rows = stmt
         .query_map([], |r| {
-            let held_investment_id: Option<String> = r.get(13)?;
+            let held_investment_id: Option<String> = r.get(14)?;
             Ok(WatchedStockRow {
                 id: r.get(0)?,
                 ticker: r.get(1)?,
                 target_price: r.get(2)?,
-                notes: r.get(3)?,
-                short_name: r.get(4)?,
-                long_name: r.get(5)?,
-                currency: r.get(6)?,
-                current_price: r.get(7)?,
-                previous_close: r.get(8)?,
-                fifty_two_week_low: r.get(9)?,
-                fifty_two_week_high: r.get(10)?,
-                exchange: r.get(11)?,
-                price_fetched_at: r.get(12)?,
+                target_direction: r.get(3)?,
+                notes: r.get(4)?,
+                short_name: r.get(5)?,
+                long_name: r.get(6)?,
+                currency: r.get(7)?,
+                current_price: r.get(8)?,
+                previous_close: r.get(9)?,
+                fifty_two_week_low: r.get(10)?,
+                fifty_two_week_high: r.get(11)?,
+                exchange: r.get(12)?,
+                price_fetched_at: r.get(13)?,
                 is_held: held_investment_id.is_some(),
                 held_investment_id,
-                followed_at: r.get(14)?,
+                followed_at: r.get(15)?,
             })
         })?
         .collect::<std::result::Result<Vec<_>, _>>()?;
@@ -261,6 +296,7 @@ pub fn get_stock_monitor_detail(conn: &Connection, ticker: &str) -> Result<Stock
         ticker,
         followed: watched.is_some(),
         target_price: watched.as_ref().and_then(|w| w.target_price.clone()),
+        target_direction: watched.as_ref().and_then(|w| w.target_direction.clone()),
         followed_at: watched.as_ref().map(|w| w.created_at),
         notes: watched.map(|w| w.notes).unwrap_or_default(),
         short_name: d.0,
@@ -293,6 +329,7 @@ mod tests {
                 id TEXT PRIMARY KEY,
                 ticker TEXT NOT NULL UNIQUE,
                 target_price TEXT,
+                target_direction TEXT,
                 notes TEXT NOT NULL DEFAULT '',
                 created_at INTEGER NOT NULL DEFAULT (unixepoch()),
                 updated_at INTEGER NOT NULL DEFAULT (unixepoch())
@@ -381,9 +418,9 @@ mod tests {
     fn set_target_price_updates_and_clears() {
         let conn = setup_test_db();
         follow(&conn, "AAPL");
-        let ws = set_target_price(&conn, "AAPL", Some("250.50".to_string())).expect("set");
+        let ws = set_target_price(&conn, "AAPL", Some("250.50".to_string()), None).expect("set");
         assert_eq!(ws.target_price.as_deref(), Some("250.50"));
-        let ws = set_target_price(&conn, "AAPL", None).expect("clear");
+        let ws = set_target_price(&conn, "AAPL", None, None).expect("clear");
         assert!(ws.target_price.is_none());
     }
 
@@ -436,7 +473,7 @@ mod tests {
         .unwrap();
         follow(&conn, "AAPL");
         update_notes(&conn, "AAPL", "# Thesis".to_string()).unwrap();
-        set_target_price(&conn, "AAPL", Some("250".to_string())).unwrap();
+        set_target_price(&conn, "AAPL", Some("250".to_string()), None).unwrap();
 
         assert!(follow_portfolio_stocks(&conn).unwrap().is_empty());
         let kept = get_watched(&conn, "AAPL").unwrap().expect("still followed");
@@ -449,7 +486,7 @@ mod tests {
         let conn = setup_test_db();
         follow(&conn, "AAPL");
         for bad in ["0", "-5", "abc"] {
-            let err = set_target_price(&conn, "AAPL", Some(bad.to_string())).unwrap_err();
+            let err = set_target_price(&conn, "AAPL", Some(bad.to_string()), None).unwrap_err();
             assert!(matches!(err, AppError::Validation(_)), "input {bad}");
         }
     }
@@ -457,7 +494,7 @@ mod tests {
     #[test]
     fn set_target_price_unknown_ticker_is_not_found() {
         let conn = setup_test_db();
-        let err = set_target_price(&conn, "NOPE", Some("10".to_string())).unwrap_err();
+        let err = set_target_price(&conn, "NOPE", Some("10".to_string()), None).unwrap_err();
         assert!(matches!(err, AppError::NotFound(_)));
     }
 
@@ -586,7 +623,7 @@ mod tests {
     fn detail_includes_watchlist_fields_when_followed() {
         let conn = setup_test_db();
         follow(&conn, "MSFT");
-        set_target_price(&conn, "MSFT", Some("500".to_string())).unwrap();
+        set_target_price(&conn, "MSFT", Some("500".to_string()), None).unwrap();
         update_notes(&conn, "MSFT", "note".to_string()).unwrap();
         conn.execute(
             "INSERT INTO stock_investments (id, ticker, quantity, currency)
@@ -602,5 +639,88 @@ mod tests {
         assert!(d.current_price.is_none());
         assert_eq!(d.held_investment_id.as_deref(), Some("si9"));
         assert!(d.is_held);
+    }
+
+    fn with_price(conn: &Connection, ticker: &str, price: &str) {
+        conn.execute(
+            "INSERT INTO stock_data (id, ticker, original_price, currency) VALUES (?1, ?2, ?3, 'USD')",
+            rusqlite::params![format!("sd-{ticker}"), ticker, price],
+        )
+        .expect("price row");
+    }
+
+    #[test]
+    fn a_target_below_the_price_waits_for_a_dip() {
+        let conn = setup_test_db();
+        follow_stock(
+            &conn,
+            &InsertWatchedStock {
+                ticker: "CAT".into(),
+            },
+        )
+        .unwrap();
+        with_price(&conn, "CAT", "845");
+        let ws = set_target_price(&conn, "CAT", Some("600".into()), None).unwrap();
+        assert_eq!(ws.target_direction.as_deref(), Some("below"));
+    }
+
+    #[test]
+    fn a_target_above_the_price_or_without_a_price_waits_for_a_rise() {
+        let conn = setup_test_db();
+        follow_stock(
+            &conn,
+            &InsertWatchedStock {
+                ticker: "CAT".into(),
+            },
+        )
+        .unwrap();
+        let ws = set_target_price(&conn, "CAT", Some("600".into()), None).unwrap();
+        assert_eq!(
+            ws.target_direction.as_deref(),
+            Some("above"),
+            "no price known"
+        );
+        with_price(&conn, "CAT", "500");
+        let ws = set_target_price(&conn, "CAT", Some("600".into()), None).unwrap();
+        assert_eq!(ws.target_direction.as_deref(), Some("above"));
+    }
+
+    #[test]
+    fn an_explicit_direction_wins_and_clearing_the_target_clears_it() {
+        let conn = setup_test_db();
+        follow_stock(
+            &conn,
+            &InsertWatchedStock {
+                ticker: "CAT".into(),
+            },
+        )
+        .unwrap();
+        with_price(&conn, "CAT", "845");
+        let ws = set_target_price(&conn, "CAT", Some("600".into()), Some("above".into())).unwrap();
+        assert_eq!(ws.target_direction.as_deref(), Some("above"));
+        let rows = list_watched_stocks(&conn).unwrap();
+        assert_eq!(rows[0].target_direction.as_deref(), Some("above"));
+        let detail = get_stock_monitor_detail(&conn, "CAT").unwrap();
+        assert_eq!(detail.target_direction.as_deref(), Some("above"));
+        let ws = set_target_price(&conn, "CAT", None, Some("below".into())).unwrap();
+        assert_eq!(ws.target_price, None);
+        assert_eq!(ws.target_direction, None);
+    }
+
+    #[test]
+    fn an_unknown_direction_is_rejected() {
+        let conn = setup_test_db();
+        follow_stock(
+            &conn,
+            &InsertWatchedStock {
+                ticker: "CAT".into(),
+            },
+        )
+        .unwrap();
+        let err = set_target_price(&conn, "CAT", Some("600".into()), Some("sideways".into()))
+            .unwrap_err();
+        assert!(
+            matches!(err, AppError::Validation(ref k) if k == "validation.targetDirectionInvalid")
+        );
     }
 }

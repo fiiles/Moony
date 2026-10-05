@@ -46,6 +46,10 @@ pub async fn run() {
             // Onboarding (services::onboarding)
             commands::onboarding::get_onboarding_progress,
             commands::onboarding::set_onboarding_flag,
+            // Milestones (services::milestones)
+            commands::milestones::get_milestones,
+            commands::milestones::set_milestone_state,
+            commands::milestones::clear_milestone_state,
             // Backup / restore / export (services::backup)
             commands::backup::create_backup,
             commands::backup::inspect_backup,

@@ -57,6 +57,7 @@
     "zonesLabel": "Pásma úrokových sazeb",
     "zonesDescription": "Definujte rozsahy zůstatků a jejich odpovídající úrokové sazby",
     "apyHelp": "Roční procentní výnos",
+    "rateValidUntilHelp": "Konec zvýhodněné sazby. Moony upozorní 14 dní předem.",
     "addDescription": "Přidejte bankovní účet, spořicí účet nebo hotovostní účet u brokera.",
     "editDescription": "Upravte údaje účtu „{{name}}“.",
     "accountNumberPlaceholder": "např. 1234567890",
@@ -84,6 +85,7 @@
     "accountNumber": "Číslo účtu",
     "accountNumberOptional": "Číslo účtu (volitelné)",
     "interestRate": "Úroková sazba",
+    "rateValidUntil": "Sazba platí do",
     "interestType": "Typ úročení",
     "balanceManual": "Zůstatek (ručně)"
   },

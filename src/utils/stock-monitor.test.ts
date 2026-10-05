@@ -5,9 +5,11 @@ import {
   dayChange,
   formatMarketCap,
   formatNativePrice,
+  inferTargetDirection,
   latestFetchedAt,
   percentFromFraction,
   targetDistance,
+  targetReached,
 } from './stock-monitor';
 
 describe('dayChange', () => {
@@ -170,5 +172,34 @@ describe('formatMarketCap', () => {
 describe('CHART_PERIODS', () => {
   it('matches spec D9 order', () => {
     expect(CHART_PERIODS).toEqual(['1D', '5D', '1M', '6M', 'YTD', '1Y', '5Y', 'MAX']);
+  });
+});
+
+describe('inferTargetDirection', () => {
+  it('waits for a dip when the target is under the price', () => {
+    expect(inferTargetDirection(600, 845)).toBe('below');
+  });
+  it('waits for a rise when the target is above the price or no price is known', () => {
+    expect(inferTargetDirection(900, 845)).toBe('above');
+    expect(inferTargetDirection(600, null)).toBe('above');
+  });
+});
+
+describe('targetReached', () => {
+  it('a dip target is reached at or under the target', () => {
+    expect(targetReached(845, 600, 'below')).toBe(false);
+    expect(targetReached(600, 600, 'below')).toBe(true);
+    expect(targetReached(598, 600, 'below')).toBe(true);
+  });
+  it('a rise target is reached at or over the target', () => {
+    expect(targetReached(845, 900, 'above')).toBe(false);
+    expect(targetReached(905, 900, 'above')).toBe(true);
+  });
+  it('a target without a direction keeps the old meaning (at or above)', () => {
+    expect(targetReached(845, 600, null)).toBe(true);
+  });
+  it('is never reached without both numbers', () => {
+    expect(targetReached(null, 600, 'below')).toBe(false);
+    expect(targetReached(600, null, 'below')).toBe(false);
   });
 });

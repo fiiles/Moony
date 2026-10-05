@@ -45,7 +45,7 @@ pub async fn get_all_bank_accounts(
                 ba.interest_rate, ba.has_zone_designation, ba.termination_date,
                 ba.created_at, ba.updated_at,
                 i.id, i.name, i.bic, i.country, i.logo_url, i.created_at,
-                ba.exclude_from_balance
+                ba.exclude_from_balance, ba.interest_rate_valid_until
             FROM bank_accounts ba
             LEFT JOIN institutions i ON ba.institution_id = i.id
             ORDER BY ba.name ASC",
@@ -68,6 +68,7 @@ pub async fn get_all_bank_accounts(
                     interest_rate: row.get(11)?,
                     has_zone_designation: row.get::<_, i32>(12)? != 0,
                     termination_date: row.get(13)?,
+                    interest_rate_valid_until: row.get(23)?,
                     exclude_from_balance: row.get::<_, i32>(22)? != 0,
                     created_at: row.get(14)?,
                     updated_at: row.get(15)?,
@@ -115,7 +116,7 @@ pub async fn get_bank_account(
                 ba.interest_rate, ba.has_zone_designation, ba.termination_date,
                 ba.created_at, ba.updated_at,
                 i.id, i.name, i.bic, i.country, i.logo_url, i.created_at,
-                ba.exclude_from_balance
+                ba.exclude_from_balance, ba.interest_rate_valid_until
             FROM bank_accounts ba
             LEFT JOIN institutions i ON ba.institution_id = i.id
             WHERE ba.id = ?1",
@@ -137,6 +138,7 @@ pub async fn get_bank_account(
                 interest_rate: row.get(11)?,
                 has_zone_designation: row.get::<_, i32>(12)? != 0,
                 termination_date: row.get(13)?,
+                interest_rate_valid_until: row.get(23)?,
                 exclude_from_balance: row.get::<_, i32>(22)? != 0,
                 created_at: row.get(14)?,
                 updated_at: row.get(15)?,

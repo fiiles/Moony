@@ -117,6 +117,7 @@ with Nastavení pinned above the account row. **Peníze** ends with Cashflow and
 - Account row: avatar initials, name, "Účet a zámek aplikace"; click opens the existing menu (Pravidla
   kategorizace, Zamknout aplikaci).
 - Top bar status: dot + text. `status--fresh` green for fresh prices, `status--stale` red-brown for stale.
+- Milestones indicator: left of the update status, a neutral `.status` dot with `ink-2` text (one step darker than the neutral status, so the count stands out without colour) reads "N k vyřízení" and opens a popover with the milestones to act on now; it is hidden when there are none.
 
 ## 6. Components
 
@@ -142,6 +143,7 @@ Each entry names the CSS class in `moony.css` and the React component that imple
 | Toast | `.toast.is-on` | `ui/toaster.tsx` (sonner) | Bottom right, 2.6 s, past-tense verb ("Účet přidán"). |
 | Alert | `.alert`, `--error` | `ui/alert.tsx` | Inline, next to the cause, with an action. |
 | Empty state | `.empty` | `common/EmptyState.tsx` | Icon in ink-5, title, one sentence, button. |
+| Milestone row | — | `milestones/MilestoneList.tsx` | The recent-moves row (icon in a `well` square, title 12/650, sub-line 10/500 `ink-4`, relative date right in caption `ink-3`); hover or focus reveals ghost `icon-sm` buttons 'Odložit o týden' and 'Označit jako vyřízené' in a fixed 66 px column next to the link, never inside it; in the top-bar popover the sub-line wraps to two lines. |
 | Skeleton | `.skeleton` | `ui/skeleton.tsx` | Shaped like the content it replaces; no page spinners. |
 | Breadcrumb, status, back link | `.topbar`, `.crumb`, `.status`, `.back` | `shell/TopBar.tsx`, `shell/DataStatus.tsx` | See §5. |
 
@@ -155,7 +157,7 @@ implementations.
 
 | Archetype | Pages | Structure |
 |---|---|---|
-| Overview | Dashboard | Greeting H1, period segment, hero (net worth + chart), 3 stats, allocation ring + recent moves. |
+| Overview | Dashboard | Greeting H1, period segment, hero (net worth + chart), 3 stats, "Co vás čeká" (milestones in "Teď jednat" / "Brzy", hidden when empty), allocation ring + recent moves. |
 | List | Stocks, bank accounts | 3–4 stats, a trend card (`TrendCard`: title, one sentence, horizon segment, chart 170 px, legend; the same chrome and height on every list page), table card with search and toggles, add modal. Tables use a fixed layout so long text ends with an ellipsis instead of widening the table; no horizontal scroll at the minimum width. |
 | Detail | Stock detail, bank account detail | Back link, eyebrow, H1, action row, hero with time trace, 3–4 stats, ledger table + aside cards, modals. |
 | Report | Cashflow | Actual monthly income and expenses from bank transactions: stats, bar chart card, breakdown by category and by source with change versus the previous period. |

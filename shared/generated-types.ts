@@ -55,6 +55,10 @@ migrations: string[]; files: BackupFileEntry[] }
  */
 export type BankAccount = { id: string; name: string; accountType: string; iban: string | null; bban: string | null; currency: string; balance: string; institutionId: string | null; externalAccountId: string | null; dataSource: string; lastSyncedAt: number | null; interestRate: string | null; hasZoneDesignation: boolean; terminationDate: number | null; 
 /**
+ * UTC day the promotional interest rate ends; None when unknown or not promotional.
+ */
+interestRateValidUntil: number | null; 
+/**
  * Left out of net worth, totals and charts when true (still listed and editable).
  */
 excludeFromBalance: boolean; createdAt: number; updatedAt: number }
@@ -63,6 +67,10 @@ excludeFromBalance: boolean; createdAt: number; updatedAt: number }
  * Bank account with institution data (enriched)
  */
 export type BankAccountWithInstitution = ({ id: string; name: string; accountType: string; iban: string | null; bban: string | null; currency: string; balance: string; institutionId: string | null; externalAccountId: string | null; dataSource: string; lastSyncedAt: number | null; interestRate: string | null; hasZoneDesignation: boolean; terminationDate: number | null; 
+/**
+ * UTC day the promotional interest rate ends; None when unknown or not promotional.
+ */
+interestRateValidUntil: number | null; 
 /**
  * Left out of net worth, totals and charts when true (still listed and editable).
  */
@@ -584,6 +592,10 @@ export type InsertAssetValuation = { assetId: string; value: string; currency: s
  */
 export type InsertBankAccount = { name: string; accountType: string | null; iban: string | null; bban: string | null; currency: string | null; balance: string | null; institutionId: string | null; interestRate: string | null; hasZoneDesignation: boolean | null; terminationDate: number | null; 
 /**
+ * Overwritten on update like `terminationDate`: the form always sends the stored value.
+ */
+interestRateValidUntil?: number | null; 
+/**
  * `None` keeps the stored value on update and means "included" on create.
  */
 excludeFromBalance?: boolean | null }
@@ -822,6 +834,70 @@ export type McpServerStatus = { running: boolean; port: number; url: string; tok
  * Menu preferences for sidebar visibility
  */
 export type MenuPreferences = { loans: boolean; insurance: boolean; investments: boolean; bonds: boolean; realEstate: boolean; crypto?: boolean; otherAssets?: boolean }
+
+/**
+ * One occurrence of something the user should act on or know about.
+ */
+export type Milestone = { 
+/**
+ * Stable occurrence key; the done / snoozed state is stored under it.
+ */
+key: string; 
+/**
+ * `insurance_anniversary`, `insurance_end`, `insurance_payment`, `loan_fixation_end`,
+ * `loan_fixation_expired`, `loan_payoff`, `loan_balance_check`, `bond_maturity`,
+ * `bond_coupon`, `account_termination`, `savings_rate_end`, `balances_stale`,
+ * `backup_stale`, `valuation_stale`, `watch_target`.
+ */
+kind: string; 
+/**
+ * `now` (in the reminder window) or `soon` (within 90 days).
+ */
+stage: string; 
+/**
+ * `action` (counts in the top-bar indicator) or `info`.
+ */
+tone: string; 
+/**
+ * Policy, loan, bond, account or property id; the ticker for targets.
+ */
+sourceId: string | null; 
+/**
+ * Entity name; empty for the backup and balances items.
+ */
+title: string; 
+/**
+ * UTC day of the event.
+ */
+dueDay: number | null; 
+/**
+ * Last day to act when it differs from the event (insurance notice deadline).
+ */
+actionDay: number | null; 
+/**
+ * Day of the last backup, balance update, valuation or balance check.
+ */
+sinceDay: number | null; 
+/**
+ * Payment, coupon, returned principal or target price (TEXT money).
+ */
+amount: string | null; currency: string | null; 
+/**
+ * Current price of a crossed target.
+ */
+referenceAmount: string | null; 
+/**
+ * `below` / `above` for targets.
+ */
+direction: string | null; 
+/**
+ * Number of stale accounts.
+ */
+count: number | null; 
+/**
+ * False when only "Odložit" makes sense (the item resolves with the data).
+ */
+canDismiss: boolean }
 
 /**
  * Done-state of the dashboard "Getting started" checklist plus the
@@ -1366,7 +1442,11 @@ averagePriceCurrency: string }
  * notes empty, target None). All stock_data fields are None when the cache
  * has no row yet (e.g. offline right after a search).
  */
-export type StockMonitorDetail = { ticker: string; followed: boolean; targetPrice: string | null; notes: string; shortName: string | null; longName: string | null; currency: string | null; currentPrice: string | null; previousClose: string | null; fiftyTwoWeekLow: string | null; fiftyTwoWeekHigh: string | null; marketCap: string | null; peRatio: string | null; 
+export type StockMonitorDetail = { ticker: string; followed: boolean; targetPrice: string | null; 
+/**
+ * `below` (waiting for a dip) or `above` (waiting for a rise); None without a target.
+ */
+targetDirection: string | null; notes: string; shortName: string | null; longName: string | null; currency: string | null; currentPrice: string | null; previousClose: string | null; fiftyTwoWeekLow: string | null; fiftyTwoWeekHigh: string | null; marketCap: string | null; peRatio: string | null; 
 /**
  * Raw Yahoo fraction (0.0044 = 0.44 %); multiply by 100 for display.
  */
@@ -1550,12 +1630,20 @@ export type UserProfile = { id: number; name: string; surname: string; email: st
 /**
  * A followed stock (row in watched_stocks)
  */
-export type WatchedStock = { id: string; ticker: string; targetPrice: string | null; notes: string; createdAt: number; updatedAt: number }
+export type WatchedStock = { id: string; ticker: string; targetPrice: string | null; 
+/**
+ * `below` (waiting for a dip) or `above` (waiting for a rise); None without a target.
+ */
+targetDirection: string | null; notes: string; createdAt: number; updatedAt: number }
 
 /**
  * Overview-table row: watchlist entry enriched from the stock_data cache
  */
-export type WatchedStockRow = { id: string; ticker: string; targetPrice: string | null; notes: string; shortName: string | null; longName: string | null; currency: string | null; currentPrice: string | null; previousClose: string | null; fiftyTwoWeekLow: string | null; fiftyTwoWeekHigh: string | null; exchange: string | null; priceFetchedAt: number | null; heldInvestmentId: string | null; isHeld: boolean; 
+export type WatchedStockRow = { id: string; ticker: string; targetPrice: string | null; 
+/**
+ * `below` (waiting for a dip) or `above` (waiting for a rise); None without a target.
+ */
+targetDirection: string | null; notes: string; shortName: string | null; longName: string | null; currency: string | null; currentPrice: string | null; previousClose: string | null; fiftyTwoWeekLow: string | null; fiftyTwoWeekHigh: string | null; exchange: string | null; priceFetchedAt: number | null; heldInvestmentId: string | null; isHeld: boolean; 
 /**
  * When the stock was added to the watchlist (unix seconds).
  */

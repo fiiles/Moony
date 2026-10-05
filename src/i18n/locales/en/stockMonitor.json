@@ -31,6 +31,8 @@
     "setTarget": "Set target",
     "targetReached": "Target {{price}} reached",
     "toTarget": "{{pct}} to target",
+    "waitsBelow": "waits for a dip",
+    "waitsAbove": "waits for a rise",
     "footer_one": "{{count}} stock · prices in their own currency, no conversion",
     "footer_other": "{{count}} stocks · prices in their own currency, no conversion",
     "source": "Source Yahoo Finance · up to 15 minutes delayed"
@@ -126,10 +128,18 @@
     "toTarget": "{{pct}} to target",
     "placeholder": "e.g. 250.00",
     "title": "Target price",
-    "description": "When reached, the target is highlighted in the watchlist table.",
+    "description": "The price at which you want to act. Once the stock crosses it, Moony lists it among the milestones on the overview.",
     "field": "Target",
     "hintCurrent": "Current price {{price}}",
-    "hintHigh": "52W high {{price}}"
+    "hintHigh": "52W high {{price}}",
+    "directionLabel": "What the target waits for",
+    "directionBelow": "Waiting for a dip – buy / buy more",
+    "directionAbove": "Waiting for a rise – sell",
+    "explainBelow": "Moony will remind you when the price falls to {{price}} ({{pct}} from today's price).",
+    "explainAbove": "Moony will remind you when the price rises to {{price}} ({{pct}} from today's price).",
+    "explainBelowNoPrice": "Moony will remind you when the price falls to {{price}}.",
+    "explainAboveNoPrice": "Moony will remind you when the price rises to {{price}}.",
+    "explainReached": "The price is already at or past this target – Moony will list it right away."
   },
   "notes": {
     "title": "Notes",

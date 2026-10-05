@@ -28,6 +28,18 @@ All notable changes to Moony are documented in this file. The format follows
   other asset is recorded when it is created.
 - **Company data on the position detail.** Sector, industry, P/E, market cap and the other key
   figures of a holding are downloaded (at most once a day) and shown on the stock detail.
+- **Upcoming items on the overview.** A "Co vás čeká" card on the dashboard and an "N k vyřízení"
+  indicator in the top bar list what needs you and what is coming: insurance anniversaries with
+  the last day to give notice, contract ends and larger insurance payments, fixed-rate ends,
+  loan payoff, bond maturity and coupons, term-account and promotional-rate ends, upkeep (a stale
+  backup, bank balances, property valuations, loan balances to compare with a statement) and
+  watchlist targets the price has reached. "Odložit" hides an item for a week, "Vyřízeno" for
+  good, and both can be undone.
+- **Rate valid until on bank accounts.** An account can carry the date its promotional rate ends
+  ("Sazba platí do"); it shows up among the upcoming items.
+- **Watchlist targets that wait for a dip or a rise.** A target now remembers whether it waits for
+  the price to fall (a buy) or to rise (a sell), is pre-selected from the typed price and can be
+  switched in the target dialog.
 
 ### Changed
 
@@ -64,6 +76,8 @@ All notable changes to Moony are documented in this file. The format follows
 
 ### Fixed
 
+- **A watchlist target below the current price showed as reached.** A target set under the price
+  is now a target for a dip and is reported only once the price falls to it.
 - **London-listed stocks were valued in the wrong currency.** A quote was labelled with the
   currency its ticker suffix suggests, so a London share quoted in pence (BARC.L, LLOY.L) was a
   hundred times too high and a dollar ETF listed in London (CSPX.L, VWRA.L, IWDA.L, EIMI.L) was

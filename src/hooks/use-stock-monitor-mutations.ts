@@ -4,6 +4,7 @@ import { stockMonitorApi } from '@/lib/tauri-api';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 import { translateApiError } from '@/lib/translate-api-error';
+import type { TargetDirection } from '@shared/schema';
 
 export function useStockMonitorMutations() {
   const { t } = useTranslation('stockMonitor');
@@ -35,8 +36,15 @@ export function useStockMonitorMutations() {
   });
 
   const targetPriceMutation = useMutation({
-    mutationFn: ({ ticker, targetPrice }: { ticker: string; targetPrice: string | null }) =>
-      stockMonitorApi.setTargetPrice(ticker, targetPrice),
+    mutationFn: ({
+      ticker,
+      targetPrice,
+      targetDirection,
+    }: {
+      ticker: string;
+      targetPrice: string | null;
+      targetDirection: TargetDirection | null;
+    }) => stockMonitorApi.setTargetPrice(ticker, targetPrice, targetDirection),
     onSuccess: () => {
       invalidate();
       toast(tc('status.success'));

@@ -171,6 +171,7 @@
     "averagePriceNonNegative": "Průměrná cena nemůže být záporná",
     "tickerInvalid": "Zadejte platný symbol akcie",
     "targetPricePositive": "Cílová cena musí být kladné číslo",
+    "targetDirectionInvalid": "Vyberte, zda cíl čeká na pokles, nebo na růst.",
     "notesTooLong": "Poznámky jsou příliš dlouhé (max 100 kB)",
     "invalidChartPeriod": "Neplatné období grafu",
     "insuranceTypeRequired": "Typ pojištění je povinný",
@@ -225,7 +226,9 @@
     "stockImportCurrencyRequired": "Vyberte sloupec s měnou.",
     "stockImportTypeRequired": "Vyberte sloupec s typem obchodu.",
     "dateFormatRequired": "Zadejte formát data.",
-    "csvDelimiterInvalid": "Oddělovač musí být čárka, středník nebo tabulátor."
+    "csvDelimiterInvalid": "Oddělovač musí být čárka, středník nebo tabulátor.",
+    "milestoneKeyInvalid": "Tuto připomínku se nepodařilo najít.",
+    "milestoneStateInvalid": "Tuto připomínku se nepodařilo upravit."
   },
   "auth": {
     "wrongPassword": "Zadané heslo je nesprávné. Zkuste to prosím znovu.",

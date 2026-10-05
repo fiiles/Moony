@@ -543,6 +543,7 @@ describe('balanceUpdatePayload', () => {
       interestRate: '1.5',
       hasZoneDesignation: false,
       terminationDate: null,
+      interestRateValidUntil: 1_790_000_000,
       excludeFromBalance: false,
       createdAt: 1,
       updatedAt: 2,
@@ -558,6 +559,7 @@ describe('balanceUpdatePayload', () => {
       interestRate: '1.5',
       hasZoneDesignation: false,
       terminationDate: null,
+      interestRateValidUntil: 1_790_000_000,
       excludeFromBalance: false,
     });
   });

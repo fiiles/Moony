@@ -261,6 +261,7 @@ fn seed_bank(db: &Database, now: i64, rng: &mut Rng) {
                 interest_rate: None,
                 has_zone_designation: None,
                 termination_date: None,
+                interest_rate_valid_until: None,
                 exclude_from_balance: None,
             },
         )
@@ -279,6 +280,7 @@ fn seed_bank(db: &Database, now: i64, rng: &mut Rng) {
                 interest_rate: None,
                 has_zone_designation: None,
                 termination_date: None,
+                interest_rate_valid_until: None,
                 exclude_from_balance: None,
             },
         )
@@ -297,6 +299,7 @@ fn seed_bank(db: &Database, now: i64, rng: &mut Rng) {
                 interest_rate: Some("4.5".into()),
                 has_zone_designation: None,
                 termination_date: None,
+                interest_rate_valid_until: None,
                 exclude_from_balance: None,
             },
         )

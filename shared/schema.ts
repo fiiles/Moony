@@ -784,6 +784,8 @@ export interface BankAccount {
   interestRate: string | null;
   hasZoneDesignation: boolean;
   terminationDate: number | null;
+  /** UTC day the promotional interest rate ends; null when unknown or not promotional. */
+  interestRateValidUntil: number | null;
   /** Exclude from portfolio balance (for operational/checking accounts) */
   excludeFromBalance: boolean;
   createdAt: number;
@@ -807,6 +809,8 @@ export interface InsertBankAccount {
   interestRate?: string | null;
   hasZoneDesignation?: boolean;
   terminationDate?: number | null;
+  /** Overwritten on update like `terminationDate`: send the stored value back, `null` clears it. */
+  interestRateValidUntil?: number | null;
   /** Exclude from portfolio balance (for operational/checking accounts) */
   excludeFromBalance?: boolean;
 }
@@ -1360,10 +1364,14 @@ export interface HistoryRecalculationEvent {
 // Stock Monitor (watchlist) Types — spec 2026-08-17-stock-monitor-design
 // ============================================================================
 
+/** What a watchlist target waits for: a fall to it (`below`) or a rise to it (`above`). */
+export type TargetDirection = 'below' | 'above';
+
 export interface WatchedStock {
   id: string;
   ticker: string;
   targetPrice: string | null;
+  targetDirection: TargetDirection | null;
   notes: string;
   createdAt: number;
   updatedAt: number;
@@ -1373,6 +1381,7 @@ export interface WatchedStockRow {
   id: string;
   ticker: string;
   targetPrice: string | null;
+  targetDirection: TargetDirection | null;
   notes: string;
   shortName: string | null;
   longName: string | null;
@@ -1393,6 +1402,7 @@ export interface StockMonitorDetail {
   ticker: string;
   followed: boolean;
   targetPrice: string | null;
+  targetDirection: TargetDirection | null;
   notes: string;
   shortName: string | null;
   longName: string | null;
@@ -1491,6 +1501,56 @@ export interface OnboardingProgress {
   lastBackupAt: number | null;
   checklistDismissed: boolean;
   completedAt: number | null;
+}
+
+// Milestones ("Co vás čeká") — src-tauri/src/models/milestones.rs
+export type MilestoneKind =
+  | 'insurance_anniversary'
+  | 'insurance_end'
+  | 'insurance_payment'
+  | 'loan_fixation_end'
+  | 'loan_fixation_expired'
+  | 'loan_payoff'
+  | 'loan_balance_check'
+  | 'bond_maturity'
+  | 'bond_coupon'
+  | 'account_termination'
+  | 'savings_rate_end'
+  | 'balances_stale'
+  | 'backup_stale'
+  | 'valuation_stale'
+  | 'watch_target';
+export type MilestoneStage = 'now' | 'soon';
+export type MilestoneTone = 'action' | 'info';
+export type MilestoneState = 'done' | 'snoozed';
+
+export interface Milestone {
+  /** Stable occurrence key; the done / snoozed state is stored under it. */
+  key: string;
+  kind: MilestoneKind;
+  stage: MilestoneStage;
+  /** `action` counts in the top-bar indicator; `info` is shown on the card only. */
+  tone: MilestoneTone;
+  /** Policy, loan, bond, account or property id; the ticker for targets. */
+  sourceId: string | null;
+  /** Entity name; empty for the backup and balances items. */
+  title: string;
+  /** UTC day of the event. */
+  dueDay: number | null;
+  /** Last day to act when it differs from the event (insurance notice deadline). */
+  actionDay: number | null;
+  /** Day of the last backup, balance update, valuation or balance check. */
+  sinceDay: number | null;
+  /** Payment, coupon, returned principal or target price (TEXT money). */
+  amount: string | null;
+  currency: string | null;
+  /** Current price of a crossed target. */
+  referenceAmount: string | null;
+  direction: TargetDirection | null;
+  /** Number of stale accounts. */
+  count: number | null;
+  /** False when only "Odložit" is offered. */
+  canDismiss: boolean;
 }
 
 // ============================================================================

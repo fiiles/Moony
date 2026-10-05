@@ -27,6 +27,7 @@ import enBankAccounts from './locales/en/bank_accounts.json';
 import enBudgeting from './locales/en/budgeting.json';
 import enCategorization from './locales/en/categorization.json';
 import enStockMonitor from './locales/en/stockMonitor.json';
+import enMilestones from './locales/en/milestones.json';
 
 import csCommon from './locales/cs/common.json';
 import csDashboard from './locales/cs/dashboard.json';
@@ -45,6 +46,7 @@ import csBankAccounts from './locales/cs/bank_accounts.json';
 import csBudgeting from './locales/cs/budgeting.json';
 import csCategorization from './locales/cs/categorization.json';
 import csStockMonitor from './locales/cs/stockMonitor.json';
+import csMilestones from './locales/cs/milestones.json';
 
 export const SUPPORTED_LANGUAGES = ['en', 'cs'] as const;
 export type SupportedLanguage = (typeof SUPPORTED_LANGUAGES)[number];
@@ -73,6 +75,7 @@ export const NAMESPACES = [
   'bank_accounts',
   'budgeting',
   'categorization',
+  'milestones',
 ] as const;
 
 export type Namespace = (typeof NAMESPACES)[number];
@@ -96,6 +99,7 @@ const resources = {
     bank_accounts: enBankAccounts,
     budgeting: enBudgeting,
     categorization: enCategorization,
+    milestones: enMilestones,
   },
   cs: {
     common: csCommon,
@@ -115,6 +119,7 @@ const resources = {
     bank_accounts: csBankAccounts,
     budgeting: csBudgeting,
     categorization: csCategorization,
+    milestones: csMilestones,
   },
 };
 

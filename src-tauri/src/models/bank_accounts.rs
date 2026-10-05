@@ -96,6 +96,9 @@ pub struct BankAccount {
     pub has_zone_designation: bool,
     #[serde(rename = "terminationDate")]
     pub termination_date: Option<i64>,
+    /// UTC day the promotional interest rate ends; None when unknown or not promotional.
+    #[serde(rename = "interestRateValidUntil")]
+    pub interest_rate_valid_until: Option<i64>,
     /// Left out of net worth, totals and charts when true (still listed and editable).
     #[serde(rename = "excludeFromBalance")]
     pub exclude_from_balance: bool,
@@ -123,6 +126,9 @@ pub struct InsertBankAccount {
     pub has_zone_designation: Option<bool>,
     #[serde(rename = "terminationDate")]
     pub termination_date: Option<i64>,
+    /// Overwritten on update like `terminationDate`: the form always sends the stored value.
+    #[serde(rename = "interestRateValidUntil", default)]
+    pub interest_rate_valid_until: Option<i64>,
     /// `None` keeps the stored value on update and means "included" on create.
     #[serde(rename = "excludeFromBalance", default)]
     pub exclude_from_balance: Option<bool>,

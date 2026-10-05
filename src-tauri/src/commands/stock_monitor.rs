@@ -94,8 +94,16 @@ pub async fn set_watched_target_price(
     db: State<'_, Database>,
     ticker: String,
     target_price: Option<String>,
+    target_direction: Option<String>,
 ) -> Result<WatchedStock> {
-    db.with_conn(|conn| stock_monitor::set_target_price(conn, &ticker, target_price.clone()))
+    db.with_conn(|conn| {
+        stock_monitor::set_target_price(
+            conn,
+            &ticker,
+            target_price.clone(),
+            target_direction.clone(),
+        )
+    })
 }
 
 #[tauri::command]

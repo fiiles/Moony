@@ -38,6 +38,14 @@ type UpdateBankAccountData = {
   hasZoneDesignation?: boolean;
   institutionId?: string | null;
   terminationDate?: number | null;
+  interestRateValidUntil?: number | null;
+};
+
+const isoDay = (sec: number) => new Date(sec * 1000).toISOString().split('T')[0];
+/** 'YYYY-MM-DD' from a date input → UTC-midnight unix seconds (ADR 0008). */
+const isoToUtcDaySec = (iso: string) => {
+  const [y, m, d] = iso.split('-').map(Number);
+  return Math.floor(Date.UTC(y, m - 1, d) / 1000);
 };
 
 interface ZoneData {
@@ -78,6 +86,8 @@ export function BankAccountFormDialog({
   const [bban, setBban] = useState('');
   const [interestRate, setInterestRate] = useState('0');
   const [hasZoneDesignation, setHasZoneDesignation] = useState(false);
+  // ISO `yyyy-mm-dd` of the day the promotional rate ends, or empty when unknown.
+  const [rateValidUntil, setRateValidUntil] = useState('');
   const [includeInNetWorth, setIncludeInNetWorth] = useState(true);
   const [zones, setZones] = useState<ZoneData[]>([]);
   // Set by the first submit attempt: until then no field shows an error, afterwards the
@@ -178,6 +188,9 @@ export function BankAccountFormDialog({
         setBban(account.bban || '');
         setInterestRate(account.interestRate?.toString() || '0');
         setHasZoneDesignation(account.hasZoneDesignation || false);
+        setRateValidUntil(
+          account.interestRateValidUntil ? isoDay(account.interestRateValidUntil) : ''
+        );
         setIncludeInNetWorth(!account.excludeFromBalance);
 
         // Use initial zones if provided (for edit mode)
@@ -196,6 +209,7 @@ export function BankAccountFormDialog({
         setBban('');
         setInterestRate('0');
         setHasZoneDesignation(false);
+        setRateValidUntil('');
         setIncludeInNetWorth(true);
         setZones([]);
       }
@@ -227,6 +241,7 @@ export function BankAccountFormDialog({
           bban: bban || undefined,
           interestRate: hasZoneDesignation ? '0' : interestRate,
           hasZoneDesignation,
+          interestRateValidUntil: rateValidUntil ? isoToUtcDaySec(rateValidUntil) : null,
           excludeFromBalance: !includeInNetWorth,
           // The backend update overwrites these columns: send back the stored values, or an
           // edit would silently detach the account from its bank (and its CSV preset).
@@ -246,6 +261,7 @@ export function BankAccountFormDialog({
           bban: bban || undefined,
           interestRate: hasZoneDesignation ? '0' : interestRate,
           hasZoneDesignation,
+          interestRateValidUntil: rateValidUntil ? isoToUtcDaySec(rateValidUntil) : null,
           excludeFromBalance: !includeInNetWorth,
         } as InsertBankAccount,
         hasZoneDesignation ? zones : undefined
@@ -281,7 +297,11 @@ export function BankAccountFormDialog({
               aria-describedby={submitted && nameError ? 'name-error' : undefined}
             />
             {submitted && nameError && (
-              <p id="name-error" role="alert" className="text-sm font-medium text-loss">
+              <p
+                id="name-error"
+                role="alert"
+                className="flex items-center gap-[5px] text-micro font-600 text-loss"
+              >
                 {nameError}
               </p>
             )}
@@ -316,11 +336,15 @@ export function BankAccountFormDialog({
                 aria-describedby={submitted && balanceError ? 'balance-error' : undefined}
               />
               {submitted && balanceError && (
-                <p id="balance-error" role="alert" className="text-sm font-medium text-loss">
+                <p
+                  id="balance-error"
+                  role="alert"
+                  className="flex items-center gap-[5px] text-micro font-600 text-loss"
+                >
                   {balanceError}
                 </p>
               )}
-              <p className="text-xs text-ink-3">{t('form.balanceHint')}</p>
+              <p className="text-micro font-500 text-ink-4">{t('form.balanceHint')}</p>
             </div>
             <div className="grid gap-2">
               <Label htmlFor="currency">{tc('labels.currency')}</Label>
@@ -359,11 +383,11 @@ export function BankAccountFormDialog({
             <div className="space-y-1">
               <Label
                 htmlFor="hasZoneDesignation"
-                className="text-sm font-medium leading-none cursor-pointer"
+                className="cursor-pointer text-table font-500 text-ink-2"
               >
                 {t('form.useZones')}
               </Label>
-              <p className="text-xs text-ink-3">{t('form.zonesHelp')}</p>
+              <p className="text-micro font-500 text-ink-4">{t('form.zonesHelp')}</p>
             </div>
           </div>
 
@@ -377,11 +401,11 @@ export function BankAccountFormDialog({
             <div className="space-y-1">
               <Label
                 htmlFor="includeInNetWorth"
-                className="text-sm font-medium leading-none cursor-pointer"
+                className="cursor-pointer text-table font-500 text-ink-2"
               >
                 {t('form.includeInNetWorth')}
               </Label>
-              <p className="text-xs text-ink-3">{t('form.includeInNetWorthHelp')}</p>
+              <p className="text-micro font-500 text-ink-4">{t('form.includeInNetWorthHelp')}</p>
             </div>
           </div>
 
@@ -398,17 +422,28 @@ export function BankAccountFormDialog({
                   placeholder="0.00"
                 />
               </InputWrap>
-              <p className="text-xs text-ink-3">{t('form.apyHelp')}</p>
+              <p className="text-micro font-500 text-ink-4">{t('form.apyHelp')}</p>
             </div>
           )}
 
           {hasZoneDesignation && (
             <div className="space-y-2">
               <Label>{t('form.zonesLabel')}</Label>
-              <p className="text-xs text-ink-3 mb-3">{t('form.zonesDescription')}</p>
+              <p className="mb-3 text-micro font-500 text-ink-4">{t('form.zonesDescription')}</p>
               <BankAccountZoneManager zones={zones} onChange={setZones} />
             </div>
           )}
+
+          <div className="grid gap-2">
+            <Label htmlFor="rateValidUntil">{t('fields.rateValidUntil')}</Label>
+            <Input
+              id="rateValidUntil"
+              type="date"
+              value={rateValidUntil}
+              onChange={(e) => setRateValidUntil(e.target.value)}
+            />
+            <p className="text-micro font-500 text-ink-4">{t('form.rateValidUntilHelp')}</p>
+          </div>
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={handleClose}>

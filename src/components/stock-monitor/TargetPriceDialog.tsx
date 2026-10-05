@@ -11,8 +11,11 @@ import {
 import { Input, InputWrap } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useFormat } from '@/lib/use-format';
-import { formatNativePrice } from '@/utils/stock-monitor';
+import { cn } from '@/lib/utils';
+import { formatNativePrice, inferTargetDirection, targetReached } from '@/utils/stock-monitor';
+import type { TargetDirection } from '@shared/schema';
 
 export interface TargetPriceTarget {
   ticker: string;
@@ -20,12 +23,17 @@ export interface TargetPriceTarget {
   currentPrice: string | null;
   fiftyTwoWeekHigh: string | null;
   targetPrice: string | null;
+  targetDirection: TargetDirection | null;
 }
 
 interface TargetPriceDialogProps {
   target: TargetPriceTarget | null;
   onClose: () => void;
-  onSave: (ticker: string, targetPrice: string | null) => Promise<unknown>;
+  onSave: (
+    ticker: string,
+    targetPrice: string | null,
+    targetDirection: TargetDirection | null
+  ) => Promise<unknown>;
   saving: boolean;
 }
 
@@ -57,7 +65,11 @@ function TargetForm({
 }: {
   target: TargetPriceTarget;
   onClose: () => void;
-  onSave: (ticker: string, targetPrice: string | null) => Promise<unknown>;
+  onSave: (
+    ticker: string,
+    targetPrice: string | null,
+    targetDirection: TargetDirection | null
+  ) => Promise<unknown>;
   saving: boolean;
 }) {
   const { t } = useTranslation('stockMonitor');
@@ -68,13 +80,40 @@ function TargetForm({
   const high = parseFloat(target.fiftyTwoWeekHigh ?? '');
   const hasTarget = isFinite(parseFloat(target.targetPrice ?? ''));
 
+  // The choice follows the typed price until the user touches it; an unchanged
+  // value keeps its stored direction.
+  const [direction, setDirection] = useState<TargetDirection>(target.targetDirection ?? 'above');
+  const [touched, setTouched] = useState(false);
+  const draftValue = parseFloat(draft.trim().replace(',', '.'));
+  const hasDraft = isFinite(draftValue) && draftValue > 0;
+  const knownCurrent = isFinite(current) && current > 0 ? current : null;
+  const effective: TargetDirection = touched
+    ? direction
+    : !hasDraft
+      ? (target.targetDirection ?? 'above')
+      : target.targetDirection && draftValue === parseFloat(target.targetPrice ?? '')
+        ? target.targetDirection
+        : inferTargetDirection(draftValue, knownCurrent);
+  const explain = hasDraft
+    ? knownCurrent !== null
+      ? targetReached(knownCurrent, draftValue, effective)
+        ? t('target.explainReached')
+        : t(effective === 'below' ? 'target.explainBelow' : 'target.explainAbove', {
+            price: formatNativePrice(draftValue, target.currency, fmt.locale),
+            pct: fmt.percent(draftValue / knownCurrent - 1, 1, { signed: true }),
+          })
+      : t(effective === 'below' ? 'target.explainBelowNoPrice' : 'target.explainAboveNoPrice', {
+          price: formatNativePrice(draftValue, target.currency, fmt.locale),
+        })
+    : null;
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     const normalized = draft.trim().replace(',', '.');
     const value = normalized === '' ? null : normalized;
     if (value !== null && !(parseFloat(value) > 0)) return;
     try {
-      await onSave(target.ticker, value);
+      await onSave(target.ticker, value, value === null ? null : effective);
       onClose();
     } catch {
       // the mutation hook already toasted the error; keep the draft
@@ -83,7 +122,7 @@ function TargetForm({
 
   const clear = async () => {
     try {
-      await onSave(target.ticker, null);
+      await onSave(target.ticker, null, null);
       onClose();
     } catch {
       // already toasted
@@ -118,6 +157,36 @@ function TargetForm({
           <p className="text-micro font-500 text-ink-4">{hintParts.join(' · ')}.</p>
         )}
       </div>
+      <fieldset className="mt-4 grid gap-2">
+        <legend className="mb-[7px] text-caption font-700 text-ink-2">
+          {t('target.directionLabel')}
+        </legend>
+        <RadioGroup value={effective} className="gap-1.5">
+          {(['below', 'above'] as const).map((value) => (
+            <label
+              key={value}
+              className={cn(
+                'flex cursor-pointer items-center gap-2.5 rounded-r2 border px-3 py-2 text-table font-600 transition-colors duration-fast',
+                value === effective
+                  ? 'border-line-strong bg-well text-ink'
+                  : 'border-transparent text-ink-2 hover:bg-well'
+              )}
+            >
+              {/* onClick, not onValueChange: choosing the already selected option counts too. */}
+              <RadioGroupItem
+                value={value}
+                id={`target-direction-${value}`}
+                onClick={() => {
+                  setDirection(value);
+                  setTouched(true);
+                }}
+              />
+              {t(value === 'below' ? 'target.directionBelow' : 'target.directionAbove')}
+            </label>
+          ))}
+        </RadioGroup>
+        {explain && <p className="m-0 text-micro font-500 text-ink-4">{explain}</p>}
+      </fieldset>
       <DialogFooter className="mt-5">
         {hasTarget ? (
           <Button type="button" variant="danger" onClick={clear} disabled={saving}>

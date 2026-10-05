@@ -35,6 +35,10 @@ scattered `invoke()` calls bypass the types and rot silently (see
   domain key(s) **plus** `["portfolio-metrics"]` **plus** `["cashflow-report"]`, then
   `await portfolioApi.recordSnapshot()` and invalidate `["portfolio-history"]`.
   Canonical: `src/hooks/use-bank-account-mutations.ts`.
+- **Milestones refresh:** every successful `useMutation` invalidates `["milestones"]` through the
+  query client's `MutationCache` (`src/lib/queryClient.ts`), so mutation hooks do not list it.
+  Writes outside `useMutation` — direct API calls, Tauri event listeners, background refreshes —
+  must invalidate `["milestones"]` themselves.
 - Put mutations in dedicated `use-<domain>-mutations.ts` hook files, not inline in
   modals. The inline `useMutation` calls in stocks/crypto/real-estate components are
   legacy debt, not a pattern.

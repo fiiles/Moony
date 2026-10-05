@@ -136,6 +136,8 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       for (const key of domainKeys[domain] ?? []) {
         queryClient.invalidateQueries({ queryKey: key });
       }
+      // Not a useMutation, so the MutationCache refresh does not cover MCP writes.
+      queryClient.invalidateQueries({ queryKey: ['milestones'] });
 
       // Following a stock, or noting a target on it, changes nothing about what
       // the user owns — so the watchlist skips the portfolio/snapshot ritual

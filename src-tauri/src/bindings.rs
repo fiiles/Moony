@@ -167,6 +167,9 @@ pub fn collect_types() -> TypeCollection {
     // Onboarding
     types.register::<crate::models::OnboardingProgress>();
 
+    // Milestones
+    types.register::<crate::models::Milestone>();
+
     // Backup / data models
     types.register::<crate::models::BackupFileEntry>();
     types.register::<crate::models::BackupManifest>();

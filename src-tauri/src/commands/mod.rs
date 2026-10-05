@@ -16,6 +16,7 @@ pub mod export;
 pub mod insurance;
 pub mod investments;
 pub mod loans;
+pub mod milestones;
 pub mod onboarding;
 pub mod other_assets;
 pub mod portfolio;

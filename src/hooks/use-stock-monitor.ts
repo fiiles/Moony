@@ -30,6 +30,9 @@ export function useWatchedStocks() {
           // TTL no-op (empty `updated`), so this cannot loop.
           if (result.updated.length > 0) {
             queryClient.invalidateQueries({ queryKey: ['stock-monitor'] });
+            // A price that moved may have crossed a target: the overview card and the
+            // top-bar indicator should not wait for their own refresh.
+            queryClient.invalidateQueries({ queryKey: ['milestones'] });
           }
         })
         .catch((error) => {

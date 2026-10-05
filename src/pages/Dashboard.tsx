@@ -26,6 +26,7 @@ import { GettingStartedCard } from '@/components/dashboard/GettingStartedCard';
 import { AllocationRing } from '@/components/dashboard/AllocationRing';
 import { shortHistoryBaseDay } from '@/utils/change-base';
 import { RecentMoves } from '@/components/dashboard/RecentMoves';
+import { UpcomingCard } from '@/components/dashboard/UpcomingCard';
 
 type AssetClass = 'investments' | 'savings' | 'bonds' | 'crypto' | 'otherAssets' | 'realEstate';
 const ASSET_CLASSES: AssetClass[] = [
@@ -374,6 +375,8 @@ export default function Dashboard() {
           note={t('stats.freeCashNote')}
         />
       </Stats>
+
+      <UpcomingCard />
 
       <div className="mt-9 grid grid-cols-[1.15fr_0.85fr] gap-[18px]">
         <section className="flex flex-col">

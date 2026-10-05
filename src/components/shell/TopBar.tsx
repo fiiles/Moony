@@ -6,6 +6,7 @@ import { resolveSettingsSection } from '@/components/settings/settings-sections'
 import { useLanguage } from '@/i18n/I18nProvider';
 import { DataStatus } from '@/components/shell/DataStatus';
 import { UpdateStatus } from '@/components/shell/UpdateStatus';
+import { MilestonesStatus } from '@/components/shell/MilestonesStatus';
 import { HistoryRecalculationBadge } from '@/components/common/HistoryRecalculationBadge';
 import { useShell } from '@/components/shell/shell-context';
 
@@ -83,6 +84,7 @@ export function TopBar() {
       </nav>
       <div className="flex shrink-0 items-center gap-4">
         <HistoryRecalculationBadge />
+        <MilestonesStatus />
         <UpdateStatus />
         <DataStatus override={page.status} />
       </div>

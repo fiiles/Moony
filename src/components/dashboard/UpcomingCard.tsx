@@ -25,7 +25,8 @@ export function UpcomingCard() {
 
   const today = utcDayFloor(Date.now() / 1000);
   const { agenda, upkeep } = splitMilestones(milestones, today);
-  const [left, right] = columns(expanded ? agenda : agenda.slice(0, COLLAPSED_ROWS));
+  const agendaColumns = columns(expanded ? agenda : agenda.slice(0, COLLAPSED_ROWS));
+  const upkeepColumns = columns(upkeep);
 
   return (
     <section className="mt-9">
@@ -39,7 +40,7 @@ export function UpcomingCard() {
             <p className="m-0 py-3 text-table text-ink-3">{t('card.nothingDue')}</p>
           ) : (
             <div className="grid grid-cols-2 gap-x-7">
-              {[left, right].map((column, i) => (
+              {agendaColumns.map((column, i) => (
                 <ul key={i} className="m-0 list-none p-0">
                   {column.map((m) => (
                     <AgendaRow key={m.key} m={m} />
@@ -82,11 +83,15 @@ export function UpcomingCard() {
                 </span>
               </button>
               {upkeepOpen && (
-                <ul className="m-0 mt-1 grid list-none grid-cols-2 gap-x-7 p-0">
-                  {upkeep.map((m) => (
-                    <UpkeepRow key={m.key} m={m} />
+                <div className="mt-1 grid grid-cols-2 gap-x-7">
+                  {upkeepColumns.map((column, i) => (
+                    <ul key={i} className="m-0 list-none p-0">
+                      {column.map((m) => (
+                        <UpkeepRow key={m.key} m={m} />
+                      ))}
+                    </ul>
                   ))}
-                </ul>
+                </div>
               )}
             </div>
           )}

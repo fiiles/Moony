@@ -143,7 +143,7 @@ Each entry names the CSS class in `moony.css` and the React component that imple
 | Toast | `.toast.is-on` | `ui/toaster.tsx` (sonner) | Bottom right, 2.6 s, past-tense verb ("Účet přidán"). |
 | Alert | `.alert`, `--error` | `ui/alert.tsx` | Inline, next to the cause, with an action. |
 | Empty state | `.empty` | `common/EmptyState.tsx` | Icon in ink-5, title, one sentence, button. |
-| Milestone row | — | `milestones/MilestoneList.tsx` | Agenda row: a 60 × 42 px date chip on `well` (day and month 12/650, distance under it 10/500 `ink-4`; dark material only for a deadline at most 7 days away), title 12/650, one sub-line 10/500 `ink-4`, a ghost `icon-sm` '···' (always visible, `ink-4`, named "Možnosti připomínky: {title}" for assistive tech) next to the link, never inside it, opening Skrýt / Připomenout za týden (upkeep: za měsíc) / Nepřipomínat …. Upkeep rows use an icon in a `well` square instead of the chip. |
+| Milestone row | — | `milestones/MilestoneRows.tsx` | Agenda row: a 60 × 42 px date chip on `well` (day and month 12/650, distance under it 10/500 `ink-4`; dark material only for a deadline at most 7 days away), title 12/650, one sub-line 10/500 `ink-4`, a ghost `icon-sm` '···' (always visible, `ink-4`, named "Možnosti připomínky: {title}" for assistive tech) next to the link, never inside it, opening Skrýt / Připomenout za týden (upkeep: za měsíc) / Nepřipomínat …. Upkeep rows use an icon in a `well` square instead of the chip. |
 | Skeleton | `.skeleton` | `ui/skeleton.tsx` | Shaped like the content it replaces; no page spinners. |
 | Breadcrumb, status, back link | `.topbar`, `.crumb`, `.status`, `.back` | `shell/TopBar.tsx`, `shell/DataStatus.tsx` | See §5. |
 

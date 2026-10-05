@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Wrench } from 'lucide-react';
 import { SectionHead } from '@/components/shell/PageHead';
 import { Card, CardContent } from '@/components/ui/card';
-import { AgendaRow, UpkeepRow } from '@/components/milestones/MilestoneList';
+import { AgendaRow, UpkeepRow } from '@/components/milestones/MilestoneRows';
 import { useMilestones } from '@/hooks/use-milestones';
 import { utcDayFloor } from '@/utils/chart-axis';
 import { columns, splitMilestones, upkeepShort } from '@/utils/milestones';

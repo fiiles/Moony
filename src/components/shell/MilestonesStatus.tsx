@@ -3,7 +3,7 @@ import { Link } from 'wouter';
 import { useTranslation } from 'react-i18next';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { StatusText } from '@/components/shell/DataStatus';
-import { AgendaRow } from '@/components/milestones/MilestoneList';
+import { AgendaRow } from '@/components/milestones/MilestoneRows';
 import { useMilestones } from '@/hooks/use-milestones';
 import { utcDayFloor } from '@/utils/chart-axis';
 import { agendaDay, daysBetween, relativeLabel, upcomingDeadlines } from '@/utils/milestones';

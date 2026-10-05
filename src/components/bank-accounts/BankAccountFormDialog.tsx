@@ -38,6 +38,14 @@ type UpdateBankAccountData = {
   hasZoneDesignation?: boolean;
   institutionId?: string | null;
   terminationDate?: number | null;
+  interestRateValidUntil?: number | null;
+};
+
+const isoDay = (sec: number) => new Date(sec * 1000).toISOString().split('T')[0];
+/** 'YYYY-MM-DD' from a date input → UTC-midnight unix seconds (ADR 0008). */
+const isoToUtcDaySec = (iso: string) => {
+  const [y, m, d] = iso.split('-').map(Number);
+  return Math.floor(Date.UTC(y, m - 1, d) / 1000);
 };
 
 interface ZoneData {
@@ -78,6 +86,8 @@ export function BankAccountFormDialog({
   const [bban, setBban] = useState('');
   const [interestRate, setInterestRate] = useState('0');
   const [hasZoneDesignation, setHasZoneDesignation] = useState(false);
+  // ISO `yyyy-mm-dd` of the day the promotional rate ends, or empty when unknown.
+  const [rateValidUntil, setRateValidUntil] = useState('');
   const [includeInNetWorth, setIncludeInNetWorth] = useState(true);
   const [zones, setZones] = useState<ZoneData[]>([]);
   // Set by the first submit attempt: until then no field shows an error, afterwards the
@@ -178,6 +188,9 @@ export function BankAccountFormDialog({
         setBban(account.bban || '');
         setInterestRate(account.interestRate?.toString() || '0');
         setHasZoneDesignation(account.hasZoneDesignation || false);
+        setRateValidUntil(
+          account.interestRateValidUntil ? isoDay(account.interestRateValidUntil) : ''
+        );
         setIncludeInNetWorth(!account.excludeFromBalance);
 
         // Use initial zones if provided (for edit mode)
@@ -196,6 +209,7 @@ export function BankAccountFormDialog({
         setBban('');
         setInterestRate('0');
         setHasZoneDesignation(false);
+        setRateValidUntil('');
         setIncludeInNetWorth(true);
         setZones([]);
       }
@@ -227,6 +241,7 @@ export function BankAccountFormDialog({
           bban: bban || undefined,
           interestRate: hasZoneDesignation ? '0' : interestRate,
           hasZoneDesignation,
+          interestRateValidUntil: rateValidUntil ? isoToUtcDaySec(rateValidUntil) : null,
           excludeFromBalance: !includeInNetWorth,
           // The backend update overwrites these columns: send back the stored values, or an
           // edit would silently detach the account from its bank (and its CSV preset).
@@ -246,6 +261,7 @@ export function BankAccountFormDialog({
           bban: bban || undefined,
           interestRate: hasZoneDesignation ? '0' : interestRate,
           hasZoneDesignation,
+          interestRateValidUntil: rateValidUntil ? isoToUtcDaySec(rateValidUntil) : null,
           excludeFromBalance: !includeInNetWorth,
         } as InsertBankAccount,
         hasZoneDesignation ? zones : undefined
@@ -409,6 +425,17 @@ export function BankAccountFormDialog({
               <BankAccountZoneManager zones={zones} onChange={setZones} />
             </div>
           )}
+
+          <div className="grid gap-2">
+            <Label htmlFor="rateValidUntil">{t('fields.rateValidUntil')}</Label>
+            <Input
+              id="rateValidUntil"
+              type="date"
+              value={rateValidUntil}
+              onChange={(e) => setRateValidUntil(e.target.value)}
+            />
+            <p className="text-xs text-ink-3">{t('form.rateValidUntilHelp')}</p>
+          </div>
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={handleClose}>

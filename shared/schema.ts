@@ -784,6 +784,8 @@ export interface BankAccount {
   interestRate: string | null;
   hasZoneDesignation: boolean;
   terminationDate: number | null;
+  /** UTC day the promotional interest rate ends; null when unknown or not promotional. */
+  interestRateValidUntil: number | null;
   /** Exclude from portfolio balance (for operational/checking accounts) */
   excludeFromBalance: boolean;
   createdAt: number;
@@ -807,6 +809,8 @@ export interface InsertBankAccount {
   interestRate?: string | null;
   hasZoneDesignation?: boolean;
   terminationDate?: number | null;
+  /** Overwritten on update like `terminationDate`: send the stored value back, `null` clears it. */
+  interestRateValidUntil?: number | null;
   /** Exclude from portfolio balance (for operational/checking accounts) */
   excludeFromBalance?: boolean;
 }

@@ -313,6 +313,7 @@ pub fn bank_account_create(conn: &Connection, args: &BankAccountCreateArgs) -> R
         interest_rate: args.interest_rate.clone(),
         has_zone_designation: None,
         termination_date: None,
+        interest_rate_valid_until: None,
         exclude_from_balance: None,
     };
     let account = bank_service::create_account(conn, &data)?;
@@ -554,6 +555,7 @@ mod tests {
                 interest_rate TEXT,
                 has_zone_designation INTEGER NOT NULL DEFAULT 0,
                 termination_date INTEGER,
+                interest_rate_valid_until INTEGER,
                 exclude_from_balance INTEGER NOT NULL DEFAULT 0,
                 created_at INTEGER NOT NULL DEFAULT 0,
                 updated_at INTEGER NOT NULL DEFAULT 0

@@ -56,6 +56,7 @@
     "zonesLabel": "Interest Rate Tiers",
     "zonesDescription": "Define the balance ranges and their corresponding interest rates",
     "apyHelp": "Annual percentage yield (APY)",
+    "rateValidUntilHelp": "When the promotional rate ends. Moony reminds you 14 days ahead.",
     "addDescription": "Add a bank, savings or brokerage cash account.",
     "editDescription": "Update the details of “{{name}}”.",
     "accountNumberPlaceholder": "e.g. 1234567890",
@@ -83,6 +84,7 @@
     "accountNumber": "Account number",
     "accountNumberOptional": "Account number (optional)",
     "interestRate": "Interest Rate",
+    "rateValidUntil": "Rate valid until",
     "interestType": "Interest Type",
     "balanceManual": "Balance (manual)"
   },

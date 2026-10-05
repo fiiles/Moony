@@ -55,6 +55,10 @@ migrations: string[]; files: BackupFileEntry[] }
  */
 export type BankAccount = { id: string; name: string; accountType: string; iban: string | null; bban: string | null; currency: string; balance: string; institutionId: string | null; externalAccountId: string | null; dataSource: string; lastSyncedAt: number | null; interestRate: string | null; hasZoneDesignation: boolean; terminationDate: number | null; 
 /**
+ * UTC day the promotional interest rate ends; None when unknown or not promotional.
+ */
+interestRateValidUntil: number | null; 
+/**
  * Left out of net worth, totals and charts when true (still listed and editable).
  */
 excludeFromBalance: boolean; createdAt: number; updatedAt: number }
@@ -63,6 +67,10 @@ excludeFromBalance: boolean; createdAt: number; updatedAt: number }
  * Bank account with institution data (enriched)
  */
 export type BankAccountWithInstitution = ({ id: string; name: string; accountType: string; iban: string | null; bban: string | null; currency: string; balance: string; institutionId: string | null; externalAccountId: string | null; dataSource: string; lastSyncedAt: number | null; interestRate: string | null; hasZoneDesignation: boolean; terminationDate: number | null; 
+/**
+ * UTC day the promotional interest rate ends; None when unknown or not promotional.
+ */
+interestRateValidUntil: number | null; 
 /**
  * Left out of net worth, totals and charts when true (still listed and editable).
  */
@@ -583,6 +591,10 @@ export type InsertAssetValuation = { assetId: string; value: string; currency: s
  * Data for creating/updating a bank account
  */
 export type InsertBankAccount = { name: string; accountType: string | null; iban: string | null; bban: string | null; currency: string | null; balance: string | null; institutionId: string | null; interestRate: string | null; hasZoneDesignation: boolean | null; terminationDate: number | null; 
+/**
+ * Overwritten on update like `terminationDate`: the form always sends the stored value.
+ */
+interestRateValidUntil?: number | null; 
 /**
  * `None` keeps the stored value on update and means "included" on create.
  */

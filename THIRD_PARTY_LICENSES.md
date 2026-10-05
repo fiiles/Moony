@@ -19,14 +19,14 @@ components not covered by the package managers: SQLCipher (BSD-3-Clause, compile
 
 | Ecosystem | Packages |
 | --- | ---: |
-| npm | 230 |
-| Rust | 672 |
+| npm | 229 |
+| Rust | 660 |
 
 ### npm — packages per licence
 
 | Licence | Packages |
 | --- | ---: |
-| MIT | 205 |
+| MIT | 204 |
 | ISC | 13 |
 | MIT OR Apache-2.0 | 5 |
 | 0BSD | 1 |
@@ -41,9 +41,9 @@ components not covered by the package managers: SQLCipher (BSD-3-Clause, compile
 
 | Licence | Packages |
 | --- | ---: |
-| MIT OR Apache-2.0 | 340 |
-| MIT | 160 |
-| Apache-2.0 OR MIT | 64 |
+| MIT OR Apache-2.0 | 331 |
+| MIT | 159 |
+| Apache-2.0 OR MIT | 62 |
 | Unicode-3.0 | 18 |
 | Zlib OR Apache-2.0 OR MIT | 18 |
 | Unlicense OR MIT | 9 |
@@ -86,11 +86,11 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 - npm:
   - `@fontsource-variable/inter` 5.3.0: OFL-1.1 (needs OFL-1.1)
 - Rust:
-  - `cssparser` 0.36.0: MPL-2.0 (needs MPL-2.0)
-  - `cssparser-macros` 0.6.1: MPL-2.0 (needs MPL-2.0)
+  - `cssparser` 0.37.0: MPL-2.0 (needs MPL-2.0)
+  - `cssparser-macros` 0.7.1: MPL-2.0 (needs MPL-2.0)
   - `dtoa-short` 0.3.5: MPL-2.0 (needs MPL-2.0)
   - `option-ext` 0.2.0: MPL-2.0 (needs MPL-2.0)
-  - `selectors` 0.36.1: MPL-2.0 (needs MPL-2.0)
+  - `selectors` 0.38.0: MPL-2.0 (needs MPL-2.0)
 
 ## npm packages
 
@@ -102,7 +102,7 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | @floating-ui/react-dom | 2.1.9 | MIT |
 | @floating-ui/utils | 0.2.12 | MIT |
 | @fontsource-variable/inter | 5.3.0 | OFL-1.1 |
-| @hookform/resolvers | 5.7.1 | MIT |
+| @hookform/resolvers | 5.9.1 | MIT |
 | @radix-ui/number | 1.1.3 | MIT |
 | @radix-ui/primitive | 1.1.7 | MIT |
 | @radix-ui/react-alert-dialog | 1.1.23 | MIT |
@@ -152,14 +152,14 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | @reduxjs/toolkit | 2.12.0 | MIT |
 | @standard-schema/spec | 1.1.0 | MIT |
 | @standard-schema/utils | 0.3.0 | MIT |
-| @tanstack/query-core | 5.101.4 | MIT |
-| @tanstack/react-query | 5.101.4 | MIT |
-| @tauri-apps/api | 2.11.1 | Apache-2.0 OR MIT |
-| @tauri-apps/plugin-dialog | 2.7.2 | MIT OR Apache-2.0 |
-| @tauri-apps/plugin-fs | 2.5.1 | MIT OR Apache-2.0 |
-| @tauri-apps/plugin-opener | 2.5.4 | MIT OR Apache-2.0 |
-| @tauri-apps/plugin-process | 2.3.1 | MIT OR Apache-2.0 |
-| @tauri-apps/plugin-updater | 2.10.1 | MIT OR Apache-2.0 |
+| @tanstack/query-core | 5.104.0 | MIT |
+| @tanstack/react-query | 5.104.0 | MIT |
+| @tauri-apps/api | 2.12.1 | Apache-2.0 OR MIT |
+| @tauri-apps/plugin-dialog | 2.8.1 | MIT OR Apache-2.0 |
+| @tauri-apps/plugin-fs | 2.6.0 | MIT OR Apache-2.0 |
+| @tauri-apps/plugin-opener | 2.7.0 | MIT OR Apache-2.0 |
+| @tauri-apps/plugin-process | 2.4.0 | MIT OR Apache-2.0 |
+| @tauri-apps/plugin-updater | 2.13.1 | MIT OR Apache-2.0 |
 | @types/d3-array | 3.2.2 | MIT |
 | @types/d3-color | 3.1.3 | MIT |
 | @types/d3-ease | 3.0.2 | MIT |
@@ -213,14 +213,14 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | estree-util-is-identifier-name | 3.0.0 | MIT |
 | eventemitter3 | 5.0.4 | MIT |
 | extend | 3.0.2 | MIT |
-| framer-motion | 13.0.0 | MIT |
+| framer-motion | 13.4.6 | MIT |
 | get-nonce | 1.0.1 | MIT |
 | hast-util-to-jsx-runtime | 2.3.6 | MIT |
 | hast-util-whitespace | 3.0.0 | MIT |
 | heic2any | 0.0.4 | MIT |
 | html-parse-stringify | 4.0.1 | MIT |
 | html-url-attributes | 3.0.1 | MIT |
-| i18next | 26.3.6 | MIT |
+| i18next | 26.4.2 | MIT |
 | i18next-browser-languagedetector | 8.2.1 | MIT |
 | immer | 11.1.15 | MIT |
 | inline-style-parser | 0.2.7 | MIT |
@@ -231,7 +231,7 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | is-hexadecimal | 2.0.1 | MIT |
 | is-plain-obj | 4.1.0 | MIT |
 | longest-streak | 3.1.0 | MIT |
-| lucide-react | 1.28.0 | ISC |
+| lucide-react | 1.49.0 | ISC |
 | markdown-table | 3.0.4 | MIT |
 | mdast-util-find-and-replace | 3.0.2 | MIT |
 | mdast-util-from-markdown | 2.0.3 | MIT |
@@ -276,16 +276,15 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | micromark-util-subtokenize | 2.1.0 | MIT |
 | micromark-util-symbol | 2.0.1 | MIT |
 | micromark-util-types | 2.0.2 | MIT |
-| mitt | 3.0.1 | MIT |
-| motion-dom | 13.0.0 | MIT |
-| motion-utils | 13.0.0 | MIT |
+| motion-dom | 13.4.5 | MIT |
+| motion-utils | 13.3.0 | MIT |
 | ms | 2.1.3 | MIT |
 | parse-entities | 4.0.2 | MIT |
 | property-information | 7.2.0 | MIT |
-| react | 19.2.8 | MIT |
-| react-dom | 19.2.8 | MIT |
-| react-hook-form | 7.84.0 | MIT |
-| react-i18next | 17.0.11 | MIT |
+| react | 19.3.0 | MIT |
+| react-dom | 19.3.0 | MIT |
+| react-hook-form | 7.89.0 | MIT |
+| react-i18next | 17.0.15 | MIT |
 | react-markdown | 10.1.0 | MIT |
 | react-redux | 9.3.0 | MIT |
 | react-remove-scroll | 2.7.2 | MIT |
@@ -300,13 +299,13 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | remark-rehype | 11.1.2 | MIT |
 | remark-stringify | 11.0.0 | MIT |
 | reselect | 5.2.0 | MIT |
-| scheduler | 0.27.0 | MIT |
-| sonner | 2.0.7 | MIT |
+| scheduler | 0.28.0 | MIT |
+| sonner | 2.0.8 | MIT |
 | space-separated-tokens | 2.0.2 | MIT |
 | stringify-entities | 4.0.4 | MIT |
 | style-to-js | 1.1.21 | MIT |
 | style-to-object | 1.0.14 | MIT |
-| tailwind-merge | 3.6.0 | MIT |
+| tailwind-merge | 3.7.0 | MIT |
 | tiny-invariant | 1.3.3 | MIT |
 | trim-lines | 3.0.1 | MIT |
 | trough | 2.2.0 | MIT |
@@ -323,8 +322,8 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | vfile | 6.0.3 | MIT |
 | vfile-message | 4.0.3 | MIT |
 | victory-vendor | 37.3.6 | MIT AND ISC |
-| wouter | 3.10.0 | Unlicense |
-| zod | 4.4.3 | MIT |
+| wouter | 3.13.0 | Unlicense |
+| zod | 4.6.5 | MIT |
 | zwitch | 2.0.4 | MIT |
 
 ## Rust crates
@@ -334,12 +333,12 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | adler2 | 2.0.1 | 0BSD OR MIT OR Apache-2.0 |
 | aead | 0.6.1 | MIT OR Apache-2.0 |
 | aes | 0.9.2 | MIT OR Apache-2.0 |
-| aes-gcm | 0.11.0 | Apache-2.0 OR MIT |
+| aes-gcm | 0.11.1 | Apache-2.0 OR MIT |
 | aho-corasick | 1.1.5 | Unlicense OR MIT |
 | aligned | 0.4.3 | MIT OR Apache-2.0 |
 | aligned-vec | 0.6.4 | MIT |
-| alloc-no-stdlib | 2.0.4 | BSD-3-Clause |
-| alloc-stdlib | 0.2.4 | BSD-3-Clause |
+| alloc-no-stdlib | 3.0.0 | BSD-3-Clause |
+| alloc-stdlib | 0.3.0 | BSD-3-Clause |
 | android_log-sys | 0.3.2 | MIT OR Apache-2.0 |
 | android_logger | 0.15.1 | MIT OR Apache-2.0 |
 | android_system_properties | 0.1.6 | MIT OR Apache-2.0 |
@@ -382,8 +381,8 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | block-buffer | 0.12.1 | MIT OR Apache-2.0 |
 | block2 | 0.6.2 | MIT |
 | blocking | 1.6.2 | Apache-2.0 OR MIT |
-| brotli | 8.0.4 | BSD-3-Clause AND MIT |
-| brotli-decompressor | 5.0.3 | BSD-3-Clause OR MIT |
+| brotli | 9.0.0 | BSD-3-Clause AND MIT |
+| brotli-decompressor | 6.0.1 | BSD-3-Clause OR MIT |
 | bs58 | 0.5.1 | MIT OR Apache-2.0 |
 | built | 0.8.1 | MIT |
 | bumpalo | 3.20.3 | MIT OR Apache-2.0 |
@@ -395,11 +394,11 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | cairo-sys-rs | 0.18.2 | MIT |
 | camino | 1.2.5 | MIT OR Apache-2.0 |
 | cargo_metadata | 0.19.2 | MIT |
-| cargo_toml | 0.22.3 | Apache-2.0 OR MIT |
+| cargo_toml | 1.0.1 | Apache-2.0 OR MIT |
 | cargo-platform | 0.1.9 | MIT OR Apache-2.0 |
 | cc | 1.4.0 | MIT OR Apache-2.0 |
 | cesu8 | 1.1.0 | Apache-2.0 OR MIT |
-| cfb | 0.7.3 | MIT |
+| cfb | 0.14.0 | MIT |
 | cfg_aliases | 0.2.2 | MIT |
 | cfg-expr | 0.15.8 | MIT OR Apache-2.0 |
 | cfg-if | 1.0.4 | MIT OR Apache-2.0 |
@@ -413,6 +412,7 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | concurrent-queue | 2.5.0 | Apache-2.0 OR MIT |
 | cookie | 0.18.1 | MIT OR Apache-2.0 |
 | cookie_store | 0.22.1 | MIT OR Apache-2.0 |
+| core_detect | 1.0.0 | MIT OR Apache-2.0 |
 | core-foundation | 0.9.4 | MIT OR Apache-2.0 |
 | core-foundation | 0.10.1 | MIT OR Apache-2.0 |
 | core-foundation-sys | 0.8.7 | MIT OR Apache-2.0 |
@@ -429,12 +429,11 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | crunchy | 0.2.4 | MIT |
 | crypto-common | 0.1.7 | MIT OR Apache-2.0 |
 | crypto-common | 0.2.2 | MIT OR Apache-2.0 |
-| cssparser | 0.36.0 | MPL-2.0 |
-| cssparser-macros | 0.6.1 | MPL-2.0 |
+| cssparser | 0.37.0 | MPL-2.0 |
+| cssparser-macros | 0.7.1 | MPL-2.0 |
 | csv | 1.4.0 | Unlicense OR MIT |
 | csv-core | 0.1.13 | Unlicense OR MIT |
-| ctor | 0.8.0 | Apache-2.0 OR MIT |
-| ctor-proc-macro | 0.0.7 | Apache-2.0 OR MIT |
+| ctor | 1.0.13 | Apache-2.0 OR MIT |
 | ctr | 0.10.1 | MIT OR Apache-2.0 |
 | ctutils | 0.4.2 | Apache-2.0 OR MIT |
 | darling | 0.23.0 | MIT |
@@ -450,25 +449,23 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | derive_more-impl | 2.1.1 | MIT |
 | digest | 0.10.7 | MIT OR Apache-2.0 |
 | digest | 0.11.3 | MIT OR Apache-2.0 |
-| dirs | 6.0.0 | MIT OR Apache-2.0 |
+| dirs | 7.0.0 | MIT OR Apache-2.0 |
 | dirs-sys | 0.5.0 | MIT OR Apache-2.0 |
 | dispatch2 | 0.3.1 | Zlib OR Apache-2.0 OR MIT |
 | displaydoc | 0.2.7 | MIT OR Apache-2.0 |
 | dlopen2 | 0.8.2 | MIT |
 | dlopen2_derive | 0.4.3 | MIT |
 | document-features | 0.2.12 | MIT OR Apache-2.0 |
-| dom_query | 0.27.0 | MIT |
+| dom_query | 0.28.0 | MIT |
 | dpi | 0.1.2 | Apache-2.0 AND MIT |
 | dtoa | 1.0.11 | MIT OR Apache-2.0 |
 | dtoa-short | 0.3.5 | MPL-2.0 |
-| dtor | 0.3.0 | Apache-2.0 OR MIT |
-| dtor-proc-macro | 0.0.6 | Apache-2.0 OR MIT |
 | dunce | 1.0.5 | CC0-1.0 OR MIT-0 OR Apache-2.0 |
 | dyn-clone | 1.0.20 | MIT OR Apache-2.0 |
 | either | 1.17.0 | MIT OR Apache-2.0 |
 | embed_plist | 1.2.2 | MIT OR Apache-2.0 |
 | embed-resource | 3.0.11 | MIT |
-| encoding_rs | 0.8.35 | (Apache-2.0 OR MIT) AND BSD-3-Clause |
+| encoding_rs | 0.8.42 | (Apache-2.0 OR MIT) AND BSD-3-Clause |
 | endi | 1.1.1 | MIT |
 | enumflags2 | 0.7.12 | MIT OR Apache-2.0 |
 | enumflags2_derive | 0.7.12 | MIT OR Apache-2.0 |
@@ -542,7 +539,7 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | hermit-abi | 0.5.2 | MIT OR Apache-2.0 |
 | hex | 0.4.3 | MIT OR Apache-2.0 |
 | hmac | 0.13.0 | MIT OR Apache-2.0 |
-| html5ever | 0.38.0 | MIT OR Apache-2.0 |
+| html5ever | 0.39.0 | MIT OR Apache-2.0 |
 | http | 1.5.0 | MIT OR Apache-2.0 |
 | http-body | 1.1.0 | MIT |
 | http-body-util | 0.1.4 | MIT |
@@ -571,7 +568,7 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | imgref | 1.12.2 | CC0-1.0 OR Apache-2.0 |
 | indexmap | 1.9.3 | Apache-2.0 OR MIT |
 | indexmap | 2.14.0 | Apache-2.0 OR MIT |
-| infer | 0.19.0 | MIT |
+| infer | 0.22.0 | MIT |
 | Inflector | 0.11.4 | BSD-2-Clause |
 | inout | 0.2.2 | MIT OR Apache-2.0 |
 | interpolate_name | 0.2.4 | MIT |
@@ -590,10 +587,10 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | jni-sys-macros | 0.4.1 | MIT OR Apache-2.0 |
 | jobserver | 0.1.35 | MIT OR Apache-2.0 |
 | js-sys | 0.3.103 | MIT OR Apache-2.0 |
-| json-patch | 3.0.1 | MIT OR Apache-2.0 |
-| jsonptr | 0.6.3 | MIT OR Apache-2.0 |
-| keyboard-types | 0.7.0 | MIT OR Apache-2.0 |
-| lazy_static | 1.5.0 | MIT OR Apache-2.0 |
+| json-patch | 4.2.0 | MIT OR Apache-2.0 |
+| jsonptr | 0.7.1 | MIT OR Apache-2.0 |
+| keyboard-types | 0.8.3 | MIT OR Apache-2.0 |
+| lazy_static | 1.5.1 | MIT OR Apache-2.0 |
 | lebe | 0.5.3 | BSD-3-Clause |
 | libappindicator | 0.9.0 | Apache-2.0 OR MIT |
 | libappindicator-sys | 0.9.0 | Apache-2.0 OR MIT |
@@ -603,15 +600,15 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | libloading | 0.7.4 | ISC |
 | libm | 0.2.16 | MIT |
 | libredox | 0.1.19 | MIT |
-| libsqlite3-sys | 0.38.1 | MIT |
+| libsqlite3-sys | 0.38.2 | MIT |
 | linux-raw-sys | 0.12.1 | Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT |
 | litemap | 0.8.2 | Unicode-3.0 |
 | litrs | 1.0.0 | MIT OR Apache-2.0 |
 | lock_api | 0.4.14 | MIT OR Apache-2.0 |
-| log | 0.4.33 | MIT OR Apache-2.0 |
+| log | 0.4.34 | MIT OR Apache-2.0 |
 | loop9 | 0.1.5 | MIT |
 | lru-slab | 0.1.2 | MIT OR Apache-2.0 OR Zlib |
-| markup5ever | 0.38.0 | MIT OR Apache-2.0 |
+| markup5ever | 0.39.0 | MIT OR Apache-2.0 |
 | matchit | 0.8.4 | MIT AND BSD-3-Clause |
 | maybe-rayon | 0.1.1 | MIT |
 | memchr | 2.8.3 | Unlicense OR MIT |
@@ -621,8 +618,10 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | miniz_oxide | 0.8.9 | MIT OR Zlib OR Apache-2.0 |
 | mio | 1.2.2 | MIT |
 | moxcms | 0.8.1 | BSD-3-Clause OR Apache-2.0 |
-| muda | 0.19.3 | Apache-2.0 OR MIT |
+| muda | 0.20.0 | Apache-2.0 OR MIT |
+| multiversion_no_op | 1.0.0 | Apache-2.0 OR MIT |
 | ndk | 0.9.0 | MIT OR Apache-2.0 |
+| ndk-context | 0.1.1 | MIT OR Apache-2.0 |
 | ndk-sys | 0.6.0+11769913 | MIT OR Apache-2.0 |
 | new_debug_unreachable | 1.0.6 | MIT |
 | no_std_io2 | 0.9.4 | Apache-2.0 OR MIT |
@@ -712,7 +711,7 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | r-efi | 5.3.0 | MIT OR Apache-2.0 OR LGPL-2.1-or-later |
 | r-efi | 6.0.0 | MIT OR Apache-2.0 OR LGPL-2.1-or-later |
 | rand | 0.9.5 | MIT OR Apache-2.0 |
-| rand | 0.10.2 | MIT OR Apache-2.0 |
+| rand | 0.10.3 | MIT OR Apache-2.0 |
 | rand_chacha | 0.9.0 | MIT OR Apache-2.0 |
 | rand_core | 0.9.5 | MIT OR Apache-2.0 |
 | rand_core | 0.10.1 | MIT OR Apache-2.0 |
@@ -731,14 +730,14 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | regex | 1.13.1 | MIT OR Apache-2.0 |
 | regex-automata | 0.4.18 | MIT OR Apache-2.0 |
 | regex-syntax | 0.8.11 | MIT OR Apache-2.0 |
-| reqwest | 0.13.4 | MIT OR Apache-2.0 |
+| reqwest | 0.13.5 | MIT OR Apache-2.0 |
 | rfd | 0.16.0 | MIT |
 | rgb | 0.8.53 | MIT |
 | ring | 0.17.14 | Apache-2.0 AND ISC |
-| rmcp | 3.1.2 | Apache-2.0 |
-| rmcp-macros | 3.1.2 | Apache-2.0 |
+| rmcp | 3.5.0 | Apache-2.0 |
+| rmcp-macros | 3.5.0 | Apache-2.0 |
 | rsqlite-vfs | 0.1.1 | MIT |
-| rusqlite | 0.40.1 | MIT |
+| rusqlite | 0.40.2 | MIT |
 | rustc_version | 0.4.1 | MIT OR Apache-2.0 |
 | rustc-hash | 2.1.3 | Apache-2.0 OR MIT |
 | rustix | 1.1.4 | Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT |
@@ -762,7 +761,7 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | scrypt | 0.12.0 | MIT OR Apache-2.0 |
 | security-framework | 3.7.0 | MIT OR Apache-2.0 |
 | security-framework-sys | 2.17.0 | MIT OR Apache-2.0 |
-| selectors | 0.36.1 | MPL-2.0 |
+| selectors | 0.38.0 | MPL-2.0 |
 | semver | 1.0.28 | MIT OR Apache-2.0 |
 | serde | 1.0.229 | MIT OR Apache-2.0 |
 | serde_core | 1.0.229 | MIT OR Apache-2.0 |
@@ -807,7 +806,7 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | string_cache_codegen | 0.6.1 | MIT OR Apache-2.0 |
 | strsim | 0.11.1 | MIT |
 | subtle | 2.6.1 | BSD-3-Clause |
-| swift-rs | 1.0.7 | MIT OR Apache-2.0 |
+| swift-rs | 1.0.8 | MIT OR Apache-2.0 |
 | syn | 1.0.109 | MIT OR Apache-2.0 |
 | syn | 2.0.119 | MIT OR Apache-2.0 |
 | syn | 3.0.3 | MIT OR Apache-2.0 |
@@ -816,31 +815,31 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | system-configuration | 0.7.0 | MIT OR Apache-2.0 |
 | system-configuration-sys | 0.6.0 | MIT OR Apache-2.0 |
 | system-deps | 6.2.2 | MIT OR Apache-2.0 |
-| tao | 0.35.3 | Apache-2.0 |
+| tao | 0.37.1 | Apache-2.0 |
 | tao-macros | 0.1.4 | MIT OR Apache-2.0 |
 | tar | 0.4.46 | MIT OR Apache-2.0 |
 | target-lexicon | 0.12.16 | Apache-2.0 WITH LLVM-exception |
-| tauri | 2.11.5 | Apache-2.0 OR MIT |
-| tauri-build | 2.6.3 | Apache-2.0 OR MIT |
-| tauri-codegen | 2.6.3 | Apache-2.0 OR MIT |
-| tauri-macros | 2.6.3 | Apache-2.0 OR MIT |
-| tauri-plugin | 2.6.3 | Apache-2.0 OR MIT |
-| tauri-plugin-dialog | 2.7.2 | Apache-2.0 OR MIT |
-| tauri-plugin-fs | 2.5.1 | Apache-2.0 OR MIT |
-| tauri-plugin-log | 2.9.2 | Apache-2.0 OR MIT |
-| tauri-plugin-opener | 2.5.4 | Apache-2.0 OR MIT |
-| tauri-plugin-process | 2.3.1 | Apache-2.0 OR MIT |
-| tauri-plugin-updater | 2.10.1 | Apache-2.0 OR MIT |
-| tauri-runtime | 2.11.3 | Apache-2.0 OR MIT |
-| tauri-runtime-wry | 2.11.4 | Apache-2.0 OR MIT |
-| tauri-utils | 2.9.3 | Apache-2.0 OR MIT |
+| tauri | 2.12.1 | Apache-2.0 OR MIT |
+| tauri-build | 2.7.1 | Apache-2.0 OR MIT |
+| tauri-codegen | 2.7.1 | Apache-2.0 OR MIT |
+| tauri-macros | 2.7.1 | Apache-2.0 OR MIT |
+| tauri-plugin | 2.7.1 | Apache-2.0 OR MIT |
+| tauri-plugin-dialog | 2.8.1 | Apache-2.0 OR MIT |
+| tauri-plugin-fs | 2.6.0 | Apache-2.0 OR MIT |
+| tauri-plugin-log | 2.10.0 | Apache-2.0 OR MIT |
+| tauri-plugin-opener | 2.7.0 | Apache-2.0 OR MIT |
+| tauri-plugin-process | 2.4.0 | Apache-2.0 OR MIT |
+| tauri-plugin-updater | 2.13.1 | Apache-2.0 OR MIT |
+| tauri-runtime | 2.12.1 | Apache-2.0 OR MIT |
+| tauri-runtime-wry | 2.12.1 | Apache-2.0 OR MIT |
+| tauri-utils | 2.10.1 | Apache-2.0 OR MIT |
 | tauri-winres | 0.3.6 | MIT |
 | tempfile | 3.27.0 | MIT OR Apache-2.0 |
 | tendril | 0.5.1 | MIT OR Apache-2.0 |
 | thiserror | 1.0.69 | MIT OR Apache-2.0 |
-| thiserror | 2.0.19 | MIT OR Apache-2.0 |
+| thiserror | 2.0.21 | MIT OR Apache-2.0 |
 | thiserror-impl | 1.0.69 | MIT OR Apache-2.0 |
-| thiserror-impl | 2.0.19 | MIT OR Apache-2.0 |
+| thiserror-impl | 2.0.21 | MIT OR Apache-2.0 |
 | tiff | 0.11.3 | MIT |
 | time | 0.3.55 | MIT OR Apache-2.0 |
 | time-core | 0.1.9 | MIT OR Apache-2.0 |
@@ -854,10 +853,8 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | tokio-stream | 0.1.19 | MIT |
 | tokio-util | 0.7.19 | MIT |
 | toml | 0.8.2 | MIT OR Apache-2.0 |
-| toml | 0.9.12+spec-1.1.0 | MIT OR Apache-2.0 |
 | toml | 1.1.4+spec-1.1.0 | MIT OR Apache-2.0 |
 | toml_datetime | 0.6.3 | MIT OR Apache-2.0 |
-| toml_datetime | 0.7.5+spec-1.1.0 | MIT OR Apache-2.0 |
 | toml_datetime | 1.1.1+spec-1.1.0 | MIT OR Apache-2.0 |
 | toml_edit | 0.19.15 | MIT OR Apache-2.0 |
 | toml_edit | 0.20.2 | MIT OR Apache-2.0 |
@@ -871,16 +868,11 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | tracing | 0.1.44 | MIT |
 | tracing-attributes | 0.1.31 | MIT |
 | tracing-core | 0.1.36 | MIT |
-| tray-icon | 0.24.2 | MIT OR Apache-2.0 |
+| tray-icon | 0.25.1 | MIT OR Apache-2.0 |
 | try-lock | 0.2.5 | MIT |
 | typeid | 1.0.3 | MIT OR Apache-2.0 |
 | typenum | 1.20.1 | MIT OR Apache-2.0 |
 | uds_windows | 1.2.1 | MIT |
-| unic-char-property | 0.9.0 | MIT OR Apache-2.0 |
-| unic-char-range | 0.9.0 | MIT OR Apache-2.0 |
-| unic-common | 0.9.0 | MIT OR Apache-2.0 |
-| unic-ucd-ident | 0.9.0 | MIT OR Apache-2.0 |
-| unic-ucd-version | 0.9.0 | MIT OR Apache-2.0 |
 | unicode-ident | 1.0.24 | (MIT OR Apache-2.0) AND Unicode-3.0 |
 | unicode-normalization | 0.1.25 | MIT OR Apache-2.0 |
 | unicode-segmentation | 1.13.3 | MIT OR Apache-2.0 |
@@ -888,9 +880,9 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | untrusted | 0.9.0 | ISC |
 | url | 2.5.8 | MIT OR Apache-2.0 |
 | urlencoding | 2.1.3 | MIT |
-| urlpattern | 0.3.0 | MIT |
+| urlpattern | 0.6.0 | MIT |
 | utf8_iter | 1.0.4 | Apache-2.0 OR MIT |
-| uuid | 1.24.0 | Apache-2.0 OR MIT |
+| uuid | 1.26.1 | Apache-2.0 OR MIT |
 | v_frame | 0.3.9 | BSD-2-Clause |
 | vcpkg | 0.2.15 | MIT OR Apache-2.0 |
 | version_check | 0.9.5 | MIT OR Apache-2.0 |
@@ -913,16 +905,16 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | webkit2gtk | 2.0.2 | MIT |
 | webkit2gtk-sys | 2.0.2 | MIT |
 | webpki-root-certs | 1.0.9 | CDLA-Permissive-2.0 |
-| webview2-com | 0.38.2 | MIT |
+| webview2-com | 0.39.1 | MIT |
 | webview2-com-macros | 0.8.1 | MIT |
-| webview2-com-sys | 0.38.2 | MIT |
+| webview2-com-sys | 0.39.1 | MIT |
 | weezl | 0.1.12 | MIT OR Apache-2.0 |
 | winapi | 0.3.9 | MIT OR Apache-2.0 |
 | winapi-i686-pc-windows-gnu | 0.4.0 | MIT OR Apache-2.0 |
 | winapi-util | 0.1.11 | Unlicense OR MIT |
 | winapi-x86_64-pc-windows-gnu | 0.4.0 | MIT OR Apache-2.0 |
-| window-vibrancy | 0.6.0 | Apache-2.0 OR MIT |
-| windows | 0.61.3 | MIT OR Apache-2.0 |
+| window-vibrancy | 0.8.1 | Apache-2.0 OR MIT |
+| windows | 0.62.2 | MIT OR Apache-2.0 |
 | windows_aarch64_gnullvm | 0.42.2 | MIT OR Apache-2.0 |
 | windows_aarch64_gnullvm | 0.52.6 | MIT OR Apache-2.0 |
 | windows_aarch64_gnullvm | 0.53.1 | MIT OR Apache-2.0 |
@@ -946,19 +938,15 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | windows_x86_64_msvc | 0.42.2 | MIT OR Apache-2.0 |
 | windows_x86_64_msvc | 0.52.6 | MIT OR Apache-2.0 |
 | windows_x86_64_msvc | 0.53.1 | MIT OR Apache-2.0 |
-| windows-collections | 0.2.0 | MIT OR Apache-2.0 |
-| windows-core | 0.61.2 | MIT OR Apache-2.0 |
+| windows-collections | 0.3.2 | MIT OR Apache-2.0 |
 | windows-core | 0.62.2 | MIT OR Apache-2.0 |
-| windows-future | 0.2.1 | MIT OR Apache-2.0 |
+| windows-future | 0.3.2 | MIT OR Apache-2.0 |
 | windows-implement | 0.60.2 | MIT OR Apache-2.0 |
 | windows-interface | 0.59.3 | MIT OR Apache-2.0 |
-| windows-link | 0.1.3 | MIT OR Apache-2.0 |
 | windows-link | 0.2.1 | MIT OR Apache-2.0 |
-| windows-numerics | 0.2.0 | MIT OR Apache-2.0 |
+| windows-numerics | 0.3.1 | MIT OR Apache-2.0 |
 | windows-registry | 0.6.1 | MIT OR Apache-2.0 |
-| windows-result | 0.3.4 | MIT OR Apache-2.0 |
 | windows-result | 0.4.1 | MIT OR Apache-2.0 |
-| windows-strings | 0.4.2 | MIT OR Apache-2.0 |
 | windows-strings | 0.5.1 | MIT OR Apache-2.0 |
 | windows-sys | 0.45.0 | MIT OR Apache-2.0 |
 | windows-sys | 0.52.0 | MIT OR Apache-2.0 |
@@ -968,20 +956,19 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | windows-targets | 0.42.2 | MIT OR Apache-2.0 |
 | windows-targets | 0.52.6 | MIT OR Apache-2.0 |
 | windows-targets | 0.53.5 | MIT OR Apache-2.0 |
-| windows-threading | 0.1.0 | MIT OR Apache-2.0 |
+| windows-threading | 0.2.1 | MIT OR Apache-2.0 |
 | windows-version | 0.1.7 | MIT OR Apache-2.0 |
 | winnow | 0.5.40 | MIT |
-| winnow | 0.7.15 | MIT |
 | winnow | 1.0.4 | MIT |
 | winreg | 0.55.0 | MIT |
 | wit-bindgen | 0.57.1 | Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT |
 | writeable | 0.6.3 | Unicode-3.0 |
-| wry | 0.55.1 | Apache-2.0 OR MIT |
+| wry | 0.57.0 | Apache-2.0 OR MIT |
 | x11 | 2.21.0 | MIT |
 | x11-dl | 2.21.0 | MIT |
 | xattr | 1.6.1 | MIT OR Apache-2.0 |
 | y4m | 0.8.0 | MIT |
-| yahoo_finance_api | 4.1.1 | MIT OR Apache-2.0 |
+| yahoo_finance_api | 4.2.0 | MIT OR Apache-2.0 |
 | yoke | 0.8.3 | Unicode-3.0 |
 | yoke-derive | 0.8.2 | Unicode-3.0 |
 | zbus | 5.18.0 | MIT |

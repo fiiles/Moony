@@ -6,6 +6,8 @@ All notable changes to Moony are documented in this file. The format follows
 
 ## [Unreleased]
 
+## [0.9.1] - 2026-10-05
+
 ### Added
 
 - **Stock import from brokers.** A wizard (file, columns, review, done) replaces the old import
@@ -63,7 +65,6 @@ All notable changes to Moony are documented in this file. The format follows
   dialog.
 - **Bank accounts total** leaves out accounts excluded from net worth, as the dashboard does; the
   excluded amount is shown next to it.
-
 - **Amounts follow the main currency.** Gain, yield, appreciation, rent and savings totals on
   Other assets, Real estate, Cashflow, Cashflow planning and Projection were shown in CZK
   whatever main currency you chose; they now follow it. The cashflow CSV export writes its
@@ -122,6 +123,12 @@ All notable changes to Moony are documented in this file. The format follows
 - **Real estate calculator chart amounts.** The sale milestone and the chart tooltips converted
   the calculator's amounts from CZK a second time when the main currency was not CZK.
 
+### Security
+
+- **Tauri 2.12.** The Tauri version in 0.9.0 (2.11.5) had an IPC access-control flaw in its fetch
+  command ([GHSA-w28w-mhc8-qvjv](https://github.com/advisories/GHSA-w28w-mhc8-qvjv)); 0.9.1 ships
+  Tauri 2.12 with the fix, together with updated Tauri plugins, Rust crates and npm packages.
+
 ## [0.9.0] - 2026-10-04
 
 First public release of Moony, published as a pre-1.0 version for a round of testing on all
@@ -176,5 +183,6 @@ local tool). Everything below is new to the public.
 - The updater only offers versions higher than the installed one, so a machine running an
   older 1.x build from the previous private repository must install 0.9.0 by hand.
 
-[Unreleased]: https://github.com/fiiles/Moony/compare/v0.9.0...HEAD
+[Unreleased]: https://github.com/fiiles/Moony/compare/v0.9.1...HEAD
+[0.9.1]: https://github.com/fiiles/Moony/compare/v0.9.0...v0.9.1
 [0.9.0]: https://github.com/fiiles/Moony/releases/tag/v0.9.0

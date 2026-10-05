@@ -838,8 +838,8 @@ impl MoonyMcp {
 
 #[tool_handler(router = self.tool_router)]
 impl ServerHandler for MoonyMcp {
-    fn get_info(&self) -> ServerInfo {
-        ServerInfo::new(ServerCapabilities::builder().enable_tools().build())
+    fn get_info(&self) -> ServerConfig {
+        ServerConfig::new(ServerCapabilities::builder().enable_tools().build())
             .with_server_info(Implementation::from_build_env())
             .with_instructions(
                 "Query Moony personal finance data (read tools), import parsed exports (bulk \

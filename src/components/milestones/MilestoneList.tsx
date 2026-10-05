@@ -1,204 +1,213 @@
 import { Link } from 'wouter';
 import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import {
-  CalendarClock,
+  BellOff,
   Clock,
   DatabaseBackup,
+  Ellipsis,
   EyeOff,
   FileCheck,
   Home,
   Landmark,
   Percent,
-  ScrollText,
-  Shield,
-  Target,
   type LucideIcon,
 } from 'lucide-react';
 import type { Milestone, MilestoneKind } from '@shared/schema';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { useMilestoneActions } from '@/hooks/use-milestone-mutations';
 import { useFormat } from '@/lib/use-format';
 import { cn } from '@/lib/utils';
 import { utcDayFloor } from '@/utils/chart-axis';
 import { formatNativePrice } from '@/utils/stock-monitor';
-import { agendaDay, daysBetween, isUpkeep, milestoneHref, relativeLabel } from '@/utils/milestones';
+import {
+  agendaDay,
+  daysBetween,
+  groupOf,
+  isUpkeep,
+  isUrgent,
+  milestoneHref,
+  relativeLabel,
+} from '@/utils/milestones';
 
-const ICONS: Record<MilestoneKind, LucideIcon> = {
-  insurance_anniversary: Shield,
-  insurance_end: Shield,
-  insurance_payment: Shield,
-  loan_fixation_end: Percent,
-  loan_fixation_expired: Percent,
-  loan_payoff: Landmark,
-  loan_balance_check: FileCheck,
-  bond_maturity: ScrollText,
-  bond_coupon: ScrollText,
-  account_termination: CalendarClock,
-  savings_rate_end: Percent,
-  balances_stale: Landmark,
+const UPKEEP_ICONS: Partial<Record<MilestoneKind, LucideIcon>> = {
   backup_stale: DatabaseBackup,
+  balances_stale: Landmark,
   valuation_stale: Home,
-  watch_target: Target,
+  loan_balance_check: FileCheck,
+  loan_fixation_expired: Percent,
 };
 
-interface MilestoneListProps {
-  milestones: readonly Milestone[];
-  onHide: (m: Milestone) => void;
-  onRemindLater: (m: Milestone) => void;
-  /** Called when a row's link is followed (closes the top-bar popover). */
-  onNavigate?: () => void;
-  /** Let the sub-line wrap onto a second line instead of truncating (narrow popover). */
-  wrap?: boolean;
+/** "Byt 3+kk Vinohrady přecenit": one item of the folded upkeep line. */
+// eslint-disable-next-line react-refresh/only-export-components -- shares the row sub-line copy with the card
+export function upkeepShort(m: Milestone, t: TFunction<'milestones'>): string {
+  if (m.kind === 'balances_stale') return t('short.balances_stale', { count: m.count ?? 0 });
+  return t(`short.${m.kind}`, { title: m.title });
 }
 
-/**
- * Milestone rows (spec 2026-10-05 §7): icon in a `well` square, title and one
- * sub-line, the relative date right; "Připomenout za týden" and "Skrýt"
- * appear on hover next to the link, never inside it.
- */
-export function MilestoneList({
-  milestones,
-  onHide,
-  onRemindLater,
-  onNavigate,
-  wrap = false,
-}: MilestoneListProps) {
-  return (
-    <ul className="m-0 list-none p-0">
-      {milestones.map((m) => (
-        <MilestoneRow
-          key={m.key}
-          m={m}
-          onHide={onHide}
-          onRemindLater={onRemindLater}
-          onNavigate={onNavigate}
-          wrap={wrap}
-        />
-      ))}
-    </ul>
-  );
-}
-
-function MilestoneRow({
-  m,
-  onHide,
-  onRemindLater,
-  onNavigate,
-  wrap,
-}: {
-  m: Milestone;
-  onHide: (m: Milestone) => void;
-  onRemindLater: (m: Milestone) => void;
-  onNavigate?: () => void;
-  wrap: boolean;
-}) {
+/** The sub-line of a row: what happens; the date chip already says when. */
+function useSubLine() {
   const { t } = useTranslation('milestones');
   const fmt = useFormat();
-  const today = utcDayFloor(Date.now() / 1000);
-  const thisYear = new Date(today * 1000).getUTCFullYear();
+  const day = (d: number | null) =>
+    d === null ? '' : fmt.day(d, { day: 'numeric', month: 'numeric' });
+  const money = (m: Milestone) =>
+    m.amount === null ? '' : fmt.money(Number(m.amount), m.currency ?? 'CZK');
+  const price = (m: Milestone, value: string | null) =>
+    value === null ? '' : formatNativePrice(Number(value), m.currency, fmt.locale);
 
-  const date = (d: number | null) =>
-    d === null
-      ? ''
-      : new Date(d * 1000).getUTCFullYear() === thisYear
-        ? fmt.day(d, { day: 'numeric', month: 'numeric' })
-        : fmt.day(d);
-  const money = (amount: string | null) =>
-    amount === null ? '' : fmt.money(Number(amount), m.currency ?? 'CZK');
-  const price = (amount: string | null) =>
-    amount === null ? '' : formatNativePrice(Number(amount), m.currency, fmt.locale);
-
-  const sub = (() => {
+  return (m: Milestone): string => {
     switch (m.kind) {
       case 'insurance_anniversary':
         return m.tone === 'info'
-          ? t('sub.insurance_anniversary_passed', { date: date(m.dueDay) })
-          : t('sub.insurance_anniversary', { date: date(m.dueDay), deadline: date(m.actionDay) });
+          ? t('sub.insurance_anniversary_passed')
+          : t('sub.insurance_anniversary', { date: day(m.dueDay) });
       case 'insurance_payment':
       case 'bond_coupon':
-        return t(`sub.${m.kind}`, { amount: money(m.amount), date: date(m.dueDay) });
       case 'bond_maturity':
-        return t('sub.bond_maturity', { date: date(m.dueDay), amount: money(m.amount) });
+        return t(`sub.${m.kind}`, { amount: money(m) });
+      case 'watch_target':
+        return t(m.direction === 'below' ? 'sub.watch_target_below' : 'sub.watch_target_above', {
+          price: price(m, m.referenceAmount),
+          target: price(m, m.amount),
+        });
       case 'backup_stale':
         return m.sinceDay === null
           ? t('sub.backup_never')
-          : t('sub.backup_stale', { date: date(m.sinceDay) });
+          : t('sub.backup_stale', { date: day(m.sinceDay) });
       case 'balances_stale':
         return t('sub.balances_stale', { count: m.count ?? 0 });
       case 'valuation_stale':
       case 'loan_balance_check':
-        return t(`sub.${m.kind}`, { date: date(m.sinceDay) });
-      case 'watch_target':
-        return t(m.direction === 'below' ? 'sub.watch_target_below' : 'sub.watch_target_above', {
-          price: price(m.referenceAmount),
-          target: price(m.amount),
-        });
+        return t(`sub.${m.kind}`, { date: day(m.sinceDay) });
+      case 'loan_fixation_expired':
+        return t('sub.loan_fixation_expired', { date: day(m.dueDay) });
       default:
-        return t(`sub.${m.kind}`, { date: date(m.dueDay) });
+        return t(`sub.${m.kind}`);
     }
-  })();
+  };
+}
 
-  const right = (() => {
-    if (m.kind === 'watch_target') {
-      const target = Number(m.amount);
-      const current = Number(m.referenceAmount);
-      return target > 0 && current > 0
-        ? fmt.percent(current / target - 1, 1, { signed: true })
-        : '';
-    }
-    const ref = isUpkeep(m) ? m.sinceDay : agendaDay(m, today);
-    if (ref === null) return '';
-    const label = relativeLabel(daysBetween(today, ref));
-    return t(`relative.${label.key}`, { count: label.count });
-  })();
+/** "···": hide, remind later, mute the group. */
+export function MilestoneMenu({ m }: { m: Milestone }) {
+  const { t } = useTranslation('milestones');
+  const { hide, remindLater, muteGroup } = useMilestoneActions();
+  const group = groupOf(m.kind);
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          aria-label={t('card.rowMenu')}
+          className="shrink-0 text-ink-4 hover:text-ink data-[state=open]:text-ink"
+        >
+          <Ellipsis />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem onSelect={() => hide(m)}>
+          <EyeOff />
+          {t('actions.hide')}
+        </DropdownMenuItem>
+        <DropdownMenuItem onSelect={() => remindLater(m)}>
+          <Clock />
+          {t(isUpkeep(m) ? 'actions.remindMonth' : 'actions.remindWeek')}
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onSelect={() => muteGroup(group)}>
+          <BellOff />
+          {t(`groups.${group}.mute`)}
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
 
-  const remindLabel = t(isUpkeep(m) ? 'actions.remindMonth' : 'actions.remindWeek');
-  const Icon = ICONS[m.kind];
-  const title = m.title || t(`titles.${m.kind}`);
+/**
+ * Agenda row (spec 2026-10-05-milestones-agenda §2): a date chip (day and month, the
+ * distance under it; dark material for a deadline at most 7 days away), title and one
+ * sub-line, the "···" menu next to the link, never inside it.
+ */
+export function AgendaRow({ m, onNavigate }: { m: Milestone; onNavigate?: () => void }) {
+  const { t } = useTranslation('milestones');
+  const fmt = useFormat();
+  const subLine = useSubLine();
+  const today = utcDayFloor(Date.now() / 1000);
+  const day = agendaDay(m, today);
+  const rel = relativeLabel(daysBetween(today, day));
+  const urgent = isUrgent(m, today);
+  const target = m.kind === 'watch_target';
+  const sub = subLine(m);
 
   return (
-    <li className="group grid grid-cols-[1fr_auto] items-center gap-2 border-b border-line-soft last:border-0">
+    <li className="flex items-center gap-1 border-b border-line-soft last:border-0">
       <Link
         href={milestoneHref(m)}
         onClick={onNavigate}
-        className="grid min-w-0 grid-cols-[30px_1fr_auto] items-center gap-[11px] py-[11px] text-ink hover:text-ink focus-visible:outline-none focus-visible:shadow-focus"
+        className="grid min-w-0 flex-1 grid-cols-[50px_1fr] items-center gap-3 py-2.5 text-ink hover:text-ink focus-visible:outline-none focus-visible:shadow-focus"
+      >
+        <span
+          className={cn(
+            'grid h-[42px] place-content-center rounded-r2 text-center leading-tight',
+            urgent ? 'bg-dark-grad text-ink-inverse shadow-dark' : 'bg-well text-ink'
+          )}
+        >
+          <b className="block text-table font-650 num">
+            {target ? t('card.today') : fmt.day(day, { day: 'numeric', month: 'numeric' })}
+          </b>
+          <small
+            className={cn(
+              'block text-micro font-500',
+              urgent ? 'text-ink-inverse-2' : 'text-ink-4'
+            )}
+          >
+            {target ? t('card.target') : t(`relative.${rel.key}`, { count: rel.count })}
+          </small>
+        </span>
+        <span className="min-w-0">
+          <b className="block truncate text-table font-650">{m.title}</b>
+          <small title={sub} className="mt-[3px] block truncate text-micro font-500 text-ink-4">
+            {sub}
+          </small>
+        </span>
+      </Link>
+      <MilestoneMenu m={m} />
+    </li>
+  );
+}
+
+/** Upkeep row: an icon in a `well` square instead of a date chip. */
+export function UpkeepRow({ m }: { m: Milestone }) {
+  const { t } = useTranslation('milestones');
+  const subLine = useSubLine();
+  const Icon = UPKEEP_ICONS[m.kind] ?? Landmark;
+  const title = m.title || t(`titles.${m.kind}`);
+  const sub = subLine(m);
+  return (
+    <li className="flex items-center gap-1 border-b border-line-soft last:border-0">
+      <Link
+        href={milestoneHref(m)}
+        className="grid min-w-0 flex-1 grid-cols-[30px_1fr] items-center gap-[11px] py-2.5 text-ink hover:text-ink focus-visible:outline-none focus-visible:shadow-focus"
       >
         <i className="grid size-[29px] place-items-center rounded-r2 bg-well text-ink-2">
           <Icon className="size-[15px]" strokeWidth={1.75} aria-hidden />
         </i>
         <span className="min-w-0">
           <b className="block truncate text-table font-650">{title}</b>
-          <small
-            title={sub}
-            className={cn(
-              'mt-[3px] text-micro font-500 text-ink-4',
-              wrap ? 'line-clamp-2 whitespace-normal' : 'block truncate'
-            )}
-          >
+          <small title={sub} className="mt-[3px] block truncate text-micro font-500 text-ink-4">
             {sub}
           </small>
         </span>
-        <span className="whitespace-nowrap text-caption font-600 text-ink-3 num">{right}</span>
       </Link>
-      <div className="flex w-[66px] shrink-0 justify-end gap-0.5 opacity-0 transition-opacity duration-fast focus-within:opacity-100 group-hover:opacity-100">
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          aria-label={remindLabel}
-          title={remindLabel}
-          onClick={() => onRemindLater(m)}
-        >
-          <Clock />
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          aria-label={t('actions.hide')}
-          title={t('actions.hide')}
-          onClick={() => onHide(m)}
-        >
-          <EyeOff />
-        </Button>
-      </div>
+      <MilestoneMenu m={m} />
     </li>
   );
 }

@@ -126,7 +126,7 @@ export function EditTransactionModal({
                       <FormItem>
                         <FormLabel>{t('modal.buy.pricePerShare')} *</FormLabel>
                         <FormControl>
-                          <Input type="number" step="0.01" {...field} />
+                          <Input type="number" step="any" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>

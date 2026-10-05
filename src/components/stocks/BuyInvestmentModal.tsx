@@ -64,9 +64,10 @@ export function BuyInvestmentModal({ investment, open, onOpenChange }: BuyInvest
       const investmentCurrency = (investment.avgCostCurrency || investment.currency || 'USD') as
         'USD' | 'EUR' | 'CZK';
       form.setValue('currency', investmentCurrency);
-      // Use originalPrice (in stock's currency) for prefill, not currentPrice (which is converted to CZK)
+      // Use originalPrice (in stock's currency) for prefill, not currentPrice (which is converted to CZK).
+      // Six decimals, as the price is stored: a London share quoted in pence costs 0.953 £, not 0.95 £.
       const priceToShow = Number(investment.originalPrice ?? investment.currentPrice);
-      form.setValue('pricePerUnit', priceToShow ? Number(priceToShow.toFixed(2)) : 0);
+      form.setValue('pricePerUnit', priceToShow ? Number(priceToShow.toFixed(6)) : 0);
     }
   }, [investment, form]);
 
@@ -143,18 +144,7 @@ export function BuyInvestmentModal({ investment, open, onOpenChange }: BuyInvest
                   <FormItem>
                     <FormLabel>{t('modal.buy.pricePerShare')} *</FormLabel>
                     <FormControl>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        {...field}
-                        onBlur={(e) => {
-                          const value = parseFloat(e.target.value);
-                          if (!isNaN(value)) {
-                            field.onChange(value.toFixed(2));
-                          }
-                          field.onBlur();
-                        }}
-                      />
+                      <Input type="number" step="any" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

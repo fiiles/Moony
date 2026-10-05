@@ -353,17 +353,7 @@ export function AddInvestmentModal({ open, onOpenChange, initial }: AddInvestmen
                     <FormLabel>{t('modal.add.pricePerShare')}</FormLabel>
                     <InputWrap unit={currency}>
                       <FormControl>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          placeholder="0.00"
-                          {...field}
-                          onBlur={(e) => {
-                            const value = parseFloat(e.target.value);
-                            if (!isNaN(value)) field.onChange(value.toFixed(2));
-                            field.onBlur();
-                          }}
-                        />
+                        <Input type="number" step="any" placeholder="0.00" {...field} />
                       </FormControl>
                     </InputWrap>
                     <FormMessage />

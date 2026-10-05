@@ -26,7 +26,6 @@ export function UpcomingCard() {
   const limit = expanded ? Infinity : COLLAPSED_ROWS;
   const shownNow = now.slice(0, limit);
   const shownSoon = soon.slice(0, Math.max(0, limit - shownNow.length));
-  const hidden = milestones.length - shownNow.length - shownSoon.length;
 
   return (
     <section className="mt-9">
@@ -45,7 +44,7 @@ export function UpcomingCard() {
               <MilestoneList milestones={shownSoon} onDone={markDone} onSnooze={snooze} />
             </div>
           )}
-          {(hidden > 0 || expanded) && (
+          {milestones.length > COLLAPSED_ROWS && (
             <button
               type="button"
               onClick={() => setExpanded((v) => !v)}

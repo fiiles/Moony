@@ -43,6 +43,19 @@ describe('groupMilestones', () => {
     expect(soon.map((x) => x.key)).toEqual(['b', 'c']);
     expect(attentionCount([a, b, c, d])).toBe(2);
   });
+
+  it('orders "soon" by date even when a now+info item comes earlier from the backend', () => {
+    const payoff = m({ key: 'payoff', kind: 'loan_payoff', tone: 'info', dueDay: 25 * DAY });
+    const coupon = m({
+      key: 'coupon',
+      kind: 'bond_coupon',
+      stage: 'soon',
+      tone: 'info',
+      dueDay: 10 * DAY,
+    });
+    const { soon } = groupMilestones([payoff, coupon]);
+    expect(soon.map((x) => x.key)).toEqual(['coupon', 'payoff']);
+  });
 });
 
 describe('milestoneHref', () => {

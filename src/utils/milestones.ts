@@ -7,7 +7,10 @@ export function isAttention(m: Milestone): boolean {
   return m.stage === 'now' && m.tone === 'action';
 }
 
-/** "Teď jednat" and "Brzy" (soon items and info items), each keeping the backend order. */
+/**
+ * "Teď jednat" keeps the backend order; "Brzy" (soon items and info items from the
+ * reminder window) is sorted by date, so a later info item never precedes an earlier one.
+ */
 export function groupMilestones(list: readonly Milestone[]): {
   now: Milestone[];
   soon: Milestone[];
@@ -15,6 +18,8 @@ export function groupMilestones(list: readonly Milestone[]): {
   const now: Milestone[] = [];
   const soon: Milestone[] = [];
   for (const m of list) (isAttention(m) ? now : soon).push(m);
+  const day = (m: Milestone) => m.dueDay ?? m.sinceDay ?? Number.MAX_SAFE_INTEGER;
+  soon.sort((a, b) => day(a) - day(b)); // stable, and finite so ties never become NaN
   return { now, soon };
 }
 

@@ -50,7 +50,7 @@
     "loan_fixation_end": "Konec fixace {{date}} · čas porovnat nabídky",
     "loan_fixation_expired": "Fixace skončila {{date}} · doplňte novou sazbu",
     "loan_payoff": "Poslední splátka {{date}}",
-    "loan_balance_check": "Zůstatek ověřen {{date}} · porovnejte s výpisem",
+    "loan_balance_check": "Zůstatek neověřen od {{date}} · porovnejte s výpisem",
     "bond_maturity": "Splatnost {{date}} · vrátí se {{amount}}",
     "bond_coupon": "Kupón {{amount}} · {{date}}",
     "account_termination": "Účet končí {{date}}",
@@ -60,7 +60,7 @@
     "balances_stale_one": "{{count}} účet bez aktualizace přes 30 dní",
     "balances_stale_few": "{{count}} účty bez aktualizace přes 30 dní",
     "balances_stale_other": "{{count}} účtů bez aktualizace přes 30 dní",
-    "valuation_stale": "Odhad hodnoty z {{date}} · přeceňte",
+    "valuation_stale": "Bez nového odhadu od {{date}} · přeceňte",
     "watch_target_below": "Cena {{price}} klesla na cíl {{target}}",
     "watch_target_above": "Cena {{price}} dosáhla cíle {{target}}"
   }

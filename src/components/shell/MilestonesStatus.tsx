@@ -19,10 +19,13 @@ export function MilestonesStatus() {
   const { markDone, snooze } = useMilestoneActions();
   const { now } = groupMilestones(milestones);
 
+  // An item that comes back (e.g. "Vrátit") must not reopen the popover by itself.
+  if (now.length === 0 && open) setOpen(false);
+
   if (now.length === 0) return null;
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open && now.length > 0} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button
           type="button"
@@ -31,7 +34,7 @@ export function MilestonesStatus() {
           <StatusText className="text-ink-2">{t('status.count', { count: now.length })}</StatusText>
         </button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-[380px] p-0">
+      <PopoverContent align="end" className="w-[420px] p-0">
         <div className="px-4 pt-3 text-eyebrow uppercase text-ink-4">{t('status.title')}</div>
         <div className="max-h-[420px] overflow-y-auto px-4">
           <MilestoneList
@@ -39,6 +42,7 @@ export function MilestonesStatus() {
             onDone={markDone}
             onSnooze={snooze}
             onNavigate={() => setOpen(false)}
+            wrap
           />
         </div>
         <div className="border-t border-line-soft px-4 py-2.5">

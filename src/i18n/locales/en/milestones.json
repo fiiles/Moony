@@ -45,7 +45,7 @@
     "loan_fixation_end": "Fixed rate ends {{date}} · time to compare offers",
     "loan_fixation_expired": "Fixed rate ended {{date}} · enter the new rate",
     "loan_payoff": "Last payment {{date}}",
-    "loan_balance_check": "Balance checked {{date}} · compare with a statement",
+    "loan_balance_check": "Balance not checked since {{date}} · compare with a statement",
     "bond_maturity": "Matures {{date}} · {{amount}} comes back",
     "bond_coupon": "Coupon {{amount}} · {{date}}",
     "account_termination": "Account ends {{date}}",
@@ -54,7 +54,7 @@
     "backup_never": "No backup yet",
     "balances_stale_one": "{{count}} account not updated for over 30 days",
     "balances_stale_other": "{{count}} accounts not updated for over 30 days",
-    "valuation_stale": "Valued on {{date}} · revalue it",
+    "valuation_stale": "No new valuation since {{date}} · revalue it",
     "watch_target_below": "Price {{price}} fell to the target {{target}}",
     "watch_target_above": "Price {{price}} reached the target {{target}}"
   }

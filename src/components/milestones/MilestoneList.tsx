@@ -17,6 +17,7 @@ import {
 import type { Milestone, MilestoneKind } from '@shared/schema';
 import { Button } from '@/components/ui/button';
 import { useFormat } from '@/lib/use-format';
+import { cn } from '@/lib/utils';
 import { utcDayFloor } from '@/utils/chart-axis';
 import { formatNativePrice } from '@/utils/stock-monitor';
 import { daysBetween, milestoneHref, referenceDay, relativeLabel } from '@/utils/milestones';
@@ -45,6 +46,8 @@ interface MilestoneListProps {
   onSnooze: (m: Milestone) => void;
   /** Called when a row's link is followed (closes the top-bar popover). */
   onNavigate?: () => void;
+  /** Let the sub-line wrap onto a second line instead of truncating (narrow popover). */
+  wrap?: boolean;
 }
 
 /**
@@ -52,7 +55,13 @@ interface MilestoneListProps {
  * sub-line, the relative date right; "Odložit" and "Vyřízeno" appear on hover
  * next to the link, never inside it.
  */
-export function MilestoneList({ milestones, onDone, onSnooze, onNavigate }: MilestoneListProps) {
+export function MilestoneList({
+  milestones,
+  onDone,
+  onSnooze,
+  onNavigate,
+  wrap = false,
+}: MilestoneListProps) {
   return (
     <ul className="m-0 list-none p-0">
       {milestones.map((m) => (
@@ -62,6 +71,7 @@ export function MilestoneList({ milestones, onDone, onSnooze, onNavigate }: Mile
           onDone={onDone}
           onSnooze={onSnooze}
           onNavigate={onNavigate}
+          wrap={wrap}
         />
       ))}
     </ul>
@@ -73,11 +83,13 @@ function MilestoneRow({
   onDone,
   onSnooze,
   onNavigate,
+  wrap,
 }: {
   m: Milestone;
   onDone: (m: Milestone) => void;
   onSnooze: (m: Milestone) => void;
   onNavigate?: () => void;
+  wrap: boolean;
 }) {
   const { t } = useTranslation('milestones');
   const fmt = useFormat();
@@ -154,11 +166,19 @@ function MilestoneRow({
         </i>
         <span className="min-w-0">
           <b className="block truncate text-table font-650">{title}</b>
-          <small className="mt-[3px] block truncate text-micro font-500 text-ink-4">{sub}</small>
+          <small
+            title={sub}
+            className={cn(
+              'mt-[3px] block text-micro font-500 text-ink-4',
+              wrap ? 'line-clamp-2 whitespace-normal' : 'truncate'
+            )}
+          >
+            {sub}
+          </small>
         </span>
         <span className="whitespace-nowrap text-caption font-600 text-ink-3 num">{right}</span>
       </Link>
-      <div className="flex w-[60px] justify-end gap-0.5 opacity-0 transition-opacity duration-fast focus-within:opacity-100 group-hover:opacity-100">
+      <div className="flex w-[66px] shrink-0 justify-end gap-0.5 opacity-0 transition-opacity duration-fast focus-within:opacity-100 group-hover:opacity-100">
         <Button
           variant="ghost"
           size="icon-sm"

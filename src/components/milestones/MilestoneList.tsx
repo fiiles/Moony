@@ -2,9 +2,9 @@ import { Link } from 'wouter';
 import { useTranslation } from 'react-i18next';
 import {
   CalendarClock,
-  Check,
   Clock,
   DatabaseBackup,
+  EyeOff,
   FileCheck,
   Home,
   Landmark,
@@ -20,7 +20,7 @@ import { useFormat } from '@/lib/use-format';
 import { cn } from '@/lib/utils';
 import { utcDayFloor } from '@/utils/chart-axis';
 import { formatNativePrice } from '@/utils/stock-monitor';
-import { daysBetween, milestoneHref, referenceDay, relativeLabel } from '@/utils/milestones';
+import { agendaDay, daysBetween, isUpkeep, milestoneHref, relativeLabel } from '@/utils/milestones';
 
 const ICONS: Record<MilestoneKind, LucideIcon> = {
   insurance_anniversary: Shield,
@@ -42,8 +42,8 @@ const ICONS: Record<MilestoneKind, LucideIcon> = {
 
 interface MilestoneListProps {
   milestones: readonly Milestone[];
-  onDone: (m: Milestone) => void;
-  onSnooze: (m: Milestone) => void;
+  onHide: (m: Milestone) => void;
+  onRemindLater: (m: Milestone) => void;
   /** Called when a row's link is followed (closes the top-bar popover). */
   onNavigate?: () => void;
   /** Let the sub-line wrap onto a second line instead of truncating (narrow popover). */
@@ -52,13 +52,13 @@ interface MilestoneListProps {
 
 /**
  * Milestone rows (spec 2026-10-05 §7): icon in a `well` square, title and one
- * sub-line, the relative date right; "Odložit o týden" and "Označit jako vyřízené"
+ * sub-line, the relative date right; "Připomenout za týden" and "Skrýt"
  * appear on hover next to the link, never inside it.
  */
 export function MilestoneList({
   milestones,
-  onDone,
-  onSnooze,
+  onHide,
+  onRemindLater,
   onNavigate,
   wrap = false,
 }: MilestoneListProps) {
@@ -68,8 +68,8 @@ export function MilestoneList({
         <MilestoneRow
           key={m.key}
           m={m}
-          onDone={onDone}
-          onSnooze={onSnooze}
+          onHide={onHide}
+          onRemindLater={onRemindLater}
           onNavigate={onNavigate}
           wrap={wrap}
         />
@@ -80,14 +80,14 @@ export function MilestoneList({
 
 function MilestoneRow({
   m,
-  onDone,
-  onSnooze,
+  onHide,
+  onRemindLater,
   onNavigate,
   wrap,
 }: {
   m: Milestone;
-  onDone: (m: Milestone) => void;
-  onSnooze: (m: Milestone) => void;
+  onHide: (m: Milestone) => void;
+  onRemindLater: (m: Milestone) => void;
   onNavigate?: () => void;
   wrap: boolean;
 }) {
@@ -145,12 +145,13 @@ function MilestoneRow({
         ? fmt.percent(current / target - 1, 1, { signed: true })
         : '';
     }
-    const ref = referenceDay(m);
+    const ref = isUpkeep(m) ? m.sinceDay : agendaDay(m, today);
     if (ref === null) return '';
     const label = relativeLabel(daysBetween(today, ref));
     return t(`relative.${label.key}`, { count: label.count });
   })();
 
+  const remindLabel = t(isUpkeep(m) ? 'actions.remindMonth' : 'actions.remindWeek');
   const Icon = ICONS[m.kind];
   const title = m.title || t(`titles.${m.kind}`);
 
@@ -182,20 +183,20 @@ function MilestoneRow({
         <Button
           variant="ghost"
           size="icon-sm"
-          aria-label={t('actions.snooze')}
-          title={t('actions.snooze')}
-          onClick={() => onSnooze(m)}
+          aria-label={remindLabel}
+          title={remindLabel}
+          onClick={() => onRemindLater(m)}
         >
           <Clock />
         </Button>
         <Button
           variant="ghost"
           size="icon-sm"
-          aria-label={t('actions.done')}
-          title={t('actions.done')}
-          onClick={() => onDone(m)}
+          aria-label={t('actions.hide')}
+          title={t('actions.hide')}
+          onClick={() => onHide(m)}
         >
-          <Check />
+          <EyeOff />
         </Button>
       </div>
     </li>

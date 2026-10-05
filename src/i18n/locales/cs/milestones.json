@@ -1,67 +1,140 @@
 {
   "card": {
     "title": "Co vás čeká",
-    "now": "Teď jednat",
-    "soon": "Brzy",
+    "settingsLink": "Upravit připomínky",
     "showAll": "Zobrazit vše ({{count}})",
-    "showLess": "Zobrazit méně"
+    "showLess": "Zobrazit méně",
+    "nothingDue": "V příštích 90 dnech nic nevyprší.",
+    "upkeep": "Údržba dat",
+    "upkeepShow": "Zobrazit {{count}}",
+    "upkeepHide": "Sbalit",
+    "today": "Dnes",
+    "target": "cíl",
+    "rowMenu": "Možnosti připomínky"
   },
   "status": {
-    "count_one": "{{count}} k vyřízení",
-    "count_few": "{{count}} k vyřízení",
-    "count_other": "{{count}} k vyřízení",
-    "title": "Teď jednat",
+    "deadline": "{{title}} · {{when}}",
+    "more": "+{{count}}",
+    "title": "Termíny do 14 dní",
     "openOverview": "Otevřít přehled"
   },
   "actions": {
-    "snooze": "Odložit o týden",
-    "done": "Označit jako vyřízené",
+    "hide": "Skrýt",
+    "remindWeek": "Připomenout za týden",
+    "remindMonth": "Připomenout za měsíc",
     "undo": "Vrátit"
   },
   "toast": {
-    "done": "Označeno jako vyřízené",
-    "snoozed": "Odloženo o týden"
+    "hidden": "Skryto",
+    "snoozedWeek": "Odloženo o týden",
+    "snoozedMonth": "Odloženo o měsíc",
+    "muted": "Připomínky vypnuty · {{group}}"
   },
   "relative": {
-    "today": "Dnes",
-    "tomorrow": "Zítra",
-    "inDays_one": "Za {{count}} den",
-    "inDays_few": "Za {{count}} dny",
-    "inDays_other": "Za {{count}} dní",
-    "inMonths_one": "Za {{count}} měsíc",
-    "inMonths_few": "Za {{count}} měsíce",
-    "inMonths_other": "Za {{count}} měsíců",
-    "daysAgo_one": "Před {{count}} dnem",
-    "daysAgo_few": "Před {{count}} dny",
-    "daysAgo_other": "Před {{count}} dny",
-    "monthsAgo_one": "Před {{count}} měsícem",
-    "monthsAgo_few": "Před {{count}} měsíci",
-    "monthsAgo_other": "Před {{count}} měsíci"
+    "today": "dnes",
+    "tomorrow": "zítra",
+    "inDays_one": "za {{count}} den",
+    "inDays_few": "za {{count}} dny",
+    "inDays_other": "za {{count}} dní",
+    "inMonths_one": "za {{count}} měsíc",
+    "inMonths_few": "za {{count}} měsíce",
+    "inMonths_other": "za {{count}} měsíců",
+    "daysAgo_one": "před {{count}} dnem",
+    "daysAgo_few": "před {{count}} dny",
+    "daysAgo_other": "před {{count}} dny",
+    "monthsAgo_one": "před {{count}} měsícem",
+    "monthsAgo_few": "před {{count}} měsíci",
+    "monthsAgo_other": "před {{count}} měsíci"
   },
   "titles": {
     "backup_stale": "Záloha dat",
     "balances_stale": "Zůstatky účtů"
   },
   "sub": {
-    "insurance_anniversary": "Výročí {{date}} · výpověď nejpozději {{deadline}}",
-    "insurance_anniversary_passed": "Výročí {{date}} · lhůta pro výpověď uplynula",
-    "insurance_end": "Smlouva končí {{date}}",
-    "insurance_payment": "Platba {{amount}} · {{date}}",
-    "loan_fixation_end": "Konec fixace {{date}} · čas porovnat nabídky",
+    "insurance_anniversary": "Poslední den výpovědi · výročí {{date}}",
+    "insurance_anniversary_passed": "Výročí smlouvy · lhůta pro výpověď uplynula",
+    "insurance_end": "Smlouva končí",
+    "insurance_payment": "Platba {{amount}}",
+    "loan_fixation_end": "Konec fixace · čas porovnat nabídky",
+    "loan_payoff": "Poslední splátka",
+    "bond_maturity": "Splatnost · vrátí se {{amount}}",
+    "bond_coupon": "Kupón {{amount}}",
+    "account_termination": "Účet končí",
+    "savings_rate_end": "Zvýhodněná sazba končí",
+    "watch_target_below": "Cena {{price}} klesla na cíl {{target}}",
+    "watch_target_above": "Cena {{price}} dosáhla cíle {{target}}",
     "loan_fixation_expired": "Fixace skončila {{date}} · doplňte novou sazbu",
-    "loan_payoff": "Poslední splátka {{date}}",
     "loan_balance_check": "Zůstatek neověřen od {{date}} · porovnejte s výpisem",
-    "bond_maturity": "Splatnost {{date}} · vrátí se {{amount}}",
-    "bond_coupon": "Kupón {{amount}} · {{date}}",
-    "account_termination": "Účet končí {{date}}",
-    "savings_rate_end": "Zvýhodněná sazba končí {{date}}",
+    "valuation_stale": "Bez nového odhadu od {{date}} · přeceňte",
     "backup_stale": "Poslední záloha {{date}}",
     "backup_never": "Zatím žádná záloha",
     "balances_stale_one": "{{count}} účet bez aktualizace přes 30 dní",
     "balances_stale_few": "{{count}} účty bez aktualizace přes 30 dní",
-    "balances_stale_other": "{{count}} účtů bez aktualizace přes 30 dní",
-    "valuation_stale": "Bez nového odhadu od {{date}} · přeceňte",
-    "watch_target_below": "Cena {{price}} klesla na cíl {{target}}",
-    "watch_target_above": "Cena {{price}} dosáhla cíle {{target}}"
+    "balances_stale_other": "{{count}} účtů bez aktualizace přes 30 dní"
+  },
+  "short": {
+    "backup_stale": "zálohovat data",
+    "balances_stale_one": "aktualizovat {{count}} zůstatek",
+    "balances_stale_few": "aktualizovat {{count}} zůstatky",
+    "balances_stale_other": "aktualizovat {{count}} zůstatků",
+    "valuation_stale": "{{title}} přecenit",
+    "loan_balance_check": "{{title}} ověřit zůstatek",
+    "loan_fixation_expired": "{{title}} doplnit sazbu"
+  },
+  "groups": {
+    "insuranceDates": {
+      "label": "Výročí a konce pojistek",
+      "hint": "Poslední den výpovědi asi 10 týdnů předem, konec smlouvy 2 měsíce předem.",
+      "mute": "Nepřipomínat výročí a konce pojistek"
+    },
+    "insurancePayments": {
+      "label": "Platby pojistného",
+      "hint": "Čtvrtletní, pololetní a roční platby 14 dní předem.",
+      "mute": "Nepřipomínat platby pojistného"
+    },
+    "loans": {
+      "label": "Konce fixace a doplacení úvěrů",
+      "hint": "Konec fixace 6 měsíců předem, poslední splátka měsíc předem.",
+      "mute": "Nepřipomínat konce fixace a doplacení"
+    },
+    "bonds": {
+      "label": "Splatnosti a kupóny dluhopisů",
+      "hint": "Splatnost měsíc předem, kupón týden předem.",
+      "mute": "Nepřipomínat splatnosti a kupóny"
+    },
+    "accounts": {
+      "label": "Konce účtů a zvýhodněných sazeb",
+      "hint": "Konec termínovaného účtu 4 týdny předem, konec zvýhodněné sazby 14 dní předem.",
+      "mute": "Nepřipomínat konce účtů a sazeb"
+    },
+    "targets": {
+      "label": "Cílové ceny akcií",
+      "hint": "Když cena dosáhne cílové ceny ve zvoleném směru.",
+      "mute": "Nepřipomínat cílové ceny"
+    },
+    "backup": {
+      "label": "Zálohy dat",
+      "hint": "Když je poslední záloha starší než 30 dní.",
+      "mute": "Nepřipomínat zálohy"
+    },
+    "balances": {
+      "label": "Aktualizace zůstatků",
+      "hint": "Když zůstatek účtu nikdo neaktualizoval přes 30 dní.",
+      "mute": "Nepřipomínat zůstatky účtů"
+    },
+    "valuations": {
+      "label": "Ocenění nemovitostí",
+      "hint": "Když je odhad hodnoty nemovitosti starší než rok.",
+      "mute": "Nepřipomínat ocenění nemovitostí"
+    },
+    "loanChecks": {
+      "label": "Kontroly úvěrů",
+      "hint": "Ověření zůstatku jednou ročně a nová sazba po konci fixace.",
+      "mute": "Nepřipomínat kontroly úvěrů"
+    }
+  },
+  "settings": {
+    "title": "Připomínky na přehledu",
+    "description": "Co připomíná karta Co vás čeká a horní lišta. Vypnuté druhy se nezobrazí nikde."
   }
 }

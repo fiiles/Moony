@@ -8,6 +8,12 @@ import { translateApiError } from '@/lib/translate-api-error';
 import { useMilestoneMutedKinds } from '@/hooks/use-milestones';
 import { isUpkeep, kindsOf, type MilestoneGroupId } from '@/utils/milestones';
 
+/** `mutedGroup` is set only for "Nepřipomínat …", the one change that gets a toast. */
+interface MutedVariables {
+  kinds: MilestoneKind[];
+  mutedGroup?: MilestoneGroupId;
+}
+
 /**
  * "Skrýt", "Připomenout za týden / měsíc" and "Nepřipomínat …", each with a "Vrátit" toast.
  * Every successful mutation refreshes ["milestones"] through the query client.
@@ -39,32 +45,40 @@ export function useMilestoneActions() {
     onError,
   });
 
+  // The mute toast lives in the mutation options, not in a per-call `mutate(..., { onSuccess })`:
+  // a row calling the hook can unmount when its item disappears, which drops call-level callbacks.
   const setMuted = useMutation({
-    mutationFn: (kinds: MilestoneKind[]) => milestonesApi.setMutedKinds(kinds),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['milestone-muted-kinds'] }),
+    mutationFn: ({ kinds }: MutedVariables) => milestonesApi.setMutedKinds(kinds),
+    onSuccess: (_data, { mutedGroup }) => {
+      void queryClient.invalidateQueries({ queryKey: ['milestone-muted-kinds'] });
+      if (mutedGroup) {
+        toast(t('toast.muted', { group: t(`groups.${mutedGroup}.label`) }), {
+          action: { label: t('actions.undo'), onClick: () => setGroupMuted(mutedGroup, false) },
+        });
+      }
+    },
     onError,
   });
 
+  // Built from the cache, not from the render closure: two quick changes (or an undo after
+  // another switch) must not overwrite each other with a stale list.
   const withGroup = (group: MilestoneGroupId, on: boolean): MilestoneKind[] => {
+    const current = queryClient.getQueryData<MilestoneKind[]>(['milestone-muted-kinds']) ?? muted;
     const kinds = kindsOf(group);
     return on
-      ? Array.from(new Set([...muted, ...kinds]))
-      : muted.filter((kind) => !kinds.includes(kind));
+      ? Array.from(new Set([...current, ...kinds]))
+      : current.filter((kind) => !kinds.includes(kind));
   };
+
+  function setGroupMuted(group: MilestoneGroupId, mutedOn: boolean): void {
+    setMuted.mutate({ kinds: withGroup(group, mutedOn) });
+  }
 
   return {
     hide: (m: Milestone) => setState.mutate({ m, state: 'done' }),
     remindLater: (m: Milestone) => setState.mutate({ m, state: 'snoozed' }),
-    muteGroup: (group: MilestoneGroupId) => {
-      const previous = muted;
-      setMuted.mutate(withGroup(group, true), {
-        onSuccess: () =>
-          toast(t('toast.muted', { group: t(`groups.${group}.label`) }), {
-            action: { label: t('actions.undo'), onClick: () => setMuted.mutate(previous) },
-          }),
-      });
-    },
-    setGroupMuted: (group: MilestoneGroupId, mutedOn: boolean) =>
-      setMuted.mutate(withGroup(group, mutedOn)),
+    muteGroup: (group: MilestoneGroupId) =>
+      setMuted.mutate({ kinds: withGroup(group, true), mutedGroup: group }),
+    setGroupMuted,
   };
 }

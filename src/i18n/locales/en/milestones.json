@@ -78,7 +78,7 @@
   "groups": {
     "insuranceDates": {
       "label": "Insurance anniversaries and ends",
-      "hint": "The last day to cancel about 10 weeks ahead, a contract end 2 months ahead.",
+      "hint": "A reminder about 10 weeks before the contract anniversary, 2 months before a contract end.",
       "mute": "Don't remind me about insurance anniversaries and ends"
     },
     "insurancePayments": {

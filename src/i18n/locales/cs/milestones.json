@@ -84,7 +84,7 @@
   "groups": {
     "insuranceDates": {
       "label": "Výročí a konce pojistek",
-      "hint": "Poslední den výpovědi asi 10 týdnů předem, konec smlouvy 2 měsíce předem.",
+      "hint": "Upozornění asi 10 týdnů před výročím smlouvy, na konec smlouvy 2 měsíce předem.",
       "mute": "Nepřipomínat výročí a konce pojistek"
     },
     "insurancePayments": {

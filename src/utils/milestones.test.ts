@@ -113,6 +113,23 @@ describe('upcomingDeadlines and isUrgent', () => {
   });
 });
 
+describe('upcomingDeadlines and isUrgent edges', () => {
+  it('includes a deadline exactly 14 days ahead and excludes one a day in the past', () => {
+    const edge = m({ key: 'edge', kind: 'insurance_end', dueDay: TODAY + 14 * DAY });
+    const overdue = m({ key: 'late', kind: 'insurance_end', dueDay: TODAY - 1 * DAY });
+    const today = m({ key: 'today', kind: 'insurance_end', dueDay: TODAY });
+    expect(upcomingDeadlines([edge, overdue, today], TODAY).map((x) => x.key)).toEqual([
+      'today',
+      'edge',
+    ]);
+  });
+
+  it('is urgent at 7 days and not at 8', () => {
+    expect(isUrgent(m({ kind: 'insurance_end', dueDay: TODAY + 7 * DAY }), TODAY)).toBe(true);
+    expect(isUrgent(m({ kind: 'insurance_end', dueDay: TODAY + 8 * DAY }), TODAY)).toBe(false);
+  });
+});
+
 describe('groups', () => {
   it('every kind belongs to exactly one group', () => {
     const grouped = MILESTONE_GROUP_IDS.flatMap((g) => kindsOf(g));

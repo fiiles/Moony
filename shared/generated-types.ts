@@ -855,7 +855,7 @@ kind: string;
  */
 stage: string; 
 /**
- * `action` (counts in the top-bar indicator) or `info`.
+ * `action` (something to do) or `info` (nothing to do).
  */
 tone: string; 
 /**

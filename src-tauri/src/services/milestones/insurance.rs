@@ -14,7 +14,7 @@ use crate::services::loan_amortization::{day_floor, due_day};
 /// A policy can be cancelled to the end of its insurance period with at least six weeks'
 /// notice; the period ends the day before the anniversary, so the last safe delivery day is
 /// the anniversary minus 43 days (the earlier date is the safe one).
-const NOTICE_DAYS: i64 = 43;
+pub(super) const NOTICE_DAYS: i64 = 43;
 /// Remind four weeks before the notice deadline (about ten weeks before the anniversary).
 const ANNIVERSARY_LEAD_DAYS: i64 = 28;
 const END_LEAD_DAYS: i64 = 60;

@@ -17,7 +17,7 @@ pub struct Milestone {
     pub kind: String,
     /// `now` (in the reminder window) or `soon` (within 90 days).
     pub stage: String,
-    /// `action` (counts in the top-bar indicator) or `info`.
+    /// `action` (something to do) or `info` (nothing to do).
     pub tone: String,
     /// Policy, loan, bond, account or property id; the ticker for targets.
     #[serde(rename = "sourceId")]
@@ -47,7 +47,7 @@ pub struct Milestone {
 
 /// Hidden for good (this occurrence only).
 pub const MILESTONE_STATE_DONE: &str = "done";
-/// Hidden for a week.
+/// Hidden for a week (upkeep: a month), never past the item's deadline.
 pub const MILESTONE_STATE_SNOOZED: &str = "snoozed";
 const MAX_KEY_CHARS: usize = 256;
 

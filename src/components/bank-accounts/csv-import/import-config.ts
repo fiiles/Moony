@@ -445,6 +445,7 @@ export function balanceUpdatePayload(account: BankAccount, balance: string): Ins
     interestRate: account.interestRate,
     hasZoneDesignation: account.hasZoneDesignation,
     terminationDate: account.terminationDate,
+    interestRateValidUntil: account.interestRateValidUntil,
     excludeFromBalance: account.excludeFromBalance,
   };
 }

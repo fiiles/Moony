@@ -52,6 +52,11 @@ pub struct WatchlistTargetPriceArgs {
         description = "Target price in the stock's own currency as a decimal string (e.g. \"250.50\"); omit or null to clear it"
     )]
     pub target_price: Option<String>,
+    #[serde(default)]
+    #[schemars(
+        description = "\"below\" when waiting for the price to fall to the target (buy or buy more), \"above\" when waiting for it to rise (sell). Omit to infer it from the current price."
+    )]
+    pub direction: Option<String>,
 }
 
 /// Every followed stock with its cached price, day change inputs, target and
@@ -71,6 +76,7 @@ pub fn watchlist_list(conn: &Connection) -> Result<Value> {
                 "fiftyTwoWeekLow": r.fifty_two_week_low,
                 "fiftyTwoWeekHigh": r.fifty_two_week_high,
                 "targetPrice": r.target_price,
+                "targetDirection": r.target_direction,
                 "notesBytes": r.notes.len(),
                 "exchange": r.exchange,
                 "priceFetchedAt": r.price_fetched_at,
@@ -154,12 +160,14 @@ pub fn watchlist_set_target_price(
     conn: &Connection,
     ticker: &str,
     target_price: Option<String>,
+    direction: Option<String>,
 ) -> Result<Value> {
     let followed_now = ensure_followed(conn, ticker)?;
-    let watched = watchlist::set_target_price(conn, ticker, target_price)?;
+    let watched = watchlist::set_target_price(conn, ticker, target_price, direction)?;
     Ok(json!({
         "ticker": watched.ticker,
         "targetPrice": watched.target_price,
+        "targetDirection": watched.target_direction,
         "notesBytes": watched.notes.len(),
         "followedByThisCall": followed_now,
     }))
@@ -191,6 +199,7 @@ mod tests {
                 id TEXT PRIMARY KEY,
                 ticker TEXT NOT NULL UNIQUE,
                 target_price TEXT,
+                target_direction TEXT,
                 notes TEXT NOT NULL DEFAULT '',
                 created_at INTEGER NOT NULL DEFAULT (unixepoch()),
                 updated_at INTEGER NOT NULL DEFAULT (unixepoch())
@@ -265,13 +274,24 @@ mod tests {
     #[test]
     fn target_price_follows_first_then_sets_and_clears() {
         let conn = setup_test_db();
-        let set = watchlist_set_target_price(&conn, "nvda", Some("180.00".to_string()))
+        let set = watchlist_set_target_price(&conn, "nvda", Some("180.00".to_string()), None)
             .expect("set target");
         assert_eq!(set["targetPrice"], "180.00");
         assert_eq!(set["followedByThisCall"], true);
-        let cleared = watchlist_set_target_price(&conn, "NVDA", None).expect("clear target");
+        let cleared = watchlist_set_target_price(&conn, "NVDA", None, None).expect("clear target");
         assert!(cleared["targetPrice"].is_null());
         assert_eq!(cleared["followedByThisCall"], false);
+    }
+
+    #[test]
+    fn target_direction_is_stored_and_listed() {
+        let conn = setup_test_db();
+        let set =
+            watchlist_set_target_price(&conn, "CAT", Some("600".into()), Some("below".into()))
+                .expect("set target");
+        assert_eq!(set["targetDirection"], "below");
+        let list = watchlist_list(&conn).expect("list");
+        assert_eq!(list["watchlist"][0]["targetDirection"], "below");
     }
 
     #[test]
@@ -282,7 +302,7 @@ mod tests {
             AppError::Validation(_)
         ));
         assert!(matches!(
-            watchlist_set_target_price(&conn, "AAPL", Some("-5".to_string())).unwrap_err(),
+            watchlist_set_target_price(&conn, "AAPL", Some("-5".to_string()), None).unwrap_err(),
             AppError::Validation(_)
         ));
         // The rejected target must not have left a half-followed row behind

@@ -1366,7 +1366,11 @@ averagePriceCurrency: string }
  * notes empty, target None). All stock_data fields are None when the cache
  * has no row yet (e.g. offline right after a search).
  */
-export type StockMonitorDetail = { ticker: string; followed: boolean; targetPrice: string | null; notes: string; shortName: string | null; longName: string | null; currency: string | null; currentPrice: string | null; previousClose: string | null; fiftyTwoWeekLow: string | null; fiftyTwoWeekHigh: string | null; marketCap: string | null; peRatio: string | null; 
+export type StockMonitorDetail = { ticker: string; followed: boolean; targetPrice: string | null; 
+/**
+ * `below` (waiting for a dip) or `above` (waiting for a rise); None without a target.
+ */
+targetDirection: string | null; notes: string; shortName: string | null; longName: string | null; currency: string | null; currentPrice: string | null; previousClose: string | null; fiftyTwoWeekLow: string | null; fiftyTwoWeekHigh: string | null; marketCap: string | null; peRatio: string | null; 
 /**
  * Raw Yahoo fraction (0.0044 = 0.44 %); multiply by 100 for display.
  */
@@ -1550,12 +1554,20 @@ export type UserProfile = { id: number; name: string; surname: string; email: st
 /**
  * A followed stock (row in watched_stocks)
  */
-export type WatchedStock = { id: string; ticker: string; targetPrice: string | null; notes: string; createdAt: number; updatedAt: number }
+export type WatchedStock = { id: string; ticker: string; targetPrice: string | null; 
+/**
+ * `below` (waiting for a dip) or `above` (waiting for a rise); None without a target.
+ */
+targetDirection: string | null; notes: string; createdAt: number; updatedAt: number }
 
 /**
  * Overview-table row: watchlist entry enriched from the stock_data cache
  */
-export type WatchedStockRow = { id: string; ticker: string; targetPrice: string | null; notes: string; shortName: string | null; longName: string | null; currency: string | null; currentPrice: string | null; previousClose: string | null; fiftyTwoWeekLow: string | null; fiftyTwoWeekHigh: string | null; exchange: string | null; priceFetchedAt: number | null; heldInvestmentId: string | null; isHeld: boolean; 
+export type WatchedStockRow = { id: string; ticker: string; targetPrice: string | null; 
+/**
+ * `below` (waiting for a dip) or `above` (waiting for a rise); None without a target.
+ */
+targetDirection: string | null; notes: string; shortName: string | null; longName: string | null; currency: string | null; currentPrice: string | null; previousClose: string | null; fiftyTwoWeekLow: string | null; fiftyTwoWeekHigh: string | null; exchange: string | null; priceFetchedAt: number | null; heldInvestmentId: string | null; isHeld: boolean; 
 /**
  * When the stock was added to the watchlist (unix seconds).
  */

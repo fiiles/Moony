@@ -171,6 +171,7 @@
     "averagePriceNonNegative": "Average price cannot be negative",
     "tickerInvalid": "Enter a valid ticker symbol",
     "targetPricePositive": "Target price must be a positive number",
+    "targetDirectionInvalid": "Choose whether the target waits for a fall or a rise.",
     "notesTooLong": "Notes are too long (max 100 KB)",
     "invalidChartPeriod": "Invalid chart period",
     "insuranceTypeRequired": "Insurance type is required",

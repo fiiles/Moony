@@ -818,14 +818,19 @@ impl MoonyMcp {
     }
 
     #[tool(
-        description = "Set the user's own target price for a stock in Stock Monitor, or clear it by passing targetPrice: null. The target is an informative reference point shown next to the price — it triggers no order and no alert. Given in the stock's own currency as a decimal string. Follows the ticker automatically when it is not followed yet. Call this only after presenting the target to the user and receiving their confirmation."
+        description = "Set the user's own target price for a stock in Stock Monitor, or clear it by passing targetPrice: null. direction says what the target waits for: \"below\" (a dip to buy or buy more) or \"above\" (a rise to sell); omitted, it is inferred from the current price. Moony lists a crossed target among the user's milestones; it places no order. Given in the stock's own currency as a decimal string. Follows the ticker automatically when it is not followed yet. Call this only after presenting the target to the user and receiving their confirmation."
     )]
     fn watchlist_set_target_price(
         &self,
         Parameters(args): Parameters<stock_monitor::WatchlistTargetPriceArgs>,
     ) -> Result<CallToolResult, McpError> {
         let result = self.db.with_conn(|conn| {
-            stock_monitor::watchlist_set_target_price(conn, &args.ticker, args.target_price.clone())
+            stock_monitor::watchlist_set_target_price(
+                conn,
+                &args.ticker,
+                args.target_price.clone(),
+                args.direction.clone(),
+            )
         });
         self.create_tool_result("stock-monitor", result)
     }

@@ -171,6 +171,7 @@
     "averagePriceNonNegative": "Průměrná cena nemůže být záporná",
     "tickerInvalid": "Zadejte platný symbol akcie",
     "targetPricePositive": "Cílová cena musí být kladné číslo",
+    "targetDirectionInvalid": "Vyberte, zda cíl čeká na pokles, nebo na růst.",
     "notesTooLong": "Poznámky jsou příliš dlouhé (max 100 kB)",
     "invalidChartPeriod": "Neplatné období grafu",
     "insuranceTypeRequired": "Typ pojištění je povinný",

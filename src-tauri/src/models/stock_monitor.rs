@@ -13,6 +13,9 @@ pub struct WatchedStock {
     pub ticker: String,
     #[serde(rename = "targetPrice")]
     pub target_price: Option<String>,
+    /// `below` (waiting for a dip) or `above` (waiting for a rise); None without a target.
+    #[serde(rename = "targetDirection")]
+    pub target_direction: Option<String>,
     pub notes: String,
     #[serde(rename = "createdAt")]
     pub created_at: i64,
@@ -27,6 +30,9 @@ pub struct WatchedStockRow {
     pub ticker: String,
     #[serde(rename = "targetPrice")]
     pub target_price: Option<String>,
+    /// `below` (waiting for a dip) or `above` (waiting for a rise); None without a target.
+    #[serde(rename = "targetDirection")]
+    pub target_direction: Option<String>,
     pub notes: String,
     #[serde(rename = "shortName")]
     pub short_name: Option<String>,
@@ -62,6 +68,9 @@ pub struct StockMonitorDetail {
     pub followed: bool,
     #[serde(rename = "targetPrice")]
     pub target_price: Option<String>,
+    /// `below` (waiting for a dip) or `above` (waiting for a rise); None without a target.
+    #[serde(rename = "targetDirection")]
+    pub target_direction: Option<String>,
     pub notes: String,
     #[serde(rename = "shortName")]
     pub short_name: Option<String>,
@@ -149,6 +158,21 @@ pub fn validate_target_price(target: &Option<String>) -> Result<()> {
     Ok(())
 }
 
+/// Target waiting for the price to fall to it.
+pub const TARGET_BELOW: &str = "below";
+/// Target waiting for the price to rise to it.
+pub const TARGET_ABOVE: &str = "above";
+
+/// A target direction is `below`, `above` or absent.
+pub fn validate_target_direction(direction: &Option<String>) -> Result<()> {
+    match direction.as_deref() {
+        None | Some(TARGET_BELOW) | Some(TARGET_ABOVE) => Ok(()),
+        Some(_) => Err(AppError::Validation(
+            "validation.targetDirectionInvalid".to_string(),
+        )),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -208,5 +232,15 @@ mod tests {
         assert!(validate_target_price(&Some("NaN".to_string())).is_err());
         assert!(validate_target_price(&Some("2.5e2".to_string())).is_err());
         assert!(validate_target_price(&Some("1.2.3".to_string())).is_err());
+    }
+
+    #[test]
+    fn target_direction_validation() {
+        assert!(validate_target_direction(&None).is_ok());
+        assert!(validate_target_direction(&Some(TARGET_BELOW.to_string())).is_ok());
+        assert!(validate_target_direction(&Some(TARGET_ABOVE.to_string())).is_ok());
+        assert!(validate_target_direction(&Some("sideways".to_string())).is_err());
+        assert!(validate_target_direction(&Some(String::new())).is_err());
+        assert!(validate_target_direction(&Some("Below".to_string())).is_err());
     }
 }

@@ -138,7 +138,8 @@
     "explainBelow": "Upozorním, až cena klesne na {{price}} ({{pct}} od dnešní ceny).",
     "explainAbove": "Upozorním, až cena vystoupá na {{price}} ({{pct}} od dnešní ceny).",
     "explainBelowNoPrice": "Upozorním, až cena klesne na {{price}}.",
-    "explainAboveNoPrice": "Upozorním, až cena vystoupá na {{price}}."
+    "explainAboveNoPrice": "Upozorním, až cena vystoupá na {{price}}.",
+    "explainReached": "Cena už je na cíli nebo za ním – Moony ji hned ukáže mezi termíny."
   },
   "notes": {
     "title": "Poznámky",

@@ -136,7 +136,8 @@
     "explainBelow": "Moony will remind you when the price falls to {{price}} ({{pct}} from today's price).",
     "explainAbove": "Moony will remind you when the price rises to {{price}} ({{pct}} from today's price).",
     "explainBelowNoPrice": "Moony will remind you when the price falls to {{price}}.",
-    "explainAboveNoPrice": "Moony will remind you when the price rises to {{price}}."
+    "explainAboveNoPrice": "Moony will remind you when the price rises to {{price}}.",
+    "explainReached": "The price is already at or past this target – Moony will list it right away."
   },
   "notes": {
     "title": "Notes",

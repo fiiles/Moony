@@ -13,7 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useFormat } from '@/lib/use-format';
-import { formatNativePrice, inferTargetDirection } from '@/utils/stock-monitor';
+import { formatNativePrice, inferTargetDirection, targetReached } from '@/utils/stock-monitor';
 import type { TargetDirection } from '@shared/schema';
 
 export interface TargetPriceTarget {
@@ -79,23 +79,32 @@ function TargetForm({
   const high = parseFloat(target.fiftyTwoWeekHigh ?? '');
   const hasTarget = isFinite(parseFloat(target.targetPrice ?? ''));
 
-  // null = follow the typed price; an existing target keeps its stored direction.
-  const [direction, setDirection] = useState<TargetDirection | null>(target.targetDirection);
+  // The choice follows the typed price until the user touches it; an unchanged
+  // value keeps its stored direction.
+  const [direction, setDirection] = useState<TargetDirection>(target.targetDirection ?? 'above');
+  const [touched, setTouched] = useState(false);
   const draftValue = parseFloat(draft.trim().replace(',', '.'));
+  const hasDraft = isFinite(draftValue) && draftValue > 0;
   const knownCurrent = isFinite(current) && current > 0 ? current : null;
-  const effective: TargetDirection =
-    direction ?? inferTargetDirection(isFinite(draftValue) ? draftValue : 0, knownCurrent);
-  const explain =
-    isFinite(draftValue) && draftValue > 0
-      ? knownCurrent !== null
-        ? t(effective === 'below' ? 'target.explainBelow' : 'target.explainAbove', {
+  const effective: TargetDirection = touched
+    ? direction
+    : !hasDraft
+      ? (target.targetDirection ?? 'above')
+      : target.targetDirection && draftValue === parseFloat(target.targetPrice ?? '')
+        ? target.targetDirection
+        : inferTargetDirection(draftValue, knownCurrent);
+  const explain = hasDraft
+    ? knownCurrent !== null
+      ? targetReached(knownCurrent, draftValue, effective)
+        ? t('target.explainReached')
+        : t(effective === 'below' ? 'target.explainBelow' : 'target.explainAbove', {
             price: formatNativePrice(draftValue, target.currency, fmt.locale),
             pct: fmt.percent(draftValue / knownCurrent - 1, 1, { signed: true }),
           })
-        : t(effective === 'below' ? 'target.explainBelowNoPrice' : 'target.explainAboveNoPrice', {
-            price: formatNativePrice(draftValue, target.currency, fmt.locale),
-          })
-      : null;
+      : t(effective === 'below' ? 'target.explainBelowNoPrice' : 'target.explainAboveNoPrice', {
+          price: formatNativePrice(draftValue, target.currency, fmt.locale),
+        })
+    : null;
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -151,17 +160,21 @@ function TargetForm({
         <legend className="mb-1.5 text-caption font-700 text-ink-2">
           {t('target.directionLabel')}
         </legend>
-        <RadioGroup
-          value={effective}
-          onValueChange={(v) => setDirection(v as TargetDirection)}
-          className="grid gap-2"
-        >
+        <RadioGroup value={effective} className="grid gap-2">
           {(['below', 'above'] as const).map((value) => (
             <label
               key={value}
               className="flex cursor-pointer items-center gap-2 text-body text-ink-2"
             >
-              <RadioGroupItem value={value} id={`target-direction-${value}`} />
+              {/* onClick, not onValueChange: choosing the already selected option counts too. */}
+              <RadioGroupItem
+                value={value}
+                id={`target-direction-${value}`}
+                onClick={() => {
+                  setDirection(value);
+                  setTouched(true);
+                }}
+              />
               {t(value === 'below' ? 'target.directionBelow' : 'target.directionAbove')}
             </label>
           ))}

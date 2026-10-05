@@ -14,6 +14,8 @@ import type {
   LoanEvent,
   InsertLoanEvent,
   OnboardingProgress,
+  Milestone,
+  MilestoneState,
   BackupManifest,
   BackupInspection,
   DataLocation,
@@ -796,6 +798,17 @@ export const onboardingApi = {
 };
 
 // ============================================================================
+// Milestones API — "Co vás čeká" card and the top-bar indicator
+// ============================================================================
+
+export const milestonesApi = {
+  list: () => tauriInvoke<Milestone[]>('get_milestones'),
+  setState: (key: string, state: MilestoneState) =>
+    tauriInvoke<void>('set_milestone_state', { key, state }),
+  clearState: (key: string) => tauriInvoke<void>('clear_milestone_state', { key }),
+};
+
+// ============================================================================
 // Data API — backup, restore, full export, integrity, data folder
 // ============================================================================
 
@@ -1213,6 +1226,7 @@ export const api = {
   stockTags: stockTagsApi,
   categorization: categorizationApi,
   budgeting: budgetingApi,
+  milestones: milestonesApi,
 };
 
 export default api;

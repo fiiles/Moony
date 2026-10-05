@@ -1,4 +1,12 @@
-import { QueryClient } from '@tanstack/react-query';
+import { MutationCache, QueryClient } from '@tanstack/react-query';
+
+// Any successful write can add, move or resolve a milestone (an edited policy, a new
+// target, a recorded loan event), so every mutation refreshes ["milestones"].
+const mutationCache = new MutationCache({
+  onSuccess: () => {
+    void queryClient.invalidateQueries({ queryKey: ['milestones'] });
+  },
+});
 
 /**
  * Query Client for Tauri
@@ -8,6 +16,7 @@ import { QueryClient } from '@tanstack/react-query';
  * Each hook will explicitly call the Tauri API.
  */
 export const queryClient = new QueryClient({
+  mutationCache,
   defaultOptions: {
     queries: {
       refetchInterval: false,

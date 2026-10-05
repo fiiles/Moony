@@ -1503,6 +1503,56 @@ export interface OnboardingProgress {
   completedAt: number | null;
 }
 
+// Milestones ("Co vás čeká") — src-tauri/src/models/milestones.rs
+export type MilestoneKind =
+  | 'insurance_anniversary'
+  | 'insurance_end'
+  | 'insurance_payment'
+  | 'loan_fixation_end'
+  | 'loan_fixation_expired'
+  | 'loan_payoff'
+  | 'loan_balance_check'
+  | 'bond_maturity'
+  | 'bond_coupon'
+  | 'account_termination'
+  | 'savings_rate_end'
+  | 'balances_stale'
+  | 'backup_stale'
+  | 'valuation_stale'
+  | 'watch_target';
+export type MilestoneStage = 'now' | 'soon';
+export type MilestoneTone = 'action' | 'info';
+export type MilestoneState = 'done' | 'snoozed';
+
+export interface Milestone {
+  /** Stable occurrence key; the done / snoozed state is stored under it. */
+  key: string;
+  kind: MilestoneKind;
+  stage: MilestoneStage;
+  /** `action` counts in the top-bar indicator; `info` is shown on the card only. */
+  tone: MilestoneTone;
+  /** Policy, loan, bond, account or property id; the ticker for targets. */
+  sourceId: string | null;
+  /** Entity name; empty for the backup and balances items. */
+  title: string;
+  /** UTC day of the event. */
+  dueDay: number | null;
+  /** Last day to act when it differs from the event (insurance notice deadline). */
+  actionDay: number | null;
+  /** Day of the last backup, balance update, valuation or balance check. */
+  sinceDay: number | null;
+  /** Payment, coupon, returned principal or target price (TEXT money). */
+  amount: string | null;
+  currency: string | null;
+  /** Current price of a crossed target. */
+  referenceAmount: string | null;
+  direction: TargetDirection | null;
+  /** Number of stale accounts. */
+  count: number | null;
+  /** False when only "Odložit" is offered. */
+  canDismiss: boolean;
+}
+
 // ============================================================================
 // Stock CSV import (src-tauri/src/services/stock_import/types.rs)
 // Columns are 0-based indexes into the header row.

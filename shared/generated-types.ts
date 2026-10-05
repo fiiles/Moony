@@ -836,6 +836,70 @@ export type McpServerStatus = { running: boolean; port: number; url: string; tok
 export type MenuPreferences = { loans: boolean; insurance: boolean; investments: boolean; bonds: boolean; realEstate: boolean; crypto?: boolean; otherAssets?: boolean }
 
 /**
+ * One occurrence of something the user should act on or know about.
+ */
+export type Milestone = { 
+/**
+ * Stable occurrence key; the done / snoozed state is stored under it.
+ */
+key: string; 
+/**
+ * `insurance_anniversary`, `insurance_end`, `insurance_payment`, `loan_fixation_end`,
+ * `loan_fixation_expired`, `loan_payoff`, `loan_balance_check`, `bond_maturity`,
+ * `bond_coupon`, `account_termination`, `savings_rate_end`, `balances_stale`,
+ * `backup_stale`, `valuation_stale`, `watch_target`.
+ */
+kind: string; 
+/**
+ * `now` (in the reminder window) or `soon` (within 90 days).
+ */
+stage: string; 
+/**
+ * `action` (counts in the top-bar indicator) or `info`.
+ */
+tone: string; 
+/**
+ * Policy, loan, bond, account or property id; the ticker for targets.
+ */
+sourceId: string | null; 
+/**
+ * Entity name; empty for the backup and balances items.
+ */
+title: string; 
+/**
+ * UTC day of the event.
+ */
+dueDay: number | null; 
+/**
+ * Last day to act when it differs from the event (insurance notice deadline).
+ */
+actionDay: number | null; 
+/**
+ * Day of the last backup, balance update, valuation or balance check.
+ */
+sinceDay: number | null; 
+/**
+ * Payment, coupon, returned principal or target price (TEXT money).
+ */
+amount: string | null; currency: string | null; 
+/**
+ * Current price of a crossed target.
+ */
+referenceAmount: string | null; 
+/**
+ * `below` / `above` for targets.
+ */
+direction: string | null; 
+/**
+ * Number of stale accounts.
+ */
+count: number | null; 
+/**
+ * False when only "Odložit" makes sense (the item resolves with the data).
+ */
+canDismiss: boolean }
+
+/**
  * Done-state of the dashboard "Getting started" checklist plus the
  * onboarding flags stored in `app_config`.
  */

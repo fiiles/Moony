@@ -226,7 +226,9 @@
     "stockImportCurrencyRequired": "Vyberte sloupec s měnou.",
     "stockImportTypeRequired": "Vyberte sloupec s typem obchodu.",
     "dateFormatRequired": "Zadejte formát data.",
-    "csvDelimiterInvalid": "Oddělovač musí být čárka, středník nebo tabulátor."
+    "csvDelimiterInvalid": "Oddělovač musí být čárka, středník nebo tabulátor.",
+    "milestoneKeyInvalid": "Tuto připomínku se nepodařilo najít.",
+    "milestoneStateInvalid": "Tuto připomínku se nepodařilo upravit."
   },
   "auth": {
     "wrongPassword": "Zadané heslo je nesprávné. Zkuste to prosím znovu.",

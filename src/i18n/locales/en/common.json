@@ -226,7 +226,9 @@
     "stockImportCurrencyRequired": "Choose the currency column.",
     "stockImportTypeRequired": "Choose the column with the trade type.",
     "dateFormatRequired": "Enter the date format.",
-    "csvDelimiterInvalid": "The delimiter must be a comma, a semicolon or a tab."
+    "csvDelimiterInvalid": "The delimiter must be a comma, a semicolon or a tab.",
+    "milestoneKeyInvalid": "This reminder could not be found.",
+    "milestoneStateInvalid": "This reminder could not be updated."
   },
   "auth": {
     "wrongPassword": "The password you entered is incorrect. Please try again.",

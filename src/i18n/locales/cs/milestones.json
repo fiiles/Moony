@@ -1,0 +1,67 @@
+{
+  "card": {
+    "title": "Co vás čeká",
+    "now": "Teď jednat",
+    "soon": "Brzy",
+    "showAll": "Zobrazit vše ({{count}})",
+    "showLess": "Zobrazit méně"
+  },
+  "status": {
+    "count_one": "{{count}} k vyřízení",
+    "count_few": "{{count}} k vyřízení",
+    "count_other": "{{count}} k vyřízení",
+    "title": "Teď jednat",
+    "openOverview": "Otevřít přehled"
+  },
+  "actions": {
+    "snooze": "Odložit o týden",
+    "done": "Vyřízeno",
+    "undo": "Vrátit"
+  },
+  "toast": {
+    "done": "Označeno jako vyřízené",
+    "snoozed": "Odloženo o týden"
+  },
+  "relative": {
+    "today": "dnes",
+    "tomorrow": "zítra",
+    "inDays_one": "za {{count}} den",
+    "inDays_few": "za {{count}} dny",
+    "inDays_other": "za {{count}} dní",
+    "inMonths_one": "za {{count}} měsíc",
+    "inMonths_few": "za {{count}} měsíce",
+    "inMonths_other": "za {{count}} měsíců",
+    "daysAgo_one": "před {{count}} dnem",
+    "daysAgo_few": "před {{count}} dny",
+    "daysAgo_other": "před {{count}} dny",
+    "monthsAgo_one": "před {{count}} měsícem",
+    "monthsAgo_few": "před {{count}} měsíci",
+    "monthsAgo_other": "před {{count}} měsíci"
+  },
+  "titles": {
+    "backup_stale": "Záloha dat",
+    "balances_stale": "Zůstatky účtů"
+  },
+  "sub": {
+    "insurance_anniversary": "Výročí {{date}} · výpověď nejpozději {{deadline}}",
+    "insurance_anniversary_passed": "Výročí {{date}} · lhůta pro výpověď uplynula",
+    "insurance_end": "Smlouva končí {{date}}",
+    "insurance_payment": "Platba {{amount}} · {{date}}",
+    "loan_fixation_end": "Konec fixace {{date}} · čas porovnat nabídky",
+    "loan_fixation_expired": "Fixace skončila {{date}} · doplňte novou sazbu",
+    "loan_payoff": "Poslední splátka {{date}}",
+    "loan_balance_check": "Zůstatek ověřen {{date}} · porovnejte s výpisem",
+    "bond_maturity": "Splatnost {{date}} · vrátí se {{amount}}",
+    "bond_coupon": "Kupón {{amount}} · {{date}}",
+    "account_termination": "Účet končí {{date}}",
+    "savings_rate_end": "Zvýhodněná sazba končí {{date}}",
+    "backup_stale": "Poslední záloha {{date}}",
+    "backup_never": "Zatím žádná záloha",
+    "balances_stale_one": "{{count}} účet bez aktualizace přes 30 dní",
+    "balances_stale_few": "{{count}} účty bez aktualizace přes 30 dní",
+    "balances_stale_other": "{{count}} účtů bez aktualizace přes 30 dní",
+    "valuation_stale": "Odhad hodnoty z {{date}} · přeceňte",
+    "watch_target_below": "Cena {{price}} klesla na cíl {{target}}",
+    "watch_target_above": "Cena {{price}} dosáhla cíle {{target}}"
+  }
+}

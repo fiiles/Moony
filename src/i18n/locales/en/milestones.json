@@ -1,0 +1,61 @@
+{
+  "card": {
+    "title": "What's coming up",
+    "now": "Act now",
+    "soon": "Coming up",
+    "showAll": "Show all ({{count}})",
+    "showLess": "Show less"
+  },
+  "status": {
+    "count_one": "{{count}} to handle",
+    "count_other": "{{count}} to handle",
+    "title": "Act now",
+    "openOverview": "Open overview"
+  },
+  "actions": {
+    "snooze": "Snooze for a week",
+    "done": "Done",
+    "undo": "Undo"
+  },
+  "toast": {
+    "done": "Marked as done",
+    "snoozed": "Snoozed for a week"
+  },
+  "relative": {
+    "today": "today",
+    "tomorrow": "tomorrow",
+    "inDays_one": "in {{count}} day",
+    "inDays_other": "in {{count}} days",
+    "inMonths_one": "in {{count}} month",
+    "inMonths_other": "in {{count}} months",
+    "daysAgo_one": "{{count}} day ago",
+    "daysAgo_other": "{{count}} days ago",
+    "monthsAgo_one": "{{count}} month ago",
+    "monthsAgo_other": "{{count}} months ago"
+  },
+  "titles": {
+    "backup_stale": "Data backup",
+    "balances_stale": "Account balances"
+  },
+  "sub": {
+    "insurance_anniversary": "Anniversary {{date}} · cancel by {{deadline}}",
+    "insurance_anniversary_passed": "Anniversary {{date}} · the notice period has passed",
+    "insurance_end": "Contract ends {{date}}",
+    "insurance_payment": "Payment {{amount}} · {{date}}",
+    "loan_fixation_end": "Fixed rate ends {{date}} · time to compare offers",
+    "loan_fixation_expired": "Fixed rate ended {{date}} · enter the new rate",
+    "loan_payoff": "Last payment {{date}}",
+    "loan_balance_check": "Balance checked {{date}} · compare with a statement",
+    "bond_maturity": "Matures {{date}} · {{amount}} comes back",
+    "bond_coupon": "Coupon {{amount}} · {{date}}",
+    "account_termination": "Account ends {{date}}",
+    "savings_rate_end": "Promotional rate ends {{date}}",
+    "backup_stale": "Last backup {{date}}",
+    "backup_never": "No backup yet",
+    "balances_stale_one": "{{count}} account not updated for over 30 days",
+    "balances_stale_other": "{{count}} accounts not updated for over 30 days",
+    "valuation_stale": "Valued on {{date}} · revalue it",
+    "watch_target_below": "Price {{price}} fell to the target {{target}}",
+    "watch_target_above": "Price {{price}} reached the target {{target}}"
+  }
+}

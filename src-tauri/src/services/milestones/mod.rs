@@ -327,4 +327,35 @@ mod tests {
         let ids: Vec<_> = list.iter().map(|m| m.source_id.clone().unwrap()).collect();
         assert_eq!(ids, vec!["a", "b", "c"]);
     }
+
+    #[test]
+    fn now_items_are_ordered_dated_then_watch_target_then_upkeep() {
+        let conn = setup();
+        let today = day(2026, 10, 20);
+        // Anniversary 24 Dec 2026 is inside its reminder window (from 15 Oct).
+        policy(&conn, "p1", day(2020, 12, 24), None, "monthly", "300");
+        // A crossed watch target and a profile that never made a backup.
+        conn.execute(
+            "INSERT INTO watched_stocks (id, ticker, target_price, target_direction)
+             VALUES ('w', 'DIP', '600', 'below')",
+            [],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO stock_data (id, ticker, original_price, currency) VALUES ('w', 'DIP', '598', 'USD')",
+            [],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO user_profile (name, created_at) VALUES ('F', ?1)",
+            [day(2026, 1, 1)],
+        )
+        .unwrap();
+        let list = list_milestones(&conn, today).unwrap();
+        assert_eq!(
+            kinds(&list),
+            vec!["insurance_anniversary", "watch_target", "backup_stale"]
+        );
+        assert!(list.iter().all(|m| m.stage == STAGE_NOW));
+    }
 }

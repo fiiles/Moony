@@ -28,6 +28,7 @@ import { utcDayFloor } from '@/utils/chart-axis';
 import { formatNativePrice } from '@/utils/stock-monitor';
 import {
   agendaDay,
+  canRemindLater,
   daysBetween,
   groupOf,
   isUpkeep,
@@ -99,6 +100,7 @@ export function MilestoneMenu({ m, title }: { m: Milestone; title: string }) {
   const { t } = useTranslation('milestones');
   const { hide, remindLater, muteGroup } = useMilestoneActions();
   const group = groupOf(m.kind);
+  const today = utcDayFloor(Date.now() / 1000);
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -116,10 +118,12 @@ export function MilestoneMenu({ m, title }: { m: Milestone; title: string }) {
           <EyeOff />
           {t('actions.hide')}
         </DropdownMenuItem>
-        <DropdownMenuItem onSelect={() => remindLater(m)}>
-          <Clock />
-          {t(isUpkeep(m) ? 'actions.remindMonth' : 'actions.remindWeek')}
-        </DropdownMenuItem>
+        {canRemindLater(m, today) && (
+          <DropdownMenuItem onSelect={() => remindLater(m)}>
+            <Clock />
+            {t(isUpkeep(m) ? 'actions.remindMonth' : 'actions.remindWeek')}
+          </DropdownMenuItem>
+        )}
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={() => muteGroup(group)}>
           <BellOff />

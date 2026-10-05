@@ -4,7 +4,7 @@
     "settingsLink": "Edit reminders",
     "showAll": "Show all ({{count}})",
     "showLess": "Show less",
-    "nothingDue": "Nothing comes due in the next 90 days.",
+    "nothingDue": "No upcoming dates.",
     "upkeep": "Data upkeep",
     "upkeepShow": "Show {{count}}",
     "upkeepHide": "Collapse",
@@ -78,7 +78,7 @@
   "groups": {
     "insuranceDates": {
       "label": "Insurance anniversaries and ends",
-      "hint": "A reminder about 10 weeks before the contract anniversary, 2 months before a contract end.",
+      "hint": "On the overview up to 3 months ahead; anniversaries with the last day to cancel.",
       "mute": "Don't remind me about insurance anniversaries and ends"
     },
     "insurancePayments": {
@@ -93,12 +93,12 @@
     },
     "bonds": {
       "label": "Bond maturities and coupons",
-      "hint": "A maturity a month ahead, a coupon a week ahead.",
+      "hint": "A maturity up to 3 months ahead, a coupon a week ahead.",
       "mute": "Don't remind me about maturities and coupons"
     },
     "accounts": {
       "label": "Account and promotional rate ends",
-      "hint": "A term account end 4 weeks ahead, a promotional rate end 14 days ahead.",
+      "hint": "An account or promotional rate end up to 3 months ahead.",
       "mute": "Don't remind me about account and rate ends"
     },
     "targets": {

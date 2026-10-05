@@ -4,7 +4,7 @@
     "settingsLink": "Upravit připomínky",
     "showAll": "Zobrazit vše ({{count}})",
     "showLess": "Zobrazit méně",
-    "nothingDue": "V příštích 90 dnech nic nevyprší.",
+    "nothingDue": "Žádné další termíny.",
     "upkeep": "Údržba dat",
     "upkeepShow": "Zobrazit {{count}}",
     "upkeepHide": "Sbalit",
@@ -84,7 +84,7 @@
   "groups": {
     "insuranceDates": {
       "label": "Výročí a konce pojistek",
-      "hint": "Upozornění asi 10 týdnů před výročím smlouvy, na konec smlouvy 2 měsíce předem.",
+      "hint": "Na přehledu až 3 měsíce předem, u výročí s posledním dnem výpovědi.",
       "mute": "Nepřipomínat výročí a konce pojistek"
     },
     "insurancePayments": {
@@ -99,12 +99,12 @@
     },
     "bonds": {
       "label": "Splatnosti a kupóny dluhopisů",
-      "hint": "Splatnost měsíc předem, kupón týden předem.",
+      "hint": "Splatnost až 3 měsíce předem, kupón týden předem.",
       "mute": "Nepřipomínat splatnosti a kupóny"
     },
     "accounts": {
       "label": "Konce účtů a zvýhodněných sazeb",
-      "hint": "Konec termínovaného účtu 4 týdny předem, konec zvýhodněné sazby 14 dní předem.",
+      "hint": "Konec účtu nebo zvýhodněné sazby až 3 měsíce předem.",
       "mute": "Nepřipomínat konce účtů a sazeb"
     },
     "targets": {

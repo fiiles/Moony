@@ -94,15 +94,38 @@ export function agendaDay(m: Milestone, today: number): number {
   return m.dueDay ?? today;
 }
 
-/** Agenda (sorted by its day; ties keep the backend order) and data upkeep. */
+/**
+ * Information with nothing to do: shown only inside its reminder window (`now`), so the
+ * agenda does not nag about a payment or a coupon months ahead.
+ */
+export const INFO_KINDS: readonly MilestoneKind[] = [
+  'insurance_payment',
+  'bond_coupon',
+  'loan_payoff',
+];
+
+/**
+ * Agenda (sorted by its day; ties keep the backend order) and data upkeep. Information kinds
+ * outside their reminder window (`soon`) are left out.
+ */
 export function splitMilestones(
   list: readonly Milestone[],
   today: number
 ): { agenda: Milestone[]; upkeep: Milestone[] } {
-  const agenda = list.filter((m) => !isUpkeep(m));
+  const agenda = list.filter(
+    (m) => !isUpkeep(m) && !(INFO_KINDS.includes(m.kind) && m.stage === 'soon')
+  );
   const upkeep = list.filter(isUpkeep);
   agenda.sort((a, b) => agendaDay(a, today) - agendaDay(b, today));
   return { agenda, upkeep };
+}
+
+/**
+ * Whether "Připomenout za týden" makes sense: upkeep always (a month); anything else only when
+ * its agenda day is more than a week away, otherwise the snooze would reach past it.
+ */
+export function canRemindLater(m: Milestone, today: number): boolean {
+  return isUpkeep(m) || daysBetween(today, agendaDay(m, today)) > 7;
 }
 
 /** A deadline at most 7 days away: the only rows with a dark date chip. */

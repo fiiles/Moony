@@ -4,6 +4,7 @@ import type { Milestone, MilestoneKind } from '@shared/schema';
 import {
   MILESTONE_GROUP_IDS,
   agendaDay,
+  canRemindLater,
   columns,
   daysBetween,
   groupOf,
@@ -88,6 +89,86 @@ describe('splitMilestones', () => {
     );
     expect(agenda.map((x) => x.key)).toEqual(['aapl', 'end', 'pay']);
     expect(upkeep.map((x) => x.key)).toEqual(['b', 'v']);
+  });
+});
+
+describe('splitMilestones information items', () => {
+  it('keeps information (payments, coupons, payoff) only inside its reminder window', () => {
+    const nowPayment = m({
+      key: 'pay-now',
+      kind: 'insurance_payment',
+      stage: 'now',
+      tone: 'info',
+      dueDay: TODAY + 10 * DAY,
+    });
+    const soonPayment = m({
+      key: 'pay-soon',
+      kind: 'insurance_payment',
+      stage: 'soon',
+      tone: 'info',
+      dueDay: TODAY + 40 * DAY,
+    });
+    const soonCoupon = m({
+      key: 'coupon-soon',
+      kind: 'bond_coupon',
+      stage: 'soon',
+      tone: 'info',
+      dueDay: TODAY + 30 * DAY,
+    });
+    const soonPayoff = m({
+      key: 'payoff-soon',
+      kind: 'loan_payoff',
+      stage: 'soon',
+      tone: 'info',
+      dueDay: TODAY + 80 * DAY,
+    });
+    const nowPayoff = m({
+      key: 'payoff-now',
+      kind: 'loan_payoff',
+      stage: 'now',
+      tone: 'info',
+      dueDay: TODAY + 20 * DAY,
+    });
+    const soonDeadline = m({
+      key: 'maturity-soon',
+      kind: 'bond_maturity',
+      stage: 'soon',
+      dueDay: TODAY + 70 * DAY,
+    });
+    const { agenda } = splitMilestones(
+      [soonPayment, nowPayment, soonCoupon, soonPayoff, nowPayoff, soonDeadline],
+      TODAY
+    );
+    expect(agenda.map((x) => x.key)).toEqual(['pay-now', 'payoff-now', 'maturity-soon']);
+  });
+});
+
+describe('canRemindLater', () => {
+  it('offers a week only when the item is more than 7 days away; upkeep always', () => {
+    expect(canRemindLater(m({ kind: 'backup_stale', sinceDay: TODAY - 40 * DAY }), TODAY)).toBe(
+      true
+    );
+    expect(canRemindLater(m({ kind: 'insurance_end', dueDay: TODAY + 3 * DAY }), TODAY)).toBe(
+      false
+    );
+    expect(canRemindLater(m({ kind: 'insurance_end', dueDay: TODAY + 7 * DAY }), TODAY)).toBe(
+      false
+    );
+    expect(canRemindLater(m({ kind: 'insurance_end', dueDay: TODAY + 8 * DAY }), TODAY)).toBe(true);
+    expect(canRemindLater(m({ kind: 'watch_target', sourceId: 'AAPL' }), TODAY)).toBe(false);
+  });
+
+  it('measures an anniversary by its notice deadline while it can be met', () => {
+    const anniversary = m({
+      kind: 'insurance_anniversary',
+      dueDay: TODAY + 50 * DAY,
+      actionDay: TODAY + 7 * DAY,
+    });
+    expect(canRemindLater(anniversary, TODAY)).toBe(false);
+    expect(canRemindLater({ ...anniversary, actionDay: TODAY + 8 * DAY }, TODAY)).toBe(true);
+    expect(
+      canRemindLater({ ...anniversary, tone: 'info', actionDay: TODAY - 1 * DAY }, TODAY)
+    ).toBe(true);
   });
 });
 

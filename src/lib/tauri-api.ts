@@ -15,6 +15,7 @@ import type {
   InsertLoanEvent,
   OnboardingProgress,
   Milestone,
+  MilestoneKind,
   MilestoneState,
   BackupManifest,
   BackupInspection,
@@ -806,6 +807,9 @@ export const milestonesApi = {
   setState: (key: string, state: MilestoneState) =>
     tauriInvoke<void>('set_milestone_state', { key, state }),
   clearState: (key: string) => tauriInvoke<void>('clear_milestone_state', { key }),
+  mutedKinds: () => tauriInvoke<MilestoneKind[]>('get_milestone_muted_kinds'),
+  setMutedKinds: (kinds: MilestoneKind[]) =>
+    tauriInvoke<MilestoneKind[]>('set_milestone_muted_kinds', { kinds }),
 };
 
 // ============================================================================

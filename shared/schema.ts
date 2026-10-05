@@ -1549,8 +1549,6 @@ export interface Milestone {
   direction: TargetDirection | null;
   /** Number of stale accounts. */
   count: number | null;
-  /** False when only "Odložit" is offered. */
-  canDismiss: boolean;
 }
 
 // ============================================================================

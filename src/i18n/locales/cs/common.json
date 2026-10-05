@@ -228,7 +228,8 @@
     "dateFormatRequired": "Zadejte formát data.",
     "csvDelimiterInvalid": "Oddělovač musí být čárka, středník nebo tabulátor.",
     "milestoneKeyInvalid": "Tuto připomínku se nepodařilo najít.",
-    "milestoneStateInvalid": "Tuto připomínku se nepodařilo upravit."
+    "milestoneStateInvalid": "Tuto připomínku se nepodařilo upravit.",
+    "milestoneKindUnknown": "Tento druh připomínky aplikace nezná."
   },
   "auth": {
     "wrongPassword": "Zadané heslo je nesprávné. Zkuste to prosím znovu.",

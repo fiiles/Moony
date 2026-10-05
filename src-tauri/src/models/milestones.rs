@@ -43,9 +43,6 @@ pub struct Milestone {
     pub direction: Option<String>,
     /// Number of stale accounts.
     pub count: Option<i64>,
-    /// False when only "Odložit" makes sense (the item resolves with the data).
-    #[serde(rename = "canDismiss")]
-    pub can_dismiss: bool,
 }
 
 /// Hidden for good (this occurrence only).
@@ -53,6 +50,36 @@ pub const MILESTONE_STATE_DONE: &str = "done";
 /// Hidden for a week.
 pub const MILESTONE_STATE_SNOOZED: &str = "snoozed";
 const MAX_KEY_CHARS: usize = 256;
+
+/// Every kind the service emits; muted kinds must be one of these.
+pub const MILESTONE_KINDS: [&str; 15] = [
+    "insurance_anniversary",
+    "insurance_end",
+    "insurance_payment",
+    "loan_fixation_end",
+    "loan_fixation_expired",
+    "loan_payoff",
+    "loan_balance_check",
+    "bond_maturity",
+    "bond_coupon",
+    "account_termination",
+    "savings_rate_end",
+    "balances_stale",
+    "backup_stale",
+    "valuation_stale",
+    "watch_target",
+];
+
+/// Muted kinds ("Nepřipomínat …") must be kinds the service knows.
+pub fn validate_milestone_kinds(kinds: &[String]) -> Result<()> {
+    if kinds.iter().all(|k| MILESTONE_KINDS.contains(&k.trim())) {
+        Ok(())
+    } else {
+        Err(AppError::Validation(
+            "validation.milestoneKindUnknown".to_string(),
+        ))
+    }
+}
 
 /// A milestone key is non-empty and at most 256 characters.
 pub fn validate_milestone_key(key: &str) -> Result<()> {
@@ -87,5 +114,16 @@ mod tests {
         assert!(validate_milestone_state("backup_stale", "gone").is_err());
         assert!(validate_milestone_state("  ", "done").is_err());
         assert!(validate_milestone_key(&"k".repeat(257)).is_err());
+    }
+
+    #[test]
+    fn muted_kinds_must_be_known() {
+        assert!(validate_milestone_kinds(&[
+            "watch_target".to_string(),
+            "backup_stale".to_string()
+        ])
+        .is_ok());
+        assert!(validate_milestone_kinds(&[]).is_ok());
+        assert!(validate_milestone_kinds(&["nope".to_string()]).is_err());
     }
 }

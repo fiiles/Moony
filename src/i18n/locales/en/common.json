@@ -228,7 +228,8 @@
     "dateFormatRequired": "Enter the date format.",
     "csvDelimiterInvalid": "The delimiter must be a comma, a semicolon or a tab.",
     "milestoneKeyInvalid": "This reminder could not be found.",
-    "milestoneStateInvalid": "This reminder could not be updated."
+    "milestoneStateInvalid": "This reminder could not be updated.",
+    "milestoneKindUnknown": "This kind of reminder is unknown."
   },
   "auth": {
     "wrongPassword": "The password you entered is incorrect. Please try again.",

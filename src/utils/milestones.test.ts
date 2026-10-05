@@ -27,7 +27,6 @@ function m(overrides: Partial<Milestone>): Milestone {
     referenceAmount: null,
     direction: null,
     count: null,
-    canDismiss: true,
     ...overrides,
   };
 }

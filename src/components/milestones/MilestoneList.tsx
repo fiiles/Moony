@@ -188,17 +188,15 @@ function MilestoneRow({
         >
           <Clock />
         </Button>
-        {m.canDismiss && (
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            aria-label={t('actions.done')}
-            title={t('actions.done')}
-            onClick={() => onDone(m)}
-          >
-            <Check />
-          </Button>
-        )}
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          aria-label={t('actions.done')}
+          title={t('actions.done')}
+          onClick={() => onDone(m)}
+        >
+          <Check />
+        </Button>
       </div>
     </li>
   );

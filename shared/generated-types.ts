@@ -893,11 +893,7 @@ direction: string | null;
 /**
  * Number of stale accounts.
  */
-count: number | null; 
-/**
- * False when only "Odložit" makes sense (the item resolves with the data).
- */
-canDismiss: boolean }
+count: number | null }
 
 /**
  * Done-state of the dashboard "Getting started" checklist plus the

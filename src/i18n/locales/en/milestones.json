@@ -14,7 +14,7 @@
   },
   "actions": {
     "snooze": "Snooze for a week",
-    "done": "Done",
+    "done": "Mark as done",
     "undo": "Undo"
   },
   "toast": {
@@ -22,12 +22,12 @@
     "snoozed": "Snoozed for a week"
   },
   "relative": {
-    "today": "today",
-    "tomorrow": "tomorrow",
-    "inDays_one": "in {{count}} day",
-    "inDays_other": "in {{count}} days",
-    "inMonths_one": "in {{count}} month",
-    "inMonths_other": "in {{count}} months",
+    "today": "Today",
+    "tomorrow": "Tomorrow",
+    "inDays_one": "In {{count}} day",
+    "inDays_other": "In {{count}} days",
+    "inMonths_one": "In {{count}} month",
+    "inMonths_other": "In {{count}} months",
     "daysAgo_one": "{{count}} day ago",
     "daysAgo_other": "{{count}} days ago",
     "monthsAgo_one": "{{count}} month ago",

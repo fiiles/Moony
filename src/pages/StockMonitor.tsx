@@ -426,7 +426,14 @@ export default function StockMonitor() {
                     ) : (
                       <>
                         <b className="font-650 text-ink">
-                          {row.targetDirection === 'below' ? '↓ ' : '↑ '}
+                          <span aria-hidden>{row.targetDirection === 'below' ? '↓ ' : '↑ '}</span>
+                          <span className="sr-only">
+                            {t(
+                              row.targetDirection === 'below'
+                                ? 'table.waitsBelow'
+                                : 'table.waitsAbove'
+                            )}{' '}
+                          </span>
                           {price(row.targetPrice, row.currency)}
                         </b>
                         {current !== null && (

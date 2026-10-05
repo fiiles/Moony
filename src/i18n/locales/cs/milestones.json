@@ -15,7 +15,7 @@
   },
   "actions": {
     "snooze": "Odložit o týden",
-    "done": "Vyřízeno",
+    "done": "Označit jako vyřízené",
     "undo": "Vrátit"
   },
   "toast": {
@@ -23,20 +23,20 @@
     "snoozed": "Odloženo o týden"
   },
   "relative": {
-    "today": "dnes",
-    "tomorrow": "zítra",
-    "inDays_one": "za {{count}} den",
-    "inDays_few": "za {{count}} dny",
-    "inDays_other": "za {{count}} dní",
-    "inMonths_one": "za {{count}} měsíc",
-    "inMonths_few": "za {{count}} měsíce",
-    "inMonths_other": "za {{count}} měsíců",
-    "daysAgo_one": "před {{count}} dnem",
-    "daysAgo_few": "před {{count}} dny",
-    "daysAgo_other": "před {{count}} dny",
-    "monthsAgo_one": "před {{count}} měsícem",
-    "monthsAgo_few": "před {{count}} měsíci",
-    "monthsAgo_other": "před {{count}} měsíci"
+    "today": "Dnes",
+    "tomorrow": "Zítra",
+    "inDays_one": "Za {{count}} den",
+    "inDays_few": "Za {{count}} dny",
+    "inDays_other": "Za {{count}} dní",
+    "inMonths_one": "Za {{count}} měsíc",
+    "inMonths_few": "Za {{count}} měsíce",
+    "inMonths_other": "Za {{count}} měsíců",
+    "daysAgo_one": "Před {{count}} dnem",
+    "daysAgo_few": "Před {{count}} dny",
+    "daysAgo_other": "Před {{count}} dny",
+    "monthsAgo_one": "Před {{count}} měsícem",
+    "monthsAgo_few": "Před {{count}} měsíci",
+    "monthsAgo_other": "Před {{count}} měsíci"
   },
   "titles": {
     "backup_stale": "Záloha dat",

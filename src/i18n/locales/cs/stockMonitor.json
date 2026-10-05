@@ -31,6 +31,8 @@
     "setTarget": "Nastavit cíl",
     "targetReached": "Cíl {{price}} dosažen",
     "toTarget": "{{pct}} k cíli",
+    "waitsBelow": "čeká na pokles",
+    "waitsAbove": "čeká na růst",
     "footer_one": "{{count}} akcie · ceny v původní měně, bez přepočtu",
     "footer_few": "{{count}} akcie · ceny v původní měně, bez přepočtu",
     "footer_other": "{{count}} akcií · ceny v původní měně, bez přepočtu",

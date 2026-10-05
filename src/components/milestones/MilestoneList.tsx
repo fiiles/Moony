@@ -52,8 +52,8 @@ interface MilestoneListProps {
 
 /**
  * Milestone rows (spec 2026-10-05 §7): icon in a `well` square, title and one
- * sub-line, the relative date right; "Odložit" and "Vyřízeno" appear on hover
- * next to the link, never inside it.
+ * sub-line, the relative date right; "Odložit o týden" and "Označit jako vyřízené"
+ * appear on hover next to the link, never inside it.
  */
 export function MilestoneList({
   milestones,
@@ -169,8 +169,8 @@ function MilestoneRow({
           <small
             title={sub}
             className={cn(
-              'mt-[3px] block text-micro font-500 text-ink-4',
-              wrap ? 'line-clamp-2 whitespace-normal' : 'truncate'
+              'mt-[3px] text-micro font-500 text-ink-4',
+              wrap ? 'line-clamp-2 whitespace-normal' : 'block truncate'
             )}
           >
             {sub}

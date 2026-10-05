@@ -297,7 +297,11 @@ export function BankAccountFormDialog({
               aria-describedby={submitted && nameError ? 'name-error' : undefined}
             />
             {submitted && nameError && (
-              <p id="name-error" role="alert" className="text-sm font-medium text-loss">
+              <p
+                id="name-error"
+                role="alert"
+                className="flex items-center gap-[5px] text-micro font-600 text-loss"
+              >
                 {nameError}
               </p>
             )}
@@ -332,11 +336,15 @@ export function BankAccountFormDialog({
                 aria-describedby={submitted && balanceError ? 'balance-error' : undefined}
               />
               {submitted && balanceError && (
-                <p id="balance-error" role="alert" className="text-sm font-medium text-loss">
+                <p
+                  id="balance-error"
+                  role="alert"
+                  className="flex items-center gap-[5px] text-micro font-600 text-loss"
+                >
                   {balanceError}
                 </p>
               )}
-              <p className="text-xs text-ink-3">{t('form.balanceHint')}</p>
+              <p className="text-micro font-500 text-ink-4">{t('form.balanceHint')}</p>
             </div>
             <div className="grid gap-2">
               <Label htmlFor="currency">{tc('labels.currency')}</Label>
@@ -375,11 +383,11 @@ export function BankAccountFormDialog({
             <div className="space-y-1">
               <Label
                 htmlFor="hasZoneDesignation"
-                className="text-sm font-medium leading-none cursor-pointer"
+                className="cursor-pointer text-table font-500 text-ink-2"
               >
                 {t('form.useZones')}
               </Label>
-              <p className="text-xs text-ink-3">{t('form.zonesHelp')}</p>
+              <p className="text-micro font-500 text-ink-4">{t('form.zonesHelp')}</p>
             </div>
           </div>
 
@@ -393,11 +401,11 @@ export function BankAccountFormDialog({
             <div className="space-y-1">
               <Label
                 htmlFor="includeInNetWorth"
-                className="text-sm font-medium leading-none cursor-pointer"
+                className="cursor-pointer text-table font-500 text-ink-2"
               >
                 {t('form.includeInNetWorth')}
               </Label>
-              <p className="text-xs text-ink-3">{t('form.includeInNetWorthHelp')}</p>
+              <p className="text-micro font-500 text-ink-4">{t('form.includeInNetWorthHelp')}</p>
             </div>
           </div>
 
@@ -414,14 +422,14 @@ export function BankAccountFormDialog({
                   placeholder="0.00"
                 />
               </InputWrap>
-              <p className="text-xs text-ink-3">{t('form.apyHelp')}</p>
+              <p className="text-micro font-500 text-ink-4">{t('form.apyHelp')}</p>
             </div>
           )}
 
           {hasZoneDesignation && (
             <div className="space-y-2">
               <Label>{t('form.zonesLabel')}</Label>
-              <p className="text-xs text-ink-3 mb-3">{t('form.zonesDescription')}</p>
+              <p className="mb-3 text-micro font-500 text-ink-4">{t('form.zonesDescription')}</p>
               <BankAccountZoneManager zones={zones} onChange={setZones} />
             </div>
           )}
@@ -434,7 +442,7 @@ export function BankAccountFormDialog({
               value={rateValidUntil}
               onChange={(e) => setRateValidUntil(e.target.value)}
             />
-            <p className="text-xs text-ink-3">{t('form.rateValidUntilHelp')}</p>
+            <p className="text-micro font-500 text-ink-4">{t('form.rateValidUntilHelp')}</p>
           </div>
         </div>
         <DialogFooter>

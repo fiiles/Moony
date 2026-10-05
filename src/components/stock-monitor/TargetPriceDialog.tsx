@@ -13,6 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useFormat } from '@/lib/use-format';
+import { cn } from '@/lib/utils';
 import { formatNativePrice, inferTargetDirection, targetReached } from '@/utils/stock-monitor';
 import type { TargetDirection } from '@shared/schema';
 
@@ -157,14 +158,19 @@ function TargetForm({
         )}
       </div>
       <fieldset className="mt-4 grid gap-2">
-        <legend className="mb-1.5 text-caption font-700 text-ink-2">
+        <legend className="mb-[7px] text-caption font-700 text-ink-2">
           {t('target.directionLabel')}
         </legend>
-        <RadioGroup value={effective} className="grid gap-2">
+        <RadioGroup value={effective} className="gap-1.5">
           {(['below', 'above'] as const).map((value) => (
             <label
               key={value}
-              className="flex cursor-pointer items-center gap-2 text-body text-ink-2"
+              className={cn(
+                'flex cursor-pointer items-center gap-2.5 rounded-r2 border px-3 py-2 text-table font-600 transition-colors duration-fast',
+                value === effective
+                  ? 'border-line-strong bg-well text-ink'
+                  : 'border-transparent text-ink-2 hover:bg-well'
+              )}
             >
               {/* onClick, not onValueChange: choosing the already selected option counts too. */}
               <RadioGroupItem

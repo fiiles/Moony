@@ -31,6 +31,8 @@
     "setTarget": "Set target",
     "targetReached": "Target {{price}} reached",
     "toTarget": "{{pct}} to target",
+    "waitsBelow": "waits for a dip",
+    "waitsAbove": "waits for a rise",
     "footer_one": "{{count}} stock · prices in their own currency, no conversion",
     "footer_other": "{{count}} stocks · prices in their own currency, no conversion",
     "source": "Source Yahoo Finance · up to 15 minutes delayed"

@@ -1360,10 +1360,14 @@ export interface HistoryRecalculationEvent {
 // Stock Monitor (watchlist) Types — spec 2026-08-17-stock-monitor-design
 // ============================================================================
 
+/** What a watchlist target waits for: a fall to it (`below`) or a rise to it (`above`). */
+export type TargetDirection = 'below' | 'above';
+
 export interface WatchedStock {
   id: string;
   ticker: string;
   targetPrice: string | null;
+  targetDirection: TargetDirection | null;
   notes: string;
   createdAt: number;
   updatedAt: number;
@@ -1373,6 +1377,7 @@ export interface WatchedStockRow {
   id: string;
   ticker: string;
   targetPrice: string | null;
+  targetDirection: TargetDirection | null;
   notes: string;
   shortName: string | null;
   longName: string | null;
@@ -1393,6 +1398,7 @@ export interface StockMonitorDetail {
   ticker: string;
   followed: boolean;
   targetPrice: string | null;
+  targetDirection: TargetDirection | null;
   notes: string;
   shortName: string | null;
   longName: string | null;

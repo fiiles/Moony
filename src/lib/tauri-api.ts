@@ -81,6 +81,7 @@ import type {
   TwrSeries,
   McpServerStatus,
   // Stock Monitor types
+  TargetDirection,
   WatchedStock,
   WatchedStockRow,
   StockMonitorDetail,
@@ -671,8 +672,16 @@ export const stockMonitorApi = {
 
   followPortfolio: () => tauriInvoke<string[]>('follow_portfolio_stocks'),
 
-  setTargetPrice: (ticker: string, targetPrice: string | null) =>
-    tauriInvoke<WatchedStock>('set_watched_target_price', { ticker, targetPrice }),
+  setTargetPrice: (
+    ticker: string,
+    targetPrice: string | null,
+    targetDirection: TargetDirection | null
+  ) =>
+    tauriInvoke<WatchedStock>('set_watched_target_price', {
+      ticker,
+      targetPrice,
+      targetDirection,
+    }),
 
   updateNotes: (ticker: string, notes: string) =>
     tauriInvoke<WatchedStock>('update_watched_notes', { ticker, notes }),

@@ -4,6 +4,7 @@
  */
 
 import { currencyDecimals } from '@shared/currencies';
+import type { TargetDirection } from '@shared/schema';
 import { getFormatters } from '@/lib/format';
 
 export const CHART_PERIODS = ['1D', '5D', '1M', '6M', 'YTD', '1Y', '5Y', 'MAX'] as const;
@@ -36,8 +37,8 @@ export function changeFromReference(current: number, reference: number): DayChan
 
 /**
  * Informative distance from the current price to the user's target, in
- * percent (positive = the price would have to rise). No reached/crossed
- * semantics — the target is a personal reference point, nothing more.
+ * percent (positive = the price would have to rise). Whether the target is
+ * reached depends on its direction, see `targetReached`.
  */
 export function targetDistance(
   currentPrice: string | null,
@@ -47,6 +48,27 @@ export function targetDistance(
   const target = parseFloat(targetPrice ?? '');
   if (!isFinite(current) || !isFinite(target) || current <= 0 || target <= 0) return null;
   return ((target - current) / current) * 100;
+}
+
+/** What a new target waits for: a target under the current price waits for a dip. */
+export function inferTargetDirection(target: number, current: number | null): TargetDirection {
+  return current !== null && isFinite(current) && current > 0 && target < current
+    ? 'below'
+    : 'above';
+}
+
+/**
+ * True once the price has crossed the target in its direction: at or under a
+ * `below` target, at or over an `above` one (no direction = the old "above").
+ */
+export function targetReached(
+  current: number | null,
+  target: number | null,
+  direction: TargetDirection | null
+): boolean {
+  if (current === null || target === null || !isFinite(current) || !isFinite(target)) return false;
+  if (target <= 0) return false;
+  return direction === 'below' ? current <= target : current >= target;
 }
 
 /**

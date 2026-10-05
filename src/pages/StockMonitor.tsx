@@ -14,6 +14,7 @@ import {
   formatNativePrice,
   latestFetchedAt,
   targetDistance,
+  targetReached,
 } from '@/utils/stock-monitor';
 import { PageHead } from '@/components/shell/PageHead';
 import { Button } from '@/components/ui/button';
@@ -130,10 +131,12 @@ export default function StockMonitor() {
       (x): x is { row: WatchedStockRow; current: number; target: number } =>
         x.current !== null && x.target !== null && x.target > 0
     );
-  const reached = withTarget.filter((x) => x.current >= x.target);
+  const reached = withTarget.filter((x) =>
+    targetReached(x.current, x.target, x.row.targetDirection)
+  );
   const pending = withTarget
-    .filter((x) => x.current < x.target)
-    .sort((a, b) => a.target / a.current - b.target / b.current);
+    .filter((x) => !targetReached(x.current, x.target, x.row.targetDirection))
+    .sort((a, b) => Math.abs(a.target / a.current - 1) - Math.abs(b.target / b.current - 1));
   const changes = rows
     .map((r) => ({ row: r, change: dayChange(r.currentPrice, r.previousClose) }))
     .filter(
@@ -144,7 +147,7 @@ export default function StockMonitor() {
   const worst = changes[changes.length - 1];
   const pct = (v: number) => fmt.percent(v / 100, 1, { signed: true });
   const toTarget = (x: { row: WatchedStockRow; current: number; target: number }) =>
-    t('stats.toTarget', { pct: fmt.percent(x.target / x.current - 1, 1) });
+    t('stats.toTarget', { pct: fmt.percent(Math.abs(x.target / x.current - 1), 1) });
 
   const openTarget = (row: WatchedStockRow) =>
     setTarget({
@@ -153,6 +156,7 @@ export default function StockMonitor() {
       currentPrice: row.currentPrice,
       fiftyTwoWeekHigh: row.fiftyTwoWeekHigh,
       targetPrice: row.targetPrice,
+      targetDirection: row.targetDirection,
     });
 
   const head = (
@@ -192,7 +196,9 @@ export default function StockMonitor() {
       <TargetPriceDialog
         target={target}
         onClose={() => setTarget(null)}
-        onSave={(ticker, targetPrice) => targetPriceMutation.mutateAsync({ ticker, targetPrice })}
+        onSave={(ticker, targetPrice, targetDirection) =>
+          targetPriceMutation.mutateAsync({ ticker, targetPrice, targetDirection })
+        }
         saving={targetPriceMutation.isPending}
       />
       <ConfirmDeleteDialog
@@ -349,8 +355,7 @@ export default function StockMonitor() {
               const low = num(row.fiftyTwoWeekLow);
               const high = num(row.fiftyTwoWeekHigh);
               const targetValue = num(row.targetPrice);
-              const reachedTarget =
-                current !== null && targetValue !== null && current >= targetValue;
+              const reachedTarget = targetReached(current, targetValue, row.targetDirection);
               return (
                 <TableRow
                   key={row.id}
@@ -420,11 +425,14 @@ export default function StockMonitor() {
                       </Badge>
                     ) : (
                       <>
-                        <b className="font-650 text-ink">{price(row.targetPrice, row.currency)}</b>
+                        <b className="font-650 text-ink">
+                          {row.targetDirection === 'below' ? '↓ ' : '↑ '}
+                          {price(row.targetPrice, row.currency)}
+                        </b>
                         {current !== null && (
                           <small className="mt-0.5 block text-[10px] font-500 text-ink-4">
                             {t('table.toTarget', {
-                              pct: fmt.percent(targetValue / current - 1, 1),
+                              pct: fmt.percent(Math.abs(targetValue / current - 1), 1),
                             })}
                           </small>
                         )}

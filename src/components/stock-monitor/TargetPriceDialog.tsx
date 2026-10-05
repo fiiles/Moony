@@ -11,8 +11,10 @@ import {
 import { Input, InputWrap } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useFormat } from '@/lib/use-format';
-import { formatNativePrice } from '@/utils/stock-monitor';
+import { formatNativePrice, inferTargetDirection } from '@/utils/stock-monitor';
+import type { TargetDirection } from '@shared/schema';
 
 export interface TargetPriceTarget {
   ticker: string;
@@ -20,12 +22,17 @@ export interface TargetPriceTarget {
   currentPrice: string | null;
   fiftyTwoWeekHigh: string | null;
   targetPrice: string | null;
+  targetDirection: TargetDirection | null;
 }
 
 interface TargetPriceDialogProps {
   target: TargetPriceTarget | null;
   onClose: () => void;
-  onSave: (ticker: string, targetPrice: string | null) => Promise<unknown>;
+  onSave: (
+    ticker: string,
+    targetPrice: string | null,
+    targetDirection: TargetDirection | null
+  ) => Promise<unknown>;
   saving: boolean;
 }
 
@@ -57,7 +64,11 @@ function TargetForm({
 }: {
   target: TargetPriceTarget;
   onClose: () => void;
-  onSave: (ticker: string, targetPrice: string | null) => Promise<unknown>;
+  onSave: (
+    ticker: string,
+    targetPrice: string | null,
+    targetDirection: TargetDirection | null
+  ) => Promise<unknown>;
   saving: boolean;
 }) {
   const { t } = useTranslation('stockMonitor');
@@ -68,13 +79,31 @@ function TargetForm({
   const high = parseFloat(target.fiftyTwoWeekHigh ?? '');
   const hasTarget = isFinite(parseFloat(target.targetPrice ?? ''));
 
+  // null = follow the typed price; an existing target keeps its stored direction.
+  const [direction, setDirection] = useState<TargetDirection | null>(target.targetDirection);
+  const draftValue = parseFloat(draft.trim().replace(',', '.'));
+  const knownCurrent = isFinite(current) && current > 0 ? current : null;
+  const effective: TargetDirection =
+    direction ?? inferTargetDirection(isFinite(draftValue) ? draftValue : 0, knownCurrent);
+  const explain =
+    isFinite(draftValue) && draftValue > 0
+      ? knownCurrent !== null
+        ? t(effective === 'below' ? 'target.explainBelow' : 'target.explainAbove', {
+            price: formatNativePrice(draftValue, target.currency, fmt.locale),
+            pct: fmt.percent(draftValue / knownCurrent - 1, 1, { signed: true }),
+          })
+        : t(effective === 'below' ? 'target.explainBelowNoPrice' : 'target.explainAboveNoPrice', {
+            price: formatNativePrice(draftValue, target.currency, fmt.locale),
+          })
+      : null;
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     const normalized = draft.trim().replace(',', '.');
     const value = normalized === '' ? null : normalized;
     if (value !== null && !(parseFloat(value) > 0)) return;
     try {
-      await onSave(target.ticker, value);
+      await onSave(target.ticker, value, value === null ? null : effective);
       onClose();
     } catch {
       // the mutation hook already toasted the error; keep the draft
@@ -83,7 +112,7 @@ function TargetForm({
 
   const clear = async () => {
     try {
-      await onSave(target.ticker, null);
+      await onSave(target.ticker, null, null);
       onClose();
     } catch {
       // already toasted
@@ -118,6 +147,27 @@ function TargetForm({
           <p className="text-micro font-500 text-ink-4">{hintParts.join(' · ')}.</p>
         )}
       </div>
+      <fieldset className="mt-4 grid gap-2">
+        <legend className="mb-1.5 text-caption font-700 text-ink-2">
+          {t('target.directionLabel')}
+        </legend>
+        <RadioGroup
+          value={effective}
+          onValueChange={(v) => setDirection(v as TargetDirection)}
+          className="grid gap-2"
+        >
+          {(['below', 'above'] as const).map((value) => (
+            <label
+              key={value}
+              className="flex cursor-pointer items-center gap-2 text-body text-ink-2"
+            >
+              <RadioGroupItem value={value} id={`target-direction-${value}`} />
+              {t(value === 'below' ? 'target.directionBelow' : 'target.directionAbove')}
+            </label>
+          ))}
+        </RadioGroup>
+        {explain && <p className="m-0 text-micro font-500 text-ink-4">{explain}</p>}
+      </fieldset>
       <DialogFooter className="mt-5">
         {hasTarget ? (
           <Button type="button" variant="danger" onClick={clear} disabled={saving}>

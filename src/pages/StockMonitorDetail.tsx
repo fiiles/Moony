@@ -16,6 +16,7 @@ import {
   formatNativePrice,
   percentFromFraction,
   targetDistance,
+  targetReached,
   type ChartPeriod,
 } from '@/utils/stock-monitor';
 import type { ChartEvent, EventCluster } from '@/utils/chart-scale';
@@ -93,6 +94,10 @@ export default function StockMonitorDetail() {
   const prevClose = parseFloat(detail?.previousClose ?? '');
   const targetValue = parseFloat(detail?.targetPrice ?? '');
   const hasTarget = isFinite(targetValue);
+  const currentValue = isFinite(current) ? current : null;
+  const reachedTarget = hasTarget
+    ? targetReached(currentValue, targetValue, detail?.targetDirection ?? null)
+    : false;
   const low = parseFloat(detail?.fiftyTwoWeekLow ?? '');
   const high = parseFloat(detail?.fiftyTwoWeekHigh ?? '');
   const fetchedAt = detail?.priceFetchedAt ?? null;
@@ -172,6 +177,7 @@ export default function StockMonitorDetail() {
       currentPrice: detail.currentPrice,
       fiftyTwoWeekHigh: detail.fiftyTwoWeekHigh,
       targetPrice: detail.targetPrice,
+      targetDirection: detail.targetDirection,
     });
 
   if (isError) {
@@ -422,11 +428,11 @@ export default function StockMonitorDetail() {
           value={hasTarget ? price(targetValue) : '—'}
           deltaNote={
             hasTarget ? (
-              distance !== null && distance > 0 ? (
-                t('detail.toTarget', { pct: fmt.percent(distance / 100, 1) })
-              ) : (
+              reachedTarget ? (
                 <span className="text-gain">{t('detail.targetReached')}</span>
-              )
+              ) : distance !== null ? (
+                t('detail.toTarget', { pct: fmt.percent(Math.abs(distance) / 100, 1) })
+              ) : null
             ) : detail.followed ? (
               <button
                 type="button"
@@ -566,8 +572,13 @@ export default function StockMonitorDetail() {
                       {fmt.percent(sinceChange.pct / 100, 1, { signed: true })}
                     </b>
                     .
-                    {hasTarget && isFinite(current) && targetValue > current && (
-                      <> {t('detail.since.toTarget', { amount: price(targetValue - current) })}</>
+                    {hasTarget && currentValue !== null && !reachedTarget && (
+                      <>
+                        {' '}
+                        {t('detail.since.toTarget', {
+                          amount: price(Math.abs(targetValue - current)),
+                        })}
+                      </>
                     )}
                   </>
                 ) : (
@@ -582,7 +593,9 @@ export default function StockMonitorDetail() {
       <TargetPriceDialog
         target={target}
         onClose={() => setTarget(null)}
-        onSave={(tk, targetPrice) => targetPriceMutation.mutateAsync({ ticker: tk, targetPrice })}
+        onSave={(tk, targetPrice, targetDirection) =>
+          targetPriceMutation.mutateAsync({ ticker: tk, targetPrice, targetDirection })
+        }
         saving={targetPriceMutation.isPending}
       />
       <ConfirmDeleteDialog

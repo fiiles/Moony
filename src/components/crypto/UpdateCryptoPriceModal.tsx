@@ -178,7 +178,10 @@ export function UpdateCryptoPriceModal({
             </div>
           </form>
         </Form>
-        <DialogFooter className={investment.isManualPrice ? 'sm:justify-between' : undefined}>
+        <DialogFooter>
+          <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
+            {tc('buttons.cancel')}
+          </Button>
           {investment.isManualPrice && (
             <Button
               type="button"
@@ -190,19 +193,14 @@ export function UpdateCryptoPriceModal({
               {t('modal.updatePrice.remove')}
             </Button>
           )}
-          <div className="flex gap-2">
-            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
-              {tc('buttons.cancel')}
-            </Button>
-            <Button
-              type="submit"
-              form="crypto-price-form"
-              disabled={mutation.isPending}
-              loading={mutation.isPending}
-            >
-              {mutation.isPending ? tc('status.saving') : t('modal.updatePrice.submit')}
-            </Button>
-          </div>
+          <Button
+            type="submit"
+            form="crypto-price-form"
+            disabled={mutation.isPending}
+            loading={mutation.isPending}
+          >
+            {mutation.isPending ? tc('status.saving') : t('modal.updatePrice.submit')}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

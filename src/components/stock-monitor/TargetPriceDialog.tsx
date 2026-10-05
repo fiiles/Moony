@@ -188,16 +188,14 @@ function TargetForm({
         {explain && <p className="m-0 text-micro font-500 text-ink-4">{explain}</p>}
       </fieldset>
       <DialogFooter className="mt-5">
-        {hasTarget ? (
-          <Button type="button" variant="danger" onClick={clear} disabled={saving}>
-            {t('target.clear')}
-          </Button>
-        ) : (
-          <span />
-        )}
         <Button type="button" variant="ghost" onClick={onClose}>
           {tc('buttons.cancel')}
         </Button>
+        {hasTarget && (
+          <Button type="button" variant="danger" onClick={clear} disabled={saving}>
+            {t('target.clear')}
+          </Button>
+        )}
         <Button type="submit" loading={saving}>
           {t('target.save')}
         </Button>

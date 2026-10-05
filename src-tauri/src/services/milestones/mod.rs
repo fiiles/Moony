@@ -219,22 +219,48 @@ mod tests {
     #[test]
     fn an_anniversary_reminds_ten_weeks_ahead_with_the_notice_deadline() {
         let conn = setup();
-        // Anniversary 24 Dec 2026; notice deadline 12 Nov; reminder from 15 Oct.
+        // Anniversary 24 Dec 2026; the insurance period ends 23 Dec, so the last safe
+        // delivery day of the notice is 11 Nov (43 days earlier); reminder from 14 Oct.
         policy(&conn, "p1", day(2020, 12, 24), None, "monthly", "300");
-        let before = list_milestones(&conn, day(2026, 10, 14)).unwrap();
+        let before = list_milestones(&conn, day(2026, 10, 13)).unwrap();
         assert_eq!(kinds(&before), vec!["insurance_anniversary"]);
         assert_eq!(before[0].stage, STAGE_SOON);
-        let on = list_milestones(&conn, day(2026, 10, 15)).unwrap();
+        let on = list_milestones(&conn, day(2026, 10, 14)).unwrap();
         assert_eq!(on[0].stage, STAGE_NOW);
         assert_eq!(on[0].tone, TONE_ACTION);
         assert_eq!(on[0].due_day, Some(day(2026, 12, 24)));
-        assert_eq!(on[0].action_day, Some(day(2026, 11, 12)));
+        assert_eq!(on[0].action_day, Some(day(2026, 11, 11)));
         assert_eq!(
             on[0].key,
             format!("insurance_anniversary:p1:{}", day(2026, 12, 24))
         );
-        let late = list_milestones(&conn, day(2026, 11, 13)).unwrap();
+        let last_day = list_milestones(&conn, day(2026, 11, 11)).unwrap();
+        assert_eq!(
+            last_day[0].tone, TONE_ACTION,
+            "the deadline day itself is safe"
+        );
+        let late = list_milestones(&conn, day(2026, 11, 12)).unwrap();
         assert_eq!(late[0].tone, TONE_INFO, "the notice period has passed");
+    }
+
+    #[test]
+    fn a_one_time_policy_has_no_anniversary_but_keeps_its_end() {
+        let conn = setup();
+        // The notice-to-period-end rule applies to regular premiums only.
+        policy(&conn, "o", day(2020, 12, 24), None, "one_time", "0");
+        assert!(list_milestones(&conn, day(2026, 10, 20))
+            .unwrap()
+            .is_empty());
+        policy(
+            &conn,
+            "oe",
+            day(2020, 12, 24),
+            Some(day(2027, 1, 5)),
+            "one_time",
+            "0",
+        );
+        let list = list_milestones(&conn, day(2026, 10, 20)).unwrap();
+        assert_eq!(kinds(&list), vec!["insurance_end"]);
     }
 
     #[test]
@@ -320,9 +346,9 @@ mod tests {
     #[test]
     fn now_items_come_first_by_deadline_then_soon_items() {
         let conn = setup();
-        policy(&conn, "b", day(2020, 12, 24), None, "monthly", "1"); // now, deadline 12 Nov
-        policy(&conn, "a", day(2020, 12, 10), None, "monthly", "1"); // now, deadline 29 Oct
-        policy(&conn, "c", day(2021, 1, 2), None, "monthly", "1"); // soon (remind from 24 Oct)
+        policy(&conn, "b", day(2020, 12, 24), None, "monthly", "1"); // now, deadline 11 Nov
+        policy(&conn, "a", day(2020, 12, 10), None, "monthly", "1"); // now, deadline 28 Oct
+        policy(&conn, "c", day(2021, 1, 2), None, "monthly", "1"); // soon (remind from 23 Oct)
         let list = list_milestones(&conn, day(2026, 10, 20)).unwrap();
         let ids: Vec<_> = list.iter().map(|m| m.source_id.clone().unwrap()).collect();
         assert_eq!(ids, vec!["a", "b", "c"]);
@@ -332,7 +358,7 @@ mod tests {
     fn now_items_are_ordered_dated_then_watch_target_then_upkeep() {
         let conn = setup();
         let today = day(2026, 10, 20);
-        // Anniversary 24 Dec 2026 is inside its reminder window (from 15 Oct).
+        // Anniversary 24 Dec 2026 is inside its reminder window (from 14 Oct).
         policy(&conn, "p1", day(2020, 12, 24), None, "monthly", "300");
         // A crossed watch target and a profile that never made a backup.
         conn.execute(

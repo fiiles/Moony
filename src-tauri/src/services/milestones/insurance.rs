@@ -11,8 +11,10 @@ use crate::error::Result;
 use crate::models::{Milestone, PaymentFrequency};
 use crate::services::loan_amortization::{day_floor, due_day};
 
-/// A policy can be cancelled to its anniversary with at least six weeks' notice.
-const NOTICE_DAYS: i64 = 42;
+/// A policy can be cancelled to the end of its insurance period with at least six weeks'
+/// notice; the period ends the day before the anniversary, so the last safe delivery day is
+/// the anniversary minus 43 days (the earlier date is the safe one).
+const NOTICE_DAYS: i64 = 43;
 /// Remind four weeks before the notice deadline (about ten weeks before the anniversary).
 const ANNIVERSARY_LEAD_DAYS: i64 = 28;
 const END_LEAD_DAYS: i64 = 60;
@@ -109,7 +111,10 @@ pub(super) fn build(conn: &Connection, today: i64) -> Result<Vec<Milestone>> {
         if end.is_some_and(|e| e < today) {
             continue;
         }
-        if let Some(anniversary) = next_anniversary(p.start, end, today) {
+        // The notice-to-period-end rule applies to regular premiums, not one-time policies.
+        let one_time = PaymentFrequency::parse(&p.frequency) == Some(PaymentFrequency::OneTime);
+        let anniversary = next_anniversary(p.start, end, today).filter(|_| !one_time);
+        if let Some(anniversary) = anniversary {
             let action_day = anniversary - NOTICE_DAYS * DAY;
             let remind_from = action_day - ANNIVERSARY_LEAD_DAYS * DAY;
             if let Some(mut m) = dated(

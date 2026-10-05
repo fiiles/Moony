@@ -71,6 +71,9 @@ pub(super) fn build(conn: &Connection, today: i64) -> Result<Vec<Milestone>> {
         let value: f64 = b.coupon_value.trim().parse().unwrap_or(0.0);
         let quantity: f64 = b.quantity.trim().parse().unwrap_or(1.0);
         let face = value * quantity;
+        let rate: f64 = b.rate.trim().parse().unwrap_or(0.0);
+        // The final coupon is paid with the principal (as in the bonds page ladder).
+        let final_coupon = if rate > 0.0 { face * rate / 100.0 } else { 0.0 };
         let remind_from = maturity - MATURITY_LEAD_DAYS * DAY;
         if let Some(mut m) = dated(
             "bond_maturity",
@@ -80,11 +83,10 @@ pub(super) fn build(conn: &Connection, today: i64) -> Result<Vec<Milestone>> {
             remind_from,
             today,
         ) {
-            m.amount = Some(money_text(face));
+            m.amount = Some(money_text(face + final_coupon));
             m.currency = Some(b.currency.clone());
             out.push(m);
         }
-        let rate: f64 = b.rate.trim().parse().unwrap_or(0.0);
         if rate > 0.0 && face > 0.0 {
             if let Some(coupon) = next_coupon_day(maturity, today) {
                 let remind_from = coupon - COUPON_LEAD_DAYS * DAY;
@@ -135,6 +137,19 @@ mod tests {
         assert_eq!(list[0].stage, STAGE_NOW);
         assert_eq!(list[0].amount.as_deref(), Some("100000.00"));
         assert_eq!(list[0].currency.as_deref(), Some("CZK"));
+    }
+
+    #[test]
+    fn a_maturity_amount_includes_the_final_coupon() {
+        let conn = setup();
+        // 100 000 face, 4.5 % -> 4 500 final coupon paid with the principal.
+        bond(&conn, "b", "10000", "10", "4.5", Some(day(2026, 11, 1)));
+        let list = build(&conn, day(2026, 10, 5)).unwrap();
+        let maturity = list
+            .iter()
+            .find(|m| m.kind == "bond_maturity")
+            .expect("maturity");
+        assert_eq!(maturity.amount.as_deref(), Some("104500.00"));
     }
 
     #[test]

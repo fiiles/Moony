@@ -92,8 +92,6 @@ pub(crate) fn dated(
 }
 
 /// Money as TEXT with two decimals (ADR 0001).
-// Used by the loan and bond builders that fill the stubs in the next task.
-#[allow(dead_code)]
 pub(crate) fn money_text(value: f64) -> String {
     format!("{:.2}", (value * 100.0).round() / 100.0)
 }

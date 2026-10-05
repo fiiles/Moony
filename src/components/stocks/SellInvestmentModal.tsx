@@ -121,18 +121,7 @@ export function SellInvestmentModal({ investment, open, onOpenChange }: SellInve
                       <FormItem>
                         <FormLabel>{t('modal.sell.pricePerShare')} *</FormLabel>
                         <FormControl>
-                          <Input
-                            type="number"
-                            step="0.01"
-                            {...field}
-                            onBlur={(e) => {
-                              const value = parseFloat(e.target.value);
-                              if (!isNaN(value)) {
-                                field.onChange(value.toFixed(2));
-                              }
-                              field.onBlur();
-                            }}
-                          />
+                          <Input type="number" step="any" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>

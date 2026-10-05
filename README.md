@@ -102,6 +102,7 @@ You can switch the automatic check off in Settings; see [PRIVACY.md](./PRIVACY.m
 ### 📊 Dashboard & Overview
 - **Net Worth Dashboard** - Total net worth across all asset classes, with a *Getting started* checklist for new profiles
 - **Historical Tracking** - Net worth trends over time with interactive charts
+- **Milestones** - Insurance anniversaries with the notice deadline, fixed-rate ends, maturities, large payments, backup and data upkeep reminders and crossed watchlist targets, on the overview and in the top bar
 - **Multi-currency** - 40+ currencies (every currency the ECB publishes plus common others); each account keeps its own currency and totals are shown in the one you choose. Rates are ECB reference rates (daily rates from the ECB, history via Frankfurter)
 
 ---

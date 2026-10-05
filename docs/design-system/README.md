@@ -117,6 +117,7 @@ with Nastavení pinned above the account row. **Peníze** ends with Cashflow and
 - Account row: avatar initials, name, "Účet a zámek aplikace"; click opens the existing menu (Pravidla
   kategorizace, Zamknout aplikaci).
 - Top bar status: dot + text. `status--fresh` green for fresh prices, `status--stale` red-brown for stale.
+- Milestones indicator: left of the update status, a neutral `.status` "N k vyřízení" opens a popover with the milestones to act on now; it is hidden when there are none.
 
 ## 6. Components
 
@@ -155,7 +156,7 @@ implementations.
 
 | Archetype | Pages | Structure |
 |---|---|---|
-| Overview | Dashboard | Greeting H1, period segment, hero (net worth + chart), 3 stats, allocation ring + recent moves. |
+| Overview | Dashboard | Greeting H1, period segment, hero (net worth + chart), 3 stats, "Co vás čeká" (milestones in "Teď jednat" / "Brzy", hidden when empty), allocation ring + recent moves. |
 | List | Stocks, bank accounts | 3–4 stats, a trend card (`TrendCard`: title, one sentence, horizon segment, chart 170 px, legend; the same chrome and height on every list page), table card with search and toggles, add modal. Tables use a fixed layout so long text ends with an ellipsis instead of widening the table; no horizontal scroll at the minimum width. |
 | Detail | Stock detail, bank account detail | Back link, eyebrow, H1, action row, hero with time trace, 3–4 stats, ledger table + aside cards, modals. |
 | Report | Cashflow | Actual monthly income and expenses from bank transactions: stats, bar chart card, breakdown by category and by source with change versus the previous period. |

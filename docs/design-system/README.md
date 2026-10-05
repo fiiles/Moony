@@ -117,7 +117,7 @@ with Nastavení pinned above the account row. **Peníze** ends with Cashflow and
 - Account row: avatar initials, name, "Účet a zámek aplikace"; click opens the existing menu (Pravidla
   kategorizace, Zamknout aplikaci).
 - Top bar status: dot + text. `status--fresh` green for fresh prices, `status--stale` red-brown for stale.
-- Milestones indicator: left of the update status, a neutral `.status` "N k vyřízení" opens a popover with the milestones to act on now; it is hidden when there are none.
+- Milestones indicator: left of the update status, a neutral `.status` dot with `ink-2` text (one step darker than the neutral status, so the count stands out without colour) reads "N k vyřízení" and opens a popover with the milestones to act on now; it is hidden when there are none.
 
 ## 6. Components
 
@@ -143,6 +143,7 @@ Each entry names the CSS class in `moony.css` and the React component that imple
 | Toast | `.toast.is-on` | `ui/toaster.tsx` (sonner) | Bottom right, 2.6 s, past-tense verb ("Účet přidán"). |
 | Alert | `.alert`, `--error` | `ui/alert.tsx` | Inline, next to the cause, with an action. |
 | Empty state | `.empty` | `common/EmptyState.tsx` | Icon in ink-5, title, one sentence, button. |
+| Milestone row | — | `milestones/MilestoneList.tsx` | The recent-moves row (icon in a `well` square, title 12/650, sub-line 10/500 `ink-4`, relative date right in caption `ink-3`); hover or focus reveals ghost `icon-sm` buttons 'Odložit o týden' and 'Označit jako vyřízené' in a fixed 66 px column next to the link, never inside it; in the top-bar popover the sub-line wraps to two lines. |
 | Skeleton | `.skeleton` | `ui/skeleton.tsx` | Shaped like the content it replaces; no page spinners. |
 | Breadcrumb, status, back link | `.topbar`, `.crumb`, `.status`, `.back` | `shell/TopBar.tsx`, `shell/DataStatus.tsx` | See §5. |
 

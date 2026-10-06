@@ -49,6 +49,12 @@ import type {
   PortfolioMetrics,
   PortfolioMetricsHistory,
   PriceStatus,
+  BudgetGoal,
+  InsertBudgetGoal,
+  BudgetingTransaction,
+  BudgetingReport,
+  ReportTransaction,
+  EffectiveTransactionFlow,
   CashflowReport,
   CashflowActuals,
   CashflowRange,
@@ -714,8 +720,21 @@ export const cashflowApi = {
     tauriInvoke<CashflowReport>('get_cashflow_report', { viewType }),
 
   /** Actual flows from bank transactions for the Cashflow report page (design system README §11). */
-  getActuals: (range: CashflowRange) =>
-    tauriInvoke<CashflowActuals>('get_cashflow_actuals', { range }),
+  getActuals: (range: CashflowRange, accountIds?: string[]) =>
+    tauriInvoke<CashflowActuals>('get_cashflow_actuals', { range, accountIds }),
+  getTransactions: (
+    startDate: number,
+    endDate: number,
+    filters: {
+      accountIds?: string[];
+      flowKind?: FlowKind;
+      categoryId?: string;
+      sourceKey?: string;
+    } = {}
+  ) =>
+    tauriInvoke<ReportTransaction[]>('get_report_transactions', { startDate, endDate, ...filters }),
+  getEffectiveFlows: (transactionIds: string[]) =>
+    tauriInvoke<EffectiveTransactionFlow[]>('get_effective_transaction_flows', { transactionIds }),
 
   getAllItems: () => tauriInvoke<CashflowItem[]>('get_all_cashflow_items'),
 
@@ -726,6 +745,7 @@ export const cashflowApi = {
     frequency: 'monthly' | 'yearly';
     itemType: 'income' | 'expense';
     category: string;
+    replacementSourceId?: string | null;
   }) => tauriInvoke<CashflowItem>('create_cashflow_item', { data }),
 
   updateItem: (
@@ -737,6 +757,7 @@ export const cashflowApi = {
       frequency: 'monthly' | 'yearly';
       itemType: 'income' | 'expense';
       category: string;
+      replacementSourceId?: string | null;
     }
   ) => tauriInvoke<CashflowItem>('update_cashflow_item', { id, data }),
 
@@ -1126,71 +1147,23 @@ export const categorizationApi = {
 // Budgeting API
 // ============================================================================
 
-// Budget goal entity
-export interface BudgetGoal {
-  id: string;
-  categoryId: string;
-  timeframe: string; // "monthly" | "quarterly" | "yearly"
-  amount: string;
-  currency: string;
-  createdAt: number;
-  updatedAt: number;
-}
-
-// Data for creating/updating a budget goal
-export interface InsertBudgetGoal {
-  categoryId: string;
-  timeframe: string;
-  amount: string;
-  currency?: string;
-}
-
-// Category spending summary
-export interface CategorySpendingSummary {
-  categoryId: string;
-  categoryName: string;
-  categoryIcon?: string;
-  categoryColor?: string;
-  totalAmount: string;
-  transactionCount: number;
-  budgetGoal?: BudgetGoal;
-  budgetPercentage?: number;
-}
-
-// Transaction for budgeting view
-export interface BudgetingTransaction {
-  id: string;
-  bookingDate: number;
-  amount: string;
-  currency: string;
-  description?: string;
-  counterpartyName?: string;
-  counterpartyIban?: string;
-  categoryId?: string;
-  bankAccountId: string;
-  bankAccountName: string;
-  txType: string;
-}
-
-// Full budgeting report
-export interface BudgetingReport {
-  periodStart: number;
-  periodEnd: number;
-  timeframe: string;
-  totalIncome: string;
-  totalExpenses: string;
-  netBalance: string;
-  incomeCategories: CategorySpendingSummary[];
-  expenseCategories: CategorySpendingSummary[];
-  uncategorizedIncome: string;
-  uncategorizedExpenses: string;
-  uncategorizedTransactionCount: number;
-}
+export type {
+  BudgetGoal,
+  InsertBudgetGoal,
+  CategorySpendingSummary,
+  BudgetingTransaction,
+  BudgetingReport,
+} from '@shared/schema';
 
 export const budgetingApi = {
   // Get the budgeting report for a time period
-  getReport: (startDate: number, endDate: number, timeframe: string) =>
-    tauriInvoke<BudgetingReport>('get_budgeting_report', { startDate, endDate, timeframe }),
+  getReport: (startDate: number, endDate: number, timeframe: string, accountIds?: string[]) =>
+    tauriInvoke<BudgetingReport>('get_budgeting_report', {
+      startDate,
+      endDate,
+      timeframe,
+      accountIds,
+    }),
 
   // Get transactions for a specific category
   getCategoryTransactions: (categoryId: string, startDate: number, endDate: number) =>

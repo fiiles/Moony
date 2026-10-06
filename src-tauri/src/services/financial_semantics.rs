@@ -5,13 +5,7 @@ use crate::models::FlowKind;
 use rusqlite::Connection;
 use std::collections::HashSet;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum FlowSource {
-    Explicit,
-    OwnAccount,
-    Category,
-    Direction,
-}
+pub use crate::models::reporting::FlowSource;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FlowResolution {
     pub kind: FlowKind,

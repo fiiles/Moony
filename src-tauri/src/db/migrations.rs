@@ -68,6 +68,7 @@ fn all_migrations() -> Vec<(&'static str, &'static str)> {
         ("004_stock_quote_currency", MIGRATION_004),
         ("005_milestones", MIGRATION_005),
         ("006_financial_semantics", MIGRATION_006),
+        ("007_report_history", MIGRATION_007),
     ]
 }
 
@@ -1004,6 +1005,29 @@ ALTER TABLE bank_transactions ADD COLUMN flow_kind TEXT
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn report_history_backfills_creation_month_and_is_idempotent() {
+        let conn = Connection::open_in_memory().unwrap();
+        run_chain(&conn, &all_migrations()[..6]).unwrap();
+        conn.execute("INSERT INTO budget_goals(id,category_id,timeframe,amount,currency,created_at) VALUES ('g','cat_groceries','monthly','1000.123','EUR',1705276800)",[]).unwrap();
+        run_migrations(&conn).unwrap();
+        run_migrations(&conn).unwrap();
+        let v: (i64, String, String) = conn
+            .query_row(
+                "SELECT effective_month,amount,currency FROM budget_goal_versions",
+                [],
+                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+            )
+            .unwrap();
+        assert_eq!(v, (1704067200, "1000.123".into(), "EUR".into()));
+        let count: i64 = conn
+            .query_row("SELECT COUNT(*) FROM budget_goal_versions", [], |r| {
+                r.get(0)
+            })
+            .unwrap();
+        assert_eq!(count, 1);
+    }
 
     #[test]
     fn financial_semantics_upgrade_preserves_legacy_and_rejects_invalid_roles() {
@@ -1993,3 +2017,22 @@ mod migration_005 {
         );
     }
 }
+
+/// Versioned goals, with deletion tombstones and explicit planning replacement.
+pub(crate) const MIGRATION_007: &str = r#"
+CREATE TABLE budget_goal_versions (
+ id TEXT PRIMARY KEY,
+ category_id TEXT NOT NULL REFERENCES transaction_categories(id),
+ timeframe TEXT NOT NULL CHECK(timeframe IN ('monthly','quarterly','yearly')),
+ effective_month INTEGER NOT NULL,
+ amount TEXT,
+ currency TEXT NOT NULL,
+ created_at INTEGER NOT NULL DEFAULT(unixepoch()),
+ UNIQUE(category_id,timeframe,effective_month)
+);
+INSERT INTO budget_goal_versions(id,category_id,timeframe,effective_month,amount,currency,created_at)
+ SELECT lower(hex(randomblob(4)))||'-'||lower(hex(randomblob(2)))||'-4'||substr(lower(hex(randomblob(2))),2)||'-8'||substr(lower(hex(randomblob(2))),2)||'-'||lower(hex(randomblob(6))),
+ category_id,timeframe,CAST(strftime('%s',created_at,'unixepoch','start of month') AS INTEGER),amount,currency,created_at FROM budget_goals;
+ALTER TABLE cashflow_items ADD COLUMN replacement_source_id TEXT;
+CREATE UNIQUE INDEX cashflow_replacement_source ON cashflow_items(replacement_source_id) WHERE replacement_source_id IS NOT NULL;
+"#;

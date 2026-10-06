@@ -20,8 +20,17 @@ pub async fn get_budgeting_report(
     start_date: i64,
     end_date: i64,
     timeframe: String,
+    account_ids: Option<Vec<String>>,
 ) -> Result<BudgetingReport> {
-    services::budgeting::get_budgeting_report(&db, start_date, end_date, timeframe).await
+    db.with_conn(|conn| {
+        services::budgeting::get_report_scoped(
+            conn,
+            start_date,
+            end_date,
+            &timeframe,
+            account_ids.as_deref(),
+        )
+    })
 }
 
 /// Get transactions for a specific category in a time period

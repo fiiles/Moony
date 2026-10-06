@@ -222,6 +222,8 @@ pub async fn run() {
             // Cashflow commands
             commands::cashflow::get_cashflow_report,
             commands::cashflow::get_cashflow_actuals,
+            commands::cashflow::get_report_transactions,
+            commands::cashflow::get_effective_transaction_flows,
             commands::cashflow::get_all_cashflow_items,
             commands::cashflow::create_cashflow_item,
             commands::cashflow::update_cashflow_item,

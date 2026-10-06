@@ -624,6 +624,7 @@ export interface CryptoInvestmentWithPrice extends CryptoInvestment {
 
 // Cashflow Types
 export interface CashflowItem {
+  replacementSourceId: string | null;
   id: string;
   name: string;
   amount: string;
@@ -636,10 +637,15 @@ export interface CashflowItem {
 }
 
 export interface CashflowReportItem {
+  fxQuality: FxQuality;
+  sourceId: string | null;
+  replacementSourceId: string | null;
+  category: string;
+  itemType: string;
   id: string;
   name: string;
-  amount: number;
-  originalAmount: number;
+  amount: string;
+  originalAmount: string;
   originalCurrency: string;
   originalFrequency: 'monthly' | 'yearly';
   isUserDefined: boolean;
@@ -648,7 +654,7 @@ export interface CashflowReportItem {
 export interface CashflowCategory {
   key: string;
   name: string;
-  total: number;
+  total: string;
   items: CashflowReportItem[];
   isUserEditable: boolean;
 }
@@ -656,24 +662,31 @@ export interface CashflowCategory {
 export interface CashflowSection {
   income: CashflowCategory[];
   expenses: CashflowCategory[];
-  totalIncome: number;
-  totalExpenses: number;
-  netCashflow: number;
+  totalIncome: string;
+  totalExpenses: string;
+  netCashflow: string;
 }
 
 export interface CashflowReport {
+  quality: ReportQuality;
+  ratesAsOf: number | null;
+  automaticSources: CashflowReportItem[];
+  asOf: number;
+  estimate: boolean;
   viewType: 'monthly' | 'yearly';
   personal: CashflowSection;
   investments: CashflowSection;
-  totalIncome: number;
-  totalExpenses: number;
-  netCashflow: number;
+  totalIncome: string;
+  totalExpenses: string;
+  netCashflow: string;
 }
 
 // Actual cashflow from bank transactions (design system README §11); CZK TEXT amounts
 export type CashflowRange = '6m' | '12m' | 'ytd';
 
 export interface CashflowMonth {
+  nonconsumptionFlows: CashflowGroup[];
+  bankCashMovement: string;
   /** Unix seconds of the first day of the month, UTC midnight */
   month: number;
   income: string;
@@ -691,6 +704,14 @@ export interface CashflowGroup {
 }
 
 export interface CashflowActuals {
+  netBalance: string;
+  bankCashMovement: string;
+  averageCompletedMonths: number[];
+  quality: ReportQuality;
+  previousQuality: ReportQuality;
+  nonconsumptionFlows: CashflowGroup[];
+  averageIncome: string | null;
+  averageExpenses: string | null;
   range: CashflowRange;
   rangeStart: number;
   rangeEnd: number;
@@ -1784,3 +1805,91 @@ export interface SavedStockImportFormat {
   config: StockImportConfig;
   createdAt: number;
 }
+
+export type FlowSource = 'explicit' | 'ownAccount' | 'category' | 'direction';
+export type FxQuality = 'historical' | 'estimated' | 'missing';
+export interface ReportQuality {
+  missingFxCount: number;
+  missingFxCurrencies: string[];
+  estimatedFxCount: number;
+  observedCompletedMonths: number[];
+  partialMonthCount: number;
+  unobservedMonthCount: number;
+}
+export interface EffectiveTransactionFlow {
+  id: string;
+  effectiveFlowKind: FlowKind;
+  flowSource: FlowSource;
+}
+// Budget goal entity
+export interface BudgetGoal {
+  id: string;
+  categoryId: string;
+  timeframe: string; // "monthly" | "quarterly" | "yearly"
+  amount: string;
+  currency: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
+// Data for creating/updating a budget goal
+export interface InsertBudgetGoal {
+  categoryId: string;
+  timeframe: string;
+  amount: string;
+  currency?: string;
+  effectiveMonth?: number;
+}
+
+// Category spending summary
+export interface CategorySpendingSummary {
+  budgetLimitCzk: string | null;
+  budgetLimitFxQuality: FxQuality | null;
+  categoryId: string;
+  categoryName: string;
+  categoryIcon: string | null;
+  categoryColor: string | null;
+  totalAmount: string;
+  transactionCount: number;
+  budgetGoal: BudgetGoal | null;
+  budgetPercentage: number | null;
+}
+
+// Transaction for budgeting view
+export interface BudgetingTransaction {
+  effectiveFlowKind: FlowKind;
+  flowSource: FlowSource;
+  signedAmountCzk: string | null;
+  fxQuality: FxQuality;
+  id: string;
+  bookingDate: number;
+  amount: string;
+  currency: string;
+  description: string | null;
+  counterpartyName: string | null;
+  counterpartyIban: string | null;
+  categoryId: string | null;
+  bankAccountId: string;
+  bankAccountName: string;
+  txType: string;
+}
+
+// Full budgeting report
+export interface BudgetingReport {
+  bankCashMovement: string;
+  quality: ReportQuality;
+  nonconsumptionFlows: CashflowGroup[];
+  periodStart: number;
+  periodEnd: number;
+  timeframe: string;
+  totalIncome: string;
+  totalExpenses: string;
+  netBalance: string;
+  incomeCategories: CategorySpendingSummary[];
+  expenseCategories: CategorySpendingSummary[];
+  uncategorizedIncome: string;
+  uncategorizedExpenses: string;
+  uncategorizedTransactionCount: number;
+}
+
+export type ReportTransaction = BudgetingTransaction;

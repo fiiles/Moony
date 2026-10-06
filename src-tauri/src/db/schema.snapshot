@@ -1,3 +1,6 @@
+== index cashflow_replacement_source ==
+CREATE UNIQUE INDEX cashflow_replacement_source ON cashflow_items(replacement_source_id) WHERE replacement_source_id IS NOT NULL
+
 == index idx_bank_accounts_institution ==
 CREATE INDEX idx_bank_accounts_institution ON bank_accounts(institution_id)
 
@@ -189,6 +192,18 @@ CREATE TABLE bonds (
     updated_at INTEGER NOT NULL DEFAULT (unixepoch())
 )
 
+== table budget_goal_versions ==
+CREATE TABLE budget_goal_versions (
+ id TEXT PRIMARY KEY,
+ category_id TEXT NOT NULL REFERENCES transaction_categories(id),
+ timeframe TEXT NOT NULL CHECK(timeframe IN ('monthly','quarterly','yearly')),
+ effective_month INTEGER NOT NULL,
+ amount TEXT,
+ currency TEXT NOT NULL,
+ created_at INTEGER NOT NULL DEFAULT(unixepoch()),
+ UNIQUE(category_id,timeframe,effective_month)
+)
+
 == table budget_goals ==
 CREATE TABLE budget_goals (
     id TEXT PRIMARY KEY,
@@ -212,7 +227,7 @@ CREATE TABLE cashflow_items (
     created_at INTEGER NOT NULL DEFAULT (unixepoch()),
     updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
     category TEXT NOT NULL DEFAULT 'income'
-)
+, replacement_source_id TEXT)
 
 == table categorization_rules ==
 CREATE TABLE categorization_rules (

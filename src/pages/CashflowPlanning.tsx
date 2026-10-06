@@ -154,18 +154,18 @@ export default function CashflowPlanning() {
       .flatMap((s) => s.expenses)
       .flatMap((c) => c.items)
       .filter((i) => !i.isUserDefined)
-      .reduce((sum, i) => sum + i.amount, 0);
+      .reduce((sum, i) => sum + Number(i.amount), 0);
   }, [report]);
 
   const flow = useMemo((): FlowSegment[] => {
-    if (!report || report.totalIncome <= 0) return [];
+    if (!report || Number(report.totalIncome) <= 0) return [];
     const byCategory = [report.personal, report.investments]
       .flatMap((s) => s.expenses)
-      .filter((c) => c.total > 0)
+      .filter((c) => Number(c.total) > 0)
       .map((c) => ({
         key: c.key,
         label: t(`categories.${c.key}`, { defaultValue: c.name }),
-        value: c.total,
+        value: Number(c.total),
       }))
       .sort((a, b) => b.value - a.value);
     const head = byCategory.slice(0, 4);
@@ -174,7 +174,7 @@ export default function CashflowPlanning() {
       key: c.key,
       label: c.label,
       value: c.value,
-      share: c.value / report.totalIncome,
+      share: c.value / Number(report.totalIncome),
     }));
     if (rest.length > 0) {
       const value = rest.reduce((s, c) => s + c.value, 0);
@@ -182,22 +182,25 @@ export default function CashflowPlanning() {
         key: 'other',
         label: t('planning.flow.other'),
         value,
-        share: value / report.totalIncome,
+        share: value / Number(report.totalIncome),
       });
     }
-    if (report.netCashflow > 0) {
+    if (Number(report.netCashflow) > 0) {
       segments.push({
         key: 'rest',
         label: t('planning.flow.rest'),
-        value: report.netCashflow,
-        share: report.netCashflow / report.totalIncome,
+        value: Number(report.netCashflow),
+        share: Number(report.netCashflow) / Number(report.totalIncome),
         kind: 'rest',
       });
     }
     return segments;
   }, [report, t]);
 
-  const freeShare = report && report.totalIncome > 0 ? report.netCashflow / report.totalIncome : 0;
+  const freeShare =
+    report && Number(report.totalIncome) > 0
+      ? Number(report.netCashflow) / Number(report.totalIncome)
+      : 0;
 
   const sectionCard = (id: SectionId, title: string, sub: string) => {
     const section = sectionOf(id);
@@ -232,13 +235,13 @@ export default function CashflowPlanning() {
           <TableCell>{t(`categories.${category.key}`, { defaultValue: category.name })}</TableCell>
           <TableCell className="text-ink-4">
             {item.originalFrequency === 'yearly'
-              ? `${t('planning.table.perYear')} · ${fmt.money(item.originalAmount, item.originalCurrency, { decimals: 0 })}`
+              ? `${t('planning.table.perYear')} · ${fmt.money(Number(item.originalAmount), item.originalCurrency, { decimals: 0 })}`
               : item.originalFrequency === 'monthly' && viewType === 'yearly'
-                ? `${t('planning.table.perMonth')} · ${fmt.money(item.originalAmount, item.originalCurrency, { decimals: 0 })}`
+                ? `${t('planning.table.perMonth')} · ${fmt.money(Number(item.originalAmount), item.originalCurrency, { decimals: 0 })}`
                 : t('planning.table.perMonth')}
           </TableCell>
           <TableCell className={cn('text-right font-650 num', isIncome ? 'text-gain' : 'text-ink')}>
-            {formatCurrencySigned(isIncome ? item.amount : -item.amount)}
+            {formatCurrencySigned(isIncome ? Number(item.amount) : -Number(item.amount))}
           </TableCell>
           <TableCell className="text-right">
             {item.isUserDefined ? (
@@ -302,10 +305,10 @@ export default function CashflowPlanning() {
             <b
               className={cn(
                 'text-[16px] font-650 tracking-[-0.03em] num',
-                section.netCashflow >= 0 ? 'text-gain' : 'text-loss'
+                Number(section.netCashflow) >= 0 ? 'text-gain' : 'text-loss'
               )}
             >
-              {formatCurrencySigned(section.netCashflow)}
+              {formatCurrencySigned(Number(section.netCashflow))}
             </b>
           </div>
         </CardHeader>
@@ -324,7 +327,9 @@ export default function CashflowPlanning() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {groupRow(t('planning.table.incomeGroup', { amount: money(section.totalIncome) }))}
+            {groupRow(
+              t('planning.table.incomeGroup', { amount: money(Number(section.totalIncome)) })
+            )}
             {incomeItems.length === 0 && (
               <TableRow className="hover:bg-transparent">
                 <TableCell colSpan={5} className="text-center text-table text-ink-4">
@@ -333,7 +338,9 @@ export default function CashflowPlanning() {
               </TableRow>
             )}
             {incomeItems.map((e) => row(e, true))}
-            {groupRow(t('planning.table.expenseGroup', { amount: money(section.totalExpenses) }))}
+            {groupRow(
+              t('planning.table.expenseGroup', { amount: money(Number(section.totalExpenses)) })
+            )}
             {expenseItems.length === 0 && (
               <TableRow className="hover:bg-transparent">
                 <TableCell colSpan={5} className="text-center text-table text-ink-4">
@@ -416,26 +423,32 @@ export default function CashflowPlanning() {
       <Stats columns={3}>
         <Stat
           label={t('planning.stats.income')}
-          value={money(report.totalIncome)}
+          value={money(Number(report.totalIncome))}
           note={t('planning.stats.incomeNote', {
-            personal: money(report.personal.totalIncome),
-            investments: money(report.investments.totalIncome),
+            personal: money(Number(report.personal.totalIncome)),
+            investments: money(Number(report.investments.totalIncome)),
           })}
         />
         <Stat
           label={t('planning.stats.expenses')}
-          value={money(report.totalExpenses)}
+          value={money(Number(report.totalExpenses))}
           note={t('planning.stats.expensesNote', { amount: money(autoExpenses) })}
         />
         <Stat
           label={t('planning.stats.net')}
-          value={formatCurrencySigned(report.netCashflow)}
-          tone={report.netCashflow > 0 ? 'gain' : report.netCashflow < 0 ? 'loss' : 'neutral'}
+          value={formatCurrencySigned(Number(report.netCashflow))}
+          tone={
+            Number(report.netCashflow) > 0
+              ? 'gain'
+              : Number(report.netCashflow) < 0
+                ? 'loss'
+                : 'neutral'
+          }
           noteTone="neutral"
           note={
-            report.netCashflow >= 0
+            Number(report.netCashflow) >= 0
               ? t('planning.stats.netNoteFree', { percent: fmt.percent(freeShare, 0) })
-              : t('planning.stats.netNoteOver', { amount: money(-report.netCashflow) })
+              : t('planning.stats.netNoteOver', { amount: money(-Number(report.netCashflow)) })
           }
         />
       </Stats>
@@ -446,7 +459,7 @@ export default function CashflowPlanning() {
             <h3 className="m-0 text-h3 text-ink">{t('planning.flow.title')}</h3>
             <p className="mt-[5px] text-micro font-500 text-ink-4">{t('planning.flow.sub')}</p>
           </div>
-          {report.totalIncome > 0 && (
+          {Number(report.totalIncome) > 0 && (
             <Badge>
               {t('planning.flow.badge', { percent: fmt.percent(Math.max(0, freeShare), 0) })}
             </Badge>

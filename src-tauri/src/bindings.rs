@@ -158,6 +158,19 @@ pub fn collect_types() -> TypeCollection {
     types.register::<crate::models::CashflowGroup>();
     types.register::<crate::models::CashflowActuals>();
 
+    types.register::<crate::models::FlowSource>();
+    types.register::<crate::models::FxQuality>();
+    types.register::<crate::models::ReportQuality>();
+    types.register::<crate::models::ReportTransaction>();
+    types.register::<crate::models::EffectiveTransactionFlow>();
+    types.register::<crate::models::BudgetGoal>();
+    types.register::<crate::models::InsertBudgetGoal>();
+    types.register::<crate::models::CategorySpendingSummary>();
+    types.register::<crate::models::BudgetingReport>();
+    types.register::<crate::models::CashflowReportItem>();
+    types.register::<crate::models::CashflowCategory>();
+    types.register::<crate::models::CashflowSection>();
+    types.register::<crate::models::CashflowReport>();
     // Portfolio models
     types.register::<crate::commands::portfolio::PortfolioMetrics>();
     types.register::<crate::commands::portfolio::PriceStatus>();

@@ -47,3 +47,7 @@ pub mod stock_import;
 pub mod stock_monitor;
 pub mod ticker_history;
 pub mod valuations;
+
+pub mod reporting;
+
+pub mod cashflow_planning;

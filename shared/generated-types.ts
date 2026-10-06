@@ -91,70 +91,65 @@ suggestedCategoryId: string | null; flowKind: FlowKind | null; status: string; d
 export type Bond = { id: string; name: string; isin: string | null; couponValue: string; quantity: string; currency: string; interestRate: string; maturityDate: number | null; createdAt: number; updatedAt: number }
 
 /**
+ * Budget goal entity - defines spending limits per category per timeframe
+ */
+export type BudgetGoal = { id: string; categoryId: string; timeframe: string; amount: string; currency: string; createdAt: number; updatedAt: number }
+
+/**
+ * Full budgeting report for a period
+ */
+export type BudgetingReport = { bankCashMovement: string; quality: ReportQuality; nonconsumptionFlows: CashflowGroup[]; periodStart: number; periodEnd: number; timeframe: string; totalIncome: string; totalExpenses: string; netBalance: string; incomeCategories: CategorySpendingSummary[]; expenseCategories: CategorySpendingSummary[]; uncategorizedIncome: string; uncategorizedExpenses: string; uncategorizedTransactionCount: number }
+
+/**
  * Actual monthly cashflow for a range plus the preceding range of equal length.
  */
-export type CashflowActuals = { 
+export type CashflowActuals = { netBalance: string; bankCashMovement: string; averageCompletedMonths: number[]; quality: ReportQuality; previousQuality: ReportQuality; nonconsumptionFlows: CashflowGroup[]; averageIncome: string | null; averageExpenses: string | null; range: string; rangeStart: number; rangeEnd: number; previousStart: number; previousEnd: number; months: CashflowMonth[]; expenseCategories: CashflowGroup[]; incomeSources: CashflowGroup[]; totalIncome: string; totalExpenses: string; previousIncome: string; previousExpenses: string; accountCount: number; transactionCount: number }
+
 /**
- * `6m`, `12m` or `ytd`.
+ * A category with its items
  */
-range: string; rangeStart: number; rangeEnd: number; previousStart: number; previousEnd: number; 
-/**
- * Every month of the range, oldest first, zero-filled.
- */
-months: CashflowMonth[]; 
-/**
- * Net expenses by category, largest first (refunds reduce a category).
- */
-expenseCategories: CashflowGroup[]; 
-/**
- * Income by counterparty, largest first.
- */
-incomeSources: CashflowGroup[]; totalIncome: string; totalExpenses: string; previousIncome: string; previousExpenses: string; 
-/**
- * Bank accounts that had a transaction in the range.
- */
-accountCount: number; 
-/**
- * Transactions counted in the range (internal transfers excluded).
- */
-transactionCount: number }
+export type CashflowCategory = { key: string; name: string; total: string; items: CashflowReportItem[]; isUserEditable: boolean }
 
 /**
  * One row of "expenses by category" or "income by source", with the same sum
  * for the preceding range so the UI can show "vs. minulé".
  */
-export type CashflowGroup = { 
-/**
- * Category id (`uncategorized` for rows without one) or a normalized source key.
- */
-key: string; 
-/**
- * Category name as stored, or the counterparty as first seen; empty for an unknown source.
- */
-name: string; amount: string; previousAmount: string; 
-/**
- * Transactions behind `amount` in the current range.
- */
-count: number }
+export type CashflowGroup = { key: string; name: string; amount: string; previousAmount: string; count: number }
 
 /**
  * User-defined cashflow item (income or expense)
  */
-export type CashflowItem = { id: string; name: string; amount: string; currency: string; frequency: string; itemType: string; category: string; createdAt: number; updatedAt: number }
+export type CashflowItem = { id: string; name: string; amount: string; currency: string; frequency: string; itemType: string; replacementSourceId: string | null; category: string; createdAt: number; updatedAt: number }
 
 /**
  * Income and expenses of one calendar month (UTC).
  */
-export type CashflowMonth = { 
+export type CashflowMonth = { nonconsumptionFlows: CashflowGroup[]; bankCashMovement: string; month: number; income: string; expenses: string }
+
 /**
- * Unix seconds of the first day of the month, UTC midnight.
+ * Complete cashflow report with Personal and Investments sections
  */
-month: number; income: string; expenses: string }
+export type CashflowReport = { quality: ReportQuality; ratesAsOf: number | null; automaticSources: CashflowReportItem[]; asOf: number; estimate: boolean; viewType: string; personal: CashflowSection; investments: CashflowSection; totalIncome: string; totalExpenses: string; netCashflow: string }
+
+/**
+ * Individual item in a cashflow category
+ */
+export type CashflowReportItem = { fxQuality: FxQuality; category: string; itemType: string; sourceId: string | null; replacementSourceId: string | null; id: string; name: string; amount: string; originalAmount: string; originalCurrency: string; originalFrequency: string; isUserDefined: boolean }
+
+/**
+ * A cashflow section (Personal or Investments)
+ */
+export type CashflowSection = { income: CashflowCategory[]; expenses: CashflowCategory[]; totalIncome: string; totalExpenses: string; netCashflow: string }
 
 /**
  * The automation rate (TS `CategorizationOverview`).
  */
 export type CategorizationOverview = { total: number; categorized: number; bySource: SourceCount[] }
+
+/**
+ * Category spending summary for a period
+ */
+export type CategorySpendingSummary = { budgetLimitFxQuality: FxQuality | null; budgetLimitCzk: string | null; categoryId: string; categoryName: string; categoryIcon: string | null; categoryColor: string | null; totalAmount: string; transactionCount: number; budgetGoal: BudgetGoal | null; budgetPercentage: number | null }
 
 /**
  * How many rows reference a category — what a delete would have to move.
@@ -530,6 +525,8 @@ export type DirectionMode =
  */
 export type DividendOverride = { id: string; ticker: string; yearlyDividendSum: string; currency: string; updatedAt: number }
 
+export type EffectiveTransactionFlow = { id: string; effectiveFlowKind: FlowKind; flowSource: FlowSource }
+
 /**
  * Enriched crypto with current price
  */
@@ -582,6 +579,10 @@ export type ExportSummary = { path: string; tableCount: number; rowCount: number
  */
 export type FlowKind = "income" | "expense" | "transfer" | "investment" | "financing" | "adjustment"
 
+export type FlowSource = "explicit" | "ownAccount" | "category" | "direction"
+
+export type FxQuality = "estimated" | "historical" | "missing"
+
 /**
  * Payload of the `history-recalculation` event.
  */
@@ -616,9 +617,14 @@ export type InsertBankTransaction = { bankAccountId: string; transactionId: stri
 export type InsertBond = { name: string; isin: string | null; couponValue: string; quantity: string | null; currency: string | null; interestRate: string | null; maturityDate: number | null }
 
 /**
+ * Data for creating/updating a budget goal
+ */
+export type InsertBudgetGoal = { categoryId: string; timeframe: string; amount: string; currency: string | null; effectiveMonth: number | null }
+
+/**
  * Data for creating/updating cashflow item
  */
-export type InsertCashflowItem = { name: string; amount: string; currency: string | null; frequency: string; itemType: string; category: string }
+export type InsertCashflowItem = { name: string; amount: string; currency: string | null; frequency: string; itemType: string; replacementSourceId: string | null; category: string }
 
 /**
  * Data for creating crypto investment. Quantity and average price are not
@@ -1032,6 +1038,10 @@ export type RecalcStatus = "running" | "done" | "failed"
  * Recurring cost for real estate
  */
 export type RecurringCost = { name: string; amount: number; frequency: string; currency: string | null }
+
+export type ReportQuality = { missingFxCount: number; missingFxCurrencies: string[]; estimatedFxCount: number; observedCompletedMonths: number[]; partialMonthCount: number; unobservedMonthCount: number }
+
+export type ReportTransaction = { id: string; bookingDate: number; amount: string; currency: string; description: string | null; counterpartyName: string | null; counterpartyIban: string | null; categoryId: string | null; bankAccountId: string; bankAccountName: string; txType: string; effectiveFlowKind: FlowKind; flowSource: FlowSource; signedAmountCzk: string | null; fxQuality: FxQuality }
 
 /**
  * How often one rule matched in the period (TS `RuleHitCount`).

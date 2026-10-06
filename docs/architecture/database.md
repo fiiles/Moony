@@ -235,3 +235,9 @@ three kept, see `db/mod.rs`; a brand-new database has nothing to copy);
 `pre-restore-<unix ts>/` — the previous account after a restore from backup
 (never deleted automatically). Backups themselves are zip archives written
 wherever the user chooses (`services/backup.rs`).
+
+### Report history (007_report_history)
+
+`budget_goal_versions` stores UUID versions by category, timeframe and effective UTC calendar month. Amounts are TEXT; a null amount ends a goal from that month. The upgrade backfills the existing value from its creation month and makes no claim about earlier limits. Reports integrate monthly equivalents across the selected months using each month's version and recorded FX. Goal edits and currency changes preserve earlier versions; deletion writes a current-month tombstone and cancels scheduled future versions. Category reassignment moves historical references atomically, with the target retaining versions where effective month and timeframe collide.
+
+`cashflow_items.replacement_source_id` optionally links a manual estimate to an automatic source. A partial unique index allows only one replacement per source. Source identifiers use a type prefix and the native entity ID (`loan:UUID`, `insurance:UUID`, `account:UUID`, `bond:UUID`, `stock:ticker`, `rental:UUID`, `propertyCosts:UUID`). The planning response retains the automatic source inventory even when a replacement excludes it from totals.

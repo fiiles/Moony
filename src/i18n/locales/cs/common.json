@@ -230,7 +230,10 @@
     "csvDelimiterInvalid": "Oddělovač musí být čárka, středník nebo tabulátor.",
     "milestoneKeyInvalid": "Tuto připomínku se nepodařilo najít.",
     "milestoneStateInvalid": "Tuto připomínku se nepodařilo upravit.",
-    "milestoneKindUnknown": "Tento druh připomínky aplikace nezná."
+    "milestoneKindUnknown": "Tento druh připomínky aplikace nezná.",
+    "effectiveMonthInvalid": "Vyberte první den kalendářního měsíce.",
+    "cashflowItemInvalid": "Zadejte platný název, kladnou částku, měnu, četnost a kategorii cashflow.",
+    "cashflowReplacementInvalid": "Vyberte dostupný automatický zdroj, který ještě není nahrazen."
   },
   "auth": {
     "wrongPassword": "Zadané heslo je nesprávné. Zkuste to prosím znovu.",

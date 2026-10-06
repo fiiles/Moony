@@ -143,7 +143,8 @@ fn usage_of(conn: &Connection, id: &str) -> Result<CategoryUsage> {
             (SELECT COUNT(*) FROM bank_transactions WHERE category_id = ?1),
             (SELECT COUNT(*) FROM categorization_rules WHERE category_id = ?1),
             (SELECT COUNT(*) FROM learned_payees WHERE category_id = ?1),
-            (SELECT COUNT(*) FROM budget_goals WHERE category_id = ?1)",
+            ((SELECT COUNT(*) FROM budget_goals WHERE category_id = ?1) +
+             (SELECT COUNT(DISTINCT timeframe) FROM budget_goal_versions v WHERE category_id=?1 AND NOT EXISTS(SELECT 1 FROM budget_goals g WHERE g.category_id=v.category_id AND g.timeframe=v.timeframe)))",
         [id],
         |row| {
             Ok(CategoryUsage {
@@ -221,6 +222,11 @@ pub fn delete_category(conn: &Connection, id: &str, reassign_to: Option<&str>) -
             "UPDATE learned_payees SET category_id = ?2 WHERE category_id = ?1",
             params![id, target],
         )?;
+        tx.execute("DELETE FROM budget_goal_versions WHERE category_id=?1 AND EXISTS(SELECT 1 FROM budget_goal_versions target WHERE target.category_id=?2 AND target.timeframe=budget_goal_versions.timeframe AND target.effective_month=budget_goal_versions.effective_month)",params![id,target])?;
+        tx.execute(
+            "UPDATE budget_goal_versions SET category_id=?2 WHERE category_id=?1",
+            params![id, target],
+        )?;
         tx.execute(
             "DELETE FROM budget_goals
              WHERE category_id = ?1
@@ -283,6 +289,7 @@ mod tests {
                 normalized_payee TEXT,
                 category_id TEXT NOT NULL REFERENCES transaction_categories(id)
             );
+            CREATE TABLE budget_goal_versions (id TEXT PRIMARY KEY,category_id TEXT NOT NULL,timeframe TEXT NOT NULL,effective_month INTEGER NOT NULL,amount TEXT,currency TEXT NOT NULL,created_at INTEGER NOT NULL,UNIQUE(category_id,timeframe,effective_month));
             CREATE TABLE budget_goals (
                 id TEXT PRIMARY KEY,
                 category_id TEXT NOT NULL REFERENCES transaction_categories(id) ON DELETE CASCADE,
@@ -320,6 +327,21 @@ mod tests {
         }
     }
 
+    #[test]
+    fn historical_only_goal_blocks_delete_and_reassign_preserves_versions() {
+        let conn = setup_test_db();
+        conn.execute("INSERT INTO budget_goal_versions VALUES ('h','custom-pets','monthly',1704067200,'1200','CZK',1704067200)",[]).unwrap();
+        assert!(delete_category(&conn, "custom-pets", None).is_err());
+        delete_category(&conn, "custom-pets", Some("custom-kids")).unwrap();
+        let category: String = conn
+            .query_row(
+                "SELECT category_id FROM budget_goal_versions WHERE id='h'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(category, "custom-kids");
+    }
     #[test]
     fn category_role_round_trips_and_name_only_edits_preserve_it() {
         let conn = setup_test_db();

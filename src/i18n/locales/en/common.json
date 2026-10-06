@@ -230,7 +230,10 @@
     "csvDelimiterInvalid": "The delimiter must be a comma, a semicolon or a tab.",
     "milestoneKeyInvalid": "This reminder could not be found.",
     "milestoneStateInvalid": "This reminder could not be updated.",
-    "milestoneKindUnknown": "This kind of reminder is unknown."
+    "milestoneKindUnknown": "This kind of reminder is unknown.",
+    "effectiveMonthInvalid": "Choose the first day of a calendar month.",
+    "cashflowItemInvalid": "Enter a valid name, positive amount, currency, frequency and cashflow category.",
+    "cashflowReplacementInvalid": "Choose an available automatic source that is not already replaced."
   },
   "auth": {
     "wrongPassword": "The password you entered is incorrect. Please try again.",

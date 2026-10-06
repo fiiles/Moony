@@ -5,31 +5,42 @@ use specta::Type;
 
 /// Budget goal entity - defines spending limits per category per timeframe
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
-#[serde(rename_all = "camelCase")]
 pub struct BudgetGoal {
     pub id: String,
+    #[serde(rename = "categoryId")]
     pub category_id: String,
     pub timeframe: String, // "monthly", "quarterly", "yearly"
     pub amount: String,
     pub currency: String,
+    #[serde(rename = "createdAt")]
     pub created_at: i64,
+    #[serde(rename = "updatedAt")]
     pub updated_at: i64,
 }
 
 /// Data for creating/updating a budget goal
 #[derive(Debug, Clone, Deserialize, Type)]
-#[serde(rename_all = "camelCase")]
 pub struct InsertBudgetGoal {
+    #[serde(rename = "categoryId")]
     pub category_id: String,
     pub timeframe: String,
     pub amount: String,
     pub currency: Option<String>,
+    #[serde(rename = "effectiveMonth")]
+    pub effective_month: Option<i64>,
 }
 
 impl InsertBudgetGoal {
     pub fn validate(&self) -> crate::error::Result<()> {
         use crate::error::AppError;
 
+        if let Some(month) = self.effective_month {
+            if crate::services::reporting::month_start(month) != Some(month) {
+                return Err(AppError::Validation(
+                    "validation.effectiveMonthInvalid".into(),
+                ));
+            }
+        }
         // Validate timeframe
         let valid_timeframes = ["monthly", "quarterly", "yearly"];
         if !valid_timeframes.contains(&self.timeframe.as_str()) {
@@ -64,49 +75,59 @@ impl InsertBudgetGoal {
 
 /// Category spending summary for a period
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
-#[serde(rename_all = "camelCase")]
 pub struct CategorySpendingSummary {
+    #[serde(rename = "budgetLimitFxQuality")]
+    pub budget_limit_fx_quality: Option<crate::models::FxQuality>,
+    #[serde(rename = "budgetLimitCzk")]
+    pub budget_limit_czk: Option<String>,
+    #[serde(rename = "categoryId")]
     pub category_id: String,
+    #[serde(rename = "categoryName")]
     pub category_name: String,
+    #[serde(rename = "categoryIcon")]
     pub category_icon: Option<String>,
+    #[serde(rename = "categoryColor")]
     pub category_color: Option<String>,
+    #[serde(rename = "totalAmount")]
     pub total_amount: String,
+    #[serde(rename = "transactionCount")]
     pub transaction_count: i32,
+    #[serde(rename = "budgetGoal")]
     pub budget_goal: Option<BudgetGoal>,
+    #[serde(rename = "budgetPercentage")]
     pub budget_percentage: Option<f64>, // How much of budget used (0-100+)
 }
 
-/// Transaction for display in category detail within budgeting view
-#[derive(Debug, Clone, Serialize, Deserialize, Type)]
-#[serde(rename_all = "camelCase")]
-pub struct BudgetingTransaction {
-    pub id: String,
-    pub booking_date: i64,
-    pub amount: String,
-    pub currency: String,
-    pub description: Option<String>,
-    pub counterparty_name: Option<String>,
-    pub counterparty_iban: Option<String>,
-    pub category_id: Option<String>,
-    pub bank_account_id: String,
-    pub bank_account_name: String,
-    pub tx_type: String,
-}
+pub type BudgetingTransaction = crate::models::ReportTransaction;
 
 /// Full budgeting report for a period
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
-#[serde(rename_all = "camelCase")]
 pub struct BudgetingReport {
+    #[serde(rename = "bankCashMovement")]
+    pub bank_cash_movement: String,
+    pub quality: crate::models::ReportQuality,
+    #[serde(rename = "nonconsumptionFlows")]
+    pub nonconsumption_flows: Vec<crate::models::CashflowGroup>,
+    #[serde(rename = "periodStart")]
     pub period_start: i64,
+    #[serde(rename = "periodEnd")]
     pub period_end: i64,
     pub timeframe: String,
+    #[serde(rename = "totalIncome")]
     pub total_income: String,
+    #[serde(rename = "totalExpenses")]
     pub total_expenses: String,
+    #[serde(rename = "netBalance")]
     pub net_balance: String,
+    #[serde(rename = "incomeCategories")]
     pub income_categories: Vec<CategorySpendingSummary>,
+    #[serde(rename = "expenseCategories")]
     pub expense_categories: Vec<CategorySpendingSummary>,
+    #[serde(rename = "uncategorizedIncome")]
     pub uncategorized_income: String,
+    #[serde(rename = "uncategorizedExpenses")]
     pub uncategorized_expenses: String,
+    #[serde(rename = "uncategorizedTransactionCount")]
     pub uncategorized_transaction_count: i32,
 }
 
@@ -121,6 +142,7 @@ mod tests {
                 timeframe: "monthly".into(),
                 amount: amount.into(),
                 currency: None,
+                effective_month: None,
             };
             assert!(goal.validate().is_err(), "accepted {amount}");
         }

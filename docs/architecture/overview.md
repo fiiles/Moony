@@ -114,3 +114,7 @@ Fat command files hold logic that belongs in services (link, don't fix):
 - `cashflow.rs`
 
 See `docs/DEPRECATED.md` for patterns not to copy.
+
+Actual cashflow and budgeting use `services/reporting.rs` for the same booked ledger rows, dynamic own-account recognition, explicit flow overrides, signed refunds/reversals and strict recorded historical FX. Missing FX rows remain visible with null CZK contribution and quality counts; they do not enter numeric totals. SQL read failures are errors. Report account scope is independent of portfolio exclusion. `netBalance` describes ordinary income less expense; `bankCashMovement` additionally includes signed transfer, investment, financing and adjustment flows. Cashflow exposes these separated flows for both totals and individual months.
+
+Observed completed months are a sample, not evidence of full statement coverage. Cashflow averages exclude partial/unobserved months and months with missing FX; the response names the actual average sample months. Current partial 6/12-month ranges compare to equally partial calendar periods; YTD compares the same calendar date in the previous year, clamping February 29 to February 28. Planning remains a monthly/yearly equivalent estimate with its as-of date and current-FX quality; it uses loan amortization to omit repaid/expired loans and supports explicit replacement sources. Portfolio currency conversion helpers retain their existing policy.

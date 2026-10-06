@@ -1,26 +1,21 @@
 //! Actual cashflow from bank transactions (design system README §11).
 //!
-//! Sums the bank transactions of a range by month and direction, net expenses by
-//! category and income by counterparty, and repeats the sums for the preceding
-//! range of the same length. Internal transfers are left out, like the budgeting
-//! report does; refunds (credits in an expense category) reduce that category;
-//! credits in the income category and uncategorized credits count as income.
-//! Every amount converts to CZK with the exchange rate of its booking day.
+//! Shared booked ledger interpretation preserves refunds and reversals, separates
+//! nonconsumption flows and reports historical FX gaps. Averages name their
+//! observed full-month sample; observation never proves statement completeness.
 
 use crate::db::Database;
 use crate::error::{AppError, Result};
 use crate::models::cashflow_actuals::{CashflowActuals, CashflowGroup, CashflowMonth};
-use crate::services::currency::{
-    convert_to_czk_with_rates, get_all_rates, get_rates_for_date_range,
-    resolve_rates_for_day_from_range,
-};
+use crate::models::FlowKind;
+use crate::services::reporting::{parse_money, quality, transactions};
 use chrono::{DateTime, Datelike, NaiveDate, Utc};
-use rusqlite::{params, Connection};
+#[cfg(test)]
+use rusqlite::params;
+use rusqlite::Connection;
 use std::collections::HashMap;
 
 const DAY: i64 = 86_400;
-const INTERNAL_TRANSFERS: &str = "cat_internal_transfers";
-const INCOME_CATEGORY: &str = "cat_income";
 const UNCATEGORIZED: &str = "uncategorized";
 
 /// Ranges the report offers: whole months ending today, or the current year so far.
@@ -59,8 +54,8 @@ fn shift_month(year: i32, month: u32, offset: i32) -> (i32, u32) {
 }
 
 /// `6m`/`12m`: that many whole months ending with today's month, the previous
-/// range being the same number of months before. `ytd`: January 1 to today, the
-/// previous range the same number of days before.
+/// range ending on the corresponding day that many months earlier. `ytd`: January 1 to today, the
+/// previous-year range through the corresponding calendar day.
 pub fn range_bounds(range: &str, today: i64) -> Result<RangeBounds> {
     validate_range(range)?;
     let day_start = today.div_euclid(DAY) * DAY;
@@ -71,12 +66,15 @@ pub fn range_bounds(range: &str, today: i64) -> Result<RangeBounds> {
 
     if range == "ytd" {
         let start = month_start(year, 1);
-        let length = end - start + 1;
+        let previous_day = NaiveDate::from_ymd_opt(year - 1, month, date.day())
+            .or_else(|| NaiveDate::from_ymd_opt(year - 1, month, 28))
+            .and_then(|d| d.and_hms_opt(0, 0, 0))
+            .ok_or_else(|| AppError::Internal("invalid comparison date".into()))?;
         return Ok(RangeBounds {
             start,
             end,
-            previous_start: start - length,
-            previous_end: start - 1,
+            previous_start: month_start(year - 1, 1),
+            previous_end: previous_day.and_utc().timestamp() + DAY - 1,
         });
     }
 
@@ -88,7 +86,23 @@ pub fn range_bounds(range: &str, today: i64) -> Result<RangeBounds> {
         start,
         end,
         previous_start: month_start(py, pm),
-        previous_end: start - 1,
+        previous_end: {
+            let (ey, em) = shift_month(year, month, -months);
+            let mut day = date.day();
+            let comparison = loop {
+                if let Some(d) = NaiveDate::from_ymd_opt(ey, em, day) {
+                    break d;
+                }
+                day -= 1;
+            };
+            comparison
+                .and_hms_opt(0, 0, 0)
+                .expect("midnight")
+                .and_utc()
+                .timestamp()
+                + DAY
+                - 1
+        },
     })
 }
 
@@ -110,17 +124,6 @@ fn months_between(start: i64, end: i64) -> Vec<i64> {
         month = next.1;
     }
     out
-}
-
-struct Row {
-    booking_date: i64,
-    is_credit: bool,
-    currency: String,
-    amount: f64,
-    category_id: Option<String>,
-    category_name: Option<String>,
-    counterparty: Option<String>,
-    account_id: String,
 }
 
 #[derive(Default)]
@@ -146,7 +149,7 @@ fn money(v: f64) -> String {
     format!("{:.2}", if v.abs() < 0.005 { 0.0 } else { v })
 }
 
-fn source_key(counterparty: &Option<String>) -> (String, String) {
+pub fn source_key(counterparty: &Option<String>) -> (String, String) {
     let name = counterparty
         .as_deref()
         .map(str::trim)
@@ -166,164 +169,199 @@ fn source_key(counterparty: &Option<String>) -> (String, String) {
 
 /// The report for `range`, with `today` as the reference day (unix seconds).
 pub fn get_actuals(conn: &Connection, range: &str, today: i64) -> Result<CashflowActuals> {
+    get_actuals_scoped(conn, range, today, None)
+}
+pub fn get_actuals_scoped(
+    conn: &Connection,
+    range: &str,
+    today: i64,
+    accounts: Option<&[String]>,
+) -> Result<CashflowActuals> {
     let bounds = range_bounds(range, today)?;
-
-    let mut stmt = conn.prepare(
-        "SELECT bt.booking_date, bt.tx_type, bt.currency, CAST(bt.amount AS REAL),
-                bt.category_id, tc.name, bt.counterparty_name, bt.bank_account_id
-         FROM bank_transactions bt
-         LEFT JOIN transaction_categories tc ON tc.id = bt.category_id
-         WHERE bt.booking_date >= ?1 AND bt.booking_date <= ?2
-           AND COALESCE(bt.category_id, '') != ?3
-         ORDER BY bt.booking_date",
-    )?;
-    let rows: Vec<Row> = stmt
-        .query_map(
-            params![bounds.previous_start, bounds.end, INTERNAL_TRANSFERS],
-            |row| {
-                Ok(Row {
-                    booking_date: row.get(0)?,
-                    is_credit: row.get::<_, String>(1)?.eq_ignore_ascii_case("credit"),
-                    currency: row.get(2)?,
-                    amount: row.get::<_, f64>(3)?.abs(),
-                    category_id: row.get(4)?,
-                    category_name: row.get(5)?,
-                    counterparty: row.get(6)?,
-                    account_id: row.get(7)?,
-                })
-            },
-        )?
-        .filter_map(|r| r.ok())
-        .collect();
-
-    // One FX lookup for the whole span; a day without a snapshot walks back up to
-    // ten days, then falls back to the current in-memory rates.
-    let rates_by_day = get_rates_for_date_range(conn, bounds.previous_start, bounds.end);
-    let current_rates = get_all_rates();
-    let to_czk = |amount: f64, currency: &str, day: i64| {
-        let rates = resolve_rates_for_day_from_range(&rates_by_day, day).unwrap_or(&current_rates);
-        convert_to_czk_with_rates(amount, currency, rates)
-    };
-
+    let rows = transactions(conn, bounds.start, bounds.end, accounts)?;
+    let previous = transactions(conn, bounds.previous_start, bounds.previous_end, accounts)?;
+    let current_quality = quality(&rows, bounds.start, bounds.end, today);
+    let previous_quality = quality(&previous, bounds.previous_start, bounds.previous_end, today);
     let mut months: HashMap<i64, (f64, f64)> = months_between(bounds.start, bounds.end)
         .into_iter()
         .map(|m| (m, (0.0, 0.0)))
         .collect();
     let mut expenses: HashMap<String, GroupAcc> = HashMap::new();
     let mut sources: HashMap<String, GroupAcc> = HashMap::new();
-    let mut total_income = 0.0;
-    let mut total_expenses = 0.0;
-    let mut previous_income = 0.0;
-    let mut previous_expenses = 0.0;
-    let mut accounts: Vec<String> = Vec::new();
-    let mut transaction_count = 0;
-
-    for row in rows {
-        let in_current = row.booking_date >= bounds.start;
-        let czk = to_czk(row.amount, &row.currency, row.booking_date);
-        let category = row.category_id.clone().unwrap_or_default();
-        let is_income = row.is_credit && (category.is_empty() || category == INCOME_CATEGORY);
-
-        if in_current {
-            transaction_count += 1;
-            if !accounts.contains(&row.account_id) {
-                accounts.push(row.account_id.clone());
-            }
-        }
-
-        if is_income {
-            let (key, name) = source_key(&row.counterparty);
-            let acc = sources.entry(key).or_default();
-            acc.name_from(name, in_current);
-            if in_current {
-                acc.amount += czk;
-                acc.count += 1;
-                total_income += czk;
-                if let Some(m) = month_of(&mut months, row.booking_date) {
-                    m.0 += czk;
-                }
-            } else {
-                acc.previous += czk;
-                previous_income += czk;
-            }
+    let mut other: HashMap<String, GroupAcc> = HashMap::new();
+    let mut monthly_other: HashMap<(i64, String), (f64, i32)> = HashMap::new();
+    let (mut income, mut expense, mut prev_income, mut prev_expense) = (0.0, 0.0, 0.0, 0.0);
+    for (row, current) in rows
+        .iter()
+        .map(|r| (r, true))
+        .chain(previous.iter().map(|r| (r, false)))
+    {
+        let Some(amount) = row.signed_amount_czk.as_deref() else {
             continue;
-        }
-
-        // Debits in the income category are not expenses of any category: skip them
-        // like the budgeting report does.
-        if !row.is_credit && category == INCOME_CATEGORY {
-            continue;
-        }
-
-        let key = if category.is_empty() {
-            UNCATEGORIZED.to_string()
-        } else {
-            category
         };
-        let acc = expenses.entry(key).or_default();
-        acc.name_from(row.category_name.clone().unwrap_or_default(), in_current);
-        // A credit in an expense category is a refund: it reduces the category
-        let signed = if row.is_credit { -czk } else { czk };
-        if in_current {
-            acc.amount += signed;
-            acc.count += 1;
-            total_expenses += signed;
-            if let Some(m) = month_of(&mut months, row.booking_date) {
-                m.1 += signed;
+        let amount = parse_money(amount)?;
+        let kind = row.effective_flow_kind;
+        let (key, name, map) = match kind {
+            FlowKind::Income => {
+                let (k, n) = source_key(&row.counterparty_name);
+                (k, n, &mut sources)
             }
+            FlowKind::Expense => {
+                let id = row
+                    .category_id
+                    .clone()
+                    .unwrap_or_else(|| UNCATEGORIZED.into());
+                let name = if let Some(category) = &row.category_id {
+                    conn.query_row(
+                        "SELECT name FROM transaction_categories WHERE id=?1",
+                        [category],
+                        |r| r.get(0),
+                    )?
+                } else {
+                    String::new()
+                };
+                (id, name, &mut expenses)
+            }
+            _ => (kind.to_string(), kind.to_string(), &mut other),
+        };
+        let acc = map.entry(key).or_default();
+        acc.name_from(name, current);
+        if current {
+            acc.amount += amount;
+            acc.count += 1;
         } else {
-            acc.previous += signed;
-            previous_expenses += signed;
+            acc.previous += amount;
+        }
+        match (kind, current) {
+            (FlowKind::Income, true) => {
+                income += amount;
+                if let Some(m) = month_of(&mut months, row.booking_date) {
+                    m.0 += amount;
+                }
+            }
+            (FlowKind::Expense, true) => {
+                expense += amount;
+                if let Some(m) = month_of(&mut months, row.booking_date) {
+                    m.1 += amount;
+                }
+            }
+            (FlowKind::Income, false) => prev_income += amount,
+            (FlowKind::Expense, false) => prev_expense += amount,
+            (_, true) => {
+                if let Some(month) = crate::services::reporting::month_start(row.booking_date) {
+                    let acc = monthly_other.entry((month, kind.to_string())).or_default();
+                    acc.0 += amount;
+                    acc.1 += 1;
+                }
+            }
+            _ => {}
         }
     }
-
-    let mut month_list: Vec<CashflowMonth> = months
+    let mut months: Vec<_> = months
         .into_iter()
-        .map(|(month, (income, expense))| CashflowMonth {
+        .map(|(month, (income, expenses))| CashflowMonth {
+            bank_cash_movement: money(
+                income - expenses
+                    + monthly_other
+                        .iter()
+                        .filter(|((m, _), _)| *m == month)
+                        .map(|(_, a)| a.0)
+                        .sum::<f64>(),
+            ),
+            nonconsumption_flows: monthly_other
+                .iter()
+                .filter(|((m, _), _)| *m == month)
+                .map(|((_, key), (amount, count))| CashflowGroup {
+                    key: key.clone(),
+                    name: key.clone(),
+                    amount: money(*amount),
+                    previous_amount: "0.00".into(),
+                    count: *count,
+                })
+                .collect(),
             month,
             income: money(income),
-            expenses: money(expense.max(0.0)),
+            expenses: money(expenses),
         })
         .collect();
-    month_list.sort_by_key(|m| m.month);
-
-    let to_groups = |map: HashMap<String, GroupAcc>| -> Vec<CashflowGroup> {
-        let mut groups: Vec<CashflowGroup> = map
+    months.sort_by_key(|m| m.month);
+    let to_groups = |map: HashMap<String, GroupAcc>| {
+        let mut groups: Vec<_> = map
             .into_iter()
-            .filter(|(_, acc)| acc.amount.abs() >= 0.005 || acc.previous.abs() >= 0.005)
-            .map(|(key, acc)| CashflowGroup {
+            .map(|(key, a)| CashflowGroup {
                 key,
-                name: acc.name,
-                amount: money(acc.amount),
-                previous_amount: money(acc.previous),
-                count: acc.count,
+                name: a.name,
+                amount: money(a.amount),
+                previous_amount: money(a.previous),
+                count: a.count,
             })
             .collect();
         groups.sort_by(|a, b| {
-            let av: f64 = a.amount.parse().unwrap_or(0.0);
-            let bv: f64 = b.amount.parse().unwrap_or(0.0);
-            bv.partial_cmp(&av)
-                .unwrap_or(std::cmp::Ordering::Equal)
-                .then_with(|| a.name.cmp(&b.name))
+            b.amount
+                .parse::<f64>()
+                .expect("formatted amount")
+                .total_cmp(&a.amount.parse::<f64>().expect("formatted amount"))
         });
         groups
     };
-
+    let completed: Vec<_> = current_quality
+        .observed_completed_months
+        .iter()
+        .copied()
+        .filter(|month| {
+            !rows.iter().any(|r| {
+                r.fx_quality == crate::models::FxQuality::Missing
+                    && crate::services::reporting::month_start(r.booking_date) == Some(*month)
+            })
+        })
+        .collect();
+    let averages = if completed.is_empty() {
+        (None, None)
+    } else {
+        let (i, e) =
+            months
+                .iter()
+                .filter(|m| completed.contains(&m.month))
+                .fold((0.0, 0.0), |(i, e), m| {
+                    (
+                        i + m.income.parse::<f64>().expect("amount"),
+                        e + m.expenses.parse::<f64>().expect("amount"),
+                    )
+                });
+        (
+            Some(money(i / completed.len() as f64)),
+            Some(money(e / completed.len() as f64)),
+        )
+    };
+    let account_count = rows
+        .iter()
+        .map(|r| &r.bank_account_id)
+        .collect::<std::collections::HashSet<_>>()
+        .len() as i32;
+    let nonconsumption_total: f64 = other.values().map(|g| g.amount).sum();
     Ok(CashflowActuals {
-        range: range.to_string(),
+        net_balance: money(income - expense),
+        bank_cash_movement: money(income - expense + nonconsumption_total),
+        average_completed_months: completed,
+        range: range.into(),
         range_start: bounds.start,
         range_end: bounds.end,
         previous_start: bounds.previous_start,
         previous_end: bounds.previous_end,
-        months: month_list,
+        months,
         expense_categories: to_groups(expenses),
         income_sources: to_groups(sources),
-        total_income: money(total_income),
-        total_expenses: money(total_expenses.max(0.0)),
-        previous_income: money(previous_income),
-        previous_expenses: money(previous_expenses.max(0.0)),
-        account_count: accounts.len() as i32,
-        transaction_count,
+        nonconsumption_flows: to_groups(other),
+        total_income: money(income),
+        total_expenses: money(expense),
+        previous_income: money(prev_income),
+        previous_expenses: money(prev_expense),
+        account_count,
+        transaction_count: rows.len() as i32,
+        quality: current_quality,
+        previous_quality,
+        average_income: averages.0,
+        average_expenses: averages.1,
     })
 }
 
@@ -350,11 +388,11 @@ mod tests {
             r#"
             CREATE TABLE transaction_categories (
                 id TEXT PRIMARY KEY,
-                name TEXT NOT NULL
+                name TEXT NOT NULL, kind TEXT NOT NULL DEFAULT 'expense'
             );
             CREATE TABLE bank_accounts (
                 id TEXT PRIMARY KEY,
-                name TEXT NOT NULL
+                name TEXT NOT NULL, iban TEXT, bban TEXT
             );
             CREATE TABLE bank_transactions (
                 id TEXT PRIMARY KEY,
@@ -362,9 +400,9 @@ mod tests {
                 booking_date INTEGER NOT NULL,
                 amount TEXT NOT NULL,
                 currency TEXT NOT NULL,
-                counterparty_name TEXT,
+                counterparty_name TEXT, description TEXT,
                 category_id TEXT,
-                tx_type TEXT NOT NULL
+                tx_type TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'booked', flow_kind TEXT, counterparty_iban TEXT
             );
             CREATE TABLE exchange_rate_history (
                 date INTEGER NOT NULL,
@@ -381,6 +419,16 @@ mod tests {
             "#,
         )
         .expect("schema");
+        conn.execute(
+            "UPDATE transaction_categories SET kind='income' WHERE id='cat_income'",
+            [],
+        )
+        .unwrap();
+        conn.execute(
+            "UPDATE transaction_categories SET kind='transfer' WHERE id='cat_internal_transfers'",
+            [],
+        )
+        .unwrap();
         conn
     }
 
@@ -416,12 +464,108 @@ mod tests {
     const TODAY: i64 = 1_791_000_000; // 2026-10-03 (UTC)
 
     #[test]
+    fn signed_report_conserves_cross_category_refunds_income_reversals_and_pending() {
+        let conn = setup_test_db();
+        conn.execute_batch("INSERT INTO transaction_categories(id,name,kind) VALUES ('custom-income','Consulting','income');
+          INSERT INTO bank_transactions(id,bank_account_id,booking_date,amount,currency,category_id,tx_type) VALUES
+          ('d','acc1',1790812800,'1000','CZK','cat_groceries','debit'),
+          ('r','acc1',1790899200,'500','CZK','cat_housing','credit'),
+          ('i','acc1',1790812800,'1000','CZK','cat_income','credit'),
+          ('ir','acc1',1790812800,'100','CZK','cat_income','debit'),
+          ('ci','acc1',1790812800,'2000','CZK','custom-income','credit');").unwrap();
+        conn.execute("INSERT INTO bank_transactions(id,bank_account_id,booking_date,amount,currency,tx_type,status) VALUES ('pending','acc1',1790812800,'9999','CZK','debit','pending')",[]).unwrap();
+        let report = get_actuals(&conn, "6m", TODAY).unwrap();
+        assert_eq!(report.total_expenses, "500.00");
+        assert_eq!(report.total_income, "2900.00");
+        assert!(report
+            .expense_categories
+            .iter()
+            .any(|g| g.amount == "-500.00"));
+        let expense_sum: f64 = report
+            .months
+            .iter()
+            .map(|m| m.expenses.parse::<f64>().unwrap())
+            .sum();
+        assert_eq!(expense_sum, 500.0);
+    }
+
+    #[test]
+    fn calendar_ytd_clamps_leap_day_and_keeps_corresponding_march_day() {
+        let leap = range_bounds("ytd", ts(2024, 2, 29)).unwrap();
+        assert_eq!(leap.previous_start, ts(2023, 1, 1));
+        assert_eq!(leap.previous_end, ts(2023, 3, 1) - 1);
+        let march = range_bounds("ytd", ts(2025, 3, 1)).unwrap();
+        assert_eq!(march.previous_end, ts(2024, 3, 2) - 1);
+    }
+    #[test]
+    fn negative_months_nonconsumption_and_observed_averages_reconcile() {
+        let conn = setup_test_db();
+        insert_tx(
+            &conn,
+            "d",
+            "acc1",
+            ts(2026, 8, 1),
+            "1000",
+            "CZK",
+            None,
+            Some("cat_housing"),
+            "debit",
+        );
+        insert_tx(
+            &conn,
+            "r",
+            "acc1",
+            ts(2026, 9, 1),
+            "1500",
+            "CZK",
+            None,
+            Some("cat_groceries"),
+            "credit",
+        );
+        insert_tx(
+            &conn,
+            "t",
+            "acc2",
+            ts(2026, 9, 2),
+            "700",
+            "CZK",
+            None,
+            Some("cat_internal_transfers"),
+            "credit",
+        );
+        let report = get_actuals(&conn, "6m", TODAY).unwrap();
+        assert_eq!(report.total_expenses, "-500.00");
+        assert_eq!(report.net_balance, "500.00");
+        assert_eq!(report.bank_cash_movement, "1200.00");
+        assert_eq!(report.nonconsumption_flows[0].amount, "700.00");
+        let expense: f64 = report
+            .months
+            .iter()
+            .map(|m| m.expenses.parse::<f64>().unwrap())
+            .sum();
+        assert_eq!(expense, -500.0);
+        let movement: f64 = report
+            .months
+            .iter()
+            .map(|m| m.bank_cash_movement.parse::<f64>().unwrap())
+            .sum();
+        assert_eq!(movement, 1200.0);
+        assert_eq!(report.average_expenses.as_deref(), Some("-250.00"));
+        assert_eq!(
+            report.average_completed_months,
+            vec![ts(2026, 8, 1), ts(2026, 9, 1)]
+        );
+        assert_eq!(report.quality.unobserved_month_count, 3);
+        assert_eq!(report.quality.partial_month_count, 1);
+    }
+
+    #[test]
     fn six_months_end_today_and_start_on_a_month_boundary() {
         let b = range_bounds("6m", TODAY).unwrap();
         assert_eq!(b.start, ts(2026, 5, 1));
         assert_eq!(b.end, ts(2026, 10, 4) - 1);
         assert_eq!(b.previous_start, ts(2025, 11, 1));
-        assert_eq!(b.previous_end, ts(2026, 5, 1) - 1);
+        assert_eq!(b.previous_end, ts(2026, 4, 4) - 1);
         assert_eq!(months_between(b.start, b.end).len(), 6);
     }
 
@@ -437,7 +581,8 @@ mod tests {
     fn year_to_date_compares_to_the_same_number_of_days_before() {
         let b = range_bounds("ytd", TODAY).unwrap();
         assert_eq!(b.start, ts(2026, 1, 1));
-        assert_eq!(b.previous_end, b.start - 1);
+        assert_eq!(b.previous_start, ts(2025, 1, 1));
+        assert_eq!(b.previous_end, ts(2025, 10, 4) - 1);
         assert_eq!(b.end - b.start, b.previous_end - b.previous_start);
     }
 
@@ -582,7 +727,7 @@ mod tests {
         assert_eq!(report.previous_income, "48000.00");
         assert_eq!(report.previous_expenses, "14000.00");
         assert_eq!(report.account_count, 2);
-        assert_eq!(report.transaction_count, 6);
+        assert_eq!(report.transaction_count, 7);
 
         let sep = report
             .months

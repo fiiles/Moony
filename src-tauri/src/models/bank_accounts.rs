@@ -207,9 +207,12 @@ impl InsertBankAccount {
         // Balance validation (if provided)
         if let Some(ref balance) = self.balance {
             if !balance.is_empty() {
-                balance
+                let amount = balance
                     .parse::<f64>()
                     .map_err(|_| AppError::Validation("validation.invalidAmount".into()))?;
+                if !amount.is_finite() {
+                    return Err(AppError::Validation("validation.invalidAmount".into()));
+                }
             }
         }
 
@@ -303,6 +306,9 @@ impl InsertSavingsAccountZone {
         let from: f64 = self.from_amount.parse().map_err(|_| {
             AppError::Validation(format!("Invalid from amount '{}'", self.from_amount))
         })?;
+        if !from.is_finite() {
+            return Err(AppError::Validation("validation.invalidAmount".into()));
+        }
         if from < 0.0 {
             return Err(AppError::Validation(
                 "From amount cannot be negative".into(),
@@ -315,6 +321,9 @@ impl InsertSavingsAccountZone {
                 let to: f64 = to_amount.parse().map_err(|_| {
                     AppError::Validation(format!("Invalid to amount '{}'", to_amount))
                 })?;
+                if !to.is_finite() {
+                    return Err(AppError::Validation("validation.invalidAmount".into()));
+                }
                 if to <= from {
                     return Err(AppError::Validation(
                         "To amount must be greater than from amount".into(),

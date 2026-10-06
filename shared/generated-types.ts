@@ -83,7 +83,7 @@ export type BankTransaction = { id: string; bankAccountId: string; transactionId
 /**
  * Category suggested by an MCP client, pending user confirmation
  */
-suggestedCategoryId: string | null; status: string; dataSource: string; createdAt: number }
+suggestedCategoryId: string | null; flowKind: FlowKind | null; status: string; dataSource: string; createdAt: number }
 
 /**
  * Bond holding
@@ -578,6 +578,11 @@ originalDividendYield: number; dividendCurrency: string; isManualDividend: boole
 export type ExportSummary = { path: string; tableCount: number; rowCount: number }
 
 /**
+ * Financial meaning, separate from native credit/debit direction.
+ */
+export type FlowKind = "income" | "expense" | "transfer" | "investment" | "financing" | "adjustment"
+
+/**
  * Payload of the `history-recalculation` event.
  */
 export type HistoryRecalcEvent = { ticker: string; status: RecalcStatus }
@@ -603,7 +608,7 @@ excludeFromBalance?: boolean | null }
 /**
  * Data for creating/updating a transaction
  */
-export type InsertBankTransaction = { bankAccountId: string; transactionId: string | null; type: string; amount: string; currency: string | null; description: string | null; counterpartyName: string | null; counterpartyIban: string | null; bookingDate: number; valueDate: number | null; categoryId: string | null; status: string | null }
+export type InsertBankTransaction = { bankAccountId: string; transactionId: string | null; type: string; flowKind?: FlowKind | null; amount: string; currency: string | null; description: string | null; counterpartyName: string | null; counterpartyIban: string | null; bookingDate: number; valueDate: number | null; categoryId: string | null; status: string | null }
 
 /**
  * Data for creating/updating bond
@@ -693,7 +698,7 @@ export type InsertStockTagGroup = { name: string; description: string | null }
 /**
  * Data for creating a category
  */
-export type InsertTransactionCategory = { name: string; icon: string | null; color: string | null; parentId: string | null; sortOrder: number | null }
+export type InsertTransactionCategory = { kind?: FlowKind | null; name: string; icon: string | null; color: string | null; parentId: string | null; sortOrder: number | null }
 
 /**
  * Data for creating/updating user profile
@@ -1550,7 +1555,7 @@ export type TradeDirection = "buy" | "sell"
 /**
  * Transaction category
  */
-export type TransactionCategory = { id: string; name: string; icon: string | null; color: string | null; parentId: string | null; sortOrder: number; isSystem: boolean; createdAt: number }
+export type TransactionCategory = { kind: FlowKind; id: string; name: string; icon: string | null; color: string | null; parentId: string | null; sortOrder: number; isSystem: boolean; createdAt: number }
 
 /**
  * Filters for querying transactions
@@ -1611,7 +1616,7 @@ export type TypeValueAction = "buy" | "sell" |
  * Data for editing a category's definition. A field that is absent (`None`)
  * is left unchanged, so an edit dialog can send only what the user touched.
  */
-export type UpdateTransactionCategory = { name: string | null; icon: string | null; color: string | null }
+export type UpdateTransactionCategory = { kind?: FlowKind | null; name: string | null; icon: string | null; color: string | null }
 
 /**
  * Data for updating user profile (partial updates)

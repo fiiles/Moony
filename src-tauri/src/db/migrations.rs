@@ -67,6 +67,7 @@ fn all_migrations() -> Vec<(&'static str, &'static str)> {
         ("003_stock_import_batches", MIGRATION_003),
         ("004_stock_quote_currency", MIGRATION_004),
         ("005_milestones", MIGRATION_005),
+        ("006_financial_semantics", MIGRATION_006),
     ]
 }
 
@@ -989,9 +990,54 @@ CREATE TABLE IF NOT EXISTS milestone_states (
 );
 "#;
 
+/// Persist meaning independently of native transaction direction.
+const MIGRATION_006: &str = r#"
+ALTER TABLE transaction_categories ADD COLUMN kind TEXT NOT NULL DEFAULT 'expense'
+    CHECK (kind IN ('income', 'expense', 'transfer', 'investment', 'financing', 'adjustment'));
+UPDATE transaction_categories SET kind = 'income' WHERE id = 'cat_income';
+UPDATE transaction_categories SET kind = 'transfer' WHERE id = 'cat_internal_transfers';
+UPDATE transaction_categories SET kind = 'investment' WHERE id = 'cat_investments';
+ALTER TABLE bank_transactions ADD COLUMN flow_kind TEXT
+    CHECK (flow_kind IS NULL OR flow_kind IN ('income', 'expense', 'transfer', 'investment', 'financing', 'adjustment'));
+"#;
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn financial_semantics_upgrade_preserves_legacy_and_rejects_invalid_roles() {
+        let conn = Connection::open_in_memory().unwrap();
+        run_chain(&conn, &all_migrations()[..5]).unwrap();
+        conn.execute(
+            "INSERT INTO transaction_categories (id,name) VALUES ('custom-income','Custom income')",
+            [],
+        )
+        .unwrap();
+        run_migrations(&conn).unwrap();
+        for (id, expected) in [
+            ("cat_income", "income"),
+            ("cat_internal_transfers", "transfer"),
+            ("cat_investments", "investment"),
+            ("custom-income", "expense"),
+        ] {
+            let role: String = conn
+                .query_row(
+                    "SELECT kind FROM transaction_categories WHERE id=?1",
+                    [id],
+                    |r| r.get(0),
+                )
+                .unwrap();
+            assert_eq!(role, expected);
+        }
+        assert!(conn
+            .execute(
+                "UPDATE transaction_categories SET kind='bogus' WHERE id='cat_income'",
+                []
+            )
+            .is_err());
+        run_migrations(&conn).unwrap();
+    }
 
     /// Path to the schema snapshot, relative to src-tauri/
     const SNAPSHOT_PATH: &str = "src/db/schema.snapshot";
@@ -1026,7 +1072,7 @@ mod tests {
         for (table, cols) in [
             (
                 "transaction_categories",
-                "id, name, icon, color, parent_id, sort_order, is_system",
+                "id, name, icon, color, parent_id, sort_order, is_system, kind",
             ),
             ("institutions", "id, name, bic, country, logo_url"),
         ] {

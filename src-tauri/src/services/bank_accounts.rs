@@ -312,8 +312,8 @@ pub fn create_transaction_with_origin(
             id, bank_account_id, transaction_id, tx_type, amount, currency,
             description, counterparty_name, counterparty_iban, booking_date, value_date,
             category_id, status, data_source, created_at, import_batch_id,
-            categorization_source
-        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17)",
+            categorization_source, flow_kind
+        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18)",
         params![
             id,
             data.bank_account_id,
@@ -332,10 +332,12 @@ pub fn create_transaction_with_origin(
             now,
             import_batch_id,
             categorization_source,
+            data.flow_kind.map(|kind| kind.to_string()),
         ],
     )?;
 
     Ok(BankTransaction {
+        flow_kind: data.flow_kind,
         id,
         bank_account_id: data.bank_account_id.clone(),
         transaction_id: data.transaction_id.clone(),
@@ -388,6 +390,24 @@ pub fn set_transaction_category(
         return Err(AppError::NotFound(format!(
             "Transaction not found: {}",
             transaction_id
+        )));
+    }
+    Ok(())
+}
+
+/// Set or clear explicit financial meaning independently of category.
+pub fn set_transaction_flow(
+    conn: &rusqlite::Connection,
+    transaction_id: &str,
+    flow_kind: Option<crate::models::FlowKind>,
+) -> Result<()> {
+    let updated = conn.execute(
+        "UPDATE bank_transactions SET flow_kind=?1 WHERE id=?2",
+        params![flow_kind.map(|kind| kind.to_string()), transaction_id],
+    )?;
+    if updated == 0 {
+        return Err(AppError::NotFound(format!(
+            "Transaction not found: {transaction_id}"
         )));
     }
     Ok(())
@@ -456,6 +476,7 @@ mod tests {
                 created_at INTEGER NOT NULL DEFAULT 0,
                 import_batch_id TEXT,
                 categorization_source TEXT,
+                flow_kind TEXT,
                 UNIQUE(bank_account_id, transaction_id)
             );
 
@@ -488,6 +509,28 @@ mod tests {
             termination_date: None,
             interest_rate_valid_until: None,
             exclude_from_balance: None,
+        }
+    }
+
+    #[test]
+    fn validate_rejects_nonfinite_account_zone_amounts() {
+        for amount in ["NaN", "inf", "-inf", "1e999"] {
+            for field in ["fromAmount", "toAmount"] {
+                let mut json = serde_json::json!({"savingsAccountId":"acc-1","fromAmount":"0","toAmount":"100","interestRate":"3"});
+                json[field] = serde_json::json!(amount);
+                let data: crate::models::InsertSavingsAccountZone =
+                    serde_json::from_value(json).unwrap();
+                assert!(data.validate().is_err(), "accepted {field}={amount}");
+            }
+        }
+    }
+
+    #[test]
+    fn validate_rejects_nonfinite_account_balances() {
+        for balance in ["NaN", "inf", "-inf", "1e999"] {
+            let mut data = minimal_insert("Main");
+            data.balance = Some(balance.into());
+            assert!(data.validate().is_err(), "accepted {balance}");
         }
     }
 
@@ -606,9 +649,53 @@ mod tests {
     }
 
     #[test]
+    fn transaction_flow_edit_and_clear_are_persisted_and_missing_is_an_error() {
+        let conn = setup_test_db();
+        set_transaction_flow(&conn, "tx-1", Some(crate::models::FlowKind::Investment)).unwrap();
+        let flow: Option<String> = conn
+            .query_row(
+                "SELECT flow_kind FROM bank_transactions WHERE id='tx-1'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(flow.as_deref(), Some("investment"));
+        set_transaction_flow(&conn, "tx-1", None).unwrap();
+        let flow: Option<String> = conn
+            .query_row(
+                "SELECT flow_kind FROM bank_transactions WHERE id='tx-1'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(flow, None);
+        assert!(matches!(
+            set_transaction_flow(&conn, "missing", None),
+            Err(AppError::NotFound(_))
+        ));
+    }
+
+    #[test]
+    fn transaction_flow_persists_and_category_only_edits_preserve_it() {
+        let conn = setup_test_db();
+        let data: InsertBankTransaction=serde_json::from_value(serde_json::json!({"bankAccountId":"acc-1", "type":"credit", "amount":"50", "bookingDate":1700000000,"flowKind":"adjustment"})).unwrap();
+        let transaction = create_transaction(&conn, &data).unwrap();
+        set_transaction_category(&conn, &transaction.id, Some("cat-1"), None).unwrap();
+        let kind: String = conn
+            .query_row(
+                "SELECT flow_kind FROM bank_transactions WHERE id=?1",
+                [&transaction.id],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(kind, "adjustment");
+    }
+
+    #[test]
     fn create_transaction_falls_back_to_account_currency() {
         let conn = setup_test_db(); // must seed one bank_accounts row id='acc-1', currency='EUR'
         let mut data = crate::models::InsertBankTransaction {
+            flow_kind: None,
             bank_account_id: "acc-1".into(),
             transaction_id: None,
             tx_type: "debit".into(),
@@ -634,6 +721,7 @@ mod tests {
     fn create_transaction_normalizes_case() {
         let conn = setup_test_db();
         let data = crate::models::InsertBankTransaction {
+            flow_kind: None,
             bank_account_id: "acc-1".into(),
             transaction_id: None,
             tx_type: "DEBIT".into(),
@@ -666,6 +754,7 @@ mod tests {
     fn create_transaction_validates_and_checks_category() {
         let conn = setup_test_db();
         let mut data = crate::models::InsertBankTransaction {
+            flow_kind: None,
             bank_account_id: "acc-1".into(),
             transaction_id: None,
             tx_type: "debit".into(),
@@ -694,6 +783,7 @@ mod tests {
     fn create_transaction_with_origin_records_source_and_batch() {
         let conn = setup_test_db();
         let data = crate::models::InsertBankTransaction {
+            flow_kind: None,
             bank_account_id: "acc-1".into(),
             transaction_id: None,
             tx_type: "debit".into(),
@@ -747,6 +837,7 @@ mod tests {
     fn create_transaction_records_categorization_provenance() {
         let conn = setup_test_db();
         let mut data = crate::models::InsertBankTransaction {
+            flow_kind: None,
             bank_account_id: "acc-1".into(),
             transaction_id: None,
             tx_type: "debit".into(),

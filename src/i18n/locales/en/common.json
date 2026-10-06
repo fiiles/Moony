@@ -139,6 +139,7 @@
     "currencyUnknown": "Unknown currency code (use an ISO 4217 code such as USD or EUR)",
     "invalidQuantity": "Invalid quantity",
     "invalidPrice": "Invalid price",
+    "flowKindInvalid": "Invalid financial flow kind",
     "invalidAmount": "Invalid amount",
     "transactionTypeInvalid": "Choose Buy or Sell",
     "fileRequired": "Please select a file",

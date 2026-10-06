@@ -263,6 +263,7 @@ pub async fn run() {
             commands::bank_accounts::create_bank_transaction,
             commands::bank_accounts::delete_bank_transaction,
             commands::bank_accounts::update_transaction_category,
+            commands::bank_accounts::update_transaction_flow,
             // Transaction category commands
             commands::categories::get_transaction_categories,
             commands::categories::create_transaction_category,

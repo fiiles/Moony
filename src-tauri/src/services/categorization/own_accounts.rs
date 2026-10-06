@@ -4,19 +4,19 @@
 //! Internal Transfer. The engine holds the IBANs in memory, so they must be
 //! re-read whenever the accounts table changes — loading them only at unlock
 //! left every account created afterwards invisible: "Salary September"
-//! paid to a fresh account's own IBAN stayed uncategorized. Normalization
-//! (whitespace, case) is the engine's job, via
-//! [`tokenizer::normalize_iban`](super::tokenizer::normalize_iban), on both sides.
+//! paid to a fresh account's own IBAN stayed uncategorized. Normalization uses the shared financial semantics utility on both sides,
+//! including Czech domestic/IBAN equivalence. The legacy function names remain
+//! compatible with unlock/account refresh callers.
 
 use rusqlite::Connection;
 
 use super::CategorizationEngine;
 use crate::error::Result;
 
-/// The raw IBANs stored on the user's bank accounts.
+/// The raw IBANs and domestic identifiers stored on the user's bank accounts.
 pub fn load_own_ibans(conn: &Connection) -> Result<Vec<String>> {
     let mut stmt =
-        conn.prepare("SELECT iban FROM bank_accounts WHERE iban IS NOT NULL AND TRIM(iban) != ''")?;
+        conn.prepare("SELECT iban FROM bank_accounts WHERE iban IS NOT NULL AND TRIM(iban) != '' UNION ALL SELECT bban FROM bank_accounts WHERE bban IS NOT NULL AND TRIM(bban) != ''")?;
     let ibans = stmt
         .query_map([], |row| row.get::<_, String>(0))?
         .collect::<rusqlite::Result<Vec<_>>>()?;
@@ -24,7 +24,7 @@ pub fn load_own_ibans(conn: &Connection) -> Result<Vec<String>> {
 }
 
 /// Re-read the own-account IBANs into the engine. Call after unlock and after
-/// every account create / update / delete. Returns how many accounts carry an IBAN.
+/// every account create / update / delete. Returns how many nonempty identifiers were loaded.
 pub fn refresh_own_ibans(conn: &Connection, engine: &CategorizationEngine) -> Result<usize> {
     let ibans = load_own_ibans(conn)?;
     let count = ibans.len();
@@ -41,7 +41,7 @@ mod tests {
         let conn = Connection::open_in_memory().expect("in-memory db");
         conn.execute_batch(
             r#"
-            CREATE TABLE bank_accounts (id TEXT PRIMARY KEY, name TEXT NOT NULL, iban TEXT);
+            CREATE TABLE bank_accounts (id TEXT PRIMARY KEY, name TEXT NOT NULL, iban TEXT, bban TEXT);
             "#,
         )
         .expect("schema");

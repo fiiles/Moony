@@ -89,6 +89,7 @@ pub fn collect_types() -> TypeCollection {
     // Bank transaction models
     types.register::<crate::models::TransactionType>();
     types.register::<crate::models::TransactionStatus>();
+    types.register::<crate::models::FlowKind>();
     types.register::<crate::models::BankTransaction>();
     types.register::<crate::models::InsertBankTransaction>();
     types.register::<crate::models::TransactionCategory>();

@@ -441,6 +441,7 @@ fn parse_row(
     );
 
     let insert = InsertBankTransaction {
+        flow_kind: None,
         bank_account_id: account_id.to_string(),
         transaction_id: cell_opt(cols.transaction_id),
         tx_type: if amount >= 0.0 { "credit" } else { "debit" }.to_string(),

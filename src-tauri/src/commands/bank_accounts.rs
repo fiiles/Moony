@@ -180,6 +180,7 @@ pub async fn create_bank_account(
     engine: State<'_, CategorizationState>,
     data: InsertBankAccount,
 ) -> Result<BankAccount> {
+    data.validate()?;
     // 1. Delegate to service layer (validates at the trust boundary itself,
     //    since the MCP write tool calls it directly too)
     let result = db.with_conn(|conn| bank_service::create_account(conn, &data))?;
@@ -305,7 +306,7 @@ pub async fn get_bank_transactions(
             "SELECT id, bank_account_id, transaction_id, tx_type, amount, currency,
              description, counterparty_name, counterparty_iban, booking_date, value_date,
              category_id, merchant_category_code, remittance_info, suggested_category_id,
-             status, data_source, created_at
+             status, data_source, created_at, flow_kind
              FROM bank_transactions WHERE bank_account_id = ?",
         );
 
@@ -354,6 +355,7 @@ pub async fn get_bank_transactions(
         let transactions: Vec<BankTransaction> = stmt
             .query_map(params_refs.as_slice(), |row| {
                 Ok(BankTransaction {
+                    flow_kind: row.get(18)?,
                     id: row.get(0)?,
                     bank_account_id: row.get(1)?,
                     transaction_id: row.get(2)?,
@@ -374,8 +376,7 @@ pub async fn get_bank_transactions(
                     created_at: row.get(17)?,
                 })
             })?
-            .filter_map(|r| r.ok())
-            .collect();
+            .collect::<rusqlite::Result<Vec<_>>>()?;
 
         // Get total count (reuse params without search duplicates)
         let count_params: Vec<&dyn rusqlite::ToSql> =
@@ -395,7 +396,18 @@ pub async fn create_bank_transaction(
     db: State<'_, Database>,
     data: InsertBankTransaction,
 ) -> Result<BankTransaction> {
+    data.validate()?;
     db.with_conn(|conn| bank_service::create_transaction(conn, &data))
+}
+
+/// Set explicit financial meaning; null returns to automatic derivation.
+#[tauri::command]
+pub async fn update_transaction_flow(
+    db: State<'_, Database>,
+    transaction_id: String,
+    flow_kind: Option<crate::models::FlowKind>,
+) -> Result<()> {
+    db.with_conn(|conn| bank_service::set_transaction_flow(conn, &transaction_id, flow_kind))
 }
 
 /// Delete a transaction

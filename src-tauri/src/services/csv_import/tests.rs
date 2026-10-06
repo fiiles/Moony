@@ -1604,6 +1604,7 @@ fn duplicate_hits_are_classified_by_rule() {
     )
     .unwrap();
     let mut insert = InsertBankTransaction {
+        flow_kind: None,
         bank_account_id: "acc-1".into(),
         transaction_id: Some("X1".into()),
         tx_type: "debit".into(),

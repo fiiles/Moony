@@ -70,6 +70,7 @@ pub fn setup_import_db() -> Connection {
             created_at INTEGER NOT NULL DEFAULT 0,
             import_batch_id TEXT REFERENCES csv_import_batches(id) ON DELETE CASCADE,
             categorization_source TEXT,
+            flow_kind TEXT,
             UNIQUE(bank_account_id, transaction_id)
         );
 

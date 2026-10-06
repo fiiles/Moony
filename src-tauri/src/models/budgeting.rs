@@ -44,6 +44,9 @@ impl InsertBudgetGoal {
             .amount
             .parse()
             .map_err(|_| AppError::Validation("Invalid amount format".into()))?;
+        if !amount.is_finite() {
+            return Err(AppError::Validation("validation.invalidAmount".into()));
+        }
         if amount <= 0.0 {
             return Err(AppError::Validation(
                 "Budget amount must be positive".into(),
@@ -105,4 +108,21 @@ pub struct BudgetingReport {
     pub uncategorized_income: String,
     pub uncategorized_expenses: String,
     pub uncategorized_transaction_count: i32,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn validate_rejects_nonfinite_goal_amounts() {
+        for amount in ["NaN", "inf", "-inf", "1e999"] {
+            let goal = InsertBudgetGoal {
+                category_id: "cat_other".into(),
+                timeframe: "monthly".into(),
+                amount: amount.into(),
+                currency: None,
+            };
+            assert!(goal.validate().is_err(), "accepted {amount}");
+        }
+    }
 }

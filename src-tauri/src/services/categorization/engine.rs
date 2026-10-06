@@ -1,30 +1,30 @@
 //! Master categorization engine orchestrating the waterfall flow
 //!
 //! This engine combines:
-//! 1. Custom Rule Engine - User-defined rules (highest priority)
-//! 2. Exact Match Engine - HashMap lookup for known payees
-//! 3. Internal Transfer Detection - Own IBAN matching
+//! 1. Internal Transfer Detection - Own account identity matching
+//! 2. Custom Rule Engine - User-defined rules
+//! 3. Exact Match Engine - HashMap lookup for known payees
 //! 4. Default Rule Engine - System rules (locale packs)
 //!
-//! Flow: Custom Rules → Learned Payees → Internal Transfers → Default Rules
+//! Flow: Own Accounts → Custom Rules → Learned Payees → Default Rules
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::sync::RwLock;
 
 use super::exact_match::ExactMatchEngine;
 use super::rules::RuleEngine;
-use super::tokenizer::normalize_iban;
 use super::types::{CategorizationResult, CategorizationRule, TransactionInput};
+use crate::services::financial_semantics::AccountIdentities;
 
 /// Main categorization engine orchestrating all classification methods
 pub struct CategorizationEngine {
-    /// User-defined custom rules (highest priority, checked first)
+    /// User-defined custom merchant rules (after own accounts)
     custom_rule_engine: RwLock<RuleEngine>,
     /// System/default rules (checked after learned payees)
     default_rule_engine: RwLock<RuleEngine>,
     exact_match: RwLock<ExactMatchEngine>,
     /// User's own IBANs for internal transfer detection
-    own_ibans: RwLock<HashSet<String>>,
+    own_ibans: RwLock<AccountIdentities>,
 }
 
 impl CategorizationEngine {
@@ -34,7 +34,7 @@ impl CategorizationEngine {
             custom_rule_engine: RwLock::new(RuleEngine::empty()),
             default_rule_engine: RwLock::new(RuleEngine::new(default_rules)),
             exact_match: RwLock::new(ExactMatchEngine::new()),
-            own_ibans: RwLock::new(HashSet::new()),
+            own_ibans: RwLock::new(AccountIdentities::default()),
         }
     }
 
@@ -48,13 +48,9 @@ impl CategorizationEngine {
     /// Set the user's own IBANs for internal transfer detection
     ///
     /// When a transaction's counterparty IBAN matches any of these,
-    /// it will be categorized as "Internal Transfer" (unless overridden by learned payees).
+    /// it will be categorized as "Internal Transfer" before merchant and learned rules.
     pub fn set_own_ibans(&self, ibans: Vec<String>) {
-        let normalized: HashSet<String> = ibans
-            .iter()
-            .map(|s| normalize_iban(s))
-            .filter(|s| !s.is_empty())
-            .collect();
+        let normalized = AccountIdentities::from_identifiers(ibans);
         if let Ok(mut own) = self.own_ibans.write() {
             *own = normalized;
         }
@@ -62,41 +58,22 @@ impl CategorizationEngine {
 
     /// Check if counterparty IBAN matches user's own accounts
     fn is_internal_transfer(&self, counterparty_iban: Option<&str>) -> bool {
-        if let Some(iban) = counterparty_iban {
-            let normalized = normalize_iban(iban);
-            if !normalized.is_empty() {
-                if let Ok(own) = self.own_ibans.read() {
-                    return own.contains(&normalized);
-                }
-            }
-        }
-        false
+        self.own_ibans
+            .read()
+            .map(|own| own.contains(counterparty_iban, None))
+            .unwrap_or(false)
     }
 
     /// Categorize a single transaction using waterfall approach
     ///
     /// Flow (priority order):
-    /// 1. Try CUSTOM rules FIRST (user-defined rules override everything)
-    /// 2. Try exact payee match (user's learned categorizations)
-    /// 3. Check if counterparty IBAN matches user's own accounts (internal transfer)
+    /// 1. Check own account identity (internal transfer)
+    /// 2. Try custom rules
+    /// 3. Try exact payee match
     /// 4. Try DEFAULT rules (system rules)
     /// 5. Return None if nothing matches
     pub fn categorize(&self, tx: &TransactionInput) -> CategorizationResult {
-        // Step 1: Try CUSTOM rules FIRST (user-defined rules override everything)
-        if let Ok(rules) = self.custom_rule_engine.read() {
-            if let Some((result, _stop_processing)) = rules.apply(tx) {
-                return result;
-            }
-        }
-
-        // Step 2: Try exact payee match (learned payees)
-        if let Ok(exact) = self.exact_match.read() {
-            if let Some(result) = exact.apply(tx) {
-                return result;
-            }
-        }
-
-        // Step 3: Check own IBANs for internal transfer detection
+        // Own accounts take precedence over every category rule.
         if self.is_internal_transfer(tx.counterparty_iban.as_deref()) {
             return CategorizationResult::Match {
                 category_id: "cat_internal_transfers".to_string(),
@@ -105,6 +82,20 @@ impl CategorizationEngine {
                     rule_name: "Internal Transfer (own account)".to_string(),
                 },
             };
+        }
+
+        // Try custom merchant rules.
+        if let Ok(rules) = self.custom_rule_engine.read() {
+            if let Some((result, _stop_processing)) = rules.apply(tx) {
+                return result;
+            }
+        }
+
+        // Try learned payees.
+        if let Ok(exact) = self.exact_match.read() {
+            if let Some(result) = exact.apply(tx) {
+                return result;
+            }
         }
 
         // Step 4: Try DEFAULT rules (system rules)
@@ -160,7 +151,7 @@ impl CategorizationEngine {
         }
     }
 
-    /// Update custom rules (user-defined rules, checked first in waterfall)
+    /// Update custom merchant rules (after own accounts in the waterfall)
     pub fn update_custom_rules(&self, rules: Vec<CategorizationRule>) {
         if let Ok(mut engine) = self.custom_rule_engine.write() {
             *engine = RuleEngine::new(rules);
@@ -615,6 +606,47 @@ mod tests {
         // A different account is not an internal transfer.
         let other = tx_with_iban("Salary September", "DE89 3704 0044 0532 0130 01");
         assert_eq!(engine.categorize(&other).category_id(), Some("cat_income"));
+    }
+
+    #[test]
+    fn own_account_beats_learned_and_custom_merchant_rules() {
+        let engine = global_pack_engine();
+        engine.set_own_ibans(vec!["CZ6508000000192000145399".into()]);
+        engine.learn_from_user_simple("Albert", "cat_groceries");
+        engine.update_custom_rules(vec![CategorizationRule {
+            id: "r-own".into(),
+            name: "Albert".into(),
+            rule_type: RuleType::Contains,
+            pattern: "albert".into(),
+            category_id: "cat_groceries".into(),
+            priority: 100,
+            is_active: true,
+            stop_processing: true,
+            iban_pattern: None,
+        }]);
+        let mut tx = tx_with_iban("Albert", "CZ6508000000192000145399");
+        tx.counterparty = Some("Albert".into());
+        assert_eq!(
+            engine.categorize(&tx).category_id(),
+            Some("cat_internal_transfers")
+        );
+        engine.update_custom_rules(vec![]);
+        assert_eq!(
+            engine.categorize(&tx).category_id(),
+            Some("cat_internal_transfers")
+        );
+    }
+
+    #[test]
+    fn own_domestic_identifier_equals_iban() {
+        let engine = CategorizationEngine::new_empty();
+        engine.set_own_ibans(vec!["19-2000145399/0800".into()]);
+        assert_eq!(
+            engine
+                .categorize(&tx_with_iban("", "CZ6508000000192000145399"))
+                .category_id(),
+            Some("cat_internal_transfers")
+        );
     }
 
     #[test]

@@ -17,8 +17,11 @@ grouping below follows the domain map in `docs/architecture/overview.md`.
   real estate and every other asset with a price above zero and no valuation row
   gets its current price as the first estimate, dated at the UTC day of its
   `created_at` (ids are UUID v4 built in SQL). Existing logs are untouched.
-- To add one: define `const MIGRATION_003: &str = r#"..."#;` (next free
-  number) and append a `("003_short_name", MIGRATION_003)` entry to the `Vec`
+- `006_financial_semantics` adds nullable transaction `flow_kind` overrides and category
+  `kind` roles with six constrained values. Legacy custom categories default to expense;
+  system Income, Internal Transfers and Investments get income, transfer and investment.
+- To add one: define `const MIGRATION_007: &str = r#"..."#;` (next free
+  number) and append a `("007_short_name", MIGRATION_007)` entry to the `Vec`
   returned by `all_migrations()`. Numbers are zero-padded, sequential, never
   reused.
 - Applied migrations are tracked by name in the `_migrations` table. On every
@@ -111,14 +114,14 @@ Grouped by owning domain (see the domain map in `overview.md`).
 | `institutions` | Banks/financial institutions, pre-seeded with Czech banks | Readable seeded IDs (`inst_fio`, `inst_csob`, …); `bic`, `logo_url` |
 | `bank_accounts` | All bank/savings accounts | `account_type DEFAULT 'checking'`, `institution_id` FK, `iban`/`bban`, `data_source DEFAULT 'manual'`, `has_zone_designation`, `exclude_from_balance`, `interest_rate` TEXT, `interest_rate_valid_until` INTEGER (UTC day the promotional rate ends, nullable; migration 005) |
 | `bank_account_zones` | Tiered interest-rate zones per account | FK `bank_account_id` ON DELETE CASCADE; `from_amount`/`to_amount`/`interest_rate` TEXT. Tiers are bands of the balance (not contiguous, not sorted); the one interest model is `services/interest_tiers.rs`, mirrored for display by `src/utils/bank-account-zones.ts` and cross-checked through `shared/fixtures/interest-tiers.json`; an empty / `0` `to_amount` is unlimited |
-| `bank_transactions` | Imported/manual bank transactions | `UNIQUE(bank_account_id, transaction_id)` dedupes imports (`services/dedup.rs`: a bank-side id is the only key when present; id-less rows fall back to an exact date/amount/type/description match, which the MCP import reports as `possibleDuplicate` and `importAnyway` overrides); `category_id` FK, `categorization_source`, `import_batch_id` FK ON DELETE CASCADE, `suggested_category_id` FK (MCP-suggested category awaiting confirmation); indexes on account, date, category, batch |
+| `bank_transactions` | Imported/manual bank transactions | `UNIQUE(bank_account_id, transaction_id)` dedupes imports (`services/dedup.rs`: a bank-side id is the only key when present; id-less rows fall back to an exact date/amount/type/description match, which the MCP import reports as `possibleDuplicate` and `importAnyway` overrides); `category_id` FK, nullable `flow_kind` explicit meaning (NULL derives dynamically; migration 006), `categorization_source`, `import_batch_id` FK ON DELETE CASCADE, `suggested_category_id` FK (MCP-suggested category awaiting confirmation); indexes on account, date, category, batch |
 | `csv_import_batches` | One row per CSV upload with import stats | FK `bank_account_id` ON DELETE CASCADE; `imported_count`/`duplicate_count`/`error_count` |
 
 ### Categorization
 
 | Table | Purpose | Notable columns / constraints |
 |---|---|---|
-| `transaction_categories` | Spending categories, system-seeded + user-defined | Readable seeded IDs (`cat_groceries`, …); self-referencing `parent_id` FK, `is_system`, `sort_order` |
+| `transaction_categories` | Spending categories, system-seeded + user-defined | Readable seeded IDs (`cat_groceries`, …); self-referencing `parent_id` FK, `is_system`, `sort_order`; `kind` ∈ income/expense/transfer/investment/financing/adjustment (default expense; migration 006) |
 | `categorization_rules` | Priority-ordered pattern rules | `rule_type`/`pattern` (`regex`, `contains`, `word`, `starts_with`, `ends_with`, `is_credit`, `is_debit`), `priority DEFAULT 50` (index `priority DESC, is_active`), `stop_processing`, `iban_pattern` |
 | `learned_payees` | Learned payee → category mappings for auto-categorization | `normalized_payee` is nullable (IBAN-only rules); UNIQUE index `(normalized_payee, counterparty_iban)`; partial indexes for the 3-level matching hierarchy |
 

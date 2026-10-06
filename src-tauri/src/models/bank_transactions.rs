@@ -3,6 +3,61 @@
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
+/// Financial meaning, separate from native credit/debit direction.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub enum FlowKind {
+    #[serde(rename = "income")]
+    Income,
+    #[default]
+    #[serde(rename = "expense")]
+    Expense,
+    #[serde(rename = "transfer")]
+    Transfer,
+    #[serde(rename = "investment")]
+    Investment,
+    #[serde(rename = "financing")]
+    Financing,
+    #[serde(rename = "adjustment")]
+    Adjustment,
+}
+
+impl std::fmt::Display for FlowKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            Self::Income => "income",
+            Self::Expense => "expense",
+            Self::Transfer => "transfer",
+            Self::Investment => "investment",
+            Self::Financing => "financing",
+            Self::Adjustment => "adjustment",
+        })
+    }
+}
+impl std::str::FromStr for FlowKind {
+    type Err = crate::error::AppError;
+    fn from_str(value: &str) -> std::result::Result<Self, Self::Err> {
+        match value {
+            "income" => Ok(Self::Income),
+            "expense" => Ok(Self::Expense),
+            "transfer" => Ok(Self::Transfer),
+            "investment" => Ok(Self::Investment),
+            "financing" => Ok(Self::Financing),
+            "adjustment" => Ok(Self::Adjustment),
+            _ => Err(crate::error::AppError::Validation(
+                "validation.flowKindInvalid".into(),
+            )),
+        }
+    }
+}
+impl rusqlite::types::FromSql for FlowKind {
+    fn column_result(value: rusqlite::types::ValueRef<'_>) -> rusqlite::types::FromSqlResult<Self> {
+        value
+            .as_str()?
+            .parse()
+            .map_err(|err| rusqlite::types::FromSqlError::Other(Box::new(err)))
+    }
+}
+
 /// Transaction type
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "lowercase")]
@@ -79,6 +134,9 @@ pub struct BankTransaction {
     /// Category suggested by an MCP client, pending user confirmation
     #[serde(rename = "suggestedCategoryId")]
     pub suggested_category_id: Option<String>,
+    // Null derives meaning; this entity always serializes the field.
+    #[serde(rename = "flowKind")]
+    pub flow_kind: Option<FlowKind>,
     pub status: String,
     #[serde(rename = "dataSource")]
     pub data_source: String,
@@ -95,6 +153,9 @@ pub struct InsertBankTransaction {
     pub transaction_id: Option<String>,
     #[serde(rename = "type")]
     pub tx_type: String,
+    // Null derives financial meaning from own account identity, category role and direction.
+    #[serde(rename = "flowKind", default)]
+    pub flow_kind: Option<FlowKind>,
     pub amount: String,
     pub currency: Option<String>,
     pub description: Option<String>,
@@ -128,6 +189,9 @@ impl InsertBankTransaction {
             .amount
             .parse()
             .map_err(|_| AppError::Validation("validation.invalidAmount".into()))?;
+        if !amount.is_finite() {
+            return Err(AppError::Validation("validation.invalidAmount".into()));
+        }
         if amount <= 0.0 {
             return Err(AppError::Validation("validation.amountRequired".into()));
         }
@@ -156,6 +220,7 @@ impl InsertBankTransaction {
 /// Transaction category
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct TransactionCategory {
+    pub kind: FlowKind,
     pub id: String,
     pub name: String,
     pub icon: Option<String>,
@@ -176,6 +241,8 @@ pub const CATEGORY_NAME_MAX_CHARS: usize = 50;
 /// Data for creating a category
 #[derive(Debug, Clone, Deserialize, Type)]
 pub struct InsertTransactionCategory {
+    #[serde(default)]
+    pub kind: Option<FlowKind>,
     pub name: String,
     pub icon: Option<String>,
     pub color: Option<String>,
@@ -204,6 +271,8 @@ impl InsertTransactionCategory {
 /// is left unchanged, so an edit dialog can send only what the user touched.
 #[derive(Debug, Clone, Default, Deserialize, Type)]
 pub struct UpdateTransactionCategory {
+    #[serde(default)]
+    pub kind: Option<FlowKind>,
     pub name: Option<String>,
     pub icon: Option<String>,
     pub color: Option<String>,
@@ -329,6 +398,7 @@ mod tests {
 
     fn valid_tx() -> InsertBankTransaction {
         InsertBankTransaction {
+            flow_kind: None,
             bank_account_id: "acc-1".into(),
             transaction_id: None,
             tx_type: "debit".into(),
@@ -368,6 +438,15 @@ mod tests {
         assert!(tx.validate().is_err());
         tx.amount = "0".into();
         assert!(tx.validate().is_err());
+    }
+
+    #[test]
+    fn validate_rejects_nonfinite_transaction_amounts() {
+        for amount in ["NaN", "inf", "-inf", "1e999"] {
+            let mut tx = valid_tx();
+            tx.amount = amount.into();
+            assert!(tx.validate().is_err(), "accepted {amount}");
+        }
     }
 
     #[test]

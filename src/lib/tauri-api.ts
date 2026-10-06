@@ -61,6 +61,7 @@ import type {
   InsertBankAccount,
   Institution,
   BankTransaction,
+  FlowKind,
   InsertBankTransaction,
   TransactionCategory,
   InsertTransactionCategory,
@@ -867,6 +868,9 @@ export const bankAccountsApi = {
   deleteTransaction: (id: string) => tauriInvoke<void>('delete_bank_transaction', { id }),
   updateTransactionCategory: (transactionId: string, categoryId: string | null) =>
     tauriInvoke<void>('update_transaction_category', { transactionId, categoryId }),
+
+  updateTransactionFlow: (transactionId: string, flowKind: FlowKind | null) =>
+    tauriInvoke<void>('update_transaction_flow', { transactionId, flowKind }),
 
   // Categories
   getCategories: () => tauriInvoke<TransactionCategory[]>('get_transaction_categories'),

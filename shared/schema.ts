@@ -815,7 +815,13 @@ export interface InsertBankAccount {
   excludeFromBalance?: boolean;
 }
 
+/** Financial meaning, independent of native credit/debit direction. */
+export type FlowKind =
+  'income' | 'expense' | 'transfer' | 'investment' | 'financing' | 'adjustment';
+
 export interface BankTransaction {
+  /** Null derives meaning from own-account identity, category role and direction. */
+  flowKind: FlowKind | null;
   id: string;
   bankAccountId: string;
   transactionId: string | null;
@@ -838,6 +844,8 @@ export interface BankTransaction {
 }
 
 export interface InsertBankTransaction {
+  /** Null derives meaning from own-account identity, category role and direction. */
+  flowKind?: FlowKind | null;
   bankAccountId: string;
   transactionId?: string | null;
   type: TransactionType;
@@ -853,6 +861,7 @@ export interface InsertBankTransaction {
 }
 
 export interface TransactionCategory {
+  kind: FlowKind;
   id: string;
   name: string;
   icon: string | null;
@@ -864,6 +873,7 @@ export interface TransactionCategory {
 }
 
 export interface InsertTransactionCategory {
+  kind?: FlowKind;
   name: string;
   icon?: string | null;
   color?: string | null;
@@ -873,6 +883,7 @@ export interface InsertTransactionCategory {
 
 /** Edit a category's definition; an absent field is left unchanged. */
 export interface UpdateTransactionCategory {
+  kind?: FlowKind;
   name?: string;
   icon?: string;
   color?: string;

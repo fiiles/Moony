@@ -127,6 +127,7 @@ pub struct BankTransactionsCreateArgs {
 
 fn row_to_insert(account_id: &str, row: &BankTransactionRow) -> InsertBankTransaction {
     InsertBankTransaction {
+        flow_kind: None,
         bank_account_id: account_id.to_string(),
         // An empty/whitespace export id (e.g. an LLM mapping an empty CSV cell
         // to "") is "no id" — store NULL, never '', so the id-dedup rule can't
@@ -481,7 +482,7 @@ pub fn bank_transactions(
                 bt.counterparty_name, bt.counterparty_iban, bt.booking_date,
                 bt.value_date, bt.status, bt.remittance_info, bt.suggested_category_id,
                 bt.categorization_source, bt.created_at,
-                tc.name, tc.icon, tc.color
+                tc.name, tc.icon, tc.color, bt.flow_kind, tc.kind
          FROM bank_transactions bt
          LEFT JOIN transaction_categories tc ON bt.category_id = tc.id
          WHERE {} ORDER BY bt.booking_date DESC LIMIT ? OFFSET ?",
@@ -509,13 +510,15 @@ pub fn bank_transactions(
         "categoryName": sql_to_json(row.get::<_, rusqlite::types::Value>(14).unwrap_or(rusqlite::types::Value::Null)),
         "categoryIcon": sql_to_json(row.get::<_, rusqlite::types::Value>(15).unwrap_or(rusqlite::types::Value::Null)),
         "categoryColor": sql_to_json(row.get::<_, rusqlite::types::Value>(16).unwrap_or(rusqlite::types::Value::Null)),
-    })))?.filter_map(|r| r.ok()).collect();
+        "flowKind": row.get::<_, Option<crate::models::FlowKind>>(17)?,
+        "categoryKind": row.get::<_, Option<crate::models::FlowKind>>(18)?,
+    })))?.collect::<rusqlite::Result<Vec<_>>>()?;
     Ok(serde_json::json!({ "total": total, "limit": limit, "offset": offset, "transactions": txs }))
 }
 
 pub fn bank_categories(conn: &Connection) -> Result<Value> {
     let mut stmt = conn.prepare(
-        "SELECT id, name, icon, color, parent_id, sort_order, is_system, created_at
+        "SELECT id, name, icon, color, parent_id, sort_order, is_system, created_at, kind
          FROM transaction_categories ORDER BY sort_order ASC",
     )?;
     let rows: Vec<Value> = stmt.query_map([], |row| Ok(serde_json::json!({
@@ -527,7 +530,8 @@ pub fn bank_categories(conn: &Connection) -> Result<Value> {
         "sortOrder": sql_to_json(row.get::<_, rusqlite::types::Value>(5).unwrap_or(rusqlite::types::Value::Null)),
         "isSystem": row.get::<_, i32>(6)? != 0,
         "createdAt": row.get::<_, i64>(7)?,
-    })))?.filter_map(|r| r.ok()).collect();
+        "kind": row.get::<_, crate::models::FlowKind>(8)?,
+    })))?.collect::<rusqlite::Result<Vec<_>>>()?;
     Ok(Value::Array(rows))
 }
 
@@ -535,6 +539,22 @@ pub fn bank_categories(conn: &Connection) -> Result<Value> {
 mod tests {
     use super::*;
     use rusqlite::Connection;
+
+    #[test]
+    fn mcp_reads_expose_flow_override_and_category_role_without_changing_category_writes() {
+        let conn = setup_test_db();
+        let category = bank_categories(&conn).unwrap();
+        assert_eq!(category[0]["kind"], "expense");
+        let data:InsertBankTransaction=serde_json::from_value(serde_json::json!({"bankAccountId":"acc-1","type":"debit","amount":"20","bookingDate":1700000000,"flowKind":"investment"})).unwrap();
+        let transaction = bank_service::create_transaction(&conn, &data).unwrap();
+        bank_service::set_transaction_category(&conn, &transaction.id, Some("cat-1"), Some("mcp"))
+            .unwrap();
+        let args: BankTransactionsArgs =
+            serde_json::from_value(serde_json::json!({"accountId":"acc-1"})).unwrap();
+        let result = bank_transactions(&conn, "acc-1", &args, 100, 0).unwrap();
+        assert_eq!(result["transactions"][0]["flowKind"], "investment");
+        assert_eq!(result["transactions"][0]["categoryKind"], "expense");
+    }
 
     fn setup_test_db() -> Connection {
         let conn = Connection::open_in_memory().expect("in-memory db");
@@ -574,6 +594,7 @@ mod tests {
                 parent_id TEXT REFERENCES transaction_categories(id),
                 sort_order INTEGER NOT NULL DEFAULT 0,
                 is_system INTEGER NOT NULL DEFAULT 0,
+                kind TEXT NOT NULL DEFAULT 'expense',
                 created_at INTEGER NOT NULL DEFAULT 0
             );
 
@@ -598,6 +619,7 @@ mod tests {
                 created_at INTEGER NOT NULL DEFAULT 0,
                 import_batch_id TEXT,
                 categorization_source TEXT,
+                flow_kind TEXT,
                 UNIQUE(bank_account_id, transaction_id)
             );
 

@@ -195,6 +195,7 @@ mod tests {
 
     fn insert(description: &str, tx_type: &str) -> InsertBankTransaction {
         InsertBankTransaction {
+            flow_kind: None,
             bank_account_id: "acc-1".into(),
             transaction_id: None,
             tx_type: tx_type.into(),

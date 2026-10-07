@@ -596,6 +596,40 @@ mod tests {
     }
 
     #[test]
+    fn review_round1_legacy_padded_and_blank_ids_reimport_safely() {
+        let mut conn = setup_test_db();
+        conn.execute("INSERT INTO bank_transactions(id,bank_account_id,transaction_id,tx_type,amount,currency,booking_date,status,description) VALUES ('legacy','acc-1',' FIO-123 ','debit','99','CZK',1767225600,'booked','coffee')", []).unwrap();
+        let mut incoming = row("debit", "99", 1767225600, Some("coffee"));
+        incoming.transaction_id = Some(" FIO-123 ".into());
+        let args = BankTransactionsCreateArgs {
+            account_id: "acc-1".into(),
+            transactions: vec![incoming],
+        };
+        let report = bank_transactions_create(&mut conn, &args, None).unwrap();
+        assert_eq!(
+            (
+                report.created,
+                report.promoted,
+                report.skipped_duplicates.len()
+            ),
+            (0, 0, 1)
+        );
+        assert!(!report.skipped_duplicates[0].possible_duplicate);
+        assert_eq!(tx_count(&conn), 1);
+        conn.execute(
+            "UPDATE bank_transactions SET transaction_id=' \t ' WHERE id='legacy'",
+            [],
+        )
+        .unwrap();
+        // Whitespace-only legacy IDs are absent, permitting a composite match
+        // even when the new export supplies a bank ID.
+        let report = bank_transactions_create(&mut conn, &args, None).unwrap();
+        assert_eq!((report.created, report.skipped_duplicates.len()), (0, 1));
+        assert!(report.skipped_duplicates[0].possible_duplicate);
+        assert_eq!(tx_count(&conn), 1);
+    }
+
+    #[test]
     fn mcp_reads_expose_flow_override_and_category_role_without_changing_category_writes() {
         let conn = setup_test_db();
         let category = bank_categories(&conn).unwrap();

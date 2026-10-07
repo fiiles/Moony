@@ -370,28 +370,33 @@ fn parse_row(
     let cell = |idx: usize| record.get(idx).unwrap_or("").trim();
     let cell_opt = |idx: Option<usize>| idx.and_then(|i| non_empty(cell(i)));
 
+    let pending = cols
+        .status
+        .is_some_and(|i| cell(i).eq_ignore_ascii_case("pending"));
+    // A completed-state export filter may retain explicitly mapped pending
+    // rows. Pending status never bypasses an unrelated inclusion filter.
+    if let Some((idx, equals)) = &cols.filter {
+        let value = cell(*idx);
+        let keep_pending = pending
+            && cols.status == Some(*idx)
+            && matches!(equals.as_str(), "booked" | "completed");
+        if value.to_lowercase() != *equals && !keep_pending {
+            return bare_row(
+                line,
+                RowState::SkippedFiltered(message(line, "csvImport.filteredOut", Some(value))),
+            );
+        }
+    }
+    // Validate mapped status independently after the inclusion filter. A row
+    // that passes any filter still cannot turn an unknown/failed state booked.
     if let Some(i) = cols.status {
         if !["pending", "booked", "completed"]
             .iter()
             .any(|known| cell(i).eq_ignore_ascii_case(known))
-            && cols.filter.is_none()
         {
             return bare_row(
                 line,
                 RowState::Error(message(line, "validation.statusInvalid", Some(cell(i)))),
-            );
-        }
-    }
-    let pending = cols
-        .status
-        .is_some_and(|i| cell(i).eq_ignore_ascii_case("pending"));
-    // Apply the format's filter, preserving explicitly mapped pending rows.
-    if let Some((idx, equals)) = &cols.filter {
-        let value = cell(*idx);
-        if value.to_lowercase() != *equals && !pending {
-            return bare_row(
-                line,
-                RowState::SkippedFiltered(message(line, "csvImport.filteredOut", Some(value))),
             );
         }
     }

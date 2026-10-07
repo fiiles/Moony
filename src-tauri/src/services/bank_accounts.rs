@@ -397,7 +397,25 @@ pub fn promote_pending_transaction(
     data: &InsertBankTransaction,
 ) -> Result<()> {
     data.validate()?;
-    let count=conn.execute("UPDATE bank_transactions SET status='booked',booking_date=?1,value_date=?2,amount=?3,currency=COALESCE(?4,currency),tx_type=?5,description=COALESCE(?6,description),counterparty_name=COALESCE(?7,counterparty_name),counterparty_iban=COALESCE(?8,counterparty_iban),counterparty_bank_code=COALESCE(?9,counterparty_bank_code),counterparty_country=COALESCE(?10,counterparty_country) WHERE id=?11 AND bank_account_id=?12 AND transaction_id=?13 AND status='pending'",params![data.booking_date,data.value_date,data.amount,data.currency,data.tx_type.to_lowercase(),data.description,data.counterparty_name,data.counterparty_iban,data.counterparty_bank_code,data.counterparty_country,id,data.bank_account_id,data.transaction_id])?;
+    // Compare legacy padded IDs using the shared normalization, but retain the
+    // original stored value for the guarded update and for source provenance.
+    let stored_id: Option<String> = conn
+        .query_row(
+            "SELECT transaction_id FROM bank_transactions WHERE id=?1 AND bank_account_id=?2 AND status='pending'",
+            params![id, data.bank_account_id],
+            |r| r.get::<_, Option<String>>(0),
+        )
+        .optional()?
+        .flatten();
+    let incoming_id = super::dedup::normalized_bank_id(data.transaction_id.as_deref());
+    if incoming_id.is_none()
+        || incoming_id != super::dedup::normalized_bank_id(stored_id.as_deref())
+    {
+        return Err(AppError::Validation(
+            "validation.pendingPromotionInvalid".into(),
+        ));
+    }
+    let count=conn.execute("UPDATE bank_transactions SET status='booked',booking_date=?1,value_date=?2,amount=?3,currency=COALESCE(?4,currency),tx_type=?5,description=COALESCE(?6,description),counterparty_name=COALESCE(?7,counterparty_name),counterparty_iban=COALESCE(?8,counterparty_iban),counterparty_bank_code=COALESCE(?9,counterparty_bank_code),counterparty_country=COALESCE(?10,counterparty_country) WHERE id=?11 AND bank_account_id=?12 AND transaction_id=?13 AND status='pending'",params![data.booking_date,data.value_date,data.amount,data.currency,data.tx_type.to_lowercase(),data.description,data.counterparty_name,data.counterparty_iban,data.counterparty_bank_code,data.counterparty_country,id,data.bank_account_id,stored_id])?;
     if count != 1 {
         return Err(AppError::Validation(
             "validation.pendingPromotionInvalid".into(),

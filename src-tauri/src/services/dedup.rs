@@ -30,6 +30,12 @@ pub enum BankOccurrence {
     Possible,
     Promote(String),
 }
+/// Existing imports may contain padded or whitespace-only bank IDs. Compare
+/// those with the same normalization as new inputs without rewriting stored IDs.
+pub(crate) fn normalized_bank_id(id: Option<&str>) -> Option<&str> {
+    id.map(str::trim).filter(|id| !id.is_empty())
+}
+
 pub(crate) fn canonical_amount(text: &str) -> String {
     let text = text.trim();
     let (mantissa, exponent) = text
@@ -140,7 +146,7 @@ impl BankOccurrenceChecker {
             };
             Ok(StoredOccurrence {
                 id: r.get(0)?,
-                bank_id: data.transaction_id.clone(),
+                bank_id: normalized_bank_id(data.transaction_id.as_deref()).map(str::to_string),
                 status: data.status.as_deref().unwrap_or("booked").to_lowercase(),
                 key: composite_key(&data, &currency),
                 consumed: false,
@@ -153,20 +159,14 @@ impl BankOccurrenceChecker {
         })
     }
     pub fn record_written(&mut self, t: &crate::models::InsertBankTransaction, id: &str) {
-        if t.transaction_id
-            .as_deref()
-            .is_some_and(|id| !id.trim().is_empty())
+        if normalized_bank_id(t.transaction_id.as_deref()).is_some()
             && t.status
                 .as_deref()
                 .is_some_and(|status| status.eq_ignore_ascii_case("pending"))
         {
             self.stored.push(StoredOccurrence {
                 id: id.into(),
-                bank_id: t
-                    .transaction_id
-                    .as_deref()
-                    .map(str::trim)
-                    .map(str::to_string),
+                bank_id: normalized_bank_id(t.transaction_id.as_deref()).map(str::to_string),
                 status: "pending".into(),
                 key: composite_key(t, &self.currency),
                 consumed: true,
@@ -177,11 +177,7 @@ impl BankOccurrenceChecker {
         &self.currency
     }
     pub fn check(&mut self, t: &crate::models::InsertBankTransaction) -> Option<BankOccurrence> {
-        let bank_id = t
-            .transaction_id
-            .as_deref()
-            .map(str::trim)
-            .filter(|s| !s.is_empty());
+        let bank_id = normalized_bank_id(t.transaction_id.as_deref());
         if let Some(id) = bank_id {
             let seen = !self.seen_ids.insert(id.to_string());
             if let Some(stored) = self
@@ -362,6 +358,33 @@ mod tests {
         )
         .expect("schema");
         conn
+    }
+
+    #[test]
+    fn review_round1_checker_normalizes_legacy_ids_and_whitespace_only_is_absent() {
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch("CREATE TABLE bank_accounts(id TEXT,currency TEXT);
+            INSERT INTO bank_accounts VALUES ('acc-1','CZK');
+            CREATE TABLE bank_transactions(id TEXT,bank_account_id TEXT,transaction_id TEXT,
+                booking_date INTEGER,value_date INTEGER,amount TEXT,currency TEXT,tx_type TEXT,
+                description TEXT,counterparty_name TEXT,counterparty_iban TEXT,
+                counterparty_bank_code TEXT,counterparty_country TEXT,status TEXT);
+            INSERT INTO bank_transactions(id,bank_account_id,transaction_id,booking_date,amount,currency,tx_type,description,status) VALUES
+                ('padded','acc-1',' FIO-123 ',1767225600,'99','CZK','debit','coffee','booked'),
+                ('blank','acc-1',' \t ',1767225600,'1','CZK','debit','blank','booked');").unwrap();
+        let mut checker = BankOccurrenceChecker::load(&conn, "acc-1").unwrap();
+        let mut row: crate::models::InsertBankTransaction =
+            serde_json::from_value(serde_json::json!({
+                "bankAccountId":"acc-1","transactionId":"\tFIO-123\n", "bookingDate":1767225600,
+                "amount":"99","currency":"CZK","type":"debit","description":"coffee"
+            }))
+            .unwrap();
+        assert_eq!(checker.check(&row), Some(BankOccurrence::Certain));
+        row.transaction_id = Some("new-id".into());
+        row.amount = "1".into();
+        row.description = Some("blank".into());
+        assert_eq!(checker.check(&row), Some(BankOccurrence::Possible));
+        assert_eq!(checker.check(&row), Some(BankOccurrence::Certain));
     }
 
     #[test]

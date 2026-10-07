@@ -185,6 +185,12 @@ pub fn preview_import(
                             && (!config.skip_duplicates
                                 || config.import_anyway_lines.contains(&row.line))
                         {
+                            if insert.status.as_deref() == Some("pending") {
+                                if let Some(id) = insert.transaction_id.as_ref() {
+                                    pending_categories.insert(id.clone(), category.clone());
+                                }
+                            }
+                            checker.record_written(insert, "preview");
                             forced_duplicate_count += 1;
                             if category.is_some() {
                                 categorized_count += 1;

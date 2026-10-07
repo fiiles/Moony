@@ -2,7 +2,7 @@
 
 Datum: 7. října 2026. Větev: `codex/money-flows-readiness`; výchozí commit `cbf1494`.
 
-Změny popsané níže jsou implementované a prošly testy i samostatnými review jednotlivých úloh. Závěrečné průřezové review celé větve ještě probíhá. Tento dokument navazuje na [výchozí audit](2026-10-06-money-flows-audit.md), [návrh](../specs/2026-10-06-money-flows-readiness-design.md) a [plán](../plans/2026-10-06-money-flows-readiness.md).
+Změny popsané níže jsou implementované a prošly testy, samostatnými review jednotlivých úloh i závěrečným průřezovým review celé větve. Jeho nálezy byly opraveny a ověřeny cíleným re-review. Výsledný commit je uveden v historii větve; větev zůstává lokální k revizi (bez push a merge). Tento dokument navazuje na [výchozí audit](2026-10-06-money-flows-audit.md), [návrh](../specs/2026-10-06-money-flows-readiness-design.md) a [plán](../plans/2026-10-06-money-flows-readiness.md).
 
 ## Co nyní znamenají čísla
 
@@ -38,16 +38,39 @@ Historické součty používají doložený kurz k datu zaúčtování do intern
 
 Importní historie nyní rozlišuje „Smazat importované transakce…“ a „Smazat záznam importu“ u dávky bez vlastních transakcí. Potvrzení uvádí aktuální připojený počet, soubor a období. Atomická operace vrací skutečně odstraněný počet; jiné importy, samostatně změněný zůstatek a pravidla zůstávají zachovány. Starší transakce se nepřiřazují dávce odhadem.
 
-## Ověření a review
+## Závěrečné review a opravy
 
-- Frontend: 983 testů v 72 souborech; lint, typecheck, Prettier a build prošly. Vitest po opravě končí bez původního Vite close timeoutu.
-- Rust: 1 452 knihovních + 7 převodních + 10 seed + 1 dokumentační test = 1 470 úspěšných testů; 4 generátory/ručně spouštěné kontroly jsou v běžném běhu ignorované. Formát, cargo check a Clippy všech targetů s `-D warnings` prošly.
-- Generování typů a snapshotu schématu prošlo bez změny oproti uloženým souborům.
-- Testy služeb používají samostatné in-memory SQLite Connection. Úplný Rust běh měl povolené pouze potřebné lokální HTTP fixture porty.
-- Úlohy 1–5 prošly nezávislým review. Nalezené chyby FX kvality a SQL propagace, CSV statusů/promotion/ID, finančního významu a vynechaných skupin i popisků byly opraveny a znovu ověřeny.
-- Závěrečné review celé větve: čeká na dokončení.
+Závěrečné review celé větve (`cbf1494..2001658`) skončilo verdiktem „připraveno s opravami“: 0 kritických, 5 důležitých a 7 drobných nálezů. Všech 12 bylo opraveno jednou integrovanou vlnou (`2001658..82a5d7c`) a jedno cílené re-review potvrdilo, že jsou vyřešené a nic nového závažného nevzniklo.
 
-Průřezový běh byl proveden na `e8df0a2`; následná čistě jazyková oprava `34bf155` znovu prošla frontendovými testy, typecheckem, lintem, kontrolou formátu a locale klíčů. Rust se touto opravou nezměnil. Lokální surové logy jsou v `/tmp/moony-final-*.log`; trvalý doklad představují souhrny zde, regresní testy a uvedené commity.
+| Nález | Oprava |
+| --- | --- |
+| I-1 limit rozpočtu | Uložení beze změny ani naplánovaný či zpětný limit už nepřepíše limit platný v aktuálním měsíci. API vrací verzi platnou nyní, její `effectiveMonth` a seznam verzí; dialog předvyplní částku verze platné pro editovaný měsíc a měsíc platnosti je viditelný. |
+| I-2 mapování importu | Krok mapování má ruční ovládání a vysvětlení pro datum valuty, kód banky, zemi, stav a datum čekající platby (cs i en). |
+| I-3 Revolut | Ruling: předvolba Revolut nemapuje stav ani datum čekající platby a čekající řádky se jako dříve vynechávají — export nemá ID transakce, takže převod čekající → zaúčtovaná nelze bezpečně provést — cena omylu: čekající platba Revolut se objeví až po zaúčtování, bez poškození dat. |
+| I-4 kurzy pro bankovní měny | Doplňování historických kurzů pokrývá i měny bankovních transakcí od jejich nejstarší transakce; spouští ho import CSV a ruční cizoměnová transakce. |
+| I-5 MCP asistent | Nástroje `cashflow_report` a `budgeting_report` používají stejné služby jako aplikace (jen zaúčtované, podepsané vratky, resolver významu, verze limitů, kvalita FX). Tvar výstupu se změnil a popisy nástrojů jsou aktualizované. |
+| M-1–M-7 | Jednodenní výpis vybírá zůstatek jen při prokázaném pořadí; jisté ID nelze spotřebovat dvakrát; popisek identifikátoru účtu; popisy MCP nástrojů; dialog mazání dávky vysvětluje, že povýšené čekající pohyby zůstávají; starší neplatné částky se z reportů vynechají místo selhání; široké `learn_payee` je jen testovací. |
+
+## Ověření
+
+Na výsledném stromu (`82a5d7c` + aktualizace dokumentace):
+
+- Frontend: 993 testů v 73 souborech; lint, typecheck, Prettier a build prošly.
+- Rust: 1 464 knihovních + 7 převodních + 10 seed + 1 dokumentační test = 1 482 úspěšných, 4 ignorované generátory/ruční kontroly. `cargo fmt --check` a Clippy všech targetů s `-D warnings` prošly.
+- Generování typů prošlo bez driftu proti uloženému `generated-types.ts`.
+- Testy služeb používají samostatné in-memory SQLite Connection.
+- Úlohy 1–5 prošly nezávislým review a opravami; viz výše pro závěrečnou vlnu.
+- Vizuální kontrola na izolovaném demo profilu (ne soukromá DB): migrace 006–009 proběhly, rozpočty a cashflow se vykreslí, dialog limitu ukazuje explicitní měsíc platnosti. Nové ovládání mapování importu bylo ověřeno jen typecheckem, lintem, buildem a testy utilit, nikoli vizuálně.
+
+## Známá omezení a navazující práce
+
+- Při povýšení čekajícího pohybu se neukládá dávka, která ho povýšila (vyžadovalo by migraci 010).
+- Měny, které ECB nekotuje, zůstávají označené jako „chybí kurz“; nic se nepřevádí 1:1.
+- Hromadný import přes MCP nespouští doplnění kurzů; doplní je další obnova kurzů nebo start aplikace.
+- MCP `budgeting_report` škáluje limity podle `timeframe`; asistent musí zadat odpovídající kalendářní období.
+- Ruční namapování sloupce stavu u souboru bez ID transakcí může opět vytvořit trvalé čekající dvojníky; varuje jen nápověda.
+- Drobné: při změně měsíce platnosti na měsíc bez limitu dialog ponechá předchozí částku; u historie limitů v různých měnách může editace staršího měsíce uložit částku v nesprávné měně; u měny, jejíž historie ECB začíná po první transakci, se opakuje jeden požadavek na kurzy při každé obnově.
+- Odložené drobnosti z úloh: vlastní identity se při srovnání načítají dvakrát.
 
 ## Hranice ověření a globální použití
 

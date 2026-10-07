@@ -93,7 +93,24 @@ export type Bond = { id: string; name: string; isin: string | null; couponValue:
 /**
  * Budget goal entity - defines spending limits per category per timeframe
  */
-export type BudgetGoal = { id: string; categoryId: string; timeframe: string; amount: string; currency: string; createdAt: number; updatedAt: number }
+export type BudgetGoal = { id: string; categoryId: string; timeframe: string; amount: string; currency: string; createdAt: number; updatedAt: number; 
+/**
+ * First month of the version whose `amount` is shown: the version in
+ * effect now, or the first scheduled one for a goal that starts later.
+ * `None` only for a legacy goal without versions.
+ */
+effectiveMonth: number | null; 
+/**
+ * Every limit version, oldest first (`amount: null` = no limit from
+ * that month). Lets the editor prefill the version in effect for the
+ * month being edited and show scheduled changes.
+ */
+versions: BudgetGoalVersion[] }
+
+/**
+ * One limit version of a budget goal, effective from a calendar month.
+ */
+export type BudgetGoalVersion = { effectiveMonth: number; amount: string | null; currency: string }
 
 /**
  * Full budgeting report for a period

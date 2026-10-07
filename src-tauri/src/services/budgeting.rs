@@ -8,7 +8,8 @@
 use crate::db::Database;
 use crate::error::{AppError, Result};
 use crate::models::budgeting::{
-    BudgetGoal, BudgetingReport, BudgetingTransaction, CategorySpendingSummary, InsertBudgetGoal,
+    BudgetGoal, BudgetGoalVersion, BudgetingReport, BudgetingTransaction, CategorySpendingSummary,
+    InsertBudgetGoal,
 };
 use rusqlite::{params, Connection, OptionalExtension};
 use std::collections::HashMap;
@@ -16,130 +17,184 @@ use uuid::Uuid;
 
 // ========================== Budget Goals CRUD ==========================
 
+fn goal_row(row: &rusqlite::Row) -> rusqlite::Result<BudgetGoal> {
+    Ok(BudgetGoal {
+        id: row.get(0)?,
+        category_id: row.get(1)?,
+        timeframe: row.get(2)?,
+        amount: row.get(3)?,
+        currency: row.get(4)?,
+        created_at: row.get(5)?,
+        updated_at: row.get(6)?,
+        effective_month: None,
+        versions: Vec::new(),
+    })
+}
+
+fn goal_versions(
+    conn: &Connection,
+    category_id: &str,
+    timeframe: &str,
+) -> Result<Vec<BudgetGoalVersion>> {
+    let mut stmt = conn.prepare(
+        "SELECT effective_month, amount, currency FROM budget_goal_versions
+         WHERE category_id = ?1 AND timeframe = ?2 ORDER BY effective_month",
+    )?;
+    let versions = stmt
+        .query_map(params![category_id, timeframe], |r| {
+            Ok(BudgetGoalVersion {
+                effective_month: r.get(0)?,
+                amount: r.get(1)?,
+                currency: r.get(2)?,
+            })
+        })?
+        .collect::<std::result::Result<Vec<_>, _>>()?;
+    Ok(versions)
+}
+
+/// The version that sets the limit for `month`: the latest one starting on
+/// or before it, if that one is not a removal.
+fn version_in_effect(versions: &[BudgetGoalVersion], month: i64) -> Option<&BudgetGoalVersion> {
+    versions
+        .iter()
+        .rev()
+        .find(|v| v.effective_month <= month)
+        .filter(|v| v.amount.is_some())
+}
+
+/// The version a goal shows as its limit: the one in effect now, otherwise
+/// the first scheduled one (a goal that only starts in a later month).
+fn displayed_version(versions: &[BudgetGoalVersion], now_month: i64) -> Option<&BudgetGoalVersion> {
+    version_in_effect(versions, now_month).or_else(|| {
+        versions
+            .iter()
+            .find(|v| v.effective_month > now_month && v.amount.is_some())
+    })
+}
+
+/// Attach the versions and expose the displayed version as the goal's amount.
+fn with_versions(conn: &Connection, mut goal: BudgetGoal, now: i64) -> Result<BudgetGoal> {
+    let versions = goal_versions(conn, &goal.category_id, &goal.timeframe)?;
+    let now_month = crate::services::reporting::month_start(now)
+        .ok_or_else(|| AppError::Validation("validation.effectiveMonthInvalid".into()))?;
+    if let Some(v) = displayed_version(&versions, now_month) {
+        goal.amount = v.amount.clone().expect("displayed versions have an amount");
+        goal.currency = v.currency.clone();
+        goal.effective_month = Some(v.effective_month);
+    }
+    goal.versions = versions;
+    Ok(goal)
+}
+
 /// Get all budget goals
 pub fn get_all_goals(conn: &Connection) -> Result<Vec<BudgetGoal>> {
+    get_all_goals_at(conn, chrono::Utc::now().timestamp())
+}
+
+/// All goals as seen at `now`: each shows the limit in effect in that month.
+pub fn get_all_goals_at(conn: &Connection, now: i64) -> Result<Vec<BudgetGoal>> {
     let mut stmt = conn.prepare(
         "SELECT id, category_id, timeframe, amount, currency, created_at, updated_at
          FROM budget_goals
          ORDER BY category_id, timeframe",
     )?;
-
     let goals = stmt
-        .query_map([], |row| {
-            Ok(BudgetGoal {
-                id: row.get(0)?,
-                category_id: row.get(1)?,
-                timeframe: row.get(2)?,
-                amount: row.get(3)?,
-                currency: row.get(4)?,
-                created_at: row.get(5)?,
-                updated_at: row.get(6)?,
-            })
-        })?
+        .query_map([], goal_row)?
         .collect::<std::result::Result<Vec<_>, _>>()?;
-
-    Ok(goals)
+    goals
+        .into_iter()
+        .map(|goal| with_versions(conn, goal, now))
+        .collect()
 }
 
 /// Get budget goals for a specific timeframe
 pub fn get_goals_by_timeframe(conn: &Connection, timeframe: &str) -> Result<Vec<BudgetGoal>> {
-    let mut stmt = conn.prepare(
-        "SELECT id, category_id, timeframe, amount, currency, created_at, updated_at
-         FROM budget_goals
-         WHERE timeframe = ?1
-         ORDER BY category_id",
-    )?;
-
-    let goals = stmt
-        .query_map([timeframe], |row| {
-            Ok(BudgetGoal {
-                id: row.get(0)?,
-                category_id: row.get(1)?,
-                timeframe: row.get(2)?,
-                amount: row.get(3)?,
-                currency: row.get(4)?,
-                created_at: row.get(5)?,
-                updated_at: row.get(6)?,
-            })
-        })?
-        .collect::<std::result::Result<Vec<_>, _>>()?;
-
-    Ok(goals)
+    Ok(get_all_goals(conn)?
+        .into_iter()
+        .filter(|goal| goal.timeframe == timeframe)
+        .collect())
 }
 
 /// Upsert (create or update) a budget goal
-pub fn upsert_goal(conn: &Connection, mut data: InsertBudgetGoal) -> Result<BudgetGoal> {
+pub fn upsert_goal(conn: &Connection, data: InsertBudgetGoal) -> Result<BudgetGoal> {
+    upsert_goal_at(conn, data, chrono::Utc::now().timestamp())
+}
+
+/// Save a limit version effective from `data.effective_month` (default: the
+/// month of `now`). Only the versions decide the limit of a month; the
+/// `budget_goals` row mirrors the version in effect at `now`, so a scheduled
+/// or back-dated change never replaces the current limit.
+pub fn upsert_goal_at(
+    conn: &Connection,
+    mut data: InsertBudgetGoal,
+    now: i64,
+) -> Result<BudgetGoal> {
     data.validate()?;
 
     let currency = data.currency.clone().unwrap_or_else(|| "CZK".to_string());
     let effective = data
         .effective_month
-        .or_else(|| crate::services::reporting::month_start(chrono::Utc::now().timestamp()))
+        .or_else(|| crate::services::reporting::month_start(now))
         .ok_or_else(|| AppError::Validation("validation.effectiveMonthInvalid".into()))?;
     let tx = conn.unchecked_transaction()?;
     let conn = &tx;
-    let now = chrono::Utc::now().timestamp();
 
     // Check if goal already exists for this category + timeframe
-    let existing: Option<String> = conn
+    let existing: Option<(String, String, String)> = conn
         .query_row(
-            "SELECT id FROM budget_goals WHERE category_id = ?1 AND timeframe = ?2",
+            "SELECT id, amount, currency FROM budget_goals WHERE category_id = ?1 AND timeframe = ?2",
             params![data.category_id, data.timeframe],
-            |row| row.get(0),
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
         )
         .optional()?;
 
-    let id = if let Some(existing_id) = existing {
-        let (old_amount, old_currency): (String, String) = conn.query_row(
-            "SELECT amount,currency FROM budget_goals WHERE id=?1",
-            [&existing_id],
-            |r| Ok((r.get(0)?, r.get(1)?)),
-        )?;
+    // An unchanged value keeps the stored spelling of the limit the user saw
+    // for that month (the version in effect then).
+    let versions = goal_versions(conn, &data.category_id, &data.timeframe)?;
+    let previous = version_in_effect(&versions, effective)
+        .map(|v| (v.amount.clone().expect("in effect"), v.currency.clone()))
+        .or_else(|| existing.as_ref().map(|(_, a, c)| (a.clone(), c.clone())));
+    if let Some((old_amount, old_currency)) = previous {
         if currency == old_currency
             && crate::services::reporting::parse_money(&old_amount)?
                 == crate::services::reporting::parse_money(&data.amount)?
         {
             data.amount = old_amount;
         }
-        // Update existing goal
-        conn.execute(
-            "UPDATE budget_goals SET amount = ?1, currency = ?2, updated_at = ?3 WHERE id = ?4",
-            params![data.amount, currency, now, existing_id],
-        )?;
-        existing_id
-    } else {
-        // Create new goal
-        let new_id = Uuid::new_v4().to_string();
-        conn.execute(
-            "INSERT INTO budget_goals (id, category_id, timeframe, amount, currency, created_at, updated_at)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?6)",
-            params![new_id, data.category_id, data.timeframe, data.amount, currency, now],
-        )?;
-        new_id
+    }
+
+    let id = match existing {
+        Some((existing_id, _, _)) => existing_id,
+        None => {
+            let new_id = Uuid::new_v4().to_string();
+            conn.execute(
+                "INSERT INTO budget_goals (id, category_id, timeframe, amount, currency, created_at, updated_at)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?6)",
+                params![new_id, data.category_id, data.timeframe, data.amount, currency, now],
+            )?;
+            new_id
+        }
     };
 
     conn.execute("INSERT INTO budget_goal_versions(id,category_id,timeframe,effective_month,amount,currency,created_at) VALUES (?1,?2,?3,?4,?5,?6,?7) ON CONFLICT(category_id,timeframe,effective_month) DO UPDATE SET amount=excluded.amount,currency=excluded.currency,created_at=excluded.created_at",
         params![Uuid::new_v4().to_string(),data.category_id,data.timeframe,effective,data.amount,currency,now])?;
 
-    // Retrieve and return the goal
-    let result = conn
-        .query_row(
-            "SELECT id, category_id, timeframe, amount, currency, created_at, updated_at
+    // Mirror the version in effect now (or the first scheduled one).
+    let base = conn.query_row(
+        "SELECT id, category_id, timeframe, amount, currency, created_at, updated_at
          FROM budget_goals WHERE id = ?1",
-            [&id],
-            |row| {
-                Ok(BudgetGoal {
-                    id: row.get(0)?,
-                    category_id: row.get(1)?,
-                    timeframe: row.get(2)?,
-                    amount: row.get(3)?,
-                    currency: row.get(4)?,
-                    created_at: row.get(5)?,
-                    updated_at: row.get(6)?,
-                })
-            },
-        )
-        .map_err(|e| AppError::Database(e.to_string()))?;
+        [&id],
+        goal_row,
+    )?;
+    let result = with_versions(conn, base, now)?;
+    conn.execute(
+        "UPDATE budget_goals SET amount = ?1, currency = ?2, updated_at = ?3 WHERE id = ?4",
+        params![result.amount, result.currency, now, id],
+    )?;
+    let result = BudgetGoal {
+        updated_at: now,
+        ..result
+    };
     tx.commit()?;
     Ok(result)
 }
@@ -390,6 +445,8 @@ fn period_limits(
                 currency: v.4.clone(),
                 created_at: v.6,
                 updated_at: v.6,
+                effective_month: Some(v.5),
+                versions: Vec::new(),
             };
             let e = out.entry(category).or_insert((Some(0.0), goal));
             e.0 = match (e.0, czk) {
@@ -540,6 +597,120 @@ mod tests {
         )
         .unwrap();
         conn
+    }
+
+    const JAN: i64 = 1767225600;
+    const MAR: i64 = 1772323200;
+    const JUN: i64 = 1780272000;
+    const OCT: i64 = 1790812800;
+    const NOV: i64 = 1793491200;
+    const DEC: i64 = 1796083200;
+    /// 2026-10-15 12:00 UTC.
+    const NOW: i64 = 1792065600;
+
+    fn goal_input(amount: &str, month: i64) -> InsertBudgetGoal {
+        InsertBudgetGoal {
+            category_id: "cat_groceries".into(),
+            timeframe: "monthly".into(),
+            amount: amount.into(),
+            currency: Some("CZK".into()),
+            effective_month: Some(month),
+        }
+    }
+
+    fn stored_amount(conn: &Connection) -> String {
+        conn.query_row(
+            "SELECT amount FROM budget_goals WHERE category_id='cat_groceries'",
+            [],
+            |r| r.get(0),
+        )
+        .unwrap()
+    }
+
+    fn limit_for(conn: &Connection, month: i64, next: i64) -> Option<String> {
+        get_report(conn, month, next - 1, "monthly")
+            .unwrap()
+            .expense_categories[0]
+            .budget_limit_czk
+            .clone()
+    }
+
+    /// Final review I-1: a limit scheduled for December must not become the
+    /// current limit, and the version in effect now is what the goal exposes.
+    #[test]
+    fn scheduled_future_limit_keeps_the_current_limit_in_effect() {
+        let conn = setup_test_db();
+        upsert_goal_at(&conn, goal_input("1000", OCT), NOW).unwrap();
+        let saved = upsert_goal_at(&conn, goal_input("2000", DEC), NOW).unwrap();
+
+        assert_eq!(saved.amount, "1000", "current limit, not the scheduled one");
+        assert_eq!(saved.effective_month, Some(OCT));
+        assert_eq!(stored_amount(&conn), "1000");
+        let goals = get_all_goals_at(&conn, NOW).unwrap();
+        assert_eq!(goals[0].amount, "1000");
+        assert_eq!(goals[0].effective_month, Some(OCT));
+        let months: Vec<_> = goals[0]
+            .versions
+            .iter()
+            .map(|v| (v.effective_month, v.amount.clone()))
+            .collect();
+        assert_eq!(
+            months,
+            vec![(OCT, Some("1000".into())), (DEC, Some("2000".into()))]
+        );
+
+        // Reopening the dialog prefills the October version; saving it
+        // unchanged for October keeps October at 1 000 and December at 2 000.
+        upsert_goal_at(&conn, goal_input("1000", OCT), NOW).unwrap();
+        assert_eq!(limit_for(&conn, OCT, NOV).as_deref(), Some("1000.00"));
+        assert_eq!(
+            limit_for(&conn, DEC, DEC + 31 * 86400).as_deref(),
+            Some("2000.00")
+        );
+        assert_eq!(stored_amount(&conn), "1000");
+    }
+
+    #[test]
+    fn back_dated_edit_does_not_replace_the_limit_in_effect_now() {
+        let conn = setup_test_db();
+        upsert_goal_at(&conn, goal_input("1000", JAN), NOW).unwrap();
+        upsert_goal_at(&conn, goal_input("1500", JUN), NOW).unwrap();
+        let saved = upsert_goal_at(&conn, goal_input("1200", MAR), NOW).unwrap();
+
+        assert_eq!(saved.amount, "1500");
+        assert_eq!(saved.effective_month, Some(JUN));
+        assert_eq!(stored_amount(&conn), "1500");
+        assert_eq!(
+            limit_for(&conn, MAR, MAR + 31 * 86400).as_deref(),
+            Some("1200.00")
+        );
+        assert_eq!(limit_for(&conn, OCT, NOV).as_deref(), Some("1500.00"));
+    }
+
+    #[test]
+    fn goal_scheduled_only_for_the_future_exposes_its_first_version() {
+        let conn = setup_test_db();
+        let saved = upsert_goal_at(&conn, goal_input("2000", DEC), NOW).unwrap();
+        assert_eq!(saved.amount, "2000");
+        assert_eq!(saved.effective_month, Some(DEC));
+        assert_eq!(saved.versions.len(), 1);
+    }
+
+    #[test]
+    fn unchanged_amount_keeps_the_text_of_the_version_in_effect_for_that_month() {
+        let conn = setup_test_db();
+        upsert_goal_at(&conn, goal_input("1000.123", JAN), NOW).unwrap();
+        upsert_goal_at(&conn, goal_input("2000", DEC), NOW).unwrap();
+        // Same value as January's, spelled differently: keep the stored text.
+        upsert_goal_at(&conn, goal_input("1000.1230", MAR), NOW).unwrap();
+        let mar: String = conn
+            .query_row(
+                "SELECT amount FROM budget_goal_versions WHERE effective_month=?1",
+                [MAR],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(mar, "1000.123");
     }
 
     #[test]

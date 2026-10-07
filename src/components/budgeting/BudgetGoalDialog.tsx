@@ -15,6 +15,16 @@ import type { TransactionCategory } from '@shared/schema';
 import { budgetingApi, type BudgetGoal, type InsertBudgetGoal } from '@/lib/tauri-api';
 import { requiredNumber } from '@/utils/form-schemas';
 import { getUtcPeriodRange } from '@/utils/period';
+import {
+  currentMonthStart,
+  defaultEditMonth,
+  isUnchangedGoalEdit,
+  monthInputValue,
+  monthStartFromInput,
+  scheduledVersions,
+  versionInEffect,
+} from '@/utils/budget-goal-versions';
+import { useFormat } from '@/lib/use-format';
 import { useCurrency } from '@/lib/currency';
 import { useCategoryName } from '@/hooks/use-categories';
 import {
@@ -87,35 +97,55 @@ export function BudgetGoalDialog({
   const { money } = useReportMoney();
   const categoryName = useCategoryName();
   const queryClient = useQueryClient();
+  const fmt = useFormat();
   const editing = !!goal;
+  const versions = useMemo(() => goal?.versions ?? [], [goal]);
+  const nowMonth = currentMonthStart();
+  const monthLabel = (month: number) => fmt.month(new Date(month * 1000));
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       categoryId: '',
       amount: 0,
-      effectiveMonth: new Date().toISOString().slice(0, 7),
+      effectiveMonth: monthInputValue(currentMonthStart()),
     },
   });
 
-  // Reset for each opening: edited limit in its stored currency, or the
-  // preselected category with an empty amount.
+  // Reset for each opening: the limit in effect in the edited month (its
+  // stored currency), or the preselected category with an empty amount.
   useEffect(() => {
     if (!open) return;
+    const now = currentMonthStart();
     if (goal) {
+      const month = defaultEditMonth(goal.versions, now);
+      const current = versionInEffect(goal.versions, month);
       form.reset({
         categoryId: goal.categoryId,
-        amount: Number(goal.amount),
-        effectiveMonth: new Date().toISOString().slice(0, 7),
+        amount: Number(current?.amount ?? goal.amount),
+        effectiveMonth: monthInputValue(month),
       });
     } else {
       form.reset({
         categoryId: initialCategoryId ?? '',
         amount: undefined,
-        effectiveMonth: new Date().toISOString().slice(0, 7),
+        effectiveMonth: monthInputValue(now),
       });
     }
   }, [open, goal, initialCategoryId, currencyCode, form]);
+
+  // Another month shows the limit in effect then, unless the user already
+  // typed a new amount.
+  const editedMonthValue = form.watch('effectiveMonth');
+  const editedMonth = monthStartFromInput(editedMonthValue);
+  const editedVersion = editedMonth == null ? null : versionInEffect(versions, editedMonth);
+  useEffect(() => {
+    if (!open || !goal || editedMonth == null) return;
+    if (form.getFieldState('amount').isDirty) return;
+    const version = versionInEffect(goal.versions, editedMonth);
+    if (version?.amount != null) form.setValue('amount', Number(version.amount));
+  }, [open, goal, editedMonth, form]);
+  const scheduled = scheduledVersions(versions, editedMonth ?? nowMonth);
 
   // Average monthly spending per category over the last six full months (CZK).
   const averageRange = useMemo(() => {
@@ -165,16 +195,26 @@ export function BudgetGoalDialog({
   });
 
   const onSubmit = (values: FormValues) => {
+    const month = monthStartFromInput(values.effectiveMonth);
+    if (month == null) return;
+    const currency = goal?.currency ?? currencyCode;
+    // Saving the limit already in effect for that month changes nothing.
+    if (goal && isUnchangedGoalEdit(goal.versions, month, values.amount, currency)) {
+      toast.info(t('readiness.noChange'));
+      onOpenChange(false);
+      return;
+    }
+    const original = goal ? versionInEffect(goal.versions, month) : null;
     mutation.mutate({
       categoryId: values.categoryId,
       timeframe: goal?.timeframe ?? 'monthly',
       amount: preserveMoneyText(
-        goal?.amount ?? null,
-        goal?.currency ?? null,
+        original?.amount ?? null,
+        original?.currency ?? null,
         values.amount,
-        goal?.currency ?? currencyCode
+        currency
       ),
-      effectiveMonth: Date.parse(`${values.effectiveMonth}-01T00:00:00Z`) / 1000,
+      effectiveMonth: month,
       // Typed in the display currency: store it with that currency.
       currency: goal?.currency ?? currencyCode,
     });
@@ -235,7 +275,7 @@ export function BudgetGoalDialog({
                         inputMode="decimal"
                         min="0"
                         step={
-                          goal && Number(goal.amount) === Number(field.value)
+                          editedVersion && Number(editedVersion.amount) === Number(field.value)
                             ? 'any'
                             : 10 **
                               -currencyDecimals((goal?.currency ?? currencyCode) as CurrencyCode)
@@ -270,11 +310,38 @@ export function BudgetGoalDialog({
                   <FormControl>
                     <Input type="month" {...field} />
                   </FormControl>
-                  <FormDescription>{t('readiness.effectiveMonthHelp')}</FormDescription>
+                  <FormDescription>
+                    {t('readiness.effectiveMonthHelp')}
+                    {editing && editedMonth != null && (
+                      <>
+                        {' '}
+                        {t('readiness.effectiveMonthPrefill', { month: monthLabel(editedMonth) })}
+                      </>
+                    )}
+                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
             />
+            {scheduled.length > 0 && (
+              <div className="rounded-r2 border border-line bg-well px-3 py-2.5 text-micro text-ink-3">
+                <p className="mb-1 font-650 text-ink-2">{t('readiness.scheduledHeading')}</p>
+                <ul className="space-y-0.5">
+                  {scheduled.map((version) => (
+                    <li key={version.effectiveMonth}>
+                      {version.amount == null
+                        ? t('readiness.scheduledRemoval', {
+                            month: monthLabel(version.effectiveMonth),
+                          })
+                        : t('readiness.scheduledLimit', {
+                            month: monthLabel(version.effectiveMonth),
+                            amount: fmt.money(Number(version.amount), version.currency),
+                          })}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
             {averageError ? (
               <ReportError onRetry={() => void refetchAverage()} />
             ) : (

@@ -167,6 +167,7 @@ pub fn collect_types() -> TypeCollection {
     types.register::<crate::models::ReportTransaction>();
     types.register::<crate::models::EffectiveTransactionFlow>();
     types.register::<crate::models::BudgetGoal>();
+    types.register::<crate::models::BudgetGoalVersion>();
     types.register::<crate::models::InsertBudgetGoal>();
     types.register::<crate::models::CategorySpendingSummary>();
     types.register::<crate::models::BudgetingReport>();

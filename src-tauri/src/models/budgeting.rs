@@ -16,6 +16,24 @@ pub struct BudgetGoal {
     pub created_at: i64,
     #[serde(rename = "updatedAt")]
     pub updated_at: i64,
+    /// First month of the version whose `amount` is shown: the version in
+    /// effect now, or the first scheduled one for a goal that starts later.
+    /// `None` only for a legacy goal without versions.
+    #[serde(rename = "effectiveMonth")]
+    pub effective_month: Option<i64>,
+    /// Every limit version, oldest first (`amount: null` = no limit from
+    /// that month). Lets the editor prefill the version in effect for the
+    /// month being edited and show scheduled changes.
+    pub versions: Vec<BudgetGoalVersion>,
+}
+
+/// One limit version of a budget goal, effective from a calendar month.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
+pub struct BudgetGoalVersion {
+    #[serde(rename = "effectiveMonth")]
+    pub effective_month: i64,
+    pub amount: Option<String>,
+    pub currency: String,
 }
 
 /// Data for creating/updating a budget goal

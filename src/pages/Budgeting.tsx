@@ -16,6 +16,7 @@ import { useBankAccounts } from '@/hooks/use-bank-accounts';
 import { useShellPage } from '@/components/shell/shell-context';
 import { getUtcPeriodRange, type PeriodTimeframe } from '@/utils/period';
 import { budgetState, paceVerdict, periodPace, type BudgetState } from '@/utils/budget-pace';
+import { currentMonthStart, scheduledVersions } from '@/utils/budget-goal-versions';
 import { PageHead } from '@/components/shell/PageHead';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -659,6 +660,22 @@ export default function Budgeting() {
                       ? t('table.of', { amount: money(row.limit) })
                       : t('readiness.limitUnavailable')}
                   </small>
+                  {row.goal &&
+                    (() => {
+                      const next = scheduledVersions(row.goal.versions, currentMonthStart())[0];
+                      if (!next) return null;
+                      const month = fmt.month(new Date(next.effectiveMonth * 1000));
+                      return (
+                        <small className="mt-0.5 block text-micro font-500 text-ink-4">
+                          {next.amount == null
+                            ? t('readiness.scheduledRemoval', { month })
+                            : t('readiness.scheduledLimit', {
+                                month,
+                                amount: fmt.money(Number(next.amount), next.currency),
+                              })}
+                        </small>
+                      );
+                    })()}
                 </TableCell>
                 <TableCell className="text-right">{stateBadge(row)}</TableCell>
                 <TableCell className="pr-3 text-right">

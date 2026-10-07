@@ -1896,6 +1896,17 @@ export interface BudgetGoal {
   currency: string;
   createdAt: number;
   updatedAt: number;
+  /** Month of the version shown as `amount`: in effect now, or the first scheduled one. */
+  effectiveMonth: number | null;
+  /** Every limit version, oldest first; `amount: null` removes the limit from that month. */
+  versions: BudgetGoalVersion[];
+}
+
+// One limit version of a budget goal, effective from a calendar month (UTC epoch).
+export interface BudgetGoalVersion {
+  effectiveMonth: number;
+  amount: string | null;
+  currency: string;
 }
 
 // Data for creating/updating a budget goal

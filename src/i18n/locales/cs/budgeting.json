@@ -236,10 +236,15 @@
   },
   "readiness": {
     "effectiveMonth": "Platí od měsíce",
-    "effectiveMonthHelp": "Změny platí od tohoto měsíce. Dřívější limity v přehledech zůstávají.",
+    "effectiveMonthHelp": "Výchozí je tento měsíc. Pozdějším měsícem naplánujete změnu; limity dřívějších měsíců v přehledech zůstávají.",
     "observedAverage": "Pozorovaný měsíční průměr: {{amount}} z {{count}} celých měsíců. Úplnost výpisů není ověřena.",
     "limitUnavailable": "Historický limit nebo jeho kurz není k dispozici",
     "absoluteShare": "Podíl absolutních částek skupin",
-    "signedUnbudgetedTotal": "Čisté výdaje bez rozpočtu: {{amount}}"
+    "signedUnbudgetedTotal": "Čisté výdaje bez rozpočtu: {{amount}}",
+    "effectiveMonthPrefill": "Částka ukazuje limit platný v měsíci {{month}}. Uložení změní limit od tohoto měsíce; dřívější měsíce si ponechají svůj.",
+    "scheduledHeading": "Naplánované změny",
+    "scheduledLimit": "Od {{month}}: {{amount}}",
+    "scheduledRemoval": "Od {{month}}: bez limitu",
+    "noChange": "Limit se nezměnil, nic se neuložilo."
   }
 }

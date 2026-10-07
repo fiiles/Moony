@@ -649,6 +649,8 @@
     "statusColumn": "Transaction status",
     "statusHint": "Values Pending, Booked or Completed; anything else is reported as an error. Pending rows are shown but stay out of reports until booked. Map it only when the file has a transaction ID – without one a pending row cannot be matched to its booked copy.",
     "pendingDateColumn": "Pending date",
-    "pendingDateHint": "Date used for pending rows that have no booking date yet (e.g. the card payment start date)."
+    "pendingDateHint": "Date used for pending rows that have no booking date yet (e.g. the card payment start date).",
+    "deleteBatchPromoted_one": "{{count}} pending entry from an earlier import that this import booked stays booked with this import's data.",
+    "deleteBatchPromoted_other": "{{count}} pending entries from earlier imports that this import booked stay booked with this import's data."
   }
 }

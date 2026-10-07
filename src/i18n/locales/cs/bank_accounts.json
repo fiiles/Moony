@@ -676,6 +676,9 @@
     "statusColumn": "Stav transakce",
     "statusHint": "Hodnoty Pending, Booked nebo Completed; jiná hodnota se nahlásí jako chyba. Čekající řádky se zobrazí, ale do přehledů vstoupí až po zaúčtování. Přiřaďte jen tehdy, když soubor obsahuje ID transakce – bez něj nejde čekající řádek spárovat s jeho zaúčtovanou kopií.",
     "pendingDateColumn": "Datum čekající platby",
-    "pendingDateHint": "Datum pro čekající řádky, které ještě nemají datum zaúčtování (např. začátek platby kartou)."
+    "pendingDateHint": "Datum pro čekající řádky, které ještě nemají datum zaúčtování (např. začátek platby kartou).",
+    "deleteBatchPromoted_one": "{{count}} čekající položka z dřívějšího importu, kterou tento import zaúčtoval, zůstane zaúčtovaná s jeho údaji.",
+    "deleteBatchPromoted_few": "{{count}} čekající položky z dřívějších importů, které tento import zaúčtoval, zůstanou zaúčtované s jeho údaji.",
+    "deleteBatchPromoted_other": "{{count}} čekajících položek z dřívějších importů, které tento import zaúčtoval, zůstane zaúčtováno s jeho údaji."
   }
 }

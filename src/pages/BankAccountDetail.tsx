@@ -1560,13 +1560,20 @@ export default function BankAccountDetail() {
           if (!open) setPendingUndo(null);
         }}
         title={t(pendingUndo?.linkedCount ? 'readiness.deleteImported' : 'readiness.deleteRecord')}
-        description={t('readiness.deleteBatchDescription', {
-          count: pendingUndo?.linkedCount ?? 0,
-          file: pendingUndo?.fileName,
-          period: pendingUndo?.dateRange?.from
-            ? `${fmt.day(pendingUndo.dateRange.from)} – ${fmt.day(pendingUndo.dateRange.to ?? pendingUndo.dateRange.from)}`
-            : t('readiness.unknownDate'),
-        })}
+        description={[
+          t('readiness.deleteBatchDescription', {
+            count: pendingUndo?.linkedCount ?? 0,
+            file: pendingUndo?.fileName,
+            period: pendingUndo?.dateRange?.from
+              ? `${fmt.day(pendingUndo.dateRange.from)} – ${fmt.day(pendingUndo.dateRange.to ?? pendingUndo.dateRange.from)}`
+              : t('readiness.unknownDate'),
+          }),
+          pendingUndo?.promotedCount
+            ? t('readiness.deleteBatchPromoted', { count: pendingUndo.promotedCount })
+            : null,
+        ]
+          .filter(Boolean)
+          .join(' ')}
         onConfirm={() => pendingUndo && deleteBatchMutation.mutate(pendingUndo.id)}
         isPending={deleteBatchMutation.isPending}
         confirmLabel={t(

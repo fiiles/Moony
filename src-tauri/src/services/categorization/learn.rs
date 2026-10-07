@@ -133,6 +133,10 @@ pub struct LearnedKey {
 /// DELETE + INSERT rather than an upsert because SQLite treats NULLs as
 /// distinct in unique indexes.) A no-op when neither a usable payee nor an
 /// IBAN is given.
+///
+/// Test-only: production learning is account-scoped (`learn_scoped`); a
+/// broad payee rule must not be reintroduced by a new caller.
+#[cfg(test)]
 pub fn learn_payee(
     conn: &Connection,
     engine: &CategorizationEngine,

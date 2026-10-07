@@ -561,7 +561,6 @@
     "replacing": "Replaces {{name}}",
     "rateDateUnknown": "rate date unknown",
     "reportRange": "{{start}} – {{end}} · comparison {{previousStart}} – {{previousEnd}}",
-    "comparisonFx": "Comparison period excludes {{count}} movements with missing FX ({{currencies}}).",
     "averageSample_zero": "No completed observed month with available FX, so the average is unavailable.",
     "averageSample_one": "Average from {{count}} observed completed month with available FX.",
     "averageSample_other": "Average from {{count}} observed completed months with available FX.",
@@ -571,6 +570,9 @@
     "missingFx_other": "{{count}} movements excluded due to missing FX ({{currencies}}). Totals are incomplete.",
     "countedTransactions_zero": "No transactions",
     "countedTransactions_one": "{{count}} transaction",
-    "countedTransactions_other": "{{count}} transactions"
+    "countedTransactions_other": "{{count}} transactions",
+    "comparisonFx_zero": "The comparison period has no movements excluded for missing FX.",
+    "comparisonFx_one": "The comparison period excludes {{count}} movement with missing FX ({{currencies}}).",
+    "comparisonFx_other": "The comparison period excludes {{count}} movements with missing FX ({{currencies}})."
   }
 }

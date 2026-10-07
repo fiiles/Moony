@@ -579,7 +579,6 @@
     "replacing": "Nahrazuje {{name}}",
     "rateDateUnknown": "datum kurzu neznámé",
     "reportRange": "{{start}} – {{end}} · srovnání {{previousStart}} – {{previousEnd}}",
-    "comparisonFx": "Srovnávací období vynechává {{count}} pohybů bez kurzu ({{currencies}}).",
     "averageSample_zero": "Průměr nelze vypočítat: není k dispozici žádný celý pozorovaný měsíc s dostupným kurzem.",
     "averageSample_one": "Průměr z {{count}} pozorovaného celého měsíce s dostupným kurzem.",
     "averageSample_few": "Průměr ze {{count}} pozorovaných celých měsíců s dostupným kurzem.",
@@ -592,6 +591,10 @@
     "countedTransactions_zero": "Žádné transakce",
     "countedTransactions_one": "{{count}} transakce",
     "countedTransactions_few": "{{count}} transakce",
-    "countedTransactions_other": "{{count}} transakcí"
+    "countedTransactions_other": "{{count}} transakcí",
+    "comparisonFx_zero": "Ve srovnávacím období nebyly kvůli chybějícímu kurzu vynechány žádné pohyby.",
+    "comparisonFx_one": "Srovnávací období vynechává {{count}} pohyb bez kurzu ({{currencies}}).",
+    "comparisonFx_few": "Srovnávací období vynechává {{count}} pohyby bez kurzu ({{currencies}}).",
+    "comparisonFx_other": "Srovnávací období vynechává {{count}} pohybů bez kurzu ({{currencies}})."
   }
 }

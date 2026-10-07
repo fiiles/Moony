@@ -518,9 +518,9 @@
     "incomeIn": "Příchozí v měsíci {{month}}",
     "expenseIn": "Odchozí v měsíci {{month}}",
     "monthBalance": "Bilance měsíce",
-    "incomeCount_one": "{{count}} příjem",
-    "incomeCount_few": "{{count}} příjmy",
-    "incomeCount_other": "{{count}} příjmů",
+    "incomeCount_one": "{{count}} příchozí pohyb",
+    "incomeCount_few": "{{count}} příchozí pohyby",
+    "incomeCount_other": "{{count}} příchozích pohybů",
     "txCount_one": "{{count}} transakce",
     "txCount_few": "{{count}} transakce",
     "txCount_other": "{{count}} transakcí",
@@ -642,7 +642,6 @@
       "effectiveFlow": "Výsledný tok / zdroj"
     },
     "aggregateFxWarning": "Součty v {{currency}} vynechávají účty bez známého kurzu. Původní hodnoty účtů jsou níže.",
-    "excludedForeign": "{{count}} pohybů v jiné měně vynecháno z původních součtů",
     "booked": "Zaúčtováno",
     "retry": "Zkusit znovu",
     "specificLearningScope": "Tento účet · {{direction}} · {{identity}}. Spolehlivé účty platí pro různé názvy protistrany; jinak pouze tento příjemce.",
@@ -661,6 +660,10 @@
     "promotions_zero": "Žádné čekající pohyby k zaúčtování",
     "promotions_one": "{{count}} čekající pohyb bude zaúčtován",
     "promotions_few": "{{count}} čekající pohyby budou zaúčtovány",
-    "promotions_other": "{{count}} čekajících pohybů bude zaúčtováno"
+    "promotions_other": "{{count}} čekajících pohybů bude zaúčtováno",
+    "excludedForeign_zero": "Žádné pohyby v jiné měně nebyly vynechány ze součtů v původní měně",
+    "excludedForeign_one": "{{count}} pohyb v jiné měně byl vynechán ze součtů v původní měně",
+    "excludedForeign_few": "{{count}} pohyby v jiné měně byly vynechány ze součtů v původní měně",
+    "excludedForeign_other": "{{count}} pohybů v jiné měně bylo vynecháno ze součtů v původní měně"
   }
 }

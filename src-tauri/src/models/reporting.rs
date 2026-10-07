@@ -37,6 +37,10 @@ pub struct ReportQuality {
     pub partial_month_count: i32,
     #[serde(rename = "unobservedMonthCount")]
     pub unobserved_month_count: i32,
+    /// Stored rows whose amount is not a finite number (legacy data); they
+    /// are excluded from the numeric totals.
+    #[serde(rename = "invalidAmountCount")]
+    pub invalid_amount_count: i32,
 }
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct ReportTransaction {

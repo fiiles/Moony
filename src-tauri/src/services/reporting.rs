@@ -27,6 +27,7 @@ pub fn month_start(timestamp: i64) -> Option<i64> {
 }
 /// Uses only recorded rates on or before booking (up to ten days for weekends).
 /// DB failures propagate; absence is explicit and no global 1:1 fallback is used.
+/// An unusable stored rate (not finite or not positive) counts as missing.
 pub fn historical_czk(
     conn: &Connection,
     amount: f64,
@@ -44,8 +45,7 @@ pub fn historical_czk(
         Some(rate) if rate.is_finite() && rate > 0.0 && (amount * rate).is_finite() => {
             Ok(Some(amount * rate))
         }
-        Some(_) => Err(AppError::Validation("validation.invalidAmount".into())),
-        None => Ok(None),
+        Some(_) | None => Ok(None),
     }
 }
 pub fn effective_flows(conn: &Connection, ids: &[String]) -> Result<Vec<EffectiveTransactionFlow>> {
@@ -136,7 +136,12 @@ pub fn transactions(
         );
         row.effective_flow_kind = flow.kind;
         row.flow_source = flow.source;
-        let amount = parse_money(&row.amount)?.abs();
+        // A legacy non-finite amount is excluded and counted by `quality`,
+        // so one bad row cannot make every report fail.
+        let Ok(amount) = parse_money(&row.amount).map(f64::abs) else {
+            out.push(row);
+            continue;
+        };
         if let Some(czk) = historical_czk(conn, amount, &row.currency, row.booking_date)? {
             row.signed_amount_czk = Some(money(signed_flow_amount(flow.kind, credit, czk)));
             row.fx_quality = FxQuality::Historical;
@@ -149,7 +154,9 @@ pub fn quality(rows: &[ReportTransaction], start: i64, end: i64, today: i64) -> 
     let mut q = ReportQuality::default();
     let mut observed = HashSet::new();
     for row in rows {
-        if row.fx_quality == FxQuality::Missing {
+        if parse_money(&row.amount).is_err() {
+            q.invalid_amount_count += 1;
+        } else if row.fx_quality == FxQuality::Missing {
             q.missing_fx_count += 1;
             if !q.missing_fx_currencies.contains(&row.currency) {
                 q.missing_fx_currencies.push(row.currency.clone());
@@ -282,6 +289,33 @@ mod tests {
         assert_eq!(flows.len(), 2);
         assert_eq!(flows[1].effective_flow_kind, FlowKind::Transfer);
     }
+    /// Final review M-6: one legacy non-finite amount or unusable stored rate
+    /// must not make every report fail; it is excluded and reported.
+    #[test]
+    fn legacy_invalid_amounts_and_rates_are_excluded_not_fatal() {
+        let conn = db();
+        conn.execute_batch(
+            "INSERT INTO bank_transactions(id,booking_date,amount,currency,bank_account_id,tx_type,status) VALUES
+               ('inf',1704067200,'inf','CZK','a','debit','booked'),
+               ('nan',1704067200,'NaN','CZK','a','debit','booked'),
+               ('badrate',1704067200,'10','YYY','a','debit','booked');
+             INSERT INTO exchange_rate_history VALUES (1704067200,'YYY',0.0);",
+        )
+        .unwrap();
+        let rows = transactions(&conn, 0, i64::MAX, None).expect("report stays usable");
+        for id in ["inf", "nan", "badrate"] {
+            let row = rows.iter().find(|r| r.id == id).unwrap();
+            assert!(row.signed_amount_czk.is_none(), "{id}");
+        }
+        let q = quality(&rows, 1704067200, 1706745599, 1709251200);
+        assert_eq!(q.invalid_amount_count, 2);
+        assert_eq!(
+            q.missing_fx_count, 2,
+            "ZZZ without a rate and YYY with an unusable one"
+        );
+        assert_eq!(q.missing_fx_currencies, vec!["YYY", "ZZZ"]);
+    }
+
     #[test]
     fn strict_fx_uses_recorded_rates_and_propagates_schema_errors() {
         let conn = db();

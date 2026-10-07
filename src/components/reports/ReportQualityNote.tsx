@@ -56,6 +56,11 @@ export function ReportQualityNote({
           })}
         </p>
       )}
+      {quality.invalidAmountCount > 0 && (
+        <p className="text-loss">
+          {t('readiness.invalidAmounts', { count: quality.invalidAmountCount })}
+        </p>
+      )}
     </div>
   );
 }

@@ -156,8 +156,8 @@ pub fn upsert_goal_at(
         .or_else(|| existing.as_ref().map(|(_, a, c)| (a.clone(), c.clone())));
     if let Some((old_amount, old_currency)) = previous {
         if currency == old_currency
-            && crate::services::reporting::parse_money(&old_amount)?
-                == crate::services::reporting::parse_money(&data.amount)?
+            && crate::services::reporting::parse_money(&old_amount).ok()
+                == Some(crate::services::reporting::parse_money(&data.amount)?)
         {
             data.amount = old_amount;
         }
@@ -430,13 +430,21 @@ fn period_limits(
             }
         }
         for (category, (_, v)) in active {
-            let native = parse_money(v.3.as_deref().expect("active"))?
-                / match v.2.as_str() {
-                    "quarterly" => 3.0,
-                    "yearly" => 12.0,
-                    _ => 1.0,
-                };
-            let czk = historical_czk(conn, native, &v.4, month)?;
+            // A legacy non-finite limit is shown as unavailable, not fatal.
+            let native = parse_money(v.3.as_deref().expect("active"))
+                .ok()
+                .map(|amount| {
+                    amount
+                        / match v.2.as_str() {
+                            "quarterly" => 3.0,
+                            "yearly" => 12.0,
+                            _ => 1.0,
+                        }
+                });
+            let czk = match native {
+                Some(native) => historical_czk(conn, native, &v.4, month)?,
+                None => None,
+            };
             let goal = BudgetGoal {
                 id: v.0.clone(),
                 category_id: category.clone(),

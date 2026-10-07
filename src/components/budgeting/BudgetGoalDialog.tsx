@@ -168,6 +168,7 @@ export function BudgetGoalDialog({
     if (
       !averageReport ||
       averageReport.quality.missingFxCount > 0 ||
+      averageReport.quality.invalidAmountCount > 0 ||
       !averageReport.quality.observedCompletedMonths.length
     )
       return map;

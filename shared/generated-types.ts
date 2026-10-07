@@ -1078,7 +1078,12 @@ export type RecalcStatus = "running" | "done" | "failed"
  */
 export type RecurringCost = { name: string; amount: number; frequency: string; currency: string | null }
 
-export type ReportQuality = { missingFxCount: number; missingFxCurrencies: string[]; estimatedFxCount: number; observedCompletedMonths: number[]; partialMonthCount: number; unobservedMonthCount: number }
+export type ReportQuality = { missingFxCount: number; missingFxCurrencies: string[]; estimatedFxCount: number; observedCompletedMonths: number[]; partialMonthCount: number; unobservedMonthCount: number; 
+/**
+ * Stored rows whose amount is not a finite number (legacy data); they
+ * are excluded from the numeric totals.
+ */
+invalidAmountCount: number }
 
 export type ReportTransaction = { id: string; bookingDate: number; amount: string; currency: string; description: string | null; counterpartyName: string | null; counterpartyIban: string | null; categoryId: string | null; bankAccountId: string; bankAccountName: string; txType: string; effectiveFlowKind: FlowKind; flowSource: FlowSource; signedAmountCzk: string | null; fxQuality: FxQuality }
 

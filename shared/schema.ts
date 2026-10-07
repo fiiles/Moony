@@ -1881,6 +1881,8 @@ export interface ReportQuality {
   observedCompletedMonths: number[];
   partialMonthCount: number;
   unobservedMonthCount: number;
+  /** Stored rows with a non-finite amount (legacy data), excluded from totals. */
+  invalidAmountCount: number;
 }
 export interface EffectiveTransactionFlow {
   id: string;

@@ -595,6 +595,9 @@
     "comparisonFx_zero": "Ve srovnávacím období nebyly kvůli chybějícímu kurzu vynechány žádné pohyby.",
     "comparisonFx_one": "Srovnávací období vynechává {{count}} pohyb bez kurzu ({{currencies}}).",
     "comparisonFx_few": "Srovnávací období vynechává {{count}} pohyby bez kurzu ({{currencies}}).",
-    "comparisonFx_other": "Srovnávací období vynechává {{count}} pohybů bez kurzu ({{currencies}})."
+    "comparisonFx_other": "Srovnávací období vynechává {{count}} pohybů bez kurzu ({{currencies}}).",
+    "invalidAmounts_one": "{{count}} uložený pohyb má neplatnou částku a je vynechán. Součty jsou neúplné; opravte nebo smažte ho v účtu.",
+    "invalidAmounts_few": "{{count}} uložené pohyby mají neplatnou částku a jsou vynechány. Součty jsou neúplné; opravte nebo smažte je v účtu.",
+    "invalidAmounts_other": "{{count}} uložených pohybů má neplatnou částku a jsou vynechány. Součty jsou neúplné; opravte nebo smažte je v účtu."
   }
 }

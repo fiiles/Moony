@@ -81,6 +81,7 @@ import type {
   CsvImportResult,
   CsvImportConfigInput,
   CsvImportBatch,
+  InsertBalanceAnchor,
   // Stock tags types
   StockTag,
   InsertStockTag,
@@ -862,6 +863,8 @@ export const systemApi = {
 // ============================================================================
 
 export const bankAccountsApi = {
+  setBalanceAnchor: (accountId: string, data: InsertBalanceAnchor) =>
+    tauriInvoke<BankAccount>('set_bank_account_balance_anchor', { accountId, data }),
   // Bank accounts
   getAll: () => tauriInvoke<BankAccountWithInstitution[]>('get_all_bank_accounts'),
   get: (id: string) => tauriInvoke<BankAccountWithInstitution | null>('get_bank_account', { id }),
@@ -936,7 +939,7 @@ export const bankAccountsApi = {
     tauriInvoke<CsvImportResult>('import_csv_transactions', { accountId, filePath, config }),
   getImportBatches: (accountId: string) =>
     tauriInvoke<CsvImportBatch[]>('get_import_batches', { accountId }),
-  deleteImportBatch: (batchId: string) => tauriInvoke<void>('delete_import_batch', { batchId }),
+  deleteImportBatch: (batchId: string) => tauriInvoke<number>('delete_import_batch', { batchId }),
 };
 
 // ============================================================================

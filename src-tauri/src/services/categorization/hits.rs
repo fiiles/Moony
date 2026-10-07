@@ -100,7 +100,7 @@ fn since_day(now: i64, days: i64) -> i64 {
 fn load_rows(conn: &Connection, since: i64) -> Result<Vec<TxRow>> {
     let mut stmt = conn.prepare(
         "SELECT id, description, counterparty_name, counterparty_iban, amount, tx_type, booking_date,
-                category_id, categorization_source, bank_account_id, currency
+                category_id, categorization_source, bank_account_id, currency, counterparty_bank_code, counterparty_country
          FROM bank_transactions WHERE booking_date >= ?1
          ORDER BY booking_date DESC, created_at DESC",
     )?;
@@ -115,6 +115,8 @@ fn load_rows(conn: &Connection, since: i64) -> Result<Vec<TxRow>> {
                 description: row.get(1)?,
                 counterparty: row.get(2)?,
                 counterparty_iban: row.get(3)?,
+                counterparty_bank_code: row.get(11)?,
+                counterparty_country: row.get(12)?,
                 amount: if is_credit { value.abs() } else { -value.abs() },
                 is_credit,
                 bank_account_id: row.get(9)?,
@@ -394,7 +396,7 @@ mod tests {
             CREATE TABLE bank_transactions (
                 id TEXT PRIMARY KEY, bank_account_id TEXT NOT NULL, transaction_id TEXT, tx_type TEXT NOT NULL,
                 amount TEXT NOT NULL, currency TEXT NOT NULL, description TEXT, counterparty_name TEXT,
-                counterparty_iban TEXT, booking_date INTEGER NOT NULL, value_date INTEGER, category_id TEXT,
+                counterparty_iban TEXT, counterparty_bank_code TEXT, counterparty_country TEXT, import_line INTEGER, row_balance TEXT, booking_date INTEGER NOT NULL, value_date INTEGER, category_id TEXT,
                 merchant_category_code TEXT, remittance_info TEXT, status TEXT NOT NULL DEFAULT 'booked',
                 data_source TEXT NOT NULL DEFAULT 'manual', created_at INTEGER NOT NULL DEFAULT 0,
                 import_batch_id TEXT, categorization_source TEXT, suggested_category_id TEXT

@@ -205,7 +205,7 @@
     "zeroAmount": "Zero amount, skipped",
     "filteredOut": "Skipped: not a completed transaction",
     "duplicate": "An identical transaction already exists",
-    "duplicateById": "A transaction with the same bank ID already exists",
+    "duplicateById": "The bank transaction ID already exists; another copy cannot be imported",
     "dropTitle": "Drop a CSV file here",
     "dropActive": "Drop the file to open it",
     "dropHint": "or choose a file from your computer",
@@ -262,7 +262,8 @@
       "ok": "OK",
       "error": "Error",
       "duplicate": "Duplicate",
-      "skipped": "Skipped"
+      "skipped": "Skipped",
+      "promoted": "Will be booked"
     },
     "importAnyway": "Import anyway",
     "summary": {
@@ -368,7 +369,8 @@
       "setBalanceHint": "From the last statement row · today {{current}}",
       "setBalanceAction": "Set"
     },
-    "columnNone": "— not used —"
+    "columnNone": "— not used —",
+    "pendingPromoted": "Pending transaction will be booked"
   },
   "importHistory": {
     "title": "Import history",

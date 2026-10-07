@@ -4,18 +4,11 @@ import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { Check, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useBankAccountMutations } from '@/hooks/use-bank-account-mutations';
 import { translateApiError } from '@/lib/translate-api-error';
 import type { BankAccount, CsvImportResult } from '@shared/schema';
 import { cn } from '@/lib/utils';
-import {
-  balanceUpdatePayload,
-  formatBalance,
-  nextStepsFor,
-  regionName,
-  type NextStepId,
-} from './import-config';
-import { useEnableRulePack } from './use-csv-import-mutations';
+import { formatBalance, nextStepsFor, regionName, type NextStepId } from './import-config';
+import { useBalanceAnchor, useEnableRulePack } from './use-csv-import-mutations';
 
 const STEP_ORDER: readonly NextStepId[] = ['show', 'review', 'rulePack', 'balance'];
 
@@ -59,7 +52,7 @@ export function NextSteps({
   const { t } = useTranslation('bank_accounts');
   const { t: tc } = useTranslation('common');
   const queryClient = useQueryClient();
-  const { updateAccount } = useBankAccountMutations();
+  const updateBalance = useBalanceAnchor(accountId);
   const enableRulePack = useEnableRulePack();
   const [done, setDone] = useState<ReadonlySet<NextStepId>>(new Set());
 
@@ -96,14 +89,21 @@ export function NextSteps({
   };
 
   const handleBalance = () => {
-    if (!account || result.lastBalance == null) return;
-    updateAccount.mutate(
-      { id: account.id, data: balanceUpdatePayload(account, result.lastBalance) },
+    if (!account || !result.statementBalance) return;
+    const statement = result.statementBalance;
+    updateBalance.mutate(
+      {
+        amount: statement.amount,
+        currency: statement.currency,
+        asOf: statement.asOf,
+        sourceBatchId: statement.batchId,
+      },
       {
         onSuccess: () => {
           markDone('balance');
           queryClient.invalidateQueries({ queryKey: ['bank-account', accountId] });
         },
+        onError: (error) => toast.error(tc('status.error'), { description: error.message }),
       }
     );
   };
@@ -139,7 +139,7 @@ export function NextSteps({
         : undefined,
       action: t('csvImport.nextRows.setBalanceAction'),
       primary: true,
-      busy: updateAccount.isPending,
+      busy: updateBalance.isPending,
       onClick: handleBalance,
     },
   };

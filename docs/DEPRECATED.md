@@ -59,6 +59,10 @@ The one-table stock import was replaced by the broker-aware wizard
 | `import_investment_transactions` (command), `investmentsApi.importTransactions`, the `stock-import-progress` event | Wrote row by row without a transaction, returned English error prose with row numbers that did not match the file, and skipped part of the mutation contract | `import_stock_csv` (`commands/stock_import.rs`), `stockImportApi.import`, `src/hooks/use-stock-import-mutations.ts` |
 | `stocks.import.*` locale keys | Orphaned with the modal | `stocks.importWizard.*` |
 
+## Retired statement balance path
+
+The CSV import `balanceUpdatePayload` helper is removed: copying a statement amount into `update_bank_account` lost its date and currency. Use `bankAccountsApi.setBalanceAnchor` with the structured `statementBalance`, and obtain explicit confirmation before replacing an existing balance with an unknown date.
+
 ## Deprecated type sources
 
 | Path | Why deprecated | Use instead |

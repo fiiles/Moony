@@ -45,7 +45,7 @@ pub async fn get_all_bank_accounts(
                 ba.interest_rate, ba.has_zone_designation, ba.termination_date,
                 ba.created_at, ba.updated_at,
                 i.id, i.name, i.bic, i.country, i.logo_url, i.created_at,
-                ba.exclude_from_balance, ba.interest_rate_valid_until
+                ba.exclude_from_balance, ba.interest_rate_valid_until, ba.balance_as_of
             FROM bank_accounts ba
             LEFT JOIN institutions i ON ba.institution_id = i.id
             ORDER BY ba.name ASC",
@@ -61,6 +61,7 @@ pub async fn get_all_bank_accounts(
                     bban: row.get(4)?,
                     currency: row.get(5)?,
                     balance: row.get(6)?,
+                    balance_as_of: row.get(24)?,
                     institution_id: row.get(7)?,
                     external_account_id: row.get(8)?,
                     data_source: row.get(9)?,
@@ -116,7 +117,7 @@ pub async fn get_bank_account(
                 ba.interest_rate, ba.has_zone_designation, ba.termination_date,
                 ba.created_at, ba.updated_at,
                 i.id, i.name, i.bic, i.country, i.logo_url, i.created_at,
-                ba.exclude_from_balance, ba.interest_rate_valid_until
+                ba.exclude_from_balance, ba.interest_rate_valid_until, ba.balance_as_of
             FROM bank_accounts ba
             LEFT JOIN institutions i ON ba.institution_id = i.id
             WHERE ba.id = ?1",
@@ -131,6 +132,7 @@ pub async fn get_bank_account(
                 bban: row.get(4)?,
                 currency: row.get(5)?,
                 balance: row.get(6)?,
+                balance_as_of: row.get(24)?,
                 institution_id: row.get(7)?,
                 external_account_id: row.get(8)?,
                 data_source: row.get(9)?,
@@ -306,7 +308,8 @@ pub async fn get_bank_transactions(
             "SELECT id, bank_account_id, transaction_id, tx_type, amount, currency,
              description, counterparty_name, counterparty_iban, booking_date, value_date,
              category_id, merchant_category_code, remittance_info, suggested_category_id,
-             status, data_source, created_at, flow_kind
+             status, data_source, created_at, flow_kind, counterparty_bank_code, counterparty_country, import_batch_id, import_line, row_balance,
+             (SELECT file_name FROM csv_import_batches WHERE id=bank_transactions.import_batch_id)
              FROM bank_transactions WHERE bank_account_id = ?",
         );
 
@@ -365,6 +368,12 @@ pub async fn get_bank_transactions(
                     description: row.get(6)?,
                     counterparty_name: row.get(7)?,
                     counterparty_iban: row.get(8)?,
+                    counterparty_bank_code: row.get(19)?,
+                    counterparty_country: row.get(20)?,
+                    import_batch_id: row.get(21)?,
+                    import_line: row.get(22)?,
+                    row_balance: row.get(23)?,
+                    import_file_name: row.get(24)?,
                     booking_date: row.get(9)?,
                     value_date: row.get(10)?,
                     category_id: row.get(11)?,
@@ -615,66 +624,23 @@ pub async fn import_csv_transactions(
 }
 
 /// Represents a CSV import batch for the frontend
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct CsvImportBatch {
-    pub id: String,
-    pub bank_account_id: String,
-    pub file_name: String,
-    pub imported_count: i64,
-    pub duplicate_count: i64,
-    pub error_count: i64,
-    pub imported_at: i64,
-}
-
-/// Get all import batches for a bank account
 #[tauri::command]
 pub async fn get_import_batches(
     db: State<'_, Database>,
     account_id: String,
-) -> Result<Vec<CsvImportBatch>> {
-    let batches = db.with_conn(|conn| {
-        let mut stmt = conn.prepare(
-            "SELECT id, bank_account_id, file_name, imported_count, duplicate_count, error_count, imported_at 
-             FROM csv_import_batches 
-             WHERE bank_account_id = ?1 
-             ORDER BY imported_at DESC"
-        )?;
-        let batch_iter = stmt.query_map([&account_id], |row| {
-            Ok(CsvImportBatch {
-                id: row.get(0)?,
-                bank_account_id: row.get(1)?,
-                file_name: row.get(2)?,
-                imported_count: row.get(3)?,
-                duplicate_count: row.get(4)?,
-                error_count: row.get(5)?,
-                imported_at: row.get(6)?,
-            })
-        })?;
-        let batches: Vec<CsvImportBatch> = batch_iter.filter_map(|r| r.ok()).collect();
-        Ok(batches)
-    })?;
-
-    Ok(batches)
+) -> Result<Vec<csv_import::types::CsvImportBatch>> {
+    db.with_conn(|conn| csv_import::import_batches(conn, &account_id))
 }
-
-/// Delete an import batch and all its transactions
 #[tauri::command]
-pub async fn delete_import_batch(db: State<'_, Database>, batch_id: String) -> Result<()> {
-    // Transactions are deleted via CASCADE, but let's be explicit
-    db.with_conn(|conn| {
-        // Delete transactions first
-        conn.execute(
-            "DELETE FROM bank_transactions WHERE import_batch_id = ?1",
-            params![batch_id],
-        )?;
-        // Delete the batch record
-        conn.execute(
-            "DELETE FROM csv_import_batches WHERE id = ?1",
-            params![batch_id],
-        )?;
-        Ok(())
-    })?;
-
-    Ok(())
+pub async fn delete_import_batch(db: State<'_, Database>, batch_id: String) -> Result<usize> {
+    db.with_conn(|conn| csv_import::delete_import_batch(conn, &batch_id))
+}
+#[tauri::command]
+pub async fn set_bank_account_balance_anchor(
+    db: State<'_, Database>,
+    account_id: String,
+    data: crate::models::bank_accounts::InsertBalanceAnchor,
+) -> Result<BankAccount> {
+    data.validate()?;
+    db.with_conn(|conn| bank_service::set_balance_anchor(conn, &account_id, &data))
 }

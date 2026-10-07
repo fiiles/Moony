@@ -77,12 +77,14 @@ pub enum ColumnRole {
     Amount,
     Currency,
     CounterpartyIban,
+    CounterpartyBankCode,
+    CounterpartyCountry,
     Counterparty,
     Description,
 }
 
 impl ColumnRole {
-    pub const ALL: [ColumnRole; 11] = [
+    pub const ALL: [ColumnRole; 13] = [
         ColumnRole::TransactionId,
         ColumnRole::ValueDate,
         ColumnRole::Debit,
@@ -91,6 +93,8 @@ impl ColumnRole {
         ColumnRole::Date,
         ColumnRole::Amount,
         ColumnRole::Currency,
+        ColumnRole::CounterpartyBankCode,
+        ColumnRole::CounterpartyCountry,
         ColumnRole::CounterpartyIban,
         ColumnRole::Counterparty,
         ColumnRole::Description,
@@ -110,6 +114,8 @@ impl ColumnRole {
             ColumnRole::Date => "date",
             ColumnRole::Amount => "amount",
             ColumnRole::Currency => "currency",
+            ColumnRole::CounterpartyBankCode => "counterpartyBankCode",
+            ColumnRole::CounterpartyCountry => "counterpartyCountry",
             ColumnRole::CounterpartyIban => "counterparty_iban",
             ColumnRole::Counterparty => "counterparty",
             ColumnRole::Description => "description",
@@ -137,6 +143,29 @@ struct RoleSpec {
 const CCY: &str = "(?: [a-z]{3})?";
 
 static SPECS: &[RoleSpec] = &[
+    RoleSpec {
+        role: ColumnRole::CounterpartyBankCode,
+        exact: &[
+            "kod banky",
+            "counterparty bank code",
+            "bank code",
+            "routing number",
+            "routing code",
+        ],
+        loose: &[],
+        weak: &[],
+    },
+    RoleSpec {
+        role: ColumnRole::CounterpartyCountry,
+        exact: &[
+            "counterparty country",
+            "account country",
+            "country",
+            "zeme protiuctu",
+        ],
+        loose: &[],
+        weak: &[],
+    },
     RoleSpec {
         role: ColumnRole::TransactionId,
         exact: &[

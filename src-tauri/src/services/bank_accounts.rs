@@ -28,7 +28,7 @@ pub fn get_account_by_id(conn: &rusqlite::Connection, id: &str) -> Result<BankAc
     let account = conn.query_row(
         "SELECT id, name, account_type, iban, bban, currency, balance, institution_id,
          external_account_id, data_source, last_synced_at, interest_rate, has_zone_designation,
-         termination_date, created_at, updated_at, exclude_from_balance, interest_rate_valid_until
+         termination_date, created_at, updated_at, exclude_from_balance, interest_rate_valid_until, balance_as_of
          FROM bank_accounts WHERE id = ?1",
         [id],
         |row| {
@@ -40,6 +40,7 @@ pub fn get_account_by_id(conn: &rusqlite::Connection, id: &str) -> Result<BankAc
                 bban: row.get(4)?,
                 currency: row.get(5)?,
                 balance: row.get(6)?,
+                balance_as_of: row.get(18)?,
                 institution_id: row.get(7)?,
                 external_account_id: row.get(8)?,
                 data_source: row.get(9)?,
@@ -81,8 +82,8 @@ pub fn create_account(
             id, name, account_type, iban, bban, currency, balance,
             institution_id, data_source, interest_rate, has_zone_designation,
             termination_date, created_at, updated_at, exclude_from_balance,
-            interest_rate_valid_until
-        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)",
+            interest_rate_valid_until, balance_as_of
+        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17)",
         params![
             id,
             data.name,
@@ -100,6 +101,7 @@ pub fn create_account(
             now,
             exclude as i32,
             data.interest_rate_valid_until,
+            data.balance_as_of.flatten(),
         ],
     )?;
 
@@ -111,6 +113,7 @@ pub fn create_account(
         bban: data.bban.clone(),
         currency,
         balance,
+        balance_as_of: data.balance_as_of.flatten(),
         institution_id: data.institution_id.clone(),
         external_account_id: None,
         data_source: "manual".to_string(),
@@ -138,7 +141,18 @@ pub fn update_account(
     let existing = get_account_by_id(conn, id)?;
 
     let account_type = data.account_type.clone().unwrap_or(existing.account_type);
-    let currency = data.currency.clone().unwrap_or(existing.currency);
+    let currency = data.currency.clone().unwrap_or(existing.currency.clone());
+    let changed = data.balance.as_deref().is_some_and(|v| {
+        super::dedup::canonical_amount(v) != super::dedup::canonical_amount(&existing.balance)
+    }) || data
+        .currency
+        .as_deref()
+        .is_some_and(|c| !c.eq_ignore_ascii_case(&existing.currency));
+    let balance_as_of = match data.balance_as_of {
+        Some(day) => day,
+        None if changed => None,
+        None => existing.balance_as_of,
+    };
     let balance = data.balance.clone().unwrap_or(existing.balance);
     let has_zone = data
         .has_zone_designation
@@ -152,7 +166,7 @@ pub fn update_account(
             name = ?1, account_type = ?2, iban = ?3, bban = ?4, currency = ?5,
             balance = ?6, institution_id = ?7, interest_rate = ?8, has_zone_designation = ?9,
             termination_date = ?10, exclude_from_balance = ?11, updated_at = ?12,
-            interest_rate_valid_until = ?13
+            interest_rate_valid_until = ?13, balance_as_of = ?15
         WHERE id = ?14",
         params![
             data.name,
@@ -169,6 +183,7 @@ pub fn update_account(
             now,
             data.interest_rate_valid_until,
             id,
+            balance_as_of,
         ],
     )?;
 
@@ -180,6 +195,7 @@ pub fn update_account(
         bban: data.bban.clone(),
         currency,
         balance,
+        balance_as_of,
         institution_id: data.institution_id.clone(),
         external_account_id: existing.external_account_id,
         data_source: existing.data_source,
@@ -289,6 +305,12 @@ pub fn create_transaction_with_origin(
     // Normalize enum-like fields to lowercase so stored values match both
     // validate()'s lowercase comparisons and the dedup queries, which compare
     // a lowercased tx_type against the stored value.
+    let transaction_id = data
+        .transaction_id
+        .as_deref()
+        .map(str::trim)
+        .filter(|id| !id.is_empty())
+        .map(str::to_string);
     let tx_type = data.tx_type.to_lowercase();
     let status = data
         .status
@@ -312,12 +334,12 @@ pub fn create_transaction_with_origin(
             id, bank_account_id, transaction_id, tx_type, amount, currency,
             description, counterparty_name, counterparty_iban, booking_date, value_date,
             category_id, status, data_source, created_at, import_batch_id,
-            categorization_source, flow_kind
-        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18)",
+            categorization_source, flow_kind, counterparty_bank_code, counterparty_country
+        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20)",
         params![
             id,
             data.bank_account_id,
-            data.transaction_id,
+            transaction_id,
             tx_type,
             data.amount,
             currency,
@@ -333,6 +355,8 @@ pub fn create_transaction_with_origin(
             import_batch_id,
             categorization_source,
             data.flow_kind.map(|kind| kind.to_string()),
+            data.counterparty_bank_code,
+            data.counterparty_country,
         ],
     )?;
 
@@ -340,13 +364,15 @@ pub fn create_transaction_with_origin(
         flow_kind: data.flow_kind,
         id,
         bank_account_id: data.bank_account_id.clone(),
-        transaction_id: data.transaction_id.clone(),
+        transaction_id,
         tx_type,
         amount: data.amount.clone(),
         currency,
         description: data.description.clone(),
         counterparty_name: data.counterparty_name.clone(),
         counterparty_iban: data.counterparty_iban.clone(),
+        counterparty_bank_code: data.counterparty_bank_code.clone(),
+        counterparty_country: data.counterparty_country.clone(),
         booking_date: data.booking_date,
         value_date: data.value_date,
         category_id: data.category_id.clone(),
@@ -356,7 +382,28 @@ pub fn create_transaction_with_origin(
         status,
         data_source: data_source.to_string(),
         created_at: now,
+        import_batch_id: import_batch_id.map(str::to_string),
+        import_file_name: None,
+        import_line: None,
+        row_balance: None,
     })
+}
+
+/// Same bank ID turns pending into booked, retaining the original row ownership,
+/// explicit user flow and categorization. A later batch cannot delete this row.
+pub fn promote_pending_transaction(
+    conn: &rusqlite::Connection,
+    id: &str,
+    data: &InsertBankTransaction,
+) -> Result<()> {
+    data.validate()?;
+    let count=conn.execute("UPDATE bank_transactions SET status='booked',booking_date=?1,value_date=?2,amount=?3,currency=COALESCE(?4,currency),tx_type=?5,description=COALESCE(?6,description),counterparty_name=COALESCE(?7,counterparty_name),counterparty_iban=COALESCE(?8,counterparty_iban),counterparty_bank_code=COALESCE(?9,counterparty_bank_code),counterparty_country=COALESCE(?10,counterparty_country) WHERE id=?11 AND bank_account_id=?12 AND transaction_id=?13 AND status='pending'",params![data.booking_date,data.value_date,data.amount,data.currency,data.tx_type.to_lowercase(),data.description,data.counterparty_name,data.counterparty_iban,data.counterparty_bank_code,data.counterparty_country,id,data.bank_account_id,data.transaction_id])?;
+    if count != 1 {
+        return Err(AppError::Validation(
+            "validation.pendingPromotionInvalid".into(),
+        ));
+    }
+    Ok(())
 }
 
 /// Set (or clear) a transaction's category. Checks both sides exist.
@@ -413,6 +460,51 @@ pub fn set_transaction_flow(
     Ok(())
 }
 
+pub fn set_balance_anchor(
+    conn: &rusqlite::Connection,
+    account_id: &str,
+    data: &crate::models::bank_accounts::InsertBalanceAnchor,
+) -> Result<BankAccount> {
+    data.validate()?;
+    let tx = conn.unchecked_transaction()?;
+    let existing = get_account_by_id(&tx, account_id)?;
+    if !existing.currency.eq_ignore_ascii_case(&data.currency) {
+        return Err(AppError::Validation(
+            "validation.balanceCurrencyMismatch".into(),
+        ));
+    }
+    match existing.balance_as_of {
+        Some(day) if data.as_of < day => {
+            return Err(AppError::Validation("validation.balanceAnchorOlder".into()))
+        }
+        None if !data.confirm_unknown_as_of => {
+            return Err(AppError::Validation(
+                "validation.balanceAnchorUnknown".into(),
+            ))
+        }
+        _ => {}
+    }
+    if let Some(batch) = &data.source_batch_id {
+        let belongs: bool = tx.query_row(
+            "SELECT EXISTS(SELECT 1 FROM csv_import_batches WHERE id=?1 AND bank_account_id=?2)",
+            params![batch, account_id],
+            |r| r.get(0),
+        )?;
+        if !belongs {
+            return Err(AppError::Validation(
+                "validation.balanceBatchMismatch".into(),
+            ));
+        }
+    }
+    tx.execute(
+        "UPDATE bank_accounts SET balance=?1,balance_as_of=?2,updated_at=unixepoch() WHERE id=?3",
+        params![data.amount, data.as_of, account_id],
+    )?;
+    let account = get_account_by_id(&tx, account_id)?;
+    tx.commit()?;
+    Ok(account)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -430,7 +522,7 @@ mod tests {
                 iban TEXT,
                 bban TEXT,
                 currency TEXT NOT NULL DEFAULT 'CZK',
-                balance TEXT NOT NULL DEFAULT '0',
+                balance TEXT NOT NULL DEFAULT '0', balance_as_of INTEGER,
                 institution_id TEXT,
                 external_account_id TEXT,
                 data_source TEXT NOT NULL DEFAULT 'manual',
@@ -464,7 +556,7 @@ mod tests {
                 currency TEXT NOT NULL,
                 description TEXT,
                 counterparty_name TEXT,
-                counterparty_iban TEXT,
+                counterparty_iban TEXT, counterparty_bank_code TEXT, counterparty_country TEXT, import_line INTEGER, row_balance TEXT,
                 booking_date INTEGER NOT NULL,
                 value_date INTEGER,
                 category_id TEXT REFERENCES transaction_categories(id),
@@ -503,6 +595,7 @@ mod tests {
             bban: None,
             currency: None,
             balance: None,
+            balance_as_of: None,
             institution_id: None,
             interest_rate: None,
             has_zone_designation: None,
@@ -704,6 +797,8 @@ mod tests {
             description: None,
             counterparty_name: None,
             counterparty_iban: None,
+            counterparty_bank_code: None,
+            counterparty_country: None,
             booking_date: 1700000000,
             value_date: None,
             category_id: None,
@@ -730,6 +825,8 @@ mod tests {
             description: None,
             counterparty_name: None,
             counterparty_iban: None,
+            counterparty_bank_code: None,
+            counterparty_country: None,
             booking_date: 1700000000,
             value_date: None,
             category_id: None,
@@ -763,6 +860,8 @@ mod tests {
             description: None,
             counterparty_name: None,
             counterparty_iban: None,
+            counterparty_bank_code: None,
+            counterparty_country: None,
             booking_date: 1700000000,
             value_date: None,
             category_id: None,
@@ -792,6 +891,8 @@ mod tests {
             description: Some("from csv".into()),
             counterparty_name: None,
             counterparty_iban: None,
+            counterparty_bank_code: None,
+            counterparty_country: None,
             booking_date: 1700000000,
             value_date: None,
             category_id: None,
@@ -846,6 +947,8 @@ mod tests {
             description: Some("rule-matched".into()),
             counterparty_name: None,
             counterparty_iban: None,
+            counterparty_bank_code: None,
+            counterparty_country: None,
             booking_date: 1700000000,
             value_date: None,
             category_id: Some("cat-1".into()),
@@ -893,5 +996,81 @@ mod tests {
         // than leaving 'mcp' on a category the user just chose themselves.
         set_transaction_category(&conn, "tx-1", Some("cat-1"), None).unwrap();
         assert!(stored_categorization_source(&conn, "tx-1").is_none());
+    }
+    #[test]
+    fn integrity_explicit_unknown_date_clears_unchanged_anchor() {
+        let conn = setup_test_db();
+        conn.execute(
+            "UPDATE bank_accounts SET balance='100',balance_as_of=1767312000 WHERE id='acc-1'",
+            [],
+        )
+        .unwrap();
+        let edit: InsertBankAccount = serde_json::from_value(
+            serde_json::json!({"name":"Unknown date","balance":"100.00","balanceAsOf":null}),
+        )
+        .unwrap();
+        assert_eq!(
+            update_account(&conn, "acc-1", &edit).unwrap().balance_as_of,
+            None
+        );
+    }
+
+    #[test]
+    fn integrity_balance_anchor_safeguards_and_manual_date_semantics() {
+        let conn = setup_test_db();
+        let mut anchor = crate::models::bank_accounts::InsertBalanceAnchor {
+            amount: "100".into(),
+            currency: "EUR".into(),
+            as_of: 1767312000,
+            confirm_unknown_as_of: false,
+            source_batch_id: None,
+        };
+        assert!(set_balance_anchor(&conn, "acc-1", &anchor).is_err());
+        anchor.confirm_unknown_as_of = true;
+        assert_eq!(
+            set_balance_anchor(&conn, "acc-1", &anchor)
+                .unwrap()
+                .balance_as_of,
+            Some(1767312000)
+        );
+        anchor.as_of = 1767225600;
+        assert!(set_balance_anchor(&conn, "acc-1", &anchor).is_err());
+        anchor.as_of = 1767398400;
+        anchor.currency = "CZK".into();
+        assert!(set_balance_anchor(&conn, "acc-1", &anchor).is_err());
+        anchor.currency = "EUR".into();
+        anchor.as_of = i64::MAX;
+        assert!(set_balance_anchor(&conn, "acc-1", &anchor).is_err());
+        anchor.as_of = chrono::Utc::now().timestamp().div_euclid(86400) * 86400 + 86400;
+        assert!(set_balance_anchor(&conn, "acc-1", &anchor).is_err());
+        anchor.as_of = 1767398401;
+        assert!(set_balance_anchor(&conn, "acc-1", &anchor).is_err());
+        assert_eq!(get_account_by_id(&conn, "acc-1").unwrap().balance, "100");
+        let mut edit = minimal_insert("Renamed");
+        edit.balance = Some("100.00".into());
+        assert_eq!(
+            update_account(&conn, "acc-1", &edit).unwrap().balance_as_of,
+            Some(1767312000)
+        );
+        edit.balance = Some("101".into());
+        assert_eq!(
+            update_account(&conn, "acc-1", &edit).unwrap().balance_as_of,
+            None
+        );
+        anchor.as_of = 1767398400;
+        set_balance_anchor(&conn, "acc-1", &anchor).unwrap();
+        edit.balance = None;
+        edit.currency = Some("CZK".into());
+        assert_eq!(
+            update_account(&conn, "acc-1", &edit).unwrap().balance_as_of,
+            None
+        );
+        conn.execute_batch("CREATE TABLE csv_import_batches(id TEXT,bank_account_id TEXT); INSERT INTO csv_import_batches VALUES ('other','different');").unwrap();
+        anchor.currency = "CZK".into();
+        anchor.source_batch_id = Some("other".into());
+        assert!(set_balance_anchor(&conn, "acc-1", &anchor).is_err());
+        anchor.source_batch_id = None;
+        anchor.amount = "NaN".into();
+        assert!(set_balance_anchor(&conn, "acc-1", &anchor).is_err());
     }
 }

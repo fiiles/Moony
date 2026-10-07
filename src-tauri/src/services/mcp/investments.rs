@@ -287,6 +287,7 @@ pub fn stock_transactions_create(
     let report = investment_service::bulk_create_stock_transactions(conn, &rows, None)?;
 
     Ok(BulkWriteReport {
+        promoted: 0,
         created: report.created,
         skipped_duplicates: report
             .skipped_duplicates

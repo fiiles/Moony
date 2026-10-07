@@ -16,5 +16,6 @@
   "currencyColumn": "Měna",
   "transactionIdColumn": "ID operace",
   "exportHelpUrl": "https://www.fio.cz/bankovni-sluzby/internetbanking/funkce",
-  "sampleFixture": "fio.csv"
+  "sampleFixture": "fio.csv",
+  "counterpartyBankCodeColumn": "Kód banky"
 }

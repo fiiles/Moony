@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import type {
-  BankAccount,
   CsvImportPreview,
   CsvImportResult,
   CsvPreset,
@@ -12,7 +11,6 @@ import {
   EMPTY_MAPPING,
   SAMPLE_CSV,
   balanceDiffers,
-  balanceUpdatePayload,
   buildImportConfig,
   dateFormatChoices,
   dateFormatLabel,
@@ -281,6 +279,14 @@ describe('date format helpers', () => {
 describe('summarizePreview', () => {
   const row = (line: number, status: CsvPreviewRow['status']): CsvPreviewRow => ({
     line,
+    valueDate: null,
+    counterpartyIban: null,
+    counterpartyBankCode: null,
+    counterpartyCountry: null,
+    transactionId: null,
+    transactionStatus: 'booked',
+    rowBalance: null,
+    canImportAnyway: status === 'duplicate',
     bookingDate: 1_700_000_000,
     amount: '-10',
     currency: 'CZK',
@@ -300,6 +306,10 @@ describe('summarizePreview', () => {
       row(6, 'skipped'),
     ],
     totalRows: 5,
+    promotedCount: 0,
+    forcedDuplicateCount: 0,
+    offset: 0,
+    limit: 200,
     okCount: 1,
     errorCount: 1,
     duplicateCount: 2,
@@ -316,7 +326,9 @@ describe('summarizePreview', () => {
       uncategorized: 2,
     });
     // A forced duplicate counts in both totals the backend already includes it in.
-    expect(summarizePreview(preview({ categorizedCount: 2 }), [3])).toMatchObject({
+    expect(
+      summarizePreview(preview({ categorizedCount: 2, forcedDuplicateCount: 1 }), [3])
+    ).toMatchObject({
       willImport: 2,
       categorized: 2,
       uncategorized: 0,
@@ -334,7 +346,7 @@ describe('summarizePreview', () => {
   });
 
   it('adds a ticked duplicate to the rows that will be imported', () => {
-    expect(summarizePreview(preview(), [4])).toMatchObject({
+    expect(summarizePreview(preview({ forcedDuplicateCount: 1 }), [4])).toMatchObject({
       willImport: 2,
       forcedDuplicates: 1,
       skippedDuplicates: 1,
@@ -351,7 +363,10 @@ describe('summarizePreview', () => {
 
   it('keeps the totals right when the listing is capped', () => {
     expect(
-      summarizePreview(preview({ okCount: 500, duplicateCount: 40, totalRows: 560 }), [3])
+      summarizePreview(
+        preview({ okCount: 500, duplicateCount: 40, totalRows: 560, forcedDuplicateCount: 1 }),
+        [3]
+      )
     ).toMatchObject({ willImport: 501, skippedDuplicates: 39 });
   });
 });
@@ -456,6 +471,8 @@ describe('presets', () => {
 describe('next steps', () => {
   const result = (overrides: Partial<CsvImportResult> = {}): CsvImportResult => ({
     importedCount: 10,
+    promotedCount: 0,
+    statementBalance: null,
     duplicateCount: 0,
     errorCount: 0,
     errors: [],
@@ -526,45 +543,6 @@ describe('balanceDiffers', () => {
   });
 });
 
-describe('balanceUpdatePayload', () => {
-  it('changes only the balance and sends every other field back', () => {
-    const account = {
-      id: 'acc-1',
-      name: 'Main',
-      accountType: 'checking',
-      iban: 'CZ6508000000192000145399',
-      bban: null,
-      currency: 'CZK',
-      balance: '100',
-      institutionId: 'inst_fio',
-      externalAccountId: null,
-      dataSource: 'manual',
-      lastSyncedAt: null,
-      interestRate: '1.5',
-      hasZoneDesignation: false,
-      terminationDate: null,
-      interestRateValidUntil: 1_790_000_000,
-      excludeFromBalance: false,
-      createdAt: 1,
-      updatedAt: 2,
-    } as BankAccount;
-    expect(balanceUpdatePayload(account, '30196.12')).toEqual({
-      name: 'Main',
-      accountType: 'checking',
-      iban: 'CZ6508000000192000145399',
-      bban: null,
-      currency: 'CZK',
-      balance: '30196.12',
-      institutionId: 'inst_fio',
-      interestRate: '1.5',
-      hasZoneDesignation: false,
-      terminationDate: null,
-      interestRateValidUntil: 1_790_000_000,
-      excludeFromBalance: false,
-    });
-  });
-});
-
 describe('formatBalance', () => {
   it('keeps the cents of the number that will be stored, even for CZK', () => {
     expect(formatBalance('30196.12', 'CZK', 'en-US')).toBe('K\u010d\u00a030,196.12');
@@ -584,5 +562,58 @@ describe('regionName', () => {
 
   it('falls back to the code for something that is not a region', () => {
     expect(regionName('xx-not-a-region', 'en-US')).toBe('XX-NOT-A-REGION');
+  });
+});
+
+it('uses full-file forced counts while previewing another page', () => {
+  const preview: CsvImportPreview = {
+    rows: [],
+    totalRows: 405,
+    okCount: 0,
+    errorCount: 0,
+    duplicateCount: 405,
+    skippedCount: 0,
+    dateRange: null,
+    categorizedCount: 1,
+    promotedCount: 0,
+    forcedDuplicateCount: 2,
+    offset: 200,
+    limit: 200,
+  };
+  expect(summarizePreview(preview, [2, 402])).toMatchObject({
+    willImport: 2,
+    forcedDuplicates: 2,
+    skippedDuplicates: 403,
+    categorized: 1,
+  });
+});
+
+it('keeps structured identifier and value-date mapping in the import config', () => {
+  const inspection: CsvPreviewResult = {
+    headers: [],
+    sampleRows: [],
+    totalRows: 1,
+    delimiter: ';',
+    headerRow: 0,
+    detectedPresetId: null,
+    dateFormat: '%Y-%m-%d',
+    dateFormatAmbiguous: false,
+    decimalSeparator: '.',
+    encoding: 'UTF-8',
+    suggestedDescriptionColumns: [],
+    suggestedRowFilter: null,
+    suggestedMappings: {
+      date: ['Date', 1],
+      amount: ['Amount', 1],
+      valueDate: ['Value', 1],
+      counterpartyBankCode: ['Kód banky', 1],
+      counterpartyCountry: ['Country', 1],
+    },
+  };
+  const config = buildImportConfig(mappingFromInspection(inspection), inspection, 0);
+  expect(config).toMatchObject({
+    valueDateColumn: 'Value',
+    counterpartyBankCodeColumn: 'Kód banky',
+    counterpartyCountryColumn: 'Country',
   });
 });

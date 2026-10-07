@@ -45,7 +45,7 @@ pub fn setup_import_db() -> Connection {
             file_name TEXT NOT NULL,
             imported_count INTEGER NOT NULL DEFAULT 0,
             duplicate_count INTEGER NOT NULL DEFAULT 0,
-            error_count INTEGER NOT NULL DEFAULT 0,
+            error_count INTEGER NOT NULL DEFAULT 0, promoted_count INTEGER NOT NULL DEFAULT 0, date_from INTEGER, date_to INTEGER,
             imported_at INTEGER NOT NULL DEFAULT (unixepoch())
         );
 
@@ -58,7 +58,7 @@ pub fn setup_import_db() -> Connection {
             currency TEXT NOT NULL,
             description TEXT,
             counterparty_name TEXT,
-            counterparty_iban TEXT,
+            counterparty_iban TEXT, counterparty_bank_code TEXT, counterparty_country TEXT, import_line INTEGER, row_balance TEXT,
             booking_date INTEGER NOT NULL,
             value_date INTEGER,
             category_id TEXT REFERENCES transaction_categories(id),
@@ -96,6 +96,12 @@ pub fn config_from_inspection(r: &CsvPreviewResult) -> CsvImportConfig {
         delimiter: r.delimiter.clone(),
         header_row: Some(r.header_row),
         date_column: mapped("date").unwrap_or_default(),
+        value_date_column: mapped("valueDate"),
+        status_column: mapped("status"),
+        pending_date_column: mapped("pendingDate"),
+        counterparty_bank_code_column: mapped("counterpartyBankCode"),
+        counterparty_country_column: mapped("counterpartyCountry"),
+
         date_format: r.date_format.clone(),
         amount_column: mapped("amount"),
         debit_column: mapped("debit"),
@@ -134,6 +140,12 @@ impl ResolvedPreset {
         CsvImportConfig {
             delimiter: delimiter.to_string(),
             date_column: self.date.clone(),
+            value_date_column: self.value_date.clone(),
+            status_column: self.status.clone(),
+            pending_date_column: self.pending_date.clone(),
+            counterparty_bank_code_column: self.counterparty_bank_code.clone(),
+            counterparty_country_column: self.counterparty_country.clone(),
+
             date_format: date_format.to_string(),
             amount_column: self.amount.clone(),
             debit_column: self.debit.clone(),

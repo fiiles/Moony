@@ -343,7 +343,7 @@ export function CsvImportDialog({
     !isUpdating &&
     !previewError &&
     summary != null &&
-    summary.willImport > 0;
+    (summary.willImport > 0 || summary.willPromote > 0);
 
   const steps = STEP_IDS.map((id) => ({
     id,

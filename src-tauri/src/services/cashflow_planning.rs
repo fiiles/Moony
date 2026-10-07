@@ -1075,164 +1075,6 @@ fn active_loan_ids(conn: &rusqlite::Connection, day: i64) -> Result<HashSet<Stri
     }
     Ok(active)
 }
-#[cfg(test)]
-mod tests {
-    use super::*;
-    fn planning_db() -> rusqlite::Connection {
-        let conn = rusqlite::Connection::open_in_memory().unwrap();
-        conn.execute_batch("CREATE TABLE loans(id TEXT,name TEXT,principal TEXT,currency TEXT,interest_rate TEXT,monthly_payment TEXT,start_date INTEGER,end_date INTEGER,balance_anchor_amount TEXT,balance_anchor_date INTEGER);
- CREATE TABLE cashflow_items(id TEXT PRIMARY KEY,name TEXT,amount TEXT,currency TEXT,frequency TEXT,item_type TEXT,category TEXT,created_at INTEGER,updated_at INTEGER,replacement_source_id TEXT UNIQUE);
- CREATE TABLE real_estate(id TEXT,name TEXT,type TEXT,recurring_costs TEXT,monthly_rent TEXT,monthly_rent_currency TEXT);
- CREATE TABLE real_estate_loans(real_estate_id TEXT,loan_id TEXT);
- CREATE TABLE real_estate_insurances(real_estate_id TEXT,insurance_id TEXT);
- CREATE TABLE insurance_policies(id TEXT,policy_name TEXT,regular_payment TEXT,regular_payment_currency TEXT,payment_frequency TEXT,status TEXT);
- CREATE TABLE bank_accounts(id TEXT,name TEXT,balance TEXT,currency TEXT,interest_rate TEXT,has_zone_designation INTEGER,account_type TEXT,exclude_from_balance INTEGER);
- CREATE TABLE stock_investments(ticker TEXT,company_name TEXT,quantity TEXT);
- CREATE TABLE bonds(id TEXT,name TEXT,coupon_value TEXT,quantity TEXT,interest_rate TEXT,currency TEXT);
- INSERT INTO loans VALUES ('active','Loan','1000000','CZK','0','100',1704067200,NULL,NULL,NULL);").unwrap();
-        conn
-    }
-    #[test]
-    fn replacement_avoids_double_count_retains_inventory_and_restores_on_delete() {
-        let conn = planning_db();
-        let before = get_report(&conn, "monthly").unwrap();
-        assert_eq!(before.total_expenses, "100.00");
-        let item = InsertCashflowItem {
-            name: "Adjusted loan".into(),
-            amount: "1200".into(),
-            currency: Some("CZK".into()),
-            frequency: "yearly".into(),
-            item_type: "expense".into(),
-            category: "personalLoans".into(),
-            replacement_source_id: Some("loan:active".into()),
-        };
-        let created = create_cashflow_item(&conn, item.clone()).unwrap();
-        assert!(create_cashflow_item(&conn, item.clone()).is_err());
-        let mut wrong = item;
-        wrong.replacement_source_id = Some("loan:missing".into());
-        assert!(create_cashflow_item(&conn, wrong).is_err());
-        let report = get_report(&conn, "monthly").unwrap();
-        assert_eq!(report.total_expenses, "100.00");
-        assert_eq!(report.automatic_sources.len(), 1);
-        assert!(report
-            .personal
-            .expenses
-            .iter()
-            .flat_map(|c| &c.items)
-            .all(|i| i.is_user_defined));
-        delete_cashflow_item(&conn, created.id).unwrap();
-        assert_eq!(
-            get_report(&conn, "monthly").unwrap().total_expenses,
-            "100.00"
-        );
-    }
-    #[test]
-    fn planned_unknown_fx_is_excluded_and_marked_without_one_to_one_fallback() {
-        let conn = planning_db();
-        conn.execute("UPDATE loans SET currency='XPM'", []).unwrap();
-        let report = get_report(&conn, "monthly").unwrap();
-        assert_eq!(report.total_expenses, "0.00");
-        assert_eq!(report.quality.missing_fx_count, 1);
-        assert_eq!(report.automatic_sources.len(), 1);
-        assert_eq!(
-            report.automatic_sources[0].fx_quality,
-            crate::models::FxQuality::Missing
-        );
-    }
-    fn insert_property(conn: &rusqlite::Connection, kind: &str, costs: serde_json::Value) {
-        conn.execute("INSERT INTO real_estate(id,name,type,recurring_costs) VALUES ('property','Property',?1,?2)",rusqlite::params![kind,costs.to_string()]).unwrap();
-    }
-    #[test]
-    fn personal_and_investment_property_foreign_costs_are_estimated() {
-        crate::services::currency::update_exchange_rates(HashMap::from([("XPK".into(), 10.0)]));
-        for kind in ["personal", "investment"] {
-            let conn = planning_db();
-            insert_property(
-                &conn,
-                kind,
-                serde_json::json!([{"amount":100,"frequency":"monthly","currency":"XPK"}]),
-            );
-            let report = get_report(&conn, "monthly").unwrap();
-            let source = report
-                .automatic_sources
-                .iter()
-                .find(|s| s.source_id.as_deref() == Some("propertyCosts:property"))
-                .unwrap();
-            assert_eq!(source.amount, "1000.00");
-            assert_eq!(
-                source.fx_quality,
-                crate::models::FxQuality::Estimated,
-                "{kind}"
-            );
-            assert_eq!(report.quality.estimated_fx_count, 1);
-        }
-    }
-    #[test]
-    fn property_mixed_fx_quality_and_inventory_are_independent_of_component_order() {
-        for kind in ["personal", "investment"] {
-            for czk_amount in [0, 5] {
-                for missing_first in [false, true] {
-                    let conn = planning_db();
-                    let missing =
-                        serde_json::json!({"amount":100,"frequency":"monthly","currency":"XPU"});
-                    let known = serde_json::json!({"amount":czk_amount,"frequency":"monthly","currency":"CZK"});
-                    let costs = if missing_first {
-                        serde_json::json!([missing, known])
-                    } else {
-                        serde_json::json!([known, missing])
-                    };
-                    insert_property(&conn, kind, costs);
-                    let report = get_report(&conn, "monthly").unwrap();
-                    let source=report.automatic_sources.iter().find(|s|s.source_id.as_deref()==Some("propertyCosts:property")).unwrap_or_else(||panic!("missing inventory: {kind},CZK{czk_amount},missing_first{missing_first}"));
-                    assert_eq!(source.amount, format!("{czk_amount}.00"));
-                    assert_eq!(
-                        source.fx_quality,
-                        crate::models::FxQuality::Missing,
-                        "{kind},missing_first{missing_first}"
-                    );
-                    assert_eq!(report.quality.missing_fx_count, 1);
-                    assert_eq!(report.quality.missing_fx_currencies, vec!["XPU"]);
-                }
-            }
-        }
-    }
-    #[test]
-    fn absent_dividend_values_are_optional_but_query_and_type_failures_propagate() {
-        let conn = planning_db();
-        conn.execute_batch("CREATE TABLE dividend_overrides(ticker TEXT,yearly_dividend_sum TEXT,currency TEXT); CREATE TABLE dividend_data(ticker TEXT,yearly_dividend_sum TEXT,currency TEXT); INSERT INTO stock_investments VALUES ('TEST','Test stock','2');").unwrap();
-        let report = get_report(&conn, "monthly").unwrap();
-        assert_eq!(report.investments.total_income, "0.00");
-        conn.execute("INSERT INTO dividend_data VALUES ('TEST','12','CZK')", [])
-            .unwrap();
-        assert_eq!(
-            get_report(&conn, "monthly")
-                .unwrap()
-                .investments
-                .total_income,
-            "2.00"
-        );
-        conn.execute("UPDATE dividend_data SET yearly_dividend_sum=x'FF'", [])
-            .unwrap();
-        assert!(
-            matches!(get_report(&conn, "monthly"), Err(AppError::Database(_))),
-            "type failure must not become absent dividend"
-        );
-        conn.execute("DROP TABLE dividend_data", []).unwrap();
-        assert!(
-            matches!(get_report(&conn, "monthly"), Err(AppError::Database(_))),
-            "schema failure must not become absent dividend"
-        );
-    }
-    #[test]
-    fn automatic_loan_sources_omit_repaid_and_expired_loans() {
-        let conn = rusqlite::Connection::open_in_memory().unwrap();
-        conn.execute_batch("CREATE TABLE loans(id TEXT,principal TEXT,interest_rate TEXT,monthly_payment TEXT,start_date INTEGER,end_date INTEGER,balance_anchor_amount TEXT,balance_anchor_date INTEGER);
-   INSERT INTO loans VALUES ('paid','1000','0','100',1704067200,NULL,NULL,NULL),('expired','100000','0','100',1704067200,1706745600,NULL,NULL),('active','100000','0','100',1704067200,NULL,NULL,NULL);").unwrap();
-        let active = active_loan_ids(&conn, 1735689600).unwrap();
-        assert_eq!(active, HashSet::from(["active".into()]));
-    }
-}
-
 pub fn get_report(conn: &rusqlite::Connection, view_type: &str) -> Result<CashflowReport> {
     use crate::services::reporting::money;
     let mut fx = PlanningFx::default();
@@ -1463,5 +1305,163 @@ impl PlanningFx {
             self.quality.missing_fx_currencies.sort();
         }
         0.0
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    fn planning_db() -> rusqlite::Connection {
+        let conn = rusqlite::Connection::open_in_memory().unwrap();
+        conn.execute_batch("CREATE TABLE loans(id TEXT,name TEXT,principal TEXT,currency TEXT,interest_rate TEXT,monthly_payment TEXT,start_date INTEGER,end_date INTEGER,balance_anchor_amount TEXT,balance_anchor_date INTEGER);
+ CREATE TABLE cashflow_items(id TEXT PRIMARY KEY,name TEXT,amount TEXT,currency TEXT,frequency TEXT,item_type TEXT,category TEXT,created_at INTEGER,updated_at INTEGER,replacement_source_id TEXT UNIQUE);
+ CREATE TABLE real_estate(id TEXT,name TEXT,type TEXT,recurring_costs TEXT,monthly_rent TEXT,monthly_rent_currency TEXT);
+ CREATE TABLE real_estate_loans(real_estate_id TEXT,loan_id TEXT);
+ CREATE TABLE real_estate_insurances(real_estate_id TEXT,insurance_id TEXT);
+ CREATE TABLE insurance_policies(id TEXT,policy_name TEXT,regular_payment TEXT,regular_payment_currency TEXT,payment_frequency TEXT,status TEXT);
+ CREATE TABLE bank_accounts(id TEXT,name TEXT,balance TEXT,currency TEXT,interest_rate TEXT,has_zone_designation INTEGER,account_type TEXT,exclude_from_balance INTEGER);
+ CREATE TABLE stock_investments(ticker TEXT,company_name TEXT,quantity TEXT);
+ CREATE TABLE bonds(id TEXT,name TEXT,coupon_value TEXT,quantity TEXT,interest_rate TEXT,currency TEXT);
+ INSERT INTO loans VALUES ('active','Loan','1000000','CZK','0','100',1704067200,NULL,NULL,NULL);").unwrap();
+        conn
+    }
+    #[test]
+    fn replacement_avoids_double_count_retains_inventory_and_restores_on_delete() {
+        let conn = planning_db();
+        let before = get_report(&conn, "monthly").unwrap();
+        assert_eq!(before.total_expenses, "100.00");
+        let item = InsertCashflowItem {
+            name: "Adjusted loan".into(),
+            amount: "1200".into(),
+            currency: Some("CZK".into()),
+            frequency: "yearly".into(),
+            item_type: "expense".into(),
+            category: "personalLoans".into(),
+            replacement_source_id: Some("loan:active".into()),
+        };
+        let created = create_cashflow_item(&conn, item.clone()).unwrap();
+        assert!(create_cashflow_item(&conn, item.clone()).is_err());
+        let mut wrong = item;
+        wrong.replacement_source_id = Some("loan:missing".into());
+        assert!(create_cashflow_item(&conn, wrong).is_err());
+        let report = get_report(&conn, "monthly").unwrap();
+        assert_eq!(report.total_expenses, "100.00");
+        assert_eq!(report.automatic_sources.len(), 1);
+        assert!(report
+            .personal
+            .expenses
+            .iter()
+            .flat_map(|c| &c.items)
+            .all(|i| i.is_user_defined));
+        delete_cashflow_item(&conn, created.id).unwrap();
+        assert_eq!(
+            get_report(&conn, "monthly").unwrap().total_expenses,
+            "100.00"
+        );
+    }
+    #[test]
+    fn planned_unknown_fx_is_excluded_and_marked_without_one_to_one_fallback() {
+        let conn = planning_db();
+        conn.execute("UPDATE loans SET currency='XPM'", []).unwrap();
+        let report = get_report(&conn, "monthly").unwrap();
+        assert_eq!(report.total_expenses, "0.00");
+        assert_eq!(report.quality.missing_fx_count, 1);
+        assert_eq!(report.automatic_sources.len(), 1);
+        assert_eq!(
+            report.automatic_sources[0].fx_quality,
+            crate::models::FxQuality::Missing
+        );
+    }
+    fn insert_property(conn: &rusqlite::Connection, kind: &str, costs: serde_json::Value) {
+        conn.execute("INSERT INTO real_estate(id,name,type,recurring_costs) VALUES ('property','Property',?1,?2)",rusqlite::params![kind,costs.to_string()]).unwrap();
+    }
+    #[test]
+    fn personal_and_investment_property_foreign_costs_are_estimated() {
+        crate::services::currency::update_exchange_rates(HashMap::from([("XPK".into(), 10.0)]));
+        for kind in ["personal", "investment"] {
+            let conn = planning_db();
+            insert_property(
+                &conn,
+                kind,
+                serde_json::json!([{"amount":100,"frequency":"monthly","currency":"XPK"}]),
+            );
+            let report = get_report(&conn, "monthly").unwrap();
+            let source = report
+                .automatic_sources
+                .iter()
+                .find(|s| s.source_id.as_deref() == Some("propertyCosts:property"))
+                .unwrap();
+            assert_eq!(source.amount, "1000.00");
+            assert_eq!(
+                source.fx_quality,
+                crate::models::FxQuality::Estimated,
+                "{kind}"
+            );
+            assert_eq!(report.quality.estimated_fx_count, 1);
+        }
+    }
+    #[test]
+    fn property_mixed_fx_quality_and_inventory_are_independent_of_component_order() {
+        for kind in ["personal", "investment"] {
+            for czk_amount in [0, 5] {
+                for missing_first in [false, true] {
+                    let conn = planning_db();
+                    let missing =
+                        serde_json::json!({"amount":100,"frequency":"monthly","currency":"XPU"});
+                    let known = serde_json::json!({"amount":czk_amount,"frequency":"monthly","currency":"CZK"});
+                    let costs = if missing_first {
+                        serde_json::json!([missing, known])
+                    } else {
+                        serde_json::json!([known, missing])
+                    };
+                    insert_property(&conn, kind, costs);
+                    let report = get_report(&conn, "monthly").unwrap();
+                    let source=report.automatic_sources.iter().find(|s|s.source_id.as_deref()==Some("propertyCosts:property")).unwrap_or_else(||panic!("missing inventory: {kind},CZK{czk_amount},missing_first{missing_first}"));
+                    assert_eq!(source.amount, format!("{czk_amount}.00"));
+                    assert_eq!(
+                        source.fx_quality,
+                        crate::models::FxQuality::Missing,
+                        "{kind},missing_first{missing_first}"
+                    );
+                    assert_eq!(report.quality.missing_fx_count, 1);
+                    assert_eq!(report.quality.missing_fx_currencies, vec!["XPU"]);
+                }
+            }
+        }
+    }
+    #[test]
+    fn absent_dividend_values_are_optional_but_query_and_type_failures_propagate() {
+        let conn = planning_db();
+        conn.execute_batch("CREATE TABLE dividend_overrides(ticker TEXT,yearly_dividend_sum TEXT,currency TEXT); CREATE TABLE dividend_data(ticker TEXT,yearly_dividend_sum TEXT,currency TEXT); INSERT INTO stock_investments VALUES ('TEST','Test stock','2');").unwrap();
+        let report = get_report(&conn, "monthly").unwrap();
+        assert_eq!(report.investments.total_income, "0.00");
+        conn.execute("INSERT INTO dividend_data VALUES ('TEST','12','CZK')", [])
+            .unwrap();
+        assert_eq!(
+            get_report(&conn, "monthly")
+                .unwrap()
+                .investments
+                .total_income,
+            "2.00"
+        );
+        conn.execute("UPDATE dividend_data SET yearly_dividend_sum=x'FF'", [])
+            .unwrap();
+        assert!(
+            matches!(get_report(&conn, "monthly"), Err(AppError::Database(_))),
+            "type failure must not become absent dividend"
+        );
+        conn.execute("DROP TABLE dividend_data", []).unwrap();
+        assert!(
+            matches!(get_report(&conn, "monthly"), Err(AppError::Database(_))),
+            "schema failure must not become absent dividend"
+        );
+    }
+    #[test]
+    fn automatic_loan_sources_omit_repaid_and_expired_loans() {
+        let conn = rusqlite::Connection::open_in_memory().unwrap();
+        conn.execute_batch("CREATE TABLE loans(id TEXT,principal TEXT,interest_rate TEXT,monthly_payment TEXT,start_date INTEGER,end_date INTEGER,balance_anchor_amount TEXT,balance_anchor_date INTEGER);
+   INSERT INTO loans VALUES ('paid','1000','0','100',1704067200,NULL,NULL,NULL),('expired','100000','0','100',1704067200,1706745600,NULL,NULL),('active','100000','0','100',1704067200,NULL,NULL,NULL);").unwrap();
+        let active = active_loan_ids(&conn, 1735689600).unwrap();
+        assert_eq!(active, HashSet::from(["active".into()]));
     }
 }

@@ -39,6 +39,10 @@ pub struct CsvDateRange {
     pub to: i64,
 }
 
+fn default_preview_limit() -> usize {
+    200
+}
+
 fn default_true() -> bool {
     true
 }
@@ -60,6 +64,12 @@ pub struct CsvImportConfig {
     pub header_row: Option<usize>,
     #[serde(rename = "dateColumn")]
     pub date_column: String,
+    #[serde(rename = "valueDateColumn", default)]
+    pub value_date_column: Option<String>,
+    #[serde(rename = "statusColumn", default)]
+    pub status_column: Option<String>,
+    #[serde(rename = "pendingDateColumn", default)]
+    pub pending_date_column: Option<String>,
     /// chrono format (`%d.%m.%Y`). Parsed strictly: a row that does not match
     /// is an error, never re-read as another order. Empty or `auto` detects the
     /// format from the date column.
@@ -74,7 +84,7 @@ pub struct CsvImportConfig {
     pub debit_column: Option<String>,
     #[serde(rename = "creditColumn", default)]
     pub credit_column: Option<String>,
-    /// Running balance after each row; only feeds `lastBalance`.
+    /// Running balance after each row; stored as provenance and statement anchor.
     #[serde(rename = "balanceColumn", default)]
     pub balance_column: Option<String>,
     /// Bank-side transaction id; feeds the id rule of the duplicate check.
@@ -86,6 +96,10 @@ pub struct CsvImportConfig {
     pub counterparty_column: Option<String>,
     #[serde(rename = "counterpartyIbanColumn", default)]
     pub counterparty_iban_column: Option<String>,
+    #[serde(rename = "counterpartyCountryColumn", default)]
+    pub counterparty_country_column: Option<String>,
+    #[serde(rename = "counterpartyBankCodeColumn", default)]
+    pub counterparty_bank_code_column: Option<String>,
     #[serde(rename = "currencyColumn", default)]
     pub currency_column: Option<String>,
     /// `","` or `"."`; `None`, empty or `auto` detects it from the amount
@@ -94,11 +108,11 @@ pub struct CsvImportConfig {
     pub decimal_separator: Option<String>,
     #[serde(rename = "rowFilter", default)]
     pub row_filter: Option<CsvRowFilter>,
-    /// Skip rows that the duplicate check matches (default). `false` imports
-    /// them and reports them in `duplicates`.
+    /// Skip possible composite duplicates (default). `false` imports them and
+    /// reports them in `duplicates`; certain bank IDs are always skipped.
     #[serde(rename = "skipDuplicates", default = "default_true")]
     pub skip_duplicates: bool,
-    /// File lines of duplicate rows to import anyway.
+    /// File lines of possible composite duplicates to import anyway.
     #[serde(rename = "importAnywayLines", default)]
     pub import_anyway_lines: Vec<usize>,
     /// Force a text encoding (`Windows-1250`); `None` = detect.
@@ -109,6 +123,10 @@ pub struct CsvImportConfig {
     /// before the rules run, so they win; a missing category is ignored.
     #[serde(rename = "categoryOverrides", default)]
     pub category_overrides: Vec<CsvCategoryOverride>,
+    #[serde(rename = "previewOffset", default)]
+    pub preview_offset: usize,
+    #[serde(rename = "previewLimit", default = "default_preview_limit")]
+    pub preview_limit: usize,
 }
 
 /// One row's category chosen in the preview (TS `CsvCategoryOverride`).
@@ -127,6 +145,11 @@ impl Default for CsvImportConfig {
             skip_rows: 0,
             header_row: None,
             date_column: String::new(),
+            counterparty_country_column: None,
+            counterparty_bank_code_column: None,
+            value_date_column: None,
+            status_column: None,
+            pending_date_column: None,
             date_format: String::new(),
             amount_column: None,
             debit_column: None,
@@ -143,6 +166,8 @@ impl Default for CsvImportConfig {
             import_anyway_lines: Vec::new(),
             encoding: None,
             category_overrides: Vec::new(),
+            preview_offset: 0,
+            preview_limit: 200,
         }
     }
 }
@@ -154,6 +179,14 @@ fn is_blank(value: &Option<String>) -> bool {
 impl CsvImportConfig {
     /// Validate at the trust boundary. Keys are `validation.*` i18n keys.
     pub fn validate(&self) -> Result<()> {
+        if self.preview_limit == 0
+            || self.preview_limit > 200
+            || self.preview_offset > i64::MAX as usize
+        {
+            return Err(AppError::Validation(
+                "validation.csvPreviewRangeInvalid".into(),
+            ));
+        }
         if self.date_column.trim().is_empty() {
             return Err(AppError::Validation("validation.dateColumnRequired".into()));
         }
@@ -190,13 +223,17 @@ pub fn parse_decimal_separator(value: Option<&str>) -> Result<Option<char>> {
 /// Result of an import (TS `CsvImportResult`).
 ///
 /// Every row of the file ends up in exactly one bucket:
-/// `importedCount + skippedDuplicates.len() + errorCount + skippedZero +
+/// `importedCount + promotedCount + skippedDuplicates.len() + errorCount + skippedZero +
 /// skippedFiltered` = data rows (blank lines are not rows).
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct CsvImportResult {
     /// Rows written (includes duplicates that were imported anyway).
     #[serde(rename = "importedCount")]
     pub imported_count: usize,
+    #[serde(rename = "promotedCount")]
+    pub promoted_count: usize,
+    #[serde(rename = "statementBalance")]
+    pub statement_balance: Option<StatementBalance>,
     /// Duplicate hits that were imported anyway — `duplicates.len()`.
     #[serde(rename = "duplicateCount")]
     pub duplicate_count: usize,
@@ -211,10 +248,10 @@ pub struct CsvImportResult {
     pub skipped_duplicates: Vec<CsvRowMessage>,
     #[serde(rename = "skippedZero")]
     pub skipped_zero: usize,
-    /// Rows dropped by the row filter (Revolut pending rows).
+    /// Rows dropped by the row filter or rejected transaction status.
     #[serde(rename = "skippedFiltered")]
     pub skipped_filtered: usize,
-    /// Booking dates of the imported rows; `None` when nothing was imported.
+    /// Booking dates of inserted or promoted rows; `None` without a write.
     #[serde(rename = "dateRange")]
     pub date_range: Option<CsvDateRange>,
     /// Imported rows the rules could not categorize.
@@ -232,13 +269,15 @@ pub struct CsvImportResult {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
 pub enum CsvRowStatus {
+    #[serde(rename = "promoted")]
+    Promoted,
     /// Will be imported.
     #[serde(rename = "ok")]
     Ok,
     /// Cannot be imported (see `message`).
     #[serde(rename = "error")]
     Error,
-    /// Matches an existing or earlier transaction; skipped unless imported anyway.
+    /// Stored occurrence or certain bank ID; only possible composites allow overrides.
     #[serde(rename = "duplicate")]
     Duplicate,
     /// Dropped on purpose: zero amount or row filter.
@@ -249,6 +288,23 @@ pub enum CsvRowStatus {
 /// One row of the preview table.
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct CsvPreviewRow {
+    #[serde(rename = "valueDate")]
+    pub value_date: Option<i64>,
+    #[serde(rename = "counterpartyIban")]
+    pub counterparty_iban: Option<String>,
+    #[serde(rename = "counterpartyBankCode")]
+    pub counterparty_bank_code: Option<String>,
+    #[serde(rename = "counterpartyCountry")]
+    pub counterparty_country: Option<String>,
+    #[serde(rename = "transactionId")]
+    pub transaction_id: Option<String>,
+    #[serde(rename = "transactionStatus")]
+    pub transaction_status: Option<String>,
+    #[serde(rename = "rowBalance")]
+    pub row_balance: Option<String>,
+    #[serde(rename = "canImportAnyway")]
+    pub can_import_anyway: bool,
+
     pub line: usize,
     #[serde(rename = "bookingDate")]
     pub booking_date: Option<i64>,
@@ -272,7 +328,7 @@ pub struct CsvPreviewRow {
 /// Dry run of an import (TS `CsvImportPreview`).
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct CsvImportPreview {
-    /// The first 200 rows in file order.
+    /// Requested bounded page in file order; counts cover the full file.
     pub rows: Vec<CsvPreviewRow>,
     #[serde(rename = "totalRows")]
     pub total_rows: usize,
@@ -291,6 +347,12 @@ pub struct CsvImportPreview {
     /// Rows that would be written with a category (rules or overrides).
     #[serde(rename = "categorizedCount")]
     pub categorized_count: usize,
+    #[serde(rename = "forcedDuplicateCount")]
+    pub forced_duplicate_count: usize,
+    #[serde(rename = "promotedCount")]
+    pub promoted_count: usize,
+    pub offset: usize,
+    pub limit: usize,
 }
 
 /// What `parse_csv_file` learned about a file (TS `CsvPreviewResult`).
@@ -405,4 +467,38 @@ mod tests {
         let json = serde_json::to_string(&CsvRowStatus::Duplicate).unwrap();
         assert_eq!(json, "\"duplicate\"");
     }
+}
+
+/// Balance after a particular statement row, in that row's native currency.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct StatementBalance {
+    pub amount: String,
+    pub currency: String,
+    #[serde(rename = "asOf")]
+    pub as_of: i64,
+    pub line: usize,
+    #[serde(rename = "batchId")]
+    pub batch_id: String,
+}
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct CsvImportBatch {
+    pub id: String,
+    #[serde(rename = "bankAccountId")]
+    pub bank_account_id: String,
+    #[serde(rename = "fileName")]
+    pub file_name: String,
+    #[serde(rename = "importedCount")]
+    pub imported_count: i64,
+    #[serde(rename = "linkedCount")]
+    pub linked_count: i64,
+    #[serde(rename = "duplicateCount")]
+    pub duplicate_count: i64,
+    #[serde(rename = "errorCount")]
+    pub error_count: i64,
+    #[serde(rename = "promotedCount")]
+    pub promoted_count: i64,
+    #[serde(rename = "importedAt")]
+    pub imported_at: i64,
+    #[serde(rename = "dateRange")]
+    pub date_range: Option<CsvDateRange>,
 }

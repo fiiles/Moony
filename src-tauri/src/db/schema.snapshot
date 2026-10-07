@@ -150,7 +150,7 @@ CREATE TABLE bank_accounts (
     exclude_from_balance INTEGER NOT NULL DEFAULT 0,
     created_at INTEGER NOT NULL DEFAULT (unixepoch()),
     updated_at INTEGER NOT NULL DEFAULT (unixepoch())
-, interest_rate_valid_until INTEGER)
+, interest_rate_valid_until INTEGER, balance_as_of INTEGER)
 
 == table bank_transactions ==
 CREATE TABLE bank_transactions (
@@ -174,7 +174,7 @@ CREATE TABLE bank_transactions (
     import_batch_id TEXT REFERENCES csv_import_batches(id) ON DELETE CASCADE,
     categorization_source TEXT,
     suggested_category_id TEXT REFERENCES transaction_categories(id), flow_kind TEXT
-    CHECK (flow_kind IS NULL OR flow_kind IN ('income', 'expense', 'transfer', 'investment', 'financing', 'adjustment')),
+    CHECK (flow_kind IS NULL OR flow_kind IN ('income', 'expense', 'transfer', 'investment', 'financing', 'adjustment')), counterparty_bank_code TEXT, counterparty_country TEXT, import_line INTEGER, row_balance TEXT,
     UNIQUE(bank_account_id, transaction_id)
 )
 
@@ -310,7 +310,7 @@ CREATE TABLE csv_import_batches (
     duplicate_count INTEGER NOT NULL DEFAULT 0,
     error_count INTEGER NOT NULL DEFAULT 0,
     imported_at INTEGER NOT NULL DEFAULT (unixepoch())
-)
+, promoted_count INTEGER NOT NULL DEFAULT 0, date_from INTEGER, date_to INTEGER)
 
 == table dividend_data ==
 CREATE TABLE dividend_data (

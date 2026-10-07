@@ -22,6 +22,8 @@ function toTransactionInput(tx: BankTransaction): TransactionInput {
     description: tx.description ?? undefined,
     counterparty: tx.counterpartyName ?? undefined,
     counterpartyIban: tx.counterpartyIban ?? undefined,
+    counterpartyBankCode: tx.counterpartyBankCode ?? undefined,
+    counterpartyCountry: tx.counterpartyCountry ?? undefined,
     amount: parseFloat(tx.amount),
     isCredit: tx.type === 'credit',
     bankAccountId: tx.bankAccountId,

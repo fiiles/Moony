@@ -106,6 +106,9 @@ pub fn collect_types() -> TypeCollection {
     types.register::<crate::services::csv_import::CsvCategoryOverride>();
     types.register::<crate::services::csv_import::CsvImportResult>();
     types.register::<crate::services::csv_import::CsvImportPreview>();
+    types.register::<crate::services::csv_import::types::StatementBalance>();
+    types.register::<crate::services::csv_import::types::CsvImportBatch>();
+    types.register::<crate::models::bank_accounts::InsertBalanceAnchor>();
     types.register::<crate::services::csv_import::CsvPreviewRow>();
     types.register::<crate::services::csv_import::CsvPreviewResult>();
     types.register::<crate::services::csv_import::CsvRowMessage>();

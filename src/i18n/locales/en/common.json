@@ -233,7 +233,14 @@
     "milestoneKindUnknown": "This kind of reminder is unknown.",
     "effectiveMonthInvalid": "Choose the first day of a calendar month.",
     "cashflowItemInvalid": "Enter a valid name, positive amount, currency, frequency and cashflow category.",
-    "cashflowReplacementInvalid": "Choose an available automatic source that is not already replaced."
+    "cashflowReplacementInvalid": "Choose an available automatic source that is not already replaced.",
+    "csvPreviewRangeInvalid": "Preview page must contain between 1 and 200 rows.",
+    "pendingPromotionInvalid": "The pending transaction could not be promoted. Refresh the preview and try again.",
+    "balanceAsOfInvalid": "Choose a valid balance date, no later than today.",
+    "balanceCurrencyMismatch": "The statement balance currency differs from the account currency.",
+    "balanceAnchorOlder": "The statement is older than the account's recorded balance date.",
+    "balanceAnchorUnknown": "The existing balance date is unknown. Confirm replacing this balance first.",
+    "balanceBatchMismatch": "This statement import does not belong to this account."
   },
   "auth": {
     "wrongPassword": "The password you entered is incorrect. Please try again.",

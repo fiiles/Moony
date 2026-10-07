@@ -78,6 +78,8 @@ pub fn transaction_input_from_insert(data: &InsertBankTransaction) -> Transactio
         description: data.description.clone(),
         counterparty: data.counterparty_name.clone(),
         counterparty_iban: data.counterparty_iban.clone(),
+        counterparty_bank_code: data.counterparty_bank_code.clone(),
+        counterparty_country: data.counterparty_country.clone(),
         // Amounts are stored positive with the direction in tx_type. `validate()`
         // also parses this field, but its ordering relative to this call is not
         // identical on both import paths (compare services/csv_import.rs, which
@@ -130,6 +132,8 @@ mod tests {
             description: Some(description.into()),
             counterparty: counterparty.map(String::from),
             counterparty_iban: iban.map(String::from),
+            counterparty_bank_code: None,
+            counterparty_country: None,
             amount: 500.0,
             is_credit: false,
             bank_account_id: None,
@@ -144,6 +148,23 @@ mod tests {
             "albert".into(),
             "cat_groceries".into(),
         )
+    }
+
+    #[test]
+    fn integrity_structured_country_respected_during_import_categorization() {
+        let engine = CategorizationEngine::new(vec![]);
+        engine.set_own_ibans(vec!["CZ6508000000192000145399".into()]);
+        let mut row = insert("Unknown merchant", "debit");
+        row.counterparty_iban = Some("19-2000145399".into());
+        row.counterparty_bank_code = Some("0800".into());
+        row.counterparty_country = Some("CZ".into());
+        assert_eq!(
+            resolve_and_apply(&mut row, Some(&engine)),
+            Some("own_account")
+        );
+        row.category_id = None;
+        row.counterparty_country = Some("DE".into());
+        assert_eq!(resolve_and_apply(&mut row, Some(&engine)), None);
     }
 
     #[test]
@@ -204,6 +225,8 @@ mod tests {
             description: Some(description.into()),
             counterparty_name: None,
             counterparty_iban: None,
+            counterparty_bank_code: None,
+            counterparty_country: None,
             booking_date: 1700000000,
             value_date: None,
             category_id: None,

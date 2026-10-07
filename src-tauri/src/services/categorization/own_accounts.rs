@@ -15,12 +15,7 @@ use crate::error::Result;
 
 /// The raw IBANs and domestic identifiers stored on the user's bank accounts.
 pub fn load_own_ibans(conn: &Connection) -> Result<Vec<String>> {
-    let mut stmt =
-        conn.prepare("SELECT iban FROM bank_accounts WHERE iban IS NOT NULL AND TRIM(iban) != '' UNION ALL SELECT bban FROM bank_accounts WHERE bban IS NOT NULL AND TRIM(bban) != ''")?;
-    let ibans = stmt
-        .query_map([], |row| row.get::<_, String>(0))?
-        .collect::<rusqlite::Result<Vec<_>>>()?;
-    Ok(ibans)
+    crate::services::financial_semantics::load_account_identifiers(conn)
 }
 
 /// Re-read the own-account IBANs into the engine. Call after unlock and after
@@ -41,7 +36,7 @@ mod tests {
         let conn = Connection::open_in_memory().expect("in-memory db");
         conn.execute_batch(
             r#"
-            CREATE TABLE bank_accounts (id TEXT PRIMARY KEY, name TEXT NOT NULL, iban TEXT, bban TEXT);
+            CREATE TABLE bank_accounts (id TEXT PRIMARY KEY, name TEXT NOT NULL, iban TEXT, bban TEXT,institution_id TEXT); CREATE TABLE institutions(id TEXT,country TEXT);
             "#,
         )
         .expect("schema");
@@ -54,10 +49,34 @@ mod tests {
             description: Some("Salary September".into()),
             counterparty: None,
             counterparty_iban: Some(iban.into()),
+            counterparty_bank_code: None,
+            counterparty_country: None,
             amount: 3200.0,
             is_credit: true,
             bank_account_id: None,
         }
+    }
+
+    #[test]
+    fn integrity_own_foreign_iban_is_authoritative_over_paired_domestic_shape() {
+        let conn = setup_test_db();
+        conn.execute("INSERT INTO bank_accounts(id,name,iban,bban) VALUES ('foreign','Foreign','DE89370400440532013000','19-2000145399/0800')",[]).unwrap();
+        let own = crate::services::financial_semantics::AccountIdentities::load(&conn).unwrap();
+        assert!(!own.contains(Some("CZ6508000000192000145399"), None));
+        let engine = CategorizationEngine::new_empty();
+        refresh_own_ibans(&conn, &engine).unwrap();
+        assert!(!engine
+            .categorize(&salary_to("19-2000145399/0800"))
+            .has_category());
+        assert!(engine
+            .categorize(&salary_to("DE89370400440532013000"))
+            .has_category());
+        conn.execute("UPDATE bank_accounts SET iban=NULL WHERE id='foreign'", [])
+            .unwrap();
+        refresh_own_ibans(&conn, &engine).unwrap();
+        assert!(engine
+            .categorize(&salary_to("CZ6508000000192000145399"))
+            .has_category());
     }
 
     #[test]

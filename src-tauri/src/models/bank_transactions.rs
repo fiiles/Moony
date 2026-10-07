@@ -121,6 +121,11 @@ pub struct BankTransaction {
     pub counterparty_name: Option<String>,
     #[serde(rename = "counterpartyIban")]
     pub counterparty_iban: Option<String>,
+    #[serde(rename = "counterpartyBankCode", default)]
+    pub counterparty_bank_code: Option<String>,
+    #[serde(rename = "counterpartyCountry", default)]
+    pub counterparty_country: Option<String>,
+
     #[serde(rename = "bookingDate")]
     pub booking_date: i64,
     #[serde(rename = "valueDate")]
@@ -142,6 +147,14 @@ pub struct BankTransaction {
     pub data_source: String,
     #[serde(rename = "createdAt")]
     pub created_at: i64,
+    #[serde(rename = "importBatchId")]
+    pub import_batch_id: Option<String>,
+    #[serde(rename = "importFileName")]
+    pub import_file_name: Option<String>,
+    #[serde(rename = "importLine")]
+    pub import_line: Option<i64>,
+    #[serde(rename = "rowBalance")]
+    pub row_balance: Option<String>,
 }
 
 /// Data for creating/updating a transaction
@@ -163,6 +176,11 @@ pub struct InsertBankTransaction {
     pub counterparty_name: Option<String>,
     #[serde(rename = "counterpartyIban")]
     pub counterparty_iban: Option<String>,
+    #[serde(rename = "counterpartyBankCode", default)]
+    pub counterparty_bank_code: Option<String>,
+    #[serde(rename = "counterpartyCountry", default)]
+    pub counterparty_country: Option<String>,
+
     #[serde(rename = "bookingDate")]
     pub booking_date: i64,
     #[serde(rename = "valueDate")]
@@ -407,6 +425,8 @@ mod tests {
             description: Some("groceries".into()),
             counterparty_name: None,
             counterparty_iban: None,
+            counterparty_bank_code: None,
+            counterparty_country: None,
             booking_date: 1700000000,
             value_date: None,
             category_id: None,

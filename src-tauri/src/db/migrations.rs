@@ -69,6 +69,7 @@ fn all_migrations() -> Vec<(&'static str, &'static str)> {
         ("005_milestones", MIGRATION_005),
         ("006_financial_semantics", MIGRATION_006),
         ("007_report_history", MIGRATION_007),
+        ("008_import_integrity", MIGRATION_008),
     ]
 }
 
@@ -2035,4 +2036,16 @@ INSERT INTO budget_goal_versions(id,category_id,timeframe,effective_month,amount
  category_id,timeframe,CAST(strftime('%s',created_at,'unixepoch','start of month') AS INTEGER),amount,currency,created_at FROM budget_goals;
 ALTER TABLE cashflow_items ADD COLUMN replacement_source_id TEXT;
 CREATE UNIQUE INDEX cashflow_replacement_source ON cashflow_items(replacement_source_id) WHERE replacement_source_id IS NOT NULL;
+"#;
+
+/// Statement provenance and explicit balance anchors. Legacy dates stay unknown.
+pub(crate) const MIGRATION_008: &str = r#"
+ALTER TABLE bank_accounts ADD COLUMN balance_as_of INTEGER;
+ALTER TABLE bank_transactions ADD COLUMN counterparty_bank_code TEXT;
+ALTER TABLE bank_transactions ADD COLUMN counterparty_country TEXT;
+ALTER TABLE bank_transactions ADD COLUMN import_line INTEGER;
+ALTER TABLE bank_transactions ADD COLUMN row_balance TEXT;
+ALTER TABLE csv_import_batches ADD COLUMN promoted_count INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE csv_import_batches ADD COLUMN date_from INTEGER;
+ALTER TABLE csv_import_batches ADD COLUMN date_to INTEGER;
 "#;

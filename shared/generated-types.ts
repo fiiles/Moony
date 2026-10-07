@@ -53,7 +53,7 @@ migrations: string[]; files: BackupFileEntry[] }
 /**
  * Bank account entity
  */
-export type BankAccount = { id: string; name: string; accountType: string; iban: string | null; bban: string | null; currency: string; balance: string; institutionId: string | null; externalAccountId: string | null; dataSource: string; lastSyncedAt: number | null; interestRate: string | null; hasZoneDesignation: boolean; terminationDate: number | null; 
+export type BankAccount = { id: string; name: string; accountType: string; iban: string | null; bban: string | null; currency: string; balance: string; balanceAsOf: number | null; institutionId: string | null; externalAccountId: string | null; dataSource: string; lastSyncedAt: number | null; interestRate: string | null; hasZoneDesignation: boolean; terminationDate: number | null; 
 /**
  * UTC day the promotional interest rate ends; None when unknown or not promotional.
  */
@@ -66,7 +66,7 @@ excludeFromBalance: boolean; createdAt: number; updatedAt: number }
 /**
  * Bank account with institution data (enriched)
  */
-export type BankAccountWithInstitution = ({ id: string; name: string; accountType: string; iban: string | null; bban: string | null; currency: string; balance: string; institutionId: string | null; externalAccountId: string | null; dataSource: string; lastSyncedAt: number | null; interestRate: string | null; hasZoneDesignation: boolean; terminationDate: number | null; 
+export type BankAccountWithInstitution = ({ id: string; name: string; accountType: string; iban: string | null; bban: string | null; currency: string; balance: string; balanceAsOf: number | null; institutionId: string | null; externalAccountId: string | null; dataSource: string; lastSyncedAt: number | null; interestRate: string | null; hasZoneDesignation: boolean; terminationDate: number | null; 
 /**
  * UTC day the promotional interest rate ends; None when unknown or not promotional.
  */
@@ -79,11 +79,11 @@ excludeFromBalance: boolean; createdAt: number; updatedAt: number }) & { institu
 /**
  * Bank transaction entity
  */
-export type BankTransaction = { id: string; bankAccountId: string; transactionId: string | null; type: string; amount: string; currency: string; description: string | null; counterpartyName: string | null; counterpartyIban: string | null; bookingDate: number; valueDate: number | null; categoryId: string | null; merchantCategoryCode: string | null; remittanceInfo: string | null; 
+export type BankTransaction = { id: string; bankAccountId: string; transactionId: string | null; type: string; amount: string; currency: string; description: string | null; counterpartyName: string | null; counterpartyIban: string | null; counterpartyBankCode?: string | null; counterpartyCountry?: string | null; bookingDate: number; valueDate: number | null; categoryId: string | null; merchantCategoryCode: string | null; remittanceInfo: string | null; 
 /**
  * Category suggested by an MCP client, pending user confirmation
  */
-suggestedCategoryId: string | null; flowKind: FlowKind | null; status: string; dataSource: string; createdAt: number }
+suggestedCategoryId: string | null; flowKind: FlowKind | null; status: string; dataSource: string; createdAt: number; importBatchId: string | null; importFileName: string | null; importLine: number | null; rowBalance: string | null }
 
 /**
  * Bond holding
@@ -180,6 +180,8 @@ line: number; categoryId: string }
  */
 export type CsvDateRange = { from: number; to: number }
 
+export type CsvImportBatch = { id: string; bankAccountId: string; fileName: string; importedCount: number; linkedCount: number; duplicateCount: number; errorCount: number; promotedCount: number; importedAt: number; dateRange: CsvDateRange | null }
+
 /**
  * Configuration of one CSV import or preview (TS `CsvImportConfigInput`).
  * 
@@ -199,7 +201,7 @@ skipRows?: number;
 /**
  * 0-based line of the header row; `None` = auto-detect.
  */
-headerRow?: number | null; dateColumn: string; 
+headerRow?: number | null; dateColumn: string; valueDateColumn?: string | null; statusColumn?: string | null; pendingDateColumn?: string | null; 
 /**
  * chrono format (`%d.%m.%Y`). Parsed strictly: a row that does not match
  * is an error, never re-read as another order. Empty or `auto` detects the
@@ -216,25 +218,25 @@ amountColumn?: string | null;
  */
 debitColumn?: string | null; creditColumn?: string | null; 
 /**
- * Running balance after each row; only feeds `lastBalance`.
+ * Running balance after each row; stored as provenance and statement anchor.
  */
 balanceColumn?: string | null; 
 /**
  * Bank-side transaction id; feeds the id rule of the duplicate check.
  */
-transactionIdColumn?: string | null; descriptionColumns?: string[] | null; counterpartyColumn?: string | null; counterpartyIbanColumn?: string | null; currencyColumn?: string | null; 
+transactionIdColumn?: string | null; descriptionColumns?: string[] | null; counterpartyColumn?: string | null; counterpartyIbanColumn?: string | null; counterpartyCountryColumn?: string | null; counterpartyBankCodeColumn?: string | null; currencyColumn?: string | null; 
 /**
  * `","` or `"."`; `None`, empty or `auto` detects it from the amount
  * column(s).
  */
 decimalSeparator?: string | null; rowFilter?: CsvRowFilter | null; 
 /**
- * Skip rows that the duplicate check matches (default). `false` imports
- * them and reports them in `duplicates`.
+ * Skip possible composite duplicates (default). `false` imports them and
+ * reports them in `duplicates`; certain bank IDs are always skipped.
  */
 skipDuplicates?: boolean; 
 /**
- * File lines of duplicate rows to import anyway.
+ * File lines of possible composite duplicates to import anyway.
  */
 importAnywayLines?: number[]; 
 /**
@@ -246,14 +248,14 @@ encoding?: string | null;
  * uncategorized (or wanted differently), by file line. Applied on import
  * before the rules run, so they win; a missing category is ignored.
  */
-categoryOverrides?: CsvCategoryOverride[] }
+categoryOverrides?: CsvCategoryOverride[]; previewOffset?: number; previewLimit?: number }
 
 /**
  * Dry run of an import (TS `CsvImportPreview`).
  */
 export type CsvImportPreview = { 
 /**
- * The first 200 rows in file order.
+ * Requested bounded page in file order; counts cover the full file.
  */
 rows: CsvPreviewRow[]; totalRows: number; okCount: number; errorCount: number; duplicateCount: number; 
 /**
@@ -267,20 +269,20 @@ dateRange: CsvDateRange | null;
 /**
  * Rows that would be written with a category (rules or overrides).
  */
-categorizedCount: number }
+categorizedCount: number; forcedDuplicateCount: number; promotedCount: number; offset: number; limit: number }
 
 /**
  * Result of an import (TS `CsvImportResult`).
  * 
  * Every row of the file ends up in exactly one bucket:
- * `importedCount + skippedDuplicates.len() + errorCount + skippedZero +
+ * `importedCount + promotedCount + skippedDuplicates.len() + errorCount + skippedZero +
  * skippedFiltered` = data rows (blank lines are not rows).
  */
 export type CsvImportResult = { 
 /**
  * Rows written (includes duplicates that were imported anyway).
  */
-importedCount: number; 
+importedCount: number; promotedCount: number; statementBalance: StatementBalance | null; 
 /**
  * Duplicate hits that were imported anyway — `duplicates.len()`.
  */
@@ -295,11 +297,11 @@ duplicates: CsvRowMessage[];
  */
 skippedDuplicates: CsvRowMessage[]; skippedZero: number; 
 /**
- * Rows dropped by the row filter (Revolut pending rows).
+ * Rows dropped by the row filter or rejected transaction status.
  */
 skippedFiltered: number; 
 /**
- * Booking dates of the imported rows; `None` when nothing was imported.
+ * Booking dates of inserted or promoted rows; `None` without a write.
  */
 dateRange: CsvDateRange | null; 
 /**
@@ -349,7 +351,7 @@ delimiter: string;
  * Encoding label (`UTF-8`, `Windows-1250`, …). Only consulted when the
  * file is not valid UTF-8 — see `decode_csv_content`.
  */
-encoding: string; dateColumn: string; 
+encoding: string; dateColumn: string; valueDateColumn?: string | null; statusColumn?: string | null; pendingDateColumn?: string | null; 
 /**
  * chrono format of the date column (`%d.%m.%Y`, `%Y-%m-%d %H:%M:%S`).
  */
@@ -357,7 +359,7 @@ dateFormat: string; amountColumn?: string | null; debitColumn?: string | null; c
 /**
  * Joined with " | " in this order into the transaction description.
  */
-descriptionColumns: string[]; counterpartyColumn?: string | null; counterpartyIbanColumn?: string | null; currencyColumn?: string | null; balanceColumn?: string | null; 
+descriptionColumns: string[]; counterpartyColumn?: string | null; counterpartyIbanColumn?: string | null; counterpartyCountryColumn?: string | null; counterpartyBankCodeColumn?: string | null; currencyColumn?: string | null; balanceColumn?: string | null; 
 /**
  * A column that is unique per transaction at the bank (Fio "ID operace");
  * feeds the bank-side-id duplicate rule.
@@ -419,7 +421,7 @@ suggestedRowFilter: CsvRowFilter | null }
 /**
  * One row of the preview table.
  */
-export type CsvPreviewRow = { line: number; bookingDate: number | null; 
+export type CsvPreviewRow = { valueDate: number | null; counterpartyIban: string | null; counterpartyBankCode: string | null; counterpartyCountry: string | null; transactionId: string | null; transactionStatus: string | null; rowBalance: string | null; canImportAnyway: boolean; line: number; bookingDate: number | null; 
 /**
  * Signed decimal string (`-250.5`), `None` when the amount is unreadable.
  */
@@ -462,7 +464,7 @@ export type CsvRowMessage = {
  */
 line: number; key: string; detail: string | null }
 
-export type CsvRowStatus = 
+export type CsvRowStatus = "promoted" | 
 /**
  * Will be imported.
  */
@@ -472,7 +474,7 @@ export type CsvRowStatus =
  */
 "error" | 
 /**
- * Matches an existing or earlier transaction; skipped unless imported anyway.
+ * Stored occurrence or certain bank ID; only possible composites allow overrides.
  */
 "duplicate" | 
 /**
@@ -594,9 +596,18 @@ export type HistoryRecalcEvent = { ticker: string; status: RecalcStatus }
 export type InsertAssetValuation = { assetId: string; value: string; currency: string | null; valuedAt: number; note: string | null }
 
 /**
+ * Confirmed balance anchor, in the account currency and at a UTC booking day.
+ */
+export type InsertBalanceAnchor = { amount: string; currency: string; asOf: number; confirmUnknownAsOf?: boolean; sourceBatchId?: string | null }
+
+/**
  * Data for creating/updating a bank account
  */
-export type InsertBankAccount = { name: string; accountType: string | null; iban: string | null; bban: string | null; currency: string | null; balance: string | null; institutionId: string | null; interestRate: string | null; hasZoneDesignation: boolean | null; terminationDate: number | null; 
+export type InsertBankAccount = { name: string; accountType: string | null; iban: string | null; bban: string | null; currency: string | null; balance: string | null; 
+/**
+ * Omitted preserves an unchanged anchor; null explicitly makes it unknown.
+ */
+balanceAsOf?: number | null; institutionId: string | null; interestRate: string | null; hasZoneDesignation: boolean | null; terminationDate: number | null; 
 /**
  * Overwritten on update like `terminationDate`: the form always sends the stored value.
  */
@@ -609,7 +620,7 @@ excludeFromBalance?: boolean | null }
 /**
  * Data for creating/updating a transaction
  */
-export type InsertBankTransaction = { bankAccountId: string; transactionId: string | null; type: string; flowKind?: FlowKind | null; amount: string; currency: string | null; description: string | null; counterpartyName: string | null; counterpartyIban: string | null; bookingDate: number; valueDate: number | null; categoryId: string | null; status: string | null }
+export type InsertBankTransaction = { bankAccountId: string; transactionId: string | null; type: string; flowKind?: FlowKind | null; amount: string; currency: string | null; description: string | null; counterpartyName: string | null; counterpartyIban: string | null; counterpartyBankCode?: string | null; counterpartyCountry?: string | null; bookingDate: number; valueDate: number | null; categoryId: string | null; status: string | null }
 
 /**
  * Data for creating/updating bond
@@ -1102,6 +1113,11 @@ export type SourceCount = {
  * `rule`, `exact_match`, `own_account`, `mcp`, `manual` (a category without a recorded source).
  */
 source: string; count: number }
+
+/**
+ * Balance after a particular statement row, in that row's native currency.
+ */
+export type StatementBalance = { amount: string; currency: string; asOf: number; line: number; batchId: string }
 
 /**
  * A column suggested for a role (TS `StockColumnSuggestion`). Roles: `date`,

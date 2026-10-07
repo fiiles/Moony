@@ -485,9 +485,10 @@ mod tests {
 
             CREATE TABLE bank_accounts (
                 id TEXT PRIMARY KEY,
-                name TEXT NOT NULL, iban TEXT, bban TEXT
+                name TEXT NOT NULL, iban TEXT, bban TEXT, institution_id TEXT
             );
 
+            CREATE TABLE institutions(id TEXT,country TEXT);
             CREATE TABLE bank_transactions (
                 id TEXT PRIMARY KEY,
                 bank_account_id TEXT NOT NULL,
@@ -497,7 +498,7 @@ mod tests {
                 description TEXT,
                 counterparty_name TEXT,
                 category_id TEXT,
-                tx_type TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'booked', flow_kind TEXT, counterparty_iban TEXT
+                tx_type TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'booked', flow_kind TEXT, counterparty_iban TEXT, counterparty_bank_code TEXT, counterparty_country TEXT
             );
 
             CREATE TABLE budget_goals (

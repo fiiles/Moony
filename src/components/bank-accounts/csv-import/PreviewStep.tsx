@@ -163,9 +163,12 @@ export function PreviewStep({
   const statusCell = (row: CsvPreviewRow) => {
     const message = row.message ? translateRowMessage(row.message, t, tc) : null;
     switch (row.status) {
+      case 'promoted':
+        return <Badge variant="gain">{t('csvImport.status.promoted')}</Badge>;
       case 'ok':
         return <Badge variant="gain">{t('csvImport.preview.statusNew')}</Badge>;
       case 'duplicate':
+        if (!row.canImportAnyway) return <Badge>{message}</Badge>;
         return (
           <label className="flex cursor-pointer items-center gap-2 text-micro font-500 text-ink-3">
             <Checkbox

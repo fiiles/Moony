@@ -62,6 +62,12 @@ pub struct CsvPreset {
     pub encoding: String,
     #[serde(rename = "dateColumn")]
     pub date_column: String,
+    #[serde(rename = "valueDateColumn", default)]
+    pub value_date_column: Option<String>,
+    #[serde(rename = "statusColumn", default)]
+    pub status_column: Option<String>,
+    #[serde(rename = "pendingDateColumn", default)]
+    pub pending_date_column: Option<String>,
     /// chrono format of the date column (`%d.%m.%Y`, `%Y-%m-%d %H:%M:%S`).
     #[serde(rename = "dateFormat")]
     pub date_format: String,
@@ -78,6 +84,10 @@ pub struct CsvPreset {
     pub counterparty_column: Option<String>,
     #[serde(rename = "counterpartyIbanColumn", default)]
     pub counterparty_iban_column: Option<String>,
+    #[serde(rename = "counterpartyCountryColumn", default)]
+    pub counterparty_country_column: Option<String>,
+    #[serde(rename = "counterpartyBankCodeColumn", default)]
+    pub counterparty_bank_code_column: Option<String>,
     #[serde(rename = "currencyColumn", default)]
     pub currency_column: Option<String>,
     #[serde(rename = "balanceColumn", default)]
@@ -294,6 +304,11 @@ pub fn detect_preset(headers: &[String]) -> Option<&'static CsvPreset> {
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct ResolvedPreset {
     pub date: String,
+    pub counterparty_country: Option<String>,
+    pub counterparty_bank_code: Option<String>,
+    pub value_date: Option<String>,
+    pub status: Option<String>,
+    pub pending_date: Option<String>,
     pub amount: Option<String>,
     pub debit: Option<String>,
     pub credit: Option<String>,
@@ -334,6 +349,11 @@ pub fn resolve_preset(preset: &CsvPreset, headers: &[String]) -> Option<Resolved
 
     Some(ResolvedPreset {
         date,
+        counterparty_country: resolve_opt(&preset.counterparty_country_column),
+        counterparty_bank_code: resolve_opt(&preset.counterparty_bank_code_column),
+        value_date: resolve_opt(&preset.value_date_column),
+        status: resolve_opt(&preset.status_column),
+        pending_date: resolve_opt(&preset.pending_date_column),
         amount,
         debit,
         credit,

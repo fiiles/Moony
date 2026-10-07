@@ -57,10 +57,27 @@ impl CategorizationEngine {
     }
 
     /// Check if counterparty IBAN matches user's own accounts
-    fn is_internal_transfer(&self, counterparty_iban: Option<&str>) -> bool {
+    fn is_internal_transfer(
+        &self,
+        counterparty_iban: Option<&str>,
+        bank_code: Option<&str>,
+        country: Option<&str>,
+    ) -> bool {
         self.own_ibans
             .read()
-            .map(|own| own.contains(counterparty_iban, None))
+            .map(|own| {
+                super::super::financial_semantics::resolve_structured_flow(
+                    None,
+                    counterparty_iban,
+                    bank_code,
+                    country,
+                    None,
+                    false,
+                    &own,
+                )
+                .source
+                    == crate::models::reporting::FlowSource::OwnAccount
+            })
             .unwrap_or(false)
     }
 
@@ -74,7 +91,11 @@ impl CategorizationEngine {
     /// 5. Return None if nothing matches
     pub fn categorize(&self, tx: &TransactionInput) -> CategorizationResult {
         // Own accounts take precedence over every category rule.
-        if self.is_internal_transfer(tx.counterparty_iban.as_deref()) {
+        if self.is_internal_transfer(
+            tx.counterparty_iban.as_deref(),
+            tx.counterparty_bank_code.as_deref(),
+            tx.counterparty_country.as_deref(),
+        ) {
             return CategorizationResult::Match {
                 category_id: "cat_internal_transfers".to_string(),
                 source: super::types::CategorizationSource::Rule {
@@ -241,6 +262,8 @@ mod tests {
             description: Some(description.into()),
             counterparty: counterparty.map(|s| s.into()),
             counterparty_iban: None,
+            counterparty_bank_code: None,
+            counterparty_country: None,
             amount: -500.0,
             is_credit: false,
             bank_account_id: None,
@@ -566,6 +589,8 @@ mod tests {
             description: Some(description.into()),
             counterparty: None,
             counterparty_iban: Some(iban.into()),
+            counterparty_bank_code: None,
+            counterparty_country: None,
             amount: 3200.0,
             is_credit: true,
             bank_account_id: None,

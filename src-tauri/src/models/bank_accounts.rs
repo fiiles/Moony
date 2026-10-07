@@ -81,6 +81,8 @@ pub struct BankAccount {
     pub bban: Option<String>,
     pub currency: String,
     pub balance: String,
+    #[serde(rename = "balanceAsOf")]
+    pub balance_as_of: Option<i64>,
     #[serde(rename = "institutionId")]
     pub institution_id: Option<String>,
     #[serde(rename = "externalAccountId")]
@@ -118,6 +120,13 @@ pub struct InsertBankAccount {
     pub bban: Option<String>,
     pub currency: Option<String>,
     pub balance: Option<String>,
+    /// Omitted preserves an unchanged anchor; null explicitly makes it unknown.
+    #[serde(
+        rename = "balanceAsOf",
+        default,
+        deserialize_with = "deserialize_balance_day"
+    )]
+    pub balance_as_of: Option<Option<i64>>,
     #[serde(rename = "institutionId")]
     pub institution_id: Option<String>,
     #[serde(rename = "interestRate")]
@@ -176,6 +185,9 @@ use crate::error::{AppError, Result};
 impl InsertBankAccount {
     /// Validate input data at the trust boundary
     pub fn validate(&self) -> Result<()> {
+        if let Some(day) = self.balance_as_of.flatten() {
+            validate_balance_day(day)?;
+        }
         // Name validation
         if self.name.is_empty() {
             return Err(AppError::Validation(
@@ -344,4 +356,48 @@ impl InsertSavingsAccountZone {
 
         Ok(())
     }
+}
+
+/// Confirmed balance anchor, in the account currency and at a UTC booking day.
+#[derive(Debug, Clone, Deserialize, Type)]
+pub struct InsertBalanceAnchor {
+    pub amount: String,
+    pub currency: String,
+    #[serde(rename = "asOf")]
+    pub as_of: i64,
+    #[serde(rename = "confirmUnknownAsOf", default)]
+    pub confirm_unknown_as_of: bool,
+    #[serde(rename = "sourceBatchId", default)]
+    pub source_batch_id: Option<String>,
+}
+impl InsertBalanceAnchor {
+    pub fn validate(&self) -> Result<()> {
+        let amount = self
+            .amount
+            .parse::<f64>()
+            .map_err(|_| AppError::Validation("validation.invalidAmount".into()))?;
+        if !amount.is_finite() {
+            return Err(AppError::Validation("validation.invalidAmount".into()));
+        }
+        if self.currency.len() != 3 || !self.currency.bytes().all(|b| b.is_ascii_alphabetic()) {
+            return Err(AppError::Validation("validation.currencyInvalid".into()));
+        }
+        validate_balance_day(self.as_of)
+    }
+}
+fn validate_balance_day(day: i64) -> Result<()> {
+    if day <= 0
+        || day % 86400 != 0
+        || chrono::DateTime::from_timestamp(day, 0).is_none()
+        || day > chrono::Utc::now().timestamp().div_euclid(86400) * 86400
+    {
+        return Err(AppError::Validation("validation.balanceAsOfInvalid".into()));
+    }
+    Ok(())
+}
+
+fn deserialize_balance_day<'de, D: serde::Deserializer<'de>>(
+    deserializer: D,
+) -> std::result::Result<Option<Option<i64>>, D::Error> {
+    Option::<i64>::deserialize(deserializer).map(Some)
 }

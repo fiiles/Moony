@@ -208,7 +208,7 @@
     "zeroAmount": "Nulová částka, přeskočeno",
     "filteredOut": "Přeskočeno: nejde o dokončenou transakci",
     "duplicate": "Stejná transakce již existuje",
-    "duplicateById": "Transakce se stejným ID banky již existuje",
+    "duplicateById": "Transakce se stejným ID banky již existuje; další kopii nelze importovat",
     "dropTitle": "Přetáhněte sem soubor CSV",
     "dropActive": "Pusťte soubor a otevře se",
     "dropHint": "nebo vyberte soubor z počítače",
@@ -267,7 +267,8 @@
       "ok": "OK",
       "error": "Chyba",
       "duplicate": "Duplicita",
-      "skipped": "Přeskočeno"
+      "skipped": "Přeskočeno",
+      "promoted": "Bude zaúčtována"
     },
     "importAnyway": "Přesto importovat",
     "summary": {
@@ -382,7 +383,8 @@
       "setBalanceHint": "Podle posledního řádku výpisu · dnes {{current}}",
       "setBalanceAction": "Nastavit"
     },
-    "columnNone": "— nepoužít —"
+    "columnNone": "— nepoužít —",
+    "pendingPromoted": "Čekající transakce bude zaúčtována"
   },
   "importHistory": {
     "title": "Historie importů",

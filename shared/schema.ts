@@ -798,6 +798,7 @@ export interface BankAccount {
   bban: string | null;
   currency: string;
   balance: string;
+  balanceAsOf: number | null;
   institutionId: string | null;
   externalAccountId: string | null;
   dataSource: DataSource;
@@ -826,6 +827,7 @@ export interface InsertBankAccount {
   bban?: string | null;
   currency?: string;
   balance?: string;
+  balanceAsOf?: number | null;
   institutionId?: string | null;
   interestRate?: string | null;
   hasZoneDesignation?: boolean;
@@ -852,6 +854,12 @@ export interface BankTransaction {
   description: string | null;
   counterpartyName: string | null;
   counterpartyIban: string | null;
+  counterpartyBankCode: string | null;
+  counterpartyCountry: string | null;
+  importBatchId: string | null;
+  importFileName: string | null;
+  importLine: number | null;
+  rowBalance: string | null;
   bookingDate: number;
   valueDate: number | null;
   categoryId: string | null;
@@ -875,6 +883,8 @@ export interface InsertBankTransaction {
   description?: string | null;
   counterpartyName?: string | null;
   counterpartyIban?: string | null;
+  counterpartyBankCode?: string | null;
+  counterpartyCountry?: string | null;
   bookingDate: number;
   valueDate?: number | null;
   categoryId?: string | null;
@@ -956,6 +966,8 @@ export interface TransactionInput {
   isCredit: boolean;
   /** Source bank account ID (for learning context) */
   bankAccountId?: string;
+  counterpartyBankCode?: string | null;
+  counterpartyCountry?: string | null;
 }
 
 export type RuleType = 'Regex' | 'Contains' | 'Word' | 'StartsWith' | 'EndsWith';
@@ -1105,6 +1117,11 @@ export interface CsvPreset {
   delimiter: string;
   encoding: string;
   dateColumn: string;
+  valueDateColumn: string | null;
+  statusColumn: string | null;
+  pendingDateColumn: string | null;
+  counterpartyBankCodeColumn: string | null;
+  counterpartyCountryColumn: string | null;
   /** chrono format; may contain a time part (`%Y-%m-%d %H:%M:%S`). */
   dateFormat: string;
   amountColumn: string | null;
@@ -1170,6 +1187,8 @@ export interface CsvImportResult {
   lastBalance: string | null;
   /** Rule-pack id (lowercase ISO country) suggested by the counterparty IBANs, if not enabled. */
   suggestedRulePack: string | null;
+  promotedCount: number;
+  statementBalance: StatementBalance | null;
 }
 
 export interface CsvPreviewResult {
@@ -1209,6 +1228,11 @@ export interface CsvImportConfigInput {
   /** 0-based line of the header row; omit to auto-detect. */
   headerRow?: number | null;
   dateColumn: string;
+  valueDateColumn?: string | null;
+  statusColumn?: string | null;
+  pendingDateColumn?: string | null;
+  counterpartyBankCodeColumn?: string | null;
+  counterpartyCountryColumn?: string | null;
   /** chrono format, parsed strictly; "" or "auto" detects it. */
   dateFormat: string;
   /** Single signed amount column; optional when a debit/credit pair is given. */
@@ -1216,7 +1240,7 @@ export interface CsvImportConfigInput {
   /** Debit/credit pair (amount = credit - debit); used when `amountColumn` is not set. */
   debitColumn?: string | null;
   creditColumn?: string | null;
-  /** Feeds `lastBalance` only. */
+  /** Running balance retained as row provenance and dated statement balance. */
   balanceColumn?: string | null;
   /** Bank-side transaction id; feeds the duplicate check. */
   transactionIdColumn?: string | null;
@@ -1227,14 +1251,16 @@ export interface CsvImportConfigInput {
   /** "," or "."; omit/""/"auto" detects it. */
   decimalSeparator?: string | null;
   rowFilter?: CsvRowFilter | null;
-  /** Skip rows the duplicate check matches (default true). */
+  /** Skip possible composite matches (default true); certain bank IDs always skip. */
   skipDuplicates?: boolean;
-  /** File lines of duplicate rows to import anyway. */
+  /** File lines of possible composite duplicates to import anyway. */
   importAnywayLines?: number[];
   /** Force a text encoding (`Windows-1250`); omit to detect. */
   encoding?: string | null;
   /** Categories picked in the preview, by file line; applied before the rules on import. */
   categoryOverrides?: CsvCategoryOverride[];
+  previewOffset?: number;
+  previewLimit?: number;
 }
 
 /** One row's category chosen in the preview (file line → category). */
@@ -1246,12 +1272,22 @@ export interface CsvCategoryOverride {
 
 /**
  * ok: will be imported. error: cannot be imported (see `message`). duplicate: matches an
- * existing or earlier transaction — skipped unless its line is in `importAnywayLines`.
- * skipped: zero amount or dropped by the row filter.
+ * stored occurrence or bank ID; only possible composites allow `importAnywayLines`.
+ * skipped: zero amount, rejected status or dropped by the row filter.
+ * promoted: existing same-ID pending transaction will be booked in place.
  */
-export type CsvRowStatus = 'ok' | 'error' | 'duplicate' | 'skipped';
+export type CsvRowStatus = 'ok' | 'error' | 'duplicate' | 'skipped' | 'promoted';
 
 export interface CsvPreviewRow {
+  valueDate: number | null;
+  counterpartyIban: string | null;
+  counterpartyBankCode: string | null;
+  counterpartyCountry: string | null;
+  transactionId: string | null;
+  transactionStatus: TransactionStatus | null;
+  rowBalance: string | null;
+  canImportAnyway: boolean;
+
   line: number;
   bookingDate: number | null;
   /** Signed decimal string (`-250.5`); null when unreadable. */
@@ -1280,6 +1316,10 @@ export interface CsvImportPreview {
   dateRange: CsvDateRange | null;
   /** Rows that would be written with a category (rules or overrides). */
   categorizedCount: number;
+  promotedCount: number;
+  forcedDuplicateCount: number;
+  offset: number;
+  limit: number;
 }
 
 export interface CsvImportBatch {
@@ -1290,6 +1330,9 @@ export interface CsvImportBatch {
   duplicateCount: number;
   errorCount: number;
   importedAt: number;
+  linkedCount: number;
+  promotedCount: number;
+  dateRange: CsvDateRange | null;
 }
 
 // ============================================================================
@@ -1893,3 +1936,18 @@ export interface BudgetingReport {
 }
 
 export type ReportTransaction = BudgetingTransaction;
+
+export interface StatementBalance {
+  amount: string;
+  currency: string;
+  asOf: number;
+  line: number;
+  batchId: string;
+}
+export interface InsertBalanceAnchor {
+  amount: string;
+  currency: string;
+  asOf: number;
+  confirmUnknownAsOf?: boolean;
+  sourceBatchId?: string | null;
+}

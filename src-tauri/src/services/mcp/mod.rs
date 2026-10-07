@@ -204,6 +204,7 @@ pub struct RowError {
 /// sell without position, currency mismatch, missing coingeckoId).
 #[derive(Debug, serde::Serialize)]
 pub struct BulkWriteReport {
+    pub promoted: usize,
     pub created: usize,
     #[serde(rename = "skippedDuplicates")]
     pub skipped_duplicates: Vec<SkippedRow>,

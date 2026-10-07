@@ -213,6 +213,7 @@ pub fn crypto_transactions_create(
     }
     if !errors.is_empty() {
         return Ok(BulkWriteReport {
+            promoted: 0,
             created: 0,
             skipped_duplicates: vec![],
             errors,
@@ -264,6 +265,7 @@ pub fn crypto_transactions_create(
             // roll back everything; report the failing row
             drop(tx);
             return Ok(BulkWriteReport {
+                promoted: 0,
                 created: 0,
                 skipped_duplicates: vec![],
                 errors: vec![RowError {
@@ -277,6 +279,7 @@ pub fn crypto_transactions_create(
     tx.commit()?;
 
     Ok(BulkWriteReport {
+        promoted: 0,
         created,
         skipped_duplicates: skipped,
         errors: vec![],

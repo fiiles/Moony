@@ -622,6 +622,9 @@
     "booked": "Booked",
     "retry": "Retry",
     "specificLearningScope": "This account · {{direction}} · {{identity}}. Reliable accounts match across payee names; otherwise only this payee.",
-    "resultCategorized": "{{count}} newly imported transactions have a category; {{open}} remain uncategorized."
+    "resultCategorized": "{{count}} newly imported transactions have a category; {{open}} remain uncategorized.",
+    "flowLoading": "Financial meaning is loading…",
+    "flowUnavailable": "Financial meaning is unavailable.",
+    "flowUnresolved": "Financial meaning has not been resolved."
   }
 }

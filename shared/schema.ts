@@ -1956,6 +1956,8 @@ export interface BudgetingReport {
   uncategorizedIncome: string;
   uncategorizedExpenses: string;
   uncategorizedTransactionCount: number;
+  /** Included booked uncategorized expense rows, including unavailable FX. */
+  uncategorizedExpenseTransactionCount: number;
 }
 
 export type ReportTransaction = BudgetingTransaction;

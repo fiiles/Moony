@@ -349,13 +349,46 @@ export default function BankAccountDetail() {
 
   const filteredTransactions = transactions;
 
-  const { data: effectiveFlows = [] } = useQuery({
-    queryKey: ['effective-transaction-flows', transactions.map((tx) => tx.id)],
-    queryFn: () => cashflowApi.getEffectiveFlows(transactions.map((tx) => tx.id)),
-    enabled: transactions.length > 0,
+  const effectiveFlowIds = useMemo(
+    () => [
+      ...new Set([
+        ...transactions.map((tx) => tx.id),
+        ...(selectedTransaction ? [selectedTransaction.id] : []),
+      ]),
+    ],
+    [transactions, selectedTransaction]
+  );
+  const {
+    data: effectiveFlows = [],
+    isFetching: flowsLoading,
+    isError: flowsError,
+    refetch: retryFlows,
+  } = useQuery({
+    queryKey: ['effective-transaction-flows', effectiveFlowIds],
+    queryFn: () => cashflowApi.getEffectiveFlows(effectiveFlowIds),
+    enabled: effectiveFlowIds.length > 0,
   });
   const flowById = new Map(effectiveFlows.map((flow) => [flow.id, flow]));
-  // Account-currency amounts: transactions in another currency convert at today's rate
+  const missingFlows =
+    !flowsLoading && !flowsError && effectiveFlowIds.some((id) => !flowById.has(id));
+  const flowLabel = (id: string, withSource = false) => {
+    if (flowsError) return t('readiness.flowUnavailable');
+    if (flowsLoading) return t('readiness.flowLoading');
+    const flow = flowById.get(id);
+    if (!flow) return t('readiness.flowUnresolved');
+    return `${t(`readiness.flow.${flow.effectiveFlowKind}`)}${withSource ? ` · ${t(`readiness.source.${flow.flowSource}`)}` : ''}`;
+  };
+  const flowReadError = flowsError ? (
+    <ReportError onRetry={() => void retryFlows()} />
+  ) : missingFlows ? (
+    <p className="mb-3 text-micro text-ink-4" role="status">
+      {t('readiness.flowUnresolved')}{' '}
+      <Button variant="ghost" size="sm" onClick={() => void retryFlows()}>
+        {t('readiness.retry')}
+      </Button>
+    </p>
+  ) : null;
+  // Account-native amounts only; other currency rows are excluded from summaries/chart.
   const accountCurrency = (account?.currency || 'CZK') as CurrencyCode;
   const formatAccountAmount = (value: number) =>
     formatAmountInCurrency(value, accountCurrency, getLocale());
@@ -1175,6 +1208,7 @@ export default function BankAccountDetail() {
             </div>
           </div>
 
+          {flowReadError}
           {txError ? (
             <ReportError onRetry={() => void retryTransactions()} />
           ) : txLoading ? (
@@ -1284,9 +1318,7 @@ export default function BankAccountDetail() {
                               <b className="block truncate text-table font-650">{title}</b>
                               <small className="text-micro text-ink-4">
                                 {tx.status === 'pending' && <Badge>{t('readiness.pending')}</Badge>}{' '}
-                                {t(
-                                  `readiness.flow.${flowById.get(tx.id)?.effectiveFlowKind ?? (credit ? 'income' : 'expense')}`
-                                )}
+                                {flowLabel(tx.id)}
                               </small>
                               {sub && (
                                 <small className="mt-[3px] block truncate text-micro font-500 text-ink-4">
@@ -1458,10 +1490,7 @@ export default function BankAccountDetail() {
                         )
                       : null,
                   ],
-                  [
-                    'effectiveFlow',
-                    `${t(`readiness.flow.${flowById.get(selectedTransaction.id)?.effectiveFlowKind ?? (selectedTransaction.type === 'credit' ? 'income' : 'expense')}`)} · ${t(`readiness.source.${flowById.get(selectedTransaction.id)?.flowSource ?? 'direction'}`)}`,
-                  ],
+                  ['effectiveFlow', flowLabel(selectedTransaction.id, true)],
                 ].map(([key, value]) => (
                   <Fragment key={key}>
                     <dt className="text-ink-4">{t(`readiness.detail.${key}`)}</dt>
@@ -1469,6 +1498,7 @@ export default function BankAccountDetail() {
                   </Fragment>
                 ))}
               </dl>
+              {flowReadError}
               <Select
                 value={selectedTransaction.flowKind ?? 'auto'}
                 onValueChange={async (value) => {

@@ -98,7 +98,11 @@ export type BudgetGoal = { id: string; categoryId: string; timeframe: string; am
 /**
  * Full budgeting report for a period
  */
-export type BudgetingReport = { bankCashMovement: string; quality: ReportQuality; nonconsumptionFlows: CashflowGroup[]; periodStart: number; periodEnd: number; timeframe: string; totalIncome: string; totalExpenses: string; netBalance: string; incomeCategories: CategorySpendingSummary[]; expenseCategories: CategorySpendingSummary[]; uncategorizedIncome: string; uncategorizedExpenses: string; uncategorizedTransactionCount: number }
+export type BudgetingReport = { bankCashMovement: string; quality: ReportQuality; nonconsumptionFlows: CashflowGroup[]; periodStart: number; periodEnd: number; timeframe: string; totalIncome: string; totalExpenses: string; netBalance: string; incomeCategories: CategorySpendingSummary[]; expenseCategories: CategorySpendingSummary[]; uncategorizedIncome: string; uncategorizedExpenses: string; uncategorizedTransactionCount: number; 
+/**
+ * Included booked expense rows without a category, including unavailable FX.
+ */
+uncategorizedExpenseTransactionCount: number }
 
 /**
  * Actual monthly cashflow for a range plus the preceding range of equal length.

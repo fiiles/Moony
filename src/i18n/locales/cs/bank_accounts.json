@@ -645,6 +645,9 @@
     "booked": "Zaúčtováno",
     "retry": "Zkusit znovu",
     "specificLearningScope": "Tento účet · {{direction}} · {{identity}}. Spolehlivé účty platí pro různé názvy protistrany; jinak pouze tento příjemce.",
-    "resultCategorized": "Nově importované transakce s kategorií: {{count}}. Bez kategorie: {{open}}."
+    "resultCategorized": "Nově importované transakce s kategorií: {{count}}. Bez kategorie: {{open}}.",
+    "flowLoading": "Načítá se finanční význam…",
+    "flowUnavailable": "Finanční význam není k dispozici.",
+    "flowUnresolved": "Finanční význam nebyl určen."
   }
 }

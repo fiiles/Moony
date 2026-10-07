@@ -48,7 +48,6 @@ import {
 import { cn } from '@/lib/utils';
 
 const TIMEFRAMES: readonly PeriodTimeframe[] = ['monthly', 'quarterly', 'yearly'];
-const EXCLUDED = new Set(['cat_income', 'cat_internal_transfers']);
 
 type SortKey = 'usage' | 'name';
 
@@ -147,11 +146,10 @@ export default function Budgeting() {
     onError: (error: Error) => toast.error(translateApiError(error, tc)),
   });
 
-  // Spent per category (CZK, positive) for the period
+  // The server has already resolved explicit overrides, own identity and category roles.
   const spentByCategory = useMemo(() => {
     const map = new Map<string, { spent: number; count: number }>();
     for (const c of report?.expenseCategories ?? []) {
-      if (EXCLUDED.has(c.categoryId)) continue;
       map.set(c.categoryId, {
         spent: parseFloat(c.totalAmount) || 0,
         count: c.transactionCount,
@@ -205,16 +203,17 @@ export default function Budgeting() {
         spent: usage.spent,
         count: usage.count,
         share: 0,
-        canBudget: true,
+        canBudget: category?.kind === 'expense',
       });
     }
     const uncategorized = parseFloat(report?.uncategorizedExpenses ?? '0') || 0;
-    if (uncategorized !== 0) {
+    const uncategorizedCount = report?.uncategorizedExpenseTransactionCount ?? 0;
+    if (uncategorized !== 0 || uncategorizedCount > 0) {
       list.push({
         categoryId: 'uncategorized',
         name: t('unbudgeted.uncategorized'),
         spent: uncategorized,
-        count: report?.uncategorizedTransactionCount ?? 0,
+        count: uncategorizedCount,
         share: 0,
         canBudget: false,
       });

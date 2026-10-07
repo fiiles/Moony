@@ -129,6 +129,9 @@ pub struct BudgetingReport {
     pub uncategorized_expenses: String,
     #[serde(rename = "uncategorizedTransactionCount")]
     pub uncategorized_transaction_count: i32,
+    /// Included booked expense rows without a category, including unavailable FX.
+    #[serde(rename = "uncategorizedExpenseTransactionCount")]
+    pub uncategorized_expense_transaction_count: i32,
 }
 
 #[cfg(test)]

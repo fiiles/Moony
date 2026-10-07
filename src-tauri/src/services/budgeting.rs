@@ -282,6 +282,10 @@ pub fn get_report_scoped(
         uncategorized_income: money(un_income),
         uncategorized_expenses: money(un_expense),
         uncategorized_transaction_count: un_count,
+        uncategorized_expense_transaction_count: rows
+            .iter()
+            .filter(|row| row.category_id.is_none() && row.effective_flow_kind == FlowKind::Expense)
+            .count() as i32,
         quality: quality(&rows, start_date, end_date, chrono::Utc::now().timestamp()),
         nonconsumption_flows: others
             .into_iter()
@@ -986,6 +990,63 @@ mod tests {
     /// a credit nobody categorized yet is still money that
     /// came in. Uncategorized debits already counted toward `total_expenses`;
     /// the credit side must be symmetric.
+    #[test]
+    fn resolved_expenses_include_income_and_transfer_category_ids() {
+        let conn = setup_test_db();
+        conn.execute_batch("INSERT INTO transaction_categories(id,name,kind) VALUES ('cat_internal_transfers','Transfers','transfer');
+          INSERT INTO bank_transactions(id,bank_account_id,booking_date,amount,currency,tx_type,flow_kind,category_id) VALUES
+          ('income-as-expense','acc1',1704067200,'100','CZK','debit','expense','cat_income'),
+          ('transfer-as-expense','acc1',1704067200,'50','CZK','debit','expense','cat_internal_transfers');").unwrap();
+        let report = get_report(&conn, 1704067200, 1704153599, "monthly").unwrap();
+        assert_eq!(report.total_expenses, "150.00");
+        assert_eq!(report.expense_categories.len(), 2);
+        assert!(report
+            .expense_categories
+            .iter()
+            .any(|group| group.category_id == "cat_income"
+                && group.total_amount == "100.00"
+                && group.transaction_count == 1));
+        assert!(report
+            .expense_categories
+            .iter()
+            .any(|group| group.category_id == "cat_internal_transfers"
+                && group.total_amount == "50.00"
+                && group.transaction_count == 1));
+        conn.execute_batch("UPDATE transaction_categories SET kind='expense' WHERE id='cat_income'; UPDATE bank_transactions SET flow_kind=NULL WHERE id='income-as-expense';").unwrap();
+        let by_role = get_report(&conn, 1704067200, 1704153599, "monthly").unwrap();
+        assert_eq!(by_role.total_expenses, "150.00");
+        assert_eq!(by_role.expense_categories.len(), 2);
+    }
+
+    #[test]
+    fn zero_net_uncategorized_expenses_have_their_own_drilldown_count() {
+        let conn = setup_test_db();
+        conn.execute_batch("INSERT INTO bank_transactions(id,bank_account_id,booking_date,amount,currency,tx_type,flow_kind,status) VALUES
+          ('paid','acc1',1704067200,'100','CZK','debit',NULL,'booked'),
+          ('refund','acc1',1704067200,'100','CZK','credit','expense','booked'),
+          ('unknown-fx','acc1',1704067200,'10','AED','debit',NULL,'booked'),
+          ('income1','acc1',1704067200,'200','CZK','credit',NULL,'booked'),
+          ('income2','acc1',1704067200,'300','CZK','credit',NULL,'booked'),
+          ('pending','acc1',1704067200,'100','CZK','debit',NULL,'pending');").unwrap();
+        let report = get_report(&conn, 1704067200, 1704153599, "monthly").unwrap();
+        assert_eq!(report.uncategorized_expenses, "0.00");
+        assert_eq!(report.uncategorized_transaction_count, 4);
+        assert_eq!(
+            serde_json::to_value(&report).unwrap()["uncategorizedExpenseTransactionCount"],
+            3
+        );
+        let drilldown =
+            crate::services::reporting::transactions(&conn, 1704067200, 1704153599, None).unwrap();
+        assert_eq!(
+            drilldown
+                .iter()
+                .filter(|row| row.category_id.is_none()
+                    && row.effective_flow_kind == crate::models::FlowKind::Expense)
+                .count(),
+            3
+        );
+    }
+
     #[test]
     fn uncategorized_credits_count_as_income() {
         let conn = setup_test_db();

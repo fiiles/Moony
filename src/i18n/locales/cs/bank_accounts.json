@@ -107,7 +107,7 @@
     "descriptionPlaceholder": "např. Nákup potravin",
     "counterpartyPlaceholder": "např. Albert",
     "addDescription": "Přidejte novou transakci ručně.",
-    "counterpartyIban": "IBAN protistrany",
+    "counterpartyIban": "Číslo účtu / IBAN protistrany",
     "delete": "Smazat transakci"
   },
   "metrics": {
@@ -188,7 +188,7 @@
     "amountColumn": "Sloupec částka",
     "descriptionColumn": "Sloupec popis",
     "counterpartyColumn": "Sloupec protistrana",
-    "counterpartyIbanColumn": "Číslo protiúčtu (IBAN)",
+    "counterpartyIbanColumn": "Číslo účtu / IBAN protistrany",
     "descriptionColumns": "Sloupce popisu",
     "descriptionColumnsHelp": "Vyberte všechny dostupné popisné sloupce (např. zpráva, poznámka, účel) pro lepší automatickou kategorizaci.",
     "selectColumn": "Vyberte sloupec",
@@ -664,6 +664,18 @@
     "excludedForeign_zero": "Žádné pohyby v jiné měně nebyly vynechány ze součtů v původní měně",
     "excludedForeign_one": "{{count}} pohyb v jiné měně byl vynechán ze součtů v původní měně",
     "excludedForeign_few": "{{count}} pohyby v jiné měně byly vynechány ze součtů v původní měně",
-    "excludedForeign_other": "{{count}} pohybů v jiné měně bylo vynecháno ze součtů v původní měně"
+    "excludedForeign_other": "{{count}} pohybů v jiné měně bylo vynecháno ze součtů v původní měně",
+    "advancedColumns": "Rozšířené sloupce",
+    "advancedColumnsHelp": "Volitelné. Přiřaďte je, jen když soubor takový sloupec má; jinak nechte „nepoužít“.",
+    "valueDateColumn": "Datum valuty",
+    "valueDateHint": "Den, kdy peníze skutečně odešly nebo přišly. Ukládá se vedle data zaúčtování; přehledy a hledání duplicit používají datum zaúčtování.",
+    "bankCodeColumn": "Kód banky protiúčtu",
+    "bankCodeHint": "Kód banky u tuzemského čísla účtu, např. 0800. Je potřeba k poznání převodů mezi vlastními účty; chybějící kód se nikdy neodhaduje.",
+    "countryColumn": "Země protiúčtu",
+    "countryHint": "Země účtu protistrany, např. CZ. Pomáhá správně přečíst tuzemská čísla účtů.",
+    "statusColumn": "Stav transakce",
+    "statusHint": "Hodnoty Pending, Booked nebo Completed; jiná hodnota se nahlásí jako chyba. Čekající řádky se zobrazí, ale do přehledů vstoupí až po zaúčtování. Přiřaďte jen tehdy, když soubor obsahuje ID transakce – bez něj nejde čekající řádek spárovat s jeho zaúčtovanou kopií.",
+    "pendingDateColumn": "Datum čekající platby",
+    "pendingDateHint": "Datum pro čekající řádky, které ještě nemají datum zaúčtování (např. začátek platby kartou)."
   }
 }

@@ -404,6 +404,66 @@ export function MappingStep({
               />
             </div>
           </div>
+          <div>
+            {h4(t('readiness.advancedColumns'))}
+            <p className="mb-3 text-micro text-ink-4">{t('readiness.advancedColumnsHelp')}</p>
+            <div className="space-y-4">
+              <ColumnSelect
+                id="csv-value-date-column"
+                label={t('readiness.valueDateColumn')}
+                optional
+                value={mapping.valueDateColumn}
+                headers={headers}
+                onChange={(valueDateColumn) => onMappingChange({ valueDateColumn })}
+                confidence={confidence('valueDate')}
+                hint={t('readiness.valueDateHint')}
+              />
+              <ColumnSelect
+                id="csv-bank-code-column"
+                label={t('readiness.bankCodeColumn')}
+                optional
+                value={mapping.counterpartyBankCodeColumn}
+                headers={headers}
+                onChange={(counterpartyBankCodeColumn) =>
+                  onMappingChange({ counterpartyBankCodeColumn })
+                }
+                confidence={confidence('counterpartyBankCode')}
+                hint={t('readiness.bankCodeHint')}
+              />
+              <ColumnSelect
+                id="csv-country-column"
+                label={t('readiness.countryColumn')}
+                optional
+                value={mapping.counterpartyCountryColumn}
+                headers={headers}
+                onChange={(counterpartyCountryColumn) =>
+                  onMappingChange({ counterpartyCountryColumn })
+                }
+                confidence={confidence('counterpartyCountry')}
+                hint={t('readiness.countryHint')}
+              />
+              <ColumnSelect
+                id="csv-status-column"
+                label={t('readiness.statusColumn')}
+                optional
+                value={mapping.statusColumn}
+                headers={headers}
+                onChange={(statusColumn) => onMappingChange({ statusColumn })}
+                confidence={confidence('status')}
+                hint={t('readiness.statusHint')}
+              />
+              <ColumnSelect
+                id="csv-pending-date-column"
+                label={t('readiness.pendingDateColumn')}
+                optional
+                value={mapping.pendingDateColumn}
+                headers={headers}
+                onChange={(pendingDateColumn) => onMappingChange({ pendingDateColumn })}
+                confidence={confidence('pendingDate')}
+                hint={t('readiness.pendingDateHint')}
+              />
+            </div>
+          </div>
           {rowFilter && (
             <label className="flex cursor-pointer items-start gap-[9px] text-table font-500 text-ink-2">
               <Checkbox

@@ -147,10 +147,18 @@ static SPECS: &[RoleSpec] = &[
         role: ColumnRole::CounterpartyBankCode,
         exact: &[
             "kod banky",
+            "kod banky protiuctu",
+            "kod banky protistrany",
+            "kod banky prijemce",
+            "kod banky platce",
             "counterparty bank code",
             "bank code",
+            "bank code of counterparty",
             "routing number",
             "routing code",
+            // DE
+            "blz",
+            "bankleitzahl",
         ],
         loose: &[],
         weak: &[],
@@ -159,9 +167,12 @@ static SPECS: &[RoleSpec] = &[
         role: ColumnRole::CounterpartyCountry,
         exact: &[
             "counterparty country",
+            "counterparty country code",
             "account country",
             "country",
+            "country code",
             "zeme protiuctu",
+            "zeme protistrany",
         ],
         loose: &[],
         weak: &[],
@@ -790,6 +801,30 @@ mod tests {
                     spec.role
                 );
             }
+        }
+    }
+
+    /// Final review I-2: common Czech/German bank-code and country headers.
+    #[test]
+    fn counterparty_bank_code_and_country_variants() {
+        for (header, role) in [
+            ("Kód banky protiúčtu", "counterpartyBankCode"),
+            ("Kód banky protistrany", "counterpartyBankCode"),
+            ("Kód banky příjemce", "counterpartyBankCode"),
+            ("Bank code of counterparty", "counterpartyBankCode"),
+            ("BLZ", "counterpartyBankCode"),
+            ("Bankleitzahl", "counterpartyBankCode"),
+            ("Země protistrany", "counterpartyCountry"),
+            ("Country code", "counterpartyCountry"),
+        ] {
+            let m =
+                suggest_column_mappings(&headers(&["Datum", "Částka", "Číslo protiúčtu", header]));
+            assert_eq!(mapped(&m, role).as_deref(), Some(header), "{header}");
+            assert_eq!(
+                mapped(&m, "counterparty_iban").as_deref(),
+                Some("Číslo protiúčtu"),
+                "{header}"
+            );
         }
     }
 

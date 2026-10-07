@@ -667,3 +667,44 @@ it('keeps structured identifier and value-date mapping in the import config', ()
     counterpartyCountryColumn: 'Country',
   });
 });
+
+it('round-trips manually mapped advanced columns and clears them back to null', () => {
+  const ins = {
+    delimiter: ';',
+    headerRow: 0,
+    encoding: 'UTF-8',
+    suggestedRowFilter: null,
+  };
+  const manual = {
+    ...EMPTY_MAPPING,
+    dateColumn: 'Date',
+    amountColumn: 'Amount',
+    valueDateColumn: 'Valuta',
+    statusColumn: 'State',
+    pendingDateColumn: 'Started',
+    counterpartyBankCodeColumn: 'Kód banky protiúčtu',
+    counterpartyCountryColumn: 'Země',
+  };
+  expect(buildImportConfig(manual, ins, 0)).toMatchObject({
+    valueDateColumn: 'Valuta',
+    statusColumn: 'State',
+    pendingDateColumn: 'Started',
+    counterpartyBankCodeColumn: 'Kód banky protiúčtu',
+    counterpartyCountryColumn: 'Země',
+  });
+  const cleared = {
+    ...manual,
+    valueDateColumn: '',
+    statusColumn: '',
+    pendingDateColumn: '',
+    counterpartyBankCodeColumn: '',
+    counterpartyCountryColumn: '',
+  };
+  expect(buildImportConfig(cleared, ins, 0)).toMatchObject({
+    valueDateColumn: null,
+    statusColumn: null,
+    pendingDateColumn: null,
+    counterpartyBankCodeColumn: null,
+    counterpartyCountryColumn: null,
+  });
+});

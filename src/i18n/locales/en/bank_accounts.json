@@ -106,7 +106,7 @@
     "descriptionPlaceholder": "e.g. Weekly groceries",
     "counterpartyPlaceholder": "e.g. Whole Foods",
     "addDescription": "Add a new transaction manually.",
-    "counterpartyIban": "Counterparty IBAN",
+    "counterpartyIban": "Counterparty account number / IBAN",
     "delete": "Delete transaction"
   },
   "metrics": {
@@ -185,7 +185,7 @@
     "amountColumn": "Amount Column",
     "descriptionColumn": "Description Column",
     "counterpartyColumn": "Counterparty Column",
-    "counterpartyIbanColumn": "Counterparty Account (IBAN)",
+    "counterpartyIbanColumn": "Counterparty account number / IBAN",
     "descriptionColumns": "Description Columns",
     "descriptionColumnsHelp": "Select all available descriptive fields (e.g., message, note, purpose) for better automatic categorization.",
     "selectColumn": "Select column",
@@ -637,6 +637,18 @@
     "promotions_other": "{{count}} pending entries will be booked",
     "excludedForeign_zero": "No foreign-currency movements excluded from native totals",
     "excludedForeign_one": "{{count}} foreign-currency movement excluded from native totals",
-    "excludedForeign_other": "{{count}} foreign-currency movements excluded from native totals"
+    "excludedForeign_other": "{{count}} foreign-currency movements excluded from native totals",
+    "advancedColumns": "Advanced columns",
+    "advancedColumnsHelp": "Optional. Map them only when the file has such a column; leave “not used” otherwise.",
+    "valueDateColumn": "Value date",
+    "valueDateHint": "Day the money actually moved. Stored next to the booking date; reports and duplicate checks use the booking date.",
+    "bankCodeColumn": "Counterparty bank code",
+    "bankCodeHint": "Bank code of a domestic account number, e.g. 0800. Needed to recognise transfers between your own accounts; a missing code is never guessed.",
+    "countryColumn": "Counterparty country",
+    "countryHint": "Country of the counterparty account, e.g. CZ. Helps read domestic account numbers correctly.",
+    "statusColumn": "Transaction status",
+    "statusHint": "Values Pending, Booked or Completed; anything else is reported as an error. Pending rows are shown but stay out of reports until booked. Map it only when the file has a transaction ID – without one a pending row cannot be matched to its booked copy.",
+    "pendingDateColumn": "Pending date",
+    "pendingDateHint": "Date used for pending rows that have no booking date yet (e.g. the card payment start date)."
   }
 }

@@ -1063,8 +1063,9 @@ export const categorizationApi = {
 
   // ==================== MCP Category Suggestions ====================
 
-  // Accept a pending MCP suggestion: sets the category, learns the payee,
-  // clears the suggestion. Returns the accepted category id.
+  // Accept a pending MCP suggestion: sets the category on this transaction
+  // only (no payee rule is learned) and clears the suggestion. Returns the
+  // accepted category id.
   acceptSuggestion: (transactionId: string) =>
     tauriInvoke<string>('accept_category_suggestion', { transactionId }),
 

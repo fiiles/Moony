@@ -1,5 +1,7 @@
-//! MCP tools: analytics. Query bodies moved verbatim from the retired REST API
-//! (services/local_api.rs) (ADR 0006).
+//! MCP tools: analytics. Stock and tag analytics were moved from the retired
+//! REST API (services/local_api.rs) (ADR 0006); the cashflow and budgeting
+//! reports reuse the app's own report services so the assistant and the app
+//! never disagree on money semantics.
 
 use rmcp::schemars;
 use rusqlite::Connection;
@@ -21,10 +23,14 @@ pub struct CashflowArgs {
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct BudgetingArgs {
     #[serde(rename = "startDate")]
-    #[schemars(description = "Start date as Unix timestamp (seconds)")]
+    #[schemars(
+        description = "Period start as Unix timestamp (seconds), the first second of a calendar month (UTC)"
+    )]
     pub start_date: i64,
     #[serde(rename = "endDate")]
-    #[schemars(description = "End date as Unix timestamp (seconds)")]
+    #[schemars(
+        description = "Period end as Unix timestamp (seconds), the last second of the period (UTC)"
+    )]
     pub end_date: i64,
     #[schemars(
         description = "Budget timeframe to compare against: monthly (default), quarterly, or yearly"
@@ -39,254 +45,139 @@ pub struct TagMetricsArgs {
     pub tag_ids: Option<Vec<String>>,
 }
 
-/// One recurring cashflow line, normalised to a monthly amount in CZK.
-struct CashflowLine {
-    name: String,
-    category: String,
-    monthly_czk: f64,
-}
-
+/// The app's planning cashflow report (`services::cashflow_planning`) in the
+/// user's main currency: same items, repaid-loan and replacement handling,
+/// totals and FX quality as the Cashflow page.
 pub fn cashflow_report(conn: &Connection, view_type: Option<String>) -> Result<Value> {
+    use crate::services::reporting::parse_money;
     let view_type = view_type.unwrap_or_else(|| "monthly".to_string());
-    let multiplier: f64 = if view_type == "yearly" { 12.0 } else { 1.0 };
-
-    // One MoneyContext per call: all arithmetic stays in CZK, converted to the
-    // main currency only when the response is built.
+    let report = crate::services::cashflow_planning::get_report(conn, &view_type)?;
+    // The report is in CZK; convert once, when the response is built.
     let ctx = MoneyContext::load(conn)?;
-    let to_monthly = |amount: f64, currency: &str, frequency: &str| -> f64 {
-        let v = ctx.to_czk(amount, currency);
-        match frequency {
-            "monthly" => v,
-            "quarterly" => v / 3.0,
-            "semi_annual" => v / 6.0,
-            "annual" => v / 12.0,
-            "weekly" => v * 4.33,
-            "daily" => v * 30.0,
-            _ => v,
-        }
-    };
+    let money =
+        |czk: &str| -> Result<String> { Ok(format!("{:.2}", ctx.czk_to_main(parse_money(czk)?))) };
 
-    let mut income: Vec<CashflowLine> = Vec::new();
-    let mut expenses: Vec<CashflowLine> = Vec::new();
-
-    // Cashflow items
-    {
-        let mut stmt = conn.prepare(
-            "SELECT name, CAST(amount AS REAL), currency, frequency, item_type, category FROM cashflow_items",
-        )?;
-        let items: Vec<(String, f64, String, String, String, String)> = stmt
-            .query_map([], |row| {
-                Ok((
-                    row.get(0)?,
-                    row.get::<_, f64>(1)?,
-                    row.get(2)?,
-                    row.get(3)?,
-                    row.get(4)?,
-                    row.get(5)?,
-                ))
-            })?
-            .filter_map(|r| r.ok())
-            .collect();
-        for (name, amount, currency, frequency, item_type, category) in items {
-            if frequency == "one_time" {
-                continue;
-            }
-            let monthly = to_monthly(amount, &currency, &frequency);
-            let line = CashflowLine {
-                name,
-                category,
-                monthly_czk: monthly,
-            };
-            if item_type == "income" {
-                income.push(line);
-            } else {
-                expenses.push(line);
+    let mut income = Vec::new();
+    let mut expenses = Vec::new();
+    for (section_key, section) in [
+        ("personal", &report.personal),
+        ("investments", &report.investments),
+    ] {
+        for (out, categories) in [
+            (&mut income, &section.income),
+            (&mut expenses, &section.expenses),
+        ] {
+            for category in categories {
+                for item in &category.items {
+                    out.push(serde_json::json!({
+                        "name": item.name,
+                        "category": category.key,
+                        "section": section_key,
+                        "amount": money(&item.amount)?,
+                        "originalAmount": item.original_amount,
+                        "originalCurrency": item.original_currency,
+                        "originalFrequency": item.original_frequency,
+                        "userDefined": item.is_user_defined,
+                        "fxQuality": item.fx_quality,
+                    }));
+                }
             }
         }
     }
-
-    // Loan payments
-    {
-        let mut stmt = conn.prepare(
-            "SELECT name, CAST(monthly_payment AS REAL), currency FROM loans WHERE CAST(monthly_payment AS REAL) > 0",
-        )?;
-        let items: Vec<(String, f64, String)> = stmt
-            .query_map([], |row| {
-                Ok((row.get(0)?, row.get::<_, f64>(1)?, row.get(2)?))
-            })?
-            .filter_map(|r| r.ok())
-            .collect();
-        for (name, payment, currency) in items {
-            let monthly = ctx.to_czk(payment, &currency);
-            if monthly > 0.0 {
-                expenses.push(CashflowLine {
-                    name: format!("Loan: {}", name),
-                    category: "loan_payment".to_string(),
-                    monthly_czk: monthly,
-                });
-            }
-        }
-    }
-
-    // Insurance premiums
-    {
-        let mut stmt = conn.prepare("SELECT policy_name, CAST(regular_payment AS REAL), regular_payment_currency, payment_frequency FROM insurance_policies WHERE status = 'active' AND CAST(regular_payment AS REAL) > 0")?;
-        let items: Vec<(String, f64, String, String)> = stmt
-            .query_map([], |row| {
-                Ok((row.get(0)?, row.get::<_, f64>(1)?, row.get(2)?, row.get(3)?))
-            })?
-            .filter_map(|r| r.ok())
-            .collect();
-        for (name, payment, currency, frequency) in items {
-            let monthly = to_monthly(payment, &currency, &frequency);
-            if monthly > 0.0 {
-                expenses.push(CashflowLine {
-                    name: format!("Insurance: {}", name),
-                    category: "insurance".to_string(),
-                    monthly_czk: monthly,
-                });
-            }
-        }
-    }
-
-    // Savings interest
-    {
-        let mut stmt = conn.prepare("SELECT name, CAST(balance AS REAL), currency, CAST(interest_rate AS REAL) FROM bank_accounts WHERE interest_rate IS NOT NULL AND CAST(interest_rate AS REAL) > 0 AND exclude_from_balance = 0")?;
-        let items: Vec<(String, f64, String, f64)> = stmt
-            .query_map([], |row| {
-                Ok((
-                    row.get(0)?,
-                    row.get::<_, f64>(1)?,
-                    row.get(2)?,
-                    row.get::<_, f64>(3)?,
-                ))
-            })?
-            .filter_map(|r| r.ok())
-            .collect();
-        for (name, balance, currency, rate) in items {
-            let balance_czk = ctx.to_czk(balance, &currency);
-            let monthly = balance_czk * (rate / 100.0) / 12.0;
-            if monthly > 0.0 {
-                income.push(CashflowLine {
-                    name: format!("Interest: {}", name),
-                    category: "interest".to_string(),
-                    monthly_czk: monthly,
-                });
-            }
-        }
-    }
-
-    let total_income: f64 = income.iter().map(|l| l.monthly_czk).sum();
-    let total_expenses: f64 = expenses.iter().map(|l| l.monthly_czk).sum();
-
-    // Amounts are converted to the user's main currency here, once, at
-    // serialisation time.
-    let money = |czk: f64| format!("{:.2}", ctx.czk_to_main(czk));
-    let fmt_lines = |lines: &[CashflowLine]| -> Vec<Value> {
-        lines
-            .iter()
-            .map(|l| {
-                serde_json::json!({
-                    "name": l.name, "category": l.category,
-                    "amount": money(l.monthly_czk * multiplier)
-                })
-            })
-            .collect()
-    };
 
     Ok(serde_json::json!({
         "mainCurrency": ctx.main_currency(),
-        "viewType": view_type,
+        "viewType": report.view_type,
+        "estimate": report.estimate,
+        "ratesAsOf": report.rates_as_of,
         "summary": {
-            "totalIncome": money(total_income * multiplier),
-            "totalExpenses": money(total_expenses * multiplier),
-            "netCashflow": money((total_income - total_expenses) * multiplier),
+            "totalIncome": money(&report.total_income)?,
+            "totalExpenses": money(&report.total_expenses)?,
+            "netCashflow": money(&report.net_cashflow)?,
         },
-        "income": fmt_lines(&income),
-        "expenses": fmt_lines(&expenses),
+        "quality": {
+            "missingFxCurrencies": report.quality.missing_fx_currencies,
+            "estimatedFxCount": report.quality.estimated_fx_count,
+        },
+        "income": income,
+        "expenses": expenses,
     }))
 }
 
+/// The app's budgeting report (`services::budgeting`) in the user's main
+/// currency: booked transactions only, signed refunds, the shared flow
+/// resolver (transfers are not spending), limit versions by month and
+/// historical booking-day rates with missing FX reported, not guessed.
 pub fn budgeting_report(
     conn: &Connection,
-    start_date: Option<i64>,
-    end_date: Option<i64>,
+    start_date: i64,
+    end_date: i64,
     timeframe: Option<String>,
 ) -> Result<Value> {
+    use crate::services::reporting::parse_money;
     let timeframe = timeframe.unwrap_or_else(|| "monthly".to_string());
-    let start_date = start_date.unwrap_or(0);
-    let end_date = end_date.unwrap_or(i64::MAX);
-
-    // One MoneyContext per call: all arithmetic stays in CZK, converted to the
-    // main currency only when the response is built.
+    let report = crate::services::budgeting::get_report(conn, start_date, end_date, &timeframe)?;
+    // The report is in CZK; convert once, when the response is built. The
+    // usage ratio is currency-invariant.
     let ctx = MoneyContext::load(conn)?;
+    let main = |czk: f64| format!("{:.2}", ctx.czk_to_main(czk));
+    let money = |czk: &str| -> Result<String> { Ok(main(parse_money(czk)?)) };
 
-    // Goals
-    let goals: Vec<(String, String, f64, String)> = {
-        let mut stmt = conn.prepare(
-            "SELECT bg.category_id, tc.name, CAST(bg.amount AS REAL), bg.currency
-             FROM budget_goals bg JOIN transaction_categories tc ON bg.category_id = tc.id
-             WHERE bg.timeframe = ?",
-        )?;
-        let result = stmt
-            .query_map([&timeframe], |row| {
-                Ok((row.get(0)?, row.get(1)?, row.get::<_, f64>(2)?, row.get(3)?))
-            })?
-            .filter_map(|r| r.ok())
-            .collect();
-        result
-    };
-
-    // Actual spending
-    let spending: Vec<(String, f64, String)> = {
-        let mut stmt = conn.prepare(
-            "SELECT bt.category_id, SUM(CAST(bt.amount AS REAL)), bt.currency
-             FROM bank_transactions bt
-             WHERE bt.booking_date >= ? AND bt.booking_date <= ? AND bt.tx_type = 'debit' AND bt.category_id IS NOT NULL
-             GROUP BY bt.category_id, bt.currency",
-        )?;
-        let result = stmt
-            .query_map(rusqlite::params![start_date, end_date], |row| {
-                Ok((
-                    row.get::<_, String>(0)?,
-                    row.get::<_, f64>(1)?,
-                    row.get::<_, String>(2)?,
-                ))
-            })?
-            .filter_map(|r| r.ok())
-            .collect();
-        result
-    };
-
-    let mut spending_map: std::collections::HashMap<String, f64> = std::collections::HashMap::new();
-    for (cat_id, amount, currency) in spending {
-        *spending_map.entry(cat_id).or_insert(0.0) += ctx.to_czk(amount, &currency);
+    let mut categories = Vec::new();
+    for cat in report
+        .expense_categories
+        .iter()
+        .filter(|c| c.budget_goal.is_some())
+    {
+        let actual = parse_money(&cat.total_amount)?;
+        let limit = cat
+            .budget_limit_czk
+            .as_deref()
+            .map(parse_money)
+            .transpose()?;
+        categories.push(serde_json::json!({
+            "categoryId": cat.category_id,
+            "categoryName": cat.category_name,
+            // null when the limit's currency has no historical rate.
+            "budget": limit.map(main),
+            "actual": main(actual),
+            "remaining": limit.map(|l| main(l - actual)),
+            "usagePercent": match limit {
+                Some(l) if l > 0.0 => format!("{:.1}", actual / l * 100.0),
+                _ => "N/A".to_string(),
+            },
+            "overBudget": limit.is_some_and(|l| actual > l),
+            "transactionCount": cat.transaction_count,
+        }));
     }
 
-    // Amounts are converted to the user's main currency here, once, at
-    // serialisation time; the usage ratio is currency-invariant.
-    let money = |czk: f64| format!("{:.2}", ctx.czk_to_main(czk));
-    let report: Vec<Value> = goals
-        .iter()
-        .map(|(cat_id, cat_name, goal_amount, goal_currency)| {
-            let budget_czk = ctx.to_czk(*goal_amount, goal_currency);
-            let actual_czk = spending_map.get(cat_id).copied().unwrap_or(0.0);
-            serde_json::json!({
-                "categoryId": cat_id,
-                "categoryName": cat_name,
-                "budget": money(budget_czk),
-                "actual": money(actual_czk),
-                "remaining": money(budget_czk - actual_czk),
-                "usagePercent": if budget_czk > 0.0 { format!("{:.1}", (actual_czk / budget_czk) * 100.0) } else { "N/A".to_string() },
-                "overBudget": actual_czk > budget_czk,
-            })
-        })
-        .collect();
+    let mut nonconsumption = Vec::new();
+    for flow in &report.nonconsumption_flows {
+        nonconsumption.push(serde_json::json!({
+            "kind": flow.key,
+            "amount": money(&flow.amount)?,
+            "count": flow.count,
+        }));
+    }
 
     Ok(serde_json::json!({
         "mainCurrency": ctx.main_currency(),
         "timeframe": timeframe,
-        "budgetCategories": report,
+        "nonconsumptionFlows": nonconsumption,
+        "summary": {
+            "totalIncome": money(&report.total_income)?,
+            "totalExpenses": money(&report.total_expenses)?,
+            "netBalance": money(&report.net_balance)?,
+            "uncategorizedExpenses": money(&report.uncategorized_expenses)?,
+            "bankCashMovement": money(&report.bank_cash_movement)?,
+        },
+        "quality": {
+            "missingFxCount": report.quality.missing_fx_count,
+            "missingFxCurrencies": report.quality.missing_fx_currencies,
+            "observedCompletedMonths": report.quality.observed_completed_months.len(),
+            "partialMonthCount": report.quality.partial_month_count,
+        },
+        "budgetCategories": categories,
     }))
 }
 
@@ -735,136 +626,164 @@ mod tests {
         assert_eq!(tag["stockCount"], 1);
     }
 
+    // ── Reports shared with the app (final review I-5) ──────────────────
+
+    const SEP: i64 = 1788220800; // 2026-09-01 UTC
+    const OCT: i64 = 1790812800; // 2026-10-01 UTC
+
+    /// Full app schema: the MCP reports reuse the app's report services.
+    fn app_db(main_currency: &str) -> Connection {
+        let conn = Connection::open_in_memory().expect("in-memory db");
+        crate::db::migrate_for_tests(&conn).expect("schema");
+        conn.execute(
+            "INSERT INTO user_profile (name, surname, email, currency) VALUES ('T', 'U', 't@example.test', ?1)",
+            [main_currency],
+        )
+        .expect("profile");
+        conn.execute_batch(
+            "INSERT INTO exchange_rates (currency, rate, fetched_at) VALUES ('EUR', 25.0, 0);
+             INSERT INTO bank_accounts (id, name, currency) VALUES ('acc', 'Main', 'CZK');",
+        )
+        .expect("seed");
+        conn
+    }
+
+    fn seed_budget(conn: &Connection) {
+        use crate::models::InsertBudgetGoal;
+        use crate::services::budgeting::upsert_goal_at;
+        let goal = |amount: &str, month: i64| InsertBudgetGoal {
+            category_id: "cat_groceries".into(),
+            timeframe: "monthly".into(),
+            amount: amount.into(),
+            currency: Some("CZK".into()),
+            effective_month: Some(month),
+        };
+        upsert_goal_at(conn, goal("1000", SEP), SEP).expect("september limit");
+        upsert_goal_at(conn, goal("2000", OCT), SEP).expect("october limit");
+        conn.execute_batch(&format!(
+            "INSERT INTO bank_transactions (id, bank_account_id, tx_type, amount, currency, booking_date, category_id, status) VALUES
+                ('buy', 'acc', 'debit', '600', 'CZK', {d}, 'cat_groceries', 'booked'),
+                ('refund', 'acc', 'credit', '100', 'CZK', {d}, 'cat_groceries', 'booked'),
+                ('pending', 'acc', 'debit', '9999', 'CZK', {d}, 'cat_groceries', 'pending');",
+            d = SEP + 86400
+        ))
+        .expect("transactions");
+    }
+
+    #[test]
+    fn budgeting_report_matches_the_app_report_semantics() {
+        let conn = app_db("CZK");
+        seed_budget(&conn);
+
+        let result = budgeting_report(&conn, SEP, OCT - 1, None).expect("budgeting");
+
+        assert_eq!(result["mainCurrency"], "CZK");
+        let cats = result["budgetCategories"].as_array().expect("categories");
+        assert_eq!(cats.len(), 1);
+        let cat = &cats[0];
+        // September's limit version, not the later October one; the refund
+        // nets out and the pending payment is not spending yet.
+        assert_eq!(cat["categoryId"], "cat_groceries");
+        assert_eq!(cat["budget"], "1000.00");
+        assert_eq!(cat["actual"], "500.00");
+        assert_eq!(cat["remaining"], "500.00");
+        assert_eq!(cat["usagePercent"], "50.0");
+        assert_eq!(cat["overBudget"], false);
+        let app = crate::services::budgeting::get_report(&conn, SEP, OCT - 1, "monthly").unwrap();
+        assert_eq!(result["summary"]["totalExpenses"], app.total_expenses);
+        assert_eq!(result["quality"]["missingFxCount"], 0);
+    }
+
+    #[test]
+    fn budgeting_report_converts_to_the_main_currency_and_flags_missing_fx() {
+        let conn = app_db("EUR");
+        seed_budget(&conn);
+        // A EUR expense without a historical rate is excluded and reported.
+        conn.execute(
+            "INSERT INTO bank_transactions (id, bank_account_id, tx_type, amount, currency, booking_date, category_id) VALUES ('eur', 'acc', 'debit', '10', 'EUR', ?1, 'cat_groceries')",
+            [SEP + 86400],
+        )
+        .unwrap();
+
+        let result = budgeting_report(&conn, SEP, OCT - 1, None).expect("budgeting");
+
+        assert_eq!(result["mainCurrency"], "EUR");
+        let cat = &result["budgetCategories"][0];
+        // 1 000 / 500 CZK at the current 25 CZK per EUR.
+        assert_eq!(cat["budget"], "40.00");
+        assert_eq!(cat["actual"], "20.00");
+        assert_eq!(cat["usagePercent"], "50.0");
+        assert_eq!(result["quality"]["missingFxCount"], 1);
+        assert_eq!(result["quality"]["missingFxCurrencies"][0], "EUR");
+    }
+
     fn seed_cashflow(conn: &Connection) {
         conn.execute_batch(
-            r#"
-            INSERT INTO cashflow_items (name, amount, currency, frequency, item_type, category) VALUES
-                ('Salary', '50000', 'CZK', 'monthly', 'income', 'salary'),
-                ('Rent', '400.00', 'EUR', 'monthly', 'expense', 'housing'),
-                ('Bonus', '9999', 'CZK', 'one_time', 'income', 'salary');
-            INSERT INTO loans (name, monthly_payment, currency)
-                VALUES ('Mortgage', '10000.00', 'CZK');
-            INSERT INTO insurance_policies
-                (policy_name, regular_payment, regular_payment_currency, payment_frequency, status)
-            VALUES
-                ('Car', '1200.00', 'CZK', 'quarterly', 'active'),
-                ('Old policy', '999', 'CZK', 'monthly', 'inactive');
-            INSERT INTO bank_accounts (name, balance, currency, interest_rate)
-                VALUES ('Savings', '100000', 'CZK', '3');
-            "#,
+            "INSERT INTO cashflow_items (id, name, amount, currency, frequency, item_type, category) VALUES
+                ('salary', 'Salary', '50000', 'CZK', 'monthly', 'income', 'personalIncome');
+             INSERT INTO loans (id, name, principal, currency, interest_rate, monthly_payment, start_date) VALUES
+                ('active', 'Mortgage', '1000000', 'CZK', '0', '10000', 1704067200),
+                ('paid', 'Old loan', '1000', 'CZK', '0', '100', 1704067200);",
         )
         .expect("seed cashflow");
     }
 
     #[test]
-    fn cashflow_report_reports_amounts_in_the_main_currency() {
-        let conn = setup_db("EUR");
+    fn cashflow_report_matches_the_app_planning_report() {
+        let conn = app_db("CZK");
         seed_cashflow(&conn);
+        // A manual item replacing the mortgage must not be counted twice.
+        crate::services::cashflow_planning::create_cashflow_item(
+            &conn,
+            crate::models::InsertCashflowItem {
+                name: "Adjusted mortgage".into(),
+                amount: "9000".into(),
+                currency: Some("CZK".into()),
+                frequency: "monthly".into(),
+                item_type: "expense".into(),
+                category: "personalLoans".into(),
+                replacement_source_id: Some("loan:active".into()),
+            },
+        )
+        .expect("replacement");
 
         let result = cashflow_report(&conn, None).expect("cashflow");
-
-        assert_eq!(result["mainCurrency"], "EUR");
-        assert_eq!(result["viewType"], "monthly");
-        // Income 50 000 + interest 250 = 50 250 CZK; expenses 10 000 (rent)
-        // + 10 000 (loan) + 400 (quarterly insurance, 1 200 / 3) = 20 400 CZK.
-        assert_eq!(result["summary"]["totalIncome"], "2010.00");
-        assert_eq!(result["summary"]["totalExpenses"], "816.00");
-        assert_eq!(result["summary"]["netCashflow"], "1194.00");
-        let income = result["income"].as_array().expect("income");
-        assert_eq!(income[0]["name"], "Salary");
-        assert_eq!(income[0]["amount"], "2000.00");
-        assert_eq!(income[1]["name"], "Interest: Savings");
-        assert_eq!(income[1]["amount"], "10.00");
-        let expenses = result["expenses"].as_array().expect("expenses");
-        assert_eq!(expenses[0]["name"], "Rent");
-        assert_eq!(expenses[0]["amount"], "400.00");
-        assert_eq!(expenses[1]["name"], "Loan: Mortgage");
-        assert_eq!(expenses[1]["amount"], "400.00");
-        assert_eq!(expenses[2]["name"], "Insurance: Car");
-        assert_eq!(expenses[2]["amount"], "16.00");
-        assert!(result["summary"].get("totalIncomeCzk").is_none());
-    }
-
-    #[test]
-    fn cashflow_report_yearly_view_scales_the_main_currency_amounts() {
-        let conn = setup_db("EUR");
-        seed_cashflow(&conn);
-
-        let result = cashflow_report(&conn, Some("yearly".to_string())).expect("cashflow");
-
-        assert_eq!(result["mainCurrency"], "EUR");
-        assert_eq!(result["viewType"], "yearly");
-        assert_eq!(result["summary"]["totalIncome"], "24120.00");
-        assert_eq!(result["income"][0]["amount"], "24000.00");
-    }
-
-    #[test]
-    fn cashflow_report_stays_in_czk_for_a_czk_main_currency() {
-        let conn = setup_db("CZK");
-        seed_cashflow(&conn);
-
-        let result = cashflow_report(&conn, None).expect("cashflow");
+        let app = crate::services::cashflow_planning::get_report(&conn, "monthly").unwrap();
 
         assert_eq!(result["mainCurrency"], "CZK");
-        assert_eq!(result["summary"]["totalIncome"], "50250.00");
-        assert_eq!(result["summary"]["totalExpenses"], "20400.00");
-        assert_eq!(result["expenses"][0]["amount"], "10000.00");
+        assert_eq!(result["viewType"], "monthly");
+        assert_eq!(result["summary"]["totalIncome"], app.total_income);
+        assert_eq!(result["summary"]["totalExpenses"], app.total_expenses);
+        assert_eq!(result["summary"]["netCashflow"], app.net_cashflow);
+        assert_eq!(result["summary"]["totalIncome"], "50000.00");
+        assert_eq!(result["summary"]["totalExpenses"], "9000.00");
+        let names: Vec<&str> = result["expenses"]
+            .as_array()
+            .expect("expenses")
+            .iter()
+            .map(|l| l["name"].as_str().expect("name"))
+            .collect();
+        assert_eq!(
+            names,
+            vec!["Adjusted mortgage"],
+            "no repaid loan, no double count"
+        );
     }
 
-    /// Regression: production stores these money columns as TEXT; the queries
-    /// used to read them with `get::<f64>`, which rejects TEXT, so every row was
-    /// silently dropped and the report came back empty.
     #[test]
-    fn cashflow_report_reads_money_stored_as_text() {
-        let conn = setup_db("CZK");
+    fn cashflow_report_reports_amounts_in_the_main_currency() {
+        let conn = app_db("EUR");
         seed_cashflow(&conn);
 
-        let result = cashflow_report(&conn, None).expect("cashflow");
+        let monthly = cashflow_report(&conn, None).expect("cashflow");
+        let yearly = cashflow_report(&conn, Some("yearly".to_string())).expect("cashflow");
 
-        // Salary + savings interest; rent + mortgage + the active insurance.
-        assert_eq!(result["income"].as_array().expect("income").len(), 2);
-        assert_eq!(result["expenses"].as_array().expect("expenses").len(), 3);
-        assert_eq!(result["income"][1]["amount"], "250.00");
-        assert_eq!(result["expenses"][1]["amount"], "10000.00");
-        assert_eq!(result["expenses"][2]["amount"], "400.00");
-    }
-
-    #[test]
-    fn budgeting_report_reports_amounts_in_the_main_currency() {
-        let conn = setup_db("EUR");
-        conn.execute_batch(
-            r#"
-            INSERT INTO transaction_categories (id, name) VALUES ('cat-food', 'Groceries');
-            INSERT INTO budget_goals (category_id, timeframe, amount, currency)
-                VALUES ('cat-food', 'monthly', '400.00', 'EUR');
-            INSERT INTO bank_transactions (category_id, amount, currency, booking_date, tx_type) VALUES
-                ('cat-food', '5000', 'CZK', 100, 'debit'),
-                ('cat-food', '100', 'EUR', 200, 'debit'),
-                ('cat-food', '9999', 'CZK', 100000, 'debit');
-            "#,
-        )
-        .expect("seed budgeting");
-
-        let result = budgeting_report(&conn, Some(0), Some(1000), None).expect("budgeting");
-
-        assert_eq!(result["mainCurrency"], "EUR");
-        assert_eq!(result["timeframe"], "monthly");
-        // The goal is stored as TEXT; it must not be silently dropped.
-        assert_eq!(
-            result["budgetCategories"]
-                .as_array()
-                .expect("categories")
-                .len(),
-            1
-        );
-        let cat = &result["budgetCategories"][0];
-        assert_eq!(cat["categoryName"], "Groceries");
-        // Budget 400 EUR = 10 000 CZK; spent 5 000 CZK + 100 EUR = 7 500 CZK.
-        assert_eq!(cat["budget"], "400.00");
-        assert_eq!(cat["actual"], "300.00");
-        assert_eq!(cat["remaining"], "100.00");
-        assert_eq!(cat["usagePercent"], "75.0");
-        assert_eq!(cat["overBudget"], false);
-        assert!(cat.get("budgetCzk").is_none());
+        assert_eq!(monthly["mainCurrency"], "EUR");
+        // 50 000 CZK salary, 10 000 CZK mortgage at 25 CZK per EUR.
+        assert_eq!(monthly["summary"]["totalIncome"], "2000.00");
+        assert_eq!(monthly["summary"]["totalExpenses"], "400.00");
+        assert_eq!(monthly["summary"]["netCashflow"], "1600.00");
+        assert_eq!(yearly["viewType"], "yearly");
+        assert_eq!(yearly["summary"]["totalIncome"], "24000.00");
     }
 }

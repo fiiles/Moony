@@ -424,11 +424,18 @@ pub async fn refresh_exchange_rates(
     // the earliest transaction and any tail gap from days the app was closed.
     // Best-effort — a failure only means uncovered days keep falling back to
     // current rates until the next refresh.
-    let db_for_backfill = db.inner().clone();
+    spawn_fx_backfill(app, db.inner().clone());
+
+    Ok(rates)
+}
+
+/// Extend the FX timeseries in the background (best-effort). New rate rows
+/// change historical valuations and report conversions, so it pokes the
+/// `recalculation-complete` event the charts, dated converters and reports
+/// listen to.
+pub(crate) fn spawn_fx_backfill(app: AppHandle, db: Database) {
     tauri::async_runtime::spawn(async move {
-        match crate::services::fx_backfill::ensure_fx_coverage(&db_for_backfill).await {
-            // New rate rows change historical valuations — poke the same
-            // event the charts and dated converters already listen to.
+        match crate::services::fx_backfill::ensure_fx_coverage(&db).await {
             Ok(n) if n > 0 => {
                 app.emit("recalculation-complete", ()).ok();
             }
@@ -440,8 +447,6 @@ pub async fn refresh_exchange_rates(
             }
         }
     });
-
-    Ok(rates)
 }
 
 /// Get current exchange rates (without fetching)

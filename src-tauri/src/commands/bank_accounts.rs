@@ -310,11 +310,17 @@ pub async fn get_bank_transactions(
 /// Create a new transaction
 #[tauri::command]
 pub async fn create_bank_transaction(
+    app: tauri::AppHandle,
     db: State<'_, Database>,
     data: InsertBankTransaction,
 ) -> Result<BankTransaction> {
     data.validate()?;
-    db.with_conn(|conn| bank_service::create_transaction(conn, &data))
+    let created = db.with_conn(|conn| bank_service::create_transaction(conn, &data))?;
+    // A back-dated foreign-currency entry may predate the FX timeseries.
+    if !created.currency.eq_ignore_ascii_case("CZK") {
+        portfolio::spawn_fx_backfill(app, db.inner().clone());
+    }
+    Ok(created)
 }
 
 /// Set explicit financial meaning; null returns to automatic derivation.
@@ -501,6 +507,7 @@ pub async fn preview_csv_import(
 
 #[tauri::command]
 pub async fn import_csv_transactions(
+    app: tauri::AppHandle,
     db: State<'_, Database>,
     categorization: State<'_, crate::commands::categorization::CategorizationState>,
     account_id: String,
@@ -519,7 +526,7 @@ pub async fn import_csv_transactions(
     // Rules-first import (spec D2): the CSV path shares the write path with
     // the MCP bulk tool, so it gets the same deterministic categorization.
     let engine = categorization.0.clone();
-    db.with_conn_mut(|conn| {
+    let result = db.with_conn_mut(|conn| {
         csv_import::import_transactions(
             conn,
             &account_id,
@@ -528,7 +535,13 @@ pub async fn import_csv_transactions(
             &config,
             Some(&engine),
         )
-    })
+    })?;
+    // Imported statements may predate the FX timeseries (foreign-currency
+    // accounts): extend it so reports convert those rows at historical rates.
+    if result.imported_count > 0 {
+        portfolio::spawn_fx_backfill(app, db.inner().clone());
+    }
+    Ok(result)
 }
 
 /// Represents a CSV import batch for the frontend

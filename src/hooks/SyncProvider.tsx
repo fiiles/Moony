@@ -101,6 +101,24 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     }
   }, [queryClient]);
 
+  // The FX backfill (after a rate refresh or a statement import) can add
+  // historical rates: rows previously reported as missing FX now convert.
+  useEffect(() => {
+    const unlisten = listen('recalculation-complete', () => {
+      for (const key of [
+        'budgeting-report',
+        'budgeting-category-transactions',
+        'cashflow-report',
+        'report-transactions',
+      ]) {
+        queryClient.invalidateQueries({ queryKey: [key] });
+      }
+    });
+    return () => {
+      unlisten.then((f) => f());
+    };
+  }, [queryClient]);
+
   // Refresh after MCP write tools change data (rule-7 ritual, driven by the
   // mcp-data-changed event the embedded server emits). Query keys verified
   // against the real hooks/pages (grep for `queryKey: ['`) as of this writing.

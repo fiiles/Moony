@@ -17,6 +17,7 @@ pub struct RawCashflowReportItem {
     pub original_currency: String,
     pub original_frequency: String, // "monthly" or "yearly"
     pub is_user_defined: bool,
+    pub source_fx_quality: Option<crate::models::FxQuality>,
 }
 
 /// A category with its items
@@ -62,6 +63,36 @@ fn normalize_to_period(amount: f64, original_frequency: &str, target_period: &st
     }
 }
 
+/// Converted property subtotals retain estimated/missing component quality even
+/// though the aggregate's amount is denominated in CZK.
+fn property_costs_annualized(
+    costs_json: &str,
+    fx: &mut PlanningFx,
+) -> (f64, crate::models::FxQuality) {
+    use crate::models::FxQuality;
+    let costs: Vec<serde_json::Value> = serde_json::from_str(costs_json).unwrap_or_default();
+    let mut total = 0.0;
+    let mut quality = FxQuality::Historical;
+    for cost in costs {
+        let amount = cost.get("amount").and_then(|v| v.as_f64()).unwrap_or(0.0);
+        let frequency = cost
+            .get("frequency")
+            .and_then(|v| v.as_str())
+            .unwrap_or("monthly");
+        let currency = cost
+            .get("currency")
+            .and_then(|v| v.as_str())
+            .unwrap_or("CZK");
+        total += fx.convert(annualize(amount, frequency), currency);
+        quality = match (quality, fx.quality_for(currency)) {
+            (FxQuality::Missing, _) | (_, FxQuality::Missing) => FxQuality::Missing,
+            (FxQuality::Estimated, _) | (_, FxQuality::Estimated) => FxQuality::Estimated,
+            _ => FxQuality::Historical,
+        };
+    }
+    (total, quality)
+}
+
 /// Sort items alphabetically by name
 fn sort_items_alphabetically(items: &mut [RawCashflowReportItem]) {
     items.sort_by_key(|item| item.name.to_lowercase());
@@ -102,6 +133,7 @@ fn get_user_items_by_category(
             original_currency: row.3,
             original_frequency: row.4,
             is_user_defined: true,
+            source_fx_quality: None,
         };
 
         map.entry(row.5).or_default().push(item);
@@ -264,6 +296,7 @@ fn get_raw_report(
                         original_currency: loan.3,
                         original_frequency: "monthly".to_string(),
                         is_user_defined: false,
+                        source_fx_quality: None,
                     });
                 }
             }
@@ -312,6 +345,7 @@ fn get_raw_report(
                         original_currency: ins.3,
                         original_frequency: "yearly".to_string(),
                         is_user_defined: false,
+                        source_fx_quality: None,
                     });
                 }
             }
@@ -342,24 +376,11 @@ fn get_raw_report(
 
         for re in re_costs.collect::<std::result::Result<Vec<_>, _>>()? {
             if personal_re_ids.contains(&re.0) {
-                let costs: Vec<serde_json::Value> = serde_json::from_str(&re.2).unwrap_or_default();
-                let mut property_yearly_total = 0.0;
-                for cost in costs {
-                    let amount = cost.get("amount").and_then(|v| v.as_f64()).unwrap_or(0.0);
-                    let frequency = cost
-                        .get("frequency")
-                        .and_then(|v| v.as_str())
-                        .unwrap_or("monthly");
-                    let currency = cost
-                        .get("currency")
-                        .and_then(|v| v.as_str())
-                        .unwrap_or("CZK");
-                    let yearly_amount = annualize(amount, frequency);
-                    property_yearly_total += fx.convert(yearly_amount, currency);
-                }
+                let (property_yearly_total, source_fx_quality) =
+                    property_costs_annualized(&re.2, fx);
                 let normalized =
                     normalize_to_period(property_yearly_total, "yearly", target_period);
-                if normalized > 0.0 || fx.last_missing {
+                if normalized > 0.0 || source_fx_quality == crate::models::FxQuality::Missing {
                     personal_re_cost_items.push(RawCashflowReportItem {
                         id: re.0,
                         name: re.1,
@@ -368,6 +389,7 @@ fn get_raw_report(
                         original_currency: "CZK".to_string(),
                         original_frequency: "yearly".to_string(),
                         is_user_defined: false,
+                        source_fx_quality: Some(source_fx_quality),
                     });
                 }
             }
@@ -488,6 +510,7 @@ fn get_raw_report(
                     original_currency: row.3,
                     original_frequency: "yearly".to_string(),
                     is_user_defined: false,
+                    source_fx_quality: None,
                 });
             }
         }
@@ -518,7 +541,7 @@ fn get_raw_report(
 
         for inv in investments.collect::<std::result::Result<Vec<_>, _>>()? {
             let qty: f64 = crate::services::reporting::parse_money(&inv.2)?;
-            let dividend_data: rusqlite::Result<(Option<String>, Option<String>)> = conn.query_row(
+            let dividend_data: (Option<String>, Option<String>) = conn.query_row(
                 "SELECT COALESCE(
                     (SELECT yearly_dividend_sum FROM dividend_overrides WHERE ticker = ?1),
                     (SELECT yearly_dividend_sum FROM dividend_data WHERE ticker = ?1)
@@ -529,9 +552,9 @@ fn get_raw_report(
                 )",
                 [&inv.0],
                 |row| Ok((row.get(0)?, row.get(1)?)),
-            );
+            )?;
 
-            if let Ok((Some(div_sum_str), Some(currency))) = dividend_data {
+            if let (Some(div_sum_str), Some(currency)) = dividend_data {
                 let div_per_share: f64 = crate::services::reporting::parse_money(&div_sum_str)?;
                 let yearly_dividend = div_per_share * qty;
                 let yearly_dividend_czk = fx.convert(yearly_dividend, &currency);
@@ -546,6 +569,7 @@ fn get_raw_report(
                         original_currency: currency,
                         original_frequency: "yearly".to_string(),
                         is_user_defined: false,
+                        source_fx_quality: None,
                     });
                 }
             }
@@ -596,6 +620,7 @@ fn get_raw_report(
                     original_currency: bond.5,
                     original_frequency: "yearly".to_string(),
                     is_user_defined: false,
+                    source_fx_quality: None,
                 });
             }
         }
@@ -644,6 +669,7 @@ fn get_raw_report(
                             original_currency: currency,
                             original_frequency: "monthly".to_string(),
                             is_user_defined: false,
+                            source_fx_quality: None,
                         });
                     }
                 }
@@ -710,6 +736,7 @@ fn get_raw_report(
                         original_currency: loan.3,
                         original_frequency: "monthly".to_string(),
                         is_user_defined: false,
+                        source_fx_quality: None,
                     });
                 }
             }
@@ -758,6 +785,7 @@ fn get_raw_report(
                         original_currency: ins.3,
                         original_frequency: "yearly".to_string(),
                         is_user_defined: false,
+                        source_fx_quality: None,
                     });
                 }
             }
@@ -790,24 +818,11 @@ fn get_raw_report(
 
         for re in re_costs2.collect::<std::result::Result<Vec<_>, _>>()? {
             if investment_re_ids.contains(&re.0) {
-                let costs: Vec<serde_json::Value> = serde_json::from_str(&re.2).unwrap_or_default();
-                let mut property_yearly_total = 0.0;
-                for cost in costs {
-                    let amount = cost.get("amount").and_then(|v| v.as_f64()).unwrap_or(0.0);
-                    let frequency = cost
-                        .get("frequency")
-                        .and_then(|v| v.as_str())
-                        .unwrap_or("monthly");
-                    let currency = cost
-                        .get("currency")
-                        .and_then(|v| v.as_str())
-                        .unwrap_or("CZK");
-                    let yearly_amount = annualize(amount, frequency);
-                    property_yearly_total += fx.convert(yearly_amount, currency);
-                }
+                let (property_yearly_total, source_fx_quality) =
+                    property_costs_annualized(&re.2, fx);
                 let normalized =
                     normalize_to_period(property_yearly_total, "yearly", target_period);
-                if normalized > 0.0 || fx.last_missing {
+                if normalized > 0.0 || source_fx_quality == crate::models::FxQuality::Missing {
                     investment_re_cost_items.push(RawCashflowReportItem {
                         id: re.0,
                         name: re.1,
@@ -816,6 +831,7 @@ fn get_raw_report(
                         original_currency: "CZK".to_string(),
                         original_frequency: "yearly".to_string(),
                         is_user_defined: false,
+                        source_fx_quality: Some(source_fx_quality),
                     });
                 }
             }
@@ -1123,6 +1139,90 @@ mod tests {
             crate::models::FxQuality::Missing
         );
     }
+    fn insert_property(conn: &rusqlite::Connection, kind: &str, costs: serde_json::Value) {
+        conn.execute("INSERT INTO real_estate(id,name,type,recurring_costs) VALUES ('property','Property',?1,?2)",rusqlite::params![kind,costs.to_string()]).unwrap();
+    }
+    #[test]
+    fn personal_and_investment_property_foreign_costs_are_estimated() {
+        crate::services::currency::update_exchange_rates(HashMap::from([("XPK".into(), 10.0)]));
+        for kind in ["personal", "investment"] {
+            let conn = planning_db();
+            insert_property(
+                &conn,
+                kind,
+                serde_json::json!([{"amount":100,"frequency":"monthly","currency":"XPK"}]),
+            );
+            let report = get_report(&conn, "monthly").unwrap();
+            let source = report
+                .automatic_sources
+                .iter()
+                .find(|s| s.source_id.as_deref() == Some("propertyCosts:property"))
+                .unwrap();
+            assert_eq!(source.amount, "1000.00");
+            assert_eq!(
+                source.fx_quality,
+                crate::models::FxQuality::Estimated,
+                "{kind}"
+            );
+            assert_eq!(report.quality.estimated_fx_count, 1);
+        }
+    }
+    #[test]
+    fn property_mixed_fx_quality_and_inventory_are_independent_of_component_order() {
+        for kind in ["personal", "investment"] {
+            for czk_amount in [0, 5] {
+                for missing_first in [false, true] {
+                    let conn = planning_db();
+                    let missing =
+                        serde_json::json!({"amount":100,"frequency":"monthly","currency":"XPU"});
+                    let known = serde_json::json!({"amount":czk_amount,"frequency":"monthly","currency":"CZK"});
+                    let costs = if missing_first {
+                        serde_json::json!([missing, known])
+                    } else {
+                        serde_json::json!([known, missing])
+                    };
+                    insert_property(&conn, kind, costs);
+                    let report = get_report(&conn, "monthly").unwrap();
+                    let source=report.automatic_sources.iter().find(|s|s.source_id.as_deref()==Some("propertyCosts:property")).unwrap_or_else(||panic!("missing inventory: {kind},CZK{czk_amount},missing_first{missing_first}"));
+                    assert_eq!(source.amount, format!("{czk_amount}.00"));
+                    assert_eq!(
+                        source.fx_quality,
+                        crate::models::FxQuality::Missing,
+                        "{kind},missing_first{missing_first}"
+                    );
+                    assert_eq!(report.quality.missing_fx_count, 1);
+                    assert_eq!(report.quality.missing_fx_currencies, vec!["XPU"]);
+                }
+            }
+        }
+    }
+    #[test]
+    fn absent_dividend_values_are_optional_but_query_and_type_failures_propagate() {
+        let conn = planning_db();
+        conn.execute_batch("CREATE TABLE dividend_overrides(ticker TEXT,yearly_dividend_sum TEXT,currency TEXT); CREATE TABLE dividend_data(ticker TEXT,yearly_dividend_sum TEXT,currency TEXT); INSERT INTO stock_investments VALUES ('TEST','Test stock','2');").unwrap();
+        let report = get_report(&conn, "monthly").unwrap();
+        assert_eq!(report.investments.total_income, "0.00");
+        conn.execute("INSERT INTO dividend_data VALUES ('TEST','12','CZK')", [])
+            .unwrap();
+        assert_eq!(
+            get_report(&conn, "monthly")
+                .unwrap()
+                .investments
+                .total_income,
+            "2.00"
+        );
+        conn.execute("UPDATE dividend_data SET yearly_dividend_sum=x'FF'", [])
+            .unwrap();
+        assert!(
+            matches!(get_report(&conn, "monthly"), Err(AppError::Database(_))),
+            "type failure must not become absent dividend"
+        );
+        conn.execute("DROP TABLE dividend_data", []).unwrap();
+        assert!(
+            matches!(get_report(&conn, "monthly"), Err(AppError::Database(_))),
+            "schema failure must not become absent dividend"
+        );
+    }
     #[test]
     fn automatic_loan_sources_omit_repaid_and_expired_loans() {
         let conn = rusqlite::Connection::open_in_memory().unwrap();
@@ -1185,14 +1285,9 @@ pub fn get_report(conn: &rusqlite::Connection, view_type: &str) -> Result<Cashfl
                         .filter_map(|i| {
                             let source = (!i.is_user_defined).then(|| source_for(&c.key, &i.id));
                             let item = crate::models::CashflowReportItem {
-                                fx_quality: if i.original_currency.eq_ignore_ascii_case("CZK") {
-                                    crate::models::FxQuality::Historical
-                                } else if fx.rates.contains_key(&i.original_currency.to_uppercase())
-                                {
-                                    crate::models::FxQuality::Estimated
-                                } else {
-                                    crate::models::FxQuality::Missing
-                                },
+                                fx_quality: i
+                                    .source_fx_quality
+                                    .unwrap_or_else(|| fx.quality_for(&i.original_currency)),
                                 category: c.key.clone(),
                                 item_type: direction.into(),
                                 id: i.id.clone(),
@@ -1327,6 +1422,20 @@ impl Default for PlanningFx {
     }
 }
 impl PlanningFx {
+    fn quality_for(&self, currency: &str) -> crate::models::FxQuality {
+        use crate::models::FxQuality;
+        if currency.eq_ignore_ascii_case("CZK") {
+            FxQuality::Historical
+        } else if self
+            .rates
+            .get(&currency.to_uppercase())
+            .is_some_and(|r| r.is_finite() && *r > 0.0)
+        {
+            FxQuality::Estimated
+        } else {
+            FxQuality::Missing
+        }
+    }
     fn convert(&mut self, amount: f64, currency: &str) -> f64 {
         self.last_missing = false;
         if currency.eq_ignore_ascii_case("CZK") {

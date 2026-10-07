@@ -552,7 +552,7 @@ fn n26_maps_amount_in_brackets_and_partner_columns() {
 }
 
 #[test]
-fn revolut_pending_rows_are_preserved_and_balance_is_the_last_completed() {
+fn revolut_pending_rows_are_filtered_and_balance_is_the_last_completed() {
     let inspection = inspect_fixture("revolut.csv");
     assert_eq!(inspection.detected_preset_id.as_deref(), Some("revolut"));
     assert_eq!(
@@ -566,6 +566,10 @@ fn revolut_pending_rows_are_preserved_and_balance_is_the_last_completed() {
     );
     assert_eq!(mapped(&inspection, "currency").as_deref(), Some("Currency"));
     assert_eq!(mapped(&inspection, "balance").as_deref(), Some("Balance"));
+    // Revolut exports carry no transaction ID, so a pending row could never be
+    // promoted to its booked copy: the preset must not map status/pending date.
+    assert!(mapped(&inspection, "status").is_none());
+    assert!(mapped(&inspection, "pendingDate").is_none());
     assert_eq!(
         inspection.date_format, "%Y-%m-%d",
         "date part of the preset's format"
@@ -580,11 +584,8 @@ fn revolut_pending_rows_are_preserved_and_balance_is_the_last_completed() {
 
     let mut conn = setup_import_db();
     let result = import_fixture_auto(&mut conn, "revolut.csv");
-    assert_eq!(result.imported_count, 7);
-    assert_eq!(
-        result.skipped_filtered, 0,
-        "pending is visible but excluded from actuals"
-    );
+    assert_eq!(result.imported_count, 6);
+    assert_eq!(result.skipped_filtered, 1, "the PENDING row");
     assert_eq!(
         result.error_count, 0,
         "its empty Completed Date is not an error"
@@ -597,7 +598,7 @@ fn revolut_pending_rows_are_preserved_and_balance_is_the_last_completed() {
             |r| r.get(0),
         )
         .unwrap();
-    assert_eq!(gbp, 7);
+    assert_eq!(gbp, 6);
 
     // Without the filter the pending row would be a date error — which is why
     // the inspection hands the preset's filter to the import.
@@ -606,8 +607,34 @@ fn revolut_pending_rows_are_preserved_and_balance_is_the_last_completed() {
     config.row_filter = None;
     let mut conn = setup_import_db();
     let unfiltered = import(&mut conn, &text, &config);
-    assert_eq!(unfiltered.error_count, 0);
-    assert_eq!(unfiltered.imported_count, 7);
+    assert_eq!(unfiltered.error_count, 1);
+    assert_eq!(unfiltered.errors[0].key, "validation.dateRequired");
+}
+
+/// Final review I-3: an ID-less export that later books its pending card
+/// payment must not leave a never-resolving pending twin behind.
+#[test]
+fn revolut_pending_then_booked_reimport_leaves_no_stale_pending_row() {
+    let first = decode_for_import(&fixture_bytes("revolut.csv"), None, None).text;
+    let booked = first.replace(
+        "2026-09-12 20:00:00,,Pending merchant,-5.00,0.00,GBP,PENDING",
+        "2026-09-12 20:00:00,2026-09-13 08:00:00,Pending merchant,-5.00,0.00,GBP,COMPLETED",
+    );
+    assert_ne!(first, booked, "fixture still has the pending row");
+    let config = config_from_inspection(&inspect_fixture("revolut.csv"));
+    let mut conn = setup_import_db();
+    import(&mut conn, &first, &config);
+    let second = import(&mut conn, &booked, &config);
+    assert_eq!(second.imported_count, 1, "only the newly booked payment");
+    let pending: i64 = conn
+        .query_row(
+            "SELECT count(*) FROM bank_transactions WHERE status = 'pending'",
+            [],
+            |r| r.get(0),
+        )
+        .unwrap();
+    assert_eq!(pending, 0);
+    assert_eq!(tx_count(&conn), 7);
 }
 
 #[test]

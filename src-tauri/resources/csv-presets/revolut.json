@@ -18,7 +18,5 @@
     "equals": "COMPLETED"
   },
   "exportHelpUrl": "https://help.revolut.com/help/profile-and-plan/managing-my-account/account-statement-per-chosen-currency/",
-  "sampleFixture": "revolut.csv",
-  "statusColumn": "State",
-  "pendingDateColumn": "Started Date"
+  "sampleFixture": "revolut.csv"
 }

@@ -14,6 +14,9 @@ use rusqlite::{Connection, OptionalExtension};
 pub struct BankOccurrenceChecker {
     stored: Vec<StoredOccurrence>,
     seen_ids: std::collections::HashSet<String>,
+    /// Bank IDs present anywhere in the incoming batch: a stored row with
+    /// one of them belongs to that ID-bearing row, whatever the file order.
+    batch_ids: std::collections::HashSet<String>,
     currency: String,
 }
 #[derive(Debug)]
@@ -155,8 +158,19 @@ impl BankOccurrenceChecker {
         Ok(Self {
             stored: rows.collect::<std::result::Result<Vec<_>, _>>()?,
             seen_ids: Default::default(),
+            batch_ids: Default::default(),
             currency,
         })
+    }
+    /// Announce the bank IDs of the whole batch before checking its rows, so
+    /// an ID-less row never consumes the stored occurrence that a later row
+    /// of the same batch matches by ID.
+    pub fn reserve_batch_ids<'a>(&mut self, ids: impl IntoIterator<Item = Option<&'a str>>) {
+        self.batch_ids.extend(
+            ids.into_iter()
+                .filter_map(normalized_bank_id)
+                .map(str::to_string),
+        );
     }
     pub fn record_written(&mut self, t: &crate::models::InsertBankTransaction, id: &str) {
         if normalized_bank_id(t.transaction_id.as_deref()).is_some()
@@ -202,11 +216,14 @@ impl BankOccurrenceChecker {
             }
         }
         let key = composite_key(t, &self.currency);
-        if let Some(stored) = self
-            .stored
-            .iter_mut()
-            .find(|s| !s.consumed && s.key == key && (bank_id.is_none() || s.bank_id.is_none()))
-        {
+        if let Some(stored) = self.stored.iter_mut().find(|s| {
+            !s.consumed
+                && s.key == key
+                && (bank_id.is_none() || s.bank_id.is_none())
+                && s.bank_id
+                    .as_ref()
+                    .is_none_or(|id| !self.batch_ids.contains(id))
+        }) {
             stored.consumed = true;
             return Some(BankOccurrence::Possible);
         }

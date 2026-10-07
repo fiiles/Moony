@@ -122,6 +122,10 @@ pub fn preview_import(
     let parsed = parse_rows(content, account_id, config)?;
 
     let mut checker = dedup::BankOccurrenceChecker::load(conn, account_id)?;
+    checker.reserve_batch_ids(parsed.rows.iter().map(|row| match &row.state {
+        RowState::Candidate(insert) => insert.transaction_id.as_deref(),
+        _ => None,
+    }));
     let mut rows: Vec<CsvPreviewRow> = Vec::new();
     let mut pending_categories: HashMap<String, Option<(String, Option<String>)>> = HashMap::new();
     let (mut ok_count, mut error_count, mut duplicate_count, mut skipped_count) = (0, 0, 0, 0);
@@ -360,13 +364,47 @@ fn statement_balance_row(rows: &[ParsedRow]) -> Option<&ParsedRow> {
         })
         .collect();
     let latest = dated.iter().filter_map(|r| r.booking_date).max()?;
-    let newest_first =
-        dated.first().and_then(|r| r.booking_date) > dated.last().and_then(|r| r.booking_date);
-    let mut latest_rows = dated.into_iter().filter(|r| r.booking_date == Some(latest));
-    if newest_first {
-        latest_rows.next()
+    let first_day = dated.first().and_then(|r| r.booking_date);
+    let last_day = dated.last().and_then(|r| r.booking_date);
+    let latest_rows: Vec<&ParsedRow> = dated
+        .into_iter()
+        .filter(|r| r.booking_date == Some(latest))
+        .collect();
+    let newest_first = if first_day == last_day {
+        // One booking day: the dates prove no order. Only the running
+        // balance chain can; without it no statement balance is offered.
+        if latest_rows.len() == 1 {
+            false
+        } else {
+            balance_chain_newest_first(&latest_rows)?
+        }
     } else {
-        latest_rows.next_back()
+        first_day > last_day
+    };
+    if newest_first {
+        latest_rows.first().copied()
+    } else {
+        latest_rows.last().copied()
+    }
+}
+
+/// File order proven by the row balances: `Some(false)` when each balance is
+/// the previous one plus the row's amount (oldest first), `Some(true)` when
+/// it is the next one plus the row's amount (newest first), `None` when the
+/// balances prove neither.
+fn balance_chain_newest_first(rows: &[&ParsedRow]) -> Option<bool> {
+    let mut values = Vec::with_capacity(rows.len());
+    for row in rows {
+        let amount = row.signed_amount.as_deref()?.parse::<f64>().ok()?;
+        values.push((amount, row.balance?));
+    }
+    let close = |a: f64, b: f64| (a - b).abs() < 0.005;
+    let oldest_first = values.windows(2).all(|w| close(w[1].1, w[0].1 + w[1].0));
+    let newest_first = values.windows(2).all(|w| close(w[0].1, w[1].1 + w[0].0));
+    match (oldest_first, newest_first) {
+        (true, _) => Some(false),
+        (false, true) => Some(true),
+        (false, false) => None,
     }
 }
 
@@ -398,6 +436,10 @@ pub fn import_transactions(
 
     let batch_id = Uuid::new_v4().to_string();
     let mut checker = dedup::BankOccurrenceChecker::load(conn, account_id)?;
+    checker.reserve_batch_ids(parsed.rows.iter().map(|row| match &row.state {
+        RowState::Candidate(insert) => insert.transaction_id.as_deref(),
+        _ => None,
+    }));
     let mut imported_count = 0usize;
     let mut promoted_count = 0usize;
     let mut uncategorized_count = 0usize;

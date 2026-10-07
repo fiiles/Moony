@@ -2031,6 +2031,40 @@ fn integrity_canonical_text_amounts_preserve_three_decimal_differences() {
     assert_eq!(r.imported_count, 0);
 }
 
+/// Final review M-1: in a one-day file the dates cannot tell the order, so
+/// the running balance chain decides it — or no balance is offered.
+#[test]
+fn single_day_statement_order_comes_from_the_balance_chain() {
+    fn result_of(content: &str) -> CsvImportResult {
+        let config = CsvImportConfig {
+            delimiter: ",".into(),
+            date_column: "Date".into(),
+            date_format: "%Y-%m-%d".into(),
+            amount_column: Some("Amount".into()),
+            balance_column: Some("Balance".into()),
+            ..Default::default()
+        };
+        let mut conn = setup_import_db();
+        import(&mut conn, content, &config)
+    }
+    // Newest first: 13 → (−2) 11 → (−1) 10; the first row is the latest.
+    let newest_first =
+        result_of("Date,Amount,Balance\n2026-09-02,-1,10\n2026-09-02,-2,11\n2026-09-02,-1,13\n");
+    assert_eq!(newest_first.last_balance.as_deref(), Some("10"));
+    assert_eq!(newest_first.statement_balance.unwrap().amount, "10");
+    // Oldest first: 12 → (−1) 11 → (−2) 9; the last row is the latest.
+    let oldest_first =
+        result_of("Date,Amount,Balance\n2026-09-02,-1,12\n2026-09-02,-1,11\n2026-09-02,-2,9\n");
+    assert_eq!(oldest_first.last_balance.as_deref(), Some("9"));
+    // Balances that do not chain prove no order: no anchor is suggested.
+    let unknown = result_of("Date,Amount,Balance\n2026-09-02,-1,10\n2026-09-02,-1,50\n");
+    assert!(unknown.last_balance.is_none());
+    assert!(unknown.statement_balance.is_none());
+    // A single row needs no order.
+    let single = result_of("Date,Amount,Balance\n2026-09-02,-1,10\n");
+    assert_eq!(single.last_balance.as_deref(), Some("10"));
+}
+
 #[test]
 fn integrity_statement_descending_dates_and_same_day_order() {
     for (csv,expected,line) in [
@@ -2062,6 +2096,29 @@ fn integrity_status_whitelist_and_same_file_pending_promotion() {
         .query_row("SELECT status FROM bank_transactions", [], |r| r.get(0))
         .unwrap();
     assert_eq!(status, "booked");
+}
+
+/// Final review M-2: an ID-less row listed before the ID-bearing reimport of
+/// the same stored transaction must not be taken for that transaction.
+#[test]
+fn id_less_row_does_not_consume_a_stored_row_whose_id_is_in_the_file() {
+    let mut conn = setup_import_db();
+    let mut cfg = basic_config();
+    cfg.transaction_id_column = Some("ID".into());
+    import(
+        &mut conn,
+        "Datum;Částka;Popis;ID\n01.01.2026;-99;coffee;X\n",
+        &cfg,
+    );
+    let csv = "Datum;Částka;Popis;ID\n01.01.2026;-99;coffee;\n01.01.2026;-99;coffee;X\n";
+    let p = preview_import(&conn, "acc-1", csv, &cfg, None).unwrap();
+    assert_eq!((p.ok_count, p.duplicate_count), (1, 1));
+    let r = import(&mut conn, csv, &cfg);
+    assert_eq!(r.imported_count, 1, "the ID-less row is another occurrence");
+    // Only the row with ID X is skipped, as the stored transaction itself.
+    assert_eq!(r.skipped_duplicates.len(), 1);
+    assert_eq!(r.skipped_duplicates[0].line, 3);
+    assert_eq!(tx_count(&conn), 2);
 }
 
 #[test]

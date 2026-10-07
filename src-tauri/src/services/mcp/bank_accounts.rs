@@ -218,6 +218,11 @@ pub fn bank_transactions_create(
     // Dedup runs INSIDE the transaction, so it also catches duplicates within
     // the batch itself: after row 3 inserts, an identical row 7 matches it.
     let mut checker = dedup::BankOccurrenceChecker::load(conn, &args.account_id)?;
+    checker.reserve_batch_ids(
+        args.transactions
+            .iter()
+            .map(|r| r.transaction_id.as_deref()),
+    );
     let tx = conn.transaction()?;
     let mut promoted = 0usize;
     let mut created = 0usize;

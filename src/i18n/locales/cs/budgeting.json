@@ -233,5 +233,13 @@
     "cat_taxes": "Daně",
     "cat_other": "Ostatní",
     "uncategorized": "Nezařazené"
+  },
+  "readiness": {
+    "effectiveMonth": "Platí od měsíce",
+    "effectiveMonthHelp": "Změny platí od tohoto měsíce. Dřívější limity v přehledech zůstávají.",
+    "observedAverage": "Pozorovaný měsíční průměr: {{amount}} z {{count}} celých měsíců. Úplnost výpisů není ověřena.",
+    "limitUnavailable": "Historický limit nebo jeho kurz není k dispozici",
+    "absoluteShare": "Podíl absolutních částek skupin",
+    "signedUnbudgetedTotal": "Čisté výdaje bez rozpočtu: {{amount}}"
   }
 }

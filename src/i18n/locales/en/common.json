@@ -240,7 +240,9 @@
     "balanceCurrencyMismatch": "The statement balance currency differs from the account currency.",
     "balanceAnchorOlder": "The statement is older than the account's recorded balance date.",
     "balanceAnchorUnknown": "The existing balance date is unknown. Confirm replacing this balance first.",
-    "balanceBatchMismatch": "This statement import does not belong to this account."
+    "balanceBatchMismatch": "This statement import does not belong to this account.",
+    "learningIdentity": "Provide a reliable account identifier or a payee.",
+    "paginationInvalid": "Select a valid history page."
   },
   "auth": {
     "wrongPassword": "The password you entered is incorrect. Please try again.",

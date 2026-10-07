@@ -10,6 +10,9 @@ import {
 
 function rule(id: string, overrides: Partial<LearnedPayeeEntry> = {}): LearnedPayeeEntry {
   return {
+    bankAccountId: null,
+    isCredit: null,
+    counterpartyIban: null,
     id,
     ruleType: 'payee_default',
     originalPayee: `Payee ${id}`,

@@ -696,6 +696,11 @@ export type InsertRealEstate = { name: string; address: string; type: string; pu
 purchaseDate: number | null; marketPrice: string | null; marketPriceCurrency: string | null; monthlyRent: string | null; monthlyRentCurrency: string | null; recurringCosts: RecurringCost[] | null; photos: string[] | null; notes: string | null }
 
 /**
+ * Explicit opt-in: one own account, movement direction and reliable account/payee identity.
+ */
+export type InsertScopedLearning = { bankAccountId: string; isCredit: boolean; payee: string | null; counterpartyIban: string | null; counterpartyBankCode: string | null; counterpartyCountry: string | null; categoryId: string }
+
+/**
  * Data for creating stock investment. Quantity and average price are not
  * accepted: they derive from the transaction record (pass an initial
  * transaction on create).
@@ -756,6 +761,8 @@ export type IntegrityReport = { ok: boolean; messages: string[] }
  * Investment transaction (buy/sell)
  */
 export type InvestmentTransaction = { id: string; investmentId: string; type: string; ticker: string; companyName: string; quantity: string; pricePerUnit: string; currency: string; transactionDate: number; createdAt: number }
+
+export type LearnedPayeeEntry = { id: string; ruleType: string; normalizedPayee: string | null; originalPayee: string | null; counterpartyIban: string | null; categoryId: string; bankAccountId: string | null; isCredit: boolean | null; createdAt: number; updatedAt: number }
 
 /**
  * Loan
@@ -1586,7 +1593,7 @@ export type TransactionCategory = { kind: FlowKind; id: string; name: string; ic
 /**
  * Filters for querying transactions
  */
-export type TransactionFilters = { dateFrom: number | null; dateTo: number | null; categoryId: string | null; txType: string | null; search: string | null; limit: number | null; offset: number | null }
+export type TransactionFilters = { sortBy: string | null; ascending: boolean | null; dateFrom: number | null; dateTo: number | null; categoryId: string | null; txType: string | null; search: string | null; limit: number | null; offset: number | null }
 
 /**
  * Result of transaction query with pagination

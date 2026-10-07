@@ -1,5 +1,6 @@
+import { refreshMoneyFlows } from '@/lib/money-flow-refresh';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { bankAccountsApi, portfolioApi } from '@/lib/tauri-api';
+import { bankAccountsApi } from '@/lib/tauri-api';
 import type { InsertBankAccount, InsertBankTransaction } from '@shared/schema';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
@@ -37,12 +38,7 @@ export function useBankAccountMutations() {
       return account;
     },
     onSuccess: async () => {
-      queryClient.invalidateQueries({ queryKey: ['bank-accounts'] });
-      queryClient.invalidateQueries({ queryKey: ['portfolio-metrics'] });
-      queryClient.invalidateQueries({ queryKey: ['cashflow-report'] });
-      // Record new portfolio snapshot to update dashboard history
-      await portfolioApi.recordSnapshot();
-      queryClient.invalidateQueries({ queryKey: ['portfolio-history'] });
+      await refreshMoneyFlows(queryClient);
       toast(t('messages.accountCreated'), { description: t('messages.accountCreatedDesc') });
     },
     onError: (error: Error) => {
@@ -92,12 +88,7 @@ export function useBankAccountMutations() {
       return account;
     },
     onSuccess: async () => {
-      queryClient.invalidateQueries({ queryKey: ['bank-accounts'] });
-      queryClient.invalidateQueries({ queryKey: ['portfolio-metrics'] });
-      queryClient.invalidateQueries({ queryKey: ['cashflow-report'] });
-      // Record new portfolio snapshot to update dashboard history
-      await portfolioApi.recordSnapshot();
-      queryClient.invalidateQueries({ queryKey: ['portfolio-history'] });
+      await refreshMoneyFlows(queryClient);
       toast(t('messages.accountUpdated'), { description: t('messages.accountUpdatedDesc') });
     },
     onError: (error: Error) => {
@@ -108,12 +99,7 @@ export function useBankAccountMutations() {
   const deleteAccount = useMutation({
     mutationFn: (id: string) => bankAccountsApi.delete(id),
     onSuccess: async () => {
-      queryClient.invalidateQueries({ queryKey: ['bank-accounts'] });
-      queryClient.invalidateQueries({ queryKey: ['portfolio-metrics'] });
-      queryClient.invalidateQueries({ queryKey: ['cashflow-report'] });
-      // Record new portfolio snapshot to update dashboard history
-      await portfolioApi.recordSnapshot();
-      queryClient.invalidateQueries({ queryKey: ['portfolio-history'] });
+      await refreshMoneyFlows(queryClient);
       toast(t('messages.accountDeleted'), { description: t('messages.accountDeletedDesc') });
     },
     onError: (error: Error) => {
@@ -128,15 +114,15 @@ export function useBankAccountMutations() {
   };
 }
 
-export function useBankTransactionMutations(accountId?: string) {
+export function useBankTransactionMutations(_accountId?: string) {
   const queryClient = useQueryClient();
   const { t } = useTranslation('bank_accounts');
   const { t: tc } = useTranslation('common');
 
   const createTransaction = useMutation({
     mutationFn: (data: InsertBankTransaction) => bankAccountsApi.createTransaction(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['bank-transactions', accountId] });
+    onSuccess: async () => {
+      await refreshMoneyFlows(queryClient);
       toast(t('messages.transactionCreated'));
     },
     onError: (error: Error) => {
@@ -146,11 +132,8 @@ export function useBankTransactionMutations(accountId?: string) {
 
   const deleteTransaction = useMutation({
     mutationFn: (id: string) => bankAccountsApi.deleteTransaction(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['bank-transactions', accountId] });
-      // Cashflow and budget reports are derived from bank transactions.
-      queryClient.invalidateQueries({ queryKey: ['cashflow-report'] });
-      queryClient.invalidateQueries({ queryKey: ['budgeting-report'] });
+    onSuccess: async () => {
+      await refreshMoneyFlows(queryClient);
       toast(t('messages.transactionDeleted'));
     },
     onError: (error: Error) => {

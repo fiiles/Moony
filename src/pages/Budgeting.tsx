@@ -1,24 +1,21 @@
+import { AccountScope } from '@/components/reports/AccountScope';
+import { ReportQualityNote, ReportError } from '@/components/reports/ReportQualityNote';
+import { useReportMoney } from '@/lib/use-report-money';
+import { refreshMoneyFlows } from '@/lib/money-flow-refresh';
+import { translateApiError } from '@/lib/translate-api-error';
 import { useMemo, useState } from 'react';
 import { Link } from 'wouter';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { ChevronLeft, ChevronRight, Ellipsis, Landmark, PiggyBank, Plus } from 'lucide-react';
-import type { CurrencyCode } from '@shared/currencies';
 import { budgetingApi, type BudgetGoal } from '@/lib/tauri-api';
-import { useCurrency } from '@/lib/currency';
 import { useFormat } from '@/lib/use-format';
 import { useCategories, useCategoryName } from '@/hooks/use-categories';
 import { useBankAccounts } from '@/hooks/use-bank-accounts';
 import { useShellPage } from '@/components/shell/shell-context';
 import { getUtcPeriodRange, type PeriodTimeframe } from '@/utils/period';
-import {
-  budgetMultiplier,
-  budgetState,
-  paceVerdict,
-  periodPace,
-  type BudgetState,
-} from '@/utils/budget-pace';
+import { budgetState, paceVerdict, periodPace, type BudgetState } from '@/utils/budget-pace';
 import { PageHead } from '@/components/shell/PageHead';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -56,7 +53,8 @@ const EXCLUDED = new Set(['cat_income', 'cat_internal_transfers']);
 type SortKey = 'usage' | 'name';
 
 interface BudgetRow {
-  goal: BudgetGoal;
+  goal: BudgetGoal | null;
+  limitKnown: boolean;
   categoryId: string;
   name: string;
   /** Limit scaled to the period, CZK. */
@@ -86,7 +84,8 @@ interface UnbudgetedRow {
 export default function Budgeting() {
   const { t } = useTranslation('budgeting');
   const { t: tc } = useTranslation('common');
-  const { formatCurrency, convert } = useCurrency();
+  const { money } = useReportMoney();
+  const [accountIds, setAccountIds] = useState<string[] | undefined>(undefined);
   const fmt = useFormat();
   const queryClient = useQueryClient();
   const categoryName = useCategoryName();
@@ -116,13 +115,22 @@ export default function Budgeting() {
     return String(range.startDate.getUTCFullYear());
   }, [timeframe, range, fmt]);
   const pace = useMemo(() => periodPace(range.start, range.end), [range]);
-  const multiplier = budgetMultiplier(timeframe);
 
-  const { data: report, isLoading: reportLoading } = useQuery({
-    queryKey: ['budgeting-report', range.start, range.end, timeframe],
-    queryFn: () => budgetingApi.getReport(range.start, range.end, timeframe),
+  const {
+    data: report,
+    isLoading: reportLoading,
+    isError: reportError,
+    refetch: refetchReport,
+  } = useQuery({
+    queryKey: ['budgeting-report', range.start, range.end, timeframe, accountIds],
+    queryFn: () => budgetingApi.getReport(range.start, range.end, timeframe, accountIds),
   });
-  const { data: goals = [], isLoading: goalsLoading } = useQuery({
+  const {
+    data: goals = [],
+    isLoading: goalsLoading,
+    isError: goalsError,
+    refetch: refetchGoals,
+  } = useQuery({
     queryKey: ['budget-goals'],
     queryFn: () => budgetingApi.getBudgetGoals(),
   });
@@ -131,13 +139,12 @@ export default function Budgeting() {
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => budgetingApi.deleteBudgetGoal(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['budgeting-report'] });
-      queryClient.invalidateQueries({ queryKey: ['budget-goals'] });
+    onSuccess: async () => {
+      await refreshMoneyFlows(queryClient);
       toast.success(t('deleteConfirm.deleted'));
       setPendingDelete(null);
     },
-    onError: (error: Error) => toast.error(error.message),
+    onError: (error: Error) => toast.error(translateApiError(error, tc)),
   });
 
   // Spent per category (CZK, positive) for the period
@@ -146,7 +153,7 @@ export default function Budgeting() {
     for (const c of report?.expenseCategories ?? []) {
       if (EXCLUDED.has(c.categoryId)) continue;
       map.set(c.categoryId, {
-        spent: Math.max(0, parseFloat(c.totalAmount) || 0),
+        spent: parseFloat(c.totalAmount) || 0,
         count: c.transactionCount,
       });
     }
@@ -154,71 +161,75 @@ export default function Budgeting() {
   }, [report]);
 
   const rows = useMemo<BudgetRow[]>(() => {
-    const list = goals
-      .filter((g) => g.timeframe === 'monthly' && !EXCLUDED.has(g.categoryId))
-      .map((goal) => {
-        const category = categories.find((c) => c.id === goal.categoryId);
-        // Limits carry their own currency: compare in CZK
-        const limit =
-          convert(parseFloat(goal.amount) || 0, goal.currency as CurrencyCode, 'CZK') * multiplier;
-        const usage = spentByCategory.get(goal.categoryId);
-        const spent = usage?.spent ?? 0;
-        return {
-          goal,
-          categoryId: goal.categoryId,
-          name: category ? categoryName(category) : goal.categoryId,
-          limit,
-          spent,
-          count: usage?.count ?? 0,
-          ratio: limit > 0 ? spent / limit : 0,
-          state: budgetState(spent, limit),
-        };
-      });
+    const ids = new Set([
+      ...(report?.expenseCategories ?? []).filter((c) => c.budgetGoal).map((c) => c.categoryId),
+      ...goals.filter((g) => g.timeframe === 'monthly').map((g) => g.categoryId),
+    ]);
+    const list = [...ids].map((categoryId) => {
+      const goal =
+        goals.find((g) => g.categoryId === categoryId && g.timeframe === 'monthly') ?? null;
+      const historical = report?.expenseCategories.find((c) => c.categoryId === categoryId);
+      const category = categories.find((c) => c.id === categoryId);
+      const limitKnown = historical?.budgetLimitCzk != null;
+      const limit = Number(historical?.budgetLimitCzk ?? 0);
+      const usage = spentByCategory.get(categoryId);
+      const spent = usage?.spent ?? 0;
+      return {
+        goal,
+        categoryId,
+        name: category ? categoryName(category) : categoryId,
+        limit,
+        limitKnown,
+        spent,
+        count: usage?.count ?? 0,
+        ratio: limit > 0 ? spent / limit : 0,
+        state: budgetState(spent, limit),
+      };
+    });
     return list.sort((a, b) =>
       sort === 'name'
         ? a.name.localeCompare(b.name, fmt.locale)
         : b.ratio - a.ratio || b.spent - a.spent
     );
-  }, [goals, categories, categoryName, convert, multiplier, spentByCategory, sort, fmt.locale]);
-
-  const totalExpenses =
-    Array.from(spentByCategory.values()).reduce((s, v) => s + v.spent, 0) +
-    Math.max(0, parseFloat(report?.uncategorizedExpenses ?? '0') || 0);
+  }, [goals, report, categories, categoryName, spentByCategory, sort, fmt.locale]);
 
   const unbudgeted = useMemo<UnbudgetedRow[]>(() => {
     const budgeted = new Set(rows.map((r) => r.categoryId));
     const list: UnbudgetedRow[] = [];
     for (const [categoryId, usage] of spentByCategory) {
-      if (budgeted.has(categoryId) || usage.spent <= 0) continue;
+      if (budgeted.has(categoryId) || (usage.spent === 0 && usage.count === 0)) continue;
       const category = categories.find((c) => c.id === categoryId);
       list.push({
         categoryId,
         name: category ? categoryName(category) : categoryId,
         spent: usage.spent,
         count: usage.count,
-        share: totalExpenses > 0 ? usage.spent / totalExpenses : 0,
+        share: 0,
         canBudget: true,
       });
     }
-    const uncategorized = Math.max(0, parseFloat(report?.uncategorizedExpenses ?? '0') || 0);
-    if (uncategorized > 0) {
+    const uncategorized = parseFloat(report?.uncategorizedExpenses ?? '0') || 0;
+    if (uncategorized !== 0) {
       list.push({
         categoryId: 'uncategorized',
         name: t('unbudgeted.uncategorized'),
         spent: uncategorized,
         count: report?.uncategorizedTransactionCount ?? 0,
-        share: totalExpenses > 0 ? uncategorized / totalExpenses : 0,
+        share: 0,
         canBudget: false,
       });
     }
+    const movement = list.reduce((sum, row) => sum + Math.abs(row.spent), 0);
+    for (const row of list) row.share = movement ? Math.abs(row.spent) / movement : 0;
     return list.sort((a, b) => b.spent - a.spent);
-  }, [rows, spentByCategory, categories, categoryName, report, totalExpenses, t]);
+  }, [rows, spentByCategory, categories, categoryName, report, t]);
 
   const availableCategories = useMemo(() => {
     const budgeted = new Set(goals.map((g) => g.categoryId));
-    return categories.filter((c) => !EXCLUDED.has(c.id) && !budgeted.has(c.id));
+    return categories.filter((c) => c.kind === 'expense' && !budgeted.has(c.id));
   }, [categories, goals]);
 
+  const allLimitsKnown = rows.every((row) => row.limitKnown);
   const budget = rows.reduce((s, r) => s + r.limit, 0);
   const spent = rows.reduce((s, r) => s + r.spent, 0);
   const remaining = budget - spent;
@@ -247,9 +258,8 @@ export default function Budgeting() {
   const openAdd = (categoryId: string | null = null) =>
     setGoalDialog({ open: true, goal: null, categoryId });
   const openEdit = (row: BudgetRow) =>
-    setGoalDialog({ open: true, goal: row.goal, categoryId: null });
+    setGoalDialog({ open: true, goal: row.goal, categoryId: row.categoryId });
 
-  const money = (czk: number) => formatCurrency(czk);
   const periodWord = (key: 'budgetFor' | 'elapsed') =>
     t(`stats.${key}.${timeframe}`, {
       period:
@@ -259,9 +269,11 @@ export default function Budgeting() {
       percent: fmt.percent(pace.elapsed, 0),
     });
 
-  const spentNote = pace.isCurrent
-    ? `${t('stats.ofBudget', { percent: fmt.percent(share, 0) })} · ${periodWord('elapsed')}`
-    : t('stats.ofBudget', { percent: fmt.percent(share, 0) });
+  const spentNote = !allLimitsKnown
+    ? t('readiness.limitUnavailable')
+    : pace.isCurrent
+      ? `${t('stats.ofBudget', { percent: fmt.percent(share, 0) })} · ${periodWord('elapsed')}`
+      : t('stats.ofBudget', { percent: fmt.percent(share, 0) });
 
   const remainingNote = (() => {
     if (remaining < 0) return t('stats.overNote', { percent: fmt.percent(share - 1, 0) });
@@ -283,6 +295,7 @@ export default function Budgeting() {
   })();
 
   const stateBadge = (row: BudgetRow) => {
+    if (!row.limitKnown) return <Badge variant="outline">{t('readiness.limitUnavailable')}</Badge>;
     if (row.state === 'over') {
       return (
         <Badge variant="loss">
@@ -333,6 +346,7 @@ export default function Budgeting() {
               <ChevronRight />
             </Button>
           </div>
+          <AccountScope value={accountIds} onChange={setAccountIds} />
           <Button onClick={() => openAdd()} disabled={availableCategories.length === 0}>
             <Plus />
             {t('actions.add')}
@@ -353,6 +367,7 @@ export default function Budgeting() {
         categories={categories}
       />
       <CategoryTransactionsDialog
+        accountIds={accountIds}
         target={txTarget}
         onClose={() => setTxTarget(null)}
         start={range.start}
@@ -366,11 +381,23 @@ export default function Budgeting() {
         description={t('deleteConfirm.description', { category: pendingDelete?.name ?? '' })}
         confirmLabel={t('actions.delete')}
         isPending={deleteMutation.isPending}
-        onConfirm={() => pendingDelete && deleteMutation.mutate(pendingDelete.goal.id)}
+        onConfirm={() => pendingDelete && deleteMutation.mutate(pendingDelete.goal!.id)}
       />
     </>
   );
 
+  if (reportError || goalsError)
+    return (
+      <>
+        {head}
+        <ReportError
+          onRetry={() => {
+            void refetchReport();
+            void refetchGoals();
+          }}
+        />
+      </>
+    );
   if (reportLoading || goalsLoading || categoriesLoading || !report) {
     return (
       <>
@@ -394,6 +421,7 @@ export default function Budgeting() {
     return (
       <>
         {head}
+        <ReportQualityNote quality={report.quality} />
         <EmptyState
           icon={<Landmark />}
           title={t('empty.title')}
@@ -423,7 +451,7 @@ export default function Budgeting() {
         <TableHeader>
           <TableRow>
             <TableHead className="w-[30%]">{t('table.category')}</TableHead>
-            <TableHead>{t('unbudgeted.share')}</TableHead>
+            <TableHead>{t('readiness.absoluteShare')}</TableHead>
             <TableHead className="text-right">{t('unbudgeted.spent')}</TableHead>
             <TableHead className="w-[150px]" />
           </TableRow>
@@ -469,10 +497,7 @@ export default function Budgeting() {
       </Table>
       <div className="flex items-center justify-between border-t border-line px-[14px] py-3 text-micro font-500 text-ink-4">
         <span className="num">
-          {t('unbudgeted.footer', {
-            amount: money(unbudgetedTotal),
-            percent: fmt.percent(totalExpenses > 0 ? unbudgetedTotal / totalExpenses : 0, 0),
-          })}
+          {t('readiness.signedUnbudgetedTotal', { amount: money(unbudgetedTotal) })}
         </span>
       </div>
     </Card>
@@ -482,6 +507,7 @@ export default function Budgeting() {
     return (
       <>
         {head}
+        <ReportQualityNote quality={report.quality} />
         <EmptyState
           icon={<PiggyBank />}
           title={t('noBudgets.title')}
@@ -504,65 +530,67 @@ export default function Budgeting() {
   return (
     <>
       {head}
-
+      {report && <ReportQualityNote quality={report.quality} />}
       <Stats columns={3}>
         <Stat
           label={periodWord('budgetFor')}
-          value={money(budget)}
+          value={allLimitsKnown ? money(budget) : '—'}
           note={t('stats.limited', { count: rows.length })}
         />
         <Stat label={t('stats.spent')} value={money(spent)} note={spentNote} />
         <Stat
           label={remaining < 0 ? t('stats.over') : t('stats.remaining')}
-          value={money(Math.abs(remaining))}
+          value={allLimitsKnown ? money(Math.abs(remaining)) : '—'}
           tone={remaining < 0 ? 'loss' : 'neutral'}
           noteTone="neutral"
-          note={remainingNote}
+          note={allLimitsKnown ? remainingNote : t('readiness.limitUnavailable')}
         />
       </Stats>
 
-      <Card variant="flat" className="mb-[17px] px-[21px] py-5">
-        <div className="grid grid-cols-[1fr_auto] items-center gap-6">
-          <div>
-            <div className="mb-2 flex items-baseline justify-between gap-4">
-              <h3 className="m-0 text-h3 text-ink">{t('overview.title')}</h3>
-              <span className="text-caption text-ink-3">{verdictText}</span>
-            </div>
-            <Progress
-              value={share * 100}
-              over={share > 1}
-              mark={pace.isCurrent ? todayLeft : undefined}
-              className="h-2.5"
-              aria-label={fmt.percent(share, 0)}
-            />
-            <div className="relative mt-1.5 flex justify-between text-[10px] font-600 text-ink-5">
-              <span className={cn(pace.isCurrent && todayLeft < 12 && 'invisible')}>
-                {fmt.day(range.start, { day: 'numeric', month: 'numeric' })}
-              </span>
-              {pace.isCurrent && (
-                <span
-                  className="absolute -translate-x-1/2 text-ink-3"
-                  style={{ left: `${todayLeft}%` }}
-                >
-                  {tc('charts.today')}
+      {allLimitsKnown && (
+        <Card variant="flat" className="mb-[17px] px-[21px] py-5">
+          <div className="grid grid-cols-[1fr_auto] items-center gap-6">
+            <div>
+              <div className="mb-2 flex items-baseline justify-between gap-4">
+                <h3 className="m-0 text-h3 text-ink">{t('overview.title')}</h3>
+                <span className="text-caption text-ink-3">{verdictText}</span>
+              </div>
+              <Progress
+                value={share * 100}
+                over={share > 1}
+                mark={pace.isCurrent ? todayLeft : undefined}
+                className="h-2.5"
+                aria-label={fmt.percent(share, 0)}
+              />
+              <div className="relative mt-1.5 flex justify-between text-[10px] font-600 text-ink-5">
+                <span className={cn(pace.isCurrent && todayLeft < 12 && 'invisible')}>
+                  {fmt.day(range.start, { day: 'numeric', month: 'numeric' })}
                 </span>
+                {pace.isCurrent && (
+                  <span
+                    className="absolute -translate-x-1/2 text-ink-3"
+                    style={{ left: `${todayLeft}%` }}
+                  >
+                    {tc('charts.today')}
+                  </span>
+                )}
+                <span className={cn(pace.isCurrent && todayLeft > 88 && 'invisible')}>
+                  {fmt.day(range.end, { day: 'numeric', month: 'numeric' })}
+                </span>
+              </div>
+            </div>
+            <div className="text-right">
+              {overCount > 0 ? (
+                <Badge variant="loss">{t('overview.overCount', { count: overCount })}</Badge>
+              ) : nearCount > 0 ? (
+                <Badge>{t('overview.nearCount', { count: nearCount })}</Badge>
+              ) : (
+                <Badge variant="gain">{t('overview.allOk')}</Badge>
               )}
-              <span className={cn(pace.isCurrent && todayLeft > 88 && 'invisible')}>
-                {fmt.day(range.end, { day: 'numeric', month: 'numeric' })}
-              </span>
             </div>
           </div>
-          <div className="text-right">
-            {overCount > 0 ? (
-              <Badge variant="loss">{t('overview.overCount', { count: overCount })}</Badge>
-            ) : nearCount > 0 ? (
-              <Badge>{t('overview.nearCount', { count: nearCount })}</Badge>
-            ) : (
-              <Badge variant="gain">{t('overview.allOk')}</Badge>
-            )}
-          </div>
-        </div>
-      </Card>
+        </Card>
+      )}
 
       <Card variant="table">
         <CardHeader>
@@ -608,21 +636,29 @@ export default function Budgeting() {
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-3 pr-6">
-                    <Progress
-                      value={row.ratio * 100}
-                      over={row.state === 'over'}
-                      className="h-[7px] flex-1"
-                      aria-label={fmt.percent(row.ratio, 0)}
-                    />
-                    <small className="w-9 text-right text-micro font-650 text-ink-4 num">
-                      {fmt.percent(row.ratio, 0)}
-                    </small>
+                    {row.limitKnown ? (
+                      <>
+                        <Progress
+                          value={row.ratio * 100}
+                          over={row.state === 'over'}
+                          className="h-[7px] flex-1"
+                          aria-label={fmt.percent(row.ratio, 0)}
+                        />
+                        <small className="w-9 text-right text-micro font-650 text-ink-4 num">
+                          {fmt.percent(row.ratio, 0)}
+                        </small>
+                      </>
+                    ) : (
+                      <span>—</span>
+                    )}
                   </div>
                 </TableCell>
                 <TableCell className="text-right num">
                   <b className="block font-650 text-ink">{money(row.spent)}</b>
                   <small className="mt-0.5 block text-micro font-500 text-ink-4">
-                    {t('table.of', { amount: money(row.limit) })}
+                    {row.limitKnown
+                      ? t('table.of', { amount: money(row.limit) })
+                      : t('readiness.limitUnavailable')}
                   </small>
                 </TableCell>
                 <TableCell className="text-right">{stateBadge(row)}</TableCell>
@@ -651,7 +687,11 @@ export default function Budgeting() {
                           {t('actions.showTransactions')}
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem variant="danger" onSelect={() => setPendingDelete(row)}>
+                        <DropdownMenuItem
+                          disabled={!row.goal}
+                          variant="danger"
+                          onSelect={() => setPendingDelete(row)}
+                        >
                           {t('actions.delete')}
                         </DropdownMenuItem>
                       </DropdownMenuContent>

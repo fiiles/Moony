@@ -472,7 +472,13 @@ describe('next steps', () => {
   const result = (overrides: Partial<CsvImportResult> = {}): CsvImportResult => ({
     importedCount: 10,
     promotedCount: 0,
-    statementBalance: null,
+    statementBalance: {
+      amount: '30196.12',
+      currency: 'CZK',
+      asOf: 1759000000,
+      line: 4,
+      batchId: 'b',
+    },
     duplicateCount: 0,
     errorCount: 0,
     errors: [],
@@ -500,7 +506,12 @@ describe('next steps', () => {
   it('offers nothing when nothing applies', () => {
     expect(
       nextStepsFor(
-        result({ uncategorizedCount: 0, suggestedRulePack: null, lastBalance: null }),
+        result({
+          uncategorizedCount: 0,
+          suggestedRulePack: null,
+          lastBalance: null,
+          statementBalance: null,
+        }),
         context({ canShowImported: false })
       )
     ).toEqual([]);
@@ -519,9 +530,48 @@ describe('next steps', () => {
   });
 
   it('offers the balance only when it differs from the account balance', () => {
-    expect(nextStepsFor(result({ lastBalance: '1000' }), context())).not.toContain('balance');
-    expect(nextStepsFor(result({ lastBalance: '1000.00' }), context())).not.toContain('balance');
-    expect(nextStepsFor(result({ lastBalance: '1000.01' }), context())).toContain('balance');
+    expect(
+      nextStepsFor(
+        result({
+          statementBalance: {
+            amount: '1000',
+            currency: 'CZK',
+            asOf: 1759000000,
+            line: 4,
+            batchId: 'b',
+          },
+        }),
+        context()
+      )
+    ).not.toContain('balance');
+    expect(
+      nextStepsFor(
+        result({
+          statementBalance: {
+            amount: '1000.00',
+            currency: 'CZK',
+            asOf: 1759000000,
+            line: 4,
+            batchId: 'b',
+          },
+        }),
+        context()
+      )
+    ).not.toContain('balance');
+    expect(
+      nextStepsFor(
+        result({
+          statementBalance: {
+            amount: '1000.01',
+            currency: 'CZK',
+            asOf: 1759000000,
+            line: 4,
+            batchId: 'b',
+          },
+        }),
+        context()
+      )
+    ).toContain('balance');
   });
 
   it('waits for the account balance before comparing', () => {

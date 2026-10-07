@@ -1,3 +1,4 @@
+import { Button } from '@/components/ui/button';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FileText, TriangleAlert } from 'lucide-react';
@@ -82,6 +83,7 @@ function NumberField({ id, label, value, min, onCommit, disabled }: NumberFieldP
 }
 
 interface MappingStepProps {
+  dateConfirmed: boolean;
   filePath: string;
   inspection: CsvPreviewResult;
   mapping: MappingState;
@@ -107,6 +109,7 @@ interface MappingStepProps {
  * right — with the detection's confidence next to each label.
  */
 export function MappingStep({
+  dateConfirmed,
   filePath,
   inspection,
   mapping,
@@ -127,6 +130,7 @@ export function MappingStep({
     !presetDetected && presetChoice !== AUTO_PRESET && inspection.detectedPresetId == null;
   const preset = presets.find((p) => p.id === presetChoice);
 
+  const [amountMode, setAmountMode] = useState(mapping.amountColumn ? 'signed' : 'pair');
   const pair = usesDebitCredit(mapping);
   const dateFormats = dateFormatChoices(mapping.dateFormat, inspection.dateFormat);
   // The ambiguity was found in the suggested date column, not in one picked by hand.
@@ -186,43 +190,74 @@ export function MappingStep({
                 onChange={(dateColumn) => onMappingChange({ dateColumn, dateFormat: AUTO_VALUE })}
                 confidence={confidence('date')}
               />
-              <ColumnSelect
-                id="csv-amount-column"
-                label={t('csvImport.amountColumn')}
-                required={!(mapping.debitColumn && mapping.creditColumn)}
-                clearable
-                value={mapping.amountColumn}
-                headers={headers}
-                onChange={(amountColumn) => onMappingChange({ amountColumn })}
-                confidence={confidence('amount')}
-                hint={
-                  pair
-                    ? t('csvImport.debitCreditHint')
-                    : mapping.amountColumn
-                      ? t('csvImport.mapping.amountHint')
-                      : t('csvImport.amountOrPairHint')
-                }
-              />
-              <div className="grid grid-cols-2 gap-3">
-                <ColumnSelect
-                  id="csv-debit-column"
-                  label={t('csvImport.debitColumn')}
-                  optional
-                  value={mapping.debitColumn}
-                  headers={headers}
-                  onChange={(debitColumn) => onMappingChange({ debitColumn })}
-                  confidence={confidence('debit')}
-                />
-                <ColumnSelect
-                  id="csv-credit-column"
-                  label={t('csvImport.creditColumn')}
-                  optional
-                  value={mapping.creditColumn}
-                  headers={headers}
-                  onChange={(creditColumn) => onMappingChange({ creditColumn })}
-                  confidence={confidence('credit')}
-                />
+              <div className="grid gap-1.5">
+                <Label>{t('readiness.amountMode')}</Label>
+                <Select
+                  value={amountMode}
+                  onValueChange={(value) => {
+                    setAmountMode(value);
+                    onMappingChange(
+                      value === 'pair'
+                        ? { amountColumn: '' }
+                        : { debitColumn: '', creditColumn: '' }
+                    );
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="signed">{t('readiness.signedAmount')}</SelectItem>
+                    <SelectItem value="pair">{t('readiness.separateAmounts')}</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-micro text-ink-4">{t('readiness.mappingHelp')}</p>
               </div>
+              {amountMode === 'signed' && (
+                <>
+                  <ColumnSelect
+                    id="csv-amount-column"
+                    label={t('csvImport.amountColumn')}
+                    required={!(mapping.debitColumn && mapping.creditColumn)}
+                    clearable
+                    value={mapping.amountColumn}
+                    headers={headers}
+                    onChange={(amountColumn) => onMappingChange({ amountColumn })}
+                    confidence={confidence('amount')}
+                    hint={
+                      pair
+                        ? t('csvImport.debitCreditHint')
+                        : mapping.amountColumn
+                          ? t('csvImport.mapping.amountHint')
+                          : t('csvImport.amountOrPairHint')
+                    }
+                  />
+                </>
+              )}
+              {amountMode === 'pair' && (
+                <>
+                  <div className="grid grid-cols-2 gap-3">
+                    <ColumnSelect
+                      id="csv-debit-column"
+                      label={t('csvImport.debitColumn')}
+                      optional
+                      value={mapping.debitColumn}
+                      headers={headers}
+                      onChange={(debitColumn) => onMappingChange({ debitColumn })}
+                      confidence={confidence('debit')}
+                    />
+                    <ColumnSelect
+                      id="csv-credit-column"
+                      label={t('csvImport.creditColumn')}
+                      optional
+                      value={mapping.creditColumn}
+                      headers={headers}
+                      onChange={(creditColumn) => onMappingChange({ creditColumn })}
+                      confidence={confidence('credit')}
+                    />
+                  </div>
+                </>
+              )}
             </div>
           </div>
           <div>
@@ -290,10 +325,18 @@ export function MappingStep({
                 }
               />
             </div>
-            {dateFormatIsGuess && (
+            {dateFormatIsGuess && !dateConfirmed && (
               <p className="mt-3 flex items-start gap-2 text-caption font-600 text-loss">
                 <TriangleAlert className="mt-px size-3.5 shrink-0" aria-hidden />
                 {t('csvImport.dateFormatAmbiguous')}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onMappingChange({ dateFormat: mapping.dateFormat })}
+                >
+                  {t('readiness.confirmDateFormat')}
+                </Button>
               </p>
             )}
             <p className="mt-3 text-micro font-500 text-ink-4">{t('csvImport.layoutHelp')}</p>
@@ -303,6 +346,7 @@ export function MappingStep({
         <div className="space-y-4">
           <div>
             {h4(t('csvImport.optionalColumns'))}
+            <p className="mb-3 text-micro text-ink-4">{t('readiness.provenanceMappingHelp')}</p>
             <div className="space-y-4">
               <DescriptionColumnsSelect
                 value={mapping.descriptionColumns}

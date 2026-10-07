@@ -197,6 +197,8 @@ pub fn collect_types() -> TypeCollection {
 
     // MCP server models
     types.register::<crate::commands::auth::McpServerStatus>();
+    types.register::<crate::models::categorization::InsertScopedLearning>();
+    types.register::<crate::models::categorization::LearnedPayeeEntry>();
     types.register::<crate::commands::categorization::RulePackInfo>();
     types.register::<crate::commands::categorization::PackRuleInfo>();
     types.register::<crate::services::categorization::hits::RuleHitCount>();

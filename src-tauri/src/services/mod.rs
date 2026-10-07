@@ -51,3 +51,5 @@ pub mod valuations;
 pub mod reporting;
 
 pub mod cashflow_planning;
+
+pub mod bank_history;

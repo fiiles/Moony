@@ -739,28 +739,10 @@ export const cashflowApi = {
 
   getAllItems: () => tauriInvoke<CashflowItem[]>('get_all_cashflow_items'),
 
-  createItem: (data: {
-    name: string;
-    amount: string;
-    currency?: string;
-    frequency: 'monthly' | 'yearly';
-    itemType: 'income' | 'expense';
-    category: string;
-    replacementSourceId?: string | null;
-  }) => tauriInvoke<CashflowItem>('create_cashflow_item', { data }),
-
-  updateItem: (
-    id: string,
-    data: {
-      name: string;
-      amount: string;
-      currency?: string;
-      frequency: 'monthly' | 'yearly';
-      itemType: 'income' | 'expense';
-      category: string;
-      replacementSourceId?: string | null;
-    }
-  ) => tauriInvoke<CashflowItem>('update_cashflow_item', { id, data }),
+  createItem: (data: import('@shared/schema').InsertCashflowItem) =>
+    tauriInvoke<CashflowItem>('create_cashflow_item', { data }),
+  updateItem: (id: string, data: import('@shared/schema').InsertCashflowItem) =>
+    tauriInvoke<CashflowItem>('update_cashflow_item', { id, data }),
 
   deleteItem: (id: string) => tauriInvoke<void>('delete_cashflow_item', { id }),
 };
@@ -1027,14 +1009,8 @@ export const categorizationApi = {
   categorizeBatch: (transactions: TransactionInput[]) =>
     tauriInvoke<CategorizationResult[]>('categorize_batch', { transactions }),
 
-  // Learn from user's manual categorization with hierarchical matching
-  // Supports: payee + iban (iban default), payee only (payee default)
-  learn: (payee: string | null, counterpartyIban: string | null, categoryId: string) =>
-    tauriInvoke<void>('learn_categorization', {
-      payee,
-      counterpartyIban,
-      categoryId,
-    }),
+  learn: (data: import('@shared/schema').InsertScopedLearning) =>
+    tauriInvoke<void>('learn_categorization', { data }),
 
   // Forget a learned payee combination
   forget: (payee: string | null, counterpartyIban: string | null) =>

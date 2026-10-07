@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CircleAlert, RefreshCw } from 'lucide-react';
 import type {
@@ -24,9 +24,11 @@ import {
 } from '@/components/ui/table';
 import { CategoryPick } from '@/components/common/CategoryPick';
 import { cn } from '@/lib/utils';
-import { PREVIEW_COLLAPSED_ROWS, formatPreviewAmount, summarizePreview } from './import-config';
+import { formatPreviewAmount, summarizePreview } from './import-config';
 
 interface PreviewStepProps {
+  page: number;
+  onPageChange: (page: number) => void;
   /** Mapping is complete, so there is something to preview. */
   ready: boolean;
   preview: CsvImportPreview | undefined;
@@ -55,6 +57,8 @@ interface PreviewStepProps {
  * imported anyway. The first twelve rows, "Zobrazit vše" for the rest.
  */
 export function PreviewStep({
+  page,
+  onPageChange,
   ready,
   preview,
   error,
@@ -72,7 +76,6 @@ export function PreviewStep({
   const { t } = useTranslation('bank_accounts');
   const { t: tc } = useTranslation('common');
   const fmt = useFormat();
-  const [showAll, setShowAll] = useState(false);
   const forced = useMemo(() => new Set(importAnywayLines), [importAnywayLines]);
   const overrideByLine = useMemo(
     () => new Map(overrides.map((o) => [o.line, o.categoryId])),
@@ -106,9 +109,11 @@ export function PreviewStep({
   }
 
   const summary = summarizePreview(preview, importAnywayLines);
-  const rows = showAll ? preview.rows : preview.rows.slice(0, PREVIEW_COLLAPSED_ROWS);
+  const rows = preview.rows;
   const willWrite = (row: CsvPreviewRow) =>
-    row.status === 'ok' || (row.status === 'duplicate' && forced.has(row.line));
+    row.status === 'ok' ||
+    row.status === 'promoted' ||
+    (row.status === 'duplicate' && row.canImportAnyway && forced.has(row.line));
 
   const categoryCell = (row: CsvPreviewRow) => {
     if (!willWrite(row)) return <span className="text-ink-4">—</span>;
@@ -200,7 +205,8 @@ export function PreviewStep({
       <div className="mb-3.5 flex flex-wrap items-center gap-x-[22px] gap-y-2 rounded-r3 bg-well px-3.5 py-3 text-table text-ink-2">
         <span>
           <b className="font-650 text-ink">
-            {t('csvImport.preview.willImport', { count: summary.willImport })}
+            {t('csvImport.preview.willImport', { count: summary.willImport })} ·{' '}
+            {t('readiness.promotions', { count: summary.willPromote })}
           </b>
         </span>
         <span>
@@ -228,10 +234,38 @@ export function PreviewStep({
         )}
       </div>
 
+      <div className="flex items-center justify-between gap-6 border border-line mb-3 rounded-r3 px-3.5 py-2.5 text-micro font-500 text-ink-4">
+        <span>
+          {t('readiness.pageCount', {
+            shown: rows.length,
+            total: preview.totalRows,
+            page: page + 1,
+          })}
+        </span>
+        <div className="flex gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={page === 0 || isUpdating}
+            onClick={() => onPageChange(page - 1)}
+          >
+            {t('readiness.previous')}
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={(page + 1) * 100 >= preview.totalRows || isUpdating}
+            onClick={() => onPageChange(page + 1)}
+          >
+            {t('readiness.next')}
+          </Button>
+        </div>
+      </div>
+
       {preview.rows.length === 0 ? (
         <p className="py-8 text-center text-table text-ink-3">{t('csvImport.preview.noRows')}</p>
       ) : (
-        <div className="overflow-hidden rounded-r3 border border-line">
+        <div className="max-h-[38vh] overflow-y-auto rounded-r3 border border-line">
           <Table>
             <TableHeader>
               <TableRow>
@@ -286,25 +320,6 @@ export function PreviewStep({
               })}
             </TableBody>
           </Table>
-          <div className="flex items-center justify-between gap-6 border-t border-line px-3.5 py-2.5 text-micro font-500 text-ink-4">
-            <span>
-              {showAll || preview.rows.length <= PREVIEW_COLLAPSED_ROWS
-                ? t('csvImport.preview.footerAll', { total: preview.totalRows })
-                : t('csvImport.preview.footer', {
-                    shown: rows.length,
-                    total: preview.totalRows,
-                  })}
-            </span>
-            {preview.rows.length > PREVIEW_COLLAPSED_ROWS && (
-              <button
-                type="button"
-                className="font-600 text-ink-3 underline-offset-[3px] hover:text-ink hover:underline"
-                onClick={() => setShowAll((v) => !v)}
-              >
-                {showAll ? t('csvImport.preview.showLess') : t('csvImport.preview.showAll')}
-              </button>
-            )}
-          </div>
         </div>
       )}
     </div>

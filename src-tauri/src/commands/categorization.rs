@@ -48,7 +48,7 @@ pub async fn categorize_batch(
 /// Learn from user's manual categorization with hierarchical matching
 ///
 /// This stores the payee/iban → category mapping for instant future lookups
-/// AND persists it to the database for future app sessions.
+/// AND persists it to the database for future app sessions. New rules are scoped.
 ///
 /// Hierarchical priority:
 /// - iban = IBAN default (catches any payee for this iban)
@@ -57,28 +57,10 @@ pub async fn categorize_batch(
 pub async fn learn_categorization(
     state: State<'_, CategorizationState>,
     db: State<'_, Database>,
-    payee: Option<String>,
-    counterparty_iban: Option<String>,
-    category_id: String,
-) -> Result<(), String> {
-    db.with_conn(|conn| {
-        crate::services::categorization::learn::learn_payee(
-            conn,
-            &state.0,
-            payee.as_deref(),
-            counterparty_iban.as_deref(),
-            &category_id,
-        )
-    })
-    .map_err(|e| format!("Failed to persist learned payee: {}", e))?;
-
-    log::debug!(
-        "Learned and persisted: payee={:?}, iban={:?} → {}",
-        payee,
-        counterparty_iban,
-        category_id
-    );
-    Ok(())
+    data: crate::models::categorization::InsertScopedLearning,
+) -> crate::error::Result<()> {
+    data.validate()?;
+    db.with_conn(|conn| learn::learn_scoped(conn, &state.0, &data))
 }
 
 /// Accept a pending MCP category suggestion on a transaction.
@@ -86,52 +68,13 @@ pub async fn learn_categorization(
 /// Atomically promotes `suggested_category_id` to `category_id` (stamping
 /// `categorization_source = 'mcp'` — the category is LLM-derived and
 /// human-confirmed), clears the suggestion, and teaches the learned-payee
-/// layer from the row's counterparty. Returns the accepted category id.
+/// layer only through a separate explicit opt-in. Returns the accepted category id.
 #[tauri::command]
 pub async fn accept_category_suggestion(
-    state: State<'_, CategorizationState>,
     db: State<'_, Database>,
     transaction_id: String,
-) -> Result<String, String> {
-    let accepted = db
-        .with_conn(|conn| {
-            let row: Option<(String, Option<String>, Option<String>)> = conn
-                .query_row(
-                    "SELECT suggested_category_id, counterparty_name, counterparty_iban
-                     FROM bank_transactions
-                     WHERE id = ?1 AND suggested_category_id IS NOT NULL",
-                    [&transaction_id],
-                    |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
-                )
-                .optional()?;
-
-            let Some((category_id, payee, iban)) = row else {
-                return Ok(None);
-            };
-
-            conn.execute(
-                "UPDATE bank_transactions
-                 SET category_id = suggested_category_id,
-                     categorization_source = 'mcp',
-                     suggested_category_id = NULL
-                 WHERE id = ?1",
-                [&transaction_id],
-            )?;
-
-            // Confirming is the human correction that trains the engine
-            // (spec 2026-08-27 D5).
-            crate::services::categorization::learn::learn_payee(
-                conn,
-                &state.0,
-                payee.as_deref(),
-                iban.as_deref(),
-                &category_id,
-            )?;
-            Ok(Some(category_id))
-        })
-        .map_err(|e| format!("Failed to accept suggestion: {}", e))?;
-
-    accepted.ok_or_else(|| "No pending suggestion on this transaction".to_string())
+) -> crate::error::Result<String> {
+    db.with_conn(|conn| learn::accept_suggestion(conn, &transaction_id))
 }
 
 /// Decline a pending MCP category suggestion (clears it, learns nothing).
@@ -472,20 +415,7 @@ pub async fn load_rule_packs_config(
 
 // ==================== Learned Payees Management ====================
 
-/// Learned payee entry for display in the management UI
-#[derive(Debug, serde::Serialize, specta::Type)]
-#[serde(rename_all = "camelCase")]
-pub struct LearnedPayeeEntry {
-    pub id: String,
-    /// Rule type: "payee_default", "iban_only_default"
-    pub rule_type: String,
-    pub normalized_payee: Option<String>,
-    pub original_payee: Option<String>,
-    pub counterparty_iban: Option<String>,
-    pub category_id: String,
-    pub created_at: i64,
-    pub updated_at: i64,
-}
+use crate::models::categorization::LearnedPayeeEntry;
 
 /// Get all learned payees for management UI
 ///
@@ -494,32 +424,8 @@ pub struct LearnedPayeeEntry {
 #[tauri::command]
 pub async fn get_learned_payees_list(
     db: State<'_, Database>,
-) -> Result<Vec<LearnedPayeeEntry>, String> {
-    db.with_conn(learn::list_learned_payees)
-        .map(|rows| {
-            rows.into_iter()
-                .map(|row| {
-                    // Determine rule type based on which fields are present
-                    let rule_type = match (&row.normalized_payee, &row.counterparty_iban) {
-                        (Some(_), Some(_)) => "iban_default",
-                        (Some(_), None) => "payee_default",
-                        (None, Some(_)) => "iban_only_default",
-                        (None, None) => "unknown",
-                    };
-                    LearnedPayeeEntry {
-                        id: row.id,
-                        rule_type: rule_type.to_string(),
-                        normalized_payee: row.normalized_payee,
-                        original_payee: row.original_payee,
-                        counterparty_iban: row.counterparty_iban,
-                        category_id: row.category_id,
-                        created_at: row.created_at,
-                        updated_at: row.updated_at,
-                    }
-                })
-                .collect()
-        })
-        .map_err(|e| format!("Failed to load learned payees: {}", e))
+) -> crate::error::Result<Vec<LearnedPayeeEntry>> {
+    db.with_conn(learn::list_entries)
 }
 
 /// Delete a learned payee by ID
@@ -531,16 +437,12 @@ pub async fn delete_learned_payee(
     state: State<'_, CategorizationState>,
     db: State<'_, Database>,
     id: String,
-) -> Result<(), String> {
-    let forgotten = db
-        .with_conn(|conn| learn::delete_learned_payee(conn, &id))
-        .map_err(|e| format!("Failed to delete payee: {}", e))?;
+) -> crate::error::Result<()> {
+    let forgotten = db.with_conn(|conn| learn::delete_learned_payee(conn, &id))?;
 
     if let Some(key) = forgotten {
         // Remove from in-memory engine
-        state
-            .0
-            .forget_payee(key.payee.as_deref(), key.iban.as_deref());
+        key.forget(&state.0);
         log::info!("Deleted learned payee: {}", id);
     }
 
@@ -553,18 +455,14 @@ pub async fn delete_learned_payees_bulk(
     state: State<'_, CategorizationState>,
     db: State<'_, Database>,
     ids: Vec<String>,
-) -> Result<usize, String> {
+) -> crate::error::Result<usize> {
     let mut count = 0;
     for id in &ids {
         // A listed rule stands for every stored row with the same normalized
         // key, so an id deleted by an earlier iteration is simply unknown now.
-        let forgotten = db
-            .with_conn(|conn| learn::delete_learned_payee(conn, id))
-            .map_err(|e| format!("Failed to delete payees: {}", e))?;
+        let forgotten = db.with_conn(|conn| learn::delete_learned_payee(conn, id))?;
         if let Some(key) = forgotten {
-            state
-                .0
-                .forget_payee(key.payee.as_deref(), key.iban.as_deref());
+            key.forget(&state.0);
             count += 1;
         }
     }
@@ -580,16 +478,12 @@ pub async fn update_learned_payee_category(
     db: State<'_, Database>,
     id: String,
     category_id: String,
-) -> Result<(), String> {
-    let key = db
-        .with_conn(|conn| learn::set_learned_payee_category(conn, &id, &category_id))
-        .map_err(|e| format!("Failed to update payee category: {}", e))?;
+) -> crate::error::Result<()> {
+    let key = db.with_conn(|conn| learn::set_learned_payee_category(conn, &id, &category_id))?;
 
     if let Some(key) = key {
         // Update in-memory engine
-        state
-            .0
-            .learn_from_user(key.payee.as_deref(), key.iban.as_deref(), &category_id);
+        key.teach(&state.0, &category_id);
         log::info!("Updated learned payee {} to category {}", id, category_id);
     }
 

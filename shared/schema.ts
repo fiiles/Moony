@@ -623,6 +623,15 @@ export interface CryptoInvestmentWithPrice extends CryptoInvestment {
 }
 
 // Cashflow Types
+export interface InsertCashflowItem {
+  name: string;
+  amount: string;
+  currency?: string | null;
+  frequency: 'monthly' | 'yearly';
+  itemType: 'income' | 'expense';
+  category: string;
+  replacementSourceId?: string | null;
+}
 export interface CashflowItem {
   replacementSourceId: string | null;
   id: string;
@@ -930,6 +939,8 @@ export interface CategoryUsage {
 }
 
 export interface TransactionFilters {
+  sortBy?: 'date' | 'description' | 'category' | 'amount';
+  ascending?: boolean;
   dateFrom?: number;
   dateTo?: number;
   categoryId?: string;
@@ -988,14 +999,26 @@ export interface CategorizationStats {
   learnedPayees: number;
 }
 
+export interface InsertScopedLearning {
+  bankAccountId: string;
+  isCredit: boolean;
+  payee: string | null;
+  counterpartyIban: string | null;
+  counterpartyBankCode: string | null;
+  counterpartyCountry: string | null;
+  categoryId: string;
+}
+
 /** Learned payee entry for the management UI */
 export interface LearnedPayeeEntry {
+  bankAccountId: string | null;
+  isCredit: boolean | null;
   id: string;
   /** Rule type: "payee_default", "iban_default", "iban_only_default" */
   ruleType: string;
-  normalizedPayee?: string;
-  originalPayee?: string;
-  counterpartyIban?: string;
+  normalizedPayee: string | null;
+  originalPayee: string | null;
+  counterpartyIban: string | null;
   categoryId: string;
   createdAt: number;
   updatedAt: number;

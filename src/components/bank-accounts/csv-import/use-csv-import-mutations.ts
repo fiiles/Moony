@@ -1,5 +1,6 @@
+import { refreshMoneyFlows } from '@/lib/money-flow-refresh';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { bankAccountsApi, categorizationApi, portfolioApi } from '@/lib/tauri-api';
+import { bankAccountsApi, categorizationApi } from '@/lib/tauri-api';
 import type { CsvImportConfigInput } from '@shared/schema';
 
 /**
@@ -15,17 +16,8 @@ export function useCsvImportMutation(accountId: string) {
     mutationFn: ({ filePath, config }: { filePath: string; config: CsvImportConfigInput }) =>
       bankAccountsApi.importCsvTransactions(accountId, filePath, config),
     onSuccess: async () => {
-      queryClient.invalidateQueries({ queryKey: ['bank-transactions', accountId] });
-      queryClient.invalidateQueries({ queryKey: ['bank-transactions', accountId, 'any'] });
-      queryClient.invalidateQueries({ queryKey: ['import-batches', accountId] });
-      queryClient.invalidateQueries({ queryKey: ['bank-account', accountId] });
-      queryClient.invalidateQueries({ queryKey: ['portfolio-metrics'] });
-      queryClient.invalidateQueries({ queryKey: ['cashflow-report'] });
-      queryClient.invalidateQueries({ queryKey: ['budgeting-report'] });
-      // Their duplicate verdicts are out of date now: the rows are in the database.
+      await refreshMoneyFlows(queryClient);
       queryClient.removeQueries({ queryKey: ['csv-import-preview'] });
-      await portfolioApi.recordSnapshot();
-      await queryClient.invalidateQueries({ queryKey: ['portfolio-history'] });
     },
   });
 }
@@ -44,9 +36,8 @@ export function useEnableRulePack() {
       const enabled = packs.filter((pack) => pack.enabled).map((pack) => pack.packId);
       await categorizationApi.setRulePacksEnabled([...new Set([...enabled, packId])]);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['rulePacks'] });
-      queryClient.invalidateQueries({ queryKey: ['packRules'] });
+    onSuccess: async () => {
+      await refreshMoneyFlows(queryClient);
     },
   });
 }
@@ -57,14 +48,7 @@ export function useBalanceAnchor(accountId: string) {
     mutationFn: (data: import('@shared/schema').InsertBalanceAnchor) =>
       bankAccountsApi.setBalanceAnchor(accountId, data),
     onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['bank-accounts'] }),
-        queryClient.invalidateQueries({ queryKey: ['bank-account', accountId] }),
-        queryClient.invalidateQueries({ queryKey: ['portfolio-metrics'] }),
-        queryClient.invalidateQueries({ queryKey: ['cashflow-report'] }),
-      ]);
-      await portfolioApi.recordSnapshot();
-      await queryClient.invalidateQueries({ queryKey: ['portfolio-history'] });
+      await refreshMoneyFlows(queryClient);
     },
   });
 }

@@ -223,5 +223,13 @@
     "cat_taxes": "Taxes",
     "cat_other": "Other",
     "uncategorized": "Uncategorized"
+  },
+  "readiness": {
+    "effectiveMonth": "Effective month",
+    "effectiveMonthHelp": "Changes default to this month. Earlier report limits are retained.",
+    "observedAverage": "Observed monthly average: {{amount}} from {{count}} completed months. Statement completeness is not proven.",
+    "limitUnavailable": "No historical limit or its FX is unavailable",
+    "absoluteShare": "Share of absolute group amounts",
+    "signedUnbudgetedTotal": "Net unbudgeted spending: {{amount}}"
   }
 }

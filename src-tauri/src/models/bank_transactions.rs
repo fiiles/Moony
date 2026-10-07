@@ -389,6 +389,10 @@ pub struct BankTransactionWithCategory {
 /// Filters for querying transactions
 #[derive(Debug, Clone, Default, Deserialize, Type)]
 pub struct TransactionFilters {
+    #[serde(rename = "sortBy")]
+    pub sort_by: Option<String>,
+    #[serde(rename = "ascending")]
+    pub ascending: Option<bool>,
     #[serde(rename = "dateFrom")]
     pub date_from: Option<i64>,
     #[serde(rename = "dateTo")]

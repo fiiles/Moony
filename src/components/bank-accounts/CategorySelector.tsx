@@ -1,3 +1,7 @@
+import { completeAccountIdentifier } from '@/utils/iban-utils';
+import { useQueryClient } from '@tanstack/react-query';
+import { refreshMoneyFlows } from '@/lib/money-flow-refresh';
+import { translateApiError } from '@/lib/translate-api-error';
 /**
  * CategorySelector - Category dropdown with learning and suggestion support
  *
@@ -39,8 +43,12 @@ interface CategorySelectorProps {
   suggestedCategoryId?: string | null;
   counterpartyName?: string | null;
   counterpartyIban?: string | null;
+  bankAccountId?: string;
+  isCredit?: boolean;
+  counterpartyBankCode?: string | null;
+  counterpartyCountry?: string | null;
   categories: TransactionCategory[];
-  onCategoryChange: (categoryId: string | null) => void;
+  onCategoryChange: (categoryId: string | null) => void | Promise<void>;
   onAcceptSuggestion?: () => void;
   onDeclineSuggestion?: () => void;
   disabled?: boolean;
@@ -81,6 +89,10 @@ export function CategorySelector({
   counterpartyName,
   counterpartyIban,
   categories,
+  bankAccountId,
+  isCredit,
+  counterpartyBankCode,
+  counterpartyCountry,
   onCategoryChange,
   onAcceptSuggestion,
   onDeclineSuggestion,
@@ -91,7 +103,10 @@ export function CategorySelector({
   onCreateRule,
 }: CategorySelectorProps) {
   const { t } = useTranslation('bank_accounts');
+  const { t: tc } = useTranslation('common');
+  const queryClient = useQueryClient();
   const categoryName = useCategoryName();
+  const [isSaving, setIsSaving] = useState(false);
   const [open, setOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   // Whether the "Remember for future" toggle was off when "+ New category" was clicked.
@@ -114,10 +129,17 @@ export function CategorySelector({
   };
 
   const handleSelect = async (categoryId: string, skipLearning: boolean = false) => {
-    setOpen(false);
     if (categoryId === currentCategoryId) return;
 
-    onCategoryChange(categoryId);
+    setIsSaving(true);
+    try {
+      await onCategoryChange(categoryId);
+    } catch {
+      setIsSaving(false);
+      return;
+    }
+    setIsSaving(false);
+    setOpen(false);
 
     // Skip learning if explicitly requested (one-time categorization)
     // OR if learning is disabled for this selector
@@ -125,22 +147,29 @@ export function CategorySelector({
       return;
     }
 
-    // Learn from counterparty details with hierarchical matching:
-    // - payee + iban = iban default
-    // - payee only (null iban) = payee default
+    // The new rule is limited to this own account, direction and reliable identity.
     const payee =
       counterpartyName && counterpartyName.trim().length > 2 ? counterpartyName.trim() : null;
     const iban =
       counterpartyIban && counterpartyIban.trim().length > 5 ? counterpartyIban.trim() : null;
 
     // Only learn if we have at least payee or iban
-    if (payee || iban) {
+    if ((payee || iban) && bankAccountId && isCredit !== undefined) {
       try {
-        await categorizationApi.learn(payee, iban, categoryId);
+        await categorizationApi.learn({
+          payee,
+          counterpartyIban: iban,
+          categoryId,
+          bankAccountId,
+          isCredit,
+          counterpartyBankCode: counterpartyBankCode ?? null,
+          counterpartyCountry: counterpartyCountry ?? null,
+        });
+        await refreshMoneyFlows(queryClient);
         const learnKey = payee || iban || 'unknown';
         toast(t('categorization.learned'), { description: `"${learnKey}"` });
       } catch (e) {
-        console.error('Failed to learn categorization:', e);
+        toast.error(tc('status.error'), { description: translateApiError(e as Error, tc) });
       }
     }
   };
@@ -162,17 +191,25 @@ export function CategorySelector({
                 variant="ghost"
                 size="sm"
                 className="h-7 px-2 text-xs font-medium justify-start gap-1.5 hover:bg-well"
-                disabled={disabled}
+                disabled={disabled || isSaving}
               >
                 <CategoryIcon iconName={currentCategory.iconName} className="h-3.5 w-3.5" />
                 <span className="truncate">{categoryName(currentCategory)}</span>
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-[220px] p-0" align="start">
+            <PopoverContent className="w-[300px] p-0" align="start">
               <CategoryCommandList
                 categories={categories}
                 selectedId={currentCategoryId}
                 onSelect={handleSelect}
+                busy={isSaving}
+                scopeLabel={t('readiness.specificLearningScope', {
+                  direction: t(isCredit ? 'transaction.credit' : 'transaction.debit'),
+                  identity:
+                    completeAccountIdentifier(counterpartyIban, null, counterpartyBankCode) ||
+                    counterpartyName ||
+                    '—',
+                })}
                 enableLearning={enableLearning}
                 onCreate={handleRequestCreate}
               />
@@ -190,7 +227,7 @@ export function CategorySelector({
               size="sm"
               className="h-7 gap-1.5 border-dashed px-2 text-xs font-medium"
               onClick={() => onAcceptSuggestion?.()}
-              disabled={disabled}
+              disabled={disabled || isSaving}
               title={t('categorization.acceptSuggestion', 'Accept suggestion')}
             >
               <Sparkles className="h-3 w-3 text-ink-3" />
@@ -203,7 +240,7 @@ export function CategorySelector({
                 size="icon-sm"
                 className="text-ink-3 hover:text-loss"
                 onClick={handleDeclineSuggestion}
-                disabled={disabled}
+                disabled={disabled || isSaving}
                 title={t('categorization.declineSuggestion', 'Decline suggestion')}
               >
                 <X className="h-3.5 w-3.5" />
@@ -222,7 +259,7 @@ export function CategorySelector({
                 variant="ghost"
                 size="sm"
                 className="h-7 px-2 text-xs font-normal text-ink-3 hover:text-ink hover:bg-well gap-1.5"
-                disabled={disabled}
+                disabled={disabled || isSaving}
                 aria-label={
                   rowLabel
                     ? t('categorization.setCategoryFor', { description: rowLabel })
@@ -233,11 +270,19 @@ export function CategorySelector({
                 <span>{t('categorization.selectCategory', 'Select...')}</span>
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-[220px] p-0" align="start">
+            <PopoverContent className="w-[300px] p-0" align="start">
               <CategoryCommandList
                 categories={categories}
                 selectedId={currentCategoryId}
                 onSelect={handleSelect}
+                busy={isSaving}
+                scopeLabel={t('readiness.specificLearningScope', {
+                  direction: t(isCredit ? 'transaction.credit' : 'transaction.debit'),
+                  identity:
+                    completeAccountIdentifier(counterpartyIban, null, counterpartyBankCode) ||
+                    counterpartyName ||
+                    '—',
+                })}
                 enableLearning={enableLearning}
                 onCreate={handleRequestCreate}
               />
@@ -253,7 +298,7 @@ export function CategorySelector({
                   ? t('categorization.createRuleFor', { description: rowLabel })
                   : t('categorization.createRule')
               }
-              disabled={disabled}
+              disabled={disabled || isSaving}
               onClick={onCreateRule}
             >
               <ListPlus />
@@ -272,7 +317,7 @@ export function CategorySelector({
             role="combobox"
             aria-expanded={open}
             className="w-[200px] justify-between"
-            disabled={disabled}
+            disabled={disabled || isSaving}
           >
             {currentCategory ? (
               <span className="flex items-center gap-2">
@@ -292,11 +337,19 @@ export function CategorySelector({
             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-[220px] p-0">
+        <PopoverContent className="w-[300px] p-0">
           <CategoryCommandList
             categories={categories}
             selectedId={currentCategoryId}
             onSelect={handleSelect}
+            busy={isSaving}
+            scopeLabel={t('readiness.specificLearningScope', {
+              direction: t(isCredit ? 'transaction.credit' : 'transaction.debit'),
+              identity:
+                completeAccountIdentifier(counterpartyIban, null, counterpartyBankCode) ||
+                counterpartyName ||
+                '—',
+            })}
             enableLearning={enableLearning}
             onCreate={handleRequestCreate}
           />
@@ -327,18 +380,22 @@ function CategoryCommandList({
   selectedId,
   onSelect,
   enableLearning = true,
+  scopeLabel,
+  busy = false,
   onCreate,
 }: {
   categories: TransactionCategory[];
   selectedId?: string | null;
   onSelect: (id: string, skipLearning: boolean) => void;
   enableLearning?: boolean;
+  scopeLabel: string;
+  busy?: boolean;
   /** Called with `skipLearning` when "+ New category" is clicked. */
   onCreate: (skipLearning: boolean) => void;
 }) {
   const { t } = useTranslation('bank_accounts');
   const categoryName = useCategoryName();
-  const [rememberForFuture, setRememberForFuture] = useState(true);
+  const [rememberForFuture, setRememberForFuture] = useState(false);
 
   // Sort categories by sortOrder
   const sortedCategories = useMemo(() => {
@@ -356,6 +413,7 @@ function CategoryCommandList({
           {sortedCategories.map((category) => (
             <CommandItem
               key={category.id}
+              disabled={busy}
               value={categoryName(category)}
               onSelect={() => onSelect(category.id, !rememberForFuture)}
               className="flex items-center gap-2 py-2"
@@ -378,6 +436,7 @@ function CategoryCommandList({
       {/* Always visible, outside the scrolling list */}
       <button
         type="button"
+        disabled={busy}
         onClick={() => onCreate(!rememberForFuture)}
         className="flex w-full items-center gap-2 border-t px-3 py-2 text-sm text-ink-3 transition-colors hover:bg-well hover:text-ink"
       >
@@ -391,7 +450,8 @@ function CategoryCommandList({
             <div className="flex items-center gap-2">
               <Brain className="h-3.5 w-3.5 text-ink-3" />
               <Label htmlFor="remember-toggle" className="text-xs text-ink-3 cursor-pointer">
-                {t('categorization.rememberForFuture', 'Remember for future')}
+                {t('categorization.rememberForFuture')}
+                <small className="block font-400">{scopeLabel}</small>
               </Label>
             </div>
             <Switch

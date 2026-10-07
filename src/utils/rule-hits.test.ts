@@ -24,6 +24,9 @@ const custom: CustomRule[] = [
 ];
 const learned: LearnedPayeeEntry[] = [
   {
+    bankAccountId: null,
+    isCredit: null,
+    counterpartyIban: null,
     id: 'l1',
     ruleType: 'payee_default',
     normalizedPayee: 'albert',

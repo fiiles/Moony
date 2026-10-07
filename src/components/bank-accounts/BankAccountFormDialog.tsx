@@ -219,7 +219,7 @@ export function BankAccountFormDialog({
   // Validation keys live in `common.json` (`validation.*`), like the zod form messages.
   const nameError = !name.trim() ? tc('validation.accountNameRequired') : null;
   const balanceError =
-    balance.trim() === '' || Number.isNaN(Number(balance))
+    balance.trim() === '' || !Number.isFinite(Number(balance))
       ? tc('validation.balanceRequired')
       : null;
 
@@ -234,7 +234,7 @@ export function BankAccountFormDialog({
         {
           id: account.id,
           name: name.trim(),
-          balance,
+          ...(balance !== account.balance ? { balance } : {}),
           currency: selectedCurrency,
           accountType,
           iban: iban || undefined,

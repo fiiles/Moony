@@ -207,6 +207,24 @@ fn count_rule(rule: &CategorizationRule, rows: &[TxRow]) -> RuleHitCount {
 /// matches on the IBAN alone, a payee rule on the payee key (or its legacy
 /// punctuation-stripped form).
 fn learned_matches(row: &learn::LearnedPayeeRow, tx: &TransactionInput) -> bool {
+    if let (Some(account), Some(credit)) = (row.bank_account_id.as_deref(), row.is_credit) {
+        if tx.bank_account_id.as_deref() != Some(account) || tx.is_credit != credit {
+            return false;
+        }
+        if let Some(identity) = row.counterparty_iban.as_deref() {
+            return tx
+                .counterparty_iban
+                .as_deref()
+                .map(|id| {
+                    crate::services::financial_semantics::canonical_structured_identifier(
+                        id,
+                        tx.counterparty_bank_code.as_deref(),
+                        tx.counterparty_country.as_deref(),
+                    ) == identity
+                })
+                .unwrap_or(false);
+        }
+    }
     if let Some(ref iban) = row.counterparty_iban {
         return tx
             .counterparty_iban
@@ -390,6 +408,7 @@ mod tests {
                 is_system INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL DEFAULT 0, iban_pattern TEXT
             );
             CREATE TABLE learned_payees (
+                bank_account_id TEXT, is_credit INTEGER,
                 id TEXT PRIMARY KEY, normalized_payee TEXT, original_payee TEXT, counterparty_iban TEXT,
                 category_id TEXT NOT NULL, created_at INTEGER NOT NULL DEFAULT 0, updated_at INTEGER NOT NULL DEFAULT 0
             );

@@ -1,3 +1,12 @@
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { useFormat } from '@/lib/use-format';
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -54,6 +63,8 @@ export function NextSteps({
   const queryClient = useQueryClient();
   const updateBalance = useBalanceAnchor(accountId);
   const enableRulePack = useEnableRulePack();
+  const fmt = useFormat();
+  const [confirmBalance, setConfirmBalance] = useState(false);
   const [done, setDone] = useState<ReadonlySet<NextStepId>>(new Set());
 
   const markDone = (id: NextStepId) => setDone((current) => new Set(current).add(id));
@@ -65,6 +76,12 @@ export function NextSteps({
   });
   // A step that was just carried out stays on screen, marked done, even though
   // it no longer applies (the balance now matches, the pack is enabled).
+  const statement = result.statementBalance;
+  const balanceBlocked =
+    !statement ||
+    !account ||
+    statement.currency !== account.currency ||
+    (account.balanceAsOf != null && statement.asOf < account.balanceAsOf);
   const visible = STEP_ORDER.filter((id) => suggested.includes(id) || done.has(id));
   if (visible.length === 0) return null;
 
@@ -97,13 +114,16 @@ export function NextSteps({
         currency: statement.currency,
         asOf: statement.asOf,
         sourceBatchId: statement.batchId,
+        confirmUnknownAsOf: account.balanceAsOf == null,
       },
       {
         onSuccess: () => {
           markDone('balance');
+          setConfirmBalance(false);
           queryClient.invalidateQueries({ queryKey: ['bank-account', accountId] });
         },
-        onError: (error) => toast.error(tc('status.error'), { description: error.message }),
+        onError: (error) =>
+          toast.error(tc('status.error'), { description: translateApiError(error, tc) }),
       }
     );
   };
@@ -130,22 +150,50 @@ export function NextSteps({
     },
     balance: {
       label: t('csvImport.next.setBalance', {
-        balance: formatBalance(result.lastBalance ?? '0', account?.currency, locale),
+        balance: formatBalance(statement?.amount ?? '0', statement?.currency, locale),
       }),
-      hint: account
-        ? t('csvImport.nextRows.setBalanceHint', {
-            current: formatBalance(account.balance, account.currency, locale),
-          })
-        : undefined,
+      hint: balanceBlocked
+        ? t('readiness.balanceBlocked')
+        : t('readiness.statementAsOf', {
+            date: statement ? fmt.day(statement.asOf) : t('readiness.unknownDate'),
+          }),
       action: t('csvImport.nextRows.setBalanceAction'),
       primary: true,
       busy: updateBalance.isPending,
-      onClick: handleBalance,
+      onClick: () => !balanceBlocked && setConfirmBalance(true),
     },
   };
 
   return (
     <div>
+      <Dialog open={confirmBalance} onOpenChange={setConfirmBalance}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('readiness.confirmBalance')}</DialogTitle>
+            <DialogDescription>
+              {t('readiness.balanceConfirmDescription', {
+                amount: formatBalance(statement?.amount ?? '0', statement?.currency, locale),
+                date: statement ? fmt.day(statement.asOf) : t('readiness.unknownDate'),
+                currentDate: account?.balanceAsOf
+                  ? fmt.day(account.balanceAsOf)
+                  : t('readiness.unknownDate'),
+              })}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setConfirmBalance(false)}>
+              {tc('buttons.cancel')}
+            </Button>
+            <Button
+              disabled={balanceBlocked}
+              loading={updateBalance.isPending}
+              onClick={handleBalance}
+            >
+              {t('readiness.confirmBalance')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <h4 className="mb-1.5 text-caption font-700 text-ink-2">{t('csvImport.done.whatNext')}</h4>
       <ul className="m-0 list-none p-0">
         {visible.map((id) => {
@@ -175,7 +223,7 @@ export function NextSteps({
                   size="sm"
                   variant={row.primary ? 'default' : 'outline'}
                   loading={row.busy}
-                  disabled={row.busy}
+                  disabled={row.busy || (id === 'balance' && balanceBlocked)}
                   onClick={row.onClick}
                 >
                   {row.action}

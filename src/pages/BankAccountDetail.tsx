@@ -1,4 +1,15 @@
-import { useState, useMemo, useCallback, useEffect, useRef, Fragment } from 'react';
+import { ReportError } from '@/components/reports/ReportQualityNote';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
+import { refreshMoneyFlows } from '@/lib/money-flow-refresh';
+import { getCompleteBankHistory } from '@/lib/bank-history';
+import { nativeBookedTransactions } from '@/utils/money-flows';
+import { useState, useMemo, useEffect, useRef, Fragment } from 'react';
 import { useRoute, useLocation, useSearch } from 'wouter';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -8,7 +19,6 @@ import {
   ArrowDownLeft,
   ArrowUp,
   ArrowUpDown,
-  Bot,
   CalendarSearch,
   Ellipsis,
   History,
@@ -23,15 +33,21 @@ import {
   Upload,
   X,
 } from 'lucide-react';
-import type { BankTransaction, CsvImportResult, SavingsAccountZone } from '@shared/schema';
-import { convertToCzK, type CurrencyCode } from '@shared/currencies';
-import { bankAccountsApi, categorizationApi } from '@/lib/tauri-api';
+import type {
+  BankTransaction,
+  CsvImportResult,
+  SavingsAccountZone,
+  CsvImportBatch,
+  FlowKind,
+} from '@shared/schema';
+import { hasKnownRate, type CurrencyCode } from '@shared/currencies';
+import { bankAccountsApi, categorizationApi, cashflowApi } from '@/lib/tauri-api';
 import { useBankAccount } from '@/hooks/use-bank-accounts';
 import {
   useBankTransactionMutations,
   useBankAccountMutations,
 } from '@/hooks/use-bank-account-mutations';
-import { useCategorization, type CategorizationResult } from '@/hooks/useCategorization';
+import type { CategorizationResult } from '@shared/schema';
 import { useCategoryName } from '@/hooks/use-categories';
 import { useCurrency } from '@/lib/currency';
 import { useLanguage } from '@/i18n/I18nProvider';
@@ -49,7 +65,7 @@ import {
   type PeriodTimeframe,
 } from '@/utils/period';
 import { utcDayFloor } from '@/utils/chart-axis';
-import { isCzechIBAN, ibanToBBAN, formatAccountNumber } from '@/utils/iban-utils';
+import { completeAccountIdentifier } from '@/utils/iban-utils';
 import { formatAmountWithCode, formatAmountInCurrency } from '@/utils/format-amount';
 import {
   MOVEMENT_FLOOR_BASE,
@@ -68,7 +84,6 @@ import { ChartLegend } from '@/components/charts/ChartLegend';
 import TimePeriodSelector, { type Period } from '@/components/cashflow/TimePeriodSelector';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ConfirmDeleteDialog } from '@/components/common/ConfirmDeleteDialog';
-import { Alert, AlertActions, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -103,14 +118,7 @@ import { NativeBalance } from '@/components/bank-accounts/NativeBalance';
 import { CsvImportDialog } from '@/components/bank-accounts/CsvImportDialog';
 import { CategorySelector } from '@/components/bank-accounts/CategorySelector';
 import { newRuleHref } from '@/utils/rules-link';
-import {
-  MCP_CATEGORIZE_TIP_KEY,
-  MCP_CATEGORIZE_TIP_LEGACY_KEY,
-  dismissTip,
-  hasCategorizedManually,
-  isTipDismissed,
-  markCategorizedManually,
-} from '@/utils/tips';
+
 import { cn } from '@/lib/utils';
 
 type SortColumn = 'date' | 'description' | 'category' | 'amount';
@@ -129,15 +137,12 @@ export default function BankAccountDetail() {
   const { account, isLoading } = useBankAccount(accountId);
   const { deleteTransaction } = useBankTransactionMutations(accountId);
   const { updateAccount, deleteAccount } = useBankAccountMutations();
-  const { formatCurrency, formatCurrencyRaw, convert, currencyCode } = useCurrency();
+  const { convert } = useCurrency();
   const { getLocale } = useLanguage();
   const fmt = useFormat();
   const categoryName = useCategoryName();
   const queryClient = useQueryClient();
-  const { categorizeBatch, clearCache, isLoading: isCategorizingBatch } = useCategorization();
-  const [categorizationResults, setCategorizationResults] = useState<
-    Map<string, CategorizationResult>
-  >(new Map());
+  const [isCategorizingBatch, setIsCategorizingBatch] = useState(false);
 
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const deepLink = useMemo(() => new URLSearchParams(search), [search]);
@@ -145,7 +150,7 @@ export default function BankAccountDetail() {
   const [importHistoryOpen, setImportHistoryOpen] = useState(false);
   const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<BankTransaction | null>(null);
-  const [pendingUndo, setPendingUndo] = useState<{ id: string; count: number } | null>(null);
+  const [pendingUndo, setPendingUndo] = useState<CsvImportBatch | null>(null);
   const [hotEventId, setHotEventId] = useState<string | null>(null);
   const [chartPeriod, setChartPeriod] = useState<Period>('30D');
 
@@ -163,10 +168,13 @@ export default function BankAccountDetail() {
   const [kind, setKind] = useState<Kind>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>(linkedCategory ?? 'all');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [ledgerPage, setLedgerPage] = useState(0);
+  const [selectedTransaction, setSelectedTransaction] = useState<BankTransaction | null>(null);
   const [sortColumn, setSortColumn] = useState<SortColumn>('date');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
   const applyDatePreset = (preset: string) => {
+    setLedgerPage(0);
     const presets: Record<string, [PeriodTimeframe, number] | 'allTime'> = {
       thisMonth: ['monthly', 0],
       lastMonth: ['monthly', -1],
@@ -193,18 +201,41 @@ export default function BankAccountDetail() {
   };
 
   const handleDateChange = (type: 'from' | 'to', value: string) => {
+    setLedgerPage(0);
     if (type === 'from') setDateFrom(value);
     else setDateTo(value);
     setDatePreset('custom');
   };
 
   // Ledger transactions for the selected range
-  const { data: transactionsResult, isLoading: txLoading } = useQuery({
-    queryKey: ['bank-transactions', accountId, dateFrom, dateTo],
+  const {
+    data: transactionsResult,
+    isLoading: txLoading,
+    isError: txError,
+    refetch: retryTransactions,
+  } = useQuery({
+    queryKey: [
+      'bank-transactions',
+      accountId,
+      dateFrom,
+      dateTo,
+      kind,
+      categoryFilter,
+      searchQuery,
+      sortColumn,
+      sortDirection,
+      ledgerPage,
+    ],
     queryFn: () =>
       accountId
         ? bankAccountsApi.getTransactions(accountId, {
-            limit: 1000,
+            limit: 100,
+            offset: ledgerPage * 100,
+            categoryId: categoryFilter === 'all' ? undefined : categoryFilter,
+            txType: kind === 'all' ? undefined : kind === 'income' ? 'credit' : 'debit',
+            search: searchQuery.trim() || undefined,
+            sortBy: sortColumn,
+            ascending: sortDirection === 'asc',
             dateFrom: dateFrom ? utcDayStart(dateFrom) : undefined,
             dateTo: dateTo ? utcDayEnd(dateTo) : undefined,
           })
@@ -222,26 +253,32 @@ export default function BankAccountDetail() {
   // This month and last month, for the stats and the hero delta
   const thisMonth = getUtcPeriodRange('monthly', 0);
   const lastMonth = getUtcPeriodRange('monthly', -1);
-  const { data: thisMonthResult } = useQuery({
+  const {
+    data: thisMonthResult,
+    isError: thisMonthError,
+    refetch: retryThisMonth,
+  } = useQuery({
     queryKey: ['bank-transactions', accountId, 'month', thisMonth.start],
     queryFn: () =>
       accountId
-        ? bankAccountsApi.getTransactions(accountId, {
+        ? getCompleteBankHistory(accountId, {
             dateFrom: thisMonth.start,
             dateTo: thisMonth.end,
-            limit: 5000,
           })
         : null,
     enabled: !!accountId,
   });
-  const { data: lastMonthResult } = useQuery({
+  const {
+    data: lastMonthResult,
+    isError: lastMonthError,
+    refetch: retryLastMonth,
+  } = useQuery({
     queryKey: ['bank-transactions', accountId, 'month', lastMonth.start],
     queryFn: () =>
       accountId
-        ? bankAccountsApi.getTransactions(accountId, {
+        ? getCompleteBankHistory(accountId, {
             dateFrom: lastMonth.start,
             dateTo: lastMonth.end,
-            limit: 5000,
           })
         : null,
     enabled: !!accountId,
@@ -250,12 +287,13 @@ export default function BankAccountDetail() {
   // Transactions behind the balance chart (the chart span)
   const today = utcDayFloor(Date.now() / 1000);
   const chartFrom = chartPeriodStart(chartPeriod, today);
-  const { data: chartResult } = useQuery({
+  const {
+    data: chartResult,
+    isError: chartError,
+    refetch: retryChart,
+  } = useQuery({
     queryKey: ['bank-transactions', accountId, 'chart', chartFrom ?? 'all'],
-    queryFn: () =>
-      accountId
-        ? bankAccountsApi.getTransactions(accountId, { dateFrom: chartFrom, limit: 5000 })
-        : null,
+    queryFn: () => (accountId ? getCompleteBankHistory(accountId) : null),
     enabled: !!accountId,
   });
 
@@ -295,14 +333,9 @@ export default function BankAccountDetail() {
 
   const deleteBatchMutation = useMutation({
     mutationFn: (batchId: string) => bankAccountsApi.deleteImportBatch(batchId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['import-batches', accountId] });
-      queryClient.invalidateQueries({ queryKey: ['bank-transactions', accountId] });
-      queryClient.invalidateQueries({ queryKey: ['bank-account', accountId] });
-      queryClient.invalidateQueries({ queryKey: ['portfolio-metrics'] });
-      queryClient.invalidateQueries({ queryKey: ['cashflow-report'] });
-      queryClient.invalidateQueries({ queryKey: ['budgeting-report'] });
-      toast(t('importHistory.undone'));
+    onSuccess: async (count) => {
+      await refreshMoneyFlows(queryClient);
+      toast(t('readiness.batchDeleted', { count }));
       setPendingUndo(null);
     },
     onError: (error: Error) => {
@@ -312,123 +345,81 @@ export default function BankAccountDetail() {
 
   const transactions = useMemo(() => transactionsResult?.transactions || [], [transactionsResult]);
 
-  const getEffectiveCategory = useCallback(
-    (tx: BankTransaction) => {
-      const localResult = categorizationResults.get(tx.id);
-      if (localResult && localResult.type === 'Match') return localResult.data.categoryId;
-      return tx.categoryId;
-    },
-    [categorizationResults]
-  );
+  const getEffectiveCategory = (tx: BankTransaction) => tx.categoryId;
 
-  const filteredTransactions = useMemo(() => {
-    let filtered = transactions;
-    if (kind === 'income') filtered = filtered.filter((tx) => tx.type === 'credit');
-    else if (kind === 'outcome') filtered = filtered.filter((tx) => tx.type === 'debit');
+  const filteredTransactions = transactions;
 
-    if (categoryFilter === 'uncategorized') {
-      filtered = filtered.filter((tx) => !getEffectiveCategory(tx));
-    } else if (categoryFilter !== 'all') {
-      filtered = filtered.filter((tx) => getEffectiveCategory(tx) === categoryFilter);
-    }
-
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase().trim();
-      filtered = filtered.filter(
-        (tx) =>
-          (tx.counterpartyName || '').toLowerCase().includes(q) ||
-          (tx.description || '').toLowerCase().includes(q)
-      );
-    }
-
-    return [...filtered].sort((a, b) => {
-      let c = 0;
-      switch (sortColumn) {
-        case 'date':
-          c = a.bookingDate - b.bookingDate;
-          break;
-        case 'description':
-          c = (a.counterpartyName || a.description || '').localeCompare(
-            b.counterpartyName || b.description || ''
-          );
-          break;
-        case 'category':
-          c = (getEffectiveCategory(a) || '').localeCompare(getEffectiveCategory(b) || '');
-          break;
-        case 'amount':
-          c =
-            parseFloat(a.amount) * (a.type === 'credit' ? 1 : -1) -
-            parseFloat(b.amount) * (b.type === 'credit' ? 1 : -1);
-          break;
-      }
-      return sortDirection === 'asc' ? c : -c;
-    });
-  }, [
-    transactions,
-    kind,
-    categoryFilter,
-    searchQuery,
-    sortColumn,
-    sortDirection,
-    getEffectiveCategory,
-  ]);
-
+  const { data: effectiveFlows = [] } = useQuery({
+    queryKey: ['effective-transaction-flows', transactions.map((tx) => tx.id)],
+    queryFn: () => cashflowApi.getEffectiveFlows(transactions.map((tx) => tx.id)),
+    enabled: transactions.length > 0,
+  });
+  const flowById = new Map(effectiveFlows.map((flow) => [flow.id, flow]));
   // Account-currency amounts: transactions in another currency convert at today's rate
   const accountCurrency = (account?.currency || 'CZK') as CurrencyCode;
   const formatAccountAmount = (value: number) =>
     formatAmountInCurrency(value, accountCurrency, getLocale());
 
   const monthNow = useMemo(
-    () => summarizeFlow(thisMonthResult?.transactions ?? []),
-    [thisMonthResult]
+    () => summarizeFlow(thisMonthResult?.transactions ?? [], account?.currency),
+    [thisMonthResult, account?.currency]
   );
   const monthPrev = useMemo(
-    () => summarizeFlow(lastMonthResult?.transactions ?? []),
-    [lastMonthResult]
+    () => summarizeFlow(lastMonthResult?.transactions ?? [], account?.currency),
+    [lastMonthResult, account?.currency]
   );
 
   // Auto-categorize all uncategorized transactions of the loaded range
   const handleAutoCategorize = async () => {
-    clearCache();
     const uncategorized = transactions.filter((tx) => !getEffectiveCategory(tx));
     if (uncategorized.length === 0) return;
 
-    const results = await categorizeBatch(uncategorized);
-    const newResults = new Map(categorizationResults);
+    setIsCategorizingBatch(true);
+    let results: CategorizationResult[];
+    try {
+      results = await categorizationApi.categorizeBatch(
+        uncategorized.map((tx) => ({
+          id: tx.id,
+          description: tx.description ?? undefined,
+          counterparty: tx.counterpartyName ?? undefined,
+          counterpartyIban: tx.counterpartyIban ?? undefined,
+          counterpartyBankCode: tx.counterpartyBankCode ?? undefined,
+          counterpartyCountry: tx.counterpartyCountry ?? undefined,
+          amount: Number(tx.amount),
+          isCredit: tx.type === 'credit',
+          bankAccountId: tx.bankAccountId,
+        }))
+      );
+    } catch (error) {
+      toast.error(translateApiError(error as Error, tc));
+      setIsCategorizingBatch(false);
+      return;
+    }
     let matchCount = 0;
     const matchesToPersist: Array<{ txId: string; categoryId: string }> = [];
     uncategorized.forEach((tx, i) => {
       if (results[i] && results[i].type === 'Match') {
-        newResults.set(tx.id, results[i]);
         matchCount++;
         matchesToPersist.push({ txId: tx.id, categoryId: results[i].data.categoryId });
       }
     });
-    setCategorizationResults(newResults);
-
-    if (matchesToPersist.length > 0) {
-      try {
-        await Promise.all(
-          matchesToPersist.map(({ txId, categoryId }) =>
-            bankAccountsApi.updateTransactionCategory(txId, categoryId)
-          )
-        );
-        queryClient.invalidateQueries({ queryKey: ['bank-transactions', accountId] });
-      } catch (error) {
-        console.error('Failed to persist some categories:', error);
-      }
+    const writes = await Promise.allSettled(
+      matchesToPersist.map(async ({ txId, categoryId }) => {
+        await bankAccountsApi.updateTransactionCategory(txId, categoryId);
+        return { txId, categoryId };
+      })
+    );
+    const succeeded = writes.filter((write) => write.status === 'fulfilled').length;
+    const failed = writes.length - succeeded;
+    try {
+      if (succeeded) await refreshMoneyFlows(queryClient);
+    } catch (error) {
+      toast.error(translateApiError(error as Error, tc));
+    } finally {
+      setIsCategorizingBatch(false);
     }
-
-    if (matchCount > 0) {
-      toast(t('categorization.categorizeComplete'), {
-        description: t('categorization.categorizeResult', { matches: matchCount }),
-        duration: 5000,
-      });
-    } else {
-      toast.error(t('categorization.noMatches'), {
-        description: t('categorization.noMatchesDesc'),
-      });
-    }
+    toast(t('readiness.autoResult', { succeeded, failed }));
+    if (!matchCount) toast(t('categorization.noMatches'));
   };
 
   // The import dialog calls through a ref so it always runs the render with the new rows
@@ -452,32 +443,15 @@ export default function BankAccountDetail() {
         ? t('categorization.autoCategorizeAllDone')
         : null;
 
-  // the AI-assistant (MCP) hint stays out of the way until the user has
-  // categorized a transaction by hand; a dismissal is remembered for good.
-  const [mcpHintDismissed, setMcpHintDismissed] = useState(() =>
-    isTipDismissed(MCP_CATEGORIZE_TIP_KEY, MCP_CATEGORIZE_TIP_LEGACY_KEY)
-  );
-  const [categorizedManually, setCategorizedManually] = useState(hasCategorizedManually);
-  const dismissMcpHint = () => {
-    dismissTip(MCP_CATEGORIZE_TIP_KEY);
-    setMcpHintDismissed(true);
-  };
-
   const handleCategoryChange = async (txId: string, categoryId: string | null) => {
     if (!categoryId) return;
     try {
       await bankAccountsApi.updateTransactionCategory(txId, categoryId);
-      markCategorizedManually();
-      setCategorizedManually(true);
-      setCategorizationResults((prev) => {
-        const updated = new Map(prev);
-        updated.set(txId, { type: 'Match', data: { categoryId, source: { type: 'Manual' } } });
-        return updated;
-      });
-      queryClient.invalidateQueries({ queryKey: ['bank-transactions', accountId] });
+      await refreshMoneyFlows(queryClient);
     } catch (error) {
       console.error('Failed to update category:', error);
-      toast.error(t('messages.error'), { description: String(error) });
+      toast.error(t('messages.error'), { description: translateApiError(error as Error, tc) });
+      throw error;
     }
   };
 
@@ -485,7 +459,7 @@ export default function BankAccountDetail() {
     try {
       await categorizationApi.acceptSuggestion(txId);
       toast(t('categorization.suggestionAccepted'));
-      queryClient.invalidateQueries({ queryKey: ['bank-transactions', accountId] });
+      await refreshMoneyFlows(queryClient);
       queryClient.invalidateQueries({ queryKey: ['budgeting-report'] });
       queryClient.invalidateQueries({ queryKey: ['cashflow-report'] });
       queryClient.invalidateQueries({ queryKey: ['learnedPayees'] });
@@ -498,7 +472,7 @@ export default function BankAccountDetail() {
   const handleDeclineSuggestion = async (txId: string) => {
     try {
       await categorizationApi.declineSuggestion(txId);
-      queryClient.invalidateQueries({ queryKey: ['bank-transactions', accountId] });
+      await refreshMoneyFlows(queryClient);
     } catch (error) {
       console.error('Failed to decline suggestion:', error);
     }
@@ -578,20 +552,31 @@ export default function BankAccountDetail() {
           : undefined,
   });
 
-  const chartTxs = useMemo(() => chartResult?.transactions ?? [], [chartResult]);
+  const chartTxs = useMemo(
+    () => nativeBookedTransactions(chartResult?.transactions ?? [], accountCurrency),
+    [chartResult, accountCurrency]
+  );
   const chartPoints = useMemo(() => {
     const firstTx = chartTxs.reduce<number | null>(
       (min, tx) => (min === null || tx.bookingDate < min ? tx.bookingDate : min),
       null
     );
     const from = chartFrom ?? (firstTx !== null ? utcDayFloor(firstTx) : today - 30 * DAY);
-    return reconstructBalance(balance, chartTxs, from, today).map((p) => ({
+    const anchorDay = account?.balanceAsOf ? utcDayFloor(account.balanceAsOf) : today;
+    return reconstructBalance(
+      balance,
+      chartTxs.filter((tx) => tx.bookingDate <= anchorDay + DAY - 1),
+      from,
+      Math.min(today, anchorDay)
+    ).map((p) => ({
       t: p.t,
-      value: convert(p.value, accountCurrency, currencyCode),
+      value: p.value,
     }));
-  }, [chartTxs, chartFrom, today, balance, convert, accountCurrency, currencyCode]);
+  }, [chartTxs, chartFrom, today, balance, account?.balanceAsOf]);
 
-  const floorInAccount = convert(MOVEMENT_FLOOR_BASE, 'CZK', accountCurrency);
+  const floorInAccount = hasKnownRate(accountCurrency)
+    ? convert(MOVEMENT_FLOOR_BASE, 'CZK', accountCurrency)
+    : 0;
   const threshold = movementThreshold(balance, floorInAccount);
   const events = useMemo<BalanceEvent[]>(
     () =>
@@ -640,6 +625,7 @@ export default function BankAccountDetail() {
 
   // Sorting: a third click on the active column returns to the date order
   const handleSort = (column: SortColumn) => {
+    setLedgerPage(0);
     if (sortColumn !== column) {
       setSortColumn(column);
       setSortDirection('desc');
@@ -735,13 +721,7 @@ export default function BankAccountDetail() {
   const todayCount = (thisMonthResult?.transactions ?? []).filter(
     (tx) => utcDayFloor(tx.bookingDate) === today
   ).length;
-  const accountNumber = account.bban
-    ? account.bban
-    : account.iban
-      ? isCzechIBAN(account.iban)
-        ? ibanToBBAN(account.iban)
-        : formatAccountNumber(account.iban)
-      : null;
+  const accountNumber = completeAccountIdentifier(account.iban, account.bban);
   const description = [
     accountNumber,
     effectiveRate > 0
@@ -817,6 +797,15 @@ export default function BankAccountDetail() {
         }
       />
 
+      {(thisMonthError || lastMonthError || chartError) && (
+        <ReportError
+          onRetry={() => {
+            void retryThisMonth();
+            void retryLastMonth();
+            void retryChart();
+          }}
+        />
+      )}
       <HeroCard
         aside={
           <TimePeriodSelector
@@ -832,9 +821,9 @@ export default function BankAccountDetail() {
               points={chartPoints}
               height={180}
               zeroBaseline={chartPeriod === 'All'}
-              formatValue={(v) => formatCurrencyRaw(v)}
+              formatValue={(v) => formatAccountAmount(v)}
               renderTip={(p) => ({
-                title: formatCurrencyRaw(p.value),
+                title: formatAccountAmount(p.value),
                 lines: [`${fmt.day(p.t)} · ${t('chart.balance').toLowerCase()}`],
               })}
               events={events}
@@ -889,6 +878,18 @@ export default function BankAccountDetail() {
         />
       </HeroCard>
 
+      <p className="mb-3 text-micro text-ink-4">
+        {t('readiness.balanceEstimate', {
+          date: account.balanceAsOf ? fmt.day(account.balanceAsOf) : t('readiness.unknownDate'),
+        })}
+      </p>
+      {[
+        ...(thisMonthResult?.transactions ?? []),
+        ...(lastMonthResult?.transactions ?? []),
+        ...(chartResult?.transactions ?? []),
+      ].some((tx) => tx.status === 'booked' && tx.currency !== currency) && (
+        <p className="mb-3 text-micro text-loss">{t('readiness.nativeOnly', { currency })}</p>
+      )}
       <Stats columns={3} className="mt-[17px]">
         <Stat
           label={t('stats.incomeIn', { month: monthLabel })}
@@ -953,12 +954,10 @@ export default function BankAccountDetail() {
                 className="grid grid-cols-[1fr_auto] gap-x-4 border-b border-line-soft py-[9px] text-table text-ink-3 last:border-0"
               >
                 <span className="num">
-                  {formatCurrency(
-                    convertToCzK(parseFloat(zone.fromAmount || '0'), accountCurrency)
-                  )}
+                  {formatAccountAmount(parseFloat(zone.fromAmount || '0'))}
                   {' – '}
                   {zone.toAmount
-                    ? formatCurrency(convertToCzK(parseFloat(zone.toAmount), accountCurrency))
+                    ? formatAccountAmount(parseFloat(zone.toAmount))
                     : t('zones.unlimited')}
                 </span>
                 <b className="font-600 text-ink num">
@@ -968,28 +967,6 @@ export default function BankAccountDetail() {
             ))}
           </CardContent>
         </Card>
-      )}
-
-      {categorizedManually && !mcpHintDismissed && uncategorizedCount > 0 && (
-        <Alert className="mb-[17px]">
-          <Bot />
-          <AlertTitle>{t('categorization.mcpHint.title')}</AlertTitle>
-          <AlertDescription>
-            {t('categorization.mcpHint.body', { count: uncategorizedCount })}
-          </AlertDescription>
-          <AlertActions>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setLocation('/settings/integrations#mcp')}
-            >
-              {t('categorization.mcpHint.setupLink')}
-            </Button>
-            <Button variant="ghost" size="sm" onClick={dismissMcpHint}>
-              {t('categorization.mcpHint.dismiss')}
-            </Button>
-          </AlertActions>
-        </Alert>
       )}
 
       {importHistoryOpen && (
@@ -1030,13 +1007,11 @@ export default function BankAccountDetail() {
                     <TableCell className="text-right num">{batch.duplicateCount}</TableCell>
                     <TableCell className="text-right num">{batch.errorCount}</TableCell>
                     <TableCell className="text-right">
-                      <Button
-                        variant="danger"
-                        size="sm"
-                        onClick={() => setPendingUndo({ id: batch.id, count: batch.importedCount })}
-                      >
+                      <Button variant="danger" size="sm" onClick={() => setPendingUndo(batch)}>
                         <Undo2 />
-                        {t('importHistory.undoAction')}
+                        {t(
+                          batch.linkedCount ? 'readiness.deleteImported' : 'readiness.deleteRecord'
+                        )}
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -1087,14 +1062,23 @@ export default function BankAccountDetail() {
             <div className="flex flex-wrap items-center gap-2">
               <Segmented
                 value={kind}
-                onValueChange={setKind}
+                onValueChange={(value) => {
+                  setKind(value);
+                  setLedgerPage(0);
+                }}
                 options={[
                   { value: 'all', label: t('filters.allTransactions') },
                   { value: 'income', label: t('transaction.credit') },
                   { value: 'outcome', label: t('transaction.debit') },
                 ]}
               />
-              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+              <Select
+                value={categoryFilter}
+                onValueChange={(value) => {
+                  setCategoryFilter(value);
+                  setLedgerPage(0);
+                }}
+              >
                 <SelectTrigger className="h-[35px] w-[180px] text-table">
                   <SelectValue placeholder={t('filters.allCategories')} />
                 </SelectTrigger>
@@ -1113,7 +1097,10 @@ export default function BankAccountDetail() {
                   className="h-[35px] text-table"
                   placeholder={t('filters.searchDescription')}
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    setLedgerPage(0);
+                  }}
                 />
               </InputWrap>
             </div>
@@ -1140,21 +1127,25 @@ export default function BankAccountDetail() {
                 ))}
               </SelectContent>
             </Select>
-            <Input
-              type="date"
-              value={dateFrom}
-              onChange={(e) => handleDateChange('from', e.target.value)}
-              className="h-[35px] w-[140px] text-table"
-              aria-label={t('filters.from')}
-            />
-            <span className="text-ink-5">→</span>
-            <Input
-              type="date"
-              value={dateTo}
-              onChange={(e) => handleDateChange('to', e.target.value)}
-              className="h-[35px] w-[140px] text-table"
-              aria-label={t('filters.to')}
-            />
+            {datePreset === 'custom' && (
+              <>
+                <Input
+                  type="date"
+                  value={dateFrom}
+                  onChange={(e) => handleDateChange('from', e.target.value)}
+                  className="h-[35px] w-[140px] text-table"
+                  aria-label={t('filters.from')}
+                />
+                <span className="text-ink-5">→</span>
+                <Input
+                  type="date"
+                  value={dateTo}
+                  onChange={(e) => handleDateChange('to', e.target.value)}
+                  className="h-[35px] w-[140px] text-table"
+                  aria-label={t('filters.to')}
+                />
+              </>
+            )}
             <div className="ml-auto">
               {autoCategorizeDisabledReason ? (
                 <Tooltip>
@@ -1184,7 +1175,9 @@ export default function BankAccountDetail() {
             </div>
           </div>
 
-          {txLoading ? (
+          {txError ? (
+            <ReportError onRetry={() => void retryTransactions()} />
+          ) : txLoading ? (
             <div className="border-t border-line p-[14px]" aria-hidden>
               {Array.from({ length: 5 }, (_, i) => (
                 <div
@@ -1250,11 +1243,7 @@ export default function BankAccountDetail() {
                   const title = tx.counterpartyName || tx.description || t('table.movement');
                   const sub = [
                     tx.counterpartyName ? tx.description : null,
-                    tx.counterpartyIban
-                      ? isCzechIBAN(tx.counterpartyIban)
-                        ? ibanToBBAN(tx.counterpartyIban)
-                        : formatAccountNumber(tx.counterpartyIban)
-                      : null,
+                    completeAccountIdentifier(tx.counterpartyIban, null, tx.counterpartyBankCode),
                     !grouped ? fmt.day(tx.bookingDate) : null,
                   ]
                     .filter(Boolean)
@@ -1293,6 +1282,12 @@ export default function BankAccountDetail() {
                             </span>
                             <div className="min-w-0">
                               <b className="block truncate text-table font-650">{title}</b>
+                              <small className="text-micro text-ink-4">
+                                {tx.status === 'pending' && <Badge>{t('readiness.pending')}</Badge>}{' '}
+                                {t(
+                                  `readiness.flow.${flowById.get(tx.id)?.effectiveFlowKind ?? (credit ? 'income' : 'expense')}`
+                                )}
+                              </small>
                               {sub && (
                                 <small className="mt-[3px] block truncate text-micro font-500 text-ink-4">
                                   {sub}
@@ -1307,6 +1302,10 @@ export default function BankAccountDetail() {
                             suggestedCategoryId={tx.suggestedCategoryId}
                             counterpartyName={tx.counterpartyName}
                             counterpartyIban={tx.counterpartyIban}
+                            bankAccountId={tx.bankAccountId}
+                            isCredit={tx.type === 'credit'}
+                            counterpartyBankCode={tx.counterpartyBankCode}
+                            counterpartyCountry={tx.counterpartyCountry}
                             categories={categories}
                             onCategoryChange={(catId) => handleCategoryChange(tx.id, catId)}
                             onAcceptSuggestion={() => handleAcceptSuggestion(tx.id)}
@@ -1344,6 +1343,9 @@ export default function BankAccountDetail() {
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
+                                <DropdownMenuItem onSelect={() => setSelectedTransaction(tx)}>
+                                  {t('readiness.transactionDetails')}
+                                </DropdownMenuItem>
                                 <DropdownMenuItem
                                   variant="danger"
                                   onSelect={() => setPendingDelete(tx)}
@@ -1364,11 +1366,33 @@ export default function BankAccountDetail() {
           )}
           <div className="flex items-center justify-between border-t border-line px-[14px] py-3 text-micro font-500 text-ink-4">
             <span>
-              {t('ledger.footer', { count: filteredTransactions.length })}
+              {t('readiness.pageCount', {
+                shown: filteredTransactions.length,
+                total: transactionsResult?.total ?? 0,
+                page: ledgerPage + 1,
+              })}
               {datePreset !== 'allTime' && datePreset !== 'custom'
                 ? ` · ${t(`filters.${datePreset}`).toLowerCase()}`
                 : ''}
             </span>
+            <div className="flex gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={ledgerPage === 0 || txLoading}
+                onClick={() => setLedgerPage((page) => page - 1)}
+              >
+                {t('readiness.previous')}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={(ledgerPage + 1) * 100 >= (transactionsResult?.total ?? 0) || txLoading}
+                onClick={() => setLedgerPage((page) => page + 1)}
+              >
+                {t('readiness.next')}
+              </Button>
+            </div>
             {datePreset !== 'allTime' && (
               <button
                 type="button"
@@ -1382,6 +1406,110 @@ export default function BankAccountDetail() {
         </Card>
       )}
 
+      <Dialog
+        open={selectedTransaction !== null}
+        onOpenChange={(open) => !open && setSelectedTransaction(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('readiness.transactionDetails')}</DialogTitle>
+            <DialogDescription>
+              {selectedTransaction?.counterpartyName || selectedTransaction?.description}
+            </DialogDescription>
+          </DialogHeader>
+          {selectedTransaction && (
+            <div className="space-y-3 text-table">
+              <dl className="grid grid-cols-[1fr_1fr] gap-2 break-words">
+                {[
+                  ['bookingDate', fmt.day(selectedTransaction.bookingDate)],
+                  [
+                    'valueDate',
+                    selectedTransaction.valueDate ? fmt.day(selectedTransaction.valueDate) : '—',
+                  ],
+                  [
+                    'status',
+                    t(
+                      selectedTransaction.status === 'pending'
+                        ? 'readiness.pending'
+                        : 'readiness.booked'
+                    ),
+                  ],
+                  ['bankId', selectedTransaction.transactionId],
+                  [
+                    'identifier',
+                    completeAccountIdentifier(
+                      selectedTransaction.counterpartyIban,
+                      null,
+                      selectedTransaction.counterpartyBankCode
+                    ),
+                  ],
+                  ['originalIdentifier', selectedTransaction.counterpartyIban],
+                  ['bankCode', selectedTransaction.counterpartyBankCode],
+                  ['country', selectedTransaction.counterpartyCountry],
+                  ['batch', selectedTransaction.importBatchId],
+                  ['file', selectedTransaction.importFileName],
+                  ['line', selectedTransaction.importLine],
+                  [
+                    'rowBalance',
+                    selectedTransaction.rowBalance
+                      ? fmt.money(
+                          Number(selectedTransaction.rowBalance),
+                          selectedTransaction.currency
+                        )
+                      : null,
+                  ],
+                  [
+                    'effectiveFlow',
+                    `${t(`readiness.flow.${flowById.get(selectedTransaction.id)?.effectiveFlowKind ?? (selectedTransaction.type === 'credit' ? 'income' : 'expense')}`)} · ${t(`readiness.source.${flowById.get(selectedTransaction.id)?.flowSource ?? 'direction'}`)}`,
+                  ],
+                ].map(([key, value]) => (
+                  <Fragment key={key}>
+                    <dt className="text-ink-4">{t(`readiness.detail.${key}`)}</dt>
+                    <dd>{value ?? '—'}</dd>
+                  </Fragment>
+                ))}
+              </dl>
+              <Select
+                value={selectedTransaction.flowKind ?? 'auto'}
+                onValueChange={async (value) => {
+                  try {
+                    await bankAccountsApi.updateTransactionFlow(
+                      selectedTransaction.id,
+                      value === 'auto' ? null : (value as FlowKind)
+                    );
+                    setSelectedTransaction({
+                      ...selectedTransaction,
+                      flowKind: value === 'auto' ? null : (value as FlowKind),
+                    });
+                    await refreshMoneyFlows(queryClient);
+                  } catch (error) {
+                    toast.error(translateApiError(error as Error, tc));
+                  }
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {[
+                    'auto',
+                    'income',
+                    'expense',
+                    'transfer',
+                    'investment',
+                    'financing',
+                    'adjustment',
+                  ].map((value) => (
+                    <SelectItem key={value} value={value}>
+                      {t(`readiness.flow.${value}`)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
       <ConfirmDeleteDialog
         open={pendingDelete !== null}
         onOpenChange={(open) => {
@@ -1401,11 +1529,19 @@ export default function BankAccountDetail() {
         onOpenChange={(open) => {
           if (!open) setPendingUndo(null);
         }}
-        title={t('importHistory.undoTitle')}
-        description={t('importHistory.undoDescription', { count: pendingUndo?.count ?? 0 })}
+        title={t(pendingUndo?.linkedCount ? 'readiness.deleteImported' : 'readiness.deleteRecord')}
+        description={t('readiness.deleteBatchDescription', {
+          count: pendingUndo?.linkedCount ?? 0,
+          file: pendingUndo?.fileName,
+          period: pendingUndo?.dateRange?.from
+            ? `${fmt.day(pendingUndo.dateRange.from)} – ${fmt.day(pendingUndo.dateRange.to ?? pendingUndo.dateRange.from)}`
+            : t('readiness.unknownDate'),
+        })}
         onConfirm={() => pendingUndo && deleteBatchMutation.mutate(pendingUndo.id)}
         isPending={deleteBatchMutation.isPending}
-        confirmLabel={t('importHistory.undoAction')}
+        confirmLabel={t(
+          pendingUndo?.linkedCount ? 'readiness.deleteImported' : 'readiness.deleteRecord'
+        )}
       />
       <ConfirmDeleteDialog
         open={deleteAccountOpen}

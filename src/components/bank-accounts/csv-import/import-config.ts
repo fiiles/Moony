@@ -456,7 +456,11 @@ export function nextStepsFor(result: CsvImportResult, context: NextStepContext):
   if (context.canShowImported && result.importedCount > 0) steps.push('show');
   if (context.canReviewUncategorized && result.uncategorizedCount > 0) steps.push('review');
   if (result.suggestedRulePack) steps.push('rulePack');
-  if (balanceDiffers(result.lastBalance, context.accountBalance)) steps.push('balance');
+  if (
+    result.statementBalance &&
+    balanceDiffers(result.statementBalance.amount, context.accountBalance)
+  )
+    steps.push('balance');
   return steps;
 }
 

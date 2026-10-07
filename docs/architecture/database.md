@@ -123,7 +123,7 @@ Grouped by owning domain (see the domain map in `overview.md`).
 |---|---|---|
 | `transaction_categories` | Spending categories, system-seeded + user-defined | Readable seeded IDs (`cat_groceries`, …); self-referencing `parent_id` FK, `is_system`, `sort_order`; `kind` ∈ income/expense/transfer/investment/financing/adjustment (default expense; migration 006) |
 | `categorization_rules` | Priority-ordered pattern rules | `rule_type`/`pattern` (`regex`, `contains`, `word`, `starts_with`, `ends_with`, `is_credit`, `is_debit`), `priority DEFAULT 50` (index `priority DESC, is_active`), `stop_processing`, `iban_pattern` |
-| `learned_payees` | Learned payee → category mappings for auto-categorization | `normalized_payee` is nullable (IBAN-only rules); UNIQUE index `(normalized_payee, counterparty_iban)`; partial indexes for the 3-level matching hierarchy |
+| `learned_payees` | Learned payee → category mappings for auto-categorization | `normalized_payee` is nullable (account-identity rules). New opt-in rows carry `bank_account_id` FK ON DELETE CASCADE and `is_credit` (migration 009); a partial unique scope index prevents duplicates within one account/direction. NULL scope preserves legacy broad rules. Reliable structured identifiers canonicalize to the same IBAN; incomplete identifiers fall back to the normalized payee. Writes commit transactionally before engine learning. |
 
 ### Budgeting
 

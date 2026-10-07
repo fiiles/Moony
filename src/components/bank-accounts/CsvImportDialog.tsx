@@ -17,7 +17,7 @@ import { WizardSteps } from '@/components/common/WizardSteps';
 import { useBankAccount } from '@/hooks/use-bank-accounts';
 import { useCategories } from '@/hooks/use-categories';
 import { useLanguage } from '@/i18n/I18nProvider';
-import { bankAccountsApi, categorizationApi } from '@/lib/tauri-api';
+import { bankAccountsApi } from '@/lib/tauri-api';
 import { translateApiError } from '@/lib/translate-api-error';
 import type { CsvCategoryOverride, CsvImportResult, CsvPreviewResult } from '@shared/schema';
 import { FileSelectStep } from './csv-import/FileSelectStep';
@@ -103,6 +103,8 @@ export function CsvImportDialog({
   const [isInspecting, setIsInspecting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [result, setResult] = useState<CsvImportResult | null>(null);
+  const [previewPage, setPreviewPage] = useState(0);
+  const [dateConfirmed, setDateConfirmed] = useState(false);
   const [manualCount, setManualCount] = useState(0);
   // Bumped per file read; a response that is no longer the latest is dropped.
   const inspectRequest = useRef(0);
@@ -150,7 +152,10 @@ export function CsvImportDialog({
 
       setFilePath(path);
       setInspection(parsed);
-      setMapping(mappingFromInspection(parsed));
+      const detectedMapping = mappingFromInspection(parsed);
+      setMapping(detectedMapping);
+      setPreviewPage(0);
+      setDateConfirmed(!parsed.dateFormatAmbiguous);
       setSkipRows(options.skipRows ?? 0);
       setImportAnywayLines([]);
       setOverrides([]);
@@ -162,7 +167,11 @@ export function CsvImportDialog({
         setPresetOverride(options.presetId);
         setPresetDetected(false);
       }
-      setStep('mapping');
+      setStep(
+        parsed.detectedPresetId && !parsed.dateFormatAmbiguous && isMappingComplete(detectedMapping)
+          ? 'preview'
+          : 'mapping'
+      );
     } catch (e: unknown) {
       if (requestId !== inspectRequest.current) return;
       toast.error(tc('status.error'), { description: translateApiError(e as Error, tc) });
@@ -236,10 +245,14 @@ export function CsvImportDialog({
   // What an import would do with the current mapping; null until it is complete.
   const config = useMemo(
     () =>
-      inspection && isMappingComplete(mapping)
+      inspection && dateConfirmed && isMappingComplete(mapping)
         ? buildImportConfig(mapping, inspection, skipRows, importAnywayLines, overrides)
         : null,
-    [inspection, mapping, skipRows, importAnywayLines, overrides]
+    [inspection, mapping, skipRows, importAnywayLines, overrides, dateConfirmed]
+  );
+  const previewConfig = useMemo(
+    () => (config ? { ...config, previewOffset: previewPage * 100, previewLimit: 100 } : null),
+    [config, previewPage]
   );
   // The preview runs from step 2 on, so step 3 opens with the table already there.
   const {
@@ -250,7 +263,7 @@ export function CsvImportDialog({
   } = useCsvPreview({
     accountId,
     filePath,
-    config,
+    config: previewConfig,
     enabled: open && (step === 'mapping' || step === 'preview'),
   });
   const summary = preview ? summarizePreview(preview, importAnywayLines) : null;
@@ -290,20 +303,7 @@ export function CsvImportDialog({
     setIsImporting(true);
     try {
       const imported = await importMutation.mutateAsync({ filePath, config });
-      // A category picked by hand becomes a learned payee, like a manual change in the ledger.
-      const byLine = new Map(preview.rows.map((row) => [row.line, row]));
-      let learned = 0;
-      for (const override of overrides) {
-        const row = byLine.get(override.line);
-        if (!row) continue;
-        learned += 1;
-        if (row.counterparty) {
-          categorizationApi.learn(row.counterparty, null, override.categoryId).catch((e) => {
-            console.error('Could not learn the picked category:', e);
-          });
-        }
-      }
-      setManualCount(learned);
+      setManualCount(overrides.length);
       setResult(imported);
       setStep('done');
       onImported?.(imported);
@@ -372,6 +372,7 @@ export function CsvImportDialog({
         <div className="min-h-0 flex-1 overflow-y-auto px-px py-1">
           {step === 'file' && (
             <FileSelectStep
+              accountCurrency={account?.currency}
               presets={presets}
               presetChoice={presetChoice}
               onPresetChange={handlePresetChange}
@@ -383,10 +384,16 @@ export function CsvImportDialog({
 
           {step === 'mapping' && inspection && (
             <MappingStep
+              key={inspectRevision}
               filePath={filePath}
               inspection={inspection}
+              dateConfirmed={dateConfirmed}
               mapping={mapping}
-              onMappingChange={(patch) => setMapping((current) => ({ ...current, ...patch }))}
+              onMappingChange={(patch) => {
+                setMapping((current) => ({ ...current, ...patch }));
+                setPreviewPage(0);
+                if (patch.dateFormat) setDateConfirmed(true);
+              }}
               skipRows={skipRows}
               onLayoutChange={handleLayoutChange}
               inspectRevision={inspectRevision}
@@ -400,6 +407,8 @@ export function CsvImportDialog({
 
           {step === 'preview' && (
             <PreviewStep
+              page={previewPage}
+              onPageChange={setPreviewPage}
               ready={config != null}
               preview={preview}
               error={previewError}

@@ -1,3 +1,9 @@
+import { ReportError, ReportQualityNote } from '@/components/reports/ReportQualityNote';
+import { useReportMoney } from '@/lib/use-report-money';
+import { currencyDecimals, type CurrencyCode } from '@shared/currencies';
+import { preserveMoneyText } from '@/utils/money-flows';
+import { refreshMoneyFlows } from '@/lib/money-flow-refresh';
+import { translateApiError } from '@/lib/translate-api-error';
 import { useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -6,7 +12,6 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import type { TransactionCategory } from '@shared/schema';
-import type { CurrencyCode } from '@shared/currencies';
 import { budgetingApi, type BudgetGoal, type InsertBudgetGoal } from '@/lib/tauri-api';
 import { requiredNumber } from '@/utils/form-schemas';
 import { getUtcPeriodRange } from '@/utils/period';
@@ -42,6 +47,7 @@ import {
 const AVERAGE_MONTHS = 6;
 
 const formSchema = z.object({
+  effectiveMonth: z.string().regex(/^\d{4}-\d{2}$/, 'validation.dateRequired'),
   categoryId: z.string().min(1, 'validation.categoryIdRequired'),
   amount: requiredNumber('validation.amountRequired').positive('validation.amountPositive'),
 });
@@ -77,31 +83,39 @@ export function BudgetGoalDialog({
 }: BudgetGoalDialogProps) {
   const { t } = useTranslation('budgeting');
   const { t: tc } = useTranslation('common');
-  const { currencyCode, convert, formatCurrency } = useCurrency();
+  const { currencyCode } = useCurrency();
+  const { money } = useReportMoney();
   const categoryName = useCategoryName();
   const queryClient = useQueryClient();
   const editing = !!goal;
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: { categoryId: '', amount: 0 },
+    defaultValues: {
+      categoryId: '',
+      amount: 0,
+      effectiveMonth: new Date().toISOString().slice(0, 7),
+    },
   });
 
-  // Reset for each opening: edited limit in the display currency, or the
+  // Reset for each opening: edited limit in its stored currency, or the
   // preselected category with an empty amount.
   useEffect(() => {
     if (!open) return;
     if (goal) {
-      const inDisplay = convert(
-        parseFloat(goal.amount) || 0,
-        goal.currency as CurrencyCode,
-        currencyCode
-      );
-      form.reset({ categoryId: goal.categoryId, amount: Math.round(inDisplay * 100) / 100 });
+      form.reset({
+        categoryId: goal.categoryId,
+        amount: Number(goal.amount),
+        effectiveMonth: new Date().toISOString().slice(0, 7),
+      });
     } else {
-      form.reset({ categoryId: initialCategoryId ?? '', amount: undefined });
+      form.reset({
+        categoryId: initialCategoryId ?? '',
+        amount: undefined,
+        effectiveMonth: new Date().toISOString().slice(0, 7),
+      });
     }
-  }, [open, goal, initialCategoryId, convert, currencyCode, form]);
+  }, [open, goal, initialCategoryId, currencyCode, form]);
 
   // Average monthly spending per category over the last six full months (CZK).
   const averageRange = useMemo(() => {
@@ -109,7 +123,11 @@ export function BudgetGoalDialog({
     const last = getUtcPeriodRange('monthly', -1);
     return { start: first.start, end: last.end };
   }, []);
-  const { data: averageReport } = useQuery({
+  const {
+    data: averageReport,
+    isError: averageError,
+    refetch: refetchAverage,
+  } = useQuery({
     queryKey: ['budgeting-report', averageRange.start, averageRange.end, 'monthly'],
     queryFn: () => budgetingApi.getReport(averageRange.start, averageRange.end, 'monthly'),
     enabled: open,
@@ -117,8 +135,18 @@ export function BudgetGoalDialog({
   });
   const averages = useMemo(() => {
     const map = new Map<string, number>();
+    if (
+      !averageReport ||
+      averageReport.quality.missingFxCount > 0 ||
+      !averageReport.quality.observedCompletedMonths.length
+    )
+      return map;
     for (const c of averageReport?.expenseCategories ?? []) {
-      map.set(c.categoryId, Math.max(0, parseFloat(c.totalAmount) || 0) / AVERAGE_MONTHS);
+      map.set(
+        c.categoryId,
+        (parseFloat(c.totalAmount) || 0) /
+          Math.max(1, averageReport?.quality.observedCompletedMonths.length ?? 0)
+      );
     }
     return map;
   }, [averageReport]);
@@ -128,22 +156,27 @@ export function BudgetGoalDialog({
 
   const mutation = useMutation({
     mutationFn: (data: InsertBudgetGoal) => budgetingApi.upsertBudgetGoal(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['budgeting-report'] });
-      queryClient.invalidateQueries({ queryKey: ['budget-goals'] });
+    onSuccess: async () => {
+      await refreshMoneyFlows(queryClient);
       toast.success(editing ? t('dialog.updated') : t('dialog.added'));
       onOpenChange(false);
     },
-    onError: (error: Error) => toast.error(error.message),
+    onError: (error: Error) => toast.error(translateApiError(error, tc)),
   });
 
   const onSubmit = (values: FormValues) => {
     mutation.mutate({
       categoryId: values.categoryId,
-      timeframe: 'monthly',
-      amount: String(values.amount),
+      timeframe: goal?.timeframe ?? 'monthly',
+      amount: preserveMoneyText(
+        goal?.amount ?? null,
+        goal?.currency ?? null,
+        values.amount,
+        goal?.currency ?? currencyCode
+      ),
+      effectiveMonth: Date.parse(`${values.effectiveMonth}-01T00:00:00Z`) / 1000,
       // Typed in the display currency: store it with that currency.
-      currency: currencyCode,
+      currency: goal?.currency ?? currencyCode,
     });
   };
 
@@ -196,12 +229,17 @@ export function BudgetGoalDialog({
                 <FormItem>
                   <FormLabel>{t('dialog.monthlyLimit')}</FormLabel>
                   <FormControl>
-                    <InputWrap unit={currencyCode}>
+                    <InputWrap unit={goal?.currency ?? currencyCode}>
                       <Input
                         type="number"
                         inputMode="decimal"
                         min="0"
-                        step="any"
+                        step={
+                          goal && Number(goal.amount) === Number(field.value)
+                            ? 'any'
+                            : 10 **
+                              -currencyDecimals((goal?.currency ?? currencyCode) as CurrencyCode)
+                        }
                         placeholder="0"
                         autoFocus={editing}
                         {...field}
@@ -213,13 +251,35 @@ export function BudgetGoalDialog({
                     {average === null
                       ? t('dialog.hintPickCategory')
                       : average > 0
-                        ? t('dialog.averageHint', { amount: formatCurrency(average) })
+                        ? t('readiness.observedAverage', {
+                            amount: money(average),
+                            count: averageReport?.quality.observedCompletedMonths.length ?? 0,
+                          })
                         : t('dialog.noAverage')}
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
             />
+            <FormField
+              control={form.control}
+              name="effectiveMonth"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t('readiness.effectiveMonth')}</FormLabel>
+                  <FormControl>
+                    <Input type="month" {...field} />
+                  </FormControl>
+                  <FormDescription>{t('readiness.effectiveMonthHelp')}</FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            {averageError ? (
+              <ReportError onRetry={() => void refetchAverage()} />
+            ) : (
+              averageReport && <ReportQualityNote quality={averageReport.quality} />
+            )}
             <DialogFooter>
               <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
                 {tc('buttons.cancel')}

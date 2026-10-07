@@ -11,6 +11,7 @@ import { PresetPicker } from './PresetPicker';
 import { SAMPLE_CSV, sortPresets } from './import-config';
 
 interface FileSelectStepProps {
+  accountCurrency?: string;
   presets: readonly CsvPreset[];
   presetChoice: string;
   onPresetChange: (value: string) => void;
@@ -27,6 +28,7 @@ interface FileSelectStepProps {
  * the left, the drop zone on the right, the sample file as a quiet link.
  */
 export function FileSelectStep({
+  accountCurrency,
   presets,
   presetChoice,
   onPresetChange,
@@ -44,7 +46,7 @@ export function FileSelectStep({
         filters: [{ name: 'CSV', extensions: ['csv'] }],
       });
       if (!path) return;
-      await writeTextFile(path, SAMPLE_CSV);
+      await writeTextFile(path, SAMPLE_CSV.replaceAll('CZK', accountCurrency || 'CZK'));
       toast(t('csvImport.sampleSaved'));
     } catch (error) {
       console.error('Could not save the sample CSV:', error);

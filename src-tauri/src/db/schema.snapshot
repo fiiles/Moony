@@ -64,9 +64,6 @@ CREATE INDEX idx_investment_transactions_external ON investment_transactions(ext
 == index idx_investment_transactions_ticker ==
 CREATE INDEX idx_investment_transactions_ticker ON investment_transactions(ticker)
 
-== index idx_learned_payees_composite ==
-CREATE UNIQUE INDEX idx_learned_payees_composite ON learned_payees(normalized_payee, counterparty_iban)
-
 == index idx_learned_payees_iban_only ==
 CREATE INDEX idx_learned_payees_iban_only ON learned_payees(counterparty_iban) WHERE normalized_payee IS NULL
 
@@ -75,6 +72,11 @@ CREATE INDEX idx_learned_payees_iban_partial ON learned_payees(counterparty_iban
 
 == index idx_learned_payees_payee_default ==
 CREATE INDEX idx_learned_payees_payee_default ON learned_payees(normalized_payee) WHERE counterparty_iban IS NULL
+
+== index idx_learned_payees_scoped ==
+CREATE UNIQUE INDEX idx_learned_payees_scoped ON learned_payees(
+ COALESCE(normalized_payee,''),COALESCE(counterparty_iban,''),bank_account_id,is_credit
+) WHERE bank_account_id IS NOT NULL
 
 == index idx_loan_events_loan ==
 CREATE INDEX idx_loan_events_loan ON loan_events(loan_id, event_day)
@@ -411,7 +413,7 @@ CREATE TABLE learned_payees (
     counterparty_iban TEXT,
     category_id TEXT NOT NULL,
     created_at INTEGER NOT NULL DEFAULT (unixepoch()),
-    updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    updated_at INTEGER NOT NULL DEFAULT (unixepoch()), bank_account_id TEXT REFERENCES bank_accounts(id) ON DELETE CASCADE, is_credit INTEGER CHECK(is_credit IN (0,1)),
     FOREIGN KEY (category_id) REFERENCES transaction_categories(id)
 )
 

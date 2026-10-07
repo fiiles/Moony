@@ -240,7 +240,9 @@
     "balanceCurrencyMismatch": "Měna zůstatku ve výpisu se liší od měny účtu.",
     "balanceAnchorOlder": "Výpis je starší než zaznamenané datum zůstatku účtu.",
     "balanceAnchorUnknown": "Datum současného zůstatku není známé. Nejprve potvrďte jeho nahrazení.",
-    "balanceBatchMismatch": "Tento import výpisu nepatří k tomuto účtu."
+    "balanceBatchMismatch": "Tento import výpisu nepatří k tomuto účtu.",
+    "learningIdentity": "Zadejte spolehlivý identifikátor účtu nebo příjemce.",
+    "paginationInvalid": "Vyberte platnou stránku historie."
   },
   "auth": {
     "wrongPassword": "Zadané heslo je nesprávné. Zkuste to prosím znovu.",

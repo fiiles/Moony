@@ -38,7 +38,8 @@ export function useCsvPreview({ accountId, filePath, config, enabled }: UseCsvPr
     preview: query.data,
     error: query.error,
     /** The table on screen belongs to an older mapping (typing, loading). */
-    isUpdating: config != null && (config !== debounced || query.isFetching),
+    isUpdating:
+      config != null && (JSON.stringify(config) !== JSON.stringify(debounced) || query.isFetching),
     /** There is no table yet to keep on screen. */
     isLoadingFirst: config != null && query.data === undefined && !query.isError,
   };

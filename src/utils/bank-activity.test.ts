@@ -96,3 +96,38 @@ describe('movements (README §9 threshold)', () => {
     expect(events[1].type).toBe('expense');
   });
 });
+
+describe('native booked activity', () => {
+  it('does not add pending or foreign-currency units', () => {
+    const rows = [
+      {
+        id: 'a',
+        type: 'credit' as const,
+        amount: '100',
+        bookingDate: 1,
+        status: 'booked',
+        currency: 'CZK',
+      },
+      {
+        id: 'b',
+        type: 'credit' as const,
+        amount: '1000',
+        bookingDate: 1,
+        status: 'pending',
+        currency: 'CZK',
+      },
+      {
+        id: 'c',
+        type: 'debit' as const,
+        amount: '50',
+        bookingDate: 1,
+        status: 'booked',
+        currency: 'EUR',
+      },
+    ];
+    const summary = summarizeFlow(rows, 'CZK');
+    expect(summary.income).toBe(100);
+    expect(summary.expense).toBe(0);
+    expect(summary.count).toBe(1);
+  });
+});

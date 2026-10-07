@@ -70,6 +70,7 @@ fn all_migrations() -> Vec<(&'static str, &'static str)> {
         ("006_financial_semantics", MIGRATION_006),
         ("007_report_history", MIGRATION_007),
         ("008_import_integrity", MIGRATION_008),
+        ("009_scoped_learning", MIGRATION_009),
     ]
 }
 
@@ -2048,4 +2049,14 @@ ALTER TABLE bank_transactions ADD COLUMN row_balance TEXT;
 ALTER TABLE csv_import_batches ADD COLUMN promoted_count INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE csv_import_batches ADD COLUMN date_from INTEGER;
 ALTER TABLE csv_import_batches ADD COLUMN date_to INTEGER;
+"#;
+
+/// New learned rules are scoped; NULL scope preserves legacy broad rules.
+pub(crate) const MIGRATION_009: &str = r#"
+ALTER TABLE learned_payees ADD COLUMN bank_account_id TEXT REFERENCES bank_accounts(id) ON DELETE CASCADE;
+ALTER TABLE learned_payees ADD COLUMN is_credit INTEGER CHECK(is_credit IN (0,1));
+DROP INDEX idx_learned_payees_composite;
+CREATE UNIQUE INDEX idx_learned_payees_scoped ON learned_payees(
+ COALESCE(normalized_payee,''),COALESCE(counterparty_iban,''),bank_account_id,is_credit
+) WHERE bank_account_id IS NOT NULL;
 "#;

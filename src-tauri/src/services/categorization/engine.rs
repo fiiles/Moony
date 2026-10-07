@@ -147,6 +147,30 @@ impl CategorizationEngine {
     }
 
     /// Legacy learn - creates payee default
+    pub fn learn_scoped(
+        &self,
+        account: &str,
+        credit: bool,
+        payee: Option<&str>,
+        identity: Option<&str>,
+        category: &str,
+    ) {
+        if let Ok(mut exact) = self.exact_match.write() {
+            exact.learn_scoped(account, credit, payee, identity, category);
+        }
+    }
+    pub fn forget_scoped(
+        &self,
+        account: &str,
+        credit: bool,
+        payee: Option<&str>,
+        identity: Option<&str>,
+    ) {
+        if let Ok(mut exact) = self.exact_match.write() {
+            exact.forget_scoped(account, credit, payee, identity);
+        }
+    }
+
     pub fn learn_from_user_simple(&self, payee: &str, category_id: &str) {
         self.learn_from_user(Some(payee), None, category_id);
     }

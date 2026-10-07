@@ -1,3 +1,4 @@
+import { refreshMoneyFlows } from '@/lib/money-flow-refresh';
 import { useState, useEffect, useRef, useCallback, ReactNode } from 'react';
 import { portfolioApi, priceApi } from '@/lib/tauri-api';
 import { useQueryClient } from '@tanstack/react-query';
@@ -142,7 +143,14 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       // Following a stock, or noting a target on it, changes nothing about what
       // the user owns — so the watchlist skips the portfolio/snapshot ritual
       // (spec D10 of the Stock Monitor design, same deviation the UI makes).
-      const affectsNetWorth = domain !== 'stock-monitor';
+      if (domain === 'bank') {
+        try {
+          await refreshMoneyFlows(queryClient, true);
+        } catch (error) {
+          console.error('[Sync] Bank refresh failed:', error);
+        }
+      }
+      const affectsNetWorth = domain !== 'stock-monitor' && domain !== 'bank';
       if (affectsNetWorth) {
         queryClient.invalidateQueries({ queryKey: ['portfolio-metrics'] });
         queryClient.invalidateQueries({ queryKey: ['cashflow-report'] });

@@ -1,3 +1,7 @@
+import { useReportMoney } from '@/lib/use-report-money';
+import { ReportQualityNote, ReportError } from '@/components/reports/ReportQualityNote';
+import { refreshMoneyFlows } from '@/lib/money-flow-refresh';
+import { translateApiError } from '@/lib/translate-api-error';
 import { useMemo, useState, type ReactNode } from 'react';
 import { Link } from 'wouter';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -11,7 +15,6 @@ import type {
   CashflowSection,
 } from '@shared/schema';
 import { cashflowApi } from '@/lib/tauri-api';
-import { useCurrency } from '@/lib/currency';
 import { useFormat } from '@/lib/use-format';
 import { useShellPage } from '@/components/shell/shell-context';
 import { PageHead } from '@/components/shell/PageHead';
@@ -60,7 +63,7 @@ const SOURCE_BY_CATEGORY: Record<string, string> = {
 export default function CashflowPlanning() {
   const { t } = useTranslation('reports');
   const { t: tc } = useTranslation('common');
-  const { formatCurrency, formatCurrencySigned } = useCurrency();
+  const { money, signedMoney: formatCurrencySigned } = useReportMoney();
   const fmt = useFormat();
   const queryClient = useQueryClient();
 
@@ -75,25 +78,26 @@ export default function CashflowPlanning() {
 
   useShellPage({ status: { text: t('planning.status'), tone: 'neutral' } });
 
-  const { data: report, isLoading } = useQuery<CashflowReport>({
+  const {
+    data: report,
+    isLoading,
+    isError,
+    refetch,
+  } = useQuery<CashflowReport>({
     queryKey: ['cashflow-report', viewType],
     queryFn: () => cashflowApi.getReport(viewType),
     refetchOnMount: 'always',
   });
 
-  const invalidate = () => {
-    queryClient.invalidateQueries({ queryKey: ['cashflow-report'] });
-    queryClient.invalidateQueries({ queryKey: ['portfolio-metrics'] });
-  };
-
   const createMutation = useMutation({
     mutationFn: cashflowApi.createItem,
-    onSuccess: () => {
-      invalidate();
+    onSuccess: async () => {
+      await refreshMoneyFlows(queryClient);
       setAddDialogOpen(false);
       toast(t('planning.toast.added'));
     },
-    onError: (error: Error) => toast.error(tc('status.error'), { description: error.message }),
+    onError: (error: Error) =>
+      toast.error(tc('status.error'), { description: translateApiError(error, tc) }),
   });
 
   const updateMutation = useMutation({
@@ -104,23 +108,25 @@ export default function CashflowPlanning() {
       id: string;
       data: Parameters<typeof cashflowApi.updateItem>[1];
     }) => cashflowApi.updateItem(id, data),
-    onSuccess: () => {
-      invalidate();
+    onSuccess: async () => {
+      await refreshMoneyFlows(queryClient);
       setEditItem(null);
       setEditCategory('');
       toast(t('planning.toast.updated'));
     },
-    onError: (error: Error) => toast.error(tc('status.error'), { description: error.message }),
+    onError: (error: Error) =>
+      toast.error(tc('status.error'), { description: translateApiError(error, tc) }),
   });
 
   const deleteMutation = useMutation({
     mutationFn: cashflowApi.deleteItem,
-    onSuccess: () => {
-      invalidate();
+    onSuccess: async () => {
+      await refreshMoneyFlows(queryClient);
       setDeleteItem(null);
       toast(t('planning.toast.deleted'));
     },
-    onError: (error: Error) => toast.error(tc('status.error'), { description: error.message }),
+    onError: (error: Error) =>
+      toast.error(tc('status.error'), { description: translateApiError(error, tc) }),
   });
 
   const openAdd = (section: SectionId, type: 'income' | 'expense') => {
@@ -128,8 +134,6 @@ export default function CashflowPlanning() {
     setAddDialogType(type);
     setAddDialogOpen(true);
   };
-
-  const money = (amount: number) => formatCurrency(Math.abs(amount) < 0.01 ? 0 : amount);
 
   const sectionOf = (id: SectionId): CashflowSection | undefined =>
     id === 'personal' ? report?.personal : report?.investments;
@@ -221,6 +225,16 @@ export default function CashflowPlanning() {
         <TableRow key={item.id} className="h-12">
           <TableCell>
             <b className="block text-table font-650 text-ink">{item.name}</b>
+            {item.replacementSourceId && (
+              <small className="block text-micro text-ink-4">
+                {t('readiness.replacing', {
+                  name:
+                    report?.automaticSources.find(
+                      (source) => source.sourceId === item.replacementSourceId
+                    )?.name ?? t('readiness.retainedSource'),
+                })}
+              </small>
+            )}
             <span className="mt-[3px] inline-flex items-center gap-[5px] text-micro font-500 text-ink-4">
               {source ? (
                 <>
@@ -403,6 +417,13 @@ export default function CashflowPlanning() {
     />
   );
 
+  if (isError)
+    return (
+      <>
+        {head}
+        <ReportError onRetry={() => void refetch()} />
+      </>
+    );
   if (isLoading || !report) {
     return (
       <>
@@ -419,6 +440,13 @@ export default function CashflowPlanning() {
   return (
     <>
       {head}
+      <ReportQualityNote quality={report.quality} estimate />
+      <p className="mb-5 text-micro text-ink-4">
+        {t('readiness.planningAsOf', {
+          date: fmt.day(report.asOf),
+          rates: report.ratesAsOf ? fmt.day(report.ratesAsOf) : '—',
+        })}
+      </p>
 
       <Stats columns={3}>
         <Stat
@@ -511,6 +539,7 @@ export default function CashflowPlanning() {
         onOpenChange={setAddDialogOpen}
         onSubmit={(data) => createMutation.mutate(data)}
         itemType={addDialogType}
+        automaticSources={report.automaticSources}
         categories={dialogCategories(addDialogSection, addDialogType)}
         isLoading={createMutation.isPending}
       />
@@ -526,6 +555,7 @@ export default function CashflowPlanning() {
         editItem={editItem}
         editCategory={editCategory}
         itemType={editType()}
+        automaticSources={report.automaticSources}
         categories={dialogCategories(editSection, editType())}
         isLoading={updateMutation.isPending}
       />

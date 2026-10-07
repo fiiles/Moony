@@ -370,7 +370,8 @@
       "setBalanceAction": "Set"
     },
     "columnNone": "— not used —",
-    "pendingPromoted": "Pending transaction will be booked"
+    "pendingPromoted": "Pending transaction will be booked",
+    "editColumns": "Edit columns"
   },
   "importHistory": {
     "title": "Import history",
@@ -625,6 +626,15 @@
     "resultCategorized": "{{count}} newly imported transactions have a category; {{open}} remain uncategorized.",
     "flowLoading": "Financial meaning is loading…",
     "flowUnavailable": "Financial meaning is unavailable.",
-    "flowUnresolved": "Financial meaning has not been resolved."
+    "flowUnresolved": "Financial meaning has not been resolved.",
+    "batchDeleted_zero": "No imported transactions were deleted",
+    "batchDeleted_one": "Deleted {{count}} imported transaction",
+    "batchDeleted_other": "Deleted {{count}} imported transactions",
+    "deleteBatchDescription_zero": "This import has no linked transactions to delete.",
+    "deleteBatchDescription_one": "Delete {{count}} currently linked transaction from {{file}} ({{period}})? Other imports, separately changed balances and rules remain. This cannot be undone.",
+    "deleteBatchDescription_other": "Delete {{count}} currently linked transactions from {{file}} ({{period}})? Other imports, separately changed balances and rules remain. This cannot be undone.",
+    "promotions_zero": "No pending entries to book",
+    "promotions_one": "{{count}} pending entry will be booked",
+    "promotions_other": "{{count}} pending entries will be booked"
   }
 }

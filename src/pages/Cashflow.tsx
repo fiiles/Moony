@@ -371,12 +371,10 @@ export default function Cashflow() {
         <Stat
           label={t('actuals.stats.avgIncome')}
           value={data.averageIncome == null ? '—' : money(avgIncome)}
-          note={t('readiness.averageSample', { count: data.averageCompletedMonths.length })}
         />
         <Stat
           label={t('actuals.stats.avgExpenses')}
           value={data.averageExpenses == null ? '—' : money(avgExpenses)}
-          note={t('readiness.averageSample', { count: data.averageCompletedMonths.length })}
         />
         <Stat
           label={t('actuals.stats.avgSavings')}

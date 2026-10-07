@@ -41,7 +41,13 @@ export function ReportQualityNote({
           })}
         </p>
       )}
-      {averageMonths != null && <p>{t('readiness.averageSample', { count: averageMonths })}</p>}
+      {averageMonths != null && (
+        <p>
+          {averageMonths === 0
+            ? t('readiness.averageUnavailable')
+            : t('readiness.averageSample', { count: averageMonths })}
+        </p>
+      )}
       {quality.missingFxCount > 0 && (
         <p className="text-loss">
           {t('readiness.missingFx', {

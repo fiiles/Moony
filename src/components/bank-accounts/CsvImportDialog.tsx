@@ -463,7 +463,7 @@ export function CsvImportDialog({
           {step === 'preview' && (
             <>
               <Button variant="ghost" onClick={handleBack} disabled={isImporting}>
-                {tc('buttons.back')}
+                {t('csvImport.editColumns')}
               </Button>
               <Button
                 onClick={() => void handleImport()}

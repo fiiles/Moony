@@ -517,7 +517,6 @@
     "currentDisplayRate": "Display in {{currency}} uses the current cached rate ({{date}}), not a historical statement rate.",
     "planningEstimate": "Monthly-equivalent estimate, not a payment calendar. Annual items are spread over 12 months.",
     "observation": "Observed completed months: {{completed}} · current partial months: {{partial}} · unobserved months: {{missing}}. Observation does not prove complete statements.",
-    "averageSample": "Average from {{count}} observed completed months with available FX.",
     "missingFx": "{{count}} movements excluded due to missing FX: {{currencies}}. Totals are incomplete.",
     "reportError": "The report could not be loaded.",
     "retry": "Retry",
@@ -527,8 +526,8 @@
     "ordinaryNet": "Ordinary income − expenses",
     "bankMovement": "Total bank cash movement",
     "nonconsumption": "Transfers and other flows",
-    "absoluteShare": "Share of absolute group amounts",
-    "drilldownUnits": "Native movement and signed historical CZK report contribution",
+    "absoluteShare": "Share of absolute totals",
+    "drilldownUnits": "Native movement and its signed contribution to the report in historical CZK",
     "loading": "Loading…",
     "date": "Date",
     "description": "Description",
@@ -562,6 +561,16 @@
     "replacing": "Replaces {{name}}",
     "rateDateUnknown": "rate date unknown",
     "reportRange": "{{start}} – {{end}} · comparison {{previousStart}} – {{previousEnd}}",
-    "comparisonFx": "Comparison period excludes {{count}} movements with missing FX ({{currencies}})."
+    "comparisonFx": "Comparison period excludes {{count}} movements with missing FX ({{currencies}}).",
+    "averageSample_zero": "No completed observed month with available FX, so the average is unavailable.",
+    "averageSample_one": "Average from {{count}} observed completed month with available FX.",
+    "averageSample_other": "Average from {{count}} observed completed months with available FX.",
+    "averageUnavailable": "No completed observed month with available FX, so the average is unavailable.",
+    "missingFx_zero": "No movements were excluded due to missing FX.",
+    "missingFx_one": "{{count}} movement excluded due to missing FX ({{currencies}}). Totals are incomplete.",
+    "missingFx_other": "{{count}} movements excluded due to missing FX ({{currencies}}). Totals are incomplete.",
+    "countedTransactions_zero": "No transactions",
+    "countedTransactions_one": "{{count}} transaction",
+    "countedTransactions_other": "{{count}} transactions"
   }
 }

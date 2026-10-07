@@ -384,7 +384,8 @@
       "setBalanceAction": "Nastavit"
     },
     "columnNone": "— nepoužít —",
-    "pendingPromoted": "Čekající transakce bude zaúčtována"
+    "pendingPromoted": "Čekající transakce bude zaúčtována",
+    "editColumns": "Upravit sloupce"
   },
   "importHistory": {
     "title": "Historie importů",
@@ -648,6 +649,18 @@
     "resultCategorized": "Nově importované transakce s kategorií: {{count}}. Bez kategorie: {{open}}.",
     "flowLoading": "Načítá se finanční význam…",
     "flowUnavailable": "Finanční význam není k dispozici.",
-    "flowUnresolved": "Finanční význam nebyl určen."
+    "flowUnresolved": "Finanční význam nebyl určen.",
+    "batchDeleted_zero": "Nebyly smazány žádné importované transakce",
+    "batchDeleted_one": "Smazána {{count}} importovaná transakce",
+    "batchDeleted_few": "Smazány {{count}} importované transakce",
+    "batchDeleted_other": "Smazáno {{count}} importovaných transakcí",
+    "deleteBatchDescription_zero": "V tomto importu nejsou žádné přiřazené transakce k odstranění.",
+    "deleteBatchDescription_one": "Smazat {{count}} právě přiřazenou transakci ze souboru {{file}} ({{period}})? Ostatní importy, samostatně změněné zůstatky a pravidla zůstanou. Smazání nelze vrátit.",
+    "deleteBatchDescription_few": "Smazat {{count}} právě přiřazené transakce ze souboru {{file}} ({{period}})? Ostatní importy, samostatně změněné zůstatky a pravidla zůstanou. Smazání nelze vrátit.",
+    "deleteBatchDescription_other": "Smazat {{count}} právě přiřazených transakcí ze souboru {{file}} ({{period}})? Ostatní importy, samostatně změněné zůstatky a pravidla zůstanou. Smazání nelze vrátit.",
+    "promotions_zero": "Žádné čekající pohyby k zaúčtování",
+    "promotions_one": "{{count}} čekající pohyb bude zaúčtován",
+    "promotions_few": "{{count}} čekající pohyby budou zaúčtovány",
+    "promotions_other": "{{count}} čekajících pohybů bude zaúčtováno"
   }
 }

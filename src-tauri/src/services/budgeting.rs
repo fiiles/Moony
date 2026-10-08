@@ -540,12 +540,7 @@ fn period_limits(
             let e = out.entry(category).or_insert((Some(0.0), goal.clone()));
             e.1 = goal;
             e.0 = match (e.0, czk) {
-                (Some(a), Some(b)) => Some(
-                    a + parse_money(&crate::services::reporting::money_in_currency(
-                        b,
-                        report_currency,
-                    ))?,
-                ),
+                (Some(a), Some(b)) => Some(a + b),
                 _ => None,
             };
         }
@@ -561,6 +556,16 @@ fn period_limits(
             .expect("midnight")
             .and_utc()
             .timestamp();
+    }
+    // Prorated monthly shares retain precision until the complete period.
+    // Round the denominator once so wire limits and utilization use one value.
+    for (limit, _) in out.values_mut() {
+        if let Some(value) = limit {
+            *value = parse_money(&crate::services::reporting::money_in_currency(
+                *value,
+                report_currency,
+            ))?;
+        }
     }
     Ok(out)
 }
@@ -741,6 +746,35 @@ mod tests {
             .expense_categories[0]
             .budget_limit
             .clone()
+    }
+
+    fn assert_native_period_limit(currency: &str, timeframe: &str, end: i64, expected: &str) {
+        let conn = setup_test_db();
+        let mut input = goal_input("100.00", JAN);
+        input.currency = Some(currency.into());
+        input.timeframe = timeframe.into();
+        upsert_goal_at(&conn, input, JAN).unwrap();
+        conn.execute("INSERT INTO bank_transactions(id,bank_account_id,booking_date,amount,currency,category_id,tx_type) VALUES ('period','acc1',?1,'100',?2,'cat_groceries','debit')", params![JAN,currency]).unwrap();
+        let report = get_report_in_currency(&conn, JAN, end, timeframe, None, currency).unwrap();
+        let category = &report.expense_categories[0];
+        assert_eq!(category.budget_limit.as_deref(), Some(expected));
+        assert_eq!(category.budget_limit_native.as_deref(), Some(expected));
+        assert_eq!(category.budget_spent.as_deref(), Some(expected));
+        assert_eq!(category.budget_percentage, Some(100.0));
+        assert_eq!(stored_amount(&conn), "100.00");
+        assert_eq!(report.quality.missing_fx_count, 0);
+    }
+    #[test]
+    fn target_period_limit_yearly_jpy_preserves_full_goal_before_rounding() {
+        assert_native_period_limit("JPY", "yearly", 1798761600 - 1, "100");
+    }
+    #[test]
+    fn target_period_limit_quarterly_eur_preserves_fractional_monthly_shares() {
+        assert_native_period_limit("EUR", "quarterly", 1775001600 - 1, "100.00");
+    }
+    #[test]
+    fn target_period_limit_yearly_eur_preserves_fractional_monthly_shares() {
+        assert_native_period_limit("EUR", "yearly", 1798761600 - 1, "100.00");
     }
 
     /// Final review I-1: a limit scheduled for December must not become the

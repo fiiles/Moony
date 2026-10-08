@@ -233,7 +233,10 @@ than ~24 events fall in view, cluster neighbors into one mark with a count ("3 n
    fallback design.
 4. **Cashflow is two pages.** *Cashflow* (`/reports/cashflow`) shows actual flows from bank transactions:
    monthly sums by direction, by category and by income source for 6 months, 12 months or the year to date,
-   next to the same sums for the previous range, converted to CZK with the dated rate like the ledger.
+   next to the same sums for the previous range, calculated in the selected report currency with
+   historical pair rates. Same-currency movements need no conversion. Currency is part of the
+   amount; ordinary reports do not carry persistent technical FX explanations. Show compact
+   warnings only when missing data affects the result.
    *Cashflow planning* (`/reports/cashflow-planning`, label key `nav.cashflowPlanning`, cs "Plánování
    cashflow", en "Cashflow planning") shows the planned recurring items; items derived from other domains
    (`isUserEditable = false`: Úvěry, Pojištění, Nemovitosti, Akcie, Dluhopisy) carry a source badge instead

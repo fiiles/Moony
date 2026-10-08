@@ -48,7 +48,7 @@ cd src-tauri && cargo test         # Rust tests
 7. Mutations invalidate domain keys + `["portfolio-metrics"]` + `["cashflow-report"]`, then `recordSnapshot()` + invalidate `["portfolio-history"]` (reference: `use-bank-account-mutations.ts`) → `docs/standards/typescript-frontend.md`
 8. Every user-facing string lands in BOTH `en/` and `cs/` locale files → `docs/standards/i18n.md`
 9. Check `docs/DEPRECATED.md` before copying any pattern; never resurrect removed code from history → `docs/DEPRECATED.md`
-10. Money is TEXT, timestamps are unix epoch INTEGER, PKs are TEXT UUIDs, CZK is base → `docs/architecture/decisions/0001-czk-base-currency-and-money-as-text.md`
+10. Money is TEXT, timestamps are unix epoch INTEGER, PKs are TEXT UUIDs; native values are authoritative and reports declare their currency. Existing CZK cache contracts stay explicit → `docs/architecture/decisions/0011-native-money-and-report-currencies.md`
 
 ## Where the docs live
 

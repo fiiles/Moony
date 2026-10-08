@@ -575,7 +575,7 @@ impl MoonyMcp {
     }
 
     #[tool(
-        description = "Get the planned income vs expenses cashflow report — the same report as the app's Cashflow planning page: user-defined cashflow items, active loan payments (repaid and expired loans are omitted), insurance premiums, property costs, savings interest, dividends, bond interest and rental income. A user item that replaces an automatic one (replacement) is counted once. View as monthly or yearly totals. Amounts are in the user's main currency, given as `mainCurrency`; foreign items use current rates, so `estimate` is true and `quality.missingFxCurrencies` lists currencies without a rate."
+        description = "Get the planned income vs expenses cashflow report — the same report as the app's Cashflow planning page: user-defined cashflow items, active loan payments (repaid and expired loans are omitted), insurance premiums, property costs, savings interest, dividends, bond interest and rental income. A user item that replaces an automatic one (replacement) is counted once. View as monthly or yearly totals. Amounts are in the user's main currency, given as `mainCurrency`; same-currency items need no FX data, while foreign items use a current source/target rate pair. `estimate` is true and `quality.missingFxCurrencies` lists currencies whose conversion is unavailable. Mixed property costs retain their native `originalComponents`."
     )]
     fn cashflow_report(
         &self,
@@ -588,7 +588,7 @@ impl MoonyMcp {
     }
 
     #[tool(
-        description = "Get a budget vs actual spending report by category for a period — the same numbers as the app's Budgets page. Only booked transactions count (pending ones do not); refunds reduce spending; transfers between the user's own accounts, investments, loan financing and adjustments are not spending (they are summarized separately); each month uses the budget limit version in effect in that month. Pass a calendar period matching `timeframe` (one month for monthly, a quarter, a year). Values are converted to CZK at the booking-day rate; rows without a historical rate are excluded and counted in `quality.missingFxCount` (never converted 1:1); `budget` is null when the limit cannot be converted. Amounts are in the user's main currency, given as `mainCurrency` (converted from CZK at the current rate)."
+        description = "Get a budget vs actual spending report by category for a period — the same numbers as the app's Budgets page. Only booked transactions count (pending ones do not); refunds reduce spending; transfers between the user's own accounts, investments, loan financing and adjustments are not spending (they are summarized separately); each month uses the budget limit version in effect in that month. Pass a calendar period matching `timeframe` (one month for monthly, a quarter, a year). Report amounts are computed directly in the user's `mainCurrency`: same-currency rows need no rates; foreign rows use a common historical source/target quote date on or before booking, with at most ten days of lookback. Missing conversions are excluded and counted in `quality.missingFxCount`, never converted 1:1. `budget` is null when its report-currency conversion is unavailable. Budget utilization is independently evaluated in `budgetCurrency`, with `budgetSpent`, `budgetLimitNative` and `usagePercent`; changing the profile currency does not change whether that native budget is exceeded."
     )]
     fn budgeting_report(
         &self,

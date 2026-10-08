@@ -8,7 +8,7 @@ and what it costs. ADRs are dated point-in-time records — facts in them
 
 | # | Title | Date | Status |
 |---|-------|------|--------|
-| [0001](0001-czk-base-currency-and-money-as-text.md) | CZK base currency and money as TEXT | 2026-07-07 | Accepted |
+| [0001](0001-czk-base-currency-and-money-as-text.md) | CZK base currency and money as TEXT | 2026-07-07 | Reporting rule partially superseded by 0011 |
 | [0002](0002-schema-ts-is-the-wire-contract.md) | schema.ts is the wire contract | 2026-07-07 | Accepted |
 | [0003](0003-tiered-ai-workflow.md) | Tiered AI workflow | 2026-07-07 | Accepted |
 | [0004](0004-local-api-token-gated-writes.md) | Local API token-gated writes | 2026-07-07 | Superseded by 0006 |
@@ -18,6 +18,7 @@ and what it costs. ADRs are dated point-in-time records — facts in them
 | [0008](0008-utc-calendar-days.md) | Calendar days are UTC-midnight epochs; periods bounded in UTC | 2026-10-02 | Accepted |
 | [0009](0009-key-derivation-parameters.md) | Versioned scrypt parameters for the password key file | 2026-10-02 | Accepted |
 | [0010](0010-new-identifier-and-single-schema-baseline.md) | New app identifier and a single schema baseline | 2026-10-04 | Accepted |
+| [0011](0011-native-money-and-report-currencies.md) | Native money and explicit report currencies | 2026-10-08 | Accepted |
 
 ## Rules
 
@@ -25,7 +26,7 @@ and what it costs. ADRs are dated point-in-time records — facts in them
   different. To change a decision, write a **new ADR** with the next number
   that links back to the one it supersedes. The only edit ever made to an old
   ADR is flipping its `## Status` to `Superseded by [NNNN](NNNN-....md)`.
-- Numbering is sequential and zero-padded; the next free number is `0011`.
+- Numbering is sequential and zero-padded; the next free number is `0012`.
 - Filename: `NNNN-short-kebab-title.md`. Add every new ADR to the index table
   above.
 - Keep each ADR to one page or less.

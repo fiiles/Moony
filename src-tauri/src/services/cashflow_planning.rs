@@ -1176,11 +1176,24 @@ pub fn get_report_in_currency(
                                 } else {
                                     Vec::new()
                                 };
+                            let fx_quality = i
+                                .source_fx_quality
+                                .unwrap_or_else(|| fx.quality_for(&i.original_currency));
+                            let converted_component_count = if original_components.is_empty() {
+                                usize::from(fx_quality != crate::models::FxQuality::Missing)
+                            } else {
+                                original_components
+                                    .iter()
+                                    .filter(|component| {
+                                        fx.quality_for(&component.currency)
+                                            != crate::models::FxQuality::Missing
+                                    })
+                                    .count()
+                            };
                             let item = crate::models::CashflowReportItem {
                                 original_components,
-                                fx_quality: i
-                                    .source_fx_quality
-                                    .unwrap_or_else(|| fx.quality_for(&i.original_currency)),
+                                converted_component_count,
+                                fx_quality,
                                 category: c.key.clone(),
                                 item_type: direction.into(),
                                 id: i.id.clone(),
@@ -1650,6 +1663,59 @@ mod tests {
                     assert_eq!(report.quality.missing_fx_currencies, vec!["XPU"]);
                 }
             }
+        }
+    }
+    #[test]
+    fn target_composite_count_distinguishes_known_zero_from_all_missing() {
+        for (costs, expected_amount, expected_count) in [
+            (
+                serde_json::json!([
+                    {"amount":0,"currency":"AED","frequency":"monthly"},
+                    {"amount":100,"currency":"XQJ","frequency":"monthly"}
+                ]),
+                "0.00",
+                1,
+            ),
+            (
+                serde_json::json!([
+                    {"amount":100,"currency":"XQJ","frequency":"monthly"},
+                    {"amount":200,"currency":"XQK","frequency":"monthly"}
+                ]),
+                "0.00",
+                0,
+            ),
+            (
+                serde_json::json!([
+                    {"amount":60,"currency":"AED","frequency":"monthly"},
+                    {"amount":100,"currency":"XQJ","frequency":"monthly"}
+                ]),
+                "60.00",
+                1,
+            ),
+        ] {
+            let conn = planning_db();
+            insert_property(&conn, "personal", costs);
+            let report = get_report_in_currency(&conn, "monthly", "AED").unwrap();
+            let source = report
+                .automatic_sources
+                .iter()
+                .find(|source| source.source_id.as_deref() == Some("propertyCosts:property"))
+                .expect("property source");
+            assert_eq!(source.amount, expected_amount);
+            assert_eq!(source.fx_quality, crate::models::FxQuality::Missing);
+            let serialized = serde_json::to_value(source).unwrap();
+            assert_eq!(serialized["convertedComponentCount"], expected_count);
+            let active = report
+                .personal
+                .expenses
+                .iter()
+                .flat_map(|category| &category.items)
+                .find(|item| item.source_id == source.source_id)
+                .expect("active property item");
+            assert_eq!(
+                serde_json::to_value(active).unwrap()["convertedComponentCount"],
+                expected_count
+            );
         }
     }
     #[test]

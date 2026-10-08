@@ -201,7 +201,7 @@
     "effectiveMonth": "Effective month",
     "effectiveMonthHelp": "Defaults to this month. Choose a later month to schedule a change; limits of earlier months stay in the reports.",
     "observedAverage": "Observed monthly average: {{amount}} from {{count}} completed months. Statement completeness is not proven.",
-    "limitUnavailable": "No historical limit or its FX is unavailable",
+    "usageUnavailable": "Budget usage unavailable",
     "absoluteShare": "Share of absolute group amounts",
     "signedUnbudgetedTotal": "Net unbudgeted spending: {{amount}}",
     "effectiveMonthPrefill": "The amount shows the limit in effect in {{month}}. Saving it changes the limit from that month on; earlier months keep theirs.",

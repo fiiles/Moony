@@ -125,6 +125,8 @@ mod tests {
 pub struct CashflowReportItem {
     #[serde(rename = "originalComponents")]
     pub original_components: Vec<CashflowOriginalComponent>,
+    #[serde(rename = "convertedComponentCount")]
+    pub converted_component_count: usize,
     #[serde(rename = "fxQuality")]
     pub fx_quality: crate::models::FxQuality,
     pub category: String,

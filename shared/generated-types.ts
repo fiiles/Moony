@@ -160,7 +160,7 @@ export type CashflowReport = { reportCurrency: string; quality: ReportQuality; r
 /**
  * Individual item in a cashflow category
  */
-export type CashflowReportItem = { originalComponents: CashflowOriginalComponent[]; fxQuality: FxQuality; category: string; itemType: string; sourceId: string | null; replacementSourceId: string | null; id: string; name: string; amount: string; originalAmount: string; originalCurrency: string; originalFrequency: string; isUserDefined: boolean }
+export type CashflowReportItem = { originalComponents: CashflowOriginalComponent[]; convertedComponentCount: number; fxQuality: FxQuality; category: string; itemType: string; sourceId: string | null; replacementSourceId: string | null; id: string; name: string; amount: string; originalAmount: string; originalCurrency: string; originalFrequency: string; isUserDefined: boolean }
 
 /**
  * A cashflow section (Personal or Investments)

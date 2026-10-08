@@ -73,6 +73,7 @@ pub fn cashflow_report(conn: &Connection, view_type: Option<String>) -> Result<V
                         "section": section_key,
                         "amount": money(&item.amount)?,
                         "originalComponents": item.original_components,
+                        "convertedComponentCount": item.converted_component_count,
                         "originalAmount": item.original_amount,
                         "originalCurrency": item.original_currency,
                         "originalFrequency": item.original_frequency,

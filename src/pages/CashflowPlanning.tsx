@@ -224,7 +224,7 @@ export default function CashflowPlanning() {
       const sourceKey = !item.isUserDefined ? SOURCE_BY_CATEGORY[category.key] : undefined;
       const source = sourceKey ? tc(sourceKey) : undefined;
       const incomplete = item.fxQuality === 'missing';
-      const unavailable = incomplete && item.originalComponents.length <= 1;
+      const unavailable = incomplete && item.convertedComponentCount === 0;
       const original =
         item.originalCurrency === 'MULTI'
           ? item.originalComponents

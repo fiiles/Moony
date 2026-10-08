@@ -279,7 +279,7 @@ export default function Budgeting() {
       row.budgetSpent == null ||
       row.budgetLimitNative == null
     )
-      return <Badge variant="outline">{t('readiness.limitUnavailable')}</Badge>;
+      return <Badge variant="outline">{t('readiness.usageUnavailable')}</Badge>;
     if (row.state === 'over') {
       return (
         <Badge variant="loss">
@@ -617,7 +617,7 @@ export default function Budgeting() {
                       ? t('table.of', {
                           amount: fmt.money(Number(row.budgetLimitNative), row.budgetCurrency),
                         })
-                      : t('readiness.limitUnavailable')}
+                      : t('readiness.usageUnavailable')}
                   </small>
                   {row.goal &&
                     (() => {

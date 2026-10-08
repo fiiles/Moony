@@ -653,6 +653,8 @@ export interface CashflowOriginalComponent {
 
 export interface CashflowReportItem {
   originalComponents: CashflowOriginalComponent[];
+  /** Components with a usable target conversion, including known zero-valued components. */
+  convertedComponentCount: number;
   fxQuality: FxQuality;
   sourceId: string | null;
   replacementSourceId: string | null;

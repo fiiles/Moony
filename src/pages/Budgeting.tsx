@@ -1,6 +1,8 @@
 import { AccountScope } from '@/components/reports/AccountScope';
 import { ReportQualityNote, ReportError } from '@/components/reports/ReportQualityNote';
 import { useReportMoney } from '@/lib/use-report-money';
+import { useCurrency } from '@/lib/currency';
+import { summarizeBudgetStatus } from '@/utils/report-currencies';
 import { refreshMoneyFlows } from '@/lib/money-flow-refresh';
 import { translateApiError } from '@/lib/translate-api-error';
 import { useMemo, useState } from 'react';
@@ -15,7 +17,7 @@ import { useCategories, useCategoryName } from '@/hooks/use-categories';
 import { useBankAccounts } from '@/hooks/use-bank-accounts';
 import { useShellPage } from '@/components/shell/shell-context';
 import { getUtcPeriodRange, type PeriodTimeframe } from '@/utils/period';
-import { budgetState, paceVerdict, periodPace, type BudgetState } from '@/utils/budget-pace';
+import type { BudgetState } from '@/utils/budget-pace';
 import { currentMonthStart, scheduledVersions } from '@/utils/budget-goal-versions';
 import { PageHead } from '@/components/shell/PageHead';
 import { Button } from '@/components/ui/button';
@@ -46,7 +48,6 @@ import {
   CategoryTransactionsDialog,
   type CategoryTransactionsTarget,
 } from '@/components/budgeting/CategoryTransactionsDialog';
-import { cn } from '@/lib/utils';
 
 const TIMEFRAMES: readonly PeriodTimeframe[] = ['monthly', 'quarterly', 'yearly'];
 
@@ -54,16 +55,14 @@ type SortKey = 'usage' | 'name';
 
 interface BudgetRow {
   goal: BudgetGoal | null;
-  limitKnown: boolean;
   categoryId: string;
   name: string;
-  /** Limit scaled to the period, CZK. */
-  limit: number;
-  /** Spent in the period, CZK. */
-  spent: number;
+  budgetCurrency: string | null;
+  budgetSpent: string | null;
+  budgetLimitNative: string | null;
+  budgetPercentage: number | null;
   count: number;
-  ratio: number;
-  state: BudgetState;
+  state: BudgetState | null;
 }
 
 interface UnbudgetedRow {
@@ -77,14 +76,14 @@ interface UnbudgetedRow {
 
 /**
  * Budgets (design system §7 Planning, prototype `budgets.html`): period
- * navigation, three stats with the pace of the period, the overall usage bar
- * with today's mark, one table of limited categories with state badges, and
+ * navigation, report-currency spending and native-currency budget states,
+ * one table of limited categories with state badges, and
  * the spending that has no limit yet.
  */
 export default function Budgeting() {
   const { t } = useTranslation('budgeting');
   const { t: tc } = useTranslation('common');
-  const { money } = useReportMoney();
+  const { currencyCode, ratesTimestamp } = useCurrency();
   const [accountIds, setAccountIds] = useState<string[] | undefined>(undefined);
   const fmt = useFormat();
   const queryClient = useQueryClient();
@@ -114,7 +113,6 @@ export default function Budgeting() {
     }
     return String(range.startDate.getUTCFullYear());
   }, [timeframe, range, fmt]);
-  const pace = useMemo(() => periodPace(range.start, range.end), [range]);
 
   const {
     data: report,
@@ -122,9 +120,19 @@ export default function Budgeting() {
     isError: reportError,
     refetch: refetchReport,
   } = useQuery({
-    queryKey: ['budgeting-report', range.start, range.end, timeframe, accountIds],
-    queryFn: () => budgetingApi.getReport(range.start, range.end, timeframe, accountIds),
+    queryKey: [
+      'budgeting-report',
+      range.start,
+      range.end,
+      timeframe,
+      accountIds,
+      currencyCode,
+      ratesTimestamp,
+    ],
+    queryFn: () =>
+      budgetingApi.getReport(range.start, range.end, timeframe, accountIds, currencyCode),
   });
+  const { money } = useReportMoney(report?.reportCurrency);
   const {
     data: goals = [],
     isLoading: goalsLoading,
@@ -169,26 +177,36 @@ export default function Budgeting() {
         goals.find((g) => g.categoryId === categoryId && g.timeframe === 'monthly') ?? null;
       const historical = report?.expenseCategories.find((c) => c.categoryId === categoryId);
       const category = categories.find((c) => c.id === categoryId);
-      const limitKnown = historical?.budgetLimit != null;
-      const limit = Number(historical?.budgetLimit ?? 0);
       const usage = spentByCategory.get(categoryId);
-      const spent = usage?.spent ?? 0;
+      const budgetPercentage = historical?.budgetPercentage ?? null;
+      const state: BudgetState | null =
+        budgetPercentage == null ||
+        !Number.isFinite(budgetPercentage) ||
+        !historical?.budgetCurrency ||
+        historical?.budgetSpent == null ||
+        historical?.budgetLimitNative == null
+          ? null
+          : budgetPercentage > 100
+            ? 'over'
+            : budgetPercentage >= 85
+              ? 'near'
+              : 'ok';
       return {
         goal,
         categoryId,
         name: category ? categoryName(category) : categoryId,
-        limit,
-        limitKnown,
-        spent,
+        budgetCurrency: historical?.budgetCurrency ?? null,
+        budgetSpent: historical?.budgetSpent ?? null,
+        budgetLimitNative: historical?.budgetLimitNative ?? null,
+        budgetPercentage,
         count: usage?.count ?? 0,
-        ratio: limit > 0 ? spent / limit : 0,
-        state: budgetState(spent, limit),
+        state,
       };
     });
     return list.sort((a, b) =>
       sort === 'name'
         ? a.name.localeCompare(b.name, fmt.locale)
-        : b.ratio - a.ratio || b.spent - a.spent
+        : (b.budgetPercentage ?? -Infinity) - (a.budgetPercentage ?? -Infinity)
     );
   }, [goals, report, categories, categoryName, spentByCategory, sort, fmt.locale]);
 
@@ -229,13 +247,7 @@ export default function Budgeting() {
     return categories.filter((c) => c.kind === 'expense' && !budgeted.has(c.id));
   }, [categories, goals]);
 
-  const allLimitsKnown = rows.every((row) => row.limitKnown);
-  const budget = rows.reduce((s, r) => s + r.limit, 0);
-  const spent = rows.reduce((s, r) => s + r.spent, 0);
-  const remaining = budget - spent;
-  const share = budget > 0 ? spent / budget : 0;
-  const overCount = rows.filter((r) => r.state === 'over').length;
-  const nearCount = rows.filter((r) => r.state === 'near').length;
+  const status = summarizeBudgetStatus(rows, report?.totalExpenses ?? '0');
 
   // Czech month names are lower-case inside a sentence; English keeps the capital.
   const inSentence = (text: string) =>
@@ -260,46 +272,23 @@ export default function Budgeting() {
   const openEdit = (row: BudgetRow) =>
     setGoalDialog({ open: true, goal: row.goal, categoryId: row.categoryId });
 
-  const periodWord = (key: 'budgetFor' | 'elapsed') =>
-    t(`stats.${key}.${timeframe}`, {
-      period:
-        timeframe === 'monthly'
-          ? inSentence(fmt.month(range.startDate, { month: 'long', year: undefined }))
-          : periodLabel,
-      percent: fmt.percent(pace.elapsed, 0),
-    });
-
-  const spentNote = !allLimitsKnown
-    ? t('readiness.limitUnavailable')
-    : pace.isCurrent
-      ? `${t('stats.ofBudget', { percent: fmt.percent(share, 0) })} · ${periodWord('elapsed')}`
-      : t('stats.ofBudget', { percent: fmt.percent(share, 0) });
-
-  const remainingNote = (() => {
-    if (remaining < 0) return t('stats.overNote', { percent: fmt.percent(share - 1, 0) });
-    if (pace.isPast) return t('stats.unspent');
-    if (!pace.isCurrent) return t('stats.ahead');
-    if (pace.remainingDays === 0) return t('stats.lastDay');
-    return t('stats.remainingNote', {
-      days: t('stats.days', { count: pace.remainingDays }),
-      perDay: money(remaining / pace.remainingDays),
-    });
-  })();
-
-  const verdictText = (() => {
-    if (pace.isPast) return t('overview.closed');
-    if (!pace.isCurrent) return t('overview.notStarted');
-    const { verdict, points } = paceVerdict(share, pace.elapsed);
-    if (verdict === 'onPace') return t('overview.onPace');
-    return t(`overview.${verdict}`, { count: points });
-  })();
-
   const stateBadge = (row: BudgetRow) => {
-    if (!row.limitKnown) return <Badge variant="outline">{t('readiness.limitUnavailable')}</Badge>;
+    if (
+      row.state == null ||
+      !row.budgetCurrency ||
+      row.budgetSpent == null ||
+      row.budgetLimitNative == null
+    )
+      return <Badge variant="outline">{t('readiness.limitUnavailable')}</Badge>;
     if (row.state === 'over') {
       return (
         <Badge variant="loss">
-          {t('table.state.over', { amount: money(row.spent - row.limit) })}
+          {t('table.state.over', {
+            amount: fmt.money(
+              Number(row.budgetSpent) - Number(row.budgetLimitNative),
+              row.budgetCurrency
+            ),
+          })}
         </Badge>
       );
     }
@@ -369,6 +358,8 @@ export default function Budgeting() {
       <CategoryTransactionsDialog
         accountIds={accountIds}
         target={txTarget}
+        reportCurrency={txTarget?.budgetCurrency ?? report?.reportCurrency ?? currencyCode}
+        ratesTimestamp={ratesTimestamp}
         onClose={() => setTxTarget(null)}
         start={range.start}
         end={range.end}
@@ -525,72 +516,28 @@ export default function Budgeting() {
     );
   }
 
-  const todayLeft = Math.max(0, Math.min(100, pace.elapsed * 100));
-
   return (
     <>
       {head}
       {report && <ReportQualityNote quality={report.quality} />}
       <Stats columns={3}>
         <Stat
-          label={periodWord('budgetFor')}
-          value={allLimitsKnown ? money(budget) : '—'}
+          label={t('stats.totalExpenses')}
+          value={money(Number(status.targetExpenses))}
           note={t('stats.limited', { count: rows.length })}
         />
-        <Stat label={t('stats.spent')} value={money(spent)} note={spentNote} />
         <Stat
-          label={remaining < 0 ? t('stats.over') : t('stats.remaining')}
-          value={allLimitsKnown ? money(Math.abs(remaining)) : '—'}
-          tone={remaining < 0 ? 'loss' : 'neutral'}
-          noteTone="neutral"
-          note={allLimitsKnown ? remainingNote : t('readiness.limitUnavailable')}
+          label={t('stats.onTrack')}
+          value={String(status.onTrack)}
+          note={t('stats.nearCount', { count: status.near })}
+        />
+        <Stat
+          label={t('stats.overCount')}
+          value={String(status.over)}
+          tone={status.over > 0 ? 'loss' : 'neutral'}
+          note={t('stats.unavailableCount', { count: status.unavailable })}
         />
       </Stats>
-
-      {allLimitsKnown && (
-        <Card variant="flat" className="mb-[17px] px-[21px] py-5">
-          <div className="grid grid-cols-[1fr_auto] items-center gap-6">
-            <div>
-              <div className="mb-2 flex items-baseline justify-between gap-4">
-                <h3 className="m-0 text-h3 text-ink">{t('overview.title')}</h3>
-                <span className="text-caption text-ink-3">{verdictText}</span>
-              </div>
-              <Progress
-                value={share * 100}
-                over={share > 1}
-                mark={pace.isCurrent ? todayLeft : undefined}
-                className="h-2.5"
-                aria-label={fmt.percent(share, 0)}
-              />
-              <div className="relative mt-1.5 flex justify-between text-[10px] font-600 text-ink-5">
-                <span className={cn(pace.isCurrent && todayLeft < 12 && 'invisible')}>
-                  {fmt.day(range.start, { day: 'numeric', month: 'numeric' })}
-                </span>
-                {pace.isCurrent && (
-                  <span
-                    className="absolute -translate-x-1/2 text-ink-3"
-                    style={{ left: `${todayLeft}%` }}
-                  >
-                    {tc('charts.today')}
-                  </span>
-                )}
-                <span className={cn(pace.isCurrent && todayLeft > 88 && 'invisible')}>
-                  {fmt.day(range.end, { day: 'numeric', month: 'numeric' })}
-                </span>
-              </div>
-            </div>
-            <div className="text-right">
-              {overCount > 0 ? (
-                <Badge variant="loss">{t('overview.overCount', { count: overCount })}</Badge>
-              ) : nearCount > 0 ? (
-                <Badge>{t('overview.nearCount', { count: nearCount })}</Badge>
-              ) : (
-                <Badge variant="gain">{t('overview.allOk')}</Badge>
-              )}
-            </div>
-          </div>
-        </Card>
-      )}
 
       <Card variant="table">
         <CardHeader>
@@ -626,7 +573,13 @@ export default function Budgeting() {
                   <button
                     type="button"
                     className="block text-left font-650 text-ink underline-offset-[3px] hover:underline focus-visible:outline-none focus-visible:underline"
-                    onClick={() => setTxTarget({ categoryId: row.categoryId, name: row.name })}
+                    onClick={() =>
+                      setTxTarget({
+                        categoryId: row.categoryId,
+                        name: row.name,
+                        budgetCurrency: row.budgetCurrency ?? row.goal?.currency ?? undefined,
+                      })
+                    }
                   >
                     {row.name}
                   </button>
@@ -636,16 +589,16 @@ export default function Budgeting() {
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-3 pr-6">
-                    {row.limitKnown ? (
+                    {row.state != null && row.budgetPercentage != null ? (
                       <>
                         <Progress
-                          value={row.ratio * 100}
+                          value={row.budgetPercentage}
                           over={row.state === 'over'}
                           className="h-[7px] flex-1"
-                          aria-label={fmt.percent(row.ratio, 0)}
+                          aria-label={fmt.percent(row.budgetPercentage / 100, 0)}
                         />
                         <small className="w-9 text-right text-micro font-650 text-ink-4 num">
-                          {fmt.percent(row.ratio, 0)}
+                          {fmt.percent(row.budgetPercentage / 100, 0)}
                         </small>
                       </>
                     ) : (
@@ -654,10 +607,16 @@ export default function Budgeting() {
                   </div>
                 </TableCell>
                 <TableCell className="text-right num">
-                  <b className="block font-650 text-ink">{money(row.spent)}</b>
+                  <b className="block font-650 text-ink">
+                    {row.budgetCurrency && row.budgetSpent != null
+                      ? fmt.money(Number(row.budgetSpent), row.budgetCurrency)
+                      : '—'}
+                  </b>
                   <small className="mt-0.5 block text-micro font-500 text-ink-4">
-                    {row.limitKnown
-                      ? t('table.of', { amount: money(row.limit) })
+                    {row.budgetCurrency && row.budgetLimitNative != null
+                      ? t('table.of', {
+                          amount: fmt.money(Number(row.budgetLimitNative), row.budgetCurrency),
+                        })
                       : t('readiness.limitUnavailable')}
                   </small>
                   {row.goal &&
@@ -697,7 +656,11 @@ export default function Budgeting() {
                         <DropdownMenuItem
                           disabled={row.count === 0}
                           onSelect={() =>
-                            setTxTarget({ categoryId: row.categoryId, name: row.name })
+                            setTxTarget({
+                              categoryId: row.categoryId,
+                              name: row.name,
+                              budgetCurrency: row.budgetCurrency ?? row.goal?.currency ?? undefined,
+                            })
                           }
                         >
                           {t('actions.showTransactions')}

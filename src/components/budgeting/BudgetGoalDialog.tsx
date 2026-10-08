@@ -1,5 +1,4 @@
 import { ReportError, ReportQualityNote } from '@/components/reports/ReportQualityNote';
-import { useReportMoney } from '@/lib/use-report-money';
 import { currencyDecimals, type CurrencyCode } from '@shared/currencies';
 import { preserveMoneyText } from '@/utils/money-flows';
 import { refreshMoneyFlows } from '@/lib/money-flow-refresh';
@@ -93,8 +92,8 @@ export function BudgetGoalDialog({
 }: BudgetGoalDialogProps) {
   const { t } = useTranslation('budgeting');
   const { t: tc } = useTranslation('common');
-  const { currencyCode } = useCurrency();
-  const { money } = useReportMoney();
+  const { currencyCode, ratesTimestamp } = useCurrency();
+  const editorCurrency = goal?.currency ?? currencyCode;
   const categoryName = useCategoryName();
   const queryClient = useQueryClient();
   const fmt = useFormat();
@@ -147,7 +146,7 @@ export function BudgetGoalDialog({
   }, [open, goal, editedMonth, form]);
   const scheduled = scheduledVersions(versions, editedMonth ?? nowMonth);
 
-  // Average monthly spending per category over the last six full months (CZK).
+  // Average monthly spending in the limit editor's own currency.
   const averageRange = useMemo(() => {
     const first = getUtcPeriodRange('monthly', -AVERAGE_MONTHS);
     const last = getUtcPeriodRange('monthly', -1);
@@ -158,8 +157,22 @@ export function BudgetGoalDialog({
     isError: averageError,
     refetch: refetchAverage,
   } = useQuery({
-    queryKey: ['budgeting-report', averageRange.start, averageRange.end, 'monthly'],
-    queryFn: () => budgetingApi.getReport(averageRange.start, averageRange.end, 'monthly'),
+    queryKey: [
+      'budgeting-report',
+      averageRange.start,
+      averageRange.end,
+      'monthly',
+      editorCurrency,
+      ratesTimestamp,
+    ],
+    queryFn: () =>
+      budgetingApi.getReport(
+        averageRange.start,
+        averageRange.end,
+        'monthly',
+        undefined,
+        editorCurrency
+      ),
     enabled: open,
     staleTime: 5 * 60 * 1000,
   });
@@ -293,7 +306,10 @@ export function BudgetGoalDialog({
                       ? t('dialog.hintPickCategory')
                       : average > 0
                         ? t('readiness.observedAverage', {
-                            amount: money(average),
+                            amount: fmt.money(
+                              average,
+                              averageReport?.reportCurrency ?? editorCurrency
+                            ),
                             count: averageReport?.quality.observedCompletedMonths.length ?? 0,
                           })
                         : t('dialog.noAverage')}

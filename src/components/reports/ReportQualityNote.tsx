@@ -1,56 +1,20 @@
-import { useRatesUpdatedAt } from '@/hooks/use-rates-updated-at';
-import { useFormat } from '@/lib/use-format';
 import { useTranslation } from 'react-i18next';
 import type { ReportQuality } from '@shared/schema';
-import { useReportMoney } from '@/lib/use-report-money';
 
 export function ReportQualityNote({
   quality,
-  averageMonths,
-  estimate = false,
+  planning = false,
 }: {
   quality: ReportQuality;
-  averageMonths?: number;
-  estimate?: boolean;
+  planning?: boolean;
 }) {
   const { t } = useTranslation('reports');
-  const ratesUpdatedAt = useRatesUpdatedAt();
-  const fmt = useFormat();
-  const { displayCurrency, unsupported, converted } = useReportMoney();
+  if (quality.missingFxCount === 0 && quality.invalidAmountCount === 0) return null;
   return (
     <div className="mb-5 space-y-1 text-micro text-ink-4" role="note">
-      <p>
-        {t(estimate ? 'readiness.planningEstimate' : 'readiness.historicalCzk')}{' '}
-        {unsupported
-          ? t('readiness.unsupportedCurrency')
-          : converted
-            ? t('readiness.currentDisplayRate', {
-                currency: displayCurrency,
-                date: ratesUpdatedAt
-                  ? fmt.dateTime(ratesUpdatedAt, { hour: undefined, minute: undefined })
-                  : t('readiness.rateDateUnknown'),
-              })
-            : null}
-      </p>
-      {!estimate && (
-        <p>
-          {t('readiness.observation', {
-            completed: quality.observedCompletedMonths.length,
-            partial: quality.partialMonthCount,
-            missing: quality.unobservedMonthCount,
-          })}
-        </p>
-      )}
-      {averageMonths != null && (
-        <p>
-          {averageMonths === 0
-            ? t('readiness.averageUnavailable')
-            : t('readiness.averageSample', { count: averageMonths })}
-        </p>
-      )}
       {quality.missingFxCount > 0 && (
         <p className="text-loss">
-          {t('readiness.missingFx', {
+          {t(planning ? 'readiness.missingPlanningFx' : 'readiness.missingFx', {
             count: quality.missingFxCount,
             currencies: quality.missingFxCurrencies.join(', '),
           })}

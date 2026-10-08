@@ -2,6 +2,7 @@ import { ReportTransactionsDialog } from '@/components/reports/ReportTransaction
 export interface CategoryTransactionsTarget {
   categoryId: string;
   name: string;
+  budgetCurrency?: string;
 }
 export function CategoryTransactionsDialog({
   target,
@@ -9,6 +10,8 @@ export function CategoryTransactionsDialog({
   start,
   end,
   accountIds,
+  reportCurrency,
+  ratesTimestamp,
 }: {
   target: CategoryTransactionsTarget | null;
   onClose: () => void;
@@ -16,6 +19,8 @@ export function CategoryTransactionsDialog({
   end: number;
   periodLabel: string;
   accountIds?: string[];
+  reportCurrency: string;
+  ratesTimestamp: number;
 }) {
   return (
     <ReportTransactionsDialog
@@ -24,6 +29,8 @@ export function CategoryTransactionsDialog({
       start={start}
       end={end}
       accountIds={accountIds}
+      reportCurrency={reportCurrency}
+      ratesTimestamp={ratesTimestamp}
       onClose={onClose}
     />
   );

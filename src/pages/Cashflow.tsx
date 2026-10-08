@@ -5,6 +5,7 @@ import {
   type ReportTarget,
 } from '@/components/reports/ReportTransactionsDialog';
 import { useReportMoney } from '@/lib/use-report-money';
+import { buildCashflowCsv } from '@/utils/report-currencies';
 import { absoluteMovementShares } from '@/utils/money-flows';
 import { useMemo, useState, type ReactNode } from 'react';
 import { Link } from 'wouter';
@@ -56,12 +57,7 @@ interface Row {
 export default function Cashflow() {
   const { t } = useTranslation('reports');
   const { t: tBank } = useTranslation('bank_accounts');
-  const { convert } = useCurrency();
-  const {
-    money,
-    signedMoney: formatCurrencySigned,
-    displayCurrency: currencyCode,
-  } = useReportMoney();
+  const { currencyCode, ratesTimestamp } = useCurrency();
   const [accountIds, setAccountIds] = useState<string[] | undefined>(undefined);
   const [txTarget, setTxTarget] = useState<ReportTarget | null>(null);
   const fmt = useFormat();
@@ -70,17 +66,18 @@ export default function Cashflow() {
   // Prefix shared with the planned report, so the mutation contract's
   // ['cashflow-report'] invalidation refreshes this page too.
   const { data, isLoading, isError, refetch } = useQuery<CashflowActuals>({
-    queryKey: ['cashflow-report', 'actuals', range, accountIds],
-    queryFn: () => cashflowApi.getActuals(range, accountIds),
+    queryKey: ['cashflow-report', 'actuals', range, accountIds, currencyCode, ratesTimestamp],
+    queryFn: () => cashflowApi.getActuals(range, accountIds, currencyCode),
     staleTime: 0,
     refetchOnMount: 'always',
   });
+  const { money, signedMoney: formatCurrencySigned } = useReportMoney(data?.reportCurrency);
 
-  const czk = (v: string | number) => Number(v) || 0;
-  const totalIncome = czk(data?.totalIncome ?? 0);
-  const totalExpenses = czk(data?.totalExpenses ?? 0);
-  const prevIncome = czk(data?.previousIncome ?? 0);
-  const prevExpenses = czk(data?.previousExpenses ?? 0);
+  const amount = (v: string | number) => Number(v) || 0;
+  const totalIncome = amount(data?.totalIncome ?? 0);
+  const totalExpenses = amount(data?.totalExpenses ?? 0);
+  const prevIncome = amount(data?.previousIncome ?? 0);
+  const prevExpenses = amount(data?.previousExpenses ?? 0);
   const savingsRate = totalIncome > 0 ? (totalIncome - totalExpenses) / totalIncome : 0;
   const prevRate = prevIncome > 0 ? (prevIncome - prevExpenses) / prevIncome : null;
 
@@ -111,13 +108,13 @@ export default function Cashflow() {
 
   // Retain every group; shares use absolute movement, amounts keep their signs.
   const fold = (groups: CashflowGroup[], kind: 'expense' | 'income', _max: number): Row[] => {
-    const shares = absoluteMovementShares(groups.map((g) => czk(g.amount)));
+    const shares = absoluteMovementShares(groups.map((g) => amount(g.amount)));
     const rows = groups
       .map((g, index) => ({
         key: g.key,
         label: groupLabel(g, kind),
-        amount: czk(g.amount),
-        previous: czk(g.previousAmount),
+        amount: amount(g.amount),
+        previous: amount(g.previousAmount),
         share: shares[index],
         count: g.count,
       }))
@@ -140,40 +137,21 @@ export default function Cashflow() {
     () =>
       (data?.months ?? []).map((m) => ({
         label: fmt.month(new Date(m.month * 1000), { month: 'short', year: '2-digit' }),
-        a: czk(m.income),
-        b: czk(m.expenses),
+        a: amount(m.income),
+        b: amount(m.expenses),
       })),
     [data, fmt]
   );
 
   const exportCsv = async () => {
     if (!data) return { csv: '', filename: 'cashflow.csv', count: 0 };
-    // Amounts are CZK; the file carries them in the main currency, like the page
-    const suffix = currencyCode.toLowerCase();
-    const inMain = (v: string | number) =>
-      Math.round(convert(czk(v), 'CZK', currencyCode) * 100) / 100;
-    const lines = [
-      ['month', `income_${suffix}`, `expenses_${suffix}`].join(';'),
-      ...data.months.map((m) =>
-        [
-          fmt.day(m.month, { year: 'numeric', month: '2-digit' }),
-          inMain(m.income),
-          inMain(m.expenses),
-        ].join(';')
-      ),
-      '',
-      ['expense_category', `amount_${suffix}`, `previous_${suffix}`, 'transactions'].join(';'),
-      ...data.expenseCategories.map((g) =>
-        [groupLabel(g, 'expense'), inMain(g.amount), inMain(g.previousAmount), g.count].join(';')
-      ),
-      '',
-      ['income_source', `amount_${suffix}`, `previous_${suffix}`, 'transactions'].join(';'),
-      ...data.incomeSources.map((g) =>
-        [groupLabel(g, 'income'), inMain(g.amount), inMain(g.previousAmount), g.count].join(';')
-      ),
-    ];
     return {
-      csv: lines.join('\n'),
+      csv: buildCashflowCsv(
+        data,
+        (month) => fmt.day(month, { year: 'numeric', month: '2-digit' }),
+        (group) => groupLabel(group, 'expense'),
+        (group) => groupLabel(group, 'income')
+      ),
       filename: `cashflow-${range}.csv`,
       count: data.months.length + data.expenseCategories.length + data.incomeSources.length,
     };
@@ -324,8 +302,8 @@ export default function Cashflow() {
     );
   }
 
-  const avgIncome = data.averageIncome == null ? 0 : czk(data.averageIncome);
-  const avgExpenses = data.averageExpenses == null ? 0 : czk(data.averageExpenses);
+  const avgIncome = data.averageIncome == null ? 0 : amount(data.averageIncome);
+  const avgExpenses = data.averageExpenses == null ? 0 : amount(data.averageExpenses);
   const avgSavings = avgIncome - avgExpenses;
 
   return (
@@ -347,16 +325,14 @@ export default function Cashflow() {
           })}
         </p>
       )}
-      <ReportQualityNote
-        quality={data.quality}
-        averageMonths={data.averageCompletedMonths.length}
-      />
+      <ReportQualityNote quality={data.quality} />
       <div className="mb-5 flex flex-wrap gap-x-6 gap-y-2 text-table">
         <span>
-          {t('readiness.ordinaryNet')}: <b className="num">{money(czk(data.netBalance))}</b>
+          {t('readiness.ordinaryNet')}: <b className="num">{money(amount(data.netBalance))}</b>
         </span>
         <span>
-          {t('readiness.bankMovement')}: <b className="num">{money(czk(data.bankCashMovement))}</b>
+          {t('readiness.bankMovement')}:{' '}
+          <b className="num">{money(amount(data.bankCashMovement))}</b>
         </span>
       </div>
       <ReportTransactionsDialog
@@ -365,12 +341,15 @@ export default function Cashflow() {
         start={data.rangeStart}
         end={data.rangeEnd}
         accountIds={accountIds}
+        reportCurrency={data.reportCurrency}
+        ratesTimestamp={ratesTimestamp}
         onClose={() => setTxTarget(null)}
       />
       <Stats columns={3}>
         <Stat
           label={t('actuals.stats.avgIncome')}
           value={data.averageIncome == null ? '—' : money(avgIncome)}
+          note={t('readiness.averageSample', { count: data.averageCompletedMonths.length })}
         />
         <Stat
           label={t('actuals.stats.avgExpenses')}
@@ -483,7 +462,7 @@ export default function Cashflow() {
                       {t(`readiness.flow.${group.key}`)} · {group.count}
                     </button>
                   </TableCell>
-                  <TableCell className="text-right num">{money(czk(group.amount))}</TableCell>
+                  <TableCell className="text-right num">{money(amount(group.amount))}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

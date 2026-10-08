@@ -35,12 +35,16 @@ function ReportTransactionsDialogContent({
   start,
   end,
   accountIds,
+  reportCurrency,
+  ratesTimestamp,
   onClose,
 }: {
   target: ReportTarget | null;
   start: number;
   end: number;
   accountIds?: string[];
+  reportCurrency: string;
+  ratesTimestamp: number;
   onClose: () => void;
 }) {
   const { t } = useTranslation('reports');
@@ -52,13 +56,22 @@ function ReportTransactionsDialogContent({
     isError,
     refetch,
   } = useQuery({
-    queryKey: ['report-transactions', target, start, end, accountIds],
+    queryKey: [
+      'report-transactions',
+      target,
+      start,
+      end,
+      accountIds,
+      reportCurrency,
+      ratesTimestamp,
+    ],
     queryFn: () =>
       cashflowApi.getTransactions(start, end, {
         accountIds,
         flowKind: target?.flowKind,
         categoryId: target?.categoryId,
         sourceKey: target?.sourceKey,
+        reportCurrency,
       }),
     enabled: target != null,
   });
@@ -68,7 +81,8 @@ function ReportTransactionsDialogContent({
         <DialogHeader>
           <DialogTitle>{target?.name}</DialogTitle>
           <DialogDescription>
-            {fmt.day(start)} – {fmt.day(end)} · {t('readiness.drilldownUnits')}
+            {fmt.day(start)} – {fmt.day(end)} ·{' '}
+            {t('readiness.drilldownUnits', { currency: reportCurrency })}
           </DialogDescription>
         </DialogHeader>
         {isError ? (
@@ -84,7 +98,9 @@ function ReportTransactionsDialogContent({
                   <TableHead>{t('readiness.description')}</TableHead>
                   <TableHead>{t('readiness.account')}</TableHead>
                   <TableHead className="text-right">{t('readiness.native')}</TableHead>
-                  <TableHead className="text-right">{t('readiness.contribution')}</TableHead>
+                  <TableHead className="text-right">
+                    {t('readiness.contribution', { currency: reportCurrency })}
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -109,7 +125,7 @@ function ReportTransactionsDialogContent({
                     <TableCell className="text-right num">
                       {tx.signedAmount === null
                         ? t('readiness.fxUnavailable')
-                        : fmt.money(Number(tx.signedAmount), 'CZK', { signed: true })}
+                        : fmt.money(Number(tx.signedAmount), tx.reportCurrency, { signed: true })}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -142,7 +158,13 @@ export function ReportTransactionsDialog(
 ) {
   return (
     <ReportTransactionsDialogContent
-      key={JSON.stringify([props.target, props.start, props.end, props.accountIds])}
+      key={JSON.stringify([
+        props.target,
+        props.start,
+        props.end,
+        props.accountIds,
+        props.reportCurrency,
+      ])}
       {...props}
     />
   );

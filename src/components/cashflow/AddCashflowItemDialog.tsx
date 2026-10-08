@@ -216,7 +216,12 @@ export default function AddCashflowItemDialog({
                     )
                     .map((source) => (
                       <SelectItem key={source.sourceId!} value={source.sourceId!}>
-                        {source.name} · {source.originalCurrency}
+                        {source.name} ·{' '}
+                        {source.originalCurrency === 'MULTI'
+                          ? source.originalComponents
+                              .map((component) => component.currency)
+                              .join(' + ')
+                          : source.originalCurrency}
                       </SelectItem>
                     ))}
                   {replacementSourceId !== 'none' &&

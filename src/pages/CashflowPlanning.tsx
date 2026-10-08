@@ -1,4 +1,5 @@
 import { useReportMoney } from '@/lib/use-report-money';
+import { useCurrency } from '@/lib/currency';
 import { ReportQualityNote, ReportError } from '@/components/reports/ReportQualityNote';
 import { refreshMoneyFlows } from '@/lib/money-flow-refresh';
 import { translateApiError } from '@/lib/translate-api-error';
@@ -63,7 +64,7 @@ const SOURCE_BY_CATEGORY: Record<string, string> = {
 export default function CashflowPlanning() {
   const { t } = useTranslation('reports');
   const { t: tc } = useTranslation('common');
-  const { money, signedMoney: formatCurrencySigned } = useReportMoney();
+  const { currencyCode, ratesTimestamp } = useCurrency();
   const fmt = useFormat();
   const queryClient = useQueryClient();
 
@@ -84,10 +85,11 @@ export default function CashflowPlanning() {
     isError,
     refetch,
   } = useQuery<CashflowReport>({
-    queryKey: ['cashflow-report', viewType],
-    queryFn: () => cashflowApi.getReport(viewType),
+    queryKey: ['cashflow-report', viewType, currencyCode, ratesTimestamp],
+    queryFn: () => cashflowApi.getReport(viewType, currencyCode),
     refetchOnMount: 'always',
   });
+  const { money, signedMoney: formatCurrencySigned } = useReportMoney(report?.reportCurrency);
 
   const createMutation = useMutation({
     mutationFn: cashflowApi.createItem,
@@ -221,6 +223,26 @@ export default function CashflowPlanning() {
     ) => {
       const sourceKey = !item.isUserDefined ? SOURCE_BY_CATEGORY[category.key] : undefined;
       const source = sourceKey ? tc(sourceKey) : undefined;
+      const incomplete = item.fxQuality === 'missing';
+      const unavailable = incomplete && item.originalComponents.length <= 1;
+      const original =
+        item.originalCurrency === 'MULTI'
+          ? item.originalComponents
+              .map((component) => {
+                const frequency =
+                  component.frequency === 'yearly'
+                    ? t('planning.table.perYear')
+                    : component.frequency === 'monthly'
+                      ? t('planning.table.perMonth')
+                      : '';
+                return `${fmt.money(Number(component.amount), component.currency)}${frequency ? ` · ${frequency}` : ''}`;
+              })
+              .join(' · ')
+          : item.originalFrequency === 'yearly'
+            ? `${t('planning.table.perYear')} · ${fmt.money(Number(item.originalAmount), item.originalCurrency)}`
+            : item.originalFrequency === 'monthly' && viewType === 'yearly'
+              ? `${t('planning.table.perMonth')} · ${fmt.money(Number(item.originalAmount), item.originalCurrency)}`
+              : t('planning.table.perMonth');
       return (
         <TableRow key={item.id} className="h-12">
           <TableCell>
@@ -247,15 +269,14 @@ export default function CashflowPlanning() {
             </span>
           </TableCell>
           <TableCell>{t(`categories.${category.key}`, { defaultValue: category.name })}</TableCell>
-          <TableCell className="text-ink-4">
-            {item.originalFrequency === 'yearly'
-              ? `${t('planning.table.perYear')} · ${fmt.money(Number(item.originalAmount), item.originalCurrency, { decimals: 0 })}`
-              : item.originalFrequency === 'monthly' && viewType === 'yearly'
-                ? `${t('planning.table.perMonth')} · ${fmt.money(Number(item.originalAmount), item.originalCurrency, { decimals: 0 })}`
-                : t('planning.table.perMonth')}
-          </TableCell>
+          <TableCell className="text-ink-4">{original}</TableCell>
           <TableCell className={cn('text-right font-650 num', isIncome ? 'text-gain' : 'text-ink')}>
-            {formatCurrencySigned(isIncome ? Number(item.amount) : -Number(item.amount))}
+            {unavailable
+              ? t('readiness.fxUnavailable')
+              : formatCurrencySigned(isIncome ? Number(item.amount) : -Number(item.amount))}
+            {incomplete && !unavailable && (
+              <small className="block text-micro text-loss">{t('readiness.partialAmount')}</small>
+            )}
           </TableCell>
           <TableCell className="text-right">
             {item.isUserDefined ? (
@@ -440,13 +461,7 @@ export default function CashflowPlanning() {
   return (
     <>
       {head}
-      <ReportQualityNote quality={report.quality} estimate />
-      <p className="mb-5 text-micro text-ink-4">
-        {t('readiness.planningAsOf', {
-          date: fmt.day(report.asOf),
-          rates: report.ratesAsOf ? fmt.day(report.ratesAsOf) : '—',
-        })}
-      </p>
+      <ReportQualityNote quality={report.quality} planning />
 
       <Stats columns={3}>
         <Stat

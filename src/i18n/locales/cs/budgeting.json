@@ -28,50 +28,21 @@
     }
   },
   "stats": {
-    "budgetFor": {
-      "monthly": "Rozpočet na {{period}}",
-      "quarterly": "Rozpočet na {{period}}",
-      "yearly": "Rozpočet na rok {{period}}"
-    },
     "limited_one": "{{count}} kategorie s limitem",
     "limited_few": "{{count}} kategorie s limitem",
     "limited_other": "{{count}} kategorií s limitem",
-    "spent": "Utraceno",
-    "ofBudget": "{{percent}} rozpočtu",
-    "elapsed": {
-      "monthly": "{{percent}} měsíce za vámi",
-      "quarterly": "{{percent}} čtvrtletí za vámi",
-      "yearly": "{{percent}} roku za vámi"
-    },
-    "remaining": "Zbývá",
-    "over": "Přes rozpočet",
-    "remainingNote": "na {{days}} · {{perDay}} denně",
     "days_one": "{{count}} den",
     "days_few": "{{count}} dny",
     "days_other": "{{count}} dní",
-    "lastDay": "poslední den období",
-    "unspent": "zůstalo nevyčerpáno",
-    "ahead": "celé období před vámi",
-    "overNote": "limity dohromady překročeny o {{percent}}"
-  },
-  "overview": {
-    "title": "Celkové čerpání",
-    "ahead_one": "Čerpání předbíhá kalendář o {{count}} bod.",
-    "ahead_few": "Čerpání předbíhá kalendář o {{count}} body.",
-    "ahead_other": "Čerpání předbíhá kalendář o {{count}} bodů.",
-    "behind_one": "Čerpání je o {{count}} bod za kalendářem.",
-    "behind_few": "Čerpání je o {{count}} body za kalendářem.",
-    "behind_other": "Čerpání je o {{count}} bodů za kalendářem.",
-    "onPace": "Čerpání drží tempo kalendáře.",
-    "closed": "Období je uzavřené.",
-    "notStarted": "Období ještě nezačalo.",
-    "overCount_one": "{{count}} kategorie překročena",
-    "overCount_few": "{{count}} kategorie překročeny",
-    "overCount_other": "{{count}} kategorií překročeno",
-    "nearCount_one": "{{count}} kategorie se blíží limitu",
-    "nearCount_few": "{{count}} kategorie se blíží limitu",
-    "nearCount_other": "{{count}} kategorií se blíží limitu",
-    "allOk": "Vše v limitu"
+    "totalExpenses": "Celkové výdaje",
+    "onTrack": "V mezích",
+    "nearCount_one": "{{count}} blízko limitu",
+    "nearCount_few": "{{count}} blízko limitu",
+    "nearCount_other": "{{count}} blízko limitu",
+    "overCount": "Nad limitem",
+    "unavailableCount_one": "{{count}} bez vyhodnocení",
+    "unavailableCount_few": "{{count}} bez vyhodnocení",
+    "unavailableCount_other": "{{count}} bez vyhodnocení"
   },
   "table": {
     "title": "Kategorie",

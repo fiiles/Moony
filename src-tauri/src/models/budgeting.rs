@@ -94,10 +94,16 @@ impl InsertBudgetGoal {
 /// Category spending summary for a period
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct CategorySpendingSummary {
+    #[serde(rename = "budgetCurrency")]
+    pub budget_currency: Option<String>,
+    #[serde(rename = "budgetSpent")]
+    pub budget_spent: Option<String>,
+    #[serde(rename = "budgetLimitNative")]
+    pub budget_limit_native: Option<String>,
     #[serde(rename = "budgetLimitFxQuality")]
     pub budget_limit_fx_quality: Option<crate::models::FxQuality>,
-    #[serde(rename = "budgetLimitCzk")]
-    pub budget_limit_czk: Option<String>,
+    #[serde(rename = "budgetLimit")]
+    pub budget_limit: Option<String>,
     #[serde(rename = "categoryId")]
     pub category_id: String,
     #[serde(rename = "categoryName")]
@@ -150,6 +156,8 @@ pub struct BudgetingReport {
     /// Included booked expense rows without a category, including unavailable FX.
     #[serde(rename = "uncategorizedExpenseTransactionCount")]
     pub uncategorized_expense_transaction_count: i32,
+    #[serde(rename = "reportCurrency")]
+    pub report_currency: String,
 }
 
 #[cfg(test)]

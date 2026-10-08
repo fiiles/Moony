@@ -169,8 +169,8 @@ export default function Budgeting() {
         goals.find((g) => g.categoryId === categoryId && g.timeframe === 'monthly') ?? null;
       const historical = report?.expenseCategories.find((c) => c.categoryId === categoryId);
       const category = categories.find((c) => c.id === categoryId);
-      const limitKnown = historical?.budgetLimitCzk != null;
-      const limit = Number(historical?.budgetLimitCzk ?? 0);
+      const limitKnown = historical?.budgetLimit != null;
+      const limit = Number(historical?.budgetLimit ?? 0);
       const usage = spentByCategory.get(categoryId);
       const spent = usage?.spent ?? 0;
       return {

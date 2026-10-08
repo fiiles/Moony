@@ -172,6 +172,7 @@ pub fn collect_types() -> TypeCollection {
     types.register::<crate::models::CategorySpendingSummary>();
     types.register::<crate::models::BudgetingReport>();
     types.register::<crate::models::CashflowReportItem>();
+    types.register::<crate::models::CashflowOriginalComponent>();
     types.register::<crate::models::CashflowCategory>();
     types.register::<crate::models::CashflowSection>();
     types.register::<crate::models::CashflowReport>();

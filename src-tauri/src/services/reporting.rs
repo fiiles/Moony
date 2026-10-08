@@ -34,20 +34,69 @@ pub fn historical_czk(
     currency: &str,
     day: i64,
 ) -> Result<Option<f64>> {
-    if currency.eq_ignore_ascii_case("CZK") {
-        return Ok(Some(amount));
+    historical_amount(conn, amount, currency, "CZK", day)
+}
+/// Currency codes are normalized at the reporting boundary; unavailable quotes
+/// remain missing even for syntactically valid currencies outside the provider.
+pub fn normalize_currency(currency: &str) -> Result<String> {
+    let currency = currency.trim().to_ascii_uppercase();
+    if currency.len() != 3 || !currency.bytes().all(|b| b.is_ascii_alphabetic()) {
+        return Err(AppError::Validation("validation.currencyInvalid".into()));
     }
-    let day = day.div_euclid(86400) * 86400;
-    let rate: Option<f64> = conn.query_row(
-        "SELECT rate FROM exchange_rate_history WHERE UPPER(currency)=UPPER(?1) AND date <= ?2 AND date >= ?3 ORDER BY date DESC LIMIT 1",
-        params![currency,day,day.saturating_sub(10*86400)], |r|r.get(0)).optional()?;
-    match rate {
-        Some(rate) if rate.is_finite() && rate > 0.0 && (amount * rate).is_finite() => {
-            Ok(Some(amount * rate))
-        }
-        Some(_) | None => Ok(None),
+    Ok(currency)
+}
+pub fn minor_units(currency: &str) -> usize {
+    match currency {
+        "BHD" | "KWD" | "OMR" => 3,
+        "CLP" | "ISK" | "JPY" | "KRW" | "VND" => 0,
+        _ => 2,
     }
 }
+pub fn money_in_currency(amount: f64, currency: &str) -> String {
+    let decimals = minor_units(currency);
+    let scale = 10_f64.powi(decimals as i32);
+    let rounded = (amount * scale).round() / scale;
+    format!(
+        "{rounded:.decimals$}",
+        rounded = if rounded == 0.0 { 0.0 } else { rounded }
+    )
+}
+/// Cross quotes must share a valid day; never combine separate last-known dates.
+/// Same-currency facts bypass database/rate access, including non-provider codes.
+pub fn historical_amount(
+    conn: &Connection,
+    amount: f64,
+    from: &str,
+    target: &str,
+    day: i64,
+) -> Result<Option<f64>> {
+    let from = normalize_currency(from)?;
+    let target = normalize_currency(target)?;
+    if from == target {
+        return Ok(amount.is_finite().then_some(amount));
+    }
+    let day = day.div_euclid(86400) * 86400;
+    let lower = day.saturating_sub(10 * 86400);
+    let sql = if from == "CZK" {
+        "SELECT 1.0,rate FROM exchange_rate_history WHERE UPPER(currency)=?2 AND date<=?3 AND date>=?4 AND rate>0 ORDER BY date DESC"
+    } else if target == "CZK" {
+        "SELECT rate,1.0 FROM exchange_rate_history WHERE UPPER(currency)=?1 AND date<=?3 AND date>=?4 AND rate>0 ORDER BY date DESC"
+    } else {
+        "SELECT s.rate,t.rate FROM exchange_rate_history s JOIN exchange_rate_history t ON s.date=t.date WHERE UPPER(s.currency)=?1 AND UPPER(t.currency)=?2 AND s.date<=?3 AND s.date>=?4 AND s.rate>0 AND t.rate>0 ORDER BY s.date DESC"
+    };
+    let mut stmt = conn.prepare(sql)?;
+    let mut rows = stmt.query(params![from, target, day, lower])?;
+    while let Some(row) = rows.next()? {
+        let source: f64 = row.get(0)?;
+        let target: f64 = row.get(1)?;
+        if source.is_finite() && target.is_finite() && source > 0.0 && target > 0.0 {
+            let converted = amount * source / target;
+            return Ok(converted.is_finite().then_some(converted));
+        }
+    }
+    Ok(None)
+}
+
 pub fn effective_flows(conn: &Connection, ids: &[String]) -> Result<Vec<EffectiveTransactionFlow>> {
     let own = AccountIdentities::load(conn)?;
     let mut out = vec![];
@@ -91,6 +140,16 @@ pub fn transactions(
     end: i64,
     accounts: Option<&[String]>,
 ) -> Result<Vec<ReportTransaction>> {
+    transactions_in_currency(conn, start, end, accounts, "CZK")
+}
+pub fn transactions_in_currency(
+    conn: &Connection,
+    start: i64,
+    end: i64,
+    accounts: Option<&[String]>,
+    report_currency: &str,
+) -> Result<Vec<ReportTransaction>> {
+    let report_currency = normalize_currency(report_currency)?;
     let own = AccountIdentities::load(conn)?;
     let mut stmt=conn.prepare("SELECT bt.id,bt.booking_date,bt.amount,bt.currency,bt.description,bt.counterparty_name,bt.counterparty_iban,bt.category_id,bt.bank_account_id,ba.name,bt.tx_type,bt.flow_kind,tc.kind,bt.counterparty_bank_code,bt.counterparty_country FROM bank_transactions bt JOIN bank_accounts ba ON ba.id=bt.bank_account_id LEFT JOIN transaction_categories tc ON tc.id=bt.category_id WHERE bt.booking_date>=?1 AND bt.booking_date<=?2 AND bt.status='booked' ORDER BY bt.booking_date DESC,bt.id")?;
     let rows = stmt.query_map(params![start, end], |r| {
@@ -109,7 +168,8 @@ pub fn transactions(
                 tx_type: r.get(10)?,
                 effective_flow_kind: FlowKind::Expense,
                 flow_source: crate::models::reporting::FlowSource::Direction,
-                signed_amount_czk: None,
+                signed_amount: None,
+                report_currency: report_currency.clone(),
                 fx_quality: FxQuality::Missing,
             },
             r.get::<_, Option<FlowKind>>(11)?,
@@ -142,8 +202,17 @@ pub fn transactions(
             out.push(row);
             continue;
         };
-        if let Some(czk) = historical_czk(conn, amount, &row.currency, row.booking_date)? {
-            row.signed_amount_czk = Some(money(signed_flow_amount(flow.kind, credit, czk)));
+        if let Some(czk) = historical_amount(
+            conn,
+            amount,
+            &row.currency,
+            &report_currency,
+            row.booking_date,
+        )? {
+            row.signed_amount = Some(money_in_currency(
+                signed_flow_amount(flow.kind, credit, czk),
+                &report_currency,
+            ));
             row.fx_quality = FxQuality::Historical;
         }
         out.push(row);
@@ -210,17 +279,32 @@ pub fn filtered_transactions(
     category: Option<&str>,
     source: Option<&str>,
 ) -> Result<Vec<ReportTransaction>> {
-    Ok(transactions(conn, start, end, accounts)?
-        .into_iter()
-        .filter(|r| {
-            kind.is_none_or(|kind| r.effective_flow_kind == kind)
-                && category
-                    .is_none_or(|id| r.category_id.as_deref().unwrap_or("uncategorized") == id)
-                && source.is_none_or(|key| {
-                    crate::services::cashflow_actuals::source_key(&r.counterparty_name).0 == key
-                })
-        })
-        .collect())
+    filtered_transactions_in_currency(conn, start, end, accounts, kind, category, source, "CZK")
+}
+#[allow(clippy::too_many_arguments)]
+pub fn filtered_transactions_in_currency(
+    conn: &Connection,
+    start: i64,
+    end: i64,
+    accounts: Option<&[String]>,
+    kind: Option<FlowKind>,
+    category: Option<&str>,
+    source: Option<&str>,
+    report_currency: &str,
+) -> Result<Vec<ReportTransaction>> {
+    Ok(
+        transactions_in_currency(conn, start, end, accounts, report_currency)?
+            .into_iter()
+            .filter(|r| {
+                kind.is_none_or(|kind| r.effective_flow_kind == kind)
+                    && category
+                        .is_none_or(|id| r.category_id.as_deref().unwrap_or("uncategorized") == id)
+                    && source.is_none_or(|key| {
+                        crate::services::cashflow_actuals::source_key(&r.counterparty_name).0 == key
+                    })
+            })
+            .collect(),
+    )
 }
 
 #[cfg(test)]
@@ -239,6 +323,89 @@ mod tests {
    ('pending',1704067200,'1000','CZK',NULL,NULL,NULL,'custom','a','credit',NULL,'pending'),
    ('foreign',1704067200,'100','ZZZ',NULL,NULL,NULL,'custom','a','credit',NULL,'booked');").unwrap();
         conn
+    }
+    #[test]
+    fn target_precision_rows_remain_visible_and_sum_at_minor_units() {
+        let conn = db();
+        conn.execute("DELETE FROM bank_transactions", []).unwrap();
+        for (id, amount, currency) in [
+            ("a", "0.1234", "KWD"),
+            ("b", "0.1234", "KWD"),
+            ("missing", "7", "USD"),
+        ] {
+            conn.execute("INSERT INTO bank_transactions(id,booking_date,amount,currency,bank_account_id,tx_type,status) VALUES (?1,1704067200,?2,?3,'a','debit','booked')", params![id,amount,currency]).unwrap();
+        }
+        let rows = transactions_in_currency(&conn, 0, i64::MAX, None, "kwd").unwrap();
+        assert_eq!(rows.len(), 3);
+        assert_eq!(
+            rows.iter()
+                .filter_map(|r| r.signed_amount.as_deref())
+                .map(|a| parse_money(a).unwrap())
+                .sum::<f64>(),
+            0.246
+        );
+        assert!(rows.iter().all(|r| r.report_currency == "KWD"));
+        assert!(rows
+            .iter()
+            .find(|r| r.id == "missing")
+            .unwrap()
+            .signed_amount
+            .is_none());
+        assert_eq!(money_in_currency(123.6, "JPY"), "124");
+        assert_eq!(money_in_currency(-0.0001, "KWD"), "0.000");
+        assert_eq!(money_in_currency(0.123, "KWD"), "0.123");
+        assert_eq!(money_in_currency(1.234, "EUR"), "1.23");
+        assert_eq!(normalize_currency(" eur ").unwrap(), "EUR");
+        assert!(normalize_currency("EURO").is_err());
+    }
+    #[test]
+    fn target_historical_cross_rates_ignore_live_changes_and_old_quotes() {
+        let conn = db();
+        conn.execute_batch("INSERT INTO exchange_rate_history VALUES (1704067200,'XHU',25),(1704067200,'XHE',27.5);").unwrap();
+        let before = historical_amount(&conn, 110.0, "XHU", "XHE", 1704067200).unwrap();
+        crate::services::currency::update_exchange_rates(std::collections::HashMap::from([(
+            "XHL".into(),
+            99.0,
+        )]));
+        assert_eq!(
+            historical_amount(&conn, 110.0, "XHU", "XHE", 1704067200).unwrap(),
+            before
+        );
+        assert_eq!(
+            historical_amount(&conn, 110.0, "XHU", "XHE", 1704067200 + 11 * 86400).unwrap(),
+            None
+        );
+        assert_eq!(
+            historical_amount(&conn, 110.0, "XHU", "AED", 1704067200).unwrap(),
+            None
+        );
+        conn.execute("DROP TABLE exchange_rate_history", [])
+            .unwrap();
+        assert!(historical_amount(&conn, 110.0, "XHU", "XHE", 1704067200).is_err());
+    }
+    #[test]
+    fn target_native_currency_bypasses_fx_even_without_rate_schema() {
+        let conn = Connection::open_in_memory().unwrap();
+        for currency in ["EUR", "AED", "KWD", "JPY"] {
+            assert_eq!(
+                historical_amount(&conn, 100.0, currency, currency, 1704067200).unwrap(),
+                Some(100.0)
+            );
+        }
+    }
+    #[test]
+    fn target_cross_rates_use_one_common_historical_day() {
+        let conn = db();
+        conn.execute_batch("INSERT INTO exchange_rate_history VALUES (1704067200,'USD',25),(1704067200,'EUR',27.5);").unwrap();
+        assert_eq!(
+            historical_amount(&conn, 110.0, "USD", "EUR", 1704067200).unwrap(),
+            Some(100.0)
+        );
+        conn.execute_batch("DELETE FROM exchange_rate_history; INSERT INTO exchange_rate_history VALUES (1704067200,'USD',25),(1703980800,'EUR',27.5);").unwrap();
+        assert_eq!(
+            historical_amount(&conn, 110.0, "USD", "EUR", 1704067200).unwrap(),
+            None
+        );
     }
     #[test]
     fn integrity_structured_country_is_shared_by_report_and_effective_reads() {
@@ -281,7 +448,7 @@ mod tests {
         assert_eq!(explicit.effective_flow_kind, FlowKind::Income);
         let foreign = rows.iter().find(|r| r.id == "foreign").unwrap();
         assert_eq!(foreign.fx_quality, FxQuality::Missing);
-        assert!(foreign.signed_amount_czk.is_none());
+        assert!(foreign.signed_amount.is_none());
         let q = quality(&rows, 1704067200, 1706745599, 1709251200);
         assert_eq!(q.missing_fx_count, 1);
         assert_eq!(q.observed_completed_months, vec![1704067200]);
@@ -305,7 +472,7 @@ mod tests {
         let rows = transactions(&conn, 0, i64::MAX, None).expect("report stays usable");
         for id in ["inf", "nan", "badrate"] {
             let row = rows.iter().find(|r| r.id == id).unwrap();
-            assert!(row.signed_amount_czk.is_none(), "{id}");
+            assert!(row.signed_amount.is_none(), "{id}");
         }
         let q = quality(&rows, 1704067200, 1706745599, 1709251200);
         assert_eq!(q.invalid_amount_count, 2);

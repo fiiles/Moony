@@ -645,7 +645,14 @@ export interface CashflowItem {
   updatedAt: number;
 }
 
+export interface CashflowOriginalComponent {
+  amount: string;
+  currency: string;
+  frequency: string;
+}
+
 export interface CashflowReportItem {
+  originalComponents: CashflowOriginalComponent[];
   fxQuality: FxQuality;
   sourceId: string | null;
   replacementSourceId: string | null;
@@ -677,6 +684,7 @@ export interface CashflowSection {
 }
 
 export interface CashflowReport {
+  reportCurrency: string;
   quality: ReportQuality;
   ratesAsOf: number | null;
   automaticSources: CashflowReportItem[];
@@ -690,7 +698,7 @@ export interface CashflowReport {
   netCashflow: string;
 }
 
-// Actual cashflow from bank transactions (design system README §11); CZK TEXT amounts
+// Actual cashflow from bank transactions (design system README §11); report-currency TEXT amounts
 export type CashflowRange = '6m' | '12m' | 'ytd';
 
 export interface CashflowMonth {
@@ -713,6 +721,7 @@ export interface CashflowGroup {
 }
 
 export interface CashflowActuals {
+  reportCurrency: string;
   netBalance: string;
   bankCashMovement: string;
   averageCompletedMonths: number[];
@@ -1922,7 +1931,10 @@ export interface InsertBudgetGoal {
 
 // Category spending summary
 export interface CategorySpendingSummary {
-  budgetLimitCzk: string | null;
+  budgetCurrency: string | null;
+  budgetSpent: string | null;
+  budgetLimitNative: string | null;
+  budgetLimit: string | null;
   budgetLimitFxQuality: FxQuality | null;
   categoryId: string;
   categoryName: string;
@@ -1936,9 +1948,10 @@ export interface CategorySpendingSummary {
 
 // Transaction for budgeting view
 export interface BudgetingTransaction {
+  reportCurrency: string;
   effectiveFlowKind: FlowKind;
   flowSource: FlowSource;
-  signedAmountCzk: string | null;
+  signedAmount: string | null;
   fxQuality: FxQuality;
   id: string;
   bookingDate: number;
@@ -1955,6 +1968,7 @@ export interface BudgetingTransaction {
 
 // Full budgeting report
 export interface BudgetingReport {
+  reportCurrency: string;
   bankCashMovement: string;
   quality: ReportQuality;
   nonconsumptionFlows: CashflowGroup[];

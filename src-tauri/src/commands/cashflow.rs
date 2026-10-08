@@ -9,13 +9,15 @@ pub async fn get_cashflow_actuals(
     db: State<'_, Database>,
     range: String,
     account_ids: Option<Vec<String>>,
+    report_currency: Option<String>,
 ) -> Result<crate::models::CashflowActuals> {
     db.with_conn(|conn| {
-        cashflow_actuals::get_actuals_scoped(
+        cashflow_actuals::get_actuals_in_currency(
             conn,
             &range,
             chrono::Utc::now().timestamp(),
             account_ids.as_deref(),
+            report_currency.as_deref().unwrap_or("CZK"),
         )
     })
 }
@@ -23,8 +25,15 @@ pub async fn get_cashflow_actuals(
 pub async fn get_cashflow_report(
     db: State<'_, Database>,
     view_type: String,
+    report_currency: Option<String>,
 ) -> Result<CashflowReport> {
-    db.with_conn(|conn| cashflow_planning::get_report(conn, &view_type))
+    db.with_conn(|conn| {
+        cashflow_planning::get_report_in_currency(
+            conn,
+            &view_type,
+            report_currency.as_deref().unwrap_or("CZK"),
+        )
+    })
 }
 #[tauri::command]
 pub async fn get_all_cashflow_items(db: State<'_, Database>) -> Result<Vec<CashflowItem>> {
@@ -52,17 +61,19 @@ pub async fn delete_cashflow_item(db: State<'_, Database>, id: String) -> Result
     db.with_conn(|conn| cashflow_planning::delete_cashflow_item(conn, id))
 }
 #[tauri::command]
+#[allow(clippy::too_many_arguments)]
 pub async fn get_report_transactions(
     db: State<'_, Database>,
     start_date: i64,
     end_date: i64,
     account_ids: Option<Vec<String>>,
+    report_currency: Option<String>,
     flow_kind: Option<crate::models::FlowKind>,
     category_id: Option<String>,
     source_key: Option<String>,
 ) -> Result<Vec<crate::models::ReportTransaction>> {
     db.with_conn(|conn| {
-        crate::services::reporting::filtered_transactions(
+        crate::services::reporting::filtered_transactions_in_currency(
             conn,
             start_date,
             end_date,
@@ -70,6 +81,7 @@ pub async fn get_report_transactions(
             flow_kind,
             category_id.as_deref(),
             source_key.as_deref(),
+            report_currency.as_deref().unwrap_or("CZK"),
         )
     })
 }

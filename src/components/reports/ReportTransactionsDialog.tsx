@@ -107,9 +107,9 @@ function ReportTransactionsDialogContent({
                       )}
                     </TableCell>
                     <TableCell className="text-right num">
-                      {tx.signedAmountCzk === null
+                      {tx.signedAmount === null
                         ? t('readiness.fxUnavailable')
-                        : fmt.money(Number(tx.signedAmountCzk), 'CZK', { signed: true })}
+                        : fmt.money(Number(tx.signedAmount), 'CZK', { signed: true })}
                     </TableCell>
                   </TableRow>
                 ))}

@@ -244,16 +244,28 @@ pub fn get_report_scoped(
     timeframe: &str,
     accounts: Option<&[String]>,
 ) -> Result<BudgetingReport> {
+    get_report_in_currency(conn, start_date, end_date, timeframe, accounts, "CZK")
+}
+pub fn get_report_in_currency(
+    conn: &Connection,
+    start_date: i64,
+    end_date: i64,
+    timeframe: &str,
+    accounts: Option<&[String]>,
+    report_currency: &str,
+) -> Result<BudgetingReport> {
+    let report_currency = crate::services::reporting::normalize_currency(report_currency)?;
+    let money = |v| crate::services::reporting::money_in_currency(v, &report_currency);
     use crate::models::{CashflowGroup, FlowKind};
-    use crate::services::reporting::{money, parse_money, quality, transactions};
-    let rows = transactions(conn, start_date, end_date, accounts)?;
+    use crate::services::reporting::{parse_money, quality, transactions_in_currency};
+    let rows = transactions_in_currency(conn, start_date, end_date, accounts, &report_currency)?;
     let mut incomes: HashMap<String, CategorySpendingSummary> = HashMap::new();
     let mut expenses: HashMap<String, CategorySpendingSummary> = HashMap::new();
     let mut others: HashMap<String, (f64, i32)> = HashMap::new();
     let (mut income, mut expense, mut un_income, mut un_expense, mut un_count) =
         (0.0, 0.0, 0.0, 0.0, 0);
     for row in &rows {
-        let Some(value) = row.signed_amount_czk.as_deref() else {
+        let Some(value) = row.signed_amount.as_deref() else {
             continue;
         };
         let value = parse_money(value)?;
@@ -290,21 +302,85 @@ pub fn get_report_scoped(
             un_count += 1;
         }
     }
-    let limits = period_limits(conn, start_date, end_date, timeframe)?;
+    let limits = period_limits(conn, start_date, end_date, timeframe, &report_currency)?;
+    // The latest active version within this period chooses the budget's own
+    // evaluation currency. Profile/display changes never change utilization.
+    let mut native_limits = HashMap::new();
+    let mut native_spending = HashMap::new();
+    for (_, goal) in limits.values() {
+        let currency = crate::services::reporting::normalize_currency(&goal.currency)?;
+        if native_limits.contains_key(&currency) {
+            continue;
+        }
+        native_limits.insert(
+            currency.clone(),
+            period_limits(conn, start_date, end_date, timeframe, &currency)?,
+        );
+        let mut spending: HashMap<String, Option<f64>> = HashMap::new();
+        for row in rows
+            .iter()
+            .filter(|r| r.effective_flow_kind == FlowKind::Expense)
+        {
+            let Some(category) = &row.category_id else {
+                continue;
+            };
+            let contribution = match parse_money(&row.amount) {
+                Ok(amount) => crate::services::reporting::historical_amount(
+                    conn,
+                    amount.abs(),
+                    &row.currency,
+                    &currency,
+                    row.booking_date,
+                )?
+                .map(|value| {
+                    let signed = crate::services::financial_semantics::signed_flow_amount(
+                        row.effective_flow_kind,
+                        row.tx_type.eq_ignore_ascii_case("credit"),
+                        value,
+                    );
+                    parse_money(&crate::services::reporting::money_in_currency(
+                        signed, &currency,
+                    ))
+                    .expect("formatted money")
+                }),
+                Err(_) => None,
+            };
+            let total = spending.entry(category.clone()).or_insert(Some(0.0));
+            *total = match (*total, contribution) {
+                (Some(a), Some(b)) => Some(a + b),
+                _ => None,
+            };
+        }
+        native_spending.insert(currency, spending);
+    }
     for (category, (limit, goal)) in limits {
         if !expenses.contains_key(&category) {
             expenses.insert(category.clone(), empty_summary(conn, &category)?);
         }
         let summary = expenses.get_mut(&category).expect("inserted");
+        let currency = crate::services::reporting::normalize_currency(&goal.currency)?;
+        let native_money = |value| crate::services::reporting::money_in_currency(value, &currency);
+        let spent = native_spending
+            .get(&currency)
+            .and_then(|m| m.get(&category))
+            .copied()
+            .unwrap_or(Some(0.0));
+        let native_limit = native_limits
+            .get(&currency)
+            .and_then(|m| m.get(&category))
+            .and_then(|(amount, _)| *amount);
+        summary.budget_currency = Some(currency.clone());
+        summary.budget_spent = spent.map(native_money);
+        summary.budget_limit_native = native_limit.map(native_money);
+        summary.budget_percentage = match (spent, native_limit) {
+            (Some(spent), Some(limit)) if limit > 0.0 => Some(spent / limit * 100.0),
+            _ => None,
+        };
         summary.budget_goal = Some(goal);
         summary.budget_limit_fx_quality = Some(crate::models::FxQuality::Missing);
         if let Some(limit) = limit {
-            summary.budget_limit_czk = Some(money(limit));
+            summary.budget_limit = Some(money(limit));
             summary.budget_limit_fx_quality = Some(crate::models::FxQuality::Historical);
-            if limit > 0.0 {
-                summary.budget_percentage =
-                    Some(parse_money(&summary.total_amount)? / limit * 100.0);
-            }
         }
     }
     let sort = |map: HashMap<String, CategorySpendingSummary>| {
@@ -325,6 +401,7 @@ pub fn get_report_scoped(
     };
     let other_total: f64 = others.values().map(|v| v.0).sum();
     Ok(BudgetingReport {
+        report_currency: report_currency.clone(),
         bank_cash_movement: money(income - expense + other_total),
         period_start: start_date,
         period_end: end_date,
@@ -368,8 +445,11 @@ fn empty_summary(conn: &Connection, id: &str) -> Result<CategorySpendingSummary>
         total_amount: "0.00".into(),
         transaction_count: 0,
         budget_goal: None,
+        budget_currency: None,
+        budget_spent: None,
+        budget_limit_native: None,
         budget_percentage: None,
-        budget_limit_czk: None,
+        budget_limit: None,
         budget_limit_fx_quality: None,
     })
 }
@@ -381,8 +461,9 @@ fn period_limits(
     start: i64,
     end: i64,
     timeframe: &str,
+    report_currency: &str,
 ) -> Result<HashMap<String, (Option<f64>, BudgetGoal)>> {
-    use crate::services::reporting::{historical_czk, month_start, parse_money};
+    use crate::services::reporting::{historical_amount, month_start, parse_money};
     use chrono::{DateTime, Datelike, NaiveDate, Utc};
     let mut stmt=conn.prepare("SELECT id,category_id,timeframe,amount,currency,effective_month,created_at FROM budget_goal_versions ORDER BY effective_month")?;
     let versions = stmt
@@ -442,7 +523,7 @@ fn period_limits(
                         }
                 });
             let czk = match native {
-                Some(native) => historical_czk(conn, native, &v.4, month)?,
+                Some(native) => historical_amount(conn, native, &v.4, report_currency, month)?,
                 None => None,
             };
             let goal = BudgetGoal {
@@ -456,9 +537,15 @@ fn period_limits(
                 effective_month: Some(v.5),
                 versions: Vec::new(),
             };
-            let e = out.entry(category).or_insert((Some(0.0), goal));
+            let e = out.entry(category).or_insert((Some(0.0), goal.clone()));
+            e.1 = goal;
             e.0 = match (e.0, czk) {
-                (Some(a), Some(b)) => Some(a + b),
+                (Some(a), Some(b)) => Some(
+                    a + parse_money(&crate::services::reporting::money_in_currency(
+                        b,
+                        report_currency,
+                    ))?,
+                ),
                 _ => None,
             };
         }
@@ -483,18 +570,31 @@ pub fn get_category_transactions(
     start: i64,
     end: i64,
 ) -> Result<Vec<BudgetingTransaction>> {
-    Ok(
-        crate::services::reporting::transactions(conn, start, end, None)?
-            .into_iter()
-            .filter(|r| {
-                r.category_id.as_deref().unwrap_or("uncategorized") == category_id
-                    && matches!(
-                        r.effective_flow_kind,
-                        crate::models::FlowKind::Income | crate::models::FlowKind::Expense
-                    )
-            })
-            .collect(),
-    )
+    get_category_transactions_in_currency(conn, category_id, start, end, "CZK")
+}
+pub fn get_category_transactions_in_currency(
+    conn: &Connection,
+    category_id: &str,
+    start: i64,
+    end: i64,
+    report_currency: &str,
+) -> Result<Vec<BudgetingTransaction>> {
+    Ok(crate::services::reporting::transactions_in_currency(
+        conn,
+        start,
+        end,
+        None,
+        report_currency,
+    )?
+    .into_iter()
+    .filter(|r| {
+        r.category_id.as_deref().unwrap_or("uncategorized") == category_id
+            && matches!(
+                r.effective_flow_kind,
+                crate::models::FlowKind::Income | crate::models::FlowKind::Expense
+            )
+    })
+    .collect())
 }
 
 // ========================== Async wrappers for Database ==========================
@@ -639,12 +739,148 @@ mod tests {
         get_report(conn, month, next - 1, "monthly")
             .unwrap()
             .expense_categories[0]
-            .budget_limit_czk
+            .budget_limit
             .clone()
     }
 
     /// Final review I-1: a limit scheduled for December must not become the
     /// current limit, and the version in effect now is what the goal exposes.
+    #[test]
+    fn target_budget_missing_native_spend_is_unavailable_not_false_underspend() {
+        let conn = setup_test_db();
+        let mut input = goal_input("100", OCT);
+        input.currency = Some("EUR".into());
+        upsert_goal_at(&conn, input, NOW).unwrap();
+        conn.execute("INSERT INTO bank_transactions(id,bank_account_id,booking_date,amount,currency,category_id,tx_type) VALUES ('mixed','acc1',?1,'50','USD','cat_groceries','debit')",[OCT]).unwrap();
+        let report = get_report_in_currency(&conn, OCT, NOV - 1, "monthly", None, "USD").unwrap();
+        assert_eq!(report.total_expenses, "50.00");
+        assert!(report.expense_categories[0].budget_spent.is_none());
+        assert!(report.expense_categories[0].budget_percentage.is_none());
+        assert_eq!(
+            report.expense_categories[0].budget_limit_native.as_deref(),
+            Some("100.00")
+        );
+    }
+    #[test]
+    fn target_budget_latest_active_version_selects_native_evaluation_currency() {
+        let conn = setup_test_db();
+        for (amount, currency, month) in [("100.00", "EUR", OCT), ("110.00", "USD", NOV)] {
+            let mut input = goal_input(amount, month);
+            input.currency = Some(currency.into());
+            upsert_goal_at(&conn, input, NOW).unwrap();
+        }
+        conn.execute(
+            "INSERT INTO exchange_rate_history VALUES (?1,'EUR',27.5)",
+            [OCT],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO exchange_rate_history VALUES (?1,'USD',25)",
+            [OCT],
+        )
+        .unwrap();
+        let report = get_report_in_currency(&conn, OCT, DEC - 1, "quarterly", None, "EUR").unwrap();
+        let cat = &report.expense_categories[0];
+        assert_eq!(cat.budget_currency.as_deref(), Some("USD"));
+        assert_eq!(cat.budget_limit_native.as_deref(), Some("220.00"));
+        assert_eq!(cat.budget_goal.as_ref().unwrap().currency, "USD");
+    }
+    #[test]
+    fn target_budget_utilization_is_independent_of_display_fx_changes() {
+        let conn = setup_test_db();
+        let mut input = goal_input("100.00", OCT);
+        input.currency = Some("EUR".into());
+        upsert_goal_at(&conn, input, NOW).unwrap();
+        conn.execute("INSERT INTO bank_transactions(id,bank_account_id,booking_date,amount,currency,category_id,tx_type) VALUES ('eur','acc1',?1,'50','EUR','cat_groceries','debit')",[OCT+86400]).unwrap();
+        conn.execute(
+            "INSERT INTO exchange_rate_history VALUES (?1,'EUR',25)",
+            [OCT],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO exchange_rate_history VALUES (?1,'USD',25)",
+            [OCT],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO exchange_rate_history VALUES (?1,'EUR',30)",
+            [OCT + 86400],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO exchange_rate_history VALUES (?1,'USD',25)",
+            [OCT + 86400],
+        )
+        .unwrap();
+        let eur = get_report_in_currency(&conn, OCT, NOV - 1, "monthly", None, "EUR").unwrap();
+        let usd = get_report_in_currency(&conn, OCT, NOV - 1, "monthly", None, "USD").unwrap();
+        assert_eq!(eur.expense_categories[0].budget_percentage, Some(50.0));
+        assert_eq!(usd.expense_categories[0].budget_percentage, Some(50.0));
+        assert_eq!(usd.total_expenses, "60.00");
+        assert_eq!(
+            usd.expense_categories[0].budget_currency.as_deref(),
+            Some("EUR")
+        );
+        assert_eq!(
+            usd.expense_categories[0].budget_spent.as_deref(),
+            Some("50.00")
+        );
+        assert_eq!(
+            usd.expense_categories[0].budget_limit_native.as_deref(),
+            Some("100.00")
+        );
+    }
+    #[test]
+    fn target_budget_versions_retain_native_text_after_target_switch() {
+        let conn = setup_test_db();
+        for (amount, month) in [("100.00", OCT), ("200.00", NOV)] {
+            let mut input = goal_input(amount, month);
+            input.currency = Some("EUR".into());
+            upsert_goal_at(&conn, input, NOW).unwrap();
+        }
+        let october = get_report_in_currency(&conn, OCT, NOV - 1, "monthly", None, "EUR").unwrap();
+        assert_eq!(
+            october.expense_categories[0].budget_limit.as_deref(),
+            Some("100.00")
+        );
+        let quarter =
+            get_report_in_currency(&conn, OCT, DEC - 1, "quarterly", None, "EUR").unwrap();
+        assert_eq!(
+            quarter.expense_categories[0].budget_limit.as_deref(),
+            Some("300.00")
+        );
+        let usd = get_report_in_currency(&conn, OCT, NOV - 1, "monthly", None, "USD").unwrap();
+        assert!(usd.expense_categories[0].budget_limit.is_none());
+        assert_eq!(usd.expense_categories[0].budget_percentage, Some(0.0));
+        assert_eq!(
+            usd.expense_categories[0]
+                .budget_goal
+                .as_ref()
+                .unwrap()
+                .amount,
+            "100.00"
+        );
+        let native: String = conn
+            .query_row(
+                "SELECT amount FROM budget_goal_versions WHERE effective_month=?1",
+                [OCT],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(native, "100.00");
+    }
+    #[test]
+    fn target_budget_native_limit_and_spend_need_no_fx() {
+        let conn = setup_test_db();
+        let mut input = goal_input("100.00", OCT);
+        input.currency = Some("EUR".into());
+        upsert_goal_at(&conn, input, NOW).unwrap();
+        conn.execute("INSERT INTO bank_transactions(id,bank_account_id,booking_date,amount,currency,category_id,tx_type) VALUES ('eur','acc1',1790812800,'25','EUR','cat_groceries','debit')", []).unwrap();
+        let report = get_report_in_currency(&conn, OCT, NOV - 1, "monthly", None, "EUR").unwrap();
+        assert_eq!(report.total_expenses, "25.00");
+        assert_eq!(report.expense_categories[0].budget_percentage, Some(25.0));
+        assert_eq!(stored_amount(&conn), "100.00");
+    }
     #[test]
     fn scheduled_future_limit_keeps_the_current_limit_in_effect() {
         let conn = setup_test_db();
@@ -755,13 +991,13 @@ mod tests {
             "zero-spend budget remains visible"
         );
         assert_eq!(
-            report.expense_categories[0].budget_limit_czk.as_deref(),
+            report.expense_categories[0].budget_limit.as_deref(),
             Some("1000.12")
         );
         delete_goal(&conn, &goal.id).unwrap();
         let report = get_report(&conn, jan, feb - 1, "monthly").unwrap();
         assert_eq!(
-            report.expense_categories[0].budget_limit_czk.as_deref(),
+            report.expense_categories[0].budget_limit.as_deref(),
             Some("1000.12")
         );
     }
@@ -787,7 +1023,7 @@ mod tests {
         let drilldown =
             get_category_transactions(&conn, "cat_groceries", 1790812800, 1791158400).unwrap();
         assert_eq!(drilldown.len(), 1);
-        assert_eq!(drilldown[0].signed_amount_czk.as_deref(), Some("-500.00"));
+        assert_eq!(drilldown[0].signed_amount.as_deref(), Some("-500.00"));
 
         assert!(report
             .expense_categories
@@ -821,12 +1057,12 @@ mod tests {
         add_rate(&conn, feb, "EUR", 25.0);
         let quarter = get_report(&conn, jan, 1711929599, "quarterly").unwrap();
         assert_eq!(
-            quarter.expense_categories[0].budget_limit_czk.as_deref(),
+            quarter.expense_categories[0].budget_limit.as_deref(),
             Some("6500.12")
         );
         let old = get_report(&conn, jan, feb - 1, "monthly").unwrap();
         assert_eq!(
-            old.expense_categories[0].budget_limit_czk.as_deref(),
+            old.expense_categories[0].budget_limit.as_deref(),
             Some("1000.12")
         );
         let before = get_report(&conn, 1672531200, 1675209599, "monthly").unwrap();
@@ -835,7 +1071,7 @@ mod tests {
         delete_goal(&conn, &future_goal.id).unwrap();
         let old = get_report(&conn, jan, feb - 1, "monthly").unwrap();
         assert_eq!(
-            old.expense_categories[0].budget_limit_czk.as_deref(),
+            old.expense_categories[0].budget_limit.as_deref(),
             Some("1000.12")
         );
     }

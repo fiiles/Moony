@@ -717,12 +717,12 @@ export const stockMonitorApi = {
 // ============================================================================
 
 export const cashflowApi = {
-  getReport: (viewType: 'monthly' | 'yearly') =>
-    tauriInvoke<CashflowReport>('get_cashflow_report', { viewType }),
+  getReport: (viewType: 'monthly' | 'yearly', reportCurrency?: string) =>
+    tauriInvoke<CashflowReport>('get_cashflow_report', { viewType, reportCurrency }),
 
   /** Actual flows from bank transactions for the Cashflow report page (design system README §11). */
-  getActuals: (range: CashflowRange, accountIds?: string[]) =>
-    tauriInvoke<CashflowActuals>('get_cashflow_actuals', { range, accountIds }),
+  getActuals: (range: CashflowRange, accountIds?: string[], reportCurrency?: string) =>
+    tauriInvoke<CashflowActuals>('get_cashflow_actuals', { range, accountIds, reportCurrency }),
   getTransactions: (
     startDate: number,
     endDate: number,
@@ -731,6 +731,7 @@ export const cashflowApi = {
       flowKind?: FlowKind;
       categoryId?: string;
       sourceKey?: string;
+      reportCurrency?: string;
     } = {}
   ) =>
     tauriInvoke<ReportTransaction[]>('get_report_transactions', { startDate, endDate, ...filters }),
@@ -1137,20 +1138,33 @@ export type {
 
 export const budgetingApi = {
   // Get the budgeting report for a time period
-  getReport: (startDate: number, endDate: number, timeframe: string, accountIds?: string[]) =>
+  getReport: (
+    startDate: number,
+    endDate: number,
+    timeframe: string,
+    accountIds?: string[],
+    reportCurrency?: string
+  ) =>
     tauriInvoke<BudgetingReport>('get_budgeting_report', {
       startDate,
       endDate,
       timeframe,
       accountIds,
+      reportCurrency,
     }),
 
   // Get transactions for a specific category
-  getCategoryTransactions: (categoryId: string, startDate: number, endDate: number) =>
+  getCategoryTransactions: (
+    categoryId: string,
+    startDate: number,
+    endDate: number,
+    reportCurrency?: string
+  ) =>
     tauriInvoke<BudgetingTransaction[]>('get_category_transactions', {
       categoryId,
       startDate,
       endDate,
+      reportCurrency,
     }),
 
   // Get all budget goals

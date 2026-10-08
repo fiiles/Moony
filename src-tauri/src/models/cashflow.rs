@@ -123,6 +123,8 @@ mod tests {
 /// Individual item in a cashflow category
 #[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type)]
 pub struct CashflowReportItem {
+    #[serde(rename = "originalComponents")]
+    pub original_components: Vec<CashflowOriginalComponent>,
     #[serde(rename = "fxQuality")]
     pub fx_quality: crate::models::FxQuality,
     pub category: String,
@@ -143,6 +145,14 @@ pub struct CashflowReportItem {
     pub original_frequency: String, // "monthly" or "yearly"
     #[serde(rename = "isUserDefined")]
     pub is_user_defined: bool,
+}
+
+/// Native components of a composite automatic property-cost source.
+#[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type)]
+pub struct CashflowOriginalComponent {
+    pub amount: String,
+    pub currency: String,
+    pub frequency: String,
 }
 
 /// A category with its items
@@ -172,6 +182,8 @@ pub struct CashflowSection {
 /// Complete cashflow report with Personal and Investments sections
 #[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type)]
 pub struct CashflowReport {
+    #[serde(rename = "reportCurrency")]
+    pub report_currency: String,
     pub quality: crate::models::ReportQuality,
     #[serde(rename = "ratesAsOf")]
     pub rates_as_of: Option<i64>,

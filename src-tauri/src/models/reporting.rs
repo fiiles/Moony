@@ -1,4 +1,4 @@
-//! Shared, booked-only report contracts. Monetary values are CZK TEXT.
+//! Shared, booked-only report contracts. Monetary contributions are TEXT in reportCurrency.
 use crate::models::FlowKind;
 use serde::{Deserialize, Serialize};
 use specta::Type;
@@ -44,6 +44,8 @@ pub struct ReportQuality {
 }
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct ReportTransaction {
+    #[serde(rename = "reportCurrency")]
+    pub report_currency: String,
     pub id: String,
     #[serde(rename = "bookingDate")]
     pub booking_date: i64,
@@ -66,8 +68,8 @@ pub struct ReportTransaction {
     pub effective_flow_kind: FlowKind,
     #[serde(rename = "flowSource")]
     pub flow_source: FlowSource,
-    #[serde(rename = "signedAmountCzk")]
-    pub signed_amount_czk: Option<String>,
+    #[serde(rename = "signedAmount")]
+    pub signed_amount: Option<String>,
     #[serde(rename = "fxQuality")]
     pub fx_quality: FxQuality,
 }

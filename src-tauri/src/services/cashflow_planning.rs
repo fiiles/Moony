@@ -386,7 +386,7 @@ fn get_raw_report(
                         name: re.1,
                         amount: normalized,
                         original_amount: property_yearly_total,
-                        original_currency: "CZK".to_string(),
+                        original_currency: "MULTI".to_string(),
                         original_frequency: "yearly".to_string(),
                         is_user_defined: false,
                         source_fx_quality: Some(source_fx_quality),
@@ -828,7 +828,7 @@ fn get_raw_report(
                         name: re.1,
                         amount: normalized,
                         original_amount: property_yearly_total,
-                        original_currency: "CZK".to_string(),
+                        original_currency: "MULTI".to_string(),
                         original_frequency: "yearly".to_string(),
                         is_user_defined: false,
                         source_fx_quality: Some(source_fx_quality),
@@ -1076,8 +1076,19 @@ fn active_loan_ids(conn: &rusqlite::Connection, day: i64) -> Result<HashSet<Stri
     Ok(active)
 }
 pub fn get_report(conn: &rusqlite::Connection, view_type: &str) -> Result<CashflowReport> {
-    use crate::services::reporting::money;
-    let mut fx = PlanningFx::default();
+    get_report_in_currency(conn, view_type, "CZK")
+}
+pub fn get_report_in_currency(
+    conn: &rusqlite::Connection,
+    view_type: &str,
+    report_currency: &str,
+) -> Result<CashflowReport> {
+    let report_currency = crate::services::reporting::normalize_currency(report_currency)?;
+    let money = |v| crate::services::reporting::money_in_currency(v, &report_currency);
+    let mut fx = PlanningFx {
+        target: report_currency.clone(),
+        ..PlanningFx::default()
+    };
     let raw = get_raw_report(conn, view_type, &mut fx)?;
     for section in [&raw.personal, &raw.investments] {
         for item in section
@@ -1116,7 +1127,40 @@ pub fn get_report(conn: &rusqlite::Connection, view_type: &str) -> Result<Cashfl
             id
         )
     };
+    let mut property_components = HashMap::new();
+    let mut stmt = conn.prepare("SELECT id,recurring_costs FROM real_estate")?;
+    for row in stmt.query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?)))? {
+        let (id, json) = row?;
+        let costs: Vec<serde_json::Value> = serde_json::from_str(&json).unwrap_or_default();
+        let components = costs
+            .into_iter()
+            .map(|c| crate::models::CashflowOriginalComponent {
+                amount: c
+                    .get("amount")
+                    .map(|v| {
+                        v.as_str()
+                            .map(str::to_string)
+                            .unwrap_or_else(|| v.to_string())
+                    })
+                    .unwrap_or_else(|| "0".into()),
+                currency: c
+                    .get("currency")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("CZK")
+                    .to_string(),
+                frequency: c
+                    .get("frequency")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("monthly")
+                    .to_string(),
+            })
+            .collect::<Vec<_>>();
+        property_components.insert(id, components);
+    }
     let mut automatic_sources = vec![];
+    // Quality describes active contributions; replaced sources retain row-level
+    // quality in inventory without making the effective plan incomplete.
+    fx.quality = crate::models::ReportQuality::default();
     let mut section = |raw: RawCashflowSection| {
         let mut categories = |raw: Vec<RawCashflowCategory>, direction: &str| {
             raw.into_iter()
@@ -1126,7 +1170,14 @@ pub fn get_report(conn: &rusqlite::Connection, view_type: &str) -> Result<Cashfl
                         .into_iter()
                         .filter_map(|i| {
                             let source = (!i.is_user_defined).then(|| source_for(&c.key, &i.id));
+                            let original_components =
+                                if !i.is_user_defined && c.key.ends_with("RealEstateCosts") {
+                                    property_components.get(&i.id).cloned().unwrap_or_default()
+                                } else {
+                                    Vec::new()
+                                };
                             let item = crate::models::CashflowReportItem {
+                                original_components,
                                 fx_quality: i
                                     .source_fx_quality
                                     .unwrap_or_else(|| fx.quality_for(&i.original_currency)),
@@ -1153,6 +1204,13 @@ pub fn get_report(conn: &rusqlite::Connection, view_type: &str) -> Result<Cashfl
                                 automatic_sources.push(item.clone());
                                 if replacements.contains_key(&source) {
                                     return None;
+                                }
+                            }
+                            if item.original_components.is_empty() {
+                                fx.record_quality(&item.original_currency);
+                            } else {
+                                for component in &item.original_components {
+                                    fx.record_quality(&component.currency);
                                 }
                             }
                             Some(item)
@@ -1197,6 +1255,7 @@ pub fn get_report(conn: &rusqlite::Connection, view_type: &str) -> Result<Cashfl
     let expense = personal.total_expenses.parse::<f64>().expect("money")
         + investments.total_expenses.parse::<f64>().expect("money");
     Ok(CashflowReport {
+        report_currency: report_currency.clone(),
         view_type: raw.view_type,
         personal,
         investments,
@@ -1250,6 +1309,7 @@ fn validate_replacement(
 }
 
 struct PlanningFx {
+    target: String,
     rates: HashMap<String, f64>,
     quality: crate::models::ReportQuality,
     last_missing: bool,
@@ -1257,6 +1317,7 @@ struct PlanningFx {
 impl Default for PlanningFx {
     fn default() -> Self {
         Self {
+            target: "CZK".into(),
             rates: crate::services::currency::get_all_rates(),
             quality: crate::models::ReportQuality::default(),
             last_missing: false,
@@ -1264,46 +1325,54 @@ impl Default for PlanningFx {
     }
 }
 impl PlanningFx {
+    fn rate(&self, currency: &str) -> Option<f64> {
+        if currency.eq_ignore_ascii_case("CZK") {
+            Some(1.0)
+        } else {
+            self.rates
+                .get(&currency.trim().to_uppercase())
+                .copied()
+                .filter(|r| r.is_finite() && *r > 0.0)
+        }
+    }
     fn quality_for(&self, currency: &str) -> crate::models::FxQuality {
         use crate::models::FxQuality;
-        if currency.eq_ignore_ascii_case("CZK") {
+        if currency.trim().eq_ignore_ascii_case(&self.target) {
             FxQuality::Historical
-        } else if self
-            .rates
-            .get(&currency.to_uppercase())
-            .is_some_and(|r| r.is_finite() && *r > 0.0)
-        {
+        } else if self.rate(currency).is_some() && self.rate(&self.target).is_some() {
             FxQuality::Estimated
         } else {
             FxQuality::Missing
         }
     }
+    fn record_quality(&mut self, currency: &str) {
+        use crate::models::FxQuality;
+        match self.quality_for(currency) {
+            FxQuality::Historical => {}
+            FxQuality::Estimated => self.quality.estimated_fx_count += 1,
+            FxQuality::Missing => {
+                self.quality.missing_fx_count += 1;
+                for code in [currency.trim().to_uppercase(), self.target.clone()] {
+                    if self.rate(&code).is_none()
+                        && !self.quality.missing_fx_currencies.contains(&code)
+                    {
+                        self.quality.missing_fx_currencies.push(code);
+                    }
+                }
+                self.quality.missing_fx_currencies.sort();
+            }
+        }
+    }
     fn convert(&mut self, amount: f64, currency: &str) -> f64 {
         self.last_missing = false;
-        if currency.eq_ignore_ascii_case("CZK") {
+        self.record_quality(currency);
+        if currency.trim().eq_ignore_ascii_case(&self.target) {
             return amount;
         }
-        if let Some(rate) = self
-            .rates
-            .get(&currency.to_uppercase())
-            .copied()
-            .filter(|r| r.is_finite() && *r > 0.0)
-        {
-            self.quality.estimated_fx_count += 1;
-            return amount * rate;
+        if let (Some(source), Some(target)) = (self.rate(currency), self.rate(&self.target)) {
+            return amount * source / target;
         }
         self.last_missing = true;
-        self.quality.missing_fx_count += 1;
-        if !self
-            .quality
-            .missing_fx_currencies
-            .contains(&currency.to_uppercase())
-        {
-            self.quality
-                .missing_fx_currencies
-                .push(currency.to_uppercase());
-            self.quality.missing_fx_currencies.sort();
-        }
         0.0
     }
 }
@@ -1324,6 +1393,160 @@ mod tests {
  CREATE TABLE bonds(id TEXT,name TEXT,coupon_value TEXT,quantity TEXT,interest_rate TEXT,currency TEXT);
  INSERT INTO loans VALUES ('active','Loan','1000000','CZK','0','100',1704067200,NULL,NULL,NULL);").unwrap();
         conn
+    }
+    #[test]
+    fn target_replaced_missing_source_does_not_make_active_plan_incomplete() {
+        let conn = planning_db();
+        conn.execute("UPDATE loans SET currency='XRS'", []).unwrap();
+        create_cashflow_item(
+            &conn,
+            InsertCashflowItem {
+                name: "Native replacement".into(),
+                amount: "100".into(),
+                currency: Some("EUR".into()),
+                frequency: "monthly".into(),
+                item_type: "expense".into(),
+                category: "personalLoans".into(),
+                replacement_source_id: Some("loan:active".into()),
+            },
+        )
+        .unwrap();
+        let report = get_report_in_currency(&conn, "monthly", "EUR").unwrap();
+        assert_eq!(report.total_expenses, "100.00");
+        assert_eq!(
+            report.automatic_sources[0].fx_quality,
+            crate::models::FxQuality::Missing
+        );
+        assert_eq!(report.quality.missing_fx_count, 0);
+    }
+    #[test]
+    fn target_planning_mixed_property_components_and_replacement_conserve() {
+        crate::services::currency::update_exchange_rates(HashMap::from([
+            ("XTP".into(), 27.5),
+            ("XSP".into(), 25.0),
+        ]));
+        let conn = planning_db();
+        conn.execute("DELETE FROM loans", []).unwrap();
+        insert_property(
+            &conn,
+            "personal",
+            serde_json::json!([
+                {"amount":100,"currency":"XTP","frequency":"monthly"},
+                {"amount":110,"currency":"XSP","frequency":"monthly"}
+            ]),
+        );
+        let cross_report = get_report_in_currency(&conn, "monthly", "XTP").unwrap();
+        assert_eq!(cross_report.total_expenses, "200.00");
+        assert_eq!(cross_report.automatic_sources[0].amount, "200.00");
+        // Also assert the unrounded annual composite before period normalization.
+        let mut fx = PlanningFx {
+            target: "EUR".into(),
+            rates: HashMap::from([("EUR".into(), 27.5), ("USD".into(), 25.0)]),
+            ..PlanningFx::default()
+        };
+        let (annual, q) = property_costs_annualized(
+            r#"[{"amount":100,"currency":"EUR","frequency":"monthly"},{"amount":110,"currency":"USD","frequency":"monthly"}]"#,
+            &mut fx,
+        );
+        assert_eq!(annual, 2400.0);
+        assert_eq!(q, crate::models::FxQuality::Estimated);
+        // Same-currency component remains usable even if the other component is missing.
+        conn.execute("UPDATE real_estate SET recurring_costs=?1", [r#"[{"amount":100,"currency":"AED","frequency":"monthly"},{"amount":110,"currency":"XZZ","frequency":"monthly"}]"#]).unwrap();
+        let report = get_report_in_currency(&conn, "monthly", "AED").unwrap();
+        let source = &report.automatic_sources[0];
+        assert_eq!(source.amount, "100.00");
+        assert_eq!(source.original_currency, "MULTI");
+        assert_eq!(source.original_components.len(), 2);
+        assert_eq!(source.original_components[0].currency, "AED");
+        assert_eq!(source.fx_quality, crate::models::FxQuality::Missing);
+        assert_eq!(report.total_expenses, "100.00");
+        create_cashflow_item(
+            &conn,
+            InsertCashflowItem {
+                name: "Replacement".into(),
+                amount: "1200".into(),
+                currency: Some("AED".into()),
+                frequency: "yearly".into(),
+                item_type: "expense".into(),
+                category: "personalRealEstateCosts".into(),
+                replacement_source_id: source.source_id.clone(),
+            },
+        )
+        .unwrap();
+        let replacement = get_report_in_currency(&conn, "monthly", "AED").unwrap();
+        assert_eq!(replacement.total_expenses, "100.00");
+        assert_eq!(replacement.automatic_sources.len(), 1);
+        assert_eq!(
+            replacement
+                .personal
+                .expenses
+                .iter()
+                .flat_map(|c| &c.items)
+                .count(),
+            1
+        );
+    }
+    #[test]
+    fn target_planning_minor_units_and_missing_target_are_explicit() {
+        for (currency, amount, expected) in [
+            ("KWD", "0.123", "0.123"),
+            ("JPY", "1.6", "2"),
+            ("AED", "100", "100.00"),
+        ] {
+            let conn = planning_db();
+            conn.execute("DELETE FROM loans", []).unwrap();
+            create_cashflow_item(
+                &conn,
+                InsertCashflowItem {
+                    name: "Native".into(),
+                    amount: amount.into(),
+                    currency: Some(currency.into()),
+                    frequency: "monthly".into(),
+                    item_type: "expense".into(),
+                    category: "subscriptions".into(),
+                    replacement_source_id: None,
+                },
+            )
+            .unwrap();
+            let report = get_report_in_currency(&conn, "monthly", currency).unwrap();
+            assert_eq!(report.total_expenses, expected);
+            let missing = get_report_in_currency(&conn, "monthly", "XZA").unwrap();
+            assert_eq!(missing.total_expenses, "0.00");
+            assert_eq!(
+                missing
+                    .personal
+                    .expenses
+                    .iter()
+                    .flat_map(|c| &c.items)
+                    .count(),
+                1
+            );
+            assert!(missing
+                .quality
+                .missing_fx_currencies
+                .contains(&"XZA".into()));
+        }
+    }
+    #[test]
+    fn target_planning_native_annual_item_normalizes_without_fx() {
+        let conn = planning_db();
+        conn.execute("DELETE FROM loans", []).unwrap();
+        create_cashflow_item(
+            &conn,
+            InsertCashflowItem {
+                name: "Annual".into(),
+                amount: "1200".into(),
+                currency: Some("EUR".into()),
+                frequency: "yearly".into(),
+                item_type: "expense".into(),
+                category: "subscriptions".into(),
+                replacement_source_id: None,
+            },
+        )
+        .unwrap();
+        let report = get_report_in_currency(&conn, "monthly", "EUR").unwrap();
+        assert_eq!(report.total_expenses, "100.00");
+        assert_eq!(report.quality.estimated_fx_count, 0);
     }
     #[test]
     fn replacement_avoids_double_count_retains_inventory_and_restores_on_delete() {

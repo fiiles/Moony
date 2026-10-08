@@ -4,13 +4,6 @@
 
 mod migrations;
 
-/// The full migrated schema on a plain in-memory connection, for service tests
-/// whose subject spans many tables (e.g. MCP tools that reuse the app reports).
-#[cfg(test)]
-pub(crate) fn migrate_for_tests(conn: &rusqlite::Connection) -> crate::error::Result<()> {
-    migrations::run_migrations(conn)
-}
-
 pub use migrations::{applied_migration_names, known_migration_names};
 
 use crate::error::{AppError, Result};

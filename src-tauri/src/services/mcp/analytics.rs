@@ -49,13 +49,11 @@ pub struct TagMetricsArgs {
 /// user's main currency: same items, repaid-loan and replacement handling,
 /// totals and FX quality as the Cashflow page.
 pub fn cashflow_report(conn: &Connection, view_type: Option<String>) -> Result<Value> {
-    use crate::services::reporting::parse_money;
     let view_type = view_type.unwrap_or_else(|| "monthly".to_string());
-    let report = crate::services::cashflow_planning::get_report(conn, &view_type)?;
-    // The report is in CZK; convert once, when the response is built.
-    let ctx = MoneyContext::load(conn)?;
-    let money =
-        |czk: &str| -> Result<String> { Ok(format!("{:.2}", ctx.czk_to_main(parse_money(czk)?))) };
+    let target = super::money::load_main_currency(conn)?;
+    let report =
+        crate::services::cashflow_planning::get_report_in_currency(conn, &view_type, &target)?;
+    let money = |value: &str| -> Result<String> { Ok(value.to_string()) };
 
     let mut income = Vec::new();
     let mut expenses = Vec::new();
@@ -74,6 +72,7 @@ pub fn cashflow_report(conn: &Connection, view_type: Option<String>) -> Result<V
                         "category": category.key,
                         "section": section_key,
                         "amount": money(&item.amount)?,
+                        "originalComponents": item.original_components,
                         "originalAmount": item.original_amount,
                         "originalCurrency": item.original_currency,
                         "originalFrequency": item.original_frequency,
@@ -86,7 +85,7 @@ pub fn cashflow_report(conn: &Connection, view_type: Option<String>) -> Result<V
     }
 
     Ok(serde_json::json!({
-        "mainCurrency": ctx.main_currency(),
+        "mainCurrency": report.report_currency,
         "viewType": report.view_type,
         "estimate": report.estimate,
         "ratesAsOf": report.rates_as_of,
@@ -116,12 +115,14 @@ pub fn budgeting_report(
 ) -> Result<Value> {
     use crate::services::reporting::parse_money;
     let timeframe = timeframe.unwrap_or_else(|| "monthly".to_string());
-    let report = crate::services::budgeting::get_report(conn, start_date, end_date, &timeframe)?;
-    // The report is in CZK; convert once, when the response is built. The
-    // usage ratio is currency-invariant.
-    let ctx = MoneyContext::load(conn)?;
-    let main = |czk: f64| format!("{:.2}", ctx.czk_to_main(czk));
-    let money = |czk: &str| -> Result<String> { Ok(main(parse_money(czk)?)) };
+    let target = super::money::load_main_currency(conn)?;
+    let report = crate::services::budgeting::get_report_in_currency(
+        conn, start_date, end_date, &timeframe, None, &target,
+    )?;
+    let main = |amount: f64| {
+        crate::services::reporting::money_in_currency(amount, &report.report_currency)
+    };
+    let money = |amount: &str| -> Result<String> { Ok(amount.to_string()) };
 
     let mut categories = Vec::new();
     for cat in report
@@ -130,11 +131,7 @@ pub fn budgeting_report(
         .filter(|c| c.budget_goal.is_some())
     {
         let actual = parse_money(&cat.total_amount)?;
-        let limit = cat
-            .budget_limit_czk
-            .as_deref()
-            .map(parse_money)
-            .transpose()?;
+        let limit = cat.budget_limit.as_deref().map(parse_money).transpose()?;
         categories.push(serde_json::json!({
             "categoryId": cat.category_id,
             "categoryName": cat.category_name,
@@ -142,11 +139,11 @@ pub fn budgeting_report(
             "budget": limit.map(main),
             "actual": main(actual),
             "remaining": limit.map(|l| main(l - actual)),
-            "usagePercent": match limit {
-                Some(l) if l > 0.0 => format!("{:.1}", actual / l * 100.0),
-                _ => "N/A".to_string(),
-            },
-            "overBudget": limit.is_some_and(|l| actual > l),
+            "budgetCurrency": cat.budget_currency,
+            "budgetSpent": cat.budget_spent,
+            "budgetLimitNative": cat.budget_limit_native,
+            "usagePercent": cat.budget_percentage.map(|p| format!("{p:.1}")).unwrap_or_else(|| "N/A".into()),
+            "overBudget": cat.budget_percentage.is_some_and(|p| p > 100.0),
             "transactionCount": cat.transaction_count,
         }));
     }
@@ -161,7 +158,7 @@ pub fn budgeting_report(
     }
 
     Ok(serde_json::json!({
-        "mainCurrency": ctx.main_currency(),
+        "mainCurrency": report.report_currency,
         "timeframe": timeframe,
         "nonconsumptionFlows": nonconsumption,
         "summary": {
@@ -634,7 +631,25 @@ mod tests {
     /// Full app schema: the MCP reports reuse the app's report services.
     fn app_db(main_currency: &str) -> Connection {
         let conn = Connection::open_in_memory().expect("in-memory db");
-        crate::db::migrate_for_tests(&conn).expect("schema");
+        conn.execute_batch("CREATE TABLE user_profile(name TEXT,surname TEXT,email TEXT,currency TEXT);
+CREATE TABLE exchange_rates(currency TEXT,rate REAL,fetched_at INTEGER);
+CREATE TABLE institutions(id TEXT,country TEXT);
+CREATE TABLE bank_accounts(id TEXT,name TEXT,currency TEXT,iban TEXT,bban TEXT,institution_id TEXT,balance TEXT DEFAULT '0',interest_rate TEXT DEFAULT '0',has_zone_designation INTEGER DEFAULT 0,account_type TEXT DEFAULT 'checking',exclude_from_balance INTEGER DEFAULT 0);
+CREATE TABLE transaction_categories(id TEXT,name TEXT,kind TEXT,icon TEXT,color TEXT);
+INSERT INTO transaction_categories VALUES ('cat_groceries','Groceries','expense',NULL,NULL);
+CREATE TABLE bank_transactions(id TEXT,bank_account_id TEXT,tx_type TEXT,amount TEXT,currency TEXT,booking_date INTEGER,category_id TEXT,status TEXT DEFAULT 'booked',description TEXT,counterparty_name TEXT,counterparty_iban TEXT,counterparty_bank_code TEXT,counterparty_country TEXT,flow_kind TEXT);
+CREATE TABLE exchange_rate_history(date INTEGER,currency TEXT,rate REAL,PRIMARY KEY(date,currency));
+CREATE TABLE budget_goals(id TEXT PRIMARY KEY,category_id TEXT,timeframe TEXT,amount TEXT,currency TEXT,created_at INTEGER,updated_at INTEGER,UNIQUE(category_id,timeframe));
+CREATE TABLE budget_goal_versions(id TEXT PRIMARY KEY,category_id TEXT,timeframe TEXT,effective_month INTEGER,amount TEXT,currency TEXT,created_at INTEGER,UNIQUE(category_id,timeframe,effective_month));
+CREATE TABLE cashflow_items(id TEXT PRIMARY KEY,name TEXT,amount TEXT,currency TEXT,frequency TEXT,item_type TEXT,category TEXT,created_at INTEGER DEFAULT 0,updated_at INTEGER DEFAULT 0,replacement_source_id TEXT UNIQUE);
+CREATE TABLE loans(id TEXT,name TEXT,principal TEXT,currency TEXT,interest_rate TEXT,monthly_payment TEXT,start_date INTEGER,end_date INTEGER,balance_anchor_amount TEXT,balance_anchor_date INTEGER);
+CREATE TABLE real_estate(id TEXT,name TEXT,type TEXT,recurring_costs TEXT,monthly_rent TEXT,monthly_rent_currency TEXT);
+CREATE TABLE real_estate_loans(real_estate_id TEXT,loan_id TEXT);
+CREATE TABLE real_estate_insurances(real_estate_id TEXT,insurance_id TEXT);
+CREATE TABLE insurance_policies(id TEXT,policy_name TEXT,regular_payment TEXT,regular_payment_currency TEXT,payment_frequency TEXT,status TEXT);
+CREATE TABLE stock_investments(ticker TEXT,company_name TEXT,quantity TEXT);
+CREATE TABLE bonds(id TEXT,name TEXT,coupon_value TEXT,quantity TEXT,interest_rate TEXT,currency TEXT);").expect("minimal report schema");
+
         conn.execute(
             "INSERT INTO user_profile (name, surname, email, currency) VALUES ('T', 'U', 't@example.test', ?1)",
             [main_currency],
@@ -671,6 +686,47 @@ mod tests {
     }
 
     #[test]
+    fn target_mcp_native_reports_match_services_without_any_fx() {
+        for target in ["EUR", "AED"] {
+            let conn = app_db(target);
+            conn.execute("DELETE FROM exchange_rates", []).unwrap();
+            crate::services::budgeting::upsert_goal_at(
+                &conn,
+                crate::models::InsertBudgetGoal {
+                    category_id: "cat_groceries".into(),
+                    timeframe: "monthly".into(),
+                    amount: "100.00".into(),
+                    currency: Some(target.into()),
+                    effective_month: Some(SEP),
+                },
+                SEP,
+            )
+            .unwrap();
+            conn.execute("INSERT INTO bank_transactions(id,bank_account_id,tx_type,amount,currency,booking_date,category_id) VALUES ('native','acc','debit','25',?1,?2,'cat_groceries')",rusqlite::params![target,SEP]).unwrap();
+            let mcp = budgeting_report(&conn, SEP, OCT - 1, None).unwrap();
+            let app = crate::services::budgeting::get_report_in_currency(
+                &conn,
+                SEP,
+                OCT - 1,
+                "monthly",
+                None,
+                target,
+            )
+            .unwrap();
+            assert_eq!(mcp["summary"]["totalExpenses"], app.total_expenses);
+            assert_eq!(mcp["budgetCategories"][0]["usagePercent"], "25.0");
+            assert_eq!(mcp["quality"]["missingFxCount"], 0);
+            conn.execute("INSERT INTO cashflow_items(id,name,amount,currency,frequency,item_type,category) VALUES ('native','Annual','1200',?1,'yearly','expense','subscriptions')",[target]).unwrap();
+            let mcp = cashflow_report(&conn, None).unwrap();
+            let app = crate::services::cashflow_planning::get_report_in_currency(
+                &conn, "monthly", target,
+            )
+            .unwrap();
+            assert_eq!(mcp["summary"]["totalExpenses"], app.total_expenses);
+            assert_eq!(mcp["summary"]["totalExpenses"], "100.00");
+        }
+    }
+    #[test]
     fn budgeting_report_matches_the_app_report_semantics() {
         let conn = app_db("CZK");
         seed_budget(&conn);
@@ -698,23 +754,34 @@ mod tests {
     fn budgeting_report_converts_to_the_main_currency_and_flags_missing_fx() {
         let conn = app_db("EUR");
         seed_budget(&conn);
-        // A EUR expense without a historical rate is excluded and reported.
+        // Native EUR requires no quote; cross-currency CZK uses historical EUR quotes.
         conn.execute(
             "INSERT INTO bank_transactions (id, bank_account_id, tx_type, amount, currency, booking_date, category_id) VALUES ('eur', 'acc', 'debit', '10', 'EUR', ?1, 'cat_groceries')",
             [SEP + 86400],
         )
         .unwrap();
 
+        conn.execute(
+            "INSERT INTO exchange_rate_history VALUES (?1,'EUR',25)",
+            [SEP],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO exchange_rate_history VALUES (?1,'EUR',25)",
+            [SEP + 86400],
+        )
+        .unwrap();
+        conn.execute("INSERT INTO bank_transactions(id,bank_account_id,tx_type,amount,currency,booking_date,category_id) VALUES ('missing','acc','debit','99','XZZ',?1,'cat_groceries')",[SEP+86400]).unwrap();
         let result = budgeting_report(&conn, SEP, OCT - 1, None).expect("budgeting");
 
         assert_eq!(result["mainCurrency"], "EUR");
         let cat = &result["budgetCategories"][0];
-        // 1 000 / 500 CZK at the current 25 CZK per EUR.
+        // Historical CZK500 becomes EUR20, plus native EUR10.
         assert_eq!(cat["budget"], "40.00");
-        assert_eq!(cat["actual"], "20.00");
-        assert_eq!(cat["usagePercent"], "50.0");
+        assert_eq!(cat["actual"], "30.00");
+        assert_eq!(cat["usagePercent"], "N/A");
         assert_eq!(result["quality"]["missingFxCount"], 1);
-        assert_eq!(result["quality"]["missingFxCurrencies"][0], "EUR");
+        assert_eq!(result["quality"]["missingFxCurrencies"][0], "XZZ");
     }
 
     fn seed_cashflow(conn: &Connection) {
@@ -772,13 +839,18 @@ mod tests {
 
     #[test]
     fn cashflow_report_reports_amounts_in_the_main_currency() {
-        let conn = app_db("EUR");
+        // A private code isolates this current-rate fixture from other tests.
+        crate::services::currency::update_exchange_rates(std::collections::HashMap::from([(
+            "XMC".into(),
+            25.0,
+        )]));
+        let conn = app_db("XMC");
         seed_cashflow(&conn);
 
         let monthly = cashflow_report(&conn, None).expect("cashflow");
         let yearly = cashflow_report(&conn, Some("yearly".to_string())).expect("cashflow");
 
-        assert_eq!(monthly["mainCurrency"], "EUR");
+        assert_eq!(monthly["mainCurrency"], "XMC");
         // 50 000 CZK salary, 10 000 CZK mortgage at 25 CZK per EUR.
         assert_eq!(monthly["summary"]["totalIncome"], "2000.00");
         assert_eq!(monthly["summary"]["totalExpenses"], "400.00");

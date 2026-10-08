@@ -119,12 +119,12 @@ export type BudgetingReport = { bankCashMovement: string; quality: ReportQuality
 /**
  * Included booked expense rows without a category, including unavailable FX.
  */
-uncategorizedExpenseTransactionCount: number }
+uncategorizedExpenseTransactionCount: number; reportCurrency: string }
 
 /**
  * Actual monthly cashflow for a range plus the preceding range of equal length.
  */
-export type CashflowActuals = { netBalance: string; bankCashMovement: string; averageCompletedMonths: number[]; quality: ReportQuality; previousQuality: ReportQuality; nonconsumptionFlows: CashflowGroup[]; averageIncome: string | null; averageExpenses: string | null; range: string; rangeStart: number; rangeEnd: number; previousStart: number; previousEnd: number; months: CashflowMonth[]; expenseCategories: CashflowGroup[]; incomeSources: CashflowGroup[]; totalIncome: string; totalExpenses: string; previousIncome: string; previousExpenses: string; accountCount: number; transactionCount: number }
+export type CashflowActuals = { reportCurrency: string; netBalance: string; bankCashMovement: string; averageCompletedMonths: number[]; quality: ReportQuality; previousQuality: ReportQuality; nonconsumptionFlows: CashflowGroup[]; averageIncome: string | null; averageExpenses: string | null; range: string; rangeStart: number; rangeEnd: number; previousStart: number; previousEnd: number; months: CashflowMonth[]; expenseCategories: CashflowGroup[]; incomeSources: CashflowGroup[]; totalIncome: string; totalExpenses: string; previousIncome: string; previousExpenses: string; accountCount: number; transactionCount: number }
 
 /**
  * A category with its items
@@ -148,14 +148,19 @@ export type CashflowItem = { id: string; name: string; amount: string; currency:
 export type CashflowMonth = { nonconsumptionFlows: CashflowGroup[]; bankCashMovement: string; month: number; income: string; expenses: string }
 
 /**
+ * Native components of a composite automatic property-cost source.
+ */
+export type CashflowOriginalComponent = { amount: string; currency: string; frequency: string }
+
+/**
  * Complete cashflow report with Personal and Investments sections
  */
-export type CashflowReport = { quality: ReportQuality; ratesAsOf: number | null; automaticSources: CashflowReportItem[]; asOf: number; estimate: boolean; viewType: string; personal: CashflowSection; investments: CashflowSection; totalIncome: string; totalExpenses: string; netCashflow: string }
+export type CashflowReport = { reportCurrency: string; quality: ReportQuality; ratesAsOf: number | null; automaticSources: CashflowReportItem[]; asOf: number; estimate: boolean; viewType: string; personal: CashflowSection; investments: CashflowSection; totalIncome: string; totalExpenses: string; netCashflow: string }
 
 /**
  * Individual item in a cashflow category
  */
-export type CashflowReportItem = { fxQuality: FxQuality; category: string; itemType: string; sourceId: string | null; replacementSourceId: string | null; id: string; name: string; amount: string; originalAmount: string; originalCurrency: string; originalFrequency: string; isUserDefined: boolean }
+export type CashflowReportItem = { originalComponents: CashflowOriginalComponent[]; fxQuality: FxQuality; category: string; itemType: string; sourceId: string | null; replacementSourceId: string | null; id: string; name: string; amount: string; originalAmount: string; originalCurrency: string; originalFrequency: string; isUserDefined: boolean }
 
 /**
  * A cashflow section (Personal or Investments)
@@ -170,7 +175,7 @@ export type CategorizationOverview = { total: number; categorized: number; bySou
 /**
  * Category spending summary for a period
  */
-export type CategorySpendingSummary = { budgetLimitFxQuality: FxQuality | null; budgetLimitCzk: string | null; categoryId: string; categoryName: string; categoryIcon: string | null; categoryColor: string | null; totalAmount: string; transactionCount: number; budgetGoal: BudgetGoal | null; budgetPercentage: number | null }
+export type CategorySpendingSummary = { budgetCurrency: string | null; budgetSpent: string | null; budgetLimitNative: string | null; budgetLimitFxQuality: FxQuality | null; budgetLimit: string | null; categoryId: string; categoryName: string; categoryIcon: string | null; categoryColor: string | null; totalAmount: string; transactionCount: number; budgetGoal: BudgetGoal | null; budgetPercentage: number | null }
 
 /**
  * How many rows reference a category — what a delete would have to move.
@@ -1085,7 +1090,7 @@ export type ReportQuality = { missingFxCount: number; missingFxCurrencies: strin
  */
 invalidAmountCount: number }
 
-export type ReportTransaction = { id: string; bookingDate: number; amount: string; currency: string; description: string | null; counterpartyName: string | null; counterpartyIban: string | null; categoryId: string | null; bankAccountId: string; bankAccountName: string; txType: string; effectiveFlowKind: FlowKind; flowSource: FlowSource; signedAmountCzk: string | null; fxQuality: FxQuality }
+export type ReportTransaction = { reportCurrency: string; id: string; bookingDate: number; amount: string; currency: string; description: string | null; counterpartyName: string | null; counterpartyIban: string | null; categoryId: string | null; bankAccountId: string; bankAccountName: string; txType: string; effectiveFlowKind: FlowKind; flowSource: FlowSource; signedAmount: string | null; fxQuality: FxQuality }
 
 /**
  * How often one rule matched in the period (TS `RuleHitCount`).

@@ -1,6 +1,6 @@
 //! Actual cashflow from bank transactions (design system §11): what the
 //! "Cashflow" report page shows, as opposed to the planned items of
-//! "Plánování cashflow". All amounts are CZK TEXT with two decimals (ADR 0001).
+//! "Plánování cashflow". Amounts are TEXT in the declared report currency, at its minor-unit precision.
 
 use serde::{Deserialize, Serialize};
 use specta::Type;
@@ -36,6 +36,8 @@ pub struct CashflowGroup {
 /// Actual monthly cashflow for a range plus the preceding range of equal length.
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct CashflowActuals {
+    #[serde(rename = "reportCurrency")]
+    pub report_currency: String,
     #[serde(rename = "netBalance")]
     pub net_balance: String,
     #[serde(rename = "bankCashMovement")]

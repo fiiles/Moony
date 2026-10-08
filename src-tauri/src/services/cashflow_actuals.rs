@@ -8,7 +8,7 @@ use crate::db::Database;
 use crate::error::{AppError, Result};
 use crate::models::cashflow_actuals::{CashflowActuals, CashflowGroup, CashflowMonth};
 use crate::models::FlowKind;
-use crate::services::reporting::{parse_money, quality, transactions};
+use crate::services::reporting::{parse_money, quality, transactions_in_currency};
 use chrono::{DateTime, Datelike, NaiveDate, Utc};
 #[cfg(test)]
 use rusqlite::params;
@@ -145,10 +145,6 @@ impl GroupAcc {
     }
 }
 
-fn money(v: f64) -> String {
-    format!("{:.2}", if v.abs() < 0.005 { 0.0 } else { v })
-}
-
 pub fn source_key(counterparty: &Option<String>) -> (String, String) {
     let name = counterparty
         .as_deref()
@@ -177,9 +173,27 @@ pub fn get_actuals_scoped(
     today: i64,
     accounts: Option<&[String]>,
 ) -> Result<CashflowActuals> {
+    get_actuals_in_currency(conn, range, today, accounts, "CZK")
+}
+pub fn get_actuals_in_currency(
+    conn: &Connection,
+    range: &str,
+    today: i64,
+    accounts: Option<&[String]>,
+    report_currency: &str,
+) -> Result<CashflowActuals> {
+    let report_currency = crate::services::reporting::normalize_currency(report_currency)?;
+    let money = |v| crate::services::reporting::money_in_currency(v, &report_currency);
     let bounds = range_bounds(range, today)?;
-    let rows = transactions(conn, bounds.start, bounds.end, accounts)?;
-    let previous = transactions(conn, bounds.previous_start, bounds.previous_end, accounts)?;
+    let rows =
+        transactions_in_currency(conn, bounds.start, bounds.end, accounts, &report_currency)?;
+    let previous = transactions_in_currency(
+        conn,
+        bounds.previous_start,
+        bounds.previous_end,
+        accounts,
+        &report_currency,
+    )?;
     let current_quality = quality(&rows, bounds.start, bounds.end, today);
     let previous_quality = quality(&previous, bounds.previous_start, bounds.previous_end, today);
     let mut months: HashMap<i64, (f64, f64)> = months_between(bounds.start, bounds.end)
@@ -196,7 +210,7 @@ pub fn get_actuals_scoped(
         .map(|r| (r, true))
         .chain(previous.iter().map(|r| (r, false)))
     {
-        let Some(amount) = row.signed_amount_czk.as_deref() else {
+        let Some(amount) = row.signed_amount.as_deref() else {
             continue;
         };
         let amount = parse_money(amount)?;
@@ -340,6 +354,7 @@ pub fn get_actuals_scoped(
         .len() as i32;
     let nonconsumption_total: f64 = other.values().map(|g| g.amount).sum();
     Ok(CashflowActuals {
+        report_currency: report_currency.clone(),
         net_balance: money(income - expense),
         bank_cash_movement: money(income - expense + nonconsumption_total),
         average_completed_months: completed,
@@ -464,6 +479,115 @@ mod tests {
 
     const TODAY: i64 = 1_791_000_000; // 2026-10-03 (UTC)
 
+    #[test]
+    fn target_actuals_aed_and_jpy_work_without_quotes() {
+        for (currency, amount, expected) in [
+            ("AED", "100", "100.00"),
+            ("JPY", "100.6", "101"),
+            ("KWD", "0.123", "0.123"),
+        ] {
+            let conn = setup_test_db();
+            insert_tx(
+                &conn,
+                "native",
+                "acc1",
+                ts(2026, 9, 1),
+                amount,
+                currency,
+                None,
+                Some("cat_income"),
+                "credit",
+            );
+            let report = get_actuals_in_currency(&conn, "6m", TODAY, None, currency).unwrap();
+            assert_eq!(report.total_income, expected);
+            assert_eq!(report.quality.missing_fx_count, 0);
+        }
+    }
+    #[test]
+    fn target_actuals_comparison_is_historical_and_conserves_cross_rows() {
+        let conn = setup_test_db();
+        for (id, day) in [("current", ts(2026, 9, 1)), ("previous", ts(2026, 3, 1))] {
+            insert_tx(
+                &conn,
+                id,
+                "acc1",
+                day,
+                "110",
+                "XAC",
+                None,
+                Some("cat_income"),
+                "credit",
+            );
+            conn.execute(
+                "INSERT INTO exchange_rate_history VALUES (?1,'XAC',25)",
+                [day],
+            )
+            .unwrap();
+            conn.execute(
+                "INSERT INTO exchange_rate_history VALUES (?1,'XAT',27.5)",
+                [day],
+            )
+            .unwrap();
+        }
+        let first = get_actuals_in_currency(&conn, "6m", TODAY, None, "XAT").unwrap();
+        assert_eq!(first.total_income, "100.00");
+        assert_eq!(first.previous_income, "100.00");
+        crate::services::currency::update_exchange_rates(HashMap::from([
+            ("XAC".into(), 80.0),
+            ("XAT".into(), 10.0),
+        ]));
+        let second = get_actuals_in_currency(&conn, "6m", TODAY, None, "XAT").unwrap();
+        assert_eq!(first.total_income, second.total_income);
+        assert_eq!(first.previous_income, second.previous_income);
+    }
+    #[test]
+    fn target_actuals_native_eur_refunds_and_drilldowns_conserve() {
+        let conn = setup_test_db();
+        insert_tx(
+            &conn,
+            "eur",
+            "acc1",
+            ts(2026, 9, 1),
+            "100",
+            "EUR",
+            None,
+            Some("cat_groceries"),
+            "debit",
+        );
+        insert_tx(
+            &conn,
+            "refund",
+            "acc1",
+            ts(2026, 9, 2),
+            "25",
+            "EUR",
+            None,
+            Some("cat_groceries"),
+            "credit",
+        );
+        let report = get_actuals_in_currency(&conn, "6m", TODAY, None, "EUR").unwrap();
+        assert_eq!(report.total_expenses, "75.00");
+        assert_eq!(report.quality.missing_fx_count, 0);
+        assert_eq!(report.report_currency, "EUR");
+        let rows = crate::services::reporting::filtered_transactions_in_currency(
+            &conn,
+            report.range_start,
+            report.range_end,
+            None,
+            Some(FlowKind::Expense),
+            Some("cat_groceries"),
+            None,
+            "EUR",
+        )
+        .unwrap();
+        assert_eq!(
+            rows.iter()
+                .filter_map(|r| r.signed_amount.as_deref())
+                .map(|a| parse_money(a).unwrap())
+                .sum::<f64>(),
+            75.0
+        );
+    }
     #[test]
     fn signed_report_conserves_cross_category_refunds_income_reversals_and_pending() {
         let conn = setup_test_db();

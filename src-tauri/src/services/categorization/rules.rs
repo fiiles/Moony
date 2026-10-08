@@ -264,6 +264,8 @@ mod tests {
             description: Some(description.into()),
             counterparty: counterparty.map(|s| s.into()),
             counterparty_iban: None,
+            counterparty_bank_code: None,
+            counterparty_country: None,
             amount: -500.0,
             is_credit: false,
             bank_account_id: None,

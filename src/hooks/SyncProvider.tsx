@@ -1,3 +1,4 @@
+import { refreshMoneyFlows } from '@/lib/money-flow-refresh';
 import { useState, useEffect, useRef, useCallback, ReactNode } from 'react';
 import { portfolioApi, priceApi } from '@/lib/tauri-api';
 import { useQueryClient } from '@tanstack/react-query';
@@ -100,6 +101,24 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     }
   }, [queryClient]);
 
+  // The FX backfill (after a rate refresh or a statement import) can add
+  // historical rates: rows previously reported as missing FX now convert.
+  useEffect(() => {
+    const unlisten = listen('recalculation-complete', () => {
+      for (const key of [
+        'budgeting-report',
+        'budgeting-category-transactions',
+        'cashflow-report',
+        'report-transactions',
+      ]) {
+        queryClient.invalidateQueries({ queryKey: [key] });
+      }
+    });
+    return () => {
+      unlisten.then((f) => f());
+    };
+  }, [queryClient]);
+
   // Refresh after MCP write tools change data (rule-7 ritual, driven by the
   // mcp-data-changed event the embedded server emits). Query keys verified
   // against the real hooks/pages (grep for `queryKey: ['`) as of this writing.
@@ -142,7 +161,14 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       // Following a stock, or noting a target on it, changes nothing about what
       // the user owns — so the watchlist skips the portfolio/snapshot ritual
       // (spec D10 of the Stock Monitor design, same deviation the UI makes).
-      const affectsNetWorth = domain !== 'stock-monitor';
+      if (domain === 'bank') {
+        try {
+          await refreshMoneyFlows(queryClient, true);
+        } catch (error) {
+          console.error('[Sync] Bank refresh failed:', error);
+        }
+      }
+      const affectsNetWorth = domain !== 'stock-monitor' && domain !== 'bank';
       if (affectsNetWorth) {
         queryClient.invalidateQueries({ queryKey: ['portfolio-metrics'] });
         queryClient.invalidateQueries({ queryKey: ['cashflow-report'] });

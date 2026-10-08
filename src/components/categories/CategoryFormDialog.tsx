@@ -1,3 +1,11 @@
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import type { FlowKind } from '@shared/schema';
 /**
  * CategoryFormDialog - create or edit a transaction category (name, icon, color).
  *
@@ -76,6 +84,7 @@ export function CategoryFormDialog({
   const initialName = category ? categoryName(category) : '';
   const [name, setName] = useState(initialName);
   const [icon, setIcon] = useState(category?.icon || DEFAULT_ICON);
+  const [kind, setKind] = useState<FlowKind>(category?.kind ?? 'expense');
   const [color, setColor] = useState(category?.color || DEFAULT_COLOR);
 
   const trimmedName = name.trim();
@@ -89,6 +98,7 @@ export function CategoryFormDialog({
       if (category) {
         // Only send what changed.
         const data: UpdateTransactionCategory = {
+          ...(kind !== category.kind ? { kind } : {}),
           ...(trimmedName !== initialName ? { name: trimmedName } : {}),
           ...(icon !== (category.icon || DEFAULT_ICON) ? { icon } : {}),
           ...(color !== (category.color || DEFAULT_COLOR) ? { color } : {}),
@@ -99,7 +109,7 @@ export function CategoryFormDialog({
         }
         saved = await updateCategory.mutateAsync({ id: category.id, data });
       } else {
-        saved = await createCategory.mutateAsync({ name: trimmedName, icon, color });
+        saved = await createCategory.mutateAsync({ name: trimmedName, icon, color, kind });
       }
       onOpenChange(false);
       onSaved?.(saved);
@@ -141,6 +151,24 @@ export function CategoryFormDialog({
             />
           </div>
 
+          <div className="space-y-2">
+            <Label>{t('readiness.categoryRole')}</Label>
+            <Select value={kind} onValueChange={(value) => setKind(value as FlowKind)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {['income', 'expense', 'transfer', 'investment', 'financing', 'adjustment'].map(
+                  (value) => (
+                    <SelectItem key={value} value={value}>
+                      {t(`readiness.flow.${value}`)}
+                    </SelectItem>
+                  )
+                )}
+              </SelectContent>
+            </Select>
+            <p className="text-micro text-ink-4">{t('readiness.roleImpact')}</p>
+          </div>
           <div className="space-y-2">
             <Label>{t('categoryManagement.icon')}</Label>
             <div className="grid grid-cols-9 gap-1" role="radiogroup">

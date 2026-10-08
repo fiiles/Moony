@@ -623,7 +623,17 @@ export interface CryptoInvestmentWithPrice extends CryptoInvestment {
 }
 
 // Cashflow Types
+export interface InsertCashflowItem {
+  name: string;
+  amount: string;
+  currency?: string | null;
+  frequency: 'monthly' | 'yearly';
+  itemType: 'income' | 'expense';
+  category: string;
+  replacementSourceId?: string | null;
+}
 export interface CashflowItem {
+  replacementSourceId: string | null;
   id: string;
   name: string;
   amount: string;
@@ -635,11 +645,25 @@ export interface CashflowItem {
   updatedAt: number;
 }
 
+export interface CashflowOriginalComponent {
+  amount: string;
+  currency: string;
+  frequency: string;
+}
+
 export interface CashflowReportItem {
+  originalComponents: CashflowOriginalComponent[];
+  /** Components with a usable target conversion, including known zero-valued components. */
+  convertedComponentCount: number;
+  fxQuality: FxQuality;
+  sourceId: string | null;
+  replacementSourceId: string | null;
+  category: string;
+  itemType: string;
   id: string;
   name: string;
-  amount: number;
-  originalAmount: number;
+  amount: string;
+  originalAmount: string;
   originalCurrency: string;
   originalFrequency: 'monthly' | 'yearly';
   isUserDefined: boolean;
@@ -648,7 +672,7 @@ export interface CashflowReportItem {
 export interface CashflowCategory {
   key: string;
   name: string;
-  total: number;
+  total: string;
   items: CashflowReportItem[];
   isUserEditable: boolean;
 }
@@ -656,24 +680,32 @@ export interface CashflowCategory {
 export interface CashflowSection {
   income: CashflowCategory[];
   expenses: CashflowCategory[];
-  totalIncome: number;
-  totalExpenses: number;
-  netCashflow: number;
+  totalIncome: string;
+  totalExpenses: string;
+  netCashflow: string;
 }
 
 export interface CashflowReport {
+  reportCurrency: string;
+  quality: ReportQuality;
+  ratesAsOf: number | null;
+  automaticSources: CashflowReportItem[];
+  asOf: number;
+  estimate: boolean;
   viewType: 'monthly' | 'yearly';
   personal: CashflowSection;
   investments: CashflowSection;
-  totalIncome: number;
-  totalExpenses: number;
-  netCashflow: number;
+  totalIncome: string;
+  totalExpenses: string;
+  netCashflow: string;
 }
 
-// Actual cashflow from bank transactions (design system README §11); CZK TEXT amounts
+// Actual cashflow from bank transactions (design system README §11); report-currency TEXT amounts
 export type CashflowRange = '6m' | '12m' | 'ytd';
 
 export interface CashflowMonth {
+  nonconsumptionFlows: CashflowGroup[];
+  bankCashMovement: string;
   /** Unix seconds of the first day of the month, UTC midnight */
   month: number;
   income: string;
@@ -691,6 +723,15 @@ export interface CashflowGroup {
 }
 
 export interface CashflowActuals {
+  reportCurrency: string;
+  netBalance: string;
+  bankCashMovement: string;
+  averageCompletedMonths: number[];
+  quality: ReportQuality;
+  previousQuality: ReportQuality;
+  nonconsumptionFlows: CashflowGroup[];
+  averageIncome: string | null;
+  averageExpenses: string | null;
   range: CashflowRange;
   rangeStart: number;
   rangeEnd: number;
@@ -777,6 +818,7 @@ export interface BankAccount {
   bban: string | null;
   currency: string;
   balance: string;
+  balanceAsOf: number | null;
   institutionId: string | null;
   externalAccountId: string | null;
   dataSource: DataSource;
@@ -805,6 +847,7 @@ export interface InsertBankAccount {
   bban?: string | null;
   currency?: string;
   balance?: string;
+  balanceAsOf?: number | null;
   institutionId?: string | null;
   interestRate?: string | null;
   hasZoneDesignation?: boolean;
@@ -815,7 +858,13 @@ export interface InsertBankAccount {
   excludeFromBalance?: boolean;
 }
 
+/** Financial meaning, independent of native credit/debit direction. */
+export type FlowKind =
+  'income' | 'expense' | 'transfer' | 'investment' | 'financing' | 'adjustment';
+
 export interface BankTransaction {
+  /** Null derives meaning from own-account identity, category role and direction. */
+  flowKind: FlowKind | null;
   id: string;
   bankAccountId: string;
   transactionId: string | null;
@@ -825,6 +874,12 @@ export interface BankTransaction {
   description: string | null;
   counterpartyName: string | null;
   counterpartyIban: string | null;
+  counterpartyBankCode: string | null;
+  counterpartyCountry: string | null;
+  importBatchId: string | null;
+  importFileName: string | null;
+  importLine: number | null;
+  rowBalance: string | null;
   bookingDate: number;
   valueDate: number | null;
   categoryId: string | null;
@@ -838,6 +893,8 @@ export interface BankTransaction {
 }
 
 export interface InsertBankTransaction {
+  /** Null derives meaning from own-account identity, category role and direction. */
+  flowKind?: FlowKind | null;
   bankAccountId: string;
   transactionId?: string | null;
   type: TransactionType;
@@ -846,6 +903,8 @@ export interface InsertBankTransaction {
   description?: string | null;
   counterpartyName?: string | null;
   counterpartyIban?: string | null;
+  counterpartyBankCode?: string | null;
+  counterpartyCountry?: string | null;
   bookingDate: number;
   valueDate?: number | null;
   categoryId?: string | null;
@@ -853,6 +912,7 @@ export interface InsertBankTransaction {
 }
 
 export interface TransactionCategory {
+  kind: FlowKind;
   id: string;
   name: string;
   icon: string | null;
@@ -864,6 +924,7 @@ export interface TransactionCategory {
 }
 
 export interface InsertTransactionCategory {
+  kind?: FlowKind;
   name: string;
   icon?: string | null;
   color?: string | null;
@@ -873,6 +934,7 @@ export interface InsertTransactionCategory {
 
 /** Edit a category's definition; an absent field is left unchanged. */
 export interface UpdateTransactionCategory {
+  kind?: FlowKind;
   name?: string;
   icon?: string;
   color?: string;
@@ -888,6 +950,8 @@ export interface CategoryUsage {
 }
 
 export interface TransactionFilters {
+  sortBy?: 'date' | 'description' | 'category' | 'amount';
+  ascending?: boolean;
   dateFrom?: number;
   dateTo?: number;
   categoryId?: string;
@@ -924,6 +988,8 @@ export interface TransactionInput {
   isCredit: boolean;
   /** Source bank account ID (for learning context) */
   bankAccountId?: string;
+  counterpartyBankCode?: string | null;
+  counterpartyCountry?: string | null;
 }
 
 export type RuleType = 'Regex' | 'Contains' | 'Word' | 'StartsWith' | 'EndsWith';
@@ -944,14 +1010,26 @@ export interface CategorizationStats {
   learnedPayees: number;
 }
 
+export interface InsertScopedLearning {
+  bankAccountId: string;
+  isCredit: boolean;
+  payee: string | null;
+  counterpartyIban: string | null;
+  counterpartyBankCode: string | null;
+  counterpartyCountry: string | null;
+  categoryId: string;
+}
+
 /** Learned payee entry for the management UI */
 export interface LearnedPayeeEntry {
+  bankAccountId: string | null;
+  isCredit: boolean | null;
   id: string;
   /** Rule type: "payee_default", "iban_default", "iban_only_default" */
   ruleType: string;
-  normalizedPayee?: string;
-  originalPayee?: string;
-  counterpartyIban?: string;
+  normalizedPayee: string | null;
+  originalPayee: string | null;
+  counterpartyIban: string | null;
   categoryId: string;
   createdAt: number;
   updatedAt: number;
@@ -1073,6 +1151,11 @@ export interface CsvPreset {
   delimiter: string;
   encoding: string;
   dateColumn: string;
+  valueDateColumn: string | null;
+  statusColumn: string | null;
+  pendingDateColumn: string | null;
+  counterpartyBankCodeColumn: string | null;
+  counterpartyCountryColumn: string | null;
   /** chrono format; may contain a time part (`%Y-%m-%d %H:%M:%S`). */
   dateFormat: string;
   amountColumn: string | null;
@@ -1138,6 +1221,8 @@ export interface CsvImportResult {
   lastBalance: string | null;
   /** Rule-pack id (lowercase ISO country) suggested by the counterparty IBANs, if not enabled. */
   suggestedRulePack: string | null;
+  promotedCount: number;
+  statementBalance: StatementBalance | null;
 }
 
 export interface CsvPreviewResult {
@@ -1177,6 +1262,11 @@ export interface CsvImportConfigInput {
   /** 0-based line of the header row; omit to auto-detect. */
   headerRow?: number | null;
   dateColumn: string;
+  valueDateColumn?: string | null;
+  statusColumn?: string | null;
+  pendingDateColumn?: string | null;
+  counterpartyBankCodeColumn?: string | null;
+  counterpartyCountryColumn?: string | null;
   /** chrono format, parsed strictly; "" or "auto" detects it. */
   dateFormat: string;
   /** Single signed amount column; optional when a debit/credit pair is given. */
@@ -1184,7 +1274,7 @@ export interface CsvImportConfigInput {
   /** Debit/credit pair (amount = credit - debit); used when `amountColumn` is not set. */
   debitColumn?: string | null;
   creditColumn?: string | null;
-  /** Feeds `lastBalance` only. */
+  /** Running balance retained as row provenance and dated statement balance. */
   balanceColumn?: string | null;
   /** Bank-side transaction id; feeds the duplicate check. */
   transactionIdColumn?: string | null;
@@ -1195,14 +1285,16 @@ export interface CsvImportConfigInput {
   /** "," or "."; omit/""/"auto" detects it. */
   decimalSeparator?: string | null;
   rowFilter?: CsvRowFilter | null;
-  /** Skip rows the duplicate check matches (default true). */
+  /** Skip possible composite matches (default true); certain bank IDs always skip. */
   skipDuplicates?: boolean;
-  /** File lines of duplicate rows to import anyway. */
+  /** File lines of possible composite duplicates to import anyway. */
   importAnywayLines?: number[];
   /** Force a text encoding (`Windows-1250`); omit to detect. */
   encoding?: string | null;
   /** Categories picked in the preview, by file line; applied before the rules on import. */
   categoryOverrides?: CsvCategoryOverride[];
+  previewOffset?: number;
+  previewLimit?: number;
 }
 
 /** One row's category chosen in the preview (file line → category). */
@@ -1214,12 +1306,22 @@ export interface CsvCategoryOverride {
 
 /**
  * ok: will be imported. error: cannot be imported (see `message`). duplicate: matches an
- * existing or earlier transaction — skipped unless its line is in `importAnywayLines`.
- * skipped: zero amount or dropped by the row filter.
+ * stored occurrence or bank ID; only possible composites allow `importAnywayLines`.
+ * skipped: zero amount, rejected status or dropped by the row filter.
+ * promoted: existing same-ID pending transaction will be booked in place.
  */
-export type CsvRowStatus = 'ok' | 'error' | 'duplicate' | 'skipped';
+export type CsvRowStatus = 'ok' | 'error' | 'duplicate' | 'skipped' | 'promoted';
 
 export interface CsvPreviewRow {
+  valueDate: number | null;
+  counterpartyIban: string | null;
+  counterpartyBankCode: string | null;
+  counterpartyCountry: string | null;
+  transactionId: string | null;
+  transactionStatus: TransactionStatus | null;
+  rowBalance: string | null;
+  canImportAnyway: boolean;
+
   line: number;
   bookingDate: number | null;
   /** Signed decimal string (`-250.5`); null when unreadable. */
@@ -1248,6 +1350,10 @@ export interface CsvImportPreview {
   dateRange: CsvDateRange | null;
   /** Rows that would be written with a category (rules or overrides). */
   categorizedCount: number;
+  promotedCount: number;
+  forcedDuplicateCount: number;
+  offset: number;
+  limit: number;
 }
 
 export interface CsvImportBatch {
@@ -1258,6 +1364,9 @@ export interface CsvImportBatch {
   duplicateCount: number;
   errorCount: number;
   importedAt: number;
+  linkedCount: number;
+  promotedCount: number;
+  dateRange: CsvDateRange | null;
 }
 
 // ============================================================================
@@ -1772,4 +1881,127 @@ export interface SavedStockImportFormat {
   headerSignature: string;
   config: StockImportConfig;
   createdAt: number;
+}
+
+export type FlowSource = 'explicit' | 'ownAccount' | 'category' | 'direction';
+export type FxQuality = 'historical' | 'estimated' | 'missing';
+export interface ReportQuality {
+  missingFxCount: number;
+  missingFxCurrencies: string[];
+  estimatedFxCount: number;
+  observedCompletedMonths: number[];
+  partialMonthCount: number;
+  unobservedMonthCount: number;
+  /** Stored rows with a non-finite amount (legacy data), excluded from totals. */
+  invalidAmountCount: number;
+}
+export interface EffectiveTransactionFlow {
+  id: string;
+  effectiveFlowKind: FlowKind;
+  flowSource: FlowSource;
+}
+// Budget goal entity
+export interface BudgetGoal {
+  id: string;
+  categoryId: string;
+  timeframe: string; // "monthly" | "quarterly" | "yearly"
+  amount: string;
+  currency: string;
+  createdAt: number;
+  updatedAt: number;
+  /** Month of the version shown as `amount`: in effect now, or the first scheduled one. */
+  effectiveMonth: number | null;
+  /** Every limit version, oldest first; `amount: null` removes the limit from that month. */
+  versions: BudgetGoalVersion[];
+}
+
+// One limit version of a budget goal, effective from a calendar month (UTC epoch).
+export interface BudgetGoalVersion {
+  effectiveMonth: number;
+  amount: string | null;
+  currency: string;
+}
+
+// Data for creating/updating a budget goal
+export interface InsertBudgetGoal {
+  categoryId: string;
+  timeframe: string;
+  amount: string;
+  currency?: string;
+  effectiveMonth?: number;
+}
+
+// Category spending summary
+export interface CategorySpendingSummary {
+  budgetCurrency: string | null;
+  budgetSpent: string | null;
+  budgetLimitNative: string | null;
+  budgetLimit: string | null;
+  budgetLimitFxQuality: FxQuality | null;
+  categoryId: string;
+  categoryName: string;
+  categoryIcon: string | null;
+  categoryColor: string | null;
+  totalAmount: string;
+  transactionCount: number;
+  budgetGoal: BudgetGoal | null;
+  budgetPercentage: number | null;
+}
+
+// Transaction for budgeting view
+export interface BudgetingTransaction {
+  reportCurrency: string;
+  effectiveFlowKind: FlowKind;
+  flowSource: FlowSource;
+  signedAmount: string | null;
+  fxQuality: FxQuality;
+  id: string;
+  bookingDate: number;
+  amount: string;
+  currency: string;
+  description: string | null;
+  counterpartyName: string | null;
+  counterpartyIban: string | null;
+  categoryId: string | null;
+  bankAccountId: string;
+  bankAccountName: string;
+  txType: string;
+}
+
+// Full budgeting report
+export interface BudgetingReport {
+  reportCurrency: string;
+  bankCashMovement: string;
+  quality: ReportQuality;
+  nonconsumptionFlows: CashflowGroup[];
+  periodStart: number;
+  periodEnd: number;
+  timeframe: string;
+  totalIncome: string;
+  totalExpenses: string;
+  netBalance: string;
+  incomeCategories: CategorySpendingSummary[];
+  expenseCategories: CategorySpendingSummary[];
+  uncategorizedIncome: string;
+  uncategorizedExpenses: string;
+  uncategorizedTransactionCount: number;
+  /** Included booked uncategorized expense rows, including unavailable FX. */
+  uncategorizedExpenseTransactionCount: number;
+}
+
+export type ReportTransaction = BudgetingTransaction;
+
+export interface StatementBalance {
+  amount: string;
+  currency: string;
+  asOf: number;
+  line: number;
+  batchId: string;
+}
+export interface InsertBalanceAnchor {
+  amount: string;
+  currency: string;
+  asOf: number;
+  confirmUnknownAsOf?: boolean;
+  sourceBatchId?: string | null;
 }

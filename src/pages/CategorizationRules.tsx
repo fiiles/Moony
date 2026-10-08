@@ -1,3 +1,5 @@
+import { refreshMoneyFlows } from '@/lib/money-flow-refresh';
+import { useBankAccounts } from '@/hooks/use-bank-accounts';
 /**
  * Categorization rules (design system prototype categorization-rules.html):
  * what happens to every new transaction, and which rules actually work —
@@ -178,7 +180,8 @@ export default function CategorizationRules() {
         : undefined,
   });
 
-  const invalidateAll = () => {
+  const invalidateAll = async () => {
+    await refreshMoneyFlows(queryClient);
     queryClient.invalidateQueries({ queryKey: ['learnedPayees'] });
     queryClient.invalidateQueries({ queryKey: ['customRules'] });
     queryClient.invalidateQueries({ queryKey: ['packRules'] });
@@ -193,8 +196,8 @@ export default function CategorizationRules() {
   const togglePackRule = useMutation({
     mutationFn: ({ ruleId, disabled }: { ruleId: string; disabled: boolean }) =>
       categorizationApi.setPackRuleDisabled(ruleId, disabled),
-    onSuccess: (_r, v) => {
-      invalidateAll();
+    onSuccess: async (_r, v) => {
+      await invalidateAll();
       toast(t(v.disabled ? 'packTab.ruleOff' : 'packTab.ruleOn'));
     },
     onError,
@@ -211,16 +214,16 @@ export default function CategorizationRules() {
         stopProcessing: rule.stopProcessing,
         ibanPattern: rule.ibanPattern,
       }),
-    onSuccess: (_r, v) => {
-      invalidateAll();
+    onSuccess: async (_r, v) => {
+      await invalidateAll();
       toast(t(v.isActive ? 'customTab.activated' : 'customTab.deactivated'));
     },
     onError,
   });
   const deleteLearned = useMutation({
     mutationFn: (id: string) => categorizationApi.deleteLearnedPayee(id),
-    onSuccess: () => {
-      invalidateAll();
+    onSuccess: async () => {
+      await invalidateAll();
       setPendingDelete(null);
       toast(t('learnedRules.deleteSuccess'));
     },
@@ -228,27 +231,27 @@ export default function CategorizationRules() {
   });
   const bulkDeleteLearned = useMutation({
     mutationFn: (ids: string[]) => categorizationApi.deleteLearnedPayeesBulk(ids),
-    onSuccess: (_result, ids) => {
-      invalidateAll();
+    onSuccess: async (deletedCount) => {
+      await invalidateAll();
       setSelectedIds(new Set());
       setPendingDelete(null);
-      toast(t('learnedRules.bulkDeleteSuccess', { count: ids.length }));
+      toast(t('learnedRules.bulkDeleteSuccess', { count: deletedCount }));
     },
     onError,
   });
   const updateLearnedCategory = useMutation({
     mutationFn: ({ id, categoryId }: { id: string; categoryId: string }) =>
       categorizationApi.updateLearnedPayeeCategory(id, categoryId),
-    onSuccess: () => {
-      invalidateAll();
+    onSuccess: async () => {
+      await invalidateAll();
       toast(t('learnedRules.updateCategorySuccess'));
     },
     onError,
   });
   const deleteCustom = useMutation({
     mutationFn: (id: string) => categorizationApi.deleteCustomRule(id),
-    onSuccess: () => {
-      invalidateAll();
+    onSuccess: async () => {
+      await invalidateAll();
       setPendingDelete(null);
       toast(t('customRules.deleteSuccess'));
     },
@@ -899,6 +902,7 @@ function LearnedRow({
 }) {
   const { t } = useTranslation('categorization');
   const fmt = useFormat();
+  const { accounts } = useBankAccounts();
   const category = categories.find((c) => c.id === rule.categoryId);
   const payee = rule.normalizedPayee || rule.originalPayee;
   const count = hit?.hits ?? 0;
@@ -931,6 +935,15 @@ function LearnedRow({
       </TableCell>
       <TableCell className="font-mono text-[11px] text-ink-3">
         {formatIbanDisplay(rule.counterpartyIban) || '—'}
+        <small className="block font-sans text-micro">
+          {rule.bankAccountId
+            ? t('scopedLearning', {
+                account:
+                  accounts.find((a) => a.id === rule.bankAccountId)?.name ?? rule.bankAccountId,
+                direction: t(rule.isCredit ? 'incoming' : 'outgoing'),
+              })
+            : t('legacyLearning')}
+        </small>
       </TableCell>
       <TableCell>
         <CategoryPick

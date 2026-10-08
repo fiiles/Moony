@@ -4,27 +4,22 @@
 //! Internal Transfer. The engine holds the IBANs in memory, so they must be
 //! re-read whenever the accounts table changes — loading them only at unlock
 //! left every account created afterwards invisible: "Salary September"
-//! paid to a fresh account's own IBAN stayed uncategorized. Normalization
-//! (whitespace, case) is the engine's job, via
-//! [`tokenizer::normalize_iban`](super::tokenizer::normalize_iban), on both sides.
+//! paid to a fresh account's own IBAN stayed uncategorized. Normalization uses the shared financial semantics utility on both sides,
+//! including Czech domestic/IBAN equivalence. The legacy function names remain
+//! compatible with unlock/account refresh callers.
 
 use rusqlite::Connection;
 
 use super::CategorizationEngine;
 use crate::error::Result;
 
-/// The raw IBANs stored on the user's bank accounts.
+/// The raw IBANs and domestic identifiers stored on the user's bank accounts.
 pub fn load_own_ibans(conn: &Connection) -> Result<Vec<String>> {
-    let mut stmt =
-        conn.prepare("SELECT iban FROM bank_accounts WHERE iban IS NOT NULL AND TRIM(iban) != ''")?;
-    let ibans = stmt
-        .query_map([], |row| row.get::<_, String>(0))?
-        .collect::<rusqlite::Result<Vec<_>>>()?;
-    Ok(ibans)
+    crate::services::financial_semantics::load_account_identifiers(conn)
 }
 
 /// Re-read the own-account IBANs into the engine. Call after unlock and after
-/// every account create / update / delete. Returns how many accounts carry an IBAN.
+/// every account create / update / delete. Returns how many nonempty identifiers were loaded.
 pub fn refresh_own_ibans(conn: &Connection, engine: &CategorizationEngine) -> Result<usize> {
     let ibans = load_own_ibans(conn)?;
     let count = ibans.len();
@@ -41,7 +36,7 @@ mod tests {
         let conn = Connection::open_in_memory().expect("in-memory db");
         conn.execute_batch(
             r#"
-            CREATE TABLE bank_accounts (id TEXT PRIMARY KEY, name TEXT NOT NULL, iban TEXT);
+            CREATE TABLE bank_accounts (id TEXT PRIMARY KEY, name TEXT NOT NULL, iban TEXT, bban TEXT,institution_id TEXT); CREATE TABLE institutions(id TEXT,country TEXT);
             "#,
         )
         .expect("schema");
@@ -54,10 +49,34 @@ mod tests {
             description: Some("Salary September".into()),
             counterparty: None,
             counterparty_iban: Some(iban.into()),
+            counterparty_bank_code: None,
+            counterparty_country: None,
             amount: 3200.0,
             is_credit: true,
             bank_account_id: None,
         }
+    }
+
+    #[test]
+    fn integrity_own_foreign_iban_is_authoritative_over_paired_domestic_shape() {
+        let conn = setup_test_db();
+        conn.execute("INSERT INTO bank_accounts(id,name,iban,bban) VALUES ('foreign','Foreign','DE89370400440532013000','19-2000145399/0800')",[]).unwrap();
+        let own = crate::services::financial_semantics::AccountIdentities::load(&conn).unwrap();
+        assert!(!own.contains(Some("CZ6508000000192000145399"), None));
+        let engine = CategorizationEngine::new_empty();
+        refresh_own_ibans(&conn, &engine).unwrap();
+        assert!(!engine
+            .categorize(&salary_to("19-2000145399/0800"))
+            .has_category());
+        assert!(engine
+            .categorize(&salary_to("DE89370400440532013000"))
+            .has_category());
+        conn.execute("UPDATE bank_accounts SET iban=NULL WHERE id='foreign'", [])
+            .unwrap();
+        refresh_own_ibans(&conn, &engine).unwrap();
+        assert!(engine
+            .categorize(&salary_to("CZ6508000000192000145399"))
+            .has_category());
     }
 
     #[test]

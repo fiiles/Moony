@@ -1,3 +1,4 @@
+import { IBAN_COUNTRY_LENGTHS } from '@shared/iban-country-lengths';
 /**
  * IBAN utility functions for Czech account number formatting
  */
@@ -65,4 +66,34 @@ export function formatAccountNumber(
   // For non-Czech IBANs, format with spaces for readability
   const cleaned = iban.replace(/\s/g, '').toUpperCase();
   return cleaned.replace(/(.{4})/g, '$1 ').trim();
+}
+
+/** An IBAN must pass checksum before it is displayed as a complete bank identity. */
+export function validDisplayIban(value: string): boolean {
+  const id = value.replace(/\s/g, '').toUpperCase();
+  if (
+    !/^[A-Z]{2}\d{2}[A-Z0-9]{11,30}$/.test(id) ||
+    IBAN_COUNTRY_LENGTHS[id.slice(0, 2)] !== id.length
+  )
+    return false;
+  let remainder = 0;
+  for (const char of id.slice(4) + id.slice(0, 4)) {
+    const digits = /[A-Z]/.test(char) ? String(char.charCodeAt(0) - 55) : char;
+    for (const digit of digits) remainder = (remainder * 10 + Number(digit)) % 97;
+  }
+  return remainder === 1;
+}
+
+/** Never disguise domestic or routing text as an IBAN, or invent a bank code. */
+export function completeAccountIdentifier(
+  iban?: string | null,
+  bban?: string | null,
+  bankCode?: string | null
+): string | null {
+  if (iban && validDisplayIban(iban)) {
+    return isCzechIBAN(iban) ? ibanToBBAN(iban) : formatAccountNumber(iban);
+  }
+  const raw = bban?.trim() || iban?.trim();
+  if (!raw) return null;
+  return bankCode && !raw.includes('/') ? `${raw}/${bankCode}` : raw;
 }

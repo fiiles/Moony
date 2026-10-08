@@ -13,7 +13,10 @@
   "descriptionColumns": ["Description"],
   "currencyColumn": "Currency",
   "balanceColumn": "Balance",
-  "rowFilter": { "column": "State", "equals": "COMPLETED" },
+  "rowFilter": {
+    "column": "State",
+    "equals": "COMPLETED"
+  },
   "exportHelpUrl": "https://help.revolut.com/help/profile-and-plan/managing-my-account/account-statement-per-chosen-currency/",
   "sampleFixture": "revolut.csv"
 }

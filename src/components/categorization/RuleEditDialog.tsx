@@ -1,3 +1,4 @@
+import { refreshMoneyFlows } from '@/lib/money-flow-refresh';
 /**
  * Rule editor (design system prototype categorization-rules.html): name, what
  * to match on, the pattern, category and priority, the two switches, and a
@@ -171,7 +172,8 @@ export default function RuleEditDialog({
       }
       return { saved, applied };
     },
-    onSuccess: ({ applied }) => {
+    onSuccess: async ({ applied }) => {
+      await refreshMoneyFlows(queryClient);
       invalidate();
       toast(
         applied > 0

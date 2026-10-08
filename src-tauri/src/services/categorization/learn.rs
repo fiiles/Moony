@@ -35,7 +35,13 @@ fn iban_key(iban: &str) -> Option<String> {
 }
 
 /// `(payee key, IBAN key, own id)` — see `StoredRow::group`.
-type Group = (Option<String>, Option<String>, Option<String>);
+type Group = (
+    Option<String>,
+    Option<String>,
+    Option<String>,
+    Option<bool>,
+    Option<String>,
+);
 
 /// One `learned_payees` row as stored.
 #[derive(Debug, Clone)]
@@ -45,6 +51,8 @@ struct StoredRow {
     original_payee: Option<String>,
     counterparty_iban: Option<String>,
     category_id: String,
+    bank_account_id: Option<String>,
+    is_credit: Option<bool>,
     created_at: i64,
     updated_at: i64,
 }
@@ -74,14 +82,20 @@ impl StoredRow {
     /// `group()` for keys the caller has already derived.
     fn group_with(&self, payee: Option<String>, iban: Option<String>) -> Group {
         let own_id = (payee.is_none() && iban.is_none()).then(|| self.id.clone());
-        (payee, iban, own_id)
+        (
+            payee,
+            iban,
+            self.bank_account_id.clone(),
+            self.is_credit,
+            own_id,
+        )
     }
 }
 
 /// Every row, oldest first, so that applying them in order lets the newest win.
 fn all_rows(conn: &Connection) -> Result<Vec<StoredRow>> {
     let mut stmt = conn.prepare(
-        "SELECT id, normalized_payee, original_payee, counterparty_iban, category_id, created_at, updated_at
+        "SELECT id, normalized_payee, original_payee, counterparty_iban, category_id, created_at, updated_at, bank_account_id, is_credit
          FROM learned_payees
          ORDER BY updated_at ASC, created_at ASC, rowid ASC",
     )?;
@@ -95,6 +109,8 @@ fn all_rows(conn: &Connection) -> Result<Vec<StoredRow>> {
                 category_id: row.get(4)?,
                 created_at: row.get(5)?,
                 updated_at: row.get(6)?,
+                bank_account_id: row.get(7)?,
+                is_credit: row.get(8)?,
             })
         })?
         .collect::<rusqlite::Result<Vec<_>>>()?;
@@ -106,6 +122,8 @@ fn all_rows(conn: &Connection) -> Result<Vec<StoredRow>> {
 pub struct LearnedKey {
     pub payee: Option<String>,
     pub iban: Option<String>,
+    pub bank_account_id: Option<String>,
+    pub is_credit: Option<bool>,
 }
 
 /// Persist a payee/IBAN → category mapping and teach the in-memory engine.
@@ -115,6 +133,10 @@ pub struct LearnedKey {
 /// DELETE + INSERT rather than an upsert because SQLite treats NULLs as
 /// distinct in unique indexes.) A no-op when neither a usable payee nor an
 /// IBAN is given.
+///
+/// Test-only: production learning is account-scoped (`learn_scoped`); a
+/// broad payee rule must not be reintroduced by a new caller.
+#[cfg(test)]
 pub fn learn_payee(
     conn: &Connection,
     engine: &CategorizationEngine,
@@ -128,14 +150,13 @@ pub fn learn_payee(
         return Ok(());
     }
 
-    engine.learn_from_user(payee, counterparty_iban, category_id);
-
-    for row in all_rows(conn)? {
-        if row.payee_key() == key && row.iban_key() == iban {
-            conn.execute("DELETE FROM learned_payees WHERE id = ?1", [&row.id])?;
+    let transaction = conn.unchecked_transaction()?;
+    for row in all_rows(&transaction)? {
+        if row.bank_account_id.is_none() && row.payee_key() == key && row.iban_key() == iban {
+            transaction.execute("DELETE FROM learned_payees WHERE id = ?1", [&row.id])?;
         }
     }
-    conn.execute(
+    transaction.execute(
         "INSERT INTO learned_payees (id, normalized_payee, original_payee, counterparty_iban, category_id, updated_at)
          VALUES (?1, ?2, ?3, ?4, ?5, unixepoch())",
         params![
@@ -146,7 +167,80 @@ pub fn learn_payee(
             category_id
         ],
     )?;
+    transaction.commit()?;
+    engine.learn_from_user(payee, counterparty_iban, category_id);
     Ok(())
+}
+
+/// Persist before touching memory; scope cannot replace a legacy broad rule.
+pub fn learn_scoped(
+    conn: &Connection,
+    engine: &CategorizationEngine,
+    data: &crate::models::categorization::InsertScopedLearning,
+) -> Result<()> {
+    data.validate()?;
+    if !category_exists(conn, &data.category_id)? {
+        return Err(AppError::NotFound("Category not found".into()));
+    }
+    let exists: bool = conn.query_row(
+        "SELECT EXISTS(SELECT 1 FROM bank_accounts WHERE id=?1)",
+        [&data.bank_account_id],
+        |r| r.get(0),
+    )?;
+    if !exists {
+        return Err(AppError::NotFound("Account not found".into()));
+    }
+    let canonical = data.counterparty_iban.as_deref().map(|id| {
+        crate::services::financial_semantics::canonical_structured_identifier(
+            id,
+            data.counterparty_bank_code.as_deref(),
+            data.counterparty_country.as_deref(),
+        )
+    });
+    let identity = canonical.filter(|id| crate::services::financial_semantics::valid_iban(id));
+    let payee = if identity.is_some() {
+        None
+    } else {
+        data.payee.as_deref().and_then(payee_key)
+    };
+    if identity.is_none() && payee.is_none() {
+        return Err(AppError::Validation("validation.learningIdentity".into()));
+    }
+    let transaction = conn.unchecked_transaction()?;
+    transaction.execute("DELETE FROM learned_payees WHERE bank_account_id=?1 AND is_credit=?2 AND normalized_payee IS ?3 AND counterparty_iban IS ?4", params![data.bank_account_id,data.is_credit,payee,identity])?;
+    transaction.execute("INSERT INTO learned_payees(id,normalized_payee,original_payee,counterparty_iban,category_id,bank_account_id,is_credit) VALUES (?1,?2,?3,?4,?5,?6,?7)",params![Uuid::new_v4().to_string(),payee,if identity.is_some() { None } else { data.payee.as_deref() },identity,data.category_id,data.bank_account_id,data.is_credit])?;
+    transaction.commit()?;
+    engine.learn_scoped(
+        &data.bank_account_id,
+        data.is_credit,
+        payee.as_deref(),
+        identity.as_deref(),
+        &data.category_id,
+    );
+    Ok(())
+}
+
+impl LearnedKey {
+    pub fn forget(&self, engine: &CategorizationEngine) {
+        if let (Some(account), Some(credit)) = (self.bank_account_id.as_deref(), self.is_credit) {
+            engine.forget_scoped(account, credit, self.payee.as_deref(), self.iban.as_deref());
+        } else {
+            engine.forget_payee(self.payee.as_deref(), self.iban.as_deref());
+        }
+    }
+    pub fn teach(&self, engine: &CategorizationEngine, category: &str) {
+        if let (Some(account), Some(credit)) = (self.bank_account_id.as_deref(), self.is_credit) {
+            engine.learn_scoped(
+                account,
+                credit,
+                self.payee.as_deref(),
+                self.iban.as_deref(),
+                category,
+            );
+        } else {
+            engine.learn_from_user(self.payee.as_deref(), self.iban.as_deref(), category);
+        }
+    }
 }
 
 /// Teach the engine every stored row (call after unlock). Rows are applied
@@ -160,7 +254,17 @@ pub fn load_learned_payees(conn: &Connection, engine: &CategorizationEngine) -> 
         if payee.is_none() && iban.is_none() {
             continue;
         }
-        engine.learn_from_user(payee.as_deref(), iban.as_deref(), &row.category_id);
+        if let (Some(account), Some(credit)) = (row.bank_account_id.as_deref(), row.is_credit) {
+            engine.learn_scoped(
+                account,
+                credit,
+                payee.as_deref(),
+                iban.as_deref(),
+                &row.category_id,
+            );
+        } else {
+            engine.learn_from_user(payee.as_deref(), iban.as_deref(), &row.category_id);
+        }
         loaded += 1;
     }
     Ok(loaded)
@@ -175,6 +279,8 @@ pub struct LearnedPayeeRow {
     pub original_payee: Option<String>,
     pub counterparty_iban: Option<String>,
     pub category_id: String,
+    pub bank_account_id: Option<String>,
+    pub is_credit: Option<bool>,
     pub created_at: i64,
     pub updated_at: i64,
 }
@@ -208,6 +314,8 @@ pub fn list_learned_payees(conn: &Connection) -> Result<Vec<LearnedPayeeRow>> {
             original_payee: row.original_payee,
             counterparty_iban: row.counterparty_iban,
             category_id: row.category_id,
+            bank_account_id: row.bank_account_id,
+            is_credit: row.is_credit,
             created_at: row.created_at,
             updated_at: row.updated_at,
         })
@@ -232,8 +340,51 @@ fn group_of(conn: &Connection, id: &str) -> Result<Option<(Vec<String>, LearnedK
         LearnedKey {
             payee: target.payee_key(),
             iban: target.iban_key(),
+            bank_account_id: target.bank_account_id.clone(),
+            is_credit: target.is_credit,
         },
     )))
+}
+
+pub fn list_entries(
+    conn: &Connection,
+) -> Result<Vec<crate::models::categorization::LearnedPayeeEntry>> {
+    Ok(list_learned_payees(conn)?
+        .into_iter()
+        .map(|row| crate::models::categorization::LearnedPayeeEntry {
+            id: row.id,
+            rule_type: if row.counterparty_iban.is_some() {
+                "iban_only_default"
+            } else {
+                "payee_default"
+            }
+            .into(),
+            normalized_payee: row.normalized_payee,
+            original_payee: row.original_payee,
+            counterparty_iban: row.counterparty_iban,
+            category_id: row.category_id,
+            bank_account_id: row.bank_account_id,
+            is_credit: row.is_credit,
+            created_at: row.created_at,
+            updated_at: row.updated_at,
+        })
+        .collect())
+}
+pub fn accept_suggestion(conn: &Connection, id: &str) -> Result<String> {
+    use rusqlite::OptionalExtension;
+    let tx = conn.unchecked_transaction()?;
+    let category:Option<String>=tx.query_row("SELECT suggested_category_id FROM bank_transactions WHERE id=?1 AND suggested_category_id IS NOT NULL",[id],|r|r.get(0)).optional()?;
+    let Some(category) = category else {
+        return Err(AppError::NotFound(
+            "No pending suggestion on this transaction".into(),
+        ));
+    };
+    if !category_exists(&tx, &category)? {
+        return Err(AppError::NotFound("Category not found".into()));
+    }
+    tx.execute("UPDATE bank_transactions SET category_id=suggested_category_id,categorization_source='mcp',suggested_category_id=NULL WHERE id=?1",[id])?;
+    tx.commit()?;
+    Ok(category)
 }
 
 /// Delete a listed rule — every row that shares its normalized key, or the
@@ -284,7 +435,7 @@ pub fn forget_learned_payee(
     let key = payee.and_then(payee_key);
     let iban = counterparty_iban.and_then(iban_key);
     for row in all_rows(conn)? {
-        if row.payee_key() == key && row.iban_key() == iban {
+        if row.bank_account_id.is_none() && row.payee_key() == key && row.iban_key() == iban {
             conn.execute("DELETE FROM learned_payees WHERE id = ?1", [&row.id])?;
         }
     }
@@ -308,6 +459,8 @@ mod tests {
                 original_payee TEXT,
                 counterparty_iban TEXT,
                 category_id TEXT NOT NULL,
+                bank_account_id TEXT,
+                is_credit INTEGER,
                 created_at INTEGER NOT NULL DEFAULT (unixepoch()),
                 updated_at INTEGER NOT NULL DEFAULT (unixepoch())
             );
@@ -318,6 +471,86 @@ mod tests {
         )
         .expect("schema");
         conn
+    }
+
+    #[test]
+    fn scoped_learning_survives_reload_without_crossing_account_or_direction() {
+        let conn = setup_test_db();
+        conn.execute_batch("DROP INDEX idx_learned_payees_composite; CREATE TABLE bank_accounts(id TEXT PRIMARY KEY); INSERT INTO bank_accounts VALUES ('a'),('b'); INSERT INTO transaction_categories VALUES ('cat_dining');").unwrap();
+        let engine = CategorizationEngine::new_empty();
+        let data = crate::models::categorization::InsertScopedLearning {
+            bank_account_id: "a".into(),
+            is_credit: false,
+            payee: Some("Merchant".into()),
+            counterparty_iban: Some("19-2000145399".into()),
+            counterparty_bank_code: Some("0800".into()),
+            counterparty_country: Some("CZ".into()),
+            category_id: "cat_dining".into(),
+        };
+        learn_scoped(&conn, &engine, &data).unwrap();
+        let restarted = CategorizationEngine::new_empty();
+        load_learned_payees(&conn, &restarted).unwrap();
+        let mut tx =
+            TransactionInput::new("tx".into(), None, Some("Different merchant".into()), -100.0);
+        tx.bank_account_id = Some("a".into());
+        tx.counterparty_iban = Some("CZ6508000000192000145399".into());
+        assert_eq!(restarted.categorize(&tx).category_id(), Some("cat_dining"));
+        tx.is_credit = true;
+        assert_eq!(restarted.categorize(&tx).category_id(), None);
+        tx.is_credit = false;
+        tx.bank_account_id = Some("b".into());
+        assert_eq!(restarted.categorize(&tx).category_id(), None);
+        assert_eq!(
+            conn.query_row(
+                "SELECT COUNT(*) FROM learned_payees WHERE bank_account_id IS NULL",
+                [],
+                |r| r.get::<_, i64>(0)
+            )
+            .unwrap(),
+            0
+        );
+    }
+
+    #[test]
+    fn scoped_learning_failed_replacement_preserves_database_and_engine() {
+        let conn = setup_test_db();
+        conn.execute_batch("DROP INDEX idx_learned_payees_composite; CREATE TABLE bank_accounts(id TEXT PRIMARY KEY); INSERT INTO bank_accounts VALUES ('a'); INSERT INTO transaction_categories VALUES ('old'),('new');").unwrap();
+        let engine = CategorizationEngine::new_empty();
+        let mut data = crate::models::categorization::InsertScopedLearning {
+            bank_account_id: "a".into(),
+            is_credit: false,
+            payee: Some("Merchant".into()),
+            counterparty_iban: None,
+            counterparty_bank_code: None,
+            counterparty_country: None,
+            category_id: "old".into(),
+        };
+        learn_scoped(&conn, &engine, &data).unwrap();
+        conn.execute_batch("CREATE TRIGGER reject_scoped BEFORE INSERT ON learned_payees WHEN NEW.category_id='new' BEGIN SELECT RAISE(ABORT,'fixture rejects replacement'); END;").unwrap();
+        data.category_id = "new".into();
+        assert!(learn_scoped(&conn, &engine, &data).is_err());
+        let mut tx = TransactionInput::new("tx".into(), None, Some("Merchant".into()), -100.0);
+        tx.bank_account_id = Some("a".into());
+        assert_eq!(engine.categorize(&tx).category_id(), Some("old"));
+        assert_eq!(
+            conn.query_row("SELECT category_id FROM learned_payees", [], |r| r
+                .get::<_, String>(0))
+                .unwrap(),
+            "old"
+        );
+        let restarted = CategorizationEngine::new_empty();
+        load_learned_payees(&conn, &restarted).unwrap();
+        assert_eq!(restarted.categorize(&tx).category_id(), Some("old"));
+    }
+
+    #[test]
+    fn failed_learning_persistence_does_not_change_engine() {
+        let conn = setup_test_db();
+        conn.execute_batch("CREATE TRIGGER reject_learning BEFORE INSERT ON learned_payees BEGIN SELECT RAISE(ABORT, 'fixture rejects write'); END;").unwrap();
+        let engine = CategorizationEngine::new_empty();
+        assert!(learn_payee(&conn, &engine, Some("Merchant"), None, "cat_dining").is_err());
+        let tx = TransactionInput::new("tx".into(), None, Some("Merchant".into()), -100.0);
+        assert_eq!(engine.categorize(&tx).category_id(), None);
     }
 
     /// RUL-01: how long the rules list takes for a given number of learned rows.

@@ -1,3 +1,12 @@
+import { AccountScope } from '@/components/reports/AccountScope';
+import { ReportQualityNote, ReportError } from '@/components/reports/ReportQualityNote';
+import {
+  ReportTransactionsDialog,
+  type ReportTarget,
+} from '@/components/reports/ReportTransactionsDialog';
+import { useReportMoney } from '@/lib/use-report-money';
+import { buildCashflowCsv } from '@/utils/report-currencies';
+import { absoluteMovementShares } from '@/utils/money-flows';
 import { useMemo, useState, type ReactNode } from 'react';
 import { Link } from 'wouter';
 import { useQuery } from '@tanstack/react-query';
@@ -37,6 +46,7 @@ interface Row {
   amount: number;
   previous: number;
   share: number;
+  count: number;
 }
 
 /**
@@ -47,26 +57,27 @@ interface Row {
 export default function Cashflow() {
   const { t } = useTranslation('reports');
   const { t: tBank } = useTranslation('bank_accounts');
-  const { formatCurrency, formatCurrencySigned, convert, currencyCode } = useCurrency();
+  const { currencyCode, ratesTimestamp } = useCurrency();
+  const [accountIds, setAccountIds] = useState<string[] | undefined>(undefined);
+  const [txTarget, setTxTarget] = useState<ReportTarget | null>(null);
   const fmt = useFormat();
   const [range, setRange] = useState<CashflowRange>('12m');
 
   // Prefix shared with the planned report, so the mutation contract's
   // ['cashflow-report'] invalidation refreshes this page too.
-  const { data, isLoading } = useQuery<CashflowActuals>({
-    queryKey: ['cashflow-report', 'actuals', range],
-    queryFn: () => cashflowApi.getActuals(range),
+  const { data, isLoading, isError, refetch } = useQuery<CashflowActuals>({
+    queryKey: ['cashflow-report', 'actuals', range, accountIds, currencyCode, ratesTimestamp],
+    queryFn: () => cashflowApi.getActuals(range, accountIds, currencyCode),
     staleTime: 0,
     refetchOnMount: 'always',
   });
+  const { money, signedMoney: formatCurrencySigned } = useReportMoney(data?.reportCurrency);
 
-  const czk = (v: string | number) => Number(v) || 0;
-  const money = (v: number) => formatCurrency(v);
-  const monthCount = data?.months.length ?? 0;
-  const totalIncome = czk(data?.totalIncome ?? 0);
-  const totalExpenses = czk(data?.totalExpenses ?? 0);
-  const prevIncome = czk(data?.previousIncome ?? 0);
-  const prevExpenses = czk(data?.previousExpenses ?? 0);
+  const amount = (v: string | number) => Number(v) || 0;
+  const totalIncome = amount(data?.totalIncome ?? 0);
+  const totalExpenses = amount(data?.totalExpenses ?? 0);
+  const prevIncome = amount(data?.previousIncome ?? 0);
+  const prevExpenses = amount(data?.previousExpenses ?? 0);
   const savingsRate = totalIncome > 0 ? (totalIncome - totalExpenses) / totalIncome : 0;
   const prevRate = prevIncome > 0 ? (prevIncome - prevExpenses) / prevIncome : null;
 
@@ -95,29 +106,20 @@ export default function Cashflow() {
     return g.name || t('actuals.otherIncome');
   };
 
-  // Top N rows plus "Ostatní"; shares against the current total
-  const fold = (groups: CashflowGroup[], kind: 'expense' | 'income', max: number): Row[] => {
-    const total = groups.reduce((s, g) => s + Math.max(0, czk(g.amount)), 0);
+  // Retain every group; shares use absolute movement, amounts keep their signs.
+  const fold = (groups: CashflowGroup[], kind: 'expense' | 'income', _max: number): Row[] => {
+    const shares = absoluteMovementShares(groups.map((g) => amount(g.amount)));
     const rows = groups
-      .map((g) => ({
+      .map((g, index) => ({
         key: g.key,
         label: groupLabel(g, kind),
-        amount: czk(g.amount),
-        previous: czk(g.previousAmount),
-        share: total > 0 ? Math.max(0, czk(g.amount)) / total : 0,
+        amount: amount(g.amount),
+        previous: amount(g.previousAmount),
+        share: shares[index],
+        count: g.count,
       }))
-      .filter((r) => r.amount > 0 || r.previous > 0);
-    if (rows.length <= max) return rows;
-    const head = rows.slice(0, max - 1);
-    const rest = rows.slice(max - 1);
-    head.push({
-      key: 'other',
-      label: t('actuals.other'),
-      amount: rest.reduce((s, r) => s + r.amount, 0),
-      previous: rest.reduce((s, r) => s + r.previous, 0),
-      share: rest.reduce((s, r) => s + r.share, 0),
-    });
-    return head;
+      .filter((r) => r.count > 0 || r.amount !== 0 || r.previous !== 0);
+    return rows;
   };
 
   const expenseRows = useMemo(
@@ -135,43 +137,21 @@ export default function Cashflow() {
     () =>
       (data?.months ?? []).map((m) => ({
         label: fmt.month(new Date(m.month * 1000), { month: 'short', year: '2-digit' }),
-        a: czk(m.income),
-        b: czk(m.expenses),
+        a: amount(m.income),
+        b: amount(m.expenses),
       })),
     [data, fmt]
   );
 
-  const topSource = incomeRows[0];
-  const topExpense = expenseRows[0];
-
   const exportCsv = async () => {
     if (!data) return { csv: '', filename: 'cashflow.csv', count: 0 };
-    // Amounts are CZK; the file carries them in the main currency, like the page
-    const suffix = currencyCode.toLowerCase();
-    const inMain = (v: string | number) =>
-      Math.round(convert(czk(v), 'CZK', currencyCode) * 100) / 100;
-    const lines = [
-      ['month', `income_${suffix}`, `expenses_${suffix}`].join(';'),
-      ...data.months.map((m) =>
-        [
-          fmt.day(m.month, { year: 'numeric', month: '2-digit' }),
-          inMain(m.income),
-          inMain(m.expenses),
-        ].join(';')
-      ),
-      '',
-      ['expense_category', `amount_${suffix}`, `previous_${suffix}`, 'transactions'].join(';'),
-      ...data.expenseCategories.map((g) =>
-        [groupLabel(g, 'expense'), inMain(g.amount), inMain(g.previousAmount), g.count].join(';')
-      ),
-      '',
-      ['income_source', `amount_${suffix}`, `previous_${suffix}`, 'transactions'].join(';'),
-      ...data.incomeSources.map((g) =>
-        [groupLabel(g, 'income'), inMain(g.amount), inMain(g.previousAmount), g.count].join(';')
-      ),
-    ];
     return {
-      csv: lines.join('\n'),
+      csv: buildCashflowCsv(
+        data,
+        (month) => fmt.day(month, { year: 'numeric', month: '2-digit' }),
+        (group) => groupLabel(group, 'expense'),
+        (group) => groupLabel(group, 'income')
+      ),
       filename: `cashflow-${range}.csv`,
       count: data.months.length + data.expenseCategories.length + data.incomeSources.length,
     };
@@ -202,7 +182,7 @@ export default function Cashflow() {
       <TableHeader>
         <TableRow>
           <TableHead className="w-[30%]">{firstHead}</TableHead>
-          <TableHead>{t('actuals.breakdown.share')}</TableHead>
+          <TableHead>{t('readiness.absoluteShare')}</TableHead>
           <TableHead className="text-right">{t('actuals.breakdown.amount')}</TableHead>
           <TableHead className="text-right">{t('actuals.breakdown.vsPrevious')}</TableHead>
         </TableRow>
@@ -210,7 +190,22 @@ export default function Cashflow() {
       <TableBody>
         {rows.map((row, i) => (
           <TableRow key={row.key} className="h-[46px]">
-            <TableCell className="font-650 text-ink">{row.label}</TableCell>
+            <TableCell className="font-650 text-ink">
+              <button
+                type="button"
+                className="text-left hover:underline"
+                onClick={() =>
+                  setTxTarget({
+                    name: row.label,
+                    flowKind: lowerIsBetter ? 'expense' : 'income',
+                    ...(lowerIsBetter ? { categoryId: row.key } : { sourceKey: row.key }),
+                    expectedCount: row.count,
+                  })
+                }
+              >
+                {row.label} <small className="text-ink-4">· {row.count}</small>
+              </button>
+            </TableCell>
             <TableCell>
               <div className="flex items-center gap-[10px]">
                 <Progress
@@ -262,12 +257,20 @@ export default function Cashflow() {
                   : t(`actuals.range.${r}`),
             }))}
           />
+          <AccountScope value={accountIds} onChange={setAccountIds} />
           <ExportButton exportFn={exportCsv} label={t('actuals.export')} />
         </>
       }
     />
   );
 
+  if (isError)
+    return (
+      <>
+        {head}
+        <ReportError onRetry={() => void refetch()} />
+      </>
+    );
   if (isLoading || !data) {
     return (
       <>
@@ -299,43 +302,66 @@ export default function Cashflow() {
     );
   }
 
-  const avgIncome = monthCount > 0 ? totalIncome / monthCount : 0;
-  const avgExpenses = monthCount > 0 ? totalExpenses / monthCount : 0;
+  const avgIncome = data.averageIncome == null ? 0 : amount(data.averageIncome);
+  const avgExpenses = data.averageExpenses == null ? 0 : amount(data.averageExpenses);
   const avgSavings = avgIncome - avgExpenses;
 
   return (
     <>
       {head}
-
+      <p className="mb-2 text-micro text-ink-4">
+        {t('readiness.reportRange', {
+          start: fmt.day(data.rangeStart),
+          end: fmt.day(data.rangeEnd),
+          previousStart: fmt.day(data.previousStart),
+          previousEnd: fmt.day(data.previousEnd),
+        })}
+      </p>
+      {data.previousQuality.missingFxCount > 0 && (
+        <p className="mb-2 text-micro text-loss">
+          {t('readiness.comparisonFx', {
+            count: data.previousQuality.missingFxCount,
+            currencies: data.previousQuality.missingFxCurrencies.join(', '),
+          })}
+        </p>
+      )}
+      <ReportQualityNote quality={data.quality} />
+      <div className="mb-5 flex flex-wrap gap-x-6 gap-y-2 text-table">
+        <span>
+          {t('readiness.ordinaryNet')}: <b className="num">{money(amount(data.netBalance))}</b>
+        </span>
+        <span>
+          {t('readiness.bankMovement')}:{' '}
+          <b className="num">{money(amount(data.bankCashMovement))}</b>
+        </span>
+      </div>
+      <ReportTransactionsDialog
+        key={JSON.stringify(txTarget)}
+        target={txTarget}
+        start={data.rangeStart}
+        end={data.rangeEnd}
+        accountIds={accountIds}
+        reportCurrency={data.reportCurrency}
+        ratesTimestamp={ratesTimestamp}
+        onClose={() => setTxTarget(null)}
+      />
       <Stats columns={3}>
         <Stat
           label={t('actuals.stats.avgIncome')}
-          value={money(avgIncome)}
-          note={
-            topSource
-              ? t('actuals.stats.avgIncomeNote', {
-                  months: t('actuals.months', { count: monthCount }),
-                  source: topSource.label,
-                  percent: fmt.percent(topSource.share, 0),
-                })
-              : t('actuals.months', { count: monthCount })
-          }
+          value={data.averageIncome == null ? '—' : money(avgIncome)}
+          note={t('readiness.averageSample', { count: data.averageCompletedMonths.length })}
         />
         <Stat
           label={t('actuals.stats.avgExpenses')}
-          value={money(avgExpenses)}
-          note={
-            topExpense
-              ? t('actuals.stats.avgExpensesNote', {
-                  category: topExpense.label,
-                  amount: money(topExpense.amount / Math.max(1, monthCount)),
-                })
-              : t('actuals.months', { count: monthCount })
-          }
+          value={data.averageExpenses == null ? '—' : money(avgExpenses)}
         />
         <Stat
           label={t('actuals.stats.avgSavings')}
-          value={formatCurrencySigned(avgSavings)}
+          value={
+            data.averageIncome == null || data.averageExpenses == null
+              ? '—'
+              : formatCurrencySigned(avgSavings)
+          }
           tone={avgSavings > 0 ? 'gain' : avgSavings < 0 ? 'loss' : 'neutral'}
           noteTone="neutral"
           note={
@@ -412,6 +438,37 @@ export default function Cashflow() {
           </div>
         </Card>
       </div>
+      {data.nonconsumptionFlows.length > 0 && (
+        <Card variant="table" className="mt-5">
+          <CardHeader>
+            <CardTitle>{t('readiness.nonconsumption')}</CardTitle>
+          </CardHeader>
+          <Table>
+            <TableBody>
+              {data.nonconsumptionFlows.map((group) => (
+                <TableRow key={group.key}>
+                  <TableCell>
+                    <button
+                      type="button"
+                      className="font-650 hover:underline"
+                      onClick={() =>
+                        setTxTarget({
+                          name: t(`readiness.flow.${group.key}`),
+                          flowKind: group.key as import('@shared/schema').FlowKind,
+                          expectedCount: group.count,
+                        })
+                      }
+                    >
+                      {t(`readiness.flow.${group.key}`)} · {group.count}
+                    </button>
+                  </TableCell>
+                  <TableCell className="text-right num">{money(amount(group.amount))}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Card>
+      )}
     </>
   );
 }

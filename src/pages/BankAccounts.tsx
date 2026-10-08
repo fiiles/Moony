@@ -1,3 +1,4 @@
+import { completeAccountIdentifier } from '@/utils/iban-utils';
 import { useMemo, useState, type ReactNode } from 'react';
 import { useLocation } from 'wouter';
 import { useQueryClient } from '@tanstack/react-query';
@@ -15,7 +16,7 @@ import {
   Upload,
 } from 'lucide-react';
 import type { BankAccountWithInstitution, InsertBankAccount } from '@shared/schema';
-import { convertToCzK, type CurrencyCode } from '@shared/currencies';
+import { hasKnownRate, type CurrencyCode } from '@shared/currencies';
 import { useBankAccounts } from '@/hooks/use-bank-accounts';
 import { useBankAccountMutations } from '@/hooks/use-bank-account-mutations';
 import { useBankAccountActivity } from '@/hooks/use-bank-account-activity';
@@ -78,8 +79,10 @@ export default function BankAccounts() {
   const [, setLocation] = useLocation();
   const { accounts, isLoading } = useBankAccounts();
   const { createAccount, updateAccount, deleteAccount } = useBankAccountMutations();
-  const { formatCurrencyRaw, convert, currencyCode } = useCurrency();
+  const { convert, currencyCode: preferredCurrency } = useCurrency();
   const fmt = useFormat();
+  const currencyCode = hasKnownRate(preferredCurrency) ? preferredCurrency : 'CZK';
+  const formatCurrencyRaw = (value: number) => fmt.money(value, currencyCode);
   const queryClient = useQueryClient();
   const activity = useBankAccountActivity(accounts);
 
@@ -91,7 +94,9 @@ export default function BankAccounts() {
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
   const toDisplay = (amount: number, currency: string) =>
-    convert(amount, (currency || 'CZK') as CurrencyCode, currencyCode);
+    hasKnownRate((currency || 'CZK') as CurrencyCode)
+      ? convert(amount, (currency || 'CZK') as CurrencyCode, currencyCode)
+      : 0;
 
   // Totals and the 30-day money flow across the accounts counted in net worth,
   // in the display currency. Excluded accounts stay out of them like they do on
@@ -164,8 +169,8 @@ export default function BankAccounts() {
           break;
         case 'balance':
           c =
-            convertToCzK(parseFloat(a.balance), (a.currency || 'CZK') as CurrencyCode) -
-            convertToCzK(parseFloat(b.balance), (b.currency || 'CZK') as CurrencyCode);
+            toDisplay(parseFloat(a.balance), a.currency) -
+            toDisplay(parseFloat(b.balance), b.currency);
           break;
         case 'change':
           c = change(a) - change(b);
@@ -296,6 +301,12 @@ export default function BankAccounts() {
         />
       ) : (
         <>
+          {(accounts.some((a) => !hasKnownRate(a.currency as CurrencyCode)) ||
+            !hasKnownRate(preferredCurrency)) && (
+            <p className="mb-3 text-micro text-loss">
+              {t('readiness.aggregateFxWarning', { currency: currencyCode })}
+            </p>
+          )}
           <Stats columns={3}>
             <Stat
               label={t('metrics.totalOnAccounts')}
@@ -347,7 +358,10 @@ export default function BankAccounts() {
             />
           </Stats>
 
-          <PortfolioTrendCard type="cash" currentValue={totals.balance} />
+          {hasKnownRate(preferredCurrency) &&
+            accounts.every((a) => hasKnownRate(a.currency as CurrencyCode)) && (
+              <PortfolioTrendCard type="cash" currentValue={totals.balance} />
+            )}
 
           <Card variant="table">
             <CardHeader>
@@ -394,6 +408,10 @@ export default function BankAccounts() {
                       account.effectiveInterestRate ??
                       (account.interestRate ? parseFloat(account.interestRate) : 0);
                     const sub = [
+                      completeAccountIdentifier(account.iban, account.bban),
+                      a?.excludedForeignCount
+                        ? t('readiness.excludedForeign', { count: a.excludedForeignCount })
+                        : null,
                       account.institution?.name,
                       t(`accountTypes.${account.accountType}`),
                       rate > 0 ? fmt.percent(rate / 100, 2) : null,

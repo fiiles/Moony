@@ -19,7 +19,7 @@ pub mod inspect;
 pub mod rows;
 pub mod types;
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 use rusqlite::{Connection, OptionalExtension};
 use uuid::Uuid;
@@ -57,90 +57,6 @@ impl DuplicateKind {
             DuplicateKind::BankId => "csvImport.duplicateById",
             DuplicateKind::Composite => "csvImport.duplicate",
         }
-    }
-}
-
-type CompositeKey = (i64, Option<i64>, String, String, Option<String>);
-
-fn composite_key(t: &InsertBankTransaction) -> CompositeKey {
-    (
-        t.booking_date,
-        t.value_date,
-        t.amount.clone(),
-        t.tx_type.to_lowercase(),
-        t.description.clone(),
-    )
-}
-
-/// The duplicate rule of `services::dedup` plus the rows already accepted from
-/// this file. The same checker backs the preview and the import, so what the
-/// preview promises is what the import does.
-#[derive(Default)]
-struct DuplicateChecker {
-    seen_ids: HashSet<String>,
-    /// Composite keys of every accepted row.
-    seen_keys: HashSet<CompositeKey>,
-    /// Composite keys of accepted rows that carry no bank-side id. A row with
-    /// an id only matches these: a different id is a different payment
-    ///, exactly as `dedup::check_bank_transaction` treats stored rows.
-    seen_idless_keys: HashSet<CompositeKey>,
-}
-
-impl DuplicateChecker {
-    fn check(
-        &self,
-        conn: &Connection,
-        account_id: &str,
-        t: &InsertBankTransaction,
-    ) -> Result<Option<DuplicateKind>> {
-        let id = t
-            .transaction_id
-            .as_deref()
-            .map(str::trim)
-            .filter(|s| !s.is_empty());
-        if id.is_some_and(|id| self.seen_ids.contains(id)) {
-            return Ok(Some(DuplicateKind::BankId));
-        }
-        if let Some(reason) = dedup::find_duplicate_bank_transaction(
-            conn,
-            account_id,
-            t.transaction_id.as_deref(),
-            t.booking_date,
-            t.value_date,
-            &t.amount,
-            &t.tx_type,
-            t.description.as_deref(),
-        )? {
-            // dedup reports the id rule first; its reason names the bank-side id.
-            return Ok(Some(if reason.contains("bank-side id") {
-                DuplicateKind::BankId
-            } else {
-                DuplicateKind::Composite
-            }));
-        }
-        let key = composite_key(t);
-        let hit = if id.is_some() {
-            self.seen_idless_keys.contains(&key)
-        } else {
-            self.seen_keys.contains(&key)
-        };
-        Ok(hit.then_some(DuplicateKind::Composite))
-    }
-
-    /// Remember a row that is going to be written.
-    fn accept(&mut self, t: &InsertBankTransaction) {
-        let key = composite_key(t);
-        if let Some(id) = t
-            .transaction_id
-            .as_deref()
-            .map(str::trim)
-            .filter(|s| !s.is_empty())
-        {
-            self.seen_ids.insert(id.to_string());
-        } else {
-            self.seen_idless_keys.insert(key.clone());
-        }
-        self.seen_keys.insert(key);
     }
 }
 
@@ -190,8 +106,9 @@ fn extend_range(range: &mut Option<CsvDateRange>, date: i64) {
 /// would, without writing anything.
 ///
 /// Statuses: `ok` (will be imported), `error`, `duplicate` (skipped unless its
-/// line is in `importAnywayLines`, or `skipDuplicates` is off), `skipped` (zero
-/// amount or row filter). Lists the first [`PREVIEW_ROWS`] rows; the counts
+/// line is in `importAnywayLines`, or `skipDuplicates` is off, for possible
+/// composites only), `promoted` (same-ID pending updated), `skipped` (zero
+/// amount or row filter). Lists the requested bounded page; the counts
 /// cover the whole file.
 pub fn preview_import(
     conn: &Connection,
@@ -204,35 +121,84 @@ pub fn preview_import(
     config.validate()?;
     let parsed = parse_rows(content, account_id, config)?;
 
-    let mut checker = DuplicateChecker::default();
+    let mut checker = dedup::BankOccurrenceChecker::load(conn, account_id)?;
+    checker.reserve_batch_ids(parsed.rows.iter().map(|row| match &row.state {
+        RowState::Candidate(insert) => insert.transaction_id.as_deref(),
+        _ => None,
+    }));
     let mut rows: Vec<CsvPreviewRow> = Vec::new();
+    let mut pending_categories: HashMap<String, Option<(String, Option<String>)>> = HashMap::new();
     let (mut ok_count, mut error_count, mut duplicate_count, mut skipped_count) = (0, 0, 0, 0);
     let mut categorized_count = 0usize;
+    let mut forced_duplicate_count = 0usize;
+    let mut promoted_count = 0usize;
     let mut date_range: Option<CsvDateRange> = None;
 
-    for row in &parsed.rows {
-        let mut category: Option<(String, &'static str)> = None;
+    for (row_index, row) in parsed.rows.iter().enumerate() {
+        let mut category: Option<(String, Option<String>)> = None;
         let (status, message) = match &row.state {
             RowState::Candidate(insert) => {
-                category = resolve_row_category(conn, config, row.line, insert, engine)?;
-                match checker.check(conn, account_id, insert)? {
+                category = resolve_row_category(conn, config, row.line, insert, engine)?
+                    .map(|(id, source)| (id, Some(source.to_string())));
+                match checker.check(insert) {
                     None => {
+                        if insert.status.as_deref() == Some("pending") {
+                            if let Some(id) = insert.transaction_id.as_ref() {
+                                pending_categories.insert(id.clone(), category.clone());
+                            }
+                        }
+                        checker.record_written(insert, "preview");
                         ok_count += 1;
                         if category.is_some() {
                             categorized_count += 1;
                         }
-                        checker.accept(insert);
                         extend_range(&mut date_range, insert.booking_date);
                         (CsvRowStatus::Ok, None)
                     }
-                    Some(kind) => {
+                    Some(dedup::BankOccurrence::Promote(id)) => {
+                        category = if id == "preview" {
+                            insert
+                                .transaction_id
+                                .as_ref()
+                                .and_then(|id| pending_categories.get(id))
+                                .cloned()
+                                .flatten()
+                        } else {
+                            let (category_id, source): (Option<String>,Option<String>)=conn.query_row("SELECT category_id,categorization_source FROM bank_transactions WHERE id=?1",[id],|r|Ok((r.get(0)?,r.get(1)?)))?;
+                            category_id.map(|id| (id, source))
+                        };
+                        promoted_count += 1;
+                        extend_range(&mut date_range, insert.booking_date);
+                        (
+                            CsvRowStatus::Promoted,
+                            Some(CsvRowMessage {
+                                line: row.line,
+                                key: "csvImport.pendingPromoted".into(),
+                                detail: None,
+                            }),
+                        )
+                    }
+                    Some(hit) => {
+                        let kind = if hit == dedup::BankOccurrence::Certain {
+                            DuplicateKind::BankId
+                        } else {
+                            DuplicateKind::Composite
+                        };
                         duplicate_count += 1;
-                        if !config.skip_duplicates || config.import_anyway_lines.contains(&row.line)
+                        if kind == DuplicateKind::Composite
+                            && (!config.skip_duplicates
+                                || config.import_anyway_lines.contains(&row.line))
                         {
+                            if insert.status.as_deref() == Some("pending") {
+                                if let Some(id) = insert.transaction_id.as_ref() {
+                                    pending_categories.insert(id.clone(), category.clone());
+                                }
+                            }
+                            checker.record_written(insert, "preview");
+                            forced_duplicate_count += 1;
                             if category.is_some() {
                                 categorized_count += 1;
                             }
-                            checker.accept(insert);
                             extend_range(&mut date_range, insert.booking_date);
                         }
                         (
@@ -251,8 +217,25 @@ pub fn preview_import(
                 (CsvRowStatus::Skipped, Some(m.clone()))
             }
         };
-        if rows.len() < PREVIEW_ROWS {
+        if rows.len() < config.preview_limit && row_index >= config.preview_offset {
+            let candidate = match &row.state {
+                RowState::Candidate(t) => Some(t.as_ref()),
+                _ => None,
+            };
+            let can_import_anyway = status == CsvRowStatus::Duplicate
+                && message
+                    .as_ref()
+                    .is_some_and(|m| m.key == "csvImport.duplicate");
             rows.push(CsvPreviewRow {
+                value_date: candidate.and_then(|t| t.value_date),
+                counterparty_iban: candidate.and_then(|t| t.counterparty_iban.clone()),
+                counterparty_bank_code: candidate.and_then(|t| t.counterparty_bank_code.clone()),
+                counterparty_country: candidate.and_then(|t| t.counterparty_country.clone()),
+                transaction_id: candidate.and_then(|t| t.transaction_id.clone()),
+                transaction_status: row.transaction_status.clone(),
+                row_balance: row.balance.map(|b| b.to_string()),
+                can_import_anyway,
+
                 line: row.line,
                 booking_date: row.booking_date,
                 amount: row.signed_amount.clone(),
@@ -262,7 +245,7 @@ pub fn preview_import(
                 status,
                 message,
                 category_id: category.as_ref().map(|(id, _)| id.clone()),
-                category_source: category.map(|(_, source)| source.to_string()),
+                category_source: category.and_then(|(_, source)| source),
             });
         }
     }
@@ -276,6 +259,10 @@ pub fn preview_import(
         skipped_count,
         date_range,
         categorized_count,
+        forced_duplicate_count,
+        promoted_count,
+        offset: config.preview_offset,
+        limit: config.preview_limit,
     })
 }
 
@@ -359,29 +346,66 @@ fn suggest_rule_pack(conn: &Connection, ibans: &[String]) -> Option<String> {
 /// Rows that are errors or were filtered out do not count; skipped duplicates
 /// and zero rows do (they are real statement lines).
 fn last_balance(rows: &[ParsedRow]) -> Option<String> {
-    let dated: Vec<&ParsedRow> = rows
+    statement_balance_row(rows)
+        .and_then(|r| r.balance)
+        .map(|b| b.to_string())
+}
+
+/// Newest booking day; descending statements select the first row on that day,
+/// ascending statements select the last. Pending rows (including zeros) never
+/// provide a booked statement balance.
+fn statement_balance_row(rows: &[ParsedRow]) -> Option<&ParsedRow> {
+    let dated: Vec<_> = rows
         .iter()
         .filter(|r| {
             r.booking_date.is_some()
+                && r.transaction_status.as_deref() != Some("pending")
                 && matches!(r.state, RowState::Candidate(_) | RowState::SkippedZero(_))
         })
         .collect();
     let latest = dated.iter().filter_map(|r| r.booking_date).max()?;
-    let newest_first =
-        dated.first().and_then(|r| r.booking_date) > dated.last().and_then(|r| r.booking_date);
-    let mut on_latest_day = dated.iter().filter(|r| r.booking_date == Some(latest));
-    let row = if newest_first {
-        on_latest_day.next()
-    } else {
-        on_latest_day.next_back()
-    }?;
-    row.balance.map(|b| {
-        if b == 0.0 {
-            "0".to_string()
+    let first_day = dated.first().and_then(|r| r.booking_date);
+    let last_day = dated.last().and_then(|r| r.booking_date);
+    let latest_rows: Vec<&ParsedRow> = dated
+        .into_iter()
+        .filter(|r| r.booking_date == Some(latest))
+        .collect();
+    let newest_first = if first_day == last_day {
+        // One booking day: the dates prove no order. Only the running
+        // balance chain can; without it no statement balance is offered.
+        if latest_rows.len() == 1 {
+            false
         } else {
-            b.to_string()
+            balance_chain_newest_first(&latest_rows)?
         }
-    })
+    } else {
+        first_day > last_day
+    };
+    if newest_first {
+        latest_rows.first().copied()
+    } else {
+        latest_rows.last().copied()
+    }
+}
+
+/// File order proven by the row balances: `Some(false)` when each balance is
+/// the previous one plus the row's amount (oldest first), `Some(true)` when
+/// it is the next one plus the row's amount (newest first), `None` when the
+/// balances prove neither.
+fn balance_chain_newest_first(rows: &[&ParsedRow]) -> Option<bool> {
+    let mut values = Vec::with_capacity(rows.len());
+    for row in rows {
+        let amount = row.signed_amount.as_deref()?.parse::<f64>().ok()?;
+        values.push((amount, row.balance?));
+    }
+    let close = |a: f64, b: f64| (a - b).abs() < 0.005;
+    let oldest_first = values.windows(2).all(|w| close(w[1].1, w[0].1 + w[1].0));
+    let newest_first = values.windows(2).all(|w| close(w[0].1, w[1].1 + w[0].0));
+    match (oldest_first, newest_first) {
+        (true, _) => Some(false),
+        (false, true) => Some(true),
+        (false, false) => None,
+    }
 }
 
 /// Import bank transactions from decoded CSV content (one write path, ADR 0007).
@@ -391,17 +415,9 @@ fn last_balance(rows: &[ParsedRow]) -> Option<String> {
 /// with the good rows. Phase 2: one SQL transaction — batch record, then every
 /// row goes through `services::bank_accounts::create_transaction_with_origin`.
 ///
-/// Duplicates: a `services::dedup::find_duplicate_bank_transaction`
-/// hit is **skipped** unless its line is in `config.import_anyway_lines` (or
-/// `config.skip_duplicates` is off). The check runs inside the import
-/// transaction, so an identical row later in the same file matches the earlier
-/// one. When a row is imported anyway after a *bank-side id* hit, its id is not
-/// stored (the (account, id) pair is unique). The MCP bulk tools keep their own
-/// skip-and-report behaviour.
-///
-/// Two genuine purchases that look identical (two 99 CZK coffees on the same
-/// day, same description) are indistinguishable from a re-imported line under
-/// the composite rule — that is what the preview's "import anyway" is for.
+/// Stored occurrences are consumed once; new ID-less repeats stay distinct.
+/// Certain bank IDs cannot be forced; same-ID pending rows promote in place
+/// while retaining their original batch ownership and explicit user meaning.
 ///
 /// `engine` enables rules-first categorization (spec D2): every row that is
 /// written is run through the app's deterministic layers just before its
@@ -419,8 +435,13 @@ pub fn import_transactions(
     let parsed = parse_rows(content, account_id, config)?;
 
     let batch_id = Uuid::new_v4().to_string();
-    let mut checker = DuplicateChecker::default();
+    let mut checker = dedup::BankOccurrenceChecker::load(conn, account_id)?;
+    checker.reserve_batch_ids(parsed.rows.iter().map(|row| match &row.state {
+        RowState::Candidate(insert) => insert.transaction_id.as_deref(),
+        _ => None,
+    }));
     let mut imported_count = 0usize;
+    let mut promoted_count = 0usize;
     let mut uncategorized_count = 0usize;
     let mut errors: Vec<CsvRowMessage> = Vec::new();
     let mut duplicates: Vec<CsvRowMessage> = Vec::new();
@@ -429,10 +450,18 @@ pub fn import_transactions(
     let mut date_range: Option<CsvDateRange> = None;
     let mut imported_ibans: Vec<String> = Vec::new();
 
+    let mut statement_range = None;
+    for row in &parsed.rows {
+        if matches!(row.state, RowState::Candidate(_) | RowState::SkippedZero(_)) {
+            if let Some(day) = row.booking_date {
+                extend_range(&mut statement_range, day);
+            }
+        }
+    }
     let tx = conn.transaction()?;
     tx.execute(
-        "INSERT INTO csv_import_batches (id, bank_account_id, file_name, imported_count, duplicate_count, error_count) VALUES (?1, ?2, ?3, 0, 0, 0)",
-        rusqlite::params![batch_id, account_id, file_name],
+        "INSERT INTO csv_import_batches (id, bank_account_id, file_name, imported_count, duplicate_count, error_count,date_from,date_to) VALUES (?1, ?2, ?3, 0, 0, 0,?4,?5)",
+        rusqlite::params![batch_id, account_id, file_name,statement_range.map(|r|r.from),statement_range.map(|r|r.to)],
     )?;
 
     for row in &parsed.rows {
@@ -452,19 +481,26 @@ pub fn import_transactions(
             }
         };
 
-        if let Some(kind) = checker.check(&tx, account_id, &insert)? {
-            let forced = !config.skip_duplicates || config.import_anyway_lines.contains(&row.line);
+        if let Some(hit) = checker.check(&insert) {
+            if let dedup::BankOccurrence::Promote(id) = hit {
+                super::bank_accounts::promote_pending_transaction(&tx, &id, &insert)?;
+                promoted_count += 1;
+                extend_range(&mut date_range, insert.booking_date);
+                continue;
+            }
+            let kind = if hit == dedup::BankOccurrence::Certain {
+                DuplicateKind::BankId
+            } else {
+                DuplicateKind::Composite
+            };
+            let forced = kind == DuplicateKind::Composite
+                && (!config.skip_duplicates || config.import_anyway_lines.contains(&row.line));
             if !forced {
                 skipped_duplicates.push(duplicate_message(row.line, kind));
                 continue;
             }
             duplicates.push(duplicate_message(row.line, kind));
-            if kind == DuplicateKind::BankId {
-                // (account, bank id) is unique: the second copy goes in without one.
-                insert.transaction_id = None;
-            }
         }
-        checker.accept(&insert);
 
         // A category picked in the preview wins over the rules (the user was
         // explicit); a since-deleted category falls through to the rules.
@@ -485,12 +521,21 @@ pub fn import_transactions(
             categorization_source =
                 super::bank_accounts::enrich_with_rules(&tx, &mut insert, engine)?;
         }
-        super::bank_accounts::create_transaction_with_origin(
+        let created = super::bank_accounts::create_transaction_with_origin(
             &tx,
             &insert,
             "csv_import",
             Some(&batch_id),
             categorization_source,
+        )?;
+        checker.record_written(&insert, &created.id);
+        tx.execute(
+            "UPDATE bank_transactions SET import_line=?1,row_balance=?2 WHERE id=?3",
+            rusqlite::params![
+                row.line as i64,
+                row.balance.map(|b| b.to_string()),
+                created.id
+            ],
         )?;
         imported_count += 1;
         if insert.category_id.is_none() {
@@ -503,20 +548,23 @@ pub fn import_transactions(
     }
 
     // `duplicate_count` of the batch = rows NOT imported because they were
-    // duplicates, so imported + duplicates + errors adds up in the history.
+    // duplicates; newly inserted and promoted rows have separate counters.
     tx.execute(
-        "UPDATE csv_import_batches SET imported_count = ?1, duplicate_count = ?2, error_count = ?3 WHERE id = ?4",
+        "UPDATE csv_import_batches SET imported_count = ?1, duplicate_count = ?2, error_count = ?3, promoted_count = ?5 WHERE id = ?4",
         rusqlite::params![
             imported_count as i64,
             skipped_duplicates.len() as i64,
             errors.len() as i64,
-            batch_id
+            batch_id,
+            promoted_count as i64
         ],
     )?;
     tx.commit()?;
 
     Ok(CsvImportResult {
         imported_count,
+        promoted_count,
+        statement_balance: statement_balance(&parsed.rows, checker.currency(), &batch_id),
         duplicate_count: duplicates.len(),
         error_count: errors.len(),
         errors,
@@ -535,3 +583,63 @@ pub fn import_transactions(
 pub(crate) mod test_support;
 #[cfg(test)]
 mod tests;
+
+fn statement_balance(
+    rows: &[ParsedRow],
+    account_currency: &str,
+    batch_id: &str,
+) -> Option<types::StatementBalance> {
+    let row = statement_balance_row(rows)?;
+    Some(types::StatementBalance {
+        amount: row.balance?.to_string(),
+        currency: row
+            .currency
+            .as_deref()
+            .unwrap_or(account_currency)
+            .to_ascii_uppercase(),
+        as_of: row.booking_date?,
+        line: row.line,
+        batch_id: batch_id.into(),
+    })
+}
+
+pub fn import_batches(conn: &Connection, account_id: &str) -> Result<Vec<types::CsvImportBatch>> {
+    let mut stmt=conn.prepare("SELECT b.id,b.bank_account_id,b.file_name,b.imported_count,b.duplicate_count,b.error_count,b.imported_at,b.promoted_count,COUNT(t.id),b.date_from,b.date_to FROM csv_import_batches b LEFT JOIN bank_transactions t ON t.import_batch_id=b.id WHERE b.bank_account_id=?1 GROUP BY b.id ORDER BY b.imported_at DESC,b.id")?;
+    let rows = stmt.query_map([account_id], |r| {
+        let from: Option<i64> = r.get(9)?;
+        let to: Option<i64> = r.get(10)?;
+        Ok(types::CsvImportBatch {
+            id: r.get(0)?,
+            bank_account_id: r.get(1)?,
+            file_name: r.get(2)?,
+            imported_count: r.get(3)?,
+            duplicate_count: r.get(4)?,
+            error_count: r.get(5)?,
+            imported_at: r.get(6)?,
+            promoted_count: r.get(7)?,
+            linked_count: r.get(8)?,
+            date_range: from.zip(to).map(|(from, to)| CsvDateRange { from, to }),
+        })
+    })?;
+    Ok(rows.collect::<std::result::Result<Vec<_>, _>>()?)
+}
+pub fn delete_import_batch(conn: &Connection, batch_id: &str) -> Result<usize> {
+    let tx = conn.unchecked_transaction()?;
+    let exists: bool = tx.query_row(
+        "SELECT EXISTS(SELECT 1 FROM csv_import_batches WHERE id=?1)",
+        [batch_id],
+        |r| r.get(0),
+    )?;
+    if !exists {
+        return Err(AppError::NotFound(format!(
+            "Import batch not found: {batch_id}"
+        )));
+    }
+    let deleted = tx.execute(
+        "DELETE FROM bank_transactions WHERE import_batch_id=?1",
+        [batch_id],
+    )?;
+    tx.execute("DELETE FROM csv_import_batches WHERE id=?1", [batch_id])?;
+    tx.commit()?;
+    Ok(deleted)
+}

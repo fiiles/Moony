@@ -27,44 +27,17 @@
     }
   },
   "stats": {
-    "budgetFor": {
-      "monthly": "Budget for {{period}}",
-      "quarterly": "Budget for {{period}}",
-      "yearly": "Budget for {{period}}"
-    },
     "limited_one": "{{count}} category with a limit",
     "limited_other": "{{count}} categories with a limit",
-    "spent": "Spent",
-    "ofBudget": "{{percent}} of budget",
-    "elapsed": {
-      "monthly": "{{percent}} of the month behind you",
-      "quarterly": "{{percent}} of the quarter behind you",
-      "yearly": "{{percent}} of the year behind you"
-    },
-    "remaining": "Remaining",
-    "over": "Over budget",
-    "remainingNote": "for {{days}} · {{perDay}} a day",
     "days_one": "{{count}} day",
     "days_other": "{{count}} days",
-    "lastDay": "last day of the period",
-    "unspent": "left unspent",
-    "ahead": "the whole period ahead of you",
-    "overNote": "limits exceeded by {{percent}} in total"
-  },
-  "overview": {
-    "title": "Overall usage",
-    "ahead_one": "Spending runs {{count}} point ahead of the calendar.",
-    "ahead_other": "Spending runs {{count}} points ahead of the calendar.",
-    "behind_one": "Spending runs {{count}} point behind the calendar.",
-    "behind_other": "Spending runs {{count}} points behind the calendar.",
-    "onPace": "Spending keeps pace with the calendar.",
-    "closed": "The period is closed.",
-    "notStarted": "The period has not started yet.",
-    "overCount_one": "{{count}} category over the limit",
-    "overCount_other": "{{count}} categories over the limit",
-    "nearCount_one": "{{count}} category near its limit",
-    "nearCount_other": "{{count}} categories near their limit",
-    "allOk": "All within limits"
+    "totalExpenses": "Total expenses",
+    "onTrack": "On track",
+    "nearCount_one": "{{count}} near the limit",
+    "nearCount_other": "{{count}} near the limit",
+    "overCount": "Over limit",
+    "unavailableCount_one": "{{count}} unavailable",
+    "unavailableCount_other": "{{count}} unavailable"
   },
   "table": {
     "title": "Categories",
@@ -223,5 +196,18 @@
     "cat_taxes": "Taxes",
     "cat_other": "Other",
     "uncategorized": "Uncategorized"
+  },
+  "readiness": {
+    "effectiveMonth": "Effective month",
+    "effectiveMonthHelp": "Defaults to this month. Choose a later month to schedule a change; limits of earlier months stay in the reports.",
+    "observedAverage": "Observed monthly average: {{amount}} from {{count}} completed months. Statement completeness is not proven.",
+    "usageUnavailable": "Budget usage unavailable",
+    "absoluteShare": "Share of absolute group amounts",
+    "signedUnbudgetedTotal": "Net unbudgeted spending: {{amount}}",
+    "effectiveMonthPrefill": "The amount shows the limit in effect in {{month}}. Saving it changes the limit from that month on; earlier months keep theirs.",
+    "scheduledHeading": "Scheduled changes",
+    "scheduledLimit": "From {{month}}: {{amount}}",
+    "scheduledRemoval": "From {{month}}: no limit",
+    "noChange": "The limit is unchanged; nothing was saved."
   }
 }

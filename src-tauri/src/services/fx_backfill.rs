@@ -33,13 +33,15 @@ const ECB_EPOCH: i64 = 915_408_000; // 1999-01-04 UTC midnight
 /// the timeseries has fallen further behind than that.
 const TAIL_TOLERANCE: i64 = 3 * DAY;
 
-/// Distinct non-CZK transaction currencies across stocks and crypto — the
-/// symbols the FX timeseries must cover for cost basis derivation.
+/// Distinct non-CZK transaction currencies across stocks, crypto and bank
+/// accounts — the symbols the FX timeseries must cover for cost basis and
+/// for the historical CZK values of budget and cashflow reports.
 pub fn tx_currencies(conn: &Connection) -> Result<Vec<String>> {
     let mut set: HashSet<String> = HashSet::new();
     for sql in [
         "SELECT DISTINCT currency FROM investment_transactions",
         "SELECT DISTINCT currency FROM crypto_transactions",
+        "SELECT DISTINCT currency FROM bank_transactions",
     ] {
         let mut stmt = conn.prepare(sql)?;
         let rows = stmt.query_map([], |r| r.get::<_, String>(0))?;
@@ -51,29 +53,48 @@ pub fn tx_currencies(conn: &Connection) -> Result<Vec<String>> {
     Ok(list)
 }
 
+/// Earliest transaction day (any table) in `currency`.
+fn earliest_tx_in(conn: &Connection, currency: &str) -> Result<Option<i64>> {
+    Ok(conn.query_row(
+        "SELECT MIN(d) FROM (
+            SELECT MIN(transaction_date) AS d FROM investment_transactions WHERE UPPER(currency) = ?1
+            UNION ALL
+            SELECT MIN(transaction_date) AS d FROM crypto_transactions WHERE UPPER(currency) = ?1
+            UNION ALL
+            SELECT MIN(booking_date) AS d FROM bank_transactions WHERE UPPER(currency) = ?1
+         ) WHERE d IS NOT NULL",
+        [currency],
+        |r| r.get(0),
+    )?)
+}
+
+/// First fetch day for history starting at `earliest_tx`.
+fn needed_start(earliest_tx: i64) -> i64 {
+    (((earliest_tx / DAY) * DAY) - LOOKBACK).max(ECB_EPOCH)
+}
+
 /// Day ranges (inclusive, midnight-UTC keys) missing from
 /// `exchange_rate_history` for the given transaction record: the prefix
 /// before the earliest covered day, and the tail since the latest one.
 /// Empty when nothing needs fetching.
+///
+/// The prefix is checked per currency: a bank currency first recorded by the
+/// daily writer long after its earliest statement row still needs its
+/// history even when another currency was backfilled further back. A
+/// currency without any recorded rate (one the ECB does not quote) is not
+/// fetched again and again; it stays reported as missing.
 pub fn missing_fx_ranges(conn: &Connection, today: i64) -> Result<Vec<(i64, i64)>> {
-    if tx_currencies(conn)?.is_empty() {
-        return Ok(Vec::new());
+    let symbols = tx_currencies(conn)?;
+    let mut earliest = Vec::new();
+    for symbol in &symbols {
+        if let Some(day) = earliest_tx_in(conn, symbol)? {
+            earliest.push((symbol, day));
+        }
     }
-
-    let earliest_tx: Option<i64> = conn.query_row(
-        "SELECT MIN(d) FROM (
-            SELECT MIN(transaction_date) AS d FROM investment_transactions
-            UNION ALL
-            SELECT MIN(transaction_date) AS d FROM crypto_transactions
-         ) WHERE d IS NOT NULL",
-        [],
-        |r| r.get(0),
-    )?;
-    let Some(earliest_tx) = earliest_tx else {
+    let Some(earliest_tx) = earliest.iter().map(|(_, day)| *day).min() else {
         return Ok(Vec::new());
     };
 
-    let needed_start = (((earliest_tx / DAY) * DAY) - LOOKBACK).max(ECB_EPOCH);
     let coverage: Option<(i64, i64)> = conn
         .query_row(
             "SELECT MIN(date), MAX(date) FROM exchange_rate_history",
@@ -85,11 +106,27 @@ pub fn missing_fx_ranges(conn: &Connection, today: i64) -> Result<Vec<(i64, i64)
 
     let mut ranges = Vec::new();
     match coverage {
-        None => ranges.push((needed_start, today)),
-        Some((min_date, max_date)) => {
-            if min_date > needed_start {
-                ranges.push((needed_start, min_date));
+        None => ranges.push((needed_start(earliest_tx), today)),
+        Some((_, max_date)) => {
+            let mut prefix: Option<(i64, i64)> = None;
+            for (symbol, first_tx) in &earliest {
+                let covered_from: Option<i64> = conn.query_row(
+                    "SELECT MIN(date) FROM exchange_rate_history WHERE UPPER(currency) = ?1",
+                    [symbol.as_str()],
+                    |r| r.get(0),
+                )?;
+                let Some(covered_from) = covered_from else {
+                    continue;
+                };
+                let start = needed_start(*first_tx);
+                if covered_from > start {
+                    prefix = Some(match prefix {
+                        None => (start, covered_from),
+                        Some((a, b)) => (a.min(start), b.max(covered_from)),
+                    });
+                }
             }
+            ranges.extend(prefix);
             if max_date < today - TAIL_TOLERANCE {
                 ranges.push((max_date, today));
             }
@@ -238,6 +275,11 @@ mod tests {
                 rate REAL NOT NULL,
                 PRIMARY KEY (date, currency)
             );
+            CREATE TABLE bank_transactions (
+                id TEXT PRIMARY KEY,
+                booking_date INTEGER NOT NULL,
+                currency TEXT NOT NULL
+            );
             "#,
         )
         .expect("schema");
@@ -260,6 +302,62 @@ mod tests {
             rusqlite::params![day, ccy],
         )
         .expect("rate");
+    }
+
+    fn add_bank_tx(conn: &Connection, id: &str, ccy: &str, date: i64) {
+        conn.execute(
+            "INSERT INTO bank_transactions (id, booking_date, currency) VALUES (?1, ?2, ?3)",
+            rusqlite::params![id, date, ccy],
+        )
+        .expect("bank tx");
+    }
+
+    /// Final review I-4: foreign bank-account history needs rates too.
+    #[test]
+    fn bank_transaction_currencies_are_covered() {
+        let conn = setup_db();
+        add_bank_tx(&conn, "b1", "gbp", TODAY - 30 * D);
+        add_bank_tx(&conn, "b2", "CZK", TODAY - 900 * D);
+        assert_eq!(tx_currencies(&conn).expect("currencies"), vec!["GBP"]);
+    }
+
+    #[test]
+    fn bank_only_history_fetches_from_its_earliest_booking() {
+        let conn = setup_db();
+        add_bank_tx(&conn, "b1", "GBP", TODAY - 400 * D);
+        add_bank_tx(&conn, "b2", "CZK", TODAY - 900 * D);
+
+        let ranges = missing_fx_ranges(&conn, TODAY).expect("ranges");
+
+        assert_eq!(ranges, vec![(TODAY - 410 * D, TODAY)]);
+    }
+
+    #[test]
+    fn a_currency_covered_later_than_its_history_gets_its_prefix() {
+        // USD is backfilled for the investments; GBP only has the rows the
+        // daily writer recorded since the app's first run.
+        let conn = setup_db();
+        add_stock_tx(&conn, "t1", "USD", TODAY - 100 * D);
+        add_rate(&conn, TODAY - 110 * D, "USD");
+        add_rate(&conn, TODAY, "USD");
+        add_bank_tx(&conn, "b1", "GBP", TODAY - 300 * D);
+        add_rate(&conn, TODAY - 5 * D, "GBP");
+        add_rate(&conn, TODAY, "GBP");
+
+        let ranges = missing_fx_ranges(&conn, TODAY).expect("ranges");
+
+        assert_eq!(ranges, vec![(TODAY - 310 * D, TODAY - 5 * D)]);
+    }
+
+    #[test]
+    fn a_currency_the_rate_source_never_quoted_does_not_refetch_forever() {
+        let conn = setup_db();
+        add_stock_tx(&conn, "t1", "USD", TODAY - 100 * D);
+        add_rate(&conn, TODAY - 110 * D, "USD");
+        add_rate(&conn, TODAY, "USD");
+        add_bank_tx(&conn, "b1", "AED", TODAY - 50 * D);
+
+        assert!(missing_fx_ranges(&conn, TODAY).expect("ranges").is_empty());
     }
 
     #[test]

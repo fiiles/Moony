@@ -1,3 +1,8 @@
+import { useReportMoney } from '@/lib/use-report-money';
+import { useCurrency } from '@/lib/currency';
+import { ReportQualityNote, ReportError } from '@/components/reports/ReportQualityNote';
+import { refreshMoneyFlows } from '@/lib/money-flow-refresh';
+import { translateApiError } from '@/lib/translate-api-error';
 import { useMemo, useState, type ReactNode } from 'react';
 import { Link } from 'wouter';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -11,7 +16,6 @@ import type {
   CashflowSection,
 } from '@shared/schema';
 import { cashflowApi } from '@/lib/tauri-api';
-import { useCurrency } from '@/lib/currency';
 import { useFormat } from '@/lib/use-format';
 import { useShellPage } from '@/components/shell/shell-context';
 import { PageHead } from '@/components/shell/PageHead';
@@ -60,7 +64,7 @@ const SOURCE_BY_CATEGORY: Record<string, string> = {
 export default function CashflowPlanning() {
   const { t } = useTranslation('reports');
   const { t: tc } = useTranslation('common');
-  const { formatCurrency, formatCurrencySigned } = useCurrency();
+  const { currencyCode, ratesTimestamp } = useCurrency();
   const fmt = useFormat();
   const queryClient = useQueryClient();
 
@@ -75,25 +79,31 @@ export default function CashflowPlanning() {
 
   useShellPage({ status: { text: t('planning.status'), tone: 'neutral' } });
 
-  const { data: report, isLoading } = useQuery<CashflowReport>({
-    queryKey: ['cashflow-report', viewType],
-    queryFn: () => cashflowApi.getReport(viewType),
+  const {
+    data: report,
+    isLoading,
+    isError,
+    refetch,
+  } = useQuery<CashflowReport>({
+    queryKey: ['cashflow-report', viewType, currencyCode, ratesTimestamp],
+    queryFn: () => cashflowApi.getReport(viewType, currencyCode),
     refetchOnMount: 'always',
   });
-
-  const invalidate = () => {
-    queryClient.invalidateQueries({ queryKey: ['cashflow-report'] });
-    queryClient.invalidateQueries({ queryKey: ['portfolio-metrics'] });
-  };
+  const {
+    money,
+    signedMoney: formatCurrencySigned,
+    nativeMoney,
+  } = useReportMoney(report?.reportCurrency);
 
   const createMutation = useMutation({
     mutationFn: cashflowApi.createItem,
-    onSuccess: () => {
-      invalidate();
+    onSuccess: async () => {
+      await refreshMoneyFlows(queryClient);
       setAddDialogOpen(false);
       toast(t('planning.toast.added'));
     },
-    onError: (error: Error) => toast.error(tc('status.error'), { description: error.message }),
+    onError: (error: Error) =>
+      toast.error(tc('status.error'), { description: translateApiError(error, tc) }),
   });
 
   const updateMutation = useMutation({
@@ -104,23 +114,25 @@ export default function CashflowPlanning() {
       id: string;
       data: Parameters<typeof cashflowApi.updateItem>[1];
     }) => cashflowApi.updateItem(id, data),
-    onSuccess: () => {
-      invalidate();
+    onSuccess: async () => {
+      await refreshMoneyFlows(queryClient);
       setEditItem(null);
       setEditCategory('');
       toast(t('planning.toast.updated'));
     },
-    onError: (error: Error) => toast.error(tc('status.error'), { description: error.message }),
+    onError: (error: Error) =>
+      toast.error(tc('status.error'), { description: translateApiError(error, tc) }),
   });
 
   const deleteMutation = useMutation({
     mutationFn: cashflowApi.deleteItem,
-    onSuccess: () => {
-      invalidate();
+    onSuccess: async () => {
+      await refreshMoneyFlows(queryClient);
       setDeleteItem(null);
       toast(t('planning.toast.deleted'));
     },
-    onError: (error: Error) => toast.error(tc('status.error'), { description: error.message }),
+    onError: (error: Error) =>
+      toast.error(tc('status.error'), { description: translateApiError(error, tc) }),
   });
 
   const openAdd = (section: SectionId, type: 'income' | 'expense') => {
@@ -128,8 +140,6 @@ export default function CashflowPlanning() {
     setAddDialogType(type);
     setAddDialogOpen(true);
   };
-
-  const money = (amount: number) => formatCurrency(Math.abs(amount) < 0.01 ? 0 : amount);
 
   const sectionOf = (id: SectionId): CashflowSection | undefined =>
     id === 'personal' ? report?.personal : report?.investments;
@@ -154,18 +164,18 @@ export default function CashflowPlanning() {
       .flatMap((s) => s.expenses)
       .flatMap((c) => c.items)
       .filter((i) => !i.isUserDefined)
-      .reduce((sum, i) => sum + i.amount, 0);
+      .reduce((sum, i) => sum + Number(i.amount), 0);
   }, [report]);
 
   const flow = useMemo((): FlowSegment[] => {
-    if (!report || report.totalIncome <= 0) return [];
+    if (!report || Number(report.totalIncome) <= 0) return [];
     const byCategory = [report.personal, report.investments]
       .flatMap((s) => s.expenses)
-      .filter((c) => c.total > 0)
+      .filter((c) => Number(c.total) > 0)
       .map((c) => ({
         key: c.key,
         label: t(`categories.${c.key}`, { defaultValue: c.name }),
-        value: c.total,
+        value: Number(c.total),
       }))
       .sort((a, b) => b.value - a.value);
     const head = byCategory.slice(0, 4);
@@ -174,7 +184,7 @@ export default function CashflowPlanning() {
       key: c.key,
       label: c.label,
       value: c.value,
-      share: c.value / report.totalIncome,
+      share: c.value / Number(report.totalIncome),
     }));
     if (rest.length > 0) {
       const value = rest.reduce((s, c) => s + c.value, 0);
@@ -182,22 +192,25 @@ export default function CashflowPlanning() {
         key: 'other',
         label: t('planning.flow.other'),
         value,
-        share: value / report.totalIncome,
+        share: value / Number(report.totalIncome),
       });
     }
-    if (report.netCashflow > 0) {
+    if (Number(report.netCashflow) > 0) {
       segments.push({
         key: 'rest',
         label: t('planning.flow.rest'),
-        value: report.netCashflow,
-        share: report.netCashflow / report.totalIncome,
+        value: Number(report.netCashflow),
+        share: Number(report.netCashflow) / Number(report.totalIncome),
         kind: 'rest',
       });
     }
     return segments;
   }, [report, t]);
 
-  const freeShare = report && report.totalIncome > 0 ? report.netCashflow / report.totalIncome : 0;
+  const freeShare =
+    report && Number(report.totalIncome) > 0
+      ? Number(report.netCashflow) / Number(report.totalIncome)
+      : 0;
 
   const sectionCard = (id: SectionId, title: string, sub: string) => {
     const section = sectionOf(id);
@@ -214,10 +227,40 @@ export default function CashflowPlanning() {
     ) => {
       const sourceKey = !item.isUserDefined ? SOURCE_BY_CATEGORY[category.key] : undefined;
       const source = sourceKey ? tc(sourceKey) : undefined;
+      const incomplete = item.fxQuality === 'missing';
+      const unavailable = incomplete && item.convertedComponentCount === 0;
+      const original =
+        item.originalCurrency === 'MULTI'
+          ? item.originalComponents
+              .map((component) => {
+                const frequency =
+                  component.frequency === 'yearly'
+                    ? t('planning.table.perYear')
+                    : component.frequency === 'monthly'
+                      ? t('planning.table.perMonth')
+                      : '';
+                return `${nativeMoney(Number(component.amount), component.currency)}${frequency ? ` · ${frequency}` : ''}`;
+              })
+              .join(' · ')
+          : item.originalFrequency === 'yearly'
+            ? `${t('planning.table.perYear')} · ${nativeMoney(Number(item.originalAmount), item.originalCurrency)}`
+            : item.originalFrequency === 'monthly' && viewType === 'yearly'
+              ? `${t('planning.table.perMonth')} · ${nativeMoney(Number(item.originalAmount), item.originalCurrency)}`
+              : t('planning.table.perMonth');
       return (
         <TableRow key={item.id} className="h-12">
           <TableCell>
             <b className="block text-table font-650 text-ink">{item.name}</b>
+            {item.replacementSourceId && (
+              <small className="block text-micro text-ink-4">
+                {t('readiness.replacing', {
+                  name:
+                    report?.automaticSources.find(
+                      (source) => source.sourceId === item.replacementSourceId
+                    )?.name ?? t('readiness.retainedSource'),
+                })}
+              </small>
+            )}
             <span className="mt-[3px] inline-flex items-center gap-[5px] text-micro font-500 text-ink-4">
               {source ? (
                 <>
@@ -230,15 +273,14 @@ export default function CashflowPlanning() {
             </span>
           </TableCell>
           <TableCell>{t(`categories.${category.key}`, { defaultValue: category.name })}</TableCell>
-          <TableCell className="text-ink-4">
-            {item.originalFrequency === 'yearly'
-              ? `${t('planning.table.perYear')} · ${fmt.money(item.originalAmount, item.originalCurrency, { decimals: 0 })}`
-              : item.originalFrequency === 'monthly' && viewType === 'yearly'
-                ? `${t('planning.table.perMonth')} · ${fmt.money(item.originalAmount, item.originalCurrency, { decimals: 0 })}`
-                : t('planning.table.perMonth')}
-          </TableCell>
+          <TableCell className="text-ink-4">{original}</TableCell>
           <TableCell className={cn('text-right font-650 num', isIncome ? 'text-gain' : 'text-ink')}>
-            {formatCurrencySigned(isIncome ? item.amount : -item.amount)}
+            {unavailable
+              ? t('readiness.fxUnavailable')
+              : formatCurrencySigned(isIncome ? Number(item.amount) : -Number(item.amount))}
+            {incomplete && !unavailable && (
+              <small className="block text-micro text-loss">{t('readiness.partialAmount')}</small>
+            )}
           </TableCell>
           <TableCell className="text-right">
             {item.isUserDefined ? (
@@ -302,10 +344,10 @@ export default function CashflowPlanning() {
             <b
               className={cn(
                 'text-[16px] font-650 tracking-[-0.03em] num',
-                section.netCashflow >= 0 ? 'text-gain' : 'text-loss'
+                Number(section.netCashflow) >= 0 ? 'text-gain' : 'text-loss'
               )}
             >
-              {formatCurrencySigned(section.netCashflow)}
+              {formatCurrencySigned(Number(section.netCashflow))}
             </b>
           </div>
         </CardHeader>
@@ -324,7 +366,9 @@ export default function CashflowPlanning() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {groupRow(t('planning.table.incomeGroup', { amount: money(section.totalIncome) }))}
+            {groupRow(
+              t('planning.table.incomeGroup', { amount: money(Number(section.totalIncome)) })
+            )}
             {incomeItems.length === 0 && (
               <TableRow className="hover:bg-transparent">
                 <TableCell colSpan={5} className="text-center text-table text-ink-4">
@@ -333,7 +377,9 @@ export default function CashflowPlanning() {
               </TableRow>
             )}
             {incomeItems.map((e) => row(e, true))}
-            {groupRow(t('planning.table.expenseGroup', { amount: money(section.totalExpenses) }))}
+            {groupRow(
+              t('planning.table.expenseGroup', { amount: money(Number(section.totalExpenses)) })
+            )}
             {expenseItems.length === 0 && (
               <TableRow className="hover:bg-transparent">
                 <TableCell colSpan={5} className="text-center text-table text-ink-4">
@@ -396,6 +442,13 @@ export default function CashflowPlanning() {
     />
   );
 
+  if (isError)
+    return (
+      <>
+        {head}
+        <ReportError onRetry={() => void refetch()} />
+      </>
+    );
   if (isLoading || !report) {
     return (
       <>
@@ -412,30 +465,37 @@ export default function CashflowPlanning() {
   return (
     <>
       {head}
+      <ReportQualityNote quality={report.quality} planning />
 
       <Stats columns={3}>
         <Stat
           label={t('planning.stats.income')}
-          value={money(report.totalIncome)}
+          value={money(Number(report.totalIncome))}
           note={t('planning.stats.incomeNote', {
-            personal: money(report.personal.totalIncome),
-            investments: money(report.investments.totalIncome),
+            personal: money(Number(report.personal.totalIncome)),
+            investments: money(Number(report.investments.totalIncome)),
           })}
         />
         <Stat
           label={t('planning.stats.expenses')}
-          value={money(report.totalExpenses)}
+          value={money(Number(report.totalExpenses))}
           note={t('planning.stats.expensesNote', { amount: money(autoExpenses) })}
         />
         <Stat
           label={t('planning.stats.net')}
-          value={formatCurrencySigned(report.netCashflow)}
-          tone={report.netCashflow > 0 ? 'gain' : report.netCashflow < 0 ? 'loss' : 'neutral'}
+          value={formatCurrencySigned(Number(report.netCashflow))}
+          tone={
+            Number(report.netCashflow) > 0
+              ? 'gain'
+              : Number(report.netCashflow) < 0
+                ? 'loss'
+                : 'neutral'
+          }
           noteTone="neutral"
           note={
-            report.netCashflow >= 0
+            Number(report.netCashflow) >= 0
               ? t('planning.stats.netNoteFree', { percent: fmt.percent(freeShare, 0) })
-              : t('planning.stats.netNoteOver', { amount: money(-report.netCashflow) })
+              : t('planning.stats.netNoteOver', { amount: money(-Number(report.netCashflow)) })
           }
         />
       </Stats>
@@ -446,7 +506,7 @@ export default function CashflowPlanning() {
             <h3 className="m-0 text-h3 text-ink">{t('planning.flow.title')}</h3>
             <p className="mt-[5px] text-micro font-500 text-ink-4">{t('planning.flow.sub')}</p>
           </div>
-          {report.totalIncome > 0 && (
+          {Number(report.totalIncome) > 0 && (
             <Badge>
               {t('planning.flow.badge', { percent: fmt.percent(Math.max(0, freeShare), 0) })}
             </Badge>
@@ -498,6 +558,7 @@ export default function CashflowPlanning() {
         onOpenChange={setAddDialogOpen}
         onSubmit={(data) => createMutation.mutate(data)}
         itemType={addDialogType}
+        automaticSources={report.automaticSources}
         categories={dialogCategories(addDialogSection, addDialogType)}
         isLoading={createMutation.isPending}
       />
@@ -513,6 +574,7 @@ export default function CashflowPlanning() {
         editItem={editItem}
         editCategory={editCategory}
         itemType={editType()}
+        automaticSources={report.automaticSources}
         categories={dialogCategories(editSection, editType())}
         isLoading={updateMutation.isPending}
       />

@@ -53,7 +53,7 @@ migrations: string[]; files: BackupFileEntry[] }
 /**
  * Bank account entity
  */
-export type BankAccount = { id: string; name: string; accountType: string; iban: string | null; bban: string | null; currency: string; balance: string; institutionId: string | null; externalAccountId: string | null; dataSource: string; lastSyncedAt: number | null; interestRate: string | null; hasZoneDesignation: boolean; terminationDate: number | null; 
+export type BankAccount = { id: string; name: string; accountType: string; iban: string | null; bban: string | null; currency: string; balance: string; balanceAsOf: number | null; institutionId: string | null; externalAccountId: string | null; dataSource: string; lastSyncedAt: number | null; interestRate: string | null; hasZoneDesignation: boolean; terminationDate: number | null; 
 /**
  * UTC day the promotional interest rate ends; None when unknown or not promotional.
  */
@@ -66,7 +66,7 @@ excludeFromBalance: boolean; createdAt: number; updatedAt: number }
 /**
  * Bank account with institution data (enriched)
  */
-export type BankAccountWithInstitution = ({ id: string; name: string; accountType: string; iban: string | null; bban: string | null; currency: string; balance: string; institutionId: string | null; externalAccountId: string | null; dataSource: string; lastSyncedAt: number | null; interestRate: string | null; hasZoneDesignation: boolean; terminationDate: number | null; 
+export type BankAccountWithInstitution = ({ id: string; name: string; accountType: string; iban: string | null; bban: string | null; currency: string; balance: string; balanceAsOf: number | null; institutionId: string | null; externalAccountId: string | null; dataSource: string; lastSyncedAt: number | null; interestRate: string | null; hasZoneDesignation: boolean; terminationDate: number | null; 
 /**
  * UTC day the promotional interest rate ends; None when unknown or not promotional.
  */
@@ -79,11 +79,11 @@ excludeFromBalance: boolean; createdAt: number; updatedAt: number }) & { institu
 /**
  * Bank transaction entity
  */
-export type BankTransaction = { id: string; bankAccountId: string; transactionId: string | null; type: string; amount: string; currency: string; description: string | null; counterpartyName: string | null; counterpartyIban: string | null; bookingDate: number; valueDate: number | null; categoryId: string | null; merchantCategoryCode: string | null; remittanceInfo: string | null; 
+export type BankTransaction = { id: string; bankAccountId: string; transactionId: string | null; type: string; amount: string; currency: string; description: string | null; counterpartyName: string | null; counterpartyIban: string | null; counterpartyBankCode?: string | null; counterpartyCountry?: string | null; bookingDate: number; valueDate: number | null; categoryId: string | null; merchantCategoryCode: string | null; remittanceInfo: string | null; 
 /**
  * Category suggested by an MCP client, pending user confirmation
  */
-suggestedCategoryId: string | null; status: string; dataSource: string; createdAt: number }
+suggestedCategoryId: string | null; flowKind: FlowKind | null; status: string; dataSource: string; createdAt: number; importBatchId: string | null; importFileName: string | null; importLine: number | null; rowBalance: string | null }
 
 /**
  * Bond holding
@@ -91,70 +91,91 @@ suggestedCategoryId: string | null; status: string; dataSource: string; createdA
 export type Bond = { id: string; name: string; isin: string | null; couponValue: string; quantity: string; currency: string; interestRate: string; maturityDate: number | null; createdAt: number; updatedAt: number }
 
 /**
+ * Budget goal entity - defines spending limits per category per timeframe
+ */
+export type BudgetGoal = { id: string; categoryId: string; timeframe: string; amount: string; currency: string; createdAt: number; updatedAt: number; 
+/**
+ * First month of the version whose `amount` is shown: the version in
+ * effect now, or the first scheduled one for a goal that starts later.
+ * `None` only for a legacy goal without versions.
+ */
+effectiveMonth: number | null; 
+/**
+ * Every limit version, oldest first (`amount: null` = no limit from
+ * that month). Lets the editor prefill the version in effect for the
+ * month being edited and show scheduled changes.
+ */
+versions: BudgetGoalVersion[] }
+
+/**
+ * One limit version of a budget goal, effective from a calendar month.
+ */
+export type BudgetGoalVersion = { effectiveMonth: number; amount: string | null; currency: string }
+
+/**
+ * Full budgeting report for a period
+ */
+export type BudgetingReport = { bankCashMovement: string; quality: ReportQuality; nonconsumptionFlows: CashflowGroup[]; periodStart: number; periodEnd: number; timeframe: string; totalIncome: string; totalExpenses: string; netBalance: string; incomeCategories: CategorySpendingSummary[]; expenseCategories: CategorySpendingSummary[]; uncategorizedIncome: string; uncategorizedExpenses: string; uncategorizedTransactionCount: number; 
+/**
+ * Included booked expense rows without a category, including unavailable FX.
+ */
+uncategorizedExpenseTransactionCount: number; reportCurrency: string }
+
+/**
  * Actual monthly cashflow for a range plus the preceding range of equal length.
  */
-export type CashflowActuals = { 
+export type CashflowActuals = { reportCurrency: string; netBalance: string; bankCashMovement: string; averageCompletedMonths: number[]; quality: ReportQuality; previousQuality: ReportQuality; nonconsumptionFlows: CashflowGroup[]; averageIncome: string | null; averageExpenses: string | null; range: string; rangeStart: number; rangeEnd: number; previousStart: number; previousEnd: number; months: CashflowMonth[]; expenseCategories: CashflowGroup[]; incomeSources: CashflowGroup[]; totalIncome: string; totalExpenses: string; previousIncome: string; previousExpenses: string; accountCount: number; transactionCount: number }
+
 /**
- * `6m`, `12m` or `ytd`.
+ * A category with its items
  */
-range: string; rangeStart: number; rangeEnd: number; previousStart: number; previousEnd: number; 
-/**
- * Every month of the range, oldest first, zero-filled.
- */
-months: CashflowMonth[]; 
-/**
- * Net expenses by category, largest first (refunds reduce a category).
- */
-expenseCategories: CashflowGroup[]; 
-/**
- * Income by counterparty, largest first.
- */
-incomeSources: CashflowGroup[]; totalIncome: string; totalExpenses: string; previousIncome: string; previousExpenses: string; 
-/**
- * Bank accounts that had a transaction in the range.
- */
-accountCount: number; 
-/**
- * Transactions counted in the range (internal transfers excluded).
- */
-transactionCount: number }
+export type CashflowCategory = { key: string; name: string; total: string; items: CashflowReportItem[]; isUserEditable: boolean }
 
 /**
  * One row of "expenses by category" or "income by source", with the same sum
  * for the preceding range so the UI can show "vs. minulé".
  */
-export type CashflowGroup = { 
-/**
- * Category id (`uncategorized` for rows without one) or a normalized source key.
- */
-key: string; 
-/**
- * Category name as stored, or the counterparty as first seen; empty for an unknown source.
- */
-name: string; amount: string; previousAmount: string; 
-/**
- * Transactions behind `amount` in the current range.
- */
-count: number }
+export type CashflowGroup = { key: string; name: string; amount: string; previousAmount: string; count: number }
 
 /**
  * User-defined cashflow item (income or expense)
  */
-export type CashflowItem = { id: string; name: string; amount: string; currency: string; frequency: string; itemType: string; category: string; createdAt: number; updatedAt: number }
+export type CashflowItem = { id: string; name: string; amount: string; currency: string; frequency: string; itemType: string; replacementSourceId: string | null; category: string; createdAt: number; updatedAt: number }
 
 /**
  * Income and expenses of one calendar month (UTC).
  */
-export type CashflowMonth = { 
+export type CashflowMonth = { nonconsumptionFlows: CashflowGroup[]; bankCashMovement: string; month: number; income: string; expenses: string }
+
 /**
- * Unix seconds of the first day of the month, UTC midnight.
+ * Native components of a composite automatic property-cost source.
  */
-month: number; income: string; expenses: string }
+export type CashflowOriginalComponent = { amount: string; currency: string; frequency: string }
+
+/**
+ * Complete cashflow report with Personal and Investments sections
+ */
+export type CashflowReport = { reportCurrency: string; quality: ReportQuality; ratesAsOf: number | null; automaticSources: CashflowReportItem[]; asOf: number; estimate: boolean; viewType: string; personal: CashflowSection; investments: CashflowSection; totalIncome: string; totalExpenses: string; netCashflow: string }
+
+/**
+ * Individual item in a cashflow category
+ */
+export type CashflowReportItem = { originalComponents: CashflowOriginalComponent[]; convertedComponentCount: number; fxQuality: FxQuality; category: string; itemType: string; sourceId: string | null; replacementSourceId: string | null; id: string; name: string; amount: string; originalAmount: string; originalCurrency: string; originalFrequency: string; isUserDefined: boolean }
+
+/**
+ * A cashflow section (Personal or Investments)
+ */
+export type CashflowSection = { income: CashflowCategory[]; expenses: CashflowCategory[]; totalIncome: string; totalExpenses: string; netCashflow: string }
 
 /**
  * The automation rate (TS `CategorizationOverview`).
  */
 export type CategorizationOverview = { total: number; categorized: number; bySource: SourceCount[] }
+
+/**
+ * Category spending summary for a period
+ */
+export type CategorySpendingSummary = { budgetCurrency: string | null; budgetSpent: string | null; budgetLimitNative: string | null; budgetLimitFxQuality: FxQuality | null; budgetLimit: string | null; categoryId: string; categoryName: string; categoryIcon: string | null; categoryColor: string | null; totalAmount: string; transactionCount: number; budgetGoal: BudgetGoal | null; budgetPercentage: number | null }
 
 /**
  * How many rows reference a category — what a delete would have to move.
@@ -185,6 +206,8 @@ line: number; categoryId: string }
  */
 export type CsvDateRange = { from: number; to: number }
 
+export type CsvImportBatch = { id: string; bankAccountId: string; fileName: string; importedCount: number; linkedCount: number; duplicateCount: number; errorCount: number; promotedCount: number; importedAt: number; dateRange: CsvDateRange | null }
+
 /**
  * Configuration of one CSV import or preview (TS `CsvImportConfigInput`).
  * 
@@ -204,7 +227,7 @@ skipRows?: number;
 /**
  * 0-based line of the header row; `None` = auto-detect.
  */
-headerRow?: number | null; dateColumn: string; 
+headerRow?: number | null; dateColumn: string; valueDateColumn?: string | null; statusColumn?: string | null; pendingDateColumn?: string | null; 
 /**
  * chrono format (`%d.%m.%Y`). Parsed strictly: a row that does not match
  * is an error, never re-read as another order. Empty or `auto` detects the
@@ -221,25 +244,25 @@ amountColumn?: string | null;
  */
 debitColumn?: string | null; creditColumn?: string | null; 
 /**
- * Running balance after each row; only feeds `lastBalance`.
+ * Running balance after each row; stored as provenance and statement anchor.
  */
 balanceColumn?: string | null; 
 /**
  * Bank-side transaction id; feeds the id rule of the duplicate check.
  */
-transactionIdColumn?: string | null; descriptionColumns?: string[] | null; counterpartyColumn?: string | null; counterpartyIbanColumn?: string | null; currencyColumn?: string | null; 
+transactionIdColumn?: string | null; descriptionColumns?: string[] | null; counterpartyColumn?: string | null; counterpartyIbanColumn?: string | null; counterpartyCountryColumn?: string | null; counterpartyBankCodeColumn?: string | null; currencyColumn?: string | null; 
 /**
  * `","` or `"."`; `None`, empty or `auto` detects it from the amount
  * column(s).
  */
 decimalSeparator?: string | null; rowFilter?: CsvRowFilter | null; 
 /**
- * Skip rows that the duplicate check matches (default). `false` imports
- * them and reports them in `duplicates`.
+ * Skip possible composite duplicates (default). `false` imports them and
+ * reports them in `duplicates`; certain bank IDs are always skipped.
  */
 skipDuplicates?: boolean; 
 /**
- * File lines of duplicate rows to import anyway.
+ * File lines of possible composite duplicates to import anyway.
  */
 importAnywayLines?: number[]; 
 /**
@@ -251,14 +274,14 @@ encoding?: string | null;
  * uncategorized (or wanted differently), by file line. Applied on import
  * before the rules run, so they win; a missing category is ignored.
  */
-categoryOverrides?: CsvCategoryOverride[] }
+categoryOverrides?: CsvCategoryOverride[]; previewOffset?: number; previewLimit?: number }
 
 /**
  * Dry run of an import (TS `CsvImportPreview`).
  */
 export type CsvImportPreview = { 
 /**
- * The first 200 rows in file order.
+ * Requested bounded page in file order; counts cover the full file.
  */
 rows: CsvPreviewRow[]; totalRows: number; okCount: number; errorCount: number; duplicateCount: number; 
 /**
@@ -272,20 +295,20 @@ dateRange: CsvDateRange | null;
 /**
  * Rows that would be written with a category (rules or overrides).
  */
-categorizedCount: number }
+categorizedCount: number; forcedDuplicateCount: number; promotedCount: number; offset: number; limit: number }
 
 /**
  * Result of an import (TS `CsvImportResult`).
  * 
  * Every row of the file ends up in exactly one bucket:
- * `importedCount + skippedDuplicates.len() + errorCount + skippedZero +
+ * `importedCount + promotedCount + skippedDuplicates.len() + errorCount + skippedZero +
  * skippedFiltered` = data rows (blank lines are not rows).
  */
 export type CsvImportResult = { 
 /**
  * Rows written (includes duplicates that were imported anyway).
  */
-importedCount: number; 
+importedCount: number; promotedCount: number; statementBalance: StatementBalance | null; 
 /**
  * Duplicate hits that were imported anyway — `duplicates.len()`.
  */
@@ -300,11 +323,11 @@ duplicates: CsvRowMessage[];
  */
 skippedDuplicates: CsvRowMessage[]; skippedZero: number; 
 /**
- * Rows dropped by the row filter (Revolut pending rows).
+ * Rows dropped by the row filter or rejected transaction status.
  */
 skippedFiltered: number; 
 /**
- * Booking dates of the imported rows; `None` when nothing was imported.
+ * Booking dates of inserted or promoted rows; `None` without a write.
  */
 dateRange: CsvDateRange | null; 
 /**
@@ -354,7 +377,7 @@ delimiter: string;
  * Encoding label (`UTF-8`, `Windows-1250`, …). Only consulted when the
  * file is not valid UTF-8 — see `decode_csv_content`.
  */
-encoding: string; dateColumn: string; 
+encoding: string; dateColumn: string; valueDateColumn?: string | null; statusColumn?: string | null; pendingDateColumn?: string | null; 
 /**
  * chrono format of the date column (`%d.%m.%Y`, `%Y-%m-%d %H:%M:%S`).
  */
@@ -362,7 +385,7 @@ dateFormat: string; amountColumn?: string | null; debitColumn?: string | null; c
 /**
  * Joined with " | " in this order into the transaction description.
  */
-descriptionColumns: string[]; counterpartyColumn?: string | null; counterpartyIbanColumn?: string | null; currencyColumn?: string | null; balanceColumn?: string | null; 
+descriptionColumns: string[]; counterpartyColumn?: string | null; counterpartyIbanColumn?: string | null; counterpartyCountryColumn?: string | null; counterpartyBankCodeColumn?: string | null; currencyColumn?: string | null; balanceColumn?: string | null; 
 /**
  * A column that is unique per transaction at the bank (Fio "ID operace");
  * feeds the bank-side-id duplicate rule.
@@ -424,7 +447,7 @@ suggestedRowFilter: CsvRowFilter | null }
 /**
  * One row of the preview table.
  */
-export type CsvPreviewRow = { line: number; bookingDate: number | null; 
+export type CsvPreviewRow = { valueDate: number | null; counterpartyIban: string | null; counterpartyBankCode: string | null; counterpartyCountry: string | null; transactionId: string | null; transactionStatus: string | null; rowBalance: string | null; canImportAnyway: boolean; line: number; bookingDate: number | null; 
 /**
  * Signed decimal string (`-250.5`), `None` when the amount is unreadable.
  */
@@ -467,7 +490,7 @@ export type CsvRowMessage = {
  */
 line: number; key: string; detail: string | null }
 
-export type CsvRowStatus = 
+export type CsvRowStatus = "promoted" | 
 /**
  * Will be imported.
  */
@@ -477,7 +500,7 @@ export type CsvRowStatus =
  */
 "error" | 
 /**
- * Matches an existing or earlier transaction; skipped unless imported anyway.
+ * Stored occurrence or certain bank ID; only possible composites allow overrides.
  */
 "duplicate" | 
 /**
@@ -530,6 +553,8 @@ export type DirectionMode =
  */
 export type DividendOverride = { id: string; ticker: string; yearlyDividendSum: string; currency: string; updatedAt: number }
 
+export type EffectiveTransactionFlow = { id: string; effectiveFlowKind: FlowKind; flowSource: FlowSource }
+
 /**
  * Enriched crypto with current price
  */
@@ -578,6 +603,15 @@ originalDividendYield: number; dividendCurrency: string; isManualDividend: boole
 export type ExportSummary = { path: string; tableCount: number; rowCount: number }
 
 /**
+ * Financial meaning, separate from native credit/debit direction.
+ */
+export type FlowKind = "income" | "expense" | "transfer" | "investment" | "financing" | "adjustment"
+
+export type FlowSource = "explicit" | "ownAccount" | "category" | "direction"
+
+export type FxQuality = "estimated" | "historical" | "missing"
+
+/**
  * Payload of the `history-recalculation` event.
  */
 export type HistoryRecalcEvent = { ticker: string; status: RecalcStatus }
@@ -588,9 +622,18 @@ export type HistoryRecalcEvent = { ticker: string; status: RecalcStatus }
 export type InsertAssetValuation = { assetId: string; value: string; currency: string | null; valuedAt: number; note: string | null }
 
 /**
+ * Confirmed balance anchor, in the account currency and at a UTC booking day.
+ */
+export type InsertBalanceAnchor = { amount: string; currency: string; asOf: number; confirmUnknownAsOf?: boolean; sourceBatchId?: string | null }
+
+/**
  * Data for creating/updating a bank account
  */
-export type InsertBankAccount = { name: string; accountType: string | null; iban: string | null; bban: string | null; currency: string | null; balance: string | null; institutionId: string | null; interestRate: string | null; hasZoneDesignation: boolean | null; terminationDate: number | null; 
+export type InsertBankAccount = { name: string; accountType: string | null; iban: string | null; bban: string | null; currency: string | null; balance: string | null; 
+/**
+ * Omitted preserves an unchanged anchor; null explicitly makes it unknown.
+ */
+balanceAsOf?: number | null; institutionId: string | null; interestRate: string | null; hasZoneDesignation: boolean | null; terminationDate: number | null; 
 /**
  * Overwritten on update like `terminationDate`: the form always sends the stored value.
  */
@@ -603,7 +646,7 @@ excludeFromBalance?: boolean | null }
 /**
  * Data for creating/updating a transaction
  */
-export type InsertBankTransaction = { bankAccountId: string; transactionId: string | null; type: string; amount: string; currency: string | null; description: string | null; counterpartyName: string | null; counterpartyIban: string | null; bookingDate: number; valueDate: number | null; categoryId: string | null; status: string | null }
+export type InsertBankTransaction = { bankAccountId: string; transactionId: string | null; type: string; flowKind?: FlowKind | null; amount: string; currency: string | null; description: string | null; counterpartyName: string | null; counterpartyIban: string | null; counterpartyBankCode?: string | null; counterpartyCountry?: string | null; bookingDate: number; valueDate: number | null; categoryId: string | null; status: string | null }
 
 /**
  * Data for creating/updating bond
@@ -611,9 +654,14 @@ export type InsertBankTransaction = { bankAccountId: string; transactionId: stri
 export type InsertBond = { name: string; isin: string | null; couponValue: string; quantity: string | null; currency: string | null; interestRate: string | null; maturityDate: number | null }
 
 /**
+ * Data for creating/updating a budget goal
+ */
+export type InsertBudgetGoal = { categoryId: string; timeframe: string; amount: string; currency: string | null; effectiveMonth: number | null }
+
+/**
  * Data for creating/updating cashflow item
  */
-export type InsertCashflowItem = { name: string; amount: string; currency: string | null; frequency: string; itemType: string; category: string }
+export type InsertCashflowItem = { name: string; amount: string; currency: string | null; frequency: string; itemType: string; replacementSourceId: string | null; category: string }
 
 /**
  * Data for creating crypto investment. Quantity and average price are not
@@ -674,6 +722,11 @@ export type InsertRealEstate = { name: string; address: string; type: string; pu
 purchaseDate: number | null; marketPrice: string | null; marketPriceCurrency: string | null; monthlyRent: string | null; monthlyRentCurrency: string | null; recurringCosts: RecurringCost[] | null; photos: string[] | null; notes: string | null }
 
 /**
+ * Explicit opt-in: one own account, movement direction and reliable account/payee identity.
+ */
+export type InsertScopedLearning = { bankAccountId: string; isCredit: boolean; payee: string | null; counterpartyIban: string | null; counterpartyBankCode: string | null; counterpartyCountry: string | null; categoryId: string }
+
+/**
  * Data for creating stock investment. Quantity and average price are not
  * accepted: they derive from the transaction record (pass an initial
  * transaction on create).
@@ -693,7 +746,7 @@ export type InsertStockTagGroup = { name: string; description: string | null }
 /**
  * Data for creating a category
  */
-export type InsertTransactionCategory = { name: string; icon: string | null; color: string | null; parentId: string | null; sortOrder: number | null }
+export type InsertTransactionCategory = { kind?: FlowKind | null; name: string; icon: string | null; color: string | null; parentId: string | null; sortOrder: number | null }
 
 /**
  * Data for creating/updating user profile
@@ -734,6 +787,8 @@ export type IntegrityReport = { ok: boolean; messages: string[] }
  * Investment transaction (buy/sell)
  */
 export type InvestmentTransaction = { id: string; investmentId: string; type: string; ticker: string; companyName: string; quantity: string; pricePerUnit: string; currency: string; transactionDate: number; createdAt: number }
+
+export type LearnedPayeeEntry = { id: string; ruleType: string; normalizedPayee: string | null; originalPayee: string | null; counterpartyIban: string | null; categoryId: string; bankAccountId: string | null; isCredit: boolean | null; createdAt: number; updatedAt: number }
 
 /**
  * Loan
@@ -1028,6 +1083,15 @@ export type RecalcStatus = "running" | "done" | "failed"
  */
 export type RecurringCost = { name: string; amount: number; frequency: string; currency: string | null }
 
+export type ReportQuality = { missingFxCount: number; missingFxCurrencies: string[]; estimatedFxCount: number; observedCompletedMonths: number[]; partialMonthCount: number; unobservedMonthCount: number; 
+/**
+ * Stored rows whose amount is not a finite number (legacy data); they
+ * are excluded from the numeric totals.
+ */
+invalidAmountCount: number }
+
+export type ReportTransaction = { reportCurrency: string; id: string; bookingDate: number; amount: string; currency: string; description: string | null; counterpartyName: string | null; counterpartyIban: string | null; categoryId: string | null; bankAccountId: string; bankAccountName: string; txType: string; effectiveFlowKind: FlowKind; flowSource: FlowSource; signedAmount: string | null; fxQuality: FxQuality }
+
 /**
  * How often one rule matched in the period (TS `RuleHitCount`).
  */
@@ -1087,6 +1151,11 @@ export type SourceCount = {
  * `rule`, `exact_match`, `own_account`, `mcp`, `manual` (a category without a recorded source).
  */
 source: string; count: number }
+
+/**
+ * Balance after a particular statement row, in that row's native currency.
+ */
+export type StatementBalance = { amount: string; currency: string; asOf: number; line: number; batchId: string }
 
 /**
  * A column suggested for a role (TS `StockColumnSuggestion`). Roles: `date`,
@@ -1550,12 +1619,12 @@ export type TradeDirection = "buy" | "sell"
 /**
  * Transaction category
  */
-export type TransactionCategory = { id: string; name: string; icon: string | null; color: string | null; parentId: string | null; sortOrder: number; isSystem: boolean; createdAt: number }
+export type TransactionCategory = { kind: FlowKind; id: string; name: string; icon: string | null; color: string | null; parentId: string | null; sortOrder: number; isSystem: boolean; createdAt: number }
 
 /**
  * Filters for querying transactions
  */
-export type TransactionFilters = { dateFrom: number | null; dateTo: number | null; categoryId: string | null; txType: string | null; search: string | null; limit: number | null; offset: number | null }
+export type TransactionFilters = { sortBy: string | null; ascending: boolean | null; dateFrom: number | null; dateTo: number | null; categoryId: string | null; txType: string | null; search: string | null; limit: number | null; offset: number | null }
 
 /**
  * Result of transaction query with pagination
@@ -1611,7 +1680,7 @@ export type TypeValueAction = "buy" | "sell" |
  * Data for editing a category's definition. A field that is absent (`None`)
  * is left unchanged, so an edit dialog can send only what the user touched.
  */
-export type UpdateTransactionCategory = { name: string | null; icon: string | null; color: string | null }
+export type UpdateTransactionCategory = { kind?: FlowKind | null; name: string | null; icon: string | null; color: string | null }
 
 /**
  * Data for updating user profile (partial updates)

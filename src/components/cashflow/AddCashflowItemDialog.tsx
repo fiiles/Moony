@@ -1,3 +1,5 @@
+import { currencyDecimals, type CurrencyCode } from '@shared/currencies';
+import { preserveMoneyText } from '@/utils/money-flows';
 /* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useEffect, useMemo } from 'react';
 import {
@@ -26,14 +28,8 @@ import type { CashflowReportItem, CashflowCategory } from '@shared/schema';
 interface AddCashflowItemDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (data: {
-    name: string;
-    amount: string;
-    currency: string;
-    frequency: 'monthly' | 'yearly';
-    itemType: 'income' | 'expense';
-    category: string;
-  }) => void;
+  onSubmit: (data: import('@shared/schema').InsertCashflowItem) => void;
+  automaticSources?: CashflowReportItem[];
   editItem?: CashflowReportItem | null;
   editCategory?: string;
   itemType: 'income' | 'expense';
@@ -49,12 +45,14 @@ export default function AddCashflowItemDialog({
   editCategory,
   itemType,
   categories,
+  automaticSources = [],
   isLoading,
 }: AddCashflowItemDialogProps) {
   const { t } = useTranslation('reports');
   const { t: tc } = useTranslation('common');
   const { currencyCode: userCurrency } = useCurrency();
 
+  const [replacementSourceId, setReplacementSourceId] = useState<string>('none');
   const [name, setName] = useState('');
   const [amount, setAmount] = useState('');
   const [currency, setCurrency] = useState<string>(userCurrency);
@@ -70,12 +68,14 @@ export default function AddCashflowItemDialog({
   useEffect(() => {
     if (open) {
       if (editItem) {
+        setReplacementSourceId(editItem.replacementSourceId ?? 'none');
         setName(editItem.name);
         setAmount(editItem.originalAmount.toString());
         setCurrency(editItem.originalCurrency);
         setFrequency(editItem.originalFrequency);
         setSelectedCategory(editCategory || '');
       } else {
+        setReplacementSourceId('none');
         setName('');
         setAmount('');
         setCurrency(userCurrency);
@@ -97,11 +97,24 @@ export default function AddCashflowItemDialog({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !amount.trim() || !selectedCategory) return;
+    if (
+      !name.trim() ||
+      !amount.trim() ||
+      !Number.isFinite(Number(amount)) ||
+      Number(amount) <= 0 ||
+      !selectedCategory
+    )
+      return;
 
     onSubmit({
       name: name.trim(),
-      amount: amount.trim(),
+      amount: preserveMoneyText(
+        editItem?.originalAmount ?? null,
+        editItem?.originalCurrency ?? null,
+        Number(amount),
+        currency
+      ),
+      replacementSourceId: replacementSourceId === 'none' ? null : replacementSourceId,
       currency,
       frequency,
       itemType,
@@ -128,7 +141,10 @@ export default function AddCashflowItemDialog({
                 <Label htmlFor="category">{t('addItem.category')}</Label>
                 <Select
                   value={selectedCategory}
-                  onValueChange={setSelectedCategory}
+                  onValueChange={(value) => {
+                    setSelectedCategory(value);
+                    setReplacementSourceId('none');
+                  }}
                   disabled={isEditing}
                 >
                   <SelectTrigger id="category">
@@ -162,7 +178,13 @@ export default function AddCashflowItemDialog({
                 <Input
                   id="amount"
                   type="number"
-                  step="0.01"
+                  step={
+                    editItem &&
+                    editItem.originalCurrency === currency &&
+                    Number(editItem.originalAmount) === Number(amount)
+                      ? 'any'
+                      : 10 ** -currencyDecimals(currency as CurrencyCode)
+                  }
                   min="0"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
@@ -177,6 +199,41 @@ export default function AddCashflowItemDialog({
               </div>
             </div>
 
+            <div className="grid gap-2">
+              <Label>{t('readiness.replacesSource')}</Label>
+              <Select value={replacementSourceId} onValueChange={setReplacementSourceId}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">{t('readiness.additionalItem')}</SelectItem>
+                  {automaticSources
+                    .filter(
+                      (source) =>
+                        source.category === selectedCategory &&
+                        source.itemType === itemType &&
+                        source.sourceId
+                    )
+                    .map((source) => (
+                      <SelectItem key={source.sourceId!} value={source.sourceId!}>
+                        {source.name} ·{' '}
+                        {source.originalCurrency === 'MULTI'
+                          ? source.originalComponents
+                              .map((component) => component.currency)
+                              .join(' + ')
+                          : source.originalCurrency}
+                      </SelectItem>
+                    ))}
+                  {replacementSourceId !== 'none' &&
+                    !automaticSources.some((source) => source.sourceId === replacementSourceId) && (
+                      <SelectItem value={replacementSourceId}>
+                        {t('readiness.retainedSource')}
+                      </SelectItem>
+                    )}
+                </SelectContent>
+              </Select>
+              <p className="text-micro text-ink-4">{t('readiness.replacementHelp')}</p>
+            </div>
             <div className="grid gap-2">
               <Label htmlFor="frequency">{t('addItem.frequency')}</Label>
               <Select
@@ -200,7 +257,14 @@ export default function AddCashflowItemDialog({
             </Button>
             <Button
               type="submit"
-              disabled={isLoading || !name.trim() || !amount.trim() || !selectedCategory}
+              disabled={
+                isLoading ||
+                !name.trim() ||
+                !amount.trim() ||
+                !Number.isFinite(Number(amount)) ||
+                Number(amount) <= 0 ||
+                !selectedCategory
+              }
             >
               {isLoading
                 ? tc('status.saving')

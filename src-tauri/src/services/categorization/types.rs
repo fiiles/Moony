@@ -52,6 +52,10 @@ pub struct TransactionInput {
     pub counterparty: Option<String>,
     #[serde(rename = "counterpartyIban")]
     pub counterparty_iban: Option<String>,
+    #[serde(rename = "counterpartyBankCode", default)]
+    pub counterparty_bank_code: Option<String>,
+    #[serde(rename = "counterpartyCountry", default)]
+    pub counterparty_country: Option<String>,
     pub amount: f64,
     #[serde(rename = "isCredit")]
     pub is_credit: bool,
@@ -73,6 +77,8 @@ impl TransactionInput {
             description,
             counterparty,
             counterparty_iban: None,
+            counterparty_bank_code: None,
+            counterparty_country: None,
             is_credit: amount >= 0.0,
             amount,
             bank_account_id: None,
@@ -213,6 +219,8 @@ mod tests {
             description: Some("Payment for goods".into()),
             counterparty: Some("Albert CZ".into()),
             counterparty_iban: None,
+            counterparty_bank_code: None,
+            counterparty_country: None,
             amount: -500.0,
             is_credit: false,
             bank_account_id: None,

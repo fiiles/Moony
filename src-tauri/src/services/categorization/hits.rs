@@ -100,7 +100,7 @@ fn since_day(now: i64, days: i64) -> i64 {
 fn load_rows(conn: &Connection, since: i64) -> Result<Vec<TxRow>> {
     let mut stmt = conn.prepare(
         "SELECT id, description, counterparty_name, counterparty_iban, amount, tx_type, booking_date,
-                category_id, categorization_source, bank_account_id, currency
+                category_id, categorization_source, bank_account_id, currency, counterparty_bank_code, counterparty_country
          FROM bank_transactions WHERE booking_date >= ?1
          ORDER BY booking_date DESC, created_at DESC",
     )?;
@@ -115,6 +115,8 @@ fn load_rows(conn: &Connection, since: i64) -> Result<Vec<TxRow>> {
                 description: row.get(1)?,
                 counterparty: row.get(2)?,
                 counterparty_iban: row.get(3)?,
+                counterparty_bank_code: row.get(11)?,
+                counterparty_country: row.get(12)?,
                 amount: if is_credit { value.abs() } else { -value.abs() },
                 is_credit,
                 bank_account_id: row.get(9)?,
@@ -205,6 +207,24 @@ fn count_rule(rule: &CategorizationRule, rows: &[TxRow]) -> RuleHitCount {
 /// matches on the IBAN alone, a payee rule on the payee key (or its legacy
 /// punctuation-stripped form).
 fn learned_matches(row: &learn::LearnedPayeeRow, tx: &TransactionInput) -> bool {
+    if let (Some(account), Some(credit)) = (row.bank_account_id.as_deref(), row.is_credit) {
+        if tx.bank_account_id.as_deref() != Some(account) || tx.is_credit != credit {
+            return false;
+        }
+        if let Some(identity) = row.counterparty_iban.as_deref() {
+            return tx
+                .counterparty_iban
+                .as_deref()
+                .map(|id| {
+                    crate::services::financial_semantics::canonical_structured_identifier(
+                        id,
+                        tx.counterparty_bank_code.as_deref(),
+                        tx.counterparty_country.as_deref(),
+                    ) == identity
+                })
+                .unwrap_or(false);
+        }
+    }
     if let Some(ref iban) = row.counterparty_iban {
         return tx
             .counterparty_iban
@@ -388,13 +408,14 @@ mod tests {
                 is_system INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL DEFAULT 0, iban_pattern TEXT
             );
             CREATE TABLE learned_payees (
+                bank_account_id TEXT, is_credit INTEGER,
                 id TEXT PRIMARY KEY, normalized_payee TEXT, original_payee TEXT, counterparty_iban TEXT,
                 category_id TEXT NOT NULL, created_at INTEGER NOT NULL DEFAULT 0, updated_at INTEGER NOT NULL DEFAULT 0
             );
             CREATE TABLE bank_transactions (
                 id TEXT PRIMARY KEY, bank_account_id TEXT NOT NULL, transaction_id TEXT, tx_type TEXT NOT NULL,
                 amount TEXT NOT NULL, currency TEXT NOT NULL, description TEXT, counterparty_name TEXT,
-                counterparty_iban TEXT, booking_date INTEGER NOT NULL, value_date INTEGER, category_id TEXT,
+                counterparty_iban TEXT, counterparty_bank_code TEXT, counterparty_country TEXT, import_line INTEGER, row_balance TEXT, booking_date INTEGER NOT NULL, value_date INTEGER, category_id TEXT,
                 merchant_category_code TEXT, remittance_info TEXT, status TEXT NOT NULL DEFAULT 'booked',
                 data_source TEXT NOT NULL DEFAULT 'manual', created_at INTEGER NOT NULL DEFAULT 0,
                 import_batch_id TEXT, categorization_source TEXT, suggested_category_id TEXT

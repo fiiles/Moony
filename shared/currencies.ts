@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import isoMinorUnitTable from './iso4217-minor-units.json';
 
 /**
  * Every currency the app supports — each is both a position currency and a
@@ -236,6 +237,17 @@ export function currencyDecimals(code: string | null | undefined): number {
   } catch {
     return 2;
   }
+}
+
+/**
+ * ISO 4217 minor units of the money contract (backend `reporting::minor_units`
+ * reads the same table). Reports show this precision so rows, totals and CSV
+ * reconcile; `currencyDecimals` stays the everyday cash style (CZK 0).
+ */
+export function isoMinorUnits(code: string | null | undefined): number {
+  const table: Record<string, number | undefined> = isoMinorUnitTable.exceptions;
+  const units = code ? table[code.trim().toUpperCase()] : undefined;
+  return units ?? isoMinorUnitTable.defaultMinorUnits;
 }
 
 /**

@@ -7,6 +7,7 @@ import {
   convertFromCzK,
   updateExchangeRates,
   currencyDecimals,
+  isoMinorUnits,
   priceDecimals,
   currencyName,
   currencyCodeSchema,
@@ -467,5 +468,16 @@ describe('hasKnownRate', () => {
     expect(hasKnownRate('XYZ')).toBe(false);
     expect(hasKnownRate(null)).toBe(false);
     expect(hasKnownRate(undefined)).toBe(false);
+  });
+});
+
+describe('isoMinorUnits', () => {
+  it('follows the shared ISO table, not the UI cash style', () => {
+    expect(isoMinorUnits('CZK')).toBe(2);
+    expect(isoMinorUnits(' jod ')).toBe(3);
+    expect(isoMinorUnits('UGX')).toBe(0);
+    expect(isoMinorUnits('CLF')).toBe(4);
+    expect(isoMinorUnits('XAU')).toBe(2);
+    expect(isoMinorUnits(null)).toBe(2);
   });
 });

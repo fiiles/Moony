@@ -45,7 +45,7 @@ pub async fn get_all_bank_accounts(
                 ba.interest_rate, ba.has_zone_designation, ba.termination_date,
                 ba.created_at, ba.updated_at,
                 i.id, i.name, i.bic, i.country, i.logo_url, i.created_at,
-                ba.exclude_from_balance, ba.interest_rate_valid_until
+                ba.exclude_from_balance, ba.interest_rate_valid_until, ba.balance_as_of
             FROM bank_accounts ba
             LEFT JOIN institutions i ON ba.institution_id = i.id
             ORDER BY ba.name ASC",
@@ -61,6 +61,7 @@ pub async fn get_all_bank_accounts(
                     bban: row.get(4)?,
                     currency: row.get(5)?,
                     balance: row.get(6)?,
+                    balance_as_of: row.get(24)?,
                     institution_id: row.get(7)?,
                     external_account_id: row.get(8)?,
                     data_source: row.get(9)?,
@@ -116,7 +117,7 @@ pub async fn get_bank_account(
                 ba.interest_rate, ba.has_zone_designation, ba.termination_date,
                 ba.created_at, ba.updated_at,
                 i.id, i.name, i.bic, i.country, i.logo_url, i.created_at,
-                ba.exclude_from_balance, ba.interest_rate_valid_until
+                ba.exclude_from_balance, ba.interest_rate_valid_until, ba.balance_as_of
             FROM bank_accounts ba
             LEFT JOIN institutions i ON ba.institution_id = i.id
             WHERE ba.id = ?1",
@@ -131,6 +132,7 @@ pub async fn get_bank_account(
                 bban: row.get(4)?,
                 currency: row.get(5)?,
                 balance: row.get(6)?,
+                balance_as_of: row.get(24)?,
                 institution_id: row.get(7)?,
                 external_account_id: row.get(8)?,
                 data_source: row.get(9)?,
@@ -180,6 +182,7 @@ pub async fn create_bank_account(
     engine: State<'_, CategorizationState>,
     data: InsertBankAccount,
 ) -> Result<BankAccount> {
+    data.validate()?;
     // 1. Delegate to service layer (validates at the trust boundary itself,
     //    since the MCP write tool calls it directly too)
     let result = db.with_conn(|conn| bank_service::create_account(conn, &data))?;
@@ -295,107 +298,39 @@ pub async fn get_bank_transactions(
     account_id: String,
     filters: Option<TransactionFilters>,
 ) -> Result<TransactionQueryResult> {
-    let filters = filters.unwrap_or_default();
-    let limit = filters.limit.unwrap_or(50);
-    let offset = filters.offset.unwrap_or(0);
-
     db.with_conn(|conn| {
-        // Build base query
-        let mut sql = String::from(
-            "SELECT id, bank_account_id, transaction_id, tx_type, amount, currency,
-             description, counterparty_name, counterparty_iban, booking_date, value_date,
-             category_id, merchant_category_code, remittance_info, suggested_category_id,
-             status, data_source, created_at
-             FROM bank_transactions WHERE bank_account_id = ?",
-        );
-
-        let mut count_sql =
-            String::from("SELECT COUNT(*) FROM bank_transactions WHERE bank_account_id = ?");
-
-        // Build dynamic filters
-        let mut params_vec: Vec<Box<dyn rusqlite::ToSql>> = vec![Box::new(account_id.clone())];
-
-        if let Some(date_from) = filters.date_from {
-            sql.push_str(" AND booking_date >= ?");
-            count_sql.push_str(" AND booking_date >= ?");
-            params_vec.push(Box::new(date_from));
-        }
-        if let Some(date_to) = filters.date_to {
-            sql.push_str(" AND booking_date <= ?");
-            count_sql.push_str(" AND booking_date <= ?");
-            params_vec.push(Box::new(date_to));
-        }
-        if let Some(ref category_id) = filters.category_id {
-            sql.push_str(" AND category_id = ?");
-            count_sql.push_str(" AND category_id = ?");
-            params_vec.push(Box::new(category_id.clone()));
-        }
-        if let Some(ref tx_type) = filters.tx_type {
-            sql.push_str(" AND tx_type = ?");
-            count_sql.push_str(" AND tx_type = ?");
-            params_vec.push(Box::new(tx_type.clone()));
-        }
-        if let Some(ref search) = filters.search {
-            sql.push_str(" AND (description LIKE ? OR counterparty_name LIKE ?)");
-            count_sql.push_str(" AND (description LIKE ? OR counterparty_name LIKE ?)");
-            let pattern = format!("%{}%", search);
-            params_vec.push(Box::new(pattern.clone()));
-            params_vec.push(Box::new(pattern));
-        }
-
-        sql.push_str(" ORDER BY booking_date DESC");
-        sql.push_str(&format!(" LIMIT {} OFFSET {}", limit, offset));
-
-        // Execute query
-        let params_refs: Vec<&dyn rusqlite::ToSql> =
-            params_vec.iter().map(|p| p.as_ref()).collect();
-
-        let mut stmt = conn.prepare(&sql)?;
-        let transactions: Vec<BankTransaction> = stmt
-            .query_map(params_refs.as_slice(), |row| {
-                Ok(BankTransaction {
-                    id: row.get(0)?,
-                    bank_account_id: row.get(1)?,
-                    transaction_id: row.get(2)?,
-                    tx_type: row.get(3)?,
-                    amount: row.get(4)?,
-                    currency: row.get(5)?,
-                    description: row.get(6)?,
-                    counterparty_name: row.get(7)?,
-                    counterparty_iban: row.get(8)?,
-                    booking_date: row.get(9)?,
-                    value_date: row.get(10)?,
-                    category_id: row.get(11)?,
-                    merchant_category_code: row.get(12)?,
-                    remittance_info: row.get(13)?,
-                    suggested_category_id: row.get(14)?,
-                    status: row.get(15)?,
-                    data_source: row.get(16)?,
-                    created_at: row.get(17)?,
-                })
-            })?
-            .filter_map(|r| r.ok())
-            .collect();
-
-        // Get total count (reuse params without search duplicates)
-        let count_params: Vec<&dyn rusqlite::ToSql> =
-            params_vec.iter().map(|p| p.as_ref()).collect();
-        let total: i64 = conn.query_row(&count_sql, count_params.as_slice(), |row| row.get(0))?;
-
-        Ok(TransactionQueryResult {
-            transactions,
-            total,
-        })
+        crate::services::bank_history::get_transactions(
+            conn,
+            &account_id,
+            &filters.unwrap_or_default(),
+        )
     })
 }
 
 /// Create a new transaction
 #[tauri::command]
 pub async fn create_bank_transaction(
+    app: tauri::AppHandle,
     db: State<'_, Database>,
     data: InsertBankTransaction,
 ) -> Result<BankTransaction> {
-    db.with_conn(|conn| bank_service::create_transaction(conn, &data))
+    data.validate()?;
+    let created = db.with_conn(|conn| bank_service::create_transaction(conn, &data))?;
+    // A back-dated foreign-currency entry may predate the FX timeseries.
+    if !created.currency.eq_ignore_ascii_case("CZK") {
+        portfolio::spawn_fx_backfill(app, db.inner().clone());
+    }
+    Ok(created)
+}
+
+/// Set explicit financial meaning; null returns to automatic derivation.
+#[tauri::command]
+pub async fn update_transaction_flow(
+    db: State<'_, Database>,
+    transaction_id: String,
+    flow_kind: Option<crate::models::FlowKind>,
+) -> Result<()> {
+    db.with_conn(|conn| bank_service::set_transaction_flow(conn, &transaction_id, flow_kind))
 }
 
 /// Delete a transaction
@@ -572,6 +507,7 @@ pub async fn preview_csv_import(
 
 #[tauri::command]
 pub async fn import_csv_transactions(
+    app: tauri::AppHandle,
     db: State<'_, Database>,
     categorization: State<'_, crate::commands::categorization::CategorizationState>,
     account_id: String,
@@ -590,7 +526,7 @@ pub async fn import_csv_transactions(
     // Rules-first import (spec D2): the CSV path shares the write path with
     // the MCP bulk tool, so it gets the same deterministic categorization.
     let engine = categorization.0.clone();
-    db.with_conn_mut(|conn| {
+    let result = db.with_conn_mut(|conn| {
         csv_import::import_transactions(
             conn,
             &account_id,
@@ -599,70 +535,33 @@ pub async fn import_csv_transactions(
             &config,
             Some(&engine),
         )
-    })
+    })?;
+    // Imported statements may predate the FX timeseries (foreign-currency
+    // accounts): extend it so reports convert those rows at historical rates.
+    if result.imported_count > 0 {
+        portfolio::spawn_fx_backfill(app, db.inner().clone());
+    }
+    Ok(result)
 }
 
 /// Represents a CSV import batch for the frontend
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct CsvImportBatch {
-    pub id: String,
-    pub bank_account_id: String,
-    pub file_name: String,
-    pub imported_count: i64,
-    pub duplicate_count: i64,
-    pub error_count: i64,
-    pub imported_at: i64,
-}
-
-/// Get all import batches for a bank account
 #[tauri::command]
 pub async fn get_import_batches(
     db: State<'_, Database>,
     account_id: String,
-) -> Result<Vec<CsvImportBatch>> {
-    let batches = db.with_conn(|conn| {
-        let mut stmt = conn.prepare(
-            "SELECT id, bank_account_id, file_name, imported_count, duplicate_count, error_count, imported_at 
-             FROM csv_import_batches 
-             WHERE bank_account_id = ?1 
-             ORDER BY imported_at DESC"
-        )?;
-        let batch_iter = stmt.query_map([&account_id], |row| {
-            Ok(CsvImportBatch {
-                id: row.get(0)?,
-                bank_account_id: row.get(1)?,
-                file_name: row.get(2)?,
-                imported_count: row.get(3)?,
-                duplicate_count: row.get(4)?,
-                error_count: row.get(5)?,
-                imported_at: row.get(6)?,
-            })
-        })?;
-        let batches: Vec<CsvImportBatch> = batch_iter.filter_map(|r| r.ok()).collect();
-        Ok(batches)
-    })?;
-
-    Ok(batches)
+) -> Result<Vec<csv_import::types::CsvImportBatch>> {
+    db.with_conn(|conn| csv_import::import_batches(conn, &account_id))
 }
-
-/// Delete an import batch and all its transactions
 #[tauri::command]
-pub async fn delete_import_batch(db: State<'_, Database>, batch_id: String) -> Result<()> {
-    // Transactions are deleted via CASCADE, but let's be explicit
-    db.with_conn(|conn| {
-        // Delete transactions first
-        conn.execute(
-            "DELETE FROM bank_transactions WHERE import_batch_id = ?1",
-            params![batch_id],
-        )?;
-        // Delete the batch record
-        conn.execute(
-            "DELETE FROM csv_import_batches WHERE id = ?1",
-            params![batch_id],
-        )?;
-        Ok(())
-    })?;
-
-    Ok(())
+pub async fn delete_import_batch(db: State<'_, Database>, batch_id: String) -> Result<usize> {
+    db.with_conn(|conn| csv_import::delete_import_batch(conn, &batch_id))
+}
+#[tauri::command]
+pub async fn set_bank_account_balance_anchor(
+    db: State<'_, Database>,
+    account_id: String,
+    data: crate::models::bank_accounts::InsertBalanceAnchor,
+) -> Result<BankAccount> {
+    data.validate()?;
+    db.with_conn(|conn| bank_service::set_balance_anchor(conn, &account_id, &data))
 }

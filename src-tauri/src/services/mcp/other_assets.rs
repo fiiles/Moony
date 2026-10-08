@@ -179,6 +179,7 @@ pub fn other_asset_transactions_create(
     }
     if !errors.is_empty() {
         return Ok(BulkWriteReport {
+            promoted: 0,
             created: 0,
             skipped_duplicates: vec![],
             errors,
@@ -208,6 +209,7 @@ pub fn other_asset_transactions_create(
     tx.commit()?;
 
     Ok(BulkWriteReport {
+        promoted: 0,
         created,
         skipped_duplicates: skipped,
         errors: vec![],

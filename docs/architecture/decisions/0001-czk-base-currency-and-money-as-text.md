@@ -4,7 +4,7 @@ Date: 2026-07-07
 
 ## Status
 
-Accepted
+Reporting currency requirement partially superseded by [0011](0011-native-money-and-report-currencies.md). Decimal TEXT storage remains accepted.
 
 ## Context
 

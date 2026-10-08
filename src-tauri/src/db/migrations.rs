@@ -67,6 +67,10 @@ fn all_migrations() -> Vec<(&'static str, &'static str)> {
         ("003_stock_import_batches", MIGRATION_003),
         ("004_stock_quote_currency", MIGRATION_004),
         ("005_milestones", MIGRATION_005),
+        ("006_financial_semantics", MIGRATION_006),
+        ("007_report_history", MIGRATION_007),
+        ("008_import_integrity", MIGRATION_008),
+        ("009_scoped_learning", MIGRATION_009),
     ]
 }
 
@@ -989,9 +993,77 @@ CREATE TABLE IF NOT EXISTS milestone_states (
 );
 "#;
 
+/// Persist meaning independently of native transaction direction.
+const MIGRATION_006: &str = r#"
+ALTER TABLE transaction_categories ADD COLUMN kind TEXT NOT NULL DEFAULT 'expense'
+    CHECK (kind IN ('income', 'expense', 'transfer', 'investment', 'financing', 'adjustment'));
+UPDATE transaction_categories SET kind = 'income' WHERE id = 'cat_income';
+UPDATE transaction_categories SET kind = 'transfer' WHERE id = 'cat_internal_transfers';
+UPDATE transaction_categories SET kind = 'investment' WHERE id = 'cat_investments';
+ALTER TABLE bank_transactions ADD COLUMN flow_kind TEXT
+    CHECK (flow_kind IS NULL OR flow_kind IN ('income', 'expense', 'transfer', 'investment', 'financing', 'adjustment'));
+"#;
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn report_history_backfills_creation_month_and_is_idempotent() {
+        let conn = Connection::open_in_memory().unwrap();
+        run_chain(&conn, &all_migrations()[..6]).unwrap();
+        conn.execute("INSERT INTO budget_goals(id,category_id,timeframe,amount,currency,created_at) VALUES ('g','cat_groceries','monthly','1000.123','EUR',1705276800)",[]).unwrap();
+        run_migrations(&conn).unwrap();
+        run_migrations(&conn).unwrap();
+        let v: (i64, String, String) = conn
+            .query_row(
+                "SELECT effective_month,amount,currency FROM budget_goal_versions",
+                [],
+                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+            )
+            .unwrap();
+        assert_eq!(v, (1704067200, "1000.123".into(), "EUR".into()));
+        let count: i64 = conn
+            .query_row("SELECT COUNT(*) FROM budget_goal_versions", [], |r| {
+                r.get(0)
+            })
+            .unwrap();
+        assert_eq!(count, 1);
+    }
+
+    #[test]
+    fn financial_semantics_upgrade_preserves_legacy_and_rejects_invalid_roles() {
+        let conn = Connection::open_in_memory().unwrap();
+        run_chain(&conn, &all_migrations()[..5]).unwrap();
+        conn.execute(
+            "INSERT INTO transaction_categories (id,name) VALUES ('custom-income','Custom income')",
+            [],
+        )
+        .unwrap();
+        run_migrations(&conn).unwrap();
+        for (id, expected) in [
+            ("cat_income", "income"),
+            ("cat_internal_transfers", "transfer"),
+            ("cat_investments", "investment"),
+            ("custom-income", "expense"),
+        ] {
+            let role: String = conn
+                .query_row(
+                    "SELECT kind FROM transaction_categories WHERE id=?1",
+                    [id],
+                    |r| r.get(0),
+                )
+                .unwrap();
+            assert_eq!(role, expected);
+        }
+        assert!(conn
+            .execute(
+                "UPDATE transaction_categories SET kind='bogus' WHERE id='cat_income'",
+                []
+            )
+            .is_err());
+        run_migrations(&conn).unwrap();
+    }
 
     /// Path to the schema snapshot, relative to src-tauri/
     const SNAPSHOT_PATH: &str = "src/db/schema.snapshot";
@@ -1026,7 +1098,7 @@ mod tests {
         for (table, cols) in [
             (
                 "transaction_categories",
-                "id, name, icon, color, parent_id, sort_order, is_system",
+                "id, name, icon, color, parent_id, sort_order, is_system, kind",
             ),
             ("institutions", "id, name, bic, country, logo_url"),
         ] {
@@ -1947,3 +2019,44 @@ mod migration_005 {
         );
     }
 }
+
+/// Versioned goals, with deletion tombstones and explicit planning replacement.
+pub(crate) const MIGRATION_007: &str = r#"
+CREATE TABLE budget_goal_versions (
+ id TEXT PRIMARY KEY,
+ category_id TEXT NOT NULL REFERENCES transaction_categories(id),
+ timeframe TEXT NOT NULL CHECK(timeframe IN ('monthly','quarterly','yearly')),
+ effective_month INTEGER NOT NULL,
+ amount TEXT,
+ currency TEXT NOT NULL,
+ created_at INTEGER NOT NULL DEFAULT(unixepoch()),
+ UNIQUE(category_id,timeframe,effective_month)
+);
+INSERT INTO budget_goal_versions(id,category_id,timeframe,effective_month,amount,currency,created_at)
+ SELECT lower(hex(randomblob(4)))||'-'||lower(hex(randomblob(2)))||'-4'||substr(lower(hex(randomblob(2))),2)||'-8'||substr(lower(hex(randomblob(2))),2)||'-'||lower(hex(randomblob(6))),
+ category_id,timeframe,CAST(strftime('%s',created_at,'unixepoch','start of month') AS INTEGER),amount,currency,created_at FROM budget_goals;
+ALTER TABLE cashflow_items ADD COLUMN replacement_source_id TEXT;
+CREATE UNIQUE INDEX cashflow_replacement_source ON cashflow_items(replacement_source_id) WHERE replacement_source_id IS NOT NULL;
+"#;
+
+/// Statement provenance and explicit balance anchors. Legacy dates stay unknown.
+pub(crate) const MIGRATION_008: &str = r#"
+ALTER TABLE bank_accounts ADD COLUMN balance_as_of INTEGER;
+ALTER TABLE bank_transactions ADD COLUMN counterparty_bank_code TEXT;
+ALTER TABLE bank_transactions ADD COLUMN counterparty_country TEXT;
+ALTER TABLE bank_transactions ADD COLUMN import_line INTEGER;
+ALTER TABLE bank_transactions ADD COLUMN row_balance TEXT;
+ALTER TABLE csv_import_batches ADD COLUMN promoted_count INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE csv_import_batches ADD COLUMN date_from INTEGER;
+ALTER TABLE csv_import_batches ADD COLUMN date_to INTEGER;
+"#;
+
+/// New learned rules are scoped; NULL scope preserves legacy broad rules.
+pub(crate) const MIGRATION_009: &str = r#"
+ALTER TABLE learned_payees ADD COLUMN bank_account_id TEXT REFERENCES bank_accounts(id) ON DELETE CASCADE;
+ALTER TABLE learned_payees ADD COLUMN is_credit INTEGER CHECK(is_credit IN (0,1));
+DROP INDEX idx_learned_payees_composite;
+CREATE UNIQUE INDEX idx_learned_payees_scoped ON learned_payees(
+ COALESCE(normalized_payee,''),COALESCE(counterparty_iban,''),bank_account_id,is_credit
+) WHERE bank_account_id IS NOT NULL;
+"#;

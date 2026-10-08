@@ -89,6 +89,7 @@ pub fn collect_types() -> TypeCollection {
     // Bank transaction models
     types.register::<crate::models::TransactionType>();
     types.register::<crate::models::TransactionStatus>();
+    types.register::<crate::models::FlowKind>();
     types.register::<crate::models::BankTransaction>();
     types.register::<crate::models::InsertBankTransaction>();
     types.register::<crate::models::TransactionCategory>();
@@ -105,6 +106,9 @@ pub fn collect_types() -> TypeCollection {
     types.register::<crate::services::csv_import::CsvCategoryOverride>();
     types.register::<crate::services::csv_import::CsvImportResult>();
     types.register::<crate::services::csv_import::CsvImportPreview>();
+    types.register::<crate::services::csv_import::types::StatementBalance>();
+    types.register::<crate::services::csv_import::types::CsvImportBatch>();
+    types.register::<crate::models::bank_accounts::InsertBalanceAnchor>();
     types.register::<crate::services::csv_import::CsvPreviewRow>();
     types.register::<crate::services::csv_import::CsvPreviewResult>();
     types.register::<crate::services::csv_import::CsvRowMessage>();
@@ -157,6 +161,21 @@ pub fn collect_types() -> TypeCollection {
     types.register::<crate::models::CashflowGroup>();
     types.register::<crate::models::CashflowActuals>();
 
+    types.register::<crate::models::FlowSource>();
+    types.register::<crate::models::FxQuality>();
+    types.register::<crate::models::ReportQuality>();
+    types.register::<crate::models::ReportTransaction>();
+    types.register::<crate::models::EffectiveTransactionFlow>();
+    types.register::<crate::models::BudgetGoal>();
+    types.register::<crate::models::BudgetGoalVersion>();
+    types.register::<crate::models::InsertBudgetGoal>();
+    types.register::<crate::models::CategorySpendingSummary>();
+    types.register::<crate::models::BudgetingReport>();
+    types.register::<crate::models::CashflowReportItem>();
+    types.register::<crate::models::CashflowOriginalComponent>();
+    types.register::<crate::models::CashflowCategory>();
+    types.register::<crate::models::CashflowSection>();
+    types.register::<crate::models::CashflowReport>();
     // Portfolio models
     types.register::<crate::commands::portfolio::PortfolioMetrics>();
     types.register::<crate::commands::portfolio::PriceStatus>();
@@ -180,6 +199,8 @@ pub fn collect_types() -> TypeCollection {
 
     // MCP server models
     types.register::<crate::commands::auth::McpServerStatus>();
+    types.register::<crate::models::categorization::InsertScopedLearning>();
+    types.register::<crate::models::categorization::LearnedPayeeEntry>();
     types.register::<crate::commands::categorization::RulePackInfo>();
     types.register::<crate::commands::categorization::PackRuleInfo>();
     types.register::<crate::services::categorization::hits::RuleHitCount>();

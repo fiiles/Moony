@@ -49,6 +49,12 @@ import type {
   PortfolioMetrics,
   PortfolioMetricsHistory,
   PriceStatus,
+  BudgetGoal,
+  InsertBudgetGoal,
+  BudgetingTransaction,
+  BudgetingReport,
+  ReportTransaction,
+  EffectiveTransactionFlow,
   CashflowReport,
   CashflowActuals,
   CashflowRange,
@@ -61,6 +67,7 @@ import type {
   InsertBankAccount,
   Institution,
   BankTransaction,
+  FlowKind,
   InsertBankTransaction,
   TransactionCategory,
   InsertTransactionCategory,
@@ -74,6 +81,7 @@ import type {
   CsvImportResult,
   CsvImportConfigInput,
   CsvImportBatch,
+  InsertBalanceAnchor,
   // Stock tags types
   StockTag,
   InsertStockTag,
@@ -709,35 +717,33 @@ export const stockMonitorApi = {
 // ============================================================================
 
 export const cashflowApi = {
-  getReport: (viewType: 'monthly' | 'yearly') =>
-    tauriInvoke<CashflowReport>('get_cashflow_report', { viewType }),
+  getReport: (viewType: 'monthly' | 'yearly', reportCurrency?: string) =>
+    tauriInvoke<CashflowReport>('get_cashflow_report', { viewType, reportCurrency }),
 
   /** Actual flows from bank transactions for the Cashflow report page (design system README §11). */
-  getActuals: (range: CashflowRange) =>
-    tauriInvoke<CashflowActuals>('get_cashflow_actuals', { range }),
+  getActuals: (range: CashflowRange, accountIds?: string[], reportCurrency?: string) =>
+    tauriInvoke<CashflowActuals>('get_cashflow_actuals', { range, accountIds, reportCurrency }),
+  getTransactions: (
+    startDate: number,
+    endDate: number,
+    filters: {
+      accountIds?: string[];
+      flowKind?: FlowKind;
+      categoryId?: string;
+      sourceKey?: string;
+      reportCurrency?: string;
+    } = {}
+  ) =>
+    tauriInvoke<ReportTransaction[]>('get_report_transactions', { startDate, endDate, ...filters }),
+  getEffectiveFlows: (transactionIds: string[]) =>
+    tauriInvoke<EffectiveTransactionFlow[]>('get_effective_transaction_flows', { transactionIds }),
 
   getAllItems: () => tauriInvoke<CashflowItem[]>('get_all_cashflow_items'),
 
-  createItem: (data: {
-    name: string;
-    amount: string;
-    currency?: string;
-    frequency: 'monthly' | 'yearly';
-    itemType: 'income' | 'expense';
-    category: string;
-  }) => tauriInvoke<CashflowItem>('create_cashflow_item', { data }),
-
-  updateItem: (
-    id: string,
-    data: {
-      name: string;
-      amount: string;
-      currency?: string;
-      frequency: 'monthly' | 'yearly';
-      itemType: 'income' | 'expense';
-      category: string;
-    }
-  ) => tauriInvoke<CashflowItem>('update_cashflow_item', { id, data }),
+  createItem: (data: import('@shared/schema').InsertCashflowItem) =>
+    tauriInvoke<CashflowItem>('create_cashflow_item', { data }),
+  updateItem: (id: string, data: import('@shared/schema').InsertCashflowItem) =>
+    tauriInvoke<CashflowItem>('update_cashflow_item', { id, data }),
 
   deleteItem: (id: string) => tauriInvoke<void>('delete_cashflow_item', { id }),
 };
@@ -840,6 +846,8 @@ export const systemApi = {
 // ============================================================================
 
 export const bankAccountsApi = {
+  setBalanceAnchor: (accountId: string, data: InsertBalanceAnchor) =>
+    tauriInvoke<BankAccount>('set_bank_account_balance_anchor', { accountId, data }),
   // Bank accounts
   getAll: () => tauriInvoke<BankAccountWithInstitution[]>('get_all_bank_accounts'),
   get: (id: string) => tauriInvoke<BankAccountWithInstitution | null>('get_bank_account', { id }),
@@ -867,6 +875,9 @@ export const bankAccountsApi = {
   deleteTransaction: (id: string) => tauriInvoke<void>('delete_bank_transaction', { id }),
   updateTransactionCategory: (transactionId: string, categoryId: string | null) =>
     tauriInvoke<void>('update_transaction_category', { transactionId, categoryId }),
+
+  updateTransactionFlow: (transactionId: string, flowKind: FlowKind | null) =>
+    tauriInvoke<void>('update_transaction_flow', { transactionId, flowKind }),
 
   // Categories
   getCategories: () => tauriInvoke<TransactionCategory[]>('get_transaction_categories'),
@@ -911,7 +922,7 @@ export const bankAccountsApi = {
     tauriInvoke<CsvImportResult>('import_csv_transactions', { accountId, filePath, config }),
   getImportBatches: (accountId: string) =>
     tauriInvoke<CsvImportBatch[]>('get_import_batches', { accountId }),
-  deleteImportBatch: (batchId: string) => tauriInvoke<void>('delete_import_batch', { batchId }),
+  deleteImportBatch: (batchId: string) => tauriInvoke<number>('delete_import_batch', { batchId }),
 };
 
 // ============================================================================
@@ -999,14 +1010,8 @@ export const categorizationApi = {
   categorizeBatch: (transactions: TransactionInput[]) =>
     tauriInvoke<CategorizationResult[]>('categorize_batch', { transactions }),
 
-  // Learn from user's manual categorization with hierarchical matching
-  // Supports: payee + iban (iban default), payee only (payee default)
-  learn: (payee: string | null, counterpartyIban: string | null, categoryId: string) =>
-    tauriInvoke<void>('learn_categorization', {
-      payee,
-      counterpartyIban,
-      categoryId,
-    }),
+  learn: (data: import('@shared/schema').InsertScopedLearning) =>
+    tauriInvoke<void>('learn_categorization', { data }),
 
   // Forget a learned payee combination
   forget: (payee: string | null, counterpartyIban: string | null) =>
@@ -1059,8 +1064,9 @@ export const categorizationApi = {
 
   // ==================== MCP Category Suggestions ====================
 
-  // Accept a pending MCP suggestion: sets the category, learns the payee,
-  // clears the suggestion. Returns the accepted category id.
+  // Accept a pending MCP suggestion: sets the category on this transaction
+  // only (no payee rule is learned) and clears the suggestion. Returns the
+  // accepted category id.
   acceptSuggestion: (transactionId: string) =>
     tauriInvoke<string>('accept_category_suggestion', { transactionId }),
 
@@ -1122,78 +1128,43 @@ export const categorizationApi = {
 // Budgeting API
 // ============================================================================
 
-// Budget goal entity
-export interface BudgetGoal {
-  id: string;
-  categoryId: string;
-  timeframe: string; // "monthly" | "quarterly" | "yearly"
-  amount: string;
-  currency: string;
-  createdAt: number;
-  updatedAt: number;
-}
-
-// Data for creating/updating a budget goal
-export interface InsertBudgetGoal {
-  categoryId: string;
-  timeframe: string;
-  amount: string;
-  currency?: string;
-}
-
-// Category spending summary
-export interface CategorySpendingSummary {
-  categoryId: string;
-  categoryName: string;
-  categoryIcon?: string;
-  categoryColor?: string;
-  totalAmount: string;
-  transactionCount: number;
-  budgetGoal?: BudgetGoal;
-  budgetPercentage?: number;
-}
-
-// Transaction for budgeting view
-export interface BudgetingTransaction {
-  id: string;
-  bookingDate: number;
-  amount: string;
-  currency: string;
-  description?: string;
-  counterpartyName?: string;
-  counterpartyIban?: string;
-  categoryId?: string;
-  bankAccountId: string;
-  bankAccountName: string;
-  txType: string;
-}
-
-// Full budgeting report
-export interface BudgetingReport {
-  periodStart: number;
-  periodEnd: number;
-  timeframe: string;
-  totalIncome: string;
-  totalExpenses: string;
-  netBalance: string;
-  incomeCategories: CategorySpendingSummary[];
-  expenseCategories: CategorySpendingSummary[];
-  uncategorizedIncome: string;
-  uncategorizedExpenses: string;
-  uncategorizedTransactionCount: number;
-}
+export type {
+  BudgetGoal,
+  InsertBudgetGoal,
+  CategorySpendingSummary,
+  BudgetingTransaction,
+  BudgetingReport,
+} from '@shared/schema';
 
 export const budgetingApi = {
   // Get the budgeting report for a time period
-  getReport: (startDate: number, endDate: number, timeframe: string) =>
-    tauriInvoke<BudgetingReport>('get_budgeting_report', { startDate, endDate, timeframe }),
+  getReport: (
+    startDate: number,
+    endDate: number,
+    timeframe: string,
+    accountIds?: string[],
+    reportCurrency?: string
+  ) =>
+    tauriInvoke<BudgetingReport>('get_budgeting_report', {
+      startDate,
+      endDate,
+      timeframe,
+      accountIds,
+      reportCurrency,
+    }),
 
   // Get transactions for a specific category
-  getCategoryTransactions: (categoryId: string, startDate: number, endDate: number) =>
+  getCategoryTransactions: (
+    categoryId: string,
+    startDate: number,
+    endDate: number,
+    reportCurrency?: string
+  ) =>
     tauriInvoke<BudgetingTransaction[]>('get_category_transactions', {
       categoryId,
       startDate,
       endDate,
+      reportCurrency,
     }),
 
   // Get all budget goals

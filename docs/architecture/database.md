@@ -17,8 +17,11 @@ grouping below follows the domain map in `docs/architecture/overview.md`.
   real estate and every other asset with a price above zero and no valuation row
   gets its current price as the first estimate, dated at the UTC day of its
   `created_at` (ids are UUID v4 built in SQL). Existing logs are untouched.
-- To add one: define `const MIGRATION_003: &str = r#"..."#;` (next free
-  number) and append a `("003_short_name", MIGRATION_003)` entry to the `Vec`
+- `006_financial_semantics` adds nullable transaction `flow_kind` overrides and category
+  `kind` roles with six constrained values. Legacy custom categories default to expense;
+  system Income, Internal Transfers and Investments get income, transfer and investment.
+- To add one: define `const MIGRATION_007: &str = r#"..."#;` (next free
+  number) and append a `("007_short_name", MIGRATION_007)` entry to the `Vec`
   returned by `all_migrations()`. Numbers are zero-padded, sequential, never
   reused.
 - Applied migrations are tracked by name in the `_migrations` table. On every
@@ -109,18 +112,18 @@ Grouped by owning domain (see the domain map in `overview.md`).
 | Table | Purpose | Notable columns / constraints |
 |---|---|---|
 | `institutions` | Banks/financial institutions, pre-seeded with Czech banks | Readable seeded IDs (`inst_fio`, `inst_csob`, …); `bic`, `logo_url` |
-| `bank_accounts` | All bank/savings accounts | `account_type DEFAULT 'checking'`, `institution_id` FK, `iban`/`bban`, `data_source DEFAULT 'manual'`, `has_zone_designation`, `exclude_from_balance`, `interest_rate` TEXT, `interest_rate_valid_until` INTEGER (UTC day the promotional rate ends, nullable; migration 005) |
+| `bank_accounts` | All bank/savings accounts | `account_type DEFAULT 'checking'`, `institution_id` FK, `iban`/`bban`, `data_source DEFAULT 'manual'`, `has_zone_designation`, `exclude_from_balance`, `interest_rate` TEXT, `interest_rate_valid_until` INTEGER (UTC day the promotional rate ends, nullable; migration 005), `balance_as_of` INTEGER nullable UTC booking day (migration 008; legacy remains unknown) |
 | `bank_account_zones` | Tiered interest-rate zones per account | FK `bank_account_id` ON DELETE CASCADE; `from_amount`/`to_amount`/`interest_rate` TEXT. Tiers are bands of the balance (not contiguous, not sorted); the one interest model is `services/interest_tiers.rs`, mirrored for display by `src/utils/bank-account-zones.ts` and cross-checked through `shared/fixtures/interest-tiers.json`; an empty / `0` `to_amount` is unlimited |
-| `bank_transactions` | Imported/manual bank transactions | `UNIQUE(bank_account_id, transaction_id)` dedupes imports (`services/dedup.rs`: a bank-side id is the only key when present; id-less rows fall back to an exact date/amount/type/description match, which the MCP import reports as `possibleDuplicate` and `importAnyway` overrides); `category_id` FK, `categorization_source`, `import_batch_id` FK ON DELETE CASCADE, `suggested_category_id` FK (MCP-suggested category awaiting confirmation); indexes on account, date, category, batch |
-| `csv_import_batches` | One row per CSV upload with import stats | FK `bank_account_id` ON DELETE CASCADE; `imported_count`/`duplicate_count`/`error_count` |
+| `bank_transactions` | Imported/manual bank transactions | `UNIQUE(bank_account_id, transaction_id)` dedupes imports (`services/dedup.rs`: certain same-bank-ID matches cannot be forced, different IDs remain distinct; fallback keys include exact canonical decimal TEXT, currency, direction, dates, description, normalized payee and safely canonicalized identifier. Stored occurrences are consumed once and within-file ID-less multiplicity is retained; possible duplicates allow explicit overrides); `category_id` FK, nullable `flow_kind` explicit meaning (NULL derives dynamically; migration 006), `categorization_source`, `import_batch_id` FK ON DELETE CASCADE, `import_line` INTEGER and `row_balance` TEXT preserve source details, `counterparty_bank_code`/`counterparty_country` TEXT preserve optional routing metadata (migration 008), `suggested_category_id` FK (MCP-suggested category awaiting confirmation); indexes on account, date, category, batch |
+| `csv_import_batches` | One row per CSV upload with import stats | FK `bank_account_id` ON DELETE CASCADE; `imported_count`/`duplicate_count`/`error_count`, `promoted_count` (migration 008); reads calculate actual `linkedCount`; `date_from`/`date_to` retain the statement period even for duplicate-only records (legacy period stays unknown). Atomic deletion removes only owned rows and returns the actual count; promotion preserves the preexisting row's batch ownership. |
 
 ### Categorization
 
 | Table | Purpose | Notable columns / constraints |
 |---|---|---|
-| `transaction_categories` | Spending categories, system-seeded + user-defined | Readable seeded IDs (`cat_groceries`, …); self-referencing `parent_id` FK, `is_system`, `sort_order` |
+| `transaction_categories` | Spending categories, system-seeded + user-defined | Readable seeded IDs (`cat_groceries`, …); self-referencing `parent_id` FK, `is_system`, `sort_order`; `kind` ∈ income/expense/transfer/investment/financing/adjustment (default expense; migration 006) |
 | `categorization_rules` | Priority-ordered pattern rules | `rule_type`/`pattern` (`regex`, `contains`, `word`, `starts_with`, `ends_with`, `is_credit`, `is_debit`), `priority DEFAULT 50` (index `priority DESC, is_active`), `stop_processing`, `iban_pattern` |
-| `learned_payees` | Learned payee → category mappings for auto-categorization | `normalized_payee` is nullable (IBAN-only rules); UNIQUE index `(normalized_payee, counterparty_iban)`; partial indexes for the 3-level matching hierarchy |
+| `learned_payees` | Learned payee → category mappings for auto-categorization | `normalized_payee` is nullable (account-identity rules). New opt-in rows carry `bank_account_id` FK ON DELETE CASCADE and `is_credit` (migration 009); a partial unique scope index prevents duplicates within one account/direction. NULL scope preserves legacy broad rules. Reliable structured identifiers canonicalize to the same IBAN; incomplete identifiers fall back to the normalized payee. Writes commit transactionally before engine learning. |
 
 ### Budgeting
 
@@ -209,7 +212,7 @@ Grouped by owning domain (see the domain map in `overview.md`).
 | Table | Purpose | Notable columns / constraints |
 |---|---|---|
 | `exchange_rates` | Latest ECB rates persisted for offline use | `currency TEXT PRIMARY KEY`; **`rate REAL`** (money-as-TEXT exception) |
-| `exchange_rate_history` | Daily historical rates for accurate backfills | `PRIMARY KEY (date, currency)`; **`rate REAL`**; index `(currency, date)`. Coverage self-heals (`services/fx_backfill.rs`): the prefix before the earliest transaction and any multi-day tail gap are fetched from frankfurter.dev on rate refresh and before historical-transaction recalcs; live-recorded rows win over backfill (`INSERT OR IGNORE`). ECB rows are stored under the feed's reference date (`time=` attribute, `parse_ecb_xml`), not the fetch day, so a weekend fetch lands on Friday; a feed without a CZK quote is an error. Budget reports convert foreign-currency transactions with the rates of their booking day |
+| `exchange_rate_history` | Daily historical rates for accurate backfills | `PRIMARY KEY (date, currency)`; **`rate REAL`**; index `(currency, date)`. Coverage self-heals (`services/fx_backfill.rs`): per currency (investment, crypto and bank-account transactions), the prefix before that currency's earliest transaction and any multi-day tail gap are fetched from frankfurter.dev on rate refresh and before historical-transaction recalcs; live-recorded rows win over backfill (`INSERT OR IGNORE`). ECB rows are stored under the feed's reference date (`time=` attribute, `parse_ecb_xml`), not the fetch day, so a weekend fetch lands on Friday; a feed without a CZK quote is an error. Budget reports convert foreign-currency transactions with the rates of their booking day; a CSV import that inserted rows and a non-CZK manual bank transaction trigger the backfill, and a currency the ECB never quotes stays reported as missing FX (never 1:1) |
 
 ### Cashflow / projection
 
@@ -232,3 +235,9 @@ three kept, see `db/mod.rs`; a brand-new database has nothing to copy);
 `pre-restore-<unix ts>/` — the previous account after a restore from backup
 (never deleted automatically). Backups themselves are zip archives written
 wherever the user chooses (`services/backup.rs`).
+
+### Report history (007_report_history)
+
+`budget_goal_versions` stores UUID versions by category, timeframe and effective UTC calendar month. Amounts are TEXT; a null amount ends a goal from that month. The upgrade backfills the existing value from its creation month and makes no claim about earlier limits. Reports integrate monthly equivalents across the selected months using each month's version and recorded FX. Goal edits and currency changes preserve earlier versions; deletion writes a current-month tombstone and cancels scheduled future versions. `budget_goals.amount`/`currency` always mirror the version in effect now (a scheduled or back-dated save never replaces it); the API exposes that version's `effectiveMonth` plus the full `versions` list, and the edit dialog prefills from the version in effect for the month being edited. Category reassignment moves historical references atomically, with the target retaining versions where effective month and timeframe collide.
+
+`cashflow_items.replacement_source_id` optionally links a manual estimate to an automatic source. A partial unique index allows only one replacement per source. Source identifiers use a type prefix and the native entity ID (`loan:UUID`, `insurance:UUID`, `account:UUID`, `bond:UUID`, `stock:ticker`, `rental:UUID`, `propertyCosts:UUID`). The planning response retains the automatic source inventory even when a replacement excludes it from totals.

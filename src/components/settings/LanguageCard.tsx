@@ -103,6 +103,7 @@ export function LanguageCard() {
           <>
             {t('currency.mainHint')} {currencyName(currencyCode, fmt.locale)} ({currencyCode}) ·{' '}
             {t('currency.example', { example })}
+            <span className="mt-0.5 block">{t('currency.nativeHint')}</span>
             {!hasAutomaticRate && (
               <span className="mt-0.5 block text-loss">{t('currency.noRateHint')}</span>
             )}

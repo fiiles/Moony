@@ -1,3 +1,4 @@
+import { getCompleteBankHistory } from '@/lib/bank-history';
 import { useMemo } from 'react';
 import { useQueries } from '@tanstack/react-query';
 import type { BankAccountWithInstitution, BankTransaction } from '@shared/schema';
@@ -11,6 +12,7 @@ export interface AccountActivity {
   last30: FlowSummary;
   /** Newest transaction of the account, if any. */
   last: BankTransaction | null;
+  excludedForeignCount: number;
   isLoading: boolean;
 }
 
@@ -25,7 +27,7 @@ export function useBankAccountActivity(accounts: readonly BankAccountWithInstitu
   const recent = useQueries({
     queries: accounts.map((account) => ({
       queryKey: ['bank-transactions', account.id, 'recent-30d', since],
-      queryFn: () => bankAccountsApi.getTransactions(account.id, { dateFrom: since, limit: 1000 }),
+      queryFn: () => getCompleteBankHistory(account.id, { dateFrom: since }),
       staleTime: 0,
     })),
   });
@@ -43,7 +45,10 @@ export function useBankAccountActivity(accounts: readonly BankAccountWithInstitu
     const map = new Map<string, AccountActivity>();
     accounts.forEach((account, i) => {
       map.set(account.id, {
-        last30: summarizeFlow(recent[i]?.data?.transactions ?? []),
+        last30: summarizeFlow(recent[i]?.data?.transactions ?? [], account.currency),
+        excludedForeignCount: (recent[i]?.data?.transactions ?? []).filter(
+          (tx) => tx.status === 'booked' && tx.currency !== account.currency
+        ).length,
         last: latest[i]?.data?.transactions[0] ?? null,
         isLoading: !!recent[i]?.isLoading || !!latest[i]?.isLoading,
       });

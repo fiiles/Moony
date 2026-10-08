@@ -281,5 +281,9 @@
   "crumb": "pravidla kategorizace",
   "hitsCount_one": "{{count}} zásah",
   "hitsCount_few": "{{count}} zásahy",
-  "hitsCount_other": "{{count}} zásahů"
+  "hitsCount_other": "{{count}} zásahů",
+  "scopedLearning": "Pouze účet {{account}} · {{direction}}",
+  "legacyLearning": "Původní široké pravidlo · všechny účty a směry",
+  "incoming": "Příchozí",
+  "outgoing": "Odchozí"
 }

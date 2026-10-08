@@ -7,6 +7,8 @@
 
 export interface FlowTransaction {
   id: string;
+  currency?: string;
+  status?: string;
   type: 'credit' | 'debit';
   /** Positive amount as stored. */
   amount: string | number;
@@ -32,7 +34,13 @@ export interface FlowSummary {
 
 const num = (v: string | number) => Math.abs(Number(v) || 0);
 
-export function summarizeFlow(transactions: readonly FlowTransaction[]): FlowSummary {
+export function summarizeFlow(
+  allTransactions: readonly FlowTransaction[],
+  currency?: string
+): FlowSummary {
+  const transactions = allTransactions.filter(
+    (tx) => tx.status !== 'pending' && (!currency || tx.currency === currency)
+  );
   let income = 0;
   let expense = 0;
   let incomeCount = 0;

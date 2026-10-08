@@ -43,6 +43,20 @@ fn iban_key(iban: &str) -> Option<String> {
     (!key.is_empty()).then_some(key)
 }
 
+/// Only reliable account identities broaden across names. Incomplete identifiers use a payee key.
+pub fn scoped_key(
+    account: &str,
+    credit: bool,
+    payee: Option<&str>,
+    identity: Option<&str>,
+) -> Option<String> {
+    let identity = identity.filter(|id| crate::services::financial_semantics::valid_iban(id));
+    let key = identity
+        .map(|id| format!("account:{id}"))
+        .or_else(|| payee.and_then(payee_key).map(|p| format!("payee:{p}")))?;
+    Some(format!("scoped:{}:{account}:{credit}:{key}", account.len()))
+}
+
 /// Hierarchical exact match engine with cascading defaults
 ///
 /// Matching priority (most specific first):
@@ -150,6 +164,29 @@ impl ExactMatchEngine {
         }
     }
 
+    pub fn learn_scoped(
+        &mut self,
+        account: &str,
+        credit: bool,
+        payee: Option<&str>,
+        identity: Option<&str>,
+        category: &str,
+    ) {
+        if let Some(key) = scoped_key(account, credit, payee, identity) {
+            self.payee_map.insert(key, category.to_string());
+        }
+    }
+    pub fn forget_scoped(
+        &mut self,
+        account: &str,
+        credit: bool,
+        payee: Option<&str>,
+        identity: Option<&str>,
+    ) -> bool {
+        scoped_key(account, credit, payee, identity)
+            .is_some_and(|key| self.payee_map.remove(&key).is_some())
+    }
+
     /// Find the key of an existing rule that would match a transaction with given attributes
     /// Returns None if no rule matches (new categorization scenario)
     fn find_matching_rule_key(
@@ -226,6 +263,30 @@ impl ExactMatchEngine {
     pub fn apply(&self, tx: &TransactionInput) -> Option<CategorizationResult> {
         let payee = tx.counterparty.as_deref().and_then(payee_key);
         let iban = tx.counterparty_iban.as_deref().and_then(iban_key);
+
+        if let Some(account) = tx.bank_account_id.as_deref() {
+            let canonical = tx.counterparty_iban.as_deref().map(|id| {
+                crate::services::financial_semantics::canonical_structured_identifier(
+                    id,
+                    tx.counterparty_bank_code.as_deref(),
+                    tx.counterparty_country.as_deref(),
+                )
+            });
+            for identity in [canonical.as_deref(), None] {
+                if let Some(key) =
+                    scoped_key(account, tx.is_credit, tx.counterparty.as_deref(), identity)
+                {
+                    if let Some(category) = self.payee_map.get(&key) {
+                        return Some(CategorizationResult::Match {
+                            category_id: category.clone(),
+                            source: CategorizationSource::ExactMatch {
+                                payee: tx.counterparty.clone().unwrap_or_default(),
+                            },
+                        });
+                    }
+                }
+            }
+        }
 
         // Priority 1: iban_only_default (iban only) - general IBAN rule
         if let Some(ref i) = iban {
@@ -351,6 +412,8 @@ mod tests {
             description: description.map(|s| s.into()),
             counterparty: counterparty.map(|s| s.into()),
             counterparty_iban: None,
+            counterparty_bank_code: None,
+            counterparty_country: None,
             amount: -500.0,
             is_credit: false,
             bank_account_id: None,
@@ -363,6 +426,8 @@ mod tests {
             description: None,
             counterparty: counterparty.map(|s| s.into()),
             counterparty_iban: iban.map(|s| s.into()),
+            counterparty_bank_code: None,
+            counterparty_country: None,
             amount: -500.0,
             is_credit: false,
             bank_account_id: None,

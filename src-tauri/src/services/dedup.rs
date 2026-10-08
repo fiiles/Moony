@@ -1,119 +1,234 @@
 //! Duplicate detection for bulk imports — MCP write tools and the UI CSV
 //! import (spec 2026-08-12, D4).
 //!
-//! Strict matching on purpose: a false "duplicate" that silently skips a real
+//! Conservative matching on purpose: a false "duplicate" that silently skips a real
 //! payment is worse than an occasional visible double. Amount/quantity/price
-//! are TEXT columns compared as exact strings — the same export re-uploaded
-//! produces the same strings.
+//! remain TEXT; bank keys canonicalize decimal spelling without rounding.
 
 use crate::error::Result;
 use rusqlite::{Connection, OptionalExtension};
 
-/// Why a bank transaction counts as already imported.
+/// Snapshot of existing occurrences: newly accepted ID-less rows are genuine
+/// occurrences, while reimports consume only stored matches one at a time.
+#[derive(Debug)]
+pub struct BankOccurrenceChecker {
+    stored: Vec<StoredOccurrence>,
+    seen_ids: std::collections::HashSet<String>,
+    /// Bank IDs present anywhere in the incoming batch: a stored row with
+    /// one of them belongs to that ID-bearing row, whatever the file order.
+    batch_ids: std::collections::HashSet<String>,
+    currency: String,
+}
+#[derive(Debug)]
+struct StoredOccurrence {
+    id: String,
+    bank_id: Option<String>,
+    status: String,
+    key: String,
+    consumed: bool,
+}
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum BankDuplicate {
-    /// The bank-side export id already exists in the account. Certain: the
-    /// bank itself says it is the same transaction.
-    BankId(String),
-    /// Same account, date, value date, amount, type and description as an
-    /// existing row. Only a *possible* duplicate — two genuine purchases (two
-    /// 99 CZK coffees on one day) look exactly like a re-imported line.
-    Identical,
+pub enum BankOccurrence {
+    Certain,
+    Possible,
+    Promote(String),
+}
+/// Existing imports may contain padded or whitespace-only bank IDs. Compare
+/// those with the same normalization as new inputs without rewriting stored IDs.
+pub(crate) fn normalized_bank_id(id: Option<&str>) -> Option<&str> {
+    id.map(str::trim).filter(|id| !id.is_empty())
 }
 
-impl BankDuplicate {
-    /// Human-readable reason for reports and previews.
-    pub fn reason(&self) -> String {
-        match self {
-            BankDuplicate::BankId(id) => format!(
-                "transaction with bank-side id '{}' already exists in this account",
-                id
-            ),
-            BankDuplicate::Identical => "identical transaction (same account, date, value date, amount, type, description) already exists"
-                .to_string(),
-        }
+pub(crate) fn canonical_amount(text: &str) -> String {
+    let text = text.trim();
+    let (mantissa, exponent) = text
+        .split_once(['e', 'E'])
+        .map_or((text, 0), |(m, e)| (m, e.parse::<i32>().unwrap_or(0)));
+    let negative = mantissa.starts_with('-');
+    let mantissa = mantissa.trim_start_matches(['-', '+']);
+    let (integer, fraction) = mantissa.split_once('.').unwrap_or((mantissa, ""));
+    if !integer
+        .bytes()
+        .chain(fraction.bytes())
+        .all(|b| b.is_ascii_digit())
+        || exponent.unsigned_abs() > 1000
+    {
+        return text.into();
     }
-}
-
-/// Bank transactions. When the row carries a bank-side export id, that id is
-/// the dedup key: a hit on the id is a certain duplicate, and a stored row with
-/// a *different* id is a different payment however alike the other fields are
-///. The strict composite match is the fallback for id-less rows — and
-/// for an id-bearing row it only considers stored rows that have no id (an
-/// earlier import without ids must still catch the re-import).
-#[allow(clippy::too_many_arguments)]
-pub fn check_bank_transaction(
-    conn: &Connection,
-    bank_account_id: &str,
-    transaction_id: Option<&str>,
-    booking_date: i64,
-    value_date: Option<i64>,
-    amount: &str,
-    tx_type: &str,
-    description: Option<&str>,
-) -> Result<Option<BankDuplicate>> {
-    // An empty/whitespace export id is "no id", not an id: '' == '' would make
-    // the primary rule match every later id-less row and silently skip real
-    // payments. Guarded here so every caller inherits it.
-    let ext_id = transaction_id.filter(|s| !s.trim().is_empty());
-    if let Some(ext_id) = ext_id {
-        let hit: Option<String> = conn
-            .query_row(
-                "SELECT id FROM bank_transactions
-                 WHERE bank_account_id = ?1 AND transaction_id = ?2",
-                rusqlite::params![bank_account_id, ext_id],
-                |row| row.get(0),
-            )
-            .optional()?;
-        if hit.is_some() {
-            return Ok(Some(BankDuplicate::BankId(ext_id.to_string())));
-        }
-    }
-    let hit: Option<String> = conn
-        .query_row(
-            "SELECT id FROM bank_transactions
-             WHERE bank_account_id = ?1 AND booking_date = ?2 AND amount = ?3
-               AND tx_type = ?4 AND description IS ?5 AND value_date IS ?6
-               AND (?7 = 0 OR transaction_id IS NULL OR TRIM(transaction_id) = '')",
-            rusqlite::params![
-                bank_account_id,
-                booking_date,
-                amount,
-                tx_type,
-                description,
-                value_date,
-                ext_id.is_some() as i64
-            ],
-            |row| row.get(0),
+    let digits = format!("{integer}{fraction}");
+    let position = integer.len() as i32 + exponent;
+    let expanded = if position <= 0 {
+        format!("0.{}{digits}", "0".repeat((-position) as usize))
+    } else if position as usize >= digits.len() {
+        format!("{digits}{}", "0".repeat(position as usize - digits.len()))
+    } else {
+        format!(
+            "{}.{}",
+            &digits[..position as usize],
+            &digits[position as usize..]
         )
-        .optional()?;
-    Ok(hit.map(|_| BankDuplicate::Identical))
+    };
+    let (i, f) = expanded.split_once('.').unwrap_or((&expanded, ""));
+    let i = i.trim_start_matches('0');
+    let i = if i.is_empty() { "0" } else { i };
+    let f = f.trim_end_matches('0');
+    let sign = if negative && (i != "0" || !f.is_empty()) {
+        "-"
+    } else {
+        ""
+    };
+    if f.is_empty() {
+        format!("{sign}{i}")
+    } else {
+        format!("{sign}{i}.{f}")
+    }
 }
-
-/// [`check_bank_transaction`] with the reason as text. Returns
-/// Some(human-readable reason) when a duplicate exists.
-#[allow(clippy::too_many_arguments)]
-pub fn find_duplicate_bank_transaction(
-    conn: &Connection,
-    bank_account_id: &str,
-    transaction_id: Option<&str>,
-    booking_date: i64,
-    value_date: Option<i64>,
-    amount: &str,
-    tx_type: &str,
-    description: Option<&str>,
-) -> Result<Option<String>> {
-    Ok(check_bank_transaction(
-        conn,
-        bank_account_id,
-        transaction_id,
-        booking_date,
-        value_date,
-        amount,
-        tx_type,
-        description,
-    )?
-    .map(|d| d.reason()))
+fn composite_key(t: &crate::models::InsertBankTransaction, currency: &str) -> String {
+    let payee = t
+        .counterparty_name
+        .as_deref()
+        .unwrap_or_default()
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+        .to_lowercase();
+    let identifier = t.counterparty_iban.as_deref().map(|s| {
+        let canonical = super::financial_semantics::canonical_structured_identifier(
+            s,
+            t.counterparty_bank_code.as_deref(),
+            t.counterparty_country.as_deref(),
+        );
+        if super::financial_semantics::valid_iban(&canonical) {
+            serde_json::json!([canonical])
+        } else {
+            serde_json::json!([canonical, t.counterparty_bank_code, t.counterparty_country])
+        }
+    });
+    // JSON tuples avoid delimiter collisions in descriptions and identifiers.
+    serde_json::json!([
+        t.booking_date,
+        t.value_date,
+        canonical_amount(&t.amount),
+        t.currency
+            .as_deref()
+            .unwrap_or(currency)
+            .to_ascii_uppercase(),
+        t.tx_type.to_lowercase(),
+        t.description,
+        payee,
+        identifier,
+        t.status.as_deref().unwrap_or("booked").to_lowercase()
+    ])
+    .to_string()
+}
+impl BankOccurrenceChecker {
+    pub fn load(conn: &Connection, account: &str) -> Result<Self> {
+        let currency: String = conn.query_row(
+            "SELECT currency FROM bank_accounts WHERE id=?1",
+            [account],
+            |r| r.get(0),
+        )?;
+        let mut stmt = conn.prepare("SELECT id,transaction_id,booking_date,value_date,amount,currency,tx_type,description,counterparty_name,counterparty_iban,counterparty_bank_code,counterparty_country,status FROM bank_transactions WHERE bank_account_id=?1 ORDER BY id")?;
+        let rows = stmt.query_map([account], |r| {
+            let data = crate::models::InsertBankTransaction {
+                bank_account_id: account.into(),
+                transaction_id: r.get(1)?,
+                booking_date: r.get(2)?,
+                value_date: r.get(3)?,
+                amount: r.get(4)?,
+                currency: r.get(5)?,
+                tx_type: r.get(6)?,
+                description: r.get(7)?,
+                counterparty_name: r.get(8)?,
+                counterparty_iban: r.get(9)?,
+                counterparty_bank_code: r.get(10)?,
+                counterparty_country: r.get(11)?,
+                status: r.get(12)?,
+                category_id: None,
+                flow_kind: None,
+            };
+            Ok(StoredOccurrence {
+                id: r.get(0)?,
+                bank_id: normalized_bank_id(data.transaction_id.as_deref()).map(str::to_string),
+                status: data.status.as_deref().unwrap_or("booked").to_lowercase(),
+                key: composite_key(&data, &currency),
+                consumed: false,
+            })
+        })?;
+        Ok(Self {
+            stored: rows.collect::<std::result::Result<Vec<_>, _>>()?,
+            seen_ids: Default::default(),
+            batch_ids: Default::default(),
+            currency,
+        })
+    }
+    /// Announce the bank IDs of the whole batch before checking its rows, so
+    /// an ID-less row never consumes the stored occurrence that a later row
+    /// of the same batch matches by ID.
+    pub fn reserve_batch_ids<'a>(&mut self, ids: impl IntoIterator<Item = Option<&'a str>>) {
+        self.batch_ids.extend(
+            ids.into_iter()
+                .filter_map(normalized_bank_id)
+                .map(str::to_string),
+        );
+    }
+    pub fn record_written(&mut self, t: &crate::models::InsertBankTransaction, id: &str) {
+        if normalized_bank_id(t.transaction_id.as_deref()).is_some()
+            && t.status
+                .as_deref()
+                .is_some_and(|status| status.eq_ignore_ascii_case("pending"))
+        {
+            self.stored.push(StoredOccurrence {
+                id: id.into(),
+                bank_id: normalized_bank_id(t.transaction_id.as_deref()).map(str::to_string),
+                status: "pending".into(),
+                key: composite_key(t, &self.currency),
+                consumed: true,
+            });
+        }
+    }
+    pub fn currency(&self) -> &str {
+        &self.currency
+    }
+    pub fn check(&mut self, t: &crate::models::InsertBankTransaction) -> Option<BankOccurrence> {
+        let bank_id = normalized_bank_id(t.transaction_id.as_deref());
+        if let Some(id) = bank_id {
+            let seen = !self.seen_ids.insert(id.to_string());
+            if let Some(stored) = self
+                .stored
+                .iter_mut()
+                .find(|s| s.bank_id.as_deref() == Some(id))
+            {
+                stored.consumed = true;
+                if stored.status == "pending"
+                    && t.status
+                        .as_deref()
+                        .unwrap_or("booked")
+                        .eq_ignore_ascii_case("booked")
+                {
+                    stored.status = "booked".into();
+                    return Some(BankOccurrence::Promote(stored.id.clone()));
+                }
+                return Some(BankOccurrence::Certain);
+            }
+            if seen {
+                return Some(BankOccurrence::Certain);
+            }
+        }
+        let key = composite_key(t, &self.currency);
+        if let Some(stored) = self.stored.iter_mut().find(|s| {
+            !s.consumed
+                && s.key == key
+                && (bank_id.is_none() || s.bank_id.is_none())
+                && s.bank_id
+                    .as_ref()
+                    .is_none_or(|id| !self.batch_ids.contains(id))
+        }) {
+            stored.consumed = true;
+            return Some(BankOccurrence::Possible);
+        }
+        None
+    }
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -150,7 +265,7 @@ fn find_duplicate_in_tx_table(
     }))
 }
 
-/// Stock transactions: exact (ticker, date, type, quantity, price) match.
+/// Exact stock duplicate lookup.
 pub fn find_duplicate_stock_transaction(
     conn: &Connection,
     ticker_upper: &str,
@@ -262,264 +377,31 @@ mod tests {
         conn
     }
 
-    fn insert_bank_tx(
-        conn: &Connection,
-        id: &str,
-        tx_id: Option<&str>,
-        desc: Option<&str>,
-        value_date: Option<i64>,
-    ) {
-        conn.execute(
-            "INSERT INTO bank_transactions (id, bank_account_id, transaction_id, tx_type, amount, description, booking_date, value_date)
-             VALUES (?1, 'acc-1', ?2, 'debit', '250.5', ?3, 1700000000, ?4)",
-            rusqlite::params![id, tx_id, desc, value_date],
-        )
-        .unwrap();
-    }
-
     #[test]
-    fn bank_matches_on_export_transaction_id() {
-        let conn = setup_test_db();
-        insert_bank_tx(&conn, "t1", Some("FIO-123"), Some("groceries"), None);
-        let hit = find_duplicate_bank_transaction(
-            &conn,
-            "acc-1",
-            Some("FIO-123"),
-            1699999999,
-            None,
-            "999",
-            "credit",
-            None,
-        )
-        .unwrap();
-        assert!(hit.is_some(), "id match wins regardless of other fields");
-        assert!(hit.unwrap().contains("FIO-123"));
-    }
-
-    #[test]
-    fn bank_id_match_is_scoped_to_account() {
-        let conn = setup_test_db();
-        insert_bank_tx(&conn, "t1", Some("FIO-123"), None, None);
-        let hit = find_duplicate_bank_transaction(
-            &conn,
-            "acc-OTHER",
-            Some("FIO-123"),
-            1700000000,
-            None,
-            "250.5",
-            "debit",
-            None,
-        )
-        .unwrap();
-        assert!(hit.is_none());
-    }
-
-    #[test]
-    fn bank_empty_transaction_id_is_treated_as_no_id() {
-        let conn = setup_test_db();
-        // A stored row with transaction_id = '' (bad/legacy data)
-        insert_bank_tx(&conn, "t1", Some(""), Some("groceries"), None);
-        // An incoming empty id must NOT match the '' row via the id rule
-        assert!(find_duplicate_bank_transaction(
-            &conn,
-            "acc-1",
-            Some(""),
-            1800000000,
-            None,
-            "999",
-            "credit",
-            Some("rent"),
-        )
-        .unwrap()
-        .is_none());
-        // Whitespace-only counts as empty too — but the composite rule still
-        // catches genuinely identical rows.
-        assert!(find_duplicate_bank_transaction(
-            &conn,
-            "acc-1",
-            Some("   "),
-            1700000000,
-            None,
-            "250.5",
-            "debit",
-            Some("groceries"),
-        )
-        .unwrap()
-        .is_some());
-    }
-
-    #[test]
-    fn bank_composite_match_requires_all_fields() {
-        let conn = setup_test_db();
-        insert_bank_tx(&conn, "t1", None, Some("groceries"), Some(1700000000));
-        // exact composite → duplicate
-        assert!(find_duplicate_bank_transaction(
-            &conn,
-            "acc-1",
-            None,
-            1700000000,
-            Some(1700000000),
-            "250.5",
-            "debit",
-            Some("groceries"),
-        )
-        .unwrap()
-        .is_some());
-        // one field differs → not a duplicate
-        assert!(find_duplicate_bank_transaction(
-            &conn,
-            "acc-1",
-            None,
-            1700000000,
-            Some(1700000000),
-            "250.5",
-            "debit",
-            Some("rent"),
-        )
-        .unwrap()
-        .is_none());
-        assert!(
-            find_duplicate_bank_transaction(
-                &conn,
-                "acc-1",
-                None,
-                1700000000,
-                Some(1700000000),
-                "250.50",
-                "debit",
-                Some("groceries"),
-            )
-            .unwrap()
-            .is_none(),
-            "string compare is exact: '250.50' != '250.5'"
-        );
-    }
-
-    #[test]
-    fn bank_composite_matches_null_description() {
-        let conn = setup_test_db();
-        insert_bank_tx(&conn, "t1", None, None, None);
-        assert!(find_duplicate_bank_transaction(
-            &conn, "acc-1", None, 1700000000, None, "250.5", "debit", None,
-        )
-        .unwrap()
-        .is_some());
-    }
-
-    #[test]
-    fn bank_composite_distinguishes_value_date() {
-        let conn = setup_test_db();
-        insert_bank_tx(&conn, "t1", None, Some("groceries"), Some(1700000000));
-        // different value_date → not the same transaction
-        assert!(
-            find_duplicate_bank_transaction(
-                &conn,
-                "acc-1",
-                None,
-                1700000000,
-                Some(1700086400),
-                "250.5",
-                "debit",
-                Some("groceries"),
-            )
-            .unwrap()
-            .is_none(),
-            "value date differs → not a duplicate"
-        );
-        // matching value_date → duplicate
-        assert!(find_duplicate_bank_transaction(
-            &conn,
-            "acc-1",
-            None,
-            1700000000,
-            Some(1700000000),
-            "250.5",
-            "debit",
-            Some("groceries"),
-        )
-        .unwrap()
-        .is_some());
-        // None vs None still matches
-        insert_bank_tx(&conn, "t2", None, Some("rent"), None);
-        assert!(find_duplicate_bank_transaction(
-            &conn,
-            "acc-1",
-            None,
-            1700000000,
-            None,
-            "250.5",
-            "debit",
-            Some("rent"),
-        )
-        .unwrap()
-        .is_some());
-    }
-
-    #[test]
-    fn bank_distinct_export_ids_are_distinct_transactions() {
-        // two coffees of 99 CZK on one day, each with its own bank
-        // id, are two payments — the id is the only key when it is present.
-        let conn = setup_test_db();
-        insert_bank_tx(&conn, "t1", Some("FIO-1"), Some("coffee"), None);
-        let hit = find_duplicate_bank_transaction(
-            &conn,
-            "acc-1",
-            Some("FIO-2"),
-            1700000000,
-            None,
-            "250.5",
-            "debit",
-            Some("coffee"),
-        )
-        .unwrap();
-        assert!(hit.is_none(), "a different bank id is a different payment");
-    }
-
-    #[test]
-    fn bank_id_row_still_matches_stored_row_without_id() {
-        // An earlier import without ids must still catch a re-import that now
-        // carries them: a stored row with no id cannot be told apart by id.
-        let conn = setup_test_db();
-        insert_bank_tx(&conn, "t1", None, Some("coffee"), None);
-        let hit = find_duplicate_bank_transaction(
-            &conn,
-            "acc-1",
-            Some("FIO-9"),
-            1700000000,
-            None,
-            "250.5",
-            "debit",
-            Some("coffee"),
-        )
-        .unwrap();
-        assert!(hit.is_some());
-    }
-
-    #[test]
-    fn bank_check_tells_certain_id_hits_from_possible_repeats() {
-        let conn = setup_test_db();
-        insert_bank_tx(&conn, "t1", Some("FIO-1"), Some("coffee"), None);
-        insert_bank_tx(&conn, "t2", None, Some("tea"), None);
-        let by_id =
-            check_bank_transaction(&conn, "acc-1", Some("FIO-1"), 1, None, "1", "credit", None)
-                .unwrap();
-        assert_eq!(by_id, Some(BankDuplicate::BankId("FIO-1".into())));
-        let by_composite = check_bank_transaction(
-            &conn,
-            "acc-1",
-            None,
-            1700000000,
-            None,
-            "250.5",
-            "debit",
-            Some("tea"),
-        )
-        .unwrap();
-        assert_eq!(by_composite, Some(BankDuplicate::Identical));
-        assert_eq!(
-            check_bank_transaction(&conn, "acc-1", None, 1, None, "1", "credit", None).unwrap(),
-            None
-        );
+    fn review_round1_checker_normalizes_legacy_ids_and_whitespace_only_is_absent() {
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch("CREATE TABLE bank_accounts(id TEXT,currency TEXT);
+            INSERT INTO bank_accounts VALUES ('acc-1','CZK');
+            CREATE TABLE bank_transactions(id TEXT,bank_account_id TEXT,transaction_id TEXT,
+                booking_date INTEGER,value_date INTEGER,amount TEXT,currency TEXT,tx_type TEXT,
+                description TEXT,counterparty_name TEXT,counterparty_iban TEXT,
+                counterparty_bank_code TEXT,counterparty_country TEXT,status TEXT);
+            INSERT INTO bank_transactions(id,bank_account_id,transaction_id,booking_date,amount,currency,tx_type,description,status) VALUES
+                ('padded','acc-1',' FIO-123 ',1767225600,'99','CZK','debit','coffee','booked'),
+                ('blank','acc-1',' \t ',1767225600,'1','CZK','debit','blank','booked');").unwrap();
+        let mut checker = BankOccurrenceChecker::load(&conn, "acc-1").unwrap();
+        let mut row: crate::models::InsertBankTransaction =
+            serde_json::from_value(serde_json::json!({
+                "bankAccountId":"acc-1","transactionId":"\tFIO-123\n", "bookingDate":1767225600,
+                "amount":"99","currency":"CZK","type":"debit","description":"coffee"
+            }))
+            .unwrap();
+        assert_eq!(checker.check(&row), Some(BankOccurrence::Certain));
+        row.transaction_id = Some("new-id".into());
+        row.amount = "1".into();
+        row.description = Some("blank".into());
+        assert_eq!(checker.check(&row), Some(BankOccurrence::Possible));
+        assert_eq!(checker.check(&row), Some(BankOccurrence::Certain));
     }
 
     #[test]

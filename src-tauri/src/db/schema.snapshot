@@ -1,3 +1,6 @@
+== index cashflow_replacement_source ==
+CREATE UNIQUE INDEX cashflow_replacement_source ON cashflow_items(replacement_source_id) WHERE replacement_source_id IS NOT NULL
+
 == index idx_bank_accounts_institution ==
 CREATE INDEX idx_bank_accounts_institution ON bank_accounts(institution_id)
 
@@ -61,9 +64,6 @@ CREATE INDEX idx_investment_transactions_external ON investment_transactions(ext
 == index idx_investment_transactions_ticker ==
 CREATE INDEX idx_investment_transactions_ticker ON investment_transactions(ticker)
 
-== index idx_learned_payees_composite ==
-CREATE UNIQUE INDEX idx_learned_payees_composite ON learned_payees(normalized_payee, counterparty_iban)
-
 == index idx_learned_payees_iban_only ==
 CREATE INDEX idx_learned_payees_iban_only ON learned_payees(counterparty_iban) WHERE normalized_payee IS NULL
 
@@ -72,6 +72,11 @@ CREATE INDEX idx_learned_payees_iban_partial ON learned_payees(counterparty_iban
 
 == index idx_learned_payees_payee_default ==
 CREATE INDEX idx_learned_payees_payee_default ON learned_payees(normalized_payee) WHERE counterparty_iban IS NULL
+
+== index idx_learned_payees_scoped ==
+CREATE UNIQUE INDEX idx_learned_payees_scoped ON learned_payees(
+ COALESCE(normalized_payee,''),COALESCE(counterparty_iban,''),bank_account_id,is_credit
+) WHERE bank_account_id IS NOT NULL
 
 == index idx_loan_events_loan ==
 CREATE INDEX idx_loan_events_loan ON loan_events(loan_id, event_day)
@@ -147,7 +152,7 @@ CREATE TABLE bank_accounts (
     exclude_from_balance INTEGER NOT NULL DEFAULT 0,
     created_at INTEGER NOT NULL DEFAULT (unixepoch()),
     updated_at INTEGER NOT NULL DEFAULT (unixepoch())
-, interest_rate_valid_until INTEGER)
+, interest_rate_valid_until INTEGER, balance_as_of INTEGER)
 
 == table bank_transactions ==
 CREATE TABLE bank_transactions (
@@ -170,7 +175,8 @@ CREATE TABLE bank_transactions (
     created_at INTEGER NOT NULL DEFAULT (unixepoch()),
     import_batch_id TEXT REFERENCES csv_import_batches(id) ON DELETE CASCADE,
     categorization_source TEXT,
-    suggested_category_id TEXT REFERENCES transaction_categories(id),
+    suggested_category_id TEXT REFERENCES transaction_categories(id), flow_kind TEXT
+    CHECK (flow_kind IS NULL OR flow_kind IN ('income', 'expense', 'transfer', 'investment', 'financing', 'adjustment')), counterparty_bank_code TEXT, counterparty_country TEXT, import_line INTEGER, row_balance TEXT,
     UNIQUE(bank_account_id, transaction_id)
 )
 
@@ -186,6 +192,18 @@ CREATE TABLE bonds (
     quantity TEXT NOT NULL DEFAULT '1',
     created_at INTEGER NOT NULL DEFAULT (unixepoch()),
     updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+)
+
+== table budget_goal_versions ==
+CREATE TABLE budget_goal_versions (
+ id TEXT PRIMARY KEY,
+ category_id TEXT NOT NULL REFERENCES transaction_categories(id),
+ timeframe TEXT NOT NULL CHECK(timeframe IN ('monthly','quarterly','yearly')),
+ effective_month INTEGER NOT NULL,
+ amount TEXT,
+ currency TEXT NOT NULL,
+ created_at INTEGER NOT NULL DEFAULT(unixepoch()),
+ UNIQUE(category_id,timeframe,effective_month)
 )
 
 == table budget_goals ==
@@ -211,7 +229,7 @@ CREATE TABLE cashflow_items (
     created_at INTEGER NOT NULL DEFAULT (unixepoch()),
     updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
     category TEXT NOT NULL DEFAULT 'income'
-)
+, replacement_source_id TEXT)
 
 == table categorization_rules ==
 CREATE TABLE categorization_rules (
@@ -294,7 +312,7 @@ CREATE TABLE csv_import_batches (
     duplicate_count INTEGER NOT NULL DEFAULT 0,
     error_count INTEGER NOT NULL DEFAULT 0,
     imported_at INTEGER NOT NULL DEFAULT (unixepoch())
-)
+, promoted_count INTEGER NOT NULL DEFAULT 0, date_from INTEGER, date_to INTEGER)
 
 == table dividend_data ==
 CREATE TABLE dividend_data (
@@ -395,7 +413,7 @@ CREATE TABLE learned_payees (
     counterparty_iban TEXT,
     category_id TEXT NOT NULL,
     created_at INTEGER NOT NULL DEFAULT (unixepoch()),
-    updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    updated_at INTEGER NOT NULL DEFAULT (unixepoch()), bank_account_id TEXT REFERENCES bank_accounts(id) ON DELETE CASCADE, is_credit INTEGER CHECK(is_credit IN (0,1)),
     FOREIGN KEY (category_id) REFERENCES transaction_categories(id)
 )
 
@@ -698,7 +716,8 @@ CREATE TABLE transaction_categories (
     sort_order INTEGER NOT NULL DEFAULT 0,
     is_system INTEGER NOT NULL DEFAULT 0,
     created_at INTEGER NOT NULL DEFAULT (unixepoch())
-)
+, kind TEXT NOT NULL DEFAULT 'expense'
+    CHECK (kind IN ('income', 'expense', 'transfer', 'investment', 'financing', 'adjustment')))
 
 == table user_profile ==
 CREATE TABLE user_profile (
@@ -728,23 +747,23 @@ CREATE TABLE watched_stocks (
 , target_direction TEXT CHECK (target_direction IN ('below', 'above')))
 
 == data transaction_categories ==
-cat_dining | Dining & Restaurants | utensils | #FF9800 | NULL | 2 | 1
-cat_entertainment | Entertainment | film | #E91E63 | NULL | 5 | 1
-cat_groceries | Groceries | shopping-cart | #4CAF50 | NULL | 1 | 1
-cat_health | Health & Medical | heart | #F44336 | NULL | 7 | 1
-cat_housing | Housing | home | #F59E0B | NULL | 14 | 1
-cat_income | Income | trending-up | #8BC34A | NULL | 9 | 1
-cat_insurance | Insurance | shield | #8B5CF6 | NULL | 16 | 1
-cat_internal_transfers | Internal Transfers | arrows-right-left | #94A3B8 | NULL | 13 | 1
-cat_investments | Investments | line-chart | #6366F1 | NULL | 11 | 1
-cat_loan_payments | Loan Payments | credit-card | #EF4444 | NULL | 17 | 1
-cat_other | Other | more-horizontal | #9E9E9E | NULL | 99 | 1
-cat_savings | Savings | piggy-bank | #22C55E | NULL | 12 | 1
-cat_shopping | Shopping | shopping-bag | #00BCD4 | NULL | 6 | 1
-cat_taxes | Taxes | landmark | #DC2626 | NULL | 15 | 1
-cat_transport | Transportation | car | #2196F3 | NULL | 3 | 1
-cat_travel | Travel | plane | #3F51B5 | NULL | 8 | 1
-cat_utilities | Utilities | zap | #9C27B0 | NULL | 4 | 1
+cat_dining | Dining & Restaurants | utensils | #FF9800 | NULL | 2 | 1 | expense
+cat_entertainment | Entertainment | film | #E91E63 | NULL | 5 | 1 | expense
+cat_groceries | Groceries | shopping-cart | #4CAF50 | NULL | 1 | 1 | expense
+cat_health | Health & Medical | heart | #F44336 | NULL | 7 | 1 | expense
+cat_housing | Housing | home | #F59E0B | NULL | 14 | 1 | expense
+cat_income | Income | trending-up | #8BC34A | NULL | 9 | 1 | income
+cat_insurance | Insurance | shield | #8B5CF6 | NULL | 16 | 1 | expense
+cat_internal_transfers | Internal Transfers | arrows-right-left | #94A3B8 | NULL | 13 | 1 | transfer
+cat_investments | Investments | line-chart | #6366F1 | NULL | 11 | 1 | investment
+cat_loan_payments | Loan Payments | credit-card | #EF4444 | NULL | 17 | 1 | expense
+cat_other | Other | more-horizontal | #9E9E9E | NULL | 99 | 1 | expense
+cat_savings | Savings | piggy-bank | #22C55E | NULL | 12 | 1 | expense
+cat_shopping | Shopping | shopping-bag | #00BCD4 | NULL | 6 | 1 | expense
+cat_taxes | Taxes | landmark | #DC2626 | NULL | 15 | 1 | expense
+cat_transport | Transportation | car | #2196F3 | NULL | 3 | 1 | expense
+cat_travel | Travel | plane | #3F51B5 | NULL | 8 | 1 | expense
+cat_utilities | Utilities | zap | #9C27B0 | NULL | 4 | 1 | expense
 
 == data institutions ==
 inst_air_bank | Air Bank | AIRACZPP | CZ | /bank-logos/air-bank.svg

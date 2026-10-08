@@ -79,7 +79,7 @@ pub fn bank_accounts_list(conn: &Connection) -> Result<Value> {
 // Write tools (Task 8: canonical two-phase bulk engine)
 // ============================================================================
 
-#[derive(Debug, Deserialize, schemars::JsonSchema)]
+#[derive(Debug, Clone, Deserialize, schemars::JsonSchema)]
 pub struct BankTransactionRow {
     #[serde(rename = "transactionId")]
     #[schemars(
@@ -98,6 +98,12 @@ pub struct BankTransactionRow {
     pub counterparty_name: Option<String>,
     #[serde(rename = "counterpartyIban")]
     pub counterparty_iban: Option<String>,
+    #[serde(rename = "counterpartyBankCode", default)]
+    pub counterparty_bank_code: Option<String>,
+    #[serde(rename = "counterpartyCountry", default)]
+    pub counterparty_country: Option<String>,
+    #[serde(default)]
+    pub status: Option<String>,
     #[serde(rename = "bookingDate")]
     #[schemars(description = "Booking date as Unix timestamp (seconds)")]
     pub booking_date: i64,
@@ -127,6 +133,7 @@ pub struct BankTransactionsCreateArgs {
 
 fn row_to_insert(account_id: &str, row: &BankTransactionRow) -> InsertBankTransaction {
     InsertBankTransaction {
+        flow_kind: None,
         bank_account_id: account_id.to_string(),
         // An empty/whitespace export id (e.g. an LLM mapping an empty CSV cell
         // to "") is "no id" — store NULL, never '', so the id-dedup rule can't
@@ -135,17 +142,19 @@ fn row_to_insert(account_id: &str, row: &BankTransactionRow) -> InsertBankTransa
             .transaction_id
             .as_deref()
             .filter(|s| !s.trim().is_empty())
-            .map(String::from),
+            .map(|s| s.trim().to_string()),
         tx_type: row.tx_type.clone(),
         amount: row.amount.clone(),
         currency: row.currency.clone(),
         description: row.description.clone(),
         counterparty_name: row.counterparty_name.clone(),
         counterparty_iban: row.counterparty_iban.clone(),
+        counterparty_bank_code: row.counterparty_bank_code.clone(),
+        counterparty_country: row.counterparty_country.clone(),
         booking_date: row.booking_date,
         value_date: row.value_date,
         category_id: row.category_id.clone(),
-        status: None,
+        status: row.status.clone(),
     }
 }
 
@@ -199,6 +208,7 @@ pub fn bank_transactions_create(
     }
     if !errors.is_empty() {
         return Ok(BulkWriteReport {
+            promoted: 0,
             created: 0,
             skipped_duplicates: vec![],
             errors,
@@ -207,55 +217,57 @@ pub fn bank_transactions_create(
 
     // Dedup runs INSIDE the transaction, so it also catches duplicates within
     // the batch itself: after row 3 inserts, an identical row 7 matches it.
+    let mut checker = dedup::BankOccurrenceChecker::load(conn, &args.account_id)?;
+    checker.reserve_batch_ids(
+        args.transactions
+            .iter()
+            .map(|r| r.transaction_id.as_deref()),
+    );
     let tx = conn.transaction()?;
+    let mut promoted = 0usize;
     let mut created = 0usize;
     let mut skipped: Vec<SkippedRow> = Vec::new();
     for (i, row) in args.transactions.iter().enumerate() {
-        match dedup::check_bank_transaction(
-            &tx,
-            &args.account_id,
-            row.transaction_id.as_deref(),
-            row.booking_date,
-            row.value_date,
-            &row.amount,
-            &row.tx_type.to_lowercase(),
-            row.description.as_deref(),
-        )? {
-            // The bank says it is the same transaction: never imported again.
-            Some(dup @ dedup::BankDuplicate::BankId(_)) => {
-                skipped.push(SkippedRow::new(i, dup.reason()));
-                continue;
-            }
-            // Looks identical, but may be a genuine repeat purchase:
-            // left out with an explicit way for the client to override it.
-            Some(dup @ dedup::BankDuplicate::Identical) if !row.import_anyway.unwrap_or(false) => {
-                skipped.push(SkippedRow::possible_duplicate(
+        let mut insert = row_to_insert(&args.account_id, row);
+        match checker.check(&insert) {
+            Some(dedup::BankOccurrence::Certain) => {
+                skipped.push(SkippedRow::new(
                     i,
                     format!(
-                        "{} — if this is a genuine repeat purchase, resend this row with importAnyway: true",
-                        dup.reason()
+                        "Bank-side transaction ID {} already exists in this account",
+                        row.transaction_id.as_deref().unwrap_or_default()
                     ),
                 ));
                 continue;
             }
-            Some(dedup::BankDuplicate::Identical) | None => {}
+            Some(dedup::BankOccurrence::Possible) if !row.import_anyway.unwrap_or(false) => {
+                skipped.push(SkippedRow::possible_duplicate(i,"Possible duplicate (matching currency, amount, direction, dates, description and counterparty). Confirm a genuine separate occurrence using importAnyway: true".into()));
+                continue;
+            }
+            Some(dedup::BankOccurrence::Promote(id)) => {
+                bank_service::promote_pending_transaction(&tx, &id, &insert)?;
+                promoted += 1;
+                continue;
+            }
+            _ => {}
         }
-        let mut insert = row_to_insert(&args.account_id, row);
         let categorization_source = bank_service::enrich_with_rules(&tx, &mut insert, engine)?;
         // data_source stays "manual" (what create_transaction has always
         // written for this tool) — only the categorization provenance is new.
-        bank_service::create_transaction_with_origin(
+        let created_transaction = bank_service::create_transaction_with_origin(
             &tx,
             &insert,
             "manual",
             None,
             categorization_source,
         )?;
+        checker.record_written(&insert, &created_transaction.id);
         created += 1;
     }
     tx.commit()?;
 
     Ok(BulkWriteReport {
+        promoted,
         created,
         skipped_duplicates: skipped,
         errors: vec![],
@@ -309,6 +321,7 @@ pub fn bank_account_create(conn: &Connection, args: &BankAccountCreateArgs) -> R
         // that leaves the currency out means the user's own currency.
         currency: Some(currency_or_main(conn, args.currency.as_deref())?),
         balance: args.balance.clone(),
+        balance_as_of: None,
         institution_id: None,
         interest_rate: args.interest_rate.clone(),
         has_zone_designation: None,
@@ -404,6 +417,7 @@ pub fn bank_transactions_categorize(
     }
     if !errors.is_empty() {
         return Ok(BulkWriteReport {
+            promoted: 0,
             created: 0,
             skipped_duplicates: vec![],
             errors,
@@ -426,6 +440,7 @@ pub fn bank_transactions_categorize(
     }
     tx.commit()?;
     Ok(BulkWriteReport {
+        promoted: 0,
         created,
         skipped_duplicates: skipped,
         errors: vec![],
@@ -481,7 +496,7 @@ pub fn bank_transactions(
                 bt.counterparty_name, bt.counterparty_iban, bt.booking_date,
                 bt.value_date, bt.status, bt.remittance_info, bt.suggested_category_id,
                 bt.categorization_source, bt.created_at,
-                tc.name, tc.icon, tc.color
+                tc.name, tc.icon, tc.color, bt.flow_kind, tc.kind
          FROM bank_transactions bt
          LEFT JOIN transaction_categories tc ON bt.category_id = tc.id
          WHERE {} ORDER BY bt.booking_date DESC LIMIT ? OFFSET ?",
@@ -509,13 +524,15 @@ pub fn bank_transactions(
         "categoryName": sql_to_json(row.get::<_, rusqlite::types::Value>(14).unwrap_or(rusqlite::types::Value::Null)),
         "categoryIcon": sql_to_json(row.get::<_, rusqlite::types::Value>(15).unwrap_or(rusqlite::types::Value::Null)),
         "categoryColor": sql_to_json(row.get::<_, rusqlite::types::Value>(16).unwrap_or(rusqlite::types::Value::Null)),
-    })))?.filter_map(|r| r.ok()).collect();
+        "flowKind": row.get::<_, Option<crate::models::FlowKind>>(17)?,
+        "categoryKind": row.get::<_, Option<crate::models::FlowKind>>(18)?,
+    })))?.collect::<rusqlite::Result<Vec<_>>>()?;
     Ok(serde_json::json!({ "total": total, "limit": limit, "offset": offset, "transactions": txs }))
 }
 
 pub fn bank_categories(conn: &Connection) -> Result<Value> {
     let mut stmt = conn.prepare(
-        "SELECT id, name, icon, color, parent_id, sort_order, is_system, created_at
+        "SELECT id, name, icon, color, parent_id, sort_order, is_system, created_at, kind
          FROM transaction_categories ORDER BY sort_order ASC",
     )?;
     let rows: Vec<Value> = stmt.query_map([], |row| Ok(serde_json::json!({
@@ -527,7 +544,8 @@ pub fn bank_categories(conn: &Connection) -> Result<Value> {
         "sortOrder": sql_to_json(row.get::<_, rusqlite::types::Value>(5).unwrap_or(rusqlite::types::Value::Null)),
         "isSystem": row.get::<_, i32>(6)? != 0,
         "createdAt": row.get::<_, i64>(7)?,
-    })))?.filter_map(|r| r.ok()).collect();
+        "kind": row.get::<_, crate::models::FlowKind>(8)?,
+    })))?.collect::<rusqlite::Result<Vec<_>>>()?;
     Ok(Value::Array(rows))
 }
 
@@ -535,6 +553,102 @@ pub fn bank_categories(conn: &Connection) -> Result<Value> {
 mod tests {
     use super::*;
     use rusqlite::Connection;
+
+    #[test]
+    fn integrity_mcp_occurrences_reimport_and_pending_promotion_counts() {
+        let mut conn = setup_test_db();
+        let make_args = |rows| BankTransactionsCreateArgs {
+            account_id: "acc-1".into(),
+            transactions: rows,
+        };
+        let identical = row("debit", "1.001", 1767225600, Some("coffee"));
+        let args = make_args(vec![identical.clone(), identical.clone()]);
+        assert_eq!(
+            bank_transactions_create(&mut conn, &args, None)
+                .unwrap()
+                .created,
+            2
+        );
+        assert_eq!(
+            bank_transactions_create(&mut conn, &args, None)
+                .unwrap()
+                .created,
+            0
+        );
+        let mut pending = row("debit", "99", 1767225600, Some("pending"));
+        pending.transaction_id = Some("one".into());
+        pending.status = Some("pending".into());
+        let args = make_args(vec![pending.clone()]);
+        assert_eq!(
+            bank_transactions_create(&mut conn, &args, None)
+                .unwrap()
+                .created,
+            1
+        );
+        pending.status = Some("booked".into());
+        pending.amount = "101".into();
+        let args = make_args(vec![pending]);
+        let result = bank_transactions_create(&mut conn, &args, None).unwrap();
+        assert_eq!(
+            (
+                result.created,
+                result.promoted,
+                result.skipped_duplicates.len()
+            ),
+            (0, 1, 0)
+        );
+        assert_eq!(tx_count(&conn), 3);
+    }
+
+    #[test]
+    fn review_round1_legacy_padded_and_blank_ids_reimport_safely() {
+        let mut conn = setup_test_db();
+        conn.execute("INSERT INTO bank_transactions(id,bank_account_id,transaction_id,tx_type,amount,currency,booking_date,status,description) VALUES ('legacy','acc-1',' FIO-123 ','debit','99','CZK',1767225600,'booked','coffee')", []).unwrap();
+        let mut incoming = row("debit", "99", 1767225600, Some("coffee"));
+        incoming.transaction_id = Some(" FIO-123 ".into());
+        let args = BankTransactionsCreateArgs {
+            account_id: "acc-1".into(),
+            transactions: vec![incoming],
+        };
+        let report = bank_transactions_create(&mut conn, &args, None).unwrap();
+        assert_eq!(
+            (
+                report.created,
+                report.promoted,
+                report.skipped_duplicates.len()
+            ),
+            (0, 0, 1)
+        );
+        assert!(!report.skipped_duplicates[0].possible_duplicate);
+        assert_eq!(tx_count(&conn), 1);
+        conn.execute(
+            "UPDATE bank_transactions SET transaction_id=' \t ' WHERE id='legacy'",
+            [],
+        )
+        .unwrap();
+        // Whitespace-only legacy IDs are absent, permitting a composite match
+        // even when the new export supplies a bank ID.
+        let report = bank_transactions_create(&mut conn, &args, None).unwrap();
+        assert_eq!((report.created, report.skipped_duplicates.len()), (0, 1));
+        assert!(report.skipped_duplicates[0].possible_duplicate);
+        assert_eq!(tx_count(&conn), 1);
+    }
+
+    #[test]
+    fn mcp_reads_expose_flow_override_and_category_role_without_changing_category_writes() {
+        let conn = setup_test_db();
+        let category = bank_categories(&conn).unwrap();
+        assert_eq!(category[0]["kind"], "expense");
+        let data:InsertBankTransaction=serde_json::from_value(serde_json::json!({"bankAccountId":"acc-1","type":"debit","amount":"20","bookingDate":1700000000,"flowKind":"investment"})).unwrap();
+        let transaction = bank_service::create_transaction(&conn, &data).unwrap();
+        bank_service::set_transaction_category(&conn, &transaction.id, Some("cat-1"), Some("mcp"))
+            .unwrap();
+        let args: BankTransactionsArgs =
+            serde_json::from_value(serde_json::json!({"accountId":"acc-1"})).unwrap();
+        let result = bank_transactions(&conn, "acc-1", &args, 100, 0).unwrap();
+        assert_eq!(result["transactions"][0]["flowKind"], "investment");
+        assert_eq!(result["transactions"][0]["categoryKind"], "expense");
+    }
 
     fn setup_test_db() -> Connection {
         let conn = Connection::open_in_memory().expect("in-memory db");
@@ -547,7 +661,7 @@ mod tests {
                 iban TEXT,
                 bban TEXT,
                 currency TEXT NOT NULL DEFAULT 'CZK',
-                balance TEXT NOT NULL DEFAULT '0',
+                balance TEXT NOT NULL DEFAULT '0', balance_as_of INTEGER,
                 institution_id TEXT,
                 external_account_id TEXT,
                 data_source TEXT NOT NULL DEFAULT 'manual',
@@ -574,6 +688,7 @@ mod tests {
                 parent_id TEXT REFERENCES transaction_categories(id),
                 sort_order INTEGER NOT NULL DEFAULT 0,
                 is_system INTEGER NOT NULL DEFAULT 0,
+                kind TEXT NOT NULL DEFAULT 'expense',
                 created_at INTEGER NOT NULL DEFAULT 0
             );
 
@@ -586,7 +701,7 @@ mod tests {
                 currency TEXT NOT NULL,
                 description TEXT,
                 counterparty_name TEXT,
-                counterparty_iban TEXT,
+                counterparty_iban TEXT, counterparty_bank_code TEXT, counterparty_country TEXT, import_line INTEGER, row_balance TEXT,
                 booking_date INTEGER NOT NULL,
                 value_date INTEGER,
                 category_id TEXT REFERENCES transaction_categories(id),
@@ -598,6 +713,7 @@ mod tests {
                 created_at INTEGER NOT NULL DEFAULT 0,
                 import_batch_id TEXT,
                 categorization_source TEXT,
+                flow_kind TEXT,
                 UNIQUE(bank_account_id, transaction_id)
             );
 
@@ -626,10 +742,13 @@ mod tests {
             description: desc.map(String::from),
             counterparty_name: None,
             counterparty_iban: None,
+            counterparty_bank_code: None,
+            counterparty_country: None,
             booking_date,
             value_date: None,
             category_id: None,
             import_anyway: None,
+            status: None,
         }
     }
 
@@ -736,7 +855,7 @@ mod tests {
     }
 
     #[test]
-    fn create_skips_duplicates_including_intra_batch() {
+    fn create_consumes_stored_duplicates_and_preserves_new_occurrences() {
         let mut conn = setup_test_db();
         let first = BankTransactionsCreateArgs {
             account_id: "acc-1".into(),
@@ -754,16 +873,15 @@ mod tests {
             transactions: vec![
                 row("debit", "10", 1700000000, Some("groceries")), // dup of existing
                 row("credit", "77", 1700000500, Some("fresh")),
-                row("credit", "77", 1700000500, Some("fresh")), // intra-batch dup
+                row("credit", "77", 1700000500, Some("fresh")), // separate occurrence
             ],
         };
         let report = bank_transactions_create(&mut conn, &second, None).unwrap();
-        assert_eq!(report.created, 1);
+        assert_eq!(report.created, 2);
         assert!(report.errors.is_empty());
-        assert_eq!(report.skipped_duplicates.len(), 2);
+        assert_eq!(report.skipped_duplicates.len(), 1);
         assert_eq!(report.skipped_duplicates[0].index, 0);
-        assert_eq!(report.skipped_duplicates[1].index, 2);
-        assert_eq!(tx_count(&conn), 2);
+        assert_eq!(tx_count(&conn), 3);
     }
 
     #[test]
@@ -883,11 +1001,14 @@ mod tests {
                 row("debit", "99", 1700000000, Some("coffee")),
             ],
         };
+        let initial = bank_transactions_create(&mut conn, &args, None).unwrap();
+        assert_eq!(initial.created, 2);
+        assert!(initial.skipped_duplicates.is_empty());
         let report = bank_transactions_create(&mut conn, &args, None).unwrap();
-        assert_eq!(report.created, 1);
-        assert_eq!(report.skipped_duplicates.len(), 1);
+        assert_eq!(report.created, 0);
+        assert_eq!(report.skipped_duplicates.len(), 2);
         let skipped = &report.skipped_duplicates[0];
-        assert_eq!(skipped.index, 1);
+        assert_eq!(skipped.index, 0);
         assert!(
             skipped.possible_duplicate,
             "an id-less repeat is only a suspect"

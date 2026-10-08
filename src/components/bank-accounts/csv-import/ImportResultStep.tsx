@@ -105,8 +105,7 @@ export function ImportResultStep({
     () => result.errors.map((message) => formatRowMessage(message, t, tc)),
     [result.errors, t, tc]
   );
-  const manual = Math.min(manualCount, result.importedCount);
-  const rules = Math.max(0, result.importedCount - result.uncategorizedCount - manual);
+  const categorized = result.importedCount - result.uncategorizedCount;
 
   return (
     <div className="grid grid-cols-2 gap-6">
@@ -125,32 +124,36 @@ export function ImportResultStep({
                 to: fmt.day(result.dateRange.to),
               })
             : t('csvImport.done.nothing')}{' '}
-          {result.lastBalance != null && result.dateRange && (
+          {result.statementBalance != null && (
             <>
               {t('csvImport.done.balance', {
-                date: fmt.day(result.dateRange.to),
+                date: fmt.day(result.statementBalance!.asOf),
                 balance: '',
               }).replace(/\s*\.\s*$/, '')}{' '}
               <b className="font-650 text-ink">
-                {formatBalance(result.lastBalance, account?.currency, locale)}
+                {formatBalance(
+                  result.statementBalance!.amount,
+                  result.statementBalance!.currency,
+                  locale
+                )}
               </b>
               .
             </>
           )}
         </p>
-        <div className="my-4 grid grid-cols-3 gap-2.5">
+        <div className="my-4 grid grid-cols-4 gap-2.5">
+          <Tile value={result.promotedCount} label={t('readiness.promoted')} />
           <Tile value={result.importedCount} label={t('csvImport.done.imported')} />
           <Tile value={skippedDuplicates.length} label={t('csvImport.done.duplicates')} />
           <Tile value={result.errorCount} label={t('csvImport.done.errors')} tone="loss" />
         </div>
         {result.importedCount > 0 && (
           <p className="m-0 text-micro font-500 text-ink-4">
-            {t('csvImport.done.categorization', {
-              rules,
-              manual,
+            {t('readiness.resultCategorized', {
+              count: categorized,
               open: result.uncategorizedCount,
             })}{' '}
-            {manual > 0 && t('csvImport.done.learnedNote')}
+            {manualCount > 0 && t('readiness.oneTimeChoices')}
           </p>
         )}
         {(result.skippedZero > 0 || result.skippedFiltered > 0 || result.duplicates.length > 0) && (

@@ -16,10 +16,12 @@ use uuid::Uuid;
 /// Where a new custom category sorts: after the seeded ones (1..17), before "Other" (99).
 const DEFAULT_SORT_ORDER: i32 = 50;
 
-const SELECT_COLUMNS: &str = "id, name, icon, color, parent_id, sort_order, is_system, created_at";
+const SELECT_COLUMNS: &str =
+    "id, name, icon, color, parent_id, sort_order, is_system, created_at, kind";
 
 fn row_to_category(row: &rusqlite::Row<'_>) -> rusqlite::Result<TransactionCategory> {
     Ok(TransactionCategory {
+        kind: row.get(8)?,
         id: row.get(0)?,
         name: row.get(1)?,
         icon: row.get(2)?,
@@ -90,8 +92,8 @@ pub fn create_category(
     let id = Uuid::new_v4().to_string();
     let now = chrono::Utc::now().timestamp();
     conn.execute(
-        "INSERT INTO transaction_categories (id, name, icon, color, parent_id, sort_order, is_system, created_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, 0, ?7)",
+        "INSERT INTO transaction_categories (id, name, icon, color, parent_id, sort_order, is_system, created_at, kind)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, 0, ?7, ?8)",
         params![
             id,
             name,
@@ -99,13 +101,14 @@ pub fn create_category(
             data.color,
             data.parent_id,
             data.sort_order.unwrap_or(DEFAULT_SORT_ORDER),
-            now
+            now,
+            data.kind.unwrap_or_default().to_string(),
         ],
     )?;
     get_category(conn, &id)
 }
 
-/// Edit a category's name, icon or color (system categories included).
+/// Edit a category's name, icon, color or financial role (system categories included).
 /// Absent fields are left as they are.
 pub fn update_category(
     conn: &Connection,
@@ -128,8 +131,8 @@ pub fn update_category(
     let color = data.color.clone().or(existing.color);
 
     conn.execute(
-        "UPDATE transaction_categories SET name = ?1, icon = ?2, color = ?3 WHERE id = ?4",
-        params![name, icon, color, id],
+        "UPDATE transaction_categories SET name = ?1, icon = ?2, color = ?3, kind = ?5 WHERE id = ?4",
+        params![name, icon, color, id, data.kind.unwrap_or(existing.kind).to_string()],
     )?;
     get_category(conn, id)
 }
@@ -140,7 +143,8 @@ fn usage_of(conn: &Connection, id: &str) -> Result<CategoryUsage> {
             (SELECT COUNT(*) FROM bank_transactions WHERE category_id = ?1),
             (SELECT COUNT(*) FROM categorization_rules WHERE category_id = ?1),
             (SELECT COUNT(*) FROM learned_payees WHERE category_id = ?1),
-            (SELECT COUNT(*) FROM budget_goals WHERE category_id = ?1)",
+            ((SELECT COUNT(*) FROM budget_goals WHERE category_id = ?1) +
+             (SELECT COUNT(DISTINCT timeframe) FROM budget_goal_versions v WHERE category_id=?1 AND NOT EXISTS(SELECT 1 FROM budget_goals g WHERE g.category_id=v.category_id AND g.timeframe=v.timeframe)))",
         [id],
         |row| {
             Ok(CategoryUsage {
@@ -218,6 +222,11 @@ pub fn delete_category(conn: &Connection, id: &str, reassign_to: Option<&str>) -
             "UPDATE learned_payees SET category_id = ?2 WHERE category_id = ?1",
             params![id, target],
         )?;
+        tx.execute("DELETE FROM budget_goal_versions WHERE category_id=?1 AND EXISTS(SELECT 1 FROM budget_goal_versions target WHERE target.category_id=?2 AND target.timeframe=budget_goal_versions.timeframe AND target.effective_month=budget_goal_versions.effective_month)",params![id,target])?;
+        tx.execute(
+            "UPDATE budget_goal_versions SET category_id=?2 WHERE category_id=?1",
+            params![id, target],
+        )?;
         tx.execute(
             "DELETE FROM budget_goals
              WHERE category_id = ?1
@@ -262,6 +271,7 @@ mod tests {
                 parent_id TEXT REFERENCES transaction_categories(id),
                 sort_order INTEGER NOT NULL DEFAULT 0,
                 is_system INTEGER NOT NULL DEFAULT 0,
+                kind TEXT NOT NULL DEFAULT 'expense',
                 created_at INTEGER NOT NULL DEFAULT 0
             );
             CREATE TABLE bank_transactions (
@@ -279,6 +289,7 @@ mod tests {
                 normalized_payee TEXT,
                 category_id TEXT NOT NULL REFERENCES transaction_categories(id)
             );
+            CREATE TABLE budget_goal_versions (id TEXT PRIMARY KEY,category_id TEXT NOT NULL,timeframe TEXT NOT NULL,effective_month INTEGER NOT NULL,amount TEXT,currency TEXT NOT NULL,created_at INTEGER NOT NULL,UNIQUE(category_id,timeframe,effective_month));
             CREATE TABLE budget_goals (
                 id TEXT PRIMARY KEY,
                 category_id TEXT NOT NULL REFERENCES transaction_categories(id) ON DELETE CASCADE,
@@ -300,6 +311,7 @@ mod tests {
 
     fn insert(name: &str) -> InsertTransactionCategory {
         InsertTransactionCategory {
+            kind: None,
             name: name.to_string(),
             icon: None,
             color: None,
@@ -313,6 +325,58 @@ mod tests {
             AppError::Validation(key) => key,
             other => panic!("expected a validation error, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn historical_only_goal_blocks_delete_and_reassign_preserves_versions() {
+        let conn = setup_test_db();
+        conn.execute("INSERT INTO budget_goal_versions VALUES ('h','custom-pets','monthly',1704067200,'1200','CZK',1704067200)",[]).unwrap();
+        assert!(delete_category(&conn, "custom-pets", None).is_err());
+        delete_category(&conn, "custom-pets", Some("custom-kids")).unwrap();
+        let category: String = conn
+            .query_row(
+                "SELECT category_id FROM budget_goal_versions WHERE id='h'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(category, "custom-kids");
+    }
+    #[test]
+    fn category_role_round_trips_and_name_only_edits_preserve_it() {
+        let conn = setup_test_db();
+        let data: InsertTransactionCategory =
+            serde_json::from_value(serde_json::json!({"name":"Salary custom", "kind":"income"}))
+                .unwrap();
+        let category = create_category(&conn, &data).unwrap();
+        let role: String = conn
+            .query_row(
+                "SELECT kind FROM transaction_categories WHERE id=?1",
+                [&category.id],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(role, "income");
+        let edit: UpdateTransactionCategory =
+            serde_json::from_value(serde_json::json!({"kind":"financing"})).unwrap();
+        update_category(&conn, &category.id, &edit).unwrap();
+        update_category(
+            &conn,
+            &category.id,
+            &UpdateTransactionCategory {
+                name: Some("Updated".into()),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        let role: String = conn
+            .query_row(
+                "SELECT kind FROM transaction_categories WHERE id=?1",
+                [&category.id],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(role, "financing");
     }
 
     // ---- create ----
@@ -418,6 +482,7 @@ mod tests {
             &conn,
             "custom-pets",
             &UpdateTransactionCategory {
+                kind: None,
                 name: Some("Pets & vets".into()),
                 icon: None,
                 color: Some("#00BCD4".into()),

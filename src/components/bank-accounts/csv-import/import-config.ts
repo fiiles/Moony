@@ -6,7 +6,6 @@
 import { getFormatters } from '@/lib/format';
 import { formatSignedAmount } from '@/utils/signed-amount';
 import type {
-  BankAccount,
   CsvCategoryOverride,
   CsvImportConfigInput,
   CsvImportPreview,
@@ -14,7 +13,6 @@ import type {
   CsvPreset,
   CsvPreviewResult,
   CsvRowStatus,
-  InsertBankAccount,
 } from '@shared/schema';
 
 /** Radix `Select` cannot hold an empty value, so "no column" is a sentinel. */
@@ -52,6 +50,11 @@ export type DecimalSetting = typeof AUTO_VALUE | ',' | '.';
 /** Everything the user can change on step 2 (column names are CSV header texts, '' = none). */
 export interface MappingState {
   dateColumn: string;
+  valueDateColumn: string;
+  statusColumn: string;
+  pendingDateColumn: string;
+  counterpartyBankCodeColumn: string;
+  counterpartyCountryColumn: string;
   amountColumn: string;
   debitColumn: string;
   creditColumn: string;
@@ -70,6 +73,11 @@ export interface MappingState {
 
 export const EMPTY_MAPPING: MappingState = {
   dateColumn: '',
+  valueDateColumn: '',
+  statusColumn: '',
+  pendingDateColumn: '',
+  counterpartyBankCodeColumn: '',
+  counterpartyCountryColumn: '',
   amountColumn: '',
   debitColumn: '',
   creditColumn: '',
@@ -99,6 +107,11 @@ export function uniqueHeaders(headers: readonly string[]): string[] {
 /** Maps a `suggestedMappings` role to the `MappingState` field it fills. */
 export const ROLE_FIELDS = {
   date: 'dateColumn',
+  valueDate: 'valueDateColumn',
+  status: 'statusColumn',
+  pendingDate: 'pendingDateColumn',
+  counterpartyBankCode: 'counterpartyBankCodeColumn',
+  counterpartyCountry: 'counterpartyCountryColumn',
   amount: 'amountColumn',
   debit: 'debitColumn',
   credit: 'creditColumn',
@@ -117,6 +130,11 @@ export function mappingFromInspection(inspection: CsvPreviewResult): MappingStat
   const column = (role: string) => suggested[role]?.[0] ?? '';
   return {
     dateColumn: column('date'),
+    valueDateColumn: column('valueDate'),
+    statusColumn: column('status'),
+    pendingDateColumn: column('pendingDate'),
+    counterpartyBankCodeColumn: column('counterpartyBankCode'),
+    counterpartyCountryColumn: column('counterpartyCountry'),
     amountColumn: column('amount'),
     debitColumn: column('debit'),
     creditColumn: column('credit'),
@@ -195,6 +213,11 @@ export function buildImportConfig(
     skipRows,
     headerRow: inspection.headerRow,
     dateColumn: mapping.dateColumn,
+    valueDateColumn: mapping.valueDateColumn || null,
+    statusColumn: mapping.statusColumn || null,
+    pendingDateColumn: mapping.pendingDateColumn || null,
+    counterpartyBankCodeColumn: mapping.counterpartyBankCodeColumn || null,
+    counterpartyCountryColumn: mapping.counterpartyCountryColumn || null,
     dateFormat: mapping.dateFormat || AUTO_VALUE,
     amountColumn: orNull(mapping.amountColumn),
     debitColumn: hasPair ? mapping.debitColumn : null,
@@ -250,6 +273,7 @@ export function isDateFormatGuess(
 export interface PreviewSummary {
   /** `ok` rows plus the duplicates the user chose to import anyway. */
   willImport: number;
+  willPromote: number;
   forcedDuplicates: number;
   skippedDuplicates: number;
   errors: number;
@@ -264,21 +288,27 @@ export interface PreviewSummary {
 /**
  * Counts for the line above the preview table. The backend keeps a forced
  * duplicate's status as `duplicate` (and out of `okCount`), so the rows the
- * user ticked are added back here. Only the first 200 rows are listed — and so
- * tickable — which makes counting them in `rows` exact.
+ * user ticked are added back here. The backend counts forced possible duplicates
+ * across the full file, independently of the bounded page.
  */
 export function summarizePreview(
   preview: CsvImportPreview,
   importAnywayLines: readonly number[]
 ): PreviewSummary {
   const forced = new Set(importAnywayLines);
-  const forcedDuplicates = preview.rows.filter(
-    (row) => row.status === 'duplicate' && forced.has(row.line)
-  ).length;
+  const forcedDuplicates =
+    preview.forcedDuplicateCount ??
+    preview.rows.filter(
+      (row) =>
+        row.status === 'duplicate' &&
+        row.message?.key !== 'csvImport.duplicateById' &&
+        forced.has(row.line)
+    ).length;
   const willImport = preview.okCount + forcedDuplicates;
   const categorized = Math.min(willImport, preview.categorizedCount ?? 0);
   return {
     willImport,
+    willPromote: preview.promotedCount,
     forcedDuplicates,
     skippedDuplicates: Math.max(0, preview.duplicateCount - forcedDuplicates),
     errors: preview.errorCount,
@@ -330,6 +360,8 @@ export function rowStatusPresentation(status: CsvRowStatus): {
   variant: StatusBadgeVariant;
 } {
   switch (status) {
+    case 'promoted':
+      return { labelKey: 'csvImport.status.promoted', variant: 'gain' };
     case 'ok':
       return { labelKey: 'csvImport.status.ok', variant: 'gain' };
     case 'error':
@@ -424,30 +456,12 @@ export function nextStepsFor(result: CsvImportResult, context: NextStepContext):
   if (context.canShowImported && result.importedCount > 0) steps.push('show');
   if (context.canReviewUncategorized && result.uncategorizedCount > 0) steps.push('review');
   if (result.suggestedRulePack) steps.push('rulePack');
-  if (balanceDiffers(result.lastBalance, context.accountBalance)) steps.push('balance');
+  if (
+    result.statementBalance &&
+    balanceDiffers(result.statementBalance.amount, context.accountBalance)
+  )
+    steps.push('balance');
   return steps;
-}
-
-/**
- * Account update that changes only the balance. `update_bank_account` writes
- * every field it is given (a missing iban would be cleared), so the rest of the
- * account is sent back unchanged.
- */
-export function balanceUpdatePayload(account: BankAccount, balance: string): InsertBankAccount {
-  return {
-    name: account.name,
-    accountType: account.accountType,
-    iban: account.iban,
-    bban: account.bban,
-    currency: account.currency,
-    balance,
-    institutionId: account.institutionId,
-    interestRate: account.interestRate,
-    hasZoneDesignation: account.hasZoneDesignation,
-    terminationDate: account.terminationDate,
-    interestRateValidUntil: account.interestRateValidUntil,
-    excludeFromBalance: account.excludeFromBalance,
-  };
 }
 
 /** A balance as it will be stored ("30 196,12 Kč"), cents included even for CZK. */

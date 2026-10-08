@@ -85,8 +85,8 @@ function moonyBrowserBridge(): Plugin {
 }
 
 // https://vite.dev/config/
-export default defineConfig(async () => ({
-  plugins: [react(), moonyBrowserBridge()],
+export default defineConfig(async ({ mode }) => ({
+  plugins: [react(), ...(mode === 'test' ? [] : [moonyBrowserBridge()])],
 
   resolve: {
     alias: {

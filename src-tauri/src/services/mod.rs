@@ -20,6 +20,7 @@ pub mod csv_presets;
 pub mod currency;
 pub mod date_parser;
 pub mod dedup;
+pub mod financial_semantics;
 pub mod fx_backfill;
 pub mod history_recalc;
 pub mod http;
@@ -46,3 +47,9 @@ pub mod stock_import;
 pub mod stock_monitor;
 pub mod ticker_history;
 pub mod valuations;
+
+pub mod reporting;
+
+pub mod cashflow_planning;
+
+pub mod bank_history;

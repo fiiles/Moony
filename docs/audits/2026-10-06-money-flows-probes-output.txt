@@ -1,0 +1,34 @@
+   Compiling moony v0.9.1 (/Users/filipkral/Programování/FinanceApp/Moony-tauri/src-tauri)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 14.08s
+     Running unittests src/lib.rs (target/debug/deps/moony_lib-87ac917110b57d90)
+
+running 8 tests
+test services::audit_probes::audit_finite_amount_validation_is_missing_at_wire_boundary ... ok
+test services::audit_probes::audit_learned_payee_overrides_own_iban_and_domestic_number_does_not_match ... ok
+test services::audit_probes::audit_income_debit_is_ignored_and_custom_income_is_not_income ... ok
+test services::audit_probes::audit_refund_in_other_category_disagrees_between_reports ... ok
+test services::audit_probes::audit_pending_transactions_are_included_in_actuals_and_budgets ... ok
+test services::audit_probes::audit_balance_has_no_currency_or_as_of_date_in_result ... ok
+test services::audit_probes::audit_delete_only_removes_rows_owned_by_that_batch ... ok
+test services::audit_probes::audit_dedup_discards_different_currency_and_different_counterparty ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 1397 filtered out; finished in 0.03s
+
+     Running unittests src/bin/local_convert_prerelease_db.rs (target/debug/deps/local_convert_prerelease_db-363b62bf39887aab)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 7 filtered out; finished in 0.00s
+
+     Running unittests src/main.rs (target/debug/deps/moony-a746307f126d6db8)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/bin/seed_demo.rs (target/debug/deps/seed_demo-fe267a1fa21640ff)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 10 filtered out; finished in 0.00s
+

@@ -272,5 +272,9 @@
   },
   "crumb": "categorization rules",
   "hitsCount_one": "{{count}} hit",
-  "hitsCount_other": "{{count}} hits"
+  "hitsCount_other": "{{count}} hits",
+  "scopedLearning": "Account {{account}} · {{direction}} only",
+  "legacyLearning": "Legacy broad rule · all accounts and directions",
+  "incoming": "Incoming",
+  "outgoing": "Outgoing"
 }

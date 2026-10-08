@@ -77,12 +77,14 @@ pub enum ColumnRole {
     Amount,
     Currency,
     CounterpartyIban,
+    CounterpartyBankCode,
+    CounterpartyCountry,
     Counterparty,
     Description,
 }
 
 impl ColumnRole {
-    pub const ALL: [ColumnRole; 11] = [
+    pub const ALL: [ColumnRole; 13] = [
         ColumnRole::TransactionId,
         ColumnRole::ValueDate,
         ColumnRole::Debit,
@@ -91,6 +93,8 @@ impl ColumnRole {
         ColumnRole::Date,
         ColumnRole::Amount,
         ColumnRole::Currency,
+        ColumnRole::CounterpartyBankCode,
+        ColumnRole::CounterpartyCountry,
         ColumnRole::CounterpartyIban,
         ColumnRole::Counterparty,
         ColumnRole::Description,
@@ -110,6 +114,8 @@ impl ColumnRole {
             ColumnRole::Date => "date",
             ColumnRole::Amount => "amount",
             ColumnRole::Currency => "currency",
+            ColumnRole::CounterpartyBankCode => "counterpartyBankCode",
+            ColumnRole::CounterpartyCountry => "counterpartyCountry",
             ColumnRole::CounterpartyIban => "counterparty_iban",
             ColumnRole::Counterparty => "counterparty",
             ColumnRole::Description => "description",
@@ -137,6 +143,40 @@ struct RoleSpec {
 const CCY: &str = "(?: [a-z]{3})?";
 
 static SPECS: &[RoleSpec] = &[
+    RoleSpec {
+        role: ColumnRole::CounterpartyBankCode,
+        exact: &[
+            "kod banky",
+            "kod banky protiuctu",
+            "kod banky protistrany",
+            "kod banky prijemce",
+            "kod banky platce",
+            "counterparty bank code",
+            "bank code",
+            "bank code of counterparty",
+            "routing number",
+            "routing code",
+            // DE
+            "blz",
+            "bankleitzahl",
+        ],
+        loose: &[],
+        weak: &[],
+    },
+    RoleSpec {
+        role: ColumnRole::CounterpartyCountry,
+        exact: &[
+            "counterparty country",
+            "counterparty country code",
+            "account country",
+            "country",
+            "country code",
+            "zeme protiuctu",
+            "zeme protistrany",
+        ],
+        loose: &[],
+        weak: &[],
+    },
     RoleSpec {
         role: ColumnRole::TransactionId,
         exact: &[
@@ -761,6 +801,30 @@ mod tests {
                     spec.role
                 );
             }
+        }
+    }
+
+    /// Final review I-2: common Czech/German bank-code and country headers.
+    #[test]
+    fn counterparty_bank_code_and_country_variants() {
+        for (header, role) in [
+            ("Kód banky protiúčtu", "counterpartyBankCode"),
+            ("Kód banky protistrany", "counterpartyBankCode"),
+            ("Kód banky příjemce", "counterpartyBankCode"),
+            ("Bank code of counterparty", "counterpartyBankCode"),
+            ("BLZ", "counterpartyBankCode"),
+            ("Bankleitzahl", "counterpartyBankCode"),
+            ("Země protistrany", "counterpartyCountry"),
+            ("Country code", "counterpartyCountry"),
+        ] {
+            let m =
+                suggest_column_mappings(&headers(&["Datum", "Částka", "Číslo protiúčtu", header]));
+            assert_eq!(mapped(&m, role).as_deref(), Some(header), "{header}");
+            assert_eq!(
+                mapped(&m, "counterparty_iban").as_deref(),
+                Some("Číslo protiúčtu"),
+                "{header}"
+            );
         }
     }
 

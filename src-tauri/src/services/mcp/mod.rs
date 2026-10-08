@@ -204,6 +204,7 @@ pub struct RowError {
 /// sell without position, currency mismatch, missing coingeckoId).
 #[derive(Debug, serde::Serialize)]
 pub struct BulkWriteReport {
+    pub promoted: usize,
     pub created: usize,
     #[serde(rename = "skippedDuplicates")]
     pub skipped_duplicates: Vec<SkippedRow>,
@@ -574,7 +575,7 @@ impl MoonyMcp {
     }
 
     #[tool(
-        description = "Get an income vs expenses cashflow report based on user-defined cashflow items (recurring income/expenses), loan payments, insurance premiums, and savings account interest. View as monthly or yearly totals. Amounts are in the user's main currency, given as `mainCurrency`."
+        description = "Get the planned income vs expenses cashflow report — the same report as the app's Cashflow planning page: user-defined cashflow items, active loan payments (repaid and expired loans are omitted), insurance premiums, property costs, savings interest, dividends, bond interest and rental income. A user item that replaces an automatic one (replacement) is counted once. View as monthly or yearly totals. Amounts are in the user's main currency, given as `mainCurrency`; same-currency items need no FX data, while foreign items use a current source/target rate pair. `estimate` is true and `quality.missingFxCurrencies` lists currencies whose conversion is unavailable. Mixed property costs retain their native `originalComponents`."
     )]
     fn cashflow_report(
         &self,
@@ -587,7 +588,7 @@ impl MoonyMcp {
     }
 
     #[tool(
-        description = "Get a budget vs actual spending report by category for a given time period. Shows how much was spent vs budget goals. Amounts are in the user's main currency, given as `mainCurrency`."
+        description = "Get a budget vs actual spending report by category for a period — the same numbers as the app's Budgets page. Only booked transactions count (pending ones do not); refunds reduce spending; transfers between the user's own accounts, investments, loan financing and adjustments are not spending (they are summarized separately); each month uses the budget limit version in effect in that month. Pass a calendar period matching `timeframe` (one month for monthly, a quarter, a year). Report amounts are computed directly in the user's `mainCurrency`: same-currency rows need no rates; foreign rows use a common historical source/target quote date on or before booking, with at most ten days of lookback. Missing conversions are excluded and counted in `quality.missingFxCount`, never converted 1:1. `budget` is null when its report-currency conversion is unavailable. Budget utilization is independently evaluated in `budgetCurrency`, with `budgetSpent`, `budgetLimitNative` and `usagePercent`; changing the profile currency does not change whether that native budget is exceeded."
     )]
     fn budgeting_report(
         &self,
@@ -596,8 +597,8 @@ impl MoonyMcp {
         to_result(self.db.with_conn(|conn| {
             analytics::budgeting_report(
                 conn,
-                Some(args.start_date),
-                Some(args.end_date),
+                args.start_date,
+                args.end_date,
                 args.timeframe.clone(),
             )
         }))
@@ -637,7 +638,7 @@ impl MoonyMcp {
     }
 
     #[tool(
-        description = "Bulk-import bank transactions into one account (designed for parsed CSV/statement exports).\n\nCall this only after presenting the parsed data to the user and receiving their confirmation. Import in batches of about 100 rows at a time (max 200 per call); split larger exports across multiple calls — safe to do because duplicate rows are skipped and reported.\nRows without a categoryId are auto-categorized by the app's own rules (custom rules, learned payees, own-account transfers, default system rules) wherever one matches; anything the rules can't place is left uncategorized rather than guessed — call bank_transactions with uncategorized: true afterward to find those and assign the rest yourself. Rows that arrive with an explicit categoryId are always left as given.\nAll-or-nothing: if any row is invalid or references a missing category, the whole batch is rejected with per-row errors and nothing is written. Duplicates: pass the bank-side transactionId whenever the export has one — it is then the only duplicate key (a row whose id already exists is skipped and reported; two rows with different ids are two payments, however alike). Rows without a transactionId that exactly match an existing transaction (account+date+amount+type+description) are skipped and reported in skippedDuplicates with possibleDuplicate: true, because they may be a genuine repeat purchase (two identical coffees on one day) rather than a re-import. Tell the user about every such row; only if they confirm it is a separate payment, resend just that row with importAnyway: true. Re-importing an overlapping export is safe.\ntype: credit | debit. Dates: Unix timestamps (seconds). Amounts: positive numeric strings."
+        description = "Bulk-import bank transactions into one account (designed for parsed CSV/statement exports).\n\nCall this only after presenting the parsed data to the user and receiving their confirmation. Import in batches of about 100 rows at a time (max 200 per call); split larger exports across multiple calls — safe to do because duplicate rows are skipped and reported.\nRows without a categoryId are auto-categorized by the app's own rules wherever one matches, in this order: transfers to/from the user's own accounts (recognized only from a valid IBAN or a complete domestic account number with bank code) first, then custom rules, learned payees and default system rules; anything the rules can't place is left uncategorized rather than guessed — call bank_transactions with uncategorized: true afterward to find those and assign the rest yourself. Rows that arrive with an explicit categoryId are always left as given.\nAll-or-nothing: if any row is invalid or references a missing category, the whole batch is rejected with per-row errors and nothing is written. Duplicates: pass the bank-side transactionId whenever the export has one — it is then the only duplicate key (a row whose id already exists is skipped and reported; two rows with different ids are two payments, however alike). Rows without a transactionId that exactly match an existing, not yet matched transaction (account + booking date + value date + amount + currency + type + description + counterparty name + counterparty account identifier + status) are skipped and reported in skippedDuplicates with possibleDuplicate: true, because they may be a genuine repeat purchase (two identical coffees on one day) rather than a re-import; each stored transaction matches at most one new row, so genuine repeats in one export stay distinct. Tell the user about every such row; only if they confirm it is a separate payment, resend just that row with importAnyway: true. Pending rows: pass status: pending; a later row with the same transactionId and status booked updates (promotes) the stored pending row instead of adding a second one, reported as promoted. Pending rows are kept out of budgets and cashflow. Re-importing an overlapping export is safe.\ntype: credit | debit. Dates: Unix timestamps (seconds). Amounts: positive numeric strings."
     )]
     fn bank_transactions_create(
         &self,
@@ -651,7 +652,7 @@ impl MoonyMcp {
     }
 
     #[tool(
-        description = "Suggest categories for existing bank transactions (bulk). Suggestions are NOT final: each one lands as a pending suggestion the user reviews and confirms inside the Moony app. When the user confirms a suggestion, the app learns a payee rule and will categorize that merchant automatically from then on — tell the user to review your suggestions in the app after you are done. Categories must already exist (see bank_categories).\n\nSubmit about 100 assignments at a time (max 200 per call); split larger batches across multiple calls. A transaction that already has a final category — manual, rule-derived, or a previously confirmed suggestion — is skipped and reported in skippedDuplicates; the user can recategorize it in the app. A pending unconfirmed suggestion is replaced by a new one. Rows with a pending suggestion show it as suggestedCategoryId in the bank_transactions read tool — skip those unless you mean to revise them.\nAll-or-nothing on genuinely invalid input: an unknown transaction or category id, or the same transaction assigned twice in one call, rejects the whole batch with per-row errors and nothing is written."
+        description = "Suggest categories for existing bank transactions (bulk). Suggestions are NOT final: each one lands as a pending suggestion the user reviews and confirms inside the Moony app. Confirming a suggestion in the app applies it to that one transaction only; it does not create a payee rule (to categorize a merchant automatically, the user picks the category themselves in the app, which can learn a rule scoped to that account and direction). Tell the user to review your suggestions in the app after you are done. Categories must already exist (see bank_categories).\n\nSubmit about 100 assignments at a time (max 200 per call); split larger batches across multiple calls. A transaction that already has a final category — manual, rule-derived, or a previously confirmed suggestion — is skipped and reported in skippedDuplicates; the user can recategorize it in the app. A pending unconfirmed suggestion is replaced by a new one. Rows with a pending suggestion show it as suggestedCategoryId in the bank_transactions read tool — skip those unless you mean to revise them.\nAll-or-nothing on genuinely invalid input: an unknown transaction or category id, or the same transaction assigned twice in one call, rejects the whole batch with per-row errors and nothing is written."
     )]
     fn bank_transactions_categorize(
         &self,

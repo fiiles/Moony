@@ -91,10 +91,18 @@ Every Tauri `listen()` call gets its `unlisten()` in the `useEffect` cleanup.
 
 ## 8. Currency
 
-- Convert amounts via `convertToCzK` from `@shared/currencies` (CZK is the base — see
-  ADR 0001).
-- Format via `formatCurrency`/`formatCurrencyShort` from `useCurrency()` for values that
-  must be converted from CZK to the display currency first.
+- Native amounts remain in their stored currency. Actual cashflow, budgeting, drilldowns
+  and planning request an explicit target currency and format the returned amounts directly
+  with `useReportMoney(report.reportCurrency)` (`money`, `signedMoney`, `nativeMoney` for
+  native details) or `formatReportMoney` — see ADR 0011. Never convert a target-currency
+  report from CZK again.
+- Reports and their details show ISO 4217 minor units (`isoMinorUnits`, the same
+  `shared/iso4217-minor-units.json` table as backend `reporting::minor_units`) so rows,
+  totals and CSV reconcile: CZK 100.40 + 100.40 reads 200.80. Elsewhere `useFormat().money()`
+  keeps the cash style (CZK/HUF without decimals); do not migrate it wholesale.
+- Use `convertToCzK` and `formatCurrency`/`formatCurrencyShort` only for interfaces that
+  explicitly retain a CZK contract (for example, existing portfolio caches). A reference
+  currency is not a reason to overwrite native amounts or change historical rate dates.
 - Everything else (native-currency amounts, plain numbers, percentages, dates) goes through
   `useFormat()` / `getFormatters(locale)` from `src/lib/format.ts`: `money`, `number`,
   `percent`, `day` (UTC calendar days — booking, transaction, maturity dates), `dateTime`
@@ -105,9 +113,9 @@ Every Tauri `listen()` call gets its `unlisten()` in the `useEffect` cleanup.
   Pure utilities take a `locale` argument instead of calling `Intl` themselves.
 - Chart axes: label days with `fmt.day`, thin the ticks with `evenTicks()` from
   `src/utils/chart-axis.ts` (at most 8, evenly spaced).
-- Queries whose results depend on exchange rates must include `ratesTimestamp` in their
-  query key so they refetch when ECB rates refresh — see the portfolio-metrics query in
-  `src/pages/Dashboard.tsx`.
+- Queries returning target-currency money include that currency in their key. Queries
+  dependent on rates also include `ratesTimestamp` so new rate data refetches them. Format
+  with the response currency, never relabel an old response after a profile change.
 
 **Why:** hand-rolled conversion or formatting drifts from the rest of the app; a query
 that ignores `ratesTimestamp` shows values computed with stale rates next to values

@@ -298,7 +298,6 @@ pub fn get_report_in_currency(
             } else {
                 un_expense += value;
             }
-            un_count += 1;
         }
     }
     let limits = period_limits(conn, start_date, end_date, timeframe, &report_currency)?;
@@ -390,8 +389,13 @@ pub fn get_report_in_currency(
             FlowKind::Expense => &mut expenses,
             _ => continue,
         };
-        if let Some(summary) = row.category_id.as_ref().and_then(|c| map.get_mut(c)) {
-            summary.transaction_count += 1;
+        match row.category_id.as_ref() {
+            Some(category) => {
+                if let Some(summary) = map.get_mut(category) {
+                    summary.transaction_count += 1;
+                }
+            }
+            None => un_count += 1,
         }
     }
     let sort = |map: HashMap<String, CategorySpendingSummary>| {
@@ -887,18 +891,22 @@ mod tests {
             "INSERT INTO bank_transactions(id,bank_account_id,booking_date,amount,currency,category_id,tx_type) VALUES
              ('e1','acc1',{d},'60','EUR','cat_groceries','debit'),
              ('e2','acc1',{d},'40','EUR','cat_groceries','debit'),
-             ('salary','acc1',{d},'500','EUR','cat_income','credit');",
+             ('salary','acc1',{d},'500','EUR','cat_income','credit'),
+             ('loose','acc1',{d},'5','EUR',NULL,'debit');",
             d = OCT + 86400
         ))
         .unwrap();
         let usd = get_report_in_currency(&conn, OCT, NOV - 1, "monthly", None, "USD").unwrap();
-        assert_eq!(usd.quality.missing_fx_count, 3);
+        assert_eq!(usd.quality.missing_fx_count, 4);
         let groceries = &usd.expense_categories[0];
         assert_eq!(groceries.budget_spent.as_deref(), Some("100.00"));
         assert_eq!(groceries.budget_percentage, Some(50.0));
         assert_eq!(groceries.transaction_count, 2);
-        // Unconverted spending is not reported as a healthy zero row.
+        // Unconverted spending is not reported as a healthy zero row, but
+        // uncategorized movements still count (no false "no transactions").
         assert!(usd.income_categories.is_empty());
+        assert_eq!(usd.uncategorized_transaction_count, 1);
+        assert_eq!(usd.uncategorized_expense_transaction_count, 1);
     }
     #[test]
     fn target_budget_versions_retain_native_text_after_target_switch() {
@@ -1515,7 +1523,8 @@ mod tests {
           ('pending','acc1',1704067200,'100','CZK','debit',NULL,'pending');").unwrap();
         let report = get_report(&conn, 1704067200, 1704153599, "monthly").unwrap();
         assert_eq!(report.uncategorized_expenses, "0.00");
-        assert_eq!(report.uncategorized_transaction_count, 4);
+        // Like the expense count below, the AED row counts without a quote.
+        assert_eq!(report.uncategorized_transaction_count, 5);
         assert_eq!(
             serde_json::to_value(&report).unwrap()["uncategorizedExpenseTransactionCount"],
             3

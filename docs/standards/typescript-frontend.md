@@ -93,8 +93,13 @@ Every Tauri `listen()` call gets its `unlisten()` in the `useEffect` cleanup.
 
 - Native amounts remain in their stored currency. Actual cashflow, budgeting, drilldowns
   and planning request an explicit target currency and format the returned amounts directly
-  with `useFormat().money(value, report.reportCurrency)` — see ADR 0011. Never convert a
-  target-currency report from CZK again.
+  with `useReportMoney(report.reportCurrency)` (`money`, `signedMoney`, `nativeMoney` for
+  native details) or `formatReportMoney` — see ADR 0011. Never convert a target-currency
+  report from CZK again.
+- Reports and their details show ISO 4217 minor units (`isoMinorUnits`, the same
+  `shared/iso4217-minor-units.json` table as backend `reporting::minor_units`) so rows,
+  totals and CSV reconcile: CZK 100.40 + 100.40 reads 200.80. Elsewhere `useFormat().money()`
+  keeps the cash style (CZK/HUF without decimals); do not migrate it wholesale.
 - Use `convertToCzK` and `formatCurrency`/`formatCurrencyShort` only for interfaces that
   explicitly retain a CZK contract (for example, existing portfolio caches). A reference
   currency is not a reason to overwrite native amounts or change historical rate dates.

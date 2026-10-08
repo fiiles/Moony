@@ -60,11 +60,12 @@
   },
   "currency": {
     "title": "Currency",
-    "description": "Choose the currency for summaries, reports and your total net worth.",
+    "description": "Choose the currency for summaries, asset overviews and reports.",
     "example": "e.g. {{example}}",
     "noRateHint": "Exchange rates are updated automatically only for currencies the ECB publishes. Other currencies (for example AED or SAR) have no rate, so totals that include them are not accurate.",
     "main": "Main currency",
-    "mainHint": "Summaries and reports are shown in this currency. Accounts, transactions, contracts and individual budgets keep their own currency."
+    "mainHint": "Summaries, asset overviews and reports are shown in this currency:",
+    "nativeHint": "Entered amounts of accounts, transactions, contracts and budgets keep their original currency."
   },
   "language": {
     "title": "Language and formats",

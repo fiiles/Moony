@@ -242,7 +242,6 @@ pub fn get_actuals_in_currency(
         acc.name_from(name, current);
         if current {
             acc.amount += amount;
-            acc.count += 1;
         } else {
             acc.previous += amount;
         }
@@ -269,6 +268,23 @@ pub fn get_actuals_in_currency(
                 }
             }
             _ => {}
+        }
+    }
+    // Counts match the drilldown and include rows whose report conversion is
+    // missing; a group with only unconverted rows is not added as a zero.
+    for row in &rows {
+        let (key, map) = match row.effective_flow_kind {
+            FlowKind::Income => (source_key(&row.counterparty_name).0, &mut sources),
+            FlowKind::Expense => (
+                row.category_id
+                    .clone()
+                    .unwrap_or_else(|| UNCATEGORIZED.into()),
+                &mut expenses,
+            ),
+            kind => (kind.to_string(), &mut other),
+        };
+        if let Some(acc) = map.get_mut(&key) {
+            acc.count += 1;
         }
     }
     let mut months: Vec<_> = months
@@ -479,6 +495,42 @@ mod tests {
 
     const TODAY: i64 = 1_791_000_000; // 2026-10-03 (UTC)
 
+    /// Group counts match the drilldown (all relevant rows), even when a row
+    /// lacks a report quote; its amount stays out of the partial total.
+    #[test]
+    fn group_counts_include_rows_without_report_conversion() {
+        let conn = setup_test_db();
+        for (id, currency) in [("czk", "CZK"), ("aed", "AED")] {
+            insert_tx(
+                &conn,
+                id,
+                "acc1",
+                ts(2026, 9, 1),
+                "100",
+                currency,
+                None,
+                Some("cat_groceries"),
+                "debit",
+            );
+        }
+        // Only unconverted spending: no healthy-looking zero group is added.
+        insert_tx(
+            &conn,
+            "aed-only",
+            "acc1",
+            ts(2026, 9, 1),
+            "50",
+            "AED",
+            None,
+            None,
+            "debit",
+        );
+        let report = get_actuals_in_currency(&conn, "6m", TODAY, None, "CZK").unwrap();
+        assert_eq!(report.quality.missing_fx_count, 2);
+        assert_eq!(report.expense_categories.len(), 1);
+        assert_eq!(report.expense_categories[0].amount, "100.00");
+        assert_eq!(report.expense_categories[0].count, 2);
+    }
     #[test]
     fn target_actuals_aed_and_jpy_work_without_quotes() {
         for (currency, amount, expected) in [

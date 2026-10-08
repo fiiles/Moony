@@ -1,6 +1,7 @@
 import { ReportError, ReportQualityNote } from '@/components/reports/ReportQualityNote';
 import { currencyDecimals, type CurrencyCode } from '@shared/currencies';
 import { preserveMoneyText } from '@/utils/money-flows';
+import { formatReportMoney } from '@/utils/report-currencies';
 import { refreshMoneyFlows } from '@/lib/money-flow-refresh';
 import { translateApiError } from '@/lib/translate-api-error';
 import { useEffect, useMemo } from 'react';
@@ -306,7 +307,8 @@ export function BudgetGoalDialog({
                       ? t('dialog.hintPickCategory')
                       : average > 0
                         ? t('readiness.observedAverage', {
-                            amount: fmt.money(
+                            amount: formatReportMoney(
+                              fmt,
                               average,
                               averageReport?.reportCurrency ?? editorCurrency
                             ),
@@ -352,7 +354,11 @@ export function BudgetGoalDialog({
                           })
                         : t('readiness.scheduledLimit', {
                             month: monthLabel(version.effectiveMonth),
-                            amount: fmt.money(Number(version.amount), version.currency),
+                            amount: formatReportMoney(
+                              fmt,
+                              Number(version.amount),
+                              version.currency
+                            ),
                           })}
                     </li>
                   ))}

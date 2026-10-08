@@ -405,7 +405,8 @@ export default function Budgeting() {
   const noTransactions =
     report.incomeCategories.length === 0 &&
     report.expenseCategories.length === 0 &&
-    report.uncategorizedTransactionCount === 0;
+    report.uncategorizedTransactionCount === 0 &&
+    report.quality.missingFxCount === 0;
 
   // nothing booked in the period and no limits to show
   if (rows.length === 0 && noTransactions) {

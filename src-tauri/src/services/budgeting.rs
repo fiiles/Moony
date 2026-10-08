@@ -271,9 +271,7 @@ pub fn get_report_in_currency(
         let value = parse_money(value)?;
         let kind = row.effective_flow_kind;
         if kind != FlowKind::Income && kind != FlowKind::Expense {
-            let v = others.entry(kind.to_string()).or_default();
-            v.0 += value;
-            v.1 += 1;
+            others.entry(kind.to_string()).or_default().0 += value;
             continue;
         }
         if kind == FlowKind::Income {
@@ -387,7 +385,12 @@ pub fn get_report_in_currency(
         let map = match row.effective_flow_kind {
             FlowKind::Income => &mut incomes,
             FlowKind::Expense => &mut expenses,
-            _ => continue,
+            kind => {
+                if let Some(v) = others.get_mut(&kind.to_string()) {
+                    v.1 += 1;
+                }
+                continue;
+            }
         };
         match row.category_id.as_ref() {
             Some(category) => {
@@ -892,12 +895,15 @@ mod tests {
              ('e1','acc1',{d},'60','EUR','cat_groceries','debit'),
              ('e2','acc1',{d},'40','EUR','cat_groceries','debit'),
              ('salary','acc1',{d},'500','EUR','cat_income','credit'),
-             ('loose','acc1',{d},'5','EUR',NULL,'debit');",
+             ('loose','acc1',{d},'5','EUR',NULL,'debit');
+             INSERT INTO bank_transactions(id,bank_account_id,booking_date,amount,currency,tx_type,flow_kind) VALUES
+             ('invest-usd','acc1',{d},'30','USD','debit','investment'),
+             ('invest-eur','acc1',{d},'20','EUR','debit','investment');",
             d = OCT + 86400
         ))
         .unwrap();
         let usd = get_report_in_currency(&conn, OCT, NOV - 1, "monthly", None, "USD").unwrap();
-        assert_eq!(usd.quality.missing_fx_count, 4);
+        assert_eq!(usd.quality.missing_fx_count, 5);
         let groceries = &usd.expense_categories[0];
         assert_eq!(groceries.budget_spent.as_deref(), Some("100.00"));
         assert_eq!(groceries.budget_percentage, Some(50.0));
@@ -907,6 +913,11 @@ mod tests {
         assert!(usd.income_categories.is_empty());
         assert_eq!(usd.uncategorized_transaction_count, 1);
         assert_eq!(usd.uncategorized_expense_transaction_count, 1);
+        let investment = &usd.nonconsumption_flows[0];
+        assert_eq!(
+            (investment.amount.as_str(), investment.count),
+            ("-30.00", 2)
+        );
     }
     #[test]
     fn target_budget_versions_retain_native_text_after_target_switch() {

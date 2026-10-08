@@ -8,7 +8,8 @@ use crate::services::financial_semantics::{
 };
 use chrono::{DateTime, Datelike, NaiveDate, Utc};
 use rusqlite::{params, Connection, OptionalExtension};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
+use std::sync::LazyLock;
 
 pub fn parse_money(text: &str) -> Result<f64> {
     text.parse::<f64>()
@@ -45,12 +46,20 @@ pub fn normalize_currency(currency: &str) -> Result<String> {
     }
     Ok(currency)
 }
-pub fn minor_units(currency: &str) -> usize {
-    match currency {
-        "BHD" | "KWD" | "OMR" => 3,
-        "CLP" | "ISK" | "JPY" | "KRW" | "VND" => 0,
-        _ => 2,
+/// ISO 4217 minor units of the money contract, shared with the frontend report
+/// formatter. Codes without an ISO minor unit (metals, XDR, XXX) or outside the
+/// list keep two decimals. This is wire precision, not the cash style of the UI.
+static ISO_MINOR_UNITS: LazyLock<HashMap<String, usize>> = LazyLock::new(|| {
+    #[derive(serde::Deserialize)]
+    struct Table {
+        exceptions: HashMap<String, usize>,
     }
+    serde_json::from_str::<Table>(include_str!("../../../shared/iso4217-minor-units.json"))
+        .expect("shared/iso4217-minor-units.json is valid")
+        .exceptions
+});
+pub fn minor_units(currency: &str) -> usize {
+    ISO_MINOR_UNITS.get(currency).copied().unwrap_or(2)
 }
 pub fn money_in_currency(amount: f64, currency: &str) -> String {
     let decimals = minor_units(currency);
@@ -357,6 +366,20 @@ mod tests {
         assert_eq!(money_in_currency(1.234, "EUR"), "1.23");
         assert_eq!(normalize_currency(" eur ").unwrap(), "EUR");
         assert!(normalize_currency("EURO").is_err());
+    }
+    #[test]
+    fn minor_units_follow_the_iso_list_not_the_ui_cash_style() {
+        // ISO exceptions beyond the currency picker (SIX List One, 2026-09-17).
+        for (code, units) in [("JOD", 3), ("TND", 3), ("UGX", 0), ("XOF", 0), ("CLF", 4)] {
+            assert_eq!(minor_units(code), units, "{code}");
+        }
+        // CZK/HUF keep ISO two decimals even though the UI hides cash subunits.
+        assert_eq!(money_in_currency(200.8, "CZK"), "200.80");
+        assert_eq!(money_in_currency(1.2345, "JOD"), "1.235");
+        assert_eq!(money_in_currency(1500.4, "UGX"), "1500");
+        // No ISO minor unit (gold) or an unlisted code: two decimals.
+        assert_eq!(minor_units("XAU"), 2);
+        assert_eq!(minor_units("ZZZ"), 2);
     }
     #[test]
     fn target_historical_cross_rates_ignore_live_changes_and_old_quotes() {

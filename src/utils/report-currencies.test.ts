@@ -1,7 +1,61 @@
 import { describe, expect, it } from 'vitest';
-import { buildCashflowCsv, summarizeBudgetStatus } from './report-currencies';
+import { createFormatters } from '@/lib/format';
+import { buildCashflowCsv, formatReportMoney, summarizeBudgetStatus } from './report-currencies';
 
 describe('report currency boundaries', () => {
+  it('reconciles displayed CZK contributions with the total and the export', () => {
+    // Two CZK 100.40 rows: the cash style (0 decimals) would show 100 + 100 = 201.
+    const report = {
+      reportCurrency: 'CZK',
+      months: [
+        {
+          month: 1,
+          income: '0.00',
+          expenses: '200.80',
+          nonconsumptionFlows: [],
+          bankCashMovement: '-200.80',
+        },
+      ],
+      expenseCategories: [
+        { key: 'food', name: 'Food', amount: '100.40', previousAmount: '0.00', count: 1 },
+        { key: 'fuel', name: 'Fuel', amount: '100.40', previousAmount: '0.00', count: 1 },
+      ],
+      incomeSources: [],
+    };
+    const fmt = createFormatters('en');
+    const shown = (text: string) => Number(text.replace(/[^\d.-]/g, ''));
+    const plain = (text: string) => text.replace(/\s/g, ' ');
+    const rows = report.expenseCategories.map((g) =>
+      plain(formatReportMoney(fmt, Number(g.amount), report.reportCurrency))
+    );
+    const total = plain(
+      formatReportMoney(fmt, Number(report.months[0].expenses), report.reportCurrency)
+    );
+    expect(rows).toEqual(['Kč 100.40', 'Kč 100.40']);
+    expect(total).toBe('Kč 200.80');
+    expect(rows.map(shown).reduce((a, b) => a + b, 0)).toBeCloseTo(shown(total), 10);
+    const csv = buildCashflowCsv(
+      report,
+      () => 'Jan 2026',
+      (g) => g.name,
+      (g) => g.name
+    );
+    expect(csv).toContain('Jan 2026;0.00;200.80');
+    expect(csv).toContain('Food;100.40;0.00;1');
+    // Cash style elsewhere in the app is unchanged.
+    expect(plain(fmt.money(200.8, 'CZK'))).toBe('Kč 201');
+  });
+
+  it('uses ISO precision beyond the picker and for signed native details', () => {
+    const fmt = createFormatters('en');
+    expect(formatReportMoney(fmt, 1.2345, 'JOD')).toMatch(/1\.235/);
+    expect(formatReportMoney(fmt, 1500.4, 'UGX')).toMatch(/1,500$/);
+    expect(formatReportMoney(fmt, 0.123, 'KWD')).toMatch(/0\.123/);
+    expect(formatReportMoney(fmt, 1234, 'JPY')).toBe('¥1,234');
+    const signed = formatReportMoney(fmt, -100.4, 'CZK', { signed: true });
+    expect(signed.replace(/\s/g, ' ')).toBe('\u2212 Kč 100.40');
+  });
+
   it('exports target decimal TEXT without converting or forcing two decimals', () => {
     const csv = buildCashflowCsv(
       {

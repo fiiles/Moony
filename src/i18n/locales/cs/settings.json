@@ -60,11 +60,11 @@
   },
   "currency": {
     "title": "Měna",
-    "description": "Zvolte měnu, která bude použita v celé aplikaci.",
+    "description": "Zvolte měnu pro souhrnné přehledy, reporty a celkový majetek.",
     "example": "příklad {{example}}",
     "noRateHint": "Směnné kurzy se aktualizují automaticky jen u měn, které zveřejňuje ECB. Ostatní měny (např. AED nebo SAR) kurz nemají, takže součty, které je obsahují, nejsou přesné.",
     "main": "Hlavní měna",
-    "mainHint": "Všechny hodnoty se přepočítávají do této měny."
+    "mainHint": "Souhrny a reporty se zobrazují v této měně. Účty, transakce, smlouvy a jednotlivé rozpočty si ponechávají vlastní měnu."
   },
   "language": {
     "title": "Jazyk a formáty",

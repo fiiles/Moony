@@ -89,7 +89,11 @@ export default function CashflowPlanning() {
     queryFn: () => cashflowApi.getReport(viewType, currencyCode),
     refetchOnMount: 'always',
   });
-  const { money, signedMoney: formatCurrencySigned } = useReportMoney(report?.reportCurrency);
+  const {
+    money,
+    signedMoney: formatCurrencySigned,
+    nativeMoney,
+  } = useReportMoney(report?.reportCurrency);
 
   const createMutation = useMutation({
     mutationFn: cashflowApi.createItem,
@@ -235,13 +239,13 @@ export default function CashflowPlanning() {
                     : component.frequency === 'monthly'
                       ? t('planning.table.perMonth')
                       : '';
-                return `${fmt.money(Number(component.amount), component.currency)}${frequency ? ` · ${frequency}` : ''}`;
+                return `${nativeMoney(Number(component.amount), component.currency)}${frequency ? ` · ${frequency}` : ''}`;
               })
               .join(' · ')
           : item.originalFrequency === 'yearly'
-            ? `${t('planning.table.perYear')} · ${fmt.money(Number(item.originalAmount), item.originalCurrency)}`
+            ? `${t('planning.table.perYear')} · ${nativeMoney(Number(item.originalAmount), item.originalCurrency)}`
             : item.originalFrequency === 'monthly' && viewType === 'yearly'
-              ? `${t('planning.table.perMonth')} · ${fmt.money(Number(item.originalAmount), item.originalCurrency)}`
+              ? `${t('planning.table.perMonth')} · ${nativeMoney(Number(item.originalAmount), item.originalCurrency)}`
               : t('planning.table.perMonth');
       return (
         <TableRow key={item.id} className="h-12">

@@ -292,7 +292,6 @@ pub fn get_report_in_currency(
             }
             let summary = map.get_mut(category).expect("inserted");
             summary.total_amount = (parse_money(&summary.total_amount)? + value).to_string();
-            summary.transaction_count += 1;
         } else {
             if kind == FlowKind::Income {
                 un_income += value;
@@ -381,6 +380,18 @@ pub fn get_report_in_currency(
         if let Some(limit) = limit {
             summary.budget_limit = Some(money(limit));
             summary.budget_limit_fx_quality = Some(crate::models::FxQuality::Historical);
+        }
+    }
+    // Counts (and drilldown availability) include rows whose report conversion
+    // is missing; a row with only unconverted spending is not added as a zero.
+    for row in &rows {
+        let map = match row.effective_flow_kind {
+            FlowKind::Income => &mut incomes,
+            FlowKind::Expense => &mut expenses,
+            _ => continue,
+        };
+        if let Some(summary) = row.category_id.as_ref().and_then(|c| map.get_mut(c)) {
+            summary.transaction_count += 1;
         }
     }
     let sort = |map: HashMap<String, CategorySpendingSummary>| {
@@ -863,6 +874,31 @@ mod tests {
             usd.expense_categories[0].budget_limit_native.as_deref(),
             Some("100.00")
         );
+    }
+    /// A native EUR budget stays evaluable without USD quotes; its count (and
+    /// thus the drilldown) reflects the relevant transactions, not conversions.
+    #[test]
+    fn budget_transaction_count_does_not_depend_on_report_conversion() {
+        let conn = setup_test_db();
+        let mut input = goal_input("200.00", OCT);
+        input.currency = Some("EUR".into());
+        upsert_goal_at(&conn, input, NOW).unwrap();
+        conn.execute_batch(&format!(
+            "INSERT INTO bank_transactions(id,bank_account_id,booking_date,amount,currency,category_id,tx_type) VALUES
+             ('e1','acc1',{d},'60','EUR','cat_groceries','debit'),
+             ('e2','acc1',{d},'40','EUR','cat_groceries','debit'),
+             ('salary','acc1',{d},'500','EUR','cat_income','credit');",
+            d = OCT + 86400
+        ))
+        .unwrap();
+        let usd = get_report_in_currency(&conn, OCT, NOV - 1, "monthly", None, "USD").unwrap();
+        assert_eq!(usd.quality.missing_fx_count, 3);
+        let groceries = &usd.expense_categories[0];
+        assert_eq!(groceries.budget_spent.as_deref(), Some("100.00"));
+        assert_eq!(groceries.budget_percentage, Some(50.0));
+        assert_eq!(groceries.transaction_count, 2);
+        // Unconverted spending is not reported as a healthy zero row.
+        assert!(usd.income_categories.is_empty());
     }
     #[test]
     fn target_budget_versions_retain_native_text_after_target_switch() {

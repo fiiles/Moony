@@ -1,4 +1,16 @@
+import { isoMinorUnits } from '@shared/currencies';
 import type { CashflowActuals, CashflowGroup, CategorySpendingSummary } from '@shared/schema';
+import type { Formatters } from '@/lib/format';
+
+/** Report precision is the ISO minor unit of the wire contract, not the cash style. */
+export function formatReportMoney(
+  fmt: Pick<Formatters, 'money'>,
+  amount: number,
+  currency: string,
+  opts: { signed?: boolean } = {}
+): string {
+  return fmt.money(amount, currency, { ...opts, decimals: isoMinorUnits(currency) });
+}
 
 type CsvReport = Pick<
   CashflowActuals,

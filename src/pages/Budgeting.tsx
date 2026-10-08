@@ -132,7 +132,7 @@ export default function Budgeting() {
     queryFn: () =>
       budgetingApi.getReport(range.start, range.end, timeframe, accountIds, currencyCode),
   });
-  const { money } = useReportMoney(report?.reportCurrency);
+  const { money, nativeMoney } = useReportMoney(report?.reportCurrency);
   const {
     data: goals = [],
     isLoading: goalsLoading,
@@ -284,7 +284,7 @@ export default function Budgeting() {
       return (
         <Badge variant="loss">
           {t('table.state.over', {
-            amount: fmt.money(
+            amount: nativeMoney(
               Number(row.budgetSpent) - Number(row.budgetLimitNative),
               row.budgetCurrency
             ),
@@ -609,13 +609,13 @@ export default function Budgeting() {
                 <TableCell className="text-right num">
                   <b className="block font-650 text-ink">
                     {row.budgetCurrency && row.budgetSpent != null
-                      ? fmt.money(Number(row.budgetSpent), row.budgetCurrency)
+                      ? nativeMoney(Number(row.budgetSpent), row.budgetCurrency)
                       : '—'}
                   </b>
                   <small className="mt-0.5 block text-micro font-500 text-ink-4">
                     {row.budgetCurrency && row.budgetLimitNative != null
                       ? t('table.of', {
-                          amount: fmt.money(Number(row.budgetLimitNative), row.budgetCurrency),
+                          amount: nativeMoney(Number(row.budgetLimitNative), row.budgetCurrency),
                         })
                       : t('readiness.usageUnavailable')}
                   </small>
@@ -630,7 +630,7 @@ export default function Budgeting() {
                             ? t('readiness.scheduledRemoval', { month })
                             : t('readiness.scheduledLimit', {
                                 month,
-                                amount: fmt.money(Number(next.amount), next.currency),
+                                amount: nativeMoney(Number(next.amount), next.currency),
                               })}
                         </small>
                       );

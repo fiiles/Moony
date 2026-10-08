@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import type { FlowKind } from '@shared/schema';
 import { cashflowApi } from '@/lib/tauri-api';
 import { useFormat } from '@/lib/use-format';
+import { formatReportMoney } from '@/utils/report-currencies';
 import {
   Dialog,
   DialogContent,
@@ -116,7 +117,8 @@ function ReportTransactionsDialogContent({
                     </TableCell>
                     <TableCell>{tx.bankAccountName}</TableCell>
                     <TableCell className="text-right num">
-                      {fmt.money(
+                      {formatReportMoney(
+                        fmt,
                         Number(tx.amount) * (tx.txType === 'credit' ? 1 : -1),
                         tx.currency,
                         { signed: true }
@@ -125,7 +127,9 @@ function ReportTransactionsDialogContent({
                     <TableCell className="text-right num">
                       {tx.signedAmount === null
                         ? t('readiness.fxUnavailable')
-                        : fmt.money(Number(tx.signedAmount), tx.reportCurrency, { signed: true })}
+                        : formatReportMoney(fmt, Number(tx.signedAmount), tx.reportCurrency, {
+                            signed: true,
+                          })}
                     </TableCell>
                   </TableRow>
                 ))}

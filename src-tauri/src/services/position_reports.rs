@@ -32,12 +32,12 @@ fn money(value: Option<f64>, currency: &str) -> Option<String> {
 
 fn wire_totals(totals: &PositionTotals, currency: &str) -> WirePositionTotals {
     WirePositionTotals {
-        value: money_in_currency(totals.value, currency),
-        cost_basis: money_in_currency(totals.cost_basis, currency),
-        unrealized_gain: money_in_currency(totals.unrealized_gain, currency),
+        value: money(totals.value, currency),
+        cost_basis: money(totals.cost_basis, currency),
+        unrealized_gain: money(totals.unrealized_gain, currency),
         unrealized_gain_percent: totals.unrealized_gain_percent(),
-        realized_gain: money_in_currency(totals.realized_gain, currency),
-        yearly_dividend: money_in_currency(totals.yearly_dividend, currency),
+        realized_gain: money(totals.realized_gain, currency),
+        yearly_dividend: money(totals.yearly_dividend, currency),
     }
 }
 
@@ -298,15 +298,14 @@ fn tag_metrics_from(
         .map(|tag| {
             let totals = by_tag.remove(&tag.id).unwrap_or_default();
             TagMetrics {
-                value: money_in_currency(totals.value, currency),
-                cost_basis: money_in_currency(totals.cost_basis, currency),
-                unrealized_gain: money_in_currency(totals.unrealized_gain, currency),
+                value: money(totals.value, currency),
+                cost_basis: money(totals.cost_basis, currency),
+                unrealized_gain: money(totals.unrealized_gain, currency),
                 unrealized_gain_percent: totals.unrealized_gain_percent(),
-                yearly_dividend: money_in_currency(totals.yearly_dividend, currency),
-                portfolio_percent: if portfolio_value > 0.0 {
-                    totals.value / portfolio_value * 100.0
-                } else {
-                    0.0
+                yearly_dividend: money(totals.yearly_dividend, currency),
+                portfolio_percent: match (totals.value, portfolio_value) {
+                    (Some(value), Some(portfolio)) if portfolio > 0.0 => value / portfolio * 100.0,
+                    _ => 0.0,
                 },
                 holdings_count: i32::try_from(totals.count).unwrap_or(i32::MAX),
                 fx_quality: ConversionQuality::from(&totals.quality),
@@ -371,6 +370,7 @@ mod tests {
             dividend_currency: None,
             yearly_dividend: Some(dividend),
             quality,
+            has_cost_record: cost.is_some(),
         }
     }
 
@@ -412,12 +412,12 @@ mod tests {
             vec!["KWD".to_string()]
         );
         let growth = &report.tags[0];
-        assert_eq!(growth.value, "300.00");
+        assert_eq!(growth.value.as_deref(), Some("300.00"));
         // the known cost of the unpriced position counts too; its gain does not
-        assert_eq!(growth.cost_basis, "250.00");
-        assert_eq!(growth.unrealized_gain, "100.00");
+        assert_eq!(growth.cost_basis.as_deref(), Some("250.00"));
+        assert_eq!(growth.unrealized_gain.as_deref(), Some("100.00"));
         assert!((growth.unrealized_gain_percent - 50.0).abs() < 1e-9);
-        assert_eq!(growth.yearly_dividend, "6.00");
+        assert_eq!(growth.yearly_dividend.as_deref(), Some("6.00"));
         assert!((growth.portfolio_percent - 75.0).abs() < 1e-9);
         assert_eq!(growth.holdings_count, 2);
         assert_eq!(
@@ -425,8 +425,39 @@ mod tests {
             vec!["KWD".to_string()]
         );
         let empty = &report.tags[1];
-        assert_eq!(empty.value, "0.00");
+        assert_eq!(empty.value.as_deref(), Some("0.00"));
         assert_eq!(empty.holdings_count, 0);
         assert!(empty.fx_quality.missing_currencies.is_empty());
+    }
+
+    #[test]
+    fn totals_are_null_when_nothing_held_in_them_converted() {
+        // Transactions exist, but neither the value nor the cost converted
+        let mut failed = item("c", None, None, 0.0);
+        failed.has_cost_record = true;
+        let mut quality = Quality::default();
+        quality.track("KWD", None);
+        let positions = Positions {
+            currency: "EUR".to_string(),
+            items: vec![item("a", Some(300.0), Some(200.0), 6.0), failed],
+            quality,
+        };
+        let tag_map: HashMap<String, Vec<String>> = [("c".to_string(), vec!["gulf".to_string()])]
+            .into_iter()
+            .collect();
+
+        let report = tag_metrics_from(&positions, vec![tag("gulf")], &tag_map);
+
+        let gulf = &report.tags[0];
+        // a priced position whose value and cost failed: unknown, not 0
+        assert_eq!(gulf.value, None);
+        assert_eq!(gulf.cost_basis, None);
+        assert_eq!(gulf.unrealized_gain, None);
+        assert_eq!(gulf.yearly_dividend, Some("0.00".to_string()));
+        assert_eq!(gulf.portfolio_percent, 0.0);
+        // the whole portfolio still knows its converted position
+        let all = wire_totals(&positions::totals(&positions.items), "EUR");
+        assert_eq!(all.value.as_deref(), Some("300.00"));
+        assert_eq!(all.cost_basis.as_deref(), Some("200.00"));
     }
 }

@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { Bitcoin, Plus, RefreshCw } from 'lucide-react';
 import type { CryptoPositions, CryptoTransaction } from '@shared/schema';
 import { cryptoApi, exportApi, priceApi } from '@/lib/tauri-api';
-import { amountOf, toCryptoRow } from '@/utils/positions';
+import { amountOf, toCryptoRow, totalOf } from '@/utils/positions';
 import { useCurrency } from '@/lib/currency';
 import { useFormat } from '@/lib/use-format';
 import { useTransactionFx } from '@/hooks/use-fx';
@@ -143,7 +143,7 @@ export default function Crypto() {
   // Positions as the backend values them in the report currency (ADR 0011)
   const reportCurrency = positions?.currency ?? currencyCode;
   const totals = positions?.totals;
-  const totalValue = amountOf(totals?.value) ?? 0;
+  const totalValue = totalOf(totals?.value);
   const holdings = useMemo((): CryptoTableRow[] => {
     const openTotal = amountOf(positions?.totals.value) ?? 0;
     return (positions?.items ?? []).map((inv) => {
@@ -166,8 +166,8 @@ export default function Crypto() {
   }, [positions, txsByInvestment]);
 
   const openPositions = holdings.filter((h) => h.quantity > 0);
-  const totalCost = amountOf(totals?.costBasis) ?? 0;
-  const unrealizedGain = amountOf(totals?.unrealizedGain) ?? 0;
+  const totalCost = totalOf(totals?.costBasis);
+  const unrealizedGain = totalOf(totals?.unrealizedGain);
   const metrics = {
     totalValue,
     totalCost,

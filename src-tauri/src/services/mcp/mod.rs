@@ -322,7 +322,7 @@ impl MoonyMcp {
     }
 
     #[tool(
-        description = "Get current portfolio metrics: net worth breakdown by asset class (savings, investments, crypto, bonds, real estate, other assets, liabilities). All monetary values are in the user's main currency, given as `mainCurrency`. A class that could not be converted at all is null; the totals sum every amount that could be converted and `missingCurrencies` lists the currencies left out. When classes hold amounts but none of them could be converted, net_worth, total_assets and total_liabilities are null (not 0)."
+        description = "Get current portfolio metrics: net worth breakdown by asset class (savings, investments, crypto, bonds, real estate, other assets, liabilities). All monetary values are in the user's main currency, given as `mainCurrency`. A class that could not be converted at all is null; the totals sum every amount that could be converted and `missingCurrencies` lists the currencies left out. total_assets is null (not 0) when the asset classes hold amounts but none of them could be converted, total_liabilities likewise for the loans, and net_worth is null unless both are known."
     )]
     fn portfolio_get_metrics(
         &self,
@@ -336,7 +336,7 @@ impl MoonyMcp {
     }
 
     #[tool(
-        description = "Get historical portfolio snapshots showing net worth over time, newest first. Each record contains per-asset-class totals and `netWorth` in the user's main currency (the `mainCurrency` field): every snapshot's amounts are converted from their own currencies at that day's exchange rates. A class that could not be converted that day is null; `missingCurrencies` lists the currencies left out of the returned records. Useful for trend analysis."
+        description = "Get historical portfolio snapshots showing net worth over time, newest first. Each record contains per-asset-class totals and `netWorth` in the user's main currency (the `mainCurrency` field): every snapshot's amounts are converted from their own currencies at that day's exchange rates. A class that could not be converted that day is null; `netWorth` is null when that day's asset classes, or its loans, hold amounts but none of them could be converted; `missingCurrencies` lists the currencies left out of the returned records. Useful for trend analysis."
     )]
     fn portfolio_get_history(
         &self,
@@ -349,7 +349,7 @@ impl MoonyMcp {
     }
 
     #[tool(
-        description = "List all stock investments with ticker, company name, quantity, native average purchase price and current market price, plus value, cost basis, unrealized and realized gain and annual dividend in the user's main currency (`mainCurrency`). Amounts that cannot be converted are null and their currencies are listed in `missingCurrencies`; the summary's totalValue sums the known values, totalCostBasis the known costs, totalUnrealizedGain only the positions whose value and cost are both known, totalRealizedGain the known realized gains and annualDividends the dividends of positions with a known value. `fxEstimated` (per row and for the response) is true when some cost basis used today's exchange rate because the rate of its day is not stored yet."
+        description = "List all stock investments with ticker, company name, quantity, native average purchase price and current market price, plus value, cost basis, unrealized and realized gain and annual dividend in the user's main currency (`mainCurrency`). Amounts that cannot be converted are null and their currencies are listed in `missingCurrencies`; the summary's totalValue sums the known values, totalCostBasis the known costs, totalUnrealizedGain only the positions whose value and cost are both known, totalRealizedGain the known realized gains and annualDividends the dividends of positions with a known value. A summary total is null (not 0) when positions hold amounts for it but none of them could be converted. A gain percentage uses only the cost of positions whose value and cost are both known. `fxEstimated` (per row and for the response) is true when some cost basis used today's exchange rate because the rate of its day is not stored yet."
     )]
     fn investments_list(&self) -> Result<CallToolResult, McpError> {
         to_result(self.db.with_conn(investments::investments_list))
@@ -396,7 +396,7 @@ impl MoonyMcp {
     }
 
     #[tool(
-        description = "List all cryptocurrency holdings with ticker, name, CoinGecko ID, quantity, native average purchase price and current market price, plus value, cost basis, unrealized and realized gain in the user's main currency (`mainCurrency`). Amounts that cannot be converted are null and their currencies are listed in `missingCurrencies`; the summary's totalValue sums the known values, totalCostBasis the known costs, totalUnrealizedGain only the positions whose value and cost are both known and totalRealizedGain the known realized gains. `fxEstimated` (per row and for the response) is true when some cost basis used today's exchange rate because the rate of its day is not stored yet."
+        description = "List all cryptocurrency holdings with ticker, name, CoinGecko ID, quantity, native average purchase price and current market price, plus value, cost basis, unrealized and realized gain in the user's main currency (`mainCurrency`). Amounts that cannot be converted are null and their currencies are listed in `missingCurrencies`; the summary's totalValue sums the known values, totalCostBasis the known costs, totalUnrealizedGain only the positions whose value and cost are both known and totalRealizedGain the known realized gains. A summary total is null (not 0) when positions hold amounts for it but none of them could be converted. A gain percentage uses only the cost of positions whose value and cost are both known. `fxEstimated` (per row and for the response) is true when some cost basis used today's exchange rate because the rate of its day is not stored yet."
     )]
     fn crypto_list(&self) -> Result<CallToolResult, McpError> {
         to_result(self.db.with_conn(crypto::crypto_list))
@@ -557,14 +557,14 @@ impl MoonyMcp {
     }
 
     #[tool(
-        description = "Get all stock investments with their current value, cost basis, gain/loss, realized gain and dividend yield. Amounts are in the user's main currency, given as `mainCurrency`; an amount that cannot be converted is null, its currency is listed in `missingCurrencies`, and the summary's totalValue sums the known values, totalCostBasis the known costs, totalGainLoss only the positions whose value and cost are both known, realizedGain the known realized gains and annualDividends the dividends of positions with a known value. `fxEstimated` is true when some cost basis used today's exchange rate because the rate of its day is not stored yet."
+        description = "Get all stock investments with their current value, cost basis, gain/loss, realized gain and dividend yield. Amounts are in the user's main currency, given as `mainCurrency`; an amount that cannot be converted is null, its currency is listed in `missingCurrencies`, and the summary's totalValue sums the known values, totalCostBasis the known costs, totalGainLoss only the positions whose value and cost are both known, realizedGain the known realized gains and annualDividends the dividends of positions with a known value. A summary total is null (not 0) when positions hold amounts for it but none of them could be converted. A gain percentage uses only the cost of positions whose value and cost are both known. `fxEstimated` is true when some cost basis used today's exchange rate because the rate of its day is not stored yet."
     )]
     fn stocks_analysis(&self) -> Result<CallToolResult, McpError> {
         to_result(self.db.with_conn(analytics::stocks_analysis))
     }
 
     #[tool(
-        description = "Get aggregated portfolio metrics grouped by stock tag. Shows total value, cost basis, gain/loss, and dividend yield per tag. Amounts are in the user's main currency, given as `mainCurrency`; each tag sums every amount that could be converted, lists the currencies it could not convert in its own `missingCurrencies`, and the response-level `missingCurrencies` covers every position once. `fxEstimated` (per tag and for the response) is true when some cost basis used today's exchange rate because the rate of its day is not stored yet."
+        description = "Get aggregated portfolio metrics grouped by stock tag. Shows total value, cost basis, gain/loss, and dividend yield per tag. Amounts are in the user's main currency, given as `mainCurrency`; each tag sums every amount that could be converted, lists the currencies it could not convert in its own `missingCurrencies`, and the response-level `missingCurrencies` covers every position once. A tag total is null (not 0) when its positions hold amounts for it but none of them could be converted; gainLossPct uses only the cost of positions whose value and cost are both known. `fxEstimated` (per tag and for the response) is true when some cost basis used today's exchange rate because the rate of its day is not stored yet."
     )]
     fn tag_metrics(
         &self,

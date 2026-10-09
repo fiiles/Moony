@@ -14,6 +14,14 @@ export function amountOf(value: string | null | undefined): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+/**
+ * A response total as a number: 0 while the response has not arrived, `null` when the
+ * response declares the total unknown (amounts held, none converted: shown as "—").
+ */
+export function totalOf(value: string | null | undefined): number | null {
+  return value === undefined ? 0 : amountOf(value);
+}
+
 /** Cost per unit in the report currency; `null` without a known cost or an open quantity. */
 export function costPerUnit(costBasis: number | null, quantity: number): number | null {
   return costBasis !== null && quantity > 0 ? costBasis / quantity : null;

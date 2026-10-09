@@ -51,7 +51,7 @@ interface InvestmentsTableProps {
   /** The report currency of the holdings' converted figures. */
   currency: string;
   /** The response's `totals.value`: every known value (the summary's figure). */
-  totalValue: number;
+  totalValue: number | null;
   holdings: HoldingData[];
   onViewDetail: (holding: HoldingData) => void;
   onBuy: (holding: HoldingData) => void;
@@ -159,7 +159,7 @@ export function InvestmentsTable({
     ? filtered.reduce((sum, h) => sum + (h.marketValue ?? 0), 0)
     : totalValue;
   const largest = filtered.reduce((max, h) => Math.max(max, h.marketValue ?? 0), 0);
-  const largestShare = total > 0 ? largest / total : 0;
+  const largestShare = total !== null && total > 0 ? largest / total : 0;
 
   const SortHead = ({
     column,
@@ -415,7 +415,9 @@ export function InvestmentsTable({
       <div className="flex items-center justify-between border-t border-line px-[14px] py-3 text-micro font-500 text-ink-4">
         <span>
           {t('table.footer.count', { count: filtered.length })} · {t('table.footer.total')}{' '}
-          <span className="num">{fmt.money(total, currency, { decimals: 0 })}</span>
+          <span className="num">
+            {total === null ? '—' : fmt.money(total, currency, { decimals: 0 })}
+          </span>
           {filtered.length > 1 && largestShare > 0 && (
             <> · {t('table.footer.largest', { percent: fmt.percent(largestShare, 0) })}</>
           )}

@@ -58,7 +58,7 @@ interface CryptoTableProps {
   /** The report currency of the holdings' converted figures. */
   currency: string;
   /** The response's `totals.value`: every known value (the summary's figure). */
-  totalValue: number;
+  totalValue: number | null;
   holdings: CryptoTableRow[];
   onViewDetail: (holding: CryptoTableRow) => void;
   onBuy: (holding: CryptoTableRow) => void;
@@ -393,7 +393,9 @@ export function CryptoTable({
       <div className="flex items-center justify-between border-t border-line px-[14px] py-3 text-micro font-500 text-ink-4">
         <span>
           {t('table.footer.count', { count: openRows.length })} · {t('table.footer.total')}{' '}
-          <span className="num">{fmt.money(total, currency, { decimals: 0 })}</span>
+          <span className="num">
+            {total === null ? '—' : fmt.money(total, currency, { decimals: 0 })}
+          </span>
         </span>
         <span>
           {t('table.footer.rates', { currency })}

@@ -32,12 +32,15 @@ pub struct PortfolioMetrics {
     pub total_real_estate: Option<String>,
     #[serde(rename = "totalOtherAssets")]
     pub total_other_assets: Option<String>,
+    /// `null` when the loans hold amounts but none of them could be converted.
     #[serde(rename = "totalLiabilities")]
-    pub total_liabilities: String,
+    pub total_liabilities: Option<String>,
+    /// `null` when the asset classes hold amounts but none of them could be converted.
     #[serde(rename = "totalAssets")]
-    pub total_assets: String,
+    pub total_assets: Option<String>,
+    /// `null` unless both `totalAssets` and `totalLiabilities` are known.
     #[serde(rename = "netWorth")]
-    pub net_worth: String,
+    pub net_worth: Option<String>,
     #[serde(rename = "savingsByCurrency")]
     pub savings_by_currency: HashMap<String, f64>,
     #[serde(rename = "investmentsByCurrency")]

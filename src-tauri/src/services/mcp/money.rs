@@ -103,16 +103,16 @@ pub fn positions_response(
 ) -> serde_json::Value {
     let currency = positions.currency.as_str();
     let totals = crate::services::positions::totals(&positions.items);
-    let money = |v: f64| crate::services::reporting::money_in_currency(v, currency);
+    // A total is null when positions hold amounts for it but none of them converted
     let mut summary = serde_json::json!({
-        "totalValue": money(totals.value),
-        "totalCostBasis": money(totals.cost_basis),
-        "totalUnrealizedGain": money(totals.unrealized_gain),
-        "totalRealizedGain": money(totals.realized_gain),
+        "totalValue": amount_json(totals.value, currency),
+        "totalCostBasis": amount_json(totals.cost_basis, currency),
+        "totalUnrealizedGain": amount_json(totals.unrealized_gain, currency),
+        "totalRealizedGain": amount_json(totals.realized_gain, currency),
     });
     // Stocks pay dividends; crypto has none.
     if positions.items.iter().any(|i| i.yearly_dividend.is_some()) {
-        summary["annualDividends"] = serde_json::json!(money(totals.yearly_dividend));
+        summary["annualDividends"] = amount_json(totals.yearly_dividend, currency);
     }
     serde_json::json!({
         "mainCurrency": currency,

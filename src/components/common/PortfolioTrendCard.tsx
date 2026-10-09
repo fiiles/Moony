@@ -20,8 +20,11 @@ type TrendType = 'investments' | 'crypto' | 'realEstate' | 'otherAssets' | 'cash
 
 interface PortfolioTrendCardProps<E extends ChartEvent> {
   type: TrendType;
-  /** Today's value in the profile (report) currency; the last point of the line. */
-  currentValue: number;
+  /**
+   * Today's value in the profile (report) currency; the last point of the line. `null` when
+   * unknown (held, none converted): today is left out instead of plotted as 0.
+   */
+  currentValue: number | null;
   /**
    * Currencies today's value leaves out for want of a rate (named in the note with the
    * history's own misses).
@@ -137,6 +140,7 @@ export default function PortfolioTrendCard<E extends ChartEvent = ChartEvent>({
       return value === null ? [] : [{ t: h.recordedAt, value }];
     });
     const today = utcDayFloor(Date.now() / 1000);
+    if (currentValue === null) return pts.filter((p) => utcDayFloor(p.t) !== today);
     const last = pts[pts.length - 1];
     if (last && utcDayFloor(last.t) === today) last.value = currentValue;
     else pts.push({ t: Math.floor(Date.now() / 1000), value: currentValue });

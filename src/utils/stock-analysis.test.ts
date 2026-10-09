@@ -14,9 +14,10 @@ function position(
   tags: { id: string }[],
   currentValue: number | null,
   gainLoss: number | null = 0,
-  yearlyDividendAmount: number | null = 0
+  yearlyDividendAmount: number | null = 0,
+  price: string | null = '1'
 ) {
-  return { id, tags, currentValue, gainLoss, yearlyDividendAmount };
+  return { id, tags, currentValue, gainLoss, yearlyDividendAmount, price };
 }
 
 describe('chosenTagIds', () => {
@@ -109,6 +110,15 @@ describe('tagTotals', () => {
       gainLossPercent: 0,
       dividend: 0,
     });
+  });
+
+  it('has no value when its priced positions hold value but none converted', () => {
+    const kwd = position('kwd', [growth], null, null, null);
+    expect(tagTotals([kwd], 'growth').value).toBeNull();
+    // an unpriced position holds no value: a real 0
+    expect(tagTotals([position('new', [growth], null, null, null, null)], 'growth').value).toBe(0);
+    // one converted position makes it known again
+    expect(tagTotals([kwd, position('sap', [growth], 500)], 'growth').value).toBe(500);
   });
 
   it('gives no percentage without a cost basis', () => {

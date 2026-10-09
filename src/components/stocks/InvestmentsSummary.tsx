@@ -7,13 +7,14 @@ import { cn } from '@/lib/utils';
 interface InvestmentsSummaryProps {
   /** The report currency of every amount below. */
   currency: string;
+  /** Totals of the response; `null` when unknown (held, none converted), shown as "—". */
   metrics: {
-    totalValue: number;
-    totalCost: number;
-    overallGainLoss: number;
+    totalValue: number | null;
+    totalCost: number | null;
+    overallGainLoss: number | null;
     overallGainLossPercent: number;
     /** Yearly dividend estimate in `currency`. */
-    estimatedDividendYield: number;
+    estimatedDividendYield: number | null;
     topPerformer: { ticker: string; companyName?: string; gainLossPercent: number } | null;
   };
   positionCount: number;
@@ -39,7 +40,10 @@ export function InvestmentsSummary({
   const fmt = useFormat();
   const { t } = useTranslation('stocks');
 
-  const tone = (v: number) => (v > 0 ? 'gain' : v < 0 ? 'loss' : 'neutral');
+  const tone = (v: number | null) =>
+    v === null ? 'neutral' : v > 0 ? 'gain' : v < 0 ? 'loss' : 'neutral';
+  const money = (v: number | null, signed = false) =>
+    v === null ? '—' : fmt.money(v, currency, { signed, decimals: 0 });
   const fetched = latestFetchedAt ? Math.floor(latestFetchedAt.getTime() / 1000) : null;
   const freshness =
     fetched === null
@@ -68,20 +72,22 @@ export function InvestmentsSummary({
     >
       <Stat
         label={t('summary.totalValue')}
-        value={fmt.money(metrics.totalValue, currency, { decimals: 0 })}
+        value={money(metrics.totalValue)}
         note={`${t('summary.positions', { count: positionCount })} · ${freshness}`}
       />
       <Stat
         label={
-          metrics.overallGainLoss >= 0 ? t('summary.unrealizedGain') : t('summary.unrealizedLoss')
+          (metrics.overallGainLoss ?? 0) >= 0
+            ? t('summary.unrealizedGain')
+            : t('summary.unrealizedLoss')
         }
-        value={fmt.money(metrics.overallGainLoss, currency, { signed: true, decimals: 0 })}
+        value={money(metrics.overallGainLoss, true)}
         tone={tone(metrics.overallGainLoss)}
         note={unrealizedNote}
       />
       <Stat
         label={t('summary.estimatedDividend')}
-        value={fmt.money(metrics.estimatedDividendYield, currency, { decimals: 0 })}
+        value={money(metrics.estimatedDividendYield)}
         note={t('summary.next12Months')}
       />
       <Stat

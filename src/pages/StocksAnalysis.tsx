@@ -689,7 +689,12 @@ export default function StocksAnalysis() {
                       {has ? money(totals.value) : <span className="text-ink-5">—</span>}
                     </TableCell>
                     <TableCell className="text-right num">
-                      {has ? fmt.percent(totalValue > 0 ? totals.value / totalValue : 0, 0) : '—'}
+                      {has && totals.value !== null
+                        ? fmt.percent(
+                            totalValue && totalValue > 0 ? totals.value / totalValue : 0,
+                            0
+                          )
+                        : '—'}
                     </TableCell>
                     <TableCell className="text-right num">
                       {has ? gainText(totals.gainLossPercent) : '—'}
@@ -718,7 +723,10 @@ export default function StocksAnalysis() {
                 shown: filtered.length,
                 total: stocks.length,
                 amount: money(filteredValue),
-                percent: fmt.percent(totalValue > 0 ? filteredValue / totalValue : 0, 0),
+                percent: fmt.percent(
+                  totalValue && totalValue > 0 ? filteredValue / totalValue : 0,
+                  0
+                ),
               })}
             </CardDescription>
           </div>

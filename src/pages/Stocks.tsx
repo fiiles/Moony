@@ -11,7 +11,7 @@ import { useFormat } from '@/lib/use-format';
 import { useStockTagsByInvestment } from '@/hooks/use-stock-tags';
 import { useTransactionFx } from '@/hooks/use-fx';
 import type { HoldingData } from '@/utils/stocks';
-import { amountOf, toStockRow, topPerformer } from '@/utils/positions';
+import { amountOf, toStockRow, topPerformer, totalOf } from '@/utils/positions';
 import type { EventCluster } from '@/utils/chart-scale';
 import {
   firstTradeDay,
@@ -153,15 +153,15 @@ export default function Stocks() {
     [positions]
   );
   const totals = positions?.totals;
-  const totalCost = amountOf(totals?.costBasis) ?? 0;
-  const unrealizedGain = amountOf(totals?.unrealizedGain) ?? 0;
+  const totalCost = totalOf(totals?.costBasis);
+  const unrealizedGain = totalOf(totals?.unrealizedGain);
   const top = topPerformer(holdings);
   const metrics = {
-    totalValue: amountOf(totals?.value) ?? 0,
+    totalValue: totalOf(totals?.value),
     totalCost,
     overallGainLoss: unrealizedGain,
     overallGainLossPercent: totals?.unrealizedGainPercent ?? 0,
-    estimatedDividendYield: amountOf(totals?.yearlyDividend) ?? 0,
+    estimatedDividendYield: totalOf(totals?.yearlyDividend),
     topPerformer: top
       ? {
           ticker: top.ticker,

@@ -1074,7 +1074,19 @@ totalRealEstatePersonal: string | null; totalRealEstateInvestment: string | null
 /**
  * The real estate counted in `totalAssets` (personal left out when excluded).
  */
-totalRealEstate: string | null; totalOtherAssets: string | null; totalLiabilities: string; totalAssets: string; netWorth: string; savingsByCurrency: Partial<{ [key in string]: number }>; investmentsByCurrency: Partial<{ [key in string]: number }>; cryptoByCurrency: Partial<{ [key in string]: number }>; bondsByCurrency: Partial<{ [key in string]: number }>; 
+totalRealEstate: string | null; totalOtherAssets: string | null; 
+/**
+ * `null` when the loans hold amounts but none of them could be converted.
+ */
+totalLiabilities: string | null; 
+/**
+ * `null` when the asset classes hold amounts but none of them could be converted.
+ */
+totalAssets: string | null; 
+/**
+ * `null` unless both `totalAssets` and `totalLiabilities` are known.
+ */
+netWorth: string | null; savingsByCurrency: Partial<{ [key in string]: number }>; investmentsByCurrency: Partial<{ [key in string]: number }>; cryptoByCurrency: Partial<{ [key in string]: number }>; bondsByCurrency: Partial<{ [key in string]: number }>; 
 /**
  * Personal properties left out when excluded, like `totalRealEstate`.
  */
@@ -1091,13 +1103,14 @@ export type PortfolioProjection = { currency: string; fxQuality: ConversionQuali
  * Sums in the report currency over every known amount: `value`, `costBasis` and
  * `realizedGain` of the positions where they are known, `unrealizedGain` (and its percent) of
  * the positions whose value and cost are both known, `yearlyDividend` of the positions whose
- * value is known.
+ * value is known. A total is `null` when positions hold amounts for it but none of them
+ * could be converted.
  */
-export type PositionTotals = { value: string; costBasis: string; unrealizedGain: string; 
+export type PositionTotals = { value: string | null; costBasis: string | null; unrealizedGain: string | null; 
 /**
  * `unrealizedGain` in percent of the cost of the same positions; 0 without a cost.
  */
-unrealizedGainPercent: number; realizedGain: string; yearlyDividend: string }
+unrealizedGainPercent: number; realizedGain: string | null; yearlyDividend: string | null }
 
 /**
  * Status of prices and exchange rates freshness
@@ -1773,13 +1786,14 @@ export type StocksAnalysis = { currency: string; fxQuality: ConversionQuality; i
 
 /**
  * Sums over a tag's positions in the response's report currency, every known amount counted
- * (the rule of `PositionTotals`).
+ * (the rule of `PositionTotals`: a total is `null` when the tag's positions hold amounts for it
+ * but none of them could be converted).
  */
-export type TagMetrics = { tag: StockTag; value: string; costBasis: string; unrealizedGain: string; 
+export type TagMetrics = { tag: StockTag; value: string | null; costBasis: string | null; unrealizedGain: string | null; 
 /**
  * Percent of the cost of the positions in `unrealizedGain`; 0 without a cost basis.
  */
-unrealizedGainPercent: number; yearlyDividend: string; 
+unrealizedGainPercent: number; yearlyDividend: string | null; 
 /**
  * The tag's value in percent of the known value of every position.
  */

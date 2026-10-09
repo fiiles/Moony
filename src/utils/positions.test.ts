@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { EnrichedStockInvestment } from '@shared/schema';
-import { amountOf, costPerUnit, toStockRow, topPerformer } from './positions';
+import { amountOf, costPerUnit, toStockRow, topPerformer, totalOf } from './positions';
 
 function stock(overrides: Partial<EnrichedStockInvestment> = {}): EnrichedStockInvestment {
   return {
@@ -35,6 +35,14 @@ describe('amountOf', () => {
     expect(amountOf('1136.36')).toBe(1136.36);
     expect(amountOf(null)).toBeNull();
     expect(amountOf('not a number')).toBeNull();
+  });
+});
+
+describe('totalOf', () => {
+  it('reads 0 before the response, null for an unknown total', () => {
+    expect(totalOf(undefined)).toBe(0);
+    expect(totalOf(null)).toBeNull();
+    expect(totalOf('12.50')).toBe(12.5);
   });
 });
 

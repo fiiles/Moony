@@ -43,10 +43,12 @@ pub struct ClassTotals {
 pub struct NetWorth {
     pub currency: String,
     pub classes: ClassTotals,
-    pub total_assets: f64,
-    pub total_liabilities: f64,
-    /// `None` when a class holds amounts but none of them converted (the totals above are then
-    /// zero and unknown, not a real zero); a portfolio with nothing to convert is a real 0.
+    /// `None` when asset classes hold amounts but none of them converted (unknown, not a real
+    /// zero); nothing to convert is a real 0.
+    pub total_assets: Option<f64>,
+    /// `None` when the loans hold amounts but none of them converted.
+    pub total_liabilities: Option<f64>,
+    /// Known only when both the assets and the liabilities are.
     pub net_worth: Option<f64>,
     pub quality: Quality,
     /// The native breakdowns the classes were converted from (real estate split).
@@ -61,7 +63,8 @@ pub struct HistoryPoint {
     pub is_stale: bool,
     pub classes: ClassTotals,
     /// Every converted asset class (personal real estate included) minus the converted loans;
-    /// `None` when classes hold amounts but none converted (empty classes do not count).
+    /// `None` when the asset classes, or the loans, hold amounts but none of them converted
+    /// (empty classes do not count).
     pub net_worth: Option<f64>,
 }
 
@@ -240,60 +243,52 @@ fn net_worth_of(
         other_assets: sum(&breakdowns.other_assets),
         loans: sum(&breakdowns.loans),
     };
-    let total_assets = counted_real_estate(&classes, exclude_personal_real_estate)
-        .into_iter()
-        .chain([
-            classes.savings,
-            classes.investments,
-            classes.crypto,
-            classes.bonds,
-            classes.other_assets,
-        ])
-        .flatten()
-        .sum::<f64>();
-    let total_liabilities = classes.loans.unwrap_or(0.0);
     let has_amount = |breakdown: &HashMap<String, f64>| breakdown.values().any(|v| *v != 0.0);
-    let is_known = net_worth_is_known([
+    let [personal, investment] = counted_real_estate(&classes, exclude_personal_real_estate);
+    let assets = [
         (classes.savings, has_amount(&breakdowns.savings)),
         (classes.investments, has_amount(&breakdowns.investments)),
         (classes.crypto, has_amount(&breakdowns.crypto)),
         (classes.bonds, has_amount(&breakdowns.bonds)),
         (classes.other_assets, has_amount(&breakdowns.other_assets)),
+        (investment, has_amount(&breakdowns.real_estate_investment)),
         (
-            classes.real_estate_investment,
-            has_amount(&breakdowns.real_estate_investment),
-        ),
-        (
-            counted_real_estate(&classes, exclude_personal_real_estate)[0],
+            personal,
             !exclude_personal_real_estate && has_amount(&breakdowns.real_estate_personal),
         ),
-        (classes.loans, has_amount(&breakdowns.loans)),
-    ]);
+    ];
+    let liabilities = [(classes.loans, has_amount(&breakdowns.loans))];
+    let total_assets = known_total(assets);
+    let total_liabilities = known_total(liabilities);
     NetWorth {
         currency: currency.to_string(),
         classes,
         total_assets,
         total_liabilities,
-        net_worth: is_known.then_some(total_assets - total_liabilities),
+        net_worth: total_assets
+            .zip(total_liabilities)
+            .map(|(assets, liabilities)| assets - liabilities),
         quality,
         breakdowns,
     }
 }
 
-/// Whether a net worth can be stated: nothing to convert at all (a real zero), or at least one
-/// class holding amounts converted. `parts` are `(converted total, holds amounts)` of every
-/// asset class and the loans. Empty classes never make it known, so a portfolio whose only
-/// amounts failed to convert is unknown rather than 0.
-fn net_worth_is_known(parts: impl IntoIterator<Item = (Option<f64>, bool)>) -> bool {
-    let mut any_amount = false;
-    let mut any_converted = false;
-    for (total, has_amount) in parts {
-        if has_amount {
-            any_amount = true;
-            any_converted |= total.is_some();
-        }
-    }
-    !any_amount || any_converted
+/// Whether a total can be stated: nothing to convert at all (a real zero), or at least one
+/// part holding amounts converted. `parts` are `(converted total, holds amounts)`. Empty parts
+/// never make it known, so a total whose only amounts failed to convert is unknown rather
+/// than 0.
+fn total_is_known(parts: &[(Option<f64>, bool)]) -> bool {
+    let mut holding = parts
+        .iter()
+        .filter(|(_, has_amount)| *has_amount)
+        .peekable();
+    holding.peek().is_none() || holding.any(|(total, _)| total.is_some())
+}
+
+/// The sum of the converted parts when the total is known (see `total_is_known`).
+fn known_total(parts: impl AsRef<[(Option<f64>, bool)]>) -> Option<f64> {
+    let parts = parts.as_ref();
+    total_is_known(parts).then(|| parts.iter().filter_map(|(total, _)| *total).sum())
 }
 
 /// The real estate classes that count into the totals.
@@ -336,10 +331,9 @@ pub fn metrics_report(
         total_real_estate_investment: text(classes.real_estate_investment),
         total_real_estate: text(classes.real_estate(exclude_personal_real_estate)),
         total_other_assets: text(classes.other_assets),
-        total_liabilities: money_in_currency(worth.total_liabilities, currency),
-        total_assets: money_in_currency(worth.total_assets, currency),
-        // The wire has no unknown net worth yet (the totals above are zero then)
-        net_worth: money_in_currency(worth.net_worth.unwrap_or(0.0), currency),
+        total_liabilities: text(worth.total_liabilities),
+        total_assets: text(worth.total_assets),
+        net_worth: text(worth.net_worth),
         savings_by_currency: breakdowns.savings.clone(),
         investments_by_currency: breakdowns.investments.clone(),
         crypto_by_currency: breakdowns.crypto.clone(),
@@ -476,6 +470,8 @@ fn history_point(
     };
     let (savings, loans, investments, crypto, bonds, other_assets) =
         (class(0), class(1), class(2), class(3), class(4), class(5));
+    // The loans are the liabilities; every other part is an asset
+    let liabilities = [parts.remove(1)];
     let (real_estate_personal, real_estate_investment) = stored_real_estate(row, &mut convert);
     let combined = breakdown_from_json(&row.real_estate);
     parts.push((
@@ -496,16 +492,9 @@ fn history_point(
         other_assets,
         loans,
     };
-    let assets = sum_known([
-        savings,
-        investments,
-        crypto,
-        bonds,
-        real_estate_personal,
-        real_estate_investment,
-        other_assets,
-    ]);
-    let net_worth = net_worth_is_known(parts).then(|| assets.unwrap_or(0.0) - loans.unwrap_or(0.0));
+    let net_worth = known_total(&parts)
+        .zip(known_total(liabilities))
+        .map(|(assets, liabilities)| assets - liabilities);
     HistoryPoint {
         recorded_at: row.recorded_at,
         source: row.source.clone(),
@@ -851,15 +840,15 @@ mod tests {
         approx(worth.classes.loans, 100.0);
         approx(worth.classes.investments, 0.0);
         assert_eq!(worth.classes.other_assets, None);
-        assert!((worth.total_assets - 3580.0).abs() < 1e-9);
-        assert!((worth.total_liabilities - 100.0).abs() < 1e-9);
+        approx(worth.total_assets, 3580.0);
+        approx(worth.total_liabilities, 100.0);
         approx(worth.net_worth, 3480.0);
         assert_eq!(worth.quality.missing_currencies(), vec!["KWD".to_string()]);
 
         // Excluding personal real estate leaves it out of the totals, still reported.
         let excluded = net_worth_of(breakdowns, &eur_quotes(), "EUR", true);
         approx(excluded.classes.real_estate_personal, 80.0);
-        assert!((excluded.total_assets - 3500.0).abs() < 1e-9);
+        approx(excluded.total_assets, 3500.0);
         approx(excluded.net_worth, 3400.0);
     }
 
@@ -890,6 +879,9 @@ mod tests {
 
         assert_eq!(worth.classes.savings, None);
         assert_eq!(worth.net_worth, None);
+        assert_eq!(worth.total_assets, None);
+        // No loans: the liabilities are a real zero
+        approx(worth.total_liabilities, 0.0);
         assert_eq!(worth.quality.missing_currencies(), vec!["KWD".to_string()]);
 
         // One class converting makes it known again, the failed one stays left out.
@@ -921,6 +913,32 @@ mod tests {
     }
 
     #[test]
+    fn net_worth_is_unknown_when_assets_fail_even_though_loans_converted() {
+        let breakdowns = ClassBreakdowns {
+            savings: map(&[("KWD", 9.0)]),
+            loans: map(&[("EUR", 100.0)]),
+            ..Default::default()
+        };
+
+        let worth = net_worth_of(breakdowns, &eur_quotes(), "EUR", false);
+
+        assert_eq!(worth.total_assets, None);
+        approx(worth.total_liabilities, 100.0);
+        assert_eq!(worth.net_worth, None);
+
+        // And the other way round: unconvertible loans leave the liabilities unknown
+        let breakdowns = ClassBreakdowns {
+            savings: map(&[("EUR", 50.0)]),
+            loans: map(&[("KWD", 9.0)]),
+            ..Default::default()
+        };
+        let worth = net_worth_of(breakdowns, &eur_quotes(), "EUR", false);
+        approx(worth.total_assets, 50.0);
+        assert_eq!(worth.total_liabilities, None);
+        assert_eq!(worth.net_worth, None);
+    }
+
+    #[test]
     fn history_net_worth_is_unknown_when_no_class_with_amounts_converted() {
         let conn = setup_db();
         add_rate(&conn, D, "EUR", 25.0);
@@ -935,5 +953,24 @@ mod tests {
         assert_eq!(points[0].classes.savings, None);
         assert_eq!(points[0].net_worth, None);
         approx(points[1].net_worth, 0.0);
+    }
+
+    #[test]
+    fn history_net_worth_is_unknown_when_assets_fail_even_though_loans_converted() {
+        let conn = setup_db();
+        add_rate(&conn, D, "EUR", 25.0);
+        add_row(
+            &conn,
+            D,
+            &[
+                ("savings_by_currency", r#"{"KWD":9}"#),
+                ("loans_by_currency", r#"{"EUR":100}"#),
+            ],
+        );
+
+        let (points, _) = history_in(&conn, "EUR", None, None).expect("history");
+
+        approx(points[0].classes.loans, 100.0);
+        assert_eq!(points[0].net_worth, None);
     }
 }

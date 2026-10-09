@@ -50,8 +50,11 @@ export function selectPositions<T extends { tags: readonly { id: string }[] }>(
 export interface TagTotals {
   /** Positions carrying the tag. */
   count: number;
-  /** Known current value, in the report currency. */
-  value: number;
+  /**
+   * Known current value, in the report currency; `null` when priced positions hold value but
+   * none of it converted (the backend's rule: unknown, not 0).
+   */
+  value: number | null;
   /** Their gain or loss, report currency. */
   gainLoss: number;
   /** Gain or loss in percent of the cost basis (value − gain); 0 without a cost basis. */
@@ -63,6 +66,8 @@ export interface TagTotals {
 /** What the sums need of a position (see `toAnalysisPosition`); `null` = not convertible. */
 interface TotalsPosition {
   tags: readonly { id: string }[];
+  /** Native price; `null` when unpriced (no value to convert). */
+  price: string | null;
   currentValue: number | null;
   gainLoss: number | null;
   yearlyDividendAmount: number | null;
@@ -88,19 +93,25 @@ export function toAnalysisPosition(item: StockInvestmentWithTags): AnalysisPosit
 
 /**
  * Sums over `positions` with the rule of the backend's `PositionTotals`: every known amount
- * counts. The value sums the known values (and the dividends of those positions); the gain
- * sums the known gains, and its percent is of the cost of those same positions
- * (value − gain). Every position is counted.
+ * counts. The value sums the known values (and the dividends of those positions), `null` when
+ * priced positions hold value but none converted; the gain sums the known gains, and its
+ * percent is of the cost of those same positions (value − gain). Every position is counted.
  */
 export function positionTotals(positions: readonly TotalsPosition[]): TagTotals {
   let count = 0;
   let value = 0;
+  let valueKnown = false;
+  let valueFailed = false;
   let gainLoss = 0;
   let gainedValue = 0;
   let dividend = 0;
   for (const position of positions) {
     count += 1;
-    if (position.currentValue === null) continue;
+    if (position.currentValue === null) {
+      valueFailed ||= position.price !== null;
+      continue;
+    }
+    valueKnown = true;
     value += position.currentValue;
     dividend += position.yearlyDividendAmount ?? 0;
     if (position.gainLoss === null) continue;
@@ -110,7 +121,7 @@ export function positionTotals(positions: readonly TotalsPosition[]): TagTotals 
   const cost = gainedValue - gainLoss;
   return {
     count,
-    value,
+    value: valueKnown || !valueFailed ? value : null,
     gainLoss,
     gainLossPercent: cost > 0 ? (gainLoss / cost) * 100 : 0,
     dividend,

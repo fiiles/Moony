@@ -52,6 +52,9 @@ pub struct PositionValue {
     pub yearly_dividend: Option<f64>,
     /// What this position could not convert (cost basis, value and dividend together).
     pub quality: Quality,
+    /// The position has transactions: its cost basis and realized gain have native amounts
+    /// (a `None` there is a failed conversion, not a missing record).
+    pub has_cost_record: bool,
 }
 
 /// Every position of one asset class in `currency`, with what could not be converted.
@@ -69,58 +72,125 @@ pub struct Positions {
 /// `unrealized_cost_basis`, the base of the percentage); `yearly_dividend` sums the known
 /// dividends of positions whose value is known (a row left out of the value leaves its
 /// dividend out too). An unknown amount is never counted as 0 and never converted 1:1.
-#[derive(Debug, Clone, Default, PartialEq)]
+/// A total is `None` when positions hold amounts for it but none of them converted (the same
+/// rule as the net worth); nothing to sum is a real 0.
+#[derive(Debug, Clone, PartialEq)]
 pub struct PositionTotals {
-    pub value: f64,
-    pub cost_basis: f64,
-    pub unrealized_gain: f64,
+    pub value: Option<f64>,
+    pub cost_basis: Option<f64>,
+    pub unrealized_gain: Option<f64>,
     /// Cost basis of the positions in `unrealized_gain`.
     pub unrealized_cost_basis: f64,
-    pub realized_gain: f64,
-    pub yearly_dividend: f64,
+    pub realized_gain: Option<f64>,
+    pub yearly_dividend: Option<f64>,
     /// Positions in the group, summed or not.
     pub count: usize,
     /// Everything the group's positions could not convert.
     pub quality: Quality,
 }
 
+impl Default for PositionTotals {
+    /// An empty group: every total a real 0.
+    fn default() -> Self {
+        TotalsBuilder::default().finish()
+    }
+}
+
 impl PositionTotals {
-    fn add(&mut self, item: &PositionValue) {
-        self.count += 1;
-        self.quality.merge(&item.quality);
-        if let Some(value) = item.value {
-            self.value += value;
-            self.yearly_dividend += item.yearly_dividend.unwrap_or(0.0);
+    /// `unrealized_gain / unrealized_cost_basis * 100`; 0 for a zero or unknown cost basis.
+    pub fn unrealized_gain_percent(&self) -> f64 {
+        match self.unrealized_gain {
+            Some(gain) if self.unrealized_cost_basis > 0.0 => {
+                gain / self.unrealized_cost_basis * 100.0
+            }
+            _ => 0.0,
         }
-        if let Some(cost) = item.cost_basis {
-            self.cost_basis += cost;
-        }
-        if let (Some(value), Some(cost)) = (item.value, item.cost_basis) {
-            self.unrealized_gain += value - cost;
-            self.unrealized_cost_basis += cost;
-        }
-        if let Some(realized) = item.realized_gain {
-            self.realized_gain += realized;
+    }
+}
+
+/// A sum of the known amounts that is unknown when amounts exist but none of them converted.
+#[derive(Debug, Clone, Copy, Default)]
+struct KnownSum {
+    sum: f64,
+    known: bool,
+    failed: bool,
+}
+
+impl KnownSum {
+    /// `amount` is the converted amount; `has_native` whether a native amount exists for it
+    /// (a `None` without one is not a failed conversion, e.g. an unpriced position's value).
+    fn add(&mut self, amount: Option<f64>, has_native: bool) {
+        match amount {
+            Some(amount) => {
+                self.sum += amount;
+                self.known = true;
+            }
+            None => self.failed |= has_native,
         }
     }
 
-    /// `unrealized_gain / unrealized_cost_basis * 100`; 0 for a zero cost basis.
-    pub fn unrealized_gain_percent(&self) -> f64 {
-        if self.unrealized_cost_basis > 0.0 {
-            self.unrealized_gain / self.unrealized_cost_basis * 100.0
-        } else {
-            0.0
+    fn total(self) -> Option<f64> {
+        (self.known || !self.failed).then_some(self.sum)
+    }
+}
+
+#[derive(Default)]
+struct TotalsBuilder {
+    value: KnownSum,
+    cost_basis: KnownSum,
+    unrealized_gain: KnownSum,
+    unrealized_cost_basis: f64,
+    realized_gain: KnownSum,
+    yearly_dividend: KnownSum,
+    count: usize,
+    quality: Quality,
+}
+
+impl TotalsBuilder {
+    fn add(&mut self, item: &PositionValue) {
+        self.count += 1;
+        self.quality.merge(&item.quality);
+        let priced = item.price.is_some();
+        self.value.add(item.value, priced);
+        self.cost_basis.add(item.cost_basis, item.has_cost_record);
+        self.unrealized_gain
+            .add(item.unrealized_gain, priced && item.has_cost_record);
+        if let (Some(_), Some(cost)) = (item.value, item.cost_basis) {
+            self.unrealized_cost_basis += cost;
+        }
+        self.realized_gain
+            .add(item.realized_gain, item.has_cost_record);
+        // Only positions with a known value count; one without dividend data pays nothing.
+        let has_dividend = item.dividend_per_share.is_some();
+        let dividend = match (item.value, item.yearly_dividend) {
+            (Some(_), Some(dividend)) => Some(dividend),
+            (Some(_), None) if !has_dividend => Some(0.0),
+            _ => None,
+        };
+        self.yearly_dividend.add(dividend, priced && has_dividend);
+    }
+
+    fn finish(self) -> PositionTotals {
+        PositionTotals {
+            value: self.value.total(),
+            cost_basis: self.cost_basis.total(),
+            unrealized_gain: self.unrealized_gain.total(),
+            unrealized_cost_basis: self.unrealized_cost_basis,
+            realized_gain: self.realized_gain.total(),
+            yearly_dividend: self.yearly_dividend.total(),
+            count: self.count,
+            quality: self.quality,
         }
     }
 }
 
 /// Totals over `items` (see `PositionTotals`).
 pub fn totals<'a>(items: impl IntoIterator<Item = &'a PositionValue>) -> PositionTotals {
-    let mut totals = PositionTotals::default();
+    let mut totals = TotalsBuilder::default();
     for item in items {
         totals.add(item);
     }
-    totals
+    totals.finish()
 }
 
 /// Totals per tag. `tag_map` lists the tag ids of each investment id; a position counts in
@@ -129,13 +199,16 @@ pub fn tag_totals(
     positions: &Positions,
     tag_map: &HashMap<String, Vec<String>>,
 ) -> HashMap<String, PositionTotals> {
-    let mut by_tag: HashMap<String, PositionTotals> = HashMap::new();
+    let mut by_tag: HashMap<String, TotalsBuilder> = HashMap::new();
     for item in &positions.items {
         for tag_id in tag_map.get(&item.investment_id).into_iter().flatten() {
             by_tag.entry(tag_id.clone()).or_default().add(item);
         }
     }
     by_tag
+        .into_iter()
+        .map(|(tag_id, totals)| (tag_id, totals.finish()))
+        .collect()
 }
 
 /// The tag ids of every tagged stock investment (`stock_investment_tags`), keyed by
@@ -370,6 +443,7 @@ fn value_position(
         dividend_currency,
         yearly_dividend,
         quality,
+        has_cost_record: cost.is_some(),
     }
 }
 
@@ -841,16 +915,18 @@ mod tests {
 
         let tech = &by_tag["tech"];
         assert_eq!(tech.count, 2);
-        assert_close(tech.value, 1136.3636363636);
-        assert_close(tech.cost_basis, 1000.0);
-        assert_close(tech.unrealized_gain, 136.3636363636);
+        assert_close(tech.value.expect("known"), 1136.3636363636);
+        assert_close(tech.cost_basis.expect("known"), 1000.0);
+        assert_close(tech.unrealized_gain.expect("known"), 136.3636363636);
         assert_close(tech.unrealized_gain_percent(), 13.636363636);
         // the KWD position's (convertible) USD dividend stays out with its value
-        assert_close(tech.yearly_dividend, 0.0);
+        assert_close(tech.yearly_dividend.expect("known"), 0.0);
         assert_eq!(tech.quality.missing_currencies(), vec!["KWD".to_string()]);
         let gulf = &by_tag["gulf"];
         assert_eq!(gulf.count, 1);
-        assert_close(gulf.value, 0.0);
+        // its only position is priced but not convertible: unknown, not 0
+        assert_eq!(gulf.value, None);
+        assert_eq!(gulf.unrealized_gain, None);
         assert_eq!(gulf.quality.missing_currencies(), vec!["KWD".to_string()]);
         assert!(!by_tag.contains_key("untagged"));
     }
@@ -875,8 +951,8 @@ mod tests {
         let t = totals(&p.items);
 
         assert_eq!(t.count, 1);
-        assert_close(t.value, 0.0);
-        assert_close(t.realized_gain, 100.0);
+        assert_close(t.value.expect("known"), 0.0);
+        assert_close(t.realized_gain.expect("known"), 100.0);
         assert!(t.quality.is_complete());
     }
 
@@ -911,9 +987,9 @@ mod tests {
         assert!(p.quality.is_complete());
         // its known value still counts; its unknown cost and gain do not
         let t = totals(&p.items);
-        assert_close(t.value, 300.0);
-        assert_close(t.cost_basis, 0.0);
-        assert_close(t.unrealized_gain, 0.0);
+        assert_close(t.value.expect("known"), 300.0);
+        assert_close(t.cost_basis.expect("known"), 0.0);
+        assert_close(t.unrealized_gain.expect("known"), 0.0);
     }
 
     #[test]
@@ -945,9 +1021,9 @@ mod tests {
         let t = totals(&p.items);
 
         assert_eq!(t.count, 2);
-        assert_close(t.cost_basis, 250.0);
-        assert_close(t.value, 240.0);
-        assert_close(t.unrealized_gain, 40.0);
+        assert_close(t.cost_basis.expect("known"), 250.0);
+        assert_close(t.value.expect("known"), 240.0);
+        assert_close(t.unrealized_gain.expect("known"), 40.0);
         assert_close(t.unrealized_cost_basis, 200.0);
         assert_close(t.unrealized_gain_percent(), 20.0);
         assert!(t.quality.is_complete());

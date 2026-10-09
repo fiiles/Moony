@@ -377,9 +377,12 @@ export interface PortfolioMetrics {
   /** The real estate counted in `totalAssets` (personal left out when excluded). */
   totalRealEstate: string | null;
   totalOtherAssets: string | null;
-  totalLiabilities: string;
-  totalAssets: string;
-  netWorth: string;
+  /** `null` when the loans hold amounts but none of them could be converted. */
+  totalLiabilities: string | null;
+  /** `null` when the asset classes hold amounts but none of them could be converted. */
+  totalAssets: string | null;
+  /** `null` unless both `totalAssets` and `totalLiabilities` are known. */
+  netWorth: string | null;
   // Native currency breakdowns
   savingsByCurrency: Record<string, number>;
   investmentsByCurrency: Record<string, number>;
@@ -686,16 +689,17 @@ export interface EnrichedCryptoInvestment {
 /**
  * Sums over every known amount: `value`, `costBasis` and `realizedGain` where known,
  * `unrealizedGain` (and its percent) of the positions whose value and cost are both known,
- * `yearlyDividend` of the positions whose value is known.
+ * `yearlyDividend` of the positions whose value is known. A total is `null` when positions
+ * hold amounts for it but none of them could be converted.
  */
 export interface PositionTotals {
-  value: string;
-  costBasis: string;
-  unrealizedGain: string;
+  value: string | null;
+  costBasis: string | null;
+  unrealizedGain: string | null;
   /** `unrealizedGain` in percent of the cost of the same positions; 0 without a cost. */
   unrealizedGainPercent: number;
-  realizedGain: string;
-  yearlyDividend: string;
+  realizedGain: string | null;
+  yearlyDividend: string | null;
 }
 
 export interface StockPositions {
@@ -1591,15 +1595,18 @@ export interface StocksAnalysis {
   items: StockInvestmentWithTags[];
 }
 
-/** Sums over a tag's positions, every known amount counted (the rule of `PositionTotals`). */
+/**
+ * Sums over a tag's positions, every known amount counted (the rule of `PositionTotals`: a
+ * total is `null` when the tag's positions hold amounts for it but none of them converted).
+ */
 export interface TagMetrics {
   tag: StockTag;
-  value: string;
-  costBasis: string;
-  unrealizedGain: string;
+  value: string | null;
+  costBasis: string | null;
+  unrealizedGain: string | null;
   /** Percent of the cost of the positions in `unrealizedGain`; 0 without a cost basis. */
   unrealizedGainPercent: number;
-  yearlyDividend: string;
+  yearlyDividend: string | null;
   /** The tag's value in percent of the known value of every position. */
   portfolioPercent: number;
   /** Positions carrying the tag, summed or not. */

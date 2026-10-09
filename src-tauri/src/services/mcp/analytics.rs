@@ -12,7 +12,6 @@ use std::collections::HashMap;
 
 use crate::error::Result;
 use crate::services::positions::{self, AssetKind};
-use crate::services::reporting::money_in_currency;
 
 use super::money::{amount_json, main_currency_positions, percent_json};
 
@@ -232,11 +231,11 @@ pub fn stocks_analysis(conn: &Connection) -> Result<Value> {
     Ok(serde_json::json!({
         "mainCurrency": currency,
         "summary": {
-            "totalValue": money_in_currency(totals.value, currency),
-            "totalCostBasis": money_in_currency(totals.cost_basis, currency),
-            "totalGainLoss": money_in_currency(totals.unrealized_gain, currency),
-            "realizedGain": money_in_currency(totals.realized_gain, currency),
-            "annualDividends": money_in_currency(totals.yearly_dividend, currency),
+            "totalValue": amount_json(totals.value, currency),
+            "totalCostBasis": amount_json(totals.cost_basis, currency),
+            "totalGainLoss": amount_json(totals.unrealized_gain, currency),
+            "realizedGain": amount_json(totals.realized_gain, currency),
+            "annualDividends": amount_json(totals.yearly_dividend, currency),
         },
         "stocks": stocks,
         "missingCurrencies": positions.quality.missing_currencies(),
@@ -279,14 +278,14 @@ pub fn tag_metrics(conn: &Connection, tag_ids: Option<Vec<String>>) -> Result<Va
                 "tagId": tag_id,
                 "tagName": tag_name,
                 "stockCount": totals.count,
-                "totalValue": money_in_currency(totals.value, currency),
-                "costBasis": money_in_currency(totals.cost_basis, currency),
-                "gainLoss": money_in_currency(totals.unrealized_gain, currency),
+                "totalValue": amount_json(totals.value, currency),
+                "costBasis": amount_json(totals.cost_basis, currency),
+                "gainLoss": amount_json(totals.unrealized_gain, currency),
                 "gainLossPct": format!("{:.2}", totals.unrealized_gain_percent()),
-                "annualDividend": money_in_currency(totals.yearly_dividend, currency),
+                "annualDividend": amount_json(totals.yearly_dividend, currency),
                 "dividendYieldPct": format!(
                     "{:.2}",
-                    dividend_yield(Some(totals.yearly_dividend), Some(totals.value))
+                    dividend_yield(totals.yearly_dividend, totals.value)
                         .unwrap_or(0.0)
                 ),
                 "missingCurrencies": totals.quality.missing_currencies(),
@@ -561,10 +560,12 @@ mod tests {
         }
         // The cost basis does not depend on the price currency.
         assert_eq!(stock["costBasis"], "45000.00");
-        // The row is left out of the totals (its dividend too) and its currency is declared.
-        assert_eq!(result["summary"]["annualDividends"], "0.00");
-        assert_eq!(result["summary"]["totalValue"], "0.00");
-        assert_eq!(result["summary"]["totalGainLoss"], "0.00");
+        // The row is left out of the totals (its dividend too) and its currency is declared;
+        // with nothing else held the totals are unknown, not 0.
+        assert!(result["summary"]["annualDividends"].is_null());
+        assert!(result["summary"]["totalValue"].is_null());
+        assert!(result["summary"]["totalGainLoss"].is_null());
+        assert_eq!(result["summary"]["totalCostBasis"], "45000.00");
         assert_eq!(result["missingCurrencies"], serde_json::json!(["KWD"]));
     }
 
@@ -588,8 +589,8 @@ mod tests {
         assert_eq!(stock["currentValue"], "53130.00");
         // Every known amount counts: the value and its dividend (21 × 2 USD × 23), no gain.
         assert_eq!(result["summary"]["totalValue"], "53130.00");
-        assert_eq!(result["summary"]["totalCostBasis"], "0.00");
-        assert_eq!(result["summary"]["totalGainLoss"], "0.00");
+        assert!(result["summary"]["totalCostBasis"].is_null());
+        assert!(result["summary"]["totalGainLoss"].is_null());
         assert_eq!(result["summary"]["annualDividends"], "966.00");
         assert_eq!(result["missingCurrencies"], serde_json::json!(["KWD"]));
     }
@@ -604,10 +605,10 @@ mod tests {
 
         let tag = &result["tags"][0];
         assert_eq!(tag["stockCount"], 1);
-        // The unknown value and gain stay out; the known cost counts.
-        assert_eq!(tag["totalValue"], "0.00");
+        // The unknown value and gain stay out (null: nothing else to sum); the known cost counts.
+        assert!(tag["totalValue"].is_null());
         assert_eq!(tag["costBasis"], "45000.00");
-        assert_eq!(tag["gainLoss"], "0.00");
+        assert!(tag["gainLoss"].is_null());
         assert_eq!(tag["missingCurrencies"], serde_json::json!(["KWD"]));
         assert_eq!(result["missingCurrencies"], serde_json::json!(["KWD"]));
         assert_eq!(tag["fxEstimated"], false);

@@ -8,7 +8,6 @@ use serde_json::Value;
 use super::money::{amount_json, load_main_currency};
 use crate::error::Result;
 use crate::services::net_worth;
-use crate::services::reporting::money_in_currency;
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct PortfolioHistoryArgs {
@@ -32,15 +31,13 @@ pub struct PortfolioMetricsArgs {
 /// Today's net worth in the user's main currency: the app's net worth service with the app's
 /// current quote snapshot (C-A), so the assistant and the app agree. A class that could not
 /// be converted at all is `null`; the totals leave unconverted amounts out and
-/// `missingCurrencies` names them. When classes hold amounts but none converted, the net worth
-/// and the totals are `null` too (never a misleading "0").
+/// `missingCurrencies` names them. When the asset classes (or the loans) hold amounts but none
+/// converted, their total and the net worth are `null` too (never a misleading "0").
 pub fn portfolio_metrics(conn: &Connection, exclude_personal_real_estate: bool) -> Result<Value> {
     let main = load_main_currency(conn)?;
     let worth = net_worth::current_net_worth(conn, &main, exclude_personal_real_estate)?;
     let currency = worth.currency.as_str();
     let classes = &worth.classes;
-    // No totals when classes hold amounts but none converted (a 0 would read as real)
-    let known = |value: f64| worth.net_worth.map(|_| money_in_currency(value, currency));
     let personal = if exclude_personal_real_estate {
         Some(0.0)
     } else {
@@ -50,8 +47,9 @@ pub fn portfolio_metrics(conn: &Connection, exclude_personal_real_estate: bool) 
     Ok(serde_json::json!({
         "mainCurrency": currency,
         "net_worth": amount_json(worth.net_worth, currency),
-        "total_assets": known(worth.total_assets),
-        "total_liabilities": known(worth.total_liabilities),
+        // No totals when classes hold amounts but none converted (a 0 would read as real)
+        "total_assets": amount_json(worth.total_assets, currency),
+        "total_liabilities": amount_json(worth.total_liabilities, currency),
         "breakdown": {
             "savings": amount_json(classes.savings, currency),
             "investments": amount_json(classes.investments, currency),
@@ -317,13 +315,14 @@ mod tests {
         let result = portfolio_metrics(&conn, false).expect("metrics");
 
         assert_eq!(result["mainCurrency"], "JPY");
-        // Nothing converts into JPY: no class value, no totals (null, never "0"), JPY reported.
+        // Nothing converts into JPY: no class value, no asset total (null, never "0"), JPY
+        // reported. Without loans the liabilities are a real 0, the net worth still unknown.
         assert!(result["breakdown"]["savings"].is_null());
         assert!(result["breakdown"]["other_assets"].is_null());
         assert_eq!(result["breakdown"]["loans"], "0");
         assert!(result["net_worth"].is_null());
         assert!(result["total_assets"].is_null());
-        assert!(result["total_liabilities"].is_null());
+        assert_eq!(result["total_liabilities"], "0");
         assert_eq!(result["missingCurrencies"], serde_json::json!(["JPY"]));
     }
 

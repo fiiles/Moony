@@ -105,14 +105,29 @@ export default function Dashboard() {
     crypto: amount(portfolioMetrics?.totalCrypto),
     otherAssets: amount(portfolioMetrics?.totalOtherAssets),
   };
+  // A total is null when its classes hold amounts but none converted: shown as "—", never 0
+  const unknown = {
+    netWorth: portfolioMetrics?.netWorth === null,
+    assets: portfolioMetrics?.totalAssets === null,
+    liabilities: portfolioMetrics?.totalLiabilities === null,
+  };
+  const totalMoney = (value: number, isUnknown: boolean) => (isUnknown ? '—' : money(value));
 
   // Brand-new profile: every total is zero. The empty state is only shown once
   // the metrics have settled, so it never flashes during a refetch.
+  // An unknown (null) total is not zero: it holds amounts that could not be converted.
   const allTotalsZero =
     portfolioMetrics !== undefined &&
-    [...ASSET_CLASSES.map((cls) => display[cls]), display.assets, display.liabilities].every(
-      (value) => value === 0
-    );
+    [
+      portfolioMetrics.totalSavings,
+      portfolioMetrics.totalInvestments,
+      portfolioMetrics.totalBonds,
+      portfolioMetrics.totalCrypto,
+      portfolioMetrics.totalOtherAssets,
+      portfolioMetrics.totalRealEstate,
+      portfolioMetrics.totalAssets,
+      portfolioMetrics.totalLiabilities,
+    ].every((value) => amountOf(value) === 0);
   const isCheckingPortfolio = metricsLoading || (allTotalsZero && metricsFetching);
   const isEmptyPortfolio = allTotalsZero && !metricsFetching;
 
@@ -202,6 +217,8 @@ export default function Dashboard() {
   // Insight: the asset class with the largest absolute contribution to the change
   const insight = useMemo(() => {
     if (!oldest || !hasHistory) return t('insight.noHistory');
+    // An unknown net worth today has no change to explain
+    if (unknown.netWorth) return null;
     const deltas: { cls: AssetClass | 'liabilities'; delta: number }[] = ASSET_CLASSES.map(
       (cls) => ({ cls, delta: display[cls] - oldest[cls] })
     );
@@ -213,17 +230,19 @@ export default function Dashboard() {
     return t('insight.flat', { class: cls });
     // display is rebuilt every render; its input is the metrics response
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [oldest, hasHistory, netWorthPct, t, portfolioMetrics]);
+  }, [oldest, hasHistory, netWorthPct, t, portfolioMetrics, unknown.netWorth]);
 
   // Hero chart: history plus the live value for today (UTC days, ADR 0008)
   const points = useMemo(() => {
     const todayStart = utcDayFloor(Date.now() / 1000);
     const pts = convertedHistory.map((h) => ({ t: h.recordedAt, value: h.netWorth }));
+    // An unknown net worth today is left out, not plotted as a drop to 0
+    if (unknown.netWorth) return pts.filter((p) => utcDayFloor(p.t) !== todayStart);
     const last = pts[pts.length - 1];
     if (last && utcDayFloor(last.t) === todayStart) last.value = display.netWorth;
     else pts.push({ t: Math.floor(Date.now() / 1000), value: display.netWorth });
     return pts;
-  }, [convertedHistory, display.netWorth]);
+  }, [convertedHistory, display.netWorth, unknown.netWorth]);
 
   const allocation = ASSET_CLASSES.map((cls) => ({
     key: cls,
@@ -333,15 +352,19 @@ export default function Dashboard() {
       >
         <HeroValue
           label={t('hero.label')}
-          value={money(display.netWorth)}
+          value={totalMoney(display.netWorth, unknown.netWorth)}
           tone={tone(netWorthDelta)}
           delta={
-            hasHistory
+            hasHistory && !unknown.netWorth
               ? `${netWorthDelta >= 0 ? '↗' : '↘'} ${fmt.percent(netWorthPct, 1, { signed: true })}`
               : undefined
           }
           deltaNote={
-            hasHistory ? `${signedMoney(netWorthDelta)} ${changeLabel}` : t('stats.noHistory')
+            unknown.netWorth
+              ? undefined
+              : hasHistory
+                ? `${signedMoney(netWorthDelta)} ${changeLabel}`
+                : t('stats.noHistory')
           }
         />
       </HeroCard>
@@ -350,19 +373,27 @@ export default function Dashboard() {
         <Stat
           label={t('stats.totalAssets')}
           aside={<SeriesDot className="bg-s1" />}
-          value={money(display.assets)}
-          note={hasHistory ? `${signedMoney(assetsDelta)} ${changeLabel}` : t('stats.noHistory')}
+          value={totalMoney(display.assets, unknown.assets)}
+          note={
+            unknown.assets
+              ? undefined
+              : hasHistory
+                ? `${signedMoney(assetsDelta)} ${changeLabel}`
+                : t('stats.noHistory')
+          }
         />
         <Stat
           label={t('stats.totalLiabilities')}
           aside={<SeriesDot className="bg-s3" />}
-          value={money(display.liabilities)}
+          value={totalMoney(display.liabilities, unknown.liabilities)}
           note={
-            !hasHistory
-              ? t('stats.noHistory')
-              : Math.abs(liabilitiesDelta) < 1
-                ? t('stats.unchanged')
-                : `${signedMoney(liabilitiesDelta)} ${changeLabel}`
+            unknown.liabilities
+              ? undefined
+              : !hasHistory
+                ? t('stats.noHistory')
+                : Math.abs(liabilitiesDelta) < 1
+                  ? t('stats.unchanged')
+                  : `${signedMoney(liabilitiesDelta)} ${changeLabel}`
           }
         />
         <Stat

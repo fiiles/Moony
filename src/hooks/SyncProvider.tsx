@@ -5,6 +5,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { listen } from '@tauri-apps/api/event';
 import type { McpDataChangedPayload } from '@shared/schema';
 import { SyncContext } from './sync-context';
+import { FX_HISTORY_KEY, FX_SNAPSHOT_KEY } from './use-fx';
 
 export function SyncProvider({ children }: { children: ReactNode }) {
   const [isSyncing, setIsSyncing] = useState(false);
@@ -68,7 +69,13 @@ export function SyncProvider({ children }: { children: ReactNode }) {
 
         if (needsRefresh) {
           await Promise.allSettled([
-            status.exchangeRatesStale ? portfolioApi.refreshExchangeRates() : Promise.resolve(),
+            status.exchangeRatesStale
+              ? portfolioApi.refreshExchangeRates().then((rates) => {
+                  queryClient.invalidateQueries({ queryKey: FX_SNAPSHOT_KEY });
+                  queryClient.invalidateQueries({ queryKey: FX_HISTORY_KEY });
+                  return rates;
+                })
+              : Promise.resolve(),
             status.stocksStale ? priceApi.refreshStockPrices() : Promise.resolve(),
             status.cryptoStale ? priceApi.refreshCryptoPrices() : Promise.resolve(),
           ]);

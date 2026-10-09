@@ -44,6 +44,23 @@ describe('money', () => {
   });
 });
 
+describe('money main-currency symbol', () => {
+  it('uses the narrow symbol only for the main currency', () => {
+    expect(norm(createFormatters('en-US', 'CZK').money(5, 'USD'))).toBe('USD 5.00');
+    expect(norm(createFormatters('en-US', 'USD').money(5, 'USD'))).toBe('$5.00');
+    expect(norm(createFormatters('en-US', 'czk').money(1234, 'CZK'))).toBe('Kč 1,234');
+  });
+
+  it('keeps the narrow symbol everywhere when no main currency is known', () => {
+    expect(norm(createFormatters('en-US').money(5, 'USD'))).toBe('$5.00');
+  });
+
+  it('memoizes per locale and main currency', () => {
+    expect(getFormatters('en-US', 'USD')).toBe(getFormatters('en-US', 'USD'));
+    expect(getFormatters('en-US', 'USD')).not.toBe(getFormatters('en-US', 'CZK'));
+  });
+});
+
 describe('number and percent', () => {
   it('keeps the minimum fraction digits valid when only a minimum is given', () => {
     const en = createFormatters('en-US');

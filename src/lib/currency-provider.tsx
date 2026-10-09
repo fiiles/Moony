@@ -4,6 +4,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import { portfolioApi } from '@/lib/tauri-api';
 import { CurrencyContext } from '@/lib/currency';
 import { getFormatters } from '@/lib/format';
+import { useFxSnapshot, FX_SNAPSHOT_KEY, FX_HISTORY_KEY } from '@/hooks/use-fx';
+import { convert as fxConvertPure } from '@shared/fx';
 import { useLanguage } from '@/i18n/I18nProvider';
 import {
   CURRENCIES,
@@ -20,6 +22,7 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
   const { getLocale } = useLanguage();
   const queryClient = useQueryClient();
   const [ratesTimestamp, setRatesTimestamp] = useState(0);
+  const { quotes: fx, revision: fxRevision } = useFxSnapshot();
 
   // Derive currencyCode from user profile - no need for separate state
   const currencyCode = useMemo<CurrencyCode>(() => {
@@ -60,6 +63,8 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
           updateExchangeRates(freshRates);
           setRatesTimestamp(Date.now());
           queryClient.invalidateQueries({ queryKey: ['portfolio-metrics'] });
+          queryClient.invalidateQueries({ queryKey: FX_SNAPSHOT_KEY });
+          queryClient.invalidateQueries({ queryKey: FX_HISTORY_KEY });
         }
       } catch (error) {
         console.warn('[CURRENCY] Failed to fetch ECB rates, using backend rates:', error);
@@ -70,6 +75,10 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
 
   const currency =
     (CURRENCIES as Record<CurrencyCode, CurrencyDef | undefined>)[currencyCode] ?? CURRENCIES.CZK;
+
+  function fxConvert(amount: number, from: string, to: string = currencyCode): number | null {
+    return fxConvertPure(fx, amount, from, to);
+  }
 
   function convert(amount: number, from: CurrencyCode, to: CurrencyCode): number {
     if (from === to) return amount;
@@ -88,7 +97,7 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
 
   // All text output goes through the locale-driven formatters:
   // separators and symbol placement follow the UI language, not the currency.
-  const fmt = getFormatters(getLocale());
+  const fmt = getFormatters(getLocale(), currencyCode);
   const decimalsFrom = (opts: Intl.NumberFormatOptions | undefined, fallback: number) =>
     opts?.maximumFractionDigits ?? opts?.minimumFractionDigits ?? fallback;
 
@@ -148,6 +157,9 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
       value={{
         currencyCode,
         currency,
+        fx,
+        fxRevision,
+        fxConvert,
         setCurrency,
         formatCurrency,
         formatCurrencySigned,

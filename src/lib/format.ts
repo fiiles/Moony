@@ -92,7 +92,15 @@ function spaceSign(text: string): string {
   return `${text.slice(0, i)}${sign}\u00a0${text.slice(i + 1).replace(/^\s+/, '')}`;
 }
 
-export function createFormatters(locale: string): Formatters {
+/**
+ * `mainCurrency` is the profile currency: only that one gets the compact
+ * narrow symbol ("$", "Kč"); every other currency shows its ISO code so that
+ * amounts of different currencies are never mistaken for each other ("$" is
+ * also CAD/AUD, "kr" is four currencies). Without a `mainCurrency` (callers
+ * with no profile context) the narrow symbol is used for every currency.
+ */
+export function createFormatters(locale: string, mainCurrency?: string): Formatters {
+  const main = mainCurrency?.trim().toUpperCase();
   const money: Formatters['money'] = (amount, currency, opts = {}) => {
     const label = (currency || '').trim();
     const code = label.toUpperCase();
@@ -111,7 +119,7 @@ export function createFormatters(locale: string): Formatters {
         ...base,
         style: 'currency',
         currency: code,
-        currencyDisplay: 'narrowSymbol',
+        currencyDisplay: main === undefined || code === main ? 'narrowSymbol' : 'code',
       });
       // numberFormat() falls back to a plain format for codes Intl rejects;
       // detect that and append the code ourselves.
@@ -195,12 +203,13 @@ export function createFormatters(locale: string): Formatters {
 }
 
 const formatterCache = new Map<string, Formatters>();
-/** Memoized per locale (formatters are pure). */
-export function getFormatters(locale: string): Formatters {
-  let f = formatterCache.get(locale);
+/** Memoized per locale and main currency (formatters are pure). */
+export function getFormatters(locale: string, mainCurrency?: string): Formatters {
+  const key = `${locale}|${mainCurrency?.trim().toUpperCase() ?? ''}`;
+  let f = formatterCache.get(key);
   if (!f) {
-    f = createFormatters(locale);
-    formatterCache.set(locale, f);
+    f = createFormatters(locale, mainCurrency);
+    formatterCache.set(key, f);
   }
   return f;
 }

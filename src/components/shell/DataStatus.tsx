@@ -7,6 +7,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { portfolioApi, priceApi } from '@/lib/tauri-api';
 import { useCurrency } from '@/lib/currency';
 import { useSyncStatus } from '@/hooks/sync-context';
+import { FX_HISTORY_KEY, FX_SNAPSHOT_KEY } from '@/hooks/use-fx';
 import { hasKnownRate } from '@shared/currencies';
 import { cn } from '@/lib/utils';
 import type { ShellStatus, ShellStatusTone } from '@/components/shell/shell-context';
@@ -90,7 +91,11 @@ export function DataStatus({ override }: { override?: ShellStatus }) {
     setIsRefreshing(true);
     try {
       await Promise.allSettled([
-        portfolioApi.refreshExchangeRates(),
+        portfolioApi.refreshExchangeRates().then((rates) => {
+          queryClient.invalidateQueries({ queryKey: FX_SNAPSHOT_KEY });
+          queryClient.invalidateQueries({ queryKey: FX_HISTORY_KEY });
+          return rates;
+        }),
         priceApi.refreshStockPrices(),
         priceApi.refreshCryptoPrices(),
       ]);

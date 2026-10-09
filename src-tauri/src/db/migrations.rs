@@ -71,6 +71,7 @@ fn all_migrations() -> Vec<(&'static str, &'static str)> {
         ("007_report_history", MIGRATION_007),
         ("008_import_integrity", MIGRATION_008),
         ("009_scoped_learning", MIGRATION_009),
+        ("010_income_categories", MIGRATION_010),
     ]
 }
 
@@ -1040,7 +1041,8 @@ mod tests {
             [],
         )
         .unwrap();
-        run_migrations(&conn).unwrap();
+        // Through 006 only: 010 later collapses the investment role into transfer.
+        run_chain(&conn, &all_migrations()[..6]).unwrap();
         for (id, expected) in [
             ("cat_income", "income"),
             ("cat_internal_transfers", "transfer"),
@@ -1063,6 +1065,77 @@ mod tests {
             )
             .is_err());
         run_migrations(&conn).unwrap();
+    }
+
+    fn category(conn: &Connection, id: &str) -> (String, String) {
+        conn.query_row(
+            "SELECT name, kind FROM transaction_categories WHERE id=?1",
+            [id],
+            |r| Ok((r.get(0)?, r.get(1)?)),
+        )
+        .unwrap()
+    }
+
+    #[test]
+    fn income_categories_migration_renames_seeds_and_collapses_roles() {
+        let conn = Connection::open_in_memory().unwrap();
+        run_chain(&conn, &all_migrations()[..9]).unwrap();
+        conn.execute_batch(
+            "INSERT INTO transaction_categories (id,name,kind) VALUES
+               ('c-inv','Broker','investment'),('c-fin','Mortgage','financing'),('c-adj','Fix','adjustment');
+             INSERT INTO bank_accounts (id,name,account_type,balance,currency) VALUES ('a','Main','checking','0','CZK');
+             INSERT INTO bank_transactions (id,bank_account_id,tx_type,amount,currency,booking_date,status,data_source,flow_kind)
+               VALUES ('t','a','debit','10','CZK',0,'booked','manual','financing');",
+        )
+        .unwrap();
+        run_migrations(&conn).unwrap();
+
+        assert_eq!(
+            category(&conn, "cat_income"),
+            ("Salary".into(), "income".into())
+        );
+        assert_eq!(
+            category(&conn, "cat_investment_income"),
+            ("Investment income".into(), "income".into())
+        );
+        assert_eq!(
+            category(&conn, "cat_other_income"),
+            ("Other income".into(), "income".into())
+        );
+        for id in ["cat_savings", "cat_investments", "c-inv", "c-fin", "c-adj"] {
+            assert_eq!(category(&conn, id).1, "transfer", "{id}");
+        }
+        let flow: String = conn
+            .query_row(
+                "SELECT flow_kind FROM bank_transactions WHERE id='t'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(flow, "transfer");
+        let leftover: i64 = conn
+            .query_row(
+                "SELECT (SELECT COUNT(*) FROM transaction_categories WHERE kind NOT IN ('income','expense','transfer'))
+                      + (SELECT COUNT(*) FROM bank_transactions WHERE flow_kind NOT IN ('income','expense','transfer'))",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(leftover, 0);
+    }
+
+    #[test]
+    fn income_categories_migration_keeps_user_choices() {
+        let conn = Connection::open_in_memory().unwrap();
+        run_chain(&conn, &all_migrations()[..9]).unwrap();
+        conn.execute_batch(
+            "UPDATE transaction_categories SET name='Výplata' WHERE id='cat_income';
+             UPDATE transaction_categories SET kind='income' WHERE id='cat_savings';",
+        )
+        .unwrap();
+        run_migrations(&conn).unwrap();
+        assert_eq!(category(&conn, "cat_income").0, "Výplata");
+        assert_eq!(category(&conn, "cat_savings").1, "income");
     }
 
     /// Path to the schema snapshot, relative to src-tauri/
@@ -1190,13 +1263,13 @@ mod tests {
             applied_migration_names(&conn).expect("applied"),
             known_migration_names()
         );
-        // Seed rows come from the baseline.
+        // Seed rows: 17 from the baseline, two income categories from 010.
         let categories: i64 = conn
             .query_row("SELECT COUNT(*) FROM transaction_categories", [], |r| {
                 r.get(0)
             })
             .expect("count");
-        assert_eq!(categories, 17);
+        assert_eq!(categories, 19);
 
         run_migrations(&conn).expect("second run is a no-op");
         assert_eq!(
@@ -2059,4 +2132,18 @@ DROP INDEX idx_learned_payees_composite;
 CREATE UNIQUE INDEX idx_learned_payees_scoped ON learned_payees(
  COALESCE(normalized_payee,''),COALESCE(counterparty_iban,''),bank_account_id,is_credit
 ) WHERE bank_account_id IS NOT NULL;
+"#;
+
+/// Income by category: "Income" becomes "Salary", investment yield and other income get
+/// their own categories, Savings stops counting as spending, and the flow roles collapse
+/// to income / expense / transfer. User choices (a renamed Salary, a re-roled Savings)
+/// are kept. The CHECK constraints still list the old roles; nothing writes them anymore.
+pub(crate) const MIGRATION_010: &str = r#"
+UPDATE transaction_categories SET name = 'Salary' WHERE id = 'cat_income' AND name = 'Income';
+INSERT OR IGNORE INTO transaction_categories (id, name, icon, color, parent_id, sort_order, is_system, kind) VALUES
+    ('cat_investment_income', 'Investment income', 'building', '#14B8A6', NULL, 10, 1, 'income'),
+    ('cat_other_income', 'Other income', 'wallet', '#84CC16', NULL, 10, 1, 'income');
+UPDATE transaction_categories SET kind = 'transfer' WHERE id = 'cat_savings' AND kind = 'expense';
+UPDATE transaction_categories SET kind = 'transfer' WHERE kind IN ('investment', 'financing', 'adjustment');
+UPDATE bank_transactions SET flow_kind = 'transfer' WHERE flow_kind IN ('investment', 'financing', 'adjustment');
 "#;

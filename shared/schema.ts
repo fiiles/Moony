@@ -859,8 +859,10 @@ export interface InsertBankAccount {
 }
 
 /** Financial meaning, independent of native credit/debit direction. */
-export type FlowKind =
-  'income' | 'expense' | 'transfer' | 'investment' | 'financing' | 'adjustment';
+export type FlowKind = 'income' | 'expense' | 'transfer';
+
+/** Every flow role, in the order pickers list them. */
+export const FLOW_KINDS: readonly FlowKind[] = ['income', 'expense', 'transfer'];
 
 export interface BankTransaction {
   /** Null derives meaning from own-account identity, category role and direction. */

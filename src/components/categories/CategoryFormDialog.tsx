@@ -5,7 +5,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import type { FlowKind } from '@shared/schema';
+import { FLOW_KINDS, type FlowKind } from '@shared/schema';
 /**
  * CategoryFormDialog - create or edit a transaction category (name, icon, color).
  *
@@ -158,13 +158,11 @@ export function CategoryFormDialog({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {['income', 'expense', 'transfer', 'investment', 'financing', 'adjustment'].map(
-                  (value) => (
-                    <SelectItem key={value} value={value}>
-                      {t(`readiness.flow.${value}`)}
-                    </SelectItem>
-                  )
-                )}
+                {FLOW_KINDS.map((value) => (
+                  <SelectItem key={value} value={value}>
+                    {t(`readiness.flow.${value}`)}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
             <p className="text-micro text-ink-4">{t('readiness.roleImpact')}</p>

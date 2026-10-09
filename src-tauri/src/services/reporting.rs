@@ -451,9 +451,9 @@ mod tests {
                 .effective_flow_kind,
             FlowKind::Income
         );
-        conn.execute("UPDATE bank_transactions SET flow_kind='adjustment',counterparty_country='CZ' WHERE id='own'",[]).unwrap();
+        conn.execute("UPDATE bank_transactions SET flow_kind='expense',counterparty_country='CZ' WHERE id='own'",[]).unwrap();
         let a = effective_flows(&conn, &["own".into()]).unwrap();
-        assert_eq!(a[0].effective_flow_kind, FlowKind::Adjustment);
+        assert_eq!(a[0].effective_flow_kind, FlowKind::Expense);
     }
 
     #[test]

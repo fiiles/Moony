@@ -554,11 +554,8 @@
     "flow": {
       "auto": "Automaticky",
       "income": "Příjem",
-      "expense": "Výdaj / vratka",
-      "transfer": "Převod",
-      "investment": "Investice",
-      "financing": "Financování",
-      "adjustment": "Úprava"
+      "expense": "Výdaj",
+      "transfer": "Přesun peněz"
     },
     "source": {
       "explicit": "Výslovná volba",

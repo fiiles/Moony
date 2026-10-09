@@ -536,11 +536,8 @@
     "flow": {
       "auto": "Automatic flow",
       "income": "Income",
-      "expense": "Expense / refund",
-      "transfer": "Transfer",
-      "investment": "Investment",
-      "financing": "Financing",
-      "adjustment": "Adjustment"
+      "expense": "Expense",
+      "transfer": "Money transfer"
     },
     "source": {
       "explicit": "Explicit choice",

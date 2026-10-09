@@ -539,7 +539,9 @@
     "cat_shopping": "Nákupy",
     "cat_health": "Zdraví",
     "cat_travel": "Cestování",
-    "cat_income": "Příjem",
+    "cat_income": "Mzda",
+    "cat_investment_income": "Investiční příjem",
+    "cat_other_income": "Ostatní příjem",
     "cat_investments": "Investice",
     "cat_savings": "Spoření",
     "cat_internal_transfers": "Interní převody",
@@ -585,15 +587,12 @@
   "readiness": {
     "learningScope": "Platí pouze pro tento účet a směr. Shoduje se s úplným účtem protistrany, nebo s tímto příjemcem, pokud spolehlivý účet není k dispozici.",
     "categoryRole": "Role v přehledech",
-    "roleImpact": "Mění historii odvozenou z kategorií. Výslovné volby toku transakcí a převody mezi vlastními účty zachovají svůj význam.",
+    "roleImpact": "Příjem a výdaj tvoří přehled příjmů a výdajů. Přesun peněz se do nich nepočítá: investice, spoření, převody mezi účty.",
     "flow": {
       "auto": "Automaticky",
       "income": "Příjem",
-      "expense": "Výdaj / vratka",
-      "transfer": "Převod",
-      "investment": "Investice",
-      "financing": "Financování",
-      "adjustment": "Úprava"
+      "expense": "Výdaj",
+      "transfer": "Přesun peněz"
     },
     "source": {
       "explicit": "Výslovná volba",

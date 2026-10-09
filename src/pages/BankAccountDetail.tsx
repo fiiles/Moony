@@ -40,6 +40,7 @@ import type {
   CsvImportBatch,
   FlowKind,
 } from '@shared/schema';
+import { FLOW_KINDS } from '@shared/schema';
 import { hasKnownRate, type CurrencyCode } from '@shared/currencies';
 import { bankAccountsApi, categorizationApi, cashflowApi } from '@/lib/tauri-api';
 import { useBankAccount } from '@/hooks/use-bank-accounts';
@@ -1538,15 +1539,7 @@ export default function BankAccountDetail() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {[
-                    'auto',
-                    'income',
-                    'expense',
-                    'transfer',
-                    'investment',
-                    'financing',
-                    'adjustment',
-                  ].map((value) => (
+                  {['auto', ...FLOW_KINDS].map((value) => (
                     <SelectItem key={value} value={value}>
                       {t(`readiness.flow.${value}`)}
                     </SelectItem>

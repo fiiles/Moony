@@ -897,8 +897,8 @@ mod tests {
              ('salary','acc1',{d},'500','EUR','cat_income','credit'),
              ('loose','acc1',{d},'5','EUR',NULL,'debit');
              INSERT INTO bank_transactions(id,bank_account_id,booking_date,amount,currency,tx_type,flow_kind) VALUES
-             ('invest-usd','acc1',{d},'30','USD','debit','investment'),
-             ('invest-eur','acc1',{d},'20','EUR','debit','investment');",
+             ('invest-usd','acc1',{d},'30','USD','debit','transfer'),
+             ('invest-eur','acc1',{d},'20','EUR','debit','transfer');",
             d = OCT + 86400
         ))
         .unwrap();

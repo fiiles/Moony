@@ -21,6 +21,8 @@ pub async fn get_all_crypto(db: State<'_, Database>) -> Result<Vec<EnrichedCrypt
         let (avg_map, cost_quality) = crate::services::cost_basis::cost_basis_for_all(
             conn,
             crate::services::cost_basis::TxTable::Crypto,
+            "CZK",
+            &crate::services::fx::current(),
         )?;
         crate::services::fx::record_missing_all(&cost_quality);
         let mut stmt = conn.prepare(

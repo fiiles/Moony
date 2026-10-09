@@ -37,6 +37,8 @@ pub fn crypto_list(conn: &Connection) -> Result<Value> {
     let (avg_map, _) = crate::services::cost_basis::cost_basis_for_all(
         conn,
         crate::services::cost_basis::TxTable::Crypto,
+        "CZK",
+        &crate::services::fx::current(),
     )?;
     let mut stmt = conn.prepare(
         "SELECT ci.id, ci.ticker, ci.coingecko_id, ci.name, ci.quantity,
@@ -404,6 +406,8 @@ mod bulk_tests {
         crate::services::cost_basis::cost_basis_for_all(
             conn,
             crate::services::cost_basis::TxTable::Crypto,
+            "CZK",
+            &crate::services::fx::current(),
         )
         .ok()?
         .0

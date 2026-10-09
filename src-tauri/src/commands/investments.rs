@@ -31,6 +31,8 @@ fn derived_average_prices(
     let (positions, quality) = crate::services::cost_basis::cost_basis_for_all(
         conn,
         crate::services::cost_basis::TxTable::Stocks,
+        "CZK",
+        &crate::services::fx::current(),
     )?;
     crate::services::fx::record_missing_all(&quality);
     Ok(positions

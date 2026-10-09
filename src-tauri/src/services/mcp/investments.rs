@@ -43,6 +43,8 @@ pub fn investments_list(conn: &Connection) -> Result<Value> {
     let (avg_map, _) = crate::services::cost_basis::cost_basis_for_all(
         conn,
         crate::services::cost_basis::TxTable::Stocks,
+        "CZK",
+        &crate::services::fx::current(),
     )?;
     let mut stmt = conn.prepare(
         "SELECT si.id, si.ticker, si.company_name, si.quantity,
@@ -99,6 +101,8 @@ pub fn investment_detail(conn: &Connection, id: &str) -> Result<Value> {
     let (positions, _) = crate::services::cost_basis::cost_basis_for_all(
         conn,
         crate::services::cost_basis::TxTable::Stocks,
+        "CZK",
+        &crate::services::fx::current(),
     )?;
     let position = positions.get(&id);
     let derived_avg = position
@@ -422,6 +426,8 @@ mod bulk_tests {
         crate::services::cost_basis::cost_basis_for_all(
             conn,
             crate::services::cost_basis::TxTable::Stocks,
+            "CZK",
+            &crate::services::fx::current(),
         )
         .ok()?
         .0

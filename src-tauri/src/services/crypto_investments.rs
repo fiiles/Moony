@@ -192,6 +192,8 @@ pub fn get_crypto_by_id(
     let (positions, quality) = crate::services::cost_basis::cost_basis_for_all(
         conn,
         crate::services::cost_basis::TxTable::Crypto,
+        "CZK",
+        &crate::services::fx::current(),
     )?;
     crate::services::fx::record_missing_all(&quality);
     inv.average_price = positions

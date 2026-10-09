@@ -7,24 +7,28 @@
 //! buys accumulate cost, sells release cost proportionally at the running
 //! average.
 //!
-//! Two aggregates are accumulated in one pass:
+//! Three figures are accumulated in one pass:
 //! - `cost_basis_target`: every buy converted to the target currency at its day's rate.
 //! - `cost_basis_native`: every buy converted to the position's
 //!   primary currency (the currency of its first transaction) at its day's
 //!   cross rate. For single-currency positions (stocks enforce this at write
 //!   time) no conversion happens and the value is exact.
+//! - `realized_gain_target`: for every sell, the proceeds converted at the sell day minus the
+//!   target cost it releases at the running average (port of
+//!   `shared/calculations/realized-gains.ts`).
 //!
-//! A buy whose day has no common quote for both currencies (ten-day walk-back) is
-//! converted with the current quotes and the position is flagged `fx_estimated`; when even
-//! those are missing the buy is left out of that aggregate and its currency is reported in
-//! the returned `Quality` (never valued 1:1).
+//! A conversion whose day has no common quote for both currencies (ten-day walk-back) uses
+//! the current quotes and the position is flagged `fx_estimated` (also marked in the returned
+//! `Quality`); when even those are missing the amount is left out of that aggregate and the
+//! unresolvable currency is reported in the returned `Quality` (never valued 1:1). Each failed
+//! transaction counts as one missing conversion.
 
 use std::collections::HashMap;
 
 use rusqlite::Connection;
 
 use crate::error::Result;
-use crate::services::fx::{self, History, Quality, Quotes};
+use crate::services::fx::{History, Quality, Quotes};
 
 /// One transaction row, parsed. Order-independent input; sorting happens in
 /// the accumulator.
@@ -41,15 +45,23 @@ pub struct TxRow {
 #[derive(Debug, PartialEq)]
 pub struct PositionCostBasis {
     pub quantity: f64,
+    /// Cost of the open quantity in the target currency. Buys that could not be converted are
+    /// left out (see `cost_basis_target_complete`).
     pub cost_basis_target: f64,
+    /// True when every buy could be converted to the target currency.
+    pub cost_basis_target_complete: bool,
     pub cost_basis_native: f64,
     /// Quantity whose buys are included in `cost_basis_native`. Smaller than `quantity` when a
     /// buy could not be converted to the primary currency; the average uses this so it is not
     /// diluted by quantity that carries no cost.
     pub native_quantity: f64,
+    /// Realized gain in the target currency: sell proceeds at the sell day minus the released
+    /// average cost. `None` when a sell, or a buy held at the time of a sell, could not be
+    /// converted.
+    pub realized_gain_target: Option<f64>,
     pub primary_currency: String,
-    /// Currencies of buys that could not be converted for this position (left out of the cost
-    /// aggregates). Empty when the cost basis is complete.
+    /// Currencies of transactions that could not be converted for this position. Empty when
+    /// every conversion succeeded.
     pub missing_currencies: Vec<String>,
     /// True when at least one conversion used current instead of day quotes.
     pub fx_estimated: bool,
@@ -64,6 +76,12 @@ impl PositionCostBasis {
         } else {
             0.0
         }
+    }
+
+    /// Cost basis in the target currency, `None` unless every buy could be converted.
+    pub fn cost_basis_in_target(&self) -> Option<f64> {
+        self.cost_basis_target_complete
+            .then_some(self.cost_basis_target)
     }
 }
 
@@ -84,8 +102,8 @@ impl TxTable {
     }
 }
 
-/// Converts at a transaction's day, falling back to current quotes and recording what could
-/// not be converted at all.
+/// Converts at a transaction's day, falling back to current quotes; records what could not
+/// be converted at all.
 struct DayConverter<'a> {
     history: &'a History,
     current: &'a Quotes,
@@ -95,26 +113,19 @@ struct DayConverter<'a> {
 
 impl DayConverter<'_> {
     /// The day's quotes (ten-day walk-back), else the current quotes (flagging `estimated`),
-    /// else `None` with the unresolvable currency recorded in `quality`.
+    /// else `None`. Records nothing; see `record_miss`.
     fn convert(&mut self, amount: f64, from: &str, to: &str, day: i64) -> Option<f64> {
         if let Some(value) = self.history.convert_on(amount, from, to, day) {
             return Some(value);
         }
-        match self.current.convert(amount, from, to) {
-            Some(value) => {
-                self.estimated = true;
-                Some(value)
-            }
-            None => {
-                let missing = if self.current.units(from).is_none() {
-                    from
-                } else {
-                    to
-                };
-                self.quality.track(missing, None);
-                None
-            }
-        }
+        let value = self.current.convert(amount, from, to)?;
+        self.estimated = true;
+        Some(value)
+    }
+
+    /// Records one failed conversion, blaming the side(s) the current quotes cannot resolve.
+    fn record_miss(&mut self, from: &str, to: &str) {
+        self.quality.track_conversion(self.current, from, to, None);
     }
 }
 
@@ -147,23 +158,33 @@ pub fn position_cost_basis(
 
     let mut quantity = 0.0_f64;
     let mut cost_target = 0.0_f64;
+    let mut target_complete = true;
     let mut cost_native = 0.0_f64;
     let mut native_quantity = 0.0_f64;
+    let mut realized = 0.0_f64;
+    let mut realized_known = true;
 
     for tx in order {
+        let day = tx.transaction_date;
         if tx.tx_type == "buy" {
-            let day = tx.transaction_date;
             let amount = tx.quantity * tx.price_per_unit;
             // A buy that cannot be converted adds no cost to that aggregate (never 1:1).
-            let amount_target = converter
-                .convert(amount, &tx.currency, target, day)
-                .unwrap_or(0.0);
+            let amount_target = converter.convert(amount, &tx.currency, target, day);
             let amount_native = converter.convert(amount, &tx.currency, &primary_currency, day);
+            // One failed buy is one missing conversion, even when both aggregates miss it.
+            match (amount_target, amount_native) {
+                (None, _) => converter.record_miss(&tx.currency, target),
+                (Some(_), None) => converter.record_miss(&tx.currency, &primary_currency),
+                _ => {}
+            }
+            match amount_target {
+                Some(value) => cost_target += value,
+                None => target_complete = false,
+            }
             if let Some(native) = amount_native {
                 cost_native += native;
                 native_quantity += tx.quantity;
             }
-            cost_target += amount_target;
             quantity += tx.quantity;
         } else if tx.tx_type == "sell" {
             // Release cost proportionally at the running average, matching
@@ -174,7 +195,23 @@ pub fn position_cost_basis(
             let sold = tx.quantity.min(quantity.max(0.0));
             if quantity > 0.0 && sold > 0.0 {
                 let fraction = sold / quantity;
-                cost_target -= cost_target * fraction;
+                let released_target = cost_target * fraction;
+                // Only the held quantity realizes a gain; proceeds convert at the sell day.
+                if !target_complete {
+                    // The released cost is unknown; that buy's miss is already recorded.
+                    realized_known = false;
+                } else {
+                    let proceeds =
+                        converter.convert(sold * tx.price_per_unit, &tx.currency, target, day);
+                    match proceeds {
+                        Some(proceeds) => realized += proceeds - released_target,
+                        None => {
+                            converter.record_miss(&tx.currency, target);
+                            realized_known = false;
+                        }
+                    }
+                }
+                cost_target -= released_target;
                 cost_native -= cost_native * fraction;
                 native_quantity -= native_quantity * fraction;
             }
@@ -199,13 +236,18 @@ pub fn position_cost_basis(
         cost_target = 0.0;
         cost_native = 0.0;
     }
+    if converter.estimated {
+        converter.quality.mark_estimated();
+    }
 
     (
         Some(PositionCostBasis {
             quantity,
             cost_basis_target: cost_target,
+            cost_basis_target_complete: target_complete,
             cost_basis_native: cost_native,
             native_quantity,
+            realized_gain_target: realized_known.then_some(realized),
             primary_currency,
             fx_estimated: converter.estimated,
             missing_currencies: converter.quality.missing_currencies(),
@@ -214,15 +256,9 @@ pub fn position_cost_basis(
     )
 }
 
-/// Derive cost basis for every position in `table`, keyed by investment id.
-/// Loads the FX timeseries once for the whole transaction date range. The returned `Quality`
-/// lists currencies whose buys could not be converted (and were left out of the cost).
-/// Phase 1: the target currency is CZK.
-pub fn cost_basis_for_all(
-    conn: &Connection,
-    table: TxTable,
-) -> Result<(HashMap<String, PositionCostBasis>, Quality)> {
-    let target = "CZK";
+/// Every transaction of `table`, parsed and grouped by investment id (chronological order
+/// within a group, ties by `created_at` then rowid).
+fn load_transactions(conn: &Connection, table: TxTable) -> Result<HashMap<String, Vec<TxRow>>> {
     let sql = format!(
         "SELECT investment_id, type, quantity, price_per_unit, currency, transaction_date
          FROM {} ORDER BY transaction_date ASC, created_at ASC, rowid ASC",
@@ -259,39 +295,74 @@ pub fn cost_basis_for_all(
         .filter_map(|r| r.ok())
         .collect();
 
-    if rows.is_empty() {
-        return Ok((HashMap::new(), Quality::default()));
-    }
-
-    let min_day = rows
-        .iter()
-        .map(|(_, tx)| tx.transaction_date)
-        .min()
-        .unwrap_or(0);
-    let max_day = rows
-        .iter()
-        .map(|(_, tx)| tx.transaction_date)
-        .max()
-        .unwrap_or(0);
-    // `History::load` pads the range with the look-back window itself.
-    let history = History::load(conn, min_day, max_day)?;
-    let current = fx::current();
-
     let mut grouped: HashMap<String, Vec<TxRow>> = HashMap::new();
     for (investment_id, tx) in rows {
         grouped.entry(investment_id).or_default().push(tx);
     }
+    Ok(grouped)
+}
 
+/// Derives every grouped position against one history.
+fn derive_all(
+    grouped: HashMap<String, Vec<TxRow>>,
+    history: &History,
+    current: &Quotes,
+    target: &str,
+) -> (HashMap<String, PositionCostBasis>, Quality) {
     let mut quality = Quality::default();
     let mut positions = HashMap::new();
     for (id, txs) in grouped {
-        let (position, position_quality) = position_cost_basis(&txs, &history, &current, target);
+        let (position, position_quality) = position_cost_basis(&txs, history, current, target);
         quality.merge(&position_quality);
         if let Some(position) = position {
             positions.insert(id, position);
         }
     }
-    Ok((positions, quality))
+    (positions, quality)
+}
+
+/// The earliest and latest transaction day of the grouped rows.
+fn date_range(grouped: &HashMap<String, Vec<TxRow>>) -> Option<(i64, i64)> {
+    let dates = grouped.values().flatten().map(|tx| tx.transaction_date);
+    let min = dates.clone().min()?;
+    let max = dates.max()?;
+    Some((min, max))
+}
+
+/// Derive cost basis in `target` for every position in `table`, keyed by investment id.
+/// Loads the FX timeseries once for the whole transaction date range; `current` is the
+/// request's quote snapshot used when a day has no quotes. The returned `Quality` lists
+/// currencies of transactions that could not be converted (and were left out).
+pub fn cost_basis_for_all(
+    conn: &Connection,
+    table: TxTable,
+    target: &str,
+    current: &Quotes,
+) -> Result<(HashMap<String, PositionCostBasis>, Quality)> {
+    let grouped = load_transactions(conn, table)?;
+    let Some((min_day, max_day)) = date_range(&grouped) else {
+        return Ok((HashMap::new(), Quality::default()));
+    };
+    // `History::load` pads the range with the look-back window itself.
+    let history = History::load(conn, min_day, max_day)?;
+    Ok(derive_all(grouped, &history, current, target))
+}
+
+/// Like `cost_basis_for_all`, but day quotes are read only up to `today`: transactions dated
+/// later have no historical rate yet and use the current quotes (flagged estimated).
+pub fn cost_basis_as_of(
+    conn: &Connection,
+    table: TxTable,
+    target: &str,
+    current: &Quotes,
+    today: i64,
+) -> Result<(HashMap<String, PositionCostBasis>, Quality)> {
+    let grouped = load_transactions(conn, table)?;
+    let Some((min_day, _)) = date_range(&grouped) else {
+        return Ok((HashMap::new(), Quality::default()));
+    };
+    let history = History::load(conn, min_day.min(today), today)?;
+    Ok(derive_all(grouped, &history, current, target))
 }
 
 #[cfg(test)]
@@ -570,6 +641,102 @@ mod tests {
         assert!(result.cost_basis_native.abs() < 1e-9);
     }
 
+    #[test]
+    fn realized_gain_releases_average_cost_and_converts_proceeds_at_the_sell_day() {
+        // buy 10 @ 100 USD (USD 20), buy 10 @ 100 USD (USD 30) -> avg 2 500 CZK per share;
+        // sell 5 @ 120 USD on a USD 25 day: proceeds 15 000, released cost 12 500.
+        let d3 = D2 + DAY;
+        let rates = rates(&[(D1, "USD", 20.0), (D2, "USD", 30.0), (d3, "USD", 25.0)]);
+        let txs = vec![
+            buy(10.0, 100.0, "USD", D1),
+            buy(10.0, 100.0, "USD", D2),
+            sell(5.0, 120.0, "USD", d3),
+        ];
+        let result = derive(&txs, &rates, &current());
+        assert!((result.realized_gain_target.expect("realized") - 2_500.0).abs() < 1e-9);
+        assert!(result.cost_basis_target_complete);
+        assert!((result.cost_basis_target - 37_500.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn realized_gain_ignores_the_oversold_excess_and_sells_without_holdings() {
+        // sell before any buy realizes nothing; oversell realizes only the held quantity.
+        let rates = rates(&[(D1, "USD", 20.0), (D2, "USD", 20.0)]);
+        let txs = vec![
+            sell(3.0, 500.0, "USD", D1 - DAY),
+            buy(10.0, 100.0, "USD", D1),
+            sell(15.0, 110.0, "USD", D2),
+        ];
+        let result = derive(&txs, &rates, &current());
+        // 10 x (110 - 100) USD x 20
+        assert!((result.realized_gain_target.expect("realized") - 2_000.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn realized_gain_is_unknown_when_a_held_buy_or_the_sell_cannot_be_converted() {
+        let empty = Quotes::new("CZK");
+        // KWD buy has no quote at all: the released cost is unknown.
+        let txs = vec![buy(1.0, 100.0, "KWD", D1), sell(1.0, 120.0, "KWD", D2)];
+        let (pos, quality) = position_cost_basis(&txs, &rates(&[]), &empty, "CZK");
+        let pos = pos.expect("position");
+        assert_eq!(pos.realized_gain_target, None);
+        assert!(!pos.cost_basis_target_complete);
+        // the buy failed once; the sell is not converted again
+        assert_eq!(quality.missing_count(), 1);
+        assert_eq!(quality.missing_currencies(), vec!["KWD".to_string()]);
+
+        // A sell that cannot be converted makes the realized gain unknown.
+        // (the sell day is beyond the ten-day walk-back from the only quote day)
+        let txs = vec![
+            buy(1.0, 100.0, "USD", D1),
+            sell(1.0, 120.0, "USD", D1 + 20 * DAY),
+        ];
+        let (pos, quality) = position_cost_basis(&txs, &rates(&[(D1, "USD", 20.0)]), &empty, "CZK");
+        let pos = pos.expect("position");
+        assert!(pos.cost_basis_target_complete);
+        assert_eq!(pos.realized_gain_target, None);
+        assert_eq!(quality.missing_count(), 1);
+    }
+
+    #[test]
+    fn positions_without_sells_realize_nothing() {
+        let rates = rates(&[(D1, "USD", 20.0)]);
+        let result = derive(&[buy(1.0, 100.0, "USD", D1)], &rates, &current());
+        assert_eq!(result.realized_gain_target, Some(0.0));
+    }
+
+    #[test]
+    fn a_buy_failing_both_aggregates_counts_one_missing_conversion() {
+        // Primary USD; a KWD buy fails to the target and to the primary currency.
+        let txs = vec![buy(1.0, 100.0, "USD", D1), buy(1.0, 50.0, "KWD", D2)];
+        let (_, quality) = position_cost_basis(&txs, &rates(&[]), &current(), "CZK");
+        assert_eq!(quality.missing_count(), 1);
+        assert_eq!(quality.missing_currencies(), vec!["KWD".to_string()]);
+    }
+
+    #[test]
+    fn estimated_cost_basis_is_flagged_in_the_quality() {
+        let (pos, quality) = position_cost_basis(
+            &[buy(10.0, 100.0, "USD", D1)],
+            &rates(&[]),
+            &current(),
+            "CZK",
+        );
+        assert!(pos.expect("position").fx_estimated);
+        assert!(quality.is_estimated());
+        assert!(quality.is_complete());
+    }
+
+    #[test]
+    fn target_currency_can_be_any_quoted_currency() {
+        // USD 20 and EUR 25 CZK on the buy day: 1 000 USD = 800 EUR.
+        let rates = rates(&[(D1, "USD", 20.0), (D1, "EUR", 25.0)]);
+        let (pos, quality) =
+            position_cost_basis(&[buy(10.0, 100.0, "USD", D1)], &rates, &current(), "EUR");
+        assert!((pos.expect("position").cost_basis_target - 800.0).abs() < 1e-9);
+        assert!(quality.is_complete());
+    }
+
     fn setup_db() -> Connection {
         let conn = Connection::open_in_memory().expect("in-memory db");
         conn.execute_batch(
@@ -629,7 +796,8 @@ mod tests {
         ))
         .expect("seed");
 
-        let (map, quality) = cost_basis_for_all(&conn, TxTable::Stocks).expect("derive");
+        let (map, quality) =
+            cost_basis_for_all(&conn, TxTable::Stocks, "CZK", &current()).expect("derive");
         assert!(quality.is_complete());
 
         let a = map.get("inv-a").expect("inv-a");
@@ -656,7 +824,8 @@ mod tests {
         ))
         .expect("seed");
 
-        let (map, _) = cost_basis_for_all(&conn, TxTable::Crypto).expect("derive");
+        let (map, _) =
+            cost_basis_for_all(&conn, TxTable::Crypto, "CZK", &current()).expect("derive");
 
         let btc = map.get("btc").expect("btc");
         assert!((btc.quantity - 2.0).abs() < 1e-9);

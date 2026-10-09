@@ -199,6 +199,8 @@ pub fn stocks_analysis(conn: &Connection) -> Result<Value> {
     let (cost_map, cost_quality) = crate::services::cost_basis::cost_basis_for_all(
         conn,
         crate::services::cost_basis::TxTable::Stocks,
+        "CZK",
+        &crate::services::fx::current(),
     )?;
     ctx.absorb(&cost_quality);
 
@@ -318,6 +320,8 @@ pub fn tag_metrics(conn: &Connection, tag_ids: Option<Vec<String>>) -> Result<Va
     let (cost_map, cost_quality) = crate::services::cost_basis::cost_basis_for_all(
         conn,
         crate::services::cost_basis::TxTable::Stocks,
+        "CZK",
+        &crate::services::fx::current(),
     )?;
     ctx.absorb(&cost_quality);
 

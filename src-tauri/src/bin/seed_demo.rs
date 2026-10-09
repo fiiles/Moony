@@ -773,6 +773,8 @@ fn verify(db: &Database) {
         let avg = moony_lib::services::cost_basis::cost_basis_for_all(
             conn,
             moony_lib::services::cost_basis::TxTable::Stocks,
+            "CZK",
+            &moony_lib::services::fx::current(),
         )
         .expect("cost basis")
         .0

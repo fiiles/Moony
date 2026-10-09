@@ -285,6 +285,8 @@ pub async fn get_stocks_analysis(db: State<'_, Database>) -> Result<Vec<StockInv
         let (cost_map, cost_quality) = crate::services::cost_basis::cost_basis_for_all(
             conn,
             crate::services::cost_basis::TxTable::Stocks,
+            "CZK",
+            &crate::services::fx::current(),
         )?;
         crate::services::fx::record_missing_all(&cost_quality);
 

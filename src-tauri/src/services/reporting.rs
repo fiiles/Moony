@@ -6,6 +6,7 @@ use crate::models::{
 use crate::services::financial_semantics::{
     resolve_structured_flow, signed_flow_amount, AccountIdentities,
 };
+use crate::services::fx;
 use chrono::{DateTime, Datelike, NaiveDate, Utc};
 use rusqlite::{params, Connection, OptionalExtension};
 use std::collections::{HashMap, HashSet};
@@ -40,11 +41,7 @@ pub fn historical_czk(
 /// Currency codes are normalized at the reporting boundary; unavailable quotes
 /// remain missing even for syntactically valid currencies outside the provider.
 pub fn normalize_currency(currency: &str) -> Result<String> {
-    let currency = currency.trim().to_ascii_uppercase();
-    if currency.len() != 3 || !currency.bytes().all(|b| b.is_ascii_alphabetic()) {
-        return Err(AppError::Validation("validation.currencyInvalid".into()));
-    }
-    Ok(currency)
+    fx::normalize(currency).ok_or_else(|| AppError::Validation("validation.currencyInvalid".into()))
 }
 /// ISO 4217 minor units of the money contract, shared with the frontend report
 /// formatter. Codes without an ISO minor unit (metals, XDR, XXX) or outside the
@@ -84,26 +81,7 @@ pub fn historical_amount(
     if from == target {
         return Ok(amount.is_finite().then_some(amount));
     }
-    let day = day.div_euclid(86400) * 86400;
-    let lower = day.saturating_sub(10 * 86400);
-    let sql = if from == "CZK" {
-        "SELECT 1.0,rate FROM exchange_rate_history WHERE UPPER(currency)=?2 AND date<=?3 AND date>=?4 AND rate>0 ORDER BY date DESC"
-    } else if target == "CZK" {
-        "SELECT rate,1.0 FROM exchange_rate_history WHERE UPPER(currency)=?1 AND date<=?3 AND date>=?4 AND rate>0 ORDER BY date DESC"
-    } else {
-        "SELECT s.rate,t.rate FROM exchange_rate_history s JOIN exchange_rate_history t ON s.date=t.date WHERE UPPER(s.currency)=?1 AND UPPER(t.currency)=?2 AND s.date<=?3 AND s.date>=?4 AND s.rate>0 AND t.rate>0 ORDER BY s.date DESC"
-    };
-    let mut stmt = conn.prepare(sql)?;
-    let mut rows = stmt.query(params![from, target, day, lower])?;
-    while let Some(row) = rows.next()? {
-        let source: f64 = row.get(0)?;
-        let target: f64 = row.get(1)?;
-        if source.is_finite() && target.is_finite() && source > 0.0 && target > 0.0 {
-            let converted = amount * source / target;
-            return Ok(converted.is_finite().then_some(converted));
-        }
-    }
-    Ok(None)
+    Ok(fx::History::load(conn, day, day)?.convert_on(amount, &from, &target, day))
 }
 
 pub fn effective_flows(conn: &Connection, ids: &[String]) -> Result<Vec<EffectiveTransactionFlow>> {

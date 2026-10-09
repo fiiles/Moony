@@ -1,7 +1,9 @@
 //! One conversion policy for the whole backend (ADR 0011, ADR 0012). Quotes are units of a
 //! currency per 1 unit of the reference currency; the reference is an implementation detail.
 
-use std::collections::{BTreeSet, HashMap};
+use crate::error::Result;
+use rusqlite::{params, Connection};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::sync::OnceLock;
 
 /// Seconds in one UTC day.
@@ -193,6 +195,77 @@ impl Quotes {
     }
 }
 
+/// Day-keyed quotes (UTC midnight keys). Historical conversions use one common day for both
+/// currencies, looking back at most `MAX_LOOKBACK_DAYS`; separate last-known days are never mixed.
+#[derive(Debug, Clone, Default)]
+pub struct History {
+    days: BTreeMap<i64, Quotes>,
+}
+
+impl History {
+    /// Loads `exchange_rate_history` for `[start_day - MAX_LOOKBACK_DAYS * DAY, end_day]`, plus
+    /// one extra day below so a lookup one day before `start_day` still sees its full window.
+    /// Phase-1 storage: rows are CZK per unit, so each day becomes `Quotes::new("CZK")` with
+    /// `units = 1 / rate`; unusable rows are skipped.
+    pub fn load(conn: &Connection, start_day: i64, end_day: i64) -> Result<History> {
+        let lower = floor_day(start_day).saturating_sub((MAX_LOOKBACK_DAYS + 1) * DAY);
+        let upper = floor_day(end_day);
+        let mut stmt = conn.prepare(
+            "SELECT date, currency, rate FROM exchange_rate_history WHERE date >= ?1 AND date <= ?2",
+        )?;
+        let mut rows = stmt.query(params![lower, upper])?;
+        let mut days: BTreeMap<i64, Quotes> = BTreeMap::new();
+        while let Some(row) = rows.next()? {
+            let date: i64 = row.get(0)?;
+            let currency: String = row.get(1)?;
+            let rate: f64 = row.get(2)?;
+            let quotes = days
+                .entry(floor_day(date))
+                .or_insert_with(|| Quotes::new("CZK"));
+            if rate.is_finite() && rate > 0.0 {
+                quotes.insert(&currency, 1.0 / rate);
+            }
+        }
+        Ok(History { days })
+    }
+
+    /// For tests and adapters.
+    pub fn from_days(days: BTreeMap<i64, Quotes>) -> History {
+        History { days }
+    }
+
+    /// Walks back day by day from `floor(day)` for at most `MAX_LOOKBACK_DAYS` and uses the
+    /// first day on which both currencies resolve. Same currency is identity without lookup.
+    pub fn convert_on(&self, amount: f64, from: &str, to: &str, day: i64) -> Option<f64> {
+        let from = normalize(from)?;
+        let to = normalize(to)?;
+        if from == to {
+            return amount.is_finite().then_some(amount);
+        }
+        let start = floor_day(day);
+        (0..=MAX_LOOKBACK_DAYS).find_map(|back| {
+            let quotes = self.days.get(&(start - back * DAY))?;
+            quotes.units(&from)?;
+            quotes.units(&to)?;
+            // Both quotes resolve on this day: this day decides, even when the result overflows.
+            Some(quotes.convert(amount, &from, &to))
+        })?
+    }
+
+    /// Quotes of exactly this stored day.
+    pub fn quotes_on(&self, day: i64) -> Option<&Quotes> {
+        self.days.get(&day)
+    }
+
+    pub fn days(&self) -> impl Iterator<Item = (&i64, &Quotes)> {
+        self.days.iter()
+    }
+}
+
+fn floor_day(ts: i64) -> i64 {
+    ts.div_euclid(DAY) * DAY
+}
+
 /// Collects conversions that could not be made, so reports can declare what they excluded.
 #[derive(Debug, Clone, Default)]
 pub struct Quality {
@@ -312,5 +385,55 @@ mod tests {
         assert!(is_supported("aed"));
         assert!(!is_supported("KWD"));
         assert_eq!(derived("BGN"), Some(("EUR", 1.95583)));
+    }
+
+    fn history_db(rows: &[(i64, &str, f64)]) -> Connection {
+        let conn = Connection::open_in_memory().expect("db");
+        conn.execute_batch(
+            "CREATE TABLE exchange_rate_history (date INTEGER NOT NULL, currency TEXT NOT NULL, rate REAL NOT NULL, PRIMARY KEY (date, currency));",
+        ).expect("schema");
+        for (date, currency, rate) in rows {
+            conn.execute(
+                "INSERT INTO exchange_rate_history VALUES (?1, ?2, ?3)",
+                rusqlite::params![date, currency, rate],
+            )
+            .expect("row");
+        }
+        conn
+    }
+
+    #[test]
+    fn convert_on_uses_a_day_that_quotes_both_currencies() {
+        let d = 20_000 * DAY;
+        // day d: only EUR; day d-1: EUR and USD -> USD->EUR must use d-1 for both
+        let conn = history_db(&[
+            (d, "EUR", 24.0),
+            (d - DAY, "EUR", 25.0),
+            (d - DAY, "USD", 20.0),
+        ]);
+        let h = History::load(&conn, d, d).expect("load");
+        let got = h
+            .convert_on(100.0, "USD", "EUR", d + 3600)
+            .expect("converted");
+        assert!((got - 80.0).abs() < 1e-9, "{got}");
+    }
+
+    #[test]
+    fn convert_on_gives_up_after_ten_days() {
+        let d = 20_000 * DAY;
+        let conn = history_db(&[(d - 11 * DAY, "EUR", 25.0)]);
+        let h = History::load(&conn, d, d).expect("load");
+        assert_eq!(h.convert_on(1.0, "EUR", "CZK", d), None);
+        assert_eq!(h.convert_on(1.0, "EUR", "CZK", d - 10 * DAY), Some(25.0));
+    }
+
+    #[test]
+    fn convert_on_derives_pegs_and_skips_bad_rows() {
+        let d = 20_000 * DAY;
+        let conn = history_db(&[(d, "USD", 0.0), (d - DAY, "USD", 20.0)]);
+        let h = History::load(&conn, d, d).expect("load");
+        let aed = h.convert_on(3.6725, "AED", "CZK", d).expect("peg");
+        assert!((aed - 20.0).abs() < 1e-9);
+        assert_eq!(h.convert_on(5.0, "KWD", "KWD", d), Some(5.0));
     }
 }

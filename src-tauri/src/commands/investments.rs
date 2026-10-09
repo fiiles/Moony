@@ -32,6 +32,7 @@ fn derived_average_prices(
         conn,
         crate::services::cost_basis::TxTable::Stocks,
     )?
+    .0
     .into_iter()
     .map(|(id, p)| (id, p.average_price_native().to_string()))
     .collect())

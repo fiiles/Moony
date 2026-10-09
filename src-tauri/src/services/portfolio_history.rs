@@ -11,8 +11,8 @@
 //! Rate semantics: live rows convert at the current in-memory rates (identical
 //! to what `save_rates_to_history_db` stores for today, so the timeseries and
 //! the cache agree); backfill rows convert at their day's rates from the
-//! timeseries (`get_rates_for_date`, ≤10-day walk-back, current-rates fallback
-//! when the timeseries predates the day).
+//! timeseries (`get_rates_for_date`, ≤10-day walk-back; a currency without a
+//! quote for that day is excluded and reported, never valued at current rates).
 
 use std::collections::{BTreeMap, HashMap};
 

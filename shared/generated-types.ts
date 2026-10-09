@@ -1023,8 +1023,8 @@ stocksMissingPrice: number;
  */
 cryptoMissingPrice: number; 
 /**
- * Currency codes encountered this session with no known exchange rate
- * (converted 1:1 to CZK as a last resort — values are wrong; audit M2)
+ * Currency codes that failed a current conversion since the rates were last
+ * replaced (those amounts are excluded from totals, never valued 1:1)
  */
 missingCurrencies: string[] }
 

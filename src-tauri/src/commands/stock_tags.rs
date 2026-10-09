@@ -282,10 +282,11 @@ pub async fn get_stocks_analysis(db: State<'_, Database>) -> Result<Vec<StockInv
     db.with_conn(|conn| {
         // Historical cost basis derived from transactions (ADR 0001: never
         // convert old values at today's rate).
-        let cost_map = crate::services::cost_basis::cost_basis_for_all(
+        let (cost_map, cost_quality) = crate::services::cost_basis::cost_basis_for_all(
             conn,
             crate::services::cost_basis::TxTable::Stocks,
         )?;
+        crate::services::fx::record_missing_all(&cost_quality);
 
         // Get all investments with current prices
         let mut stmt = conn.prepare(
@@ -346,7 +347,7 @@ pub async fn get_stocks_analysis(db: State<'_, Database>) -> Result<Vec<StockInv
 
             let position = cost_map.get(&id);
             let current_value = quantity * current_price_czk;
-            let cost_basis = position.map(|p| p.cost_basis_czk).unwrap_or(0.0);
+            let cost_basis = position.map(|p| p.cost_basis_target).unwrap_or(0.0);
             let avg_price_str = position
                 .map(|p| p.average_price_native().to_string())
                 .unwrap_or_else(|| "0".to_string());

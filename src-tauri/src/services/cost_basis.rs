@@ -8,18 +8,23 @@
 //! average.
 //!
 //! Two aggregates are accumulated in one pass:
-//! - `cost_basis_czk`: every transaction converted to CZK at its day's rate.
-//! - `cost_basis_native`: every transaction converted to the position's
+//! - `cost_basis_target`: every buy converted to the target currency at its day's rate.
+//! - `cost_basis_native`: every buy converted to the position's
 //!   primary currency (the currency of its first transaction) at its day's
 //!   cross rate. For single-currency positions (stocks enforce this at write
 //!   time) no conversion happens and the value is exact.
+//!
+//! A buy whose day has no common quote for both currencies (ten-day walk-back) is
+//! converted with the current quotes and the position is flagged `fx_estimated`; when even
+//! those are missing the buy is left out of that aggregate and its currency is reported in
+//! the returned `Quality` (never valued 1:1).
 
 use std::collections::HashMap;
 
 use rusqlite::Connection;
 
 use crate::error::Result;
-use crate::services::currency::{get_rates_for_date_range, resolve_rates_for_day_from_range};
+use crate::services::fx::{self, History, Quality, Quotes};
 
 /// One transaction row, parsed. Order-independent input; sorting happens in
 /// the accumulator.
@@ -36,9 +41,11 @@ pub struct TxRow {
 #[derive(Debug, PartialEq)]
 pub struct PositionCostBasis {
     pub quantity: f64,
-    pub cost_basis_czk: f64,
+    pub cost_basis_target: f64,
     pub cost_basis_native: f64,
     pub primary_currency: String,
+    /// True when at least one conversion used current instead of day quotes.
+    pub fx_estimated: bool,
 }
 
 impl PositionCostBasis {
@@ -69,42 +76,57 @@ impl TxTable {
     }
 }
 
-/// CZK-per-unit rate for `currency` on `day`: the day's snapshot (≤10-day
-/// walk-back, mirroring `get_rates_for_date`), else `current_rates`, else
-/// 1.0 as the documented last resort.
-fn rate_for(
-    currency: &str,
-    day: i64,
-    rates_by_day: &HashMap<i64, HashMap<String, f64>>,
-    current_rates: &HashMap<String, f64>,
-) -> f64 {
-    let currency = currency.to_uppercase();
-    if currency == "CZK" {
-        return 1.0;
-    }
-    resolve_rates_for_day_from_range(rates_by_day, day)
-        .and_then(|day_rates| day_rates.get(&currency))
-        .or_else(|| current_rates.get(&currency))
-        .copied()
-        .unwrap_or_else(|| {
-            // Documented last resort, mirroring convert_to_czk's semantics.
-            log::warn!(
-                "[COST_BASIS] WARNING: no rate for {currency} (day {day}); using 1 {currency} = 1 CZK"
-            );
-            1.0
-        })
+/// Converts at a transaction's day, falling back to current quotes and recording what could
+/// not be converted at all.
+struct DayConverter<'a> {
+    history: &'a History,
+    current: &'a Quotes,
+    estimated: bool,
+    quality: Quality,
 }
 
-/// Accumulate one position's transactions into historical-rate cost basis.
+impl DayConverter<'_> {
+    /// The day's quotes (ten-day walk-back), else the current quotes (flagging `estimated`),
+    /// else `None` with the unresolvable currency recorded in `quality`.
+    fn convert(&mut self, amount: f64, from: &str, to: &str, day: i64) -> Option<f64> {
+        if let Some(value) = self.history.convert_on(amount, from, to, day) {
+            return Some(value);
+        }
+        match self.current.convert(amount, from, to) {
+            Some(value) => {
+                self.estimated = true;
+                Some(value)
+            }
+            None => {
+                let missing = if self.current.units(from).is_none() {
+                    from
+                } else {
+                    to
+                };
+                self.quality.track(missing, None);
+                None
+            }
+        }
+    }
+}
+
+/// Accumulate one position's transactions into historical-rate cost basis in `target`.
 /// Returns `None` for an empty transaction list (no position can be derived).
 pub fn position_cost_basis(
     txs: &[TxRow],
-    rates_by_day: &HashMap<i64, HashMap<String, f64>>,
-    current_rates: &HashMap<String, f64>,
-) -> Option<PositionCostBasis> {
+    history: &History,
+    current: &Quotes,
+    target: &str,
+) -> (Option<PositionCostBasis>, Quality) {
     if txs.is_empty() {
-        return None;
+        return (None, Quality::default());
     }
+    let mut converter = DayConverter {
+        history,
+        current,
+        estimated: false,
+        quality: Quality::default(),
+    };
 
     // Chronological replay. Dates are day-granular, so same-day transactions
     // share a timestamp; within a day buys are processed before sells so a
@@ -114,25 +136,23 @@ pub fn position_cost_basis(
     order.sort_by_key(|tx| (tx.transaction_date, tx.tx_type == "sell"));
 
     let primary_currency = order[0].currency.to_uppercase();
-    let primary_is_czk = primary_currency == "CZK";
 
     let mut quantity = 0.0_f64;
-    let mut cost_czk = 0.0_f64;
+    let mut cost_target = 0.0_f64;
     let mut cost_native = 0.0_f64;
 
     for tx in order {
-        let day = tx.transaction_date;
-        let amount = tx.quantity * tx.price_per_unit;
-        let rate = rate_for(&tx.currency, day, rates_by_day, current_rates);
-        let amount_czk = amount * rate;
-        let amount_native = if primary_is_czk {
-            amount_czk
-        } else {
-            amount_czk / rate_for(&primary_currency, day, rates_by_day, current_rates)
-        };
-
         if tx.tx_type == "buy" {
-            cost_czk += amount_czk;
+            let day = tx.transaction_date;
+            let amount = tx.quantity * tx.price_per_unit;
+            // A buy that cannot be converted adds no cost to that aggregate (never 1:1).
+            let amount_target = converter
+                .convert(amount, &tx.currency, target, day)
+                .unwrap_or(0.0);
+            let amount_native = converter
+                .convert(amount, &tx.currency, &primary_currency, day)
+                .unwrap_or(0.0);
+            cost_target += amount_target;
             cost_native += amount_native;
             quantity += tx.quantity;
         } else if tx.tx_type == "sell" {
@@ -144,7 +164,7 @@ pub fn position_cost_basis(
             let sold = tx.quantity.min(quantity.max(0.0));
             if quantity > 0.0 && sold > 0.0 {
                 let fraction = sold / quantity;
-                cost_czk -= cost_czk * fraction;
+                cost_target -= cost_target * fraction;
                 cost_native -= cost_native * fraction;
             }
             quantity -= sold;
@@ -154,32 +174,39 @@ pub fn position_cost_basis(
     if quantity < 0.0 {
         quantity = 0.0;
     }
-    if cost_czk < 0.0 {
-        cost_czk = 0.0;
+    if cost_target < 0.0 {
+        cost_target = 0.0;
     }
     if cost_native < 0.0 {
         cost_native = 0.0;
     }
     if quantity == 0.0 {
         // A fully closed position holds no cost.
-        cost_czk = 0.0;
+        cost_target = 0.0;
         cost_native = 0.0;
     }
 
-    Some(PositionCostBasis {
-        quantity,
-        cost_basis_czk: cost_czk,
-        cost_basis_native: cost_native,
-        primary_currency,
-    })
+    (
+        Some(PositionCostBasis {
+            quantity,
+            cost_basis_target: cost_target,
+            cost_basis_native: cost_native,
+            primary_currency,
+            fx_estimated: converter.estimated,
+        }),
+        converter.quality,
+    )
 }
 
 /// Derive cost basis for every position in `table`, keyed by investment id.
-/// Loads the FX timeseries once for the whole transaction date range.
+/// Loads the FX timeseries once for the whole transaction date range. The returned `Quality`
+/// lists currencies whose buys could not be converted (and were left out of the cost).
+/// Phase 1: the target currency is CZK.
 pub fn cost_basis_for_all(
     conn: &Connection,
     table: TxTable,
-) -> Result<HashMap<String, PositionCostBasis>> {
+) -> Result<(HashMap<String, PositionCostBasis>, Quality)> {
+    let target = "CZK";
     let sql = format!(
         "SELECT investment_id, type, quantity, price_per_unit, currency, transaction_date
          FROM {} ORDER BY transaction_date ASC, created_at ASC, rowid ASC",
@@ -217,7 +244,7 @@ pub fn cost_basis_for_all(
         .collect();
 
     if rows.is_empty() {
-        return Ok(HashMap::new());
+        return Ok((HashMap::new(), Quality::default()));
     }
 
     let min_day = rows
@@ -230,43 +257,62 @@ pub fn cost_basis_for_all(
         .map(|(_, tx)| tx.transaction_date)
         .max()
         .unwrap_or(0);
-    // 10 extra days before the earliest transaction so its walk-back can land.
-    let rates_by_day = get_rates_for_date_range(conn, min_day - 10 * 86_400, max_day);
-    let current_rates = crate::services::currency::get_all_rates();
+    // `History::load` pads the range with the look-back window itself.
+    let history = History::load(conn, min_day, max_day)?;
+    let current = fx::current();
 
     let mut grouped: HashMap<String, Vec<TxRow>> = HashMap::new();
     for (investment_id, tx) in rows {
         grouped.entry(investment_id).or_default().push(tx);
     }
 
-    Ok(grouped
-        .into_iter()
-        .filter_map(|(id, txs)| {
-            position_cost_basis(&txs, &rates_by_day, &current_rates).map(|pcb| (id, pcb))
-        })
-        .collect())
+    let mut quality = Quality::default();
+    let mut positions = HashMap::new();
+    for (id, txs) in grouped {
+        let (position, position_quality) = position_cost_basis(&txs, &history, &current, target);
+        quality.merge(&position_quality);
+        if let Some(position) = position {
+            positions.insert(id, position);
+        }
+    }
+    Ok((positions, quality))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::collections::BTreeMap;
 
     const DAY: i64 = 86_400;
     const D1: i64 = 1_700_006_400; // 2023-11-15 (midnight UTC)
     const D2: i64 = D1 + DAY;
 
-    fn rates(entries: &[(i64, &str, f64)]) -> HashMap<i64, HashMap<String, f64>> {
-        let mut map: HashMap<i64, HashMap<String, f64>> = HashMap::new();
+    /// History from `(day, currency, CZK per unit)` rows.
+    fn rates(entries: &[(i64, &str, f64)]) -> History {
+        let mut days: BTreeMap<i64, HashMap<String, f64>> = BTreeMap::new();
         for (day, ccy, rate) in entries {
-            map.entry(*day)
+            days.entry(*day)
                 .or_default()
                 .insert((*ccy).to_string(), *rate);
         }
-        map
+        History::from_days(
+            days.into_iter()
+                .map(|(day, map)| (day, Quotes::from_czk_per_unit(&map)))
+                .collect(),
+        )
     }
 
-    fn current() -> HashMap<String, f64> {
-        HashMap::from([("USD".to_string(), 23.0), ("EUR".to_string(), 25.0)])
+    fn current() -> Quotes {
+        Quotes::from_czk_per_unit(&HashMap::from([
+            ("USD".to_string(), 23.0),
+            ("EUR".to_string(), 25.0),
+        ]))
+    }
+
+    fn derive(txs: &[TxRow], history: &History, current: &Quotes) -> PositionCostBasis {
+        position_cost_basis(txs, history, current, "CZK")
+            .0
+            .expect("position")
     }
 
     fn buy(qty: f64, price: f64, ccy: &str, date: i64) -> TxRow {
@@ -296,9 +342,9 @@ mod tests {
         let rates = rates(&[(D1, "USD", 25.0), (D2, "USD", 20.0)]);
         let txs = vec![buy(10.0, 100.0, "USD", D1), buy(10.0, 100.0, "USD", D2)];
 
-        let result = position_cost_basis(&txs, &rates, &current()).expect("position");
+        let result = derive(&txs, &rates, &current());
 
-        assert!((result.cost_basis_czk - 45_000.0).abs() < 1e-9);
+        assert!((result.cost_basis_target - 45_000.0).abs() < 1e-9);
         assert!((result.quantity - 20.0).abs() < 1e-9);
         assert_eq!(result.primary_currency, "USD");
         // Native currency needs no conversion: 20 × 100 USD.
@@ -315,11 +361,11 @@ mod tests {
             sell(10.0, 150.0, "USD", D2),
         ];
 
-        let result = position_cost_basis(&txs, &rates, &current()).expect("position");
+        let result = derive(&txs, &rates, &current());
 
         // Half the quantity sold → half of both cost aggregates released.
         assert!((result.quantity - 10.0).abs() < 1e-9);
-        assert!((result.cost_basis_czk - 22_500.0).abs() < 1e-9);
+        assert!((result.cost_basis_target - 22_500.0).abs() < 1e-9);
         assert!((result.cost_basis_native - 1_000.0).abs() < 1e-9);
     }
 
@@ -332,7 +378,7 @@ mod tests {
             sell(15.0, 120.0, "USD", D1 + 1),
             buy(10.0, 200.0, "USD", D2),
         ];
-        let result = position_cost_basis(&txs, &rates, &current()).expect("position");
+        let result = derive(&txs, &rates, &current());
         assert!((result.quantity - 10.0).abs() < 1e-9);
         assert!((result.average_price_native() - 200.0).abs() < 1e-9);
     }
@@ -348,10 +394,10 @@ mod tests {
             buy(10.0, 100.0, "USD", D1),
         ];
 
-        let result = position_cost_basis(&txs, &rates, &current()).expect("position");
+        let result = derive(&txs, &rates, &current());
 
         assert!((result.quantity - 10.0).abs() < 1e-9);
-        assert!((result.cost_basis_czk - 25_000.0).abs() < 1e-9);
+        assert!((result.cost_basis_target - 25_000.0).abs() < 1e-9);
         assert!((result.average_price_native() - 100.0).abs() < 1e-9);
     }
 
@@ -366,9 +412,9 @@ mod tests {
             buy(10.0, 100.0, "USD", D1),
         ];
 
-        let result = position_cost_basis(&txs, &rates, &current()).expect("position");
+        let result = derive(&txs, &rates, &current());
 
-        assert!((result.cost_basis_czk - 22_500.0).abs() < 1e-9);
+        assert!((result.cost_basis_target - 22_500.0).abs() < 1e-9);
         assert_eq!(result.primary_currency, "USD");
     }
 
@@ -382,10 +428,10 @@ mod tests {
             buy(1.0, 30_000.0, "USD", D2),
         ];
 
-        let result = position_cost_basis(&txs, &rates, &current()).expect("position");
+        let result = derive(&txs, &rates, &current());
 
         assert_eq!(result.primary_currency, "CZK");
-        assert!((result.cost_basis_czk - 1_100_000.0).abs() < 1e-9);
+        assert!((result.cost_basis_target - 1_100_000.0).abs() < 1e-9);
         assert!((result.cost_basis_native - 1_100_000.0).abs() < 1e-9);
     }
 
@@ -398,25 +444,64 @@ mod tests {
             buy(1.0, 500_000.0, "CZK", D2),
         ];
 
-        let result = position_cost_basis(&txs, &rates, &current()).expect("position");
+        let result = derive(&txs, &rates, &current());
 
         assert_eq!(result.primary_currency, "USD");
         // CZK: 30 000 × 20 + 500 000 = 1 100 000
-        assert!((result.cost_basis_czk - 1_100_000.0).abs() < 1e-9);
+        assert!((result.cost_basis_target - 1_100_000.0).abs() < 1e-9);
         // USD: 30 000 + 500 000 / 25 = 50 000
         assert!((result.cost_basis_native - 50_000.0).abs() < 1e-9);
     }
 
     #[test]
-    fn missing_history_falls_back_to_current_rates() {
+    fn missing_history_falls_back_to_current_rates_and_is_flagged() {
         // No history at all for the transaction's day (beyond walk-back):
-        // fall back to the provided current rates (USD 23).
+        // fall back to the provided current rates (USD 23) and flag the position.
         let rates = rates(&[(D1 - 30 * DAY, "EUR", 24.0)]);
         let txs = vec![buy(10.0, 100.0, "USD", D1)];
 
-        let result = position_cost_basis(&txs, &rates, &current()).expect("position");
+        let result = derive(&txs, &rates, &current());
 
-        assert!((result.cost_basis_czk - 23_000.0).abs() < 1e-9);
+        assert!((result.cost_basis_target - 23_000.0).abs() < 1e-9);
+        assert!(result.fx_estimated);
+    }
+
+    #[test]
+    fn day_rates_do_not_flag_the_position_as_estimated() {
+        let rates = rates(&[(D1, "USD", 25.0)]);
+        let result = derive(&[buy(10.0, 100.0, "USD", D1)], &rates, &current());
+        assert!(!result.fx_estimated);
+    }
+
+    #[test]
+    fn missing_rate_is_reported_not_booked_at_one() {
+        let txs = vec![TxRow {
+            tx_type: "buy".into(),
+            quantity: 1.0,
+            price_per_unit: 100.0,
+            currency: "KWD".into(),
+            transaction_date: 20_000 * 86_400,
+        }];
+        let history = crate::services::fx::History::from_days(Default::default());
+        let (pos, quality) = position_cost_basis(
+            &txs,
+            &history,
+            &crate::services::fx::Quotes::new("CZK"),
+            "CZK",
+        );
+        let pos = pos.expect("position");
+        assert_eq!(pos.cost_basis_target, 0.0);
+        assert_eq!(quality.missing_currencies(), vec!["KWD".to_string()]);
+    }
+
+    #[test]
+    fn only_the_unquoted_side_of_a_cross_conversion_is_reported() {
+        // CZK buy into a KWD-primary position: CZK is fine, KWD has no quote.
+        let txs = vec![buy(1.0, 100.0, "KWD", D1), buy(1.0, 500.0, "CZK", D2)];
+        let (pos, quality) = position_cost_basis(&txs, &rates(&[]), &current(), "CZK");
+        let pos = pos.expect("position");
+        assert!((pos.cost_basis_target - 500.0).abs() < 1e-9);
+        assert_eq!(quality.missing_currencies(), vec!["KWD".to_string()]);
     }
 
     #[test]
@@ -425,22 +510,22 @@ mod tests {
         let rates = rates(&[(D1, "USD", 25.0)]);
         let txs = vec![buy(10.0, 100.0, "USD", D1 + 2 * DAY)];
 
-        let result = position_cost_basis(&txs, &rates, &current()).expect("position");
+        let result = derive(&txs, &rates, &current());
 
-        assert!((result.cost_basis_czk - 25_000.0).abs() < 1e-9);
+        assert!((result.cost_basis_target - 25_000.0).abs() < 1e-9);
     }
 
     #[test]
     fn empty_transactions_yield_none() {
-        assert!(position_cost_basis(&[], &rates(&[]), &current()).is_none());
+        assert!(position_cost_basis(&[], &rates(&[]), &current(), "CZK")
+            .0
+            .is_none());
     }
 
     #[test]
     fn czk_transactions_need_no_rates() {
-        let result =
-            position_cost_basis(&[buy(144.0, 1_043.0, "CZK", D1)], &rates(&[]), &current())
-                .expect("position");
-        assert!((result.cost_basis_czk - 150_192.0).abs() < 1e-9);
+        let result = derive(&[buy(144.0, 1_043.0, "CZK", D1)], &rates(&[]), &current());
+        assert!((result.cost_basis_target - 150_192.0).abs() < 1e-9);
         assert_eq!(result.primary_currency, "CZK");
     }
 
@@ -449,10 +534,10 @@ mod tests {
         let rates = rates(&[(D1, "USD", 25.0)]);
         let txs = vec![buy(10.0, 100.0, "USD", D1), sell(15.0, 100.0, "USD", D1)];
 
-        let result = position_cost_basis(&txs, &rates, &current()).expect("position");
+        let result = derive(&txs, &rates, &current());
 
         assert!(result.quantity.abs() < 1e-9);
-        assert!(result.cost_basis_czk.abs() < 1e-9);
+        assert!(result.cost_basis_target.abs() < 1e-9);
         assert!(result.cost_basis_native.abs() < 1e-9);
     }
 
@@ -515,13 +600,14 @@ mod tests {
         ))
         .expect("seed");
 
-        let map = cost_basis_for_all(&conn, TxTable::Stocks).expect("derive");
+        let (map, quality) = cost_basis_for_all(&conn, TxTable::Stocks).expect("derive");
+        assert!(quality.is_complete());
 
         let a = map.get("inv-a").expect("inv-a");
-        assert!((a.cost_basis_czk - 45_000.0).abs() < 1e-9);
+        assert!((a.cost_basis_target - 45_000.0).abs() < 1e-9);
         assert!((a.quantity - 20.0).abs() < 1e-9);
         let b = map.get("inv-b").expect("inv-b");
-        assert!((b.cost_basis_czk - 5_000.0).abs() < 1e-9);
+        assert!((b.cost_basis_target - 5_000.0).abs() < 1e-9);
         assert_eq!(b.primary_currency, "CZK");
     }
 
@@ -541,11 +627,11 @@ mod tests {
         ))
         .expect("seed");
 
-        let map = cost_basis_for_all(&conn, TxTable::Crypto).expect("derive");
+        let (map, _) = cost_basis_for_all(&conn, TxTable::Crypto).expect("derive");
 
         let btc = map.get("btc").expect("btc");
         assert!((btc.quantity - 2.0).abs() < 1e-9);
-        assert!((btc.cost_basis_czk - 1_100_000.0).abs() < 1e-9);
+        assert!((btc.cost_basis_target - 1_100_000.0).abs() < 1e-9);
         assert_eq!(btc.primary_currency, "CZK");
     }
 }

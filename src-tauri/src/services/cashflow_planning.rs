@@ -63,6 +63,10 @@ fn normalize_to_period(amount: f64, original_frequency: &str, target_period: &st
     }
 }
 
+/// Currency marker for an amount that has none; it never resolves, so the amount is reported
+/// as a missing conversion instead of being valued as CZK.
+const UNKNOWN_CURRENCY: &str = "?";
+
 /// Converted property subtotals retain estimated/missing component quality even
 /// though the aggregate's amount is denominated in CZK.
 fn property_costs_annualized(
@@ -79,10 +83,11 @@ fn property_costs_annualized(
             .get("frequency")
             .and_then(|v| v.as_str())
             .unwrap_or("monthly");
+        // A cost without a currency is reported as a missing conversion, never valued as CZK.
         let currency = cost
             .get("currency")
             .and_then(|v| v.as_str())
-            .unwrap_or("CZK");
+            .unwrap_or(UNKNOWN_CURRENCY);
         total += fx.convert(annualize(amount, frequency), currency);
         quality = match (quality, fx.quality_for(currency)) {
             (FxQuality::Missing, _) | (_, FxQuality::Missing) => FxQuality::Missing,
@@ -655,7 +660,7 @@ fn get_raw_report(
             if investment_re_ids.contains(&re.0) {
                 if let Some(rent_str) = re.2 {
                     let monthly_rent: f64 = crate::services::reporting::parse_money(&rent_str)?;
-                    let currency = re.3.unwrap_or_else(|| "CZK".to_string());
+                    let currency = re.3.unwrap_or_else(|| UNKNOWN_CURRENCY.to_string());
                     let monthly_rent_czk = fx.convert(monthly_rent, &currency);
                     let normalized =
                         normalize_to_period(monthly_rent_czk, "monthly", target_period);
@@ -1146,7 +1151,7 @@ pub fn get_report_in_currency(
                 currency: c
                     .get("currency")
                     .and_then(|v| v.as_str())
-                    .unwrap_or("CZK")
+                    .unwrap_or(UNKNOWN_CURRENCY)
                     .to_string(),
                 frequency: c
                     .get("frequency")
@@ -1323,7 +1328,7 @@ fn validate_replacement(
 
 struct PlanningFx {
     target: String,
-    rates: HashMap<String, f64>,
+    quotes: crate::services::fx::Quotes,
     quality: crate::models::ReportQuality,
     last_missing: bool,
 }
@@ -1331,22 +1336,16 @@ impl Default for PlanningFx {
     fn default() -> Self {
         Self {
             target: "CZK".into(),
-            rates: crate::services::currency::get_all_rates(),
+            quotes: crate::services::fx::current(),
             quality: crate::models::ReportQuality::default(),
             last_missing: false,
         }
     }
 }
 impl PlanningFx {
+    /// Units of `currency` per unit of the quote reference, when quoted.
     fn rate(&self, currency: &str) -> Option<f64> {
-        if currency.eq_ignore_ascii_case("CZK") {
-            Some(1.0)
-        } else {
-            self.rates
-                .get(&currency.trim().to_uppercase())
-                .copied()
-                .filter(|r| r.is_finite() && *r > 0.0)
-        }
+        self.quotes.units(currency)
     }
     fn quality_for(&self, currency: &str) -> crate::models::FxQuality {
         use crate::models::FxQuality;
@@ -1382,8 +1381,8 @@ impl PlanningFx {
         if currency.trim().eq_ignore_ascii_case(&self.target) {
             return amount;
         }
-        if let (Some(source), Some(target)) = (self.rate(currency), self.rate(&self.target)) {
-            return amount * source / target;
+        if let Some(converted) = self.quotes.convert(amount, currency, &self.target) {
+            return converted;
         }
         self.last_missing = true;
         0.0
@@ -1409,6 +1408,7 @@ mod tests {
     }
     #[test]
     fn target_replaced_missing_source_does_not_make_active_plan_incomplete() {
+        let _fx = crate::services::fx::test_lock();
         let conn = planning_db();
         conn.execute("UPDATE loans SET currency='XRS'", []).unwrap();
         create_cashflow_item(
@@ -1434,10 +1434,7 @@ mod tests {
     }
     #[test]
     fn target_planning_mixed_property_components_and_replacement_conserve() {
-        crate::services::currency::update_exchange_rates(HashMap::from([
-            ("XTP".into(), 27.5),
-            ("XSP".into(), 25.0),
-        ]));
+        let _fx = crate::services::fx::set_current_for_test(&[("XTP", 27.5), ("XSP", 25.0)]);
         let conn = planning_db();
         conn.execute("DELETE FROM loans", []).unwrap();
         insert_property(
@@ -1454,7 +1451,10 @@ mod tests {
         // Also assert the unrounded annual composite before period normalization.
         let mut fx = PlanningFx {
             target: "EUR".into(),
-            rates: HashMap::from([("EUR".into(), 27.5), ("USD".into(), 25.0)]),
+            quotes: crate::services::fx::Quotes::from_czk_per_unit(&HashMap::from([
+                ("EUR".into(), 27.5),
+                ("USD".into(), 25.0),
+            ])),
             ..PlanningFx::default()
         };
         let (annual, q) = property_costs_annualized(
@@ -1501,6 +1501,7 @@ mod tests {
     }
     #[test]
     fn target_planning_minor_units_and_missing_target_are_explicit() {
+        let _fx = crate::services::fx::test_lock();
         for (currency, amount, expected) in [
             ("KWD", "0.123", "0.123"),
             ("JPY", "1.6", "2"),
@@ -1542,6 +1543,7 @@ mod tests {
     }
     #[test]
     fn target_planning_native_annual_item_normalizes_without_fx() {
+        let _fx = crate::services::fx::test_lock();
         let conn = planning_db();
         conn.execute("DELETE FROM loans", []).unwrap();
         create_cashflow_item(
@@ -1563,6 +1565,7 @@ mod tests {
     }
     #[test]
     fn replacement_avoids_double_count_retains_inventory_and_restores_on_delete() {
+        let _fx = crate::services::fx::test_lock();
         let conn = planning_db();
         let before = get_report(&conn, "monthly").unwrap();
         assert_eq!(before.total_expenses, "100.00");
@@ -1597,6 +1600,7 @@ mod tests {
     }
     #[test]
     fn planned_unknown_fx_is_excluded_and_marked_without_one_to_one_fallback() {
+        let _fx = crate::services::fx::test_lock();
         let conn = planning_db();
         conn.execute("UPDATE loans SET currency='XPM'", []).unwrap();
         let report = get_report(&conn, "monthly").unwrap();
@@ -1608,12 +1612,36 @@ mod tests {
             crate::models::FxQuality::Missing
         );
     }
+    #[test]
+    fn rent_and_costs_without_a_currency_are_missing_not_valued_as_czk() {
+        let _fx = crate::services::fx::test_lock();
+        crate::services::fx::set_current(crate::services::fx::Quotes::new("CZK"));
+        let conn = planning_db();
+        conn.execute("DELETE FROM loans", []).unwrap();
+        conn.execute(
+            "INSERT INTO real_estate(id,name,type,recurring_costs,monthly_rent,monthly_rent_currency) VALUES ('flat','Flat','investment',?1,'20000',NULL)",
+            [r#"[{"amount":500,"frequency":"monthly"}]"#],
+        )
+        .unwrap();
+        let report = get_report(&conn, "monthly").unwrap();
+        assert_eq!(report.total_income, "0.00", "rent must not count as CZK");
+        assert_eq!(report.total_expenses, "0.00", "cost must not count as CZK");
+        assert_eq!(report.quality.missing_fx_count, 2);
+        assert_eq!(report.quality.missing_fx_currencies, vec!["?"]);
+        let rent = report
+            .automatic_sources
+            .iter()
+            .find(|s| s.source_id.as_deref() == Some("rental:flat"))
+            .expect("rent source");
+        assert_eq!(rent.fx_quality, crate::models::FxQuality::Missing);
+        assert_eq!(rent.original_currency, "?");
+    }
     fn insert_property(conn: &rusqlite::Connection, kind: &str, costs: serde_json::Value) {
         conn.execute("INSERT INTO real_estate(id,name,type,recurring_costs) VALUES ('property','Property',?1,?2)",rusqlite::params![kind,costs.to_string()]).unwrap();
     }
     #[test]
     fn personal_and_investment_property_foreign_costs_are_estimated() {
-        crate::services::currency::update_exchange_rates(HashMap::from([("XPK".into(), 10.0)]));
+        let _fx = crate::services::fx::set_current_for_test(&[("XPK", 10.0)]);
         for kind in ["personal", "investment"] {
             let conn = planning_db();
             insert_property(
@@ -1638,6 +1666,7 @@ mod tests {
     }
     #[test]
     fn property_mixed_fx_quality_and_inventory_are_independent_of_component_order() {
+        let _fx = crate::services::fx::test_lock();
         for kind in ["personal", "investment"] {
             for czk_amount in [0, 5] {
                 for missing_first in [false, true] {
@@ -1667,6 +1696,7 @@ mod tests {
     }
     #[test]
     fn target_composite_count_distinguishes_known_zero_from_all_missing() {
+        let _fx = crate::services::fx::test_lock();
         for (costs, expected_amount, expected_count) in [
             (
                 serde_json::json!([
@@ -1720,6 +1750,7 @@ mod tests {
     }
     #[test]
     fn absent_dividend_values_are_optional_but_query_and_type_failures_propagate() {
+        let _fx = crate::services::fx::test_lock();
         let conn = planning_db();
         conn.execute_batch("CREATE TABLE dividend_overrides(ticker TEXT,yearly_dividend_sum TEXT,currency TEXT); CREATE TABLE dividend_data(ticker TEXT,yearly_dividend_sum TEXT,currency TEXT); INSERT INTO stock_investments VALUES ('TEST','Test stock','2');").unwrap();
         let report = get_report(&conn, "monthly").unwrap();

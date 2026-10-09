@@ -3,13 +3,17 @@
 //! Aggregates are computed in CZK (the internal base currency) and converted
 //! into the user's main currency once, at serialisation time. A `MoneyContext`
 //! is loaded once per tool call so every amount in one response uses the same
-//! rates and the same main currency.
+//! rates and the same main currency. An amount that cannot be converted is
+//! excluded from aggregates or emitted as `null`, and its currency is listed
+//! in the response's `missingCurrencies` (never relabelled or valued 1:1).
 
+use std::cell::RefCell;
 use std::collections::HashMap;
 
 use rusqlite::{Connection, OptionalExtension};
 
 use crate::error::Result;
+use crate::services::fx::{History, Quality, Quotes};
 
 /// The user's main currency (`user_profile.currency`, trimmed and uppercased),
 /// CZK when there is no profile or its currency is blank. The MCP write tools
@@ -38,37 +42,20 @@ pub fn currency_or_main(conn: &Connection, currency: Option<&str>) -> Result<Str
     }
 }
 
-/// Exchange-rate snapshots (day -> X -> CZK per unit) for the days a history
-/// response covers, loaded with one query for the whole span (see
-/// `MoneyContext::day_rates_for`). The span is padded
-/// by the 10-day walk-back that `currency::resolve_rates_for_day_from_range`
-/// applies, so a row on a weekend or holiday still finds the closest earlier
-/// snapshot.
-fn load_day_rates(
-    conn: &Connection,
-    first_day: i64,
-    last_day: i64,
-) -> HashMap<i64, HashMap<String, f64>> {
-    crate::services::currency::get_rates_for_date_range(
-        conn,
-        first_day - 10 * SECONDS_PER_DAY,
-        last_day,
-    )
-}
-
-const SECONDS_PER_DAY: i64 = 86_400;
-
 pub struct MoneyContext {
     main: String,
-    /// X -> CZK per unit, from the `exchange_rates` table (CZK = 1.0).
-    rates: HashMap<String, f64>,
+    /// Quotes from the `exchange_rates` table (reference CZK).
+    quotes: Quotes,
+    /// Currencies that could not be converted while building this response.
+    quality: RefCell<Quality>,
 }
 
 impl MoneyContext {
     /// Reads the stored exchange rates and the user's main currency
     /// (`user_profile.currency`, falling back to CZK when there is no profile).
+    /// Unusable stored rows (not finite or not positive) are ignored.
     pub fn load(conn: &Connection) -> Result<MoneyContext> {
-        let mut rates: HashMap<String, f64> = {
+        let rates: HashMap<String, f64> = {
             let mut stmt = conn.prepare("SELECT currency, rate FROM exchange_rates")?;
             let result = stmt
                 .query_map([], |row| {
@@ -78,11 +65,14 @@ impl MoneyContext {
                 .collect();
             result
         };
-        rates.insert("CZK".to_string(), 1.0);
 
         let main = load_main_currency(conn)?;
 
-        Ok(MoneyContext { main, rates })
+        Ok(MoneyContext {
+            main,
+            quotes: Quotes::from_czk_per_unit(&rates),
+            quality: RefCell::new(Quality::default()),
+        })
     }
 
     /// The user's main currency (3-letter uppercase code).
@@ -90,78 +80,76 @@ impl MoneyContext {
         &self.main
     }
 
-    /// Converts an amount in `currency` to CZK. A currency missing from the
-    /// table falls back to the in-memory rate, then to the documented 1.0 last
-    /// resort (see `currency::convert_to_czk_with_rates`).
+    /// Converts an amount in `currency` to CZK for aggregation. An amount that cannot be
+    /// converted is excluded (0.0) and its currency is listed in `missing_currencies`.
     pub fn to_czk(&self, amount: f64, currency: &str) -> f64 {
-        crate::services::currency::convert_to_czk_with_rates(amount, currency, &self.rates)
+        let converted = self.quotes.convert(amount, currency, "CZK");
+        self.quality
+            .borrow_mut()
+            .track(currency, converted)
+            .unwrap_or(0.0)
     }
 
-    /// Converts a CZK amount into the main currency. A main currency without a
-    /// usable stored rate uses the same last resort as the app
-    /// (`currency::convert_from_czk`).
-    pub fn czk_to_main(&self, czk: f64) -> f64 {
-        if self.main == "CZK" {
-            return czk;
-        }
-        match self.rates.get(&self.main) {
-            Some(rate) if *rate > 0.0 => czk / rate,
-            _ => crate::services::currency::convert_from_czk(czk, &self.main),
+    /// Converts a CZK amount into the main currency; `None` (and the main currency listed as
+    /// missing) when it has no quote.
+    pub fn czk_to_main(&self, czk: f64) -> Option<f64> {
+        let converted = self.quotes.convert(czk, "CZK", &self.main);
+        self.quality.borrow_mut().track(&self.main, converted)
+    }
+
+    /// A CZK amount in the main currency as a two-decimal string like the other money fields,
+    /// or JSON `null` when it cannot be converted. Never the CZK number relabelled.
+    pub fn money(&self, czk: f64) -> serde_json::Value {
+        match self.czk_to_main(czk) {
+            Some(value) => serde_json::json!(format!("{value:.2}")),
+            None => serde_json::Value::Null,
         }
     }
 
-    /// Loads the rate snapshots needed to convert history rows recorded on
-    /// `days`. Empty when nothing needs them (a CZK main currency converts
-    /// nothing, and no rows means no days).
-    pub fn day_rates_for(
-        &self,
-        conn: &Connection,
-        days: &[i64],
-    ) -> HashMap<i64, HashMap<String, f64>> {
+    /// Merges conversions another service could not make (e.g. cost basis) into this response.
+    pub fn absorb(&self, quality: &Quality) {
+        self.quality.borrow_mut().merge(quality);
+    }
+
+    /// Currencies excluded or nulled in this response, sorted.
+    pub fn missing_currencies(&self) -> Vec<String> {
+        self.quality.borrow().missing_currencies()
+    }
+
+    /// Loads the rate history needed to convert rows recorded on `days`. Empty when nothing
+    /// needs it (a CZK main currency converts nothing, and no rows means no days).
+    pub fn day_rates_for(&self, conn: &Connection, days: &[i64]) -> Result<History> {
         if self.main == "CZK" {
-            return HashMap::new();
+            return Ok(History::default());
         }
         match (days.iter().min(), days.iter().max()) {
-            (Some(first), Some(last)) => load_day_rates(conn, *first, *last),
-            _ => HashMap::new(),
+            (Some(first), Some(last)) => History::load(conn, *first, *last),
+            _ => Ok(History::default()),
         }
     }
 
-    /// Converts a CZK amount into the main currency at the rates of `day`
-    /// (ADR 0001: historical values use the rates of their day). `day_rates`
-    /// comes from `load_day_rates`; the day resolves to the exact snapshot or
-    /// the closest earlier one. A day without a snapshot, or a snapshot that
-    /// lacks a usable main-currency rate, falls back to the current rates
-    /// (`czk_to_main`).
-    pub fn czk_to_main_on(
-        &self,
-        czk: f64,
-        day: i64,
-        day_rates: &HashMap<i64, HashMap<String, f64>>,
-    ) -> f64 {
+    /// Converts a CZK amount into the main currency at the rates of `day` (ADR 0001:
+    /// historical values use the rates of their day): the closest earlier day, at most ten
+    /// days back, that quotes both currencies. `None` (main currency listed as missing) when
+    /// there is none; current rates are never substituted.
+    pub fn czk_to_main_on(&self, czk: f64, day: i64, history: &History) -> Option<f64> {
         if self.main == "CZK" {
-            return czk;
+            return Some(czk);
         }
-        let day_rate = crate::services::currency::resolve_rates_for_day_from_range(day_rates, day)
-            .and_then(|rates| rates.get(&self.main))
-            .copied()
-            .filter(|rate| *rate > 0.0);
-        match day_rate {
-            Some(rate) => czk / rate,
-            None => self.czk_to_main(czk),
-        }
+        let converted = history.convert_on(czk, "CZK", &self.main, day);
+        self.quality.borrow_mut().track(&self.main, converted)
     }
 
     /// Converts a stored CZK money cell (TEXT in production) into the main
     /// currency at the rates of `day`, as a two-decimal string like the other
     /// money fields. A CZK main currency returns the stored value untouched;
     /// NULL stays NULL; an unparseable cell counts as 0 (the convention of the
-    /// other MCP readers).
+    /// other MCP readers); an amount without usable rates becomes `null`.
     pub fn stored_czk_to_main_on(
         &self,
         cell: rusqlite::types::Value,
         day: i64,
-        day_rates: &HashMap<i64, HashMap<String, f64>>,
+        history: &History,
     ) -> serde_json::Value {
         if self.main == "CZK" {
             return super::sql_to_json(cell);
@@ -174,7 +162,10 @@ impl MoneyContext {
             rusqlite::types::Value::Real(f) => f,
             rusqlite::types::Value::Text(s) => s.trim().parse::<f64>().unwrap_or(0.0),
         };
-        serde_json::json!(format!("{:.2}", self.czk_to_main_on(czk, day, day_rates)))
+        match self.czk_to_main_on(czk, day, history) {
+            Some(value) => serde_json::json!(format!("{value:.2}")),
+            None => serde_json::Value::Null,
+        }
     }
 }
 
@@ -207,57 +198,70 @@ mod tests {
         conn
     }
 
+    fn approx(value: Option<f64>, expected: f64) {
+        let value = value.expect("converted");
+        assert!((value - expected).abs() < 1e-9, "{value} != {expected}");
+    }
+
     #[test]
     fn eur_main_currency_converts_czk_by_the_stored_rate() {
         let ctx = MoneyContext::load(&setup_db(Some("EUR"))).expect("load");
         assert_eq!(ctx.main_currency(), "EUR");
-        assert_eq!(ctx.czk_to_main(2500.0), 100.0);
+        approx(ctx.czk_to_main(2500.0), 100.0);
+        assert!(ctx.missing_currencies().is_empty());
     }
 
     #[test]
     fn missing_profile_row_means_czk_and_identity() {
         let ctx = MoneyContext::load(&setup_db(None)).expect("load");
         assert_eq!(ctx.main_currency(), "CZK");
-        assert_eq!(ctx.czk_to_main(2500.0), 2500.0);
+        assert_eq!(ctx.czk_to_main(2500.0), Some(2500.0));
     }
 
     #[test]
     fn empty_profile_currency_falls_back_to_czk() {
         let ctx = MoneyContext::load(&setup_db(Some("  "))).expect("load");
         assert_eq!(ctx.main_currency(), "CZK");
-        assert_eq!(ctx.czk_to_main(10.0), 10.0);
+        assert_eq!(ctx.czk_to_main(10.0), Some(10.0));
     }
 
     #[test]
     fn profile_currency_is_trimmed_and_uppercased() {
         let ctx = MoneyContext::load(&setup_db(Some(" eur "))).expect("load");
         assert_eq!(ctx.main_currency(), "EUR");
-        assert_eq!(ctx.czk_to_main(2500.0), 100.0);
+        approx(ctx.czk_to_main(2500.0), 100.0);
     }
 
     #[test]
     fn to_czk_uses_the_table_rates() {
         let ctx = MoneyContext::load(&setup_db(Some("EUR"))).expect("load");
-        assert_eq!(ctx.to_czk(10.0, "USD"), 200.0);
-        assert_eq!(ctx.to_czk(10.0, "EUR"), 250.0);
+        assert!((ctx.to_czk(10.0, "USD") - 200.0).abs() < 1e-9);
+        assert!((ctx.to_czk(10.0, "EUR") - 250.0).abs() < 1e-9);
         assert_eq!(ctx.to_czk(10.0, "CZK"), 10.0);
+        assert!(ctx.missing_currencies().is_empty());
     }
 
     #[test]
-    fn main_without_a_table_rate_uses_the_in_memory_rate() {
-        // JPY is not in the test table; the built-in in-memory rate (0.15) applies,
-        // exactly as `currency::convert_from_czk` would.
+    fn an_unquoted_amount_is_excluded_and_reported() {
+        let ctx = MoneyContext::load(&setup_db(Some("EUR"))).expect("load");
+        assert_eq!(ctx.to_czk(10.0, "KWD"), 0.0);
+        assert_eq!(ctx.missing_currencies(), vec!["KWD".to_string()]);
+    }
+
+    #[test]
+    fn main_without_a_table_rate_yields_null_and_is_reported() {
+        // JPY is not in the test table: no invented in-memory rate, no relabelled CZK.
         let ctx = MoneyContext::load(&setup_db(Some("JPY"))).expect("load");
-        let expected = crate::services::currency::convert_from_czk(1500.0, "JPY");
-        assert_eq!(ctx.czk_to_main(1500.0), expected);
+        assert_eq!(ctx.czk_to_main(1500.0), None);
+        assert_eq!(ctx.money(1500.0), serde_json::Value::Null);
+        assert_eq!(ctx.missing_currencies(), vec!["JPY".to_string()]);
     }
 
     #[test]
-    fn main_with_a_non_positive_rate_does_not_divide_by_zero() {
-        // A stored rate of 0 is unusable; fall back to the app-wide last resort
-        // (an unknown currency is 1 CZK, so the amount passes through).
-        let ctx = MoneyContext::load(&setup_db(Some("ZMN1"))).expect("load");
-        assert_eq!(ctx.czk_to_main(1500.0), 1500.0);
+    fn main_with_a_non_positive_rate_is_unusable_not_a_division_by_zero() {
+        let ctx = MoneyContext::load(&setup_db(Some("ZMN"))).expect("load");
+        assert_eq!(ctx.czk_to_main(1500.0), None);
+        assert_eq!(ctx.missing_currencies(), vec!["ZMN".to_string()]);
     }
 
     // ---- day-rate conversion (history rows, ADR 0001) ----
@@ -286,18 +290,22 @@ mod tests {
         conn
     }
 
+    fn load_day_rates(conn: &Connection, ctx: &MoneyContext, first: i64, last: i64) -> History {
+        ctx.day_rates_for(conn, &[first, last]).expect("history")
+    }
+
     #[test]
     fn day_rates_convert_each_day_at_its_own_rate() {
         let conn = setup_history_db(Some("EUR"));
         add_history(&conn, 100 * DAY, "EUR", 24.0);
         add_history(&conn, 101 * DAY, "EUR", 26.0);
         let ctx = MoneyContext::load(&conn).expect("load");
-        let rates = load_day_rates(&conn, 100 * DAY, 101 * DAY);
+        let rates = load_day_rates(&conn, &ctx, 100 * DAY, 101 * DAY);
 
-        assert_eq!(ctx.czk_to_main_on(2400.0, 100 * DAY, &rates), 100.0);
-        assert_eq!(ctx.czk_to_main_on(2600.0, 101 * DAY, &rates), 100.0);
+        approx(ctx.czk_to_main_on(2400.0, 100 * DAY, &rates), 100.0);
+        approx(ctx.czk_to_main_on(2600.0, 101 * DAY, &rates), 100.0);
         // The current rate (25) would give a different answer for both days.
-        assert_eq!(ctx.czk_to_main(2400.0), 96.0);
+        approx(ctx.czk_to_main(2400.0), 96.0);
     }
 
     #[test]
@@ -307,28 +315,29 @@ mod tests {
         let ctx = MoneyContext::load(&conn).expect("load");
         // The row sits three days after the snapshot; the range query has to
         // reach back that far.
-        let rates = load_day_rates(&conn, 103 * DAY, 103 * DAY);
+        let rates = load_day_rates(&conn, &ctx, 103 * DAY, 103 * DAY);
 
-        assert_eq!(ctx.czk_to_main_on(2400.0, 103 * DAY, &rates), 100.0);
+        approx(ctx.czk_to_main_on(2400.0, 103 * DAY, &rates), 100.0);
     }
 
     #[test]
-    fn a_day_with_no_history_at_all_uses_the_current_rate() {
+    fn a_day_with_no_history_is_null_and_reported_not_the_current_rate() {
         let conn = setup_history_db(Some("EUR"));
         let ctx = MoneyContext::load(&conn).expect("load");
-        let rates = load_day_rates(&conn, 100 * DAY, 100 * DAY);
+        let rates = load_day_rates(&conn, &ctx, 100 * DAY, 100 * DAY);
 
-        assert_eq!(ctx.czk_to_main_on(2500.0, 100 * DAY, &rates), 100.0);
+        assert_eq!(ctx.czk_to_main_on(2500.0, 100 * DAY, &rates), None);
+        assert_eq!(ctx.missing_currencies(), vec!["EUR".to_string()]);
     }
 
     #[test]
-    fn a_snapshot_without_the_main_currency_uses_the_current_rate() {
+    fn a_snapshot_without_the_main_currency_is_null_not_the_current_rate() {
         let conn = setup_history_db(Some("EUR"));
         add_history(&conn, 100 * DAY, "USD", 21.0);
         let ctx = MoneyContext::load(&conn).expect("load");
-        let rates = load_day_rates(&conn, 100 * DAY, 100 * DAY);
+        let rates = load_day_rates(&conn, &ctx, 100 * DAY, 100 * DAY);
 
-        assert_eq!(ctx.czk_to_main_on(2500.0, 100 * DAY, &rates), 100.0);
+        assert_eq!(ctx.czk_to_main_on(2500.0, 100 * DAY, &rates), None);
     }
 
     #[test]
@@ -336,9 +345,9 @@ mod tests {
         let conn = setup_history_db(Some("CZK"));
         add_history(&conn, 100 * DAY, "EUR", 24.0);
         let ctx = MoneyContext::load(&conn).expect("load");
-        let rates = load_day_rates(&conn, 100 * DAY, 100 * DAY);
+        let rates = load_day_rates(&conn, &ctx, 100 * DAY, 100 * DAY);
 
-        assert_eq!(ctx.czk_to_main_on(2400.0, 100 * DAY, &rates), 2400.0);
+        assert_eq!(ctx.czk_to_main_on(2400.0, 100 * DAY, &rates), Some(2400.0));
     }
 
     #[test]
@@ -346,7 +355,7 @@ mod tests {
         let conn = setup_history_db(Some("EUR"));
         add_history(&conn, 100 * DAY, "EUR", 24.0);
         let ctx = MoneyContext::load(&conn).expect("load");
-        let rates = load_day_rates(&conn, 100 * DAY, 100 * DAY);
+        let rates = load_day_rates(&conn, &ctx, 100 * DAY, 100 * DAY);
         let text = |s: &str| rusqlite::types::Value::Text(s.to_string());
 
         assert_eq!(
@@ -363,7 +372,7 @@ mod tests {
     fn stored_czk_text_stays_untouched_for_a_czk_main_currency() {
         let conn = setup_history_db(Some("CZK"));
         let ctx = MoneyContext::load(&conn).expect("load");
-        let rates = load_day_rates(&conn, 100 * DAY, 100 * DAY);
+        let rates = load_day_rates(&conn, &ctx, 100 * DAY, 100 * DAY);
 
         assert_eq!(
             ctx.stored_czk_to_main_on(

@@ -313,6 +313,7 @@ pub fn get_investment_by_id(
         conn,
         crate::services::cost_basis::TxTable::Stocks,
     )?
+    .0
     .get(investment_id)
     .map(|p| p.average_price_native().to_string())
     .unwrap_or_else(|| "0".to_string());

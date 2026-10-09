@@ -40,7 +40,7 @@ pub struct StockValueHistoryArgs {
 }
 
 pub fn investments_list(conn: &Connection) -> Result<Value> {
-    let avg_map = crate::services::cost_basis::cost_basis_for_all(
+    let (avg_map, _) = crate::services::cost_basis::cost_basis_for_all(
         conn,
         crate::services::cost_basis::TxTable::Stocks,
     )?;
@@ -97,6 +97,7 @@ pub fn investment_detail(conn: &Connection, id: &str) -> Result<Value> {
         conn,
         crate::services::cost_basis::TxTable::Stocks,
     )?
+    .0
     .get(&id)
     .map(|p| p.average_price_native().to_string())
     .unwrap_or_else(|| "0".to_string());
@@ -416,6 +417,7 @@ mod bulk_tests {
             crate::services::cost_basis::TxTable::Stocks,
         )
         .ok()?
+        .0
         .get(&id)
         .map(|p| p.average_price_native().to_string())
     }

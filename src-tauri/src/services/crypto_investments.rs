@@ -193,6 +193,7 @@ pub fn get_crypto_by_id(
         conn,
         crate::services::cost_basis::TxTable::Crypto,
     )?
+    .0
     .get(investment_id)
     .map(|p| p.average_price_native().to_string())
     .unwrap_or_else(|| "0".to_string());

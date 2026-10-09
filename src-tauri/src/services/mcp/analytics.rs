@@ -196,10 +196,11 @@ pub fn stocks_analysis(conn: &Connection) -> Result<Value> {
     // main currency only when the response is built.
     let ctx = MoneyContext::load(conn)?;
 
-    let cost_map = crate::services::cost_basis::cost_basis_for_all(
+    let (cost_map, cost_quality) = crate::services::cost_basis::cost_basis_for_all(
         conn,
         crate::services::cost_basis::TxTable::Stocks,
     )?;
+    ctx.absorb(&cost_quality);
 
     let mut stmt = conn.prepare(
         "SELECT si.id, si.ticker, si.company_name, si.quantity,
@@ -232,7 +233,7 @@ pub fn stocks_analysis(conn: &Connection) -> Result<Value> {
 
     // Amounts are converted to the user's main currency here, once, at
     // serialisation time; ratios are currency-invariant.
-    let money = |czk: f64| format!("{:.2}", ctx.czk_to_main(czk));
+    let money = |czk: f64| ctx.money(czk);
 
     let mut stocks: Vec<Value> = Vec::new();
     let mut total_val_czk = 0.0_f64;
@@ -252,7 +253,10 @@ pub fn stocks_analysis(conn: &Connection) -> Result<Value> {
         let curr_val_czk = ctx.to_czk(qty * curr_price, &price_currency);
         // Historical cost: every transaction at its own day's rate
         // (ADR 0001) — never the stored scalar at today's rate.
-        let cost_czk = cost_map.get(&id).map(|p| p.cost_basis_czk).unwrap_or(0.0);
+        let cost_czk = cost_map
+            .get(&id)
+            .map(|p| p.cost_basis_target)
+            .unwrap_or(0.0);
         let gain_czk = curr_val_czk - cost_czk;
         let gain_pct = if cost_czk > 0.0 {
             (gain_czk / cost_czk) * 100.0
@@ -282,25 +286,28 @@ pub fn stocks_analysis(conn: &Connection) -> Result<Value> {
         }));
     }
 
+    let summary = serde_json::json!({
+        "totalValue": money(total_val_czk),
+        "totalGainLoss": money(total_gain_czk),
+        "annualDividends": money(total_div_czk),
+    });
     Ok(serde_json::json!({
         "mainCurrency": ctx.main_currency(),
-        "summary": {
-            "totalValue": money(total_val_czk),
-            "totalGainLoss": money(total_gain_czk),
-            "annualDividends": money(total_div_czk),
-        },
+        "summary": summary,
         "stocks": stocks,
+        "missingCurrencies": ctx.missing_currencies(),
     }))
 }
 
 pub fn tag_metrics(conn: &Connection, tag_ids: Option<Vec<String>>) -> Result<Value> {
-    let cost_map = crate::services::cost_basis::cost_basis_for_all(
-        conn,
-        crate::services::cost_basis::TxTable::Stocks,
-    )?;
     // One MoneyContext per call: all arithmetic stays in CZK, converted to the
     // main currency only when the response is built.
     let ctx = MoneyContext::load(conn)?;
+    let (cost_map, cost_quality) = crate::services::cost_basis::cost_basis_for_all(
+        conn,
+        crate::services::cost_basis::TxTable::Stocks,
+    )?;
+    ctx.absorb(&cost_quality);
 
     let tags: Vec<(String, String)> = if let Some(ref ids) = tag_ids {
         let placeholders = ids.iter().map(|_| "?").collect::<Vec<_>>().join(",");
@@ -330,7 +337,7 @@ pub fn tag_metrics(conn: &Connection, tag_ids: Option<Vec<String>>) -> Result<Va
 
     // Amounts are converted to the user's main currency here, once, at
     // serialisation time; ratios are currency-invariant.
-    let money = |czk: f64| format!("{:.2}", ctx.czk_to_main(czk));
+    let money = |czk: f64| ctx.money(czk);
 
     let result: Vec<Value> = tags
         .iter()
@@ -373,7 +380,7 @@ pub fn tag_metrics(conn: &Connection, tag_ids: Option<Vec<String>>) -> Result<Va
             let mut div = 0.0_f64;
             for (id, qty, cp, cc, yd, dc) in &stocks {
                 val += ctx.to_czk(qty * cp, cc);
-                cost += cost_map.get(id).map(|p| p.cost_basis_czk).unwrap_or(0.0);
+                cost += cost_map.get(id).map(|p| p.cost_basis_target).unwrap_or(0.0);
                 div += ctx.to_czk(qty * yd, dc);
             }
             let gain = val - cost;
@@ -397,6 +404,7 @@ pub fn tag_metrics(conn: &Connection, tag_ids: Option<Vec<String>>) -> Result<Va
     Ok(serde_json::json!({
         "mainCurrency": ctx.main_currency(),
         "tags": result,
+        "missingCurrencies": ctx.missing_currencies(),
     }))
 }
 
@@ -841,10 +849,7 @@ CREATE TABLE bonds(id TEXT,name TEXT,coupon_value TEXT,quantity TEXT,interest_ra
     #[test]
     fn cashflow_report_reports_amounts_in_the_main_currency() {
         // A private code isolates this current-rate fixture from other tests.
-        crate::services::currency::update_exchange_rates(std::collections::HashMap::from([(
-            "XMC".into(),
-            25.0,
-        )]));
+        let _fx = crate::services::fx::set_current_for_test(&[("XMC", 25.0)]);
         let conn = app_db("XMC");
         seed_cashflow(&conn);
 

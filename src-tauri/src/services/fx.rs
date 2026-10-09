@@ -4,7 +4,7 @@
 use crate::error::Result;
 use rusqlite::{params, Connection};
 use std::collections::{BTreeMap, BTreeSet, HashMap};
-use std::sync::OnceLock;
+use std::sync::{OnceLock, RwLock};
 
 /// Seconds in one UTC day.
 pub const DAY: i64 = 86_400;
@@ -264,6 +264,89 @@ impl History {
 
 fn floor_day(ts: i64) -> i64 {
     ts.div_euclid(DAY) * DAY
+}
+
+/// The in-memory snapshot of the latest quotes, plus the currencies that failed a current
+/// conversion since it was last replaced.
+struct CurrentStore {
+    quotes: Quotes,
+    missing: BTreeSet<String>,
+}
+
+fn store() -> &'static RwLock<CurrentStore> {
+    static STORE: OnceLock<RwLock<CurrentStore>> = OnceLock::new();
+    STORE.get_or_init(|| {
+        RwLock::new(CurrentStore {
+            quotes: Quotes::new("CZK"),
+            missing: BTreeSet::new(),
+        })
+    })
+}
+
+/// Clone of the current quote snapshot. Empty (reference only) until rates are loaded.
+pub fn current() -> Quotes {
+    store()
+        .read()
+        .unwrap_or_else(|e| e.into_inner())
+        .quotes
+        .clone()
+}
+
+/// Replaces the current snapshot and forgets previously recorded missing currencies.
+pub fn set_current(quotes: Quotes) {
+    let mut guard = store().write().unwrap_or_else(|e| e.into_inner());
+    guard.quotes = quotes;
+    guard.missing.clear();
+}
+
+/// Codes that failed a current conversion since the last `set_current`, sorted.
+pub fn missing_now() -> Vec<String> {
+    store()
+        .read()
+        .unwrap_or_else(|e| e.into_inner())
+        .missing
+        .iter()
+        .cloned()
+        .collect()
+}
+
+/// Records a currency that could not be converted with the current snapshot (warns once).
+pub fn record_missing(code: &str) {
+    let code = normalize(code).unwrap_or_else(|| code.trim().to_uppercase());
+    let mut guard = store().write().unwrap_or_else(|e| e.into_inner());
+    if guard.missing.insert(code.clone()) {
+        log::warn!("[FX] no current exchange rate for {code}; amounts in {code} are excluded");
+    }
+}
+
+/// Records every currency of `quality` as missing in the current snapshot (for conversions
+/// that were made elsewhere, e.g. cost basis, and must still reach `get_price_status`).
+pub fn record_missing_all(quality: &Quality) {
+    for code in quality.missing_currencies() {
+        record_missing(&code);
+    }
+}
+
+/// Test helper: takes the lock, then replaces the snapshot with these CZK-per-unit rates.
+/// Hold the returned guard for the whole test.
+#[cfg(test)]
+pub(crate) fn set_current_for_test(
+    czk_per_unit: &[(&str, f64)],
+) -> std::sync::MutexGuard<'static, ()> {
+    let guard = test_lock();
+    let rates: HashMap<String, f64> = czk_per_unit
+        .iter()
+        .map(|(code, rate)| (code.to_string(), *rate))
+        .collect();
+    set_current(Quotes::from_czk_per_unit(&rates));
+    guard
+}
+
+/// Serialises tests that touch the global snapshot.
+#[cfg(test)]
+pub(crate) fn test_lock() -> std::sync::MutexGuard<'static, ()> {
+    static LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+    LOCK.lock().unwrap_or_else(|e| e.into_inner())
 }
 
 /// Collects conversions that could not be made, so reports can declare what they excluded.

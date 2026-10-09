@@ -1379,10 +1379,7 @@ mod tests {
     fn budget_percentage_converts_goal_currency_to_czk() {
         // XTS is an ISO test code, so it cannot collide with real rates used
         // by other tests sharing the global rate cache.
-        crate::services::currency::update_exchange_rates(HashMap::from([(
-            "XTS".to_string(),
-            10.0,
-        )]));
+        let _fx = crate::services::fx::set_current_for_test(&[("XTS", 10.0)]);
         let conn = setup_test_db();
         upsert_goal(
             &conn,
@@ -1433,10 +1430,7 @@ mod tests {
     #[test]
     fn foreign_currency_transactions_convert_at_the_booking_day_rate() {
         // XTB: an ISO test code that no other test touches in the shared cache.
-        crate::services::currency::update_exchange_rates(HashMap::from([(
-            "XTB".to_string(),
-            25.2, // today
-        )]));
+        let _fx = crate::services::fx::set_current_for_test(&[("XTB", 25.2)]);
         let conn = setup_test_db();
         add_fx_history(&conn);
         let january: i64 = 1_705_276_800; // 2024-01-15
@@ -1455,10 +1449,7 @@ mod tests {
 
     #[test]
     fn same_day_transactions_share_one_rate_and_czk_is_untouched() {
-        crate::services::currency::update_exchange_rates(HashMap::from([(
-            "XTB".to_string(),
-            25.2,
-        )]));
+        let _fx = crate::services::fx::set_current_for_test(&[("XTB", 25.2)]);
         let conn = setup_test_db();
         add_fx_history(&conn);
         let day: i64 = 1_705_276_800;
@@ -1474,10 +1465,7 @@ mod tests {
 
     #[test]
     fn a_day_without_history_is_explicitly_missing_not_current_rate() {
-        crate::services::currency::update_exchange_rates(HashMap::from([(
-            "XTB".to_string(),
-            25.2,
-        )]));
+        let _fx = crate::services::fx::set_current_for_test(&[("XTB", 25.2)]);
         // No exchange_rate_history table rows at all.
         let conn = setup_test_db();
         add_fx_history(&conn);

@@ -775,6 +775,7 @@ fn verify(db: &Database) {
             moony_lib::services::cost_basis::TxTable::Stocks,
         )
         .expect("cost basis")
+        .0
         .values()
         .find(|_| true)
         .map(|p| p.average_price_native())

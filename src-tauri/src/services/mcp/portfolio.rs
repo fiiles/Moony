@@ -187,7 +187,7 @@ pub fn portfolio_metrics(conn: &Connection, exclude_personal_real_estate: bool) 
 
     // Amounts are converted to the user's main currency here, once, at
     // serialisation time.
-    let money = |czk: f64| format!("{:.2}", ctx.czk_to_main(czk));
+    let money = |czk: f64| ctx.money(czk);
 
     Ok(serde_json::json!({
         "mainCurrency": ctx.main_currency(),
@@ -204,6 +204,8 @@ pub fn portfolio_metrics(conn: &Connection, exclude_personal_real_estate: bool) 
             "other_assets": money(other),
             "loans": money(loans),
         },
+        // Last on purpose: the amounts above record what could not be converted.
+        "missingCurrencies": ctx.missing_currencies(),
     }))
 }
 
@@ -269,7 +271,7 @@ pub fn portfolio_history(
     // day (ADR 0001), one rates query for the whole span.
     let ctx = MoneyContext::load(conn)?;
     let days: Vec<i64> = snapshots.iter().map(|(_, _, day)| *day).collect();
-    let day_rates = ctx.day_rates_for(conn, &days);
+    let day_rates = ctx.day_rates_for(conn, &days)?;
 
     let rows: Vec<Value> = snapshots
         .into_iter()
@@ -289,6 +291,7 @@ pub fn portfolio_history(
     Ok(serde_json::json!({
         "mainCurrency": ctx.main_currency(),
         "history": rows,
+        "missingCurrencies": ctx.missing_currencies(),
     }))
 }
 
@@ -449,6 +452,40 @@ mod tests {
         assert_eq!(result["mainCurrency"], "CZK");
         assert_eq!(result["net_worth"], "78000.00");
         assert_eq!(result["breakdown"]["savings"], "75000.00");
+    }
+
+    #[test]
+    fn portfolio_metrics_excludes_unconvertible_amounts_and_lists_their_currency() {
+        let conn = setup_db("EUR");
+        conn.execute(
+            "INSERT INTO bank_accounts (id, balance, currency) VALUES ('b3', '999', 'KWD')",
+            [],
+        )
+        .expect("kwd account");
+
+        let result = portfolio_metrics(&conn, false).expect("metrics");
+
+        // The KWD balance is left out (never counted 1:1) and declared.
+        assert_eq!(result["breakdown"]["savings"], "3000.00");
+        assert_eq!(result["missingCurrencies"], serde_json::json!(["KWD"]));
+    }
+
+    #[test]
+    fn portfolio_metrics_amounts_are_null_when_the_main_currency_has_no_rate() {
+        let conn = setup_db("JPY");
+
+        let result = portfolio_metrics(&conn, false).expect("metrics");
+
+        assert_eq!(result["mainCurrency"], "JPY");
+        assert!(result["net_worth"].is_null());
+        assert!(result["breakdown"]["savings"].is_null());
+        assert_eq!(result["missingCurrencies"], serde_json::json!(["JPY"]));
+    }
+
+    #[test]
+    fn complete_portfolio_metrics_declare_no_missing_currencies() {
+        let result = portfolio_metrics(&setup_db("EUR"), false).expect("metrics");
+        assert_eq!(result["missingCurrencies"], serde_json::json!([]));
     }
 
     const DAY: i64 = 86_400;

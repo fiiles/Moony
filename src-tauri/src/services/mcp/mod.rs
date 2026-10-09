@@ -113,7 +113,7 @@ pub(crate) fn ticker_value_history(
         _ => 0,
     };
     let days: Vec<i64> = stored.iter().map(day_of).collect();
-    let day_rates = ctx.day_rates_for(conn, &days);
+    let day_rates = ctx.day_rates_for(conn, &days)?;
 
     let rows: Vec<Value> = stored
         .into_iter()
@@ -134,6 +134,7 @@ pub(crate) fn ticker_value_history(
     Ok(serde_json::json!({
         "mainCurrency": ctx.main_currency(),
         "history": rows,
+        "missingCurrencies": ctx.missing_currencies(),
     }))
 }
 

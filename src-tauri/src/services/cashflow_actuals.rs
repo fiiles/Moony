@@ -557,6 +557,7 @@ mod tests {
     }
     #[test]
     fn target_actuals_comparison_is_historical_and_conserves_cross_rows() {
+        let _fx = crate::services::fx::test_lock();
         let conn = setup_test_db();
         for (id, day) in [("current", ts(2026, 9, 1)), ("previous", ts(2026, 3, 1))] {
             insert_tx(
@@ -584,10 +585,9 @@ mod tests {
         let first = get_actuals_in_currency(&conn, "6m", TODAY, None, "XAT").unwrap();
         assert_eq!(first.total_income, "100.00");
         assert_eq!(first.previous_income, "100.00");
-        crate::services::currency::update_exchange_rates(HashMap::from([
-            ("XAC".into(), 80.0),
-            ("XAT".into(), 10.0),
-        ]));
+        crate::services::fx::set_current(crate::services::fx::Quotes::from_czk_per_unit(
+            &HashMap::from([("XAC".into(), 80.0), ("XAT".into(), 10.0)]),
+        ));
         let second = get_actuals_in_currency(&conn, "6m", TODAY, None, "XAT").unwrap();
         assert_eq!(first.total_income, second.total_income);
         assert_eq!(first.previous_income, second.previous_income);

@@ -34,7 +34,7 @@ pub struct CryptoValueHistoryArgs {
 }
 
 pub fn crypto_list(conn: &Connection) -> Result<Value> {
-    let avg_map = crate::services::cost_basis::cost_basis_for_all(
+    let (avg_map, _) = crate::services::cost_basis::cost_basis_for_all(
         conn,
         crate::services::cost_basis::TxTable::Crypto,
     )?;
@@ -403,6 +403,7 @@ mod bulk_tests {
             crate::services::cost_basis::TxTable::Crypto,
         )
         .ok()?
+        .0
         .get(&id)
         .map(|p| p.average_price_native().to_string())
     }

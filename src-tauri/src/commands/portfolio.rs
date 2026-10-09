@@ -449,14 +449,14 @@ pub(crate) fn spawn_fx_backfill(app: AppHandle, db: Database) {
     });
 }
 
-/// Get current exchange rates (without fetching)
+/// Get current exchange rates (without fetching): CZK per 1 unit, derived codes included.
 #[tauri::command]
 pub fn get_exchange_rates() -> std::collections::HashMap<String, f64> {
     crate::services::currency::get_all_rates()
 }
 
 /// Get exchange rates (relative to CZK) for a specific date.
-/// Falls back to the nearest earlier date with a snapshot, then to today's rates.
+/// Uses the nearest earlier day with a snapshot (at most ten days back); empty when there is none.
 #[tauri::command]
 pub async fn get_exchange_rates_for_date(
     db: State<'_, Database>,
@@ -504,8 +504,8 @@ pub struct PriceStatus {
     pub stocks_missing_price: i32,
     /// Number of cryptos without any price data
     pub crypto_missing_price: i32,
-    /// Currency codes encountered this session with no known exchange rate
-    /// (converted 1:1 to CZK as a last resort — values are wrong; audit M2)
+    /// Currency codes that failed a current conversion since the rates were last
+    /// replaced (those amounts are excluded from totals, never valued 1:1)
     pub missing_currencies: Vec<String>,
 }
 
@@ -609,7 +609,7 @@ pub fn get_price_status(db: State<'_, Database>) -> Result<PriceStatus> {
             exchange_rates_age_hours,
             stocks_missing_price: stocks_missing,
             crypto_missing_price: crypto_missing,
-            missing_currencies: crate::services::currency::get_missing_currencies(),
+            missing_currencies: crate::services::fx::missing_now(),
         })
     })
 }
@@ -2678,11 +2678,12 @@ mod tests {
         )
         .expect("schema");
 
-        crate::services::currency::update_exchange_rates(
-            [("USD".to_string(), 23.0), ("JPY".to_string(), 0.15)]
+        let _fx = crate::services::fx::test_lock();
+        crate::services::fx::set_current(crate::services::fx::Quotes::from_czk_per_unit(
+            &[("USD".to_string(), 23.0), ("JPY".to_string(), 0.15)]
                 .into_iter()
                 .collect(),
-        );
+        ));
 
         let resolved_aapl =
             crate::services::pricing::resolve_stock_price(&conn, "AAPL").expect("AAPL price");

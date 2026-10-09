@@ -14,7 +14,6 @@ export async function refreshMoneyFlows(client: QueryClient, refreshIdentities =
     'budgeting-report',
     'budget-goals',
     'budgeting-category-transactions',
-    'report-transactions',
     'effective-transaction-flows',
     'cashflow-report',
     'learnedPayees',

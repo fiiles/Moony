@@ -536,7 +536,7 @@
     "missingPlanningFx_one": "{{count}} planned component has no conversion ({{currencies}}). Totals are partial.",
     "missingPlanningFx_other": "{{count}} planned components have no conversion ({{currencies}}). Totals are partial.",
     "category": "Category",
-    "moved": "Moved",
+    "moved": "moved",
     "movedCount": "moved: {{count}}"
   }
 }

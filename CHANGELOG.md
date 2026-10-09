@@ -23,6 +23,11 @@ All notable changes to Moony are documented in this file. The format follows
   "Investment income" and "Other income" are added.
 - **Savings no longer count as spending.** The Savings category is now a money transfer, unless you
   had chosen another role. Past months change accordingly: spending drops and the savings rate rises.
+  A budget limit on Savings stops tracking anything; remove it on the Budgets page.
+- **Automatic categorization knows the new income categories.** Interest keywords now go to
+  Investment income, and pensions, benefits and tax refunds go to Other income instead of Salary. The
+  Czech "vratka" and "dobropis" keywords no longer file a refund as income: a refund belongs in the
+  category of the original purchase, so it stays uncategorized for you to assign.
 
 ### Fixed
 

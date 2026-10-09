@@ -168,13 +168,11 @@ export default function Cashflow() {
     };
   };
 
-  const open = (row: Row) =>
-    setTxTarget({
-      name: row.label,
-      flowKind: row.group.flowKind,
-      categoryId: row.group.key,
-      expectedCount: row.group.count,
-    });
+  // While the next period loads, the rows still belong to the previous one.
+  const open = (row: Row) => {
+    if (isPlaceholderData) return;
+    setTxTarget({ name: row.label, flowKind: row.group.flowKind, categoryId: row.group.key });
+  };
 
   const breakdownTable = (rows: Row[]) => (
     <Table>
@@ -262,7 +260,7 @@ export default function Cashflow() {
     />
   );
 
-  if (isError)
+  if (isError && !data)
     return (
       <>
         {head}
@@ -315,6 +313,7 @@ export default function Cashflow() {
         className={cn('transition-opacity', isPlaceholderData && 'opacity-60')}
         aria-busy={isPlaceholderData}
       >
+        {isError && <ReportError onRetry={() => void refetch()} />}
         <ReportQualityNote quality={data.quality} />
         <ReportTransactionsDialog
           target={txTarget}

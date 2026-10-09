@@ -31,11 +31,10 @@ pub fn validate_period(start: i64, end: i64) -> Result<()> {
     }
 }
 
-fn month_start(year: i32, month: u32) -> i64 {
+fn month_start(year: i32, month: u32) -> Option<i64> {
     NaiveDate::from_ymd_opt(year, month, 1)
         .and_then(|d| d.and_hms_opt(0, 0, 0))
         .map(|dt| dt.and_utc().timestamp())
-        .unwrap_or(0)
 }
 
 /// The month `offset` months before (negative) or after the given one.
@@ -51,8 +50,11 @@ pub fn chart_window_start(start: i64, end: i64) -> i64 {
         return start;
     };
     let (year, month) = shift_month(last.year(), last.month(), -(CHART_MONTHS - 1));
-    let window = month_start(year, month);
-    crate::services::reporting::month_start(start).map_or(window, |first| first.min(window))
+    let first = crate::services::reporting::month_start(start);
+    match (month_start(year, month), first) {
+        (Some(window), Some(first)) => window.min(first),
+        (window, first) => window.or(first).unwrap_or(start),
+    }
 }
 
 /// First days of every month from `start` to `end`, oldest first.
@@ -62,8 +64,8 @@ fn months_between(start: i64, end: i64) -> Vec<i64> {
         return out;
     };
     let (mut year, mut month) = (from.year(), from.month());
-    loop {
-        let ts = month_start(year, month);
+    // A month outside chrono's calendar ends the list instead of looping forever.
+    while let Some(ts) = month_start(year, month) {
         if ts > end {
             break;
         }

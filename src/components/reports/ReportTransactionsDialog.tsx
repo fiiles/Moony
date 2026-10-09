@@ -37,7 +37,6 @@ export interface ReportTarget {
   flowKind?: FlowKind;
   /** Category id, or `uncategorized` */
   categoryId?: string;
-  expectedCount?: number;
 }
 
 const PAGE = 100;
@@ -76,7 +75,7 @@ function ReportTransactionsDialogContent({
   const [changes, setChanges] = useState<ReadonlyMap<string, string | null>>(new Map());
   // Outside the money-flows refresh keys and dropped on close, so a
   // recategorization never reshuffles the open list.
-  const { data, isLoading, isError, refetch } = useQuery({
+  const { data, isError, refetch } = useQuery({
     queryKey: ['report-drilldown', target, start, end, accountIds, reportCurrency, ratesTimestamp],
     queryFn: () =>
       cashflowApi.getTransactions(start, end, {
@@ -105,7 +104,12 @@ function ReportTransactionsDialogContent({
       throw error;
     }
     setChanges((current) => new Map(current).set(tx.id, categoryId));
-    await refreshMoneyFlows(queryClient);
+    // The category is saved; a failed refresh must not read as a failed change.
+    try {
+      await refreshMoneyFlows(queryClient);
+    } catch (error) {
+      toast.error(translateApiError(error as Error, tc));
+    }
   };
 
   const flowNote = (tx: ReportTransaction, credit: boolean) => {
@@ -124,9 +128,9 @@ function ReportTransactionsDialogContent({
             {t('readiness.drilldownUnits', { currency: reportCurrency })}
           </DialogDescription>
         </DialogHeader>
-        {isError ? (
+        {snapshot === null && isError ? (
           <ReportError onRetry={() => void refetch()} />
-        ) : isLoading || snapshot === null ? (
+        ) : snapshot === null ? (
           <p>{t('readiness.loading')}</p>
         ) : (
           <div className="max-h-[60vh] overflow-y-auto">

@@ -557,7 +557,7 @@
     "missingPlanningFx_few": "{{count}} plánované složky nemají dostupný kurz ({{currencies}}). Součty jsou neúplné.",
     "missingPlanningFx_other": "{{count}} plánovaných složek nemá dostupný kurz ({{currencies}}). Součty jsou neúplné.",
     "category": "Kategorie",
-    "moved": "Přesunuto",
+    "moved": "přesunuto",
     "movedCount": "přesunuto: {{count}}"
   }
 }

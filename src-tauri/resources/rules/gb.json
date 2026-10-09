@@ -57,7 +57,7 @@
     { "id": "gb/freetrade", "name": "Freetrade", "ruleType": "contains", "pattern": "freetrade", "categoryId": "cat_investments", "priority": 60 },
     { "id": "gb/salary", "name": "Salary", "ruleType": "contains", "pattern": "salary", "categoryId": "cat_income", "priority": 60 },
     { "id": "gb/payroll", "name": "Payroll", "ruleType": "contains", "pattern": "payroll", "categoryId": "cat_income", "priority": 60 },
-    { "id": "gb/dwp", "name": "DWP Benefits", "ruleType": "word", "pattern": "dwp", "categoryId": "cat_income", "priority": 60 },
+    { "id": "gb/dwp", "name": "DWP Benefits", "ruleType": "word", "pattern": "dwp", "categoryId": "cat_other_income", "priority": 60 },
     { "id": "gb/hmrc", "name": "HMRC", "ruleType": "word", "pattern": "hmrc", "categoryId": "cat_taxes", "priority": 70 },
     { "id": "gb/atm-withdrawal", "name": "ATM Withdrawal", "ruleType": "contains", "pattern": "atm withdrawal", "categoryId": "cat_internal_transfers", "priority": 40 },
     { "id": "gb/cash-withdrawal", "name": "Cash Withdrawal", "ruleType": "contains", "pattern": "cash withdrawal", "categoryId": "cat_internal_transfers", "priority": 40 },

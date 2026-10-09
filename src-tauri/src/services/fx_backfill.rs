@@ -15,14 +15,17 @@
 //! break transaction entry or rate refresh — days that stay uncovered fall
 //! back to current rates at read time (documented fallback semantics).
 
-use std::collections::HashSet;
+use std::collections::BTreeSet;
 
 use rusqlite::Connection;
 
 use crate::db::Database;
 use crate::error::Result;
+use crate::services::fx;
 
 const DAY: i64 = 86_400;
+/// The currency every stored rate is quoted against; it never has a row of its own.
+const REFERENCE: &str = "CZK";
 /// Walk-back window used by rate lookups (`get_rates_for_date`): the fetch
 /// starts this much before the earliest transaction so weekend/holiday
 /// transactions can resolve to the closest earlier day.
@@ -33,39 +36,127 @@ const ECB_EPOCH: i64 = 915_408_000; // 1999-01-04 UTC midnight
 /// the timeseries has fallen further behind than that.
 const TAIL_TOLERANCE: i64 = 3 * DAY;
 
-/// Distinct non-CZK transaction currencies across stocks, crypto and bank
-/// accounts — the symbols the FX timeseries must cover for cost basis and
-/// for the historical CZK values of budget and cashflow reports.
-pub fn tx_currencies(conn: &Connection) -> Result<Vec<String>> {
-    let mut set: HashSet<String> = HashSet::new();
-    for sql in [
-        "SELECT DISTINCT currency FROM investment_transactions",
-        "SELECT DISTINCT currency FROM crypto_transactions",
-        "SELECT DISTINCT currency FROM bank_transactions",
-    ] {
-        let mut stmt = conn.prepare(sql)?;
-        let rows = stmt.query_map([], |r| r.get::<_, String>(0))?;
-        set.extend(rows.filter_map(|r| r.ok().map(|c| c.to_uppercase())));
-    }
-    set.remove("CZK");
-    let mut list: Vec<String> = set.into_iter().collect();
-    list.sort();
-    Ok(list)
+/// Every table column that names a currency the user holds, is quoted in or reports in.
+const CURRENCY_COLUMNS: &[(&str, &str)] = &[
+    ("investment_transactions", "currency"),
+    ("crypto_transactions", "currency"),
+    ("bank_transactions", "currency"),
+    ("bank_accounts", "currency"),
+    ("stock_data", "currency"),
+    ("crypto_prices", "currency"),
+    ("bonds", "currency"),
+    ("loans", "currency"),
+    ("real_estate", "purchase_price_currency"),
+    ("real_estate", "market_price_currency"),
+    ("real_estate", "monthly_rent_currency"),
+    ("real_estate_valuations", "currency"),
+    ("other_assets", "currency"),
+    ("other_asset_transactions", "currency"),
+    ("other_asset_valuations", "currency"),
+    ("insurance_policies", "one_time_payment_currency"),
+    ("insurance_policies", "regular_payment_currency"),
+    ("cashflow_items", "currency"),
+    ("budget_goal_versions", "currency"),
+    ("user_profile", "currency"),
+];
+
+/// `(table, currency column, date column)` for every fact that carries both a currency and a
+/// day. Only these decide how far back the rate history has to reach.
+const DATED_CURRENCY_FACTS: &[(&str, &str, &str)] = &[
+    ("investment_transactions", "currency", "transaction_date"),
+    ("crypto_transactions", "currency", "transaction_date"),
+    ("bank_transactions", "currency", "booking_date"),
+    ("other_asset_transactions", "currency", "transaction_date"),
+    ("real_estate_valuations", "currency", "valued_at"),
+    ("other_asset_valuations", "currency", "valued_at"),
+    ("real_estate", "purchase_price_currency", "purchase_date"),
+];
+
+/// Days after which a held currency's newest stored rate counts as stale.
+pub const STALE_AFTER_DAYS: i64 = 14;
+
+fn has_column(conn: &Connection, table: &str, column: &str) -> Result<bool> {
+    Ok(conn.query_row(
+        "SELECT EXISTS(SELECT 1 FROM pragma_table_info(?1) WHERE name = ?2)",
+        [table, column],
+        |r| r.get::<_, bool>(0),
+    )?)
 }
 
-/// Earliest transaction day (any table) in `currency`.
-fn earliest_tx_in(conn: &Connection, currency: &str) -> Result<Option<i64>> {
-    Ok(conn.query_row(
-        "SELECT MIN(d) FROM (
-            SELECT MIN(transaction_date) AS d FROM investment_transactions WHERE UPPER(currency) = ?1
-            UNION ALL
-            SELECT MIN(transaction_date) AS d FROM crypto_transactions WHERE UPPER(currency) = ?1
-            UNION ALL
-            SELECT MIN(booking_date) AS d FROM bank_transactions WHERE UPPER(currency) = ?1
-         ) WHERE d IS NOT NULL",
-        [currency],
-        |r| r.get(0),
-    )?)
+/// Currencies the rate history must cover: every currency found in the user's data (balances,
+/// transactions, price quotes, properties, policies, budgets, the profile), expressed as a
+/// stored source quote. The reference currency needs no rate, a pegged currency is represented
+/// by its anchor, and codes without a published source quote cannot be fetched at all. Sorted.
+pub fn held_currencies(conn: &Connection) -> Result<Vec<String>> {
+    let mut set: BTreeSet<String> = BTreeSet::new();
+    for (table, column) in CURRENCY_COLUMNS {
+        if !has_column(conn, table, column)? {
+            continue;
+        }
+        let mut stmt = conn.prepare(&format!(
+            "SELECT DISTINCT {column} FROM {table} WHERE {column} IS NOT NULL"
+        ))?;
+        let rows = stmt.query_map([], |r| r.get::<_, String>(0))?;
+        for code in rows.filter_map(|r| r.ok()) {
+            let Some(code) = fx::normalize(&code) else {
+                continue;
+            };
+            match fx::derived(&code) {
+                Some((anchor, _)) => set.insert(anchor.to_string()),
+                None => set.insert(code),
+            };
+        }
+    }
+    set.retain(|code| code != REFERENCE && fx::source_codes().contains(code));
+    Ok(set.into_iter().collect())
+}
+
+/// `currency` together with the pegged currencies stored through it.
+fn codes_behind(currency: &str) -> Vec<String> {
+    let mut codes = vec![currency.to_string()];
+    codes.extend(
+        fx::supported_codes()
+            .into_iter()
+            .filter(|code| fx::derived(code).is_some_and(|(anchor, _)| anchor == currency)),
+    );
+    codes
+}
+
+/// Earliest day of any dated fact in `currency` (or in a currency pegged to it).
+fn earliest_day(conn: &Connection, currency: &str) -> Result<Option<i64>> {
+    let codes = codes_behind(currency);
+    let mut earliest: Option<i64> = None;
+    for (table, currency_column, date_column) in DATED_CURRENCY_FACTS {
+        if !has_column(conn, table, currency_column)? || !has_column(conn, table, date_column)? {
+            continue;
+        }
+        let sql = format!(
+            "SELECT MIN({date_column}) FROM {table} WHERE UPPER(TRIM({currency_column})) = ?1"
+        );
+        for code in &codes {
+            let day: Option<i64> = conn.query_row(&sql, [code.as_str()], |r| r.get(0))?;
+            earliest = earliest.into_iter().chain(day).min();
+        }
+    }
+    Ok(earliest)
+}
+
+/// Held currencies whose newest stored rate is more than [`STALE_AFTER_DAYS`] days older than
+/// `today`; values in them use that old rate. A currency without any stored rate is not listed
+/// here (it is reported as missing when a conversion needs it). Sorted.
+pub fn stale_currencies(conn: &Connection, today: i64) -> Result<Vec<String>> {
+    let mut stale = Vec::new();
+    for currency in held_currencies(conn)? {
+        let latest: Option<i64> = conn.query_row(
+            "SELECT MAX(date) FROM exchange_rate_history WHERE UPPER(currency) = ?1",
+            [currency.as_str()],
+            |r| r.get(0),
+        )?;
+        if latest.is_some_and(|day| day < today - STALE_AFTER_DAYS * DAY) {
+            stale.push(currency);
+        }
+    }
+    Ok(stale)
 }
 
 /// First fetch day for history starting at `earliest_tx`.
@@ -74,26 +165,27 @@ fn needed_start(earliest_tx: i64) -> i64 {
 }
 
 /// Day ranges (inclusive, midnight-UTC keys) missing from
-/// `exchange_rate_history` for the given transaction record: the prefix
-/// before the earliest covered day, and the tail since the latest one.
-/// Empty when nothing needs fetching.
+/// `exchange_rate_history` for every held currency: the prefix before the
+/// earliest covered day, and the tail since the latest one. Empty when
+/// nothing needs fetching.
 ///
-/// The prefix is checked per currency: a bank currency first recorded by the
-/// daily writer long after its earliest statement row still needs its
-/// history even when another currency was backfilled further back. A
-/// currency without any recorded rate (one the ECB does not quote) is not
-/// fetched again and again; it stays reported as missing.
+/// The prefix is checked per currency: a currency first recorded by the
+/// daily writer long after its earliest dated fact still needs its history
+/// even when another currency was backfilled further back. A currency
+/// without any recorded rate is not fetched again and again; it stays
+/// reported as missing. A currency without any dated fact (a bare balance
+/// or quote) needs no prefix, only the tail.
 pub fn missing_fx_ranges(conn: &Connection, today: i64) -> Result<Vec<(i64, i64)>> {
-    let symbols = tx_currencies(conn)?;
+    let symbols = held_currencies(conn)?;
+    if symbols.is_empty() {
+        return Ok(Vec::new());
+    }
     let mut earliest = Vec::new();
     for symbol in &symbols {
-        if let Some(day) = earliest_tx_in(conn, symbol)? {
+        if let Some(day) = earliest_day(conn, symbol)? {
             earliest.push((symbol, day));
         }
     }
-    let Some(earliest_tx) = earliest.iter().map(|(_, day)| *day).min() else {
-        return Ok(Vec::new());
-    };
 
     let coverage: Option<(i64, i64)> = conn
         .query_row(
@@ -106,7 +198,10 @@ pub fn missing_fx_ranges(conn: &Connection, today: i64) -> Result<Vec<(i64, i64)
 
     let mut ranges = Vec::new();
     match coverage {
-        None => ranges.push((needed_start(earliest_tx), today)),
+        None => {
+            let from = earliest.iter().map(|(_, day)| *day).min().unwrap_or(today);
+            ranges.push((needed_start(from), today));
+        }
         Some((_, max_date)) => {
             let mut prefix: Option<(i64, i64)> = None;
             for (symbol, first_tx) in &earliest {
@@ -184,7 +279,7 @@ pub fn store_fx_history(conn: &Connection, rows: &[(i64, String, f64)]) -> Resul
 pub async fn ensure_fx_coverage(db: &Database) -> Result<usize> {
     let today = (chrono::Utc::now().timestamp() / DAY) * DAY;
     let (symbols, ranges) =
-        db.with_conn(|conn| Ok((tx_currencies(conn)?, missing_fx_ranges(conn, today)?)))?;
+        db.with_conn(|conn| Ok((held_currencies(conn)?, missing_fx_ranges(conn, today)?)))?;
     if symbols.is_empty() || ranges.is_empty() {
         return Ok(0);
     }
@@ -280,6 +375,16 @@ mod tests {
                 booking_date INTEGER NOT NULL,
                 currency TEXT NOT NULL
             );
+            CREATE TABLE bank_accounts (id TEXT PRIMARY KEY, currency TEXT NOT NULL);
+            CREATE TABLE stock_data (ticker TEXT PRIMARY KEY, currency TEXT NOT NULL);
+            CREATE TABLE real_estate (
+                id TEXT PRIMARY KEY,
+                purchase_price_currency TEXT NOT NULL,
+                market_price_currency TEXT NOT NULL,
+                monthly_rent_currency TEXT,
+                purchase_date INTEGER
+            );
+            CREATE TABLE user_profile (id INTEGER PRIMARY KEY, currency TEXT NOT NULL);
             "#,
         )
         .expect("schema");
@@ -318,7 +423,7 @@ mod tests {
         let conn = setup_db();
         add_bank_tx(&conn, "b1", "gbp", TODAY - 30 * D);
         add_bank_tx(&conn, "b2", "CZK", TODAY - 900 * D);
-        assert_eq!(tx_currencies(&conn).expect("currencies"), vec!["GBP"]);
+        assert_eq!(held_currencies(&conn).expect("currencies"), vec!["GBP"]);
     }
 
     #[test]
@@ -350,18 +455,115 @@ mod tests {
     }
 
     #[test]
-    fn a_currency_the_rate_source_never_quoted_does_not_refetch_forever() {
+    fn a_currency_without_a_source_quote_is_never_fetched() {
         let conn = setup_db();
         add_stock_tx(&conn, "t1", "USD", TODAY - 100 * D);
         add_rate(&conn, TODAY - 110 * D, "USD");
         add_rate(&conn, TODAY, "USD");
-        add_bank_tx(&conn, "b1", "AED", TODAY - 50 * D);
+        add_bank_tx(&conn, "b1", "KWD", TODAY - 500 * D);
 
         assert!(missing_fx_ranges(&conn, TODAY).expect("ranges").is_empty());
     }
 
     #[test]
-    fn tx_currencies_collects_distinct_non_czk_from_both_tables() {
+    fn held_currencies_cover_balances_quotes_properties_and_pegs() {
+        let conn = setup_db();
+        conn.execute_batch(
+            "
+            INSERT INTO bank_accounts (id, currency) VALUES ('a', 'CHF');
+            INSERT INTO stock_data (ticker, currency) VALUES ('CSPX.L', 'USD');
+            INSERT INTO real_estate (id, purchase_price_currency, market_price_currency, monthly_rent_currency) VALUES ('r', 'PLN', 'PLN', NULL);
+            INSERT INTO user_profile (id, currency) VALUES (1, 'AED');
+            INSERT INTO bank_accounts (id, currency) VALUES ('b', 'KWD');
+        ",
+        )
+        .expect("seed");
+        assert_eq!(
+            held_currencies(&conn).expect("held"),
+            vec!["CHF", "PLN", "USD"]
+        );
+    }
+
+    #[test]
+    fn a_pegged_currency_is_covered_through_its_anchor_and_dates_count_for_it() {
+        let conn = setup_db();
+        add_bank_tx(&conn, "b1", "AED", TODAY - 300 * D);
+        add_rate(&conn, TODAY - 5 * D, "USD");
+        add_rate(&conn, TODAY, "USD");
+
+        assert_eq!(held_currencies(&conn).expect("held"), vec!["USD"]);
+        assert_eq!(
+            missing_fx_ranges(&conn, TODAY).expect("ranges"),
+            vec![(TODAY - 310 * D, TODAY - 5 * D)]
+        );
+    }
+
+    #[test]
+    fn a_property_purchase_date_extends_the_history_it_needs() {
+        let conn = setup_db();
+        conn.execute(
+            "INSERT INTO real_estate (id, purchase_price_currency, market_price_currency, purchase_date)
+             VALUES ('r', 'PLN', 'PLN', ?1)",
+            [TODAY - 400 * D],
+        )
+        .expect("seed");
+        add_rate(&conn, TODAY - 20 * D, "PLN");
+        add_rate(&conn, TODAY, "PLN");
+
+        assert_eq!(
+            missing_fx_ranges(&conn, TODAY).expect("ranges"),
+            vec![(TODAY - 410 * D, TODAY - 20 * D)]
+        );
+    }
+
+    #[test]
+    fn a_balance_without_dated_facts_needs_only_the_tail() {
+        let conn = setup_db();
+        conn.execute(
+            "INSERT INTO bank_accounts (id, currency) VALUES ('a', 'CHF')",
+            [],
+        )
+        .expect("seed");
+        add_rate(&conn, TODAY - 200 * D, "CHF");
+        add_rate(&conn, TODAY - 30 * D, "CHF");
+
+        assert_eq!(
+            missing_fx_ranges(&conn, TODAY).expect("ranges"),
+            vec![(TODAY - 30 * D, TODAY)]
+        );
+    }
+
+    #[test]
+    fn a_balance_without_any_history_fetches_the_recent_window() {
+        let conn = setup_db();
+        conn.execute(
+            "INSERT INTO bank_accounts (id, currency) VALUES ('a', 'CHF')",
+            [],
+        )
+        .expect("seed");
+
+        assert_eq!(
+            missing_fx_ranges(&conn, TODAY).expect("ranges"),
+            vec![(TODAY - 10 * D, TODAY)]
+        );
+    }
+
+    #[test]
+    fn stale_currencies_lists_held_currencies_quoted_over_two_weeks_ago() {
+        let conn = setup_db();
+        conn.execute_batch(
+            "INSERT INTO bank_accounts (id, currency) VALUES ('a', 'CHF'), ('b', 'GBP'), ('c', 'PLN');",
+        )
+        .expect("seed");
+        add_rate(&conn, TODAY - 20 * D, "CHF");
+        add_rate(&conn, TODAY - 2 * D, "GBP");
+        // PLN was never quoted: reported as missing elsewhere, not as stale.
+
+        assert_eq!(stale_currencies(&conn, TODAY).expect("stale"), vec!["CHF"]);
+    }
+
+    #[test]
+    fn held_currencies_collects_distinct_non_czk_from_both_tables() {
         let conn = setup_db();
         add_stock_tx(&conn, "t1", "USD", TODAY - 100 * D);
         add_stock_tx(&conn, "t2", "USD", TODAY - 90 * D);
@@ -374,7 +576,7 @@ mod tests {
         )
         .expect("tx");
 
-        let mut symbols = tx_currencies(&conn).expect("currencies");
+        let mut symbols = held_currencies(&conn).expect("currencies");
         symbols.sort();
         assert_eq!(symbols, vec!["EUR".to_string(), "USD".to_string()]);
     }

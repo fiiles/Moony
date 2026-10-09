@@ -376,7 +376,8 @@
     "daysAgo_one": "Před 1 dnem",
     "refresh": "Aktualizovat ceny",
     "refreshing": "Aktualizuji...",
-    "unknownRates": "Neznámý směnný kurz pro: {{currencies}} — součty, které je obsahují, nejsou přesné",
+    "unknownRates": "Nezapočteno do součtů: chybí kurz pro {{currencies}}",
+    "staleRates": "Pro {{currencies}} chybí aktuální kurz — hodnoty používají kurz starší než {{days}} dní",
     "fresh": "Data aktuální"
   },
   "notFound": {

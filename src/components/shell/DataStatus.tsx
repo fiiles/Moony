@@ -11,6 +11,9 @@ import { hasKnownRate } from '@shared/currencies';
 import { cn } from '@/lib/utils';
 import type { ShellStatus, ShellStatusTone } from '@/components/shell/shell-context';
 
+/** Age after which a held currency's newest stored rate counts as stale (mirrors the backend). */
+const STALE_RATE_DAYS = 14;
+
 const toneClass: Record<ShellStatusTone, string> = {
   neutral: 'text-ink-3 before:bg-ink-5',
   fresh: 'text-gain before:bg-gain',
@@ -57,9 +60,9 @@ export function DataStatus({ override }: { override?: ShellStatus }) {
     staleTime: 30000,
   });
 
-  // Currencies with no known exchange rate (internally counted 1:1 against
-  // CZK, the base currency, so totals that include them are inaccurate). The
-  // backend reports the ones it met in a conversion; the display
+  // Currencies with no known exchange rate (their amounts are excluded from
+  // totals, never valued 1:1). The backend reports the ones it met in a
+  // conversion; the display
   // currency is converted on the frontend, so a non-ECB display currency is
   // added here once the rates have loaded.
   const { currencyCode: displayCurrency, ratesTimestamp } = useCurrency();
@@ -72,12 +75,16 @@ export function DataStatus({ override }: { override?: ShellStatus }) {
     ? [...reportedMissing, displayCurrency]
     : reportedMissing;
 
+  // Held currencies whose newest stored rate is more than two weeks old.
+  const staleCurrencies = priceStatus?.staleCurrencies ?? [];
+
   const isStale =
     !!priceStatus &&
     (priceStatus.stocksStale ||
       priceStatus.cryptoStale ||
       priceStatus.exchangeRatesStale ||
-      missingCurrencies.length > 0);
+      missingCurrencies.length > 0 ||
+      staleCurrencies.length > 0);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -183,6 +190,14 @@ export function DataStatus({ override }: { override?: ShellStatus }) {
             {missingCurrencies.length > 0 && (
               <p className="py-2 text-caption text-loss">
                 {t('priceStatus.unknownRates', { currencies: missingCurrencies.join(', ') })}
+              </p>
+            )}
+            {staleCurrencies.length > 0 && (
+              <p className="py-2 text-caption text-loss">
+                {t('priceStatus.staleRates', {
+                  currencies: staleCurrencies.join(', '),
+                  days: STALE_RATE_DAYS,
+                })}
               </p>
             )}
           </div>

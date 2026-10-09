@@ -507,6 +507,10 @@ pub struct PriceStatus {
     /// Currencies whose conversion failed (current or historical) since the last
     /// rate load; those amounts are excluded from totals, never valued 1:1
     pub missing_currencies: Vec<String>,
+    /// Held currencies whose newest stored exchange rate is more than 14 days old;
+    /// their values use that old rate
+    #[serde(rename = "staleCurrencies")]
+    pub stale_currencies: Vec<String>,
 }
 
 /// Staleness thresholds in hours
@@ -610,6 +614,10 @@ pub fn get_price_status(db: State<'_, Database>) -> Result<PriceStatus> {
             stocks_missing_price: stocks_missing,
             crypto_missing_price: crypto_missing,
             missing_currencies: crate::services::fx::missing_now(),
+            stale_currencies: crate::services::fx_backfill::stale_currencies(
+                conn,
+                (now / 86_400) * 86_400,
+            )?,
         })
     })
 }

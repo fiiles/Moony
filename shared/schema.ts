@@ -391,8 +391,10 @@ export interface PriceStatus {
   exchangeRatesAgeHours: number | null;
   stocksMissingPrice: number;
   cryptoMissingPrice: number;
-  /** Currency codes with no known exchange rate this session (converted 1:1 to CZK) */
+  /** Currency codes with no known exchange rate this session (excluded from totals) */
   missingCurrencies: string[];
+  /** Held currencies whose newest stored exchange rate is more than 14 days old */
+  staleCurrencies: string[];
 }
 
 export interface PortfolioMetricsHistory {

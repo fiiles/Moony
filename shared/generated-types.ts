@@ -1026,7 +1026,12 @@ cryptoMissingPrice: number;
  * Currencies whose conversion failed (current or historical) since the last
  * rate load; those amounts are excluded from totals, never valued 1:1
  */
-missingCurrencies: string[] }
+missingCurrencies: string[]; 
+/**
+ * Held currencies whose newest stored exchange rate is more than 14 days old;
+ * their values use that old rate
+ */
+staleCurrencies: string[] }
 
 /**
  * Projection settings for a specific asset type

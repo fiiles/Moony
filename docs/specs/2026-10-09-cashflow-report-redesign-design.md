@@ -32,12 +32,14 @@ direction. The report makes that model the organizing principle:
 - **Expenses** are rows of kind `expense`, grouped by category, signed so that a credit in
   an expense category is a refund that lowers the category. A category may go negative
   in a month when the refund arrives after the month boundary; the row keeps its sign.
-- **Investments, savings and transfers** are rows of kind `investment`, `transfer`,
-  `financing` or `adjustment`. They are not consumption and never enter income, expenses
-  or the savings rate. They are grouped by category (Investments, Savings, Internal
-  Transfers, any custom category of those kinds); uncategorized rows of a kind form one
-  row named after the kind. Amounts are credit-positive: money leaving the tracked
-  accounts is negative.
+- **Investments, savings and transfers** are rows of kind `transfer`. They are not
+  consumption and never enter income, expenses or the savings rate. They are grouped by
+  category (Investments, Savings, Internal Transfers, any custom category of kind
+  transfer); transfer rows without a category form one row "Přesuny bez kategorie".
+  Amounts are credit-positive: money leaving the tracked accounts is negative.
+- **What the money is lives in the category, how it counts lives in the role.** Investment,
+  savings and an account-to-account transfer count the same way, so they share one role
+  and differ only by category.
 - **Investment yield is income.** Dividends, interest and rent belong in a category of
   kind income, never in Investments (there they would read as returned capital).
 
@@ -54,11 +56,34 @@ direction. The report makes that model the organizing principle:
 - Changes `cat_savings` from kind `expense` to `transfer`, only when it is still
   `expense`. A user who already chose another kind keeps it. Historical reports change
   accordingly: savings leave expenses and the savings rate rises. The changelog says so.
+- Collapses the roles to three. Every category and every explicit row override with kind
+  `investment`, `financing` or `adjustment` becomes `transfer`; `cat_investments` is
+  among them. These four kinds already behave identically in every report, so no total
+  changes; only the grouping label of uncategorized explicit overrides does.
 - `SYSTEM_CATEGORY_DEFAULT_NAMES` and `categoryNames.*` in both locales gain the two ids.
 
-The category editor's "Role v přehledech" select keeps its six roles. Savings is not a
-role because saving is a transfer; financing (loan principal) and adjustment
-(corrections) are rare but have no other home.
+### Three roles
+
+`FlowKind` becomes `'income' | 'expense' | 'transfer'` in Rust (`models/bank_transactions.rs`:
+enum, `Display`, `FromStr`) and in `shared/schema.ts`. The database CHECK constraints on
+`transaction_categories.kind` and `bank_transactions.flow_kind` keep listing the old six
+values: narrowing a CHECK needs a rebuild of `bank_transactions`, which is not worth the
+risk, and after migration 010 the app never writes or reads the removed values.
+
+The category editor's "Role v přehledech" select and the ledger's explicit flow select
+offer the three roles (the ledger adds "Automaticky"). Labels:
+
+| Role | cs | en |
+|---|---|---|
+| income | Příjem | Income |
+| expense | Výdaj | Expense |
+| transfer | Přesun peněz | Money transfer |
+
+The help text under the category role select becomes: cs "Příjem a výdaj tvoří přehled
+příjmů a výdajů. Přesun peněz se do nich nepočítá: investice, spoření, převody mezi
+účty." en "Income and expense make up the income and spending report. A money transfer
+counts as neither: investing, saving, moving money between accounts." The MCP budgeting
+tool description drops "loan financing and adjustments".
 
 ## Page design
 
@@ -106,8 +131,8 @@ table is expected to be the tallest, so the right column stacks the two shorter 
 Every table has three columns: name with the transaction count, share (progress bar and
 percent, share of the sum of absolute amounts), amount. No "vs. previous" column. Rows
 sort by amount, largest first (absolute amount in the third card). Uncategorized rows are
-named "Nezařazeno" in the expense and income tables; in the third card an uncategorized
-row is named after its kind ("Převod", "Financování", "Úprava", "Investice").
+named "Nezařazeno" in the expense and income tables and "Přesuny bez kategorie" in the
+third card.
 
 **The whole row is the click target.** The row shows the pointer and the table hover; the
 existing text button stays for keyboard users and is stretched over the row with an
@@ -147,7 +172,7 @@ bank accounts.
 ### CSV export
 
 Sections: months of the chart window (month, income, expenses); expense categories;
-income categories; other flows (name, amount, transactions). No previous-period columns.
+income categories; transfers (name, amount, transactions). No previous-period columns.
 File name `cashflow-<period label>.csv`.
 
 ## Contract
@@ -192,15 +217,15 @@ interface CashflowActuals {
   totalExpenses: string;
   /** totalIncome − totalExpenses */
   netBalance: string;
-  /** netBalance + the sum of otherFlows */
+  /** netBalance + the sum of transfers */
   bankCashMovement: string;
   averageIncome: string | null;
   averageExpenses: string | null;
   averageCompletedMonths: number[];
   expenseCategories: CashflowGroup[];
   incomeCategories: CashflowGroup[];
-  /** investment, transfer, financing and adjustment rows by category */
-  otherFlows: CashflowGroup[];
+  /** transfer rows by category */
+  transfers: CashflowGroup[];
   accountCount: number;
   transactionCount: number;
 }
@@ -209,8 +234,8 @@ interface CashflowActuals {
 Removed: `range`, `rangeStart/End`, `previousStart/End`, `previousQuality`,
 `previousIncome/Expenses`, `incomeSources`, `nonconsumptionFlows`, `CashflowGroup.previousAmount`,
 `CashflowMonth.nonconsumptionFlows` and `CashflowMonth.bankCashMovement`.
-`BudgetingReport.nonconsumptionFlows` keeps using `CashflowGroup` with `key` and `name`
-set to the kind and `flowKind` set to the same kind. `CashflowRange` leaves `schema.ts`.
+`BudgetingReport.nonconsumptionFlows` keeps using `CashflowGroup`; it now holds at most
+one group, `key` and `name` `transfer`, `flowKind` `transfer`. `CashflowRange` leaves `schema.ts`.
 
 ### Frontend wrappers (`src/lib/tauri-api.ts`)
 
@@ -241,8 +266,10 @@ Query key: `['cashflow-report', 'actuals', start, end, accountIds, currencyCode,
 
 - Design system README decision 4 is rewritten: period navigation, no comparison,
   income by category, the third card, in-place categorization.
-- `docs/architecture/database.md`: the `transaction_categories` row mentions migration
-  010 (two income categories, Savings as transfer).
+- `docs/architecture/overview.md`: the money-flow paragraphs describe three roles.
+- `docs/architecture/database.md`: the `transaction_categories` and `bank_transactions`
+  rows mention migration 010 (Salary rename, two income categories, Savings as transfer,
+  three roles, CHECK constraints still listing the old values).
 - `CHANGELOG.md` Unreleased: the redesign, the Salary rename, the two new income
   categories, and the Savings change with its effect on history.
 - Budgets' period strings move to `common.json` (`periods.timeframe.*`, `periods.prev.*`,
@@ -253,10 +280,11 @@ Query key: `['cashflow-report', 'actuals', start, end, accountIds, currencyCode,
 - Rust service tests with a raw in-memory connection: chart window for a month, a
   quarter and a year; period totals exclude window rows outside the period; refunds in
   expense categories net and never enter income; income grouped by category with an
-  uncategorized row; other flows grouped by category with per-kind uncategorized rows;
-  bank cash movement reconciles with income − expenses + other flows; averages and
+  uncategorized row; transfers grouped by category with one uncategorized row;
+  bank cash movement reconciles with income − expenses + transfers; averages and
   quality scoped to the period; account scope; invalid period rejected; migration 010 on
-  a fresh database and on one where the user had already changed Savings.
+  a fresh database, on one where the user renamed Income or changed Savings, and on rows
+  and categories with the removed kinds; `FlowKind::from_str` rejects the removed kinds.
 - TypeScript tests for pure utilities only: the CSV builder, the "moved row" rule of the
   dialog (`src/utils/report-drilldown.ts`), existing period utilities.
 - No component or hook tests. Gates: lint, typecheck, vitest, cargo fmt/clippy/test,
@@ -264,6 +292,7 @@ Query key: `['cashflow-report', 'actuals', start, end, accountIds, currencyCode,
 
 ## Out of scope
 
-The Cashflow planning page, MCP tools (their cashflow report is the planned one), the
-bank ledger, automatic categorization of reimbursements, and any change to Budgets beyond
-the shared period control and the shared dialog.
+The Cashflow planning page, MCP tools beyond the budgeting tool description (their
+cashflow report is the planned one), the bank ledger beyond its explicit flow select,
+automatic categorization of reimbursements, and any change to Budgets beyond the shared
+period control and the shared dialog.

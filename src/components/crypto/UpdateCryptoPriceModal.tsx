@@ -9,6 +9,7 @@ import type { CryptoHoldingData } from '@shared/calculations';
 import type { CurrencyCode } from '@shared/currencies';
 import { cryptoApi } from '@/lib/tauri-api';
 import { useCurrency } from '@/lib/currency';
+import { plainDecimal } from '@/utils/plain-decimal';
 import { useFormat } from '@/lib/use-format';
 import {
   Dialog,
@@ -66,7 +67,7 @@ export function UpdateCryptoPriceModal({
     if (investment && open) {
       const native = Number(investment.originalPrice ?? investment.currentPrice) || 0;
       form.reset({
-        price: native ? String(Number(native.toFixed(2))) : '',
+        price: native ? plainDecimal(native) : '',
         currency: investment.currency || userCurrency,
       });
     }
@@ -144,7 +145,7 @@ export function UpdateCryptoPriceModal({
                     </FormLabel>
                     <InputWrap unit={currency}>
                       <FormControl>
-                        <Input type="number" step="0.01" placeholder="0" autoFocus {...field} />
+                        <Input type="number" step="any" placeholder="0" autoFocus {...field} />
                       </FormControl>
                     </InputWrap>
                     <FormMessage />

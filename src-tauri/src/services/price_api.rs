@@ -539,7 +539,7 @@ pub async fn refresh_crypto_prices(
                         uuid::Uuid::new_v4().to_string(),
                         &ticker_upper,
                         &coingecko_id,
-                        format!("{:.2}", usd_price),
+                        price_text(usd_price),
                         "USD",
                         now,
                     ],
@@ -1200,6 +1200,13 @@ fn sane_dividend_yield(dividend_yield: Option<f64>, trailing_yield: Option<f64>)
         .or_else(|| trailing_yield.filter(plausible))
 }
 
+/// Persisted crypto price as decimal TEXT at full precision. `f64` Display is the
+/// shortest round-trip form, never uses exponent notation and prints whole numbers
+/// without a fraction ("2"), so sub-cent prices survive.
+fn price_text(price: f64) -> String {
+    price.to_string()
+}
+
 /// Format an Option<f64> to a decimal string, dropping non-finite values
 fn fmt_f64(v: Option<f64>, decimals: usize) -> Option<String> {
     v.filter(|x| x.is_finite())
@@ -1502,6 +1509,14 @@ pub async fn get_stock_price_range(ticker: &str, period: &str) -> Result<Vec<Sto
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn crypto_price_keeps_sub_cent_precision() {
+        assert_eq!(price_text(0.00001234), "0.00001234");
+        assert_eq!(price_text(0.00000001), "0.00000001");
+        assert_eq!(price_text(64250.5), "64250.5");
+        assert_eq!(price_text(2.0), "2");
+    }
 
     #[test]
     fn simple_price_parses_integer_and_float_prices() {

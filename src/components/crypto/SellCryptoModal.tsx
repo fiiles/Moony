@@ -72,7 +72,7 @@ export function SellCryptoModal({ investment, open, onOpenChange }: SellCryptoMo
     const native = Number(investment.originalPrice ?? investment.currentPrice) || 0;
     form.reset({
       quantity: 0,
-      pricePerUnit: native ? Number(native.toFixed(2)) : 0,
+      pricePerUnit: native ? Number(native.toPrecision(12)) : 0,
       currency: (investment.currency as CurrencyCode) || 'USD',
       date: new Date().toISOString().split('T')[0],
     });
@@ -181,16 +181,7 @@ export function SellCryptoModal({ investment, open, onOpenChange }: SellCryptoMo
                     </FormLabel>
                     <InputWrap unit={currency}>
                       <FormControl>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          {...field}
-                          onBlur={(e) => {
-                            const value = parseFloat(e.target.value);
-                            if (!isNaN(value)) field.onChange(value.toFixed(2));
-                            field.onBlur();
-                          }}
-                        />
+                        <Input type="number" step="any" {...field} />
                       </FormControl>
                     </InputWrap>
                     <FormMessage />

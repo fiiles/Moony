@@ -146,7 +146,7 @@ Grouped by owning domain (see the domain map in `overview.md`).
 | `stock_tags` | User tags for grouping investments | `name UNIQUE`; `group_id` FK ON DELETE SET NULL |
 | `stock_investment_tags` | Investment ↔ tag many-to-many join | Composite PK `(investment_id, tag_id)`; both FKs ON DELETE CASCADE |
 | `stock_tag_groups` | Optional grouping of tags (e.g. "Strategy") | `name UNIQUE` |
-| `stock_value_history` | Daily CZK value per ticker (also feeds portfolio trend) | `UNIQUE(ticker, recorded_at)`; `value_czk`, native `price`+`currency`, `is_stale` |
+| `stock_value_history` | Daily native value per ticker (also feeds portfolio trend) | `UNIQUE(ticker, recorded_at)`; native `quantity`, `price`+`currency`, `is_stale`; values convert per response at the row's day (the `value_czk` cache was dropped in migration 011) |
 
 ### Crypto
 
@@ -156,7 +156,7 @@ Grouped by owning domain (see the domain map in `overview.md`).
 | `crypto_transactions` | Buy/sell transactions per crypto position | FK `investment_id` ON DELETE CASCADE; index on `ticker` (for MCP import dedup) |
 | `crypto_prices` | Fetched CoinGecko price cache | `symbol UNIQUE`; `coingecko_id` |
 | `crypto_price_overrides` | Manual price overrides (win over `crypto_prices`) | `symbol UNIQUE` |
-| `crypto_value_history` | Daily CZK value per crypto ticker (also feeds portfolio trend) | `UNIQUE(ticker, recorded_at)`; `value_czk`, `is_stale` |
+| `crypto_value_history` | Daily native value per crypto ticker (also feeds portfolio trend) | `UNIQUE(ticker, recorded_at)`; native `quantity`, `price`+`currency`, `is_stale` (`value_czk` dropped in migration 011) |
 
 ### Bonds
 
@@ -203,7 +203,7 @@ Grouped by owning domain (see the domain map in `overview.md`).
 
 | Table | Purpose | Notable columns / constraints |
 |---|---|---|
-| `portfolio_metrics_history` | Daily net-worth snapshots per asset class | Totals as CZK TEXT (`total_savings`, `total_loans_principal`, …, `total_other_assets`); `is_stale`; seven `*_by_currency` JSON TEXT `DEFAULT '{}'`; `source` TEXT `'live'`/`'backfill'` provenance — live rows are authentic records, backfill rows may be rebuilt. Index on `recorded_at`. `get_portfolio_history` returns `source`; the dashboard draws backfilled days dashed because their static classes (accounts, bonds, real estate, loans) are carried from the nearest live row |
+| `portfolio_metrics_history` | Daily net-worth snapshots per asset class | Native breakdowns only: seven `*_by_currency` JSON TEXT `DEFAULT '{}'` (`real_estate_by_currency` holds every property) plus `real_estate_personal_by_currency` (the personal subset; investment real estate is the difference per currency). The CZK `total_*` columns were dropped in migration 011 (legacy rows without breakdowns got `{"CZK": total}` once); readers convert each row at its day (`services/net_worth.rs`). `is_stale`; `source` TEXT `'live'`/`'backfill'` provenance — live rows are authentic records, backfill rows may be rebuilt. Index on `recorded_at`. `get_portfolio_history` returns `source`; the dashboard draws backfilled days dashed because their static classes (accounts, bonds, real estate, loans) are carried from the nearest live row |
 
 (`stock_value_history` and `crypto_value_history` above also feed this domain's trend charts.)
 

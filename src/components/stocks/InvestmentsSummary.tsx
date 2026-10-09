@@ -11,6 +11,7 @@ interface InvestmentsSummaryProps {
     totalCost: number;
     overallGainLoss: number;
     overallGainLossPercent: number;
+    /** Yearly dividend estimate in CZK (backend `dividendYield` is CZK per share) */
     estimatedDividendYield: number;
     topPerformer: { ticker: string; companyName?: string; gainLossPercent: number } | null;
   };
@@ -33,7 +34,7 @@ export function InvestmentsSummary({
   latestFetchedAt,
   isLoading,
 }: InvestmentsSummaryProps) {
-  const { formatCurrencyRaw, currencyCode } = useCurrency();
+  const { formatCurrency, formatCurrencyRaw, currencyCode } = useCurrency();
   const fmt = useFormat();
   const { t } = useTranslation('stocks');
 
@@ -79,7 +80,7 @@ export function InvestmentsSummary({
       />
       <Stat
         label={t('summary.estimatedDividend')}
-        value={formatCurrencyRaw(metrics.estimatedDividendYield)}
+        value={formatCurrency(metrics.estimatedDividendYield)}
         note={t('summary.next12Months')}
       />
       <Stat

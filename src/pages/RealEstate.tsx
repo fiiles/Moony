@@ -86,7 +86,7 @@ export default function RealEstatePage() {
   const { t: tc } = useTranslation('common');
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
-  const { formatCurrency, formatCurrencySigned } = useCurrency();
+  const { formatCurrency, formatCurrencySigned, convert, currencyCode } = useCurrency();
   const fmt = useFormat();
   const { user } = useAuth();
   const excludePersonal = user?.excludePersonalRealEstate ?? false;
@@ -376,7 +376,11 @@ export default function RealEstatePage() {
 
           <PortfolioTrendCard
             type="realEstate"
-            currentValue={totals.value + (excludePersonal ? personalValue : 0)}
+            currentValue={convert(
+              totals.value + (excludePersonal ? personalValue : 0),
+              'CZK',
+              currencyCode
+            )}
           />
 
           <Card variant="table">

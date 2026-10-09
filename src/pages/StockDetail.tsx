@@ -80,7 +80,7 @@ export default function StockDetail() {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const id = params?.id;
-  const { formatCurrencyRaw, currencyCode, convert } = useCurrency();
+  const { formatCurrency, formatCurrencyRaw, currencyCode, convert } = useCurrency();
   const { t } = useTranslation('stocks');
   const { t: tc } = useTranslation('common');
   const fmt = useFormat();
@@ -204,8 +204,10 @@ export default function StockDetail() {
   const unrealized = currentValue - totalInvested;
   const unrealizedPct = totalInvested > 0 ? unrealized / totalInvested : 0;
   const dividendPerShare = investment?.dividendYield || 0;
+  // `dividendYield` is the yearly dividend per share in CZK.
   const yearlyDividend = quantity * dividendPerShare;
-  const dividendYieldPct = currentValue > 0 ? yearlyDividend / currentValue : 0;
+  const dividendYieldPct =
+    currentValue > 0 ? convert(yearlyDividend, 'CZK', preferredCurrency) / currentValue : 0;
 
   const sells = (transactions ?? []).filter((tx) => tx.type === 'sell');
   const lastBuy = (transactions ?? [])
@@ -583,7 +585,7 @@ export default function StockDetail() {
               <TooltipContent>{t('detail.dividendYieldTooltip')}</TooltipContent>
             </Tooltip>
           }
-          value={yearlyDividend > 0 ? formatCurrencyRaw(yearlyDividend) : '—'}
+          value={yearlyDividend > 0 ? formatCurrency(yearlyDividend) : '—'}
           note={
             yearlyDividend > 0
               ? `${t('detail.dividendNote', { percent: fmt.percent(dividendYieldPct, 1) })}${investment.isManualDividend ? ` · ${t('detail.manual')}` : ''}`

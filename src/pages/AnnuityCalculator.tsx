@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { ChevronDown } from 'lucide-react';
 import { useCurrency } from '@/lib/currency';
 import { useFormat } from '@/lib/use-format';
+import type { CurrencyCode } from '@shared/currencies';
 import { useLoans } from '@/hooks/use-loans';
 import { useShellPage } from '@/components/shell/shell-context';
 import {
@@ -64,7 +65,7 @@ const DAY = 86_400;
  */
 export default function AnnuityCalculator() {
   const { t } = useTranslation('calculators');
-  const { formatCurrencyRaw, currencyCode } = useCurrency();
+  const { formatCurrencyRaw, currencyCode, convert } = useCurrency();
   const fmt = useFormat();
   const { loans } = useLoans();
 
@@ -128,7 +129,14 @@ export default function AnnuityCalculator() {
   const saving = withExtra ? base.totalInterest - withExtra.totalInterest : 0;
 
   const loadLoan = (loan: (typeof loans)[number]) => {
-    setAmount(fmt.number(parseFloat(loan.principal) || 0, { maximumFractionDigits: 0 }));
+    setAmount(
+      fmt.number(
+        convert(Number(loan.principal) || 0, loan.currency as CurrencyCode, currencyCode),
+        {
+          maximumFractionDigits: 0,
+        }
+      )
+    );
     setRate(fmt.number(parseFloat(loan.interestRate) || 0, { maximumFractionDigits: 2 }));
     if (loan.endDate) {
       const span = Math.max(1, Math.round((loan.endDate - loan.startDate) / DAY / 365.25));

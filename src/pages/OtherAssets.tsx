@@ -37,7 +37,7 @@ export default function OtherAssets() {
   const { t } = useTranslation('otherAssets');
   const { t: tc } = useTranslation('common');
   const queryClient = useQueryClient();
-  const { formatCurrency, formatCurrencySigned } = useCurrency();
+  const { formatCurrency, formatCurrencySigned, convert, currencyCode } = useCurrency();
   const fmt = useFormat();
   const [modal, setModal] = useState<Modal>(null);
   const [selected, setSelected] = useState<OtherAsset | null>(null);
@@ -181,7 +181,10 @@ export default function OtherAssets() {
             />
           </Stats>
 
-          <PortfolioTrendCard type="otherAssets" currentValue={totals.value} />
+          <PortfolioTrendCard
+            type="otherAssets"
+            currentValue={convert(totals.value, 'CZK', currencyCode)}
+          />
 
           <OtherAssetsTable
             rows={rows}

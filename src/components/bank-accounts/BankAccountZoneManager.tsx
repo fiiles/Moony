@@ -12,7 +12,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Plus, Trash2, Edit2, AlertCircle } from 'lucide-react';
-import { useCurrency } from '@/lib/currency';
+import { useFormat } from '@/lib/use-format';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface ZoneData {
@@ -25,12 +25,15 @@ interface ZoneData {
 interface BankAccountZoneManagerProps {
   zones: ZoneData[];
   onChange: (zones: ZoneData[]) => void;
+  /** Currency of the account; zone thresholds are in this currency. */
+  currency: string;
 }
 
-export function BankAccountZoneManager({ zones, onChange }: BankAccountZoneManagerProps) {
+export function BankAccountZoneManager({ zones, onChange, currency }: BankAccountZoneManagerProps) {
   const { t } = useTranslation('bank_accounts');
   const { t: tc } = useTranslation('common');
-  const { formatCurrency } = useCurrency();
+  const fmt = useFormat();
+  const formatCurrency = (amount: number) => fmt.money(amount, currency);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [formData, setFormData] = useState<ZoneData>({
     fromAmount: '',

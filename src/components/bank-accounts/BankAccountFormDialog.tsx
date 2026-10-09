@@ -430,7 +430,11 @@ export function BankAccountFormDialog({
             <div className="space-y-2">
               <Label>{t('form.zonesLabel')}</Label>
               <p className="mb-3 text-micro font-500 text-ink-4">{t('form.zonesDescription')}</p>
-              <BankAccountZoneManager zones={zones} onChange={setZones} />
+              <BankAccountZoneManager
+                zones={zones}
+                onChange={setZones}
+                currency={selectedCurrency}
+              />
             </div>
           )}
 

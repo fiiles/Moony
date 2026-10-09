@@ -20,7 +20,7 @@ export function InsuranceSummary({ metrics, today }: InsuranceSummaryProps) {
   const { currencyCode } = useCurrency();
   const fmt = useFormat();
   const duration = useDurationText('insurance');
-  const formatCurrency = (value: number) => fmt.money(value, currencyCode, { decimals: 0 });
+  const money = (value: number) => fmt.money(value, currencyCode, { decimals: 0 });
   const compact = (value: number) =>
     fmt.money(value, currencyCode, {
       compact: true,
@@ -38,9 +38,9 @@ export function InsuranceSummary({ metrics, today }: InsuranceSummaryProps) {
     <Stats>
       <Stat
         label={t('summary.yearly')}
-        value={formatCurrency(metrics.yearlyTotal)}
+        value={money(metrics.yearlyTotal)}
         note={t('summary.yearlyNote', {
-          monthly: formatCurrency(metrics.yearlyTotal / 12),
+          monthly: money(metrics.yearlyTotal / 12),
           policies: t('policies', { count: metrics.activeCount }),
         })}
       />
@@ -50,7 +50,7 @@ export function InsuranceSummary({ metrics, today }: InsuranceSummaryProps) {
         note={
           next
             ? t('summary.nextPaymentNote', {
-                amount: formatCurrency(next.amount),
+                amount: money(next.amount),
                 policies:
                   next.rows.length === 1
                     ? next.rows[0].policy.policyName

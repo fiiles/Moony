@@ -22,7 +22,7 @@ export function PaymentCalendarCard({ rows, today }: PaymentCalendarCardProps) {
   const { t } = useTranslation('insurance');
   const { currencyCode } = useCurrency();
   const fmt = useFormat();
-  const formatCurrency = (value: number) => fmt.money(value, currencyCode, { decimals: 0 });
+  const money = (value: number) => fmt.money(value, currencyCode, { decimals: 0 });
 
   // In the main currency; payments without a rate stay out (the page note names them)
   const months = useMemo(() => paymentCalendar(rows, today), [rows, today]);
@@ -44,9 +44,7 @@ export function PaymentCalendarCard({ rows, today }: PaymentCalendarCardProps) {
     <TrendCard
       title={t('calendar.title')}
       subtitle={t('calendar.subtitle')}
-      aside={
-        <Badge variant="outline">{t('calendar.total', { amount: formatCurrency(total) })}</Badge>
-      }
+      aside={<Badge variant="outline">{t('calendar.total', { amount: money(total) })}</Badge>}
       legend={
         <ChartLegend
           items={[
@@ -55,10 +53,10 @@ export function PaymentCalendarCard({ rows, today }: PaymentCalendarCardProps) {
           ]}
           note={
             even
-              ? t('calendar.evenNote', { amount: formatCurrency(total / 12) })
+              ? t('calendar.evenNote', { amount: money(total / 12) })
               : t('calendar.peakNote', {
                   month: fmt.month(new Date(peak.month * 1000)),
-                  amount: formatCurrency(peak.monthly + peak.other),
+                  amount: money(peak.monthly + peak.other),
                 })
           }
         />
@@ -81,7 +79,7 @@ export function PaymentCalendarCard({ rows, today }: PaymentCalendarCardProps) {
             lines: [
               `${fmt.day(r.anniversary!)} · ${
                 r.yearly !== null
-                  ? formatCurrency(r.yearly)
+                  ? money(r.yearly)
                   : fmt.money(r.yearlyNative.amount, r.yearlyNative.currency, { decimals: 0 })
               } ${t('table.perYearShort')}`,
             ],

@@ -266,6 +266,7 @@ export default function Stocks() {
           <PortfolioTrendCard<TradeDayEvent>
             type="investments"
             currentValue={metrics.totalValue}
+            missingCurrencies={positions?.fxQuality.missingCurrencies}
             isRefreshing={refreshPricesMutation.isPending}
             earliest={earliest}
             events={trendEvents}

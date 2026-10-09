@@ -20,7 +20,7 @@ export function LoansSummary({ metrics, today }: LoansSummaryProps) {
   const { t } = useTranslation('loans');
   const { currencyCode } = useCurrency();
   const fmt = useFormat();
-  const formatCurrency = (value: number) => fmt.money(value, currencyCode, { decimals: 0 });
+  const money = (value: number) => fmt.money(value, currencyCode, { decimals: 0 });
   const text = useLoanText();
 
   const repaidShare =
@@ -31,10 +31,10 @@ export function LoansSummary({ metrics, today }: LoansSummaryProps) {
   const paymentsNote = metrics.nextPayoff
     ? t('summary.paymentsAfter', {
         month: text.monthYear(metrics.nextPayoff.day),
-        amount: formatCurrency(metrics.nextPayoff.paymentsAfter),
+        amount: money(metrics.nextPayoff.paymentsAfter),
         name: metrics.nextPayoff.row.loan.name,
       })
-    : t('summary.paymentsYear', { amount: formatCurrency(metrics.totalMonthlyPayment * 12) });
+    : t('summary.paymentsYear', { amount: money(metrics.totalMonthlyPayment * 12) });
 
   const fixation = metrics.nextFixation;
   const expired = metrics.expiredFixation;
@@ -43,21 +43,21 @@ export function LoansSummary({ metrics, today }: LoansSummaryProps) {
     <Stats>
       <Stat
         label={t('summary.outstanding')}
-        value={formatCurrency(metrics.totalOutstanding)}
+        value={money(metrics.totalOutstanding)}
         note={`${t('loans', { count: metrics.activeCount })} · ${t('summary.repaidOf', {
           percent: fmt.percent(repaidShare, 0),
-          principal: formatCurrency(metrics.totalPrincipal),
+          principal: money(metrics.totalPrincipal),
         })}`}
       />
       <Stat
         label={t('summary.payments')}
-        value={formatCurrency(metrics.totalMonthlyPayment)}
+        value={money(metrics.totalMonthlyPayment)}
         note={paymentsNote}
       />
       <Stat
         label={t('summary.rate')}
         value={fmt.percent(metrics.averageInterestRate / 100, 2)}
-        note={t('summary.rateNote', { interest: formatCurrency(metrics.interestNext12) })}
+        note={t('summary.rateNote', { interest: money(metrics.interestNext12) })}
       />
       <Stat
         label={t('summary.fixation')}

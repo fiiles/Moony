@@ -1,5 +1,8 @@
-import type { Loan, RealEstate } from '@shared/schema';
+import type { InsurancePolicy, Loan, LoanSchedule, RealEstate } from '@shared/schema';
+import { annualizeAmount } from '@shared/calculations';
 import { MissingTracker, type ConvertAtFn, type ConvertFn } from '@shared/fx';
+
+const DAY = 86_400;
 
 /** An amount in its own currency (a blank currency is CZK, the legacy default). */
 export interface NativeAmount {
@@ -136,5 +139,120 @@ export function propertiesSummary(rows: readonly PropertyRow[]): PropertiesSumma
     personalValue: sum(rows.filter((r) => r.personal).map((r) => r.value)),
     missing: [...new Set(counted.flatMap((r) => r.missing))],
     missingPurchase: [...new Set(counted.flatMap((r) => r.missingPurchase))],
+  };
+}
+
+/** Yearly factor of a recurring real-estate cost (`monthly` / `quarterly` / `yearly`). */
+export function yearlyFactor(frequency: string | undefined): number {
+  switch ((frequency || '').toLowerCase()) {
+    case 'monthly':
+      return 12;
+    case 'quarterly':
+      return 4;
+    default:
+      return 1;
+  }
+}
+
+/**
+ * The property's yearly balance in the main currency. Every line is null when any of its
+ * amounts has no rate (never counted as 0); the `has*` flags come from the native amounts,
+ * so a line without a rate still exists.
+ */
+export interface YearlyBalance {
+  rent: number | null;
+  recurring: number | null;
+  insurance: number | null;
+  /** The linked loans' payments of a year. */
+  payments: number | null;
+  /** Interest and principal in the payments due within the next 12 months. */
+  interest: number | null;
+  principal: number | null;
+  /** rent − recurring − insurance − interest; null when any of them is unknown. */
+  netIncome: number | null;
+  /** netIncome − principal. */
+  cashflow: number | null;
+  hasRent: boolean;
+  hasRecurring: boolean;
+  hasPayments: boolean;
+  hasPrincipal: boolean;
+  /** Currencies of the amounts without a rate. */
+  missing: string[];
+}
+
+/** Sum of converted parts; null when any part is unknown. */
+function sumKnown(values: readonly (number | null)[]): number | null {
+  let total = 0;
+  for (const value of values) {
+    if (value === null) return null;
+    total += value;
+  }
+  return total;
+}
+
+export function yearlyBalance(
+  property: RealEstate,
+  loans: readonly Loan[],
+  schedules: readonly (LoanSchedule | undefined)[],
+  insurances: readonly InsurancePolicy[],
+  today: number,
+  convert: ConvertFn
+): YearlyBalance {
+  const tracker = new MissingTracker();
+  const toMain = (amount: number, currency: string | null | undefined) => {
+    const code = currency || 'CZK';
+    return tracker.track(code, amount === 0 ? 0 : convert(amount, code));
+  };
+  const rentMonth = Number(property.monthlyRent) || 0;
+  const rent = toMain(rentMonth * 12, property.monthlyRentCurrency);
+  const recurringNative = (property.recurringCosts ?? []).map((c) => ({
+    amount: (Number(c.amount) || 0) * yearlyFactor(c.frequency),
+    currency: c.currency,
+  }));
+  const recurring = sumKnown(recurringNative.map((c) => toMain(c.amount, c.currency)));
+  const insurance = sumKnown(
+    insurances.map((p) =>
+      toMain(
+        annualizeAmount(Number(p.regularPayment) || 0, p.paymentFrequency),
+        p.regularPaymentCurrency
+      )
+    )
+  );
+  const paymentsNative = loans.map((l) => (Number(l.monthlyPayment) || 0) * 12);
+  const payments = sumKnown(loans.map((l, i) => toMain(paymentsNative[i], l.currency)));
+  // Next 12 payments split by the schedules; a missing schedule falls back to rate × balance
+  const horizon = today + 365 * DAY;
+  const split = loans.map((loan, i) => {
+    const schedule = schedules[i];
+    if (schedule) {
+      const next = schedule.rows.filter((r) => r.dueDay > today && r.dueDay <= horizon);
+      return {
+        interest: next.reduce((s, r) => s + Number(r.interest), 0),
+        principal: next.reduce((s, r) => s + Number(r.principalPart), 0),
+      };
+    }
+    const interest = (Number(loan.outstandingBalance) * (Number(loan.interestRate) || 0)) / 100;
+    return { interest, principal: paymentsNative[i] - interest };
+  });
+  const interest = sumKnown(split.map((p, i) => toMain(p.interest, loans[i].currency)));
+  const principal = sumKnown(split.map((p, i) => toMain(p.principal, loans[i].currency)));
+  const netIncome =
+    rent !== null && recurring !== null && insurance !== null && interest !== null
+      ? rent - recurring - insurance - interest
+      : null;
+  return {
+    rent,
+    recurring,
+    insurance,
+    payments,
+    interest,
+    principal,
+    netIncome,
+    cashflow: netIncome !== null && principal !== null ? netIncome - principal : null,
+    hasRent: rentMonth > 0,
+    hasRecurring: recurringNative.some((c) => c.amount > 0),
+    hasPayments: paymentsNative.some((p) => p > 0),
+    hasPrincipal: split.some((p) => p.principal > 0),
+    missing: tracker.missing,
   };
 }

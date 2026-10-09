@@ -39,10 +39,10 @@ export default function OtherAssets() {
   const { t } = useTranslation('otherAssets');
   const { t: tc } = useTranslation('common');
   const queryClient = useQueryClient();
-  const { currencyCode } = useCurrency();
+  const { currencyCode, fxReady } = useCurrency();
   const fmt = useFormat();
-  const formatCurrency = (value: number) => fmt.money(value, currencyCode, { decimals: 0 });
-  const formatCurrencySigned = (value: number) =>
+  const money = (value: number) => fmt.money(value, currencyCode, { decimals: 0 });
+  const signedMoney = (value: number) =>
     fmt.money(value, currencyCode, { signed: true, decimals: 0 });
   const [modal, setModal] = useState<Modal>(null);
   const [selected, setSelected] = useState<OtherAsset | null>(null);
@@ -157,7 +157,7 @@ export default function OtherAssets() {
         }
       />
 
-      {isLoading ? (
+      {isLoading || !fxReady ? (
         <Stats>
           <StatSkeleton />
           <StatSkeleton />
@@ -182,22 +182,22 @@ export default function OtherAssets() {
           <Stats>
             <Stat
               label={t('summary.value')}
-              value={formatCurrency(totals.value)}
+              value={money(totals.value)}
               note={t('summary.assets', { count: assets.length })}
             />
             <Stat
               label={t('summary.gain')}
-              value={formatCurrencySigned(gain)}
+              value={signedMoney(gain)}
               tone={gain > 0 ? 'gain' : gain < 0 ? 'loss' : 'neutral'}
               note={
                 totals.gainCost > 0
-                  ? `${fmt.percent(gain / totals.gainCost, 1, { signed: true })} ${t('summary.vsCost', { amount: formatCurrency(totals.gainCost) })}`
+                  ? `${fmt.percent(gain / totals.gainCost, 1, { signed: true })} ${t('summary.vsCost', { amount: money(totals.gainCost) })}`
                   : t('summary.noCost')
               }
             />
             <Stat
               label={t('summary.yearlyYield')}
-              value={formatCurrencySigned(totals.yield)}
+              value={signedMoney(totals.yield)}
               tone={totals.yield > 0 ? 'gain' : 'neutral'}
               noteTone="neutral"
               note={

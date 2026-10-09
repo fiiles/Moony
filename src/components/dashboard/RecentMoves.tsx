@@ -107,8 +107,8 @@ export function RecentMoves({ moves, isLoading }: { moves: RecentMove[]; isLoadi
                     'text-ink-2'
                 )}
               >
-                {sign}
                 <ConvertedMoney
+                  prefix={sign}
                   value={convertAt(move.amount, move.currency, move.date)}
                   amount={move.amount}
                   currency={move.currency}

@@ -112,13 +112,16 @@ export function InsuranceTable({
   const endedCount = rows.filter((r) => r.ended).length;
   const types = useMemo(() => [...new Set(rows.map((r) => r.policy.type))].sort(), [rows]);
   const typeLabel = (value: string) => t(`typeShort.${value}`, { defaultValue: value });
-  const formatCurrency = (value: number) => fmt.money(value, currencyCode, { decimals: 0 });
+  const money = (value: number) => fmt.money(value, currencyCode, { decimals: 0 });
   /** A main-currency total, compact. */
   const compact = (value: number) =>
     fmt.money(value, currencyCode, {
       compact: true,
       decimals: 2,
     });
+
+  /** What the premium column sorts by: the yearly premium, the lump sum for a one-time policy. */
+  const premiumOrder = (r: InsuranceRow) => (r.frequency === 'one_time' ? r.oneTime : r.yearly);
 
   const handleSort = (column: SortColumn) => {
     if (sortColumn === column) setSortDirection((d) => (d === 'asc' ? 'desc' : 'asc'));
@@ -142,7 +145,7 @@ export function InsuranceTable({
           });
           break;
         case 'premium':
-          c = compareConverted(a.yearly || a.oneTime, b.yearly || b.oneTime);
+          c = compareConverted(premiumOrder(a), premiumOrder(b));
           break;
         case 'coverage':
           c = compareConverted(a.coverage, b.coverage);
@@ -229,7 +232,7 @@ export function InsuranceTable({
     const yearly = t('table.perYear', {
       amount:
         r.yearly !== null
-          ? formatCurrency(r.yearly)
+          ? money(r.yearly)
           : fmt.money(r.yearlyNative.amount, r.yearlyNative.currency, { decimals: 0 }),
     });
     return (
@@ -418,7 +421,7 @@ export function InsuranceTable({
                         {fmt.day(r.nextPayment)}
                         {sub(
                           r.premium !== null
-                            ? formatCurrency(r.premium)
+                            ? money(r.premium)
                             : fmt.money(r.premiumNative.amount, r.premiumNative.currency, {
                                 decimals: 0,
                               })
@@ -476,7 +479,7 @@ export function InsuranceTable({
         <span>
           {t('policies', { count: active.length })} ·{' '}
           {t('table.footer.yearly', {
-            amount: formatCurrency(active.reduce((s, r) => s + (r.yearly ?? 0), 0)),
+            amount: money(active.reduce((s, r) => s + (r.yearly ?? 0), 0)),
           })}{' '}
           ·{' '}
           {t('table.footer.coverage', {

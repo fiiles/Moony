@@ -72,7 +72,7 @@ export function OtherAssetsTable({
   const { t } = useTranslation('otherAssets');
   const { currencyCode } = useCurrency();
   const fmt = useFormat();
-  const formatCurrency = (value: number) => fmt.money(value, currencyCode, { decimals: 0 });
+  const money = (value: number) => fmt.money(value, currencyCode, { decimals: 0 });
   const signed = { signed: true, decimals: 0 };
   const [search, setSearch] = useState('');
   const [sortColumn, setSortColumn] = useState<SortColumn>('value');
@@ -346,8 +346,8 @@ export function OtherAssetsTable({
       <div className="flex items-center justify-between border-t border-line px-[14px] py-3 text-micro font-500 text-ink-4">
         <span>
           {t('table.footer.count', { count: visible.length })} ·{' '}
-          {t('table.footer.value', { amount: formatCurrency(totalValue) })} ·{' '}
-          {t('table.footer.cost', { amount: formatCurrency(totalCost) })}
+          {t('table.footer.value', { amount: money(totalValue) })} ·{' '}
+          {t('table.footer.cost', { amount: money(totalCost) })}
         </span>
         <span>{t('table.footer.yieldNote')}</span>
       </div>

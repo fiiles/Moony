@@ -29,7 +29,7 @@ type Modal = 'add' | 'edit' | 'delete' | null;
 export default function Bonds() {
   const { t } = useTranslation('bonds');
   const { bonds, metrics, isLoading, today, convert } = useBonds();
-  const { currencyCode } = useCurrency();
+  const { currencyCode, fxReady } = useCurrency();
   const { createMutation, updateMutation, deleteMutation } = useBondMutations();
   const [modal, setModal] = useState<Modal>(null);
   const [selected, setSelected] = useState<Bond | null>(null);
@@ -77,7 +77,7 @@ export default function Bonds() {
         }
       />
 
-      {isLoading ? (
+      {isLoading || !fxReady ? (
         <Stats>
           <StatSkeleton />
           <StatSkeleton />

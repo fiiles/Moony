@@ -82,10 +82,10 @@ export default function BankAccounts() {
   const [, setLocation] = useLocation();
   const { accounts, isLoading } = useBankAccounts();
   const { createAccount, updateAccount, deleteAccount } = useBankAccountMutations();
-  const { currencyCode } = useCurrency();
+  const { currencyCode, fxReady } = useCurrency();
   const convert = useMainConvert();
   const fmt = useFormat();
-  const formatCurrencyRaw = (value: number) => fmt.money(value, currencyCode);
+  const money = (value: number) => fmt.money(value, currencyCode);
   const queryClient = useQueryClient();
   const activity = useBankAccountActivity(accounts);
 
@@ -230,9 +230,7 @@ export default function BankAccounts() {
   const trendValue = totals.balance;
   const foreign = [...totals.currencies].filter((c) => c !== currencyCode);
   const excludedNote =
-    totals.excluded !== 0
-      ? t('metrics.excludedHint', { amount: formatCurrencyRaw(totals.excluded) })
-      : null;
+    totals.excluded !== 0 ? t('metrics.excludedHint', { amount: money(totals.excluded) }) : null;
   const isEmpty = !isLoading && accounts.length === 0;
 
   return (
@@ -272,7 +270,7 @@ export default function BankAccounts() {
         }
       />
 
-      {isLoading ? (
+      {isLoading || !fxReady ? (
         <Stats columns={3}>
           <StatSkeleton />
           <StatSkeleton />
@@ -300,7 +298,7 @@ export default function BankAccounts() {
           <Stats columns={3}>
             <Stat
               label={t('metrics.totalOnAccounts')}
-              value={formatCurrencyRaw(totals.balance)}
+              value={money(totals.balance)}
               note={[
                 `${t('metrics.accounts', { count: accounts.length })} · ${t('metrics.currencies', { count: totals.currencies.size })}`,
                 excludedNote,
@@ -545,7 +543,7 @@ export default function BankAccounts() {
             <div className="flex items-center justify-between border-t border-line px-[14px] py-3 text-micro font-500 text-ink-4">
               <span>
                 {t('metrics.accounts', { count: rows.length })} · {t('table.total')}{' '}
-                <span className="num">{formatCurrencyRaw(totals.balance)}</span>
+                <span className="num">{money(totals.balance)}</span>
                 {excludedNote && ` ${excludedNote}`}
               </span>
               <span className="num">

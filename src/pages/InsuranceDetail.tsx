@@ -59,7 +59,7 @@ export default function InsuranceDetail() {
   const { t } = useTranslation('insurance');
   const { t: tc } = useTranslation('common');
   const fmt = useFormat();
-  const { currencyCode, fxConvert } = useCurrency();
+  const { currencyCode, fxConvert, fxReady } = useCurrency();
   const duration = useDurationText('insurance');
   const { rows, metrics, isLoading, today } = useInsurance();
   const { setStatus, remove } = useInsuranceMutations();
@@ -103,7 +103,8 @@ export default function InsuranceDetail() {
       : undefined,
   });
 
-  if (isLoading) {
+  // Until the quotes load, a null conversion would read as a missing rate
+  if (isLoading || !fxReady) {
     return (
       <>
         <BackLink href="/insurance">{t('detail.backToList')}</BackLink>

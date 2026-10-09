@@ -25,7 +25,7 @@ interface BondsLadderCardProps {
 export function BondsLadderCard({ bonds, today, convert }: BondsLadderCardProps) {
   const { currencyCode } = useCurrency();
   const fmt = useFormat();
-  const formatCurrency = (value: number) => fmt.money(value, currencyCode, { decimals: 0 });
+  const money = (value: number) => fmt.money(value, currencyCode, { decimals: 0 });
   const { t } = useTranslation('bonds');
 
   const ladder = useMemo(() => bondLadder(bonds, today, convert), [bonds, today, convert]);
@@ -53,8 +53,8 @@ export function BondsLadderCard({ bonds, today, convert }: BondsLadderCardProps)
           ]}
           note={t('ladder.note', {
             year: ladder[ladder.length - 1].year,
-            principal: formatCurrency(totals.principal),
-            coupons: formatCurrency(totals.coupons),
+            principal: money(totals.principal),
+            coupons: money(totals.coupons),
           })}
         />
       }
@@ -64,7 +64,7 @@ export function BondsLadderCard({ bonds, today, convert }: BondsLadderCardProps)
         stacked
         height={TREND_CHART_HEIGHT}
         names={[t('ladder.principal'), t('ladder.coupons')]}
-        formatValue={(v) => formatCurrency(v)}
+        formatValue={(v) => money(v)}
         marks={
           nearest?.maturityDate && nearestYear !== null
             ? [
@@ -73,7 +73,7 @@ export function BondsLadderCard({ bonds, today, convert }: BondsLadderCardProps)
                   title: t('ladder.nearest'),
                   lines: [
                     `${fmt.day(nearest.maturityDate)} · ${nearest.name}`,
-                    formatCurrency(ladder.find((y) => y.year === nearestYear)?.principal ?? 0),
+                    money(ladder.find((y) => y.year === nearestYear)?.principal ?? 0),
                   ],
                 },
               ].filter((m) => m.index >= 0)

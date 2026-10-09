@@ -60,7 +60,7 @@ export function LoansTable({ rows, today, onEdit, onDelete }: LoansTableProps) {
   const { t } = useTranslation('loans');
   const { currencyCode } = useCurrency();
   const fmt = useFormat();
-  const formatCurrency = (value: number) => fmt.money(value, currencyCode, { decimals: 0 });
+  const money = (value: number) => fmt.money(value, currencyCode, { decimals: 0 });
   const text = useLoanText();
   const [, setLocation] = useLocation();
   const [showMatured, setShowMatured] = useState(false);
@@ -363,8 +363,8 @@ export function LoansTable({ rows, today, onEdit, onDelete }: LoansTableProps) {
       <div className="flex items-center justify-between gap-6 border-t border-line px-[14px] py-3 text-micro font-500 text-ink-4">
         <span>
           {t('table.footer.count', { count: active.length })} ·{' '}
-          {t('table.footer.outstanding', { amount: formatCurrency(totalOutstanding) })} ·{' '}
-          {t('table.footer.payments', { amount: formatCurrency(totalPayments) })}
+          {t('table.footer.outstanding', { amount: money(totalOutstanding) })} ·{' '}
+          {t('table.footer.payments', { amount: money(totalPayments) })}
         </span>
         <span>{t('table.footer.note')}</span>
       </div>

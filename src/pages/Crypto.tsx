@@ -273,6 +273,7 @@ export default function Crypto() {
           <PortfolioTrendCard<TradeDayEvent>
             type="crypto"
             currentValue={metrics.totalValue}
+            missingCurrencies={positions?.fxQuality.missingCurrencies}
             isRefreshing={refreshPricesMutation.isPending}
             earliest={earliest}
             events={trendEvents}

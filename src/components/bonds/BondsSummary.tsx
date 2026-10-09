@@ -5,6 +5,7 @@ import { useFormat } from '@/lib/use-format';
 import { Stat, Stats } from '@/components/common/Stat';
 import { untilText } from '@/components/bonds/bond-until';
 import { bondCurrency, bondFaceValue } from '@/utils/bonds';
+import { ConvertedMoney } from '@/components/common/ConvertedMoney';
 
 interface BondsSummaryProps {
   metrics: BondsMetrics;
@@ -24,6 +25,10 @@ export function BondsSummary({ metrics, today }: BondsSummaryProps) {
   const nearest = metrics.nearest;
 
   const income = metrics.projectedYearlyIncome;
+  // "returns {{amount}}" around the amount, which carries the missing marker without a rate
+  const [returnsBefore, returnsAfter = ''] = t('summary.returns', { amount: '\u0000' }).split(
+    '\u0000'
+  );
   const issuesNote = [
     t('summary.issues', { count: metrics.liveCount }),
     metrics.currencies.length > 1
@@ -47,21 +52,19 @@ export function BondsSummary({ metrics, today }: BondsSummaryProps) {
         label={t('summary.nearestMaturity')}
         value={metrics.nearest?.maturityDate ? fmt.day(metrics.nearest.maturityDate) : '—'}
         note={
-          metrics.nearest?.maturityDate
-            ? `${untilText(t, metrics.nearest.maturityDate, today, fmt.day)} · ${t(
-                'summary.returns',
-                {
-                  amount:
-                    metrics.nearestValue !== null
-                      ? money(metrics.nearestValue)
-                      : nearest
-                        ? fmt.money(bondFaceValue(nearest), bondCurrency(nearest), {
-                            decimals: 0,
-                          })
-                        : '',
-                }
-              )}`
-            : t('summary.noMaturity')
+          metrics.nearest?.maturityDate && nearest ? (
+            <>
+              {untilText(t, metrics.nearest.maturityDate, today, fmt.day)} · {returnsBefore}
+              <ConvertedMoney
+                value={metrics.nearestValue}
+                amount={bondFaceValue(nearest)}
+                currency={bondCurrency(nearest)}
+              />
+              {returnsAfter}
+            </>
+          ) : (
+            t('summary.noMaturity')
+          )
         }
       />
       <Stat

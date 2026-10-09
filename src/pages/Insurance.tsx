@@ -33,7 +33,7 @@ type Modal = 'add' | 'edit' | 'end' | 'delete' | null;
 export default function Insurance() {
   const { t } = useTranslation('insurance');
   const [, navigate] = useLocation();
-  const { currencyCode } = useCurrency();
+  const { currencyCode, fxReady } = useCurrency();
   const fmt = useFormat();
   const { rows, metrics, isLoading, today } = useInsurance();
   const { setStatus, remove } = useInsuranceMutations();
@@ -87,7 +87,7 @@ export default function Insurance() {
         }
       />
 
-      {isLoading ? (
+      {isLoading || !fxReady ? (
         <Stats>
           <StatSkeleton />
           <StatSkeleton />

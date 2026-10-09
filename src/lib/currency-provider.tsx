@@ -22,7 +22,7 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
   const { getLocale } = useLanguage();
   const queryClient = useQueryClient();
   const [ratesTimestamp, setRatesTimestamp] = useState(0);
-  const { quotes: fx, revision: fxRevision } = useFxSnapshot();
+  const { quotes: fx, revision: fxRevision, isLoading: fxLoading } = useFxSnapshot();
 
   // Derive currencyCode from user profile - no need for separate state
   const currencyCode = useMemo<CurrencyCode>(() => {
@@ -159,6 +159,7 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
         currency,
         fx,
         fxRevision,
+        fxReady: !fxLoading,
         fxConvert,
         setCurrency,
         formatCurrency,

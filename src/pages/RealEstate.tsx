@@ -71,10 +71,10 @@ export default function RealEstatePage() {
   const { t: tc } = useTranslation('common');
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
-  const { currencyCode } = useCurrency();
+  const { currencyCode, fxReady } = useCurrency();
   const fmt = useFormat();
-  const formatCurrency = (value: number) => fmt.money(value, currencyCode, { decimals: 0 });
-  const formatCurrencySigned = (value: number) =>
+  const money = (value: number) => fmt.money(value, currencyCode, { decimals: 0 });
+  const signedMoney = (value: number) =>
     fmt.money(value, currencyCode, { signed: true, decimals: 0 });
   const { user } = useAuth();
   const excludePersonal = user?.excludePersonalRealEstate ?? false;
@@ -260,7 +260,7 @@ export default function RealEstatePage() {
   /** The purchase price in the main currency at its day, or native while that day has no rate. */
   const purchaseText = (r: PropertyRow) =>
     r.purchase !== null
-      ? formatCurrency(r.purchase)
+      ? money(r.purchase)
       : fmt.money(r.purchaseNative.amount, r.purchaseNative.currency, { decimals: 0 });
   /** Muted second line of a cell: one line, the full text in the title. */
   const sub = (text: string, title: string = text) => (
@@ -292,7 +292,7 @@ export default function RealEstatePage() {
         }
       />
 
-      {isLoading ? (
+      {isLoading || !fxReady ? (
         <Stats>
           <StatSkeleton />
           <StatSkeleton />
@@ -321,13 +321,13 @@ export default function RealEstatePage() {
           <Stats>
             <Stat
               label={t('summary.marketValue')}
-              value={formatCurrency(totals.value)}
+              value={money(totals.value)}
               note={[
                 t('summary.properties', { count: counted.length }),
                 personalValue > 0
                   ? excludePersonal
-                    ? t('summary.excludedNote', { amount: formatCurrency(personalValue) })
-                    : t('summary.includedNote', { amount: formatCurrency(personalValue) })
+                    ? t('summary.excludedNote', { amount: money(personalValue) })
+                    : t('summary.includedNote', { amount: money(personalValue) })
                   : null,
               ]
                 .filter(Boolean)
@@ -335,17 +335,17 @@ export default function RealEstatePage() {
             />
             <Stat
               label={t('summary.appreciationTitle')}
-              value={formatCurrencySigned(totals.appreciation)}
+              value={signedMoney(totals.appreciation)}
               tone={totals.appreciation >= 0 ? 'gain' : 'loss'}
-              note={`${fmt.percent(totals.purchase > 0 ? totals.appreciation / totals.purchase : 0, 1, { signed: true })} ${t('summary.vsPurchase', { amount: formatCurrency(totals.purchase) })}`}
+              note={`${fmt.percent(totals.purchase > 0 ? totals.appreciation / totals.purchase : 0, 1, { signed: true })} ${t('summary.vsPurchase', { amount: money(totals.purchase) })}`}
             />
             <Stat
               label={t('summary.equity')}
-              value={formatCurrency(totals.equity)}
+              value={money(totals.equity)}
               note={
                 totals.loans > 0
                   ? t('summary.equityNote', {
-                      amount: formatCurrency(totals.loans),
+                      amount: money(totals.loans),
                       ltv: fmt.percent(
                         totals.equityValue > 0 ? totals.loans / totals.equityValue : 0,
                         0
@@ -356,13 +356,13 @@ export default function RealEstatePage() {
             />
             <Stat
               label={t('summary.grossRentYear')}
-              value={formatCurrencySigned(totals.rent)}
+              value={signedMoney(totals.rent)}
               tone={totals.rent > 0 ? 'gain' : 'neutral'}
               noteTone="neutral"
               note={
                 totals.rent > 0
                   ? t('summary.rentNote', {
-                      monthly: formatCurrency(totals.rent / 12),
+                      monthly: money(totals.rent / 12),
                       yield: fmt.percent(totals.rented > 0 ? totals.rent / totals.rented : 0, 1),
                     })
                   : t('summary.noRent')
@@ -512,7 +512,7 @@ export default function RealEstatePage() {
                             main('—', 'text-ink-4')
                           ) : (
                             <>
-                              {main(formatCurrencySigned(r.appreciation), 'font-650')}
+                              {main(signedMoney(r.appreciation), 'font-650')}
                               {sub(
                                 fmt.percent(
                                   r.purchase !== null && r.purchase > 0
@@ -547,7 +547,7 @@ export default function RealEstatePage() {
                           {r.equity === null
                             ? main('—', 'text-ink-4')
                             : main(
-                                formatCurrency(r.equity),
+                                money(r.equity),
                                 cn('font-650', r.excluded ? 'text-ink-3' : 'text-ink')
                               )}
                           {sub(
@@ -606,8 +606,8 @@ export default function RealEstatePage() {
             <div className="flex items-center justify-between border-t border-line px-[14px] py-3 text-micro font-500 text-ink-4">
               <span>
                 {t('table.footer.count', { count: counted.length })} ·{' '}
-                {t('table.footer.value', { amount: formatCurrency(totals.value) })} ·{' '}
-                {t('table.footer.equity', { amount: formatCurrency(totals.equity) })}
+                {t('table.footer.value', { amount: money(totals.value) })} ·{' '}
+                {t('table.footer.equity', { amount: money(totals.equity) })}
               </span>
               {personalValue > 0 && (
                 <span>

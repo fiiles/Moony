@@ -10,6 +10,11 @@ export type CurrencyContextValue = {
   /** Fetched-at seconds of the quotes; part of every converted query key. */
   fxRevision: number;
   /**
+   * The quotes have loaded (or failed to). Until then a null conversion means "pending",
+   * not "missing": no missing marker, no missing note.
+   */
+  fxReady: boolean;
+  /**
    * Convert at the current quotes; `to` defaults to the profile currency.
    * Null when a quote is missing (never 1:1). Renamed to `convert` in Task 21.
    */

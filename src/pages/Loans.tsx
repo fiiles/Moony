@@ -31,7 +31,7 @@ export default function Loans() {
   const { t } = useTranslation('loans');
   const fmt = useFormat();
   const { rows, metrics, isLoading, today, convert } = useLoans();
-  const { currencyCode } = useCurrency();
+  const { currencyCode, fxReady } = useCurrency();
   const { createMutation, updateMutation, deleteMutation } = useLoanMutations();
   const [modal, setModal] = useState<Modal>(null);
   const [selected, setSelected] = useState<Loan | null>(null);
@@ -80,7 +80,7 @@ export default function Loans() {
         }
       />
 
-      {isLoading ? (
+      {isLoading || !fxReady ? (
         <Stats>
           <StatSkeleton />
           <StatSkeleton />

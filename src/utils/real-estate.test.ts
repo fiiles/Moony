@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { Loan, RealEstate } from '@shared/schema';
-import { propertiesSummary, propertyRow } from './real-estate';
+import type { InsurancePolicy, Loan, RealEstate } from '@shared/schema';
+import { propertiesSummary, propertyRow, yearlyBalance } from './real-estate';
 
 const DAY = 86_400;
 /** Today: 1 EUR = 25 CZK; no rate for KWD. */
@@ -32,8 +32,15 @@ function property(partial: Partial<RealEstate>): RealEstate {
   };
 }
 
-const loan = (outstandingBalance: string, currency = 'CZK') =>
-  ({ id: 'l', outstandingBalance, currency }) as Loan;
+const loan = (outstandingBalance: string, currency = 'CZK', extra: Partial<Loan> = {}) =>
+  ({
+    id: 'l',
+    outstandingBalance,
+    currency,
+    monthlyPayment: '0',
+    interestRate: '0',
+    ...extra,
+  }) as Loan;
 
 describe('propertyRow', () => {
   it('derives appreciation, yield, equity and LTV', () => {
@@ -99,6 +106,11 @@ describe('propertyRow', () => {
     expect(kwd.purchase).toBeNull();
     expect(kwd.equity).toBeNull();
     expect(kwd.loans).toBe(1_000_000);
+    // A linked loan without a rate leaves the equity unknown, not inflated
+    const withKwdLoan = propertyRow(property({}), [loan('1000', 'KWD')], false, convert, convertAt);
+    expect(withKwdLoan.loans).toBeNull();
+    expect(withKwdLoan.equity).toBeNull();
+    expect(withKwdLoan.missing).toEqual(['KWD']);
     expect(kwd.valueNative).toEqual({ amount: 90_000, currency: 'KWD' });
     const s = propertiesSummary([czk, kwd]);
     expect(s.value).toBe(5_000_000);
@@ -115,5 +127,55 @@ describe('propertyRow', () => {
     const s = propertiesSummary([home]);
     expect(s.value).toBe(0);
     expect(s.personalValue).toBe(5_000_000);
+  });
+});
+
+describe('yearlyBalance', () => {
+  const TODAY = 1_000 * DAY;
+  const policy = (regularPayment: string, regularPaymentCurrency: string) =>
+    ({ regularPayment, regularPaymentCurrency, paymentFrequency: 'monthly' }) as InsurancePolicy;
+
+  it('sums the year in the main currency', () => {
+    const b = yearlyBalance(
+      property({
+        recurringCosts: [{ name: 'Fond', amount: 100, currency: 'EUR', frequency: 'monthly' }],
+      }),
+      [loan('1200000', 'CZK', { monthlyPayment: '10000', interestRate: '5' })],
+      [undefined],
+      [policy('500', 'CZK')],
+      TODAY,
+      convert
+    );
+    expect(b.rent).toBe(240_000);
+    expect(b.recurring).toBe(30_000);
+    expect(b.insurance).toBe(6_000);
+    expect(b.payments).toBe(120_000);
+    // Without a schedule: interest = rate × balance, the rest of the payments is principal
+    expect(b.interest).toBe(60_000);
+    expect(b.principal).toBe(60_000);
+    expect(b.netIncome).toBe(240_000 - 30_000 - 6_000 - 60_000);
+    expect(b.cashflow).toBe(144_000 - 60_000);
+    expect(b.missing).toEqual([]);
+  });
+
+  it('keeps a line without a rate unknown, not 0, and still existing', () => {
+    const b = yearlyBalance(
+      property({ monthlyRent: '500', monthlyRentCurrency: 'KWD' }),
+      [loan('100000', 'KWD', { monthlyPayment: '1000', interestRate: '3' })],
+      [undefined],
+      [],
+      TODAY,
+      convert
+    );
+    expect(b.rent).toBeNull();
+    expect(b.payments).toBeNull();
+    expect(b.interest).toBeNull();
+    expect(b.netIncome).toBeNull();
+    expect(b.cashflow).toBeNull();
+    expect(b.hasRent).toBe(true);
+    expect(b.hasPayments).toBe(true);
+    expect(b.hasPrincipal).toBe(true);
+    expect(b.insurance).toBe(0);
+    expect(b.missing).toEqual(['KWD']);
   });
 });

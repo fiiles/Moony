@@ -25,6 +25,9 @@
 use crate::error::{AppError, Result};
 use rusqlite::Connection;
 
+#[cfg(test)]
+mod dry_run;
+
 /// Run all database migrations
 pub fn run_migrations(conn: &Connection) -> Result<()> {
     run_chain(conn, &all_migrations())

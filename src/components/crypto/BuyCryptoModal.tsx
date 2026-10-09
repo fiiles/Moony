@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import type { CryptoHoldingData } from '@shared/calculations';
+import type { CryptoRow } from '@/utils/positions';
 import { currencyCodeSchema, type CurrencyCode } from '@shared/currencies';
 import { requiredNumber } from '@/utils/form-schemas';
 import { cryptoApi } from '@/lib/tauri-api';
@@ -41,7 +41,7 @@ const formSchema = z.object({
 });
 
 interface BuyCryptoModalProps {
-  investment: CryptoHoldingData | null;
+  investment: CryptoRow | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
@@ -67,11 +67,11 @@ export function BuyCryptoModal({ investment, open, onOpenChange }: BuyCryptoModa
   // The native rate (usually USD) is the sensible prefill
   useEffect(() => {
     if (!investment || !open) return;
-    const native = Number(investment.originalPrice ?? investment.currentPrice) || 0;
+    const native = investment.originalCurrentPrice;
     form.reset({
       quantity: 0,
       pricePerUnit: native ? Number(native.toPrecision(12)) : 0,
-      currency: (investment.currency as CurrencyCode) || 'USD',
+      currency: investment.originalCurrency as CurrencyCode,
       date: new Date().toISOString().split('T')[0],
     });
   }, [investment, open, form]);

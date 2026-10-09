@@ -62,14 +62,11 @@ export function ManualPriceModal({ open, onOpenChange, investment }: ManualPrice
   // Reset form when investment changes
   useEffect(() => {
     if (investment && open) {
-      // Use originalPrice (in stock's currency) for prefill, not currentPrice (which is converted to CZK)
-      // Six decimals, as the price is stored (same as BuyInvestmentModal).
-      const priceToShow = Number(
-        investment.originalCurrentPrice ?? investment.originalPrice ?? investment.currentPrice
-      );
+      // Prefill the native price; six decimals, as the price is stored (as BuyInvestmentModal)
+      const priceToShow = investment.originalCurrentPrice;
       form.reset({
         price: priceToShow ? String(Number(priceToShow.toFixed(6))) : '',
-        currency: investment.originalCurrency || investment.currency || userCurrency,
+        currency: investment.originalCurrency || userCurrency,
       });
     }
   }, [investment, open, form, userCurrency]);

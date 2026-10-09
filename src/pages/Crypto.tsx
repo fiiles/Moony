@@ -4,16 +4,10 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { Bitcoin, Plus, RefreshCw } from 'lucide-react';
-import type { CryptoInvestmentWithPrice } from '@shared/types';
-import type { CryptoTransaction } from '@shared/schema';
+import type { CryptoPositions, CryptoTransaction } from '@shared/schema';
 import type { CurrencyCode } from '@shared/currencies';
-import {
-  calculateCryptoPortfolioMetrics,
-  calculatePositionCostBasis,
-  calculateRealizedGains,
-  mapCryptoInvestmentToHolding,
-} from '@shared/calculations';
 import { cryptoApi, exportApi, priceApi } from '@/lib/tauri-api';
+import { amountOf, percentOfCost, toCryptoRow } from '@/utils/positions';
 import { useCurrency } from '@/lib/currency';
 import { useFormat } from '@/lib/use-format';
 import { useDatedConvert } from '@/hooks/use-dated-convert';
@@ -38,7 +32,8 @@ import { SellCryptoModal } from '@/components/crypto/SellCryptoModal';
 import { UpdateCryptoPriceModal } from '@/components/crypto/UpdateCryptoPriceModal';
 import { CoinGeckoApiKeyBanner } from '@/components/crypto/CoinGeckoApiKeyBanner';
 import { CryptoSummary } from '@/components/crypto/CryptoSummary';
-import { CryptoTable, type CryptoRow } from '@/components/crypto/CryptoTable';
+import { CryptoTable, type CryptoTableRow } from '@/components/crypto/CryptoTable';
+import { ConversionQualityNote } from '@/components/reports/ReportQualityNote';
 
 type RowModal = 'buy' | 'sell' | 'price' | 'delete' | null;
 
@@ -47,15 +42,15 @@ export default function Crypto() {
   const { t: tc } = useTranslation('common');
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
-  const { convert, currencyCode, formatCurrency } = useCurrency();
+  const { currencyCode, fxRevision, formatCurrency } = useCurrency();
   const fmt = useFormat();
   const [addOpen, setAddOpen] = useState(false);
   const [rowModal, setRowModal] = useState<RowModal>(null);
-  const [selected, setSelected] = useState<CryptoRow | null>(null);
+  const [selected, setSelected] = useState<CryptoTableRow | null>(null);
 
-  const { data: cryptoInvestments, isLoading } = useQuery<CryptoInvestmentWithPrice[]>({
-    queryKey: ['crypto'],
-    queryFn: () => cryptoApi.getAll(),
+  const { data: positions, isLoading } = useQuery<CryptoPositions>({
+    queryKey: ['crypto', currencyCode, fxRevision],
+    queryFn: () => cryptoApi.getAll(currencyCode),
     refetchOnMount: true,
     staleTime: 60 * 1000,
   });
@@ -66,10 +61,9 @@ export default function Crypto() {
     staleTime: 60 * 1000,
   });
 
-  // Date-aware conversion over the transactions' range: historical amounts
-  // convert at their own day's rates (ADR 0001).
+  // Date-aware conversion for the trade markers of the trend card, which still plots the
+  // CZK history (its amounts convert at their own day's rates, ADR 0001).
   const convertAt = useDatedConvert(allTransactions);
-  const preferredCurrency = currencyCode as CurrencyCode;
 
   const txsByInvestment = useMemo(() => {
     const map = new Map<string, CryptoTransaction[]>();
@@ -112,11 +106,6 @@ export default function Crypto() {
     };
   };
 
-  // Realized gains (WAC) in total, each leg at its day's rate
-  const realizedGain = useMemo(() => {
-    if (!allTransactions || allTransactions.length === 0) return 0;
-    return calculateRealizedGains(allTransactions, convertAt, preferredCurrency);
-  }, [allTransactions, convertAt, preferredCurrency]);
   const sellCount = (allTransactions ?? []).filter((tx) => tx.type === 'sell').length;
 
   const refreshPricesMutation = useMutation({
@@ -148,73 +137,53 @@ export default function Crypto() {
     },
   });
 
-  // Holdings in the display currency: market value from the native rate at
-  // today's FX, cost basis from the transactions at their own day's rates.
-  const holdings = useMemo((): CryptoRow[] => {
-    const rows = (cryptoInvestments || []).map((inv) => {
-      const quantity = parseFloat(String(inv.quantity)) || 0;
-      const txs = txsByInvestment.get(inv.id) ?? [];
-      const averagePrice = calculatePositionCostBasis(
-        txs,
-        convertAt,
-        preferredCurrency
-      ).averageCost;
-      const originalPrice = parseFloat(String(inv.originalPrice)) || 0;
-      const nativeCurrency = (inv.currency || 'USD') as CurrencyCode;
-      const currentPrice =
-        originalPrice > 0
-          ? convert(originalPrice, nativeCurrency, preferredCurrency)
-          : convert(parseFloat(String(inv.currentPrice)) || 0, 'CZK', preferredCurrency);
-      const holding = mapCryptoInvestmentToHolding(
-        inv.id,
-        inv.ticker,
-        inv.name || inv.ticker,
-        quantity,
-        averagePrice,
-        currentPrice,
-        inv.fetchedAt,
-        inv.isManualPrice,
-        inv.coingeckoId,
-        inv.originalPrice,
-        inv.currency
-      );
-      const lastSell = txs
+  // Positions as the backend values them in the report currency (ADR 0011)
+  const reportCurrency = positions?.currency ?? currencyCode;
+  const totals = positions?.totals;
+  const totalValue = amountOf(totals?.value) ?? 0;
+  const holdings = useMemo((): CryptoTableRow[] => {
+    const openTotal = amountOf(positions?.totals.value) ?? 0;
+    return (positions?.items ?? []).map((inv) => {
+      const row = toCryptoRow(inv);
+      const lastSell = (txsByInvestment.get(inv.id) ?? [])
         .filter((tx) => tx.type === 'sell')
         .reduce<number | null>(
           (max, tx) => (max === null || tx.transactionDate > max ? tx.transactionDate : max),
           null
         );
       return {
-        ...holding,
-        realizedGain:
-          txs.length > 0 ? calculateRealizedGains(txs, convertAt, preferredCurrency) : 0,
-        share: 0,
-        closedAt: quantity <= 0 ? lastSell : null,
+        ...row,
+        share:
+          openTotal > 0 && row.quantity > 0 && row.marketValue !== null
+            ? row.marketValue / openTotal
+            : 0,
+        closedAt: row.quantity <= 0 ? lastSell : null,
       };
     });
-    const openTotal = rows.reduce((sum, h) => sum + (h.quantity > 0 ? h.marketValue : 0), 0);
-    return rows.map((h) => ({
-      ...h,
-      share: openTotal > 0 && h.quantity > 0 ? h.marketValue / openTotal : 0,
-    }));
-  }, [cryptoInvestments, txsByInvestment, convertAt, convert, preferredCurrency]);
+  }, [positions, txsByInvestment]);
 
   const openPositions = holdings.filter((h) => h.quantity > 0);
-  const metrics = calculateCryptoPortfolioMetrics(openPositions);
-  const largestRow = openPositions.reduce<CryptoRow | null>(
-    (max, h) => (max === null || h.marketValue > max.marketValue ? h : max),
+  const totalCost = amountOf(totals?.costBasis) ?? 0;
+  const unrealizedGain = amountOf(totals?.unrealizedGain) ?? 0;
+  const metrics = {
+    totalValue,
+    totalCost,
+    overallGainLoss: unrealizedGain,
+    overallGainLossPercent: percentOfCost(unrealizedGain, totalCost),
+  };
+  const realizedGain = amountOf(totals?.realizedGain) ?? 0;
+  const largestRow = openPositions.reduce<CryptoTableRow | null>(
+    (max, h) =>
+      h.marketValue !== null && (max === null || h.marketValue > (max.marketValue ?? 0)) ? h : max,
     null
   );
   const latestFetchedAt = holdings.reduce<Date | undefined>((latest, h) => {
     if (!h.fetchedAt) return latest;
-    const value = h.fetchedAt as unknown;
-    const date = new Date(
-      typeof value === 'number' && value < 100000000000 ? value * 1000 : (value as Date)
-    );
+    const date = new Date(h.fetchedAt * 1000);
     return !latest || date > latest ? date : latest;
   }, undefined);
 
-  const openRowModal = (modal: RowModal) => (holding: CryptoRow) => {
+  const openRowModal = (modal: RowModal) => (holding: CryptoTableRow) => {
     setSelected(holding);
     setRowModal(modal);
   };
@@ -276,7 +245,9 @@ export default function Crypto() {
         />
       ) : (
         <>
+          <ConversionQualityNote quality={positions?.fxQuality} currency={reportCurrency} />
           <CryptoSummary
+            currency={reportCurrency}
             metrics={metrics}
             positionCount={openPositions.length}
             realizedGain={realizedGain}
@@ -286,7 +257,7 @@ export default function Crypto() {
                 ? {
                     name: largestRow.name,
                     share: largestRow.share,
-                    gainLossPercent: largestRow.gainLossPercent,
+                    gainLossPercent: largestRow.gainLossPercent ?? 0,
                   }
                 : null
             }
@@ -315,6 +286,7 @@ export default function Crypto() {
           />
 
           <CryptoTable
+            currency={reportCurrency}
             holdings={holdings}
             isLoading={refreshPricesMutation.isPending}
             onViewDetail={(h) => setLocation(`/crypto/${h.id}`)}

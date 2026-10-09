@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useMemo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ArrowDown,
@@ -11,9 +11,9 @@ import {
   Trash2,
   TrendingDown,
 } from 'lucide-react';
-import type { CryptoHoldingData } from '@shared/calculations';
 import { priceDecimals } from '@shared/currencies';
 import { matchesSearch } from '@/utils/holdings-search';
+import { compareKnown, costPerUnit, type CryptoRow } from '@/utils/positions';
 import { useCurrency } from '@/lib/currency';
 import { useFormat } from '@/lib/use-format';
 import { Badge } from '@/components/ui/badge';
@@ -41,25 +41,28 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { AssetLogo } from '@/components/common/AssetLogo';
 import { cn } from '@/lib/utils';
 
-/** A crypto holding as the list shows it: metrics plus its realized result and share. */
-export interface CryptoRow extends CryptoHoldingData {
-  /** Realized gain of this position (WAC) in the display currency. */
-  realizedGain: number;
+/** A crypto position as the list shows it: the backend's figures plus its share. */
+export interface CryptoTableRow extends CryptoRow {
   /** Share of the open crypto value, 0–1. */
   share: number;
   /** Day of the last sell when the position is closed. */
   closedAt?: number | null;
 }
 
+/** The cost per unit in the report currency, from the backend's cost basis. */
+const unitCost = (h: CryptoRow) => costPerUnit(h.totalCost, h.quantity);
+
 type SortColumn = 'name' | 'quantity' | 'avgCost' | 'currentPrice' | 'marketValue' | 'gainLoss';
 
 interface CryptoTableProps {
-  holdings: CryptoRow[];
-  onViewDetail: (holding: CryptoRow) => void;
-  onBuy: (holding: CryptoRow) => void;
-  onSell: (holding: CryptoRow) => void;
-  onUpdatePrice: (holding: CryptoRow) => void;
-  onDelete: (holding: CryptoRow) => void;
+  /** The report currency of the holdings' converted figures. */
+  currency: string;
+  holdings: CryptoTableRow[];
+  onViewDetail: (holding: CryptoTableRow) => void;
+  onBuy: (holding: CryptoTableRow) => void;
+  onSell: (holding: CryptoTableRow) => void;
+  onUpdatePrice: (holding: CryptoTableRow) => void;
+  onDelete: (holding: CryptoTableRow) => void;
   isLoading?: boolean;
 }
 
@@ -70,6 +73,7 @@ interface CryptoTableProps {
  * a share bar, the return with its amount, "···" actions on hover.
  */
 export function CryptoTable({
+  currency,
   holdings,
   onViewDetail,
   onBuy,
@@ -78,8 +82,13 @@ export function CryptoTable({
   onDelete,
   isLoading,
 }: CryptoTableProps) {
-  const { formatCurrencyRaw, currencyCode } = useCurrency();
+  const { fxConvert } = useCurrency();
   const fmt = useFormat();
+  // The rate in the report currency, converted with the response's quote snapshot
+  const unitPrice = useCallback(
+    (h: CryptoRow) => fxConvert(h.originalCurrentPrice, h.originalCurrency, currency),
+    [fxConvert, currency]
+  );
   const { t } = useTranslation('crypto');
   const [search, setSearch] = useState('');
   const [showClosed, setShowClosed] = useState(false);
@@ -108,24 +117,25 @@ export function CryptoTable({
           c = a.quantity - b.quantity;
           break;
         case 'avgCost':
-          c = a.avgCost - b.avgCost;
+          c = compareKnown(unitCost(a), unitCost(b));
           break;
         case 'currentPrice':
-          c = a.currentPrice - b.currentPrice;
+          c = compareKnown(unitPrice(a), unitPrice(b));
           break;
         case 'marketValue':
-          c = a.marketValue - b.marketValue;
+          c = compareKnown(a.marketValue, b.marketValue);
           break;
         case 'gainLoss':
-          c = a.gainLoss - b.gainLoss;
+          c = compareKnown(a.gainLoss, b.gainLoss);
           break;
       }
       return sortDirection === 'asc' ? c : -c;
     });
-  }, [holdings, search, showClosed, sortColumn, sortDirection]);
+  }, [holdings, search, showClosed, sortColumn, sortDirection, unitPrice]);
 
+  // Footer over the open rows shown: the values the backend could convert
   const openRows = filtered.filter((h) => h.quantity > 0);
-  const total = openRows.reduce((sum, h) => sum + h.marketValue, 0);
+  const total = openRows.reduce((sum, h) => sum + (h.marketValue ?? 0), 0);
   const closedCount = holdings.filter((h) => h.quantity <= 0).length;
 
   const SortHead = ({
@@ -170,7 +180,7 @@ export function CryptoTable({
       <CardHeader>
         <div>
           <CardTitle>{t('table.title')}</CardTitle>
-          <CardDescription>{t('table.subtitle', { currency: currencyCode })}</CardDescription>
+          <CardDescription>{t('table.subtitle', { currency })}</CardDescription>
         </div>
         <div className="flex items-center gap-4">
           {closedCount > 0 && (
@@ -226,8 +236,11 @@ export function CryptoTable({
           ) : (
             filtered.map((h) => {
               const closed = h.quantity <= 0;
-              const nativeCurrency = h.currency && h.currency !== currencyCode ? h.currency : null;
-              const nativePrice = Number(h.originalPrice) || 0;
+              const nativePrice = h.originalCurrentPrice;
+              const rate = unitPrice(h);
+              const cost = unitCost(h);
+              const nativeCurrency =
+                rate !== null && h.originalCurrency !== currency ? h.originalCurrency : null;
               return (
                 <TableRow
                   key={h.id}
@@ -262,10 +275,10 @@ export function CryptoTable({
                     {fmt.number(h.quantity, { maximumFractionDigits: 8 })} {h.ticker}
                   </TableCell>
                   <TableCell className="text-right num">
-                    {closed ? (
+                    {closed || cost === null ? (
                       <span className="text-ink-4">—</span>
                     ) : (
-                      price(h.avgCost, currencyCode)
+                      price(cost, currency)
                     )}
                   </TableCell>
                   <TableCell className="text-right num">
@@ -280,7 +293,9 @@ export function CryptoTable({
                           <TooltipContent>{t('tooltip.manualPrice')}</TooltipContent>
                         </Tooltip>
                       )}
-                      {price(h.currentPrice, currencyCode)}
+                      {rate !== null
+                        ? price(rate, currency)
+                        : price(nativePrice, h.originalCurrency)}
                     </span>
                     {nativeCurrency && nativePrice > 0 ? (
                       <small className="mt-[3px] block text-micro font-500 text-ink-4">
@@ -289,10 +304,10 @@ export function CryptoTable({
                     ) : null}
                   </TableCell>
                   <TableCell className="text-right font-650 text-ink num">
-                    {closed ? (
+                    {closed || h.marketValue === null ? (
                       <span className="font-500 text-ink-4">—</span>
                     ) : (
-                      formatCurrencyRaw(h.marketValue)
+                      fmt.money(h.marketValue, currency, { decimals: 0 })
                     )}
                   </TableCell>
                   <TableCell className="text-right">
@@ -310,13 +325,15 @@ export function CryptoTable({
                       <span className="text-ink-4">
                         {h.realizedGain
                           ? t('table.realized', {
-                              amount: fmt.money(h.realizedGain, currencyCode, {
+                              amount: fmt.money(h.realizedGain, currency, {
                                 signed: true,
                                 decimals: 0,
                               }),
                             })
                           : '—'}
                       </span>
+                    ) : h.gainLoss === null ? (
+                      <span className="text-ink-4">—</span>
                     ) : (
                       <span
                         className={cn(
@@ -324,9 +341,9 @@ export function CryptoTable({
                           h.gainLoss >= 0 ? 'text-gain' : 'text-loss'
                         )}
                       >
-                        {fmt.money(h.gainLoss, currencyCode, { signed: true, decimals: 0 })}
+                        {fmt.money(h.gainLoss, currency, { signed: true, decimals: 0 })}
                         <small className="mt-[3px] block text-micro font-600">
-                          {fmt.percent(h.gainLossPercent / 100, 1, { signed: true })}
+                          {fmt.percent((h.gainLossPercent ?? 0) / 100, 1, { signed: true })}
                         </small>
                       </span>
                     )}
@@ -370,10 +387,10 @@ export function CryptoTable({
       <div className="flex items-center justify-between border-t border-line px-[14px] py-3 text-micro font-500 text-ink-4">
         <span>
           {t('table.footer.count', { count: openRows.length })} · {t('table.footer.total')}{' '}
-          <span className="num">{formatCurrencyRaw(total)}</span>
+          <span className="num">{fmt.money(total, currency, { decimals: 0 })}</span>
         </span>
         <span>
-          {t('table.footer.rates', { currency: currencyCode })}
+          {t('table.footer.rates', { currency })}
           {closedCount > 0 && ` · ${t('table.footer.closed', { count: closedCount })}`}
         </span>
       </div>

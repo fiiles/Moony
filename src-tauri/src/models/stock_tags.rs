@@ -3,6 +3,8 @@
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
+use super::fx::ConversionQuality;
+
 /// Stock tag group for organizing related tags
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct StockTagGroup {
@@ -41,47 +43,85 @@ pub struct InsertStockTag {
     pub group_id: Option<String>,
 }
 
-/// Investment with its associated tags
-#[derive(Debug, Clone, Serialize, Deserialize)]
+/// A stock position with its tags, in the response's report currency (converted amounts are
+/// decimal TEXT, `null` when they cannot be converted).
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct StockInvestmentWithTags {
     pub id: String,
     pub ticker: String,
     #[serde(rename = "companyName")]
     pub company_name: String,
     pub quantity: String,
+    /// Native weighted average cost (currency `averagePriceCurrency`).
     #[serde(rename = "averagePrice")]
     pub average_price: String,
-    #[serde(rename = "currentPrice")]
-    pub current_price: String,
-    #[serde(rename = "currentValue")]
-    pub current_value: f64,
-    #[serde(rename = "gainLoss")]
-    pub gain_loss: f64,
-    #[serde(rename = "gainLossPercent")]
-    pub gain_loss_percent: f64,
-    #[serde(rename = "dividendYield")]
-    pub dividend_yield: f64,
+    #[serde(rename = "averagePriceCurrency")]
+    pub average_price_currency: String,
+    /// Current price in its own currency; `null` when unpriced.
+    #[serde(rename = "price")]
+    pub price: Option<String>,
+    #[serde(rename = "priceCurrency")]
+    pub price_currency: Option<String>,
+    #[serde(rename = "value")]
+    pub value: Option<String>,
+    #[serde(rename = "costBasis")]
+    pub cost_basis: Option<String>,
+    #[serde(rename = "unrealizedGain")]
+    pub unrealized_gain: Option<String>,
+    #[serde(rename = "unrealizedGainPercent")]
+    pub unrealized_gain_percent: Option<f64>,
+    #[serde(rename = "yearlyDividend")]
+    pub yearly_dividend: Option<String>,
     pub tags: Vec<StockTag>,
 }
 
-/// Aggregated metrics for a specific tag
-#[derive(Debug, Clone, Serialize, Deserialize)]
+/// Every stock position with its tags in `currency`.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct StocksAnalysis {
+    #[serde(rename = "currency")]
+    pub currency: String,
+    #[serde(rename = "fxQuality")]
+    pub fx_quality: ConversionQuality,
+    #[serde(rename = "items")]
+    pub items: Vec<StockInvestmentWithTags>,
+}
+
+/// Sums over a tag's positions whose value and cost basis are both known (dividends of those
+/// positions only), in the response's report currency.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct TagMetrics {
     pub tag: StockTag,
-    #[serde(rename = "totalValue")]
-    pub total_value: f64,
-    #[serde(rename = "totalCost")]
-    pub total_cost: f64,
-    #[serde(rename = "gainLoss")]
-    pub gain_loss: f64,
-    #[serde(rename = "gainLossPercent")]
-    pub gain_loss_percent: f64,
-    #[serde(rename = "estimatedYearlyDividend")]
-    pub estimated_yearly_dividend: f64,
+    #[serde(rename = "value")]
+    pub value: String,
+    #[serde(rename = "costBasis")]
+    pub cost_basis: String,
+    #[serde(rename = "unrealizedGain")]
+    pub unrealized_gain: String,
+    /// Percent of the cost basis; 0 without a cost basis.
+    #[serde(rename = "unrealizedGainPercent")]
+    pub unrealized_gain_percent: f64,
+    #[serde(rename = "yearlyDividend")]
+    pub yearly_dividend: String,
+    /// The tag's value in percent of the value of every summed position.
     #[serde(rename = "portfolioPercent")]
     pub portfolio_percent: f64,
+    /// Positions carrying the tag, summed or not.
     #[serde(rename = "holdingsCount")]
     pub holdings_count: i32,
+    /// What the tag's positions could not convert.
+    #[serde(rename = "fxQuality")]
+    pub fx_quality: ConversionQuality,
+}
+
+/// Metrics per tag in `currency`.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct TagMetricsReport {
+    #[serde(rename = "currency")]
+    pub currency: String,
+    #[serde(rename = "fxQuality")]
+    pub fx_quality: ConversionQuality,
+    #[serde(rename = "tags")]
+    pub tags: Vec<TagMetrics>,
 }
 
 /// Tag group with its tags

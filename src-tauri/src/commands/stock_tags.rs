@@ -3,24 +3,11 @@
 use crate::db::Database;
 use crate::error::{AppError, Result};
 use crate::models::{
-    InsertStockTag, InsertStockTagGroup, StockInvestmentWithTags, StockTag, StockTagGroup,
-    TagMetrics,
+    InsertStockTag, InsertStockTagGroup, StockTag, StockTagGroup, StocksAnalysis, TagMetricsReport,
 };
-use crate::services::currency::convert_to_czk;
+use crate::services::position_reports;
 use tauri::State;
 use uuid::Uuid;
-
-/// Type alias for investment row data (id, ticker, company_name, quantity, current_price, price_currency, dividend, dividend_currency)
-type InvestmentRow = (
-    String,
-    String,
-    String,
-    String,
-    String,
-    String,
-    String,
-    String,
-);
 
 // ============================================================================
 // Tag Group Commands
@@ -276,226 +263,21 @@ pub async fn set_investment_tags(
     })
 }
 
-/// Get all investments with their tags and computed metrics for analysis
+/// Every stock position with its tags in `report_currency` (positions service).
 #[tauri::command]
-pub async fn get_stocks_analysis(db: State<'_, Database>) -> Result<Vec<StockInvestmentWithTags>> {
-    db.with_conn(|conn| {
-        // Historical cost basis derived from transactions (ADR 0001: never
-        // convert old values at today's rate).
-        let (cost_map, cost_quality) = crate::services::cost_basis::cost_basis_for_all(
-            conn,
-            crate::services::cost_basis::TxTable::Stocks,
-            "CZK",
-            &crate::services::fx::current(),
-        )?;
-        crate::services::fx::record_missing_all(&cost_quality);
-
-        // Get all investments with current prices
-        let mut stmt = conn.prepare(
-            "SELECT
-                si.id,
-                si.ticker,
-                si.company_name,
-                si.quantity,
-                COALESCE(CASE WHEN spo.price IS NOT NULL AND (sd.fetched_at IS NULL OR sd.fetched_at <= spo.updated_at) THEN spo.price ELSE sd.original_price END, '0') as current_price,
-                COALESCE(CASE WHEN spo.price IS NOT NULL AND (sd.fetched_at IS NULL OR sd.fetched_at <= spo.updated_at) THEN spo.currency ELSE sd.currency END, 'USD') as price_currency,
-                COALESCE(do.yearly_dividend_sum, dd.yearly_dividend_sum, '0') as dividend_amount,
-                COALESCE(do.currency, dd.currency, 'USD') as dividend_currency
-             FROM stock_investments si
-             LEFT JOIN stock_data sd ON si.ticker = sd.ticker
-             LEFT JOIN stock_price_overrides spo ON si.ticker = spo.ticker
-             LEFT JOIN dividend_data dd ON si.ticker = dd.ticker
-             LEFT JOIN dividend_overrides do ON si.ticker = do.ticker
-             ORDER BY si.company_name",
-        )?;
-
-        let investments: Vec<InvestmentRow> = stmt
-            .query_map([], |row| {
-                Ok((
-                    row.get::<_, String>(0)?,
-                    row.get::<_, String>(1)?,
-                    row.get::<_, String>(2)?,
-                    row.get::<_, String>(3)?,
-                    row.get::<_, String>(4)?,
-                    row.get::<_, String>(5)?,
-                    row.get::<_, String>(6)?,
-                    row.get::<_, String>(7)?,
-                ))
-            })?
-            .filter_map(|r| r.ok())
-            .collect();
-
-        let mut result = Vec::new();
-
-        for (
-            id,
-            ticker,
-            company_name,
-            quantity_str,
-            current_price_str,
-            price_currency,
-            dividend_str,
-            dividend_currency,
-        ) in investments
-        {
-            let quantity: f64 = quantity_str.parse().unwrap_or(0.0);
-            let current_price: f64 = current_price_str.parse().unwrap_or(0.0);
-            let yearly_dividend: f64 = dividend_str.parse().unwrap_or(0.0);
-
-            // Current value converts at today's rate; cost basis comes from
-            // the per-transaction historical derivation.
-            let current_price_czk = convert_to_czk(current_price, &price_currency);
-            let yearly_dividend_czk = convert_to_czk(yearly_dividend, &dividend_currency);
-
-            let position = cost_map.get(&id);
-            let current_value = quantity * current_price_czk;
-            let cost_basis = position.map(|p| p.cost_basis_target).unwrap_or(0.0);
-            let avg_price_str = position
-                .map(|p| p.average_price_native().to_string())
-                .unwrap_or_else(|| "0".to_string());
-            let gain_loss = current_value - cost_basis;
-            let gain_loss_percent = if cost_basis > 0.0 {
-                (gain_loss / cost_basis) * 100.0
-            } else {
-                0.0
-            };
-            let dividend_yield = quantity * yearly_dividend_czk;
-
-            // Get tags for this investment (with group_id)
-            let mut tag_stmt = conn.prepare(
-                "SELECT t.id, t.name, t.color, t.group_id, t.created_at
-                 FROM stock_tags t
-                 INNER JOIN stock_investment_tags sit ON t.id = sit.tag_id
-                 WHERE sit.investment_id = ?1
-                 ORDER BY t.name",
-            )?;
-
-            let tags: Vec<StockTag> = tag_stmt
-                .query_map([&id], |row| {
-                    Ok(StockTag {
-                        id: row.get(0)?,
-                        name: row.get(1)?,
-                        color: row.get(2)?,
-                        group_id: row.get(3)?,
-                        created_at: row.get(4)?,
-                    })
-                })?
-                .filter_map(|r| r.ok())
-                .collect();
-
-            result.push(StockInvestmentWithTags {
-                id,
-                ticker,
-                company_name,
-                quantity: quantity_str,
-                average_price: avg_price_str,
-                current_price: format!("{:.2}", current_price_czk),
-                current_value,
-                gain_loss,
-                gain_loss_percent,
-                dividend_yield,
-                tags,
-            });
-        }
-
-        Ok(result)
-    })
+pub async fn get_stocks_analysis(
+    db: State<'_, Database>,
+    report_currency: String,
+) -> Result<StocksAnalysis> {
+    db.with_conn(|conn| position_reports::stocks_analysis(conn, &report_currency))
 }
 
-/// Get aggregated metrics per tag
+/// Metrics per tag in `report_currency`; every tag when `tag_ids` is empty.
 #[tauri::command]
 pub async fn get_tag_metrics(
     db: State<'_, Database>,
     tag_ids: Vec<String>,
-) -> Result<Vec<TagMetrics>> {
-    // If no tags specified, return metrics for all tags
-    let stocks = get_stocks_analysis(db.clone()).await?;
-
-    db.with_conn(|conn| {
-        // First, get the tags to process
-        let tags_to_process: Vec<StockTag> = if tag_ids.is_empty() {
-            // Get all tags
-            let mut stmt = conn.prepare(
-                "SELECT id, name, color, group_id, created_at FROM stock_tags ORDER BY name",
-            )?;
-            let tags: Vec<StockTag> = stmt
-                .query_map([], |row| {
-                    Ok(StockTag {
-                        id: row.get(0)?,
-                        name: row.get(1)?,
-                        color: row.get(2)?,
-                        group_id: row.get(3)?,
-                        created_at: row.get(4)?,
-                    })
-                })?
-                .filter_map(|r| r.ok())
-                .collect();
-            tags
-        } else {
-            // Get specified tags one by one to avoid lifetime issues
-            let mut tags = Vec::new();
-            for tag_id in &tag_ids {
-                if let Ok(tag) = conn.query_row(
-                    "SELECT id, name, color, group_id, created_at FROM stock_tags WHERE id = ?1",
-                    [tag_id],
-                    |row| {
-                        Ok(StockTag {
-                            id: row.get(0)?,
-                            name: row.get(1)?,
-                            color: row.get(2)?,
-                            group_id: row.get(3)?,
-                            created_at: row.get(4)?,
-                        })
-                    },
-                ) {
-                    tags.push(tag);
-                }
-            }
-            tags
-        };
-
-        // Calculate total portfolio value for percentage calculations
-        let total_portfolio_value: f64 = stocks.iter().map(|s| s.current_value).sum();
-
-        let mut metrics = Vec::new();
-
-        for tag in tags_to_process {
-            // Find stocks with this tag
-            let tagged_stocks: Vec<&StockInvestmentWithTags> = stocks
-                .iter()
-                .filter(|s| s.tags.iter().any(|t| t.id == tag.id))
-                .collect();
-
-            let total_value: f64 = tagged_stocks.iter().map(|s| s.current_value).sum();
-            // Use pre-calculated gain_loss from stocks (already converted to CZK)
-            let gain_loss: f64 = tagged_stocks.iter().map(|s| s.gain_loss).sum();
-            // Derive total_cost from value and gain/loss for consistency
-            let total_cost = total_value - gain_loss;
-            let gain_loss_percent = if total_cost > 0.0 {
-                (gain_loss / total_cost) * 100.0
-            } else {
-                0.0
-            };
-            let estimated_yearly_dividend: f64 =
-                tagged_stocks.iter().map(|s| s.dividend_yield).sum();
-            let portfolio_percent = if total_portfolio_value > 0.0 {
-                (total_value / total_portfolio_value) * 100.0
-            } else {
-                0.0
-            };
-
-            metrics.push(TagMetrics {
-                tag,
-                total_value,
-                total_cost,
-                gain_loss,
-                gain_loss_percent,
-                estimated_yearly_dividend,
-                portfolio_percent,
-                holdings_count: tagged_stocks.len() as i32,
-            });
-        }
-
-        Ok(metrics)
-    })
+    report_currency: String,
+) -> Result<TagMetricsReport> {
+    db.with_conn(|conn| position_reports::tag_metrics(conn, &report_currency, &tag_ids))
 }

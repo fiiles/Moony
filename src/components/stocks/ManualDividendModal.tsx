@@ -62,11 +62,11 @@ export function ManualDividendModal({ open, onOpenChange, investment }: ManualDi
   // Reset form when investment changes
   useEffect(() => {
     if (investment && open) {
-      // Use originalDividendYield (in stock's currency) for prefill, not dividendYield (which is converted to CZK)
-      const dividendToShow = investment.originalDividendYield ?? investment.dividendYield;
+      // Prefill the native dividend per share in its own currency
+      const dividendToShow = investment.originalDividendYield;
       form.reset({
         amount: dividendToShow ? String(Number(dividendToShow.toFixed(6))) : '',
-        currency: investment.dividendCurrency || investment.currency || userCurrency,
+        currency: investment.dividendCurrency || investment.originalCurrency || userCurrency,
       });
     }
   }, [investment, open, form, userCurrency]);

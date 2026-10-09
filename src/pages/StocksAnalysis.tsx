@@ -4,17 +4,24 @@ import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { Plus, Search, Tag, TrendingUp } from 'lucide-react';
 import type {
-  StockInvestmentWithTags,
+  StocksAnalysis as StocksAnalysisReport,
   StockTag,
   StockTagGroup,
-  TagMetrics,
+  TagMetricsReport,
   TwrSeries,
 } from '@shared/schema';
 import { investmentsApi, stockTagsApi } from '@/lib/tauri-api';
 import { useCurrency } from '@/lib/currency';
 import { useFormat } from '@/lib/use-format';
 import { useMediaQuery } from '@/hooks/use-media-query';
-import { FILTER_ALL, chosenTagIds, selectPositions, tagTotals } from '@/utils/stock-analysis';
+import {
+  FILTER_ALL,
+  chosenTagIds,
+  positionTotals,
+  selectPositions,
+  tagTotals,
+  toAnalysisPosition,
+} from '@/utils/stock-analysis';
 import { twrPercent, twrTickDigits } from '@/utils/twr';
 import { PageHead } from '@/components/shell/PageHead';
 import { Button } from '@/components/ui/button';
@@ -38,6 +45,7 @@ import { AllocationRing } from '@/components/dashboard/AllocationRing';
 import { MoonyLinesChart, type LineSeries } from '@/components/charts/MoonyLinesChart';
 import { ManageTagsDialog } from '@/components/stocks-analysis/ManageTagsDialog';
 import { AssignTagsDialog } from '@/components/stocks-analysis/AssignTagsDialog';
+import { ConversionQualityNote } from '@/components/reports/ReportQualityNote';
 import { cn } from '@/lib/utils';
 
 const PERIODS = ['3m', 'ytd', '1y'] as const;
@@ -98,7 +106,7 @@ interface FilterGroup {
 export default function StocksAnalysis() {
   const { t } = useTranslation('reports');
   const { t: tc } = useTranslation('common');
-  const { formatCurrency, formatCurrencyShort } = useCurrency();
+  const { currencyCode, fxRevision } = useCurrency();
   const fmt = useFormat();
   const wide = useMediaQuery(WIDE_QUERY);
   // Five series (four tags and the portfolio) need three lines of legend in a narrow card
@@ -123,14 +131,18 @@ export default function StocksAnalysis() {
     queryKey: ['stock-tag-groups'],
     queryFn: stockTagsApi.getAllGroups,
   });
-  const { data: stocks = [], isLoading: stocksLoading } = useQuery<StockInvestmentWithTags[]>({
-    queryKey: ['stocks-analysis'],
-    queryFn: stockTagsApi.getAnalysis,
+  const { data: analysis, isLoading: stocksLoading } = useQuery<StocksAnalysisReport>({
+    queryKey: ['stocks-analysis', currencyCode, fxRevision],
+    queryFn: () => stockTagsApi.getAnalysis(currencyCode),
   });
-  const { data: metrics = [], isLoading: metricsLoading } = useQuery<TagMetrics[]>({
-    queryKey: ['tag-metrics', []],
-    queryFn: () => stockTagsApi.getTagMetrics([]),
+  const { data: metricsReport, isLoading: metricsLoading } = useQuery<TagMetricsReport>({
+    queryKey: ['tag-metrics', currencyCode, fxRevision],
+    queryFn: () => stockTagsApi.getTagMetrics([], currencyCode),
   });
+  // Amounts in the report currency of the response (ADR 0011); null = not convertible
+  const reportCurrency = analysis?.currency ?? currencyCode;
+  const stocks = useMemo(() => (analysis?.items ?? []).map(toAnalysisPosition), [analysis]);
+  const metrics = useMemo(() => metricsReport?.tags ?? [], [metricsReport]);
 
   // Tag groups for the filters and the charts; ungrouped tags form a group of their own
   const filterGroups = useMemo<FilterGroup[]>(() => {
@@ -154,7 +166,7 @@ export default function StocksAnalysis() {
   const filterActive = chosenIds.length > 0;
   const selected = useMemo(() => selectPositions(stocks, chosenIds), [stocks, chosenIds]);
   const selectedIds = useMemo(() => selected.map((s) => s.id), [selected]);
-  const selectedValue = selected.reduce((sum, x) => sum + x.currentValue, 0);
+  const selectedValue = selected.reduce((sum, x) => sum + (x.currentValue ?? 0), 0);
   const selectionText = t('stocksAnalysis.selection', {
     shown: selected.length,
     total: stocks.length,
@@ -167,9 +179,9 @@ export default function StocksAnalysis() {
     let untagged = 0;
     for (const s of selected) {
       const own = s.tags.filter((x) => byTag.has(x.id));
-      if (own.length === 0) untagged += s.currentValue;
-      else
-        for (const x of own) byTag.set(x.id, (byTag.get(x.id) ?? 0) + s.currentValue / own.length);
+      const value = s.currentValue ?? 0;
+      if (own.length === 0) untagged += value;
+      else for (const x of own) byTag.set(x.id, (byTag.get(x.id) ?? 0) + value / own.length);
     }
     return {
       segments: chartGroup.tags.map((x) => ({
@@ -263,14 +275,15 @@ export default function StocksAnalysis() {
   }, [twr, t, tc, fmt]);
 
   // Derived figures (the stats stay portfolio-wide)
-  const totalValue = stocks.reduce((s, x) => s + x.currentValue, 0);
+  const portfolio = positionTotals(stocks);
+  const totalValue = portfolio.value;
   const taggedStocks = stocks.filter((x) => x.tags.length > 0);
   const untaggedStocks = stocks.filter((x) => x.tags.length === 0);
-  const totalDividends = stocks.reduce((s, x) => s + x.dividendYield, 0);
-  const taggedDividends = taggedStocks.reduce((s, x) => s + x.dividendYield, 0);
-  const best = metrics
+  const totalDividends = portfolio.dividend;
+  const taggedDividends = positionTotals(taggedStocks).dividend;
+  const best = [...metrics]
     .filter((m) => m.holdingsCount > 0)
-    .sort((a, b) => b.gainLossPercent - a.gainLossPercent)[0];
+    .sort((a, b) => b.unrealizedGainPercent - a.unrealizedGainPercent)[0];
 
   // Tag table: the totals of the selected positions per tag; with a filter, only tags that have one
   const tagRows = useMemo(
@@ -289,14 +302,22 @@ export default function StocksAnalysis() {
       `${s.companyName} ${s.ticker}`.toLocaleLowerCase(fmt.locale).includes(q)
     );
   }, [selected, query, fmt.locale]);
-  const filteredValue = filtered.reduce((s, x) => s + x.currentValue, 0);
+  const filteredValue = filtered.reduce((s, x) => s + (x.currentValue ?? 0), 0);
 
-  const money = (v: number) => formatCurrency(v);
-  const gainText = (pct: number) => (
-    <b className={cn('font-650', pct >= 0 ? 'text-gain' : 'text-loss')}>
-      {fmt.percent(pct / 100, 1, { signed: true })}
-    </b>
-  );
+  const money = (v: number | null) =>
+    v === null ? '—' : fmt.money(v, reportCurrency, { decimals: 0 });
+  const shortMoney = (v: number) =>
+    Math.abs(v) < 1000
+      ? fmt.money(v, reportCurrency, { decimals: 0 })
+      : fmt.money(v, reportCurrency, { compact: true });
+  const gainText = (pct: number | null) =>
+    pct === null ? (
+      '—'
+    ) : (
+      <b className={cn('font-650', pct >= 0 ? 'text-gain' : 'text-loss')}>
+        {fmt.percent(pct / 100, 1, { signed: true })}
+      </b>
+    );
   const openAssign = (stockIds: string[]) => setAssign({ open: true, stockIds });
 
   const allocationSub = filterActive
@@ -386,6 +407,7 @@ export default function StocksAnalysis() {
   return (
     <>
       {head}
+      <ConversionQualityNote quality={analysis?.fxQuality} currency={reportCurrency} />
 
       <Stats>
         <Stat
@@ -396,10 +418,10 @@ export default function StocksAnalysis() {
         <Stat
           label={t('stocksAnalysis.stats.bestTag')}
           value={best ? best.tag.name : '—'}
-          tone={best ? (best.gainLossPercent >= 0 ? 'gain' : 'loss') : 'neutral'}
+          tone={best ? (best.unrealizedGainPercent >= 0 ? 'gain' : 'loss') : 'neutral'}
           note={
             best
-              ? `${fmt.percent(best.gainLossPercent / 100, 1, { signed: true })} · ${t('stocksAnalysis.stats.positions', { count: best.holdingsCount })}`
+              ? `${fmt.percent(best.unrealizedGainPercent / 100, 1, { signed: true })} · ${t('stocksAnalysis.stats.positions', { count: best.holdingsCount })}`
               : t('stocksAnalysis.stats.noTags')
           }
         />
@@ -519,7 +541,7 @@ export default function StocksAnalysis() {
                     ? t('stocksAnalysis.allocation.centerSelected')
                     : t('stocksAnalysis.allocation.center')
                 }
-                centerValue={formatCurrencyShort(selectedValue)}
+                centerValue={shortMoney(selectedValue)}
                 otherLabel={t('stocksAnalysis.allocation.other')}
                 formatValue={money}
                 formatPercent={(r) => fmt.percent(r, 0)}

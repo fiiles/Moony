@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useMemo, useState, type ReactNode } from 'react';
 import { Link } from 'wouter';
 import type { StockTag } from '@shared/schema';
 import { matchesSearch } from '@/utils/holdings-search';
@@ -38,6 +38,7 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { AssetLogo } from '@/components/common/AssetLogo';
 import type { HoldingData } from '@/utils/stocks';
+import { compareKnown, costPerUnit } from '@/utils/positions';
 import { useCurrency } from '@/lib/currency';
 import { useFormat } from '@/lib/use-format';
 import { priceDecimals } from '@shared/currencies';
@@ -47,6 +48,8 @@ type SortColumn =
   'name' | 'quantity' | 'avgCost' | 'currentPrice' | 'marketValue' | 'gainLoss' | 'dividend';
 
 interface InvestmentsTableProps {
+  /** The report currency of the holdings' converted figures. */
+  currency: string;
   holdings: HoldingData[];
   onViewDetail: (holding: HoldingData) => void;
   onBuy: (holding: HoldingData) => void;
@@ -57,6 +60,9 @@ interface InvestmentsTableProps {
   /** Tags per investment id; searched along with ticker and name and shown as badges. */
   tagsByInvestmentId?: ReadonlyMap<string, StockTag[]>;
 }
+
+/** The cost per unit in the report currency, from the backend's cost basis. */
+const unitCost = (h: HoldingData) => costPerUnit(h.totalCost, h.quantity);
 
 /** Tag badges shown under the name before the rest collapse into "+N". */
 const MAX_VISIBLE_TAGS = 3;
@@ -70,6 +76,7 @@ const EMPTY_TAGS: StockTag[] = [];
  * largest position's share.
  */
 export function InvestmentsTable({
+  currency,
   holdings,
   onViewDetail,
   onBuy,
@@ -79,8 +86,13 @@ export function InvestmentsTable({
   isLoading,
   tagsByInvestmentId,
 }: InvestmentsTableProps) {
-  const { formatCurrency, formatCurrencyRaw, currencyCode } = useCurrency();
+  const { fxConvert } = useCurrency();
   const fmt = useFormat();
+  // The market price in the report currency, converted with the response's quote snapshot
+  const unitPrice = useCallback(
+    (h: HoldingData) => fxConvert(h.originalCurrentPrice, h.originalCurrency, currency),
+    [fxConvert, currency]
+  );
   const { t } = useTranslation('stocks');
   const [search, setSearch] = useState('');
   const [showZero, setShowZero] = useState(false);
@@ -119,27 +131,28 @@ export function InvestmentsTable({
           c = a.quantity - b.quantity;
           break;
         case 'avgCost':
-          c = a.avgCost - b.avgCost;
+          c = compareKnown(unitCost(a), unitCost(b));
           break;
         case 'currentPrice':
-          c = a.currentPrice - b.currentPrice;
+          c = compareKnown(unitPrice(a), unitPrice(b));
           break;
         case 'marketValue':
-          c = a.marketValue - b.marketValue;
+          c = compareKnown(a.marketValue, b.marketValue);
           break;
         case 'gainLoss':
-          c = a.gainLoss - b.gainLoss;
+          c = compareKnown(a.gainLoss, b.gainLoss);
           break;
         case 'dividend':
-          c = (a.dividendYield || 0) * a.quantity - (b.dividendYield || 0) * b.quantity;
+          c = compareKnown(a.yearlyDividend, b.yearlyDividend);
           break;
       }
       return sortDirection === 'asc' ? c : -c;
     });
-  }, [holdings, search, showZero, sortColumn, sortDirection, tagsByInvestmentId]);
+  }, [holdings, search, showZero, sortColumn, sortDirection, tagsByInvestmentId, unitPrice]);
 
-  const total = filtered.reduce((sum, h) => sum + h.marketValue, 0);
-  const largest = filtered.reduce((max, h) => Math.max(max, h.marketValue), 0);
+  // Footer over the rows shown: the values the backend could convert
+  const total = filtered.reduce((sum, h) => sum + (h.marketValue ?? 0), 0);
+  const largest = filtered.reduce((max, h) => Math.max(max, h.marketValue ?? 0), 0);
   const largestShare = total > 0 ? largest / total : 0;
 
   const SortHead = ({
@@ -239,7 +252,9 @@ export function InvestmentsTable({
           ) : (
             filtered.map((h) => {
               const zero = h.quantity <= 0;
-              const dividend = h.dividendYield ? h.dividendYield * h.quantity : 0;
+              const dividend = h.yearlyDividend ?? 0;
+              const cost = unitCost(h);
+              const marketPrice = unitPrice(h);
               return (
                 <TableRow
                   key={h.id}
@@ -260,7 +275,7 @@ export function InvestmentsTable({
                       <div className="min-w-0">
                         <b className="block truncate text-table font-650">{h.companyName}</b>
                         <small className="mt-[3px] block text-micro font-500 text-ink-4">
-                          {h.ticker} · {h.originalCurrency ?? currencyCode}
+                          {h.ticker} · {h.originalCurrency}
                         </small>
                         <HoldingTags tags={tagsByInvestmentId?.get(h.id) ?? EMPTY_TAGS} />
                       </div>
@@ -270,10 +285,12 @@ export function InvestmentsTable({
                     {fmt.number(h.quantity, { maximumFractionDigits: 4 })} {t('table.unit')}
                   </TableCell>
                   <TableCell className="text-right num">
-                    {price(h.avgCost, currencyCode)}
-                    {h.originalAvgCostCurrency && h.originalAvgCostCurrency !== currencyCode && (
+                    {cost !== null
+                      ? price(cost, currency)
+                      : price(h.originalAvgCost, h.originalAvgCostCurrency)}
+                    {cost !== null && h.originalAvgCostCurrency !== currency && (
                       <small className="mt-[3px] block text-micro font-500 text-ink-4">
-                        {price(h.originalAvgCost || 0, h.originalAvgCostCurrency)}
+                        {price(h.originalAvgCost, h.originalAvgCostCurrency)}
                       </small>
                     )}
                   </TableCell>
@@ -289,19 +306,21 @@ export function InvestmentsTable({
                           <TooltipContent>{t('tooltips.manualPrice')}</TooltipContent>
                         </Tooltip>
                       )}
-                      {price(h.currentPrice, currencyCode)}
+                      {marketPrice !== null
+                        ? price(marketPrice, currency)
+                        : price(h.originalCurrentPrice, h.originalCurrency)}
                     </span>
-                    {h.originalCurrency && h.originalCurrency !== currencyCode && (
+                    {marketPrice !== null && h.originalCurrency !== currency && (
                       <small className="mt-[3px] block text-micro font-500 text-ink-4">
-                        {price(h.originalCurrentPrice || 0, h.originalCurrency)}
+                        {price(h.originalCurrentPrice, h.originalCurrency)}
                       </small>
                     )}
                   </TableCell>
                   <TableCell className="text-right font-650 text-ink num">
-                    {zero ? (
+                    {zero || h.marketValue === null ? (
                       <span className="text-ink-4">—</span>
                     ) : (
-                      formatCurrencyRaw(h.marketValue)
+                      fmt.money(h.marketValue, currency, { decimals: 0 })
                     )}
                   </TableCell>
                   <TableCell className="text-right num">
@@ -309,13 +328,15 @@ export function InvestmentsTable({
                       <span className="text-ink-4">
                         {h.realizedGain
                           ? t('table.realized', {
-                              amount: fmt.money(h.realizedGain, currencyCode, {
+                              amount: fmt.money(h.realizedGain, currency, {
                                 signed: true,
                                 decimals: 0,
                               }),
                             })
                           : '—'}
                       </span>
+                    ) : h.gainLoss === null ? (
+                      <span className="text-ink-4">—</span>
                     ) : (
                       <span
                         className={cn(
@@ -323,9 +344,9 @@ export function InvestmentsTable({
                           h.gainLoss >= 0 ? 'text-gain' : 'text-loss'
                         )}
                       >
-                        {fmt.percent(h.gainLossPercent / 100, 1, { signed: true })}
+                        {fmt.percent((h.gainLossPercent ?? 0) / 100, 1, { signed: true })}
                         <small className="mt-[3px] block text-micro font-500 text-ink-4">
-                          {fmt.money(h.gainLoss, currencyCode, { signed: true, decimals: 0 })}
+                          {fmt.money(h.gainLoss, currency, { signed: true, decimals: 0 })}
                         </small>
                       </span>
                     )}
@@ -343,7 +364,7 @@ export function InvestmentsTable({
                         </Tooltip>
                       )}
                       {dividend > 0 ? (
-                        formatCurrency(dividend)
+                        fmt.money(dividend, currency, { decimals: 0 })
                       ) : (
                         <span className="text-ink-4">—</span>
                       )}
@@ -388,12 +409,12 @@ export function InvestmentsTable({
       <div className="flex items-center justify-between border-t border-line px-[14px] py-3 text-micro font-500 text-ink-4">
         <span>
           {t('table.footer.count', { count: filtered.length })} · {t('table.footer.total')}{' '}
-          <span className="num">{formatCurrencyRaw(total)}</span>
+          <span className="num">{fmt.money(total, currency, { decimals: 0 })}</span>
           {filtered.length > 1 && largestShare > 0 && (
             <> · {t('table.footer.largest', { percent: fmt.percent(largestShare, 0) })}</>
           )}
         </span>
-        <span>{t('table.footer.rates', { currency: currencyCode })}</span>
+        <span>{t('table.footer.rates', { currency })}</span>
       </div>
     </Card>
   );

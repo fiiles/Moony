@@ -14,10 +14,8 @@ import {
   Tag,
   Trash2,
 } from 'lucide-react';
-import type { InvestmentTransaction, StockCompanyInfo } from '@shared/schema';
-import type { StockInvestmentWithPrice } from '@shared/types/extended-types';
+import type { InvestmentTransaction, StockCompanyInfo, StockPosition } from '@shared/schema';
 import { type CurrencyCode, priceDecimals } from '@shared/currencies';
-import { calculatePositionCostBasis, calculateRealizedGains } from '@shared/calculations';
 import { investmentsApi, priceApi } from '@/lib/tauri-api';
 import { useCurrency } from '@/lib/currency';
 import { useFormat } from '@/lib/use-format';
@@ -25,7 +23,7 @@ import { useDatedConvert } from '@/hooks/use-dated-convert';
 import { useInvestmentTransactionMutations } from '@/hooks/use-investment-mutations';
 import { useShellPage } from '@/components/shell/shell-context';
 import { formatAmountWithCode } from '@/utils/format-amount';
-import { mapInvestmentToHolding } from '@/utils/stocks';
+import { costPerUnit, toStockRow } from '@/utils/positions';
 import { utcDayFloor } from '@/utils/chart-axis';
 import { formatMarketCap } from '@/utils/stock-monitor';
 import { BackLink, PageHead } from '@/components/shell/PageHead';
@@ -68,6 +66,7 @@ import { ManualPriceModal } from '@/components/stocks/ManualPriceModal';
 import { ManualDividendModal } from '@/components/stocks/ManualDividendModal';
 import { EditTransactionModal } from '@/components/stocks/EditTransactionModal';
 import { PositionHero } from '@/components/stocks/PositionHero';
+import { ConversionQualityNote } from '@/components/reports/ReportQualityNote';
 
 type LedgerFilter = 'all' | 'buy' | 'sell';
 
@@ -80,7 +79,7 @@ export default function StockDetail() {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const id = params?.id;
-  const { formatCurrency, formatCurrencyRaw, currencyCode, convert } = useCurrency();
+  const { formatCurrencyRaw, currencyCode, fxRevision, fxConvert } = useCurrency();
   const { t } = useTranslation('stocks');
   const { t: tc } = useTranslation('common');
   const fmt = useFormat();
@@ -99,11 +98,13 @@ export default function StockDetail() {
   const [hotEventId, setHotEventId] = useState<string | null>(null);
   const { deleteTransaction } = useInvestmentTransactionMutations();
 
-  const { data: investment, isLoading } = useQuery<StockInvestmentWithPrice | null>({
-    queryKey: ['investment', id],
-    queryFn: () => investmentsApi.get(id!),
+  const { data: position, isLoading } = useQuery<StockPosition | null>({
+    queryKey: ['investment', id, currencyCode, fxRevision],
+    queryFn: () => investmentsApi.get(id!, currencyCode),
     enabled: !!id,
   });
+  const investment = position?.investment;
+  const reportCurrency = position?.currency ?? currencyCode;
 
   const { data: transactions } = useQuery<InvestmentTransaction[]>({
     queryKey: ['investment-transactions', id],
@@ -131,9 +132,8 @@ export default function StockDetail() {
   const companyFetching = freshCompanyInfo.isFetching;
   const refetchCompanyInfo = freshCompanyInfo.refetch;
 
-  // Date-aware conversion over the transactions' range (ADR 0001).
+  // Date-aware conversion of the ledger rows and the hero's cost line (ADR 0001).
   const convertAt = useDatedConvert(transactions);
-  const preferredCurrency = currencyCode as CurrencyCode;
 
   const deleteMutation = useMutation({
     mutationFn: () => investmentsApi.delete(id!),
@@ -149,7 +149,7 @@ export default function StockDetail() {
   });
 
   const updateNameMutation = useMutation({
-    mutationFn: (newName: string) => investmentsApi.updateName(id!, newName),
+    mutationFn: (newName: string) => investmentsApi.updateName(id!, newName, currencyCode),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['investment', id] });
       queryClient.invalidateQueries({ queryKey: ['investments'] });
@@ -178,36 +178,30 @@ export default function StockDetail() {
     }
   };
 
-  // Position numbers (display currency); cost from the transactions at their own day's rates
-  const holdingData = investment ? mapInvestmentToHolding(investment) : null;
+  // Position numbers as the backend values them in the report currency (ADR 0011)
+  const holdingData = investment ? toStockRow(investment) : null;
   const quantity = holdingData?.quantity ?? 0;
-  const position = useMemo(
-    () => calculatePositionCostBasis(transactions ?? [], convertAt, preferredCurrency),
-    [transactions, convertAt, preferredCurrency]
-  );
-  const realized = useMemo(
-    () =>
-      transactions && transactions.length > 0
-        ? calculateRealizedGains(transactions, convertAt, preferredCurrency)
-        : 0,
-    [transactions, convertAt, preferredCurrency]
-  );
-  const stockCurrency = (investment?.currency || 'USD') as CurrencyCode;
-  const avgCostCurrency = (investment?.averagePriceCurrency || 'USD') as CurrencyCode;
-  const originalPriceNum = parseFloat(String(investment?.originalPrice)) || 0;
-  const currentPrice =
-    originalPriceNum > 0
-      ? convert(originalPriceNum, stockCurrency, preferredCurrency)
-      : convert(holdingData?.currentPrice ?? 0, 'CZK', preferredCurrency);
-  const currentValue = quantity * currentPrice;
-  const totalInvested = position.costBasis;
-  const unrealized = currentValue - totalInvested;
-  const unrealizedPct = totalInvested > 0 ? unrealized / totalInvested : 0;
-  const dividendPerShare = investment?.dividendYield || 0;
-  // `dividendYield` is the yearly dividend per share in CZK.
-  const yearlyDividend = quantity * dividendPerShare;
+  const stockCurrency = holdingData?.originalCurrency ?? reportCurrency;
+  const avgCostCurrency = holdingData?.originalAvgCostCurrency ?? reportCurrency;
+  const originalPriceNum = holdingData?.originalCurrentPrice ?? 0;
+  const currentPrice = fxConvert(originalPriceNum, stockCurrency, reportCurrency);
+  const currentValue = holdingData?.marketValue ?? null;
+  const totalInvested = holdingData?.totalCost ?? null;
+  const averageCost = costPerUnit(totalInvested, quantity);
+  const unrealized = holdingData?.gainLoss ?? null;
+  const unrealizedPct = (holdingData?.gainLossPercent ?? 0) / 100;
+  const realized = holdingData?.realizedGain ?? null;
+  const yearlyDividend = holdingData?.yearlyDividend ?? null;
   const dividendYieldPct =
-    currentValue > 0 ? convert(yearlyDividend, 'CZK', preferredCurrency) / currentValue : 0;
+    yearlyDividend !== null && currentValue !== null && currentValue > 0
+      ? yearlyDividend / currentValue
+      : 0;
+  const tone = (v: number | null) =>
+    v !== null && v > 0 ? 'gain' : v !== null && v < 0 ? 'loss' : 'neutral';
+  const money = (v: number | null, opts?: { signed?: boolean }) =>
+    v === null ? '—' : fmt.money(v, reportCurrency, { decimals: 0, ...opts });
+  const unitMoney = (v: number | null) =>
+    v === null ? '—' : fmt.money(v, reportCurrency, { decimals: priceDecimals(v, reportCurrency) });
 
   const sells = (transactions ?? []).filter((tx) => tx.type === 'sell');
   const lastBuy = (transactions ?? [])
@@ -422,11 +416,7 @@ export default function StockDetail() {
         title={investment.companyName}
         description={[
           t('detail.sharesCount', { count: quantity }),
-          t('detail.avgBuyPrice', {
-            price: fmt.money(position.averageCost, currencyCode, {
-              decimals: priceDecimals(position.averageCost, currencyCode),
-            }),
-          }),
+          t('detail.avgBuyPrice', { price: unitMoney(averageCost) }),
           lastBuy !== null ? t('detail.lastBuy', { date: fmt.day(lastBuy) }) : null,
         ]
           .filter(Boolean)
@@ -497,6 +487,8 @@ export default function StockDetail() {
         }
       />
 
+      <ConversionQualityNote quality={position?.fxQuality} currency={reportCurrency} />
+
       <PositionHero
         type="stock"
         ticker={investment.ticker}
@@ -512,15 +504,15 @@ export default function StockDetail() {
       >
         <HeroValue
           label={t('detail.positionValue')}
-          value={formatCurrencyRaw(currentValue)}
-          tone={unrealized > 0 ? 'gain' : unrealized < 0 ? 'loss' : 'neutral'}
+          value={money(currentValue)}
+          tone={tone(unrealized)}
           delta={
-            totalInvested > 0
-              ? `${unrealized >= 0 ? '↗' : '↘'} ${fmt.money(unrealized, currencyCode, { signed: true, decimals: 0 })}`
+            unrealized !== null && totalInvested !== null && totalInvested > 0
+              ? `${unrealized >= 0 ? '↗' : '↘'} ${money(unrealized, { signed: true })}`
               : undefined
           }
           deltaNote={
-            totalInvested > 0
+            unrealized !== null && totalInvested !== null && totalInvested > 0
               ? `${fmt.percent(unrealizedPct, 1, { signed: true })} ${t('detail.sinceBuy')}`
               : undefined
           }
@@ -528,16 +520,20 @@ export default function StockDetail() {
         <HeroValue
           compact
           label={t('detail.currentPrice')}
-          value={fmt.money(currentPrice, currencyCode, {
-            decimals: priceDecimals(currentPrice, currencyCode),
-          })}
+          value={
+            currentPrice !== null
+              ? unitMoney(currentPrice)
+              : fmt.money(originalPriceNum, stockCurrency, {
+                  decimals: priceDecimals(originalPriceNum, stockCurrency),
+                })
+          }
           delta={
             investment.isManualPrice ? (
               <Badge variant="outline">{t('badges.manual')}</Badge>
             ) : undefined
           }
           deltaNote={
-            originalPriceNum > 0 && stockCurrency !== currencyCode
+            currentPrice !== null && originalPriceNum > 0 && stockCurrency !== reportCurrency
               ? fmt.money(originalPriceNum, stockCurrency, {
                   decimals: priceDecimals(originalPriceNum, stockCurrency),
                 })
@@ -549,23 +545,21 @@ export default function StockDetail() {
       <Stats className="mt-[17px]">
         <Stat
           label={t('detail.invested')}
-          value={formatCurrencyRaw(totalInvested)}
+          value={money(totalInvested)}
           note={`${t('detail.sharesCount', { count: quantity })} · ${t('detail.avgShort', {
-            price: fmt.money(position.averageCost, currencyCode, {
-              decimals: priceDecimals(position.averageCost, currencyCode),
-            }),
+            price: unitMoney(averageCost),
           })}`}
         />
         <Stat
           label={t('detail.unrealized')}
-          value={fmt.money(unrealized, currencyCode, { signed: true, decimals: 0 })}
-          tone={unrealized > 0 ? 'gain' : unrealized < 0 ? 'loss' : 'neutral'}
+          value={money(unrealized, { signed: true })}
+          tone={tone(unrealized)}
           note={`${fmt.percent(unrealizedPct, 1, { signed: true })} ${t('detail.vsInvested')}`}
         />
         <Stat
           label={t('detail.realized')}
-          value={fmt.money(realized, currencyCode, { signed: true, decimals: 0 })}
-          tone={realized > 0 ? 'gain' : realized < 0 ? 'loss' : 'neutral'}
+          value={money(realized, { signed: true })}
+          tone={tone(realized)}
           noteTone="neutral"
           note={sells.length > 0 ? t('detail.sells', { count: sells.length }) : t('detail.noSells')}
         />
@@ -585,9 +579,9 @@ export default function StockDetail() {
               <TooltipContent>{t('detail.dividendYieldTooltip')}</TooltipContent>
             </Tooltip>
           }
-          value={yearlyDividend > 0 ? formatCurrency(yearlyDividend) : '—'}
+          value={yearlyDividend !== null && yearlyDividend > 0 ? money(yearlyDividend) : '—'}
           note={
-            yearlyDividend > 0
+            yearlyDividend !== null && yearlyDividend > 0
               ? `${t('detail.dividendNote', { percent: fmt.percent(dividendYieldPct, 1) })}${investment.isManualDividend ? ` · ${t('detail.manual')}` : ''}`
               : t('detail.noDividend')
           }
@@ -650,7 +644,7 @@ export default function StockDetail() {
                   const priceInDisplay = convertAt(
                     txPrice,
                     txCurrency,
-                    preferredCurrency,
+                    currencyCode as CurrencyCode,
                     tx.transactionDate
                   );
                   const isSell = tx.type === 'sell';
@@ -754,21 +748,17 @@ export default function StockDetail() {
                 )}
                 {kv(
                   t('detail.position.avgPrice'),
-                  `${fmt.money(holdingData.avgCost, avgCostCurrency, {
-                    decimals: priceDecimals(holdingData.avgCost, avgCostCurrency),
+                  `${fmt.money(holdingData.originalAvgCost, avgCostCurrency, {
+                    decimals: priceDecimals(holdingData.originalAvgCost, avgCostCurrency),
                   })}${
-                    avgCostCurrency !== currencyCode
-                      ? ` ≈ ${fmt.money(position.averageCost, currencyCode, {
-                          decimals: priceDecimals(position.averageCost, currencyCode),
-                        })}`
+                    avgCostCurrency !== reportCurrency && averageCost !== null
+                      ? ` ≈ ${unitMoney(averageCost)}`
                       : ''
                   }`
                 )}
                 {kv(
                   t('detail.position.currentPrice'),
-                  fmt.money(currentPrice, currencyCode, {
-                    decimals: priceDecimals(currentPrice, currencyCode),
-                  })
+                  currentPrice !== null ? unitMoney(currentPrice) : undefined
                 )}
                 {kv(
                   t('detail.position.priceUpdated'),

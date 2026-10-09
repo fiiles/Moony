@@ -381,6 +381,9 @@
     "staleRates": "Pro {{currencies}} chybí aktuální kurz — hodnoty používají kurz starší než {{days}} dní",
     "fresh": "Data aktuální"
   },
+  "fxQuality": {
+    "missing": "Nepřepočteno na {{currency}}: chybí kurz pro {{currencies}}. Součty tyto pozice nezahrnují."
+  },
   "notFound": {
     "title": "Stránka nenalezena",
     "description": "Tato stránka neexistuje nebo byla přesunuta.",

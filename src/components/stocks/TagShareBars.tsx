@@ -1,7 +1,6 @@
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Card } from '@/components/ui/card';
-import { useCurrency } from '@/lib/currency';
 import { useFormat } from '@/lib/use-format';
 import { buildTagShareRows } from '@/utils/tag-share';
 import type { TagMetrics } from '@shared/schema';
@@ -11,9 +10,8 @@ import type { TagMetrics } from '@shared/schema';
  * value and the percentage written out. Replaces the old 0-100 % stacked chart, whose
  * bars were all but invisible and whose 100 % had no clear meaning.
  */
-export function TagShareBars({ metrics }: { metrics: TagMetrics[] }) {
+export function TagShareBars({ metrics, currency }: { metrics: TagMetrics[]; currency: string }) {
   const { t } = useTranslation('reports');
-  const { formatCurrency } = useCurrency();
   const fmt = useFormat();
   const rows = useMemo(() => buildTagShareRows(metrics), [metrics]);
 
@@ -45,7 +43,9 @@ export function TagShareBars({ metrics }: { metrics: TagMetrics[] }) {
             </div>
             <span className="min-w-[10rem] whitespace-nowrap text-right text-sm tabular-nums">
               <span className="font-semibold">{fmt.percent(row.percent / 100, 1)}</span>
-              <span className="ml-2 text-ink-3">{formatCurrency(row.value)}</span>
+              <span className="ml-2 text-ink-3">
+                {fmt.money(row.value, currency, { decimals: 0 })}
+              </span>
             </span>
           </li>
         ))}

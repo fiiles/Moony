@@ -10,13 +10,14 @@ function metric(
 ): TagMetrics {
   return {
     tag: { id, name, color: id === 'a' ? '#123456' : null, groupId: null, createdAt: 0 },
-    totalValue,
-    totalCost: 0,
-    gainLoss: 0,
-    gainLossPercent: 0,
-    estimatedYearlyDividend: 0,
+    value: totalValue.toFixed(2),
+    costBasis: '0.00',
+    unrealizedGain: '0.00',
+    unrealizedGainPercent: 0,
+    yearlyDividend: '0.00',
     portfolioPercent,
     holdingsCount: 1,
+    fxQuality: { missingCurrencies: [], missingCount: 0, estimated: false },
   };
 }
 

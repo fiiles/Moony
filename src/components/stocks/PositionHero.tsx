@@ -34,10 +34,11 @@ export interface PositionEvent extends ChartEvent {
 interface PositionHeroProps {
   type: 'stock' | 'crypto';
   ticker: string;
-  /** Current value of the position in the display currency. */
-  currentValue: number;
-  /** Current cost basis in the display currency (end of the dashed line). */
-  currentCost: number;
+  /** Current value of the position in the display currency; `null` when not convertible
+   *  (the line then ends at the last recorded day). */
+  currentValue: number | null;
+  /** Current cost basis in the display currency (end of the dashed line); `null` when unknown. */
+  currentCost: number | null;
   transactions: PositionTransaction[];
   convertAt: DatedConvertFn;
   /** The hero numbers on the left (one or more <HeroValue>). */
@@ -146,13 +147,15 @@ export function PositionHero({
       value: convert(Number(h.valueCzk) || 0, 'CZK', currencyCode as CurrencyCode),
       cost: costAt(h.recordedAt),
     }));
+    if (currentValue === null) return pts;
     const today = utcDayFloor(Date.now() / 1000);
     const last = pts[pts.length - 1];
+    const cost = currentCost ?? costAt(Date.now() / 1000);
     if (last && utcDayFloor(last.t) === today) {
       last.value = currentValue;
-      last.cost = currentCost;
+      last.cost = cost;
     } else {
-      pts.push({ t: Math.floor(Date.now() / 1000), value: currentValue, cost: currentCost });
+      pts.push({ t: Math.floor(Date.now() / 1000), value: currentValue, cost });
     }
     return pts;
     // costAt is derived from costSteps

@@ -12,11 +12,11 @@ const region = { key: 'region', tags: [usa, europe] };
 function position(
   id: string,
   tags: { id: string }[],
-  currentValue: number,
-  gainLoss = 0,
-  dividendYield = 0
+  currentValue: number | null,
+  gainLoss: number | null = 0,
+  yearlyDividendAmount: number | null = 0
 ) {
-  return { id, tags, currentValue, gainLoss, dividendYield };
+  return { id, tags, currentValue, gainLoss, yearlyDividendAmount };
 }
 
 describe('chosenTagIds', () => {
@@ -114,6 +114,16 @@ describe('tagTotals', () => {
   it('gives no percentage without a cost basis', () => {
     // Value equals the gain: nothing was paid in, so there is nothing to divide by
     expect(tagTotals([position('gift', [growth], 100, 100)], 'growth').gainLossPercent).toBe(0);
+  });
+
+  it('counts but does not sum a position whose value or cost is unknown (nor its dividend)', () => {
+    const withGap = [...positions, position('kwd', [growth], null, null, 99)];
+    const totals = tagTotals(withGap, 'growth');
+    expect(totals.count).toBe(3);
+    expect(totals.value).toBe(1700);
+    expect(totals.dividend).toBe(24);
+    const unknownCost = [position('gift', [growth], 100, null, 5)];
+    expect(tagTotals(unknownCost, 'growth')).toMatchObject({ count: 1, value: 0, dividend: 0 });
   });
 
   it('follows a narrowed selection', () => {

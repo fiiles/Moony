@@ -24,6 +24,8 @@ import type {
   IntegrityReport,
   UserProfile,
   SavingsAccountZone,
+  StockInvestment,
+  CryptoInvestment,
   InvestmentTransaction,
   InsertInvestmentTransaction,
   CryptoTransaction,
@@ -89,8 +91,12 @@ import type {
   InsertStockTag,
   StockTagGroup,
   InsertStockTagGroup,
-  StockInvestmentWithTags,
-  TagMetrics,
+  StocksAnalysis,
+  TagMetricsReport,
+  StockPositions,
+  StockPosition,
+  InvestmentWithDetails,
+  CryptoPositions,
   TwrSeries,
   McpServerStatus,
   // Stock Monitor types
@@ -125,11 +131,6 @@ import type {
   StockInstrumentQuery,
   StockInstrumentResolution,
 } from '../../shared/schema';
-import type {
-  StockInvestmentWithPrice,
-  CryptoInvestmentWithPrice,
-  InvestmentWithDetails,
-} from '../../shared/types/extended-types';
 
 // Per-ticker value history record
 export interface TickerValueHistory {
@@ -227,23 +228,26 @@ export const authApi = {
 // ============================================================================
 
 export const investmentsApi = {
-  getAll: () => tauriInvoke<StockInvestmentWithPrice[]>('get_all_investments'),
+  /** Every stock position valued in `reportCurrency`. */
+  getAll: (reportCurrency: string) =>
+    tauriInvoke<StockPositions>('get_all_investments', { reportCurrency }),
 
-  get: (id: string) => tauriInvoke<StockInvestmentWithPrice>('get_investment', { id }),
+  get: (id: string, reportCurrency: string) =>
+    tauriInvoke<StockPosition>('get_investment', { id, reportCurrency }),
 
   /** Get investment with all details (transactions + tags) in a single IPC call */
-  getWithDetails: (id: string) =>
-    tauriInvoke<InvestmentWithDetails>('get_investment_with_details', { id }),
+  getWithDetails: (id: string, reportCurrency: string) =>
+    tauriInvoke<InvestmentWithDetails>('get_investment_with_details', { id, reportCurrency }),
 
   create: (
     data: { ticker: string; companyName: string },
     initialTransaction?: InsertInvestmentTransaction
-  ) => tauriInvoke<StockInvestmentWithPrice>('create_investment', { data, initialTransaction }),
+  ) => tauriInvoke<StockInvestment>('create_investment', { data, initialTransaction }),
 
   delete: (id: string) => tauriInvoke<void>('delete_investment', { id }),
 
-  updateName: (id: string, companyName: string) =>
-    tauriInvoke<StockInvestmentWithPrice>('update_investment_name', { id, companyName }),
+  updateName: (id: string, companyName: string, reportCurrency: string) =>
+    tauriInvoke<StockPosition>('update_investment_name', { id, companyName, reportCurrency }),
 
   getTransactions: (investmentId: string) =>
     tauriInvoke<InvestmentTransaction[]>('get_investment_transactions', { investmentId }),
@@ -309,12 +313,14 @@ export const investmentsApi = {
 // ============================================================================
 
 export const cryptoApi = {
-  getAll: () => tauriInvoke<CryptoInvestmentWithPrice[]>('get_all_crypto'),
+  /** Every crypto position valued in `reportCurrency`. */
+  getAll: (reportCurrency: string) =>
+    tauriInvoke<CryptoPositions>('get_all_crypto', { reportCurrency }),
 
   create: (
     data: { ticker: string; name: string; coingeckoId?: string },
     initialTransaction?: Omit<CryptoTransaction, 'id' | 'investmentId' | 'createdAt'>
-  ) => tauriInvoke<CryptoInvestmentWithPrice>('create_crypto', { data, initialTransaction }),
+  ) => tauriInvoke<CryptoInvestment>('create_crypto', { data, initialTransaction }),
 
   delete: (id: string) => tauriInvoke<void>('delete_crypto', { id }),
 
@@ -979,10 +985,11 @@ export const stockTagsApi = {
   setForInvestment: (investmentId: string, tagIds: string[]) =>
     tauriInvoke<void>('set_investment_tags', { investmentId, tagIds }),
 
-  getAnalysis: () => tauriInvoke<StockInvestmentWithTags[]>('get_stocks_analysis'),
+  getAnalysis: (reportCurrency: string) =>
+    tauriInvoke<StocksAnalysis>('get_stocks_analysis', { reportCurrency }),
 
-  getTagMetrics: (tagIds: string[] = []) =>
-    tauriInvoke<TagMetrics[]>('get_tag_metrics', { tagIds }),
+  getTagMetrics: (tagIds: string[], reportCurrency: string) =>
+    tauriInvoke<TagMetricsReport>('get_tag_metrics', { tagIds, reportCurrency }),
 
   // Tag Group operations
   getAllGroups: () => tauriInvoke<StockTagGroup[]>('get_all_stock_tag_groups'),

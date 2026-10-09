@@ -3,6 +3,8 @@
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
+use super::fx::ConversionQuality;
+
 /// Crypto investment holding
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct CryptoInvestment {
@@ -16,7 +18,9 @@ pub struct CryptoInvestment {
     pub average_price: String,
 }
 
-/// Enriched crypto with current price
+/// A crypto position: its native facts plus its figures in the response's report currency.
+/// Converted amounts are decimal TEXT at the report currency's minor unit and `null` when they
+/// cannot be converted (the currency is then in the response's `fxQuality`).
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct EnrichedCryptoInvestment {
     pub id: String,
@@ -25,23 +29,51 @@ pub struct EnrichedCryptoInvestment {
     pub coingecko_id: String,
     pub name: String,
     pub quantity: String,
+    /// Native weighted average cost (currency `averagePriceCurrency`).
     #[serde(rename = "averagePrice")]
     pub average_price: String,
     /// Currency of the average price (native currency from first transaction)
     #[serde(rename = "averagePriceCurrency")]
     pub average_price_currency: String,
-    #[serde(rename = "currentPrice")]
-    pub current_price: String,
-    /// Original price in its source currency (before conversion to CZK)
+    /// Current price in its own currency, "0" when unpriced (see `price`).
     #[serde(rename = "originalPrice")]
     pub original_price: String,
     /// Currency of the current market price (e.g., USD, EUR)
+    #[serde(rename = "currency")]
     pub currency: String,
     #[serde(rename = "fetchedAt")]
     pub fetched_at: Option<i64>,
     /// Whether the price is manually overridden
     #[serde(rename = "isManualPrice")]
     pub is_manual_price: bool,
+    /// Current price in its own currency; `null` when unpriced.
+    #[serde(rename = "price")]
+    pub price: Option<String>,
+    #[serde(rename = "priceCurrency")]
+    pub price_currency: Option<String>,
+    #[serde(rename = "value")]
+    pub value: Option<String>,
+    #[serde(rename = "costBasis")]
+    pub cost_basis: Option<String>,
+    #[serde(rename = "unrealizedGain")]
+    pub unrealized_gain: Option<String>,
+    #[serde(rename = "unrealizedGainPercent")]
+    pub unrealized_gain_percent: Option<f64>,
+    #[serde(rename = "realizedGain")]
+    pub realized_gain: Option<String>,
+}
+
+/// Every crypto position in `currency`, with what could not be converted.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct CryptoPositions {
+    #[serde(rename = "currency")]
+    pub currency: String,
+    #[serde(rename = "fxQuality")]
+    pub fx_quality: ConversionQuality,
+    #[serde(rename = "items")]
+    pub items: Vec<EnrichedCryptoInvestment>,
+    #[serde(rename = "totals")]
+    pub totals: super::investments::PositionTotals,
 }
 
 /// Data for creating crypto investment. Quantity and average price are not

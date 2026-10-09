@@ -1,11 +1,12 @@
 import { useTranslation } from 'react-i18next';
 import { Stat, Stats } from '@/components/common/Stat';
-import { useCurrency } from '@/lib/currency';
 import { useFormat } from '@/lib/use-format';
 import { utcDayFloor } from '@/utils/chart-axis';
 import { cn } from '@/lib/utils';
 
 interface CryptoSummaryProps {
+  /** The report currency of every amount below. */
+  currency: string;
   metrics: {
     totalValue: number;
     totalCost: number;
@@ -27,6 +28,7 @@ interface CryptoSummaryProps {
  * largest position with its share of the crypto total.
  */
 export function CryptoSummary({
+  currency,
   metrics,
   positionCount,
   realizedGain,
@@ -35,7 +37,6 @@ export function CryptoSummary({
   latestFetchedAt,
   isLoading,
 }: CryptoSummaryProps) {
-  const { formatCurrencyRaw, currencyCode } = useCurrency();
   const fmt = useFormat();
   const { t } = useTranslation('crypto');
 
@@ -52,23 +53,23 @@ export function CryptoSummary({
     <Stats className={cn('transition-opacity duration-base', isLoading && 'opacity-50')}>
       <Stat
         label={t('summary.value')}
-        value={formatCurrencyRaw(metrics.totalValue)}
+        value={fmt.money(metrics.totalValue, currency, { decimals: 0 })}
         note={`${t('summary.positions', { count: positionCount })} · ${freshness}`}
       />
       <Stat
         label={
           metrics.overallGainLoss >= 0 ? t('summary.unrealizedGain') : t('summary.unrealizedLoss')
         }
-        value={fmt.money(metrics.overallGainLoss, currencyCode, { signed: true, decimals: 0 })}
+        value={fmt.money(metrics.overallGainLoss, currency, { signed: true, decimals: 0 })}
         tone={tone(metrics.overallGainLoss)}
         note={`${fmt.percent(metrics.overallGainLossPercent / 100, 1, { signed: true })} ${t(
           'summary.vsInvested',
-          { amount: formatCurrencyRaw(metrics.totalCost) }
+          { amount: fmt.money(metrics.totalCost, currency, { decimals: 0 }) }
         )}`}
       />
       <Stat
         label={t('summary.realized')}
-        value={fmt.money(realizedGain, currencyCode, { signed: true, decimals: 0 })}
+        value={fmt.money(realizedGain, currency, { signed: true, decimals: 0 })}
         tone={tone(realizedGain)}
         noteTone="neutral"
         note={sellCount > 0 ? t('summary.sells', { count: sellCount }) : t('summary.noSells')}

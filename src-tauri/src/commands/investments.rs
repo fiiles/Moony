@@ -4,90 +4,33 @@ use crate::commands::portfolio;
 use crate::db::Database;
 use crate::error::{AppError, Result};
 use crate::models::{
-    DividendOverride, EnrichedStockInvestment, InsertInvestmentTransaction, InsertStockInvestment,
-    InvestmentTransaction, StockInvestment, StockPriceOverride, StockTag, TwrSeries,
+    DividendOverride, InsertInvestmentTransaction, InsertStockInvestment, InvestmentTransaction,
+    InvestmentWithDetails, StockInvestment, StockPosition, StockPositions, StockPriceOverride,
+    StockTag, TwrSeries,
 };
-use crate::services::currency::convert_to_czk;
 use crate::services::history_recalc::HistoryRecalc;
 use crate::services::investments as investment_service;
-use serde::Serialize;
+use crate::services::position_reports;
 use tauri::{AppHandle, Emitter, State};
 use uuid::Uuid;
 
-/// Investment with all related data (compound response to reduce IPC calls)
-#[derive(Debug, Clone, Serialize)]
-pub struct InvestmentWithDetails {
-    pub investment: EnrichedStockInvestment,
-    pub transactions: Vec<InvestmentTransaction>,
-    pub tags: Vec<StockTag>,
-}
-
-/// Get all investments with enriched price data
-/// Derived native average price per investment id (weighted average in the
-/// position's primary currency, computed from transactions — never stored).
-fn derived_average_prices(
-    conn: &rusqlite::Connection,
-) -> Result<std::collections::HashMap<String, String>> {
-    let (positions, quality) = crate::services::cost_basis::cost_basis_for_all(
-        conn,
-        crate::services::cost_basis::TxTable::Stocks,
-        "CZK",
-        &crate::services::fx::current(),
-    )?;
-    crate::services::fx::record_missing_all(&quality);
-    Ok(positions
-        .into_iter()
-        .map(|(id, p)| (id, p.average_price_native().to_string()))
-        .collect())
-}
-
+/// Every stock position in `report_currency` (positions service, one quote snapshot).
 #[tauri::command]
-pub async fn get_all_investments(db: State<'_, Database>) -> Result<Vec<EnrichedStockInvestment>> {
-    db.with_conn(|conn| {
-        let avg_map = derived_average_prices(conn)?;
-        let mut stmt = conn.prepare(
-            "SELECT id, ticker, company_name, quantity, currency FROM stock_investments",
-        )?;
-
-        let investments: Vec<StockInvestment> = stmt
-            .query_map([], |row| {
-                Ok(StockInvestment {
-                    id: row.get(0)?,
-                    ticker: row.get(1)?,
-                    company_name: row.get(2)?,
-                    quantity: row.get(3)?,
-                    average_price: String::new(),
-                    currency: row.get(4)?,
-                })
-            })?
-            .filter_map(|r| r.ok())
-            .map(|mut inv| {
-                inv.average_price = avg_map.get(&inv.id).cloned().unwrap_or_else(|| "0".into());
-                inv
-            })
-            .collect();
-
-        // Enrich with price data
-        let mut enriched = Vec::new();
-        for inv in investments {
-            enriched.push(enrich_investment(conn, inv)?);
-        }
-
-        Ok(enriched)
-    })
+pub async fn get_all_investments(
+    db: State<'_, Database>,
+    report_currency: String,
+) -> Result<StockPositions> {
+    db.with_conn(|conn| position_reports::stock_positions(conn, &report_currency))
 }
 
-/// Get a single investment by ID with enriched price data
+/// One stock position in `report_currency`.
 #[tauri::command]
 pub async fn get_investment(
     db: State<'_, Database>,
     id: String,
-) -> Result<EnrichedStockInvestment> {
-    db.with_conn(|conn| {
-        let inv = investment_service::get_investment_by_id(conn, &id)?;
-
-        enrich_investment(conn, inv)
-    })
+    report_currency: String,
+) -> Result<StockPosition> {
+    db.with_conn(|conn| position_reports::stock_position(conn, &id, &report_currency))
 }
 
 /// Get investment with all details in a single call (compound command to reduce IPC overhead)
@@ -95,12 +38,10 @@ pub async fn get_investment(
 pub async fn get_investment_with_details(
     db: State<'_, Database>,
     id: String,
+    report_currency: String,
 ) -> Result<InvestmentWithDetails> {
     db.with_conn(|conn| {
-        // Get investment
-        let inv = investment_service::get_investment_by_id(conn, &id)?;
-
-        let enriched = enrich_investment(conn, inv)?;
+        let position = position_reports::stock_position(conn, &id, &report_currency)?;
 
         // Get transactions
         let mut stmt = conn.prepare(
@@ -132,7 +73,7 @@ pub async fn get_investment_with_details(
         let mut tag_stmt = conn.prepare(
             "SELECT t.id, t.name, t.color, t.group_id, t.created_at
              FROM stock_tags t
-             JOIN investment_tags it ON t.id = it.tag_id
+             JOIN stock_investment_tags it ON t.id = it.tag_id
              WHERE it.investment_id = ?1",
         )?;
 
@@ -150,61 +91,12 @@ pub async fn get_investment_with_details(
             .collect();
 
         Ok(InvestmentWithDetails {
-            investment: enriched,
+            currency: position.currency,
+            fx_quality: position.fx_quality,
+            investment: position.investment,
             transactions,
             tags,
         })
-    })
-}
-
-/// Helper function to enrich a stock investment with price and dividend data
-fn enrich_investment(
-    conn: &rusqlite::Connection,
-    inv: StockInvestment,
-) -> Result<EnrichedStockInvestment> {
-    use crate::services::pricing;
-
-    // Determine active price using unified resolver
-    let resolved = pricing::resolve_stock_price(conn, &inv.ticker);
-    let (current_price, original_price, currency, fetched_at, is_manual_price) = match resolved {
-        Some(rp) => (
-            convert_to_czk(rp.price, &rp.currency),
-            rp.original_price,
-            rp.currency,
-            rp.fetched_at,
-            rp.is_manual,
-        ),
-        None => (0.0, "0".to_string(), "CZK".to_string(), None, false),
-    };
-
-    // Dividend per share in its own currency (override wins over fetched data)
-    let (original_dividend_yield, dividend_currency, dividend_yield, is_manual_dividend) =
-        match crate::services::positions::resolve_dividend(conn, &inv.ticker)? {
-            Some(d) => (
-                d.per_share,
-                d.currency.clone(),
-                convert_to_czk(d.per_share, &d.currency),
-                d.is_manual,
-            ),
-            None => (0.0, "CZK".to_string(), 0.0, false),
-        };
-
-    Ok(EnrichedStockInvestment {
-        id: inv.id,
-        ticker: inv.ticker,
-        company_name: inv.company_name,
-        quantity: inv.quantity,
-        average_price: inv.average_price,
-        average_price_currency: inv.currency,
-        current_price,
-        original_price,
-        currency,
-        fetched_at,
-        is_manual_price,
-        dividend_yield,
-        original_dividend_yield,
-        dividend_currency,
-        is_manual_dividend,
     })
 }
 
@@ -262,7 +154,8 @@ pub async fn update_investment_name(
     db: State<'_, Database>,
     id: String,
     company_name: String,
-) -> Result<EnrichedStockInvestment> {
+    report_currency: String,
+) -> Result<StockPosition> {
     // Validate name
     if company_name.trim().is_empty() {
         return Err(AppError::Validation("Company name cannot be empty".into()));
@@ -284,10 +177,8 @@ pub async fn update_investment_name(
             rusqlite::params![company_name.trim(), id],
         )?;
 
-        // Return updated investment
-        let inv = investment_service::get_investment_by_id(conn, &id)?;
-
-        enrich_investment(conn, inv)
+        // Return the updated position
+        position_reports::stock_position(conn, &id, &report_currency)
     })
 }
 

@@ -3,97 +3,21 @@
 use crate::db::Database;
 use crate::error::{AppError, Result};
 use crate::models::{
-    CryptoInvestment, CryptoTransaction, EnrichedCryptoInvestment, InsertCryptoInvestment,
+    CryptoInvestment, CryptoPositions, CryptoTransaction, InsertCryptoInvestment,
     InsertCryptoTransaction,
 };
 use crate::services::crypto_investments as crypto_service;
-use crate::services::currency::convert_to_czk;
+use crate::services::position_reports;
 use tauri::{AppHandle, Emitter, State};
 use uuid::Uuid;
 
-/// Get all crypto investments with current prices
+/// Every crypto position in `report_currency` (positions service, one quote snapshot).
 #[tauri::command]
-pub async fn get_all_crypto(db: State<'_, Database>) -> Result<Vec<EnrichedCryptoInvestment>> {
-    db.with_conn(|conn| {
-        use crate::services::pricing;
-
-        // Average price derives from transactions at their day's rates —
-        // crypto positions may mix transaction currencies.
-        let (avg_map, cost_quality) = crate::services::cost_basis::cost_basis_for_all(
-            conn,
-            crate::services::cost_basis::TxTable::Crypto,
-            "CZK",
-            &crate::services::fx::current(),
-        )?;
-        crate::services::fx::record_missing_all(&cost_quality);
-        let mut stmt = conn.prepare(
-            "SELECT id, ticker, coingecko_id, name, quantity, currency FROM crypto_investments",
-        )?;
-
-        let investments: Vec<(CryptoInvestment, String)> = stmt
-            .query_map([], |row| {
-                Ok((
-                    CryptoInvestment {
-                        id: row.get(0)?,
-                        ticker: row.get(1)?,
-                        coingecko_id: row.get(2)?,
-                        name: row.get(3)?,
-                        quantity: row.get(4)?,
-                        average_price: String::new(),
-                    },
-                    row.get::<_, Option<String>>(5)?
-                        .unwrap_or_else(|| "USD".to_string()),
-                ))
-            })?
-            .filter_map(|r| r.ok())
-            .map(|(mut inv, ccy)| {
-                inv.average_price = avg_map
-                    .get(&inv.id)
-                    .map(|p| p.average_price_native().to_string())
-                    .unwrap_or_else(|| "0".to_string());
-                (inv, ccy)
-            })
-            .collect();
-
-        let mut enriched = Vec::new();
-        for (inv, avg_price_currency) in investments {
-            // Determine active price using unified resolver
-            let resolved = pricing::resolve_crypto_price(conn, &inv.ticker);
-            let (current_price, original_price, currency, fetched_at, is_manual) = match resolved {
-                Some(rp) => (
-                    convert_to_czk(rp.price, &rp.currency).to_string(),
-                    rp.original_price,
-                    rp.currency,
-                    rp.fetched_at,
-                    rp.is_manual,
-                ),
-                None => (
-                    "0".to_string(),
-                    "0".to_string(),
-                    "USD".to_string(),
-                    None,
-                    false,
-                ),
-            };
-
-            enriched.push(EnrichedCryptoInvestment {
-                id: inv.id,
-                ticker: inv.ticker,
-                coingecko_id: inv.coingecko_id,
-                name: inv.name,
-                quantity: inv.quantity,
-                average_price: inv.average_price,
-                average_price_currency: avg_price_currency,
-                current_price,
-                original_price,
-                currency,
-                fetched_at,
-                is_manual_price: is_manual,
-            });
-        }
-
-        Ok(enriched)
-    })
+pub async fn get_all_crypto(
+    db: State<'_, Database>,
+    report_currency: String,
+) -> Result<CryptoPositions> {
+    db.with_conn(|conn| position_reports::crypto_positions(conn, &report_currency))
 }
 
 /// Create crypto investment

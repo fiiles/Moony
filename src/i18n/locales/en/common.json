@@ -380,6 +380,9 @@
     "staleRates": "No current rate for {{currencies}} — values use the last rate from {{days}}+ days ago",
     "fresh": "Data up to date"
   },
+  "fxQuality": {
+    "missing": "Not converted to {{currency}}: no exchange rate for {{currencies}}. Totals leave those positions out."
+  },
   "notFound": {
     "title": "Page not found",
     "description": "This page does not exist or has been moved.",

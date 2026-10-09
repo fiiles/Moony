@@ -3,65 +3,7 @@
  * These interfaces augment the base schema types with computed/fetched fields.
  */
 
-import type {
-  StockInvestment,
-  CryptoInvestment,
-  RealEstate,
-  Loan,
-  InsurancePolicy,
-  InvestmentTransaction,
-  StockTag,
-} from '../schema';
-
-// ============================================================
-// Investment Types (Enriched with price data)
-// ============================================================
-
-/**
- * Stock investment enriched with current price data from API.
- * Used when the API returns investments with their latest prices.
- *
- * Note: averagePriceCurrency is inherited from StockInvestment base type
- * and represents the currency of the stored average purchase price.
- */
-export interface StockInvestmentWithPrice extends StockInvestment {
-  currentPrice: number;
-  /** Original price in its source currency (before conversion) */
-  originalPrice?: number;
-  fetchedAt?: Date | string;
-  isManualPrice?: boolean;
-  dividendYield?: number;
-  /** Original dividend amount before conversion */
-  originalDividendYield?: number;
-  dividendCurrency?: string;
-  isManualDividend?: boolean;
-  /** Currency of the current market price (e.g., USD, EUR) */
-  currency?: string;
-}
-
-/**
- * Crypto investment enriched with current price data.
- */
-export interface CryptoInvestmentWithPrice extends CryptoInvestment {
-  currentPrice: number;
-  /** Original price in its source currency (before conversion) */
-  originalPrice?: number;
-  /** Currency of the average price (native currency from first transaction) */
-  averagePriceCurrency?: string;
-  /** Currency of the current market price (e.g., USD, EUR) */
-  currency?: string;
-  fetchedAt?: Date | string;
-  isManualPrice?: boolean;
-}
-
-/**
- * Compound response for investment details (reduces IPC calls)
- */
-export interface InvestmentWithDetails {
-  investment: StockInvestmentWithPrice;
-  transactions: InvestmentTransaction[];
-  tags: StockTag[];
-}
+import type { RealEstate, Loan, InsurancePolicy } from '../schema';
 
 // ============================================================
 // Real Estate Types

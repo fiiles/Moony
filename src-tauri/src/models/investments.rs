@@ -3,6 +3,7 @@
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
+use super::fx::ConversionQuality;
 use super::stock_tags::StockTag;
 
 /// Stock investment holding
@@ -20,7 +21,9 @@ pub struct StockInvestment {
     pub currency: String,
 }
 
-/// Enriched investment with current price data
+/// A stock position: its native facts plus its figures in the response's report currency.
+/// Converted amounts are decimal TEXT at the report currency's minor unit and `null` when they
+/// cannot be converted (the currency is then in the response's `fxQuality`).
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct EnrichedStockInvestment {
     pub id: String,
@@ -28,31 +31,107 @@ pub struct EnrichedStockInvestment {
     #[serde(rename = "companyName")]
     pub company_name: String,
     pub quantity: String,
+    /// Native weighted average cost (currency `averagePriceCurrency`).
     #[serde(rename = "averagePrice")]
     pub average_price: String,
     /// Currency of the average price (determined by first transaction)
     #[serde(rename = "averagePriceCurrency")]
     pub average_price_currency: String,
-    #[serde(rename = "currentPrice")]
-    pub current_price: f64,
-    /// Original price in its source currency (before conversion to CZK)
+    /// Current price in its own currency, "0" when unpriced (see `price`).
     #[serde(rename = "originalPrice")]
     pub original_price: String,
     /// Currency of the current price (e.g., USD, EUR)
+    #[serde(rename = "currency")]
     pub currency: String,
     #[serde(rename = "fetchedAt")]
     pub fetched_at: Option<i64>,
     #[serde(rename = "isManualPrice")]
     pub is_manual_price: bool,
-    #[serde(rename = "dividendYield")]
-    pub dividend_yield: f64,
-    /// Original dividend amount before conversion
+    /// Yearly dividend per share in `dividendCurrency`, 0 without dividend data.
     #[serde(rename = "originalDividendYield")]
     pub original_dividend_yield: f64,
+    /// Currency of the dividend per share; `null` without dividend data.
     #[serde(rename = "dividendCurrency")]
-    pub dividend_currency: String,
+    pub dividend_currency: Option<String>,
     #[serde(rename = "isManualDividend")]
     pub is_manual_dividend: bool,
+    /// Current price in its own currency; `null` when unpriced.
+    #[serde(rename = "price")]
+    pub price: Option<String>,
+    #[serde(rename = "priceCurrency")]
+    pub price_currency: Option<String>,
+    #[serde(rename = "value")]
+    pub value: Option<String>,
+    #[serde(rename = "costBasis")]
+    pub cost_basis: Option<String>,
+    #[serde(rename = "unrealizedGain")]
+    pub unrealized_gain: Option<String>,
+    #[serde(rename = "unrealizedGainPercent")]
+    pub unrealized_gain_percent: Option<f64>,
+    #[serde(rename = "realizedGain")]
+    pub realized_gain: Option<String>,
+    /// Yearly dividend per share in `dividendCurrency`; `null` without dividend data.
+    #[serde(rename = "dividendPerShare")]
+    pub dividend_per_share: Option<String>,
+    /// Yearly dividend of the whole position in the report currency.
+    #[serde(rename = "yearlyDividend")]
+    pub yearly_dividend: Option<String>,
+}
+
+/// Sums in the report currency over the positions whose value and cost basis are both known
+/// (dividends of those positions only); `realizedGain` over every position whose realized
+/// gain is known.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct PositionTotals {
+    #[serde(rename = "value")]
+    pub value: String,
+    #[serde(rename = "costBasis")]
+    pub cost_basis: String,
+    #[serde(rename = "unrealizedGain")]
+    pub unrealized_gain: String,
+    #[serde(rename = "realizedGain")]
+    pub realized_gain: String,
+    #[serde(rename = "yearlyDividend")]
+    pub yearly_dividend: String,
+}
+
+/// Every stock position in `currency`, with what could not be converted.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct StockPositions {
+    #[serde(rename = "currency")]
+    pub currency: String,
+    #[serde(rename = "fxQuality")]
+    pub fx_quality: ConversionQuality,
+    #[serde(rename = "items")]
+    pub items: Vec<EnrichedStockInvestment>,
+    #[serde(rename = "totals")]
+    pub totals: PositionTotals,
+}
+
+/// One stock position in `currency`; `fxQuality` covers this position only.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct StockPosition {
+    #[serde(rename = "currency")]
+    pub currency: String,
+    #[serde(rename = "fxQuality")]
+    pub fx_quality: ConversionQuality,
+    #[serde(rename = "investment")]
+    pub investment: EnrichedStockInvestment,
+}
+
+/// A stock position with its transactions and tags (one IPC call for the detail page).
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct InvestmentWithDetails {
+    #[serde(rename = "currency")]
+    pub currency: String,
+    #[serde(rename = "fxQuality")]
+    pub fx_quality: ConversionQuality,
+    #[serde(rename = "investment")]
+    pub investment: EnrichedStockInvestment,
+    #[serde(rename = "transactions")]
+    pub transactions: Vec<InvestmentTransaction>,
+    #[serde(rename = "tags")]
+    pub tags: Vec<StockTag>,
 }
 
 /// Data for creating stock investment. Quantity and average price are not

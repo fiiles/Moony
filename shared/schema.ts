@@ -606,22 +606,107 @@ export const insertWatchedStockSchema = z.object({
 });
 export type InsertWatchedStock = z.infer<typeof insertWatchedStockSchema>;
 
-// Stock Investment with Price (enriched type from API)
-export interface StockInvestmentWithPrice extends StockInvestment {
-  currentPrice: string;
+/**
+ * Positions (ADR 0011): native facts plus figures in the response's report currency. Converted
+ * amounts are decimal TEXT at the currency's minor unit and `null` when they cannot be converted
+ * (the currency is then listed in the response's `fxQuality`).
+ */
+export interface EnrichedStockInvestment {
+  id: string;
+  ticker: string;
+  companyName: string;
+  quantity: string;
+  /** Native weighted average cost, in `averagePriceCurrency`. */
+  averagePrice: string;
+  averagePriceCurrency: string;
+  /** Current price in its own currency, "0" when unpriced (see `price`). */
+  originalPrice: string;
+  /** Currency of the current price. */
+  currency: string;
   fetchedAt: number | null;
   isManualPrice: boolean;
-  dividendYield: number;
-  dividendCurrency: string;
+  /** Yearly dividend per share in `dividendCurrency`, 0 without dividend data. */
+  originalDividendYield: number;
+  dividendCurrency: string | null;
   isManualDividend: boolean;
+  /** Current price in its own currency; null when unpriced. */
+  price: string | null;
+  priceCurrency: string | null;
+  value: string | null;
+  costBasis: string | null;
+  unrealizedGain: string | null;
+  unrealizedGainPercent: number | null;
+  realizedGain: string | null;
+  /** Yearly dividend per share in `dividendCurrency`; null without dividend data. */
+  dividendPerShare: string | null;
+  /** Yearly dividend of the whole position in the report currency. */
+  yearlyDividend: string | null;
 }
 
-// Crypto Investment with Price (enriched type from API)
-export interface CryptoInvestmentWithPrice extends CryptoInvestment {
-  currentPrice: string;
-  /** Currency of the average price (native currency from first transaction) */
-  averagePriceCurrency?: string;
+export interface EnrichedCryptoInvestment {
+  id: string;
+  ticker: string;
+  coingeckoId: string;
+  name: string;
+  quantity: string;
+  /** Native weighted average cost, in `averagePriceCurrency`. */
+  averagePrice: string;
+  averagePriceCurrency: string;
+  /** Current price in its own currency, "0" when unpriced (see `price`). */
+  originalPrice: string;
+  /** Currency of the current price. */
+  currency: string;
   fetchedAt: number | null;
+  isManualPrice: boolean;
+  /** Current price in its own currency; null when unpriced. */
+  price: string | null;
+  priceCurrency: string | null;
+  value: string | null;
+  costBasis: string | null;
+  unrealizedGain: string | null;
+  unrealizedGainPercent: number | null;
+  realizedGain: string | null;
+}
+
+/**
+ * Sums over the positions whose value and cost basis are both known (their dividends only);
+ * `realizedGain` over every position whose realized gain is known.
+ */
+export interface PositionTotals {
+  value: string;
+  costBasis: string;
+  unrealizedGain: string;
+  realizedGain: string;
+  yearlyDividend: string;
+}
+
+export interface StockPositions {
+  currency: string;
+  fxQuality: ConversionQuality;
+  items: EnrichedStockInvestment[];
+  totals: PositionTotals;
+}
+
+/** One stock position; `fxQuality` covers this position only. */
+export interface StockPosition {
+  currency: string;
+  fxQuality: ConversionQuality;
+  investment: EnrichedStockInvestment;
+}
+
+export interface InvestmentWithDetails {
+  currency: string;
+  fxQuality: ConversionQuality;
+  investment: EnrichedStockInvestment;
+  transactions: InvestmentTransaction[];
+  tags: StockTag[];
+}
+
+export interface CryptoPositions {
+  currency: string;
+  fxQuality: ConversionQuality;
+  items: EnrichedCryptoInvestment[];
+  totals: PositionTotals;
 }
 
 // Cashflow Types
@@ -1421,24 +1506,46 @@ export interface StockInvestmentWithTags {
   ticker: string;
   companyName: string;
   quantity: string;
+  /** Native weighted average cost, in `averagePriceCurrency`. */
   averagePrice: string;
-  currentPrice: string;
-  currentValue: number;
-  gainLoss: number;
-  gainLossPercent: number;
-  dividendYield: number;
+  averagePriceCurrency: string;
+  /** Current price in its own currency; null when unpriced. */
+  price: string | null;
+  priceCurrency: string | null;
+  value: string | null;
+  costBasis: string | null;
+  unrealizedGain: string | null;
+  unrealizedGainPercent: number | null;
+  yearlyDividend: string | null;
   tags: StockTag[];
 }
 
+export interface StocksAnalysis {
+  currency: string;
+  fxQuality: ConversionQuality;
+  items: StockInvestmentWithTags[];
+}
+
+/** Sums over a tag's positions whose value and cost basis are known (their dividends only). */
 export interface TagMetrics {
   tag: StockTag;
-  totalValue: number;
-  totalCost: number;
-  gainLoss: number;
-  gainLossPercent: number;
-  estimatedYearlyDividend: number;
+  value: string;
+  costBasis: string;
+  unrealizedGain: string;
+  /** Percent of the cost basis; 0 without a cost basis. */
+  unrealizedGainPercent: number;
+  yearlyDividend: string;
+  /** The tag's value in percent of the value of every summed position. */
   portfolioPercent: number;
+  /** Positions carrying the tag, summed or not. */
   holdingsCount: number;
+  fxQuality: ConversionQuality;
+}
+
+export interface TagMetricsReport {
+  currency: string;
+  fxQuality: ConversionQuality;
+  tags: TagMetrics[];
 }
 
 // ============================================================================

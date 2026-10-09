@@ -11,7 +11,7 @@ export interface TagShareRow {
   id: string;
   name: string;
   color: string | null;
-  /** Total value of the tag's holdings, in CZK (the wire currency) */
+  /** Total value of the tag's holdings, in the response's report currency */
   value: number;
   /** Share of the whole portfolio, 0-100 */
   percent: number;
@@ -20,17 +20,18 @@ export interface TagShareRow {
 }
 
 export function buildTagShareRows(metrics: readonly TagMetrics[]): TagShareRow[] {
+  const valueOf = (m: TagMetrics) => Number(m.value) || 0;
   const sorted = [...metrics].sort(
-    (a, b) => b.totalValue - a.totalValue || a.tag.name.localeCompare(b.tag.name)
+    (a, b) => valueOf(b) - valueOf(a) || a.tag.name.localeCompare(b.tag.name)
   );
-  const max = sorted.reduce((largest, m) => Math.max(largest, m.totalValue), 0);
+  const max = sorted.reduce((largest, m) => Math.max(largest, valueOf(m)), 0);
 
   return sorted.map((m) => ({
     id: m.tag.id,
     name: m.tag.name,
     color: m.tag.color,
-    value: m.totalValue,
+    value: valueOf(m),
     percent: m.portfolioPercent,
-    barPercent: max > 0 ? (m.totalValue / max) * 100 : 0,
+    barPercent: max > 0 ? (valueOf(m) / max) * 100 : 0,
   }));
 }

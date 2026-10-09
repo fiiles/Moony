@@ -193,6 +193,11 @@ export type ConversionQuality = { missingCurrencies: string[]; missingCount: num
 export type CryptoInvestment = { id: string; ticker: string; coingeckoId: string; name: string; quantity: string; averagePrice: string }
 
 /**
+ * Every crypto position in `currency`, with what could not be converted.
+ */
+export type CryptoPositions = { currency: string; fxQuality: ConversionQuality; items: EnrichedCryptoInvestment[]; totals: PositionTotals }
+
+/**
  * Crypto transaction (buy/sell)
  */
 export type CryptoTransaction = { id: string; investmentId: string; type: string; ticker: string; name: string; quantity: string; pricePerUnit: string; currency: string; transactionDate: number; createdAt: number }
@@ -561,15 +566,21 @@ export type DividendOverride = { id: string; ticker: string; yearlyDividendSum: 
 export type EffectiveTransactionFlow = { id: string; effectiveFlowKind: FlowKind; flowSource: FlowSource }
 
 /**
- * Enriched crypto with current price
+ * A crypto position: its native facts plus its figures in the response's report currency.
+ * Converted amounts are decimal TEXT at the report currency's minor unit and `null` when they
+ * cannot be converted (the currency is then in the response's `fxQuality`).
  */
-export type EnrichedCryptoInvestment = { id: string; ticker: string; coingeckoId: string; name: string; quantity: string; averagePrice: string; 
+export type EnrichedCryptoInvestment = { id: string; ticker: string; coingeckoId: string; name: string; quantity: string; 
+/**
+ * Native weighted average cost (currency `averagePriceCurrency`).
+ */
+averagePrice: string; 
 /**
  * Currency of the average price (native currency from first transaction)
  */
-averagePriceCurrency: string; currentPrice: string; 
+averagePriceCurrency: string; 
 /**
- * Original price in its source currency (before conversion to CZK)
+ * Current price in its own currency, "0" when unpriced (see `price`).
  */
 originalPrice: string; 
 /**
@@ -579,28 +590,54 @@ currency: string; fetchedAt: number | null;
 /**
  * Whether the price is manually overridden
  */
-isManualPrice: boolean }
+isManualPrice: boolean; 
+/**
+ * Current price in its own currency; `null` when unpriced.
+ */
+price: string | null; priceCurrency: string | null; value: string | null; costBasis: string | null; unrealizedGain: string | null; unrealizedGainPercent: number | null; realizedGain: string | null }
 
 /**
- * Enriched investment with current price data
+ * A stock position: its native facts plus its figures in the response's report currency.
+ * Converted amounts are decimal TEXT at the report currency's minor unit and `null` when they
+ * cannot be converted (the currency is then in the response's `fxQuality`).
  */
-export type EnrichedStockInvestment = { id: string; ticker: string; companyName: string; quantity: string; averagePrice: string; 
+export type EnrichedStockInvestment = { id: string; ticker: string; companyName: string; quantity: string; 
+/**
+ * Native weighted average cost (currency `averagePriceCurrency`).
+ */
+averagePrice: string; 
 /**
  * Currency of the average price (determined by first transaction)
  */
-averagePriceCurrency: string; currentPrice: number; 
+averagePriceCurrency: string; 
 /**
- * Original price in its source currency (before conversion to CZK)
+ * Current price in its own currency, "0" when unpriced (see `price`).
  */
 originalPrice: string; 
 /**
  * Currency of the current price (e.g., USD, EUR)
  */
-currency: string; fetchedAt: number | null; isManualPrice: boolean; dividendYield: number; 
+currency: string; fetchedAt: number | null; isManualPrice: boolean; 
 /**
- * Original dividend amount before conversion
+ * Yearly dividend per share in `dividendCurrency`, 0 without dividend data.
  */
-originalDividendYield: number; dividendCurrency: string; isManualDividend: boolean }
+originalDividendYield: number; 
+/**
+ * Currency of the dividend per share; `null` without dividend data.
+ */
+dividendCurrency: string | null; isManualDividend: boolean; 
+/**
+ * Current price in its own currency; `null` when unpriced.
+ */
+price: string | null; priceCurrency: string | null; value: string | null; costBasis: string | null; unrealizedGain: string | null; unrealizedGainPercent: number | null; realizedGain: string | null; 
+/**
+ * Yearly dividend per share in `dividendCurrency`; `null` without dividend data.
+ */
+dividendPerShare: string | null; 
+/**
+ * Yearly dividend of the whole position in the report currency.
+ */
+yearlyDividend: string | null }
 
 /**
  * Summary of a full JSON export.
@@ -811,6 +848,11 @@ export type IntegrityReport = { ok: boolean; messages: string[] }
  */
 export type InvestmentTransaction = { id: string; investmentId: string; type: string; ticker: string; companyName: string; quantity: string; pricePerUnit: string; currency: string; transactionDate: number; createdAt: number }
 
+/**
+ * A stock position with its transactions and tags (one IPC call for the detail page).
+ */
+export type InvestmentWithDetails = { currency: string; fxQuality: ConversionQuality; investment: EnrichedStockInvestment; transactions: InvestmentTransaction[]; tags: StockTag[] }
+
 export type LearnedPayeeEntry = { id: string; ruleType: string; normalizedPayee: string | null; originalPayee: string | null; counterpartyIban: string | null; categoryId: string; bankAccountId: string | null; isCredit: boolean | null; createdAt: number; updatedAt: number }
 
 /**
@@ -1008,6 +1050,13 @@ export type PortfolioMetricsHistory = { id: string; totalSavings: string; totalL
  * the static classes of such a day are carried from the nearest live row).
  */
 source: string }
+
+/**
+ * Sums in the report currency over the positions whose value and cost basis are both known
+ * (dividends of those positions only); `realizedGain` over every position whose realized
+ * gain is known.
+ */
+export type PositionTotals = { value: string; costBasis: string; unrealizedGain: string; realizedGain: string; yearlyDividend: string }
 
 /**
  * Status of prices and exchange rates freshness
@@ -1531,6 +1580,20 @@ export type StockInvestment = { id: string; ticker: string; companyName: string;
 averagePriceCurrency: string }
 
 /**
+ * A stock position with its tags, in the response's report currency (converted amounts are
+ * decimal TEXT, `null` when they cannot be converted).
+ */
+export type StockInvestmentWithTags = { id: string; ticker: string; companyName: string; quantity: string; 
+/**
+ * Native weighted average cost (currency `averagePriceCurrency`).
+ */
+averagePrice: string; averagePriceCurrency: string; 
+/**
+ * Current price in its own currency; `null` when unpriced.
+ */
+price: string | null; priceCurrency: string | null; value: string | null; costBasis: string | null; unrealizedGain: string | null; unrealizedGainPercent: number | null; yearlyDividend: string | null; tags: StockTag[] }
+
+/**
  * Detail for any ticker — works for un-followed tickers too (followed=false,
  * notes empty, target None). All stock_data fields are None when the cache
  * has no row yet (e.g. offline right after a search).
@@ -1548,6 +1611,16 @@ trailingDividendYield: string | null; exchange: string | null; priceFetchedAt: n
  * When the stock was added to the watchlist (unix seconds); None when not followed.
  */
 followedAt: number | null }
+
+/**
+ * One stock position in `currency`; `fxQuality` covers this position only.
+ */
+export type StockPosition = { currency: string; fxQuality: ConversionQuality; investment: EnrichedStockInvestment }
+
+/**
+ * Every stock position in `currency`, with what could not be converted.
+ */
+export type StockPositions = { currency: string; fxQuality: ConversionQuality; items: EnrichedStockInvestment[]; totals: PositionTotals }
 
 /**
  * One row of the preview table (TS `StockPreviewRow`).
@@ -1636,6 +1709,38 @@ firstLine: number;
  * Meaning suggested from keywords in several languages.
  */
 suggested: TypeValueAction }
+
+/**
+ * Every stock position with its tags in `currency`.
+ */
+export type StocksAnalysis = { currency: string; fxQuality: ConversionQuality; items: StockInvestmentWithTags[] }
+
+/**
+ * Sums over a tag's positions whose value and cost basis are both known (dividends of those
+ * positions only), in the response's report currency.
+ */
+export type TagMetrics = { tag: StockTag; value: string; costBasis: string; unrealizedGain: string; 
+/**
+ * Percent of the cost basis; 0 without a cost basis.
+ */
+unrealizedGainPercent: number; yearlyDividend: string; 
+/**
+ * The tag's value in percent of the value of every summed position.
+ */
+portfolioPercent: number; 
+/**
+ * Positions carrying the tag, summed or not.
+ */
+holdingsCount: number; 
+/**
+ * What the tag's positions could not convert.
+ */
+fxQuality: ConversionQuality }
+
+/**
+ * Metrics per tag in `currency`.
+ */
+export type TagMetricsReport = { currency: string; fxQuality: ConversionQuality; tags: TagMetrics[] }
 
 /**
  * Per-ticker value history record

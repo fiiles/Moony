@@ -4,16 +4,15 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { Plus, RefreshCw, TrendingUp, Upload } from 'lucide-react';
-import type { StockInvestmentWithPrice } from '@shared/types';
-import type { InvestmentTransaction } from '@shared/schema';
+import type { InvestmentTransaction, StockPositions } from '@shared/schema';
 import type { CurrencyCode } from '@shared/currencies';
-import { calculatePositionCostBasis, calculateRealizedGains } from '@shared/calculations';
 import { exportApi, investmentsApi, priceApi } from '@/lib/tauri-api';
 import { useCurrency } from '@/lib/currency';
 import { useFormat } from '@/lib/use-format';
 import { useStockTagsByInvestment } from '@/hooks/use-stock-tags';
 import { useDatedConvert } from '@/hooks/use-dated-convert';
-import { mapInvestmentToHolding, calculateMetrics, type HoldingData } from '@/utils/stocks';
+import type { HoldingData } from '@/utils/stocks';
+import { amountOf, percentOfCost, toStockRow, topPerformer } from '@/utils/positions';
 import type { EventCluster } from '@/utils/chart-scale';
 import {
   firstTradeDay,
@@ -36,6 +35,7 @@ import { ManualPriceModal } from '@/components/stocks/ManualPriceModal';
 import { StockImportDialog } from '@/components/stocks/import/StockImportDialog';
 import { InvestmentsSummary } from '@/components/stocks/InvestmentsSummary';
 import { InvestmentsTable } from '@/components/stocks/InvestmentsTable';
+import { ConversionQualityNote } from '@/components/reports/ReportQualityNote';
 
 type RowModal = 'buy' | 'sell' | 'price' | 'delete' | null;
 
@@ -45,16 +45,16 @@ export default function Stocks() {
   const { t: tc } = useTranslation('common');
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
-  const { convert, currencyCode, formatCurrency } = useCurrency();
+  const { currencyCode, fxRevision, formatCurrency } = useCurrency();
   const fmt = useFormat();
   const [addOpen, setAddOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [rowModal, setRowModal] = useState<RowModal>(null);
   const [selected, setSelected] = useState<HoldingData | null>(null);
 
-  const { data: investments, isLoading } = useQuery<StockInvestmentWithPrice[]>({
-    queryKey: ['investments'],
-    queryFn: () => investmentsApi.getAll(),
+  const { data: positions, isLoading } = useQuery<StockPositions>({
+    queryKey: ['investments', currencyCode, fxRevision],
+    queryFn: () => investmentsApi.getAll(currencyCode),
     refetchOnMount: true,
     staleTime: 60 * 1000,
   });
@@ -65,19 +65,9 @@ export default function Stocks() {
     staleTime: 60 * 1000,
   });
 
-  // Date-aware conversion over the transactions' range: historical amounts
-  // convert at their own day's rates (ADR 0001).
+  // Date-aware conversion for the trade markers of the trend card, which still plots the
+  // CZK history (its amounts convert at their own day's rates, ADR 0001).
   const convertAt = useDatedConvert(allTransactions);
-
-  const txsByInvestment = useMemo(() => {
-    const map = new Map<string, InvestmentTransaction[]>();
-    for (const tx of allTransactions || []) {
-      const group = map.get(tx.investmentId) ?? [];
-      group.push(tx);
-      map.set(tx.investmentId, group);
-    }
-    return map;
-  }, [allTransactions]);
 
   // No horizon of the trend card starts before the first transaction
   const earliest = useMemo(() => firstTradeDay(allTransactions ?? []), [allTransactions]);
@@ -109,12 +99,6 @@ export default function Stocks() {
       lines: [`${fmt.day(event.t)} · ${formatCurrency(event.amountCzk)}`],
     };
   };
-
-  // Realized gains (WAC) in total and per position, each leg at its day's rate
-  const realizedGain = useMemo(() => {
-    if (!allTransactions || allTransactions.length === 0) return 0;
-    return calculateRealizedGains(allTransactions, convertAt, currencyCode as CurrencyCode);
-  }, [allTransactions, convertAt, currencyCode]);
 
   const refreshPricesMutation = useMutation({
     mutationFn: async () => {
@@ -154,63 +138,40 @@ export default function Stocks() {
     },
   });
 
-  // Holdings in the display currency: market value from the native price at
-  // today's rate, cost basis from the transactions at their own day's rates.
-  const holdings = useMemo(() => {
-    return (investments || [])
-      .map((inv) => {
-        const holding = mapInvestmentToHolding(inv);
-        const preferredCurrency = currencyCode as CurrencyCode;
-        const marketPriceCurrency = (inv.currency || 'USD') as CurrencyCode;
-        const avgCostCurrency = (inv.averagePriceCurrency || 'USD') as CurrencyCode;
-
-        const originalCurrentPrice = parseFloat(String(inv.originalPrice)) || 0;
-        const currentPriceConverted =
-          originalCurrentPrice > 0
-            ? convert(originalCurrentPrice, marketPriceCurrency, preferredCurrency)
-            : convert(holding.currentPrice, 'CZK', preferredCurrency);
-        const marketValue = holding.quantity * currentPriceConverted;
-
-        const txs = txsByInvestment.get(inv.id) ?? [];
-        const position = calculatePositionCostBasis(txs, convertAt, preferredCurrency);
-        const gainLoss = marketValue - position.costBasis;
-        const gainLossPercent =
-          position.costBasis !== 0 ? (gainLoss / position.costBasis) * 100 : 0;
-        const positionRealized =
-          txs.length > 0 ? calculateRealizedGains(txs, convertAt, preferredCurrency) : 0;
-
-        return {
-          ...holding,
-          avgCost: position.averageCost,
-          avgCostCurrency: preferredCurrency,
-          currentPrice: currentPriceConverted,
-          currency: preferredCurrency,
-          totalCost: position.costBasis,
-          originalAvgCost: holding.avgCost,
-          originalAvgCostCurrency: avgCostCurrency,
-          originalCurrentPrice,
-          originalCurrency: marketPriceCurrency,
-          marketValue,
-          gainLoss,
-          gainLossPercent,
-          realizedGain: positionRealized,
-        } satisfies HoldingData;
-      })
-      .sort((a, b) =>
-        (a.companyName || '').localeCompare(b.companyName || '', undefined, { sensitivity: 'base' })
-      );
-  }, [investments, txsByInvestment, convertAt, convert, currencyCode]);
-
-  const totalDividendYield = holdings.reduce(
-    (sum, h) => sum + (h.dividendYield || 0) * h.quantity,
-    0
+  // Positions as the backend values them in the report currency (ADR 0011)
+  const reportCurrency = positions?.currency ?? currencyCode;
+  const holdings = useMemo(
+    () =>
+      (positions?.items ?? []).map(toStockRow).sort((a, b) =>
+        (a.companyName || '').localeCompare(b.companyName || '', undefined, {
+          sensitivity: 'base',
+        })
+      ),
+    [positions]
   );
-  const metrics = calculateMetrics(holdings, totalDividendYield);
+  const totals = positions?.totals;
+  const totalCost = amountOf(totals?.costBasis) ?? 0;
+  const unrealizedGain = amountOf(totals?.unrealizedGain) ?? 0;
+  const top = topPerformer(holdings);
+  const metrics = {
+    totalValue: amountOf(totals?.value) ?? 0,
+    totalCost,
+    overallGainLoss: unrealizedGain,
+    overallGainLossPercent: percentOfCost(unrealizedGain, totalCost),
+    estimatedDividendYield: amountOf(totals?.yearlyDividend) ?? 0,
+    topPerformer: top
+      ? {
+          ticker: top.ticker,
+          companyName: top.companyName,
+          gainLossPercent: top.gainLossPercent ?? 0,
+        }
+      : null,
+  };
+  const realizedGain = amountOf(totals?.realizedGain) ?? 0;
   const openPositions = holdings.filter((h) => h.quantity > 0);
   const latestFetchedAt = holdings.reduce<Date | undefined>((latest, h) => {
     if (!h.fetchedAt) return latest;
-    const value = h.fetchedAt;
-    const date = new Date(typeof value === 'number' && value < 100000000000 ? value * 1000 : value);
+    const date = new Date(h.fetchedAt * 1000);
     return !latest || date > latest ? date : latest;
   }, undefined);
 
@@ -289,7 +250,9 @@ export default function Stocks() {
         />
       ) : (
         <>
+          <ConversionQualityNote quality={positions?.fxQuality} currency={reportCurrency} />
           <InvestmentsSummary
+            currency={reportCurrency}
             metrics={metrics}
             positionCount={openPositions.length}
             realizedGain={realizedGain}
@@ -316,6 +279,7 @@ export default function Stocks() {
           />
 
           <InvestmentsTable
+            currency={reportCurrency}
             holdings={holdings}
             tagsByInvestmentId={tagsByInvestmentId}
             isLoading={refreshPricesMutation.isPending}

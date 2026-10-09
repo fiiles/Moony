@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import type { ReportQuality } from '@shared/schema';
+import type { ConversionQuality, ReportQuality } from '@shared/schema';
 
 export function ReportQualityNote({
   quality,
@@ -37,5 +37,25 @@ export function ReportError({ onRetry }: { onRetry: () => void }) {
         {t('readiness.retry')}
       </button>
     </div>
+  );
+}
+
+/**
+ * The compact report warning for a response's `fxQuality`: which currencies could not be
+ * converted into `currency` and that the totals leave them out. Nothing when complete.
+ */
+export function ConversionQualityNote({
+  quality,
+  currency,
+}: {
+  quality: ConversionQuality | undefined;
+  currency: string;
+}) {
+  const { t } = useTranslation('common');
+  if (!quality || quality.missingCurrencies.length === 0) return null;
+  return (
+    <p className="mb-5 text-micro text-loss" role="note">
+      {t('fxQuality.missing', { currency, currencies: quality.missingCurrencies.join(', ') })}
+    </p>
   );
 }

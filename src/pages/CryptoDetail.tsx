@@ -4,14 +4,9 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { Ellipsis, Pencil, Plus, RefreshCw, Trash2 } from 'lucide-react';
-import type { CryptoTransaction } from '@shared/schema';
-import type { CryptoInvestmentWithPrice } from '@shared/types/extended-types';
+import type { CryptoPositions, CryptoTransaction } from '@shared/schema';
 import { type CurrencyCode, priceDecimals } from '@shared/currencies';
-import {
-  calculatePositionCostBasis,
-  calculateRealizedGains,
-  mapCryptoInvestmentToHolding,
-} from '@shared/calculations';
+import { calculateRealizedGains } from '@shared/calculations';
 import { cryptoApi, priceApi } from '@/lib/tauri-api';
 import { useCurrency } from '@/lib/currency';
 import { useFormat } from '@/lib/use-format';
@@ -19,6 +14,7 @@ import { useDatedConvert } from '@/hooks/use-dated-convert';
 import { useCryptoTransactionMutations } from '@/hooks/use-crypto-mutations';
 import { useShellPage } from '@/components/shell/shell-context';
 import { formatAmountWithCode } from '@/utils/format-amount';
+import { amountOf, costPerUnit, toCryptoRow } from '@/utils/positions';
 import { monthsBetween } from '@/utils/duration';
 import { utcDayFloor } from '@/utils/chart-axis';
 import { BackLink, PageHead } from '@/components/shell/PageHead';
@@ -45,6 +41,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { ConfirmDeleteDialog } from '@/components/common/ConfirmDeleteDialog';
 import { PositionHero } from '@/components/stocks/PositionHero';
+import { ConversionQualityNote } from '@/components/reports/ReportQualityNote';
 import { BuyCryptoModal } from '@/components/crypto/BuyCryptoModal';
 import { SellCryptoModal } from '@/components/crypto/SellCryptoModal';
 import { UpdateCryptoPriceModal } from '@/components/crypto/UpdateCryptoPriceModal';
@@ -64,7 +61,7 @@ export default function CryptoDetail() {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const id = params?.id;
-  const { formatCurrencyRaw, currencyCode, convert } = useCurrency();
+  const { formatCurrencyRaw, currencyCode, fxRevision, fxConvert } = useCurrency();
   const { t } = useTranslation('crypto');
   const { t: tc } = useTranslation('common');
   const fmt = useFormat();
@@ -81,12 +78,13 @@ export default function CryptoDetail() {
   const { deleteTransaction } = useCryptoTransactionMutations();
 
   // The list query is the source: one position and the crypto total come from the same rows
-  const { data: allCrypto, isLoading } = useQuery<CryptoInvestmentWithPrice[]>({
-    queryKey: ['crypto'],
-    queryFn: () => cryptoApi.getAll(),
+  const { data: positions, isLoading } = useQuery<CryptoPositions>({
+    queryKey: ['crypto', currencyCode, fxRevision],
+    queryFn: () => cryptoApi.getAll(currencyCode),
     staleTime: 60 * 1000,
   });
-  const crypto = useMemo(() => allCrypto?.find((c) => c.id === id) ?? null, [allCrypto, id]);
+  const crypto = useMemo(() => positions?.items.find((c) => c.id === id) ?? null, [positions, id]);
+  const reportCurrency = positions?.currency ?? currencyCode;
 
   const { data: transactions } = useQuery<CryptoTransaction[]>({
     queryKey: ['crypto-transactions', id],
@@ -94,7 +92,8 @@ export default function CryptoDetail() {
     enabled: !!id,
   });
 
-  // Date-aware conversion over the transactions' range (ADR 0001)
+  // Date-aware conversion of the ledger rows, per-sale results and the hero's cost line
+  // (ADR 0001); the position's own figures come from the backend.
   const convertAt = useDatedConvert(transactions);
 
   const deleteMutation = useMutation({
@@ -124,26 +123,12 @@ export default function CryptoDetail() {
     }
   };
 
-  // Display-currency price of one position from its native rate at today's FX
-  const displayPrice = (inv: CryptoInvestmentWithPrice) => {
-    const native = parseFloat(String(inv.originalPrice)) || 0;
-    return native > 0
-      ? convert(native, (inv.currency || 'USD') as CurrencyCode, preferredCurrency)
-      : convert(parseFloat(String(inv.currentPrice)) || 0, 'CZK', preferredCurrency);
-  };
-
-  const quantity = parseFloat(String(crypto?.quantity)) || 0;
-  const position = useMemo(
-    () => calculatePositionCostBasis(transactions ?? [], convertAt, preferredCurrency),
-    [transactions, convertAt, preferredCurrency]
-  );
-  const realized = useMemo(
-    () =>
-      transactions && transactions.length > 0
-        ? calculateRealizedGains(transactions, convertAt, preferredCurrency)
-        : 0,
-    [transactions, convertAt, preferredCurrency]
-  );
+  // Position numbers as the backend values them in the report currency (ADR 0011)
+  const row = crypto ? toCryptoRow(crypto) : null;
+  const quantity = row?.quantity ?? 0;
+  const totalInvested = row?.totalCost ?? null;
+  const averageCost = costPerUnit(totalInvested, quantity);
+  const realized = row?.realizedGain ?? null;
   // Realized result of each sale: the running total before and after it
   const realizedBySale = useMemo(() => {
     const ordered = [...(transactions ?? [])].sort((a, b) => a.transactionDate - b.transactionDate);
@@ -158,19 +143,18 @@ export default function CryptoDetail() {
     return map;
   }, [transactions, convertAt, preferredCurrency]);
 
-  const nativeCurrency = (crypto?.currency || 'USD') as CurrencyCode;
-  const nativePrice = parseFloat(String(crypto?.originalPrice)) || 0;
-  const currentPrice = crypto ? displayPrice(crypto) : 0;
-  const currentValue = quantity * currentPrice;
-  const totalInvested = position.costBasis;
-  const unrealized = currentValue - totalInvested;
-  const unrealizedPct = totalInvested > 0 ? unrealized / totalInvested : 0;
-
-  const cryptoTotal = (allCrypto ?? []).reduce((sum, inv) => {
-    const q = parseFloat(String(inv.quantity)) || 0;
-    return q > 0 ? sum + q * displayPrice(inv) : sum;
-  }, 0);
-  const share = cryptoTotal > 0 ? currentValue / cryptoTotal : 0;
+  const nativeCurrency = row?.originalCurrency ?? reportCurrency;
+  const nativePrice = row?.originalCurrentPrice ?? 0;
+  const currentPrice = fxConvert(nativePrice, nativeCurrency, reportCurrency);
+  const currentValue = row?.marketValue ?? null;
+  const unrealized = row?.gainLoss ?? null;
+  const unrealizedPct = (row?.gainLossPercent ?? 0) / 100;
+  const cryptoTotal = amountOf(positions?.totals.value) ?? 0;
+  const share = cryptoTotal > 0 && currentValue !== null ? currentValue / cryptoTotal : 0;
+  const tone = (v: number | null) =>
+    v !== null && v > 0 ? 'gain' : v !== null && v < 0 ? 'loss' : 'neutral';
+  const money = (v: number | null, opts?: { signed?: boolean }) =>
+    v === null ? '—' : fmt.money(v, reportCurrency, { decimals: 0, ...opts });
 
   const buys = (transactions ?? []).filter((tx) => tx.type === 'buy');
   const sells = (transactions ?? []).filter((tx) => tx.type === 'sell');
@@ -202,7 +186,8 @@ export default function CryptoDetail() {
         firstBuy.transactionDate
       )
     : 0;
-  const rateChange = firstBuyPrice > 0 ? currentPrice / firstBuyPrice - 1 : 0;
+  const rateChange =
+    firstBuyPrice > 0 && currentPrice !== null ? currentPrice / firstBuyPrice - 1 : 0;
 
   // Top bar: entity name and freshness of the rate
   const fetchedAt = crypto?.fetchedAt ? Number(crypto.fetchedAt) : null;
@@ -296,19 +281,7 @@ export default function CryptoDetail() {
     );
   }
 
-  const holdingData = mapCryptoInvestmentToHolding(
-    crypto.id,
-    crypto.ticker,
-    crypto.name || crypto.ticker,
-    quantity,
-    position.averageCost,
-    currentPrice,
-    crypto.fetchedAt,
-    crypto.isManualPrice,
-    crypto.coingeckoId,
-    crypto.originalPrice,
-    crypto.currency
-  );
+  const holdingData = row;
   const priceOf = (value: number, currency: string) =>
     fmt.money(value, currency, { decimals: priceDecimals(value, currency) });
   const unitQty = (value: number) => fmt.number(value, { maximumFractionDigits: 8 });
@@ -336,8 +309,8 @@ export default function CryptoDetail() {
         title={crypto.name || crypto.ticker}
         description={[
           t('detail.quantityUnits', { quantity: unitQty(quantity), ticker: crypto.ticker }),
-          totalInvested > 0
-            ? t('detail.avgBuyPrice', { price: priceOf(position.averageCost, currencyCode) })
+          averageCost !== null && averageCost > 0
+            ? t('detail.avgBuyPrice', { price: priceOf(averageCost, reportCurrency) })
             : null,
           lastBuy !== null ? t('detail.lastBuy', { date: fmt.day(lastBuy) }) : null,
         ]
@@ -387,6 +360,11 @@ export default function CryptoDetail() {
         }
       />
 
+      {/* The list's quality, shown when this position is one of those not converted */}
+      {(currentValue === null || totalInvested === null) && (
+        <ConversionQualityNote quality={positions?.fxQuality} currency={reportCurrency} />
+      )}
+
       <PositionHero
         type="crypto"
         ticker={crypto.ticker}
@@ -402,15 +380,15 @@ export default function CryptoDetail() {
       >
         <HeroValue
           label={t('detail.positionValue')}
-          value={formatCurrencyRaw(currentValue)}
-          tone={unrealized > 0 ? 'gain' : unrealized < 0 ? 'loss' : 'neutral'}
+          value={money(currentValue)}
+          tone={tone(unrealized)}
           delta={
-            totalInvested > 0
-              ? `${unrealized >= 0 ? '↗' : '↘'} ${fmt.money(unrealized, currencyCode, { signed: true, decimals: 0 })}`
+            unrealized !== null && totalInvested !== null && totalInvested > 0
+              ? `${unrealized >= 0 ? '↗' : '↘'} ${money(unrealized, { signed: true })}`
               : undefined
           }
           deltaNote={
-            totalInvested > 0
+            unrealized !== null && totalInvested !== null && totalInvested > 0
               ? `${fmt.percent(unrealizedPct, 1, { signed: true })} ${t('detail.vsInvested')}`
               : undefined
           }
@@ -418,12 +396,16 @@ export default function CryptoDetail() {
         <HeroValue
           compact
           label={t('detail.rate')}
-          value={priceOf(currentPrice, currencyCode)}
+          value={
+            currentPrice !== null
+              ? priceOf(currentPrice, reportCurrency)
+              : priceOf(nativePrice, nativeCurrency)
+          }
           delta={
             crypto.isManualPrice ? <Badge variant="outline">{t('badges.manual')}</Badge> : undefined
           }
           deltaNote={
-            nativePrice > 0 && nativeCurrency !== currencyCode
+            currentPrice !== null && nativePrice > 0 && nativeCurrency !== reportCurrency
               ? priceOf(nativePrice, nativeCurrency)
               : undefined
           }
@@ -433,22 +415,22 @@ export default function CryptoDetail() {
       <Stats className="mt-[17px]">
         <Stat
           label={t('detail.invested')}
-          value={formatCurrencyRaw(totalInvested)}
+          value={money(totalInvested)}
           note={`${t('detail.quantityUnits', { quantity: unitQty(quantity), ticker: crypto.ticker })} · ${t(
             'detail.avgShort',
-            { price: priceOf(position.averageCost, currencyCode) }
+            { price: averageCost !== null ? priceOf(averageCost, reportCurrency) : '—' }
           )}`}
         />
         <Stat
           label={t('detail.unrealized')}
-          value={fmt.money(unrealized, currencyCode, { signed: true, decimals: 0 })}
-          tone={unrealized > 0 ? 'gain' : unrealized < 0 ? 'loss' : 'neutral'}
+          value={money(unrealized, { signed: true })}
+          tone={tone(unrealized)}
           note={`${fmt.percent(unrealizedPct, 1, { signed: true })} ${t('detail.vsInvested')}`}
         />
         <Stat
           label={t('detail.realized')}
-          value={fmt.money(realized, currencyCode, { signed: true, decimals: 0 })}
-          tone={realized > 0 ? 'gain' : realized < 0 ? 'loss' : 'neutral'}
+          value={money(realized, { signed: true })}
+          tone={tone(realized)}
           noteTone="neutral"
           note={sells.length > 0 ? t('detail.sells', { count: sells.length }) : t('detail.noSells')}
         />
@@ -606,10 +588,15 @@ export default function CryptoDetail() {
               )}
               {kv(
                 t('detail.position.avgPrice'),
-                totalInvested > 0 ? priceOf(position.averageCost, currencyCode) : undefined
+                averageCost !== null && averageCost > 0
+                  ? priceOf(averageCost, reportCurrency)
+                  : undefined
               )}
-              {kv(t('detail.position.currentPrice'), priceOf(currentPrice, currencyCode))}
-              {nativeCurrency !== currencyCode &&
+              {kv(
+                t('detail.position.currentPrice'),
+                currentPrice !== null ? priceOf(currentPrice, reportCurrency) : undefined
+              )}
+              {nativeCurrency !== reportCurrency &&
                 nativePrice > 0 &&
                 kv(
                   t('detail.position.nativePrice', { currency: nativeCurrency }),
@@ -647,9 +634,9 @@ export default function CryptoDetail() {
                       firstPrice: priceOf(firstBuyPrice, currencyCode),
                       positionChange: fmt.percent(unrealizedPct, 1, { signed: true }),
                       realizedPart:
-                        realized !== 0
+                        realized !== null && realized !== 0
                           ? t('detail.sinceFirst.realizedPart', {
-                              amount: fmt.money(realized, currencyCode, {
+                              amount: fmt.money(realized, reportCurrency, {
                                 signed: true,
                                 decimals: 0,
                               }),

@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import type { CryptoHoldingData } from '@shared/calculations';
+import { costPerUnit, type CryptoRow } from '@/utils/positions';
 import { currencyCodeSchema, type CurrencyCode } from '@shared/currencies';
 import { requiredNumber } from '@/utils/form-schemas';
 import { cryptoApi } from '@/lib/tauri-api';
@@ -41,7 +41,7 @@ const formSchema = z.object({
 });
 
 interface SellCryptoModalProps {
-  investment: CryptoHoldingData | null;
+  investment: CryptoRow | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
@@ -70,11 +70,11 @@ export function SellCryptoModal({ investment, open, onOpenChange }: SellCryptoMo
 
   useEffect(() => {
     if (!investment || !open) return;
-    const native = Number(investment.originalPrice ?? investment.currentPrice) || 0;
+    const native = investment.originalCurrentPrice;
     form.reset({
       quantity: 0,
       pricePerUnit: native ? Number(native.toPrecision(12)) : 0,
-      currency: (investment.currency as CurrencyCode) || 'USD',
+      currency: investment.originalCurrency as CurrencyCode,
       date: new Date().toISOString().split('T')[0],
     });
   }, [investment, open, form]);
@@ -115,7 +115,9 @@ export function SellCryptoModal({ investment, open, onOpenChange }: SellCryptoMo
   const price = Number(form.watch('pricePerUnit')) || 0;
   const priceDisplay = convert(price, currency, currencyCode as CurrencyCode);
   const proceeds = quantity * priceDisplay;
-  const realized = quantity * (priceDisplay - investment.avgCost);
+  // Estimate against the backend's cost per unit (report currency = display currency)
+  const unitCost = costPerUnit(investment.totalCost, investment.quantity);
+  const realized = unitCost === null ? null : quantity * (priceDisplay - unitCost);
   const tooMuch = quantity > investment.quantity;
 
   return (
@@ -227,10 +229,14 @@ export function SellCryptoModal({ investment, open, onOpenChange }: SellCryptoMo
               <b
                 className={cn(
                   'text-[14px] font-650 tracking-[-0.03em] num',
-                  proceeds > 0 ? (realized >= 0 ? 'text-gain' : 'text-loss') : 'text-ink'
+                  proceeds > 0 && realized !== null
+                    ? realized >= 0
+                      ? 'text-gain'
+                      : 'text-loss'
+                    : 'text-ink'
                 )}
               >
-                {proceeds > 0
+                {proceeds > 0 && realized !== null
                   ? fmt.money(realized, currencyCode, { signed: true, decimals: 0 })
                   : '—'}
               </b>

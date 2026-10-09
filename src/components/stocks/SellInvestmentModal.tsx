@@ -60,10 +60,7 @@ export function SellInvestmentModal({ investment, open, onOpenChange }: SellInve
   useEffect(() => {
     if (investment) {
       const investmentCurrency = (investment.originalAvgCostCurrency ||
-        investment.avgCostCurrency ||
-        investment.originalCurrency ||
-        investment.currency ||
-        'USD') as CurrencyCode;
+        investment.originalCurrency) as CurrencyCode;
       form.setValue('currency', investmentCurrency);
     }
   }, [investment, form]);

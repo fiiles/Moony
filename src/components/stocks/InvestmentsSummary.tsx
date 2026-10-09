@@ -1,17 +1,18 @@
 import { useTranslation } from 'react-i18next';
 import { Stat, Stats } from '@/components/common/Stat';
-import { useCurrency } from '@/lib/currency';
 import { useFormat } from '@/lib/use-format';
 import { utcDayFloor } from '@/utils/chart-axis';
 import { cn } from '@/lib/utils';
 
 interface InvestmentsSummaryProps {
+  /** The report currency of every amount below. */
+  currency: string;
   metrics: {
     totalValue: number;
     totalCost: number;
     overallGainLoss: number;
     overallGainLossPercent: number;
-    /** Yearly dividend estimate in CZK (backend `dividendYield` is CZK per share) */
+    /** Yearly dividend estimate in `currency`. */
     estimatedDividendYield: number;
     topPerformer: { ticker: string; companyName?: string; gainLossPercent: number } | null;
   };
@@ -28,13 +29,13 @@ interface InvestmentsSummaryProps {
  * next twelve months, best position.
  */
 export function InvestmentsSummary({
+  currency,
   metrics,
   positionCount,
   realizedGain = 0,
   latestFetchedAt,
   isLoading,
 }: InvestmentsSummaryProps) {
-  const { formatCurrency, formatCurrencyRaw, currencyCode } = useCurrency();
   const fmt = useFormat();
   const { t } = useTranslation('stocks');
 
@@ -51,7 +52,7 @@ export function InvestmentsSummary({
     `${fmt.percent(metrics.overallGainLossPercent / 100, 1, { signed: true })} ${t('summary.vsInvested')}`,
     realizedGain !== 0
       ? t('summary.realizedNote', {
-          amount: fmt.money(realizedGain, currencyCode, { signed: true, decimals: 0 }),
+          amount: fmt.money(realizedGain, currency, { signed: true, decimals: 0 }),
         })
       : null,
   ]
@@ -67,20 +68,20 @@ export function InvestmentsSummary({
     >
       <Stat
         label={t('summary.totalValue')}
-        value={formatCurrencyRaw(metrics.totalValue)}
+        value={fmt.money(metrics.totalValue, currency, { decimals: 0 })}
         note={`${t('summary.positions', { count: positionCount })} · ${freshness}`}
       />
       <Stat
         label={
           metrics.overallGainLoss >= 0 ? t('summary.unrealizedGain') : t('summary.unrealizedLoss')
         }
-        value={fmt.money(metrics.overallGainLoss, currencyCode, { signed: true, decimals: 0 })}
+        value={fmt.money(metrics.overallGainLoss, currency, { signed: true, decimals: 0 })}
         tone={tone(metrics.overallGainLoss)}
         note={unrealizedNote}
       />
       <Stat
         label={t('summary.estimatedDividend')}
-        value={formatCurrency(metrics.estimatedDividendYield)}
+        value={fmt.money(metrics.estimatedDividendYield, currency, { decimals: 0 })}
         note={t('summary.next12Months')}
       />
       <Stat

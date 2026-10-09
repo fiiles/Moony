@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import type { CryptoHoldingData } from '@shared/calculations';
+import type { CryptoRow } from '@/utils/positions';
 import type { CurrencyCode } from '@shared/currencies';
 import { cryptoApi } from '@/lib/tauri-api';
 import { useCurrency } from '@/lib/currency';
@@ -41,7 +41,7 @@ type FormData = z.infer<typeof manualPriceSchema>;
 interface UpdateCryptoPriceModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  investment: CryptoHoldingData | null;
+  investment: CryptoRow | null;
 }
 
 /**
@@ -65,10 +65,10 @@ export function UpdateCryptoPriceModal({
 
   useEffect(() => {
     if (investment && open) {
-      const native = Number(investment.originalPrice ?? investment.currentPrice) || 0;
+      const native = investment.originalCurrentPrice;
       form.reset({
         price: native ? plainDecimal(native) : '',
-        currency: investment.currency || userCurrency,
+        currency: investment.originalCurrency || userCurrency,
       });
     }
   }, [investment, open, form, userCurrency]);

@@ -60,19 +60,13 @@ export function BuyInvestmentModal({ investment, open, onOpenChange }: BuyInvest
   // Currency is locked to the investment's base currency (set by first transaction)
   useEffect(() => {
     if (investment) {
-      // The stock's own currency: the list page puts the display currency in the base fields
-      // and the native one in original*; the detail page passes native values in the base fields.
+      // The stock's own currency (native fields of the row)
       const investmentCurrency = (investment.originalAvgCostCurrency ||
-        investment.avgCostCurrency ||
-        investment.originalCurrency ||
-        investment.currency ||
-        'USD') as CurrencyCode;
+        investment.originalCurrency) as CurrencyCode;
       form.setValue('currency', investmentCurrency);
-      // Use originalPrice (in stock's currency) for prefill, not currentPrice (which is converted to CZK).
-      // Six decimals, as the price is stored: a London share quoted in pence costs 0.953 £, not 0.95 £.
-      const priceToShow = Number(
-        investment.originalCurrentPrice ?? investment.originalPrice ?? investment.currentPrice
-      );
+      // Prefill the native price. Six decimals, as the price is stored: a London share quoted
+      // in pence costs 0.953 £, not 0.95 £.
+      const priceToShow = investment.originalCurrentPrice;
       form.setValue('pricePerUnit', priceToShow ? Number(priceToShow.toFixed(6)) : 0);
     }
   }, [investment, form]);

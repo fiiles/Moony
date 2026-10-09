@@ -23,6 +23,10 @@ pub fn collect_types() -> TypeCollection {
     // Investment models
     types.register::<crate::models::StockInvestment>();
     types.register::<crate::models::EnrichedStockInvestment>();
+    types.register::<crate::models::PositionTotals>();
+    types.register::<crate::models::StockPositions>();
+    types.register::<crate::models::StockPosition>();
+    types.register::<crate::models::InvestmentWithDetails>();
     types.register::<crate::models::InsertStockInvestment>();
     types.register::<crate::models::InvestmentTransaction>();
     types.register::<crate::models::InsertInvestmentTransaction>();
@@ -36,6 +40,7 @@ pub fn collect_types() -> TypeCollection {
     // Crypto models
     types.register::<crate::models::CryptoInvestment>();
     types.register::<crate::models::EnrichedCryptoInvestment>();
+    types.register::<crate::models::CryptoPositions>();
     types.register::<crate::models::InsertCryptoInvestment>();
     types.register::<crate::models::CryptoTransaction>();
     types.register::<crate::models::InsertCryptoTransaction>();
@@ -143,6 +148,10 @@ pub fn collect_types() -> TypeCollection {
     types.register::<crate::models::InsertStockTag>();
     types.register::<crate::models::StockTagGroup>();
     types.register::<crate::models::InsertStockTagGroup>();
+    types.register::<crate::models::StockInvestmentWithTags>();
+    types.register::<crate::models::StocksAnalysis>();
+    types.register::<crate::models::TagMetrics>();
+    types.register::<crate::models::TagMetricsReport>();
 
     // Stock Monitor models
     types.register::<crate::models::WatchedStock>();

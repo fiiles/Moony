@@ -57,7 +57,6 @@ import type {
   EffectiveTransactionFlow,
   CashflowReport,
   CashflowActuals,
-  CashflowRange,
   CashflowItem,
   ProjectionSettings,
   PortfolioProjection,
@@ -720,9 +719,19 @@ export const cashflowApi = {
   getReport: (viewType: 'monthly' | 'yearly', reportCurrency?: string) =>
     tauriInvoke<CashflowReport>('get_cashflow_report', { viewType, reportCurrency }),
 
-  /** Actual flows from bank transactions for the Cashflow report page (design system README §11). */
-  getActuals: (range: CashflowRange, accountIds?: string[], reportCurrency?: string) =>
-    tauriInvoke<CashflowActuals>('get_cashflow_actuals', { range, accountIds, reportCurrency }),
+  /** Actual flows from bank transactions for one calendar period (design system README §11). */
+  getActuals: (
+    startDate: number,
+    endDate: number,
+    accountIds?: string[],
+    reportCurrency?: string
+  ) =>
+    tauriInvoke<CashflowActuals>('get_cashflow_actuals', {
+      startDate,
+      endDate,
+      accountIds,
+      reportCurrency,
+    }),
   getTransactions: (
     startDate: number,
     endDate: number,
@@ -730,7 +739,6 @@ export const cashflowApi = {
       accountIds?: string[];
       flowKind?: FlowKind;
       categoryId?: string;
-      sourceKey?: string;
       reportCurrency?: string;
     } = {}
   ) =>

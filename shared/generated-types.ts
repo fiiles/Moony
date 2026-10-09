@@ -122,9 +122,9 @@ export type BudgetingReport = { bankCashMovement: string; quality: ReportQuality
 uncategorizedExpenseTransactionCount: number; reportCurrency: string }
 
 /**
- * Actual monthly cashflow for a range plus the preceding range of equal length.
+ * Actual cashflow for one calendar period, with a twelve-month chart window.
  */
-export type CashflowActuals = { reportCurrency: string; netBalance: string; bankCashMovement: string; averageCompletedMonths: number[]; quality: ReportQuality; previousQuality: ReportQuality; nonconsumptionFlows: CashflowGroup[]; averageIncome: string | null; averageExpenses: string | null; range: string; rangeStart: number; rangeEnd: number; previousStart: number; previousEnd: number; months: CashflowMonth[]; expenseCategories: CashflowGroup[]; incomeSources: CashflowGroup[]; totalIncome: string; totalExpenses: string; previousIncome: string; previousExpenses: string; accountCount: number; transactionCount: number }
+export type CashflowActuals = { reportCurrency: string; periodStart: number; periodEnd: number; quality: ReportQuality; months: CashflowMonth[]; totalIncome: string; totalExpenses: string; netBalance: string; bankCashMovement: string; averageIncome: string | null; averageExpenses: string | null; averageCompletedMonths: number[]; expenseCategories: CashflowGroup[]; incomeCategories: CashflowGroup[]; transfers: CashflowGroup[]; accountCount: number; transactionCount: number }
 
 /**
  * A category with its items
@@ -132,10 +132,9 @@ export type CashflowActuals = { reportCurrency: string; netBalance: string; bank
 export type CashflowCategory = { key: string; name: string; total: string; items: CashflowReportItem[]; isUserEditable: boolean }
 
 /**
- * One row of "expenses by category" or "income by source", with the same sum
- * for the preceding range so the UI can show "vs. minulé".
+ * One row of a breakdown: the period's rows of one flow role in one category.
  */
-export type CashflowGroup = { key: string; name: string; amount: string; previousAmount: string; count: number }
+export type CashflowGroup = { key: string; name: string; flowKind: FlowKind; amount: string; count: number }
 
 /**
  * User-defined cashflow item (income or expense)
@@ -145,7 +144,7 @@ export type CashflowItem = { id: string; name: string; amount: string; currency:
 /**
  * Income and expenses of one calendar month (UTC).
  */
-export type CashflowMonth = { nonconsumptionFlows: CashflowGroup[]; bankCashMovement: string; month: number; income: string; expenses: string }
+export type CashflowMonth = { month: number; income: string; expenses: string }
 
 /**
  * Native components of a composite automatic property-cost source.
@@ -603,9 +602,10 @@ originalDividendYield: number; dividendCurrency: string; isManualDividend: boole
 export type ExportSummary = { path: string; tableCount: number; rowCount: number }
 
 /**
- * Financial meaning, separate from native credit/debit direction.
+ * Financial meaning, separate from native credit/debit direction: what counts as
+ * income, what counts as spending, and what only moves money between own pots.
  */
-export type FlowKind = "income" | "expense" | "transfer" | "investment" | "financing" | "adjustment"
+export type FlowKind = "income" | "expense" | "transfer"
 
 export type FlowSource = "explicit" | "ownAccount" | "category" | "direction"
 
@@ -1090,7 +1090,7 @@ export type ReportQuality = { missingFxCount: number; missingFxCurrencies: strin
  */
 invalidAmountCount: number }
 
-export type ReportTransaction = { reportCurrency: string; id: string; bookingDate: number; amount: string; currency: string; description: string | null; counterpartyName: string | null; counterpartyIban: string | null; categoryId: string | null; bankAccountId: string; bankAccountName: string; txType: string; effectiveFlowKind: FlowKind; flowSource: FlowSource; signedAmount: string | null; fxQuality: FxQuality }
+export type ReportTransaction = { reportCurrency: string; id: string; bookingDate: number; amount: string; currency: string; description: string | null; counterpartyName: string | null; counterpartyIban: string | null; counterpartyBankCode: string | null; counterpartyCountry: string | null; categoryId: string | null; bankAccountId: string; bankAccountName: string; txType: string; effectiveFlowKind: FlowKind; flowSource: FlowSource; signedAmount: string | null; fxQuality: FxQuality }
 
 /**
  * How often one rule matched in the period (TS `RuleHitCount`).

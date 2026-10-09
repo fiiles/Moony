@@ -2,87 +2,74 @@
 //! "Cashflow" report page shows, as opposed to the planned items of
 //! "Plánování cashflow". Amounts are TEXT in the declared report currency, at its minor-unit precision.
 
+use crate::models::FlowKind;
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
 /// Income and expenses of one calendar month (UTC).
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct CashflowMonth {
-    #[serde(rename = "nonconsumptionFlows")]
-    pub nonconsumption_flows: Vec<CashflowGroup>,
-    #[serde(rename = "bankCashMovement")]
-    pub bank_cash_movement: String,
     // Unix seconds of the first day of the month, UTC midnight.
     pub month: i64,
     pub income: String,
     pub expenses: String,
 }
 
-/// One row of "expenses by category" or "income by source", with the same sum
-/// for the preceding range so the UI can show "vs. minulé".
+/// One row of a breakdown: the period's rows of one flow role in one category.
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct CashflowGroup {
-    // Category id (`uncategorized` for rows without one) or a normalized source key.
+    // Category id, or `uncategorized` for rows without one.
     pub key: String,
-    // Category name as stored, or the counterparty as first seen; empty for an unknown source.
+    // Category name as stored; empty for uncategorized rows.
     pub name: String,
+    #[serde(rename = "flowKind")]
+    pub flow_kind: FlowKind,
+    // Expense rows debit-positive (refunds lower them), every other role credit-positive.
     pub amount: String,
-    #[serde(rename = "previousAmount")]
-    pub previous_amount: String,
-    // Transactions behind `amount` in the current range.
+    // Booked rows behind the group, including rows without a report conversion.
     pub count: i32,
 }
 
-/// Actual monthly cashflow for a range plus the preceding range of equal length.
+/// Actual cashflow for one calendar period, with a twelve-month chart window.
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct CashflowActuals {
     #[serde(rename = "reportCurrency")]
     pub report_currency: String,
-    #[serde(rename = "netBalance")]
-    pub net_balance: String,
-    #[serde(rename = "bankCashMovement")]
-    pub bank_cash_movement: String,
-    #[serde(rename = "averageCompletedMonths")]
-    pub average_completed_months: Vec<i64>,
+    #[serde(rename = "periodStart")]
+    pub period_start: i64,
+    #[serde(rename = "periodEnd")]
+    pub period_end: i64,
     pub quality: crate::models::ReportQuality,
-    #[serde(rename = "previousQuality")]
-    pub previous_quality: crate::models::ReportQuality,
-    #[serde(rename = "nonconsumptionFlows")]
-    pub nonconsumption_flows: Vec<CashflowGroup>,
-    #[serde(rename = "averageIncome")]
-    pub average_income: Option<String>,
-    #[serde(rename = "averageExpenses")]
-    pub average_expenses: Option<String>,
-    // `6m`, `12m` or `ytd`.
-    pub range: String,
-    #[serde(rename = "rangeStart")]
-    pub range_start: i64,
-    #[serde(rename = "rangeEnd")]
-    pub range_end: i64,
-    #[serde(rename = "previousStart")]
-    pub previous_start: i64,
-    #[serde(rename = "previousEnd")]
-    pub previous_end: i64,
-    // Every month of the range, oldest first, zero-filled.
+    // Chart window, oldest first, zero-filled: twelve months ending with the period's last month.
     pub months: Vec<CashflowMonth>,
-    // Net expenses by category, largest first (refunds reduce a category).
-    #[serde(rename = "expenseCategories")]
-    pub expense_categories: Vec<CashflowGroup>,
-    // Income by counterparty, largest first.
-    #[serde(rename = "incomeSources")]
-    pub income_sources: Vec<CashflowGroup>,
     #[serde(rename = "totalIncome")]
     pub total_income: String,
     #[serde(rename = "totalExpenses")]
     pub total_expenses: String,
-    #[serde(rename = "previousIncome")]
-    pub previous_income: String,
-    #[serde(rename = "previousExpenses")]
-    pub previous_expenses: String,
-    // Bank accounts that had a transaction in the range.
+    // Income less expenses.
+    #[serde(rename = "netBalance")]
+    pub net_balance: String,
+    // Income less expenses plus the signed money transfers.
+    #[serde(rename = "bankCashMovement")]
+    pub bank_cash_movement: String,
+    #[serde(rename = "averageIncome")]
+    pub average_income: Option<String>,
+    #[serde(rename = "averageExpenses")]
+    pub average_expenses: Option<String>,
+    #[serde(rename = "averageCompletedMonths")]
+    pub average_completed_months: Vec<i64>,
+    // Net expenses by category, largest first.
+    #[serde(rename = "expenseCategories")]
+    pub expense_categories: Vec<CashflowGroup>,
+    // Income by category, largest first; uncategorized credits form their own group.
+    #[serde(rename = "incomeCategories")]
+    pub income_categories: Vec<CashflowGroup>,
+    // Money transfers (investing, saving, between accounts) by category, largest movement first.
+    pub transfers: Vec<CashflowGroup>,
+    // Bank accounts that had a transaction in the period.
     #[serde(rename = "accountCount")]
     pub account_count: i32,
-    // Booked rows in scope, including separated flows and explicit FX gaps.
+    // Booked rows of the period in scope, including transfers and explicit FX gaps.
     #[serde(rename = "transactionCount")]
     pub transaction_count: i32,
 }

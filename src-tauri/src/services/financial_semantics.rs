@@ -548,12 +548,7 @@ mod tests {
         );
         assert_eq!(signed_flow_amount(FlowKind::Income, false, 100.0), -100.0);
         assert_eq!(signed_flow_amount(FlowKind::Expense, true, 100.0), -100.0);
-        for kind in [
-            FlowKind::Investment,
-            FlowKind::Financing,
-            FlowKind::Adjustment,
-            FlowKind::Transfer,
-        ] {
+        for kind in [FlowKind::Income, FlowKind::Expense, FlowKind::Transfer] {
             assert_eq!(
                 resolve_flow(None, None, None, Some(kind), false, &own).kind,
                 kind

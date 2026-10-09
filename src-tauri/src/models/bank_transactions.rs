@@ -3,22 +3,18 @@
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
-/// Financial meaning, separate from native credit/debit direction.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, Type)]
+/// Financial meaning, separate from native credit/debit direction: what counts as
+/// income, what counts as spending, and what only moves money between own pots.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, Serialize, Deserialize, Type)]
 pub enum FlowKind {
     #[serde(rename = "income")]
     Income,
     #[default]
     #[serde(rename = "expense")]
     Expense,
+    // Money moved between the user's own pots: investing, saving, account transfers.
     #[serde(rename = "transfer")]
     Transfer,
-    #[serde(rename = "investment")]
-    Investment,
-    #[serde(rename = "financing")]
-    Financing,
-    #[serde(rename = "adjustment")]
-    Adjustment,
 }
 
 impl std::fmt::Display for FlowKind {
@@ -27,9 +23,6 @@ impl std::fmt::Display for FlowKind {
             Self::Income => "income",
             Self::Expense => "expense",
             Self::Transfer => "transfer",
-            Self::Investment => "investment",
-            Self::Financing => "financing",
-            Self::Adjustment => "adjustment",
         })
     }
 }
@@ -40,9 +33,6 @@ impl std::str::FromStr for FlowKind {
             "income" => Ok(Self::Income),
             "expense" => Ok(Self::Expense),
             "transfer" => Ok(Self::Transfer),
-            "investment" => Ok(Self::Investment),
-            "financing" => Ok(Self::Financing),
-            "adjustment" => Ok(Self::Adjustment),
             _ => Err(crate::error::AppError::Validation(
                 "validation.flowKindInvalid".into(),
             )),
@@ -417,6 +407,21 @@ pub struct TransactionQueryResult {
 mod tests {
     use super::*;
     use crate::error::AppError;
+
+    #[test]
+    fn flow_kind_has_three_roles_and_rejects_removed_ones() {
+        for (text, kind) in [
+            ("income", FlowKind::Income),
+            ("expense", FlowKind::Expense),
+            ("transfer", FlowKind::Transfer),
+        ] {
+            assert_eq!(text.parse::<FlowKind>().unwrap(), kind);
+            assert_eq!(kind.to_string(), text);
+        }
+        for removed in ["investment", "financing", "adjustment"] {
+            assert!(removed.parse::<FlowKind>().is_err(), "{removed}");
+        }
+    }
 
     fn valid_tx() -> InsertBankTransaction {
         InsertBankTransaction {

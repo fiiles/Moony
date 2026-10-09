@@ -97,10 +97,8 @@
 
     { "id": "cz/mzda", "name": "Mzda / výplata", "ruleType": "regex", "pattern": "\\b(mzda|vyplata|plat)\\b", "categoryId": "cat_income", "priority": 60 },
     { "id": "cz/stravenky", "name": "Stravenky", "ruleType": "contains", "pattern": "stravenkovy", "categoryId": "cat_income", "priority": 60 },
-    { "id": "cz/cssz", "name": "ČSSZ", "ruleType": "word", "pattern": "cssz", "categoryId": "cat_income", "priority": 60 },
-    { "id": "cz/duchod", "name": "Důchod", "ruleType": "contains", "pattern": "duchod", "categoryId": "cat_income", "priority": 60 },
-    { "id": "cz/vratka", "name": "Vratka", "ruleType": "word", "pattern": "vratka", "categoryId": "cat_income", "priority": 55 },
-    { "id": "cz/dobropis", "name": "Dobropis", "ruleType": "contains", "pattern": "dobropis", "categoryId": "cat_income", "priority": 55 },
+    { "id": "cz/cssz", "name": "ČSSZ", "ruleType": "word", "pattern": "cssz", "categoryId": "cat_other_income", "priority": 60 },
+    { "id": "cz/duchod", "name": "Důchod", "ruleType": "contains", "pattern": "duchod", "categoryId": "cat_other_income", "priority": 60 },
 
     { "id": "cz/portu", "name": "Portu", "ruleType": "word", "pattern": "portu", "categoryId": "cat_investments", "priority": 60 },
     { "id": "cz/fondee", "name": "Fondee", "ruleType": "word", "pattern": "fondee", "categoryId": "cat_investments", "priority": 60 },

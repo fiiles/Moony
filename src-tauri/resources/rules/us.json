@@ -51,7 +51,7 @@
     { "id": "us/marriott", "name": "Marriott", "ruleType": "contains", "pattern": "marriott", "categoryId": "cat_travel", "priority": 50 },
     { "id": "us/hilton", "name": "Hilton", "ruleType": "contains", "pattern": "hilton", "categoryId": "cat_travel", "priority": 50 },
     { "id": "us/payroll", "name": "Payroll", "ruleType": "contains", "pattern": "payroll", "categoryId": "cat_income", "priority": 60 },
-    { "id": "us/irs-treas-310", "name": "IRS Tax Refund", "ruleType": "contains", "pattern": "irs treas 310", "categoryId": "cat_income", "priority": 60 },
+    { "id": "us/irs-treas-310", "name": "IRS Tax Refund", "ruleType": "contains", "pattern": "irs treas 310", "categoryId": "cat_other_income", "priority": 60 },
     { "id": "us/fidelity", "name": "Fidelity", "ruleType": "contains", "pattern": "fidelity", "categoryId": "cat_investments", "priority": 60 },
     { "id": "us/vanguard", "name": "Vanguard", "ruleType": "contains", "pattern": "vanguard", "categoryId": "cat_investments", "priority": 60 },
     { "id": "us/schwab", "name": "Charles Schwab", "ruleType": "contains", "pattern": "schwab", "categoryId": "cat_investments", "priority": 60 },

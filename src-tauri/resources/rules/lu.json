@@ -29,7 +29,7 @@
     { "id": "lu/basic-fit", "name": "Basic-Fit", "ruleType": "regex", "pattern": "basic[ -]?fit", "categoryId": "cat_health", "priority": 50 },
     { "id": "lu/luxair", "name": "Luxair", "ruleType": "contains", "pattern": "luxair", "categoryId": "cat_travel", "priority": 50 },
     { "id": "lu/salaire", "name": "Salaire (salary)", "ruleType": "contains", "pattern": "salaire", "categoryId": "cat_income", "priority": 60 },
-    { "id": "lu/cnap", "name": "CNAP (pension fund)", "ruleType": "word", "pattern": "cnap", "categoryId": "cat_income", "priority": 60 },
+    { "id": "lu/cnap", "name": "CNAP (pension fund)", "ruleType": "word", "pattern": "cnap", "categoryId": "cat_other_income", "priority": 60 },
     { "id": "lu/swissquote", "name": "Swissquote", "ruleType": "contains", "pattern": "swissquote", "categoryId": "cat_investments", "priority": 60 },
     { "id": "lu/contributions-directes", "name": "Administration des contributions directes", "ruleType": "contains", "pattern": "contributions directes", "categoryId": "cat_taxes", "priority": 70 },
     { "id": "lu/impots", "name": "Impôts", "ruleType": "regex", "pattern": "\\bimpots?\\b", "categoryId": "cat_taxes", "priority": 70 },

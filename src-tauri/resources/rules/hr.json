@@ -31,7 +31,7 @@
     { "id": "hr/poliklinika", "name": "Poliklinika (clinic)", "ruleType": "contains", "pattern": "poliklinika", "categoryId": "cat_health", "priority": 45 },
     { "id": "hr/croatia-airlines", "name": "Croatia Airlines", "ruleType": "contains", "pattern": "croatia airlines", "categoryId": "cat_travel", "priority": 50 },
     { "id": "hr/placa", "name": "Plaća (salary)", "ruleType": "word", "pattern": "placa", "categoryId": "cat_income", "priority": 60 },
-    { "id": "hr/mirovina", "name": "Mirovina (pension)", "ruleType": "contains", "pattern": "mirovina", "categoryId": "cat_income", "priority": 60 },
+    { "id": "hr/mirovina", "name": "Mirovina (pension)", "ruleType": "contains", "pattern": "mirovina", "categoryId": "cat_other_income", "priority": 60 },
     { "id": "hr/intercapital", "name": "InterCapital", "ruleType": "contains", "pattern": "intercapital", "categoryId": "cat_investments", "priority": 60 },
     { "id": "hr/bauhaus", "name": "Bauhaus", "ruleType": "contains", "pattern": "bauhaus", "categoryId": "cat_housing", "priority": 50 },
     { "id": "hr/pevex", "name": "Pevex", "ruleType": "word", "pattern": "pevex", "categoryId": "cat_housing", "priority": 50 },

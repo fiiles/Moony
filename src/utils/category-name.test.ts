@@ -45,7 +45,12 @@ describe('hasSeededName', () => {
     expect(hasSeededName({ id: 'x', name: 'Other', isSystem: false })).toBe(false);
   });
 
-  it('knows all 17 seeded system categories', () => {
-    expect(Object.keys(SYSTEM_CATEGORY_DEFAULT_NAMES)).toHaveLength(17);
+  it('knows all 19 seeded system categories', () => {
+    expect(Object.keys(SYSTEM_CATEGORY_DEFAULT_NAMES)).toHaveLength(19);
+  });
+
+  it('treats the migrated Salary name as seeded, a kept user rename as custom', () => {
+    expect(hasSeededName({ id: 'cat_income', name: 'Salary', isSystem: true })).toBe(true);
+    expect(hasSeededName({ id: 'cat_income', name: 'Výplata', isSystem: true })).toBe(false);
   });
 });

@@ -358,7 +358,7 @@ mod tests {
             .unwrap();
         assert_eq!(role, "income");
         let edit: UpdateTransactionCategory =
-            serde_json::from_value(serde_json::json!({"kind":"financing"})).unwrap();
+            serde_json::from_value(serde_json::json!({"kind":"transfer"})).unwrap();
         update_category(&conn, &category.id, &edit).unwrap();
         update_category(
             &conn,
@@ -376,7 +376,7 @@ mod tests {
                 |r| r.get(0),
             )
             .unwrap();
-        assert_eq!(role, "financing");
+        assert_eq!(role, "transfer");
     }
 
     // ---- create ----

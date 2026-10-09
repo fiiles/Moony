@@ -7,14 +7,16 @@ use tauri::State;
 #[tauri::command]
 pub async fn get_cashflow_actuals(
     db: State<'_, Database>,
-    range: String,
+    start_date: i64,
+    end_date: i64,
     account_ids: Option<Vec<String>>,
     report_currency: Option<String>,
 ) -> Result<crate::models::CashflowActuals> {
     db.with_conn(|conn| {
         cashflow_actuals::get_actuals_in_currency(
             conn,
-            &range,
+            start_date,
+            end_date,
             chrono::Utc::now().timestamp(),
             account_ids.as_deref(),
             report_currency.as_deref().unwrap_or("CZK"),
@@ -70,7 +72,6 @@ pub async fn get_report_transactions(
     report_currency: Option<String>,
     flow_kind: Option<crate::models::FlowKind>,
     category_id: Option<String>,
-    source_key: Option<String>,
 ) -> Result<Vec<crate::models::ReportTransaction>> {
     db.with_conn(|conn| {
         crate::services::reporting::filtered_transactions_in_currency(
@@ -80,7 +81,6 @@ pub async fn get_report_transactions(
             account_ids.as_deref(),
             flow_kind,
             category_id.as_deref(),
-            source_key.as_deref(),
             report_currency.as_deref().unwrap_or("CZK"),
         )
     })

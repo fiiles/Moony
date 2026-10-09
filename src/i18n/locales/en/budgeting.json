@@ -4,27 +4,12 @@
   "eyebrow": "Planning",
   "status_one": "Spending from {{count}} account · {{period}}",
   "status_other": "Spending from {{count}} accounts · {{period}}",
-  "timeframe": {
-    "monthly": "Month",
-    "quarterly": "Quarter",
-    "yearly": "Year"
-  },
   "actions": {
     "add": "Add budget",
     "editLimit": "Edit limit",
     "showTransactions": "Show transactions",
     "delete": "Delete budget",
-    "setLimit": "Set a limit",
-    "prev": {
-      "monthly": "Previous month",
-      "quarterly": "Previous quarter",
-      "yearly": "Previous year"
-    },
-    "next": {
-      "monthly": "Next month",
-      "quarterly": "Next quarter",
-      "yearly": "Next year"
-    }
+    "setLimit": "Set a limit"
   },
   "stats": {
     "limited_one": "{{count}} category with a limit",

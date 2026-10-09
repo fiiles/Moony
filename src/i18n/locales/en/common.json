@@ -211,7 +211,7 @@
     "csvColumnsNotFound": "The selected columns were not found in the file. Check the header row and the column mapping.",
     "csvDecimalSeparatorInvalid": "The decimal separator must be a comma or a dot.",
     "amountPositive": "Amount must be positive",
-    "cashflowRangeInvalid": "The range must be 6 months, 12 months or year to date.",
+    "cashflowPeriodInvalid": "The period cannot end before it starts.",
     "balanceAnchorIncomplete": "Enter both the outstanding balance and its date",
     "balanceAnchorNegative": "The outstanding balance cannot be negative",
     "balanceAnchorBeforeStart": "The balance date cannot be before the loan start date",
@@ -269,7 +269,22 @@
     "last7Days": "Last 7 Days",
     "last30Days": "Last 30 Days",
     "last90Days": "Last 90 Days",
-    "label": "Period"
+    "label": "Period",
+    "timeframe": {
+      "monthly": "Month",
+      "quarterly": "Quarter",
+      "yearly": "Year"
+    },
+    "prev": {
+      "monthly": "Previous month",
+      "quarterly": "Previous quarter",
+      "yearly": "Previous year"
+    },
+    "next": {
+      "monthly": "Next month",
+      "quarterly": "Next quarter",
+      "yearly": "Next year"
+    }
   },
   "table": {
     "noData": "No data available",

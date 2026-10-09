@@ -10,13 +10,14 @@ import { Link } from 'wouter';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { ChevronLeft, ChevronRight, Ellipsis, Landmark, PiggyBank, Plus } from 'lucide-react';
+import { Ellipsis, Landmark, PiggyBank, Plus } from 'lucide-react';
 import { budgetingApi, type BudgetGoal } from '@/lib/tauri-api';
 import { useFormat } from '@/lib/use-format';
 import { useCategories, useCategoryName } from '@/hooks/use-categories';
 import { useBankAccounts } from '@/hooks/use-bank-accounts';
 import { useShellPage } from '@/components/shell/shell-context';
-import { getUtcPeriodRange, type PeriodTimeframe } from '@/utils/period';
+import { usePeriodSelection } from '@/hooks/use-period-selection';
+import { PeriodNav } from '@/components/reports/PeriodNav';
 import type { BudgetState } from '@/utils/budget-pace';
 import { currentMonthStart, scheduledVersions } from '@/utils/budget-goal-versions';
 import { PageHead } from '@/components/shell/PageHead';
@@ -48,8 +49,6 @@ import {
   CategoryTransactionsDialog,
   type CategoryTransactionsTarget,
 } from '@/components/budgeting/CategoryTransactionsDialog';
-
-const TIMEFRAMES: readonly PeriodTimeframe[] = ['monthly', 'quarterly', 'yearly'];
 
 type SortKey = 'usage' | 'name';
 
@@ -89,8 +88,8 @@ export default function Budgeting() {
   const queryClient = useQueryClient();
   const categoryName = useCategoryName();
 
-  const [timeframe, setTimeframe] = useState<PeriodTimeframe>('monthly');
-  const [periodOffset, setPeriodOffset] = useState(0);
+  const period = usePeriodSelection('monthly');
+  const { timeframe, range, label: periodLabel } = period;
   const [sort, setSort] = useState<SortKey>('usage');
   const [goalDialog, setGoalDialog] = useState<{
     open: boolean;
@@ -99,20 +98,6 @@ export default function Budgeting() {
   }>({ open: false, goal: null, categoryId: null });
   const [pendingDelete, setPendingDelete] = useState<BudgetRow | null>(null);
   const [txTarget, setTxTarget] = useState<CategoryTransactionsTarget | null>(null);
-
-  // Period boundaries on the UTC calendar: booking dates are UTC midnight
-  // (ADR 0008), so local boundaries would drop the last day east of UTC.
-  const range = useMemo(
-    () => getUtcPeriodRange(timeframe, periodOffset),
-    [timeframe, periodOffset]
-  );
-  const periodLabel = useMemo(() => {
-    if (timeframe === 'monthly') return fmt.month(range.startDate);
-    if (timeframe === 'quarterly') {
-      return `Q${Math.floor(range.startDate.getUTCMonth() / 3) + 1} ${range.startDate.getUTCFullYear()}`;
-    }
-    return String(range.startDate.getUTCFullYear());
-  }, [timeframe, range, fmt]);
 
   const {
     data: report,
@@ -306,35 +291,7 @@ export default function Budgeting() {
       description={t('subtitle')}
       actions={
         <>
-          <Segmented
-            value={timeframe}
-            onValueChange={(next) => {
-              setTimeframe(next);
-              setPeriodOffset(0);
-            }}
-            options={TIMEFRAMES.map((tf) => ({ value: tf, label: t(`timeframe.${tf}`) }))}
-            aria-label={tc('periods.label')}
-          />
-          <div className="mx-1 inline-flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              aria-label={t(`actions.prev.${timeframe}`)}
-              onClick={() => setPeriodOffset((o) => o - 1)}
-            >
-              <ChevronLeft />
-            </Button>
-            <b className="min-w-[110px] text-center text-body font-650 text-ink">{periodLabel}</b>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              aria-label={t(`actions.next.${timeframe}`)}
-              disabled={periodOffset >= 0}
-              onClick={() => setPeriodOffset((o) => o + 1)}
-            >
-              <ChevronRight />
-            </Button>
-          </div>
+          <PeriodNav selection={period} />
           <AccountScope value={accountIds} onChange={setAccountIds} />
           <Button onClick={() => openAdd()} disabled={availableCategories.length === 0}>
             <Plus />

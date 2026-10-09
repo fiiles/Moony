@@ -518,7 +518,9 @@
     "cat_shopping": "Shopping",
     "cat_health": "Health & Medical",
     "cat_travel": "Travel",
-    "cat_income": "Income",
+    "cat_income": "Salary",
+    "cat_investment_income": "Investment income",
+    "cat_other_income": "Other income",
     "cat_investments": "Investments",
     "cat_savings": "Savings",
     "cat_internal_transfers": "Internal Transfers",
@@ -562,15 +564,12 @@
   "readiness": {
     "learningScope": "Opt in for this account and direction only. Matches the complete counterparty account, or this payee when no reliable account is available.",
     "categoryRole": "Report role",
-    "roleImpact": "Changes automatically derived report history. Explicit transaction flow choices and own-account transfers keep their meaning.",
+    "roleImpact": "Income and expense make up the income and spending report. A money transfer counts as neither: investing, saving, moving money between accounts.",
     "flow": {
       "auto": "Automatic flow",
       "income": "Income",
-      "expense": "Expense / refund",
-      "transfer": "Transfer",
-      "investment": "Investment",
-      "financing": "Financing",
-      "adjustment": "Adjustment"
+      "expense": "Expense",
+      "transfer": "Money transfer"
     },
     "source": {
       "explicit": "Explicit choice",

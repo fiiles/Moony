@@ -762,7 +762,7 @@ mod tests {
     #[test]
     fn transaction_flow_edit_and_clear_are_persisted_and_missing_is_an_error() {
         let conn = setup_test_db();
-        set_transaction_flow(&conn, "tx-1", Some(crate::models::FlowKind::Investment)).unwrap();
+        set_transaction_flow(&conn, "tx-1", Some(crate::models::FlowKind::Transfer)).unwrap();
         let flow: Option<String> = conn
             .query_row(
                 "SELECT flow_kind FROM bank_transactions WHERE id='tx-1'",
@@ -770,7 +770,7 @@ mod tests {
                 |r| r.get(0),
             )
             .unwrap();
-        assert_eq!(flow.as_deref(), Some("investment"));
+        assert_eq!(flow.as_deref(), Some("transfer"));
         set_transaction_flow(&conn, "tx-1", None).unwrap();
         let flow: Option<String> = conn
             .query_row(
@@ -789,7 +789,7 @@ mod tests {
     #[test]
     fn transaction_flow_persists_and_category_only_edits_preserve_it() {
         let conn = setup_test_db();
-        let data: InsertBankTransaction=serde_json::from_value(serde_json::json!({"bankAccountId":"acc-1", "type":"credit", "amount":"50", "bookingDate":1700000000,"flowKind":"adjustment"})).unwrap();
+        let data: InsertBankTransaction=serde_json::from_value(serde_json::json!({"bankAccountId":"acc-1", "type":"credit", "amount":"50", "bookingDate":1700000000,"flowKind":"transfer"})).unwrap();
         let transaction = create_transaction(&conn, &data).unwrap();
         set_transaction_category(&conn, &transaction.id, Some("cat-1"), None).unwrap();
         let kind: String = conn
@@ -799,7 +799,7 @@ mod tests {
                 |r| r.get(0),
             )
             .unwrap();
-        assert_eq!(kind, "adjustment");
+        assert_eq!(kind, "transfer");
     }
 
     #[test]

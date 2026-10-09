@@ -31,7 +31,7 @@
     { "id": "uy/buquebus", "name": "Buquebus", "ruleType": "contains", "pattern": "buquebus", "categoryId": "cat_travel", "priority": 50 },
     { "id": "uy/sueldo", "name": "Sueldo (salary)", "ruleType": "word", "pattern": "sueldo", "categoryId": "cat_income", "priority": 60 },
     { "id": "uy/haberes", "name": "Haberes (wages)", "ruleType": "contains", "pattern": "haberes", "categoryId": "cat_income", "priority": 60 },
-    { "id": "uy/bps", "name": "BPS (social security)", "ruleType": "word", "pattern": "bps", "categoryId": "cat_income", "priority": 60 },
+    { "id": "uy/bps", "name": "BPS (social security)", "ruleType": "word", "pattern": "bps", "categoryId": "cat_other_income", "priority": 60 },
     { "id": "uy/dgi", "name": "DGI (tax authority)", "ruleType": "word", "pattern": "dgi", "categoryId": "cat_taxes", "priority": 70 },
     { "id": "uy/banred", "name": "Banred (ATM network)", "ruleType": "contains", "pattern": "banred", "categoryId": "cat_internal_transfers", "priority": 40 },
     { "id": "uy/redbrou", "name": "RedBROU (ATM network)", "ruleType": "contains", "pattern": "redbrou", "categoryId": "cat_internal_transfers", "priority": 40 },

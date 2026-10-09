@@ -449,30 +449,21 @@
   "actuals": {
     "eyebrow": "Report",
     "title": "Cashflow",
-    "subtitle": "Actual income and expenses from all accounts, by month. The recurring items you count on are in",
+    "subtitle": "Actual income and expenses from all accounts for the chosen period. The recurring items you count on are in",
     "link": "Cashflow planning",
     "transactions_one": "{{count}} transaction",
     "transactions_other": "{{count}} transactions",
-    "range": {
-      "6m": "6 months",
-      "12m": "12 months",
-      "ytd": "Year {{year}}"
-    },
     "export": "Export",
-    "months_one": "{{count}} month",
-    "months_other": "{{count}} months",
     "stats": {
-      "avgIncome": "Average monthly income",
-      "avgIncomeNote": "{{months}} · {{source}} makes {{percent}}",
-      "avgExpenses": "Average monthly expenses",
-      "avgExpensesNote": "most on {{category}} {{amount}}",
-      "avgSavings": "Average saving",
-      "avgSavingsNote": "savings rate {{rate}} · previous period {{previous}}",
-      "avgSavingsNoteNoPrev": "savings rate {{rate}}"
+      "income": "Income",
+      "expenses": "Expenses",
+      "savings": "Savings",
+      "perMonth": "⌀ {{amount}} / month",
+      "savingsRate": "savings rate {{rate}}"
     },
     "chart": {
       "title": "Income and expenses by month",
-      "sub": "Hover a bar to see the month balance.",
+      "sub": "The chosen period is highlighted. Hover a bar to see the month balance.",
       "income": "Income",
       "expenses": "Expenses",
       "balance": "balance"
@@ -480,29 +471,30 @@
     "breakdown": {
       "sub": "Sum over the chosen period",
       "category": "Category",
-      "source": "Source",
       "share": "Share",
       "amount": "Amount",
-      "vsPrevious": "vs. previous",
-      "total": "Total {{amount}}"
+      "total": "Total {{amount}}",
+      "empty": "Nothing in this period"
     },
     "expenses": {
       "title": "Expenses by category",
       "budgets": "Set budgets"
     },
     "income": {
-      "title": "Income by source",
-      "note": "Internal transfers excluded; uncategorized credits count as income"
+      "title": "Income by category",
+      "note": "Uncategorized credits count as income"
     },
-    "other": "Other",
-    "otherIncome": "Other income",
+    "transfers": {
+      "title": "Investments, savings and transfers",
+      "sub": "Counted as neither income nor expenses",
+      "movement": "Total money movement on the accounts {{amount}}"
+    },
     "uncategorized": "Uncategorized",
-    "noChange": "no change",
-    "new": "new",
+    "uncategorizedTransfers": "Transfers without a category",
     "empty": {
-      "title": "No transactions yet",
-      "description": "Import a bank statement and the report shows your actual income and expenses by month.",
-      "action": "Open bank accounts"
+      "action": "Open bank accounts",
+      "periodTitle": "No transactions in this period",
+      "periodDescription": "Choose another period, or import a bank statement."
     }
   },
   "viewType": {
@@ -518,57 +510,33 @@
     "accounts": "Accounts ({{count}})",
     "accountScopeHelp": "Select accounts for this report. Scope is independent of inclusion in portfolio balance.",
     "allAccounts": "All accounts",
-    "ordinaryNet": "Ordinary income − expenses",
-    "bankMovement": "Total bank cash movement",
-    "nonconsumption": "Transfers and other flows",
-    "absoluteShare": "Share of absolute totals",
     "drilldownUnits": "Native movement and report contribution in {{currency}}",
     "loading": "Loading…",
     "date": "Date",
     "description": "Description",
-    "account": "Account",
     "native": "Native movement",
     "contribution": "Report contribution ({{currency}})",
     "fxUnavailable": "FX unavailable",
     "countedTransactions": "{{count}} transactions",
     "previous": "Previous",
     "next": "Next",
-    "flow": {
-      "auto": "Automatic flow",
-      "income": "Income",
-      "expense": "Expense / refund",
-      "transfer": "Transfer",
-      "investment": "Investment",
-      "financing": "Financing",
-      "adjustment": "Adjustment"
-    },
-    "source": {
-      "explicit": "Explicit choice",
-      "category": "Category role",
-      "direction": "Movement direction",
-      "ownAccount": "Own account"
-    },
     "replacesSource": "Automatic source to replace",
     "additionalItem": "Additional manual item",
     "retainedSource": "Previously linked source",
     "replacementHelp": "A replacement excludes the selected automatic item from totals. Deleting the manual replacement restores the source.",
     "replacing": "Replaces {{name}}",
-    "reportRange": "{{start}} – {{end}} · comparison {{previousStart}} – {{previousEnd}}",
-    "averageSample_zero": "No completed month is available for this average.",
-    "averageSample_one": "Average from {{count}} completed month.",
-    "averageSample_other": "Average from {{count}} completed months.",
     "missingFx_one": "{{count}} movement excluded due to missing FX ({{currencies}}). Totals are incomplete.",
     "missingFx_other": "{{count}} movements excluded due to missing FX ({{currencies}}). Totals are incomplete.",
     "countedTransactions_zero": "No transactions",
     "countedTransactions_one": "{{count}} transaction",
     "countedTransactions_other": "{{count}} transactions",
-    "comparisonFx_zero": "The comparison period has no movements excluded for missing FX.",
-    "comparisonFx_one": "The comparison period excludes {{count}} movement with missing FX ({{currencies}}).",
-    "comparisonFx_other": "The comparison period excludes {{count}} movements with missing FX ({{currencies}}).",
     "invalidAmounts_one": "{{count}} stored movement has an invalid amount and is excluded. Totals are incomplete; correct or delete it in the account.",
     "invalidAmounts_other": "{{count}} stored movements have an invalid amount and are excluded. Totals are incomplete; correct or delete them in the account.",
     "partialAmount": "Partial amount; some conversions are unavailable",
     "missingPlanningFx_one": "{{count}} planned component has no conversion ({{currencies}}). Totals are partial.",
-    "missingPlanningFx_other": "{{count}} planned components have no conversion ({{currencies}}). Totals are partial."
+    "missingPlanningFx_other": "{{count}} planned components have no conversion ({{currencies}}). Totals are partial.",
+    "category": "Category",
+    "moved": "moved",
+    "movedCount": "moved: {{count}}"
   }
 }

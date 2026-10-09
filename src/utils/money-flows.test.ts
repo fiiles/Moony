@@ -48,7 +48,6 @@ describe('ledger row flow label', () => {
     expect(rowFlowLabel(flow('expense', 'direction'), false, false)).toBeNull();
     expect(rowFlowLabel(flow('income', 'direction'), true, false)).toBeNull();
     expect(rowFlowLabel(flow('transfer'), false, true)).toBeNull();
-    expect(rowFlowLabel(flow('investment'), false, true)).toBeNull();
     expect(rowFlowLabel(flow('transfer', 'ownAccount'), false, true)).toBeNull();
   });
 

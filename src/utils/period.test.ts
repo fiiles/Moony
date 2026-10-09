@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
+  periodFileStem,
   CHART_PERIODS,
   chartPeriodStart,
   getUtcPeriodRange,
@@ -146,5 +147,15 @@ describe('chartPeriodStart', () => {
     for (const period of CHART_PERIODS) {
       expect(chartPeriodStart(period, morning)).toBe(chartPeriodStart(period, evening));
     }
+  });
+});
+
+describe('periodFileStem', () => {
+  it('names a year, a quarter and a month for export file names', () => {
+    expect(periodFileStem('yearly', new Date(Date.UTC(2026, 0, 1)))).toBe('2026');
+    expect(periodFileStem('quarterly', new Date(Date.UTC(2026, 9, 1)))).toBe('2026-q4');
+    expect(periodFileStem('quarterly', new Date(Date.UTC(2026, 0, 1)))).toBe('2026-q1');
+    expect(periodFileStem('monthly', new Date(Date.UTC(2026, 9, 1)))).toBe('2026-10');
+    expect(periodFileStem('monthly', new Date(Date.UTC(2026, 2, 1)))).toBe('2026-03');
   });
 });

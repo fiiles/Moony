@@ -211,7 +211,7 @@
     "csvColumnsNotFound": "Vybrané sloupce nebyly v souboru nalezeny. Zkontrolujte řádek záhlaví a mapování sloupců.",
     "csvDecimalSeparatorInvalid": "Desetinný oddělovač musí být čárka nebo tečka.",
     "amountPositive": "Částka musí být kladná",
-    "cashflowRangeInvalid": "Období musí být 6 měsíců, 12 měsíců nebo od začátku roku.",
+    "cashflowPeriodInvalid": "Období nesmí skončit dřív, než začne.",
     "balanceAnchorIncomplete": "Zadejte zůstatek i datum, ke kterému platí",
     "balanceAnchorNegative": "Nesplacený zůstatek nemůže být záporný",
     "balanceAnchorBeforeStart": "Datum zůstatku nemůže předcházet datu zahájení úvěru",
@@ -269,7 +269,22 @@
     "last7Days": "Posledních 7 dní",
     "last30Days": "Posledních 30 dní",
     "last90Days": "Posledních 90 dní",
-    "label": "Období"
+    "label": "Období",
+    "timeframe": {
+      "monthly": "Měsíc",
+      "quarterly": "Čtvrtletí",
+      "yearly": "Rok"
+    },
+    "prev": {
+      "monthly": "Předchozí měsíc",
+      "quarterly": "Předchozí čtvrtletí",
+      "yearly": "Předchozí rok"
+    },
+    "next": {
+      "monthly": "Další měsíc",
+      "quarterly": "Další čtvrtletí",
+      "yearly": "Další rok"
+    }
   },
   "table": {
     "noData": "Žádná data k zobrazení",

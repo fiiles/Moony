@@ -160,7 +160,7 @@ implementations.
 | Overview | Dashboard | Greeting H1, period segment, hero (net worth + chart), 3 stats, "Co vás čeká" (a two-column agenda with date chips filled top to bottom, data upkeep folded into one line under it, hidden when empty), allocation ring + recent moves. |
 | List | Stocks, bank accounts | 3–4 stats, a trend card (`TrendCard`: title, one sentence, horizon segment, chart 170 px, legend; the same chrome and height on every list page), table card with search and toggles, add modal. Tables use a fixed layout so long text ends with an ellipsis instead of widening the table; no horizontal scroll at the minimum width. |
 | Detail | Stock detail, bank account detail | Back link, eyebrow, H1, action row, hero with time trace, 3–4 stats, ledger table + aside cards, modals. |
-| Report | Cashflow | Actual monthly income and expenses from bank transactions: stats, bar chart card, breakdown by category and by source with change versus the previous period. |
+| Report | Cashflow | Actual income and expenses from bank transactions for a month, quarter or year: stats, bar chart card, income and expenses by category, money transfers in their own card, recategorization from the drilldown. |
 | Plan | Cashflow planning | Planned recurring items in personal and investment sections, items derived from Úvěry / Pojištění / Nemovitosti / Akcie marked as automatic, monthly / yearly switch, a 100 % flow bar instead of a Sankey diagram. |
 | Planning | Budgets | Month navigation, stats, overview progress, category table with progress bars and state badges. |
 | Settings | Settings | Left sub-navigation (existing routes), stacked flat cards, danger zone last. |
@@ -231,10 +231,14 @@ than ~24 events fall in view, cluster neighbors into one mark with a count ("3 n
    events.
 3. **Inter Variable is bundled** via `@fontsource-variable/inter`. No network fonts and no system-font
    fallback design.
-4. **Cashflow is two pages.** *Cashflow* (`/reports/cashflow`) shows actual flows from bank transactions:
-   monthly sums by direction, by category and by income source for 6 months, 12 months or the year to date,
-   next to the same sums for the previous range, calculated in the selected report currency with
-   historical pair rates. Same-currency movements need no conversion. Currency is part of the
+4. **Cashflow is two pages.** *Cashflow* (`/reports/cashflow`) shows actual flows from bank transactions
+   for one calendar month, quarter or year, chosen with the same period control as Budgets (default:
+   the current year), with no comparison period. Three stats (income, expenses, savings with the savings
+   rate), a twelve-month chart that mutes the months outside the period, then a two-column grid: expenses
+   by category on the left, income by category and *Investice, spoření a převody* (money transfers by
+   category) stacked on the right. Every breakdown row is clickable as a whole and opens its
+   transactions, which can be recategorized in place. Amounts are calculated in the selected report
+   currency with historical pair rates. Same-currency movements need no conversion. Currency is part of the
    amount; ordinary reports do not carry persistent technical FX explanations. Show compact
    warnings only when missing data affects the result.
    *Cashflow planning* (`/reports/cashflow-planning`, label key `nav.cashflowPlanning`, cs "Plánování

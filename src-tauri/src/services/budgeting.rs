@@ -261,7 +261,7 @@ pub fn get_report_in_currency(
     let rows = transactions_in_currency(conn, start_date, end_date, accounts, &report_currency)?;
     let mut incomes: HashMap<String, CategorySpendingSummary> = HashMap::new();
     let mut expenses: HashMap<String, CategorySpendingSummary> = HashMap::new();
-    let mut others: HashMap<String, (f64, i32)> = HashMap::new();
+    let mut others: HashMap<FlowKind, (f64, i32)> = HashMap::new();
     let (mut income, mut expense, mut un_income, mut un_expense, mut un_count) =
         (0.0, 0.0, 0.0, 0.0, 0);
     for row in &rows {
@@ -271,7 +271,7 @@ pub fn get_report_in_currency(
         let value = parse_money(value)?;
         let kind = row.effective_flow_kind;
         if kind != FlowKind::Income && kind != FlowKind::Expense {
-            others.entry(kind.to_string()).or_default().0 += value;
+            others.entry(kind).or_default().0 += value;
             continue;
         }
         if kind == FlowKind::Income {
@@ -386,7 +386,7 @@ pub fn get_report_in_currency(
             FlowKind::Income => &mut incomes,
             FlowKind::Expense => &mut expenses,
             kind => {
-                if let Some(v) = others.get_mut(&kind.to_string()) {
+                if let Some(v) = others.get_mut(&kind) {
                     v.1 += 1;
                 }
                 continue;
@@ -439,11 +439,11 @@ pub fn get_report_in_currency(
         quality: quality(&rows, start_date, end_date, chrono::Utc::now().timestamp()),
         nonconsumption_flows: others
             .into_iter()
-            .map(|(key, (amount, count))| CashflowGroup {
-                key: key.clone(),
-                name: key,
+            .map(|(kind, (amount, count))| CashflowGroup {
+                key: kind.to_string(),
+                name: kind.to_string(),
+                flow_kind: kind,
                 amount: money(amount),
-                previous_amount: "0.00".into(),
                 count,
             })
             .collect(),
@@ -897,8 +897,8 @@ mod tests {
              ('salary','acc1',{d},'500','EUR','cat_income','credit'),
              ('loose','acc1',{d},'5','EUR',NULL,'debit');
              INSERT INTO bank_transactions(id,bank_account_id,booking_date,amount,currency,tx_type,flow_kind) VALUES
-             ('invest-usd','acc1',{d},'30','USD','debit','investment'),
-             ('invest-eur','acc1',{d},'20','EUR','debit','investment');",
+             ('invest-usd','acc1',{d},'30','USD','debit','transfer'),
+             ('invest-eur','acc1',{d},'20','EUR','debit','transfer');",
             d = OCT + 86400
         ))
         .unwrap();
@@ -1105,8 +1105,15 @@ mod tests {
         let report = get_report(&conn, 1790812800, 1791158400, "monthly").unwrap();
         assert_eq!(report.total_expenses, "500.00");
         assert_eq!(report.total_income, "2900.00");
-        let cashflow =
-            crate::services::cashflow_actuals::get_actuals(&conn, "6m", 1_791_000_000).unwrap();
+        let cashflow = crate::services::cashflow_actuals::get_actuals_in_currency(
+            &conn,
+            1790812800,
+            1791158400,
+            1_791_000_000,
+            None,
+            "CZK",
+        )
+        .unwrap();
         assert_eq!(cashflow.total_expenses, "500.00");
         assert_eq!(cashflow.total_income, "2900.00");
         let drilldown =

@@ -52,7 +52,7 @@ Spec: `docs/specs/2026-10-09-multi-currency-design.md`. Audit (finding IDs C1…
 
 Each task here is an independent small fix: write a regression test where the logic is a pure function, fix, run the gates, commit. Components have no tests by policy; verify by typecheck and reading the diff.
 
-### Task 0.1: Decimal manual price and dividend (P1)
+### Task 1: Decimal manual price and dividend (P1)
 
 **Files:**
 - Modify: `src/components/stocks/ManualPriceModal.tsx` (prefill ~line 65, input ~128-141)
@@ -62,7 +62,7 @@ Each task here is an independent small fix: write a regression test where the lo
 - [ ] **Step 2:** `npm run typecheck && npm run lint`. Expected: pass.
 - [ ] **Step 3:** Commit `fix: keep decimals in manual stock price and dividend`.
 
-### Task 0.2: Full-precision crypto prices (P2, P4)
+### Task 2: Full-precision crypto prices (P2, P4)
 
 **Files:**
 - Modify: `src-tauri/src/services/price_api.rs:~542` (and any sibling `format!("{:.2}", …)` that persists a crypto price; grep `{:.2}` in the file)
@@ -84,7 +84,7 @@ fn crypto_price_keeps_sub_cent_precision() {
 - [ ] **Step 4:** In the four crypto modals replace `toFixed(2)` with `Number(x.toPrecision(12))` on prefill and keep the raw typed value on blur (no truncation); inputs `step="any"`.
 - [ ] **Step 5:** Run the test (PASS), `cargo clippy -- -D warnings`, `npm run typecheck`. Commit `fix: store and edit crypto prices at full precision`.
 
-### Task 0.3: Native currency in stock modals opened from the list (P3)
+### Task 3: Native currency in stock modals opened from the list (P3)
 
 **Files:**
 - Modify: `src/pages/Stocks.tsx:182-197` (holding mapping), `src/components/stocks/BuyInvestmentModal.tsx:64-70`, `SellInvestmentModal.tsx:62-64`, `ManualPriceModal.tsx:62-66`
@@ -94,7 +94,7 @@ fn crypto_price_keeps_sub_cent_precision() {
 - [ ] **Step 2:** Confirm `HoldingData` (where it is declared, likely `src/components/stocks/types.ts` or `Stocks.tsx`) has `originalAvgCostCurrency` and `originalCurrency`; StockDetail's object passes the same keys with native values (add them there if missing).
 - [ ] **Step 3:** `npm run typecheck && npm run lint`. Commit `fix: use the stock's own currency in buy, sell and manual price from the list`.
 
-### Task 0.4: Display-currency inputs and outputs on asset pages (U1–U4)
+### Task 4: Display-currency inputs and outputs on asset pages (U1–U4)
 
 **Files:**
 - Modify: `src/pages/RealEstate.tsx:377-380`, `src/pages/OtherAssets.tsx:184` — pass `convert(totalCzk, 'CZK', currencyCode)` to `PortfolioTrendCard.currentValue`.
@@ -109,7 +109,7 @@ fn crypto_price_keeps_sub_cent_precision() {
 
 # Phase 1 — one FX service and full rate coverage
 
-### Task 1: Supported-currency table and FX test vectors
+### Task 5: Supported-currency table and FX test vectors
 
 **Files:**
 - Create: `shared/fx-supported.json`, `shared/fx-test-vectors.json`
@@ -149,7 +149,7 @@ fn crypto_price_keeps_sub_cent_precision() {
   ]
 }
 ```
-- `shared/currencies.ts` exports `FX_SOURCE_CODES: readonly string[]`, `FX_DERIVED_CODES: readonly string[]`, `FX_SUPPORTED_CODES: readonly CurrencyCode[]` (source ∪ derived, sorted, filtered to `CURRENCY_CODES`), `isFxSupported(code): boolean`. `ECB_CURRENCY_CODES` becomes `FX_SOURCE_CODES` filtered to `CURRENCY_CODES` (keep the export name for now; Task 2.10 removes legacy names).
+- `shared/currencies.ts` exports `FX_SOURCE_CODES: readonly string[]`, `FX_DERIVED_CODES: readonly string[]`, `FX_SUPPORTED_CODES: readonly CurrencyCode[]` (source ∪ derived, sorted, filtered to `CURRENCY_CODES`), `isFxSupported(code): boolean`. `ECB_CURRENCY_CODES` becomes `FX_SOURCE_CODES` filtered to `CURRENCY_CODES` (keep the export name for now; Task 21 removes legacy names).
 
 - [ ] **Step 1: Failing test** (`shared/currencies.test.ts`):
 ```ts
@@ -174,7 +174,7 @@ describe('fx supported currencies', () => {
 - [ ] **Step 4:** Run test → PASS; `npm run typecheck`.
 - [ ] **Step 5:** Commit `feat: shared table of FX-supported currencies and conversion test vectors`.
 
-### Task 2: FX service core (quotes, pegs, quality)
+### Task 6: FX service core (quotes, pegs, quality)
 
 **Files:**
 - Create: `src-tauri/src/services/fx.rs`
@@ -302,7 +302,7 @@ fn supported_set_matches_shared_table() {
 - [ ] **Step 4:** `cargo test services::fx` → PASS; `cargo clippy -- -D warnings`.
 - [ ] **Step 5:** Commit `feat: FX service core with derived pegs and conversion quality`.
 
-### Task 3: FX history with the common-day rule; reports delegate to it
+### Task 7: FX history with the common-day rule; reports delegate to it
 
 **Files:**
 - Modify: `src-tauri/src/services/fx.rs` (add `History`)
@@ -373,7 +373,7 @@ fn convert_on_derives_pegs_and_skips_bad_rows() {
 - [ ] **Step 4:** `cargo test` (whole crate: all reporting, budgeting, cashflow tests must still pass unchanged). If a report test fails, the FX rule changed semantics — fix the implementation, never the report test.
 - [ ] **Step 5:** Commit `refactor: reports convert through the FX history service`.
 
-### Task 4: Current snapshot store; remove hardcoded rates and 1:1 fallbacks
+### Task 8: Current snapshot store; remove hardcoded rates and 1:1 fallbacks
 
 **Files:**
 - Modify: `src-tauri/src/services/currency.rs` (in-memory store, `load_rates_from_db`, `fetch_ecb_rates`, `get_all_rates`, `convert_*`, `get_rates_for_date*`, `resolve_rates_for_day_from_range`, missing set)
@@ -383,7 +383,7 @@ fn convert_on_derives_pegs_and_skips_bad_rows() {
 **Interfaces:**
 - Consumes: `fx::Quotes`, `fx::History`, `fx::Quality`.
 - Produces (in `fx.rs`): `pub fn current() -> Quotes` (clone of the in-memory snapshot), `pub fn set_current(q: Quotes)`, `pub fn missing_now() -> Vec<String>` (codes that failed a current conversion since the last `set_current`), `fn record_missing(code)`.
-- Phase-1 legacy shims kept in `currency.rs` until Task 2.10 deletes them: `convert_to_czk(amount, currency) -> f64` = `fx::current().convert(amount, currency, "CZK")`, on `None` → `fx::record_missing(currency)` and return `0.0` (excluded from the CZK total, flagged); `get_all_rates()` = `fx::current().to_czk_per_unit()`; `get_rates_for_date(conn, date)` = that day's (walk-back) quotes as CZK-per-unit including derived, or an empty map when no day within 10 days (never current rates); `convert_to_czk_with_rates` on a missing code → record + `0.0`. Delete `convert_from_czk`, `convert_between`, `get_exchange_rate` and their tests only after replacing their callers (MCP money uses `Quotes::convert`).
+- Phase-1 legacy shims kept in `currency.rs` until Task 21 deletes them: `convert_to_czk(amount, currency) -> f64` = `fx::current().convert(amount, currency, "CZK")`, on `None` → `fx::record_missing(currency)` and return `0.0` (excluded from the CZK total, flagged); `get_all_rates()` = `fx::current().to_czk_per_unit()`; `get_rates_for_date(conn, date)` = that day's (walk-back) quotes as CZK-per-unit including derived, or an empty map when no day within 10 days (never current rates); `convert_to_czk_with_rates` on a missing code → record + `0.0`. Delete `convert_from_czk`, `convert_between`, `get_exchange_rate` and their tests only after replacing their callers (MCP money uses `Quotes::convert`).
 
 Rules:
 - No hardcoded rates: the store starts empty. `load_rates_from_db` validates each row (finite, > 0) and calls `fx::set_current(Quotes::from_czk_per_unit(&rows))`. `fetch_ecb_rates` sets current from the parsed feed.
@@ -441,7 +441,7 @@ Tests touching the global store must not run in parallel with each other: guard 
 - [ ] **Step 4:** `cargo test && cargo clippy -- -D warnings` → PASS. Existing tests that asserted the hardcoded EUR=25 default or 1:1 fallback are updated to set the store explicitly (they test behaviour that the spec removes; note each in the commit body).
 - [ ] **Step 5:** Commit `fix: no invented or 1:1 exchange rates; missing conversions are reported`.
 
-### Task 5: FX coverage for every held currency and per-currency staleness
+### Task 9: FX coverage for every held currency and per-currency staleness
 
 **Files:**
 - Modify: `src-tauri/src/services/fx_backfill.rs:36-140` (`tx_currencies` → `held_currencies`, `missing_fx_ranges`)
@@ -473,7 +473,7 @@ fn held_currencies_cover_balances_quotes_properties_and_pegs() {
 - [ ] **Step 4:** Regenerate bindings (`cd src-tauri && cargo test generate_bindings -- --ignored`), update `shared/schema.ts`, DataStatus, locales. Gates.
 - [ ] **Step 5:** Commit `feat: exchange-rate history for every held currency and stale-rate warning`.
 
-### Task 6: Main currency restricted to supported currencies
+### Task 10: Main currency restricted to supported currencies
 
 **Files:**
 - Modify: `src-tauri/src/services/auth.rs` (profile create/update; lines ~122, ~254), `src-tauri/src/services/onboarding.rs` (if it sets the currency), the profile `Insert*`/update struct `validate()`
@@ -504,7 +504,7 @@ Rust (profile service test module, in-memory `user_profile` table): updating the
 - [ ] **Step 3:** Implement. Settings picker lists `FX_SUPPORTED_CODES`; when the current profile currency is unsupported, show it as the selected value plus the warning `currency.unsupportedMain` (en "Your main currency has no exchange-rate source. Totals that mix currencies cannot be converted — choose a supported main currency." / cs "Vaše hlavní měna nemá zdroj kurzu. Součty v různých měnách nejde převést — zvolte podporovanou hlavní měnu."). BG maps to EUR (Bulgaria uses the euro since 2026-01-01).
 - [ ] **Step 4:** Gates. Commit `feat: main currency must have an exchange-rate source`.
 
-### Task 7: Phase 1 review checkpoint
+### Task 11: Phase 1 review checkpoint
 
 - [ ] Full gates (both sides), `cargo test generate_bindings -- --ignored` without drift.
 - [ ] Dispatch a code reviewer (model sonnet) over `git diff main...HEAD` restricted to phase 0–1 files against this plan and the spec; fix findings; commit `fix: phase 1 review findings` if any.
@@ -513,7 +513,7 @@ Rust (profile service test module, in-memory `user_profile` table): updating the
 
 # Phase 2 — explicit currency in every monetary response
 
-### Task 2.1: Conversion-quality wire type, FX snapshot commands, required report currency
+### Task 12: Conversion-quality wire type, FX snapshot commands, required report currency
 
 **Files:**
 - Create: `src-tauri/src/models/fx.rs` (+ `models/mod.rs`)
@@ -549,7 +549,7 @@ TS: `fxApi.getSnapshot(): Promise<FxSnapshot>`, `fxApi.getHistory(startDay, endD
 - [ ] **Step 2:** Add the wire types, commands (thin; logic in `fx.rs`), bindings registration; regenerate types; mirror in `shared/schema.ts` per the 7-step procedure; add `tauri-api.ts` wrappers; make report currency required (frontend callers already pass it — `npm run typecheck` proves it).
 - [ ] **Step 3:** Gates. Commit `feat: FX snapshot and history commands, required report currency`.
 
-### Task 2.2: Frontend FX core
+### Task 13: Frontend FX core
 
 **Files:**
 - Create: `shared/fx.ts`, `shared/fx.test.ts`, `src/hooks/use-fx.ts`
@@ -572,7 +572,7 @@ export class MissingTracker { track(from: string, v: number | null): number | nu
 export function useFxSnapshot(): { quotes: FxQuotes | undefined; revision: number; isLoading: boolean };
 export function useFxHistory(startTs: number | undefined, endTs: number | undefined): FxHistory | undefined;
 ```
-`useCurrency()` context becomes `{ currencyCode, currency, fx: FxQuotes | undefined, fxRevision: number, convert(amount, from, to?): number | null /* to defaults to currencyCode */ }` — the old fields stay until Task 2.10 so the app keeps compiling; mark them `/** @deprecated removed in Task 2.10 */`.
+`useCurrency()` context becomes `{ currencyCode, currency, fx: FxQuotes | undefined, fxRevision: number, convert(amount, from, to?): number | null /* to defaults to currencyCode */ }` — the old fields stay until Task 21 so the app keeps compiling; mark them `/** @deprecated removed in Task 21 */`.
 `refreshExchangeRates` callers (DataStatus, SyncProvider, CurrencyProvider) invalidate `['fx-snapshot']` after success; every converted query key includes `fxRevision`.
 `fmt.money(amount, currency, opts)`: uses `currencyDisplay: 'narrowSymbol'` only when `currency === mainCurrency` (pass the main currency into `getFormatters(locale, mainCurrency)`), otherwise `'code'`.
 
@@ -629,7 +629,7 @@ describe('MissingTracker', () => {
 - [ ] **Step 3:** Implement `shared/fx.ts`, `use-fx.ts`, provider/context changes, formatter symbol rule, invalidation wiring. Add a `format.test.ts` case: `money(5, 'USD')` with main `CZK` renders the code `USD`, with main `USD` renders `$`.
 - [ ] **Step 4:** Gates. Commit `feat: frontend FX snapshot, pure conversion and main-currency symbols`.
 
-### Task 2.3: Positions service (stocks and crypto) in a report currency
+### Task 14: Positions service (stocks and crypto) in a report currency
 
 **Files:**
 - Create: `src-tauri/src/services/positions.rs`
@@ -718,7 +718,7 @@ fn same_currency_needs_no_rates() {
 - [ ] **Step 3:** Implement; crypto uses the same function with `crypto_*` tables (mixed transaction currencies allowed: cost per transaction converted directly into the report currency).
 - [ ] **Step 4:** PASS; clippy. Commit `feat: value stock and crypto positions in a report currency`.
 
-### Task 2.4: Investment and crypto commands, tags, analysis and MCP on the positions service
+### Task 15: Investment and crypto commands, tags, analysis and MCP on the positions service
 
 **Files:**
 - Modify: `src-tauri/src/commands/investments.rs` (`get_all_investments`, `get_investment`, `get_investment_with_details`, `update_investment_name` response), `src-tauri/src/commands/crypto.rs` (`get_all_crypto`), `src-tauri/src/commands/stock_tags.rs` (`get_stocks_analysis`, `get_tag_metrics`), `src-tauri/src/services/mcp/{analytics,investments,crypto}.rs`, models for the response types, `bindings.rs`
@@ -731,10 +731,10 @@ fn same_currency_needs_no_rates() {
 
 - [ ] **Step 1: Failing test** (`commands` are not tested; add to `services/positions.rs`): `tag_totals(&positions, &tag_map) -> HashMap<tag_id, PositionTotals>` sums only convertible items and returns quality per tag — test with one convertible and one KWD position in the same tag (total = convertible one, tag quality lists KWD). Then MCP parity test in `services/mcp/analytics.rs` tests: for the C1 fixture, the MCP `stocks_analysis` output's `gainLoss` for AAPL equals `"136.36"` with `mainCurrency: "EUR"` (read the module's existing test setup for the MCP context).
 - [ ] **Step 2:** FAIL → implement → PASS. Regenerate bindings; update `shared/schema.ts` per the 7-step procedure; `tauri-api.ts` functions take `reportCurrency`.
-- [ ] **Step 3:** Frontend still compiles? It will not: callers of these APIs change in Task 2.8. To keep the branch green, this task also performs the minimal caller update: pass `currencyCode` and adapt field names in `Stocks.tsx`, `Crypto.tsx`, `StockDetail.tsx`, `CryptoDetail.tsx`, `StocksAnalysis.tsx`, `InvestmentsTable.tsx`, `InvestmentsSummary.tsx`, `CryptoTable.tsx`, `CryptoSummary.tsx`, `TagShareBars.tsx`, `PositionHero.tsx` — formatting values with `fmt.money(Number(v), response.currency)`; remove the frontend holding maths there (`calculateMetrics`, `useDatedConvert`, `calculateRealizedGains`, `calculatePortfolioTotals` uses on these pages) in favour of the response fields and `totals`. Query keys: `['investments', currencyCode, fxRevision]`, `['crypto', currencyCode, fxRevision]`, `['stocks-analysis', currencyCode, fxRevision]`, `['tag-metrics', currencyCode, fxRevision]`.
+- [ ] **Step 3:** The frontend stops compiling once these wire types change. To keep the branch green, this task also performs the minimal caller update: pass `currencyCode` and adapt field names in `Stocks.tsx`, `Crypto.tsx`, `StockDetail.tsx`, `CryptoDetail.tsx`, `StocksAnalysis.tsx`, `InvestmentsTable.tsx`, `InvestmentsSummary.tsx`, `CryptoTable.tsx`, `CryptoSummary.tsx`, `TagShareBars.tsx`, `PositionHero.tsx` — formatting values with `fmt.money(Number(v), response.currency)`; remove the frontend holding maths there (`calculateMetrics`, `useDatedConvert`, `calculateRealizedGains`, `calculatePortfolioTotals` uses on these pages) in favour of the response fields and `totals`. Query keys: `['investments', currencyCode, fxRevision]`, `['crypto', currencyCode, fxRevision]`, `['stocks-analysis', currencyCode, fxRevision]`, `['tag-metrics', currencyCode, fxRevision]`.
 - [ ] **Step 4:** Gates. Commit `feat: investment, crypto, tag and MCP analytics in the report currency`.
 
-### Task 2.5: TWR and ticker value history in a report currency
+### Task 16: TWR and ticker value history in a report currency
 
 **Files:**
 - Modify: `src-tauri/src/services/investments.rs:~918-1060` (`compute_twr_for_tickers`), `src-tauri/src/services/ticker_history.rs` (read API), `src-tauri/src/commands/investments.rs` (`get_stock_twr`, `get_stock_value_history`), `src-tauri/src/commands/crypto.rs` (`get_crypto_value_history`), `src-tauri/src/services/mcp/mod.rs:~127` (value history tools), models, bindings, `shared/schema.ts`, `src/lib/tauri-api.ts` (`TickerValueHistory`), `src/components/stocks/PositionHero.tsx`
@@ -744,10 +744,10 @@ fn same_currency_needs_no_rates() {
 - TWR input: per day `value = quantity × price` converted with `History::convert_on(…, report_currency, day)`; flows (buys/sells) converted at their own day. Days without conversion are skipped and recorded in quality.
 
 - [ ] **Step 1: Failing test** (investments.rs tests): USD-only stock, price constant 100 USD for 3 days, USDCZK moves 20 → 25, report currency USD → TWR series all `0.0`; report currency CZK → last point `25.0` (%). 
-- [ ] **Step 2:** FAIL → implement → PASS. PositionHero converts nothing; plots `value` and the position's `costBasis` from Task 2.4 in the same currency.
+- [ ] **Step 2:** FAIL → implement → PASS. PositionHero converts nothing; plots `value` and the position's `costBasis` from Task 15 in the same currency.
 - [ ] **Step 3:** Gates. Commit `feat: TWR and ticker history in the report currency`.
 
-### Task 2.6: Net worth and history in a report currency
+### Task 17: Net worth and history in a report currency
 
 **Files:**
 - Create: `src-tauri/src/services/net_worth.rs`
@@ -761,7 +761,7 @@ pub fn current_net_worth(conn: &Connection, report_currency: &str, exclude_perso
 pub struct HistoryPoint { pub recorded_at: i64, pub source: String, pub is_stale: bool, pub classes: ClassTotals, pub net_worth: Option<f64> }
 pub fn history_in(conn: &Connection, report_currency: &str, from: Option<i64>, to: Option<i64>) -> Result<(Vec<HistoryPoint>, fx::Quality)>;
 ```
-`current_net_worth` sums the native breakdowns that `compute_breakdowns` already produces (convert each `(currency, amount)` with `fx::current()`; class `None` only when every amount in it is unconvertible; totals exclude missing and record them). `history_in` converts each row's `*_by_currency` at that row's day with one `History::load` for the whole range; a class with an empty breakdown and a non-zero CZK total falls back to the CZK total converted at that day (phase-2 compatibility for legacy rows; removed in Task 3.2). Wire: `PortfolioMetrics { currency, fxQuality, totalSavings…netWorth: String /*TEXT*/, *ByCurrency maps unchanged }`, `PortfolioHistoryResponse { currency, fxQuality, points: Vec<PortfolioHistoryPoint> }` (same class field names as today, TEXT, nullable).
+`current_net_worth` sums the native breakdowns that `compute_breakdowns` already produces (convert each `(currency, amount)` with `fx::current()`; class `None` only when every amount in it is unconvertible; totals exclude missing and record them). `history_in` converts each row's `*_by_currency` at that row's day with one `History::load` for the whole range; a class with an empty breakdown and a non-zero CZK total falls back to the CZK total converted at that day (phase-2 compatibility for legacy rows; removed in Task 24). Wire: `PortfolioMetrics { currency, fxQuality, totalSavings…netWorth: String /*TEXT*/, *ByCurrency maps unchanged }`, `PortfolioHistoryResponse { currency, fxQuality, points: Vec<PortfolioHistoryPoint> }` (same class field names as today, TEXT, nullable).
 
 - [ ] **Step 1: Failing tests** (net_worth.rs, in-memory `portfolio_metrics_history` + `exchange_rate_history` + the tables `compute_breakdowns` reads — or test `history_in` and a pure `sum_breakdowns(&HashMap<String,f64>, &Quotes, &mut Quality) -> Option<f64>`):
   - EUR-only breakdowns `{"EUR": 1000}` with no CZK quote anywhere → `history_in(…, "EUR")` returns 1000 for every day (spec acceptance).
@@ -771,7 +771,7 @@ pub fn history_in(conn: &Connection, report_currency: &str, from: Option<i64>, t
 - [ ] **Step 3:** Frontend: Dashboard and trend cards read `currency` + TEXT values (`Number(...)`), no conversion; query keys `['portfolio-metrics', currencyCode, fxRevision]`, `['portfolio-history', currencyCode, fxRevision, …]` (mutation invalidation by prefix `['portfolio-metrics']` / `['portfolio-history']` keeps working — verify `use-bank-account-mutations.ts` uses prefix invalidation). Incomplete quality → the compact warning component used by reports (grep `missingFx` in `src/components/reports`).
 - [ ] **Step 4:** Gates. Commit `feat: net worth and portfolio history in the report currency`.
 
-### Task 2.7: Projection in a report currency with native contributions
+### Task 18: Projection in a report currency with native contributions
 
 **Files:**
 - Modify: `src-tauri/src/commands/projection.rs` (current values from `net_worth`/`positions`; contribution read natively at ~547), `src-tauri/src/models/projection.rs`, specta registration of `ProjectionTimelinePoint`/`PortfolioProjection` (currently unregistered — register them), `shared/schema.ts`, `src/components/projection/ProjectionParamsDialog.tsx:95-130`, `src/utils/projection-assumptions.ts:158-172`, `src/pages/Projection.tsx`, `src/utils/projection-milestones.ts`
@@ -786,7 +786,7 @@ pub fn history_in(conn: &Connection, report_currency: &str, from: Option<i64>, t
 - [ ] **Step 2:** FAIL → implement → PASS; frontend changes; gates.
 - [ ] **Step 3:** Commit `feat: projection in the report currency with contributions in their own currency`.
 
-### Task 2.8: Native-sum pages convert through the FX snapshot
+### Task 19: Native-sum pages convert through the FX snapshot
 
 **Files:**
 - Modify: `src/pages/BankAccounts.tsx` (drop the local fallback policy, K6), `src/hooks/use-bank-accounts.ts` (remove unused `metrics`), `src/utils/bank-account-summary.ts`, `src/hooks/use-bonds.ts`, `src/utils/bonds.ts`, `src/components/bonds/*`, `src/hooks/use-loans.ts`, `src/utils/loans.ts`, `src/components/loans/{LoansTable,LoansSummary,DebtTrajectoryCard}.tsx`, `src/hooks/use-insurance.ts`, `src/utils/insurance.ts`, `src/components/insurance/*`, `src/pages/RealEstate.tsx`, `src/pages/RealEstateDetail.tsx`, `src/utils/other-assets.ts`, `src/pages/OtherAssets.tsx`, `src/components/other-assets/OtherAssetsTable.tsx`, `src/components/dashboard/RecentMoves.tsx`, `src/utils/valuation-trace.ts`, `src/utils/bank-activity.ts` + `BankAccountDetail.tsx:610-613`
@@ -807,7 +807,7 @@ it('excludes unconvertible bonds from the total and reports them', () => {
 - [ ] **Step 2:** FAIL → implement → PASS; pages wired; `useMemo` deps include `fxRevision`.
 - [ ] **Step 3:** Gates. Commit `feat: asset pages convert native amounts through the FX snapshot`.
 
-### Task 2.9: MCP rates tool and precision
+### Task 20: MCP rates tool and precision
 
 **Files:**
 - Modify: `src-tauri/src/services/mcp/exchange_rates.rs`, `src-tauri/src/services/mcp/money.rs:~177`, `mcp/portfolio.rs:~190`, `mcp/analytics.rs:~235,333`, `mcp/mod.rs` (server instructions ~565/870, tool descriptions)
@@ -815,10 +815,10 @@ it('excludes unconvertible bonds from the total and reports them', () => {
 - [ ] **Step 1: Failing test:** `exchange_rates_list` returns `baseCurrency` equal to the FX reference, `rates` as units per base (derived included) and `supportedCurrencies` (36 codes); a JPY main-currency amount is emitted with 0 decimals and KWD with 3 (use `money_in_currency`).
 - [ ] **Step 2:** FAIL → implement → PASS; update tool descriptions (no "internal base currency CZK"; explain units per base). Gates. Commit `feat: MCP exchange rates against an explicit base and ISO precision`.
 
-### Task 2.10: Remove the implicit-CZK machinery and CZK-scale defaults
+### Task 21: Remove the implicit-CZK machinery and CZK-scale defaults
 
 **Files:**
-- Modify/delete: `src/lib/currency.ts`, `src/lib/currency-provider.tsx` (remove `formatCurrency`, `formatCurrencySigned`, `formatCurrencyShort`, `formatCurrencyRaw`, `formatPrice`, CZK-based `convert`), `shared/currencies.ts` (remove `EXCHANGE_RATES`, `BUILT_IN_RATES`, `updateExchangeRates`, `hasKnownRate`, `convertToCzK`, `convertFromCzK`, `BASE_CURRENCY`, `isEcbCurrency`/`ECB_CURRENCY_CODES` if unused), `src/hooks/use-dated-convert.ts` (delete if unused), `shared/calculations/*` functions left without callers (delete with their tests), `src-tauri/src/services/currency.rs` (remove `convert_to_czk`, `convert_to_czk_with_rates`, `convert_to_czk_at`, `get_all_rates`, `get_rates_for_date*` if unused, `breakdown_czk_at_rates` — keep what the snapshot writer still needs until Task 3.2), `src-tauri/src/constants.rs` (`DEFAULT_BASE_CURRENCY`)
+- Modify/delete: `src/lib/currency.ts`, `src/lib/currency-provider.tsx` (remove `formatCurrency`, `formatCurrencySigned`, `formatCurrencyShort`, `formatCurrencyRaw`, `formatPrice`, CZK-based `convert`), `shared/currencies.ts` (remove `EXCHANGE_RATES`, `BUILT_IN_RATES`, `updateExchangeRates`, `hasKnownRate`, `convertToCzK`, `convertFromCzK`, `BASE_CURRENCY`, `isEcbCurrency`/`ECB_CURRENCY_CODES` if unused), `src/hooks/use-dated-convert.ts` (delete if unused), `shared/calculations/*` functions left without callers (delete with their tests), `src-tauri/src/services/currency.rs` (remove `convert_to_czk`, `convert_to_czk_with_rates`, `convert_to_czk_at`, `get_all_rates`, `get_rates_for_date*` if unused, `breakdown_czk_at_rates` — keep what the snapshot writer still needs until Task 24), `src-tauri/src/constants.rs` (`DEFAULT_BASE_CURRENCY`)
 - Modify: `src/pages/AnnuityCalculator.tsx:73-77`, `src/pages/EstateCalculator.tsx:140-151`, `src/components/loans/LoanWhatIfCard.tsx:24` — defaults start empty or scale from EUR constants through `convert`; what-if step = 1 % of the loan balance rounded to a power of ten.
 - Modify: `docs/DEPRECATED.md` (list every removed API with its replacement), the remaining `|| 'CZK'` UI fallbacks → the main currency (`currencyCode`).
 
@@ -829,7 +829,7 @@ rg -n "convert_to_czk|convertToCzK|convertFromCzK|formatCurrencyRaw|formatCurren
 ```
 - [ ] **Step 3:** Full gates. Commit `refactor: remove implicit-CZK converters and formatters`.
 
-### Task 2.11: Phase 2 review checkpoint
+### Task 22: Phase 2 review checkpoint
 
 - [ ] Full gates + bindings drift check.
 - [ ] Launch the demo profile (`moony-demo` launch config, password from memory note `dev-bridge-background-throttling`) only if the dev bridge is available; otherwise rely on tests. Smoke: Dashboard, Stocks, StockDetail, Crypto, Bonds, Loans, Insurance, Real estate, Other assets, Bank accounts, Projection, Stocks analysis in CZK, EUR and AED main currency; switch currency and confirm refetch.
@@ -839,7 +839,7 @@ rg -n "convert_to_czk|convertToCzK|convertFromCzK|formatCurrencyRaw|formatCurren
 
 # Phase 3 — EUR rate reference and retiring CZK caches
 
-### Task 3.1: Migration 010 — rates in EUR quotes
+### Task 23: Migration 010 — rates in EUR quotes
 
 **Files:**
 - Modify: `src-tauri/src/db/migrations.rs` (append `("010_fx_eur_reference", MIGRATION_010)`), `src-tauri/src/db/schema.snapshot` (regenerate; the schema must come out identical — the migration only rewrites data), `src-tauri/src/services/currency.rs` (`parse_ecb_xml`, `save_rates_to_db`, `save_rates_to_history_db`, `load_rates_from_db`), `src-tauri/src/services/fx_backfill.rs` (`parse_frankfurter_rates`, request symbols), `src-tauri/src/services/fx.rs` (`History::load`, a `REFERENCE: &str = "EUR"`; remove `from_czk_per_unit`/`to_czk_per_unit` after the last caller), `docs/architecture/database.md`
@@ -899,7 +899,7 @@ Plus `parse_ecb_xml` test: a feed without CZK parses and contains USD 1.17 as pu
 - [ ] **Step 2:** FAIL → implement → PASS. Regenerate `schema.snapshot` (`cargo test regenerate_schema_snapshot -- --ignored`) and read the diff (index only, if any). `shared/fx.ts` needs no change (reference comes from the snapshot). Update `database.md` rate rows.
 - [ ] **Step 3:** Full Rust gates. Commit `feat: store exchange rates against EUR`.
 
-### Task 3.2: Migration 011 — retire CZK caches
+### Task 24: Migration 011 — retire CZK caches
 
 **Files:**
 - Modify: `src-tauri/src/db/migrations.rs` (`("011_retire_czk_caches", MIGRATION_011)`), `schema.snapshot`, `src-tauri/src/services/portfolio_history.rs` (writer stores native breakdowns only; `carried_statics_from_nearest_live` carries native breakdowns; remove `czk_map`, `czk_total`), `src-tauri/src/commands/portfolio.rs` (delete `backfill_currency_breakdowns` command + its registration in `lib.rs` + its `tauri-api.ts` wrapper and caller), `src-tauri/src/services/currency.rs` (remove `BREAKDOWN_CONSISTENCY_TOLERANCE`, `breakdown_czk_at_rates`), `src-tauri/src/services/ticker_history.rs` + `backfill.rs` + `history_recalc.rs` (stop writing `value_czk`), `src-tauri/src/services/net_worth.rs` (drop the CZK-total fallback; personal real estate from the new column), `docs/architecture/database.md`
@@ -943,7 +943,7 @@ From now on the live writer stores `real_estate_personal_by_currency` (personal 
 - [ ] **Step 3:** Acceptance grep: `rg -n "value_czk|valueCzk|total_savings|BREAKDOWN_CONSISTENCY|backfill_currency_breakdowns" src src-tauri/src shared` → only migrations and tests of migrations.
 - [ ] **Step 4:** Full gates. Commit `feat: retire CZK snapshot and ticker caches`.
 
-### Task 3.3: ADR 0012 and living docs
+### Task 25: ADR 0012 and living docs
 
 **Files:**
 - Create: `docs/architecture/decisions/0012-explicit-currencies-and-eur-rate-reference.md` (Status: Accepted; supersedes ADR 0001 except decimal TEXT storage, and ADR 0011's CZK cache clause; Context = audit summary; Decision = Global Constraints of this plan; Consequences = no CZK caches, EUR reference, main-currency restriction, MCP outputs).
@@ -951,7 +951,7 @@ From now on the live writer stores `real_estate_personal_by_currency` (personal 
 - [ ] **Step 1:** Write/update; `rg -n "CZK is the (internal )?base|base currency" docs AGENTS.md README.md` → only historical specs/plans/ADRs 0001/0011.
 - [ ] **Step 2:** Commit `docs: ADR 0012 explicit currencies and EUR rate reference`.
 
-### Task 3.4: Final verification and merge
+### Task 26: Final verification and merge
 
 - [ ] Full gates on both sides; `cargo test generate_bindings -- --ignored` and `git diff --exit-code shared/generated-types.ts`.
 - [ ] Migration dry run on a profile copy: if the demo profile database file exists (memory note `dev-bridge-background-throttling` names the `moony-demo` launch config), copy it into the scratchpad, open it with the app's migration runner in a throwaway test binary or `cargo test -- --ignored` helper that takes a path, and compare before/after: for every snapshot row with complete breakdowns, the CZK net worth computed before (old totals) equals the net worth recomputed from breakdowns at that day's rates within 0.01 CZK. Never touch the real profile.

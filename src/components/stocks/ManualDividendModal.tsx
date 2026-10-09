@@ -30,7 +30,10 @@ import { investmentsApi } from '@/lib/tauri-api';
 import { useTranslation } from 'react-i18next';
 
 const manualDividendSchema = z.object({
-  amount: z.string().min(1, 'validation.amountRequired'),
+  amount: z
+    .string()
+    .min(1, 'validation.amountRequired')
+    .refine((v) => Number(v) >= 0, 'validation.amountNonNegative'),
   currency: z.string(),
 });
 
@@ -62,7 +65,7 @@ export function ManualDividendModal({ open, onOpenChange, investment }: ManualDi
       // Use originalDividendYield (in stock's currency) for prefill, not dividendYield (which is converted to CZK)
       const dividendToShow = investment.originalDividendYield ?? investment.dividendYield;
       form.reset({
-        amount: dividendToShow ? Math.round(dividendToShow).toString() : '',
+        amount: dividendToShow ? String(Number(dividendToShow.toFixed(6))) : '',
         currency: investment.dividendCurrency || investment.currency || userCurrency,
       });
     }
@@ -129,13 +132,13 @@ export function ManualDividendModal({ open, onOpenChange, investment }: ManualDi
                     <FormControl>
                       <Input
                         type="number"
-                        step="1"
+                        step="any"
                         placeholder="0"
                         {...field}
                         onBlur={(e) => {
                           const value = parseFloat(e.target.value);
                           if (!isNaN(value)) {
-                            field.onChange(Math.round(value).toString());
+                            field.onChange(String(value));
                           }
                           field.onBlur();
                         }}

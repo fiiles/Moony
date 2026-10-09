@@ -30,7 +30,10 @@ import { investmentsApi } from '@/lib/tauri-api';
 import { useTranslation } from 'react-i18next';
 
 const manualPriceSchema = z.object({
-  price: z.string().min(1, 'validation.priceRequired'),
+  price: z
+    .string()
+    .min(1, 'validation.priceRequired')
+    .refine((v) => Number(v) > 0, 'validation.pricePositive'),
   currency: z.string(),
 });
 
@@ -60,9 +63,10 @@ export function ManualPriceModal({ open, onOpenChange, investment }: ManualPrice
   useEffect(() => {
     if (investment && open) {
       // Use originalPrice (in stock's currency) for prefill, not currentPrice (which is converted to CZK)
+      // Six decimals, as the price is stored (same as BuyInvestmentModal).
       const priceToShow = Number(investment.originalPrice ?? investment.currentPrice);
       form.reset({
-        price: priceToShow ? Math.round(priceToShow).toString() : '',
+        price: priceToShow ? String(Number(priceToShow.toFixed(6))) : '',
         currency: investment.currency || userCurrency,
       });
     }
@@ -129,13 +133,13 @@ export function ManualPriceModal({ open, onOpenChange, investment }: ManualPrice
                     <FormControl>
                       <Input
                         type="number"
-                        step="1"
+                        step="any"
                         placeholder="0"
                         {...field}
                         onBlur={(e) => {
                           const value = parseFloat(e.target.value);
                           if (!isNaN(value)) {
-                            field.onChange(Math.round(value).toString());
+                            field.onChange(String(value));
                           }
                           field.onBlur();
                         }}

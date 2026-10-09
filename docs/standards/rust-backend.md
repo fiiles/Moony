@@ -96,3 +96,35 @@ Append-only, per `docs/architecture/database.md`: add the next-numbered
 migration.
 **Why:** migrations already applied to users' encrypted databases cannot be re-run;
 editing one desyncs schemas across installs.
+
+## 10. Currency conversion goes through `services/fx.rs`
+
+Rules of ADR 0012. There is no base currency in the backend: native amounts are the facts and
+every conversion happens at read time into a declared currency.
+
+- **One policy.** Convert only with `services/fx.rs`: `fx::current()` once per request for the
+  current snapshot (`Quotes::convert`, pass the `&Quotes` down), `fx::History::load` once per
+  range and `History::convert_on` / `convert_on_tracked` for a value at its own day (one UTC day
+  that quotes both currencies, at most ten days back). Never read `exchange_rates` or
+  `exchange_rate_history` for a conversion yourself, never hardcode a rate, never fall back to 1:1.
+  Same currency is identity without a quote. Stored quotes are units per 1 EUR; AED, SAR, QAR, BHD,
+  OMR and BGN are derived inside `fx.rs` and never stored.
+- **Required report currency.** A command or MCP tool that returns converted money takes the
+  currency as a required argument (`report_currency: String`, no default; the MCP reads the
+  profile currency) and the response declares it as `currency` next to `fxQuality`
+  (`ConversionQuality` from `fx::Quality`: `missingCurrencies`, `missingCount`, `estimated`).
+- **Wire amounts.** Converted amounts are `Option<String>` decimal TEXT rounded at the currency's
+  ISO 4217 minor unit with `reporting::money_in_currency`; `None` when the item cannot be
+  converted. Collect misses in a `Quality` (`track`, `track_conversion`) and leave the item out
+  of totals; never a global "missing" set, never 0 for unknown. A fallback to the current rate for
+  an uncovered historical day must be asked for explicitly and `mark_estimated()`.
+- **One service per value.** A value the UI and an MCP tool both show lives in one service
+  (`positions`, `position_reports`, `net_worth`, `ticker_history`, `projection`) that both call;
+  do not re-aggregate in a command or a tool.
+- **Tests.** Seed `fx::set_current_for_test(&[("CZK", 25.0), ("USD", 1.1)])` (units per EUR) or an
+  in-memory `exchange_rate_history` table; cover a missing currency, a derived code and the
+  ten-day window.
+
+**Why:** the audit found three conversion regimes and five aggregators that valued the same
+position differently and treated unknown currencies as CZK; one service with explicit `None`
+makes a wrong number impossible to produce silently.

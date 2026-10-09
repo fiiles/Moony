@@ -30,8 +30,9 @@ canonical examples from `docs/architecture/overview.md`, and check
    `cd src-tauri && cargo test generate_bindings -- --ignored`; commit the
    regenerated `shared/generated-types.ts` (`docs/standards/type-contract.md`).
 7. **Wire contract.** Hand-mirror the types into `shared/schema.ts` — camelCase
-   fields, money as `string` (ADR 0001,
-   `docs/architecture/decisions/0001-czk-base-currency-and-money-as-text.md`).
+   fields, money as `string` (decimal TEXT, ADR 0001), and a converted amount as
+   `string | null` next to the response's `currency` and `fxQuality`
+   (`docs/architecture/decisions/0012-explicit-currencies-and-eur-rate-reference.md`).
 8. **API namespace.** Add `<domain>Api` to `src/lib/tauri-api.ts` — the only file
    allowed to call `invoke()` (`docs/standards/typescript-frontend.md` rule 1).
 9. **Hooks.** `src/hooks/use-<domain>.ts` (reads, `useQuery`, kebab-case keys) and
@@ -50,12 +51,20 @@ canonical examples from `docs/architecture/overview.md`, and check
     `src/i18n/locales/cs/<ns>.json`, registered in `src/i18n/index.ts` (`NAMESPACES`
     list + `resources` map) — `docs/standards/i18n.md`.
 13. **Portfolio integration.** Net-worth inclusion does not happen by itself:
-    - include the new asset class in the metrics computation in
-      `src-tauri/src/commands/portfolio.rs`;
-    - extend `portfolio_metrics_history` via a migration: a new CZK-TEXT total
-      column plus a `*_by_currency` JSON-TEXT column (conventions: ADR 0001 and
+    - give the class a native per-currency breakdown: one more field of `ClassBreakdowns`
+      (`services/portfolio_history.rs`), filled from the class's own currency columns in
+      `net_worth::compute_breakdowns` (`services/net_worth.rs`);
+    - extend `portfolio_metrics_history` via a migration with **one** `*_by_currency`
+      JSON-TEXT column (`TEXT NOT NULL DEFAULT '{}'`) and no CZK or other converted total
+      column — snapshots store native breakdowns only (ADR 0012, conventions in
       `docs/architecture/database.md`);
-    - extend the history **backfill** so existing snapshot rows gain the new class.
+    - teach the snapshot writer and the history readers the new column, and add the class to
+      `net_worth::ClassTotals` so `metrics_report` and `history_report` convert it into the
+      report currency (an unconvertible amount stays out of the totals and is named in
+      `fxQuality`; never 1:1);
+    - extend the history **backfill** so existing snapshot rows gain the new class;
+    - if the class holds a currency the user may type freely, make sure `fx_backfill` covers its
+      currency columns so historical conversion has rates (`held_currencies`).
 14. **README.** Add the new asset class to the feature list in `README.md`
     (`docs/standards/workflow.md`, definition of done).
 

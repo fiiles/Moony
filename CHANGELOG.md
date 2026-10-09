@@ -6,6 +6,61 @@ All notable changes to Moony are documented in this file. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **Main currency from 36 currencies.** The main currency can be any currency with an
+  exchange-rate source: the 30 the ECB publishes plus AED, SAR, QAR, BHD, OMR (fixed pegs to the
+  US dollar) and BGN (fixed peg to the euro), whose rates Moony derives from the dollar or euro rate
+  of each day. The picker in Settings and the first-run wizard list only these; a profile that
+  already uses another main currency keeps working for amounts in that currency and shows a
+  prompt in Settings. Accounts, holdings and contracts can still use any of the 45 selectable
+  currencies.
+- **Missing and estimated rates are named.** An amount whose currency has no usable rate stays
+  visible in its own currency, is left out of the totals and the page says which currency is
+  missing, instead of being counted as if one unit were worth one crown. A cost converted at
+  today's rate because its purchase day had no rate is marked as estimated. Rates older than 14
+  days are reported as stale.
+
+### Changed
+
+- **No base currency.** CZK is no longer the unit Moony sums in. Net worth, history, positions,
+  tags, stock analysis, returns (TWR) and the projection are computed from the native amounts of
+  every account and holding and are shown in your main currency; a EUR profile holding only EUR
+  assets sees the same numbers whatever the CZK rate does.
+- **Gains in your currency.** The gain of a foreign stock or coin is the value today minus what you
+  paid, each purchase converted at its own day's rate, in your main currency. A EUR profile no
+  longer sees the CZK/EUR move inside the gain of a USD stock; the time-weighted return is
+  computed in your main currency the same way. The dividend per share keeps its own currency; the
+  yearly dividend of a position is shown in your main currency.
+- **Pages convert historical values at their own day.** The debt trajectory, the real estate value
+  trace and purchase price, other-asset cost and recent moves use the rate of the day of each
+  value instead of today's; every page refreshes when rates are refreshed, without unlocking.
+- **Exchange rates are stored against the euro.** Rates are kept as published by the ECB, with
+  CZK as an ordinary quote, so the app no longer depends on the CZK feed. Rate history is now also
+  downloaded for every currency you hold (balances, properties, loans, bonds, other assets,
+  insurance, budgets), not only for transaction currencies.
+- **Symbols.** Only the main currency is shown with its compact symbol ("$", "Kč"); every other
+  currency is shown with its ISO code, so "$" and "kr" can no longer mean several currencies.
+- **Calculator defaults** (annuity, real estate, the what-if step) scale to your main currency or
+  start empty instead of using crown-sized numbers.
+- **Data migrations 010 and 011.** On the first start after the update Moony rewrites stored
+  exchange rates to euro quotes and removes the CZK copies of net worth history and per-ticker
+  values (native breakdowns stay; an old history day that had no breakdown keeps its CZK figure
+  as a CZK amount). Before it runs, the database is copied next to itself as
+  `moony.db.bak-<time>` (the newest three are kept), so keep that copy until you have checked
+  your history. After the update an older Moony version can no longer open the database.
+- **MCP server (breaking for MCP clients).** Aggregates are computed by the same services as
+  the app, in your main currency (`mainCurrency`), as decimal strings at the currency's own
+  precision. An amount that cannot be converted is `null` and its currency is listed in
+  `missingCurrencies`; `fxEstimated` is true when a cost used today's rate. `investments_list` and
+  `crypto_list` return an object (`{mainCurrency, investments | crypto, summary, missingCurrencies,
+  fxEstimated}`) instead of an array and add `value`, `costBasis`, `unrealizedGain`,
+  `unrealizedGainPct`, `realizedGain` and `annualDividend` per row. `stock_value_history` and
+  `crypto_value_history` rows no longer carry `id` and add `costBasis`. `stocks_analysis`,
+  `tag_metrics`, `portfolio_get_metrics` and `portfolio_get_history` report gains in the main
+  currency with the cost at each purchase day's rate. `exchange_rates_list` quotes against an
+  explicit `baseCurrency` (EUR; was CZK), marks derived rates and lists `supportedCurrencies`.
+
 ### Fixed
 
 - **Stock prices lost their third decimal.** Adding a position, buying or selling rounded the price

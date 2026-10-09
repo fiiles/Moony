@@ -4,7 +4,7 @@ Date: 2026-07-07
 
 ## Status
 
-Reporting currency requirement partially superseded by [0011](0011-native-money-and-report-currencies.md). Decimal TEXT storage remains accepted.
+Reporting currency requirement partially superseded by [0011](0011-native-money-and-report-currencies.md); the CZK base and its conversion rules are superseded by [0012](0012-explicit-currencies-and-eur-rate-reference.md). Decimal TEXT storage remains accepted.
 
 ## Context
 

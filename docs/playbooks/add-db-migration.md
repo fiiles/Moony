@@ -13,8 +13,10 @@ is the execution checklist only.
 2. **Define the const.** Add `const MIGRATION_0NN: &str = r#"..."#;` with inline SQL
    (there are no `.sql` files). Follow the storage conventions in
    `docs/architecture/database.md`: TEXT UUID primary keys, INTEGER unix-epoch
-   timestamps (`DEFAULT (unixepoch())`), money/decimals as TEXT strings, CZK-base
-   aggregates, per-currency breakdowns as JSON-in-TEXT.
+   timestamps (`DEFAULT (unixepoch())`), money/decimals as TEXT strings, a `currency` column
+   next to every native amount, per-currency breakdowns as JSON-in-TEXT. Never store a
+   converted total (no CZK or other "base currency" aggregate; ADR 0012): store native facts and
+   convert at read time. Stored exchange rates are units per 1 EUR.
 3. **Append the Vec entry.** Add `("0NN_short_name", MIGRATION_0NN)` to the `Vec` in
    `all_migrations()` in the same file.
 4. **Never edit or rename an applied migration** (including `001_initial_schema`) —

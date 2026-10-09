@@ -20,8 +20,19 @@ grouping below follows the domain map in `docs/architecture/overview.md`.
 - `006_financial_semantics` adds nullable transaction `flow_kind` overrides and category
   `kind` roles with six constrained values. Legacy custom categories default to expense;
   system Income, Internal Transfers and Investments get income, transfer and investment.
-- To add one: define `const MIGRATION_007: &str = r#"..."#;` (next free
-  number) and append a `("007_short_name", MIGRATION_007)` entry to the `Vec`
+- `010_fx_eur_reference` rewrites `exchange_rates` and `exchange_rate_history` in place from
+  CZK per unit to units per 1 EUR (CZK becomes an ordinary quote, the EUR row is dropped, the
+  derived pegged codes AED/SAR/QAR/BHD/OMR/BGN are removed) and records
+  `app_config.fx_reference = 'EUR'`. Rows of a day without an EUR quote cannot be rebased and are
+  dropped.
+- `011_retire_czk_caches` makes native breakdowns the only stored record of a snapshot day: adds
+  `portfolio_metrics_history.real_estate_personal_by_currency`, gives a class whose breakdown is
+  empty while its CZK total was not `{"CZK": total}` once, then drops the eight `total_*`
+  columns and `value_czk` of `stock_value_history` and `crypto_value_history` (ADR 0012). Both
+  migrations rewrite data, so the pre-migration copy of the database (see "Data folder artefacts")
+  is the rollback.
+- To add one: define `const MIGRATION_0NN: &str = r#"..."#;` (next free
+  number) and append a `("0NN_short_name", MIGRATION_0NN)` entry to the `Vec`
   returned by `all_migrations()`. Numbers are zero-padded, sequential, never
   reused.
 - Applied migrations are tracked by name in the `_migrations` table. On every
@@ -72,10 +83,16 @@ grouping below follows the domain map in `docs/architecture/overview.md`.
   balances, prices, quantities, rates. Parsed in Rust/TS at use time to avoid
   float drift. The **only exception**: `exchange_rates.rate` and
   `exchange_rate_history.rate` are `REAL`.
-- **CZK is the base currency.** Aggregated values (e.g.
-  `stock_value_history.value_czk`, `portfolio_metrics_history` totals) are
-  stored in CZK; entity tables carry a `currency` column for native amounts.
-- **Per-currency breakdowns are JSON strings in TEXT columns**, e.g. the seven
+- **There is no base currency (ADR 0012).** Entity tables carry a `currency`
+  column next to every native amount, and native amount, currency and date are
+  the only stored facts. No converted total is persisted: snapshots store
+  per-currency breakdowns, ticker histories store native quantity, price and
+  currency, and every reader converts into the response's declared currency at
+  read time. Stored exchange rates are units of a currency per 1 EUR
+  (`app_config.fx_reference`), which is the rate store's reference only. The
+  `DEFAULT 'CZK'` on currency columns is a storage default for a record created
+  without a currency, not an aggregation unit.
+- **Per-currency breakdowns are JSON strings in TEXT columns**, e.g. the
   `portfolio_metrics_history.*_by_currency` columns
   (`TEXT NOT NULL DEFAULT '{}'`). Other JSON-in-TEXT columns:
   `user_profile.menu_preferences`, `real_estate.recurring_costs` / `.photos`,
@@ -105,7 +122,7 @@ Grouped by owning domain (see the domain map in `overview.md`).
 | Table | Purpose | Notable columns / constraints |
 |---|---|---|
 | `app_config` | Key-value app settings incl. recovery-key hash | `key TEXT PRIMARY KEY`, `value TEXT`; the CoinGecko API key (`api_key_coingecko`) is the only API key still read; `stock_import_formats` holds the custom stock CSV mappings (JSON array, newest first, at most 20; `services/stock_import/formats.rs`); `milestones.mutedKinds` holds the milestone kinds the user turned off (JSON array of kind names; `services/milestones/`); `fx_reference` records the currency stored rates are quoted against (`EUR` since migration 010) |
-| `user_profile` | Single-row user profile and preferences | `INTEGER AUTOINCREMENT` PK (convention exception); `currency DEFAULT 'CZK'`, `language`, `menu_preferences` JSON, `coingecko_modal_dismissed`, `mcp_server_enabled` gates the local API server, `mcp_server_token` TEXT (NULL until the server is first enabled), `mcp_server_port` INTEGER (NULL = default 41414) |
+| `user_profile` | Single-row user profile and preferences | `INTEGER AUTOINCREMENT` PK (convention exception); `currency DEFAULT 'CZK'` (the main currency; creation and update accept only the 36 codes with an exchange-rate source, `validation.currencyUnsupported`; an older unsupported value is kept as is), `language`, `menu_preferences` JSON, `coingecko_modal_dismissed`, `mcp_server_enabled` gates the local API server, `mcp_server_token` TEXT (NULL until the server is first enabled), `mcp_server_port` INTEGER (NULL = default 41414) |
 
 ### Bank accounts
 
@@ -219,7 +236,7 @@ Grouped by owning domain (see the domain map in `overview.md`).
 | Table | Purpose | Notable columns / constraints |
 |---|---|---|
 | `cashflow_items` | User-defined recurring income/expense items | `amount` TEXT, `frequency`, `item_type`, `category` |
-| `projection_settings` | Growth/contribution assumptions per asset class | `asset_type UNIQUE`; `yearly_growth_rate`, `monthly_contribution` TEXT |
+| `projection_settings` | Growth/contribution assumptions per asset class | `asset_type UNIQUE`; `yearly_growth_rate`, `monthly_contribution` TEXT in its own `contribution_currency` (stored as typed, converted to the report currency by the projection; legacy rows are CZK amounts) |
 
 ### Milestones
 

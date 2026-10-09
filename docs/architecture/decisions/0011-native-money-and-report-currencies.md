@@ -6,6 +6,8 @@ Date: 2026-10-08
 
 Accepted. Supersedes ADR0001's mandatory CZK aggregation/presentation rule for actual cashflow, budgeting, their drilldowns and planned cashflow. ADR0001's decimal TEXT storage requirement remains in force. Explicitly CZK portfolio/projection cache contracts remain denominated in CZK until individually migrated.
 
+The CZK cache clause is superseded by [0012](0012-explicit-currencies-and-eur-rate-reference.md): the caches no longer exist and portfolio values follow the same report-currency rules.
+
 ## Context
 
 A native EUR payment shown to an EUR user must remain the same EUR payment. Converting historical payments into CZK and the historical total back at a current rate changes past spending when exchange rates move. A global application also needs same-currency reports to work without reference rates. Repeated explanations of this internal conversion burden everyday report screens without correcting their numbers.

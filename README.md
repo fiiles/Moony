@@ -13,7 +13,7 @@ A privacy-focused personal finance app for your desktop, built with Tauri, React
 </div>
 
 Moony tracks your bank accounts, investments, crypto, bonds, real estate, loans and insurance
-in one net-worth view, in English or Czech, in any of 40+ currencies. There is no account, no
+in one net-worth view, in English or Czech, in 45 currencies. There is no account, no
 cloud and no sync: everything lives in an AES-256 encrypted database on your computer.
 
 ## Screenshots
@@ -86,7 +86,7 @@ Builds are provided for x86_64.
 
 ### First run
 
-A short wizard asks for your display currency and country, a name and password, shows your
+A short wizard asks for your main currency and country, a name and password, shows your
 **recovery key** (save it — see [Data and backups](#data-and-backups)), lets you choose what to
 track, and offers to add your first account and import a bank statement. The dashboard then
 shows a *Getting started* checklist.
@@ -103,7 +103,7 @@ You can switch the automatic check off in Settings; see [PRIVACY.md](./PRIVACY.m
 - **Net Worth Dashboard** - Total net worth across all asset classes, with a *Getting started* checklist for new profiles
 - **Historical Tracking** - Net worth trends over time with interactive charts
 - **Milestones** - Insurance anniversaries with the notice deadline, fixed-rate ends, maturities, large payments, backup and data upkeep reminders and crossed watchlist targets, on the overview; deadlines at most 14 days away also in the top bar
-- **Multi-currency** - 40+ currencies (every currency the ECB publishes plus common others); each account keeps its own currency and totals are shown in the one you choose. Rates are ECB reference rates (daily rates from the ECB, history via Frankfurter)
+- **Multi-currency** - 45 currencies; each account, holding and contract keeps its own currency and totals are shown in your main currency, which can be any of the 36 currencies with an exchange-rate source (see [Currencies and exchange rates](#-currencies-and-exchange-rates)). There is no implicit base currency: Moony never treats CZK, or any other currency, as the unit of your portfolio
 
 ---
 
@@ -166,6 +166,13 @@ You can switch the automatic check off in Settings; see [PRIVACY.md](./PRIVACY.m
 
 ---
 
+### 💱 Currencies and exchange rates
+
+- **Your amounts stay as entered.** Every balance, price, transaction and contract keeps its own currency; changing your main currency never rewrites them, it only changes what totals and charts are shown in.
+- **Main currency.** Any of the 36 currencies with a rate source: the 30 the ECB publishes (AUD, BRL, CAD, CHF, CNY, CZK, DKK, EUR, GBP, HKD, HUF, IDR, ILS, INR, ISK, JPY, KRW, MXN, MYR, NOK, NZD, PHP, PLN, RON, SEK, SGD, THB, TRY, USD, ZAR) and six with a fixed peg that Moony derives: AED, SAR, QAR, BHD and OMR (pegged to the US dollar) and BGN (pegged to the euro). Pegged rates follow the dollar or euro rate of each day and are not downloaded. Accounts and holdings can also use ARS, CLP, COP, EGP, KWD, RSD, TWD, UAH and VND; they have no rate source, so they are listed in their own currency and left out of converted totals.
+- **Rates.** ECB reference rates (daily rates from the ECB, history via Frankfurter), stored against the euro. A historical value is converted at the rate of its own day, or the nearest earlier day on which both currencies were quoted (at most ten days back); a gain on a foreign stock is computed in your main currency from the cost at each purchase day's rate.
+- **Nothing is guessed.** An amount that cannot be converted is never shown 1:1 or at an invented rate: it stays visible in its own currency, the totals leave it out, and a note names the missing currency. A value whose purchase day had no usable rate and was converted at today's rate is marked as estimated. Values in your main currency need no rate at all.
+
 ### 🤖 AI Assistant (MCP) — optional, for advanced users
 
 Moony can serve your data to an AI assistant such as Claude over the Model Context Protocol. It
@@ -175,6 +182,7 @@ is **off by default**, runs only on your own computer, and needs the app to be u
 - **Token authentication** - Every request must carry a bearer token generated once and stored inside the encrypted database. Anyone with the token can read and modify that data — treat it like a password
 - **Read tools and a small set of write tools** - portfolio, investments, crypto, banking, insurance, the stock watchlist and analytics can be read. Write tools create records (accounts, bonds, loans, properties, other assets, insurance policies) and bulk-import parsed statements and broker exports; category suggestions arrive as *pending* suggestions that you confirm in the app
 - **Bank import history** - each validated nonempty MCP bank import call creates a record in the account's import history, just like a CSV upload. Pass the original statement's `fileName` when known; otherwise the record is named `MCP`. A statement imported in several calls (about 100 rows each) produces one record per call. Deleting it removes only its newly inserted transactions; pending transactions updated from earlier imports retain their original ownership. Older unbatched transactions are never assigned automatically; `bank_transactions_assign_import` groups the explicitly listed rows of one earlier MCP import call (after your confirmation; same account, written within one minute, never CSV uploads or rows already in an import) into a record named `MCP`, so it can be deleted in one step.
+- **Amounts in your main currency** - aggregates are reported in your main currency (the `mainCurrency` field), as decimal strings at the currency's own precision; an amount that cannot be converted is `null` and its currency is listed in `missingCurrencies`. `exchange_rates_list` gives the rates against an explicit base (the euro)
 - **Runs while unlocked** - Locking the app closes the port; unlocking reopens it with the same address and token, so client configs keep working
 - **Your data goes to the AI client.** Whatever the client reads is processed by it — usually in its provider's cloud. Enable the server only for clients you trust
 

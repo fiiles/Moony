@@ -66,7 +66,7 @@ The CSV import `balanceUpdatePayload` helper is removed: copying a statement amo
 ## Removed with explicit currencies (do not re-add)
 
 Implicit-CZK machinery deleted once every page and command declared its currency
-(ADR 0011, `docs/plans/2026-10-09-multi-currency.md`). It converted through a global CZK
+(ADR 0012, building on ADR 0011; `docs/plans/2026-10-09-multi-currency.md`). It converted through a global CZK
 table, valued unknown currencies 1:1 and returned unlabelled CZK numbers.
 
 | Removed | Why it was removed | Use instead |

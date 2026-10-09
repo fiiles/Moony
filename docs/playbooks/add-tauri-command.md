@@ -39,8 +39,12 @@ TDD service step. Rationale lives in the standards
 
    Commit the regenerated `shared/generated-types.ts` — CI diffs it.
 7. **Hand-mirror into `shared/schema.ts`** — the file the frontend actually imports.
-   Field names camelCase; money fields are `string`, never `number` (ADR 0001,
-   `docs/architecture/decisions/0001-czk-base-currency-and-money-as-text.md`).
+   Field names camelCase; money fields are `string`, never `number` (ADR 0001). A command
+   that returns converted money takes a required `report_currency` argument and returns
+   `currency` plus `fxQuality`, with converted amounts as `string | null`
+   (`docs/architecture/decisions/0012-explicit-currencies-and-eur-rate-reference.md`; the
+   conversion itself belongs in the service via `services/fx.rs`,
+   `docs/standards/rust-backend.md` rule 10).
 8. **Add the typed wrapper.** In `src/lib/tauri-api.ts`, under the domain's `*Api`
    namespace: snake_case command-name string, camelCase args object, return type
    imported from `@shared/schema`.

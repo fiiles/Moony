@@ -134,10 +134,11 @@ sort by amount, largest first (absolute amount in the third card). Uncategorized
 named "Nezařazeno" in the expense and income tables and "Přesuny bez kategorie" in the
 third card.
 
-**The whole row is the click target.** The row shows the pointer and the table hover; the
-existing text button stays for keyboard users and is stretched over the row with an
-absolutely positioned pseudo-element. Clicking opens the drilldown dialog for that
-category (or uncategorized rows) and flow kind.
+**The whole row is the click target.** The row shows the pointer and the table hover and
+handles the click; the text button in the first cell stays for keyboard users. (A
+pseudo-element stretched over a `<tr>` is unreliable in WebKit, which Tauri uses on
+macOS.) Clicking opens the drilldown dialog for that category (or uncategorized rows)
+and flow kind.
 
 Footers: the expense card keeps "Celkem {amount}" and the Budgets link; the income card
 keeps "Celkem {amount}" and the note that uncategorized income counts; the third card's
@@ -147,12 +148,14 @@ footer reads "Celkový pohyb peněz na účtech {amount}" (income − expenses +
 
 `ReportTransactionsDialog` (shared with Budgets through `CategoryTransactionsDialog`)
 gains a **Kategorie** column with the same compact `CategorySelector` the bank ledger
-uses, including "remember for next time" rule learning. Changing a category calls the
+uses, including "remember for next time" rule learning. `ReportTransaction` gains
+`counterpartyBankCode` and `counterpartyCountry` so a learned rule has the same identity
+as one learned in the ledger. Changing a category calls the
 existing update command and the money-flows refresh, so the report behind the dialog
 recomputes immediately.
 
 **The list stays stable while the dialog is open.** The dialog keeps the rows it first
-loaded; a change updates that row's category locally. A row that no longer belongs to
+loaded (its query key sits outside the money-flows refresh, with no cache after close); a change updates that row's category locally. A row that no longer belongs to
 the dialog's target (its category differs from the target category, or an uncategorized
 target's row now has a category) is dimmed and labeled "přesunuto"; the selector still
 shows its new category so the change can be reverted. The footer reads
@@ -173,7 +176,7 @@ bank accounts.
 
 Sections: months of the chart window (month, income, expenses); expense categories;
 income categories; transfers (name, amount, transactions). No previous-period columns.
-File name `cashflow-<period label>.csv`.
+File name `cashflow-2026.csv`, `cashflow-2026-q4.csv` or `cashflow-2026-10.csv`.
 
 ## Contract
 

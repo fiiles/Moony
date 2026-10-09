@@ -800,8 +800,9 @@ export const projectionApi = {
   saveSettings: (settings: ProjectionSettings[]) =>
     tauriInvoke<void>('save_projection_settings', { settings }),
 
-  calculate: (input: ProjectionInput) =>
-    tauriInvoke<PortfolioProjection>('calculate_portfolio_projection', { input }),
+  /** The projection valued in `reportCurrency`; contributions convert from their own currency. */
+  calculate: (input: ProjectionInput, reportCurrency: string) =>
+    tauriInvoke<PortfolioProjection>('calculate_portfolio_projection', { input, reportCurrency }),
 };
 
 // ============================================================================

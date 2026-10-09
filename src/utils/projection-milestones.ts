@@ -1,7 +1,8 @@
 /**
  * Milestones for the net-worth projection (design system §7 Outlook):
  * the point where the liabilities reach zero and the round net-worth marks
- * the expected path crosses on the way to the horizon.
+ * the expected path crosses on the way to the horizon. The values are in the
+ * projection's report currency, so the 1 · 2 · 5 marks are round in that currency.
  */
 
 export interface ProjectionSeriesPoint {

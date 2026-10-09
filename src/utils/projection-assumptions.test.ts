@@ -1,9 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type {
-  CalculatedDefaults,
-  ProjectionSettings,
-  ProjectionTimelinePoint,
-} from '@shared/schema';
+import type { CalculatedDefaults, ProjectionSettings } from '@shared/schema';
 import {
   ASSET_CLASSES,
   DEFAULT_RATES,
@@ -15,6 +11,8 @@ import {
   rateToStore,
   resolveAssumptions,
   summarizeAssumptions,
+  toProjectionPoint,
+  type ProjectionPoint,
 } from './projection-assumptions';
 
 function row(
@@ -35,7 +33,7 @@ function row(
 
 const calculated: CalculatedDefaults = { savingsRate: 3.5, bondsRate: 4.25 };
 
-function point(values: Partial<ProjectionTimelinePoint>): ProjectionTimelinePoint {
+function point(values: Partial<ProjectionPoint>): ProjectionPoint {
   return {
     date: 0,
     totalAssets: 0,
@@ -194,23 +192,61 @@ describe('rateToStore', () => {
 });
 
 describe('contributionToStore', () => {
-  const toCzk = (v: number) => v * 25; // 1 EUR = 25 CZK
+  const stored = { amount: 500, currency: 'EUR' };
 
-  it('keeps the stored CZK value when the field was not touched (no rounding drift)', () => {
-    expect(contributionToStore('40', '40', 1000, toCzk)).toBe('1000');
+  it('keeps the stored amount and currency when the field was not touched', () => {
+    expect(contributionToStore('40', '40', stored, 'CZK')).toEqual({
+      monthlyContribution: '500',
+      contributionCurrency: 'EUR',
+    });
   });
 
-  it('converts an edited display-currency amount back to CZK', () => {
-    expect(contributionToStore('100', '40', 1000, toCzk)).toBe('2500');
+  it('stores an edited amount as typed, in the currency the field showed', () => {
+    expect(contributionToStore('100', '40', stored, 'CZK')).toEqual({
+      monthlyContribution: '100',
+      contributionCurrency: 'CZK',
+    });
   });
 
-  it('rounds the converted amount to cents', () => {
-    expect(contributionToStore('1.234', '0', 0, (v) => v * 24.567)).toBe('30.32');
+  it('rounds the typed amount to cents', () => {
+    expect(contributionToStore('1.234', '0', { amount: 0, currency: '' }, 'EUR')).toEqual({
+      monthlyContribution: '1.23',
+      contributionCurrency: 'EUR',
+    });
   });
 
-  it('stores an empty or unusable field as 0', () => {
-    expect(contributionToStore('', '40', 1000, toCzk)).toBe('0');
-    expect(contributionToStore('abc', '40', 1000, toCzk)).toBe('0');
+  it('stores an empty or unusable field as 0 in the shown currency', () => {
+    const zero = { monthlyContribution: '0', contributionCurrency: 'CZK' };
+    expect(contributionToStore('', '40', stored, 'CZK')).toEqual(zero);
+    expect(contributionToStore('abc', '40', stored, 'CZK')).toEqual(zero);
+  });
+
+  it('uses the shown currency for an untouched row that has none stored', () => {
+    expect(contributionToStore('0', '0', { amount: 0, currency: '' }, 'EUR')).toEqual({
+      monthlyContribution: '0',
+      contributionCurrency: 'EUR',
+    });
+  });
+});
+
+describe('toProjectionPoint', () => {
+  it('reads the decimal text of every amount as a number', () => {
+    const p = toProjectionPoint({
+      date: 5,
+      totalAssets: '1250.50',
+      totalLiabilities: '250.00',
+      netWorth: '1000.50',
+      savings: '1000.50',
+      investments: '0.00',
+      crypto: '0.00',
+      bonds: '0.00',
+      realEstate: '250.00',
+      otherAssets: '0.00',
+      loans: '250.00',
+    });
+    expect(p.date).toBe(5);
+    expect(p.netWorth).toBe(1000.5);
+    expect(p.realEstate).toBe(250);
   });
 });
 

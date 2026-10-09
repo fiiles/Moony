@@ -11,6 +11,8 @@ import { useCurrency } from '@/lib/currency';
 import { useFormat } from '@/lib/use-format';
 import { useShellPage } from '@/components/shell/shell-context';
 import { horizonAxisLabels, payoffIndex, roundMilestones } from '@/utils/projection-milestones';
+import { toProjectionPoint } from '@/utils/projection-assumptions';
+import { amountOf } from '@/utils/positions';
 import { PageHead } from '@/components/shell/PageHead';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -35,6 +37,7 @@ import {
 import { ChartLegend } from '@/components/charts/ChartLegend';
 import { ProjectionParamsDialog } from '@/components/projection/ProjectionParamsDialog';
 import { resolveClassParams } from '@/components/projection/projection-classes';
+import { ConversionQualityNote } from '@/components/reports/ReportQualityNote';
 import { cn } from '@/lib/utils';
 
 const HORIZONS = ['5', '10', '20', '30'] as const;
@@ -58,7 +61,7 @@ export default function Projection() {
   const { t } = useTranslation('reports');
   const { t: tc } = useTranslation('common');
   const fmt = useFormat();
-  const { formatCurrency, formatCurrencyShort, formatCurrencySigned } = useCurrency();
+  const { currencyCode, fxRevision, fxConvert } = useCurrency();
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
@@ -77,15 +80,18 @@ export default function Projection() {
 
   // Three runs of the same model: expected, and every active rate ± 2 p.p.
   const { data: band, isLoading } = useQuery<Band>({
-    queryKey: ['projection', years, viewType, excludePersonalRE, 'band'],
+    queryKey: ['projection', currencyCode, fxRevision, years, viewType, excludePersonalRE, 'band'],
     queryFn: async () => {
       const run = (rateShift: number) =>
-        projectionApi.calculate({
-          horizonYears: years,
-          viewType,
-          excludePersonalRealEstate: excludePersonalRE,
-          rateShift,
-        });
+        projectionApi.calculate(
+          {
+            horizonYears: years,
+            viewType,
+            excludePersonalRealEstate: excludePersonalRE,
+            rateShift,
+          },
+          currencyCode
+        );
       const [lo, mid, hi] = await Promise.all([run(-SHIFT), run(0), run(SHIFT)]);
       return { lo, mid, hi };
     },
@@ -116,21 +122,39 @@ export default function Projection() {
     [settings, band]
   );
 
-  const timeline = useMemo(() => band?.mid.timeline ?? [], [band]);
-  const monthlyContributions = params.reduce((s, p) => s + (p.enabled ? p.contribution : 0), 0);
+  // Everything below is in the report currency the backend valued the projection in
+  const reportCurrency = band?.mid.currency ?? currencyCode;
+  const money = (v: number) => fmt.money(v, reportCurrency, { decimals: 0 });
+  const short = (v: number) => fmt.money(v, reportCurrency, { compact: true });
+  const signed = (v: number) => fmt.money(v, reportCurrency, { decimals: 0, signed: true });
+
+  const timeline = useMemo(() => band?.mid.timeline.map(toProjectionPoint) ?? [], [band]);
+  const loNetWorth = useMemo(() => band?.lo.timeline.map((p) => amountOf(p.netWorth) ?? 0), [band]);
+  const hiNetWorth = useMemo(() => band?.hi.timeline.map((p) => amountOf(p.netWorth) ?? 0), [band]);
+
+  // A stored contribution in the report currency; null while no quote converts it (the
+  // projection leaves it out as well)
+  const contributionInReport = (p: { contribution: number; contributionCurrency: string }) =>
+    p.contribution > 0 && p.contributionCurrency
+      ? fxConvert(p.contribution, p.contributionCurrency, reportCurrency)
+      : 0;
+  const monthlyContributions = params.reduce(
+    (s, p) => s + (p.enabled ? (contributionInReport(p) ?? 0) : 0),
+    0
+  );
 
   const points = useMemo<BandPoint[]>(() => {
     if (!band) return [];
-    const first = band.mid.timeline[0];
-    return band.mid.timeline.map((p, i) => ({
+    const first = timeline[0];
+    return timeline.map((p, i) => ({
       x: i,
       value: p.netWorth,
-      lo: band.lo.timeline[i]?.netWorth ?? p.netWorth,
-      hi: band.hi.timeline[i]?.netWorth ?? p.netWorth,
+      lo: loNetWorth?.[i] ?? p.netWorth,
+      hi: hiNetWorth?.[i] ?? p.netWorth,
       // Today's assets plus the contributions paid in so far, minus the loans at that point
       base: first.totalAssets + monthlyContributions * i * monthsPerPoint - p.totalLiabilities,
     }));
-  }, [band, monthlyContributions, monthsPerPoint]);
+  }, [band, timeline, loNetWorth, hiNetWorth, monthlyContributions, monthsPerPoint]);
 
   const yearOf = (index: number) =>
     timeline[index] ? fmt.day(timeline[index].date, { year: 'numeric' }) : '';
@@ -155,7 +179,7 @@ export default function Projection() {
     )) {
       list.push({
         x: m.index,
-        title: formatCurrencyShort(m.value),
+        title: short(m.value),
         lines: [t('projection.milestones.roundLine', { year: yearOf(m.index) })],
       });
     }
@@ -216,7 +240,7 @@ export default function Projection() {
   const last = timeline[timeline.length - 1];
   const today = first?.netWorth ?? 0;
   const projected = last?.netWorth ?? 0;
-  const contributions = band.mid.totalContributions;
+  const contributions = amountOf(band.mid.totalContributions) ?? 0;
 
   // Nothing to project: no assets, no liabilities and no configured contributions
   if (
@@ -251,11 +275,9 @@ export default function Projection() {
     );
   }
 
-  const money = (v: number) => formatCurrency(v);
-  const short = (v: number) => formatCurrencyShort(v);
   const delta = projected - today;
-  const lastLo = band.lo.timeline[band.lo.timeline.length - 1]?.netWorth ?? projected;
-  const lastHi = band.hi.timeline[band.hi.timeline.length - 1]?.netWorth ?? projected;
+  const lastLo = loNetWorth?.[loNetWorth.length - 1] ?? projected;
+  const lastHi = hiNetWorth?.[hiNetWorth.length - 1] ?? projected;
   const assetGrowth = (last?.totalAssets ?? 0) - (first?.totalAssets ?? 0);
   const returns = assetGrowth - contributions;
   const share = (part: number) => (delta > 0 ? fmt.percent(part / delta, 0) : null);
@@ -285,6 +307,7 @@ export default function Projection() {
   return (
     <>
       {head}
+      <ConversionQualityNote quality={band.mid.fxQuality} currency={reportCurrency} />
 
       <HeroCard
         aside={
@@ -339,7 +362,7 @@ export default function Projection() {
           label={t('projection.hero.label', { count: years })}
           value={money(projected)}
           tone={delta >= 0 ? 'gain' : 'loss'}
-          delta={`${delta >= 0 ? '↗' : '↘'} ${formatCurrencySigned(delta)}`}
+          delta={`${delta >= 0 ? '↗' : '↘'} ${signed(delta)}`}
           deltaNote={t('projection.hero.deltaNote', { lo: short(lastLo), hi: short(lastHi) })}
         />
       </HeroCard>
@@ -361,7 +384,7 @@ export default function Projection() {
         />
         <Stat
           label={t('projection.stats.growth')}
-          value={formatCurrencySigned(returns)}
+          value={signed(returns)}
           tone={returns > 0 ? 'gain' : returns < 0 ? 'loss' : 'neutral'}
           noteTone="neutral"
           note={
@@ -438,7 +461,13 @@ export default function Projection() {
                     </TableCell>
                     <TableCell className="text-right num">
                       {p.enabled && p.contribution > 0 ? (
-                        money(p.contribution)
+                        (() => {
+                          const converted = contributionInReport(p);
+                          // No quote: the stored amount stays visible in its own currency
+                          return converted !== null
+                            ? money(converted)
+                            : fmt.money(p.contribution, p.contributionCurrency, { decimals: 0 });
+                        })()
                       ) : (
                         <span className="text-ink-5">—</span>
                       )}

@@ -1,5 +1,5 @@
-import type { ProjectionSettings, ProjectionTimelinePoint } from '@shared/schema';
-import { defaultRate, parseRate } from '@/utils/projection-assumptions';
+import type { ProjectionSettings } from '@shared/schema';
+import { defaultRate, parseRate, type ProjectionPoint } from '@/utils/projection-assumptions';
 
 export type ProjectionClassKey = ProjectionSettings['assetType'];
 
@@ -9,7 +9,7 @@ export interface ProjectionClass {
   labelKey: string;
   /** Field of a timeline point. */
   field: keyof Pick<
-    ProjectionTimelinePoint,
+    ProjectionPoint,
     'savings' | 'investments' | 'crypto' | 'bonds' | 'realEstate' | 'otherAssets'
   >;
   /** CSS token of the series color. */
@@ -76,8 +76,10 @@ export interface ClassParams {
   cls: ProjectionClass;
   /** Annual rate in percent after the savings/bonds fallback to the derived rate. */
   rate: number;
-  /** Monthly contribution in CZK (settings store CZK). */
+  /** Monthly contribution as stored, in `contributionCurrency`. */
   contribution: number;
+  /** Currency of `contribution`; empty when no row is stored (then the contribution is 0). */
+  contributionCurrency: string;
   enabled: boolean;
   /** True while the rate is a default (the weighted account/bond rate, or the class constant), not a stored one. */
   derived: boolean;
@@ -100,6 +102,7 @@ export function resolveClassParams(
       cls,
       rate: stored ?? defaultRate(cls.key, derivedRates),
       contribution: saved && cls.hasContribution ? parseFloat(saved.monthlyContribution) || 0 : 0,
+      contributionCurrency: saved && cls.hasContribution ? saved.contributionCurrency : '',
       enabled: saved ? saved.enabled : true,
       derived: stored === undefined,
     };

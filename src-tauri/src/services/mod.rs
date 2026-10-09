@@ -44,6 +44,7 @@ pub mod position_reports;
 pub mod positions;
 pub mod price_api;
 pub mod pricing;
+pub mod projection;
 pub mod projection_math;
 pub mod quote_unit;
 pub mod real_estate;

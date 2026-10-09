@@ -62,6 +62,14 @@ pub struct HistoryPoint {
     pub net_worth: Option<f64>,
 }
 
+impl ClassTotals {
+    /// The real estate counted into the totals (personal left out when excluded); `None` when
+    /// none of it converted.
+    pub fn real_estate(&self, exclude_personal: bool) -> Option<f64> {
+        sum_known(counted_real_estate(self, exclude_personal))
+    }
+}
+
 /// Today's native breakdowns of every class from the live tables (real estate split into
 /// personal and investment). Shared by the current metrics and the snapshot writer.
 pub fn compute_breakdowns(conn: &Connection) -> Result<ClassBreakdowns> {
@@ -216,11 +224,27 @@ pub fn current_net_worth(
     report_currency: &str,
     exclude_personal_real_estate: bool,
 ) -> Result<NetWorth> {
+    current_net_worth_with_quotes(
+        conn,
+        &fx::current(),
+        report_currency,
+        exclude_personal_real_estate,
+    )
+}
+
+/// Today's net worth in `report_currency` at the caller's quote snapshot, for requests that
+/// convert more than the net worth and must use one snapshot throughout.
+pub fn current_net_worth_with_quotes(
+    conn: &Connection,
+    quotes: &Quotes,
+    report_currency: &str,
+    exclude_personal_real_estate: bool,
+) -> Result<NetWorth> {
     let currency = normalize_currency(report_currency)?;
     let breakdowns = compute_breakdowns(conn)?;
     Ok(net_worth_of(
         breakdowns,
-        &fx::current(),
+        quotes,
         &currency,
         exclude_personal_real_estate,
     ))
@@ -306,10 +330,7 @@ pub fn metrics_report(
         total_bonds: text(classes.bonds),
         total_real_estate_personal: text(classes.real_estate_personal),
         total_real_estate_investment: text(classes.real_estate_investment),
-        total_real_estate: text(sum_known(counted_real_estate(
-            &classes,
-            exclude_personal_real_estate,
-        ))),
+        total_real_estate: text(classes.real_estate(exclude_personal_real_estate)),
         total_other_assets: text(classes.other_assets),
         total_liabilities: money_in_currency(worth.total_liabilities, currency),
         total_assets: money_in_currency(worth.total_assets, currency),

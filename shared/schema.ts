@@ -863,35 +863,43 @@ export interface ProjectionSettings {
     'savings' | 'investments' | 'crypto' | 'bonds' | 'real_estate' | 'other_assets' | 'loans';
   /** Percent as text. '0' is an explicit 0 %; '' = not set (savings/bonds use the calculated weighted rate). */
   yearlyGrowthRate: string;
-  /** CZK (base currency) as text. */
+  /** Monthly amount as text, in `contributionCurrency` (the currency the user typed). */
   monthlyContribution: string;
+  /** ISO code of `monthlyContribution`; the projection converts it into its report currency. */
   contributionCurrency: string;
   enabled: boolean;
   createdAt?: number;
   updatedAt?: number;
 }
 
+/** One projected point; amounts are decimal text in the projection's `currency`. */
 export interface ProjectionTimelinePoint {
   date: number;
-  totalAssets: number;
-  totalLiabilities: number;
-  netWorth: number;
-  savings: number;
-  investments: number;
-  crypto: number;
-  bonds: number;
-  realEstate: number;
-  otherAssets: number;
-  loans: number;
+  totalAssets: string;
+  totalLiabilities: string;
+  netWorth: string;
+  savings: string;
+  investments: string;
+  crypto: string;
+  bonds: string;
+  realEstate: string;
+  otherAssets: string;
+  loans: string;
 }
 
+/**
+ * A projection valued in `currency`. What could not be converted (a holding or a contribution
+ * in a currency without a quote) is left out and named in `fxQuality`.
+ */
 export interface PortfolioProjection {
+  currency: string;
+  fxQuality: ConversionQuality;
   horizonYears: number;
   viewType: 'monthly' | 'yearly';
   timeline: ProjectionTimelinePoint[];
-  projectedNetWorth: number;
-  totalContributions: number;
-  totalGrowth: number;
+  projectedNetWorth: string;
+  totalContributions: string;
+  totalGrowth: string;
   calculatedDefaults: CalculatedDefaults;
 }
 

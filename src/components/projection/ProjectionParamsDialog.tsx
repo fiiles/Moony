@@ -20,6 +20,8 @@ import { contributionToStore, rateToStore } from '@/utils/projection-assumptions
 interface Draft {
   rate: string;
   contribution: string;
+  /** Currency the contribution field shows (and an edit is stored in). */
+  currency: string;
   enabled: boolean;
 }
 
@@ -65,18 +67,27 @@ export function ProjectionParamsDialog({
   );
 }
 
-/** `toDisplay` converts a stored CZK amount into the display currency. */
+/**
+ * `toDisplay` converts a stored amount into the display currency (null when no quote exists:
+ * the field then shows the stored amount in its own currency).
+ */
 function initialDraft(
   params: ClassParams[],
-  toDisplay: (czk: number) => number
+  displayCurrency: string,
+  toDisplay: (amount: number, from: string) => number | null
 ): Record<string, Draft> {
   const next: Record<string, Draft> = {};
   for (const p of params) {
+    const converted =
+      p.contribution > 0 && p.contributionCurrency
+        ? toDisplay(p.contribution, p.contributionCurrency)
+        : p.contribution;
+    const native = converted === null;
     next[p.cls.key] = {
       // A default rate stays blank (the placeholder shows it), so the class keeps following its default
       rate: p.derived ? '' : (Math.round(p.rate * 100) / 100).toString(),
-      // The stored contribution is CZK; the field shows the display currency
-      contribution: Math.round(toDisplay(p.contribution)).toString(),
+      contribution: Math.round(native ? p.contribution : converted).toString(),
+      currency: native ? p.contributionCurrency : displayCurrency,
       enabled: p.enabled,
     };
   }
@@ -96,10 +107,10 @@ function ParamsForm({
 }) {
   const { t } = useTranslation('reports');
   const { t: tc } = useTranslation('common');
-  const { currencyCode, convert } = useCurrency();
-  // Kept so submit can tell an untouched contribution (stored CZK value kept as is) from an edited one
+  const { currencyCode, fxConvert } = useCurrency();
+  // Kept so submit can tell an untouched contribution (stored amount and currency kept as is) from an edited one
   const [initial] = useState<Record<string, Draft>>(() =>
-    initialDraft(params, (czk) => convert(czk, 'CZK', currencyCode))
+    initialDraft(params, currencyCode, (amount, from) => fxConvert(amount, from, currencyCode))
   );
   const [draft, setDraft] = useState<Record<string, Draft>>(initial);
 
@@ -109,24 +120,27 @@ function ParamsForm({
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     onSave(
-      params.map((p) => ({
-        id: '',
-        assetType: p.cls.key,
-        // '' = keep the class default, '0' = an explicit 0 %
-        yearlyGrowthRate: rateToStore(draft[p.cls.key]?.rate ?? ''),
-        monthlyContribution: p.cls.hasContribution
+      params.map((p) => {
+        const d = draft[p.cls.key];
+        const stored = p.cls.hasContribution
           ? contributionToStore(
-              draft[p.cls.key]?.contribution ?? '',
+              d?.contribution ?? '',
               initial[p.cls.key]?.contribution ?? '',
-              p.contribution,
-              (v) => convert(v, currencyCode, 'CZK')
+              { amount: p.contribution, currency: p.contributionCurrency },
+              d?.currency ?? currencyCode
             )
-          : '0',
-        // Stored in CZK, the base currency (the backend sums it as CZK, see get_settings_map);
-        // the dialog converts from the display currency above
-        contributionCurrency: 'CZK',
-        enabled: draft[p.cls.key]?.enabled ?? true,
-      }))
+          : { monthlyContribution: '0', contributionCurrency: currencyCode };
+        return {
+          id: '',
+          assetType: p.cls.key,
+          // '' = keep the class default, '0' = an explicit 0 %
+          yearlyGrowthRate: rateToStore(d?.rate ?? ''),
+          // The amount as typed, in the currency the field showed; the projection converts it
+          monthlyContribution: stored.monthlyContribution,
+          contributionCurrency: stored.contributionCurrency,
+          enabled: d?.enabled ?? true,
+        };
+      })
     );
   };
 
@@ -172,7 +186,7 @@ function ParamsForm({
             </div>
             <div className={cn(cell, 'justify-end')}>
               {p.cls.hasContribution ? (
-                <InputWrap unit={currencyCode} className="w-[128px]">
+                <InputWrap unit={d?.currency ?? currencyCode} className="w-[128px]">
                   <Input
                     type="number"
                     step="any"

@@ -122,6 +122,11 @@ export type BudgetingReport = { bankCashMovement: string; quality: ReportQuality
 uncategorizedExpenseTransactionCount: number; reportCurrency: string }
 
 /**
+ * Calculated default rates from actual portfolio data (percent)
+ */
+export type CalculatedDefaults = { savingsRate: number; bondsRate: number }
+
+/**
  * Actual monthly cashflow for a range plus the preceding range of equal length.
  */
 export type CashflowActuals = { reportCurrency: string; netBalance: string; bankCashMovement: string; averageCompletedMonths: number[]; quality: ReportQuality; previousQuality: ReportQuality; nonconsumptionFlows: CashflowGroup[]; averageIncome: string | null; averageExpenses: string | null; range: string; rangeStart: number; rangeEnd: number; previousStart: number; previousEnd: number; months: CashflowMonth[]; expenseCategories: CashflowGroup[]; incomeSources: CashflowGroup[]; totalIncome: string; totalExpenses: string; previousIncome: string; previousExpenses: string; accountCount: number; transactionCount: number }
@@ -1076,6 +1081,13 @@ totalRealEstate: string | null; totalOtherAssets: string | null; totalLiabilitie
 realEstateByCurrency: Partial<{ [key in string]: number }>; loansByCurrency: Partial<{ [key in string]: number }>; otherAssetsByCurrency: Partial<{ [key in string]: number }> }
 
 /**
+ * Full portfolio projection response, valued in `currency`. What could not be converted
+ * (a holding or a contribution in a currency without a quote) is left out and named in
+ * `fxQuality`.
+ */
+export type PortfolioProjection = { currency: string; fxQuality: ConversionQuality; horizonYears: number; viewType: string; timeline: ProjectionTimelinePoint[]; projectedNetWorth: string; totalContributions: string; totalGrowth: string; calculatedDefaults: CalculatedDefaults }
+
+/**
  * Sums in the report currency over every known amount: `value`, `costBasis` and
  * `realizedGain` of the positions where they are known, `unrealizedGain` (and its percent) of
  * the positions whose value and cost are both known, `yearlyDividend` of the positions whose
@@ -1146,9 +1158,16 @@ export type ProjectionSettings = { id: string; assetType: string;
  */
 yearlyGrowthRate: string; 
 /**
- * Monthly contribution in CZK (the base currency, ADR 0001) as text.
+ * Monthly contribution as text, in `contribution_currency` (the currency the user typed;
+ * converted into the report currency when a projection is calculated).
  */
 monthlyContribution: string; contributionCurrency: string; enabled: boolean; createdAt?: number; updatedAt?: number }
+
+/**
+ * A single point in the projection timeline; amounts are decimal text in the report
+ * currency, rounded at its minor unit.
+ */
+export type ProjectionTimelinePoint = { date: number; totalAssets: string; totalLiabilities: string; netWorth: string; savings: string; investments: string; crypto: string; bonds: string; realEstate: string; otherAssets: string; loans: string }
 
 /**
  * Real estate property

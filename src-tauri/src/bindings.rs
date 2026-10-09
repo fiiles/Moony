@@ -197,6 +197,9 @@ pub fn collect_types() -> TypeCollection {
 
     // Projection models
     types.register::<crate::models::ProjectionSettings>();
+    types.register::<crate::models::ProjectionTimelinePoint>();
+    types.register::<crate::models::CalculatedDefaults>();
+    types.register::<crate::models::PortfolioProjection>();
 
     // Onboarding
     types.register::<crate::models::OnboardingProgress>();

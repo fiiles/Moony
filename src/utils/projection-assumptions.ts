@@ -2,7 +2,7 @@
  * The assumptions behind a projection, as the page shows them (PRJ-02, PRJ-03).
  *
  * Mirrors how the backend reads `projection_settings` (`get_settings_map` in
- * `commands/projection.rs`): only enabled rows count, a stored rate of "0" is an
+ * `services/projection.rs`): only enabled rows count, a stored rate of "0" is an
  * explicit 0 %, an empty rate means "not set" and falls back to the class
  * default (the weighted rate calculated from the user's own accounts / bonds for
  * savings and bonds, a built-in constant for the rest).
@@ -12,6 +12,28 @@ import type {
   ProjectionSettings,
   ProjectionTimelinePoint,
 } from '@shared/schema';
+import { amountOf } from '@/utils/positions';
+
+/** A projected point with numeric amounts (the wire point carries decimal text). */
+export type ProjectionPoint = { [K in keyof ProjectionTimelinePoint]: number };
+
+/** The wire point as numbers, in the projection's currency. */
+export function toProjectionPoint(point: ProjectionTimelinePoint): ProjectionPoint {
+  const n = (value: string) => amountOf(value) ?? 0;
+  return {
+    date: point.date,
+    totalAssets: n(point.totalAssets),
+    totalLiabilities: n(point.totalLiabilities),
+    netWorth: n(point.netWorth),
+    savings: n(point.savings),
+    investments: n(point.investments),
+    crypto: n(point.crypto),
+    bonds: n(point.bonds),
+    realEstate: n(point.realEstate),
+    otherAssets: n(point.otherAssets),
+    loans: n(point.loans),
+  };
+}
 
 export type ProjectionAssetKey =
   'savings' | 'investments' | 'crypto' | 'bonds' | 'real_estate' | 'other_assets';
@@ -23,7 +45,7 @@ export interface AssetClassDef {
   hasContribution: boolean;
   /** Field of the timeline point that holds the class's current value. */
   valueField: keyof Pick<
-    ProjectionTimelinePoint,
+    ProjectionPoint,
     'savings' | 'investments' | 'crypto' | 'bonds' | 'realEstate' | 'otherAssets'
   >;
 }
@@ -67,7 +89,7 @@ export interface ResolvedAssumption {
   rate: number;
   /** True when the user stored this rate (an explicit 0 counts), false for a default. */
   explicit: boolean;
-  /** Monthly contribution in CZK (the base currency). */
+  /** Monthly contribution as stored, in its own `contributionCurrency` (not converted). */
   contribution: number;
 }
 
@@ -110,7 +132,7 @@ export function resolveAssumptions(
 export interface AssumptionSummary {
   /** Classes that share a rate are grouped, in class order. Rates in percent. */
   rateGroups: { rate: number; keys: ProjectionAssetKey[] }[];
-  /** Sum of the monthly contributions, CZK. */
+  /** Sum of the stored monthly contributions (callers mixing currencies convert first). */
   monthlyContribution: number;
 }
 
@@ -120,7 +142,7 @@ export interface AssumptionSummary {
  */
 export function summarizeAssumptions(
   assumptions: Record<ProjectionAssetKey, ResolvedAssumption>,
-  current: ProjectionTimelinePoint | undefined
+  current: ProjectionPoint | undefined
 ): AssumptionSummary {
   if (!current) return { rateGroups: [], monthlyContribution: 0 };
 
@@ -154,21 +176,35 @@ export function rateToStore(text: string): string {
   return value === undefined ? '' : String(value);
 }
 
+/** A contribution as stored: the amount as typed and the currency it was typed in. */
+export interface StoredContribution {
+  monthlyContribution: string;
+  contributionCurrency: string;
+}
+
 /**
- * The CZK amount to store for a contribution typed in the display currency.
- * An untouched field keeps the stored CZK value (a round trip through the
- * display currency would drift by rounding); an edited one is converted back.
+ * What to store for a contribution field. An untouched field keeps the stored amount and its
+ * currency (a round trip through the display currency would drift by rounding); an edited one
+ * stores the typed amount as it is, in `typedCurrency` (the currency the field showed).
  */
 export function contributionToStore(
   editedText: string,
   initialText: string,
-  initialCzk: number,
-  toCzk: (displayAmount: number) => number
-): string {
-  if (editedText === initialText) return String(initialCzk);
+  stored: { amount: number; currency: string },
+  typedCurrency: string
+): StoredContribution {
+  if (editedText === initialText) {
+    return {
+      monthlyContribution: String(stored.amount),
+      contributionCurrency: stored.currency || typedCurrency,
+    };
+  }
   const value = Number(editedText);
-  if (editedText.trim() === '' || !Number.isFinite(value)) return '0';
-  return String(Math.round(toCzk(value) * 100) / 100);
+  const valid = editedText.trim() !== '' && Number.isFinite(value);
+  return {
+    monthlyContribution: valid ? String(Math.round(value * 100) / 100) : '0',
+    contributionCurrency: typedCurrency,
+  };
 }
 
 /** "a, b and c" in the given locale; falls back to a comma list where Intl.ListFormat is missing. */

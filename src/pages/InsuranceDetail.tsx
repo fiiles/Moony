@@ -4,7 +4,6 @@ import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { Ellipsis, Lock, LockOpen, Pencil, Trash2, Upload } from 'lucide-react';
 import type { RealEstate } from '@shared/schema';
-import type { CurrencyCode } from '@shared/currencies';
 import { insuranceApi } from '@/lib/tauri-api';
 import { useCurrency } from '@/lib/currency';
 import { useFormat } from '@/lib/use-format';
@@ -60,7 +59,7 @@ export default function InsuranceDetail() {
   const { t } = useTranslation('insurance');
   const { t: tc } = useTranslation('common');
   const fmt = useFormat();
-  const { formatCurrency, convert, currencyCode } = useCurrency();
+  const { currencyCode, fxConvert } = useCurrency();
   const duration = useDurationText('insurance');
   const { rows, metrics, isLoading, today } = useInsurance();
   const { setStatus, remove } = useInsuranceMutations();
@@ -133,10 +132,27 @@ export default function InsuranceDetail() {
   // ---- numbers ----
   const regular = Number(policy.regularPayment) || 0;
   const oneTime = Number(policy.oneTimePayment) || 0;
-  const yearly = row.yearlyCzk;
-  const yearlyNative = convert(yearly, 'CZK', currency as CurrencyCode);
-  const coverageDisplay = convert(row.coverageCzk, 'CZK', currencyCode as CurrencyCode);
-  const share = metrics.yearlyTotal > 0 ? yearly / metrics.yearlyTotal : 0;
+  // The policy's own yearly premium (native); its main-currency value counts toward the share
+  const yearlyNative = row.yearlyNative.amount;
+  const share =
+    row.yearly !== null && metrics.yearlyTotal > 0 ? row.yearly / metrics.yearlyTotal : null;
+  // Coverage in the main currency; unknown when a limit has no rate
+  const missingRate = tc('fxQuality.missing', {
+    currency: currencyCode,
+    currencies: row.missing.join(', '),
+  });
+  const coverageNote =
+    row.coverage === null
+      ? missingRate
+      : row.coverage <= 0
+        ? t('detail.hero.noCoverage')
+        : yearlyNative <= 0
+          ? t('detail.hero.coverageOneTime', { count: (policy.limits ?? []).length })
+          : row.yearly === null
+            ? missingRate
+            : t('detail.hero.coverageRatio', {
+                ratio: fmt.number(row.coverage / row.yearly, { maximumFractionDigits: 0 }),
+              });
   const startDay = series.past[0]?.t ?? policy.startDate;
   const next = row.nextPayment;
   const afterNext = next !== null ? nextPaymentDay(policy, next) : null;
@@ -158,8 +174,8 @@ export default function InsuranceDetail() {
     </div>
   );
 
-  // Ranked by their CZK value: limits are in their own currencies
-  const limits = limitsByValue(policy.limits);
+  // Ranked by their value in the main currency: limits are in their own currencies
+  const limits = limitsByValue(policy.limits, (amount, from) => fxConvert(amount, from));
 
   return (
     <>
@@ -304,32 +320,24 @@ export default function InsuranceDetail() {
           compact
           label={t('detail.hero.coverage')}
           value={
-            row.coverageCzk > 0 ? fmt.money(coverageDisplay, currencyCode, { decimals: 0 }) : '—'
+            row.coverage !== null && row.coverage > 0
+              ? fmt.money(row.coverage, currencyCode, { decimals: 0 })
+              : '—'
           }
-          deltaNote={
-            row.coverageCzk > 0
-              ? yearly > 0
-                ? t('detail.hero.coverageRatio', {
-                    ratio: fmt.number(row.coverageCzk / yearly, { maximumFractionDigits: 0 }),
-                  })
-                : t('detail.hero.coverageOneTime', {
-                    count: limits.length,
-                  })
-              : t('detail.hero.noCoverage')
-          }
+          deltaNote={coverageNote}
         />
       </HeroCard>
 
       <Stats className="mt-[17px]">
         <Stat
           label={t('detail.stats.yearly')}
-          value={yearly > 0 ? money(yearlyNative) : money(oneTime)}
+          value={yearlyNative > 0 ? money(yearlyNative) : money(oneTime)}
           note={
-            yearly > 0
+            yearlyNative > 0
               ? t('detail.stats.yearlyNote', {
                   premium: money(regular),
                   frequency: frequencyLabel,
-                  share: fmt.percent(share, 0),
+                  share: share !== null ? fmt.percent(share, 0) : '—',
                 })
               : t('detail.stats.yearlyOneTime')
           }
@@ -430,7 +438,10 @@ export default function InsuranceDetail() {
                   <span>
                     {t('detail.limits.footer', {
                       risks: t('risks', { count: limits.length }),
-                      amount: formatCurrency(row.coverageCzk),
+                      amount:
+                        row.coverage !== null
+                          ? fmt.money(row.coverage, currencyCode, { decimals: 0 })
+                          : '—',
                     })}
                   </span>
                 </div>

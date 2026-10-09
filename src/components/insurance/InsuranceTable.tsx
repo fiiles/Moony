@@ -13,8 +13,9 @@ import {
   Pencil,
   Trash2,
 } from 'lucide-react';
-import type { CurrencyCode } from '@shared/currencies';
 import type { InsuranceRow } from '@/utils/insurance';
+import { compareConverted } from '@/utils/fx-totals';
+import { ConvertedMoney } from '@/components/common/ConvertedMoney';
 import { useCurrency } from '@/lib/currency';
 import { useFormat } from '@/lib/use-format';
 import { useDurationText } from '@/hooks/use-duration-text';
@@ -98,7 +99,8 @@ export function InsuranceTable({
   onDelete,
 }: InsuranceTableProps) {
   const { t } = useTranslation('insurance');
-  const { formatCurrency, convert, currencyCode } = useCurrency();
+  const { t: tc } = useTranslation('common');
+  const { currencyCode } = useCurrency();
   const fmt = useFormat();
   const duration = useDurationText('insurance');
   const [, setLocation] = useLocation();
@@ -110,9 +112,10 @@ export function InsuranceTable({
   const endedCount = rows.filter((r) => r.ended).length;
   const types = useMemo(() => [...new Set(rows.map((r) => r.policy.type))].sort(), [rows]);
   const typeLabel = (value: string) => t(`typeShort.${value}`, { defaultValue: value });
-  /** A CZK total in the display currency. */
-  const compact = (czk: number) =>
-    fmt.money(convert(czk, 'CZK', currencyCode as CurrencyCode), currencyCode, {
+  const formatCurrency = (value: number) => fmt.money(value, currencyCode, { decimals: 0 });
+  /** A main-currency total, compact. */
+  const compact = (value: number) =>
+    fmt.money(value, currencyCode, {
       compact: true,
       decimals: 2,
     });
@@ -139,10 +142,10 @@ export function InsuranceTable({
           });
           break;
         case 'premium':
-          c = (a.yearlyCzk || a.oneTimeCzk) - (b.yearlyCzk || b.oneTimeCzk);
+          c = compareConverted(a.yearly || a.oneTime, b.yearly || b.oneTime);
           break;
         case 'coverage':
-          c = a.coverageCzk - b.coverageCzk;
+          c = compareConverted(a.coverage, b.coverage);
           break;
         case 'nextPayment':
           c = (a.nextPayment ?? far) - (b.nextPayment ?? far);
@@ -222,8 +225,13 @@ export function InsuranceTable({
   const premiumSub = (r: InsuranceRow) => {
     if (r.frequency === 'one_time') return sub(t('frequencyShort.one_time'));
     const frequency = t(`frequencyShort.${r.frequency ?? 'monthly'}`);
-    if (r.frequency === 'annually' || r.yearlyCzk <= 0) return sub(frequency);
-    const yearly = t('table.perYear', { amount: formatCurrency(r.yearlyCzk) });
+    if (r.frequency === 'annually' || r.yearlyNative.amount <= 0) return sub(frequency);
+    const yearly = t('table.perYear', {
+      amount:
+        r.yearly !== null
+          ? formatCurrency(r.yearly)
+          : fmt.money(r.yearlyNative.amount, r.yearlyNative.currency, { decimals: 0 }),
+    });
     return (
       <small
         title={`${frequency} · ${yearly}`}
@@ -235,17 +243,34 @@ export function InsuranceTable({
     );
   };
 
-  /** Total in the display currency; under it the largest limit in its own currency and how many more. */
+  /**
+   * Total in the main currency (a limit without a rate leaves the total unknown: a dash with
+   * the missing marker); under it the largest limit in its own currency and how many more.
+   */
   const coverageCell = (r: InsuranceRow) => {
     const top = r.topLimit;
-    if (r.coverageCzk <= 0 || !top) return <span className="text-ink-4">—</span>;
+    if (!top || (r.coverage !== null && r.coverage <= 0)) {
+      return <span className="text-ink-4">—</span>;
+    }
     const title = top.title.trim();
     const amount = fmt.money(top.amount, top.currency || 'CZK', { compact: true, decimals: 2 });
     const more = r.limitCount > 1 ? ` · ${t('table.moreLimits', { count: r.limitCount - 1 })}` : '';
     const rest = `${amount}${more}`;
     return (
       <>
-        {compact(r.coverageCzk)}
+        {r.coverage !== null ? (
+          compact(r.coverage)
+        ) : (
+          <span
+            className="text-loss"
+            title={tc('fxQuality.missing', {
+              currency: currencyCode,
+              currencies: r.missing.join(', '),
+            })}
+          >
+            —
+          </span>
+        )}
         {/* the free-text title (wide layout) gives way first; the amount and the count stay whole */}
         <small
           title={title ? `${title} ${rest}` : rest}
@@ -378,9 +403,12 @@ export function InsuranceTable({
                     </div>
                   </TableCell>
                   <TableCell className="truncate text-right num">
-                    <span className={cn('font-650', !r.ended && 'text-ink')}>
-                      {formatCurrency(r.premiumCzk)}
-                    </span>
+                    <ConvertedMoney
+                      className={cn('font-650', !r.ended && 'text-ink')}
+                      value={r.premium}
+                      amount={r.premiumNative.amount}
+                      currency={r.premiumNative.currency}
+                    />
                     {premiumSub(r)}
                   </TableCell>
                   <TableCell className="truncate text-right num">{coverageCell(r)}</TableCell>
@@ -388,7 +416,13 @@ export function InsuranceTable({
                     {r.nextPayment !== null ? (
                       <>
                         {fmt.day(r.nextPayment)}
-                        {sub(formatCurrency(r.premiumCzk))}
+                        {sub(
+                          r.premium !== null
+                            ? formatCurrency(r.premium)
+                            : fmt.money(r.premiumNative.amount, r.premiumNative.currency, {
+                                decimals: 0,
+                              })
+                        )}
                       </>
                     ) : (
                       <span className="text-ink-4">—</span>
@@ -442,11 +476,11 @@ export function InsuranceTable({
         <span>
           {t('policies', { count: active.length })} ·{' '}
           {t('table.footer.yearly', {
-            amount: formatCurrency(active.reduce((s, r) => s + r.yearlyCzk, 0)),
+            amount: formatCurrency(active.reduce((s, r) => s + (r.yearly ?? 0), 0)),
           })}{' '}
           ·{' '}
           {t('table.footer.coverage', {
-            amount: compact(active.reduce((s, r) => s + r.coverageCzk, 0)),
+            amount: compact(active.reduce((s, r) => s + r.coverageKnown, 0)),
           })}
         </span>
         <span>{t('table.footer.note')}</span>

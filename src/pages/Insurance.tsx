@@ -18,6 +18,7 @@ import { ConfirmDeleteDialog } from '@/components/common/ConfirmDeleteDialog';
 import { StatSkeleton, Stats } from '@/components/common/Stat';
 import { InsuranceFormDialog } from '@/components/insurance/InsuranceFormDialog';
 import { InsuranceSummary } from '@/components/insurance/InsuranceSummary';
+import { ConversionQualityNote } from '@/components/reports/ReportQualityNote';
 import { PaymentCalendarCard } from '@/components/insurance/PaymentCalendarCard';
 import { InsuranceTable } from '@/components/insurance/InsuranceTable';
 import { EndPolicyDialog } from '@/components/insurance/EndPolicyDialog';
@@ -32,7 +33,7 @@ type Modal = 'add' | 'edit' | 'end' | 'delete' | null;
 export default function Insurance() {
   const { t } = useTranslation('insurance');
   const [, navigate] = useLocation();
-  const { formatCurrency } = useCurrency();
+  const { currencyCode } = useCurrency();
   const fmt = useFormat();
   const { rows, metrics, isLoading, today } = useInsurance();
   const { setStatus, remove } = useInsuranceMutations();
@@ -44,7 +45,7 @@ export default function Insurance() {
       ? {
           text: t('status.nextPayment', {
             date: fmt.day(metrics.nextPayment.day),
-            amount: formatCurrency(metrics.nextPayment.amountCzk),
+            amount: fmt.money(metrics.nextPayment.amount, currencyCode, { decimals: 0 }),
           }),
           tone: 'neutral',
         }
@@ -128,6 +129,10 @@ export default function Insurance() {
         />
       ) : (
         <>
+          <ConversionQualityNote
+            quality={{ missingCurrencies: metrics.missing }}
+            currency={currencyCode}
+          />
           <InsuranceSummary metrics={metrics} today={today} />
           <PaymentCalendarCard rows={rows} today={today} />
           <InsuranceTable

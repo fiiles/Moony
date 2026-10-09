@@ -6,6 +6,7 @@ import type { InsertInsurancePolicy, InsurancePolicy } from '@shared/schema';
 import { todayUtcDay } from '@shared/calculations/loan-amortization';
 import { insuranceApi } from '@/lib/tauri-api';
 import { translateApiError } from '@/lib/translate-api-error';
+import { useMainConvert } from '@/hooks/use-fx';
 import {
   insuranceMetrics,
   insuranceRow,
@@ -14,7 +15,10 @@ import {
   type InsuranceRow,
 } from '@/utils/insurance';
 
-/** All policies with the derived rows (premiums, coverage, next dates) and totals. */
+/**
+ * All policies with the derived rows (premiums, coverage, next dates) and totals, in the
+ * main currency at the current quotes (amounts without a rate are named in `missing`).
+ */
 export function useInsurance(): {
   policies: InsurancePolicy[];
   rows: InsuranceRow[];
@@ -27,7 +31,11 @@ export function useInsurance(): {
     queryFn: () => insuranceApi.getAll(),
   });
   const today = todayUtcDay();
-  const rows = useMemo(() => policies.map((p) => insuranceRow(p, today)), [policies, today]);
+  const convert = useMainConvert();
+  const rows = useMemo(
+    () => policies.map((p) => insuranceRow(p, today, convert)),
+    [policies, today, convert]
+  );
   const metrics = useMemo(() => insuranceMetrics(rows, today), [rows, today]);
   return { policies, rows, metrics, isLoading, today };
 }

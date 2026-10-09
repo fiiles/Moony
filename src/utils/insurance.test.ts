@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import type { InsurancePolicy } from '@shared/schema';
-import { convertToCzK } from '@shared/currencies';
 import {
   insuranceMetrics,
   insuranceRow,
@@ -17,6 +16,10 @@ import {
 
 const day = (y: number, m: number, d: number) => Date.UTC(y, m - 1, d) / 1000;
 const TODAY = day(2026, 10, 3);
+/** 1 EUR = 25 CZK, 1 JPY = 0.15 CZK; no rate for KWD. */
+const RATES: Record<string, number> = { CZK: 1, EUR: 25, JPY: 0.15 };
+const convert = (amount: number, currency: string) =>
+  currency in RATES ? amount * RATES[currency] : null;
 
 function policy(partial: Partial<InsurancePolicy>): InsurancePolicy {
   return {
@@ -70,10 +73,10 @@ describe('payment days', () => {
 
 describe('insuranceRow / insuranceMetrics', () => {
   it('derives premiums, coverage and status', () => {
-    const row = insuranceRow(policy({}), TODAY);
-    expect(row.premiumCzk).toBe(1150);
-    expect(row.yearlyCzk).toBe(13_800);
-    expect(row.coverageCzk).toBe(2_000_000);
+    const row = insuranceRow(policy({}), TODAY, convert);
+    expect(row.premium).toBe(1150);
+    expect(row.yearly).toBe(13_800);
+    expect(row.coverage).toBe(2_000_000);
     expect(row.ended).toBe(false);
     expect(row.nextPayment).toBe(day(2026, 11, 1));
     const once = insuranceRow(
@@ -84,16 +87,17 @@ describe('insuranceRow / insuranceMetrics', () => {
         oneTimePaymentCurrency: 'CZK',
         endDate: day(2026, 6, 30),
       }),
-      TODAY
+      TODAY,
+      convert
     );
-    expect(once.premiumCzk).toBe(2400);
-    expect(once.yearlyCzk).toBe(0);
+    expect(once.premium).toBe(2400);
+    expect(once.yearly).toBe(0);
     expect(once.ended).toBe(true);
     expect(isEnded(policy({ status: 'inactive' }), TODAY)).toBe(true);
   });
 
   it('totals the active policies and finds the next payment and date', () => {
-    const life = insuranceRow(policy({ id: 'a' }), TODAY);
+    const life = insuranceRow(policy({ id: 'a' }), TODAY, convert);
     const car = insuranceRow(
       policy({
         id: 'b',
@@ -103,18 +107,56 @@ describe('insuranceRow / insuranceMetrics', () => {
         startDate: day(2024, 1, 15),
         limits: [{ title: 'POV', amount: 5_000_000, currency: 'CZK' }],
       }),
-      TODAY
+      TODAY,
+      convert
     );
-    const old = insuranceRow(policy({ id: 'c', status: 'inactive' }), TODAY);
+    const old = insuranceRow(policy({ id: 'c', status: 'inactive' }), TODAY, convert);
     const m = insuranceMetrics([life, car, old], TODAY);
     expect(m.activeCount).toBe(2);
     expect(m.endedCount).toBe(1);
     expect(m.yearlyTotal).toBe(13_800 + 7_800);
     expect(m.coverageTotal).toBe(7_000_000);
-    expect(m.coverageByType[0]).toEqual({ type: 'vehicle', czk: 5_000_000 });
-    expect(m.nextPayment).toEqual({ day: day(2026, 11, 1), amountCzk: 1150, rows: [life] });
+    expect(m.coverageByType[0]).toEqual({ type: 'vehicle', value: 5_000_000 });
+    expect(m.nextPayment).toEqual({ day: day(2026, 11, 1), amount: 1150, rows: [life] });
     expect(m.nextDate?.day).toBe(day(2027, 1, 15));
     expect(m.nextDate?.kind).toBe('anniversary');
+    expect(m.missing).toEqual([]);
+  });
+
+  it('excludes unconvertible policies from the totals and reports them', () => {
+    const eur = insuranceRow(
+      policy({ id: 'a', regularPayment: '10', regularPaymentCurrency: 'EUR', limits: [] }),
+      TODAY,
+      convert
+    );
+    const kwd = insuranceRow(
+      policy({
+        id: 'b',
+        regularPayment: '7',
+        regularPaymentCurrency: 'KWD',
+        limits: [
+          { title: 'Smrt', amount: 1_000, currency: 'KWD' },
+          { title: 'Úraz', amount: 100_000, currency: 'CZK' },
+        ],
+      }),
+      TODAY,
+      convert
+    );
+    expect(kwd.premium).toBeNull();
+    expect(kwd.yearly).toBeNull();
+    expect(kwd.premiumNative).toEqual({ amount: 7, currency: 'KWD' });
+    expect(kwd.coverage).toBeNull();
+    expect(kwd.coverageKnown).toBe(100_000);
+    expect(kwd.missing).toEqual(['KWD']);
+    // The limit without a rate ranks last
+    expect(kwd.topLimit?.title).toBe('Úraz');
+    const m = insuranceMetrics([eur, kwd], TODAY);
+    expect(m.yearlyTotal).toBe(12 * 250);
+    expect(m.coverageTotal).toBe(100_000);
+    expect(m.nextPayment?.amount).toBe(250);
+    expect(m.missing).toEqual(['KWD']);
+    const cal = paymentCalendar([eur, kwd], TODAY);
+    expect(cal[0]).toMatchObject({ monthly: 250, other: 0 });
   });
 });
 
@@ -126,10 +168,10 @@ describe('insuranceRow limits', () => {
 
   it('picks the largest limit after conversion to CZK and counts them all', () => {
     expect(jpy.amount).toBeGreaterThan(eur.amount);
-    expect(convertToCzK(eur.amount, 'EUR')).toBeGreaterThan(convertToCzK(jpy.amount, 'JPY'));
-    expect(convertToCzK(jpy.amount, 'JPY')).toBeLessThan(crown.amount);
+    expect(convert(eur.amount, 'EUR')!).toBeGreaterThan(convert(jpy.amount, 'JPY')!);
+    expect(convert(jpy.amount, 'JPY')!).toBeLessThan(crown.amount);
 
-    const row = insuranceRow(policy({ limits: [jpy, crown, eur] }), TODAY);
+    const row = insuranceRow(policy({ limits: [jpy, crown, eur] }), TODAY, convert);
     expect(row.topLimit).toEqual(eur);
     expect(row.limitCount).toBe(3);
     // the limit keeps its own currency; only the ranking is in CZK
@@ -144,7 +186,8 @@ describe('insuranceRow limits', () => {
           { title: 'Druhý', amount: 500_000, currency: 'CZK' },
         ],
       }),
-      TODAY
+      TODAY,
+      convert
     );
     expect(row.topLimit?.title).toBe('První');
     expect(row.limitCount).toBe(2);
@@ -152,21 +195,23 @@ describe('insuranceRow limits', () => {
 
   it('orders all limits by their CZK value, ties in their original order', () => {
     const second = { title: 'Druhý', amount: 1_000_000, currency: 'CZK' };
-    expect(limitsByValue([jpy, crown, eur, second])).toEqual([eur, crown, second, jpy]);
-    expect(limitsByValue(undefined)).toEqual([]);
+    expect(limitsByValue([jpy, crown, eur, second], convert)).toEqual([eur, crown, second, jpy]);
+    expect(limitsByValue(undefined, convert)).toEqual([]);
+    const kwd = { title: 'Bez kurzu', amount: 9_000_000, currency: 'KWD' };
+    expect(limitsByValue([kwd, jpy, eur], convert)).toEqual([eur, jpy, kwd]);
   });
 
   it('has no top limit for a policy without limits', () => {
-    const row = insuranceRow(policy({ limits: [] }), TODAY);
+    const row = insuranceRow(policy({ limits: [] }), TODAY, convert);
     expect(row.topLimit).toBeNull();
     expect(row.limitCount).toBe(0);
-    expect(row.coverageCzk).toBe(0);
+    expect(row.coverage).toBe(0);
   });
 });
 
 describe('paymentCalendar', () => {
   it('splits monthly and other payments per month and marks anniversaries', () => {
-    const life = insuranceRow(policy({ id: 'a' }), TODAY);
+    const life = insuranceRow(policy({ id: 'a' }), TODAY, convert);
     const car = insuranceRow(
       policy({
         id: 'b',
@@ -174,7 +219,8 @@ describe('paymentCalendar', () => {
         regularPayment: '7800',
         startDate: day(2024, 1, 15),
       }),
-      TODAY
+      TODAY,
+      convert
     );
     const cal = paymentCalendar([life, car], TODAY);
     expect(cal).toHaveLength(12);

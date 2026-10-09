@@ -1,6 +1,5 @@
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { CurrencyCode } from '@shared/currencies';
 import { paymentCalendar, type InsuranceRow } from '@/utils/insurance';
 import { useCurrency } from '@/lib/currency';
 import { useFormat } from '@/lib/use-format';
@@ -21,11 +20,12 @@ interface PaymentCalendarCardProps {
  */
 export function PaymentCalendarCard({ rows, today }: PaymentCalendarCardProps) {
   const { t } = useTranslation('insurance');
-  const { formatCurrency, convert, currencyCode } = useCurrency();
+  const { currencyCode } = useCurrency();
   const fmt = useFormat();
+  const formatCurrency = (value: number) => fmt.money(value, currencyCode, { decimals: 0 });
 
+  // In the main currency; payments without a rate stay out (the page note names them)
   const months = useMemo(() => paymentCalendar(rows, today), [rows, today]);
-  const toDisplay = (czk: number) => convert(czk, 'CZK', currencyCode as CurrencyCode);
   const total = months.reduce((s, m) => s + m.monthly + m.other, 0);
   if (total <= 0) return null;
 
@@ -67,8 +67,8 @@ export function PaymentCalendarCard({ rows, today }: PaymentCalendarCardProps) {
       <MoonyBarChart
         bars={months.map((m) => ({
           label: monthLabel(m.month),
-          a: toDisplay(m.monthly),
-          b: toDisplay(m.other),
+          a: m.monthly,
+          b: m.other,
         }))}
         stacked
         height={TREND_CHART_HEIGHT}
@@ -79,7 +79,11 @@ export function PaymentCalendarCard({ rows, today }: PaymentCalendarCardProps) {
             index,
             title: t('calendar.anniversary', { name: r.policy.policyName }),
             lines: [
-              `${fmt.day(r.anniversary!)} · ${formatCurrency(r.yearlyCzk)} ${t('table.perYearShort')}`,
+              `${fmt.day(r.anniversary!)} · ${
+                r.yearly !== null
+                  ? formatCurrency(r.yearly)
+                  : fmt.money(r.yearlyNative.amount, r.yearlyNative.currency, { decimals: 0 })
+              } ${t('table.perYearShort')}`,
             ],
           }))
         )}

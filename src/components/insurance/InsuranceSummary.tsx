@@ -4,7 +4,6 @@ import { useCurrency } from '@/lib/currency';
 import { useFormat } from '@/lib/use-format';
 import { useDurationText } from '@/hooks/use-duration-text';
 import { Stat, Stats } from '@/components/common/Stat';
-import type { CurrencyCode } from '@shared/currencies';
 
 interface InsuranceSummaryProps {
   metrics: InsuranceMetrics;
@@ -18,11 +17,12 @@ interface InsuranceSummaryProps {
  */
 export function InsuranceSummary({ metrics, today }: InsuranceSummaryProps) {
   const { t } = useTranslation('insurance');
-  const { formatCurrency, convert, currencyCode } = useCurrency();
+  const { currencyCode } = useCurrency();
   const fmt = useFormat();
   const duration = useDurationText('insurance');
-  const compact = (czk: number) =>
-    fmt.money(convert(czk, 'CZK', currencyCode as CurrencyCode), currencyCode, {
+  const formatCurrency = (value: number) => fmt.money(value, currencyCode, { decimals: 0 });
+  const compact = (value: number) =>
+    fmt.money(value, currencyCode, {
       compact: true,
       decimals: 2,
     });
@@ -31,7 +31,7 @@ export function InsuranceSummary({ metrics, today }: InsuranceSummaryProps) {
   const date = metrics.nextDate;
   const breakdown = metrics.coverageByType
     .slice(0, 3)
-    .map((e) => `${t(`typeShort.${e.type}`, { defaultValue: e.type })} ${compact(e.czk)}`)
+    .map((e) => `${t(`typeShort.${e.type}`, { defaultValue: e.type })} ${compact(e.value)}`)
     .join(', ');
 
   return (
@@ -50,7 +50,7 @@ export function InsuranceSummary({ metrics, today }: InsuranceSummaryProps) {
         note={
           next
             ? t('summary.nextPaymentNote', {
-                amount: formatCurrency(next.amountCzk),
+                amount: formatCurrency(next.amount),
                 policies:
                   next.rows.length === 1
                     ? next.rows[0].policy.policyName

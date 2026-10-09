@@ -1,5 +1,5 @@
 import type { InsertInsurancePolicy, InsuranceLimit, InsurancePolicy } from '@shared/schema';
-import { convertToCzK, type CurrencyCode } from '@shared/currencies';
+import { MissingTracker, type ConvertFn } from '@shared/fx';
 import {
   annualizeAmount,
   parsePaymentFrequency,
@@ -19,8 +19,20 @@ export const PERIOD_MONTHS: Record<PaymentFrequency, number> = {
 /** Payments guard: never walk more than this many payment periods. */
 const MAX_PERIODS = 1_200;
 
-const czk = (amount: string | number | null | undefined, currency: string | null | undefined) =>
-  convertToCzK(Number(amount) || 0, (currency || 'CZK') as CurrencyCode);
+/** An amount in its own currency (a blank currency is CZK, the legacy default). */
+export interface NativeMoney {
+  amount: number;
+  currency: string;
+}
+
+const native = (
+  amount: string | number | null | undefined,
+  currency: string | null | undefined
+): NativeMoney => ({ amount: Number(amount) || 0, currency: currency || 'CZK' });
+
+/** A native amount in the main currency; zero needs no rate. */
+const toMain = (money: NativeMoney, convert: ConvertFn): number | null =>
+  money.amount === 0 ? 0 : convert(money.amount, money.currency);
 
 /** Whole calendar months from `from` to `to` (UTC days), negative when `to` is earlier. */
 function monthsDiff(from: number, to: number): number {
@@ -105,47 +117,44 @@ export function nextAnniversary(policy: InsurancePolicy, today: number): number 
   return null;
 }
 
+/** A limit's value in the main currency; a limit without a rate ranks below every other. */
+const limitValue = (limit: InsuranceLimit, convert: ConvertFn): number =>
+  toMain(native(limit.amount, limit.currency), convert) ?? -Infinity;
+
 /**
- * Limits from the most to the least valuable in CZK (equal ones keep their order). Limits are in
- * their own currencies, so they are ranked by the converted value, never by the raw amount.
+ * Limits from the most to the least valuable in the main currency (equal ones keep their order,
+ * limits without a rate come last). Limits are in their own currencies, so they are ranked by
+ * the converted value, never by the raw amount.
  */
 export function limitsByValue(
-  limits: readonly InsuranceLimit[] | null | undefined
+  limits: readonly InsuranceLimit[] | null | undefined,
+  convert: ConvertFn
 ): InsuranceLimit[] {
   return (limits ?? [])
-    .map((limit, index) => ({ limit, index, value: czk(limit.amount, limit.currency) }))
-    .sort((a, b) => b.value - a.value || a.index - b.index)
+    .map((limit, index) => ({ limit, index, value: limitValue(limit, convert) }))
+    .sort((a, b) => (b.value === a.value ? a.index - b.index : b.value > a.value ? 1 : -1))
     .map(({ limit }) => limit);
 }
 
-/**
- * The limit worth the most in CZK (the first one on a tie), or null without limits. Limits are in
- * their own currencies, so they are ranked by the converted value, never by the raw amount.
- */
-function largestLimit(limits: readonly InsuranceLimit[]): InsuranceLimit | null {
-  let top: InsuranceLimit | null = null;
-  let best = -Infinity;
-  for (const limit of limits) {
-    const value = czk(limit.amount, limit.currency);
-    if (value > best) {
-      top = limit;
-      best = value;
-    }
-  }
-  return top;
-}
-
-/** One policy with the numbers the list and detail show (CZK). */
+/** One policy with the numbers the list and detail show (main currency, null without a rate). */
 export interface InsuranceRow {
   policy: InsurancePolicy;
   frequency: PaymentFrequency | null;
   ended: boolean;
-  /** One regular payment (the lump sum for a one-time policy), CZK. */
-  premiumCzk: number;
-  yearlyCzk: number;
-  oneTimeCzk: number;
-  coverageCzk: number;
-  /** The largest limit by its CZK value, in its own currency; null without limits. */
+  /** One regular payment (the lump sum for a one-time policy), native. */
+  premiumNative: NativeMoney;
+  premium: number | null;
+  /** The regular payments of a year, native. */
+  yearlyNative: NativeMoney;
+  yearly: number | null;
+  oneTime: number | null;
+  /** Sum of the limits; null when any limit has no rate. */
+  coverage: number | null;
+  /** Sum of the limits that have a rate (what the totals count). */
+  coverageKnown: number;
+  /** Currencies of this policy's amounts that have no rate. */
+  missing: string[];
+  /** The largest limit by its converted value, in its own currency; null without limits. */
   topLimit: InsuranceLimit | null;
   limitCount: number;
   nextPayment: number | null;
@@ -153,21 +162,41 @@ export interface InsuranceRow {
   endDay: number | null;
 }
 
-export function insuranceRow(policy: InsurancePolicy, today: number): InsuranceRow {
+export function insuranceRow(
+  policy: InsurancePolicy,
+  today: number,
+  convert: ConvertFn
+): InsuranceRow {
   const frequency = parsePaymentFrequency(policy.paymentFrequency);
   const ended = isEnded(policy, today);
-  const regularCzk = czk(policy.regularPayment, policy.regularPaymentCurrency);
-  const oneTimeCzk = czk(policy.oneTimePayment, policy.oneTimePaymentCurrency);
+  const tracker = new MissingTracker();
+  const track = (money: NativeMoney) => tracker.track(money.currency, toMain(money, convert));
+  const regularNative = native(policy.regularPayment, policy.regularPaymentCurrency);
+  const oneTimeNative = native(policy.oneTimePayment, policy.oneTimePaymentCurrency);
+  const yearlyNative = {
+    amount: annualizeAmount(regularNative.amount, policy.paymentFrequency),
+    currency: regularNative.currency,
+  };
+  const regular = track(regularNative);
+  const oneTime = track(oneTimeNative);
+  const yearly = track(yearlyNative);
   const limits = policy.limits ?? [];
+  const limitValues = limits.map((l) => track(native(l.amount, l.currency)));
+  const coverageKnown = limitValues.reduce<number>((s, v) => s + (v ?? 0), 0);
+  const oneTimePolicy = frequency === 'one_time';
   return {
     policy,
     frequency,
     ended,
-    premiumCzk: frequency === 'one_time' ? oneTimeCzk : regularCzk,
-    yearlyCzk: annualizeAmount(regularCzk, policy.paymentFrequency),
-    oneTimeCzk,
-    coverageCzk: limits.reduce((s, l) => s + czk(l.amount, l.currency), 0),
-    topLimit: largestLimit(limits),
+    premiumNative: oneTimePolicy ? oneTimeNative : regularNative,
+    premium: oneTimePolicy ? oneTime : regular,
+    yearlyNative,
+    yearly,
+    oneTime,
+    coverage: limitValues.some((v) => v === null) ? null : coverageKnown,
+    coverageKnown,
+    missing: tracker.missing,
+    topLimit: limitsByValue(limits, convert)[0] ?? null,
     limitCount: limits.length,
     nextPayment: ended ? null : nextPaymentDay(policy, today),
     anniversary: ended ? null : nextAnniversary(policy, today),
@@ -175,25 +204,29 @@ export function insuranceRow(policy: InsurancePolicy, today: number): InsuranceR
   };
 }
 
+/** Totals over the active policies in the main currency; amounts without a rate stay out. */
 export interface InsuranceMetrics {
   activeCount: number;
   endedCount: number;
   yearlyTotal: number;
   coverageTotal: number;
   /** Coverage per policy type, largest first. */
-  coverageByType: { type: string; czk: number }[];
+  coverageByType: { type: string; value: number }[];
   /** The nearest payment day and everything due on it. */
-  nextPayment: { day: number; amountCzk: number; rows: InsuranceRow[] } | null;
+  nextPayment: { day: number; amount: number; rows: InsuranceRow[] } | null;
   /** The nearest anniversary or contractual end among active policies. */
   nextDate: { row: InsuranceRow; day: number; kind: 'anniversary' | 'end' } | null;
+  /** Currencies of active policies left out of the totals for want of a rate. */
+  missing: string[];
 }
 
 export function insuranceMetrics(rows: readonly InsuranceRow[], today: number): InsuranceMetrics {
   const day = dayFloor(today);
   const active = rows.filter((r) => !r.ended);
   const byType = new Map<string, number>();
-  for (const r of active)
-    byType.set(r.policy.type, (byType.get(r.policy.type) ?? 0) + r.coverageCzk);
+  for (const r of active) {
+    byType.set(r.policy.type, (byType.get(r.policy.type) ?? 0) + r.coverageKnown);
+  }
   const withNext = active.filter((r) => r.nextPayment !== null);
   const nextDay = withNext.length ? Math.min(...withNext.map((r) => r.nextPayment!)) : null;
   const due = nextDay === null ? [] : withNext.filter((r) => r.nextPayment === nextDay);
@@ -208,26 +241,27 @@ export function insuranceMetrics(rows: readonly InsuranceRow[], today: number): 
   return {
     activeCount: active.length,
     endedCount: rows.length - active.length,
-    yearlyTotal: active.reduce((s, r) => s + r.yearlyCzk, 0),
-    coverageTotal: active.reduce((s, r) => s + r.coverageCzk, 0),
+    yearlyTotal: active.reduce((s, r) => s + (r.yearly ?? 0), 0),
+    coverageTotal: active.reduce((s, r) => s + r.coverageKnown, 0),
     coverageByType: [...byType.entries()]
-      .map(([type, value]) => ({ type, czk: value }))
-      .filter((e) => e.czk > 0)
-      .sort((a, b) => b.czk - a.czk),
+      .map(([type, value]) => ({ type, value }))
+      .filter((e) => e.value > 0)
+      .sort((a, b) => b.value - a.value),
     nextPayment:
       nextDay === null
         ? null
-        : { day: nextDay, amountCzk: due.reduce((s, r) => s + r.premiumCzk, 0), rows: due },
+        : { day: nextDay, amount: due.reduce((s, r) => s + (r.premium ?? 0), 0), rows: due },
     nextDate: dates[0] ?? null,
+    missing: [...new Set(active.flatMap((r) => r.missing))],
   };
 }
 
 export interface CalendarMonth {
   /** UTC first day of the month. */
   month: number;
-  /** Payments of monthly policies, CZK. */
+  /** Payments of monthly policies, main currency (payments without a rate left out). */
   monthly: number;
-  /** Payments of quarterly, semi-annual and annual policies, CZK. */
+  /** Payments of quarterly, semi-annual and annual policies, main currency. */
   other: number;
   anniversaries: InsuranceRow[];
 }
@@ -243,9 +277,9 @@ export function paymentCalendar(rows: readonly InsuranceRow[], today: number): C
     for (const r of rows) {
       if (r.ended) continue;
       const count = paymentDays(r.policy, monthStart - 1, monthEnd).length;
-      if (count > 0) {
-        if (r.frequency === 'monthly') entry.monthly += count * r.premiumCzk;
-        else entry.other += count * r.premiumCzk;
+      if (count > 0 && r.premium !== null) {
+        if (r.frequency === 'monthly') entry.monthly += count * r.premium;
+        else entry.other += count * r.premium;
       }
       if (r.anniversary !== null && r.anniversary >= monthStart && r.anniversary <= monthEnd) {
         entry.anniversaries.push(r);

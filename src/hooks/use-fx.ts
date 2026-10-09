@@ -2,7 +2,16 @@ import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { fxApi } from '@/lib/tauri-api';
 import { useAuth } from '@/hooks/use-auth';
-import { convertOn, makeHistory, type FxHistory, type FxQuotes } from '@shared/fx';
+import { useCurrency } from '@/lib/currency';
+import {
+  convert,
+  convertOn,
+  makeHistory,
+  type ConvertAtFn,
+  type ConvertFn,
+  type FxHistory,
+  type FxQuotes,
+} from '@shared/fx';
 
 const SECONDS_PER_DAY = 86_400;
 /** Mirrors the ten-day lookback of `convertOn`, so the first day of a range can still resolve. */
@@ -69,6 +78,25 @@ export function useFxHistory(
 }
 
 /**
+ * Converts amounts at the rates of their own day (common-day rule) from `firstTs` (unix
+ * seconds) up to today. `convertAt` returns `null` when a day cannot be converted and while
+ * the daily quotes are still loading; `ready` tells the two apart.
+ */
+export function useDatedFx(firstTs: number | undefined): {
+  ready: boolean;
+  convertAt: (amount: number, from: string, to: string, timestamp: number) => number | null;
+} {
+  const history = useFxHistory(firstTs, firstTs === undefined ? undefined : Date.now() / 1000);
+  return useMemo(
+    () => ({
+      ready: history !== undefined,
+      convertAt: (amount, from, to, timestamp) => convertOn(history, amount, from, to, timestamp),
+    }),
+    [history]
+  );
+}
+
+/**
  * Converts amounts at the rates of a transaction's own day (common-day rule), for the
  * transactions' date range. `convertAt` returns `null` when a day cannot be converted and
  * while the daily quotes are still loading; `ready` tells the two apart.
@@ -84,12 +112,39 @@ export function useTransactionFx(transactions: { transactionDate: number }[] | u
         : undefined,
     [transactions]
   );
-  const history = useFxHistory(first, first === undefined ? undefined : Date.now() / 1000);
+  return useDatedFx(first);
+}
+
+/**
+ * Converter into the profile (main) currency at the current quotes. Stable until the
+ * currency or the rates change, so it can sit in `useMemo` dependencies.
+ */
+export function useMainConvert(): ConvertFn {
+  const { currencyCode, fx, fxRevision } = useCurrency();
+  return useMemo<ConvertFn>(() => {
+    // A new revision is a new set of quotes, even when the object compares equal
+    void fxRevision;
+    return (amount, currency) => convert(fx, amount, currency, currencyCode);
+  }, [fx, fxRevision, currencyCode]);
+}
+
+/**
+ * Converter into the profile (main) currency at the rates of each value's own day, from
+ * `firstTs` up to today. `ready` is false while the daily quotes load (`convertAt` then
+ * returns null for every foreign amount).
+ */
+export function useDatedMainConvert(firstTs: number | undefined): {
+  ready: boolean;
+  convertAt: ConvertAtFn;
+} {
+  const { currencyCode } = useCurrency();
+  const { ready, convertAt } = useDatedFx(firstTs);
   return useMemo(
     () => ({
-      ready: history !== undefined,
-      convertAt: (amount, from, to, timestamp) => convertOn(history, amount, from, to, timestamp),
+      ready,
+      convertAt: (amount, currency, timestamp) =>
+        convertAt(amount, currency, currencyCode, timestamp),
     }),
-    [history]
+    [ready, convertAt, currencyCode]
   );
 }

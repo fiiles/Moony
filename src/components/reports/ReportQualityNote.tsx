@@ -50,7 +50,8 @@ export function ConversionQualityNote({
   currency,
   className = 'mb-5',
 }: {
-  quality: ConversionQuality | undefined;
+  /** A response's quality, or just the currencies a view could not convert. */
+  quality: Pick<ConversionQuality, 'missingCurrencies'> | undefined;
   currency: string;
   /** Spacing around the note (default: a gap below). */
   className?: string;

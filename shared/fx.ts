@@ -110,3 +110,9 @@ export class MissingTracker {
     return this.codes.size === 0;
   }
 }
+
+/** Converts a native amount into one target currency (a view's main currency); null without a rate. */
+export type ConvertFn = (amount: number, currency: string) => number | null;
+
+/** Converts a native amount into one target currency at the rates of `timestamp`'s day. */
+export type ConvertAtFn = (amount: number, currency: string, timestamp: number) => number | null;

@@ -13,6 +13,8 @@ import { ExportButton } from '@/components/common/ExportButton';
 import { ConfirmDeleteDialog } from '@/components/common/ConfirmDeleteDialog';
 import { StatSkeleton, Stats } from '@/components/common/Stat';
 import { BondsSummary } from '@/components/bonds/BondsSummary';
+import { ConversionQualityNote } from '@/components/reports/ReportQualityNote';
+import { useCurrency } from '@/lib/currency';
 import { BondsLadderCard } from '@/components/bonds/BondsLadderCard';
 import { BondsTable } from '@/components/bonds/BondsTable';
 import { BondsFormDialog } from '@/components/bonds/BondsFormDialog';
@@ -26,7 +28,8 @@ type Modal = 'add' | 'edit' | 'delete' | null;
  */
 export default function Bonds() {
   const { t } = useTranslation('bonds');
-  const { bonds, metrics, isLoading, today } = useBonds();
+  const { bonds, metrics, isLoading, today, convert } = useBonds();
+  const { currencyCode } = useCurrency();
   const { createMutation, updateMutation, deleteMutation } = useBondMutations();
   const [modal, setModal] = useState<Modal>(null);
   const [selected, setSelected] = useState<Bond | null>(null);
@@ -95,9 +98,19 @@ export default function Bonds() {
         />
       ) : (
         <>
+          <ConversionQualityNote
+            quality={{ missingCurrencies: metrics.missing }}
+            currency={currencyCode}
+          />
           <BondsSummary metrics={metrics} today={today} />
-          <BondsLadderCard bonds={bonds} today={today} />
-          <BondsTable bonds={bonds} today={today} onEdit={openEdit} onDelete={openDelete} />
+          <BondsLadderCard bonds={bonds} today={today} convert={convert} />
+          <BondsTable
+            bonds={bonds}
+            today={today}
+            convert={convert}
+            onEdit={openEdit}
+            onDelete={openDelete}
+          />
         </>
       )}
 

@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Bond } from '@shared/schema';
+import type { ConvertFn } from '@shared/fx';
 import { bondLadder, nearestMaturity } from '@/utils/bonds';
 import { useCurrency } from '@/lib/currency';
 import { useFormat } from '@/lib/use-format';
@@ -12,6 +13,8 @@ import { TREND_CHART_HEIGHT, TrendCard } from '@/components/charts/TrendCard';
 interface BondsLadderCardProps {
   bonds: Bond[];
   today: number;
+  /** Into the main currency; bonds without a rate stay off the ladder. */
+  convert: ConvertFn;
 }
 
 /**
@@ -19,12 +22,13 @@ interface BondsLadderCardProps {
  * stacked bars per calendar year with the face value coming back and the
  * coupons still due, the nearest maturity marked.
  */
-export function BondsLadderCard({ bonds, today }: BondsLadderCardProps) {
-  const { formatCurrency } = useCurrency();
+export function BondsLadderCard({ bonds, today, convert }: BondsLadderCardProps) {
+  const { currencyCode } = useCurrency();
   const fmt = useFormat();
+  const formatCurrency = (value: number) => fmt.money(value, currencyCode, { decimals: 0 });
   const { t } = useTranslation('bonds');
 
-  const ladder = useMemo(() => bondLadder(bonds, today), [bonds, today]);
+  const ladder = useMemo(() => bondLadder(bonds, today, convert), [bonds, today, convert]);
   const nearest = nearestMaturity(bonds, today);
   const nearestYear = nearest?.maturityDate
     ? new Date(nearest.maturityDate * 1000).getUTCFullYear()

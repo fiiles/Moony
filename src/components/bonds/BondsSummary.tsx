@@ -1,10 +1,10 @@
 import { useTranslation } from 'react-i18next';
-import type { CurrencyCode } from '@shared/currencies';
 import type { BondsMetrics } from '@/hooks/use-bonds';
 import { useCurrency } from '@/lib/currency';
 import { useFormat } from '@/lib/use-format';
 import { Stat, Stats } from '@/components/common/Stat';
 import { untilText } from '@/components/bonds/bond-until';
+import { bondCurrency, bondFaceValue } from '@/utils/bonds';
 
 interface BondsSummaryProps {
   metrics: BondsMetrics;
@@ -17,11 +17,13 @@ interface BondsSummaryProps {
  * returns, the face-value-weighted time to maturity.
  */
 export function BondsSummary({ metrics, today }: BondsSummaryProps) {
-  const { formatCurrency, convert, currencyCode } = useCurrency();
+  const { currencyCode } = useCurrency();
   const fmt = useFormat();
   const { t } = useTranslation('bonds');
+  const money = (value: number) => fmt.money(value, currencyCode, { decimals: 0 });
+  const nearest = metrics.nearest;
 
-  const income = convert(metrics.projectedYearlyIncome, 'CZK', currencyCode as CurrencyCode);
+  const income = metrics.projectedYearlyIncome;
   const issuesNote = [
     t('summary.issues', { count: metrics.liveCount }),
     metrics.currencies.length > 1
@@ -33,11 +35,7 @@ export function BondsSummary({ metrics, today }: BondsSummaryProps) {
 
   return (
     <Stats>
-      <Stat
-        label={t('summary.nominal')}
-        value={formatCurrency(metrics.totalValue)}
-        note={issuesNote}
-      />
+      <Stat label={t('summary.nominal')} value={money(metrics.totalValue)} note={issuesNote} />
       <Stat
         label={t('summary.yearlyCoupon')}
         value={fmt.money(income, currencyCode, { signed: true, decimals: 0 })}
@@ -53,7 +51,14 @@ export function BondsSummary({ metrics, today }: BondsSummaryProps) {
             ? `${untilText(t, metrics.nearest.maturityDate, today, fmt.day)} · ${t(
                 'summary.returns',
                 {
-                  amount: formatCurrency(metrics.nearestValueCzk),
+                  amount:
+                    metrics.nearestValue !== null
+                      ? money(metrics.nearestValue)
+                      : nearest
+                        ? fmt.money(bondFaceValue(nearest), bondCurrency(nearest), {
+                            decimals: 0,
+                          })
+                        : '',
                 }
               )}`
             : t('summary.noMaturity')

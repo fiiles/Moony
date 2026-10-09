@@ -2,8 +2,16 @@ import { useMemo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ArrowDown, ArrowUp, ArrowUpDown, Ellipsis, Pencil, Search, Trash2 } from 'lucide-react';
 import type { Bond } from '@shared/schema';
-import type { CurrencyCode } from '@shared/currencies';
-import { bondCouponCzk, bondFaceValue, bondValueCzk, isMatured } from '@/utils/bonds';
+import type { ConvertFn } from '@shared/fx';
+import {
+  bondCoupon,
+  bondCurrency,
+  bondFaceValue,
+  bondValue,
+  bondYearlyCoupon,
+  isMatured,
+} from '@/utils/bonds';
+import { compareConverted } from '@/utils/fx-totals';
 import { monthsBetween } from '@/utils/duration';
 import { useCurrency } from '@/lib/currency';
 import { useFormat } from '@/lib/use-format';
@@ -28,6 +36,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { AssetLogo } from '@/components/common/AssetLogo';
+import { ConvertedMoney } from '@/components/common/ConvertedMoney';
 import { untilText } from '@/components/bonds/bond-until';
 import { cn } from '@/lib/utils';
 
@@ -36,6 +45,8 @@ type SortColumn = 'name' | 'nominal' | 'quantity' | 'value' | 'rate' | 'yearly' 
 interface BondsTableProps {
   bonds: Bond[];
   today: number;
+  /** Into the main currency; a bond without a rate shows its own currency. */
+  convert: ConvertFn;
   onEdit: (bond: Bond) => void;
   onDelete: (bond: Bond) => void;
 }
@@ -45,8 +56,8 @@ interface BondsTableProps {
  * maturity first, per-bond yearly coupon, "do roka" badge, matured issues
  * dimmed behind a toggle, "···" actions on hover.
  */
-export function BondsTable({ bonds, today, onEdit, onDelete }: BondsTableProps) {
-  const { formatCurrency, currencyCode } = useCurrency();
+export function BondsTable({ bonds, today, convert, onEdit, onDelete }: BondsTableProps) {
+  const { currencyCode } = useCurrency();
   const fmt = useFormat();
   const { t } = useTranslation('bonds');
   const [search, setSearch] = useState('');
@@ -83,13 +94,13 @@ export function BondsTable({ bonds, today, onEdit, onDelete }: BondsTableProps) 
           c = (parseFloat(a.quantity) || 0) - (parseFloat(b.quantity) || 0);
           break;
         case 'value':
-          c = bondValueCzk(a) - bondValueCzk(b);
+          c = compareConverted(bondValue(a, convert), bondValue(b, convert));
           break;
         case 'rate':
           c = (parseFloat(a.interestRate) || 0) - (parseFloat(b.interestRate) || 0);
           break;
         case 'yearly':
-          c = bondCouponCzk(a) - bondCouponCzk(b);
+          c = compareConverted(bondCoupon(a, convert), bondCoupon(b, convert));
           break;
         case 'maturity':
           c =
@@ -99,11 +110,13 @@ export function BondsTable({ bonds, today, onEdit, onDelete }: BondsTableProps) 
       }
       return sortDirection === 'asc' ? c : -c;
     });
-  }, [bonds, search, showMatured, sortColumn, sortDirection, today]);
+  }, [bonds, search, showMatured, sortColumn, sortDirection, today, convert]);
 
+  // Footer totals: the bonds without a rate stay out (the page note names them)
   const live = rows.filter((b) => !isMatured(b, today));
-  const liveNominal = live.reduce((s, b) => s + bondValueCzk(b), 0);
-  const liveCoupons = live.reduce((s, b) => s + bondCouponCzk(b), 0);
+  const liveNominal = live.reduce((s, b) => s + (bondValue(b, convert) ?? 0), 0);
+  const liveCoupons = live.reduce((s, b) => s + (bondCoupon(b, convert) ?? 0), 0);
+  const money = (value: number) => fmt.money(value, currencyCode, { decimals: 0 });
 
   const SortHead = ({
     column,
@@ -196,7 +209,7 @@ export function BondsTable({ bonds, today, onEdit, onDelete }: BondsTableProps) 
           ) : (
             rows.map((bond) => {
               const matured = isMatured(bond, today);
-              const currency = (bond.currency || 'CZK') as CurrencyCode;
+              const currency = bondCurrency(bond);
               const nominal = parseFloat(bond.couponValue) || 0;
               const withinYear =
                 !matured &&
@@ -233,9 +246,15 @@ export function BondsTable({ bonds, today, onEdit, onDelete }: BondsTableProps) 
                   <TableCell
                     className={cn('text-right font-650 num', matured ? 'text-ink-3' : 'text-ink')}
                   >
-                    {currency === currencyCode
-                      ? fmt.money(bondFaceValue(bond), currency)
-                      : formatCurrency(bondValueCzk(bond))}
+                    {currency === currencyCode ? (
+                      fmt.money(bondFaceValue(bond), currency)
+                    ) : (
+                      <ConvertedMoney
+                        value={bondValue(bond, convert)}
+                        amount={bondFaceValue(bond)}
+                        currency={bondCurrency(bond)}
+                      />
+                    )}
                   </TableCell>
                   <TableCell className="text-right num">
                     {fmt.percent((parseFloat(bond.interestRate) || 0) / 100, 2)}
@@ -244,7 +263,11 @@ export function BondsTable({ bonds, today, onEdit, onDelete }: BondsTableProps) 
                     {matured ? (
                       <span className="text-ink-4">—</span>
                     ) : (
-                      formatCurrency(bondCouponCzk(bond))
+                      <ConvertedMoney
+                        value={bondCoupon(bond, convert)}
+                        amount={bondYearlyCoupon(bond)}
+                        currency={bondCurrency(bond)}
+                      />
                     )}
                   </TableCell>
                   <TableCell className="text-right num">
@@ -297,8 +320,8 @@ export function BondsTable({ bonds, today, onEdit, onDelete }: BondsTableProps) 
       <div className="flex items-center justify-between border-t border-line px-[14px] py-3 text-micro font-500 text-ink-4">
         <span>
           {t('table.footer.count', { count: live.length })} ·{' '}
-          {t('table.footer.nominal', { amount: formatCurrency(liveNominal) })} ·{' '}
-          {t('table.footer.coupons', { amount: formatCurrency(liveCoupons) })}
+          {t('table.footer.nominal', { amount: money(liveNominal) })} ·{' '}
+          {t('table.footer.coupons', { amount: money(liveCoupons) })}
         </span>
         <span>{t('table.footer.valuation')}</span>
       </div>

@@ -4,6 +4,7 @@ import {
   bondFaceValue,
   bondLadder,
   bondYearlyCoupon,
+  bondsSummary,
   isMatured,
   nearestMaturity,
   weightedYearsToMaturity,
@@ -30,6 +31,9 @@ function bond(partial: Partial<Bond> & { couponValue: string }): Bond {
 }
 
 const TODAY = day('2026-10-02');
+/** 1 EUR = 25 CZK; no rate for KWD. */
+const convert = (amount: number, currency: string) =>
+  currency === 'KWD' ? null : currency === 'EUR' ? amount * 25 : amount;
 
 describe('bond values', () => {
   it('multiplies face value by quantity and applies the yearly rate', () => {
@@ -75,7 +79,7 @@ describe('bondLadder', () => {
   ];
 
   it('returns principal in the maturity year and coupons on remaining anniversaries', () => {
-    const ladder = bondLadder(bonds, TODAY);
+    const ladder = bondLadder(bonds, TODAY, convert);
     expect(ladder.map((y) => y.year)).toEqual([2026, 2027, 2028, 2029, 2030]);
     // 2026: both anniversaries (15 Jun, 29 Apr) already passed this year
     expect(ladder[0]).toEqual({ year: 2026, principal: 0, coupons: 0 });
@@ -88,12 +92,12 @@ describe('bondLadder', () => {
   });
 
   it('ignores matured bonds and is empty without live bonds', () => {
-    expect(bondLadder([bonds[2]], TODAY)).toEqual([]);
+    expect(bondLadder([bonds[2]], TODAY, convert)).toEqual([]);
   });
 
   it('pays perpetual bonds every year of the range', () => {
     const perpetual = bond({ id: 'p', couponValue: '1000', quantity: '10', interestRate: '6' });
-    const ladder = bondLadder([bonds[0], perpetual], TODAY);
+    const ladder = bondLadder([bonds[0], perpetual], TODAY, convert);
     expect(ladder.map((y) => y.coupons).map((c) => Math.round(c))).toEqual([600, 3050]);
   });
 });
@@ -105,8 +109,8 @@ describe('maturity helpers', () => {
       bond({ id: 'b', couponValue: '50000', maturityDate: day('2029-10-02') }), // 3 years
       bond({ id: 'p', couponValue: '999999' }), // no maturity: ignored
     ];
-    expect(weightedYearsToMaturity(bonds, TODAY)).toBeCloseTo(2, 1);
-    expect(weightedYearsToMaturity([bonds[2]], TODAY)).toBeNull();
+    expect(weightedYearsToMaturity(bonds, TODAY, convert)).toBeCloseTo(2, 1);
+    expect(weightedYearsToMaturity([bonds[2]], TODAY, convert)).toBeNull();
   });
 
   it('finds the nearest live maturity', () => {
@@ -117,5 +121,42 @@ describe('maturity helpers', () => {
     ];
     expect(nearestMaturity(bonds, TODAY)?.id).toBe('soon');
     expect(nearestMaturity([bonds[2]], TODAY)).toBeNull();
+  });
+});
+
+describe('bondsSummary', () => {
+  it('converts every bond into the main currency', () => {
+    const s = bondsSummary(
+      [
+        bond({ id: 'eur', couponValue: '100', currency: 'EUR', interestRate: '4' }),
+        bond({ id: 'czk', couponValue: '500', interestRate: '2' }),
+      ],
+      convert,
+      TODAY
+    );
+    expect(s.totalValue).toBe(3000);
+    expect(s.projectedYearlyIncome).toBeCloseTo(100 + 10);
+    expect(s.averageYield).toBeCloseTo((2500 * 4 + 500 * 2) / 3000);
+    expect(s.missing).toEqual([]);
+  });
+
+  it('excludes unconvertible bonds from the total and reports them', () => {
+    const s = bondsSummary(
+      [
+        bond({ id: 'eur', couponValue: '100', currency: 'EUR' }),
+        bond({ id: 'kwd', couponValue: '7', currency: 'KWD', maturityDate: day('2027-01-01') }),
+      ],
+      convert,
+      TODAY
+    );
+    expect(s.totalValue).toBe(2500);
+    expect(s.missing).toEqual(['KWD']);
+    expect(s.liveCount).toBe(2);
+    // The nearest maturity is the KWD bond: known by date, not convertible
+    expect(s.nearest?.id).toBe('kwd');
+    expect(s.nearestValue).toBeNull();
+    // Without a converted value it carries no weight in the years to maturity
+    expect(s.weightedYears).toBeNull();
+    expect(bondLadder(s.nearest ? [s.nearest] : [], TODAY, convert)).toEqual([]);
   });
 });

@@ -495,7 +495,7 @@ fn current_investments_czk(conn: &rusqlite::Connection) -> Result<f64> {
     for (ticker, quantity) in rows.filter_map(|r| r.ok()) {
         let qty = parse_money(&quantity, 0.0, "stock_investments.quantity");
         if let Some(resolved) = resolve_stock_price(conn, &ticker) {
-            total += resolved.price_czk * qty;
+            total += convert_to_czk(resolved.price, &resolved.currency) * qty;
         }
     }
     Ok(total)
@@ -513,7 +513,7 @@ fn current_crypto_czk(conn: &rusqlite::Connection) -> Result<f64> {
     for (ticker, quantity) in rows.filter_map(|r| r.ok()) {
         let qty = parse_money(&quantity, 0.0, "crypto_investments.quantity");
         if let Some(resolved) = resolve_crypto_price(conn, &ticker) {
-            total += resolved.price_czk * qty;
+            total += convert_to_czk(resolved.price, &resolved.currency) * qty;
         }
     }
     Ok(total)

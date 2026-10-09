@@ -166,46 +166,27 @@ fn enrich_investment(
 
     // Determine active price using unified resolver
     let resolved = pricing::resolve_stock_price(conn, &inv.ticker);
-    let (original_price, currency, current_price, fetched_at, is_manual_price) = match resolved {
+    let (current_price, original_price, currency, fetched_at, is_manual_price) = match resolved {
         Some(rp) => (
+            convert_to_czk(rp.price, &rp.currency),
             rp.original_price,
             rp.currency,
-            rp.price_czk,
             rp.fetched_at,
             rp.is_manual,
         ),
-        None => ("0".to_string(), "CZK".to_string(), 0.0, None, false),
+        None => (0.0, "0".to_string(), "CZK".to_string(), None, false),
     };
 
-    // Get dividend data
-    let user_dividend: Option<(String, String)> = conn
-        .query_row(
-            "SELECT yearly_dividend_sum, currency FROM dividend_overrides WHERE ticker = ?1",
-            [&inv.ticker],
-            |row| Ok((row.get(0)?, row.get(1)?)),
-        )
-        .ok();
-
-    let global_dividend: Option<(String, String)> = conn
-        .query_row(
-            "SELECT yearly_dividend_sum, currency FROM dividend_data WHERE ticker = ?1",
-            [&inv.ticker],
-            |row| Ok((row.get(0)?, row.get(1)?)),
-        )
-        .ok();
-
-    // Get original dividend and currency
+    // Dividend per share in its own currency (override wins over fetched data)
     let (original_dividend_yield, dividend_currency, dividend_yield, is_manual_dividend) =
-        match (&user_dividend, &global_dividend) {
-            (Some((sum, curr)), _) => {
-                let orig = sum.parse().unwrap_or(0.0);
-                (orig, curr.clone(), convert_to_czk(orig, curr), true)
-            }
-            (None, Some((sum, curr))) => {
-                let orig = sum.parse().unwrap_or(0.0);
-                (orig, curr.clone(), convert_to_czk(orig, curr), false)
-            }
-            _ => (0.0, "CZK".to_string(), 0.0, false),
+        match crate::services::positions::resolve_dividend(conn, &inv.ticker)? {
+            Some(d) => (
+                d.per_share,
+                d.currency.clone(),
+                convert_to_czk(d.per_share, &d.currency),
+                d.is_manual,
+            ),
+            None => (0.0, "CZK".to_string(), 0.0, false),
         };
 
     Ok(EnrichedStockInvestment {

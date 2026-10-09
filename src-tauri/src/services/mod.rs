@@ -39,6 +39,7 @@ pub mod onboarding;
 pub mod other_assets;
 pub mod parsing;
 pub mod portfolio_history;
+pub mod positions;
 pub mod price_api;
 pub mod pricing;
 pub mod projection_math;

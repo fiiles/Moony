@@ -157,7 +157,7 @@ fn calculate_portfolio_metrics_full(
         for inv in investments {
             let qty: f64 = parse_money(&inv.1, 0.0, "stock_investments.quantity");
             if let Some(resolved) = crate::services::pricing::resolve_stock_price(conn, &inv.0) {
-                total_investments += resolved.price_czk * qty;
+                total_investments += convert_to_czk(resolved.price, &resolved.currency) * qty;
                 let native_price: f64 = parse_money(
                     &resolved.original_price,
                     0.0,
@@ -182,7 +182,7 @@ fn calculate_portfolio_metrics_full(
             let qty: f64 = parse_money(&crypto.1, 0.0, "crypto_investments.quantity");
             if let Some(resolved) = crate::services::pricing::resolve_crypto_price(conn, &crypto.0)
             {
-                total_crypto += resolved.price_czk * qty;
+                total_crypto += convert_to_czk(resolved.price, &resolved.currency) * qty;
                 let native_price: f64 = parse_money(
                     &resolved.original_price,
                     0.0,
@@ -308,7 +308,7 @@ fn record_todays_ticker_values(db: &Database) -> Result<()> {
                 if price <= 0.0 {
                     continue;
                 }
-                let value_czk = resolved.price_czk * qty;
+                let value_czk = convert_to_czk(resolved.price, &resolved.currency) * qty;
                 let id = Uuid::new_v4().to_string();
 
                 conn.execute(
@@ -352,7 +352,7 @@ fn record_todays_ticker_values(db: &Database) -> Result<()> {
                 if price <= 0.0 {
                     continue;
                 }
-                let value_czk = resolved.price_czk * qty;
+                let value_czk = convert_to_czk(resolved.price, &resolved.currency) * qty;
                 let id = Uuid::new_v4().to_string();
 
                 conn.execute(

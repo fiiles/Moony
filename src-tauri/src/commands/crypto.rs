@@ -7,6 +7,7 @@ use crate::models::{
     InsertCryptoTransaction,
 };
 use crate::services::crypto_investments as crypto_service;
+use crate::services::currency::convert_to_czk;
 use tauri::{AppHandle, Emitter, State};
 use uuid::Uuid;
 
@@ -58,18 +59,18 @@ pub async fn get_all_crypto(db: State<'_, Database>) -> Result<Vec<EnrichedCrypt
         for (inv, avg_price_currency) in investments {
             // Determine active price using unified resolver
             let resolved = pricing::resolve_crypto_price(conn, &inv.ticker);
-            let (original_price, currency, current_price, fetched_at, is_manual) = match resolved {
+            let (current_price, original_price, currency, fetched_at, is_manual) = match resolved {
                 Some(rp) => (
+                    convert_to_czk(rp.price, &rp.currency).to_string(),
                     rp.original_price,
                     rp.currency,
-                    rp.price_czk.to_string(),
                     rp.fetched_at,
                     rp.is_manual,
                 ),
                 None => (
                     "0".to_string(),
-                    "USD".to_string(),
                     "0".to_string(),
+                    "USD".to_string(),
                     None,
                     false,
                 ),

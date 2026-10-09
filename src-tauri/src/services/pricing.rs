@@ -20,22 +20,24 @@
 //! Stocks and crypto behave identically. The price and the currency always
 //! come from the same row (an override quoted in EUR is never combined with an
 //! API row quoted in USD).
+//!
+//! The resolver only returns native facts; converting the price is the caller's job (with
+//! the request's quote snapshot).
 
-use crate::services::currency::convert_to_czk;
 use crate::services::parsing::parse_money;
 
-/// Resolved price for a stock or crypto asset
+/// Resolved price for a stock or crypto asset, in its own currency.
 #[derive(Debug, Clone)]
 pub struct ResolvedPrice {
     /// Price in original currency (as string for precision)
     pub original_price: String,
+    /// `original_price` parsed (0 when the stored text is corrupt, logged)
+    pub price: f64,
     /// Original currency code
     pub currency: String,
-    /// Price converted to CZK
-    pub price_czk: f64,
     /// When the price was last fetched/updated (Unix timestamp)
     pub fetched_at: Option<i64>,
-    /// Whether this is a manual override
+    /// Source: the manual override (`true`) or the API price (`false`)
     pub is_manual: bool,
 }
 
@@ -103,15 +105,12 @@ pub fn resolve_price(
     let override_row = query_row(conn, sources.override_sql, key);
     let api_row = query_row(conn, sources.api_sql, key);
 
-    pick_price(override_row, api_row).map(|((price, currency, at), is_manual)| {
-        let amount = parse_money(&price, 0.0, "resolved price");
-        ResolvedPrice {
-            price_czk: convert_to_czk(amount, &currency),
-            original_price: price,
-            currency,
-            fetched_at: Some(at),
-            is_manual,
-        }
+    pick_price(override_row, api_row).map(|((price, currency, at), is_manual)| ResolvedPrice {
+        price: parse_money(&price, 0.0, "resolved price"),
+        original_price: price,
+        currency,
+        fetched_at: Some(at),
+        is_manual,
     })
 }
 
@@ -326,11 +325,12 @@ mod tests {
     }
 
     #[test]
-    fn test_price_czk_converts_the_native_price() {
+    fn test_price_is_the_parsed_native_price() {
         let conn = setup_test_db();
-        insert_stock(&conn, "CEZ", "950.00", "CZK", 100);
-        let result = resolve_stock_price(&conn, "CEZ").expect("price");
-        assert!((result.price_czk - 950.0).abs() < 1e-9);
+        insert_stock(&conn, "AAPL", "180.25", "USD", 100);
+        let result = resolve_stock_price(&conn, "AAPL").expect("price");
+        assert!((result.price - 180.25).abs() < 1e-9);
+        assert_eq!(result.currency, "USD");
     }
 
     #[test]

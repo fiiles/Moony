@@ -1,0 +1,691 @@
+//! Stock and crypto positions valued in a requested report currency (ADR 0011).
+//!
+//! One service for the UI commands and the MCP tools. Native facts stay authoritative: the
+//! current price comes from the price resolver in its own currency, the cost basis converts
+//! every transaction at its own day (`cost_basis`), and only the report figures are converted.
+//! A position whose figures cannot be converted stays listed with its native price; the
+//! converted fields are `None` and the currency is reported in `Positions::quality` (never 0,
+//! never 1:1).
+
+use rusqlite::{Connection, OptionalExtension};
+
+use crate::error::Result;
+use crate::services::cost_basis::{self, PositionCostBasis, TxTable};
+use crate::services::fx::{self, Quality, Quotes};
+use crate::services::parsing::parse_money;
+pub use crate::services::pricing::AssetKind;
+use crate::services::pricing::{self, ResolvedPrice};
+use crate::services::reporting::normalize_currency;
+
+/// One position valued in the report currency.
+#[derive(Debug, Clone, PartialEq)]
+pub struct PositionValue {
+    pub investment_id: String,
+    pub ticker: String,
+    pub quantity: f64,
+    /// Native current price (resolver), `None` when unpriced.
+    pub price: Option<f64>,
+    pub price_currency: Option<String>,
+    /// Report currency, current snapshot.
+    pub value: Option<f64>,
+    /// Report currency, each transaction at its day (estimated flag in the quality).
+    pub cost_basis: Option<f64>,
+    /// Native weighted average cost in `average_price_currency` (the primary currency).
+    pub average_price: f64,
+    pub average_price_currency: String,
+    /// `value - cost_basis`.
+    pub unrealized_gain: Option<f64>,
+    /// `unrealized_gain / cost_basis * 100`; 0 for a zero cost basis.
+    pub unrealized_gain_percent: Option<f64>,
+    /// Report currency: sell proceeds at the sell day minus the released average cost.
+    pub realized_gain: Option<f64>,
+    /// Native yearly dividend per share; `None` without dividend data (and for crypto).
+    pub dividend_per_share: Option<f64>,
+    pub dividend_currency: Option<String>,
+    /// Report currency, current snapshot. `Some(0)` for a stock without dividend data,
+    /// `None` for crypto (no dividends) or when not convertible.
+    pub yearly_dividend: Option<f64>,
+}
+
+/// Every position of one asset class in `currency`, with what could not be converted.
+#[derive(Debug, Clone)]
+pub struct Positions {
+    pub currency: String,
+    pub items: Vec<PositionValue>,
+    pub quality: Quality,
+}
+
+/// A stock's yearly dividend per share in its own currency.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ResolvedDividend {
+    pub per_share: f64,
+    pub currency: String,
+    /// The user's override (`true`) wins over fetched dividend data (`false`).
+    pub is_manual: bool,
+}
+
+/// The yearly dividend per share of `ticker`: the user's override, else the fetched data.
+pub fn resolve_dividend(conn: &Connection, ticker: &str) -> Result<Option<ResolvedDividend>> {
+    for (sql, is_manual) in [
+        (
+            "SELECT yearly_dividend_sum, currency FROM dividend_overrides WHERE ticker = ?1",
+            true,
+        ),
+        (
+            "SELECT yearly_dividend_sum, currency FROM dividend_data WHERE ticker = ?1",
+            false,
+        ),
+    ] {
+        let row: Option<(String, String)> = conn
+            .query_row(sql, [ticker], |row| Ok((row.get(0)?, row.get(1)?)))
+            .optional()?;
+        if let Some((sum, currency)) = row {
+            return Ok(Some(ResolvedDividend {
+                per_share: parse_money(&sum, 0.0, "yearly_dividend_sum"),
+                currency,
+                is_manual,
+            }));
+        }
+    }
+    Ok(None)
+}
+
+/// Values every position of `kind` in `report_currency` with the current quote snapshot.
+pub fn value_positions(
+    conn: &Connection,
+    kind: AssetKind,
+    report_currency: &str,
+    today: i64,
+) -> Result<Positions> {
+    value_positions_with_quotes(conn, kind, report_currency, &fx::current(), today)
+}
+
+/// Like `value_positions`, with the request's quote snapshot passed in (C-A: one snapshot
+/// per request when a caller values more than one asset class). Day quotes for the cost
+/// basis are read up to `today`.
+pub fn value_positions_with_quotes(
+    conn: &Connection,
+    kind: AssetKind,
+    report_currency: &str,
+    quotes: &Quotes,
+    today: i64,
+) -> Result<Positions> {
+    let currency = normalize_currency(report_currency)?;
+    let table = match kind {
+        AssetKind::Stock => TxTable::Stocks,
+        AssetKind::Crypto => TxTable::Crypto,
+    };
+    let (costs, mut quality) = cost_basis::cost_basis_as_of(conn, table, &currency, quotes, today)?;
+
+    let mut items = Vec::new();
+    for holding in load_holdings(conn, kind)? {
+        let price = pricing::resolve_price(conn, kind, &holding.ticker);
+        let dividend = match kind {
+            AssetKind::Stock => Some(resolve_dividend(conn, &holding.ticker)?),
+            AssetKind::Crypto => None,
+        };
+        let cost = costs.get(&holding.id);
+        let mut converter = CurrentConverter {
+            quotes,
+            target: &currency,
+            quality: &mut quality,
+        };
+        items.push(value_position(
+            holding,
+            cost,
+            price,
+            dividend,
+            &mut converter,
+        ));
+    }
+    Ok(Positions {
+        currency,
+        items,
+        quality,
+    })
+}
+
+/// One row of `stock_investments` / `crypto_investments`.
+struct Holding {
+    id: String,
+    ticker: String,
+    quantity: f64,
+    /// The stored average-price currency, used when there are no transactions.
+    currency: String,
+}
+
+fn load_holdings(conn: &Connection, kind: AssetKind) -> Result<Vec<Holding>> {
+    let (sql, default_currency) = match kind {
+        AssetKind::Stock => (
+            "SELECT id, ticker, quantity, currency FROM stock_investments ORDER BY ticker",
+            "CZK",
+        ),
+        AssetKind::Crypto => (
+            "SELECT id, ticker, quantity, currency FROM crypto_investments ORDER BY ticker",
+            "USD",
+        ),
+    };
+    let mut stmt = conn.prepare(sql)?;
+    let rows = stmt.query_map([], |row| {
+        let quantity: String = row.get(2)?;
+        Ok(Holding {
+            id: row.get(0)?,
+            ticker: row.get(1)?,
+            quantity: parse_money(&quantity, 0.0, "position quantity"),
+            currency: row
+                .get::<_, Option<String>>(3)?
+                .unwrap_or_else(|| default_currency.to_string()),
+        })
+    })?;
+    Ok(rows.collect::<rusqlite::Result<Vec<_>>>()?)
+}
+
+/// Converts with the request's current quotes, recording failed conversions.
+struct CurrentConverter<'a> {
+    quotes: &'a Quotes,
+    target: &'a str,
+    quality: &'a mut Quality,
+}
+
+impl CurrentConverter<'_> {
+    /// Zero is zero in every currency and needs no quote.
+    fn convert(&mut self, amount: f64, from: &str) -> Option<f64> {
+        if amount == 0.0 {
+            return Some(0.0);
+        }
+        let result = self.quotes.convert(amount, from, self.target);
+        self.quality
+            .track_conversion(self.quotes, from, self.target, result)
+    }
+}
+
+fn value_position(
+    holding: Holding,
+    cost: Option<&PositionCostBasis>,
+    price: Option<ResolvedPrice>,
+    dividend: Option<Option<ResolvedDividend>>,
+    converter: &mut CurrentConverter,
+) -> PositionValue {
+    let quantity = holding.quantity;
+    let value = price
+        .as_ref()
+        .and_then(|p| converter.convert(quantity * p.price, &p.currency));
+    // A position without transactions carries no known cost and has realized nothing.
+    let cost_basis = cost.map_or(Some(0.0), PositionCostBasis::cost_basis_in_target);
+    let realized_gain = cost.map_or(Some(0.0), |c| c.realized_gain_target);
+    let unrealized_gain = value.zip(cost_basis).map(|(v, c)| v - c);
+    let unrealized_gain_percent =
+        unrealized_gain
+            .zip(cost_basis)
+            .map(|(gain, cost)| if cost > 0.0 { gain / cost * 100.0 } else { 0.0 });
+    let (average_price, average_price_currency) = match cost {
+        Some(c) => (c.average_price_native(), c.primary_currency.clone()),
+        None => (0.0, holding.currency.to_uppercase()),
+    };
+    let (dividend_per_share, dividend_currency, yearly_dividend) = match dividend {
+        Some(Some(d)) => {
+            let yearly = converter.convert(quantity * d.per_share, &d.currency);
+            (Some(d.per_share), Some(d.currency), yearly)
+        }
+        // A stock without dividend data pays nothing.
+        Some(None) => (None, None, Some(0.0)),
+        // Crypto has no dividends.
+        None => (None, None, None),
+    };
+    PositionValue {
+        investment_id: holding.id,
+        ticker: holding.ticker,
+        quantity,
+        price: price.as_ref().map(|p| p.price),
+        price_currency: price.map(|p| p.currency),
+        value,
+        cost_basis,
+        average_price,
+        average_price_currency,
+        unrealized_gain,
+        unrealized_gain_percent,
+        realized_gain,
+        dividend_per_share,
+        dividend_currency,
+        yearly_dividend,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::services::fx::DAY;
+
+    fn setup() -> Connection {
+        let conn = Connection::open_in_memory().expect("in-memory db");
+        conn.execute_batch(
+            r#"
+            CREATE TABLE stock_investments (
+                id TEXT PRIMARY KEY,
+                ticker TEXT NOT NULL UNIQUE,
+                company_name TEXT NOT NULL,
+                quantity TEXT NOT NULL,
+                currency TEXT NOT NULL DEFAULT 'CZK'
+            );
+            CREATE TABLE investment_transactions (
+                id TEXT PRIMARY KEY,
+                investment_id TEXT NOT NULL REFERENCES stock_investments(id) ON DELETE CASCADE,
+                type TEXT NOT NULL,
+                ticker TEXT NOT NULL,
+                company_name TEXT NOT NULL,
+                quantity TEXT NOT NULL,
+                price_per_unit TEXT NOT NULL,
+                currency TEXT NOT NULL,
+                transaction_date INTEGER NOT NULL,
+                created_at INTEGER NOT NULL DEFAULT (unixepoch())
+            , import_batch_id TEXT, external_id TEXT);
+            CREATE TABLE stock_data (
+                id TEXT PRIMARY KEY,
+                ticker TEXT NOT NULL UNIQUE,
+                original_price TEXT NOT NULL,
+                currency TEXT NOT NULL DEFAULT 'USD',
+                price_date INTEGER NOT NULL,
+                fetched_at INTEGER NOT NULL DEFAULT (unixepoch())
+            );
+            CREATE TABLE stock_price_overrides (
+                id TEXT PRIMARY KEY,
+                ticker TEXT NOT NULL UNIQUE,
+                price TEXT NOT NULL,
+                currency TEXT NOT NULL DEFAULT 'CZK',
+                updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+            );
+            CREATE TABLE dividend_data (
+                id TEXT PRIMARY KEY,
+                ticker TEXT NOT NULL UNIQUE,
+                yearly_dividend_sum TEXT NOT NULL DEFAULT '0',
+                currency TEXT NOT NULL DEFAULT 'USD',
+                last_fetched_at INTEGER NOT NULL DEFAULT (unixepoch()),
+                created_at INTEGER NOT NULL DEFAULT (unixepoch())
+            );
+            CREATE TABLE dividend_overrides (
+                id TEXT PRIMARY KEY,
+                ticker TEXT NOT NULL UNIQUE,
+                yearly_dividend_sum TEXT NOT NULL,
+                currency TEXT NOT NULL DEFAULT 'CZK',
+                updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+            );
+            CREATE TABLE exchange_rate_history (
+                date INTEGER NOT NULL,
+                currency TEXT NOT NULL,
+                rate REAL NOT NULL,
+                PRIMARY KEY (date, currency)
+            );
+            CREATE TABLE crypto_investments (
+                id TEXT PRIMARY KEY,
+                ticker TEXT NOT NULL UNIQUE,
+                coingecko_id TEXT NOT NULL,
+                name TEXT NOT NULL,
+                quantity TEXT NOT NULL,
+                currency TEXT NOT NULL DEFAULT 'CZK'
+            );
+            CREATE TABLE crypto_transactions (
+                id TEXT PRIMARY KEY,
+                investment_id TEXT NOT NULL REFERENCES crypto_investments(id) ON DELETE CASCADE,
+                type TEXT NOT NULL,
+                ticker TEXT NOT NULL,
+                name TEXT NOT NULL,
+                quantity TEXT NOT NULL,
+                price_per_unit TEXT NOT NULL,
+                currency TEXT NOT NULL,
+                transaction_date INTEGER NOT NULL,
+                created_at INTEGER NOT NULL DEFAULT (unixepoch())
+            );
+            CREATE TABLE crypto_prices (
+                id TEXT PRIMARY KEY,
+                symbol TEXT NOT NULL UNIQUE,
+                coingecko_id TEXT,
+                price TEXT NOT NULL,
+                currency TEXT NOT NULL DEFAULT 'USD',
+                fetched_at INTEGER NOT NULL DEFAULT (unixepoch())
+            );
+            CREATE TABLE crypto_price_overrides (
+                id TEXT PRIMARY KEY,
+                symbol TEXT NOT NULL UNIQUE,
+                price TEXT NOT NULL,
+                currency TEXT NOT NULL DEFAULT 'USD',
+                updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+            );
+            "#,
+        )
+        .expect("schema");
+        conn
+    }
+
+    /// `exchange_rate_history` rows: CZK per unit on `day`.
+    fn seed_rates(conn: &Connection, day: i64, czk_per_unit: &[(&str, f64)]) {
+        for (code, rate) in czk_per_unit {
+            conn.execute(
+                "INSERT INTO exchange_rate_history (date, currency, rate) VALUES (?1, ?2, ?3)",
+                rusqlite::params![day, code, rate],
+            )
+            .expect("rate");
+        }
+    }
+
+    /// A stock with its transactions `(type, quantity, price, day)` in `currency` and an API
+    /// price of `current_price` in the same currency.
+    fn seed_stock(
+        conn: &Connection,
+        id: &str,
+        ticker: &str,
+        currency: &str,
+        txs: &[(&str, f64, f64, i64)],
+        current_price: f64,
+    ) {
+        let quantity: f64 = txs
+            .iter()
+            .map(|(kind, qty, _, _)| if *kind == "buy" { *qty } else { -*qty })
+            .sum();
+        conn.execute(
+            "INSERT INTO stock_investments (id, ticker, company_name, quantity, currency)
+             VALUES (?1, ?2, ?2, ?3, ?4)",
+            rusqlite::params![id, ticker, quantity.to_string(), currency],
+        )
+        .expect("stock");
+        for (n, (kind, qty, price, day)) in txs.iter().enumerate() {
+            conn.execute(
+                "INSERT INTO investment_transactions (id, investment_id, type, ticker, company_name,
+                    quantity, price_per_unit, currency, transaction_date, created_at)
+                 VALUES (?1, ?2, ?3, ?4, ?4, ?5, ?6, ?7, ?8, ?9)",
+                rusqlite::params![
+                    format!("{id}-{n}"),
+                    id,
+                    kind,
+                    ticker,
+                    qty.to_string(),
+                    price.to_string(),
+                    currency,
+                    day,
+                    n as i64
+                ],
+            )
+            .expect("transaction");
+        }
+        conn.execute(
+            "INSERT INTO stock_data (id, ticker, original_price, currency, price_date, fetched_at)
+             VALUES (?1, ?2, ?3, ?4, 0, 100)",
+            rusqlite::params![id, ticker, current_price.to_string(), currency],
+        )
+        .expect("price");
+    }
+
+    fn set_current_czk(czk_per_unit: &[(&str, f64)]) {
+        fx::set_current_for_test(czk_per_unit);
+    }
+
+    fn assert_close(a: f64, b: f64) {
+        assert!((a - b).abs() < 1e-6, "{a} != {b}");
+    }
+
+    #[test]
+    fn eur_investor_gain_on_usd_stock_ignores_czk_moves() {
+        // C1: bought 10 x 100 USD when USDCZK = EURCZK = 25; today USDCZK 25, EURCZK 22.
+        let conn = setup();
+        let buy_day = 19_000 * DAY;
+        seed_rates(&conn, buy_day, &[("USD", 25.0), ("EUR", 25.0)]);
+        seed_stock(
+            &conn,
+            "s1",
+            "AAPL",
+            "USD",
+            &[("buy", 10.0, 100.0, buy_day)],
+            100.0,
+        );
+        set_current_czk(&[("USD", 25.0), ("EUR", 22.0)]);
+        let p = value_positions(&conn, AssetKind::Stock, "EUR", 20_000 * DAY).expect("positions");
+        let item = &p.items[0];
+        assert_close(item.cost_basis.expect("cost"), 1000.0);
+        assert_close(item.value.expect("value"), 1136.3636363636);
+        assert_close(item.unrealized_gain.expect("gain"), 136.3636363636);
+        assert!(p.quality.is_complete());
+    }
+
+    #[test]
+    fn realized_gain_uses_sell_day_rate() {
+        let conn = setup();
+        let (d1, d2) = (19_000 * DAY, 19_100 * DAY);
+        seed_rates(&conn, d1, &[("USD", 20.0)]);
+        seed_rates(&conn, d2, &[("USD", 25.0)]);
+        seed_stock(
+            &conn,
+            "s1",
+            "AAPL",
+            "USD",
+            &[("buy", 10.0, 100.0, d1), ("sell", 5.0, 100.0, d2)],
+            100.0,
+        );
+        set_current_czk(&[("USD", 25.0)]);
+        let p = value_positions(&conn, AssetKind::Stock, "CZK", 20_000 * DAY).expect("positions");
+        // released cost 5*100*20 = 10000 CZK, proceeds 5*100*25 = 12500 CZK
+        assert_close(p.items[0].realized_gain.expect("realized"), 2500.0);
+    }
+
+    #[test]
+    fn unconvertible_position_is_listed_and_reported() {
+        let conn = setup();
+        seed_stock(
+            &conn,
+            "s1",
+            "KWFH",
+            "KWD",
+            &[("buy", 1.0, 10.0, 19_000 * DAY)],
+            10.0,
+        );
+        // EUR is quoted so that only the position's own currency is unconvertible (C-C blames
+        // every unquoted side, the report currency included).
+        set_current_czk(&[("USD", 25.0), ("EUR", 25.0)]);
+        let p = value_positions(&conn, AssetKind::Stock, "EUR", 20_000 * DAY).expect("positions");
+        assert_eq!(p.items.len(), 1);
+        assert_eq!(p.items[0].value, None);
+        assert_eq!(p.items[0].price, Some(10.0));
+        assert_eq!(p.quality.missing_currencies(), vec!["KWD".to_string()]);
+        let item = &p.items[0];
+        assert_eq!(item.cost_basis, None);
+        assert_eq!(item.unrealized_gain, None);
+        assert_eq!(item.unrealized_gain_percent, None);
+        assert_eq!(item.price_currency.as_deref(), Some("KWD"));
+        assert_close(item.average_price, 10.0);
+        assert_eq!(item.average_price_currency, "KWD");
+        // one failed cost conversion (the buy) and one failed value conversion
+        assert_eq!(p.quality.missing_count(), 2);
+    }
+
+    #[test]
+    fn same_currency_needs_no_rates() {
+        let conn = setup();
+        seed_stock(
+            &conn,
+            "s1",
+            "SAP.DE",
+            "EUR",
+            &[("buy", 2.0, 100.0, 19_000 * DAY)],
+            120.0,
+        );
+        set_current_czk(&[]);
+        let p = value_positions(&conn, AssetKind::Stock, "EUR", 20_000 * DAY).expect("positions");
+        assert_close(p.items[0].unrealized_gain.expect("gain"), 40.0);
+        assert_close(p.items[0].unrealized_gain_percent.expect("percent"), 20.0);
+        assert_eq!(p.items[0].realized_gain, Some(0.0));
+        assert!(p.quality.is_complete());
+        assert!(!p.quality.is_estimated());
+    }
+
+    #[test]
+    fn cost_basis_without_day_quotes_is_estimated_from_current_quotes() {
+        let conn = setup();
+        seed_stock(
+            &conn,
+            "s1",
+            "AAPL",
+            "USD",
+            &[("buy", 10.0, 100.0, 19_000 * DAY)],
+            110.0,
+        );
+        set_current_czk(&[("USD", 25.0), ("EUR", 20.0)]);
+        let p = value_positions(&conn, AssetKind::Stock, "EUR", 20_000 * DAY).expect("positions");
+        assert_close(p.items[0].cost_basis.expect("cost"), 1250.0);
+        assert_close(p.items[0].value.expect("value"), 1375.0);
+        assert!(p.quality.is_estimated());
+        assert!(p.quality.is_complete());
+    }
+
+    #[test]
+    fn unpriced_position_is_listed_without_value() {
+        let conn = setup();
+        seed_stock(
+            &conn,
+            "s1",
+            "XYZ",
+            "EUR",
+            &[("buy", 2.0, 100.0, 19_000 * DAY)],
+            1.0,
+        );
+        conn.execute("DELETE FROM stock_data", []).expect("delete");
+        set_current_czk(&[]);
+        let p = value_positions(&conn, AssetKind::Stock, "EUR", 20_000 * DAY).expect("positions");
+        let item = &p.items[0];
+        assert_eq!(item.price, None);
+        assert_eq!(item.price_currency, None);
+        assert_eq!(item.value, None);
+        assert_eq!(item.unrealized_gain, None);
+        assert_close(item.cost_basis.expect("cost"), 200.0);
+        // no conversion failed: an unpriced position is not an FX gap
+        assert!(p.quality.is_complete());
+    }
+
+    #[test]
+    fn manual_price_override_wins_until_a_newer_api_price() {
+        let conn = setup();
+        seed_stock(
+            &conn,
+            "s1",
+            "SAP.DE",
+            "EUR",
+            &[("buy", 1.0, 100.0, 19_000 * DAY)],
+            120.0,
+        );
+        conn.execute(
+            "INSERT INTO stock_price_overrides (id, ticker, price, currency, updated_at)
+             VALUES ('o1', 'SAP.DE', '130', 'EUR', 200)",
+            [],
+        )
+        .expect("override");
+        set_current_czk(&[]);
+        let p = value_positions(&conn, AssetKind::Stock, "EUR", 20_000 * DAY).expect("positions");
+        assert_eq!(p.items[0].price, Some(130.0));
+        assert_close(p.items[0].value.expect("value"), 130.0);
+    }
+
+    #[test]
+    fn yearly_dividend_converts_the_per_share_dividend_with_current_quotes() {
+        let conn = setup();
+        let day = 19_000 * DAY;
+        seed_rates(&conn, day, &[("USD", 25.0), ("EUR", 25.0)]);
+        seed_stock(
+            &conn,
+            "s1",
+            "AAPL",
+            "USD",
+            &[("buy", 10.0, 100.0, day)],
+            100.0,
+        );
+        conn.execute(
+            "INSERT INTO dividend_data (id, ticker, yearly_dividend_sum, currency)
+             VALUES ('d1', 'AAPL', '1.0', 'USD')",
+            [],
+        )
+        .expect("dividend");
+        set_current_czk(&[("USD", 25.0), ("EUR", 20.0)]);
+        let p = value_positions(&conn, AssetKind::Stock, "EUR", 20_000 * DAY).expect("positions");
+        let item = &p.items[0];
+        assert_eq!(item.dividend_per_share, Some(1.0));
+        assert_eq!(item.dividend_currency.as_deref(), Some("USD"));
+        assert_close(item.yearly_dividend.expect("dividend"), 12.5);
+
+        // the user's override wins over the fetched dividend
+        conn.execute(
+            "INSERT INTO dividend_overrides (id, ticker, yearly_dividend_sum, currency)
+             VALUES ('o1', 'AAPL', '50', 'CZK')",
+            [],
+        )
+        .expect("override");
+        let p = value_positions(&conn, AssetKind::Stock, "EUR", 20_000 * DAY).expect("positions");
+        assert_eq!(p.items[0].dividend_per_share, Some(50.0));
+        assert_close(p.items[0].yearly_dividend.expect("dividend"), 25.0);
+    }
+
+    #[test]
+    fn missing_dividend_is_zero_and_unconvertible_dividend_is_reported() {
+        let conn = setup();
+        seed_stock(
+            &conn,
+            "s1",
+            "SAP.DE",
+            "EUR",
+            &[("buy", 1.0, 100.0, 19_000 * DAY)],
+            120.0,
+        );
+        set_current_czk(&[("EUR", 25.0)]);
+        let p = value_positions(&conn, AssetKind::Stock, "EUR", 20_000 * DAY).expect("positions");
+        assert_eq!(p.items[0].dividend_per_share, None);
+        assert_eq!(p.items[0].yearly_dividend, Some(0.0));
+
+        conn.execute(
+            "INSERT INTO dividend_data (id, ticker, yearly_dividend_sum, currency)
+             VALUES ('d1', 'SAP.DE', '2', 'KWD')",
+            [],
+        )
+        .expect("dividend");
+        let p = value_positions(&conn, AssetKind::Stock, "EUR", 20_000 * DAY).expect("positions");
+        assert_eq!(p.items[0].dividend_per_share, Some(2.0));
+        assert_eq!(p.items[0].yearly_dividend, None);
+        assert_eq!(p.quality.missing_currencies(), vec!["KWD".to_string()]);
+        // the dividend gap does not hide the value
+        assert_close(p.items[0].value.expect("value"), 120.0);
+    }
+
+    #[test]
+    fn crypto_with_mixed_transaction_currencies_converts_each_buy_directly() {
+        let conn = setup();
+        let (d1, d2) = (19_000 * DAY, 19_050 * DAY);
+        seed_rates(&conn, d1, &[("USD", 20.0), ("EUR", 25.0)]);
+        seed_rates(&conn, d2, &[("USD", 25.0), ("EUR", 25.0)]);
+        conn.execute_batch(&format!(
+            r#"
+            INSERT INTO crypto_investments (id, ticker, coingecko_id, name, quantity, currency)
+                VALUES ('c1', 'BTC', 'bitcoin', 'Bitcoin', '2', 'CZK');
+            INSERT INTO crypto_transactions (id, investment_id, type, ticker, name, quantity,
+                price_per_unit, currency, transaction_date, created_at) VALUES
+                ('t1', 'c1', 'buy', 'BTC', 'Bitcoin', '1', '500000', 'CZK', {d1}, 1),
+                ('t2', 'c1', 'buy', 'BTC', 'Bitcoin', '1', '30000', 'USD', {d2}, 2);
+            INSERT INTO crypto_prices (id, symbol, price, currency, fetched_at)
+                VALUES ('p1', 'BTC', '40000', 'USD', 100);
+            "#
+        ))
+        .expect("seed");
+        set_current_czk(&[("USD", 25.0), ("EUR", 25.0)]);
+        let p = value_positions(&conn, AssetKind::Crypto, "EUR", 20_000 * DAY).expect("positions");
+        let item = &p.items[0];
+        assert_eq!(item.ticker, "BTC");
+        // 500 000 CZK / 25 + 30 000 USD * 25 / 25
+        assert_close(item.cost_basis.expect("cost"), 50_000.0);
+        assert_close(item.value.expect("value"), 80_000.0);
+        assert_close(item.unrealized_gain.expect("gain"), 30_000.0);
+        // CZK primary: 500 000 + 30 000 * 25 = 1 250 000 for 2 coins
+        assert_eq!(item.average_price_currency, "CZK");
+        assert_close(item.average_price, 625_000.0);
+        assert_eq!(item.dividend_per_share, None);
+        assert!(p.quality.is_complete());
+    }
+
+    #[test]
+    fn invalid_report_currency_is_rejected() {
+        let conn = setup();
+        assert!(value_positions(&conn, AssetKind::Stock, "euro", 20_000 * DAY).is_err());
+    }
+}

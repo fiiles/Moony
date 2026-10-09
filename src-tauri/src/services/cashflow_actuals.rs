@@ -557,7 +557,6 @@ mod tests {
     }
     #[test]
     fn target_actuals_comparison_is_historical_and_conserves_cross_rows() {
-        let _fx = crate::services::fx::test_lock();
         let conn = setup_test_db();
         for (id, day) in [("current", ts(2026, 9, 1)), ("previous", ts(2026, 3, 1))] {
             insert_tx(

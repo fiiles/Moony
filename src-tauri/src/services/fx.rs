@@ -266,57 +266,98 @@ fn floor_day(ts: i64) -> i64 {
     ts.div_euclid(DAY) * DAY
 }
 
-/// The in-memory snapshot of the latest quotes, plus the currencies that failed a current
-/// conversion since it was last replaced.
+/// The in-memory snapshot of the latest quotes, when it was fetched, and the currencies that
+/// failed a current conversion since it was last replaced.
 struct CurrentStore {
     quotes: Quotes,
+    /// Unix seconds the quotes were fetched/saved; doubles as the snapshot revision.
+    fetched_at: Option<i64>,
     missing: BTreeSet<String>,
 }
 
-fn store() -> &'static RwLock<CurrentStore> {
-    static STORE: OnceLock<RwLock<CurrentStore>> = OnceLock::new();
-    STORE.get_or_init(|| {
-        RwLock::new(CurrentStore {
+impl CurrentStore {
+    fn empty() -> Self {
+        Self {
             quotes: Quotes::new("CZK"),
+            fetched_at: None,
             missing: BTreeSet::new(),
-        })
-    })
+        }
+    }
+}
+
+/// Production: one process-wide store.
+#[cfg(not(test))]
+fn with_store<R>(f: impl FnOnce(&RwLock<CurrentStore>) -> R) -> R {
+    static STORE: OnceLock<RwLock<CurrentStore>> = OnceLock::new();
+    f(STORE.get_or_init(|| RwLock::new(CurrentStore::empty())))
+}
+
+/// Tests: cargo runs every test on its own thread, so a thread-local store isolates tests
+/// from each other without any locking.
+#[cfg(test)]
+fn with_store<R>(f: impl FnOnce(&RwLock<CurrentStore>) -> R) -> R {
+    thread_local! {
+        static STORE: RwLock<CurrentStore> = RwLock::new(CurrentStore::empty());
+    }
+    STORE.with(f)
 }
 
 /// Clone of the current quote snapshot. Empty (reference only) until rates are loaded.
 pub fn current() -> Quotes {
-    store()
-        .read()
-        .unwrap_or_else(|e| e.into_inner())
-        .quotes
-        .clone()
+    with_store(|s| s.read().unwrap_or_else(|e| e.into_inner()).quotes.clone())
 }
 
-/// Replaces the current snapshot and forgets previously recorded missing currencies.
+/// Unix seconds the current snapshot was fetched; `0` while no rates have been loaded.
+pub fn current_revision() -> i64 {
+    current_fetched_at().unwrap_or(0)
+}
+
+/// Unix seconds the current snapshot was fetched, if known.
+pub fn current_fetched_at() -> Option<i64> {
+    with_store(|s| s.read().unwrap_or_else(|e| e.into_inner()).fetched_at)
+}
+
+/// Replaces the current snapshot (keeping its revision) and forgets previously recorded
+/// missing currencies.
 pub fn set_current(quotes: Quotes) {
-    let mut guard = store().write().unwrap_or_else(|e| e.into_inner());
-    guard.quotes = quotes;
-    guard.missing.clear();
+    with_store(|s| {
+        let mut guard = s.write().unwrap_or_else(|e| e.into_inner());
+        guard.quotes = quotes;
+        guard.missing.clear();
+    });
+}
+
+/// Replaces the snapshot and its fetched-at revision together.
+pub fn set_current_with_revision(quotes: Quotes, fetched_at: i64) {
+    with_store(|s| {
+        let mut guard = s.write().unwrap_or_else(|e| e.into_inner());
+        guard.quotes = quotes;
+        guard.fetched_at = Some(fetched_at);
+        guard.missing.clear();
+    });
 }
 
 /// Codes that failed a current conversion since the last `set_current`, sorted.
 pub fn missing_now() -> Vec<String> {
-    store()
-        .read()
-        .unwrap_or_else(|e| e.into_inner())
-        .missing
-        .iter()
-        .cloned()
-        .collect()
+    with_store(|s| {
+        s.read()
+            .unwrap_or_else(|e| e.into_inner())
+            .missing
+            .iter()
+            .cloned()
+            .collect()
+    })
 }
 
 /// Records a currency that could not be converted with the current snapshot (warns once).
 pub fn record_missing(code: &str) {
     let code = normalize(code).unwrap_or_else(|| code.trim().to_uppercase());
-    let mut guard = store().write().unwrap_or_else(|e| e.into_inner());
-    if guard.missing.insert(code.clone()) {
-        log::warn!("[FX] no current exchange rate for {code}; amounts in {code} are excluded");
-    }
+    with_store(|s| {
+        let mut guard = s.write().unwrap_or_else(|e| e.into_inner());
+        if guard.missing.insert(code.clone()) {
+            log::warn!("[FX] no current exchange rate for {code}; amounts in {code} are excluded");
+        }
+    });
 }
 
 /// Records every currency of `quality` as missing in the current snapshot (for conversions
@@ -327,26 +368,14 @@ pub fn record_missing_all(quality: &Quality) {
     }
 }
 
-/// Test helper: takes the lock, then replaces the snapshot with these CZK-per-unit rates.
-/// Hold the returned guard for the whole test.
+/// Test helper: replaces the (thread-local) snapshot with these CZK-per-unit rates.
 #[cfg(test)]
-pub(crate) fn set_current_for_test(
-    czk_per_unit: &[(&str, f64)],
-) -> std::sync::MutexGuard<'static, ()> {
-    let guard = test_lock();
+pub(crate) fn set_current_for_test(czk_per_unit: &[(&str, f64)]) {
     let rates: HashMap<String, f64> = czk_per_unit
         .iter()
         .map(|(code, rate)| (code.to_string(), *rate))
         .collect();
     set_current(Quotes::from_czk_per_unit(&rates));
-    guard
-}
-
-/// Serialises tests that touch the global snapshot.
-#[cfg(test)]
-pub(crate) fn test_lock() -> std::sync::MutexGuard<'static, ()> {
-    static LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
-    LOCK.lock().unwrap_or_else(|e| e.into_inner())
 }
 
 /// Collects conversions that could not be made, so reports can declare what they excluded.
@@ -365,6 +394,33 @@ impl Quality {
             self.missing_count += 1;
         }
         converted
+    }
+
+    /// Passes the `result` of converting `from` into `to` through; on `None` records every
+    /// currency the quotes cannot resolve (both, or just the unquoted side), counting one
+    /// missing conversion. When both quotes exist (e.g. a non-finite amount) `from` is blamed.
+    pub fn track_conversion(
+        &mut self,
+        quotes: &Quotes,
+        from: &str,
+        to: &str,
+        result: Option<f64>,
+    ) -> Option<f64> {
+        if result.is_none() {
+            let mut unresolved: Vec<&str> = [from, to]
+                .into_iter()
+                .filter(|code| quotes.units(code).is_none())
+                .collect();
+            if unresolved.is_empty() {
+                unresolved.push(from);
+            }
+            for code in unresolved {
+                self.missing
+                    .insert(normalize(code).unwrap_or_else(|| code.trim().to_uppercase()));
+            }
+            self.missing_count += 1;
+        }
+        result
     }
 
     pub fn merge(&mut self, other: &Quality) {
@@ -460,6 +516,48 @@ mod tests {
         assert_eq!(quality.missing_currencies(), vec!["KWD".to_string()]);
         assert_eq!(quality.missing_count(), 2);
         assert!(!quality.is_complete());
+    }
+
+    #[test]
+    fn track_conversion_blames_the_unquoted_sides() {
+        let q = eur_quotes();
+        let mut quality = Quality::default();
+        // only the target is unquoted
+        assert_eq!(
+            quality.track_conversion(&q, "USD", "KWD", q.convert(1.0, "USD", "KWD")),
+            None
+        );
+        assert_eq!(quality.missing_currencies(), vec!["KWD".to_string()]);
+        // only the source is unquoted
+        quality.track_conversion(&q, "ZZA", "EUR", q.convert(1.0, "ZZA", "EUR"));
+        // both unquoted: one conversion, two currencies
+        quality.track_conversion(&q, "ZZB", "KWD", q.convert(1.0, "ZZB", "KWD"));
+        assert_eq!(
+            quality.missing_currencies(),
+            vec!["KWD".to_string(), "ZZA".to_string(), "ZZB".to_string()]
+        );
+        assert_eq!(quality.missing_count(), 3);
+        // success passes through untouched; both quoted but not finite blames the source
+        assert!(quality
+            .track_conversion(&q, "USD", "EUR", q.convert(1.1, "USD", "EUR"))
+            .is_some());
+        assert_eq!(quality.missing_count(), 3);
+        quality.track_conversion(&q, "JPY", "EUR", q.convert(f64::NAN, "JPY", "EUR"));
+        assert!(quality.missing_currencies().contains(&"JPY".to_string()));
+        assert_eq!(quality.missing_count(), 4);
+    }
+
+    #[test]
+    fn current_store_sets_quotes_and_revision_together() {
+        assert_eq!(current_revision(), 0);
+        assert_eq!(current_fetched_at(), None);
+        let mut q = Quotes::new("CZK");
+        q.insert("EUR", 0.04);
+        set_current_with_revision(q, 1_700_000_000);
+        assert_eq!(current_revision(), 1_700_000_000);
+        // plain set_current keeps the revision of the data it replaces
+        set_current(Quotes::new("CZK"));
+        assert_eq!(current_fetched_at(), Some(1_700_000_000));
     }
 
     #[test]

@@ -2686,7 +2686,6 @@ mod tests {
         )
         .expect("schema");
 
-        let _fx = crate::services::fx::test_lock();
         crate::services::fx::set_current(crate::services::fx::Quotes::from_czk_per_unit(
             &[("USD".to_string(), 23.0), ("JPY".to_string(), 0.15)]
                 .into_iter()

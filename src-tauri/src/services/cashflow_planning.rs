@@ -1408,7 +1408,6 @@ mod tests {
     }
     #[test]
     fn target_replaced_missing_source_does_not_make_active_plan_incomplete() {
-        let _fx = crate::services::fx::test_lock();
         let conn = planning_db();
         conn.execute("UPDATE loans SET currency='XRS'", []).unwrap();
         create_cashflow_item(
@@ -1434,7 +1433,7 @@ mod tests {
     }
     #[test]
     fn target_planning_mixed_property_components_and_replacement_conserve() {
-        let _fx = crate::services::fx::set_current_for_test(&[("XTP", 27.5), ("XSP", 25.0)]);
+        crate::services::fx::set_current_for_test(&[("XTP", 27.5), ("XSP", 25.0)]);
         let conn = planning_db();
         conn.execute("DELETE FROM loans", []).unwrap();
         insert_property(
@@ -1501,7 +1500,6 @@ mod tests {
     }
     #[test]
     fn target_planning_minor_units_and_missing_target_are_explicit() {
-        let _fx = crate::services::fx::test_lock();
         for (currency, amount, expected) in [
             ("KWD", "0.123", "0.123"),
             ("JPY", "1.6", "2"),
@@ -1543,7 +1541,6 @@ mod tests {
     }
     #[test]
     fn target_planning_native_annual_item_normalizes_without_fx() {
-        let _fx = crate::services::fx::test_lock();
         let conn = planning_db();
         conn.execute("DELETE FROM loans", []).unwrap();
         create_cashflow_item(
@@ -1565,7 +1562,6 @@ mod tests {
     }
     #[test]
     fn replacement_avoids_double_count_retains_inventory_and_restores_on_delete() {
-        let _fx = crate::services::fx::test_lock();
         let conn = planning_db();
         let before = get_report(&conn, "monthly").unwrap();
         assert_eq!(before.total_expenses, "100.00");
@@ -1600,7 +1596,6 @@ mod tests {
     }
     #[test]
     fn planned_unknown_fx_is_excluded_and_marked_without_one_to_one_fallback() {
-        let _fx = crate::services::fx::test_lock();
         let conn = planning_db();
         conn.execute("UPDATE loans SET currency='XPM'", []).unwrap();
         let report = get_report(&conn, "monthly").unwrap();
@@ -1614,7 +1609,6 @@ mod tests {
     }
     #[test]
     fn rent_and_costs_without_a_currency_are_missing_not_valued_as_czk() {
-        let _fx = crate::services::fx::test_lock();
         crate::services::fx::set_current(crate::services::fx::Quotes::new("CZK"));
         let conn = planning_db();
         conn.execute("DELETE FROM loans", []).unwrap();
@@ -1641,7 +1635,7 @@ mod tests {
     }
     #[test]
     fn personal_and_investment_property_foreign_costs_are_estimated() {
-        let _fx = crate::services::fx::set_current_for_test(&[("XPK", 10.0)]);
+        crate::services::fx::set_current_for_test(&[("XPK", 10.0)]);
         for kind in ["personal", "investment"] {
             let conn = planning_db();
             insert_property(
@@ -1666,7 +1660,6 @@ mod tests {
     }
     #[test]
     fn property_mixed_fx_quality_and_inventory_are_independent_of_component_order() {
-        let _fx = crate::services::fx::test_lock();
         for kind in ["personal", "investment"] {
             for czk_amount in [0, 5] {
                 for missing_first in [false, true] {
@@ -1696,7 +1689,6 @@ mod tests {
     }
     #[test]
     fn target_composite_count_distinguishes_known_zero_from_all_missing() {
-        let _fx = crate::services::fx::test_lock();
         for (costs, expected_amount, expected_count) in [
             (
                 serde_json::json!([
@@ -1750,7 +1742,6 @@ mod tests {
     }
     #[test]
     fn absent_dividend_values_are_optional_but_query_and_type_failures_propagate() {
-        let _fx = crate::services::fx::test_lock();
         let conn = planning_db();
         conn.execute_batch("CREATE TABLE dividend_overrides(ticker TEXT,yearly_dividend_sum TEXT,currency TEXT); CREATE TABLE dividend_data(ticker TEXT,yearly_dividend_sum TEXT,currency TEXT); INSERT INTO stock_investments VALUES ('TEST','Test stock','2');").unwrap();
         let report = get_report(&conn, "monthly").unwrap();

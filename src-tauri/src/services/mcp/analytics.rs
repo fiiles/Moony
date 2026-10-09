@@ -929,7 +929,7 @@ CREATE TABLE bonds(id TEXT,name TEXT,coupon_value TEXT,quantity TEXT,interest_ra
     #[test]
     fn cashflow_report_reports_amounts_in_the_main_currency() {
         // A private code isolates this current-rate fixture from other tests.
-        let _fx = crate::services::fx::set_current_for_test(&[("XMC", 25.0)]);
+        crate::services::fx::set_current_for_test(&[("XMC", 25.0)]);
         let conn = app_db("XMC");
         seed_cashflow(&conn);
 

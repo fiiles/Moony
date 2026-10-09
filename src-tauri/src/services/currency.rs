@@ -4,14 +4,7 @@
 //! Base currency is CZK
 
 use crate::services::fx::{self, Quotes};
-use lazy_static::lazy_static;
 use std::collections::HashMap;
-use std::sync::RwLock;
-
-lazy_static! {
-    /// Timestamp when exchange rates were last fetched (Unix timestamp in seconds)
-    static ref EXCHANGE_RATES_FETCHED_AT: RwLock<Option<i64>> = RwLock::new(None);
-}
 
 /// Phase-1 shim: converts to CZK with the current snapshot. A currency without a quote is
 /// excluded (0.0) and recorded as missing; it is never valued 1:1.
@@ -25,20 +18,9 @@ pub fn convert_to_czk(amount: f64, currency: &str) -> f64 {
     }
 }
 
-/// Update the fetched_at timestamp
-pub fn set_exchange_rates_fetched_at(timestamp: i64) {
-    let mut fetched_at = EXCHANGE_RATES_FETCHED_AT
-        .write()
-        .expect("Exchange rates fetched_at lock poisoned");
-    *fetched_at = Some(timestamp);
-}
-
-/// Get the timestamp when exchange rates were last fetched
+/// Get the timestamp when exchange rates were last fetched (kept in the FX current store).
 pub fn get_exchange_rates_fetched_at() -> Option<i64> {
-    let fetched_at = EXCHANGE_RATES_FETCHED_AT
-        .read()
-        .expect("Exchange rates fetched_at lock poisoned");
-    *fetched_at
+    fx::current_fetched_at()
 }
 
 /// Phase-1 shim: CZK per 1 unit of every currency the current snapshot resolves
@@ -92,10 +74,10 @@ pub fn load_rates_from_db(conn: &rusqlite::Connection) -> crate::error::Result<(
             "[CURRENCY] Loaded {} exchange rates from database",
             rates.len()
         );
-        fx::set_current(Quotes::from_czk_per_unit(&rates));
-
-        if let Some(ts) = latest_fetched_at {
-            set_exchange_rates_fetched_at(ts);
+        let quotes = Quotes::from_czk_per_unit(&rates);
+        match latest_fetched_at {
+            Some(ts) => fx::set_current_with_revision(quotes, ts),
+            None => fx::set_current(quotes),
         }
     } else {
         log::info!("[CURRENCY] No exchange rates in database, will fetch from ECB");
@@ -127,7 +109,6 @@ pub fn save_rates_to_db(
         "[CURRENCY] Saved {} exchange rates to database",
         rates.len()
     );
-    set_exchange_rates_fetched_at(now);
 
     Ok(())
 }
@@ -152,15 +133,12 @@ pub async fn fetch_ecb_rates() -> crate::error::Result<EcbRates> {
     let body = response.text().await?;
     let ecb = parse_ecb_xml(&body)?;
 
-    // Update global rates
-    fx::set_current(Quotes::from_czk_per_unit(&ecb.rates));
-
-    // Update fetched_at timestamp
+    // Update global rates together with their fetched-at revision
     let now = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .expect("Time went backwards")
         .as_secs() as i64;
-    set_exchange_rates_fetched_at(now);
+    fx::set_current_with_revision(Quotes::from_czk_per_unit(&ecb.rates), now);
 
     Ok(ecb)
 }
@@ -518,7 +496,6 @@ mod tests {
 
     #[test]
     fn unknown_currency_is_excluded_and_reported_not_one_to_one() {
-        let _fx = fx::test_lock();
         fx::set_current(Quotes::from_czk_per_unit(&HashMap::from([(
             "EUR".to_string(),
             25.0,
@@ -530,7 +507,6 @@ mod tests {
 
     #[test]
     fn store_starts_without_invented_rates() {
-        let _fx = fx::test_lock();
         fx::set_current(Quotes::new("CZK"));
         assert_eq!(convert_to_czk(1.0, "EUR"), 0.0);
         assert!(!get_all_rates().contains_key("EUR"));
@@ -538,7 +514,6 @@ mod tests {
 
     #[test]
     fn rates_loaded_from_db_are_validated() {
-        let _fx = fx::test_lock();
         let conn = Connection::open_in_memory().expect("db");
         conn.execute_batch("CREATE TABLE exchange_rates (currency TEXT PRIMARY KEY, rate REAL NOT NULL, fetched_at INTEGER NOT NULL);
             INSERT INTO exchange_rates VALUES ('EUR', 25.0, 1), ('USD', 0.0, 1), ('GBP', -3.0, 1);").expect("schema");
@@ -550,7 +525,6 @@ mod tests {
 
     #[test]
     fn set_current_resets_the_missing_set() {
-        let _fx = fx::test_lock();
         set_store(&[("EUR", 25.0)]);
         assert_eq!(convert_to_czk(1.0, "ZZA"), 0.0);
         assert!(fx::missing_now().contains(&"ZZA".to_string()));
@@ -560,7 +534,6 @@ mod tests {
 
     #[test]
     fn missing_currency_is_recorded_uppercase_and_sorted_without_duplicates() {
-        let _fx = fx::test_lock();
         set_store(&[("EUR", 25.0)]);
         let _ = convert_to_czk(1.0, "zzb");
         let _ = convert_to_czk(1.0, "ZZB");
@@ -573,7 +546,6 @@ mod tests {
 
     #[test]
     fn czk_is_never_recorded_as_missing_and_known_currencies_convert() {
-        let _fx = fx::test_lock();
         set_store(&[("EUR", 25.0)]);
         assert_eq!(convert_to_czk(10.0, "czk"), 10.0);
         assert!((convert_to_czk(10.0, "eur") - 250.0).abs() < 1e-9);
@@ -582,7 +554,6 @@ mod tests {
 
     #[test]
     fn derived_currencies_resolve_through_their_anchor() {
-        let _fx = fx::test_lock();
         set_store(&[("USD", 20.0)]);
         assert!((convert_to_czk(3.6725, "AED") - 20.0).abs() < 1e-9);
         assert!(get_all_rates().contains_key("AED"));
@@ -648,7 +619,6 @@ mod tests {
 
     #[test]
     fn get_rates_for_date_is_empty_without_history_never_current_rates() {
-        let _fx = fx::test_lock();
         let conn = setup_history_db(); // empty table
         set_store(&[("EUR", 27.0)]);
         assert!(get_rates_for_date(&conn, 1_700_000_000).is_empty());
@@ -732,7 +702,6 @@ mod tests {
 
     #[test]
     fn convert_to_czk_at_without_history_is_excluded_and_reported_not_current() {
-        let _fx = fx::test_lock();
         let conn = setup_history_db(); // empty table, no history at all
         set_store(&[("NOK", 21.0)]);
 
@@ -750,7 +719,6 @@ mod tests {
 
     #[test]
     fn convert_to_czk_at_currency_missing_from_the_days_map_is_excluded_not_current() {
-        let _fx = fx::test_lock();
         let conn = setup_history_db();
         let day: i64 = 1_700_000_000 / 86400 * 86400;
         // The day has history, but only for EUR — NOK is absent from that day's map.
@@ -788,7 +756,6 @@ mod tests {
 
     #[test]
     fn convert_to_czk_with_rates_missing_currency_is_excluded_and_reported() {
-        let _fx = fx::test_lock();
         set_store(&[("NOK", 21.0)]);
         let rates: HashMap<String, f64> = [("EUR".to_string(), 24.0)].into_iter().collect();
 

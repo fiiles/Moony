@@ -395,7 +395,6 @@ mod tests {
     }
     #[test]
     fn target_historical_cross_rates_ignore_live_changes_and_old_quotes() {
-        let _fx = crate::services::fx::test_lock();
         let conn = db();
         conn.execute_batch("INSERT INTO exchange_rate_history VALUES (1704067200,'XHU',25),(1704067200,'XHE',27.5);").unwrap();
         let before = historical_amount(&conn, 110.0, "XHU", "XHE", 1704067200).unwrap();

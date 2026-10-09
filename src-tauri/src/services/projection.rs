@@ -1443,10 +1443,14 @@ mod tests {
                                  balance_anchor_amount TEXT, balance_anchor_date INTEGER);
              CREATE TABLE real_estate (type TEXT, market_price TEXT, market_price_currency TEXT);
              CREATE TABLE other_assets (quantity TEXT, market_price TEXT, currency TEXT);
-             CREATE TABLE stock_investments (ticker TEXT, quantity TEXT);
+             CREATE TABLE stock_investments (id TEXT, ticker TEXT, quantity TEXT, currency TEXT);
+             CREATE TABLE investment_transactions (investment_id TEXT, type TEXT, quantity TEXT, price_per_unit TEXT,
+                                                   currency TEXT, transaction_date INTEGER, created_at INTEGER);
              CREATE TABLE stock_data (ticker TEXT PRIMARY KEY, original_price TEXT, currency TEXT, fetched_at INTEGER);
              CREATE TABLE stock_price_overrides (ticker TEXT PRIMARY KEY, price TEXT, currency TEXT, updated_at INTEGER);
-             CREATE TABLE crypto_investments (ticker TEXT, quantity TEXT);
+             CREATE TABLE crypto_investments (id TEXT, ticker TEXT, quantity TEXT, currency TEXT);
+             CREATE TABLE crypto_transactions (investment_id TEXT, type TEXT, quantity TEXT, price_per_unit TEXT,
+                                               currency TEXT, transaction_date INTEGER, created_at INTEGER);
              CREATE TABLE crypto_prices (symbol TEXT PRIMARY KEY, price TEXT, currency TEXT, fetched_at INTEGER);
              CREATE TABLE crypto_price_overrides (symbol TEXT PRIMARY KEY, price TEXT, currency TEXT, updated_at INTEGER);
              CREATE TABLE projection_settings (
@@ -1475,7 +1479,7 @@ mod tests {
         // says 180, the projection used to start from 150.
         let conn = portfolio_db();
         conn.execute_batch(
-            "INSERT INTO stock_investments VALUES ('AAPL', '10');
+            "INSERT INTO stock_investments VALUES ('AAPL', 'AAPL', '10', 'USD');
              INSERT INTO stock_data VALUES ('AAPL', '180', 'EUR', 2000);
              INSERT INTO stock_price_overrides VALUES ('AAPL', '150', 'EUR', 1000);",
         )
@@ -1493,7 +1497,7 @@ mod tests {
     fn test_investments_use_the_override_when_it_is_newer_than_the_api() {
         let conn = portfolio_db();
         conn.execute_batch(
-            "INSERT INTO stock_investments VALUES ('AAPL', '10');
+            "INSERT INTO stock_investments VALUES ('AAPL', 'AAPL', '10', 'USD');
              INSERT INTO stock_data VALUES ('AAPL', '180', 'EUR', 1000);
              INSERT INTO stock_price_overrides VALUES ('AAPL', '150', 'EUR', 2000);",
         )
@@ -1510,7 +1514,7 @@ mod tests {
     fn test_crypto_honours_a_newer_override() {
         let conn = portfolio_db();
         conn.execute_batch(
-            "INSERT INTO crypto_investments VALUES ('BTC', '2');
+            "INSERT INTO crypto_investments VALUES ('BTC', 'BTC', '2', 'USD');
              INSERT INTO crypto_prices VALUES ('BTC', '60000', 'EUR', 1000);
              INSERT INTO crypto_price_overrides VALUES ('BTC', '50000', 'EUR', 2000);",
         )
@@ -1527,7 +1531,7 @@ mod tests {
     fn test_crypto_uses_the_api_price_when_it_is_newer_than_the_override() {
         let conn = portfolio_db();
         conn.execute_batch(
-            "INSERT INTO crypto_investments VALUES ('BTC', '2');
+            "INSERT INTO crypto_investments VALUES ('BTC', 'BTC', '2', 'USD');
              INSERT INTO crypto_prices VALUES ('BTC', '60000', 'EUR', 2000);
              INSERT INTO crypto_price_overrides VALUES ('BTC', '50000', 'EUR', 1000);",
         )
@@ -1544,8 +1548,8 @@ mod tests {
     fn test_positions_without_any_price_are_not_valued() {
         let conn = portfolio_db();
         conn.execute_batch(
-            "INSERT INTO stock_investments VALUES ('XYZ', '10');
-             INSERT INTO crypto_investments VALUES ('ETH', '1');",
+            "INSERT INTO stock_investments VALUES ('XYZ', 'XYZ', '10', 'USD');
+             INSERT INTO crypto_investments VALUES ('ETH', 'ETH', '1', 'USD');",
         )
         .unwrap();
         let (values, _) = values_in(&conn, "EUR");

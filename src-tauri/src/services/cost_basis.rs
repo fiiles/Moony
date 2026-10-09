@@ -131,6 +131,48 @@ impl DayConverter<'_> {
     }
 }
 
+/// Chronological replay order. Dates are day-granular, so same-day transactions share a
+/// timestamp; within a day buys are processed before sells so a sell can never precede the
+/// buy it depends on. The stable sort keeps the caller's created_at/rowid order for the rest.
+fn chronological(txs: &[TxRow]) -> Vec<&TxRow> {
+    let mut order: Vec<&TxRow> = txs.iter().collect();
+    order.sort_by_key(|tx| (tx.transaction_date, tx.tx_type == "sell"));
+    order
+}
+
+/// Units a sell of `requested` closes out of `open`: a sell larger than the open quantity
+/// only closes what is held (the excess has no cost to release and must not drive the
+/// quantity negative ahead of a later buy).
+fn units_sold(open: f64, requested: f64) -> f64 {
+    requested.min(open.max(0.0))
+}
+
+/// The quantity a position's transactions replay to — the same rule as
+/// `PositionCostBasis::quantity`, without converting anything.
+pub fn replayed_quantity(txs: &[TxRow]) -> f64 {
+    let mut quantity = 0.0_f64;
+    for tx in chronological(txs) {
+        if tx.tx_type == "buy" {
+            quantity += tx.quantity;
+        } else if tx.tx_type == "sell" {
+            quantity -= units_sold(quantity, tx.quantity);
+        }
+    }
+    quantity.max(0.0)
+}
+
+/// The replayed quantity of every position in `table` that has transactions, keyed by
+/// investment id. A position without transactions is absent (its stored quantity holds).
+pub fn replayed_quantities(conn: &Connection, table: TxTable) -> Result<HashMap<String, f64>> {
+    Ok(load_transactions(conn, table)?
+        .into_iter()
+        .map(|(id, txs)| {
+            let quantity = replayed_quantity(&txs);
+            (id, quantity)
+        })
+        .collect())
+}
+
 /// Accumulate one position's transactions into historical-rate cost basis in `target`.
 /// Returns `None` for an empty transaction list (no position can be derived).
 pub fn position_cost_basis(
@@ -149,13 +191,7 @@ pub fn position_cost_basis(
         quality: Quality::default(),
     };
 
-    // Chronological replay. Dates are day-granular, so same-day transactions
-    // share a timestamp; within a day buys are processed before sells so a
-    // sell can never precede the buy it depends on. The stable
-    // sort keeps the caller's created_at/rowid order for the rest.
-    let mut order: Vec<&TxRow> = txs.iter().collect();
-    order.sort_by_key(|tx| (tx.transaction_date, tx.tx_type == "sell"));
-
+    let order = chronological(txs);
     let primary_currency = order[0].currency.to_uppercase();
 
     let mut quantity = 0.0_f64;
@@ -191,10 +227,7 @@ pub fn position_cost_basis(
         } else if tx.tx_type == "sell" {
             // Release cost proportionally at the running average, matching
             // recalculate_investment_metrics.
-            // A sell larger than the open quantity only closes what is held
-            //: the excess has no cost to release and must not drive
-            // the quantity negative ahead of a later buy.
-            let sold = tx.quantity.min(quantity.max(0.0));
+            let sold = units_sold(quantity, tx.quantity);
             if quantity > 0.0 && sold > 0.0 {
                 let fraction = sold / quantity;
                 let released_target = cost_target * fraction;
@@ -442,6 +475,22 @@ mod tests {
             currency: ccy.into(),
             transaction_date: date,
         }
+    }
+
+    #[test]
+    fn replayed_quantity_follows_the_cost_basis_replay() {
+        // A sell listed before a same-day buy, an oversell, then a later buy.
+        let txs = vec![
+            sell(3.0, 100.0, "USD", D1),
+            buy(5.0, 100.0, "USD", D1),
+            sell(9.0, 100.0, "USD", D2),
+            buy(2.0, 100.0, "USD", D2 + DAY),
+        ];
+        let quantity = replayed_quantity(&txs);
+        assert!((quantity - 2.0).abs() < 1e-9, "{quantity}");
+        let derived = derive(&txs, &rates(&[]), &current());
+        assert!((derived.quantity - quantity).abs() < 1e-12);
+        assert_eq!(replayed_quantity(&[]), 0.0);
     }
 
     #[test]

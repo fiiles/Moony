@@ -41,6 +41,21 @@ fn wire_totals(totals: &PositionTotals, currency: &str) -> WirePositionTotals {
     }
 }
 
+/// The wire quantity of a position: the quantity its value describes (`PositionValue.quantity`,
+/// replayed from the transactions). The stored text is kept when it holds that same quantity,
+/// so its precision survives (no float noise from the replay).
+fn wire_quantity(stored: &str, valued: f64) -> String {
+    let same = stored
+        .trim()
+        .parse::<f64>()
+        .is_ok_and(|q| (q - valued).abs() <= 1e-9 * valued.abs().max(1.0));
+    if same {
+        stored.to_string()
+    } else {
+        valued.to_string()
+    }
+}
+
 /// `(company_name, stored quantity)` of every stock holding, keyed by id.
 fn stock_names(conn: &Connection) -> Result<HashMap<String, (String, String)>> {
     let mut stmt = conn.prepare("SELECT id, company_name, quantity FROM stock_investments")?;
@@ -97,7 +112,8 @@ pub fn stock_positions(conn: &Connection, report_currency: &str) -> Result<Stock
     let currency = positions.currency.clone();
     let mut items = Vec::with_capacity(positions.items.len());
     for item in &positions.items {
-        let (name, quantity) = names.remove(&item.investment_id).unwrap_or_default();
+        let (name, stored) = names.remove(&item.investment_id).unwrap_or_default();
+        let quantity = wire_quantity(&stored, item.quantity);
         items.push(enrich_stock(conn, item, name, quantity, &currency)?);
     }
     Ok(StockPositions {
@@ -116,7 +132,8 @@ pub fn stock_position(conn: &Connection, id: &str, report_currency: &str) -> Res
         .iter()
         .find(|item| item.investment_id == id)
         .ok_or_else(|| AppError::NotFound("Investment not found".into()))?;
-    let (name, quantity) = stock_names(conn)?.remove(id).unwrap_or_default();
+    let (name, stored) = stock_names(conn)?.remove(id).unwrap_or_default();
+    let quantity = wire_quantity(&stored, item.quantity);
     Ok(StockPosition {
         currency: positions.currency.clone(),
         fx_quality: ConversionQuality::from(&item.quality),
@@ -149,8 +166,8 @@ pub fn crypto_positions(conn: &Connection, report_currency: &str) -> Result<Cryp
         .items
         .iter()
         .map(|item| {
-            let (coingecko_id, name, quantity) =
-                meta.remove(&item.investment_id).unwrap_or_default();
+            let (coingecko_id, name, stored) = meta.remove(&item.investment_id).unwrap_or_default();
+            let quantity = wire_quantity(&stored, item.quantity);
             let price = pricing::resolve_crypto_price(conn, &item.ticker);
             EnrichedCryptoInvestment {
                 id: item.investment_id.clone(),
@@ -224,7 +241,8 @@ pub fn stocks_analysis(conn: &Connection, report_currency: &str) -> Result<Stock
         .items
         .iter()
         .map(|item| {
-            let (company_name, quantity) = names.remove(&item.investment_id).unwrap_or_default();
+            let (company_name, stored) = names.remove(&item.investment_id).unwrap_or_default();
+            let quantity = wire_quantity(&stored, item.quantity);
             StockInvestmentWithTags {
                 id: item.investment_id.clone(),
                 ticker: item.ticker.clone(),
@@ -320,6 +338,16 @@ pub fn tag_metrics(
 mod tests {
     use super::*;
     use crate::services::fx::Quality;
+
+    #[test]
+    fn wire_quantity_is_the_valued_quantity() {
+        // The stored text survives when it holds the valued quantity
+        assert_eq!(wire_quantity("0.30000000", 0.1 + 0.2), "0.30000000");
+        assert_eq!(wire_quantity("2", 2.0), "2");
+        // A stale stored quantity gives way to the replayed one
+        assert_eq!(wire_quantity("5", 2.0), "2");
+        assert_eq!(wire_quantity("", 1.5), "1.5");
+    }
 
     fn item(id: &str, value: Option<f64>, cost: Option<f64>, dividend: f64) -> PositionValue {
         let mut quality = Quality::default();

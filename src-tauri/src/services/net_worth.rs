@@ -20,6 +20,7 @@ use crate::services::fx::{self, History, Quality, Quotes};
 use crate::services::loan_amortization::today_utc_day;
 use crate::services::parsing::parse_money;
 use crate::services::portfolio_history::ClassBreakdowns;
+use crate::services::positions::{native_value_breakdown, AssetKind};
 use crate::services::reporting::{money_in_currency, normalize_currency};
 
 /// Every asset class and the loans in the report currency; `None` when nothing in the class
@@ -123,42 +124,10 @@ pub fn compute_breakdowns(conn: &Connection) -> Result<ClassBreakdowns> {
         *class.entry(currency).or_insert(0.0) += price;
     }
 
-    let mut stmt = conn.prepare("SELECT ticker, quantity FROM stock_investments")?;
-    let stocks: Vec<(String, String)> = stmt
-        .query_map([], |row| Ok((row.get(0)?, row.get(1)?)))?
-        .filter_map(|r| r.ok())
-        .collect();
-    for (ticker, quantity) in stocks {
-        let quantity = parse_money(&quantity, 0.0, "stock_investments.quantity");
-        if let Some(resolved) = crate::services::pricing::resolve_stock_price(conn, &ticker) {
-            let price = parse_money(
-                &resolved.original_price,
-                0.0,
-                "resolved stock price (original_price)",
-            );
-            *breakdowns
-                .investments
-                .entry(resolved.currency)
-                .or_insert(0.0) += price * quantity;
-        }
-    }
-
-    let mut stmt = conn.prepare("SELECT ticker, quantity FROM crypto_investments")?;
-    let coins: Vec<(String, String)> = stmt
-        .query_map([], |row| Ok((row.get(0)?, row.get(1)?)))?
-        .filter_map(|r| r.ok())
-        .collect();
-    for (ticker, quantity) in coins {
-        let quantity = parse_money(&quantity, 0.0, "crypto_investments.quantity");
-        if let Some(resolved) = crate::services::pricing::resolve_crypto_price(conn, &ticker) {
-            let price = parse_money(
-                &resolved.original_price,
-                0.0,
-                "resolved crypto price (original_price)",
-            );
-            *breakdowns.crypto.entry(resolved.currency).or_insert(0.0) += price * quantity;
-        }
-    }
+    // Stocks and crypto at the quantity the positions value (one quantity rule), so the
+    // dashboard's classes equal the Stocks and Crypto totals.
+    breakdowns.investments = native_value_breakdown(conn, AssetKind::Stock)?;
+    breakdowns.crypto = native_value_breakdown(conn, AssetKind::Crypto)?;
 
     let mut stmt = conn.prepare("SELECT quantity, market_price, currency FROM other_assets")?;
     let rows = stmt.query_map([], |row| {

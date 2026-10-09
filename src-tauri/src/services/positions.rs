@@ -211,10 +211,7 @@ pub fn value_positions_with_quotes(
     today: i64,
 ) -> Result<Positions> {
     let currency = normalize_currency(report_currency)?;
-    let table = match kind {
-        AssetKind::Stock => TxTable::Stocks,
-        AssetKind::Crypto => TxTable::Crypto,
-    };
+    let table = tx_table(kind);
     // The per-position cost qualities are merged below, only for positions that are held.
     let (costs, _) = cost_basis::cost_basis_as_of(conn, table, &currency, quotes, today)?;
 
@@ -236,6 +233,31 @@ pub fn value_positions_with_quotes(
         items,
         quality,
     })
+}
+
+fn tx_table(kind: AssetKind) -> TxTable {
+    match kind {
+        AssetKind::Stock => TxTable::Stocks,
+        AssetKind::Crypto => TxTable::Crypto,
+    }
+}
+
+/// Native value of every priced position of `kind` (`quantity × price` in the price's own
+/// currency), summed per currency. The quantity is the one `value_positions` values: the
+/// replayed transaction quantity when the holding has transactions, else the stored one.
+pub fn native_value_breakdown(conn: &Connection, kind: AssetKind) -> Result<HashMap<String, f64>> {
+    let replayed = cost_basis::replayed_quantities(conn, tx_table(kind))?;
+    let mut breakdown = HashMap::new();
+    for holding in load_holdings(conn, kind)? {
+        let quantity = replayed
+            .get(&holding.id)
+            .copied()
+            .unwrap_or(holding.quantity);
+        if let Some(price) = pricing::resolve_price(conn, kind, &holding.ticker) {
+            *breakdown.entry(price.currency).or_insert(0.0) += quantity * price.price;
+        }
+    }
+    Ok(breakdown)
 }
 
 /// One row of `stock_investments` / `crypto_investments`.
@@ -951,6 +973,45 @@ mod tests {
         assert_close(item.quantity, 2.0);
         assert_close(item.value.expect("value"), 240.0);
         assert_close(item.unrealized_gain.expect("gain"), 40.0);
+    }
+
+    #[test]
+    fn native_breakdown_values_the_same_quantity_as_positions() {
+        let conn = setup();
+        seed_stock(
+            &conn,
+            "s1",
+            "SAP.DE",
+            "EUR",
+            &[("buy", 2.0, 100.0, 19_000 * DAY)],
+            120.0,
+        );
+        seed_stock(&conn, "s2", "NOTX", "USD", &[], 10.0);
+        conn.execute(
+            "UPDATE stock_investments SET quantity = '3' WHERE id = 's2'",
+            [],
+        )
+        .expect("stored quantity");
+        // A stale stored quantity (metrics not recalculated): positions value the replay
+        conn.execute(
+            "UPDATE stock_investments SET quantity = '5' WHERE id = 's1'",
+            [],
+        )
+        .expect("stale");
+
+        let breakdown = native_value_breakdown(&conn, AssetKind::Stock).expect("breakdown");
+
+        // SAP: replayed 2 × 120 EUR; NOTX without transactions: stored 3 × 10 USD.
+        assert_close(breakdown["EUR"], 240.0);
+        assert_close(breakdown["USD"], 30.0);
+        set_current_czk(&[]);
+        let p = value_positions(&conn, AssetKind::Stock, "EUR", 20_000 * DAY).expect("positions");
+        let sap = p
+            .items
+            .iter()
+            .find(|i| i.investment_id == "s1")
+            .expect("s1");
+        assert_close(sap.value.expect("value"), breakdown["EUR"]);
     }
 
     #[test]

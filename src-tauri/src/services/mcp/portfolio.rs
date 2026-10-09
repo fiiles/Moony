@@ -185,7 +185,8 @@ mod tests {
                 balance_anchor_amount TEXT,
                 balance_anchor_date INTEGER
             );
-            CREATE TABLE stock_investments (ticker TEXT PRIMARY KEY, quantity TEXT NOT NULL);
+            CREATE TABLE stock_investments (id TEXT PRIMARY KEY, ticker TEXT NOT NULL, quantity TEXT NOT NULL, currency TEXT NOT NULL);
+            CREATE TABLE investment_transactions (investment_id TEXT, type TEXT, quantity TEXT, price_per_unit TEXT, currency TEXT, transaction_date INTEGER, created_at INTEGER);
             CREATE TABLE stock_data (
                 ticker TEXT PRIMARY KEY,
                 original_price TEXT,
@@ -198,7 +199,8 @@ mod tests {
                 currency TEXT NOT NULL,
                 updated_at INTEGER NOT NULL
             );
-            CREATE TABLE crypto_investments (ticker TEXT PRIMARY KEY, quantity TEXT NOT NULL);
+            CREATE TABLE crypto_investments (id TEXT PRIMARY KEY, ticker TEXT NOT NULL, quantity TEXT NOT NULL, currency TEXT NOT NULL);
+            CREATE TABLE crypto_transactions (investment_id TEXT, type TEXT, quantity TEXT, price_per_unit TEXT, currency TEXT, transaction_date INTEGER, created_at INTEGER);
             CREATE TABLE crypto_prices (
                 symbol TEXT PRIMARY KEY,
                 price TEXT,

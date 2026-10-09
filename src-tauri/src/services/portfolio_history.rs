@@ -76,8 +76,12 @@ fn merged(a: &HashMap<String, f64>, b: &HashMap<String, f64>) -> HashMap<String,
     out
 }
 
+/// Below this a difference of two stored amounts is float residue, not money (far under any
+/// currency's minor unit).
+const RESIDUE_EPSILON: f64 = 1e-6;
+
 /// Investment real estate of a stored row: the combined breakdown minus its personal subset,
-/// per currency (currencies that net to zero are left out).
+/// per currency (currencies that net to zero, residue included, are left out).
 pub fn investment_real_estate(
     combined: &HashMap<String, f64>,
     personal: &HashMap<String, f64>,
@@ -88,7 +92,7 @@ pub fn investment_real_estate(
             let personal = personal.get(currency).copied().unwrap_or(0.0);
             (currency.clone(), amount - personal)
         })
-        .filter(|(_, amount)| *amount != 0.0)
+        .filter(|(_, amount)| amount.abs() > RESIDUE_EPSILON)
         .collect()
 }
 
@@ -631,6 +635,10 @@ mod tests {
             &map(&[("EUR", 100.0), ("CZK", 500.0)]),
         );
         assert_eq!(investment, map(&[("EUR", 200.0)]));
+
+        // 0.1 + 0.2 - 0.3 is float residue, not an investment property
+        let residue = investment_real_estate(&map(&[("EUR", 0.1 + 0.2)]), &map(&[("EUR", 0.3)]));
+        assert!(residue.is_empty(), "{residue:?}");
     }
 
     #[test]

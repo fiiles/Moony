@@ -2245,22 +2245,29 @@ mod migration_010 {
 /// snapshot day, and a ticker's value-history row keeps only its native quantity, price and
 /// currency.
 ///
-/// - Personal real estate gets its own native breakdown. A row without a native real estate
-///   breakdown, or with a CZK-only one, takes its CZK personal total as is (CZK amounts are their
-///   own CZK totals). A row with other currencies applies the CZK totals' personal share to each
-///   native amount — the split the history showed until now — so no CZK bucket appears next to a
-///   foreign property.
-/// - Every other class whose breakdown is empty while its CZK total is not (rows written before
-///   the breakdowns existed) gets `{"CZK": total}` once.
+/// A breakdown counts as empty when it holds no readable amount: not valid JSON, not an object,
+/// or no numeric entry (the reader, `breakdown_from_json`, skips all of those). `CASE` keeps
+/// `json_type`/`json_each` away from text that is not JSON.
+///
+/// - Personal real estate gets its own native breakdown. A row with an empty real estate
+///   breakdown takes its CZK personal total; a CZK-only one takes that total clamped to the CZK
+///   amount (CZK amounts are their own CZK totals, and investment never goes negative). A row
+///   with other currencies applies the CZK totals' personal share to each native amount — the
+///   split the history showed until now — so no CZK bucket appears next to a foreign property.
+/// - Every class whose breakdown is empty while its CZK total is not (rows written before the
+///   breakdowns existed, or unreadable ones) gets `{"CZK": total}` once.
 /// - Then the eight `total_*` columns and both `value_czk` columns are dropped (no index or
 ///   constraint refers to them).
 pub(crate) const MIGRATION_011: &str = r#"
 ALTER TABLE portfolio_metrics_history ADD COLUMN real_estate_personal_by_currency TEXT NOT NULL DEFAULT '{}';
 UPDATE portfolio_metrics_history SET real_estate_personal_by_currency = CASE
-    WHEN real_estate_by_currency = '{}'
-      OR (json_type(real_estate_by_currency, '$.CZK') IN ('integer', 'real')
-          AND (SELECT COUNT(*) FROM json_each(portfolio_metrics_history.real_estate_by_currency)) = 1)
+    WHEN CASE WHEN NOT json_valid(portfolio_metrics_history.real_estate_by_currency) THEN 1 WHEN json_type(portfolio_metrics_history.real_estate_by_currency) <> 'object' THEN 1
+         ELSE NOT EXISTS (SELECT 1 FROM json_each(portfolio_metrics_history.real_estate_by_currency) WHERE type IN ('integer', 'real')) END
       THEN json_object('CZK', CAST(total_real_estate_personal AS REAL))
+    WHEN NOT EXISTS (SELECT 1 FROM json_each(portfolio_metrics_history.real_estate_by_currency)
+                     WHERE type IN ('integer', 'real') AND key <> 'CZK')
+      THEN json_object('CZK', MIN(CAST(total_real_estate_personal AS REAL),
+                                  json_extract(portfolio_metrics_history.real_estate_by_currency, '$.CZK')))
     WHEN CAST(total_real_estate_investment AS REAL) = 0
       THEN (SELECT json_group_object(key, value) FROM json_each(portfolio_metrics_history.real_estate_by_currency)
             WHERE type IN ('integer', 'real'))
@@ -2270,22 +2277,35 @@ UPDATE portfolio_metrics_history SET real_estate_personal_by_currency = CASE
           WHERE type IN ('integer', 'real'))
   END
   WHERE CAST(total_real_estate_personal AS REAL) > 0
-    AND CAST(total_real_estate_investment AS REAL) >= 0
-    AND CASE WHEN json_valid(real_estate_by_currency) THEN json_type(real_estate_by_currency) = 'object' ELSE 0 END;
+    AND CAST(total_real_estate_investment AS REAL) >= 0;
 UPDATE portfolio_metrics_history SET savings_by_currency = json_object('CZK', CAST(total_savings AS REAL))
-  WHERE savings_by_currency = '{}' AND CAST(total_savings AS REAL) <> 0;
+  WHERE CAST(total_savings AS REAL) <> 0
+    AND CASE WHEN NOT json_valid(portfolio_metrics_history.savings_by_currency) THEN 1 WHEN json_type(portfolio_metrics_history.savings_by_currency) <> 'object' THEN 1
+         ELSE NOT EXISTS (SELECT 1 FROM json_each(portfolio_metrics_history.savings_by_currency) WHERE type IN ('integer', 'real')) END;
 UPDATE portfolio_metrics_history SET investments_by_currency = json_object('CZK', CAST(total_investments AS REAL))
-  WHERE investments_by_currency = '{}' AND CAST(total_investments AS REAL) <> 0;
+  WHERE CAST(total_investments AS REAL) <> 0
+    AND CASE WHEN NOT json_valid(portfolio_metrics_history.investments_by_currency) THEN 1 WHEN json_type(portfolio_metrics_history.investments_by_currency) <> 'object' THEN 1
+         ELSE NOT EXISTS (SELECT 1 FROM json_each(portfolio_metrics_history.investments_by_currency) WHERE type IN ('integer', 'real')) END;
 UPDATE portfolio_metrics_history SET crypto_by_currency = json_object('CZK', CAST(total_crypto AS REAL))
-  WHERE crypto_by_currency = '{}' AND CAST(total_crypto AS REAL) <> 0;
+  WHERE CAST(total_crypto AS REAL) <> 0
+    AND CASE WHEN NOT json_valid(portfolio_metrics_history.crypto_by_currency) THEN 1 WHEN json_type(portfolio_metrics_history.crypto_by_currency) <> 'object' THEN 1
+         ELSE NOT EXISTS (SELECT 1 FROM json_each(portfolio_metrics_history.crypto_by_currency) WHERE type IN ('integer', 'real')) END;
 UPDATE portfolio_metrics_history SET bonds_by_currency = json_object('CZK', CAST(total_bonds AS REAL))
-  WHERE bonds_by_currency = '{}' AND CAST(total_bonds AS REAL) <> 0;
+  WHERE CAST(total_bonds AS REAL) <> 0
+    AND CASE WHEN NOT json_valid(portfolio_metrics_history.bonds_by_currency) THEN 1 WHEN json_type(portfolio_metrics_history.bonds_by_currency) <> 'object' THEN 1
+         ELSE NOT EXISTS (SELECT 1 FROM json_each(portfolio_metrics_history.bonds_by_currency) WHERE type IN ('integer', 'real')) END;
 UPDATE portfolio_metrics_history SET real_estate_by_currency = json_object('CZK', CAST(total_real_estate_personal AS REAL) + CAST(total_real_estate_investment AS REAL))
-  WHERE real_estate_by_currency = '{}' AND CAST(total_real_estate_personal AS REAL) + CAST(total_real_estate_investment AS REAL) <> 0;
+  WHERE CAST(total_real_estate_personal AS REAL) + CAST(total_real_estate_investment AS REAL) <> 0
+    AND CASE WHEN NOT json_valid(portfolio_metrics_history.real_estate_by_currency) THEN 1 WHEN json_type(portfolio_metrics_history.real_estate_by_currency) <> 'object' THEN 1
+         ELSE NOT EXISTS (SELECT 1 FROM json_each(portfolio_metrics_history.real_estate_by_currency) WHERE type IN ('integer', 'real')) END;
 UPDATE portfolio_metrics_history SET loans_by_currency = json_object('CZK', CAST(total_loans_principal AS REAL))
-  WHERE loans_by_currency = '{}' AND CAST(total_loans_principal AS REAL) <> 0;
+  WHERE CAST(total_loans_principal AS REAL) <> 0
+    AND CASE WHEN NOT json_valid(portfolio_metrics_history.loans_by_currency) THEN 1 WHEN json_type(portfolio_metrics_history.loans_by_currency) <> 'object' THEN 1
+         ELSE NOT EXISTS (SELECT 1 FROM json_each(portfolio_metrics_history.loans_by_currency) WHERE type IN ('integer', 'real')) END;
 UPDATE portfolio_metrics_history SET other_assets_by_currency = json_object('CZK', CAST(total_other_assets AS REAL))
-  WHERE other_assets_by_currency = '{}' AND CAST(total_other_assets AS REAL) <> 0;
+  WHERE CAST(total_other_assets AS REAL) <> 0
+    AND CASE WHEN NOT json_valid(portfolio_metrics_history.other_assets_by_currency) THEN 1 WHEN json_type(portfolio_metrics_history.other_assets_by_currency) <> 'object' THEN 1
+         ELSE NOT EXISTS (SELECT 1 FROM json_each(portfolio_metrics_history.other_assets_by_currency) WHERE type IN ('integer', 'real')) END;
 ALTER TABLE portfolio_metrics_history DROP COLUMN total_savings;
 ALTER TABLE portfolio_metrics_history DROP COLUMN total_loans_principal;
 ALTER TABLE portfolio_metrics_history DROP COLUMN total_investments;
@@ -2452,18 +2472,55 @@ mod migration_011 {
             &[("real_estate_by_currency", r#"{"EUR":100,"USD":5}"#)],
         );
 
-        // A breakdown that is not a JSON object cannot be split; the migration still runs.
+        // Breakdowns without a readable amount (not JSON, not an object, only non-numeric
+        // entries) count as empty: the CZK total is kept instead of losing both.
         add_snapshot(
             &conn,
             "corrupt",
             4 * 86_400,
-            ["0", "0", "0", "0", "0", "10", "0", "0"],
-            &[("real_estate_by_currency", "not json")],
+            ["7", "0", "3", "2", "0", "10", "0", "0"],
+            &[
+                ("real_estate_by_currency", "not json"),
+                ("savings_by_currency", ""),
+                ("investments_by_currency", r#""text""#),
+                ("crypto_by_currency", r#"{"USD":"bad"}"#),
+            ],
+        );
+        // A CZK-only breakdown smaller than the personal total: personal is clamped to it, so
+        // investment real estate never goes negative.
+        add_snapshot(
+            &conn,
+            "short",
+            5 * 86_400,
+            ["0", "0", "0", "0", "0", "5000", "2500", "0"],
+            &[("real_estate_by_currency", r#"{"CZK":3000}"#)],
         );
 
         run_migrations(&conn).expect("migrate to the current chain");
 
-        assert!(breakdown(&conn, "corrupt", "real_estate_personal_by_currency").is_empty());
+        let czk = |amount: f64| map(&[("CZK", amount)]);
+        assert_eq!(breakdown(&conn, "corrupt", "savings_by_currency"), czk(7.0));
+        assert_eq!(
+            breakdown(&conn, "corrupt", "investments_by_currency"),
+            czk(3.0)
+        );
+        assert_eq!(breakdown(&conn, "corrupt", "crypto_by_currency"), czk(2.0));
+        assert_eq!(
+            breakdown(&conn, "corrupt", "real_estate_by_currency"),
+            czk(10.0)
+        );
+        assert_eq!(
+            breakdown(&conn, "corrupt", "real_estate_personal_by_currency"),
+            czk(10.0)
+        );
+        assert_eq!(
+            breakdown(&conn, "short", "real_estate_personal_by_currency"),
+            czk(3000.0)
+        );
+        assert_eq!(
+            breakdown(&conn, "short", "real_estate_by_currency"),
+            czk(3000.0)
+        );
         assert_eq!(
             breakdown(&conn, "modern", "savings_by_currency"),
             map(&[("EUR", 4.0)])
@@ -2487,6 +2544,23 @@ mod migration_011 {
         assert_eq!(
             breakdown(&conn, "personal", "real_estate_personal_by_currency"),
             map(&[("EUR", 100.0), ("USD", 5.0)])
+        );
+    }
+
+    /// `ALTER TABLE ... DROP COLUMN` needs SQLite 3.35 or newer.
+    #[test]
+    fn the_bundled_sqlite_supports_drop_column() {
+        let conn = Connection::open_in_memory().expect("in-memory db");
+        let version: String = conn
+            .query_row("SELECT sqlite_version()", [], |r| r.get(0))
+            .expect("version");
+        let parts: Vec<u32> = version
+            .split('.')
+            .map(|part| part.parse().expect("numeric version part"))
+            .collect();
+        assert!(
+            (parts[0], parts[1]) >= (3, 35),
+            "SQLite {version} lacks DROP COLUMN"
         );
     }
 

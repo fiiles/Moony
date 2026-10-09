@@ -382,7 +382,8 @@
     "fresh": "Data aktuální"
   },
   "fxQuality": {
-    "missing": "Nepřepočteno na {{currency}}: chybí kurz pro {{currencies}}. Součty tyto pozice nezahrnují."
+    "missing": "Nepřepočteno na {{currency}}: chybí kurz pro {{currencies}}. Součty tyto pozice nezahrnují.",
+    "estimated": "Některé částky používají dnešní kurz, protože kurz jejich dne zatím není k dispozici."
   },
   "notFound": {
     "title": "Stránka nenalezena",

@@ -381,7 +381,8 @@
     "fresh": "Data up to date"
   },
   "fxQuality": {
-    "missing": "Not converted to {{currency}}: no exchange rate for {{currencies}}. Totals leave those positions out."
+    "missing": "Not converted to {{currency}}: no exchange rate for {{currencies}}. Totals leave those positions out.",
+    "estimated": "Some amounts use today's exchange rate because the rate of their day is not available yet."
   },
   "notFound": {
     "title": "Page not found",

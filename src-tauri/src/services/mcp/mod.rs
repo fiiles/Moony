@@ -85,6 +85,7 @@ pub(crate) fn ticker_value_history(
         "mainCurrency": report.currency,
         "history": report.points,
         "missingCurrencies": report.fx_quality.missing_currencies,
+        "fxEstimated": report.fx_quality.estimated,
     }))
 }
 
@@ -348,14 +349,14 @@ impl MoonyMcp {
     }
 
     #[tool(
-        description = "List all stock investments with ticker, company name, quantity, native average purchase price and current market price, plus value, cost basis, unrealized and realized gain and annual dividend in the user's main currency (`mainCurrency`). Amounts that cannot be converted are null and their currencies are listed in `missingCurrencies`; the summary's totalValue sums the known values, totalCostBasis the known costs, totalUnrealizedGain only the positions whose value and cost are both known, totalRealizedGain the known realized gains and annualDividends the dividends of positions with a known value."
+        description = "List all stock investments with ticker, company name, quantity, native average purchase price and current market price, plus value, cost basis, unrealized and realized gain and annual dividend in the user's main currency (`mainCurrency`). Amounts that cannot be converted are null and their currencies are listed in `missingCurrencies`; the summary's totalValue sums the known values, totalCostBasis the known costs, totalUnrealizedGain only the positions whose value and cost are both known, totalRealizedGain the known realized gains and annualDividends the dividends of positions with a known value. `fxEstimated` (per row and for the response) is true when some cost basis used today's exchange rate because the rate of its day is not stored yet."
     )]
     fn investments_list(&self) -> Result<CallToolResult, McpError> {
         to_result(self.db.with_conn(investments::investments_list))
     }
 
     #[tool(
-        description = "Get full details for a specific stock investment including all its transactions, with value, cost basis and gains in the user's main currency (`mainCurrency`)."
+        description = "Get full details for a specific stock investment including all its transactions, with value, cost basis and gains in the user's main currency (`mainCurrency`). Amounts that cannot be converted are null and named in `missingCurrencies`; `fxEstimated` is true when the cost basis used today's exchange rate because the rate of its day is not stored yet."
     )]
     fn investment_detail(
         &self,
@@ -383,7 +384,7 @@ impl MoonyMcp {
     }
 
     #[tool(
-        description = "Get historical value snapshots for a specific stock ticker. Each snapshot's `value` is in the user's main currency (the `mainCurrency` field) at that day's exchange rate; `price` and `currency` are the native quote."
+        description = "Get historical value snapshots for a specific stock ticker. Each snapshot's `value` is in the user's main currency (the `mainCurrency` field) at that day's exchange rate (null when not convertible, its currency named in `missingCurrencies`; `fxEstimated` is true when some value used today's rate in place of its day's); `price` and `currency` are the native quote."
     )]
     fn stock_value_history(
         &self,
@@ -395,7 +396,7 @@ impl MoonyMcp {
     }
 
     #[tool(
-        description = "List all cryptocurrency holdings with ticker, name, CoinGecko ID, quantity, native average purchase price and current market price, plus value, cost basis, unrealized and realized gain in the user's main currency (`mainCurrency`). Amounts that cannot be converted are null and their currencies are listed in `missingCurrencies`; the summary's totalValue sums the known values, totalCostBasis the known costs, totalUnrealizedGain only the positions whose value and cost are both known and totalRealizedGain the known realized gains."
+        description = "List all cryptocurrency holdings with ticker, name, CoinGecko ID, quantity, native average purchase price and current market price, plus value, cost basis, unrealized and realized gain in the user's main currency (`mainCurrency`). Amounts that cannot be converted are null and their currencies are listed in `missingCurrencies`; the summary's totalValue sums the known values, totalCostBasis the known costs, totalUnrealizedGain only the positions whose value and cost are both known and totalRealizedGain the known realized gains. `fxEstimated` (per row and for the response) is true when some cost basis used today's exchange rate because the rate of its day is not stored yet."
     )]
     fn crypto_list(&self) -> Result<CallToolResult, McpError> {
         to_result(self.db.with_conn(crypto::crypto_list))
@@ -416,7 +417,7 @@ impl MoonyMcp {
     }
 
     #[tool(
-        description = "Get historical value snapshots for a specific cryptocurrency ticker. Each snapshot's `value` is in the user's main currency (the `mainCurrency` field) at that day's exchange rate; `price` and `currency` are the native quote."
+        description = "Get historical value snapshots for a specific cryptocurrency ticker. Each snapshot's `value` is in the user's main currency (the `mainCurrency` field) at that day's exchange rate (null when not convertible, its currency named in `missingCurrencies`; `fxEstimated` is true when some value used today's rate in place of its day's); `price` and `currency` are the native quote."
     )]
     fn crypto_value_history(
         &self,
@@ -556,14 +557,14 @@ impl MoonyMcp {
     }
 
     #[tool(
-        description = "Get all stock investments with their current value, cost basis, gain/loss, realized gain and dividend yield. Amounts are in the user's main currency, given as `mainCurrency`; an amount that cannot be converted is null, its currency is listed in `missingCurrencies`, and the summary's totalValue sums the known values, totalCostBasis the known costs, totalGainLoss only the positions whose value and cost are both known, realizedGain the known realized gains and annualDividends the dividends of positions with a known value."
+        description = "Get all stock investments with their current value, cost basis, gain/loss, realized gain and dividend yield. Amounts are in the user's main currency, given as `mainCurrency`; an amount that cannot be converted is null, its currency is listed in `missingCurrencies`, and the summary's totalValue sums the known values, totalCostBasis the known costs, totalGainLoss only the positions whose value and cost are both known, realizedGain the known realized gains and annualDividends the dividends of positions with a known value. `fxEstimated` is true when some cost basis used today's exchange rate because the rate of its day is not stored yet."
     )]
     fn stocks_analysis(&self) -> Result<CallToolResult, McpError> {
         to_result(self.db.with_conn(analytics::stocks_analysis))
     }
 
     #[tool(
-        description = "Get aggregated portfolio metrics grouped by stock tag. Shows total value, cost basis, gain/loss, and dividend yield per tag. Amounts are in the user's main currency, given as `mainCurrency`; each tag sums every amount that could be converted, lists the currencies it could not convert in its own `missingCurrencies`, and the response-level `missingCurrencies` covers every position once."
+        description = "Get aggregated portfolio metrics grouped by stock tag. Shows total value, cost basis, gain/loss, and dividend yield per tag. Amounts are in the user's main currency, given as `mainCurrency`; each tag sums every amount that could be converted, lists the currencies it could not convert in its own `missingCurrencies`, and the response-level `missingCurrencies` covers every position once. `fxEstimated` (per tag and for the response) is true when some cost basis used today's exchange rate because the rate of its day is not stored yet."
     )]
     fn tag_metrics(
         &self,

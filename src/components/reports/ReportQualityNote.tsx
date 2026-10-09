@@ -43,7 +43,8 @@ export function ReportError({ onRetry }: { onRetry: () => void }) {
 
 /**
  * The compact report warning for a response's `fxQuality`: which currencies could not be
- * converted into `currency` and that the totals leave them out. Nothing when complete.
+ * converted into `currency` and that the totals leave them out, and whether some amounts
+ * use today's rate in place of their day's. Nothing when complete.
  */
 export function ConversionQualityNote({
   quality,
@@ -51,16 +52,25 @@ export function ConversionQualityNote({
   className = 'mb-5',
 }: {
   /** A response's quality, or just the currencies a view could not convert. */
-  quality: Pick<ConversionQuality, 'missingCurrencies'> | undefined;
+  quality:
+    | (Pick<ConversionQuality, 'missingCurrencies'> & Partial<Pick<ConversionQuality, 'estimated'>>)
+    | undefined;
   currency: string;
   /** Spacing around the note (default: a gap below). */
   className?: string;
 }) {
   const { t } = useTranslation('common');
-  if (!quality || quality.missingCurrencies.length === 0) return null;
+  const missing = quality?.missingCurrencies ?? [];
+  const estimated = quality?.estimated === true;
+  if (missing.length === 0 && !estimated) return null;
   return (
-    <p className={cn('text-micro text-loss', className)} role="note">
-      {t('fxQuality.missing', { currency, currencies: quality.missingCurrencies.join(', ') })}
-    </p>
+    <div className={cn('space-y-1 text-micro', className)} role="note">
+      {missing.length > 0 && (
+        <p className="text-loss">
+          {t('fxQuality.missing', { currency, currencies: missing.join(', ') })}
+        </p>
+      )}
+      {estimated && <p className="text-ink-4">{t('fxQuality.estimated')}</p>}
+    </div>
   );
 }

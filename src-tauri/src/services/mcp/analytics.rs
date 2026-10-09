@@ -240,6 +240,7 @@ pub fn stocks_analysis(conn: &Connection) -> Result<Value> {
         },
         "stocks": stocks,
         "missingCurrencies": positions.quality.missing_currencies(),
+        "fxEstimated": positions.quality.is_estimated(),
     }))
 }
 
@@ -289,6 +290,7 @@ pub fn tag_metrics(conn: &Connection, tag_ids: Option<Vec<String>>) -> Result<Va
                         .unwrap_or(0.0)
                 ),
                 "missingCurrencies": totals.quality.missing_currencies(),
+                "fxEstimated": totals.quality.is_estimated(),
             })
         })
         .collect();
@@ -298,6 +300,7 @@ pub fn tag_metrics(conn: &Connection, tag_ids: Option<Vec<String>>) -> Result<Va
         "tags": result,
         // Every position counted once, whichever tags it carries
         "missingCurrencies": positions.quality.missing_currencies(),
+        "fxEstimated": positions.quality.is_estimated(),
     }))
 }
 
@@ -507,6 +510,7 @@ mod tests {
         assert_eq!(aapl["gainLoss"], "136.36");
         assert_eq!(result["summary"]["totalGainLoss"], "136.36");
         assert_eq!(result["missingCurrencies"], serde_json::json!([]));
+        assert_eq!(result["fxEstimated"], false);
     }
 
     #[test]
@@ -606,6 +610,8 @@ mod tests {
         assert_eq!(tag["gainLoss"], "0.00");
         assert_eq!(tag["missingCurrencies"], serde_json::json!(["KWD"]));
         assert_eq!(result["missingCurrencies"], serde_json::json!(["KWD"]));
+        assert_eq!(tag["fxEstimated"], false);
+        assert_eq!(result["fxEstimated"], false);
     }
 
     #[test]

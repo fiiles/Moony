@@ -63,7 +63,8 @@ pub fn main_currency_positions(
 
 /// Adds a position's native price and average cost and its main-currency figures to a list
 /// row.
-/// Unknown amounts are `null`; `missingCurrencies` names what this position could not convert.
+/// Unknown amounts are `null`; `missingCurrencies` names what this position could not convert;
+/// `fxEstimated` is true when some of its cost used today's rate in place of its day's.
 pub fn add_position_fields(
     row: &mut serde_json::Value,
     item: Option<&crate::services::positions::PositionValue>,
@@ -90,6 +91,7 @@ pub fn add_position_fields(
     row["missingCurrencies"] = serde_json::json!(item
         .map(|i| i.quality.missing_currencies())
         .unwrap_or_default());
+    row["fxEstimated"] = serde_json::json!(item.is_some_and(|i| i.quality.is_estimated()));
 }
 
 /// A list response: `mainCurrency`, the rows under `key`, the totals of the positions whose
@@ -117,6 +119,7 @@ pub fn positions_response(
         key: rows,
         "summary": summary,
         "missingCurrencies": positions.quality.missing_currencies(),
+        "fxEstimated": positions.quality.is_estimated(),
     })
 }
 

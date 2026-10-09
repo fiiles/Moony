@@ -737,6 +737,7 @@ mod value_history_tests {
         assert_eq!(rows[0]["value"], "100.00");
         assert_eq!(rows[1]["recordedAt"], 101 * DAY);
         assert_eq!(rows[1]["value"], "92.31");
+        assert_eq!(result["fxEstimated"], false);
     }
 
     #[test]
@@ -889,6 +890,31 @@ mod list_missing_currency_tests {
         assert_eq!(aapl["annualDividend"], "11.36");
         assert_eq!(result["summary"]["totalValue"], "1136.36");
         assert_eq!(result["summary"]["annualDividends"], "11.36");
+        assert_eq!(result["missingCurrencies"], serde_json::json!([]));
+        assert_eq!(result["fxEstimated"], false);
+        assert_eq!(aapl["fxEstimated"], false);
+    }
+
+    #[test]
+    fn investments_list_flags_cost_estimated_at_todays_rate() {
+        // No stored rate for the buy day: the cost falls back to today's quotes.
+        let conn = list_db("EUR");
+        conn.execute_batch(
+            r#"
+            INSERT INTO stock_investments VALUES ('a', 'AAPL', 'Apple', '10', 'USD');
+            INSERT INTO investment_transactions (id, investment_id, type, ticker, company_name, quantity, price_per_unit, currency, transaction_date) VALUES
+                ('t1', 'a', 'buy', 'AAPL', 'Apple', '10', '100', 'USD', 1700000000);
+            INSERT INTO stock_data (ticker, original_price, currency, fetched_at) VALUES ('AAPL', '100', 'USD', 100);
+            "#,
+        )
+        .expect("seed");
+        crate::services::fx::set_current_for_test(&[("USD", 25.0), ("EUR", 20.0)]);
+
+        let result = investments_list(&conn).expect("list");
+
+        assert_eq!(result["investments"][0]["costBasis"], "1250.00");
+        assert_eq!(result["investments"][0]["fxEstimated"], true);
+        assert_eq!(result["fxEstimated"], true);
         assert_eq!(result["missingCurrencies"], serde_json::json!([]));
     }
 }

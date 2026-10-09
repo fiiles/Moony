@@ -253,6 +253,44 @@ impl History {
         })?
     }
 
+    /// Like `convert_on`, recording a failed conversion in `quality` (one miss per conversion):
+    /// the currencies with no quote within the lookback window are blamed, `from` when both
+    /// are quoted but never on one common day.
+    pub fn convert_on_tracked(
+        &self,
+        quality: &mut Quality,
+        amount: f64,
+        from: &str,
+        to: &str,
+        day: i64,
+    ) -> Option<f64> {
+        let result = self.convert_on(amount, from, to, day);
+        if result.is_none() {
+            let mut unresolved: Vec<&str> = [from, to]
+                .into_iter()
+                .filter(|code| !self.is_quoted_near(code, day))
+                .collect();
+            if unresolved.is_empty() {
+                unresolved.push(from);
+            }
+            quality.record_missing_conversion(unresolved);
+        }
+        result
+    }
+
+    /// Whether `code` has a quote on `day` or within the lookback window before it.
+    fn is_quoted_near(&self, code: &str, day: i64) -> bool {
+        let Some(code) = normalize(code) else {
+            return false;
+        };
+        let start = floor_day(day);
+        (0..=MAX_LOOKBACK_DAYS).any(|back| {
+            self.days
+                .get(&start.saturating_sub(back * DAY))
+                .is_some_and(|quotes| quotes.units(&code).is_some())
+        })
+    }
+
     /// Quotes of exactly this stored day.
     pub fn quotes_on(&self, day: i64) -> Option<&Quotes> {
         self.days.get(&day)
@@ -465,6 +503,15 @@ impl Quality {
             self.missing_count += 1;
         }
         result
+    }
+
+    /// Records one missing conversion that involves `codes` (each is listed as missing).
+    pub fn record_missing_conversion<'a>(&mut self, codes: impl IntoIterator<Item = &'a str>) {
+        for code in codes {
+            self.missing
+                .insert(normalize(code).unwrap_or_else(|| code.trim().to_uppercase()));
+        }
+        self.missing_count += 1;
     }
 
     pub fn merge(&mut self, other: &Quality) {
@@ -725,6 +772,44 @@ mod tests {
         let h = History::load(&conn, d - 10 * DAY, d).expect("load");
         assert_eq!(h.convert_on(1.0, "EUR", "CZK", d), None);
         assert_eq!(h.convert_on(1.0, "EUR", "CZK", d - 10 * DAY), Some(25.0));
+    }
+
+    #[test]
+    fn convert_on_tracked_blames_the_currency_without_a_quote() {
+        let d = 20_000 * DAY;
+        let conn = history_db(&[(d, "EUR", 25.0)]);
+        let h = History::load(&conn, d, d).expect("load");
+        let mut quality = Quality::default();
+        assert_eq!(
+            h.convert_on_tracked(&mut quality, 1.0, "EUR", "CZK", d),
+            Some(25.0)
+        );
+        assert!(quality.is_complete());
+        assert_eq!(
+            h.convert_on_tracked(&mut quality, 1.0, "USD", "CZK", d),
+            None
+        );
+        assert_eq!(
+            h.convert_on_tracked(&mut quality, 1.0, "USD", "JPY", d),
+            None
+        );
+        assert_eq!(quality.missing_currencies(), vec!["JPY", "USD"]);
+        assert_eq!(quality.missing_count(), 2);
+    }
+
+    #[test]
+    fn convert_on_tracked_blames_from_when_no_common_day_exists() {
+        let d = 20_000 * DAY;
+        // EUR and USD are each quoted within ten days, but never on the same day
+        let conn = history_db(&[(d, "EUR", 25.0), (d - 3 * DAY, "USD", 20.0)]);
+        let h = History::load(&conn, d, d).expect("load");
+        let mut quality = Quality::default();
+        assert_eq!(
+            h.convert_on_tracked(&mut quality, 1.0, "USD", "EUR", d),
+            None
+        );
+        assert_eq!(quality.missing_currencies(), vec!["USD"]);
+        assert_eq!(quality.missing_count(), 1);
     }
 
     #[test]

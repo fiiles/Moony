@@ -1694,6 +1694,13 @@ export type StockTag = { id: string; name: string; color: string | null; groupId
 export type StockTagGroup = { id: string; name: string; description: string | null; createdAt: number }
 
 /**
+ * Time-weighted return series computed in a report currency: each day's value and cash flows
+ * are converted at that day's rate. Days that could not be converted are left out of the
+ * chain and counted in `fxQuality`.
+ */
+export type StockTwr = { currency: string; fxQuality: ConversionQuality; series: TwrSeries[] }
+
+/**
  * One value of the type column and what it means (TS `StockTypeValueMapping`).
  */
 export type StockTypeValueMapping = { 
@@ -1748,9 +1755,20 @@ fxQuality: ConversionQuality }
 export type TagMetricsReport = { currency: string; fxQuality: ConversionQuality; tags: TagMetrics[] }
 
 /**
- * Per-ticker value history record
+ * One recorded day of a ticker's position. Quantity, price and currency are the native facts;
+ * `value` is `quantity × price` converted at that day's rate (common-day rule), `null` when it
+ * cannot be converted.
  */
-export type TickerValueHistory = { ticker: string; recordedAt: number; valueCzk: string; quantity: string; price: string; currency: string }
+export type TickerValueHistory = { ticker: string; recordedAt: number; quantity: string; price: string; currency: string; value: string | null; isStale: boolean }
+
+/**
+ * A ticker's value history in a report currency, oldest day first.
+ */
+export type TickerValueHistoryReport = { 
+/**
+ * The report currency of every `value`.
+ */
+currency: string; fxQuality: ConversionQuality; points: TickerValueHistory[] }
 
 export type TradeDirection = "buy" | "sell"
 

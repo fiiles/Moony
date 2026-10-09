@@ -8,6 +8,7 @@ import type {
   StockTag,
   StockTagGroup,
   TagMetricsReport,
+  StockTwr,
   TwrSeries,
 } from '@shared/schema';
 import { investmentsApi, stockTagsApi } from '@/lib/tauri-api';
@@ -208,10 +209,10 @@ export default function StocksAnalysis() {
   const bounds = useMemo(() => periodBounds(period), [period]);
   const chartTagIds = chartTags.map((x) => x.id);
   const {
-    data: twr = [],
+    data: twrReport,
     isLoading: twrLoading,
     isPlaceholderData: twrStale,
-  } = useQuery<TwrSeries[]>({
+  } = useQuery<StockTwr>({
     queryKey: [
       'stock-twr',
       chartTagIds,
@@ -220,6 +221,8 @@ export default function StocksAnalysis() {
       filterActive ? selectedIds : null,
       bounds.from,
       bounds.to,
+      currencyCode,
+      fxRevision,
     ],
     queryFn: () =>
       investmentsApi.getStockTwr(
@@ -228,12 +231,15 @@ export default function StocksAnalysis() {
         false,
         bounds.from,
         bounds.to,
+        currencyCode,
         filterActive ? selectedIds : undefined
       ),
     enabled: stocks.length > 0,
     // Keep the chart (and the card's height) while the next period or selection loads
     placeholderData: keepPreviousData,
   });
+
+  const twr = useMemo(() => twrReport?.series ?? [], [twrReport]);
 
   // TWR as an index (100 = start of the period) on a shared date grid; the whole portfolio is the
   // reference line and its return for the period goes to the card head. The tag lines come from
@@ -607,6 +613,14 @@ export default function StocksAnalysis() {
                 style={{ height: twrBlockHeight(legendRows) }}
               >
                 {twrLoading ? tc('status.loading') : t('stocksAnalysis.twr.empty')}
+              </p>
+            )}
+            {twrReport && twrReport.fxQuality.missingCurrencies.length > 0 && (
+              <p className="mt-3 text-micro text-loss" role="note">
+                {t('stocksAnalysis.twr.fxMissing', {
+                  currency: twrReport.currency,
+                  currencies: twrReport.fxQuality.missingCurrencies.join(', '),
+                })}
               </p>
             )}
           </div>

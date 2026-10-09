@@ -59,82 +59,27 @@ pub(crate) fn sql_to_json(v: rusqlite::types::Value) -> Value {
 }
 
 /// Daily value history of one ticker (`stock_value_history` /
-/// `crypto_value_history`), oldest first. The stored `value_czk` is converted
-/// into the user's main currency at each row's own day rate (ADR 0001) and
-/// returned as `value`; `price` and `currency` stay native. `table` is one of
-/// the two fixed table names, never user input.
+/// `crypto_value_history`), oldest first, from the same service as the app
+/// (`ticker_history::value_history`): `value` is `quantity × price` converted
+/// into the user's main currency at each row's own day (common-day rule, ADR
+/// 0011) and returned as decimal text at the currency's minor unit, `null`
+/// when not convertible (named in `missingCurrencies`); `quantity`, `price`
+/// and `currency` stay native.
 pub(crate) fn ticker_value_history(
     conn: &rusqlite::Connection,
-    table: &'static str,
+    kind: crate::services::pricing::AssetKind,
     ticker: &str,
     start_date: Option<i64>,
     end_date: Option<i64>,
 ) -> crate::error::Result<Value> {
-    let mut conditions = vec!["ticker = ?".to_string()];
-    let mut p: Vec<Box<dyn rusqlite::ToSql>> = vec![Box::new(ticker.to_string())];
-    if let Some(s) = start_date {
-        conditions.push("recorded_at >= ?".into());
-        p.push(Box::new(s));
-    }
-    if let Some(e) = end_date {
-        conditions.push("recorded_at <= ?".into());
-        p.push(Box::new(e));
-    }
-    let sql = format!(
-        "SELECT id, ticker, recorded_at, value_czk, quantity, price, currency
-         FROM {} WHERE {} ORDER BY recorded_at ASC",
-        table,
-        conditions.join(" AND ")
-    );
-    let refs: Vec<&dyn rusqlite::ToSql> = p.iter().map(|x| x.as_ref()).collect();
-    let mut stmt = conn.prepare(&sql)?;
-    let cell = |row: &rusqlite::Row, i: usize| {
-        row.get::<_, rusqlite::types::Value>(i)
-            .unwrap_or(rusqlite::types::Value::Null)
-    };
-    let stored: Vec<[rusqlite::types::Value; 7]> = stmt
-        .query_map(refs.as_slice(), |row| {
-            Ok([
-                cell(row, 0),
-                cell(row, 1),
-                cell(row, 2),
-                cell(row, 3),
-                cell(row, 4),
-                cell(row, 5),
-                cell(row, 6),
-            ])
-        })?
-        .filter_map(|r| r.ok())
-        .collect();
-
-    let ctx = money::MoneyContext::load(conn)?;
-    let day_of = |cells: &[rusqlite::types::Value; 7]| match cells[2] {
-        rusqlite::types::Value::Integer(day) => day,
-        _ => 0,
-    };
-    let days: Vec<i64> = stored.iter().map(day_of).collect();
-    let day_rates = ctx.day_rates_for(conn, &days)?;
-
-    let rows: Vec<Value> = stored
-        .into_iter()
-        .map(|cells| {
-            let day = day_of(&cells);
-            let [id, ticker, recorded_at, value_czk, quantity, price, currency] = cells;
-            serde_json::json!({
-                "id": sql_to_json(id),
-                "ticker": sql_to_json(ticker),
-                "recordedAt": sql_to_json(recorded_at),
-                "value": ctx.stored_czk_to_main_on(value_czk, day, &day_rates),
-                "quantity": sql_to_json(quantity),
-                "price": sql_to_json(price),
-                "currency": sql_to_json(currency),
-            })
-        })
-        .collect();
+    let main = money::load_main_currency(conn)?;
+    let report = crate::services::ticker_history::value_history(
+        conn, kind, ticker, start_date, end_date, &main,
+    )?;
     Ok(serde_json::json!({
-        "mainCurrency": ctx.main_currency(),
-        "history": rows,
-        "missingCurrencies": ctx.missing_currencies(),
+        "mainCurrency": report.currency,
+        "history": report.points,
+        "missingCurrencies": report.fx_quality.missing_currencies,
     }))
 }
 

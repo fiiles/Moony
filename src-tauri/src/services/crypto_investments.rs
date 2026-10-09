@@ -373,52 +373,6 @@ pub fn import_single_crypto_transaction(
     Ok(investment_id)
 }
 
-/// Get value history for a specific crypto ticker
-pub fn get_value_history(
-    conn: &rusqlite::Connection,
-    ticker: &str,
-    start_date: Option<i64>,
-    end_date: Option<i64>,
-) -> Result<Vec<crate::models::TickerValueHistory>> {
-    let ticker_upper = ticker.to_uppercase();
-
-    let mut query = String::from(
-        "SELECT ticker, recorded_at, value_czk, quantity, price, currency 
-         FROM crypto_value_history 
-         WHERE ticker = ?",
-    );
-
-    let mut params: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
-    params.push(Box::new(ticker_upper));
-
-    if let Some(start) = start_date {
-        query.push_str(" AND recorded_at >= ?");
-        params.push(Box::new(start));
-    }
-    if let Some(end) = end_date {
-        query.push_str(" AND recorded_at <= ?");
-        params.push(Box::new(end));
-    }
-
-    query.push_str(" ORDER BY recorded_at DESC");
-
-    let mut stmt = conn.prepare(&query)?;
-
-    let rows = stmt.query_map(rusqlite::params_from_iter(params), |row| {
-        Ok(crate::models::TickerValueHistory {
-            ticker: row.get(0)?,
-            recorded_at: row.get(1)?,
-            value_czk: row.get(2)?,
-            quantity: row.get(3)?,
-            price: row.get(4)?,
-            currency: row.get(5)?,
-        })
-    })?;
-
-    let histories: Vec<crate::models::TickerValueHistory> = rows.filter_map(|r| r.ok()).collect();
-    Ok(histories)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -603,57 +557,5 @@ mod tests {
             &conn, "BTC", "Bitcoin", None, "buy", "1", "40000", "USD", 1700000001,
         )
         .is_err());
-    }
-
-    #[test]
-    fn test_get_value_history_sql_construction() {
-        let conn = Connection::open_in_memory().unwrap();
-
-        // Create table
-        conn.execute(
-            "CREATE TABLE crypto_value_history (
-                ticker TEXT NOT NULL,
-                recorded_at INTEGER NOT NULL,
-                value_czk TEXT NOT NULL,
-                quantity TEXT NOT NULL,
-                price TEXT NOT NULL,
-                currency TEXT NOT NULL
-            )",
-            [],
-        )
-        .unwrap();
-
-        // Insert dummy data
-        conn.execute(
-            "INSERT INTO crypto_value_history (ticker, recorded_at, value_czk, quantity, price, currency)
-             VALUES ('BTC', 1000, '1000', '1', '10000', 'USD')",
-            [],
-        ).unwrap();
-        conn.execute(
-            "INSERT INTO crypto_value_history (ticker, recorded_at, value_czk, quantity, price, currency)
-             VALUES ('BTC', 2000, '2000', '1', '20000', 'USD')",
-            [],
-        ).unwrap();
-        conn.execute(
-            "INSERT INTO crypto_value_history (ticker, recorded_at, value_czk, quantity, price, currency)
-             VALUES ('BTC', 3000, '3000', '1', '30000', 'USD')",
-            [],
-        ).unwrap();
-
-        // Test 1: No dates (All) - Should NOT fail
-        let history = get_value_history(&conn, "BTC", None, None).unwrap();
-        assert_eq!(history.len(), 3);
-
-        // Test 2: Start date only
-        let history = get_value_history(&conn, "BTC", Some(2000), None).unwrap();
-        assert_eq!(history.len(), 2); // 2000 and 3000
-
-        // Test 3: End date only
-        let history = get_value_history(&conn, "BTC", None, Some(2000)).unwrap();
-        assert_eq!(history.len(), 2); // 1000 and 2000
-
-        // Test 4: Both dates
-        let history = get_value_history(&conn, "BTC", Some(2000), Some(2500)).unwrap();
-        assert_eq!(history.len(), 1); // Only 2000
     }
 }

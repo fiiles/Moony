@@ -1504,6 +1504,40 @@ export interface TwrSeries {
   data: TwrDataPoint[];
 }
 
+/**
+ * Time-weighted return series computed in a report currency: each day's value and cash flows
+ * are converted at that day's rate. Days that could not be converted are left out of the chain
+ * and counted in `fxQuality`.
+ */
+export interface StockTwr {
+  currency: string;
+  fxQuality: ConversionQuality;
+  series: TwrSeries[];
+}
+
+/**
+ * One recorded day of a ticker's position. Quantity, price and currency are the native facts;
+ * `value` is `quantity × price` converted at that day's rate (common-day rule), null when it
+ * cannot be converted.
+ */
+export interface TickerValueHistory {
+  ticker: string;
+  recordedAt: number;
+  quantity: string;
+  price: string;
+  currency: string;
+  value: string | null;
+  isStale: boolean;
+}
+
+/** A ticker's value history in a report currency, oldest day first. */
+export interface TickerValueHistoryReport {
+  /** The report currency of every `value`. */
+  currency: string;
+  fxQuality: ConversionQuality;
+  points: TickerValueHistory[];
+}
+
 export interface StockInvestmentWithTags {
   id: string;
   ticker: string;

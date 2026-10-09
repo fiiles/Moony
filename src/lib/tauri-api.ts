@@ -97,7 +97,8 @@ import type {
   StockPosition,
   InvestmentWithDetails,
   CryptoPositions,
-  TwrSeries,
+  StockTwr,
+  TickerValueHistoryReport,
   McpServerStatus,
   // Stock Monitor types
   TargetDirection,
@@ -131,16 +132,6 @@ import type {
   StockInstrumentQuery,
   StockInstrumentResolution,
 } from '../../shared/schema';
-
-// Per-ticker value history record
-export interface TickerValueHistory {
-  ticker: string;
-  recordedAt: number;
-  valueCzk: string;
-  quantity: string;
-  price: string;
-  currency: string;
-}
 
 // Backend error keys (`validation.*`, `auth.*`) and the generic `errors.*` messages live in common.json.
 const translateCommon = (key: string, options?: Record<string, unknown>): string =>
@@ -280,15 +271,22 @@ export const investmentsApi = {
   getCompanyInfo: (ticker: string, refresh: boolean) =>
     tauriInvoke<StockCompanyInfo>('get_stock_company_info', { ticker, refresh }),
 
-  getHistory: (ticker: string, startDate?: number, endDate?: number) =>
-    tauriInvoke<TickerValueHistory[]>('get_stock_value_history', { ticker, startDate, endDate }),
+  /** Value history of a ticker, each day's value converted into `reportCurrency`. */
+  getHistory: (ticker: string, reportCurrency: string, startDate?: number, endDate?: number) =>
+    tauriInvoke<TickerValueHistoryReport>('get_stock_value_history', {
+      ticker,
+      startDate,
+      endDate,
+      reportCurrency,
+    }),
 
   backfillHistory: (ticker: string) =>
     tauriInvoke<BackfillResult>('backfill_stock_ticker_history', { ticker }),
 
   /**
    * Time-weighted return per tag and for the whole portfolio. `investmentIds` narrows every tag
-   * series to those positions; the whole-portfolio series is never narrowed.
+   * series to those positions; the whole-portfolio series is never narrowed. The returns are
+   * computed in `reportCurrency` (values and flows converted at their own day).
    */
   getStockTwr: (
     tagIds: string[],
@@ -296,15 +294,17 @@ export const investmentsApi = {
     includeUntagged: boolean,
     fromTs: number,
     toTs: number,
+    reportCurrency: string,
     investmentIds?: string[]
   ) =>
-    tauriInvoke<TwrSeries[]>('get_stock_twr', {
+    tauriInvoke<StockTwr>('get_stock_twr', {
       tagIds,
       includePortfolio,
       includeUntagged,
       investmentIds,
       fromTs,
       toTs,
+      reportCurrency,
     }),
 };
 
@@ -342,8 +342,14 @@ export const cryptoApi = {
   deleteManualPrice: (symbol: string) =>
     tauriInvoke<void>('delete_crypto_manual_price', { symbol }),
 
-  getHistory: (ticker: string, startDate?: number, endDate?: number) =>
-    tauriInvoke<TickerValueHistory[]>('get_crypto_value_history', { ticker, startDate, endDate }),
+  /** Value history of a ticker, each day's value converted into `reportCurrency`. */
+  getHistory: (ticker: string, reportCurrency: string, startDate?: number, endDate?: number) =>
+    tauriInvoke<TickerValueHistoryReport>('get_crypto_value_history', {
+      ticker,
+      startDate,
+      endDate,
+      reportCurrency,
+    }),
 
   backfillHistory: (ticker: string) =>
     tauriInvoke<BackfillResult>('backfill_crypto_ticker_history', { ticker }),

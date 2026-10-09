@@ -270,17 +270,30 @@ pub struct DividendOverride {
     pub updated_at: i64,
 }
 
-/// Per-ticker value history record
+/// One recorded day of a ticker's position. Quantity, price and currency are the native facts;
+/// `value` is `quantity × price` converted at that day's rate (common-day rule), `null` when it
+/// cannot be converted.
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct TickerValueHistory {
     pub ticker: String,
     #[serde(rename = "recordedAt")]
     pub recorded_at: i64,
-    #[serde(rename = "valueCzk")]
-    pub value_czk: String,
     pub quantity: String,
     pub price: String,
     pub currency: String,
+    pub value: Option<String>,
+    #[serde(rename = "isStale")]
+    pub is_stale: bool,
+}
+
+/// A ticker's value history in a report currency, oldest day first.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct TickerValueHistoryReport {
+    /// The report currency of every `value`.
+    pub currency: String,
+    #[serde(rename = "fxQuality")]
+    pub fx_quality: crate::models::fx::ConversionQuality,
+    pub points: Vec<TickerValueHistory>,
 }
 
 // Input validation at trust boundary
@@ -379,4 +392,15 @@ pub struct TwrSeries {
     #[serde(rename = "isUntagged")]
     pub is_untagged: bool,
     pub data: Vec<TwrDataPoint>,
+}
+
+/// Time-weighted return series computed in a report currency: each day's value and cash flows
+/// are converted at that day's rate. Days that could not be converted are left out of the
+/// chain and counted in `fxQuality`.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct StockTwr {
+    pub currency: String,
+    #[serde(rename = "fxQuality")]
+    pub fx_quality: crate::models::fx::ConversionQuality,
+    pub series: Vec<TwrSeries>,
 }

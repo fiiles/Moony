@@ -30,10 +30,15 @@ use rusqlite::{params, Connection};
 use uuid::Uuid;
 
 use crate::error::Result;
+use crate::models::fx::ConversionQuality;
+use crate::models::{TickerValueHistory, TickerValueHistoryReport};
 use crate::services::currency::{
     convert_to_czk_with_rates, get_all_rates, get_rates_for_date_range,
 };
+use crate::services::fx::{History, Quality};
 use crate::services::portfolio_history::SECONDS_PER_DAY;
+use crate::services::pricing::AssetKind;
+use crate::services::reporting::{money_in_currency, normalize_currency};
 
 /// A position smaller than this is float noise from summing fractional
 /// quantities (0.1 + 0.2 - 0.3), not a holding: the day counts as empty.
@@ -234,6 +239,81 @@ where
 {
     let plan = plan_stock_ticker_history(conn, ticker, from_day, until_day, price_at)?;
     apply_stock_ticker_plan(conn, ticker, &plan)
+}
+
+/// A ticker's daily value history (`stock_value_history` / `crypto_value_history`) in
+/// `report_currency`, oldest day first, optionally limited to `start_date..=end_date`.
+///
+/// Quantity, price and currency stay the native facts of each row; `value` is
+/// `quantity × price` converted at the row's own day with the common-day rule
+/// (`fx::History::convert_on`). The stored `value_czk` is never read. A row that cannot be
+/// converted has `value: null` and is counted in `fxQuality`.
+pub fn value_history(
+    conn: &Connection,
+    kind: AssetKind,
+    ticker: &str,
+    start_date: Option<i64>,
+    end_date: Option<i64>,
+    report_currency: &str,
+) -> Result<TickerValueHistoryReport> {
+    let currency = normalize_currency(report_currency)?;
+    let table = match kind {
+        AssetKind::Stock => "stock_value_history",
+        AssetKind::Crypto => "crypto_value_history",
+    };
+    let mut stmt = conn.prepare(&format!(
+        "SELECT ticker, recorded_at, quantity, price, currency, is_stale
+         FROM {table}
+         WHERE ticker = ?1 AND (?2 IS NULL OR recorded_at >= ?2) AND (?3 IS NULL OR recorded_at <= ?3)
+         ORDER BY recorded_at ASC"
+    ))?;
+    let stored = stmt
+        .query_map(
+            params![ticker.to_uppercase(), start_date, end_date],
+            |row| {
+                Ok(TickerValueHistory {
+                    ticker: row.get(0)?,
+                    recorded_at: row.get(1)?,
+                    quantity: row.get(2)?,
+                    price: row.get(3)?,
+                    currency: row.get(4)?,
+                    value: None,
+                    is_stale: row.get::<_, i64>(5)? != 0,
+                })
+            },
+        )?
+        .collect::<rusqlite::Result<Vec<_>>>()?;
+
+    let mut points = stored;
+    let mut quality = Quality::default();
+    if let (Some(first), Some(last)) = (points.first(), points.last()) {
+        let history = History::load(conn, first.recorded_at, last.recorded_at)?;
+        for point in &mut points {
+            let native = point
+                .quantity
+                .trim()
+                .parse::<f64>()
+                .ok()
+                .zip(point.price.trim().parse::<f64>().ok());
+            let Some((quantity, price)) = native else {
+                continue;
+            };
+            point.value = history
+                .convert_on_tracked(
+                    &mut quality,
+                    quantity * price,
+                    &point.currency,
+                    &currency,
+                    point.recorded_at,
+                )
+                .map(|v| money_in_currency(v, &currency));
+        }
+    }
+    Ok(TickerValueHistoryReport {
+        currency,
+        fx_quality: ConversionQuality::from(&quality),
+        points,
+    })
 }
 
 #[cfg(test)]
@@ -488,6 +568,117 @@ mod tests {
         let plan = plan_stock_ticker_history(&conn, "AAPL", TODAY, TODAY - DAY, flat_price(1.0))
             .expect("plan");
         assert!(plan.is_empty());
+    }
+
+    fn seed_value_rows(conn: &Connection) {
+        conn.execute_batch(&format!(
+            "INSERT INTO stock_value_history (id, ticker, recorded_at, value_czk, quantity, price, currency, is_stale)
+             VALUES ('a', 'AAPL', {d0}, '999999', '10', '100', 'USD', 0),
+                    ('b', 'AAPL', {d1}, '999999', '10', '100', 'USD', 1),
+                    ('c', 'AAPL', {d2}, '999999', '10', '100', 'USD', 0),
+                    ('x', 'MSFT', {d1}, '1', '1', '1', 'USD', 0);
+             INSERT INTO exchange_rate_history (date, currency, rate)
+             VALUES ({d0}, 'USD', 20.0), ({d1}, 'USD', 22.5), ({d2}, 'USD', 25.0),
+                    ({d0}, 'EUR', 25.0), ({d1}, 'EUR', 25.0), ({d2}, 'EUR', 25.0);",
+            d0 = 20_000 * DAY,
+            d1 = 20_001 * DAY,
+            d2 = 20_002 * DAY,
+        ))
+        .expect("seed");
+    }
+
+    #[test]
+    fn value_history_converts_native_value_at_each_days_rate() {
+        let conn = setup_test_db();
+        seed_value_rows(&conn);
+
+        let czk = value_history(&conn, AssetKind::Stock, "aapl", None, None, "CZK").expect("czk");
+        assert_eq!(czk.currency, "CZK");
+        let values: Vec<_> = czk.points.iter().map(|p| p.value.clone()).collect();
+        // quantity x price in USD at that day's rate; the stored value_czk is not read
+        assert_eq!(
+            values,
+            [
+                Some("20000.00".to_string()),
+                Some("22500.00".to_string()),
+                Some("25000.00".to_string())
+            ]
+        );
+        // oldest first, native facts untouched, the stale flag carried
+        assert_eq!(czk.points[0].recorded_at, 20_000 * DAY);
+        assert_eq!(czk.points[0].quantity, "10");
+        assert_eq!(czk.points[0].price, "100");
+        assert_eq!(czk.points[0].currency, "USD");
+        assert!(czk.points[1].is_stale && !czk.points[0].is_stale);
+        assert_eq!(czk.fx_quality.missing_count, 0);
+
+        let usd = value_history(&conn, AssetKind::Stock, "AAPL", None, None, "USD").expect("usd");
+        assert!(usd
+            .points
+            .iter()
+            .all(|p| p.value.as_deref() == Some("1000.00")));
+        let eur = value_history(&conn, AssetKind::Stock, "AAPL", None, None, "EUR").expect("eur");
+        assert_eq!(eur.points[0].value.as_deref(), Some("800.00"));
+        assert_eq!(eur.points[2].value.as_deref(), Some("1000.00"));
+    }
+
+    #[test]
+    fn value_history_applies_the_date_window() {
+        let conn = setup_test_db();
+        seed_value_rows(&conn);
+
+        let only_middle = value_history(
+            &conn,
+            AssetKind::Stock,
+            "AAPL",
+            Some(20_001 * DAY),
+            Some(20_001 * DAY),
+            "CZK",
+        )
+        .expect("window");
+        assert_eq!(only_middle.points.len(), 1);
+        assert_eq!(only_middle.points[0].recorded_at, 20_001 * DAY);
+
+        let unknown =
+            value_history(&conn, AssetKind::Stock, "NOPE", None, None, "CZK").expect("none");
+        assert!(unknown.points.is_empty());
+        assert_eq!(unknown.currency, "CZK");
+    }
+
+    #[test]
+    fn value_history_leaves_unconvertible_days_null_and_counts_them() {
+        let conn = setup_test_db();
+        seed_value_rows(&conn);
+        conn.execute(
+            "DELETE FROM exchange_rate_history WHERE date = ?1 AND currency = 'USD'",
+            [20_001 * DAY],
+        )
+        .unwrap();
+        conn.execute(
+            "DELETE FROM exchange_rate_history WHERE date = ?1",
+            [20_000 * DAY],
+        )
+        .unwrap();
+        // day 20_000 has no quotes at all and nothing earlier: USD (and CZK) are missing there;
+        // day 20_001 falls back to a common day, which does not exist either
+        let report =
+            value_history(&conn, AssetKind::Stock, "AAPL", None, None, "CZK").expect("report");
+
+        assert_eq!(report.points[0].value, None);
+        assert_eq!(report.points[1].value, None);
+        assert_eq!(report.points[2].value.as_deref(), Some("25000.00"));
+        assert_eq!(report.points[1].price, "100");
+        assert_eq!(report.fx_quality.missing_count, 2);
+        assert!(report
+            .fx_quality
+            .missing_currencies
+            .contains(&"USD".to_string()));
+    }
+
+    #[test]
+    fn value_history_rejects_an_invalid_report_currency() {
+        let conn = setup_test_db();
+        assert!(value_history(&conn, AssetKind::Stock, "AAPL", None, None, "??").is_err());
     }
 }
 

@@ -5,8 +5,11 @@
 //! This is the SINGLE SOURCE OF TRUTH for investment operations.
 
 use crate::error::{AppError, Result};
+use crate::models::fx::ConversionQuality;
 use crate::models::{InsertInvestmentTransaction, InvestmentTransaction, StockInvestment};
 use crate::services::dedup;
+use crate::services::fx::{History, Quality};
+use crate::services::reporting::normalize_currency;
 use chrono::DateTime;
 use rusqlite::params_from_iter;
 use rusqlite::types::Value;
@@ -839,52 +842,6 @@ pub fn ensure_sell_within_holdings(
     Ok(())
 }
 
-/// Get value history for a specific stock ticker
-pub fn get_value_history(
-    conn: &rusqlite::Connection,
-    ticker: &str,
-    start_date: Option<i64>,
-    end_date: Option<i64>,
-) -> Result<Vec<crate::models::TickerValueHistory>> {
-    let ticker_upper = ticker.to_uppercase();
-
-    let mut query = String::from(
-        "SELECT ticker, recorded_at, value_czk, quantity, price, currency 
-         FROM stock_value_history 
-         WHERE ticker = ?",
-    );
-
-    let mut params: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
-    params.push(Box::new(ticker_upper));
-
-    if let Some(start) = start_date {
-        query.push_str(" AND recorded_at >= ?");
-        params.push(Box::new(start));
-    }
-    if let Some(end) = end_date {
-        query.push_str(" AND recorded_at <= ?");
-        params.push(Box::new(end));
-    }
-
-    query.push_str(" ORDER BY recorded_at DESC");
-
-    let mut stmt = conn.prepare(&query)?;
-
-    let rows = stmt.query_map(rusqlite::params_from_iter(params), |row| {
-        Ok(crate::models::TickerValueHistory {
-            ticker: row.get(0)?,
-            recorded_at: row.get(1)?,
-            value_czk: row.get(2)?,
-            quantity: row.get(3)?,
-            price: row.get(4)?,
-            currency: row.get(5)?,
-        })
-    })?;
-
-    let histories: Vec<crate::models::TickerValueHistory> = rows.filter_map(|r| r.ok()).collect();
-    Ok(histories)
-}
-
 /// Convert a Unix timestamp to a "YYYY-MM-DD" date string (UTC).
 fn ts_to_date_str(ts: i64) -> String {
     DateTime::from_timestamp(ts, 0)
@@ -892,43 +849,57 @@ fn ts_to_date_str(ts: i64) -> String {
         .unwrap_or_default()
 }
 
-/// Find the most recent (value_czk, quantity) for a ticker at or before `target_ts`.
+/// One recorded day of a ticker's position, in native terms.
+#[derive(Debug, Clone)]
+struct DayHolding {
+    ts: i64,
+    quantity: f64,
+    price: f64,
+    currency: String,
+}
+
+/// The most recent recorded holding of a ticker at or before `target_ts`.
 ///
 /// Uses binary search — O(log N) — so entries must be sorted ascending by timestamp
 /// (as guaranteed by the SQL `ORDER BY ticker, recorded_at ASC` in `compute_twr_for_tickers`).
-fn lookup_ticker_at(
-    history: &HashMap<String, Vec<(i64, f64, f64)>>,
+fn lookup_ticker_at<'a>(
+    history: &'a HashMap<String, Vec<DayHolding>>,
     ticker: &str,
     target_ts: i64,
-) -> (f64, f64) {
-    history
-        .get(ticker)
-        .and_then(|entries| {
-            // partition_point returns the index of the first element where ts > target_ts,
-            // so the last element at or before target_ts is at idx-1 (if idx > 0).
-            let idx = entries.partition_point(|(ts, _, _)| *ts <= target_ts);
-            if idx > 0 {
-                let (_, val, qty) = entries[idx - 1];
-                Some((val, qty))
-            } else {
-                None
-            }
-        })
-        .unwrap_or((0.0, 0.0))
+) -> Option<&'a DayHolding> {
+    let entries = history.get(ticker)?;
+    // partition_point returns the index of the first element where ts > target_ts,
+    // so the last element at or before target_ts is at idx-1 (if idx > 0).
+    let idx = entries.partition_point(|entry| entry.ts <= target_ts);
+    idx.checked_sub(1).map(|i| &entries[i])
 }
 
-/// Compute daily chain-linked time-weighted return for a group of tickers.
+/// The report currency of a TWR computation and the day quotes it converts with.
+struct ReportFx<'a> {
+    currency: &'a str,
+    history: &'a History,
+}
+
+/// Compute daily chain-linked time-weighted return for a group of tickers, in a report
+/// currency.
 ///
 /// Returns one `TwrDataPoint` per calendar day from `from_ts` to `to_ts` inclusive.
 /// The first point is always `{ date: from_ts, twr: 0.0 }`.
-/// Cash flows are estimated from quantity changes in `stock_value_history`.
+/// Cash flows are estimated from quantity changes in `stock_value_history`. A day's value is
+/// the native `quantity × price` converted at that day's rate and a flow is converted at the
+/// day it happened, so a currency moving alone shows up as return in a report currency other
+/// than the position's. A day any of whose conversions fails is left out of the chain and
+/// counted in `quality`.
 ///
-/// `from_ts` and `to_ts` must be Unix timestamps (seconds, midnight UTC).
-pub fn compute_twr_for_tickers(
+/// `from_ts` and `to_ts` must be Unix timestamps (seconds, midnight UTC); `fx.history` must
+/// cover them (and the day before `from_ts`).
+fn compute_twr_for_tickers(
     conn: &rusqlite::Connection,
     tickers: &[String],
     from_ts: i64,
     to_ts: i64,
+    fx: &ReportFx<'_>,
+    quality: &mut Quality,
 ) -> Result<Vec<crate::models::TwrDataPoint>> {
     if tickers.is_empty() {
         return Ok(vec![crate::models::TwrDataPoint {
@@ -943,11 +914,11 @@ pub fn compute_twr_for_tickers(
     let main_placeholders: Vec<String> = (3..=n + 2).map(|i| format!("?{i}")).collect();
     let pre_placeholders: Vec<String> = (n + 3..=2 * n + 2).map(|i| format!("?{i}")).collect();
     let sql = format!(
-        "SELECT ticker, recorded_at, CAST(value_czk AS REAL), CAST(quantity AS REAL) \
+        "SELECT ticker, recorded_at, CAST(quantity AS REAL), CAST(price AS REAL), currency \
          FROM stock_value_history \
          WHERE ticker IN ({main}) AND recorded_at >= ?1 AND recorded_at <= ?2 \
          UNION ALL \
-         SELECT s.ticker, s.recorded_at, CAST(s.value_czk AS REAL), CAST(s.quantity AS REAL) \
+         SELECT s.ticker, s.recorded_at, CAST(s.quantity AS REAL), CAST(s.price AS REAL), s.currency \
          FROM stock_value_history s \
          WHERE s.ticker IN ({pre}) \
            AND s.recorded_at = ( \
@@ -965,20 +936,23 @@ pub fn compute_twr_for_tickers(
         .chain(tickers.iter().map(|t| Value::Text(t.clone()))) // pre-range
         .collect();
 
-    let mut history: HashMap<String, Vec<(i64, f64, f64)>> = HashMap::new();
+    let mut history: HashMap<String, Vec<DayHolding>> = HashMap::new();
     {
         let mut stmt = conn.prepare(&sql)?;
         let rows = stmt.query_map(params_from_iter(params), |row| {
             Ok((
                 row.get::<_, String>(0)?,
-                row.get::<_, i64>(1)?,
-                row.get::<_, f64>(2)?,
-                row.get::<_, f64>(3)?,
+                DayHolding {
+                    ts: row.get(1)?,
+                    quantity: row.get(2)?,
+                    price: row.get(3)?,
+                    currency: row.get(4)?,
+                },
             ))
         })?;
         for row in rows {
-            let (ticker, ts, val, qty) = row?;
-            history.entry(ticker).or_default().push((ts, val, qty));
+            let (ticker, holding) = row?;
+            history.entry(ticker).or_default().push(holding);
         }
     }
 
@@ -989,11 +963,11 @@ pub fn compute_twr_for_tickers(
     // runs for millions of iterations while holding the global DB mutex.
     let earliest = history
         .values()
-        .filter_map(|rows| rows.first().map(|(ts, _, _)| *ts))
+        .filter_map(|rows| rows.first().map(|entry| entry.ts))
         .min();
     let latest = history
         .values()
-        .filter_map(|rows| rows.last().map(|(ts, _, _)| *ts))
+        .filter_map(|rows| rows.last().map(|entry| entry.ts))
         .max();
     let (Some(earliest), Some(latest)) = (earliest, latest) else {
         return Ok(vec![crate::models::TwrDataPoint {
@@ -1018,36 +992,77 @@ pub fn compute_twr_for_tickers(
     let mut day = from_ts + 86400;
     let mut day_index: i64 = 0;
 
+    // Value of a holding converted at `at`; an empty holding is worth nothing and needs no rate.
+    let value_at = |holding: Option<&DayHolding>, at: i64, quality: &mut Quality| {
+        let Some(h) = holding.filter(|h| h.quantity > 1e-9) else {
+            return Some(0.0);
+        };
+        fx.history
+            .convert_on_tracked(quality, h.quantity * h.price, &h.currency, fx.currency, at)
+    };
+
+    // Each ticker's value on the previous day: the day before is converted once, as it was
+    // when it was "today".
+    let mut prev_values: Vec<Option<f64>> = tickers
+        .iter()
+        .map(|ticker| {
+            value_at(
+                lookup_ticker_at(&history, ticker, from_ts),
+                from_ts,
+                quality,
+            )
+        })
+        .collect();
+
     while day <= to_ts {
         day_index += 1;
         let prev_day = day - 86400;
         let mut v_curr = 0.0f64;
         let mut v_prev = 0.0f64;
         let mut cf = 0.0f64;
+        let mut convertible = true;
+        let mut curr_values = Vec::with_capacity(tickers.len());
 
-        for ticker in tickers {
-            let (val_curr, qty_curr) = lookup_ticker_at(&history, ticker, day);
-            let (val_prev, qty_prev) = lookup_ticker_at(&history, ticker, prev_day);
+        for (ticker, val_prev) in tickers.iter().zip(&prev_values) {
+            let curr = lookup_ticker_at(&history, ticker, day);
+            let prev = lookup_ticker_at(&history, ticker, prev_day);
+            let val_curr = value_at(curr, day, quality);
+            curr_values.push(val_curr);
+            let (Some(val_curr), Some(val_prev)) = (val_curr, *val_prev) else {
+                convertible = false;
+                continue;
+            };
             v_curr += val_curr;
             v_prev += val_prev;
 
+            let qty_curr = curr.map_or(0.0, |h| h.quantity);
+            let qty_prev = prev.map_or(0.0, |h| h.quantity);
             let delta_qty = qty_curr - qty_prev;
             if delta_qty.abs() > 1e-9 {
-                let price_czk = if qty_curr > 1e-9 {
-                    val_curr / qty_curr
-                } else if qty_prev > 1e-9 {
-                    val_prev / qty_prev
-                } else {
-                    0.0
-                };
-                cf += delta_qty * price_czk;
+                // The flow is priced with the day's own native price, converted at its day.
+                let priced = if qty_curr > 1e-9 { curr } else { prev };
+                if let Some(h) = priced {
+                    match fx.history.convert_on_tracked(
+                        quality,
+                        delta_qty * h.price,
+                        &h.currency,
+                        fx.currency,
+                        day,
+                    ) {
+                        Some(flow) => cf += flow,
+                        None => convertible = false,
+                    }
+                }
             }
         }
+        prev_values = curr_values;
 
-        let denominator = v_prev + cf;
-        if denominator > 1e-9 {
-            let daily_r = (v_curr - v_prev - cf) / denominator;
-            twr_factor *= 1.0 + daily_r;
+        if convertible {
+            let denominator = v_prev + cf;
+            if denominator > 1e-9 {
+                let daily_r = (v_curr - v_prev - cf) / denominator;
+                twr_factor *= 1.0 + daily_r;
+            }
         }
 
         // Emit this point if it falls on the sampling interval or is the last day.
@@ -1127,16 +1142,27 @@ fn twr_scope_tickers(
 ///   intersection with the tag's own positions); `None` leaves them whole, an empty list leaves
 ///   them with nothing to chart (one flat point). The whole-portfolio series is the benchmark the
 ///   others are read against, so it is never narrowed.
-/// - `from_ts` / `to_ts`: Unix timestamps (seconds, midnight UTC) of the date range.
+/// - `range`: Unix timestamps (seconds, midnight UTC) of the first and last day.
+/// - `report_currency`: the currency the returns are computed in; every day's values and flows
+///   are converted at that day's rate (common-day rule). Days that cannot be converted are left
+///   out of the chain and counted in the response's `fxQuality`.
 pub fn twr_series(
     conn: &rusqlite::Connection,
     tag_ids: &[String],
     include_portfolio: bool,
     include_untagged: bool,
     investment_ids: Option<&[String]>,
-    from_ts: i64,
-    to_ts: i64,
-) -> Result<Vec<crate::models::TwrSeries>> {
+    range: std::ops::RangeInclusive<i64>,
+    report_currency: &str,
+) -> Result<crate::models::StockTwr> {
+    let (from_ts, to_ts) = (*range.start(), *range.end());
+    let currency = normalize_currency(report_currency)?;
+    let history = load_twr_history(conn, from_ts, to_ts)?;
+    let fx = ReportFx {
+        currency: &currency,
+        history: &history,
+    };
+    let mut quality = Quality::default();
     let only: Option<std::collections::HashSet<&str>> =
         investment_ids.map(|ids| ids.iter().map(String::as_str).collect());
     let mut series = Vec::new();
@@ -1148,7 +1174,7 @@ pub fn twr_series(
         series.push(crate::models::TwrSeries {
             tag: None,
             is_untagged: false,
-            data: compute_twr_for_tickers(conn, &tickers, from_ts, to_ts)?,
+            data: compute_twr_for_tickers(conn, &tickers, from_ts, to_ts, &fx, &mut quality)?,
         });
     }
 
@@ -1175,7 +1201,7 @@ pub fn twr_series(
         series.push(crate::models::TwrSeries {
             tag: Some(tag),
             is_untagged: false,
-            data: compute_twr_for_tickers(conn, &tickers, from_ts, to_ts)?,
+            data: compute_twr_for_tickers(conn, &tickers, from_ts, to_ts, &fx, &mut quality)?,
         });
     }
 
@@ -1185,69 +1211,38 @@ pub fn twr_series(
         series.push(crate::models::TwrSeries {
             tag: None,
             is_untagged: true,
-            data: compute_twr_for_tickers(conn, &tickers, from_ts, to_ts)?,
+            data: compute_twr_for_tickers(conn, &tickers, from_ts, to_ts, &fx, &mut quality)?,
         });
     }
 
-    Ok(series)
+    Ok(crate::models::StockTwr {
+        currency,
+        fx_quality: ConversionQuality::from(&quality),
+        series,
+    })
+}
+
+/// The day quotes the TWR of `from_ts..=to_ts` converts with: the requested range limited to
+/// the span of `stock_value_history` (a transient absurd range loads nothing extra), plus the
+/// day before it, which is the base of the first day's return.
+fn load_twr_history(conn: &rusqlite::Connection, from_ts: i64, to_ts: i64) -> Result<History> {
+    let (first, last): (Option<i64>, Option<i64>) = conn.query_row(
+        "SELECT MIN(recorded_at), MAX(recorded_at) FROM stock_value_history",
+        [],
+        |row| Ok((row.get(0)?, row.get(1)?)),
+    )?;
+    let (Some(first), Some(last)) = (first, last) else {
+        return Ok(History::default());
+    };
+    let start = from_ts.max(first) - 86400;
+    let end = to_ts.min(last);
+    History::load(conn, start, end.max(start))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use rusqlite::Connection;
-
-    #[test]
-    fn test_get_value_history_sql_construction() {
-        let conn = Connection::open_in_memory().unwrap();
-
-        // Create table
-        conn.execute(
-            "CREATE TABLE stock_value_history (
-                ticker TEXT NOT NULL,
-                recorded_at INTEGER NOT NULL,
-                value_czk TEXT NOT NULL,
-                quantity TEXT NOT NULL,
-                price TEXT NOT NULL,
-                currency TEXT NOT NULL
-            )",
-            [],
-        )
-        .unwrap();
-
-        // Insert dummy data
-        conn.execute(
-            "INSERT INTO stock_value_history (ticker, recorded_at, value_czk, quantity, price, currency)
-             VALUES ('AAPL', 1000, '1000', '10', '100', 'USD')",
-            [],
-        ).unwrap();
-        conn.execute(
-            "INSERT INTO stock_value_history (ticker, recorded_at, value_czk, quantity, price, currency)
-             VALUES ('AAPL', 2000, '2000', '10', '200', 'USD')",
-            [],
-        ).unwrap();
-        conn.execute(
-            "INSERT INTO stock_value_history (ticker, recorded_at, value_czk, quantity, price, currency)
-             VALUES ('AAPL', 3000, '3000', '10', '300', 'USD')",
-            [],
-        ).unwrap();
-
-        // Test 1: No dates (All) - Should NOT fail
-        let history = get_value_history(&conn, "AAPL", None, None).unwrap();
-        assert_eq!(history.len(), 3);
-
-        // Test 2: Start date only
-        let history = get_value_history(&conn, "AAPL", Some(2000), None).unwrap();
-        assert_eq!(history.len(), 2); // 2000 and 3000
-
-        // Test 3: End date only
-        let history = get_value_history(&conn, "AAPL", None, Some(2000)).unwrap();
-        assert_eq!(history.len(), 2); // 1000 and 2000
-
-        // Test 4: Both dates
-        let history = get_value_history(&conn, "AAPL", Some(2000), Some(2500)).unwrap();
-        assert_eq!(history.len(), 1); // Only 2000
-    }
 
     pub(super) fn setup_test_db() -> Connection {
         let conn = Connection::open_in_memory().expect("in-memory db");
@@ -1778,6 +1773,43 @@ mod tests {
         assert!(result.is_err());
     }
 
+    /// TWR of `tickers` in CZK (the rows of these tests are CZK, so no rates are needed).
+    fn twr_czk(
+        conn: &rusqlite::Connection,
+        tickers: &[String],
+        from_ts: i64,
+        to_ts: i64,
+    ) -> Result<Vec<crate::models::TwrDataPoint>> {
+        let history = History::default();
+        let fx = ReportFx {
+            currency: "CZK",
+            history: &history,
+        };
+        compute_twr_for_tickers(conn, tickers, from_ts, to_ts, &fx, &mut Quality::default())
+    }
+
+    /// `twr_series` in CZK, the series only.
+    fn czk_series(
+        conn: &rusqlite::Connection,
+        tag_ids: &[String],
+        include_portfolio: bool,
+        include_untagged: bool,
+        investment_ids: Option<&[String]>,
+        from_ts: i64,
+        to_ts: i64,
+    ) -> Result<Vec<crate::models::TwrSeries>> {
+        Ok(twr_series(
+            conn,
+            tag_ids,
+            include_portfolio,
+            include_untagged,
+            investment_ids,
+            from_ts..=to_ts,
+            "CZK",
+        )?
+        .series)
+    }
+
     fn setup_twr_db() -> rusqlite::Connection {
         let conn = rusqlite::Connection::open_in_memory().unwrap();
         conn.execute_batch(
@@ -1785,15 +1817,143 @@ mod tests {
                 id TEXT PRIMARY KEY,
                 ticker TEXT NOT NULL,
                 recorded_at INTEGER NOT NULL,
-                value_czk TEXT NOT NULL,
                 quantity TEXT NOT NULL,
                 price TEXT NOT NULL,
                 currency TEXT NOT NULL,
                 UNIQUE(ticker, recorded_at)
+            );
+            CREATE TABLE exchange_rate_history (
+                date INTEGER NOT NULL,
+                currency TEXT NOT NULL,
+                rate REAL NOT NULL,
+                PRIMARY KEY (date, currency)
             );",
         )
         .unwrap();
         conn
+    }
+
+    fn hold_aapl(conn: &rusqlite::Connection) {
+        conn.execute(
+            "INSERT INTO stock_investments (id, ticker, quantity) VALUES ('inv-aapl', 'AAPL', '10')",
+            [],
+        )
+        .unwrap();
+    }
+
+    /// A USD stock priced 100 USD for three days (10 units) and USD/CZK moving 20, 22.5, 25.
+    fn seed_usd_stock_with_moving_rate(conn: &rusqlite::Connection) -> (i64, i64) {
+        let day0: i64 = 1_700_000_000 / 86400 * 86400;
+        hold_aapl(conn);
+        for i in 0..3_i64 {
+            conn.execute(
+                "INSERT INTO stock_value_history (id, ticker, recorded_at, quantity, price, currency)
+                 VALUES (?1, 'AAPL', ?2, '10', '100', 'USD')",
+                rusqlite::params![format!("v{i}"), day0 + i * 86400],
+            )
+            .unwrap();
+            conn.execute(
+                "INSERT INTO exchange_rate_history (date, currency, rate) VALUES (?1, 'USD', ?2)",
+                rusqlite::params![day0 + i * 86400, 20.0 + 2.5 * i as f64],
+            )
+            .unwrap();
+        }
+        (day0, day0 + 2 * 86400)
+    }
+
+    fn twr_points(twr: &crate::models::StockTwr) -> Vec<f64> {
+        twr.series[0].data.iter().map(|p| p.twr).collect()
+    }
+
+    #[test]
+    fn twr_in_the_position_currency_ignores_the_exchange_rate() {
+        let conn = setup_twr_series_db();
+        let (day0, day2) = seed_usd_stock_with_moving_rate(&conn);
+
+        let twr = twr_series(&conn, &[], false, false, None, day0..=day2, "USD").unwrap();
+
+        assert_eq!(twr.currency, "USD");
+        assert_eq!(twr_points(&twr), [0.0, 0.0, 0.0]);
+        assert_eq!(twr.fx_quality.missing_count, 0);
+    }
+
+    #[test]
+    fn twr_in_another_currency_includes_the_exchange_rate_move() {
+        let conn = setup_twr_series_db();
+        let (day0, day2) = seed_usd_stock_with_moving_rate(&conn);
+
+        let twr = twr_series(&conn, &[], false, false, None, day0..=day2, "CZK").unwrap();
+
+        assert_eq!(twr.currency, "CZK");
+        let points = twr_points(&twr);
+        assert_eq!(points.len(), 3);
+        assert!((points[1] - 12.5).abs() < 1e-9, "{points:?}");
+        assert!((points[2] - 25.0).abs() < 1e-9, "{points:?}");
+        assert!(twr.fx_quality.missing_currencies.is_empty());
+    }
+
+    #[test]
+    fn twr_flows_are_converted_at_their_own_day() {
+        // 10 units on day 0 (20000 CZK), 10 more bought on day 1 at an unchanged price while
+        // USD/CZK goes 20 -> 25. The purchase is a flow of 1000 USD = 25000 CZK at its own
+        // day (not 20000), so day 1 returns (50000 - 20000 - 25000) / (20000 + 25000).
+        let conn = setup_twr_series_db();
+        hold_aapl(&conn);
+        let day0: i64 = 1_700_000_000 / 86400 * 86400;
+        for (i, (qty, rate)) in [("10", 20.0), ("20", 25.0), ("20", 25.0)]
+            .iter()
+            .enumerate()
+        {
+            let day = day0 + i as i64 * 86400;
+            conn.execute(
+                "INSERT INTO stock_value_history (id, ticker, recorded_at, quantity, price, currency)
+                 VALUES (?1, 'AAPL', ?2, ?3, '100', 'USD')",
+                rusqlite::params![format!("v{i}"), day, qty],
+            )
+            .unwrap();
+            conn.execute(
+                "INSERT INTO exchange_rate_history (date, currency, rate) VALUES (?1, 'USD', ?2)",
+                rusqlite::params![day, rate],
+            )
+            .unwrap();
+        }
+
+        let twr = twr_series(
+            &conn,
+            &[],
+            false,
+            false,
+            None,
+            day0..=day0 + 2 * 86400,
+            "CZK",
+        )
+        .unwrap();
+
+        let points = twr_points(&twr);
+        let expected = 100.0 * 5000.0 / 45000.0;
+        assert!((points[1] - expected).abs() < 1e-9, "{points:?}");
+        assert!((points[2] - expected).abs() < 1e-9, "{points:?}");
+    }
+
+    #[test]
+    fn twr_skips_days_without_a_rate_and_names_the_currency() {
+        let conn = setup_twr_series_db();
+        let (day0, day2) = seed_usd_stock_with_moving_rate(&conn);
+        // No quotes for the middle day or the ten before it would be needed; drop all of them
+        conn.execute("DELETE FROM exchange_rate_history", [])
+            .unwrap();
+
+        let twr = twr_series(&conn, &[], false, false, None, day0..=day2, "CZK").unwrap();
+
+        assert_eq!(twr_points(&twr), [0.0, 0.0, 0.0]);
+        assert_eq!(twr.fx_quality.missing_currencies, ["CZK", "USD"]);
+        assert!(twr.fx_quality.missing_count > 0);
+    }
+
+    #[test]
+    fn twr_rejects_an_invalid_report_currency() {
+        let conn = setup_twr_db();
+        assert!(twr_series(&conn, &[], false, false, None, 0..=1, "??").is_err());
     }
 
     #[test]
@@ -1807,14 +1967,14 @@ mod tests {
         let day1 = day0 + 86400;
         let day2 = day0 + 2 * 86400;
         conn.execute_batch(&format!(
-            "INSERT INTO stock_value_history (id, ticker, recorded_at, value_czk, quantity, price, currency) VALUES
-             ('a', 'AAPL', {day0}, '1000.0', '10.0', '100.0', 'USD'),
-             ('b', 'AAPL', {day1}, '2000.0', '20.0', '100.0', 'USD'),
-             ('c', 'AAPL', {day2}, '2200.0', '20.0', '110.0', 'USD');"
+            "INSERT INTO stock_value_history (id, ticker, recorded_at, quantity, price, currency) VALUES
+             ('a', 'AAPL', {day0}, '10.0', '100.0', 'CZK'),
+             ('b', 'AAPL', {day1}, '20.0', '100.0', 'CZK'),
+             ('c', 'AAPL', {day2}, '20.0', '110.0', 'CZK');"
         ))
         .unwrap();
 
-        let result = compute_twr_for_tickers(&conn, &["AAPL".to_string()], day0, day2).unwrap();
+        let result = twr_czk(&conn, &["AAPL".to_string()], day0, day2).unwrap();
         assert_eq!(result.len(), 3);
         assert!((result[0].twr - 0.0).abs() < 0.01, "day0 should be 0%");
         assert!(
@@ -1835,14 +1995,14 @@ mod tests {
         let day1 = day0 + 86400;
         let day2 = day0 + 2 * 86400;
         conn.execute_batch(&format!(
-            "INSERT INTO stock_value_history (id, ticker, recorded_at, value_czk, quantity, price, currency) VALUES
-             ('a', 'AAPL', {day0}, '1000.0', '10.0', '100.0', 'USD'),
-             ('b', 'AAPL', {day1}, '1050.0', '10.0', '105.0', 'USD'),
-             ('c', 'AAPL', {day2}, '1100.0', '10.0', '110.0', 'USD');"
+            "INSERT INTO stock_value_history (id, ticker, recorded_at, quantity, price, currency) VALUES
+             ('a', 'AAPL', {day0}, '10.0', '100.0', 'CZK'),
+             ('b', 'AAPL', {day1}, '10.0', '105.0', 'CZK'),
+             ('c', 'AAPL', {day2}, '10.0', '110.0', 'CZK');"
         ))
         .unwrap();
 
-        let result = compute_twr_for_tickers(&conn, &["AAPL".to_string()], day0, day2).unwrap();
+        let result = twr_czk(&conn, &["AAPL".to_string()], day0, day2).unwrap();
         assert_eq!(result.len(), 3);
         assert!((result[0].twr - 0.0).abs() < 0.01);
         // day1: (1050-1000)/1000 = 5%
@@ -1856,7 +2016,7 @@ mod tests {
         let conn = setup_twr_db();
         let day0: i64 = 1_700_400_000 / 86400 * 86400;
         let day1 = day0 + 86400;
-        let result = compute_twr_for_tickers(&conn, &[], day0, day1).unwrap();
+        let result = twr_czk(&conn, &[], day0, day1).unwrap();
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].twr, 0.0);
     }
@@ -1873,10 +2033,10 @@ mod tests {
         let day1 = day0 + 86400;
         let day2 = day0 + 2 * 86400;
         conn.execute_batch(&format!(
-            "INSERT INTO stock_value_history (id, ticker, recorded_at, value_czk, quantity, price, currency) VALUES
-             ('a', 'AAPL', {day0}, '1000.0', '10.0', '100.0', 'USD'),
-             ('b', 'AAPL', {day1}, '1050.0', '10.0', '105.0', 'USD'),
-             ('c', 'AAPL', {day2}, '1100.0', '10.0', '110.0', 'USD');"
+            "INSERT INTO stock_value_history (id, ticker, recorded_at, quantity, price, currency) VALUES
+             ('a', 'AAPL', {day0}, '10.0', '100.0', 'CZK'),
+             ('b', 'AAPL', {day1}, '10.0', '105.0', 'CZK'),
+             ('c', 'AAPL', {day2}, '10.0', '110.0', 'CZK');"
         ))
         .unwrap();
 
@@ -1884,8 +2044,7 @@ mod tests {
         // ~24 million days. The result must start at the data span instead.
         let absurd_from: i64 = -62_000_000_000;
         let absurd_to: i64 = 66_000_000_000;
-        let result =
-            compute_twr_for_tickers(&conn, &["AAPL".to_string()], absurd_from, absurd_to).unwrap();
+        let result = twr_czk(&conn, &["AAPL".to_string()], absurd_from, absurd_to).unwrap();
 
         assert_eq!(result[0].date, ts_to_date_str(day0), "starts at first data");
         let last = result.last().unwrap();
@@ -1902,7 +2061,7 @@ mod tests {
         let conn = setup_twr_db();
         // Ticker exists but has no value-history rows in or before the range:
         // no loop, one flat point (nothing can be computed).
-        let result = compute_twr_for_tickers(
+        let result = twr_czk(
             &conn,
             &["AAPL".to_string()],
             -62_000_000_000,
@@ -1987,13 +2146,13 @@ mod tests {
             for (i, value) in values.iter().enumerate() {
                 conn.execute(
                     "INSERT INTO stock_value_history
-                     (id, ticker, recorded_at, value_czk, quantity, price, currency)
-                     VALUES (?1, ?2, ?3, ?4, '10', '1', 'CZK')",
+                     (id, ticker, recorded_at, quantity, price, currency)
+                     VALUES (?1, ?2, ?3, '10', ?4, 'CZK')",
                     rusqlite::params![
                         format!("{ticker}-{i}"),
                         ticker,
                         day0 + i as i64 * 86400,
-                        value.to_string()
+                        (value / 10).to_string()
                     ],
                 )
                 .unwrap();
@@ -2058,7 +2217,7 @@ mod tests {
         let conn = setup_twr_series_db();
         let (day0, day1) = seed_twr_series(&conn);
 
-        let series = twr_series(
+        let series = czk_series(
             &conn,
             &strings(&["growth", "value"]),
             true,
@@ -2093,7 +2252,7 @@ mod tests {
         let (day0, day1) = seed_twr_series(&conn);
 
         // Even with `include_portfolio` off: nothing else was asked for
-        let series = twr_series(&conn, &[], false, false, None, day0, day1).unwrap();
+        let series = czk_series(&conn, &[], false, false, None, day0, day1).unwrap();
 
         assert_eq!(series_kinds(&series), ["portfolio"]);
     }
@@ -2104,7 +2263,7 @@ mod tests {
         let (day0, day1) = seed_twr_series(&conn);
 
         let series =
-            twr_series(&conn, &strings(&["value"]), false, false, None, day0, day1).unwrap();
+            czk_series(&conn, &strings(&["value"]), false, false, None, day0, day1).unwrap();
 
         assert_eq!(series_kinds(&series), ["value"]);
     }
@@ -2114,7 +2273,7 @@ mod tests {
         let conn = setup_twr_series_db();
         let (day0, day1) = seed_twr_series(&conn);
 
-        let series = twr_series(
+        let series = czk_series(
             &conn,
             &strings(&["missing", "value"]),
             false,
@@ -2134,7 +2293,7 @@ mod tests {
         let (day0, day1) = seed_twr_series(&conn);
 
         let series =
-            twr_series(&conn, &strings(&["unused"]), false, false, None, day0, day1).unwrap();
+            czk_series(&conn, &strings(&["unused"]), false, false, None, day0, day1).unwrap();
 
         let unused = series_of(&series, "unused");
         assert_eq!(unused.data.len(), 1);
@@ -2148,7 +2307,7 @@ mod tests {
 
         // growth = AAPL + MSFT; with only AAPL selected its return is AAPL's (+10 %, not +5 %)
         let only_aapl = strings(&["inv-aapl"]);
-        let series = twr_series(
+        let series = czk_series(
             &conn,
             &strings(&["growth"]),
             false,
@@ -2163,7 +2322,7 @@ mod tests {
 
         // The restriction intersects: NVDA is not in growth, so it adds nothing
         let aapl_and_nvda = strings(&["inv-aapl", "inv-nvda"]);
-        let series = twr_series(
+        let series = czk_series(
             &conn,
             &strings(&["growth", "value"]),
             false,
@@ -2183,10 +2342,10 @@ mod tests {
         let (day0, day1) = seed_twr_series(&conn);
         let tags = strings(&["growth"]);
 
-        let unrestricted = twr_series(&conn, &tags, true, false, None, day0, day1).unwrap();
+        let unrestricted = czk_series(&conn, &tags, true, false, None, day0, day1).unwrap();
         let only_msft = strings(&["inv-msft"]);
         let restricted =
-            twr_series(&conn, &tags, true, false, Some(&only_msft), day0, day1).unwrap();
+            czk_series(&conn, &tags, true, false, Some(&only_msft), day0, day1).unwrap();
 
         // growth narrows to MSFT (flat), the whole portfolio stays what it was
         assert!((final_twr(series_of(&restricted, "growth")) - 0.0).abs() < 1e-6);
@@ -2206,13 +2365,13 @@ mod tests {
         let (day0, day1) = seed_twr_series(&conn);
 
         let only_gold = strings(&["inv-gold"]);
-        let with_gold = twr_series(&conn, &[], false, true, Some(&only_gold), day0, day1).unwrap();
+        let with_gold = czk_series(&conn, &[], false, true, Some(&only_gold), day0, day1).unwrap();
         assert!((final_twr(series_of(&with_gold, "untagged")) - 30.0).abs() < 1e-6);
 
         // GOLD is the only untagged position: selecting another one leaves nothing to chart
         let only_aapl = strings(&["inv-aapl"]);
         let without_gold =
-            twr_series(&conn, &[], false, true, Some(&only_aapl), day0, day1).unwrap();
+            czk_series(&conn, &[], false, true, Some(&only_aapl), day0, day1).unwrap();
         assert_eq!(series_of(&without_gold, "untagged").data.len(), 1);
         assert_eq!(final_twr(series_of(&without_gold, "untagged")), 0.0);
     }
@@ -2222,7 +2381,7 @@ mod tests {
         let conn = setup_twr_series_db();
         let (day0, day1) = seed_twr_series(&conn);
 
-        let series = twr_series(
+        let series = czk_series(
             &conn,
             &strings(&["growth", "value"]),
             true,

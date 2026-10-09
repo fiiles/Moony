@@ -6,12 +6,13 @@ import { toast } from 'sonner';
 import { Ellipsis, Pencil, Plus, RefreshCw, Trash2 } from 'lucide-react';
 import type { CryptoPositions, CryptoTransaction } from '@shared/schema';
 import { type CurrencyCode, priceDecimals } from '@shared/currencies';
-import { calculateRealizedGains } from '@shared/calculations';
+import { calculateRealizedGains, type DatedConvertFn } from '@shared/calculations';
 import { cryptoApi, priceApi } from '@/lib/tauri-api';
 import { useCurrency } from '@/lib/currency';
 import { useFormat } from '@/lib/use-format';
-import { useDatedConvert } from '@/hooks/use-dated-convert';
+import { useTransactionFx } from '@/hooks/use-fx';
 import { useCryptoTransactionMutations } from '@/hooks/use-crypto-mutations';
+import { cn } from '@/lib/utils';
 import { useShellPage } from '@/components/shell/shell-context';
 import { formatAmountWithCode } from '@/utils/format-amount';
 import { amountOf, costPerUnit, toCryptoRow } from '@/utils/positions';
@@ -61,11 +62,10 @@ export default function CryptoDetail() {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const id = params?.id;
-  const { formatCurrencyRaw, currencyCode, fxRevision, fxConvert } = useCurrency();
+  const { currencyCode, fxRevision, fxConvert } = useCurrency();
   const { t } = useTranslation('crypto');
   const { t: tc } = useTranslation('common');
   const fmt = useFormat();
-  const preferredCurrency = currencyCode as CurrencyCode;
 
   const [showBuyModal, setShowBuyModal] = useState(false);
   const [showSellModal, setShowSellModal] = useState(false);
@@ -92,9 +92,16 @@ export default function CryptoDetail() {
     enabled: !!id,
   });
 
-  // Date-aware conversion of the ledger rows, per-sale results and the hero's cost line
-  // (ADR 0001); the position's own figures come from the backend.
-  const convertAt = useDatedConvert(transactions);
+  // Each ledger row and per-sale result converts at the rates of its own day (common-day rule);
+  // the position's own figures and the hero come from the backend.
+  const { ready: ratesReady, convertAt: convertTxAt } = useTransactionFx(transactions);
+  const missingRateTitle = (currency: string) =>
+    tc('fxQuality.missing', { currency: reportCurrency, currencies: currency });
+  // A day without rates gives NaN, so a result built on it is left out rather than shown wrong
+  const convertAt = useMemo<DatedConvertFn>(
+    () => (amount, from, to, ts) => convertTxAt(amount, from, to, ts) ?? Number.NaN,
+    [convertTxAt]
+  );
 
   const deleteMutation = useMutation({
     mutationFn: () => cryptoApi.delete(id!),
@@ -129,19 +136,21 @@ export default function CryptoDetail() {
   const totalInvested = row?.totalCost ?? null;
   const averageCost = costPerUnit(totalInvested, quantity);
   const realized = row?.realizedGain ?? null;
+  const resultCurrency = reportCurrency as CurrencyCode;
   // Realized result of each sale: the running total before and after it
   const realizedBySale = useMemo(() => {
     const ordered = [...(transactions ?? [])].sort((a, b) => a.transactionDate - b.transactionDate);
     const map = new Map<string, number>();
     ordered.forEach((tx, i) => {
       if (tx.type !== 'sell') return;
-      const after = calculateRealizedGains(ordered.slice(0, i + 1), convertAt, preferredCurrency);
+      const after = calculateRealizedGains(ordered.slice(0, i + 1), convertAt, resultCurrency);
       const before =
-        i > 0 ? calculateRealizedGains(ordered.slice(0, i), convertAt, preferredCurrency) : 0;
-      map.set(tx.id, after - before);
+        i > 0 ? calculateRealizedGains(ordered.slice(0, i), convertAt, resultCurrency) : 0;
+      const result = after - before;
+      if (Number.isFinite(result)) map.set(tx.id, result);
     });
     return map;
-  }, [transactions, convertAt, preferredCurrency]);
+  }, [transactions, convertAt, resultCurrency]);
 
   const nativeCurrency = row?.originalCurrency ?? reportCurrency;
   const nativePrice = row?.originalCurrentPrice ?? 0;
@@ -178,16 +187,15 @@ export default function CryptoDetail() {
           .filter(Boolean)
           .join(' ')
     : null;
+  const firstBuyNative = firstBuy ? parseFloat(firstBuy.pricePerUnit) || 0 : 0;
+  const firstBuyCurrency = firstBuy?.currency || currencyCode;
   const firstBuyPrice = firstBuy
-    ? convertAt(
-        parseFloat(firstBuy.pricePerUnit) || 0,
-        (firstBuy.currency || currencyCode) as CurrencyCode,
-        preferredCurrency,
-        firstBuy.transactionDate
-      )
-    : 0;
+    ? convertTxAt(firstBuyNative, firstBuyCurrency, reportCurrency, firstBuy.transactionDate)
+    : null;
   const rateChange =
-    firstBuyPrice > 0 && currentPrice !== null ? currentPrice / firstBuyPrice - 1 : 0;
+    firstBuyPrice !== null && firstBuyPrice > 0 && currentPrice !== null
+      ? currentPrice / firstBuyPrice - 1
+      : 0;
 
   // Top bar: entity name and freshness of the rate
   const fetchedAt = crypto?.fetchedAt ? Number(crypto.fetchedAt) : null;
@@ -218,21 +226,21 @@ export default function CryptoDetail() {
   const nativeCurrencies = Array.from(
     new Set((transactions ?? []).map((tx) => tx.currency || currencyCode))
   );
-  const txDisplayPrice = (tx: CryptoTransaction) =>
-    convertAt(
+  const txDisplayPrice = (tx: CryptoTransaction): number | null =>
+    convertTxAt(
       parseFloat(tx.pricePerUnit) || 0,
-      (tx.currency || currencyCode) as CurrencyCode,
-      preferredCurrency,
+      tx.currency || currencyCode,
+      reportCurrency,
       tx.transactionDate
     );
-  const boughtTotal = buys.reduce(
-    (s, tx) => s + (parseFloat(tx.quantity) || 0) * txDisplayPrice(tx),
-    0
-  );
-  const soldTotal = sells.reduce(
-    (s, tx) => s + (parseFloat(tx.quantity) || 0) * txDisplayPrice(tx),
-    0
-  );
+  // A total is shown only when every one of its rows converted
+  const totalOf = (rows: CryptoTransaction[]): number | null =>
+    rows.reduce<number | null>((sum, tx) => {
+      const price = txDisplayPrice(tx);
+      return sum === null || price === null ? null : sum + (parseFloat(tx.quantity) || 0) * price;
+    }, 0);
+  const boughtTotal = totalOf(buys);
+  const soldTotal = totalOf(sells);
 
   const scrollToRow = (ids: string[]) => {
     document
@@ -371,7 +379,6 @@ export default function CryptoDetail() {
         currentValue={currentValue}
         currentCost={totalInvested}
         transactions={transactions ?? []}
-        convertAt={convertAt}
         hotEventId={hotEventId}
         onHotEventChange={setHotEventId}
         onEventClick={scrollToRow}
@@ -484,7 +491,7 @@ export default function CryptoDetail() {
                   )}
                   <TableHead className="text-right">
                     {hasMixedCurrencies
-                      ? t('detail.priceNative', { currency: currencyCode })
+                      ? t('detail.priceNative', { currency: reportCurrency })
                       : t('detail.transactions.price')}
                   </TableHead>
                   <TableHead className="text-right">{t('detail.transactions.total')}</TableHead>
@@ -499,6 +506,8 @@ export default function CryptoDetail() {
                   const txPrice = parseFloat(tx.pricePerUnit) || 0;
                   const txCurrency = (tx.currency || currencyCode) as CurrencyCode;
                   const priceInDisplay = txDisplayPrice(tx);
+                  // No rate for the day: the row keeps its own currency and says so
+                  const unconverted = priceInDisplay === null && ratesReady;
                   const isSell = tx.type === 'sell';
                   const saleResult = isSell ? realizedBySale.get(tx.id) : undefined;
                   return (
@@ -524,17 +533,30 @@ export default function CryptoDetail() {
                           {priceOf(txPrice, txCurrency)}
                         </TableCell>
                       )}
-                      <TableCell className="text-right num">
-                        {priceOf(priceInDisplay, currencyCode)}
+                      <TableCell
+                        className={cn('text-right num', unconverted && 'text-loss')}
+                        title={unconverted ? missingRateTitle(txCurrency) : undefined}
+                      >
+                        {priceInDisplay !== null
+                          ? priceOf(priceInDisplay, reportCurrency)
+                          : priceOf(txPrice, txCurrency)}
                       </TableCell>
-                      <TableCell className="text-right font-650 text-ink num">
-                        {formatCurrencyRaw(txQty * priceInDisplay)}
+                      <TableCell
+                        className={cn(
+                          'text-right font-650 num',
+                          unconverted ? 'text-loss' : 'text-ink'
+                        )}
+                        title={unconverted ? missingRateTitle(txCurrency) : undefined}
+                      >
+                        {priceInDisplay !== null
+                          ? fmt.money(txQty * priceInDisplay, reportCurrency, { decimals: 0 })
+                          : fmt.money(txQty * txPrice, txCurrency, { decimals: 0 })}
                         {saleResult !== undefined && (
                           <small
                             className={`mt-[3px] block text-micro font-600 ${saleResult >= 0 ? 'text-gain' : 'text-loss'}`}
                           >
                             {t('detail.realizedRow', {
-                              amount: fmt.money(saleResult, currencyCode, {
+                              amount: fmt.money(saleResult, reportCurrency, {
                                 signed: true,
                                 decimals: 0,
                               }),
@@ -564,12 +586,14 @@ export default function CryptoDetail() {
           <div className="flex items-center justify-between border-t border-line px-[14px] py-3 text-micro font-500 text-ink-4">
             <span>
               {t('detail.ledger.footer', { count: ledger.length })}
-              {boughtTotal > 0 &&
-                ` · ${t('detail.ledger.bought', { amount: formatCurrencyRaw(boughtTotal) })}`}
-              {soldTotal > 0 &&
-                ` · ${t('detail.ledger.sold', { amount: formatCurrencyRaw(soldTotal) })}`}
+              {boughtTotal !== null &&
+                boughtTotal > 0 &&
+                ` · ${t('detail.ledger.bought', { amount: fmt.money(boughtTotal, reportCurrency, { decimals: 0 }) })}`}
+              {soldTotal !== null &&
+                soldTotal > 0 &&
+                ` · ${t('detail.ledger.sold', { amount: fmt.money(soldTotal, reportCurrency, { decimals: 0 }) })}`}
             </span>
-            <span>{t('detail.ledger.rates', { currency: currencyCode })}</span>
+            <span>{t('detail.ledger.rates', { currency: reportCurrency })}</span>
           </div>
         </Card>
 
@@ -631,7 +655,10 @@ export default function CryptoDetail() {
                       duration: durationText,
                       ticker: crypto.ticker,
                       rateChange: fmt.percent(rateChange, 1, { signed: true }),
-                      firstPrice: priceOf(firstBuyPrice, currencyCode),
+                      firstPrice:
+                        firstBuyPrice !== null
+                          ? priceOf(firstBuyPrice, reportCurrency)
+                          : priceOf(firstBuyNative, firstBuyCurrency),
                       positionChange: fmt.percent(unrealizedPct, 1, { signed: true }),
                       realizedPart:
                         realized !== null && realized !== 0

@@ -19,9 +19,10 @@ import { type CurrencyCode, priceDecimals } from '@shared/currencies';
 import { investmentsApi, priceApi } from '@/lib/tauri-api';
 import { useCurrency } from '@/lib/currency';
 import { useFormat } from '@/lib/use-format';
-import { useDatedConvert } from '@/hooks/use-dated-convert';
+import { useTransactionFx } from '@/hooks/use-fx';
 import { useInvestmentTransactionMutations } from '@/hooks/use-investment-mutations';
 import { useShellPage } from '@/components/shell/shell-context';
+import { cn } from '@/lib/utils';
 import { formatAmountWithCode } from '@/utils/format-amount';
 import { costPerUnit, toStockRow } from '@/utils/positions';
 import { utcDayFloor } from '@/utils/chart-axis';
@@ -79,7 +80,7 @@ export default function StockDetail() {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const id = params?.id;
-  const { formatCurrencyRaw, currencyCode, fxRevision, fxConvert } = useCurrency();
+  const { currencyCode, fxRevision, fxConvert } = useCurrency();
   const { t } = useTranslation('stocks');
   const { t: tc } = useTranslation('common');
   const fmt = useFormat();
@@ -132,8 +133,10 @@ export default function StockDetail() {
   const companyFetching = freshCompanyInfo.isFetching;
   const refetchCompanyInfo = freshCompanyInfo.refetch;
 
-  // Date-aware conversion of the ledger rows and the hero's cost line (ADR 0001).
-  const convertAt = useDatedConvert(transactions);
+  // Each ledger row converts at the rates of its own day; the hero takes everything from the backend.
+  const { ready: ratesReady, convertAt } = useTransactionFx(transactions);
+  const missingRateTitle = (currency: string) =>
+    tc('fxQuality.missing', { currency: reportCurrency, currencies: currency });
 
   const deleteMutation = useMutation({
     mutationFn: () => investmentsApi.delete(id!),
@@ -495,7 +498,6 @@ export default function StockDetail() {
         currentValue={currentValue}
         currentCost={totalInvested}
         transactions={transactions ?? []}
-        convertAt={convertAt}
         hotEventId={hotEventId}
         onHotEventChange={setHotEventId}
         onEventClick={scrollToRow}
@@ -627,7 +629,7 @@ export default function StockDetail() {
                   )}
                   <TableHead className="text-right">
                     {hasMixedCurrencies
-                      ? t('detail.priceNative', { currency: currencyCode })
+                      ? t('detail.priceNative', { currency: reportCurrency })
                       : t('detail.transactions.price')}
                   </TableHead>
                   <TableHead className="text-right">{t('detail.transactions.total')}</TableHead>
@@ -644,9 +646,11 @@ export default function StockDetail() {
                   const priceInDisplay = convertAt(
                     txPrice,
                     txCurrency,
-                    currencyCode as CurrencyCode,
+                    reportCurrency,
                     tx.transactionDate
                   );
+                  // No rate for the day: the row keeps its own currency and says so
+                  const unconverted = priceInDisplay === null && ratesReady;
                   const isSell = tx.type === 'sell';
                   return (
                     <TableRow
@@ -673,13 +677,28 @@ export default function StockDetail() {
                           })}
                         </TableCell>
                       )}
-                      <TableCell className="text-right num">
-                        {fmt.money(priceInDisplay, currencyCode, {
-                          decimals: priceDecimals(priceInDisplay, currencyCode),
-                        })}
+                      <TableCell
+                        className={cn('text-right num', unconverted && 'text-loss')}
+                        title={unconverted ? missingRateTitle(txCurrency) : undefined}
+                      >
+                        {priceInDisplay !== null
+                          ? fmt.money(priceInDisplay, reportCurrency, {
+                              decimals: priceDecimals(priceInDisplay, reportCurrency),
+                            })
+                          : fmt.money(txPrice, txCurrency, {
+                              decimals: priceDecimals(txPrice, txCurrency),
+                            })}
                       </TableCell>
-                      <TableCell className="text-right font-650 text-ink num">
-                        {formatCurrencyRaw(txQty * priceInDisplay)}
+                      <TableCell
+                        className={cn(
+                          'text-right font-650 num',
+                          unconverted ? 'text-loss' : 'text-ink'
+                        )}
+                        title={unconverted ? missingRateTitle(txCurrency) : undefined}
+                      >
+                        {priceInDisplay !== null
+                          ? fmt.money(txQty * priceInDisplay, reportCurrency, { decimals: 0 })
+                          : fmt.money(txQty * txPrice, txCurrency, { decimals: 0 })}
                       </TableCell>
                       <TableCell className="text-right">
                         <div data-row-actions className="inline-flex gap-0.5">
@@ -714,7 +733,7 @@ export default function StockDetail() {
               {t('detail.ledger.footer', { count: ledger.length })}
               {firstTx !== null && ` · ${t('detail.ledger.since', { date: fmt.day(firstTx) })}`}
             </span>
-            <span>{t('detail.ledger.rates', { currency: currencyCode })}</span>
+            <span>{t('detail.ledger.rates', { currency: reportCurrency })}</span>
           </div>
         </Card>
 

@@ -6,11 +6,13 @@ use crate::error::{AppError, Result};
 use crate::models::{
     DividendOverride, InsertInvestmentTransaction, InsertStockInvestment, InvestmentTransaction,
     InvestmentWithDetails, StockInvestment, StockPosition, StockPositions, StockPriceOverride,
-    StockTag, TwrSeries,
+    StockTag, StockTwr,
 };
 use crate::services::history_recalc::HistoryRecalc;
 use crate::services::investments as investment_service;
 use crate::services::position_reports;
+use crate::services::pricing::AssetKind;
+use crate::services::ticker_history;
 use tauri::{AppHandle, Emitter, State};
 use uuid::Uuid;
 
@@ -578,15 +580,26 @@ pub async fn delete_manual_dividend(db: State<'_, Database>, ticker: String) -> 
     })
 }
 
-/// Get value history for a specific stock ticker
+/// Value history of a stock ticker in `report_currency` (native quantity, price and currency
+/// per day plus the value converted at that day's rate).
 #[tauri::command]
 pub async fn get_stock_value_history(
     db: State<'_, Database>,
     ticker: String,
     start_date: Option<i64>,
     end_date: Option<i64>,
-) -> Result<Vec<crate::models::TickerValueHistory>> {
-    db.with_conn(|conn| investment_service::get_value_history(conn, &ticker, start_date, end_date))
+    report_currency: String,
+) -> Result<crate::models::TickerValueHistoryReport> {
+    db.with_conn(|conn| {
+        ticker_history::value_history(
+            conn,
+            AssetKind::Stock,
+            &ticker,
+            start_date,
+            end_date,
+            &report_currency,
+        )
+    })
 }
 
 /// Get time-weighted return series for a set of stock tags and/or the whole portfolio.
@@ -597,9 +610,12 @@ pub async fn get_stock_value_history(
 /// `investment_ids`: when given, every tag (and untagged) series covers only these positions;
 /// the whole-portfolio series is never narrowed.
 /// `from_ts` / `to_ts`: Unix timestamps (seconds, midnight UTC) for the date range.
+/// `report_currency`: the currency the returns are computed in (values and flows converted at
+/// their own day).
 ///
 /// When `tag_ids` is empty and `include_untagged` is false, only the portfolio series is returned.
 #[tauri::command]
+#[allow(clippy::too_many_arguments)] // flat wire arguments
 pub async fn get_stock_twr(
     db: State<'_, Database>,
     tag_ids: Vec<String>,
@@ -608,7 +624,8 @@ pub async fn get_stock_twr(
     investment_ids: Option<Vec<String>>,
     from_ts: i64,
     to_ts: i64,
-) -> Result<Vec<TwrSeries>> {
+    report_currency: String,
+) -> Result<StockTwr> {
     db.with_conn(|conn| {
         investment_service::twr_series(
             conn,
@@ -616,8 +633,8 @@ pub async fn get_stock_twr(
             include_portfolio,
             include_untagged,
             investment_ids.as_deref(),
-            from_ts,
-            to_ts,
+            from_ts..=to_ts,
+            &report_currency,
         )
     })
 }

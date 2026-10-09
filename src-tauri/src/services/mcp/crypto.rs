@@ -139,7 +139,13 @@ pub fn crypto_value_history(
     start_date: Option<i64>,
     end_date: Option<i64>,
 ) -> Result<Value> {
-    ticker_value_history(conn, "crypto_value_history", ticker, start_date, end_date)
+    ticker_value_history(
+        conn,
+        crate::services::pricing::AssetKind::Crypto,
+        ticker,
+        start_date,
+        end_date,
+    )
 }
 
 // ============================================================================
@@ -734,11 +740,6 @@ mod value_history_tests {
         let conn = Connection::open_in_memory().expect("in-memory db");
         conn.execute_batch(
             r#"
-            CREATE TABLE exchange_rates (
-                currency TEXT PRIMARY KEY,
-                rate REAL NOT NULL,
-                fetched_at INTEGER NOT NULL
-            );
             CREATE TABLE user_profile (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 currency TEXT NOT NULL DEFAULT 'CZK'
@@ -753,21 +754,20 @@ mod value_history_tests {
                 id TEXT PRIMARY KEY,
                 ticker TEXT NOT NULL,
                 recorded_at INTEGER NOT NULL,
-                value_czk TEXT NOT NULL,
                 quantity TEXT NOT NULL,
                 price TEXT NOT NULL,
                 currency TEXT NOT NULL,
                 is_stale INTEGER NOT NULL DEFAULT 0,
                 UNIQUE(ticker, recorded_at)
             );
-            INSERT INTO exchange_rates (currency, rate, fetched_at) VALUES ('EUR', 25.0, 0);
             INSERT INTO exchange_rate_history (date, currency, rate) VALUES
-                (100 * 86400, 'EUR', 24.0), (101 * 86400, 'EUR', 26.0);
-            -- the same 2400 CZK value on two days: only the day rate differs
-            INSERT INTO crypto_value_history (id, ticker, recorded_at, value_czk, quantity, price, currency)
-                VALUES ('v1', 'BTC', 100 * 86400, '2400', '10', '12', 'USD'),
-                       ('v2', 'BTC', 101 * 86400, '2400', '10', '12', 'USD'),
-                       ('v3', 'OTHER', 101 * 86400, '9999', '1', '1', 'USD');
+                (100 * 86400, 'EUR', 24.0), (100 * 86400, 'USD', 20.0),
+                (101 * 86400, 'EUR', 26.0), (101 * 86400, 'USD', 20.0);
+            -- the same 120 USD value on two days: only the day rate of the main currency differs
+            INSERT INTO crypto_value_history (id, ticker, recorded_at, quantity, price, currency)
+                VALUES ('v1', 'BTC', 100 * 86400, '10', '12', 'USD'),
+                       ('v2', 'BTC', 101 * 86400, '10', '12', 'USD'),
+                       ('v3', 'OTHER', 101 * 86400, '1', '1', 'USD');
             "#,
         )
         .expect("schema + seed");
@@ -806,6 +806,7 @@ mod value_history_tests {
         assert_eq!(first["currency"], "USD");
         assert_eq!(first["quantity"], "10");
         assert!(first.get("valueCzk").is_none());
+        assert_eq!(first["isStale"], false);
     }
 
     #[test]
@@ -815,8 +816,9 @@ mod value_history_tests {
         let result = crypto_value_history(&conn, "BTC", None, None).expect("history");
 
         assert_eq!(result["mainCurrency"], "CZK");
-        assert_eq!(result["history"][0]["value"], "2400");
-        assert_eq!(result["history"][1]["value"], "2400");
+        assert_eq!(result["history"][0]["value"], "2400.00");
+        assert_eq!(result["history"][1]["value"], "2400.00");
+        assert_eq!(result["missingCurrencies"], serde_json::json!([]));
     }
 
     #[test]
@@ -838,6 +840,23 @@ mod value_history_tests {
 
         assert_eq!(result["mainCurrency"], "EUR");
         assert_eq!(result["history"], serde_json::json!([]));
+    }
+
+    #[test]
+    fn value_history_names_the_currency_it_cannot_convert() {
+        let conn = setup_db("EUR");
+        conn.execute(
+            "INSERT INTO crypto_value_history (id, ticker, recorded_at, quantity, price, currency)
+             VALUES ('v4', 'BTC', 102 * 86400, '1', '5', 'XAU')",
+            [],
+        )
+        .expect("row");
+
+        let result = crypto_value_history(&conn, "BTC", None, None).expect("history");
+
+        assert_eq!(result["history"][2]["value"], serde_json::Value::Null);
+        assert_eq!(result["history"][2]["price"], "5");
+        assert_eq!(result["missingCurrencies"], serde_json::json!(["XAU"]));
     }
 }
 

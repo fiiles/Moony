@@ -260,7 +260,8 @@
         "ytd": "YTD",
         "1y": "1R"
       },
-      "empty": "Pro zvolené období zatím nejsou data."
+      "empty": "Pro zvolené období zatím nejsou data.",
+      "fxMissing": "Výnosy jsou v měně {{currency}}. Dny bez kurzu pro {{currencies}} v grafu chybí."
     },
     "tagsTable": {
       "title": "Štítky",

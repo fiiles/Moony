@@ -8,6 +8,8 @@ use crate::models::{
 };
 use crate::services::crypto_investments as crypto_service;
 use crate::services::position_reports;
+use crate::services::pricing::AssetKind;
+use crate::services::ticker_history;
 use tauri::{AppHandle, Emitter, State};
 use uuid::Uuid;
 
@@ -399,13 +401,24 @@ pub async fn delete_crypto_manual_price(db: State<'_, Database>, symbol: String)
     Ok(())
 }
 
-/// Get value history for a specific crypto ticker
+/// Value history of a crypto ticker in `report_currency` (native quantity, price and currency
+/// per day plus the value converted at that day's rate).
 #[tauri::command]
 pub async fn get_crypto_value_history(
     db: State<'_, Database>,
     ticker: String,
     start_date: Option<i64>,
     end_date: Option<i64>,
-) -> Result<Vec<crate::models::TickerValueHistory>> {
-    db.with_conn(|conn| crypto_service::get_value_history(conn, &ticker, start_date, end_date))
+    report_currency: String,
+) -> Result<crate::models::TickerValueHistoryReport> {
+    db.with_conn(|conn| {
+        ticker_history::value_history(
+            conn,
+            AssetKind::Crypto,
+            &ticker,
+            start_date,
+            end_date,
+            &report_currency,
+        )
+    })
 }

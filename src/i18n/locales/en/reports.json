@@ -248,7 +248,8 @@
         "ytd": "YTD",
         "1y": "1Y"
       },
-      "empty": "No data for the chosen period yet."
+      "empty": "No data for the chosen period yet.",
+      "fxMissing": "Returns are in {{currency}}. Days without an exchange rate for {{currencies}} are left out of the chart."
     },
     "tagsTable": {
       "title": "Tags",

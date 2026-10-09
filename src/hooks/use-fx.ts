@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { fxApi } from '@/lib/tauri-api';
 import { useAuth } from '@/hooks/use-auth';
-import { makeHistory, type FxHistory, type FxQuotes } from '@shared/fx';
+import { convertOn, makeHistory, type FxHistory, type FxQuotes } from '@shared/fx';
 
 const SECONDS_PER_DAY = 86_400;
 /** Mirrors the ten-day lookback of `convertOn`, so the first day of a range can still resolve. */
@@ -65,5 +65,31 @@ export function useFxHistory(
   return useMemo(
     () => (data && reference ? makeHistory(data, reference) : undefined),
     [data, reference]
+  );
+}
+
+/**
+ * Converts amounts at the rates of a transaction's own day (common-day rule), for the
+ * transactions' date range. `convertAt` returns `null` when a day cannot be converted and
+ * while the daily quotes are still loading; `ready` tells the two apart.
+ */
+export function useTransactionFx(transactions: { transactionDate: number }[] | undefined): {
+  ready: boolean;
+  convertAt: (amount: number, from: string, to: string, timestamp: number) => number | null;
+} {
+  const first = useMemo(
+    () =>
+      transactions && transactions.length > 0
+        ? Math.min(...transactions.map((tx) => tx.transactionDate))
+        : undefined,
+    [transactions]
+  );
+  const history = useFxHistory(first, first === undefined ? undefined : Date.now() / 1000);
+  return useMemo(
+    () => ({
+      ready: history !== undefined,
+      convertAt: (amount, from, to, timestamp) => convertOn(history, amount, from, to, timestamp),
+    }),
+    [history]
   );
 }

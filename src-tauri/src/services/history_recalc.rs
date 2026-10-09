@@ -625,7 +625,7 @@ mod tests {
                     real_estate_by_currency TEXT NOT NULL DEFAULT '{}', loans_by_currency TEXT NOT NULL DEFAULT '{}',
                     other_assets_by_currency TEXT NOT NULL DEFAULT '{}', source TEXT NOT NULL DEFAULT 'backfill'
                 );
-                INSERT INTO exchange_rate_history VALUES (19990 * 86400, 'USD', 20.0);
+                INSERT INTO exchange_rate_history VALUES (19990 * 86400, 'CZK', 25.0), (19990 * 86400, 'USD', 1.25);
                 INSERT INTO investment_transactions VALUES ('t1', 'buy', 'AAPL', '3', 20010 * 86400);
                 "#,
             )

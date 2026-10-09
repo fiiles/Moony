@@ -58,8 +58,8 @@ mod tests {
             conn.execute("INSERT INTO user_profile (currency) VALUES (?1)", [c])
                 .expect("profile");
         }
-        // The current snapshot is the source (C-A): EUR and USD quoted, the rest unquoted.
-        fx::set_current_for_test(&[("USD", 20.0), ("EUR", 25.0)]);
+        // The current snapshot is the source (C-A): CZK and USD quoted per EUR, the rest unquoted.
+        fx::set_current_for_test(&[("CZK", 25.0), ("USD", 1.25)]);
         conn
     }
 
@@ -86,7 +86,7 @@ mod tests {
         for code in ["USD", "EUR", "AED", "BGN"] {
             assert_eq!(rate_of(&result, code), quotes.units(code), "{code}");
         }
-        // 20 CZK / 25 CZK per unit means 0.05 USD per CZK; AED is pegged to USD.
+        // 1.25 USD per EUR; AED is pegged to USD.
         let usd = rate_of(&result, "USD").expect("usd");
         let aed = rate_of(&result, "AED").expect("aed");
         assert!((aed - usd * 3.6725).abs() < 1e-9);
@@ -132,7 +132,7 @@ mod tests {
         assert!(exchange_rates_list(&conn).expect("rates")["fetchedAt"].is_null());
 
         let mut quotes = fx::Quotes::new(fx::current().reference());
-        quotes.insert("EUR", 0.04);
+        quotes.insert("USD", 1.25);
         fx::set_current_with_revision(quotes, 1_700_000_000);
 
         assert_eq!(

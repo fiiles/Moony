@@ -149,7 +149,7 @@ mod tests {
                 currency TEXT NOT NULL DEFAULT 'CZK'
             );
             INSERT INTO exchange_rates (currency, rate, fetched_at) VALUES
-                ('EUR', 25.0, 0), ('USD', 20.0, 0), ('ZMN1', 0.0, 0);
+                ('CZK', 25.0, 0), ('USD', 1.25, 0), ('ZMN1', 0.0, 0);
             "#,
         )
         .expect("schema");
@@ -159,7 +159,7 @@ mod tests {
         }
         // The current snapshot, not the table, is the source (C-A); unusable quotes are
         // ignored by the snapshot.
-        crate::services::fx::set_current_for_test(&[("EUR", 25.0), ("USD", 20.0), ("ZMN1", 0.0)]);
+        crate::services::fx::set_current_for_test(&[("CZK", 25.0), ("USD", 1.25), ("ZMN1", 0.0)]);
         conn
     }
 

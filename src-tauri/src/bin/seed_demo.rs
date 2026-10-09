@@ -664,9 +664,10 @@ fn seed_rate_history(db: &Database, now: i64, rng: &mut Rng) {
             let ts = now - day * DAY;
             let date = ts - ts % DAY;
             let drift = (day as f64) / 180.0;
+            // CZK per unit, stored as units per 1 EUR (the ECB's own base).
             let eur = 24.85 + 0.45 * (day as f64 / 29.0).sin() + rng.range(-0.05, 0.05) - 0.3 * drift;
             let usd = 23.10 + 0.55 * (day as f64 / 23.0).sin() + rng.range(-0.06, 0.06) + 0.4 * drift;
-            for (cur, rate) in [("EUR", eur), ("USD", usd)] {
+            for (cur, rate) in [("CZK", eur), ("USD", eur / usd)] {
                 conn.execute(
                     "INSERT OR IGNORE INTO exchange_rate_history (date, currency, rate) VALUES (?1, ?2, ?3)",
                     params![date, cur, rate],
@@ -675,7 +676,7 @@ fn seed_rate_history(db: &Database, now: i64, rng: &mut Rng) {
             }
         }
         // current in-DB rates used at unlock
-        for (cur, rate) in [("EUR", 24.55f64), ("USD", 23.45f64)] {
+        for (cur, rate) in [("CZK", 24.55f64), ("USD", 24.55f64 / 23.45)] {
             conn.execute(
                 "INSERT OR REPLACE INTO exchange_rates (currency, rate, fetched_at) VALUES (?1, ?2, ?3)",
                 params![cur, rate, now],

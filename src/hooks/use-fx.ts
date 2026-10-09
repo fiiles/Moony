@@ -69,12 +69,8 @@ export function useFxHistory(
     enabled: user?.id !== undefined && startDay !== undefined && endDay !== undefined,
     staleTime: 60 * 60 * 1000,
   });
-  const { quotes } = useFxSnapshot();
-  const reference = quotes?.reference;
-  return useMemo(
-    () => (data && reference ? makeHistory(data, reference) : undefined),
-    [data, reference]
-  );
+  // The history carries its own reference: it is never assumed to match the snapshot's.
+  return useMemo(() => (data ? makeHistory(data.days, data.reference) : undefined), [data]);
 }
 
 /**

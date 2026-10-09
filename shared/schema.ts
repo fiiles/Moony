@@ -2084,6 +2084,12 @@ export interface FxDayQuotes {
   day: number;
   units: Record<string, number>;
 }
+/** Stored daily quotes: each day's `units` are units of a currency per 1 unit of `reference`. */
+export interface FxHistoryQuotes {
+  reference: string;
+  /** Oldest first. */
+  days: FxDayQuotes[];
+}
 export interface ReportQuality {
   missingFxCount: number;
   missingFxCurrencies: string[];

@@ -231,7 +231,7 @@ mod tests {
             );
 
             INSERT INTO exchange_rates (currency, rate, fetched_at) VALUES
-                ('EUR', 25.0, 0), ('USD', 20.0, 0);
+                ('CZK', 25.0, 0), ('USD', 1.25, 0);
             -- 2000 EUR (50 000 CZK) + 25 000 CZK = 75 000 CZK of savings
             INSERT INTO bank_accounts (id, balance, currency) VALUES
                 ('b1', '2000', 'EUR'), ('b2', '25000', 'CZK');
@@ -250,7 +250,7 @@ mod tests {
         )
         .expect("profile");
         // The MCP converts with the app's current snapshot (C-A), mirroring the table above.
-        crate::services::fx::set_current_for_test(&[("EUR", 25.0), ("USD", 20.0)]);
+        crate::services::fx::set_current_for_test(&[("CZK", 25.0), ("USD", 1.25)]);
         conn
     }
 
@@ -365,6 +365,7 @@ mod tests {
         .expect("snapshot");
     }
 
+    /// A stored day quote: units of `currency` per 1 EUR.
     fn add_day_rate(conn: &Connection, day: i64, currency: &str, rate: f64) {
         conn.execute(
             "INSERT INTO exchange_rate_history (date, currency, rate) VALUES (?1, ?2, ?3)",
@@ -376,8 +377,8 @@ mod tests {
     #[test]
     fn portfolio_history_converts_each_row_at_its_own_day_rate() {
         let conn = setup_db("EUR");
-        add_day_rate(&conn, 100 * DAY, "EUR", 24.0);
-        add_day_rate(&conn, 101 * DAY, "EUR", 26.0);
+        add_day_rate(&conn, 100 * DAY, "CZK", 24.0);
+        add_day_rate(&conn, 101 * DAY, "CZK", 26.0);
         // Legacy rows (CZK totals, no breakdowns): the same CZK total on both days, only the
         // day's rate differs.
         add_snapshot(&conn, "s1", 100 * DAY, "2400");
@@ -402,8 +403,8 @@ mod tests {
     #[test]
     fn portfolio_history_converts_the_native_breakdowns() {
         let conn = setup_db("EUR");
-        add_day_rate(&conn, 100 * DAY, "EUR", 25.0);
-        add_day_rate(&conn, 100 * DAY, "USD", 20.0);
+        add_day_rate(&conn, 100 * DAY, "CZK", 25.0);
+        add_day_rate(&conn, 100 * DAY, "USD", 1.25);
         conn.execute(
             "INSERT INTO portfolio_metrics_history
                 (id, total_savings, total_loans_principal, total_investments, total_crypto,
@@ -428,7 +429,7 @@ mod tests {
     #[test]
     fn portfolio_history_row_without_a_snapshot_uses_the_closest_earlier_day() {
         let conn = setup_db("EUR");
-        add_day_rate(&conn, 100 * DAY, "EUR", 24.0);
+        add_day_rate(&conn, 100 * DAY, "CZK", 24.0);
         // Three days after the only snapshot (a weekend, say).
         add_snapshot(&conn, "s1", 103 * DAY, "2400");
 
@@ -475,8 +476,8 @@ mod tests {
     #[test]
     fn portfolio_history_reports_only_the_returned_days() {
         let conn = setup_db("EUR");
-        add_day_rate(&conn, 101 * DAY, "EUR", 25.0);
-        // The older day cannot convert (no rate); it is outside a limit of one.
+        add_day_rate(&conn, 101 * DAY, "CZK", 25.0);
+        // The older day cannot convert (no CZK quote); it is outside a limit of one.
         add_snapshot(&conn, "s1", 90 * DAY, "2500");
         add_snapshot(&conn, "s2", 101 * DAY, "2500");
 
@@ -485,7 +486,7 @@ mod tests {
 
         let all = portfolio_history(&conn, None, None, 365).expect("history");
         assert!(all["history"][1]["totalSavings"].is_null());
-        assert_eq!(all["missingCurrencies"], serde_json::json!(["EUR"]));
+        assert_eq!(all["missingCurrencies"], serde_json::json!(["CZK"]));
     }
 
     #[test]

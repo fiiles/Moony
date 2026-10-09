@@ -1833,6 +1833,17 @@ mod tests {
         conn
     }
 
+    /// One day of EUR quotes on which 1 USD costs `czk_per_usd` CZK (CZK at 25 per EUR).
+    fn add_usd_czk(conn: &rusqlite::Connection, day: i64, czk_per_usd: f64) {
+        for (currency, units_per_eur) in [("CZK", 25.0), ("USD", 25.0 / czk_per_usd)] {
+            conn.execute(
+                "INSERT INTO exchange_rate_history (date, currency, rate) VALUES (?1, ?2, ?3)",
+                rusqlite::params![day, currency, units_per_eur],
+            )
+            .unwrap();
+        }
+    }
+
     fn hold_aapl(conn: &rusqlite::Connection) {
         conn.execute(
             "INSERT INTO stock_investments (id, ticker, quantity) VALUES ('inv-aapl', 'AAPL', '10')",
@@ -1852,11 +1863,7 @@ mod tests {
                 rusqlite::params![format!("v{i}"), day0 + i * 86400],
             )
             .unwrap();
-            conn.execute(
-                "INSERT INTO exchange_rate_history (date, currency, rate) VALUES (?1, 'USD', ?2)",
-                rusqlite::params![day0 + i * 86400, 20.0 + 2.5 * i as f64],
-            )
-            .unwrap();
+            add_usd_czk(conn, day0 + i * 86400, 20.0 + 2.5 * i as f64);
         }
         (day0, day0 + 2 * 86400)
     }
@@ -1911,11 +1918,7 @@ mod tests {
                 rusqlite::params![format!("v{i}"), day, qty],
             )
             .unwrap();
-            conn.execute(
-                "INSERT INTO exchange_rate_history (date, currency, rate) VALUES (?1, 'USD', ?2)",
-                rusqlite::params![day, rate],
-            )
-            .unwrap();
+            add_usd_czk(&conn, day, *rate);
         }
 
         let twr = twr_series(
@@ -1939,9 +1942,12 @@ mod tests {
     fn twr_skips_days_without_a_rate_and_names_the_currency() {
         let conn = setup_twr_series_db();
         let (day0, day2) = seed_usd_stock_with_moving_rate(&conn);
-        // No quotes for the middle day or the ten before it would be needed; drop all of them
-        conn.execute("DELETE FROM exchange_rate_history", [])
-            .unwrap();
+        // No USD quotes for the middle day or the ten before it would be needed; drop all of them
+        conn.execute(
+            "DELETE FROM exchange_rate_history WHERE currency = 'USD'",
+            [],
+        )
+        .unwrap();
 
         let twr = twr_series(&conn, &[], false, false, None, day0..=day2, "CZK").unwrap();
 
@@ -1982,6 +1988,14 @@ mod tests {
             }
         }
 
+        // Rates are stored (CZK is quoted); XAU has none.
+        for day in [day0, day0 + 86400] {
+            conn.execute(
+                "INSERT INTO exchange_rate_history (date, currency, rate) VALUES (?1, 'CZK', 25.0)",
+                [day],
+            )
+            .unwrap();
+        }
         let twr = twr_series(&conn, &[], false, false, None, day0..=day0 + 86400, "CZK").unwrap();
 
         // The unconvertible holding leaves the day alone: the CZK stock's +10 % still shows

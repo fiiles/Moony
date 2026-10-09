@@ -429,26 +429,25 @@ mod tests {
     const D1: i64 = 1_700_006_400; // 2023-11-15 (midnight UTC)
     const D2: i64 = D1 + DAY;
 
-    /// History from `(day, currency, CZK per unit)` rows.
+    /// History from `(day, currency, units per EUR)` rows.
     fn rates(entries: &[(i64, &str, f64)]) -> History {
-        let mut days: BTreeMap<i64, HashMap<String, f64>> = BTreeMap::new();
-        for (day, ccy, rate) in entries {
+        let mut days: BTreeMap<i64, Quotes> = BTreeMap::new();
+        for (day, ccy, units) in entries {
             days.entry(*day)
-                .or_default()
-                .insert((*ccy).to_string(), *rate);
+                .or_insert_with(|| Quotes::new("EUR"))
+                .insert(ccy, *units);
         }
-        History::from_days(
-            days.into_iter()
-                .map(|(day, map)| (day, Quotes::from_czk_per_unit(&map)))
-                .collect(),
-        )
+        History::from_days(days)
     }
 
+    /// A day on which 1 USD costs `czk_per_usd` CZK (CZK at 25 per EUR).
+    fn usd_day(day: i64, czk_per_usd: f64) -> [(i64, &'static str, f64); 2] {
+        [(day, "CZK", 25.0), (day, "USD", 25.0 / czk_per_usd)]
+    }
+
+    /// Current quotes: 25 CZK and 25/23 USD per EUR (1 USD = 23 CZK).
     fn current() -> Quotes {
-        Quotes::from_czk_per_unit(&HashMap::from([
-            ("USD".to_string(), 23.0),
-            ("EUR".to_string(), 25.0),
-        ]))
+        Quotes::from_stored([("CZK", 25.0), ("USD", 25.0 / 23.0)])
     }
 
     fn derive(txs: &[TxRow], history: &History, current: &Quotes) -> PositionCostBasis {
@@ -497,7 +496,7 @@ mod tests {
     fn cost_basis_uses_each_transactions_day_rate() {
         // Two identical USD buys on days with different rates: the CZK cost
         // must be the per-day sum, NOT quantity × average × any single rate.
-        let rates = rates(&[(D1, "USD", 25.0), (D2, "USD", 20.0)]);
+        let rates = rates(&[usd_day(D1, 25.0), usd_day(D2, 20.0)].concat());
         let txs = vec![buy(10.0, 100.0, "USD", D1), buy(10.0, 100.0, "USD", D2)];
 
         let result = derive(&txs, &rates, &current());
@@ -512,7 +511,7 @@ mod tests {
 
     #[test]
     fn sell_releases_cost_proportionally_at_running_average() {
-        let rates = rates(&[(D1, "USD", 25.0), (D2, "USD", 20.0)]);
+        let rates = rates(&[usd_day(D1, 25.0), usd_day(D2, 20.0)].concat());
         let txs = vec![
             buy(10.0, 100.0, "USD", D1),
             buy(10.0, 100.0, "USD", D2),
@@ -530,7 +529,7 @@ mod tests {
     #[test]
     fn oversell_only_closes_the_held_quantity() {
         // buy 10 @ 100, sell 15 @ 120, buy 10 @ 200 → 10 @ 200
-        let rates = rates(&[(D1, "USD", 25.0), (D2, "USD", 25.0)]);
+        let rates = rates(&[usd_day(D1, 25.0), usd_day(D2, 25.0)].concat());
         let txs = vec![
             buy(10.0, 100.0, "USD", D1),
             sell(15.0, 120.0, "USD", D1 + 1),
@@ -545,7 +544,7 @@ mod tests {
     fn same_day_sell_is_processed_after_same_day_buys() {
         // CSV exports are often newest-first, so a same-day sell can precede
         // its buys in rowid order. Within one day buys come first.
-        let rates = rates(&[(D1, "USD", 25.0)]);
+        let rates = rates(&usd_day(D1, 25.0));
         let txs = vec![
             sell(10.0, 150.0, "USD", D1),
             buy(10.0, 100.0, "USD", D1),
@@ -563,7 +562,7 @@ mod tests {
     fn transactions_are_sorted_by_date_before_accumulation() {
         // Same as the sell test but supplied out of order: the sell happens
         // chronologically last and must release cost from BOTH buys.
-        let rates = rates(&[(D1, "USD", 25.0), (D2, "USD", 20.0)]);
+        let rates = rates(&[usd_day(D1, 25.0), usd_day(D2, 20.0)].concat());
         let txs = vec![
             sell(10.0, 150.0, "USD", D2 + 1),
             buy(10.0, 100.0, "USD", D2),
@@ -580,7 +579,7 @@ mod tests {
     fn mixed_currency_transactions_convert_at_their_days_cross_rate() {
         // Crypto case: first buy in CZK, second in USD. Primary currency is
         // CZK; the USD buy converts at ITS day's rate (20), not today's (23).
-        let rates = rates(&[(D1, "USD", 25.0), (D2, "USD", 20.0)]);
+        let rates = rates(&[usd_day(D1, 25.0), usd_day(D2, 20.0)].concat());
         let txs = vec![
             buy(1.0, 500_000.0, "CZK", D1),
             buy(1.0, 30_000.0, "USD", D2),
@@ -596,7 +595,7 @@ mod tests {
     #[test]
     fn mixed_currency_native_uses_cross_rate_when_primary_is_foreign() {
         // Primary USD; a CZK buy converts to USD at its day's USD rate.
-        let rates = rates(&[(D1, "USD", 20.0), (D2, "USD", 25.0)]);
+        let rates = rates(&[usd_day(D1, 20.0), usd_day(D2, 25.0)].concat());
         let txs = vec![
             buy(1.0, 30_000.0, "USD", D1),
             buy(1.0, 500_000.0, "CZK", D2),
@@ -615,7 +614,7 @@ mod tests {
     fn missing_history_falls_back_to_current_rates_and_is_flagged() {
         // No history at all for the transaction's day (beyond walk-back):
         // fall back to the provided current rates (USD 23) and flag the position.
-        let rates = rates(&[(D1 - 30 * DAY, "EUR", 24.0)]);
+        let rates = rates(&[(D1 - 30 * DAY, "CZK", 24.0)]);
         let txs = vec![buy(10.0, 100.0, "USD", D1)];
 
         let result = derive(&txs, &rates, &current());
@@ -626,7 +625,7 @@ mod tests {
 
     #[test]
     fn day_rates_do_not_flag_the_position_as_estimated() {
-        let rates = rates(&[(D1, "USD", 25.0)]);
+        let rates = rates(&usd_day(D1, 25.0));
         let result = derive(&[buy(10.0, 100.0, "USD", D1)], &rates, &current());
         assert!(!result.fx_estimated);
     }
@@ -678,7 +677,7 @@ mod tests {
     #[test]
     fn weekend_transaction_walks_back_to_closest_earlier_day() {
         // Rate snapshot exists two days before the transaction (weekend gap).
-        let rates = rates(&[(D1, "USD", 25.0)]);
+        let rates = rates(&usd_day(D1, 25.0));
         let txs = vec![buy(10.0, 100.0, "USD", D1 + 2 * DAY)];
 
         let result = derive(&txs, &rates, &current());
@@ -702,7 +701,7 @@ mod tests {
 
     #[test]
     fn oversell_clamps_to_zero_not_negative() {
-        let rates = rates(&[(D1, "USD", 25.0)]);
+        let rates = rates(&usd_day(D1, 25.0));
         let txs = vec![buy(10.0, 100.0, "USD", D1), sell(15.0, 100.0, "USD", D1)];
 
         let result = derive(&txs, &rates, &current());
@@ -717,7 +716,7 @@ mod tests {
         // buy 10 @ 100 USD (USD 20), buy 10 @ 100 USD (USD 30) -> avg 2 500 CZK per share;
         // sell 5 @ 120 USD on a USD 25 day: proceeds 15 000, released cost 12 500.
         let d3 = D2 + DAY;
-        let rates = rates(&[(D1, "USD", 20.0), (D2, "USD", 30.0), (d3, "USD", 25.0)]);
+        let rates = rates(&[usd_day(D1, 20.0), usd_day(D2, 30.0), usd_day(d3, 25.0)].concat());
         let txs = vec![
             buy(10.0, 100.0, "USD", D1),
             buy(10.0, 100.0, "USD", D2),
@@ -732,7 +731,7 @@ mod tests {
     #[test]
     fn realized_gain_ignores_the_oversold_excess_and_sells_without_holdings() {
         // sell before any buy realizes nothing; oversell realizes only the held quantity.
-        let rates = rates(&[(D1, "USD", 20.0), (D2, "USD", 20.0)]);
+        let rates = rates(&[usd_day(D1, 20.0), usd_day(D2, 20.0)].concat());
         let txs = vec![
             sell(3.0, 500.0, "USD", D1 - DAY),
             buy(10.0, 100.0, "USD", D1),
@@ -762,7 +761,7 @@ mod tests {
             buy(1.0, 100.0, "USD", D1),
             sell(1.0, 120.0, "USD", D1 + 20 * DAY),
         ];
-        let (pos, quality) = position_cost_basis(&txs, &rates(&[(D1, "USD", 20.0)]), &empty, "CZK");
+        let (pos, quality) = position_cost_basis(&txs, &rates(&usd_day(D1, 20.0)), &empty, "CZK");
         let pos = pos.expect("position");
         assert!(pos.cost_basis_target_complete);
         assert_eq!(pos.realized_gain_target, None);
@@ -771,7 +770,7 @@ mod tests {
 
     #[test]
     fn positions_without_sells_realize_nothing() {
-        let rates = rates(&[(D1, "USD", 20.0)]);
+        let rates = rates(&usd_day(D1, 20.0));
         let result = derive(&[buy(1.0, 100.0, "USD", D1)], &rates, &current());
         assert_eq!(result.realized_gain_target, Some(0.0));
     }
@@ -801,7 +800,7 @@ mod tests {
     #[test]
     fn target_currency_can_be_any_quoted_currency() {
         // USD 20 and EUR 25 CZK on the buy day: 1 000 USD = 800 EUR.
-        let rates = rates(&[(D1, "USD", 20.0), (D1, "EUR", 25.0)]);
+        let rates = rates(&usd_day(D1, 20.0));
         let (pos, quality) =
             position_cost_basis(&[buy(10.0, 100.0, "USD", D1)], &rates, &current(), "EUR");
         assert!((pos.expect("position").cost_basis_target - 800.0).abs() < 1e-9);
@@ -854,7 +853,7 @@ mod tests {
         conn.execute_batch(&format!(
             r#"
             INSERT INTO exchange_rate_history (date, currency, rate) VALUES
-                ({d1}, 'USD', 25.0), ({d2}, 'USD', 20.0);
+                ({d1}, 'CZK', 25.0), ({d1}, 'USD', 1.0), ({d2}, 'CZK', 25.0), ({d2}, 'USD', 1.25);
             INSERT INTO investment_transactions
                 (id, investment_id, type, ticker, company_name, quantity, price_per_unit, currency, transaction_date)
             VALUES
@@ -884,7 +883,8 @@ mod tests {
         let conn = setup_db();
         conn.execute_batch(&format!(
             r#"
-            INSERT INTO exchange_rate_history (date, currency, rate) VALUES ({d1}, 'USD', 20.0);
+            INSERT INTO exchange_rate_history (date, currency, rate) VALUES
+                ({d1}, 'CZK', 25.0), ({d1}, 'USD', 1.25);
             INSERT INTO crypto_transactions
                 (id, investment_id, type, ticker, name, quantity, price_per_unit, currency, transaction_date)
             VALUES

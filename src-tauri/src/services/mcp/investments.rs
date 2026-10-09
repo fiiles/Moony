@@ -705,8 +705,7 @@ mod value_history_tests {
                 UNIQUE(ticker, recorded_at)
             );
             INSERT INTO exchange_rate_history (date, currency, rate) VALUES
-                (100 * 86400, 'EUR', 24.0), (100 * 86400, 'USD', 20.0),
-                (101 * 86400, 'EUR', 26.0), (101 * 86400, 'USD', 20.0);
+                (100 * 86400, 'CZK', 24.0), (100 * 86400, 'USD', 1.2), (101 * 86400, 'CZK', 26.0), (101 * 86400, 'USD', 1.3);
             -- the same 120 USD value on two days: only the day rate of the main currency differs
             INSERT INTO stock_value_history (id, ticker, recorded_at, quantity, price, currency)
                 VALUES ('v1', 'AAPL', 100 * 86400, '10', '12', 'USD'),
@@ -837,7 +836,7 @@ mod list_missing_currency_tests {
         let conn = list_db("CZK");
         conn.execute_batch(
             r#"
-            INSERT INTO exchange_rate_history VALUES (1699920000, 'USD', 20.0);
+            INSERT INTO exchange_rate_history VALUES (1699920000, 'CZK', 25.0), (1699920000, 'USD', 1.25);
             INSERT INTO stock_investments VALUES ('a', 'AAA', 'A', '2', 'USD'), ('b', 'BBB', 'B', '1', 'USD');
             INSERT INTO investment_transactions (id, investment_id, type, ticker, company_name, quantity, price_per_unit, currency, transaction_date) VALUES
                 ('t1', 'a', 'buy', 'AAA', 'A', '1', '100', 'USD', 1700000000),
@@ -846,6 +845,7 @@ mod list_missing_currency_tests {
             "#,
         )
         .expect("seed");
+        crate::services::fx::set_current_for_test(&[("CZK", 25.0), ("USD", 1.25)]);
 
         let result = investments_list(&conn).expect("list");
 
@@ -866,7 +866,7 @@ mod list_missing_currency_tests {
         let conn = list_db("EUR");
         conn.execute_batch(
             r#"
-            INSERT INTO exchange_rate_history VALUES (1699920000, 'USD', 25.0), (1699920000, 'EUR', 25.0);
+            INSERT INTO exchange_rate_history VALUES (1699920000, 'CZK', 25.0), (1699920000, 'USD', 1.0);
             INSERT INTO stock_investments VALUES ('a', 'AAPL', 'Apple', '10', 'USD');
             INSERT INTO investment_transactions (id, investment_id, type, ticker, company_name, quantity, price_per_unit, currency, transaction_date) VALUES
                 ('t1', 'a', 'buy', 'AAPL', 'Apple', '10', '100', 'USD', 1700000000);
@@ -875,7 +875,7 @@ mod list_missing_currency_tests {
             "#,
         )
         .expect("seed");
-        crate::services::fx::set_current_for_test(&[("USD", 25.0), ("EUR", 22.0)]);
+        crate::services::fx::set_current_for_test(&[("CZK", 22.0), ("USD", 22.0 / 25.0)]);
 
         let result = investments_list(&conn).expect("list");
 
@@ -935,7 +935,7 @@ mod list_missing_currency_tests {
             "#,
         )
         .expect("seed");
-        crate::services::fx::set_current_for_test(&[("USD", 25.0), ("EUR", 20.0)]);
+        crate::services::fx::set_current_for_test(&[("CZK", 20.0), ("USD", 20.0 / 25.0)]);
 
         let result = investments_list(&conn).expect("list");
 

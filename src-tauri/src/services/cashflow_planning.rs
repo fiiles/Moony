@@ -1433,7 +1433,7 @@ mod tests {
     }
     #[test]
     fn target_planning_mixed_property_components_and_replacement_conserve() {
-        crate::services::fx::set_current_for_test(&[("XTP", 27.5), ("XSP", 25.0)]);
+        crate::services::fx::set_current_for_test(&[("XTP", 2.5), ("XSP", 2.75)]);
         let conn = planning_db();
         conn.execute("DELETE FROM loans", []).unwrap();
         insert_property(
@@ -1449,15 +1449,12 @@ mod tests {
         assert_eq!(cross_report.automatic_sources[0].amount, "200.00");
         // Also assert the unrounded annual composite before period normalization.
         let mut fx = PlanningFx {
-            target: "EUR".into(),
-            quotes: crate::services::fx::Quotes::from_czk_per_unit(&HashMap::from([
-                ("EUR".into(), 27.5),
-                ("USD".into(), 25.0),
-            ])),
+            target: "GBP".into(),
+            quotes: crate::services::fx::Quotes::from_stored([("GBP", 2.5), ("USD", 2.75)]),
             ..PlanningFx::default()
         };
         let (annual, q) = property_costs_annualized(
-            r#"[{"amount":100,"currency":"EUR","frequency":"monthly"},{"amount":110,"currency":"USD","frequency":"monthly"}]"#,
+            r#"[{"amount":100,"currency":"GBP","frequency":"monthly"},{"amount":110,"currency":"USD","frequency":"monthly"}]"#,
             &mut fx,
         );
         assert_eq!(annual, 2400.0);
@@ -1635,7 +1632,7 @@ mod tests {
     }
     #[test]
     fn personal_and_investment_property_foreign_costs_are_estimated() {
-        crate::services::fx::set_current_for_test(&[("XPK", 10.0)]);
+        crate::services::fx::set_current_for_test(&[("CZK", 25.0), ("XPK", 2.5)]);
         for kind in ["personal", "investment"] {
             let conn = planning_db();
             insert_property(
@@ -1660,6 +1657,8 @@ mod tests {
     }
     #[test]
     fn property_mixed_fx_quality_and_inventory_are_independent_of_component_order() {
+        // Rates are loaded (CZK is quoted); only XPU has no quote.
+        crate::services::fx::set_current_for_test(&[("CZK", 25.0)]);
         for kind in ["personal", "investment"] {
             for czk_amount in [0, 5] {
                 for missing_first in [false, true] {

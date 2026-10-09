@@ -435,10 +435,9 @@ mod tests {
             );
 
             INSERT INTO exchange_rates (currency, rate, fetched_at) VALUES
-                ('USD', 23.0, 0), ('EUR', 25.0, 0);
+                ('CZK', 25.0, 0), ('USD', 1.0869565217391304, 0);
             INSERT INTO exchange_rate_history (date, currency, rate) VALUES
-                ({d1}, 'USD', 25.0), ({d2}, 'USD', 20.0),
-                ({d1}, 'EUR', 25.0), ({d2}, 'EUR', 25.0);
+                ({d1}, 'CZK', 25.0), ({d1}, 'USD', 1.0), ({d2}, 'CZK', 25.0), ({d2}, 'USD', 1.25);
             INSERT INTO stock_investments (id, ticker, company_name, quantity, currency)
                 VALUES ('inv-a', 'AAA', 'A Corp', '20', 'USD');
             INSERT INTO investment_transactions
@@ -461,7 +460,7 @@ mod tests {
         )
         .expect("profile");
         // The current snapshot (C-A), mirroring `exchange_rates` above.
-        crate::services::fx::set_current_for_test(&[("USD", 23.0), ("EUR", 25.0)]);
+        crate::services::fx::set_current_for_test(&[("CZK", 25.0), ("USD", 25.0 / 23.0)]);
         conn
     }
 
@@ -479,7 +478,7 @@ mod tests {
             DELETE FROM dividend_data;
             DELETE FROM stock_investment_tags;
             INSERT INTO exchange_rate_history (date, currency, rate) VALUES
-                ({d1}, 'USD', 25.0), ({d1}, 'EUR', 25.0);
+                ({d1}, 'CZK', 25.0), ({d1}, 'USD', 1.0);
             INSERT INTO stock_investments (id, ticker, company_name, quantity, currency)
                 VALUES ('inv-aapl', 'AAPL', 'Apple', '10', 'USD');
             INSERT INTO investment_transactions
@@ -491,7 +490,7 @@ mod tests {
             d1 = D1,
         ))
         .expect("c1 seed");
-        crate::services::fx::set_current_for_test(&[("USD", 25.0), ("EUR", 22.0)]);
+        crate::services::fx::set_current_for_test(&[("CZK", 22.0), ("USD", 22.0 / 25.0)]);
         conn
     }
 
@@ -699,7 +698,7 @@ CREATE TABLE bonds(id TEXT,name TEXT,coupon_value TEXT,quantity TEXT,interest_ra
         )
         .expect("profile");
         conn.execute_batch(
-            "INSERT INTO exchange_rates (currency, rate, fetched_at) VALUES ('EUR', 25.0, 0);
+            "INSERT INTO exchange_rates (currency, rate, fetched_at) VALUES ('CZK', 25.0, 0);
              INSERT INTO bank_accounts (id, name, currency) VALUES ('acc', 'Main', 'CZK');",
         )
         .expect("seed");
@@ -805,12 +804,12 @@ CREATE TABLE bonds(id TEXT,name TEXT,coupon_value TEXT,quantity TEXT,interest_ra
         .unwrap();
 
         conn.execute(
-            "INSERT INTO exchange_rate_history VALUES (?1,'EUR',25)",
+            "INSERT INTO exchange_rate_history VALUES (?1,'CZK',25)",
             [SEP],
         )
         .unwrap();
         conn.execute(
-            "INSERT INTO exchange_rate_history VALUES (?1,'EUR',25)",
+            "INSERT INTO exchange_rate_history VALUES (?1,'CZK',25)",
             [SEP + 86400],
         )
         .unwrap();
@@ -883,7 +882,7 @@ CREATE TABLE bonds(id TEXT,name TEXT,coupon_value TEXT,quantity TEXT,interest_ra
     #[test]
     fn cashflow_report_reports_amounts_in_the_main_currency() {
         // A private code isolates this current-rate fixture from other tests.
-        crate::services::fx::set_current_for_test(&[("XMC", 25.0)]);
+        crate::services::fx::set_current_for_test(&[("CZK", 25.0), ("XMC", 1.0)]);
         let conn = app_db("XMC");
         seed_cashflow(&conn);
 

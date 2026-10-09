@@ -238,13 +238,14 @@ pub fn get_fx_snapshot() -> Result<crate::models::fx::FxSnapshot> {
     Ok(crate::services::fx::snapshot())
 }
 
-/// Stored daily quotes within `[start_day, end_day]` (UTC-midnight unix seconds), oldest first.
+/// Stored daily quotes within `[start_day, end_day]` (UTC-midnight unix seconds), oldest first,
+/// with the reference they are quoted against.
 #[tauri::command]
 pub async fn get_fx_history(
     db: State<'_, Database>,
     start_day: i64,
     end_day: i64,
-) -> Result<Vec<crate::models::fx::FxDayQuotes>> {
+) -> Result<crate::models::fx::FxHistoryQuotes> {
     db.with_conn(|conn| crate::services::fx::history_quotes(conn, start_day, end_day))
 }
 
@@ -2379,11 +2380,11 @@ mod tests {
         )
         .expect("schema");
 
-        crate::services::fx::set_current(crate::services::fx::Quotes::from_czk_per_unit(
-            &[("USD".to_string(), 23.0), ("JPY".to_string(), 0.15)]
-                .into_iter()
-                .collect(),
-        ));
+        crate::services::fx::set_current_for_test(&[
+            ("CZK", 25.0),
+            ("USD", 25.0 / 23.0),
+            ("JPY", 25.0 / 0.15),
+        ]);
 
         let resolved_aapl =
             crate::services::pricing::resolve_stock_price(&conn, "AAPL").expect("AAPL price");

@@ -571,12 +571,12 @@ mod tests {
                 "credit",
             );
             conn.execute(
-                "INSERT INTO exchange_rate_history VALUES (?1,'XAC',25)",
+                "INSERT INTO exchange_rate_history VALUES (?1,'XAC',1.1)",
                 [day],
             )
             .unwrap();
             conn.execute(
-                "INSERT INTO exchange_rate_history VALUES (?1,'XAT',27.5)",
+                "INSERT INTO exchange_rate_history VALUES (?1,'XAT',1.0)",
                 [day],
             )
             .unwrap();
@@ -584,9 +584,7 @@ mod tests {
         let first = get_actuals_in_currency(&conn, "6m", TODAY, None, "XAT").unwrap();
         assert_eq!(first.total_income, "100.00");
         assert_eq!(first.previous_income, "100.00");
-        crate::services::fx::set_current(crate::services::fx::Quotes::from_czk_per_unit(
-            &HashMap::from([("XAC".into(), 80.0), ("XAT".into(), 10.0)]),
-        ));
+        crate::services::fx::set_current_for_test(&[("XAC", 0.125), ("XAT", 1.0)]);
         let second = get_actuals_in_currency(&conn, "6m", TODAY, None, "XAT").unwrap();
         assert_eq!(first.total_income, second.total_income);
         assert_eq!(first.previous_income, second.previous_income);
@@ -890,7 +888,7 @@ mod tests {
             "debit",
         );
         conn.execute(
-            "INSERT INTO exchange_rate_history (date, currency, rate) VALUES (?1, 'EUR', 25.0)",
+            "INSERT INTO exchange_rate_history (date, currency, rate) VALUES (?1, 'CZK', 25.0)",
             params![ts(2026, 8, 24)],
         )
         .unwrap();

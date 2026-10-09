@@ -614,6 +614,7 @@ mod tests {
     const DAY: i64 = SECONDS_PER_DAY;
     const TEST_DAY: i64 = DAY * 20_000;
 
+    /// A stored day quote: units of `currency` per 1 EUR.
     fn insert_day_rate(conn: &Connection, day: i64, currency: &str, rate: f64) {
         conn.execute(
             "INSERT INTO exchange_rate_history (date, currency, rate) VALUES (?1, ?2, ?3)",
@@ -649,8 +650,10 @@ mod tests {
     #[test]
     fn legacy_czk_converts_at_the_day_and_excludes_what_it_cannot_quote() {
         let conn = setup_test_db();
-        insert_day_rate(&conn, TEST_DAY, "USD", 20.0);
-        crate::services::fx::set_current_for_test(&[("USD", 25.0)]);
+        // 1 USD = 20 CZK
+        insert_day_rate(&conn, TEST_DAY, "CZK", 25.0);
+        insert_day_rate(&conn, TEST_DAY, "USD", 1.25);
+        crate::services::fx::set_current_for_test(&[("CZK", 25.0), ("USD", 1.0)]);
         let later = TEST_DAY + 30 * SECONDS_PER_DAY;
         let czk = LegacyCzk::dated(&conn, TEST_DAY, later).expect("history");
 
@@ -667,7 +670,9 @@ mod tests {
     #[test]
     fn backfill_insert_derives_totals_at_day_rates() {
         let conn = setup_test_db();
-        insert_day_rate(&conn, TEST_DAY, "USD", 20.0);
+        // 1 USD = 20 CZK
+        insert_day_rate(&conn, TEST_DAY, "CZK", 25.0);
+        insert_day_rate(&conn, TEST_DAY, "USD", 1.25);
 
         let breakdowns = ClassBreakdowns {
             investments: map(&[("USD", 100.0)]),
@@ -693,7 +698,9 @@ mod tests {
     #[test]
     fn backfill_never_overwrites_live_row() {
         let conn = setup_test_db();
-        insert_day_rate(&conn, TEST_DAY, "USD", 20.0);
+        // 1 USD = 20 CZK
+        insert_day_rate(&conn, TEST_DAY, "CZK", 25.0);
+        insert_day_rate(&conn, TEST_DAY, "USD", 1.25);
 
         let live = ClassBreakdowns {
             investments: map(&[("CZK", 1111.0)]),
@@ -717,7 +724,9 @@ mod tests {
     #[test]
     fn live_overwrites_backfill_row_and_claims_provenance() {
         let conn = setup_test_db();
-        insert_day_rate(&conn, TEST_DAY, "USD", 20.0);
+        // 1 USD = 20 CZK
+        insert_day_rate(&conn, TEST_DAY, "CZK", 25.0);
+        insert_day_rate(&conn, TEST_DAY, "USD", 1.25);
 
         let backfill = ClassBreakdowns {
             investments: map(&[("USD", 100.0)]),
@@ -747,7 +756,9 @@ mod tests {
     #[test]
     fn backfill_updates_existing_backfill_row() {
         let conn = setup_test_db();
-        insert_day_rate(&conn, TEST_DAY, "USD", 20.0);
+        // 1 USD = 20 CZK
+        insert_day_rate(&conn, TEST_DAY, "CZK", 25.0);
+        insert_day_rate(&conn, TEST_DAY, "USD", 1.25);
 
         let first = ClassBreakdowns {
             investments: map(&[("USD", 100.0)]),
@@ -794,7 +805,9 @@ mod tests {
     #[test]
     fn update_classes_rewrites_total_and_breakdown_together() {
         let conn = setup_test_db();
-        insert_day_rate(&conn, TEST_DAY, "USD", 20.0);
+        // 1 USD = 20 CZK
+        insert_day_rate(&conn, TEST_DAY, "CZK", 25.0);
+        insert_day_rate(&conn, TEST_DAY, "USD", 1.25);
 
         let breakdowns = ClassBreakdowns {
             investments: map(&[("USD", 100.0)]),
@@ -819,7 +832,7 @@ mod tests {
     #[test]
     fn carried_statics_come_from_nearest_earlier_live_row() {
         let conn = setup_test_db();
-        insert_day_rate(&conn, TEST_DAY, "EUR", 25.0);
+        insert_day_rate(&conn, TEST_DAY, "CZK", 25.0);
 
         // An older live row, a newer backfill row, and a live row after the
         // target date — only the older live row may be carried.

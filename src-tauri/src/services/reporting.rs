@@ -396,11 +396,9 @@ mod tests {
     #[test]
     fn target_historical_cross_rates_ignore_live_changes_and_old_quotes() {
         let conn = db();
-        conn.execute_batch("INSERT INTO exchange_rate_history VALUES (1704067200,'XHU',25),(1704067200,'XHE',27.5);").unwrap();
+        conn.execute_batch("INSERT INTO exchange_rate_history VALUES (1704067200,'XHU',1.1),(1704067200,'XHE',1.0);").unwrap();
         let before = historical_amount(&conn, 110.0, "XHU", "XHE", 1704067200).unwrap();
-        crate::services::fx::set_current(crate::services::fx::Quotes::from_czk_per_unit(
-            &std::collections::HashMap::from([("XHL".into(), 99.0)]),
-        ));
+        crate::services::fx::set_current_for_test(&[("XHL", 99.0)]);
         assert_eq!(
             historical_amount(&conn, 110.0, "XHU", "XHE", 1704067200).unwrap(),
             before
@@ -430,14 +428,14 @@ mod tests {
     #[test]
     fn target_cross_rates_use_one_common_historical_day() {
         let conn = db();
-        conn.execute_batch("INSERT INTO exchange_rate_history VALUES (1704067200,'USD',25),(1704067200,'EUR',27.5);").unwrap();
+        conn.execute_batch("INSERT INTO exchange_rate_history VALUES (1704067200,'USD',1.25),(1704067200,'GBP',0.625);").unwrap();
         assert_eq!(
-            historical_amount(&conn, 110.0, "USD", "EUR", 1704067200).unwrap(),
-            Some(100.0)
+            historical_amount(&conn, 110.0, "USD", "GBP", 1704067200).unwrap(),
+            Some(55.0)
         );
-        conn.execute_batch("DELETE FROM exchange_rate_history; INSERT INTO exchange_rate_history VALUES (1704067200,'USD',25),(1703980800,'EUR',27.5);").unwrap();
+        conn.execute_batch("DELETE FROM exchange_rate_history; INSERT INTO exchange_rate_history VALUES (1704067200,'USD',1.25),(1703980800,'GBP',0.625);").unwrap();
         assert_eq!(
-            historical_amount(&conn, 110.0, "USD", "EUR", 1704067200).unwrap(),
+            historical_amount(&conn, 110.0, "USD", "GBP", 1704067200).unwrap(),
             None
         );
     }
@@ -525,7 +523,7 @@ mod tests {
             None
         );
         conn.execute(
-            "INSERT INTO exchange_rate_history VALUES (1704067200,'ZZZ',25.0)",
+            "INSERT INTO exchange_rate_history VALUES (1704067200,'CZK',25.0),(1704067200,'ZZZ',1.0)",
             [],
         )
         .unwrap();

@@ -394,12 +394,15 @@ mod tests {
         .expect("insert tx");
     }
 
-    fn add_rate(conn: &Connection, day: i64, currency: &str, rate: f64) {
-        conn.execute(
-            "INSERT INTO exchange_rate_history (date, currency, rate) VALUES (?1, ?2, ?3)",
-            params![day, currency, rate],
-        )
-        .expect("insert rate");
+    /// One day of EUR quotes on which 1 USD costs `czk_per_usd` CZK (CZK at 25 per EUR).
+    fn add_usd_czk(conn: &Connection, day: i64, czk_per_usd: f64) {
+        for (currency, units_per_eur) in [("CZK", 25.0), ("USD", 25.0 / czk_per_usd)] {
+            conn.execute(
+                "INSERT INTO exchange_rate_history (date, currency, rate) VALUES (?1, ?2, ?3)",
+                params![day, currency, units_per_eur],
+            )
+            .expect("insert rate");
+        }
     }
 
     /// `(recorded_at, value_czk, quantity, price, currency)` of every stored row.
@@ -432,7 +435,7 @@ mod tests {
         add_tx(&conn, "t1", "AAPL", "buy", "10", d0);
         add_tx(&conn, "t2", "AAPL", "buy", "5", d0 + 3 * DAY);
         add_tx(&conn, "t3", "AAPL", "sell", "15", d0 + 6 * DAY);
-        add_rate(&conn, d0 - DAY, "USD", 20.0);
+        add_usd_czk(&conn, d0 - DAY, 20.0);
 
         let stats = rebuild_stock_ticker_history(
             &conn,
@@ -468,7 +471,7 @@ mod tests {
         let conn = setup_test_db();
         let d0 = TODAY - 5 * DAY;
         add_tx(&conn, "t1", "AAPL", "buy", "4", d0 + 15 * 3600);
-        add_rate(&conn, d0 - DAY, "USD", 20.0);
+        add_usd_czk(&conn, d0 - DAY, 20.0);
 
         rebuild_stock_ticker_history(&conn, "AAPL", d0, d0 + 2 * DAY, flat_price(1.0))
             .expect("rebuild");
@@ -485,7 +488,7 @@ mod tests {
         let conn = setup_test_db();
         let d0 = TODAY - 6 * DAY;
         add_tx(&conn, "t1", "AAPL", "buy", "1", d0 + 2 * DAY);
-        add_rate(&conn, d0 - DAY, "USD", 20.0);
+        add_usd_czk(&conn, d0 - DAY, 20.0);
         // Stale rows from an earlier state: one before the buy, one on a day
         // that will have a position but no price.
         for (id, day) in [("stale0", d0), ("stale3", d0 + 3 * DAY)] {
@@ -522,7 +525,7 @@ mod tests {
         let conn = setup_test_db();
         let d0 = TODAY - 4 * DAY;
         add_tx(&conn, "t1", "AAPL", "buy", "2", d0);
-        add_rate(&conn, d0 - DAY, "USD", 20.0);
+        add_usd_czk(&conn, d0 - DAY, 20.0);
 
         rebuild_stock_ticker_history(&conn, "AAPL", d0, d0 + 3 * DAY, flat_price(1.0))
             .expect("first");
@@ -545,8 +548,8 @@ mod tests {
         let conn = setup_test_db();
         let d0 = TODAY - 30 * DAY;
         add_tx(&conn, "t1", "AAPL", "buy", "1", d0);
-        add_rate(&conn, d0, "USD", 20.0);
-        add_rate(&conn, d0 + 12 * DAY, "USD", 25.0);
+        add_usd_czk(&conn, d0, 20.0);
+        add_usd_czk(&conn, d0 + 12 * DAY, 25.0);
 
         rebuild_stock_ticker_history(&conn, "AAPL", d0, d0 + 13 * DAY, flat_price(1.0))
             .expect("rebuild");
@@ -572,7 +575,7 @@ mod tests {
         add_tx(&conn, "t1", "AAPL", "buy", "0.1", d0);
         add_tx(&conn, "t2", "AAPL", "buy", "0.2", d0);
         add_tx(&conn, "t3", "AAPL", "sell", "0.3", d0 + 2 * DAY);
-        add_rate(&conn, d0 - DAY, "USD", 20.0);
+        add_usd_czk(&conn, d0 - DAY, 20.0);
 
         rebuild_stock_ticker_history(&conn, "AAPL", d0, d0 + 4 * DAY, flat_price(1.0))
             .expect("rebuild");
@@ -600,8 +603,8 @@ mod tests {
                     ('c', 'AAPL', {d2}, '999999', '10', '100', 'USD', 0),
                     ('x', 'MSFT', {d1}, '1', '1', '1', 'USD', 0);
              INSERT INTO exchange_rate_history (date, currency, rate)
-             VALUES ({d0}, 'USD', 20.0), ({d1}, 'USD', 22.5), ({d2}, 'USD', 25.0),
-                    ({d0}, 'EUR', 25.0), ({d1}, 'EUR', 25.0), ({d2}, 'EUR', 25.0);",
+             VALUES ({d0}, 'USD', 1.25), ({d1}, 'USD', 25.0 / 22.5), ({d2}, 'USD', 1.0),
+                    ({d0}, 'CZK', 25.0), ({d1}, 'CZK', 25.0), ({d2}, 'CZK', 25.0);",
             d0 = 20_000 * DAY,
             d1 = 20_001 * DAY,
             d2 = 20_002 * DAY,
@@ -728,12 +731,12 @@ mod tests {
         .unwrap();
         // day 20_000 has no quotes at all and nothing earlier: USD is missing there; day
         // 20_001 has no common day with USD either
-        let report = stock_history(&conn, "AAPL", "CZK");
+        let report = stock_history(&conn, "AAPL", "EUR");
 
-        assert_eq!(values(&report), [None, None, Some("25000.00")]);
+        assert_eq!(values(&report), [None, None, Some("1000.00")]);
         assert_eq!(report.points[1].price, "100");
         assert_eq!(report.fx_quality.missing_count, 2);
-        // CZK is the quotes' own reference: only USD can be missing
+        // EUR is the quotes' own reference: only USD can be missing
         assert_eq!(report.fx_quality.missing_currencies, ["USD"]);
     }
 
@@ -1021,9 +1024,9 @@ mod golden {
         let mut day = first_day - 15 * DAY;
         while day <= TODAY {
             if weekday_of(day) < 5 {
-                for (currency, rate) in
-                    [("USD", 21.0 + (day / DAY % 11) as f64 * 0.1), ("EUR", 24.5)]
-                {
+                // 1 USD costs 21.0 to 22.0 CZK, 1 EUR 24.5 CZK
+                let czk_per_usd = 21.0 + (day / DAY % 11) as f64 * 0.1;
+                for (currency, rate) in [("USD", 24.5 / czk_per_usd), ("CZK", 24.5)] {
                     conn.execute(
                         "INSERT INTO exchange_rate_history (date, currency, rate) VALUES (?1, ?2, ?3)",
                         params![day, currency, rate],

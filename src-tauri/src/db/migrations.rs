@@ -71,6 +71,7 @@ fn all_migrations() -> Vec<(&'static str, &'static str)> {
         ("007_report_history", MIGRATION_007),
         ("008_import_integrity", MIGRATION_008),
         ("009_scoped_learning", MIGRATION_009),
+        ("010_fx_eur_reference", MIGRATION_010),
     ]
 }
 
@@ -2060,3 +2061,163 @@ CREATE UNIQUE INDEX idx_learned_payees_scoped ON learned_payees(
  COALESCE(normalized_payee,''),COALESCE(counterparty_iban,''),bank_account_id,is_credit
 ) WHERE bank_account_id IS NOT NULL;
 "#;
+
+/// Stored rates become units of a currency per 1 EUR (the ECB's own base) instead of CZK per
+/// unit; CZK is stored as a quote like any other currency. Days (and current rates) without a
+/// usable EUR quote cannot be rebased and are dropped; derived (pegged) codes are never stored.
+/// The rows are rewritten in place, so the tables, their constraints and `idx_erh_currency_date`
+/// stay exactly as they are.
+pub(crate) const MIGRATION_010: &str = r#"
+CREATE TEMP TABLE exchange_rate_history_eur (date INTEGER NOT NULL, currency TEXT NOT NULL, rate REAL NOT NULL, PRIMARY KEY (date, currency));
+INSERT INTO exchange_rate_history_eur (date, currency, rate)
+  SELECT h.date, h.currency, e.rate / h.rate
+  FROM exchange_rate_history h JOIN exchange_rate_history e ON e.date = h.date AND e.currency = 'EUR'
+  WHERE h.currency NOT IN ('EUR', 'CZK') AND h.rate > 0 AND e.rate > 0;
+INSERT INTO exchange_rate_history_eur (date, currency, rate)
+  SELECT date, 'CZK', rate FROM exchange_rate_history WHERE currency = 'EUR' AND rate > 0;
+DELETE FROM exchange_rate_history;
+INSERT INTO exchange_rate_history (date, currency, rate)
+  SELECT date, currency, rate FROM exchange_rate_history_eur;
+DROP TABLE exchange_rate_history_eur;
+
+CREATE TEMP TABLE exchange_rates_eur (currency TEXT PRIMARY KEY, rate REAL NOT NULL, fetched_at INTEGER NOT NULL);
+INSERT INTO exchange_rates_eur (currency, rate, fetched_at)
+  SELECT r.currency, e.rate / r.rate, r.fetched_at
+  FROM exchange_rates r JOIN exchange_rates e ON e.currency = 'EUR'
+  WHERE r.currency NOT IN ('EUR', 'CZK') AND r.rate > 0 AND e.rate > 0;
+INSERT INTO exchange_rates_eur (currency, rate, fetched_at)
+  SELECT 'CZK', rate, fetched_at FROM exchange_rates WHERE currency = 'EUR' AND rate > 0;
+DELETE FROM exchange_rates;
+INSERT INTO exchange_rates (currency, rate, fetched_at)
+  SELECT currency, rate, fetched_at FROM exchange_rates_eur;
+DROP TABLE exchange_rates_eur;
+
+DELETE FROM exchange_rate_history WHERE currency IN ('AED', 'SAR', 'QAR', 'BHD', 'OMR', 'BGN');
+DELETE FROM exchange_rates WHERE currency IN ('AED', 'SAR', 'QAR', 'BHD', 'OMR', 'BGN');
+
+INSERT OR REPLACE INTO app_config (key, value) VALUES ('fx_reference', 'EUR');
+"#;
+
+#[cfg(test)]
+mod migration_010 {
+    use super::*;
+    use crate::services::fx::History;
+
+    const DAY: i64 = 86_400;
+
+    /// A database as it was before `010`: every migration that comes earlier in the chain.
+    fn database_before_010() -> Connection {
+        let conn = Connection::open_in_memory().expect("in-memory db");
+        let earlier: Vec<(&str, &str)> = all_migrations()
+            .into_iter()
+            .filter(|(name, _)| *name < "010_fx_eur_reference")
+            .collect();
+        run_chain(&conn, &earlier).expect("earlier migrations");
+        conn
+    }
+
+    #[test]
+    fn migration_010_rebases_rates_on_eur() {
+        let conn = database_before_010();
+        conn.execute_batch(
+            "
+            INSERT INTO exchange_rate_history VALUES (86400, 'EUR', 25.0), (86400, 'USD', 20.0), (86400, 'AED', 5.4);
+            INSERT INTO exchange_rates VALUES ('CZK', 1.0, 7), ('EUR', 25.0, 7), ('USD', 20.0, 7);
+        ",
+        )
+        .expect("seed");
+        run_migrations(&conn).expect("migrate to the current chain");
+        let usd: f64 = conn
+            .query_row(
+                "SELECT rate FROM exchange_rate_history WHERE date = 86400 AND currency = 'USD'",
+                [],
+                |r| r.get(0),
+            )
+            .expect("usd");
+        let czk: f64 = conn
+            .query_row(
+                "SELECT rate FROM exchange_rate_history WHERE date = 86400 AND currency = 'CZK'",
+                [],
+                |r| r.get(0),
+            )
+            .expect("czk");
+        assert!((usd - 1.25).abs() < 1e-12 && (czk - 25.0).abs() < 1e-12);
+        let n: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM exchange_rate_history WHERE currency IN ('EUR', 'AED')",
+                [],
+                |r| r.get(0),
+            )
+            .expect("n");
+        assert_eq!(n, 0);
+        let current: f64 = conn
+            .query_row(
+                "SELECT rate FROM exchange_rates WHERE currency = 'USD'",
+                [],
+                |r| r.get(0),
+            )
+            .expect("cur");
+        assert!((current - 1.25).abs() < 1e-12);
+        let reference: String = conn
+            .query_row(
+                "SELECT value FROM app_config WHERE key = 'fx_reference'",
+                [],
+                |r| r.get(0),
+            )
+            .expect("ref");
+        assert_eq!(reference, "EUR");
+    }
+
+    #[test]
+    fn a_conversion_through_history_gives_the_same_value_after_migration() {
+        let conn = database_before_010();
+        let d = 20_000 * DAY;
+        conn.execute_batch(&format!(
+            "INSERT INTO exchange_rate_history VALUES ({d}, 'EUR', 24.5), ({d}, 'USD', 21.3), ({d}, 'GBP', 29.1);"
+        ))
+        .expect("seed");
+        // Before: CZK per unit, so 100 CZK is 100 / 21.3 USD.
+        let before = 100.0 / 21.3;
+
+        run_migrations(&conn).expect("migrate to the current chain");
+
+        let history = History::load(&conn, d, d).expect("load");
+        let after = history
+            .convert_on(100.0, "CZK", "USD", d)
+            .expect("CZK->USD after migration");
+        assert!((after - before).abs() < 1e-9, "{after} vs {before}");
+        let gbp_usd = history.convert_on(1.0, "GBP", "USD", d).expect("cross");
+        assert!((gbp_usd - 29.1 / 21.3).abs() < 1e-9, "{gbp_usd}");
+    }
+
+    #[test]
+    fn days_and_current_rates_without_a_eur_quote_are_dropped_and_the_index_survives() {
+        let conn = database_before_010();
+        conn.execute_batch(
+            "INSERT INTO exchange_rate_history VALUES (86400, 'USD', 20.0), (172800, 'EUR', 0.0), (172800, 'USD', 20.0);
+             INSERT INTO exchange_rates VALUES ('USD', 20.0, 7);",
+        )
+        .expect("seed");
+
+        run_migrations(&conn).expect("migrate to the current chain");
+
+        let rows: i64 = conn
+            .query_row("SELECT COUNT(*) FROM exchange_rate_history", [], |r| {
+                r.get(0)
+            })
+            .expect("history rows");
+        assert_eq!(rows, 0, "no EUR quote on the day: nothing to rebase on");
+        let current: i64 = conn
+            .query_row("SELECT COUNT(*) FROM exchange_rates", [], |r| r.get(0))
+            .expect("current rows");
+        assert_eq!(current, 0);
+        let index: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM sqlite_master WHERE type = 'index' AND name = 'idx_erh_currency_date'",
+                [],
+                |r| r.get(0),
+            )
+            .expect("index");
+        assert_eq!(index, 1);
+    }
+}

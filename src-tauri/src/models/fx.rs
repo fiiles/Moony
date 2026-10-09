@@ -47,3 +47,14 @@ pub struct FxDayQuotes {
     #[serde(rename = "units")]
     pub units: HashMap<String, f64>,
 }
+
+/// Stored daily quotes with the reference they are quoted against: each day's `units` are
+/// units of a currency per 1 unit of `reference`.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct FxHistoryQuotes {
+    #[serde(rename = "reference")]
+    pub reference: String,
+    /// Oldest first.
+    #[serde(rename = "days")]
+    pub days: Vec<FxDayQuotes>,
+}

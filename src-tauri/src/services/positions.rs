@@ -563,9 +563,9 @@ mod tests {
         conn
     }
 
-    /// `exchange_rate_history` rows: CZK per unit on `day`.
-    fn seed_rates(conn: &Connection, day: i64, czk_per_unit: &[(&str, f64)]) {
-        for (code, rate) in czk_per_unit {
+    /// `exchange_rate_history` rows: units per 1 EUR on `day`.
+    fn seed_rates(conn: &Connection, day: i64, units_per_eur: &[(&str, f64)]) {
+        for (code, rate) in units_per_eur {
             conn.execute(
                 "INSERT INTO exchange_rate_history (date, currency, rate) VALUES (?1, ?2, ?3)",
                 rusqlite::params![day, code, rate],
@@ -621,8 +621,8 @@ mod tests {
         .expect("price");
     }
 
-    fn set_current_czk(czk_per_unit: &[(&str, f64)]) {
-        fx::set_current_for_test(czk_per_unit);
+    fn set_current_eur(units_per_eur: &[(&str, f64)]) {
+        fx::set_current_for_test(units_per_eur);
     }
 
     fn assert_close(a: f64, b: f64) {
@@ -634,7 +634,7 @@ mod tests {
         // C1: bought 10 x 100 USD when USDCZK = EURCZK = 25; today USDCZK 25, EURCZK 22.
         let conn = setup();
         let buy_day = 19_000 * DAY;
-        seed_rates(&conn, buy_day, &[("USD", 25.0), ("EUR", 25.0)]);
+        seed_rates(&conn, buy_day, &[("CZK", 25.0), ("USD", 1.0)]);
         seed_stock(
             &conn,
             "s1",
@@ -643,7 +643,7 @@ mod tests {
             &[("buy", 10.0, 100.0, buy_day)],
             100.0,
         );
-        set_current_czk(&[("USD", 25.0), ("EUR", 22.0)]);
+        set_current_eur(&[("CZK", 22.0), ("USD", 22.0 / 25.0)]);
         let p = value_positions(&conn, AssetKind::Stock, "EUR", 20_000 * DAY).expect("positions");
         let item = &p.items[0];
         assert_close(item.cost_basis.expect("cost"), 1000.0);
@@ -656,8 +656,8 @@ mod tests {
     fn realized_gain_uses_sell_day_rate() {
         let conn = setup();
         let (d1, d2) = (19_000 * DAY, 19_100 * DAY);
-        seed_rates(&conn, d1, &[("USD", 20.0)]);
-        seed_rates(&conn, d2, &[("USD", 25.0)]);
+        seed_rates(&conn, d1, &[("CZK", 25.0), ("USD", 1.25)]);
+        seed_rates(&conn, d2, &[("CZK", 25.0), ("USD", 1.0)]);
         seed_stock(
             &conn,
             "s1",
@@ -666,7 +666,7 @@ mod tests {
             &[("buy", 10.0, 100.0, d1), ("sell", 5.0, 100.0, d2)],
             100.0,
         );
-        set_current_czk(&[("USD", 25.0)]);
+        set_current_eur(&[("CZK", 25.0), ("USD", 1.0)]);
         let p = value_positions(&conn, AssetKind::Stock, "CZK", 20_000 * DAY).expect("positions");
         // released cost 5*100*20 = 10000 CZK, proceeds 5*100*25 = 12500 CZK
         assert_close(p.items[0].realized_gain.expect("realized"), 2500.0);
@@ -685,7 +685,7 @@ mod tests {
         );
         // EUR is quoted so that only the position's own currency is unconvertible (C-C blames
         // every unquoted side, the report currency included).
-        set_current_czk(&[("USD", 25.0), ("EUR", 25.0)]);
+        set_current_eur(&[("CZK", 25.0), ("USD", 1.0)]);
         let p = value_positions(&conn, AssetKind::Stock, "EUR", 20_000 * DAY).expect("positions");
         assert_eq!(p.items.len(), 1);
         assert_eq!(p.items[0].value, None);
@@ -713,7 +713,7 @@ mod tests {
             &[("buy", 2.0, 100.0, 19_000 * DAY)],
             120.0,
         );
-        set_current_czk(&[]);
+        set_current_eur(&[]);
         let p = value_positions(&conn, AssetKind::Stock, "EUR", 20_000 * DAY).expect("positions");
         assert_close(p.items[0].unrealized_gain.expect("gain"), 40.0);
         assert_close(p.items[0].unrealized_gain_percent.expect("percent"), 20.0);
@@ -733,7 +733,7 @@ mod tests {
             &[("buy", 10.0, 100.0, 19_000 * DAY)],
             110.0,
         );
-        set_current_czk(&[("USD", 25.0), ("EUR", 20.0)]);
+        set_current_eur(&[("CZK", 20.0), ("USD", 20.0 / 25.0)]);
         let p = value_positions(&conn, AssetKind::Stock, "EUR", 20_000 * DAY).expect("positions");
         assert_close(p.items[0].cost_basis.expect("cost"), 1250.0);
         assert_close(p.items[0].value.expect("value"), 1375.0);
@@ -753,7 +753,7 @@ mod tests {
             1.0,
         );
         conn.execute("DELETE FROM stock_data", []).expect("delete");
-        set_current_czk(&[]);
+        set_current_eur(&[]);
         let p = value_positions(&conn, AssetKind::Stock, "EUR", 20_000 * DAY).expect("positions");
         let item = &p.items[0];
         assert_eq!(item.price, None);
@@ -782,7 +782,7 @@ mod tests {
             [],
         )
         .expect("override");
-        set_current_czk(&[]);
+        set_current_eur(&[]);
         let p = value_positions(&conn, AssetKind::Stock, "EUR", 20_000 * DAY).expect("positions");
         assert_eq!(p.items[0].price, Some(130.0));
         assert_close(p.items[0].value.expect("value"), 130.0);
@@ -792,7 +792,7 @@ mod tests {
     fn yearly_dividend_converts_the_per_share_dividend_with_current_quotes() {
         let conn = setup();
         let day = 19_000 * DAY;
-        seed_rates(&conn, day, &[("USD", 25.0), ("EUR", 25.0)]);
+        seed_rates(&conn, day, &[("CZK", 25.0), ("USD", 1.0)]);
         seed_stock(
             &conn,
             "s1",
@@ -807,7 +807,7 @@ mod tests {
             [],
         )
         .expect("dividend");
-        set_current_czk(&[("USD", 25.0), ("EUR", 20.0)]);
+        set_current_eur(&[("CZK", 20.0), ("USD", 20.0 / 25.0)]);
         let p = value_positions(&conn, AssetKind::Stock, "EUR", 20_000 * DAY).expect("positions");
         let item = &p.items[0];
         assert_eq!(item.dividend_per_share, Some(1.0));
@@ -837,7 +837,7 @@ mod tests {
             &[("buy", 1.0, 100.0, 19_000 * DAY)],
             120.0,
         );
-        set_current_czk(&[("EUR", 25.0)]);
+        set_current_eur(&[("CZK", 25.0)]);
         let p = value_positions(&conn, AssetKind::Stock, "EUR", 20_000 * DAY).expect("positions");
         assert_eq!(p.items[0].dividend_per_share, None);
         assert_eq!(p.items[0].yearly_dividend, Some(0.0));
@@ -860,8 +860,8 @@ mod tests {
     fn crypto_with_mixed_transaction_currencies_converts_each_buy_directly() {
         let conn = setup();
         let (d1, d2) = (19_000 * DAY, 19_050 * DAY);
-        seed_rates(&conn, d1, &[("USD", 20.0), ("EUR", 25.0)]);
-        seed_rates(&conn, d2, &[("USD", 25.0), ("EUR", 25.0)]);
+        seed_rates(&conn, d1, &[("CZK", 25.0), ("USD", 1.25)]);
+        seed_rates(&conn, d2, &[("CZK", 25.0), ("USD", 1.0)]);
         conn.execute_batch(&format!(
             r#"
             INSERT INTO crypto_investments (id, ticker, coingecko_id, name, quantity, currency)
@@ -875,7 +875,7 @@ mod tests {
             "#
         ))
         .expect("seed");
-        set_current_czk(&[("USD", 25.0), ("EUR", 25.0)]);
+        set_current_eur(&[("CZK", 25.0), ("USD", 1.0)]);
         let p = value_positions(&conn, AssetKind::Crypto, "EUR", 20_000 * DAY).expect("positions");
         let item = &p.items[0];
         assert_eq!(item.ticker, "BTC");
@@ -894,7 +894,7 @@ mod tests {
     fn tag_totals_sum_only_convertible_positions_and_report_the_rest() {
         let conn = setup();
         let day = 19_000 * DAY;
-        seed_rates(&conn, day, &[("USD", 25.0), ("EUR", 25.0)]);
+        seed_rates(&conn, day, &[("CZK", 25.0), ("USD", 1.0)]);
         seed_stock(
             &conn,
             "s1",
@@ -910,7 +910,7 @@ mod tests {
             [],
         )
         .expect("dividend");
-        set_current_czk(&[("USD", 25.0), ("EUR", 22.0)]);
+        set_current_eur(&[("CZK", 22.0), ("USD", 22.0 / 25.0)]);
         let p = value_positions(&conn, AssetKind::Stock, "EUR", 20_000 * DAY).expect("positions");
         let tag_map: HashMap<String, Vec<String>> = [
             ("s1".to_string(), vec!["tech".to_string()]),
@@ -956,7 +956,7 @@ mod tests {
         );
         // closed and no longer priced
         conn.execute("DELETE FROM stock_data", []).expect("delete");
-        set_current_czk(&[]);
+        set_current_eur(&[]);
         let p = value_positions(&conn, AssetKind::Stock, "EUR", 20_000 * DAY).expect("positions");
 
         let t = totals(&p.items);
@@ -979,7 +979,7 @@ mod tests {
             "#,
         )
         .expect("seed");
-        set_current_czk(&[]);
+        set_current_eur(&[]);
         let p = value_positions(&conn, AssetKind::Stock, "EUR", 20_000 * DAY).expect("positions");
         let open = p.items.iter().find(|i| i.ticker == "SAP.DE").expect("open");
         assert_close(open.value.expect("value"), 300.0);
@@ -1026,7 +1026,7 @@ mod tests {
         // the second position has no price
         conn.execute("DELETE FROM stock_data WHERE ticker = 'XYZ.DE'", [])
             .expect("unprice");
-        set_current_czk(&[]);
+        set_current_eur(&[]);
         let p = value_positions(&conn, AssetKind::Stock, "EUR", 20_000 * DAY).expect("positions");
 
         let t = totals(&p.items);
@@ -1054,7 +1054,7 @@ mod tests {
         // a stale stored quantity (metrics not recalculated)
         conn.execute("UPDATE stock_investments SET quantity = '5'", [])
             .expect("stale");
-        set_current_czk(&[]);
+        set_current_eur(&[]);
         let p = value_positions(&conn, AssetKind::Stock, "EUR", 20_000 * DAY).expect("positions");
         let item = &p.items[0];
         assert_close(item.quantity, 2.0);
@@ -1096,7 +1096,7 @@ mod tests {
         // SAP: replayed 2 × 120 EUR; NOTX without transactions: stored 3 × 10 USD.
         assert_close(breakdown["EUR"], 240.0);
         assert_close(breakdown["USD"], 30.0);
-        set_current_czk(&[]);
+        set_current_eur(&[]);
         let p = value_positions(&conn, AssetKind::Stock, "EUR", 20_000 * DAY).expect("positions");
         let sap = p
             .items

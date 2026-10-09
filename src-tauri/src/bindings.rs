@@ -177,6 +177,7 @@ pub fn collect_types() -> TypeCollection {
     types.register::<crate::models::fx::ConversionQuality>();
     types.register::<crate::models::fx::FxSnapshot>();
     types.register::<crate::models::fx::FxDayQuotes>();
+    types.register::<crate::models::fx::FxHistoryQuotes>();
     types.register::<crate::models::ReportTransaction>();
     types.register::<crate::models::EffectiveTransactionFlow>();
     types.register::<crate::models::BudgetGoal>();

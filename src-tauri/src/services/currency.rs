@@ -1,5 +1,6 @@
-//! Exchange rate storage: the ECB feed, the stored current rates and the daily rate history
-//! (CZK per unit, the storage format until Task 24). Conversions go through `services::fx`.
+//! Exchange rate storage: the ECB feed, the stored current rates and the daily rate history.
+//! Every stored rate is units of a currency per 1 EUR ([`fx::REFERENCE`]), as the ECB publishes
+//! it. Conversions go through `services::fx`.
 
 use crate::services::fx::{self, Quotes};
 use std::collections::HashMap;
@@ -28,7 +29,7 @@ pub fn load_rates_from_db(conn: &rusqlite::Connection) -> crate::error::Result<(
     }
 
     let mut stmt = conn.prepare("SELECT currency, rate, fetched_at FROM exchange_rates")?;
-    let mut rates = HashMap::new();
+    let mut rates: Vec<(String, f64)> = Vec::new();
     let mut latest_fetched_at: Option<i64> = None;
 
     let rows = stmt.query_map([], |row| {
@@ -45,7 +46,7 @@ pub fn load_rates_from_db(conn: &rusqlite::Connection) -> crate::error::Result<(
             log::warn!("[CURRENCY] ignoring unusable stored rate for {currency}");
             continue;
         }
-        rates.insert(currency, rate);
+        rates.push((currency, rate));
         latest_fetched_at = latest_fetched_at.max(Some(fetched_at));
     }
 
@@ -54,7 +55,7 @@ pub fn load_rates_from_db(conn: &rusqlite::Connection) -> crate::error::Result<(
             "[CURRENCY] Loaded {} exchange rates from database",
             rates.len()
         );
-        let quotes = Quotes::from_czk_per_unit(&rates);
+        let quotes = Quotes::from_stored(rates.iter().map(|(code, rate)| (code.as_str(), *rate)));
         match latest_fetched_at {
             Some(ts) => fx::set_current_with_revision(quotes, ts),
             None => fx::set_current(quotes),
@@ -66,7 +67,8 @@ pub fn load_rates_from_db(conn: &rusqlite::Connection) -> crate::error::Result<(
     Ok(())
 }
 
-/// Save exchange rates to database for offline use
+/// Save exchange rates (units per 1 EUR) to the database for offline use. Only stored quotes are
+/// written: never the reference itself or a derived (pegged) code.
 pub fn save_rates_to_db(
     conn: &rusqlite::Connection,
     rates: &HashMap<String, f64>,
@@ -76,7 +78,7 @@ pub fn save_rates_to_db(
         .expect("Time went backwards")
         .as_secs() as i64;
 
-    for (currency, rate) in rates {
+    for (currency, rate) in rates.iter().filter(|(code, _)| fx::is_stored_code(code)) {
         conn.execute(
             "INSERT INTO exchange_rates (currency, rate, fetched_at)
              VALUES (?1, ?2, ?3)
@@ -93,19 +95,19 @@ pub fn save_rates_to_db(
     Ok(())
 }
 
-/// The ECB daily reference rates: rates relative to CZK plus the day they were
+/// The ECB daily reference rates as published (units per 1 EUR) plus the day they were
 /// published *for* (the `time` attribute of the feed). On weekends and
 /// holidays the feed keeps serving the last business day, so the reference day
 /// is not the day the app fetched it.
 #[derive(Debug, Clone)]
 pub struct EcbRates {
-    /// Currency -> CZK per 1 unit, including `EUR` and `CZK` (= 1.0).
+    /// Currency -> units per 1 EUR. EUR itself is the reference and has no entry.
     pub rates: HashMap<String, f64>,
     /// Midnight UTC of the ECB reference date.
     pub reference_day: i64,
 }
 
-/// Fetch exchange rates from the ECB feed (rates relative to CZK).
+/// Fetch exchange rates from the ECB feed (units per 1 EUR).
 pub async fn fetch_ecb_rates() -> crate::error::Result<EcbRates> {
     let url = "https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml";
 
@@ -118,18 +120,21 @@ pub async fn fetch_ecb_rates() -> crate::error::Result<EcbRates> {
         .duration_since(std::time::UNIX_EPOCH)
         .expect("Time went backwards")
         .as_secs() as i64;
-    fx::set_current_with_revision(Quotes::from_czk_per_unit(&ecb.rates), now);
+    fx::set_current_with_revision(
+        Quotes::from_stored(ecb.rates.iter().map(|(code, rate)| (code.as_str(), *rate))),
+        now,
+    );
 
     Ok(ecb)
 }
 
 /// Parse the ECB daily XML (`<Cube time='2026-10-02'>` with
-/// `<Cube currency='USD' rate='1.0843'/>` rows, all quoted per 1 EUR) into CZK
-/// based rates and the reference day.
+/// `<Cube currency='USD' rate='1.0843'/>` rows, all quoted per 1 EUR) into the published rates
+/// and the reference day. No currency is required: a feed without CZK still carries every other
+/// quote.
 ///
-/// Fails — instead of guessing — when the feed has no usable CZK quote (every
-/// other rate is converted through it; the old fallback of 25.0 silently
-/// mispriced everything) or no parseable reference date.
+/// Fails — instead of guessing — when the feed has no usable rate at all or no parseable
+/// reference date.
 pub fn parse_ecb_xml(body: &str) -> crate::error::Result<EcbRates> {
     use crate::error::AppError;
 
@@ -137,26 +142,16 @@ pub fn parse_ecb_xml(body: &str) -> crate::error::Result<EcbRates> {
         AppError::ExternalApi("ECB feed has no usable reference date (time attribute)".into())
     })?;
 
-    // CZK per 1 EUR
-    let czk_per_eur = extract_rate(body, "CZK")
-        .filter(|r| r.is_finite() && *r > 0.0)
-        .ok_or_else(|| AppError::ExternalApi("ECB feed has no usable CZK rate".into()))?;
-
-    let mut rates = HashMap::new();
-    rates.insert("CZK".to_string(), 1.0);
-    rates.insert("EUR".to_string(), czk_per_eur);
-
-    for currency in extract_all_currencies(body) {
-        if currency == "CZK" {
-            continue;
-        }
-        if let Some(rate_vs_eur) = extract_rate(body, &currency) {
-            if rate_vs_eur.is_finite() && rate_vs_eur > 0.0 {
-                // rate_vs_eur units of the currency per 1 EUR = czk_per_eur CZK,
-                // so 1 unit = czk_per_eur / rate_vs_eur CZK
-                rates.insert(currency, czk_per_eur / rate_vs_eur);
-            }
-        }
+    let rates: HashMap<String, f64> = extract_all_currencies(body)
+        .into_iter()
+        .filter(|currency| fx::is_stored_code(currency))
+        .filter_map(|currency| {
+            let rate = extract_rate(body, &currency).filter(|r| r.is_finite() && *r > 0.0)?;
+            Some((currency, rate))
+        })
+        .collect();
+    if rates.is_empty() {
+        return Err(AppError::ExternalApi("ECB feed has no usable rates".into()));
     }
 
     Ok(EcbRates {
@@ -251,7 +246,7 @@ fn extract_rate(xml: &str, currency: &str) -> Option<f64> {
     None
 }
 
-/// Save rates into the exchange_rate_history table (one row per currency per
+/// Save rates (units per 1 EUR) into the exchange_rate_history table (one row per currency per
 /// day), under `reference_day` — the ECB reference date of the rates, *not* the
 /// day the app fetched them: on a Saturday the feed still carries Friday's
 /// rates, which belong to Friday. Overwrites an existing row for that
@@ -265,10 +260,8 @@ pub fn save_rates_to_history_db(
     // Normalise to midnight UTC
     let day = (reference_day / 86400) * 86400;
 
-    for (currency, rate) in rates {
-        if currency == "CZK" {
-            continue; // CZK is always 1.0 — no need to store
-        }
+    // The reference is 1.0 by definition and derived codes are resolved at read time.
+    for (currency, rate) in rates.iter().filter(|(code, _)| fx::is_stored_code(code)) {
         conn.execute(
             "INSERT INTO exchange_rate_history (date, currency, rate)
              VALUES (?1, ?2, ?3)
@@ -331,22 +324,13 @@ mod tests {
     use super::*;
     use rusqlite::Connection;
 
-    fn set_store(czk_per_unit: &[(&str, f64)]) {
-        fx::set_current(Quotes::from_czk_per_unit(
-            &czk_per_unit
-                .iter()
-                .map(|(code, rate)| (code.to_string(), *rate))
-                .collect(),
-        ));
-    }
-
     fn current_czk(amount: f64, currency: &str) -> Option<f64> {
         fx::current().convert(amount, currency, "CZK")
     }
 
     #[test]
     fn store_starts_without_invented_rates() {
-        fx::set_current(Quotes::new("CZK"));
+        fx::set_current(Quotes::new(fx::REFERENCE));
         assert_eq!(current_czk(1.0, "EUR"), None);
         assert_eq!(current_czk(100.0, "czk"), Some(100.0));
     }
@@ -355,17 +339,18 @@ mod tests {
     fn rates_loaded_from_db_are_validated() {
         let conn = Connection::open_in_memory().expect("db");
         conn.execute_batch("CREATE TABLE exchange_rates (currency TEXT PRIMARY KEY, rate REAL NOT NULL, fetched_at INTEGER NOT NULL);
-            INSERT INTO exchange_rates VALUES ('EUR', 25.0, 1), ('USD', 0.0, 1), ('GBP', -3.0, 1);").expect("schema");
+            INSERT INTO exchange_rates VALUES ('CZK', 25.0, 1), ('USD', 0.0, 1), ('GBP', -3.0, 1);").expect("schema");
         load_rates_from_db(&conn).expect("load");
         assert!((current_czk(1.0, "EUR").expect("EUR loaded") - 25.0).abs() < 1e-9);
         assert_eq!(current_czk(1.0, "USD"), None);
         assert_eq!(current_czk(1.0, "GBP"), None);
         assert_eq!(fx::current_fetched_at(), Some(1));
+        assert_eq!(fx::current().reference(), "EUR");
     }
 
     #[test]
     fn derived_currencies_resolve_through_their_anchor() {
-        set_store(&[("USD", 20.0)]);
+        fx::set_current_for_test(&[("CZK", 25.0), ("USD", 1.25)]);
         assert!((current_czk(3.6725, "AED").expect("pegged") - 20.0).abs() < 1e-9);
     }
 
@@ -387,10 +372,18 @@ mod tests {
     fn saved_history_converts_at_the_days_quotes_with_derived_pegs() {
         let conn = setup_history_db();
         let mut rates = HashMap::new();
-        rates.insert("EUR".to_string(), 25.0);
-        rates.insert("USD".to_string(), 23.0);
+        rates.insert("CZK".to_string(), 25.0);
+        rates.insert("USD".to_string(), 25.0 / 23.0);
+        rates.insert("AED".to_string(), 4.0); // derived: never stored
+        rates.insert("EUR".to_string(), 2.0); // the reference: never stored
         let day = 1_700_006_400;
         save_rates_to_history_db(&conn, &rates, day).expect("save");
+        let stored: i64 = conn
+            .query_row("SELECT COUNT(*) FROM exchange_rate_history", [], |r| {
+                r.get(0)
+            })
+            .expect("count");
+        assert_eq!(stored, 2);
 
         let history = fx::History::load(&conn, day, day).expect("load");
         let eur = history.convert_on(1.0, "EUR", "CZK", day).expect("EUR");
@@ -470,7 +463,7 @@ mod tests {
   <gesmes:subject>Reference rates</gesmes:subject>
   <Cube>
     <Cube time='{time}'>
-      <Cube currency='USD' rate='1.2500'/>
+      <Cube currency='USD' rate='1.1700'/>
       {czk_row}
       <Cube currency='GBP' rate='0.8000'/>
     </Cube>
@@ -487,16 +480,30 @@ mod tests {
     fn test_parse_ecb_xml_reads_the_reference_date_and_rates() {
         let ecb = parse_ecb_xml(&ecb_xml("2026-10-02", Some("25.000"))).expect("parses");
         assert_eq!(ecb.reference_day, FRIDAY);
-        assert_eq!(ecb.rates["CZK"], 1.0);
-        assert!((ecb.rates["EUR"] - 25.0).abs() < 1e-9);
-        assert!((ecb.rates["USD"] - 20.0).abs() < 1e-9); // 25 CZK/EUR / 1.25 USD/EUR
-        assert!((ecb.rates["GBP"] - 31.25).abs() < 1e-9);
+        // Units per 1 EUR, exactly as published.
+        assert_eq!(ecb.rates["CZK"], 25.0);
+        assert_eq!(ecb.rates["USD"], 1.17);
+        assert_eq!(ecb.rates["GBP"], 0.8);
+        assert_eq!(ecb.rates.len(), 3);
     }
 
     #[test]
-    fn test_parse_ecb_xml_without_a_czk_quote_is_an_error_not_25() {
-        let err = parse_ecb_xml(&ecb_xml("2026-10-02", None)).unwrap_err();
-        assert!(err.to_string().contains("CZK"), "{err}");
+    fn test_parse_ecb_xml_without_a_czk_quote_keeps_the_published_rates() {
+        let ecb = parse_ecb_xml(&ecb_xml("2026-10-02", None)).expect("parses without CZK");
+        assert!((ecb.rates["USD"] - 1.17).abs() < 1e-12);
+        assert!((ecb.rates["GBP"] - 0.8).abs() < 1e-12);
+        assert!(!ecb.rates.contains_key("CZK"));
+        assert!(
+            !ecb.rates.contains_key("EUR"),
+            "the reference has no row of its own"
+        );
+    }
+
+    #[test]
+    fn test_parse_ecb_xml_without_any_rate_is_an_error() {
+        let xml = "<Cube><Cube time='2026-10-02'></Cube></Cube>";
+        let err = parse_ecb_xml(xml).unwrap_err();
+        assert!(err.to_string().contains("no usable rates"), "{err}");
     }
 
     #[test]
@@ -534,7 +541,7 @@ mod tests {
         };
         assert!((eur_on(&conn, SATURDAY) - 25.0).abs() < 1e-9);
         conn.execute(
-            "INSERT OR IGNORE INTO exchange_rate_history (date, currency, rate) VALUES (?1, 'EUR', 99.0)",
+            "INSERT OR IGNORE INTO exchange_rate_history (date, currency, rate) VALUES (?1, 'CZK', 99.0)",
             [FRIDAY],
         )
         .unwrap();
@@ -544,7 +551,7 @@ mod tests {
     #[test]
     fn test_history_save_normalises_the_day_to_midnight() {
         let conn = setup_history_db();
-        let rates: HashMap<String, f64> = [("EUR".to_string(), 25.0)].into_iter().collect();
+        let rates: HashMap<String, f64> = [("CZK".to_string(), 25.0)].into_iter().collect();
         save_rates_to_history_db(&conn, &rates, FRIDAY + 3600).unwrap();
         let day: i64 = conn
             .query_row("SELECT date FROM exchange_rate_history", [], |r| r.get(0))

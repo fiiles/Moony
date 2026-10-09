@@ -2,7 +2,7 @@
 //! currency per 1 unit of the reference currency; the reference is an implementation detail.
 
 use crate::error::Result;
-use crate::models::fx::{FxDayQuotes, FxSnapshot};
+use crate::models::fx::{FxDayQuotes, FxHistoryQuotes, FxSnapshot};
 use rusqlite::{params, Connection};
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::sync::{OnceLock, RwLock};
@@ -11,8 +11,9 @@ use std::sync::{OnceLock, RwLock};
 pub const DAY: i64 = 86_400;
 /// How many days back a historical conversion may look for a common quote day.
 pub const MAX_LOOKBACK_DAYS: i64 = 10;
-/// The reference currency of the stored day quotes (phase-1 storage: CZK per unit).
-const HISTORY_REFERENCE: &str = "CZK";
+/// The reference currency of every stored quote: `exchange_rates` and `exchange_rate_history`
+/// rows are units of a currency per 1 EUR, as the ECB publishes them (migration 010).
+pub const REFERENCE: &str = "EUR";
 
 type SupportedTable = (Vec<String>, HashMap<String, (String, f64)>);
 
@@ -71,6 +72,12 @@ pub fn derived(code: &str) -> Option<(&'static str, f64)> {
         .map(|(anchor, peg)| (anchor.as_str(), *peg))
 }
 
+/// Whether a stored quote may exist for `code`: a valid code that is neither the storage
+/// [`REFERENCE`] (1.0 by definition) nor derived (resolved through its anchor at read time).
+pub fn is_stored_code(code: &str) -> bool {
+    normalize(code).is_some_and(|code| code != REFERENCE && !table().1.contains_key(&code))
+}
+
 /// Source codes plus derived (pegged) codes.
 pub fn is_supported(code: &str) -> bool {
     match normalize(code) {
@@ -126,6 +133,16 @@ impl Quotes {
         self.units.insert(code, units_per_reference);
     }
 
+    /// Quotes against the storage [`REFERENCE`] from stored `(code, units per EUR)` pairs;
+    /// unusable pairs are ignored (see [`Quotes::insert`]).
+    pub fn from_stored<'a>(rates: impl IntoIterator<Item = (&'a str, f64)>) -> Self {
+        let mut quotes = Self::new(REFERENCE);
+        for (code, units) in rates {
+            quotes.insert(code, units);
+        }
+        quotes
+    }
+
     /// Units of `code` per 1 unit of the reference (reference -> 1.0, derived -> anchor * peg).
     pub fn units(&self, code: &str) -> Option<f64> {
         let code = normalize(code)?;
@@ -170,17 +187,6 @@ impl Quotes {
         codes.dedup();
         codes
     }
-
-    /// Phase-1 adapter: reference CZK, `units = 1 / rate` for a CZK-per-unit map.
-    pub fn from_czk_per_unit(rates: &HashMap<String, f64>) -> Self {
-        let mut quotes = Self::new("CZK");
-        for (code, rate) in rates {
-            if rate.is_finite() && *rate > 0.0 {
-                quotes.insert(code, 1.0 / rate);
-            }
-        }
-        quotes
-    }
 }
 
 /// Day-keyed quotes (UTC midnight keys). Historical conversions use one common day for both
@@ -193,8 +199,8 @@ pub struct History {
 impl History {
     /// Loads `exchange_rate_history` for `[floor(start_day) - MAX_LOOKBACK_DAYS * DAY,
     /// floor(end_day)]`; `convert_on` is supported for days in `[start_day, end_day]`.
-    /// Phase-1 storage: rows are CZK per unit, so each day becomes `Quotes::new("CZK")` with
-    /// `units = 1 / rate`; unusable rows are skipped.
+    /// Rows are units per 1 EUR ([`REFERENCE`]), so each day becomes `Quotes::new(REFERENCE)`
+    /// with `units = rate`; unusable rows are skipped.
     pub fn load(conn: &Connection, start_day: i64, end_day: i64) -> Result<History> {
         let lower = floor_day(start_day).saturating_sub(MAX_LOOKBACK_DAYS * DAY);
         let upper = floor_day(end_day);
@@ -209,10 +215,8 @@ impl History {
             let rate: f64 = row.get(2)?;
             let quotes = days
                 .entry(floor_day(date))
-                .or_insert_with(|| Quotes::new(HISTORY_REFERENCE));
-            if rate.is_finite() && rate > 0.0 {
-                quotes.insert(&currency, 1.0 / rate);
-            }
+                .or_insert_with(|| Quotes::new(REFERENCE));
+            quotes.insert(&currency, rate);
         }
         Ok(History { days })
     }
@@ -272,7 +276,7 @@ impl History {
             return false;
         };
         // The storage reference is quoted on every stored day by definition
-        if code == HISTORY_REFERENCE {
+        if code == REFERENCE {
             return true;
         }
         let start = floor_day(day);
@@ -307,7 +311,7 @@ struct CurrentStore {
 impl CurrentStore {
     fn empty() -> Self {
         Self {
-            quotes: Quotes::new("CZK"),
+            quotes: Quotes::new(REFERENCE),
             fetched_at: None,
         }
     }
@@ -362,14 +366,10 @@ pub fn set_current_with_revision(quotes: Quotes, fetched_at: i64) {
     });
 }
 
-/// Test helper: replaces the (thread-local) snapshot with these CZK-per-unit rates.
+/// Test helper: replaces the (thread-local) snapshot with these units-per-EUR quotes.
 #[cfg(test)]
-pub(crate) fn set_current_for_test(czk_per_unit: &[(&str, f64)]) {
-    let rates: HashMap<String, f64> = czk_per_unit
-        .iter()
-        .map(|(code, rate)| (code.to_string(), *rate))
-        .collect();
-    set_current(Quotes::from_czk_per_unit(&rates));
+pub(crate) fn set_current_for_test(units_per_eur: &[(&str, f64)]) {
+    set_current(Quotes::from_stored(units_per_eur.iter().copied()));
 }
 
 /// Units per 1 unit of the reference for every resolvable code (stored, derived and the
@@ -396,22 +396,27 @@ pub fn snapshot() -> FxSnapshot {
 }
 
 /// Stored quote days within `[floor(start_day), floor(end_day)]`, oldest first, with derived
-/// codes resolved. Days without any usable quote are skipped; the lookback margin that
-/// `History::load` reads is not returned.
-pub fn history_quotes(conn: &Connection, start_day: i64, end_day: i64) -> Result<Vec<FxDayQuotes>> {
+/// codes resolved, together with their reference. Days without any usable quote are skipped;
+/// the lookback margin that `History::load` reads is not returned.
+pub fn history_quotes(conn: &Connection, start_day: i64, end_day: i64) -> Result<FxHistoryQuotes> {
+    let mut result = FxHistoryQuotes {
+        reference: REFERENCE.to_string(),
+        days: Vec::new(),
+    };
     if start_day > end_day {
-        return Ok(Vec::new());
+        return Ok(result);
     }
     let (first, last) = (floor_day(start_day), floor_day(end_day));
     let history = History::load(conn, start_day, end_day)?;
-    Ok(history
+    result.days = history
         .days()
         .filter(|(day, quotes)| **day >= first && **day <= last && !quotes.is_empty())
         .map(|(day, quotes)| FxDayQuotes {
             day: *day,
             units: snapshot_units(quotes),
         })
-        .collect())
+        .collect();
+    Ok(result)
 }
 
 /// Collects conversions that could not be made, so reports can declare what they excluded.
@@ -545,17 +550,15 @@ mod tests {
     }
 
     #[test]
-    fn czk_adapter_round_trips() {
-        let czk_per_unit = HashMap::from([
-            ("EUR".to_string(), 25.0),
-            ("USD".to_string(), 22.727272727272727),
-        ]);
-        let q = Quotes::from_czk_per_unit(&czk_per_unit);
-        assert_eq!(q.reference(), "CZK");
+    fn stored_quotes_are_units_per_eur() {
+        let q = Quotes::from_stored([("CZK", 25.0), ("USD", 1.1), ("AED", 4.0), ("EUR", 2.0)]);
+        assert_eq!(q.reference(), "EUR");
         assert!((q.convert(1.0, "EUR", "USD").expect("conv") - 1.1).abs() < 1e-9);
         assert!((q.convert(1.0, "EUR", "CZK").expect("EUR") - 25.0).abs() < 1e-9);
+        // AED is derived from USD (a stored AED quote is ignored), EUR is the reference.
         let aed = q.convert(1.0, "AED", "CZK").expect("AED via USD");
-        assert!((aed - 22.727272727272727 / 3.6725).abs() < 1e-9);
+        assert!((aed - 25.0 / (1.1 * 3.6725)).abs() < 1e-9);
+        assert_eq!(q.units("EUR"), Some(1.0));
         assert_eq!(q.convert(1.0, "CZK", "CZK"), Some(1.0));
     }
 
@@ -650,20 +653,22 @@ mod tests {
     fn history_quotes_skip_empty_days_and_the_lookback_margin() {
         let d = 20_000 * DAY;
         let conn = history_db(&[
-            (d - 2 * DAY, "USD", 20.0), // before the requested range: lookback only
-            (d, "USD", 0.0),            // unusable row: day ends up empty
-            (d + DAY, "USD", 25.0),
+            (d - 2 * DAY, "USD", 1.1), // before the requested range: lookback only
+            (d, "USD", 0.0),           // unusable row: day ends up empty
+            (d + DAY, "USD", 1.25),
             (d + DAY, "AED", 6.0), // derived codes are never stored
         ]);
-        let days = history_quotes(&conn, d, d + 2 * DAY).expect("history");
+        let history = history_quotes(&conn, d, d + 2 * DAY).expect("history");
+        assert_eq!(history.reference, "EUR");
+        let days = history.days;
         assert_eq!(days.len(), 1);
         assert_eq!(days[0].day, d + DAY);
-        assert!((days[0].units["USD"] - 1.0 / 25.0).abs() < 1e-12);
-        assert!((days[0].units["AED"] - 3.6725 / 25.0).abs() < 1e-12);
-        assert_eq!(days[0].units["CZK"], 1.0);
-        assert!(history_quotes(&conn, d + 2 * DAY, d)
-            .expect("reversed")
-            .is_empty());
+        assert!((days[0].units["USD"] - 1.25).abs() < 1e-12);
+        assert!((days[0].units["AED"] - 1.25 * 3.6725).abs() < 1e-12);
+        assert_eq!(days[0].units["EUR"], 1.0);
+        let reversed = history_quotes(&conn, d + 2 * DAY, d).expect("reversed");
+        assert!(reversed.days.is_empty());
+        assert_eq!(reversed.reference, "EUR");
     }
 
     #[test]
@@ -703,17 +708,28 @@ mod tests {
     #[test]
     fn convert_on_uses_a_day_that_quotes_both_currencies() {
         let d = 20_000 * DAY;
-        // day d: only EUR; day d-1: EUR and USD -> USD->EUR must use d-1 for both
+        // day d: only CZK; day d-1: CZK and USD -> USD->CZK must use d-1 for both
         let conn = history_db(&[
-            (d, "EUR", 24.0),
-            (d - DAY, "EUR", 25.0),
-            (d - DAY, "USD", 20.0),
+            (d, "CZK", 24.0),
+            (d - DAY, "CZK", 25.0),
+            (d - DAY, "USD", 1.25),
         ]);
         let h = History::load(&conn, d, d).expect("load");
         let got = h
-            .convert_on(100.0, "USD", "EUR", d + 3600)
+            .convert_on(100.0, "USD", "CZK", d + 3600)
             .expect("converted");
-        assert!((got - 80.0).abs() < 1e-9, "{got}");
+        assert!((got - 2000.0).abs() < 1e-9, "{got}");
+    }
+
+    #[test]
+    fn history_rows_are_units_per_eur() {
+        let d = 20_000 * DAY;
+        let conn = history_db(&[(d, "CZK", 25.0), (d, "USD", 1.25)]);
+        let h = History::load(&conn, d, d).expect("load");
+        let czk = h.convert_on(100.0, "USD", "CZK", d).expect("USD->CZK");
+        assert!((czk - 2000.0).abs() < 1e-9, "{czk}");
+        let eur = h.convert_on(100.0, "USD", "EUR", d).expect("USD->EUR");
+        assert!((eur - 80.0).abs() < 1e-9, "{eur}");
     }
 
     #[test]
@@ -730,7 +746,7 @@ mod tests {
     #[test]
     fn convert_on_gives_up_after_ten_days() {
         let d = 20_000 * DAY;
-        let conn = history_db(&[(d - 11 * DAY, "EUR", 25.0)]);
+        let conn = history_db(&[(d - 11 * DAY, "CZK", 25.0)]);
         let h = History::load(&conn, d - 10 * DAY, d).expect("load");
         assert_eq!(h.convert_on(1.0, "EUR", "CZK", d), None);
         assert_eq!(h.convert_on(1.0, "EUR", "CZK", d - 10 * DAY), Some(25.0));
@@ -739,7 +755,7 @@ mod tests {
     #[test]
     fn convert_on_tracked_blames_the_currency_without_a_quote() {
         let d = 20_000 * DAY;
-        let conn = history_db(&[(d, "EUR", 25.0)]);
+        let conn = history_db(&[(d, "CZK", 25.0)]);
         let h = History::load(&conn, d, d).expect("load");
         let mut quality = Quality::default();
         assert_eq!(
@@ -764,7 +780,7 @@ mod tests {
         let h = History::default();
         let mut quality = Quality::default();
         assert_eq!(
-            h.convert_on_tracked(&mut quality, 1.0, "USD", "CZK", 20_000 * DAY),
+            h.convert_on_tracked(&mut quality, 1.0, "USD", "EUR", 20_000 * DAY),
             None
         );
         assert_eq!(quality.missing_currencies(), vec!["USD"]);
@@ -773,12 +789,12 @@ mod tests {
     #[test]
     fn convert_on_tracked_blames_from_when_no_common_day_exists() {
         let d = 20_000 * DAY;
-        // EUR and USD are each quoted within ten days, but never on the same day
-        let conn = history_db(&[(d, "EUR", 25.0), (d - 3 * DAY, "USD", 20.0)]);
+        // CZK and USD are each quoted within ten days, but never on the same day
+        let conn = history_db(&[(d, "CZK", 25.0), (d - 3 * DAY, "USD", 1.25)]);
         let h = History::load(&conn, d, d).expect("load");
         let mut quality = Quality::default();
         assert_eq!(
-            h.convert_on_tracked(&mut quality, 1.0, "USD", "EUR", d),
+            h.convert_on_tracked(&mut quality, 1.0, "USD", "CZK", d),
             None
         );
         assert_eq!(quality.missing_currencies(), vec!["USD"]);
@@ -788,7 +804,11 @@ mod tests {
     #[test]
     fn convert_on_derives_pegs_and_skips_bad_rows() {
         let d = 20_000 * DAY;
-        let conn = history_db(&[(d, "USD", 0.0), (d - DAY, "USD", 20.0)]);
+        let conn = history_db(&[
+            (d, "USD", 0.0),
+            (d - DAY, "USD", 1.25),
+            (d - DAY, "CZK", 25.0),
+        ]);
         let h = History::load(&conn, d, d).expect("load");
         let aed = h.convert_on(3.6725, "AED", "CZK", d).expect("peg");
         assert!((aed - 20.0).abs() < 1e-9);

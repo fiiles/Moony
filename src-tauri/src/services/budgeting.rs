@@ -829,12 +829,12 @@ mod tests {
             upsert_goal_at(&conn, input, NOW).unwrap();
         }
         conn.execute(
-            "INSERT INTO exchange_rate_history VALUES (?1,'EUR',27.5)",
+            "INSERT INTO exchange_rate_history VALUES (?1,'CZK',27.5)",
             [OCT],
         )
         .unwrap();
         conn.execute(
-            "INSERT INTO exchange_rate_history VALUES (?1,'USD',25)",
+            "INSERT INTO exchange_rate_history VALUES (?1,'USD',1.1)",
             [OCT],
         )
         .unwrap();
@@ -852,22 +852,22 @@ mod tests {
         upsert_goal_at(&conn, input, NOW).unwrap();
         conn.execute("INSERT INTO bank_transactions(id,bank_account_id,booking_date,amount,currency,category_id,tx_type) VALUES ('eur','acc1',?1,'50','EUR','cat_groceries','debit')",[OCT+86400]).unwrap();
         conn.execute(
-            "INSERT INTO exchange_rate_history VALUES (?1,'EUR',25)",
+            "INSERT INTO exchange_rate_history VALUES (?1,'CZK',25)",
             [OCT],
         )
         .unwrap();
         conn.execute(
-            "INSERT INTO exchange_rate_history VALUES (?1,'USD',25)",
+            "INSERT INTO exchange_rate_history VALUES (?1,'USD',1.0)",
             [OCT],
         )
         .unwrap();
         conn.execute(
-            "INSERT INTO exchange_rate_history VALUES (?1,'EUR',30)",
+            "INSERT INTO exchange_rate_history VALUES (?1,'CZK',30)",
             [OCT + 86400],
         )
         .unwrap();
         conn.execute(
-            "INSERT INTO exchange_rate_history VALUES (?1,'USD',25)",
+            "INSERT INTO exchange_rate_history VALUES (?1,'USD',1.2)",
             [OCT + 86400],
         )
         .unwrap();
@@ -1150,7 +1150,7 @@ mod tests {
             )
             .unwrap();
         }
-        add_rate(&conn, feb, "EUR", 25.0);
+        add_rate(&conn, feb, "CZK", 25.0);
         let quarter = get_report(&conn, jan, 1711929599, "quarterly").unwrap();
         assert_eq!(
             quarter.expense_categories[0].budget_limit.as_deref(),
@@ -1379,7 +1379,7 @@ mod tests {
     fn budget_percentage_converts_goal_currency_to_czk() {
         // XTS is an ISO test code, so it cannot collide with real rates used
         // by other tests sharing the global rate cache.
-        crate::services::fx::set_current_for_test(&[("XTS", 10.0)]);
+        crate::services::fx::set_current_for_test(&[("CZK", 10.0), ("XTS", 1.0)]);
         let conn = setup_test_db();
         upsert_goal(
             &conn,
@@ -1392,7 +1392,8 @@ mod tests {
             },
         )
         .expect("goal");
-        add_rate(&conn, 1704067200, "XTS", 10.0);
+        add_rate(&conn, 1704067200, "CZK", 10.0);
+        add_rate(&conn, 1704067200, "XTS", 1.0);
         conn.execute_batch(
             r#"INSERT INTO bank_transactions (id, bank_account_id, booking_date, amount, currency, category_id, tx_type)
                VALUES ('tx1', 'acc1', 1704067200, '250', 'CZK', 'cat_groceries', 'debit');"#,
@@ -1407,6 +1408,7 @@ mod tests {
 
     fn add_fx_history(_conn: &Connection) {}
 
+    /// A stored day quote: units of `currency` per 1 EUR.
     fn add_rate(conn: &Connection, day: i64, currency: &str, rate: f64) {
         conn.execute(
             "INSERT INTO exchange_rate_history (date, currency, rate) VALUES (?1, ?2, ?3)",
@@ -1430,13 +1432,15 @@ mod tests {
     #[test]
     fn foreign_currency_transactions_convert_at_the_booking_day_rate() {
         // XTB: an ISO test code that no other test touches in the shared cache.
-        crate::services::fx::set_current_for_test(&[("XTB", 25.2)]);
+        crate::services::fx::set_current_for_test(&[("CZK", 25.2), ("XTB", 1.0)]);
         let conn = setup_test_db();
         add_fx_history(&conn);
         let january: i64 = 1_705_276_800; // 2024-01-15
         let june: i64 = 1_718_409_600; // 2024-06-15
-        add_rate(&conn, january, "XTB", 24.5);
-        add_rate(&conn, june, "XTB", 24.0);
+        add_rate(&conn, january, "CZK", 24.5);
+        add_rate(&conn, january, "XTB", 1.0);
+        add_rate(&conn, june, "CZK", 24.0);
+        add_rate(&conn, june, "XTB", 1.0);
         add_expense(&conn, "tx1", january, "100", "XTB");
         add_expense(&conn, "tx2", june, "100", "XTB");
 
@@ -1449,11 +1453,12 @@ mod tests {
 
     #[test]
     fn same_day_transactions_share_one_rate_and_czk_is_untouched() {
-        crate::services::fx::set_current_for_test(&[("XTB", 25.2)]);
+        crate::services::fx::set_current_for_test(&[("CZK", 25.2), ("XTB", 1.0)]);
         let conn = setup_test_db();
         add_fx_history(&conn);
         let day: i64 = 1_705_276_800;
-        add_rate(&conn, day, "XTB", 24.5);
+        add_rate(&conn, day, "CZK", 24.5);
+        add_rate(&conn, day, "XTB", 1.0);
         add_expense(&conn, "tx1", day + 3600, "10", "XTB");
         add_expense(&conn, "tx2", day + 7200, "30", "XTB");
         add_expense(&conn, "tx3", day, "500", "CZK");
@@ -1465,7 +1470,7 @@ mod tests {
 
     #[test]
     fn a_day_without_history_is_explicitly_missing_not_current_rate() {
-        crate::services::fx::set_current_for_test(&[("XTB", 25.2)]);
+        crate::services::fx::set_current_for_test(&[("CZK", 25.2), ("XTB", 1.0)]);
         // No exchange_rate_history table rows at all.
         let conn = setup_test_db();
         add_fx_history(&conn);
@@ -1478,7 +1483,8 @@ mod tests {
         // History that only starts after the booking day: also the latest rate.
         let conn = setup_test_db();
         add_fx_history(&conn);
-        add_rate(&conn, 1_705_276_800 + 30 * 86_400, "XTB", 20.0);
+        add_rate(&conn, 1_705_276_800 + 30 * 86_400, "CZK", 20.0);
+        add_rate(&conn, 1_705_276_800 + 30 * 86_400, "XTB", 1.0);
         add_expense(&conn, "tx1", 1_705_276_800, "100", "XTB");
         let report = get_report(&conn, 0, i64::MAX, "monthly").expect("report");
         assert_eq!(report.total_expenses, "0.00");

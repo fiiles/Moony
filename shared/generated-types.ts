@@ -661,6 +661,16 @@ export type FlowSource = "explicit" | "ownAccount" | "category" | "direction"
  */
 export type FxDayQuotes = { day: number; units: Partial<{ [key in string]: number }> }
 
+/**
+ * Stored daily quotes with the reference they are quoted against: each day's `units` are
+ * units of a currency per 1 unit of `reference`.
+ */
+export type FxHistoryQuotes = { reference: string; 
+/**
+ * Oldest first.
+ */
+days: FxDayQuotes[] }
+
 export type FxQuality = "estimated" | "historical" | "missing"
 
 /**

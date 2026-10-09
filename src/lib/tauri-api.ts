@@ -61,7 +61,7 @@ import type {
   CashflowActuals,
   CashflowRange,
   FxSnapshot,
-  FxDayQuotes,
+  FxHistoryQuotes,
   CashflowItem,
   ProjectionSettings,
   PortfolioProjection,
@@ -731,9 +731,12 @@ export const fxApi = {
   /** Current quotes: units of each currency per 1 unit of `reference` (derived codes included). */
   getSnapshot: () => tauriInvoke<FxSnapshot>('get_fx_snapshot'),
 
-  /** Stored daily quotes for `[startDay, endDay]` (UTC-midnight unix seconds), oldest first. */
+  /**
+   * Stored daily quotes for `[startDay, endDay]` (UTC-midnight unix seconds), oldest first,
+   * with the reference they are quoted against.
+   */
   getHistory: (startDay: number, endDay: number) =>
-    tauriInvoke<FxDayQuotes[]>('get_fx_history', { startDay, endDay }),
+    tauriInvoke<FxHistoryQuotes>('get_fx_history', { startDay, endDay }),
 };
 
 // ============================================================================

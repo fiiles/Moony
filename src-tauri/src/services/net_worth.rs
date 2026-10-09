@@ -640,11 +640,11 @@ mod tests {
             .expect("snapshot row");
     }
 
-    /// A stored day quote: CZK per 1 unit of `currency`.
-    fn add_rate(conn: &Connection, day: i64, currency: &str, czk_per_unit: f64) {
+    /// A stored day quote: units of `currency` per 1 EUR.
+    fn add_rate(conn: &Connection, day: i64, currency: &str, units_per_eur: f64) {
         conn.execute(
             "INSERT INTO exchange_rate_history (date, currency, rate) VALUES (?1, ?2, ?3)",
-            rusqlite::params![day, currency, czk_per_unit],
+            rusqlite::params![day, currency, units_per_eur],
         )
         .expect("rate");
     }
@@ -673,10 +673,11 @@ mod tests {
     #[test]
     fn each_row_converts_at_its_own_day() {
         let conn = setup_db();
-        add_rate(&conn, D, "USD", 25.0);
-        add_rate(&conn, D, "EUR", 25.0);
-        add_rate(&conn, D + DAY, "USD", 25.0);
-        add_rate(&conn, D + DAY, "EUR", 20.0);
+        // 1 USD = 25 CZK on both days; 1 EUR = 25 CZK, then 20 CZK
+        add_rate(&conn, D, "CZK", 25.0);
+        add_rate(&conn, D, "USD", 1.0);
+        add_rate(&conn, D + DAY, "CZK", 20.0);
+        add_rate(&conn, D + DAY, "USD", 0.8);
         add_row(&conn, D, &[("savings_by_currency", r#"{"USD":100}"#)]);
         add_row(&conn, D + DAY, &[("savings_by_currency", r#"{"USD":100}"#)]);
 
@@ -711,7 +712,7 @@ mod tests {
     #[test]
     fn history_leaves_an_unquoted_currency_out_and_reports_it() {
         let conn = setup_db();
-        add_rate(&conn, D, "EUR", 25.0);
+        add_rate(&conn, D, "CZK", 25.0);
         add_row(&conn, D, &[("bonds_by_currency", r#"{"KWD":5,"EUR":10}"#)]);
 
         let (points, quality) = history_in(&conn, "EUR", None, None).expect("history");
@@ -743,7 +744,7 @@ mod tests {
     #[test]
     fn a_legacy_row_without_breakdown_converts_its_czk_total_at_its_day() {
         let conn = setup_db();
-        add_rate(&conn, D, "EUR", 25.0);
+        add_rate(&conn, D, "CZK", 25.0);
         add_row(&conn, D, &[("total_savings", "2500")]);
 
         let (points, quality) = history_in(&conn, "EUR", None, None).expect("history");
@@ -755,7 +756,7 @@ mod tests {
     #[test]
     fn real_estate_splits_by_the_rows_czk_ratio() {
         let conn = setup_db();
-        add_rate(&conn, D, "EUR", 25.0);
+        add_rate(&conn, D, "CZK", 25.0);
         add_row(
             &conn,
             D,
@@ -941,12 +942,12 @@ mod tests {
     #[test]
     fn history_net_worth_is_unknown_when_no_class_with_amounts_converted() {
         let conn = setup_db();
-        add_rate(&conn, D, "EUR", 25.0);
+        add_rate(&conn, D, "CZK", 25.0);
         // KWD never quoted; loans, bonds etc. are empty.
         add_row(&conn, D, &[("savings_by_currency", r#"{"KWD":9}"#)]);
         // An empty snapshot is a real zero.
         add_row(&conn, D + DAY, &[]);
-        add_rate(&conn, D + DAY, "EUR", 25.0);
+        add_rate(&conn, D + DAY, "CZK", 25.0);
 
         let (points, _) = history_in(&conn, "EUR", None, None).expect("history");
 
@@ -958,7 +959,7 @@ mod tests {
     #[test]
     fn history_net_worth_is_unknown_when_assets_fail_even_though_loans_converted() {
         let conn = setup_db();
-        add_rate(&conn, D, "EUR", 25.0);
+        add_rate(&conn, D, "CZK", 25.0);
         add_row(
             &conn,
             D,

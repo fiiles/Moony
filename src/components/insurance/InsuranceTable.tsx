@@ -256,7 +256,10 @@ export function InsuranceTable({
       return <span className="text-ink-4">—</span>;
     }
     const title = top.title.trim();
-    const amount = fmt.money(top.amount, top.currency || 'CZK', { compact: true, decimals: 2 });
+    const amount = fmt.money(top.amount, top.currency || currencyCode, {
+      compact: true,
+      decimals: 2,
+    });
     const more = r.limitCount > 1 ? ` · ${t('table.moreLimits', { count: r.limitCount - 1 })}` : '';
     const rest = `${amount}${more}`;
     return (

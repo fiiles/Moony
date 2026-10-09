@@ -20,6 +20,7 @@ import { Badge } from '@/components/ui/badge';
 import { Info } from 'lucide-react';
 import { bankAccountsApi } from '@/lib/tauri-api';
 import { useFormat } from '@/lib/use-format';
+import { useCurrency } from '@/lib/currency';
 import { calculateEffectiveRate, zoneUpperBound } from '@/utils/bank-account-zones';
 import { useTranslation } from 'react-i18next';
 
@@ -40,7 +41,8 @@ export function ZonesInfoModal({
 }: ZonesInfoModalProps) {
   const { t } = useTranslation('bank_accounts');
   const fmt = useFormat();
-  const accountCurrency = currency || 'CZK';
+  const { currencyCode } = useCurrency();
+  const accountCurrency = currency || currencyCode;
   const [open, setOpen] = useState(false);
 
   const { data: zones } = useQuery({

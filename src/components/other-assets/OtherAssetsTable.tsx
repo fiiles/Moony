@@ -220,7 +220,7 @@ export function OtherAssetsTable({
           ) : (
             visible.map((r) => {
               const a = r.asset;
-              const currency = a.currency || 'CZK';
+              const currency = a.currency || currencyCode;
               return (
                 <TableRow key={a.id} className="h-[62px]">
                   <TableCell>

@@ -256,7 +256,7 @@ export default function OtherAssets() {
                 id: selected.id,
                 name: selected.name,
                 currentValue: Number(selected.marketPrice) || 0,
-                currency: selected.currency || 'CZK',
+                currency: selected.currency || currencyCode,
                 unit: t('table.unit'),
                 quantity: Number(selected.quantity) || 0,
               }

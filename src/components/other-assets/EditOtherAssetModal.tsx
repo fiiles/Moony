@@ -74,13 +74,13 @@ export function EditOtherAssetModal({ asset, open, onOpenChange }: EditOtherAsse
     if (!open || !asset) return;
     form.reset({
       name: asset.name,
-      currency: (asset.currency || 'CZK') as CurrencyCode,
+      currency: (asset.currency || currencyCode) as CurrencyCode,
       yieldType: (YIELD_TYPES as readonly string[]).includes(asset.yieldType)
         ? (asset.yieldType as FormValues['yieldType'])
         : 'none',
       yieldValue: asset.yieldValue ?? '',
     });
-  }, [open, asset, form]);
+  }, [open, asset, form, currencyCode]);
 
   const mutation = useMutation({
     mutationFn: (values: FormValues) =>

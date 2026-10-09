@@ -103,7 +103,7 @@ export function BondsFormDialog({
             isin: bond.isin ?? '',
             couponValue: parseFloat(bond.couponValue) || 0,
             quantity: parseFloat(bond.quantity) || 1,
-            currency: (bond.currency || 'CZK') as CurrencyCode,
+            currency: (bond.currency || currencyCode) as CurrencyCode,
             interestRate: parseFloat(bond.interestRate) || 0,
             maturityDate: bond.maturityDate ? isoDay(bond.maturityDate) : '',
           }

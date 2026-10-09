@@ -268,7 +268,7 @@ export function LoansTable({ rows, today, onEdit, onDelete }: LoansTableProps) {
                           {loan.name}
                         </b>
                         {sub(
-                          `${loan.currency || 'CZK'} · ${t('table.since', {
+                          `${loan.currency || currencyCode} · ${t('table.since', {
                             month: text.monthYear(loan.startDate),
                           })}`
                         )}

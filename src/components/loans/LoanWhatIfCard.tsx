@@ -1,7 +1,12 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { LoanTerms } from '@shared/calculations/loan-amortization';
-import { extraPaymentWhatIf, type ExtraPaymentMode } from '@/utils/loan-trajectory';
+import {
+  extraPaymentWhatIf,
+  suggestedExtraPayment,
+  whatIfStep,
+  type ExtraPaymentMode,
+} from '@/utils/loan-trajectory';
 import { useFormat } from '@/lib/use-format';
 import { useLoanText } from '@/hooks/use-loan-text';
 import { Button } from '@/components/ui/button';
@@ -19,11 +24,6 @@ interface LoanWhatIfCardProps {
   onRecord: (amount: number, mode: ExtraPaymentMode) => void;
 }
 
-/** A round starting amount: 5 % of the balance to the nearest thousand, at least 1 000. */
-function suggestedAmount(balance: number): number {
-  return Math.max(1000, Math.round((balance * 0.05) / 1000) * 1000);
-}
-
 /**
  * Extra-payment what-if (prototype loan-detail.html): the amount, the two
  * things a bank offers (shorter term or lower payment) and the result in one
@@ -39,7 +39,7 @@ export function LoanWhatIfCard({
   const { t } = useTranslation('loans');
   const fmt = useFormat();
   const text = useLoanText();
-  const [amountText, setAmountText] = useState(() => String(suggestedAmount(balanceToday)));
+  const [amountText, setAmountText] = useState(() => String(suggestedExtraPayment(balanceToday)));
   const [mode, setMode] = useState<ExtraPaymentMode>('term');
 
   const amount = Number(amountText.replace(/\s/g, '').replace(',', '.')) || 0;
@@ -62,7 +62,7 @@ export function LoanWhatIfCard({
               id="loan-what-if-amount"
               type="number"
               min="0"
-              step="1000"
+              step={whatIfStep(balanceToday)}
               value={amountText}
               onChange={(e) => setAmountText(e.target.value)}
             />

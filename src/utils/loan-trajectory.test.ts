@@ -7,6 +7,8 @@ import {
   extraPaymentWhatIf,
   loanTrajectory,
   stepValueAt,
+  suggestedExtraPayment,
+  whatIfStep,
 } from './loan-trajectory';
 
 const DAY = 86_400;
@@ -249,5 +251,25 @@ describe('annuityPayment', () => {
     expect(annuityPayment(120_000, 0, 12)).toBe(10_000);
     expect(annuityPayment(1_000_000, 6, 120)).toBeCloseTo(11_102.05, 1);
     expect(annuityPayment(0, 6, 120)).toBe(0);
+  });
+});
+
+describe('whatIfStep / suggestedExtraPayment', () => {
+  it('steps by 1 % of the balance rounded down to a power of ten', () => {
+    expect(whatIfStep(3_000_000)).toBe(10_000);
+    expect(whatIfStep(120_000)).toBe(1_000);
+    expect(whatIfStep(100_000)).toBe(1_000);
+    expect(whatIfStep(9_999)).toBe(10);
+  });
+
+  it('never steps below one unit', () => {
+    expect(whatIfStep(50)).toBe(1);
+    expect(whatIfStep(0)).toBe(1);
+  });
+
+  it('suggests 5 % of the balance in whole steps, at least one step', () => {
+    expect(suggestedExtraPayment(3_000_000)).toBe(150_000);
+    expect(suggestedExtraPayment(120_000)).toBe(6_000);
+    expect(suggestedExtraPayment(0)).toBe(1);
   });
 });

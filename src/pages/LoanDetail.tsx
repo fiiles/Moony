@@ -13,6 +13,7 @@ import {
   type ExtraPaymentMode,
 } from '@/utils/loan-trajectory';
 import { useFormat } from '@/lib/use-format';
+import { useCurrency } from '@/lib/currency';
 import { useLoans, useLoanSchedule } from '@/hooks/use-loans';
 import { useLoanMutations } from '@/hooks/use-loan-mutations';
 import { useLoanEventMutations, useLoanEvents } from '@/hooks/use-loan-events';
@@ -270,8 +271,9 @@ function LoanDetailBody({
   const { t } = useTranslation('loans');
   const fmt = useFormat();
   const text = useLoanText();
+  const { currencyCode } = useCurrency();
   const { loan, terms, trajectory } = row;
-  const currency = loan.currency || 'CZK';
+  const currency = loan.currency || currencyCode;
   const money = (v: number | string) => fmt.money(Number(v), currency, { decimals: 0 });
   const rate = Number(loan.interestRate) || 0;
   const payment = Number(loan.monthlyPayment) || 0;

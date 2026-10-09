@@ -257,10 +257,10 @@ export default function RealEstateDetail() {
     : null;
 
   const valueNative = row?.valueNative.amount ?? 0;
-  const valueCurrency = row?.valueNative.currency ?? 'CZK';
+  const valueCurrency = row?.valueNative.currency ?? currencyCode;
   const value = row?.value ?? null;
   const purchaseNative = row?.purchaseNative.amount ?? 0;
-  const purchaseCurrency = row?.purchaseNative.currency ?? 'CZK';
+  const purchaseCurrency = row?.purchaseNative.currency ?? currencyCode;
   const purchase = row?.purchase ?? null;
   const appreciation = row?.appreciation ?? null;
   const equity = row?.equity ?? null;
@@ -277,7 +277,7 @@ export default function RealEstateDetail() {
   /** A one-time cost at the rates of its day; null without a rate. */
   const costAt = (cost: RealEstateOneTimeCost) => {
     const amount = Number(cost.amount) || 0;
-    return amount === 0 ? 0 : dated.convertAt(amount, cost.currency || 'CZK', cost.date);
+    return amount === 0 ? 0 : dated.convertAt(amount, cost.currency || currencyCode, cost.date);
   };
   const oneTimeValues = oneTimeCosts.map(costAt);
   const oneTimeTotal = oneTimeValues.some((v) => v === null)
@@ -290,7 +290,9 @@ export default function RealEstateDetail() {
   const missingNow = new Set<string>([...(row?.missing ?? []), ...(balance?.missing ?? [])]);
   const missingDated = new Set<string>([
     ...(row?.missingPurchase ?? []),
-    ...oneTimeCosts.filter((_, i) => oneTimeValues[i] === null).map((c) => c.currency || 'CZK'),
+    ...oneTimeCosts
+      .filter((_, i) => oneTimeValues[i] === null)
+      .map((c) => c.currency || currencyCode),
   ]);
 
   // ---- valuation trace ----
@@ -306,14 +308,14 @@ export default function RealEstateDetail() {
             id: v.id,
             t: v.valuedAt,
             value: Number(v.value) || 0,
-            currency: v.currency || 'CZK',
+            currency: v.currency || currencyCode,
             createdAt: v.createdAt,
             note: v.note,
           }))
         ),
         dated.convertAt
       ),
-    [valuations, dated.convertAt]
+    [valuations, dated.convertAt, currencyCode]
   );
   for (const code of missingEstimates) missingDated.add(code);
   // The rates of the purchase, the costs and the estimates load after the page: until then
@@ -445,23 +447,31 @@ export default function RealEstateDetail() {
   const rentText =
     rentYear !== null
       ? money(rentYear / 12)
-      : fmt.money(Number(realEstate.monthlyRent) || 0, realEstate.monthlyRentCurrency || 'CZK', {
-          decimals: 0,
-        });
+      : fmt.money(
+          Number(realEstate.monthlyRent) || 0,
+          realEstate.monthlyRentCurrency || currencyCode,
+          {
+            decimals: 0,
+          }
+        );
   const rentYearText =
     rentYear !== null
       ? money(rentYear)
       : fmt.money(
           (Number(realEstate.monthlyRent) || 0) * 12,
-          realEstate.monthlyRentCurrency || 'CZK',
+          realEstate.monthlyRentCurrency || currencyCode,
           { decimals: 0 }
         );
   /** A one-time cost at its day's rates, or native while that day has no rate. */
   const costText = (cost: RealEstateOneTimeCost) => {
-    const converted = dated.convertAt(Number(cost.amount) || 0, cost.currency || 'CZK', cost.date);
+    const converted = dated.convertAt(
+      Number(cost.amount) || 0,
+      cost.currency || currencyCode,
+      cost.date
+    );
     return converted !== null
       ? money(converted)
-      : fmt.money(Number(cost.amount) || 0, cost.currency || 'CZK', { decimals: 0 });
+      : fmt.money(Number(cost.amount) || 0, cost.currency || currencyCode, { decimals: 0 });
   };
   /** The purchase price at its day's rates, or native while that day has no rate. */
   const purchaseText =
@@ -1051,7 +1061,7 @@ export default function RealEstateDetail() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right num">
-                        {fmt.money(Number(cost.amount) || 0, cost.currency || 'CZK', {
+                        {fmt.money(Number(cost.amount) || 0, cost.currency || currencyCode, {
                           decimals: 0,
                         })}
                       </TableCell>
@@ -1059,10 +1069,10 @@ export default function RealEstateDetail() {
                         <ConvertedMoney
                           value={convert(
                             Number(cost.amount) * yearlyFactor(cost.frequency),
-                            cost.currency || 'CZK'
+                            cost.currency || currencyCode
                           )}
                           amount={Number(cost.amount) * yearlyFactor(cost.frequency)}
-                          currency={cost.currency || 'CZK'}
+                          currency={cost.currency || currencyCode}
                         />
                       </TableCell>
                     </TableRow>
@@ -1118,11 +1128,11 @@ export default function RealEstateDetail() {
                           <ConvertedMoney
                             value={dated.convertAt(
                               Number(cost.amount) || 0,
-                              cost.currency || 'CZK',
+                              cost.currency || currencyCode,
                               cost.date
                             )}
                             amount={Number(cost.amount) || 0}
-                            currency={cost.currency || 'CZK'}
+                            currency={cost.currency || currencyCode}
                             pending={!dated.ready}
                           />
                         </TableCell>
@@ -1208,7 +1218,7 @@ export default function RealEstateDetail() {
           id: realEstate.id,
           name: realEstate.name,
           currentValue: Number(realEstate.marketPrice) || 0,
-          currency: realEstate.marketPriceCurrency || 'CZK',
+          currency: realEstate.marketPriceCurrency || currencyCode,
         }}
       />
       <ConfirmDeleteDialog

@@ -182,7 +182,7 @@ export function BankAccountFormDialog({
         // Edit mode
         setName(account.name);
         setBalance(account.balance.toString());
-        setSelectedCurrency((account.currency || 'CZK') as CurrencyCode);
+        setSelectedCurrency((account.currency || userCurrency) as CurrencyCode);
         setAccountType(account.accountType as AccountType);
         setIban(account.iban || '');
         setBban(account.bban || '');

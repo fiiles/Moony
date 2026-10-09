@@ -288,3 +288,20 @@ export function extraPaymentWhatIf(
     payoffDay: after.payoffDay,
   };
 }
+
+/**
+ * Input step of the extra-payment what-if: 1 % of the balance rounded down to a
+ * power of ten (3 000 000 → 10 000, 120 000 → 1 000), at least 1 — the scale
+ * follows the loan, whatever its currency.
+ */
+export function whatIfStep(balance: number): number {
+  const onePercent = Math.abs(balance) * 0.01;
+  if (!(onePercent >= 1)) return 1;
+  return 10 ** Math.floor(Math.log10(onePercent));
+}
+
+/** A round starting extra payment: 5 % of the balance in whole steps, at least one step. */
+export function suggestedExtraPayment(balance: number): number {
+  const step = whatIfStep(balance);
+  return Math.max(step, Math.round((balance * 0.05) / step) * step);
+}

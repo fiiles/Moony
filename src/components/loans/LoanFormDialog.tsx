@@ -118,7 +118,7 @@ export function LoanFormDialog({
   const watched = useWatch({ control: form.control });
   // "Set the balance as of a date": off = amortize from the principal at the start date
   const manualBalance = !!watched.manualBalance;
-  const currency = watched.currency || 'CZK';
+  const currency = watched.currency || userCurrency;
 
   useEffect(() => {
     if (!open) return;
@@ -127,7 +127,7 @@ export function LoanFormDialog({
       form.reset({
         name: loan.name,
         principal: loan.principal.toString(),
-        currency: loan.currency || 'CZK',
+        currency: loan.currency || userCurrency,
         interestRate: loan.interestRate.toString(),
         monthlyPayment: loan.monthlyPayment?.toString() || '0',
         interestRateValidityDate: loan.interestRateValidityDate

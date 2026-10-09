@@ -650,7 +650,7 @@ export default function RealEstatePage() {
                 id: selected.id,
                 name: selected.name,
                 currentValue: Number(selected.marketPrice) || 0,
-                currency: selected.marketPriceCurrency || 'CZK',
+                currency: selected.marketPriceCurrency || currencyCode,
               }
             : null
         }

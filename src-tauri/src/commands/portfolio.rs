@@ -402,7 +402,8 @@ pub async fn record_portfolio_snapshot(db: State<'_, Database>) -> Result<()> {
     update_todays_snapshot(&db).await
 }
 
-/// Update exchange rates from ECB and return them
+/// Update exchange rates from ECB and return every resolvable quote (CZK per unit, derived
+/// codes such as AED/SAR/QAR/BHD/OMR/BGN included).
 #[tauri::command]
 pub async fn refresh_exchange_rates(
     app: AppHandle,
@@ -422,11 +423,11 @@ pub async fn refresh_exchange_rates(
 
     // Self-heal the FX timeseries in the background: fill the prefix before
     // the earliest transaction and any tail gap from days the app was closed.
-    // Best-effort — a failure only means uncovered days keep falling back to
-    // current rates until the next refresh.
+    // Best-effort — a failure only means uncovered days stay without a historical
+    // quote (and are reported as missing) until the next refresh.
     spawn_fx_backfill(app, db.inner().clone());
 
-    Ok(rates)
+    Ok(crate::services::currency::get_all_rates())
 }
 
 /// Extend the FX timeseries in the background (best-effort). New rate rows
@@ -617,7 +618,11 @@ pub fn get_price_status(db: State<'_, Database>) -> Result<PriceStatus> {
             stale_currencies: crate::services::fx_backfill::stale_currencies(
                 conn,
                 (now / 86_400) * 86_400,
-            )?,
+            )
+            .unwrap_or_else(|e| {
+                log::warn!("[PRICE_STATUS] stale currency lookup failed: {e}");
+                Vec::new()
+            }),
         })
     })
 }
@@ -1019,8 +1024,8 @@ pub async fn backfill_missing_snapshots(db: &Database) -> Result<BackfillResult>
 
     // Each day's value_czk converts at that day's rates (FX timeseries), not
     // today's — one prefetch for the whole missing span, with the 10-day
-    // walk-back margin. Days older than the timeseries fall back to current
-    // rates, matching get_rates_for_date.
+    // walk-back margin. Days without a quote within the walk-back are excluded
+    // and reported as missing; there is no fallback to current rates.
     let rates_by_day = {
         let first = missing_days.first().copied().unwrap_or(0);
         let last = missing_days.last().copied().unwrap_or(0);
@@ -2336,8 +2341,8 @@ pub async fn recalculate_crypto_ticker_history(
                 continue;
             };
 
-            // Value at that day's rates (falls back to current rates when the
-            // FX timeseries has no snapshot near that day).
+            // Value at that day's rates (excluded and recorded as missing when the
+            // FX timeseries has no snapshot within the walk-back).
             let value_czk =
                 crate::services::currency::convert_to_czk_at(conn, quantity * price, &currency, day_timestamp);
 

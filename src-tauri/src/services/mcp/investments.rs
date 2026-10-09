@@ -79,12 +79,15 @@ pub fn investments_list(conn: &Connection) -> Result<Value> {
     let rows = rows
         .into_iter()
         .map(|mut v| {
-            let avg = v["id"]
-                .as_str()
-                .and_then(|id| avg_map.get(id))
+            let position = v["id"].as_str().and_then(|id| avg_map.get(id));
+            let avg = position
                 .map(|p| p.average_price_native().to_string())
                 .unwrap_or_else(|| "0".to_string());
             v["averagePrice"] = serde_json::json!(avg);
+            // Currencies of buys that could not be converted and are left out of the average.
+            v["missingCurrencies"] = serde_json::json!(position
+                .map(|p| p.missing_currencies.clone())
+                .unwrap_or_default());
             v
         })
         .collect();
@@ -93,14 +96,17 @@ pub fn investments_list(conn: &Connection) -> Result<Value> {
 
 pub fn investment_detail(conn: &Connection, id: &str) -> Result<Value> {
     let id = id.to_string();
-    let derived_avg = crate::services::cost_basis::cost_basis_for_all(
+    let (positions, _) = crate::services::cost_basis::cost_basis_for_all(
         conn,
         crate::services::cost_basis::TxTable::Stocks,
-    )?
-    .0
-    .get(&id)
-    .map(|p| p.average_price_native().to_string())
-    .unwrap_or_else(|| "0".to_string());
+    )?;
+    let position = positions.get(&id);
+    let derived_avg = position
+        .map(|p| p.average_price_native().to_string())
+        .unwrap_or_else(|| "0".to_string());
+    let missing_currencies = position
+        .map(|p| p.missing_currencies.clone())
+        .unwrap_or_default();
     let inv = conn.query_row(
         "SELECT si.id, si.ticker, si.company_name, si.quantity,
                 si.currency,
@@ -129,6 +135,7 @@ pub fn investment_detail(conn: &Connection, id: &str) -> Result<Value> {
         Err(e) => Err(e.into()),
         Ok(mut obj) => {
             obj["averagePrice"] = serde_json::json!(derived_avg);
+            obj["missingCurrencies"] = serde_json::json!(missing_currencies);
             let txs: Vec<Value> = {
                 let mut s = conn.prepare(
                     "SELECT id, type, ticker, company_name, quantity, price_per_unit,
@@ -780,5 +787,40 @@ mod value_history_tests {
 
         assert_eq!(result["mainCurrency"], "EUR");
         assert_eq!(result["history"], serde_json::json!([]));
+    }
+}
+
+#[cfg(test)]
+mod list_missing_currency_tests {
+    use super::*;
+
+    #[test]
+    fn investments_list_declares_currencies_left_out_of_the_average() {
+        let conn = Connection::open_in_memory().expect("db");
+        conn.execute_batch(
+            r#"
+            CREATE TABLE stock_investments (id TEXT PRIMARY KEY, ticker TEXT, company_name TEXT, quantity TEXT, currency TEXT);
+            CREATE TABLE stock_data (ticker TEXT PRIMARY KEY, original_price TEXT, currency TEXT, short_name TEXT, sector TEXT, industry TEXT, pe_ratio TEXT, market_cap TEXT, beta TEXT, fifty_two_week_high TEXT, fifty_two_week_low TEXT, fetched_at INTEGER);
+            CREATE TABLE stock_price_overrides (ticker TEXT PRIMARY KEY, price TEXT, currency TEXT, updated_at INTEGER);
+            CREATE TABLE investment_transactions (id TEXT PRIMARY KEY, investment_id TEXT, type TEXT, ticker TEXT, company_name TEXT, quantity TEXT, price_per_unit TEXT, currency TEXT, transaction_date INTEGER, created_at INTEGER NOT NULL DEFAULT 0);
+            CREATE TABLE exchange_rate_history (date INTEGER NOT NULL, currency TEXT NOT NULL, rate REAL NOT NULL, PRIMARY KEY (date, currency));
+            INSERT INTO exchange_rate_history VALUES (1699920000, 'USD', 20.0);
+            INSERT INTO stock_investments VALUES ('a', 'AAA', 'A', '2', 'USD'), ('b', 'BBB', 'B', '1', 'USD');
+            INSERT INTO investment_transactions (id, investment_id, type, ticker, company_name, quantity, price_per_unit, currency, transaction_date) VALUES
+                ('t1', 'a', 'buy', 'AAA', 'A', '1', '100', 'USD', 1700000000),
+                ('t2', 'a', 'buy', 'AAA', 'A', '1', '50', 'KWD', 1700000000),
+                ('t3', 'b', 'buy', 'BBB', 'B', '1', '10', 'USD', 1700000000);
+            "#,
+        )
+        .expect("schema");
+
+        let result = investments_list(&conn).expect("list");
+
+        let rows = result.as_array().expect("array");
+        let a = rows.iter().find(|r| r["id"] == "a").expect("a");
+        let b = rows.iter().find(|r| r["id"] == "b").expect("b");
+        assert_eq!(a["missingCurrencies"], serde_json::json!(["KWD"]));
+        assert_eq!(a["averagePrice"], "100");
+        assert_eq!(b["missingCurrencies"], serde_json::json!([]));
     }
 }

@@ -63,12 +63,15 @@ pub fn crypto_list(conn: &Connection) -> Result<Value> {
     let rows = rows
         .into_iter()
         .map(|mut v| {
-            let avg = v["id"]
-                .as_str()
-                .and_then(|id| avg_map.get(id))
+            let position = v["id"].as_str().and_then(|id| avg_map.get(id));
+            let avg = position
                 .map(|p| p.average_price_native().to_string())
                 .unwrap_or_else(|| "0".to_string());
             v["averagePrice"] = serde_json::json!(avg);
+            // Currencies of buys that could not be converted and are left out of the average.
+            v["missingCurrencies"] = serde_json::json!(position
+                .map(|p| p.missing_currencies.clone())
+                .unwrap_or_default());
             v
         })
         .collect();

@@ -1023,8 +1023,8 @@ stocksMissingPrice: number;
  */
 cryptoMissingPrice: number; 
 /**
- * Currency codes that failed a current conversion since the rates were last
- * replaced (those amounts are excluded from totals, never valued 1:1)
+ * Currencies whose conversion failed (current or historical) since the last
+ * rate load; those amounts are excluded from totals, never valued 1:1
  */
 missingCurrencies: string[] }
 

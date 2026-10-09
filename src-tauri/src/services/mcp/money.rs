@@ -83,11 +83,14 @@ impl MoneyContext {
     /// Converts an amount in `currency` to CZK for aggregation. An amount that cannot be
     /// converted is excluded (0.0) and its currency is listed in `missing_currencies`.
     pub fn to_czk(&self, amount: f64, currency: &str) -> f64 {
+        self.try_to_czk(amount, currency).unwrap_or(0.0)
+    }
+
+    /// Like `to_czk`, but `None` for an unconvertible amount, so a caller can null the row it
+    /// belongs to. The currency is listed in `missing_currencies` either way.
+    pub fn try_to_czk(&self, amount: f64, currency: &str) -> Option<f64> {
         let converted = self.quotes.convert(amount, currency, "CZK");
-        self.quality
-            .borrow_mut()
-            .track(currency, converted)
-            .unwrap_or(0.0)
+        self.quality.borrow_mut().track(currency, converted)
     }
 
     /// Converts a CZK amount into the main currency; `None` (and the main currency listed as

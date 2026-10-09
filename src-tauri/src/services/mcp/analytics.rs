@@ -250,39 +250,51 @@ pub fn stocks_analysis(conn: &Connection) -> Result<Value> {
         div_currency,
     } in rows
     {
-        let curr_val_czk = ctx.to_czk(qty * curr_price, &price_currency);
+        let curr_val_czk = ctx.try_to_czk(qty * curr_price, &price_currency);
         // Historical cost: every transaction at its own day's rate
         // (ADR 0001) — never the stored scalar at today's rate.
-        let cost_czk = cost_map
-            .get(&id)
-            .map(|p| p.cost_basis_target)
-            .unwrap_or(0.0);
-        let gain_czk = curr_val_czk - cost_czk;
-        let gain_pct = if cost_czk > 0.0 {
-            (gain_czk / cost_czk) * 100.0
-        } else {
-            0.0
+        let position = cost_map.get(&id);
+        let cost_complete = position.is_none_or(|p| p.missing_currencies.is_empty());
+        let cost_czk = position.map(|p| p.cost_basis_target).unwrap_or(0.0);
+        let div_czk = ctx.try_to_czk(qty * yearly_div, &div_currency);
+        // A row whose value or cost is not fully convertible is null and left out of the totals.
+        let valued = match curr_val_czk {
+            Some(value) if cost_complete => Some((value, value - cost_czk)),
+            _ => None,
         };
-        let div_czk = ctx.to_czk(qty * yearly_div, &div_currency);
-        let div_yield = if curr_val_czk > 0.0 {
-            (div_czk / curr_val_czk) * 100.0
-        } else {
-            0.0
+        let gain_pct = valued.map(|(_, gain)| {
+            if cost_czk > 0.0 {
+                (gain / cost_czk) * 100.0
+            } else {
+                0.0
+            }
+        });
+        let div_yield = match (valued, div_czk) {
+            (Some((value, _)), Some(div)) => Some(if value > 0.0 {
+                (div / value) * 100.0
+            } else {
+                0.0
+            }),
+            _ => None,
         };
-        total_val_czk += curr_val_czk;
-        total_gain_czk += gain_czk;
-        total_div_czk += div_czk;
+        if let Some((value, gain)) = valued {
+            total_val_czk += value;
+            total_gain_czk += gain;
+        }
+        total_div_czk += div_czk.unwrap_or(0.0);
+        let amount = |czk: Option<f64>| czk.map_or(Value::Null, &money);
+        let pct = |p: Option<f64>| p.map_or(Value::Null, |p| serde_json::json!(format!("{p:.2}")));
         stocks.push(serde_json::json!({
             "id": id,
             "ticker": ticker,
             "companyName": company,
             "quantity": qty,
-            "currentValue": money(curr_val_czk),
-            "costBasis": money(cost_czk),
-            "gainLoss": money(gain_czk),
-            "gainLossPct": format!("{:.2}", gain_pct),
-            "annualDividend": money(div_czk),
-            "dividendYieldPct": format!("{:.2}", div_yield),
+            "currentValue": amount(valued.map(|(value, _)| value)),
+            "costBasis": amount(valued.map(|_| cost_czk)),
+            "gainLoss": amount(valued.map(|(_, gain)| gain)),
+            "gainLossPct": pct(gain_pct),
+            "annualDividend": amount(div_czk),
+            "dividendYieldPct": pct(div_yield),
         }));
     }
 
@@ -379,8 +391,15 @@ pub fn tag_metrics(conn: &Connection, tag_ids: Option<Vec<String>>) -> Result<Va
             let mut cost = 0.0_f64;
             let mut div = 0.0_f64;
             for (id, qty, cp, cc, yd, dc) in &stocks {
-                val += ctx.to_czk(qty * cp, cc);
-                cost += cost_map.get(id).map(|p| p.cost_basis_target).unwrap_or(0.0);
+                // A stock whose value or cost is not fully convertible is left out of the
+                // tag's value, cost and gain; its currencies are in `missingCurrencies`.
+                let position = cost_map.get(id);
+                if let Some(value) = ctx.try_to_czk(qty * cp, cc) {
+                    if position.is_none_or(|p| p.missing_currencies.is_empty()) {
+                        val += value;
+                        cost += position.map(|p| p.cost_basis_target).unwrap_or(0.0);
+                    }
+                }
                 div += ctx.to_czk(qty * yd, dc);
             }
             let gain = val - cost;
@@ -579,6 +598,67 @@ mod tests {
         assert_eq!(stock["currentValue"], "50600.00");
         assert_eq!(stock["gainLoss"], "5600.00");
         assert_eq!(result["summary"]["totalGainLoss"], "5600.00");
+    }
+
+    #[test]
+    fn stocks_analysis_nulls_a_row_with_an_unquoted_price_currency() {
+        let conn = setup_db("CZK");
+        conn.execute("UPDATE stock_data SET currency = 'KWD'", [])
+            .expect("kwd price");
+
+        let result = stocks_analysis(&conn).expect("analysis");
+
+        let stock = &result["stocks"][0];
+        for field in [
+            "currentValue",
+            "costBasis",
+            "gainLoss",
+            "gainLossPct",
+            "dividendYieldPct",
+        ] {
+            assert!(stock[field].is_null(), "{field} must be null");
+        }
+        // The row is left out of the totals and its currency is declared.
+        assert_eq!(result["summary"]["totalValue"], "0.00");
+        assert_eq!(result["summary"]["totalGainLoss"], "0.00");
+        assert_eq!(result["missingCurrencies"], serde_json::json!(["KWD"]));
+    }
+
+    #[test]
+    fn stocks_analysis_nulls_a_row_with_a_partial_cost_basis() {
+        let conn = setup_db("CZK");
+        conn.execute(
+            "INSERT INTO investment_transactions
+                (id, investment_id, type, ticker, company_name, quantity, price_per_unit, currency, transaction_date)
+             VALUES ('t3', 'inv-a', 'buy', 'AAA', 'A Corp', '1', '10', 'KWD', ?1)",
+            [D2],
+        )
+        .expect("kwd buy");
+
+        let result = stocks_analysis(&conn).expect("analysis");
+
+        let stock = &result["stocks"][0];
+        assert!(stock["costBasis"].is_null());
+        assert!(stock["gainLoss"].is_null());
+        assert!(stock["currentValue"].is_null());
+        assert_eq!(result["summary"]["totalValue"], "0.00");
+        assert_eq!(result["missingCurrencies"], serde_json::json!(["KWD"]));
+    }
+
+    #[test]
+    fn tag_metrics_leaves_an_unconvertible_stock_out_of_the_tag_totals() {
+        let conn = setup_db("CZK");
+        conn.execute("UPDATE stock_data SET currency = 'KWD'", [])
+            .expect("kwd price");
+
+        let result = tag_metrics(&conn, None).expect("tag metrics");
+
+        let tag = &result["tags"][0];
+        assert_eq!(tag["stockCount"], 1);
+        assert_eq!(tag["totalValue"], "0.00");
+        assert_eq!(tag["costBasis"], "0.00");
+        assert_eq!(tag["gainLoss"], "0.00");
+        assert_eq!(result["missingCurrencies"], serde_json::json!(["KWD"]));
     }
 
     #[test]

@@ -504,8 +504,8 @@ pub struct PriceStatus {
     pub stocks_missing_price: i32,
     /// Number of cryptos without any price data
     pub crypto_missing_price: i32,
-    /// Currency codes that failed a current conversion since the rates were last
-    /// replaced (those amounts are excluded from totals, never valued 1:1)
+    /// Currencies whose conversion failed (current or historical) since the last
+    /// rate load; those amounts are excluded from totals, never valued 1:1
     pub missing_currencies: Vec<String>,
 }
 

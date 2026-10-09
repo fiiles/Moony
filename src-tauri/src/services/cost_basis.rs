@@ -43,16 +43,24 @@ pub struct PositionCostBasis {
     pub quantity: f64,
     pub cost_basis_target: f64,
     pub cost_basis_native: f64,
+    /// Quantity whose buys are included in `cost_basis_native`. Smaller than `quantity` when a
+    /// buy could not be converted to the primary currency; the average uses this so it is not
+    /// diluted by quantity that carries no cost.
+    pub native_quantity: f64,
     pub primary_currency: String,
+    /// Currencies of buys that could not be converted for this position (left out of the cost
+    /// aggregates). Empty when the cost basis is complete.
+    pub missing_currencies: Vec<String>,
     /// True when at least one conversion used current instead of day quotes.
     pub fx_estimated: bool,
 }
 
 impl PositionCostBasis {
-    /// Weighted average cost per unit in the primary currency.
+    /// Weighted average cost per unit in the primary currency, over the buys that could be
+    /// converted to it (see `native_quantity`).
     pub fn average_price_native(&self) -> f64 {
-        if self.quantity > 0.0 {
-            self.cost_basis_native / self.quantity
+        if self.native_quantity > 0.0 {
+            self.cost_basis_native / self.native_quantity
         } else {
             0.0
         }
@@ -140,6 +148,7 @@ pub fn position_cost_basis(
     let mut quantity = 0.0_f64;
     let mut cost_target = 0.0_f64;
     let mut cost_native = 0.0_f64;
+    let mut native_quantity = 0.0_f64;
 
     for tx in order {
         if tx.tx_type == "buy" {
@@ -149,11 +158,12 @@ pub fn position_cost_basis(
             let amount_target = converter
                 .convert(amount, &tx.currency, target, day)
                 .unwrap_or(0.0);
-            let amount_native = converter
-                .convert(amount, &tx.currency, &primary_currency, day)
-                .unwrap_or(0.0);
+            let amount_native = converter.convert(amount, &tx.currency, &primary_currency, day);
+            if let Some(native) = amount_native {
+                cost_native += native;
+                native_quantity += tx.quantity;
+            }
             cost_target += amount_target;
-            cost_native += amount_native;
             quantity += tx.quantity;
         } else if tx.tx_type == "sell" {
             // Release cost proportionally at the running average, matching
@@ -166,6 +176,7 @@ pub fn position_cost_basis(
                 let fraction = sold / quantity;
                 cost_target -= cost_target * fraction;
                 cost_native -= cost_native * fraction;
+                native_quantity -= native_quantity * fraction;
             }
             quantity -= sold;
         }
@@ -180,6 +191,9 @@ pub fn position_cost_basis(
     if cost_native < 0.0 {
         cost_native = 0.0;
     }
+    if quantity == 0.0 || native_quantity < 0.0 {
+        native_quantity = 0.0;
+    }
     if quantity == 0.0 {
         // A fully closed position holds no cost.
         cost_target = 0.0;
@@ -191,8 +205,10 @@ pub fn position_cost_basis(
             quantity,
             cost_basis_target: cost_target,
             cost_basis_native: cost_native,
+            native_quantity,
             primary_currency,
             fx_estimated: converter.estimated,
+            missing_currencies: converter.quality.missing_currencies(),
         }),
         converter.quality,
     )
@@ -491,6 +507,19 @@ mod tests {
         );
         let pos = pos.expect("position");
         assert_eq!(pos.cost_basis_target, 0.0);
+        assert_eq!(quality.missing_currencies(), vec!["KWD".to_string()]);
+    }
+
+    #[test]
+    fn unconvertible_buy_does_not_dilute_the_native_average() {
+        // Primary USD: 1 @ 100 USD, then 1 @ 50 KWD (no KWD quote). The KWD buy carries no
+        // native cost, so it must not lower the USD average either.
+        let txs = vec![buy(1.0, 100.0, "USD", D1), buy(1.0, 50.0, "KWD", D2)];
+        let (pos, quality) = position_cost_basis(&txs, &rates(&[]), &current(), "CZK");
+        let pos = pos.expect("position");
+        assert!((pos.quantity - 2.0).abs() < 1e-9);
+        assert!((pos.cost_basis_native - 100.0).abs() < 1e-9);
+        assert!((pos.average_price_native() - 100.0).abs() < 1e-9);
         assert_eq!(quality.missing_currencies(), vec!["KWD".to_string()]);
     }
 

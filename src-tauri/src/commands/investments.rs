@@ -28,14 +28,15 @@ pub struct InvestmentWithDetails {
 fn derived_average_prices(
     conn: &rusqlite::Connection,
 ) -> Result<std::collections::HashMap<String, String>> {
-    Ok(crate::services::cost_basis::cost_basis_for_all(
+    let (positions, quality) = crate::services::cost_basis::cost_basis_for_all(
         conn,
         crate::services::cost_basis::TxTable::Stocks,
-    )?
-    .0
-    .into_iter()
-    .map(|(id, p)| (id, p.average_price_native().to_string()))
-    .collect())
+    )?;
+    crate::services::fx::record_missing_all(&quality);
+    Ok(positions
+        .into_iter()
+        .map(|(id, p)| (id, p.average_price_native().to_string()))
+        .collect())
 }
 
 #[tauri::command]

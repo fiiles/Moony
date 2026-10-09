@@ -18,10 +18,11 @@ pub async fn get_all_crypto(db: State<'_, Database>) -> Result<Vec<EnrichedCrypt
 
         // Average price derives from transactions at their day's rates —
         // crypto positions may mix transaction currencies.
-        let (avg_map, _) = crate::services::cost_basis::cost_basis_for_all(
+        let (avg_map, cost_quality) = crate::services::cost_basis::cost_basis_for_all(
             conn,
             crate::services::cost_basis::TxTable::Crypto,
         )?;
+        crate::services::fx::record_missing_all(&cost_quality);
         let mut stmt = conn.prepare(
             "SELECT id, ticker, coingecko_id, name, quantity, currency FROM crypto_investments",
         )?;

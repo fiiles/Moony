@@ -16,11 +16,15 @@ import {
   Trash2,
 } from 'lucide-react';
 import type { Loan, RealEstate } from '@shared/schema';
-import { convertToCzK, type CurrencyCode } from '@shared/currencies';
 import { exportApi, portfolioApi, realEstateApi } from '@/lib/tauri-api';
 import { useCurrency } from '@/lib/currency';
 import { useFormat } from '@/lib/use-format';
 import { useAuth } from '@/hooks/use-auth';
+import { useDatedMainConvert, useMainConvert } from '@/hooks/use-fx';
+import { propertiesSummary, propertyRow, type PropertyRow } from '@/utils/real-estate';
+import { compareConverted } from '@/utils/fx-totals';
+import { ConvertedMoney } from '@/components/common/ConvertedMoney';
+import { ConversionQualityNote } from '@/components/reports/ReportQualityNote';
 import { translateApiError } from '@/lib/translate-api-error';
 import { useShellPage } from '@/components/shell/shell-context';
 import { PageHead } from '@/components/shell/PageHead';
@@ -53,27 +57,8 @@ import { AddRealEstateModal } from '@/components/real-estate/AddRealEstateModal'
 import { RevalueDialog } from '@/components/valuations/RevalueDialog';
 import { cn } from '@/lib/utils';
 
-/** A property with the list's derived numbers, all in CZK. */
-interface PropertyRow {
-  property: RealEstate;
-  valueCzk: number;
-  purchaseCzk: number;
-  appreciation: number;
-  rentYearCzk: number;
-  grossYield: number;
-  loansCzk: number;
-  equityCzk: number;
-  ltv: number;
-  personal: boolean;
-  /** Personal residence left out of net worth by the profile setting. */
-  excluded: boolean;
-}
-
 type SortColumn = 'name' | 'value' | 'appreciation' | 'rent' | 'equity';
 type Modal = 'edit' | 'revalue' | 'delete' | null;
-
-const czk = (amount: string | number | null | undefined, currency: string | null | undefined) =>
-  convertToCzK(Number(amount) || 0, (currency || 'CZK') as CurrencyCode);
 
 /**
  * Real estate list (design system §7 List, prototype real-estate.html): four
@@ -86,8 +71,11 @@ export default function RealEstatePage() {
   const { t: tc } = useTranslation('common');
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
-  const { formatCurrency, formatCurrencySigned, fxConvert } = useCurrency();
+  const { currencyCode } = useCurrency();
   const fmt = useFormat();
+  const formatCurrency = (value: number) => fmt.money(value, currencyCode, { decimals: 0 });
+  const formatCurrencySigned = (value: number) =>
+    fmt.money(value, currencyCode, { signed: true, decimals: 0 });
   const { user } = useAuth();
   const excludePersonal = user?.excludePersonalRealEstate ?? false;
   const [search, setSearch] = useState('');
@@ -110,50 +98,43 @@ export default function RealEstatePage() {
     })),
   });
 
-  const rows = useMemo((): PropertyRow[] => {
-    return properties.map((p, i) => {
-      const loans: Loan[] = loanQueries[i]?.data ?? [];
-      const valueCzk = czk(p.marketPrice, p.marketPriceCurrency);
-      const purchaseCzk = czk(p.purchasePrice, p.purchasePriceCurrency);
-      const rentYearCzk = czk(Number(p.monthlyRent || 0) * 12, p.monthlyRentCurrency);
-      const loansCzk = loans.reduce((s, l) => s + czk(l.outstandingBalance, l.currency), 0);
-      const personal = p.type === 'personal';
-      return {
-        property: p,
-        valueCzk,
-        purchaseCzk,
-        appreciation: valueCzk - purchaseCzk,
-        rentYearCzk,
-        grossYield: valueCzk > 0 ? rentYearCzk / valueCzk : 0,
-        loansCzk,
-        equityCzk: valueCzk - loansCzk,
-        ltv: valueCzk > 0 ? loansCzk / valueCzk : 0,
-        personal,
-        excluded: personal && excludePersonal,
-      };
-    });
+  // Today's amounts at the current quotes, each purchase price at its own day
+  const convert = useMainConvert();
+  const firstPurchase = properties.length
+    ? Math.min(...properties.map((p) => p.purchaseDate ?? p.createdAt))
+    : undefined;
+  const dated = useDatedMainConvert(firstPurchase);
+
+  const rows = useMemo(
+    (): PropertyRow[] =>
+      properties.map((p, i) =>
+        propertyRow(
+          p,
+          (loanQueries[i]?.data ?? []) as Loan[],
+          excludePersonal,
+          convert,
+          dated.convertAt
+        )
+      ),
     // loanQueries is a new array every render; its data is what matters
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [properties, excludePersonal, ...loanQueries.map((q) => q.data)]);
+    [properties, excludePersonal, convert, dated.convertAt, ...loanQueries.map((q) => q.data)]
+  );
 
   const counted = rows.filter((r) => !r.excluded);
-  const totals = counted.reduce(
-    (acc, r) => ({
-      value: acc.value + r.valueCzk,
-      purchase: acc.purchase + r.purchaseCzk,
-      rent: acc.rent + r.rentYearCzk,
-      rented: acc.rented + (r.rentYearCzk > 0 ? r.valueCzk : 0),
-      loans: acc.loans + r.loansCzk,
-    }),
-    { value: 0, purchase: 0, rent: 0, rented: 0, loans: 0 }
-  );
-  const personalValue = rows.filter((r) => r.personal).reduce((s, r) => s + r.valueCzk, 0);
+  const totals = propertiesSummary(rows);
+  const personalValue = totals.personalValue;
+  // The purchase-day rates load after the page: until then purchases are pending, not missing
+  const missing = dated.ready
+    ? [...new Set([...totals.missing, ...totals.missingPurchase])]
+    : totals.missing;
   // Today's point of the trend card: every property (personal included, like the recorded
-  // history) in the report currency; a property without a rate stays out, like in history.
-  const trendValue = properties.reduce(
-    (sum, p) => sum + (fxConvert(Number(p.marketPrice) || 0, p.marketPriceCurrency) ?? 0),
-    0
-  );
+  // history) through the same converter as the page; a property without a rate is named.
+  const trendRows = rows.filter((r) => r.value !== null);
+  const trendValue = trendRows.reduce((sum, r) => sum + (r.value ?? 0), 0);
+  const trendMissing = [
+    ...new Set(rows.filter((r) => r.value === null).map((r) => r.valueNative.currency)),
+  ];
   const latest = properties.reduce<RealEstate | null>(
     (max, p) => (max === null || p.updatedAt > max.updatedAt ? p : max),
     null
@@ -209,16 +190,16 @@ export default function RealEstatePage() {
           c = a.property.name.localeCompare(b.property.name, undefined, { sensitivity: 'base' });
           break;
         case 'value':
-          c = a.valueCzk - b.valueCzk;
+          c = compareConverted(a.value, b.value);
           break;
         case 'appreciation':
-          c = a.appreciation - b.appreciation;
+          c = compareConverted(a.appreciation, b.appreciation);
           break;
         case 'rent':
-          c = a.rentYearCzk - b.rentYearCzk;
+          c = compareConverted(a.rentYear, b.rentYear);
           break;
         case 'equity':
-          c = a.equityCzk - b.equityCzk;
+          c = compareConverted(a.equity, b.equity);
           break;
       }
       return sortDirection === 'asc' ? c : -c;
@@ -276,6 +257,11 @@ export default function RealEstatePage() {
       {text}
     </span>
   );
+  /** The purchase price in the main currency at its day, or native while that day has no rate. */
+  const purchaseText = (r: PropertyRow) =>
+    r.purchase !== null
+      ? formatCurrency(r.purchase)
+      : fmt.money(r.purchaseNative.amount, r.purchaseNative.currency, { decimals: 0 });
   /** Muted second line of a cell: one line, the full text in the title. */
   const sub = (text: string, title: string = text) => (
     <small className="mt-[3px] block truncate text-micro font-500 text-ink-4" title={title}>
@@ -331,6 +317,7 @@ export default function RealEstatePage() {
         />
       ) : (
         <>
+          <ConversionQualityNote quality={{ missingCurrencies: missing }} currency={currencyCode} />
           <Stats>
             <Stat
               label={t('summary.marketValue')}
@@ -348,18 +335,21 @@ export default function RealEstatePage() {
             />
             <Stat
               label={t('summary.appreciationTitle')}
-              value={formatCurrencySigned(totals.value - totals.purchase)}
-              tone={totals.value - totals.purchase >= 0 ? 'gain' : 'loss'}
-              note={`${fmt.percent(totals.purchase > 0 ? (totals.value - totals.purchase) / totals.purchase : 0, 1, { signed: true })} ${t('summary.vsPurchase', { amount: formatCurrency(totals.purchase) })}`}
+              value={formatCurrencySigned(totals.appreciation)}
+              tone={totals.appreciation >= 0 ? 'gain' : 'loss'}
+              note={`${fmt.percent(totals.purchase > 0 ? totals.appreciation / totals.purchase : 0, 1, { signed: true })} ${t('summary.vsPurchase', { amount: formatCurrency(totals.purchase) })}`}
             />
             <Stat
               label={t('summary.equity')}
-              value={formatCurrency(totals.value - totals.loans)}
+              value={formatCurrency(totals.equity)}
               note={
                 totals.loans > 0
                   ? t('summary.equityNote', {
                       amount: formatCurrency(totals.loans),
-                      ltv: fmt.percent(totals.value > 0 ? totals.loans / totals.value : 0, 0),
+                      ltv: fmt.percent(
+                        totals.equityValue > 0 ? totals.loans / totals.equityValue : 0,
+                        0
+                      ),
                     })
                   : t('summary.noLoans')
               }
@@ -380,7 +370,11 @@ export default function RealEstatePage() {
             />
           </Stats>
 
-          <PortfolioTrendCard type="realEstate" currentValue={trendValue} />
+          <PortfolioTrendCard
+            type="realEstate"
+            currentValue={trendValue}
+            missingCurrencies={trendMissing}
+          />
 
           <Card variant="table">
             <CardHeader>
@@ -484,19 +478,24 @@ export default function RealEstatePage() {
                           </div>
                         </TableCell>
                         <TableCell className="text-right num">
-                          {main(
-                            formatCurrency(r.valueCzk),
-                            cn('font-650', r.excluded ? 'text-ink-3' : 'text-ink')
-                          )}
+                          <ConvertedMoney
+                            className={cn(
+                              'block truncate font-650',
+                              r.excluded ? 'text-ink-3' : 'text-ink'
+                            )}
+                            value={r.value}
+                            amount={r.valueNative.amount}
+                            currency={r.valueNative.currency}
+                          />
                           {/* A purchase price of 0 is the form's "not entered" */}
                           {/* The purchase date only goes to the tooltip: the column has no room */}
-                          {r.purchaseCzk > 0 &&
+                          {r.purchaseNative.amount > 0 &&
                             sub(
-                              t('table.boughtFor', { amount: formatCurrency(r.purchaseCzk) }),
+                              t('table.boughtFor', { amount: purchaseText(r) }),
                               p.purchaseDate !== null
                                 ? t('detail.boughtOnFor', {
                                     date: fmt.day(p.purchaseDate),
-                                    amount: formatCurrency(r.purchaseCzk),
+                                    amount: purchaseText(r),
                                   })
                                 : undefined
                             )}
@@ -504,36 +503,58 @@ export default function RealEstatePage() {
                         <TableCell
                           className={cn(
                             'text-right num',
-                            !r.excluded && (r.appreciation >= 0 ? 'text-gain' : 'text-loss')
+                            !r.excluded &&
+                              r.appreciation !== null &&
+                              (r.appreciation >= 0 ? 'text-gain' : 'text-loss')
                           )}
                         >
-                          {main(formatCurrencySigned(r.appreciation), 'font-650')}
-                          {sub(
-                            fmt.percent(r.purchaseCzk > 0 ? r.appreciation / r.purchaseCzk : 0, 1, {
-                              signed: true,
-                            })
+                          {r.appreciation === null ? (
+                            main('—', 'text-ink-4')
+                          ) : (
+                            <>
+                              {main(formatCurrencySigned(r.appreciation), 'font-650')}
+                              {sub(
+                                fmt.percent(
+                                  r.purchase !== null && r.purchase > 0
+                                    ? r.appreciation / r.purchase
+                                    : 0,
+                                  1,
+                                  { signed: true }
+                                )
+                              )}
+                            </>
                           )}
                         </TableCell>
                         <TableCell className="hidden text-right num min-[1240px]:table-cell">
-                          {r.rentYearCzk > 0 ? (
+                          {r.rentMonthNative.amount > 0 ? (
                             <>
-                              {main(formatCurrency(r.rentYearCzk / 12))}
-                              {sub(
-                                t('table.monthlyYield', { yield: fmt.percent(r.grossYield, 1) })
-                              )}
+                              <ConvertedMoney
+                                className="block truncate"
+                                value={r.rentYear !== null ? r.rentYear / 12 : null}
+                                amount={r.rentMonthNative.amount}
+                                currency={r.rentMonthNative.currency}
+                              />
+                              {r.grossYield !== null &&
+                                sub(
+                                  t('table.monthlyYield', { yield: fmt.percent(r.grossYield, 1) })
+                                )}
                             </>
                           ) : (
                             main(t('table.noRent'), 'text-ink-4')
                           )}
                         </TableCell>
                         <TableCell className="text-right num">
-                          {main(
-                            formatCurrency(r.equityCzk),
-                            cn('font-650', r.excluded ? 'text-ink-3' : 'text-ink')
-                          )}
+                          {r.equity === null
+                            ? main('—', 'text-ink-4')
+                            : main(
+                                formatCurrency(r.equity),
+                                cn('font-650', r.excluded ? 'text-ink-3' : 'text-ink')
+                              )}
                           {sub(
-                            r.loansCzk > 0
-                              ? t('table.ltv', { ltv: fmt.percent(r.ltv, 0) })
+                            r.loans === null || r.loans > 0
+                              ? r.ltv !== null
+                                ? t('table.ltv', { ltv: fmt.percent(r.ltv, 0) })
+                                : '—'
                               : t('table.noLoan')
                           )}
                         </TableCell>
@@ -586,7 +607,7 @@ export default function RealEstatePage() {
               <span>
                 {t('table.footer.count', { count: counted.length })} ·{' '}
                 {t('table.footer.value', { amount: formatCurrency(totals.value) })} ·{' '}
-                {t('table.footer.equity', { amount: formatCurrency(totals.value - totals.loans) })}
+                {t('table.footer.equity', { amount: formatCurrency(totals.equity) })}
               </span>
               {personalValue > 0 && (
                 <span>

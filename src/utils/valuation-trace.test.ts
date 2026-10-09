@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { dailyValuations, valuationTrace, type TraceValuation } from './valuation-trace';
+import {
+  convertValuations,
+  dailyValuations,
+  valuationTrace,
+  type TraceValuation,
+} from './valuation-trace';
 
 const DAY = 86_400;
 const day = (n: number) => n * DAY;
@@ -182,5 +187,44 @@ describe('valuationTrace', () => {
         expect(trace[i].t).toBeGreaterThan(trace[i - 1].t);
       }
     }
+  });
+});
+
+describe('convertValuations', () => {
+  /** Before day 100: 1 EUR = 20 CZK, later 24; no rate for KWD. */
+  const convertAt = (amount: number, currency: string, t: number) =>
+    currency === 'KWD' ? null : currency === 'EUR' ? amount * (t < day(100) ? 20 : 24) : amount;
+
+  it('converts every estimate at its own day and keeps the other fields', () => {
+    const { valuations, missing } = convertValuations(
+      [
+        { id: 'a', t: day(10), value: 100, currency: 'EUR', createdAt: 1, note: 'x' },
+        { id: 'b', t: day(200), value: 100, currency: 'EUR', createdAt: 2, note: null },
+        { id: 'c', t: day(300), value: 3000, currency: 'CZK', createdAt: 3, note: null },
+      ],
+      convertAt
+    );
+    expect(valuations.map((v) => v.value)).toEqual([2000, 2400, 3000]);
+    expect(valuations[0]).toEqual({ id: 'a', t: day(10), value: 2000, createdAt: 1, note: 'x' });
+    expect(missing).toEqual([]);
+  });
+
+  it('leaves out an estimate without a rate and reports its currency', () => {
+    const { valuations, missing } = convertValuations(
+      [
+        { id: 'a', t: day(10), value: 100, currency: 'EUR', createdAt: 1 },
+        { id: 'k', t: day(20), value: 7, currency: 'KWD', createdAt: 2 },
+      ],
+      convertAt
+    );
+    expect(valuations.map((v) => v.id)).toEqual(['a']);
+    expect(missing).toEqual(['KWD']);
+  });
+});
+
+describe('valuationTrace now value', () => {
+  it("ends on the value at today's rates instead of the last estimate", () => {
+    const trace = valuationTrace({ valuations: [est('a', 10, 100)], now: day(30), nowValue: 120 });
+    expect(trace).toEqual([pt(10, 100), pt(30, 120)]);
   });
 });

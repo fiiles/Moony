@@ -12,7 +12,6 @@ import type {
   RealEstate,
   RealEstateOneTimeCost,
 } from '@shared/schema';
-import { convertToCzK, type CurrencyCode } from '@shared/currencies';
 import { annualizeAmount, todayUtcDay } from '@shared/calculations';
 import { insuranceApi, loansApi, portfolioApi, realEstateApi } from '@/lib/tauri-api';
 import { useCurrency } from '@/lib/currency';
@@ -20,7 +19,10 @@ import { useFormat } from '@/lib/use-format';
 import { translateApiError } from '@/lib/translate-api-error';
 import { formatAmountWithCode } from '@/utils/format-amount';
 import type { ChartEvent, EventCluster } from '@/utils/chart-scale';
-import { dailyValuations, valuationTrace } from '@/utils/valuation-trace';
+import { convertValuations, dailyValuations, valuationTrace } from '@/utils/valuation-trace';
+import { useDatedMainConvert, useMainConvert } from '@/hooks/use-fx';
+import { ConvertedMoney } from '@/components/common/ConvertedMoney';
+import { ConversionQualityNote } from '@/components/reports/ReportQualityNote';
 import { useShellPage } from '@/components/shell/shell-context';
 import { BackLink, PageHead } from '@/components/shell/PageHead';
 import { HeroCard, HeroValue } from '@/components/common/HeroCard';
@@ -72,9 +74,6 @@ interface TraceEvent extends ChartEvent {
   first?: boolean;
 }
 
-const czk = (amount: string | number | null | undefined, currency: string | null | undefined) =>
-  convertToCzK(Number(amount) || 0, (currency || 'CZK') as CurrencyCode);
-
 /** Yearly factor of a recurring real-estate cost (`monthly` / `quarterly` / `yearly`). */
 function yearlyFactor(frequency: string | undefined): number {
   switch ((frequency || '').toLowerCase()) {
@@ -100,10 +99,11 @@ export default function RealEstateDetail() {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const id = params?.id;
-  const { formatCurrency, convert, currencyCode } = useCurrency();
+  const { currencyCode } = useCurrency();
   const { t } = useTranslation('realEstate');
   const { t: tc } = useTranslation('common');
   const fmt = useFormat();
+  const formatCurrency = (value: number) => fmt.money(value, currencyCode, { decimals: 0 });
   const today = todayUtcDay();
   const nowSec = Math.floor(Date.now() / 1000);
 
@@ -247,85 +247,147 @@ export default function RealEstateDetail() {
     onError,
   });
 
-  // ---- derived numbers (CZK, then formatCurrency converts to the display currency) ----
-  const valueCzk = czk(realEstate?.marketPrice, realEstate?.marketPriceCurrency);
-  const purchaseCzk = czk(realEstate?.purchasePrice, realEstate?.purchasePriceCurrency);
-  const appreciation = valueCzk - purchaseCzk;
-  const rentMonthlyCzk = czk(realEstate?.monthlyRent, realEstate?.monthlyRentCurrency);
-  const rentYearCzk = rentMonthlyCzk * 12;
-  const loansCzk = linkedLoans.reduce((s, l) => s + czk(l.outstandingBalance, l.currency), 0);
-  const equityCzk = valueCzk - loansCzk;
-  const ltv = valueCzk > 0 ? loansCzk / valueCzk : 0;
-  const recurringYearCzk = (realEstate?.recurringCosts ?? []).reduce(
-    (s, c) => s + czk(Number(c.amount) * yearlyFactor(c.frequency), c.currency),
+  // ---- derived numbers in the main currency ----
+  // Today's amounts at the current quotes; the purchase price, the one-time costs and the
+  // estimates at the rates of their own day. An amount without a rate stays out of the
+  // sums and its currency is named in the note.
+  const convert = useMainConvert();
+  const firstDay = Math.min(
+    realEstate ? (realEstate.purchaseDate ?? realEstate.createdAt) : Infinity,
+    ...valuations.map((v) => v.valuedAt),
+    ...oneTimeCosts.map((c) => c.date)
+  );
+  const dated = useDatedMainConvert(Number.isFinite(firstDay) ? firstDay : undefined);
+  const missingNow = new Set<string>();
+  const missingDated = new Set<string>();
+  /** A native amount at the current quotes; null (and named) without a rate. */
+  const now = (amount: string | number | null | undefined, currency: string | null | undefined) => {
+    const value = Number(amount) || 0;
+    const code = currency || 'CZK';
+    const converted = value === 0 ? 0 : convert(value, code);
+    if (converted === null) missingNow.add(code);
+    return converted;
+  };
+  /** A native amount at the rates of day `t`; null (and named) without a rate. */
+  const at = (
+    amount: string | number | null | undefined,
+    currency: string | null | undefined,
+    t: number
+  ) => {
+    const value = Number(amount) || 0;
+    const code = currency || 'CZK';
+    const converted = value === 0 ? 0 : dated.convertAt(value, code, t);
+    if (converted === null) missingDated.add(code);
+    return converted;
+  };
+  const known = (value: number | null) => value ?? 0;
+
+  const valueNative = Number(realEstate?.marketPrice) || 0;
+  const valueCurrency = realEstate?.marketPriceCurrency || 'CZK';
+  const value = now(realEstate?.marketPrice, realEstate?.marketPriceCurrency);
+  const purchaseNative = Number(realEstate?.purchasePrice) || 0;
+  const purchaseCurrency = realEstate?.purchasePriceCurrency || 'CZK';
+  const purchase = realEstate
+    ? at(
+        realEstate.purchasePrice,
+        realEstate.purchasePriceCurrency,
+        realEstate.purchaseDate ?? realEstate.createdAt
+      )
+    : 0;
+  const appreciation = value !== null && purchase !== null ? value - purchase : null;
+  const rentMonthly = known(now(realEstate?.monthlyRent, realEstate?.monthlyRentCurrency));
+  const rentYear = rentMonthly * 12;
+  const loansTotal = linkedLoans.reduce(
+    (s, l) => s + known(now(l.outstandingBalance, l.currency)),
     0
   );
-  const insuranceYearCzk = linkedInsurances.reduce(
+  const equity = value !== null ? value - loansTotal : null;
+  const ltv = value !== null && value > 0 ? loansTotal / value : 0;
+  const recurringYear = (realEstate?.recurringCosts ?? []).reduce(
+    (s, c) => s + known(now(Number(c.amount) * yearlyFactor(c.frequency), c.currency)),
+    0
+  );
+  const insuranceYear = linkedInsurances.reduce(
     (s, p) =>
       s +
-      czk(
-        annualizeAmount(Number(p.regularPayment) || 0, p.paymentFrequency),
-        p.regularPaymentCurrency
+      known(
+        now(
+          annualizeAmount(Number(p.regularPayment) || 0, p.paymentFrequency),
+          p.regularPaymentCurrency
+        )
       ),
     0
   );
-  const paymentsYearCzk = linkedLoans.reduce(
-    (s, l) => s + czk(Number(l.monthlyPayment) * 12, l.currency),
+  const paymentsYear = linkedLoans.reduce(
+    (s, l) => s + known(now(Number(l.monthlyPayment) * 12, l.currency)),
     0
   );
   // Next 12 payments split by the schedules; a missing schedule falls back to rate × balance
-  const { interestYearCzk, principalYearCzk } = linkedLoans.reduce(
+  const { interestYear, principalYear } = linkedLoans.reduce(
     (acc, loan, i) => {
       const schedule = schedules[i];
       const horizon = today + 365 * DAY;
       if (schedule) {
         const next = schedule.rows.filter((r) => r.dueDay > today && r.dueDay <= horizon);
-        acc.interestYearCzk += czk(
-          next.reduce((s, r) => s + Number(r.interest), 0),
-          loan.currency
+        acc.interestYear += known(
+          now(
+            next.reduce((s, r) => s + Number(r.interest), 0),
+            loan.currency
+          )
         );
-        acc.principalYearCzk += czk(
-          next.reduce((s, r) => s + Number(r.principalPart), 0),
-          loan.currency
+        acc.principalYear += known(
+          now(
+            next.reduce((s, r) => s + Number(r.principalPart), 0),
+            loan.currency
+          )
         );
       } else {
         const interest = (Number(loan.outstandingBalance) * (Number(loan.interestRate) || 0)) / 100;
-        acc.interestYearCzk += czk(interest, loan.currency);
-        acc.principalYearCzk += czk(Number(loan.monthlyPayment) * 12 - interest, loan.currency);
+        acc.interestYear += known(now(interest, loan.currency));
+        acc.principalYear += known(now(Number(loan.monthlyPayment) * 12 - interest, loan.currency));
       }
       return acc;
     },
-    { interestYearCzk: 0, principalYearCzk: 0 }
+    { interestYear: 0, principalYear: 0 }
   );
-  const netIncomeCzk = rentYearCzk - recurringYearCzk - insuranceYearCzk - interestYearCzk;
-  const cashflowCzk = netIncomeCzk - principalYearCzk;
-  const grossYield = valueCzk > 0 ? rentYearCzk / valueCzk : 0;
-  const cashOnCash = equityCzk > 0 ? netIncomeCzk / equityCzk : 0;
-  const oneTimeTotalCzk = oneTimeCosts.reduce((s, c) => s + czk(c.amount, c.currency), 0);
+  const netIncome = rentYear - recurringYear - insuranceYear - interestYear;
+  const cashflow = netIncome - principalYear;
+  const grossYield = value !== null && value > 0 ? rentYear / value : null;
+  const cashOnCash = equity !== null && equity > 0 ? netIncome / equity : 0;
+  /** A one-time cost at the rates of its day. */
+  const costAt = (cost: RealEstateOneTimeCost) => at(cost.amount, cost.currency, cost.date);
+  const oneTimeTotal = oneTimeCosts.reduce((s, c) => s + known(costAt(c)), 0);
   const lastOneTime = oneTimeCosts.reduce<RealEstateOneTimeCost | null>(
     (max, c) => (max === null || c.date > max.date ? c : max),
     null
   );
 
   // ---- valuation trace ----
-  const purchaseDisplay = convert(purchaseCzk, 'CZK', currencyCode);
-  // The purchase is on the trace only when both its day and its price are known.
+  // The purchase is on the trace only when its day, its price and its rate are known.
   const purchaseDay = realEstate?.purchaseDate ?? null;
-  const purchaseKnown = purchaseDay !== null && purchaseDisplay > 0;
-  // One estimate per day (the newest one), in the display currency.
-  const estimates = useMemo(
+  const purchaseKnown = purchaseDay !== null && purchase !== null && purchase > 0;
+  // One estimate per day (the newest one), each at the rates of its own day.
+  const { valuations: estimates, missing: missingEstimates } = useMemo(
     () =>
-      dailyValuations(
-        valuations.map((v) => ({
-          id: v.id,
-          t: v.valuedAt,
-          value: convert(Number(v.value) || 0, (v.currency || 'CZK') as CurrencyCode, currencyCode),
-          createdAt: v.createdAt,
-          note: v.note,
-        }))
+      convertValuations(
+        dailyValuations(
+          valuations.map((v) => ({
+            id: v.id,
+            t: v.valuedAt,
+            value: Number(v.value) || 0,
+            currency: v.currency || 'CZK',
+            createdAt: v.createdAt,
+            note: v.note,
+          }))
+        ),
+        dated.convertAt
       ),
-    [valuations, convert, currencyCode]
+    [valuations, dated.convertAt]
   );
+  for (const code of missingEstimates) missingDated.add(code);
+  // The rates of the purchase, the costs and the estimates load after the page: until then
+  // those amounts are pending, not missing
+  const missing = [...new Set([...missingNow, ...(dated.ready ? missingDated : [])])];
   // The window opens on a UTC day (ADR 0008).
   const windowStart =
     period === 'all' ? undefined : today - (period === '12' ? 365 : 3 * 365) * DAY;
@@ -333,11 +395,13 @@ export default function RealEstateDetail() {
     () =>
       valuationTrace({
         valuations: estimates,
-        purchase: purchaseKnown ? { t: purchaseDay, value: purchaseDisplay } : null,
+        purchase: purchaseKnown ? { t: purchaseDay, value: purchase } : null,
         now: nowSec,
+        // The line ends on today's value (today's rates), like the hero
+        nowValue: value ?? undefined,
         start: windowStart,
       }),
-    [estimates, purchaseKnown, purchaseDay, purchaseDisplay, nowSec, windowStart]
+    [estimates, purchaseKnown, purchaseDay, purchase, value, nowSec, windowStart]
   );
   const events = useMemo<TraceEvent[]>(() => {
     const marks = estimates
@@ -359,12 +423,12 @@ export default function RealEstateDetail() {
             t: purchaseDay,
             type: 'buy',
             kind: 'purchase',
-            value: purchaseDisplay,
+            value: purchase,
           },
           ...marks,
         ]
       : marks;
-  }, [estimates, purchaseKnown, purchaseDay, purchaseDisplay]);
+  }, [estimates, purchaseKnown, purchaseDay, purchase]);
   const eventTip = (cluster: EventCluster<TraceEvent>) => {
     const e = cluster.events[0];
     const label =
@@ -437,10 +501,22 @@ export default function RealEstateDetail() {
     </div>
   );
   const signed = (v: number) =>
-    fmt.money(convert(v, 'CZK', currencyCode as CurrencyCode), currencyCode, {
+    fmt.money(v, currencyCode, {
       signed: true,
       decimals: 0,
     });
+  /** A one-time cost at its day's rates, or native while that day has no rate. */
+  const costText = (cost: RealEstateOneTimeCost) => {
+    const converted = dated.convertAt(Number(cost.amount) || 0, cost.currency || 'CZK', cost.date);
+    return converted !== null
+      ? formatCurrency(converted)
+      : fmt.money(Number(cost.amount) || 0, cost.currency || 'CZK', { decimals: 0 });
+  };
+  /** The purchase price at its day's rates, or native while that day has no rate. */
+  const purchaseText =
+    purchase !== null
+      ? formatCurrency(purchase)
+      : fmt.money(purchaseNative, purchaseCurrency, { decimals: 0 });
   const sub = (text: string) => (
     <small className="mt-[3px] block text-micro font-500 text-ink-4">{text}</small>
   );
@@ -474,14 +550,14 @@ export default function RealEstateDetail() {
           purchaseDay !== null
             ? t('detail.boughtOnFor', {
                 date: fmt.day(purchaseDay),
-                amount: formatCurrency(purchaseCzk),
+                amount: purchaseText,
               })
-            : t('detail.boughtFor', { amount: formatCurrency(purchaseCzk) }),
+            : t('detail.boughtFor', { amount: purchaseText }),
         ]}
         title={realEstate.name}
         description={[
-          rentMonthlyCzk > 0
-            ? t('detail.rented', { rent: formatCurrency(rentMonthlyCzk) })
+          rentMonthly > 0
+            ? t('detail.rented', { rent: formatCurrency(rentMonthly) })
             : t('detail.notRented'),
           mortgageText || null,
         ]
@@ -521,6 +597,7 @@ export default function RealEstateDetail() {
         }
       />
 
+      <ConversionQualityNote quality={{ missingCurrencies: missing }} currency={currencyCode} />
       <HeroCard
         aside={
           <Segmented
@@ -541,21 +618,27 @@ export default function RealEstateDetail() {
                 points={points}
                 height={210}
                 formatValue={(v) => fmt.money(v, currencyCode, { decimals: 0 })}
-                reference={{
-                  value: purchaseDisplay,
-                  label: t('detail.chart.purchase'),
-                  color: 'var(--chart-cost)',
-                }}
+                reference={
+                  purchase !== null
+                    ? {
+                        value: purchase,
+                        label: t('detail.chart.purchase'),
+                        color: 'var(--chart-cost)',
+                      }
+                    : undefined
+                }
                 renderTip={(p) => ({
                   title: fmt.money(p.value, currencyCode, { decimals: 0 }),
                   lines: [
-                    `${fmt.day(p.t)} · ${t('detail.chart.tipValue', {
-                      amount: '',
-                      delta: fmt.money(p.value - purchaseDisplay, currencyCode, {
-                        signed: true,
-                        decimals: 0,
-                      }),
-                    }).replace(/^\s*·\s*/, '')}`,
+                    purchase !== null
+                      ? `${fmt.day(p.t)} · ${t('detail.chart.tipValue', {
+                          amount: '',
+                          delta: fmt.money(p.value - purchase, currencyCode, {
+                            signed: true,
+                            decimals: 0,
+                          }),
+                        }).replace(/^\s*·\s*/, '')}`
+                      : fmt.day(p.t),
                   ],
                 })}
                 events={events}
@@ -578,25 +661,38 @@ export default function RealEstateDetail() {
       >
         <HeroValue
           label={t('detail.heroValue')}
-          value={formatCurrency(valueCzk)}
-          tone={appreciation > 0 ? 'gain' : appreciation < 0 ? 'loss' : 'neutral'}
+          value={<ConvertedMoney value={value} amount={valueNative} currency={valueCurrency} />}
+          tone={
+            appreciation === null
+              ? 'neutral'
+              : appreciation > 0
+                ? 'gain'
+                : appreciation < 0
+                  ? 'loss'
+                  : 'neutral'
+          }
           delta={
-            purchaseCzk > 0 ? `${appreciation >= 0 ? '↗' : '↘'} ${signed(appreciation)}` : undefined
+            appreciation !== null && purchase !== null && purchase > 0
+              ? `${appreciation >= 0 ? '↗' : '↘'} ${signed(appreciation)}`
+              : undefined
           }
           deltaNote={
-            purchaseCzk > 0
-              ? `${fmt.percent(appreciation / purchaseCzk, 1, { signed: true })} ${t('detail.vsPurchase')}`
+            appreciation !== null && purchase !== null && purchase > 0
+              ? `${fmt.percent(appreciation / purchase, 1, { signed: true })} ${t('detail.vsPurchase')}`
               : undefined
           }
         />
         <HeroValue
           compact
           label={t('detail.heroEquity')}
-          value={formatCurrency(equityCzk)}
+          value={equity !== null ? formatCurrency(equity) : '—'}
           deltaNote={
-            loansCzk > 0
+            loansTotal > 0
               ? t('detail.equityNote', {
-                  share: fmt.percent(valueCzk > 0 ? equityCzk / valueCzk : 0, 0),
+                  share: fmt.percent(
+                    value !== null && value > 0 && equity !== null ? equity / value : 0,
+                    0
+                  ),
                   ltv: fmt.percent(ltv, 0),
                 })
               : t('detail.equityNoLoan')
@@ -607,38 +703,41 @@ export default function RealEstateDetail() {
       <Stats className="mt-[17px]">
         <Stat
           label={t('detail.stats.grossYield')}
-          value={rentYearCzk > 0 ? fmt.percent(grossYield, 1) : '—'}
+          value={rentYear > 0 && grossYield !== null ? fmt.percent(grossYield, 1) : '—'}
           note={
-            rentYearCzk > 0
+            rentYear > 0
               ? t('detail.stats.grossYieldNote', {
-                  rent: formatCurrency(rentYearCzk),
-                  purchaseYield: fmt.percent(purchaseCzk > 0 ? rentYearCzk / purchaseCzk : 0, 1),
+                  rent: formatCurrency(rentYear),
+                  purchaseYield: fmt.percent(
+                    purchase !== null && purchase > 0 ? rentYear / purchase : 0,
+                    1
+                  ),
                 })
               : t('detail.stats.noRentNote')
           }
         />
         <Stat
           label={t('detail.stats.cashflow')}
-          value={signed(cashflowCzk)}
-          tone={cashflowCzk > 0 ? 'gain' : cashflowCzk < 0 ? 'loss' : 'neutral'}
+          value={signed(cashflow)}
+          tone={cashflow > 0 ? 'gain' : cashflow < 0 ? 'loss' : 'neutral'}
           noteTone="neutral"
           note={
-            paymentsYearCzk > 0
-              ? t('detail.stats.cashflowNote', { payments: formatCurrency(paymentsYearCzk) })
+            paymentsYear > 0
+              ? t('detail.stats.cashflowNote', { payments: formatCurrency(paymentsYear) })
               : t('detail.stats.cashflowNoLoanNote')
           }
         />
         <Stat
           label={t('detail.stats.principal')}
-          value={principalYearCzk > 0 ? signed(principalYearCzk) : '—'}
-          tone={principalYearCzk > 0 ? 'gain' : 'neutral'}
+          value={principalYear > 0 ? signed(principalYear) : '—'}
+          tone={principalYear > 0 ? 'gain' : 'neutral'}
           noteTone="neutral"
           note={
-            principalYearCzk > 0
-              ? rentYearCzk > 0
+            principalYear > 0
+              ? rentYear > 0
                 ? t('detail.stats.principalNote', {
                     share: fmt.percent(
-                      paymentsYearCzk > 0 ? Math.min(1, rentYearCzk / paymentsYearCzk) : 0,
+                      paymentsYear > 0 ? Math.min(1, rentYear / paymentsYear) : 0,
                       0
                     ),
                   })
@@ -648,10 +747,10 @@ export default function RealEstateDetail() {
         />
         <Stat
           label={t('detail.stats.cashOnCash')}
-          value={equityCzk > 0 && rentYearCzk > 0 ? fmt.percent(cashOnCash, 1) : '—'}
+          value={equity !== null && equity > 0 && rentYear > 0 ? fmt.percent(cashOnCash, 1) : '—'}
           note={t('detail.stats.cashOnCashNote', {
-            income: signed(netIncomeCzk),
-            equity: formatCurrency(equityCzk),
+            income: signed(netIncome),
+            equity: equity !== null ? formatCurrency(equity) : '—',
           })}
         />
       </Stats>
@@ -875,43 +974,43 @@ export default function RealEstateDetail() {
                 </CardHeader>
                 <CardContent>
                   {kv(
-                    t('detail.balance.rent', { amount: formatCurrency(rentMonthlyCzk) }),
-                    signed(rentYearCzk),
-                    rentYearCzk > 0 ? 'gain' : undefined
+                    t('detail.balance.rent', { amount: formatCurrency(rentMonthly) }),
+                    signed(rentYear),
+                    rentYear > 0 ? 'gain' : undefined
                   )}
                   {kv(
                     t('detail.balance.recurring'),
-                    signed(-recurringYearCzk),
-                    recurringYearCzk > 0 ? 'loss' : undefined
+                    signed(-recurringYear),
+                    recurringYear > 0 ? 'loss' : undefined
                   )}
                   {kv(
                     t('detail.balance.insurance'),
-                    signed(-insuranceYearCzk),
-                    insuranceYearCzk > 0 ? 'loss' : undefined
+                    signed(-insuranceYear),
+                    insuranceYear > 0 ? 'loss' : undefined
                   )}
                   {kv(
                     t('detail.balance.interest'),
-                    signed(-interestYearCzk),
-                    interestYearCzk > 0 ? 'loss' : undefined
+                    signed(-interestYear),
+                    interestYear > 0 ? 'loss' : undefined
                   )}
-                  {kv(t('detail.balance.netIncome'), signed(netIncomeCzk), 'total')}
+                  {kv(t('detail.balance.netIncome'), signed(netIncome), 'total')}
                   {kv(
                     t('detail.balance.principal'),
-                    signed(-principalYearCzk),
-                    principalYearCzk > 0 ? 'loss' : undefined
+                    signed(-principalYear),
+                    principalYear > 0 ? 'loss' : undefined
                   )}
-                  {kv(t('detail.balance.cashflow'), signed(cashflowCzk), 'total')}
+                  {kv(t('detail.balance.cashflow'), signed(cashflow), 'total')}
                   <p className="mb-0 mt-3 text-caption leading-[1.5] text-ink-3">
-                    {rentYearCzk === 0 && recurringYearCzk === 0 && paymentsYearCzk === 0
+                    {rentYear === 0 && recurringYear === 0 && paymentsYear === 0
                       ? t('detail.balance.empty')
-                      : cashflowCzk < 0
+                      : cashflow < 0
                         ? t('detail.balance.costs', {
-                            amount: formatCurrency(Math.abs(cashflowCzk) / 12),
-                            income: signed(netIncomeCzk),
+                            amount: formatCurrency(Math.abs(cashflow) / 12),
+                            income: signed(netIncome),
                           })
                         : t('detail.balance.earns', {
-                            amount: formatCurrency(cashflowCzk / 12),
-                            income: signed(netIncomeCzk),
+                            amount: formatCurrency(cashflow / 12),
+                            income: signed(netIncome),
                           })}{' '}
                     <Link
                       href={`/calculators/estate?property=${realEstate.id}`}
@@ -929,11 +1028,11 @@ export default function RealEstateDetail() {
                     {oneTimeCosts.length > 0 && lastOneTime
                       ? t('detail.oneTime.text', {
                           count: oneTimeCosts.length,
-                          total: formatCurrency(oneTimeTotalCzk),
-                          last: `${lastOneTime.name} ${formatCurrency(czk(lastOneTime.amount, lastOneTime.currency))} (${fmt.day(lastOneTime.date)})`,
-                          basis: formatCurrency(purchaseCzk + oneTimeTotalCzk),
+                          total: formatCurrency(oneTimeTotal),
+                          last: `${lastOneTime.name} ${costText(lastOneTime)} (${fmt.day(lastOneTime.date)})`,
+                          basis: formatCurrency(known(purchase) + oneTimeTotal),
                         })
-                      : t('detail.oneTime.none', { basis: formatCurrency(purchaseCzk) })}
+                      : t('detail.oneTime.none', { basis: purchaseText })}
                   </p>
                 </CardContent>
               </Card>
@@ -985,9 +1084,14 @@ export default function RealEstateDetail() {
                         })}
                       </TableCell>
                       <TableCell className="text-right font-650 text-ink num">
-                        {formatCurrency(
-                          czk(Number(cost.amount) * yearlyFactor(cost.frequency), cost.currency)
-                        )}
+                        <ConvertedMoney
+                          value={convert(
+                            Number(cost.amount) * yearlyFactor(cost.frequency),
+                            cost.currency || 'CZK'
+                          )}
+                          amount={Number(cost.amount) * yearlyFactor(cost.frequency)}
+                          currency={cost.currency || 'CZK'}
+                        />
                       </TableCell>
                     </TableRow>
                   ))}
@@ -996,7 +1100,7 @@ export default function RealEstateDetail() {
             )}
             <div className="flex items-center justify-between border-t border-line px-[14px] py-3 text-micro font-500 text-ink-4">
               <span>
-                {t('detail.recurringTable.total', { amount: formatCurrency(recurringYearCzk) })}
+                {t('detail.recurringTable.total', { amount: formatCurrency(recurringYear) })}
               </span>
             </div>
           </Card>
@@ -1037,7 +1141,16 @@ export default function RealEstateDetail() {
                         <TableCell className="font-650 text-ink">{cost.name}</TableCell>
                         <TableCell className="text-ink-3">{cost.description}</TableCell>
                         <TableCell className="text-right font-650 text-ink num">
-                          {formatCurrency(czk(cost.amount, cost.currency))}
+                          <ConvertedMoney
+                            value={dated.convertAt(
+                              Number(cost.amount) || 0,
+                              cost.currency || 'CZK',
+                              cost.date
+                            )}
+                            amount={Number(cost.amount) || 0}
+                            currency={cost.currency || 'CZK'}
+                            pending={!dated.ready}
+                          />
                         </TableCell>
                         <TableCell className="text-right">
                           <div data-row-actions className="inline-flex gap-0.5">
@@ -1071,7 +1184,7 @@ export default function RealEstateDetail() {
             )}
             <div className="flex items-center justify-between border-t border-line px-[14px] py-3 text-micro font-500 text-ink-4">
               <span>
-                {t('detail.oneTime.title')} · {formatCurrency(oneTimeTotalCzk)}
+                {t('detail.oneTime.title')} · {formatCurrency(oneTimeTotal)}
               </span>
             </div>
           </Card>

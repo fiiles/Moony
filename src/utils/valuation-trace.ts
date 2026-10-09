@@ -2,10 +2,12 @@
  * The value trace of a manually priced asset (design system §9, the real estate
  * detail): purchase → every estimate → today, as the points of a line chart.
  *
- * Pure: no clock, no locale, no currency. The caller converts the values to the
- * display currency first and passes `now`. Days are UTC-midnight unix seconds
- * (ADR 0008).
+ * Pure: no clock, no locale. The caller converts the values to the display
+ * currency first (`convertValuations`: every estimate at its own day) and passes
+ * `now`. Days are UTC-midnight unix seconds (ADR 0008).
  */
+
+import type { ConvertAtFn } from '@shared/fx';
 
 const DAY = 86_400;
 
@@ -29,6 +31,11 @@ export interface ValuationTraceInput {
   purchase?: TracePoint | null;
   /** Unix seconds; the line runs up to here. */
   now: number;
+  /**
+   * The value at `now` (the latest estimate at today's rates); defaults to the
+   * last estimate's own value.
+   */
+  nowValue?: number;
   /** Unix seconds; the trace shows nothing earlier than this. */
   start?: number;
 }
@@ -62,6 +69,7 @@ export function valuationTrace({
   valuations,
   purchase,
   now,
+  nowValue,
   start,
 }: ValuationTraceInput): TracePoint[] {
   const days = dailyValuations(valuations);
@@ -84,11 +92,41 @@ export function valuationTrace({
     push(day.t, day.value);
     previous = day.value;
   }
-  push(now, days[days.length - 1].value);
+  push(now, nowValue ?? days[days.length - 1].value);
 
   if (start === undefined) return points;
   const before = points.filter((p) => p.t < start);
   const inside = points.filter((p) => p.t >= start);
   if (before.length === 0 || inside[0]?.t === start) return inside;
   return [{ t: start, value: before[before.length - 1].value }, ...inside];
+}
+
+/** A stored estimate in its own currency. */
+export interface NativeValuation {
+  id: string;
+  /** UTC day the estimate applies to. */
+  t: number;
+  value: number;
+  currency: string;
+  createdAt: number;
+}
+
+/**
+ * Estimates in the display currency, each at the rates of its own day. An estimate whose
+ * day cannot be converted is left off the trace (the line bridges it) and its currency
+ * reported in `missing`. Extra fields of the rows are kept.
+ */
+export function convertValuations<V extends NativeValuation>(
+  valuations: readonly V[],
+  convertAt: ConvertAtFn
+): { valuations: (Omit<V, 'value' | 'currency'> & { value: number })[]; missing: string[] } {
+  const missing = new Set<string>();
+  const out: (Omit<V, 'value' | 'currency'> & { value: number })[] = [];
+  for (const row of valuations) {
+    const { currency, value, ...rest } = row;
+    const converted = value === 0 ? 0 : convertAt(value, currency, row.t);
+    if (converted === null) missing.add(currency);
+    else out.push({ ...rest, value: converted });
+  }
+  return { valuations: out, missing: [...missing] };
 }

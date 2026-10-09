@@ -15,6 +15,8 @@ import {
   isEcbCurrency,
   CURRENCY_CODES,
   ECB_CURRENCY_CODES,
+  FX_SUPPORTED_CODES,
+  isFxSupported,
   CurrencyCode,
 } from './currencies';
 
@@ -22,7 +24,6 @@ const ECB_CODES = [
   'EUR',
   'USD',
   'JPY',
-  'BGN',
   'CZK',
   'DKK',
   'GBP',
@@ -52,6 +53,7 @@ const ECB_CODES = [
   'ZAR',
 ] as const;
 const EXTRA_CODES = [
+  'BGN',
   'AED',
   'SAR',
   'ARS',
@@ -479,5 +481,19 @@ describe('isoMinorUnits', () => {
     expect(isoMinorUnits('CLF')).toBe(4);
     expect(isoMinorUnits('XAU')).toBe(2);
     expect(isoMinorUnits(null)).toBe(2);
+  });
+});
+
+describe('fx supported currencies', () => {
+  it('has 36 codes: 30 quoted + 6 derived', () => {
+    expect(FX_SUPPORTED_CODES).toHaveLength(36);
+  });
+  it('treats pegs and BGN as supported, floating non-ECB codes as unsupported', () => {
+    for (const c of ['AED', 'SAR', 'QAR', 'BHD', 'OMR', 'BGN', 'EUR', 'CZK'])
+      expect(isFxSupported(c)).toBe(true);
+    for (const c of ['KWD', 'UAH', 'VND', 'ARS', 'TWD']) expect(isFxSupported(c)).toBe(false);
+  });
+  it('no longer lists BGN as ECB-quoted', () => {
+    expect(ECB_CURRENCY_CODES).not.toContain('BGN');
   });
 });

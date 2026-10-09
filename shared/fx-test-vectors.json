@@ -1,0 +1,15 @@
+{
+  "quotes": { "reference": "EUR", "units": { "CZK": 25.0, "USD": 1.1, "JPY": 160.0 } },
+  "cases": [
+    { "amount": 100, "from": "EUR", "to": "CZK", "expected": 2500 },
+    { "amount": 2500, "from": "CZK", "to": "EUR", "expected": 100 },
+    { "amount": 110, "from": "USD", "to": "CZK", "expected": 2500 },
+    { "amount": 1, "from": "USD", "to": "AED", "expected": 3.6725 },
+    { "amount": 3.6725, "from": "AED", "to": "SAR", "expected": 3.75 },
+    { "amount": 1, "from": "EUR", "to": "BGN", "expected": 1.95583 },
+    { "amount": 100, "from": "KWD", "to": "EUR", "expected": null },
+    { "amount": 100, "from": "KWD", "to": "KWD", "expected": 100 },
+    { "amount": 100, "from": " usd ", "to": "usd", "expected": 100 },
+    { "amount": 100, "from": "EUR", "to": "PLN", "expected": null }
+  ]
+}

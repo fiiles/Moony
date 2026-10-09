@@ -1,0 +1,42 @@
+{
+  "source": [
+    "AUD",
+    "BRL",
+    "CAD",
+    "CHF",
+    "CNY",
+    "CZK",
+    "DKK",
+    "EUR",
+    "GBP",
+    "HKD",
+    "HUF",
+    "IDR",
+    "ILS",
+    "INR",
+    "ISK",
+    "JPY",
+    "KRW",
+    "MXN",
+    "MYR",
+    "NOK",
+    "NZD",
+    "PHP",
+    "PLN",
+    "RON",
+    "SEK",
+    "SGD",
+    "THB",
+    "TRY",
+    "USD",
+    "ZAR"
+  ],
+  "derived": {
+    "AED": { "anchor": "USD", "unitsPerAnchor": 3.6725 },
+    "SAR": { "anchor": "USD", "unitsPerAnchor": 3.75 },
+    "QAR": { "anchor": "USD", "unitsPerAnchor": 3.64 },
+    "BHD": { "anchor": "USD", "unitsPerAnchor": 0.376 },
+    "OMR": { "anchor": "USD", "unitsPerAnchor": 0.3845 },
+    "BGN": { "anchor": "EUR", "unitsPerAnchor": 1.95583 }
+  }
+}

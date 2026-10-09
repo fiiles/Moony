@@ -1,11 +1,12 @@
 import { z } from 'zod';
 import isoMinorUnitTable from './iso4217-minor-units.json';
+import fxSupportedTable from './fx-supported.json';
 
 /**
  * Every currency the app supports — each is both a position currency and a
- * display currency. The 31 currencies the ECB publishes a daily rate for, plus
- * common currencies it does not (their rates are not updated automatically, see
- * `isEcbCurrency` / `hasKnownRate`). Sorted by code.
+ * display currency. 30 currencies with an ECB rate, 6 derived from a fixed peg
+ * (see `fx-supported.json`), the rest without automatic rates (see
+ * `isFxSupported` / `isEcbCurrency` / `hasKnownRate`). Sorted by code.
  *
  * Symbols, symbol placement and separators come from `Intl` (see
  * `src/lib/format.ts`), names from `currencyName()` — nothing presentational
@@ -89,40 +90,29 @@ export const CURRENCIES = Object.fromEntries(
   CURRENCY_CODES.map((code) => [code, { code, decimals: MINOR_UNITS[code] ?? 2 }])
 ) as Record<CurrencyCode, CurrencyDef>;
 
+const isCurrencyCode = (code: string): code is CurrencyCode =>
+  (CURRENCY_CODES as readonly string[]).includes(code);
+
+/** Codes quoted directly in `fx-supported.json` (the ECB publishes a daily rate for them). */
+export const FX_SOURCE_CODES: readonly string[] = fxSupportedTable.source;
+
+/** Codes derived from a fixed peg to an anchor in `fx-supported.json` (computed at read time only). */
+export const FX_DERIVED_CODES: readonly string[] = Object.keys(fxSupportedTable.derived);
+
+/** Source ∪ derived codes, restricted to `CURRENCY_CODES`, sorted. */
+export const FX_SUPPORTED_CODES: readonly CurrencyCode[] = [...FX_SOURCE_CODES, ...FX_DERIVED_CODES]
+  .filter(isCurrencyCode)
+  .sort();
+
+const FX_SUPPORTED_SET: ReadonlySet<string> = new Set(FX_SUPPORTED_CODES);
+
+/** Whether a currency has a conversion path (quoted or pegged). False for codes without any rate. */
+export function isFxSupported(code: string | null | undefined): boolean {
+  return !!code && FX_SUPPORTED_SET.has(code);
+}
+
 /** Currencies the ECB publishes a daily reference rate for (rates refresh automatically). */
-export const ECB_CURRENCY_CODES: readonly CurrencyCode[] = [
-  'AUD',
-  'BGN',
-  'BRL',
-  'CAD',
-  'CHF',
-  'CNY',
-  'CZK',
-  'DKK',
-  'EUR',
-  'GBP',
-  'HKD',
-  'HUF',
-  'IDR',
-  'ILS',
-  'INR',
-  'ISK',
-  'JPY',
-  'KRW',
-  'MXN',
-  'MYR',
-  'NOK',
-  'NZD',
-  'PHP',
-  'PLN',
-  'RON',
-  'SEK',
-  'SGD',
-  'THB',
-  'TRY',
-  'USD',
-  'ZAR',
-];
+export const ECB_CURRENCY_CODES: readonly CurrencyCode[] = FX_SOURCE_CODES.filter(isCurrencyCode);
 
 /** Whether the ECB publishes a rate for this currency (false for AED, SAR, ...: no automatic rate). */
 export function isEcbCurrency(code: string | null | undefined): boolean {

@@ -147,15 +147,7 @@ mod tests {
             );
             CREATE TABLE portfolio_metrics_history (
                 id TEXT PRIMARY KEY,
-                total_savings TEXT NOT NULL,
-                total_loans_principal TEXT NOT NULL,
-                total_investments TEXT NOT NULL,
-                total_crypto TEXT NOT NULL DEFAULT '0',
-                total_bonds TEXT NOT NULL,
-                total_real_estate_personal TEXT NOT NULL,
-                total_real_estate_investment TEXT NOT NULL,
                 recorded_at INTEGER NOT NULL DEFAULT (unixepoch()),
-                total_other_assets TEXT NOT NULL DEFAULT '0',
                 is_stale INTEGER NOT NULL DEFAULT 0,
                 investments_by_currency TEXT NOT NULL DEFAULT '{}',
                 crypto_by_currency TEXT NOT NULL DEFAULT '{}',
@@ -164,7 +156,8 @@ mod tests {
                 real_estate_by_currency TEXT NOT NULL DEFAULT '{}',
                 loans_by_currency TEXT NOT NULL DEFAULT '{}',
                 other_assets_by_currency TEXT NOT NULL DEFAULT '{}',
-                source TEXT NOT NULL DEFAULT 'live'
+                source TEXT NOT NULL DEFAULT 'live',
+                real_estate_personal_by_currency TEXT NOT NULL DEFAULT '{}'
             );
             CREATE TABLE bank_accounts (
                 id TEXT PRIMARY KEY,
@@ -353,14 +346,13 @@ mod tests {
 
     const DAY: i64 = 86_400;
 
+    /// A CZK snapshot day: `savings_czk` CZK of savings and 1 200 CZK of loans.
     fn add_snapshot(conn: &Connection, id: &str, day: i64, savings_czk: &str) {
         conn.execute(
             "INSERT INTO portfolio_metrics_history
-                (id, total_savings, total_loans_principal, total_investments, total_crypto,
-                 total_bonds, total_real_estate_personal, total_real_estate_investment,
-                 recorded_at, total_other_assets)
-             VALUES (?1, ?2, '1200', '0', '0', '0', '0', '0', ?3, '0')",
-            rusqlite::params![id, savings_czk, day],
+                (id, recorded_at, savings_by_currency, loans_by_currency)
+             VALUES (?1, ?2, json_object('CZK', CAST(?3 AS REAL)), '{\"CZK\":1200}')",
+            rusqlite::params![id, day, savings_czk],
         )
         .expect("snapshot");
     }
@@ -379,8 +371,7 @@ mod tests {
         let conn = setup_db("EUR");
         add_day_rate(&conn, 100 * DAY, "CZK", 24.0);
         add_day_rate(&conn, 101 * DAY, "CZK", 26.0);
-        // Legacy rows (CZK totals, no breakdowns): the same CZK total on both days, only the
-        // day's rate differs.
+        // The same CZK amounts on both days, only the day's rate differs.
         add_snapshot(&conn, "s1", 100 * DAY, "2400");
         add_snapshot(&conn, "s2", 101 * DAY, "2400");
 
@@ -407,11 +398,8 @@ mod tests {
         add_day_rate(&conn, 100 * DAY, "USD", 1.25);
         conn.execute(
             "INSERT INTO portfolio_metrics_history
-                (id, total_savings, total_loans_principal, total_investments, total_crypto,
-                 total_bonds, total_real_estate_personal, total_real_estate_investment,
-                 recorded_at, savings_by_currency, investments_by_currency)
-             VALUES ('s1', '0', '0', '0', '0', '0', '0', '0', ?1, '{\"EUR\":100}',
-                     '{\"USD\":50,\"KWD\":7}')",
+                (id, recorded_at, savings_by_currency, investments_by_currency)
+             VALUES ('s1', ?1, '{\"EUR\":100}', '{\"USD\":50,\"KWD\":7}')",
             [100 * DAY],
         )
         .expect("snapshot");
@@ -439,7 +427,7 @@ mod tests {
     }
 
     #[test]
-    fn portfolio_history_in_czk_rounds_the_stored_czk_total() {
+    fn portfolio_history_in_czk_rounds_the_stored_czk_amount() {
         let conn = setup_db("CZK");
         add_snapshot(&conn, "s1", 100 * DAY, "2400.126");
 

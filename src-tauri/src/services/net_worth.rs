@@ -5,8 +5,9 @@
 //! breakdowns with one quote snapshot; the history converts each stored row's breakdowns at
 //! that row's day (common-day rule, `fx::History::convert_on`). An amount that cannot be
 //! converted is left out of every sum and recorded in the response's quality; a class is
-//! `None` only when nothing in it converts. The snapshot writer (`portfolio_history`) still
-//! stores CZK totals next to the breakdowns; they are read here only for legacy rows.
+//! `None` only when nothing in it converts. Stored rows hold native breakdowns only
+//! (`portfolio_history`); personal real estate has its own breakdown and investment real estate
+//! is the combined one minus it, per currency.
 
 use std::collections::HashMap;
 
@@ -19,7 +20,7 @@ use crate::services::currency::breakdown_from_json;
 use crate::services::fx::{self, History, Quality, Quotes};
 use crate::services::loan_amortization::today_utc_day;
 use crate::services::parsing::parse_money;
-use crate::services::portfolio_history::ClassBreakdowns;
+use crate::services::portfolio_history::{investment_real_estate, ClassBreakdowns};
 use crate::services::positions::{native_value_breakdown, AssetKind};
 use crate::services::reporting::{money_in_currency, normalize_currency};
 
@@ -344,116 +345,46 @@ pub fn metrics_report(
     })
 }
 
-/// One `portfolio_metrics_history` row as stored: native breakdown JSON per class plus the
-/// CZK totals (read only for legacy rows and the real estate split).
+/// One `portfolio_metrics_history` row as stored: the native breakdown JSON of every class.
 struct StoredRow {
     recorded_at: i64,
     source: String,
     is_stale: bool,
-    /// Savings, loans, investments, crypto, bonds, other assets: `(breakdown JSON, CZK total)`.
-    classes: [(String, f64); 6],
+    /// Savings, loans, investments, crypto, bonds, other assets.
+    classes: [String; 6],
+    /// Every property (personal and investment) combined.
     real_estate: String,
-    real_estate_personal_czk: f64,
-    real_estate_investment_czk: f64,
+    real_estate_personal: String,
 }
 
 fn stored_rows(conn: &Connection, from: Option<i64>, to: Option<i64>) -> Result<Vec<StoredRow>> {
-    let czk = |column: &str| format!("COALESCE(CAST({column} AS REAL), 0)");
-    let sql = format!(
+    let mut stmt = conn.prepare(
         "SELECT recorded_at, source, is_stale,
-                savings_by_currency, {}, loans_by_currency, {}, investments_by_currency, {},
-                crypto_by_currency, {}, bonds_by_currency, {}, other_assets_by_currency, {},
-                real_estate_by_currency, {}, {}
+                savings_by_currency, loans_by_currency, investments_by_currency,
+                crypto_by_currency, bonds_by_currency, other_assets_by_currency,
+                real_estate_by_currency, real_estate_personal_by_currency
          FROM portfolio_metrics_history
          WHERE (?1 IS NULL OR recorded_at >= ?1) AND (?2 IS NULL OR recorded_at <= ?2)
          ORDER BY recorded_at ASC",
-        czk("total_savings"),
-        czk("total_loans_principal"),
-        czk("total_investments"),
-        czk("total_crypto"),
-        czk("total_bonds"),
-        czk("total_other_assets"),
-        czk("total_real_estate_personal"),
-        czk("total_real_estate_investment"),
-    );
-    let mut stmt = conn.prepare(&sql)?;
+    )?;
     let rows = stmt.query_map(params![from, to], |row| {
-        let class =
-            |i: usize| -> rusqlite::Result<(String, f64)> { Ok((row.get(i)?, row.get(i + 1)?)) };
         Ok(StoredRow {
             recorded_at: row.get(0)?,
             source: row.get(1)?,
             is_stale: row.get::<_, i64>(2)? != 0,
             classes: [
-                class(3)?,
-                class(5)?,
-                class(7)?,
-                class(9)?,
-                class(11)?,
-                class(13)?,
+                row.get(3)?,
+                row.get(4)?,
+                row.get(5)?,
+                row.get(6)?,
+                row.get(7)?,
+                row.get(8)?,
             ],
-            real_estate: row.get(15)?,
-            real_estate_personal_czk: row.get(16)?,
-            real_estate_investment_czk: row.get(17)?,
+            real_estate: row.get(9)?,
+            real_estate_personal: row.get(10)?,
         })
     })?;
     Ok(rows.collect::<rusqlite::Result<Vec<_>>>()?)
-}
-
-/// A class of a stored row: its native breakdown, or — for a legacy row whose breakdown is
-/// empty while its CZK total is not — that CZK total (phase-2 compatibility; Task 24 removes it).
-fn stored_class(
-    breakdown: &HashMap<String, f64>,
-    czk_total: f64,
-    convert: &mut impl FnMut(f64, &str) -> Option<f64>,
-) -> Option<f64> {
-    if breakdown.is_empty() && czk_total != 0.0 {
-        return convert(czk_total, "CZK");
-    }
-    sum_converted(breakdown, convert)
-}
-
-/// Personal and investment real estate of a stored row. The stored breakdown combines both;
-/// the split survives only in the row's CZK totals, so the converted combined value is
-/// prorated by `personal / (personal + investment)` of those totals. Without a usable ratio
-/// (both totals zero, e.g. no CZK quote when the row was written) everything counts as
-/// investment. Task 24 stores the personal breakdown natively and drops this.
-fn stored_real_estate(
-    row: &StoredRow,
-    convert: &mut impl FnMut(f64, &str) -> Option<f64>,
-) -> (Option<f64>, Option<f64>) {
-    let (personal_czk, investment_czk) =
-        (row.real_estate_personal_czk, row.real_estate_investment_czk);
-    let combined = breakdown_from_json(&row.real_estate);
-    if combined.is_empty() {
-        let empty = HashMap::new();
-        return (
-            stored_class(&empty, personal_czk, convert),
-            stored_class(&empty, investment_czk, convert),
-        );
-    }
-    let Some(value) = sum_converted(&combined, convert) else {
-        return (None, None);
-    };
-    let total_czk = personal_czk + investment_czk;
-    if personal_czk >= 0.0 && investment_czk >= 0.0 && total_czk > 0.0 && total_czk.is_finite() {
-        (
-            Some(value * personal_czk / total_czk),
-            Some(value * investment_czk / total_czk),
-        )
-    } else {
-        (Some(0.0), Some(value))
-    }
-}
-
-/// Whether a stored class holds any amount: a non-zero native entry, or — for a legacy row
-/// without a breakdown — a non-zero CZK total.
-fn stored_class_has_amount(breakdown: &HashMap<String, f64>, czk_total: f64) -> bool {
-    if breakdown.is_empty() {
-        czk_total != 0.0
-    } else {
-        breakdown.values().any(|v| *v != 0.0)
-    }
 }
 
 fn history_point(
@@ -461,27 +392,21 @@ fn history_point(
     mut convert: impl FnMut(f64, &str) -> Option<f64>,
 ) -> HistoryPoint {
     let mut parts: Vec<(Option<f64>, bool)> = Vec::new();
-    let mut class = |i: usize| {
-        let (json, czk_total) = &row.classes[i];
-        let breakdown = breakdown_from_json(json);
-        let total = stored_class(&breakdown, *czk_total, &mut convert);
-        parts.push((total, stored_class_has_amount(&breakdown, *czk_total)));
+    let mut class = |breakdown: &HashMap<String, f64>| {
+        let total = sum_converted(breakdown, &mut convert);
+        parts.push((total, breakdown.values().any(|v| *v != 0.0)));
         total
     };
-    let (savings, loans, investments, crypto, bonds, other_assets) =
-        (class(0), class(1), class(2), class(3), class(4), class(5));
+    let [savings, loans, investments, crypto, bonds, other_assets] = row
+        .classes
+        .each_ref()
+        .map(|json| class(&breakdown_from_json(json)));
+    let personal = breakdown_from_json(&row.real_estate_personal);
+    let investment = investment_real_estate(&breakdown_from_json(&row.real_estate), &personal);
+    let real_estate_personal = class(&personal);
+    let real_estate_investment = class(&investment);
     // The loans are the liabilities; every other part is an asset
     let liabilities = [parts.remove(1)];
-    let (real_estate_personal, real_estate_investment) = stored_real_estate(row, &mut convert);
-    let combined = breakdown_from_json(&row.real_estate);
-    parts.push((
-        real_estate_personal,
-        stored_class_has_amount(&combined, row.real_estate_personal_czk),
-    ));
-    parts.push((
-        real_estate_investment,
-        stored_class_has_amount(&combined, row.real_estate_investment_czk),
-    ));
     let classes = ClassTotals {
         savings,
         investments,
@@ -587,15 +512,7 @@ mod tests {
             r#"
             CREATE TABLE portfolio_metrics_history (
                 id TEXT PRIMARY KEY,
-                total_savings TEXT NOT NULL DEFAULT '0',
-                total_loans_principal TEXT NOT NULL DEFAULT '0',
-                total_investments TEXT NOT NULL DEFAULT '0',
-                total_crypto TEXT NOT NULL DEFAULT '0',
-                total_bonds TEXT NOT NULL DEFAULT '0',
-                total_real_estate_personal TEXT NOT NULL DEFAULT '0',
-                total_real_estate_investment TEXT NOT NULL DEFAULT '0',
                 recorded_at INTEGER NOT NULL,
-                total_other_assets TEXT NOT NULL DEFAULT '0',
                 is_stale INTEGER NOT NULL DEFAULT 0,
                 investments_by_currency TEXT NOT NULL DEFAULT '{}',
                 crypto_by_currency TEXT NOT NULL DEFAULT '{}',
@@ -604,7 +521,8 @@ mod tests {
                 real_estate_by_currency TEXT NOT NULL DEFAULT '{}',
                 loans_by_currency TEXT NOT NULL DEFAULT '{}',
                 other_assets_by_currency TEXT NOT NULL DEFAULT '{}',
-                source TEXT NOT NULL DEFAULT 'live'
+                source TEXT NOT NULL DEFAULT 'live',
+                real_estate_personal_by_currency TEXT NOT NULL DEFAULT '{}'
             );
             CREATE TABLE exchange_rate_history (
                 date INTEGER NOT NULL,
@@ -742,36 +660,48 @@ mod tests {
     }
 
     #[test]
-    fn a_legacy_row_without_breakdown_converts_its_czk_total_at_its_day() {
+    fn personal_real_estate_comes_from_its_own_native_breakdown() {
         let conn = setup_db();
-        add_rate(&conn, D, "CZK", 25.0);
-        add_row(&conn, D, &[("total_savings", "2500")]);
-
-        let (points, quality) = history_in(&conn, "EUR", None, None).expect("history");
-
-        approx(points[0].classes.savings, 100.0);
-        assert!(quality.is_complete());
-    }
-
-    #[test]
-    fn real_estate_splits_by_the_rows_czk_ratio() {
-        let conn = setup_db();
-        add_rate(&conn, D, "CZK", 25.0);
         add_row(
             &conn,
             D,
             &[
                 ("real_estate_by_currency", r#"{"EUR":300}"#),
-                ("total_real_estate_personal", "5000"),
-                ("total_real_estate_investment", "2500"),
+                ("real_estate_personal_by_currency", r#"{"EUR":100}"#),
+            ],
+        );
+
+        let (points, quality) = history_in(&conn, "EUR", None, None).expect("history");
+
+        let classes = points[0].classes;
+        approx(classes.real_estate_personal, 100.0);
+        approx(classes.real_estate_investment, 200.0);
+        // Excluding personal real estate subtracts it natively: no rate involved.
+        approx(classes.real_estate(true), 200.0);
+        approx(classes.real_estate(false), 300.0);
+        approx(points[0].net_worth, 300.0);
+        assert!(quality.is_complete());
+    }
+
+    #[test]
+    fn a_mixed_currency_real_estate_split_converts_each_part_at_the_rows_day() {
+        let conn = setup_db();
+        // 1 EUR = 25 CZK
+        add_rate(&conn, D, "CZK", 25.0);
+        add_row(
+            &conn,
+            D,
+            &[
+                ("real_estate_by_currency", r#"{"EUR":300,"CZK":5000}"#),
+                ("real_estate_personal_by_currency", r#"{"CZK":5000}"#),
             ],
         );
 
         let (points, _) = history_in(&conn, "EUR", None, None).expect("history");
 
         approx(points[0].classes.real_estate_personal, 200.0);
-        approx(points[0].classes.real_estate_investment, 100.0);
-        approx(points[0].net_worth, 300.0);
+        approx(points[0].classes.real_estate_investment, 300.0);
+        approx(points[0].classes.real_estate(true), 300.0);
     }
 
     #[test]

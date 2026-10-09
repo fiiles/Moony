@@ -542,16 +542,13 @@ mod tests {
             for offset in 0..3 {
                 let day = first + offset * DAY;
                 conn.execute(
-                    "INSERT INTO stock_value_history (id, ticker, recorded_at, value_czk, quantity, price, currency)
-                     VALUES (?1, 'GONE', ?2, '500', '2', '25', 'USD')",
+                    "INSERT INTO stock_value_history (id, ticker, recorded_at, quantity, price, currency)
+                     VALUES (?1, 'GONE', ?2, '2', '25', 'USD')",
                     rusqlite::params![format!("h{offset}"), day],
                 )?;
                 conn.execute(
-                    "INSERT INTO portfolio_metrics_history
-                     (id, total_savings, total_loans_principal, total_investments, total_bonds,
-                      total_real_estate_personal, total_real_estate_investment, recorded_at,
-                      investments_by_currency, source)
-                     VALUES (?1, '0', '0', '500', '0', '0', '0', ?2, '{\"USD\":50}', 'backfill')",
+                    "INSERT INTO portfolio_metrics_history (id, recorded_at, investments_by_currency, source)
+                     VALUES (?1, ?2, '{\"USD\":50}', 'backfill')",
                     rusqlite::params![format!("p{offset}"), day],
                 )?;
             }
@@ -614,18 +611,14 @@ mod tests {
                 r#"
                 CREATE TABLE investment_transactions (id TEXT PRIMARY KEY, type TEXT NOT NULL, ticker TEXT NOT NULL, quantity TEXT NOT NULL, transaction_date INTEGER NOT NULL);
                 CREATE TABLE stock_value_history (id TEXT PRIMARY KEY, ticker TEXT NOT NULL, recorded_at INTEGER NOT NULL, quantity TEXT NOT NULL, price TEXT NOT NULL, currency TEXT NOT NULL, UNIQUE(ticker, recorded_at));
-                CREATE TABLE exchange_rate_history (date INTEGER NOT NULL, currency TEXT NOT NULL, rate REAL NOT NULL, PRIMARY KEY (date, currency));
                 CREATE TABLE portfolio_metrics_history (
-                    id TEXT PRIMARY KEY, total_savings TEXT NOT NULL DEFAULT '0', total_loans_principal TEXT NOT NULL DEFAULT '0',
-                    total_investments TEXT NOT NULL DEFAULT '0', total_crypto TEXT NOT NULL DEFAULT '0', total_bonds TEXT NOT NULL DEFAULT '0',
-                    total_real_estate_personal TEXT NOT NULL DEFAULT '0', total_real_estate_investment TEXT NOT NULL DEFAULT '0',
-                    total_other_assets TEXT NOT NULL DEFAULT '0', recorded_at INTEGER NOT NULL,
+                    id TEXT PRIMARY KEY, recorded_at INTEGER NOT NULL,
                     investments_by_currency TEXT NOT NULL DEFAULT '{}', crypto_by_currency TEXT NOT NULL DEFAULT '{}',
                     savings_by_currency TEXT NOT NULL DEFAULT '{}', bonds_by_currency TEXT NOT NULL DEFAULT '{}',
                     real_estate_by_currency TEXT NOT NULL DEFAULT '{}', loans_by_currency TEXT NOT NULL DEFAULT '{}',
-                    other_assets_by_currency TEXT NOT NULL DEFAULT '{}', source TEXT NOT NULL DEFAULT 'backfill'
+                    other_assets_by_currency TEXT NOT NULL DEFAULT '{}', source TEXT NOT NULL DEFAULT 'backfill',
+                    real_estate_personal_by_currency TEXT NOT NULL DEFAULT '{}'
                 );
-                INSERT INTO exchange_rate_history VALUES (19990 * 86400, 'CZK', 25.0), (19990 * 86400, 'USD', 1.25);
                 INSERT INTO investment_transactions VALUES ('t1', 'buy', 'AAPL', '3', 20010 * 86400);
                 "#,
             )

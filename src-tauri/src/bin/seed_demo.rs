@@ -696,12 +696,12 @@ fn seed_portfolio_history(db: &Database, now: i64, rng: &mut Rng) {
             let growth = |from: f64, to: f64| from + (to - from) * progress;
 
             let savings = growth(392_000.0, 486_000.0) + rng.range(-4_000.0, 4_000.0);
-            let investments = growth(298_000.0, 405_000.0) * (1.0 + 0.03 * (day as f64 / 17.0).sin());
+            let investments =
+                growth(298_000.0, 405_000.0) * (1.0 + 0.03 * (day as f64 / 17.0).sin());
             let crypto = growth(212_000.0, 268_000.0) * (1.0 + 0.09 * (day as f64 / 11.0).sin());
             let bonds = 150_000.0;
             let re_personal = growth(8_150_000.0, 8_400_000.0);
             let re_investment = growth(4_700_000.0, 4_850_000.0);
-            let other = 0.0;
             let loans = growth(4_410_000.0, 4_320_000.0);
 
             let usd_rate = 23.45;
@@ -715,29 +715,20 @@ fn seed_portfolio_history(db: &Database, now: i64, rng: &mut Rng) {
 
             conn.execute(
                 "INSERT INTO portfolio_metrics_history
-                 (id, total_savings, total_loans_principal, total_investments, total_crypto,
-                  total_bonds, total_real_estate_personal, total_real_estate_investment,
-                  total_other_assets, recorded_at,
+                 (id, recorded_at,
                   investments_by_currency, crypto_by_currency, savings_by_currency,
-                  bonds_by_currency, real_estate_by_currency, loans_by_currency,
-                  other_assets_by_currency)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17)",
+                  bonds_by_currency, real_estate_by_currency, real_estate_personal_by_currency,
+                  loans_by_currency, other_assets_by_currency)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
                 params![
                     Uuid::new_v4().to_string(),
-                    format!("{savings:.2}"),
-                    format!("{loans:.2}"),
-                    format!("{investments:.2}"),
-                    format!("{crypto:.2}"),
-                    format!("{bonds:.2}"),
-                    format!("{re_personal:.2}"),
-                    format!("{re_investment:.2}"),
-                    format!("{other:.2}"),
                     ts,
                     inv_by_cur,
                     crypto_by_cur,
                     savings_by_cur,
-                    "{\"CZK\":150000.00}",
+                    format!("{{\"CZK\":{bonds:.2}}}"),
                     format!("{{\"CZK\":{:.2}}}", re_personal + re_investment),
+                    format!("{{\"CZK\":{re_personal:.2}}}"),
                     format!("{{\"CZK\":{loans:.2}}}"),
                     "{}",
                 ],

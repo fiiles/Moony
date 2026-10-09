@@ -27,10 +27,6 @@ use crate::services::fx;
 const DAY: i64 = 86_400;
 /// The currency every stored rate is quoted against; it never has a row of its own.
 const REFERENCE: &str = fx::REFERENCE;
-/// Transitional bridge, removed in Task 24: the legacy CZK caches (`LegacyCzk` in
-/// `portfolio_history.rs`) convert every amount to CZK, so backfilled days need a CZK quote even
-/// for a profile that holds no CZK.
-const LEGACY_CACHE_CURRENCY: &str = "CZK";
 /// Walk-back window used by rate lookups (`fx::History::convert_on`): the fetch
 /// starts this much before the earliest transaction so weekend/holiday
 /// transactions can resolve to the closest earlier day.
@@ -115,8 +111,7 @@ fn has_column(conn: &Connection, table: &str, column: &str) -> Result<bool> {
 /// transactions, price quotes, properties, policies, budgets, the profile), expressed as a
 /// stored source quote. The reference currency (EUR) needs no rate — CZK is a quote like any
 /// other — a pegged currency is represented by its anchor, and codes without a published source
-/// quote cannot be fetched at all. While anything is held, CZK is held too (see
-/// [`LEGACY_CACHE_CURRENCY`]). Sorted.
+/// quote cannot be fetched at all. Sorted.
 pub fn held_currencies(conn: &Connection) -> Result<Vec<String>> {
     let mut set: BTreeSet<String> = BTreeSet::new();
     for code in data_currencies(conn, CURRENCY_COLUMNS)? {
@@ -126,9 +121,6 @@ pub fn held_currencies(conn: &Connection) -> Result<Vec<String>> {
         };
     }
     set.retain(|code| code != REFERENCE && fx::source_codes().contains(code));
-    if !set.is_empty() {
-        set.insert(LEGACY_CACHE_CURRENCY.to_string());
-    }
     Ok(set.into_iter().collect())
 }
 
@@ -573,11 +565,8 @@ mod tests {
         let conn = setup_db();
         add_bank_tx(&conn, "b1", "gbp", TODAY - 30 * D);
         add_bank_tx(&conn, "b2", "EUR", TODAY - 900 * D);
-        // EUR is the reference; CZK is the legacy-cache bridge.
-        assert_eq!(
-            held_currencies(&conn).expect("currencies"),
-            vec!["CZK", "GBP"]
-        );
+        // EUR is the reference: it needs no rate.
+        assert_eq!(held_currencies(&conn).expect("currencies"), vec!["GBP"]);
     }
 
     #[test]
@@ -637,7 +626,7 @@ mod tests {
         .expect("seed");
         assert_eq!(
             held_currencies(&conn).expect("held"),
-            vec!["CHF", "CZK", "NOK", "PLN", "SEK", "USD"]
+            vec!["CHF", "NOK", "PLN", "SEK", "USD"]
         );
     }
 
@@ -648,7 +637,7 @@ mod tests {
         add_rate(&conn, TODAY - 5 * D, "USD");
         add_rate(&conn, TODAY, "USD");
 
-        assert_eq!(held_currencies(&conn).expect("held"), vec!["CZK", "USD"]);
+        assert_eq!(held_currencies(&conn).expect("held"), vec!["USD"]);
         assert_eq!(
             missing_fx_ranges(&conn, TODAY).expect("ranges"),
             vec![(TODAY - 310 * D, TODAY - 5 * D)]
@@ -907,11 +896,11 @@ mod tests {
     }
 
     #[test]
-    fn czk_is_held_while_the_legacy_czk_caches_exist() {
+    fn czk_is_held_only_when_something_is_in_czk() {
         let conn = setup_db();
         add_bank_tx(&conn, "b1", "USD", TODAY - 30 * D);
 
-        assert_eq!(held_currencies(&conn).expect("held"), vec!["CZK", "USD"]);
+        assert_eq!(held_currencies(&conn).expect("held"), vec!["USD"]);
     }
 
     #[test]

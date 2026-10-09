@@ -7,7 +7,7 @@ use crate::services::loan_amortization::today_utc_day;
 use crate::services::net_worth;
 use crate::services::parsing::parse_money;
 use crate::services::portfolio_history::{
-    self, AssetClassKind, ClassBreakdowns, LegacyCzk, SnapshotSource, StaticBreakdowns,
+    self, AssetClassKind, ClassBreakdowns, SnapshotSource, StaticBreakdowns,
 };
 use crate::services::positions::{self, AssetKind};
 use serde::Serialize;
@@ -49,8 +49,6 @@ fn record_todays_ticker_values(db: &Database) -> Result<()> {
         .and_utc()
         .timestamp();
 
-    // The value_czk cache column at today's quotes (excluded without a quote).
-    let czk = LegacyCzk::current();
     db.with_conn(|conn| {
         // Record stock values, at the quantity the positions value (one quantity rule)
         for (ticker, qty) in positions::held_quantities(conn, AssetKind::Stock)? {
@@ -63,14 +61,12 @@ fn record_todays_ticker_values(db: &Database) -> Result<()> {
                 if price <= 0.0 {
                     continue;
                 }
-                let value_czk = czk.now(resolved.price, &resolved.currency) * qty;
                 let id = Uuid::new_v4().to_string();
 
                 conn.execute(
-                    "INSERT INTO stock_value_history (id, ticker, recorded_at, value_czk, quantity, price, currency)
-                     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+                    "INSERT INTO stock_value_history (id, ticker, recorded_at, quantity, price, currency)
+                     VALUES (?1, ?2, ?3, ?4, ?5, ?6)
                      ON CONFLICT(ticker, recorded_at) DO UPDATE SET
-                         value_czk = excluded.value_czk,
                          quantity = excluded.quantity,
                          price = excluded.price,
                          currency = excluded.currency",
@@ -78,7 +74,6 @@ fn record_todays_ticker_values(db: &Database) -> Result<()> {
                         id,
                         ticker,
                         today_start,
-                        value_czk.to_string(),
                         qty.to_string(),
                         price.to_string(),
                         resolved.currency,
@@ -98,14 +93,12 @@ fn record_todays_ticker_values(db: &Database) -> Result<()> {
                 if price <= 0.0 {
                     continue;
                 }
-                let value_czk = czk.now(resolved.price, &resolved.currency) * qty;
                 let id = Uuid::new_v4().to_string();
 
                 conn.execute(
-                    "INSERT INTO crypto_value_history (id, ticker, recorded_at, value_czk, quantity, price, currency)
-                     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+                    "INSERT INTO crypto_value_history (id, ticker, recorded_at, quantity, price, currency)
+                     VALUES (?1, ?2, ?3, ?4, ?5, ?6)
                      ON CONFLICT(ticker, recorded_at) DO UPDATE SET
-                         value_czk = excluded.value_czk,
                          quantity = excluded.quantity,
                          price = excluded.price,
                          currency = excluded.currency",
@@ -113,7 +106,6 @@ fn record_todays_ticker_values(db: &Database) -> Result<()> {
                         id,
                         ticker,
                         today_start,
-                        value_czk.to_string(),
                         qty.to_string(),
                         price.to_string(),
                         resolved.currency,
@@ -527,8 +519,8 @@ fn current_static_breakdowns(conn: &rusqlite::Connection) -> Result<StaticBreakd
 /// Native breakdowns for a reconstructed (gap-backfilled) day: stocks/crypto
 /// from historical prices (look-back only, the last known price carried
 /// forward), static classes carried forward from the nearest earlier live
-/// snapshot (current tables when none). CZK totals are derived later by the
-/// single writer.
+/// snapshot (current tables when none). The single writer stores them as they
+/// are.
 ///
 /// Returns `None` when a held position has no known price on that day
 ///: the day is left unvalued, to be retried by a later run, instead
@@ -701,7 +693,7 @@ pub async fn backfill_missing_snapshots(db: &Database) -> Result<BackfillResult>
 
     for day_timestamp in missing_days.clone() {
         // Reconstruct native breakdowns for this day; the single writer
-        // derives the CZK totals at the day's rates and stamps provenance.
+        // stores them and stamps provenance.
         let Some(breakdowns) =
             breakdowns_for_backfill_day(db, day_timestamp, &stock_prices, &crypto_prices)?
         else {
@@ -733,17 +725,6 @@ pub async fn backfill_missing_snapshots(db: &Database) -> Result<BackfillResult>
     // Also populate per-ticker history tables
     log::info!("[BACKFILL] Populating per-ticker history tables...");
 
-    // Each day's value_czk cache converts at that day's rates (FX timeseries) —
-    // one load for the whole missing span. A day before the rate history uses the
-    // current quotes (legacy cache behaviour, see `LegacyCzk::on_or_now`).
-    let czk = {
-        let first = missing_days.first().copied().unwrap_or(0);
-        let last = missing_days.last().copied().unwrap_or(0);
-        db.with_conn(|conn| LegacyCzk::dated(conn, first, last))?
-    };
-    let czk_value_at =
-        |amount: f64, currency: &str, day: i64| -> f64 { czk.on_or_now(amount, currency, day) };
-
     // Populate stock_value_history
     for ticker in &stock_tickers {
         db.with_conn(|conn| {
@@ -764,14 +745,12 @@ pub async fn backfill_missing_snapshots(db: &Database) -> Result<BackfillResult>
                     continue;
                 };
 
-                let value_czk = czk_value_at(quantity * price, &currency, *day_timestamp);
                 let id = Uuid::new_v4().to_string();
 
                 conn.execute(
-                    "INSERT INTO stock_value_history (id, ticker, recorded_at, value_czk, quantity, price, currency)
-                     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+                    "INSERT INTO stock_value_history (id, ticker, recorded_at, quantity, price, currency)
+                     VALUES (?1, ?2, ?3, ?4, ?5, ?6)
                      ON CONFLICT(ticker, recorded_at) DO UPDATE SET
-                         value_czk = excluded.value_czk,
                          quantity = excluded.quantity,
                          price = excluded.price,
                          currency = excluded.currency",
@@ -779,7 +758,6 @@ pub async fn backfill_missing_snapshots(db: &Database) -> Result<BackfillResult>
                         id,
                         ticker,
                         day_timestamp,
-                        value_czk.to_string(),
                         quantity.to_string(),
                         price.to_string(),
                         currency,
@@ -810,14 +788,12 @@ pub async fn backfill_missing_snapshots(db: &Database) -> Result<BackfillResult>
                     continue;
                 };
 
-                let value_czk = czk_value_at(quantity * price, &currency, *day_timestamp);
                 let id = Uuid::new_v4().to_string();
 
                 conn.execute(
-                    "INSERT INTO crypto_value_history (id, ticker, recorded_at, value_czk, quantity, price, currency)
-                     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+                    "INSERT INTO crypto_value_history (id, ticker, recorded_at, quantity, price, currency)
+                     VALUES (?1, ?2, ?3, ?4, ?5, ?6)
                      ON CONFLICT(ticker, recorded_at) DO UPDATE SET
-                         value_czk = excluded.value_czk,
                          quantity = excluded.quantity,
                          price = excluded.price,
                          currency = excluded.currency",
@@ -825,7 +801,6 @@ pub async fn backfill_missing_snapshots(db: &Database) -> Result<BackfillResult>
                         id,
                         ticker,
                         day_timestamp,
-                        value_czk.to_string(),
                         quantity.to_string(),
                         price.to_string(),
                         currency,
@@ -1139,7 +1114,7 @@ type CurrencyBreakdown = HashMap<String, f64>;
 
 /// Native breakdowns of the transaction-driven classes for a specific day:
 /// quantities from the transaction ledgers at that date, prices from the
-/// prefetched historical price maps. CZK totals are derived by the writer.
+/// prefetched historical price maps.
 fn historical_transaction_breakdowns(
     db: &Database,
     day_timestamp: i64,
@@ -1793,8 +1768,6 @@ pub async fn recalculate_crypto_ticker_history(
     // Calculate and store value for each day
     let ticker_clone = ticker.to_string();
     db.with_conn(move |conn| {
-        // One load of the FX timeseries for the whole span.
-        let czk = LegacyCzk::dated(conn, from_day, today_start)?;
         for day_timestamp in days_to_recalc {
             let quantity = get_crypto_quantity_at_date(conn, &ticker_clone, day_timestamp);
 
@@ -1826,16 +1799,11 @@ pub async fn recalculate_crypto_ticker_history(
                 continue;
             };
 
-            // The value_czk cache at that day's rates (excluded when the FX
-            // timeseries has no quote within the walk-back).
-            let value_czk = czk.on(quantity * price, &currency, day_timestamp);
-
             let id = Uuid::new_v4().to_string();
             conn.execute(
-                "INSERT INTO crypto_value_history (id, ticker, recorded_at, value_czk, quantity, price, currency)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+                "INSERT INTO crypto_value_history (id, ticker, recorded_at, quantity, price, currency)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6)
                  ON CONFLICT(ticker, recorded_at) DO UPDATE SET
-                     value_czk = excluded.value_czk,
                      quantity = excluded.quantity,
                      price = excluded.price,
                      currency = excluded.currency",
@@ -1843,7 +1811,6 @@ pub async fn recalculate_crypto_ticker_history(
                     id,
                     ticker_clone,
                     day_timestamp,
-                    value_czk.to_string(),
                     quantity.to_string(),
                     price.to_string(),
                     currency,

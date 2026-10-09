@@ -1,19 +1,15 @@
 //! Single writer for `portfolio_metrics_history`
 //!
 //! Invariants enforced here and nowhere else:
-//! - I1: native per-currency breakdowns are the canonical daily record.
-//! - I3: CZK totals are a derived cache — computed from the breakdowns at the
-//!   row's rates by this module only. No other code writes history columns.
+//! - I1: native per-currency breakdowns are the only stored record of a day (the CZK totals
+//!   were retired by migration 011). Nothing is converted on write; readers convert per
+//!   response (`services/net_worth.rs`).
+//! - I2: real estate is stored as the combined breakdown (`real_estate_by_currency`) plus its
+//!   personal subset (`real_estate_personal_by_currency`); investment real estate is the
+//!   difference per currency ([`investment_real_estate`]).
 //! - I4: provenance — `source = 'live'` rows are authentic records; a
 //!   `'backfill'` write never overwrites a live row, while a live write
 //!   overwrites anything for its day.
-//!
-//! Rate semantics: live rows convert at the current in-memory quotes (identical
-//! to what `save_rates_to_history_db` stores for today, so the timeseries and
-//! the cache agree); backfill rows convert at their day's quotes from the
-//! timeseries (`fx::History::convert_on`, ≤10-day walk-back; a currency without
-//! a quote for that day is excluded, never valued at current rates). All CZK
-//! cache conversions go through [`LegacyCzk`].
 
 use std::collections::{BTreeMap, HashMap};
 
@@ -21,7 +17,6 @@ use rusqlite::Connection;
 use uuid::Uuid;
 
 use crate::error::Result;
-use crate::services::fx::{self, History, Quotes};
 
 pub const SECONDS_PER_DAY: i64 = 86_400;
 
@@ -44,8 +39,8 @@ impl SnapshotSource {
 }
 
 /// Native per-currency amounts for every asset class of one snapshot day.
-/// Real estate is split so both stored totals can be derived; the stored
-/// `real_estate_by_currency` column is the merge of the two maps.
+/// Real estate is split; the stored `real_estate_by_currency` column is the
+/// merge of the two maps and `real_estate_personal_by_currency` the personal one.
 #[derive(Debug, Clone, Default)]
 pub struct ClassBreakdowns {
     pub savings: HashMap<String, f64>,
@@ -73,85 +68,28 @@ pub fn breakdown_json(map: &HashMap<String, f64>) -> String {
     serde_json::to_string(map).unwrap_or_else(|_| "{}".to_string())
 }
 
-/// The CZK cache columns (`total_*` here, `value_czk` of the per-ticker history) until Task 24
-/// drops them: the one place left that converts to CZK. Every cache writer goes through it;
-/// nothing user-facing reads these columns (outputs convert native amounts per response).
-/// A currency without a quote is excluded (0.0) — never valued 1:1 or at another day's rate.
-pub(crate) struct LegacyCzk {
-    current: Quotes,
-    history: History,
-}
-
-impl LegacyCzk {
-    const CZK: &'static str = "CZK";
-
-    /// The current quote snapshot only (live rows, today's per-ticker values).
-    pub(crate) fn current() -> Self {
-        Self {
-            current: fx::current(),
-            history: History::default(),
-        }
-    }
-
-    /// Stored daily quotes for `[start_day, end_day]` (plus the lookback window) and the current
-    /// snapshot (for [`LegacyCzk::on_or_now`]).
-    pub(crate) fn dated(conn: &Connection, start_day: i64, end_day: i64) -> Result<Self> {
-        Ok(Self {
-            current: fx::current(),
-            history: History::load(conn, start_day, end_day)?,
-        })
-    }
-
-    /// CZK at the current quotes; 0.0 (excluded) without a quote.
-    pub(crate) fn now(&self, amount: f64, currency: &str) -> f64 {
-        self.current
-            .convert(amount, currency, Self::CZK)
-            .unwrap_or(0.0)
-    }
-
-    /// CZK at `day`'s quotes (common-day rule, at most `fx::MAX_LOOKBACK_DAYS` back); 0.0
-    /// (excluded) without a quote.
-    pub(crate) fn on(&self, amount: f64, currency: &str, day: i64) -> f64 {
-        self.history
-            .convert_on(amount, currency, Self::CZK, day)
-            .unwrap_or(0.0)
-    }
-
-    /// Like [`LegacyCzk::on`], but a day without any stored quote within the lookback (before
-    /// the rate history starts) converts at the current quotes — the per-ticker cache's
-    /// historical behaviour, kept until the cache is removed.
-    pub(crate) fn on_or_now(&self, amount: f64, currency: &str, day: i64) -> f64 {
-        let start = day.div_euclid(fx::DAY) * fx::DAY;
-        let has_history = (0..=fx::MAX_LOOKBACK_DAYS).any(|back| {
-            self.history
-                .quotes_on(start - back * fx::DAY)
-                .is_some_and(|quotes| !quotes.is_empty())
-        });
-        if has_history {
-            self.on(amount, currency, day)
-        } else {
-            self.now(amount, currency)
-        }
-    }
-
-    /// Sum of a breakdown in CZK: at `day`'s quotes, or the current ones for `None`.
-    fn total(&self, breakdown: &HashMap<String, f64>, day: Option<i64>) -> f64 {
-        breakdown
-            .iter()
-            .map(|(currency, amount)| match day {
-                Some(day) => self.on(*amount, currency, day),
-                None => self.now(*amount, currency),
-            })
-            .sum()
-    }
-}
-
 fn merged(a: &HashMap<String, f64>, b: &HashMap<String, f64>) -> HashMap<String, f64> {
     let mut out = a.clone();
     for (currency, amount) in b {
         *out.entry(currency.clone()).or_insert(0.0) += amount;
     }
     out
+}
+
+/// Investment real estate of a stored row: the combined breakdown minus its personal subset,
+/// per currency (currencies that net to zero are left out).
+pub fn investment_real_estate(
+    combined: &HashMap<String, f64>,
+    personal: &HashMap<String, f64>,
+) -> HashMap<String, f64> {
+    combined
+        .iter()
+        .map(|(currency, amount)| {
+            let personal = personal.get(currency).copied().unwrap_or(0.0);
+            (currency.clone(), amount - personal)
+        })
+        .filter(|(_, amount)| *amount != 0.0)
+        .collect()
 }
 
 /// Insert or update the snapshot row for `recorded_at`'s day.
@@ -167,15 +105,6 @@ pub fn upsert_snapshot(
     breakdowns: &ClassBreakdowns,
 ) -> Result<()> {
     let day_start = (recorded_at / SECONDS_PER_DAY) * SECONDS_PER_DAY;
-
-    let (czk, rate_day) = match source {
-        SnapshotSource::Live => (LegacyCzk::current(), None),
-        SnapshotSource::Backfill => (
-            LegacyCzk::dated(conn, day_start, day_start)?,
-            Some(day_start),
-        ),
-    };
-    let czk_total = |breakdown: &HashMap<String, f64>| czk.total(breakdown, rate_day);
 
     let real_estate_merged = merged(
         &breakdowns.real_estate_personal,
@@ -196,82 +125,48 @@ pub fn upsert_snapshot(
         SnapshotSource::Backfill => day_start,
     };
 
-    match existing {
+    let id = match existing {
         Some((_, existing_source))
             if source == SnapshotSource::Backfill && existing_source == "live" =>
         {
             // I4: reconstructions never replace authentic records.
-            Ok(())
+            return Ok(());
         }
-        Some((id, _)) => {
-            conn.execute(
-                "UPDATE portfolio_metrics_history
-                 SET total_savings = ?2, total_loans_principal = ?3, total_investments = ?4,
-                     total_crypto = ?5, total_bonds = ?6, total_real_estate_personal = ?7,
-                     total_real_estate_investment = ?8, total_other_assets = ?9, recorded_at = ?10,
-                     investments_by_currency = ?11, crypto_by_currency = ?12,
-                     savings_by_currency = ?13, bonds_by_currency = ?14,
-                     real_estate_by_currency = ?15, loans_by_currency = ?16,
-                     other_assets_by_currency = ?17, source = ?18
-                 WHERE id = ?1",
-                rusqlite::params![
-                    id,
-                    czk_total(&breakdowns.savings).to_string(),
-                    czk_total(&breakdowns.loans).to_string(),
-                    czk_total(&breakdowns.investments).to_string(),
-                    czk_total(&breakdowns.crypto).to_string(),
-                    czk_total(&breakdowns.bonds).to_string(),
-                    czk_total(&breakdowns.real_estate_personal).to_string(),
-                    czk_total(&breakdowns.real_estate_investment).to_string(),
-                    czk_total(&breakdowns.other_assets).to_string(),
-                    row_ts,
-                    breakdown_json(&breakdowns.investments),
-                    breakdown_json(&breakdowns.crypto),
-                    breakdown_json(&breakdowns.savings),
-                    breakdown_json(&breakdowns.bonds),
-                    breakdown_json(&real_estate_merged),
-                    breakdown_json(&breakdowns.loans),
-                    breakdown_json(&breakdowns.other_assets),
-                    source.as_str(),
-                ],
-            )?;
-            Ok(())
-        }
-        None => {
-            conn.execute(
-                "INSERT INTO portfolio_metrics_history
-                 (id, total_savings, total_loans_principal, total_investments, total_crypto,
-                  total_bonds, total_real_estate_personal, total_real_estate_investment,
-                  total_other_assets, recorded_at,
-                  investments_by_currency, crypto_by_currency, savings_by_currency,
-                  bonds_by_currency, real_estate_by_currency, loans_by_currency,
-                  other_assets_by_currency, source)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10,
-                         ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18)",
-                rusqlite::params![
-                    Uuid::new_v4().to_string(),
-                    czk_total(&breakdowns.savings).to_string(),
-                    czk_total(&breakdowns.loans).to_string(),
-                    czk_total(&breakdowns.investments).to_string(),
-                    czk_total(&breakdowns.crypto).to_string(),
-                    czk_total(&breakdowns.bonds).to_string(),
-                    czk_total(&breakdowns.real_estate_personal).to_string(),
-                    czk_total(&breakdowns.real_estate_investment).to_string(),
-                    czk_total(&breakdowns.other_assets).to_string(),
-                    row_ts,
-                    breakdown_json(&breakdowns.investments),
-                    breakdown_json(&breakdowns.crypto),
-                    breakdown_json(&breakdowns.savings),
-                    breakdown_json(&breakdowns.bonds),
-                    breakdown_json(&real_estate_merged),
-                    breakdown_json(&breakdowns.loans),
-                    breakdown_json(&breakdowns.other_assets),
-                    source.as_str(),
-                ],
-            )?;
-            Ok(())
-        }
-    }
+        Some((id, _)) => id,
+        None => Uuid::new_v4().to_string(),
+    };
+    conn.execute(
+        "INSERT INTO portfolio_metrics_history
+         (id, recorded_at, investments_by_currency, crypto_by_currency, savings_by_currency,
+          bonds_by_currency, real_estate_by_currency, real_estate_personal_by_currency,
+          loans_by_currency, other_assets_by_currency, source)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)
+         ON CONFLICT(id) DO UPDATE SET
+             recorded_at = excluded.recorded_at,
+             investments_by_currency = excluded.investments_by_currency,
+             crypto_by_currency = excluded.crypto_by_currency,
+             savings_by_currency = excluded.savings_by_currency,
+             bonds_by_currency = excluded.bonds_by_currency,
+             real_estate_by_currency = excluded.real_estate_by_currency,
+             real_estate_personal_by_currency = excluded.real_estate_personal_by_currency,
+             loans_by_currency = excluded.loans_by_currency,
+             other_assets_by_currency = excluded.other_assets_by_currency,
+             source = excluded.source",
+        rusqlite::params![
+            id,
+            row_ts,
+            breakdown_json(&breakdowns.investments),
+            breakdown_json(&breakdowns.crypto),
+            breakdown_json(&breakdowns.savings),
+            breakdown_json(&breakdowns.bonds),
+            breakdown_json(&real_estate_merged),
+            breakdown_json(&breakdowns.real_estate_personal),
+            breakdown_json(&breakdowns.loans),
+            breakdown_json(&breakdowns.other_assets),
+            source.as_str(),
+        ],
+    )?;
+    Ok(())
 }
 
 /// Static-class breakdowns used when reconstructing a day (savings, bonds,
@@ -292,10 +187,9 @@ pub struct StaticBreakdowns {
 /// nearest **earlier** live row wins; days that precede every live row carry
 /// **backward** from the earliest one instead — the first authentic record is
 /// still a better statics estimate than nothing (zeroed savings/loans would
-/// cliff the net-worth chart at the live boundary). Real estate is carried
-/// from the live row's split CZK totals — the stored breakdown is combined,
-/// so the split survives only in CZK terms. Returns None only when no live
-/// row exists at all (caller falls back to current table values).
+/// cliff the net-worth chart at the live boundary). Every class, real estate
+/// split included, is carried in its native currencies. Returns None only when
+/// no live row exists at all (caller falls back to current table values).
 pub fn carried_statics_from_nearest_live(
     conn: &Connection,
     before_ts: i64,
@@ -303,11 +197,10 @@ pub fn carried_statics_from_nearest_live(
     use crate::services::currency::breakdown_from_json;
 
     const COLUMNS: &str = "savings_by_currency, bonds_by_currency, loans_by_currency,
-                    other_assets_by_currency,
-                    CAST(total_real_estate_personal AS REAL),
-                    CAST(total_real_estate_investment AS REAL)";
+                    other_assets_by_currency, real_estate_by_currency,
+                    real_estate_personal_by_currency";
 
-    type StaticsRow = (String, String, String, String, f64, f64);
+    type StaticsRow = (String, String, String, String, String, String);
     let fetch = |sql: String| -> Option<StaticsRow> {
         conn.query_row(&sql, [before_ts], |r| {
             Ok((
@@ -335,31 +228,25 @@ pub fn carried_statics_from_nearest_live(
         ))
     });
 
-    Ok(row.map(
-        |(savings, bonds, loans, other, re_personal, re_investment)| {
-            let czk_map = |v: f64| -> HashMap<String, f64> {
-                if v != 0.0 {
-                    HashMap::from([("CZK".to_string(), v)])
-                } else {
-                    HashMap::new()
-                }
-            };
+    Ok(
+        row.map(|(savings, bonds, loans, other, real_estate, personal)| {
+            let real_estate = breakdown_from_json(&real_estate);
+            let personal = breakdown_from_json(&personal);
             StaticBreakdowns {
                 savings: breakdown_from_json(&savings),
                 bonds: breakdown_from_json(&bonds),
                 loans: breakdown_from_json(&loans),
                 other_assets: breakdown_from_json(&other),
-                real_estate_personal: czk_map(re_personal),
-                real_estate_investment: czk_map(re_investment),
+                real_estate_investment: investment_real_estate(&real_estate, &personal),
+                real_estate_personal: personal,
             }
-        },
-    ))
+        }),
+    )
 }
 
-/// Rewrite selected transaction-driven classes of an existing snapshot row:
-/// the class total and its breakdown change together, both derived at the
-/// day's rates. Rows the day does not have are left for the full backfill to
-/// create; every other column (including `source`) is untouched.
+/// Rewrite the breakdowns of selected transaction-driven classes on an
+/// existing snapshot row. Rows the day does not have are left for the full
+/// backfill to create; every other column (including `source`) is untouched.
 pub fn update_classes(
     conn: &Connection,
     day_timestamp: i64,
@@ -368,39 +255,20 @@ pub fn update_classes(
     let day_start = (day_timestamp / SECONDS_PER_DAY) * SECONDS_PER_DAY;
     let day_end = day_start + SECONDS_PER_DAY;
 
-    let exists: bool = conn
-        .query_row(
-            "SELECT 1 FROM portfolio_metrics_history
-             WHERE recorded_at >= ?1 AND recorded_at < ?2 LIMIT 1",
-            [day_start, day_end],
-            |_| Ok(true),
-        )
-        .unwrap_or(false);
-    if !exists {
-        return Ok(());
-    }
-
-    let czk = LegacyCzk::dated(conn, day_start, day_start)?;
-
     for (kind, breakdown) in classes {
-        let (total_column, breakdown_column) = match kind {
-            AssetClassKind::Savings => ("total_savings", "savings_by_currency"),
-            AssetClassKind::Investments => ("total_investments", "investments_by_currency"),
-            AssetClassKind::Crypto => ("total_crypto", "crypto_by_currency"),
-            AssetClassKind::OtherAssets => ("total_other_assets", "other_assets_by_currency"),
+        let breakdown_column = match kind {
+            AssetClassKind::Savings => "savings_by_currency",
+            AssetClassKind::Investments => "investments_by_currency",
+            AssetClassKind::Crypto => "crypto_by_currency",
+            AssetClassKind::OtherAssets => "other_assets_by_currency",
         };
         let sql = format!(
-            "UPDATE portfolio_metrics_history SET {total_column} = ?1, {breakdown_column} = ?2
-             WHERE recorded_at >= ?3 AND recorded_at < ?4"
+            "UPDATE portfolio_metrics_history SET {breakdown_column} = ?1
+             WHERE recorded_at >= ?2 AND recorded_at < ?3"
         );
         conn.execute(
             &sql,
-            rusqlite::params![
-                czk.total(breakdown, Some(day_start)).to_string(),
-                breakdown_json(breakdown),
-                day_start,
-                day_end
-            ],
+            rusqlite::params![breakdown_json(breakdown), day_start, day_end],
         )?;
     }
 
@@ -414,8 +282,7 @@ pub fn update_classes(
 /// currency ("carry forward" over weekends and holidays) — but only for
 /// tickers whose transactions leave a positive quantity on that day. Without
 /// that filter a position sold on day D kept contributing its last row for
-/// ever. The class total and its breakdown are written together
-/// through `update_classes`, keeping invariant I3.
+/// ever. The breakdown is written through `update_classes`.
 ///
 /// `until_day_exclusive` is typically today's day start: today's row belongs
 /// to the live snapshot and must not be replaced by a reconstruction.
@@ -573,6 +440,7 @@ fn load_ticker_series(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::services::currency::breakdown_from_json;
     use rusqlite::Connection;
 
     fn setup_test_db() -> Connection {
@@ -581,15 +449,8 @@ mod tests {
             r#"
             CREATE TABLE portfolio_metrics_history (
                 id TEXT PRIMARY KEY,
-                total_savings TEXT NOT NULL,
-                total_loans_principal TEXT NOT NULL,
-                total_investments TEXT NOT NULL,
-                total_crypto TEXT NOT NULL,
-                total_bonds TEXT NOT NULL,
-                total_real_estate_personal TEXT NOT NULL,
-                total_real_estate_investment TEXT NOT NULL,
-                total_other_assets TEXT NOT NULL DEFAULT '0',
                 recorded_at INTEGER NOT NULL,
+                is_stale INTEGER NOT NULL DEFAULT 0,
                 investments_by_currency TEXT NOT NULL DEFAULT '{}',
                 crypto_by_currency TEXT NOT NULL DEFAULT '{}',
                 savings_by_currency TEXT NOT NULL DEFAULT '{}',
@@ -597,13 +458,8 @@ mod tests {
                 real_estate_by_currency TEXT NOT NULL DEFAULT '{}',
                 loans_by_currency TEXT NOT NULL DEFAULT '{}',
                 other_assets_by_currency TEXT NOT NULL DEFAULT '{}',
-                source TEXT NOT NULL DEFAULT 'live'
-            );
-            CREATE TABLE exchange_rate_history (
-                date INTEGER NOT NULL,
-                currency TEXT NOT NULL,
-                rate REAL NOT NULL,
-                PRIMARY KEY (date, currency)
+                source TEXT NOT NULL DEFAULT 'live',
+                real_estate_personal_by_currency TEXT NOT NULL DEFAULT '{}'
             );
         "#,
         )
@@ -614,66 +470,38 @@ mod tests {
     const DAY: i64 = SECONDS_PER_DAY;
     const TEST_DAY: i64 = DAY * 20_000;
 
-    /// A stored day quote: units of `currency` per 1 EUR.
-    fn insert_day_rate(conn: &Connection, day: i64, currency: &str, rate: f64) {
-        conn.execute(
-            "INSERT INTO exchange_rate_history (date, currency, rate) VALUES (?1, ?2, ?3)",
-            rusqlite::params![day, currency, rate],
-        )
-        .expect("insert rate");
-    }
-
     fn map(entries: &[(&str, f64)]) -> HashMap<String, f64> {
         entries.iter().map(|(c, v)| (c.to_string(), *v)).collect()
     }
 
-    fn row(conn: &Connection) -> (String, String, String, String, i64, String) {
+    /// A breakdown column of the row for `day`.
+    fn column(conn: &Connection, day: i64, column: &str) -> HashMap<String, f64> {
+        let json: String = conn
+            .query_row(
+                &format!(
+                    "SELECT {column} FROM portfolio_metrics_history
+                     WHERE recorded_at >= ?1 AND recorded_at < ?2"
+                ),
+                [day, day + DAY],
+                |r| r.get(0),
+            )
+            .expect("breakdown column");
+        breakdown_from_json(&json)
+    }
+
+    /// `(recorded_at, source)` of the only row.
+    fn provenance(conn: &Connection) -> (i64, String) {
         conn.query_row(
-            "SELECT total_investments, total_savings, investments_by_currency,
-                    real_estate_by_currency, recorded_at, source
-             FROM portfolio_metrics_history LIMIT 1",
+            "SELECT recorded_at, source FROM portfolio_metrics_history",
             [],
-            |r| {
-                Ok((
-                    r.get(0)?,
-                    r.get(1)?,
-                    r.get(2)?,
-                    r.get(3)?,
-                    r.get(4)?,
-                    r.get(5)?,
-                ))
-            },
+            |r| Ok((r.get(0)?, r.get(1)?)),
         )
         .expect("row")
     }
 
     #[test]
-    fn legacy_czk_converts_at_the_day_and_excludes_what_it_cannot_quote() {
+    fn backfill_insert_stores_the_native_breakdowns_at_midnight() {
         let conn = setup_test_db();
-        // 1 USD = 20 CZK
-        insert_day_rate(&conn, TEST_DAY, "CZK", 25.0);
-        insert_day_rate(&conn, TEST_DAY, "USD", 1.25);
-        crate::services::fx::set_current_for_test(&[("CZK", 25.0), ("USD", 1.0)]);
-        let later = TEST_DAY + 30 * SECONDS_PER_DAY;
-        let czk = LegacyCzk::dated(&conn, TEST_DAY, later).expect("history");
-
-        assert_eq!(czk.on(10.0, "USD", TEST_DAY + SECONDS_PER_DAY), 200.0);
-        assert_eq!(czk.now(10.0, "usd"), 250.0);
-        // Without a quote the amount is excluded, never valued 1:1.
-        assert_eq!(czk.on(10.0, "KWD", TEST_DAY), 0.0);
-        // Beyond the walk-back window: no stored quote at all, so the current quotes decide.
-        assert_eq!(czk.on(10.0, "USD", later), 0.0);
-        assert_eq!(czk.on_or_now(10.0, "USD", later), 250.0);
-        assert_eq!(czk.on_or_now(10.0, "USD", TEST_DAY), 200.0);
-    }
-
-    #[test]
-    fn backfill_insert_derives_totals_at_day_rates() {
-        let conn = setup_test_db();
-        // 1 USD = 20 CZK
-        insert_day_rate(&conn, TEST_DAY, "CZK", 25.0);
-        insert_day_rate(&conn, TEST_DAY, "USD", 1.25);
-
         let breakdowns = ClassBreakdowns {
             investments: map(&[("USD", 100.0)]),
             savings: map(&[("CZK", 500.0)]),
@@ -687,21 +515,24 @@ mod tests {
         )
         .expect("upsert");
 
-        let (inv, savings, inv_json, _, recorded_at, source) = row(&conn);
-        assert_eq!(inv, "2000");
-        assert_eq!(savings, "500");
-        assert!(inv_json.contains("\"USD\":100"));
-        assert_eq!(recorded_at, TEST_DAY, "backfill rows sit at midnight");
-        assert_eq!(source, "backfill");
+        assert_eq!(
+            column(&conn, TEST_DAY, "investments_by_currency"),
+            map(&[("USD", 100.0)])
+        );
+        assert_eq!(
+            column(&conn, TEST_DAY, "savings_by_currency"),
+            map(&[("CZK", 500.0)])
+        );
+        assert_eq!(
+            provenance(&conn),
+            (TEST_DAY, "backfill".to_string()),
+            "backfill rows sit at midnight"
+        );
     }
 
     #[test]
     fn backfill_never_overwrites_live_row() {
         let conn = setup_test_db();
-        // 1 USD = 20 CZK
-        insert_day_rate(&conn, TEST_DAY, "CZK", 25.0);
-        insert_day_rate(&conn, TEST_DAY, "USD", 1.25);
-
         let live = ClassBreakdowns {
             investments: map(&[("CZK", 1111.0)]),
             ..Default::default()
@@ -715,19 +546,17 @@ mod tests {
         upsert_snapshot(&conn, TEST_DAY + 100, SnapshotSource::Backfill, &backfill)
             .expect("backfill");
 
-        let (inv, _, _, _, recorded_at, source) = row(&conn);
-        assert_eq!(inv, "1111", "live totals must survive a backfill write");
-        assert_eq!(recorded_at, TEST_DAY + 4000);
-        assert_eq!(source, "live");
+        assert_eq!(
+            column(&conn, TEST_DAY, "investments_by_currency"),
+            map(&[("CZK", 1111.0)]),
+            "live breakdowns must survive a backfill write"
+        );
+        assert_eq!(provenance(&conn), (TEST_DAY + 4000, "live".to_string()));
     }
 
     #[test]
     fn live_overwrites_backfill_row_and_claims_provenance() {
         let conn = setup_test_db();
-        // 1 USD = 20 CZK
-        insert_day_rate(&conn, TEST_DAY, "CZK", 25.0);
-        insert_day_rate(&conn, TEST_DAY, "USD", 1.25);
-
         let backfill = ClassBreakdowns {
             investments: map(&[("USD", 100.0)]),
             ..Default::default()
@@ -746,20 +575,16 @@ mod tests {
             })
             .expect("count");
         assert_eq!(count, 1, "same day must stay one row");
-
-        let (inv, _, _, _, recorded_at, source) = row(&conn);
-        assert_eq!(inv, "3333");
-        assert_eq!(recorded_at, TEST_DAY + 5555);
-        assert_eq!(source, "live");
+        assert_eq!(
+            column(&conn, TEST_DAY, "investments_by_currency"),
+            map(&[("CZK", 3333.0)])
+        );
+        assert_eq!(provenance(&conn), (TEST_DAY + 5555, "live".to_string()));
     }
 
     #[test]
     fn backfill_updates_existing_backfill_row() {
         let conn = setup_test_db();
-        // 1 USD = 20 CZK
-        insert_day_rate(&conn, TEST_DAY, "CZK", 25.0);
-        insert_day_rate(&conn, TEST_DAY, "USD", 1.25);
-
         let first = ClassBreakdowns {
             investments: map(&[("USD", 100.0)]),
             ..Default::default()
@@ -772,43 +597,45 @@ mod tests {
         };
         upsert_snapshot(&conn, TEST_DAY, SnapshotSource::Backfill, &second).expect("second");
 
-        let (inv, _, inv_json, _, _, source) = row(&conn);
-        assert_eq!(inv, "3000");
-        assert!(inv_json.contains("\"USD\":150"));
-        assert_eq!(source, "backfill");
+        assert_eq!(
+            column(&conn, TEST_DAY, "investments_by_currency"),
+            map(&[("USD", 150.0)])
+        );
+        assert_eq!(provenance(&conn).1, "backfill");
     }
 
     #[test]
-    fn real_estate_split_totals_with_merged_breakdown() {
+    fn real_estate_is_stored_combined_with_its_personal_subset() {
         let conn = setup_test_db();
         let breakdowns = ClassBreakdowns {
-            real_estate_personal: map(&[("CZK", 100.0)]),
-            real_estate_investment: map(&[("CZK", 50.0)]),
+            real_estate_personal: map(&[("EUR", 100.0)]),
+            real_estate_investment: map(&[("EUR", 50.0), ("CZK", 900.0)]),
             ..Default::default()
         };
-        upsert_snapshot(&conn, TEST_DAY, SnapshotSource::Backfill, &breakdowns).expect("upsert");
+        upsert_snapshot(&conn, TEST_DAY, SnapshotSource::Live, &breakdowns).expect("upsert");
 
-        let (personal, investment, re_json): (String, String, String) = conn
-            .query_row(
-                "SELECT total_real_estate_personal, total_real_estate_investment,
-                        real_estate_by_currency
-                 FROM portfolio_metrics_history",
-                [],
-                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
-            )
-            .expect("row");
-        assert_eq!(personal, "100");
-        assert_eq!(investment, "50");
-        assert!(re_json.contains("\"CZK\":150"));
+        assert_eq!(
+            column(&conn, TEST_DAY, "real_estate_by_currency"),
+            map(&[("EUR", 150.0), ("CZK", 900.0)])
+        );
+        assert_eq!(
+            column(&conn, TEST_DAY, "real_estate_personal_by_currency"),
+            map(&[("EUR", 100.0)])
+        );
     }
 
     #[test]
-    fn update_classes_rewrites_total_and_breakdown_together() {
-        let conn = setup_test_db();
-        // 1 USD = 20 CZK
-        insert_day_rate(&conn, TEST_DAY, "CZK", 25.0);
-        insert_day_rate(&conn, TEST_DAY, "USD", 1.25);
+    fn investment_real_estate_is_the_combined_breakdown_minus_the_personal_one() {
+        let investment = investment_real_estate(
+            &map(&[("EUR", 300.0), ("CZK", 500.0)]),
+            &map(&[("EUR", 100.0), ("CZK", 500.0)]),
+        );
+        assert_eq!(investment, map(&[("EUR", 200.0)]));
+    }
 
+    #[test]
+    fn update_classes_rewrites_only_the_given_breakdowns() {
+        let conn = setup_test_db();
         let breakdowns = ClassBreakdowns {
             investments: map(&[("USD", 100.0)]),
             savings: map(&[("CZK", 500.0)]),
@@ -823,16 +650,20 @@ mod tests {
         )
         .expect("update classes");
 
-        let (inv, savings, inv_json, _, _, _) = row(&conn);
-        assert_eq!(inv, "4000", "total derived from the new breakdown");
-        assert!(inv_json.contains("\"USD\":200"));
-        assert_eq!(savings, "500", "other classes untouched");
+        assert_eq!(
+            column(&conn, TEST_DAY, "investments_by_currency"),
+            map(&[("USD", 200.0)])
+        );
+        assert_eq!(
+            column(&conn, TEST_DAY, "savings_by_currency"),
+            map(&[("CZK", 500.0)]),
+            "other classes untouched"
+        );
     }
 
     #[test]
     fn carried_statics_come_from_nearest_earlier_live_row() {
         let conn = setup_test_db();
-        insert_day_rate(&conn, TEST_DAY, "CZK", 25.0);
 
         // An older live row, a newer backfill row, and a live row after the
         // target date — only the older live row may be carried.
@@ -866,10 +697,51 @@ mod tests {
         let statics = carried_statics_from_nearest_live(&conn, TEST_DAY + 2 * DAY)
             .expect("query")
             .expect("live row exists");
-        assert!((statics.savings["EUR"] - 40.0).abs() < 1e-9);
-        assert!((statics.bonds["CZK"] - 100.0).abs() < 1e-9);
-        assert!((statics.real_estate_personal["CZK"] - 900.0).abs() < 1e-9);
+        assert_eq!(statics.savings, map(&[("EUR", 40.0)]));
+        assert_eq!(statics.bonds, map(&[("CZK", 100.0)]));
+        assert_eq!(statics.real_estate_personal, map(&[("CZK", 900.0)]));
+        assert!(statics.real_estate_investment.is_empty());
         assert!(statics.loans.is_empty());
+    }
+
+    #[test]
+    fn a_carried_day_keeps_a_foreign_property_in_its_own_currency() {
+        let conn = setup_test_db();
+        let live = ClassBreakdowns {
+            real_estate_personal: map(&[("EUR", 300.0)]),
+            real_estate_investment: map(&[("EUR", 100.0)]),
+            ..Default::default()
+        };
+        upsert_snapshot(&conn, TEST_DAY + 500, SnapshotSource::Live, &live).expect("live");
+
+        let statics = carried_statics_from_nearest_live(&conn, TEST_DAY + 2 * DAY)
+            .expect("query")
+            .expect("live row exists");
+        assert_eq!(statics.real_estate_personal, map(&[("EUR", 300.0)]));
+        assert_eq!(statics.real_estate_investment, map(&[("EUR", 100.0)]));
+
+        // The reconstructed day stores the same native split: no synthetic CZK bucket.
+        let carried = ClassBreakdowns {
+            real_estate_personal: statics.real_estate_personal,
+            real_estate_investment: statics.real_estate_investment,
+            ..Default::default()
+        };
+        upsert_snapshot(
+            &conn,
+            TEST_DAY + 2 * DAY,
+            SnapshotSource::Backfill,
+            &carried,
+        )
+        .expect("backfill");
+        let day = TEST_DAY + 2 * DAY;
+        assert_eq!(
+            column(&conn, day, "real_estate_by_currency"),
+            map(&[("EUR", 400.0)])
+        );
+        assert_eq!(
+            column(&conn, day, "real_estate_personal_by_currency"),
+            map(&[("EUR", 300.0)])
+        );
     }
 
     #[test]
@@ -895,8 +767,8 @@ mod tests {
         let statics = carried_statics_from_nearest_live(&conn, TEST_DAY)
             .expect("query")
             .expect("later live row exists");
-        assert!((statics.savings["CZK"] - 2500.0).abs() < 1e-9);
-        assert!((statics.loans["CZK"] - 12000.0).abs() < 1e-9);
+        assert_eq!(statics.savings, map(&[("CZK", 2500.0)]));
+        assert_eq!(statics.loans, map(&[("CZK", 12000.0)]));
     }
 
     #[test]
@@ -918,12 +790,12 @@ mod tests {
             r#"
             CREATE TABLE stock_value_history (
                 id TEXT PRIMARY KEY, ticker TEXT NOT NULL, recorded_at INTEGER NOT NULL,
-                value_czk TEXT NOT NULL, quantity TEXT NOT NULL, price TEXT NOT NULL,
+                quantity TEXT NOT NULL, price TEXT NOT NULL,
                 currency TEXT NOT NULL, UNIQUE(ticker, recorded_at)
             );
             CREATE TABLE crypto_value_history (
                 id TEXT PRIMARY KEY, ticker TEXT NOT NULL, recorded_at INTEGER NOT NULL,
-                value_czk TEXT NOT NULL, quantity TEXT NOT NULL, price TEXT NOT NULL,
+                quantity TEXT NOT NULL, price TEXT NOT NULL,
                 currency TEXT NOT NULL, UNIQUE(ticker, recorded_at)
             );
             CREATE TABLE investment_transactions (
@@ -940,12 +812,12 @@ mod tests {
         conn
     }
 
+    /// A live day whose stocks and crypto hold a sentinel amount.
     fn insert_history_day(conn: &Connection, day: i64) {
         conn.execute(
-            "INSERT INTO portfolio_metrics_history (id, total_savings, total_loans_principal,
-                total_investments, total_crypto, total_bonds, total_real_estate_personal,
-                total_real_estate_investment, recorded_at, source)
-             VALUES (?1, '0', '0', '999', '999', '0', '0', '0', ?2, 'live')",
+            "INSERT INTO portfolio_metrics_history (id, recorded_at, investments_by_currency,
+                crypto_by_currency, source)
+             VALUES (?1, ?2, '{\"CZK\":999}', '{\"CZK\":999}', 'live')",
             rusqlite::params![format!("row-{day}"), day],
         )
         .expect("history row");
@@ -962,14 +834,13 @@ mod tests {
     ) {
         conn.execute(
             &format!(
-                "INSERT INTO {table} (id, ticker, recorded_at, value_czk, quantity, price, currency)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)"
+                "INSERT INTO {table} (id, ticker, recorded_at, quantity, price, currency)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6)"
             ),
             rusqlite::params![
                 format!("{ticker}-{day}"),
                 ticker,
                 day,
-                (qty * price).to_string(),
                 qty.to_string(),
                 price.to_string(),
                 ccy
@@ -978,18 +849,9 @@ mod tests {
         .expect("ticker row");
     }
 
-    fn total_investments(conn: &Connection, day: i64) -> f64 {
-        conn.query_row(
-            "SELECT CAST(total_investments AS REAL) FROM portfolio_metrics_history WHERE recorded_at = ?1",
-            [day],
-            |r| r.get(0),
-        )
-        .expect("total")
-    }
-
     /// a ticker sold on day 4 must not be carried forward from its
     /// last row forever. AAPL (1 000 CZK) is held days 1–3 and sold on day 4;
-    /// MSFT (500 CZK) is held throughout. Day 6 must total 500, not 1 500.
+    /// MSFT (500 CZK) is held throughout. Day 6 must hold 500, not 1 500.
     #[test]
     fn aggregate_ticker_history_drops_sold_positions() {
         let conn = setup_ticker_history_db();
@@ -1031,21 +893,10 @@ mod tests {
         aggregate_ticker_history(&conn, AssetClassKind::Investments, day(1), day(7))
             .expect("aggregate");
 
-        assert!((total_investments(&conn, day(3)) - 1_500.0).abs() < 1e-9);
-        assert!((total_investments(&conn, day(4)) - 500.0).abs() < 1e-9);
-        assert!((total_investments(&conn, day(6)) - 500.0).abs() < 1e-9);
-        // I3: the breakdown is rewritten together with the total
-        let breakdown: String = conn
-            .query_row(
-                "SELECT investments_by_currency FROM portfolio_metrics_history WHERE recorded_at = ?1",
-                [day(6)],
-                |r| r.get(0),
-            )
-            .expect("breakdown");
-        assert_eq!(
-            breakdown_from_json_sorted(&breakdown),
-            vec![("CZK".to_string(), 500.0)]
-        );
+        let investments = |n: i64| column(&conn, day(n), "investments_by_currency");
+        assert_eq!(investments(3), map(&[("CZK", 1_500.0)]));
+        assert_eq!(investments(4), map(&[("CZK", 500.0)]));
+        assert_eq!(investments(6), map(&[("CZK", 500.0)]));
     }
 
     /// The upper bound is exclusive so today's live snapshot is never
@@ -1067,27 +918,15 @@ mod tests {
 
         aggregate_ticker_history(&conn, AssetClassKind::Crypto, D1, d2).expect("aggregate");
 
-        let total = |day: i64| -> f64 {
-            conn.query_row(
-                "SELECT CAST(total_crypto AS REAL) FROM portfolio_metrics_history WHERE recorded_at = ?1",
-                [day],
-                |r| r.get(0),
-            )
-            .expect("total")
-        };
-        assert!((total(D1) - 200.0).abs() < 1e-9);
-        assert!(
-            (total(d2) - 999.0).abs() < 1e-9,
+        assert_eq!(
+            column(&conn, D1, "crypto_by_currency"),
+            map(&[("CZK", 200.0)])
+        );
+        assert_eq!(
+            column(&conn, d2, "crypto_by_currency"),
+            map(&[("CZK", 999.0)]),
             "excluded day keeps its live value"
         );
-    }
-
-    fn breakdown_from_json_sorted(json: &str) -> Vec<(String, f64)> {
-        let mut v: Vec<(String, f64)> = crate::services::currency::breakdown_from_json(json)
-            .into_iter()
-            .collect();
-        v.sort_by(|a, b| a.0.cmp(&b.0));
-        v
     }
 
     #[test]

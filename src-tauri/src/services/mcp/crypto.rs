@@ -809,7 +809,6 @@ mod value_history_tests {
         assert_eq!(first["price"], "12");
         assert_eq!(first["currency"], "USD");
         assert_eq!(first["quantity"], "10");
-        assert!(first.get("valueCzk").is_none());
         assert_eq!(first["isStale"], false);
     }
 

@@ -72,6 +72,7 @@ fn all_migrations() -> Vec<(&'static str, &'static str)> {
         ("008_import_integrity", MIGRATION_008),
         ("009_scoped_learning", MIGRATION_009),
         ("010_fx_eur_reference", MIGRATION_010),
+        ("011_retire_czk_caches", MIGRATION_011),
     ]
 }
 
@@ -2237,5 +2238,292 @@ mod migration_010 {
             )
             .expect("index");
         assert_eq!(index, 1);
+    }
+}
+
+/// The CZK caches retire: native per-currency breakdowns become the only stored record of a
+/// snapshot day, and a ticker's value-history row keeps only its native quantity, price and
+/// currency.
+///
+/// - Personal real estate gets its own native breakdown. A row without a native real estate
+///   breakdown, or with a CZK-only one, takes its CZK personal total as is (CZK amounts are their
+///   own CZK totals). A row with other currencies applies the CZK totals' personal share to each
+///   native amount — the split the history showed until now — so no CZK bucket appears next to a
+///   foreign property.
+/// - Every other class whose breakdown is empty while its CZK total is not (rows written before
+///   the breakdowns existed) gets `{"CZK": total}` once.
+/// - Then the eight `total_*` columns and both `value_czk` columns are dropped (no index or
+///   constraint refers to them).
+pub(crate) const MIGRATION_011: &str = r#"
+ALTER TABLE portfolio_metrics_history ADD COLUMN real_estate_personal_by_currency TEXT NOT NULL DEFAULT '{}';
+UPDATE portfolio_metrics_history SET real_estate_personal_by_currency = CASE
+    WHEN real_estate_by_currency = '{}'
+      OR (json_type(real_estate_by_currency, '$.CZK') IN ('integer', 'real')
+          AND (SELECT COUNT(*) FROM json_each(portfolio_metrics_history.real_estate_by_currency)) = 1)
+      THEN json_object('CZK', CAST(total_real_estate_personal AS REAL))
+    WHEN CAST(total_real_estate_investment AS REAL) = 0
+      THEN (SELECT json_group_object(key, value) FROM json_each(portfolio_metrics_history.real_estate_by_currency)
+            WHERE type IN ('integer', 'real'))
+    ELSE (SELECT json_group_object(key, value * CAST(total_real_estate_personal AS REAL)
+                   / (CAST(total_real_estate_personal AS REAL) + CAST(total_real_estate_investment AS REAL)))
+          FROM json_each(portfolio_metrics_history.real_estate_by_currency)
+          WHERE type IN ('integer', 'real'))
+  END
+  WHERE CAST(total_real_estate_personal AS REAL) > 0
+    AND CAST(total_real_estate_investment AS REAL) >= 0
+    AND CASE WHEN json_valid(real_estate_by_currency) THEN json_type(real_estate_by_currency) = 'object' ELSE 0 END;
+UPDATE portfolio_metrics_history SET savings_by_currency = json_object('CZK', CAST(total_savings AS REAL))
+  WHERE savings_by_currency = '{}' AND CAST(total_savings AS REAL) <> 0;
+UPDATE portfolio_metrics_history SET investments_by_currency = json_object('CZK', CAST(total_investments AS REAL))
+  WHERE investments_by_currency = '{}' AND CAST(total_investments AS REAL) <> 0;
+UPDATE portfolio_metrics_history SET crypto_by_currency = json_object('CZK', CAST(total_crypto AS REAL))
+  WHERE crypto_by_currency = '{}' AND CAST(total_crypto AS REAL) <> 0;
+UPDATE portfolio_metrics_history SET bonds_by_currency = json_object('CZK', CAST(total_bonds AS REAL))
+  WHERE bonds_by_currency = '{}' AND CAST(total_bonds AS REAL) <> 0;
+UPDATE portfolio_metrics_history SET real_estate_by_currency = json_object('CZK', CAST(total_real_estate_personal AS REAL) + CAST(total_real_estate_investment AS REAL))
+  WHERE real_estate_by_currency = '{}' AND CAST(total_real_estate_personal AS REAL) + CAST(total_real_estate_investment AS REAL) <> 0;
+UPDATE portfolio_metrics_history SET loans_by_currency = json_object('CZK', CAST(total_loans_principal AS REAL))
+  WHERE loans_by_currency = '{}' AND CAST(total_loans_principal AS REAL) <> 0;
+UPDATE portfolio_metrics_history SET other_assets_by_currency = json_object('CZK', CAST(total_other_assets AS REAL))
+  WHERE other_assets_by_currency = '{}' AND CAST(total_other_assets AS REAL) <> 0;
+ALTER TABLE portfolio_metrics_history DROP COLUMN total_savings;
+ALTER TABLE portfolio_metrics_history DROP COLUMN total_loans_principal;
+ALTER TABLE portfolio_metrics_history DROP COLUMN total_investments;
+ALTER TABLE portfolio_metrics_history DROP COLUMN total_crypto;
+ALTER TABLE portfolio_metrics_history DROP COLUMN total_bonds;
+ALTER TABLE portfolio_metrics_history DROP COLUMN total_real_estate_personal;
+ALTER TABLE portfolio_metrics_history DROP COLUMN total_real_estate_investment;
+ALTER TABLE portfolio_metrics_history DROP COLUMN total_other_assets;
+ALTER TABLE stock_value_history DROP COLUMN value_czk;
+ALTER TABLE crypto_value_history DROP COLUMN value_czk;
+"#;
+
+#[cfg(test)]
+mod migration_011 {
+    use super::*;
+    use crate::services::currency::breakdown_from_json;
+    use std::collections::HashMap;
+
+    /// A database as it was before `011`: every migration that comes earlier in the chain.
+    fn database_before_011() -> Connection {
+        let conn = Connection::open_in_memory().expect("in-memory db");
+        let earlier: Vec<(&str, &str)> = all_migrations()
+            .into_iter()
+            .filter(|(name, _)| *name < "011_retire_czk_caches")
+            .collect();
+        run_chain(&conn, &earlier).expect("earlier migrations");
+        conn
+    }
+
+    /// A pre-011 snapshot row: the eight CZK totals in column order (savings, loans,
+    /// investments, crypto, bonds, personal real estate, investment real estate, other assets)
+    /// plus `(breakdown column, JSON)` pairs on top of the `'{}'` defaults.
+    fn add_snapshot(
+        conn: &Connection,
+        id: &str,
+        day: i64,
+        totals: [&str; 8],
+        json: &[(&str, &str)],
+    ) {
+        conn.execute(
+            "INSERT INTO portfolio_metrics_history
+                (id, total_savings, total_loans_principal, total_investments, total_crypto,
+                 total_bonds, total_real_estate_personal, total_real_estate_investment,
+                 total_other_assets, recorded_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+            rusqlite::params![
+                id, totals[0], totals[1], totals[2], totals[3], totals[4], totals[5], totals[6],
+                totals[7], day
+            ],
+        )
+        .expect("snapshot row");
+        for (column, value) in json {
+            conn.execute(
+                &format!("UPDATE portfolio_metrics_history SET {column} = ?1 WHERE id = ?2"),
+                [value, &id],
+            )
+            .expect("breakdown");
+        }
+    }
+
+    fn breakdown(conn: &Connection, id: &str, column: &str) -> HashMap<String, f64> {
+        let json: String = conn
+            .query_row(
+                &format!("SELECT {column} FROM portfolio_metrics_history WHERE id = ?1"),
+                [id],
+                |r| r.get(0),
+            )
+            .expect("breakdown column");
+        breakdown_from_json(&json)
+    }
+
+    fn map(entries: &[(&str, f64)]) -> HashMap<String, f64> {
+        entries.iter().map(|(c, v)| (c.to_string(), *v)).collect()
+    }
+
+    fn column_names(conn: &Connection, table: &str) -> Vec<String> {
+        let mut stmt = conn
+            .prepare(&format!("PRAGMA table_info({table})"))
+            .expect("table_info");
+        stmt.query_map([], |r| r.get::<_, String>(1))
+            .expect("columns")
+            .map(|c| c.expect("column"))
+            .collect()
+    }
+
+    #[test]
+    fn a_legacy_row_gets_czk_breakdowns_from_its_totals_once() {
+        let conn = database_before_011();
+        add_snapshot(
+            &conn,
+            "legacy",
+            86_400,
+            ["100", "40", "30", "20", "10", "50", "70", "5"],
+            &[],
+        );
+        add_snapshot(&conn, "empty", 2 * 86_400, ["0"; 8], &[]);
+
+        run_migrations(&conn).expect("migrate to the current chain");
+
+        let czk = |amount: f64| map(&[("CZK", amount)]);
+        assert_eq!(
+            breakdown(&conn, "legacy", "savings_by_currency"),
+            czk(100.0)
+        );
+        assert_eq!(breakdown(&conn, "legacy", "loans_by_currency"), czk(40.0));
+        assert_eq!(
+            breakdown(&conn, "legacy", "investments_by_currency"),
+            czk(30.0)
+        );
+        assert_eq!(breakdown(&conn, "legacy", "crypto_by_currency"), czk(20.0));
+        assert_eq!(breakdown(&conn, "legacy", "bonds_by_currency"), czk(10.0));
+        assert_eq!(
+            breakdown(&conn, "legacy", "other_assets_by_currency"),
+            czk(5.0)
+        );
+        assert_eq!(
+            breakdown(&conn, "legacy", "real_estate_by_currency"),
+            czk(120.0)
+        );
+        assert_eq!(
+            breakdown(&conn, "legacy", "real_estate_personal_by_currency"),
+            czk(50.0)
+        );
+        // Zero totals leave the breakdowns empty: nothing to record.
+        for column in [
+            "savings_by_currency",
+            "loans_by_currency",
+            "real_estate_by_currency",
+            "real_estate_personal_by_currency",
+        ] {
+            assert!(breakdown(&conn, "empty", column).is_empty(), "{column}");
+        }
+    }
+
+    #[test]
+    fn a_native_row_keeps_its_breakdowns_and_splits_real_estate_in_its_own_currencies() {
+        let conn = database_before_011();
+        // Native breakdowns next to CZK totals at the row's rates (25 CZK per EUR).
+        add_snapshot(
+            &conn,
+            "modern",
+            86_400,
+            ["100", "0", "75", "0", "0", "5000", "2500", "0"],
+            &[
+                ("savings_by_currency", r#"{"EUR":4}"#),
+                ("investments_by_currency", r#"{"USD":3}"#),
+                ("real_estate_by_currency", r#"{"EUR":300}"#),
+            ],
+        );
+        // A CZK-only row (e.g. carried statics): the personal total is the native amount.
+        add_snapshot(
+            &conn,
+            "czk",
+            2 * 86_400,
+            ["0", "0", "0", "0", "0", "100.1", "50.2", "0"],
+            &[("real_estate_by_currency", r#"{"CZK":150.3}"#)],
+        );
+        // Only personal property: the whole breakdown is personal.
+        add_snapshot(
+            &conn,
+            "personal",
+            3 * 86_400,
+            ["0", "0", "0", "0", "0", "2600", "0", "0"],
+            &[("real_estate_by_currency", r#"{"EUR":100,"USD":5}"#)],
+        );
+
+        // A breakdown that is not a JSON object cannot be split; the migration still runs.
+        add_snapshot(
+            &conn,
+            "corrupt",
+            4 * 86_400,
+            ["0", "0", "0", "0", "0", "10", "0", "0"],
+            &[("real_estate_by_currency", "not json")],
+        );
+
+        run_migrations(&conn).expect("migrate to the current chain");
+
+        assert!(breakdown(&conn, "corrupt", "real_estate_personal_by_currency").is_empty());
+        assert_eq!(
+            breakdown(&conn, "modern", "savings_by_currency"),
+            map(&[("EUR", 4.0)])
+        );
+        assert_eq!(
+            breakdown(&conn, "modern", "investments_by_currency"),
+            map(&[("USD", 3.0)])
+        );
+        assert_eq!(
+            breakdown(&conn, "modern", "real_estate_by_currency"),
+            map(&[("EUR", 300.0)])
+        );
+        // The CZK totals' ratio (2/3 personal) applied to the native amounts, never a CZK bucket.
+        let personal = breakdown(&conn, "modern", "real_estate_personal_by_currency");
+        assert_eq!(personal.len(), 1);
+        assert!((personal["EUR"] - 200.0).abs() < 1e-9, "{personal:?}");
+        assert_eq!(
+            breakdown(&conn, "czk", "real_estate_personal_by_currency"),
+            map(&[("CZK", 100.1)])
+        );
+        assert_eq!(
+            breakdown(&conn, "personal", "real_estate_personal_by_currency"),
+            map(&[("EUR", 100.0), ("USD", 5.0)])
+        );
+    }
+
+    #[test]
+    fn the_czk_cache_columns_are_dropped_and_the_native_rows_survive() {
+        let conn = database_before_011();
+        conn.execute_batch(
+            "INSERT INTO stock_value_history (id, ticker, recorded_at, value_czk, quantity, price, currency)
+               VALUES ('s', 'AAPL', 86400, '2300', '10', '10', 'USD');
+             INSERT INTO crypto_value_history (id, ticker, recorded_at, value_czk, quantity, price, currency)
+               VALUES ('c', 'BTC', 86400, '23000', '1', '1000', 'USD');",
+        )
+        .expect("ticker rows");
+
+        run_migrations(&conn).expect("migrate to the current chain");
+
+        let snapshot = column_names(&conn, "portfolio_metrics_history");
+        assert!(
+            snapshot.iter().all(|c| !c.starts_with("total_")),
+            "{snapshot:?}"
+        );
+        assert!(snapshot.contains(&"real_estate_personal_by_currency".to_string()));
+        for table in ["stock_value_history", "crypto_value_history"] {
+            let columns = column_names(&conn, table);
+            assert!(!columns.contains(&"value_czk".to_string()), "{table}");
+            assert!(columns.contains(&"price".to_string()), "{table}");
+        }
+        let (quantity, price, currency): (String, String, String) = conn
+            .query_row(
+                "SELECT quantity, price, currency FROM stock_value_history WHERE id = 's'",
+                [],
+                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+            )
+            .expect("stock row");
+        assert_eq!(
+            (quantity.as_str(), price.as_str(), currency.as_str()),
+            ("10", "10", "USD")
+        );
     }
 }

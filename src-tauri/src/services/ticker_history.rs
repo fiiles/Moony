@@ -10,8 +10,7 @@
 //! It is now planned in a single pass and written in a single transaction:
 //!
 //! 1. [`plan_stock_ticker_history`] reads the ticker's transactions once and
-//!    walks the days with a running position, looks the day's FX rates up in a
-//!    map preloaded for the whole range, and prices each day through the
+//!    walks the days with a running position, and prices each day through the
 //!    caller's `price_at` closure. It only reads; the result is a list of
 //!    [`DayPlan`]s.
 //! 2. [`apply_stock_ticker_plan`] writes a slice of the plan through prepared
@@ -34,7 +33,7 @@ use crate::models::fx::ConversionQuality;
 use crate::models::{TickerValueHistory, TickerValueHistoryReport};
 use crate::services::cost_basis::{self, TxTable};
 use crate::services::fx::{History, Quality, Quotes};
-use crate::services::portfolio_history::{LegacyCzk, SECONDS_PER_DAY};
+use crate::services::portfolio_history::SECONDS_PER_DAY;
 use crate::services::pricing::AssetKind;
 use crate::services::reporting::{money_in_currency, normalize_currency};
 
@@ -50,7 +49,6 @@ pub enum DayAction {
         quantity: f64,
         price: f64,
         currency: String,
-        value_czk: f64,
     },
     /// Nothing is held: drop whatever row is stored for the day.
     Delete,
@@ -115,9 +113,6 @@ where
     }
 
     let changes = load_position_changes(conn, ticker)?;
-    // The value_czk cache at each day's rates; a day before the rate history
-    // uses the current quotes (see `LegacyCzk::on_or_now`).
-    let czk = LegacyCzk::dated(conn, from_day, until_day)?;
 
     let mut plan = Vec::new();
     let mut position = 0.0_f64;
@@ -136,14 +131,12 @@ where
                 action: DayAction::Delete,
             });
         } else if let Some((price, currency)) = price_at(day) {
-            let value_czk = czk.on_or_now(quantity * price, &currency, day);
             plan.push(DayPlan {
                 day,
                 action: DayAction::Upsert {
                     quantity,
                     price,
                     currency,
-                    value_czk,
                 },
             });
         }
@@ -166,10 +159,9 @@ pub fn apply_stock_ticker_plan(
     let tx = conn.unchecked_transaction()?;
     {
         let mut upsert = tx.prepare_cached(
-            "INSERT INTO stock_value_history (id, ticker, recorded_at, value_czk, quantity, price, currency)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+            "INSERT INTO stock_value_history (id, ticker, recorded_at, quantity, price, currency)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6)
              ON CONFLICT(ticker, recorded_at) DO UPDATE SET
-                 value_czk = excluded.value_czk,
                  quantity = excluded.quantity,
                  price = excluded.price,
                  currency = excluded.currency",
@@ -183,13 +175,11 @@ pub fn apply_stock_ticker_plan(
                     quantity,
                     price,
                     currency,
-                    value_czk,
                 } => {
                     upsert.execute(params![
                         Uuid::new_v4().to_string(),
                         ticker,
                         day_plan.day,
-                        value_czk.to_string(),
                         quantity.to_string(),
                         price.to_string(),
                         currency,
@@ -229,7 +219,7 @@ where
 /// `quantity × price` converted at the row's own day with the common-day rule
 /// (`fx::History::convert_on`); `cost_basis` is the position's cost as of that day, replayed
 /// from the transactions up to it by `cost_basis::position_cost_basis` (each buy at its own
-/// day, `quotes` standing in for a day without quotes). The stored `value_czk` is never read.
+/// day, `quotes` standing in for a day without quotes).
 /// A value that cannot be converted is `null` and counted in `fxQuality`, as is a cost with a
 /// missing conversion; a row with an unreadable quantity or price is skipped.
 pub fn value_history(
@@ -366,7 +356,6 @@ mod tests {
                 id TEXT PRIMARY KEY,
                 ticker TEXT NOT NULL,
                 recorded_at INTEGER NOT NULL,
-                value_czk TEXT NOT NULL,
                 quantity TEXT NOT NULL,
                 price TEXT NOT NULL,
                 currency TEXT NOT NULL,
@@ -394,30 +383,18 @@ mod tests {
         .expect("insert tx");
     }
 
-    /// One day of EUR quotes on which 1 USD costs `czk_per_usd` CZK (CZK at 25 per EUR).
-    fn add_usd_czk(conn: &Connection, day: i64, czk_per_usd: f64) {
-        for (currency, units_per_eur) in [("CZK", 25.0), ("USD", 25.0 / czk_per_usd)] {
-            conn.execute(
-                "INSERT INTO exchange_rate_history (date, currency, rate) VALUES (?1, ?2, ?3)",
-                params![day, currency, units_per_eur],
-            )
-            .expect("insert rate");
-        }
-    }
-
-    /// `(recorded_at, value_czk, quantity, price, currency)` of every stored row.
-    type StoredRow = (i64, f64, f64, f64, String);
+    /// `(recorded_at, quantity, price, currency)` of every stored row.
+    type StoredRow = (i64, f64, f64, String);
 
     fn stored_rows(conn: &Connection, ticker: &str) -> Vec<StoredRow> {
         let mut stmt = conn
             .prepare(
-                "SELECT recorded_at, CAST(value_czk AS REAL), CAST(quantity AS REAL),
-                        CAST(price AS REAL), currency
+                "SELECT recorded_at, CAST(quantity AS REAL), CAST(price AS REAL), currency
                  FROM stock_value_history WHERE ticker = ?1 ORDER BY recorded_at",
             )
             .expect("prepare");
         stmt.query_map([ticker], |r| {
-            Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?))
+            Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?))
         })
         .expect("query")
         .map(|r| r.expect("row"))
@@ -435,7 +412,6 @@ mod tests {
         add_tx(&conn, "t1", "AAPL", "buy", "10", d0);
         add_tx(&conn, "t2", "AAPL", "buy", "5", d0 + 3 * DAY);
         add_tx(&conn, "t3", "AAPL", "sell", "15", d0 + 6 * DAY);
-        add_usd_czk(&conn, d0 - DAY, 20.0);
 
         let stats = rebuild_stock_ticker_history(
             &conn,
@@ -447,7 +423,7 @@ mod tests {
         .expect("rebuild");
 
         let rows = stored_rows(&conn, "AAPL");
-        let by_day: Vec<(i64, f64)> = rows.iter().map(|r| ((r.0 - d0) / DAY, r.2)).collect();
+        let by_day: Vec<(i64, f64)> = rows.iter().map(|r| ((r.0 - d0) / DAY, r.1)).collect();
         // 0..=2: 10, 3..=5: 15, from the sale day on: nothing, so no rows
         assert_eq!(
             by_day,
@@ -461,8 +437,8 @@ mod tests {
             ]
         );
         assert_eq!(stats.upserted, 6);
-        // value = qty * price * USD rate of the (carried-back) day
-        assert!((rows[0].1 - 10.0 * 2.0 * 20.0).abs() < 1e-9);
+        // the native price and currency of the day, nothing converted
+        assert_eq!((rows[0].2, rows[0].3.as_str()), (2.0, "USD"));
     }
 
     #[test]
@@ -471,7 +447,6 @@ mod tests {
         let conn = setup_test_db();
         let d0 = TODAY - 5 * DAY;
         add_tx(&conn, "t1", "AAPL", "buy", "4", d0 + 15 * 3600);
-        add_usd_czk(&conn, d0 - DAY, 20.0);
 
         rebuild_stock_ticker_history(&conn, "AAPL", d0, d0 + 2 * DAY, flat_price(1.0))
             .expect("rebuild");
@@ -488,13 +463,12 @@ mod tests {
         let conn = setup_test_db();
         let d0 = TODAY - 6 * DAY;
         add_tx(&conn, "t1", "AAPL", "buy", "1", d0 + 2 * DAY);
-        add_usd_czk(&conn, d0 - DAY, 20.0);
         // Stale rows from an earlier state: one before the buy, one on a day
         // that will have a position but no price.
         for (id, day) in [("stale0", d0), ("stale3", d0 + 3 * DAY)] {
             conn.execute(
-                "INSERT INTO stock_value_history (id, ticker, recorded_at, value_czk, quantity, price, currency)
-                 VALUES (?1, 'AAPL', ?2, '999', '9', '9', 'USD')",
+                "INSERT INTO stock_value_history (id, ticker, recorded_at, quantity, price, currency)
+                 VALUES (?1, 'AAPL', ?2, '9', '9', 'USD')",
                 params![id, day],
             )
             .expect("stale row");
@@ -515,7 +489,7 @@ mod tests {
         let days: Vec<i64> = rows.iter().map(|r| (r.0 - d0) / DAY).collect();
         // d0 and d0+1 (no position) deleted; d0+2 and d0+4 written; d0+3 untouched
         assert_eq!(days, vec![2, 3, 4]);
-        assert_eq!(rows[1].1, 999.0, "an unpriced held day keeps its old row");
+        assert_eq!(rows[1].1, 9.0, "an unpriced held day keeps its old row");
         assert_eq!(stats.deleted, 1);
         assert_eq!(stats.upserted, 2);
     }
@@ -525,7 +499,6 @@ mod tests {
         let conn = setup_test_db();
         let d0 = TODAY - 4 * DAY;
         add_tx(&conn, "t1", "AAPL", "buy", "2", d0);
-        add_usd_czk(&conn, d0 - DAY, 20.0);
 
         rebuild_stock_ticker_history(&conn, "AAPL", d0, d0 + 3 * DAY, flat_price(1.0))
             .expect("first");
@@ -540,31 +513,7 @@ mod tests {
             4,
             "the (ticker, day) key is upserted, not duplicated"
         );
-        assert!((second[0].3 - 5.0).abs() < 1e-12);
-    }
-
-    #[test]
-    fn rates_come_from_the_nearest_earlier_snapshot_within_ten_days() {
-        let conn = setup_test_db();
-        let d0 = TODAY - 30 * DAY;
-        add_tx(&conn, "t1", "AAPL", "buy", "1", d0);
-        add_usd_czk(&conn, d0, 20.0);
-        add_usd_czk(&conn, d0 + 12 * DAY, 25.0);
-
-        rebuild_stock_ticker_history(&conn, "AAPL", d0, d0 + 13 * DAY, flat_price(1.0))
-            .expect("rebuild");
-
-        let rows = stored_rows(&conn, "AAPL");
-        let value_on = |offset: i64| {
-            rows.iter()
-                .find(|r| r.0 == d0 + offset * DAY)
-                .expect("row")
-                .1
-        };
-        assert_eq!(value_on(0), 20.0);
-        assert_eq!(value_on(10), 20.0, "still inside the 10-day walk-back");
-        assert_eq!(value_on(12), 25.0, "a newer snapshot takes over on its day");
-        assert_eq!(value_on(13), 25.0);
+        assert!((second[0].2 - 5.0).abs() < 1e-12);
     }
 
     #[test]
@@ -575,7 +524,6 @@ mod tests {
         add_tx(&conn, "t1", "AAPL", "buy", "0.1", d0);
         add_tx(&conn, "t2", "AAPL", "buy", "0.2", d0);
         add_tx(&conn, "t3", "AAPL", "sell", "0.3", d0 + 2 * DAY);
-        add_usd_czk(&conn, d0 - DAY, 20.0);
 
         rebuild_stock_ticker_history(&conn, "AAPL", d0, d0 + 4 * DAY, flat_price(1.0))
             .expect("rebuild");
@@ -597,11 +545,11 @@ mod tests {
 
     fn seed_value_rows(conn: &Connection) {
         conn.execute_batch(&format!(
-            "INSERT INTO stock_value_history (id, ticker, recorded_at, value_czk, quantity, price, currency, is_stale)
-             VALUES ('a', 'AAPL', {d0}, '999999', '10', '100', 'USD', 0),
-                    ('b', 'AAPL', {d1}, '999999', '10', '100', 'USD', 1),
-                    ('c', 'AAPL', {d2}, '999999', '10', '100', 'USD', 0),
-                    ('x', 'MSFT', {d1}, '1', '1', '1', 'USD', 0);
+            "INSERT INTO stock_value_history (id, ticker, recorded_at, quantity, price, currency, is_stale)
+             VALUES ('a', 'AAPL', {d0}, '10', '100', 'USD', 0),
+                    ('b', 'AAPL', {d1}, '10', '100', 'USD', 1),
+                    ('c', 'AAPL', {d2}, '10', '100', 'USD', 0),
+                    ('x', 'MSFT', {d1}, '1', '1', 'USD', 0);
              INSERT INTO exchange_rate_history (date, currency, rate)
              VALUES ({d0}, 'USD', 1.25), ({d1}, 'USD', 25.0 / 22.5), ({d2}, 'USD', 1.0),
                     ({d0}, 'CZK', 25.0), ({d1}, 'CZK', 25.0), ({d2}, 'CZK', 25.0);",
@@ -671,7 +619,7 @@ mod tests {
 
         let czk = stock_history(&conn, "aapl", "CZK");
         assert_eq!(czk.currency, "CZK");
-        // quantity x price in USD at that day's rate; the stored value_czk is not read
+        // quantity x price in USD at that day's rate
         assert_eq!(
             values(&czk),
             [Some("20000.00"), Some("22500.00"), Some("25000.00")]
@@ -844,12 +792,12 @@ mod golden {
     const TODAY: i64 = DAY * 20_500;
 
     type Quote = (i64, f64, String);
-    type HistoryRow = (i64, f64, f64, f64, String);
+    type HistoryRow = (i64, f64, f64, String);
 
     /// Verbatim logic of the previous `recalculate_stock_ticker_history` DB
-    /// phase (commands/portfolio.rs): one `SUM` per day, one rate lookup per
-    /// day, one autocommit write per row. `(timestamp, price, currency)`
-    /// quotes stand in for the Yahoo response.
+    /// phase (commands/portfolio.rs): one `SUM` per day, one autocommit write
+    /// per row (its CZK cache column, retired by migration 011, left out).
+    /// `(timestamp, price, currency)` quotes stand in for the Yahoo response.
     fn legacy_recalculate(
         conn: &Connection,
         ticker: &str,
@@ -891,14 +839,10 @@ mod golden {
             else {
                 continue;
             };
-            let value_czk = LegacyCzk::dated(conn, day_timestamp, day_timestamp)
-                .expect("rate history")
-                .on(quantity * price, currency, day_timestamp);
             conn.execute(
-                "INSERT INTO stock_value_history (id, ticker, recorded_at, value_czk, quantity, price, currency)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+                "INSERT INTO stock_value_history (id, ticker, recorded_at, quantity, price, currency)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6)
                  ON CONFLICT(ticker, recorded_at) DO UPDATE SET
-                     value_czk = excluded.value_czk,
                      quantity = excluded.quantity,
                      price = excluded.price,
                      currency = excluded.currency",
@@ -906,7 +850,6 @@ mod golden {
                     Uuid::new_v4().to_string(),
                     ticker,
                     day_timestamp,
-                    value_czk.to_string(),
                     quantity.to_string(),
                     price.to_string(),
                     currency,
@@ -1002,40 +945,18 @@ mod golden {
         conn.execute_batch(
             r#"
             CREATE TABLE investment_transactions (id TEXT PRIMARY KEY, investment_id TEXT NOT NULL, type TEXT NOT NULL, ticker TEXT NOT NULL, company_name TEXT NOT NULL, quantity TEXT NOT NULL, price_per_unit TEXT NOT NULL, currency TEXT NOT NULL, transaction_date INTEGER NOT NULL, created_at INTEGER NOT NULL DEFAULT 0);
-            CREATE TABLE stock_value_history (id TEXT PRIMARY KEY, ticker TEXT NOT NULL, recorded_at INTEGER NOT NULL, value_czk TEXT NOT NULL, quantity TEXT NOT NULL, price TEXT NOT NULL, currency TEXT NOT NULL, is_stale INTEGER NOT NULL DEFAULT 0, UNIQUE(ticker, recorded_at));
-            CREATE TABLE exchange_rate_history (date INTEGER NOT NULL, currency TEXT NOT NULL, rate REAL NOT NULL, PRIMARY KEY (date, currency));
+            CREATE TABLE stock_value_history (id TEXT PRIMARY KEY, ticker TEXT NOT NULL, recorded_at INTEGER NOT NULL, quantity TEXT NOT NULL, price TEXT NOT NULL, currency TEXT NOT NULL, is_stale INTEGER NOT NULL DEFAULT 0, UNIQUE(ticker, recorded_at));
             CREATE TABLE portfolio_metrics_history (
-                id TEXT PRIMARY KEY, total_savings TEXT NOT NULL, total_loans_principal TEXT NOT NULL,
-                total_investments TEXT NOT NULL, total_crypto TEXT NOT NULL, total_bonds TEXT NOT NULL,
-                total_real_estate_personal TEXT NOT NULL, total_real_estate_investment TEXT NOT NULL,
-                total_other_assets TEXT NOT NULL DEFAULT '0', recorded_at INTEGER NOT NULL,
+                id TEXT PRIMARY KEY, recorded_at INTEGER NOT NULL,
                 investments_by_currency TEXT NOT NULL DEFAULT '{}', crypto_by_currency TEXT NOT NULL DEFAULT '{}',
                 savings_by_currency TEXT NOT NULL DEFAULT '{}', bonds_by_currency TEXT NOT NULL DEFAULT '{}',
                 real_estate_by_currency TEXT NOT NULL DEFAULT '{}', loans_by_currency TEXT NOT NULL DEFAULT '{}',
-                other_assets_by_currency TEXT NOT NULL DEFAULT '{}', source TEXT NOT NULL DEFAULT 'live'
+                other_assets_by_currency TEXT NOT NULL DEFAULT '{}', source TEXT NOT NULL DEFAULT 'live',
+                real_estate_personal_by_currency TEXT NOT NULL DEFAULT '{}'
             );
             "#,
         )
         .expect("schema");
-    }
-
-    /// FX snapshots on weekdays only, so weekend days exercise the walk-back.
-    fn seed_rates(conn: &Connection, first_day: i64) {
-        let mut day = first_day - 15 * DAY;
-        while day <= TODAY {
-            if weekday_of(day) < 5 {
-                // 1 USD costs 21.0 to 22.0 CZK, 1 EUR 24.5 CZK
-                let czk_per_usd = 21.0 + (day / DAY % 11) as f64 * 0.1;
-                for (currency, rate) in [("USD", 24.5 / czk_per_usd), ("CZK", 24.5)] {
-                    conn.execute(
-                        "INSERT INTO exchange_rate_history (date, currency, rate) VALUES (?1, ?2, ?3)",
-                        params![day, currency, rate],
-                    )
-                    .expect("rate");
-                }
-            }
-            day += DAY;
-        }
     }
 
     fn seed_snapshot_days(conn: &Connection, first_day: i64, skip_every: i64) {
@@ -1045,10 +966,8 @@ mod golden {
             n += 1;
             if skip_every == 0 || n % skip_every != 0 {
                 conn.execute(
-                    "INSERT INTO portfolio_metrics_history
-                     (id, total_savings, total_loans_principal, total_investments, total_crypto, total_bonds,
-                      total_real_estate_personal, total_real_estate_investment, recorded_at, source)
-                     VALUES (?1, '1', '0', '1', '0', '0', '0', '0', ?2, 'backfill')",
+                    "INSERT INTO portfolio_metrics_history (id, recorded_at, source)
+                     VALUES (?1, ?2, 'backfill')",
                     params![Uuid::new_v4().to_string(), day],
                 )
                 .expect("snapshot");
@@ -1106,13 +1025,12 @@ mod golden {
     fn rows_of(conn: &Connection, ticker: &str) -> Vec<HistoryRow> {
         let mut stmt = conn
             .prepare(
-                "SELECT recorded_at, CAST(value_czk AS REAL), CAST(quantity AS REAL),
-                        CAST(price AS REAL), currency
+                "SELECT recorded_at, CAST(quantity AS REAL), CAST(price AS REAL), currency
                  FROM stock_value_history WHERE ticker = ?1 ORDER BY recorded_at",
             )
             .expect("prepare");
         stmt.query_map([ticker], |r| {
-            Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?))
+            Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?))
         })
         .expect("query")
         .map(|r| r.expect("row"))
@@ -1127,12 +1045,8 @@ mod golden {
         assert_eq!(legacy.len(), new.len(), "same number of history rows");
         for (a, b) in legacy.iter().zip(new) {
             assert_eq!(a.0, b.0, "same day");
-            assert_eq!(a.4, b.4, "same currency on day {}", a.0);
-            for (x, y, what) in [
-                (a.1, b.1, "value_czk"),
-                (a.2, b.2, "quantity"),
-                (a.3, b.3, "price"),
-            ] {
+            assert_eq!(a.3, b.3, "same currency on day {}", a.0);
+            for (x, y, what) in [(a.1, b.1, "quantity"), (a.2, b.2, "price")] {
                 assert!(close(x, y), "{what} differs on day {}: {x} vs {y}", a.0);
             }
         }
@@ -1147,7 +1061,6 @@ mod golden {
         let new_db = Connection::open_in_memory().expect("db");
         for conn in [&legacy_db, &new_db] {
             minimal_schema(conn);
-            seed_rates(conn, first_day);
             seed_main_ticker(conn, "AAPL", first_day);
             seed_fractional_ticker(conn, "MSFT", "USD", first_day);
         }
@@ -1182,26 +1095,22 @@ mod golden {
         assert_rows_match(&legacy_rows, &rows_of(&new_db, "AAPL"));
     }
 
-    /// `(day, investments_by_currency, total_investments)` per snapshot row.
-    fn investments_of(conn: &Connection) -> Vec<(i64, HashMap<String, f64>, f64)> {
+    /// `(day, investments_by_currency)` per snapshot row.
+    fn investments_of(conn: &Connection) -> Vec<(i64, HashMap<String, f64>)> {
         let mut stmt = conn
             .prepare(
-                "SELECT recorded_at, investments_by_currency, CAST(total_investments AS REAL)
+                "SELECT recorded_at, investments_by_currency
                  FROM portfolio_metrics_history ORDER BY recorded_at",
             )
             .expect("prepare");
         stmt.query_map([], |r| {
             let json: String = r.get(1)?;
-            Ok((r.get(0)?, json, r.get(2)?))
+            Ok((r.get(0)?, json))
         })
         .expect("query")
         .map(|r| {
-            let (day, json, total) = r.expect("row");
-            (
-                day,
-                crate::services::currency::breakdown_from_json(&json),
-                total,
-            )
+            let (day, json) = r.expect("row");
+            (day, crate::services::currency::breakdown_from_json(&json))
         })
         .collect()
     }
@@ -1216,7 +1125,6 @@ mod golden {
         let new_db = Connection::open_in_memory().expect("db");
         for conn in [&legacy_db, &new_db] {
             minimal_schema(conn);
-            seed_rates(conn, first_day);
             // Holiday-like gaps in the snapshot days
             seed_snapshot_days(conn, first_day, 9);
             seed_main_ticker(conn, "AAPL", first_day - 100 * DAY);
@@ -1225,8 +1133,8 @@ mod golden {
             // Transactions but no history rows, and history rows but no transactions
             add_txs(conn, "NOHIST", "USD", &[("buy", "5", first_day)]);
             conn.execute(
-                "INSERT INTO stock_value_history (id, ticker, recorded_at, value_czk, quantity, price, currency)
-                 VALUES ('ghost', 'GHOST', ?1, '1', '1', '1', 'USD')",
+                "INSERT INTO stock_value_history (id, ticker, recorded_at, quantity, price, currency)
+                 VALUES ('ghost', 'GHOST', ?1, '1', '1', 'USD')",
                 [first_day + 5 * DAY],
             )
             .expect("ghost row");
@@ -1246,15 +1154,11 @@ mod golden {
         let new = investments_of(&new_db);
         assert_eq!(legacy.len(), new.len());
         assert!(
-            legacy
-                .iter()
-                .any(|(_, by_currency, _)| by_currency.len() == 2),
+            legacy.iter().any(|(_, by_currency)| by_currency.len() == 2),
             "the fixture mixes two currencies on some days"
         );
         assert!(
-            legacy
-                .iter()
-                .any(|(_, by_currency, _)| by_currency.is_empty()),
+            legacy.iter().any(|(_, by_currency)| by_currency.is_empty()),
             "and has days where nothing is held"
         );
         for (a, b) in legacy.iter().zip(&new) {
@@ -1268,7 +1172,6 @@ mod golden {
                     a.0
                 );
             }
-            assert!(close(a.2, b.2), "total differs on day {}", a.0);
         }
     }
 
@@ -1283,10 +1186,8 @@ mod golden {
     }
 
     /// A realistic book: `other` tickers held across the whole range with a
-    /// full history, daily portfolio snapshots, USD/EUR rates, plus the
-    /// ticker under test.
+    /// full history, daily portfolio snapshots, plus the ticker under test.
     fn seed_bench_db(conn: &Connection, first_day: i64, other: usize) {
-        seed_rates(conn, first_day);
         conn.execute_batch("BEGIN").expect("begin");
         seed_snapshot_days(conn, first_day, 0);
         for t in 0..other {
@@ -1332,17 +1233,15 @@ mod golden {
                 quantity,
                 price,
                 currency,
-                value_czk,
             } = day_plan.action
             {
                 conn.execute(
-                    "INSERT INTO stock_value_history (id, ticker, recorded_at, value_czk, quantity, price, currency)
-                     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+                    "INSERT INTO stock_value_history (id, ticker, recorded_at, quantity, price, currency)
+                     VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
                     params![
                         Uuid::new_v4().to_string(),
                         ticker,
                         day_plan.day,
-                        value_czk.to_string(),
                         quantity.to_string(),
                         price.to_string(),
                         currency

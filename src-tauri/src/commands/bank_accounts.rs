@@ -316,10 +316,9 @@ pub async fn create_bank_transaction(
 ) -> Result<BankTransaction> {
     data.validate()?;
     let created = db.with_conn(|conn| bank_service::create_transaction(conn, &data))?;
-    // A back-dated foreign-currency entry may predate the FX timeseries.
-    if !created.currency.eq_ignore_ascii_case("CZK") {
-        portfolio::spawn_fx_backfill(app, db.inner().clone());
-    }
+    // A back-dated entry may predate the FX timeseries; the backfill is a no-op when its
+    // currency is the reference or already covered.
+    portfolio::spawn_fx_backfill(app, db.inner().clone());
     Ok(created)
 }
 

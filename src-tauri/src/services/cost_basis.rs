@@ -357,6 +357,40 @@ pub fn load_ticker_transactions(
     Ok(rows)
 }
 
+/// Weighted average cost per unit of one position in its primary currency (the currency of its
+/// first transaction), cross-currency buys converted at their day's quotes (`current` when a day
+/// has none). No other currency is involved. `0.0` without transactions or convertible buys.
+pub fn native_average_price(
+    conn: &Connection,
+    table: TxTable,
+    investment_id: &str,
+    current: &Quotes,
+) -> Result<f64> {
+    let sql = format!(
+        "SELECT type, quantity, price_per_unit, currency, transaction_date
+         FROM {} WHERE investment_id = ?1
+         ORDER BY transaction_date ASC, created_at ASC, rowid ASC",
+        table.table_name()
+    );
+    let mut stmt = conn.prepare(&sql)?;
+    let txs = stmt
+        .query_map([investment_id], |row| parse_tx_row(row, 0))?
+        .collect::<rusqlite::Result<Vec<_>>>()?;
+    let Some(first) = chronological(&txs)
+        .first()
+        .map(|tx| tx.currency.to_uppercase())
+    else {
+        return Ok(0.0);
+    };
+    let (min_day, max_day) = txs
+        .iter()
+        .map(|tx| tx.transaction_date)
+        .fold((i64::MAX, i64::MIN), |(lo, hi), d| (lo.min(d), hi.max(d)));
+    let history = History::load(conn, min_day, max_day)?;
+    let (position, _quality) = position_cost_basis(&txs, &history, current, &first);
+    Ok(position.map_or(0.0, |p| p.average_price_native()))
+}
+
 /// Derives every grouped position against one history.
 fn derive_all(
     grouped: HashMap<String, Vec<TxRow>>,
@@ -902,5 +936,41 @@ mod tests {
         assert!((btc.quantity - 2.0).abs() < 1e-9);
         assert!((btc.cost_basis_target - 1_100_000.0).abs() < 1e-9);
         assert_eq!(btc.primary_currency, "CZK");
+    }
+
+    #[test]
+    fn native_average_price_needs_no_target_currency() {
+        let conn = setup_db();
+        conn.execute_batch(&format!(
+            r#"
+            INSERT INTO exchange_rate_history (date, currency, rate) VALUES
+                ({d1}, 'CZK', 25.0), ({d1}, 'USD', 1.25);
+            INSERT INTO crypto_transactions
+                (id, investment_id, type, ticker, name, quantity, price_per_unit, currency, transaction_date)
+            VALUES
+                ('c1', 'btc', 'buy', 'BTC', 'Bitcoin', '1', '500000', 'CZK', {d1}),
+                ('c2', 'btc', 'buy', 'BTC', 'Bitcoin', '1', '30000', 'USD', {d1});
+            INSERT INTO investment_transactions
+                (id, investment_id, type, ticker, company_name, quantity, price_per_unit, currency, transaction_date)
+            VALUES
+                ('t1', 'inv-a', 'buy', 'AAA', 'A', '10', '100', 'KWD', {d1}),
+                ('t2', 'inv-a', 'buy', 'AAA', 'A', '10', '120', 'KWD', {d2});
+            "#,
+            d1 = D1,
+            d2 = D2,
+        ))
+        .expect("seed");
+        let empty = Quotes::new("EUR");
+
+        // Primary CZK: the USD buy converts at its day's cross rate (1 USD = 20 CZK).
+        let btc = native_average_price(&conn, TxTable::Crypto, "btc", &empty).expect("btc");
+        assert!((btc - 550_000.0).abs() < 1e-6, "{btc}");
+        // A single-currency position without any quote still has its native average.
+        let kwd = native_average_price(&conn, TxTable::Stocks, "inv-a", &empty).expect("inv-a");
+        assert!((kwd - 110.0).abs() < 1e-9, "{kwd}");
+        assert_eq!(
+            native_average_price(&conn, TxTable::Stocks, "none", &empty).expect("none"),
+            0.0
+        );
     }
 }

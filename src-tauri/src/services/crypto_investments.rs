@@ -189,16 +189,13 @@ pub fn get_crypto_by_id(
     // Weighted average in the primary (first-transaction) currency, with
     // cross-currency transactions converted at their day's rates — crypto
     // positions may mix transaction currencies.
-    let (positions, _quality) = crate::services::cost_basis::cost_basis_for_all(
+    inv.average_price = crate::services::cost_basis::native_average_price(
         conn,
         crate::services::cost_basis::TxTable::Crypto,
-        "CZK",
+        investment_id,
         &crate::services::fx::current(),
-    )?;
-    inv.average_price = positions
-        .get(investment_id)
-        .map(|p| p.average_price_native().to_string())
-        .unwrap_or_else(|| "0".to_string());
+    )?
+    .to_string();
     Ok(inv)
 }
 

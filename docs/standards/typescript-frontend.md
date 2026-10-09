@@ -100,11 +100,15 @@ Every Tauri `listen()` call gets its `unlisten()` in the `useEffect` cleanup.
   `shared/iso4217-minor-units.json` table as backend `reporting::minor_units`) so rows,
   totals and CSV reconcile: CZK 100.40 + 100.40 reads 200.80. Elsewhere `useFormat().money()`
   keeps the cash style (CZK/HUF without decimals); do not migrate it wholesale.
-- Use `convertToCzK` and `formatCurrency`/`formatCurrencyShort` only for interfaces that
-  explicitly retain a CZK contract (for example, existing portfolio caches). A reference
+- Convert on the frontend only with `useCurrency().convert(amount, from, to?)` (current
+  quotes, `to` defaults to the main currency) or the dated converters of `src/hooks/use-fx.ts`
+  (`useDatedFx`, `useDatedMainConvert`);
+  both return `null` without a rate — show the native amount or "—", never 1:1. A reference
   currency is not a reason to overwrite native amounts or change historical rate dates.
 - Everything else (native-currency amounts, plain numbers, percentages, dates) goes through
-  `useFormat()` / `getFormatters(locale)` from `src/lib/format.ts`: `money`, `number`,
+  `useFormat()` / `getFormatters(locale, mainCurrency)` from `src/lib/format.ts` (only the
+  main currency gets its narrow symbol; pass `undefined` explicitly where no profile context
+  exists, then every currency shows its ISO code): `money`, `number`,
   `percent`, `day` (UTC calendar days — booking, transaction, maturity dates), `dateTime`
   and `time` (real instants), `date` (local `Date` objects), `month`. Output follows the
   **UI language**, never the currency's locale or the OS locale. ESLint
@@ -114,9 +118,9 @@ Every Tauri `listen()` call gets its `unlisten()` in the `useEffect` cleanup.
 - Chart axes: label days with `fmt.day`, thin the ticks with `evenTicks()` from
   `src/utils/chart-axis.ts` (at most 8, evenly spaced).
 - Queries returning target-currency money include that currency in their key. Queries
-  dependent on rates also include `ratesTimestamp` so new rate data refetches them. Format
+  dependent on rates also include `fxRevision` so new rate data refetches them. Format
   with the response currency, never relabel an old response after a profile change.
 
 **Why:** hand-rolled conversion or formatting drifts from the rest of the app; a query
-that ignores `ratesTimestamp` shows values computed with stale rates next to values
+that ignores `fxRevision` shows values computed with stale rates next to values
 computed with fresh ones.

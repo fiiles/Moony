@@ -63,6 +63,27 @@ The one-table stock import was replaced by the broker-aware wizard
 
 The CSV import `balanceUpdatePayload` helper is removed: copying a statement amount into `update_bank_account` lost its date and currency. Use `bankAccountsApi.setBalanceAnchor` with the structured `statementBalance`, and obtain explicit confirmation before replacing an existing balance with an unknown date.
 
+## Removed with explicit currencies (do not re-add)
+
+Implicit-CZK machinery deleted once every page and command declared its currency
+(ADR 0011, `docs/plans/2026-10-09-multi-currency.md`). It converted through a global CZK
+table, valued unknown currencies 1:1 and returned unlabelled CZK numbers.
+
+| Removed | Why it was removed | Use instead |
+|---|---|---|
+| `useCurrency().formatCurrency`, `formatCurrencySigned`, `formatCurrencyShort`, `formatCurrencyRaw`, `formatPrice` | Assumed a CZK input and converted it to the display currency with the frontend rate table | `useFormat().money(amount, currency, opts)` with the amount's own currency; reports: `useReportMoney(report.reportCurrency)` / `formatReportMoney` |
+| CZK-based `useCurrency().convert(amount, from, to)` (1:1 for unknown codes) and `ratesTimestamp` | Silent 1:1 fallback; refetch key tied to the old table | `useCurrency().convert(amount, from, to?)` (the former `fxConvert`, `null` without a rate) and `fxRevision` |
+| `shared/currencies.ts`: `EXCHANGE_RATES`, `BUILT_IN_RATES`, `updateExchangeRates`, `hasKnownRate`, `convertToCzK`, `convertFromCzK`, `BASE_CURRENCY`, `ECB_CURRENCY_CODES`, `isEcbCurrency` | Mutable global CZK rate table with hardcoded fallback rates | `shared/fx.ts` (`convert`, `convertOn`) over `useFxSnapshot()` / `useFxHistory()`; `isFxSupported` / `FX_SOURCE_CODES` for "has a rate source" |
+| `createFormatters(locale)` / `getFormatters(locale)` without a main currency (narrow symbol for every currency) | "$" and "kr" are several currencies | `getFormatters(locale, mainCurrency)` — required; `undefined` only where no profile context exists (every currency then shows its ISO code) |
+| `src/hooks/use-dated-convert.ts` (`useDatedConvert`) | Nearest-day-with-any-quote lookups that fell back to today's rates | `useFxHistory()` + `convertOn` (common-day rule) or backend responses converted per day |
+| `shared/calculations/{change-metrics,crypto-metrics,holding-metrics,portfolio-metrics,cost-basis}.ts`, `calculateYieldPercentOnCost/OnMarket` | No callers after the pages moved to backend reports | Backend `services/positions.rs`, `services/cost_basis.rs`, `services/net_worth.rs` responses |
+| `resolveAssumptions`, `summarizeAssumptions` (`src/utils/projection-assumptions.ts`) | Test-only after the projection page moved to the backend response | `get_projection` response (`fxQuality`, class values) |
+| `portfolioApi.getExchangeRates`, `getExchangeRatesForDate`, `getExchangeRatesForDateRange` and the commands `get_exchange_rates`, `get_exchange_rates_for_date`, `get_exchange_rates_for_date_range`; the CZK map returned by `refresh_exchange_rates` | CZK-per-unit maps for the frontend table | `get_fx_snapshot` / `get_fx_history` (`useFxSnapshot`, `useFxHistory`); `refresh_exchange_rates` only triggers the refresh |
+| Rust `services/currency.rs`: `convert_to_czk`, `convert_to_czk_with_rates`, `convert_to_czk_at`, `get_all_rates`, `get_rates_for_date`, `get_rates_for_date_range`, `resolve_rates_for_day_from_range`, `breakdown_czk_at_rates` | Phase-1 CZK shims; the day lookups used the nearest day with *any* quote | `fx::current()` + `Quotes::convert`, `fx::History::convert_on` (common-day rule), `reporting` helpers; the CZK cache columns only through `portfolio_history::LegacyCzk` (removed with the caches in Task 24) |
+| `fx::record_missing`, `fx::record_missing_all`, `fx::missing_now` (global missing-currency set) | Filled as a side effect of conversions, so it depended on which pages had run | Per-response `fxQuality` (`ConversionQuality`); `PriceStatus.missingCurrencies` = data currencies the current quotes cannot resolve (`fx_backfill::unquoted_currencies`) |
+| `constants::DEFAULT_BASE_CURRENCY` | There is no base currency; reports declare theirs | The profile (main) currency or the request's `reportCurrency` |
+| CZK-scale UI defaults (annuity/estate calculator amounts, the what-if 1 000 step) and UI `\|\| 'CZK'` currency fallbacks | Meaningless outside CZK | EUR constants scaled by `scaledDefault` (empty without a rate), `whatIfStep` (1 % of the balance), the main currency `currencyCode` |
+
 ## Deprecated type sources
 
 | Path | Why deprecated | Use instead |

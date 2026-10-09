@@ -7,6 +7,7 @@ use crate::models::{
     InsertCryptoTransaction,
 };
 use crate::services::crypto_investments as crypto_service;
+use crate::services::fx;
 use crate::services::position_reports;
 use crate::services::pricing::AssetKind;
 use crate::services::ticker_history;
@@ -416,9 +417,9 @@ pub async fn get_crypto_value_history(
             conn,
             AssetKind::Crypto,
             &ticker,
-            start_date,
-            end_date,
+            (start_date, end_date),
             &report_currency,
+            &fx::current(),
         )
     })
 }

@@ -1695,8 +1695,8 @@ export type StockTagGroup = { id: string; name: string; description: string | nu
 
 /**
  * Time-weighted return series computed in a report currency: each day's value and cash flows
- * are converted at that day's rate. Days that could not be converted are left out of the
- * chain and counted in `fxQuality`.
+ * are converted at that day's rate. A holding that cannot be converted is left out of that day
+ * (the others keep chaining) and counted in `fxQuality`.
  */
 export type StockTwr = { currency: string; fxQuality: ConversionQuality; series: TwrSeries[] }
 
@@ -1759,7 +1759,12 @@ export type TagMetricsReport = { currency: string; fxQuality: ConversionQuality;
  * `value` is `quantity × price` converted at that day's rate (common-day rule), `null` when it
  * cannot be converted.
  */
-export type TickerValueHistory = { ticker: string; recordedAt: number; quantity: string; price: string; currency: string; value: string | null; isStale: boolean }
+export type TickerValueHistory = { ticker: string; recordedAt: number; quantity: string; price: string; currency: string; value: string | null; 
+/**
+ * The position's cost basis as of that day in the report currency (every buy converted at
+ * its own day, sells release cost at the running average); `null` when unknown.
+ */
+costBasis: string | null; isStale: boolean }
 
 /**
  * A ticker's value history in a report currency, oldest day first.

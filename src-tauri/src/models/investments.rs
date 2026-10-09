@@ -282,6 +282,10 @@ pub struct TickerValueHistory {
     pub price: String,
     pub currency: String,
     pub value: Option<String>,
+    /// The position's cost basis as of that day in the report currency (every buy converted at
+    /// its own day, sells release cost at the running average); `null` when unknown.
+    #[serde(rename = "costBasis")]
+    pub cost_basis: Option<String>,
     #[serde(rename = "isStale")]
     pub is_stale: bool,
 }
@@ -395,8 +399,8 @@ pub struct TwrSeries {
 }
 
 /// Time-weighted return series computed in a report currency: each day's value and cash flows
-/// are converted at that day's rate. Days that could not be converted are left out of the
-/// chain and counted in `fxQuality`.
+/// are converted at that day's rate. A holding that cannot be converted is left out of that day
+/// (the others keep chaining) and counted in `fxQuality`.
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct StockTwr {
     pub currency: String,

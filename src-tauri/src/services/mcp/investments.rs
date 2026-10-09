@@ -687,6 +687,17 @@ mod value_history_tests {
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 currency TEXT NOT NULL DEFAULT 'CZK'
             );
+            CREATE TABLE investment_transactions (
+                id TEXT PRIMARY KEY,
+                investment_id TEXT NOT NULL,
+                type TEXT NOT NULL,
+                ticker TEXT NOT NULL,
+                quantity TEXT NOT NULL,
+                price_per_unit TEXT NOT NULL,
+                currency TEXT NOT NULL,
+                transaction_date INTEGER NOT NULL,
+                created_at INTEGER NOT NULL DEFAULT 0
+            );
             CREATE TABLE exchange_rate_history (
                 date INTEGER NOT NULL,
                 currency TEXT NOT NULL,

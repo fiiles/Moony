@@ -11,6 +11,8 @@ use std::sync::{OnceLock, RwLock};
 pub const DAY: i64 = 86_400;
 /// How many days back a historical conversion may look for a common quote day.
 pub const MAX_LOOKBACK_DAYS: i64 = 10;
+/// The reference currency of the stored day quotes (phase-1 storage: CZK per unit).
+const HISTORY_REFERENCE: &str = "CZK";
 
 type SupportedTable = (Vec<String>, HashMap<String, (String, f64)>);
 
@@ -222,7 +224,7 @@ impl History {
             let rate: f64 = row.get(2)?;
             let quotes = days
                 .entry(floor_day(date))
-                .or_insert_with(|| Quotes::new("CZK"));
+                .or_insert_with(|| Quotes::new(HISTORY_REFERENCE));
             if rate.is_finite() && rate > 0.0 {
                 quotes.insert(&currency, 1.0 / rate);
             }
@@ -283,6 +285,10 @@ impl History {
         let Some(code) = normalize(code) else {
             return false;
         };
+        // The storage reference is quoted on every stored day by definition
+        if code == HISTORY_REFERENCE {
+            return true;
+        }
         let start = floor_day(day);
         (0..=MAX_LOOKBACK_DAYS).any(|back| {
             self.days
@@ -496,11 +502,7 @@ impl Quality {
             if unresolved.is_empty() {
                 unresolved.push(from);
             }
-            for code in unresolved {
-                self.missing
-                    .insert(normalize(code).unwrap_or_else(|| code.trim().to_uppercase()));
-            }
-            self.missing_count += 1;
+            self.record_missing_conversion(unresolved);
         }
         result
     }
@@ -795,6 +797,17 @@ mod tests {
         );
         assert_eq!(quality.missing_currencies(), vec!["JPY", "USD"]);
         assert_eq!(quality.missing_count(), 2);
+    }
+
+    #[test]
+    fn convert_on_tracked_never_blames_the_storage_reference() {
+        let h = History::default();
+        let mut quality = Quality::default();
+        assert_eq!(
+            h.convert_on_tracked(&mut quality, 1.0, "USD", "CZK", 20_000 * DAY),
+            None
+        );
+        assert_eq!(quality.missing_currencies(), vec!["USD"]);
     }
 
     #[test]

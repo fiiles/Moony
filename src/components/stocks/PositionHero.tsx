@@ -37,8 +37,8 @@ interface PositionHeroProps {
   /** Current value of the position in the report currency; `null` when not convertible
    *  (the line then ends at the last recorded day). */
   currentValue: number | null;
-  /** The position's cost basis in the report currency, as the backend states it (the dashed
-   *  line, from the first transaction on); `null` when unknown (no dashed line). */
+  /** The position's cost basis in the report currency, as the backend states it (end of the
+   *  dashed line); `null` when unknown. */
   currentCost: number | null;
   transactions: PositionTransaction[];
   /** The hero numbers on the left (one or more <HeroValue>). */
@@ -122,38 +122,27 @@ export function PositionHero({
   const reportCurrency = history?.currency ?? currencyCode;
   const money = (v: number) => fmt.money(v, reportCurrency, { decimals: 0 });
 
-  const firstTransaction = useMemo(
-    () =>
-      transactions.reduce<number | null>(
-        (min, tx) => (min === null || tx.transactionDate < min ? tx.transactionDate : min),
-        null
-      ),
-    [transactions]
-  );
-  const costAt = (time: number): number | undefined =>
-    currentCost !== null && firstTransaction !== null && time >= firstTransaction
-      ? currentCost
-      : undefined;
-
+  // Each point carries the position's value and cost basis as of its day, both in the report
+  // currency; today's end point is the position's own figures.
   const points = useMemo(() => {
     const pts = (history?.points ?? []).flatMap((h) => {
       const value = amountOf(h.value);
-      return value === null ? [] : [{ t: h.recordedAt, value, cost: costAt(h.recordedAt) }];
+      return value === null
+        ? []
+        : [{ t: h.recordedAt, value, cost: amountOf(h.costBasis) ?? undefined }];
     });
     if (currentValue === null) return pts;
     const today = utcDayFloor(Date.now() / 1000);
     const last = pts[pts.length - 1];
-    const now = Math.floor(Date.now() / 1000);
+    const cost = currentCost ?? undefined;
     if (last && utcDayFloor(last.t) === today) {
       last.value = currentValue;
-      last.cost = costAt(now);
+      last.cost = cost;
     } else {
-      pts.push({ t: now, value: currentValue, cost: costAt(now) });
+      pts.push({ t: Math.floor(Date.now() / 1000), value: currentValue, cost });
     }
     return pts;
-    // costAt is derived from currentCost and the first transaction
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [history, currentValue, currentCost, firstTransaction]);
+  }, [history, currentValue, currentCost]);
 
   const events = useMemo<PositionEvent[]>(
     () =>
@@ -218,6 +207,13 @@ export function PositionHero({
             onHotEventChange={onHotEventChange}
             onEventClick={(cluster) => onEventClick?.(cluster.events.map((e) => e.id))}
           />
+          {history && history.fxQuality.missingCurrencies.length > 0 && (
+            <p className="mt-2 text-micro text-loss" role="note">
+              {t('detail.chartFxMissing', {
+                currencies: history.fxQuality.missingCurrencies.join(', '),
+              })}
+            </p>
+          )}
           <ChartLegend
             items={[
               { label: t('detail.legend.value'), swatch: { kind: 'line' } },

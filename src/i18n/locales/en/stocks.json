@@ -212,6 +212,7 @@
     }
   },
   "detail": {
+    "chartFxMissing": "Some days are missing from the chart or the invested line: no exchange rate for {{currencies}}.",
     "backToList": "Back to stocks",
     "notFound": "Holding not found",
     "deleted": "Position deleted",

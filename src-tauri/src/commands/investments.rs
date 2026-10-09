@@ -8,6 +8,7 @@ use crate::models::{
     InvestmentWithDetails, StockInvestment, StockPosition, StockPositions, StockPriceOverride,
     StockTag, StockTwr,
 };
+use crate::services::fx;
 use crate::services::history_recalc::HistoryRecalc;
 use crate::services::investments as investment_service;
 use crate::services::position_reports;
@@ -595,9 +596,9 @@ pub async fn get_stock_value_history(
             conn,
             AssetKind::Stock,
             &ticker,
-            start_date,
-            end_date,
+            (start_date, end_date),
             &report_currency,
+            &fx::current(),
         )
     })
 }

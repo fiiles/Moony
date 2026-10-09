@@ -59,7 +59,7 @@ pub(crate) fn sql_to_json(v: rusqlite::types::Value) -> Value {
 }
 
 /// Daily value history of one ticker (`stock_value_history` /
-/// `crypto_value_history`), oldest first, from the same service as the app
+/// `crypto_value_history`), oldest first, from the same service and quote snapshot as the app
 /// (`ticker_history::value_history`): `value` is `quantity × price` converted
 /// into the user's main currency at each row's own day (common-day rule, ADR
 /// 0011) and returned as decimal text at the currency's minor unit, `null`
@@ -74,7 +74,12 @@ pub(crate) fn ticker_value_history(
 ) -> crate::error::Result<Value> {
     let main = money::load_main_currency(conn)?;
     let report = crate::services::ticker_history::value_history(
-        conn, kind, ticker, start_date, end_date, &main,
+        conn,
+        kind,
+        ticker,
+        (start_date, end_date),
+        &main,
+        &crate::services::fx::current(),
     )?;
     Ok(serde_json::json!({
         "mainCurrency": report.currency,

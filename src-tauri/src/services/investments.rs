@@ -888,8 +888,8 @@ struct ReportFx<'a> {
 /// Cash flows are estimated from quantity changes in `stock_value_history`. A day's value is
 /// the native `quantity × price` converted at that day's rate and a flow is converted at the
 /// day it happened, so a currency moving alone shows up as return in a report currency other
-/// than the position's. A day any of whose conversions fails is left out of the chain and
-/// counted in `quality`.
+/// than the position's. A holding any of whose conversions fails is left out of that day only
+/// (the miss is counted in `quality`); the other holdings keep chaining.
 ///
 /// `from_ts` and `to_ts` must be Unix timestamps (seconds, midnight UTC); `fx.history` must
 /// cover them (and the day before `from_ts`).
@@ -1020,7 +1020,6 @@ fn compute_twr_for_tickers(
         let mut v_curr = 0.0f64;
         let mut v_prev = 0.0f64;
         let mut cf = 0.0f64;
-        let mut convertible = true;
         let mut curr_values = Vec::with_capacity(tickers.len());
 
         for (ticker, val_prev) in tickers.iter().zip(&prev_values) {
@@ -1028,41 +1027,43 @@ fn compute_twr_for_tickers(
             let prev = lookup_ticker_at(&history, ticker, prev_day);
             let val_curr = value_at(curr, day, quality);
             curr_values.push(val_curr);
+            // A holding that cannot be converted drops out of this day only; the miss is
+            // already recorded and the others keep chaining.
             let (Some(val_curr), Some(val_prev)) = (val_curr, *val_prev) else {
-                convertible = false;
                 continue;
             };
-            v_curr += val_curr;
-            v_prev += val_prev;
 
             let qty_curr = curr.map_or(0.0, |h| h.quantity);
             let qty_prev = prev.map_or(0.0, |h| h.quantity);
             let delta_qty = qty_curr - qty_prev;
+            let mut flow = 0.0;
             if delta_qty.abs() > 1e-9 {
                 // The flow is priced with the day's own native price, converted at its day.
                 let priced = if qty_curr > 1e-9 { curr } else { prev };
                 if let Some(h) = priced {
-                    match fx.history.convert_on_tracked(
+                    let converted = fx.history.convert_on_tracked(
                         quality,
                         delta_qty * h.price,
                         &h.currency,
                         fx.currency,
                         day,
-                    ) {
-                        Some(flow) => cf += flow,
-                        None => convertible = false,
-                    }
+                    );
+                    let Some(converted) = converted else {
+                        continue;
+                    };
+                    flow = converted;
                 }
             }
+            v_curr += val_curr;
+            v_prev += val_prev;
+            cf += flow;
         }
         prev_values = curr_values;
 
-        if convertible {
-            let denominator = v_prev + cf;
-            if denominator > 1e-9 {
-                let daily_r = (v_curr - v_prev - cf) / denominator;
-                twr_factor *= 1.0 + daily_r;
-            }
+        let denominator = v_prev + cf;
+        if denominator > 1e-9 {
+            let daily_r = (v_curr - v_prev - cf) / denominator;
+            twr_factor *= 1.0 + daily_r;
         }
 
         // Emit this point if it falls on the sampling interval or is the last day.
@@ -1144,8 +1145,8 @@ fn twr_scope_tickers(
 ///   others are read against, so it is never narrowed.
 /// - `range`: Unix timestamps (seconds, midnight UTC) of the first and last day.
 /// - `report_currency`: the currency the returns are computed in; every day's values and flows
-///   are converted at that day's rate (common-day rule). Days that cannot be converted are left
-///   out of the chain and counted in the response's `fxQuality`.
+///   are converted at that day's rate (common-day rule). A holding that cannot be converted is
+///   left out of that day (the others keep chaining) and counted in the response's `fxQuality`.
 pub fn twr_series(
     conn: &rusqlite::Connection,
     tag_ids: &[String],
@@ -1946,7 +1947,48 @@ mod tests {
         let twr = twr_series(&conn, &[], false, false, None, day0..=day2, "CZK").unwrap();
 
         assert_eq!(twr_points(&twr), [0.0, 0.0, 0.0]);
-        assert_eq!(twr.fx_quality.missing_currencies, ["CZK", "USD"]);
+        assert_eq!(twr.fx_quality.missing_currencies, ["USD"]);
+        assert!(twr.fx_quality.missing_count > 0);
+    }
+
+    #[test]
+    fn twr_keeps_chaining_the_holdings_that_convert() {
+        // CZ (a CZK stock) goes 100 -> 110; GOLD is priced in XAU, which has no quote at all
+        let conn = setup_twr_series_db();
+        let day0: i64 = 1_700_000_000 / 86400 * 86400;
+        for (id, ticker) in [("inv-cz", "CZ"), ("inv-gold", "GOLD")] {
+            conn.execute(
+                "INSERT INTO stock_investments (id, ticker, quantity) VALUES (?1, ?2, '10')",
+                rusqlite::params![id, ticker],
+            )
+            .unwrap();
+        }
+        for (ticker, currency, prices) in [
+            ("CZ", "CZK", ["100", "110"]),
+            ("GOLD", "XAU", ["2000", "2100"]),
+        ] {
+            for (i, price) in prices.iter().enumerate() {
+                conn.execute(
+                    "INSERT INTO stock_value_history (id, ticker, recorded_at, quantity, price, currency)
+                     VALUES (?1, ?2, ?3, '10', ?4, ?5)",
+                    rusqlite::params![
+                        format!("{ticker}-{i}"),
+                        ticker,
+                        day0 + i as i64 * 86400,
+                        price,
+                        currency
+                    ],
+                )
+                .unwrap();
+            }
+        }
+
+        let twr = twr_series(&conn, &[], false, false, None, day0..=day0 + 86400, "CZK").unwrap();
+
+        // The unconvertible holding leaves the day alone: the CZK stock's +10 % still shows
+        let points = twr_points(&twr);
+        assert!((points[1] - 10.0).abs() < 1e-9, "{points:?}");
+        assert_eq!(twr.fx_quality.missing_currencies, ["XAU"]);
         assert!(twr.fx_quality.missing_count > 0);
     }
 

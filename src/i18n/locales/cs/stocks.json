@@ -217,6 +217,7 @@
     }
   },
   "detail": {
+    "chartFxMissing": "V grafu nebo v řadě vloženo chybí některé dny: chybí kurz pro {{currencies}}.",
     "backToList": "Zpět na akcie",
     "notFound": "Pozice nenalezena",
     "deleted": "Pozice smazána",

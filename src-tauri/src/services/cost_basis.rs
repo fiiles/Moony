@@ -259,6 +259,28 @@ pub fn position_cost_basis(
     )
 }
 
+/// One `investment_id, type, quantity, price_per_unit, currency, transaction_date` row, parsed.
+/// Tolerant parsing: legacy data may contain suffixes (matches
+/// `recalculate_investment_metrics`).
+fn parse_tx_row(row: &rusqlite::Row<'_>, first: usize) -> rusqlite::Result<TxRow> {
+    let qty_str: String = row.get(first + 1)?;
+    let price_str: String = row.get(first + 2)?;
+    let leading_number = |text: &str| {
+        text.split_whitespace()
+            .next()
+            .unwrap_or("0")
+            .parse()
+            .unwrap_or(0.0)
+    };
+    Ok(TxRow {
+        tx_type: row.get(first)?,
+        quantity: leading_number(&qty_str),
+        price_per_unit: leading_number(&price_str),
+        currency: row.get(first + 3)?,
+        transaction_date: row.get(first + 4)?,
+    })
+}
+
 /// Every transaction of `table`, parsed and grouped by investment id (chronological order
 /// within a group, ties by `created_at` then rowid).
 fn load_transactions(conn: &Connection, table: TxTable) -> Result<HashMap<String, Vec<TxRow>>> {
@@ -270,30 +292,7 @@ fn load_transactions(conn: &Connection, table: TxTable) -> Result<HashMap<String
     let mut stmt = conn.prepare(&sql)?;
     let rows: Vec<(String, TxRow)> = stmt
         .query_map([], |row| {
-            let qty_str: String = row.get(2)?;
-            let price_str: String = row.get(3)?;
-            Ok((
-                row.get::<_, String>(0)?,
-                TxRow {
-                    tx_type: row.get(1)?,
-                    // Tolerant parsing: legacy data may contain suffixes
-                    // (matches recalculate_investment_metrics).
-                    quantity: qty_str
-                        .split_whitespace()
-                        .next()
-                        .unwrap_or("0")
-                        .parse()
-                        .unwrap_or(0.0),
-                    price_per_unit: price_str
-                        .split_whitespace()
-                        .next()
-                        .unwrap_or("0")
-                        .parse()
-                        .unwrap_or(0.0),
-                    currency: row.get(4)?,
-                    transaction_date: row.get(5)?,
-                },
-            ))
+            Ok((row.get::<_, String>(0)?, parse_tx_row(row, 1)?))
         })?
         .filter_map(|r| r.ok())
         .collect();
@@ -303,6 +302,26 @@ fn load_transactions(conn: &Connection, table: TxTable) -> Result<HashMap<String
         grouped.entry(investment_id).or_default().push(tx);
     }
     Ok(grouped)
+}
+
+/// The transactions of one ticker in `table` (case-insensitive), in the same order as
+/// `load_transactions`.
+pub fn load_ticker_transactions(
+    conn: &Connection,
+    table: TxTable,
+    ticker: &str,
+) -> Result<Vec<TxRow>> {
+    let sql = format!(
+        "SELECT type, quantity, price_per_unit, currency, transaction_date
+         FROM {} WHERE UPPER(ticker) = UPPER(?1)
+         ORDER BY transaction_date ASC, created_at ASC, rowid ASC",
+        table.table_name()
+    );
+    let mut stmt = conn.prepare(&sql)?;
+    let rows = stmt
+        .query_map([ticker], |row| parse_tx_row(row, 0))?
+        .collect::<rusqlite::Result<Vec<_>>>()?;
+    Ok(rows)
 }
 
 /// Derives every grouped position against one history.

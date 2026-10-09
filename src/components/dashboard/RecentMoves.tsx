@@ -8,12 +8,12 @@ import {
   TrendingUp,
   type LucideIcon,
 } from 'lucide-react';
-import { useCurrency } from '@/lib/currency';
 import { useFormat } from '@/lib/use-format';
+import { useDatedMainConvert } from '@/hooks/use-fx';
+import { ConvertedMoney } from '@/components/common/ConvertedMoney';
 import { utcDayFloor } from '@/utils/chart-axis';
 import { cn } from '@/lib/utils';
 import type { MoveKind, RecentMove } from '@/hooks/use-recent-moves';
-import type { CurrencyCode } from '@shared/currencies';
 
 const ICONS: Record<MoveKind, LucideIcon> = {
   bankIn: ArrowDownLeft,
@@ -28,13 +28,16 @@ const ICONS: Record<MoveKind, LucideIcon> = {
  * "Poslední pohyby" rows (design system §7 Overview): icon in a `well` square,
  * title + "Dnes · Spořicí účet", signed amount right. Only a bank credit is
  * green with a plus; a debit carries a minus in ink; buys and sells are
- * neutral amounts whose direction is in the title.
+ * neutral amounts whose direction is in the title. Each amount is in the main
+ * currency at the rates of its own day; without a rate it stays native with the
+ * missing marker.
  */
 export function RecentMoves({ moves, isLoading }: { moves: RecentMove[]; isLoading: boolean }) {
   const { t } = useTranslation('dashboard');
   const fmt = useFormat();
-  const { convert, currencyCode, formatCurrencyRaw } = useCurrency();
   const today = utcDayFloor(Date.now() / 1000);
+  const first = moves.length ? Math.min(...moves.map((m) => m.date)) : undefined;
+  const { ready, convertAt } = useDatedMainConvert(first);
 
   const dayLabel = (date: number) => {
     const day = utcDayFloor(date);
@@ -71,13 +74,7 @@ export function RecentMoves({ moves, isLoading }: { moves: RecentMove[]; isLoadi
     <ul className="m-0 list-none p-0">
       {moves.map((move) => {
         const Icon = ICONS[move.kind];
-        const amount = convert(move.amount, move.currency as CurrencyCode, currencyCode);
-        const signed =
-          move.kind === 'bankIn'
-            ? formatCurrencyRaw(amount).replace(/^/, '+ ')
-            : move.kind === 'bankOut'
-              ? formatCurrencyRaw(amount).replace(/^/, '− ')
-              : formatCurrencyRaw(amount);
+        const sign = move.kind === 'bankIn' ? '+ ' : move.kind === 'bankOut' ? '− ' : '';
         const title = move.title || t(`moves.kind.${move.kind}`);
         const kindLabel = t(`moves.kind.${move.kind}`);
         const source =
@@ -110,7 +107,13 @@ export function RecentMoves({ moves, isLoading }: { moves: RecentMove[]; isLoadi
                     'text-ink-2'
                 )}
               >
-                {signed}
+                {sign}
+                <ConvertedMoney
+                  value={convertAt(move.amount, move.currency, move.date)}
+                  amount={move.amount}
+                  currency={move.currency}
+                  pending={!ready}
+                />
               </strong>
             </Link>
           </li>

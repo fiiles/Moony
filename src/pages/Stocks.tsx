@@ -5,12 +5,11 @@ import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { Plus, RefreshCw, TrendingUp, Upload } from 'lucide-react';
 import type { InvestmentTransaction, StockPositions } from '@shared/schema';
-import type { CurrencyCode } from '@shared/currencies';
 import { exportApi, investmentsApi, priceApi } from '@/lib/tauri-api';
 import { useCurrency } from '@/lib/currency';
 import { useFormat } from '@/lib/use-format';
 import { useStockTagsByInvestment } from '@/hooks/use-stock-tags';
-import { useDatedConvert } from '@/hooks/use-dated-convert';
+import { useTransactionFx } from '@/hooks/use-fx';
 import type { HoldingData } from '@/utils/stocks';
 import { amountOf, toStockRow, topPerformer } from '@/utils/positions';
 import type { EventCluster } from '@/utils/chart-scale';
@@ -45,7 +44,7 @@ export default function Stocks() {
   const { t: tc } = useTranslation('common');
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
-  const { currencyCode, fxRevision, formatCurrency } = useCurrency();
+  const { currencyCode, fxRevision } = useCurrency();
   const fmt = useFormat();
   const [addOpen, setAddOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
@@ -65,9 +64,9 @@ export default function Stocks() {
     staleTime: 60 * 1000,
   });
 
-  // Date-aware conversion for the trade markers of the trend card, which still plots the
-  // CZK history (its amounts convert at their own day's rates, ADR 0001).
-  const convertAt = useDatedConvert(allTransactions);
+  // The trade markers of the trend card: every trade in the report currency at the rates
+  // of its own day (common-day rule), like the history line they sit on.
+  const { convertAt } = useTransactionFx(allTransactions);
 
   // No horizon of the trend card starts before the first transaction
   const earliest = useMemo(() => firstTradeDay(allTransactions ?? []), [allTransactions]);
@@ -77,9 +76,9 @@ export default function Stocks() {
   const trendEvents = useMemo(
     () =>
       tradeDayEvents(allTransactions ?? [], (amount, currency, date) =>
-        convertAt(amount, currency as CurrencyCode, 'CZK', date)
+        convertAt(amount, currency, currencyCode, date)
       ),
-    [allTransactions, convertAt]
+    [allTransactions, convertAt, currencyCode]
   );
 
   const trendEventTip = (cluster: EventCluster<TradeDayEvent>) => {
@@ -96,7 +95,11 @@ export default function Stocks() {
       title: t(event.type === 'sell' ? 'chart.events.sell' : 'chart.events.buy', {
         tickers: tickerSummary(event.tickers),
       }),
-      lines: [`${fmt.day(event.t)} · ${formatCurrency(event.amountCzk)}`],
+      lines: [
+        event.amount === null
+          ? fmt.day(event.t)
+          : `${fmt.day(event.t)} · ${fmt.money(event.amount, currencyCode, { decimals: 0 })}`,
+      ],
     };
   };
 

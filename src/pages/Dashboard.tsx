@@ -1,16 +1,15 @@
 import { useMemo, useState } from 'react';
 import { useLocation } from 'wouter';
-import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { Landmark, Plus, Target, Wallet } from 'lucide-react';
-import type { PortfolioMetricsHistory } from '@shared/schema';
-import { portfolioApi } from '@/lib/tauri-api';
 import { useAuth } from '@/hooks/use-auth';
 import { useCurrency } from '@/lib/currency';
 import { useFormat } from '@/lib/use-format';
 import { useLanguage } from '@/i18n/I18nProvider';
-import { useHistoricalDisplayValues } from '@/hooks/use-historical-display-values';
+import { usePortfolioHistory, usePortfolioMetrics } from '@/hooks/use-portfolio';
 import { useRecentMoves } from '@/hooks/use-recent-moves';
+import { amountOf } from '@/utils/positions';
+import { mergeConversionQuality } from '@/utils/conversion-quality';
 import { utcDayFloor } from '@/utils/chart-axis';
 import { CHART_PERIODS, chartPeriodStart } from '@/utils/period';
 import { vocative } from '@/utils/vocative';
@@ -27,6 +26,7 @@ import { AllocationRing } from '@/components/dashboard/AllocationRing';
 import { shortHistoryBaseDay } from '@/utils/change-base';
 import { RecentMoves } from '@/components/dashboard/RecentMoves';
 import { UpcomingCard } from '@/components/dashboard/UpcomingCard';
+import { ConversionQualityNote } from '@/components/reports/ReportQualityNote';
 
 type AssetClass = 'investments' | 'savings' | 'bonds' | 'crypto' | 'otherAssets' | 'realEstate';
 const ASSET_CLASSES: AssetClass[] = [
@@ -37,6 +37,9 @@ const ASSET_CLASSES: AssetClass[] = [
   'otherAssets',
   'realEstate',
 ];
+
+/** A TEXT amount of a response as a number; unknown counts as nothing. */
+const amount = (value: string | null | undefined) => amountOf(value) ?? 0;
 
 /** Greeting by the local hour: morning until 11, day until 18, evening after. */
 function greetingKey(hour: number): 'morning' | 'day' | 'evening' {
@@ -51,7 +54,7 @@ export default function Dashboard() {
   const { user } = useAuth();
   const fmt = useFormat();
   const { getLocale } = useLanguage();
-  const { ratesTimestamp, formatCurrencyRaw, formatCurrency, currencyCode } = useCurrency();
+  const { currencyCode } = useCurrency();
   const [selectedPeriod, setSelectedPeriod] = useState<Period>('30D');
 
   // First visit right after onboarding greets with "Welcome", later visits by
@@ -77,81 +80,58 @@ export default function Dashboard() {
   // the day, so it can key the query; the end is read when the query runs.
   const periodStartSeconds = chartPeriodStart(selectedPeriod, Date.now() / 1000);
 
-  const { data: portfolioHistory } = useQuery<PortfolioMetricsHistory[]>({
-    queryKey: ['portfolio-history', 'dashboard', periodStartSeconds ?? 'all'],
-    queryFn: () => portfolioApi.getHistory(periodStartSeconds, Math.floor(Date.now() / 1000)),
-    staleTime: 0,
-    refetchOnMount: 'always',
-  });
-
-  // ratesTimestamp in the key: re-fetch whenever ECB rates refresh, so the
-  // overview uses the same rates as the stocks/crypto pages.
+  const { data: history } = usePortfolioHistory(periodStartSeconds);
   const {
     data: portfolioMetrics,
     isLoading: metricsLoading,
     isFetching: metricsFetching,
-  } = useQuery({
-    queryKey: ['portfolio-metrics', ratesTimestamp],
-    queryFn: async () => portfolioApi.getMetrics(user?.excludePersonalRealEstate || false),
-    staleTime: 0,
-    refetchOnMount: 'always',
-  });
+  } = usePortfolioMetrics();
 
-  const totals = {
-    savings: portfolioMetrics?.totalSavings || 0,
-    investments: portfolioMetrics?.totalInvestments || 0,
-    bonds: portfolioMetrics?.totalBonds || 0,
-    realEstate: portfolioMetrics?.totalRealEstate || 0,
-    crypto: portfolioMetrics?.totalCrypto || 0,
-    otherAssets: portfolioMetrics?.totalOtherAssets || 0,
+  // Everything below is in the report currency the backend valued it in (ADR 0011)
+  const reportCurrency = portfolioMetrics?.currency ?? currencyCode;
+  const money = (value: number) => fmt.money(value, reportCurrency, { decimals: 0 });
+  const fxQuality = mergeConversionQuality(portfolioMetrics?.fxQuality, history?.fxQuality);
+
+  // Today's values; the last chart point equals the hero number
+  const display = {
+    netWorth: amount(portfolioMetrics?.netWorth),
+    assets: amount(portfolioMetrics?.totalAssets),
+    liabilities: amount(portfolioMetrics?.totalLiabilities),
+    savings: amount(portfolioMetrics?.totalSavings),
+    investments: amount(portfolioMetrics?.totalInvestments),
+    bonds: amount(portfolioMetrics?.totalBonds),
+    realEstate: amount(portfolioMetrics?.totalRealEstate),
+    crypto: amount(portfolioMetrics?.totalCrypto),
+    otherAssets: amount(portfolioMetrics?.totalOtherAssets),
   };
-  const totalAssets = portfolioMetrics?.totalAssets || 0;
-  const totalLiabilities = portfolioMetrics?.totalLiabilities || 0;
-  const netWorth = portfolioMetrics?.netWorth || 0;
 
   // Brand-new profile: every total is zero. The empty state is only shown once
   // the metrics have settled, so it never flashes during a refetch.
   const allTotalsZero =
     portfolioMetrics !== undefined &&
-    [...Object.values(totals), totalAssets, totalLiabilities].every((value) => value === 0);
+    [...ASSET_CLASSES.map((cls) => display[cls]), display.assets, display.liabilities].every(
+      (value) => value === 0
+    );
   const isCheckingPortfolio = metricsLoading || (allTotalsZero && metricsFetching);
   const isEmptyPortfolio = allTotalsZero && !metricsFetching;
 
-  // Per-day display-currency conversion shared by the hero chart and the stats
-  const { convertPoint, convertCzkPoint, convertCzkToday } =
-    useHistoricalDisplayValues(portfolioHistory);
-
-  // History in chronological order, converted with each day's rates. When
-  // personal real estate is excluded, that class converts via its CZK total
-  // because the stored breakdown still includes the personal part.
+  // History in chronological order, every day valued at its own rates by the backend.
+  // Personal real estate leaves the history like it leaves today's totals when excluded.
+  const historyCurrency = history?.currency;
   const convertedHistory = useMemo(() => {
+    // A history still in the previous currency must not meet today's values
+    if (historyCurrency !== reportCurrency) return [];
     const excludePersonal = user?.excludePersonalRealEstate || false;
-    return [...(portfolioHistory || [])].reverse().map((h) => {
-      const savings = convertPoint(h.recordedAt, h.savingsByCurrency, Number(h.totalSavings));
-      const investments = convertPoint(
-        h.recordedAt,
-        h.investmentsByCurrency,
-        Number(h.totalInvestments)
-      );
-      const bonds = convertPoint(h.recordedAt, h.bondsByCurrency, Number(h.totalBonds));
-      const crypto = convertPoint(h.recordedAt, h.cryptoByCurrency, Number(h.totalCrypto || 0));
-      const otherAssets = convertPoint(
-        h.recordedAt,
-        h.otherAssetsByCurrency,
-        Number(h.totalOtherAssets || 0)
-      );
-      const realEstate = excludePersonal
-        ? convertCzkPoint(h.recordedAt, Number(h.totalRealEstateInvestment))
-        : convertPoint(
-            h.recordedAt,
-            h.realEstateByCurrency,
-            Number(h.totalRealEstatePersonal) + Number(h.totalRealEstateInvestment)
-          );
-      const liabilities = convertPoint(
-        h.recordedAt,
-        h.loansByCurrency,
-        Number(h.totalLoansPrincipal)
-      );
+    return (history?.points ?? []).map((h) => {
+      const savings = amount(h.totalSavings);
+      const investments = amount(h.totalInvestments);
+      const bonds = amount(h.totalBonds);
+      const crypto = amount(h.totalCrypto);
+      const otherAssets = amount(h.totalOtherAssets);
+      const realEstate =
+        amount(h.totalRealEstateInvestment) +
+        (excludePersonal ? 0 : amount(h.totalRealEstatePersonal));
+      const liabilities = amount(h.totalLoansPrincipal);
       const assets = savings + investments + bonds + realEstate + crypto + otherAssets;
       return {
         recordedAt: h.recordedAt,
@@ -166,20 +146,7 @@ export default function Dashboard() {
         netWorth: assets - liabilities,
       };
     });
-  }, [portfolioHistory, convertPoint, convertCzkPoint, user?.excludePersonalRealEstate]);
-
-  // Live "today" values at today's rates: the last chart point equals the hero number
-  const display = {
-    netWorth: convertCzkToday(netWorth),
-    assets: convertCzkToday(totalAssets),
-    liabilities: convertCzkToday(totalLiabilities),
-    savings: convertCzkToday(totals.savings),
-    investments: convertCzkToday(totals.investments),
-    bonds: convertCzkToday(totals.bonds),
-    realEstate: convertCzkToday(totals.realEstate),
-    crypto: convertCzkToday(totals.crypto),
-    otherAssets: convertCzkToday(totals.otherAssets),
-  };
+  }, [history?.points, historyCurrency, reportCurrency, user?.excludePersonalRealEstate]);
 
   const oldest = convertedHistory[0];
   // What the change is measured against: the period, or — when the
@@ -217,9 +184,9 @@ export default function Dashboard() {
     if (netWorthPct > 0.005) return t('insight.up', { class: cls });
     if (netWorthPct < -0.005) return t('insight.down', { class: cls });
     return t('insight.flat', { class: cls });
-    // display is rebuilt every render; its inputs are the metric totals below
+    // display is rebuilt every render; its input is the metrics response
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [oldest, hasHistory, netWorthPct, t, portfolioMetrics, ratesTimestamp]);
+  }, [oldest, hasHistory, netWorthPct, t, portfolioMetrics]);
 
   // Hero chart: history plus the live value for today (UTC days, ADR 0008)
   const points = useMemo(() => {
@@ -234,14 +201,14 @@ export default function Dashboard() {
   const allocation = ASSET_CLASSES.map((cls) => ({
     key: cls,
     label: t(`cards.${cls}`),
-    value: totals[cls],
+    value: display[cls],
   }));
 
   const { moves, isLoading: movesLoading } = useRecentMoves(5);
 
   const tone = (delta: number) => (delta > 0 ? 'gain' : delta < 0 ? 'loss' : 'neutral');
   const signedMoney = (value: number) =>
-    fmt.money(value, currencyCode, { signed: true, decimals: 0 });
+    fmt.money(value, reportCurrency, { signed: true, decimals: 0 });
 
   const head = (
     <PageHead
@@ -314,6 +281,9 @@ export default function Dashboard() {
     <>
       {head}
 
+      {/* Amounts the backend could not convert into the report currency (left out) */}
+      <ConversionQualityNote quality={fxQuality} currency={reportCurrency} />
+
       {/* Getting started checklist (hides itself when done or dismissed) */}
       <GettingStartedCard />
 
@@ -329,14 +299,14 @@ export default function Dashboard() {
             zeroBaseline={selectedPeriod === 'All'}
             height={220}
             className="mt-[18px] -mx-1"
-            formatValue={(v) => formatCurrencyRaw(v)}
-            renderTip={(p) => ({ title: formatCurrencyRaw(p.value), lines: [fmt.day(p.t)] })}
+            formatValue={money}
+            renderTip={(p) => ({ title: money(p.value), lines: [fmt.day(p.t)] })}
           />
         }
       >
         <HeroValue
           label={t('hero.label')}
-          value={formatCurrencyRaw(display.netWorth)}
+          value={money(display.netWorth)}
           tone={tone(netWorthDelta)}
           delta={
             hasHistory
@@ -353,13 +323,13 @@ export default function Dashboard() {
         <Stat
           label={t('stats.totalAssets')}
           aside={<SeriesDot className="bg-s1" />}
-          value={formatCurrency(totalAssets)}
+          value={money(display.assets)}
           note={hasHistory ? `${signedMoney(assetsDelta)} ${changeLabel}` : t('stats.noHistory')}
         />
         <Stat
           label={t('stats.totalLiabilities')}
           aside={<SeriesDot className="bg-s3" />}
-          value={formatCurrency(totalLiabilities)}
+          value={money(display.liabilities)}
           note={
             !hasHistory
               ? t('stats.noHistory')
@@ -371,7 +341,7 @@ export default function Dashboard() {
         <Stat
           label={t('stats.freeCash')}
           aside={<SeriesDot className="bg-s4" />}
-          value={formatCurrency(totals.savings)}
+          value={money(display.savings)}
           note={t('stats.freeCashNote')}
         />
       </Stats>
@@ -396,7 +366,7 @@ export default function Dashboard() {
                   maximumFractionDigits: 2,
                 })}
                 otherLabel={t('cards.other')}
-                formatValue={(v) => formatCurrency(v)}
+                formatValue={money}
                 formatPercent={(r) => fmt.percent(r, 0)}
               />
             </CardContent>

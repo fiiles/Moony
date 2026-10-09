@@ -48,8 +48,8 @@ import type {
   InsertOtherAsset,
   OtherAssetTransaction,
   InsertOtherAssetTransaction,
+  PortfolioHistoryResponse,
   PortfolioMetrics,
-  PortfolioMetricsHistory,
   PriceStatus,
   BudgetGoal,
   InsertBudgetGoal,
@@ -578,11 +578,18 @@ export interface BackfillResult {
 }
 
 export const portfolioApi = {
-  getMetrics: (excludePersonalRealEstate: boolean = false) =>
-    tauriInvoke<PortfolioMetrics>('get_portfolio_metrics', { excludePersonalRealEstate }),
+  getMetrics: (reportCurrency: string, excludePersonalRealEstate: boolean = false) =>
+    tauriInvoke<PortfolioMetrics>('get_portfolio_metrics', {
+      reportCurrency,
+      excludePersonalRealEstate,
+    }),
 
-  getHistory: (startDate?: number, endDate?: number) =>
-    tauriInvoke<PortfolioMetricsHistory[]>('get_portfolio_history', { startDate, endDate }),
+  getHistory: (reportCurrency: string, startDate?: number, endDate?: number) =>
+    tauriInvoke<PortfolioHistoryResponse>('get_portfolio_history', {
+      reportCurrency,
+      startDate,
+      endDate,
+    }),
 
   recordSnapshot: () => tauriInvoke<void>('record_portfolio_snapshot'),
 

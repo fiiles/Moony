@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import type { ConversionQuality, ReportQuality } from '@shared/schema';
+import { cn } from '@/lib/utils';
 
 export function ReportQualityNote({
   quality,
@@ -47,14 +48,17 @@ export function ReportError({ onRetry }: { onRetry: () => void }) {
 export function ConversionQualityNote({
   quality,
   currency,
+  className = 'mb-5',
 }: {
   quality: ConversionQuality | undefined;
   currency: string;
+  /** Spacing around the note (default: a gap below). */
+  className?: string;
 }) {
   const { t } = useTranslation('common');
   if (!quality || quality.missingCurrencies.length === 0) return null;
   return (
-    <p className="mb-5 text-micro text-loss" role="note">
+    <p className={cn('text-micro text-loss', className)} role="note">
       {t('fxQuality.missing', { currency, currencies: quality.missingCurrencies.join(', ') })}
     </p>
   );

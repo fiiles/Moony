@@ -37,7 +37,7 @@ export default function OtherAssets() {
   const { t } = useTranslation('otherAssets');
   const { t: tc } = useTranslation('common');
   const queryClient = useQueryClient();
-  const { formatCurrency, formatCurrencySigned, convert, currencyCode } = useCurrency();
+  const { formatCurrency, formatCurrencySigned, fxConvert } = useCurrency();
   const fmt = useFormat();
   const [modal, setModal] = useState<Modal>(null);
   const [selected, setSelected] = useState<OtherAsset | null>(null);
@@ -58,6 +58,12 @@ export default function OtherAssets() {
     { value: 0, cost: 0, yield: 0, yielding: 0 }
   );
   const gain = totals.value - totals.cost;
+  // Today's point of the trend card in the report currency; an asset without a rate stays out,
+  // like in the recorded history.
+  const trendValue = rows.reduce(
+    (sum, r) => sum + (fxConvert(r.quantity * r.price, r.asset.currency || 'CZK') ?? 0),
+    0
+  );
   const latest = assets.reduce<OtherAsset | null>(
     (max, a) => (max === null || a.updatedAt > max.updatedAt ? a : max),
     null
@@ -181,10 +187,7 @@ export default function OtherAssets() {
             />
           </Stats>
 
-          <PortfolioTrendCard
-            type="otherAssets"
-            currentValue={convert(totals.value, 'CZK', currencyCode)}
-          />
+          <PortfolioTrendCard type="otherAssets" currentValue={trendValue} />
 
           <OtherAssetsTable
             rows={rows}

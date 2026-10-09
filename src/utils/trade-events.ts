@@ -24,33 +24,37 @@ export interface TradeDayEvent extends ChartEvent {
   type: 'buy' | 'sell';
   /** Tickers traded that day in this direction, in the order their first trade appears. */
   tickers: string[];
-  /** Total of that day's trades in this direction, in CZK. */
-  amountCzk: number;
+  /**
+   * Total of that day's trades in this direction in the report currency; `null` when one of
+   * them could not be converted (a partial total would understate the day).
+   */
+  amount: number | null;
 }
 
 /**
  * One event per UTC day and direction, sorted by day with the buy before the
- * sell. Every trade converts to CZK on its own date (`toCzk` gets that trade's
- * `transactionDate`), so a day's amount is what it was worth then; anything
- * that is not a sell counts as a buy.
+ * sell. Every trade converts into the report currency on its own date (`convert`
+ * gets that trade's `transactionDate` and returns `null` without a rate), so a
+ * day's amount is what it was worth then; anything that is not a sell counts as
+ * a buy.
  */
 export function tradeDayEvents(
   trades: readonly TradeLike[],
-  toCzk: (amount: number, currency: string, date: number) => number
+  convert: (amount: number, currency: string, date: number) => number | null
 ): TradeDayEvent[] {
   const byDayAndType = new Map<string, TradeDayEvent>();
   for (const trade of trades) {
     const type = trade.type === 'sell' ? 'sell' : 'buy';
     const day = utcDayFloor(trade.transactionDate);
     const key = `${type}-${day}`;
-    const amount = (parseFloat(trade.quantity) || 0) * (parseFloat(trade.pricePerUnit) || 0);
-    const amountCzk = toCzk(amount, trade.currency || 'CZK', trade.transactionDate);
+    const native = (parseFloat(trade.quantity) || 0) * (parseFloat(trade.pricePerUnit) || 0);
+    const amount = convert(native, trade.currency || 'CZK', trade.transactionDate);
     const event = byDayAndType.get(key);
     if (event) {
-      event.amountCzk += amountCzk;
+      event.amount = event.amount === null || amount === null ? null : event.amount + amount;
       if (!event.tickers.includes(trade.ticker)) event.tickers.push(trade.ticker);
     } else {
-      byDayAndType.set(key, { id: key, t: day, type, tickers: [trade.ticker], amountCzk });
+      byDayAndType.set(key, { id: key, t: day, type, tickers: [trade.ticker], amount });
     }
   }
   return [...byDayAndType.values()].sort(

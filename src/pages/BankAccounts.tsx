@@ -79,7 +79,7 @@ export default function BankAccounts() {
   const [, setLocation] = useLocation();
   const { accounts, isLoading } = useBankAccounts();
   const { createAccount, updateAccount, deleteAccount } = useBankAccountMutations();
-  const { convert, currencyCode: preferredCurrency } = useCurrency();
+  const { convert, fxConvert, currencyCode: preferredCurrency } = useCurrency();
   const fmt = useFormat();
   const currencyCode = hasKnownRate(preferredCurrency) ? preferredCurrency : 'CZK';
   const formatCurrencyRaw = (value: number) => fmt.money(value, currencyCode);
@@ -237,6 +237,15 @@ export default function BankAccounts() {
     return !best || n > (activity.get(best.id)?.last30.uncategorized ?? 0) ? a : best;
   }, null);
 
+  // Today's point of the cash trend: the balances counted in net worth, in the report
+  // currency at the current quotes (an account without a rate stays out, like in history)
+  const trendValue = accounts.reduce(
+    (sum, account) =>
+      account.excludeFromBalance
+        ? sum
+        : sum + (fxConvert(parseFloat(account.balance || '0'), account.currency || 'CZK') ?? 0),
+    0
+  );
   const foreign = [...totals.currencies].filter((c) => c !== currencyCode);
   const excludedNote =
     totals.excluded !== 0
@@ -360,7 +369,7 @@ export default function BankAccounts() {
 
           {hasKnownRate(preferredCurrency) &&
             accounts.every((a) => hasKnownRate(a.currency as CurrencyCode)) && (
-              <PortfolioTrendCard type="cash" currentValue={totals.balance} />
+              <PortfolioTrendCard type="cash" currentValue={trendValue} />
             )}
 
           <Card variant="table">

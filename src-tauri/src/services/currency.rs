@@ -379,7 +379,7 @@ pub fn convert_to_czk_at(
 /// equivalent and the CZK total stored alongside it. Rate drift between the two
 /// sources is a few percent at most; a larger gap means the breakdown does not
 /// cover the whole asset class (e.g. it was derived from incomplete per-ticker
-/// history). Mirrors BREAKDOWN_CONSISTENCY_TOLERANCE in src/utils/historical-rates.ts.
+/// history).
 pub const BREAKDOWN_CONSISTENCY_TOLERANCE: f64 = 0.25;
 
 /// Parse a `*_by_currency` JSON column ({"USD": 123.4, ...}) into a map.

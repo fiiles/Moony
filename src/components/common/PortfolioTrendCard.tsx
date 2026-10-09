@@ -1,28 +1,26 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { listen } from '@tauri-apps/api/event';
-import type { PortfolioMetricsHistory } from '@shared/schema';
-import { portfolioApi } from '@/lib/tauri-api';
+import type { PortfolioHistoryPoint } from '@shared/schema';
 import { useCurrency } from '@/lib/currency';
 import { useFormat } from '@/lib/use-format';
 import { useSyncStatus } from '@/hooks/sync-context';
-import {
-  useHistoricalDisplayValues,
-  type HistoricalDisplayValues,
-} from '@/hooks/use-historical-display-values';
+import { usePortfolioHistory } from '@/hooks/use-portfolio';
 import { utcDayFloor } from '@/utils/chart-axis';
+import { amountOf } from '@/utils/positions';
 import type { ChartEvent, EventCluster } from '@/utils/chart-scale';
 import { CHART_PERIODS, chartPeriodStart, type ChartPeriod } from '@/utils/period';
 import TimePeriodSelector from '@/components/cashflow/TimePeriodSelector';
 import { MoonyLineChart, type LineTip } from '@/components/charts/MoonyLineChart';
 import { TREND_CHART_HEIGHT, TrendCard } from '@/components/charts/TrendCard';
+import { ConversionQualityNote } from '@/components/reports/ReportQualityNote';
 
 type TrendType = 'investments' | 'crypto' | 'realEstate' | 'otherAssets' | 'cash';
 
 interface PortfolioTrendCardProps<E extends ChartEvent> {
   type: TrendType;
-  /** Today's value in the display currency; the last point of the line. */
+  /** Today's value in the profile (report) currency; the last point of the line. */
   currentValue: number;
   isRefreshing?: boolean;
   /** First day (UTC, unix seconds) with data; no horizon starts before it. */
@@ -43,27 +41,20 @@ const TEXTS: Record<TrendType, { namespace: string; group: string }> = {
   cash: { namespace: 'bank_accounts', group: 'trend' },
 };
 
-/** The part of a history row a trend of `type` shows, in the display currency of that day. */
-function historyValue(
-  h: PortfolioMetricsHistory,
-  type: TrendType,
-  convertPoint: HistoricalDisplayValues['convertPoint']
-): number {
+/** The part of a history day a trend of `type` shows (report currency, unknown as 0). */
+function historyValue(h: PortfolioHistoryPoint, type: TrendType): number {
+  const amount = (value: string | null) => amountOf(value) ?? 0;
   switch (type) {
     case 'investments':
-      return convertPoint(h.recordedAt, h.investmentsByCurrency, Number(h.totalInvestments));
+      return amount(h.totalInvestments);
     case 'crypto':
-      return convertPoint(h.recordedAt, h.cryptoByCurrency, Number(h.totalCrypto || 0));
+      return amount(h.totalCrypto);
     case 'otherAssets':
-      return convertPoint(h.recordedAt, h.otherAssetsByCurrency, Number(h.totalOtherAssets || 0));
+      return amount(h.totalOtherAssets);
     case 'cash':
-      return convertPoint(h.recordedAt, h.savingsByCurrency, Number(h.totalSavings || 0));
+      return amount(h.totalSavings);
     case 'realEstate':
-      return convertPoint(
-        h.recordedAt,
-        h.realEstateByCurrency,
-        Number(h.totalRealEstatePersonal || 0) + Number(h.totalRealEstateInvestment || 0)
-      );
+      return amount(h.totalRealEstatePersonal) + amount(h.totalRealEstateInvestment);
   }
 }
 
@@ -85,7 +76,7 @@ export default function PortfolioTrendCard<E extends ChartEvent = ChartEvent>({
   renderEventTip,
   legend,
 }: PortfolioTrendCardProps<E>) {
-  const { formatCurrencyRaw } = useCurrency();
+  const { currencyCode } = useCurrency();
   const { namespace, group } = TEXTS[type];
   const { t } = useTranslation(namespace);
   const fmt = useFormat();
@@ -113,26 +104,22 @@ export default function PortfolioTrendCard<E extends ChartEvent = ChartEvent>({
   // this renders (a start rebuilt from `new Date()` per render never settled)
   const start = chartPeriodStart(period, Date.now() / 1000, earliest);
 
-  const { data: history } = useQuery<PortfolioMetricsHistory[]>({
-    queryKey: ['portfolio-history', 'trend', start ?? 'all'],
-    queryFn: () => portfolioApi.getHistory(start, Math.floor(Date.now() / 1000)),
-    staleTime: 0,
-    refetchOnMount: 'always',
-  });
-
-  const { convertPoint } = useHistoricalDisplayValues(history);
+  // History in the report currency, every day at its own rates (ADR 0011)
+  const { data: history } = usePortfolioHistory(start);
+  const money = (value: number) => fmt.money(value, currencyCode, { decimals: 0 });
+  // Days with amounts that could not be converted (left out of their class)
+  const incomplete = (history?.fxQuality.missingCurrencies.length ?? 0) > 0;
 
   const points = useMemo(() => {
-    const pts = [...(history ?? [])].reverse().map((h) => ({
-      t: h.recordedAt,
-      value: historyValue(h, type, convertPoint),
-    }));
+    // A history still in the previous currency must not meet today's value
+    const days = history?.currency === currencyCode ? history.points : [];
+    const pts = days.map((h) => ({ t: h.recordedAt, value: historyValue(h, type) }));
     const today = utcDayFloor(Date.now() / 1000);
     const last = pts[pts.length - 1];
     if (last && utcDayFloor(last.t) === today) last.value = currentValue;
     else pts.push({ t: Math.floor(Date.now() / 1000), value: currentValue });
     return pts;
-  }, [history, convertPoint, type, currentValue]);
+  }, [history, currencyCode, type, currentValue]);
 
   // Events before the horizon would pile up on the left edge
   const visibleEvents = useMemo(
@@ -145,15 +132,26 @@ export default function PortfolioTrendCard<E extends ChartEvent = ChartEvent>({
       title={t(`${group}.title`)}
       subtitle={t(`${group}.subtitle`)}
       aside={<TimePeriodSelector value={period} onChange={setPeriod} options={CHART_PERIODS} />}
-      legend={legend}
+      legend={
+        legend || incomplete ? (
+          <>
+            {legend}
+            <ConversionQualityNote
+              quality={history?.fxQuality}
+              currency={currencyCode}
+              className="mb-0 mt-2"
+            />
+          </>
+        ) : undefined
+      }
       dimmed={isRefreshing}
     >
       <MoonyLineChart<E>
         points={points}
         height={TREND_CHART_HEIGHT}
         zeroBaseline={period === 'All'}
-        formatValue={(v) => formatCurrencyRaw(v)}
-        renderTip={(p) => ({ title: formatCurrencyRaw(p.value), lines: [fmt.day(p.t)] })}
+        formatValue={money}
+        renderTip={(p) => ({ title: money(p.value), lines: [fmt.day(p.t)] })}
         events={visibleEvents}
         renderEventTip={renderEventTip}
       />

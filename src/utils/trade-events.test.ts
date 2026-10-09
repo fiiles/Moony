@@ -18,9 +18,10 @@ function trade(partial: Partial<TradeLike> & Pick<TradeLike, 'transactionDate'>)
   };
 }
 
-// 1 USD = 25 CZK, 1 EUR = 24 CZK regardless of the day
+// Report currency CZK: 1 USD = 25 CZK, 1 EUR = 24 CZK regardless of the day
 const FLAT_RATES: Record<string, number> = { CZK: 1, USD: 25, EUR: 24 };
-const toCzk = (amount: number, currency: string) => amount * (FLAT_RATES[currency] ?? 1);
+const toCzk = (amount: number, currency: string) =>
+  FLAT_RATES[currency] === undefined ? null : amount * FLAT_RATES[currency];
 
 describe('tradeDayEvents', () => {
   it('folds the trades of one day and direction into one event', () => {
@@ -32,7 +33,7 @@ describe('tradeDayEvents', () => {
       toCzk
     );
     expect(events).toEqual([
-      { id: `buy-${D2}`, t: D2, type: 'buy', tickers: ['AAPL', 'MSFT'], amountCzk: 500 },
+      { id: `buy-${D2}`, t: D2, type: 'buy', tickers: ['AAPL', 'MSFT'], amount: 500 },
     ]);
   });
 
@@ -63,7 +64,7 @@ describe('tradeDayEvents', () => {
     );
     expect(events).toHaveLength(1);
     expect(events[0].tickers).toEqual(['MSFT', 'AAPL', 'NVDA']);
-    expect(events[0].amountCzk).toBe(500);
+    expect(events[0].amount).toBe(500);
   });
 
   it('treats a sell as a sell and every other type as a buy', () => {
@@ -106,7 +107,7 @@ describe('tradeDayEvents', () => {
     expect(events.map((e) => e.id)).toEqual([`buy-${D1}`, `sell-${D2}`, `buy-${D3}`, `sell-${D3}`]);
   });
 
-  it('converts each trade from its own currency and sums in CZK', () => {
+  it('converts each trade from its own currency and sums in the report currency', () => {
     const events = tradeDayEvents(
       [
         trade({ quantity: '2', pricePerUnit: '10', currency: 'USD', transactionDate: D2 }), // 20 USD
@@ -115,7 +116,7 @@ describe('tradeDayEvents', () => {
       ],
       toCzk
     );
-    expect(events[0].amountCzk).toBe(20 * 25 + 50 * 24 + 70);
+    expect(events[0].amount).toBe(20 * 25 + 50 * 24 + 70);
   });
 
   it('hands the converter the amount, the currency and the date of the trade', () => {
@@ -146,7 +147,7 @@ describe('tradeDayEvents', () => {
       ],
       (amount, _currency, date) => amount * (rateOn[Math.floor(date / DAY) * DAY] ?? Number.NaN)
     );
-    expect(events.map((e) => e.amountCzk)).toEqual([2500, 2000]);
+    expect(events.map((e) => e.amount)).toEqual([2500, 2000]);
   });
 
   it('reads a missing, null or empty currency as CZK', () => {
@@ -174,7 +175,22 @@ describe('tradeDayEvents', () => {
       ],
       toCzk
     );
-    expect(events[0].amountCzk).toBe(40);
+    expect(events[0].amount).toBe(40);
+  });
+
+  it('leaves the amount of a day unknown when one of its trades cannot be converted', () => {
+    const events = tradeDayEvents(
+      [
+        trade({ ticker: 'AAPL', currency: 'USD', transactionDate: D2 }),
+        trade({ ticker: 'KWD1', currency: 'KWD', transactionDate: D2 }),
+        trade({ ticker: 'MSFT', currency: 'USD', transactionDate: D3 }),
+      ],
+      toCzk
+    );
+    expect(events.map((e) => [e.tickers, e.amount])).toEqual([
+      [['AAPL', 'KWD1'], null],
+      [['MSFT'], 2500],
+    ]);
   });
 
   it('returns nothing for no trades', () => {

@@ -5,12 +5,11 @@ import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { Bitcoin, Plus, RefreshCw } from 'lucide-react';
 import type { CryptoPositions, CryptoTransaction } from '@shared/schema';
-import type { CurrencyCode } from '@shared/currencies';
 import { cryptoApi, exportApi, priceApi } from '@/lib/tauri-api';
 import { amountOf, toCryptoRow } from '@/utils/positions';
 import { useCurrency } from '@/lib/currency';
 import { useFormat } from '@/lib/use-format';
-import { useDatedConvert } from '@/hooks/use-dated-convert';
+import { useTransactionFx } from '@/hooks/use-fx';
 import type { EventCluster } from '@/utils/chart-scale';
 import {
   firstTradeDay,
@@ -42,7 +41,7 @@ export default function Crypto() {
   const { t: tc } = useTranslation('common');
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
-  const { currencyCode, fxRevision, formatCurrency } = useCurrency();
+  const { currencyCode, fxRevision } = useCurrency();
   const fmt = useFormat();
   const [addOpen, setAddOpen] = useState(false);
   const [rowModal, setRowModal] = useState<RowModal>(null);
@@ -61,9 +60,9 @@ export default function Crypto() {
     staleTime: 60 * 1000,
   });
 
-  // Date-aware conversion for the trade markers of the trend card, which still plots the
-  // CZK history (its amounts convert at their own day's rates, ADR 0001).
-  const convertAt = useDatedConvert(allTransactions);
+  // The trade markers of the trend card: every trade in the report currency at the rates
+  // of its own day (common-day rule), like the history line they sit on.
+  const { convertAt } = useTransactionFx(allTransactions);
 
   const txsByInvestment = useMemo(() => {
     const map = new Map<string, CryptoTransaction[]>();
@@ -83,9 +82,9 @@ export default function Crypto() {
   const trendEvents = useMemo(
     () =>
       tradeDayEvents(allTransactions ?? [], (amount, currency, date) =>
-        convertAt(amount, currency as CurrencyCode, 'CZK', date)
+        convertAt(amount, currency, currencyCode, date)
       ),
-    [allTransactions, convertAt]
+    [allTransactions, convertAt, currencyCode]
   );
 
   const trendEventTip = (cluster: EventCluster<TradeDayEvent>) => {
@@ -102,7 +101,11 @@ export default function Crypto() {
       title: t(event.type === 'sell' ? 'chart.events.sell' : 'chart.events.buy', {
         tickers: tickerSummary(event.tickers),
       }),
-      lines: [`${fmt.day(event.t)} · ${formatCurrency(event.amountCzk)}`],
+      lines: [
+        event.amount === null
+          ? fmt.day(event.t)
+          : `${fmt.day(event.t)} · ${fmt.money(event.amount, currencyCode, { decimals: 0 })}`,
+      ],
     };
   };
 

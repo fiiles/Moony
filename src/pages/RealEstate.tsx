@@ -86,7 +86,7 @@ export default function RealEstatePage() {
   const { t: tc } = useTranslation('common');
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
-  const { formatCurrency, formatCurrencySigned, convert, currencyCode } = useCurrency();
+  const { formatCurrency, formatCurrencySigned, fxConvert } = useCurrency();
   const fmt = useFormat();
   const { user } = useAuth();
   const excludePersonal = user?.excludePersonalRealEstate ?? false;
@@ -148,6 +148,12 @@ export default function RealEstatePage() {
     { value: 0, purchase: 0, rent: 0, rented: 0, loans: 0 }
   );
   const personalValue = rows.filter((r) => r.personal).reduce((s, r) => s + r.valueCzk, 0);
+  // Today's point of the trend card: every property (personal included, like the recorded
+  // history) in the report currency; a property without a rate stays out, like in history.
+  const trendValue = properties.reduce(
+    (sum, p) => sum + (fxConvert(Number(p.marketPrice) || 0, p.marketPriceCurrency) ?? 0),
+    0
+  );
   const latest = properties.reduce<RealEstate | null>(
     (max, p) => (max === null || p.updatedAt > max.updatedAt ? p : max),
     null
@@ -374,14 +380,7 @@ export default function RealEstatePage() {
             />
           </Stats>
 
-          <PortfolioTrendCard
-            type="realEstate"
-            currentValue={convert(
-              totals.value + (excludePersonal ? personalValue : 0),
-              'CZK',
-              currencyCode
-            )}
-          />
+          <PortfolioTrendCard type="realEstate" currentValue={trendValue} />
 
           <Card variant="table">
             <CardHeader>

@@ -638,7 +638,7 @@ impl MoonyMcp {
     }
 
     #[tool(
-        description = "Bulk-import bank transactions into one account (designed for parsed CSV/statement exports).\n\nCall this only after presenting the parsed data to the user and receiving their confirmation. Import in batches of about 100 rows at a time (max 200 per call); split larger exports across multiple calls — safe to do because duplicate rows are skipped and reported.\nRows without a categoryId are auto-categorized by the app's own rules wherever one matches, in this order: transfers to/from the user's own accounts (recognized only from a valid IBAN or a complete domestic account number with bank code) first, then custom rules, learned payees and default system rules; anything the rules can't place is left uncategorized rather than guessed — call bank_transactions with uncategorized: true afterward to find those and assign the rest yourself. Rows that arrive with an explicit categoryId are always left as given.\nAll-or-nothing: if any row is invalid or references a missing category, the whole batch is rejected with per-row errors and nothing is written. Duplicates: pass the bank-side transactionId whenever the export has one — it is then the only duplicate key (a row whose id already exists is skipped and reported; two rows with different ids are two payments, however alike). Rows without a transactionId that exactly match an existing, not yet matched transaction (account + booking date + value date + amount + currency + type + description + counterparty name + counterparty account identifier + status) are skipped and reported in skippedDuplicates with possibleDuplicate: true, because they may be a genuine repeat purchase (two identical coffees on one day) rather than a re-import; each stored transaction matches at most one new row, so genuine repeats in one export stay distinct. Tell the user about every such row; only if they confirm it is a separate payment, resend just that row with importAnyway: true. Pending rows: pass status: pending; a later row with the same transactionId and status booked updates (promotes) the stored pending row instead of adding a second one, reported as promoted. Pending rows are kept out of budgets and cashflow. Re-importing an overlapping export is safe.\ntype: credit | debit. Dates: Unix timestamps (seconds). Amounts: positive numeric strings."
+        description = "Bulk-import bank transactions into one account (designed for parsed CSV/statement exports).\n\nCall this only after presenting the parsed data to the user and receiving their confirmation. Import in batches of about 100 rows at a time (max 200 per call); split larger exports across multiple calls — safe to do because duplicate rows are skipped and reported. Each validated nonempty call creates a record in the account import history (including duplicate-only calls). Pass the original statement fileName when known; otherwise its name is MCP. Deleting the record removes its newly inserted transactions; promoted pending rows keep their original import ownership.\nRows without a categoryId are auto-categorized by the app's own rules wherever one matches, in this order: transfers to/from the user's own accounts (recognized only from a valid IBAN or a complete domestic account number with bank code) first, then custom rules, learned payees and default system rules; anything the rules can't place is left uncategorized rather than guessed — call bank_transactions with uncategorized: true afterward to find those and assign the rest yourself. Rows that arrive with an explicit categoryId are always left as given.\nAll-or-nothing: if any row is invalid or references a missing category, the whole batch is rejected with per-row errors and nothing is written. Duplicates: pass the bank-side transactionId whenever the export has one — it is then the only duplicate key (a row whose id already exists is skipped and reported; two rows with different ids are two payments, however alike). Rows without a transactionId that exactly match an existing, not yet matched transaction (account + booking date + value date + amount + currency + type + description + counterparty name + counterparty account identifier + status) are skipped and reported in skippedDuplicates with possibleDuplicate: true, because they may be a genuine repeat purchase (two identical coffees on one day) rather than a re-import; each stored transaction matches at most one new row, so genuine repeats in one export stay distinct. Tell the user about every such row; only if they confirm it is a separate payment, resend just that row with importAnyway: true. Pending rows: pass status: pending; a later row with the same transactionId and status booked updates (promotes) the stored pending row instead of adding a second one, reported as promoted. Pending rows are kept out of budgets and cashflow. Re-importing an overlapping export is safe.\ntype: credit | debit. Dates: Unix timestamps (seconds). Amounts: positive numeric strings."
     )]
     fn bank_transactions_create(
         &self,
@@ -648,6 +648,14 @@ impl MoonyMcp {
         let report = self.db.with_conn_mut(|conn| {
             bank_accounts::bank_transactions_create(conn, &args, engine.as_deref())
         });
+        // Valid nonempty requests also write history when all rows are duplicates
+        // or promotions. The generic bulk helper only emits for new rows.
+        if report
+            .as_ref()
+            .is_ok_and(|r| r.errors.is_empty() && r.created == 0 && !args.transactions.is_empty())
+        {
+            self.emit_data_changed("bank", &[], None);
+        }
         self.bulk_tool_result("bank", &[], None, report)
     }
 
@@ -661,6 +669,19 @@ impl MoonyMcp {
         let report = self
             .db
             .with_conn_mut(|conn| bank_accounts::bank_transactions_categorize(conn, &args));
+        self.bulk_tool_result("bank", &[], None, report)
+    }
+
+    #[tool(
+        description = "Add an import history record for bank transactions written by one earlier bank_transactions_create call, made before such calls were recorded in the import history. Deleting that record in the app (account import history) then removes exactly these transactions in one step.\n\nFind the rows with bank_transactions: rows of one earlier call share their createdAt (within a minute). Only explicitly listed ids are assigned; never guess them. Call this only after showing the user exactly which transactions will be grouped (and that deleting the record deletes them) and receiving their confirmation. One call per earlier import call (max 200 ids). The record is named MCP, or MCP · <fileName> when fileName is given, and dated at the original write.\nAll-or-nothing: a repeated, unknown or other-account id, a transaction that already belongs to an import, one not written by an earlier MCP import (for example a CSV upload), or one created more than a minute apart from the others rejects the whole call with per-row errors and nothing is written. created = number of linked transactions."
+    )]
+    fn bank_transactions_assign_import(
+        &self,
+        Parameters(args): Parameters<bank_accounts::BankTransactionsAssignImportArgs>,
+    ) -> Result<CallToolResult, McpError> {
+        let report = self
+            .db
+            .with_conn_mut(|conn| bank_accounts::bank_transactions_assign_import(conn, &args));
         self.bulk_tool_result("bank", &[], None, report)
     }
 
@@ -845,7 +866,10 @@ impl ServerHandler for MoonyMcp {
             .with_instructions(
                 "Query Moony personal finance data (read tools), import parsed exports (bulk \
                  *_create write tools — always show the user the parsed data and get their \
-                 confirmation first), and categorize bank payments. Monetary values are in the \
+                 confirmation first), and categorize bank payments. Each bank import call is \
+                 recorded in the account's import history; bank_transactions_assign_import \
+                 groups an earlier unrecorded import call, also only after confirmation. \
+                 Monetary values are in the \
                  user's main currency (the `mainCurrency` field) unless a currency field says \
                  otherwise; money amounts are decimal strings; dates are Unix timestamps in \
                  seconds."
@@ -883,6 +907,16 @@ mod bulk_schema_tests {
         let schema =
             schema_for_input::<super::bank_accounts::BankTransactionsCategorizeArgs>().unwrap();
         assert_eq!(max_items_of(&schema, "assignments"), MAX_BULK_ROWS as u64);
+    }
+
+    #[test]
+    fn bank_transactions_assign_import_advertises_max_items() {
+        let schema =
+            schema_for_input::<super::bank_accounts::BankTransactionsAssignImportArgs>().unwrap();
+        assert_eq!(
+            max_items_of(&schema, "transactionIds"),
+            MAX_BULK_ROWS as u64
+        );
     }
 
     #[test]

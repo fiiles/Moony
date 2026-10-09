@@ -23,9 +23,11 @@ no transactional guarantees.
   both callers for the stock/crypto import functions (whose per-row
   validation precedes the batch). Tauri commands (UI) and MCP tools are
   both thin wrappers.
-- MCP writes are create-only. The single exception: bank_transactions_categorize
-  may set the category field (only) of existing transactions, to existing
-  categories only.
+- MCP writes are create-only, with two narrow exceptions:
+  bank_transactions_categorize may set the category field (only) of existing
+  transactions, to existing categories only; bank_transactions_assign_import
+  (2026-10-09, see Consequences) may set the import ownership (only) of
+  unowned transactions of one earlier MCP import call.
 - Bulk tools are two-phase and atomic: validate everything up front (any
   failure rejects the batch, nothing written), then insert inside one SQL
   transaction. Duplicates (services/dedup.rs: bank-side transaction id, else
@@ -52,8 +54,9 @@ no transactional guarantees.
 - Write tools multiply: every new one must be listed in the README (rule
   carried from ADR 0006) and must go through a service function — a tool
   with inline SQL is a review-blocking defect.
-- Accepted risk: an LLM with the bearer token can create records and
-  re-categorize payments. It cannot modify or delete financial facts.
+- Accepted risk: an LLM with the bearer token can create records,
+  re-categorize payments and group one earlier MCP import call into an
+  import record. It cannot modify or delete financial facts.
 - 2026-08-19: imports are now rules-first, and the rule applies identically to both
   callers of the shared write path. `bank_transactions_create` and the UI
   CSV import run the app's own categorization waterfall on every row that
@@ -116,3 +119,26 @@ no transactional guarantees.
   and says splitting a larger export across calls is safe because
   duplicate/already-handled rows are skipped and reported. No minimum was
   added — an empty batch stays a harmless no-op.
+- 2026-10-09: MCP bank imports record a `csv_import_batches` entry per
+  validated nonempty call, like CSV uploads, so they can be deleted from the
+  account's import history. Rows imported before that have no owner and
+  their origin cannot be inferred, so `bank_transactions_assign_import` is a
+  second, narrow exception to create-only: it creates one history record and
+  sets `import_batch_id` (only) on explicitly listed transactions of one
+  account that belong to no import. Because an LLM thereby decides what a
+  later human deletion removes, eligibility is limited to what one earlier
+  MCP call looks like: `manual` data source (never CSV uploads), no owner,
+  `created_at` within one minute. The record is always named `MCP` /
+  `MCP · <name>` so it cannot pose as a CSV upload, and is dated at the
+  original write. Amounts, dates, categories and existing ownership are never
+  changed; any ineligible id rejects the whole call. Deleting the record stays
+  a human action in the app, whose confirmation states how many transactions
+  it removes. Rows typed in the app are also `manual` and unowned, so any of
+  them written within one minute (even a single row, with no MCP import
+  nearby) remain eligible; the `MCP` name and the human confirmation are the
+  remaining guards — the residual risk accepted here.
+- New MCP bank rows use the existing `api_sync` data source to avoid a wire
+  change. A future real bank-sync feature must not assume `api_sync` means
+  bank API rows only.
+- Batch rows are written only through `csv_import::insert_batch` and
+  `finish_batch`, shared by the CSV and MCP writers.

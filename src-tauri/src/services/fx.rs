@@ -225,11 +225,11 @@ impl History {
     /// Walks back day by day from `floor(day)` for at most `MAX_LOOKBACK_DAYS` and uses the
     /// first day on which both currencies resolve. Same currency is identity without lookup.
     pub fn convert_on(&self, amount: f64, from: &str, to: &str, day: i64) -> Option<f64> {
-        let from = normalize(from)?;
-        let to = normalize(to)?;
-        if from == to {
+        if from.trim().to_uppercase() == to.trim().to_uppercase() {
             return amount.is_finite().then_some(amount);
         }
+        let from = normalize(from)?;
+        let to = normalize(to)?;
         let start = floor_day(day);
         (0..=MAX_LOOKBACK_DAYS).find_map(|back| {
             let quotes = self.days.get(&start.saturating_sub(back * DAY))?;
@@ -713,6 +713,14 @@ mod tests {
             .convert_on(100.0, "USD", "EUR", d + 3600)
             .expect("converted");
         assert!((got - 80.0).abs() < 1e-9, "{got}");
+    }
+
+    #[test]
+    fn convert_on_same_code_is_identity_even_for_non_iso_codes() {
+        let h = History::default();
+        assert_eq!(h.convert_on(5.0, "USDT", "usdt ", 0), Some(5.0));
+        assert_eq!(h.convert_on(5.0, " eur", "EUR", 0), Some(5.0));
+        assert_eq!(h.convert_on(5.0, "USDT", "USD", 0), None);
     }
 
     #[test]

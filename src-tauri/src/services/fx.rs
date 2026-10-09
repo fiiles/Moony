@@ -2,6 +2,7 @@
 //! currency per 1 unit of the reference currency; the reference is an implementation detail.
 
 use crate::error::Result;
+use crate::models::fx::{FxDayQuotes, FxSnapshot};
 use rusqlite::{params, Connection};
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::sync::{OnceLock, RwLock};
@@ -378,11 +379,54 @@ pub(crate) fn set_current_for_test(czk_per_unit: &[(&str, f64)]) {
     set_current(Quotes::from_czk_per_unit(&rates));
 }
 
+/// Units per 1 unit of the reference for every resolvable code (stored, derived and the
+/// reference itself at 1.0), as exposed to the frontend.
+pub fn snapshot_units(quotes: &Quotes) -> HashMap<String, f64> {
+    quotes
+        .codes()
+        .into_iter()
+        .filter_map(|code| {
+            let units = quotes.units(&code)?;
+            Some((code, units))
+        })
+        .collect()
+}
+
+/// The current quotes as a wire snapshot (`revision` 0 while nothing has been loaded).
+pub fn snapshot() -> FxSnapshot {
+    let quotes = current();
+    FxSnapshot {
+        reference: quotes.reference().to_string(),
+        units: snapshot_units(&quotes),
+        revision: current_revision(),
+    }
+}
+
+/// Stored quote days within `[floor(start_day), floor(end_day)]`, oldest first, with derived
+/// codes resolved. Days without any usable quote are skipped; the lookback margin that
+/// `History::load` reads is not returned.
+pub fn history_quotes(conn: &Connection, start_day: i64, end_day: i64) -> Result<Vec<FxDayQuotes>> {
+    if start_day > end_day {
+        return Ok(Vec::new());
+    }
+    let (first, last) = (floor_day(start_day), floor_day(end_day));
+    let history = History::load(conn, start_day, end_day)?;
+    Ok(history
+        .days()
+        .filter(|(day, quotes)| **day >= first && **day <= last && !quotes.is_empty())
+        .map(|(day, quotes)| FxDayQuotes {
+            day: *day,
+            units: snapshot_units(quotes),
+        })
+        .collect())
+}
+
 /// Collects conversions that could not be made, so reports can declare what they excluded.
 #[derive(Debug, Clone, Default)]
 pub struct Quality {
     missing: BTreeSet<String>,
     missing_count: usize,
+    estimated: bool,
 }
 
 impl Quality {
@@ -426,6 +470,16 @@ impl Quality {
     pub fn merge(&mut self, other: &Quality) {
         self.missing.extend(other.missing.iter().cloned());
         self.missing_count += other.missing_count;
+        self.estimated |= other.estimated;
+    }
+
+    /// Flags that some converted value used an estimated (non-historical) rate.
+    pub fn mark_estimated(&mut self) {
+        self.estimated = true;
+    }
+
+    pub fn is_estimated(&self) -> bool {
+        self.estimated
     }
 
     pub fn missing_currencies(&self) -> Vec<String> {
@@ -444,6 +498,7 @@ impl Quality {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::models::fx::ConversionQuality;
 
     fn eur_quotes() -> Quotes {
         let mut q = Quotes::new("EUR");
@@ -566,6 +621,70 @@ mod tests {
         assert!(is_supported("aed"));
         assert!(!is_supported("KWD"));
         assert_eq!(derived("BGN"), Some(("EUR", 1.95583)));
+    }
+
+    #[test]
+    fn snapshot_units_lists_every_resolvable_code() {
+        let mut quotes = Quotes::new("CZK");
+        quotes.insert("USD", 0.05);
+        let units = snapshot_units(&quotes);
+        assert_eq!(units["CZK"], 1.0);
+        assert_eq!(units["USD"], 0.05);
+        assert!((units["AED"] - 0.05 * 3.6725).abs() < 1e-12);
+        assert!(!units.contains_key("EUR"));
+        assert!(snapshot_units(&Quotes::new("CZK")).len() == 1);
+    }
+
+    #[test]
+    fn snapshot_reports_reference_units_and_revision() {
+        assert_eq!(snapshot().revision, 0);
+        let mut quotes = Quotes::new("CZK");
+        quotes.insert("EUR", 0.04);
+        set_current_with_revision(quotes, 1_700_000_000);
+        let snap = snapshot();
+        assert_eq!(snap.reference, "CZK");
+        assert_eq!(snap.revision, 1_700_000_000);
+        assert_eq!(snap.units["EUR"], 0.04);
+        assert_eq!(snap.units["CZK"], 1.0);
+    }
+
+    #[test]
+    fn history_quotes_skip_empty_days_and_the_lookback_margin() {
+        let d = 20_000 * DAY;
+        let conn = history_db(&[
+            (d - 2 * DAY, "USD", 20.0), // before the requested range: lookback only
+            (d, "USD", 0.0),            // unusable row: day ends up empty
+            (d + DAY, "USD", 25.0),
+            (d + DAY, "AED", 6.0), // derived codes are never stored
+        ]);
+        let days = history_quotes(&conn, d, d + 2 * DAY).expect("history");
+        assert_eq!(days.len(), 1);
+        assert_eq!(days[0].day, d + DAY);
+        assert!((days[0].units["USD"] - 1.0 / 25.0).abs() < 1e-12);
+        assert!((days[0].units["AED"] - 3.6725 / 25.0).abs() < 1e-12);
+        assert_eq!(days[0].units["CZK"], 1.0);
+        assert!(history_quotes(&conn, d + 2 * DAY, d)
+            .expect("reversed")
+            .is_empty());
+    }
+
+    #[test]
+    fn quality_estimated_flag_merges_and_maps_to_the_wire() {
+        let mut quality = Quality::default();
+        assert!(!quality.is_estimated());
+        let mut other = Quality::default();
+        other.mark_estimated();
+        quality.merge(&other);
+        assert!(quality.is_estimated());
+        quality.track("KWD", None);
+        let wire = ConversionQuality::from(&quality);
+        assert_eq!(wire.missing_currencies, vec!["KWD".to_string()]);
+        assert_eq!(wire.missing_count, 1);
+        assert!(wire.estimated);
+        assert_eq!(
+            ConversionQuality::from(&Quality::default()),
+            ConversionQuality::default()
+        );
     }
 
     fn history_db(rows: &[(i64, &str, f64)]) -> Connection {

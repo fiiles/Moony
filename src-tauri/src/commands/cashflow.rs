@@ -9,7 +9,7 @@ pub async fn get_cashflow_actuals(
     db: State<'_, Database>,
     range: String,
     account_ids: Option<Vec<String>>,
-    report_currency: Option<String>,
+    report_currency: String,
 ) -> Result<crate::models::CashflowActuals> {
     db.with_conn(|conn| {
         cashflow_actuals::get_actuals_in_currency(
@@ -17,7 +17,7 @@ pub async fn get_cashflow_actuals(
             &range,
             chrono::Utc::now().timestamp(),
             account_ids.as_deref(),
-            report_currency.as_deref().unwrap_or("CZK"),
+            &report_currency,
         )
     })
 }
@@ -25,14 +25,10 @@ pub async fn get_cashflow_actuals(
 pub async fn get_cashflow_report(
     db: State<'_, Database>,
     view_type: String,
-    report_currency: Option<String>,
+    report_currency: String,
 ) -> Result<CashflowReport> {
     db.with_conn(|conn| {
-        cashflow_planning::get_report_in_currency(
-            conn,
-            &view_type,
-            report_currency.as_deref().unwrap_or("CZK"),
-        )
+        cashflow_planning::get_report_in_currency(conn, &view_type, &report_currency)
     })
 }
 #[tauri::command]
@@ -67,7 +63,7 @@ pub async fn get_report_transactions(
     start_date: i64,
     end_date: i64,
     account_ids: Option<Vec<String>>,
-    report_currency: Option<String>,
+    report_currency: String,
     flow_kind: Option<crate::models::FlowKind>,
     category_id: Option<String>,
     source_key: Option<String>,
@@ -81,7 +77,7 @@ pub async fn get_report_transactions(
             flow_kind,
             category_id.as_deref(),
             source_key.as_deref(),
-            report_currency.as_deref().unwrap_or("CZK"),
+            &report_currency,
         )
     })
 }

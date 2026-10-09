@@ -16,6 +16,7 @@ pub mod company_info;
 pub mod crypto;
 pub mod currency;
 pub mod frequency;
+pub mod fx;
 pub mod insurance;
 pub mod investments;
 pub mod loan_events;

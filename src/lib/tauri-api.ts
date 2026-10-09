@@ -58,6 +58,8 @@ import type {
   CashflowReport,
   CashflowActuals,
   CashflowRange,
+  FxSnapshot,
+  FxDayQuotes,
   CashflowItem,
   ProjectionSettings,
   PortfolioProjection,
@@ -713,15 +715,28 @@ export const stockMonitorApi = {
 };
 
 // ============================================================================
+// FX API
+// ============================================================================
+
+export const fxApi = {
+  /** Current quotes: units of each currency per 1 unit of `reference` (derived codes included). */
+  getSnapshot: () => tauriInvoke<FxSnapshot>('get_fx_snapshot'),
+
+  /** Stored daily quotes for `[startDay, endDay]` (UTC-midnight unix seconds), oldest first. */
+  getHistory: (startDay: number, endDay: number) =>
+    tauriInvoke<FxDayQuotes[]>('get_fx_history', { startDay, endDay }),
+};
+
+// ============================================================================
 // Cashflow API
 // ============================================================================
 
 export const cashflowApi = {
-  getReport: (viewType: 'monthly' | 'yearly', reportCurrency?: string) =>
+  getReport: (viewType: 'monthly' | 'yearly', reportCurrency: string) =>
     tauriInvoke<CashflowReport>('get_cashflow_report', { viewType, reportCurrency }),
 
   /** Actual flows from bank transactions for the Cashflow report page (design system README §11). */
-  getActuals: (range: CashflowRange, accountIds?: string[], reportCurrency?: string) =>
+  getActuals: (range: CashflowRange, accountIds: string[] | undefined, reportCurrency: string) =>
     tauriInvoke<CashflowActuals>('get_cashflow_actuals', { range, accountIds, reportCurrency }),
   getTransactions: (
     startDate: number,
@@ -731,8 +746,8 @@ export const cashflowApi = {
       flowKind?: FlowKind;
       categoryId?: string;
       sourceKey?: string;
-      reportCurrency?: string;
-    } = {}
+      reportCurrency: string;
+    }
   ) =>
     tauriInvoke<ReportTransaction[]>('get_report_transactions', { startDate, endDate, ...filters }),
   getEffectiveFlows: (transactionIds: string[]) =>
@@ -1142,8 +1157,8 @@ export const budgetingApi = {
     startDate: number,
     endDate: number,
     timeframe: string,
-    accountIds?: string[],
-    reportCurrency?: string
+    accountIds: string[] | undefined,
+    reportCurrency: string
   ) =>
     tauriInvoke<BudgetingReport>('get_budgeting_report', {
       startDate,
@@ -1158,7 +1173,7 @@ export const budgetingApi = {
     categoryId: string,
     startDate: number,
     endDate: number,
-    reportCurrency?: string
+    reportCurrency: string
   ) =>
     tauriInvoke<BudgetingTransaction[]>('get_category_transactions', {
       categoryId,
@@ -1195,6 +1210,7 @@ export const api = {
   price: priceApi,
   stockMonitor: stockMonitorApi,
   cashflow: cashflowApi,
+  fx: fxApi,
   projection: projectionApi,
   export: exportApi,
   bankAccounts: bankAccountsApi,

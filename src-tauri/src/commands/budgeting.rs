@@ -21,7 +21,7 @@ pub async fn get_budgeting_report(
     end_date: i64,
     timeframe: String,
     account_ids: Option<Vec<String>>,
-    report_currency: Option<String>,
+    report_currency: String,
 ) -> Result<BudgetingReport> {
     db.with_conn(|conn| {
         services::budgeting::get_report_in_currency(
@@ -30,7 +30,7 @@ pub async fn get_budgeting_report(
             end_date,
             &timeframe,
             account_ids.as_deref(),
-            report_currency.as_deref().unwrap_or("CZK"),
+            &report_currency,
         )
     })
 }
@@ -45,7 +45,7 @@ pub async fn get_category_transactions(
     category_id: String,
     start_date: i64,
     end_date: i64,
-    report_currency: Option<String>,
+    report_currency: String,
 ) -> Result<Vec<BudgetingTransaction>> {
     db.with_conn(|conn| {
         services::budgeting::get_category_transactions_in_currency(
@@ -53,7 +53,7 @@ pub async fn get_category_transactions(
             &category_id,
             start_date,
             end_date,
-            report_currency.as_deref().unwrap_or("CZK"),
+            &report_currency,
         )
     })
 }

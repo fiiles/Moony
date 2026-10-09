@@ -192,6 +192,8 @@ pub async fn run() {
             commands::portfolio::get_exchange_rates_for_date,
             commands::portfolio::get_exchange_rates_for_date_range,
             commands::portfolio::get_price_status,
+            commands::portfolio::get_fx_snapshot,
+            commands::portfolio::get_fx_history,
             commands::portfolio::start_snapshot_backfill,
             commands::portfolio::recalculate_all_portfolio_history,
             commands::portfolio::backfill_stock_ticker_history,

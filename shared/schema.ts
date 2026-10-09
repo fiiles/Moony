@@ -1887,6 +1887,24 @@ export interface SavedStockImportFormat {
 
 export type FlowSource = 'explicit' | 'ownAccount' | 'category' | 'direction';
 export type FxQuality = 'historical' | 'estimated' | 'missing';
+/** What a converted response could not (or only approximately) convert. */
+export interface ConversionQuality {
+  missingCurrencies: string[];
+  missingCount: number;
+  estimated: boolean;
+}
+/** Current quotes: units of each currency per 1 unit of `reference` (derived codes and the reference included). */
+export interface FxSnapshot {
+  reference: string;
+  units: Record<string, number>;
+  /** Unix seconds of the last fetch; 0 when no rates are loaded. */
+  revision: number;
+}
+/** Quotes stored for one UTC day (`day` is the UTC-midnight unix timestamp). */
+export interface FxDayQuotes {
+  day: number;
+  units: Record<string, number>;
+}
 export interface ReportQuality {
   missingFxCount: number;
   missingFxCurrencies: string[];

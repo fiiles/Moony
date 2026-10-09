@@ -519,6 +519,22 @@ const STOCKS_STALE_THRESHOLD_HOURS: i64 = 24;
 const CRYPTO_STALE_THRESHOLD_HOURS: i64 = 12;
 const EXCHANGE_RATES_STALE_THRESHOLD_HOURS: i64 = 48;
 
+/// Current FX quotes (units per 1 unit of the reference) for frontend conversions.
+#[tauri::command]
+pub fn get_fx_snapshot() -> Result<crate::models::fx::FxSnapshot> {
+    Ok(crate::services::fx::snapshot())
+}
+
+/// Stored daily quotes within `[start_day, end_day]` (UTC-midnight unix seconds), oldest first.
+#[tauri::command]
+pub async fn get_fx_history(
+    db: State<'_, Database>,
+    start_day: i64,
+    end_day: i64,
+) -> Result<Vec<crate::models::fx::FxDayQuotes>> {
+    db.with_conn(|conn| crate::services::fx::history_quotes(conn, start_day, end_day))
+}
+
 /// Get the status of prices and exchange rates freshness
 #[tauri::command]
 pub fn get_price_status(db: State<'_, Database>) -> Result<PriceStatus> {

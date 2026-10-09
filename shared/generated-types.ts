@@ -183,6 +183,11 @@ export type CategorySpendingSummary = { budgetCurrency: string | null; budgetSpe
 export type CategoryUsage = { categoryId: string; transactions: number; rules: number; learnedPayees: number; budgetGoals: number }
 
 /**
+ * What a converted response could not (or only approximately) convert.
+ */
+export type ConversionQuality = { missingCurrencies: string[]; missingCount: number; estimated: boolean }
+
+/**
  * Crypto investment holding
  */
 export type CryptoInvestment = { id: string; ticker: string; coingeckoId: string; name: string; quantity: string; averagePrice: string }
@@ -609,7 +614,25 @@ export type FlowKind = "income" | "expense" | "transfer" | "investment" | "finan
 
 export type FlowSource = "explicit" | "ownAccount" | "category" | "direction"
 
+/**
+ * Quotes stored for one UTC day (`day` is the UTC-midnight unix timestamp).
+ */
+export type FxDayQuotes = { day: number; units: Partial<{ [key in string]: number }> }
+
 export type FxQuality = "estimated" | "historical" | "missing"
+
+/**
+ * The current quotes: units of each currency per 1 unit of `reference`.
+ */
+export type FxSnapshot = { reference: string; 
+/**
+ * Includes derived codes and the reference itself (1.0).
+ */
+units: Partial<{ [key in string]: number }>; 
+/**
+ * Unix seconds of the last fetch; 0 when no rates are loaded.
+ */
+revision: number }
 
 /**
  * Payload of the `history-recalculation` event.

@@ -303,6 +303,12 @@ pub fn get_report_in_currency(
     // evaluation currency. Profile/display changes never change utilization.
     let mut native_limits = HashMap::new();
     let mut native_spending = HashMap::new();
+    let days = rows.iter().map(|r| r.booking_date);
+    let fx_history = crate::services::reporting::FxHistory::new(
+        conn,
+        days.clone().min().unwrap_or_default(),
+        days.max().unwrap_or_default(),
+    );
     for (_, goal) in limits.values() {
         let currency = crate::services::reporting::normalize_currency(&goal.currency)?;
         if native_limits.contains_key(&currency) {
@@ -321,24 +327,19 @@ pub fn get_report_in_currency(
                 continue;
             };
             let contribution = match parse_money(&row.amount) {
-                Ok(amount) => crate::services::reporting::historical_amount(
-                    conn,
-                    amount.abs(),
-                    &row.currency,
-                    &currency,
-                    row.booking_date,
-                )?
-                .map(|value| {
-                    let signed = crate::services::financial_semantics::signed_flow_amount(
-                        row.effective_flow_kind,
-                        row.tx_type.eq_ignore_ascii_case("credit"),
-                        value,
-                    );
-                    parse_money(&crate::services::reporting::money_in_currency(
-                        signed, &currency,
-                    ))
-                    .expect("formatted money")
-                }),
+                Ok(amount) => fx_history
+                    .convert(amount.abs(), &row.currency, &currency, row.booking_date)?
+                    .map(|value| {
+                        let signed = crate::services::financial_semantics::signed_flow_amount(
+                            row.effective_flow_kind,
+                            row.tx_type.eq_ignore_ascii_case("credit"),
+                            value,
+                        );
+                        parse_money(&crate::services::reporting::money_in_currency(
+                            signed, &currency,
+                        ))
+                        .expect("formatted money")
+                    }),
                 Err(_) => None,
             };
             let total = spending.entry(category.clone()).or_insert(Some(0.0));
@@ -481,7 +482,7 @@ fn period_limits(
     timeframe: &str,
     report_currency: &str,
 ) -> Result<HashMap<String, (Option<f64>, BudgetGoal)>> {
-    use crate::services::reporting::{historical_amount, month_start, parse_money};
+    use crate::services::reporting::{month_start, parse_money, FxHistory};
     use chrono::{DateTime, Datelike, NaiveDate, Utc};
     let mut stmt=conn.prepare("SELECT id,category_id,timeframe,amount,currency,effective_month,created_at FROM budget_goal_versions ORDER BY effective_month")?;
     let versions = stmt
@@ -506,6 +507,12 @@ fn period_limits(
         _ => 1,
     };
     let mut out: HashMap<String, (Option<f64>, BudgetGoal)> = HashMap::new();
+    // Months visited below lie within `count` months of the first one and never past `end`.
+    let fx_history = FxHistory::new(
+        conn,
+        month,
+        end.min(month.saturating_add(count * 31 * 86_400)),
+    );
     for _ in 0..count {
         if month > end {
             break;
@@ -541,7 +548,7 @@ fn period_limits(
                         }
                 });
             let czk = match native {
-                Some(native) => historical_amount(conn, native, &v.4, report_currency, month)?,
+                Some(native) => fx_history.convert(native, &v.4, report_currency, month)?,
                 None => None,
             };
             let goal = BudgetGoal {

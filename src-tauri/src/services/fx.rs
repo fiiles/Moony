@@ -203,12 +203,12 @@ pub struct History {
 }
 
 impl History {
-    /// Loads `exchange_rate_history` for `[start_day - MAX_LOOKBACK_DAYS * DAY, end_day]`, plus
-    /// one extra day below so a lookup one day before `start_day` still sees its full window.
+    /// Loads `exchange_rate_history` for `[floor(start_day) - MAX_LOOKBACK_DAYS * DAY,
+    /// floor(end_day)]`; `convert_on` is supported for days in `[start_day, end_day]`.
     /// Phase-1 storage: rows are CZK per unit, so each day becomes `Quotes::new("CZK")` with
     /// `units = 1 / rate`; unusable rows are skipped.
     pub fn load(conn: &Connection, start_day: i64, end_day: i64) -> Result<History> {
-        let lower = floor_day(start_day).saturating_sub((MAX_LOOKBACK_DAYS + 1) * DAY);
+        let lower = floor_day(start_day).saturating_sub(MAX_LOOKBACK_DAYS * DAY);
         let upper = floor_day(end_day);
         let mut stmt = conn.prepare(
             "SELECT date, currency, rate FROM exchange_rate_history WHERE date >= ?1 AND date <= ?2",
@@ -244,7 +244,7 @@ impl History {
         }
         let start = floor_day(day);
         (0..=MAX_LOOKBACK_DAYS).find_map(|back| {
-            let quotes = self.days.get(&(start - back * DAY))?;
+            let quotes = self.days.get(&start.saturating_sub(back * DAY))?;
             quotes.units(&from)?;
             quotes.units(&to)?;
             // Both quotes resolve on this day: this day decides, even when the result overflows.
@@ -422,7 +422,7 @@ mod tests {
     fn convert_on_gives_up_after_ten_days() {
         let d = 20_000 * DAY;
         let conn = history_db(&[(d - 11 * DAY, "EUR", 25.0)]);
-        let h = History::load(&conn, d, d).expect("load");
+        let h = History::load(&conn, d - 10 * DAY, d).expect("load");
         assert_eq!(h.convert_on(1.0, "EUR", "CZK", d), None);
         assert_eq!(h.convert_on(1.0, "EUR", "CZK", d - 10 * DAY), Some(25.0));
     }

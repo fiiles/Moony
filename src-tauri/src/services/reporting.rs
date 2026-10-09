@@ -76,12 +76,43 @@ pub fn historical_amount(
     target: &str,
     day: i64,
 ) -> Result<Option<f64>> {
-    let from = normalize_currency(from)?;
-    let target = normalize_currency(target)?;
-    if from == target {
-        return Ok(amount.is_finite().then_some(amount));
+    FxHistory::new(conn, day, day).convert(amount, from, target, day)
+}
+/// FX history for a known range of days, read from the database at most once and only when
+/// a conversion between different currencies is actually requested.
+pub struct FxHistory<'a> {
+    conn: &'a Connection,
+    start: i64,
+    end: i64,
+    loaded: std::cell::OnceCell<fx::History>,
+}
+impl<'a> FxHistory<'a> {
+    /// `convert` supports days within `[start, end]`.
+    pub fn new(conn: &'a Connection, start: i64, end: i64) -> Self {
+        Self {
+            conn,
+            start,
+            end,
+            loaded: std::cell::OnceCell::new(),
+        }
     }
-    Ok(fx::History::load(conn, day, day)?.convert_on(amount, &from, &target, day))
+    /// Same semantics as `historical_amount` for `day` in `[start, end]`: invalid codes are
+    /// validation errors, same currency is identity, database failures propagate.
+    pub fn convert(&self, amount: f64, from: &str, target: &str, day: i64) -> Result<Option<f64>> {
+        let from = normalize_currency(from)?;
+        let target = normalize_currency(target)?;
+        if from == target {
+            return Ok(amount.is_finite().then_some(amount));
+        }
+        let history = match self.loaded.get() {
+            Some(history) => history,
+            None => {
+                let history = fx::History::load(self.conn, self.start, self.end)?;
+                self.loaded.get_or_init(|| history)
+            }
+        };
+        Ok(history.convert_on(amount, &from, &target, day))
+    }
 }
 
 pub fn effective_flows(conn: &Connection, ids: &[String]) -> Result<Vec<EffectiveTransactionFlow>> {
@@ -165,9 +196,16 @@ pub fn transactions_in_currency(
             r.get::<_, Option<String>>(14)?,
         ))
     })?;
+    let rows = rows.collect::<std::result::Result<Vec<_>, _>>()?;
+    let days = rows.iter().map(|r| r.0.booking_date);
+    let fx_history = FxHistory::new(
+        conn,
+        days.clone().min().unwrap_or_default(),
+        days.max().unwrap_or_default(),
+    );
     let mut out = vec![];
     for row in rows {
-        let (mut row, explicit, category, bank_code, country) = row?;
+        let (mut row, explicit, category, bank_code, country) = row;
         if accounts.is_some_and(|ids| !ids.contains(&row.bank_account_id)) {
             continue;
         }
@@ -189,13 +227,9 @@ pub fn transactions_in_currency(
             out.push(row);
             continue;
         };
-        if let Some(czk) = historical_amount(
-            conn,
-            amount,
-            &row.currency,
-            &report_currency,
-            row.booking_date,
-        )? {
+        if let Some(czk) =
+            fx_history.convert(amount, &row.currency, &report_currency, row.booking_date)?
+        {
             row.signed_amount = Some(money_in_currency(
                 signed_flow_amount(flow.kind, credit, czk),
                 &report_currency,

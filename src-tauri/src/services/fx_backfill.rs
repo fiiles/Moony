@@ -1,7 +1,7 @@
 //! Automatic FX timeseries backfill.
 //!
 //! Cost basis and historical valuations derive from `exchange_rate_history`
-//! (services/cost_basis.rs, convert_to_czk_at). The daily writer only records
+//! (services/cost_basis.rs, `fx::History`). The daily writer only records
 //! rates for days the app is running, so two kinds of gaps appear:
 //!
 //! - a **prefix gap**: a transaction predates the whole timeseries (a user
@@ -27,7 +27,7 @@ use crate::services::fx;
 const DAY: i64 = 86_400;
 /// The currency every stored rate is quoted against; it never has a row of its own.
 const REFERENCE: &str = "CZK";
-/// Walk-back window used by rate lookups (`get_rates_for_date`): the fetch
+/// Walk-back window used by rate lookups (`fx::History::convert_on`): the fetch
 /// starts this much before the earliest transaction so weekend/holiday
 /// transactions can resolve to the closest earlier day.
 const LOOKBACK: i64 = 10 * DAY;
@@ -113,7 +113,20 @@ fn has_column(conn: &Connection, table: &str, column: &str) -> Result<bool> {
 /// by its anchor, and codes without a published source quote cannot be fetched at all. Sorted.
 pub fn held_currencies(conn: &Connection) -> Result<Vec<String>> {
     let mut set: BTreeSet<String> = BTreeSet::new();
-    for (table, column) in CURRENCY_COLUMNS {
+    for code in data_currencies(conn, CURRENCY_COLUMNS)? {
+        match fx::derived(&code) {
+            Some((anchor, _)) => set.insert(anchor.to_string()),
+            None => set.insert(code),
+        };
+    }
+    set.retain(|code| code != REFERENCE && fx::source_codes().contains(code));
+    Ok(set.into_iter().collect())
+}
+
+/// Normalised codes found in `columns` (missing tables/columns are skipped).
+fn data_currencies(conn: &Connection, columns: &[(&str, &str)]) -> Result<BTreeSet<String>> {
+    let mut set: BTreeSet<String> = BTreeSet::new();
+    for (table, column) in columns {
         if !has_column(conn, table, column)? {
             continue;
         }
@@ -121,18 +134,31 @@ pub fn held_currencies(conn: &Connection) -> Result<Vec<String>> {
             "SELECT DISTINCT {column} FROM {table} WHERE {column} IS NOT NULL"
         ))?;
         let rows = stmt.query_map([], |r| r.get::<_, String>(0))?;
-        for code in rows.filter_map(|r| r.ok()) {
-            let Some(code) = fx::normalize(&code) else {
-                continue;
-            };
-            match fx::derived(&code) {
-                Some((anchor, _)) => set.insert(anchor.to_string()),
-                None => set.insert(code),
-            };
-        }
+        set.extend(
+            rows.filter_map(|r| r.ok())
+                .filter_map(|c| fx::normalize(&c)),
+        );
     }
-    set.retain(|code| code != REFERENCE && fx::source_codes().contains(code));
-    Ok(set.into_iter().collect())
+    Ok(set)
+}
+
+/// Currencies in the user's data (the profile currency included) that `quotes` cannot
+/// resolve: amounts in them are excluded from every converted total. Raw Yahoo quote units
+/// (`stock_data.quote_currency`, e.g. `ZAc`) are not currencies of their own and are skipped.
+/// Empty while no quotes are loaded at all (the rate age reports that). Sorted.
+pub fn unquoted_currencies(conn: &Connection, quotes: &fx::Quotes) -> Result<Vec<String>> {
+    if quotes.is_empty() {
+        return Ok(Vec::new());
+    }
+    let columns: Vec<(&str, &str)> = CURRENCY_COLUMNS
+        .iter()
+        .copied()
+        .filter(|column| *column != ("stock_data", "quote_currency"))
+        .collect();
+    Ok(data_currencies(conn, &columns)?
+        .into_iter()
+        .filter(|code| quotes.units(code).is_none())
+        .collect())
 }
 
 /// `currency` together with the pegged currencies stored through it.
@@ -639,6 +665,31 @@ mod tests {
         let mut symbols = held_currencies(&conn).expect("currencies");
         symbols.sort();
         assert_eq!(symbols, vec!["EUR".to_string(), "USD".to_string()]);
+    }
+
+    #[test]
+    fn unquoted_currencies_lists_data_currencies_the_quotes_cannot_resolve() {
+        let conn = setup_db();
+        add_stock_tx(&conn, "t1", "KWD", TODAY - 10 * D);
+        add_stock_tx(&conn, "t2", "usd", TODAY - 10 * D);
+        conn.execute_batch(
+            "INSERT INTO user_profile (id, currency) VALUES (1, 'AED');
+             ALTER TABLE stock_data ADD COLUMN quote_currency TEXT;
+             INSERT INTO stock_data (ticker, currency, quote_currency) VALUES ('NPN.JO', 'ZAR', 'ZAc');",
+        )
+        .expect("data");
+        let mut quotes = fx::Quotes::new("EUR");
+        quotes.insert("USD", 1.1);
+
+        // AED resolves through its USD peg; ZAc is a quote unit, not a currency of its own.
+        assert_eq!(
+            unquoted_currencies(&conn, &quotes).expect("unquoted"),
+            vec!["KWD".to_string(), "ZAR".to_string()]
+        );
+        // Before any quote is loaded nothing is listed (the rate age reports that).
+        assert!(unquoted_currencies(&conn, &fx::Quotes::new("CZK"))
+            .expect("unquoted")
+            .is_empty());
     }
 
     #[test]

@@ -1136,8 +1136,8 @@ stocksMissingPrice: number;
  */
 cryptoMissingPrice: number; 
 /**
- * Currencies whose conversion failed (current or historical) since the last
- * rate load; those amounts are excluded from totals, never valued 1:1
+ * Currencies in the user's data (the profile currency included) without a current
+ * quote; amounts in them are excluded from converted totals, never valued 1:1
  */
 missingCurrencies: string[]; 
 /**

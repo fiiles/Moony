@@ -181,21 +181,6 @@ impl Quotes {
         }
         quotes
     }
-
-    /// CZK per 1 unit of every resolvable code (incl. derived and CZK itself). Empty when CZK
-    /// cannot be resolved.
-    pub fn to_czk_per_unit(&self) -> HashMap<String, f64> {
-        let Some(czk_units) = self.units("CZK") else {
-            return HashMap::new();
-        };
-        self.codes()
-            .into_iter()
-            .filter_map(|code| {
-                let units = self.units(&code)?;
-                Some((code, czk_units / units))
-            })
-            .collect()
-    }
 }
 
 /// Day-keyed quotes (UTC midnight keys). Historical conversions use one common day for both
@@ -311,13 +296,11 @@ fn floor_day(ts: i64) -> i64 {
     ts.div_euclid(DAY) * DAY
 }
 
-/// The in-memory snapshot of the latest quotes, when it was fetched, and the currencies that
-/// failed a current conversion since it was last replaced.
+/// The in-memory snapshot of the latest quotes and when it was fetched.
 struct CurrentStore {
     quotes: Quotes,
     /// Unix seconds the quotes were fetched/saved; doubles as the snapshot revision.
     fetched_at: Option<i64>,
-    missing: BTreeSet<String>,
 }
 
 impl CurrentStore {
@@ -325,7 +308,6 @@ impl CurrentStore {
         Self {
             quotes: Quotes::new("CZK"),
             fetched_at: None,
-            missing: BTreeSet::new(),
         }
     }
 }
@@ -362,13 +344,11 @@ pub fn current_fetched_at() -> Option<i64> {
     with_store(|s| s.read().unwrap_or_else(|e| e.into_inner()).fetched_at)
 }
 
-/// Replaces the current snapshot (keeping its revision) and forgets previously recorded
-/// missing currencies.
+/// Replaces the current snapshot (keeping its revision).
 pub fn set_current(quotes: Quotes) {
     with_store(|s| {
         let mut guard = s.write().unwrap_or_else(|e| e.into_inner());
         guard.quotes = quotes;
-        guard.missing.clear();
     });
 }
 
@@ -378,39 +358,7 @@ pub fn set_current_with_revision(quotes: Quotes, fetched_at: i64) {
         let mut guard = s.write().unwrap_or_else(|e| e.into_inner());
         guard.quotes = quotes;
         guard.fetched_at = Some(fetched_at);
-        guard.missing.clear();
     });
-}
-
-/// Codes that failed a current conversion since the last `set_current`, sorted.
-pub fn missing_now() -> Vec<String> {
-    with_store(|s| {
-        s.read()
-            .unwrap_or_else(|e| e.into_inner())
-            .missing
-            .iter()
-            .cloned()
-            .collect()
-    })
-}
-
-/// Records a currency that could not be converted with the current snapshot (warns once).
-pub fn record_missing(code: &str) {
-    let code = normalize(code).unwrap_or_else(|| code.trim().to_uppercase());
-    with_store(|s| {
-        let mut guard = s.write().unwrap_or_else(|e| e.into_inner());
-        if guard.missing.insert(code.clone()) {
-            log::warn!("[FX] no current exchange rate for {code}; amounts in {code} are excluded");
-        }
-    });
-}
-
-/// Records every currency of `quality` as missing in the current snapshot (for conversions
-/// that were made elsewhere, e.g. cost basis, and must still reach `get_price_status`).
-pub fn record_missing_all(quality: &Quality) {
-    for code in quality.missing_currencies() {
-        record_missing(&code);
-    }
 }
 
 /// Test helper: replaces the (thread-local) snapshot with these CZK-per-unit rates.
@@ -604,10 +552,10 @@ mod tests {
         let q = Quotes::from_czk_per_unit(&czk_per_unit);
         assert_eq!(q.reference(), "CZK");
         assert!((q.convert(1.0, "EUR", "USD").expect("conv") - 1.1).abs() < 1e-9);
-        let back = q.to_czk_per_unit();
-        assert!((back["EUR"] - 25.0).abs() < 1e-9);
-        assert!((back["AED"] - 22.727272727272727 / 3.6725).abs() < 1e-9);
-        assert_eq!(back["CZK"], 1.0);
+        assert!((q.convert(1.0, "EUR", "CZK").expect("EUR") - 25.0).abs() < 1e-9);
+        let aed = q.convert(1.0, "AED", "CZK").expect("AED via USD");
+        assert!((aed - 22.727272727272727 / 3.6725).abs() < 1e-9);
+        assert_eq!(q.convert(1.0, "CZK", "CZK"), Some(1.0));
     }
 
     #[test]

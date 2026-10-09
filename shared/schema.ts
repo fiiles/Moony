@@ -401,7 +401,7 @@ export interface PriceStatus {
   exchangeRatesAgeHours: number | null;
   stocksMissingPrice: number;
   cryptoMissingPrice: number;
-  /** Currency codes with no known exchange rate this session (excluded from totals) */
+  /** Currencies in the user's data (profile currency included) without a current quote (excluded from converted totals) */
   missingCurrencies: string[];
   /** Held currencies whose newest stored exchange rate is more than 14 days old */
   staleCurrencies: string[];

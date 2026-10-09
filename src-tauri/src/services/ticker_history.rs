@@ -33,21 +33,14 @@ use crate::error::Result;
 use crate::models::fx::ConversionQuality;
 use crate::models::{TickerValueHistory, TickerValueHistoryReport};
 use crate::services::cost_basis::{self, TxTable};
-use crate::services::currency::{
-    convert_to_czk_with_rates, get_all_rates, get_rates_for_date_range,
-};
 use crate::services::fx::{History, Quality, Quotes};
-use crate::services::portfolio_history::SECONDS_PER_DAY;
+use crate::services::portfolio_history::{LegacyCzk, SECONDS_PER_DAY};
 use crate::services::pricing::AssetKind;
 use crate::services::reporting::{money_in_currency, normalize_currency};
 
 /// A position smaller than this is float noise from summing fractional
 /// quantities (0.1 + 0.2 - 0.3), not a holding: the day counts as empty.
 const POSITION_EPSILON: f64 = 1e-9;
-
-/// How far back a day's FX rates may be borrowed from (weekends, holidays) —
-/// the same window as `currency::get_rates_for_date`.
-const FX_LOOKBACK_DAYS: i64 = 10;
 
 /// What a rebuild does to one day of a ticker's history.
 #[derive(Debug, Clone, PartialEq)]
@@ -122,14 +115,9 @@ where
     }
 
     let changes = load_position_changes(conn, ticker)?;
-    let rates_by_day = get_rates_for_date_range(
-        conn,
-        from_day - FX_LOOKBACK_DAYS * SECONDS_PER_DAY,
-        until_day,
-    );
-    // Today's in-memory rates, read at most once and only if a day has no
-    // timeseries snapshot at all (what `get_rates_for_date` falls back to).
-    let mut current_rates: Option<HashMap<String, f64>> = None;
+    // The value_czk cache at each day's rates; a day before the rate history
+    // uses the current quotes (see `LegacyCzk::on_or_now`).
+    let czk = LegacyCzk::dated(conn, from_day, until_day)?;
 
     let mut plan = Vec::new();
     let mut position = 0.0_f64;
@@ -148,15 +136,7 @@ where
                 action: DayAction::Delete,
             });
         } else if let Some((price, currency)) = price_at(day) {
-            let snapshot = (0..=FX_LOOKBACK_DAYS)
-                .find_map(|offset| rates_by_day.get(&(day - offset * SECONDS_PER_DAY)));
-            let value_czk = match snapshot {
-                Some(rates) => convert_to_czk_with_rates(quantity * price, &currency, rates),
-                None => {
-                    let rates = current_rates.get_or_insert_with(get_all_rates);
-                    convert_to_czk_with_rates(quantity * price, &currency, rates)
-                }
-            };
+            let value_czk = czk.on_or_now(quantity * price, &currency, day);
             plan.push(DayPlan {
                 day,
                 action: DayAction::Upsert {
@@ -852,7 +832,6 @@ mod tests {
 mod golden {
     use super::*;
     use crate::db::Database;
-    use crate::services::currency::convert_to_czk_at;
     use crate::services::portfolio_history::{
         aggregate_ticker_history, update_classes, AssetClassKind,
     };
@@ -909,7 +888,9 @@ mod golden {
             else {
                 continue;
             };
-            let value_czk = convert_to_czk_at(conn, quantity * price, currency, day_timestamp);
+            let value_czk = LegacyCzk::dated(conn, day_timestamp, day_timestamp)
+                .expect("rate history")
+                .on(quantity * price, currency, day_timestamp);
             conn.execute(
                 "INSERT INTO stock_value_history (id, ticker, recorded_at, value_czk, quantity, price, currency)
                  VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)

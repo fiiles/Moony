@@ -1,32 +1,12 @@
-//! Currency conversion service
-//!
-//! Handles exchange rate caching and currency conversion
-//! Base currency is CZK
+//! Exchange rate storage: the ECB feed, the stored current rates and the daily rate history
+//! (CZK per unit, the storage format until Task 24). Conversions go through `services::fx`.
 
 use crate::services::fx::{self, Quotes};
 use std::collections::HashMap;
 
-/// Phase-1 shim: converts to CZK with the current snapshot. A currency without a quote is
-/// excluded (0.0) and recorded as missing; it is never valued 1:1.
-pub fn convert_to_czk(amount: f64, currency: &str) -> f64 {
-    match fx::current().convert(amount, currency, "CZK") {
-        Some(converted) => converted,
-        None => {
-            fx::record_missing(currency);
-            0.0
-        }
-    }
-}
-
 /// Get the timestamp when exchange rates were last fetched (kept in the FX current store).
 pub fn get_exchange_rates_fetched_at() -> Option<i64> {
     fx::current_fetched_at()
-}
-
-/// Phase-1 shim: CZK per 1 unit of every currency the current snapshot resolves
-/// (derived codes included). Contains only `CZK` until rates are loaded.
-pub fn get_all_rates() -> HashMap<String, f64> {
-    fx::current().to_czk_per_unit()
 }
 
 /// Load exchange rates from database on startup
@@ -300,81 +280,6 @@ pub fn save_rates_to_history_db(
     Ok(())
 }
 
-/// Phase-1 shim: CZK-per-unit rates (derived codes included) of the closest day on or before
-/// `date` that has stored quotes, looking back at most `fx::MAX_LOOKBACK_DAYS`. Empty when no
-/// such day exists; current rates are never substituted.
-pub fn get_rates_for_date(conn: &rusqlite::Connection, date: i64) -> HashMap<String, f64> {
-    let day = date.div_euclid(fx::DAY) * fx::DAY;
-    let Ok(history) = fx::History::load(conn, day, day) else {
-        return HashMap::new();
-    };
-    (0..=fx::MAX_LOOKBACK_DAYS)
-        .find_map(|back| {
-            history
-                .quotes_on(day - back * fx::DAY)
-                .filter(|quotes| !quotes.is_empty())
-        })
-        .map(Quotes::to_czk_per_unit)
-        .unwrap_or_default()
-}
-
-/// Phase-1 shim: CZK-per-unit rates for every stored day in `[start_date, end_date]`
-/// (midnight-normalised keys; days without usable quotes are omitted).
-pub fn get_rates_for_date_range(
-    conn: &rusqlite::Connection,
-    start_date: i64,
-    end_date: i64,
-) -> HashMap<i64, HashMap<String, f64>> {
-    let start = start_date.div_euclid(fx::DAY) * fx::DAY;
-    let end = end_date.div_euclid(fx::DAY) * fx::DAY;
-    let Ok(history) = fx::History::load(conn, start, end) else {
-        return HashMap::new();
-    };
-    history
-        .days()
-        .filter(|(day, quotes)| **day >= start && !quotes.is_empty())
-        .map(|(day, quotes)| (*day, quotes.to_czk_per_unit()))
-        .collect()
-}
-
-/// Phase-1 shim: converts to CZK using a prefetched CZK-per-unit map (e.g. one day's snapshot
-/// from `get_rates_for_date`). A currency absent from the map (or with an unusable rate) is
-/// excluded (0.0) and recorded as missing; neither current rates nor 1:1 are substituted.
-pub fn convert_to_czk_with_rates(amount: f64, currency: &str, rates: &HashMap<String, f64>) -> f64 {
-    let currency = currency.trim().to_uppercase();
-    if currency == "CZK" {
-        return amount;
-    }
-    match rates
-        .get(&currency)
-        .copied()
-        .filter(|rate| rate.is_finite() && *rate > 0.0)
-    {
-        Some(rate) => amount * rate,
-        None => {
-            fx::record_missing(&currency);
-            0.0
-        }
-    }
-}
-
-/// Phase-1 shim: converts to CZK at the rates of `day_ts` (closest earlier stored day, at most
-/// ten days back). Without quotes for that currency the amount is excluded (0.0) and recorded
-/// as missing.
-///
-/// Note: this queries the database on every call. Callers converting several amounts for
-/// the same day should call `get_rates_for_date` once and reuse `convert_to_czk_with_rates`
-/// instead.
-pub fn convert_to_czk_at(
-    conn: &rusqlite::Connection,
-    amount: f64,
-    currency: &str,
-    day_ts: i64,
-) -> f64 {
-    let rates = get_rates_for_date(conn, day_ts);
-    convert_to_czk_with_rates(amount, currency, &rates)
-}
-
 /// Maximum relative difference tolerated between a per-currency breakdown's CZK
 /// equivalent and the CZK total stored alongside it. Rate drift between the two
 /// sources is a few percent at most; a larger gap means the breakdown does not
@@ -404,24 +309,6 @@ pub fn breakdown_from_json(json: &str) -> HashMap<String, f64> {
         .collect()
 }
 
-/// CZK equivalent of a breakdown at the given day's rates, or None when any
-/// bucket currency lacks a usable (finite, positive) rate — in which case the
-/// breakdown cannot be valued like-for-like against a stored CZK total.
-pub fn breakdown_czk_at_rates(
-    breakdown: &HashMap<String, f64>,
-    rates: &HashMap<String, f64>,
-) -> Option<f64> {
-    let mut sum = 0.0;
-    for (currency, amount) in breakdown {
-        let rate = rates.get(currency).copied()?;
-        if !rate.is_finite() || rate <= 0.0 {
-            return None;
-        }
-        sum += amount * rate;
-    }
-    Some(sum)
-}
-
 /// True when a breakdown's CZK sum is close enough to the stored CZK total for
 /// the breakdown to represent the whole asset class (see the tolerance above).
 pub fn breakdown_covers_total(czk_sum: f64, czk_total: f64) -> bool {
@@ -435,30 +322,20 @@ pub fn breakdown_covers_total(czk_sum: f64, czk_total: f64) -> bool {
 /// total: an empty breakdown with a non-zero total needs repair, a valuable
 /// breakdown that does not cover the total needs repair, and a breakdown that
 /// cannot be valued at the day's rates is kept (nothing better is available).
+/// `czk_value` values a breakdown at the row's day (None when a bucket has no quote).
 pub fn needs_breakdown_repair(
     json: &str,
     czk_total: f64,
-    rates: Option<&HashMap<String, f64>>,
+    czk_value: impl Fn(&HashMap<String, f64>) -> Option<f64>,
 ) -> bool {
     let breakdown = breakdown_from_json(json);
     if breakdown.is_empty() {
         return czk_total != 0.0;
     }
-    match rates.and_then(|r| breakdown_czk_at_rates(&breakdown, r)) {
+    match czk_value(&breakdown) {
         Some(czk_sum) => !breakdown_covers_total(czk_sum, czk_total),
         None => false,
     }
-}
-
-/// Resolve rates for a day from a prefetched `get_rates_for_date_range` map:
-/// the exact day, else the closest earlier day within a 10-day walk-back
-/// (weekends + holidays) — the in-memory mirror of `get_rates_for_date`.
-pub fn resolve_rates_for_day_from_range(
-    rates_by_day: &HashMap<i64, HashMap<String, f64>>,
-    day: i64,
-) -> Option<&HashMap<String, f64>> {
-    let day = day.div_euclid(fx::DAY) * fx::DAY;
-    (0..=fx::MAX_LOOKBACK_DAYS).find_map(|offset| rates_by_day.get(&(day - offset * fx::DAY)))
 }
 
 #[cfg(test)]
@@ -475,41 +352,15 @@ mod tests {
         ));
     }
 
-    #[test]
-    fn test_convert_to_czk() {
-        // CZK to CZK should be identity
-        let czk = convert_to_czk(100.0, "CZK");
-        assert_eq!(czk, 100.0);
-    }
-
-    #[test]
-    fn test_currency_case_sensitivity() {
-        // Case sensitivity test - both should work the same
-        let val_upper = convert_to_czk(100.0, "CZK");
-        let val_lower = convert_to_czk(100.0, "czk");
-
-        assert_eq!(
-            val_upper, val_lower,
-            "Currency conversion should be case insensitive"
-        );
-    }
-
-    #[test]
-    fn unknown_currency_is_excluded_and_reported_not_one_to_one() {
-        fx::set_current(Quotes::from_czk_per_unit(&HashMap::from([(
-            "EUR".to_string(),
-            25.0,
-        )])));
-        assert_eq!(convert_to_czk(100.0, "KWD"), 0.0);
-        assert!(fx::missing_now().contains(&"KWD".to_string()));
-        assert_eq!(convert_to_czk(2.0, "EUR"), 50.0);
+    fn current_czk(amount: f64, currency: &str) -> Option<f64> {
+        fx::current().convert(amount, currency, "CZK")
     }
 
     #[test]
     fn store_starts_without_invented_rates() {
         fx::set_current(Quotes::new("CZK"));
-        assert_eq!(convert_to_czk(1.0, "EUR"), 0.0);
-        assert!(!get_all_rates().contains_key("EUR"));
+        assert_eq!(current_czk(1.0, "EUR"), None);
+        assert_eq!(current_czk(100.0, "czk"), Some(100.0));
     }
 
     #[test]
@@ -518,45 +369,16 @@ mod tests {
         conn.execute_batch("CREATE TABLE exchange_rates (currency TEXT PRIMARY KEY, rate REAL NOT NULL, fetched_at INTEGER NOT NULL);
             INSERT INTO exchange_rates VALUES ('EUR', 25.0, 1), ('USD', 0.0, 1), ('GBP', -3.0, 1);").expect("schema");
         load_rates_from_db(&conn).expect("load");
-        let rates = get_all_rates();
-        assert_eq!(rates.get("EUR"), Some(&25.0));
-        assert!(!rates.contains_key("USD") && !rates.contains_key("GBP"));
-    }
-
-    #[test]
-    fn set_current_resets_the_missing_set() {
-        set_store(&[("EUR", 25.0)]);
-        assert_eq!(convert_to_czk(1.0, "ZZA"), 0.0);
-        assert!(fx::missing_now().contains(&"ZZA".to_string()));
-        set_store(&[("EUR", 25.0)]);
-        assert!(fx::missing_now().is_empty());
-    }
-
-    #[test]
-    fn missing_currency_is_recorded_uppercase_and_sorted_without_duplicates() {
-        set_store(&[("EUR", 25.0)]);
-        let _ = convert_to_czk(1.0, "zzb");
-        let _ = convert_to_czk(1.0, "ZZB");
-        let _ = convert_to_czk(1.0, "ZZA");
-        assert_eq!(
-            fx::missing_now(),
-            vec!["ZZA".to_string(), "ZZB".to_string()]
-        );
-    }
-
-    #[test]
-    fn czk_is_never_recorded_as_missing_and_known_currencies_convert() {
-        set_store(&[("EUR", 25.0)]);
-        assert_eq!(convert_to_czk(10.0, "czk"), 10.0);
-        assert!((convert_to_czk(10.0, "eur") - 250.0).abs() < 1e-9);
-        assert!(fx::missing_now().is_empty());
+        assert!((current_czk(1.0, "EUR").expect("EUR loaded") - 25.0).abs() < 1e-9);
+        assert_eq!(current_czk(1.0, "USD"), None);
+        assert_eq!(current_czk(1.0, "GBP"), None);
+        assert_eq!(fx::current_fetched_at(), Some(1));
     }
 
     #[test]
     fn derived_currencies_resolve_through_their_anchor() {
         set_store(&[("USD", 20.0)]);
-        assert!((convert_to_czk(3.6725, "AED") - 20.0).abs() < 1e-9);
-        assert!(get_all_rates().contains_key("AED"));
+        assert!((current_czk(3.6725, "AED").expect("pegged") - 20.0).abs() < 1e-9);
     }
 
     fn setup_history_db() -> rusqlite::Connection {
@@ -574,201 +396,21 @@ mod tests {
     }
 
     #[test]
-    fn test_save_and_get_rates_for_date_exact() {
+    fn saved_history_converts_at_the_days_quotes_with_derived_pegs() {
         let conn = setup_history_db();
         let mut rates = HashMap::new();
         rates.insert("EUR".to_string(), 25.0);
         rates.insert("USD".to_string(), 23.0);
-        let now = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_secs() as i64;
-        let today = (now / 86400) * 86400;
-        save_rates_to_history_db(&conn, &rates, today).expect("save");
+        let day = 1_700_006_400;
+        save_rates_to_history_db(&conn, &rates, day).expect("save");
 
-        let loaded = get_rates_for_date(&conn, today);
-        assert!((loaded["EUR"] - 25.0).abs() < 0.001);
-        assert!((loaded["USD"] - 23.0).abs() < 0.001);
-        assert_eq!(loaded["CZK"], 1.0);
-        // Derived pegs are part of the day's rates.
-        assert!((loaded["AED"] - 23.0 / 3.6725).abs() < 1e-6);
-    }
-
-    #[test]
-    fn test_get_rates_for_date_falls_back_to_nearest_earlier() {
-        let conn = setup_history_db();
-        // Insert rates for 5 days ago
-        let five_days_ago = (std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_secs() as i64
-            / 86400
-            - 5)
-            * 86400;
-        conn.execute(
-            "INSERT INTO exchange_rate_history (date, currency, rate) VALUES (?1, 'EUR', 24.5)",
-            [five_days_ago],
-        )
-        .expect("insert");
-
-        // Query for 2 days ago (no exact match) — should fall back to 5-days-ago row
-        let two_days_ago = five_days_ago + 3 * 86400;
-        let loaded = get_rates_for_date(&conn, two_days_ago);
-        assert!((loaded["EUR"] - 24.5).abs() < 0.001);
-    }
-
-    #[test]
-    fn get_rates_for_date_is_empty_without_history_never_current_rates() {
-        let conn = setup_history_db(); // empty table
-        set_store(&[("EUR", 27.0)]);
-        assert!(get_rates_for_date(&conn, 1_700_000_000).is_empty());
-    }
-
-    #[test]
-    fn get_rates_for_date_gives_up_after_ten_days() {
-        let conn = setup_history_db();
-        let day: i64 = 1_700_000_000 / 86400 * 86400;
-        conn.execute(
-            "INSERT INTO exchange_rate_history VALUES (?1, 'EUR', 25.0)",
-            [day - 11 * 86400],
-        )
-        .expect("insert");
-        assert!(get_rates_for_date(&conn, day).is_empty());
-        assert!(!get_rates_for_date(&conn, day - 86400).is_empty());
-    }
-
-    #[test]
-    fn test_get_rates_for_date_range() {
-        let conn = setup_history_db();
-        let base: i64 = 1_700_000_000 / 86400 * 86400;
-        conn.execute_batch(&format!(
-            "INSERT INTO exchange_rate_history VALUES ({}, 'EUR', 25.0);
-             INSERT INTO exchange_rate_history VALUES ({}, 'EUR', 25.5);",
-            base,
-            base + 86400,
-        ))
-        .expect("insert");
-
-        let result = get_rates_for_date_range(&conn, base, base + 86400);
-        assert_eq!(result.len(), 2);
-        assert!((result[&base]["EUR"] - 25.0).abs() < 0.001);
-        assert!((result[&(base + 86400)]["EUR"] - 25.5).abs() < 0.001);
-    }
-
-    #[test]
-    fn get_rates_for_date_range_only_returns_days_inside_the_range() {
-        let conn = setup_history_db();
-        let base: i64 = 1_700_000_000 / 86400 * 86400;
-        conn.execute_batch(&format!(
-            "INSERT INTO exchange_rate_history VALUES ({}, 'EUR', 25.0);
-             INSERT INTO exchange_rate_history VALUES ({}, 'EUR', 25.5);",
-            base - 86400,
-            base,
-        ))
-        .expect("insert");
-        let result = get_rates_for_date_range(&conn, base, base);
-        assert_eq!(result.keys().copied().collect::<Vec<_>>(), vec![base]);
-    }
-
-    #[test]
-    fn test_convert_to_czk_at_uses_exact_day_rate() {
-        let conn = setup_history_db();
-        let day: i64 = 1_700_000_000 / 86400 * 86400;
-        conn.execute(
-            "INSERT INTO exchange_rate_history (date, currency, rate) VALUES (?1, 'EUR', 24.0)",
-            [day],
-        )
-        .expect("insert");
-
-        let result = convert_to_czk_at(&conn, 10.0, "EUR", day);
-        assert!((result - 240.0).abs() < 0.001);
-    }
-
-    #[test]
-    fn test_convert_to_czk_at_falls_back_to_closest_earlier_day() {
-        let conn = setup_history_db();
-        let day: i64 = 1_700_000_000 / 86400 * 86400;
-        let earlier_day = day - 3 * 86400;
-        conn.execute(
-            "INSERT INTO exchange_rate_history (date, currency, rate) VALUES (?1, 'EUR', 24.0)",
-            [earlier_day],
-        )
-        .expect("insert");
-
-        // Query on `day` — no exact-day row, should fall back to the row 3 days earlier.
-        let result = convert_to_czk_at(&conn, 10.0, "EUR", day);
-        assert!((result - 240.0).abs() < 0.001);
-    }
-
-    #[test]
-    fn convert_to_czk_at_without_history_is_excluded_and_reported_not_current() {
-        let conn = setup_history_db(); // empty table, no history at all
-        set_store(&[("NOK", 21.0)]);
-
-        let result = convert_to_czk_at(&conn, 5.0, "NOK", 1_700_000_000);
-        assert_eq!(result, 0.0);
-        assert!(fx::missing_now().contains(&"NOK".to_string()));
-    }
-
-    #[test]
-    fn test_convert_to_czk_at_czk_identity() {
-        let conn = setup_history_db();
-        let result = convert_to_czk_at(&conn, 500.0, "CZK", 1_700_000_000);
-        assert_eq!(result, 500.0);
-    }
-
-    #[test]
-    fn convert_to_czk_at_currency_missing_from_the_days_map_is_excluded_not_current() {
-        let conn = setup_history_db();
-        let day: i64 = 1_700_000_000 / 86400 * 86400;
-        // The day has history, but only for EUR — NOK is absent from that day's map.
-        conn.execute(
-            "INSERT INTO exchange_rate_history (date, currency, rate) VALUES (?1, 'EUR', 24.0)",
-            [day],
-        )
-        .expect("insert");
-        set_store(&[("NOK", 21.0)]);
-
-        assert_eq!(convert_to_czk_at(&conn, 5.0, "NOK", day), 0.0);
-    }
-
-    #[test]
-    fn test_convert_to_czk_at_case_insensitive() {
-        let conn = setup_history_db();
-        let day: i64 = 1_700_000_000 / 86400 * 86400;
-        conn.execute(
-            "INSERT INTO exchange_rate_history (date, currency, rate) VALUES (?1, 'EUR', 24.0)",
-            [day],
-        )
-        .expect("insert");
-
-        let upper = convert_to_czk_at(&conn, 10.0, "EUR", day);
-        let lower = convert_to_czk_at(&conn, 10.0, "eur", day);
-        assert!((upper - lower).abs() < 0.001);
-    }
-
-    #[test]
-    fn test_convert_to_czk_with_rates_uses_provided_map() {
-        let rates: HashMap<String, f64> = [("EUR".to_string(), 24.0)].into_iter().collect();
-        let result = convert_to_czk_with_rates(10.0, "EUR", &rates);
-        assert!((result - 240.0).abs() < 0.001);
-    }
-
-    #[test]
-    fn convert_to_czk_with_rates_missing_currency_is_excluded_and_reported() {
-        set_store(&[("NOK", 21.0)]);
-        let rates: HashMap<String, f64> = [("EUR".to_string(), 24.0)].into_iter().collect();
-
-        let result = convert_to_czk_with_rates(5.0, "NOK", &rates);
-        assert_eq!(result, 0.0);
-        assert!(fx::missing_now().contains(&"NOK".to_string()));
-    }
-
-    #[test]
-    fn test_convert_to_czk_with_rates_czk_identity() {
-        let rates: HashMap<String, f64> = HashMap::new();
-        let result = convert_to_czk_with_rates(100.0, "CZK", &rates);
-        assert_eq!(result, 100.0);
+        let history = fx::History::load(&conn, day, day).expect("load");
+        let eur = history.convert_on(1.0, "EUR", "CZK", day).expect("EUR");
+        assert!((eur - 25.0).abs() < 1e-9);
+        let aed = history
+            .convert_on(3.6725, "AED", "CZK", day)
+            .expect("AED via USD");
+        assert!((aed - 23.0).abs() < 1e-6);
     }
 
     #[test]
@@ -795,28 +437,6 @@ mod tests {
     }
 
     #[test]
-    fn test_breakdown_czk_at_rates_sums_all_buckets() {
-        let bd: HashMap<String, f64> = [("USD".to_string(), 100.0), ("CZK".to_string(), 500.0)]
-            .into_iter()
-            .collect();
-        let rates: HashMap<String, f64> = [("CZK".to_string(), 1.0), ("USD".to_string(), 20.0)]
-            .into_iter()
-            .collect();
-        let czk = breakdown_czk_at_rates(&bd, &rates).expect("all rates present");
-        assert!((czk - 2500.0).abs() < 0.001);
-    }
-
-    #[test]
-    fn test_breakdown_czk_at_rates_missing_or_unusable_rate_yields_none() {
-        let bd: HashMap<String, f64> = [("GBP".to_string(), 10.0)].into_iter().collect();
-        let rates: HashMap<String, f64> = [("CZK".to_string(), 1.0)].into_iter().collect();
-        assert!(breakdown_czk_at_rates(&bd, &rates).is_none());
-
-        let zero_rate: HashMap<String, f64> = [("GBP".to_string(), 0.0)].into_iter().collect();
-        assert!(breakdown_czk_at_rates(&bd, &zero_rate).is_none());
-    }
-
-    #[test]
     fn test_breakdown_covers_total_within_tolerance() {
         assert!(breakdown_covers_total(2000.0, 2100.0)); // ~5% off
         assert!(!breakdown_covers_total(2000.0, 10000.0)); // fragment
@@ -831,59 +451,32 @@ mod tests {
 
     #[test]
     fn test_needs_breakdown_repair_policy() {
-        let rates: HashMap<String, f64> = [("CZK".to_string(), 1.0), ("USD".to_string(), 20.0)]
-            .into_iter()
-            .collect();
+        // USD at 20 CZK; any other bucket currency has no quote that day.
+        let value = |breakdown: &HashMap<String, f64>| -> Option<f64> {
+            breakdown
+                .iter()
+                .map(|(currency, amount)| match currency.as_str() {
+                    "CZK" => Some(*amount),
+                    "USD" => Some(amount * 20.0),
+                    _ => None,
+                })
+                .sum()
+        };
 
         // Empty breakdown with a non-zero total needs repair; with a zero total it does not.
-        assert!(needs_breakdown_repair("{}", 1000.0, Some(&rates)));
-        assert!(!needs_breakdown_repair("{}", 0.0, Some(&rates)));
+        assert!(needs_breakdown_repair("{}", 1000.0, value));
+        assert!(!needs_breakdown_repair("{}", 0.0, value));
 
         // Consistent breakdown is kept.
-        assert!(!needs_breakdown_repair(
-            "{\"USD\":100}",
-            2000.0,
-            Some(&rates)
-        ));
+        assert!(!needs_breakdown_repair("{\"USD\":100}", 2000.0, value));
 
         // Fragment breakdown (covers 20% of the total) needs repair.
-        assert!(needs_breakdown_repair(
-            "{\"USD\":100}",
-            10000.0,
-            Some(&rates)
-        ));
+        assert!(needs_breakdown_repair("{\"USD\":100}", 10000.0, value));
 
-        // Unverifiable breakdowns are kept: no day rates, or a bucket currency
-        // missing from the day map.
-        assert!(!needs_breakdown_repair("{\"USD\":100}", 10000.0, None));
-        assert!(!needs_breakdown_repair(
-            "{\"GBP\":100}",
-            10000.0,
-            Some(&rates)
-        ));
+        // Unverifiable breakdowns are kept: a bucket currency without a quote that day.
+        assert!(!needs_breakdown_repair("{\"GBP\":100}", 10000.0, value));
     }
 
-    #[test]
-    fn test_resolve_rates_for_day_from_range_exact_then_walk_back() {
-        let day = 86400 * 100;
-        let mut by_day: HashMap<i64, HashMap<String, f64>> = HashMap::new();
-        by_day.insert(day, [("USD".to_string(), 20.0)].into_iter().collect());
-        by_day.insert(
-            day - 3 * 86400,
-            [("USD".to_string(), 21.0)].into_iter().collect(),
-        );
-
-        // Exact day wins
-        let exact = resolve_rates_for_day_from_range(&by_day, day).expect("exact");
-        assert!((exact["USD"] - 20.0).abs() < 0.001);
-
-        // Missing day walks back to the closest earlier snapshot (weekends/holidays)
-        let walked = resolve_rates_for_day_from_range(&by_day, day - 86400).expect("walk back");
-        assert!((walked["USD"] - 21.0).abs() < 0.001);
-
-        // Beyond the 10-day walk-back window there is no match
-        assert!(resolve_rates_for_day_from_range(&by_day, day + 20 * 86400).is_none());
-    }
     // ---- ECB reference date and the CZK quote ----
 
     /// The ECB daily feed as published; `time` is the reference date.
@@ -953,14 +546,19 @@ mod tests {
 
         // A Saturday lookup walks back to Friday's rates; a later Frankfurter
         // INSERT OR IGNORE for Friday keeps the ECB row.
-        let rates = get_rates_for_date(&conn, SATURDAY);
-        assert!((rates["EUR"] - 25.0).abs() < 1e-9);
+        let eur_on = |conn: &Connection, day: i64| {
+            fx::History::load(conn, day, day)
+                .unwrap()
+                .convert_on(1.0, "EUR", "CZK", day)
+                .unwrap()
+        };
+        assert!((eur_on(&conn, SATURDAY) - 25.0).abs() < 1e-9);
         conn.execute(
             "INSERT OR IGNORE INTO exchange_rate_history (date, currency, rate) VALUES (?1, 'EUR', 99.0)",
             [FRIDAY],
         )
         .unwrap();
-        assert!((get_rates_for_date(&conn, FRIDAY)["EUR"] - 25.0).abs() < 1e-9);
+        assert!((eur_on(&conn, FRIDAY) - 25.0).abs() < 1e-9);
     }
 
     #[test]

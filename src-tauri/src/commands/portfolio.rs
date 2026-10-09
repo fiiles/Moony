@@ -3,12 +3,11 @@
 use crate::db::Database;
 use crate::error::Result;
 use crate::models::{PortfolioHistoryResponse, PortfolioMetrics};
-use crate::services::currency::convert_to_czk;
 use crate::services::loan_amortization::today_utc_day;
 use crate::services::net_worth;
 use crate::services::parsing::parse_money;
 use crate::services::portfolio_history::{
-    self, AssetClassKind, ClassBreakdowns, SnapshotSource, StaticBreakdowns,
+    self, AssetClassKind, ClassBreakdowns, LegacyCzk, SnapshotSource, StaticBreakdowns,
 };
 use serde::Serialize;
 use specta::Type;
@@ -49,6 +48,8 @@ fn record_todays_ticker_values(db: &Database) -> Result<()> {
         .and_utc()
         .timestamp();
 
+    // The value_czk cache column at today's quotes (excluded without a quote).
+    let czk = LegacyCzk::current();
     db.with_conn(|conn| {
         // Record stock values
         let mut inv_stmt = conn.prepare(
@@ -70,7 +71,7 @@ fn record_todays_ticker_values(db: &Database) -> Result<()> {
                 if price <= 0.0 {
                     continue;
                 }
-                let value_czk = convert_to_czk(resolved.price, &resolved.currency) * qty;
+                let value_czk = czk.now(resolved.price, &resolved.currency) * qty;
                 let id = Uuid::new_v4().to_string();
 
                 conn.execute(
@@ -114,7 +115,7 @@ fn record_todays_ticker_values(db: &Database) -> Result<()> {
                 if price <= 0.0 {
                     continue;
                 }
-                let value_czk = convert_to_czk(resolved.price, &resolved.currency) * qty;
+                let value_czk = czk.now(resolved.price, &resolved.currency) * qty;
                 let id = Uuid::new_v4().to_string();
 
                 conn.execute(
@@ -164,13 +165,10 @@ pub async fn record_portfolio_snapshot(db: State<'_, Database>) -> Result<()> {
     update_todays_snapshot(&db).await
 }
 
-/// Update exchange rates from ECB and return every resolvable quote (CZK per unit, derived
-/// codes such as AED/SAR/QAR/BHD/OMR/BGN included).
+/// Update exchange rates from the ECB (current snapshot, stored rates and the daily history).
+/// The quotes themselves are read through `get_fx_snapshot`.
 #[tauri::command]
-pub async fn refresh_exchange_rates(
-    app: AppHandle,
-    db: State<'_, Database>,
-) -> Result<std::collections::HashMap<String, f64>> {
+pub async fn refresh_exchange_rates(app: AppHandle, db: State<'_, Database>) -> Result<()> {
     let ecb = crate::services::currency::fetch_ecb_rates().await?;
     let rates = ecb.rates;
 
@@ -189,7 +187,7 @@ pub async fn refresh_exchange_rates(
     // quote (and are reported as missing) until the next refresh.
     spawn_fx_backfill(app, db.inner().clone());
 
-    Ok(crate::services::currency::get_all_rates())
+    Ok(())
 }
 
 /// Extend the FX timeseries in the background (best-effort). New rate rows
@@ -210,37 +208,6 @@ pub(crate) fn spawn_fx_backfill(app: AppHandle, db: Database) {
             }
         }
     });
-}
-
-/// Get current exchange rates (without fetching): CZK per 1 unit, derived codes included.
-#[tauri::command]
-pub fn get_exchange_rates() -> std::collections::HashMap<String, f64> {
-    crate::services::currency::get_all_rates()
-}
-
-/// Get exchange rates (relative to CZK) for a specific date.
-/// Uses the nearest earlier day with a snapshot (at most ten days back); empty when there is none.
-#[tauri::command]
-pub async fn get_exchange_rates_for_date(
-    db: State<'_, Database>,
-    date: i64,
-) -> Result<std::collections::HashMap<String, f64>> {
-    db.with_conn(|conn| Ok(crate::services::currency::get_rates_for_date(conn, date)))
-}
-
-/// Get exchange rates for all dates in a range that have history snapshots.
-/// Returns a map of date (midnight UTC unix timestamp) → rates.
-#[tauri::command]
-pub async fn get_exchange_rates_for_date_range(
-    db: State<'_, Database>,
-    start_date: i64,
-    end_date: i64,
-) -> Result<std::collections::HashMap<i64, std::collections::HashMap<String, f64>>> {
-    db.with_conn(|conn| {
-        Ok(crate::services::currency::get_rates_for_date_range(
-            conn, start_date, end_date,
-        ))
-    })
 }
 
 // ============================================================================
@@ -267,8 +234,8 @@ pub struct PriceStatus {
     pub stocks_missing_price: i32,
     /// Number of cryptos without any price data
     pub crypto_missing_price: i32,
-    /// Currencies whose conversion failed (current or historical) since the last
-    /// rate load; those amounts are excluded from totals, never valued 1:1
+    /// Currencies in the user's data (the profile currency included) without a current
+    /// quote; amounts in them are excluded from converted totals, never valued 1:1
     pub missing_currencies: Vec<String>,
     /// Held currencies whose newest stored exchange rate is more than 14 days old;
     /// their values use that old rate
@@ -279,7 +246,7 @@ pub struct PriceStatus {
 /// Staleness thresholds in hours
 const STOCKS_STALE_THRESHOLD_HOURS: i64 = 24;
 const CRYPTO_STALE_THRESHOLD_HOURS: i64 = 12;
-const EXCHANGE_RATES_STALE_THRESHOLD_HOURS: i64 = 48;
+const FX_STALE_THRESHOLD_HOURS: i64 = 48;
 
 /// Current FX quotes (units per 1 unit of the reference) for frontend conversions.
 #[tauri::command]
@@ -380,7 +347,7 @@ pub fn get_price_status(db: State<'_, Database>) -> Result<PriceStatus> {
             || crypto_missing > 0;
 
         let exchange_rates_stale = exchange_rates_age_hours
-            .map(|h| h > EXCHANGE_RATES_STALE_THRESHOLD_HOURS)
+            .map(|h| h > FX_STALE_THRESHOLD_HOURS)
             .unwrap_or(true); // Stale if never fetched
 
         Ok(PriceStatus {
@@ -392,7 +359,14 @@ pub fn get_price_status(db: State<'_, Database>) -> Result<PriceStatus> {
             exchange_rates_age_hours,
             stocks_missing_price: stocks_missing,
             crypto_missing_price: crypto_missing,
-            missing_currencies: crate::services::fx::missing_now(),
+            missing_currencies: crate::services::fx_backfill::unquoted_currencies(
+                conn,
+                &crate::services::fx::current(),
+            )
+            .unwrap_or_else(|e| {
+                log::warn!("[PRICE_STATUS] unquoted currency lookup failed: {e}");
+                Vec::new()
+            }),
             stale_currencies: crate::services::fx_backfill::stale_currencies(
                 conn,
                 (now / 86_400) * 86_400,
@@ -800,29 +774,16 @@ pub async fn backfill_missing_snapshots(db: &Database) -> Result<BackfillResult>
     // Also populate per-ticker history tables
     log::info!("[BACKFILL] Populating per-ticker history tables...");
 
-    // Each day's value_czk converts at that day's rates (FX timeseries), not
-    // today's — one prefetch for the whole missing span, with the 10-day
-    // walk-back margin. Days without a quote within the walk-back are excluded
-    // and reported as missing; there is no fallback to current rates.
-    let rates_by_day = {
+    // Each day's value_czk cache converts at that day's rates (FX timeseries) —
+    // one load for the whole missing span. A day before the rate history uses the
+    // current quotes (legacy cache behaviour, see `LegacyCzk::on_or_now`).
+    let czk = {
         let first = missing_days.first().copied().unwrap_or(0);
         let last = missing_days.last().copied().unwrap_or(0);
-        db.with_conn(|conn| {
-            Ok(crate::services::currency::get_rates_for_date_range(
-                conn,
-                first - 10 * 86400,
-                last,
-            ))
-        })?
+        db.with_conn(|conn| LegacyCzk::dated(conn, first, last))?
     };
-    let czk_value_at = |amount: f64, currency: &str, day: i64| -> f64 {
-        match crate::services::currency::resolve_rates_for_day_from_range(&rates_by_day, day) {
-            Some(rates) => {
-                crate::services::currency::convert_to_czk_with_rates(amount, currency, rates)
-            }
-            None => convert_to_czk(amount, currency),
-        }
-    };
+    let czk_value_at =
+        |amount: f64, currency: &str, day: i64| -> f64 { czk.on_or_now(amount, currency, day) };
 
     // Populate stock_value_history
     for ticker in &stock_tickers {
@@ -1209,10 +1170,7 @@ fn derive_breakdown_from_value_history(
 /// Returns the number of rows updated. Idempotent — consistent rows are untouched.
 #[tauri::command]
 pub async fn backfill_currency_breakdowns(db: State<'_, Database>) -> Result<i32> {
-    use crate::services::currency::{
-        breakdown_covers_total, get_rates_for_date_range, needs_breakdown_repair,
-        resolve_rates_for_day_from_range,
-    };
+    use crate::services::currency::{breakdown_covers_total, needs_breakdown_repair};
 
     db.with_conn(|conn| {
         struct SnapshotRow {
@@ -1276,23 +1234,23 @@ pub async fn backfill_currency_breakdowns(db: State<'_, Database>) -> Result<i32
             return Ok(0);
         }
 
-        // One prefetch of the whole FX timeseries for the rows' span (with the
-        // 10-day walk-back margin) instead of per-row queries.
+        // One load of the FX timeseries for the rows' span (with the walk-back
+        // margin) instead of per-row queries.
         let min_day = rows.iter().map(|r| r.recorded_at).min().unwrap_or(0);
         let max_day = rows.iter().map(|r| r.recorded_at).max().unwrap_or(0);
-        let rates_by_day = get_rates_for_date_range(conn, min_day - 10 * 86400, max_day);
+        let czk = LegacyCzk::dated(conn, min_day, max_day)?;
 
         let mut repaired = 0i32;
 
         for row in rows {
             let day_start = (row.recorded_at / 86400) * 86400;
             let day_end = day_start + 86400;
-            let rates = resolve_rates_for_day_from_range(&rates_by_day, day_start);
+            let value_at_day = |breakdown: &HashMap<String, f64>| czk.breakdown_on(breakdown, day_start);
 
             // Static classes: repair to {"CZK": total} (their CZK total is the
             // only per-day record available).
             let fix_static = |json: &str, total: f64| -> Option<String> {
-                if needs_breakdown_repair(json, total, rates) {
+                if needs_breakdown_repair(json, total, value_at_day) {
                     let target = format!("{{\"CZK\":{total}}}");
                     if target != json {
                         return Some(target);
@@ -1311,7 +1269,7 @@ pub async fn backfill_currency_breakdowns(db: State<'_, Database>) -> Result<i32
                                   total: f64,
                                   table: &'static str|
              -> Result<Option<String>> {
-                if !needs_breakdown_repair(json, total, rates) {
+                if !needs_breakdown_repair(json, total, value_at_day) {
                     return Ok(None);
                 }
                 let (derived, czk_sum) =
@@ -2088,6 +2046,8 @@ pub async fn recalculate_crypto_ticker_history(
     // Calculate and store value for each day
     let ticker_clone = ticker.to_string();
     db.with_conn(move |conn| {
+        // One load of the FX timeseries for the whole span.
+        let czk = LegacyCzk::dated(conn, from_day, today_start)?;
         for day_timestamp in days_to_recalc {
             let quantity = get_crypto_quantity_at_date(conn, &ticker_clone, day_timestamp);
 
@@ -2119,10 +2079,9 @@ pub async fn recalculate_crypto_ticker_history(
                 continue;
             };
 
-            // Value at that day's rates (excluded and recorded as missing when the
-            // FX timeseries has no snapshot within the walk-back).
-            let value_czk =
-                crate::services::currency::convert_to_czk_at(conn, quantity * price, &currency, day_timestamp);
+            // The value_czk cache at that day's rates (excluded when the FX
+            // timeseries has no quote within the walk-back).
+            let value_czk = czk.on(quantity * price, &currency, day_timestamp);
 
             let id = Uuid::new_v4().to_string();
             conn.execute(

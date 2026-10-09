@@ -312,13 +312,12 @@ pub fn get_investment_by_id(
     )?;
     // Average price is derived from transactions (weighted average in the
     // position's primary currency), never stored.
-    let (positions, quality) = crate::services::cost_basis::cost_basis_for_all(
+    let (positions, _quality) = crate::services::cost_basis::cost_basis_for_all(
         conn,
         crate::services::cost_basis::TxTable::Stocks,
         "CZK",
         &crate::services::fx::current(),
     )?;
-    crate::services::fx::record_missing_all(&quality);
     inv.average_price = positions
         .get(investment_id)
         .map(|p| p.average_price_native().to_string())

@@ -8,11 +8,12 @@
 //!   `'backfill'` write never overwrites a live row, while a live write
 //!   overwrites anything for its day.
 //!
-//! Rate semantics: live rows convert at the current in-memory rates (identical
+//! Rate semantics: live rows convert at the current in-memory quotes (identical
 //! to what `save_rates_to_history_db` stores for today, so the timeseries and
-//! the cache agree); backfill rows convert at their day's rates from the
-//! timeseries (`get_rates_for_date`, ≤10-day walk-back; a currency without a
-//! quote for that day is excluded and reported, never valued at current rates).
+//! the cache agree); backfill rows convert at their day's quotes from the
+//! timeseries (`fx::History::convert_on`, ≤10-day walk-back; a currency without
+//! a quote for that day is excluded, never valued at current rates). All CZK
+//! cache conversions go through [`LegacyCzk`].
 
 use std::collections::{BTreeMap, HashMap};
 
@@ -20,7 +21,7 @@ use rusqlite::Connection;
 use uuid::Uuid;
 
 use crate::error::Result;
-use crate::services::currency::{convert_to_czk_with_rates, get_all_rates, get_rates_for_date};
+use crate::services::fx::{self, History, Quotes};
 
 pub const SECONDS_PER_DAY: i64 = 86_400;
 
@@ -72,11 +73,86 @@ pub fn breakdown_json(map: &HashMap<String, f64>) -> String {
     serde_json::to_string(map).unwrap_or_else(|_| "{}".to_string())
 }
 
-fn czk_total(breakdown: &HashMap<String, f64>, rates: &HashMap<String, f64>) -> f64 {
-    breakdown
-        .iter()
-        .map(|(currency, amount)| convert_to_czk_with_rates(*amount, currency, rates))
-        .sum()
+/// The CZK cache columns (`total_*` here, `value_czk` of the per-ticker history) until Task 24
+/// drops them: the one place left that converts to CZK. Every cache writer goes through it;
+/// nothing user-facing reads these columns (outputs convert native amounts per response).
+/// A currency without a quote is excluded (0.0) — never valued 1:1 or at another day's rate.
+pub(crate) struct LegacyCzk {
+    current: Quotes,
+    history: History,
+}
+
+impl LegacyCzk {
+    const CZK: &'static str = "CZK";
+
+    /// The current quote snapshot only (live rows, today's per-ticker values).
+    pub(crate) fn current() -> Self {
+        Self {
+            current: fx::current(),
+            history: History::default(),
+        }
+    }
+
+    /// Stored daily quotes for `[start_day, end_day]` (plus the lookback window) and the current
+    /// snapshot (for [`LegacyCzk::on_or_now`]).
+    pub(crate) fn dated(conn: &Connection, start_day: i64, end_day: i64) -> Result<Self> {
+        Ok(Self {
+            current: fx::current(),
+            history: History::load(conn, start_day, end_day)?,
+        })
+    }
+
+    /// CZK at the current quotes; 0.0 (excluded) without a quote.
+    pub(crate) fn now(&self, amount: f64, currency: &str) -> f64 {
+        self.current
+            .convert(amount, currency, Self::CZK)
+            .unwrap_or(0.0)
+    }
+
+    /// CZK at `day`'s quotes (common-day rule, at most `fx::MAX_LOOKBACK_DAYS` back); 0.0
+    /// (excluded) without a quote.
+    pub(crate) fn on(&self, amount: f64, currency: &str, day: i64) -> f64 {
+        self.history
+            .convert_on(amount, currency, Self::CZK, day)
+            .unwrap_or(0.0)
+    }
+
+    /// Like [`LegacyCzk::on`], but a day without any stored quote within the lookback (before
+    /// the rate history starts) converts at the current quotes — the per-ticker cache's
+    /// historical behaviour, kept until the cache is removed.
+    pub(crate) fn on_or_now(&self, amount: f64, currency: &str, day: i64) -> f64 {
+        let start = day.div_euclid(fx::DAY) * fx::DAY;
+        let has_history = (0..=fx::MAX_LOOKBACK_DAYS).any(|back| {
+            self.history
+                .quotes_on(start - back * fx::DAY)
+                .is_some_and(|quotes| !quotes.is_empty())
+        });
+        if has_history {
+            self.on(amount, currency, day)
+        } else {
+            self.now(amount, currency)
+        }
+    }
+
+    /// CZK value of a whole breakdown at `day`'s quotes; None when any bucket cannot be
+    /// converted (the breakdown cannot be compared with a CZK total like-for-like).
+    pub(crate) fn breakdown_on(&self, breakdown: &HashMap<String, f64>, day: i64) -> Option<f64> {
+        breakdown
+            .iter()
+            .map(|(currency, amount)| self.history.convert_on(*amount, currency, Self::CZK, day))
+            .sum()
+    }
+
+    /// Sum of a breakdown in CZK: at `day`'s quotes, or the current ones for `None`.
+    fn total(&self, breakdown: &HashMap<String, f64>, day: Option<i64>) -> f64 {
+        breakdown
+            .iter()
+            .map(|(currency, amount)| match day {
+                Some(day) => self.on(*amount, currency, day),
+                None => self.now(*amount, currency),
+            })
+            .sum()
+    }
 }
 
 fn merged(a: &HashMap<String, f64>, b: &HashMap<String, f64>) -> HashMap<String, f64> {
@@ -101,10 +177,14 @@ pub fn upsert_snapshot(
 ) -> Result<()> {
     let day_start = (recorded_at / SECONDS_PER_DAY) * SECONDS_PER_DAY;
 
-    let rates = match source {
-        SnapshotSource::Live => get_all_rates(),
-        SnapshotSource::Backfill => get_rates_for_date(conn, day_start),
+    let (czk, rate_day) = match source {
+        SnapshotSource::Live => (LegacyCzk::current(), None),
+        SnapshotSource::Backfill => (
+            LegacyCzk::dated(conn, day_start, day_start)?,
+            Some(day_start),
+        ),
     };
+    let czk_total = |breakdown: &HashMap<String, f64>| czk.total(breakdown, rate_day);
 
     let real_estate_merged = merged(
         &breakdowns.real_estate_personal,
@@ -145,14 +225,14 @@ pub fn upsert_snapshot(
                  WHERE id = ?1",
                 rusqlite::params![
                     id,
-                    czk_total(&breakdowns.savings, &rates).to_string(),
-                    czk_total(&breakdowns.loans, &rates).to_string(),
-                    czk_total(&breakdowns.investments, &rates).to_string(),
-                    czk_total(&breakdowns.crypto, &rates).to_string(),
-                    czk_total(&breakdowns.bonds, &rates).to_string(),
-                    czk_total(&breakdowns.real_estate_personal, &rates).to_string(),
-                    czk_total(&breakdowns.real_estate_investment, &rates).to_string(),
-                    czk_total(&breakdowns.other_assets, &rates).to_string(),
+                    czk_total(&breakdowns.savings).to_string(),
+                    czk_total(&breakdowns.loans).to_string(),
+                    czk_total(&breakdowns.investments).to_string(),
+                    czk_total(&breakdowns.crypto).to_string(),
+                    czk_total(&breakdowns.bonds).to_string(),
+                    czk_total(&breakdowns.real_estate_personal).to_string(),
+                    czk_total(&breakdowns.real_estate_investment).to_string(),
+                    czk_total(&breakdowns.other_assets).to_string(),
                     row_ts,
                     breakdown_json(&breakdowns.investments),
                     breakdown_json(&breakdowns.crypto),
@@ -179,14 +259,14 @@ pub fn upsert_snapshot(
                          ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18)",
                 rusqlite::params![
                     Uuid::new_v4().to_string(),
-                    czk_total(&breakdowns.savings, &rates).to_string(),
-                    czk_total(&breakdowns.loans, &rates).to_string(),
-                    czk_total(&breakdowns.investments, &rates).to_string(),
-                    czk_total(&breakdowns.crypto, &rates).to_string(),
-                    czk_total(&breakdowns.bonds, &rates).to_string(),
-                    czk_total(&breakdowns.real_estate_personal, &rates).to_string(),
-                    czk_total(&breakdowns.real_estate_investment, &rates).to_string(),
-                    czk_total(&breakdowns.other_assets, &rates).to_string(),
+                    czk_total(&breakdowns.savings).to_string(),
+                    czk_total(&breakdowns.loans).to_string(),
+                    czk_total(&breakdowns.investments).to_string(),
+                    czk_total(&breakdowns.crypto).to_string(),
+                    czk_total(&breakdowns.bonds).to_string(),
+                    czk_total(&breakdowns.real_estate_personal).to_string(),
+                    czk_total(&breakdowns.real_estate_investment).to_string(),
+                    czk_total(&breakdowns.other_assets).to_string(),
                     row_ts,
                     breakdown_json(&breakdowns.investments),
                     breakdown_json(&breakdowns.crypto),
@@ -309,7 +389,7 @@ pub fn update_classes(
         return Ok(());
     }
 
-    let rates = get_rates_for_date(conn, day_start);
+    let czk = LegacyCzk::dated(conn, day_start, day_start)?;
 
     for (kind, breakdown) in classes {
         let (total_column, breakdown_column) = match kind {
@@ -325,7 +405,7 @@ pub fn update_classes(
         conn.execute(
             &sql,
             rusqlite::params![
-                czk_total(breakdown, &rates).to_string(),
+                czk.total(breakdown, Some(day_start)).to_string(),
                 breakdown_json(breakdown),
                 day_start,
                 day_end
@@ -573,6 +653,30 @@ mod tests {
             },
         )
         .expect("row")
+    }
+
+    #[test]
+    fn legacy_czk_converts_at_the_day_and_excludes_what_it_cannot_quote() {
+        let conn = setup_test_db();
+        insert_day_rate(&conn, TEST_DAY, "USD", 20.0);
+        crate::services::fx::set_current_for_test(&[("USD", 25.0)]);
+        let later = TEST_DAY + 30 * SECONDS_PER_DAY;
+        let czk = LegacyCzk::dated(&conn, TEST_DAY, later).expect("history");
+
+        assert_eq!(czk.on(10.0, "USD", TEST_DAY + SECONDS_PER_DAY), 200.0);
+        assert_eq!(czk.now(10.0, "usd"), 250.0);
+        // Without a quote the amount is excluded, never valued 1:1.
+        assert_eq!(czk.on(10.0, "KWD", TEST_DAY), 0.0);
+        // Beyond the walk-back window: no stored quote at all, so the current quotes decide.
+        assert_eq!(czk.on(10.0, "USD", later), 0.0);
+        assert_eq!(czk.on_or_now(10.0, "USD", later), 250.0);
+        assert_eq!(czk.on_or_now(10.0, "USD", TEST_DAY), 200.0);
+        // A breakdown is valued only when every bucket converts.
+        assert_eq!(
+            czk.breakdown_on(&map(&[("USD", 1.0), ("CZK", 5.0)]), TEST_DAY),
+            Some(25.0)
+        );
+        assert_eq!(czk.breakdown_on(&map(&[("KWD", 1.0)]), TEST_DAY), None);
     }
 
     #[test]

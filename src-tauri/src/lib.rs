@@ -195,7 +195,6 @@ pub async fn run() {
             commands::portfolio::recalculate_all_portfolio_history,
             commands::portfolio::backfill_stock_ticker_history,
             commands::portfolio::backfill_crypto_ticker_history,
-            commands::portfolio::backfill_currency_breakdowns,
             commands::portfolio::trigger_import_recalculation,
             // Price API commands
             commands::price_api::get_api_keys,

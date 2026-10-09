@@ -602,8 +602,6 @@ export const portfolioApi = {
 
   recalculateAllHistory: () => tauriInvoke<BackfillResult>('recalculate_all_portfolio_history'),
 
-  backfillCurrencyBreakdowns: () => tauriInvoke<number>('backfill_currency_breakdowns'),
-
   // Historical recalculation after an MCP bulk import of retroactive
   // transactions (see mcp-data-changed listener in SyncProvider.tsx).
   triggerImportRecalculation: (

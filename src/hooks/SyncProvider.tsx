@@ -41,14 +41,6 @@ export function SyncProvider({ children }: { children: ReactNode }) {
         queryClient.invalidateQueries({ queryKey: ['portfolio-history'] });
         queryClient.invalidateQueries({ queryKey: ['portfolio-metrics'] });
       }
-
-      // Backfill native currency breakdowns for existing snapshots (safe to re-run)
-      try {
-        await portfolioApi.backfillCurrencyBreakdowns();
-        queryClient.invalidateQueries({ queryKey: ['portfolio-history'] });
-      } catch (err) {
-        console.warn('[Sync] Currency breakdown backfill failed (non-critical):', err);
-      }
     } catch (error) {
       console.error('[Sync] Backfill failed:', error);
     } finally {

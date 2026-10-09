@@ -57,6 +57,8 @@ type SortColumn = 'name' | 'quantity' | 'avgCost' | 'currentPrice' | 'marketValu
 interface CryptoTableProps {
   /** The report currency of the holdings' converted figures. */
   currency: string;
+  /** The response's `totals.value`: every known value (the summary's figure). */
+  totalValue: number;
   holdings: CryptoTableRow[];
   onViewDetail: (holding: CryptoTableRow) => void;
   onBuy: (holding: CryptoTableRow) => void;
@@ -74,6 +76,7 @@ interface CryptoTableProps {
  */
 export function CryptoTable({
   currency,
+  totalValue,
   holdings,
   onViewDetail,
   onBuy,
@@ -133,9 +136,12 @@ export function CryptoTable({
     });
   }, [holdings, search, showClosed, sortColumn, sortDirection, unitPrice]);
 
-  // Footer over the open rows shown: the values the backend could convert
   const openRows = filtered.filter((h) => h.quantity > 0);
-  const total = openRows.reduce((sum, h) => sum + (h.marketValue ?? 0), 0);
+  // Without a search the footer is the response's total; a search sums the known values of
+  // the rows shown (the same rule: every known value counts)
+  const total = search.trim()
+    ? openRows.reduce((sum, h) => sum + (h.marketValue ?? 0), 0)
+    : totalValue;
   const closedCount = holdings.filter((h) => h.quantity <= 0).length;
 
   const SortHead = ({

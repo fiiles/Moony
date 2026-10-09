@@ -1052,11 +1052,16 @@ export type PortfolioMetricsHistory = { id: string; totalSavings: string; totalL
 source: string }
 
 /**
- * Sums in the report currency over the positions whose value and cost basis are both known
- * (dividends of those positions only); `realizedGain` over every position whose realized
- * gain is known.
+ * Sums in the report currency over every known amount: `value`, `costBasis` and
+ * `realizedGain` of the positions where they are known, `unrealizedGain` (and its percent) of
+ * the positions whose value and cost are both known, `yearlyDividend` of the positions whose
+ * value is known.
  */
-export type PositionTotals = { value: string; costBasis: string; unrealizedGain: string; realizedGain: string; yearlyDividend: string }
+export type PositionTotals = { value: string; costBasis: string; unrealizedGain: string; 
+/**
+ * `unrealizedGain` in percent of the cost of the same positions; 0 without a cost.
+ */
+unrealizedGainPercent: number; realizedGain: string; yearlyDividend: string }
 
 /**
  * Status of prices and exchange rates freshness
@@ -1716,16 +1721,16 @@ suggested: TypeValueAction }
 export type StocksAnalysis = { currency: string; fxQuality: ConversionQuality; items: StockInvestmentWithTags[] }
 
 /**
- * Sums over a tag's positions whose value and cost basis are both known (dividends of those
- * positions only), in the response's report currency.
+ * Sums over a tag's positions in the response's report currency, every known amount counted
+ * (the rule of `PositionTotals`).
  */
 export type TagMetrics = { tag: StockTag; value: string; costBasis: string; unrealizedGain: string; 
 /**
- * Percent of the cost basis; 0 without a cost basis.
+ * Percent of the cost of the positions in `unrealizedGain`; 0 without a cost basis.
  */
 unrealizedGainPercent: number; yearlyDividend: string; 
 /**
- * The tag's value in percent of the value of every summed position.
+ * The tag's value in percent of the known value of every position.
  */
 portfolioPercent: number; 
 /**

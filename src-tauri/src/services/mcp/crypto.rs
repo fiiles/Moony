@@ -865,6 +865,8 @@ mod list_tests {
                 ('t1', 'c1', 'buy', 'BTC', 'Bitcoin', '1', '30000', 'USD', 1700000000),
                 ('t2', 'c2', 'buy', 'KWC', 'Kuwait Coin', '1', '10', 'KWD', 1700000000);
             INSERT INTO crypto_prices VALUES ('BTC', '44000', 'USD', 100), ('KWC', '12', 'KWD', 100);
+            -- an override older than the API price no longer applies (the resolver's rule)
+            INSERT INTO crypto_price_overrides VALUES ('BTC', '1', 'EUR', 50);
             "#,
         )
         .expect("schema");
@@ -880,8 +882,11 @@ mod list_tests {
         assert_eq!(btc["unrealizedGain"], "20000.00");
         assert!(btc.get("annualDividend").is_none());
         // The unconvertible coin stays listed with its native price, its amounts null.
+        assert_eq!(btc["currentPrice"], "44000");
+        assert_eq!(btc["priceCurrency"], "USD");
         let kwc = rows.iter().find(|r| r["ticker"] == "KWC").expect("kwc");
         assert_eq!(kwc["currentPrice"], "12");
+        assert_eq!(kwc["priceCurrency"], "KWD");
         assert!(kwc["value"].is_null());
         assert!(kwc["costBasis"].is_null());
         assert_eq!(kwc["missingCurrencies"], serde_json::json!(["KWD"]));

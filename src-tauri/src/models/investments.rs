@@ -78,9 +78,10 @@ pub struct EnrichedStockInvestment {
     pub yearly_dividend: Option<String>,
 }
 
-/// Sums in the report currency over the positions whose value and cost basis are both known
-/// (dividends of those positions only); `realizedGain` over every position whose realized
-/// gain is known.
+/// Sums in the report currency over every known amount: `value`, `costBasis` and
+/// `realizedGain` of the positions where they are known, `unrealizedGain` (and its percent) of
+/// the positions whose value and cost are both known, `yearlyDividend` of the positions whose
+/// value is known.
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct PositionTotals {
     #[serde(rename = "value")]
@@ -89,6 +90,9 @@ pub struct PositionTotals {
     pub cost_basis: String,
     #[serde(rename = "unrealizedGain")]
     pub unrealized_gain: String,
+    /// `unrealizedGain` in percent of the cost of the same positions; 0 without a cost.
+    #[serde(rename = "unrealizedGainPercent")]
+    pub unrealized_gain_percent: f64,
     #[serde(rename = "realizedGain")]
     pub realized_gain: String,
     #[serde(rename = "yearlyDividend")]

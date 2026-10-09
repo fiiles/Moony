@@ -669,13 +669,16 @@ export interface EnrichedCryptoInvestment {
 }
 
 /**
- * Sums over the positions whose value and cost basis are both known (their dividends only);
- * `realizedGain` over every position whose realized gain is known.
+ * Sums over every known amount: `value`, `costBasis` and `realizedGain` where known,
+ * `unrealizedGain` (and its percent) of the positions whose value and cost are both known,
+ * `yearlyDividend` of the positions whose value is known.
  */
 export interface PositionTotals {
   value: string;
   costBasis: string;
   unrealizedGain: string;
+  /** `unrealizedGain` in percent of the cost of the same positions; 0 without a cost. */
+  unrealizedGainPercent: number;
   realizedGain: string;
   yearlyDividend: string;
 }
@@ -1526,16 +1529,16 @@ export interface StocksAnalysis {
   items: StockInvestmentWithTags[];
 }
 
-/** Sums over a tag's positions whose value and cost basis are known (their dividends only). */
+/** Sums over a tag's positions, every known amount counted (the rule of `PositionTotals`). */
 export interface TagMetrics {
   tag: StockTag;
   value: string;
   costBasis: string;
   unrealizedGain: string;
-  /** Percent of the cost basis; 0 without a cost basis. */
+  /** Percent of the cost of the positions in `unrealizedGain`; 0 without a cost basis. */
   unrealizedGainPercent: number;
   yearlyDividend: string;
-  /** The tag's value in percent of the value of every summed position. */
+  /** The tag's value in percent of the known value of every position. */
   portfolioPercent: number;
   /** Positions carrying the tag, summed or not. */
   holdingsCount: number;

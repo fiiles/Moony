@@ -11,7 +11,6 @@ use serde_json::Value;
 use std::collections::HashMap;
 
 use crate::error::Result;
-use crate::services::fx::Quality;
 use crate::services::positions::{self, AssetKind};
 use crate::services::reporting::money_in_currency;
 
@@ -270,12 +269,10 @@ pub fn tag_metrics(conn: &Connection, tag_ids: Option<Vec<String>>) -> Result<Va
     let tag_map = positions::investment_tag_ids(conn)?;
     let by_tag = positions::tag_totals(&positions, &tag_map);
 
-    let mut missing = Quality::default();
     let result: Vec<Value> = tags
         .iter()
         .map(|(tag_id, tag_name)| {
             let totals = by_tag.get(tag_id).cloned().unwrap_or_default();
-            missing.merge(&totals.quality);
             serde_json::json!({
                 "tagId": tag_id,
                 "tagName": tag_name,
@@ -298,7 +295,8 @@ pub fn tag_metrics(conn: &Connection, tag_ids: Option<Vec<String>>) -> Result<Va
     Ok(serde_json::json!({
         "mainCurrency": currency,
         "tags": result,
-        "missingCurrencies": missing.missing_currencies(),
+        // Every position counted once, whichever tags it carries
+        "missingCurrencies": positions.quality.missing_currencies(),
     }))
 }
 
@@ -583,8 +581,11 @@ mod tests {
         assert!(stock["gainLoss"].is_null());
         // The value is known: 21 × 110 USD × 23.
         assert_eq!(stock["currentValue"], "53130.00");
-        assert_eq!(result["summary"]["totalValue"], "0.00");
-        assert_eq!(result["summary"]["annualDividends"], "0.00");
+        // Every known amount counts: the value and its dividend (21 × 2 USD × 23), no gain.
+        assert_eq!(result["summary"]["totalValue"], "53130.00");
+        assert_eq!(result["summary"]["totalCostBasis"], "0.00");
+        assert_eq!(result["summary"]["totalGainLoss"], "0.00");
+        assert_eq!(result["summary"]["annualDividends"], "966.00");
         assert_eq!(result["missingCurrencies"], serde_json::json!(["KWD"]));
     }
 
@@ -598,9 +599,11 @@ mod tests {
 
         let tag = &result["tags"][0];
         assert_eq!(tag["stockCount"], 1);
+        // The unknown value and gain stay out; the known cost counts.
         assert_eq!(tag["totalValue"], "0.00");
-        assert_eq!(tag["costBasis"], "0.00");
+        assert_eq!(tag["costBasis"], "45000.00");
         assert_eq!(tag["gainLoss"], "0.00");
+        assert_eq!(tag["missingCurrencies"], serde_json::json!(["KWD"]));
         assert_eq!(result["missingCurrencies"], serde_json::json!(["KWD"]));
     }
 

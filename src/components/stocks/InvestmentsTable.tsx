@@ -50,6 +50,8 @@ type SortColumn =
 interface InvestmentsTableProps {
   /** The report currency of the holdings' converted figures. */
   currency: string;
+  /** The response's `totals.value`: every known value (the summary's figure). */
+  totalValue: number;
   holdings: HoldingData[];
   onViewDetail: (holding: HoldingData) => void;
   onBuy: (holding: HoldingData) => void;
@@ -77,6 +79,7 @@ const EMPTY_TAGS: StockTag[] = [];
  */
 export function InvestmentsTable({
   currency,
+  totalValue,
   holdings,
   onViewDetail,
   onBuy,
@@ -150,8 +153,11 @@ export function InvestmentsTable({
     });
   }, [holdings, search, showZero, sortColumn, sortDirection, tagsByInvestmentId, unitPrice]);
 
-  // Footer over the rows shown: the values the backend could convert
-  const total = filtered.reduce((sum, h) => sum + (h.marketValue ?? 0), 0);
+  // Without a search the footer is the response's total; a search sums the known values of
+  // the rows shown (the same rule: every known value counts)
+  const total = search.trim()
+    ? filtered.reduce((sum, h) => sum + (h.marketValue ?? 0), 0)
+    : totalValue;
   const largest = filtered.reduce((max, h) => Math.max(max, h.marketValue ?? 0), 0);
   const largestShare = total > 0 ? largest / total : 0;
 

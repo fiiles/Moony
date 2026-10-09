@@ -613,7 +613,7 @@ impl MoonyMcp {
     }
 
     #[tool(
-        description = "Get aggregated portfolio metrics grouped by stock tag. Shows total value, cost basis, gain/loss, and dividend yield per tag. Amounts are in the user's main currency, given as `mainCurrency`."
+        description = "Get aggregated portfolio metrics grouped by stock tag. Shows total value, cost basis, gain/loss, and dividend yield per tag. Amounts are in the user's main currency, given as `mainCurrency`; each tag sums every amount that could be converted, lists the currencies it could not convert in its own `missingCurrencies`, and the response-level `missingCurrencies` covers every position once."
     )]
     fn tag_metrics(
         &self,

@@ -67,7 +67,8 @@ pub fn main_currency_positions(
     crate::services::positions::value_positions(conn, kind, &main, chrono::Utc::now().timestamp())
 }
 
-/// Adds a position's native average cost and its main-currency figures to a list row.
+/// Adds a position's native price and average cost and its main-currency figures to a list
+/// row.
 /// Unknown amounts are `null`; `missingCurrencies` names what this position could not convert.
 pub fn add_position_fields(
     row: &mut serde_json::Value,
@@ -77,6 +78,10 @@ pub fn add_position_fields(
     let field = |f: fn(&crate::services::positions::PositionValue) -> Option<f64>| {
         amount_json(item.and_then(f), currency)
     };
+    // The resolver's price (override vs API), so `currentPrice × quantity` matches `value`;
+    // `null` when unpriced.
+    row["currentPrice"] = serde_json::json!(item.and_then(|i| i.price).map(|p| p.to_string()));
+    row["priceCurrency"] = serde_json::json!(item.and_then(|i| i.price_currency.clone()));
     row["averagePrice"] = serde_json::json!(
         item.map_or_else(|| "0".to_string(), |item| item.average_price.to_string())
     );

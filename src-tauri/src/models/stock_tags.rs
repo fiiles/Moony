@@ -86,8 +86,8 @@ pub struct StocksAnalysis {
     pub items: Vec<StockInvestmentWithTags>,
 }
 
-/// Sums over a tag's positions whose value and cost basis are both known (dividends of those
-/// positions only), in the response's report currency.
+/// Sums over a tag's positions in the response's report currency, every known amount counted
+/// (the rule of `PositionTotals`).
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct TagMetrics {
     pub tag: StockTag,
@@ -97,12 +97,12 @@ pub struct TagMetrics {
     pub cost_basis: String,
     #[serde(rename = "unrealizedGain")]
     pub unrealized_gain: String,
-    /// Percent of the cost basis; 0 without a cost basis.
+    /// Percent of the cost of the positions in `unrealizedGain`; 0 without a cost basis.
     #[serde(rename = "unrealizedGainPercent")]
     pub unrealized_gain_percent: f64,
     #[serde(rename = "yearlyDividend")]
     pub yearly_dividend: String,
-    /// The tag's value in percent of the value of every summed position.
+    /// The tag's value in percent of the known value of every position.
     #[serde(rename = "portfolioPercent")]
     pub portfolio_percent: f64,
     /// Positions carrying the tag, summed or not.

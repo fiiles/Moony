@@ -15,7 +15,6 @@ use crate::models::{
     PositionTotals as WirePositionTotals, StockInvestmentWithTags, StockPosition, StockPositions,
     StockTag, StocksAnalysis, TagMetrics, TagMetricsReport,
 };
-use crate::services::fx::Quality;
 use crate::services::positions::{
     self, resolve_dividend, AssetKind, PositionTotals, PositionValue, Positions,
 };
@@ -36,6 +35,7 @@ fn wire_totals(totals: &PositionTotals, currency: &str) -> WirePositionTotals {
         value: money_in_currency(totals.value, currency),
         cost_basis: money_in_currency(totals.cost_basis, currency),
         unrealized_gain: money_in_currency(totals.unrealized_gain, currency),
+        unrealized_gain_percent: totals.unrealized_gain_percent(),
         realized_gain: money_in_currency(totals.realized_gain, currency),
         yearly_dividend: money_in_currency(totals.yearly_dividend, currency),
     }
@@ -275,12 +275,10 @@ fn tag_metrics_from(
     let currency = positions.currency.as_str();
     let portfolio_value = positions::totals(&positions.items).value;
     let mut by_tag = positions::tag_totals(positions, tag_map);
-    let mut quality = Quality::default();
     let tags = tags
         .into_iter()
         .map(|tag| {
             let totals = by_tag.remove(&tag.id).unwrap_or_default();
-            quality.merge(&totals.quality);
             TagMetrics {
                 value: money_in_currency(totals.value, currency),
                 cost_basis: money_in_currency(totals.cost_basis, currency),
@@ -298,9 +296,10 @@ fn tag_metrics_from(
             }
         })
         .collect();
+    // Every position counted once, whichever tags it carries
     TagMetricsReport {
         currency: currency.to_string(),
-        fx_quality: ConversionQuality::from(&quality),
+        fx_quality: ConversionQuality::from(&positions.quality),
         tags,
     }
 }
@@ -320,6 +319,7 @@ pub fn tag_metrics(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::services::fx::Quality;
 
     fn item(id: &str, value: Option<f64>, cost: Option<f64>, dividend: f64) -> PositionValue {
         let mut quality = Quality::default();
@@ -385,7 +385,8 @@ mod tests {
         );
         let growth = &report.tags[0];
         assert_eq!(growth.value, "300.00");
-        assert_eq!(growth.cost_basis, "200.00");
+        // the known cost of the unpriced position counts too; its gain does not
+        assert_eq!(growth.cost_basis, "250.00");
         assert_eq!(growth.unrealized_gain, "100.00");
         assert!((growth.unrealized_gain_percent - 50.0).abs() < 1e-9);
         assert_eq!(growth.yearly_dividend, "6.00");

@@ -50,7 +50,7 @@ export function selectPositions<T extends { tags: readonly { id: string }[] }>(
 export interface TagTotals {
   /** Positions carrying the tag. */
   count: number;
-  /** Current value of those whose value and cost are known, in the report currency. */
+  /** Known current value, in the report currency. */
   value: number;
   /** Their gain or loss, report currency. */
   gainLoss: number;
@@ -87,23 +87,27 @@ export function toAnalysisPosition(item: StockInvestmentWithTags): AnalysisPosit
 }
 
 /**
- * Sums over `positions` with the rule of the backend's `PositionTotals`: a position adds its
- * value, gain and dividend only when its value and gain (so its cost) are known; it is counted
- * either way. Cost = value − gain, percent = gain / cost.
+ * Sums over `positions` with the rule of the backend's `PositionTotals`: every known amount
+ * counts. The value sums the known values (and the dividends of those positions); the gain
+ * sums the known gains, and its percent is of the cost of those same positions
+ * (value − gain). Every position is counted.
  */
 export function positionTotals(positions: readonly TotalsPosition[]): TagTotals {
   let count = 0;
   let value = 0;
   let gainLoss = 0;
+  let gainedValue = 0;
   let dividend = 0;
   for (const position of positions) {
     count += 1;
-    if (position.currentValue === null || position.gainLoss === null) continue;
+    if (position.currentValue === null) continue;
     value += position.currentValue;
-    gainLoss += position.gainLoss;
     dividend += position.yearlyDividendAmount ?? 0;
+    if (position.gainLoss === null) continue;
+    gainLoss += position.gainLoss;
+    gainedValue += position.currentValue;
   }
-  const cost = value - gainLoss;
+  const cost = gainedValue - gainLoss;
   return {
     count,
     value,

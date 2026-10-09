@@ -99,11 +99,6 @@ export function topPerformer<T extends PositionRowBase>(rows: readonly T[]): T |
   }, null);
 }
 
-/** Return in percent of the cost; 0 without a cost basis (as the backend's percent). */
-export function percentOfCost(gain: number, cost: number): number {
-  return cost > 0 ? (gain / cost) * 100 : 0;
-}
-
 /** Ascending order of possibly unknown numbers; unknown (`null`) sorts below every number. */
 export function compareKnown(a: number | null, b: number | null): number {
   if (a === b) return 0;

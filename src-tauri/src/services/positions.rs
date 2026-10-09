@@ -62,18 +62,20 @@ pub struct Positions {
     pub quality: Quality,
 }
 
-/// Sums over a group of positions in the report currency.
+/// Sums over a group of positions in the report currency: every known amount counts.
 ///
-/// A position adds to `value`, `cost_basis`, `unrealized_gain` and `yearly_dividend` only when
-/// both its value and its cost basis are known (an unconvertible or unpriced position is left
-/// out of all four, so the gain always equals value minus cost and the dividend belongs to the
-/// same positions). `realized_gain` sums every position whose realized gain is known: a closed
-/// position realizes its gain whether or not it still has a price.
+/// `value`, `cost_basis` and `realized_gain` sum the positions whose amount is known;
+/// `unrealized_gain` sums the positions whose value and cost are both known (their cost is
+/// `unrealized_cost_basis`, the base of the percentage); `yearly_dividend` sums the known
+/// dividends of positions whose value is known (a row left out of the value leaves its
+/// dividend out too). An unknown amount is never counted as 0 and never converted 1:1.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct PositionTotals {
     pub value: f64,
     pub cost_basis: f64,
     pub unrealized_gain: f64,
+    /// Cost basis of the positions in `unrealized_gain`.
+    pub unrealized_cost_basis: f64,
     pub realized_gain: f64,
     pub yearly_dividend: f64,
     /// Positions in the group, summed or not.
@@ -86,21 +88,26 @@ impl PositionTotals {
     fn add(&mut self, item: &PositionValue) {
         self.count += 1;
         self.quality.merge(&item.quality);
-        if let (Some(value), Some(cost)) = (item.value, item.cost_basis) {
+        if let Some(value) = item.value {
             self.value += value;
-            self.cost_basis += cost;
-            self.unrealized_gain += value - cost;
             self.yearly_dividend += item.yearly_dividend.unwrap_or(0.0);
+        }
+        if let Some(cost) = item.cost_basis {
+            self.cost_basis += cost;
+        }
+        if let (Some(value), Some(cost)) = (item.value, item.cost_basis) {
+            self.unrealized_gain += value - cost;
+            self.unrealized_cost_basis += cost;
         }
         if let Some(realized) = item.realized_gain {
             self.realized_gain += realized;
         }
     }
 
-    /// `unrealized_gain / cost_basis * 100`; 0 for a zero cost basis.
+    /// `unrealized_gain / unrealized_cost_basis * 100`; 0 for a zero cost basis.
     pub fn unrealized_gain_percent(&self) -> f64 {
-        if self.cost_basis > 0.0 {
-            self.unrealized_gain / self.cost_basis * 100.0
+        if self.unrealized_cost_basis > 0.0 {
+            self.unrealized_gain / self.unrealized_cost_basis * 100.0
         } else {
             0.0
         }
@@ -880,6 +887,48 @@ mod tests {
         assert_eq!(empty.realized_gain, Some(0.0));
         // an unknown cost is not an FX gap
         assert!(p.quality.is_complete());
+        // its known value still counts; its unknown cost and gain do not
+        let t = totals(&p.items);
+        assert_close(t.value, 300.0);
+        assert_close(t.cost_basis, 0.0);
+        assert_close(t.unrealized_gain, 0.0);
+    }
+
+    #[test]
+    fn totals_sum_every_known_amount() {
+        let conn = setup();
+        let day = 19_000 * DAY;
+        seed_stock(
+            &conn,
+            "s1",
+            "SAP.DE",
+            "EUR",
+            &[("buy", 2.0, 100.0, day)],
+            120.0,
+        );
+        seed_stock(
+            &conn,
+            "s2",
+            "XYZ.DE",
+            "EUR",
+            &[("buy", 1.0, 50.0, day)],
+            1.0,
+        );
+        // the second position has no price
+        conn.execute("DELETE FROM stock_data WHERE ticker = 'XYZ.DE'", [])
+            .expect("unprice");
+        set_current_czk(&[]);
+        let p = value_positions(&conn, AssetKind::Stock, "EUR", 20_000 * DAY).expect("positions");
+
+        let t = totals(&p.items);
+
+        assert_eq!(t.count, 2);
+        assert_close(t.cost_basis, 250.0);
+        assert_close(t.value, 240.0);
+        assert_close(t.unrealized_gain, 40.0);
+        assert_close(t.unrealized_cost_basis, 200.0);
+        assert_close(t.unrealized_gain_percent(), 20.0);
+        assert!(t.quality.is_complete());
     }
 
     #[test]

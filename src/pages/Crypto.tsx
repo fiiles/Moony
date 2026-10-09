@@ -7,7 +7,7 @@ import { Bitcoin, Plus, RefreshCw } from 'lucide-react';
 import type { CryptoPositions, CryptoTransaction } from '@shared/schema';
 import type { CurrencyCode } from '@shared/currencies';
 import { cryptoApi, exportApi, priceApi } from '@/lib/tauri-api';
-import { amountOf, percentOfCost, toCryptoRow } from '@/utils/positions';
+import { amountOf, toCryptoRow } from '@/utils/positions';
 import { useCurrency } from '@/lib/currency';
 import { useFormat } from '@/lib/use-format';
 import { useDatedConvert } from '@/hooks/use-dated-convert';
@@ -169,7 +169,7 @@ export default function Crypto() {
     totalValue,
     totalCost,
     overallGainLoss: unrealizedGain,
-    overallGainLossPercent: percentOfCost(unrealizedGain, totalCost),
+    overallGainLossPercent: totals?.unrealizedGainPercent ?? 0,
   };
   const realizedGain = amountOf(totals?.realizedGain) ?? 0;
   const largestRow = openPositions.reduce<CryptoTableRow | null>(
@@ -287,6 +287,7 @@ export default function Crypto() {
 
           <CryptoTable
             currency={reportCurrency}
+            totalValue={totalValue}
             holdings={holdings}
             isLoading={refreshPricesMutation.isPending}
             onViewDetail={(h) => setLocation(`/crypto/${h.id}`)}

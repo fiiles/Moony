@@ -12,7 +12,7 @@ import { useFormat } from '@/lib/use-format';
 import { useStockTagsByInvestment } from '@/hooks/use-stock-tags';
 import { useDatedConvert } from '@/hooks/use-dated-convert';
 import type { HoldingData } from '@/utils/stocks';
-import { amountOf, percentOfCost, toStockRow, topPerformer } from '@/utils/positions';
+import { amountOf, toStockRow, topPerformer } from '@/utils/positions';
 import type { EventCluster } from '@/utils/chart-scale';
 import {
   firstTradeDay,
@@ -157,7 +157,7 @@ export default function Stocks() {
     totalValue: amountOf(totals?.value) ?? 0,
     totalCost,
     overallGainLoss: unrealizedGain,
-    overallGainLossPercent: percentOfCost(unrealizedGain, totalCost),
+    overallGainLossPercent: totals?.unrealizedGainPercent ?? 0,
     estimatedDividendYield: amountOf(totals?.yearlyDividend) ?? 0,
     topPerformer: top
       ? {
@@ -280,6 +280,7 @@ export default function Stocks() {
 
           <InvestmentsTable
             currency={reportCurrency}
+            totalValue={metrics.totalValue}
             holdings={holdings}
             tagsByInvestmentId={tagsByInvestmentId}
             isLoading={refreshPricesMutation.isPending}

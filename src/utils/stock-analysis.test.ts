@@ -116,14 +116,21 @@ describe('tagTotals', () => {
     expect(tagTotals([position('gift', [growth], 100, 100)], 'growth').gainLossPercent).toBe(0);
   });
 
-  it('counts but does not sum a position whose value or cost is unknown (nor its dividend)', () => {
+  it('sums every known amount: an unknown value leaves out its dividend, an unknown cost its gain', () => {
     const withGap = [...positions, position('kwd', [growth], null, null, 99)];
     const totals = tagTotals(withGap, 'growth');
     expect(totals.count).toBe(3);
     expect(totals.value).toBe(1700);
     expect(totals.dividend).toBe(24);
-    const unknownCost = [position('gift', [growth], 100, null, 5)];
-    expect(tagTotals(unknownCost, 'growth')).toMatchObject({ count: 1, value: 0, dividend: 0 });
+    const unknownCost = [...positions, position('gift', [growth], 100, null, 5)];
+    expect(tagTotals(unknownCost, 'growth')).toEqual({
+      count: 3,
+      value: 1800,
+      gainLoss: 250,
+      // the percent stays on the positions with a known gain: 250 / 1450
+      gainLossPercent: (250 / 1450) * 100,
+      dividend: 29,
+    });
   });
 
   it('follows a narrowed selection', () => {

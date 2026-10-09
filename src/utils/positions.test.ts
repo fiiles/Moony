@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { EnrichedStockInvestment } from '@shared/schema';
-import { amountOf, costPerUnit, percentOfCost, toStockRow, topPerformer } from './positions';
+import { amountOf, costPerUnit, toStockRow, topPerformer } from './positions';
 
 function stock(overrides: Partial<EnrichedStockInvestment> = {}): EnrichedStockInvestment {
   return {
@@ -72,12 +72,10 @@ describe('topPerformer', () => {
   });
 });
 
-describe('costPerUnit and percentOfCost', () => {
+describe('costPerUnit', () => {
   it('divide only known, positive bases', () => {
     expect(costPerUnit(1000, 10)).toBe(100);
     expect(costPerUnit(null, 10)).toBeNull();
     expect(costPerUnit(1000, 0)).toBeNull();
-    expect(percentOfCost(50, 200)).toBe(25);
-    expect(percentOfCost(50, 0)).toBe(0);
   });
 });

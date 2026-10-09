@@ -7,6 +7,20 @@ import type { McpDataChangedPayload } from '@shared/schema';
 import { SyncContext } from './sync-context';
 import { FX_HISTORY_KEY, FX_SNAPSHOT_KEY } from './use-fx';
 
+/**
+ * Queries built on position values and cost bases (prices plus current and historical
+ * rates): stock and crypto lists and details, the stocks analysis, tag metrics and the
+ * projection.
+ */
+const PRICED_POSITION_KEYS = [
+  'investments',
+  'investment',
+  'crypto',
+  'stocks-analysis',
+  'tag-metrics',
+  'projection',
+] as const;
+
 export function SyncProvider({ children }: { children: ReactNode }) {
   const [isSyncing, setIsSyncing] = useState(false);
   const [progress, setProgress] = useState({ current: 0, total: 0 });
@@ -78,10 +92,10 @@ export function SyncProvider({ children }: { children: ReactNode }) {
             status.stocksStale ? priceApi.refreshStockPrices() : Promise.resolve(),
             status.cryptoStale ? priceApi.refreshCryptoPrices() : Promise.resolve(),
           ]);
-          queryClient.invalidateQueries({ queryKey: ['investments'] });
-          queryClient.invalidateQueries({ queryKey: ['crypto'] });
-          queryClient.invalidateQueries({ queryKey: ['portfolio-metrics'] });
-          queryClient.invalidateQueries({ queryKey: ['price-status'] });
+          // Fresh prices change every position value, list or detail, and what is built on them
+          for (const key of [...PRICED_POSITION_KEYS, 'portfolio-metrics', 'price-status']) {
+            queryClient.invalidateQueries({ queryKey: [key] });
+          }
         }
       } catch (error) {
         console.error('[Sync] Auto price refresh failed:', error);
@@ -108,14 +122,19 @@ export function SyncProvider({ children }: { children: ReactNode }) {
   }, [queryClient]);
 
   // The FX backfill (after a rate refresh or a statement import) can add
-  // historical rates: rows previously reported as missing FX now convert.
+  // historical rates: rows previously reported as missing FX now convert, and
+  // costs estimated at today's rate get their day's rate. The rate refresh
+  // returns before the backfill finishes, so this is the moment to refetch.
   useEffect(() => {
     const unlisten = listen('recalculation-complete', () => {
+      queryClient.invalidateQueries({ queryKey: FX_HISTORY_KEY });
       for (const key of [
         'budgeting-report',
         'budgeting-category-transactions',
         'cashflow-report',
         'report-transactions',
+        ...PRICED_POSITION_KEYS,
+        'stock-twr',
       ]) {
         queryClient.invalidateQueries({ queryKey: [key] });
       }

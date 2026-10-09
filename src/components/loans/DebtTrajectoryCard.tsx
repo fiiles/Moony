@@ -1,12 +1,13 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { dueDay } from '@shared/calculations/loan-amortization';
-import type { CurrencyCode } from '@shared/currencies';
+import type { ConvertFn } from '@shared/fx';
 import type { LoanMetrics, LoanRow } from '@/utils/loans';
 import { monthsAhead } from '@/utils/loans';
 import { clipSeries, debtSeries, stepValueAt } from '@/utils/loan-trajectory';
 import type { ChartEvent, EventCluster } from '@/utils/chart-scale';
 import { useCurrency } from '@/lib/currency';
+import { useDatedMainConvert } from '@/hooks/use-fx';
 import { useFormat } from '@/lib/use-format';
 import { useLoanText } from '@/hooks/use-loan-text';
 import { Segmented } from '@/components/ui/segmented';
@@ -26,34 +27,54 @@ interface DebtTrajectoryCardProps {
   rows: LoanRow[];
   metrics: LoanMetrics;
   today: number;
+  /** Into the main currency at the current quotes (the schedule ahead of today). */
+  convert: ConvertFn;
 }
 
 /**
  * Debt trajectory (prototype loans.html): the sum of all balances, actual solid
  * from the first drawdown, the schedules dashed after today. Every loan marks
  * its start (the ▲ where the line steps up), payoffs, fixation ends and
- * half-repaid days are the milestones.
+ * half-repaid days are the milestones. Past balances convert at their own day,
+ * the schedule ahead at today's quotes; a loan without a rate today stays out (the
+ * page note names it).
  */
-export function DebtTrajectoryCard({ rows, metrics, today }: DebtTrajectoryCardProps) {
+export function DebtTrajectoryCard({ rows, metrics, today, convert }: DebtTrajectoryCardProps) {
   const { t } = useTranslation('loans');
-  const { formatCurrency, convert, currencyCode } = useCurrency();
+  const { currencyCode } = useCurrency();
   const fmt = useFormat();
   const text = useLoanText();
   const [horizon, setHorizon] = useState<Horizon>('10');
 
-  const active = useMemo(() => rows.filter((r) => !r.matured), [rows]);
-  const toDisplay = (czk: number) => convert(czk, 'CZK', currencyCode as CurrencyCode);
+  const counted = useMemo(() => rows.filter((r) => r.converted !== null), [rows]);
+  const active = useMemo(() => counted.filter((r) => !r.matured), [counted]);
+  const firstStart = counted.length ? Math.min(...counted.map((r) => r.terms.startDay)) : undefined;
+  const { ready, convertAt } = useDatedMainConvert(firstStart);
 
-  // Sum in CZK, then into the display currency
+  /** A native amount of `row` on day `t` in the main currency (today's quotes ahead of today). */
+  const at = useMemo(
+    () =>
+      (row: LoanRow, amount: number, t: number): number | null =>
+        t > today ? convert(amount, row.currency) : convertAt(amount, row.currency, t),
+    [convert, convertAt, today]
+  );
+  const money = (v: number) => fmt.money(v, currencyCode, { decimals: 0 });
+  /** In the main currency on day `t`, or the native amount when that day has no rate. */
+  const moneyAt = (row: LoanRow, amount: number, t: number) => {
+    const value = at(row, amount, t);
+    return value !== null ? money(value) : fmt.money(amount, row.currency, { decimals: 0 });
+  };
+
   const series = useMemo(
     () =>
       debtSeries(
-        rows.map((r) => ({ trajectory: r.trajectory, rate: r.rate })),
+        counted.map((r) => ({
+          trajectory: r.trajectory,
+          convert: (amount: number, t: number) => at(r, amount, t),
+        })),
         today
-      ).map((p) => ({ t: p.t, value: toDisplay(p.value) })),
-    // convert is stable per currency
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [rows, today, currencyCode]
+      ),
+    [counted, today, at]
   );
 
   const lastT = series[series.length - 1]?.t ?? today;
@@ -66,14 +87,14 @@ export function DebtTrajectoryCard({ rows, metrics, today }: DebtTrajectoryCardP
 
   const events = useMemo<DebtEvent[]>(() => {
     const out: DebtEvent[] = [];
-    // Every loan, paid-off ones too: the mark says why the line steps up there
-    for (const r of rows) {
+    // Every loan on the line, paid-off ones too: the mark says why the line steps up there
+    for (const r of counted) {
       out.push({
         id: `start-${r.loan.id}`,
         t: r.terms.startDay,
         type: 'buy',
         title: t('chart.milestones.newLoan', { name: r.loan.name }),
-        lines: [`${fmt.day(r.terms.startDay)} · ${formatCurrency(r.principalCzk)}`],
+        lines: [`${fmt.day(r.terms.startDay)} · ${moneyAt(r, r.principal, r.terms.startDay)}`],
       });
     }
     for (const r of active) {
@@ -89,7 +110,7 @@ export function DebtTrajectoryCard({ rows, metrics, today }: DebtTrajectoryCardP
               isLast
                 ? t('chart.milestones.debtFree')
                 : t('chart.milestones.paidOffPayments', {
-                    amount: formatCurrency(r.paymentCzk),
+                    amount: moneyAt(r, r.payment, r.payoffDay),
                   })
             }`,
           ],
@@ -121,22 +142,23 @@ export function DebtTrajectoryCard({ rows, metrics, today }: DebtTrajectoryCardP
           title: t('chart.milestones.half', { name: r.loan.name }),
           lines: [
             `${text.monthYear(r.trajectory.halfDay)} · ${t('chart.milestones.balance', {
-              amount: formatCurrency(r.principalCzk / 2),
+              amount: moneyAt(r, r.principal / 2, r.trajectory.halfDay),
             })}`,
           ],
         });
       }
     }
     return out.filter((e) => e.t >= start && e.t <= end).sort((a, b) => a.t - b.t);
-    // `text` and `formatCurrency` are rebuilt every render but only follow the locale and currency
+    // `text` and `moneyAt` are rebuilt every render but only follow the locale, the currency and `at`
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [t, fmt, rows, active, metrics.debtFreeDay, today, start, end, currencyCode]);
+  }, [t, fmt, counted, active, metrics.debtFreeDay, today, start, end, currencyCode, at]);
 
-  if (series.length < 2) return null;
+  // Past balances of a foreign loan need the daily quotes; without them the line would lack its past
+  const waiting = !ready && counted.some((r) => r.currency !== currencyCode);
+  if (waiting || series.length < 2) return null;
 
   const todayValue = stepValueAt(series, today);
   const endValue = points[points.length - 1]?.value ?? 0;
-  const money = (v: number) => fmt.money(v, currencyCode, { decimals: 0 });
   const note =
     horizon === 'all'
       ? metrics.debtFreeDay

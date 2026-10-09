@@ -1,5 +1,5 @@
 import type { Loan } from '@shared/schema';
-import { convertToCzK, type CurrencyCode } from '@shared/currencies';
+import { MissingTracker, type ConvertFn } from '@shared/fx';
 import {
   dayFloor,
   dueDay,
@@ -13,7 +13,16 @@ import { loanTrajectory, type LoanTrajectory } from '@/utils/loan-trajectory';
 
 const DAY = 86_400;
 
-/** Derived numbers of one loan for the list page (CZK totals, native per-loan figures). */
+/** A loan's money in the main currency at the current quotes. */
+export interface LoanConverted {
+  outstanding: number;
+  principal: number;
+  payment: number;
+  /** Interest in the payments due within the next 12 months. */
+  interestNext12: number;
+}
+
+/** Derived numbers of one loan for the list page (native figures, main-currency totals). */
 export interface LoanRow {
   loan: Loan;
   terms: LoanTerms;
@@ -21,32 +30,32 @@ export interface LoanRow {
   mode: LoanValuationMode;
   /** The payment does not cover the interest: the balance does not fall. */
   belowInterest: boolean;
-  /** Multiplier from the loan's currency to CZK. */
-  rate: number;
-  /** Backend-valued balance as of today, native and CZK. */
+  /** The loan's currency (legacy rows without one are CZK). */
+  currency: string;
+  /** Backend-valued balance as of today, native. */
   outstanding: number;
-  outstandingCzk: number;
   principal: number;
-  principalCzk: number;
   payment: number;
-  paymentCzk: number;
+  /** Interest due within the next 12 months, native. */
+  interestNext12: number;
+  /** The money above in the main currency; null when the currency has no rate. */
+  converted: LoanConverted | null;
   /** 1 − outstanding / principal, clamped to 0–1. */
   repaidShare: number;
   /** Paid off, or past the contractual end date. */
   matured: boolean;
   payoffDay: number | null;
-  /** Interest in the payments due within the next 12 months, CZK. */
-  interestNext12Czk: number;
   /** Rate validity date still ahead of today. */
   fixationEnd: number | null;
 }
 
-export function loanRow(loan: Loan, today: number): LoanRow {
+export function loanRow(loan: Loan, today: number, convert: ConvertFn): LoanRow {
   const day = dayFloor(today);
   const terms = loanTermsFromWire(loan);
   const trajectory = loanTrajectory(terms, day);
-  const currency = (loan.currency || 'CZK') as CurrencyCode;
-  const rate = convertToCzK(1, currency);
+  const currency = loan.currency || 'CZK';
+  // One factor per loan: every amount of the row converts at the same current quote
+  const rate = convert(1, currency);
   const outstanding = Math.max(0, Number(loan.outstandingBalance) || 0);
   const principal = Number(loan.principal) || 0;
   const payment = Number(loan.monthlyPayment) || 0;
@@ -61,17 +70,23 @@ export function loanRow(loan: Loan, today: number): LoanRow {
     trajectory,
     mode: loanValuationMode(terms),
     belowInterest: paymentBelowInterest(terms),
-    rate,
+    currency,
     outstanding,
-    outstandingCzk: outstanding * rate,
     principal,
-    principalCzk: principal * rate,
     payment,
-    paymentCzk: payment * rate,
+    interestNext12,
+    converted:
+      rate === null
+        ? null
+        : {
+            outstanding: outstanding * rate,
+            principal: principal * rate,
+            payment: payment * rate,
+            interestNext12: interestNext12 * rate,
+          },
     repaidShare: principal > 0 ? Math.min(1, Math.max(0, 1 - outstanding / principal)) : 0,
     matured,
     payoffDay: trajectory.payoffDay,
-    interestNext12Czk: interestNext12 * rate,
     fixationEnd:
       loan.interestRateValidityDate !== null && dayFloor(loan.interestRateValidityDate) > day
         ? dayFloor(loan.interestRateValidityDate)
@@ -85,7 +100,7 @@ export interface LoanMetrics {
   totalOutstanding: number;
   totalPrincipal: number;
   totalMonthlyPayment: number;
-  /** Weighted by the outstanding balance in CZK; 0 without any balance. */
+  /** Weighted by the outstanding balance in the main currency; 0 without any balance. */
   averageInterestRate: number;
   interestNext12: number;
   /** The active loan that pays off first, with the monthly payments left after it. */
@@ -96,15 +111,27 @@ export interface LoanMetrics {
   expiredFixation: { row: LoanRow; day: number } | null;
   /** Day all active loans are paid off; null when any never is. */
   debtFreeDay: number | null;
+  /** Currencies of the loans left out of the totals for want of a rate. */
+  missing: string[];
 }
 
-/** Totals over the rows; matured loans count only in `count` and the principal. */
+/** Sum of one converted field over the rows that have a rate. */
+function sumConverted(rows: readonly LoanRow[], field: keyof LoanConverted): number {
+  return rows.reduce((s, r) => s + (r.converted?.[field] ?? 0), 0);
+}
+
+/**
+ * Totals in the main currency over the rows with a rate (the others are reported in
+ * `missing`); matured loans count only in `count` and the principal.
+ */
 export function loanMetrics(rows: readonly LoanRow[], today: number): LoanMetrics {
   const day = dayFloor(today);
   const active = rows.filter((r) => !r.matured);
-  const totalOutstanding = active.reduce((s, r) => s + r.outstandingCzk, 0);
+  const tracker = new MissingTracker();
+  for (const r of rows) tracker.track(r.currency, r.converted === null ? null : 0);
+  const totalOutstanding = sumConverted(active, 'outstanding');
   const weighted = active.reduce(
-    (s, r) => s + r.outstandingCzk * (Number(r.loan.interestRate) || 0),
+    (s, r) => s + (r.converted?.outstanding ?? 0) * (Number(r.loan.interestRate) || 0),
     0
   );
   const withPayoff = active.filter((r) => r.payoffDay !== null && r.payoffDay > day);
@@ -123,15 +150,18 @@ export function loanMetrics(rows: readonly LoanRow[], today: number): LoanMetric
     count: rows.length,
     activeCount: active.length,
     totalOutstanding,
-    totalPrincipal: rows.reduce((s, r) => s + r.principalCzk, 0),
-    totalMonthlyPayment: active.reduce((s, r) => s + r.paymentCzk, 0),
+    totalPrincipal: sumConverted(rows, 'principal'),
+    totalMonthlyPayment: sumConverted(active, 'payment'),
     averageInterestRate: totalOutstanding > 0 ? weighted / totalOutstanding : 0,
-    interestNext12: active.reduce((s, r) => s + r.interestNext12Czk, 0),
+    interestNext12: sumConverted(active, 'interestNext12'),
     nextPayoff: first
       ? {
           row: first,
           day: first.payoffDay!,
-          paymentsAfter: active.reduce((s, r) => s + (r === first ? 0 : r.paymentCzk), 0),
+          paymentsAfter: active.reduce(
+            (s, r) => s + (r === first ? 0 : (r.converted?.payment ?? 0)),
+            0
+          ),
         }
       : null,
     nextFixation: fixations[0] ? { row: fixations[0], day: fixations[0].fixationEnd! } : null,
@@ -139,6 +169,7 @@ export function loanMetrics(rows: readonly LoanRow[], today: number): LoanMetric
       ? { row: expired, day: dayFloor(expired.loan.interestRateValidityDate!) }
       : null,
     debtFreeDay: everyPaysOff ? Math.max(...active.map((r) => r.payoffDay!)) : null,
+    missing: tracker.missing,
   };
 }
 

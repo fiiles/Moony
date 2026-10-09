@@ -107,8 +107,8 @@ describe('debtSeries', () => {
     );
     const sum = debtSeries(
       [
-        { trajectory: a, rate: 1 },
-        { trajectory: b, rate: 2 },
+        { trajectory: a, convert: (amount: number) => amount },
+        { trajectory: b, convert: (amount: number) => amount * 2 },
       ],
       today
     );
@@ -120,12 +120,35 @@ describe('debtSeries', () => {
     expect(sum[sum.length - 1].value).toBe(0);
   });
 
+  it('converts every reading at its own day and leaves out the days without a rate', () => {
+    const today = day(2024, 3, 15);
+    const a = loanTrajectory(zeroRate, today);
+    const noRateOn = day(2024, 3, 1);
+    const sum = debtSeries(
+      [
+        {
+          trajectory: a,
+          // 2 per unit before March, 3 from March on, no rate on 1 March
+          convert: (amount: number, t: number) =>
+            t === noRateOn ? null : amount * (t < noRateOn ? 2 : 3),
+        },
+      ],
+      today
+    );
+    const at = (t: number) => sum.find((p) => p.t === t)?.value;
+    expect(at(START)).toBe(240_000);
+    expect(sum.some((p) => p.t === noRateOn)).toBe(false);
+    expect(at(today)).toBe(300_000);
+    // A zero balance needs no rate
+    expect(sum[sum.length - 1].value).toBe(0);
+  });
+
   describe('the day a later loan starts', () => {
     const today = day(2024, 6, 15);
-    /** A debtSeries input at rate 1, the terms over the zero-rate loan above. */
+    /** A debtSeries input in its own currency, the terms over the zero-rate loan above. */
     const item = (terms: Partial<LoanTerms>) => ({
       trajectory: loanTrajectory({ ...zeroRate, ...terms }, today),
-      rate: 1,
+      convert: (amount: number) => amount,
     });
     const laterStart = day(2024, 3, 20);
     const later = { principal: 60_000, monthlyPayment: 5_000, startDay: laterStart };

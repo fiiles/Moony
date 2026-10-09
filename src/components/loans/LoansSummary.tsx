@@ -18,8 +18,9 @@ interface LoansSummaryProps {
  */
 export function LoansSummary({ metrics, today }: LoansSummaryProps) {
   const { t } = useTranslation('loans');
-  const { formatCurrency } = useCurrency();
+  const { currencyCode } = useCurrency();
   const fmt = useFormat();
+  const formatCurrency = (value: number) => fmt.money(value, currencyCode, { decimals: 0 });
   const text = useLoanText();
 
   const repaidShare =

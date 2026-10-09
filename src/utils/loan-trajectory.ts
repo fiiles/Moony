@@ -140,8 +140,11 @@ export function stepValueAt(points: readonly TrajectoryPoint[], t: number): numb
 
 export interface DebtSeriesInput {
   trajectory: LoanTrajectory;
-  /** Multiplier from the loan's currency to the series currency. */
-  rate: number;
+  /**
+   * A native balance of this loan in the series currency at the rates of day `t`; null
+   * when that day cannot be converted.
+   */
+  convert: (amount: number, t: number) => number | null;
 }
 
 /**
@@ -149,13 +152,15 @@ export interface DebtSeriesInput {
  * thinned when there are many). A loan counts as 0 before its first reading, and
  * every loan that starts after the earliest one also gets a reading the day
  * before, so its drawdown is a one-day step and not a ramp from the previous
- * reading (usually the last due day, a month back).
+ * reading (usually the last due day, a month back). Every balance converts at its own
+ * day; a reading where a non-zero balance cannot be converted is left out (the line
+ * bridges it instead of dropping by that loan).
  */
 export function debtSeries(items: readonly DebtSeriesInput[], today: number): TrajectoryPoint[] {
   const day = dayFloor(today);
   const series = items.map((item) => ({
     points: [...item.trajectory.past, ...item.trajectory.future],
-    rate: item.rate,
+    convert: item.convert,
   }));
   const firsts = series.flatMap((s) => (s.points.length > 0 ? [s.points[0].t] : []));
   // Every start after the earliest gets a reading the day before (the sum holds, then jumps);
@@ -173,10 +178,23 @@ export function debtSeries(items: readonly DebtSeriesInput[], today: number): Tr
     const stride = Math.ceil(grid.length / MAX_SERIES_POINTS);
     grid = grid.filter((t, i) => i % stride === 0 || i === grid.length - 1 || keep.has(t));
   }
-  return grid.map((t) => ({
-    t,
-    value: series.reduce((sum, s) => sum + stepValueAt(s.points, t) * s.rate, 0),
-  }));
+  const out: TrajectoryPoint[] = [];
+  for (const t of grid) {
+    let value = 0;
+    let known = true;
+    for (const s of series) {
+      const native = stepValueAt(s.points, t);
+      if (native === 0) continue;
+      const converted = s.convert(native, t);
+      if (converted === null) {
+        known = false;
+        break;
+      }
+      value += converted;
+    }
+    if (known) out.push({ t, value });
+  }
+  return out;
 }
 
 /**

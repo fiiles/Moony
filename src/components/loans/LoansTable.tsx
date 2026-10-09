@@ -13,6 +13,8 @@ import {
 import type { Loan } from '@shared/schema';
 import type { LoanRow } from '@/utils/loans';
 import { monthsAhead } from '@/utils/loans';
+import { compareConverted } from '@/utils/fx-totals';
+import { ConvertedMoney } from '@/components/common/ConvertedMoney';
 import { useCurrency } from '@/lib/currency';
 import { useFormat } from '@/lib/use-format';
 import { useLoanText } from '@/hooks/use-loan-text';
@@ -56,8 +58,9 @@ interface LoansTableProps {
  */
 export function LoansTable({ rows, today, onEdit, onDelete }: LoansTableProps) {
   const { t } = useTranslation('loans');
-  const { formatCurrency } = useCurrency();
+  const { currencyCode } = useCurrency();
   const fmt = useFormat();
+  const formatCurrency = (value: number) => fmt.money(value, currencyCode, { decimals: 0 });
   const text = useLoanText();
   const [, setLocation] = useLocation();
   const [showMatured, setShowMatured] = useState(false);
@@ -84,16 +87,16 @@ export function LoansTable({ rows, today, onEdit, onDelete }: LoansTableProps) {
           c = a.loan.name.localeCompare(b.loan.name, undefined, { sensitivity: 'base' });
           break;
         case 'outstanding':
-          c = a.outstandingCzk - b.outstandingCzk;
+          c = compareConverted(a.converted?.outstanding ?? null, b.converted?.outstanding ?? null);
           break;
         case 'principal':
-          c = a.principalCzk - b.principalCzk;
+          c = compareConverted(a.converted?.principal ?? null, b.converted?.principal ?? null);
           break;
         case 'rate':
           c = (Number(a.loan.interestRate) || 0) - (Number(b.loan.interestRate) || 0);
           break;
         case 'payment':
-          c = a.paymentCzk - b.paymentCzk;
+          c = compareConverted(a.converted?.payment ?? null, b.converted?.payment ?? null);
           break;
         case 'payoff':
           c = (a.payoffDay ?? far) - (b.payoffDay ?? far);
@@ -103,9 +106,10 @@ export function LoansTable({ rows, today, onEdit, onDelete }: LoansTableProps) {
     });
   }, [rows, showMatured, sortColumn, sortDirection]);
 
+  // Footer totals: the loans without a rate stay out (the page note names them)
   const active = visible.filter((r) => !r.matured);
-  const totalOutstanding = active.reduce((s, r) => s + r.outstandingCzk, 0);
-  const totalPayments = active.reduce((s, r) => s + r.paymentCzk, 0);
+  const totalOutstanding = active.reduce((s, r) => s + (r.converted?.outstanding ?? 0), 0);
+  const totalPayments = active.reduce((s, r) => s + (r.converted?.payment ?? 0), 0);
 
   const SortHead = ({
     column,
@@ -279,15 +283,24 @@ export function LoansTable({ rows, today, onEdit, onDelete }: LoansTableProps) {
                         <span className="inline-flex items-center justify-end gap-2">
                           {needsNote && <LoanValuationNote loan={loan} />}
                           <Progress value={r.repaidShare * 100} className="w-[60px]" />
-                          <span className="font-650 text-ink">
-                            {formatCurrency(r.outstandingCzk)}
-                          </span>
+                          <ConvertedMoney
+                            className="font-650 text-ink"
+                            value={r.converted?.outstanding ?? null}
+                            amount={r.outstanding}
+                            currency={r.currency}
+                          />
                         </span>
                         {sub(t('table.repaid', { percent: fmt.percent(r.repaidShare, 0) }))}
                       </>
                     )}
                   </TableCell>
-                  <TableCell className="text-right num">{formatCurrency(r.principalCzk)}</TableCell>
+                  <TableCell className="text-right num">
+                    <ConvertedMoney
+                      value={r.converted?.principal ?? null}
+                      amount={r.principal}
+                      currency={r.currency}
+                    />
+                  </TableCell>
                   <TableCell className="text-right num">
                     {fmt.percent((Number(loan.interestRate) || 0) / 100, 2)}
                     {sub(
@@ -303,7 +316,11 @@ export function LoansTable({ rows, today, onEdit, onDelete }: LoansTableProps) {
                   <TableCell className="text-right num">
                     {r.payment > 0 && !r.matured ? (
                       <>
-                        {formatCurrency(r.paymentCzk)}
+                        <ConvertedMoney
+                          value={r.converted?.payment ?? null}
+                          amount={r.payment}
+                          currency={r.currency}
+                        />
                         {sub(t('table.monthly'))}
                       </>
                     ) : (

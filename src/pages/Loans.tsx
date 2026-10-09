@@ -15,6 +15,8 @@ import { ConfirmDeleteDialog } from '@/components/common/ConfirmDeleteDialog';
 import { StatSkeleton, Stats } from '@/components/common/Stat';
 import { LoanFormDialog } from '@/components/loans/LoanFormDialog';
 import { LoansSummary } from '@/components/loans/LoansSummary';
+import { ConversionQualityNote } from '@/components/reports/ReportQualityNote';
+import { useCurrency } from '@/lib/currency';
 import { DebtTrajectoryCard } from '@/components/loans/DebtTrajectoryCard';
 import { LoansTable } from '@/components/loans/LoansTable';
 
@@ -28,7 +30,8 @@ type Modal = 'add' | 'edit' | 'delete' | null;
 export default function Loans() {
   const { t } = useTranslation('loans');
   const fmt = useFormat();
-  const { rows, metrics, isLoading, today } = useLoans();
+  const { rows, metrics, isLoading, today, convert } = useLoans();
+  const { currencyCode } = useCurrency();
   const { createMutation, updateMutation, deleteMutation } = useLoanMutations();
   const [modal, setModal] = useState<Modal>(null);
   const [selected, setSelected] = useState<Loan | null>(null);
@@ -98,8 +101,12 @@ export default function Loans() {
         />
       ) : (
         <>
+          <ConversionQualityNote
+            quality={{ missingCurrencies: metrics.missing }}
+            currency={currencyCode}
+          />
           <LoansSummary metrics={metrics} today={today} />
-          <DebtTrajectoryCard rows={rows} metrics={metrics} today={today} />
+          <DebtTrajectoryCard rows={rows} metrics={metrics} today={today} convert={convert} />
           <LoansTable rows={rows} today={today} onEdit={open('edit')} onDelete={open('delete')} />
         </>
       )}

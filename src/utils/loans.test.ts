@@ -4,6 +4,9 @@ import { loanMetrics, loanRow, monthsAhead } from './loans';
 
 const day = (y: number, m: number, d: number) => Date.UTC(y, m - 1, d) / 1000;
 const TODAY = day(2026, 10, 3);
+/** 1 EUR = 25 CZK; no rate for KWD. */
+const convert = (amount: number, currency: string) =>
+  currency === 'KWD' ? null : currency === 'EUR' ? amount * 25 : amount;
 
 function loan(partial: Partial<Loan>): Loan {
   return {
@@ -29,23 +32,24 @@ describe('loanRow', () => {
   it('derives the repaid share, payoff and fixation from the wire loan', () => {
     const row = loanRow(
       loan({ interestRateValidityDate: day(2028, 3, 1), monthlyPayment: '10000' }),
-      TODAY
+      TODAY,
+      convert
     );
-    expect(row.outstandingCzk).toBe(870_000);
+    expect(row.converted?.outstanding).toBe(870_000);
     expect(row.repaidShare).toBeCloseTo(0.275, 3);
     expect(row.matured).toBe(false);
     expect(row.fixationEnd).toBe(day(2028, 3, 1));
     // 33 payments made (Feb 2024 .. Oct 2026): 1 200 000 − 330 000 = 870 000, 87 to go
     expect(row.trajectory.balanceToday).toBe(870_000);
     expect(row.payoffDay).toBe(day(2034, 1, 1));
-    expect(row.interestNext12Czk).toBe(0);
+    expect(row.converted?.interestNext12).toBe(0);
   });
 
   it('marks paid-off and ended loans as matured and converts foreign currency', () => {
-    expect(loanRow(loan({ outstandingBalance: '0.00' }), TODAY).matured).toBe(true);
-    expect(loanRow(loan({ endDate: day(2026, 1, 1) }), TODAY).matured).toBe(true);
-    const eur = loanRow(loan({ currency: 'EUR', outstandingBalance: '100' }), TODAY);
-    expect(eur.outstandingCzk).toBeGreaterThan(100);
+    expect(loanRow(loan({ outstandingBalance: '0.00' }), TODAY, convert).matured).toBe(true);
+    expect(loanRow(loan({ endDate: day(2026, 1, 1) }), TODAY, convert).matured).toBe(true);
+    const eur = loanRow(loan({ currency: 'EUR', outstandingBalance: '100' }), TODAY, convert);
+    expect(eur.converted?.outstanding).toBe(2_500);
   });
 });
 
@@ -53,7 +57,8 @@ describe('loanMetrics', () => {
   it('weights the rate by balance and finds the next payoff and fixation', () => {
     const big = loanRow(
       loan({ id: 'a', interestRate: '4', interestRateValidityDate: day(2028, 3, 1) }),
-      TODAY
+      TODAY,
+      convert
     );
     const small = loanRow(
       loan({
@@ -65,9 +70,10 @@ describe('loanMetrics', () => {
         interestRate: '8',
         startDate: day(2024, 7, 1),
       }),
-      TODAY
+      TODAY,
+      convert
     );
-    const old = loanRow(loan({ id: 'c', outstandingBalance: '0.00' }), TODAY);
+    const old = loanRow(loan({ id: 'c', outstandingBalance: '0.00' }), TODAY, convert);
     const m = loanMetrics([big, small, old], TODAY);
     expect(m.count).toBe(3);
     expect(m.activeCount).toBe(2);
@@ -79,8 +85,30 @@ describe('loanMetrics', () => {
     expect(m.debtFreeDay).toBe(big.payoffDay);
   });
 
+  it('excludes unconvertible loans from the totals and reports them', () => {
+    const czk = loanRow(loan({ id: 'a', interestRate: '4' }), TODAY, convert);
+    const eur = loanRow(
+      loan({ id: 'b', currency: 'EUR', outstandingBalance: '100', interestRate: '2' }),
+      TODAY,
+      convert
+    );
+    const kwd = loanRow(
+      loan({ id: 'c', currency: 'KWD', outstandingBalance: '7000', interestRate: '9' }),
+      TODAY,
+      convert
+    );
+    expect(kwd.converted).toBeNull();
+    expect(kwd.outstanding).toBe(7000);
+    const m = loanMetrics([czk, eur, kwd], TODAY);
+    expect(m.totalOutstanding).toBe(870_000 + 2_500);
+    expect(m.totalMonthlyPayment).toBe(10_000 + 250_000);
+    expect(m.averageInterestRate).toBeCloseTo((870_000 * 4 + 2_500 * 2) / 872_500, 6);
+    expect(m.activeCount).toBe(3);
+    expect(m.missing).toEqual(['KWD']);
+  });
+
   it('has no debt-free day when a loan never pays off', () => {
-    const stuck = loanRow(loan({ monthlyPayment: '0' }), TODAY);
+    const stuck = loanRow(loan({ monthlyPayment: '0' }), TODAY, convert);
     expect(loanMetrics([stuck], TODAY).debtFreeDay).toBeNull();
     expect(loanMetrics([stuck], TODAY).nextPayoff).toBeNull();
   });

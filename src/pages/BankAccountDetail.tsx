@@ -137,7 +137,7 @@ export default function BankAccountDetail() {
   const { account, isLoading } = useBankAccount(accountId);
   const { deleteTransaction } = useBankTransactionMutations(accountId);
   const { updateAccount, deleteAccount } = useBankAccountMutations();
-  const { fx } = useCurrency();
+  const { fx, currencyCode } = useCurrency();
   const { getLocale } = useLanguage();
   const fmt = useFormat();
   const categoryName = useCategoryName();
@@ -389,9 +389,9 @@ export default function BankAccountDetail() {
     </p>
   ) : null;
   // Account-native amounts only; other currency rows are excluded from summaries/chart.
-  const accountCurrency = (account?.currency || 'CZK') as CurrencyCode;
+  const accountCurrency = (account?.currency || currencyCode) as CurrencyCode;
   const formatAccountAmount = (value: number) =>
-    formatAmountInCurrency(value, accountCurrency, getLocale());
+    formatAmountInCurrency(value, accountCurrency, getLocale(), currencyCode);
 
   const monthNow = useMemo(
     () => summarizeFlow(thisMonthResult?.transactions ?? [], account?.currency),
@@ -565,7 +565,7 @@ export default function BankAccountDetail() {
 
   // ---- Derived figures for the hero and the chart ----
   const balance = parseFloat(account?.balance || '0');
-  const currency = account?.currency || 'CZK';
+  const currency = account?.currency || currencyCode;
   const lastImport = (importBatches ?? []).reduce<number | null>(
     (max, b) => (max === null || b.importedAt > max ? b.importedAt : max),
     null

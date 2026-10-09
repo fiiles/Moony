@@ -96,10 +96,11 @@ function spaceSign(text: string): string {
  * `mainCurrency` is the profile currency: only that one gets the compact
  * narrow symbol ("$", "Kč"); every other currency shows its ISO code so that
  * amounts of different currencies are never mistaken for each other ("$" is
- * also CAD/AUD, "kr" is four currencies). Without a `mainCurrency` (callers
- * with no profile context) the narrow symbol is used for every currency.
+ * also CAD/AUD, "kr" is four currencies). It is a required argument: callers
+ * with no profile context pass `undefined` explicitly, and then every currency
+ * shows its ISO code.
  */
-export function createFormatters(locale: string, mainCurrency?: string): Formatters {
+export function createFormatters(locale: string, mainCurrency: string | undefined): Formatters {
   const main = mainCurrency?.trim().toUpperCase();
   const money: Formatters['money'] = (amount, currency, opts = {}) => {
     const label = (currency || '').trim();
@@ -119,7 +120,7 @@ export function createFormatters(locale: string, mainCurrency?: string): Formatt
         ...base,
         style: 'currency',
         currency: code,
-        currencyDisplay: main === undefined || code === main ? 'narrowSymbol' : 'code',
+        currencyDisplay: code === main ? 'narrowSymbol' : 'code',
       });
       // numberFormat() falls back to a plain format for codes Intl rejects;
       // detect that and append the code ourselves.
@@ -204,7 +205,7 @@ export function createFormatters(locale: string, mainCurrency?: string): Formatt
 
 const formatterCache = new Map<string, Formatters>();
 /** Memoized per locale and main currency (formatters are pure). */
-export function getFormatters(locale: string, mainCurrency?: string): Formatters {
+export function getFormatters(locale: string, mainCurrency: string | undefined): Formatters {
   const key = `${locale}|${mainCurrency?.trim().toUpperCase() ?? ''}`;
   let f = formatterCache.get(key);
   if (!f) {

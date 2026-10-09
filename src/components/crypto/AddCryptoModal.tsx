@@ -172,10 +172,12 @@ export function AddCryptoModal({ open, onOpenChange }: AddCryptoModalProps) {
   const quantity = Number(form.watch('quantity')) || 0;
   const pricePerUnit = Number(form.watch('pricePerUnit')) || 0;
   const total = quantity * pricePerUnit;
+  // The main-currency estimate is left out when no rate is known (never 1:1).
+  const totalInMain = currency === currencyCode ? null : convert(total, currency);
   const totalDisplay =
-    currency === currencyCode
+    totalInMain === null
       ? fmt.money(total, currency)
-      : `${fmt.money(total, currency)} ≈ ${fmt.money(convert(total, currency, currencyCode as CurrencyCode), currencyCode)}`;
+      : `${fmt.money(total, currency)} ≈ ${fmt.money(totalInMain, currencyCode)}`;
 
   return (
     <Dialog

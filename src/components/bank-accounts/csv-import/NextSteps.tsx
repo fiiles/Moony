@@ -7,6 +7,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { useFormat } from '@/lib/use-format';
+import { useCurrency } from '@/lib/currency';
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -64,6 +65,7 @@ export function NextSteps({
   const updateBalance = useBalanceAnchor(accountId);
   const enableRulePack = useEnableRulePack();
   const fmt = useFormat();
+  const { currencyCode } = useCurrency();
   const [confirmBalance, setConfirmBalance] = useState(false);
   const [done, setDone] = useState<ReadonlySet<NextStepId>>(new Set());
 
@@ -150,7 +152,7 @@ export function NextSteps({
     },
     balance: {
       label: t('csvImport.next.setBalance', {
-        balance: formatBalance(statement?.amount ?? '0', statement?.currency, locale),
+        balance: formatBalance(statement?.amount ?? '0', statement?.currency, locale, currencyCode),
       }),
       hint: balanceBlocked
         ? t('readiness.balanceBlocked')
@@ -172,7 +174,12 @@ export function NextSteps({
             <DialogTitle>{t('readiness.confirmBalance')}</DialogTitle>
             <DialogDescription>
               {t('readiness.balanceConfirmDescription', {
-                amount: formatBalance(statement?.amount ?? '0', statement?.currency, locale),
+                amount: formatBalance(
+                  statement?.amount ?? '0',
+                  statement?.currency,
+                  locale,
+                  currencyCode
+                ),
                 date: statement ? fmt.day(statement.asOf) : t('readiness.unknownDate'),
                 currentDate: account?.balanceAsOf
                   ? fmt.day(account.balanceAsOf)

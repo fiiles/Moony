@@ -22,7 +22,7 @@ describe('report currency boundaries', () => {
       ],
       incomeSources: [],
     };
-    const fmt = createFormatters('en');
+    const fmt = createFormatters('en', 'CZK');
     const shown = (text: string) => Number(text.replace(/[^\d.-]/g, ''));
     const plain = (text: string) => text.replace(/\s/g, ' ');
     const rows = report.expenseCategories.map((g) =>
@@ -47,11 +47,11 @@ describe('report currency boundaries', () => {
   });
 
   it('uses ISO precision beyond the picker and for signed native details', () => {
-    const fmt = createFormatters('en');
+    const fmt = createFormatters('en', 'CZK');
     expect(formatReportMoney(fmt, 1.2345, 'JOD')).toMatch(/1\.235/);
     expect(formatReportMoney(fmt, 1500.4, 'UGX')).toMatch(/1,500$/);
     expect(formatReportMoney(fmt, 0.123, 'KWD')).toMatch(/0\.123/);
-    expect(formatReportMoney(fmt, 1234, 'JPY')).toBe('¥1,234');
+    expect(formatReportMoney(createFormatters('en', 'JPY'), 1234, 'JPY')).toBe('¥1,234');
     const signed = formatReportMoney(fmt, -100.4, 'CZK', { signed: true });
     expect(signed.replace(/\s/g, ' ')).toBe('\u2212 Kč 100.40');
   });

@@ -61,7 +61,7 @@ export default function Projection() {
   const { t } = useTranslation('reports');
   const { t: tc } = useTranslation('common');
   const fmt = useFormat();
-  const { currencyCode, fxRevision, fxConvert } = useCurrency();
+  const { currencyCode, fxRevision, convert } = useCurrency();
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
@@ -136,7 +136,7 @@ export default function Projection() {
   // projection leaves it out as well)
   const contributionInReport = (p: { contribution: number; contributionCurrency: string }) =>
     p.contribution > 0 && p.contributionCurrency
-      ? fxConvert(p.contribution, p.contributionCurrency, reportCurrency)
+      ? convert(p.contribution, p.contributionCurrency, reportCurrency)
       : 0;
   const monthlyContributions = params.reduce(
     (s, p) => s + (p.enabled ? (contributionInReport(p) ?? 0) : 0),

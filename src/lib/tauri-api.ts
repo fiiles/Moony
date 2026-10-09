@@ -593,18 +593,8 @@ export const portfolioApi = {
 
   recordSnapshot: () => tauriInvoke<void>('record_portfolio_snapshot'),
 
-  refreshExchangeRates: () => tauriInvoke<Record<string, number>>('refresh_exchange_rates'),
-
-  getExchangeRates: () => tauriInvoke<Record<string, number>>('get_exchange_rates'),
-
-  getExchangeRatesForDate: (date: number) =>
-    tauriInvoke<Record<string, number>>('get_exchange_rates_for_date', { date }),
-
-  getExchangeRatesForDateRange: (startDate: number, endDate: number) =>
-    tauriInvoke<Record<number, Record<string, number>>>('get_exchange_rates_for_date_range', {
-      startDate,
-      endDate,
-    }),
+  /** Fetches the ECB rates, stores them and extends the rate history; read quotes via getFxSnapshot. */
+  refreshExchangeRates: () => tauriInvoke<void>('refresh_exchange_rates'),
 
   getPriceStatus: () => tauriInvoke<PriceStatus>('get_price_status'),
 

@@ -85,12 +85,12 @@ export function CryptoTable({
   onDelete,
   isLoading,
 }: CryptoTableProps) {
-  const { fxConvert } = useCurrency();
+  const { convert } = useCurrency();
   const fmt = useFormat();
   // The rate in the report currency, converted with the response's quote snapshot
   const unitPrice = useCallback(
-    (h: CryptoRow) => fxConvert(h.originalCurrentPrice, h.originalCurrency, currency),
-    [fxConvert, currency]
+    (h: CryptoRow) => convert(h.originalCurrentPrice, h.originalCurrency, currency),
+    [convert, currency]
   );
   const { t } = useTranslation('crypto');
   const [search, setSearch] = useState('');

@@ -59,7 +59,7 @@ export default function InsuranceDetail() {
   const { t } = useTranslation('insurance');
   const { t: tc } = useTranslation('common');
   const fmt = useFormat();
-  const { currencyCode, fxConvert, fxReady } = useCurrency();
+  const { currencyCode, convert, fxReady } = useCurrency();
   const duration = useDurationText('insurance');
   const { rows, metrics, isLoading, today } = useInsurance();
   const { setStatus, remove } = useInsuranceMutations();
@@ -84,7 +84,7 @@ export default function InsuranceDetail() {
     enabled: !!id,
   });
 
-  const currency = policy?.regularPaymentCurrency || 'CZK';
+  const currency = policy?.regularPaymentCurrency || currencyCode;
   const money = (v: number) => fmt.money(v, currency, { decimals: 0 });
   const series = useMemo(() => (policy ? paidSeries(policy, today, 12) : null), [policy, today]);
 
@@ -176,7 +176,7 @@ export default function InsuranceDetail() {
   );
 
   // Ranked by their value in the main currency: limits are in their own currencies
-  const limits = limitsByValue(policy.limits, (amount, from) => fxConvert(amount, from));
+  const limits = limitsByValue(policy.limits, (amount, from) => convert(amount, from));
 
   return (
     <>

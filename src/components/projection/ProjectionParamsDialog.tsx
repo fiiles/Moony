@@ -107,10 +107,10 @@ function ParamsForm({
 }) {
   const { t } = useTranslation('reports');
   const { t: tc } = useTranslation('common');
-  const { currencyCode, fxConvert } = useCurrency();
+  const { currencyCode, convert } = useCurrency();
   // Kept so submit can tell an untouched contribution (stored amount and currency kept as is) from an edited one
   const [initial] = useState<Record<string, Draft>>(() =>
-    initialDraft(params, currencyCode, (amount, from) => fxConvert(amount, from, currencyCode))
+    initialDraft(params, currencyCode, (amount, from) => convert(amount, from, currencyCode))
   );
   const [draft, setDraft] = useState<Record<string, Draft>>(initial);
 

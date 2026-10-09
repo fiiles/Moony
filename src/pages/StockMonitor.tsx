@@ -6,6 +6,7 @@ import type { WatchedStockRow } from '@shared/schema';
 import { currencyDecimals } from '@shared/currencies';
 import { exchangeName } from '@/utils/exchange-names';
 import { useFormat } from '@/lib/use-format';
+import { useCurrency } from '@/lib/currency';
 import { useShellPage } from '@/components/shell/shell-context';
 import { usePortfolioFollowCandidates, useWatchedStocks } from '@/hooks/use-stock-monitor';
 import { useStockMonitorMutations } from '@/hooks/use-stock-monitor-mutations';
@@ -68,6 +69,7 @@ export default function StockMonitor() {
   const { t: tc } = useTranslation('common');
   const fmt = useFormat();
   const locale = fmt.locale;
+  const { currencyCode } = useCurrency();
   const [, setLocation] = useLocation();
   const { data: rows = [], isLoading } = useWatchedStocks();
   const { data: portfolioCandidates = [] } = usePortfolioFollowCandidates();
@@ -96,7 +98,7 @@ export default function StockMonitor() {
 
   const price = (v: string | null, currency: string | null) => {
     const n = num(v);
-    return n === null ? '—' : formatNativePrice(n, currency, locale);
+    return n === null ? '—' : formatNativePrice(n, currency, locale, currencyCode);
   };
   const plain = (n: number, currency: string | null) => {
     const d = currencyDecimals(currency);
@@ -385,7 +387,14 @@ export default function StockMonitor() {
                           {fmt.percent(change.pct / 100, 1, { signed: true })}
                         </b>
                         <small className="mt-0.5 block text-[10px] font-500 text-ink-4">
-                          {formatNativePrice(change.abs, row.currency, locale, undefined, true)}
+                          {formatNativePrice(
+                            change.abs,
+                            row.currency,
+                            locale,
+                            currencyCode,
+                            undefined,
+                            true
+                          )}
                         </small>
                       </>
                     ) : (

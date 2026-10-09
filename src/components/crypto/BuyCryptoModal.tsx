@@ -109,10 +109,12 @@ export function BuyCryptoModal({ investment, open, onOpenChange }: BuyCryptoModa
 
   const currency = form.watch('currency') as CurrencyCode;
   const total = (Number(form.watch('quantity')) || 0) * (Number(form.watch('pricePerUnit')) || 0);
+  // The main-currency estimate is left out when no rate is known (never 1:1).
+  const totalInMain = currency === currencyCode ? null : convert(total, currency);
   const totalDisplay =
-    currency === currencyCode
+    totalInMain === null
       ? fmt.money(total, currency)
-      : `${fmt.money(total, currency)} ≈ ${fmt.money(convert(total, currency, currencyCode as CurrencyCode), currencyCode)}`;
+      : `${fmt.money(total, currency)} ≈ ${fmt.money(totalInMain, currencyCode)}`;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

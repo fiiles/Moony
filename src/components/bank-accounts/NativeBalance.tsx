@@ -35,7 +35,7 @@ export function NativeBalance({
 }: NativeBalanceProps) {
   const { t } = useTranslation('bank_accounts');
   const fmt = useFormat();
-  const { currencyCode: displayCurrency, fx, fxConvert } = useCurrency();
+  const { currencyCode: displayCurrency, fx, convert } = useCurrency();
   const updatedAt = useRatesUpdatedAt();
 
   if (currency === displayCurrency) {
@@ -46,7 +46,7 @@ export function NativeBalance({
   const from = currency;
   const to = displayCurrency;
   const ratesLoaded = fx !== undefined;
-  const rate = fxConvert(1, from, to);
+  const rate = convert(1, from, to);
 
   let secondary: string | null = null;
   let tooltip: string | null = null;

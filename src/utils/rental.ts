@@ -143,8 +143,8 @@ export function rentalResult(input: RentalInput): RentalResult {
 
 /** Loan fields of the calculator, prefilled from a property's linked loans. */
 export interface LinkedLoanInput {
-  /** Sum of the original principals in the display currency (0 without loans). */
-  loan: number;
+  /** Sum of the original principals in the display currency (0 without loans); null when a principal has no rate. */
+  loan: number | null;
   /** Principal-weighted term in years; null when no loan has a known term. */
   loanYears: number | null;
   /** Principal-weighted annual rate in percent; null without loans. */
@@ -175,14 +175,16 @@ function loanTermYears(loan: Loan): number | null {
  */
 export function linkedLoanInput(
   loans: Loan[],
-  toDisplay: (amount: number, currency: string) => number
+  toDisplay: (amount: number, currency: string) => number | null
 ): LinkedLoanInput {
   let loan = 0;
   let rateSum = 0;
   let termSum = 0;
   let termWeight = 0;
   for (const l of loans) {
-    const principal = toDisplay(Number(l.principal) || 0, l.currency || 'CZK');
+    const principal = toDisplay(Number(l.principal) || 0, l.currency);
+    // A loan without a rate cannot be summed: the prefill stays unknown, never 1:1.
+    if (principal === null) return { loan: null, loanYears: null, rate: null };
     loan += principal;
     rateSum += principal * (Number(l.interestRate) || 0);
     const term = loanTermYears(l);

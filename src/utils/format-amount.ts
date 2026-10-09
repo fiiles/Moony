@@ -19,7 +19,8 @@ export function formatAmountWithCode(
 ): string {
   const code = currency || '';
   const decimals = currencyDecimals(code);
-  const formatted = getFormatters(locale).number(amount, {
+  // No money is formatted here: no main currency needed.
+  const formatted = getFormatters(locale, undefined).number(amount, {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
   });
@@ -28,14 +29,16 @@ export function formatAmountWithCode(
 
 /**
  * Formats an amount in a given currency (symbol placement and separators
- * follow the UI `locale`): "€1,234.56" / "1 234,56 €" / "1 234 Kč". Falls back
- * to "<number> <code>" for codes Intl rejects.
+ * follow the UI `locale`): "€1,234.56" / "1 234,56 €" / "1 234 Kč" for the
+ * main (profile) currency, the ISO code for any other ("EUR 1,234.56"). Falls
+ * back to "<number> <code>" for codes Intl rejects.
  */
 export function formatAmountInCurrency(
   amount: number,
   currency: string | null | undefined,
-  locale: string = FALLBACK_LOCALE
+  locale: string,
+  mainCurrency: string | undefined
 ): string {
   if (!Number.isFinite(amount)) return '';
-  return getFormatters(locale).money(amount, currency ?? '');
+  return getFormatters(locale, mainCurrency).money(amount, currency ?? '');
 }

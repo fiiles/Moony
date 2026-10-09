@@ -3,6 +3,7 @@ import { CurrencyCode, CurrencyDef } from '@shared/currencies';
 import type { FxQuotes } from '@shared/fx';
 
 export type CurrencyContextValue = {
+  /** The profile (main) currency: reports default to it, and only it is shown as a symbol. */
   currencyCode: CurrencyCode;
   currency: CurrencyDef;
   /** Current quotes (reference-based, derived codes included); undefined until loaded. */
@@ -16,30 +17,10 @@ export type CurrencyContextValue = {
   fxReady: boolean;
   /**
    * Convert at the current quotes; `to` defaults to the profile currency.
-   * Null when a quote is missing (never 1:1). Renamed to `convert` in Task 21.
+   * Null when a quote is missing (never 1:1); same currency is the identity.
    */
-  fxConvert: (amount: number, from: string, to?: string) => number | null;
+  convert: (amount: number, from: string, to?: string) => number | null;
   setCurrency: (c: CurrencyCode) => void;
-  /** @deprecated removed in Task 21 */
-  formatCurrency: (value: number, opts?: Intl.NumberFormatOptions) => string;
-  /**
-   * Convert a CZK value to the display currency and format it with an explicit sign, 0 decimals.
-   * @deprecated removed in Task 21
-   */
-  formatCurrencySigned: (value: number) => string;
-  /** @deprecated removed in Task 21 */
-  formatCurrencyRaw: (value: number, opts?: Intl.NumberFormatOptions) => string;
-  /** @deprecated removed in Task 21 */
-  formatCurrencyShort: (value: number) => string;
-  /**
-   * Format a price with smart rounding: the currency's decimals below 1000, 0 decimals from 1000 up
-   * @deprecated removed in Task 21
-   */
-  formatPrice: (value: number) => string;
-  /** CZK-based, 1:1 fallback for unknown codes. @deprecated removed in Task 21 (use fxConvert) */
-  convert: (amount: number, from: CurrencyCode, to: CurrencyCode) => number;
-  /** @deprecated removed in Task 21 (use fxRevision) */
-  ratesTimestamp: number; // Added to trigger re-renders when rates update
 };
 
 /** Consumed by CurrencyProvider in ./currency-provider.tsx; use useCurrency() elsewhere. */

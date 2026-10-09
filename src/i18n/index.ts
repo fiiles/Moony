@@ -175,7 +175,8 @@ export function formatDateForLanguage(
   lang: SupportedLanguage,
   options?: Intl.DateTimeFormatOptions
 ): string {
-  return getFormatters(getLocaleForLanguage(lang)).date(date, options);
+  // No money is formatted here: no main currency needed.
+  return getFormatters(getLocaleForLanguage(lang), undefined).date(date, options);
 }
 
 /**
@@ -186,5 +187,6 @@ export function formatNumberForLanguage(
   lang: SupportedLanguage,
   options?: Intl.NumberFormatOptions
 ): string {
-  return getFormatters(getLocaleForLanguage(lang)).number(value, options);
+  // No money is formatted here: no main currency needed.
+  return getFormatters(getLocaleForLanguage(lang), undefined).number(value, options);
 }

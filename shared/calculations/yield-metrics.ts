@@ -56,18 +56,3 @@ export function calculateAnnualYield(input: YieldInput): number {
       return 0;
   }
 }
-
-/**
- * Calculate yield percentage relative to purchase cost.
- * Useful for comparing yields across different investments.
- */
-export function calculateYieldPercentOnCost(annualYield: number, totalCost: number): number {
-  return totalCost > 0 ? (annualYield / totalCost) * 100 : 0;
-}
-
-/**
- * Calculate yield percentage relative to market value.
- */
-export function calculateYieldPercentOnMarket(annualYield: number, marketValue: number): number {
-  return marketValue > 0 ? (annualYield / marketValue) * 100 : 0;
-}

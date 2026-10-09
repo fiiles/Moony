@@ -174,8 +174,10 @@ export function ManualDividendModal({ open, onOpenChange, investment }: ManualDi
                     const total = amount * quantity;
                     const formCurrency = form.watch('currency') as CurrencyCode;
 
-                    if (formCurrency !== userCurrency) {
-                      const convertedTotal = convert(total, formCurrency, userCurrency);
+                    // No main-currency figure without a known rate (never 1:1).
+                    const convertedTotal =
+                      formCurrency === userCurrency ? null : convert(total, formCurrency);
+                    if (convertedTotal !== null) {
                       return `${fmt.money(total, formCurrency)} / ${fmt.money(convertedTotal, userCurrency)}`;
                     }
 

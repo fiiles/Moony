@@ -70,10 +70,9 @@ export function SyncProvider({ children }: { children: ReactNode }) {
         if (needsRefresh) {
           await Promise.allSettled([
             status.exchangeRatesStale
-              ? portfolioApi.refreshExchangeRates().then((rates) => {
+              ? portfolioApi.refreshExchangeRates().then(() => {
                   queryClient.invalidateQueries({ queryKey: FX_SNAPSHOT_KEY });
                   queryClient.invalidateQueries({ queryKey: FX_HISTORY_KEY });
-                  return rates;
                 })
               : Promise.resolve(),
             status.stocksStale ? priceApi.refreshStockPrices() : Promise.resolve(),

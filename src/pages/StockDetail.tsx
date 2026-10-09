@@ -80,7 +80,7 @@ export default function StockDetail() {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const id = params?.id;
-  const { currencyCode, fxRevision, fxConvert } = useCurrency();
+  const { currencyCode, fxRevision, convert } = useCurrency();
   const { t } = useTranslation('stocks');
   const { t: tc } = useTranslation('common');
   const fmt = useFormat();
@@ -187,7 +187,7 @@ export default function StockDetail() {
   const stockCurrency = holdingData?.originalCurrency ?? reportCurrency;
   const avgCostCurrency = holdingData?.originalAvgCostCurrency ?? reportCurrency;
   const originalPriceNum = holdingData?.originalCurrentPrice ?? 0;
-  const currentPrice = fxConvert(originalPriceNum, stockCurrency, reportCurrency);
+  const currentPrice = convert(originalPriceNum, stockCurrency, reportCurrency);
   const currentValue = holdingData?.marketValue ?? null;
   const totalInvested = holdingData?.totalCost ?? null;
   const averageCost = costPerUnit(totalInvested, quantity);
@@ -319,7 +319,7 @@ export default function StockDetail() {
           [t('detail.companyInfo.forwardPe'), figureText(companyInfo.forwardPe, ratioText)],
           [
             t('detail.companyInfo.marketCap'),
-            formatMarketCap(companyInfo.marketCap, companyCurrency, fmt.locale),
+            formatMarketCap(companyInfo.marketCap, companyCurrency, fmt.locale, currencyCode),
           ],
           [
             t('detail.companyInfo.beta'),

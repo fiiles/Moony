@@ -13,6 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useFormat } from '@/lib/use-format';
+import { useCurrency } from '@/lib/currency';
 import { cn } from '@/lib/utils';
 import { formatNativePrice, inferTargetDirection, targetReached } from '@/utils/stock-monitor';
 import type { TargetDirection } from '@shared/schema';
@@ -75,6 +76,7 @@ function TargetForm({
   const { t } = useTranslation('stockMonitor');
   const { t: tc } = useTranslation('common');
   const fmt = useFormat();
+  const { currencyCode } = useCurrency();
   const [draft, setDraft] = useState(target.targetPrice ?? '');
   const current = parseFloat(target.currentPrice ?? '');
   const high = parseFloat(target.fiftyTwoWeekHigh ?? '');
@@ -99,11 +101,11 @@ function TargetForm({
       ? targetReached(knownCurrent, draftValue, effective)
         ? t('target.explainReached')
         : t(effective === 'below' ? 'target.explainBelow' : 'target.explainAbove', {
-            price: formatNativePrice(draftValue, target.currency, fmt.locale),
+            price: formatNativePrice(draftValue, target.currency, fmt.locale, currencyCode),
             pct: fmt.percent(draftValue / knownCurrent - 1, 1, { signed: true }),
           })
       : t(effective === 'below' ? 'target.explainBelowNoPrice' : 'target.explainAboveNoPrice', {
-          price: formatNativePrice(draftValue, target.currency, fmt.locale),
+          price: formatNativePrice(draftValue, target.currency, fmt.locale, currencyCode),
         })
     : null;
 
@@ -131,10 +133,14 @@ function TargetForm({
 
   const hintParts = [
     isFinite(current)
-      ? t('target.hintCurrent', { price: formatNativePrice(current, target.currency, fmt.locale) })
+      ? t('target.hintCurrent', {
+          price: formatNativePrice(current, target.currency, fmt.locale, currencyCode),
+        })
       : null,
     isFinite(high)
-      ? t('target.hintHigh', { price: formatNativePrice(high, target.currency, fmt.locale) })
+      ? t('target.hintHigh', {
+          price: formatNativePrice(high, target.currency, fmt.locale, currencyCode),
+        })
       : null,
   ].filter(Boolean);
 

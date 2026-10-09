@@ -93,7 +93,7 @@ export function BudgetGoalDialog({
 }: BudgetGoalDialogProps) {
   const { t } = useTranslation('budgeting');
   const { t: tc } = useTranslation('common');
-  const { currencyCode, ratesTimestamp } = useCurrency();
+  const { currencyCode, fxRevision } = useCurrency();
   const editorCurrency = goal?.currency ?? currencyCode;
   const categoryName = useCategoryName();
   const queryClient = useQueryClient();
@@ -164,7 +164,7 @@ export function BudgetGoalDialog({
       averageRange.end,
       'monthly',
       editorCurrency,
-      ratesTimestamp,
+      fxRevision,
     ],
     queryFn: () =>
       budgetingApi.getReport(

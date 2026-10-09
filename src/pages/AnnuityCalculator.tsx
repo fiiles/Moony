@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next';
 import { ChevronDown } from 'lucide-react';
 import { useCurrency } from '@/lib/currency';
 import { useFormat } from '@/lib/use-format';
-import type { CurrencyCode } from '@shared/currencies';
 import { useLoans } from '@/hooks/use-loans';
 import { useShellPage } from '@/components/shell/shell-context';
 import {
@@ -45,7 +44,7 @@ import { MoonyBarChart, type BarMark } from '@/components/charts/MoonyBarChart';
 import { MoonyLinesChart } from '@/components/charts/MoonyLinesChart';
 import { ChartLegend } from '@/components/charts/ChartLegend';
 import { CalcField } from '@/components/calculators/CalcField';
-import { parseCalcNumber } from '@/components/calculators/calc-number';
+import { parseCalcNumber, scaledDefault } from '@/components/calculators/calc-number';
 
 const FREQUENCIES: readonly PaymentPeriodicity[] = [
   'monthly',
@@ -54,6 +53,8 @@ const FREQUENCIES: readonly PaymentPeriodicity[] = [
   'annually',
 ];
 const PREVIEW_ROWS = 10;
+/** The example loan the calculator opens with, in EUR (scaled to the main currency). */
+const EXAMPLE_LOAN_EUR = 140_000;
 const DAY = 86_400;
 
 /**
@@ -65,11 +66,14 @@ const DAY = 86_400;
  */
 export default function AnnuityCalculator() {
   const { t } = useTranslation('calculators');
-  const { formatCurrencyRaw, currencyCode, convert } = useCurrency();
+  const { currencyCode, convert } = useCurrency();
   const fmt = useFormat();
   const { loans } = useLoans();
 
-  const [amount, setAmount] = useState('3 500 000');
+  // The example loan is defined in EUR and scaled to the main currency; empty without a rate.
+  const [amount, setAmount] = useState(() =>
+    scaledDefault(EXAMPLE_LOAN_EUR, convert, (v) => fmt.number(v, { maximumFractionDigits: 0 }))
+  );
   const [years, setYears] = useState('25');
   const [rate, setRate] = useState('5,1');
   const [frequency, setFrequency] = useState<PaymentPeriodicity>('monthly');
@@ -102,7 +106,8 @@ export default function AnnuityCalculator() {
 
   const startYear = new Date().getFullYear();
   const yearLabel = (y: number) => String(startYear + y - 1);
-  const money = (v: number) => formatCurrencyRaw(v);
+  // Calculator amounts are in the main currency already: formatted, never converted.
+  const money = (v: number) => fmt.money(v, currencyCode, { decimals: 0 });
   const yearsText = (n: number) => t('annuity.years', { count: n });
 
   const cross = baseYears.findIndex((y) => y.principal > y.interest);
@@ -129,14 +134,9 @@ export default function AnnuityCalculator() {
   const saving = withExtra ? base.totalInterest - withExtra.totalInterest : 0;
 
   const loadLoan = (loan: (typeof loans)[number]) => {
-    setAmount(
-      fmt.number(
-        convert(Number(loan.principal) || 0, loan.currency as CurrencyCode, currencyCode),
-        {
-          maximumFractionDigits: 0,
-        }
-      )
-    );
+    // A loan in a currency without a rate keeps the amount field as it is (never 1:1).
+    const principal = convert(Number(loan.principal) || 0, loan.currency);
+    if (principal !== null) setAmount(fmt.number(principal, { maximumFractionDigits: 0 }));
     setRate(fmt.number(parseFloat(loan.interestRate) || 0, { maximumFractionDigits: 2 }));
     if (loan.endDate) {
       const span = Math.max(1, Math.round((loan.endDate - loan.startDate) / DAY / 365.25));

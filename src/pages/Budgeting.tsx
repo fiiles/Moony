@@ -83,7 +83,7 @@ interface UnbudgetedRow {
 export default function Budgeting() {
   const { t } = useTranslation('budgeting');
   const { t: tc } = useTranslation('common');
-  const { currencyCode, ratesTimestamp } = useCurrency();
+  const { currencyCode, fxRevision } = useCurrency();
   const [accountIds, setAccountIds] = useState<string[] | undefined>(undefined);
   const fmt = useFormat();
   const queryClient = useQueryClient();
@@ -127,7 +127,7 @@ export default function Budgeting() {
       timeframe,
       accountIds,
       currencyCode,
-      ratesTimestamp,
+      fxRevision,
     ],
     queryFn: () =>
       budgetingApi.getReport(range.start, range.end, timeframe, accountIds, currencyCode),
@@ -359,7 +359,7 @@ export default function Budgeting() {
         accountIds={accountIds}
         target={txTarget}
         reportCurrency={txTarget?.budgetCurrency ?? report?.reportCurrency ?? currencyCode}
-        ratesTimestamp={ratesTimestamp}
+        fxRevision={fxRevision}
         onClose={() => setTxTarget(null)}
         start={range.start}
         end={range.end}

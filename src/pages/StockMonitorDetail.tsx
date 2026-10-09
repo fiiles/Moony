@@ -5,6 +5,7 @@ import { Eye, Plus, RefreshCw } from 'lucide-react';
 import { currencyDecimals } from '@shared/currencies';
 import { exchangeName } from '@/utils/exchange-names';
 import { useFormat } from '@/lib/use-format';
+import { useCurrency } from '@/lib/currency';
 import { useShellPage } from '@/components/shell/shell-context';
 import { useStockMonitorDetail, useStockPriceRange } from '@/hooks/use-stock-monitor';
 import { useStockMonitorMutations } from '@/hooks/use-stock-monitor-mutations';
@@ -63,6 +64,7 @@ export default function StockMonitorDetail() {
   const { t: tc } = useTranslation('common');
   const fmt = useFormat();
   const locale = fmt.locale;
+  const { currencyCode } = useCurrency();
   const [, params] = useRoute('/stock-monitor/:ticker');
   const ticker = params?.ticker ? decodeURIComponent(params.ticker) : undefined;
 
@@ -110,7 +112,7 @@ export default function StockMonitorDetail() {
         : undefined,
   });
 
-  const price = (v: number) => formatNativePrice(v, currency, locale);
+  const price = (v: number) => formatNativePrice(v, currency, locale, currencyCode);
   const plain = (n: number) => {
     const d = currencyDecimals(currency);
     return fmt.number(n, { minimumFractionDigits: d, maximumFractionDigits: d });
@@ -207,7 +209,7 @@ export default function StockMonitorDetail() {
   const dividendPct = percentFromFraction(detail.trailingDividendYield);
   const dividendPerShare =
     dividendPct !== null && isFinite(current) ? (current * dividendPct) / 100 : null;
-  const marketCap = formatMarketCap(detail.marketCap, currency, locale);
+  const marketCap = formatMarketCap(detail.marketCap, currency, locale, currencyCode);
   const peRatio = parseFloat(detail.peRatio ?? '');
   const sinceDays = followedAt
     ? Math.max(0, Math.floor((Date.now() / 1000 - followedAt) / DAY))
@@ -219,7 +221,9 @@ export default function StockMonitorDetail() {
     { label: t('detail.kv.previousClose'), value: isFinite(prevClose) ? price(prevClose) : null },
     {
       label: t('detail.kv.changeToday'),
-      value: today ? formatNativePrice(today.abs, currency, locale, undefined, true) : null,
+      value: today
+        ? formatNativePrice(today.abs, currency, locale, currencyCode, undefined, true)
+        : null,
     },
     { label: t('detail.kv.low'), value: isFinite(low) ? price(low) : null },
     { label: t('detail.kv.high'), value: isFinite(high) ? price(high) : null },
@@ -410,7 +414,7 @@ export default function StockMonitorDetail() {
           tone={today ? (today.abs >= 0 ? 'gain' : 'loss') : 'neutral'}
           delta={
             today
-              ? `${today.abs >= 0 ? '↗' : '↘'} ${formatNativePrice(today.abs, currency, locale, undefined, true)}`
+              ? `${today.abs >= 0 ? '↗' : '↘'} ${formatNativePrice(today.abs, currency, locale, currencyCode, undefined, true)}`
               : undefined
           }
           deltaNote={

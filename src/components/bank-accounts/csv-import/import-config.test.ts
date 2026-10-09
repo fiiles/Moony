@@ -373,23 +373,27 @@ describe('summarizePreview', () => {
 
 describe('formatPreviewAmount', () => {
   it('signs credits with a plus and debits with a real minus', () => {
-    expect(formatPreviewAmount('45000', 'CZK', 'en-US')).toBe('+K\u010d\u00a045,000');
-    expect(formatPreviewAmount('-1234.5', 'USD', 'en-US')).toBe('\u2212$1,234.50');
+    expect(formatPreviewAmount('45000', 'CZK', 'en-US', 'CZK')).toBe('+K\u010d\u00a045,000');
+    expect(formatPreviewAmount('-1234.5', 'USD', 'en-US', 'USD')).toBe('\u2212$1,234.50');
   });
 
   it('shows a dash when the row has no amount and the raw text when it is not a number', () => {
-    expect(formatPreviewAmount(null, 'CZK', 'en-US')).toBe('—');
-    expect(formatPreviewAmount('abc', 'CZK', 'en-US')).toBe('abc');
+    expect(formatPreviewAmount(null, 'CZK', 'en-US', 'CZK')).toBe('—');
+    expect(formatPreviewAmount('abc', 'CZK', 'en-US', 'CZK')).toBe('abc');
   });
 
   it('never rounds away cents, not even for CZK (which the app shows without decimals)', () => {
-    expect(formatPreviewAmount('-250.5', 'CZK', 'en-US')).toBe('\u2212K\u010d\u00a0250.50');
-    expect(formatPreviewAmount('0.05', 'CZK', 'en-US')).toBe('+K\u010d\u00a00.05');
-    expect(formatPreviewAmount('12.345', 'USD', 'en-US')).toBe('+$12.345');
+    expect(formatPreviewAmount('-250.5', 'CZK', 'en-US', 'CZK')).toBe('\u2212K\u010d\u00a0250.50');
+    expect(formatPreviewAmount('0.05', 'CZK', 'en-US', 'CZK')).toBe('+K\u010d\u00a00.05');
+    expect(formatPreviewAmount('12.345', 'USD', 'en-US', 'USD')).toBe('+$12.345');
   });
 
   it('formats without a currency code when the row has none', () => {
-    expect(formatPreviewAmount('12.5', null, 'en-US')).toBe('+12.50');
+    expect(formatPreviewAmount('12.5', null, 'en-US', undefined)).toBe('+12.50');
+  });
+
+  it('shows the ISO code for a currency other than the main one', () => {
+    expect(formatPreviewAmount('-1234.5', 'USD', 'en-US', 'CZK')).toBe('\u2212USD\u00a01,234.50');
   });
 });
 
@@ -595,12 +599,12 @@ describe('balanceDiffers', () => {
 
 describe('formatBalance', () => {
   it('keeps the cents of the number that will be stored, even for CZK', () => {
-    expect(formatBalance('30196.12', 'CZK', 'en-US')).toBe('K\u010d\u00a030,196.12');
-    expect(formatBalance('-250', 'USD', 'en-US')).toBe('-$250');
+    expect(formatBalance('30196.12', 'CZK', 'en-US', 'CZK')).toBe('K\u010d\u00a030,196.12');
+    expect(formatBalance('-250', 'USD', 'en-US', 'USD')).toBe('-$250');
   });
 
   it('falls back to the raw text for something that is not a number', () => {
-    expect(formatBalance('n/a', 'CZK', 'en-US')).toBe('n/a');
+    expect(formatBalance('n/a', 'CZK', 'en-US', 'CZK')).toBe('n/a');
   });
 });
 

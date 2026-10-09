@@ -10,5 +10,6 @@ export function formatBytes(bytes: number, locale: string): string {
     unit += 1;
   }
   const digits = unit === 0 ? 0 : 1;
-  return `${getFormatters(locale).number(value, { maximumFractionDigits: digits })}\u00a0${units[unit]}`;
+  // No money is formatted here: no main currency needed.
+  return `${getFormatters(locale, undefined).number(value, { maximumFractionDigits: digits })}\u00a0${units[unit]}`;
 }

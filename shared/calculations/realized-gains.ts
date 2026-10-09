@@ -4,7 +4,37 @@
  */
 
 import type { CurrencyCode } from '../currencies';
-import { compareChronologically, type DatedConvertFn } from './cost-basis';
+
+/**
+ * Chronological order for replaying transactions. Day-granular dates give
+ * every same-day transaction the same timestamp, and the API lists them
+ * newest-first without a tiebreak, so a plain stable sort can put a sell in
+ * front of the buys it depends on. Within one day buys are
+ * processed before sells; `createdAt` (then input order) breaks the rest.
+ */
+export function compareChronologically(
+  a: { type: string; transactionDate: number; createdAt?: number },
+  b: { type: string; transactionDate: number; createdAt?: number }
+): number {
+  if (a.transactionDate !== b.transactionDate) return a.transactionDate - b.transactionDate;
+  const aSell = a.type === 'sell' ? 1 : 0;
+  const bSell = b.type === 'sell' ? 1 : 0;
+  if (aSell !== bSell) return aSell - bSell;
+  if (a.createdAt !== undefined && b.createdAt !== undefined) return a.createdAt - b.createdAt;
+  return 0;
+}
+
+/**
+ * Convert `amount` from one currency to another at the rates of the given
+ * day (unix seconds). An implementation without a rate for that day returns
+ * NaN, which makes the realized result unknown rather than wrong.
+ */
+export type DatedConvertFn = (
+  amount: number,
+  from: CurrencyCode,
+  to: CurrencyCode,
+  dateTs: number
+) => number;
 
 export interface RealizedGainTransaction {
   type: string; // 'buy' | 'sell'

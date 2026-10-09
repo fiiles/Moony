@@ -55,7 +55,7 @@ export interface StockInvestment {
    * primary (first-transaction) currency, computed from the transaction
    * record. Never stored. Converting it at today's rate is wrong for any
    * other currency — derive display-currency cost from transactions at
-   * their day's rates instead (shared/calculations/cost-basis.ts).
+   * their day's rates instead (backend `services/cost_basis.rs`).
    */
   averagePrice: string;
   /** Currency of the average price (determined by first transaction) */

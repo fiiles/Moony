@@ -89,12 +89,12 @@ export function InvestmentsTable({
   isLoading,
   tagsByInvestmentId,
 }: InvestmentsTableProps) {
-  const { fxConvert } = useCurrency();
+  const { convert } = useCurrency();
   const fmt = useFormat();
   // The market price in the report currency, converted with the response's quote snapshot
   const unitPrice = useCallback(
-    (h: HoldingData) => fxConvert(h.originalCurrentPrice, h.originalCurrency, currency),
-    [fxConvert, currency]
+    (h: HoldingData) => convert(h.originalCurrentPrice, h.originalCurrency, currency),
+    [convert, currency]
   );
   const { t } = useTranslation('stocks');
   const [search, setSearch] = useState('');

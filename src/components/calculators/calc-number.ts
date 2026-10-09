@@ -3,8 +3,10 @@ import { getFormatters } from '@/lib/format';
 /** The locale's thousands separator ("," in English, a no-break space in Czech). */
 function groupSeparator(locale: string): string {
   return (
-    getFormatters(locale).number(1_000_000, { maximumFractionDigits: 0 }).replace(/\d/g, '')[0] ??
-    ''
+    // No money is formatted here: no main currency needed.
+    getFormatters(locale, undefined)
+      .number(1_000_000, { maximumFractionDigits: 0 })
+      .replace(/\d/g, '')[0] ?? ''
   );
 }
 
@@ -30,4 +32,25 @@ export function parseCalcNumber(value: string, locale: string): number {
   }
   const n = parseFloat(s);
   return isFinite(n) ? n : 0;
+}
+
+/** `value` rounded to `digits` significant digits (5 436 123 → 5 400 000). */
+export function roundSignificant(value: number, digits = 2): number {
+  if (value === 0 || !Number.isFinite(value)) return 0;
+  const magnitude = 10 ** (Math.floor(Math.log10(Math.abs(value))) - digits + 1);
+  return Math.round(value / magnitude) * magnitude;
+}
+
+/**
+ * A calculator's starting amount, defined once in EUR and shown in the main
+ * currency at the current quotes as a round number (140 000 EUR → "3 500 000"
+ * in CZK). Empty when no rate is known: an amount is never carried over 1:1.
+ */
+export function scaledDefault(
+  eur: number,
+  convertFromEur: (amount: number, from: string) => number | null,
+  format: (value: number) => string
+): string {
+  const converted = convertFromEur(eur, 'EUR');
+  return converted === null ? '' : format(roundSignificant(converted));
 }

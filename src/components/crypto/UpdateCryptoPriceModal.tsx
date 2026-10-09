@@ -56,7 +56,7 @@ export function UpdateCryptoPriceModal({
   const { t } = useTranslation('crypto');
   const { t: tc } = useTranslation('common');
   const queryClient = useQueryClient();
-  const { currencyCode: userCurrency, convert, formatCurrencyRaw } = useCurrency();
+  const { currencyCode: userCurrency } = useCurrency();
   const fmt = useFormat();
   const form = useForm<FormData>({
     resolver: zodResolver(manualPriceSchema),
@@ -119,7 +119,8 @@ export function UpdateCryptoPriceModal({
 
   const price = parseFloat(form.watch('price') || '0') || 0;
   const currency = form.watch('currency') as CurrencyCode;
-  const valueDisplay = investment.quantity * convert(price, currency, userCurrency as CurrencyCode);
+  // The position's value at the entered price, in the price's own currency (always known).
+  const value = investment.quantity * price;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -174,7 +175,7 @@ export function UpdateCryptoPriceModal({
                 })}
               </span>
               <b className="text-[14px] font-650 tracking-[-0.03em] text-ink num">
-                {price > 0 ? formatCurrencyRaw(valueDisplay) : '—'}
+                {price > 0 ? fmt.money(value, currency) : '—'}
               </b>
             </div>
           </form>

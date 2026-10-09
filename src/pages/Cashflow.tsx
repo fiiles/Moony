@@ -57,7 +57,7 @@ interface Row {
 export default function Cashflow() {
   const { t } = useTranslation('reports');
   const { t: tBank } = useTranslation('bank_accounts');
-  const { currencyCode, ratesTimestamp } = useCurrency();
+  const { currencyCode, fxRevision } = useCurrency();
   const [accountIds, setAccountIds] = useState<string[] | undefined>(undefined);
   const [txTarget, setTxTarget] = useState<ReportTarget | null>(null);
   const fmt = useFormat();
@@ -66,12 +66,12 @@ export default function Cashflow() {
   // Prefix shared with the planned report, so the mutation contract's
   // ['cashflow-report'] invalidation refreshes this page too.
   const { data, isLoading, isError, refetch } = useQuery<CashflowActuals>({
-    queryKey: ['cashflow-report', 'actuals', range, accountIds, currencyCode, ratesTimestamp],
+    queryKey: ['cashflow-report', 'actuals', range, accountIds, currencyCode, fxRevision],
     queryFn: () => cashflowApi.getActuals(range, accountIds, currencyCode),
     staleTime: 0,
     refetchOnMount: 'always',
   });
-  const { money, signedMoney: formatCurrencySigned } = useReportMoney(data?.reportCurrency);
+  const { money, signedMoney } = useReportMoney(data?.reportCurrency);
 
   const amount = (v: string | number) => Number(v) || 0;
   const totalIncome = amount(data?.totalIncome ?? 0);
@@ -342,7 +342,7 @@ export default function Cashflow() {
         end={data.rangeEnd}
         accountIds={accountIds}
         reportCurrency={data.reportCurrency}
-        ratesTimestamp={ratesTimestamp}
+        fxRevision={fxRevision}
         onClose={() => setTxTarget(null)}
       />
       <Stats columns={3}>
@@ -360,7 +360,7 @@ export default function Cashflow() {
           value={
             data.averageIncome == null || data.averageExpenses == null
               ? '—'
-              : formatCurrencySigned(avgSavings)
+              : signedMoney(avgSavings)
           }
           tone={avgSavings > 0 ? 'gain' : avgSavings < 0 ? 'loss' : 'neutral'}
           noteTone="neutral"
@@ -395,9 +395,7 @@ export default function Cashflow() {
           names={[t('actuals.chart.income'), t('actuals.chart.expenses')]}
           height={200}
           formatValue={money}
-          renderExtra={(bar) =>
-            `${t('actuals.chart.balance')} ${formatCurrencySigned(bar.a - bar.b)}`
-          }
+          renderExtra={(bar) => `${t('actuals.chart.balance')} ${signedMoney(bar.a - bar.b)}`}
         />
       </Card>
 

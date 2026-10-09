@@ -1,13 +1,18 @@
 import { describe, expect, it } from 'vitest';
-import { createFormatters, getFormatters } from './format';
+import { createFormatters, getFormatters, type Formatters } from './format';
 
 const NBSP = ' ';
 const NNBSP = ' ';
 const norm = (s: string) => s.replace(new RegExp(`[${NBSP}${NNBSP}]`, 'g'), ' ');
 
 describe('money', () => {
-  const en = createFormatters('en-US');
-  const cs = createFormatters('cs-CZ');
+  // Each amount in the main currency (its narrow symbol); other currencies: see below.
+  const asMain = (locale: string) => ({
+    money: (amount: number, currency: string, opts?: Parameters<Formatters['money']>[2]) =>
+      createFormatters(locale, currency).money(amount, currency, opts),
+  });
+  const en = asMain('en-US');
+  const cs = asMain('cs-CZ');
 
   it('follows the UI language, not the currency', () => {
     expect(norm(en.money(1234.5, 'EUR'))).toBe('€1,234.50');
@@ -51,8 +56,9 @@ describe('money main-currency symbol', () => {
     expect(norm(createFormatters('en-US', 'czk').money(1234, 'CZK'))).toBe('Kč 1,234');
   });
 
-  it('keeps the narrow symbol everywhere when no main currency is known', () => {
-    expect(norm(createFormatters('en-US').money(5, 'USD'))).toBe('$5.00');
+  it('shows the ISO code for every currency when no main currency is known', () => {
+    expect(norm(createFormatters('en-US', undefined).money(5, 'USD'))).toBe('USD 5.00');
+    expect(norm(createFormatters('en-US', undefined).money(1234, 'CZK'))).toBe('CZK 1,234');
   });
 
   it('memoizes per locale and main currency', () => {
@@ -63,25 +69,27 @@ describe('money main-currency symbol', () => {
 
 describe('number and percent', () => {
   it('keeps the minimum fraction digits valid when only a minimum is given', () => {
-    const en = createFormatters('en-US');
+    const en = createFormatters('en-US', undefined);
     expect(norm(en.number(1.5, { minimumFractionDigits: 4 }))).toBe('1.5000');
     expect(norm(en.number(-0))).toBe('0');
     expect(norm(en.number(1234.5678, { maximumFractionDigits: 0 }))).toBe('1,235');
   });
 
   it('formats with the locale separators', () => {
-    expect(norm(createFormatters('en-US').number(1234567.891))).toBe('1,234,567.89');
-    expect(norm(createFormatters('cs-CZ').number(1234567.891))).toBe('1 234 567,89');
-    expect(norm(createFormatters('en-US').percent(0.1234))).toBe('12.3%');
-    expect(norm(createFormatters('cs-CZ').percent(0.1234))).toBe('12,3 %');
+    expect(norm(createFormatters('en-US', undefined).number(1234567.891))).toBe('1,234,567.89');
+    expect(norm(createFormatters('cs-CZ', undefined).number(1234567.891))).toBe('1 234 567,89');
+    expect(norm(createFormatters('en-US', undefined).percent(0.1234))).toBe('12.3%');
+    expect(norm(createFormatters('cs-CZ', undefined).percent(0.1234))).toBe('12,3 %');
   });
 
   it('signs percentages without ever showing +0 or -0', () => {
-    const en = createFormatters('en-US');
+    const en = createFormatters('en-US', undefined);
     expect(norm(en.percent(0.0123, 2, { signed: true }))).toBe('+ 1.23%');
     expect(norm(en.percent(-0.0123, 2, { signed: true }))).toBe('− 1.23%');
     expect(norm(en.percent(-0.00001, 2, { signed: true }))).toBe('0.00%');
-    expect(norm(createFormatters('cs-CZ').percent(0.05, 1, { signed: true }))).toBe('+ 5,0 %');
+    expect(norm(createFormatters('cs-CZ', undefined).percent(0.05, 1, { signed: true }))).toBe(
+      '+ 5,0 %'
+    );
   });
 });
 
@@ -90,23 +98,23 @@ describe('day', () => {
   const SEPT_30 = 1_790_726_400;
 
   it('formats the calendar day in UTC regardless of the machine time zone', () => {
-    expect(norm(createFormatters('en-US').day(SEPT_30))).toBe('9/30/2026');
-    expect(norm(createFormatters('cs-CZ').day(SEPT_30))).toBe('30. 9. 2026');
-    expect(norm(createFormatters('en-GB').day(SEPT_30))).toBe('30/09/2026');
+    expect(norm(createFormatters('en-US', undefined).day(SEPT_30))).toBe('9/30/2026');
+    expect(norm(createFormatters('cs-CZ', undefined).day(SEPT_30))).toBe('30. 9. 2026');
+    expect(norm(createFormatters('en-GB', undefined).day(SEPT_30))).toBe('30/09/2026');
   });
 
   it('accepts formatting options', () => {
-    expect(norm(createFormatters('en-US').day(SEPT_30, { month: 'short', day: 'numeric' }))).toBe(
-      'Sep 30'
-    );
+    expect(
+      norm(createFormatters('en-US', undefined).day(SEPT_30, { month: 'short', day: 'numeric' }))
+    ).toBe('Sep 30');
   });
 });
 
 describe('time', () => {
   it('formats the time of day without a date', () => {
     const at = Math.floor(new Date(2026, 8, 30, 14, 5).getTime() / 1000);
-    expect(norm(createFormatters('cs-CZ').time(at))).toBe('14:05');
-    expect(norm(createFormatters('en-US').time(at))).toBe('02:05 PM');
+    expect(norm(createFormatters('cs-CZ', undefined).time(at))).toBe('14:05');
+    expect(norm(createFormatters('en-US', undefined).time(at))).toBe('02:05 PM');
   });
 });
 
@@ -115,37 +123,39 @@ describe('date', () => {
   const local = new Date(2026, 8, 30, 14, 5);
 
   it('formats local dates with the UI locale and numeric defaults', () => {
-    expect(norm(createFormatters('en-US').date(local))).toBe('9/30/2026');
-    expect(norm(createFormatters('cs-CZ').date(local))).toBe('30. 9. 2026');
+    expect(norm(createFormatters('en-US', undefined).date(local))).toBe('9/30/2026');
+    expect(norm(createFormatters('cs-CZ', undefined).date(local))).toBe('30. 9. 2026');
   });
 
   it('keeps the requested parts only (like toLocaleDateString)', () => {
-    expect(norm(createFormatters('en-US').date(local, { month: 'short', day: 'numeric' }))).toBe(
-      'Sep 30'
-    );
-    expect(norm(createFormatters('cs-CZ').date(local, { month: 'long', year: 'numeric' }))).toBe(
-      'září 2026'
-    );
+    expect(
+      norm(createFormatters('en-US', undefined).date(local, { month: 'short', day: 'numeric' }))
+    ).toBe('Sep 30');
+    expect(
+      norm(createFormatters('cs-CZ', undefined).date(local, { month: 'long', year: 'numeric' }))
+    ).toBe('září 2026');
   });
 
   it('accepts ISO strings and returns an empty string for invalid input', () => {
-    expect(norm(createFormatters('en-US').date('2026-09-30T12:00:00'))).toBe('9/30/2026');
-    expect(createFormatters('en-US').date('nonsense')).toBe('');
-    expect(createFormatters('en-US').date(new Date(NaN))).toBe('');
+    expect(norm(createFormatters('en-US', undefined).date('2026-09-30T12:00:00'))).toBe(
+      '9/30/2026'
+    );
+    expect(createFormatters('en-US', undefined).date('nonsense')).toBe('');
+    expect(createFormatters('en-US', undefined).date(new Date(NaN))).toBe('');
   });
 });
 
 describe('month', () => {
   it('capitalizes period labels in both languages', () => {
     const d = new Date(Date.UTC(2026, 8, 1));
-    expect(createFormatters('en-US').month(d)).toBe('September 2026');
-    expect(createFormatters('cs-CZ').month(d)).toBe('Září 2026');
+    expect(createFormatters('en-US', undefined).month(d)).toBe('September 2026');
+    expect(createFormatters('cs-CZ', undefined).month(d)).toBe('Září 2026');
   });
 });
 
 describe('getFormatters', () => {
   it('memoizes per locale', () => {
-    expect(getFormatters('en-US')).toBe(getFormatters('en-US'));
-    expect(getFormatters('en-US')).not.toBe(getFormatters('cs-CZ'));
+    expect(getFormatters('en-US', undefined)).toBe(getFormatters('en-US', undefined));
+    expect(getFormatters('en-US', undefined)).not.toBe(getFormatters('cs-CZ', undefined));
   });
 });

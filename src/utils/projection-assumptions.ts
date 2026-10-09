@@ -7,11 +7,7 @@
  * default (the weighted rate calculated from the user's own accounts / bonds for
  * savings and bonds, a built-in constant for the rest).
  */
-import type {
-  CalculatedDefaults,
-  ProjectionSettings,
-  ProjectionTimelinePoint,
-} from '@shared/schema';
+import type { CalculatedDefaults, ProjectionTimelinePoint } from '@shared/schema';
 import { amountOf } from '@/utils/positions';
 
 /** A projected point with numeric amounts (the wire point carries decimal text). */
@@ -84,15 +80,6 @@ export const DEFAULT_RATES: Record<ProjectionAssetKey, number> = {
   other_assets: 0,
 };
 
-export interface ResolvedAssumption {
-  /** Yearly growth in percent. */
-  rate: number;
-  /** True when the user stored this rate (an explicit 0 counts), false for a default. */
-  explicit: boolean;
-  /** Monthly contribution as stored, in its own `contributionCurrency` (not converted). */
-  contribution: number;
-}
-
 /** A stored rate: undefined for empty or unusable text, otherwise the number (0 stays 0). */
 export function parseRate(text: string | undefined): number | undefined {
   if (text === undefined || text.trim() === '') return undefined;
@@ -108,58 +95,6 @@ export function defaultRate(
   if (key === 'savings') return calculated?.savingsRate ?? DEFAULT_RATES.savings;
   if (key === 'bonds') return calculated?.bondsRate ?? DEFAULT_RATES.bonds;
   return DEFAULT_RATES[key];
-}
-
-export function resolveAssumptions(
-  saved: ProjectionSettings[] | undefined,
-  calculated: CalculatedDefaults | undefined
-): Record<ProjectionAssetKey, ResolvedAssumption> {
-  const result = {} as Record<ProjectionAssetKey, ResolvedAssumption>;
-  for (const cls of ASSET_CLASSES) {
-    const row = saved?.find((s) => s.assetType === cls.key && s.enabled);
-    const stored = parseRate(row?.yearlyGrowthRate);
-
-    const contribution = Number(row?.monthlyContribution);
-    result[cls.key] = {
-      rate: stored ?? defaultRate(cls.key, calculated),
-      explicit: stored !== undefined,
-      contribution: Number.isFinite(contribution) ? contribution : 0,
-    };
-  }
-  return result;
-}
-
-export interface AssumptionSummary {
-  /** Classes that share a rate are grouped, in class order. Rates in percent. */
-  rateGroups: { rate: number; keys: ProjectionAssetKey[] }[];
-  /** Sum of the stored monthly contributions (callers mixing currencies convert first). */
-  monthlyContribution: number;
-}
-
-/**
- * What the one-sentence summary mentions: the classes the user holds today (or
- * contributes to) with their rates, and the total monthly contribution.
- */
-export function summarizeAssumptions(
-  assumptions: Record<ProjectionAssetKey, ResolvedAssumption>,
-  current: ProjectionPoint | undefined
-): AssumptionSummary {
-  if (!current) return { rateGroups: [], monthlyContribution: 0 };
-
-  const groups = new Map<string, { rate: number; keys: ProjectionAssetKey[] }>();
-  let monthlyContribution = 0;
-  for (const cls of ASSET_CLASSES) {
-    const a = assumptions[cls.key];
-    const contributes = cls.hasContribution && a.contribution > 0;
-    if (contributes) monthlyContribution += a.contribution;
-    if (!(current[cls.valueField] > 0) && !contributes) continue;
-
-    const id = a.rate.toFixed(2);
-    const group = groups.get(id);
-    if (group) group.keys.push(cls.key);
-    else groups.set(id, { rate: a.rate, keys: [cls.key] });
-  }
-  return { rateGroups: [...groups.values()], monthlyContribution };
 }
 
 /** Fraction digits that show a rate without padding zeros: 7 -> 0, 3.5 -> 1, 4.25 -> 2. */

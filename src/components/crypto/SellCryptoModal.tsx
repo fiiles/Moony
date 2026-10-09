@@ -55,7 +55,7 @@ export function SellCryptoModal({ investment, open, onOpenChange }: SellCryptoMo
   const { t } = useTranslation('crypto');
   const { t: tc } = useTranslation('common');
   const queryClient = useQueryClient();
-  const { convert, currencyCode, formatCurrencyRaw } = useCurrency();
+  const { convert, currencyCode } = useCurrency();
   const fmt = useFormat();
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -113,11 +113,13 @@ export function SellCryptoModal({ investment, open, onOpenChange }: SellCryptoMo
   const currency = form.watch('currency') as CurrencyCode;
   const quantity = Number(form.watch('quantity')) || 0;
   const price = Number(form.watch('pricePerUnit')) || 0;
-  const priceDisplay = convert(price, currency, currencyCode as CurrencyCode);
-  const proceeds = quantity * priceDisplay;
-  // Estimate against the backend's cost per unit (report currency = display currency)
+  // Proceeds in the currency of the sale; the realized estimate needs the price in the
+  // main currency (the backend's cost per unit is in it) and is unknown without a rate.
+  const proceeds = quantity * price;
+  const priceDisplay = convert(price, currency);
   const unitCost = costPerUnit(investment.totalCost, investment.quantity);
-  const realized = unitCost === null ? null : quantity * (priceDisplay - unitCost);
+  const realized =
+    unitCost === null || priceDisplay === null ? null : quantity * (priceDisplay - unitCost);
   const tooMuch = quantity > investment.quantity;
 
   return (
@@ -223,7 +225,7 @@ export function SellCryptoModal({ investment, open, onOpenChange }: SellCryptoMo
             <div className="flex items-center justify-between border-t border-line-soft pt-3 text-caption text-ink-3">
               <span>
                 {proceeds > 0
-                  ? t('modal.sell.proceeds', { amount: formatCurrencyRaw(proceeds) })
+                  ? t('modal.sell.proceeds', { amount: fmt.money(proceeds, currency) })
                   : t('modal.sell.proceedsEmpty')}
               </span>
               <b

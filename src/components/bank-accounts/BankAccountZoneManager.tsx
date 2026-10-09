@@ -33,7 +33,7 @@ export function BankAccountZoneManager({ zones, onChange, currency }: BankAccoun
   const { t } = useTranslation('bank_accounts');
   const { t: tc } = useTranslation('common');
   const fmt = useFormat();
-  const formatCurrency = (amount: number) => fmt.money(amount, currency);
+  const zoneMoney = (amount: number) => fmt.money(amount, currency);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [formData, setFormData] = useState<ZoneData>({
     fromAmount: '',
@@ -78,8 +78,8 @@ export function BankAccountZoneManager({ zones, onChange, currency }: BankAccoun
         }
         if (from < zoneTo) {
           return t('zones.validation.overlapExisting', {
-            from: formatCurrency(zoneFrom),
-            to: formatCurrency(zoneTo),
+            from: zoneMoney(zoneFrom),
+            to: zoneMoney(zoneTo),
           });
         }
       } else {
@@ -87,7 +87,7 @@ export function BankAccountZoneManager({ zones, onChange, currency }: BankAccoun
         if (zoneTo === null) {
           // Existing zone is unlimited
           if (to > zoneFrom) {
-            return t('zones.validation.overlapUnlimited', { start: formatCurrency(zoneFrom) });
+            return t('zones.validation.overlapUnlimited', { start: zoneMoney(zoneFrom) });
           }
         } else {
           // Both zones have limits - check for overlap
@@ -97,8 +97,8 @@ export function BankAccountZoneManager({ zones, onChange, currency }: BankAccoun
             (from <= zoneFrom && to >= zoneTo)
           ) {
             return t('zones.validation.overlapExisting', {
-              from: formatCurrency(zoneFrom),
-              to: formatCurrency(zoneTo),
+              from: zoneMoney(zoneFrom),
+              to: zoneMoney(zoneTo),
             });
           }
         }
@@ -256,11 +256,9 @@ export function BankAccountZoneManager({ zones, onChange, currency }: BankAccoun
             <TableBody>
               {zones.map((zone, index) => (
                 <TableRow key={index}>
-                  <TableCell>{formatCurrency(parseFloat(zone.fromAmount))}</TableCell>
+                  <TableCell>{zoneMoney(parseFloat(zone.fromAmount))}</TableCell>
                   <TableCell>
-                    {zone.toAmount
-                      ? formatCurrency(parseFloat(zone.toAmount))
-                      : t('zones.unlimited')}
+                    {zone.toAmount ? zoneMoney(parseFloat(zone.toAmount)) : t('zones.unlimited')}
                   </TableCell>
                   <TableCell>{parseFloat(zone.interestRate).toFixed(2)}%</TableCell>
                   <TableCell>

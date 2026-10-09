@@ -6,7 +6,7 @@ import fxSupportedTable from './fx-supported.json';
  * Every currency the app supports — each is both a position currency and a
  * display currency. 30 currencies with an ECB rate, 6 derived from a fixed peg
  * (see `fx-supported.json`), the rest without automatic rates (see
- * `isFxSupported` / `isEcbCurrency` / `hasKnownRate`). Sorted by code.
+ * `isFxSupported`). Sorted by code.
  *
  * Symbols, symbol placement and separators come from `Intl` (see
  * `src/lib/format.ts`), names from `currencyName()` — nothing presentational
@@ -111,14 +111,6 @@ export function isFxSupported(code: string | null | undefined): boolean {
   return !!code && FX_SUPPORTED_SET.has(code);
 }
 
-/** Currencies the ECB publishes a daily reference rate for (rates refresh automatically). */
-export const ECB_CURRENCY_CODES: readonly CurrencyCode[] = FX_SOURCE_CODES.filter(isCurrencyCode);
-
-/** Whether the ECB publishes a rate for this currency (false for AED, SAR, ...: no automatic rate). */
-export function isEcbCurrency(code: string | null | undefined): boolean {
-  return !!code && (ECB_CURRENCY_CODES as readonly string[]).includes(code);
-}
-
 const displayNamesByLocale = new Map<string, Intl.DisplayNames | null>();
 
 /**
@@ -156,61 +148,6 @@ export const currencyCodeSchema = z.enum(
   { error: 'validation.currencyInvalid' }
 );
 
-// Base currency is CZK
-export const BASE_CURRENCY: CurrencyCode = 'CZK';
-
-// Built-in fallback rates (1 unit of currency = X CZK), mirroring the Rust side
-// (`services/currency.rs`). The ECB refresh overwrites them on unlock.
-const BUILT_IN_RATES: Partial<Record<CurrencyCode, number>> = {
-  CZK: 1,
-  EUR: 25.0,
-  USD: 23.0,
-  GBP: 29.0,
-  JPY: 0.15,
-  AUD: 14.5,
-  CAD: 17.0,
-  CHF: 26.0,
-  HKD: 3.0,
-  CNY: 3.2,
-  SEK: 2.2,
-  NOK: 2.1,
-  DKK: 3.4,
-  SGD: 17.5,
-  NZD: 13.5,
-};
-
-/**
- * Exchange rates (1 unit of currency = X CZK). Currencies without a built-in
- * rate hold a 1:1 placeholder (like the backend's last-resort fallback) until a
- * rate arrives through `updateExchangeRates`; `hasKnownRate` tells the two
- * apart, so callers can flag a placeholder instead of showing it as a real
- * conversion.
- */
-export const EXCHANGE_RATES = Object.fromEntries(
-  CURRENCY_CODES.map((code) => [code, BUILT_IN_RATES[code] ?? 1])
-) as Record<CurrencyCode, number>;
-
-const knownRateCodes = new Set<string>(Object.keys(BUILT_IN_RATES));
-
-export function updateExchangeRates(rates: Partial<Record<CurrencyCode, number>>): void {
-  Object.entries(rates).forEach(([currency, rate]) => {
-    if (rate !== undefined) {
-      EXCHANGE_RATES[currency as CurrencyCode] = rate;
-      knownRateCodes.add(currency);
-    }
-  });
-  EXCHANGE_RATES.CZK = 1;
-}
-
-/**
- * Whether `code` has a real rate (built-in fallback or delivered by the backend)
- * rather than the 1:1 placeholder. False for non-ECB currencies such as AED and
- * for ECB currencies before the first rate load.
- */
-export function hasKnownRate(code: string | null | undefined): boolean {
-  return !!code && knownRateCodes.has(code);
-}
-
 /**
  * Decimals to display for a currency code — including codes outside CURRENCIES
  * (a stock may be listed in PLN, HUF, ...), where Intl knows the minor unit.
@@ -246,14 +183,4 @@ export function isoMinorUnits(code: string | null | undefined): number {
  */
 export function priceDecimals(value: number, code: string | null | undefined): number {
   return Math.abs(value) >= 1000 ? 0 : currencyDecimals(code);
-}
-
-export function convertToCzK(amount: number, fromCurrency: CurrencyCode): number {
-  const rate = EXCHANGE_RATES[fromCurrency];
-  return amount * rate;
-}
-
-export function convertFromCzK(amountInCzk: number, toCurrency: CurrencyCode): number {
-  const rate = EXCHANGE_RATES[toCurrency];
-  return amountInCzk / rate;
 }

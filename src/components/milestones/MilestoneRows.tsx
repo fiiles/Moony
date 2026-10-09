@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useMilestoneActions } from '@/hooks/use-milestone-mutations';
 import { useFormat } from '@/lib/use-format';
+import { useCurrency } from '@/lib/currency';
 import { cn } from '@/lib/utils';
 import { utcDayFloor } from '@/utils/chart-axis';
 import { formatNativePrice } from '@/utils/stock-monitor';
@@ -49,6 +50,7 @@ const UPKEEP_ICONS: Partial<Record<MilestoneKind, LucideIcon>> = {
 function useSubLine() {
   const { t } = useTranslation('milestones');
   const fmt = useFormat();
+  const { currencyCode } = useCurrency();
   const thisYear = new Date(utcDayFloor(Date.now() / 1000) * 1000).getUTCFullYear();
   // Day and month inside the current year, the full date otherwise: "17. 4." for a valuation
   // from this spring, "17. 4. 2024" for one from two years ago.
@@ -59,9 +61,9 @@ function useSubLine() {
       : fmt.day(d);
   };
   const money = (m: Milestone) =>
-    m.amount === null ? '' : fmt.money(Number(m.amount), m.currency ?? 'CZK');
+    m.amount === null ? '' : fmt.money(Number(m.amount), m.currency ?? currencyCode);
   const price = (m: Milestone, value: string | null) =>
-    value === null ? '' : formatNativePrice(Number(value), m.currency, fmt.locale);
+    value === null ? '' : formatNativePrice(Number(value), m.currency, fmt.locale, currencyCode);
 
   return (m: Milestone): string => {
     switch (m.kind) {

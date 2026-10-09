@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Check, ChevronDown } from 'lucide-react';
 import { useFormat } from '@/lib/use-format';
+import { useCurrency } from '@/lib/currency';
 import { formatRowMessage } from '@/utils/csv-import-messages';
 import type { BankAccount, CsvImportResult } from '@shared/schema';
 import { cn } from '@/lib/utils';
@@ -96,6 +97,7 @@ export function ImportResultStep({
   const { t } = useTranslation('bank_accounts');
   const { t: tc } = useTranslation('common');
   const fmt = useFormat();
+  const { currencyCode } = useCurrency();
 
   const skippedDuplicates = useMemo(
     () => result.skippedDuplicates.map((message) => formatRowMessage(message, t, tc)),
@@ -134,7 +136,8 @@ export function ImportResultStep({
                 {formatBalance(
                   result.statementBalance!.amount,
                   result.statementBalance!.currency,
-                  locale
+                  locale,
+                  currencyCode
                 )}
               </b>
               .

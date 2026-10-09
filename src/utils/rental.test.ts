@@ -125,4 +125,12 @@ describe('linkedLoanInput', () => {
     expect(r.rate).toBeCloseTo(5, 6);
     expect(r.loanYears).toBeCloseTo(50 / 3, 1);
   });
+
+  it('leaves every loan field unknown when a principal has no rate (never 1:1)', () => {
+    const r = linkedLoanInput(
+      [loan({}), loan({ id: 'l2', principal: '40000', currency: 'KWD' })],
+      (amount, currency) => (currency === 'CZK' ? amount : null)
+    );
+    expect(r).toEqual({ loan: null, loanYears: null, rate: null });
+  });
 });

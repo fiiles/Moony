@@ -62,7 +62,7 @@ export default function CryptoDetail() {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const id = params?.id;
-  const { currencyCode, fxRevision, fxConvert } = useCurrency();
+  const { currencyCode, fxRevision, convert } = useCurrency();
   const { t } = useTranslation('crypto');
   const { t: tc } = useTranslation('common');
   const fmt = useFormat();
@@ -154,7 +154,7 @@ export default function CryptoDetail() {
 
   const nativeCurrency = row?.originalCurrency ?? reportCurrency;
   const nativePrice = row?.originalCurrentPrice ?? 0;
-  const currentPrice = fxConvert(nativePrice, nativeCurrency, reportCurrency);
+  const currentPrice = convert(nativePrice, nativeCurrency, reportCurrency);
   const currentValue = row?.marketValue ?? null;
   const unrealized = row?.gainLoss ?? null;
   const unrealizedPct = (row?.gainLossPercent ?? 0) / 100;

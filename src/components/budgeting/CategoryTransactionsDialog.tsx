@@ -11,7 +11,7 @@ export function CategoryTransactionsDialog({
   end,
   accountIds,
   reportCurrency,
-  ratesTimestamp,
+  fxRevision,
 }: {
   target: CategoryTransactionsTarget | null;
   onClose: () => void;
@@ -20,7 +20,7 @@ export function CategoryTransactionsDialog({
   periodLabel: string;
   accountIds?: string[];
   reportCurrency: string;
-  ratesTimestamp: number;
+  fxRevision: number;
 }) {
   return (
     <ReportTransactionsDialog
@@ -30,7 +30,7 @@ export function CategoryTransactionsDialog({
       end={end}
       accountIds={accountIds}
       reportCurrency={reportCurrency}
-      ratesTimestamp={ratesTimestamp}
+      fxRevision={fxRevision}
       onClose={onClose}
     />
   );

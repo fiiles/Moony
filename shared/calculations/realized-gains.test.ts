@@ -1,6 +1,9 @@
 import { describe, expect, test } from 'vitest';
-import { calculateRealizedGains, type RealizedGainTransaction } from './realized-gains';
-import type { DatedConvertFn } from './cost-basis';
+import {
+  calculateRealizedGains,
+  type DatedConvertFn,
+  type RealizedGainTransaction,
+} from './realized-gains';
 
 const DAY = 86_400;
 const D1 = 1_700_006_400;

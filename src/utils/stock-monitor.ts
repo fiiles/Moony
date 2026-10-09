@@ -100,11 +100,13 @@ export function formatNativePrice(
   value: number,
   currency: string | null,
   locale: string,
+  /** The profile currency: the only one shown as a symbol, any other shows its ISO code. */
+  mainCurrency: string | undefined,
   maxLength?: number,
   signed = false
 ): string {
   if (!isFinite(value)) return '—';
-  const fmt = getFormatters(locale);
+  const fmt = getFormatters(locale, mainCurrency);
   const build = (decimals: number) => fmt.money(value, currency ?? '', { decimals, signed });
   return fitDecimals(build, currencyDecimals(currency), maxLength);
 }
@@ -133,11 +135,13 @@ export function formatMarketCap(
   marketCap: string | null,
   currency: string | null,
   locale: string,
+  /** The profile currency: the only one shown as a symbol, any other shows its ISO code. */
+  mainCurrency: string | undefined,
   maxLength?: number
 ): string | null {
   const v = parseFloat(marketCap ?? '');
   if (!isFinite(v)) return null;
-  const fmt = getFormatters(locale);
+  const fmt = getFormatters(locale, mainCurrency);
   const build = (decimals: number) => fmt.money(v, currency ?? '', { compact: true, decimals });
   return fitDecimals(build, 2, maxLength);
 }

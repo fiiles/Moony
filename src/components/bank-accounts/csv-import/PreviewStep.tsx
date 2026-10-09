@@ -8,6 +8,7 @@ import type {
   TransactionCategory,
 } from '@shared/schema';
 import { useFormat } from '@/lib/use-format';
+import { useCurrency } from '@/lib/currency';
 import { translateApiError } from '@/lib/translate-api-error';
 import { translateRowMessage } from '@/utils/csv-import-messages';
 import { categoryDisplayName } from '@/utils/category-name';
@@ -76,6 +77,7 @@ export function PreviewStep({
   const { t } = useTranslation('bank_accounts');
   const { t: tc } = useTranslation('common');
   const fmt = useFormat();
+  const { currencyCode } = useCurrency();
   const forced = useMemo(() => new Set(importAnywayLines), [importAnywayLines]);
   const overrideByLine = useMemo(
     () => new Map(overrides.map((o) => [o.line, o.categoryId])),
@@ -303,7 +305,12 @@ export function PreviewStep({
                         !muted && 'font-600'
                       )}
                     >
-                      {formatPreviewAmount(row.amount, row.currency ?? accountCurrency, locale)}
+                      {formatPreviewAmount(
+                        row.amount,
+                        row.currency ?? accountCurrency,
+                        locale,
+                        currencyCode
+                      )}
                     </TableCell>
                     <TableCell className="max-w-0">
                       <span className="block truncate" title={row.description ?? undefined}>

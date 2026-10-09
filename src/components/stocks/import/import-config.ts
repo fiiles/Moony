@@ -1036,7 +1036,8 @@ export function formatDecimalText(
   if (!Number.isFinite(value)) return text;
   const written = /\.(\d+)\s*$/.exec(text.trim())?.[1].length ?? 0;
   const digits = Math.min(8, Math.max(minDecimals, written));
-  return getFormatters(locale).number(value, {
+  // No money is formatted here: no main currency needed.
+  return getFormatters(locale, undefined).number(value, {
     minimumFractionDigits: digits,
     maximumFractionDigits: digits,
   });

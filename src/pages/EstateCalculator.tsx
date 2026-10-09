@@ -4,7 +4,6 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { ChevronDown } from 'lucide-react';
 import type { Loan, RealEstate } from '@shared/schema';
-import type { CurrencyCode } from '@shared/currencies';
 import { realEstateApi } from '@/lib/tauri-api';
 import { useCurrency } from '@/lib/currency';
 import { useFormat } from '@/lib/use-format';
@@ -37,7 +36,7 @@ import {
 } from '@/components/charts/MoonyBandChart';
 import { ChartLegend } from '@/components/charts/ChartLegend';
 import { CalcField, ComputedRow } from '@/components/calculators/CalcField';
-import { parseCalcNumber } from '@/components/calculators/calc-number';
+import { parseCalcNumber, scaledDefault } from '@/components/calculators/calc-number';
 import { cn } from '@/lib/utils';
 
 /** Monthly equivalent of a recurring cost of a property. */
@@ -50,11 +49,20 @@ function monthlyCost(cost: RealEstate['recurringCosts'][number]): number {
 }
 
 /** Field texts a property prefills, in the display currency (null keeps the field). */
+/** The example property the calculator opens with, in EUR (scaled to the main currency). */
+const EXAMPLE_EUR = {
+  price: 216_000,
+  loan: 120_000,
+  rent: 860,
+  costs: 120,
+  oneTime: 10_000,
+};
+
 interface PropertyDefaults {
-  price: string;
+  price: string | null;
   rent: string | null;
   costs: string | null;
-  loan: string;
+  loan: string | null;
   loanYears: string | null;
   rate: string | null;
 }
@@ -62,26 +70,34 @@ interface PropertyDefaults {
 /**
  * Values a property prefills: purchase price, rent, the monthly recurring
  * costs and its linked loans (principal, term, rate), converted to the
- * display currency the calculator works in.
+ * display currency the calculator works in. A value whose currency has no
+ * rate is null (the field keeps its value): nothing is carried over 1:1.
  */
 function propertyDefaults(
   p: RealEstate,
   loans: Loan[],
-  toDisplay: (amount: number, currency: string) => number,
-  format: (v: number, decimals?: number) => string
+  toDisplay: (amount: number, currency: string) => number | null,
+  format: (v: number, decimals?: number) => string,
+  /** Currency of an amount stored without one: the main currency. */
+  mainCurrency: string
 ): PropertyDefaults {
-  const monthly = p.recurringCosts.reduce(
-    (s, c) => s + toDisplay(monthlyCost(c), c.currency || 'CZK'),
-    0
+  const formatKnown = (v: number | null) => (v === null ? null : format(v));
+  const monthlyCosts = p.recurringCosts.map((c) =>
+    toDisplay(monthlyCost(c), c.currency || mainCurrency)
   );
+  const monthly = monthlyCosts.includes(null)
+    ? null
+    : monthlyCosts.reduce<number>((s, v) => s + (v ?? 0), 0);
   const linked = linkedLoanInput(loans, toDisplay);
   return {
-    price: format(toDisplay(parseFloat(p.purchasePrice ?? '') || 0, p.purchasePriceCurrency)),
+    price: formatKnown(toDisplay(parseFloat(p.purchasePrice ?? '') || 0, p.purchasePriceCurrency)),
     rent: p.monthlyRent
-      ? format(toDisplay(parseFloat(p.monthlyRent) || 0, p.monthlyRentCurrency || 'CZK'))
+      ? formatKnown(
+          toDisplay(parseFloat(p.monthlyRent) || 0, p.monthlyRentCurrency || mainCurrency)
+        )
       : null,
-    costs: monthly > 0 ? format(monthly) : null,
-    loan: format(linked.loan),
+    costs: monthly !== null && monthly > 0 ? format(monthly) : null,
+    loan: formatKnown(linked.loan),
     loanYears: linked.loanYears !== null ? format(linked.loanYears, 1) : null,
     rate: linked.rate !== null ? format(linked.rate, 2) : null,
   };
@@ -124,7 +140,7 @@ export default function EstateCalculator() {
  */
 function Calculator({ initial }: { initial?: { property: RealEstate; loans: Loan[] } }) {
   const { t } = useTranslation('calculators');
-  const { formatCurrencyRaw, convert, currencyCode } = useCurrency();
+  const { convert, currencyCode } = useCurrency();
   const fmt = useFormat();
   const queryClient = useQueryClient();
   const { data: properties = [] } = useQuery({
@@ -136,22 +152,27 @@ function Calculator({ initial }: { initial?: { property: RealEstate; loans: Loan
     propertyDefaults(
       p,
       loans,
-      (amount, currency) => convert(amount, currency as CurrencyCode, currencyCode),
-      (v, decimals = 0) => fmt.number(v, { maximumFractionDigits: decimals })
+      (amount, currency) => convert(amount, currency),
+      (v, decimals = 0) => fmt.number(v, { maximumFractionDigits: decimals }),
+      currencyCode
     );
   const initialValues = initial ? defaults(initial.property, initial.loans) : null;
-  const [price, setPrice] = useState(initialValues?.price ?? '5 400 000');
-  const [loan, setLoan] = useState(initialValues?.loan ?? '3 000 000');
+  // The example property is defined in EUR and scaled to the main currency; a field
+  // starts empty when no rate is known.
+  const example = (eur: number) =>
+    scaledDefault(eur, convert, (v) => fmt.number(v, { maximumFractionDigits: 0 }));
+  const [price, setPrice] = useState(() => initialValues?.price ?? example(EXAMPLE_EUR.price));
+  const [loan, setLoan] = useState(() => initialValues?.loan ?? example(EXAMPLE_EUR.loan));
   const [loanYears, setLoanYears] = useState(initialValues?.loanYears ?? '30');
   const [rate, setRate] = useState(initialValues?.rate ?? '4,1');
-  const [rent, setRent] = useState(initialValues?.rent ?? '21 500');
-  const [costs, setCosts] = useState(initialValues?.costs ?? '3 000');
+  const [rent, setRent] = useState(() => initialValues?.rent ?? example(EXAMPLE_EUR.rent));
+  const [costs, setCosts] = useState(() => initialValues?.costs ?? example(EXAMPLE_EUR.costs));
   const [vacancy, setVacancy] = useState('0,5');
   const [rentGrowth, setRentGrowth] = useState('3');
   const [costsGrowth, setCostsGrowth] = useState('3');
   const [priceGrowth, setPriceGrowth] = useState('3');
   const [years, setYears] = useState('15');
-  const [oneTime, setOneTime] = useState('250 000');
+  const [oneTime, setOneTime] = useState(() => example(EXAMPLE_EUR.oneTime));
 
   useShellPage({ status: { text: t('estate.status'), tone: 'neutral' } });
 
@@ -190,8 +211,8 @@ function Calculator({ initial }: { initial?: { property: RealEstate; loans: Loan
   const lo = useMemo(() => rentalSeries(input, -1), [input]);
   const hi = useMemo(() => rentalSeries(input, 1), [input]);
 
-  const money = (v: number) => formatCurrencyRaw(v);
-  // Calculator amounts are already in the display currency: no conversion from CZK.
+  // Calculator amounts are in the main currency already: formatted, never converted.
+  const money = (v: number) => fmt.money(v, currencyCode, { decimals: 0 });
   const short = (v: number) =>
     Math.abs(v) < 1000
       ? fmt.money(v, currencyCode, { decimals: 0 })
@@ -259,10 +280,10 @@ function Calculator({ initial }: { initial?: { property: RealEstate; loans: Loan
       queryFn: () => realEstateApi.getLoans(p.id),
     });
     const values = defaults(p, loans);
-    setPrice(values.price);
+    if (values.price !== null) setPrice(values.price);
     if (values.rent) setRent(values.rent);
     if (values.costs) setCosts(values.costs);
-    setLoan(values.loan);
+    if (values.loan !== null) setLoan(values.loan);
     if (values.loanYears) setLoanYears(values.loanYears);
     if (values.rate) setRate(values.rate);
   };

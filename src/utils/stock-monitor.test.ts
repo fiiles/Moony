@@ -87,47 +87,50 @@ describe('latestFetchedAt', () => {
 
 describe('formatNativePrice', () => {
   it('formats using the currency of the stock', () => {
-    expect(formatNativePrice(230.1, 'USD', 'en-US')).toBe('$230.10');
-    expect(formatNativePrice(85.2, 'EUR', 'en-US')).toBe('€85.20');
+    expect(formatNativePrice(230.1, 'USD', 'en-US', 'USD')).toBe('$230.10');
+    expect(formatNativePrice(85.2, 'EUR', 'en-US', 'EUR')).toBe('€85.20');
+    expect(formatNativePrice(230.1, 'USD', 'en-US', 'CZK')).toBe('USD\u00a0230.10');
   });
 
   it('falls back gracefully for unknown currency codes', () => {
     // GBp: Intl case-folds to GBP on current ICU (renders £), while other ICUs may reject it
-    expect(formatNativePrice(85.2, 'GBp', 'en-US')).toMatch(/^(£85\.20|85\.20\sGBp)$/);
-    expect(formatNativePrice(85.2, null, 'en-US')).toBe('85.20');
+    expect(formatNativePrice(85.2, 'GBp', 'en-US', 'GBP')).toMatch(/^(£85\.20|85\.20\sGBp)$/);
+    expect(formatNativePrice(85.2, null, 'en-US', undefined)).toBe('85.20');
     // Locale-aware formatting: Czech uses comma as decimal separator
-    expect(formatNativePrice(85.2, null, 'cs-CZ')).toBe('85,20');
+    expect(formatNativePrice(85.2, null, 'cs-CZ', undefined)).toBe('85,20');
   });
 
   it('falls back to plain format for invalid currency codes', () => {
     // 'notacur' triggers the catch block; fallback is plain number + currency code
-    expect(formatNativePrice(85.2, 'notacur', 'en-US')).toBe('85.20 notacur');
-    expect(formatNativePrice(85.2, 'notacur', 'cs-CZ')).toBe('85,20 notacur');
+    expect(formatNativePrice(85.2, 'notacur', 'en-US', undefined)).toBe('85.20 notacur');
+    expect(formatNativePrice(85.2, 'notacur', 'cs-CZ', undefined)).toBe('85,20 notacur');
   });
 
   it('omits decimals for currencies that do not use them', () => {
     // en-US renders the narrow CZK symbol with a non-breaking space before the amount
-    expect(formatNativePrice(1234.56, 'CZK', 'en-US')).toBe('K\u010d\u00a01,235');
-    expect(formatNativePrice(1234.56, 'JPY', 'en-US')).toBe('¥1,235');
+    expect(formatNativePrice(1234.56, 'CZK', 'en-US', 'CZK')).toBe('K\u010d\u00a01,235');
+    expect(formatNativePrice(1234.56, 'JPY', 'en-US', 'JPY')).toBe('¥1,235');
   });
 
   it('can show an explicit plus for changes and never a signed zero', () => {
-    expect(formatNativePrice(1.5, 'USD', 'en-US', undefined, true)).toBe('+\u00a0$1.50');
-    expect(formatNativePrice(-1.5, 'USD', 'en-US', undefined, true)).toBe('\u2212\u00a0$1.50');
-    expect(formatNativePrice(-0.001, 'USD', 'en-US', undefined, true)).toBe('$0.00');
+    expect(formatNativePrice(1.5, 'USD', 'en-US', 'USD', undefined, true)).toBe('+\u00a0$1.50');
+    expect(formatNativePrice(-1.5, 'USD', 'en-US', 'USD', undefined, true)).toBe(
+      '\u2212\u00a0$1.50'
+    );
+    expect(formatNativePrice(-0.001, 'USD', 'en-US', 'USD', undefined, true)).toBe('$0.00');
   });
 
   it('returns em dash for non-finite values', () => {
-    expect(formatNativePrice(NaN, 'USD', 'en-US')).toBe('—');
+    expect(formatNativePrice(NaN, 'USD', 'en-US', 'USD')).toBe('—');
   });
 
   it('drops decimals when the formatted value exceeds maxLength', () => {
     // cs-CZ: "1 234,56 $" (10 chars) and "1 234,6 $" (9) are too wide for an 8-char card
-    expect(formatNativePrice(1234.56, 'USD', 'cs-CZ', 8)).toBe('1\u00A0235\u00A0$');
+    expect(formatNativePrice(1234.56, 'USD', 'cs-CZ', 'USD', 8)).toBe('1\u00A0235\u00A0$');
   });
 
   it('keeps decimals when the value already fits maxLength', () => {
-    expect(formatNativePrice(65.08, 'USD', 'cs-CZ', 10)).toBe('65,08\u00A0$');
+    expect(formatNativePrice(65.08, 'USD', 'cs-CZ', 'USD', 10)).toBe('65,08\u00A0$');
   });
 });
 
@@ -141,31 +144,33 @@ describe('percentFromFraction', () => {
 
 describe('formatMarketCap', () => {
   it('compacts large values', () => {
-    expect(formatMarketCap('3120000000000', 'USD', 'en-US')).toBe('$3.12T');
-    expect(formatMarketCap(null, 'USD', 'en-US')).toBeNull();
+    expect(formatMarketCap('3120000000000', 'USD', 'en-US', 'USD')).toBe('$3.12T');
+    expect(formatMarketCap(null, 'USD', 'en-US', 'USD')).toBeNull();
   });
 
   it('keeps an unknown currency code as a suffix of the compact number', () => {
-    expect(formatMarketCap('3120000000000', 'notacur', 'en-US')).toBe('3.12T notacur');
+    expect(formatMarketCap('3120000000000', 'notacur', 'en-US', undefined)).toBe('3.12T notacur');
   });
 
   it('uses plain compact notation when currency is null', () => {
-    expect(formatMarketCap('3120000000000', null, 'en-US')).toBe('3.12T');
+    expect(formatMarketCap('3120000000000', null, 'en-US', undefined)).toBe('3.12T');
   });
 
   it('drops decimals when the compact value exceeds maxLength', () => {
     // cs-CZ: "327,06 mld. $" (13 chars) and "327,1 mld. $" (12) overflow a 10-char card
-    expect(formatMarketCap('327060000000', 'USD', 'cs-CZ', 10)).toBe('327\u00A0mld.\u00A0$');
+    expect(formatMarketCap('327060000000', 'USD', 'cs-CZ', 'USD', 10)).toBe('327\u00A0mld.\u00A0$');
   });
 
   it('keeps decimals when the compact value already fits maxLength', () => {
-    expect(formatMarketCap('3120000000000', 'USD', 'en-US', 12)).toBe('$3.12T');
+    expect(formatMarketCap('3120000000000', 'USD', 'en-US', 'USD', 12)).toBe('$3.12T');
   });
 
   it('steps down one decimal at a time, keeping as much precision as fits', () => {
     // cs-CZ 4.46e12: "4,46 bil. $" (11) is too long for 10, but "4,5 bil. $" (10)
     // fits — so it must not fall all the way to "4 bil. $"
-    expect(formatMarketCap('4459835424768', 'USD', 'cs-CZ', 10)).toBe('4,5\u00A0bil.\u00A0$');
+    expect(formatMarketCap('4459835424768', 'USD', 'cs-CZ', 'USD', 10)).toBe(
+      '4,5\u00A0bil.\u00A0$'
+    );
   });
 });
 

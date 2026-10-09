@@ -25,14 +25,19 @@ describe('formatAmountWithCode', () => {
   });
 
   describe('formatAmountInCurrency', () => {
-    it('uses the currency symbol and the locale separators', () => {
-      expect(formatAmountInCurrency(1234.5, 'EUR', 'en-US')).toBe('€1,234.50');
-      expect(formatAmountInCurrency(1234.5, 'EUR', 'cs-CZ')).toBe('1\u00a0234,50\u00a0€');
-      expect(formatAmountInCurrency(1234, 'CZK', 'cs-CZ')).toBe('1\u00a0234\u00a0Kč');
+    it('uses the main currency symbol and the locale separators', () => {
+      expect(formatAmountInCurrency(1234.5, 'EUR', 'en-US', 'EUR')).toBe('€1,234.50');
+      expect(formatAmountInCurrency(1234.5, 'EUR', 'cs-CZ', 'EUR')).toBe('1\u00a0234,50\u00a0€');
+      expect(formatAmountInCurrency(1234, 'CZK', 'cs-CZ', 'CZK')).toBe('1\u00a0234\u00a0Kč');
+    });
+
+    it('shows the ISO code for any other currency or without a main currency', () => {
+      expect(formatAmountInCurrency(1234.5, 'EUR', 'en-US', 'CZK')).toBe('EUR\u00a01,234.50');
+      expect(formatAmountInCurrency(1234.5, 'EUR', 'en-US', undefined)).toBe('EUR\u00a01,234.50');
     });
 
     it('falls back to the code for unknown currencies', () => {
-      expect(formatAmountInCurrency(10, 'XYZ1', 'en-US')).toBe('10.00 XYZ1');
+      expect(formatAmountInCurrency(10, 'XYZ1', 'en-US', 'CZK')).toBe('10.00 XYZ1');
     });
   });
 });

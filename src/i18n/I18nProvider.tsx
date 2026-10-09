@@ -79,7 +79,8 @@ export function I18nProvider({ children }: I18nProviderProps) {
 
   const formatDate = useCallback(
     (date: Date | string, options?: Intl.DateTimeFormatOptions) => {
-      return getFormatters(getLocaleForLanguage(currentLanguage)).date(date, options);
+      // No money is formatted here: no main currency needed.
+      return getFormatters(getLocaleForLanguage(currentLanguage), undefined).date(date, options);
     },
     [currentLanguage]
   );
@@ -87,7 +88,8 @@ export function I18nProvider({ children }: I18nProviderProps) {
   const formatNumber = useCallback(
     (value: number, options?: Intl.NumberFormatOptions) => {
       if (value === null || value === undefined || isNaN(value)) return '';
-      return getFormatters(getLocaleForLanguage(currentLanguage)).number(value, options);
+      // No money is formatted here: no main currency needed.
+      return getFormatters(getLocaleForLanguage(currentLanguage), undefined).number(value, options);
     },
     [currentLanguage]
   );

@@ -328,11 +328,12 @@ function formatExact(
   value: number,
   text: string,
   currency: string | null | undefined,
-  locale: string
+  locale: string,
+  mainCurrency: string | undefined
 ): string {
   const written = /\.(\d+)\s*$/.exec(text.trim())?.[1].length ?? 0;
   const digits = written === 0 ? 0 : Math.min(8, Math.max(2, written));
-  return getFormatters(locale).money(value, currency ?? '', { decimals: digits });
+  return getFormatters(locale, mainCurrency).money(value, currency ?? '', { decimals: digits });
 }
 
 /**
@@ -343,12 +344,16 @@ function formatExact(
 export function formatPreviewAmount(
   amount: string | null,
   currency: string | null | undefined,
-  locale: string
+  locale: string,
+  /** The profile currency: the only one shown as a symbol. */
+  mainCurrency: string | undefined
 ): string {
   if (amount == null) return '—';
   const value = Number(amount);
   if (!Number.isFinite(value)) return amount;
-  const text = formatSignedAmount(value, (abs) => formatExact(abs, amount, currency, locale));
+  const text = formatSignedAmount(value, (abs) =>
+    formatExact(abs, amount, currency, locale, mainCurrency)
+  );
   return value > 0 ? `+${text}` : text;
 }
 
@@ -468,11 +473,13 @@ export function nextStepsFor(result: CsvImportResult, context: NextStepContext):
 export function formatBalance(
   value: string,
   currency: string | null | undefined,
-  locale: string
+  locale: string,
+  /** The profile currency: the only one shown as a symbol. */
+  mainCurrency: string | undefined
 ): string {
   const amount = Number(value);
   if (!Number.isFinite(amount)) return value;
-  return formatExact(amount, value, currency, locale);
+  return formatExact(amount, value, currency, locale, mainCurrency);
 }
 
 /** "Germany" for `de`: the localized region name, or the code when Intl does not know it. */

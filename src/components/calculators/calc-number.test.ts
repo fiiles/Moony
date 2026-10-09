@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseCalcNumber } from './calc-number';
+import { parseCalcNumber, roundSignificant, scaledDefault } from './calc-number';
 
 describe('parseCalcNumber', () => {
   it('reads Czech input: space grouping, comma or dot decimals', () => {
@@ -27,5 +27,31 @@ describe('parseCalcNumber', () => {
   it('reads anything unreadable as 0', () => {
     expect(parseCalcNumber('', 'cs-CZ')).toBe(0);
     expect(parseCalcNumber('abc', 'en-US')).toBe(0);
+  });
+});
+
+describe('roundSignificant', () => {
+  it('keeps two significant digits by default', () => {
+    expect(roundSignificant(5_436_123)).toBe(5_400_000);
+    expect(roundSignificant(861.4)).toBe(860);
+    expect(roundSignificant(0)).toBe(0);
+    expect(roundSignificant(-12_345)).toBe(-12_000);
+  });
+});
+
+describe('scaledDefault', () => {
+  const format = (v: number) => String(v);
+
+  it('is the EUR constant itself when the main currency is EUR', () => {
+    expect(scaledDefault(140_000, (amount) => amount, format)).toBe('140000');
+  });
+
+  it('converts the EUR constant and rounds it to a round amount', () => {
+    // 140 000 EUR at 24.7 CZK = 3 458 000 → 3 500 000
+    expect(scaledDefault(140_000, (amount) => amount * 24.7, format)).toBe('3500000');
+  });
+
+  it('starts empty when no rate is known (never 1:1)', () => {
+    expect(scaledDefault(140_000, () => null, format)).toBe('');
   });
 });

@@ -94,7 +94,10 @@ export function LanguageCard() {
               <RadioGroupItem value={lang} id={`lang-${lang}`} />
               {LANGUAGE_NAMES[lang].native}
               <span className="ml-auto font-500 text-ink-4 num">
-                {getFormatters(getLocaleForLanguage(lang)).money(1234.56, currencyCode)}
+                {getFormatters(getLocaleForLanguage(lang), currencyCode).money(
+                  1234.56,
+                  currencyCode
+                )}
               </span>
             </label>
           );

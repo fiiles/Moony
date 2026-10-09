@@ -5,10 +5,8 @@ import { Check, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { portfolioApi, priceApi } from '@/lib/tauri-api';
-import { useCurrency } from '@/lib/currency';
 import { useSyncStatus } from '@/hooks/sync-context';
 import { FX_HISTORY_KEY, FX_SNAPSHOT_KEY } from '@/hooks/use-fx';
-import { hasKnownRate } from '@shared/currencies';
 import { cn } from '@/lib/utils';
 import type { ShellStatus, ShellStatusTone } from '@/components/shell/shell-context';
 
@@ -61,20 +59,10 @@ export function DataStatus({ override }: { override?: ShellStatus }) {
     staleTime: 30000,
   });
 
-  // Currencies with no known exchange rate (their amounts are excluded from
-  // totals, never valued 1:1). The backend reports the ones it met in a
-  // conversion; the display
-  // currency is converted on the frontend, so a non-ECB display currency is
-  // added here once the rates have loaded.
-  const { currencyCode: displayCurrency, ratesTimestamp } = useCurrency();
-  const reportedMissing = priceStatus?.missingCurrencies ?? [];
-  const displayMissing =
-    ratesTimestamp > 0 &&
-    !hasKnownRate(displayCurrency) &&
-    !reportedMissing.includes(displayCurrency);
-  const missingCurrencies = displayMissing
-    ? [...reportedMissing, displayCurrency]
-    : reportedMissing;
+  // Currencies in the user's data (the profile currency included) without a
+  // current quote: their amounts are excluded from converted totals, never
+  // valued 1:1.
+  const missingCurrencies = priceStatus?.missingCurrencies ?? [];
 
   // Held currencies whose newest stored rate is more than two weeks old.
   const staleCurrencies = priceStatus?.staleCurrencies ?? [];
@@ -91,10 +79,9 @@ export function DataStatus({ override }: { override?: ShellStatus }) {
     setIsRefreshing(true);
     try {
       await Promise.allSettled([
-        portfolioApi.refreshExchangeRates().then((rates) => {
+        portfolioApi.refreshExchangeRates().then(() => {
           queryClient.invalidateQueries({ queryKey: FX_SNAPSHOT_KEY });
           queryClient.invalidateQueries({ queryKey: FX_HISTORY_KEY });
-          return rates;
         }),
         priceApi.refreshStockPrices(),
         priceApi.refreshCryptoPrices(),

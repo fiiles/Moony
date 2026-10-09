@@ -64,7 +64,7 @@ const SOURCE_BY_CATEGORY: Record<string, string> = {
 export default function CashflowPlanning() {
   const { t } = useTranslation('reports');
   const { t: tc } = useTranslation('common');
-  const { currencyCode, ratesTimestamp } = useCurrency();
+  const { currencyCode, fxRevision } = useCurrency();
   const fmt = useFormat();
   const queryClient = useQueryClient();
 
@@ -85,15 +85,11 @@ export default function CashflowPlanning() {
     isError,
     refetch,
   } = useQuery<CashflowReport>({
-    queryKey: ['cashflow-report', viewType, currencyCode, ratesTimestamp],
+    queryKey: ['cashflow-report', viewType, currencyCode, fxRevision],
     queryFn: () => cashflowApi.getReport(viewType, currencyCode),
     refetchOnMount: 'always',
   });
-  const {
-    money,
-    signedMoney: formatCurrencySigned,
-    nativeMoney,
-  } = useReportMoney(report?.reportCurrency);
+  const { money, signedMoney, nativeMoney } = useReportMoney(report?.reportCurrency);
 
   const createMutation = useMutation({
     mutationFn: cashflowApi.createItem,
@@ -277,7 +273,7 @@ export default function CashflowPlanning() {
           <TableCell className={cn('text-right font-650 num', isIncome ? 'text-gain' : 'text-ink')}>
             {unavailable
               ? t('readiness.fxUnavailable')
-              : formatCurrencySigned(isIncome ? Number(item.amount) : -Number(item.amount))}
+              : signedMoney(isIncome ? Number(item.amount) : -Number(item.amount))}
             {incomplete && !unavailable && (
               <small className="block text-micro text-loss">{t('readiness.partialAmount')}</small>
             )}
@@ -347,7 +343,7 @@ export default function CashflowPlanning() {
                 Number(section.netCashflow) >= 0 ? 'text-gain' : 'text-loss'
               )}
             >
-              {formatCurrencySigned(Number(section.netCashflow))}
+              {signedMoney(Number(section.netCashflow))}
             </b>
           </div>
         </CardHeader>
@@ -483,7 +479,7 @@ export default function CashflowPlanning() {
         />
         <Stat
           label={t('planning.stats.net')}
-          value={formatCurrencySigned(Number(report.netCashflow))}
+          value={signedMoney(Number(report.netCashflow))}
           tone={
             Number(report.netCashflow) > 0
               ? 'gain'

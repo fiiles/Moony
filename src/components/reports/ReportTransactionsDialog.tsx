@@ -37,7 +37,7 @@ function ReportTransactionsDialogContent({
   end,
   accountIds,
   reportCurrency,
-  ratesTimestamp,
+  fxRevision,
   onClose,
 }: {
   target: ReportTarget | null;
@@ -45,7 +45,7 @@ function ReportTransactionsDialogContent({
   end: number;
   accountIds?: string[];
   reportCurrency: string;
-  ratesTimestamp: number;
+  fxRevision: number;
   onClose: () => void;
 }) {
   const { t } = useTranslation('reports');
@@ -57,15 +57,7 @@ function ReportTransactionsDialogContent({
     isError,
     refetch,
   } = useQuery({
-    queryKey: [
-      'report-transactions',
-      target,
-      start,
-      end,
-      accountIds,
-      reportCurrency,
-      ratesTimestamp,
-    ],
+    queryKey: ['report-transactions', target, start, end, accountIds, reportCurrency, fxRevision],
     queryFn: () =>
       cashflowApi.getTransactions(start, end, {
         accountIds,

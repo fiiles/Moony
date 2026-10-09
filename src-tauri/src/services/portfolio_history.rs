@@ -134,15 +134,6 @@ impl LegacyCzk {
         }
     }
 
-    /// CZK value of a whole breakdown at `day`'s quotes; None when any bucket cannot be
-    /// converted (the breakdown cannot be compared with a CZK total like-for-like).
-    pub(crate) fn breakdown_on(&self, breakdown: &HashMap<String, f64>, day: i64) -> Option<f64> {
-        breakdown
-            .iter()
-            .map(|(currency, amount)| self.history.convert_on(*amount, currency, Self::CZK, day))
-            .sum()
-    }
-
     /// Sum of a breakdown in CZK: at `day`'s quotes, or the current ones for `None`.
     fn total(&self, breakdown: &HashMap<String, f64>, day: Option<i64>) -> f64 {
         breakdown
@@ -671,12 +662,6 @@ mod tests {
         assert_eq!(czk.on(10.0, "USD", later), 0.0);
         assert_eq!(czk.on_or_now(10.0, "USD", later), 250.0);
         assert_eq!(czk.on_or_now(10.0, "USD", TEST_DAY), 200.0);
-        // A breakdown is valued only when every bucket converts.
-        assert_eq!(
-            czk.breakdown_on(&map(&[("USD", 1.0), ("CZK", 5.0)]), TEST_DAY),
-            Some(25.0)
-        );
-        assert_eq!(czk.breakdown_on(&map(&[("KWD", 1.0)]), TEST_DAY), None);
     }
 
     #[test]

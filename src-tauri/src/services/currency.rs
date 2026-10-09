@@ -318,24 +318,12 @@ pub fn breakdown_covers_total(czk_sum: f64, czk_total: f64) -> bool {
     ((czk_sum - czk_total) / czk_total).abs() <= BREAKDOWN_CONSISTENCY_TOLERANCE
 }
 
-/// Repair policy for a stored `*_by_currency` column checked against its CZK
-/// total: an empty breakdown with a non-zero total needs repair, a valuable
-/// breakdown that does not cover the total needs repair, and a breakdown that
-/// cannot be valued at the day's rates is kept (nothing better is available).
-/// `czk_value` values a breakdown at the row's day (None when a bucket has no quote).
-pub fn needs_breakdown_repair(
-    json: &str,
-    czk_total: f64,
-    czk_value: impl Fn(&HashMap<String, f64>) -> Option<f64>,
-) -> bool {
-    let breakdown = breakdown_from_json(json);
-    if breakdown.is_empty() {
-        return czk_total != 0.0;
-    }
-    match czk_value(&breakdown) {
-        Some(czk_sum) => !breakdown_covers_total(czk_sum, czk_total),
-        None => false,
-    }
+/// Repair policy for a stored `*_by_currency` column: only an empty breakdown with a
+/// non-zero CZK total needs repair. A non-empty breakdown holds native amounts, which are
+/// the source of truth — it is never rewritten, however far its converted value drifts
+/// from the CZK cache total.
+pub fn needs_breakdown_repair(json: &str, czk_total: f64) -> bool {
+    breakdown_from_json(json).is_empty() && czk_total != 0.0
 }
 
 #[cfg(test)]
@@ -451,30 +439,22 @@ mod tests {
 
     #[test]
     fn test_needs_breakdown_repair_policy() {
-        // USD at 20 CZK; any other bucket currency has no quote that day.
-        let value = |breakdown: &HashMap<String, f64>| -> Option<f64> {
-            breakdown
-                .iter()
-                .map(|(currency, amount)| match currency.as_str() {
-                    "CZK" => Some(*amount),
-                    "USD" => Some(amount * 20.0),
-                    _ => None,
-                })
-                .sum()
-        };
-
         // Empty breakdown with a non-zero total needs repair; with a zero total it does not.
-        assert!(needs_breakdown_repair("{}", 1000.0, value));
-        assert!(!needs_breakdown_repair("{}", 0.0, value));
+        assert!(needs_breakdown_repair("{}", 1000.0));
+        assert!(!needs_breakdown_repair("{}", 0.0));
+        assert!(needs_breakdown_repair("not json", 1000.0));
 
-        // Consistent breakdown is kept.
-        assert!(!needs_breakdown_repair("{\"USD\":100}", 2000.0, value));
+        // A consistent native breakdown is kept.
+        assert!(!needs_breakdown_repair("{\"USD\":100}", 2000.0));
+    }
 
-        // Fragment breakdown (covers 20% of the total) needs repair.
-        assert!(needs_breakdown_repair("{\"USD\":100}", 10000.0, value));
-
-        // Unverifiable breakdowns are kept: a bucket currency without a quote that day.
-        assert!(!needs_breakdown_repair("{\"GBP\":100}", 10000.0, value));
+    #[test]
+    fn native_breakdown_far_from_its_czk_total_is_not_rewritten() {
+        // 100 USD at ~20 CZK covers 20 % of a 10 000 CZK total: far beyond the old 25 %
+        // tolerance, still the native truth.
+        assert!(!needs_breakdown_repair("{\"USD\":100}", 10000.0));
+        // A bucket without any quote is kept as well.
+        assert!(!needs_breakdown_repair("{\"GBP\":100}", 10000.0));
     }
 
     // ---- ECB reference date and the CZK quote ----

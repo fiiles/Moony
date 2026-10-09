@@ -1158,17 +1158,16 @@ fn derive_breakdown_from_value_history(
 
 /// Backfill and repair native currency breakdowns on portfolio_metrics_history.
 ///
-/// Runs on every startup (SyncProvider). For each row, every `*_by_currency`
-/// column is checked against its stored CZK total at that day's rates:
-/// - Stocks/crypto: an empty or inconsistent breakdown is rebuilt from
-///   stock_value_history / crypto_value_history, and written only when that
-///   history covers the stored total (a partial fragment stays '{}' so the
-///   frontend renders the row via its CZK total).
-/// - Other asset classes: an empty or inconsistent breakdown becomes
-///   {"CZK": <czk_total>} (no per-day native history is available).
-/// - Breakdowns that cannot be valued at the day's rates are kept as-is.
+/// Runs on every startup (SyncProvider). Only an EMPTY `*_by_currency` column
+/// with a non-zero CZK total is filled; a non-empty breakdown holds native
+/// amounts (the source of truth) and is never rewritten:
+/// - Stocks/crypto: an empty breakdown is rebuilt from stock_value_history /
+///   crypto_value_history, and written only when that history covers the
+///   stored total (a partial fragment stays '{}').
+/// - Other asset classes: an empty breakdown becomes {"CZK": <czk_total>}
+///   (no per-day native history is available).
 ///
-/// Returns the number of rows updated. Idempotent — consistent rows are untouched.
+/// Returns the number of rows updated. Idempotent — filled rows are untouched.
 #[tauri::command]
 pub async fn backfill_currency_breakdowns(db: State<'_, Database>) -> Result<i32> {
     use crate::services::currency::{breakdown_covers_total, needs_breakdown_repair};
@@ -1235,23 +1234,16 @@ pub async fn backfill_currency_breakdowns(db: State<'_, Database>) -> Result<i32
             return Ok(0);
         }
 
-        // One load of the FX timeseries for the rows' span (with the walk-back
-        // margin) instead of per-row queries.
-        let min_day = rows.iter().map(|r| r.recorded_at).min().unwrap_or(0);
-        let max_day = rows.iter().map(|r| r.recorded_at).max().unwrap_or(0);
-        let czk = LegacyCzk::dated(conn, min_day, max_day)?;
-
         let mut repaired = 0i32;
 
         for row in rows {
             let day_start = (row.recorded_at / 86400) * 86400;
             let day_end = day_start + 86400;
-            let value_at_day = |breakdown: &HashMap<String, f64>| czk.breakdown_on(breakdown, day_start);
 
             // Static classes: repair to {"CZK": total} (their CZK total is the
             // only per-day record available).
             let fix_static = |json: &str, total: f64| -> Option<String> {
-                if needs_breakdown_repair(json, total, value_at_day) {
+                if needs_breakdown_repair(json, total) {
                     let target = format!("{{\"CZK\":{total}}}");
                     if target != json {
                         return Some(target);
@@ -1270,7 +1262,7 @@ pub async fn backfill_currency_breakdowns(db: State<'_, Database>) -> Result<i32
                                   total: f64,
                                   table: &'static str|
              -> Result<Option<String>> {
-                if !needs_breakdown_repair(json, total, value_at_day) {
+                if !needs_breakdown_repair(json, total) {
                     return Ok(None);
                 }
                 let (derived, czk_sum) =

@@ -20,7 +20,6 @@ use rusqlite::Connection;
 use uuid::Uuid;
 
 use crate::error::Result;
-use crate::models::PortfolioMetricsHistory;
 use crate::services::currency::{convert_to_czk_with_rates, get_all_rates, get_rates_for_date};
 
 pub const SECONDS_PER_DAY: i64 = 86_400;
@@ -401,77 +400,6 @@ pub fn aggregate_ticker_history(
     }
 
     Ok(())
-}
-
-/// Snapshot rows for the history charts, newest first, optionally limited to
-/// `recorded_at` in `[start_date, end_date]`. Every row carries its provenance
-/// (`source`: `live` = recorded by the running app, `backfill` = reconstructed;
-/// see [`SnapshotSource`]) so charts can tell an authentic record from an
-/// estimate — on backfilled days the static classes (bank accounts, bonds,
-/// real estate, loans) are carried from the nearest live row.
-pub fn read_history(
-    conn: &Connection,
-    start_date: Option<i64>,
-    end_date: Option<i64>,
-) -> Result<Vec<PortfolioMetricsHistory>> {
-    let mut query = String::from(
-        "SELECT id, total_savings, total_loans_principal, total_investments, total_crypto,
-                total_bonds, total_real_estate_personal, total_real_estate_investment,
-                total_other_assets, recorded_at,
-                investments_by_currency, crypto_by_currency, savings_by_currency,
-                bonds_by_currency, real_estate_by_currency, loans_by_currency,
-                other_assets_by_currency, source
-         FROM portfolio_metrics_history",
-    );
-
-    let mut params: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
-    let mut conditions = Vec::new();
-
-    if let Some(start) = start_date {
-        conditions.push(" recorded_at >= ?");
-        params.push(Box::new(start));
-    }
-    if let Some(end) = end_date {
-        conditions.push(" recorded_at <= ?");
-        params.push(Box::new(end));
-    }
-
-    if !conditions.is_empty() {
-        query.push_str(" WHERE");
-        query.push_str(&conditions.join(" AND"));
-    }
-    query.push_str(" ORDER BY recorded_at DESC");
-
-    let mut stmt = conn.prepare(&query)?;
-    let history = stmt
-        .query_map(rusqlite::params_from_iter(params), |row| {
-            Ok(PortfolioMetricsHistory {
-                id: row.get(0)?,
-                total_savings: row.get(1)?,
-                total_loans_principal: row.get(2)?,
-                total_investments: row.get(3)?,
-                total_crypto: row.get(4)?,
-                total_bonds: row.get(5)?,
-                total_real_estate_personal: row.get(6)?,
-                total_real_estate_investment: row.get(7)?,
-                total_other_assets: row.get(8).unwrap_or("0".to_string()),
-                recorded_at: row.get(9)?,
-                investments_by_currency: row.get::<_, String>(10).unwrap_or("{}".to_string()),
-                crypto_by_currency: row.get::<_, String>(11).unwrap_or("{}".to_string()),
-                savings_by_currency: row.get::<_, String>(12).unwrap_or("{}".to_string()),
-                bonds_by_currency: row.get::<_, String>(13).unwrap_or("{}".to_string()),
-                real_estate_by_currency: row.get::<_, String>(14).unwrap_or("{}".to_string()),
-                loans_by_currency: row.get::<_, String>(15).unwrap_or("{}".to_string()),
-                other_assets_by_currency: row.get::<_, String>(16).unwrap_or("{}".to_string()),
-                source: row
-                    .get::<_, String>(17)
-                    .unwrap_or_else(|_| SnapshotSource::Live.as_str().to_string()),
-            })
-        })?
-        .filter_map(|r| r.ok())
-        .collect();
-
-    Ok(history)
 }
 
 /// One ticker's history rows and position changes, with cursors for
@@ -1058,57 +986,6 @@ mod tests {
             .collect();
         v.sort_by(|a, b| a.0.cmp(&b.0));
         v
-    }
-
-    fn insert_history_row(conn: &Connection, id: &str, recorded_at: i64, source: &str) {
-        conn.execute(
-            "INSERT INTO portfolio_metrics_history
-             (id, total_savings, total_loans_principal, total_investments, total_crypto,
-              total_bonds, total_real_estate_personal, total_real_estate_investment,
-              recorded_at, source)
-             VALUES (?1, '500', '0', '0', '0', '0', '0', '0', ?2, ?3)",
-            rusqlite::params![id, recorded_at, source],
-        )
-        .unwrap();
-    }
-
-    #[test]
-    fn read_history_returns_the_row_source_newest_first() {
-        // the frontend must be able to tell reconstructed days from
-        // authentic records.
-        let conn = setup_test_db();
-        insert_history_row(&conn, "old", TEST_DAY, "backfill");
-        insert_history_row(&conn, "new", TEST_DAY + DAY + 3600, "live");
-
-        let rows = read_history(&conn, None, None).unwrap();
-        let sources: Vec<(&str, &str)> = rows
-            .iter()
-            .map(|r| (r.id.as_str(), r.source.as_str()))
-            .collect();
-        assert_eq!(sources, vec![("new", "live"), ("old", "backfill")]);
-        assert_eq!(rows[0].total_savings, "500");
-
-        let json = serde_json::to_value(&rows[1]).unwrap();
-        assert_eq!(json["source"], "backfill");
-    }
-
-    #[test]
-    fn read_history_filters_the_range_inclusively() {
-        let conn = setup_test_db();
-        insert_history_row(&conn, "a", TEST_DAY, "backfill");
-        insert_history_row(&conn, "b", TEST_DAY + DAY, "backfill");
-        insert_history_row(&conn, "c", TEST_DAY + 2 * DAY, "backfill");
-
-        let ids = |start, end| -> Vec<String> {
-            read_history(&conn, start, end)
-                .unwrap()
-                .into_iter()
-                .map(|r| r.id)
-                .collect()
-        };
-        assert_eq!(ids(Some(TEST_DAY + DAY), None), vec!["c", "b"]);
-        assert_eq!(ids(None, Some(TEST_DAY + DAY)), vec!["b", "a"]);
-        assert_eq!(ids(Some(TEST_DAY + DAY), Some(TEST_DAY + DAY)), vec!["b"]);
     }
 
     #[test]

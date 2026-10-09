@@ -321,7 +321,7 @@ impl MoonyMcp {
     }
 
     #[tool(
-        description = "Get current portfolio metrics: net worth breakdown by asset class (savings, investments, crypto, bonds, real estate, other assets, liabilities). All monetary values are in the user's main currency, given as `mainCurrency`."
+        description = "Get current portfolio metrics: net worth breakdown by asset class (savings, investments, crypto, bonds, real estate, other assets, liabilities). All monetary values are in the user's main currency, given as `mainCurrency`. A class that could not be converted at all is null; the totals sum every amount that could be converted and `missingCurrencies` lists the currencies left out."
     )]
     fn portfolio_get_metrics(
         &self,
@@ -335,7 +335,7 @@ impl MoonyMcp {
     }
 
     #[tool(
-        description = "Get historical portfolio snapshots showing net worth over time. Each record contains per-asset-class totals in the user's main currency (the `mainCurrency` field), each snapshot converted at its own day's exchange rate. Useful for trend analysis."
+        description = "Get historical portfolio snapshots showing net worth over time, newest first. Each record contains per-asset-class totals and `netWorth` in the user's main currency (the `mainCurrency` field): every snapshot's amounts are converted from their own currencies at that day's exchange rates. A class that could not be converted that day is null; `missingCurrencies` lists the currencies left out of the returned records. Useful for trend analysis."
     )]
     fn portfolio_get_history(
         &self,

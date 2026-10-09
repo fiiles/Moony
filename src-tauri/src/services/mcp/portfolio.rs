@@ -1,13 +1,14 @@
-//! MCP tools: portfolio. Query bodies moved verbatim from the retired REST API
-//! (services/local_api.rs) (ADR 0006).
+//! MCP tools: portfolio, on the app's net worth service (ADR 0006, ADR 0011).
 
 use rmcp::schemars;
-use rusqlite::Connection;
+use rusqlite::{Connection, OptionalExtension};
 use serde::Deserialize;
 use serde_json::Value;
 
-use super::money::MoneyContext;
+use super::money::{amount_json, load_main_currency};
 use crate::error::Result;
+use crate::services::net_worth;
+use crate::services::reporting::money_in_currency;
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct PortfolioHistoryArgs {
@@ -28,270 +29,94 @@ pub struct PortfolioMetricsArgs {
     pub exclude_personal_real_estate: Option<bool>,
 }
 
+/// Today's net worth in the user's main currency: the app's net worth service with the app's
+/// current quote snapshot (C-A), so the assistant and the app agree. A class that could not
+/// be converted at all is `null`; the totals leave unconverted amounts out and
+/// `missingCurrencies` names them.
 pub fn portfolio_metrics(conn: &Connection, exclude_personal_real_estate: bool) -> Result<Value> {
-    let exclude = exclude_personal_real_estate;
-    // One MoneyContext per call: all arithmetic stays in CZK, converted to the
-    // main currency only when the response is built.
-    let ctx = MoneyContext::load(conn)?;
-
-    // Bank accounts (savings)
-    let savings: f64 = {
-        let mut stmt = conn.prepare(
-            "SELECT balance, currency FROM bank_accounts WHERE exclude_from_balance = 0",
-        )?;
-        let result = stmt
-            .query_map([], |row| {
-                Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
-            })?
-            .filter_map(|r| r.ok())
-            .map(|(bal, cur)| ctx.to_czk(bal.parse::<f64>().unwrap_or(0.0), &cur))
-            .sum();
-        result
+    let main = load_main_currency(conn)?;
+    let worth = net_worth::current_net_worth(conn, &main, exclude_personal_real_estate)?;
+    let currency = worth.currency.as_str();
+    let classes = &worth.classes;
+    let money = |value: f64| money_in_currency(value, currency);
+    let personal = if exclude_personal_real_estate {
+        Some(0.0)
+    } else {
+        classes.real_estate_personal
     };
-
-    // Loans, valued at the amortized balance as of today
-    let loans: f64 = crate::services::loans::outstanding_by_currency(
-        conn,
-        crate::services::loan_amortization::today_utc_day(),
-    )?
-    .into_iter()
-    .map(|(currency, balance)| ctx.to_czk(balance, &currency))
-    .sum();
-
-    // Stocks
-    let investments: f64 = {
-        let mut stmt = conn.prepare(
-            // Same rule as services::pricing: the override wins unless the API price is newer.
-            "SELECT si.quantity, COALESCE(CASE WHEN spo.price IS NOT NULL AND (sd.fetched_at IS NULL OR sd.fetched_at <= spo.updated_at) THEN spo.price ELSE sd.original_price END, '0') AS cp,
-                COALESCE(CASE WHEN spo.price IS NOT NULL AND (sd.fetched_at IS NULL OR sd.fetched_at <= spo.updated_at) THEN spo.currency ELSE sd.currency END, 'USD') AS cc
-         FROM stock_investments si
-         LEFT JOIN stock_data sd ON si.ticker = sd.ticker
-         LEFT JOIN stock_price_overrides spo ON si.ticker = spo.ticker",
-        )?;
-        let result = stmt
-            .query_map([], |row| {
-                Ok((
-                    row.get::<_, String>(0)?,
-                    row.get::<_, String>(1)?,
-                    row.get::<_, String>(2)?,
-                ))
-            })?
-            .filter_map(|r| r.ok())
-            .map(|(q, cp, cc)| {
-                let val = q.parse::<f64>().unwrap_or(0.0) * cp.parse::<f64>().unwrap_or(0.0);
-                ctx.to_czk(val, &cc)
-            })
-            .sum();
-        result
-    };
-
-    // Crypto
-    let crypto: f64 = {
-        let mut stmt = conn.prepare(
-            "SELECT ci.quantity, COALESCE(CASE WHEN cpo.price IS NOT NULL AND (cp.fetched_at IS NULL OR cp.fetched_at <= cpo.updated_at) THEN cpo.price ELSE cp.price END, '0') AS cp,
-                COALESCE(CASE WHEN cpo.price IS NOT NULL AND (cp.fetched_at IS NULL OR cp.fetched_at <= cpo.updated_at) THEN cpo.currency ELSE cp.currency END, 'USD') AS cc
-         FROM crypto_investments ci
-         LEFT JOIN crypto_prices cp ON ci.ticker = cp.symbol
-         LEFT JOIN crypto_price_overrides cpo ON ci.ticker = cpo.symbol",
-        )?;
-        let result = stmt
-            .query_map([], |row| {
-                Ok((
-                    row.get::<_, String>(0)?,
-                    row.get::<_, String>(1)?,
-                    row.get::<_, String>(2)?,
-                ))
-            })?
-            .filter_map(|r| r.ok())
-            .map(|(q, cp, cc)| {
-                let val = q.parse::<f64>().unwrap_or(0.0) * cp.parse::<f64>().unwrap_or(0.0);
-                ctx.to_czk(val, &cc)
-            })
-            .sum();
-        result
-    };
-
-    // Bonds
-    let bonds: f64 = {
-        let mut stmt = conn.prepare("SELECT coupon_value, quantity, currency FROM bonds")?;
-        let result = stmt
-            .query_map([], |row| {
-                Ok((
-                    row.get::<_, String>(0)?,
-                    row.get::<_, String>(1)?,
-                    row.get::<_, String>(2)?,
-                ))
-            })?
-            .filter_map(|r| r.ok())
-            .map(|(cv, q, c)| {
-                let val = cv.parse::<f64>().unwrap_or(0.0) * q.parse::<f64>().unwrap_or(0.0);
-                ctx.to_czk(val, &c)
-            })
-            .sum();
-        result
-    };
-
-    // Real estate
-    let (re_personal, re_investment): (f64, f64) = {
-        let mut stmt =
-            conn.prepare("SELECT market_price, market_price_currency, type FROM real_estate")?;
-        let rows: Vec<(String, String, String)> = stmt
-            .query_map([], |row| {
-                Ok((
-                    row.get::<_, String>(0)?,
-                    row.get::<_, String>(1)?,
-                    row.get::<_, String>(2)?,
-                ))
-            })?
-            .filter_map(|r| r.ok())
-            .collect();
-
-        let mut personal = 0.0_f64;
-        let mut investment = 0.0_f64;
-        for (price, cur, typ) in rows {
-            let val = ctx.to_czk(price.parse::<f64>().unwrap_or(0.0), &cur);
-            if typ == "personal" {
-                personal += val;
-            } else {
-                investment += val;
-            }
-        }
-        (personal, investment)
-    };
-
-    let re_personal_final = if exclude { 0.0 } else { re_personal };
-
-    // Other assets
-    let other: f64 = {
-        let mut stmt = conn.prepare("SELECT quantity, market_price, currency FROM other_assets")?;
-        let result = stmt
-            .query_map([], |row| {
-                Ok((
-                    row.get::<_, String>(0)?,
-                    row.get::<_, String>(1)?,
-                    row.get::<_, String>(2)?,
-                ))
-            })?
-            .filter_map(|r| r.ok())
-            .map(|(q, mp, c)| {
-                let val = q.parse::<f64>().unwrap_or(0.0) * mp.parse::<f64>().unwrap_or(0.0);
-                ctx.to_czk(val, &c)
-            })
-            .sum();
-        result
-    };
-
-    let total_assets =
-        savings + investments + crypto + bonds + re_personal_final + re_investment + other;
-    let net_worth = total_assets - loans;
-
-    // Amounts are converted to the user's main currency here, once, at
-    // serialisation time.
-    let money = |czk: f64| ctx.money(czk);
 
     Ok(serde_json::json!({
-        "mainCurrency": ctx.main_currency(),
-        "net_worth": money(net_worth),
-        "total_assets": money(total_assets),
-        "total_liabilities": money(loans),
+        "mainCurrency": currency,
+        "net_worth": money(worth.net_worth),
+        "total_assets": money(worth.total_assets),
+        "total_liabilities": money(worth.total_liabilities),
         "breakdown": {
-            "savings": money(savings),
-            "investments": money(investments),
-            "crypto": money(crypto),
-            "bonds": money(bonds),
-            "real_estate_personal": money(re_personal_final),
-            "real_estate_investment": money(re_investment),
-            "other_assets": money(other),
-            "loans": money(loans),
+            "savings": amount_json(classes.savings, currency),
+            "investments": amount_json(classes.investments, currency),
+            "crypto": amount_json(classes.crypto, currency),
+            "bonds": amount_json(classes.bonds, currency),
+            "real_estate_personal": amount_json(personal, currency),
+            "real_estate_investment": amount_json(classes.real_estate_investment, currency),
+            "other_assets": amount_json(classes.other_assets, currency),
+            "loans": amount_json(classes.loans, currency),
         },
-        // Last on purpose: the amounts above record what could not be converted.
-        "missingCurrencies": ctx.missing_currencies(),
+        "missingCurrencies": worth.quality.missing_currencies(),
     }))
 }
 
-/// The CZK total columns of `portfolio_metrics_history` and their response
-/// keys, in the order the query selects them (columns 1 through 8).
-const HISTORY_TOTALS: [&str; 8] = [
-    "totalSavings",
-    "totalLoansPrincipal",
-    "totalInvestments",
-    "totalCrypto",
-    "totalBonds",
-    "totalRealEstatePersonal",
-    "totalRealEstateInvestment",
-    "totalOtherAssets",
-];
-
+/// Recorded snapshot days, newest first, at most `limit`, in the user's main currency: each
+/// day's native breakdowns converted at that day's rates (the app's history service).
+/// `missingCurrencies` covers the returned days only.
 pub fn portfolio_history(
     conn: &Connection,
     start_date: Option<i64>,
     end_date: Option<i64>,
     limit: i64,
 ) -> Result<Value> {
-    let mut conditions = Vec::new();
-    let mut p: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
-    if let Some(s) = start_date {
-        conditions.push("recorded_at >= ?");
-        p.push(Box::new(s));
-    }
-    if let Some(e) = end_date {
-        conditions.push("recorded_at <= ?");
-        p.push(Box::new(e));
-    }
-    let where_clause = if conditions.is_empty() {
-        String::new()
-    } else {
-        format!("WHERE {}", conditions.join(" AND "))
+    let main = load_main_currency(conn)?;
+    // The `limit` newest days start at the limit-th newest snapshot of the range; converting
+    // only from there keeps days outside the answer out of `missingCurrencies`.
+    let limit_start: Option<i64> = conn
+        .query_row(
+            "SELECT recorded_at FROM portfolio_metrics_history
+             WHERE (?1 IS NULL OR recorded_at >= ?1) AND (?2 IS NULL OR recorded_at <= ?2)
+             ORDER BY recorded_at DESC LIMIT 1 OFFSET ?3",
+            rusqlite::params![start_date, end_date, (limit - 1).max(0)],
+            |row| row.get(0),
+        )
+        .optional()?;
+    let from = match (start_date, limit_start) {
+        (Some(start), Some(limit_start)) => Some(start.max(limit_start)),
+        (start, limit_start) => start.or(limit_start),
     };
-    let sql = format!(
-        "SELECT id, total_savings, total_loans_principal, total_investments,
-            total_crypto, total_bonds, total_real_estate_personal,
-            total_real_estate_investment, total_other_assets, recorded_at
-     FROM portfolio_metrics_history {} ORDER BY recorded_at DESC LIMIT ?",
-        where_clause
-    );
-    p.push(Box::new(limit));
-    let refs: Vec<&dyn rusqlite::ToSql> = p.iter().map(|x| x.as_ref()).collect();
-    let mut stmt = conn.prepare(&sql)?;
-    let snapshots: Vec<(String, Vec<rusqlite::types::Value>, i64)> = stmt
-        .query_map(refs.as_slice(), |row| {
-            let totals = (1..=HISTORY_TOTALS.len())
-                .map(|i| row.get::<_, rusqlite::types::Value>(i))
-                .collect::<rusqlite::Result<Vec<_>>>()?;
-            Ok((
-                row.get::<_, String>(0)?,
-                totals,
-                row.get::<_, i64>(HISTORY_TOTALS.len() + 1)?,
-            ))
-        })?
-        .filter_map(|r| r.ok())
-        .collect();
+    let (points, quality) = net_worth::history_in(conn, &main, from, end_date)?;
+    let currency = main.as_str();
 
-    // The snapshot totals are CZK. Each row converts at the rates of its own
-    // day (ADR 0001), one rates query for the whole span.
-    let ctx = MoneyContext::load(conn)?;
-    let days: Vec<i64> = snapshots.iter().map(|(_, _, day)| *day).collect();
-    let day_rates = ctx.day_rates_for(conn, &days)?;
-
-    let rows: Vec<Value> = snapshots
-        .into_iter()
-        .map(|(id, totals, recorded_at)| {
-            let mut row = serde_json::Map::new();
-            row.insert("id".to_string(), Value::String(id));
-            for (key, cell) in HISTORY_TOTALS.iter().zip(totals) {
-                row.insert(
-                    (*key).to_string(),
-                    ctx.stored_czk_to_main_on(cell, recorded_at, &day_rates),
-                );
-            }
-            row.insert("recordedAt".to_string(), serde_json::json!(recorded_at));
-            Value::Object(row)
+    let rows: Vec<Value> = points
+        .iter()
+        .rev()
+        .take(usize::try_from(limit).unwrap_or(0))
+        .map(|point| {
+            let c = &point.classes;
+            serde_json::json!({
+                "recordedAt": point.recorded_at,
+                "source": point.source,
+                "totalSavings": amount_json(c.savings, currency),
+                "totalLoansPrincipal": amount_json(c.loans, currency),
+                "totalInvestments": amount_json(c.investments, currency),
+                "totalCrypto": amount_json(c.crypto, currency),
+                "totalBonds": amount_json(c.bonds, currency),
+                "totalRealEstatePersonal": amount_json(c.real_estate_personal, currency),
+                "totalRealEstateInvestment": amount_json(c.real_estate_investment, currency),
+                "totalOtherAssets": amount_json(c.other_assets, currency),
+                "netWorth": amount_json(point.net_worth, currency),
+            })
         })
         .collect();
     Ok(serde_json::json!({
-        "mainCurrency": ctx.main_currency(),
+        "mainCurrency": currency,
         "history": rows,
-        "missingCurrencies": ctx.missing_currencies(),
+        "missingCurrencies": quality.missing_currencies(),
     }))
 }
 
@@ -330,7 +155,16 @@ mod tests {
                 total_real_estate_personal TEXT NOT NULL,
                 total_real_estate_investment TEXT NOT NULL,
                 recorded_at INTEGER NOT NULL DEFAULT (unixepoch()),
-                total_other_assets TEXT NOT NULL DEFAULT '0'
+                total_other_assets TEXT NOT NULL DEFAULT '0',
+                is_stale INTEGER NOT NULL DEFAULT 0,
+                investments_by_currency TEXT NOT NULL DEFAULT '{}',
+                crypto_by_currency TEXT NOT NULL DEFAULT '{}',
+                savings_by_currency TEXT NOT NULL DEFAULT '{}',
+                bonds_by_currency TEXT NOT NULL DEFAULT '{}',
+                real_estate_by_currency TEXT NOT NULL DEFAULT '{}',
+                loans_by_currency TEXT NOT NULL DEFAULT '{}',
+                other_assets_by_currency TEXT NOT NULL DEFAULT '{}',
+                source TEXT NOT NULL DEFAULT 'live'
             );
             CREATE TABLE bank_accounts (
                 id TEXT PRIMARY KEY,
@@ -473,14 +307,17 @@ mod tests {
     }
 
     #[test]
-    fn portfolio_metrics_amounts_are_null_when_the_main_currency_has_no_rate() {
+    fn portfolio_metrics_classes_are_null_when_the_main_currency_has_no_rate() {
         let conn = setup_db("JPY");
 
         let result = portfolio_metrics(&conn, false).expect("metrics");
 
         assert_eq!(result["mainCurrency"], "JPY");
-        assert!(result["net_worth"].is_null());
+        // Nothing converts into JPY: no class value, totals without them, JPY reported.
         assert!(result["breakdown"]["savings"].is_null());
+        assert!(result["breakdown"]["other_assets"].is_null());
+        assert_eq!(result["breakdown"]["loans"], "0");
+        assert_eq!(result["net_worth"], "0");
         assert_eq!(result["missingCurrencies"], serde_json::json!(["JPY"]));
     }
 
@@ -517,7 +354,8 @@ mod tests {
         let conn = setup_db("EUR");
         add_day_rate(&conn, 100 * DAY, "EUR", 24.0);
         add_day_rate(&conn, 101 * DAY, "EUR", 26.0);
-        // The same CZK total on both days: only the day's rate differs.
+        // Legacy rows (CZK totals, no breakdowns): the same CZK total on both days, only the
+        // day's rate differs.
         add_snapshot(&conn, "s1", 100 * DAY, "2400");
         add_snapshot(&conn, "s2", 101 * DAY, "2400");
 
@@ -527,13 +365,40 @@ mod tests {
         let rows = result["history"].as_array().expect("history array");
         assert_eq!(rows.len(), 2);
         // Newest first, as before.
-        assert_eq!(rows[0]["id"], "s2");
+        assert_eq!(rows[0]["recordedAt"], 101 * DAY);
         assert_eq!(rows[0]["totalSavings"], "92.31");
         assert_eq!(rows[0]["totalLoansPrincipal"], "46.15");
-        assert_eq!(rows[1]["id"], "s1");
+        assert_eq!(rows[0]["netWorth"], "46.15");
+        assert_eq!(rows[1]["recordedAt"], 100 * DAY);
         assert_eq!(rows[1]["totalSavings"], "100.00");
         assert_eq!(rows[1]["totalLoansPrincipal"], "50.00");
-        assert_eq!(rows[1]["recordedAt"], 100 * DAY);
+        assert_eq!(rows[1]["source"], "live");
+    }
+
+    #[test]
+    fn portfolio_history_converts_the_native_breakdowns() {
+        let conn = setup_db("EUR");
+        add_day_rate(&conn, 100 * DAY, "EUR", 25.0);
+        add_day_rate(&conn, 100 * DAY, "USD", 20.0);
+        conn.execute(
+            "INSERT INTO portfolio_metrics_history
+                (id, total_savings, total_loans_principal, total_investments, total_crypto,
+                 total_bonds, total_real_estate_personal, total_real_estate_investment,
+                 recorded_at, savings_by_currency, investments_by_currency)
+             VALUES ('s1', '0', '0', '0', '0', '0', '0', '0', ?1, '{\"EUR\":100}',
+                     '{\"USD\":50,\"KWD\":7}')",
+            [100 * DAY],
+        )
+        .expect("snapshot");
+
+        let result = portfolio_history(&conn, None, None, 365).expect("history");
+
+        let row = &result["history"][0];
+        assert_eq!(row["totalSavings"], "100.00");
+        // 50 USD = 1000 CZK = 40 EUR; the KWD amount is left out and reported
+        assert_eq!(row["totalInvestments"], "40.00");
+        assert_eq!(row["netWorth"], "140.00");
+        assert_eq!(result["missingCurrencies"], serde_json::json!(["KWD"]));
     }
 
     #[test]
@@ -549,15 +414,14 @@ mod tests {
     }
 
     #[test]
-    fn portfolio_history_keeps_the_stored_czk_text_for_a_czk_main_currency() {
+    fn portfolio_history_in_czk_rounds_the_stored_czk_total() {
         let conn = setup_db("CZK");
-        add_day_rate(&conn, 100 * DAY, "EUR", 24.0);
         add_snapshot(&conn, "s1", 100 * DAY, "2400.126");
 
         let result = portfolio_history(&conn, None, None, 365).expect("history");
 
         assert_eq!(result["mainCurrency"], "CZK");
-        assert_eq!(result["history"][0]["totalSavings"], "2400.126");
+        assert_eq!(result["history"][0]["totalSavings"], "2400.13");
     }
 
     #[test]
@@ -572,8 +436,32 @@ mod tests {
         assert_eq!(windowed["history"].as_array().expect("array").len(), 2);
 
         let limited = portfolio_history(&conn, None, None, 1).expect("history");
-        assert_eq!(limited["history"][0]["id"], "s3");
+        assert_eq!(limited["history"][0]["recordedAt"], 102 * DAY);
         assert_eq!(limited["history"].as_array().expect("array").len(), 1);
+
+        let limited_window =
+            portfolio_history(&conn, Some(100 * DAY), Some(101 * DAY), 1).expect("history");
+        assert_eq!(limited_window["history"][0]["recordedAt"], 101 * DAY);
+        assert_eq!(
+            limited_window["history"].as_array().expect("array").len(),
+            1
+        );
+    }
+
+    #[test]
+    fn portfolio_history_reports_only_the_returned_days() {
+        let conn = setup_db("EUR");
+        add_day_rate(&conn, 101 * DAY, "EUR", 25.0);
+        // The older day cannot convert (no rate); it is outside a limit of one.
+        add_snapshot(&conn, "s1", 90 * DAY, "2500");
+        add_snapshot(&conn, "s2", 101 * DAY, "2500");
+
+        let limited = portfolio_history(&conn, None, None, 1).expect("history");
+        assert_eq!(limited["missingCurrencies"], serde_json::json!([]));
+
+        let all = portfolio_history(&conn, None, None, 365).expect("history");
+        assert!(all["history"][1]["totalSavings"].is_null());
+        assert_eq!(all["missingCurrencies"], serde_json::json!(["EUR"]));
     }
 
     #[test]

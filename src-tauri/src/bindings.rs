@@ -18,7 +18,6 @@ pub fn collect_types() -> TypeCollection {
     types.register::<crate::models::MenuPreferences>();
     types.register::<crate::models::UpdateUserProfile>();
     types.register::<crate::models::InsertUserProfile>();
-    types.register::<crate::models::PortfolioMetricsHistory>();
 
     // Investment models
     types.register::<crate::models::StockInvestment>();
@@ -191,7 +190,9 @@ pub fn collect_types() -> TypeCollection {
     types.register::<crate::models::CashflowSection>();
     types.register::<crate::models::CashflowReport>();
     // Portfolio models
-    types.register::<crate::commands::portfolio::PortfolioMetrics>();
+    types.register::<crate::models::PortfolioMetrics>();
+    types.register::<crate::models::PortfolioHistoryPoint>();
+    types.register::<crate::models::PortfolioHistoryResponse>();
     types.register::<crate::commands::portfolio::PriceStatus>();
 
     // Projection models

@@ -1037,19 +1037,43 @@ export type OtherAssetTransaction = { id: string; assetId: string; type: string;
 export type PackRuleInfo = { id: string; name: string; ruleType: string; pattern: string; categoryId: string; priority: number; disabled: boolean }
 
 /**
- * Current portfolio metrics
+ * One recorded day of the portfolio history in the response currency (converted at that
+ * day's rates). Amounts are decimal TEXT, `null` when nothing in the class converted.
  */
-export type PortfolioMetrics = { totalSavings: number; totalInvestments: number; totalCrypto: number; totalBonds: number; totalRealEstatePersonal: number; totalRealEstateInvestment: number; totalRealEstate: number; totalOtherAssets: number; totalLiabilities: number; totalAssets: number; netWorth: number; savingsByCurrency: Partial<{ [key in string]: number }>; investmentsByCurrency: Partial<{ [key in string]: number }>; cryptoByCurrency: Partial<{ [key in string]: number }>; bondsByCurrency: Partial<{ [key in string]: number }>; realEstateByCurrency: Partial<{ [key in string]: number }>; loansByCurrency: Partial<{ [key in string]: number }>; otherAssetsByCurrency: Partial<{ [key in string]: number }> }
+export type PortfolioHistoryPoint = { recordedAt: number; 
+/**
+ * `"live"` (recorded by the running app) or `"backfill"` (reconstructed; the static
+ * classes of such a day are carried from the nearest live row).
+ */
+source: string; isStale: boolean; totalSavings: string | null; totalLoansPrincipal: string | null; totalInvestments: string | null; totalCrypto: string | null; totalBonds: string | null; totalRealEstatePersonal: string | null; totalRealEstateInvestment: string | null; totalOtherAssets: string | null; 
+/**
+ * Every converted asset class (personal real estate included) minus the loans.
+ */
+netWorth: string | null }
 
 /**
- * Portfolio metrics history entry
+ * The portfolio history in `currency`, oldest day first.
  */
-export type PortfolioMetricsHistory = { id: string; totalSavings: string; totalLoansPrincipal: string; totalInvestments: string; totalCrypto: string; totalBonds: string; totalRealEstatePersonal: string; totalRealEstateInvestment: string; totalOtherAssets: string; recordedAt: number; investmentsByCurrency: string; cryptoByCurrency: string; savingsByCurrency: string; bondsByCurrency: string; realEstateByCurrency: string; loansByCurrency: string; otherAssetsByCurrency: string; 
+export type PortfolioHistoryResponse = { currency: string; fxQuality: ConversionQuality; points: PortfolioHistoryPoint[] }
+
 /**
- * `"live"` (recorded by the running app) or `"backfill"` (reconstructed;
- * the static classes of such a day are carried from the nearest live row).
+ * Current net worth in `currency`. Class totals are decimal TEXT, `null` when nothing in the
+ * class could be converted; the totals sum what converted and `fxQuality` names the rest.
+ * The `*ByCurrency` maps stay native (amounts in their own currencies).
  */
-source: string }
+export type PortfolioMetrics = { currency: string; fxQuality: ConversionQuality; totalSavings: string | null; totalInvestments: string | null; totalCrypto: string | null; totalBonds: string | null; 
+/**
+ * Always reported, also when personal real estate is excluded from the totals.
+ */
+totalRealEstatePersonal: string | null; totalRealEstateInvestment: string | null; 
+/**
+ * The real estate counted in `totalAssets` (personal left out when excluded).
+ */
+totalRealEstate: string | null; totalOtherAssets: string | null; totalLiabilities: string; totalAssets: string; netWorth: string; savingsByCurrency: Partial<{ [key in string]: number }>; investmentsByCurrency: Partial<{ [key in string]: number }>; cryptoByCurrency: Partial<{ [key in string]: number }>; bondsByCurrency: Partial<{ [key in string]: number }>; 
+/**
+ * Personal properties left out when excluded, like `totalRealEstate`.
+ */
+realEstateByCurrency: Partial<{ [key in string]: number }>; loansByCurrency: Partial<{ [key in string]: number }>; otherAssetsByCurrency: Partial<{ [key in string]: number }> }
 
 /**
  * Sums in the report currency over every known amount: `value`, `costBasis` and

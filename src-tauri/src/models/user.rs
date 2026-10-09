@@ -127,48 +127,6 @@ pub struct UpdateUserProfile {
     pub mcp_server_enabled: Option<bool>,
 }
 
-/// Portfolio metrics history entry
-#[derive(Debug, Clone, Serialize, Deserialize, Type)]
-pub struct PortfolioMetricsHistory {
-    pub id: String,
-    #[serde(rename = "totalSavings")]
-    pub total_savings: String,
-    #[serde(rename = "totalLoansPrincipal")]
-    pub total_loans_principal: String,
-    #[serde(rename = "totalInvestments")]
-    pub total_investments: String,
-    #[serde(rename = "totalCrypto")]
-    pub total_crypto: String,
-    #[serde(rename = "totalBonds")]
-    pub total_bonds: String,
-    #[serde(rename = "totalRealEstatePersonal")]
-    pub total_real_estate_personal: String,
-    #[serde(rename = "totalRealEstateInvestment")]
-    pub total_real_estate_investment: String,
-    #[serde(rename = "totalOtherAssets")]
-    pub total_other_assets: String,
-    #[serde(rename = "recordedAt")]
-    pub recorded_at: i64,
-    #[serde(rename = "investmentsByCurrency")]
-    pub investments_by_currency: String,
-    #[serde(rename = "cryptoByCurrency")]
-    pub crypto_by_currency: String,
-    #[serde(rename = "savingsByCurrency")]
-    pub savings_by_currency: String,
-    #[serde(rename = "bondsByCurrency")]
-    pub bonds_by_currency: String,
-    #[serde(rename = "realEstateByCurrency")]
-    pub real_estate_by_currency: String,
-    #[serde(rename = "loansByCurrency")]
-    pub loans_by_currency: String,
-    #[serde(rename = "otherAssetsByCurrency")]
-    pub other_assets_by_currency: String,
-    /// `"live"` (recorded by the running app) or `"backfill"` (reconstructed;
-    /// the static classes of such a day are carried from the nearest live row).
-    #[serde(rename = "source")]
-    pub source: String,
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

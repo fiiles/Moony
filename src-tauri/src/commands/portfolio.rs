@@ -2,9 +2,10 @@
 
 use crate::db::Database;
 use crate::error::Result;
-use crate::models::PortfolioMetricsHistory;
+use crate::models::{PortfolioHistoryResponse, PortfolioMetrics};
 use crate::services::currency::convert_to_czk;
 use crate::services::loan_amortization::today_utc_day;
+use crate::services::net_worth;
 use crate::services::parsing::parse_money;
 use crate::services::portfolio_history::{
     self, AssetClassKind, ClassBreakdowns, SnapshotSource, StaticBreakdowns,
@@ -14,266 +15,27 @@ use specta::Type;
 use tauri::{AppHandle, Emitter, State};
 use uuid::Uuid;
 
-/// Current portfolio metrics
-#[derive(Debug, Serialize, Type)]
-#[serde(rename_all = "camelCase")]
-pub struct PortfolioMetrics {
-    pub total_savings: f64,
-    pub total_investments: f64,
-    pub total_crypto: f64,
-    pub total_bonds: f64,
-    pub total_real_estate_personal: f64,
-    pub total_real_estate_investment: f64,
-    pub total_real_estate: f64,
-    pub total_other_assets: f64,
-    pub total_liabilities: f64,
-    pub total_assets: f64,
-    pub net_worth: f64,
-    // Native currency breakdowns
-    pub savings_by_currency: std::collections::HashMap<String, f64>,
-    pub investments_by_currency: std::collections::HashMap<String, f64>,
-    pub crypto_by_currency: std::collections::HashMap<String, f64>,
-    pub bonds_by_currency: std::collections::HashMap<String, f64>,
-    pub real_estate_by_currency: std::collections::HashMap<String, f64>,
-    pub loans_by_currency: std::collections::HashMap<String, f64>,
-    pub other_assets_by_currency: std::collections::HashMap<String, f64>,
-}
-
-/// Get current portfolio metrics
+/// Current net worth in `report_currency` (native breakdowns at the current quote snapshot).
 #[tauri::command]
 pub async fn get_portfolio_metrics(
     db: State<'_, Database>,
     exclude_personal_real_estate: bool,
+    report_currency: String,
 ) -> Result<PortfolioMetrics> {
-    calculate_portfolio_metrics(&db, exclude_personal_real_estate)
-}
-
-fn calculate_portfolio_metrics(
-    db: &Database,
-    exclude_personal_real_estate: bool,
-) -> Result<PortfolioMetrics> {
-    Ok(calculate_portfolio_metrics_full(db, exclude_personal_real_estate)?.0)
-}
-
-/// Live metrics plus the full native breakdowns (real estate split included,
-/// regardless of the exclude flag) for the single snapshot writer.
-fn calculate_portfolio_metrics_full(
-    db: &Database,
-    exclude_personal_real_estate: bool,
-) -> Result<(PortfolioMetrics, ClassBreakdowns)> {
     db.with_conn(|conn| {
-        // --- Savings ---
-        let mut savings_by_currency: HashMap<String, f64> = HashMap::new();
-        let mut bank_stmt = conn.prepare(
-            "SELECT balance, currency FROM bank_accounts WHERE exclude_from_balance = 0",
-        )?;
-        let total_savings: f64 = bank_stmt
-            .query_map([], |row| {
-                let balance: f64 =
-                    parse_money(&row.get::<_, String>(0)?, 0.0, "bank_accounts.balance");
-                let currency: String = row.get(1)?;
-                Ok((balance, currency))
-            })?
-            .filter_map(|r| r.ok())
-            .map(|(balance, currency)| {
-                *savings_by_currency.entry(currency.clone()).or_insert(0.0) += balance;
-                convert_to_czk(balance, &currency)
-            })
-            .sum();
-
-        // --- Bonds ---
-        let mut bonds_by_currency: HashMap<String, f64> = HashMap::new();
-        let mut bonds_stmt = conn.prepare("SELECT coupon_value, quantity, currency FROM bonds")?;
-        let total_bonds: f64 = bonds_stmt
-            .query_map([], |row| {
-                let value: f64 = parse_money(&row.get::<_, String>(0)?, 0.0, "bonds.coupon_value");
-                let quantity: f64 = parse_money(&row.get::<_, String>(1)?, 1.0, "bonds.quantity");
-                let currency: String = row.get(2)?;
-                Ok((value, quantity, currency))
-            })?
-            .filter_map(|r| r.ok())
-            .map(|(value, quantity, currency)| {
-                *bonds_by_currency.entry(currency.clone()).or_insert(0.0) += value * quantity;
-                convert_to_czk(value * quantity, &currency)
-            })
-            .sum();
-
-        // --- Liabilities (loans), valued at the amortized balance as of today ---
-        let loans_by_currency: HashMap<String, f64> =
-            crate::services::loans::outstanding_by_currency(conn, today_utc_day())?;
-        let total_liabilities: f64 = loans_by_currency
-            .iter()
-            .map(|(currency, balance)| convert_to_czk(*balance, currency))
-            .sum();
-
-        // --- Real estate ---
-        let mut real_estate_by_currency: HashMap<String, f64> = HashMap::new();
-        let mut re_personal_by_currency: HashMap<String, f64> = HashMap::new();
-        let mut re_investment_by_currency: HashMap<String, f64> = HashMap::new();
-        let mut stmt =
-            conn.prepare("SELECT type, market_price, market_price_currency FROM real_estate")?;
-        let mut total_re_personal = 0.0;
-        let mut total_re_investment = 0.0;
-
-        let rows = stmt.query_map([], |row| {
-            Ok((
-                row.get::<_, String>(0)?,
-                row.get::<_, String>(1)?,
-                row.get::<_, String>(2)?,
-            ))
-        })?;
-
-        for row in rows.filter_map(|r| r.ok()) {
-            let price: f64 = parse_money(&row.1, 0.0, "real_estate.market_price");
-            let currency = row.2.clone();
-            let price_czk = convert_to_czk(price, &currency);
-            let is_personal = row.0 == "personal";
-            // Breakdown must sum (in CZK terms) to total_real_estate, which excludes
-            // personal properties when exclude_personal_real_estate is set. Personal
-            // properties still count into total_re_personal below (always reported).
-            if !(exclude_personal_real_estate && is_personal) {
-                *real_estate_by_currency
-                    .entry(currency.clone())
-                    .or_insert(0.0) += price;
-            }
-            if is_personal {
-                total_re_personal += price_czk;
-                *re_personal_by_currency.entry(currency).or_insert(0.0) += price;
-            } else {
-                total_re_investment += price_czk;
-                *re_investment_by_currency.entry(currency).or_insert(0.0) += price;
-            }
-        }
-
-        // --- Investments (stocks) ---
-        let mut investments_by_currency: HashMap<String, f64> = HashMap::new();
-        let mut total_investments = 0.0;
-        let mut inv_stmt = conn.prepare("SELECT ticker, quantity FROM stock_investments")?;
-        let investments: Vec<(String, String)> = inv_stmt
-            .query_map([], |row| Ok((row.get(0)?, row.get(1)?)))?
-            .filter_map(|r| r.ok())
-            .collect();
-
-        for inv in investments {
-            let qty: f64 = parse_money(&inv.1, 0.0, "stock_investments.quantity");
-            if let Some(resolved) = crate::services::pricing::resolve_stock_price(conn, &inv.0) {
-                total_investments += convert_to_czk(resolved.price, &resolved.currency) * qty;
-                let native_price: f64 = parse_money(
-                    &resolved.original_price,
-                    0.0,
-                    "resolved stock price (original_price)",
-                );
-                *investments_by_currency
-                    .entry(resolved.currency.clone())
-                    .or_insert(0.0) += native_price * qty;
-            }
-        }
-
-        // --- Crypto ---
-        let mut crypto_by_currency: HashMap<String, f64> = HashMap::new();
-        let mut total_crypto = 0.0;
-        let mut crypto_stmt = conn.prepare("SELECT ticker, quantity FROM crypto_investments")?;
-        let cryptos: Vec<(String, String)> = crypto_stmt
-            .query_map([], |row| Ok((row.get(0)?, row.get(1)?)))?
-            .filter_map(|r| r.ok())
-            .collect();
-
-        for crypto in cryptos {
-            let qty: f64 = parse_money(&crypto.1, 0.0, "crypto_investments.quantity");
-            if let Some(resolved) = crate::services::pricing::resolve_crypto_price(conn, &crypto.0)
-            {
-                total_crypto += convert_to_czk(resolved.price, &resolved.currency) * qty;
-                let native_price: f64 = parse_money(
-                    &resolved.original_price,
-                    0.0,
-                    "resolved crypto price (original_price)",
-                );
-                *crypto_by_currency
-                    .entry(resolved.currency.clone())
-                    .or_insert(0.0) += native_price * qty;
-            }
-        }
-
-        // --- Other assets ---
-        let mut other_assets_by_currency: HashMap<String, f64> = HashMap::new();
-        let mut total_other_assets = 0.0;
-        let mut other_stmt =
-            conn.prepare("SELECT quantity, market_price, currency FROM other_assets")?;
-        let other_assets: Vec<(String, String, String)> = other_stmt
-            .query_map([], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)))?
-            .filter_map(|r| r.ok())
-            .collect();
-
-        for asset in other_assets {
-            let qty: f64 = parse_money(&asset.0, 0.0, "other_assets.quantity");
-            let price: f64 = parse_money(&asset.1, 0.0, "other_assets.market_price");
-            let currency = asset.2;
-            *other_assets_by_currency
-                .entry(currency.clone())
-                .or_insert(0.0) += qty * price;
-            total_other_assets += convert_to_czk(qty * price, &currency);
-        }
-
-        // --- Totals ---
-        let total_real_estate = if exclude_personal_real_estate {
-            total_re_investment
-        } else {
-            total_re_personal + total_re_investment
-        };
-
-        let total_assets = total_savings
-            + total_investments
-            + total_crypto
-            + total_bonds
-            + total_real_estate
-            + total_other_assets;
-        let net_worth = total_assets - total_liabilities;
-
-        let breakdowns = ClassBreakdowns {
-            savings: savings_by_currency.clone(),
-            investments: investments_by_currency.clone(),
-            crypto: crypto_by_currency.clone(),
-            bonds: bonds_by_currency.clone(),
-            real_estate_personal: re_personal_by_currency,
-            real_estate_investment: re_investment_by_currency,
-            loans: loans_by_currency.clone(),
-            other_assets: other_assets_by_currency.clone(),
-        };
-
-        Ok((
-            PortfolioMetrics {
-                total_savings,
-                total_investments,
-                total_crypto,
-                total_bonds,
-                total_real_estate_personal: total_re_personal,
-                total_real_estate_investment: total_re_investment,
-                total_real_estate,
-                total_other_assets,
-                total_liabilities,
-                total_assets,
-                net_worth,
-                savings_by_currency,
-                investments_by_currency,
-                crypto_by_currency,
-                bonds_by_currency,
-                real_estate_by_currency,
-                loans_by_currency,
-                other_assets_by_currency,
-            },
-            breakdowns,
-        ))
+        net_worth::metrics_report(conn, &report_currency, exclude_personal_real_estate)
     })
 }
 
-/// Get portfolio history
+/// Portfolio history in `report_currency`, oldest day first, every day at its own rates.
 #[tauri::command]
 pub async fn get_portfolio_history(
     db: State<'_, Database>,
     start_date: Option<i64>,
     end_date: Option<i64>,
-) -> Result<Vec<PortfolioMetricsHistory>> {
-    db.with_conn(|conn| portfolio_history::read_history(conn, start_date, end_date))
+    report_currency: String,
+) -> Result<PortfolioHistoryResponse> {
+    db.with_conn(|conn| net_worth::history_report(conn, &report_currency, start_date, end_date))
 }
 
 /// Record today's per-ticker values to stock_value_history and crypto_value_history tables
@@ -383,7 +145,7 @@ fn record_todays_ticker_values(db: &Database) -> Result<()> {
 /// Update today's portfolio snapshot (or create one if it doesn't exist).
 /// All column writing happens in the single writer (services/portfolio_history).
 pub async fn update_todays_snapshot(db: &Database) -> Result<()> {
-    let (_, breakdowns) = calculate_portfolio_metrics_full(db, false)?;
+    let breakdowns = db.with_conn(net_worth::compute_breakdowns)?;
     let now_ts = chrono::Utc::now().timestamp();
 
     db.with_conn(|conn| {

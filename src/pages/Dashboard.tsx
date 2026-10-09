@@ -9,6 +9,7 @@ import { useLanguage } from '@/i18n/I18nProvider';
 import { usePortfolioHistory, usePortfolioMetrics } from '@/hooks/use-portfolio';
 import { useRecentMoves } from '@/hooks/use-recent-moves';
 import { amountOf } from '@/utils/positions';
+import { bridgeUnknownClasses } from '@/utils/history-gaps';
 import { mergeConversionQuality } from '@/utils/conversion-quality';
 import { utcDayFloor } from '@/utils/chart-axis';
 import { CHART_PERIODS, chartPeriodStart } from '@/utils/period';
@@ -117,36 +118,62 @@ export default function Dashboard() {
 
   // History in chronological order, every day valued at its own rates by the backend.
   // Personal real estate leaves the history like it leaves today's totals when excluded.
+  // A day lacking (no rate that day) a class today's totals have is left out instead of
+  // plotted as a drop by that class.
   const historyCurrency = history?.currency;
+  const knownToday = {
+    savings: amountOf(portfolioMetrics?.totalSavings) !== null,
+    investments: amountOf(portfolioMetrics?.totalInvestments) !== null,
+    bonds: amountOf(portfolioMetrics?.totalBonds) !== null,
+    crypto: amountOf(portfolioMetrics?.totalCrypto) !== null,
+    otherAssets: amountOf(portfolioMetrics?.totalOtherAssets) !== null,
+    realEstate: amountOf(portfolioMetrics?.totalRealEstate) !== null,
+    liabilities: amountOf(portfolioMetrics?.totalLiabilities) !== null,
+  };
+  const knownTodayKey = Object.values(knownToday).join();
   const convertedHistory = useMemo(() => {
     // A history still in the previous currency must not meet today's values
     if (historyCurrency !== reportCurrency) return [];
     const excludePersonal = user?.excludePersonalRealEstate || false;
-    return (history?.points ?? []).map((h) => {
-      const savings = amount(h.totalSavings);
-      const investments = amount(h.totalInvestments);
-      const bonds = amount(h.totalBonds);
-      const crypto = amount(h.totalCrypto);
-      const otherAssets = amount(h.totalOtherAssets);
-      const realEstate =
-        amount(h.totalRealEstateInvestment) +
-        (excludePersonal ? 0 : amount(h.totalRealEstatePersonal));
-      const liabilities = amount(h.totalLoansPrincipal);
-      const assets = savings + investments + bonds + realEstate + crypto + otherAssets;
-      return {
-        recordedAt: h.recordedAt,
-        savings,
-        investments,
-        bonds,
-        crypto,
-        otherAssets,
-        realEstate,
-        assets,
-        liabilities,
-        netWorth: assets - liabilities,
-      };
+    return (history?.points ?? []).flatMap((h) => {
+      const investmentRealEstate = amountOf(h.totalRealEstateInvestment);
+      const personalRealEstate = excludePersonal ? 0 : amountOf(h.totalRealEstatePersonal);
+      const day = bridgeUnknownClasses(
+        {
+          savings: amountOf(h.totalSavings),
+          investments: amountOf(h.totalInvestments),
+          bonds: amountOf(h.totalBonds),
+          crypto: amountOf(h.totalCrypto),
+          otherAssets: amountOf(h.totalOtherAssets),
+          realEstate:
+            investmentRealEstate === null || personalRealEstate === null
+              ? null
+              : investmentRealEstate + personalRealEstate,
+          liabilities: amountOf(h.totalLoansPrincipal),
+        },
+        knownToday
+      );
+      if (day === null) return [];
+      const assets =
+        day.savings + day.investments + day.bonds + day.realEstate + day.crypto + day.otherAssets;
+      return [
+        {
+          recordedAt: h.recordedAt,
+          ...day,
+          assets,
+          netWorth: assets - day.liabilities,
+        },
+      ];
     });
-  }, [history?.points, historyCurrency, reportCurrency, user?.excludePersonalRealEstate]);
+    // knownToday is rebuilt every render; knownTodayKey carries its content
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    history?.points,
+    historyCurrency,
+    reportCurrency,
+    user?.excludePersonalRealEstate,
+    knownTodayKey,
+  ]);
 
   const oldest = convertedHistory[0];
   // What the change is measured against: the period, or — when the

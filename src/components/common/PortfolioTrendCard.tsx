@@ -22,6 +22,11 @@ interface PortfolioTrendCardProps<E extends ChartEvent> {
   type: TrendType;
   /** Today's value in the profile (report) currency; the last point of the line. */
   currentValue: number;
+  /**
+   * Currencies today's value leaves out for want of a rate (named in the note with the
+   * history's own misses).
+   */
+  missingCurrencies?: string[];
   isRefreshing?: boolean;
   /** First day (UTC, unix seconds) with data; no horizon starts before it. */
   earliest?: number;
@@ -41,9 +46,12 @@ const TEXTS: Record<TrendType, { namespace: string; group: string }> = {
   cash: { namespace: 'bank_accounts', group: 'trend' },
 };
 
-/** The part of a history day a trend of `type` shows (report currency, unknown as 0). */
-function historyValue(h: PortfolioHistoryPoint, type: TrendType): number {
-  const amount = (value: string | null) => amountOf(value) ?? 0;
+/**
+ * The part of a history day a trend of `type` shows (report currency); null when nothing in
+ * it could be converted that day.
+ */
+function historyValue(h: PortfolioHistoryPoint, type: TrendType): number | null {
+  const amount = (value: string | null) => amountOf(value);
   switch (type) {
     case 'investments':
       return amount(h.totalInvestments);
@@ -53,8 +61,11 @@ function historyValue(h: PortfolioHistoryPoint, type: TrendType): number {
       return amount(h.totalOtherAssets);
     case 'cash':
       return amount(h.totalSavings);
-    case 'realEstate':
-      return amount(h.totalRealEstatePersonal) + amount(h.totalRealEstateInvestment);
+    case 'realEstate': {
+      const personal = amount(h.totalRealEstatePersonal);
+      const investment = amount(h.totalRealEstateInvestment);
+      return personal === null || investment === null ? null : personal + investment;
+    }
   }
 }
 
@@ -70,6 +81,7 @@ function historyValue(h: PortfolioHistoryPoint, type: TrendType): number {
 export default function PortfolioTrendCard<E extends ChartEvent = ChartEvent>({
   type,
   currentValue,
+  missingCurrencies,
   isRefreshing = false,
   earliest,
   events,
@@ -107,13 +119,23 @@ export default function PortfolioTrendCard<E extends ChartEvent = ChartEvent>({
   // History in the report currency, every day at its own rates (ADR 0011)
   const { data: history } = usePortfolioHistory(start);
   const money = (value: number) => fmt.money(value, currencyCode, { decimals: 0 });
-  // Days with amounts that could not be converted (left out of their class)
-  const incomplete = (history?.fxQuality.missingCurrencies.length ?? 0) > 0;
+  // Amounts that could not be converted: the history's days and today's value leave them out
+  const missing = useMemo(
+    () => [
+      ...new Set([...(history?.fxQuality.missingCurrencies ?? []), ...(missingCurrencies ?? [])]),
+    ],
+    [history, missingCurrencies]
+  );
+  const incomplete = missing.length > 0;
 
   const points = useMemo(() => {
     // A history still in the previous currency must not meet today's value
     const days = history?.currency === currencyCode ? history.points : [];
-    const pts = days.map((h) => ({ t: h.recordedAt, value: historyValue(h, type) }));
+    // A day whose class could not be converted at all is left out, not plotted as a drop to 0
+    const pts = days.flatMap((h) => {
+      const value = historyValue(h, type);
+      return value === null ? [] : [{ t: h.recordedAt, value }];
+    });
     const today = utcDayFloor(Date.now() / 1000);
     const last = pts[pts.length - 1];
     if (last && utcDayFloor(last.t) === today) last.value = currentValue;
@@ -137,7 +159,7 @@ export default function PortfolioTrendCard<E extends ChartEvent = ChartEvent>({
           <>
             {legend}
             <ConversionQualityNote
-              quality={history?.fxQuality}
+              quality={{ missingCurrencies: missing }}
               currency={currencyCode}
               className="mb-0 mt-2"
             />

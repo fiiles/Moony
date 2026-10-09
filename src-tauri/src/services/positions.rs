@@ -319,18 +319,29 @@ fn tx_table(kind: AssetKind) -> TxTable {
 /// currency), summed per currency. The quantity is the one `value_positions` values: the
 /// replayed transaction quantity when the holding has transactions, else the stored one.
 pub fn native_value_breakdown(conn: &Connection, kind: AssetKind) -> Result<HashMap<String, f64>> {
-    let replayed = cost_basis::replayed_quantities(conn, tx_table(kind))?;
     let mut breakdown = HashMap::new();
-    for holding in load_holdings(conn, kind)? {
-        let quantity = replayed
-            .get(&holding.id)
-            .copied()
-            .unwrap_or(holding.quantity);
-        if let Some(price) = pricing::resolve_price(conn, kind, &holding.ticker) {
+    for (ticker, quantity) in held_quantities(conn, kind)? {
+        if let Some(price) = pricing::resolve_price(conn, kind, &ticker) {
             *breakdown.entry(price.currency).or_insert(0.0) += quantity * price.price;
         }
     }
     Ok(breakdown)
+}
+
+/// `(ticker, quantity)` of every holding of `kind`, at the quantity `value_positions` values:
+/// the replayed transaction quantity when the holding has transactions, else the stored one.
+pub fn held_quantities(conn: &Connection, kind: AssetKind) -> Result<Vec<(String, f64)>> {
+    let replayed = cost_basis::replayed_quantities(conn, tx_table(kind))?;
+    Ok(load_holdings(conn, kind)?
+        .into_iter()
+        .map(|holding| {
+            let quantity = replayed
+                .get(&holding.id)
+                .copied()
+                .unwrap_or(holding.quantity);
+            (holding.ticker, quantity)
+        })
+        .collect())
 }
 
 /// One row of `stock_investments` / `crypto_investments`.
@@ -1077,6 +1088,11 @@ mod tests {
 
         let breakdown = native_value_breakdown(&conn, AssetKind::Stock).expect("breakdown");
 
+        let held = held_quantities(&conn, AssetKind::Stock).expect("held");
+        assert_eq!(
+            held,
+            vec![("NOTX".to_string(), 3.0), ("SAP.DE".to_string(), 2.0)]
+        );
         // SAP: replayed 2 × 120 EUR; NOTX without transactions: stored 3 × 10 USD.
         assert_close(breakdown["EUR"], 240.0);
         assert_close(breakdown["USD"], 30.0);

@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query';
+import { invalidateAfterPriceRefresh } from '@/lib/price-refresh';
 import { portfolioApi, priceApi, stockImportApi } from '@/lib/tauri-api';
 import type { StockImportConfig } from '@shared/schema';
 
@@ -45,8 +46,7 @@ function refreshPricesInBackground(queryClient: QueryClient) {
   priceApi
     .refreshStockPrices()
     .then(() => {
-      queryClient.invalidateQueries({ queryKey: ['investments'] });
-      queryClient.invalidateQueries({ queryKey: ['portfolio-metrics'] });
+      void invalidateAfterPriceRefresh(queryClient);
       return priceApi.refreshDividends();
     })
     .then(() => {

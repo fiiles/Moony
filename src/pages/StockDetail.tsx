@@ -1,4 +1,5 @@
 import { Fragment, useMemo, useState } from 'react';
+import { invalidateAfterPriceRefresh } from '@/lib/price-refresh';
 import { useLocation, useRoute } from 'wouter';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -168,8 +169,7 @@ export default function StockDetail() {
     setIsRefreshing(true);
     try {
       await priceApi.refreshStockPrices();
-      await queryClient.invalidateQueries({ queryKey: ['investment', id] });
-      await queryClient.invalidateQueries({ queryKey: ['investments'] });
+      await invalidateAfterPriceRefresh(queryClient);
       // A first price creates the stock_data row the company data is stored in. Not awaited: a
       // Yahoo round trip must not keep the refresh button spinning.
       void queryClient.invalidateQueries({ queryKey: ['stock-company-info'] });

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { invalidateAfterPriceRefresh } from '@/lib/price-refresh';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -167,10 +168,7 @@ export function AddInvestmentModal({ open, onOpenChange, initial }: AddInvestmen
       // Prices and dividends for the new stock refresh in the background
       priceApi
         .refreshStockPrices()
-        .then(() => {
-          queryClient.invalidateQueries({ queryKey: ['investments'] });
-          queryClient.invalidateQueries({ queryKey: ['portfolio-metrics'] });
-        })
+        .then(() => invalidateAfterPriceRefresh(queryClient))
         .catch(console.error);
       priceApi
         .refreshDividends()

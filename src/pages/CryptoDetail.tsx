@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { invalidateAfterPriceRefresh } from '@/lib/price-refresh';
 import { useLocation, useRoute } from 'wouter';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -121,7 +122,7 @@ export default function CryptoDetail() {
     setIsRefreshing(true);
     try {
       await priceApi.refreshCryptoPrices();
-      await queryClient.invalidateQueries({ queryKey: ['crypto'] });
+      await invalidateAfterPriceRefresh(queryClient);
       toast(t('detail.pricesRefreshed'));
     } catch (error) {
       toast.error(tc('status.error'), { description: String(error) });

@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { invalidateAfterPriceRefresh } from '@/lib/price-refresh';
 import { useLocation } from 'wouter';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -114,8 +115,7 @@ export default function Crypto() {
   const refreshPricesMutation = useMutation({
     mutationFn: () => priceApi.refreshCryptoPrices(),
     onSuccess: (result) => {
-      queryClient.invalidateQueries({ queryKey: ['crypto'] });
-      queryClient.invalidateQueries({ queryKey: ['portfolio-metrics'] });
+      void invalidateAfterPriceRefresh(queryClient);
       toast(t('toast.pricesRefreshed', { count: result.length }), {
         description: t('toast.pricesRefreshedDescription'),
       });

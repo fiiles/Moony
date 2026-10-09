@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { invalidateAfterPriceRefresh } from '@/lib/price-refresh';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -156,10 +157,7 @@ export function AddCryptoModal({ open, onOpenChange }: AddCryptoModalProps) {
       // The new coin's rate arrives in the background
       priceApi
         .refreshCryptoPrices()
-        .then(() => {
-          queryClient.invalidateQueries({ queryKey: ['crypto'] });
-          queryClient.invalidateQueries({ queryKey: ['portfolio-metrics'] });
-        })
+        .then(() => invalidateAfterPriceRefresh(queryClient))
         .catch(console.error);
     },
     onError: (error: Error) => {

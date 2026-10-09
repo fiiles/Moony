@@ -7,6 +7,7 @@
  * - Recovery: prepareRecover() → show new recovery key → confirmRecover() → password changed
  */
 import { createContext, ReactNode, useContext, useState, useEffect } from 'react';
+import { invalidateAfterPriceRefresh } from '@/lib/price-refresh';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { authApi, priceApi, categorizationApi } from '../lib/tauri-api';
 import { queryClient } from '../lib/queryClient';
@@ -228,10 +229,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Stock prices and dividends (Yahoo Finance)
       priceApi
         .refreshStockPrices()
-        .then(() => {
-          queryClient.invalidateQueries({ queryKey: ['investments'] });
-          queryClient.invalidateQueries({ queryKey: ['portfolio-metrics'] });
-        })
+        .then(() => invalidateAfterPriceRefresh(queryClient))
         .catch(console.error);
       priceApi
         .refreshDividends()
@@ -243,10 +241,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Crypto prices (CoinGecko)
       priceApi
         .refreshCryptoPrices()
-        .then(() => {
-          queryClient.invalidateQueries({ queryKey: ['crypto'] });
-          queryClient.invalidateQueries({ queryKey: ['portfolio-metrics'] });
-        })
+        .then(() => invalidateAfterPriceRefresh(queryClient))
         .catch(console.error);
 
       // Load learned payees from database for categorization

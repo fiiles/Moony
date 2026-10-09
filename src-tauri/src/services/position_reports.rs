@@ -44,7 +44,7 @@ fn wire_totals(totals: &PositionTotals, currency: &str) -> WirePositionTotals {
 /// The wire quantity of a position: the quantity its value describes (`PositionValue.quantity`,
 /// replayed from the transactions). The stored text is kept when it holds that same quantity,
 /// so its precision survives (no float noise from the replay).
-fn wire_quantity(stored: &str, valued: f64) -> String {
+pub(crate) fn wire_quantity(stored: &str, valued: f64) -> String {
     let same = stored
         .trim()
         .parse::<f64>()

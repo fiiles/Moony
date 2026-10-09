@@ -9,6 +9,7 @@ use crate::services::parsing::parse_money;
 use crate::services::portfolio_history::{
     self, AssetClassKind, ClassBreakdowns, LegacyCzk, SnapshotSource, StaticBreakdowns,
 };
+use crate::services::positions::{self, AssetKind};
 use serde::Serialize;
 use specta::Type;
 use tauri::{AppHandle, Emitter, State};
@@ -51,17 +52,8 @@ fn record_todays_ticker_values(db: &Database) -> Result<()> {
     // The value_czk cache column at today's quotes (excluded without a quote).
     let czk = LegacyCzk::current();
     db.with_conn(|conn| {
-        // Record stock values
-        let mut inv_stmt = conn.prepare(
-            "SELECT si.ticker, si.quantity FROM stock_investments si"
-        )?;
-        let investments: Vec<(String, String)> = inv_stmt
-            .query_map([], |row| Ok((row.get(0)?, row.get(1)?)))?
-            .filter_map(|r| r.ok())
-            .collect();
-
-        for (ticker, qty_str) in investments {
-            let qty: f64 = qty_str.parse().unwrap_or(0.0);
+        // Record stock values, at the quantity the positions value (one quantity rule)
+        for (ticker, qty) in positions::held_quantities(conn, AssetKind::Stock)? {
             if qty <= 0.0 {
                 continue;
             }
@@ -96,16 +88,7 @@ fn record_todays_ticker_values(db: &Database) -> Result<()> {
         }
 
         // Record crypto values
-        let mut crypto_stmt = conn.prepare(
-            "SELECT ticker, quantity FROM crypto_investments"
-        )?;
-        let cryptos: Vec<(String, String)> = crypto_stmt
-            .query_map([], |row| Ok((row.get(0)?, row.get(1)?)))?
-            .filter_map(|r| r.ok())
-            .collect();
-
-        for (ticker, qty_str) in cryptos {
-            let qty: f64 = qty_str.parse().unwrap_or(0.0);
+        for (ticker, qty) in positions::held_quantities(conn, AssetKind::Crypto)? {
             if qty <= 0.0 {
                 continue;
             }
@@ -540,24 +523,6 @@ fn current_static_breakdowns(conn: &rusqlite::Connection) -> Result<StaticBreakd
     Ok(statics)
 }
 
-/// `(ticker, quantity)` of every row of a holdings table.
-fn held_positions(
-    conn: &rusqlite::Connection,
-    sql: &str,
-    context: &str,
-) -> Result<Vec<(String, f64)>> {
-    let mut stmt = conn.prepare(sql)?;
-    let positions = stmt
-        .query_map([], |row| {
-            let ticker: String = row.get(0)?;
-            let qty: f64 = parse_money(&row.get::<_, String>(1)?, 0.0, context);
-            Ok((ticker, qty))
-        })?
-        .filter_map(|r| r.ok())
-        .collect();
-    Ok(positions)
-}
-
 /// Native breakdowns for a reconstructed (gap-backfilled) day: stocks/crypto
 /// from historical prices (look-back only, the last known price carried
 /// forward), static classes carried forward from the nearest earlier live
@@ -581,22 +546,15 @@ fn breakdowns_for_backfill_day(
                 None => current_static_breakdowns(conn)?,
             };
 
-        let stock_positions = held_positions(
-            conn,
-            "SELECT ticker, quantity FROM stock_investments",
-            "stock_investments.quantity",
-        )?;
+        // Today's holdings at the quantity the positions value (one quantity rule)
+        let stock_positions = positions::held_quantities(conn, AssetKind::Stock)?;
         let Some(investments_by_currency) =
             backfill::value_positions_on_day(&stock_positions, stock_prices, day_timestamp)
         else {
             return Ok(None);
         };
 
-        let crypto_positions = held_positions(
-            conn,
-            "SELECT ticker, quantity FROM crypto_investments",
-            "crypto_investments.quantity",
-        )?;
+        let crypto_positions = positions::held_quantities(conn, AssetKind::Crypto)?;
         let Some(crypto_by_currency) =
             backfill::value_positions_on_day(&crypto_positions, crypto_prices, day_timestamp)
         else {

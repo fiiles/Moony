@@ -1,4 +1,5 @@
 import { refreshMoneyFlows } from '@/lib/money-flow-refresh';
+import { invalidateAfterPriceRefresh } from '@/lib/price-refresh';
 import { useState, useEffect, useRef, useCallback, ReactNode } from 'react';
 import { portfolioApi, priceApi } from '@/lib/tauri-api';
 import { useQueryClient } from '@tanstack/react-query';
@@ -6,20 +7,6 @@ import { listen } from '@tauri-apps/api/event';
 import type { McpDataChangedPayload } from '@shared/schema';
 import { SyncContext } from './sync-context';
 import { FX_HISTORY_KEY, FX_SNAPSHOT_KEY } from './use-fx';
-
-/**
- * Queries built on position values and cost bases (prices plus current and historical
- * rates): stock and crypto lists and details, the stocks analysis, tag metrics and the
- * projection.
- */
-const PRICED_POSITION_KEYS = [
-  'investments',
-  'investment',
-  'crypto',
-  'stocks-analysis',
-  'tag-metrics',
-  'projection',
-] as const;
 
 export function SyncProvider({ children }: { children: ReactNode }) {
   const [isSyncing, setIsSyncing] = useState(false);
@@ -93,9 +80,8 @@ export function SyncProvider({ children }: { children: ReactNode }) {
             status.cryptoStale ? priceApi.refreshCryptoPrices() : Promise.resolve(),
           ]);
           // Fresh prices change every position value, list or detail, and what is built on them
-          for (const key of [...PRICED_POSITION_KEYS, 'portfolio-metrics', 'price-status']) {
-            queryClient.invalidateQueries({ queryKey: [key] });
-          }
+          void invalidateAfterPriceRefresh(queryClient);
+          queryClient.invalidateQueries({ queryKey: ['price-status'] });
         }
       } catch (error) {
         console.error('[Sync] Auto price refresh failed:', error);
@@ -133,11 +119,11 @@ export function SyncProvider({ children }: { children: ReactNode }) {
         'budgeting-category-transactions',
         'cashflow-report',
         'report-transactions',
-        ...PRICED_POSITION_KEYS,
-        'stock-twr',
       ]) {
         queryClient.invalidateQueries({ queryKey: [key] });
       }
+      // Positions, analyses and histories convert at the historical rates too
+      void invalidateAfterPriceRefresh(queryClient);
     });
     return () => {
       unlisten.then((f) => f());
@@ -216,10 +202,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
           domain === 'stocks' ? priceApi.refreshStockPrices() : priceApi.refreshCryptoPrices();
         refresh
           .then(() => {
-            queryClient.invalidateQueries({
-              queryKey: [domain === 'stocks' ? 'investments' : 'crypto'],
-            });
-            queryClient.invalidateQueries({ queryKey: ['portfolio-metrics'] });
+            void invalidateAfterPriceRefresh(queryClient);
 
             if (domain === 'stocks') {
               // Newly imported tickers have no dividend data until this runs

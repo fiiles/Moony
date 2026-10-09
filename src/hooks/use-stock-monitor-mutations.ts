@@ -1,4 +1,5 @@
 import { useMutation } from '@tanstack/react-query';
+import { invalidateAfterPriceRefresh } from '@/lib/price-refresh';
 import { queryClient } from '@/lib/queryClient';
 import { stockMonitorApi } from '@/lib/tauri-api';
 import { toast } from 'sonner';
@@ -21,6 +22,8 @@ export function useStockMonitorMutations() {
     mutationFn: (ticker: string) => stockMonitorApi.follow(ticker),
     onSuccess: (watched) => {
       invalidate();
+      // Following fetches the ticker's price, shared with a held position of it
+      void invalidateAfterPriceRefresh(queryClient);
       toast(t('toast.followed', { ticker: watched.ticker }));
     },
     onError,
@@ -65,7 +68,11 @@ export function useStockMonitorMutations() {
   // Force-refresh a single ticker (detail page) — works for unfollowed tickers too
   const refreshDetailMutation = useMutation({
     mutationFn: (ticker: string) => stockMonitorApi.getDetail(ticker, true),
-    onSuccess: () => invalidate(),
+    onSuccess: () => {
+      invalidate();
+      // The forced price is shared with a held position of the ticker
+      void invalidateAfterPriceRefresh(queryClient);
+    },
     onError,
   });
 
@@ -74,6 +81,8 @@ export function useStockMonitorMutations() {
     onSuccess: (added) => {
       invalidate();
       if (added.length > 0) {
+        // Following the held tickers fetches their prices
+        void invalidateAfterPriceRefresh(queryClient);
         toast(t('toast.followedPortfolio', { count: added.length }));
       }
     },
@@ -82,7 +91,11 @@ export function useStockMonitorMutations() {
 
   const refreshMutation = useMutation({
     mutationFn: () => stockMonitorApi.refreshPrices(true),
-    onSuccess: () => invalidate(),
+    onSuccess: (result) => {
+      invalidate();
+      // A followed ticker can be a held one: its new price moves the portfolio too
+      if (result.updated.length > 0) void invalidateAfterPriceRefresh(queryClient);
+    },
     onError,
   });
 

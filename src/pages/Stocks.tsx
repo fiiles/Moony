@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { invalidateAfterPriceRefresh } from '@/lib/price-refresh';
 import { useLocation } from 'wouter';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -110,8 +111,7 @@ export default function Stocks() {
       return pricesResult;
     },
     onSuccess: (result) => {
-      queryClient.invalidateQueries({ queryKey: ['investments'] });
-      queryClient.invalidateQueries({ queryKey: ['portfolio-metrics'] });
+      void invalidateAfterPriceRefresh(queryClient);
       queryClient.invalidateQueries({ queryKey: ['dividend-summary'] });
       if (result.rate_limit_hit) {
         toast(t('toast.rateLimitReached'), { description: t('toast.rateLimitDescription') });

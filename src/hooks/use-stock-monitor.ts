@@ -1,4 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { invalidateAfterPriceRefresh } from '@/lib/price-refresh';
 import { stockMonitorApi } from '@/lib/tauri-api';
 import type { ChartPeriod } from '@/utils/stock-monitor';
 
@@ -33,6 +34,8 @@ export function useWatchedStocks() {
             // A price that moved may have crossed a target: the overview card and the
             // top-bar indicator should not wait for their own refresh.
             queryClient.invalidateQueries({ queryKey: ['milestones'] });
+            // A followed ticker can be a held one: its new price moves the portfolio too
+            void invalidateAfterPriceRefresh(queryClient);
           }
         })
         .catch((error) => {

@@ -62,7 +62,7 @@ pub fn main_currency_positions(
 }
 
 /// Adds a position's native price and average cost and its main-currency figures to a list
-/// row.
+/// row, and sets its `quantity` to the quantity the value describes.
 /// Unknown amounts are `null`; `missingCurrencies` names what this position could not convert;
 /// `fxEstimated` is true when some of its cost used today's rate in place of its day's.
 pub fn add_position_fields(
@@ -70,6 +70,14 @@ pub fn add_position_fields(
     item: Option<&crate::services::positions::PositionValue>,
     currency: &str,
 ) {
+    // The quantity the value describes (the app's wire rule), keeping the stored text when equal
+    if let Some(item) = item {
+        let stored = row["quantity"].as_str().unwrap_or_default().to_string();
+        row["quantity"] = serde_json::json!(crate::services::position_reports::wire_quantity(
+            &stored,
+            item.quantity
+        ));
+    }
     let field = |f: fn(&crate::services::positions::PositionValue) -> Option<f64>| {
         amount_json(item.and_then(f), currency)
     };

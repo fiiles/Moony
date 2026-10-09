@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { invalidateAfterPriceRefresh } from '@/lib/price-refresh';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { Check, RefreshCw } from 'lucide-react';
@@ -87,9 +88,7 @@ export function DataStatus({ override }: { override?: ShellStatus }) {
         priceApi.refreshCryptoPrices(),
       ]);
       await refetch();
-      queryClient.invalidateQueries({ queryKey: ['portfolio-metrics'] });
-      queryClient.invalidateQueries({ queryKey: ['investments'] });
-      queryClient.invalidateQueries({ queryKey: ['crypto'] });
+      void invalidateAfterPriceRefresh(queryClient);
     } catch (error) {
       console.error('Failed to refresh prices:', error);
     } finally {

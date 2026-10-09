@@ -896,6 +896,33 @@ mod list_missing_currency_tests {
     }
 
     #[test]
+    fn investments_list_reports_the_quantity_its_value_describes() {
+        let conn = list_db("EUR");
+        conn.execute_batch(
+            r#"
+            -- a stale stored quantity (metrics not recalculated): the transactions replay to 2
+            INSERT INTO stock_investments VALUES ('a', 'SAP', 'SAP', '5', 'EUR'), ('b', 'NOTX', 'N', '3.50', 'EUR');
+            INSERT INTO investment_transactions (id, investment_id, type, ticker, company_name, quantity, price_per_unit, currency, transaction_date) VALUES
+                ('t1', 'a', 'buy', 'SAP', 'SAP', '2', '100', 'EUR', 1700000000);
+            INSERT INTO stock_data (ticker, original_price, currency, fetched_at) VALUES ('SAP', '120', 'EUR', 100);
+            "#,
+        )
+        .expect("seed");
+
+        let result = investments_list(&conn).expect("list");
+
+        let rows = result["investments"].as_array().expect("array");
+        let a = rows.iter().find(|r| r["id"] == "a").expect("a");
+        assert_eq!(a["quantity"], "2");
+        assert_eq!(a["value"], "240.00");
+        // without transactions the stored text stays as it is
+        let b = rows.iter().find(|r| r["id"] == "b").expect("b");
+        assert_eq!(b["quantity"], "3.50");
+        let detail = investment_detail(&conn, "a").expect("detail");
+        assert_eq!(detail["quantity"], "2");
+    }
+
+    #[test]
     fn investments_list_flags_cost_estimated_at_todays_rate() {
         // No stored rate for the buy day: the cost falls back to today's quotes.
         let conn = list_db("EUR");

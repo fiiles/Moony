@@ -225,7 +225,8 @@ impl History {
     /// Walks back day by day from `floor(day)` for at most `MAX_LOOKBACK_DAYS` and uses the
     /// first day on which both currencies resolve. Same currency is identity without lookup.
     pub fn convert_on(&self, amount: f64, from: &str, to: &str, day: i64) -> Option<f64> {
-        if from.trim().to_uppercase() == to.trim().to_uppercase() {
+        let code = from.trim();
+        if !code.is_empty() && code.to_uppercase() == to.trim().to_uppercase() {
             return amount.is_finite().then_some(amount);
         }
         let from = normalize(from)?;
@@ -721,6 +722,9 @@ mod tests {
         assert_eq!(h.convert_on(5.0, "USDT", "usdt ", 0), Some(5.0));
         assert_eq!(h.convert_on(5.0, " eur", "EUR", 0), Some(5.0));
         assert_eq!(h.convert_on(5.0, "USDT", "USD", 0), None);
+        // An empty code is no currency, not an identity
+        assert_eq!(h.convert_on(5.0, "", "", 0), None);
+        assert_eq!(h.convert_on(5.0, "  ", " ", 0), None);
     }
 
     #[test]

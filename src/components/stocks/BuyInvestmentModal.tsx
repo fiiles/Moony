@@ -21,7 +21,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { currencyCodeSchema } from '@shared/currencies';
+import { currencyCodeSchema, type CurrencyCode } from '@shared/currencies';
 import { CurrencyCombobox } from '@/components/common/CurrencyCombobox';
 import { investmentsApi } from '@/lib/tauri-api';
 import { useEffect } from 'react';
@@ -60,13 +60,19 @@ export function BuyInvestmentModal({ investment, open, onOpenChange }: BuyInvest
   // Currency is locked to the investment's base currency (set by first transaction)
   useEffect(() => {
     if (investment) {
-      // Use avgCostCurrency (investment's locked currency) for transactions
-      const investmentCurrency = (investment.avgCostCurrency || investment.currency || 'USD') as
-        'USD' | 'EUR' | 'CZK';
+      // The stock's own currency: the list page puts the display currency in the base fields
+      // and the native one in original*; the detail page passes native values in the base fields.
+      const investmentCurrency = (investment.originalAvgCostCurrency ||
+        investment.avgCostCurrency ||
+        investment.originalCurrency ||
+        investment.currency ||
+        'USD') as CurrencyCode;
       form.setValue('currency', investmentCurrency);
       // Use originalPrice (in stock's currency) for prefill, not currentPrice (which is converted to CZK).
       // Six decimals, as the price is stored: a London share quoted in pence costs 0.953 £, not 0.95 £.
-      const priceToShow = Number(investment.originalPrice ?? investment.currentPrice);
+      const priceToShow = Number(
+        investment.originalCurrentPrice ?? investment.originalPrice ?? investment.currentPrice
+      );
       form.setValue('pricePerUnit', priceToShow ? Number(priceToShow.toFixed(6)) : 0);
     }
   }, [investment, form]);

@@ -21,7 +21,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { currencyCodeSchema } from '@shared/currencies';
+import { currencyCodeSchema, type CurrencyCode } from '@shared/currencies';
 import { CurrencyCombobox } from '@/components/common/CurrencyCombobox';
 import type { HoldingData } from '@/utils/stocks';
 import { investmentsApi } from '@/lib/tauri-api';
@@ -59,8 +59,11 @@ export function SellInvestmentModal({ investment, open, onOpenChange }: SellInve
   // Lock currency to the investment's base currency (set by first transaction)
   useEffect(() => {
     if (investment) {
-      const investmentCurrency = (investment.avgCostCurrency || investment.currency || 'USD') as
-        'USD' | 'EUR' | 'CZK';
+      const investmentCurrency = (investment.originalAvgCostCurrency ||
+        investment.avgCostCurrency ||
+        investment.originalCurrency ||
+        investment.currency ||
+        'USD') as CurrencyCode;
       form.setValue('currency', investmentCurrency);
     }
   }, [investment, form]);

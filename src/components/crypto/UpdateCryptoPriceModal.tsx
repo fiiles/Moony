@@ -9,8 +9,8 @@ import type { CryptoHoldingData } from '@shared/calculations';
 import type { CurrencyCode } from '@shared/currencies';
 import { cryptoApi } from '@/lib/tauri-api';
 import { useCurrency } from '@/lib/currency';
-import { plainDecimal } from '@/utils/plain-decimal';
 import { useFormat } from '@/lib/use-format';
+import { plainDecimal } from '@/utils/plain-decimal';
 import {
   Dialog,
   DialogContent,

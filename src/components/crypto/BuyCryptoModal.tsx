@@ -11,6 +11,7 @@ import { requiredNumber } from '@/utils/form-schemas';
 import { cryptoApi } from '@/lib/tauri-api';
 import { useCurrency } from '@/lib/currency';
 import { useFormat } from '@/lib/use-format';
+import { toPlainDecimal } from '@/utils/plain-decimal';
 import {
   Dialog,
   DialogContent,
@@ -82,8 +83,8 @@ export function BuyCryptoModal({ investment, open, onOpenChange }: BuyCryptoModa
         type: 'buy',
         ticker: investment.ticker,
         name: investment.name,
-        quantity: values.quantity.toString(),
-        pricePerUnit: values.pricePerUnit.toString(),
+        quantity: toPlainDecimal(values.quantity),
+        pricePerUnit: toPlainDecimal(values.pricePerUnit),
         currency: values.currency,
         transactionDate: values.date
           ? Math.floor(new Date(values.date).getTime() / 1000)

@@ -56,6 +56,10 @@ pub struct ReportTransaction {
     pub counterparty_name: Option<String>,
     #[serde(rename = "counterpartyIban")]
     pub counterparty_iban: Option<String>,
+    #[serde(rename = "counterpartyBankCode")]
+    pub counterparty_bank_code: Option<String>,
+    #[serde(rename = "counterpartyCountry")]
+    pub counterparty_country: Option<String>,
     #[serde(rename = "categoryId")]
     pub category_id: Option<String>,
     #[serde(rename = "bankAccountId")]

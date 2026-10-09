@@ -5,14 +5,14 @@ use specta::Type;
 
 /// Financial meaning, separate from native credit/debit direction: what counts as
 /// income, what counts as spending, and what only moves money between own pots.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, Serialize, Deserialize, Type)]
 pub enum FlowKind {
     #[serde(rename = "income")]
     Income,
     #[default]
     #[serde(rename = "expense")]
     Expense,
-    /// Money moved between the user's own pots: investing, saving, account transfers.
+    // Money moved between the user's own pots: investing, saving, account transfers.
     #[serde(rename = "transfer")]
     Transfer,
 }

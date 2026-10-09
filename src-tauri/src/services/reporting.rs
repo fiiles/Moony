@@ -171,6 +171,8 @@ pub fn transactions_in_currency(
                 description: r.get(4)?,
                 counterparty_name: r.get(5)?,
                 counterparty_iban: r.get(6)?,
+                counterparty_bank_code: r.get(13)?,
+                counterparty_country: r.get(14)?,
                 category_id: r.get(7)?,
                 bank_account_id: r.get(8)?,
                 bank_account_name: r.get(9)?,
@@ -183,13 +185,11 @@ pub fn transactions_in_currency(
             },
             r.get::<_, Option<FlowKind>>(11)?,
             r.get::<_, Option<FlowKind>>(12)?,
-            r.get::<_, Option<String>>(13)?,
-            r.get::<_, Option<String>>(14)?,
         ))
     })?;
     let mut out = vec![];
     for row in rows {
-        let (mut row, explicit, category, bank_code, country) = row?;
+        let (mut row, explicit, category) = row?;
         if accounts.is_some_and(|ids| !ids.contains(&row.bank_account_id)) {
             continue;
         }
@@ -197,8 +197,8 @@ pub fn transactions_in_currency(
         let flow = resolve_structured_flow(
             explicit,
             row.counterparty_iban.as_deref(),
-            bank_code.as_deref(),
-            country.as_deref(),
+            row.counterparty_bank_code.as_deref(),
+            row.counterparty_country.as_deref(),
             category,
             credit,
             &own,
@@ -279,18 +279,6 @@ pub fn quality(rows: &[ReportTransaction], start: i64, end: i64, today: i64) -> 
 
 /// Optional filters used by cashflow drilldowns. FX-missing rows remain visible
 /// with a null contribution; they are not silently counted in numeric totals.
-pub fn filtered_transactions(
-    conn: &Connection,
-    start: i64,
-    end: i64,
-    accounts: Option<&[String]>,
-    kind: Option<FlowKind>,
-    category: Option<&str>,
-    source: Option<&str>,
-) -> Result<Vec<ReportTransaction>> {
-    filtered_transactions_in_currency(conn, start, end, accounts, kind, category, source, "CZK")
-}
-#[allow(clippy::too_many_arguments)]
 pub fn filtered_transactions_in_currency(
     conn: &Connection,
     start: i64,
@@ -298,7 +286,6 @@ pub fn filtered_transactions_in_currency(
     accounts: Option<&[String]>,
     kind: Option<FlowKind>,
     category: Option<&str>,
-    source: Option<&str>,
     report_currency: &str,
 ) -> Result<Vec<ReportTransaction>> {
     Ok(
@@ -308,9 +295,6 @@ pub fn filtered_transactions_in_currency(
                 kind.is_none_or(|kind| r.effective_flow_kind == kind)
                     && category
                         .is_none_or(|id| r.category_id.as_deref().unwrap_or("uncategorized") == id)
-                    && source.is_none_or(|key| {
-                        crate::services::cashflow_actuals::source_key(&r.counterparty_name).0 == key
-                    })
             })
             .collect(),
     )

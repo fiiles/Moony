@@ -344,15 +344,26 @@ pub fn load_ticker_transactions(
     table: TxTable,
     ticker: &str,
 ) -> Result<Vec<TxRow>> {
+    load_rows_where(conn, table, "UPPER(ticker) = UPPER(?1)", ticker)
+}
+
+/// The transactions of `table` matching `condition` (a fixed SQL condition on `?1 = key`), in the
+/// same order as `load_transactions`.
+fn load_rows_where(
+    conn: &Connection,
+    table: TxTable,
+    condition: &'static str,
+    key: &str,
+) -> Result<Vec<TxRow>> {
     let sql = format!(
         "SELECT type, quantity, price_per_unit, currency, transaction_date
-         FROM {} WHERE UPPER(ticker) = UPPER(?1)
+         FROM {} WHERE {condition}
          ORDER BY transaction_date ASC, created_at ASC, rowid ASC",
         table.table_name()
     );
     let mut stmt = conn.prepare(&sql)?;
     let rows = stmt
-        .query_map([ticker], |row| parse_tx_row(row, 0))?
+        .query_map([key], |row| parse_tx_row(row, 0))?
         .collect::<rusqlite::Result<Vec<_>>>()?;
     Ok(rows)
 }
@@ -366,16 +377,7 @@ pub fn native_average_price(
     investment_id: &str,
     current: &Quotes,
 ) -> Result<f64> {
-    let sql = format!(
-        "SELECT type, quantity, price_per_unit, currency, transaction_date
-         FROM {} WHERE investment_id = ?1
-         ORDER BY transaction_date ASC, created_at ASC, rowid ASC",
-        table.table_name()
-    );
-    let mut stmt = conn.prepare(&sql)?;
-    let txs = stmt
-        .query_map([investment_id], |row| parse_tx_row(row, 0))?
-        .collect::<rusqlite::Result<Vec<_>>>()?;
+    let txs = load_rows_where(conn, table, "investment_id = ?1", investment_id)?;
     let Some(first) = chronological(&txs)
         .first()
         .map(|tx| tx.currency.to_uppercase())

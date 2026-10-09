@@ -78,8 +78,9 @@ pub fn save_rates_to_db(
         .expect("Time went backwards")
         .as_secs() as i64;
 
+    let mut stored = 0usize;
     for (currency, rate) in rates.iter().filter(|(code, _)| fx::is_stored_code(code)) {
-        conn.execute(
+        stored += conn.execute(
             "INSERT INTO exchange_rates (currency, rate, fetched_at)
              VALUES (?1, ?2, ?3)
              ON CONFLICT(currency) DO UPDATE SET rate = ?2, fetched_at = ?3",
@@ -87,10 +88,7 @@ pub fn save_rates_to_db(
         )?;
     }
 
-    log::info!(
-        "[CURRENCY] Saved {} exchange rates to database",
-        rates.len()
-    );
+    log::info!("[CURRENCY] Saved {stored} exchange rates to database");
 
     Ok(())
 }

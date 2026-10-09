@@ -2064,7 +2064,8 @@ CREATE UNIQUE INDEX idx_learned_payees_scoped ON learned_payees(
 
 /// Stored rates become units of a currency per 1 EUR (the ECB's own base) instead of CZK per
 /// unit; CZK is stored as a quote like any other currency. Days (and current rates) without a
-/// usable EUR quote cannot be rebased and are dropped; derived (pegged) codes are never stored.
+/// usable EUR quote cannot be rebased and are dropped (none are expected: the old daily writer
+/// and the backfill always stored EUR); derived (pegged) codes are never stored.
 /// The rows are rewritten in place, so the tables, their constraints and `idx_erh_currency_date`
 /// stay exactly as they are.
 pub(crate) const MIGRATION_010: &str = r#"
@@ -2122,7 +2123,7 @@ mod migration_010 {
         conn.execute_batch(
             "
             INSERT INTO exchange_rate_history VALUES (86400, 'EUR', 25.0), (86400, 'USD', 20.0), (86400, 'AED', 5.4);
-            INSERT INTO exchange_rates VALUES ('CZK', 1.0, 7), ('EUR', 25.0, 7), ('USD', 20.0, 7);
+            INSERT INTO exchange_rates VALUES ('CZK', 1.0, 7), ('EUR', 25.0, 7), ('USD', 20.0, 7), ('AED', 5.4, 7);
         ",
         )
         .expect("seed");
@@ -2158,6 +2159,23 @@ mod migration_010 {
             )
             .expect("cur");
         assert!((current - 1.25).abs() < 1e-12);
+        // The old ('CZK', 1.0) row is replaced by the old EUR rate.
+        let current_czk: f64 = conn
+            .query_row(
+                "SELECT rate FROM exchange_rates WHERE currency = 'CZK'",
+                [],
+                |r| r.get(0),
+            )
+            .expect("czk");
+        assert!((current_czk - 25.0).abs() < 1e-12);
+        let stale: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM exchange_rates WHERE currency IN ('EUR', 'AED', 'SAR', 'QAR', 'BHD', 'OMR', 'BGN')",
+                [],
+                |r| r.get(0),
+            )
+            .expect("derived");
+        assert_eq!(stale, 0);
         let reference: String = conn
             .query_row(
                 "SELECT value FROM app_config WHERE key = 'fx_reference'",

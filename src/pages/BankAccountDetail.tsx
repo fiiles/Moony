@@ -8,7 +8,7 @@ import {
 } from '@/components/ui/dialog';
 import { refreshMoneyFlows } from '@/lib/money-flow-refresh';
 import { getCompleteBankHistory } from '@/lib/bank-history';
-import { nativeBookedTransactions } from '@/utils/money-flows';
+import { nativeBookedTransactions, rowFlowLabel } from '@/utils/money-flows';
 import { useState, useMemo, useEffect, useRef, Fragment } from 'react';
 import { useRoute, useLocation, useSearch } from 'wouter';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
@@ -40,6 +40,7 @@ import type {
   CsvImportBatch,
   FlowKind,
 } from '@shared/schema';
+import { FLOW_KINDS } from '@shared/schema';
 import { recordCurrency, type CurrencyCode } from '@shared/currencies';
 import { bankAccountsApi, categorizationApi, cashflowApi } from '@/lib/tauri-api';
 import { useBankAccount } from '@/hooks/use-bank-accounts';
@@ -377,6 +378,12 @@ export default function BankAccountDetail() {
     const flow = flowById.get(id);
     if (!flow) return t('readiness.flowUnresolved');
     return `${t(`readiness.flow.${flow.effectiveFlowKind}`)}${withSource ? ` · ${t(`readiness.source.${flow.flowSource}`)}` : ''}`;
+  };
+  // Ledger rows name a meaning only when the sign does not already say it;
+  // loading/unresolved states are reported once above the table.
+  const rowFlow = (id: string, isCredit: boolean, hasCategory: boolean) => {
+    const flow = flowById.get(id);
+    return flow ? rowFlowLabel(flow, isCredit, hasCategory) : null;
   };
   const flowReadError = flowsError ? (
     <ReportError onRetry={() => void retryFlows()} />
@@ -1250,17 +1257,20 @@ export default function BankAccountDetail() {
               )}
             </div>
           ) : (
-            <Table>
+            <Table className="table-fixed">
               <TableHeader>
                 <TableRow>
-                  <SortHead column="description" className="w-[44%]">
-                    {t('transaction.description')}
+                  <SortHead column="description" className="w-[27%]">
+                    {t('transaction.counterparty')}
                   </SortHead>
-                  <SortHead column="category">{t('transaction.category')}</SortHead>
+                  <TableHead className="w-[28%]">{t('transaction.detail')}</TableHead>
+                  <SortHead column="category" className="w-[22%]">
+                    {t('transaction.category')}
+                  </SortHead>
                   <SortHead column="amount" align="right">
                     {t('transaction.amount')}
                   </SortHead>
-                  <TableHead className="w-10">
+                  <TableHead className="w-12">
                     <span className="sr-only">{tc('labels.actions')}</span>
                   </TableHead>
                 </TableRow>
@@ -1273,19 +1283,20 @@ export default function BankAccountDetail() {
                   const credit = tx.type === 'credit';
                   const amount = Math.abs(parseFloat(tx.amount) || 0);
                   const title = tx.counterpartyName || tx.description || t('table.movement');
-                  const sub = [
+                  const detail = [
                     tx.counterpartyName ? tx.description : null,
                     completeAccountIdentifier(tx.counterpartyIban, null, tx.counterpartyBankCode),
                     !grouped ? fmt.day(tx.bookingDate) : null,
                   ]
                     .filter(Boolean)
                     .join(' · ');
+                  const flowKey = rowFlow(tx.id, credit, !!getEffectiveCategory(tx));
                   return (
                     <Fragment key={tx.id}>
                       {showGroup && (
                         <TableRow className="h-auto hover:bg-transparent">
                           <TableCell
-                            colSpan={4}
+                            colSpan={5}
                             className="bg-paper px-[14px] pb-1.5 pt-[9px] text-micro font-700 uppercase tracking-[0.06em] text-ink-4"
                           >
                             {group}
@@ -1312,19 +1323,26 @@ export default function BankAccountDetail() {
                                 <Receipt className="size-3.5" strokeWidth={1.75} aria-hidden />
                               )}
                             </span>
-                            <div className="min-w-0">
-                              <b className="block truncate text-table font-650">{title}</b>
-                              <small className="text-micro text-ink-4">
-                                {tx.status === 'pending' && <Badge>{t('readiness.pending')}</Badge>}{' '}
-                                {flowLabel(tx.id)}
-                              </small>
-                              {sub && (
-                                <small className="mt-[3px] block truncate text-micro font-500 text-ink-4">
-                                  {sub}
-                                </small>
-                              )}
-                            </div>
+                            <b className="min-w-0 truncate text-table font-650" title={title}>
+                              {title}
+                            </b>
+                            {tx.status === 'pending' && (
+                              <Badge className="shrink-0">{t('readiness.pending')}</Badge>
+                            )}
+                            {flowKey && (
+                              <Badge variant="outline" className="shrink-0">
+                                {flowKey === 'refund'
+                                  ? t('readiness.flowRefund')
+                                  : t(`readiness.flow.${flowKey}`)}
+                              </Badge>
+                            )}
                           </div>
+                        </TableCell>
+                        <TableCell
+                          className="truncate text-micro font-500 text-ink-4"
+                          title={detail || undefined}
+                        >
+                          {detail}
                         </TableCell>
                         <TableCell>
                           <CategorySelector
@@ -1360,7 +1378,7 @@ export default function BankAccountDetail() {
                         >
                           {fmt.money(credit ? amount : -amount, tx.currency, { signed: true })}
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="pl-0 pr-2 text-right">
                           <div data-row-actions>
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
@@ -1519,15 +1537,7 @@ export default function BankAccountDetail() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {[
-                    'auto',
-                    'income',
-                    'expense',
-                    'transfer',
-                    'investment',
-                    'financing',
-                    'adjustment',
-                  ].map((value) => (
+                  {['auto', ...FLOW_KINDS].map((value) => (
                     <SelectItem key={value} value={value}>
                       {t(`readiness.flow.${value}`)}
                     </SelectItem>

@@ -466,32 +466,22 @@
   "actuals": {
     "eyebrow": "Report",
     "title": "Cashflow",
-    "subtitle": "Skutečné příjmy a výdaje ze všech účtů, po měsících. Pravidelné položky, se kterými počítáte, jsou v",
+    "subtitle": "Skutečné příjmy a výdaje ze všech účtů za zvolené období. Pravidelné položky, se kterými počítáte, jsou v",
     "link": "Plánování cashflow",
     "transactions_one": "{{count}} transakce",
     "transactions_few": "{{count}} transakce",
     "transactions_other": "{{count}} transakcí",
-    "range": {
-      "6m": "6 měsíců",
-      "12m": "12 měsíců",
-      "ytd": "Rok {{year}}"
-    },
     "export": "Export",
-    "months_one": "{{count}} měsíc",
-    "months_few": "{{count}} měsíce",
-    "months_other": "{{count}} měsíců",
     "stats": {
-      "avgIncome": "Průměrné měsíční příjmy",
-      "avgIncomeNote": "{{months}} · {{source}} tvoří {{percent}}",
-      "avgExpenses": "Průměrné měsíční výdaje",
-      "avgExpensesNote": "nejvíc {{category}} {{amount}}",
-      "avgSavings": "Průměrná úspora",
-      "avgSavingsNote": "míra úspor {{rate}} · minulé období {{previous}}",
-      "avgSavingsNoteNoPrev": "míra úspor {{rate}}"
+      "income": "Příjmy",
+      "expenses": "Výdaje",
+      "savings": "Úspora",
+      "perMonth": "⌀ {{amount}} / měsíc",
+      "savingsRate": "míra úspor {{rate}}"
     },
     "chart": {
       "title": "Příjmy a výdaje po měsících",
-      "sub": "Najetím na sloupec zobrazíte bilanci měsíce.",
+      "sub": "Zvolené období je zvýrazněné. Najetím na sloupec zobrazíte bilanci měsíce.",
       "income": "Příjmy",
       "expenses": "Výdaje",
       "balance": "bilance"
@@ -499,29 +489,30 @@
     "breakdown": {
       "sub": "Součet za zvolené období",
       "category": "Kategorie",
-      "source": "Zdroj",
       "share": "Podíl",
       "amount": "Částka",
-      "vsPrevious": "vs. minulé",
-      "total": "Celkem {{amount}}"
+      "total": "Celkem {{amount}}",
+      "empty": "V tomto období nic"
     },
     "expenses": {
       "title": "Výdaje podle kategorií",
       "budgets": "Nastavit rozpočty"
     },
     "income": {
-      "title": "Příjmy podle zdrojů",
-      "note": "Bez interních převodů; nezařazené příjmy se počítají"
+      "title": "Příjmy podle kategorií",
+      "note": "Nezařazené kredity se počítají jako příjem"
     },
-    "other": "Ostatní",
-    "otherIncome": "Ostatní příjmy",
+    "transfers": {
+      "title": "Investice, spoření a převody",
+      "sub": "Nepočítá se do příjmů ani výdajů",
+      "movement": "Celkový pohyb peněz na účtech {{amount}}"
+    },
     "uncategorized": "Nezařazeno",
-    "noChange": "beze změny",
-    "new": "nově",
+    "uncategorizedTransfers": "Přesuny bez kategorie",
     "empty": {
-      "title": "Zatím žádné transakce",
-      "description": "Naimportujte výpis z banky a report ukáže skutečné příjmy a výdaje po měsících.",
-      "action": "Otevřít bankovní účty"
+      "action": "Otevřít bankovní účty",
+      "periodTitle": "V tomto období nejsou žádné transakce",
+      "periodDescription": "Vyberte jiné období, nebo naimportujte výpis z banky."
     }
   },
   "viewType": {
@@ -537,46 +528,21 @@
     "accounts": "Účty ({{count}})",
     "accountScopeHelp": "Vyberte účty pro tento přehled. Volba je nezávislá na zahrnutí do hodnoty portfolia.",
     "allAccounts": "Všechny účty",
-    "ordinaryNet": "Běžné příjmy − výdaje",
-    "bankMovement": "Celkový pohyb peněz na účtech",
-    "nonconsumption": "Převody a ostatní toky",
-    "absoluteShare": "Podíl na součtu absolutních hodnot",
     "drilldownUnits": "Původní pohyb a příspěvek do přehledu v {{currency}}",
     "loading": "Načítání…",
     "date": "Datum",
     "description": "Popis",
-    "account": "Účet",
     "native": "Původní pohyb",
     "contribution": "Příspěvek do přehledu ({{currency}})",
     "fxUnavailable": "Kurz není k dispozici",
     "countedTransactions": "{{count}} transakcí",
     "previous": "Předchozí",
     "next": "Další",
-    "flow": {
-      "auto": "Automaticky",
-      "income": "Příjem",
-      "expense": "Výdaj / vratka",
-      "transfer": "Převod",
-      "investment": "Investice",
-      "financing": "Financování",
-      "adjustment": "Úprava"
-    },
-    "source": {
-      "explicit": "Výslovná volba",
-      "category": "Role kategorie",
-      "direction": "Směr pohybu",
-      "ownAccount": "Vlastní účet"
-    },
     "replacesSource": "Automatický zdroj k nahrazení",
     "additionalItem": "Další ruční položka",
     "retainedSource": "Dříve propojený zdroj",
     "replacementHelp": "Nahrazení vynechá vybranou automatickou položku ze součtů. Smazáním ruční náhrady se zdroj vrátí.",
     "replacing": "Nahrazuje {{name}}",
-    "reportRange": "{{start}} – {{end}} · srovnání {{previousStart}} – {{previousEnd}}",
-    "averageSample_zero": "Pro průměr není k dispozici žádný celý měsíc.",
-    "averageSample_one": "Průměr z {{count}} celého měsíce.",
-    "averageSample_few": "Průměr ze {{count}} celých měsíců.",
-    "averageSample_other": "Průměr z {{count}} celých měsíců.",
     "missingFx_one": "{{count}} pohyb byl vynechán kvůli chybějícímu kurzu ({{currencies}}). Součty jsou neúplné.",
     "missingFx_few": "{{count}} pohyby byly vynechány kvůli chybějícímu kurzu ({{currencies}}). Součty jsou neúplné.",
     "missingFx_other": "{{count}} pohybů bylo vynecháno kvůli chybějícímu kurzu ({{currencies}}). Součty jsou neúplné.",
@@ -584,16 +550,15 @@
     "countedTransactions_one": "{{count}} transakce",
     "countedTransactions_few": "{{count}} transakce",
     "countedTransactions_other": "{{count}} transakcí",
-    "comparisonFx_zero": "Ve srovnávacím období nebyly kvůli chybějícímu kurzu vynechány žádné pohyby.",
-    "comparisonFx_one": "Srovnávací období vynechává {{count}} pohyb bez kurzu ({{currencies}}).",
-    "comparisonFx_few": "Srovnávací období vynechává {{count}} pohyby bez kurzu ({{currencies}}).",
-    "comparisonFx_other": "Srovnávací období vynechává {{count}} pohybů bez kurzu ({{currencies}}).",
     "invalidAmounts_one": "{{count}} uložený pohyb má neplatnou částku a je vynechán. Součty jsou neúplné; opravte nebo smažte ho v účtu.",
     "invalidAmounts_few": "{{count}} uložené pohyby mají neplatnou částku a jsou vynechány. Součty jsou neúplné; opravte nebo smažte je v účtu.",
     "invalidAmounts_other": "{{count}} uložených pohybů má neplatnou částku a jsou vynechány. Součty jsou neúplné; opravte nebo smažte je v účtu.",
     "partialAmount": "Neúplná částka; některé kurzy chybí",
     "missingPlanningFx_one": "{{count}} plánovaná složka nemá dostupný kurz ({{currencies}}). Součty jsou neúplné.",
     "missingPlanningFx_few": "{{count}} plánované složky nemají dostupný kurz ({{currencies}}). Součty jsou neúplné.",
-    "missingPlanningFx_other": "{{count}} plánovaných složek nemá dostupný kurz ({{currencies}}). Součty jsou neúplné."
+    "missingPlanningFx_other": "{{count}} plánovaných složek nemá dostupný kurz ({{currencies}}). Součty jsou neúplné.",
+    "category": "Kategorie",
+    "moved": "přesunuto",
+    "movedCount": "přesunuto: {{count}}"
   }
 }

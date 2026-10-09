@@ -836,14 +836,14 @@ mod tests {
         let conn = setup_test_db();
         let category = bank_categories(&conn).unwrap();
         assert_eq!(category[0]["kind"], "expense");
-        let data:InsertBankTransaction=serde_json::from_value(serde_json::json!({"bankAccountId":"acc-1","type":"debit","amount":"20","bookingDate":1700000000,"flowKind":"investment"})).unwrap();
+        let data:InsertBankTransaction=serde_json::from_value(serde_json::json!({"bankAccountId":"acc-1","type":"debit","amount":"20","bookingDate":1700000000,"flowKind":"transfer"})).unwrap();
         let transaction = bank_service::create_transaction(&conn, &data).unwrap();
         bank_service::set_transaction_category(&conn, &transaction.id, Some("cat-1"), Some("mcp"))
             .unwrap();
         let args: BankTransactionsArgs =
             serde_json::from_value(serde_json::json!({"accountId":"acc-1"})).unwrap();
         let result = bank_transactions(&conn, "acc-1", &args, 100, 0).unwrap();
-        assert_eq!(result["transactions"][0]["flowKind"], "investment");
+        assert_eq!(result["transactions"][0]["flowKind"], "transfer");
         assert_eq!(result["transactions"][0]["categoryKind"], "expense");
     }
 

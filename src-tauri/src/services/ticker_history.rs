@@ -796,7 +796,7 @@ mod golden {
 
     /// Verbatim logic of the previous `recalculate_stock_ticker_history` DB
     /// phase (commands/portfolio.rs): one `SUM` per day, one autocommit write
-    /// per row (its CZK cache column, retired by migration 011, left out).
+    /// per row (its CZK cache column, retired by migration 012, left out).
     /// `(timestamp, price, currency)` quotes stand in for the Yahoo response.
     fn legacy_recalculate(
         conn: &Connection,

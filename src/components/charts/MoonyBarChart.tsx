@@ -3,6 +3,7 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
+  Cell,
   ReferenceDot,
   ReferenceLine,
   ResponsiveContainer,
@@ -23,7 +24,11 @@ export interface BarGroup {
   a: number;
   /** Second series: expense (s3). */
   b: number;
+  /** Context outside the selected period: both series drawn at reduced opacity. */
+  muted?: boolean;
 }
+
+const MUTED_OPACITY = 0.35;
 
 /** A milestone ring on top of one bar (e.g. "Jistina převýší úrok"). */
 export interface BarMark {
@@ -124,7 +129,11 @@ export function MoonyBarChart({
               maxBarSize={stacked ? 26 : 22}
               stackId={stacked ? 'flow' : undefined}
               isAnimationActive={false}
-            />
+            >
+              {bars.map((bar, i) => (
+                <Cell key={i} fillOpacity={bar.muted ? MUTED_OPACITY : 1} />
+              ))}
+            </Bar>
             <Bar
               dataKey="b"
               name={names[1]}
@@ -133,7 +142,11 @@ export function MoonyBarChart({
               maxBarSize={stacked ? 26 : 22}
               stackId={stacked ? 'flow' : undefined}
               isAnimationActive={false}
-            />
+            >
+              {bars.map((bar, i) => (
+                <Cell key={i} fillOpacity={bar.muted ? MUTED_OPACITY : 1} />
+              ))}
+            </Bar>
             {marks
               .filter((m) => bars[m.index])
               .map((m, i) => (

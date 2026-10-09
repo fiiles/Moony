@@ -110,7 +110,6 @@ export function SyncProvider({ children }: { children: ReactNode }) {
         'budgeting-report',
         'budgeting-category-transactions',
         'cashflow-report',
-        'report-transactions',
       ]) {
         queryClient.invalidateQueries({ queryKey: [key] });
       }

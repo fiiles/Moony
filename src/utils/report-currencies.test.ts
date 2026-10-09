@@ -7,20 +7,13 @@ describe('report currency boundaries', () => {
     // Two CZK 100.40 rows: the cash style (0 decimals) would show 100 + 100 = 201.
     const report = {
       reportCurrency: 'CZK',
-      months: [
-        {
-          month: 1,
-          income: '0.00',
-          expenses: '200.80',
-          nonconsumptionFlows: [],
-          bankCashMovement: '-200.80',
-        },
-      ],
+      months: [{ month: 1, income: '0.00', expenses: '200.80' }],
       expenseCategories: [
-        { key: 'food', name: 'Food', amount: '100.40', previousAmount: '0.00', count: 1 },
-        { key: 'fuel', name: 'Fuel', amount: '100.40', previousAmount: '0.00', count: 1 },
+        { key: 'food', name: 'Food', flowKind: 'expense' as const, amount: '100.40', count: 1 },
+        { key: 'fuel', name: 'Fuel', flowKind: 'expense' as const, amount: '100.40', count: 1 },
       ],
-      incomeSources: [],
+      incomeCategories: [],
+      transfers: [],
     };
     const fmt = createFormatters('en', 'CZK');
     const shown = (text: string) => Number(text.replace(/[^\d.-]/g, ''));
@@ -37,11 +30,10 @@ describe('report currency boundaries', () => {
     const csv = buildCashflowCsv(
       report,
       () => 'Jan 2026',
-      (g) => g.name,
       (g) => g.name
     );
     expect(csv).toContain('Jan 2026;0.00;200.80');
-    expect(csv).toContain('Food;100.40;0.00;1');
+    expect(csv).toContain('Food;100.40;1');
     // Cash style elsewhere in the app is unchanged.
     expect(plain(fmt.money(200.8, 'CZK'))).toBe('Kč 201');
   });
@@ -60,48 +52,31 @@ describe('report currency boundaries', () => {
     const csv = buildCashflowCsv(
       {
         reportCurrency: 'KWD',
-        months: [
-          {
-            month: 1,
-            income: '100.123',
-            expenses: '0.001',
-            nonconsumptionFlows: [],
-            bankCashMovement: '100.122',
-          },
-        ],
+        months: [{ month: 1, income: '100.123', expenses: '0.001' }],
         expenseCategories: [
-          { key: 'food', name: 'Food', amount: '99.999', previousAmount: '1.234', count: 2 },
+          { key: 'food', name: 'Food', flowKind: 'expense', amount: '99.999', count: 2 },
         ],
-        incomeSources: [],
+        incomeCategories: [],
+        transfers: [],
       },
       () => 'Jan 2026',
-      (group) => group.name,
       (group) => group.name
     );
     expect(csv).toContain('income_kwd;expenses_kwd');
     expect(csv).toContain('Jan 2026;100.123;0.001');
-    expect(csv).toContain('Food;99.999;1.234;2');
+    expect(csv).toContain('Food;99.999;2');
   });
 
   it('keeps native EUR and JPY export values as supplied by their reports', () => {
-    const empty = { months: [], expenseCategories: [], incomeSources: [] };
+    const empty = { months: [], expenseCategories: [], incomeCategories: [], transfers: [] };
     expect(
       buildCashflowCsv(
         {
           ...empty,
           reportCurrency: 'EUR',
-          months: [
-            {
-              month: 1,
-              income: '100.00',
-              expenses: '0.00',
-              nonconsumptionFlows: [],
-              bankCashMovement: '100.00',
-            },
-          ],
+          months: [{ month: 1, income: '100.00', expenses: '0.00' }],
         },
         String,
-        () => '',
         () => ''
       )
     ).toContain('1;100.00;0.00');
@@ -110,21 +85,42 @@ describe('report currency boundaries', () => {
         {
           ...empty,
           reportCurrency: 'JPY',
-          months: [
-            {
-              month: 1,
-              income: '100',
-              expenses: '1',
-              nonconsumptionFlows: [],
-              bankCashMovement: '99',
-            },
-          ],
+          months: [{ month: 1, income: '100', expenses: '1' }],
         },
         String,
-        () => '',
         () => ''
       )
     ).toContain('1;100;1');
+  });
+
+  it('exports income categories and money transfers in their own sections', () => {
+    const csv = buildCashflowCsv(
+      {
+        reportCurrency: 'CZK',
+        months: [],
+        expenseCategories: [],
+        incomeCategories: [
+          { key: 'cat_income', name: 'Salary', flowKind: 'income', amount: '50000.00', count: 1 },
+        ],
+        transfers: [
+          {
+            key: 'cat_savings',
+            name: 'Savings',
+            flowKind: 'transfer',
+            amount: '-5000.00',
+            count: 2,
+          },
+        ],
+      },
+      String,
+      (group) => group.name
+    );
+    const lines = csv.split('\n');
+    expect(lines).toContain('income_category;amount_czk;transactions');
+    expect(lines).toContain('Salary;50000.00;1');
+    expect(lines).toContain('transfer;amount_czk;transactions');
+    expect(lines).toContain('Savings;-5000.00;2');
+    expect(csv).not.toContain('previous');
   });
 
   it('counts mixed-currency budget states without summing native amounts', () => {

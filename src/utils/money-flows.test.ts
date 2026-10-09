@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { preserveMoneyText, nativeBookedTransactions, absoluteMovementShares } from './money-flows';
+import type { FlowKind, FlowSource } from '@shared/schema';
+import {
+  preserveMoneyText,
+  nativeBookedTransactions,
+  absoluteMovementShares,
+  rowFlowLabel,
+} from './money-flows';
 import { completeAccountIdentifier } from './iban-utils';
 
 describe('money flow presentation', () => {
@@ -29,5 +35,25 @@ describe('money flow presentation', () => {
     expect(completeAccountIdentifier('DE89370400440532013000', '123456789')).toBe(
       'DE89 3704 0044 0532 0130 00'
     );
+  });
+});
+
+describe('ledger row flow label', () => {
+  const flow = (effectiveFlowKind: FlowKind, flowSource: FlowSource = 'category') => ({
+    effectiveFlowKind,
+    flowSource,
+  });
+
+  it('stays silent when the sign or the category already says it', () => {
+    expect(rowFlowLabel(flow('expense', 'direction'), false, false)).toBeNull();
+    expect(rowFlowLabel(flow('income', 'direction'), true, false)).toBeNull();
+    expect(rowFlowLabel(flow('transfer'), false, true)).toBeNull();
+    expect(rowFlowLabel(flow('transfer', 'ownAccount'), false, true)).toBeNull();
+  });
+
+  it('names refunds, explicit choices and uncategorized own-account transfers', () => {
+    expect(rowFlowLabel(flow('expense'), true, true)).toBe('refund');
+    expect(rowFlowLabel(flow('expense', 'explicit'), false, false)).toBe('expense');
+    expect(rowFlowLabel(flow('transfer', 'ownAccount'), false, false)).toBe('transfer');
   });
 });

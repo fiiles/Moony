@@ -101,8 +101,8 @@ pub const PACK_SOURCES: &[&str] = &[
     include_str!("../../../resources/rules/uy.json"),
 ];
 
-/// The category ids seeded by the baseline migration — the only valid
-/// `categoryId` targets for pack rules.
+/// The system category ids seeded by migrations (the baseline and 010) — the
+/// only valid `categoryId` targets for pack rules. `cat_income` is Salary.
 pub const SEEDED_CATEGORY_IDS: &[&str] = &[
     "cat_dining",
     "cat_entertainment",
@@ -112,9 +112,11 @@ pub const SEEDED_CATEGORY_IDS: &[&str] = &[
     "cat_income",
     "cat_insurance",
     "cat_internal_transfers",
+    "cat_investment_income",
     "cat_investments",
     "cat_loan_payments",
     "cat_other",
+    "cat_other_income",
     "cat_savings",
     "cat_shopping",
     "cat_taxes",

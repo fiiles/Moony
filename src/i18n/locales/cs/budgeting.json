@@ -5,27 +5,12 @@
   "status_one": "Výdaje z {{count}} účtu · {{period}}",
   "status_few": "Výdaje ze {{count}} účtů · {{period}}",
   "status_other": "Výdaje z {{count}} účtů · {{period}}",
-  "timeframe": {
-    "monthly": "Měsíc",
-    "quarterly": "Čtvrtletí",
-    "yearly": "Rok"
-  },
   "actions": {
     "add": "Přidat rozpočet",
     "editLimit": "Upravit limit",
     "showTransactions": "Zobrazit transakce",
     "delete": "Smazat rozpočet",
-    "setLimit": "Nastavit limit",
-    "prev": {
-      "monthly": "Předchozí měsíc",
-      "quarterly": "Předchozí čtvrtletí",
-      "yearly": "Předchozí rok"
-    },
-    "next": {
-      "monthly": "Další měsíc",
-      "quarterly": "Další čtvrtletí",
-      "yearly": "Další rok"
-    }
+    "setLimit": "Nastavit limit"
   },
   "stats": {
     "limited_one": "{{count}} kategorie s limitem",

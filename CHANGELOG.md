@@ -43,7 +43,7 @@ All notable changes to Moony are documented in this file. The format follows
   currency is shown with its ISO code, so "$" and "kr" can no longer mean several currencies.
 - **Calculator defaults** (annuity, real estate, the what-if step) scale to your main currency or
   start empty instead of using crown-sized numbers.
-- **Data migrations 010 and 011.** On the first start after the update Moony rewrites stored
+- **Data migrations 011 and 012.** On the first start after the update Moony rewrites stored
   exchange rates to euro quotes and removes the CZK copies of net worth history and per-ticker
   values (native breakdowns stay; an old history day that had no breakdown keeps its CZK figure
   as a CZK amount). Before it runs, the database is copied next to itself as
@@ -60,6 +60,26 @@ All notable changes to Moony are documented in this file. The format follows
   `tag_metrics`, `portfolio_get_metrics` and `portfolio_get_history` report gains in the main
   currency with the cost at each purchase day's rate. `exchange_rates_list` quotes against an
   explicit `baseCurrency` (EUR; was CZK), marks derived rates and lists `supportedCurrencies`.
+- **Cashflow by month, quarter or year.** The Cashflow report now uses the same period switch as
+  Budgets instead of 6 months / 12 months / year to date, and it no longer compares with a previous
+  range. The chart shows twelve months and highlights the chosen period.
+- **Income by category.** Income is grouped by category instead of by counterparty, so a friend paying
+  you back no longer shows up as an income source. Uncategorized credits have their own row.
+- **Investments, savings and transfers have their own card.** They count as neither income nor
+  expenses and are listed by category.
+- **Fix categories from the report.** Clicking any row opens its transactions, and each one can be
+  recategorized right there; the report updates while the list stays put.
+- **Three category roles.** A category now counts as income, expense or money transfer. The former
+  investment, financing and adjustment roles became money transfer; no total changes.
+- **Salary and new income categories.** "Income" is renamed "Salary" (unless you renamed it), and
+  "Investment income" and "Other income" are added.
+- **Savings no longer count as spending.** The Savings category is now a money transfer, unless you
+  had chosen another role. Past months change accordingly: spending drops and the savings rate rises.
+  A budget limit on Savings stops tracking anything; remove it on the Budgets page.
+- **Automatic categorization knows the new income categories.** Interest keywords now go to
+  Investment income, and pensions, benefits and tax refunds go to Other income instead of Salary. The
+  Czech "vratka" and "dobropis" keywords no longer file a refund as income: a refund belongs in the
+  category of the original purchase, so it stays uncategorized for you to assign.
 
 ### Fixed
 

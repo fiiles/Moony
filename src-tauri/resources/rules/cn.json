@@ -61,7 +61,7 @@
     { "id": "cn/spring-airlines", "name": "春秋航空 Spring Airlines", "ruleType": "contains", "pattern": "春秋航空", "categoryId": "cat_travel", "priority": 50 },
     { "id": "cn/hanting", "name": "汉庭酒店 Hanting Hotels", "ruleType": "contains", "pattern": "汉庭", "categoryId": "cat_travel", "priority": 50 },
     { "id": "cn/salary", "name": "工资 Salary", "ruleType": "contains", "pattern": "工资", "categoryId": "cat_income", "priority": 45 },
-    { "id": "cn/tax-refund", "name": "退税 Tax refund", "ruleType": "contains", "pattern": "退税", "categoryId": "cat_income", "priority": 60 },
+    { "id": "cn/tax-refund", "name": "退税 Tax refund", "ruleType": "contains", "pattern": "退税", "categoryId": "cat_other_income", "priority": 60 },
     { "id": "cn/tiantian-fund", "name": "天天基金 Tiantian Fund", "ruleType": "contains", "pattern": "天天基金", "categoryId": "cat_investments", "priority": 60 },
     { "id": "cn/east-money", "name": "东方财富 East Money", "ruleType": "contains", "pattern": "东方财富", "categoryId": "cat_investments", "priority": 60 },
     { "id": "cn/huatai-securities", "name": "华泰证券 Huatai Securities", "ruleType": "contains", "pattern": "华泰证券", "categoryId": "cat_investments", "priority": 60 },

@@ -12,7 +12,7 @@ pub const DAY: i64 = 86_400;
 /// How many days back a historical conversion may look for a common quote day.
 pub const MAX_LOOKBACK_DAYS: i64 = 10;
 /// The reference currency of every stored quote: `exchange_rates` and `exchange_rate_history`
-/// rows are units of a currency per 1 EUR, as the ECB publishes them (migration 010).
+/// rows are units of a currency per 1 EUR, as the ECB publishes them (migration 011).
 pub const REFERENCE: &str = "EUR";
 
 type SupportedTable = (Vec<String>, HashMap<String, (String, f64)>);

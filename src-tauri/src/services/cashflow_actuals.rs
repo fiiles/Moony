@@ -1,109 +1,60 @@
-//! Actual cashflow from bank transactions (design system README §11).
+//! Actual cashflow from bank transactions for one calendar period (design system README §11).
 //!
-//! Shared booked ledger interpretation preserves refunds and reversals, separates
-//! nonconsumption flows and reports historical FX gaps. Averages name their
-//! observed full-month sample; observation never proves statement completeness.
+//! The shared booked-ledger interpretation (explicit choice, own account, category role,
+//! direction) decides whether a row is income, an expense or a money transfer. Expense
+//! rows are debit-positive, so a refund lowers its category; income and transfer rows are
+//! credit-positive. Totals and groups cover the period; `months` covers a twelve-month
+//! chart window ending with the period's last month. Averages name their observed
+//! full-month sample; observation never proves statement completeness.
 
-use crate::db::Database;
 use crate::error::{AppError, Result};
 use crate::models::cashflow_actuals::{CashflowActuals, CashflowGroup, CashflowMonth};
 use crate::models::FlowKind;
+use crate::models::ReportTransaction;
 use crate::services::reporting::{parse_money, quality, transactions_in_currency};
 use chrono::{DateTime, Datelike, NaiveDate, Utc};
-#[cfg(test)]
-use rusqlite::params;
 use rusqlite::Connection;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
-const DAY: i64 = 86_400;
 const UNCATEGORIZED: &str = "uncategorized";
+/// Months the chart shows, ending with the last month of the period.
+const CHART_MONTHS: i32 = 12;
 
-/// Ranges the report offers: whole months ending today, or the current year so far.
-pub const RANGES: [&str; 3] = ["6m", "12m", "ytd"];
-
-pub fn validate_range(range: &str) -> Result<()> {
-    if RANGES.contains(&range) {
-        Ok(())
-    } else {
+/// A period must not end before it starts.
+pub fn validate_period(start: i64, end: i64) -> Result<()> {
+    if end < start {
         Err(AppError::Validation(
-            "validation.cashflowRangeInvalid".to_string(),
+            "validation.cashflowPeriodInvalid".to_string(),
         ))
+    } else {
+        Ok(())
     }
 }
 
-/// Bounds of the range and of the preceding range, as UTC unix seconds.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct RangeBounds {
-    pub start: i64,
-    pub end: i64,
-    pub previous_start: i64,
-    pub previous_end: i64,
-}
-
-fn month_start(year: i32, month: u32) -> i64 {
+fn month_start(year: i32, month: u32) -> Option<i64> {
     NaiveDate::from_ymd_opt(year, month, 1)
         .and_then(|d| d.and_hms_opt(0, 0, 0))
         .map(|dt| dt.and_utc().timestamp())
-        .unwrap_or(0)
 }
 
-/// First day of the month `offset` months before (negative) or after the given one.
+/// The month `offset` months before (negative) or after the given one.
 fn shift_month(year: i32, month: u32, offset: i32) -> (i32, u32) {
     let index = year * 12 + (month as i32 - 1) + offset;
     (index.div_euclid(12), (index.rem_euclid(12) + 1) as u32)
 }
 
-/// `6m`/`12m`: that many whole months ending with today's month, the previous
-/// range ending on the corresponding day that many months earlier. `ytd`: January 1 to today, the
-/// previous-year range through the corresponding calendar day.
-pub fn range_bounds(range: &str, today: i64) -> Result<RangeBounds> {
-    validate_range(range)?;
-    let day_start = today.div_euclid(DAY) * DAY;
-    let end = day_start + DAY - 1;
-    let date = DateTime::<Utc>::from_timestamp(day_start, 0)
-        .ok_or_else(|| AppError::Internal("invalid timestamp".to_string()))?;
-    let (year, month) = (date.year(), date.month());
-
-    if range == "ytd" {
-        let start = month_start(year, 1);
-        let previous_day = NaiveDate::from_ymd_opt(year - 1, month, date.day())
-            .or_else(|| NaiveDate::from_ymd_opt(year - 1, month, 28))
-            .and_then(|d| d.and_hms_opt(0, 0, 0))
-            .ok_or_else(|| AppError::Internal("invalid comparison date".into()))?;
-        return Ok(RangeBounds {
-            start,
-            end,
-            previous_start: month_start(year - 1, 1),
-            previous_end: previous_day.and_utc().timestamp() + DAY - 1,
-        });
+/// First day of the chart window: eleven months before the month of `end`, or the first
+/// day of the month of `start` when a longer period begins earlier.
+pub fn chart_window_start(start: i64, end: i64) -> i64 {
+    let Some(last) = DateTime::<Utc>::from_timestamp(end, 0) else {
+        return start;
+    };
+    let (year, month) = shift_month(last.year(), last.month(), -(CHART_MONTHS - 1));
+    let first = crate::services::reporting::month_start(start);
+    match (month_start(year, month), first) {
+        (Some(window), Some(first)) => window.min(first),
+        (window, first) => window.or(first).unwrap_or(start),
     }
-
-    let months: i32 = if range == "6m" { 6 } else { 12 };
-    let (sy, sm) = shift_month(year, month, -(months - 1));
-    let start = month_start(sy, sm);
-    let (py, pm) = shift_month(sy, sm, -months);
-    Ok(RangeBounds {
-        start,
-        end,
-        previous_start: month_start(py, pm),
-        previous_end: {
-            let (ey, em) = shift_month(year, month, -months);
-            let mut day = date.day();
-            let comparison = loop {
-                if let Some(d) = NaiveDate::from_ymd_opt(ey, em, day) {
-                    break d;
-                }
-                day -= 1;
-            };
-            comparison
-                .and_hms_opt(0, 0, 0)
-                .expect("midnight")
-                .and_utc()
-                .timestamp()
-                + DAY
-                - 1
-        },
-    })
 }
 
 /// First days of every month from `start` to `end`, oldest first.
@@ -113,228 +64,139 @@ fn months_between(start: i64, end: i64) -> Vec<i64> {
         return out;
     };
     let (mut year, mut month) = (from.year(), from.month());
-    loop {
-        let ts = month_start(year, month);
+    // A month outside chrono's calendar ends the list instead of looping forever.
+    while let Some(ts) = month_start(year, month) {
         if ts > end {
             break;
         }
         out.push(ts);
-        let next = shift_month(year, month, 1);
-        year = next.0;
-        month = next.1;
+        (year, month) = shift_month(year, month, 1);
     }
     out
 }
 
 #[derive(Default)]
 struct GroupAcc {
-    name: String,
-    /// The name comes from the current range when it has rows there (spelling can drift).
-    named_in_current: bool,
     amount: f64,
-    previous: f64,
     count: i32,
 }
 
-impl GroupAcc {
-    fn name_from(&mut self, name: String, in_current: bool) {
-        if self.name.is_empty() || (in_current && !self.named_in_current) {
-            self.name = name;
-            self.named_in_current = in_current;
-        }
-    }
+fn group_key(row: &ReportTransaction) -> (FlowKind, String) {
+    (
+        row.effective_flow_kind,
+        row.category_id
+            .clone()
+            .unwrap_or_else(|| UNCATEGORIZED.into()),
+    )
 }
 
-pub fn source_key(counterparty: &Option<String>) -> (String, String) {
-    let name = counterparty
-        .as_deref()
-        .map(str::trim)
-        .filter(|s| !s.is_empty())
-        .unwrap_or("");
-    let key = name
-        .to_lowercase()
-        .split_whitespace()
-        .collect::<Vec<_>>()
-        .join(" ");
-    if key.is_empty() {
-        ("other".to_string(), String::new())
-    } else {
-        (key, name.to_string())
-    }
-}
-
-/// The report for `range`, with `today` as the reference day (unix seconds).
-pub fn get_actuals(conn: &Connection, range: &str, today: i64) -> Result<CashflowActuals> {
-    get_actuals_scoped(conn, range, today, None)
-}
-pub fn get_actuals_scoped(
-    conn: &Connection,
-    range: &str,
-    today: i64,
-    accounts: Option<&[String]>,
-) -> Result<CashflowActuals> {
-    get_actuals_in_currency(conn, range, today, accounts, "CZK")
-}
+/// The report for the period `[start, end]` (unix seconds, inclusive) with `today` as the
+/// reference day, in `report_currency`.
 pub fn get_actuals_in_currency(
     conn: &Connection,
-    range: &str,
+    start: i64,
+    end: i64,
     today: i64,
     accounts: Option<&[String]>,
     report_currency: &str,
 ) -> Result<CashflowActuals> {
+    validate_period(start, end)?;
     let report_currency = crate::services::reporting::normalize_currency(report_currency)?;
     let money = |v| crate::services::reporting::money_in_currency(v, &report_currency);
-    let bounds = range_bounds(range, today)?;
-    let rows =
-        transactions_in_currency(conn, bounds.start, bounds.end, accounts, &report_currency)?;
-    let previous = transactions_in_currency(
-        conn,
-        bounds.previous_start,
-        bounds.previous_end,
-        accounts,
-        &report_currency,
-    )?;
-    let current_quality = quality(&rows, bounds.start, bounds.end, today);
-    let previous_quality = quality(&previous, bounds.previous_start, bounds.previous_end, today);
-    let mut months: HashMap<i64, (f64, f64)> = months_between(bounds.start, bounds.end)
+    let window_start = chart_window_start(start, end);
+    let window = transactions_in_currency(conn, window_start, end, accounts, &report_currency)?;
+    let rows: Vec<&ReportTransaction> = window
+        .iter()
+        .filter(|r| r.booking_date >= start && r.booking_date <= end)
+        .collect();
+
+    let mut months: HashMap<i64, (f64, f64)> = months_between(window_start, end)
         .into_iter()
         .map(|m| (m, (0.0, 0.0)))
         .collect();
-    let mut expenses: HashMap<String, GroupAcc> = HashMap::new();
-    let mut sources: HashMap<String, GroupAcc> = HashMap::new();
-    let mut other: HashMap<String, GroupAcc> = HashMap::new();
-    let mut monthly_other: HashMap<(i64, String), (f64, i32)> = HashMap::new();
-    let (mut income, mut expense, mut prev_income, mut prev_expense) = (0.0, 0.0, 0.0, 0.0);
-    for (row, current) in rows
-        .iter()
-        .map(|r| (r, true))
-        .chain(previous.iter().map(|r| (r, false)))
-    {
+    for row in &window {
         let Some(amount) = row.signed_amount.as_deref() else {
             continue;
         };
         let amount = parse_money(amount)?;
-        let kind = row.effective_flow_kind;
-        let (key, name, map) = match kind {
-            FlowKind::Income => {
-                let (k, n) = source_key(&row.counterparty_name);
-                (k, n, &mut sources)
-            }
-            FlowKind::Expense => {
-                let id = row
-                    .category_id
-                    .clone()
-                    .unwrap_or_else(|| UNCATEGORIZED.into());
-                let name = if let Some(category) = &row.category_id {
-                    conn.query_row(
-                        "SELECT name FROM transaction_categories WHERE id=?1",
-                        [category],
-                        |r| r.get(0),
-                    )?
-                } else {
-                    String::new()
-                };
-                (id, name, &mut expenses)
-            }
-            _ => (kind.to_string(), kind.to_string(), &mut other),
+        let Some(month) = crate::services::reporting::month_start(row.booking_date)
+            .and_then(|m| months.get_mut(&m))
+        else {
+            continue;
         };
-        let acc = map.entry(key).or_default();
-        acc.name_from(name, current);
-        if current {
-            acc.amount += amount;
-        } else {
-            acc.previous += amount;
+        match row.effective_flow_kind {
+            FlowKind::Income => month.0 += amount,
+            FlowKind::Expense => month.1 += amount,
+            FlowKind::Transfer => {}
         }
-        match (kind, current) {
-            (FlowKind::Income, true) => {
-                income += amount;
-                if let Some(m) = month_of(&mut months, row.booking_date) {
-                    m.0 += amount;
-                }
-            }
-            (FlowKind::Expense, true) => {
-                expense += amount;
-                if let Some(m) = month_of(&mut months, row.booking_date) {
-                    m.1 += amount;
-                }
-            }
-            (FlowKind::Income, false) => prev_income += amount,
-            (FlowKind::Expense, false) => prev_expense += amount,
-            (_, true) => {
-                if let Some(month) = crate::services::reporting::month_start(row.booking_date) {
-                    let acc = monthly_other.entry((month, kind.to_string())).or_default();
-                    acc.0 += amount;
-                    acc.1 += 1;
-                }
-            }
-            _ => {}
+    }
+
+    let mut groups: HashMap<(FlowKind, String), GroupAcc> = HashMap::new();
+    let (mut income, mut expense) = (0.0, 0.0);
+    for row in &rows {
+        let Some(amount) = row.signed_amount.as_deref() else {
+            continue;
+        };
+        let amount = parse_money(amount)?;
+        groups.entry(group_key(row)).or_default().amount += amount;
+        match row.effective_flow_kind {
+            FlowKind::Income => income += amount,
+            FlowKind::Expense => expense += amount,
+            FlowKind::Transfer => {}
         }
     }
     // Counts match the drilldown and include rows whose report conversion is
     // missing; a group with only unconverted rows is not added as a zero.
     for row in &rows {
-        let (key, map) = match row.effective_flow_kind {
-            FlowKind::Income => (source_key(&row.counterparty_name).0, &mut sources),
-            FlowKind::Expense => (
-                row.category_id
-                    .clone()
-                    .unwrap_or_else(|| UNCATEGORIZED.into()),
-                &mut expenses,
-            ),
-            kind => (kind.to_string(), &mut other),
-        };
-        if let Some(acc) = map.get_mut(&key) {
+        if let Some(acc) = groups.get_mut(&group_key(row)) {
             acc.count += 1;
         }
     }
-    let mut months: Vec<_> = months
-        .into_iter()
-        .map(|(month, (income, expenses))| CashflowMonth {
-            bank_cash_movement: money(
-                income - expenses
-                    + monthly_other
-                        .iter()
-                        .filter(|((m, _), _)| *m == month)
-                        .map(|(_, a)| a.0)
-                        .sum::<f64>(),
-            ),
-            nonconsumption_flows: monthly_other
-                .iter()
-                .filter(|((m, _), _)| *m == month)
-                .map(|((_, key), (amount, count))| CashflowGroup {
-                    key: key.clone(),
-                    name: key.clone(),
-                    amount: money(*amount),
-                    previous_amount: "0.00".into(),
-                    count: *count,
-                })
-                .collect(),
-            month,
-            income: money(income),
-            expenses: money(expenses),
-        })
-        .collect();
-    months.sort_by_key(|m| m.month);
-    let to_groups = |map: HashMap<String, GroupAcc>| {
-        let mut groups: Vec<_> = map
-            .into_iter()
-            .map(|(key, a)| CashflowGroup {
-                key,
-                name: a.name,
-                amount: money(a.amount),
-                previous_amount: money(a.previous),
-                count: a.count,
-            })
-            .collect();
-        groups.sort_by(|a, b| {
-            b.amount
-                .parse::<f64>()
-                .expect("formatted amount")
-                .total_cmp(&a.amount.parse::<f64>().expect("formatted amount"))
-        });
-        groups
+
+    let names: HashMap<String, String> = {
+        let mut stmt = conn.prepare("SELECT id, name FROM transaction_categories")?;
+        let pairs = stmt.query_map([], |r| Ok((r.get(0)?, r.get(1)?)))?;
+        pairs.collect::<std::result::Result<_, _>>()?
     };
-    let completed: Vec<_> = current_quality
+    let mut expense_categories = Vec::new();
+    let mut income_categories = Vec::new();
+    let mut transfers = Vec::new();
+    let mut transfer_total = 0.0;
+    for ((kind, key), acc) in groups {
+        let target = match kind {
+            FlowKind::Income => &mut income_categories,
+            FlowKind::Expense => &mut expense_categories,
+            FlowKind::Transfer => {
+                transfer_total += acc.amount;
+                &mut transfers
+            }
+        };
+        target.push((
+            acc.amount,
+            CashflowGroup {
+                name: names.get(&key).cloned().unwrap_or_default(),
+                key,
+                flow_kind: kind,
+                amount: money(acc.amount),
+                count: acc.count,
+            },
+        ));
+    }
+    let largest_first = |mut list: Vec<(f64, CashflowGroup)>, by_size: bool| {
+        list.sort_by(|(a, ga), (b, gb)| {
+            let (a, b) = if by_size {
+                (a.abs(), b.abs())
+            } else {
+                (*a, *b)
+            };
+            b.total_cmp(&a).then_with(|| ga.key.cmp(&gb.key))
+        });
+        list.into_iter().map(|(_, g)| g).collect::<Vec<_>>()
+    };
+
+    let period_rows: Vec<ReportTransaction> = rows.iter().map(|r| (*r).clone()).collect();
+    let period_quality = quality(&period_rows, start, end, today);
+    let completed: Vec<i64> = period_quality
         .observed_completed_months
         .iter()
         .copied()
@@ -345,73 +207,57 @@ pub fn get_actuals_in_currency(
             })
         })
         .collect();
-    let averages = if completed.is_empty() {
+    let (average_income, average_expenses) = if completed.is_empty() {
         (None, None)
     } else {
-        let (i, e) =
-            months
-                .iter()
-                .filter(|m| completed.contains(&m.month))
-                .fold((0.0, 0.0), |(i, e), m| {
-                    (
-                        i + m.income.parse::<f64>().expect("amount"),
-                        e + m.expenses.parse::<f64>().expect("amount"),
-                    )
-                });
-        (
-            Some(money(i / completed.len() as f64)),
-            Some(money(e / completed.len() as f64)),
-        )
+        let (i, e) = completed
+            .iter()
+            .filter_map(|m| months.get(m))
+            .fold((0.0, 0.0), |(i, e), (mi, me)| (i + mi, e + me));
+        let n = completed.len() as f64;
+        (Some(money(i / n)), Some(money(e / n)))
     };
+
+    let mut months: Vec<CashflowMonth> = months
+        .into_iter()
+        .map(|(month, (income, expenses))| CashflowMonth {
+            month,
+            income: money(income),
+            expenses: money(expenses),
+        })
+        .collect();
+    months.sort_by_key(|m| m.month);
     let account_count = rows
         .iter()
         .map(|r| &r.bank_account_id)
-        .collect::<std::collections::HashSet<_>>()
+        .collect::<HashSet<_>>()
         .len() as i32;
-    let nonconsumption_total: f64 = other.values().map(|g| g.amount).sum();
+
     Ok(CashflowActuals {
         report_currency: report_currency.clone(),
-        net_balance: money(income - expense),
-        bank_cash_movement: money(income - expense + nonconsumption_total),
-        average_completed_months: completed,
-        range: range.into(),
-        range_start: bounds.start,
-        range_end: bounds.end,
-        previous_start: bounds.previous_start,
-        previous_end: bounds.previous_end,
+        period_start: start,
+        period_end: end,
+        quality: period_quality,
         months,
-        expense_categories: to_groups(expenses),
-        income_sources: to_groups(sources),
-        nonconsumption_flows: to_groups(other),
         total_income: money(income),
         total_expenses: money(expense),
-        previous_income: money(prev_income),
-        previous_expenses: money(prev_expense),
+        net_balance: money(income - expense),
+        bank_cash_movement: money(income - expense + transfer_total),
+        average_income,
+        average_expenses,
+        average_completed_months: completed,
+        expense_categories: largest_first(expense_categories, false),
+        income_categories: largest_first(income_categories, false),
+        transfers: largest_first(transfers, true),
         account_count,
         transaction_count: rows.len() as i32,
-        quality: current_quality,
-        previous_quality,
-        average_income: averages.0,
-        average_expenses: averages.1,
     })
-}
-
-fn month_of(months: &mut HashMap<i64, (f64, f64)>, booking_date: i64) -> Option<&mut (f64, f64)> {
-    let date = DateTime::<Utc>::from_timestamp(booking_date, 0)?;
-    months.get_mut(&month_start(date.year(), date.month()))
-}
-
-// ========================== Async wrapper for Database ==========================
-
-pub async fn get_cashflow_actuals(db: &Database, range: String) -> Result<CashflowActuals> {
-    let today = chrono::Utc::now().timestamp();
-    db.with_conn(|conn| get_actuals(conn, &range, today))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rusqlite::Connection;
+    use rusqlite::{params, Connection};
 
     fn setup_test_db() -> Connection {
         let conn = Connection::open_in_memory().expect("in-memory db");
@@ -442,25 +288,19 @@ mod tests {
                 rate REAL NOT NULL,
                 PRIMARY KEY (date, currency)
             );
-            INSERT INTO transaction_categories (id, name) VALUES
-                ('cat_income', 'Income'),
-                ('cat_groceries', 'Groceries'),
-                ('cat_housing', 'Housing'),
-                ('cat_internal_transfers', 'Internal Transfers');
+            INSERT INTO transaction_categories (id, name, kind) VALUES
+                ('cat_income', 'Salary', 'income'),
+                ('cat_investment_income', 'Investment income', 'income'),
+                ('cat_groceries', 'Groceries', 'expense'),
+                ('cat_dining', 'Dining & Restaurants', 'expense'),
+                ('cat_housing', 'Housing', 'expense'),
+                ('cat_savings', 'Savings', 'transfer'),
+                ('cat_investments', 'Investments', 'transfer'),
+                ('cat_internal_transfers', 'Internal Transfers', 'transfer');
             INSERT INTO bank_accounts (id, name) VALUES ('acc1', 'Main'), ('acc2', 'Savings');
             "#,
         )
         .expect("schema");
-        conn.execute(
-            "UPDATE transaction_categories SET kind='income' WHERE id='cat_income'",
-            [],
-        )
-        .unwrap();
-        conn.execute(
-            "UPDATE transaction_categories SET kind='transfer' WHERE id='cat_internal_transfers'",
-            [],
-        )
-        .unwrap();
         conn
     }
 
@@ -481,19 +321,409 @@ mod tests {
         date: i64,
         amount: &str,
         currency: &str,
-        counterparty: Option<&str>,
         category: Option<&str>,
         tx_type: &str,
     ) {
         conn.execute(
-            "INSERT INTO bank_transactions (id, bank_account_id, booking_date, amount, currency, counterparty_name, category_id, tx_type)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
-            params![id, account, date, amount, currency, counterparty, category, tx_type],
+            "INSERT INTO bank_transactions (id, bank_account_id, booking_date, amount, currency, category_id, tx_type)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+            params![id, account, date, amount, currency, category, tx_type],
         )
         .unwrap();
     }
 
     const TODAY: i64 = 1_791_000_000; // 2026-10-03 (UTC)
+    /// September 2026, a completed month before TODAY.
+    fn september() -> (i64, i64) {
+        (ts(2026, 9, 1), ts(2026, 10, 1) - 1)
+    }
+    fn year_2026() -> (i64, i64) {
+        (ts(2026, 1, 1), ts(2027, 1, 1) - 1)
+    }
+    fn report(conn: &Connection, (start, end): (i64, i64)) -> CashflowActuals {
+        get_actuals_in_currency(conn, start, end, TODAY, None, "CZK").unwrap()
+    }
+    fn group<'a>(groups: &'a [CashflowGroup], key: &str) -> &'a CashflowGroup {
+        groups.iter().find(|g| g.key == key).unwrap()
+    }
+
+    #[test]
+    fn chart_window_is_twelve_months_ending_with_the_period() {
+        let year = year_2026();
+        assert_eq!(chart_window_start(year.0, year.1), ts(2026, 1, 1));
+        let q3 = (ts(2026, 7, 1), ts(2026, 10, 1) - 1);
+        assert_eq!(chart_window_start(q3.0, q3.1), ts(2025, 10, 1));
+        let october = (ts(2026, 10, 1), ts(2026, 11, 1) - 1);
+        assert_eq!(chart_window_start(october.0, october.1), ts(2025, 11, 1));
+        let january = (ts(2026, 1, 1), ts(2026, 2, 1) - 1);
+        assert_eq!(chart_window_start(january.0, january.1), ts(2025, 2, 1));
+        for (start, end) in [year, q3, october, january] {
+            let report = report(&setup_test_db(), (start, end));
+            assert_eq!(report.months.len(), 12);
+            assert_eq!(
+                report.months[11].month,
+                crate::services::reporting::month_start(end).unwrap()
+            );
+        }
+    }
+
+    #[test]
+    fn a_longer_custom_period_widens_the_window() {
+        let (start, end) = (ts(2025, 1, 1), ts(2026, 7, 1) - 1);
+        assert_eq!(chart_window_start(start, end), start);
+        assert_eq!(report(&setup_test_db(), (start, end)).months.len(), 18);
+    }
+
+    #[test]
+    fn rejects_a_period_that_ends_before_it_starts() {
+        let conn = setup_test_db();
+        let result =
+            get_actuals_in_currency(&conn, ts(2026, 9, 2), ts(2026, 9, 1), TODAY, None, "CZK");
+        assert!(
+            matches!(result, Err(AppError::Validation(key)) if key == "validation.cashflowPeriodInvalid")
+        );
+    }
+
+    #[test]
+    fn window_rows_outside_the_period_feed_the_chart_but_not_the_totals() {
+        let conn = setup_test_db();
+        insert_tx(
+            &conn,
+            "aug",
+            "acc1",
+            ts(2026, 8, 15),
+            "1000",
+            "CZK",
+            Some("cat_income"),
+            "credit",
+        );
+        insert_tx(
+            &conn,
+            "sep-in",
+            "acc1",
+            ts(2026, 9, 15),
+            "500",
+            "CZK",
+            Some("cat_income"),
+            "credit",
+        );
+        insert_tx(
+            &conn,
+            "sep-out",
+            "acc1",
+            ts(2026, 9, 16),
+            "200",
+            "CZK",
+            Some("cat_groceries"),
+            "debit",
+        );
+        let report = report(&conn, september());
+        assert_eq!(report.total_income, "500.00");
+        assert_eq!(report.total_expenses, "200.00");
+        assert_eq!(report.transaction_count, 2);
+        let month = |m: i64| report.months.iter().find(|x| x.month == m).unwrap();
+        assert_eq!(month(ts(2026, 8, 1)).income, "1000.00");
+        assert_eq!(month(ts(2026, 9, 1)).income, "500.00");
+        assert_eq!(month(ts(2026, 9, 1)).expenses, "200.00");
+        assert_eq!(report.period_start, september().0);
+        assert_eq!(report.period_end, september().1);
+    }
+
+    #[test]
+    fn refunds_net_inside_expense_categories_and_never_enter_income() {
+        let conn = setup_test_db();
+        insert_tx(
+            &conn,
+            "dinner",
+            "acc1",
+            ts(2026, 9, 5),
+            "1000",
+            "CZK",
+            Some("cat_dining"),
+            "debit",
+        );
+        insert_tx(
+            &conn,
+            "friend",
+            "acc1",
+            ts(2026, 9, 6),
+            "400",
+            "CZK",
+            Some("cat_dining"),
+            "credit",
+        );
+        insert_tx(
+            &conn,
+            "late",
+            "acc1",
+            ts(2026, 9, 7),
+            "500",
+            "CZK",
+            Some("cat_housing"),
+            "credit",
+        );
+        let report = report(&conn, september());
+        assert_eq!(report.total_income, "0.00");
+        assert!(report.income_categories.is_empty());
+        assert_eq!(report.total_expenses, "100.00");
+        let dining = group(&report.expense_categories, "cat_dining");
+        assert_eq!((dining.amount.as_str(), dining.count), ("600.00", 2));
+        assert_eq!(dining.flow_kind, FlowKind::Expense);
+        assert_eq!(dining.name, "Dining & Restaurants");
+        assert_eq!(
+            group(&report.expense_categories, "cat_housing").amount,
+            "-500.00"
+        );
+        assert_eq!(report.expense_categories[0].key, "cat_dining");
+    }
+
+    #[test]
+    fn income_is_grouped_by_category_with_uncategorized_credits() {
+        let conn = setup_test_db();
+        insert_tx(
+            &conn,
+            "salary",
+            "acc1",
+            ts(2026, 9, 10),
+            "50000",
+            "CZK",
+            Some("cat_income"),
+            "credit",
+        );
+        insert_tx(
+            &conn,
+            "dividend",
+            "acc1",
+            ts(2026, 9, 11),
+            "300",
+            "CZK",
+            Some("cat_investment_income"),
+            "credit",
+        );
+        insert_tx(
+            &conn,
+            "friend",
+            "acc1",
+            ts(2026, 9, 12),
+            "3000",
+            "CZK",
+            None,
+            "credit",
+        );
+        insert_tx(
+            &conn,
+            "reversal",
+            "acc1",
+            ts(2026, 9, 13),
+            "1000",
+            "CZK",
+            Some("cat_income"),
+            "debit",
+        );
+        let report = report(&conn, september());
+        assert_eq!(report.total_income, "52300.00");
+        let keys: Vec<_> = report
+            .income_categories
+            .iter()
+            .map(|g| g.key.as_str())
+            .collect();
+        assert_eq!(
+            keys,
+            ["cat_income", "uncategorized", "cat_investment_income"]
+        );
+        let salary = group(&report.income_categories, "cat_income");
+        assert_eq!((salary.amount.as_str(), salary.count), ("49000.00", 2));
+        assert_eq!(salary.name, "Salary");
+        let uncategorized = group(&report.income_categories, "uncategorized");
+        assert_eq!(
+            (uncategorized.name.as_str(), uncategorized.flow_kind),
+            ("", FlowKind::Income)
+        );
+    }
+
+    #[test]
+    fn transfers_are_grouped_by_category_and_reconcile_bank_movement() {
+        let conn = setup_test_db();
+        insert_tx(
+            &conn,
+            "salary",
+            "acc1",
+            ts(2026, 9, 1),
+            "10000",
+            "CZK",
+            Some("cat_income"),
+            "credit",
+        );
+        insert_tx(
+            &conn,
+            "food",
+            "acc1",
+            ts(2026, 9, 2),
+            "1000",
+            "CZK",
+            Some("cat_groceries"),
+            "debit",
+        );
+        insert_tx(
+            &conn,
+            "save",
+            "acc1",
+            ts(2026, 9, 3),
+            "5000",
+            "CZK",
+            Some("cat_savings"),
+            "debit",
+        );
+        insert_tx(
+            &conn,
+            "etf",
+            "acc1",
+            ts(2026, 9, 4),
+            "2000",
+            "CZK",
+            Some("cat_investments"),
+            "debit",
+        );
+        insert_tx(
+            &conn,
+            "in",
+            "acc2",
+            ts(2026, 9, 5),
+            "700",
+            "CZK",
+            Some("cat_internal_transfers"),
+            "credit",
+        );
+        conn.execute(
+            "INSERT INTO bank_transactions (id, bank_account_id, booking_date, amount, currency, tx_type, flow_kind)
+             VALUES ('marked', 'acc1', ?1, '100', 'CZK', 'debit', 'transfer')",
+            [ts(2026, 9, 6)],
+        )
+        .unwrap();
+        let report = report(&conn, september());
+        assert_eq!(report.net_balance, "9000.00");
+        assert_eq!(report.total_expenses, "1000.00");
+        let keys: Vec<_> = report.transfers.iter().map(|g| g.key.as_str()).collect();
+        assert_eq!(
+            keys,
+            [
+                "cat_savings",
+                "cat_investments",
+                "cat_internal_transfers",
+                "uncategorized"
+            ]
+        );
+        assert_eq!(group(&report.transfers, "cat_savings").amount, "-5000.00");
+        assert_eq!(
+            group(&report.transfers, "cat_internal_transfers").amount,
+            "700.00"
+        );
+        assert!(report
+            .transfers
+            .iter()
+            .all(|g| g.flow_kind == FlowKind::Transfer));
+        // 10000 − 1000 − 5000 − 2000 + 700 − 100
+        assert_eq!(report.bank_cash_movement, "2600.00");
+        let months_income: f64 = report
+            .months
+            .iter()
+            .map(|m| m.income.parse::<f64>().unwrap())
+            .sum();
+        assert_eq!(months_income, 10000.0);
+    }
+
+    #[test]
+    fn averages_use_completed_observed_months_inside_the_period() {
+        let conn = setup_test_db();
+        insert_tx(
+            &conn,
+            "d",
+            "acc1",
+            ts(2026, 8, 1),
+            "1000",
+            "CZK",
+            Some("cat_housing"),
+            "debit",
+        );
+        insert_tx(
+            &conn,
+            "r",
+            "acc1",
+            ts(2026, 9, 1),
+            "1500",
+            "CZK",
+            Some("cat_groceries"),
+            "credit",
+        );
+        insert_tx(
+            &conn,
+            "t",
+            "acc2",
+            ts(2026, 9, 2),
+            "700",
+            "CZK",
+            Some("cat_internal_transfers"),
+            "credit",
+        );
+        let report = report(&conn, year_2026());
+        assert_eq!(report.total_expenses, "-500.00");
+        assert_eq!(report.bank_cash_movement, "1200.00");
+        assert_eq!(report.average_expenses.as_deref(), Some("-250.00"));
+        assert_eq!(
+            report.average_completed_months,
+            vec![ts(2026, 8, 1), ts(2026, 9, 1)]
+        );
+        // January–July unobserved; October (current) to December partial.
+        assert_eq!(report.quality.unobserved_month_count, 7);
+        assert_eq!(report.quality.partial_month_count, 3);
+        let (start, end) = september();
+        let month = get_actuals_in_currency(&conn, start, end, TODAY, None, "CZK").unwrap();
+        assert_eq!(month.average_completed_months, vec![ts(2026, 9, 1)]);
+    }
+
+    #[test]
+    fn account_scope_limits_the_period_rows() {
+        let conn = setup_test_db();
+        insert_tx(
+            &conn,
+            "a",
+            "acc1",
+            ts(2026, 9, 1),
+            "100",
+            "CZK",
+            Some("cat_groceries"),
+            "debit",
+        );
+        insert_tx(
+            &conn,
+            "b",
+            "acc2",
+            ts(2026, 9, 1),
+            "40",
+            "CZK",
+            Some("cat_groceries"),
+            "debit",
+        );
+        let scope = ["acc2".to_string()];
+        let (start, end) = september();
+        let report =
+            get_actuals_in_currency(&conn, start, end, TODAY, Some(&scope), "CZK").unwrap();
+        assert_eq!(report.total_expenses, "40.00");
+        assert_eq!((report.account_count, report.transaction_count), (1, 1));
+    }
+
+    #[test]
+    fn empty_period_gives_zero_filled_months() {
+        let report = report(&setup_test_db(), year_2026());
+        assert!(report
+            .months
+            .iter()
+            .all(|m| m.income == "0.00" && m.expenses == "0.00"));
+        assert_eq!(report.total_income, "0.00");
+        assert_eq!((report.account_count, report.transaction_count), (0, 0));
+        assert!(report.expense_categories.is_empty() && report.transfers.is_empty());
+        assert_eq!(report.average_income, None);
+    }
 
     /// Group counts match the drilldown (all relevant rows), even when a row
     /// lacks a report quote; its amount stays out of the partial total.
@@ -508,7 +738,6 @@ mod tests {
                 ts(2026, 9, 1),
                 "100",
                 currency,
-                None,
                 Some("cat_groceries"),
                 "debit",
             );
@@ -522,15 +751,16 @@ mod tests {
             "50",
             "AED",
             None,
-            None,
             "debit",
         );
-        let report = get_actuals_in_currency(&conn, "6m", TODAY, None, "CZK").unwrap();
+        let report = report(&conn, september());
         assert_eq!(report.quality.missing_fx_count, 2);
         assert_eq!(report.expense_categories.len(), 1);
         assert_eq!(report.expense_categories[0].amount, "100.00");
         assert_eq!(report.expense_categories[0].count, 2);
+        assert_eq!(report.average_completed_months, Vec::<i64>::new());
     }
+
     #[test]
     fn target_actuals_aed_and_jpy_work_without_quotes() {
         for (currency, amount, expected) in [
@@ -546,51 +776,51 @@ mod tests {
                 ts(2026, 9, 1),
                 amount,
                 currency,
-                None,
                 Some("cat_income"),
                 "credit",
             );
-            let report = get_actuals_in_currency(&conn, "6m", TODAY, None, currency).unwrap();
+            let (start, end) = september();
+            let report = get_actuals_in_currency(&conn, start, end, TODAY, None, currency).unwrap();
             assert_eq!(report.total_income, expected);
+            assert_eq!(report.report_currency, currency);
             assert_eq!(report.quality.missing_fx_count, 0);
         }
     }
+
     #[test]
-    fn target_actuals_comparison_is_historical_and_conserves_cross_rows() {
+    fn target_actuals_use_historical_cross_rates_and_ignore_live_rates() {
         let conn = setup_test_db();
-        for (id, day) in [("current", ts(2026, 9, 1)), ("previous", ts(2026, 3, 1))] {
-            insert_tx(
-                &conn,
-                id,
-                "acc1",
-                day,
-                "110",
-                "XAC",
-                None,
-                Some("cat_income"),
-                "credit",
-            );
-            conn.execute(
-                "INSERT INTO exchange_rate_history VALUES (?1,'XAC',1.1)",
-                [day],
-            )
-            .unwrap();
-            conn.execute(
-                "INSERT INTO exchange_rate_history VALUES (?1,'XAT',1.0)",
-                [day],
-            )
-            .unwrap();
-        }
-        let first = get_actuals_in_currency(&conn, "6m", TODAY, None, "XAT").unwrap();
+        let day = ts(2026, 9, 1);
+        insert_tx(
+            &conn,
+            "current",
+            "acc1",
+            day,
+            "110",
+            "XAC",
+            Some("cat_income"),
+            "credit",
+        );
+        conn.execute(
+            "INSERT INTO exchange_rate_history VALUES (?1,'XAC',1.1)",
+            [day],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO exchange_rate_history VALUES (?1,'XAT',1.0)",
+            [day],
+        )
+        .unwrap();
+        let (start, end) = september();
+        let first = get_actuals_in_currency(&conn, start, end, TODAY, None, "XAT").unwrap();
         assert_eq!(first.total_income, "100.00");
-        assert_eq!(first.previous_income, "100.00");
         crate::services::fx::set_current_for_test(&[("XAC", 0.125), ("XAT", 1.0)]);
-        let second = get_actuals_in_currency(&conn, "6m", TODAY, None, "XAT").unwrap();
+        let second = get_actuals_in_currency(&conn, start, end, TODAY, None, "XAT").unwrap();
         assert_eq!(first.total_income, second.total_income);
-        assert_eq!(first.previous_income, second.previous_income);
     }
+
     #[test]
-    fn target_actuals_native_eur_refunds_and_drilldowns_conserve() {
+    fn native_eur_refunds_and_drilldowns_conserve() {
         let conn = setup_test_db();
         insert_tx(
             &conn,
@@ -599,7 +829,6 @@ mod tests {
             ts(2026, 9, 1),
             "100",
             "EUR",
-            None,
             Some("cat_groceries"),
             "debit",
         );
@@ -610,51 +839,54 @@ mod tests {
             ts(2026, 9, 2),
             "25",
             "EUR",
-            None,
             Some("cat_groceries"),
             "credit",
         );
-        let report = get_actuals_in_currency(&conn, "6m", TODAY, None, "EUR").unwrap();
+        let (start, end) = september();
+        let report = get_actuals_in_currency(&conn, start, end, TODAY, None, "EUR").unwrap();
         assert_eq!(report.total_expenses, "75.00");
         assert_eq!(report.quality.missing_fx_count, 0);
-        assert_eq!(report.report_currency, "EUR");
         let rows = crate::services::reporting::filtered_transactions_in_currency(
             &conn,
-            report.range_start,
-            report.range_end,
+            start,
+            end,
             None,
             Some(FlowKind::Expense),
             Some("cat_groceries"),
-            None,
             "EUR",
         )
         .unwrap();
-        assert_eq!(
-            rows.iter()
-                .filter_map(|r| r.signed_amount.as_deref())
-                .map(|a| parse_money(a).unwrap())
-                .sum::<f64>(),
-            75.0
-        );
+        let sum: f64 = rows
+            .iter()
+            .filter_map(|r| r.signed_amount.as_deref())
+            .map(|a| parse_money(a).unwrap())
+            .sum();
+        assert_eq!(sum, 75.0);
     }
+
     #[test]
-    fn signed_report_conserves_cross_category_refunds_income_reversals_and_pending() {
+    fn signed_report_conserves_refunds_income_reversals_and_skips_pending() {
         let conn = setup_test_db();
-        conn.execute_batch("INSERT INTO transaction_categories(id,name,kind) VALUES ('custom-income','Consulting','income');
-          INSERT INTO bank_transactions(id,bank_account_id,booking_date,amount,currency,category_id,tx_type) VALUES
-          ('d','acc1',1790812800,'1000','CZK','cat_groceries','debit'),
-          ('r','acc1',1790899200,'500','CZK','cat_housing','credit'),
-          ('i','acc1',1790812800,'1000','CZK','cat_income','credit'),
-          ('ir','acc1',1790812800,'100','CZK','cat_income','debit'),
-          ('ci','acc1',1790812800,'2000','CZK','custom-income','credit');").unwrap();
-        conn.execute("INSERT INTO bank_transactions(id,bank_account_id,booking_date,amount,currency,tx_type,status) VALUES ('pending','acc1',1790812800,'9999','CZK','debit','pending')",[]).unwrap();
-        let report = get_actuals(&conn, "6m", TODAY).unwrap();
+        conn.execute_batch(
+            "INSERT INTO transaction_categories(id,name,kind) VALUES ('custom-income','Consulting','income');
+             INSERT INTO bank_transactions(id,bank_account_id,booking_date,amount,currency,category_id,tx_type) VALUES
+              ('d','acc1',1790812800,'1000','CZK','cat_groceries','debit'),
+              ('r','acc1',1790899200,'500','CZK','cat_housing','credit'),
+              ('i','acc1',1790812800,'1000','CZK','cat_income','credit'),
+              ('ir','acc1',1790812800,'100','CZK','cat_income','debit'),
+              ('ci','acc1',1790812800,'2000','CZK','custom-income','credit');
+             INSERT INTO bank_transactions(id,bank_account_id,booking_date,amount,currency,tx_type,status) VALUES
+              ('pending','acc1',1790812800,'9999','CZK','debit','pending');",
+        )
+        .unwrap();
+        // The rows are booked on 1 and 2 October 2026.
+        let report = report(&conn, (ts(2026, 10, 1), ts(2026, 11, 1) - 1));
         assert_eq!(report.total_expenses, "500.00");
         assert_eq!(report.total_income, "2900.00");
-        assert!(report
-            .expense_categories
-            .iter()
-            .any(|g| g.amount == "-500.00"));
+        assert_eq!(
+            group(&report.expense_categories, "cat_housing").amount,
+            "-500.00"
+        );
         let expense_sum: f64 = report
             .months
             .iter()
@@ -664,129 +896,8 @@ mod tests {
     }
 
     #[test]
-    fn calendar_ytd_clamps_leap_day_and_keeps_corresponding_march_day() {
-        let leap = range_bounds("ytd", ts(2024, 2, 29)).unwrap();
-        assert_eq!(leap.previous_start, ts(2023, 1, 1));
-        assert_eq!(leap.previous_end, ts(2023, 3, 1) - 1);
-        let march = range_bounds("ytd", ts(2025, 3, 1)).unwrap();
-        assert_eq!(march.previous_end, ts(2024, 3, 2) - 1);
-    }
-    #[test]
-    fn negative_months_nonconsumption_and_observed_averages_reconcile() {
+    fn sums_by_month_and_category_with_dated_fx() {
         let conn = setup_test_db();
-        insert_tx(
-            &conn,
-            "d",
-            "acc1",
-            ts(2026, 8, 1),
-            "1000",
-            "CZK",
-            None,
-            Some("cat_housing"),
-            "debit",
-        );
-        insert_tx(
-            &conn,
-            "r",
-            "acc1",
-            ts(2026, 9, 1),
-            "1500",
-            "CZK",
-            None,
-            Some("cat_groceries"),
-            "credit",
-        );
-        insert_tx(
-            &conn,
-            "t",
-            "acc2",
-            ts(2026, 9, 2),
-            "700",
-            "CZK",
-            None,
-            Some("cat_internal_transfers"),
-            "credit",
-        );
-        let report = get_actuals(&conn, "6m", TODAY).unwrap();
-        assert_eq!(report.total_expenses, "-500.00");
-        assert_eq!(report.net_balance, "500.00");
-        assert_eq!(report.bank_cash_movement, "1200.00");
-        assert_eq!(report.nonconsumption_flows[0].amount, "700.00");
-        let expense: f64 = report
-            .months
-            .iter()
-            .map(|m| m.expenses.parse::<f64>().unwrap())
-            .sum();
-        assert_eq!(expense, -500.0);
-        let movement: f64 = report
-            .months
-            .iter()
-            .map(|m| m.bank_cash_movement.parse::<f64>().unwrap())
-            .sum();
-        assert_eq!(movement, 1200.0);
-        assert_eq!(report.average_expenses.as_deref(), Some("-250.00"));
-        assert_eq!(
-            report.average_completed_months,
-            vec![ts(2026, 8, 1), ts(2026, 9, 1)]
-        );
-        assert_eq!(report.quality.unobserved_month_count, 3);
-        assert_eq!(report.quality.partial_month_count, 1);
-    }
-
-    #[test]
-    fn six_months_end_today_and_start_on_a_month_boundary() {
-        let b = range_bounds("6m", TODAY).unwrap();
-        assert_eq!(b.start, ts(2026, 5, 1));
-        assert_eq!(b.end, ts(2026, 10, 4) - 1);
-        assert_eq!(b.previous_start, ts(2025, 11, 1));
-        assert_eq!(b.previous_end, ts(2026, 4, 4) - 1);
-        assert_eq!(months_between(b.start, b.end).len(), 6);
-    }
-
-    #[test]
-    fn twelve_months_span_the_year_change() {
-        let b = range_bounds("12m", TODAY).unwrap();
-        assert_eq!(b.start, ts(2025, 11, 1));
-        assert_eq!(b.previous_start, ts(2024, 11, 1));
-        assert_eq!(months_between(b.start, b.end).len(), 12);
-    }
-
-    #[test]
-    fn year_to_date_compares_to_the_same_number_of_days_before() {
-        let b = range_bounds("ytd", TODAY).unwrap();
-        assert_eq!(b.start, ts(2026, 1, 1));
-        assert_eq!(b.previous_start, ts(2025, 1, 1));
-        assert_eq!(b.previous_end, ts(2025, 10, 4) - 1);
-        assert_eq!(b.end - b.start, b.previous_end - b.previous_start);
-    }
-
-    #[test]
-    fn rejects_unknown_ranges() {
-        assert!(matches!(
-            range_bounds("3m", TODAY),
-            Err(AppError::Validation(_))
-        ));
-        assert!(validate_range("ytd").is_ok());
-    }
-
-    #[test]
-    fn empty_database_gives_zero_filled_months() {
-        let conn = setup_test_db();
-        let report = get_actuals(&conn, "6m", TODAY).unwrap();
-        assert_eq!(report.months.len(), 6);
-        assert!(report
-            .months
-            .iter()
-            .all(|m| m.income == "0.00" && m.expenses == "0.00"));
-        assert_eq!(report.total_income, "0.00");
-        assert_eq!(report.account_count, 0);
-        assert!(report.expense_categories.is_empty());
-    }
-
-    #[test]
-    fn sums_by_month_category_and_source_with_previous_range_and_dated_fx() {
-        let conn = setup_test_db();
-        // Current range (May–Oct 2026)
         insert_tx(
             &conn,
             "t1",
@@ -794,7 +905,6 @@ mod tests {
             ts(2026, 9, 30),
             "50000",
             "CZK",
-            Some("Northwind a.s."),
             Some("cat_income"),
             "credit",
         );
@@ -805,7 +915,6 @@ mod tests {
             ts(2026, 9, 5),
             "1200",
             "CZK",
-            Some("Albert"),
             Some("cat_groceries"),
             "debit",
         );
@@ -816,10 +925,9 @@ mod tests {
             ts(2026, 9, 7),
             "200",
             "CZK",
-            Some("Albert"),
             Some("cat_groceries"),
             "credit",
-        ); // refund
+        );
         insert_tx(
             &conn,
             "t4",
@@ -827,7 +935,6 @@ mod tests {
             ts(2026, 8, 1),
             "15000",
             "CZK",
-            Some("Banka"),
             Some("cat_housing"),
             "debit",
         );
@@ -838,10 +945,9 @@ mod tests {
             ts(2026, 8, 20),
             "3000",
             "CZK",
-            Some("Jan Novák"),
             None,
             "credit",
-        ); // uncategorized credit = income
+        );
         insert_tx(
             &conn,
             "t6",
@@ -849,10 +955,9 @@ mod tests {
             ts(2026, 8, 25),
             "100",
             "EUR",
-            Some("Revolut"),
             None,
             "debit",
-        ); // converted with the day's rate
+        );
         insert_tx(
             &conn,
             "t7",
@@ -860,32 +965,18 @@ mod tests {
             ts(2026, 8, 26),
             "9999",
             "CZK",
-            None,
             Some("cat_internal_transfers"),
             "debit",
-        ); // excluded
-           // Previous range (Nov 2025–Apr 2026)
-        insert_tx(
-            &conn,
-            "p1",
-            "acc1",
-            ts(2026, 3, 30),
-            "48000",
-            "CZK",
-            Some("NORTHWIND  a.s."),
-            Some("cat_income"),
-            "credit",
         );
         insert_tx(
             &conn,
-            "p2",
+            "old",
             "acc1",
-            ts(2026, 3, 2),
-            "14000",
+            ts(2025, 3, 30),
+            "48000",
             "CZK",
-            Some("Banka"),
-            Some("cat_housing"),
-            "debit",
+            Some("cat_income"),
+            "credit",
         );
         conn.execute(
             "INSERT INTO exchange_rate_history (date, currency, rate) VALUES (?1, 'CZK', 25.0)",
@@ -893,56 +984,25 @@ mod tests {
         )
         .unwrap();
 
-        let report = get_actuals(&conn, "6m", TODAY).unwrap();
-
+        let report = report(&conn, year_2026());
         assert_eq!(report.total_income, "53000.00");
         // 1200 − 200 refund + 15000 + 100 EUR × 25 (rate of the nearest earlier day)
         assert_eq!(report.total_expenses, "18500.00");
-        assert_eq!(report.previous_income, "48000.00");
-        assert_eq!(report.previous_expenses, "14000.00");
         assert_eq!(report.account_count, 2);
         assert_eq!(report.transaction_count, 7);
-
-        let sep = report
-            .months
-            .iter()
-            .find(|m| m.month == ts(2026, 9, 1))
-            .unwrap();
-        assert_eq!(sep.income, "50000.00");
-        assert_eq!(sep.expenses, "1000.00");
-        let aug = report
-            .months
-            .iter()
-            .find(|m| m.month == ts(2026, 8, 1))
-            .unwrap();
-        assert_eq!(aug.income, "3000.00");
-        assert_eq!(aug.expenses, "17500.00");
-
-        let housing = report
-            .expense_categories
-            .iter()
-            .find(|g| g.key == "cat_housing")
-            .unwrap();
-        assert_eq!(housing.amount, "15000.00");
-        assert_eq!(housing.previous_amount, "14000.00");
-        assert_eq!(housing.name, "Housing");
+        let month = |m: i64| report.months.iter().find(|x| x.month == m).unwrap();
+        assert_eq!(month(ts(2026, 9, 1)).income, "50000.00");
+        assert_eq!(month(ts(2026, 9, 1)).expenses, "1000.00");
+        assert_eq!(month(ts(2026, 8, 1)).income, "3000.00");
+        assert_eq!(month(ts(2026, 8, 1)).expenses, "17500.00");
         assert_eq!(report.expense_categories[0].key, "cat_housing");
-        let uncategorized = report
-            .expense_categories
-            .iter()
-            .find(|g| g.key == "uncategorized")
-            .unwrap();
-        assert_eq!(uncategorized.amount, "2500.00");
-        assert!(report
-            .expense_categories
-            .iter()
-            .all(|g| g.key != "cat_internal_transfers"));
-
-        // Sources: counterparty normalized (case and spacing), largest first
-        assert_eq!(report.income_sources[0].key, "northwind a.s.");
-        assert_eq!(report.income_sources[0].name, "Northwind a.s.");
-        assert_eq!(report.income_sources[0].amount, "50000.00");
-        assert_eq!(report.income_sources[0].previous_amount, "48000.00");
-        assert_eq!(report.income_sources[1].key, "jan novák");
+        assert_eq!(
+            group(&report.expense_categories, "uncategorized").amount,
+            "2500.00"
+        );
+        assert_eq!(
+            group(&report.transfers, "cat_internal_transfers").amount,
+            "-9999.00"
+        );
     }
 }

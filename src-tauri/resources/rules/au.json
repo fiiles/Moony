@@ -56,7 +56,7 @@
     { "id": "au/medibank", "name": "Medibank", "ruleType": "contains", "pattern": "medibank", "categoryId": "cat_insurance", "priority": 50 },
     { "id": "au/bupa", "name": "Bupa", "ruleType": "word", "pattern": "bupa", "categoryId": "cat_insurance", "priority": 50 },
     { "id": "au/ato", "name": "ATO", "ruleType": "word", "pattern": "ato", "categoryId": "cat_taxes", "priority": 70 },
-    { "id": "au/centrelink", "name": "Centrelink", "ruleType": "contains", "pattern": "centrelink", "categoryId": "cat_income", "priority": 60 },
+    { "id": "au/centrelink", "name": "Centrelink", "ruleType": "contains", "pattern": "centrelink", "categoryId": "cat_other_income", "priority": 60 },
     { "id": "au/atm-withdrawal", "name": "ATM Withdrawal", "ruleType": "contains", "pattern": "atm withdrawal", "categoryId": "cat_internal_transfers", "priority": 40 },
     { "id": "au/cash-withdrawal", "name": "Cash Withdrawal", "ruleType": "contains", "pattern": "cash withdrawal", "categoryId": "cat_internal_transfers", "priority": 40 },
     { "id": "au/salary", "name": "Salary", "ruleType": "contains", "pattern": "salary", "categoryId": "cat_income", "priority": 60 },

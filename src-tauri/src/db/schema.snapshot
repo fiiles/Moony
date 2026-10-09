@@ -742,13 +742,15 @@ cat_entertainment | Entertainment | film | #E91E63 | NULL | 5 | 1 | expense
 cat_groceries | Groceries | shopping-cart | #4CAF50 | NULL | 1 | 1 | expense
 cat_health | Health & Medical | heart | #F44336 | NULL | 7 | 1 | expense
 cat_housing | Housing | home | #F59E0B | NULL | 14 | 1 | expense
-cat_income | Income | trending-up | #8BC34A | NULL | 9 | 1 | income
+cat_income | Salary | trending-up | #8BC34A | NULL | 9 | 1 | income
 cat_insurance | Insurance | shield | #8B5CF6 | NULL | 16 | 1 | expense
 cat_internal_transfers | Internal Transfers | arrows-right-left | #94A3B8 | NULL | 13 | 1 | transfer
-cat_investments | Investments | line-chart | #6366F1 | NULL | 11 | 1 | investment
+cat_investment_income | Investment income | building | #14B8A6 | NULL | 10 | 1 | income
+cat_investments | Investments | line-chart | #6366F1 | NULL | 11 | 1 | transfer
 cat_loan_payments | Loan Payments | credit-card | #EF4444 | NULL | 17 | 1 | expense
 cat_other | Other | more-horizontal | #9E9E9E | NULL | 99 | 1 | expense
-cat_savings | Savings | piggy-bank | #22C55E | NULL | 12 | 1 | expense
+cat_other_income | Other income | wallet | #84CC16 | NULL | 10 | 1 | income
+cat_savings | Savings | piggy-bank | #22C55E | NULL | 12 | 1 | transfer
 cat_shopping | Shopping | shopping-bag | #00BCD4 | NULL | 6 | 1 | expense
 cat_taxes | Taxes | landmark | #DC2626 | NULL | 15 | 1 | expense
 cat_transport | Transportation | car | #2196F3 | NULL | 3 | 1 | expense

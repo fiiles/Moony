@@ -809,12 +809,9 @@ export interface CashflowReport {
   netCashflow: string;
 }
 
-// Actual cashflow from bank transactions (design system README §11); report-currency TEXT amounts
-export type CashflowRange = '6m' | '12m' | 'ytd';
-
+// Actual cashflow from bank transactions for one calendar period (design system README §11);
+// report-currency TEXT amounts
 export interface CashflowMonth {
-  nonconsumptionFlows: CashflowGroup[];
-  bankCashMovement: string;
   /** Unix seconds of the first day of the month, UTC midnight */
   month: number;
   income: string;
@@ -822,40 +819,39 @@ export interface CashflowMonth {
 }
 
 export interface CashflowGroup {
-  /** Category id (`uncategorized` without one) or a normalized counterparty key */
+  /** Category id, or `uncategorized` */
   key: string;
-  /** Category name as stored, or the counterparty as seen; empty for an unknown source */
+  /** Category name as stored; empty for uncategorized */
   name: string;
+  flowKind: FlowKind;
+  /** Expense rows debit-positive (refunds lower them), every other role credit-positive */
   amount: string;
-  previousAmount: string;
+  /** Booked rows behind the group, including rows without a report conversion */
   count: number;
 }
 
 export interface CashflowActuals {
   reportCurrency: string;
-  netBalance: string;
-  bankCashMovement: string;
-  averageCompletedMonths: number[];
+  periodStart: number;
+  periodEnd: number;
   quality: ReportQuality;
-  previousQuality: ReportQuality;
-  nonconsumptionFlows: CashflowGroup[];
-  averageIncome: string | null;
-  averageExpenses: string | null;
-  range: CashflowRange;
-  rangeStart: number;
-  rangeEnd: number;
-  previousStart: number;
-  previousEnd: number;
-  /** Every month of the range, oldest first, zero-filled */
+  /** Chart window, oldest first, zero-filled: 12 months ending with the period's last month */
   months: CashflowMonth[];
-  /** Net expenses by category, largest first */
-  expenseCategories: CashflowGroup[];
-  /** Income by counterparty, largest first */
-  incomeSources: CashflowGroup[];
   totalIncome: string;
   totalExpenses: string;
-  previousIncome: string;
-  previousExpenses: string;
+  /** totalIncome − totalExpenses */
+  netBalance: string;
+  /** netBalance + the sum of transfers */
+  bankCashMovement: string;
+  averageIncome: string | null;
+  averageExpenses: string | null;
+  averageCompletedMonths: number[];
+  /** Net expenses by category, largest first */
+  expenseCategories: CashflowGroup[];
+  /** Income by category, largest first; uncategorized credits form their own group */
+  incomeCategories: CashflowGroup[];
+  /** Money transfers (investing, saving, between accounts) by category, largest movement first */
+  transfers: CashflowGroup[];
   accountCount: number;
   transactionCount: number;
 }
@@ -976,8 +972,10 @@ export interface InsertBankAccount {
 }
 
 /** Financial meaning, independent of native credit/debit direction. */
-export type FlowKind =
-  'income' | 'expense' | 'transfer' | 'investment' | 'financing' | 'adjustment';
+export type FlowKind = 'income' | 'expense' | 'transfer';
+
+/** Every flow role, in the order pickers list them. */
+export const FLOW_KINDS: readonly FlowKind[] = ['income', 'expense', 'transfer'];
 
 export interface BankTransaction {
   /** Null derives meaning from own-account identity, category role and direction. */
@@ -2167,6 +2165,8 @@ export interface BudgetingTransaction {
   description: string | null;
   counterpartyName: string | null;
   counterpartyIban: string | null;
+  counterpartyBankCode: string | null;
+  counterpartyCountry: string | null;
   categoryId: string | null;
   bankAccountId: string;
   bankAccountName: string;

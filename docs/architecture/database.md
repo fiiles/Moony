@@ -20,12 +20,15 @@ grouping below follows the domain map in `docs/architecture/overview.md`.
 - `006_financial_semantics` adds nullable transaction `flow_kind` overrides and category
   `kind` roles with six constrained values. Legacy custom categories default to expense;
   system Income, Internal Transfers and Investments get income, transfer and investment.
-- `010_fx_eur_reference` rewrites `exchange_rates` and `exchange_rate_history` in place from
+- `010_income_categories` renames the seeded Income category to Salary (unless renamed), seeds
+  Investment income and Other income, moves Savings to transfer (unless re-roled) and collapses
+  the investment, financing and adjustment roles into transfer.
+- `011_fx_eur_reference` rewrites `exchange_rates` and `exchange_rate_history` in place from
   CZK per unit to units per 1 EUR (CZK becomes an ordinary quote, the EUR row is dropped, the
   derived pegged codes AED/SAR/QAR/BHD/OMR/BGN are removed) and records
   `app_config.fx_reference = 'EUR'`. Rows of a day without an EUR quote cannot be rebased and are
   dropped.
-- `011_retire_czk_caches` makes native breakdowns the only stored record of a snapshot day: adds
+- `012_retire_czk_caches` makes native breakdowns the only stored record of a snapshot day: adds
   `portfolio_metrics_history.real_estate_personal_by_currency`, gives a class whose breakdown is
   empty while its CZK total was not `{"CZK": total}` once, then drops the eight `total_*`
   columns and `value_czk` of `stock_value_history` and `crypto_value_history` (ADR 0012). Both
@@ -121,7 +124,7 @@ Grouped by owning domain (see the domain map in `overview.md`).
 
 | Table | Purpose | Notable columns / constraints |
 |---|---|---|
-| `app_config` | Key-value app settings incl. recovery-key hash | `key TEXT PRIMARY KEY`, `value TEXT`; the CoinGecko API key (`api_key_coingecko`) is the only API key still read; `stock_import_formats` holds the custom stock CSV mappings (JSON array, newest first, at most 20; `services/stock_import/formats.rs`); `milestones.mutedKinds` holds the milestone kinds the user turned off (JSON array of kind names; `services/milestones/`); `fx_reference` records the currency stored rates are quoted against (`EUR` since migration 010) |
+| `app_config` | Key-value app settings incl. recovery-key hash | `key TEXT PRIMARY KEY`, `value TEXT`; the CoinGecko API key (`api_key_coingecko`) is the only API key still read; `stock_import_formats` holds the custom stock CSV mappings (JSON array, newest first, at most 20; `services/stock_import/formats.rs`); `milestones.mutedKinds` holds the milestone kinds the user turned off (JSON array of kind names; `services/milestones/`); `fx_reference` records the currency stored rates are quoted against (`EUR` since migration 011) |
 | `user_profile` | Single-row user profile and preferences | `INTEGER AUTOINCREMENT` PK (convention exception); `currency DEFAULT 'CZK'` (the main currency; creation and update accept only the 36 codes with an exchange-rate source, `validation.currencyUnsupported`; an older unsupported value is kept as is), `language`, `menu_preferences` JSON, `coingecko_modal_dismissed`, `mcp_server_enabled` gates the local API server, `mcp_server_token` TEXT (NULL until the server is first enabled), `mcp_server_port` INTEGER (NULL = default 41414) |
 
 ### Bank accounts
@@ -131,14 +134,14 @@ Grouped by owning domain (see the domain map in `overview.md`).
 | `institutions` | Banks/financial institutions, pre-seeded with Czech banks | Readable seeded IDs (`inst_fio`, `inst_csob`, …); `bic`, `logo_url` |
 | `bank_accounts` | All bank/savings accounts | `account_type DEFAULT 'checking'`, `institution_id` FK, `iban`/`bban`, `data_source DEFAULT 'manual'`, `has_zone_designation`, `exclude_from_balance`, `interest_rate` TEXT, `interest_rate_valid_until` INTEGER (UTC day the promotional rate ends, nullable; migration 005), `balance_as_of` INTEGER nullable UTC booking day (migration 008; legacy remains unknown) |
 | `bank_account_zones` | Tiered interest-rate zones per account | FK `bank_account_id` ON DELETE CASCADE; `from_amount`/`to_amount`/`interest_rate` TEXT. Tiers are bands of the balance (not contiguous, not sorted); the one interest model is `services/interest_tiers.rs`, mirrored for display by `src/utils/bank-account-zones.ts` and cross-checked through `shared/fixtures/interest-tiers.json`; an empty / `0` `to_amount` is unlimited |
-| `bank_transactions` | Imported/manual bank transactions | `UNIQUE(bank_account_id, transaction_id)` dedupes imports (`services/dedup.rs`: certain same-bank-ID matches cannot be forced, different IDs remain distinct; fallback keys include exact canonical decimal TEXT, currency, direction, dates, description, normalized payee and safely canonicalized identifier. Stored occurrences are consumed once and within-file ID-less multiplicity is retained; possible duplicates allow explicit overrides); `category_id` FK, nullable `flow_kind` explicit meaning (NULL derives dynamically; migration 006), `categorization_source`, `import_batch_id` FK ON DELETE CASCADE, `import_line` INTEGER and `row_balance` TEXT preserve source details, `counterparty_bank_code`/`counterparty_country` TEXT preserve optional routing metadata (migration 008), `suggested_category_id` FK (MCP-suggested category awaiting confirmation); indexes on account, date, category, batch |
+| `bank_transactions` | Imported/manual bank transactions | `UNIQUE(bank_account_id, transaction_id)` dedupes imports (`services/dedup.rs`: certain same-bank-ID matches cannot be forced, different IDs remain distinct; fallback keys include exact canonical decimal TEXT, currency, direction, dates, description, normalized payee and safely canonicalized identifier. Stored occurrences are consumed once and within-file ID-less multiplicity is retained; possible duplicates allow explicit overrides); `category_id` FK, nullable `flow_kind` explicit meaning income/expense/transfer (NULL derives dynamically; migration 006; migration 010 rewrote the removed roles to transfer, the CHECK constraint still lists them), `categorization_source`, `import_batch_id` FK ON DELETE CASCADE, `import_line` INTEGER and `row_balance` TEXT preserve source details, `counterparty_bank_code`/`counterparty_country` TEXT preserve optional routing metadata (migration 008), `suggested_category_id` FK (MCP-suggested category awaiting confirmation); indexes on account, date, category, batch |
 | `csv_import_batches` | One row per CSV upload, validated nonempty MCP bank import request, or explicitly assigned earlier MCP import call, with import stats | FK `bank_account_id` ON DELETE CASCADE; `imported_count`/`duplicate_count`/`error_count`, `promoted_count` (migration 008); reads calculate actual `linkedCount`; `date_from`/`date_to` retain the statement period even for duplicate-only records (legacy period stays unknown). MCP accepts an optional `fileName` (defaults to `MCP`) and links new `api_sync` transactions to the batch in the same SQL transaction. Atomic deletion removes only owned rows and returns the actual count; promotion preserves the preexisting row's batch ownership. Rows are created and finished through `csv_import::insert_batch`/`finish_batch` only. Legacy unbatched rows are never assigned automatically; MCP `bank_transactions_assign_import` links explicitly listed unowned `manual` rows of one account written within one minute to a new `MCP …` record dated at their original write (only `import_batch_id` changes). |
 
 ### Categorization
 
 | Table | Purpose | Notable columns / constraints |
 |---|---|---|
-| `transaction_categories` | Spending categories, system-seeded + user-defined | Readable seeded IDs (`cat_groceries`, …); self-referencing `parent_id` FK, `is_system`, `sort_order`; `kind` ∈ income/expense/transfer/investment/financing/adjustment (default expense; migration 006) |
+| `transaction_categories` | Spending categories, system-seeded + user-defined | Readable seeded IDs (`cat_groceries`, …); self-referencing `parent_id` FK, `is_system`, `sort_order`; `kind` ∈ income/expense/transfer (default expense; migration 006). Migration 010 renamed `cat_income` to Salary (when still seeded), seeded `cat_investment_income` and `cat_other_income`, moved `cat_savings` to transfer and collapsed investment/financing/adjustment into transfer; the CHECK constraint still lists the old values, which the app never writes |
 | `categorization_rules` | Priority-ordered pattern rules | `rule_type`/`pattern` (`regex`, `contains`, `word`, `starts_with`, `ends_with`, `is_credit`, `is_debit`), `priority DEFAULT 50` (index `priority DESC, is_active`), `stop_processing`, `iban_pattern` |
 | `learned_payees` | Learned payee → category mappings for auto-categorization | `normalized_payee` is nullable (account-identity rules). New opt-in rows carry `bank_account_id` FK ON DELETE CASCADE and `is_credit` (migration 009); a partial unique scope index prevents duplicates within one account/direction. NULL scope preserves legacy broad rules. Reliable structured identifiers canonicalize to the same IBAN; incomplete identifiers fall back to the normalized payee. Writes commit transactionally before engine learning. |
 
@@ -163,7 +166,7 @@ Grouped by owning domain (see the domain map in `overview.md`).
 | `stock_tags` | User tags for grouping investments | `name UNIQUE`; `group_id` FK ON DELETE SET NULL |
 | `stock_investment_tags` | Investment ↔ tag many-to-many join | Composite PK `(investment_id, tag_id)`; both FKs ON DELETE CASCADE |
 | `stock_tag_groups` | Optional grouping of tags (e.g. "Strategy") | `name UNIQUE` |
-| `stock_value_history` | Daily native value per ticker (also feeds portfolio trend) | `UNIQUE(ticker, recorded_at)`; native `quantity`, `price`+`currency`, `is_stale`; values convert per response at the row's day (the `value_czk` cache was dropped in migration 011) |
+| `stock_value_history` | Daily native value per ticker (also feeds portfolio trend) | `UNIQUE(ticker, recorded_at)`; native `quantity`, `price`+`currency`, `is_stale`; values convert per response at the row's day (the `value_czk` cache was dropped in migration 012) |
 
 ### Crypto
 
@@ -173,7 +176,7 @@ Grouped by owning domain (see the domain map in `overview.md`).
 | `crypto_transactions` | Buy/sell transactions per crypto position | FK `investment_id` ON DELETE CASCADE; index on `ticker` (for MCP import dedup) |
 | `crypto_prices` | Fetched CoinGecko price cache | `symbol UNIQUE`; `coingecko_id` |
 | `crypto_price_overrides` | Manual price overrides (win over `crypto_prices`) | `symbol UNIQUE` |
-| `crypto_value_history` | Daily native value per crypto ticker (also feeds portfolio trend) | `UNIQUE(ticker, recorded_at)`; native `quantity`, `price`+`currency`, `is_stale` (`value_czk` dropped in migration 011) |
+| `crypto_value_history` | Daily native value per crypto ticker (also feeds portfolio trend) | `UNIQUE(ticker, recorded_at)`; native `quantity`, `price`+`currency`, `is_stale` (`value_czk` dropped in migration 012) |
 
 ### Bonds
 
@@ -220,7 +223,7 @@ Grouped by owning domain (see the domain map in `overview.md`).
 
 | Table | Purpose | Notable columns / constraints |
 |---|---|---|
-| `portfolio_metrics_history` | Daily net-worth snapshots per asset class | Native breakdowns only: seven `*_by_currency` JSON TEXT `DEFAULT '{}'` (`real_estate_by_currency` holds every property) plus `real_estate_personal_by_currency` (the personal subset; investment real estate is the difference per currency). The CZK `total_*` columns were dropped in migration 011 (legacy rows without breakdowns got `{"CZK": total}` once); readers convert each row at its day (`services/net_worth.rs`). `is_stale`; `source` TEXT `'live'`/`'backfill'` provenance — live rows are authentic records, backfill rows may be rebuilt. Index on `recorded_at`. `get_portfolio_history` returns `source`; the dashboard draws backfilled days dashed because their static classes (accounts, bonds, real estate, loans) are carried from the nearest live row |
+| `portfolio_metrics_history` | Daily net-worth snapshots per asset class | Native breakdowns only: seven `*_by_currency` JSON TEXT `DEFAULT '{}'` (`real_estate_by_currency` holds every property) plus `real_estate_personal_by_currency` (the personal subset; investment real estate is the difference per currency). The CZK `total_*` columns were dropped in migration 012 (legacy rows without breakdowns got `{"CZK": total}` once); readers convert each row at its day (`services/net_worth.rs`). `is_stale`; `source` TEXT `'live'`/`'backfill'` provenance — live rows are authentic records, backfill rows may be rebuilt. Index on `recorded_at`. `get_portfolio_history` returns `source`; the dashboard draws backfilled days dashed because their static classes (accounts, bonds, real estate, loans) are carried from the nearest live row |
 
 (`stock_value_history` and `crypto_value_history` above also feed this domain's trend charts.)
 
@@ -228,7 +231,7 @@ Grouped by owning domain (see the domain map in `overview.md`).
 
 | Table | Purpose | Notable columns / constraints |
 |---|---|---|
-| `exchange_rates` | Latest ECB rates persisted for offline use | `currency TEXT PRIMARY KEY`; **`rate REAL`** (money-as-TEXT exception) = units of the currency per 1 EUR, as the ECB publishes them (migration 010; before it, CZK per unit). CZK is stored as a quote like any other currency; EUR (the reference, 1.0) and derived pegged codes (AED, SAR, QAR, BHD, OMR, BGN) never have a row. The reference is recorded in `app_config.fx_reference` |
+| `exchange_rates` | Latest ECB rates persisted for offline use | `currency TEXT PRIMARY KEY`; **`rate REAL`** (money-as-TEXT exception) = units of the currency per 1 EUR, as the ECB publishes them (migration 011; before it, CZK per unit). CZK is stored as a quote like any other currency; EUR (the reference, 1.0) and derived pegged codes (AED, SAR, QAR, BHD, OMR, BGN) never have a row. The reference is recorded in `app_config.fx_reference` |
 | `exchange_rate_history` | Daily historical rates for accurate backfills | `PRIMARY KEY (date, currency)`; **`rate REAL`** = units of the currency per 1 EUR (as `exchange_rates`: CZK stored as a quote, no EUR or derived rows; reference in `app_config.fx_reference`); index `(currency, date)`. Coverage self-heals (`services/fx_backfill.rs`): per currency (investment, crypto and bank-account transactions), the prefix before that currency's earliest transaction and any multi-day tail gap are fetched from frankfurter.dev on rate refresh and before historical-transaction recalcs; live-recorded rows win over backfill (`INSERT OR IGNORE`). ECB rows are stored under the feed's reference date (`time=` attribute, `parse_ecb_xml`), not the fetch day, so a weekend fetch lands on Friday; rates are stored as published (a feed without any usable rate is an error, a missing CZK quote is not). Backfill requests the held currencies, CZK included, and keeps days without a CZK quote. Budget reports convert foreign-currency transactions with the rates of their booking day; a CSV import that inserted rows and any manual bank transaction trigger the backfill (a no-op when covered), and a currency the ECB never quotes stays reported as missing FX (never 1:1) |
 
 ### Cashflow / projection

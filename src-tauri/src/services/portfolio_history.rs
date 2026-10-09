@@ -2,7 +2,7 @@
 //!
 //! Invariants enforced here and nowhere else:
 //! - I1: native per-currency breakdowns are the only stored record of a day (the CZK totals
-//!   were retired by migration 011). Nothing is converted on write; readers convert per
+//!   were retired by migration 012). Nothing is converted on write; readers convert per
 //!   response (`services/net_worth.rs`).
 //! - I2: real estate is stored as the combined breakdown (`real_estate_by_currency`) plus its
 //!   personal subset (`real_estate_personal_by_currency`); investment real estate is the

@@ -4,7 +4,6 @@ import { useCurrency } from '@/lib/currency';
 import { useFormat } from '@/lib/use-format';
 import { useRatesUpdatedAt } from '@/hooks/use-rates-updated-at';
 import { cn } from '@/lib/utils';
-import { hasKnownRate, type CurrencyCode } from '@shared/currencies';
 
 interface NativeBalanceProps {
   /** Amount in the account's own currency. */
@@ -24,7 +23,8 @@ interface NativeBalanceProps {
  * currency is the primary figure, the display-currency
  * equivalent a muted "≈ 30 196 Kč" with the rate in a tooltip. An amount already
  * in the display currency renders as a single plain figure; a currency without
- * a known rate says so instead of showing a made-up 1:1 conversion.
+ * a rate says so (and that totals leave it out) instead of showing a made-up 1:1
+ * conversion.
  */
 export function NativeBalance({
   amount,
@@ -35,30 +35,26 @@ export function NativeBalance({
 }: NativeBalanceProps) {
   const { t } = useTranslation('bank_accounts');
   const fmt = useFormat();
-  const {
-    currencyCode: displayCurrency,
-    formatCurrencyRaw,
-    convert,
-    ratesTimestamp,
-  } = useCurrency();
+  const { currencyCode: displayCurrency, fx, fxConvert } = useCurrency();
   const updatedAt = useRatesUpdatedAt();
 
   if (currency === displayCurrency) {
-    return <span className={className}>{formatCurrencyRaw(amount)}</span>;
+    return <span className={className}>{fmt.money(amount, displayCurrency, { decimals: 0 })}</span>;
   }
 
   const primary = fmt.money(amount, currency);
-  const from = currency as CurrencyCode;
+  const from = currency;
   const to = displayCurrency;
-  const ratesLoaded = ratesTimestamp > 0;
-  const rateKnown = hasKnownRate(from) && hasKnownRate(to);
+  const ratesLoaded = fx !== undefined;
+  const rate = fxConvert(1, from, to);
 
   let secondary: string | null = null;
   let tooltip: string | null = null;
   let warn = false;
-  if (ratesLoaded && rateKnown) {
-    secondary = t('nativeBalance.approx', { amount: formatCurrencyRaw(convert(amount, from, to)) });
-    const rate = convert(1, from, to);
+  if (ratesLoaded && rate !== null) {
+    secondary = t('nativeBalance.approx', {
+      amount: fmt.money(amount * rate, to, { decimals: 0 }),
+    });
     const rateText = fmt.number(rate, {
       minimumFractionDigits: 2,
       maximumFractionDigits: rate >= 1 ? 2 : 4,

@@ -37,7 +37,7 @@
     "rateTooltip": "1 {{from}} = {{rate}} {{to}} (ECB, updated {{date}})",
     "rateTooltipNoDate": "1 {{from}} = {{rate}} {{to}} (ECB)",
     "noRate": "No exchange rate",
-    "noRateTooltip": "There is no exchange rate for {{currency}}: the converted amount cannot be shown, and totals that include it are not accurate."
+    "noRateTooltip": "Excluded from totals: no exchange rate for {{currency}}"
   },
   "form": {
     "basicInfo": "Basic Information",
@@ -618,7 +618,6 @@
       "rowBalance": "Statement row balance",
       "effectiveFlow": "Effective flow / source"
     },
-    "aggregateFxWarning": "Totals in {{currency}} exclude accounts without a known FX rate. Native account values remain below.",
     "booked": "Booked",
     "retry": "Retry",
     "specificLearningScope": "This account · {{direction}} · {{identity}}. Reliable accounts match across payee names; otherwise only this payee.",

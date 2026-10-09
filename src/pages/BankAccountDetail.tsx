@@ -40,7 +40,7 @@ import type {
   CsvImportBatch,
   FlowKind,
 } from '@shared/schema';
-import { hasKnownRate, type CurrencyCode } from '@shared/currencies';
+import type { CurrencyCode } from '@shared/currencies';
 import { bankAccountsApi, categorizationApi, cashflowApi } from '@/lib/tauri-api';
 import { useBankAccount } from '@/hooks/use-bank-accounts';
 import {
@@ -68,7 +68,7 @@ import { utcDayFloor } from '@/utils/chart-axis';
 import { completeAccountIdentifier } from '@/utils/iban-utils';
 import { formatAmountWithCode, formatAmountInCurrency } from '@/utils/format-amount';
 import {
-  MOVEMENT_FLOOR_BASE,
+  movementFloor,
   movementThreshold,
   reconstructBalance,
   significantMovements,
@@ -137,7 +137,7 @@ export default function BankAccountDetail() {
   const { account, isLoading } = useBankAccount(accountId);
   const { deleteTransaction } = useBankTransactionMutations(accountId);
   const { updateAccount, deleteAccount } = useBankAccountMutations();
-  const { convert } = useCurrency();
+  const { fx } = useCurrency();
   const { getLocale } = useLanguage();
   const fmt = useFormat();
   const categoryName = useCategoryName();
@@ -607,9 +607,7 @@ export default function BankAccountDetail() {
     }));
   }, [chartTxs, chartFrom, today, balance, account?.balanceAsOf]);
 
-  const floorInAccount = hasKnownRate(accountCurrency)
-    ? convert(MOVEMENT_FLOOR_BASE, 'CZK', accountCurrency)
-    : 0;
+  const floorInAccount = movementFloor(fx, accountCurrency);
   const threshold = movementThreshold(balance, floorInAccount);
   const events = useMemo<BalanceEvent[]>(
     () =>

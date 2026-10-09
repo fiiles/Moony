@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  MOVEMENT_FLOOR_EUR,
+  movementFloor,
   movementThreshold,
   reconstructBalance,
   significantMovements,
@@ -76,6 +78,24 @@ describe('reconstructBalance', () => {
 
   it('returns nothing for an inverted span', () => {
     expect(reconstructBalance(1, [], D0 + DAY, D0)).toEqual([]);
+  });
+});
+
+describe('movement floor', () => {
+  // 1 EUR = 25 CZK = 1.1 USD; no quote for KWD
+  const fx = { reference: 'EUR', units: { CZK: 25, USD: 1.1 } };
+
+  it('is 400 EUR in the account currency', () => {
+    expect(MOVEMENT_FLOOR_EUR).toBe(400);
+    expect(movementFloor(fx, 'EUR')).toBe(400);
+    expect(movementFloor(fx, 'CZK')).toBe(10_000);
+    expect(movementFloor(fx, 'USD')).toBeCloseTo(440);
+  });
+
+  it('is 0 without a conversion, so only the share of the balance applies', () => {
+    expect(movementFloor(fx, 'KWD')).toBe(0);
+    expect(movementFloor(undefined, 'CZK')).toBe(0);
+    expect(movementThreshold(50_000, movementFloor(fx, 'KWD'))).toBe(5_000);
   });
 });
 

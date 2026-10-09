@@ -16,11 +16,14 @@ import {
   Upload,
 } from 'lucide-react';
 import type { BankAccountWithInstitution, InsertBankAccount } from '@shared/schema';
-import { hasKnownRate, type CurrencyCode } from '@shared/currencies';
 import { useBankAccounts } from '@/hooks/use-bank-accounts';
 import { useBankAccountMutations } from '@/hooks/use-bank-account-mutations';
 import { useBankAccountActivity } from '@/hooks/use-bank-account-activity';
 import { useCurrency } from '@/lib/currency';
+import { useMainConvert } from '@/hooks/use-fx';
+import { accountTotals } from '@/utils/bank-account-summary';
+import { compareConverted } from '@/utils/fx-totals';
+import { ConversionQualityNote } from '@/components/reports/ReportQualityNote';
 import { useFormat } from '@/lib/use-format';
 import { useShellPage } from '@/components/shell/shell-context';
 import { utcDayFloor } from '@/utils/chart-axis';
@@ -79,9 +82,9 @@ export default function BankAccounts() {
   const [, setLocation] = useLocation();
   const { accounts, isLoading } = useBankAccounts();
   const { createAccount, updateAccount, deleteAccount } = useBankAccountMutations();
-  const { convert, fxConvert, currencyCode: preferredCurrency } = useCurrency();
+  const { currencyCode } = useCurrency();
+  const convert = useMainConvert();
   const fmt = useFormat();
-  const currencyCode = hasKnownRate(preferredCurrency) ? preferredCurrency : 'CZK';
   const formatCurrencyRaw = (value: number) => fmt.money(value, currencyCode);
   const queryClient = useQueryClient();
   const activity = useBankAccountActivity(accounts);
@@ -93,55 +96,41 @@ export default function BankAccounts() {
   const [sortColumn, setSortColumn] = useState<SortColumn>('balance');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
-  const toDisplay = (amount: number, currency: string) =>
-    hasKnownRate((currency || 'CZK') as CurrencyCode)
-      ? convert(amount, (currency || 'CZK') as CurrencyCode, currencyCode)
-      : 0;
-
   // Totals and the 30-day money flow across the accounts counted in net worth,
-  // in the display currency. Excluded accounts stay out of them like they do on
-  // the dashboard (so the total is its cash) and are reported apart.
+  // in the main currency at the current quotes. Excluded accounts stay out of them
+  // like they do on the dashboard (so the total is its cash) and are reported apart;
+  // an account without a rate stays out of every total and is named in the note.
   const totals = useMemo(() => {
-    let balance = 0;
-    let excluded = 0;
-    let income = 0;
-    let expense = 0;
+    const sums = accountTotals(
+      accounts.map((account) => ({ ...account, last30: activity.get(account.id)?.last30 })),
+      convert
+    );
     let uncategorized = 0;
     let latest: number | null = null;
     const currencies = new Set<string>();
     for (const account of accounts) {
       currencies.add(account.currency || 'CZK');
-      const accountBalance = toDisplay(parseFloat(account.balance || '0'), account.currency);
-      const a = activity.get(account.id);
       // Transactions to categorize and the newest movement concern every account
+      const a = activity.get(account.id);
       if (a) {
         uncategorized += a.last30.uncategorized;
         if (a.last && (latest === null || a.last.bookingDate > latest)) {
           latest = a.last.bookingDate;
         }
       }
-      if (account.excludeFromBalance) {
-        excluded += accountBalance;
-        continue;
-      }
-      balance += accountBalance;
-      if (a) {
-        income += toDisplay(a.last30.income, account.currency);
-        expense += toDisplay(a.last30.expense, account.currency);
-      }
     }
     return {
-      balance,
-      excluded,
-      income,
-      expense,
-      net: income - expense,
+      balance: sums.included,
+      excluded: sums.excluded,
+      income: sums.income,
+      expense: sums.expense,
+      net: sums.income - sums.expense,
+      missing: sums.missing,
       uncategorized,
       currencies,
       latest,
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [accounts, activity, currencyCode]);
+  }, [accounts, activity, convert]);
 
   useShellPage({
     status:
@@ -160,7 +149,9 @@ export default function BankAccounts() {
         )
       : accounts;
     const change = (a: BankAccountWithInstitution) =>
-      toDisplay(activity.get(a.id)?.last30.net ?? 0, a.currency);
+      convert(activity.get(a.id)?.last30.net ?? 0, a.currency || 'CZK');
+    const balance = (a: BankAccountWithInstitution) =>
+      convert(parseFloat(a.balance || '0') || 0, a.currency || 'CZK');
     return [...filtered].sort((a, b) => {
       let c = 0;
       switch (sortColumn) {
@@ -168,12 +159,10 @@ export default function BankAccounts() {
           c = a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
           break;
         case 'balance':
-          c =
-            toDisplay(parseFloat(a.balance), a.currency) -
-            toDisplay(parseFloat(b.balance), b.currency);
+          c = compareConverted(balance(a), balance(b));
           break;
         case 'change':
-          c = change(a) - change(b);
+          c = compareConverted(change(a), change(b));
           break;
         case 'last':
           c =
@@ -183,8 +172,7 @@ export default function BankAccounts() {
       }
       return sortDirection === 'asc' ? c : -c;
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [accounts, activity, search, sortColumn, sortDirection, currencyCode]);
+  }, [accounts, activity, search, sortColumn, sortDirection, convert]);
 
   const handleSort = (column: SortColumn) => {
     if (sortColumn === column) setSortDirection((d) => (d === 'asc' ? 'desc' : 'asc'));
@@ -237,15 +225,9 @@ export default function BankAccounts() {
     return !best || n > (activity.get(best.id)?.last30.uncategorized ?? 0) ? a : best;
   }, null);
 
-  // Today's point of the cash trend: the balances counted in net worth, in the report
-  // currency at the current quotes (an account without a rate stays out, like in history)
-  const trendValue = accounts.reduce(
-    (sum, account) =>
-      account.excludeFromBalance
-        ? sum
-        : sum + (fxConvert(parseFloat(account.balance || '0'), account.currency || 'CZK') ?? 0),
-    0
-  );
+  // Today's point of the cash trend is the page total: the balances counted in net worth
+  // through the same converter (an account without a rate stays out and is named)
+  const trendValue = totals.balance;
   const foreign = [...totals.currencies].filter((c) => c !== currencyCode);
   const excludedNote =
     totals.excluded !== 0
@@ -310,12 +292,11 @@ export default function BankAccounts() {
         />
       ) : (
         <>
-          {(accounts.some((a) => !hasKnownRate(a.currency as CurrencyCode)) ||
-            !hasKnownRate(preferredCurrency)) && (
-            <p className="mb-3 text-micro text-loss">
-              {t('readiness.aggregateFxWarning', { currency: currencyCode })}
-            </p>
-          )}
+          <ConversionQualityNote
+            quality={{ missingCurrencies: totals.missing }}
+            currency={currencyCode}
+            className="mb-3"
+          />
           <Stats columns={3}>
             <Stat
               label={t('metrics.totalOnAccounts')}
@@ -367,10 +348,11 @@ export default function BankAccounts() {
             />
           </Stats>
 
-          {hasKnownRate(preferredCurrency) &&
-            accounts.every((a) => hasKnownRate(a.currency as CurrencyCode)) && (
-              <PortfolioTrendCard type="cash" currentValue={trendValue} />
-            )}
+          <PortfolioTrendCard
+            type="cash"
+            currentValue={trendValue}
+            missingCurrencies={totals.missing}
+          />
 
           <Card variant="table">
             <CardHeader>
@@ -569,18 +551,18 @@ export default function BankAccounts() {
               <span className="num">
                 {foreign.length > 0
                   ? foreign
-                      .map((c) =>
-                        t('table.rate', {
-                          currency: c,
-                          rate: fmt.money(
-                            convert(1, c as CurrencyCode, currencyCode),
-                            currencyCode,
-                            {
-                              decimals: 2,
-                            }
-                          ),
-                        })
-                      )
+                      .flatMap((c) => {
+                        // A currency without a rate has none to show (the note names it)
+                        const rate = convert(1, c);
+                        return rate === null
+                          ? []
+                          : [
+                              t('table.rate', {
+                                currency: c,
+                                rate: fmt.money(rate, currencyCode, { decimals: 2 }),
+                              }),
+                            ];
+                      })
                       .join(' · ')
                   : t('table.singleCurrency', { currency: currencyCode })}
               </span>

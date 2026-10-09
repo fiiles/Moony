@@ -5,6 +5,8 @@
  * mark on it. Amounts are in the account's own currency; the caller converts.
  */
 
+import { convert, type FxQuotes } from '@shared/fx';
+
 export interface FlowTransaction {
   id: string;
   currency?: string;
@@ -124,16 +126,24 @@ export interface MovementEvent {
 }
 
 /**
- * Absolute floor for a movement to be drawn on the balance line, in the base
- * currency (CZK, roughly 400 EUR). The caller converts it to the account
- * currency before passing it to `movementThreshold`.
+ * Absolute floor for a movement to be drawn on the balance line, in euros.
+ * `movementFloor` converts it to the account currency before it reaches
+ * `movementThreshold`.
  */
-export const MOVEMENT_FLOOR_BASE = 10_000;
+export const MOVEMENT_FLOOR_EUR = 400;
+
+/**
+ * The movement floor in the account's currency at the current quotes; 0 when the
+ * currency cannot be converted (then only the share of the balance applies).
+ */
+export function movementFloor(fx: FxQuotes | undefined, accountCurrency: string): number {
+  return convert(fx, MOVEMENT_FLOOR_EUR, 'EUR', accountCurrency) ?? 0;
+}
 
 /**
  * Threshold for a movement to be drawn on the balance line (README §9):
- * the base-currency floor (MOVEMENT_FLOOR_BASE) in the account currency, or
- * 10 % of the balance, whichever is larger.
+ * the floor (`movementFloor`) in the account currency, or 10 % of the
+ * balance, whichever is larger.
  */
 export function movementThreshold(balance: number, floorInCurrency: number): number {
   return Math.max(floorInCurrency, Math.abs(balance) * 0.1);

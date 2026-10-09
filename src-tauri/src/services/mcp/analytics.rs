@@ -205,8 +205,9 @@ pub fn stocks_analysis(conn: &Connection) -> Result<Value> {
         rows
     };
 
-    // A row shows what is known; an amount that cannot be converted is null, and a row
-    // without a known value and cost is left out of the summary (its dividend with it).
+    // A row shows what is known; an amount that cannot be converted is null. The summary
+    // (`positions::totals`) sums the known values and costs, the unrealized gain only over
+    // positions where both are known, and the dividend over positions with a known value.
     let stocks: Vec<Value> = positions
         .items
         .iter()

@@ -49,13 +49,9 @@ pub fn crypto_list(conn: &Connection) -> Result<Value> {
         .collect();
     let mut stmt = conn.prepare(
         "SELECT ci.id, ci.ticker, ci.coingecko_id, ci.name, ci.quantity,
-                ci.currency,
-                COALESCE(cpo.price, cp.price) AS current_price,
-                COALESCE(cpo.currency, cp.currency, 'USD') AS price_currency,
-                cp.fetched_at
+                ci.currency, cp.fetched_at
          FROM crypto_investments ci
          LEFT JOIN crypto_prices cp ON ci.ticker = cp.symbol
-         LEFT JOIN crypto_price_overrides cpo ON ci.ticker = cpo.symbol
          ORDER BY ci.name",
     )?;
     let rows: Vec<Value> = stmt.query_map([], |row| Ok(serde_json::json!({
@@ -65,9 +61,7 @@ pub fn crypto_list(conn: &Connection) -> Result<Value> {
         "name": row.get::<_, String>(3)?,
         "quantity": row.get::<_, String>(4)?,
         "currency": row.get::<_, String>(5)?,
-        "currentPrice": sql_to_json(row.get::<_, rusqlite::types::Value>(6).unwrap_or(rusqlite::types::Value::Null)),
-        "priceCurrency": row.get::<_, String>(7)?,
-        "priceFetchedAt": sql_to_json(row.get::<_, rusqlite::types::Value>(8).unwrap_or(rusqlite::types::Value::Null)),
+        "priceFetchedAt": sql_to_json(row.get::<_, rusqlite::types::Value>(6).unwrap_or(rusqlite::types::Value::Null)),
     })))?.filter_map(|r| r.ok()).collect();
     let rows: Vec<Value> = rows
         .into_iter()

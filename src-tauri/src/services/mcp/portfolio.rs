@@ -32,13 +32,15 @@ pub struct PortfolioMetricsArgs {
 /// Today's net worth in the user's main currency: the app's net worth service with the app's
 /// current quote snapshot (C-A), so the assistant and the app agree. A class that could not
 /// be converted at all is `null`; the totals leave unconverted amounts out and
-/// `missingCurrencies` names them.
+/// `missingCurrencies` names them. When classes hold amounts but none converted, the net worth
+/// and the totals are `null` too (never a misleading "0").
 pub fn portfolio_metrics(conn: &Connection, exclude_personal_real_estate: bool) -> Result<Value> {
     let main = load_main_currency(conn)?;
     let worth = net_worth::current_net_worth(conn, &main, exclude_personal_real_estate)?;
     let currency = worth.currency.as_str();
     let classes = &worth.classes;
-    let money = |value: f64| money_in_currency(value, currency);
+    // No totals when classes hold amounts but none converted (a 0 would read as real)
+    let known = |value: f64| worth.net_worth.map(|_| money_in_currency(value, currency));
     let personal = if exclude_personal_real_estate {
         Some(0.0)
     } else {
@@ -47,9 +49,9 @@ pub fn portfolio_metrics(conn: &Connection, exclude_personal_real_estate: bool) 
 
     Ok(serde_json::json!({
         "mainCurrency": currency,
-        "net_worth": money(worth.net_worth),
-        "total_assets": money(worth.total_assets),
-        "total_liabilities": money(worth.total_liabilities),
+        "net_worth": amount_json(worth.net_worth, currency),
+        "total_assets": known(worth.total_assets),
+        "total_liabilities": known(worth.total_liabilities),
         "breakdown": {
             "savings": amount_json(classes.savings, currency),
             "investments": amount_json(classes.investments, currency),
@@ -313,12 +315,33 @@ mod tests {
         let result = portfolio_metrics(&conn, false).expect("metrics");
 
         assert_eq!(result["mainCurrency"], "JPY");
-        // Nothing converts into JPY: no class value, totals without them, JPY reported.
+        // Nothing converts into JPY: no class value, no totals (null, never "0"), JPY reported.
         assert!(result["breakdown"]["savings"].is_null());
         assert!(result["breakdown"]["other_assets"].is_null());
         assert_eq!(result["breakdown"]["loans"], "0");
-        assert_eq!(result["net_worth"], "0");
+        assert!(result["net_worth"].is_null());
+        assert!(result["total_assets"].is_null());
+        assert!(result["total_liabilities"].is_null());
         assert_eq!(result["missingCurrencies"], serde_json::json!(["JPY"]));
+    }
+
+    #[test]
+    fn portfolio_metrics_amounts_use_the_iso_minor_units_of_the_main_currency() {
+        for (main, balance, expected) in [("JPY", "123.6", "124"), ("KWD", "12.3456", "12.346")] {
+            let conn = setup_db(main);
+            conn.execute(
+                "INSERT INTO bank_accounts (id, balance, currency) VALUES ('own', ?1, ?2)",
+                [balance, main],
+            )
+            .expect("account in the main currency");
+
+            let result = portfolio_metrics(&conn, false).expect("metrics");
+
+            // Identity needs no quote, so only the main-currency account converts.
+            assert_eq!(result["breakdown"]["savings"], expected, "{main}");
+            assert_eq!(result["net_worth"], expected, "{main}");
+            assert_eq!(result["total_assets"], expected, "{main}");
+        }
     }
 
     #[test]

@@ -314,14 +314,14 @@ impl MoonyMcp {
     }
 
     #[tool(
-        description = "Get stored currency exchange rates. Rates are relative to Moony's internal base currency CZK (rate = 1.0): multiply an amount by its currency's rate to get CZK. The user's main currency is given as `mainCurrency`; the aggregate tools (portfolio, history, reports, analysis) report amounts in it, while list tools report each record in its own currency. Rates are fetched from the European Central Bank and cached locally."
+        description = "Get the current exchange rates against an explicit base currency, `baseCurrency`. Each entry of `rates` is `rate` units of that currency per 1 unit of the base (the base itself is 1): divide an amount by the rate to get the base currency, multiply a base amount by the rate to get the currency. Rates flagged `derived` are fixed pegs to another currency (for example AED to USD); `supportedCurrencies` lists every code Moony can convert, including those without a rate right now. `fetchedAt` is when the rates were last fetched (null when unknown). The user's main currency is given as `mainCurrency`; the aggregate tools (portfolio, history, reports, analysis) report amounts in it, while list tools report each record in its own currency. Rates come from the European Central Bank and are cached locally."
     )]
     fn exchange_rates_list(&self) -> Result<CallToolResult, McpError> {
         to_result(self.db.with_conn(exchange_rates::exchange_rates_list))
     }
 
     #[tool(
-        description = "Get current portfolio metrics: net worth breakdown by asset class (savings, investments, crypto, bonds, real estate, other assets, liabilities). All monetary values are in the user's main currency, given as `mainCurrency`. A class that could not be converted at all is null; the totals sum every amount that could be converted and `missingCurrencies` lists the currencies left out."
+        description = "Get current portfolio metrics: net worth breakdown by asset class (savings, investments, crypto, bonds, real estate, other assets, liabilities). All monetary values are in the user's main currency, given as `mainCurrency`. A class that could not be converted at all is null; the totals sum every amount that could be converted and `missingCurrencies` lists the currencies left out. When classes hold amounts but none of them could be converted, net_worth, total_assets and total_liabilities are null (not 0)."
     )]
     fn portfolio_get_metrics(
         &self,
@@ -348,7 +348,7 @@ impl MoonyMcp {
     }
 
     #[tool(
-        description = "List all stock investments with ticker, company name, quantity, native average purchase price and current market price, plus value, cost basis, unrealized and realized gain and annual dividend in the user's main currency (`mainCurrency`). Amounts that cannot be converted are null and their currencies are listed in `missingCurrencies`; the summary sums only positions whose value and cost are known."
+        description = "List all stock investments with ticker, company name, quantity, native average purchase price and current market price, plus value, cost basis, unrealized and realized gain and annual dividend in the user's main currency (`mainCurrency`). Amounts that cannot be converted are null and their currencies are listed in `missingCurrencies`; the summary's totalValue sums the known values, totalCostBasis the known costs, totalUnrealizedGain only the positions whose value and cost are both known, totalRealizedGain the known realized gains and annualDividends the dividends of positions with a known value."
     )]
     fn investments_list(&self) -> Result<CallToolResult, McpError> {
         to_result(self.db.with_conn(investments::investments_list))
@@ -395,7 +395,7 @@ impl MoonyMcp {
     }
 
     #[tool(
-        description = "List all cryptocurrency holdings with ticker, name, CoinGecko ID, quantity, native average purchase price and current market price, plus value, cost basis, unrealized and realized gain in the user's main currency (`mainCurrency`). Amounts that cannot be converted are null and their currencies are listed in `missingCurrencies`; the summary sums only positions whose value and cost are known."
+        description = "List all cryptocurrency holdings with ticker, name, CoinGecko ID, quantity, native average purchase price and current market price, plus value, cost basis, unrealized and realized gain in the user's main currency (`mainCurrency`). Amounts that cannot be converted are null and their currencies are listed in `missingCurrencies`; the summary's totalValue sums the known values, totalCostBasis the known costs, totalUnrealizedGain only the positions whose value and cost are both known and totalRealizedGain the known realized gains."
     )]
     fn crypto_list(&self) -> Result<CallToolResult, McpError> {
         to_result(self.db.with_conn(crypto::crypto_list))
@@ -513,7 +513,7 @@ impl MoonyMcp {
     }
 
     #[tool(
-        description = "Create a new insurance policy in Moony.\n\nCall this only after presenting the extracted data to the user and receiving their confirmation.\n\nValid values:\n- type: life | health | property | vehicle | travel | liability | accident | other\n- paymentFrequency: monthly | quarterly | semi_annually | annually | one_time\n- status: active | inactive (defaults to active)\n- Dates: Unix timestamps in seconds\n- Payments: numeric strings e.g. \"1200\"\n- Currencies: 3-letter ISO codes e.g. \"CZK\", \"EUR\", \"USD\"; a missing currency defaults to the user's main currency"
+        description = "Create a new insurance policy in Moony.\n\nCall this only after presenting the extracted data to the user and receiving their confirmation.\n\nValid values:\n- type: life | health | property | vehicle | travel | liability | accident | other\n- paymentFrequency: monthly | quarterly | semi_annually | annually | one_time\n- status: active | inactive (defaults to active)\n- Dates: Unix timestamps in seconds\n- Payments: numeric strings e.g. \"1200\"\n- Currencies: 3-letter ISO 4217 codes of the amount's own currency (amounts are stored as given, never converted); a missing currency defaults to the user's main currency"
     )]
     fn insurance_create(
         &self,
@@ -556,7 +556,7 @@ impl MoonyMcp {
     }
 
     #[tool(
-        description = "Get all stock investments with their current value, cost basis, gain/loss, realized gain and dividend yield. Amounts are in the user's main currency, given as `mainCurrency`; an amount that cannot be converted is null, its currency is listed in `missingCurrencies`, and the summary sums only positions whose value and cost are known."
+        description = "Get all stock investments with their current value, cost basis, gain/loss, realized gain and dividend yield. Amounts are in the user's main currency, given as `mainCurrency`; an amount that cannot be converted is null, its currency is listed in `missingCurrencies`, and the summary's totalValue sums the known values, totalCostBasis the known costs, totalGainLoss only the positions whose value and cost are both known, realizedGain the known realized gains and annualDividends the dividends of positions with a known value."
     )]
     fn stocks_analysis(&self) -> Result<CallToolResult, McpError> {
         to_result(self.db.with_conn(analytics::stocks_analysis))
@@ -820,10 +820,14 @@ impl ServerHandler for MoonyMcp {
                  confirmation first), and categorize bank payments. Each bank import call is \
                  recorded in the account's import history; bank_transactions_assign_import \
                  groups an earlier unrecorded import call, also only after confirmation. \
-                 Monetary values are in the \
-                 user's main currency (the `mainCurrency` field) unless a currency field says \
-                 otherwise; money amounts are decimal strings; dates are Unix timestamps in \
-                 seconds."
+                 Aggregate values are in the user's main currency (the `mainCurrency` field) \
+                 and list rows keep each record's own currency, unless a currency field says \
+                 otherwise. Money amounts are decimal strings at the currency's ISO 4217 \
+                 minor-unit precision (JPY 0 decimals, EUR 2, KWD 3). An amount that cannot \
+                 be converted is null and its currency is named in `missingCurrencies`; totals \
+                 leave such amounts out and are never valued 1:1. exchange_rates_list gives \
+                 the current rates against its explicit `baseCurrency`. Dates are Unix \
+                 timestamps in seconds."
                     .to_string(),
             )
     }

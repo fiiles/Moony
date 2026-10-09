@@ -362,7 +362,8 @@ fn current_values(
         other_assets: classes.other_assets.unwrap_or(0.0),
         total_assets: worth.total_assets,
         total_liabilities,
-        net_worth: worth.net_worth,
+        // Unconvertible classes already count as zero above, so an unknown net worth does too
+        net_worth: worth.net_worth.unwrap_or(0.0),
         loan_monthly_payment: total_monthly_payment,
         loan_interest_rate: weighted_loan_interest,
         savings_weighted_interest: weighted_interest,

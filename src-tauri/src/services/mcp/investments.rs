@@ -55,13 +55,10 @@ pub fn investments_list(conn: &Connection) -> Result<Value> {
     let mut stmt = conn.prepare(
         "SELECT si.id, si.ticker, si.company_name, si.quantity,
                 si.currency,
-                CASE WHEN spo.price IS NOT NULL AND (sd.fetched_at IS NULL OR sd.fetched_at <= spo.updated_at) THEN spo.price ELSE sd.original_price END AS current_price,
-                COALESCE(CASE WHEN spo.price IS NOT NULL AND (sd.fetched_at IS NULL OR sd.fetched_at <= spo.updated_at) THEN spo.currency ELSE sd.currency END, 'USD') AS price_currency,
                 sd.short_name, sd.sector, sd.industry, sd.pe_ratio, sd.market_cap, sd.beta,
                 sd.fifty_two_week_high, sd.fifty_two_week_low, sd.fetched_at
          FROM stock_investments si
          LEFT JOIN stock_data sd ON si.ticker = sd.ticker
-         LEFT JOIN stock_price_overrides spo ON si.ticker = spo.ticker
          ORDER BY si.company_name",
     )?;
     let rows: Vec<Value> = stmt.query_map([], |row| {
@@ -71,17 +68,15 @@ pub fn investments_list(conn: &Connection) -> Result<Value> {
             "companyName": row.get::<_, String>(2)?,
             "quantity": row.get::<_, String>(3)?,
             "currency": row.get::<_, String>(4)?,
-            "currentPrice": sql_to_json(row.get::<_, rusqlite::types::Value>(5).unwrap_or(rusqlite::types::Value::Null)),
-            "priceCurrency": row.get::<_, String>(6)?,
-            "shortName": sql_to_json(row.get::<_, rusqlite::types::Value>(7).unwrap_or(rusqlite::types::Value::Null)),
-            "sector": sql_to_json(row.get::<_, rusqlite::types::Value>(8).unwrap_or(rusqlite::types::Value::Null)),
-            "industry": sql_to_json(row.get::<_, rusqlite::types::Value>(9).unwrap_or(rusqlite::types::Value::Null)),
-            "peRatio": sql_to_json(row.get::<_, rusqlite::types::Value>(10).unwrap_or(rusqlite::types::Value::Null)),
-            "marketCap": sql_to_json(row.get::<_, rusqlite::types::Value>(11).unwrap_or(rusqlite::types::Value::Null)),
-            "beta": sql_to_json(row.get::<_, rusqlite::types::Value>(12).unwrap_or(rusqlite::types::Value::Null)),
-            "fiftyTwoWeekHigh": sql_to_json(row.get::<_, rusqlite::types::Value>(13).unwrap_or(rusqlite::types::Value::Null)),
-            "fiftyTwoWeekLow": sql_to_json(row.get::<_, rusqlite::types::Value>(14).unwrap_or(rusqlite::types::Value::Null)),
-            "priceFetchedAt": sql_to_json(row.get::<_, rusqlite::types::Value>(15).unwrap_or(rusqlite::types::Value::Null)),
+            "shortName": sql_to_json(row.get::<_, rusqlite::types::Value>(5).unwrap_or(rusqlite::types::Value::Null)),
+            "sector": sql_to_json(row.get::<_, rusqlite::types::Value>(6).unwrap_or(rusqlite::types::Value::Null)),
+            "industry": sql_to_json(row.get::<_, rusqlite::types::Value>(7).unwrap_or(rusqlite::types::Value::Null)),
+            "peRatio": sql_to_json(row.get::<_, rusqlite::types::Value>(8).unwrap_or(rusqlite::types::Value::Null)),
+            "marketCap": sql_to_json(row.get::<_, rusqlite::types::Value>(9).unwrap_or(rusqlite::types::Value::Null)),
+            "beta": sql_to_json(row.get::<_, rusqlite::types::Value>(10).unwrap_or(rusqlite::types::Value::Null)),
+            "fiftyTwoWeekHigh": sql_to_json(row.get::<_, rusqlite::types::Value>(11).unwrap_or(rusqlite::types::Value::Null)),
+            "fiftyTwoWeekLow": sql_to_json(row.get::<_, rusqlite::types::Value>(12).unwrap_or(rusqlite::types::Value::Null)),
+            "priceFetchedAt": sql_to_json(row.get::<_, rusqlite::types::Value>(13).unwrap_or(rusqlite::types::Value::Null)),
         }))
     })?.filter_map(|r| r.ok()).collect();
     let rows: Vec<Value> = rows
@@ -100,25 +95,20 @@ pub fn investment_detail(conn: &Connection, id: &str) -> Result<Value> {
     let positions = main_currency_positions(conn, AssetKind::Stock)?;
     let item = positions.items.iter().find(|item| item.investment_id == id);
     let inv = conn.query_row(
-        "SELECT si.id, si.ticker, si.company_name, si.quantity,
-                si.currency,
-                CASE WHEN spo.price IS NOT NULL AND (sd.fetched_at IS NULL OR sd.fetched_at <= spo.updated_at) THEN spo.price ELSE sd.original_price END AS current_price,
-                COALESCE(CASE WHEN spo.price IS NOT NULL AND (sd.fetched_at IS NULL OR sd.fetched_at <= spo.updated_at) THEN spo.currency ELSE sd.currency END, 'USD') AS price_currency
+        "SELECT si.id, si.ticker, si.company_name, si.quantity, si.currency
          FROM stock_investments si
-         LEFT JOIN stock_data sd ON si.ticker = sd.ticker
-         LEFT JOIN stock_price_overrides spo ON si.ticker = spo.ticker
          WHERE si.id = ?",
         [&id],
-        |row| Ok(serde_json::json!({
-            "id": row.get::<_, String>(0)?,
-            "ticker": row.get::<_, String>(1)?,
-            "companyName": row.get::<_, String>(2)?,
-            "quantity": row.get::<_, String>(3)?,
-            "averagePrice": "",
-            "currency": row.get::<_, String>(4)?,
-            "currentPrice": sql_to_json(row.get::<_, rusqlite::types::Value>(5).unwrap_or(rusqlite::types::Value::Null)),
-            "priceCurrency": row.get::<_, String>(6)?,
-        })),
+        |row| {
+            Ok(serde_json::json!({
+                "id": row.get::<_, String>(0)?,
+                "ticker": row.get::<_, String>(1)?,
+                "companyName": row.get::<_, String>(2)?,
+                "quantity": row.get::<_, String>(3)?,
+                "averagePrice": "",
+                "currency": row.get::<_, String>(4)?,
+            }))
+        },
     );
     match inv {
         Err(rusqlite::Error::QueryReturnedNoRows) => {

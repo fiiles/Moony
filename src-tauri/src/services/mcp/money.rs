@@ -153,6 +153,14 @@ mod tests {
     }
 
     #[test]
+    fn amounts_use_the_iso_minor_units_of_their_currency() {
+        assert_eq!(amount_json(Some(123.6), "JPY"), "124");
+        assert_eq!(amount_json(Some(0.1234), "KWD"), "0.123");
+        assert_eq!(amount_json(Some(1.005), "EUR"), "1.00");
+        assert!(amount_json(None, "JPY").is_null());
+    }
+
+    #[test]
     fn currency_or_main_keeps_a_given_code_and_fills_a_missing_one() {
         let conn = setup_db(Some("EUR"));
 

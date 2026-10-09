@@ -6,8 +6,13 @@ use rusqlite::Connection;
 use serde::Deserialize;
 use serde_json::Value;
 
+use std::collections::HashMap;
+
 use crate::error::Result;
+use crate::services::positions::{AssetKind, PositionValue};
 use crate::services::{crypto_investments as crypto_service, dedup};
+
+use super::money::{add_position_fields, main_currency_positions, positions_response};
 
 use super::{
     sql_to_json, ticker_value_history, BulkWriteReport, RowError, SkippedRow, MAX_BULK_ROWS,
@@ -33,13 +38,15 @@ pub struct CryptoValueHistoryArgs {
     pub end_date: Option<i64>,
 }
 
+/// Every crypto position with its native price and average cost plus the value, cost basis
+/// and gains in the user's main currency (the app's positions service and current snapshot).
 pub fn crypto_list(conn: &Connection) -> Result<Value> {
-    let (avg_map, _) = crate::services::cost_basis::cost_basis_for_all(
-        conn,
-        crate::services::cost_basis::TxTable::Crypto,
-        "CZK",
-        &crate::services::fx::current(),
-    )?;
+    let positions = main_currency_positions(conn, AssetKind::Crypto)?;
+    let by_id: HashMap<&str, &PositionValue> = positions
+        .items
+        .iter()
+        .map(|item| (item.investment_id.as_str(), item))
+        .collect();
     let mut stmt = conn.prepare(
         "SELECT ci.id, ci.ticker, ci.coingecko_id, ci.name, ci.quantity,
                 ci.currency,
@@ -62,22 +69,15 @@ pub fn crypto_list(conn: &Connection) -> Result<Value> {
         "priceCurrency": row.get::<_, String>(7)?,
         "priceFetchedAt": sql_to_json(row.get::<_, rusqlite::types::Value>(8).unwrap_or(rusqlite::types::Value::Null)),
     })))?.filter_map(|r| r.ok()).collect();
-    let rows = rows
+    let rows: Vec<Value> = rows
         .into_iter()
         .map(|mut v| {
-            let position = v["id"].as_str().and_then(|id| avg_map.get(id));
-            let avg = position
-                .map(|p| p.average_price_native().to_string())
-                .unwrap_or_else(|| "0".to_string());
-            v["averagePrice"] = serde_json::json!(avg);
-            // Currencies of buys that could not be converted and are left out of the average.
-            v["missingCurrencies"] = serde_json::json!(position
-                .map(|p| p.missing_currencies.clone())
-                .unwrap_or_default());
+            let item = v["id"].as_str().and_then(|id| by_id.get(id).copied());
+            add_position_fields(&mut v, item, &positions.currency);
             v
         })
         .collect();
-    Ok(Value::Array(rows))
+    Ok(positions_response(&positions, "crypto", rows))
 }
 
 pub fn crypto_transactions(conn: &Connection, ticker: Option<String>, limit: i64) -> Result<Value> {
@@ -838,5 +838,55 @@ mod value_history_tests {
 
         assert_eq!(result["mainCurrency"], "EUR");
         assert_eq!(result["history"], serde_json::json!([]));
+    }
+}
+
+#[cfg(test)]
+mod list_tests {
+    use super::*;
+
+    #[test]
+    fn crypto_list_values_positions_in_the_main_currency() {
+        let conn = Connection::open_in_memory().expect("db");
+        conn.execute_batch(
+            r#"
+            CREATE TABLE crypto_investments (id TEXT PRIMARY KEY, ticker TEXT, coingecko_id TEXT, name TEXT, quantity TEXT, currency TEXT NOT NULL);
+            CREATE TABLE crypto_prices (symbol TEXT PRIMARY KEY, price TEXT, currency TEXT, fetched_at INTEGER);
+            CREATE TABLE crypto_price_overrides (symbol TEXT PRIMARY KEY, price TEXT, currency TEXT, updated_at INTEGER);
+            CREATE TABLE crypto_transactions (id TEXT PRIMARY KEY, investment_id TEXT, type TEXT, ticker TEXT, name TEXT, quantity TEXT, price_per_unit TEXT, currency TEXT, transaction_date INTEGER, created_at INTEGER NOT NULL DEFAULT 0);
+            CREATE TABLE exchange_rate_history (date INTEGER NOT NULL, currency TEXT NOT NULL, rate REAL NOT NULL, PRIMARY KEY (date, currency));
+            CREATE TABLE user_profile (id INTEGER PRIMARY KEY AUTOINCREMENT, currency TEXT NOT NULL);
+            INSERT INTO user_profile (currency) VALUES ('EUR');
+            INSERT INTO exchange_rate_history VALUES (1699920000, 'USD', 25.0), (1699920000, 'EUR', 25.0);
+            INSERT INTO crypto_investments VALUES
+                ('c1', 'BTC', 'bitcoin', 'Bitcoin', '1', 'USD'),
+                ('c2', 'KWC', 'kwc', 'Kuwait Coin', '1', 'KWD');
+            INSERT INTO crypto_transactions (id, investment_id, type, ticker, name, quantity, price_per_unit, currency, transaction_date) VALUES
+                ('t1', 'c1', 'buy', 'BTC', 'Bitcoin', '1', '30000', 'USD', 1700000000),
+                ('t2', 'c2', 'buy', 'KWC', 'Kuwait Coin', '1', '10', 'KWD', 1700000000);
+            INSERT INTO crypto_prices VALUES ('BTC', '44000', 'USD', 100), ('KWC', '12', 'KWD', 100);
+            "#,
+        )
+        .expect("schema");
+        crate::services::fx::set_current_for_test(&[("USD", 25.0), ("EUR", 22.0)]);
+
+        let result = crypto_list(&conn).expect("list");
+
+        assert_eq!(result["mainCurrency"], "EUR");
+        let rows = result["crypto"].as_array().expect("rows");
+        let btc = rows.iter().find(|r| r["ticker"] == "BTC").expect("btc");
+        assert_eq!(btc["costBasis"], "30000.00");
+        assert_eq!(btc["value"], "50000.00");
+        assert_eq!(btc["unrealizedGain"], "20000.00");
+        assert!(btc.get("annualDividend").is_none());
+        // The unconvertible coin stays listed with its native price, its amounts null.
+        let kwc = rows.iter().find(|r| r["ticker"] == "KWC").expect("kwc");
+        assert_eq!(kwc["currentPrice"], "12");
+        assert!(kwc["value"].is_null());
+        assert!(kwc["costBasis"].is_null());
+        assert_eq!(kwc["missingCurrencies"], serde_json::json!(["KWD"]));
+        assert_eq!(result["summary"]["totalValue"], "50000.00");
+        assert!(result["summary"].get("annualDividends").is_none());
+        assert_eq!(result["missingCurrencies"], serde_json::json!(["KWD"]));
     }
 }

@@ -8,8 +8,14 @@ use rusqlite::Connection;
 use serde::Deserialize;
 use serde_json::Value;
 
-use super::money::MoneyContext;
+use std::collections::HashMap;
+
 use crate::error::Result;
+use crate::services::fx::Quality;
+use crate::services::positions::{self, AssetKind};
+use crate::services::reporting::money_in_currency;
+
+use super::money::{amount_json, main_currency_positions, percent_json};
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct CashflowArgs {
@@ -179,151 +185,67 @@ pub fn budgeting_report(
     }))
 }
 
-/// One stock holding as read from the DB (prices and dividends in their own currencies).
-struct StockRow {
-    id: String,
-    ticker: String,
-    company: String,
-    qty: f64,
-    curr_price: f64,
-    price_currency: String,
-    yearly_div: f64,
-    div_currency: String,
+/// Dividend in percent of the value; `None` unless both are known.
+fn dividend_yield(dividend: Option<f64>, value: Option<f64>) -> Option<f64> {
+    let (dividend, value) = dividend.zip(value)?;
+    Some(if value > 0.0 {
+        dividend / value * 100.0
+    } else {
+        0.0
+    })
 }
 
 pub fn stocks_analysis(conn: &Connection) -> Result<Value> {
-    // One MoneyContext per call: all arithmetic stays in CZK, converted to the
-    // main currency only when the response is built.
-    let ctx = MoneyContext::load(conn)?;
+    let positions = main_currency_positions(conn, AssetKind::Stock)?;
+    let currency = positions.currency.as_str();
+    let names: HashMap<String, String> = {
+        let mut stmt = conn.prepare("SELECT id, company_name FROM stock_investments")?;
+        let rows = stmt
+            .query_map([], |row| Ok((row.get(0)?, row.get(1)?)))?
+            .collect::<rusqlite::Result<_>>()?;
+        rows
+    };
 
-    let (cost_map, cost_quality) = crate::services::cost_basis::cost_basis_for_all(
-        conn,
-        crate::services::cost_basis::TxTable::Stocks,
-        "CZK",
-        &crate::services::fx::current(),
-    )?;
-    ctx.absorb(&cost_quality);
-
-    let mut stmt = conn.prepare(
-        "SELECT si.id, si.ticker, si.company_name, si.quantity,
-                COALESCE(spo.price, sd.original_price, '0') AS current_price,
-                COALESCE(spo.currency, sd.currency, 'USD') AS price_currency,
-                COALESCE(do2.yearly_dividend_sum, dd.yearly_dividend_sum, '0') AS yearly_dividend,
-                COALESCE(do2.currency, dd.currency, 'USD') AS dividend_currency
-         FROM stock_investments si
-         LEFT JOIN stock_data sd ON si.ticker = sd.ticker
-         LEFT JOIN stock_price_overrides spo ON si.ticker = spo.ticker
-         LEFT JOIN dividend_data dd ON si.ticker = dd.ticker
-         LEFT JOIN dividend_overrides do2 ON si.ticker = do2.ticker",
-    )?;
-
-    let rows: Vec<StockRow> = stmt
-        .query_map([], |row| {
-            Ok(StockRow {
-                id: row.get(0)?,
-                ticker: row.get(1)?,
-                company: row.get(2)?,
-                qty: row.get::<_, String>(3)?.parse().unwrap_or(0.0),
-                curr_price: row.get::<_, String>(4)?.parse().unwrap_or(0.0),
-                price_currency: row.get(5)?,
-                yearly_div: row.get::<_, String>(6)?.parse().unwrap_or(0.0),
-                div_currency: row.get(7)?,
+    // A row shows what is known; an amount that cannot be converted is null, and a row
+    // without a known value and cost is left out of the summary (its dividend with it).
+    let stocks: Vec<Value> = positions
+        .items
+        .iter()
+        .map(|item| {
+            serde_json::json!({
+                "id": item.investment_id,
+                "ticker": item.ticker,
+                "companyName": names.get(&item.investment_id),
+                "quantity": item.quantity,
+                "currentValue": amount_json(item.value, currency),
+                "costBasis": amount_json(item.cost_basis, currency),
+                "gainLoss": amount_json(item.unrealized_gain, currency),
+                "gainLossPct": percent_json(item.unrealized_gain_percent),
+                "realizedGain": amount_json(item.realized_gain, currency),
+                "annualDividend": amount_json(item.yearly_dividend, currency),
+                "dividendYieldPct": percent_json(dividend_yield(item.yearly_dividend, item.value)),
             })
-        })?
-        .filter_map(|r| r.ok())
+        })
         .collect();
 
-    // Amounts are converted to the user's main currency here, once, at
-    // serialisation time; ratios are currency-invariant.
-    let money = |czk: f64| ctx.money(czk);
-
-    let mut stocks: Vec<Value> = Vec::new();
-    let mut total_val_czk = 0.0_f64;
-    let mut total_gain_czk = 0.0_f64;
-    let mut total_div_czk = 0.0_f64;
-    for StockRow {
-        id,
-        ticker,
-        company,
-        qty,
-        curr_price,
-        price_currency,
-        yearly_div,
-        div_currency,
-    } in rows
-    {
-        let curr_val_czk = ctx.try_to_czk(qty * curr_price, &price_currency);
-        // Historical cost: every transaction at its own day's rate
-        // (ADR 0001) — never the stored scalar at today's rate.
-        let position = cost_map.get(&id);
-        let cost_complete = position.is_none_or(|p| p.missing_currencies.is_empty());
-        let cost_czk = position.map(|p| p.cost_basis_target).unwrap_or(0.0);
-        let div_czk = ctx.try_to_czk(qty * yearly_div, &div_currency);
-        // A row whose value or cost is not fully convertible is null and left out of the totals.
-        let valued = match curr_val_czk {
-            Some(value) if cost_complete => Some((value, value - cost_czk)),
-            _ => None,
-        };
-        let gain_pct = valued.map(|(_, gain)| {
-            if cost_czk > 0.0 {
-                (gain / cost_czk) * 100.0
-            } else {
-                0.0
-            }
-        });
-        let div_yield = match (valued, div_czk) {
-            (Some((value, _)), Some(div)) => Some(if value > 0.0 {
-                (div / value) * 100.0
-            } else {
-                0.0
-            }),
-            _ => None,
-        };
-        if let Some((value, gain)) = valued {
-            total_val_czk += value;
-            total_gain_czk += gain;
-        }
-        total_div_czk += div_czk.unwrap_or(0.0);
-        let amount = |czk: Option<f64>| czk.map_or(Value::Null, &money);
-        let pct = |p: Option<f64>| p.map_or(Value::Null, |p| serde_json::json!(format!("{p:.2}")));
-        stocks.push(serde_json::json!({
-            "id": id,
-            "ticker": ticker,
-            "companyName": company,
-            "quantity": qty,
-            "currentValue": amount(valued.map(|(value, _)| value)),
-            "costBasis": amount(valued.map(|_| cost_czk)),
-            "gainLoss": amount(valued.map(|(_, gain)| gain)),
-            "gainLossPct": pct(gain_pct),
-            "annualDividend": amount(div_czk),
-            "dividendYieldPct": pct(div_yield),
-        }));
-    }
-
-    let summary = serde_json::json!({
-        "totalValue": money(total_val_czk),
-        "totalGainLoss": money(total_gain_czk),
-        "annualDividends": money(total_div_czk),
-    });
+    let totals = positions::totals(&positions.items);
     Ok(serde_json::json!({
-        "mainCurrency": ctx.main_currency(),
-        "summary": summary,
+        "mainCurrency": currency,
+        "summary": {
+            "totalValue": money_in_currency(totals.value, currency),
+            "totalCostBasis": money_in_currency(totals.cost_basis, currency),
+            "totalGainLoss": money_in_currency(totals.unrealized_gain, currency),
+            "realizedGain": money_in_currency(totals.realized_gain, currency),
+            "annualDividends": money_in_currency(totals.yearly_dividend, currency),
+        },
         "stocks": stocks,
-        "missingCurrencies": ctx.missing_currencies(),
+        "missingCurrencies": positions.quality.missing_currencies(),
     }))
 }
 
 pub fn tag_metrics(conn: &Connection, tag_ids: Option<Vec<String>>) -> Result<Value> {
-    // One MoneyContext per call: all arithmetic stays in CZK, converted to the
-    // main currency only when the response is built.
-    let ctx = MoneyContext::load(conn)?;
-    let (cost_map, cost_quality) = crate::services::cost_basis::cost_basis_for_all(
-        conn,
-        crate::services::cost_basis::TxTable::Stocks,
-        "CZK",
-        &crate::services::fx::current(),
-    )?;
-    ctx.absorb(&cost_quality);
+    let positions = main_currency_positions(conn, AssetKind::Stock)?;
+    let currency = positions.currency.as_str();
 
     let tags: Vec<(String, String)> = if let Some(ref ids) = tag_ids {
         let placeholders = ids.iter().map(|_| "?").collect::<Vec<_>>().join(",");
@@ -332,102 +254,51 @@ pub fn tag_metrics(conn: &Connection, tag_ids: Option<Vec<String>>) -> Result<Va
             placeholders
         );
         let mut stmt = conn.prepare(&sql)?;
-        let p: Vec<Box<dyn rusqlite::ToSql>> = ids
-            .iter()
-            .map(|id| Box::new(id.to_string()) as Box<dyn rusqlite::ToSql>)
-            .collect();
-        let refs: Vec<&dyn rusqlite::ToSql> = p.iter().map(|x| x.as_ref()).collect();
         let result = stmt
-            .query_map(refs.as_slice(), |row| Ok((row.get(0)?, row.get(1)?)))?
-            .filter_map(|r| r.ok())
-            .collect();
+            .query_map(rusqlite::params_from_iter(ids.iter()), |row| {
+                Ok((row.get(0)?, row.get(1)?))
+            })?
+            .collect::<rusqlite::Result<_>>()?;
         result
     } else {
         let mut stmt = conn.prepare("SELECT id, name FROM stock_tags ORDER BY name")?;
         let result = stmt
             .query_map([], |row| Ok((row.get(0)?, row.get(1)?)))?
-            .filter_map(|r| r.ok())
-            .collect();
+            .collect::<rusqlite::Result<_>>()?;
         result
     };
+    let tag_map = positions::investment_tag_ids(conn)?;
+    let by_tag = positions::tag_totals(&positions, &tag_map);
 
-    // Amounts are converted to the user's main currency here, once, at
-    // serialisation time; ratios are currency-invariant.
-    let money = |czk: f64| ctx.money(czk);
-
+    let mut missing = Quality::default();
     let result: Vec<Value> = tags
         .iter()
-        .filter_map(|(tag_id, tag_name)| {
-            let stocks: Vec<(String, f64, f64, String, f64, String)> = {
-                let mut s = conn
-                    .prepare(
-                        "SELECT si.id, si.quantity, COALESCE(spo.price, sd.original_price, '0') AS cp,
-                                COALESCE(spo.currency, sd.currency, 'USD') AS cc,
-                                COALESCE(do2.yearly_dividend_sum, dd.yearly_dividend_sum, '0') AS yd,
-                                COALESCE(do2.currency, dd.currency, 'USD') AS dc
-                         FROM stock_investments si
-                         JOIN stock_investment_tags sit ON si.id = sit.investment_id
-                         LEFT JOIN stock_data sd ON si.ticker = sd.ticker
-                         LEFT JOIN stock_price_overrides spo ON si.ticker = spo.ticker
-                         LEFT JOIN dividend_data dd ON si.ticker = dd.ticker
-                         LEFT JOIN dividend_overrides do2 ON si.ticker = do2.ticker
-                         WHERE sit.tag_id = ?",
-                    )
-                    .ok()?;
-                let result = s
-                    .query_map([tag_id], |row| {
-                        Ok((
-                            row.get::<_, String>(0)?,
-                            row.get::<_, String>(1)?.parse::<f64>().unwrap_or(0.0),
-                            row.get::<_, String>(2)?.parse::<f64>().unwrap_or(0.0),
-                            row.get::<_, String>(3)?,
-                            row.get::<_, String>(4)?.parse::<f64>().unwrap_or(0.0),
-                            row.get::<_, String>(5)?,
-                        ))
-                    })
-                    .ok()?
-                    .filter_map(|r| r.ok())
-                    .collect();
-                result
-            };
-
-            let mut val = 0.0_f64;
-            let mut cost = 0.0_f64;
-            let mut div = 0.0_f64;
-            for (id, qty, cp, cc, yd, dc) in &stocks {
-                // A stock whose value or cost is not fully convertible is left out of the
-                // tag's value, cost and gain; its currencies are in `missingCurrencies`.
-                let position = cost_map.get(id);
-                if let Some(value) = ctx.try_to_czk(qty * cp, cc) {
-                    if position.is_none_or(|p| p.missing_currencies.is_empty()) {
-                        val += value;
-                        cost += position.map(|p| p.cost_basis_target).unwrap_or(0.0);
-                    }
-                }
-                div += ctx.to_czk(qty * yd, dc);
-            }
-            let gain = val - cost;
-            let gain_pct = if cost > 0.0 { (gain / cost) * 100.0 } else { 0.0 };
-            let div_yield = if val > 0.0 { (div / val) * 100.0 } else { 0.0 };
-
-            Some(serde_json::json!({
+        .map(|(tag_id, tag_name)| {
+            let totals = by_tag.get(tag_id).cloned().unwrap_or_default();
+            missing.merge(&totals.quality);
+            serde_json::json!({
                 "tagId": tag_id,
                 "tagName": tag_name,
-                "stockCount": stocks.len(),
-                "totalValue": money(val),
-                "costBasis": money(cost),
-                "gainLoss": money(gain),
-                "gainLossPct": format!("{:.2}", gain_pct),
-                "annualDividend": money(div),
-                "dividendYieldPct": format!("{:.2}", div_yield),
-            }))
+                "stockCount": totals.count,
+                "totalValue": money_in_currency(totals.value, currency),
+                "costBasis": money_in_currency(totals.cost_basis, currency),
+                "gainLoss": money_in_currency(totals.unrealized_gain, currency),
+                "gainLossPct": format!("{:.2}", totals.unrealized_gain_percent()),
+                "annualDividend": money_in_currency(totals.yearly_dividend, currency),
+                "dividendYieldPct": format!(
+                    "{:.2}",
+                    dividend_yield(Some(totals.yearly_dividend), Some(totals.value))
+                        .unwrap_or(0.0)
+                ),
+                "missingCurrencies": totals.quality.missing_currencies(),
+            })
         })
         .collect();
 
     Ok(serde_json::json!({
-        "mainCurrency": ctx.main_currency(),
+        "mainCurrency": currency,
         "tags": result,
-        "missingCurrencies": ctx.missing_currencies(),
+        "missingCurrencies": missing.missing_currencies(),
     }))
 }
 
@@ -485,13 +356,15 @@ mod tests {
             CREATE TABLE stock_data (
                 ticker TEXT PRIMARY KEY,
                 original_price TEXT,
-                currency TEXT
+                currency TEXT,
+                fetched_at INTEGER NOT NULL DEFAULT 100
             );
             CREATE TABLE stock_price_overrides (
                 id TEXT PRIMARY KEY,
                 ticker TEXT NOT NULL UNIQUE,
                 price TEXT NOT NULL,
-                currency TEXT NOT NULL DEFAULT 'CZK'
+                currency TEXT NOT NULL DEFAULT 'CZK',
+                updated_at INTEGER NOT NULL DEFAULT 0
             );
             CREATE TABLE dividend_data (
                 ticker TEXT PRIMARY KEY,
@@ -563,7 +436,8 @@ mod tests {
             INSERT INTO exchange_rates (currency, rate, fetched_at) VALUES
                 ('USD', 23.0, 0), ('EUR', 25.0, 0);
             INSERT INTO exchange_rate_history (date, currency, rate) VALUES
-                ({d1}, 'USD', 25.0), ({d2}, 'USD', 20.0);
+                ({d1}, 'USD', 25.0), ({d2}, 'USD', 20.0),
+                ({d1}, 'EUR', 25.0), ({d2}, 'EUR', 25.0);
             INSERT INTO stock_investments (id, ticker, company_name, quantity, currency)
                 VALUES ('inv-a', 'AAA', 'A Corp', '20', 'USD');
             INSERT INTO investment_transactions
@@ -585,7 +459,68 @@ mod tests {
             [main_currency],
         )
         .expect("profile");
+        // The current snapshot (C-A), mirroring `exchange_rates` above.
+        crate::services::fx::set_current_for_test(&[("USD", 23.0), ("EUR", 25.0)]);
         conn
+    }
+
+    /// C1 (ADR 0011): bought 10 x 100 USD when USDCZK = EURCZK = 25; today USDCZK 25 and
+    /// EURCZK 22. Only the exchange_rate_history and the current snapshot carry rates.
+    fn c1_db() -> Connection {
+        let conn = setup_db("EUR");
+        conn.execute_batch(&format!(
+            r#"
+            DELETE FROM exchange_rates;
+            DELETE FROM exchange_rate_history;
+            DELETE FROM investment_transactions;
+            DELETE FROM stock_investments;
+            DELETE FROM stock_data;
+            DELETE FROM dividend_data;
+            DELETE FROM stock_investment_tags;
+            INSERT INTO exchange_rate_history (date, currency, rate) VALUES
+                ({d1}, 'USD', 25.0), ({d1}, 'EUR', 25.0);
+            INSERT INTO stock_investments (id, ticker, company_name, quantity, currency)
+                VALUES ('inv-aapl', 'AAPL', 'Apple', '10', 'USD');
+            INSERT INTO investment_transactions
+                (id, investment_id, type, ticker, company_name, quantity, price_per_unit, currency, transaction_date)
+            VALUES ('t1', 'inv-aapl', 'buy', 'AAPL', 'Apple', '10', '100', 'USD', {d1});
+            INSERT INTO stock_data (ticker, original_price, currency) VALUES ('AAPL', '100', 'USD');
+            INSERT INTO stock_investment_tags (investment_id, tag_id) VALUES ('inv-aapl', 'tag-1');
+            "#,
+            d1 = D1,
+        ))
+        .expect("c1 seed");
+        crate::services::fx::set_current_for_test(&[("USD", 25.0), ("EUR", 22.0)]);
+        conn
+    }
+
+    #[test]
+    fn stocks_analysis_matches_the_positions_service_for_an_eur_investor() {
+        let conn = c1_db();
+
+        let result = stocks_analysis(&conn).expect("analysis");
+
+        assert_eq!(result["mainCurrency"], "EUR");
+        let aapl = &result["stocks"][0];
+        assert_eq!(aapl["ticker"], "AAPL");
+        assert_eq!(aapl["costBasis"], "1000.00");
+        assert_eq!(aapl["currentValue"], "1136.36");
+        assert_eq!(aapl["gainLoss"], "136.36");
+        assert_eq!(result["summary"]["totalGainLoss"], "136.36");
+        assert_eq!(result["missingCurrencies"], serde_json::json!([]));
+    }
+
+    #[test]
+    fn tag_metrics_match_the_positions_service_for_an_eur_investor() {
+        let conn = c1_db();
+
+        let result = tag_metrics(&conn, None).expect("tag metrics");
+
+        assert_eq!(result["mainCurrency"], "EUR");
+        let tag = &result["tags"][0];
+        assert_eq!(tag["costBasis"], "1000.00");
+        assert_eq!(tag["totalValue"], "1136.36");
+        assert_eq!(tag["gainLoss"], "136.36");
     }
 
     #[test]
@@ -615,14 +550,16 @@ mod tests {
         let stock = &result["stocks"][0];
         for field in [
             "currentValue",
-            "costBasis",
             "gainLoss",
             "gainLossPct",
             "dividendYieldPct",
         ] {
             assert!(stock[field].is_null(), "{field} must be null");
         }
-        // The row is left out of the totals and its currency is declared.
+        // The cost basis does not depend on the price currency.
+        assert_eq!(stock["costBasis"], "45000.00");
+        // The row is left out of the totals (its dividend too) and its currency is declared.
+        assert_eq!(result["summary"]["annualDividends"], "0.00");
         assert_eq!(result["summary"]["totalValue"], "0.00");
         assert_eq!(result["summary"]["totalGainLoss"], "0.00");
         assert_eq!(result["missingCurrencies"], serde_json::json!(["KWD"]));
@@ -644,8 +581,10 @@ mod tests {
         let stock = &result["stocks"][0];
         assert!(stock["costBasis"].is_null());
         assert!(stock["gainLoss"].is_null());
-        assert!(stock["currentValue"].is_null());
+        // The value is known: 21 × 110 USD × 23.
+        assert_eq!(stock["currentValue"], "53130.00");
         assert_eq!(result["summary"]["totalValue"], "0.00");
+        assert_eq!(result["summary"]["annualDividends"], "0.00");
         assert_eq!(result["missingCurrencies"], serde_json::json!(["KWD"]));
     }
 

@@ -3,17 +3,17 @@
 //! Aggregates are computed in CZK (the internal base currency) and converted
 //! into the user's main currency once, at serialisation time. A `MoneyContext`
 //! is loaded once per tool call so every amount in one response uses the same
-//! rates and the same main currency. An amount that cannot be converted is
+//! quote snapshot (the app's current quotes, as the UI commands) and the same
+//! main currency. An amount that cannot be converted is
 //! excluded from aggregates or emitted as `null`, and its currency is listed
 //! in the response's `missingCurrencies` (never relabelled or valued 1:1).
 
 use std::cell::RefCell;
-use std::collections::HashMap;
 
 use rusqlite::{Connection, OptionalExtension};
 
 use crate::error::Result;
-use crate::services::fx::{History, Quality, Quotes};
+use crate::services::fx::{self, History, Quality, Quotes};
 
 /// The user's main currency (`user_profile.currency`, trimmed and uppercased),
 /// CZK when there is no profile or its currency is blank. The MCP write tools
@@ -42,37 +42,113 @@ pub fn currency_or_main(conn: &Connection, currency: Option<&str>) -> Result<Str
     }
 }
 
+/// A converted amount as decimal text at the currency's ISO minor unit
+/// (`reporting::money_in_currency`), or JSON `null` when it is not known.
+pub fn amount_json(value: Option<f64>, currency: &str) -> serde_json::Value {
+    value.map_or(serde_json::Value::Null, |v| {
+        serde_json::json!(crate::services::reporting::money_in_currency(v, currency))
+    })
+}
+
+/// A ratio in percent with two decimals, or JSON `null` when it is not known.
+pub fn percent_json(value: Option<f64>) -> serde_json::Value {
+    value.map_or(serde_json::Value::Null, |p| {
+        serde_json::json!(format!("{p:.2}"))
+    })
+}
+
+/// Every position of `kind` in the user's main currency: the app's positions service with
+/// the app's current quote snapshot (C-A), so the assistant and the app agree.
+pub fn main_currency_positions(
+    conn: &Connection,
+    kind: crate::services::positions::AssetKind,
+) -> Result<crate::services::positions::Positions> {
+    let main = load_main_currency(conn)?;
+    crate::services::positions::value_positions(conn, kind, &main, chrono::Utc::now().timestamp())
+}
+
+/// Adds a position's native average cost and its main-currency figures to a list row.
+/// Unknown amounts are `null`; `missingCurrencies` names what this position could not convert.
+pub fn add_position_fields(
+    row: &mut serde_json::Value,
+    item: Option<&crate::services::positions::PositionValue>,
+    currency: &str,
+) {
+    let field = |f: fn(&crate::services::positions::PositionValue) -> Option<f64>| {
+        amount_json(item.and_then(f), currency)
+    };
+    row["averagePrice"] = serde_json::json!(
+        item.map_or_else(|| "0".to_string(), |item| item.average_price.to_string())
+    );
+    row["value"] = field(|i| i.value);
+    row["costBasis"] = field(|i| i.cost_basis);
+    row["unrealizedGain"] = field(|i| i.unrealized_gain);
+    row["unrealizedGainPct"] = percent_json(item.and_then(|i| i.unrealized_gain_percent));
+    row["realizedGain"] = field(|i| i.realized_gain);
+    if item.is_some_and(|i| i.dividend_per_share.is_some() || i.yearly_dividend.is_some()) {
+        row["annualDividend"] = field(|i| i.yearly_dividend);
+    }
+    row["missingCurrencies"] = serde_json::json!(item
+        .map(|i| i.quality.missing_currencies())
+        .unwrap_or_default());
+}
+
+/// A list response: `mainCurrency`, the rows under `key`, the totals of the positions whose
+/// value and cost are known, and every currency that could not be converted.
+pub fn positions_response(
+    positions: &crate::services::positions::Positions,
+    key: &str,
+    rows: Vec<serde_json::Value>,
+) -> serde_json::Value {
+    let currency = positions.currency.as_str();
+    let totals = crate::services::positions::totals(&positions.items);
+    let money = |v: f64| crate::services::reporting::money_in_currency(v, currency);
+    let mut summary = serde_json::json!({
+        "totalValue": money(totals.value),
+        "totalCostBasis": money(totals.cost_basis),
+        "totalUnrealizedGain": money(totals.unrealized_gain),
+        "totalRealizedGain": money(totals.realized_gain),
+    });
+    // Stocks pay dividends; crypto has none.
+    if positions.items.iter().any(|i| i.yearly_dividend.is_some()) {
+        summary["annualDividends"] = serde_json::json!(money(totals.yearly_dividend));
+    }
+    serde_json::json!({
+        "mainCurrency": currency,
+        key: rows,
+        "summary": summary,
+        "missingCurrencies": positions.quality.missing_currencies(),
+    })
+}
+
 pub struct MoneyContext {
     main: String,
-    /// Quotes from the `exchange_rates` table (reference CZK).
+    /// The request's quote snapshot: the app's current quotes (`fx::current()`), the same
+    /// source the UI commands use (C-A).
     quotes: Quotes,
     /// Currencies that could not be converted while building this response.
     quality: RefCell<Quality>,
 }
 
 impl MoneyContext {
-    /// Reads the stored exchange rates and the user's main currency
+    /// Captures the current quote snapshot and reads the user's main currency
     /// (`user_profile.currency`, falling back to CZK when there is no profile).
-    /// Unusable stored rows (not finite or not positive) are ignored.
     pub fn load(conn: &Connection) -> Result<MoneyContext> {
-        let rates: HashMap<String, f64> = {
-            let mut stmt = conn.prepare("SELECT currency, rate FROM exchange_rates")?;
-            let result = stmt
-                .query_map([], |row| {
-                    Ok((row.get::<_, String>(0)?, row.get::<_, f64>(1)?))
-                })?
-                .filter_map(|r| r.ok())
-                .collect();
-            result
-        };
+        Self::with_quotes(conn, fx::current())
+    }
 
-        let main = load_main_currency(conn)?;
-
+    /// Like `load`, with a snapshot the caller already captured for this request.
+    pub fn with_quotes(conn: &Connection, quotes: Quotes) -> Result<MoneyContext> {
         Ok(MoneyContext {
-            main,
-            quotes: Quotes::from_czk_per_unit(&rates),
+            main: load_main_currency(conn)?,
+            quotes,
             quality: RefCell::new(Quality::default()),
         })
+    }
+
+    /// The request's quote snapshot.
+    pub fn quotes(&self) -> &Quotes {
+        &self.quotes
     }
 
     /// The user's main currency (3-letter uppercase code).
@@ -198,6 +274,9 @@ mod tests {
             conn.execute("INSERT INTO user_profile (currency) VALUES (?1)", [c])
                 .expect("profile");
         }
+        // The current snapshot, not the table, is the source (C-A); unusable quotes are
+        // ignored by the snapshot.
+        crate::services::fx::set_current_for_test(&[("EUR", 25.0), ("USD", 20.0), ("ZMN1", 0.0)]);
         conn
     }
 
@@ -207,7 +286,7 @@ mod tests {
     }
 
     #[test]
-    fn eur_main_currency_converts_czk_by_the_stored_rate() {
+    fn eur_main_currency_converts_czk_by_the_current_snapshot() {
         let ctx = MoneyContext::load(&setup_db(Some("EUR"))).expect("load");
         assert_eq!(ctx.main_currency(), "EUR");
         approx(ctx.czk_to_main(2500.0), 100.0);
@@ -236,7 +315,7 @@ mod tests {
     }
 
     #[test]
-    fn to_czk_uses_the_table_rates() {
+    fn to_czk_uses_the_current_snapshot() {
         let ctx = MoneyContext::load(&setup_db(Some("EUR"))).expect("load");
         assert!((ctx.to_czk(10.0, "USD") - 200.0).abs() < 1e-9);
         assert!((ctx.to_czk(10.0, "EUR") - 250.0).abs() < 1e-9);
@@ -253,7 +332,7 @@ mod tests {
 
     #[test]
     fn main_without_a_table_rate_yields_null_and_is_reported() {
-        // JPY is not in the test table: no invented in-memory rate, no relabelled CZK.
+        // JPY is not in the snapshot: no invented rate, no relabelled CZK.
         let ctx = MoneyContext::load(&setup_db(Some("JPY"))).expect("load");
         assert_eq!(ctx.czk_to_main(1500.0), None);
         assert_eq!(ctx.money(1500.0), serde_json::Value::Null);

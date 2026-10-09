@@ -398,14 +398,14 @@ impl MoonyMcp {
     }
 
     #[tool(
-        description = "List all stock investments with ticker, company name, quantity, average purchase price, currency, and current market price."
+        description = "List all stock investments with ticker, company name, quantity, native average purchase price and current market price, plus value, cost basis, unrealized and realized gain and annual dividend in the user's main currency (`mainCurrency`). Amounts that cannot be converted are null and their currencies are listed in `missingCurrencies`; the summary sums only positions whose value and cost are known."
     )]
     fn investments_list(&self) -> Result<CallToolResult, McpError> {
         to_result(self.db.with_conn(investments::investments_list))
     }
 
     #[tool(
-        description = "Get full details for a specific stock investment including all its transactions."
+        description = "Get full details for a specific stock investment including all its transactions, with value, cost basis and gains in the user's main currency (`mainCurrency`)."
     )]
     fn investment_detail(
         &self,
@@ -445,7 +445,7 @@ impl MoonyMcp {
     }
 
     #[tool(
-        description = "List all cryptocurrency holdings with ticker, name, CoinGecko ID, quantity, average purchase price, and current market price."
+        description = "List all cryptocurrency holdings with ticker, name, CoinGecko ID, quantity, native average purchase price and current market price, plus value, cost basis, unrealized and realized gain in the user's main currency (`mainCurrency`). Amounts that cannot be converted are null and their currencies are listed in `missingCurrencies`; the summary sums only positions whose value and cost are known."
     )]
     fn crypto_list(&self) -> Result<CallToolResult, McpError> {
         to_result(self.db.with_conn(crypto::crypto_list))
@@ -606,7 +606,7 @@ impl MoonyMcp {
     }
 
     #[tool(
-        description = "Get all stock investments with their current value, gain/loss, dividend yield, and tag groupings. Amounts are in the user's main currency, given as `mainCurrency`."
+        description = "Get all stock investments with their current value, cost basis, gain/loss, realized gain and dividend yield. Amounts are in the user's main currency, given as `mainCurrency`; an amount that cannot be converted is null, its currency is listed in `missingCurrencies`, and the summary sums only positions whose value and cost are known."
     )]
     fn stocks_analysis(&self) -> Result<CallToolResult, McpError> {
         to_result(self.db.with_conn(analytics::stocks_analysis))

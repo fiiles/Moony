@@ -6,9 +6,13 @@ use rusqlite::Connection;
 use serde::Deserialize;
 use serde_json::Value;
 
+use std::collections::HashMap;
+
 use crate::error::Result;
 use crate::services::investments as investment_service;
+use crate::services::positions::{AssetKind, PositionValue};
 
+use super::money::{add_position_fields, main_currency_positions, positions_response};
 use super::{
     sql_to_json, ticker_value_history, BulkWriteReport, RowError, SkippedRow, MAX_BULK_ROWS,
 };
@@ -39,13 +43,15 @@ pub struct StockValueHistoryArgs {
     pub end_date: Option<i64>,
 }
 
+/// Every stock position with its native price and average cost plus the value, cost basis
+/// and gains in the user's main currency (the app's positions service and current snapshot).
 pub fn investments_list(conn: &Connection) -> Result<Value> {
-    let (avg_map, _) = crate::services::cost_basis::cost_basis_for_all(
-        conn,
-        crate::services::cost_basis::TxTable::Stocks,
-        "CZK",
-        &crate::services::fx::current(),
-    )?;
+    let positions = main_currency_positions(conn, AssetKind::Stock)?;
+    let by_id: HashMap<&str, &PositionValue> = positions
+        .items
+        .iter()
+        .map(|item| (item.investment_id.as_str(), item))
+        .collect();
     let mut stmt = conn.prepare(
         "SELECT si.id, si.ticker, si.company_name, si.quantity,
                 si.currency,
@@ -78,39 +84,21 @@ pub fn investments_list(conn: &Connection) -> Result<Value> {
             "priceFetchedAt": sql_to_json(row.get::<_, rusqlite::types::Value>(15).unwrap_or(rusqlite::types::Value::Null)),
         }))
     })?.filter_map(|r| r.ok()).collect();
-    let rows = rows
+    let rows: Vec<Value> = rows
         .into_iter()
         .map(|mut v| {
-            let position = v["id"].as_str().and_then(|id| avg_map.get(id));
-            let avg = position
-                .map(|p| p.average_price_native().to_string())
-                .unwrap_or_else(|| "0".to_string());
-            v["averagePrice"] = serde_json::json!(avg);
-            // Currencies of buys that could not be converted and are left out of the average.
-            v["missingCurrencies"] = serde_json::json!(position
-                .map(|p| p.missing_currencies.clone())
-                .unwrap_or_default());
+            let item = v["id"].as_str().and_then(|id| by_id.get(id).copied());
+            add_position_fields(&mut v, item, &positions.currency);
             v
         })
         .collect();
-    Ok(Value::Array(rows))
+    Ok(positions_response(&positions, "investments", rows))
 }
 
 pub fn investment_detail(conn: &Connection, id: &str) -> Result<Value> {
     let id = id.to_string();
-    let (positions, _) = crate::services::cost_basis::cost_basis_for_all(
-        conn,
-        crate::services::cost_basis::TxTable::Stocks,
-        "CZK",
-        &crate::services::fx::current(),
-    )?;
-    let position = positions.get(&id);
-    let derived_avg = position
-        .map(|p| p.average_price_native().to_string())
-        .unwrap_or_else(|| "0".to_string());
-    let missing_currencies = position
-        .map(|p| p.missing_currencies.clone())
-        .unwrap_or_default();
+    let positions = main_currency_positions(conn, AssetKind::Stock)?;
+    let item = positions.items.iter().find(|item| item.investment_id == id);
     let inv = conn.query_row(
         "SELECT si.id, si.ticker, si.company_name, si.quantity,
                 si.currency,
@@ -138,8 +126,8 @@ pub fn investment_detail(conn: &Connection, id: &str) -> Result<Value> {
         }
         Err(e) => Err(e.into()),
         Ok(mut obj) => {
-            obj["averagePrice"] = serde_json::json!(derived_avg);
-            obj["missingCurrencies"] = serde_json::json!(missing_currencies);
+            add_position_fields(&mut obj, item, &positions.currency);
+            obj["mainCurrency"] = serde_json::json!(positions.currency);
             let txs: Vec<Value> = {
                 let mut s = conn.prepare(
                     "SELECT id, type, ticker, company_name, quantity, price_per_unit,
@@ -800,16 +788,34 @@ mod value_history_tests {
 mod list_missing_currency_tests {
     use super::*;
 
-    #[test]
-    fn investments_list_declares_currencies_left_out_of_the_average() {
+    fn list_db(main_currency: &str) -> Connection {
         let conn = Connection::open_in_memory().expect("db");
         conn.execute_batch(
             r#"
             CREATE TABLE stock_investments (id TEXT PRIMARY KEY, ticker TEXT, company_name TEXT, quantity TEXT, currency TEXT);
             CREATE TABLE stock_data (ticker TEXT PRIMARY KEY, original_price TEXT, currency TEXT, short_name TEXT, sector TEXT, industry TEXT, pe_ratio TEXT, market_cap TEXT, beta TEXT, fifty_two_week_high TEXT, fifty_two_week_low TEXT, fetched_at INTEGER);
             CREATE TABLE stock_price_overrides (ticker TEXT PRIMARY KEY, price TEXT, currency TEXT, updated_at INTEGER);
+            CREATE TABLE dividend_data (ticker TEXT PRIMARY KEY, yearly_dividend_sum TEXT, currency TEXT);
+            CREATE TABLE dividend_overrides (ticker TEXT PRIMARY KEY, yearly_dividend_sum TEXT, currency TEXT);
             CREATE TABLE investment_transactions (id TEXT PRIMARY KEY, investment_id TEXT, type TEXT, ticker TEXT, company_name TEXT, quantity TEXT, price_per_unit TEXT, currency TEXT, transaction_date INTEGER, created_at INTEGER NOT NULL DEFAULT 0);
             CREATE TABLE exchange_rate_history (date INTEGER NOT NULL, currency TEXT NOT NULL, rate REAL NOT NULL, PRIMARY KEY (date, currency));
+            CREATE TABLE user_profile (id INTEGER PRIMARY KEY AUTOINCREMENT, currency TEXT NOT NULL);
+            "#,
+        )
+        .expect("schema");
+        conn.execute(
+            "INSERT INTO user_profile (currency) VALUES (?1)",
+            [main_currency],
+        )
+        .expect("profile");
+        conn
+    }
+
+    #[test]
+    fn investments_list_declares_currencies_left_out_of_the_average() {
+        let conn = list_db("CZK");
+        conn.execute_batch(
+            r#"
             INSERT INTO exchange_rate_history VALUES (1699920000, 'USD', 20.0);
             INSERT INTO stock_investments VALUES ('a', 'AAA', 'A', '2', 'USD'), ('b', 'BBB', 'B', '1', 'USD');
             INSERT INTO investment_transactions (id, investment_id, type, ticker, company_name, quantity, price_per_unit, currency, transaction_date) VALUES
@@ -818,15 +824,51 @@ mod list_missing_currency_tests {
                 ('t3', 'b', 'buy', 'BBB', 'B', '1', '10', 'USD', 1700000000);
             "#,
         )
-        .expect("schema");
+        .expect("seed");
 
         let result = investments_list(&conn).expect("list");
 
-        let rows = result.as_array().expect("array");
+        let rows = result["investments"].as_array().expect("array");
         let a = rows.iter().find(|r| r["id"] == "a").expect("a");
         let b = rows.iter().find(|r| r["id"] == "b").expect("b");
         assert_eq!(a["missingCurrencies"], serde_json::json!(["KWD"]));
         assert_eq!(a["averagePrice"], "100");
+        assert!(a["costBasis"].is_null());
         assert_eq!(b["missingCurrencies"], serde_json::json!([]));
+        assert_eq!(b["costBasis"], "200.00");
+        assert_eq!(result["missingCurrencies"], serde_json::json!(["KWD"]));
+    }
+
+    #[test]
+    fn investments_list_values_positions_in_the_main_currency() {
+        // C1: bought 10 x 100 USD when USDCZK = EURCZK = 25; today USDCZK 25, EURCZK 22.
+        let conn = list_db("EUR");
+        conn.execute_batch(
+            r#"
+            INSERT INTO exchange_rate_history VALUES (1699920000, 'USD', 25.0), (1699920000, 'EUR', 25.0);
+            INSERT INTO stock_investments VALUES ('a', 'AAPL', 'Apple', '10', 'USD');
+            INSERT INTO investment_transactions (id, investment_id, type, ticker, company_name, quantity, price_per_unit, currency, transaction_date) VALUES
+                ('t1', 'a', 'buy', 'AAPL', 'Apple', '10', '100', 'USD', 1700000000);
+            INSERT INTO stock_data (ticker, original_price, currency, fetched_at) VALUES ('AAPL', '100', 'USD', 100);
+            INSERT INTO dividend_data VALUES ('AAPL', '1', 'USD');
+            "#,
+        )
+        .expect("seed");
+        crate::services::fx::set_current_for_test(&[("USD", 25.0), ("EUR", 22.0)]);
+
+        let result = investments_list(&conn).expect("list");
+
+        assert_eq!(result["mainCurrency"], "EUR");
+        let aapl = &result["investments"][0];
+        assert_eq!(aapl["currentPrice"], "100");
+        assert_eq!(aapl["priceCurrency"], "USD");
+        assert_eq!(aapl["costBasis"], "1000.00");
+        assert_eq!(aapl["value"], "1136.36");
+        assert_eq!(aapl["unrealizedGain"], "136.36");
+        assert_eq!(aapl["unrealizedGainPct"], "13.64");
+        assert_eq!(aapl["annualDividend"], "11.36");
+        assert_eq!(result["summary"]["totalValue"], "1136.36");
+        assert_eq!(result["summary"]["annualDividends"], "11.36");
+        assert_eq!(result["missingCurrencies"], serde_json::json!([]));
     }
 }

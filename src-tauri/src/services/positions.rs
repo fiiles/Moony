@@ -131,6 +131,23 @@ pub fn tag_totals(
     by_tag
 }
 
+/// The tag ids of every tagged stock investment (`stock_investment_tags`), keyed by
+/// investment id: the `tag_map` of `tag_totals`.
+pub fn investment_tag_ids(conn: &Connection) -> Result<HashMap<String, Vec<String>>> {
+    let mut stmt = conn.prepare(
+        "SELECT investment_id, tag_id FROM stock_investment_tags ORDER BY investment_id, tag_id",
+    )?;
+    let rows = stmt.query_map([], |row| {
+        Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+    })?;
+    let mut map: HashMap<String, Vec<String>> = HashMap::new();
+    for row in rows {
+        let (investment_id, tag_id) = row?;
+        map.entry(investment_id).or_default().push(tag_id);
+    }
+    Ok(map)
+}
+
 /// A stock's yearly dividend per share in its own currency.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ResolvedDividend {

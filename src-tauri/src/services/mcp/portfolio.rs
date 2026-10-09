@@ -413,6 +413,8 @@ mod tests {
             [main_currency],
         )
         .expect("profile");
+        // The MCP converts with the app's current snapshot (C-A), mirroring the table above.
+        crate::services::fx::set_current_for_test(&[("EUR", 25.0), ("USD", 20.0)]);
         conn
     }
 

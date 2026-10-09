@@ -76,7 +76,10 @@ checksums). Optional structured bank codes can complete domestic identifiers; mi
 codes are never guessed. Other identifiers stay verbatim; incomplete bare domestic and
 opaque foreign routing values cannot establish an own-transfer identity. Expense credits are negative
 expenses (refunds), income debits are negative income (reversals); `signed_flow_amount`
-keeps these signs. Investment, financing, adjustment and transfer retain separate roles.
+keeps these signs. There are three roles: income, expense and transfer (money moved between
+the user's own pots: investing, saving, account transfers). What the money is lives in the
+category; the role only decides how it counts (migration 010 collapsed the former investment,
+financing and adjustment roles into transfer).
 
 ## Bootstrap & Auth
 
@@ -115,13 +118,13 @@ Fat command files hold logic that belongs in services (link, don't fix):
 
 See `docs/DEPRECATED.md` for patterns not to copy.
 
-Actual cashflow and budgeting use `services/reporting.rs` for the same booked ledger rows, dynamic own-account recognition, explicit flow overrides, signed refunds/reversals and strict recorded historical FX. Missing FX rows remain visible with null CZK contribution and quality counts; they do not enter numeric totals. SQL read failures are errors. Report account scope is independent of portfolio exclusion. `netBalance` describes ordinary income less expense; `bankCashMovement` additionally includes signed transfer, investment, financing and adjustment flows. Cashflow exposes these separated flows for both totals and individual months.
+Actual cashflow and budgeting use `services/reporting.rs` for the same booked ledger rows, dynamic own-account recognition, explicit flow overrides, signed refunds/reversals and strict recorded historical FX. Missing FX rows remain visible with null CZK contribution and quality counts; they do not enter numeric totals. SQL read failures are errors. Report account scope is independent of portfolio exclusion. `netBalance` describes ordinary income less expense; `bankCashMovement` additionally includes signed transfers. Cashflow reports one calendar period (month, quarter or year) and groups income, expenses and transfers by category; uncategorized rows form their own group per role. Its chart window is the twelve months ending with the period's last month.
 
-Observed completed months are a sample, not evidence of full statement coverage. Cashflow averages exclude partial/unobserved months and months with missing FX; the response names the actual average sample months. Current partial 6/12-month ranges compare to equally partial calendar periods; YTD compares the same calendar date in the previous year, clamping February 29 to February 28. Planning remains a monthly/yearly equivalent estimate with its as-of date and current-FX quality; it uses loan amortization to omit repaid/expired loans and supports explicit replacement sources. Portfolio currency conversion helpers retain their existing policy.
+Observed completed months are a sample, not evidence of full statement coverage. Cashflow averages exclude partial/unobserved months and months with missing FX; the response names the actual average sample months. There is no comparison period. Planning remains a monthly/yearly equivalent estimate with its as-of date and current-FX quality; it uses loan amortization to omit repaid/expired loans and supports explicit replacement sources. Portfolio currency conversion helpers retain their existing policy.
 
 ## Money flow review
 
-The account ledger uses server filters and stable pages, while native summaries and balance estimates traverse every page and exclude pending or foreign-unit rows. Transaction details retain statement provenance and use the server effective-flow resolver. Cashflow and budgets share account scope, historical CZK contributions, quality notes and counted drilldowns. Display conversion to a known profile currency uses the current cached rate; unsupported display currencies fall back visibly to CZK.
+The account ledger uses server filters and stable pages, while native summaries and balance estimates traverse every page and exclude pending or foreign-unit rows. Transaction details retain statement provenance and use the server effective-flow resolver. Cashflow and budgets share account scope, the period control, historical report-currency contributions, quality notes and counted drilldowns. The drilldown dialog recategorizes rows in place: it keeps the list it opened with (its query sits outside the refresh keys) and marks rows that left the line as moved while the report refreshes. Display conversion to a known profile currency uses the current cached rate; unsupported display currencies fall back visibly to CZK.
 
 `src/lib/money-flow-refresh.ts` refreshes transaction/report/goal/drilldown domains and records a portfolio snapshot after writes, including external bank events. Category assignment awaits persistence. Learning is a separate opt-in for one account and direction, committed before changing engine memory; accepting a suggestion or picking a CSV category alone learns nothing. New scoped rows coexist with clearly labeled legacy broad learned rules.
 

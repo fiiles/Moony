@@ -127,6 +127,9 @@ pub struct BankTransactionsCreateArgs {
     #[serde(rename = "accountId")]
     #[schemars(description = "The bank account ID to import into (see bank_accounts_list)")]
     pub account_id: String,
+    #[serde(rename = "fileName", default)]
+    #[schemars(description = "Original statement file name for import history; omit when unknown")]
+    pub file_name: Option<String>,
     #[schemars(length(max = MAX_BULK_ROWS))]
     pub transactions: Vec<BankTransactionRow>,
 }
@@ -161,7 +164,8 @@ fn row_to_insert(account_id: &str, row: &BankTransactionRow) -> InsertBankTransa
 /// Two-phase bulk create. Phase 1 (no writes): account exists, every row
 /// validates, every referenced category exists — any failure returns the full
 /// error list with created == 0. Phase 2: one SQL transaction; duplicate rows
-/// are skipped and reported; everything else is inserted; commit.
+/// are skipped and reported; new rows belong to a recorded import batch;
+/// pending promotions retain the existing row's ownership; commit.
 ///
 /// Rows that arrive without a `categoryId` are categorized by the app's own
 /// deterministic layers just before the INSERT (spec D1/D2), stamped with
@@ -206,7 +210,7 @@ pub fn bank_transactions_create(
             }
         }
     }
-    if !errors.is_empty() {
+    if !errors.is_empty() || args.transactions.is_empty() {
         return Ok(BulkWriteReport {
             promoted: 0,
             created: 0,
@@ -224,6 +228,23 @@ pub fn bank_transactions_create(
             .map(|r| r.transaction_id.as_deref()),
     );
     let tx = conn.transaction()?;
+    let batch_id = uuid::Uuid::new_v4().to_string();
+    let file_name = args
+        .file_name
+        .as_deref()
+        .map(str::trim)
+        .filter(|name| !name.is_empty())
+        .unwrap_or("MCP");
+    let dates = args.transactions.iter().map(|r| r.booking_date);
+    let period = dates.clone().min().zip(dates.max());
+    crate::services::csv_import::insert_batch(
+        &tx,
+        &batch_id,
+        &args.account_id,
+        file_name,
+        period,
+        None,
+    )?;
     let mut promoted = 0usize;
     let mut created = 0usize;
     let mut skipped: Vec<SkippedRow> = Vec::new();
@@ -252,18 +273,17 @@ pub fn bank_transactions_create(
             _ => {}
         }
         let categorization_source = bank_service::enrich_with_rules(&tx, &mut insert, engine)?;
-        // data_source stays "manual" (what create_transaction has always
-        // written for this tool) — only the categorization provenance is new.
         let created_transaction = bank_service::create_transaction_with_origin(
             &tx,
             &insert,
-            "manual",
-            None,
+            "api_sync",
+            Some(&batch_id),
             categorization_source,
         )?;
         checker.record_written(&insert, &created_transaction.id);
         created += 1;
     }
+    crate::services::csv_import::finish_batch(&tx, &batch_id, created, skipped.len(), 0, promoted)?;
     tx.commit()?;
 
     Ok(BulkWriteReport {
@@ -447,6 +467,160 @@ pub fn bank_transactions_categorize(
     })
 }
 
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct BankTransactionsAssignImportArgs {
+    #[serde(rename = "accountId")]
+    #[schemars(description = "The bank account the transactions belong to")]
+    pub account_id: String,
+    #[serde(rename = "fileName", default)]
+    #[schemars(description = "Name for the import history record; omit to use MCP")]
+    pub file_name: Option<String>,
+    #[serde(rename = "transactionIds")]
+    #[schemars(
+        description = "Ids of existing transactions of this account that belong to no import",
+        length(max = MAX_BULK_ROWS)
+    )]
+    pub transaction_ids: Vec<String>,
+}
+
+/// Rows of one pre-batching MCP call were written in one SQL transaction, so
+/// their `created_at` values lie within this window.
+const ASSIGN_COHORT_SECONDS: i64 = 60;
+
+/// Records one import history entry for transactions written by a single MCP
+/// import call before such calls were batched. Their origin cannot be
+/// inferred safely, so only explicitly named rows qualify, and only rows that
+/// look like one such call: unowned, `manual` data source, one account and
+/// `created_at` within one minute. Phase 1 rejects anything else (nothing is
+/// written); phase 2 creates the record (named `MCP …`, dated at the original
+/// write) and links the rows in one SQL transaction. Deleting the record then
+/// removes exactly these rows.
+pub fn bank_transactions_assign_import(
+    conn: &mut rusqlite::Connection,
+    args: &BankTransactionsAssignImportArgs,
+) -> Result<BulkWriteReport> {
+    super::check_bulk_size(args.transaction_ids.len())?;
+    let account_exists = conn
+        .query_row(
+            "SELECT 1 FROM bank_accounts WHERE id = ?1",
+            [&args.account_id],
+            |_| Ok(()),
+        )
+        .optional()?;
+    if account_exists.is_none() {
+        return Err(AppError::NotFound(format!(
+            "Bank account not found: {}",
+            args.account_id
+        )));
+    }
+
+    let mut errors: Vec<RowError> = Vec::new();
+    let mut seen = std::collections::HashSet::new();
+    let mut found_rows: Vec<(usize, i64, i64)> = Vec::new();
+    for (i, id) in args.transaction_ids.iter().enumerate() {
+        if !seen.insert(id.as_str()) {
+            errors.push(RowError {
+                index: i,
+                message: format!("duplicate transaction id {id}"),
+            });
+            continue;
+        }
+        type Found = (String, Option<String>, String, i64, i64);
+        let found: Option<Found> = conn
+            .query_row(
+                "SELECT bank_account_id, import_batch_id, data_source, booking_date, created_at FROM bank_transactions WHERE id = ?1",
+                [id],
+                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?)),
+            )
+            .optional()?;
+        let message = match found {
+            None => format!("Transaction not found: {id}"),
+            Some((account, ..)) if account != args.account_id => {
+                format!("Transaction {id} belongs to another account")
+            }
+            Some((_, Some(_), ..)) => format!("Transaction {id} already belongs to an import"),
+            Some((_, None, source, ..)) if source != "manual" => {
+                format!("Transaction {id} was not written by an earlier MCP import ({source})")
+            }
+            Some((_, None, _, booking_date, created_at)) => {
+                found_rows.push((i, booking_date, created_at));
+                continue;
+            }
+        };
+        errors.push(RowError { index: i, message });
+    }
+    // One earlier import call = one cohort. Rows created at another time
+    // (for example typed in the app) are rejected rather than swept along.
+    // The spread is reported on every row: no row is presumed the stray one.
+    let created = found_rows.iter().map(|r| r.2);
+    if let (Some(first), Some(last)) = (created.clone().min(), created.max()) {
+        if last - first > ASSIGN_COHORT_SECONDS {
+            for &(i, ..) in &found_rows {
+                errors.push(RowError {
+                    index: i,
+                    message: format!(
+                        "the listed transactions were created {} s apart; one earlier import \
+                         call wrote its rows within {ASSIGN_COHORT_SECONDS} s — group ids by \
+                         createdAt and assign each call separately",
+                        last - first
+                    ),
+                });
+            }
+        }
+    }
+    if !errors.is_empty() || args.transaction_ids.is_empty() {
+        errors.sort_by_key(|e| e.index);
+        return Ok(BulkWriteReport {
+            promoted: 0,
+            created: 0,
+            skipped_duplicates: vec![],
+            errors,
+        });
+    }
+
+    let label = args
+        .file_name
+        .as_deref()
+        .map(str::trim)
+        .filter(|name| !name.is_empty());
+    // The record cannot pose as a CSV upload: it always reads as MCP.
+    let file_name = label.map_or_else(|| "MCP".to_string(), |name| format!("MCP · {name}"));
+    let booking = found_rows.iter().map(|r| r.1);
+    let period = booking.clone().min().zip(booking.max());
+    let imported_at = found_rows.iter().map(|r| r.2).max();
+
+    let tx = conn.transaction()?;
+    let batch_id = uuid::Uuid::new_v4().to_string();
+    crate::services::csv_import::insert_batch(
+        &tx,
+        &batch_id,
+        &args.account_id,
+        &file_name,
+        period,
+        imported_at,
+    )?;
+    for id in &args.transaction_ids {
+        let linked = tx.execute(
+            "UPDATE bank_transactions SET import_batch_id = ?1
+             WHERE id = ?2 AND bank_account_id = ?3 AND import_batch_id IS NULL",
+            rusqlite::params![batch_id, id, args.account_id],
+        )?;
+        if linked != 1 {
+            return Err(AppError::Validation(format!(
+                "Transaction {id} changed during assignment; nothing was written"
+            )));
+        }
+    }
+    crate::services::csv_import::finish_batch(&tx, &batch_id, found_rows.len(), 0, 0, 0)?;
+    tx.commit()?;
+    Ok(BulkWriteReport {
+        promoted: 0,
+        created: found_rows.len(),
+        skipped_duplicates: vec![],
+        errors: vec![],
+    })
+}
+
 pub fn bank_transactions(
     conn: &Connection,
     account_id: &str,
@@ -558,6 +732,7 @@ mod tests {
     fn integrity_mcp_occurrences_reimport_and_pending_promotion_counts() {
         let mut conn = setup_test_db();
         let make_args = |rows| BankTransactionsCreateArgs {
+            file_name: None,
             account_id: "acc-1".into(),
             transactions: rows,
         };
@@ -585,6 +760,12 @@ mod tests {
                 .created,
             1
         );
+        let original = crate::services::csv_import::import_batches(&conn, "acc-1")
+            .unwrap()
+            .into_iter()
+            .find(|b| b.linked_count == 1)
+            .unwrap();
+        assert_eq!(original.file_name, "MCP");
         pending.status = Some("booked".into());
         pending.amount = "101".into();
         let args = make_args(vec![pending]);
@@ -598,6 +779,21 @@ mod tests {
             (0, 1, 0)
         );
         assert_eq!(tx_count(&conn), 3);
+        let promoted_batch = crate::services::csv_import::import_batches(&conn, "acc-1")
+            .unwrap()
+            .into_iter()
+            .find(|b| b.promoted_count == 1)
+            .unwrap();
+        assert_eq!(promoted_batch.linked_count, 0);
+        assert_eq!(
+            crate::services::csv_import::delete_import_batch(&conn, &promoted_batch.id).unwrap(),
+            0
+        );
+        assert_eq!(
+            crate::services::csv_import::delete_import_batch(&conn, &original.id).unwrap(),
+            1
+        );
+        assert_eq!(tx_count(&conn), 2);
     }
 
     #[test]
@@ -607,6 +803,7 @@ mod tests {
         let mut incoming = row("debit", "99", 1767225600, Some("coffee"));
         incoming.transaction_id = Some(" FIO-123 ".into());
         let args = BankTransactionsCreateArgs {
+            file_name: None,
             account_id: "acc-1".into(),
             transactions: vec![incoming],
         };
@@ -692,6 +889,19 @@ mod tests {
                 created_at INTEGER NOT NULL DEFAULT 0
             );
 
+            CREATE TABLE csv_import_batches (
+                id TEXT PRIMARY KEY,
+                bank_account_id TEXT NOT NULL REFERENCES bank_accounts(id),
+                file_name TEXT NOT NULL,
+                imported_count INTEGER NOT NULL DEFAULT 0,
+                duplicate_count INTEGER NOT NULL DEFAULT 0,
+                error_count INTEGER NOT NULL DEFAULT 0,
+                promoted_count INTEGER NOT NULL DEFAULT 0,
+                imported_at INTEGER NOT NULL DEFAULT (unixepoch()),
+                date_from INTEGER,
+                date_to INTEGER
+            );
+
             CREATE TABLE bank_transactions (
                 id TEXT PRIMARY KEY,
                 bank_account_id TEXT NOT NULL REFERENCES bank_accounts(id) ON DELETE CASCADE,
@@ -711,7 +921,7 @@ mod tests {
                 status TEXT NOT NULL DEFAULT 'booked',
                 data_source TEXT NOT NULL DEFAULT 'manual',
                 created_at INTEGER NOT NULL DEFAULT 0,
-                import_batch_id TEXT,
+                import_batch_id TEXT REFERENCES csv_import_batches(id) ON DELETE CASCADE,
                 categorization_source TEXT,
                 flow_kind TEXT,
                 UNIQUE(bank_account_id, transaction_id)
@@ -758,9 +968,245 @@ mod tests {
     }
 
     #[test]
+    fn mcp_import_history_supports_scoped_deletion_and_duplicate_only_records() {
+        use crate::services::csv_import::{delete_import_batch, import_batches};
+        let mut conn = setup_test_db();
+        conn.execute_batch("PRAGMA foreign_keys=ON;").unwrap();
+        bank_service::create_transaction(
+            &conn,
+            &row_to_insert("acc-1", &row("credit", "5", 1700000000, Some("manual"))),
+        )
+        .unwrap();
+        let args = serde_json::from_value(serde_json::json!({
+            "accountId": "acc-1", "fileName": " statement.csv ",
+            "transactions": [
+                {"transactionId": "one", "type": "debit", "amount": "10", "bookingDate": 1700000200},
+                {"transactionId": "two", "type": "credit", "amount": "20", "bookingDate": 1700000100}
+            ]
+        })).unwrap();
+        assert_eq!(
+            bank_transactions_create(&mut conn, &args, None)
+                .unwrap()
+                .created,
+            2
+        );
+        let batches = import_batches(&conn, "acc-1").unwrap();
+        assert_eq!(
+            batches.len(),
+            1,
+            "MCP import must appear in account history"
+        );
+        let batch = &batches[0];
+        assert_eq!(batch.file_name, "statement.csv");
+        assert_eq!((batch.imported_count, batch.linked_count), (2, 2));
+        let range = batch.date_range.as_ref().unwrap();
+        assert_eq!((range.from, range.to), (1700000100, 1700000200));
+        let owned: i64 = conn.query_row("SELECT COUNT(*) FROM bank_transactions WHERE import_batch_id=?1 AND data_source='api_sync'", [&batch.id], |r| r.get(0)).unwrap();
+        assert_eq!(owned, 2);
+
+        let repeat = bank_transactions_create(&mut conn, &args, None).unwrap();
+        assert_eq!((repeat.created, repeat.skipped_duplicates.len()), (0, 2));
+        let repeated = import_batches(&conn, "acc-1")
+            .unwrap()
+            .into_iter()
+            .find(|b| b.id != batch.id)
+            .unwrap();
+        assert_eq!((repeated.linked_count, repeated.duplicate_count), (0, 2));
+        assert_eq!(delete_import_batch(&conn, &repeated.id).unwrap(), 0);
+        assert_eq!(delete_import_batch(&conn, &batch.id).unwrap(), 2);
+        assert_eq!(tx_count(&conn), 1, "manual transaction must survive");
+    }
+
+    #[test]
+    fn mcp_import_batch_rolls_back_on_write_failure() {
+        let mut conn = setup_test_db();
+        conn.execute_batch("CREATE TRIGGER reject_second BEFORE INSERT ON bank_transactions WHEN NEW.amount='20' BEGIN SELECT RAISE(ABORT, 'fixture rejection'); END;").unwrap();
+        let args = serde_json::from_value(serde_json::json!({
+            "accountId": "acc-1", "transactions": [
+                {"type": "debit", "amount": "10", "bookingDate": 1700000000},
+                {"type": "debit", "amount": "20", "bookingDate": 1700000100}
+            ]
+        }))
+        .unwrap();
+        assert!(bank_transactions_create(&mut conn, &args, None).is_err());
+        assert_eq!(tx_count(&conn), 0);
+        assert!(crate::services::csv_import::import_batches(&conn, "acc-1")
+            .unwrap()
+            .is_empty());
+    }
+
+    #[test]
+    fn empty_mcp_import_leaves_history_empty() {
+        let mut conn = setup_test_db();
+        let args = BankTransactionsCreateArgs {
+            account_id: "acc-1".into(),
+            file_name: None,
+            transactions: vec![],
+        };
+        let report = bank_transactions_create(&mut conn, &args, None).unwrap();
+        assert_eq!(report.created, 0);
+        assert!(crate::services::csv_import::import_batches(&conn, "acc-1")
+            .unwrap()
+            .is_empty());
+    }
+
+    fn legacy_row(conn: &Connection, description: &str, booking_date: i64) -> String {
+        bank_service::create_transaction(
+            conn,
+            &row_to_insert(
+                "acc-1",
+                &row("debit", "10", booking_date, Some(description)),
+            ),
+        )
+        .unwrap()
+        .id
+    }
+
+    fn assign_args(ids: &[&str]) -> BankTransactionsAssignImportArgs {
+        BankTransactionsAssignImportArgs {
+            account_id: "acc-1".into(),
+            file_name: None,
+            transaction_ids: ids.iter().map(|id| id.to_string()).collect(),
+        }
+    }
+
+    /// Rows imported before MCP recorded batches are assigned only by explicit
+    /// ids; deleting the new history record then removes exactly those rows.
+    #[test]
+    fn assign_import_links_named_legacy_rows_for_scoped_deletion() {
+        use crate::services::csv_import::{delete_import_batch, import_batches};
+        let mut conn = setup_test_db();
+        conn.execute_batch("PRAGMA foreign_keys=ON;").unwrap();
+        let first = legacy_row(&conn, "first", 1700000200);
+        let second = legacy_row(&conn, "second", 1700000100);
+        let keep = legacy_row(&conn, "keep", 1700000300);
+        let mut args = assign_args(&[&first, &second]);
+        args.file_name = Some(" 2026-08-20 statement ".into());
+        conn.execute(
+            "UPDATE bank_transactions SET created_at = 1787220667 + (id = ?1)",
+            [&first],
+        )
+        .unwrap();
+        let report = bank_transactions_assign_import(&mut conn, &args).unwrap();
+        assert_eq!((report.created, report.errors.len()), (2, 0));
+        let batches = import_batches(&conn, "acc-1").unwrap();
+        assert_eq!(batches.len(), 1);
+        let batch = &batches[0];
+        assert_eq!(batch.file_name, "MCP · 2026-08-20 statement");
+        // Dated at the original write, not at assignment.
+        assert_eq!(batch.imported_at, 1787220668);
+        assert_eq!((batch.imported_count, batch.linked_count), (2, 2));
+        let range = batch.date_range.as_ref().unwrap();
+        assert_eq!((range.from, range.to), (1700000100, 1700000200));
+        assert_eq!(delete_import_batch(&conn, &batch.id).unwrap(), 2);
+        assert_eq!(tx_count(&conn), 1);
+        let survivor: String = conn
+            .query_row("SELECT id FROM bank_transactions", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(survivor, keep);
+    }
+
+    #[test]
+    fn assign_import_rejects_unsafe_ids_without_writing() {
+        use crate::services::csv_import::import_batches;
+        let mut conn = setup_test_db();
+        conn.execute(
+            "INSERT INTO bank_accounts (id, name, currency, created_at, updated_at) VALUES ('acc-2', 'Other', 'CZK', 0, 0)",
+            [],
+        )
+        .unwrap();
+        let legacy = legacy_row(&conn, "legacy", 1700000000);
+        let other = bank_service::create_transaction(
+            &conn,
+            &row_to_insert("acc-2", &row("debit", "10", 1700000000, Some("other"))),
+        )
+        .unwrap()
+        .id;
+        let imported: BankTransactionsCreateArgs = serde_json::from_value(serde_json::json!({
+            "accountId": "acc-1",
+            "transactions": [{"type": "debit", "amount": "7", "bookingDate": 1700000000}]
+        }))
+        .unwrap();
+        bank_transactions_create(&mut conn, &imported, None).unwrap();
+        let owned: String = conn
+            .query_row(
+                "SELECT id FROM bank_transactions WHERE import_batch_id IS NOT NULL",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        let report = bank_transactions_assign_import(
+            &mut conn,
+            &assign_args(&[&legacy, &legacy, "ghost", &other, &owned]),
+        )
+        .unwrap();
+        assert_eq!(report.created, 0);
+        let rejected: Vec<usize> = report.errors.iter().map(|e| e.index).collect();
+        assert_eq!(rejected, vec![1, 2, 3, 4]);
+        assert_eq!(import_batches(&conn, "acc-1").unwrap().len(), 1);
+        let unbatched: Option<String> = conn
+            .query_row(
+                "SELECT import_batch_id FROM bank_transactions WHERE id=?1",
+                [&legacy],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert!(unbatched.is_none(), "valid row must not be linked either");
+    }
+
+    /// Only one earlier MCP call qualifies: rows typed in the app later, or
+    /// rows from a CSV upload, are rejected instead of being swept along.
+    #[test]
+    fn assign_import_rejects_rows_outside_one_earlier_mcp_call() {
+        use crate::services::csv_import::import_batches;
+        let mut conn = setup_test_db();
+        let mcp = legacy_row(&conn, "mcp", 1700000000);
+        let typed_later = legacy_row(&conn, "typed", 1700000100);
+        let csv = legacy_row(&conn, "csv", 1700000200);
+        conn.execute_batch(&format!(
+            "UPDATE bank_transactions SET created_at = 1787220667;
+             UPDATE bank_transactions SET created_at = 1787220667 + 61 WHERE id = '{typed_later}';
+             UPDATE bank_transactions SET data_source = 'csv_import' WHERE id = '{csv}';"
+        ))
+        .unwrap();
+        let report =
+            bank_transactions_assign_import(&mut conn, &assign_args(&[&mcp, &typed_later, &csv]))
+                .unwrap();
+        let rejected: Vec<usize> = report.errors.iter().map(|e| e.index).collect();
+        assert_eq!((report.created, rejected), (0, vec![0, 1, 2]));
+        assert!(report.errors[0].message.contains("61 s apart"));
+        assert!(import_batches(&conn, "acc-1").unwrap().is_empty());
+        let spaced = format!(" {mcp} ");
+        let report = bank_transactions_assign_import(&mut conn, &assign_args(&[&spaced])).unwrap();
+        assert_eq!(report.errors.len(), 1, "ids must match exactly");
+        assert_eq!(
+            bank_transactions_assign_import(&mut conn, &assign_args(&[&mcp]))
+                .unwrap()
+                .created,
+            1
+        );
+    }
+
+    #[test]
+    fn assign_import_requires_a_known_account_and_ignores_empty_requests() {
+        use crate::services::csv_import::import_batches;
+        let mut conn = setup_test_db();
+        let mut unknown = assign_args(&[]);
+        unknown.account_id = "no-such-account".into();
+        assert!(matches!(
+            bank_transactions_assign_import(&mut conn, &unknown).unwrap_err(),
+            AppError::NotFound(_)
+        ));
+        let report = bank_transactions_assign_import(&mut conn, &assign_args(&[])).unwrap();
+        assert_eq!(report.created, 0);
+        assert!(import_batches(&conn, "acc-1").unwrap().is_empty());
+    }
+
+    #[test]
     fn create_rejects_unknown_account() {
         let mut conn = setup_test_db();
         let args = BankTransactionsCreateArgs {
+            file_name: None,
             account_id: "no-such-account".into(),
             transactions: vec![row("debit", "10", 1700000000, None)],
         };
@@ -780,6 +1226,7 @@ mod tests {
             transactions.push(row("debit", "10", 1_700_000_000 + i as i64, None));
         }
         let args = BankTransactionsCreateArgs {
+            file_name: None,
             account_id: "acc-1".into(),
             transactions,
         };
@@ -806,6 +1253,7 @@ mod tests {
         let mut bad_category = row("credit", "50", 1700000300, Some("salary"));
         bad_category.category_id = Some("ghost-cat".into());
         let args = BankTransactionsCreateArgs {
+            file_name: None,
             account_id: "acc-1".into(),
             transactions: vec![
                 row("banana", "10", 1700000000, None), // invalid type
@@ -821,6 +1269,9 @@ mod tests {
         assert_eq!(report.errors[1].index, 2);
         assert!(report.errors[1].message.contains("ghost-cat"));
         assert_eq!(tx_count(&conn), 0, "good row must not be inserted either");
+        assert!(crate::services::csv_import::import_batches(&conn, "acc-1")
+            .unwrap()
+            .is_empty());
     }
 
     #[test]
@@ -831,6 +1282,7 @@ mod tests {
         let mut with_currency = row("debit", "30", 1700000100, Some("lunch"));
         with_currency.currency = Some("EUR".into());
         let args = BankTransactionsCreateArgs {
+            file_name: None,
             account_id: "acc-1".into(),
             transactions: vec![
                 row("debit", "10", 1700000000, Some("groceries")),
@@ -858,6 +1310,7 @@ mod tests {
     fn create_consumes_stored_duplicates_and_preserves_new_occurrences() {
         let mut conn = setup_test_db();
         let first = BankTransactionsCreateArgs {
+            file_name: None,
             account_id: "acc-1".into(),
             transactions: vec![row("debit", "10", 1700000000, Some("groceries"))],
         };
@@ -869,6 +1322,7 @@ mod tests {
         );
 
         let second = BankTransactionsCreateArgs {
+            file_name: None,
             account_id: "acc-1".into(),
             transactions: vec![
                 row("debit", "10", 1700000000, Some("groceries")), // dup of existing
@@ -890,6 +1344,7 @@ mod tests {
         let mut with_id = row("debit", "10", 1700000000, Some("groceries"));
         with_id.transaction_id = Some("FIO-123".into());
         let first = BankTransactionsCreateArgs {
+            file_name: None,
             account_id: "acc-1".into(),
             transactions: vec![with_id],
         };
@@ -904,6 +1359,7 @@ mod tests {
         let mut same_id = row("credit", "9999", 1800000000, Some("looks different"));
         same_id.transaction_id = Some("FIO-123".into());
         let second = BankTransactionsCreateArgs {
+            file_name: None,
             account_id: "acc-1".into(),
             transactions: vec![same_id],
         };
@@ -918,6 +1374,7 @@ mod tests {
     fn create_stores_lowercase_so_reimport_matches() {
         let mut conn = setup_test_db();
         let first = BankTransactionsCreateArgs {
+            file_name: None,
             account_id: "acc-1".into(),
             transactions: vec![row("DEBIT", "10", 1700000000, Some("groceries"))],
         };
@@ -934,6 +1391,7 @@ mod tests {
 
         // Re-import of the same row in canonical lowercase must be caught.
         let second = BankTransactionsCreateArgs {
+            file_name: None,
             account_id: "acc-1".into(),
             transactions: vec![row("debit", "10", 1700000000, Some("groceries"))],
         };
@@ -951,6 +1409,7 @@ mod tests {
         let mut r2 = row("debit", "20", 1700000100, Some("lunch"));
         r2.transaction_id = Some("".into());
         let args = BankTransactionsCreateArgs {
+            file_name: None,
             account_id: "acc-1".into(),
             transactions: vec![r1, r2],
         };
@@ -982,6 +1441,7 @@ mod tests {
         let mut second = row("debit", "99", 1700000000, Some("coffee"));
         second.transaction_id = Some("FIO-2".into());
         let args = BankTransactionsCreateArgs {
+            file_name: None,
             account_id: "acc-1".into(),
             transactions: vec![first, second],
         };
@@ -995,6 +1455,7 @@ mod tests {
     fn create_flags_identical_rows_without_ids_as_possible_duplicates() {
         let mut conn = setup_test_db();
         let args = BankTransactionsCreateArgs {
+            file_name: None,
             account_id: "acc-1".into(),
             transactions: vec![
                 row("debit", "99", 1700000000, Some("coffee")),
@@ -1028,6 +1489,7 @@ mod tests {
         let mut repeat = row("debit", "99", 1700000000, Some("coffee"));
         repeat.import_anyway = Some(true);
         let args = BankTransactionsCreateArgs {
+            file_name: None,
             account_id: "acc-1".into(),
             transactions: vec![row("debit", "99", 1700000000, Some("coffee")), repeat],
         };
@@ -1043,6 +1505,7 @@ mod tests {
         let report = bank_transactions_create(
             &mut conn,
             &BankTransactionsCreateArgs {
+                file_name: None,
                 account_id: "acc-1".into(),
                 transactions: vec![again],
             },
@@ -1061,6 +1524,7 @@ mod tests {
         bank_transactions_create(
             &mut conn,
             &BankTransactionsCreateArgs {
+                file_name: None,
                 account_id: "acc-1".into(),
                 transactions: vec![stored],
             },
@@ -1074,6 +1538,7 @@ mod tests {
         let report = bank_transactions_create(
             &mut conn,
             &BankTransactionsCreateArgs {
+                file_name: None,
                 account_id: "acc-1".into(),
                 transactions: vec![resent],
             },
@@ -1121,6 +1586,7 @@ mod tests {
         let mut explicit = row("debit", "30", 1700000200, Some("Albert explicit"));
         explicit.category_id = Some("cat-1".into());
         let args = BankTransactionsCreateArgs {
+            file_name: None,
             account_id: "acc-1".into(),
             transactions: vec![
                 row("debit", "10", 1700000000, Some("Platba kartou Albert")),
@@ -1152,6 +1618,7 @@ mod tests {
     fn create_without_an_engine_leaves_everything_uncategorized() {
         let mut conn = setup_test_db();
         let args = BankTransactionsCreateArgs {
+            file_name: None,
             account_id: "acc-1".into(),
             transactions: vec![row("debit", "10", 1700000000, Some("Platba kartou Albert"))],
         };
@@ -1172,6 +1639,7 @@ mod tests {
         let mut conn = setup_test_db();
         let engine = engine_with_albert_rule("cat-deleted");
         let args = BankTransactionsCreateArgs {
+            file_name: None,
             account_id: "acc-1".into(),
             transactions: vec![row("debit", "10", 1700000000, Some("Platba kartou Albert"))],
         };
@@ -1218,6 +1686,7 @@ mod tests {
         let mut conn = setup_test_db();
         let engine = engine_with_albert_rule("cat-1");
         let args = BankTransactionsCreateArgs {
+            file_name: None,
             account_id: "acc-1".into(),
             transactions: vec![
                 row("debit", "10", 1700000000, Some("Platba kartou Albert")),
@@ -1255,6 +1724,7 @@ mod tests {
         let mut conn = setup_test_db();
         let engine = engine_with_albert_rule("cat-1");
         let args = BankTransactionsCreateArgs {
+            file_name: None,
             account_id: "acc-1".into(),
             transactions: vec![
                 row("debit", "10", 1700000000, Some("Platba kartou Albert")),

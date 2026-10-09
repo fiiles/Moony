@@ -459,9 +459,13 @@ pub fn import_transactions(
         }
     }
     let tx = conn.transaction()?;
-    tx.execute(
-        "INSERT INTO csv_import_batches (id, bank_account_id, file_name, imported_count, duplicate_count, error_count,date_from,date_to) VALUES (?1, ?2, ?3, 0, 0, 0,?4,?5)",
-        rusqlite::params![batch_id, account_id, file_name,statement_range.map(|r|r.from),statement_range.map(|r|r.to)],
+    insert_batch(
+        &tx,
+        &batch_id,
+        account_id,
+        file_name,
+        statement_range.map(|r| (r.from, r.to)),
+        None,
     )?;
 
     for row in &parsed.rows {
@@ -547,17 +551,13 @@ pub fn import_transactions(
         }
     }
 
-    // `duplicate_count` of the batch = rows NOT imported because they were
-    // duplicates; newly inserted and promoted rows have separate counters.
-    tx.execute(
-        "UPDATE csv_import_batches SET imported_count = ?1, duplicate_count = ?2, error_count = ?3, promoted_count = ?5 WHERE id = ?4",
-        rusqlite::params![
-            imported_count as i64,
-            skipped_duplicates.len() as i64,
-            errors.len() as i64,
-            batch_id,
-            promoted_count as i64
-        ],
+    finish_batch(
+        &tx,
+        &batch_id,
+        imported_count,
+        skipped_duplicates.len(),
+        errors.len(),
+        promoted_count,
     )?;
     tx.commit()?;
 
@@ -601,6 +601,55 @@ fn statement_balance(
         line: row.line,
         batch_id: batch_id.into(),
     })
+}
+
+/// Opens one import history record (CSV upload or MCP bank import). Every
+/// writer goes through this pair so the batch columns have one definition.
+/// `imported_at` defaults to now; counters start at zero until `finish_batch`.
+pub fn insert_batch(
+    conn: &Connection,
+    batch_id: &str,
+    account_id: &str,
+    file_name: &str,
+    period: Option<(i64, i64)>,
+    imported_at: Option<i64>,
+) -> Result<()> {
+    conn.execute(
+        "INSERT INTO csv_import_batches (id, bank_account_id, file_name, imported_count, duplicate_count, error_count, date_from, date_to, imported_at)
+         VALUES (?1, ?2, ?3, 0, 0, 0, ?4, ?5, COALESCE(?6, unixepoch()))",
+        rusqlite::params![
+            batch_id,
+            account_id,
+            file_name,
+            period.map(|p| p.0),
+            period.map(|p| p.1),
+            imported_at
+        ],
+    )?;
+    Ok(())
+}
+
+/// `duplicate_count` = rows NOT imported because they were duplicates; newly
+/// inserted and promoted rows have separate counters.
+pub fn finish_batch(
+    conn: &Connection,
+    batch_id: &str,
+    imported: usize,
+    duplicates: usize,
+    errors: usize,
+    promoted: usize,
+) -> Result<()> {
+    conn.execute(
+        "UPDATE csv_import_batches SET imported_count = ?1, duplicate_count = ?2, error_count = ?3, promoted_count = ?4 WHERE id = ?5",
+        rusqlite::params![
+            imported as i64,
+            duplicates as i64,
+            errors as i64,
+            promoted as i64,
+            batch_id
+        ],
+    )?;
+    Ok(())
 }
 
 pub fn import_batches(conn: &Connection, account_id: &str) -> Result<Vec<types::CsvImportBatch>> {

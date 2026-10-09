@@ -62,7 +62,7 @@
     "title": "Měna",
     "description": "Zvolte měnu pro souhrny, přehledy majetku a reporty.",
     "example": "příklad {{example}}",
-    "noRateHint": "Směnné kurzy se aktualizují automaticky jen u měn, které zveřejňuje ECB. Ostatní měny (např. AED nebo SAR) kurz nemají, takže součty, které je obsahují, nejsou přesné.",
+    "unsupportedMain": "Vaše hlavní měna nemá zdroj kurzu. Součty v různých měnách nejde převést — zvolte podporovanou hlavní měnu.",
     "main": "Hlavní měna",
     "mainHint": "Souhrny, přehledy majetku a reporty se zobrazují v této měně:",
     "nativeHint": "Zadané částky účtů, transakcí, smluv a rozpočtů si ponechávají svou původní měnu."

@@ -1,9 +1,9 @@
 /**
  * Sensible defaults for the first-run wizard, derived from the system locale
  */
-import { CURRENCIES, type CurrencyCode } from '@shared/currencies';
+import { CURRENCIES, isFxSupported, type CurrencyCode } from '@shared/currencies';
 
-/** ISO 3166-1 alpha-2 region → default display currency (supported currencies only). */
+/** ISO 3166-1 alpha-2 region → local currency; `defaultCurrencyForRegion` maps unsupported ones to a rate-backed code. */
 const REGION_CURRENCY: Record<string, CurrencyCode> = {
   CZ: 'CZK',
   US: 'USD',
@@ -23,7 +23,7 @@ const REGION_CURRENCY: Record<string, CurrencyCode> = {
   PL: 'PLN',
   HU: 'HUF',
   RO: 'RON',
-  BG: 'BGN',
+  BG: 'EUR', // the euro since 2026-01-01
   IS: 'ISK',
   TR: 'TRY',
   IN: 'INR',
@@ -47,7 +47,7 @@ const REGION_CURRENCY: Record<string, CurrencyCode> = {
   TW: 'TWD',
   UA: 'UAH',
   VN: 'VND',
-  RS: 'RSD',
+  RS: 'EUR', // RSD has no rate source; the euro is the practical reference
   BH: 'BHD',
   OM: 'OMR',
   PA: 'USD',
@@ -97,16 +97,26 @@ export function regionFromLocale(locale: string | undefined | null): string | nu
   }
 }
 
-/** Default display currency for a region; EUR for the euro area, else `fallback`. */
+/**
+ * Default main currency for a region. Always a currency with an exchange-rate
+ * source: a region whose own currency has none gets EUR in the euro area and
+ * USD elsewhere; `fallback` (EUR by default) applies to unknown regions and is
+ * itself replaced by USD when unsupported.
+ */
 export function defaultCurrencyForRegion(
   region: string | null | undefined,
   fallback: CurrencyCode = 'EUR'
 ): CurrencyCode {
-  if (!region) return fallback;
+  const safeFallback: CurrencyCode = isFxSupported(fallback) ? fallback : 'USD';
+  if (!region) return safeFallback;
   const upper = region.toUpperCase();
-  if (REGION_CURRENCY[upper]) return REGION_CURRENCY[upper];
+  const local = REGION_CURRENCY[upper];
+  if (local) {
+    if (isFxSupported(local)) return local;
+    return EURO_REGIONS.includes(upper) ? 'EUR' : 'USD';
+  }
   if (EURO_REGIONS.includes(upper)) return 'EUR';
-  return fallback;
+  return safeFallback;
 }
 
 /**

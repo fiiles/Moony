@@ -5,6 +5,7 @@
 
 use crate::db::Database;
 use crate::error::{AppError, Result};
+use crate::models::user::{validate_main_currency, DEFAULT_MAIN_CURRENCY};
 use crate::models::{InsertUserProfile, MenuPreferences, UpdateUserProfile, UserProfile};
 use crate::services::crypto;
 use std::fs;
@@ -85,6 +86,7 @@ pub fn setup_account(
     password: &str,
 ) -> Result<String> {
     validate_password(password)?;
+    data.validate()?;
 
     let data_dir = db_path
         .parent()
@@ -119,7 +121,8 @@ pub fn setup_account(
         .menu_preferences
         .unwrap_or_else(MenuPreferences::all_enabled);
     let menu_prefs_json = serde_json::to_string(&menu_prefs)?;
-    let currency = data.currency.unwrap_or_else(|| "CZK".to_string());
+    let currency =
+        validate_main_currency(data.currency.as_deref().unwrap_or(DEFAULT_MAIN_CURRENCY))?;
     let language = data.language.unwrap_or_else(|| "en".to_string());
     let exclude_re = data.exclude_personal_real_estate.unwrap_or(false);
 
@@ -208,6 +211,7 @@ pub fn confirm_setup(
     prepared: &PreparedSetup,
 ) -> Result<UserProfile> {
     validate_password(password)?;
+    data.validate()?;
 
     let data_dir = db_path
         .parent()
@@ -251,7 +255,8 @@ pub fn confirm_setup(
         .menu_preferences
         .unwrap_or_else(MenuPreferences::all_enabled);
     let menu_prefs_json = serde_json::to_string(&menu_prefs)?;
-    let currency = data.currency.unwrap_or_else(|| "CZK".to_string());
+    let currency =
+        validate_main_currency(data.currency.as_deref().unwrap_or(DEFAULT_MAIN_CURRENCY))?;
     let language = data.language.unwrap_or_else(|| "en".to_string());
     let exclude_re = data.exclude_personal_real_estate.unwrap_or(false);
 
@@ -448,71 +453,75 @@ pub fn get_user_profile(db: &Database) -> Result<Option<UserProfile>> {
 
 /// Update user profile
 pub fn update_user_profile(db: &Database, updates: UpdateUserProfile) -> Result<UserProfile> {
-    db.with_conn(|conn| {
-        let mut set_clauses = Vec::new();
-        let mut params: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
-
-        if let Some(ref name) = updates.name {
-            set_clauses.push("name = ?".to_string());
-            params.push(Box::new(name.clone()));
-        }
-
-        if let Some(ref surname) = updates.surname {
-            set_clauses.push("surname = ?".to_string());
-            params.push(Box::new(surname.clone()));
-        }
-
-        if let Some(ref email) = updates.email {
-            set_clauses.push("email = ?".to_string());
-            params.push(Box::new(email.clone()));
-        }
-
-        if let Some(ref prefs) = updates.menu_preferences {
-            set_clauses.push("menu_preferences = ?".to_string());
-            params.push(Box::new(serde_json::to_string(prefs)?));
-        }
-
-        if let Some(ref currency) = updates.currency {
-            set_clauses.push("currency = ?".to_string());
-            params.push(Box::new(currency.clone()));
-        }
-
-        if let Some(ref language) = updates.language {
-            set_clauses.push("language = ?".to_string());
-            params.push(Box::new(language.clone()));
-        }
-
-        if let Some(exclude) = updates.exclude_personal_real_estate {
-            set_clauses.push("exclude_personal_real_estate = ?".to_string());
-            params.push(Box::new(exclude as i32));
-        }
-
-        if let Some(dismissed) = updates.coingecko_modal_dismissed {
-            set_clauses.push("coingecko_modal_dismissed = ?".to_string());
-            params.push(Box::new(dismissed as i32));
-        }
-
-        if let Some(enabled) = updates.mcp_server_enabled {
-            set_clauses.push("mcp_server_enabled = ?".to_string());
-            params.push(Box::new(enabled as i32));
-        }
-
-        if set_clauses.is_empty() {
-            return Ok(());
-        }
-
-        let sql = format!(
-            "UPDATE user_profile SET {} WHERE id = 1",
-            set_clauses.join(", ")
-        );
-
-        let params_refs: Vec<&dyn rusqlite::ToSql> = params.iter().map(|p| p.as_ref()).collect();
-        conn.execute(&sql, params_refs.as_slice())?;
-
-        Ok(())
-    })?;
+    db.with_conn(|conn| apply_profile_update(conn, &updates))?;
 
     get_user_profile(db)?.ok_or_else(|| AppError::NotFound("User profile not found".into()))
+}
+
+/// Validate and write a partial profile update (the main currency is stored normalised).
+fn apply_profile_update(conn: &rusqlite::Connection, updates: &UpdateUserProfile) -> Result<()> {
+    updates.validate()?;
+    let mut set_clauses = Vec::new();
+    let mut params: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
+
+    if let Some(ref name) = updates.name {
+        set_clauses.push("name = ?".to_string());
+        params.push(Box::new(name.clone()));
+    }
+
+    if let Some(ref surname) = updates.surname {
+        set_clauses.push("surname = ?".to_string());
+        params.push(Box::new(surname.clone()));
+    }
+
+    if let Some(ref email) = updates.email {
+        set_clauses.push("email = ?".to_string());
+        params.push(Box::new(email.clone()));
+    }
+
+    if let Some(ref prefs) = updates.menu_preferences {
+        set_clauses.push("menu_preferences = ?".to_string());
+        params.push(Box::new(serde_json::to_string(prefs)?));
+    }
+
+    if let Some(ref currency) = updates.currency {
+        set_clauses.push("currency = ?".to_string());
+        params.push(Box::new(validate_main_currency(currency)?));
+    }
+
+    if let Some(ref language) = updates.language {
+        set_clauses.push("language = ?".to_string());
+        params.push(Box::new(language.clone()));
+    }
+
+    if let Some(exclude) = updates.exclude_personal_real_estate {
+        set_clauses.push("exclude_personal_real_estate = ?".to_string());
+        params.push(Box::new(exclude as i32));
+    }
+
+    if let Some(dismissed) = updates.coingecko_modal_dismissed {
+        set_clauses.push("coingecko_modal_dismissed = ?".to_string());
+        params.push(Box::new(dismissed as i32));
+    }
+
+    if let Some(enabled) = updates.mcp_server_enabled {
+        set_clauses.push("mcp_server_enabled = ?".to_string());
+        params.push(Box::new(enabled as i32));
+    }
+
+    if set_clauses.is_empty() {
+        return Ok(());
+    }
+
+    let sql = format!(
+        "UPDATE user_profile SET {} WHERE id = 1",
+        set_clauses.join(", ")
+    );
+
+    let params_refs: Vec<&dyn rusqlite::ToSql> = params.iter().map(|p| p.as_ref()).collect();
+    conn.execute(&sql, params_refs.as_slice())?;
+
+    Ok(())
 }
 
 /// Delete entire account (database and key files)
@@ -933,5 +942,83 @@ mod tests {
                 & 0o777;
             assert_eq!(mode, 0o600, "{name}");
         }
+    }
+
+    // ------------------------------------------------------------------
+    // Main currency must have an exchange-rate source
+    // ------------------------------------------------------------------
+
+    fn profile_conn() -> rusqlite::Connection {
+        let conn = rusqlite::Connection::open_in_memory().expect("in-memory db");
+        conn.execute_batch(
+            r#"
+            CREATE TABLE user_profile (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL DEFAULT '',
+                surname TEXT NOT NULL DEFAULT '',
+                email TEXT NOT NULL DEFAULT '',
+                menu_preferences TEXT,
+                currency TEXT NOT NULL DEFAULT 'CZK',
+                exclude_personal_real_estate INTEGER NOT NULL DEFAULT 0,
+                language TEXT NOT NULL DEFAULT 'en',
+                coingecko_modal_dismissed INTEGER NOT NULL DEFAULT 0,
+                mcp_server_enabled INTEGER NOT NULL DEFAULT 0
+            );
+            INSERT INTO user_profile (id, currency) VALUES (1, 'CZK');
+            "#,
+        )
+        .expect("schema");
+        conn
+    }
+
+    fn currency_update(code: &str) -> UpdateUserProfile {
+        UpdateUserProfile {
+            name: None,
+            surname: None,
+            email: None,
+            menu_preferences: None,
+            currency: Some(code.to_string()),
+            language: None,
+            exclude_personal_real_estate: None,
+            coingecko_modal_dismissed: None,
+            mcp_server_enabled: None,
+        }
+    }
+
+    fn stored_currency(conn: &rusqlite::Connection) -> String {
+        conn.query_row("SELECT currency FROM user_profile WHERE id = 1", [], |r| {
+            r.get(0)
+        })
+        .expect("currency")
+    }
+
+    #[test]
+    fn update_rejects_main_currency_without_rate_source() {
+        let conn = profile_conn();
+        let err = apply_profile_update(&conn, &currency_update("KWD")).unwrap_err();
+        match err {
+            AppError::Validation(msg) => assert_eq!(msg, "validation.currencyUnsupported"),
+            other => panic!("expected validation error, got {other:?}"),
+        }
+        assert_eq!(stored_currency(&conn), "CZK");
+    }
+
+    #[test]
+    fn update_stores_supported_main_currency_normalised() {
+        let conn = profile_conn();
+        apply_profile_update(&conn, &currency_update("aed")).unwrap();
+        assert_eq!(stored_currency(&conn), "AED");
+    }
+
+    #[test]
+    fn setup_account_rejects_unsupported_main_currency_before_writing_anything() {
+        let dir = tempdir().expect("tempdir");
+        let db_path = dir.path().join("moony.db");
+        let mut data = profile_data();
+        data.currency = Some("KWD".into());
+        let err =
+            setup_account(&Database::new(), db_path, data, "long-enough-password").unwrap_err();
+        assert!(matches!(err, AppError::Validation(_)));
+        assert!(dir_is_empty(dir.path()), "no key files may be written");
     }
 }

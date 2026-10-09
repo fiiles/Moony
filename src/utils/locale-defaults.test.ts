@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { isFxSupported } from '@shared/currencies';
 import {
   RULE_PACK_COUNTRY_IDS,
   countryOptionsFromPacks,
@@ -31,6 +32,26 @@ describe('defaultCurrencyForRegion', () => {
     expect(defaultCurrencyForRegion('UY')).toBe('EUR');
     expect(defaultCurrencyForRegion('UY', 'USD')).toBe('USD');
     expect(defaultCurrencyForRegion(null)).toBe('EUR');
+  });
+});
+
+describe('defaultCurrencyForRegion with exchange-rate sources', () => {
+  it.each(['AE', 'SA', 'BG', 'UA', 'VN', 'RS', 'KW', 'AR', 'TW', 'EG'])(
+    '%s defaults to a supported currency',
+    (region) => {
+      expect(isFxSupported(defaultCurrencyForRegion(region))).toBe(true);
+    }
+  );
+
+  it('keeps pegged and euro defaults', () => {
+    expect(defaultCurrencyForRegion('AE')).toBe('AED');
+    expect(defaultCurrencyForRegion('BG')).toBe('EUR');
+    expect(defaultCurrencyForRegion('RS')).toBe('EUR');
+    expect(defaultCurrencyForRegion('UA')).toBe('USD');
+  });
+
+  it('never proposes an unsupported fallback', () => {
+    expect(defaultCurrencyForRegion('UY', 'KWD')).toBe('USD');
   });
 });
 

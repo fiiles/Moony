@@ -136,6 +136,7 @@
     "dateRequired": "Datum je povinné",
     "currencyRequired": "Měna je povinná",
     "currencyInvalid": "Měna musí být 3 písmena (např. USD, EUR)",
+    "currencyUnsupported": "Tato měna nemá zdroj kurzu; zvolte jinou hlavní měnu.",
     "currencyUnknown": "Neznámý kód měny (použijte kód ISO 4217, např. USD nebo EUR)",
     "invalidQuantity": "Neplatné množství",
     "invalidPrice": "Neplatná cena",

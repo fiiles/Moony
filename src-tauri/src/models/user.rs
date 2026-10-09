@@ -1,5 +1,7 @@
 //! User profile and app configuration models
 
+use crate::error::{AppError, Result};
+use crate::services::fx;
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
@@ -69,6 +71,42 @@ pub struct InsertUserProfile {
     pub language: Option<String>,
     #[serde(rename = "excludePersonalRealEstate")]
     pub exclude_personal_real_estate: Option<bool>,
+}
+
+/// Default main currency when a new profile does not specify one.
+pub const DEFAULT_MAIN_CURRENCY: &str = "CZK";
+
+/// Validate a main (profile) currency and return its normalised code.
+///
+/// The main currency must have an exchange-rate source (quoted or pegged),
+/// otherwise mixed-currency totals could not be converted into it.
+pub fn validate_main_currency(code: &str) -> Result<String> {
+    match fx::normalize(code) {
+        Some(normalized) if fx::is_supported(&normalized) => Ok(normalized),
+        _ => Err(AppError::Validation(
+            "validation.currencyUnsupported".into(),
+        )),
+    }
+}
+
+impl InsertUserProfile {
+    /// Validate input data at the trust boundary
+    pub fn validate(&self) -> Result<()> {
+        if let Some(currency) = &self.currency {
+            validate_main_currency(currency)?;
+        }
+        Ok(())
+    }
+}
+
+impl UpdateUserProfile {
+    /// Validate input data at the trust boundary
+    pub fn validate(&self) -> Result<()> {
+        if let Some(currency) = &self.currency {
+            validate_main_currency(currency)?;
+        }
+        Ok(())
+    }
 }
 
 /// Data for updating user profile (partial updates)

@@ -37,7 +37,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { setupSchema, MIN_PASSWORD_LENGTH, type MenuPreferences } from '@shared/schema';
-import { type CurrencyCode } from '@shared/currencies';
+import { FX_SUPPORTED_CODES, type CurrencyCode } from '@shared/currencies';
 import { CurrencyCombobox } from '@/components/common/CurrencyCombobox';
 import { MoonMark } from '@/components/common/MoonMark';
 import { WizardSteps } from '@/components/common/WizardSteps';
@@ -323,6 +323,7 @@ export function OnboardingWizard({ language, onFinished }: OnboardingWizardProps
                     data-testid="onboarding-currency"
                     value={currency}
                     onChange={setCurrency}
+                    options={FX_SUPPORTED_CODES}
                   />
                   <p className="text-micro font-500 text-ink-4">
                     {t('onboarding.welcome.currencyHint')}

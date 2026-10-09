@@ -18,7 +18,12 @@ import { useFormat } from '@/lib/use-format';
 import { getFormatters } from '@/lib/format';
 import { translateApiError } from '@/lib/translate-api-error';
 import { cn } from '@/lib/utils';
-import { currencyName, isEcbCurrency, type CurrencyCode } from '@shared/currencies';
+import {
+  FX_SUPPORTED_CODES,
+  currencyName,
+  isFxSupported,
+  type CurrencyCode,
+} from '@shared/currencies';
 
 /** Tiles in the prototype's order: Čeština first. */
 const LANGUAGE_ORDER: readonly SupportedLanguage[] = [
@@ -63,7 +68,7 @@ export function LanguageCard() {
   });
 
   const example = fmt.money(1234.56, currencyCode);
-  const hasAutomaticRate = isEcbCurrency(currencyCode);
+  const hasRateSource = isFxSupported(currencyCode);
 
   return (
     <SettingsCard title={t('language.title')} description={t('language.description')}>
@@ -104,8 +109,8 @@ export function LanguageCard() {
             {t('currency.mainHint')} {currencyName(currencyCode, fmt.locale)} ({currencyCode}) ·{' '}
             {t('currency.example', { example })}
             <span className="mt-0.5 block">{t('currency.nativeHint')}</span>
-            {!hasAutomaticRate && (
-              <span className="mt-0.5 block text-loss">{t('currency.noRateHint')}</span>
+            {!hasRateSource && (
+              <span className="mt-0.5 block text-loss">{t('currency.unsupportedMain')}</span>
             )}
           </>
         }
@@ -116,6 +121,7 @@ export function LanguageCard() {
             setCurrency(code);
             updateCurrency.mutate(code);
           }}
+          options={FX_SUPPORTED_CODES}
           disabled={updateCurrency.isPending}
           aria-label={t('currency.main')}
           className="w-[200px]"

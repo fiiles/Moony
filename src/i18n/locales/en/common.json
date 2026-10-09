@@ -136,6 +136,7 @@
     "dateRequired": "Date is required",
     "currencyRequired": "Currency is required",
     "currencyInvalid": "Currency must be 3 letters (e.g., USD, EUR)",
+    "currencyUnsupported": "This currency has no exchange-rate source; choose another main currency.",
     "currencyUnknown": "Unknown currency code (use an ISO 4217 code such as USD or EUR)",
     "invalidQuantity": "Invalid quantity",
     "invalidPrice": "Invalid price",

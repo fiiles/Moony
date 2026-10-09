@@ -62,7 +62,7 @@
     "title": "Currency",
     "description": "Choose the currency for summaries, asset overviews and reports.",
     "example": "e.g. {{example}}",
-    "noRateHint": "Exchange rates are updated automatically only for currencies the ECB publishes. Other currencies (for example AED or SAR) have no rate, so totals that include them are not accurate.",
+    "unsupportedMain": "Your main currency has no exchange-rate source. Totals that mix currencies cannot be converted — choose a supported main currency.",
     "main": "Main currency",
     "mainHint": "Summaries, asset overviews and reports are shown in this currency:",
     "nativeHint": "Entered amounts of accounts, transactions, contracts and budgets keep their original currency."

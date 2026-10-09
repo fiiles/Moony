@@ -65,6 +65,8 @@ pub struct PositionCostBasis {
     pub missing_currencies: Vec<String>,
     /// True when at least one conversion used current instead of day quotes.
     pub fx_estimated: bool,
+    /// This position's conversion quality (the same misses and estimate as above).
+    pub quality: Quality,
 }
 
 impl PositionCostBasis {
@@ -251,6 +253,7 @@ pub fn position_cost_basis(
             primary_currency,
             fx_estimated: converter.estimated,
             missing_currencies: converter.quality.missing_currencies(),
+            quality: converter.quality.clone(),
         }),
         converter.quality,
     )

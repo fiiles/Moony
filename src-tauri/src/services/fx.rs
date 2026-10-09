@@ -422,7 +422,7 @@ pub fn history_quotes(conn: &Connection, start_day: i64, end_day: i64) -> Result
 }
 
 /// Collects conversions that could not be made, so reports can declare what they excluded.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct Quality {
     missing: BTreeSet<String>,
     missing_count: usize,

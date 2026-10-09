@@ -7,6 +7,8 @@
 //! converted fields are `None` and the currency is reported in `Positions::quality` (never 0,
 //! never 1:1).
 
+use std::collections::HashMap;
+
 use rusqlite::{Connection, OptionalExtension};
 
 use crate::error::Result;
@@ -22,13 +24,16 @@ use crate::services::reporting::normalize_currency;
 pub struct PositionValue {
     pub investment_id: String,
     pub ticker: String,
+    /// The quantity the transactions replay to (the stored holding quantity when the position
+    /// has no transactions), so value and cost basis describe the same units.
     pub quantity: f64,
     /// Native current price (resolver), `None` when unpriced.
     pub price: Option<f64>,
     pub price_currency: Option<String>,
     /// Report currency, current snapshot.
     pub value: Option<f64>,
-    /// Report currency, each transaction at its day (estimated flag in the quality).
+    /// Report currency, each transaction at its day (estimated flag in the quality). `None`
+    /// when a buy cannot be converted, or for an open position without any transaction.
     pub cost_basis: Option<f64>,
     /// Native weighted average cost in `average_price_currency` (the primary currency).
     pub average_price: f64,
@@ -45,6 +50,8 @@ pub struct PositionValue {
     /// Report currency, current snapshot. `Some(0)` for a stock without dividend data,
     /// `None` for crypto (no dividends) or when not convertible.
     pub yearly_dividend: Option<f64>,
+    /// What this position could not convert (cost basis, value and dividend together).
+    pub quality: Quality,
 }
 
 /// Every position of one asset class in `currency`, with what could not be converted.
@@ -53,6 +60,75 @@ pub struct Positions {
     pub currency: String,
     pub items: Vec<PositionValue>,
     pub quality: Quality,
+}
+
+/// Sums over a group of positions in the report currency.
+///
+/// A position adds to `value`, `cost_basis`, `unrealized_gain` and `yearly_dividend` only when
+/// both its value and its cost basis are known (an unconvertible or unpriced position is left
+/// out of all four, so the gain always equals value minus cost and the dividend belongs to the
+/// same positions). `realized_gain` sums every position whose realized gain is known: a closed
+/// position realizes its gain whether or not it still has a price.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct PositionTotals {
+    pub value: f64,
+    pub cost_basis: f64,
+    pub unrealized_gain: f64,
+    pub realized_gain: f64,
+    pub yearly_dividend: f64,
+    /// Positions in the group, summed or not.
+    pub count: usize,
+    /// Everything the group's positions could not convert.
+    pub quality: Quality,
+}
+
+impl PositionTotals {
+    fn add(&mut self, item: &PositionValue) {
+        self.count += 1;
+        self.quality.merge(&item.quality);
+        if let (Some(value), Some(cost)) = (item.value, item.cost_basis) {
+            self.value += value;
+            self.cost_basis += cost;
+            self.unrealized_gain += value - cost;
+            self.yearly_dividend += item.yearly_dividend.unwrap_or(0.0);
+        }
+        if let Some(realized) = item.realized_gain {
+            self.realized_gain += realized;
+        }
+    }
+
+    /// `unrealized_gain / cost_basis * 100`; 0 for a zero cost basis.
+    pub fn unrealized_gain_percent(&self) -> f64 {
+        if self.cost_basis > 0.0 {
+            self.unrealized_gain / self.cost_basis * 100.0
+        } else {
+            0.0
+        }
+    }
+}
+
+/// Totals over `items` (see `PositionTotals`).
+pub fn totals<'a>(items: impl IntoIterator<Item = &'a PositionValue>) -> PositionTotals {
+    let mut totals = PositionTotals::default();
+    for item in items {
+        totals.add(item);
+    }
+    totals
+}
+
+/// Totals per tag. `tag_map` lists the tag ids of each investment id; a position counts in
+/// every tag it carries. Tags without a valued position are absent.
+pub fn tag_totals(
+    positions: &Positions,
+    tag_map: &HashMap<String, Vec<String>>,
+) -> HashMap<String, PositionTotals> {
+    let mut by_tag: HashMap<String, PositionTotals> = HashMap::new();
+    for item in &positions.items {
+        for tag_id in tag_map.get(&item.investment_id).into_iter().flatten() {
+            by_tag.entry(tag_id.clone()).or_default().add(item);
+        }
+    }
+    by_tag
 }
 
 /// A stock's yearly dividend per share in its own currency.
@@ -115,9 +191,11 @@ pub fn value_positions_with_quotes(
         AssetKind::Stock => TxTable::Stocks,
         AssetKind::Crypto => TxTable::Crypto,
     };
-    let (costs, mut quality) = cost_basis::cost_basis_as_of(conn, table, &currency, quotes, today)?;
+    // The per-position cost qualities are merged below, only for positions that are held.
+    let (costs, _) = cost_basis::cost_basis_as_of(conn, table, &currency, quotes, today)?;
 
     let mut items = Vec::new();
+    let mut quality = Quality::default();
     for holding in load_holdings(conn, kind)? {
         let price = pricing::resolve_price(conn, kind, &holding.ticker);
         let dividend = match kind {
@@ -125,18 +203,9 @@ pub fn value_positions_with_quotes(
             AssetKind::Crypto => None,
         };
         let cost = costs.get(&holding.id);
-        let mut converter = CurrentConverter {
-            quotes,
-            target: &currency,
-            quality: &mut quality,
-        };
-        items.push(value_position(
-            holding,
-            cost,
-            price,
-            dividend,
-            &mut converter,
-        ));
+        let item = value_position(holding, cost, price, dividend, quotes, &currency);
+        quality.merge(&item.quality);
+        items.push(item);
     }
     Ok(Positions {
         currency,
@@ -155,15 +224,13 @@ struct Holding {
 }
 
 fn load_holdings(conn: &Connection, kind: AssetKind) -> Result<Vec<Holding>> {
-    let (sql, default_currency) = match kind {
-        AssetKind::Stock => (
-            "SELECT id, ticker, quantity, currency FROM stock_investments ORDER BY ticker",
-            "CZK",
-        ),
-        AssetKind::Crypto => (
-            "SELECT id, ticker, quantity, currency FROM crypto_investments ORDER BY ticker",
-            "USD",
-        ),
+    let sql = match kind {
+        AssetKind::Stock => {
+            "SELECT id, ticker, quantity, currency FROM stock_investments ORDER BY ticker"
+        }
+        AssetKind::Crypto => {
+            "SELECT id, ticker, quantity, currency FROM crypto_investments ORDER BY ticker"
+        }
     };
     let mut stmt = conn.prepare(sql)?;
     let rows = stmt.query_map([], |row| {
@@ -172,9 +239,7 @@ fn load_holdings(conn: &Connection, kind: AssetKind) -> Result<Vec<Holding>> {
             id: row.get(0)?,
             ticker: row.get(1)?,
             quantity: parse_money(&quantity, 0.0, "position quantity"),
-            currency: row
-                .get::<_, Option<String>>(3)?
-                .unwrap_or_else(|| default_currency.to_string()),
+            currency: row.get(3)?,
         })
     })?;
     Ok(rows.collect::<rusqlite::Result<Vec<_>>>()?)
@@ -204,15 +269,25 @@ fn value_position(
     cost: Option<&PositionCostBasis>,
     price: Option<ResolvedPrice>,
     dividend: Option<Option<ResolvedDividend>>,
-    converter: &mut CurrentConverter,
+    quotes: &Quotes,
+    report_currency: &str,
 ) -> PositionValue {
-    let quantity = holding.quantity;
+    let mut quality = cost.map(|c| c.quality.clone()).unwrap_or_default();
+    let mut converter = CurrentConverter {
+        quotes,
+        target: report_currency,
+        quality: &mut quality,
+    };
+    // The replayed quantity values exactly the units the cost basis describes.
+    let quantity = cost.map_or(holding.quantity, |c| c.quantity);
     let value = price
         .as_ref()
         .and_then(|p| converter.convert(quantity * p.price, &p.currency));
-    // A position without transactions carries no known cost and has realized nothing.
-    let cost_basis = cost.map_or(Some(0.0), PositionCostBasis::cost_basis_in_target);
-    let realized_gain = cost.map_or(Some(0.0), |c| c.realized_gain_target);
+    // Without transactions nothing is known about the cost of an open position; an empty
+    // position without transactions cost and realized nothing.
+    let unknown_cost = || (quantity == 0.0).then_some(0.0);
+    let cost_basis = cost.map_or_else(unknown_cost, PositionCostBasis::cost_basis_in_target);
+    let realized_gain = cost.map_or_else(unknown_cost, |c| c.realized_gain_target);
     let unrealized_gain = value.zip(cost_basis).map(|(v, c)| v - c);
     let unrealized_gain_percent =
         unrealized_gain
@@ -248,6 +323,7 @@ fn value_position(
         dividend_per_share,
         dividend_currency,
         yearly_dividend,
+        quality,
     }
 }
 
@@ -681,6 +757,134 @@ mod tests {
         assert_close(item.average_price, 625_000.0);
         assert_eq!(item.dividend_per_share, None);
         assert!(p.quality.is_complete());
+    }
+
+    #[test]
+    fn tag_totals_sum_only_convertible_positions_and_report_the_rest() {
+        let conn = setup();
+        let day = 19_000 * DAY;
+        seed_rates(&conn, day, &[("USD", 25.0), ("EUR", 25.0)]);
+        seed_stock(
+            &conn,
+            "s1",
+            "AAPL",
+            "USD",
+            &[("buy", 10.0, 100.0, day)],
+            100.0,
+        );
+        seed_stock(&conn, "s2", "KWFH", "KWD", &[("buy", 1.0, 10.0, day)], 10.0);
+        conn.execute(
+            "INSERT INTO dividend_data (id, ticker, yearly_dividend_sum, currency)
+             VALUES ('d1', 'KWFH', '1', 'USD')",
+            [],
+        )
+        .expect("dividend");
+        set_current_czk(&[("USD", 25.0), ("EUR", 22.0)]);
+        let p = value_positions(&conn, AssetKind::Stock, "EUR", 20_000 * DAY).expect("positions");
+        let tag_map: HashMap<String, Vec<String>> = [
+            ("s1".to_string(), vec!["tech".to_string()]),
+            (
+                "s2".to_string(),
+                vec!["tech".to_string(), "gulf".to_string()],
+            ),
+        ]
+        .into_iter()
+        .collect();
+
+        let by_tag = tag_totals(&p, &tag_map);
+
+        let tech = &by_tag["tech"];
+        assert_eq!(tech.count, 2);
+        assert_close(tech.value, 1136.3636363636);
+        assert_close(tech.cost_basis, 1000.0);
+        assert_close(tech.unrealized_gain, 136.3636363636);
+        assert_close(tech.unrealized_gain_percent(), 13.636363636);
+        // the KWD position's (convertible) USD dividend stays out with its value
+        assert_close(tech.yearly_dividend, 0.0);
+        assert_eq!(tech.quality.missing_currencies(), vec!["KWD".to_string()]);
+        let gulf = &by_tag["gulf"];
+        assert_eq!(gulf.count, 1);
+        assert_close(gulf.value, 0.0);
+        assert_eq!(gulf.quality.missing_currencies(), vec!["KWD".to_string()]);
+        assert!(!by_tag.contains_key("untagged"));
+    }
+
+    #[test]
+    fn totals_keep_realized_gains_of_positions_without_a_value() {
+        let conn = setup();
+        let day = 19_000 * DAY;
+        seed_stock(
+            &conn,
+            "s1",
+            "SAP.DE",
+            "EUR",
+            &[("buy", 2.0, 100.0, day), ("sell", 2.0, 150.0, day + DAY)],
+            120.0,
+        );
+        // closed and no longer priced
+        conn.execute("DELETE FROM stock_data", []).expect("delete");
+        set_current_czk(&[]);
+        let p = value_positions(&conn, AssetKind::Stock, "EUR", 20_000 * DAY).expect("positions");
+
+        let t = totals(&p.items);
+
+        assert_eq!(t.count, 1);
+        assert_close(t.value, 0.0);
+        assert_close(t.realized_gain, 100.0);
+        assert!(t.quality.is_complete());
+    }
+
+    #[test]
+    fn an_open_holding_without_transactions_has_no_known_cost() {
+        let conn = setup();
+        conn.execute_batch(
+            r#"
+            INSERT INTO stock_investments (id, ticker, company_name, quantity, currency)
+                VALUES ('s1', 'SAP.DE', 'SAP', '3', 'EUR'), ('s2', 'OLD.DE', 'Old', '0', 'EUR');
+            INSERT INTO stock_data (id, ticker, original_price, currency, price_date, fetched_at)
+                VALUES ('p1', 'SAP.DE', '100', 'EUR', 0, 100);
+            "#,
+        )
+        .expect("seed");
+        set_current_czk(&[]);
+        let p = value_positions(&conn, AssetKind::Stock, "EUR", 20_000 * DAY).expect("positions");
+        let open = p.items.iter().find(|i| i.ticker == "SAP.DE").expect("open");
+        assert_close(open.value.expect("value"), 300.0);
+        assert_eq!(open.cost_basis, None);
+        assert_eq!(open.unrealized_gain, None);
+        assert_eq!(open.unrealized_gain_percent, None);
+        assert_eq!(open.realized_gain, None);
+        let empty = p
+            .items
+            .iter()
+            .find(|i| i.ticker == "OLD.DE")
+            .expect("empty");
+        assert_eq!(empty.cost_basis, Some(0.0));
+        assert_eq!(empty.realized_gain, Some(0.0));
+        // an unknown cost is not an FX gap
+        assert!(p.quality.is_complete());
+    }
+
+    #[test]
+    fn value_uses_the_replayed_quantity_of_the_cost_basis() {
+        let conn = setup();
+        seed_stock(
+            &conn,
+            "s1",
+            "SAP.DE",
+            "EUR",
+            &[("buy", 2.0, 100.0, 19_000 * DAY)],
+            120.0,
+        );
+        // a stale stored quantity (metrics not recalculated)
+        conn.execute("UPDATE stock_investments SET quantity = '5'", [])
+            .expect("stale");
+        set_current_czk(&[]);
+        let p = value_positions(&conn, AssetKind::Stock, "EUR", 20_000 * DAY).expect("positions");
+        let item = &p.items[0];
+        assert_close(item.quantity, 2.0);
+        assert_close(item.value.expect("value"), 240.0);
+        assert_close(item.unrealized_gain.expect("gain"), 40.0);
     }
 
     #[test]

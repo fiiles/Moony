@@ -1,25 +1,27 @@
 import { AccountScope } from '@/components/reports/AccountScope';
+import { PeriodNav } from '@/components/reports/PeriodNav';
 import { ReportQualityNote, ReportError } from '@/components/reports/ReportQualityNote';
 import {
   ReportTransactionsDialog,
   type ReportTarget,
 } from '@/components/reports/ReportTransactionsDialog';
 import { useReportMoney } from '@/lib/use-report-money';
+import { usePeriodSelection } from '@/hooks/use-period-selection';
 import { buildCashflowCsv } from '@/utils/report-currencies';
 import { absoluteMovementShares } from '@/utils/money-flows';
+import { periodFileStem } from '@/utils/period';
 import { useMemo, useState, type ReactNode } from 'react';
 import { Link } from 'wouter';
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { Landmark } from 'lucide-react';
-import type { CashflowActuals, CashflowGroup, CashflowRange } from '@shared/schema';
+import type { CashflowActuals, CashflowGroup } from '@shared/schema';
 import { cashflowApi } from '@/lib/tauri-api';
 import { useCurrency } from '@/lib/currency';
 import { useFormat } from '@/lib/use-format';
 import { useShellPage } from '@/components/shell/shell-context';
 import { categoryDisplayName } from '@/utils/category-name';
 import { PageHead } from '@/components/shell/PageHead';
-import { Segmented } from '@/components/ui/segmented';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import {
@@ -38,21 +40,18 @@ import { MoonyBarChart } from '@/components/charts/MoonyBarChart';
 import { ChartLegend } from '@/components/charts/ChartLegend';
 import { cn } from '@/lib/utils';
 
-const RANGES: readonly CashflowRange[] = ['6m', '12m', 'ytd'];
-
 interface Row {
-  key: string;
+  group: CashflowGroup;
   label: string;
   amount: number;
-  previous: number;
   share: number;
-  count: number;
 }
 
 /**
- * Cashflow report (design system §7 Report, §11): actual monthly income and
- * expenses from bank transactions, averages, expenses by category and income
- * by source with the change against the preceding range.
+ * Cashflow report (design system §7 Report, §11): actual income and expenses
+ * from bank transactions for a calendar month, quarter or year, by category,
+ * with money transfers (investing, saving, between accounts) apart. Every
+ * breakdown row opens its transactions, where they can be recategorized.
  */
 export default function Cashflow() {
   const { t } = useTranslation('reports');
@@ -61,74 +60,82 @@ export default function Cashflow() {
   const [accountIds, setAccountIds] = useState<string[] | undefined>(undefined);
   const [txTarget, setTxTarget] = useState<ReportTarget | null>(null);
   const fmt = useFormat();
-  const [range, setRange] = useState<CashflowRange>('12m');
+  const period = usePeriodSelection('yearly');
+  const { range, timeframe } = period;
 
   // Prefix shared with the planned report, so the mutation contract's
   // ['cashflow-report'] invalidation refreshes this page too.
-  const { data, isLoading, isError, refetch } = useQuery<CashflowActuals>({
-    queryKey: ['cashflow-report', 'actuals', range, accountIds, currencyCode, ratesTimestamp],
-    queryFn: () => cashflowApi.getActuals(range, accountIds, currencyCode),
+  const { data, isLoading, isError, isPlaceholderData, refetch } = useQuery<CashflowActuals>({
+    queryKey: [
+      'cashflow-report',
+      'actuals',
+      range.start,
+      range.end,
+      accountIds,
+      currencyCode,
+      ratesTimestamp,
+    ],
+    queryFn: () => cashflowApi.getActuals(range.start, range.end, accountIds, currencyCode),
     staleTime: 0,
     refetchOnMount: 'always',
+    placeholderData: keepPreviousData,
   });
-  const { money, signedMoney: formatCurrencySigned } = useReportMoney(data?.reportCurrency);
+  const { money, signedMoney } = useReportMoney(data?.reportCurrency);
 
-  const amount = (v: string | number) => Number(v) || 0;
-  const totalIncome = amount(data?.totalIncome ?? 0);
-  const totalExpenses = amount(data?.totalExpenses ?? 0);
-  const prevIncome = amount(data?.previousIncome ?? 0);
-  const prevExpenses = amount(data?.previousExpenses ?? 0);
-  const savingsRate = totalIncome > 0 ? (totalIncome - totalExpenses) / totalIncome : 0;
-  const prevRate = prevIncome > 0 ? (prevIncome - prevExpenses) / prevIncome : null;
-
-  const periodLabel =
-    range === 'ytd'
-      ? t('actuals.range.ytd', { year: new Date().getUTCFullYear() })
-      : t(`actuals.range.${range}`);
+  // Czech month names are lower-case inside a sentence; "Q4 2026" and "2026" keep their spelling.
+  const periodInSentence =
+    timeframe === 'monthly' && fmt.locale.startsWith('cs')
+      ? period.label.toLocaleLowerCase(fmt.locale)
+      : period.label;
 
   useShellPage({
     status: data
       ? {
-          text: `${tBank('metrics.accounts', { count: data.accountCount })} · ${t('actuals.transactions', { count: data.transactionCount })} · ${periodLabel.toLocaleLowerCase(fmt.locale)}`,
+          text: `${tBank('metrics.accounts', { count: data.accountCount })} · ${t('actuals.transactions', { count: data.transactionCount })} · ${periodInSentence}`,
           tone: 'neutral',
         }
       : undefined,
   });
 
-  const groupLabel = (g: CashflowGroup, kind: 'expense' | 'income') => {
-    if (kind === 'expense') {
-      if (g.key === 'uncategorized') return t('actuals.uncategorized');
-      return categoryDisplayName(
-        { id: g.key, name: g.name, isSystem: g.key.startsWith('cat_') },
-        tBank
-      );
+  const amount = (v: string | number) => Number(v) || 0;
+
+  const groupLabel = (g: CashflowGroup) => {
+    if (g.key === 'uncategorized') {
+      return g.flowKind === 'transfer'
+        ? t('actuals.uncategorizedTransfers')
+        : t('actuals.uncategorized');
     }
-    return g.name || t('actuals.otherIncome');
+    return categoryDisplayName(
+      { id: g.key, name: g.name, isSystem: g.key.startsWith('cat_') },
+      tBank
+    );
   };
 
-  // Retain every group; shares use absolute movement, amounts keep their signs.
-  const fold = (groups: CashflowGroup[], kind: 'expense' | 'income', _max: number): Row[] => {
+  // Shares use absolute movement, amounts keep their signs.
+  const toRows = (groups: CashflowGroup[]): Row[] => {
     const shares = absoluteMovementShares(groups.map((g) => amount(g.amount)));
-    const rows = groups
-      .map((g, index) => ({
-        key: g.key,
-        label: groupLabel(g, kind),
-        amount: amount(g.amount),
-        previous: amount(g.previousAmount),
+    return groups
+      .map((group, index) => ({
+        group,
+        label: groupLabel(group),
+        amount: amount(group.amount),
         share: shares[index],
-        count: g.count,
       }))
-      .filter((r) => r.count > 0 || r.amount !== 0 || r.previous !== 0);
-    return rows;
+      .filter((row) => row.group.count > 0 || row.amount !== 0);
   };
 
   const expenseRows = useMemo(
-    () => (data ? fold(data.expenseCategories, 'expense', 7) : []),
+    () => (data ? toRows(data.expenseCategories) : []),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [data, fmt.locale]
   );
   const incomeRows = useMemo(
-    () => (data ? fold(data.incomeSources, 'income', 5) : []),
+    () => (data ? toRows(data.incomeCategories) : []),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [data, fmt.locale]
+  );
+  const transferRows = useMemo(
+    () => (data ? toRows(data.transfers) : []),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [data, fmt.locale]
   );
@@ -139,71 +146,69 @@ export default function Cashflow() {
         label: fmt.month(new Date(m.month * 1000), { month: 'short', year: '2-digit' }),
         a: amount(m.income),
         b: amount(m.expenses),
+        muted: m.month < data!.periodStart || m.month > data!.periodEnd,
       })),
     [data, fmt]
   );
 
   const exportCsv = async () => {
-    if (!data) return { csv: '', filename: 'cashflow.csv', count: 0 };
+    if (!data || isPlaceholderData) return { csv: '', filename: 'cashflow.csv', count: 0 };
     return {
       csv: buildCashflowCsv(
         data,
         (month) => fmt.day(month, { year: 'numeric', month: '2-digit' }),
-        (group) => groupLabel(group, 'expense'),
-        (group) => groupLabel(group, 'income')
+        groupLabel
       ),
-      filename: `cashflow-${range}.csv`,
-      count: data.months.length + data.expenseCategories.length + data.incomeSources.length,
+      filename: `cashflow-${periodFileStem(timeframe, range.startDate)}.csv`,
+      count:
+        data.months.length +
+        data.expenseCategories.length +
+        data.incomeCategories.length +
+        data.transfers.length,
     };
   };
 
-  const changeCell = (row: Row, lowerIsBetter: boolean): ReactNode => {
-    if (row.previous <= 0) {
-      return <span className="text-ink-4">{row.amount > 0 ? t('actuals.new') : '—'}</span>;
-    }
-    const change = (row.amount - row.previous) / row.previous;
-    if (Math.abs(change) < 0.0005)
-      return <span className="text-ink-4">{t('actuals.noChange')}</span>;
-    const good = lowerIsBetter ? change < 0 : change > 0;
-    return (
-      <span className={cn('font-650', good ? 'text-gain' : 'text-ink-2')}>
-        {fmt.percent(change, 1, { signed: true })}
-      </span>
-    );
-  };
+  const open = (row: Row) =>
+    setTxTarget({
+      name: row.label,
+      flowKind: row.group.flowKind,
+      categoryId: row.group.key,
+      expectedCount: row.group.count,
+    });
 
-  const breakdownTable = (
-    rows: Row[],
-    firstHead: string,
-    lowerIsBetter: boolean,
-    footer: ReactNode
-  ) => (
+  const breakdownTable = (rows: Row[]) => (
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead className="w-[30%]">{firstHead}</TableHead>
-          <TableHead>{t('readiness.absoluteShare')}</TableHead>
+          <TableHead className="w-[42%]">{t('actuals.breakdown.category')}</TableHead>
+          <TableHead>{t('actuals.breakdown.share')}</TableHead>
           <TableHead className="text-right">{t('actuals.breakdown.amount')}</TableHead>
-          <TableHead className="text-right">{t('actuals.breakdown.vsPrevious')}</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
-        {rows.map((row, i) => (
-          <TableRow key={row.key} className="h-[46px]">
+        {rows.length === 0 && (
+          <TableRow className="h-[46px] hover:bg-transparent">
+            <TableCell colSpan={3} className="text-ink-4">
+              {t('actuals.breakdown.empty')}
+            </TableCell>
+          </TableRow>
+        )}
+        {rows.map((row) => (
+          <TableRow
+            key={row.group.key}
+            className="h-[46px] cursor-pointer"
+            onClick={() => open(row)}
+          >
             <TableCell className="font-650 text-ink">
               <button
                 type="button"
-                className="text-left hover:underline"
-                onClick={() =>
-                  setTxTarget({
-                    name: row.label,
-                    flowKind: lowerIsBetter ? 'expense' : 'income',
-                    ...(lowerIsBetter ? { categoryId: row.key } : { sourceKey: row.key }),
-                    expectedCount: row.count,
-                  })
-                }
+                className="text-left focus-visible:underline"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  open(row);
+                }}
               >
-                {row.label} <small className="text-ink-4">· {row.count}</small>
+                {row.label} <small className="text-ink-4">· {row.group.count}</small>
               </button>
             </TableCell>
             <TableCell>
@@ -219,13 +224,17 @@ export default function Cashflow() {
               </div>
             </TableCell>
             <TableCell className="text-right font-650 text-ink num">{money(row.amount)}</TableCell>
-            <TableCell className="text-right num">{changeCell(row, lowerIsBetter)}</TableCell>
-            {i === -1 && null}
           </TableRow>
         ))}
       </TableBody>
-      {footer}
     </Table>
+  );
+
+  const footer = (left: ReactNode, right?: ReactNode) => (
+    <div className="flex items-center justify-between gap-4 border-t border-line px-[14px] py-3 text-micro font-500 text-ink-4">
+      <span className="num">{left}</span>
+      {right}
+    </div>
   );
 
   const head = (
@@ -245,18 +254,7 @@ export default function Cashflow() {
       }
       actions={
         <>
-          <Segmented
-            size="lg"
-            value={range}
-            onValueChange={setRange}
-            options={RANGES.map((r) => ({
-              value: r,
-              label:
-                r === 'ytd'
-                  ? t('actuals.range.ytd', { year: new Date().getUTCFullYear() })
-                  : t(`actuals.range.${r}`),
-            }))}
-          />
+          <PeriodNav selection={period} />
           <AccountScope value={accountIds} onChange={setAccountIds} />
           <ExportButton exportFn={exportCsv} label={t('actuals.export')} />
         </>
@@ -284,16 +282,16 @@ export default function Cashflow() {
     );
   }
 
-  if (data.transactionCount === 0 && prevIncome === 0 && prevExpenses === 0) {
+  if (data.transactionCount === 0) {
     return (
       <>
         {head}
         <EmptyState
           icon={<Landmark />}
-          title={t('actuals.empty.title')}
-          description={t('actuals.empty.description')}
+          title={t('actuals.empty.periodTitle')}
+          description={t('actuals.empty.periodDescription')}
           action={
-            <Button asChild>
+            <Button asChild variant="outline">
               <Link href="/bank-accounts">{t('actuals.empty.action')}</Link>
             </Button>
           }
@@ -302,173 +300,134 @@ export default function Cashflow() {
     );
   }
 
-  const avgIncome = data.averageIncome == null ? 0 : amount(data.averageIncome);
-  const avgExpenses = data.averageExpenses == null ? 0 : amount(data.averageExpenses);
-  const avgSavings = avgIncome - avgExpenses;
+  const totalIncome = amount(data.totalIncome);
+  const totalExpenses = amount(data.totalExpenses);
+  const net = amount(data.netBalance);
+  const perMonth = (average: string | null) =>
+    average != null && data.averageCompletedMonths.length >= 2
+      ? t('actuals.stats.perMonth', { amount: money(amount(average)) })
+      : undefined;
 
   return (
     <>
       {head}
-      <p className="mb-2 text-micro text-ink-4">
-        {t('readiness.reportRange', {
-          start: fmt.day(data.rangeStart),
-          end: fmt.day(data.rangeEnd),
-          previousStart: fmt.day(data.previousStart),
-          previousEnd: fmt.day(data.previousEnd),
-        })}
-      </p>
-      {data.previousQuality.missingFxCount > 0 && (
-        <p className="mb-2 text-micro text-loss">
-          {t('readiness.comparisonFx', {
-            count: data.previousQuality.missingFxCount,
-            currencies: data.previousQuality.missingFxCurrencies.join(', '),
-          })}
-        </p>
-      )}
-      <ReportQualityNote quality={data.quality} />
-      <div className="mb-5 flex flex-wrap gap-x-6 gap-y-2 text-table">
-        <span>
-          {t('readiness.ordinaryNet')}: <b className="num">{money(amount(data.netBalance))}</b>
-        </span>
-        <span>
-          {t('readiness.bankMovement')}:{' '}
-          <b className="num">{money(amount(data.bankCashMovement))}</b>
-        </span>
-      </div>
-      <ReportTransactionsDialog
-        key={JSON.stringify(txTarget)}
-        target={txTarget}
-        start={data.rangeStart}
-        end={data.rangeEnd}
-        accountIds={accountIds}
-        reportCurrency={data.reportCurrency}
-        ratesTimestamp={ratesTimestamp}
-        onClose={() => setTxTarget(null)}
-      />
-      <Stats columns={3}>
-        <Stat
-          label={t('actuals.stats.avgIncome')}
-          value={data.averageIncome == null ? '—' : money(avgIncome)}
-          note={t('readiness.averageSample', { count: data.averageCompletedMonths.length })}
+      <div
+        className={cn('transition-opacity', isPlaceholderData && 'opacity-60')}
+        aria-busy={isPlaceholderData}
+      >
+        <ReportQualityNote quality={data.quality} />
+        <ReportTransactionsDialog
+          target={txTarget}
+          start={data.periodStart}
+          end={data.periodEnd}
+          accountIds={accountIds}
+          reportCurrency={data.reportCurrency}
+          ratesTimestamp={ratesTimestamp}
+          onClose={() => setTxTarget(null)}
         />
-        <Stat
-          label={t('actuals.stats.avgExpenses')}
-          value={data.averageExpenses == null ? '—' : money(avgExpenses)}
-        />
-        <Stat
-          label={t('actuals.stats.avgSavings')}
-          value={
-            data.averageIncome == null || data.averageExpenses == null
-              ? '—'
-              : formatCurrencySigned(avgSavings)
-          }
-          tone={avgSavings > 0 ? 'gain' : avgSavings < 0 ? 'loss' : 'neutral'}
-          noteTone="neutral"
-          note={
-            prevRate !== null
-              ? t('actuals.stats.avgSavingsNote', {
-                  rate: fmt.percent(savingsRate, 0),
-                  previous: fmt.percent(prevRate, 0),
-                })
-              : t('actuals.stats.avgSavingsNoteNoPrev', { rate: fmt.percent(savingsRate, 0) })
-          }
-        />
-      </Stats>
-
-      <Card className="relative mb-7 overflow-hidden px-[21px] pb-4 pt-5 after:pointer-events-none after:absolute after:-right-[100px] after:-top-[120px] after:h-[180px] after:w-[340px] after:rounded-full after:bg-hero-orb after:content-['']">
-        <div className="relative z-[1] flex items-center justify-between gap-6">
-          <div>
-            <h3 className="m-0 text-h3 text-ink">{t('actuals.chart.title')}</h3>
-            <p className="mt-[5px] text-micro font-500 text-ink-4">{t('actuals.chart.sub')}</p>
-          </div>
-          <ChartLegend
-            className="mt-0"
-            items={[
-              { label: t('actuals.chart.income'), swatch: { kind: 'block', color: 'var(--s1)' } },
-              { label: t('actuals.chart.expenses'), swatch: { kind: 'block', color: 'var(--s3)' } },
-            ]}
+        <Stats columns={3}>
+          <Stat
+            label={t('actuals.stats.income')}
+            value={money(totalIncome)}
+            note={perMonth(data.averageIncome)}
           />
-        </div>
-        <MoonyBarChart
-          className="relative z-[1] -mx-1 mt-[18px]"
-          bars={bars}
-          names={[t('actuals.chart.income'), t('actuals.chart.expenses')]}
-          height={200}
-          formatValue={money}
-          renderExtra={(bar) =>
-            `${t('actuals.chart.balance')} ${formatCurrencySigned(bar.a - bar.b)}`
-          }
-        />
-      </Card>
+          <Stat
+            label={t('actuals.stats.expenses')}
+            value={money(totalExpenses)}
+            note={perMonth(data.averageExpenses)}
+          />
+          <Stat
+            label={t('actuals.stats.savings')}
+            value={signedMoney(net)}
+            tone={net > 0 ? 'gain' : net < 0 ? 'loss' : 'neutral'}
+            noteTone="neutral"
+            note={
+              totalIncome > 0
+                ? t('actuals.stats.savingsRate', { rate: fmt.percent(net / totalIncome, 0) })
+                : undefined
+            }
+          />
+        </Stats>
 
-      <div className="grid grid-cols-2 items-start gap-[18px]">
-        <Card variant="table">
-          <CardHeader>
+        <Card className="relative mb-7 overflow-hidden px-[21px] pb-4 pt-5 after:pointer-events-none after:absolute after:-right-[100px] after:-top-[120px] after:h-[180px] after:w-[340px] after:rounded-full after:bg-hero-orb after:content-['']">
+          <div className="relative z-[1] flex items-center justify-between gap-6">
             <div>
-              <CardTitle>{t('actuals.expenses.title')}</CardTitle>
-              <CardDescription>{t('actuals.breakdown.sub')}</CardDescription>
+              <h3 className="m-0 text-h3 text-ink">{t('actuals.chart.title')}</h3>
+              <p className="mt-[5px] text-micro font-500 text-ink-4">{t('actuals.chart.sub')}</p>
             </div>
-          </CardHeader>
-          {breakdownTable(expenseRows, t('actuals.breakdown.category'), true, null)}
-          <div className="flex items-center justify-between border-t border-line px-[14px] py-3 text-micro font-500 text-ink-4">
-            <span className="num">
-              {t('actuals.breakdown.total', { amount: money(totalExpenses) })}
-            </span>
-            <Link
-              href="/reports/budgeting"
-              className="text-caption font-650 text-ink-2 underline-offset-[3px] hover:text-ink hover:underline"
-            >
-              {t('actuals.expenses.budgets')} →
-            </Link>
+            <ChartLegend
+              className="mt-0"
+              items={[
+                { label: t('actuals.chart.income'), swatch: { kind: 'block', color: 'var(--s1)' } },
+                {
+                  label: t('actuals.chart.expenses'),
+                  swatch: { kind: 'block', color: 'var(--s3)' },
+                },
+              ]}
+            />
           </div>
+          <MoonyBarChart
+            className="relative z-[1] -mx-1 mt-[18px]"
+            bars={bars}
+            names={[t('actuals.chart.income'), t('actuals.chart.expenses')]}
+            height={200}
+            formatValue={money}
+            renderExtra={(bar) => `${t('actuals.chart.balance')} ${signedMoney(bar.a - bar.b)}`}
+          />
         </Card>
-        <Card variant="table">
-          <CardHeader>
-            <div>
-              <CardTitle>{t('actuals.income.title')}</CardTitle>
-              <CardDescription>{t('actuals.breakdown.sub')}</CardDescription>
-            </div>
-          </CardHeader>
-          {breakdownTable(incomeRows, t('actuals.breakdown.source'), false, null)}
-          <div className="flex items-center justify-between border-t border-line px-[14px] py-3 text-micro font-500 text-ink-4">
-            <span className="num">
-              {t('actuals.breakdown.total', { amount: money(totalIncome) })}
-            </span>
-            <span>{t('actuals.income.note')}</span>
+
+        <div className="grid grid-cols-2 items-start gap-[18px]">
+          <Card variant="table">
+            <CardHeader>
+              <div>
+                <CardTitle>{t('actuals.expenses.title')}</CardTitle>
+                <CardDescription>{t('actuals.breakdown.sub')}</CardDescription>
+              </div>
+            </CardHeader>
+            {breakdownTable(expenseRows)}
+            {footer(
+              t('actuals.breakdown.total', { amount: money(totalExpenses) }),
+              <Link
+                href="/reports/budgeting"
+                className="text-caption font-650 text-ink-2 underline-offset-[3px] hover:text-ink hover:underline"
+              >
+                {t('actuals.expenses.budgets')} →
+              </Link>
+            )}
+          </Card>
+          <div className="flex flex-col gap-[18px]">
+            <Card variant="table">
+              <CardHeader>
+                <div>
+                  <CardTitle>{t('actuals.income.title')}</CardTitle>
+                  <CardDescription>{t('actuals.breakdown.sub')}</CardDescription>
+                </div>
+              </CardHeader>
+              {breakdownTable(incomeRows)}
+              {footer(
+                t('actuals.breakdown.total', { amount: money(totalIncome) }),
+                <span>{t('actuals.income.note')}</span>
+              )}
+            </Card>
+            {transferRows.length > 0 && (
+              <Card variant="table">
+                <CardHeader>
+                  <div>
+                    <CardTitle>{t('actuals.transfers.title')}</CardTitle>
+                    <CardDescription>{t('actuals.transfers.sub')}</CardDescription>
+                  </div>
+                </CardHeader>
+                {breakdownTable(transferRows)}
+                {footer(
+                  t('actuals.transfers.movement', {
+                    amount: signedMoney(amount(data.bankCashMovement)),
+                  })
+                )}
+              </Card>
+            )}
           </div>
-        </Card>
+        </div>
       </div>
-      {data.nonconsumptionFlows.length > 0 && (
-        <Card variant="table" className="mt-5">
-          <CardHeader>
-            <CardTitle>{t('readiness.nonconsumption')}</CardTitle>
-          </CardHeader>
-          <Table>
-            <TableBody>
-              {data.nonconsumptionFlows.map((group) => (
-                <TableRow key={group.key}>
-                  <TableCell>
-                    <button
-                      type="button"
-                      className="font-650 hover:underline"
-                      onClick={() =>
-                        setTxTarget({
-                          name: t(`readiness.flow.${group.key}`),
-                          flowKind: group.key as import('@shared/schema').FlowKind,
-                          expectedCount: group.count,
-                        })
-                      }
-                    >
-                      {t(`readiness.flow.${group.key}`)} · {group.count}
-                    </button>
-                  </TableCell>
-                  <TableCell className="text-right num">{money(amount(group.amount))}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </Card>
-      )}
     </>
   );
 }

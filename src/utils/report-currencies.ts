@@ -14,15 +14,14 @@ export function formatReportMoney(
 
 type CsvReport = Pick<
   CashflowActuals,
-  'reportCurrency' | 'months' | 'expenseCategories' | 'incomeSources'
+  'reportCurrency' | 'months' | 'expenseCategories' | 'incomeCategories' | 'transfers'
 >;
 
 /** Backend money is already rounded decimal TEXT in the report currency. */
 export function buildCashflowCsv(
   report: CsvReport,
   monthLabel: (month: number) => string,
-  expenseLabel: (group: CashflowGroup) => string,
-  incomeLabel: (group: CashflowGroup) => string
+  groupLabel: (group: CashflowGroup) => string
 ): string {
   const suffix = report.reportCurrency.toLowerCase();
   const cell = (value: string | number) => {
@@ -30,19 +29,17 @@ export function buildCashflowCsv(
     return /[;"\r\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
   };
   const line = (values: (string | number)[]) => values.map(cell).join(';');
+  const section = (head: string, groups: CashflowGroup[]) => [
+    '',
+    line([head, `amount_${suffix}`, 'transactions']),
+    ...groups.map((group) => line([groupLabel(group), group.amount, group.count])),
+  ];
   return [
     line(['month', `income_${suffix}`, `expenses_${suffix}`]),
     ...report.months.map((month) => line([monthLabel(month.month), month.income, month.expenses])),
-    '',
-    line(['expense_category', `amount_${suffix}`, `previous_${suffix}`, 'transactions']),
-    ...report.expenseCategories.map((group) =>
-      line([expenseLabel(group), group.amount, group.previousAmount, group.count])
-    ),
-    '',
-    line(['income_source', `amount_${suffix}`, `previous_${suffix}`, 'transactions']),
-    ...report.incomeSources.map((group) =>
-      line([incomeLabel(group), group.amount, group.previousAmount, group.count])
-    ),
+    ...section('expense_category', report.expenseCategories),
+    ...section('income_category', report.incomeCategories),
+    ...section('transfer', report.transfers),
   ].join('\n');
 }
 

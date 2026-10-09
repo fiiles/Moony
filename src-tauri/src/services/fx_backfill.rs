@@ -12,8 +12,9 @@
 //! are already backfilled per ticker after a historical transaction is
 //! entered. Rates come from frankfurter.dev (ECB daily series, EUR base,
 //! inverted to CZK base). Backfill is best-effort: a fetch failure must never
-//! break transaction entry or rate refresh — days that stay uncovered fall
-//! back to current rates at read time (documented fallback semantics).
+//! break transaction entry or rate refresh — days that stay uncovered have no
+//! historical quote, so conversions for them are excluded and reported as
+//! missing (never valued at current rates).
 
 use std::collections::BTreeSet;
 
@@ -43,7 +44,16 @@ const CURRENCY_COLUMNS: &[(&str, &str)] = &[
     ("bank_transactions", "currency"),
     ("bank_accounts", "currency"),
     ("stock_data", "currency"),
+    ("stock_data", "quote_currency"),
     ("crypto_prices", "currency"),
+    ("stock_investments", "currency"),
+    ("crypto_investments", "currency"),
+    ("stock_price_overrides", "currency"),
+    ("crypto_price_overrides", "currency"),
+    ("dividend_data", "currency"),
+    ("dividend_overrides", "currency"),
+    ("projection_settings", "contribution_currency"),
+    ("real_estate_one_time_costs", "currency"),
     ("bonds", "currency"),
     ("loans", "currency"),
     ("real_estate", "purchase_price_currency"),
@@ -70,6 +80,20 @@ const DATED_CURRENCY_FACTS: &[(&str, &str, &str)] = &[
     ("real_estate_valuations", "currency", "valued_at"),
     ("other_asset_valuations", "currency", "valued_at"),
     ("real_estate", "purchase_price_currency", "purchase_date"),
+    ("real_estate_one_time_costs", "currency", "date"),
+    ("loans", "currency", "start_date"),
+    (
+        "insurance_policies",
+        "regular_payment_currency",
+        "start_date",
+    ),
+    (
+        "insurance_policies",
+        "one_time_payment_currency",
+        "start_date",
+    ),
+    ("stock_value_history", "currency", "recorded_at"),
+    ("crypto_value_history", "currency", "recorded_at"),
 ];
 
 /// Days after which a held currency's newest stored rate counts as stale.
@@ -148,7 +172,7 @@ pub fn stale_currencies(conn: &Connection, today: i64) -> Result<Vec<String>> {
     let mut stale = Vec::new();
     for currency in held_currencies(conn)? {
         let latest: Option<i64> = conn.query_row(
-            "SELECT MAX(date) FROM exchange_rate_history WHERE UPPER(currency) = ?1",
+            "SELECT MAX(date) FROM exchange_rate_history WHERE currency = ?1",
             [currency.as_str()],
             |r| r.get(0),
         )?;
@@ -206,7 +230,7 @@ pub fn missing_fx_ranges(conn: &Connection, today: i64) -> Result<Vec<(i64, i64)
             let mut prefix: Option<(i64, i64)> = None;
             for (symbol, first_tx) in &earliest {
                 let covered_from: Option<i64> = conn.query_row(
-                    "SELECT MIN(date) FROM exchange_rate_history WHERE UPPER(currency) = ?1",
+                    "SELECT MIN(date) FROM exchange_rate_history WHERE currency = ?1",
                     [symbol.as_str()],
                     |r| r.get(0),
                 )?;
@@ -232,7 +256,8 @@ pub fn missing_fx_ranges(conn: &Connection, today: i64) -> Result<Vec<(i64, i64)
 
 /// Parse a frankfurter.dev range response (EUR base) into CZK-base rows
 /// `(day, currency, rate_czk_per_unit)`. Includes EUR itself. Days without a
-/// CZK quote are skipped (no inversion possible).
+/// usable (finite, positive) CZK quote are skipped (no inversion possible); unusable per-EUR
+/// quotes are skipped too.
 pub fn parse_frankfurter_rates(
     body: &serde_json::Value,
     symbols: &[String],
@@ -245,7 +270,10 @@ pub fn parse_frankfurter_rates(
         let day = day_from_date(date);
         // Everything is quoted per EUR; without the CZK quote there is no
         // way to invert to CZK base.
-        let Some(czk_per_eur) = day_rates["CZK"].as_f64() else {
+        let Some(czk_per_eur) = day_rates["CZK"]
+            .as_f64()
+            .filter(|rate| rate.is_finite() && *rate > 0.0)
+        else {
             continue;
         };
         rows.push((day, "EUR".to_string(), czk_per_eur));
@@ -253,7 +281,10 @@ pub fn parse_frankfurter_rates(
             if currency == "EUR" || currency == "CZK" {
                 continue;
             }
-            if let Some(per_eur) = day_rates[currency.as_str()].as_f64() {
+            if let Some(per_eur) = day_rates[currency.as_str()]
+                .as_f64()
+                .filter(|rate| rate.is_finite() && *rate > 0.0)
+            {
                 rows.push((day, currency.clone(), czk_per_eur / per_eur));
             }
         }
@@ -308,7 +339,7 @@ pub async fn ensure_fx_coverage(db: &Database) -> Result<usize> {
 
 /// `ensure_fx_coverage` that never fails the caller: transaction entry and
 /// rate refresh must succeed even when the network is down. Uncovered days
-/// keep falling back to current rates at read time until the next attempt.
+/// stay without a historical quote (reported as missing) until the next attempt.
 pub async fn ensure_fx_coverage_best_effort(db: &Database) {
     if let Err(e) = ensure_fx_coverage(db).await {
         log::warn!("[FX_BACKFILL] WARNING: backfill failed (will retry on next refresh): {e}");
@@ -385,6 +416,12 @@ mod tests {
                 purchase_date INTEGER
             );
             CREATE TABLE user_profile (id INTEGER PRIMARY KEY, currency TEXT NOT NULL);
+            CREATE TABLE loans (id TEXT PRIMARY KEY, currency TEXT NOT NULL, start_date INTEGER NOT NULL);
+            CREATE TABLE real_estate_one_time_costs (
+                id TEXT PRIMARY KEY,
+                currency TEXT NOT NULL,
+                date INTEGER NOT NULL
+            );
             "#,
         )
         .expect("schema");
@@ -475,12 +512,14 @@ mod tests {
             INSERT INTO real_estate (id, purchase_price_currency, market_price_currency, monthly_rent_currency) VALUES ('r', 'PLN', 'PLN', NULL);
             INSERT INTO user_profile (id, currency) VALUES (1, 'AED');
             INSERT INTO bank_accounts (id, currency) VALUES ('b', 'KWD');
+            INSERT INTO loans (id, currency, start_date) VALUES ('l', 'SEK', 1);
+            INSERT INTO real_estate_one_time_costs (id, currency, date) VALUES ('c', 'NOK', 1);
         ",
         )
         .expect("seed");
         assert_eq!(
             held_currencies(&conn).expect("held"),
-            vec!["CHF", "PLN", "USD"]
+            vec!["CHF", "NOK", "PLN", "SEK", "USD"]
         );
     }
 
@@ -513,6 +552,27 @@ mod tests {
         assert_eq!(
             missing_fx_ranges(&conn, TODAY).expect("ranges"),
             vec![(TODAY - 410 * D, TODAY - 20 * D)]
+        );
+    }
+
+    #[test]
+    fn a_loan_start_and_a_one_time_cost_extend_the_history_they_need() {
+        let conn = setup_db();
+        conn.execute_batch(&format!(
+            "INSERT INTO loans (id, currency, start_date) VALUES ('l', 'CHF', {});
+             INSERT INTO real_estate_one_time_costs (id, currency, date) VALUES ('c', 'PLN', {});",
+            TODAY - 600 * D,
+            TODAY - 400 * D
+        ))
+        .expect("seed");
+        for ccy in ["CHF", "PLN"] {
+            add_rate(&conn, TODAY - 20 * D, ccy);
+            add_rate(&conn, TODAY, ccy);
+        }
+
+        assert_eq!(
+            missing_fx_ranges(&conn, TODAY).expect("ranges"),
+            vec![(TODAY - 610 * D, TODAY - 20 * D)]
         );
     }
 
@@ -682,6 +742,26 @@ mod tests {
         assert!((rows[1].2 - 25.5 / 1.18).abs() < 1e-9 && rows[1].1 == "USD" && rows[1].0 == d16);
         assert_eq!(rows[2], (d17, "EUR".to_string(), 25.6));
         assert!((rows[3].2 - 25.6 / 1.20).abs() < 1e-9);
+    }
+
+    #[test]
+    fn parse_frankfurter_skips_unusable_quotes() {
+        let body = serde_json::json!({
+            "base": "EUR",
+            "rates": {
+                "2018-05-16": { "CZK": 0.0, "USD": 1.18 },
+                "2018-05-17": { "CZK": 25.6, "USD": 0.0, "GBP": -1.0, "CHF": 1.1 }
+            }
+        });
+        let symbols: Vec<String> = ["USD", "GBP", "CHF"].map(String::from).to_vec();
+
+        let rows = parse_frankfurter_rates(&body, &symbols);
+
+        let d17 = day_from_date("2018-05-17");
+        let mut codes: Vec<&str> = rows.iter().map(|r| r.1.as_str()).collect();
+        codes.sort();
+        assert_eq!(codes, vec!["CHF", "EUR"]);
+        assert!(rows.iter().all(|r| r.0 == d17 && r.2 > 0.0));
     }
 
     #[test]

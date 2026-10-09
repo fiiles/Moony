@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import type { OtherAsset } from '@shared/schema';
-import { otherAssetRow } from './other-assets';
+import { otherAssetRow, otherAssetsSummary } from './other-assets';
+
+const DAY = 86_400;
+/** Today: 1 EUR = 25 CZK; no rate for KWD. */
+const convert = (amount: number, currency: string) =>
+  currency === 'KWD' ? null : currency === 'EUR' ? amount * 25 : amount;
+/** Before day 100: 1 EUR = 20 CZK, from day 100 on: 24 CZK; never a rate for KWD. */
+const convertAt = (amount: number, currency: string, t: number) =>
+  currency === 'KWD' ? null : currency === 'EUR' ? amount * (t < 100 * DAY ? 20 : 24) : amount;
 
 function asset(partial: Partial<OtherAsset>): OtherAsset {
   return {
@@ -20,28 +28,72 @@ function asset(partial: Partial<OtherAsset>): OtherAsset {
 
 describe('otherAssetRow', () => {
   it('values quantity × price and the gain against the purchase average', () => {
-    const row = otherAssetRow(asset({}));
-    expect(row.valueCzk).toBe(205_500);
-    expect(row.costCzk).toBe(156_000);
-    expect(row.gainCzk).toBe(49_500);
+    const row = otherAssetRow(asset({}), convert, convertAt);
+    expect(row.value).toBe(205_500);
+    expect(row.cost).toBe(156_000);
+    expect(row.gain).toBe(49_500);
     expect(row.gainPct).toBeCloseTo(0.3173, 3);
-    expect(row.yieldCzk).toBe(0);
+    expect(row.yield).toBe(0);
   });
 
   it('computes the yearly yield by type', () => {
-    expect(otherAssetRow(asset({ yieldType: 'fixed', yieldValue: '2400' })).yieldCzk).toBe(2_400);
-    expect(
-      otherAssetRow(asset({ yieldType: 'percent_purchase', yieldValue: '6' })).yieldCzk
-    ).toBeCloseTo(9_360);
-    expect(
-      otherAssetRow(asset({ yieldType: 'percent_market', yieldValue: '1' })).yieldCzk
-    ).toBeCloseTo(2_055);
+    const row = (partial: Partial<OtherAsset>) => otherAssetRow(asset(partial), convert, convertAt);
+    expect(row({ yieldType: 'fixed', yieldValue: '2400' }).yield).toBe(2_400);
+    expect(row({ yieldType: 'percent_purchase', yieldValue: '6' }).yield).toBeCloseTo(9_360);
+    expect(row({ yieldType: 'percent_market', yieldValue: '1' }).yield).toBeCloseTo(2_055);
   });
 
   it('has no gain percentage without a purchase cost', () => {
-    const row = otherAssetRow(asset({ averagePurchasePrice: '0' }));
-    expect(row.costCzk).toBe(0);
+    const row = otherAssetRow(asset({ averagePurchasePrice: '0' }), convert, convertAt);
+    expect(row.cost).toBe(0);
     expect(row.gainPct).toBe(0);
-    expect(row.gainCzk).toBe(205_500);
+    expect(row.gain).toBe(205_500);
+  });
+
+  it('converts the value today and every buy at its own day', () => {
+    const eur = asset({
+      currency: 'EUR',
+      quantity: '2',
+      marketPrice: '100',
+      averagePurchasePrice: '90',
+    });
+    // Bought 1 at 80 EUR on day 10 (20 CZK) and 2 at 95 EUR on day 200 (24 CZK); 2 held
+    const buys = [
+      { quantity: 1, pricePerUnit: 80, currency: 'EUR', date: 10 * DAY },
+      { quantity: 2, pricePerUnit: 95, currency: 'EUR', date: 200 * DAY },
+    ];
+    const row = otherAssetRow(eur, convert, convertAt, buys);
+    expect(row.value).toBe(5_000);
+    expect(row.cost).toBeCloseTo((2 * (80 * 20 + 2 * 95 * 24)) / 3);
+    // Without transactions: the purchase average on the creation day
+    const created = otherAssetRow({ ...eur, createdAt: 150 * DAY }, convert, convertAt);
+    expect(created.cost).toBe(2 * 90 * 24);
+  });
+
+  it('keeps an unconvertible asset native and out of the totals', () => {
+    const kwd = otherAssetRow(
+      asset({
+        id: 'k',
+        currency: 'KWD',
+        quantity: '1',
+        marketPrice: '700',
+        averagePurchasePrice: '600',
+      }),
+      convert,
+      convertAt
+    );
+    expect(kwd.value).toBeNull();
+    expect(kwd.cost).toBeNull();
+    expect(kwd.gain).toBeNull();
+    expect(kwd.gainPct).toBeNull();
+    expect(kwd.valueNative).toBe(700);
+    const gold = otherAssetRow(asset({}), convert, convertAt);
+    const s = otherAssetsSummary([gold, kwd]);
+    expect(s.value).toBe(205_500);
+    expect(s.cost).toBe(156_000);
+    expect(s.gain).toBe(49_500);
+    expect(s.gainCost).toBe(156_000);
+    expect(s.missing).toEqual(['KWD']);
+    expect(s.missingCost).toEqual(['KWD']);
   });
 });

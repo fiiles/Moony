@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { Gem, Plus } from 'lucide-react';
 import type { OtherAsset } from '@shared/schema';
 import { exportApi, otherAssetsApi, portfolioApi } from '@/lib/tauri-api';
 import { useCurrency } from '@/lib/currency';
+import { useDatedMainConvert, useMainConvert } from '@/hooks/use-fx';
 import { useFormat } from '@/lib/use-format';
 import { translateApiError } from '@/lib/translate-api-error';
 import { useShellPage } from '@/components/shell/shell-context';
@@ -17,7 +18,8 @@ import { ConfirmDeleteDialog } from '@/components/common/ConfirmDeleteDialog';
 import { Stat, StatSkeleton, Stats } from '@/components/common/Stat';
 import PortfolioTrendCard from '@/components/common/PortfolioTrendCard';
 import { OtherAssetsTable } from '@/components/other-assets/OtherAssetsTable';
-import { otherAssetRow } from '@/utils/other-assets';
+import { otherAssetRow, otherAssetsSummary, type OtherAssetBuy } from '@/utils/other-assets';
+import { ConversionQualityNote } from '@/components/reports/ReportQualityNote';
 import { AddOtherAssetModal } from '@/components/other-assets/AddOtherAssetModal';
 import { EditOtherAssetModal } from '@/components/other-assets/EditOtherAssetModal';
 import { BuyOtherAssetModal } from '@/components/other-assets/BuyOtherAssetModal';
@@ -37,8 +39,11 @@ export default function OtherAssets() {
   const { t } = useTranslation('otherAssets');
   const { t: tc } = useTranslation('common');
   const queryClient = useQueryClient();
-  const { formatCurrency, formatCurrencySigned, fxConvert } = useCurrency();
+  const { currencyCode } = useCurrency();
   const fmt = useFormat();
+  const formatCurrency = (value: number) => fmt.money(value, currencyCode, { decimals: 0 });
+  const formatCurrencySigned = (value: number) =>
+    fmt.money(value, currencyCode, { signed: true, decimals: 0 });
   const [modal, setModal] = useState<Modal>(null);
   const [selected, setSelected] = useState<OtherAsset | null>(null);
 
@@ -47,23 +52,46 @@ export default function OtherAssets() {
     queryFn: () => otherAssetsApi.getAll(),
   });
 
-  const rows = useMemo(() => assets.map(otherAssetRow), [assets]);
-  const totals = rows.reduce(
-    (acc, r) => ({
-      value: acc.value + r.valueCzk,
-      cost: acc.cost + r.costCzk,
-      yield: acc.yield + r.yieldCzk,
-      yielding: acc.yielding + (r.yieldCzk > 0 ? 1 : 0),
-    }),
-    { value: 0, cost: 0, yield: 0, yielding: 0 }
+  // The buys decide the cost: each converts at its own day
+  const transactionQueries = useQueries({
+    queries: assets.map((a) => ({
+      queryKey: ['other-asset-transactions', a.id],
+      queryFn: () => otherAssetsApi.getTransactions(a.id),
+    })),
+  });
+  const buysByAsset = transactionQueries.map((q) =>
+    q.data
+      ?.filter((tx) => tx.type === 'buy')
+      .map<OtherAssetBuy>((tx) => ({
+        quantity: parseFloat(tx.quantity) || 0,
+        pricePerUnit: parseFloat(tx.pricePerUnit) || 0,
+        currency: tx.currency,
+        date: tx.transactionDate,
+      }))
   );
-  const gain = totals.value - totals.cost;
-  // Today's point of the trend card in the report currency; an asset without a rate stays out,
-  // like in the recorded history.
-  const trendValue = rows.reduce(
-    (sum, r) => sum + (fxConvert(r.quantity * r.price, r.asset.currency || 'CZK') ?? 0),
-    0
+  const transactionsLoaded = transactionQueries.every((q) => !q.isLoading);
+  const firstDay = Math.min(
+    ...assets.map((a) => a.createdAt),
+    ...buysByAsset.flatMap((buys) => buys?.map((b) => b.date) ?? [])
   );
+  const convert = useMainConvert();
+  const dated = useDatedMainConvert(Number.isFinite(firstDay) ? firstDay : undefined);
+  // The cost needs the transactions and the daily rates; until then it is pending, not missing
+  const costReady = dated.ready && transactionsLoaded;
+
+  const rows = useMemo(
+    () => assets.map((a, i) => otherAssetRow(a, convert, dated.convertAt, buysByAsset[i])),
+    // buysByAsset is rebuilt every render; the query data is what matters
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [assets, convert, dated.convertAt, ...transactionQueries.map((q) => q.data)]
+  );
+  const totals = otherAssetsSummary(rows);
+  const gain = totals.gain;
+  const missing = costReady
+    ? [...new Set([...totals.missing, ...totals.missingCost])]
+    : totals.missing;
+  // Today's point of the trend card is the page total, through the same converter
+  const trendValue = totals.value;
   const latest = assets.reduce<OtherAsset | null>(
     (max, a) => (max === null || a.updatedAt > max.updatedAt ? a : max),
     null
@@ -150,6 +178,7 @@ export default function OtherAssets() {
         />
       ) : (
         <>
+          <ConversionQualityNote quality={{ missingCurrencies: missing }} currency={currencyCode} />
           <Stats>
             <Stat
               label={t('summary.value')}
@@ -161,8 +190,8 @@ export default function OtherAssets() {
               value={formatCurrencySigned(gain)}
               tone={gain > 0 ? 'gain' : gain < 0 ? 'loss' : 'neutral'}
               note={
-                totals.cost > 0
-                  ? `${fmt.percent(gain / totals.cost, 1, { signed: true })} ${t('summary.vsCost', { amount: formatCurrency(totals.cost) })}`
+                totals.gainCost > 0
+                  ? `${fmt.percent(gain / totals.gainCost, 1, { signed: true })} ${t('summary.vsCost', { amount: formatCurrency(totals.gainCost) })}`
                   : t('summary.noCost')
               }
             />
@@ -187,10 +216,15 @@ export default function OtherAssets() {
             />
           </Stats>
 
-          <PortfolioTrendCard type="otherAssets" currentValue={trendValue} />
+          <PortfolioTrendCard
+            type="otherAssets"
+            currentValue={trendValue}
+            missingCurrencies={totals.missing}
+          />
 
           <OtherAssetsTable
             rows={rows}
+            costPending={!costReady}
             onViewTransactions={open('transactions')}
             onBuy={open('buy')}
             onSell={open('sell')}

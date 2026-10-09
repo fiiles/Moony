@@ -14,6 +14,8 @@ import {
 } from 'lucide-react';
 import type { OtherAsset } from '@shared/schema';
 import type { OtherAssetRow } from '@/utils/other-assets';
+import { compareConverted } from '@/utils/fx-totals';
+import { ConvertedMoney } from '@/components/common/ConvertedMoney';
 import { useCurrency } from '@/lib/currency';
 import { useFormat } from '@/lib/use-format';
 import { Button } from '@/components/ui/button';
@@ -41,6 +43,8 @@ type SortColumn = 'name' | 'quantity' | 'price' | 'avgPurchase' | 'value' | 'gai
 
 interface OtherAssetsTableProps {
   rows: OtherAssetRow[];
+  /** The purchase-day rates or the transactions are still loading: costs are not known yet. */
+  costPending?: boolean;
   onViewTransactions: (asset: OtherAsset) => void;
   onBuy: (asset: OtherAsset) => void;
   onSell: (asset: OtherAsset) => void;
@@ -57,6 +61,7 @@ interface OtherAssetsTableProps {
  */
 export function OtherAssetsTable({
   rows,
+  costPending = false,
   onViewTransactions,
   onBuy,
   onSell,
@@ -65,8 +70,10 @@ export function OtherAssetsTable({
   onDelete,
 }: OtherAssetsTableProps) {
   const { t } = useTranslation('otherAssets');
-  const { formatCurrency, formatCurrencySigned } = useCurrency();
+  const { currencyCode } = useCurrency();
   const fmt = useFormat();
+  const formatCurrency = (value: number) => fmt.money(value, currencyCode, { decimals: 0 });
+  const signed = { signed: true, decimals: 0 };
   const [search, setSearch] = useState('');
   const [sortColumn, setSortColumn] = useState<SortColumn>('value');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
@@ -98,21 +105,22 @@ export function OtherAssetsTable({
           c = a.avgPurchase - b.avgPurchase;
           break;
         case 'value':
-          c = a.valueCzk - b.valueCzk;
+          c = compareConverted(a.value, b.value);
           break;
         case 'gain':
-          c = a.gainCzk - b.gainCzk;
+          c = compareConverted(a.gain, b.gain);
           break;
         case 'yield':
-          c = a.yieldCzk - b.yieldCzk;
+          c = compareConverted(a.yield, b.yield);
           break;
       }
       return sortDirection === 'asc' ? c : -c;
     });
   }, [rows, search, sortColumn, sortDirection]);
 
-  const totalValue = visible.reduce((s, r) => s + r.valueCzk, 0);
-  const totalCost = visible.reduce((s, r) => s + r.costCzk, 0);
+  // Footer totals: amounts without a rate stay out (the page note names them)
+  const totalValue = visible.reduce((s, r) => s + (r.value ?? 0), 0);
+  const totalCost = visible.reduce((s, r) => s + (r.cost ?? 0), 0);
 
   const SortHead = ({
     column,
@@ -238,29 +246,49 @@ export function OtherAssetsTable({
                     )}
                   </TableCell>
                   <TableCell className="text-right font-650 text-ink num">
-                    {formatCurrency(r.valueCzk)}
+                    <ConvertedMoney value={r.value} amount={r.valueNative} currency={currency} />
                   </TableCell>
                   <TableCell
                     className={cn(
                       'text-right num',
-                      r.gainCzk > 0 ? 'text-gain' : r.gainCzk < 0 ? 'text-loss' : 'text-ink-4'
+                      r.gain === null
+                        ? 'text-ink-4'
+                        : r.gain > 0
+                          ? 'text-gain'
+                          : r.gain < 0
+                            ? 'text-loss'
+                            : 'text-ink-4'
                     )}
                   >
-                    {r.costCzk === 0 || r.gainCzk === 0 ? (
+                    {r.costNative === 0 || r.gain === 0 ? (
                       t('table.noChange')
+                    ) : r.gain === null ? (
+                      // Native gain until the purchase days convert (or with the missing marker)
+                      <ConvertedMoney
+                        className="font-650"
+                        value={null}
+                        amount={r.valueNative - r.costNative}
+                        currency={currency}
+                        options={signed}
+                        pending={costPending}
+                      />
                     ) : (
                       <>
-                        <span className="font-650">{formatCurrencySigned(r.gainCzk)}</span>
-                        {sub(fmt.percent(r.gainPct, 1, { signed: true }))}
+                        <span className="font-650">{fmt.money(r.gain, currencyCode, signed)}</span>
+                        {sub(fmt.percent(r.gainPct ?? 0, 1, { signed: true }))}
                       </>
                     )}
                   </TableCell>
                   <TableCell className="text-right num">
-                    {r.yieldCzk > 0 ? (
+                    {r.yieldNative > 0 ? (
                       <>
-                        <span className="font-650 text-gain">
-                          {formatCurrencySigned(r.yieldCzk)}
-                        </span>
+                        <ConvertedMoney
+                          className="font-650 text-gain"
+                          value={r.yield}
+                          amount={r.yieldNative}
+                          currency={currency}
+                          options={signed}
+                        />
                         {sub(yieldLabel(a))}
                       </>
                     ) : (

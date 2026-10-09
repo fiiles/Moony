@@ -11,6 +11,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import type { Loan } from '@shared/schema';
+import { recordCurrency } from '@shared/currencies';
 import type { LoanRow } from '@/utils/loans';
 import { monthsAhead } from '@/utils/loans';
 import { compareConverted } from '@/utils/fx-totals';
@@ -268,7 +269,7 @@ export function LoansTable({ rows, today, onEdit, onDelete }: LoansTableProps) {
                           {loan.name}
                         </b>
                         {sub(
-                          `${loan.currency || currencyCode} · ${t('table.since', {
+                          `${recordCurrency(loan.currency)} · ${t('table.since', {
                             month: text.monthYear(loan.startDate),
                           })}`
                         )}

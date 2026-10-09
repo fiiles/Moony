@@ -1,6 +1,7 @@
 import type { OtherAsset } from '@shared/schema';
 import { calculateAnnualYield, type YieldType } from '@shared/calculations';
 import { MissingTracker, type ConvertAtFn, type ConvertFn } from '@shared/fx';
+import { recordCurrency } from '@shared/currencies';
 
 /** One buy of an other asset, in the transaction's own currency. */
 export interface OtherAssetBuy {
@@ -75,7 +76,7 @@ export function otherAssetRow(
   const quantity = parseFloat(asset.quantity) || 0;
   const price = parseFloat(asset.marketPrice) || 0;
   const avgPurchase = parseFloat(asset.averagePurchasePrice) || 0;
-  const currency = asset.currency || 'CZK';
+  const currency = recordCurrency(asset.currency);
   const valueNative = quantity * price;
   const costNative = quantity * avgPurchase;
   const yieldNative = calculateAnnualYield({

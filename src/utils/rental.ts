@@ -4,6 +4,7 @@
  * with the price growth shifted for the scenario band. Pure functions.
  */
 import type { Loan } from '@shared/schema';
+import { recordCurrency } from '@shared/currencies';
 import { calculateAnnuityPayment } from '@/utils/annuity';
 
 const SECONDS_PER_YEAR = 365.25 * 86_400;
@@ -182,7 +183,7 @@ export function linkedLoanInput(
   let termSum = 0;
   let termWeight = 0;
   for (const l of loans) {
-    const principal = toDisplay(Number(l.principal) || 0, l.currency);
+    const principal = toDisplay(Number(l.principal) || 0, recordCurrency(l.currency));
     // A loan without a rate cannot be summed: the prefill stays unknown, never 1:1.
     if (principal === null) return { loan: null, loanYears: null, rate: null };
     loan += principal;

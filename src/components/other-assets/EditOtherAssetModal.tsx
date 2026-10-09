@@ -6,7 +6,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import type { OtherAsset } from '@shared/schema';
-import { currencyCodeSchema, type CurrencyCode } from '@shared/currencies';
+import { currencyCodeSchema, type CurrencyCode, recordCurrency } from '@shared/currencies';
 import { otherAssetsApi, portfolioApi } from '@/lib/tauri-api';
 import { translateApiError } from '@/lib/translate-api-error';
 import { useCurrency } from '@/lib/currency';
@@ -74,13 +74,13 @@ export function EditOtherAssetModal({ asset, open, onOpenChange }: EditOtherAsse
     if (!open || !asset) return;
     form.reset({
       name: asset.name,
-      currency: (asset.currency || currencyCode) as CurrencyCode,
+      currency: recordCurrency(asset.currency) as CurrencyCode,
       yieldType: (YIELD_TYPES as readonly string[]).includes(asset.yieldType)
         ? (asset.yieldType as FormValues['yieldType'])
         : 'none',
       yieldValue: asset.yieldValue ?? '',
     });
-  }, [open, asset, form, currencyCode]);
+  }, [open, asset, form]);
 
   const mutation = useMutation({
     mutationFn: (values: FormValues) =>

@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { Ellipsis, Lock, LockOpen, Pencil, Trash2, Upload } from 'lucide-react';
 import type { RealEstate } from '@shared/schema';
+import { recordCurrency } from '@shared/currencies';
 import { insuranceApi } from '@/lib/tauri-api';
 import { useCurrency } from '@/lib/currency';
 import { useFormat } from '@/lib/use-format';
@@ -84,7 +85,7 @@ export default function InsuranceDetail() {
     enabled: !!id,
   });
 
-  const currency = policy?.regularPaymentCurrency || currencyCode;
+  const currency = recordCurrency(policy?.regularPaymentCurrency);
   const money = (v: number) => fmt.money(v, currency, { decimals: 0 });
   const series = useMemo(() => (policy ? paidSeries(policy, today, 12) : null), [policy, today]);
 

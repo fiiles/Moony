@@ -1,9 +1,10 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearch } from 'wouter';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { ChevronDown } from 'lucide-react';
 import type { Loan, RealEstate } from '@shared/schema';
+import { recordCurrency } from '@shared/currencies';
 import { realEstateApi } from '@/lib/tauri-api';
 import { useCurrency } from '@/lib/currency';
 import { useFormat } from '@/lib/use-format';
@@ -48,7 +49,6 @@ function monthlyCost(cost: RealEstate['recurringCosts'][number]): number {
   return cost.amount;
 }
 
-/** Field texts a property prefills, in the display currency (null keeps the field). */
 /** The example property the calculator opens with, in EUR (scaled to the main currency). */
 const EXAMPLE_EUR = {
   price: 216_000,
@@ -58,11 +58,12 @@ const EXAMPLE_EUR = {
   oneTime: 10_000,
 };
 
+/** Field texts a property prefills, in the display currency (null: the property has none). */
 interface PropertyDefaults {
-  price: string | null;
+  price: string;
   rent: string | null;
   costs: string | null;
-  loan: string | null;
+  loan: string;
   loanYears: string | null;
   rate: string | null;
 }
@@ -70,34 +71,33 @@ interface PropertyDefaults {
 /**
  * Values a property prefills: purchase price, rent, the monthly recurring
  * costs and its linked loans (principal, term, rate), converted to the
- * display currency the calculator works in. A value whose currency has no
- * rate is null (the field keeps its value): nothing is carried over 1:1.
+ * display currency the calculator works in. Null when any of these amounts
+ * has no rate: then nothing is prefilled — never 1:1, and never a mix of the
+ * example and the property.
  */
 function propertyDefaults(
   p: RealEstate,
   loans: Loan[],
   toDisplay: (amount: number, currency: string) => number | null,
-  format: (v: number, decimals?: number) => string,
-  /** Currency of an amount stored without one: the main currency. */
-  mainCurrency: string
-): PropertyDefaults {
-  const formatKnown = (v: number | null) => (v === null ? null : format(v));
+  format: (v: number, decimals?: number) => string
+): PropertyDefaults | null {
   const monthlyCosts = p.recurringCosts.map((c) =>
-    toDisplay(monthlyCost(c), c.currency || mainCurrency)
+    toDisplay(monthlyCost(c), recordCurrency(c.currency))
   );
-  const monthly = monthlyCosts.includes(null)
-    ? null
-    : monthlyCosts.reduce<number>((s, v) => s + (v ?? 0), 0);
+  const price = toDisplay(parseFloat(p.purchasePrice ?? '') || 0, p.purchasePriceCurrency);
+  const rent = p.monthlyRent
+    ? toDisplay(parseFloat(p.monthlyRent) || 0, recordCurrency(p.monthlyRentCurrency))
+    : 0;
   const linked = linkedLoanInput(loans, toDisplay);
+  if (price === null || rent === null || linked.loan === null || monthlyCosts.includes(null)) {
+    return null;
+  }
+  const monthly = monthlyCosts.reduce<number>((s, v) => s + (v ?? 0), 0);
   return {
-    price: formatKnown(toDisplay(parseFloat(p.purchasePrice ?? '') || 0, p.purchasePriceCurrency)),
-    rent: p.monthlyRent
-      ? formatKnown(
-          toDisplay(parseFloat(p.monthlyRent) || 0, p.monthlyRentCurrency || mainCurrency)
-        )
-      : null,
-    costs: monthly !== null && monthly > 0 ? format(monthly) : null,
-    loan: formatKnown(linked.loan),
+    price: format(price),
+    rent: p.monthlyRent ? format(rent) : null,
+    costs: monthly > 0 ? format(monthly) : null,
+    loan: format(linked.loan),
     loanYears: linked.loanYears !== null ? format(linked.loanYears, 1) : null,
     rate: linked.rate !== null ? format(linked.rate, 2) : null,
   };
@@ -110,6 +110,8 @@ function propertyDefaults(
  */
 export default function EstateCalculator() {
   const search = useSearch();
+  // A prefill converts at the current quotes: wait for them so "pending" is never "missing".
+  const { fxReady } = useCurrency();
   const propertyId = new URLSearchParams(search).get('property');
   const { data: properties, isLoading } = useQuery({
     queryKey: ['real-estate'],
@@ -121,7 +123,7 @@ export default function EstateCalculator() {
     queryFn: () => realEstateApi.getLoans(propertyId as string),
     enabled: !!propertyId,
   });
-  if (propertyId && (isLoading || loansLoading)) return <></>;
+  if (propertyId && (isLoading || loansLoading || !fxReady)) return <></>;
   const initial = propertyId ? properties?.find((p) => p.id === propertyId) : undefined;
   return (
     <Calculator
@@ -140,7 +142,7 @@ export default function EstateCalculator() {
  */
 function Calculator({ initial }: { initial?: { property: RealEstate; loans: Loan[] } }) {
   const { t } = useTranslation('calculators');
-  const { convert, currencyCode } = useCurrency();
+  const { convert, currencyCode, fxReady } = useCurrency();
   const fmt = useFormat();
   const queryClient = useQueryClient();
   const { data: properties = [] } = useQuery({
@@ -153,10 +155,11 @@ function Calculator({ initial }: { initial?: { property: RealEstate; loans: Loan
       p,
       loans,
       (amount, currency) => convert(amount, currency),
-      (v, decimals = 0) => fmt.number(v, { maximumFractionDigits: decimals }),
-      currencyCode
+      (v, decimals = 0) => fmt.number(v, { maximumFractionDigits: decimals })
     );
   const initialValues = initial ? defaults(initial.property, initial.loans) : null;
+  // A property with an amount that has no rate is not prefilled; the note says why.
+  const [prefillNoRate, setPrefillNoRate] = useState(!!initial && initialValues === null);
   // The example property is defined in EUR and scaled to the main currency; a field
   // starts empty when no rate is known.
   const example = (eur: number) =>
@@ -173,6 +176,23 @@ function Calculator({ initial }: { initial?: { property: RealEstate; loans: Loan
   const [priceGrowth, setPriceGrowth] = useState('3');
   const [years, setYears] = useState('15');
   const [oneTime, setOneTime] = useState(() => example(EXAMPLE_EUR.oneTime));
+
+  // Quotes that arrive after the first render fill the example amounts once, in the fields
+  // that are still empty (a field the user typed into keeps its text).
+  const examplesFilled = useRef(false);
+  useEffect(() => {
+    if (examplesFilled.current || !fxReady) return;
+    examplesFilled.current = true;
+    const fill = (eur: number) => (text: string) =>
+      text === ''
+        ? scaledDefault(eur, convert, (v) => fmt.number(v, { maximumFractionDigits: 0 }))
+        : text;
+    setPrice(fill(EXAMPLE_EUR.price));
+    setLoan(fill(EXAMPLE_EUR.loan));
+    setRent(fill(EXAMPLE_EUR.rent));
+    setCosts(fill(EXAMPLE_EUR.costs));
+    setOneTime(fill(EXAMPLE_EUR.oneTime));
+  }, [fxReady, convert, fmt]);
 
   useShellPage({ status: { text: t('estate.status'), tone: 'neutral' } });
 
@@ -280,10 +300,12 @@ function Calculator({ initial }: { initial?: { property: RealEstate; loans: Loan
       queryFn: () => realEstateApi.getLoans(p.id),
     });
     const values = defaults(p, loans);
-    if (values.price !== null) setPrice(values.price);
+    setPrefillNoRate(values === null);
+    if (values === null) return;
+    setPrice(values.price);
     if (values.rent) setRent(values.rent);
     if (values.costs) setCosts(values.costs);
-    if (values.loan !== null) setLoan(values.loan);
+    setLoan(values.loan);
     if (values.loanYears) setLoanYears(values.loanYears);
     if (values.rate) setRate(values.rate);
   };
@@ -341,6 +363,10 @@ function Calculator({ initial }: { initial?: { property: RealEstate; loans: Loan
           ) : undefined
         }
       />
+
+      {prefillNoRate && (
+        <p className="mb-[14px] text-caption text-loss">{t('estate.prefillNoRate')}</p>
+      )}
 
       <div className="grid grid-cols-[340px_1fr] items-start gap-[18px]">
         <div className="grid gap-[14px]">

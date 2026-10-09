@@ -13,6 +13,7 @@ import type {
   RealEstateOneTimeCost,
 } from '@shared/schema';
 import { annualizeAmount, todayUtcDay } from '@shared/calculations';
+import { recordCurrency } from '@shared/currencies';
 import { insuranceApi, loansApi, portfolioApi, realEstateApi } from '@/lib/tauri-api';
 import { useCurrency } from '@/lib/currency';
 import { useFormat } from '@/lib/use-format';
@@ -257,10 +258,10 @@ export default function RealEstateDetail() {
     : null;
 
   const valueNative = row?.valueNative.amount ?? 0;
-  const valueCurrency = row?.valueNative.currency ?? currencyCode;
+  const valueCurrency = recordCurrency(row?.valueNative.currency);
   const value = row?.value ?? null;
   const purchaseNative = row?.purchaseNative.amount ?? 0;
-  const purchaseCurrency = row?.purchaseNative.currency ?? currencyCode;
+  const purchaseCurrency = recordCurrency(row?.purchaseNative.currency);
   const purchase = row?.purchase ?? null;
   const appreciation = row?.appreciation ?? null;
   const equity = row?.equity ?? null;
@@ -277,7 +278,7 @@ export default function RealEstateDetail() {
   /** A one-time cost at the rates of its day; null without a rate. */
   const costAt = (cost: RealEstateOneTimeCost) => {
     const amount = Number(cost.amount) || 0;
-    return amount === 0 ? 0 : dated.convertAt(amount, cost.currency || currencyCode, cost.date);
+    return amount === 0 ? 0 : dated.convertAt(amount, recordCurrency(cost.currency), cost.date);
   };
   const oneTimeValues = oneTimeCosts.map(costAt);
   const oneTimeTotal = oneTimeValues.some((v) => v === null)
@@ -292,7 +293,7 @@ export default function RealEstateDetail() {
     ...(row?.missingPurchase ?? []),
     ...oneTimeCosts
       .filter((_, i) => oneTimeValues[i] === null)
-      .map((c) => c.currency || currencyCode),
+      .map((c) => recordCurrency(c.currency)),
   ]);
 
   // ---- valuation trace ----
@@ -308,14 +309,14 @@ export default function RealEstateDetail() {
             id: v.id,
             t: v.valuedAt,
             value: Number(v.value) || 0,
-            currency: v.currency || currencyCode,
+            currency: recordCurrency(v.currency),
             createdAt: v.createdAt,
             note: v.note,
           }))
         ),
         dated.convertAt
       ),
-    [valuations, dated.convertAt, currencyCode]
+    [valuations, dated.convertAt]
   );
   for (const code of missingEstimates) missingDated.add(code);
   // The rates of the purchase, the costs and the estimates load after the page: until then
@@ -449,7 +450,7 @@ export default function RealEstateDetail() {
       ? money(rentYear / 12)
       : fmt.money(
           Number(realEstate.monthlyRent) || 0,
-          realEstate.monthlyRentCurrency || currencyCode,
+          recordCurrency(realEstate.monthlyRentCurrency),
           {
             decimals: 0,
           }
@@ -459,19 +460,19 @@ export default function RealEstateDetail() {
       ? money(rentYear)
       : fmt.money(
           (Number(realEstate.monthlyRent) || 0) * 12,
-          realEstate.monthlyRentCurrency || currencyCode,
+          recordCurrency(realEstate.monthlyRentCurrency),
           { decimals: 0 }
         );
   /** A one-time cost at its day's rates, or native while that day has no rate. */
   const costText = (cost: RealEstateOneTimeCost) => {
     const converted = dated.convertAt(
       Number(cost.amount) || 0,
-      cost.currency || currencyCode,
+      recordCurrency(cost.currency),
       cost.date
     );
     return converted !== null
       ? money(converted)
-      : fmt.money(Number(cost.amount) || 0, cost.currency || currencyCode, { decimals: 0 });
+      : fmt.money(Number(cost.amount) || 0, recordCurrency(cost.currency), { decimals: 0 });
   };
   /** The purchase price at its day's rates, or native while that day has no rate. */
   const purchaseText =
@@ -1061,7 +1062,7 @@ export default function RealEstateDetail() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right num">
-                        {fmt.money(Number(cost.amount) || 0, cost.currency || currencyCode, {
+                        {fmt.money(Number(cost.amount) || 0, recordCurrency(cost.currency), {
                           decimals: 0,
                         })}
                       </TableCell>
@@ -1069,10 +1070,10 @@ export default function RealEstateDetail() {
                         <ConvertedMoney
                           value={convert(
                             Number(cost.amount) * yearlyFactor(cost.frequency),
-                            cost.currency || currencyCode
+                            recordCurrency(cost.currency)
                           )}
                           amount={Number(cost.amount) * yearlyFactor(cost.frequency)}
-                          currency={cost.currency || currencyCode}
+                          currency={recordCurrency(cost.currency)}
                         />
                       </TableCell>
                     </TableRow>
@@ -1128,11 +1129,11 @@ export default function RealEstateDetail() {
                           <ConvertedMoney
                             value={dated.convertAt(
                               Number(cost.amount) || 0,
-                              cost.currency || currencyCode,
+                              recordCurrency(cost.currency),
                               cost.date
                             )}
                             amount={Number(cost.amount) || 0}
-                            currency={cost.currency || currencyCode}
+                            currency={recordCurrency(cost.currency)}
                             pending={!dated.ready}
                           />
                         </TableCell>
@@ -1218,7 +1219,7 @@ export default function RealEstateDetail() {
           id: realEstate.id,
           name: realEstate.name,
           currentValue: Number(realEstate.marketPrice) || 0,
-          currency: realEstate.marketPriceCurrency || currencyCode,
+          currency: recordCurrency(realEstate.marketPriceCurrency),
         }}
       />
       <ConfirmDeleteDialog

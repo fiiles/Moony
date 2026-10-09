@@ -6,10 +6,10 @@ import { useTranslation } from 'react-i18next';
 import { Info } from 'lucide-react';
 import type { Loan, LoanEventKind } from '@shared/schema';
 import { outstandingBalanceAt, type LoanTerms } from '@shared/calculations/loan-amortization';
+import { recordCurrency } from '@shared/currencies';
 import { isoDateFromUtcTimestamp } from '@/utils/period';
 import { extraPaymentWhatIf, loanTrajectory, type ExtraPaymentMode } from '@/utils/loan-trajectory';
 import { useFormat } from '@/lib/use-format';
-import { useCurrency } from '@/lib/currency';
 import { useLoanText } from '@/hooks/use-loan-text';
 import { useLoanEventMutations } from '@/hooks/use-loan-events';
 import {
@@ -80,8 +80,7 @@ export function LoanEventDialog({
   const fmt = useFormat();
   const text = useLoanText();
   const { add } = useLoanEventMutations(loan.id);
-  const { currencyCode } = useCurrency();
-  const currency = loan.currency || currencyCode;
+  const currency = recordCurrency(loan.currency);
   const money = (v: number) => fmt.money(v, currency, { decimals: 0 });
   const balanceToday = Math.max(0, Number(loan.outstandingBalance) || 0);
 

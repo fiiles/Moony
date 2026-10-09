@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { useTranslation } from 'react-i18next';
 import { Info } from 'lucide-react';
 import type { Bond, InsertBond } from '@shared/schema';
-import { currencyCodeSchema, type CurrencyCode } from '@shared/currencies';
+import { currencyCodeSchema, type CurrencyCode, recordCurrency } from '@shared/currencies';
 import { requiredNumber } from '@/utils/form-schemas';
 import { useCurrency } from '@/lib/currency';
 import { useFormat } from '@/lib/use-format';
@@ -103,7 +103,7 @@ export function BondsFormDialog({
             isin: bond.isin ?? '',
             couponValue: parseFloat(bond.couponValue) || 0,
             quantity: parseFloat(bond.quantity) || 1,
-            currency: (bond.currency || currencyCode) as CurrencyCode,
+            currency: recordCurrency(bond.currency) as CurrencyCode,
             interestRate: parseFloat(bond.interestRate) || 0,
             maturityDate: bond.maturityDate ? isoDay(bond.maturityDate) : '',
           }

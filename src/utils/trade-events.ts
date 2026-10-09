@@ -4,6 +4,7 @@
  * Pure, no DOM and no locale: the pages format the tooltips.
  */
 
+import { recordCurrency } from '@shared/currencies';
 import { utcDayFloor } from './chart-axis';
 import type { ChartEvent } from './chart-scale';
 
@@ -48,7 +49,7 @@ export function tradeDayEvents(
     const day = utcDayFloor(trade.transactionDate);
     const key = `${type}-${day}`;
     const native = (parseFloat(trade.quantity) || 0) * (parseFloat(trade.pricePerUnit) || 0);
-    const amount = convert(native, trade.currency || 'CZK', trade.transactionDate);
+    const amount = convert(native, recordCurrency(trade.currency), trade.transactionDate);
     const event = byDayAndType.get(key);
     if (event) {
       event.amount = event.amount === null || amount === null ? null : event.amount + amount;

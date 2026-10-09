@@ -1,4 +1,5 @@
 import { MissingTracker, type ConvertFn } from '@shared/fx';
+import { recordCurrency } from '@shared/currencies';
 
 export interface BalanceItem {
   balance?: string | null;
@@ -33,7 +34,7 @@ export function accountTotals(items: readonly BalanceItem[], convert: ConvertFn)
   const totals = { included: 0, excluded: 0, excludedCount: 0, income: 0, expense: 0 };
   const tracker = new MissingTracker();
   for (const item of items) {
-    const currency = item.currency || 'CZK';
+    const currency = recordCurrency(item.currency);
     if (item.excludeFromBalance) totals.excludedCount += 1;
     const amount = parseFloat(item.balance || '0');
     const rate = tracker.track(currency, convert(1, currency));

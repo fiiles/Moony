@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Check, Ellipsis, Pencil, Plus, Repeat, Trash2, TriangleAlert } from 'lucide-react';
 import type { InsertLoan, Loan, LoanEvent, LoanEventKind, LoanSchedule } from '@shared/schema';
 import { dueDay } from '@shared/calculations/loan-amortization';
+import { recordCurrency } from '@shared/currencies';
 import type { ChartEvent, EventCluster } from '@/utils/chart-scale';
 import { monthsAhead, type LoanRow } from '@/utils/loans';
 import {
@@ -13,7 +14,6 @@ import {
   type ExtraPaymentMode,
 } from '@/utils/loan-trajectory';
 import { useFormat } from '@/lib/use-format';
-import { useCurrency } from '@/lib/currency';
 import { useLoans, useLoanSchedule } from '@/hooks/use-loans';
 import { useLoanMutations } from '@/hooks/use-loan-mutations';
 import { useLoanEventMutations, useLoanEvents } from '@/hooks/use-loan-events';
@@ -271,9 +271,8 @@ function LoanDetailBody({
   const { t } = useTranslation('loans');
   const fmt = useFormat();
   const text = useLoanText();
-  const { currencyCode } = useCurrency();
   const { loan, terms, trajectory } = row;
-  const currency = loan.currency || currencyCode;
+  const currency = recordCurrency(loan.currency);
   const money = (v: number | string) => fmt.money(Number(v), currency, { decimals: 0 });
   const rate = Number(loan.interestRate) || 0;
   const payment = Number(loan.monthlyPayment) || 0;

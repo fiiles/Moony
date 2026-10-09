@@ -184,3 +184,12 @@ export function isoMinorUnits(code: string | null | undefined): number {
 export function priceDecimals(value: number, code: string | null | undefined): number {
   return Math.abs(value) >= 1000 ? 0 : currencyDecimals(code);
 }
+
+/**
+ * The currency of a stored record: its own code, or `'CZK'` when the record carries none —
+ * the storage default of every currency column (`NOT NULL DEFAULT 'CZK'`). Labels and
+ * valuations use this one rule so they always agree; it is never a conversion target.
+ */
+export function recordCurrency(code: string | null | undefined): string {
+  return code || 'CZK';
+}

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ChevronDown } from 'lucide-react';
 import { useCurrency } from '@/lib/currency';
@@ -66,14 +66,25 @@ const DAY = 86_400;
  */
 export default function AnnuityCalculator() {
   const { t } = useTranslation('calculators');
-  const { currencyCode, convert } = useCurrency();
+  const { currencyCode, convert, fxReady } = useCurrency();
   const fmt = useFormat();
   const { loans } = useLoans();
 
   // The example loan is defined in EUR and scaled to the main currency; empty without a rate.
-  const [amount, setAmount] = useState(() =>
-    scaledDefault(EXAMPLE_LOAN_EUR, convert, (v) => fmt.number(v, { maximumFractionDigits: 0 }))
-  );
+  const exampleAmount = () =>
+    scaledDefault(EXAMPLE_LOAN_EUR, convert, (v) => fmt.number(v, { maximumFractionDigits: 0 }));
+  const [amount, setAmount] = useState(exampleAmount);
+  // Quotes that arrive after the first render fill the example once, if the field is still
+  // empty (text the user typed is kept).
+  const exampleFilled = useRef(false);
+  useEffect(() => {
+    if (exampleFilled.current || !fxReady) return;
+    exampleFilled.current = true;
+    const filled = scaledDefault(EXAMPLE_LOAN_EUR, convert, (v) =>
+      fmt.number(v, { maximumFractionDigits: 0 })
+    );
+    setAmount((text) => (text === '' ? filled : text));
+  }, [fxReady, convert, fmt]);
   const [years, setYears] = useState('25');
   const [rate, setRate] = useState('5,1');
   const [frequency, setFrequency] = useState<PaymentPeriodicity>('monthly');

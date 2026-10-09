@@ -11,6 +11,7 @@ import {
   todayUtcDay,
   type LoanTerms,
 } from '@shared/calculations/loan-amortization';
+import { recordCurrency } from '@shared/currencies';
 import {
   Dialog,
   DialogContent,
@@ -118,7 +119,7 @@ export function LoanFormDialog({
   const watched = useWatch({ control: form.control });
   // "Set the balance as of a date": off = amortize from the principal at the start date
   const manualBalance = !!watched.manualBalance;
-  const currency = watched.currency || userCurrency;
+  const currency = recordCurrency(watched.currency);
 
   useEffect(() => {
     if (!open) return;
@@ -127,7 +128,7 @@ export function LoanFormDialog({
       form.reset({
         name: loan.name,
         principal: loan.principal.toString(),
-        currency: loan.currency || userCurrency,
+        currency: recordCurrency(loan.currency),
         interestRate: loan.interestRate.toString(),
         monthlyPayment: loan.monthlyPayment?.toString() || '0',
         interestRateValidityDate: loan.interestRateValidityDate

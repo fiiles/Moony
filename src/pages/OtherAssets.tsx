@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { Gem, Plus } from 'lucide-react';
 import type { OtherAsset } from '@shared/schema';
+import { recordCurrency } from '@shared/currencies';
 import { exportApi, otherAssetsApi, portfolioApi } from '@/lib/tauri-api';
 import { useCurrency } from '@/lib/currency';
 import { useDatedMainConvert, useMainConvert } from '@/hooks/use-fx';
@@ -256,7 +257,7 @@ export default function OtherAssets() {
                 id: selected.id,
                 name: selected.name,
                 currentValue: Number(selected.marketPrice) || 0,
-                currency: selected.currency || currencyCode,
+                currency: recordCurrency(selected.currency),
                 unit: t('table.unit'),
                 quantity: Number(selected.quantity) || 0,
               }

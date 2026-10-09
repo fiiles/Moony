@@ -1,5 +1,6 @@
 import type { Bond } from '@shared/schema';
 import { MissingTracker, type ConvertFn } from '@shared/fx';
+import { recordCurrency } from '@shared/currencies';
 
 const SECONDS_PER_DAY = 86_400;
 
@@ -18,7 +19,7 @@ export function bondYearlyCoupon(bond: Bond): number {
 
 /** The bond's currency (legacy rows without one are CZK). */
 export function bondCurrency(bond: Bond): string {
-  return bond.currency || 'CZK';
+  return recordCurrency(bond.currency);
 }
 
 /** Face value × quantity in the main currency; null without a rate. */

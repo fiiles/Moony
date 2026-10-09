@@ -234,8 +234,9 @@ pub struct PriceStatus {
     pub stocks_missing_price: i32,
     /// Number of cryptos without any price data
     pub crypto_missing_price: i32,
-    /// Currencies in the user's data (the profile currency included) without a current
-    /// quote; amounts in them are excluded from converted totals, never valued 1:1
+    /// Currencies that enter converted totals (open positions, transactions, entities,
+    /// budgets, the profile currency) without a current quote; amounts in them are excluded
+    /// from those totals, never valued 1:1. Watch-only and closed-position quotes do not count
     pub missing_currencies: Vec<String>,
     /// Held currencies whose newest stored exchange rate is more than 14 days old;
     /// their values use that old rate

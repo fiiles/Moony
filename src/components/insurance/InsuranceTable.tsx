@@ -13,6 +13,7 @@ import {
   Pencil,
   Trash2,
 } from 'lucide-react';
+import { recordCurrency } from '@shared/currencies';
 import type { InsuranceRow } from '@/utils/insurance';
 import { compareConverted } from '@/utils/fx-totals';
 import { ConvertedMoney } from '@/components/common/ConvertedMoney';
@@ -256,7 +257,7 @@ export function InsuranceTable({
       return <span className="text-ink-4">—</span>;
     }
     const title = top.title.trim();
-    const amount = fmt.money(top.amount, top.currency || currencyCode, {
+    const amount = fmt.money(top.amount, recordCurrency(top.currency), {
       compact: true,
       decimals: 2,
     });

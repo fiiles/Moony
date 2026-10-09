@@ -13,6 +13,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import type { Milestone, MilestoneKind } from '@shared/schema';
+import { recordCurrency } from '@shared/currencies';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -61,7 +62,7 @@ function useSubLine() {
       : fmt.day(d);
   };
   const money = (m: Milestone) =>
-    m.amount === null ? '' : fmt.money(Number(m.amount), m.currency ?? currencyCode);
+    m.amount === null ? '' : fmt.money(Number(m.amount), recordCurrency(m.currency));
   const price = (m: Milestone, value: string | null) =>
     value === null ? '' : formatNativePrice(Number(value), m.currency, fmt.locale, currencyCode);
 

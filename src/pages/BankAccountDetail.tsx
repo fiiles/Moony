@@ -40,7 +40,7 @@ import type {
   CsvImportBatch,
   FlowKind,
 } from '@shared/schema';
-import type { CurrencyCode } from '@shared/currencies';
+import { recordCurrency, type CurrencyCode } from '@shared/currencies';
 import { bankAccountsApi, categorizationApi, cashflowApi } from '@/lib/tauri-api';
 import { useBankAccount } from '@/hooks/use-bank-accounts';
 import {
@@ -389,7 +389,7 @@ export default function BankAccountDetail() {
     </p>
   ) : null;
   // Account-native amounts only; other currency rows are excluded from summaries/chart.
-  const accountCurrency = (account?.currency || currencyCode) as CurrencyCode;
+  const accountCurrency = recordCurrency(account?.currency) as CurrencyCode;
   const formatAccountAmount = (value: number) =>
     formatAmountInCurrency(value, accountCurrency, getLocale(), currencyCode);
 
@@ -565,7 +565,7 @@ export default function BankAccountDetail() {
 
   // ---- Derived figures for the hero and the chart ----
   const balance = parseFloat(account?.balance || '0');
-  const currency = account?.currency || currencyCode;
+  const currency = recordCurrency(account?.currency);
   const lastImport = (importBatches ?? []).reduce<number | null>(
     (max, b) => (max === null || b.importedAt > max ? b.importedAt : max),
     null

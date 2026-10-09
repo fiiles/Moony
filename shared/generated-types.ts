@@ -1136,8 +1136,9 @@ stocksMissingPrice: number;
  */
 cryptoMissingPrice: number; 
 /**
- * Currencies in the user's data (the profile currency included) without a current
- * quote; amounts in them are excluded from converted totals, never valued 1:1
+ * Currencies that enter converted totals (open positions, transactions, entities,
+ * budgets, the profile currency) without a current quote; amounts in them are excluded
+ * from those totals, never valued 1:1. Watch-only and closed-position quotes do not count
  */
 missingCurrencies: string[]; 
 /**

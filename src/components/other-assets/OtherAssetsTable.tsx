@@ -13,6 +13,7 @@ import {
   TrendingDown,
 } from 'lucide-react';
 import type { OtherAsset } from '@shared/schema';
+import { recordCurrency } from '@shared/currencies';
 import type { OtherAssetRow } from '@/utils/other-assets';
 import { compareConverted } from '@/utils/fx-totals';
 import { ConvertedMoney } from '@/components/common/ConvertedMoney';
@@ -220,7 +221,7 @@ export function OtherAssetsTable({
           ) : (
             visible.map((r) => {
               const a = r.asset;
-              const currency = a.currency || currencyCode;
+              const currency = recordCurrency(a.currency);
               return (
                 <TableRow key={a.id} className="h-[62px]">
                   <TableCell>

@@ -23,6 +23,8 @@ floating-point drift that compounds across thousands of transaction rows.
   cached by `src-tauri/src/services/currency.rs` on the backend, applied on
   the frontend via `shared/currencies.ts` (`convertToCzK`) and the
   `CurrencyContext` formatting helpers.
+  *Superseded in part by ADR 0011 (and ADR 0012): those helpers
+  are removed; see `docs/DEPRECATED.md`.*
 
 ## Consequences
 

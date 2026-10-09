@@ -9,6 +9,7 @@ import {
   type LoanTerms,
   type LoanValuationMode,
 } from '@shared/calculations/loan-amortization';
+import { recordCurrency } from '@shared/currencies';
 import { loanTrajectory, type LoanTrajectory } from '@/utils/loan-trajectory';
 
 const DAY = 86_400;
@@ -53,7 +54,7 @@ export function loanRow(loan: Loan, today: number, convert: ConvertFn): LoanRow 
   const day = dayFloor(today);
   const terms = loanTermsFromWire(loan);
   const trajectory = loanTrajectory(terms, day);
-  const currency = loan.currency || 'CZK';
+  const currency = recordCurrency(loan.currency);
   // One factor per loan: every amount of the row converts at the same current quote
   const rate = convert(1, currency);
   const outstanding = Math.max(0, Number(loan.outstandingBalance) || 0);

@@ -16,6 +16,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import type { Loan, RealEstate } from '@shared/schema';
+import { recordCurrency } from '@shared/currencies';
 import { exportApi, portfolioApi, realEstateApi } from '@/lib/tauri-api';
 import { useCurrency } from '@/lib/currency';
 import { useFormat } from '@/lib/use-format';
@@ -650,7 +651,7 @@ export default function RealEstatePage() {
                 id: selected.id,
                 name: selected.name,
                 currentValue: Number(selected.marketPrice) || 0,
-                currency: selected.marketPriceCurrency || currencyCode,
+                currency: recordCurrency(selected.marketPriceCurrency),
               }
             : null
         }

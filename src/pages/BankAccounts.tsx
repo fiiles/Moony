@@ -16,6 +16,7 @@ import {
   Upload,
 } from 'lucide-react';
 import type { BankAccountWithInstitution, InsertBankAccount } from '@shared/schema';
+import { recordCurrency } from '@shared/currencies';
 import { useBankAccounts } from '@/hooks/use-bank-accounts';
 import { useBankAccountMutations } from '@/hooks/use-bank-account-mutations';
 import { useBankAccountActivity } from '@/hooks/use-bank-account-activity';
@@ -109,7 +110,7 @@ export default function BankAccounts() {
     let latest: number | null = null;
     const currencies = new Set<string>();
     for (const account of accounts) {
-      currencies.add(account.currency || currencyCode);
+      currencies.add(recordCurrency(account.currency));
       // Transactions to categorize and the newest movement concern every account
       const a = activity.get(account.id);
       if (a) {
@@ -130,7 +131,7 @@ export default function BankAccounts() {
       currencies,
       latest,
     };
-  }, [accounts, activity, convert, currencyCode]);
+  }, [accounts, activity, convert]);
 
   useShellPage({
     status:
@@ -149,9 +150,9 @@ export default function BankAccounts() {
         )
       : accounts;
     const change = (a: BankAccountWithInstitution) =>
-      convert(activity.get(a.id)?.last30.net ?? 0, a.currency || currencyCode);
+      convert(activity.get(a.id)?.last30.net ?? 0, recordCurrency(a.currency));
     const balance = (a: BankAccountWithInstitution) =>
-      convert(parseFloat(a.balance || '0') || 0, a.currency || currencyCode);
+      convert(parseFloat(a.balance || '0') || 0, recordCurrency(a.currency));
     return [...filtered].sort((a, b) => {
       let c = 0;
       switch (sortColumn) {
@@ -172,7 +173,7 @@ export default function BankAccounts() {
       }
       return sortDirection === 'asc' ? c : -c;
     });
-  }, [accounts, activity, search, sortColumn, sortDirection, convert, currencyCode]);
+  }, [accounts, activity, search, sortColumn, sortDirection, convert]);
 
   const handleSort = (column: SortColumn) => {
     if (sortColumn === column) setSortDirection((d) => (d === 'asc' ? 'desc' : 'asc'));
@@ -447,11 +448,11 @@ export default function BankAccounts() {
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell>{account.currency || currencyCode}</TableCell>
+                        <TableCell>{recordCurrency(account.currency)}</TableCell>
                         <TableCell className="text-right font-650 text-ink num">
                           <NativeBalance
                             amount={parseFloat(account.balance || '0')}
-                            currency={account.currency || currencyCode}
+                            currency={recordCurrency(account.currency)}
                             secondaryClassName="text-micro font-500 text-ink-4"
                           />
                         </TableCell>
@@ -468,7 +469,7 @@ export default function BankAccounts() {
                           ) : change === 0 ? (
                             t('table.noChange')
                           ) : (
-                            fmt.money(change, account.currency || currencyCode, {
+                            fmt.money(change, recordCurrency(account.currency), {
                               signed: true,
                               decimals: 0,
                             })
@@ -488,7 +489,7 @@ export default function BankAccounts() {
                                 {fmt.money(
                                   (a.last.type === 'credit' ? 1 : -1) *
                                     Math.abs(Number(a.last.amount) || 0),
-                                  a.last.currency || account.currency || currencyCode,
+                                  a.last.currency || recordCurrency(account.currency),
                                   { signed: true, decimals: 0 }
                                 )}
                               </small>

@@ -1,6 +1,7 @@
 import type { InsurancePolicy, Loan, LoanSchedule, RealEstate } from '@shared/schema';
 import { annualizeAmount } from '@shared/calculations';
 import { MissingTracker, type ConvertAtFn, type ConvertFn } from '@shared/fx';
+import { recordCurrency } from '@shared/currencies';
 
 const DAY = 86_400;
 
@@ -13,7 +14,7 @@ export interface NativeAmount {
 const native = (
   amount: string | number | null | undefined,
   currency: string | null | undefined
-): NativeAmount => ({ amount: Number(amount) || 0, currency: currency || 'CZK' });
+): NativeAmount => ({ amount: Number(amount) || 0, currency: recordCurrency(currency) });
 
 /**
  * A property with the list's derived numbers: native amounts plus their main-currency
@@ -200,7 +201,7 @@ export function yearlyBalance(
 ): YearlyBalance {
   const tracker = new MissingTracker();
   const toMain = (amount: number, currency: string | null | undefined) => {
-    const code = currency || 'CZK';
+    const code = recordCurrency(currency);
     return tracker.track(code, amount === 0 ? 0 : convert(amount, code));
   };
   const rentMonth = Number(property.monthlyRent) || 0;

@@ -22,7 +22,7 @@ import {
 import type { BankAccountWithInstitution, InsertBankAccount, AccountType } from '@shared/schema';
 import { useCurrency } from '@/lib/currency';
 import { CurrencyCombobox } from '@/components/common/CurrencyCombobox';
-import { CurrencyCode } from '@shared/currencies';
+import { CurrencyCode, recordCurrency } from '@shared/currencies';
 import { BankAccountZoneManager } from '@/components/bank-accounts/BankAccountZoneManager';
 import { useTranslation } from 'react-i18next';
 
@@ -182,7 +182,7 @@ export function BankAccountFormDialog({
         // Edit mode
         setName(account.name);
         setBalance(account.balance.toString());
-        setSelectedCurrency((account.currency || userCurrency) as CurrencyCode);
+        setSelectedCurrency(recordCurrency(account.currency) as CurrencyCode);
         setAccountType(account.accountType as AccountType);
         setIban(account.iban || '');
         setBban(account.bban || '');

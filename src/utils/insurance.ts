@@ -6,6 +6,7 @@ import {
   type PaymentFrequency,
 } from '@shared/calculations';
 import { dayFloor, dueDay } from '@shared/calculations/loan-amortization';
+import { recordCurrency } from '@shared/currencies';
 
 /** Months between two payments of a frequency; 0 for a one-time policy. */
 export const PERIOD_MONTHS: Record<PaymentFrequency, number> = {
@@ -28,7 +29,7 @@ export interface NativeMoney {
 const native = (
   amount: string | number | null | undefined,
   currency: string | null | undefined
-): NativeMoney => ({ amount: Number(amount) || 0, currency: currency || 'CZK' });
+): NativeMoney => ({ amount: Number(amount) || 0, currency: recordCurrency(currency) });
 
 /** A native amount in the main currency; zero needs no rate. */
 const toMain = (money: NativeMoney, convert: ConvertFn): number | null =>

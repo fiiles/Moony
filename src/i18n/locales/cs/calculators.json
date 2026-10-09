@@ -95,6 +95,7 @@
     "subtitle": "Vyhodnoťte nemovitost jako celou investici: nájem a cashflow, splácení úvěru, růst ceny a zisk z budoucího prodeje.",
     "eyebrow": "Kalkulačka",
     "status": "Výpočet probíhá lokálně, nic se neukládá",
+    "prefillNoRate": "Nemovitost obsahuje částku v měně bez kurzu, proto se nenačetla. Kalkulačka ukazuje vzorové hodnoty.",
     "actions": {
       "loadProperty": "Načíst z mých nemovitostí"
     },

@@ -401,7 +401,7 @@ export interface PriceStatus {
   exchangeRatesAgeHours: number | null;
   stocksMissingPrice: number;
   cryptoMissingPrice: number;
-  /** Currencies in the user's data (profile currency included) without a current quote (excluded from converted totals) */
+  /** Currencies entering converted totals (open positions, transactions, entities, profile) without a current quote; excluded from those totals */
   missingCurrencies: string[];
   /** Held currencies whose newest stored exchange rate is more than 14 days old */
   staleCurrencies: string[];

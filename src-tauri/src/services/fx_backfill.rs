@@ -142,20 +142,106 @@ fn data_currencies(conn: &Connection, columns: &[(&str, &str)]) -> Result<BTreeS
     Ok(set)
 }
 
-/// Currencies in the user's data (the profile currency included) that `quotes` cannot
-/// resolve: amounts in them are excluded from every converted total. Raw Yahoo quote units
-/// (`stock_data.quote_currency`, e.g. `ZAc`) are not currencies of their own and are skipped.
-/// Empty while no quotes are loaded at all (the rate age reports that). Sorted.
+/// Condition of an open position (`stock_investments` / `crypto_investments`).
+const OPEN_POSITION: &str = "CAST(quantity AS REAL) > 0";
+
+/// Every place a currency enters a converted total: `(table, currency column, filter column,
+/// filter)`. The filter is skipped when its column does not exist. Price and dividend caches
+/// are not listed here (see [`HELD_QUOTE_SOURCES`]): a watched or long-sold ticker keeps its
+/// cached quote without being valued anywhere.
+const CONVERTED_CURRENCY_SOURCES: &[(&str, &str, &str, &str)] = &[
+    ("investment_transactions", "currency", "", ""),
+    ("crypto_transactions", "currency", "", ""),
+    ("bank_transactions", "currency", "", ""),
+    // The accounts net worth counts (`net_worth.rs`)
+    (
+        "bank_accounts",
+        "currency",
+        "exclude_from_balance",
+        "exclude_from_balance = 0",
+    ),
+    ("other_asset_transactions", "currency", "", ""),
+    ("stock_investments", "currency", "quantity", OPEN_POSITION),
+    ("crypto_investments", "currency", "quantity", OPEN_POSITION),
+    ("projection_settings", "contribution_currency", "", ""),
+    ("real_estate_one_time_costs", "currency", "", ""),
+    ("bonds", "currency", "", ""),
+    ("loans", "currency", "", ""),
+    ("real_estate", "purchase_price_currency", "", ""),
+    ("real_estate", "market_price_currency", "", ""),
+    ("real_estate", "monthly_rent_currency", "", ""),
+    ("real_estate_valuations", "currency", "", ""),
+    ("other_assets", "currency", "", ""),
+    ("other_asset_valuations", "currency", "", ""),
+    ("insurance_policies", "one_time_payment_currency", "", ""),
+    ("insurance_policies", "regular_payment_currency", "", ""),
+    ("cashflow_items", "currency", "", ""),
+    ("budget_goal_versions", "currency", "", ""),
+    ("user_profile", "currency", "", ""),
+];
+
+/// Price and dividend caches, counted only for open positions: `(cache table, cache key
+/// column, position table)`; the cache currency column is `currency`, the position key
+/// `ticker`. Raw Yahoo quote units (`stock_data.quote_currency`, e.g. `ZAc`) are never read.
+const HELD_QUOTE_SOURCES: &[(&str, &str, &str)] = &[
+    ("stock_data", "ticker", "stock_investments"),
+    ("stock_price_overrides", "ticker", "stock_investments"),
+    ("dividend_data", "ticker", "stock_investments"),
+    ("dividend_overrides", "ticker", "stock_investments"),
+    ("crypto_prices", "symbol", "crypto_investments"),
+    ("crypto_price_overrides", "symbol", "crypto_investments"),
+];
+
+/// Normalised currencies that enter converted totals: open positions with their price and
+/// dividend currencies, transactions, entities, budgets/cashflow items and the profile.
+fn converted_currencies(conn: &Connection) -> Result<BTreeSet<String>> {
+    let mut queries: Vec<String> = Vec::new();
+    for (table, column, filter_column, filter) in CONVERTED_CURRENCY_SOURCES {
+        if !has_column(conn, table, column)? {
+            continue;
+        }
+        let condition = if !filter.is_empty() && has_column(conn, table, filter_column)? {
+            format!(" AND {filter}")
+        } else {
+            String::new()
+        };
+        queries.push(format!(
+            "SELECT DISTINCT {column} FROM {table} WHERE {column} IS NOT NULL{condition}"
+        ));
+    }
+    for (cache, key, positions) in HELD_QUOTE_SOURCES {
+        if !has_column(conn, cache, "currency")?
+            || !has_column(conn, cache, key)?
+            || !has_column(conn, positions, "quantity")?
+        {
+            continue;
+        }
+        queries.push(format!(
+            "SELECT DISTINCT c.currency FROM {cache} c JOIN {positions} p ON p.ticker = c.{key}
+             WHERE c.currency IS NOT NULL AND CAST(p.quantity AS REAL) > 0"
+        ));
+    }
+    let mut set = BTreeSet::new();
+    for sql in queries {
+        let mut stmt = conn.prepare(&sql)?;
+        let rows = stmt.query_map([], |r| r.get::<_, String>(0))?;
+        set.extend(
+            rows.filter_map(|r| r.ok())
+                .filter_map(|c| fx::normalize(&c)),
+        );
+    }
+    Ok(set)
+}
+
+/// Currencies that enter converted totals (the profile currency included) and that `quotes`
+/// cannot resolve: amounts in them are excluded from those totals. Watch-only tickers and
+/// closed positions do not count. Empty while no quotes are loaded at all (the rate age
+/// reports that). Sorted.
 pub fn unquoted_currencies(conn: &Connection, quotes: &fx::Quotes) -> Result<Vec<String>> {
     if quotes.is_empty() {
         return Ok(Vec::new());
     }
-    let columns: Vec<(&str, &str)> = CURRENCY_COLUMNS
-        .iter()
-        .copied()
-        .filter(|column| *column != ("stock_data", "quote_currency"))
-        .collect();
-    Ok(data_currencies(conn, &columns)?
+    Ok(converted_currencies(conn)?
         .into_iter()
         .filter(|code| quotes.units(code).is_none())
         .collect())
@@ -668,23 +754,35 @@ mod tests {
     }
 
     #[test]
-    fn unquoted_currencies_lists_data_currencies_the_quotes_cannot_resolve() {
+    fn unquoted_currencies_lists_converted_currencies_the_quotes_cannot_resolve() {
         let conn = setup_db();
-        add_stock_tx(&conn, "t1", "KWD", TODAY - 10 * D);
-        add_stock_tx(&conn, "t2", "usd", TODAY - 10 * D);
+        add_stock_tx(&conn, "t1", "usd", TODAY - 10 * D);
         conn.execute_batch(
             "INSERT INTO user_profile (id, currency) VALUES (1, 'AED');
              ALTER TABLE stock_data ADD COLUMN quote_currency TEXT;
+             CREATE TABLE stock_investments (id TEXT PRIMARY KEY, ticker TEXT NOT NULL,
+                 quantity TEXT NOT NULL, currency TEXT NOT NULL);
+             -- an open KWD position: valued, so its quote currency counts
+             INSERT INTO stock_investments VALUES ('s1', 'NBK.KW', '5', 'KWD');
+             INSERT INTO stock_data (ticker, currency, quote_currency) VALUES ('NBK.KW', 'KWD', 'KWD');
+             -- a watch-only TWD ticker: cached quote, never valued
+             INSERT INTO stock_data (ticker, currency, quote_currency) VALUES ('2330.TW', 'TWD', 'TWD');
+             -- a sold-out UAH position keeps its cached quote
+             INSERT INTO stock_investments VALUES ('s2', 'UA.X', '0', 'USD');
+             INSERT INTO stock_data (ticker, currency, quote_currency) VALUES ('UA.X', 'UAH', 'UAH');
+             -- a Johannesburg quote unit is not a currency of its own
+             INSERT INTO stock_investments VALUES ('s3', 'NPN.JO', '1', 'ZAR');
              INSERT INTO stock_data (ticker, currency, quote_currency) VALUES ('NPN.JO', 'ZAR', 'ZAc');",
         )
         .expect("data");
         let mut quotes = fx::Quotes::new("EUR");
         quotes.insert("USD", 1.1);
+        quotes.insert("ZAR", 20.0);
 
-        // AED resolves through its USD peg; ZAc is a quote unit, not a currency of its own.
+        // AED resolves through its USD peg.
         assert_eq!(
             unquoted_currencies(&conn, &quotes).expect("unquoted"),
-            vec!["KWD".to_string(), "ZAR".to_string()]
+            vec!["KWD".to_string()]
         );
         // Before any quote is loaded nothing is listed (the rate age reports that).
         assert!(unquoted_currencies(&conn, &fx::Quotes::new("CZK"))

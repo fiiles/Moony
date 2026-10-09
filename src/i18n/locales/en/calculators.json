@@ -93,6 +93,7 @@
     "subtitle": "Evaluate a property as a whole investment: rent and cashflow, loan repayment, price growth and the gain from a future sale.",
     "eyebrow": "Calculator",
     "status": "Calculated locally, nothing is saved",
+    "prefillNoRate": "The property has an amount in a currency without an exchange rate, so it was not loaded. The calculator shows the example values.",
     "actions": {
       "loadProperty": "Load from my properties"
     },

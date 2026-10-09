@@ -10,6 +10,7 @@ import {
   FX_SOURCE_CODES,
   FX_SUPPORTED_CODES,
   isFxSupported,
+  recordCurrency,
 } from './currencies';
 
 const ECB_CODES = [
@@ -250,5 +251,14 @@ describe('fx supported currencies', () => {
   });
   it('no longer lists BGN as ECB-quoted', () => {
     expect(FX_SOURCE_CODES).not.toContain('BGN');
+  });
+});
+
+describe('recordCurrency', () => {
+  it('keeps a record currency and reads a missing one as the storage default', () => {
+    expect(recordCurrency('EUR')).toBe('EUR');
+    expect(recordCurrency('')).toBe('CZK');
+    expect(recordCurrency(null)).toBe('CZK');
+    expect(recordCurrency(undefined)).toBe('CZK');
   });
 });

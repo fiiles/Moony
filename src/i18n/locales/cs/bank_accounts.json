@@ -734,5 +734,18 @@
     "caption": "Efektivní sazba je roční úrok z aktuálního zůstatku dělený zůstatkem.",
     "validUntil": "Sazba platí do {{date}}",
     "rate": "Sazba"
+  },
+  "flows": {
+    "netIn": "Bilance · {{month}}",
+    "line_one": "{{credits}} příchozí · {{debits}} odchozí · {{count}} pohyb",
+    "line_few": "{{credits}} příchozí · {{debits}} odchozí · {{count}} pohyby",
+    "line_other": "{{credits}} příchozí · {{debits}} odchozí · {{count}} pohybů",
+    "noMoves": "bez pohybů",
+    "prev": "Předchozí měsíc",
+    "next": "Další měsíc",
+    "income": "Příchozí",
+    "expense": "Odchozí",
+    "balance": "bilance",
+    "noImport": "bez importu"
   }
 }

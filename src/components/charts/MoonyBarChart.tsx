@@ -49,6 +49,8 @@ export interface MoonyBarChartProps {
   formatTick?: (value: number) => string;
   /** Extra tooltip line, e.g. the balance "bilance + 12 300 Kč". */
   renderExtra?: (bar: BarGroup) => ReactNode;
+  /** Called with the bar index when a bar (or its slot) is clicked. */
+  onBarClick?: (index: number) => void;
   className?: string;
 }
 
@@ -65,6 +67,7 @@ export function MoonyBarChart({
   formatValue,
   formatTick,
   renderExtra,
+  onBarClick,
   className,
 }: MoonyBarChartProps) {
   const fmt = useFormat();
@@ -89,6 +92,11 @@ export function MoonyBarChart({
             margin={{ top: 14, right: 0, bottom: 0, left: 0 }}
             barGap={2}
             barCategoryGap="30%"
+            onClick={(state) => {
+              const index = (state as { activeTooltipIndex?: number } | null)?.activeTooltipIndex;
+              if (onBarClick && typeof index === 'number') onBarClick(index);
+            }}
+            style={onBarClick ? { cursor: 'pointer' } : undefined}
           >
             <CartesianGrid vertical={false} stroke={tk.grid} strokeDasharray="0" />
             <XAxis dataKey="label" hide />

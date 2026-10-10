@@ -701,5 +701,17 @@
     "caption": "The effective rate is the yearly interest on the current balance divided by the balance.",
     "validUntil": "Rate valid until {{date}}",
     "rate": "Rate"
+  },
+  "flows": {
+    "netIn": "Net · {{month}}",
+    "line_one": "{{credits}} in · {{debits}} out · {{count}} movement",
+    "line_other": "{{credits}} in · {{debits}} out · {{count}} movements",
+    "noMoves": "no movements",
+    "prev": "Previous month",
+    "next": "Next month",
+    "income": "Incoming",
+    "expense": "Outgoing",
+    "balance": "net",
+    "noImport": "no import"
   }
 }

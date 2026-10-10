@@ -664,5 +664,7 @@
     "countryHint": "Country of the counterparty account, e.g. CZ. Helps read domestic account numbers correctly.",
     "deleteBatchPromoted_one": "{{count}} pending entry from an earlier import that this import booked stays booked with this import's data.",
     "deleteBatchPromoted_other": "{{count}} pending entries from earlier imports that this import booked stay booked with this import's data."
-  }
+  },
+  "recordDialog": { "success": "Balance recorded" },
+  "balanceHistory": { "deleted": "Record deleted" }
 }

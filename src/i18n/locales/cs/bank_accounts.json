@@ -696,5 +696,7 @@
     "deleteBatchPromoted_one": "{{count}} čekající položka z dřívějšího importu, kterou tento import zaúčtoval, zůstane zaúčtovaná s jeho údaji.",
     "deleteBatchPromoted_few": "{{count}} čekající položky z dřívějších importů, které tento import zaúčtoval, zůstanou zaúčtované s jeho údaji.",
     "deleteBatchPromoted_other": "{{count}} čekajících položek z dřívějších importů, které tento import zaúčtoval, zůstane zaúčtováno s jeho údaji."
-  }
+  },
+  "recordDialog": { "success": "Zůstatek zaznamenán" },
+  "balanceHistory": { "deleted": "Záznam smazán" }
 }

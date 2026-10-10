@@ -7,6 +7,7 @@ export async function refreshMoneyFlows(client: QueryClient, refreshIdentities =
     'bank-accounts',
     'bank-account',
     'bank-account-zones',
+    'bank-balance-records',
     'bank-transactions',
     'import-batches',
     'transaction-categories',

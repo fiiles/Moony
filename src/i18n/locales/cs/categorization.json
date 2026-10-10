@@ -5,7 +5,6 @@
     "custom": "Vlastní",
     "learned": "Naučená",
     "pack": "Balíček {{country}}",
-    "packGeneric": "Balíčky",
     "packGlobal": "Globální balíček"
   },
   "learnedRules": {
@@ -127,8 +126,6 @@
   "packRules": {
     "title": "Obsah balíčku pravidel",
     "description": "Vestavěná pravidla dodávaných balíčků zemí. Jednotlivá pravidla lze vypnout; balíčky se zapínají v Nastavení.",
-    "selectPack": "Vyberte balíček",
-    "packDisabled": "vypnuto",
     "columns": {
       "name": "Název",
       "type": "Typ",

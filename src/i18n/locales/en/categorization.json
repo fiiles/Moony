@@ -5,7 +5,6 @@
     "custom": "Custom",
     "learned": "Learned",
     "pack": "Pack {{country}}",
-    "packGeneric": "Packs",
     "packGlobal": "Global pack"
   },
   "learnedRules": {
@@ -125,8 +124,6 @@
   "packRules": {
     "title": "Rule Pack Contents",
     "description": "Built-in rules of the shipped country packs. Individual rules can be turned off; packs are enabled in Settings.",
-    "selectPack": "Select pack",
-    "packDisabled": "disabled",
     "columns": {
       "name": "Name",
       "type": "Type",

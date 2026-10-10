@@ -750,12 +750,6 @@ export default function CategorizationRules() {
                       {t(activePack.enabled ? 'packTab.enabled' : 'packTab.disabled')}
                     </Badge>
                   )}
-                  <Link
-                    href="/settings/categorization"
-                    className="text-caption font-650 text-ink-2 hover:underline"
-                  >
-                    {t('packTab.settingsLink')}
-                  </Link>
                   {searchBox(t('packTab.search'))}
                 </div>
               </CardHeader>

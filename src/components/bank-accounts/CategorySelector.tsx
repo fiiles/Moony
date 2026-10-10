@@ -395,7 +395,7 @@ function CategoryCommandList({
 }) {
   const { t } = useTranslation('bank_accounts');
   const categoryName = useCategoryName();
-  const [rememberForFuture, setRememberForFuture] = useState(false);
+  const [rememberForFuture, setRememberForFuture] = useState(true);
 
   // Sort categories by sortOrder
   const sortedCategories = useMemo(() => {

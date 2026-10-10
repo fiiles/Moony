@@ -27,9 +27,6 @@
     "yearlyInterest": "Yearly interest",
     "perYear": "per year",
     "notFound": "Account not found",
-    "interestNote": "{{rate}} · {{amount}} a year",
-    "todayCount_one": "{{count}} transaction today",
-    "todayCount_other": "{{count}} transactions today",
     "excludedFromPortfolio": "Excluded from net worth"
   },
   "nativeBalance": {
@@ -158,14 +155,12 @@
     "description": "Add your first bank account to start tracking your finances.",
     "noTransactions": "No transactions yet",
     "noMatchingTransactions": "Nothing matches the chosen filter. Try clearing the category filter.",
-    "noTransactionsTitle": "No transactions yet",
-    "noTransactionsDescription": "Import a CSV statement from your bank to see where your money goes, or add a transaction by hand.",
-    "importCsv": "Import bank statement (CSV)",
-    "addManually": "Add transaction manually",
     "noTransactionsInPeriod": "No transactions in this period",
     "noTransactionsInPeriodHint": "This account has transactions in other periods.",
     "showAll": "Show all",
-    "noMatchingTransactionsTitle": "No transactions"
+    "noMatchingTransactionsTitle": "No transactions",
+    "noDataTitle": "No data on this account yet",
+    "noDataDescription": "Record the balance from your statement or import a bank statement."
   },
   "confirmDelete": {
     "title": "Delete account?",
@@ -379,7 +374,6 @@
   },
   "importHistory": {
     "title": "Import history",
-    "button": "Import history",
     "fileName": "File Name",
     "period": "Period",
     "imported": "Imported",
@@ -396,17 +390,12 @@
     "undone": "Import undone"
   },
   "zones": {
-    "title": "Interest rate tiers",
     "fromAmount": "From Amount",
     "toAmount": "To Amount",
     "interestRate": "Interest Rate",
     "effective": "effective",
-    "effectiveRate": "Effective Rate",
-    "active": "Active",
-    "noZones": "No interest rate tiers configured",
     "unlimited": "Unlimited",
     "ratePercent": "Rate (%)",
-    "effectiveNote": "Effective rate {{rate}} · {{amount}} a year",
     "addZoneTitle": "Add New Tier",
     "editZoneTitle": "Edit Tier",
     "save": "Save",
@@ -519,18 +508,7 @@
     "totalTransactions": "Transactions",
     "income": "Income",
     "outcome": "Expenses",
-    "netFlow": "Net Flow",
-    "incomeIn": "Incoming in {{month}}",
-    "expenseIn": "Outgoing in {{month}}",
-    "monthBalance": "Month balance",
-    "incomeCount_one": "{{count}} incoming movement",
-    "incomeCount_other": "{{count}} incoming movements",
-    "txCount_one": "{{count}} transaction",
-    "txCount_other": "{{count}} transactions",
-    "mostIn": "most in {{category}}",
-    "none": "none yet",
-    "prevMonth": "in {{month}} {{amount}}",
-    "noPrevMonth": "no movements in {{month}}"
+    "netFlow": "Net Flow"
   },
   "categoryNames": {
     "cat_groceries": "Groceries",
@@ -556,23 +534,20 @@
   "eyebrow": "Cash",
   "status": {
     "lastMovement": "Last movement {{date}}",
-    "lastImport": "Last import {{date}}"
+    "lastImport": "Last import {{date}}",
+    "balanceAsOf": "Balance as of {{date}}",
+    "noData": "No data yet"
   },
-  "hero": {
-    "thisMonth": "this month",
-    "expensesExceed": "expenses exceed income",
-    "incomeExceeds": "income exceeds expenses",
-    "balanced": "income and expenses balanced",
-    "noMovementsThisMonth": "no movements this month"
+  "actions": {
+    "recordBalance": "Record balance",
+    "importStatement": "Import statement"
+  },
+  "menu": {
+    "balanceHistory": "Balance history",
+    "interest": "Interest"
   },
   "chart": {
-    "balance": "Balance",
-    "largeIncome": "Large incoming movement",
-    "largeExpense": "Large outgoing movement",
-    "thresholdNote": "Movements above {{amount}} are marked",
-    "reconstructed": "the line is reconstructed from the transactions",
-    "clusterTitle_one": "{{count}} movement",
-    "clusterTitle_other": "{{count}} movements"
+    "balance": "Balance"
   },
   "trend": {
     "title": "Cash over time",
@@ -611,7 +586,6 @@
     "next": "Next",
     "pending": "Pending",
     "transactionDetails": "Transaction details",
-    "balanceEstimate": "Estimated from the available booked ledger. Balance anchor: {{date}}. Statement coverage is not proven.",
     "foreignConverted": "Movements in {{currencies}} are converted to {{currency}} at the rate of their day in the totals and chart.",
     "foreignMissing": "Movements in {{currencies}} are left out of the totals and chart: no exchange rate for their day.",
     "promotions": "{{count}} pending entries will be booked",

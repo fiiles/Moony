@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import {
-  MOVEMENT_FLOOR_EUR,
   detailSections,
   flowsWindow,
   hasRecentRows,
@@ -8,12 +7,8 @@ import {
   monthOf,
   monthStart,
   monthlyFlows,
-  movementFloor,
-  movementThreshold,
   newestMonthWithRows,
   oldestMonthWithRows,
-  reconstructBalance,
-  significantMovements,
   summarizeFlow,
   type FlowTransaction,
 } from './bank-activity';
@@ -65,64 +60,6 @@ describe('summarizeFlow', () => {
     const s = summarizeFlow([]);
     expect(s.net).toBe(0);
     expect(s.topExpenseCategory).toBeNull();
-  });
-});
-
-describe('reconstructBalance', () => {
-  it('walks back from the current balance through the days', () => {
-    const points = reconstructBalance(
-      1000,
-      [tx('a', 'credit', 500, 2), tx('b', 'debit', 200, 1)],
-      D0,
-      D0 + 2 * DAY
-    );
-    expect(points.map((p) => p.value)).toEqual([700, 500, 1000]);
-    expect(points.map((p) => p.t)).toEqual([D0, D0 + DAY, D0 + 2 * DAY]);
-  });
-
-  it('undoes transactions after the end of the span first', () => {
-    const points = reconstructBalance(1000, [tx('a', 'credit', 400, 5)], D0, D0 + 2 * DAY);
-    expect(points.every((p) => p.value === 600)).toBe(true);
-  });
-
-  it('returns nothing for an inverted span', () => {
-    expect(reconstructBalance(1, [], D0 + DAY, D0)).toEqual([]);
-  });
-});
-
-describe('movement floor', () => {
-  // 1 EUR = 25 CZK = 1.1 USD; no quote for KWD
-  const fx = { reference: 'EUR', units: { CZK: 25, USD: 1.1 } };
-
-  it('is 400 EUR in the account currency', () => {
-    expect(MOVEMENT_FLOOR_EUR).toBe(400);
-    expect(movementFloor(fx, 'EUR')).toBe(400);
-    expect(movementFloor(fx, 'CZK')).toBe(10_000);
-    expect(movementFloor(fx, 'USD')).toBeCloseTo(440);
-  });
-
-  it('is 0 without a conversion, so only the share of the balance applies', () => {
-    expect(movementFloor(fx, 'KWD')).toBe(0);
-    expect(movementFloor(undefined, 'CZK')).toBe(0);
-    expect(movementThreshold(50_000, movementFloor(fx, 'KWD'))).toBe(5_000);
-  });
-});
-
-describe('movements (README §9 threshold)', () => {
-  it('uses the larger of the floor and 10 % of the balance', () => {
-    expect(movementThreshold(50_000, 10_000)).toBe(10_000);
-    expect(movementThreshold(500_000, 10_000)).toBe(50_000);
-    expect(movementThreshold(-500_000, 10_000)).toBe(50_000);
-  });
-
-  it('keeps only movements at or above the threshold, chronologically', () => {
-    const events = significantMovements(
-      [tx('big', 'debit', 15_000, 3), tx('small', 'debit', 900, 1), tx('pay', 'credit', 60_000, 2)],
-      10_000
-    );
-    expect(events.map((e) => e.id)).toEqual(['pay', 'big']);
-    expect(events[0].type).toBe('income');
-    expect(events[1].type).toBe('expense');
   });
 });
 

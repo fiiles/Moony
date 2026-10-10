@@ -1,12 +1,8 @@
 /**
- * Pure helpers for the bank-account pages (design system §7 List/Detail and §9):
- * flow summaries of a set of transactions, the balance line reconstructed from
- * the current balance and the transactions, and the movements large enough to
- * mark on it. Amounts are in the account's own currency; the caller converts.
- * The monthly flows window of the detail page and its section rules live here too.
+ * Pure helpers for the bank-account pages: flow summaries of a set of transactions,
+ * the monthly flows window of the detail page and its section rules. Amounts are in
+ * the account's own currency; the caller converts.
  */
-
-import { convert, type FxQuotes } from '@shared/fx';
 
 export interface FlowTransaction {
   id: string;
@@ -78,91 +74,6 @@ export function summarizeFlow(
     uncategorized,
     topExpenseCategory: top,
   };
-}
-
-export interface BalancePoint {
-  t: number;
-  value: number;
-}
-
-const DAY = 86400;
-
-/**
- * Daily balance from `fromDay` to `toDay` (UTC day starts, inclusive), walking
- * back from the current balance through the transactions of that span. Days
- * before the first known transaction keep the balance the account had then.
- * Transactions newer than `toDay` are undone first so the line ends on the
- * balance of `toDay`.
- */
-export function reconstructBalance(
-  currentBalance: number,
-  transactions: readonly FlowTransaction[],
-  fromDay: number,
-  toDay: number
-): BalancePoint[] {
-  if (toDay < fromDay) return [];
-  const signed = (tx: FlowTransaction) => (tx.type === 'credit' ? 1 : -1) * num(tx.amount);
-  // Net movement per UTC day
-  const perDay = new Map<number, number>();
-  let afterEnd = 0;
-  for (const tx of transactions) {
-    const day = Math.floor(tx.bookingDate / DAY) * DAY;
-    if (day > toDay) afterEnd += signed(tx);
-    else perDay.set(day, (perDay.get(day) ?? 0) + signed(tx));
-  }
-  let balance = currentBalance - afterEnd;
-  const points: BalancePoint[] = [];
-  for (let day = toDay; day >= fromDay; day -= DAY) {
-    points.push({ t: day, value: balance });
-    balance -= perDay.get(day) ?? 0;
-  }
-  return points.reverse();
-}
-
-export interface MovementEvent {
-  id: string;
-  t: number;
-  type: 'income' | 'expense';
-  tx: FlowTransaction;
-}
-
-/**
- * Absolute floor for a movement to be drawn on the balance line, in euros.
- * `movementFloor` converts it to the account currency before it reaches
- * `movementThreshold`.
- */
-export const MOVEMENT_FLOOR_EUR = 400;
-
-/**
- * The movement floor in the account's currency at the current quotes; 0 when the
- * currency cannot be converted (then only the share of the balance applies).
- */
-export function movementFloor(fx: FxQuotes | undefined, accountCurrency: string): number {
-  return convert(fx, MOVEMENT_FLOOR_EUR, 'EUR', accountCurrency) ?? 0;
-}
-
-/**
- * Threshold for a movement to be drawn on the balance line (README §9):
- * the floor (`movementFloor`) in the account currency, or 10 % of the
- * balance, whichever is larger.
- */
-export function movementThreshold(balance: number, floorInCurrency: number): number {
-  return Math.max(floorInCurrency, Math.abs(balance) * 0.1);
-}
-
-export function significantMovements(
-  transactions: readonly FlowTransaction[],
-  threshold: number
-): MovementEvent[] {
-  return transactions
-    .filter((tx) => num(tx.amount) >= threshold)
-    .map((tx) => ({
-      id: tx.id,
-      t: tx.bookingDate,
-      type: tx.type === 'credit' ? ('income' as const) : ('expense' as const),
-      tx,
-    }))
-    .sort((a, b) => a.t - b.t);
 }
 
 const WINDOW_MONTHS = 12;

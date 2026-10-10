@@ -10,6 +10,7 @@ import { refreshMoneyFlows } from '@/lib/money-flow-refresh';
 import { getCompleteBankHistory } from '@/lib/bank-history';
 import { bookedInAccountCurrency, rowFlowLabel, type AccountConvertAt } from '@/utils/money-flows';
 import { useDatedFx } from '@/hooks/use-fx';
+import { useBalanceRecords } from '@/hooks/use-balance-records';
 import { useState, useMemo, useEffect, useRef, useCallback, Fragment } from 'react';
 import { useRoute, useLocation, useSearch } from 'wouter';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
@@ -25,22 +26,16 @@ import {
   History,
   ListFilter,
   Pencil,
+  Percent,
   Plus,
   Receipt,
   Search,
   Sparkles,
   Trash2,
-  Undo2,
   Upload,
-  X,
+  Wallet,
 } from 'lucide-react';
-import type {
-  BankTransaction,
-  CsvImportResult,
-  SavingsAccountZone,
-  CsvImportBatch,
-  FlowKind,
-} from '@shared/schema';
+import type { BankTransaction, CsvImportResult, CsvImportBatch, FlowKind } from '@shared/schema';
 import { FLOW_KINDS } from '@shared/schema';
 import { recordCurrency, type CurrencyCode } from '@shared/currencies';
 import { bankAccountsApi, categorizationApi, cashflowApi } from '@/lib/tauri-api';
@@ -57,10 +52,7 @@ import { useLanguage } from '@/i18n/I18nProvider';
 import { useFormat } from '@/lib/use-format';
 import { translateApiError } from '@/lib/translate-api-error';
 import { useShellPage } from '@/components/shell/shell-context';
-import { calculateZonedInterest } from '@/utils/bank-account-zones';
 import {
-  CHART_PERIODS,
-  chartPeriodStart,
   getUtcPeriodRange,
   isoDateFromUtcTimestamp,
   utcDayStart,
@@ -71,25 +63,20 @@ import { utcDayFloor } from '@/utils/chart-axis';
 import { completeAccountIdentifier } from '@/utils/iban-utils';
 import { formatAmountWithCode, formatAmountInCurrency } from '@/utils/format-amount';
 import {
-  movementFloor,
-  movementThreshold,
-  reconstructBalance,
-  significantMovements,
-  summarizeFlow,
-  type MovementEvent,
+  detailSections,
+  hasRecentRows,
+  ledgerPresetForMonth,
+  monthEnd,
+  monthOf,
+  monthStart,
+  newestMonthWithRows,
 } from '@/utils/bank-activity';
-import type { ChartEvent, EventCluster } from '@/utils/chart-scale';
 import { BackLink, PageHead } from '@/components/shell/PageHead';
-import { HeroCard, HeroValue } from '@/components/common/HeroCard';
-import { Stat, Stats } from '@/components/common/Stat';
-import { MoonyLineChart } from '@/components/charts/MoonyLineChart';
-import { ChartLegend } from '@/components/charts/ChartLegend';
-import TimePeriodSelector, { type Period } from '@/components/cashflow/TimePeriodSelector';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ConfirmDeleteDialog } from '@/components/common/ConfirmDeleteDialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input, InputWrap } from '@/components/ui/input';
 import { Segmented } from '@/components/ui/segmented';
 import {
@@ -117,7 +104,12 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { BankAccountFormDialog } from '@/components/bank-accounts/BankAccountFormDialog';
 import { AddTransactionModal } from '@/components/bank-accounts/AddTransactionModal';
-import { NativeBalance } from '@/components/bank-accounts/NativeBalance';
+import { BalanceSection } from '@/components/bank-accounts/BalanceSection';
+import { FlowsCard } from '@/components/bank-accounts/FlowsCard';
+import { BalanceRecordDialog } from '@/components/bank-accounts/BalanceRecordDialog';
+import { BalanceHistoryDialog } from '@/components/bank-accounts/BalanceHistoryDialog';
+import { ImportHistoryDialog } from '@/components/bank-accounts/ImportHistoryDialog';
+import { InterestDialog } from '@/components/bank-accounts/InterestDialog';
 import { CsvImportDialog } from '@/components/bank-accounts/CsvImportDialog';
 import { CategorySelector } from '@/components/bank-accounts/CategorySelector';
 import { newRuleHref } from '@/utils/rules-link';
@@ -126,7 +118,6 @@ import { cn } from '@/lib/utils';
 
 type SortColumn = 'date' | 'description' | 'category' | 'amount';
 type Kind = 'all' | 'income' | 'outcome';
-type BalanceEvent = ChartEvent & { move: MovementEvent };
 
 const DAY = 86400;
 
@@ -140,7 +131,7 @@ export default function BankAccountDetail() {
   const { account, isLoading } = useBankAccount(accountId);
   const { deleteTransaction } = useBankTransactionMutations(accountId);
   const { updateAccount, deleteAccount } = useBankAccountMutations();
-  const { fx, currencyCode } = useCurrency();
+  const { currencyCode } = useCurrency();
   const { getLocale } = useLanguage();
   const fmt = useFormat();
   const categoryName = useCategoryName();
@@ -150,23 +141,25 @@ export default function BankAccountDetail() {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const deepLink = useMemo(() => new URLSearchParams(search), [search]);
   const [csvImportOpen, setCsvImportOpen] = useState(() => deepLink.get('import') === '1');
-  const [importHistoryOpen, setImportHistoryOpen] = useState(false);
   const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<BankTransaction | null>(null);
   const [pendingUndo, setPendingUndo] = useState<CsvImportBatch | null>(null);
-  const [hotEventId, setHotEventId] = useState<string | null>(null);
-  const [chartPeriod, setChartPeriod] = useState<Period>('30D');
+  const [recordOpen, setRecordOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [importsOpen, setImportsOpen] = useState(false);
+  const [interestOpen, setInterestOpen] = useState(false);
+  const [addTxOpen, setAddTxOpen] = useState(false);
+  // Flows window: the month it ends with (null = the current month) and a clicked month
+  const [windowEnd, setWindowEnd] = useState<number | null>(null);
+  const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
 
-  // Ledger filters: default to the current month (UTC calendar, ADR 0008)
-  // A ?category= deep link (from the list page) widens the range to everything
-  const initialRange = getUtcPeriodRange('monthly', 0);
+  // Ledger filters (UTC calendar, ADR 0008). The ledger opens on the newest month with
+  // movements, set once from the data below; a ?category= deep link (from the list page)
+  // widens the range to everything and starts ready.
   const linkedCategory = deepLink.get('category');
-  const [dateFrom, setDateFrom] = useState<string>(
-    linkedCategory ? '' : isoDateFromUtcTimestamp(initialRange.start)
-  );
-  const [dateTo, setDateTo] = useState<string>(
-    linkedCategory ? '' : isoDateFromUtcTimestamp(initialRange.end)
-  );
+  const [ledgerReady, setLedgerReady] = useState<boolean>(!!linkedCategory);
+  const [dateFrom, setDateFrom] = useState<string>('');
+  const [dateTo, setDateTo] = useState<string>('');
   const [datePreset, setDatePreset] = useState<string>(linkedCategory ? 'allTime' : 'thisMonth');
   const [kind, setKind] = useState<Kind>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>(linkedCategory ?? 'all');
@@ -227,7 +220,7 @@ export default function BankAccountDetail() {
   // Ledger transactions for the selected range
   const {
     data: transactionsResult,
-    isLoading: txLoading,
+    isLoading: txQueryLoading,
     isError: txError,
     refetch: retryTransactions,
   } = useQuery({
@@ -253,8 +246,10 @@ export default function BankAccountDetail() {
             ascending: sortDirection === 'asc',
           })
         : null,
-    enabled: !!accountId,
+    enabled: !!accountId && ledgerReady,
   });
+  // Until the initial period is known the ledger reads as loading, never as empty
+  const txLoading = txQueryLoading || !ledgerReady;
 
   // How many filtered rows lack a category, across all ledger pages
   const { data: uncategorizedTotal = 0 } = useQuery({
@@ -264,7 +259,7 @@ export default function BankAccountDetail() {
         ? (await bankAccountsApi.getTransactions(accountId, { ...uncategorizedFilters, limit: 1 }))
             .total
         : 0,
-    enabled: !!accountId,
+    enabled: !!accountId && ledgerReady,
   });
 
   // Any transaction at all? Tells "nothing imported yet" from "nothing in this period".
@@ -274,49 +269,14 @@ export default function BankAccountDetail() {
     enabled: !!accountId,
   });
 
-  // This month and last month, for the stats and the hero delta
-  const thisMonth = getUtcPeriodRange('monthly', 0);
-  const lastMonth = getUtcPeriodRange('monthly', -1);
+  // Every transaction of the account: the flows window, the section rules and the FX notes
   const {
-    data: thisMonthResult,
-    isError: thisMonthError,
-    refetch: retryThisMonth,
+    data: history,
+    isLoading: historyLoading,
+    isError: historyError,
+    refetch: retryHistory,
   } = useQuery({
-    queryKey: ['bank-transactions', accountId, 'month', thisMonth.start],
-    queryFn: () =>
-      accountId
-        ? getCompleteBankHistory(accountId, {
-            dateFrom: thisMonth.start,
-            dateTo: thisMonth.end,
-          })
-        : null,
-    enabled: !!accountId,
-  });
-  const {
-    data: lastMonthResult,
-    isError: lastMonthError,
-    refetch: retryLastMonth,
-  } = useQuery({
-    queryKey: ['bank-transactions', accountId, 'month', lastMonth.start],
-    queryFn: () =>
-      accountId
-        ? getCompleteBankHistory(accountId, {
-            dateFrom: lastMonth.start,
-            dateTo: lastMonth.end,
-          })
-        : null,
-    enabled: !!accountId,
-  });
-
-  // Transactions behind the balance chart (the chart span)
-  const today = utcDayFloor(Date.now() / 1000);
-  const chartFrom = chartPeriodStart(chartPeriod, today);
-  const {
-    data: chartResult,
-    isError: chartError,
-    refetch: retryChart,
-  } = useQuery({
-    queryKey: ['bank-transactions', accountId, 'chart', chartFrom ?? 'all'],
+    queryKey: ['bank-transactions', accountId, 'history'],
     queryFn: () => (accountId ? getCompleteBankHistory(accountId) : null),
     enabled: !!accountId,
   });
@@ -340,6 +300,7 @@ export default function BankAccountDetail() {
 
   // show exactly the imported range after an import
   const handleImported = (result: CsvImportResult) => {
+    setLedgerReady(true);
     if (result.dateRange) {
       setDateFrom(isoDateFromUtcTimestamp(result.dateRange.from));
       setDateTo(isoDateFromUtcTimestamp(result.dateRange.to));
@@ -418,70 +379,88 @@ export default function BankAccountDetail() {
       </Button>
     </p>
   ) : null;
-  // Summaries and the chart are in the account currency: rows from another currency
+  // The flows card is in the account currency: rows from another currency
   // pocket are converted at the rate of their booking day, unconvertible ones left out.
   const accountCurrency = recordCurrency(account?.currency) as CurrencyCode;
   const formatAccountAmount = (value: number) =>
     formatAmountInCurrency(value, accountCurrency, getLocale(), currencyCode);
 
   const firstForeignDay = useMemo(() => {
-    const days = [
-      ...(thisMonthResult?.transactions ?? []),
-      ...(lastMonthResult?.transactions ?? []),
-      ...(chartResult?.transactions ?? []),
-    ]
+    const days = (history?.transactions ?? [])
       .filter((tx) => tx.status === 'booked' && tx.currency !== accountCurrency)
       .map((tx) => tx.bookingDate);
     return days.length > 0 ? Math.min(...days) : undefined;
-  }, [thisMonthResult, lastMonthResult, chartResult, accountCurrency]);
+  }, [history, accountCurrency]);
   const { ready: foreignRatesReady, convertAt } = useDatedFx(firstForeignDay);
   const toAccountCurrency = useCallback<AccountConvertAt>(
     (amount, from, timestamp) =>
       foreignRatesReady ? convertAt(amount, from, accountCurrency, timestamp) : null,
     [foreignRatesReady, convertAt, accountCurrency]
   );
-  const monthNowRows = useMemo(
-    () =>
-      bookedInAccountCurrency(
-        thisMonthResult?.transactions ?? [],
-        accountCurrency,
-        toAccountCurrency
-      ),
-    [thisMonthResult, accountCurrency, toAccountCurrency]
+  const historyRows = useMemo(
+    () => bookedInAccountCurrency(history?.transactions ?? [], accountCurrency, toAccountCurrency),
+    [history, accountCurrency, toAccountCurrency]
   );
-  const monthPrevRows = useMemo(
-    () =>
-      bookedInAccountCurrency(
-        lastMonthResult?.transactions ?? [],
-        accountCurrency,
-        toAccountCurrency
-      ),
-    [lastMonthResult, accountCurrency, toAccountCurrency]
-  );
-  const chartRows = useMemo(
-    () =>
-      bookedInAccountCurrency(chartResult?.transactions ?? [], accountCurrency, toAccountCurrency),
-    [chartResult, accountCurrency, toAccountCurrency]
-  );
-  const monthNow = useMemo(
-    () => summarizeFlow(monthNowRows.rows, accountCurrency),
-    [monthNowRows, accountCurrency]
-  );
-  const monthPrev = useMemo(
-    () => summarizeFlow(monthPrevRows.rows, accountCurrency),
-    [monthPrevRows, accountCurrency]
-  );
-  // Currencies named in the notes under the hero: converted, or left out for lack of a rate
+  // Currencies named in the notes under the flows: converted, or left out for lack of a rate
   // (only once the daily rates have loaded, so loading never reads as missing)
-  const foreignNote = useMemo(() => {
-    const all = [monthNowRows, monthPrevRows, chartRows];
-    const union = (pick: (r: (typeof all)[number]) => string[]) =>
-      [...new Set(all.flatMap(pick))].sort();
-    return {
-      converted: union((r) => r.converted),
-      missing: foreignRatesReady ? union((r) => r.missing) : [],
-    };
-  }, [monthNowRows, monthPrevRows, chartRows, foreignRatesReady]);
+  const foreignNote = useMemo(
+    () => ({
+      converted: historyRows.converted,
+      missing: foreignRatesReady ? historyRows.missing : [],
+    }),
+    [historyRows, foreignRatesReady]
+  );
+  const foreignNotes = (
+    <>
+      {foreignNote.converted.length > 0 && (
+        <p className="mt-2 text-micro text-ink-4">
+          {t('readiness.foreignConverted', {
+            currencies: foreignNote.converted.join(', '),
+            currency: accountCurrency,
+          })}
+        </p>
+      )}
+      {foreignNote.missing.length > 0 && (
+        <p className="mt-2 text-micro text-loss">
+          {t('readiness.foreignMissing', { currencies: foreignNote.missing.join(', ') })}
+        </p>
+      )}
+    </>
+  );
+
+  // ---- Sections by data (spec "Section combinations") ----
+  const { records } = useBalanceRecords(accountId);
+  const today = utcDayFloor(Date.now() / 1000);
+  const currentMonth = monthOf(today);
+  const balance = parseFloat(account?.balance || '0');
+  const hasAnyTransaction = (anyTransactionResult?.total ?? 0) > 0;
+  const sections = detailSections({
+    balance,
+    hasAnyTransaction,
+    hasRecentRows: hasRecentRows(historyRows.rows, currentMonth),
+  });
+  const effectiveWindowEnd = windowEnd ?? currentMonth;
+
+  // Newest booked transaction → ledger preset, once. Every currency counts (the ledger lists
+  // them all), so the choice never waits for the day rates of a foreign pocket. Done during
+  // render instead of in an effect: React re-renders right away (same pattern as the
+  // account form dialog).
+  const newestMonth = useMemo(() => newestMonthWithRows(history?.transactions ?? []), [history]);
+  if (!ledgerReady && !historyLoading) {
+    setLedgerReady(true);
+    if (newestMonth === null) {
+      applyDatePreset('thisMonth');
+    } else {
+      const preset = ledgerPresetForMonth(newestMonth, currentMonth);
+      if (preset === 'custom') {
+        setDateFrom(isoDateFromUtcTimestamp(monthStart(newestMonth)));
+        setDateTo(isoDateFromUtcTimestamp(monthEnd(newestMonth)));
+        setDatePreset('custom');
+      } else {
+        applyDatePreset(preset);
+      }
+    }
+  }
 
   // Auto-categorize every uncategorized transaction matching the filters, not just this page
   const handleAutoCategorize = async () => {
@@ -555,11 +534,6 @@ export default function BankAccountDetail() {
   });
 
   const uncategorizedCount = uncategorizedTotal;
-
-  const transactionsSettled = !txLoading && !anyTransactionLoading;
-  const hasAnyTransaction = (anyTransactionResult?.total ?? 0) > 0;
-  const noTransactionsAtAll =
-    transactionsSettled && anyTransactionResult != null && !hasAnyTransaction;
 
   const autoCategorizeDisabledReason = isCategorizingBatch
     ? null
@@ -656,8 +630,7 @@ export default function BankAccountDetail() {
     );
   };
 
-  // ---- Derived figures for the hero and the chart ----
-  const balance = parseFloat(account?.balance || '0');
+  // ---- Head and top-bar status ----
   const currency = recordCurrency(account?.currency);
   const lastImport = (importBatches ?? []).reduce<number | null>(
     (max, b) => (max === null || b.importedAt > max ? b.importedAt : max),
@@ -675,74 +648,13 @@ export default function BankAccountDetail() {
               text: t('status.lastMovement', { date: fmt.day(latestTx.bookingDate) }),
               tone: 'neutral',
             }
-          : undefined,
+          : account?.balanceAsOf
+            ? {
+                text: t('status.balanceAsOf', { date: fmt.day(account.balanceAsOf) }),
+                tone: 'neutral',
+              }
+            : { text: t('status.noData'), tone: 'neutral' },
   });
-
-  const chartTxs = chartRows.rows;
-  const chartPoints = useMemo(() => {
-    const firstTx = chartTxs.reduce<number | null>(
-      (min, tx) => (min === null || tx.bookingDate < min ? tx.bookingDate : min),
-      null
-    );
-    const from = chartFrom ?? (firstTx !== null ? utcDayFloor(firstTx) : today - 30 * DAY);
-    const anchorDay = account?.balanceAsOf ? utcDayFloor(account.balanceAsOf) : today;
-    return reconstructBalance(
-      balance,
-      chartTxs.filter((tx) => tx.bookingDate <= anchorDay + DAY - 1),
-      from,
-      Math.min(today, anchorDay)
-    ).map((p) => ({
-      t: p.t,
-      value: p.value,
-    }));
-  }, [chartTxs, chartFrom, today, balance, account?.balanceAsOf]);
-
-  const floorInAccount = movementFloor(fx, accountCurrency);
-  const threshold = movementThreshold(balance, floorInAccount);
-  const events = useMemo<BalanceEvent[]>(
-    () =>
-      significantMovements(chartTxs, threshold).map((move) => ({
-        id: move.id,
-        t: move.t,
-        type: move.type,
-        move,
-      })),
-    [chartTxs, threshold]
-  );
-
-  const eventTip = (cluster: EventCluster<BalanceEvent>) => {
-    if (cluster.events.length > 1) {
-      return {
-        title: t('chart.clusterTitle', { count: cluster.events.length }),
-        lines: [
-          `${fmt.day(cluster.events[0].t)} – ${fmt.day(cluster.events[cluster.events.length - 1].t)}`,
-        ],
-      };
-    }
-    const { tx } = cluster.events[0].move;
-    const amount = Math.abs(Number(tx.amount) || 0);
-    return {
-      title: `${tx.counterpartyName || tx.description || t('table.movement')} ${fmt.money(
-        tx.type === 'credit' ? amount : -amount,
-        accountCurrency,
-        { signed: true, decimals: 0 }
-      )}`,
-      lines: [fmt.day(tx.bookingDate)],
-    };
-  };
-
-  const scrollToTx = (ids: string[]) => {
-    const el = document.getElementById(`tx-${ids[0]}`);
-    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    else {
-      // The row is outside the ledger's range: widen it
-      applyDatePreset('allTime');
-      setTimeout(
-        () => document.getElementById(`tx-${ids[0]}`)?.scrollIntoView({ block: 'center' }),
-        400
-      );
-    }
-  };
 
   // Sorting: a third click on the active column returns to the date order
   const handleSort = (column: SortColumn) => {
@@ -827,40 +739,7 @@ export default function BankAccountDetail() {
     );
   }
 
-  // Interest on this account
-  let yearlyInterest = 0;
-  let effectiveRate = 0;
-  if (account.hasZoneDesignation && zones && zones.length > 0) {
-    yearlyInterest = calculateZonedInterest(balance, zones);
-    effectiveRate = balance > 0 ? (yearlyInterest / balance) * 100 : 0;
-  } else if (account.interestRate) {
-    const rate = parseFloat(account.interestRate);
-    yearlyInterest = balance * (rate / 100);
-    effectiveRate = rate;
-  }
-
-  const todayCount = (thisMonthResult?.transactions ?? []).filter(
-    (tx) => utcDayFloor(tx.bookingDate) === today
-  ).length;
   const accountNumber = completeAccountIdentifier(account.iban, account.bban);
-  const description = [
-    accountNumber,
-    effectiveRate > 0
-      ? t('detail.interestNote', {
-          rate: fmt.percent(effectiveRate / 100, 2),
-          amount: formatAccountAmount(yearlyInterest),
-        })
-      : null,
-    todayCount > 0 ? t('detail.todayCount', { count: todayCount }) : null,
-  ]
-    .filter(Boolean)
-    .join(' · ');
-
-  const monthLabel = fmt.month(new Date(thisMonth.start * 1000), { month: 'long' });
-  const prevMonthLabel = fmt.month(new Date(lastMonth.start * 1000), { month: 'long' });
-  const topCategory = monthNow.topExpenseCategory
-    ? categories.find((c) => c.id === monthNow.topExpenseCategory!.id)
-    : undefined;
 
   const grouped = sortColumn === 'date';
   let lastGroup = '';
@@ -871,12 +750,16 @@ export default function BankAccountDetail() {
       <PageHead
         eyebrow={[account.institution?.name, currency, t(`accountTypes.${account.accountType}`)]}
         title={account.name}
-        description={description || undefined}
+        description={accountNumber || undefined}
         actions={
           <>
-            <Button variant="outline" onClick={() => setCsvImportOpen(true)}>
+            <Button onClick={() => setRecordOpen(true)}>
+              <Wallet />
+              {t('actions.recordBalance')}
+            </Button>
+            <Button onClick={() => setCsvImportOpen(true)}>
               <Upload />
-              {t('csvImport.importCsv')}
+              {t('actions.importStatement')}
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -889,10 +772,24 @@ export default function BankAccountDetail() {
                   <Pencil />
                   {t('editAccount')}
                 </DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => setImportHistoryOpen((v) => !v)}>
+                <DropdownMenuItem onSelect={() => setAddTxOpen(true)}>
+                  <Plus />
+                  {t('transaction.add')}
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => setHistoryOpen(true)}>
                   <History />
+                  {t('menu.balanceHistory')}
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => setImportsOpen(true)}>
+                  <Receipt />
                   {t('importHistory.title')}
                 </DropdownMenuItem>
+                {(account.hasZoneDesignation || parseFloat(account.interestRate ?? '0') > 0) && (
+                  <DropdownMenuItem onSelect={() => setInterestOpen(true)}>
+                    <Percent />
+                    {t('menu.interest')}
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem onSelect={() => setLocation('/settings/categorization-rules')}>
                   <ListFilter />
                   {tc('nav.categorizationRules')}
@@ -904,657 +801,431 @@ export default function BankAccountDetail() {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <AddTransactionModal
-              accountId={accountId || ''}
-              accountCurrency={currency}
-              trigger={
-                <Button>
-                  <Plus />
-                  {t('transaction.add')}
-                </Button>
-              }
-            />
           </>
         }
       />
 
-      {(thisMonthError || lastMonthError || chartError) && (
-        <ReportError
-          onRetry={() => {
-            void retryThisMonth();
-            void retryLastMonth();
-            void retryChart();
-          }}
+      {historyError && <ReportError onRetry={() => void retryHistory()} />}
+      {sections.balance && (
+        <BalanceSection
+          account={account}
+          records={records}
+          zones={zones ?? []}
+          today={today}
+          currency={accountCurrency}
+          formatValue={formatAccountAmount}
         />
       )}
-      <HeroCard
-        aside={
-          <TimePeriodSelector
-            value={chartPeriod}
-            onChange={setChartPeriod}
-            options={CHART_PERIODS}
+      {sections.balance && !sections.flows && foreignNotes}
+      {sections.flows && (
+        <div className={sections.balance ? 'mt-[17px]' : undefined}>
+          <FlowsCard
+            transactions={historyRows.rows}
+            currency={accountCurrency}
+            currentMonth={currentMonth}
+            windowEnd={effectiveWindowEnd}
+            onWindowEndChange={setWindowEnd}
+            selectedOverride={selectedMonth}
+            onSelect={setSelectedMonth}
+            hero={!sections.balance}
+            notes={foreignNotes}
           />
-        }
-        chart={
-          <>
-            <MoonyLineChart<BalanceEvent>
-              className="-mx-1 mt-[18px]"
-              points={chartPoints}
-              height={180}
-              zeroBaseline={chartPeriod === 'All'}
-              formatValue={(v) => formatAccountAmount(v)}
-              renderTip={(p) => ({
-                title: formatAccountAmount(p.value),
-                lines: [`${fmt.day(p.t)} · ${t('chart.balance').toLowerCase()}`],
-              })}
-              events={events}
-              renderEventTip={eventTip}
-              hotEventId={hotEventId}
-              onHotEventChange={setHotEventId}
-              onEventClick={(cluster) => scrollToTx(cluster.events.map((e) => e.id))}
-            />
-            <ChartLegend
-              items={[
-                { label: t('chart.balance'), swatch: { kind: 'line' } },
-                { label: t('chart.largeIncome'), swatch: { kind: 'event', type: 'income' } },
-                { label: t('chart.largeExpense'), swatch: { kind: 'event', type: 'expense' } },
-              ]}
-              className="items-center"
-            ></ChartLegend>
-            <p className="mt-1.5 text-micro font-500 text-ink-4">
-              {t('chart.thresholdNote', { amount: formatAccountAmount(threshold) })}
-              {chartFrom === undefined ? ` · ${t('chart.reconstructed')}` : ''}
-            </p>
-          </>
-        }
-      >
-        <HeroValue
-          label={t('chart.balance')}
-          value={
-            <NativeBalance
-              amount={balance}
-              currency={currency}
-              align="start"
-              className=""
-              secondaryClassName="ml-2 text-table font-500 text-ink-4"
-            />
-          }
-          tone={monthNow.net > 0 ? 'gain' : monthNow.net < 0 ? 'loss' : 'neutral'}
-          delta={
-            monthNow.count > 0
-              ? `${monthNow.net >= 0 ? '↗' : '↘'} ${fmt.money(monthNow.net, accountCurrency, { signed: true, decimals: 0 })}`
-              : undefined
-          }
-          deltaNote={
-            monthNow.count > 0
-              ? `${t('hero.thisMonth')} · ${
-                  monthNow.net < 0
-                    ? t('hero.expensesExceed')
-                    : monthNow.net > 0
-                      ? t('hero.incomeExceeds')
-                      : t('hero.balanced')
-                }`
-              : t('hero.noMovementsThisMonth')
-          }
-        />
-      </HeroCard>
-
-      <p className="mb-3 text-micro text-ink-4">
-        {t('readiness.balanceEstimate', {
-          date: account.balanceAsOf ? fmt.day(account.balanceAsOf) : t('readiness.unknownDate'),
-        })}
-      </p>
-      {foreignNote.converted.length > 0 && (
-        <p className="mb-3 text-micro text-ink-4">
-          {t('readiness.foreignConverted', {
-            currencies: foreignNote.converted.join(', '),
-            currency: accountCurrency,
-          })}
-        </p>
+        </div>
       )}
-      {foreignNote.missing.length > 0 && (
-        <p className="mb-3 text-micro text-loss">
-          {t('readiness.foreignMissing', { currencies: foreignNote.missing.join(', ') })}
-        </p>
-      )}
-      <Stats columns={3} className="mt-[17px]">
-        <Stat
-          label={t('stats.incomeIn', { month: monthLabel })}
-          value={fmt.money(monthNow.income, accountCurrency, {
-            signed: monthNow.income > 0,
-            decimals: 0,
-          })}
-          tone={monthNow.income > 0 ? 'gain' : 'neutral'}
-          noteTone="neutral"
-          note={
-            monthNow.incomeCount > 0
-              ? t('stats.incomeCount', { count: monthNow.incomeCount })
-              : t('stats.none')
-          }
-        />
-        <Stat
-          label={t('stats.expenseIn', { month: monthLabel })}
-          value={fmt.money(monthNow.expense, accountCurrency, { decimals: 0 })}
-          note={
-            monthNow.expenseCount > 0
-              ? `${t('stats.txCount', { count: monthNow.expenseCount })}${
-                  topCategory
-                    ? ` · ${t('stats.mostIn', { category: categoryName(topCategory) })}`
-                    : ''
-                }`
-              : t('stats.none')
-          }
-        />
-        <Stat
-          label={t('stats.monthBalance')}
-          value={fmt.money(monthNow.net, accountCurrency, { signed: true, decimals: 0 })}
-          tone={monthNow.net > 0 ? 'gain' : monthNow.net < 0 ? 'loss' : 'neutral'}
-          noteTone="neutral"
-          note={
-            monthPrev.count > 0
-              ? t('stats.prevMonth', {
-                  month: prevMonthLabel,
-                  amount: fmt.money(monthPrev.net, accountCurrency, { signed: true, decimals: 0 }),
-                })
-              : t('stats.noPrevMonth', { month: prevMonthLabel })
-          }
-        />
-      </Stats>
-
-      {account.hasZoneDesignation && zones && zones.length > 0 && (
-        <Card variant="flat" className="mb-[17px]">
-          <CardHeader className="pb-1.5">
-            <div>
-              <CardTitle className="text-h3">{t('zones.title')}</CardTitle>
-              <CardDescription>
-                {t('zones.effectiveNote', {
-                  rate: fmt.percent(effectiveRate / 100, 2),
-                  amount: formatAccountAmount(yearlyInterest),
-                })}
-              </CardDescription>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {zones.map((zone: SavingsAccountZone) => (
-              <div
-                key={zone.id}
-                className="grid grid-cols-[1fr_auto] gap-x-4 border-b border-line-soft py-[9px] text-table text-ink-3 last:border-0"
-              >
-                <span className="num">
-                  {formatAccountAmount(parseFloat(zone.fromAmount || '0'))}
-                  {' – '}
-                  {zone.toAmount
-                    ? formatAccountAmount(parseFloat(zone.toAmount))
-                    : t('zones.unlimited')}
-                </span>
-                <b className="font-600 text-ink num">
-                  {fmt.percent(parseFloat(zone.interestRate || '0') / 100, 2)}
-                </b>
+      {!sections.balance &&
+        !sections.flows &&
+        !sections.ledger &&
+        !historyLoading &&
+        !anyTransactionLoading && (
+          <EmptyState
+            icon={<Wallet />}
+            title={t('empty.noDataTitle')}
+            description={t('empty.noDataDescription')}
+          />
+        )}
+      {sections.ledger && (
+        <div className={sections.balance || sections.flows ? 'mt-[17px]' : undefined}>
+          <Card variant="table">
+            <CardHeader className="flex-wrap">
+              <div>
+                <CardTitle>{t('transactions')}</CardTitle>
+                <CardDescription>
+                  {grouped ? t('ledger.subGrouped') : t('ledger.subSorted')}
+                </CardDescription>
               </div>
-            ))}
-          </CardContent>
-        </Card>
-      )}
-
-      {importHistoryOpen && (
-        <Card variant="table" className="mb-[17px]">
-          <CardHeader>
-            <CardTitle className="text-h3">{t('importHistory.title')}</CardTitle>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              onClick={() => setImportHistoryOpen(false)}
-              aria-label={tc('buttons.close')}
-            >
-              <X />
-            </Button>
-          </CardHeader>
-          {importBatches && importBatches.length > 0 ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{tc('labels.date')}</TableHead>
-                  <TableHead>{t('importHistory.fileName')}</TableHead>
-                  <TableHead className="text-right">{t('importHistory.imported')}</TableHead>
-                  <TableHead className="text-right" title={t('importHistory.duplicatesHelp')}>
-                    {t('importHistory.duplicates')}
-                  </TableHead>
-                  <TableHead className="text-right">{t('importHistory.errors')}</TableHead>
-                  <TableHead className="w-40">
-                    <span className="sr-only">{tc('labels.actions')}</span>
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {importBatches.map((batch) => (
-                  <TableRow key={batch.id} className="h-[50px]">
-                    <TableCell>{fmt.dateTime(batch.importedAt)}</TableCell>
-                    <TableCell className="font-650 text-ink">{batch.fileName}</TableCell>
-                    <TableCell className="text-right num">{batch.importedCount}</TableCell>
-                    <TableCell className="text-right num">{batch.duplicateCount}</TableCell>
-                    <TableCell className="text-right num">{batch.errorCount}</TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="danger" size="sm" onClick={() => setPendingUndo(batch)}>
-                        <Undo2 />
-                        {t(
-                          batch.linkedCount ? 'readiness.deleteImported' : 'readiness.deleteRecord'
-                        )}
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          ) : (
-            <p className="border-t border-line px-[21px] py-8 text-center text-table text-ink-3">
-              {t('importHistory.empty')}
-            </p>
-          )}
-        </Card>
-      )}
-
-      {noTransactionsAtAll ? (
-        <EmptyState
-          icon={<Upload />}
-          title={t('empty.noTransactionsTitle')}
-          description={t('empty.noTransactionsDescription')}
-          action={
-            <div className="flex flex-wrap items-center justify-center gap-2">
-              <Button onClick={() => setCsvImportOpen(true)}>
-                <Upload />
-                {t('empty.importCsv')}
-              </Button>
-              <AddTransactionModal
-                accountId={accountId || ''}
-                accountCurrency={currency}
-                trigger={
-                  <Button variant="outline">
-                    <Plus />
-                    {t('empty.addManually')}
-                  </Button>
-                }
-              />
-            </div>
-          }
-        />
-      ) : (
-        <Card variant="table">
-          <CardHeader className="flex-wrap">
-            <div>
-              <CardTitle>{t('transactions')}</CardTitle>
-              <CardDescription>
-                {grouped ? t('ledger.subGrouped') : t('ledger.subSorted')}
-              </CardDescription>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <Segmented
-                value={kind}
-                onValueChange={(value) => {
-                  setKind(value);
-                  setLedgerPage(0);
-                }}
-                options={[
-                  { value: 'all', label: t('filters.allTransactions') },
-                  { value: 'income', label: t('transaction.credit') },
-                  { value: 'outcome', label: t('transaction.debit') },
-                ]}
-              />
-              <Select
-                value={categoryFilter}
-                onValueChange={(value) => {
-                  setCategoryFilter(value);
-                  setLedgerPage(0);
-                }}
-              >
-                <SelectTrigger className="h-[35px] w-[180px] text-table">
-                  <SelectValue placeholder={t('filters.allCategories')} />
+              <div className="flex flex-wrap items-center gap-2">
+                <Button variant="outline" size="sm" onClick={() => setAddTxOpen(true)}>
+                  <Plus />
+                  {t('transaction.add')}
+                </Button>
+                <Segmented
+                  value={kind}
+                  onValueChange={(value) => {
+                    setKind(value);
+                    setLedgerPage(0);
+                  }}
+                  options={[
+                    { value: 'all', label: t('filters.allTransactions') },
+                    { value: 'income', label: t('transaction.credit') },
+                    { value: 'outcome', label: t('transaction.debit') },
+                  ]}
+                />
+                <Select
+                  value={categoryFilter}
+                  onValueChange={(value) => {
+                    setCategoryFilter(value);
+                    setLedgerPage(0);
+                  }}
+                >
+                  <SelectTrigger className="h-[35px] w-[180px] text-table">
+                    <SelectValue placeholder={t('filters.allCategories')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">{t('filters.allCategories')}</SelectItem>
+                    <SelectItem value="uncategorized">{t('filters.uncategorized')}</SelectItem>
+                    {categories.map((cat) => (
+                      <SelectItem key={cat.id} value={cat.id}>
+                        {categoryName(cat)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <InputWrap icon={<Search />} className="w-60">
+                  <Input
+                    className="h-[35px] text-table"
+                    placeholder={t('filters.searchDescription')}
+                    value={searchQuery}
+                    onChange={(e) => {
+                      setSearchQuery(e.target.value);
+                      setLedgerPage(0);
+                    }}
+                  />
+                </InputWrap>
+              </div>
+            </CardHeader>
+            <div className="flex flex-wrap items-center gap-2 px-[21px] pb-4">
+              <Select value={datePreset} onValueChange={applyDatePreset}>
+                <SelectTrigger className="h-[35px] w-[160px] text-table">
+                  <SelectValue placeholder={t('filters.selectPeriod')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">{t('filters.allCategories')}</SelectItem>
-                  <SelectItem value="uncategorized">{t('filters.uncategorized')}</SelectItem>
-                  {categories.map((cat) => (
-                    <SelectItem key={cat.id} value={cat.id}>
-                      {categoryName(cat)}
+                  {[
+                    'thisMonth',
+                    'lastMonth',
+                    'thisQuarter',
+                    'lastQuarter',
+                    'thisYear',
+                    'lastYear',
+                    'allTime',
+                    'custom',
+                  ].map((p) => (
+                    <SelectItem key={p} value={p}>
+                      {t(`filters.${p}`)}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              <InputWrap icon={<Search />} className="w-60">
-                <Input
-                  className="h-[35px] text-table"
-                  placeholder={t('filters.searchDescription')}
-                  value={searchQuery}
-                  onChange={(e) => {
-                    setSearchQuery(e.target.value);
-                    setLedgerPage(0);
-                  }}
-                />
-              </InputWrap>
-            </div>
-          </CardHeader>
-          <div className="flex flex-wrap items-center gap-2 px-[21px] pb-4">
-            <Select value={datePreset} onValueChange={applyDatePreset}>
-              <SelectTrigger className="h-[35px] w-[160px] text-table">
-                <SelectValue placeholder={t('filters.selectPeriod')} />
-              </SelectTrigger>
-              <SelectContent>
-                {[
-                  'thisMonth',
-                  'lastMonth',
-                  'thisQuarter',
-                  'lastQuarter',
-                  'thisYear',
-                  'lastYear',
-                  'allTime',
-                  'custom',
-                ].map((p) => (
-                  <SelectItem key={p} value={p}>
-                    {t(`filters.${p}`)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {datePreset === 'custom' && (
-              <>
-                <Input
-                  type="date"
-                  value={dateFrom}
-                  onChange={(e) => handleDateChange('from', e.target.value)}
-                  className="h-[35px] w-[140px] text-table"
-                  aria-label={t('filters.from')}
-                />
-                <span className="text-ink-5">→</span>
-                <Input
-                  type="date"
-                  value={dateTo}
-                  onChange={(e) => handleDateChange('to', e.target.value)}
-                  className="h-[35px] w-[140px] text-table"
-                  aria-label={t('filters.to')}
-                />
-              </>
-            )}
-            <div className="ml-auto">
-              {autoCategorizeDisabledReason ? (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span tabIndex={0} className="inline-flex">
-                      <Button disabled size="sm" variant="outline" className="pointer-events-none">
-                        <Sparkles />
-                        {t('categorization.autoCategorize')}
-                      </Button>
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent>{autoCategorizeDisabledReason}</TooltipContent>
-                </Tooltip>
-              ) : (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={handleAutoCategorize}
-                  disabled={isCategorizingBatch}
-                  loading={isCategorizingBatch}
-                >
-                  <Sparkles />
-                  {t('categorization.autoCategorize')}
-                  {uncategorizedCount > 0 && <Badge variant="dark">{uncategorizedCount}</Badge>}
-                </Button>
+              {datePreset === 'custom' && (
+                <>
+                  <Input
+                    type="date"
+                    value={dateFrom}
+                    onChange={(e) => handleDateChange('from', e.target.value)}
+                    className="h-[35px] w-[140px] text-table"
+                    aria-label={t('filters.from')}
+                  />
+                  <span className="text-ink-5">→</span>
+                  <Input
+                    type="date"
+                    value={dateTo}
+                    onChange={(e) => handleDateChange('to', e.target.value)}
+                    className="h-[35px] w-[140px] text-table"
+                    aria-label={t('filters.to')}
+                  />
+                </>
               )}
+              <div className="ml-auto">
+                {autoCategorizeDisabledReason ? (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span tabIndex={0} className="inline-flex">
+                        <Button
+                          disabled
+                          size="sm"
+                          variant="outline"
+                          className="pointer-events-none"
+                        >
+                          <Sparkles />
+                          {t('categorization.autoCategorize')}
+                        </Button>
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>{autoCategorizeDisabledReason}</TooltipContent>
+                  </Tooltip>
+                ) : (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleAutoCategorize}
+                    disabled={isCategorizingBatch}
+                    loading={isCategorizingBatch}
+                  >
+                    <Sparkles />
+                    {t('categorization.autoCategorize')}
+                    {uncategorizedCount > 0 && <Badge variant="dark">{uncategorizedCount}</Badge>}
+                  </Button>
+                )}
+              </div>
             </div>
-          </div>
 
-          {flowReadError}
-          {txError ? (
-            <ReportError onRetry={() => void retryTransactions()} />
-          ) : txLoading ? (
-            <div className="border-t border-line p-[14px]" aria-hidden>
-              {Array.from({ length: 5 }, (_, i) => (
-                <div
-                  key={i}
-                  className="flex items-center gap-[10px] border-b border-line-soft py-3 last:border-0"
-                >
-                  <div className="skeleton size-[30px] rounded-full" />
-                  <div className="flex-1">
-                    <div className="skeleton h-3 w-2/5" />
-                    <div className="skeleton mt-1.5 h-2.5 w-1/4" />
+            {flowReadError}
+            {txError ? (
+              <ReportError onRetry={() => void retryTransactions()} />
+            ) : txLoading ? (
+              <div className="border-t border-line p-[14px]" aria-hidden>
+                {Array.from({ length: 5 }, (_, i) => (
+                  <div
+                    key={i}
+                    className="flex items-center gap-[10px] border-b border-line-soft py-3 last:border-0"
+                  >
+                    <div className="skeleton size-[30px] rounded-full" />
+                    <div className="flex-1">
+                      <div className="skeleton h-3 w-2/5" />
+                      <div className="skeleton mt-1.5 h-2.5 w-1/4" />
+                    </div>
+                    <div className="skeleton h-3 w-20" />
                   </div>
-                  <div className="skeleton h-3 w-20" />
-                </div>
-              ))}
-            </div>
-          ) : filteredTransactions.length === 0 ? (
-            <div className="grid place-items-center border-t border-line px-6 py-12 text-center text-ink-3">
-              <CalendarSearch className="mb-3 size-7 text-ink-5" aria-hidden />
-              <h3 className="mb-1.5 text-h3 text-ink">
-                {transactions.length === 0 && hasAnyTransaction
-                  ? t('empty.noTransactionsInPeriod')
-                  : t('empty.noMatchingTransactionsTitle')}
-              </h3>
-              <p className="m-0 max-w-[320px] text-table">
-                {transactions.length === 0 && hasAnyTransaction
-                  ? t('empty.noTransactionsInPeriodHint')
-                  : t('empty.noMatchingTransactions')}
-              </p>
-              {datePreset !== 'allTime' && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="mt-4"
-                  onClick={() => applyDatePreset('allTime')}
-                >
-                  {t('empty.showAll')}
-                </Button>
-              )}
-            </div>
-          ) : (
-            <Table className="table-fixed">
-              <TableHeader>
-                <TableRow>
-                  <SortHead column="description" className="w-[27%]">
-                    {t('transaction.counterparty')}
-                  </SortHead>
-                  <TableHead className="w-[28%]">{t('transaction.detail')}</TableHead>
-                  <SortHead column="category" className="w-[22%]">
-                    {t('transaction.category')}
-                  </SortHead>
-                  <SortHead column="amount" align="right">
-                    {t('transaction.amount')}
-                  </SortHead>
-                  <TableHead className="w-12">
-                    <span className="sr-only">{tc('labels.actions')}</span>
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredTransactions.map((tx) => {
-                  const group = grouped ? dayLabel(tx.bookingDate) : '';
-                  const showGroup = grouped && group !== lastGroup;
-                  if (showGroup) lastGroup = group;
-                  const credit = tx.type === 'credit';
-                  const amount = Math.abs(parseFloat(tx.amount) || 0);
-                  const counterparty = counterpartyLabel(tx);
-                  const detail = [
-                    ...transactionDetails(tx),
-                    !grouped ? fmt.day(tx.bookingDate) : null,
-                  ]
-                    .filter(Boolean)
-                    .join(' · ');
-                  const flowKey = rowFlow(tx.id, credit, !!getEffectiveCategory(tx));
-                  return (
-                    <Fragment key={tx.id}>
-                      {showGroup && (
-                        <TableRow className="h-auto hover:bg-transparent">
-                          <TableCell
-                            colSpan={5}
-                            className="bg-paper px-[14px] pb-1.5 pt-[9px] text-micro font-700 uppercase tracking-[0.06em] text-ink-4"
-                          >
-                            {group}
-                          </TableCell>
-                        </TableRow>
-                      )}
-                      <TableRow
-                        id={`tx-${tx.id}`}
-                        className="h-[52px]"
-                        data-hot={hotEventId === tx.id || undefined}
-                        onMouseEnter={() => setHotEventId(tx.id)}
-                        onMouseLeave={() => setHotEventId(null)}
-                      >
-                        <TableCell>
-                          <div className="flex min-w-0 items-center gap-[10px] text-ink">
-                            <span className="grid size-[30px] shrink-0 place-items-center rounded-full bg-well-2 text-ink-2">
-                              {credit ? (
-                                <ArrowDownLeft
-                                  className="size-3.5"
-                                  strokeWidth={1.75}
-                                  aria-hidden
-                                />
-                              ) : (
-                                <Receipt className="size-3.5" strokeWidth={1.75} aria-hidden />
+                ))}
+              </div>
+            ) : filteredTransactions.length === 0 ? (
+              <div className="grid place-items-center border-t border-line px-6 py-12 text-center text-ink-3">
+                <CalendarSearch className="mb-3 size-7 text-ink-5" aria-hidden />
+                <h3 className="mb-1.5 text-h3 text-ink">
+                  {transactions.length === 0 && hasAnyTransaction
+                    ? t('empty.noTransactionsInPeriod')
+                    : t('empty.noMatchingTransactionsTitle')}
+                </h3>
+                <p className="m-0 max-w-[320px] text-table">
+                  {transactions.length === 0 && hasAnyTransaction
+                    ? t('empty.noTransactionsInPeriodHint')
+                    : t('empty.noMatchingTransactions')}
+                </p>
+                {datePreset !== 'allTime' && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-4"
+                    onClick={() => applyDatePreset('allTime')}
+                  >
+                    {t('empty.showAll')}
+                  </Button>
+                )}
+              </div>
+            ) : (
+              <Table className="table-fixed">
+                <TableHeader>
+                  <TableRow>
+                    <SortHead column="description" className="w-[27%]">
+                      {t('transaction.counterparty')}
+                    </SortHead>
+                    <TableHead className="w-[28%]">{t('transaction.detail')}</TableHead>
+                    <SortHead column="category" className="w-[22%]">
+                      {t('transaction.category')}
+                    </SortHead>
+                    <SortHead column="amount" align="right">
+                      {t('transaction.amount')}
+                    </SortHead>
+                    <TableHead className="w-12">
+                      <span className="sr-only">{tc('labels.actions')}</span>
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredTransactions.map((tx) => {
+                    const group = grouped ? dayLabel(tx.bookingDate) : '';
+                    const showGroup = grouped && group !== lastGroup;
+                    if (showGroup) lastGroup = group;
+                    const credit = tx.type === 'credit';
+                    const amount = Math.abs(parseFloat(tx.amount) || 0);
+                    const counterparty = counterpartyLabel(tx);
+                    const detail = [
+                      ...transactionDetails(tx),
+                      !grouped ? fmt.day(tx.bookingDate) : null,
+                    ]
+                      .filter(Boolean)
+                      .join(' · ');
+                    const flowKey = rowFlow(tx.id, credit, !!getEffectiveCategory(tx));
+                    return (
+                      <Fragment key={tx.id}>
+                        {showGroup && (
+                          <TableRow className="h-auto hover:bg-transparent">
+                            <TableCell
+                              colSpan={5}
+                              className="bg-paper px-[14px] pb-1.5 pt-[9px] text-micro font-700 uppercase tracking-[0.06em] text-ink-4"
+                            >
+                              {group}
+                            </TableCell>
+                          </TableRow>
+                        )}
+                        <TableRow id={`tx-${tx.id}`} className="h-[52px]">
+                          <TableCell>
+                            <div className="flex min-w-0 items-center gap-[10px] text-ink">
+                              <span className="grid size-[30px] shrink-0 place-items-center rounded-full bg-well-2 text-ink-2">
+                                {credit ? (
+                                  <ArrowDownLeft
+                                    className="size-3.5"
+                                    strokeWidth={1.75}
+                                    aria-hidden
+                                  />
+                                ) : (
+                                  <Receipt className="size-3.5" strokeWidth={1.75} aria-hidden />
+                                )}
+                              </span>
+                              <div className="min-w-0">
+                                {counterparty.title ? (
+                                  <b
+                                    className="block truncate text-table font-650"
+                                    title={counterparty.title}
+                                  >
+                                    {counterparty.title}
+                                  </b>
+                                ) : (
+                                  <span className="text-ink-4">—</span>
+                                )}
+                                {counterparty.subtitle && (
+                                  <small
+                                    className="block truncate text-micro font-500 text-ink-4 num"
+                                    title={counterparty.subtitle}
+                                  >
+                                    {counterparty.subtitle}
+                                  </small>
+                                )}
+                              </div>
+                              {tx.status === 'pending' && (
+                                <Badge className="shrink-0">{t('readiness.pending')}</Badge>
                               )}
-                            </span>
-                            <div className="min-w-0">
-                              {counterparty.title ? (
-                                <b
-                                  className="block truncate text-table font-650"
-                                  title={counterparty.title}
-                                >
-                                  {counterparty.title}
-                                </b>
-                              ) : (
-                                <span className="text-ink-4">—</span>
-                              )}
-                              {counterparty.subtitle && (
-                                <small
-                                  className="block truncate text-micro font-500 text-ink-4 num"
-                                  title={counterparty.subtitle}
-                                >
-                                  {counterparty.subtitle}
-                                </small>
+                              {flowKey && (
+                                <Badge variant="outline" className="shrink-0">
+                                  {flowKey === 'refund'
+                                    ? t('readiness.flowRefund')
+                                    : t(`readiness.flow.${flowKey}`)}
+                                </Badge>
                               )}
                             </div>
-                            {tx.status === 'pending' && (
-                              <Badge className="shrink-0">{t('readiness.pending')}</Badge>
+                          </TableCell>
+                          <TableCell className="truncate" title={detail || undefined}>
+                            {detail}
+                          </TableCell>
+                          <TableCell>
+                            <CategorySelector
+                              currentCategoryId={getEffectiveCategory(tx)}
+                              transactionId={tx.id}
+                              suggestedCategoryId={tx.suggestedCategoryId}
+                              counterpartyName={tx.counterpartyName}
+                              counterpartyIban={tx.counterpartyIban}
+                              bankAccountId={tx.bankAccountId}
+                              isCredit={tx.type === 'credit'}
+                              counterpartyBankCode={tx.counterpartyBankCode}
+                              counterpartyCountry={tx.counterpartyCountry}
+                              categories={categories}
+                              onCategoryChange={(catId) => handleCategoryChange(tx.id, catId)}
+                              onAcceptSuggestion={() => handleAcceptSuggestion(tx.id)}
+                              onDeclineSuggestion={() => handleDeclineSuggestion(tx.id)}
+                              rowLabel={tx.description || tx.counterpartyName || undefined}
+                              onCreateRule={() =>
+                                setLocation(
+                                  newRuleHref({
+                                    payee: tx.counterpartyName || tx.description,
+                                    categoryId: getEffectiveCategory(tx),
+                                  })
+                                )
+                              }
+                              compact
+                            />
+                          </TableCell>
+                          <TableCell
+                            className={cn(
+                              'text-right font-650 num',
+                              credit ? 'text-gain' : 'text-ink'
                             )}
-                            {flowKey && (
-                              <Badge variant="outline" className="shrink-0">
-                                {flowKey === 'refund'
-                                  ? t('readiness.flowRefund')
-                                  : t(`readiness.flow.${flowKey}`)}
-                              </Badge>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell className="truncate" title={detail || undefined}>
-                          {detail}
-                        </TableCell>
-                        <TableCell>
-                          <CategorySelector
-                            currentCategoryId={getEffectiveCategory(tx)}
-                            transactionId={tx.id}
-                            suggestedCategoryId={tx.suggestedCategoryId}
-                            counterpartyName={tx.counterpartyName}
-                            counterpartyIban={tx.counterpartyIban}
-                            bankAccountId={tx.bankAccountId}
-                            isCredit={tx.type === 'credit'}
-                            counterpartyBankCode={tx.counterpartyBankCode}
-                            counterpartyCountry={tx.counterpartyCountry}
-                            categories={categories}
-                            onCategoryChange={(catId) => handleCategoryChange(tx.id, catId)}
-                            onAcceptSuggestion={() => handleAcceptSuggestion(tx.id)}
-                            onDeclineSuggestion={() => handleDeclineSuggestion(tx.id)}
-                            rowLabel={tx.description || tx.counterpartyName || undefined}
-                            onCreateRule={() =>
-                              setLocation(
-                                newRuleHref({
-                                  payee: tx.counterpartyName || tx.description,
-                                  categoryId: getEffectiveCategory(tx),
-                                })
-                              )
-                            }
-                            compact
-                          />
-                        </TableCell>
-                        <TableCell
-                          className={cn(
-                            'text-right font-650 num',
-                            credit ? 'text-gain' : 'text-ink'
-                          )}
-                        >
-                          {fmt.money(credit ? amount : -amount, tx.currency, { signed: true })}
-                        </TableCell>
-                        <TableCell className="pl-0 pr-2 text-right">
-                          <div data-row-actions>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon-sm"
-                                  aria-label={tc('labels.actions')}
-                                >
-                                  <Ellipsis />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem onSelect={() => setSelectedTransaction(tx)}>
-                                  {t('readiness.transactionDetails')}
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  variant="danger"
-                                  onSelect={() => setPendingDelete(tx)}
-                                >
-                                  <Trash2 />
-                                  {t('transaction.delete')}
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    </Fragment>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          )}
-          <div className="flex items-center justify-between border-t border-line px-[14px] py-3 text-micro font-500 text-ink-4">
-            <span>
-              {t('readiness.pageCount', {
-                shown: filteredTransactions.length,
-                total: transactionsResult?.total ?? 0,
-                page: ledgerPage + 1,
-              })}
-              {datePreset !== 'allTime' && datePreset !== 'custom'
-                ? ` · ${t(`filters.${datePreset}`).toLowerCase()}`
-                : ''}
-            </span>
-            <div className="flex gap-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                disabled={ledgerPage === 0 || txLoading}
-                onClick={() => setLedgerPage((page) => page - 1)}
-              >
-                {t('readiness.previous')}
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                disabled={(ledgerPage + 1) * 100 >= (transactionsResult?.total ?? 0) || txLoading}
-                onClick={() => setLedgerPage((page) => page + 1)}
-              >
-                {t('readiness.next')}
-              </Button>
-            </div>
-            {datePreset !== 'allTime' && (
-              <button
-                type="button"
-                onClick={() => applyDatePreset('allTime')}
-                className="text-caption font-650 text-ink-2 underline-offset-[3px] hover:text-ink hover:underline focus-visible:outline-none focus-visible:shadow-focus"
-              >
-                {t('empty.showAll')} →
-              </button>
+                          >
+                            {fmt.money(credit ? amount : -amount, tx.currency, { signed: true })}
+                          </TableCell>
+                          <TableCell className="pl-0 pr-2 text-right">
+                            <div data-row-actions>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon-sm"
+                                    aria-label={tc('labels.actions')}
+                                  >
+                                    <Ellipsis />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem onSelect={() => setSelectedTransaction(tx)}>
+                                    {t('readiness.transactionDetails')}
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    variant="danger"
+                                    onSelect={() => setPendingDelete(tx)}
+                                  >
+                                    <Trash2 />
+                                    {t('transaction.delete')}
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      </Fragment>
+                    );
+                  })}
+                </TableBody>
+              </Table>
             )}
-          </div>
-        </Card>
+            <div className="flex items-center justify-between border-t border-line px-[14px] py-3 text-micro font-500 text-ink-4">
+              <span>
+                {t('readiness.pageCount', {
+                  shown: filteredTransactions.length,
+                  total: transactionsResult?.total ?? 0,
+                  page: ledgerPage + 1,
+                })}
+                {datePreset !== 'allTime' && datePreset !== 'custom'
+                  ? ` · ${t(`filters.${datePreset}`).toLowerCase()}`
+                  : ''}
+              </span>
+              <div className="flex gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled={ledgerPage === 0 || txLoading}
+                  onClick={() => setLedgerPage((page) => page - 1)}
+                >
+                  {t('readiness.previous')}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled={(ledgerPage + 1) * 100 >= (transactionsResult?.total ?? 0) || txLoading}
+                  onClick={() => setLedgerPage((page) => page + 1)}
+                >
+                  {t('readiness.next')}
+                </Button>
+              </div>
+              {datePreset !== 'allTime' && (
+                <button
+                  type="button"
+                  onClick={() => applyDatePreset('allTime')}
+                  className="text-caption font-650 text-ink-2 underline-offset-[3px] hover:text-ink hover:underline focus-visible:outline-none focus-visible:shadow-focus"
+                >
+                  {t('empty.showAll')} →
+                </button>
+              )}
+            </div>
+          </Card>
+        </div>
       )}
 
       <Dialog
@@ -1709,6 +1380,7 @@ export default function BankAccountDetail() {
         onSubmit={handleEditSubmit}
         account={account}
         isLoading={updateAccount.isPending}
+        onRecordBalance={() => setRecordOpen(true)}
         initialZones={zones?.map((z) => ({
           id: z.id,
           fromAmount: z.fromAmount,
@@ -1725,6 +1397,43 @@ export default function BankAccountDetail() {
         onImported={handleImported}
         onReviewUncategorized={() => setCategoryFilter('uncategorized')}
         onAutoCategorize={() => autoCategorizeRef.current()}
+      />
+
+      <AddTransactionModal
+        accountId={accountId || ''}
+        accountCurrency={currency}
+        open={addTxOpen}
+        onOpenChange={setAddTxOpen}
+      />
+      <BalanceRecordDialog
+        open={recordOpen}
+        onOpenChange={setRecordOpen}
+        account={account}
+        records={records}
+      />
+      <BalanceHistoryDialog
+        open={historyOpen}
+        onOpenChange={setHistoryOpen}
+        accountId={account.id}
+        currency={accountCurrency}
+        records={records}
+      />
+      <ImportHistoryDialog
+        open={importsOpen}
+        onOpenChange={setImportsOpen}
+        batches={importBatches ?? []}
+        onUndo={(batch) => {
+          setImportsOpen(false);
+          setPendingUndo(batch);
+        }}
+      />
+      <InterestDialog
+        open={interestOpen}
+        onOpenChange={setInterestOpen}
+        account={account}
+        zones={zones ?? []}
+        balance={balance}
+        currency={accountCurrency}
       />
     </>
   );

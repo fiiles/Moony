@@ -239,7 +239,6 @@
     "pendingPromotionInvalid": "Čekající transakci se nepodařilo zaúčtovat. Obnovte náhled a zkuste to znovu.",
     "balanceAsOfInvalid": "Vyberte platné datum zůstatku, nejpozději dnešní.",
     "balanceCurrencyMismatch": "Měna zůstatku ve výpisu se liší od měny účtu.",
-    "balanceAnchorOlder": "Výpis je starší než zaznamenané datum zůstatku účtu.",
     "balanceAnchorUnknown": "Datum současného zůstatku není známé. Nejprve potvrďte jeho nahrazení.",
     "balanceBatchMismatch": "Tento import výpisu nepatří k tomuto účtu.",
     "currencyLockedByRecords": "Měnu nelze změnit, dokud má účet záznamy zůstatku.",

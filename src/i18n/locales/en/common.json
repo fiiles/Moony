@@ -239,7 +239,6 @@
     "pendingPromotionInvalid": "The pending transaction could not be promoted. Refresh the preview and try again.",
     "balanceAsOfInvalid": "Choose a valid balance date, no later than today.",
     "balanceCurrencyMismatch": "The statement balance currency differs from the account currency.",
-    "balanceAnchorOlder": "The statement is older than the account's recorded balance date.",
     "balanceAnchorUnknown": "The existing balance date is unknown. Confirm replacing this balance first.",
     "balanceBatchMismatch": "This statement import does not belong to this account.",
     "currencyLockedByRecords": "The currency cannot change while the account has balance records.",

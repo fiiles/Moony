@@ -49,9 +49,7 @@
     "frequency": "Frekvence",
     "category": "Kategorie",
     "selectCategory": "Vyberte kategorii",
-    "type": "Typ",
-    "income": "Příjem",
-    "expense": "Výdaj"
+    "description": "Pravidelný příjem nebo výdaj. Kategorie určuje, kam se v plánu započítá."
   },
   "deleteConfirm": {
     "title": "Smazat položku?",
@@ -562,10 +560,8 @@
     "countedTransactions": "{{count}} transakcí",
     "previous": "Předchozí",
     "next": "Další",
-    "replacesSource": "Automatický zdroj k nahrazení",
-    "additionalItem": "Další ruční položka",
     "retainedSource": "Dříve propojený zdroj",
-    "replacementHelp": "Nahrazení vynechá vybranou automatickou položku ze součtů. Smazáním ruční náhrady se zdroj vrátí.",
+    "replacementHelp": "Dokud tato ruční položka existuje, automatická se v plánu nepočítá. Smazáním ruční položky se automatická vrátí.",
     "replacing": "Nahrazuje {{name}}",
     "missingFx_one": "{{count}} pohyb byl vynechán kvůli chybějícímu kurzu ({{currencies}}). Součty jsou neúplné.",
     "missingFx_few": "{{count}} pohyby byly vynechány kvůli chybějícímu kurzu ({{currencies}}). Součty jsou neúplné.",

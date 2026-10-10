@@ -68,9 +68,12 @@ tech; visible on hover and focus-within like every other table)
 | Manual item | *Nezapočítávat* / *Započítat* · *Upravit* · separator · *Smazat* (danger) |
 | Any item inside an excluded category | first entry becomes the disabled line *Celá kategorie je mimo plán*; the rest as above |
 
-*Nahradit vlastní částkou…* opens the existing add dialog with the section, category, type and
-"Automatický zdroj k nahrazení" preselected — the replacement feature stays, it only gets a visible
-entry point. *Přidat položku do kategorie* opens the add dialog with that category preselected.
+*Nahradit vlastní částkou…* opens the add dialog with the category preselected and the replaced
+source shown as a note ("Nahrazuje …") — the replacement feature stays, but its only entry point is this
+menu item; the dialog has no source select. *Přidat položku do kategorie* opens the add dialog with that
+category preselected. The add dialog itself offers every category in one select grouped by section and
+income / expense (Osobní příjmy, Osobní výdaje, Investiční příjmy, Investiční výdaje); the category
+decides the item type, so the page-level "Přidat položku" can add an income too.
 *Otevřít v modulu* navigates to the module's list page (route from `nav-config.ts`).
 
 **Card footer**: `{N příjmy} · {M výdajů} · {K položek mimo plán}` on the left; on the right
@@ -191,8 +194,9 @@ already reflects the report totals. Documented in `CHANGELOG.md` (Unreleased).
 - The page's inline `useMutation`s move to `src/hooks/use-cashflow-planning-mutations.ts`
   (create, update, delete, setInclusion); every one refreshes through the existing
   `refreshMoneyFlows(queryClient)` so `["cashflow-report"]` and the related keys invalidate as today.
-- `AddCashflowItemDialog` gains optional `presetCategory` and `presetReplacementSourceId` props; the
-  replacement select stays where it is.
+- `AddCashflowItemDialog` takes the whole `report` (grouped category select, automatic sources for the
+  replacement note) plus optional `presetCategory` and `presetReplacementSourceId`; the replacement
+  select is gone.
 - Design-system README: §7 "Plan" row and §11 decision 4 describe the grouped list, "Mimo plán" and
   the "···" menu; `SOURCE_BY_CATEGORY` becomes the single map from category to module label and route.
 

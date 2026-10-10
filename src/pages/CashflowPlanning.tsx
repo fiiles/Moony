@@ -6,12 +6,7 @@ import { Link } from 'wouter';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { Plus } from 'lucide-react';
-import type {
-  CashflowReport,
-  CashflowReportItem,
-  CashflowCategory as CashflowCategoryType,
-  CashflowSection,
-} from '@shared/schema';
+import type { CashflowReport, CashflowReportItem } from '@shared/schema';
 import { cashflowApi } from '@/lib/tauri-api';
 import { useFormat } from '@/lib/use-format';
 import { useShellPage } from '@/components/shell/shell-context';
@@ -25,11 +20,7 @@ import { ConfirmDeleteDialog } from '@/components/common/ConfirmDeleteDialog';
 import { FlowBar, type FlowSegment } from '@/components/cashflow/FlowBar';
 import { flowColor } from '@/components/cashflow/flow-colors';
 import AddCashflowItemDialog from '@/components/cashflow/AddCashflowItemDialog';
-import {
-  PlanSectionCard,
-  type ItemType,
-  type SectionId,
-} from '@/components/cashflow/PlanSectionCard';
+import { PlanSectionCard } from '@/components/cashflow/PlanSectionCard';
 import { useCashflowPlanningMutations } from '@/hooks/use-cashflow-planning-mutations';
 import { readExpanded, setKeys, toggleKey, writeExpanded } from '@/utils/plan-expansion';
 
@@ -59,15 +50,11 @@ export default function CashflowPlanning() {
 
   const [viewType, setViewType] = useState<ViewType>('monthly');
   const [addDialogOpen, setAddDialogOpen] = useState(false);
-  const [addDialogType, setAddDialogType] = useState<ItemType>('expense');
-  const [addDialogSection, setAddDialogSection] = useState<SectionId>('personal');
   const [addPreset, setAddPreset] = useState<{
     category?: string;
     replacementSourceId?: string | null;
   }>({});
   const [editItem, setEditItem] = useState<CashflowReportItem | null>(null);
-  const [editCategory, setEditCategory] = useState<string>('');
-  const [editSection, setEditSection] = useState<SectionId>('personal');
   const [deleteItem, setDeleteItem] = useState<CashflowReportItem | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(() => readExpanded(planStorage()));
   const persistExpanded = (next: Set<string>) => {
@@ -91,29 +78,10 @@ export default function CashflowPlanning() {
   const { createMutation, updateMutation, deleteMutation, inclusionMutation } =
     useCashflowPlanningMutations();
 
-  const openAdd = (
-    section: SectionId,
-    type: ItemType,
-    category?: string,
-    replacementSourceId: string | null = null
-  ) => {
-    setAddDialogSection(section);
-    setAddDialogType(type);
+  /** Opens the add dialog; a category or a replaced source are presets only, the dialog offers every category. */
+  const openAdd = (category?: string, replacementSourceId: string | null = null) => {
     setAddPreset({ category, replacementSourceId });
     setAddDialogOpen(true);
-  };
-
-  const sectionOf = (id: SectionId): CashflowSection | undefined =>
-    id === 'personal' ? report?.personal : report?.investments;
-
-  const dialogCategories = (section: SectionId, type: ItemType): CashflowCategoryType[] => {
-    const s = sectionOf(section);
-    if (!s) return [];
-    return type === 'income' ? s.income : s.expenses;
-  };
-  const editType = (): ItemType => {
-    const s = sectionOf(editSection);
-    return s && s.income.some((c) => c.key === editCategory) ? 'income' : 'expense';
   };
 
   // Automatic expenses still in the plan, and how many expense rows are out of it
@@ -202,7 +170,7 @@ export default function CashflowPlanning() {
               { value: 'yearly', label: t('viewType.yearly') },
             ]}
           />
-          <Button onClick={() => openAdd('personal', 'expense')}>
+          <Button onClick={() => openAdd()}>
             <Plus />
             {t('planning.addItem')}
           </Button>
@@ -240,15 +208,9 @@ export default function CashflowPlanning() {
       persistExpanded(setKeys(expanded, keys, open)),
     onToggleInclusion: (key: string, kind: 'item' | 'category', included: boolean) =>
       inclusionMutation.mutate({ key, kind, included }),
-    onAdd: (section: SectionId, type: ItemType, category?: string) =>
-      openAdd(section, type, category),
-    onReplace: (section: SectionId, type: ItemType, item: CashflowReportItem) =>
-      openAdd(section, type, item.category, item.sourceId),
-    onEdit: (section: SectionId, item: CashflowReportItem, category: string) => {
-      setEditItem(item);
-      setEditCategory(category);
-      setEditSection(section);
-    },
+    onAdd: (category?: string) => openAdd(category),
+    onReplace: (item: CashflowReportItem) => openAdd(item.category, item.sourceId),
+    onEdit: setEditItem,
     onDelete: setDeleteItem,
   };
 
@@ -361,38 +323,20 @@ export default function CashflowPlanning() {
         onSubmit={(data) =>
           createMutation.mutate(data, { onSuccess: () => setAddDialogOpen(false) })
         }
-        itemType={addDialogType}
-        automaticSources={report.automaticSources}
-        categories={dialogCategories(addDialogSection, addDialogType)}
+        report={report}
         presetCategory={addPreset.category}
         presetReplacementSourceId={addPreset.replacementSourceId}
         isLoading={createMutation.isPending}
       />
       <AddCashflowItemDialog
         open={!!editItem}
-        onOpenChange={(open) => {
-          if (!open) {
-            setEditItem(null);
-            setEditCategory('');
-          }
-        }}
+        onOpenChange={(open) => !open && setEditItem(null)}
         onSubmit={(data) =>
           editItem &&
-          updateMutation.mutate(
-            { id: editItem.id, data },
-            {
-              onSuccess: () => {
-                setEditItem(null);
-                setEditCategory('');
-              },
-            }
-          )
+          updateMutation.mutate({ id: editItem.id, data }, { onSuccess: () => setEditItem(null) })
         }
+        report={report}
         editItem={editItem}
-        editCategory={editCategory}
-        itemType={editType()}
-        automaticSources={report.automaticSources}
-        categories={dialogCategories(editSection, editType())}
         isLoading={updateMutation.isPending}
       />
       <ConfirmDeleteDialog

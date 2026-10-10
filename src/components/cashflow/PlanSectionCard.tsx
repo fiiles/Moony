@@ -28,11 +28,18 @@ interface PlanSectionCardProps {
   onToggleExpanded: (categoryKey: string) => void;
   onSetExpanded: (categoryKeys: string[], expanded: boolean) => void;
   onToggleInclusion: (key: string, kind: 'item' | 'category', included: boolean) => void;
-  onAdd: (section: SectionId, type: ItemType, category?: string) => void;
-  onReplace: (section: SectionId, type: ItemType, item: CashflowReportItem) => void;
-  onEdit: (section: SectionId, item: CashflowReportItem, category: string) => void;
+  /** Opens the add dialog with a category preselected (the dialog still offers every category). */
+  onAdd: (category?: string) => void;
+  onReplace: (item: CashflowReportItem) => void;
+  onEdit: (item: CashflowReportItem) => void;
   onDelete: (item: CashflowReportItem) => void;
 }
+
+/** Category a block's add link preselects: the section's own income, or its "other costs". */
+const BLOCK_DEFAULT: Record<SectionId, Record<ItemType, string>> = {
+  personal: { income: 'personalIncome', expense: 'otherPersonalCosts' },
+  investments: { income: 'otherInvestmentIncome', expense: 'otherInvestmentCosts' },
+};
 
 const TEXT_LINK =
   'text-caption font-650 text-ink-2 underline-offset-[3px] hover:text-ink hover:underline focus-visible:outline-none focus-visible:shadow-focus';
@@ -81,7 +88,11 @@ export function PlanSectionCard({
       {cats.length === 0 && (
         <p className="m-0 border-b border-line-soft px-[14px] py-3.5 text-center text-table text-ink-4">
           {t(isIncome ? 'planning.table.noIncome' : 'planning.table.noExpenses')}{' '}
-          <button type="button" onClick={() => onAdd(id, type)} className={TEXT_LINK}>
+          <button
+            type="button"
+            onClick={() => onAdd(BLOCK_DEFAULT[id][type])}
+            className={TEXT_LINK}
+          >
             {t(isIncome ? 'planning.table.addIncome' : 'planning.table.addExpense')} →
           </button>
         </p>
@@ -110,7 +121,7 @@ export function PlanSectionCard({
                   !category.included
                 )
               }
-              onAdd={() => onAdd(id, type, category.key)}
+              onAdd={() => onAdd(category.key)}
             />
             <div id={controlsId} hidden={!open}>
               {open &&
@@ -127,8 +138,8 @@ export function PlanSectionCard({
                     onToggleInclusion={() =>
                       onToggleInclusion(planInclusionKey(item), 'item', !item.included)
                     }
-                    onReplace={() => onReplace(id, type, item)}
-                    onEdit={() => onEdit(id, item, category.key)}
+                    onReplace={() => onReplace(item)}
+                    onEdit={() => onEdit(item)}
                     onDelete={() => onDelete(item)}
                   />
                 ))}
@@ -191,7 +202,11 @@ export function PlanSectionCard({
               {t(everyOpen ? 'planning.table.collapseAll' : 'planning.table.expandAll')}
             </button>
           )}
-          <button type="button" onClick={() => onAdd(id, 'expense')} className={TEXT_LINK}>
+          <button
+            type="button"
+            onClick={() => onAdd(BLOCK_DEFAULT[id].expense)}
+            className={TEXT_LINK}
+          >
             {t('planning.table.addToSection')} →
           </button>
         </span>

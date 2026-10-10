@@ -186,7 +186,10 @@ pub fn create_loan(conn: &Connection, data: &InsertLoan) -> Result<Loan> {
 
     let id = Uuid::new_v4().to_string();
     let now = chrono::Utc::now().timestamp();
-    let currency = data.currency.clone().unwrap_or_else(|| "CZK".to_string());
+    let currency = data
+        .currency
+        .clone()
+        .unwrap_or_else(|| crate::constants::STORAGE_DEFAULT_CURRENCY.to_string());
     let interest_rate = data
         .interest_rate
         .clone()

@@ -2,7 +2,9 @@
 //! Tauri command and the MCP write tool share one validated path (ADR 0007).
 
 use crate::error::{AppError, Result};
-use crate::models::{InsertRealEstate, RealEstate};
+use crate::models::{
+    InsertRealEstate, InsertRealEstateOneTimeCost, RealEstate, RealEstateOneTimeCost,
+};
 use crate::services::loan_amortization::day_floor;
 use crate::services::valuations::{self, ValuationKind};
 use rusqlite::{Connection, OptionalExtension, Row};
@@ -83,7 +85,7 @@ pub fn create_property(conn: &Connection, data: &InsertRealEstate) -> Result<Str
     let market_price_currency = data
         .market_price_currency
         .clone()
-        .unwrap_or_else(|| "CZK".to_string());
+        .unwrap_or_else(|| crate::constants::STORAGE_DEFAULT_CURRENCY.to_string());
 
     // The property and its first estimate are saved together or not at all
     let tx = conn.unchecked_transaction()?;
@@ -102,7 +104,7 @@ pub fn create_property(conn: &Connection, data: &InsertRealEstate) -> Result<Str
                 .unwrap_or_else(|| "0".to_string()),
             data.purchase_price_currency
                 .clone()
-                .unwrap_or_else(|| "CZK".to_string()),
+                .unwrap_or_else(|| crate::constants::STORAGE_DEFAULT_CURRENCY.to_string()),
             market_price,
             market_price_currency,
             data.monthly_rent,
@@ -215,6 +217,77 @@ pub fn update_property(
     }
     tx.commit()?;
     Ok(())
+}
+
+/// Stores a one-time cost; a missing currency takes the storage default.
+pub fn create_one_time_cost(
+    conn: &Connection,
+    data: InsertRealEstateOneTimeCost,
+) -> Result<RealEstateOneTimeCost> {
+    data.validate()?;
+    let id = Uuid::new_v4().to_string();
+    let now = chrono::Utc::now().timestamp();
+    let currency = data
+        .currency
+        .unwrap_or_else(|| crate::constants::STORAGE_DEFAULT_CURRENCY.to_string());
+    conn.execute(
+        "INSERT INTO real_estate_one_time_costs (id, real_estate_id, name, description, amount, currency, date, created_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+        rusqlite::params![id, data.real_estate_id, data.name, data.description, data.amount, currency, data.date, now],
+    )?;
+    Ok(RealEstateOneTimeCost {
+        id,
+        real_estate_id: data.real_estate_id,
+        name: data.name,
+        description: data.description,
+        amount: data.amount,
+        currency,
+        date: data.date,
+        created_at: now,
+    })
+}
+
+/// Updates a one-time cost and returns the stored row; a missing currency takes the
+/// storage default.
+pub fn update_one_time_cost(
+    conn: &Connection,
+    cost_id: &str,
+    data: InsertRealEstateOneTimeCost,
+) -> Result<RealEstateOneTimeCost> {
+    data.validate()?;
+    let currency = data
+        .currency
+        .unwrap_or_else(|| crate::constants::STORAGE_DEFAULT_CURRENCY.to_string());
+    conn.execute(
+        "UPDATE real_estate_one_time_costs
+         SET name = ?2, description = ?3, amount = ?4, currency = ?5, date = ?6
+         WHERE id = ?1",
+        rusqlite::params![
+            cost_id,
+            data.name,
+            data.description,
+            data.amount,
+            currency,
+            data.date
+        ],
+    )?;
+    Ok(conn.query_row(
+        "SELECT id, real_estate_id, name, description, amount, currency, date, created_at
+         FROM real_estate_one_time_costs WHERE id = ?1",
+        [cost_id],
+        |row| {
+            Ok(RealEstateOneTimeCost {
+                id: row.get(0)?,
+                real_estate_id: row.get(1)?,
+                name: row.get(2)?,
+                description: row.get(3)?,
+                amount: row.get(4)?,
+                currency: row.get(5)?,
+                date: row.get(6)?,
+                created_at: row.get(7)?,
+            })
+        },
+    )?)
 }
 
 #[cfg(test)]
@@ -768,5 +841,41 @@ mod tests {
             .unwrap();
         assert!(recurring_costs_json.contains("\"quarterly\""));
         assert!(!recurring_costs_json.contains("Quarterly"));
+    }
+
+    fn cost_input(currency: Option<&str>) -> InsertRealEstateOneTimeCost {
+        InsertRealEstateOneTimeCost {
+            real_estate_id: "re1".into(),
+            name: "Roof".into(),
+            description: None,
+            amount: "100".into(),
+            currency: currency.map(String::from),
+            date: 1_700_000_000,
+        }
+    }
+
+    #[test]
+    fn one_time_costs_default_the_currency_and_keep_an_explicit_one() {
+        let conn = Connection::open_in_memory().expect("in-memory db");
+        conn.execute_batch(
+            "CREATE TABLE real_estate_one_time_costs (
+                id TEXT PRIMARY KEY, real_estate_id TEXT NOT NULL, name TEXT NOT NULL,
+                description TEXT, amount TEXT NOT NULL, currency TEXT NOT NULL DEFAULT 'CZK',
+                date INTEGER NOT NULL, created_at INTEGER NOT NULL DEFAULT 0
+            );",
+        )
+        .expect("schema");
+        let defaulted = create_one_time_cost(&conn, cost_input(None)).expect("create");
+        assert_eq!(
+            defaulted.currency,
+            crate::constants::STORAGE_DEFAULT_CURRENCY
+        );
+        let explicit = create_one_time_cost(&conn, cost_input(Some("EUR"))).expect("create");
+        assert_eq!(explicit.currency, "EUR");
+        let updated = update_one_time_cost(&conn, &explicit.id, cost_input(None)).expect("update");
+        assert_eq!(updated.currency, crate::constants::STORAGE_DEFAULT_CURRENCY);
+        let mut bad = cost_input(None);
+        bad.name = String::new();
+        assert!(update_one_time_cost(&conn, &explicit.id, bad).is_err());
     }
 }

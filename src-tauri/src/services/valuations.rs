@@ -233,7 +233,7 @@ pub fn add_valuation(
     let currency = data
         .currency
         .clone()
-        .unwrap_or_else(|| "CZK".to_string())
+        .unwrap_or_else(|| crate::constants::STORAGE_DEFAULT_CURRENCY.to_string())
         .to_uppercase();
     let day = data.valued_at.div_euclid(86_400) * 86_400;
     let note = data

@@ -107,31 +107,7 @@ pub async fn create_real_estate_cost(
     db: State<'_, Database>,
     data: InsertRealEstateOneTimeCost,
 ) -> Result<RealEstateOneTimeCost> {
-    // Validate inputs at the trust boundary
-    data.validate()?;
-
-    let id = Uuid::new_v4().to_string();
-    let now = chrono::Utc::now().timestamp();
-    let currency = data.currency.unwrap_or_else(|| "CZK".to_string());
-
-    db.with_conn(|conn| {
-        conn.execute(
-            "INSERT INTO real_estate_one_time_costs (id, real_estate_id, name, description, amount, currency, date, created_at)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
-            rusqlite::params![id, data.real_estate_id, data.name, data.description, data.amount, currency, data.date, now],
-        )?;
-
-        Ok(RealEstateOneTimeCost {
-            id,
-            real_estate_id: data.real_estate_id,
-            name: data.name,
-            description: data.description,
-            amount: data.amount,
-            currency,
-            date: data.date,
-            created_at: now,
-        })
-    })
+    db.with_conn(|conn| real_estate_service::create_one_time_cost(conn, data))
 }
 
 /// Delete one-time cost
@@ -153,44 +129,7 @@ pub async fn update_real_estate_cost(
     cost_id: String,
     data: InsertRealEstateOneTimeCost,
 ) -> Result<RealEstateOneTimeCost> {
-    let currency = data.currency.unwrap_or_else(|| "CZK".to_string());
-
-    db.with_conn(|conn| {
-        conn.execute(
-            "UPDATE real_estate_one_time_costs
-             SET name = ?2, description = ?3, amount = ?4, currency = ?5, date = ?6
-             WHERE id = ?1",
-            rusqlite::params![
-                cost_id,
-                data.name,
-                data.description,
-                data.amount,
-                currency,
-                data.date
-            ],
-        )?;
-
-        // Fetch updated cost
-        let cost = conn.query_row(
-            "SELECT id, real_estate_id, name, description, amount, currency, date, created_at
-             FROM real_estate_one_time_costs WHERE id = ?1",
-            [&cost_id],
-            |row| {
-                Ok(RealEstateOneTimeCost {
-                    id: row.get(0)?,
-                    real_estate_id: row.get(1)?,
-                    name: row.get(2)?,
-                    description: row.get(3)?,
-                    amount: row.get(4)?,
-                    currency: row.get(5)?,
-                    date: row.get(6)?,
-                    created_at: row.get(7)?,
-                })
-            },
-        )?;
-
-        Ok(cost)
-    })
+    db.with_conn(|conn| real_estate_service::update_one_time_cost(conn, &cost_id, data))
 }
 
 /// Link loan to real estate (enforces 1 loan → 1 property)

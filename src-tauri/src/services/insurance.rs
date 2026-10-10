@@ -29,7 +29,7 @@ pub fn create_policy(
     let regular_payment_currency = data
         .regular_payment_currency
         .clone()
-        .unwrap_or_else(|| "CZK".to_string());
+        .unwrap_or_else(|| crate::constants::STORAGE_DEFAULT_CURRENCY.to_string());
     let status = data.status.clone().unwrap_or_else(|| "active".to_string());
     let limits = data.limits.clone().unwrap_or_default();
     let limits_json = serde_json::to_string(&limits)?;

@@ -15,7 +15,10 @@ pub fn create_bond(conn: &rusqlite::Connection, data: &InsertBond) -> Result<Bon
         .interest_rate
         .clone()
         .unwrap_or_else(|| "0".to_string());
-    let currency = data.currency.clone().unwrap_or_else(|| "CZK".to_string());
+    let currency = data
+        .currency
+        .clone()
+        .unwrap_or_else(|| crate::constants::STORAGE_DEFAULT_CURRENCY.to_string());
     let quantity = data.quantity.clone().unwrap_or_else(|| "1".to_string());
 
     conn.execute(

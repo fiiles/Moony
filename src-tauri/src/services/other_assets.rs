@@ -87,7 +87,10 @@ pub fn create_asset(
     let id = Uuid::new_v4().to_string();
     let now = chrono::Utc::now().timestamp();
     let market_price = data.market_price.clone().unwrap_or_else(|| "0".to_string());
-    let currency = data.currency.clone().unwrap_or_else(|| "CZK".to_string());
+    let currency = data
+        .currency
+        .clone()
+        .unwrap_or_else(|| crate::constants::STORAGE_DEFAULT_CURRENCY.to_string());
 
     // The asset, its first estimate and its initial transaction are saved together or not at all
     let db_tx = conn.unchecked_transaction()?;

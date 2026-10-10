@@ -718,7 +718,7 @@ pub fn create_investment_with_transaction(
     // Determine currency from initial transaction (first transaction sets the currency)
     let currency = initial_transaction
         .map(|tx| tx.currency.as_str())
-        .unwrap_or("CZK");
+        .unwrap_or(crate::constants::STORAGE_DEFAULT_CURRENCY);
 
     // Get or create the investment
     let investment_id = get_or_create_investment(conn, &ticker_upper, company_name, currency)?;

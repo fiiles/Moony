@@ -131,7 +131,10 @@ pub fn upsert_goal_at(
 ) -> Result<BudgetGoal> {
     data.validate()?;
 
-    let currency = data.currency.clone().unwrap_or_else(|| "CZK".to_string());
+    let currency = data
+        .currency
+        .clone()
+        .unwrap_or_else(|| crate::constants::STORAGE_DEFAULT_CURRENCY.to_string());
     let effective = data
         .effective_month
         .or_else(|| crate::services::reporting::month_start(now))

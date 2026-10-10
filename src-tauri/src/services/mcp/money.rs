@@ -22,7 +22,7 @@ pub fn load_main_currency(conn: &Connection) -> Result<String> {
     Ok(stored
         .map(|c| c.trim().to_uppercase())
         .filter(|c| !c.is_empty())
-        .unwrap_or_else(|| "CZK".to_string()))
+        .unwrap_or_else(|| crate::models::user::DEFAULT_MAIN_CURRENCY.to_string()))
 }
 
 /// A currency argument of an MCP write tool: the given code, or the user's

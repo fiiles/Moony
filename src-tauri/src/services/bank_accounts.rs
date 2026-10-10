@@ -72,7 +72,10 @@ pub fn create_account(
         .account_type
         .clone()
         .unwrap_or_else(|| "checking".to_string());
-    let currency = data.currency.clone().unwrap_or_else(|| "CZK".to_string());
+    let currency = data
+        .currency
+        .clone()
+        .unwrap_or_else(|| crate::constants::STORAGE_DEFAULT_CURRENCY.to_string());
     let balance = data.balance.clone().unwrap_or_else(|| "0".to_string());
     let has_zone = data.has_zone_designation.unwrap_or(false);
     let exclude = data.exclude_from_balance.unwrap_or(false);

@@ -938,7 +938,9 @@ pub fn create_cashflow_item(
     let id = Uuid::new_v4().to_string();
     data.validate()?;
     let now = chrono::Utc::now().timestamp();
-    let currency = data.currency.unwrap_or_else(|| "CZK".to_string());
+    let currency = data
+        .currency
+        .unwrap_or_else(|| crate::constants::STORAGE_DEFAULT_CURRENCY.to_string());
 
     {
         conn.execute(
@@ -982,7 +984,9 @@ pub fn update_cashflow_item(
     data.validate()?;
     validate_replacement(conn, &data, Some(&id))?;
     let now = chrono::Utc::now().timestamp();
-    let currency = data.currency.unwrap_or_else(|| "CZK".to_string());
+    let currency = data
+        .currency
+        .unwrap_or_else(|| crate::constants::STORAGE_DEFAULT_CURRENCY.to_string());
 
     {
         let updated=conn.execute(
@@ -1299,7 +1303,8 @@ fn validate_replacement(
         } else {
             None
         };
-        let report = get_report_in_currency(conn, "monthly", "CZK")?;
+        let report =
+            get_report_in_currency(conn, "monthly", crate::constants::STORAGE_DEFAULT_CURRENCY)?;
         if previous.as_ref() != Some(source)
             && !report
                 .automatic_sources

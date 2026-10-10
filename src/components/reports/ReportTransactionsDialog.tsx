@@ -12,7 +12,12 @@ import { cn } from '@/lib/utils';
 import { formatReportMoney } from '@/utils/report-currencies';
 import { rowFlowLabel } from '@/utils/money-flows';
 import { counterpartyLabel, transactionDetails } from '@/utils/transaction-text';
-import { isMovedOut, movedCount } from '@/utils/report-drilldown';
+import {
+  applyBulkChanges,
+  isMovedOut,
+  movedCount,
+  restoreBulkChanges,
+} from '@/utils/report-drilldown';
 import { CategorySelector } from '@/components/bank-accounts/CategorySelector';
 import {
   Dialog,
@@ -184,6 +189,15 @@ function ReportTransactionsDialogContent({
                           isCredit={credit}
                           categories={categories}
                           onCategoryChange={(categoryId) => changeCategory(tx, categoryId)}
+                          transactionId={tx.id}
+                          onHistoryApplied={(changed, categoryId) =>
+                            setChanges((current) =>
+                              applyBulkChanges(current, rows, changed, categoryId)
+                            )
+                          }
+                          onHistoryRestored={(changed) =>
+                            setChanges((current) => restoreBulkChanges(current, rows, changed))
+                          }
                           rowLabel={tx.description || tx.counterpartyName || undefined}
                           compact
                         />

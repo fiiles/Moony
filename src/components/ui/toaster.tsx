@@ -26,7 +26,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
         unstyled: true,
         classNames: {
           toast:
-            'group flex w-[356px] items-start gap-2.5 rounded-[10px] border border-line bg-paper px-3.5 py-[11px] text-table font-600 text-ink shadow-pop animate-toast-in',
+            'group pointer-events-auto flex w-[356px] items-start gap-2.5 rounded-[10px] border border-line bg-paper px-3.5 py-[11px] text-table font-600 text-ink shadow-pop animate-toast-in',
           title: 'text-table font-600 text-ink leading-[1.4]',
           description: 'mt-0.5 text-caption font-500 text-ink-3 leading-[1.4]',
           icon: 'mt-px flex size-4 shrink-0 items-center justify-center',

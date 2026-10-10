@@ -40,11 +40,21 @@ interface DialogContentProps extends React.ComponentPropsWithoutRef<
   hideCloseButton?: boolean;
 }
 
-/** Content padding is 23 × 27 px; DialogHeader/DialogFooter stretch to the edges. */
+/** True when a pointer-down outside the dialog started on a toast (sonner's toaster). */
+function startedOnToast(event: { detail: { originalEvent: Event } }): boolean {
+  const target = event.detail.originalEvent.target;
+  return target instanceof Element && target.closest('[data-sonner-toaster]') !== null;
+}
+
+/**
+ * Content padding is 23 × 27 px; DialogHeader/DialogFooter stretch to the edges.
+ * A click on a toast (its "Vrátit zpět", for one) is not a click outside the modal: the
+ * toast handles it and the dialog stays open.
+ */
 const DialogContent = React.forwardRef<
   React.ComponentRef<typeof DialogPrimitive.Content>,
   DialogContentProps
->(({ className, children, hideCloseButton, ...props }, ref) => (
+>(({ className, children, hideCloseButton, onPointerDownOutside, ...props }, ref) => (
   <DialogPortal>
     <DialogOverlay />
     <DialogPrimitive.Content
@@ -53,6 +63,10 @@ const DialogContent = React.forwardRef<
         'fixed left-1/2 top-1/2 z-50 grid w-full max-w-[560px] -translate-x-1/2 -translate-y-1/2 gap-4 overflow-hidden rounded-r5 border border-line-strong bg-paper px-[27px] py-[23px] text-ink shadow-modal data-[state=open]:animate-modal-in data-[state=closed]:animate-modal-out',
         className
       )}
+      onPointerDownOutside={(event) => {
+        if (startedOnToast(event)) event.preventDefault();
+        onPointerDownOutside?.(event);
+      }}
       {...props}
     >
       {children}

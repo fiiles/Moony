@@ -84,6 +84,12 @@ interface CategorySelectorProps {
   onCreateRule?: () => void;
   /** The ledger row's id; enables the "other payments" preview in the picker footer. */
   transactionId?: string;
+  /**
+   * A remembered pick also recategorized these other payments. A list that keeps its own rows
+   * (the report drilldown) updates them from here; `onHistoryRestored` reports the undo.
+   */
+  onHistoryApplied?: (changed: ChangedRow[], categoryId: string) => void;
+  onHistoryRestored?: (changed: ChangedRow[]) => void;
 }
 
 /** What a pick does besides setting the row's category. */
@@ -95,6 +101,13 @@ interface SelectOptions {
   /** Display name for a category `categories` does not hold yet (one created a moment ago). */
   categoryName?: string;
 }
+
+/**
+ * The picker never runs past the viewport: Radix caps it to the room on the chosen side and the
+ * list inside scrolls, so the footer (switch, other-payments checkbox) stays reachable.
+ */
+const PICKER_POPOVER =
+  'flex max-h-[var(--radix-popover-content-available-height)] w-[300px] flex-col p-0';
 
 /** Get category display info */
 function getCategoryDisplay(categoryId: string | null, categories: TransactionCategory[]) {
@@ -141,6 +154,8 @@ export function CategorySelector({
   rowLabel,
   onCreateRule,
   transactionId,
+  onHistoryApplied,
+  onHistoryRestored,
 }: CategorySelectorProps) {
   const { t } = useTranslation('bank_accounts');
   const { t: tc } = useTranslation('common');
@@ -204,6 +219,7 @@ export function CategorySelector({
           void (async () => {
             try {
               const restored = await categorizationApi.restoreTransactionCategories(changed);
+              onHistoryRestored?.(changed);
               toast(t('categorization.historyRestored', { count: restored }));
             } catch (e) {
               toast.error(tc('status.error'), { description: translateApiError(e as Error, tc) });
@@ -263,6 +279,7 @@ export function CategorySelector({
           categoryId,
           options.applyHistory
         );
+        if (changed.length > 0) onHistoryApplied?.(changed, categoryId);
         historyToast(
           changed.length > 0
             ? t('categorization.ruleRetargetedApplied', {
@@ -298,6 +315,7 @@ export function CategorySelector({
         options.applyHistory
       );
       const learnKey = payee || iban || 'unknown';
+      if (changed.length > 0) onHistoryApplied?.(changed, categoryId);
       historyToast(
         changed.length > 0
           ? t('categorization.learnedApplied', { count: changed.length })
@@ -345,7 +363,7 @@ export function CategorySelector({
                 <span className="truncate">{categoryName(currentCategory)}</span>
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-[300px] p-0" align="start">
+            <PopoverContent className={PICKER_POPOVER} align="start" collisionPadding={8}>
               <CategoryCommandList
                 categories={categories}
                 selectedId={currentCategoryId}
@@ -419,7 +437,7 @@ export function CategorySelector({
                 <span>{t('categorization.selectCategory', 'Select...')}</span>
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-[300px] p-0" align="start">
+            <PopoverContent className={PICKER_POPOVER} align="start" collisionPadding={8}>
               <CategoryCommandList
                 categories={categories}
                 selectedId={currentCategoryId}
@@ -487,7 +505,7 @@ export function CategorySelector({
             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-[300px] p-0">
+        <PopoverContent className={PICKER_POPOVER} collisionPadding={8}>
           <CategoryCommandList
             categories={categories}
             selectedId={currentCategoryId}
@@ -580,9 +598,9 @@ function CategoryCommandList({
   }, [categories]);
 
   return (
-    <Command>
+    <Command className="min-h-0">
       <CommandInput placeholder={t('categorization.searchCategory', 'Search...')} />
-      <CommandList className="max-h-[300px]">
+      <CommandList className="max-h-[300px] min-h-0 flex-1">
         <CommandEmpty>{t('categorization.noCategory', 'No category found')}</CommandEmpty>
         <CommandGroup>
           {sortedCategories.map((category) => (
@@ -613,14 +631,14 @@ function CategoryCommandList({
         type="button"
         disabled={busy}
         onClick={() => onCreate(!rememberForFuture)}
-        className="flex w-full items-center gap-2 border-t px-3 py-2 text-sm text-ink-3 transition-colors hover:bg-well hover:text-ink"
+        className="flex w-full shrink-0 items-center gap-2 border-t px-3 py-2 text-sm text-ink-3 transition-colors hover:bg-well hover:text-ink"
       >
         <Plus className="h-4 w-4 shrink-0" />
         {t('categoryManagement.newCategory')}
       </button>
       {/* Learning footer - only if learning is enabled */}
       {enableLearning && (
-        <div className="grid gap-2 border-t px-3 py-2.5">
+        <div className="grid shrink-0 gap-2 border-t px-3 py-2.5">
           {preview?.governing === 'ownAccount' ? (
             <p className="m-0 flex items-start gap-2 text-xs text-ink-3">
               <ArrowRightLeft className="mt-px h-3.5 w-3.5 shrink-0 text-ink-4" />

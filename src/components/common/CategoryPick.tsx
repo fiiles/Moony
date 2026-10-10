@@ -42,10 +42,14 @@ export function CategoryPick({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>{children}</PopoverTrigger>
-      <PopoverContent className="w-[240px] p-0" align={align}>
-        <Command>
+      <PopoverContent
+        className="flex max-h-[var(--radix-popover-content-available-height)] w-[240px] flex-col p-0"
+        align={align}
+        collisionPadding={8}
+      >
+        <Command className="min-h-0">
           <CommandInput placeholder={t('csvImport.preview.searchCategory')} />
-          <CommandList className="max-h-[260px]">
+          <CommandList className="max-h-[260px] min-h-0 flex-1">
             <CommandEmpty>—</CommandEmpty>
             <CommandGroup>
               {allowClear && (

@@ -20,10 +20,11 @@ All notable changes to Moony are documented in this file. The format follows
   missing, instead of being counted as if one unit were worth one crown. A cost converted at
   today's rate because its purchase day had no rate is marked as estimated. Rates older than 14
   days are reported as stale.
-- **Remembered corrections reach other payments.** The category picker in the bank ledger says
-  how many other payments of the same payee the remembered rule covers, broken down by their
-  current category, and categorizes them in the same step; the toast offers "Vrátit zpět". The
-  same offer appears when a learned rule's category is changed on the rules page.
+- **Remembered corrections reach other payments.** The category picker in the bank ledger and in
+  the cashflow report's drilldown says how many other payments of the same payee the remembered
+  rule covers, broken down by their current category, and categorizes them in the same step; the
+  toast offers "Vrátit zpět". The same offer appears when a learned rule's category is changed on
+  the rules page.
 
 ### Changed
 
@@ -95,7 +96,10 @@ All notable changes to Moony are documented in this file. The format follows
   nothing.
 
 ### Fixed
-
+- **The category picker stays inside the window.** When a row sits near the top or bottom of the
+  screen the picker is capped to the space on its side and its list scrolls, instead of running
+  past the edge where its footer could not be reached. A toast's "Vrátit zpět" can be clicked while
+  a dialog is open and no longer closes the dialog.
 - **Stock prices lost their third decimal.** Adding a position, buying or selling rounded the price
   per share to two decimals, so a London share quoted in pence (0.953 £) was recorded as 0.95 £;
   the buy dialog also pre-filled the rounded price. The price is now kept as typed.

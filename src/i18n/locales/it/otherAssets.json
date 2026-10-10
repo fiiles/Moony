@@ -1,0 +1,149 @@
+{
+  "title": "Altri beni",
+  "subtitle": "Oro, collezioni, quote e prestiti – tutto ciò che non ha un prezzo di mercato e che valuti tu.",
+  "loading": "Caricamento degli altri beni...",
+  "empty": {
+    "title": "Ancora nessun bene",
+    "description": "Aggiungi oro, una collezione o una quota: nome, prezzo per unità e un primo acquisto facoltativo. Le rivalutazioni disegnano poi la stima nel tempo."
+  },
+  "addAsset": "Aggiungi bene",
+  "summary": {
+    "totalValue": "Valore totale",
+    "assetCount": "Beni",
+    "totalGainLoss": "Guadagno/perdita complessivi",
+    "value": "Valore",
+    "assets_one": "{{count}} bene",
+    "assets_many": "{{count}} beni",
+    "assets_other": "{{count}} beni",
+    "gain": "Guadagno rispetto all'acquisto",
+    "vsCost": "su un costo d'acquisto di {{amount}}",
+    "noCost": "nessun costo d'acquisto",
+    "yearlyYield": "Rendita annua",
+    "yieldNote_one": "{{percent}} · da {{count}} bene che rende",
+    "yieldNote_many": "{{percent}} · da {{count}} beni che rendono",
+    "yieldNote_other": "{{percent}} · da {{count}} beni che rendono",
+    "noYield": "nessun bene produce rendita",
+    "lastChange": "Ultima modifica"
+  },
+  "table": {
+    "title": "Beni",
+    "search": "Cerca beni",
+    "name": "Nome",
+    "category": "Categoria",
+    "purchasePrice": "Prezzo di acquisto",
+    "marketPrice": "Prezzo di mercato",
+    "avgPurchasePrice": "Prezzo medio di acquisto",
+    "totalValue": "Valore totale",
+    "currentValue": "Valore attuale",
+    "purchaseDate": "Data di acquisto",
+    "gainLoss": "Guadagno/perdita",
+    "actions": "Azioni",
+    "noAssets": "Nessun bene trovato. Aggiungi il primo bene per iniziare.",
+    "subtitle": "Valore = quantità × la tua ultima stima del prezzo",
+    "asset": "Bene",
+    "quantity": "Quantità",
+    "unit": "pz",
+    "price": "Prezzo / unità",
+    "avgPurchase": "Acquisto / unità",
+    "value": "Valore",
+    "gain": "Guadagno",
+    "yearly": "Annua",
+    "updated": "Aggiornato",
+    "noChange": "nessuna modifica",
+    "yieldFixed": "importo fisso",
+    "yieldPercentPurchase": "{{value}} % del costo d'acquisto",
+    "yieldPercentMarket": "{{value}} % del valore",
+    "noResults": {
+      "title": "Nessun risultato",
+      "description": "Prova con un altro nome."
+    },
+    "footer": {
+      "count_one": "{{count}} bene",
+      "count_many": "{{count}} beni",
+      "count_other": "{{count}} beni",
+      "value": "valore {{amount}}",
+      "cost": "costo d'acquisto {{amount}}",
+      "yieldNote": "Rendita annua secondo il tipo scelto: importo fisso, % dell'acquisto o % del valore"
+    }
+  },
+  "actions": {
+    "edit": "Modifica",
+    "delete": "Elimina",
+    "transactions": "Operazioni",
+    "buy": "Acquista",
+    "sell": "Vendi",
+    "revalue": "Rivaluta"
+  },
+  "confirmDelete": {
+    "title": "Eliminare il bene?",
+    "description": "«{{name}}» e tutte le sue operazioni verranno rimossi definitivamente. L'operazione non si può annullare."
+  },
+  "confirmDeleteTransaction": {
+    "title": "Eliminare l'operazione?",
+    "description": "Verrà eliminata definitivamente l'operazione di tipo {{type}} ({{quantity}} × {{price}}, {{date}}). L'operazione non si può annullare."
+  },
+  "toast": {
+    "added": "Bene aggiunto",
+    "updated": "Bene aggiornato",
+    "deleted": "Bene eliminato",
+    "deleteError": "Impossibile eliminare il bene"
+  },
+  "modal": {
+    "add": {
+      "title": "Aggiungi altro bene",
+      "basicInfo": "Informazioni sul bene",
+      "assetName": "Nome del bene",
+      "assetNamePlaceholder": "es. Lingotti d'oro",
+      "marketPrice": "Prezzo di mercato attuale (per unità)",
+      "initialPurchase": "Acquisto iniziale (facoltativo)",
+      "pricePerUnit": "Prezzo / unità",
+      "initialPurchaseHint": "Se compilato, aggiunge un'operazione di acquisto.",
+      "yieldConfig": "Rendita (facoltativa)",
+      "yieldConfigDescription": "Reddito che questo bene genera ogni anno, per esempio affitto o interessi.",
+      "submit": "Aggiungi bene",
+      "description": "Aggiungi un nuovo bene personalizzato al tuo portafoglio.",
+      "yieldType": "Tipo di rendita",
+      "yieldValue": "Valore della rendita",
+      "yieldTypes": {
+        "none": "Nessuna",
+        "fixed": "Importo fisso (annuo)",
+        "percentPurchase": "% del prezzo di acquisto",
+        "percentMarket": "% del prezzo di mercato"
+      },
+      "marketPriceHint": "La tua stima per unità di oggi; puoi cambiarla in seguito rivalutando.",
+      "total": "Primo acquisto al prezzo di oggi"
+    },
+    "buy": {
+      "title": "Acquista altro",
+      "description": "Aggiungi quantità al tuo bene.",
+      "pricePerUnit": "Prezzo per unità",
+      "submit": "Aggiungi operazione"
+    },
+    "sell": {
+      "title": "Vendi",
+      "description": "Registra una vendita di questo bene.",
+      "pricePerUnit": "Prezzo per unità",
+      "submit": "Vendi bene"
+    },
+    "transactions": {
+      "title": "Storico delle operazioni",
+      "noTransactions": "Nessuna operazione trovata"
+    },
+    "edit": {
+      "title": "Modifica · {{name}}",
+      "description": "Nome, valuta e rendita. Il prezzo si cambia rivalutando, la quantità con acquisti e vendite.",
+      "currencyHint": "Valuta del prezzo e della media di acquisto.",
+      "priceHint": "Cambia il prezzo di mercato con Rivaluta – lascia una traccia nel grafico."
+    }
+  },
+  "eyebrow": "Portafoglio",
+  "export": "Esporta",
+  "status": {
+    "latest": "Ultima modifica {{date}}",
+    "manual": "Valutato a mano"
+  },
+  "chart": {
+    "title": "Valore stimato nel tempo",
+    "subtitle": "Piatto tra una rivalutazione e l'altra – i salti sono le tue stime e i tuoi acquisti, non il mercato."
+  }
+}

@@ -1,0 +1,198 @@
+{
+  "annuity": {
+    "title": "Calcolatore di rate",
+    "subtitle": "Rata, interessi totali e piano di rimborso per qualsiasi prestito. I valori si aggiornano mentre scrivi.",
+    "eyebrow": "Calcolatore",
+    "status": "Calcolato in locale, nulla viene salvato",
+    "actions": {
+      "loadLoan": "Carica dai miei prestiti",
+      "export": "Esporta"
+    },
+    "form": {
+      "title": "Parametri del prestito",
+      "amount": "Importo del prestito",
+      "years": "Durata",
+      "yearsUnit": "anni",
+      "rate": "Tasso di interesse annuo",
+      "frequency": "Frequenza delle rate",
+      "frequencies": {
+        "monthly": "Mensile",
+        "quarterly": "Trimestrale",
+        "semiAnnually": "Semestrale",
+        "annually": "Annuale"
+      },
+      "extra": "Versamento extra annuo",
+      "optional": "facoltativo",
+      "extraHint": "Una volta l'anno, in aggiunta alle rate regolari, senza penale."
+    },
+    "insight": {
+      "extraYearly": "{{extra}} extra all'anno",
+      "shortens": "accorcia il prestito di {{years}} e fa risparmiare",
+      "onInterest": "di interessi. Il piano qui sotto mostra la variante senza versamenti extra.",
+      "noExtra": "Inserisci un versamento extra per vedere quanti anni e quanti interessi risparmi."
+    },
+    "hero": {
+      "payment": {
+        "monthly": "Rata mensile",
+        "quarterly": "Rata trimestrale",
+        "semiAnnually": "Rata semestrale",
+        "annually": "Rata annuale"
+      },
+      "total": "totale {{amount}}",
+      "interestShare": "di cui interessi {{amount}} · {{percent}}",
+      "view": {
+        "years": "Per anno",
+        "share": "Quota interessi"
+      }
+    },
+    "legend": {
+      "principal": "Capitale",
+      "interest": "Interessi",
+      "milestone": "Traguardo"
+    },
+    "milestones": {
+      "cross": "Il capitale supera gli interessi",
+      "half": "Metà del debito rimborsata",
+      "year": "anno {{year}}"
+    },
+    "years_one": "{{count}} anno",
+    "years_many": "{{count}} anni",
+    "years_other": "{{count}} anni",
+    "payments_one": "{{count}} rata",
+    "payments_many": "{{count}} rate",
+    "payments_other": "{{count}} rate",
+    "stats": {
+      "totalPaid": "Paghi in totale",
+      "totalInterest": "Interessi totali",
+      "totalInterestNote": "{{percent}} dell'importo preso in prestito",
+      "withExtra": "Con il versamento extra",
+      "withExtraNote": "interessi risparmiati · estinto in {{short}} invece di {{long}}",
+      "firstShare": "Quota interessi della prima rata",
+      "firstShareNote": "nell'ultima {{percent}}"
+    },
+    "table": {
+      "title": "Piano di rimborso",
+      "subYears": "Totali per anno · senza versamenti extra",
+      "subPeriods": "Singole rate · senza versamenti extra",
+      "granularity": {
+        "years": "Annuale"
+      },
+      "year": "Anno",
+      "period": "Periodo",
+      "payments": "Rate",
+      "principal": "Capitale",
+      "interest": "Interessi",
+      "balance": "Debito residuo",
+      "footer": "{{shown}} di {{total}} righe",
+      "showAll": "Mostra tutto il piano",
+      "showLess": "Mostra solo l'inizio",
+      "periodLabel": "{{year}} · periodo {{n}}"
+    },
+    "empty": "Inserisci importo, durata e tasso del prestito."
+  },
+  "estate": {
+    "title": "Rendimento di un investimento immobiliare",
+    "subtitle": "Valuta un immobile come investimento complessivo: affitto e flusso di cassa, rimborso del mutuo, crescita del prezzo e guadagno da una vendita futura.",
+    "eyebrow": "Calcolatore",
+    "status": "Calcolato in locale, nulla viene salvato",
+    "prefillNoRate": "L'immobile ha un importo in una valuta senza tasso di cambio, quindi non è stato caricato. Il calcolatore mostra i valori di esempio.",
+    "actions": {
+      "loadProperty": "Carica dai miei immobili"
+    },
+    "yearsUnit": "anni",
+    "years_one": "{{count}} anno",
+    "years_many": "{{count}} anni",
+    "years_other": "{{count}} anni",
+    "purchase": {
+      "title": "Acquisto",
+      "price": "Prezzo di acquisto",
+      "loan": "Importo del mutuo",
+      "years": "Durata",
+      "rate": "Tasso di interesse",
+      "equity": "Capitale proprio",
+      "ltv": "LTV",
+      "payment": "Rata mensile"
+    },
+    "rent": {
+      "title": "Affitto",
+      "rent": "Affitto mensile atteso",
+      "costs": "Costi mensili",
+      "vacancy": "Sfitto",
+      "vacancyUnit": "mesi/anno",
+      "hint": "Costi: manutenzione, tasse, assicurazione, fondo riparazioni."
+    },
+    "projection": {
+      "title": "Proiezione",
+      "rentGrowth": "Crescita dell'affitto",
+      "costsGrowth": "Crescita dei costi",
+      "priceGrowth": "Crescita del prezzo",
+      "perYear": "%/anno",
+      "years": "Periodo di detenzione",
+      "oneTime": "Costi una tantum"
+    },
+    "sale": {
+      "title_one": "Vendita dopo {{count}} anno",
+      "title_many": "Vendita dopo {{count}} anni",
+      "title_other": "Vendita dopo {{count}} anni",
+      "finalPrice": "Prezzo finale",
+      "remainingLoan": "Mutuo residuo",
+      "repaid": "Capitale rimborsato",
+      "cumulative": "Flusso di cassa cumulato",
+      "equity": "La tua quota alla vendita",
+      "totalReturn": "Rendimento totale",
+      "pa": "{{percent}} annuo",
+      "formula": "Rendimento = (prezzo finale − mutuo residuo − capitale proprio + flusso di cassa cumulato) / capitale proprio. Al lordo di imposte e costi di vendita."
+    },
+    "hero": {
+      "label": "Rendimento totale sul tuo capitale",
+      "value": "{{percent}} all'anno",
+      "total": "totale {{percent}} in {{years}}",
+      "components": "flusso di cassa {{cashflow}} · rimborso del capitale · crescita del prezzo {{growth}}",
+      "cashflow": "Flusso di cassa netto",
+      "cashflowNote": "al mese nell'anno 1 · lordo {{gross}}"
+    },
+    "legend": {
+      "equity": "La tua quota (valore − mutuo + flusso di cassa)",
+      "band": "Crescita del prezzo ± 1 p.p.",
+      "invested": "Capitale investito",
+      "milestone": "Traguardo"
+    },
+    "chart": {
+      "purchase": "Acquisto",
+      "tipRow": "{{year}} · valore {{value}} · mutuo {{loan}} · flusso di cassa cumulato {{cumulative}}",
+      "tipStart": "{{year}} · capitale investito {{invested}}"
+    },
+    "milestones": {
+      "positive": "Flusso di cassa annuo positivo",
+      "positiveLine": "dal {{year}}",
+      "half": "Metà del mutuo rimborsata",
+      "halfLine": "anno {{year}}",
+      "sale": "Vendita",
+      "saleLine": "{{year}} · prezzo {{price}} · mutuo {{loan}}"
+    },
+    "stats": {
+      "equity": "Capitale proprio",
+      "equityNote": "{{equity}} + costi una tantum {{once}}",
+      "grossYield": "Rendimento lordo da affitto",
+      "grossYieldNote": "affitto annuo / prezzo di acquisto",
+      "cashflow": "Flusso di cassa netto annuo",
+      "cashflowNote": "nell'anno 1 · {{percent}} del capitale proprio",
+      "saleGain": "Guadagno dalla vendita",
+      "saleGainNote": "prezzo − mutuo − capitale proprio · dopo {{years}}"
+    },
+    "table": {
+      "title": "Riepilogo annuale",
+      "sub": "Affitto e costi crescono ai tassi indicati, la rata è fissa",
+      "year": "Anno",
+      "rent": "Affitto",
+      "costs": "Costi",
+      "payments": "Rate",
+      "cashflow": "CF netto",
+      "balance": "Mutuo residuo",
+      "value": "Valore",
+      "footer": "{{years}} · flusso di cassa netto cumulato {{cumulative}}",
+      "vacancyNote": "Lo sfitto viene dedotto dall'affitto"
+    },
+    "empty": "Inserisci il prezzo di acquisto e l'affitto."
+  }
+}

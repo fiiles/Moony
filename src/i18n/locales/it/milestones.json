@@ -1,0 +1,140 @@
+{
+  "card": {
+    "title": "Cosa ti aspetta",
+    "settingsLink": "Modifica promemoria",
+    "showAll": "Mostra tutto ({{count}})",
+    "showLess": "Mostra meno",
+    "nothingDue": "Nessuna scadenza in arrivo.",
+    "upkeep": "Aggiornamento dati",
+    "upkeepShow": "Mostra {{count}}",
+    "upkeepHide": "Comprimi",
+    "today": "Oggi",
+    "target": "obiettivo",
+    "rowMenu": "Opzioni del promemoria: {{title}}"
+  },
+  "status": {
+    "deadline": "{{title}} · {{when}}",
+    "more": "+{{count}}",
+    "title": "Scadenze nei prossimi 14 giorni",
+    "openOverview": "Apri la panoramica"
+  },
+  "actions": {
+    "hide": "Nascondi",
+    "remindWeek": "Ricordamelo tra una settimana",
+    "remindMonth": "Ricordamelo tra un mese",
+    "undo": "Annulla"
+  },
+  "toast": {
+    "hidden": "Nascosto",
+    "snoozedWeek": "Posticipato di una settimana",
+    "snoozedMonth": "Posticipato di un mese",
+    "muted": "Promemoria disattivati · {{group}}"
+  },
+  "relative": {
+    "today": "oggi",
+    "tomorrow": "domani",
+    "inDays_one": "tra {{count}} giorno",
+    "inDays_many": "tra {{count}} giorni",
+    "inDays_other": "tra {{count}} giorni",
+    "inMonths_one": "tra {{count}} mese",
+    "inMonths_many": "tra {{count}} mesi",
+    "inMonths_other": "tra {{count}} mesi",
+    "daysAgo_one": "{{count}} giorno fa",
+    "daysAgo_many": "{{count}} giorni fa",
+    "daysAgo_other": "{{count}} giorni fa",
+    "monthsAgo_one": "{{count}} mese fa",
+    "monthsAgo_many": "{{count}} mesi fa",
+    "monthsAgo_other": "{{count}} mesi fa"
+  },
+  "titles": {
+    "backup_stale": "Backup dei dati",
+    "balances_stale": "Saldi dei conti"
+  },
+  "sub": {
+    "insurance_anniversary": "Ultimo giorno per disdire · ricorrenza {{date}}",
+    "insurance_anniversary_passed": "Ricorrenza del contratto · il termine di preavviso è scaduto",
+    "insurance_end": "Il contratto termina",
+    "insurance_payment": "Pagamento {{amount}}",
+    "loan_fixation_end": "Il tasso fisso termina · è ora di confrontare le offerte",
+    "loan_payoff": "Ultima rata",
+    "bond_maturity": "Scade · rientrano {{amount}}",
+    "bond_coupon": "Cedola {{amount}}",
+    "account_termination": "Il conto termina",
+    "savings_rate_end": "Il tasso promozionale termina",
+    "watch_target_below": "Il prezzo {{price}} è sceso all'obiettivo {{target}}",
+    "watch_target_above": "Il prezzo {{price}} ha raggiunto l'obiettivo {{target}}",
+    "loan_fixation_expired": "Il tasso fisso è terminato il {{date}} · inserisci il nuovo tasso",
+    "loan_balance_check": "Saldo non verificato dal {{date}} · confrontalo con un estratto conto",
+    "valuation_stale": "Nessuna nuova valutazione dal {{date}} · rivalutalo",
+    "backup_stale": "Ultimo backup {{date}}",
+    "backup_never": "Ancora nessun backup",
+    "balances_stale_one": "{{count}} conto non aggiornato da oltre 30 giorni",
+    "balances_stale_many": "{{count}} conti non aggiornati da oltre 30 giorni",
+    "balances_stale_other": "{{count}} conti non aggiornati da oltre 30 giorni"
+  },
+  "short": {
+    "backup_stale": "fai il backup dei dati",
+    "balances_stale_one": "aggiorna {{count}} saldo",
+    "balances_stale_many": "aggiorna {{count}} saldi",
+    "balances_stale_other": "aggiorna {{count}} saldi",
+    "valuation_stale": "rivaluta {{title}}",
+    "loan_balance_check": "verifica il saldo di {{title}}",
+    "loan_fixation_expired": "inserisci il nuovo tasso di {{title}}"
+  },
+  "groups": {
+    "insuranceDates": {
+      "label": "Ricorrenze e scadenze delle assicurazioni",
+      "hint": "Nella panoramica fino a 3 mesi prima; le ricorrenze con l'ultimo giorno per disdire.",
+      "mute": "Non ricordarmi ricorrenze e scadenze delle assicurazioni"
+    },
+    "insurancePayments": {
+      "label": "Pagamenti delle assicurazioni",
+      "hint": "Pagamenti trimestrali, semestrali e annuali 14 giorni prima.",
+      "mute": "Non ricordarmi i pagamenti delle assicurazioni"
+    },
+    "loans": {
+      "label": "Fine del tasso fisso ed estinzione dei prestiti",
+      "hint": "La fine del tasso fisso 6 mesi prima, l'ultima rata un mese prima.",
+      "mute": "Non ricordarmi tassi fissi ed estinzioni"
+    },
+    "bonds": {
+      "label": "Scadenze e cedole delle obbligazioni",
+      "hint": "Una scadenza fino a 3 mesi prima, una cedola una settimana prima.",
+      "mute": "Non ricordarmi scadenze e cedole"
+    },
+    "accounts": {
+      "label": "Fine di conti e tassi promozionali",
+      "hint": "La fine di un conto o di un tasso promozionale fino a 3 mesi prima.",
+      "mute": "Non ricordarmi la fine di conti e tassi"
+    },
+    "targets": {
+      "label": "Prezzi obiettivo delle azioni",
+      "hint": "Quando il prezzo raggiunge l'obiettivo nella direzione impostata.",
+      "mute": "Non ricordarmi i prezzi obiettivo"
+    },
+    "backup": {
+      "label": "Backup dei dati",
+      "hint": "Quando l'ultimo backup risale a più di 30 giorni fa.",
+      "mute": "Non ricordarmi i backup"
+    },
+    "balances": {
+      "label": "Aggiornamento dei saldi",
+      "hint": "Quando il saldo di un conto non viene aggiornato da oltre 30 giorni.",
+      "mute": "Non ricordarmi i saldi dei conti"
+    },
+    "valuations": {
+      "label": "Valutazioni degli immobili",
+      "hint": "Quando la valutazione di un immobile risale a più di un anno fa.",
+      "mute": "Non ricordarmi le valutazioni degli immobili"
+    },
+    "loanChecks": {
+      "label": "Verifiche dei prestiti",
+      "hint": "Una verifica annuale del saldo e il nuovo tasso dopo la fine di un tasso fisso.",
+      "mute": "Non ricordarmi le verifiche dei prestiti"
+    }
+  },
+  "settings": {
+    "title": "Promemoria della panoramica",
+    "description": "Ciò di cui ti avvisano la scheda «Cosa ti aspetta» e la barra superiore. I tipi disattivati non compaiono da nessuna parte."
+  }
+}

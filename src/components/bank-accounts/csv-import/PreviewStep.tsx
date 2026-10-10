@@ -47,8 +47,6 @@ interface PreviewStepProps {
   accountCurrency: string | null | undefined;
   /** Locale for amount formatting, e.g. `cs-CZ`. */
   locale: string;
-  /** Opens the categorization rules page (closes the wizard). */
-  onOpenRules?: () => void;
 }
 
 /**
@@ -72,7 +70,6 @@ export function PreviewStep({
   categories,
   accountCurrency,
   locale,
-  onOpenRules,
 }: PreviewStepProps) {
   const { t } = useTranslation('bank_accounts');
   const { t: tc } = useTranslation('common');
@@ -228,11 +225,6 @@ export function PreviewStep({
           </Badge>
           <Badge>{t('csvImport.preview.uncategorized', { count: summary.uncategorized })}</Badge>
         </span>
-        {onOpenRules && (
-          <Button type="button" variant="outline" size="sm" onClick={onOpenRules}>
-            {t('csvImport.preview.rules')}
-          </Button>
-        )}
       </div>
 
       <div className="flex items-center justify-between gap-6 border border-line mb-3 rounded-r3 px-3.5 py-2.5 text-micro font-500 text-ink-4">

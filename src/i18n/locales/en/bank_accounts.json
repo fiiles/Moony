@@ -329,7 +329,6 @@
       "categorized_other": "{{count}} categorized",
       "uncategorized_one": "{{count}} without a category",
       "uncategorized_other": "{{count}} without a category",
-      "rules": "Rules",
       "colLine": "Ln.",
       "colDate": "Date",
       "colAmount": "Amount",

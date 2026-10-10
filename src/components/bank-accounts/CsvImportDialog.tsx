@@ -1,7 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { useLocation } from 'wouter';
 import { open as openFileDialog } from '@tauri-apps/plugin-dialog';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -82,7 +81,6 @@ export function CsvImportDialog({
   const { t } = useTranslation('bank_accounts');
   const { t: tc } = useTranslation('common');
   const { getLocale } = useLanguage();
-  const [, setLocation] = useLocation();
   const { account } = useBankAccount(accountId || undefined);
   const { categories } = useCategories();
 
@@ -331,11 +329,6 @@ export function CsvImportDialog({
     handleClose();
   };
 
-  const openRules = () => {
-    handleClose();
-    setLocation('/categorization-rules');
-  };
-
   const canPreview = config != null && !isInspecting;
   const canImport =
     config != null &&
@@ -421,7 +414,6 @@ export function CsvImportDialog({
               categories={categories}
               accountCurrency={account?.currency}
               locale={getLocale()}
-              onOpenRules={openRules}
             />
           )}
 

@@ -11,8 +11,7 @@ import { useFormat } from '@/lib/use-format';
 import { translateApiError } from '@/lib/translate-api-error';
 import { translateRowMessage } from '@/utils/csv-import-messages';
 import { categoryDisplayName } from '@/utils/category-name';
-import { completeAccountIdentifier } from '@/utils/iban-utils';
-import { transactionDetails, transactionTitle } from '@/utils/transaction-text';
+import { counterpartyLabel, transactionDetails } from '@/utils/transaction-text';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -289,16 +288,13 @@ export function PreviewStep({
                 // Same columns as the account ledger
                 const text = {
                   counterpartyName: row.counterparty,
+                  counterpartyIban: row.counterpartyIban,
+                  counterpartyBankCode: row.counterpartyBankCode,
                   description: row.description,
                   remittanceInfo: null,
                 };
-                const title = transactionTitle(text);
+                const counterparty = counterpartyLabel(text);
                 const details = transactionDetails(text).join(' · ');
-                const accountNumber = completeAccountIdentifier(
-                  row.counterpartyIban,
-                  null,
-                  row.counterpartyBankCode
-                );
                 return (
                   <TableRow
                     key={row.line}
@@ -322,15 +318,15 @@ export function PreviewStep({
                       {formatPreviewAmount(row.amount, row.currency ?? accountCurrency, locale)}
                     </TableCell>
                     <TableCell className="max-w-0">
-                      <span className="block truncate" title={title ?? undefined}>
-                        {title ?? '—'}
+                      <span className="block truncate" title={counterparty.title ?? undefined}>
+                        {counterparty.title ?? <span className="text-ink-4">—</span>}
                       </span>
-                      {accountNumber && (
+                      {counterparty.subtitle && (
                         <small
                           className="block truncate text-micro font-500 text-ink-4 num"
-                          title={accountNumber}
+                          title={counterparty.subtitle}
                         >
-                          {accountNumber}
+                          {counterparty.subtitle}
                         </small>
                       )}
                     </TableCell>

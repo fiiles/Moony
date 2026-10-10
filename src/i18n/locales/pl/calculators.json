@@ -26,9 +26,7 @@
       "extraHint": "Raz w roku ponad regularne raty, bez prowizji."
     },
     "insight": {
-      "extraYearly": "{{extra}} nadpłaty rocznie",
-      "shortens": "skracają kredyt o {{years}} i pozwalają zaoszczędzić",
-      "onInterest": "na odsetkach. Harmonogram poniżej pokazuje wariant bez nadpłat.",
+      "summary": "<b>{{extra}} nadpłaty rocznie</b> skracają kredyt o {{years}} i pozwalają zaoszczędzić <b>{{saving}}</b> na odsetkach. Harmonogram poniżej pokazuje wariant bez nadpłat.",
       "noExtra": "Wpisz nadpłatę, aby zobaczyć, ile lat i odsetek zaoszczędzisz."
     },
     "hero": {

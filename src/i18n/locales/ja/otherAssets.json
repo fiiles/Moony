@@ -14,7 +14,7 @@
     "value": "評価額",
     "assets_other": "{{count}}件の資産",
     "gain": "購入額に対する損益",
-    "vsCost": "購入原価 {{amount}} に対して",
+    "vsCostPct": "購入原価 {{amount}} に対して {{percent}}",
     "noCost": "購入原価なし",
     "yearlyYield": "年間の収益",
     "yieldNote_other": "{{percent}} · 収益のある{{count}}件の資産から",
@@ -108,13 +108,13 @@
       "total": "本日の価格での最初の購入"
     },
     "buy": {
-      "title": "買い増し",
+      "titleNamed": "{{name}}を買い増し",
       "description": "資産の数量を追加します。",
       "pricePerUnit": "単価",
       "submit": "取引を追加"
     },
     "sell": {
-      "title": "売却",
+      "titleNamed": "{{name}}の売却",
       "description": "この資産の売却取引を記録します。",
       "pricePerUnit": "単価",
       "submit": "資産を売却"

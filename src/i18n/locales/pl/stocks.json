@@ -29,11 +29,11 @@
     "updatedToday": "zaktualizowano dziś",
     "updatedOn": "zaktualizowano {{date}}",
     "notUpdated": "ceny jeszcze nie pobrane",
-    "vsInvested": "względem zainwestowanych",
+    "vsInvestedPct": "{{percent}} względem zainwestowanych",
     "realizedNote": "zrealizowano {{amount}}",
     "next12Months": "w następnych 12 miesiącach",
     "topPosition": "Najlepsza pozycja",
-    "overall": "ogółem",
+    "overallPct": "{{percent}} ogółem",
     "noPositions": "brak otwartej pozycji"
   },
   "table": {
@@ -160,14 +160,14 @@
       "searching": "Wyszukiwanie..."
     },
     "buy": {
-      "title": "Kup",
-      "description": "Zapisz transakcję zakupu dla",
+      "titleNamed": "Kup {{name}}",
+      "descriptionFor": "Zapisz transakcję zakupu dla {{ticker}}.",
       "quantity": "Ilość",
       "pricePerShare": "Cena za akcję",
       "addPurchase": "Dodaj zakup"
     },
     "sell": {
-      "title": "Sprzedaj",
+      "titleNamed": "Sprzedaj {{name}}",
       "description": "Zapisz transakcję sprzedaży dla tej pozycji.",
       "transactionDetails": "Szczegóły transakcji",
       "pricePerShare": "Cena za akcję",
@@ -304,12 +304,12 @@
     "avgBuyPrice": "średnia cena zakupu {{price}}",
     "lastBuy": "ostatni zakup {{date}}",
     "positionValue": "Wartość pozycji",
-    "sinceBuy": "od zakupu",
+    "sinceBuyPct": "{{percent}} od zakupu",
     "currentPrice": "Aktualna cena",
     "invested": "Zainwestowano",
     "avgShort": "średnio {{price}}",
     "unrealized": "Niezrealizowany zwrot",
-    "vsInvested": "względem zainwestowanych",
+    "vsInvestedPct": "{{percent}} względem zainwestowanych",
     "realized": "Zrealizowany zwrot",
     "sells_one": "{{count}} sprzedaż",
     "sells_few": "{{count}} sprzedaże",

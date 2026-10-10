@@ -68,10 +68,10 @@ export function CryptoSummary({
         }
         value={money(metrics.overallGainLoss, true)}
         tone={tone(metrics.overallGainLoss)}
-        note={`${fmt.percent(metrics.overallGainLossPercent / 100, 1, { signed: true })} ${t(
-          'summary.vsInvested',
-          { amount: money(metrics.totalCost) }
-        )}`}
+        note={t('summary.vsInvestedPct', {
+          percent: fmt.percent(metrics.overallGainLossPercent / 100, 1, { signed: true }),
+          amount: money(metrics.totalCost),
+        })}
       />
       <Stat
         label={t('summary.realized')}

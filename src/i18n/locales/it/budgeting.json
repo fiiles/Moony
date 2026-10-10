@@ -197,10 +197,10 @@
     "usageUnavailable": "Utilizzo del budget non disponibile",
     "absoluteShare": "Quota degli importi assoluti del gruppo",
     "signedUnbudgetedTotal": "Spese nette senza budget: {{amount}}",
-    "effectiveMonthPrefill": "L'importo mostra il limite in vigore a {{month}}. Salvandolo, il limite cambia da quel mese in poi; i mesi precedenti mantengono il proprio.",
+    "effectiveMonthPrefill": "L'importo mostra il limite in vigore a {{month, lower}}. Salvandolo, il limite cambia da quel mese in poi; i mesi precedenti mantengono il proprio.",
     "scheduledHeading": "Modifiche programmate",
-    "scheduledLimit": "Da {{month}}: {{amount}}",
-    "scheduledRemoval": "Da {{month}}: nessun limite",
+    "scheduledLimit": "Da {{month, lower}}: {{amount}}",
+    "scheduledRemoval": "Da {{month, lower}}: nessun limite",
     "noChange": "Il limite non è cambiato; non è stato salvato nulla."
   }
 }

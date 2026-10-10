@@ -423,8 +423,7 @@
   "planning": {
     "eyebrow": "Plan",
     "title": "Planowanie przepływów",
-    "subtitle": "Szacowane cykliczne przychody i wydatki. Rzeczywiste przepływy z twoich kont znajdziesz w sekcji",
-    "link": "Przepływy pieniężne",
+    "subtitleLinked": "Szacowane cykliczne przychody i wydatki. Rzeczywiste przepływy z twoich kont znajdziesz w sekcji <link>Przepływy pieniężne →</link>",
     "status": "Pozycje automatyczne z Kredytów, Ubezpieczeń, Nieruchomości i Akcji",
     "addItem": "Dodaj pozycję",
     "deleteItem": "Usuń pozycję",
@@ -482,8 +481,7 @@
   "actuals": {
     "eyebrow": "Raport",
     "title": "Przepływy pieniężne",
-    "subtitle": "Rzeczywiste przychody i wydatki ze wszystkich kont w wybranym okresie. Cykliczne pozycje, na które liczysz, znajdziesz w sekcji",
-    "link": "Planowanie przepływów",
+    "subtitleLinked": "Rzeczywiste przychody i wydatki ze wszystkich kont w wybranym okresie. Cykliczne pozycje, na które liczysz, znajdziesz w sekcji <link>Planowanie przepływów →</link>",
     "transactions_one": "{{count}} transakcja",
     "transactions_few": "{{count}} transakcje",
     "transactions_many": "{{count}} transakcji",

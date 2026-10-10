@@ -352,7 +352,7 @@
       "summary_one": "{{count}} transaksjon fra {{from}} til {{to}}.",
       "summary_other": "{{count}} transaksjoner fra {{from}} til {{to}}.",
       "nothing": "Ingenting ble importert.",
-      "balance": "Saldo ifølge kontoutskriften per {{date}}: {{balance}}.",
+      "statementBalance": "Saldo ifølge kontoutskriften per {{date}}: <b>{{balance}}</b>.",
       "imported": "Importert",
       "duplicates": "Duplikater",
       "errors": "Feil",
@@ -514,8 +514,8 @@
     "income": "Inntekter",
     "outcome": "Utgifter",
     "netFlow": "Nettostrøm",
-    "incomeIn": "Innkommende i {{month}}",
-    "expenseIn": "Utgående i {{month}}",
+    "incomeIn": "Innkommende i {{month, lower}}",
+    "expenseIn": "Utgående i {{month, lower}}",
     "monthBalance": "Månedens saldo",
     "incomeCount_one": "{{count}} innkommende bevegelse",
     "incomeCount_other": "{{count}} innkommende bevegelser",
@@ -523,8 +523,8 @@
     "txCount_other": "{{count}} transaksjoner",
     "mostIn": "mest i {{category}}",
     "none": "ingen ennå",
-    "prevMonth": "i {{month}} {{amount}}",
-    "noPrevMonth": "ingen bevegelser i {{month}}"
+    "prevMonth": "i {{month, lower}} {{amount}}",
+    "noPrevMonth": "ingen bevegelser i {{month, lower}}"
   },
   "categoryNames": {
     "cat_groceries": "Dagligvarer",

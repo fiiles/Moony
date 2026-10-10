@@ -87,8 +87,8 @@
       "mode": "Regeltyp",
       "modePattern": "Textmönster",
       "modeIban": "IBAN-matchning",
-      "modePatternHelp": "Matcha transaktioner på text i beskrivningen, mottagarnamnet med mera.",
-      "modeIbanHelp": "Matcha transaktioner på mottagarens IBAN eller kontonummer.",
+      "modePatternHelp": "Matcha transaktioner på text i beskrivningen, motpartens namn med mera.",
+      "modeIbanHelp": "Matcha transaktioner på motpartens IBAN eller kontonummer.",
       "type": "Matchningstyp",
       "pattern": "Mönster",
       "patternPlaceholder": "t.ex. LIDL eller ^ALBERT.*",
@@ -198,9 +198,9 @@
     "deactivated": "Regeln har stängts av"
   },
   "learnedTab": {
-    "subtitle": "Skapade från dina manuella korrigeringar · mottagare eller IBAN → kategori",
-    "search": "Sök mottagare",
-    "counterparty": "Mottagare",
+    "subtitle": "Skapade från dina manuella korrigeringar · motpart eller IBAN → kategori",
+    "search": "Sök motpart",
+    "counterparty": "Motpart",
     "iban": "IBAN",
     "category": "Kategori",
     "lastHit": "Senast",
@@ -210,12 +210,12 @@
     "selectedBar": "{{count}} markerade",
     "confirmForget": {
       "title": "Glöm inlärd regel",
-      "description": "Mottagaren kategoriseras inte längre automatiskt; en ny manuell korrigering lär in den igen."
+      "description": "Motparten kategoriseras inte längre automatiskt; en ny manuell korrigering lär in den igen."
     },
     "confirmForgetBulk": {
       "title": "Glöm markerade regler",
-      "description_one": "Glöm {{count}} markerad regel? Dess mottagare kategoriseras inte längre automatiskt.",
-      "description_other": "Glöm {{count}} markerade regler? Deras mottagare kategoriseras inte längre automatiskt."
+      "description_one": "Glöm {{count}} markerad regel? Dess motpart kategoriseras inte längre automatiskt.",
+      "description_other": "Glöm {{count}} markerade regler? Deras motparter kategoriseras inte längre automatiskt."
     },
     "categoryChanged": "Regelns kategori har ändrats",
     "history": {
@@ -262,7 +262,7 @@
     "name": "Namn",
     "mode": "Matcha på",
     "modeText": "Transaktionstext",
-    "modeIban": "Mottagarens IBAN",
+    "modeIban": "Motpartens IBAN",
     "matchType": "Matchning",
     "pattern": "Mönster",
     "patternHint": "Versaler och diakritiska tecken spelar ingen roll.",
@@ -273,9 +273,8 @@
     "active": "Regeln är aktiv",
     "stop": "Stoppa efter träff",
     "stopHint": "(fler regler tillämpas inte)",
-    "matchesTitle_one": "Matchar {{count}} befintlig transaktion",
-    "matchesTitle_other": "Matchar {{count}} befintliga transaktioner",
-    "matchesNote": "under de senaste {{days}} dagarna, varav {{open}} utan kategori i dag.",
+    "matchesSummary_one": "<b>Matchar {{count}} befintlig transaktion</b> under de senaste {{days}} dagarna, varav {{open}} utan kategori i dag.",
+    "matchesSummary_other": "<b>Matchar {{count}} befintliga transaktioner</b> under de senaste {{days}} dagarna, varav {{open}} utan kategori i dag.",
     "matchesNone": "Den skulle inte matcha någon transaktion de senaste {{days}} dagarna – prova ett kortare mönster.",
     "matchesEmpty": "Ange ett mönster för att se vilka transaktioner regeln skulle matcha.",
     "matchesChecking": "Kontrollerar träffar…",

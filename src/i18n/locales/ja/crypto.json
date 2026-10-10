@@ -18,7 +18,7 @@
     "notUpdated": "レートはまだ取得されていません",
     "unrealizedGain": "含み益",
     "unrealizedLoss": "含み損",
-    "vsInvested": "投資額 {{amount}} に対して",
+    "vsInvestedPct": "投資額 {{amount}} に対して {{percent}}",
     "realized": "確定損益",
     "sells_other": "売却 {{count}}件 · 加重平均",
     "noSells": "売却はまだありません",
@@ -164,7 +164,7 @@
       "todayAt": "本日 {{time}}"
     },
     "positionValue": "ポジションの評価額",
-    "vsInvested": "投資額比",
+    "vsInvestedPct": "投資額比 {{percent}}",
     "rate": "レート",
     "invested": "投資額",
     "avgShort": "平均 {{price}}",
@@ -202,7 +202,7 @@
       "footer_other": "{{count}}件の取引",
       "bought": "買付 {{amount}}",
       "sold": "売却 {{amount}}",
-      "rates": "{{currency}}建てのレートは取引日の CNB レートによる"
+      "rates": "{{currency}}建てのレートは取引日の ECB レートによる"
     },
     "position": {
       "title": "ポジション",

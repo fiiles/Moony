@@ -21,7 +21,7 @@
     "excludedNote": "自己居住用 {{amount}} は純資産の対象外",
     "includedNote": "自己居住用 {{amount}} を含む",
     "appreciationTitle": "値上がり益",
-    "vsPurchase": "購入価格 {{amount}} に対して",
+    "vsPurchasePct": "購入価格 {{amount}} に対して {{percent}}",
     "equity": "自己資本",
     "equityNote": "住宅ローン {{amount}} · LTV {{ltv}}",
     "noLoans": "ローンなし",
@@ -153,7 +153,7 @@
     "heroEquity": "自己資本",
     "equityNote": "評価額の{{share}} · LTV {{ltv}}",
     "equityNoLoan": "ローンなし · 評価額のすべてがあなたの持ち分です",
-    "vsPurchase": "購入価格比",
+    "vsPurchasePct": "購入価格比 {{percent}}",
     "chart": {
       "value": "市場価値",
       "purchase": "購入価格",

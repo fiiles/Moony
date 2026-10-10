@@ -87,8 +87,8 @@
       "mode": "Regeltyp",
       "modePattern": "Textmuster",
       "modeIban": "IBAN-Abgleich",
-      "modePatternHelp": "Transaktionen anhand von Text in der Beschreibung, im Empfängernamen usw. zuordnen.",
-      "modeIbanHelp": "Transaktionen anhand von IBAN oder Kontonummer des Empfängers zuordnen.",
+      "modePatternHelp": "Transaktionen anhand von Text in der Beschreibung, im Namen der Gegenpartei usw. zuordnen.",
+      "modeIbanHelp": "Transaktionen anhand von IBAN oder Kontonummer der Gegenpartei zuordnen.",
       "type": "Abgleichsart",
       "pattern": "Muster",
       "patternPlaceholder": "z. B. LIDL oder ^ALBERT.*",
@@ -198,9 +198,9 @@
     "deactivated": "Regel ausgeschaltet"
   },
   "learnedTab": {
-    "subtitle": "Aus Ihren manuellen Korrekturen entstanden · Empfänger oder IBAN → Kategorie",
-    "search": "Empfänger suchen",
-    "counterparty": "Empfänger",
+    "subtitle": "Aus Ihren manuellen Korrekturen entstanden · Gegenpartei oder IBAN → Kategorie",
+    "search": "Gegenpartei suchen",
+    "counterparty": "Gegenpartei",
     "iban": "IBAN",
     "category": "Kategorie",
     "lastHit": "Zuletzt",
@@ -210,12 +210,12 @@
     "selectedBar": "{{count}} ausgewählt",
     "confirmForget": {
       "title": "Gelernte Regel vergessen",
-      "description": "Der Empfänger wird nicht mehr automatisch kategorisiert; eine neue manuelle Korrektur bringt es ihm wieder bei."
+      "description": "Die Gegenpartei wird nicht mehr automatisch kategorisiert; eine neue manuelle Korrektur bringt ihr die Zuordnung erneut bei."
     },
     "confirmForgetBulk": {
       "title": "Ausgewählte Regeln vergessen",
-      "description_one": "Die {{count}} ausgewählte Regel vergessen? Ihr Empfänger wird nicht mehr automatisch kategorisiert.",
-      "description_other": "Die {{count}} ausgewählten Regeln vergessen? Ihre Empfänger werden nicht mehr automatisch kategorisiert."
+      "description_one": "Die {{count}} ausgewählte Regel vergessen? Ihre Gegenpartei wird nicht mehr automatisch kategorisiert.",
+      "description_other": "Die {{count}} ausgewählten Regeln vergessen? Ihre Gegenparteien werden nicht mehr automatisch kategorisiert."
     },
     "categoryChanged": "Kategorie der Regel geändert",
     "history": {
@@ -262,7 +262,7 @@
     "name": "Name",
     "mode": "Abgleich nach",
     "modeText": "Transaktionstext",
-    "modeIban": "IBAN des Empfängers",
+    "modeIban": "IBAN der Gegenpartei",
     "matchType": "Abgleich",
     "pattern": "Muster",
     "patternHint": "Groß-/Kleinschreibung und diakritische Zeichen spielen keine Rolle.",
@@ -273,9 +273,8 @@
     "active": "Regel ist aktiv",
     "stop": "Nach einem Treffer stoppen",
     "stopHint": "(weitere Regeln werden nicht angewendet)",
-    "matchesTitle_one": "Trifft auf {{count}} bestehende Transaktion zu",
-    "matchesTitle_other": "Trifft auf {{count}} bestehende Transaktionen zu",
-    "matchesNote": "in den letzten {{days}} Tagen, davon {{open}} heute ohne Kategorie.",
+    "matchesSummary_one": "<b>Trifft auf {{count}} bestehende Transaktion zu</b> in den letzten {{days}} Tagen, davon {{open}} heute ohne Kategorie.",
+    "matchesSummary_other": "<b>Trifft auf {{count}} bestehende Transaktionen zu</b> in den letzten {{days}} Tagen, davon {{open}} heute ohne Kategorie.",
     "matchesNone": "Sie würde auf keine Transaktion der letzten {{days}} Tage zutreffen – versuchen Sie ein kürzeres Muster.",
     "matchesEmpty": "Geben Sie ein Muster ein, um zu sehen, auf welche Transaktionen die Regel zutreffen würde.",
     "matchesChecking": "Treffer werden geprüft…",

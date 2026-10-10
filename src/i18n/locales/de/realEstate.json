@@ -22,7 +22,7 @@
     "excludedNote": "Wohnsitz {{amount}} außerhalb des Nettovermögens",
     "includedNote": "inkl. Wohnsitz {{amount}}",
     "appreciationTitle": "Wertsteigerung",
-    "vsPurchase": "ggü. Kaufpreisen {{amount}}",
+    "vsPurchasePct": "{{percent}} ggü. Kaufpreisen {{amount}}",
     "equity": "Eigenkapital",
     "equityNote": "Hypotheken {{amount}} · LTV {{ltv}}",
     "noLoans": "keine Kredite",
@@ -155,7 +155,7 @@
     "heroEquity": "Eigenkapital",
     "equityNote": "{{share}} des Werts · LTV {{ltv}}",
     "equityNoLoan": "kein Kredit · der gesamte Wert gehört Ihnen",
-    "vsPurchase": "ggü. Kaufpreis",
+    "vsPurchasePct": "{{percent}} ggü. Kaufpreis",
     "chart": {
       "value": "Marktwert",
       "purchase": "Kaufpreis",

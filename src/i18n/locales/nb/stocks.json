@@ -27,11 +27,11 @@
     "updatedToday": "oppdatert i dag",
     "updatedOn": "oppdatert {{date}}",
     "notUpdated": "kursene er ikke hentet ennå",
-    "vsInvested": "mot investert",
+    "vsInvestedPct": "{{percent}} mot investert",
     "realizedNote": "realisert {{amount}}",
     "next12Months": "de neste 12 månedene",
     "topPosition": "Beste beholdning",
-    "overall": "samlet",
+    "overallPct": "{{percent}} samlet",
     "noPositions": "ingen åpen beholdning"
   },
   "table": {
@@ -156,14 +156,14 @@
       "searching": "Søker..."
     },
     "buy": {
-      "title": "Kjøp",
-      "description": "Registrer et kjøp for",
+      "titleNamed": "Kjøp {{name}}",
+      "descriptionFor": "Registrer et kjøp for {{ticker}}.",
       "quantity": "Antall",
       "pricePerShare": "Kurs per aksje",
       "addPurchase": "Legg til kjøp"
     },
     "sell": {
-      "title": "Selg",
+      "titleNamed": "Selg {{name}}",
       "description": "Registrer et salg av denne beholdningen.",
       "transactionDetails": "Transaksjonsdetaljer",
       "pricePerShare": "Kurs per aksje",
@@ -294,12 +294,12 @@
     "avgBuyPrice": "snittkjøpspris {{price}}",
     "lastBuy": "siste kjøp {{date}}",
     "positionValue": "Verdi av beholdningen",
-    "sinceBuy": "siden kjøp",
+    "sinceBuyPct": "{{percent}} siden kjøp",
     "currentPrice": "Gjeldende kurs",
     "invested": "Investert",
     "avgShort": "snitt {{price}}",
     "unrealized": "Urealisert avkastning",
-    "vsInvested": "mot investert",
+    "vsInvestedPct": "{{percent}} mot investert",
     "realized": "Realisert avkastning",
     "sells_one": "{{count}} salg",
     "sells_other": "{{count}} salg",

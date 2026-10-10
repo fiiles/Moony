@@ -26,11 +26,11 @@
     "updatedToday": "本日更新",
     "updatedOn": "{{date}}に更新",
     "notUpdated": "価格はまだ取得されていません",
-    "vsInvested": "投資額比",
+    "vsInvestedPct": "投資額比 {{percent}}",
     "realizedNote": "確定 {{amount}}",
     "next12Months": "今後12か月",
     "topPosition": "最良のポジション",
-    "overall": "全体",
+    "overallPct": "全体 {{percent}}",
     "noPositions": "保有中のポジションなし"
   },
   "table": {
@@ -154,14 +154,14 @@
       "searching": "検索中..."
     },
     "buy": {
-      "title": "買付",
-      "description": "次の銘柄の買付取引を記録します：",
+      "titleNamed": "{{name}}の買付",
+      "descriptionFor": "{{ticker}}の買付取引を記録します。",
       "quantity": "数量",
       "pricePerShare": "1株あたりの価格",
       "addPurchase": "買付を追加"
     },
     "sell": {
-      "title": "売却",
+      "titleNamed": "{{name}}の売却",
       "description": "この保有銘柄の売却取引を記録します。",
       "transactionDetails": "取引の詳細",
       "pricePerShare": "1株あたりの価格",
@@ -289,12 +289,12 @@
     "avgBuyPrice": "平均購入価格 {{price}}",
     "lastBuy": "最終買付 {{date}}",
     "positionValue": "ポジションの評価額",
-    "sinceBuy": "購入以降",
+    "sinceBuyPct": "購入以降 {{percent}}",
     "currentPrice": "現在の価格",
     "invested": "投資額",
     "avgShort": "平均 {{price}}",
     "unrealized": "含み損益",
-    "vsInvested": "投資額比",
+    "vsInvestedPct": "投資額比 {{percent}}",
     "realized": "確定損益",
     "sells_other": "売却 {{count}}件",
     "noSells": "売却はまだありません",

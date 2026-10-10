@@ -15,7 +15,7 @@
     "assets_one": "{{count}} eiendel",
     "assets_other": "{{count}} eiendeler",
     "gain": "Gevinst mot kjøpspris",
-    "vsCost": "mot kjøpskostnad {{amount}}",
+    "vsCostPct": "{{percent}} mot kjøpskostnad {{amount}}",
     "noCost": "ingen kjøpskostnad",
     "yearlyYield": "Årlig avkastning",
     "yieldNote_one": "{{percent}} · fra {{count}} eiendel med avkastning",
@@ -111,13 +111,13 @@
       "total": "Første kjøp til dagens kurs"
     },
     "buy": {
-      "title": "Kjøp mer",
+      "titleNamed": "Kjøp mer {{name}}",
       "description": "Legg til mer av eiendelen din.",
       "pricePerUnit": "Pris per enhet",
       "submit": "Legg til transaksjon"
     },
     "sell": {
-      "title": "Selg",
+      "titleNamed": "Selg {{name}}",
       "description": "Registrer et salg av denne eiendelen.",
       "pricePerUnit": "Pris per enhet",
       "submit": "Selg eiendel"

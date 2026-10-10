@@ -24,7 +24,7 @@
     "excludedNote": "mieszkanie własne {{amount}} poza majątkiem netto",
     "includedNote": "w tym mieszkanie własne {{amount}}",
     "appreciationTitle": "Wzrost wartości",
-    "vsPurchase": "vs ceny zakupu {{amount}}",
+    "vsPurchasePct": "{{percent}} względem cen zakupu {{amount}}",
     "equity": "Kapitał własny",
     "equityNote": "kredyty hipoteczne {{amount}} · LTV {{ltv}}",
     "noLoans": "brak kredytów",
@@ -159,7 +159,7 @@
     "heroEquity": "Kapitał własny",
     "equityNote": "{{share}} wartości · LTV {{ltv}}",
     "equityNoLoan": "bez kredytu · cała wartość należy do ciebie",
-    "vsPurchase": "vs cena zakupu",
+    "vsPurchasePct": "{{percent}} względem ceny zakupu",
     "chart": {
       "value": "Wartość rynkowa",
       "purchase": "Cena zakupu",

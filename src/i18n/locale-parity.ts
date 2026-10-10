@@ -8,6 +8,8 @@ export type LocaleTree = { [key: string]: unknown };
 
 const PLURAL = /_(zero|one|two|few|many|other)$/;
 const VARIABLE = /\{\{\s*([a-zA-Z0-9_]+)\s*(?:,[^}]*)?\}\}/g;
+/** `<b>…</b>` / `<link>…</link>`: the components a `<Trans>` key hands to React. */
+const TAG = /<([a-z][a-zA-Z0-9]*)>/g;
 
 function flatten(tree: LocaleTree, prefix = '', out: Record<string, unknown> = {}) {
   for (const [key, value] of Object.entries(tree)) {
@@ -38,9 +40,9 @@ interface Entry {
   values: unknown[];
 }
 
-function variables(values: unknown[]): Set<string> {
+function matches(values: unknown[], pattern: RegExp): Set<string> {
   return new Set(
-    values.flatMap((v) => (typeof v === 'string' ? [...v.matchAll(VARIABLE)].map((m) => m[1]) : []))
+    values.flatMap((v) => (typeof v === 'string' ? [...v.matchAll(pattern)].map((m) => m[1]) : []))
   );
 }
 
@@ -100,11 +102,15 @@ export function compareNamespace(
           problems.push(`${base} has unexpected _${form}`);
       }
     }
-    const sv = variables(s.values);
-    const tv = variables(t.values);
+    const sv = matches(s.values, VARIABLE);
+    const tv = matches(t.values, VARIABLE);
     // A plural's one-form may spell the number out ("1 hour ago"), but some form keeps {{count}}.
     for (const v of sv) if (!tv.has(v)) problems.push(`${base} drops {{${v}}}`);
     for (const v of tv) if (!sv.has(v)) problems.push(`${base} adds unknown {{${v}}}`);
+    const st = matches(s.values, TAG);
+    const tt = matches(t.values, TAG);
+    for (const tag of st) if (!tt.has(tag)) problems.push(`${base} drops <${tag}>`);
+    for (const tag of tt) if (!st.has(tag)) problems.push(`${base} adds unknown <${tag}>`);
     for (const value of t.values) {
       if (typeof value !== 'string') problems.push(`${base} is not a string`);
       else if (value.trim() === '') problems.push(`${base} is empty`);

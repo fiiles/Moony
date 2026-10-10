@@ -109,7 +109,7 @@
     },
     "since": {
       "title": "フォロー開始以降",
-      "text": "{{days}}の間に、価格は{{price}}から次のように変動しました：",
+      "change": "{{days}}の間に、価格は{{price}}から<b>{{change}}</b>変動しました。",
       "toTarget": "目標まであと{{amount}}です。",
       "noData": "{{days}}フォロー中です。その日の価格はまだ取得できません。",
       "days_other": "{{count}}日"

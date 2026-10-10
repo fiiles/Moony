@@ -26,9 +26,7 @@
       "extraHint": "Una vez al año, además de los pagos regulares y sin penalización."
     },
     "insight": {
-      "extraYearly": "{{extra}} extra al año",
-      "shortens": "acorta el préstamo en {{years}} y ahorra",
-      "onInterest": "en intereses. El cuadro de abajo muestra la variante sin pagos extra.",
+      "summary": "<b>{{extra}} extra al año</b> acorta el préstamo en {{years}} y ahorra <b>{{saving}}</b> en intereses. El cuadro de abajo muestra la variante sin pagos extra.",
       "noExtra": "Introduce un pago extra para ver cuántos años e intereses ahorras."
     },
     "hero": {

@@ -110,7 +110,7 @@
     },
     "since": {
       "title": "Sedan du började bevaka",
-      "text": "Under {{days}} har kursen rört sig från {{price}} med",
+      "change": "Under {{days}} har kursen rört sig från {{price}} med <b>{{change}}</b>.",
       "toTarget": "{{amount}} till målet.",
       "noData": "Bevakas i {{days}}; kursen från den dagen finns inte ännu.",
       "days_one": "{{count}} dag",

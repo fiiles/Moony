@@ -20,7 +20,7 @@
     "notUpdated": "cotizaciones aún sin descargar",
     "unrealizedGain": "Rentabilidad latente",
     "unrealizedLoss": "Pérdida latente",
-    "vsInvested": "frente a {{amount}} invertidos",
+    "vsInvestedPct": "{{percent}} frente a {{amount}} invertidos",
     "realized": "Rentabilidad realizada",
     "sells_one": "{{count}} venta · media ponderada",
     "sells_many": "{{count}} ventas · media ponderada",
@@ -176,7 +176,7 @@
       "todayAt": "hoy a las {{time}}"
     },
     "positionValue": "Valor de la posición",
-    "vsInvested": "frente a lo invertido",
+    "vsInvestedPct": "{{percent}} frente a lo invertido",
     "rate": "Cotización",
     "invested": "Invertido",
     "avgShort": "media {{price}}",
@@ -224,7 +224,7 @@
       "footer_other": "{{count}} movimientos",
       "bought": "comprado {{amount}}",
       "sold": "vendido {{amount}}",
-      "rates": "Cotizaciones en {{currency}} al tipo del CNB del día del movimiento"
+      "rates": "Cotizaciones en {{currency}} al tipo del BCE del día del movimiento"
     },
     "position": {
       "title": "Posición",

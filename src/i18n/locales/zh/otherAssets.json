@@ -14,7 +14,7 @@
     "value": "价值",
     "assets_other": "{{count}} 项资产",
     "gain": "相对买入的收益",
-    "vsCost": "对比买入成本 {{amount}}",
+    "vsCostPct": "对比买入成本 {{amount}}：{{percent}}",
     "noCost": "无买入成本",
     "yearlyYield": "年收益",
     "yieldNote_other": "{{percent}} · 来自 {{count}} 项产生收益的资产",
@@ -108,13 +108,13 @@
       "total": "按今日价格的首次买入"
     },
     "buy": {
-      "title": "继续买入",
+      "titleNamed": "继续买入 {{name}}",
       "description": "为该资产增加数量。",
       "pricePerUnit": "单价",
       "submit": "添加交易"
     },
     "sell": {
-      "title": "卖出",
+      "titleNamed": "卖出 {{name}}",
       "description": "记录该资产的一笔卖出交易。",
       "pricePerUnit": "单价",
       "submit": "卖出资产"

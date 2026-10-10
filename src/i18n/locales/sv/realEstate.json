@@ -22,7 +22,7 @@
     "excludedNote": "bostad {{amount}} utanför nettoförmögenheten",
     "includedNote": "inkl. bostad {{amount}}",
     "appreciationTitle": "Värdeökning",
-    "vsPurchase": "mot köpesummor {{amount}}",
+    "vsPurchasePct": "{{percent}} mot köpesummor {{amount}}",
     "equity": "Eget kapital",
     "equityNote": "bolån {{amount}} · belåning {{ltv}}",
     "noLoans": "inga lån",
@@ -155,7 +155,7 @@
     "heroEquity": "Eget kapital",
     "equityNote": "{{share}} av värdet · belåning {{ltv}}",
     "equityNoLoan": "inget lån · hela värdet är ditt",
-    "vsPurchase": "mot köpesumman",
+    "vsPurchasePct": "{{percent}} mot köpesumman",
     "chart": {
       "value": "Marknadsvärde",
       "purchase": "Köpesumma",

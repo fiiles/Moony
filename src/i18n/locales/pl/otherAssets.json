@@ -17,7 +17,7 @@
     "assets_many": "{{count}} aktywów",
     "assets_other": "{{count}} aktywa",
     "gain": "Zysk względem zakupu",
-    "vsCost": "vs koszt zakupu {{amount}}",
+    "vsCostPct": "{{percent}} względem kosztu zakupu {{amount}}",
     "noCost": "brak kosztu zakupu",
     "yearlyYield": "Dochód roczny",
     "yieldNote_one": "{{percent}} · z {{count}} aktywa z dochodem",
@@ -117,13 +117,13 @@
       "total": "Pierwszy zakup po dzisiejszej cenie"
     },
     "buy": {
-      "title": "Dokup",
+      "titleNamed": "Dokup {{name}}",
       "description": "Zwiększ ilość tego aktywa.",
       "pricePerUnit": "Cena za sztukę",
       "submit": "Dodaj transakcję"
     },
     "sell": {
-      "title": "Sprzedaj",
+      "titleNamed": "Sprzedaj {{name}}",
       "description": "Zapisz transakcję sprzedaży tego aktywa.",
       "pricePerUnit": "Cena za sztukę",
       "submit": "Sprzedaj aktywo"

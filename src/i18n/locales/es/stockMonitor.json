@@ -111,7 +111,7 @@
     },
     "since": {
       "title": "Desde que empezaste a seguirla",
-      "text": "En {{days}} el precio ha pasado de {{price}} a variar",
+      "change": "En {{days}} el precio ha variado <b>{{change}}</b> respecto a {{price}}.",
       "toTarget": "{{amount}} hasta el objetivo.",
       "noData": "La sigues desde hace {{days}}; el precio de ese día aún no está disponible.",
       "days_one": "{{count}} día",

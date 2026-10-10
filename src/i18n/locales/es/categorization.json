@@ -89,8 +89,8 @@
       "mode": "Tipo de regla",
       "modePattern": "Patrón de texto",
       "modeIban": "Coincidencia de IBAN",
-      "modePatternHelp": "Busca coincidencias en el texto de la descripción, el nombre del beneficiario, etc.",
-      "modeIbanHelp": "Busca coincidencias por el IBAN o el número de cuenta del beneficiario.",
+      "modePatternHelp": "Busca coincidencias en el texto de la descripción, el nombre de la contraparte, etc.",
+      "modeIbanHelp": "Busca coincidencias por el IBAN o el número de cuenta de la contraparte.",
       "type": "Tipo de coincidencia",
       "pattern": "Patrón",
       "patternPlaceholder": "p. ej., LIDL o ^ALBERT.*",
@@ -201,9 +201,9 @@
     "deactivated": "Regla desactivada"
   },
   "learnedTab": {
-    "subtitle": "Creadas a partir de tus correcciones manuales · beneficiario o IBAN → categoría",
-    "search": "Buscar beneficiario",
-    "counterparty": "Beneficiario",
+    "subtitle": "Creadas a partir de tus correcciones manuales · contraparte o IBAN → categoría",
+    "search": "Buscar contraparte",
+    "counterparty": "Contraparte",
     "iban": "IBAN",
     "category": "Categoría",
     "lastHit": "Última",
@@ -213,13 +213,13 @@
     "selectedBar": "{{count}} seleccionadas",
     "confirmForget": {
       "title": "Olvidar regla aprendida",
-      "description": "El beneficiario dejará de categorizarse automáticamente; una nueva corrección manual volverá a enseñárselo."
+      "description": "La contraparte dejará de categorizarse automáticamente; una nueva corrección manual volverá a enseñárselo."
     },
     "confirmForgetBulk": {
       "title": "Olvidar reglas seleccionadas",
-      "description_one": "¿Olvidar la regla seleccionada ({{count}})? Su beneficiario dejará de categorizarse automáticamente.",
-      "description_many": "¿Olvidar las {{count}} reglas seleccionadas? Sus beneficiarios dejarán de categorizarse automáticamente.",
-      "description_other": "¿Olvidar las {{count}} reglas seleccionadas? Sus beneficiarios dejarán de categorizarse automáticamente."
+      "description_one": "¿Olvidar la regla seleccionada ({{count}})? Su contraparte dejará de categorizarse automáticamente.",
+      "description_many": "¿Olvidar las {{count}} reglas seleccionadas? Sus contrapartes dejarán de categorizarse automáticamente.",
+      "description_other": "¿Olvidar las {{count}} reglas seleccionadas? Sus contrapartes dejarán de categorizarse automáticamente."
     },
     "categoryChanged": "Categoría de la regla cambiada",
     "history": {
@@ -272,7 +272,7 @@
     "name": "Nombre",
     "mode": "Buscar en",
     "modeText": "Texto del movimiento",
-    "modeIban": "IBAN del beneficiario",
+    "modeIban": "IBAN de la contraparte",
     "matchType": "Coincidencia",
     "pattern": "Patrón",
     "patternHint": "No distingue mayúsculas ni acentos.",
@@ -283,10 +283,9 @@
     "active": "La regla está activa",
     "stop": "Detenerse tras una coincidencia",
     "stopHint": "(no se aplican más reglas)",
-    "matchesTitle_one": "Coincide con {{count}} movimiento existente",
-    "matchesTitle_many": "Coincide con {{count}} movimientos existentes",
-    "matchesTitle_other": "Coincide con {{count}} movimientos existentes",
-    "matchesNote": "en los últimos {{days}} días, {{open}} de ellos sin categoría hoy.",
+    "matchesSummary_one": "<b>Coincide con {{count}} movimiento existente</b> en los últimos {{days}} días, {{open}} de ellos sin categoría hoy.",
+    "matchesSummary_many": "<b>Coincide con {{count}} movimientos existentes</b> en los últimos {{days}} días, {{open}} de ellos sin categoría hoy.",
+    "matchesSummary_other": "<b>Coincide con {{count}} movimientos existentes</b> en los últimos {{days}} días, {{open}} de ellos sin categoría hoy.",
     "matchesNone": "No coincidiría con ningún movimiento de los últimos {{days}} días: prueba con un patrón más corto.",
     "matchesEmpty": "Introduce un patrón para ver con qué movimientos coincidiría la regla.",
     "matchesChecking": "Comprobando coincidencias…",

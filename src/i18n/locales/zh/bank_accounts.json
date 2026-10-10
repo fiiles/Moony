@@ -341,7 +341,7 @@
       "title": "账单已导入",
       "summary_other": "{{from}} 至 {{to}} 的 {{count}} 笔交易。",
       "nothing": "没有导入任何内容。",
-      "balance": "截至 {{date}} 的账单余额：{{balance}}。",
+      "statementBalance": "截至 {{date}} 的账单余额：<b>{{balance}}</b>。",
       "imported": "已导入",
       "duplicates": "重复",
       "errors": "错误",

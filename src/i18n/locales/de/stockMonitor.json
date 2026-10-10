@@ -110,7 +110,7 @@
     },
     "since": {
       "title": "Seit Beobachtungsbeginn",
-      "text": "Über {{days}} hinweg hat sich der Kurs, ausgehend von {{price}}, um",
+      "change": "Über {{days}} hinweg hat sich der Kurs, ausgehend von {{price}}, um <b>{{change}}</b> verändert.",
       "toTarget": "Bis zum Ziel fehlen {{amount}}.",
       "noData": "Beobachtungsdauer: {{days}}; der Kurs von damals liegt noch nicht vor.",
       "days_one": "{{count}} Tag",

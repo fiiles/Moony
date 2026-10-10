@@ -26,9 +26,7 @@
       "extraHint": "En gång per år utöver de ordinarie betalningarna, utan avgift."
     },
     "insight": {
-      "extraYearly": "{{extra}} extra per år",
-      "shortens": "förkortar lånet med {{years}} och sparar",
-      "onInterest": "i ränta. Planen nedan visar varianten utan extra betalningar.",
+      "summary": "<b>{{extra}} extra per år</b> förkortar lånet med {{years}} och sparar <b>{{saving}}</b> i ränta. Planen nedan visar varianten utan extra betalningar.",
       "noExtra": "Ange en extra betalning för att se hur många år och hur mycket ränta du sparar."
     },
     "hero": {

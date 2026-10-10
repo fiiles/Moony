@@ -19,7 +19,7 @@
     "notUpdated": "Kurse noch nicht abgerufen",
     "unrealizedGain": "Nicht realisierte Rendite",
     "unrealizedLoss": "Nicht realisierter Verlust",
-    "vsInvested": "ggü. {{amount}} investiert",
+    "vsInvestedPct": "{{percent}} ggü. {{amount}} investiert",
     "realized": "Realisierte Rendite",
     "sells_one": "{{count}} Verkauf · gewichteter Durchschnitt",
     "sells_other": "{{count}} Verkäufe · gewichteter Durchschnitt",
@@ -170,7 +170,7 @@
       "todayAt": "heute um {{time}}"
     },
     "positionValue": "Positionswert",
-    "vsInvested": "ggü. Investition",
+    "vsInvestedPct": "{{percent}} ggü. Investition",
     "rate": "Kurs",
     "invested": "Investiert",
     "avgShort": "Ø {{price}}",
@@ -213,7 +213,7 @@
       "footer_other": "{{count}} Transaktionen",
       "bought": "gekauft {{amount}}",
       "sold": "verkauft {{amount}}",
-      "rates": "Kurse in {{currency}} zum ČNB-Kurs des Transaktionstags"
+      "rates": "Kurse in {{currency}} zum EZB-Kurs des Transaktionstags"
     },
     "position": {
       "title": "Position",

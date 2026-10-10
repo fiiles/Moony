@@ -58,7 +58,7 @@
     "monthly": "Premi mensili",
     "other": "Pagamenti trimestrali e annuali",
     "anniversary": "Ricorrenza · {{name}}",
-    "peakNote": "Il mese più pesante è {{month}}: {{amount}} – metti da parte una riserva.",
+    "peakNote": "Il mese più pesante è {{month, lower}}: {{amount}} – metti da parte una riserva.",
     "evenNote": "I pagamenti sono regolari · {{amount}} al mese"
   },
   "table": {
@@ -220,7 +220,7 @@
     },
     "hero": {
       "paid": "Premi pagati",
-      "paidNote": "{{payments}} da {{month}} · {{yearly}} all'anno",
+      "paidNote": "{{payments}} da {{month, lower}} · {{yearly}} all'anno",
       "paidNoteOneTime": "pagamento una tantum alla stipula il {{date}}",
       "coverage": "Copertura totale",
       "coverageRatio": "{{ratio}}× il premio annuo",

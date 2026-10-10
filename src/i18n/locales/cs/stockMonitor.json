@@ -111,7 +111,7 @@
     },
     "since": {
       "title": "Od začátku sledování",
-      "text": "Za {{days}} se cena změnila z {{price}} o",
+      "change": "Za {{days}} se cena změnila z {{price}} o <b>{{change}}</b>.",
       "toTarget": "K cíli zbývá {{amount}}.",
       "noData": "Sledujete {{days}}; cena z té doby zatím není k dispozici.",
       "days_one": "{{count}} den",

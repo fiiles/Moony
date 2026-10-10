@@ -363,7 +363,7 @@
       "summary_many": "{{count}} movimenti dal {{from}} al {{to}}.",
       "summary_other": "{{count}} movimenti dal {{from}} al {{to}}.",
       "nothing": "Non è stato importato nulla.",
-      "balance": "Saldo dell'estratto conto al {{date}}: {{balance}}.",
+      "statementBalance": "Saldo dell'estratto conto al {{date}}: <b>{{balance}}</b>.",
       "imported": "Importati",
       "duplicates": "Duplicati",
       "errors": "Errori",

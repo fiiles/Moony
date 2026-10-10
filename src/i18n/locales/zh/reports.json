@@ -381,8 +381,7 @@
   "planning": {
     "eyebrow": "计划",
     "title": "现金流规划",
-    "subtitle": "预估的定期收入和支出。来自您账户的实际资金流见",
-    "link": "现金流",
+    "subtitleLinked": "预估的定期收入和支出。来自您账户的实际资金流见<link>现金流 →</link>",
     "status": "来自贷款、保险、房产和股票的自动项目",
     "addItem": "添加项目",
     "deleteItem": "删除项目",
@@ -434,8 +433,7 @@
   "actuals": {
     "eyebrow": "报表",
     "title": "现金流",
-    "subtitle": "所选时期内所有账户的实际收入和支出。您所依赖的定期项目见",
-    "link": "现金流规划",
+    "subtitleLinked": "所选时期内所有账户的实际收入和支出。您所依赖的定期项目见<link>现金流规划 →</link>",
     "transactions_other": "{{count}} 笔交易",
     "export": "导出",
     "stats": {

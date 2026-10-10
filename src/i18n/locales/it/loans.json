@@ -17,13 +17,13 @@
     "outstanding": "Debito residuo totale",
     "repaidOf": "{{percent}} rimborsato su {{principal}} presi in prestito",
     "payments": "Rate mensili",
-    "paymentsAfter": "da {{month}} solo {{amount}} · {{name}} sarà estinto",
+    "paymentsAfter": "da {{month, lower}} solo {{amount}} · {{name}} sarà estinto",
     "paymentsYear": "{{amount}} all'anno",
     "rate": "Tasso medio",
     "rateNote": "ponderato per saldo · interessi nei prossimi 12 mesi {{interest}}",
     "fixation": "Fine del tasso fisso",
     "fixationNote": "tra {{duration}} · {{name}} {{rate}}",
-    "fixationExpired": "Il tasso fisso di {{name}} è terminato a {{month}} – inserisci il nuovo tasso",
+    "fixationExpired": "Il tasso fisso di {{name}} è terminato a {{month, lower}} – inserisci il nuovo tasso",
     "noFixation": "nessun tasso ha una scadenza di validità"
   },
   "chart": {
@@ -74,11 +74,11 @@
     "payment": "Rata",
     "payoff": "Estinto entro",
     "actions": "Azioni",
-    "since": "da {{month}}",
+    "since": "da {{month, lower}}",
     "repaid": "{{percent}} rimborsato",
     "matured": "estinto",
-    "fixedUntil": "fisso fino a {{month}}",
-    "fixationEnded": "tasso fisso terminato a {{month}}",
+    "fixedUntil": "fisso fino a {{month, lower}}",
+    "fixationEnded": "tasso fisso terminato a {{month, lower}}",
     "fixedRate": "tasso fisso",
     "monthly": "mensile",
     "noPayment": "nessuna rata",
@@ -168,9 +168,9 @@
     "loading": "Caricamento del prestito...",
     "notFound": "Questo prestito non esiste più.",
     "eyebrow": "Prestito",
-    "description": "Capitale {{principal}} da {{month}} · {{rate}}{{fixation}} · rata {{payment}} al mese",
-    "descriptionNoPayment": "Capitale {{principal}} da {{month}} · {{rate}} · nessuna rata mensile",
-    "withFixation": " fisso fino a {{month}}",
+    "description": "Capitale {{principal}} da {{month, lower}} · {{rate}}{{fixation}} · rata {{payment}} al mese",
+    "descriptionNoPayment": "Capitale {{principal}} da {{month, lower}} · {{rate}} · nessuna rata mensile",
+    "withFixation": " fisso fino a {{month, lower}}",
     "status": {
       "automatic": "Saldo da piano",
       "manual": "Saldo da piano · dal tuo saldo del {{date}}",
@@ -185,7 +185,7 @@
       "paidOff": "Estinto",
       "noPayoff": "mai con la rata attuale",
       "noPayment": "senza una rata il saldo non scende",
-      "balanceAtEnd": "fino a {{month}} · {{amount}} residui alla data di fine"
+      "balanceAtEnd": "fino a {{month, lower}} · {{amount}} residui alla data di fine"
     },
     "horizon": {
       "5": "5 anni",
@@ -204,7 +204,7 @@
       "tipSchedule": "da piano",
       "notePast": "Dal {{date}}: {{principal}} di capitale rimborsato e {{interest}} pagati in interessi",
       "note5": "Saldo tra 5 anni {{amount}}",
-      "note5Fixation": "Saldo tra 5 anni {{amount}} · fine del tasso fisso a {{month}}",
+      "note5Fixation": "Saldo tra 5 anni {{amount}} · fine del tasso fisso a {{month, lower}}",
       "noteAll": "Fino all'estinzione pagherai ancora {{total}}, di cui {{interest}} di interessi",
       "noteNoPayoff": "Con la rata attuale il prestito non si estingue mai",
       "events": {
@@ -234,7 +234,7 @@
       "nextPayment": "Prossima rata",
       "nextPaymentNote": "interessi {{interest}} · capitale {{principal}}",
       "noSchedule": "nessun piano",
-      "remainingToEnd": "fino a {{month}} · {{amount}} residui · {{interest}} di interessi ancora da pagare"
+      "remainingToEnd": "fino a {{month, lower}} · {{amount}} residui · {{interest}} di interessi ancora da pagare"
     },
     "schedule": {
       "title": "Piano di rimborso",
@@ -273,9 +273,9 @@
         "payment": "Riduci la rata"
       },
       "termResult": "Estinto {{duration}} prima",
-      "termNote": "Risparmi {{interest}} di interessi · la rata resta {{payment}} · termina a {{month}}",
+      "termNote": "Risparmi {{interest}} di interessi · la rata resta {{payment}} · termina a {{month, lower}}",
       "paymentResult": "La rata cala di {{amount}} al mese",
-      "paymentNote": "Nuova rata {{payment}} · la durata resta fino a {{month}} · interessi inferiori di {{interest}}",
+      "paymentNote": "Nuova rata {{payment}} · la durata resta fino a {{month, lower}} · interessi inferiori di {{interest}}",
       "noEffect": "Inserisci un importo fino al saldo di {{amount}}.",
       "noPayment": "Senza una rata mensile l'effetto non si può calcolare – aggiungila modificando il prestito.",
       "record": "Registra come effettuato"
@@ -316,7 +316,7 @@
       "payment": "Ridurre la rata",
       "alertTitle": "Il saldo scende a {{amount}}",
       "alertTerm": "Estinto {{duration}} prima, con un risparmio di {{interest}} di interessi.",
-      "alertPayment": "Nuova rata {{payment}} al mese, la durata resta fino a {{month}}.",
+      "alertPayment": "Nuova rata {{payment}} al mese, la durata resta fino a {{month, lower}}.",
       "alertTooMuch": "L'importo supera il saldo di {{amount}}.",
       "alertEmpty": "Inserisci un importo per vedere l'effetto.",
       "submit": "Registra versamento"
@@ -329,7 +329,7 @@
       "paymentHint": "Vuoto = la rata resta {{amount}}",
       "date": "Valido dal",
       "alertTitle": "Interessi mensili {{from}} → {{to}}",
-      "alertNote": "Con una rata di {{payment}} il prestito si estingue a {{month}}.",
+      "alertNote": "Con una rata di {{payment}} il prestito si estingue a {{month, lower}}.",
       "alertNoPayoff": "Una rata di {{payment}} non copre gli interessi; il saldo non scenderebbe.",
       "submit": "Registra variazione"
     },

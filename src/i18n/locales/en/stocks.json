@@ -27,11 +27,11 @@
     "updatedToday": "updated today",
     "updatedOn": "updated {{date}}",
     "notUpdated": "prices not fetched yet",
-    "vsInvested": "against invested",
+    "vsInvestedPct": "{{percent}} against invested",
     "realizedNote": "realized {{amount}}",
     "next12Months": "over the next 12 months",
     "topPosition": "Best position",
-    "overall": "overall",
+    "overallPct": "{{percent}} overall",
     "noPositions": "no open position"
   },
   "table": {
@@ -156,14 +156,14 @@
       "searching": "Searching..."
     },
     "buy": {
-      "title": "Buy",
-      "description": "Record a purchase transaction for",
+      "titleNamed": "Buy {{name}}",
+      "descriptionFor": "Record a purchase transaction for {{ticker}}.",
       "quantity": "Quantity",
       "pricePerShare": "Price per Share",
       "addPurchase": "Add Purchase"
     },
     "sell": {
-      "title": "Sell",
+      "titleNamed": "Sell {{name}}",
       "description": "Record a sale transaction for this holding.",
       "transactionDetails": "Transaction Details",
       "pricePerShare": "Price per Share",
@@ -294,12 +294,12 @@
     "avgBuyPrice": "average purchase price {{price}}",
     "lastBuy": "last buy {{date}}",
     "positionValue": "Position value",
-    "sinceBuy": "since purchase",
+    "sinceBuyPct": "{{percent}} since purchase",
     "currentPrice": "Current price",
     "invested": "Invested",
     "avgShort": "average {{price}}",
     "unrealized": "Unrealized return",
-    "vsInvested": "against invested",
+    "vsInvestedPct": "{{percent}} against invested",
     "realized": "Realized return",
     "sells_one": "{{count}} sale",
     "sells_other": "{{count}} sales",

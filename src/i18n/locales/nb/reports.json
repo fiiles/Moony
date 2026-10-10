@@ -395,8 +395,7 @@
   "planning": {
     "eyebrow": "Plan",
     "title": "Kontantstrømplanlegging",
-    "subtitle": "Estimerte faste inntekter og utgifter. Faktiske strømmer fra kontoene dine finner du i",
-    "link": "Kontantstrøm",
+    "subtitleLinked": "Estimerte faste inntekter og utgifter. Faktiske strømmer fra kontoene dine finner du i <link>Kontantstrøm →</link>",
     "status": "Automatiske poster fra Lån, Forsikringer, Eiendom og Aksjer",
     "addItem": "Legg til post",
     "deleteItem": "Slett post",
@@ -450,8 +449,7 @@
   "actuals": {
     "eyebrow": "Rapport",
     "title": "Kontantstrøm",
-    "subtitle": "Faktiske inntekter og utgifter fra alle kontoer for den valgte perioden. De faste postene du regner med, finner du i",
-    "link": "Kontantstrømplanlegging",
+    "subtitleLinked": "Faktiske inntekter og utgifter fra alle kontoer for den valgte perioden. De faste postene du regner med, finner du i <link>Kontantstrømplanlegging →</link>",
     "transactions_one": "{{count}} transaksjon",
     "transactions_other": "{{count}} transaksjoner",
     "export": "Eksporter",

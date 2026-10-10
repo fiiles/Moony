@@ -51,7 +51,7 @@
     "monthly": "Månedlige premier",
     "other": "Kvartalsvise og årlige betalinger",
     "anniversary": "Årsdag · {{name}}",
-    "peakNote": "Den tyngste måneden er {{month}}: {{amount}} – sett av en reserve.",
+    "peakNote": "Den tyngste måneden er {{month, lower}}: {{amount}} – sett av en reserve.",
     "evenNote": "Betalingene er jevne · {{amount}} i måneden"
   },
   "table": {
@@ -213,7 +213,7 @@
     },
     "hero": {
       "paid": "Betalte premier",
-      "paidNote": "{{payments}} siden {{month}} · {{yearly}} i året",
+      "paidNote": "{{payments}} siden {{month, lower}} · {{yearly}} i året",
       "paidNoteOneTime": "engangsbetaling ved tegning {{date}}",
       "coverage": "Total dekning",
       "coverageRatio": "{{ratio}}× årspremien",

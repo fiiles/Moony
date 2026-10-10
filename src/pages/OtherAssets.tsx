@@ -192,7 +192,10 @@ export default function OtherAssets() {
               tone={gain > 0 ? 'gain' : gain < 0 ? 'loss' : 'neutral'}
               note={
                 totals.gainCost > 0
-                  ? `${fmt.percent(gain / totals.gainCost, 1, { signed: true })} ${t('summary.vsCost', { amount: money(totals.gainCost) })}`
+                  ? t('summary.vsCostPct', {
+                      percent: fmt.percent(gain / totals.gainCost, 1, { signed: true }),
+                      amount: money(totals.gainCost),
+                    })
                   : t('summary.noCost')
               }
             />

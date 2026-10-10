@@ -98,7 +98,7 @@
     "amount": "Betrag",
     "type": "Art",
     "description": "Beschreibung",
-    "counterparty": "Empfänger",
+    "counterparty": "Gegenpartei",
     "detail": "Details",
     "category": "Kategorie",
     "credit": "Eingehend",
@@ -107,7 +107,7 @@
     "descriptionPlaceholder": "z. B. Wocheneinkauf",
     "counterpartyPlaceholder": "z. B. Rewe",
     "addDescription": "Eine neue Transaktion manuell hinzufügen.",
-    "counterpartyIban": "Kontonummer / IBAN des Empfängers",
+    "counterpartyIban": "Kontonummer / IBAN der Gegenpartei",
     "delete": "Transaktion löschen"
   },
   "metrics": {
@@ -185,8 +185,8 @@
     "dateFormat": "Datumsformat",
     "amountColumn": "Betragsspalte",
     "descriptionColumn": "Beschreibungsspalte",
-    "counterpartyColumn": "Empfängerspalte",
-    "counterpartyIbanColumn": "Kontonummer / IBAN des Empfängers",
+    "counterpartyColumn": "Spalte Gegenpartei",
+    "counterpartyIbanColumn": "Kontonummer / IBAN der Gegenpartei",
     "descriptionColumns": "Beschreibungsspalten",
     "descriptionColumnsHelp": "Wählen Sie alle verfügbaren beschreibenden Felder (z. B. Nachricht, Notiz, Verwendungszweck) für eine bessere automatische Kategorisierung.",
     "selectColumn": "Spalte auswählen",
@@ -352,7 +352,7 @@
       "summary_one": "{{count}} Transaktion vom {{from}} bis {{to}}.",
       "summary_other": "{{count}} Transaktionen vom {{from}} bis {{to}}.",
       "nothing": "Es wurde nichts importiert.",
-      "balance": "Kontoauszugssaldo zum {{date}}: {{balance}}.",
+      "statementBalance": "Kontoauszugssaldo zum {{date}}: <b>{{balance}}</b>.",
       "imported": "Importiert",
       "duplicates": "Duplikate",
       "errors": "Fehler",
@@ -455,7 +455,7 @@
     "retargetRuleScope": "Hat Vorrang vor gelernten Entscheidungen; gilt überall, wo sie zutrifft.",
     "editRule": "Regel bearbeiten →",
     "ownAccountNote": "Umbuchung zwischen Ihren eigenen Konten – automatisch kategorisiert.",
-    "notLearnable": "Kann nicht gemerkt werden – die Zahlung hat keinen Empfänger und keine Kontonummer.",
+    "notLearnable": "Kann nicht gemerkt werden – die Zahlung hat keine Gegenpartei und keine Kontonummer.",
     "learnedApplied_one": "Gelernt · {{count}} weitere Zahlung kategorisiert",
     "learnedApplied_other": "Gelernt · {{count}} weitere Zahlungen kategorisiert",
     "ruleRetargeted": "Regel „{{rule}}“ ordnet jetzt {{category}} zu",
@@ -579,7 +579,7 @@
     "footer_other": "{{count}} Transaktionen"
   },
   "readiness": {
-    "learningScope": "Gilt nur für dieses Konto und diese Richtung. Greift bei identischem Empfängerkonto oder, wenn kein verlässliches Konto vorliegt, bei diesem Empfänger.",
+    "learningScope": "Gilt nur für dieses Konto und diese Richtung. Greift bei identischem Konto der Gegenpartei oder, wenn kein verlässliches Konto vorliegt, bei diesem Empfänger.",
     "categoryRole": "Rolle im Bericht",
     "roleImpact": "Einnahmen und Ausgaben bilden den Einnahmen- und Ausgabenbericht. Eine Geldumbuchung zählt als keines von beiden: Anlegen, Sparen, Geld zwischen Konten verschieben.",
     "flow": {
@@ -615,7 +615,7 @@
     "signedAmount": "Ein Betrag mit Vorzeichen",
     "separateAmounts": "Getrennte Spalten für ausgehend / eingehend",
     "mappingHelp": "Verwenden Sie einen Betrag mit Vorzeichen (+ eingehend, − ausgehend) oder getrennte Spalten für ausgehend und eingehend. Die Spalte mit Vorzeichen hat Vorrang, wenn beide Varianten gewählt sind.",
-    "provenanceMappingHelp": "Nach dem Import bieten wir den Schlusssaldo des Kontoauszugs als neuen Kontostand an. Eine Transaktions-ID der Bank erkennt Duplikate zuverlässig. Die Währung gibt an, in welcher Währung die Beträge stehen; ohne sie gilt die Kontowährung. Empfängerkonto, Bankleitzahl und Land sind optional; eine fehlende Bankleitzahl wird nie geraten.",
+    "provenanceMappingHelp": "Nach dem Import bieten wir den Schlusssaldo des Kontoauszugs als neuen Kontostand an. Eine Transaktions-ID der Bank erkennt Duplikate zuverlässig. Die Währung gibt an, in welcher Währung die Beträge stehen; ohne sie gilt die Kontowährung. Konto der Gegenpartei, Bankleitzahl und Land sind optional; eine fehlende Bankleitzahl wird nie geraten.",
     "confirmDateFormat": "Gewähltes Datumsformat bestätigen",
     "balanceBlocked": "Dieser Kontoauszugssaldo verwendet andere Einheiten oder ist älter als der aktuelle datierte Stichtag; er kann ihn nicht ersetzen.",
     "statementAsOf": "Kontoauszugssaldo zum {{date}}",
@@ -658,10 +658,10 @@
     "excludedForeign_other": "{{count}} Bewegungen in Fremdwährung ohne Wechselkurs bleiben in der Summe unberücksichtigt",
     "advancedColumns": "Erweiterte Spalten",
     "advancedColumnsHelp": "Optional. Ordnen Sie sie nur zu, wenn die Datei eine solche Spalte hat; sonst lassen Sie „nicht verwendet“.",
-    "bankCodeColumn": "Bankleitzahl des Empfängers",
+    "bankCodeColumn": "Bankleitzahl der Gegenpartei",
     "bankCodeHint": "Bankleitzahl einer inländischen Kontonummer, z. B. 0800. Wird benötigt, um Umbuchungen zwischen Ihren eigenen Konten zu erkennen; eine fehlende Bankleitzahl wird nie geraten.",
-    "countryColumn": "Land des Empfängers",
-    "countryHint": "Land des Empfängerkontos, z. B. CZ. Hilft, inländische Kontonummern korrekt zu lesen.",
+    "countryColumn": "Land der Gegenpartei",
+    "countryHint": "Land des Kontos der Gegenpartei, z. B. CZ. Hilft, inländische Kontonummern korrekt zu lesen.",
     "deleteBatchPromoted_one": "{{count}} vorgemerkter Eintrag aus einem früheren Import, den dieser Import gebucht hat, bleibt mit den Daten dieses Imports gebucht.",
     "deleteBatchPromoted_other": "{{count}} vorgemerkte Einträge aus früheren Importen, die dieser Import gebucht hat, bleiben mit den Daten dieses Imports gebucht."
   }

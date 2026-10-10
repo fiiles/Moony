@@ -109,7 +109,7 @@
     },
     "since": {
       "title": "自您开始关注以来",
-      "text": "{{days}}以来，价格从 {{price}} 变动了",
+      "change": "{{days}}内，价格从 {{price}} 变动了 <b>{{change}}</b>。",
       "toTarget": "距目标价还差 {{amount}}。",
       "noData": "已关注 {{days}}；暂时没有当天的价格。",
       "days_other": "{{count}} 天"

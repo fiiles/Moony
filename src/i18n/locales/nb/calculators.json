@@ -26,9 +26,7 @@
       "extraHint": "Én gang i året i tillegg til de vanlige terminene, uten gebyr."
     },
     "insight": {
-      "extraYearly": "{{extra}} ekstra i året",
-      "shortens": "forkorter lånet med {{years}} og sparer",
-      "onInterest": "i renter. Planen nedenfor viser varianten uten ekstra avdrag.",
+      "summary": "<b>{{extra}} ekstra i året</b> forkorter lånet med {{years}} og sparer <b>{{saving}}</b> i renter. Planen nedenfor viser varianten uten ekstra avdrag.",
       "noExtra": "Skriv inn ekstra avdrag for å se hvor mange år og hvor mye rente du sparer."
     },
     "hero": {

@@ -18,7 +18,7 @@
     "notUpdated": "尚未获取汇率",
     "unrealizedGain": "未实现收益",
     "unrealizedLoss": "未实现亏损",
-    "vsInvested": "对比投入的 {{amount}}",
+    "vsInvestedPct": "对比投入 {{amount}}：{{percent}}",
     "realized": "已实现收益",
     "sells_other": "{{count}} 次卖出 · 加权平均",
     "noSells": "尚无卖出",
@@ -164,7 +164,7 @@
       "todayAt": "今天 {{time}}"
     },
     "positionValue": "持仓价值",
-    "vsInvested": "对比投入",
+    "vsInvestedPct": "对比投入 {{percent}}",
     "rate": "汇率",
     "invested": "投入",
     "avgShort": "平均 {{price}}",
@@ -202,7 +202,7 @@
       "footer_other": "{{count}} 笔交易",
       "bought": "买入 {{amount}}",
       "sold": "卖出 {{amount}}",
-      "rates": "汇率以 {{currency}} 计，采用交易当日的捷克央行汇率"
+      "rates": "汇率以 {{currency}} 计，采用交易当日的欧洲央行汇率"
     },
     "position": {
       "title": "持仓",

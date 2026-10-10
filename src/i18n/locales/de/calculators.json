@@ -26,9 +26,7 @@
       "extraHint": "Einmal pro Jahr zusätzlich zu den regulären Raten, ohne Vorfälligkeitsentschädigung."
     },
     "insight": {
-      "extraYearly": "{{extra}} Sonderzahlung pro Jahr",
-      "shortens": "verkürzt die Laufzeit um {{years}} und spart",
-      "onInterest": "an Zinsen. Der Plan unten zeigt die Variante ohne Sonderzahlungen.",
+      "summary": "<b>{{extra}} Sonderzahlung pro Jahr</b> verkürzt die Laufzeit um {{years}} und spart <b>{{saving}}</b> an Zinsen. Der Plan unten zeigt die Variante ohne Sonderzahlungen.",
       "noExtra": "Geben Sie eine Sonderzahlung ein, um zu sehen, wie viele Jahre und wie viel Zinsen Sie sparen."
     },
     "hero": {

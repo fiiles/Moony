@@ -110,7 +110,7 @@
     },
     "since": {
       "title": "Siden du begynte å følge",
-      "text": "På {{days}} har kursen endret seg fra {{price}} med",
+      "change": "På {{days}} har kursen endret seg med <b>{{change}}</b> fra {{price}}.",
       "toTarget": "Til målet gjenstår {{amount}}.",
       "noData": "Følger i {{days}}; kursen fra den dagen er ikke tilgjengelig ennå.",
       "days_one": "{{count}} dag",

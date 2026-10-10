@@ -409,8 +409,7 @@
   "planning": {
     "eyebrow": "Piano",
     "title": "Pianificazione del flusso di cassa",
-    "subtitle": "Entrate e uscite ricorrenti stimate. I flussi effettivi dei tuoi conti sono in",
-    "link": "Flusso di cassa",
+    "subtitleLinked": "Entrate e uscite ricorrenti stimate. I flussi effettivi dei tuoi conti sono in <link>Flusso di cassa →</link>",
     "status": "Voci automatiche da Prestiti, Assicurazioni, Immobili e Azioni",
     "addItem": "Aggiungi voce",
     "deleteItem": "Elimina voce",
@@ -466,8 +465,7 @@
   "actuals": {
     "eyebrow": "Report",
     "title": "Flusso di cassa",
-    "subtitle": "Entrate e uscite effettive di tutti i conti nel periodo scelto. Le voci ricorrenti su cui conti sono in",
-    "link": "Pianificazione del flusso di cassa",
+    "subtitleLinked": "Entrate e uscite effettive di tutti i conti nel periodo scelto. Le voci ricorrenti su cui conti sono in <link>Pianificazione del flusso di cassa →</link>",
     "transactions_one": "{{count}} movimento",
     "transactions_many": "{{count}} movimenti",
     "transactions_other": "{{count}} movimenti",

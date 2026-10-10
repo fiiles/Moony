@@ -409,8 +409,7 @@
   "planning": {
     "eyebrow": "Plan",
     "title": "Planificación del flujo de caja",
-    "subtitle": "Ingresos y gastos recurrentes estimados. Los flujos reales de tus cuentas están en",
-    "link": "Flujo de caja",
+    "subtitleLinked": "Ingresos y gastos recurrentes estimados. Los flujos reales de tus cuentas están en <link>Flujo de caja →</link>",
     "status": "Conceptos automáticos de Préstamos, Seguros, Inmuebles y Acciones",
     "addItem": "Añadir concepto",
     "deleteItem": "Eliminar concepto",
@@ -466,8 +465,7 @@
   "actuals": {
     "eyebrow": "Informe",
     "title": "Flujo de caja",
-    "subtitle": "Ingresos y gastos reales de todas las cuentas en el periodo elegido. Los conceptos recurrentes con los que cuentas están en",
-    "link": "Planificación del flujo de caja",
+    "subtitleLinked": "Ingresos y gastos reales de todas las cuentas en el periodo elegido. Los conceptos recurrentes con los que cuentas están en <link>Planificación del flujo de caja →</link>",
     "transactions_one": "{{count}} movimiento",
     "transactions_many": "{{count}} movimientos",
     "transactions_other": "{{count}} movimientos",

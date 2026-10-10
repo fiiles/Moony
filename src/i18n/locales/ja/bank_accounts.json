@@ -341,7 +341,7 @@
       "title": "明細をインポートしました",
       "summary_other": "{{from}}から{{to}}までの{{count}}件の取引。",
       "nothing": "何もインポートされませんでした。",
-      "balance": "{{date}}時点の明細の残高：{{balance}}。",
+      "statementBalance": "{{date}}時点の明細の残高：<b>{{balance}}</b>。",
       "imported": "インポート済み",
       "duplicates": "重複",
       "errors": "エラー",

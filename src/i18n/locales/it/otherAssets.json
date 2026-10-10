@@ -16,7 +16,7 @@
     "assets_many": "{{count}} beni",
     "assets_other": "{{count}} beni",
     "gain": "Guadagno rispetto all'acquisto",
-    "vsCost": "su un costo d'acquisto di {{amount}}",
+    "vsCostPct": "{{percent}} su un costo d'acquisto di {{amount}}",
     "noCost": "nessun costo d'acquisto",
     "yearlyYield": "Rendita annua",
     "yieldNote_one": "{{percent}} · da {{count}} bene che rende",
@@ -114,13 +114,13 @@
       "total": "Primo acquisto al prezzo di oggi"
     },
     "buy": {
-      "title": "Acquista altro",
+      "titleNamed": "Acquista altro {{name}}",
       "description": "Aggiungi quantità al tuo bene.",
       "pricePerUnit": "Prezzo per unità",
       "submit": "Aggiungi operazione"
     },
     "sell": {
-      "title": "Vendi",
+      "titleNamed": "Vendi {{name}}",
       "description": "Registra una vendita di questo bene.",
       "pricePerUnit": "Prezzo per unità",
       "submit": "Vendi bene"

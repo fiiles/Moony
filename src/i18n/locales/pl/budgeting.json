@@ -205,10 +205,10 @@
     "usageUnavailable": "Wykorzystanie budżetu niedostępne",
     "absoluteShare": "Udział w bezwzględnych kwotach grup",
     "signedUnbudgetedTotal": "Wydatki netto bez limitu: {{amount}}",
-    "effectiveMonthPrefill": "Kwota pokazuje limit obowiązujący w miesiącu: {{month}}. Zapisanie zmienia limit od tego miesiąca; wcześniejsze miesiące zachowują swój.",
+    "effectiveMonthPrefill": "Kwota pokazuje limit obowiązujący w miesiącu: {{month, lower}}. Zapisanie zmienia limit od tego miesiąca; wcześniejsze miesiące zachowują swój.",
     "scheduledHeading": "Zaplanowane zmiany",
-    "scheduledLimit": "Od {{month}}: {{amount}}",
-    "scheduledRemoval": "Od {{month}}: bez limitu",
+    "scheduledLimit": "Od {{month, lower}}: {{amount}}",
+    "scheduledRemoval": "Od {{month, lower}}: bez limitu",
     "noChange": "Limit bez zmian; nic nie zapisano."
   }
 }

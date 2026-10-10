@@ -21,7 +21,7 @@
     "notUpdated": "kursy jeszcze nie pobrane",
     "unrealizedGain": "Niezrealizowany zwrot",
     "unrealizedLoss": "Niezrealizowana strata",
-    "vsInvested": "vs {{amount}} zainwestowane",
+    "vsInvestedPct": "{{percent}} względem {{amount}} zainwestowanych",
     "realized": "Zrealizowany zwrot",
     "sells_one": "{{count}} sprzedaż · średnia ważona",
     "sells_few": "{{count}} sprzedaże · średnia ważona",
@@ -182,7 +182,7 @@
       "todayAt": "dziś o {{time}}"
     },
     "positionValue": "Wartość pozycji",
-    "vsInvested": "vs zainwestowane",
+    "vsInvestedPct": "{{percent}} względem zainwestowanych",
     "rate": "Kurs",
     "invested": "Zainwestowano",
     "avgShort": "średnio {{price}}",
@@ -235,7 +235,7 @@
       "footer_other": "{{count}} transakcji",
       "bought": "kupiono {{amount}}",
       "sold": "sprzedano {{amount}}",
-      "rates": "Kursy w {{currency}} po kursie ČNB z dnia transakcji"
+      "rates": "Kursy w {{currency}} po kursie EBC z dnia transakcji"
     },
     "position": {
       "title": "Pozycja",

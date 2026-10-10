@@ -28,11 +28,11 @@
     "updatedToday": "aktualizováno dnes",
     "updatedOn": "aktualizováno {{date}}",
     "notUpdated": "ceny zatím nestaženy",
-    "vsInvested": "oproti vloženému",
+    "vsInvestedPct": "{{percent}} oproti vloženému",
     "realizedNote": "realizováno {{amount}}",
     "next12Months": "za příštích 12 měsíců",
     "topPosition": "Nejlepší pozice",
-    "overall": "celkem",
+    "overallPct": "{{percent}} celkem",
     "noPositions": "žádná otevřená pozice"
   },
   "table": {
@@ -158,14 +158,14 @@
       "searching": "Hledám..."
     },
     "buy": {
-      "title": "Nákup",
-      "description": "Zaznamenejte nákupní transakci pro",
+      "titleNamed": "Nákup {{name}}",
+      "descriptionFor": "Zaznamenejte nákupní transakci pro {{ticker}}.",
       "quantity": "Množství",
       "pricePerShare": "Cena za akcii",
       "addPurchase": "Přidat nákup"
     },
     "sell": {
-      "title": "Prodej",
+      "titleNamed": "Prodej {{name}}",
       "description": "Zaznamenejte prodejní transakci pro tuto pozici.",
       "transactionDetails": "Detaily transakce",
       "pricePerShare": "Cena za akcii",
@@ -300,12 +300,12 @@
     "avgBuyPrice": "průměrná nákupní cena {{price}}",
     "lastBuy": "poslední nákup {{date}}",
     "positionValue": "Hodnota pozice",
-    "sinceBuy": "od nákupu",
+    "sinceBuyPct": "{{percent}} od nákupu",
     "currentPrice": "Aktuální cena",
     "invested": "Vloženo",
     "avgShort": "průměr {{price}}",
     "unrealized": "Nerealizovaný výnos",
-    "vsInvested": "oproti vloženému",
+    "vsInvestedPct": "{{percent}} oproti vloženému",
     "realized": "Realizovaný výnos",
     "sells_one": "{{count}} prodej",
     "sells_few": "{{count}} prodeje",

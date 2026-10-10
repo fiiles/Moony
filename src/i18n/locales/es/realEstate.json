@@ -23,7 +23,7 @@
     "excludedNote": "vivienda habitual {{amount}} fuera del patrimonio neto",
     "includedNote": "incl. vivienda habitual {{amount}}",
     "appreciationTitle": "Revalorización",
-    "vsPurchase": "frente a precios de compra de {{amount}}",
+    "vsPurchasePct": "{{percent}} frente a precios de compra de {{amount}}",
     "equity": "Capital propio",
     "equityNote": "hipotecas {{amount}} · LTV {{ltv}}",
     "noLoans": "sin préstamos",
@@ -157,7 +157,7 @@
     "heroEquity": "Capital propio",
     "equityNote": "{{share}} del valor · LTV {{ltv}}",
     "equityNoLoan": "sin préstamo · todo el valor es tuyo",
-    "vsPurchase": "frente al precio de compra",
+    "vsPurchasePct": "{{percent}} frente al precio de compra",
     "chart": {
       "value": "Valor de mercado",
       "purchase": "Precio de compra",

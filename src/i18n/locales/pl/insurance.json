@@ -65,7 +65,7 @@
     "monthly": "Składki miesięczne",
     "other": "Płatności kwartalne i roczne",
     "anniversary": "Rocznica · {{name}}",
-    "peakNote": "Najbardziej obciążony miesiąc to {{month}} ({{amount}}) – odłóż rezerwę.",
+    "peakNote": "Najbardziej obciążony miesiąc to {{month, lower}} ({{amount}}) – odłóż rezerwę.",
     "evenNote": "Płatności są równe · {{amount}} miesięcznie"
   },
   "table": {
@@ -227,7 +227,7 @@
     },
     "hero": {
       "paid": "Zapłacone składki",
-      "paidNote": "{{payments}} od {{month}} · {{yearly}} rocznie",
+      "paidNote": "{{payments}} od {{month, lower}} · {{yearly}} rocznie",
       "paidNoteOneTime": "jednorazowa płatność przy zawarciu dnia {{date}}",
       "coverage": "Ochrona łącznie",
       "coverageRatio": "{{ratio}}× roczna składka",

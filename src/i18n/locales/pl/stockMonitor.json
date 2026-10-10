@@ -112,7 +112,7 @@
     },
     "since": {
       "title": "Od początku obserwacji",
-      "text": "Przez {{days}} cena zmieniła się z {{price}} o",
+      "change": "Przez {{days}} cena zmieniła się z {{price}} o <b>{{change}}</b>.",
       "toTarget": "{{amount}} do celu.",
       "noData": "Okres obserwacji: {{days}}; ceny z pierwszego dnia jeszcze nie ma.",
       "days_one": "{{count}} dzień",

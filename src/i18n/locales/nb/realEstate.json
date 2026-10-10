@@ -22,7 +22,7 @@
     "excludedNote": "bolig {{amount}} utenfor nettoformuen",
     "includedNote": "inkl. bolig {{amount}}",
     "appreciationTitle": "Verdistigning",
-    "vsPurchase": "mot kjøpspriser {{amount}}",
+    "vsPurchasePct": "{{percent}} mot kjøpspriser {{amount}}",
     "equity": "Egenkapital",
     "equityNote": "boliglån {{amount}} · LTV {{ltv}}",
     "noLoans": "ingen lån",
@@ -155,7 +155,7 @@
     "heroEquity": "Egenkapital",
     "equityNote": "{{share}} av verdien · LTV {{ltv}}",
     "equityNoLoan": "ingen lån · hele verdien er din",
-    "vsPurchase": "mot kjøpspris",
+    "vsPurchasePct": "{{percent}} mot kjøpspris",
     "chart": {
       "value": "Markedsverdi",
       "purchase": "Kjøpspris",

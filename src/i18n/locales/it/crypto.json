@@ -20,7 +20,7 @@
     "notUpdated": "quotazioni non ancora scaricate",
     "unrealizedGain": "Rendimento non realizzato",
     "unrealizedLoss": "Perdita non realizzata",
-    "vsInvested": "su {{amount}} investiti",
+    "vsInvestedPct": "{{percent}} su {{amount}} investiti",
     "realized": "Rendimento realizzato",
     "sells_one": "{{count}} vendita · media ponderata",
     "sells_many": "{{count}} vendite · media ponderata",
@@ -176,7 +176,7 @@
       "todayAt": "oggi alle {{time}}"
     },
     "positionValue": "Valore della posizione",
-    "vsInvested": "rispetto all'investito",
+    "vsInvestedPct": "{{percent}} rispetto all'investito",
     "rate": "Quotazione",
     "invested": "Investito",
     "avgShort": "media {{price}}",
@@ -224,7 +224,7 @@
       "footer_other": "{{count}} operazioni",
       "bought": "acquistati {{amount}}",
       "sold": "venduti {{amount}}",
-      "rates": "Quotazioni in {{currency}} al cambio della CNB del giorno dell'operazione"
+      "rates": "Quotazioni in {{currency}} al cambio della BCE del giorno dell'operazione"
     },
     "position": {
       "title": "Posizione",

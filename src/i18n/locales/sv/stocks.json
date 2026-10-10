@@ -27,11 +27,11 @@
     "updatedToday": "uppdaterad i dag",
     "updatedOn": "uppdaterad {{date}}",
     "notUpdated": "kurser har inte hämtats ännu",
-    "vsInvested": "mot investerat",
+    "vsInvestedPct": "{{percent}} mot investerat",
     "realizedNote": "realiserat {{amount}}",
     "next12Months": "de kommande 12 månaderna",
     "topPosition": "Bästa innehav",
-    "overall": "totalt",
+    "overallPct": "{{percent}} totalt",
     "noPositions": "inget öppet innehav"
   },
   "table": {
@@ -156,14 +156,14 @@
       "searching": "Söker..."
     },
     "buy": {
-      "title": "Köp",
-      "description": "Registrera ett köp för",
+      "titleNamed": "Köp {{name}}",
+      "descriptionFor": "Registrera ett köp för {{ticker}}.",
       "quantity": "Antal",
       "pricePerShare": "Pris per aktie",
       "addPurchase": "Lägg till köp"
     },
     "sell": {
-      "title": "Sälj",
+      "titleNamed": "Sälj {{name}}",
       "description": "Registrera en försäljning av det här innehavet.",
       "transactionDetails": "Transaktionsuppgifter",
       "pricePerShare": "Pris per aktie",
@@ -294,12 +294,12 @@
     "avgBuyPrice": "genomsnittligt inköpspris {{price}}",
     "lastBuy": "senaste köp {{date}}",
     "positionValue": "Innehavets värde",
-    "sinceBuy": "sedan köpet",
+    "sinceBuyPct": "{{percent}} sedan köpet",
     "currentPrice": "Aktuell kurs",
     "invested": "Investerat",
     "avgShort": "snitt {{price}}",
     "unrealized": "Orealiserad avkastning",
-    "vsInvested": "mot investerat",
+    "vsInvestedPct": "{{percent}} mot investerat",
     "realized": "Realiserad avkastning",
     "sells_one": "{{count}} försäljning",
     "sells_other": "{{count}} försäljningar",

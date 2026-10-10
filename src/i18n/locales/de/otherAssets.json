@@ -15,7 +15,7 @@
     "assets_one": "{{count}} Vermögenswert",
     "assets_other": "{{count}} Vermögenswerte",
     "gain": "Gewinn gegenüber Kauf",
-    "vsCost": "ggü. Kaufpreis {{amount}}",
+    "vsCostPct": "{{percent}} ggü. Kaufpreis {{amount}}",
     "noCost": "kein Kaufpreis",
     "yearlyYield": "Jahresertrag",
     "yieldNote_one": "{{percent}} · aus {{count}} ertragbringenden Vermögenswert",
@@ -111,13 +111,13 @@
       "total": "Erster Kauf zum heutigen Preis"
     },
     "buy": {
-      "title": "Zukaufen",
+      "titleNamed": "{{name}} zukaufen",
       "description": "Erhöhen Sie die Menge dieses Vermögenswerts.",
       "pricePerUnit": "Preis pro Stück",
       "submit": "Transaktion hinzufügen"
     },
     "sell": {
-      "title": "Verkaufen",
+      "titleNamed": "{{name}} verkaufen",
       "description": "Erfassen Sie einen Verkauf dieses Vermögenswerts.",
       "pricePerUnit": "Preis pro Stück",
       "submit": "Vermögenswert verkaufen"

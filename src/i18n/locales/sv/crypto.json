@@ -19,7 +19,7 @@
     "notUpdated": "kurser har inte hämtats ännu",
     "unrealizedGain": "Orealiserad avkastning",
     "unrealizedLoss": "Orealiserad förlust",
-    "vsInvested": "mot {{amount}} investerat",
+    "vsInvestedPct": "{{percent}} mot {{amount}} investerat",
     "realized": "Realiserad avkastning",
     "sells_one": "{{count}} försäljning · viktat genomsnitt",
     "sells_other": "{{count}} försäljningar · viktat genomsnitt",
@@ -170,7 +170,7 @@
       "todayAt": "i dag kl. {{time}}"
     },
     "positionValue": "Innehavets värde",
-    "vsInvested": "mot investerat",
+    "vsInvestedPct": "{{percent}} mot investerat",
     "rate": "Kurs",
     "invested": "Investerat",
     "avgShort": "snitt {{price}}",
@@ -213,7 +213,7 @@
       "footer_other": "{{count}} transaktioner",
       "bought": "köpt {{amount}}",
       "sold": "sålt {{amount}}",
-      "rates": "Kurser i {{currency}} enligt ČNB-kursen på transaktionsdagen"
+      "rates": "Kurser i {{currency}} enligt ECB-kursen på transaktionsdagen"
     },
     "position": {
       "title": "Innehav",

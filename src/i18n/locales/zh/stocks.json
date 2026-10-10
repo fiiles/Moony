@@ -26,11 +26,11 @@
     "updatedToday": "今天已更新",
     "updatedOn": "更新于 {{date}}",
     "notUpdated": "尚未获取价格",
-    "vsInvested": "对比投入",
+    "vsInvestedPct": "对比投入 {{percent}}",
     "realizedNote": "已实现 {{amount}}",
     "next12Months": "未来 12 个月",
     "topPosition": "最佳持仓",
-    "overall": "总体",
+    "overallPct": "总体 {{percent}}",
     "noPositions": "没有未平仓持仓"
   },
   "table": {
@@ -154,14 +154,14 @@
       "searching": "正在搜索…"
     },
     "buy": {
-      "title": "买入",
-      "description": "记录一笔买入交易：",
+      "titleNamed": "买入 {{name}}",
+      "descriptionFor": "记录 {{ticker}} 的买入交易。",
       "quantity": "数量",
       "pricePerShare": "每股价格",
       "addPurchase": "添加买入"
     },
     "sell": {
-      "title": "卖出",
+      "titleNamed": "卖出 {{name}}",
       "description": "记录该持仓的一笔卖出交易。",
       "transactionDetails": "交易详情",
       "pricePerShare": "每股价格",
@@ -289,12 +289,12 @@
     "avgBuyPrice": "平均买入价 {{price}}",
     "lastBuy": "最近买入 {{date}}",
     "positionValue": "持仓价值",
-    "sinceBuy": "自买入以来",
+    "sinceBuyPct": "自买入以来 {{percent}}",
     "currentPrice": "当前价格",
     "invested": "投入",
     "avgShort": "平均 {{price}}",
     "unrealized": "未实现收益",
-    "vsInvested": "对比投入",
+    "vsInvestedPct": "对比投入 {{percent}}",
     "realized": "已实现收益",
     "sells_other": "{{count}} 次卖出",
     "noSells": "尚无卖出",

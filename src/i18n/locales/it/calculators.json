@@ -26,9 +26,7 @@
       "extraHint": "Una volta l'anno, in aggiunta alle rate regolari, senza penale."
     },
     "insight": {
-      "extraYearly": "{{extra}} extra all'anno",
-      "shortens": "accorcia il prestito di {{years}} e fa risparmiare",
-      "onInterest": "di interessi. Il piano qui sotto mostra la variante senza versamenti extra.",
+      "summary": "<b>{{extra}} extra all'anno</b> accorcia il prestito di {{years}} e fa risparmiare <b>{{saving}}</b> di interessi. Il piano qui sotto mostra la variante senza versamenti extra.",
       "noExtra": "Inserisci un versamento extra per vedere quanti anni e quanti interessi risparmi."
     },
     "hero": {

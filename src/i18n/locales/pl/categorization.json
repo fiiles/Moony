@@ -91,8 +91,8 @@
       "mode": "Typ reguły",
       "modePattern": "Wzorzec tekstowy",
       "modeIban": "Dopasowanie IBAN",
-      "modePatternHelp": "Dopasuj transakcje po tekście w opisie, nazwie odbiorcy itp.",
-      "modeIbanHelp": "Dopasuj transakcje po numerze IBAN lub numerze konta odbiorcy.",
+      "modePatternHelp": "Dopasuj transakcje po tekście w opisie, nazwie kontrahenta itp.",
+      "modeIbanHelp": "Dopasuj transakcje po numerze IBAN lub numerze konta kontrahenta.",
       "type": "Typ dopasowania",
       "pattern": "Wzorzec",
       "patternPlaceholder": "np. LIDL lub ^ALBERT.*",
@@ -204,9 +204,9 @@
     "deactivated": "Reguła wyłączona"
   },
   "learnedTab": {
-    "subtitle": "Utworzone z twoich ręcznych poprawek · odbiorca lub IBAN → kategoria",
-    "search": "Szukaj odbiorcy",
-    "counterparty": "Odbiorca",
+    "subtitle": "Utworzone z twoich ręcznych poprawek · kontrahent lub IBAN → kategoria",
+    "search": "Szukaj kontrahenta",
+    "counterparty": "Kontrahent",
     "iban": "IBAN",
     "category": "Kategoria",
     "lastHit": "Ostatnie",
@@ -216,14 +216,14 @@
     "selectedBar": "Zaznaczono: {{count}}",
     "confirmForget": {
       "title": "Zapomnij regułę wyuczoną",
-      "description": "Odbiorca nie będzie już kategoryzowany automatycznie; nowa ręczna poprawka nauczy go ponownie."
+      "description": "Kontrahent nie będzie już kategoryzowany automatycznie; nowa ręczna poprawka nauczy go ponownie."
     },
     "confirmForgetBulk": {
       "title": "Zapomnij zaznaczone reguły",
-      "description_one": "Zapomnieć {{count}} zaznaczoną regułę? Jej odbiorca nie będzie już kategoryzowany automatycznie.",
-      "description_few": "Zapomnieć {{count}} zaznaczone reguły? Ich odbiorcy nie będą już kategoryzowani automatycznie.",
-      "description_many": "Zapomnieć {{count}} zaznaczonych reguł? Ich odbiorcy nie będą już kategoryzowani automatycznie.",
-      "description_other": "Zapomnieć {{count}} zaznaczonej reguły? Jej odbiorca nie będzie już kategoryzowany automatycznie."
+      "description_one": "Zapomnieć {{count}} zaznaczoną regułę? Jej kontrahent nie będzie już kategoryzowany automatycznie.",
+      "description_few": "Zapomnieć {{count}} zaznaczone reguły? Ich kontrahenci nie będą już kategoryzowani automatycznie.",
+      "description_many": "Zapomnieć {{count}} zaznaczonych reguł? Ich kontrahenci nie będą już kategoryzowani automatycznie.",
+      "description_other": "Zapomnieć {{count}} zaznaczonej reguły? Jej kontrahent nie będzie już kategoryzowany automatycznie."
     },
     "categoryChanged": "Kategoria reguły zmieniona",
     "history": {
@@ -282,7 +282,7 @@
     "name": "Nazwa",
     "mode": "Dopasuj po",
     "modeText": "Tekście transakcji",
-    "modeIban": "IBAN odbiorcy",
+    "modeIban": "IBAN kontrahenta",
     "matchType": "Dopasowanie",
     "pattern": "Wzorzec",
     "patternHint": "Wielkość liter i znaki diakrytyczne nie mają znaczenia.",
@@ -293,11 +293,10 @@
     "active": "Reguła jest aktywna",
     "stop": "Zatrzymaj po dopasowaniu",
     "stopHint": "(kolejne reguły nie są stosowane)",
-    "matchesTitle_one": "Pasuje do {{count}} istniejącej transakcji",
-    "matchesTitle_few": "Pasuje do {{count}} istniejących transakcji",
-    "matchesTitle_many": "Pasuje do {{count}} istniejących transakcji",
-    "matchesTitle_other": "Pasuje do {{count}} istniejącej transakcji",
-    "matchesNote": "z ostatnich {{days}} dni, z czego {{open}} dziś bez kategorii.",
+    "matchesSummary_one": "<b>Pasuje do {{count}} istniejącej transakcji</b> z ostatnich {{days}} dni, z czego {{open}} dziś bez kategorii.",
+    "matchesSummary_few": "<b>Pasuje do {{count}} istniejących transakcji</b> z ostatnich {{days}} dni, z czego {{open}} dziś bez kategorii.",
+    "matchesSummary_many": "<b>Pasuje do {{count}} istniejących transakcji</b> z ostatnich {{days}} dni, z czego {{open}} dziś bez kategorii.",
+    "matchesSummary_other": "<b>Pasuje do {{count}} istniejącej transakcji</b> z ostatnich {{days}} dni, z czego {{open}} dziś bez kategorii.",
     "matchesNone": "Nie pasowałaby do żadnej transakcji z ostatnich {{days}} dni – spróbuj krótszego wzorca.",
     "matchesEmpty": "Wpisz wzorzec, aby zobaczyć, do jakich transakcji pasuje reguła.",
     "matchesChecking": "Sprawdzanie dopasowań…",

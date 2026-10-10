@@ -19,7 +19,7 @@
     "notUpdated": "kursene er ikke hentet ennå",
     "unrealizedGain": "Urealisert avkastning",
     "unrealizedLoss": "Urealisert tap",
-    "vsInvested": "mot {{amount}} investert",
+    "vsInvestedPct": "{{percent}} mot {{amount}} investert",
     "realized": "Realisert avkastning",
     "sells_one": "{{count}} salg · vektet gjennomsnitt",
     "sells_other": "{{count}} salg · vektet gjennomsnitt",
@@ -170,7 +170,7 @@
       "todayAt": "i dag kl. {{time}}"
     },
     "positionValue": "Verdi av beholdningen",
-    "vsInvested": "mot investert",
+    "vsInvestedPct": "{{percent}} mot investert",
     "rate": "Kurs",
     "invested": "Investert",
     "avgShort": "snitt {{price}}",
@@ -213,7 +213,7 @@
       "footer_other": "{{count}} transaksjoner",
       "bought": "kjøpt {{amount}}",
       "sold": "solgt {{amount}}",
-      "rates": "Kurser i {{currency}} etter CNB-kursen på transaksjonsdagen"
+      "rates": "Kurser i {{currency}} etter ESB-kursen på transaksjonsdagen"
     },
     "position": {
       "title": "Beholdning",

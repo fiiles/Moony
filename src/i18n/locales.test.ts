@@ -84,6 +84,12 @@ describe('compareNamespace', () => {
     ]);
   });
 
+  it('requires the same <Trans> components', () => {
+    expect(
+      compareNamespace({ note: 'Saves <b>{{amount}}</b>' }, { note: 'Spart {{amount}}' }, 'de')
+    ).toEqual(['note drops <b>']);
+  });
+
   it('knows each language’s plural categories', () => {
     expect([...pluralForms('pl').required].sort()).toEqual(['few', 'many', 'one', 'other']);
     expect(pluralForms('ja').required).toEqual(['other']);

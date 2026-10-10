@@ -20,7 +20,7 @@
     "notUpdated": "kurzy zatím nestaženy",
     "unrealizedGain": "Nerealizovaný výnos",
     "unrealizedLoss": "Nerealizovaná ztráta",
-    "vsInvested": "oproti vloženým {{amount}}",
+    "vsInvestedPct": "{{percent}} oproti vloženým {{amount}}",
     "realized": "Realizovaný výnos",
     "sells_one": "{{count}} prodej · vážený průměr",
     "sells_few": "{{count}} prodeje · vážený průměr",
@@ -176,7 +176,7 @@
       "todayAt": "dnes v {{time}}"
     },
     "positionValue": "Hodnota pozice",
-    "vsInvested": "oproti vloženému",
+    "vsInvestedPct": "{{percent}} oproti vloženému",
     "rate": "Kurz",
     "invested": "Vloženo",
     "avgShort": "průměr {{price}}",
@@ -224,7 +224,7 @@
       "footer_other": "{{count}} transakcí",
       "bought": "nakoupeno {{amount}}",
       "sold": "prodáno {{amount}}",
-      "rates": "Kurzy v {{currency}} kurzem ČNB k datu transakce"
+      "rates": "Kurzy v {{currency}} kurzem ECB k datu transakce"
     },
     "position": {
       "title": "Pozice",

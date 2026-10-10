@@ -395,8 +395,7 @@
   "planning": {
     "eyebrow": "Plan",
     "title": "Kassaflödesplanering",
-    "subtitle": "Uppskattade återkommande inkomster och utgifter. Faktiska flöden från dina konton finns i",
-    "link": "Kassaflöde",
+    "subtitleLinked": "Uppskattade återkommande inkomster och utgifter. Faktiska flöden från dina konton finns i <link>Kassaflöde →</link>",
     "status": "Automatiska poster från Lån, Försäkringar, Fastigheter och Aktier",
     "addItem": "Lägg till post",
     "deleteItem": "Ta bort post",
@@ -450,8 +449,7 @@
   "actuals": {
     "eyebrow": "Rapport",
     "title": "Kassaflöde",
-    "subtitle": "Faktiska inkomster och utgifter från alla konton under den valda perioden. De återkommande poster du räknar med finns i",
-    "link": "Kassaflödesplanering",
+    "subtitleLinked": "Faktiska inkomster och utgifter från alla konton under den valda perioden. De återkommande poster du räknar med finns i <link>Kassaflödesplanering →</link>",
     "transactions_one": "{{count}} transaktion",
     "transactions_other": "{{count}} transaktioner",
     "export": "Exportera",

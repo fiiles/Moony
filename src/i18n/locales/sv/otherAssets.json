@@ -15,7 +15,7 @@
     "assets_one": "{{count}} tillgång",
     "assets_other": "{{count}} tillgångar",
     "gain": "Vinst mot inköp",
-    "vsCost": "mot inköpskostnad {{amount}}",
+    "vsCostPct": "{{percent}} mot inköpskostnad {{amount}}",
     "noCost": "ingen inköpskostnad",
     "yearlyYield": "Årlig avkastning",
     "yieldNote_one": "{{percent}} · från {{count}} avkastande tillgång",
@@ -111,13 +111,13 @@
       "total": "Första köp till dagens pris"
     },
     "buy": {
-      "title": "Köp mer",
+      "titleNamed": "Köp mer {{name}}",
       "description": "Lägg till mer antal till din tillgång.",
       "pricePerUnit": "Pris per enhet",
       "submit": "Lägg till transaktion"
     },
     "sell": {
-      "title": "Sälj",
+      "titleNamed": "Sälj {{name}}",
       "description": "Registrera en försäljning av den här tillgången.",
       "pricePerUnit": "Pris per enhet",
       "submit": "Sälj tillgång"

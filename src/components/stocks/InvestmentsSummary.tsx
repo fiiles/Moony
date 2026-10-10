@@ -53,7 +53,9 @@ export function InvestmentsSummary({
         : t('summary.updatedOn', { date: fmt.day(fetched) });
 
   const unrealizedNote = [
-    `${fmt.percent(metrics.overallGainLossPercent / 100, 1, { signed: true })} ${t('summary.vsInvested')}`,
+    t('summary.vsInvestedPct', {
+      percent: fmt.percent(metrics.overallGainLossPercent / 100, 1, { signed: true }),
+    }),
     realizedGain !== 0
       ? t('summary.realizedNote', {
           amount: fmt.money(realizedGain, currency, { signed: true, decimals: 0 }),
@@ -95,7 +97,11 @@ export function InvestmentsSummary({
         value={metrics.topPerformer?.companyName || metrics.topPerformer?.ticker || '—'}
         note={
           metrics.topPerformer
-            ? `${fmt.percent(metrics.topPerformer.gainLossPercent / 100, 1, { signed: true })} ${t('summary.overall')}`
+            ? t('summary.overallPct', {
+                percent: fmt.percent(metrics.topPerformer.gainLossPercent / 100, 1, {
+                  signed: true,
+                }),
+              })
             : t('summary.noPositions')
         }
         noteTone={metrics.topPerformer ? tone(metrics.topPerformer.gainLossPercent) : 'neutral'}

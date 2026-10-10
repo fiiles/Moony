@@ -18,13 +18,13 @@
     "outstanding": "Do spłaty łącznie",
     "repaidOf": "spłacono {{percent}} z pożyczonych {{principal}}",
     "payments": "Raty miesięczne",
-    "paymentsAfter": "od {{month}} tylko {{amount}} · spłata: {{name}}",
+    "paymentsAfter": "od {{month, lower}} tylko {{amount}} · spłata: {{name}}",
     "paymentsYear": "{{amount}} rocznie",
     "rate": "Śr. oprocentowanie",
     "rateNote": "ważone saldem · odsetki w następnych 12 miesiącach {{interest}}",
     "fixation": "Koniec stałej stopy",
     "fixationNote": "za {{duration}} · {{name}} {{rate}}",
-    "fixationExpired": "Stała stopa kredytu {{name}} skończyła się {{month}} – wpisz nową stopę",
+    "fixationExpired": "Stała stopa kredytu {{name}} skończyła się {{month, lower}} – wpisz nową stopę",
     "noFixation": "żadna stopa nie ma daty ważności"
   },
   "chart": {
@@ -77,11 +77,11 @@
     "payment": "Rata",
     "payoff": "Spłata do",
     "actions": "Akcje",
-    "since": "od {{month}}",
+    "since": "od {{month, lower}}",
     "repaid": "spłacono {{percent}}",
     "matured": "spłacony",
-    "fixedUntil": "stała stopa do {{month}}",
-    "fixationEnded": "stała stopa skończyła się {{month}}",
+    "fixedUntil": "stała stopa do {{month, lower}}",
+    "fixationEnded": "stała stopa skończyła się {{month, lower}}",
     "fixedRate": "stała stopa",
     "monthly": "miesięcznie",
     "noPayment": "brak raty",
@@ -174,9 +174,9 @@
     "loading": "Wczytywanie kredytu...",
     "notFound": "Ten kredyt już nie istnieje.",
     "eyebrow": "Kredyt",
-    "description": "Kwota {{principal}} od {{month}} · {{rate}}{{fixation}} · rata {{payment}} miesięcznie",
-    "descriptionNoPayment": "Kwota {{principal}} od {{month}} · {{rate}} · bez miesięcznej raty",
-    "withFixation": " stałe do {{month}}",
+    "description": "Kwota {{principal}} od {{month, lower}} · {{rate}}{{fixation}} · rata {{payment}} miesięcznie",
+    "descriptionNoPayment": "Kwota {{principal}} od {{month, lower}} · {{rate}} · bez miesięcznej raty",
+    "withFixation": " stałe do {{month, lower}}",
     "status": {
       "automatic": "Saldo wg harmonogramu",
       "manual": "Saldo wg harmonogramu · od twojego salda z dnia {{date}}",
@@ -191,7 +191,7 @@
       "paidOff": "Spłacony",
       "noPayoff": "nigdy przy obecnej racie",
       "noPayment": "bez raty saldo nie spada",
-      "balanceAtEnd": "do {{month}} · {{amount}} pozostaje w dniu zakończenia"
+      "balanceAtEnd": "do {{month, lower}} · {{amount}} pozostaje w dniu zakończenia"
     },
     "horizon": {
       "past": "Dotychczas",
@@ -210,7 +210,7 @@
       "tipSchedule": "wg harmonogramu",
       "notePast": "Od {{date}}: spłacono {{principal}} kapitału i zapłacono {{interest}} odsetek",
       "note5": "Saldo za 5 lat {{amount}}",
-      "note5Fixation": "Saldo za 5 lat {{amount}} · koniec stałej stopy {{month}}",
+      "note5Fixation": "Saldo za 5 lat {{amount}} · koniec stałej stopy {{month, lower}}",
       "noteAll": "Do spłaty zapłacisz jeszcze {{total}}, z czego {{interest}} to odsetki",
       "noteNoPayoff": "Przy obecnej racie kredyt nigdy nie zostanie spłacony",
       "events": {
@@ -240,7 +240,7 @@
       "nextPayment": "Następna rata",
       "nextPaymentNote": "odsetki {{interest}} · kapitał {{principal}}",
       "noSchedule": "brak harmonogramu",
-      "remainingToEnd": "do {{month}} · pozostaje {{amount}} · jeszcze {{interest}} odsetek do zapłaty"
+      "remainingToEnd": "do {{month, lower}} · pozostaje {{amount}} · jeszcze {{interest}} odsetek do zapłaty"
     },
     "schedule": {
       "title": "Harmonogram spłat",
@@ -280,9 +280,9 @@
         "payment": "Obniż ratę"
       },
       "termResult": "Spłata o {{duration}} wcześniej",
-      "termNote": "Oszczędzasz {{interest}} odsetek · rata zostaje {{payment}} · koniec {{month}}",
+      "termNote": "Oszczędzasz {{interest}} odsetek · rata zostaje {{payment}} · koniec {{month, lower}}",
       "paymentResult": "Rata spada o {{amount}} miesięcznie",
-      "paymentNote": "Nowa rata {{payment}} · okres zostaje do {{month}} · odsetki niższe o {{interest}}",
+      "paymentNote": "Nowa rata {{payment}} · okres zostaje do {{month, lower}} · odsetki niższe o {{interest}}",
       "noEffect": "Wpisz kwotę do wysokości salda {{amount}}.",
       "noPayment": "Bez miesięcznej raty nie da się obliczyć efektu – dodaj ją, edytując kredyt.",
       "record": "Zapisz jako dokonaną"
@@ -323,7 +323,7 @@
       "payment": "Obniżyć ratę",
       "alertTitle": "Saldo spada do {{amount}}",
       "alertTerm": "Spłata o {{duration}} wcześniej, oszczędność {{interest}} odsetek.",
-      "alertPayment": "Nowa rata {{payment}} miesięcznie, okres zostaje do {{month}}.",
+      "alertPayment": "Nowa rata {{payment}} miesięcznie, okres zostaje do {{month, lower}}.",
       "alertTooMuch": "Kwota przekracza saldo {{amount}}.",
       "alertEmpty": "Wpisz kwotę, aby zobaczyć efekt.",
       "submit": "Zapisz nadpłatę"
@@ -336,7 +336,7 @@
       "paymentHint": "Puste = rata zostaje {{amount}}",
       "date": "Obowiązuje od",
       "alertTitle": "Odsetki miesięczne {{from}} → {{to}}",
-      "alertNote": "Przy racie {{payment}} kredyt zostanie spłacony {{month}}.",
+      "alertNote": "Przy racie {{payment}} kredyt zostanie spłacony {{month, lower}}.",
       "alertNoPayoff": "Rata {{payment}} nie pokrywa odsetek; saldo by nie spadało.",
       "submit": "Zapisz zmianę"
     },

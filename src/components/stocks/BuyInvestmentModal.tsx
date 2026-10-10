@@ -106,11 +106,9 @@ export function BuyInvestmentModal({ investment, open, onOpenChange }: BuyInvest
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>
-            {t('modal.buy.title')} {investment.companyName}
-          </DialogTitle>
+          <DialogTitle>{t('modal.buy.titleNamed', { name: investment.companyName })}</DialogTitle>
           <DialogDescription>
-            {t('modal.buy.description')} {investment.ticker}.
+            {t('modal.buy.descriptionFor', { ticker: investment.ticker })}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>

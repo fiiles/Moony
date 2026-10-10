@@ -16,13 +16,13 @@
     "outstanding": "Total restgjeld",
     "repaidOf": "{{percent}} nedbetalt av {{principal}} lånt",
     "payments": "Månedlige terminer",
-    "paymentsAfter": "fra {{month}} bare {{amount}} · {{name}} er nedbetalt",
+    "paymentsAfter": "fra {{month, lower}} bare {{amount}} · {{name}} er nedbetalt",
     "paymentsYear": "{{amount}} i året",
     "rate": "Gj.sn. rente",
     "rateNote": "vektet etter saldo · renter de neste 12 månedene {{interest}}",
     "fixation": "Bindingstiden utløper",
     "fixationNote": "om {{duration}} · {{name}} {{rate}}",
-    "fixationExpired": "Bindingstiden for {{name}} utløp {{month}} – legg inn den nye renten",
+    "fixationExpired": "Bindingstiden for {{name}} utløp {{month, lower}} – legg inn den nye renten",
     "noFixation": "ingen rente har en utløpsdato"
   },
   "chart": {
@@ -71,11 +71,11 @@
     "payment": "Termin",
     "payoff": "Nedbetalt innen",
     "actions": "Handlinger",
-    "since": "siden {{month}}",
+    "since": "siden {{month, lower}}",
     "repaid": "{{percent}} nedbetalt",
     "matured": "nedbetalt",
-    "fixedUntil": "bundet til {{month}}",
-    "fixationEnded": "bindingen utløp {{month}}",
+    "fixedUntil": "bundet til {{month, lower}}",
+    "fixationEnded": "bindingen utløp {{month, lower}}",
     "fixedRate": "fast rente",
     "monthly": "månedlig",
     "noPayment": "ingen termin",
@@ -162,9 +162,9 @@
     "loading": "Laster lån...",
     "notFound": "Dette lånet finnes ikke lenger.",
     "eyebrow": "Lån",
-    "description": "Hovedstol {{principal}} siden {{month}} · {{rate}}{{fixation}} · termin {{payment}} i måneden",
-    "descriptionNoPayment": "Hovedstol {{principal}} siden {{month}} · {{rate}} · ingen månedlig termin",
-    "withFixation": " bundet til {{month}}",
+    "description": "Hovedstol {{principal}} siden {{month, lower}} · {{rate}}{{fixation}} · termin {{payment}} i måneden",
+    "descriptionNoPayment": "Hovedstol {{principal}} siden {{month, lower}} · {{rate}} · ingen månedlig termin",
+    "withFixation": " bundet til {{month, lower}}",
     "status": {
       "automatic": "Saldo etter plan",
       "manual": "Saldo etter plan · fra saldoen din per {{date}}",
@@ -179,7 +179,7 @@
       "paidOff": "Nedbetalt",
       "noPayoff": "aldri med nåværende termin",
       "noPayment": "uten termin faller ikke saldoen",
-      "balanceAtEnd": "til {{month}} · {{amount}} igjen ved sluttdatoen"
+      "balanceAtEnd": "til {{month, lower}} · {{amount}} igjen ved sluttdatoen"
     },
     "horizon": {
       "past": "Til nå",
@@ -198,7 +198,7 @@
       "tipSchedule": "etter plan",
       "notePast": "Siden {{date}}: {{principal}} av hovedstolen nedbetalt og {{interest}} betalt i renter",
       "note5": "Saldo om 5 år {{amount}}",
-      "note5Fixation": "Saldo om 5 år {{amount}} · bindingstiden utløper {{month}}",
+      "note5Fixation": "Saldo om 5 år {{amount}} · bindingstiden utløper {{month, lower}}",
       "noteAll": "Til nedbetalt betaler du fortsatt {{total}}, hvorav {{interest}} er renter",
       "noteNoPayoff": "Med nåværende termin blir lånet aldri nedbetalt",
       "events": {
@@ -228,7 +228,7 @@
       "nextPayment": "Neste termin",
       "nextPaymentNote": "renter {{interest}} · avdrag {{principal}}",
       "noSchedule": "ingen plan",
-      "remainingToEnd": "til {{month}} · {{amount}} igjen · {{interest}} i renter gjenstår å betale"
+      "remainingToEnd": "til {{month, lower}} · {{amount}} igjen · {{interest}} i renter gjenstår å betale"
     },
     "schedule": {
       "title": "Nedbetalingsplan",
@@ -266,9 +266,9 @@
         "payment": "Senk terminen"
       },
       "termResult": "Nedbetalt {{duration}} tidligere",
-      "termNote": "Du sparer {{interest}} i renter · terminen forblir {{payment}} · slutter {{month}}",
+      "termNote": "Du sparer {{interest}} i renter · terminen forblir {{payment}} · slutter {{month, lower}}",
       "paymentResult": "Terminen synker med {{amount}} i måneden",
-      "paymentNote": "Ny termin {{payment}} · løpetiden forblir til {{month}} · renter lavere med {{interest}}",
+      "paymentNote": "Ny termin {{payment}} · løpetiden forblir til {{month, lower}} · renter lavere med {{interest}}",
       "noEffect": "Skriv inn et beløp opptil saldoen på {{amount}}.",
       "noPayment": "Uten en månedlig termin kan effekten ikke beregnes – legg den til ved å redigere lånet.",
       "record": "Registrer som gjennomført"
@@ -309,7 +309,7 @@
       "payment": "Senke terminen",
       "alertTitle": "Saldoen synker til {{amount}}",
       "alertTerm": "Nedbetalt {{duration}} tidligere, med {{interest}} spart i renter.",
-      "alertPayment": "Ny termin {{payment}} i måneden, løpetiden forblir til {{month}}.",
+      "alertPayment": "Ny termin {{payment}} i måneden, løpetiden forblir til {{month, lower}}.",
       "alertTooMuch": "Beløpet overstiger saldoen på {{amount}}.",
       "alertEmpty": "Skriv inn et beløp for å se effekten.",
       "submit": "Registrer innbetaling"
@@ -322,7 +322,7 @@
       "paymentHint": "Tom = terminen forblir {{amount}}",
       "date": "Gjelder fra",
       "alertTitle": "Månedlige renter {{from}} → {{to}}",
-      "alertNote": "Med en termin på {{payment}} er lånet nedbetalt {{month}}.",
+      "alertNote": "Med en termin på {{payment}} er lånet nedbetalt {{month, lower}}.",
       "alertNoPayoff": "En termin på {{payment}} dekker ikke rentene; saldoen ville ikke falt.",
       "submit": "Registrer endring"
     },

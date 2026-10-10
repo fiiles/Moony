@@ -26,15 +26,17 @@ Brokers / IBKR, Revolut, Degiro, Fio, Air Bank, …), keyboard keys.
 - Keep labels short: buttons, menu items, table headers and tabs must stay about as long as
   the English. Prefer the shorter of two correct renderings.
 - `{{variables}}` keep their exact names and stay in the string; move them where the grammar
-  needs. `{{month, lower}}` lower-cases a month label: keep the `, lower` only where the
-  language writes month names lower-case mid-sentence (es, it, nb, pl, sv); German drops it
-  (`{{month}}`), Japanese and Chinese drop it.
+  needs. `{{month, lower}}` lower-cases a month label: es, it, nb, pl and sv write
+  `{{month, lower}}` wherever the month is not the first word of the string; de, ja and zh
+  never use `, lower`.
 - Plurals: give exactly the forms `Intl.PluralRules` lists for the language —
   de/nb/sv `_one` `_other`; es/it `_one` `_many` `_other` (`_many` = same text as
   `_other`); pl `_one` `_few` `_many` `_other`; ja/zh only `_other`. Keep a `_zero` key
   wherever English has one. A key that is not a plural in English (e.g. `cat_other`, the
   "Other" category) stays a plain key.
 - Numbers, dates and money are formatted by the app — never write them out in a string.
+- `<b>…</b>` and `<link>…</link>` in a string are React components (`<Trans>`): keep each
+  tag pair, translate the text inside, move the pair where the grammar needs it.
 
 ## Core terms
 
@@ -46,7 +48,8 @@ Brokers / IBKR, Revolut, Degiro, Fio, Air Bank, …), keyboard keys.
 | Bank account | Bankkonto | Cuenta bancaria | Conto bancario | Bankkonto | Konto bankowe | Bankkonto | 銀行口座 | 银行账户 |
 | Savings account | Sparkonto | Cuenta de ahorro | Conto deposito | Sparekonto | Konto oszczędnościowe | Sparkonto | 貯蓄口座 | 储蓄账户 |
 | Transaction / payment | Transaktion / Zahlung | Movimiento / pago | Movimento / pagamento | Transaksjon / betaling | Transakcja / płatność | Transaktion / betalning | 取引 / 支払い | 交易 / 付款 |
-| Payee / counterparty | Empfänger | Beneficiario | Beneficiario | Mottaker | Odbiorca | Mottagare | 支払先 | 收款方 |
+| Payee (who is paid) | Empfänger | Beneficiario | Beneficiario | Mottaker | Odbiorca | Mottagare | 支払先 | 收款方 |
+| Counterparty (the other side, in or out) | Gegenpartei | Contraparte | Controparte | Motpart | Kontrahent | Motpart | 取引相手 | 交易对方 |
 | Category | Kategorie | Categoría | Categoria | Kategori | Kategoria | Kategori | カテゴリ | 类别 |
 | Categorization rules | Kategorisierungsregeln | Reglas de categorización | Regole di categorizzazione | Kategoriseringsregler | Reguły kategoryzacji | Kategoriseringsregler | 分類ルール | 分类规则 |
 | Budget | Budget | Presupuesto | Budget | Budsjett | Budżet | Budget | 予算 | 预算 |

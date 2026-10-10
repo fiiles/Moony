@@ -395,8 +395,7 @@
   "planning": {
     "eyebrow": "Plan",
     "title": "Cashflow-Planung",
-    "subtitle": "Geschätzte wiederkehrende Einnahmen und Ausgaben. Die tatsächlichen Flüsse Ihrer Konten finden Sie unter",
-    "link": "Cashflow",
+    "subtitleLinked": "Geschätzte wiederkehrende Einnahmen und Ausgaben. Die tatsächlichen Flüsse Ihrer Konten finden Sie unter <link>Cashflow →</link>",
     "status": "Automatische Posten aus Krediten, Versicherungen, Immobilien und Aktien",
     "addItem": "Posten hinzufügen",
     "deleteItem": "Posten löschen",
@@ -450,8 +449,7 @@
   "actuals": {
     "eyebrow": "Bericht",
     "title": "Cashflow",
-    "subtitle": "Tatsächliche Einnahmen und Ausgaben aller Konten im gewählten Zeitraum. Die wiederkehrenden Posten, mit denen Sie rechnen, stehen unter",
-    "link": "Cashflow-Planung",
+    "subtitleLinked": "Tatsächliche Einnahmen und Ausgaben aller Konten im gewählten Zeitraum. Die wiederkehrenden Posten, mit denen Sie rechnen, stehen unter <link>Cashflow-Planung →</link>",
     "transactions_one": "{{count}} Transaktion",
     "transactions_other": "{{count}} Transaktionen",
     "export": "Exportieren",

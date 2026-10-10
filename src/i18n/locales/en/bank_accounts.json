@@ -352,7 +352,7 @@
       "summary_one": "{{count}} transaction from {{from}} to {{to}}.",
       "summary_other": "{{count}} transactions from {{from}} to {{to}}.",
       "nothing": "Nothing was imported.",
-      "balance": "Statement balance as of {{date}}: {{balance}}.",
+      "statementBalance": "Statement balance as of {{date}}: <b>{{balance}}</b>.",
       "imported": "Imported",
       "duplicates": "Duplicates",
       "errors": "Errors",

@@ -26,9 +26,7 @@
       "extraHint": "Jednou za rok navíc k pravidelným splátkám, bez sankce."
     },
     "insight": {
-      "extraYearly": "{{extra}} navíc ročně",
-      "shortens": "zkrátí splácení o {{years}} a ušetří",
-      "onInterest": "na úrocích. Kalendář níže ukazuje variantu bez mimořádných splátek.",
+      "summary": "<b>{{extra}} navíc ročně</b> zkrátí splácení o {{years}} a ušetří <b>{{saving}}</b> na úrocích. Kalendář níže ukazuje variantu bez mimořádných splátek.",
       "noExtra": "Zadejte mimořádnou splátku a uvidíte, o kolik let a kolik na úrocích ušetříte."
     },
     "hero": {

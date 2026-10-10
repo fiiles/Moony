@@ -189,10 +189,10 @@
     "usageUnavailable": "Budsjettbruk er utilgjengelig",
     "absoluteShare": "Andel av gruppenes absolutte beløp",
     "signedUnbudgetedTotal": "Netto utgifter uten budsjett: {{amount}}",
-    "effectiveMonthPrefill": "Beløpet viser grensen som gjelder i {{month}}. Lagrer du det, endres grensen fra den måneden; tidligere måneder beholder sine.",
+    "effectiveMonthPrefill": "Beløpet viser grensen som gjelder i {{month, lower}}. Lagrer du det, endres grensen fra den måneden; tidligere måneder beholder sine.",
     "scheduledHeading": "Planlagte endringer",
-    "scheduledLimit": "Fra {{month}}: {{amount}}",
-    "scheduledRemoval": "Fra {{month}}: ingen grense",
+    "scheduledLimit": "Fra {{month, lower}}: {{amount}}",
+    "scheduledRemoval": "Fra {{month, lower}}: ingen grense",
     "noChange": "Grensen er uendret; ingenting ble lagret."
   }
 }

@@ -98,7 +98,7 @@
     "amount": "Belopp",
     "type": "Typ",
     "description": "Beskrivning",
-    "counterparty": "Mottagare",
+    "counterparty": "Motpart",
     "detail": "Detaljer",
     "category": "Kategori",
     "credit": "Inkommande",
@@ -107,7 +107,7 @@
     "descriptionPlaceholder": "t.ex. Veckoinköp av mat",
     "counterpartyPlaceholder": "t.ex. ICA",
     "addDescription": "Lägg till en ny transaktion manuellt.",
-    "counterpartyIban": "Mottagarens kontonummer / IBAN",
+    "counterpartyIban": "Motpartens kontonummer / IBAN",
     "delete": "Ta bort transaktion"
   },
   "metrics": {
@@ -185,8 +185,8 @@
     "dateFormat": "Datumformat",
     "amountColumn": "Beloppskolumn",
     "descriptionColumn": "Beskrivningskolumn",
-    "counterpartyColumn": "Mottagarkolumn",
-    "counterpartyIbanColumn": "Mottagarens kontonummer / IBAN",
+    "counterpartyColumn": "Motpartskolumn",
+    "counterpartyIbanColumn": "Motpartens kontonummer / IBAN",
     "descriptionColumns": "Beskrivningskolumner",
     "descriptionColumnsHelp": "Välj alla tillgängliga beskrivande fält (t.ex. meddelande, anteckning, syfte) för bättre automatisk kategorisering.",
     "selectColumn": "Välj kolumn",
@@ -352,7 +352,7 @@
       "summary_one": "{{count}} transaktion från {{from}} till {{to}}.",
       "summary_other": "{{count}} transaktioner från {{from}} till {{to}}.",
       "nothing": "Ingenting importerades.",
-      "balance": "Saldo enligt kontoutdraget per {{date}}: {{balance}}.",
+      "statementBalance": "Saldo enligt kontoutdraget per {{date}}: <b>{{balance}}</b>.",
       "imported": "Importerade",
       "duplicates": "Dubbletter",
       "errors": "Fel",
@@ -455,7 +455,7 @@
     "retargetRuleScope": "Går före inlärda val; gäller överallt där den matchar.",
     "editRule": "Redigera regel →",
     "ownAccountNote": "Överföring mellan dina egna konton – kategoriseras automatiskt.",
-    "notLearnable": "Kan inte komma ihåg – betalningen saknar mottagare eller kontonummer.",
+    "notLearnable": "Kan inte komma ihåg – betalningen saknar motpart eller kontonummer.",
     "learnedApplied_one": "Inlärt · {{count}} annan betalning kategoriserad",
     "learnedApplied_other": "Inlärt · {{count}} andra betalningar kategoriserade",
     "ruleRetargeted": "Regeln ”{{rule}}” tilldelar nu {{category}}",
@@ -579,7 +579,7 @@
     "footer_other": "{{count}} transaktioner"
   },
   "readiness": {
-    "learningScope": "Gäller bara för det här kontot och den här riktningen, och bara om du väljer det. Matchar mottagarens fullständiga konto, eller den här mottagaren när inget tillförlitligt konto finns.",
+    "learningScope": "Gäller bara för det här kontot och den här riktningen, och bara om du väljer det. Matchar motpartens fullständiga konto, eller den här mottagaren när inget tillförlitligt konto finns.",
     "categoryRole": "Roll i rapporter",
     "roleImpact": "Inkomst och utgift utgör inkomst- och utgiftsrapporten. En överföring räknas som ingetdera: investera, spara, flytta pengar mellan konton.",
     "flow": {
@@ -615,7 +615,7 @@
     "signedAmount": "Ett belopp med tecken",
     "separateAmounts": "Separata kolumner för utgående / inkommande",
     "mappingHelp": "Använd ett belopp med tecken (+ inkommande, − utgående), eller kolumner för utgående och inkommande. Kolumnen med tecken har företräde om båda layouterna är valda.",
-    "provenanceMappingHelp": "Efter importen erbjuder vi kontoutdragets utgående saldo som kontots nya saldo. Bankens transaktions-ID identifierar dubbletter på ett tillförlitligt sätt. Valutan anger vilken valuta beloppen är i; utan den gäller kontots valuta. Mottagarens konto, bankkod och land är valfria; en saknad bankkod gissas aldrig.",
+    "provenanceMappingHelp": "Efter importen erbjuder vi kontoutdragets utgående saldo som kontots nya saldo. Bankens transaktions-ID identifierar dubbletter på ett tillförlitligt sätt. Valutan anger vilken valuta beloppen är i; utan den gäller kontots valuta. Motpartens konto, bankkod och land är valfria; en saknad bankkod gissas aldrig.",
     "confirmDateFormat": "Bekräfta valt datumformat",
     "balanceBlocked": "Det här kontoutdragets saldo använder andra enheter eller är äldre än den nuvarande daterade referensen; det kan inte ersätta den.",
     "statementAsOf": "Saldo enligt kontoutdraget per {{date}}",
@@ -658,10 +658,10 @@
     "excludedForeign_other": "{{count}} rörelser i utländsk valuta utan kurs utelämnas från totalen",
     "advancedColumns": "Avancerade kolumner",
     "advancedColumnsHelp": "Valfritt. Koppla dem bara om filen har en sådan kolumn; lämna annars ”används inte”.",
-    "bankCodeColumn": "Mottagarens bankkod",
+    "bankCodeColumn": "Motpartens bankkod",
     "bankCodeHint": "Bankkod för ett inhemskt kontonummer, t.ex. 0800. Behövs för att känna igen överföringar mellan dina egna konton; en saknad kod gissas aldrig.",
-    "countryColumn": "Mottagarens land",
-    "countryHint": "Land för mottagarens konto, t.ex. CZ. Hjälper till att läsa inhemska kontonummer rätt.",
+    "countryColumn": "Motpartens land",
+    "countryHint": "Land för motpartens konto, t.ex. CZ. Hjälper till att läsa inhemska kontonummer rätt.",
     "deleteBatchPromoted_one": "{{count}} väntande post från en tidigare import som den här importen bokförde förblir bokförd med den här importens data.",
     "deleteBatchPromoted_other": "{{count}} väntande poster från tidigare importer som den här importen bokförde förblir bokförda med den här importens data."
   }

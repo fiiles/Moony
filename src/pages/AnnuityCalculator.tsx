@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 import { ChevronDown } from 'lucide-react';
 import { useCurrency } from '@/lib/currency';
 import { useFormat } from '@/lib/use-format';
@@ -295,16 +295,16 @@ export default function AnnuityCalculator() {
             />
             <div className="rounded-[10px] bg-well px-[14px] py-3 text-table leading-[1.5] text-ink-2">
               {withExtra && extraYears ? (
-                <>
-                  <b className="font-650 text-ink">
-                    {t('annuity.insight.extraYearly', { extra: money(X) })}
-                  </b>{' '}
-                  {t('annuity.insight.shortens', {
+                <Trans
+                  t={t}
+                  i18nKey="annuity.insight.summary"
+                  values={{
+                    extra: money(X),
                     years: yearsText(baseYears.length - extraYears.length),
-                  })}{' '}
-                  <b className="font-650 text-ink">{money(saving)}</b>{' '}
-                  {t('annuity.insight.onInterest')}
-                </>
+                    saving: money(saving),
+                  }}
+                  components={{ b: <b className="font-650 text-ink" /> }}
+                />
               ) : (
                 t('annuity.insight.noExtra')
               )}

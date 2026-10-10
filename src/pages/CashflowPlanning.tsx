@@ -6,7 +6,7 @@ import { translateApiError } from '@/lib/translate-api-error';
 import { useMemo, useState, type ReactNode } from 'react';
 import { Link } from 'wouter';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { Pencil, Plus, Repeat, Trash2 } from 'lucide-react';
 import type {
@@ -408,15 +408,18 @@ export default function CashflowPlanning() {
       eyebrow={t('planning.eyebrow')}
       title={t('planning.title')}
       description={
-        <>
-          {t('planning.subtitle')}{' '}
-          <Link
-            href="/reports/cashflow"
-            className="font-650 text-ink-2 underline-offset-[3px] hover:text-ink hover:underline"
-          >
-            {t('planning.link')} →
-          </Link>
-        </>
+        <Trans
+          t={t}
+          i18nKey="planning.subtitleLinked"
+          components={{
+            link: (
+              <Link
+                href="/reports/cashflow"
+                className="font-650 text-ink-2 underline-offset-[3px] hover:text-ink hover:underline"
+              />
+            ),
+          }}
+        />
       }
       actions={
         <>

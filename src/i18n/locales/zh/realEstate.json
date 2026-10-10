@@ -21,7 +21,7 @@
     "excludedNote": "自住房 {{amount}} 不计入净资产",
     "includedNote": "含自住房 {{amount}}",
     "appreciationTitle": "增值",
-    "vsPurchase": "对比购入价 {{amount}}",
+    "vsPurchasePct": "对比购入价 {{amount}}：{{percent}}",
     "equity": "权益",
     "equityNote": "房贷 {{amount}} · LTV {{ltv}}",
     "noLoans": "无贷款",
@@ -153,7 +153,7 @@
     "heroEquity": "权益",
     "equityNote": "占价值的 {{share}} · LTV {{ltv}}",
     "equityNoLoan": "无贷款 · 全部价值归您所有",
-    "vsPurchase": "对比购入价",
+    "vsPurchasePct": "对比购入价 {{percent}}",
     "chart": {
       "value": "市场价值",
       "purchase": "购入价",

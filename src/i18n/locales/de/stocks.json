@@ -27,11 +27,11 @@
     "updatedToday": "heute aktualisiert",
     "updatedOn": "aktualisiert {{date}}",
     "notUpdated": "Kurse noch nicht abgerufen",
-    "vsInvested": "ggü. Investition",
+    "vsInvestedPct": "{{percent}} ggü. Investition",
     "realizedNote": "realisiert {{amount}}",
     "next12Months": "in den nächsten 12 Monaten",
     "topPosition": "Beste Position",
-    "overall": "insgesamt",
+    "overallPct": "{{percent}} insgesamt",
     "noPositions": "keine offene Position"
   },
   "table": {
@@ -156,14 +156,14 @@
       "searching": "Suche läuft..."
     },
     "buy": {
-      "title": "Kaufen",
-      "description": "Erfassen Sie einen Kauf für",
+      "titleNamed": "{{name}} kaufen",
+      "descriptionFor": "Erfassen Sie einen Kauf für {{ticker}}.",
       "quantity": "Menge",
       "pricePerShare": "Kurs pro Aktie",
       "addPurchase": "Kauf hinzufügen"
     },
     "sell": {
-      "title": "Verkaufen",
+      "titleNamed": "{{name}} verkaufen",
       "description": "Erfassen Sie einen Verkauf dieser Position.",
       "transactionDetails": "Transaktionsdetails",
       "pricePerShare": "Kurs pro Aktie",
@@ -294,12 +294,12 @@
     "avgBuyPrice": "durchschnittlicher Kaufkurs {{price}}",
     "lastBuy": "letzter Kauf {{date}}",
     "positionValue": "Positionswert",
-    "sinceBuy": "seit Kauf",
+    "sinceBuyPct": "{{percent}} seit Kauf",
     "currentPrice": "Aktueller Kurs",
     "invested": "Investiert",
     "avgShort": "Ø {{price}}",
     "unrealized": "Nicht realisierte Rendite",
-    "vsInvested": "ggü. Investition",
+    "vsInvestedPct": "{{percent}} ggü. Investition",
     "realized": "Realisierte Rendite",
     "sells_one": "{{count}} Verkauf",
     "sells_other": "{{count}} Verkäufe",

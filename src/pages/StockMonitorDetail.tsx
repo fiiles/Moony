@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Link, useRoute } from 'wouter';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 import { Eye, Plus, RefreshCw } from 'lucide-react';
 import { currencyDecimals } from '@shared/currencies';
 import { exchangeName } from '@/utils/exchange-names';
@@ -568,14 +568,25 @@ export default function StockMonitorDetail() {
               <p className="mt-1.5 text-caption text-ink-3">
                 {sinceChange && watchPrice !== null ? (
                   <>
-                    {t('detail.since.text', {
-                      days: t('detail.since.days', { count: sinceDays }),
-                      price: price(watchPrice),
-                    })}{' '}
-                    <b className={cn('font-650', sinceChange.abs >= 0 ? 'text-gain' : 'text-loss')}>
-                      {fmt.percent(sinceChange.pct / 100, 1, { signed: true })}
-                    </b>
-                    .
+                    <Trans
+                      t={t}
+                      i18nKey="detail.since.change"
+                      values={{
+                        days: t('detail.since.days', { count: sinceDays }),
+                        price: price(watchPrice),
+                        change: fmt.percent(sinceChange.pct / 100, 1, { signed: true }),
+                      }}
+                      components={{
+                        b: (
+                          <b
+                            className={cn(
+                              'font-650',
+                              sinceChange.abs >= 0 ? 'text-gain' : 'text-loss'
+                            )}
+                          />
+                        ),
+                      }}
+                    />
                     {hasTarget && currentValue !== null && !reachedTarget && (
                       <>
                         {' '}

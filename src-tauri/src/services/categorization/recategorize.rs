@@ -198,7 +198,8 @@ pub fn apply(
 }
 
 /// Put back what `apply` changed. Rows deleted meanwhile are skipped; a
-/// previous category deleted meanwhile becomes "no category".
+/// previous category deleted meanwhile becomes "no category", and the previous
+/// source goes with it (provenance never outlives the category it described).
 pub fn restore(conn: &Connection, rows: &[ChangedRow]) -> Result<usize> {
     let mut restored = 0;
     for row in rows {
@@ -206,9 +207,10 @@ pub fn restore(conn: &Connection, rows: &[ChangedRow]) -> Result<usize> {
             Some(c) if category_exists(conn, c)? => Some(c),
             _ => None,
         };
+        let source = category.and(row.previous_source.as_deref());
         restored += conn.execute(
             "UPDATE bank_transactions SET category_id = ?1, categorization_source = ?2 WHERE id = ?3",
-            params![category, row.previous_source, row.id],
+            params![category, source, row.id],
         )?;
     }
     Ok(restored)
@@ -308,7 +310,9 @@ pub fn retarget_custom_rule(
         params![category_id, rule_id],
     )?;
     rule.category_id = category_id.to_string();
-    let changed = if apply_history {
+    // The live engine loads only active rules, so an inactive one never reached
+    // any payment: retargeting it must not rewrite history either.
+    let changed = if apply_history && rule.is_active {
         let rows = matching_rows(&tx, &Matcher::Custom(rule), None)?;
         apply(&tx, &rows, category_id, SOURCE_RULE)?
     } else {
@@ -742,6 +746,70 @@ mod tests {
         assert_eq!(
             category_of(&conn, "t2"),
             (Some("cat_gifts".into()), Some("rule".into()))
+        );
+    }
+
+    #[test]
+    fn restore_drops_the_source_when_the_previous_category_is_gone() {
+        let conn = setup();
+        insert_tx(
+            &conn,
+            "t1",
+            "acc-1",
+            "debit",
+            "Albert",
+            Some("cat_dining"),
+            Some("rule"),
+        );
+        let rows = matching_rows(&conn, &Matcher::Learned(albert_scope()), None).unwrap();
+        let changed = apply(&conn, &rows, "cat_groceries", SOURCE_EXACT_MATCH).unwrap();
+        assert_eq!(changed.len(), 1);
+        conn.execute(
+            "DELETE FROM transaction_categories WHERE id = 'cat_dining'",
+            [],
+        )
+        .unwrap();
+        assert_eq!(restore(&conn, &changed).unwrap(), 1);
+        assert_eq!(
+            category_of(&conn, "t1"),
+            (None, None),
+            "no category, so no provenance either"
+        );
+    }
+
+    #[test]
+    fn retarget_with_history_leaves_an_inactive_rule_alone() {
+        let conn = setup();
+        conn.execute(
+            "INSERT INTO categorization_rules (id, name, rule_type, pattern, category_id, is_active)
+             VALUES ('r_off', 'Vypnuto', 'contains', 'albert', 'cat_dining', 0)",
+            [],
+        ).unwrap();
+        insert_tx(
+            &conn,
+            "t1",
+            "acc-1",
+            "debit",
+            "Albert",
+            Some("cat_dining"),
+            Some("rule"),
+        );
+        let changed = retarget_custom_rule(&conn, "r_off", "cat_gifts", true).unwrap();
+        assert!(
+            changed.is_empty(),
+            "an inactive rule never reached any payment"
+        );
+        let category: String = conn
+            .query_row(
+                "SELECT category_id FROM categorization_rules WHERE id = 'r_off'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(category, "cat_gifts", "the rule itself is still retargeted");
+        assert_eq!(
+            category_of(&conn, "t1"),
+            (Some("cat_dining".into()), Some("rule".into()))
         );
     }
 

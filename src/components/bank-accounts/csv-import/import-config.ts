@@ -50,9 +50,6 @@ export type DecimalSetting = typeof AUTO_VALUE | ',' | '.';
 /** Everything the user can change on step 2 (column names are CSV header texts, '' = none). */
 export interface MappingState {
   dateColumn: string;
-  valueDateColumn: string;
-  statusColumn: string;
-  pendingDateColumn: string;
   counterpartyBankCodeColumn: string;
   counterpartyCountryColumn: string;
   amountColumn: string;
@@ -73,9 +70,6 @@ export interface MappingState {
 
 export const EMPTY_MAPPING: MappingState = {
   dateColumn: '',
-  valueDateColumn: '',
-  statusColumn: '',
-  pendingDateColumn: '',
   counterpartyBankCodeColumn: '',
   counterpartyCountryColumn: '',
   amountColumn: '',
@@ -107,9 +101,6 @@ export function uniqueHeaders(headers: readonly string[]): string[] {
 /** Maps a `suggestedMappings` role to the `MappingState` field it fills. */
 export const ROLE_FIELDS = {
   date: 'dateColumn',
-  valueDate: 'valueDateColumn',
-  status: 'statusColumn',
-  pendingDate: 'pendingDateColumn',
   counterpartyBankCode: 'counterpartyBankCodeColumn',
   counterpartyCountry: 'counterpartyCountryColumn',
   amount: 'amountColumn',
@@ -130,9 +121,6 @@ export function mappingFromInspection(inspection: CsvPreviewResult): MappingStat
   const column = (role: string) => suggested[role]?.[0] ?? '';
   return {
     dateColumn: column('date'),
-    valueDateColumn: column('valueDate'),
-    statusColumn: column('status'),
-    pendingDateColumn: column('pendingDate'),
     counterpartyBankCodeColumn: column('counterpartyBankCode'),
     counterpartyCountryColumn: column('counterpartyCountry'),
     amountColumn: column('amount'),
@@ -213,9 +201,6 @@ export function buildImportConfig(
     skipRows,
     headerRow: inspection.headerRow,
     dateColumn: mapping.dateColumn,
-    valueDateColumn: mapping.valueDateColumn || null,
-    statusColumn: mapping.statusColumn || null,
-    pendingDateColumn: mapping.pendingDateColumn || null,
     counterpartyBankCodeColumn: mapping.counterpartyBankCodeColumn || null,
     counterpartyCountryColumn: mapping.counterpartyCountryColumn || null,
     dateFormat: mapping.dateFormat || AUTO_VALUE,

@@ -64,12 +64,6 @@ pub struct CsvImportConfig {
     pub header_row: Option<usize>,
     #[serde(rename = "dateColumn")]
     pub date_column: String,
-    #[serde(rename = "valueDateColumn", default)]
-    pub value_date_column: Option<String>,
-    #[serde(rename = "statusColumn", default)]
-    pub status_column: Option<String>,
-    #[serde(rename = "pendingDateColumn", default)]
-    pub pending_date_column: Option<String>,
     /// chrono format (`%d.%m.%Y`). Parsed strictly: a row that does not match
     /// is an error, never re-read as another order. Empty or `auto` detects the
     /// format from the date column.
@@ -147,9 +141,6 @@ impl Default for CsvImportConfig {
             date_column: String::new(),
             counterparty_country_column: None,
             counterparty_bank_code_column: None,
-            value_date_column: None,
-            status_column: None,
-            pending_date_column: None,
             date_format: String::new(),
             amount_column: None,
             debit_column: None,
@@ -248,7 +239,7 @@ pub struct CsvImportResult {
     pub skipped_duplicates: Vec<CsvRowMessage>,
     #[serde(rename = "skippedZero")]
     pub skipped_zero: usize,
-    /// Rows dropped by the row filter or rejected transaction status.
+    /// Rows dropped by the row filter.
     #[serde(rename = "skippedFiltered")]
     pub skipped_filtered: usize,
     /// Booking dates of inserted or promoted rows; `None` without a write.
@@ -288,8 +279,6 @@ pub enum CsvRowStatus {
 /// One row of the preview table.
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct CsvPreviewRow {
-    #[serde(rename = "valueDate")]
-    pub value_date: Option<i64>,
     #[serde(rename = "counterpartyIban")]
     pub counterparty_iban: Option<String>,
     #[serde(rename = "counterpartyBankCode")]
@@ -298,8 +287,6 @@ pub struct CsvPreviewRow {
     pub counterparty_country: Option<String>,
     #[serde(rename = "transactionId")]
     pub transaction_id: Option<String>,
-    #[serde(rename = "transactionStatus")]
-    pub transaction_status: Option<String>,
     #[serde(rename = "rowBalance")]
     pub row_balance: Option<String>,
     #[serde(rename = "canImportAnyway")]

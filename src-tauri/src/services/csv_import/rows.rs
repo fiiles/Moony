@@ -53,7 +53,6 @@ pub struct ParsedRow {
     pub counterparty: Option<String>,
     /// Parsed balance cell (rows that are not errors/filtered only).
     pub balance: Option<f64>,
-    pub transaction_status: Option<String>,
     pub state: RowState,
 }
 
@@ -68,9 +67,6 @@ pub struct ParsedCsv {
 /// Column indexes resolved against the header row.
 struct Columns {
     date: usize,
-    value_date: Option<usize>,
-    status: Option<usize>,
-    pending_date: Option<usize>,
     counterparty_bank_code: Option<usize>,
     counterparty_country: Option<usize>,
 
@@ -128,9 +124,6 @@ impl Columns {
 
         Ok(Columns {
             date,
-            value_date: lookup(headers, &config.value_date_column),
-            status: lookup(headers, &config.status_column),
-            pending_date: lookup(headers, &config.pending_date_column),
             counterparty_bank_code: lookup(headers, &config.counterparty_bank_code_column),
             counterparty_country: lookup(headers, &config.counterparty_country_column),
 
@@ -354,7 +347,6 @@ fn bare_row(line: usize, state: RowState) -> ParsedRow {
         description: None,
         counterparty: None,
         balance: None,
-        transaction_status: None,
         state,
     }
 }
@@ -370,33 +362,12 @@ fn parse_row(
     let cell = |idx: usize| record.get(idx).unwrap_or("").trim();
     let cell_opt = |idx: Option<usize>| idx.and_then(|i| non_empty(cell(i)));
 
-    let pending = cols
-        .status
-        .is_some_and(|i| cell(i).eq_ignore_ascii_case("pending"));
-    // A completed-state export filter may retain explicitly mapped pending
-    // rows. Pending status never bypasses an unrelated inclusion filter.
     if let Some((idx, equals)) = &cols.filter {
         let value = cell(*idx);
-        let keep_pending = pending
-            && cols.status == Some(*idx)
-            && matches!(equals.as_str(), "booked" | "completed");
-        if value.to_lowercase() != *equals && !keep_pending {
+        if value.to_lowercase() != *equals {
             return bare_row(
                 line,
                 RowState::SkippedFiltered(message(line, "csvImport.filteredOut", Some(value))),
-            );
-        }
-    }
-    // Validate mapped status independently after the inclusion filter. A row
-    // that passes any filter still cannot turn an unknown/failed state booked.
-    if let Some(i) = cols.status {
-        if !["pending", "booked", "completed"]
-            .iter()
-            .any(|known| cell(i).eq_ignore_ascii_case(known))
-        {
-            return bare_row(
-                line,
-                RowState::Error(message(line, "validation.statusInvalid", Some(cell(i)))),
             );
         }
     }
@@ -427,16 +398,11 @@ fn parse_row(
         description: description.clone(),
         counterparty: counterparty.clone(),
         balance,
-        transaction_status: Some(if pending { "pending" } else { "booked" }.into()),
         state,
     };
     let error = |key: &str, detail: Option<&str>| RowState::Error(message(line, key, detail));
 
-    let raw_date = if pending && cell(cols.date).is_empty() {
-        cols.pending_date.map(cell).unwrap_or("")
-    } else {
-        cell(cols.date)
-    };
+    let raw_date = cell(cols.date);
     if raw_date.is_empty() {
         return finish(None, None, None, error("validation.dateRequired", None));
     }
@@ -479,18 +445,6 @@ fn parse_row(
         amount_to_text(amount)
     );
 
-    if let Some(i) = cols.value_date {
-        if !cell(i).is_empty()
-            && date_parser::parse_date_to_timestamp_strict(cell(i), date_format).is_none()
-        {
-            return finish(
-                Some(booking_date),
-                Some(signed_amount),
-                balance,
-                error("csvImport.dateUnparseable", Some(cell(i))),
-            );
-        }
-    }
     let insert = InsertBankTransaction {
         flow_kind: None,
         bank_account_id: account_id.to_string(),
@@ -505,11 +459,9 @@ fn parse_row(
         counterparty_bank_code: cell_opt(cols.counterparty_bank_code),
         counterparty_country: cell_opt(cols.counterparty_country),
         booking_date,
-        value_date: cols
-            .value_date
-            .and_then(|i| date_parser::parse_date_to_timestamp_strict(cell(i), date_format)),
+        value_date: None,
         category_id: None,
-        status: Some(if pending { "pending" } else { "booked" }.into()),
+        status: None,
     };
     let state = match insert.validate() {
         // Well-formed but not a currency ("XYZ", a metal or fund code): reject

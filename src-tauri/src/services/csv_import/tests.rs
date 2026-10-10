@@ -566,10 +566,6 @@ fn revolut_pending_rows_are_filtered_and_balance_is_the_last_completed() {
     );
     assert_eq!(mapped(&inspection, "currency").as_deref(), Some("Currency"));
     assert_eq!(mapped(&inspection, "balance").as_deref(), Some("Balance"));
-    // Revolut exports carry no transaction ID, so a pending row could never be
-    // promoted to its booked copy: the preset must not map status/pending date.
-    assert!(mapped(&inspection, "status").is_none());
-    assert!(mapped(&inspection, "pendingDate").is_none());
     assert_eq!(
         inspection.date_format, "%Y-%m-%d",
         "date part of the preset's format"
@@ -1945,7 +1941,6 @@ fn integrity_source_metadata_and_statement_currency_and_date() {
     let mut conn = setup_import_db();
     let mut cfg = basic_config();
     cfg.decimal_separator = Some(".".into());
-    cfg.value_date_column = Some("Value date".into());
     cfg.counterparty_iban_column = Some("Account".into());
     cfg.counterparty_bank_code_column = Some("Kód banky".into());
     cfg.counterparty_country_column = Some("Country".into());
@@ -1963,7 +1958,7 @@ fn integrity_source_metadata_and_statement_currency_and_date() {
     assert_eq!(
         r,
         (
-            Some(1767398400),
+            None,
             "19-2000145399".into(),
             "0800".into(),
             "CZ".into(),
@@ -2077,27 +2072,6 @@ fn integrity_statement_descending_dates_and_same_day_order() {
     }
 }
 
-#[test]
-fn integrity_status_whitelist_and_same_file_pending_promotion() {
-    let mut conn = setup_import_db();
-    let mut cfg = basic_config();
-    cfg.status_column = Some("State".into());
-    cfg.transaction_id_column = Some("ID".into());
-    let csv="Datum;Částka;Popis;State;ID\n01.01.2026;-99;coffee;PENDING;one\n02.01.2026;-99;coffee;COMPLETED;one\n02.01.2026;-99;other;DECLINED;two\n02.01.2026;-99;other;FAILED;three\n02.01.2026;-99;other;REVERTED;four\n02.01.2026;-99;other;surprise;five\n";
-    let p = preview_import(&conn, "acc-1", csv, &cfg, None).unwrap();
-    assert_eq!((p.ok_count, p.promoted_count, p.error_count), (1, 1, 4));
-    let r = import(&mut conn, csv, &cfg);
-    assert_eq!(
-        (r.imported_count, r.promoted_count, r.error_count),
-        (1, 1, 4)
-    );
-    assert_eq!(tx_count(&conn), 1);
-    let status: String = conn
-        .query_row("SELECT status FROM bank_transactions", [], |r| r.get(0))
-        .unwrap();
-    assert_eq!(status, "booked");
-}
-
 /// Final review M-2: an ID-less row listed before the ID-bearing reimport of
 /// the same stored transaction must not be taken for that transaction.
 #[test]
@@ -2137,115 +2111,6 @@ fn integrity_distinct_bank_id_does_not_consume_existing_composite_occurrence() {
 }
 
 #[test]
-fn integrity_zero_pending_balance_is_not_statement_anchor() {
-    let mut conn = setup_import_db();
-    let mut cfg = basic_config();
-    cfg.status_column = Some("State".into());
-    cfg.balance_column = Some("Balance".into());
-    let csv="Datum;Částka;Popis;State;Balance\n01.01.2026;-1;booked;BOOKED;500\n02.01.2026;0;pending;PENDING;999\n";
-    let result = import(&mut conn, csv, &cfg);
-    assert_eq!(result.statement_balance.unwrap().amount, "500");
-}
-
-#[test]
-fn review_round1_unrelated_filter_does_not_disable_status_validation() {
-    let mut conn = setup_import_db();
-    let mut cfg = basic_config();
-    cfg.status_column = Some("State".into());
-    cfg.balance_column = Some("Balance".into());
-    cfg.row_filter = Some(CsvRowFilter {
-        column: "Include".into(),
-        equals: "YES".into(),
-    });
-    let csv = "Datum;Částka;Popis;State;Include;Balance\n01.01.2026;-99;failed;FAILED;YES;999\n01.01.2026;-99;unknown;surprise;YES;999\n01.01.2026;-99;pending;PENDING;YES;999\n";
-    let p = preview_import(&conn, "acc-1", csv, &cfg, None).unwrap();
-    assert_eq!((p.ok_count, p.error_count, p.skipped_count), (1, 2, 0));
-    assert_eq!(
-        p.rows[0].message.as_ref().unwrap().key,
-        "validation.statusInvalid"
-    );
-    assert_eq!(
-        p.rows[1].message.as_ref().unwrap().detail.as_deref(),
-        Some("surprise")
-    );
-    assert_eq!(p.rows[2].transaction_status.as_deref(), Some("pending"));
-    let r = import(&mut conn, csv, &cfg);
-    assert_eq!((r.imported_count, r.error_count), (1, 2));
-    assert!(r.statement_balance.is_none());
-    assert!(r.last_balance.is_none());
-    assert_eq!(tx_count(&conn), 1);
-}
-
-#[test]
-fn review_round1_pending_does_not_bypass_unrelated_filter() {
-    let mut conn = setup_import_db();
-    let mut cfg = basic_config();
-    cfg.status_column = Some("State".into());
-    cfg.row_filter = Some(CsvRowFilter {
-        column: "Include".into(),
-        equals: "YES".into(),
-    });
-    let csv = "Datum;Částka;Popis;State;Include\n01.01.2026;-99;pending;PENDING;NO\n";
-    let p = preview_import(&conn, "acc-1", csv, &cfg, None).unwrap();
-    assert_eq!((p.ok_count, p.skipped_count), (0, 1));
-    let r = import(&mut conn, csv, &cfg);
-    assert_eq!((r.imported_count, r.skipped_filtered), (0, 1));
-    assert_eq!(tx_count(&conn), 0);
-    // A completed-state format filter keeps explicitly mapped pending rows.
-    cfg.row_filter = Some(CsvRowFilter {
-        column: "State".into(),
-        equals: "COMPLETED".into(),
-    });
-    assert_eq!(import(&mut conn, csv, &cfg).imported_count, 1);
-}
-
-#[test]
-fn review_round1_forced_pending_preview_matches_import_and_preserves_category() {
-    let mut conn = setup_import_db();
-    conn.execute("INSERT INTO bank_transactions(id,bank_account_id,tx_type,amount,currency,description,booking_date,status) VALUES ('old','acc-1','debit','99','CZK','coffee',1767225600,'pending')", []).unwrap();
-    let mut cfg = basic_config();
-    cfg.status_column = Some("State".into());
-    cfg.transaction_id_column = Some("ID".into());
-    cfg.import_anyway_lines = vec![2];
-    cfg.category_overrides = vec![CsvCategoryOverride {
-        line: 2,
-        category_id: "cat-1".into(),
-    }];
-    let csv = "Datum;Částka;Popis;State;ID\n01.01.2026;-99;coffee;PENDING;one\n02.01.2026;-99;coffee;COMPLETED;one\n";
-    let p = preview_import(&conn, "acc-1", csv, &cfg, None).unwrap();
-    assert_eq!(
-        (
-            p.ok_count,
-            p.forced_duplicate_count,
-            p.duplicate_count,
-            p.promoted_count
-        ),
-        (0, 1, 1, 1)
-    );
-    assert_eq!(p.rows[0].status, CsvRowStatus::Duplicate);
-    assert!(p.rows[0].can_import_anyway);
-    assert_eq!(p.rows[1].status, CsvRowStatus::Promoted);
-    assert_eq!(p.rows[1].category_id.as_deref(), Some("cat-1"));
-    assert_eq!(p.rows[1].category_source.as_deref(), Some("manual"));
-    let r = import(&mut conn, csv, &cfg);
-    assert_eq!(
-        (
-            r.imported_count,
-            r.duplicate_count,
-            r.promoted_count,
-            r.skipped_duplicates.len()
-        ),
-        (1, 1, 1, 0)
-    );
-    let row:(String,String,Option<String>) = conn.query_row("SELECT status,category_id,categorization_source FROM bank_transactions WHERE transaction_id='one'",[],|r|Ok((r.get(0)?,r.get(1)?,r.get(2)?))).unwrap();
-    assert_eq!(
-        row,
-        ("booked".into(), "cat-1".into(), Some("manual".into()))
-    );
-    assert_eq!(tx_count(&conn), 2);
-}
-
-#[test]
 fn review_round1_legacy_padded_id_pending_promotion_keeps_original_identity() {
     let mut conn = setup_import_db();
     conn.execute("INSERT INTO bank_transactions(id,bank_account_id,transaction_id,tx_type,amount,currency,booking_date,status,category_id,flow_kind) VALUES ('old','acc-1',' \tFIO-123\n ','debit','99','CZK',1767225600,'pending','cat-1','adjustment')", []).unwrap();
@@ -2268,4 +2133,15 @@ fn review_round1_legacy_padded_id_pending_promotion_keeps_original_identity() {
         )
     );
     assert_eq!(tx_count(&conn), 1);
+}
+
+/// Older imports stored the value date; files read without it must still match them.
+#[test]
+fn stored_value_date_does_not_hide_a_duplicate() {
+    let mut conn = setup_import_db();
+    conn.execute("INSERT INTO bank_transactions(id,bank_account_id,tx_type,amount,currency,description,booking_date,value_date,status) VALUES ('old','acc-1','debit','99','CZK','coffee',1767225600,1767312000,'booked')", []).unwrap();
+    let csv = "Datum;Částka;Popis;Datum valuty\n01.01.2026;-99;coffee;02.01.2026\n";
+    let p = preview_import(&conn, "acc-1", csv, &basic_config(), None).unwrap();
+    assert_eq!((p.ok_count, p.duplicate_count), (0, 1));
+    assert_eq!(import(&mut conn, csv, &basic_config()).imported_count, 0);
 }

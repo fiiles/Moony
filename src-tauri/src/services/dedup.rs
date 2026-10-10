@@ -105,9 +105,10 @@ fn composite_key(t: &crate::models::InsertBankTransaction, currency: &str) -> St
         }
     });
     // JSON tuples avoid delimiter collisions in descriptions and identifiers.
+    // No value date: the CSV import stopped reading it, and rows stored with
+    // one must still match the same row read again without it.
     serde_json::json!([
         t.booking_date,
-        t.value_date,
         canonical_amount(&t.amount),
         t.currency
             .as_deref()

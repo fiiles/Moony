@@ -41,7 +41,6 @@
     "deleteSuccess": "Rule deleted successfully",
     "bulkDeleteSuccess_one": "{{count}} rule deleted",
     "bulkDeleteSuccess_other": "{{count}} rules deleted",
-    "updateCategorySuccess": "Category updated successfully",
     "selectAll": "Select All",
     "selected": "{{count}} selected",
     "noMatching": "No learned rules match your search or filter",
@@ -217,6 +216,21 @@
       "title": "Forget selected rules",
       "description_one": "Forget {{count}} selected rule? Its counterparty is no longer categorized automatically.",
       "description_other": "Forget {{count}} selected rules? Their counterparties are no longer categorized automatically."
+    },
+    "categoryChanged": "Rule category changed",
+    "history": {
+      "title": "Also categorize other payments?",
+      "description_one": "The rule for \"{{payee}}\" ({{account}} · {{direction}}) now assigns {{category}}. It covers {{count}} other payment: {{breakdown}}.",
+      "description_other": "The rule for \"{{payee}}\" ({{account}} · {{direction}}) now assigns {{category}}. It covers {{count}} other payments: {{breakdown}}.",
+      "onlyNew": "Only new payments",
+      "apply_one": "Categorize {{count}} payment",
+      "apply_other": "Categorize {{count}} payments",
+      "applied_one": "{{count}} other payment categorized",
+      "applied_other": "{{count}} other payments categorized",
+      "undo": "Undo",
+      "restored": "Changed payments restored ({{count}})",
+      "uncategorized": "no category",
+      "more": "+{{count}} more"
     }
   },
   "packTab": {

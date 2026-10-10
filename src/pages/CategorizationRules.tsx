@@ -13,6 +13,7 @@ import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { Pencil, Plus, Search, X } from 'lucide-react';
 import type {
+  ChangedRow,
   CustomRule,
   LearnedPayeeEntry,
   RuleHitCount,
@@ -28,6 +29,16 @@ import { PageHead } from '@/components/shell/PageHead';
 import { Stat, Stats } from '@/components/common/Stat';
 import { ConfirmDeleteDialog } from '@/components/common/ConfirmDeleteDialog';
 import { CategoryChip, CategoryPick } from '@/components/common/CategoryPick';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -73,7 +84,8 @@ import {
   ruleTypeKey,
   topRule,
 } from '@/utils/rule-hits';
-import { RULES_PAGE_PATH, parseNewRuleSearch } from '@/utils/rules-link';
+import { changedByPick, formatBreakdown } from '@/utils/recategorization';
+import { RULES_PAGE_PATH, parseEditRuleSearch, parseNewRuleSearch } from '@/utils/rules-link';
 import { cn } from '@/lib/utils';
 
 type Tab = 'custom' | 'learned' | `pack:${string}`;
@@ -87,15 +99,20 @@ export default function CategorizationRules() {
   const queryClient = useQueryClient();
   const { categories } = useCategories();
   const categoryName = useCategoryName();
+  const { accounts } = useBankAccounts();
 
   // A link like `?new=1&payee=…&category=…` (a transaction row's "Create a rule" button) opens
-  // the new-rule dialog prefilled (RUL-03); read once on arrival, then cleaned from the URL.
+  // the new-rule dialog prefilled (RUL-03); `?edit=<ruleId>` (the ledger's "Edit rule") opens that
+  // custom rule's editor. Both are read once on arrival, then cleaned from the URL.
   const search = useSearch();
   const [, setLocation] = useLocation();
   const [linkedNewRule] = useState(() => parseNewRuleSearch(search));
+  const [linkedEditId] = useState(() => parseEditRuleSearch(search));
+  // The link's editor is derived from the loaded rules; closing it ends the link for good.
+  const [editLinkClosed, setEditLinkClosed] = useState(false);
   useEffect(() => {
-    if (linkedNewRule) setLocation(RULES_PAGE_PATH, { replace: true });
-  }, [linkedNewRule, setLocation]);
+    if (linkedNewRule || linkedEditId) setLocation(RULES_PAGE_PATH, { replace: true });
+  }, [linkedNewRule, linkedEditId, setLocation]);
 
   const [selectedTab, setSelectedTab] = useState<Tab>('custom');
   const [query, setQuery] = useState('');
@@ -109,6 +126,11 @@ export default function CategorizationRules() {
     | { kind: 'custom'; rule: CustomRule }
     | null
   >(null);
+  const [pendingHistory, setPendingHistory] = useState<{
+    id: string;
+    count: number;
+    description: string;
+  } | null>(null);
   const [ruleDialogOpen, setRuleDialogOpen] = useState(linkedNewRule !== null);
   const [editingRule, setEditingRule] = useState<CustomRule | null>(null);
   const [rulePrefill, setRulePrefill] = useState<RuleEditPrefill | null>(() =>
@@ -134,6 +156,11 @@ export default function CategorizationRules() {
     queryKey: ['rulePacks'],
     queryFn: () => categorizationApi.getRulePacks(),
   });
+  // System rules have no editor (their row has no edit button), so a link to one opens nothing.
+  const linkedEditRule =
+    linkedEditId && !editLinkClosed
+      ? customRules.find((r) => r.id === linkedEditId && !r.isSystem)
+      : undefined;
   const enabledPacks = rulePacks.filter((p) => p.enabled);
   // A pack tab whose pack was disabled in Settings no longer exists: show the first tab instead.
   const selectedPackId = packIdFromTab(selectedTab);
@@ -254,12 +281,64 @@ export default function CategorizationRules() {
     },
     onError,
   });
+  // Changing a learned rule's category: the rule is updated first, then, when it also covers
+  // payments in other categories, the page offers to recategorize them (the dialog below).
   const updateLearnedCategory = useMutation({
-    mutationFn: ({ id, categoryId }: { id: string; categoryId: string }) =>
-      categorizationApi.updateLearnedPayeeCategory(id, categoryId),
-    onSuccess: async () => {
+    mutationFn: async ({ id, categoryId }: { id: string; categoryId: string }) => {
+      await categorizationApi.updateLearnedPayeeCategory(id, categoryId);
+      const preview = await categorizationApi.previewLearnedRuleHistory(id);
+      return { id, categoryId, preview };
+    },
+    onSuccess: async ({ id, categoryId, preview }) => {
       await invalidateAll();
-      toast(t('learnedRules.updateCategorySuccess'));
+      toast(t('learnedTab.categoryChanged'));
+      const count = changedByPick(preview, categoryId);
+      if (count === 0) return;
+      const rule = learnedRules.find((r) => r.id === id);
+      setPendingHistory({
+        id,
+        count,
+        description: t('learnedTab.history.description', {
+          count,
+          payee:
+            rule?.normalizedPayee ||
+            rule?.originalPayee ||
+            formatIbanDisplay(rule?.counterpartyIban ?? null) ||
+            '—',
+          account: accounts.find((a) => a.id === rule?.bankAccountId)?.name ?? '—',
+          direction: t(rule?.isCredit ? 'incoming' : 'outgoing').toLowerCase(),
+          category: nameOf(categoryId),
+          breakdown: formatBreakdown(preview.byCategory, nameOf, {
+            uncategorized: t('learnedTab.history.uncategorized'),
+            more: (n) => t('learnedTab.history.more', { count: n }),
+          }),
+        }),
+      });
+    },
+    onError,
+  });
+  const applyHistory = useMutation({
+    mutationFn: (id: string) => categorizationApi.applyLearnedRuleToHistory(id),
+    onSuccess: async (changed: ChangedRow[]) => {
+      await invalidateAll();
+      setPendingHistory(null);
+      toast(t('learnedTab.history.applied', { count: changed.length }), {
+        duration: 8000,
+        action: {
+          label: t('learnedTab.history.undo'),
+          onClick: () => {
+            void (async () => {
+              try {
+                const restored = await categorizationApi.restoreTransactionCategories(changed);
+                await invalidateAll();
+                toast(t('learnedTab.history.restored', { count: restored }));
+              } catch (error) {
+                onError(error as Error);
+              }
+            })();
+          },
+        },
+      });
     },
     onError,
   });
@@ -862,18 +941,49 @@ export default function CategorizationRules() {
         }
       />
 
+      <AlertDialog
+        open={pendingHistory !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingHistory(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('learnedTab.history.title')}</AlertDialogTitle>
+            <AlertDialogDescription>{pendingHistory?.description}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={applyHistory.isPending}>
+              {t('learnedTab.history.onlyNew')}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                if (pendingHistory) applyHistory.mutate(pendingHistory.id);
+              }}
+              disabled={applyHistory.isPending}
+            >
+              {applyHistory.isPending
+                ? tc('status.saving')
+                : t('learnedTab.history.apply', { count: pendingHistory?.count ?? 0 })}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Keyed by rule id so the form remounts with fresh state */}
       <RuleEditDialog
-        key={editingRule?.id ?? (rulePrefill ? 'prefilled' : 'new')}
-        open={ruleDialogOpen}
+        key={(editingRule ?? linkedEditRule)?.id ?? (rulePrefill ? 'prefilled' : 'new')}
+        open={ruleDialogOpen || linkedEditRule !== undefined}
         onOpenChange={(open) => {
           setRuleDialogOpen(open);
           if (!open) {
             setEditingRule(null);
             setRulePrefill(null);
+            setEditLinkClosed(true);
           }
         }}
-        rule={editingRule}
+        rule={editingRule ?? linkedEditRule ?? null}
         prefill={rulePrefill}
         categories={categories}
       />

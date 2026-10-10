@@ -43,7 +43,6 @@
     "bulkDeleteSuccess_one": "{{count}} pravidlo smazáno",
     "bulkDeleteSuccess_few": "{{count}} pravidla smazána",
     "bulkDeleteSuccess_other": "{{count}} pravidel smazáno",
-    "updateCategorySuccess": "Kategorie úspěšně aktualizována",
     "selectAll": "Vybrat vše",
     "selected": "{{count}} vybráno",
     "noMatching": "Hledání ani filtru neodpovídá žádné naučené pravidlo",
@@ -221,6 +220,24 @@
       "description_one": "Zapomenout {{count}} vybrané pravidlo? Protistrany se příště nezařadí automaticky.",
       "description_few": "Zapomenout {{count}} vybraná pravidla? Protistrany se příště nezařadí automaticky.",
       "description_other": "Zapomenout {{count}} vybraných pravidel? Protistrany se příště nezařadí automaticky."
+    },
+    "categoryChanged": "Kategorie pravidla změněna",
+    "history": {
+      "title": "Zařadit i další platby?",
+      "description_one": "Pravidlo pro „{{payee}}“ ({{account}} · {{direction}}) nově zařazuje jako {{category}}. Zasáhne {{count}} další platbu: {{breakdown}}.",
+      "description_few": "Pravidlo pro „{{payee}}“ ({{account}} · {{direction}}) nově zařazuje jako {{category}}. Zasáhne {{count}} další platby: {{breakdown}}.",
+      "description_other": "Pravidlo pro „{{payee}}“ ({{account}} · {{direction}}) nově zařazuje jako {{category}}. Zasáhne {{count}} dalších plateb: {{breakdown}}.",
+      "onlyNew": "Jen nové platby",
+      "apply_one": "Zařadit {{count}} platbu",
+      "apply_few": "Zařadit {{count}} platby",
+      "apply_other": "Zařadit {{count}} plateb",
+      "applied_one": "{{count}} další platba zařazena",
+      "applied_few": "{{count}} další platby zařazeny",
+      "applied_other": "{{count}} dalších plateb zařazeno",
+      "undo": "Vrátit zpět",
+      "restored": "Změněné platby vráceny ({{count}})",
+      "uncategorized": "bez kategorie",
+      "more": "+{{count}} dalších"
     }
   },
   "packTab": {

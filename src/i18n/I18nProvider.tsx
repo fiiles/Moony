@@ -12,8 +12,8 @@ import { useAuth } from '@/hooks/use-auth';
 import { getFormatters } from '@/lib/format';
 import './index'; // Initialize i18next
 import {
-  SUPPORTED_LANGUAGES,
-  LANGUAGE_NAMES,
+  LANGUAGES,
+  isSupportedLanguage,
   type SupportedLanguage,
   getLocaleForLanguage,
 } from './index';
@@ -23,10 +23,8 @@ interface I18nContextValue {
   language: SupportedLanguage;
   /** Change the current language */
   setLanguage: (lang: SupportedLanguage) => void;
-  /** List of supported languages */
-  supportedLanguages: typeof SUPPORTED_LANGUAGES;
-  /** Language display names */
-  languageNames: typeof LANGUAGE_NAMES;
+  /** Supported languages in picker order, with their names and format locales */
+  languages: typeof LANGUAGES;
   /** Get locale string for Intl APIs */
   getLocale: () => string;
   /**
@@ -51,7 +49,7 @@ export function I18nProvider({ children }: I18nProviderProps) {
 
   // Sync language with user profile when it changes
   useEffect(() => {
-    if (user?.language && SUPPORTED_LANGUAGES.includes(user.language as SupportedLanguage)) {
+    if (isSupportedLanguage(user?.language)) {
       if (i18n.language !== user.language) {
         i18n.changeLanguage(user.language);
       }
@@ -59,16 +57,13 @@ export function I18nProvider({ children }: I18nProviderProps) {
   }, [user?.language, i18n]);
 
   const currentLanguage = (
-    SUPPORTED_LANGUAGES.includes(i18n.language as SupportedLanguage) ? i18n.language : 'en'
+    isSupportedLanguage(i18n.language) ? i18n.language : 'en'
   ) as SupportedLanguage;
 
   const setLanguage = useCallback(
     (lang: SupportedLanguage) => {
-      if (SUPPORTED_LANGUAGES.includes(lang)) {
-        i18n.changeLanguage(lang);
-        // Also persist to localStorage for pre-auth state
-        localStorage.setItem('moony-language', lang);
-      }
+      // Loads the language's chunk first; the detector persists it for the lock screen.
+      if (isSupportedLanguage(lang)) void i18n.changeLanguage(lang);
     },
     [i18n]
   );
@@ -97,8 +92,7 @@ export function I18nProvider({ children }: I18nProviderProps) {
   const value: I18nContextValue = {
     language: currentLanguage,
     setLanguage,
-    supportedLanguages: SUPPORTED_LANGUAGES,
-    languageNames: LANGUAGE_NAMES,
+    languages: LANGUAGES,
     getLocale,
     formatDate,
     formatNumber,

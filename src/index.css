@@ -174,6 +174,24 @@
     font-feature-settings: 'cv11', 'ss01';
   }
 
+  /* Japanese and Chinese: Inter has no CJK glyphs, so name the system faces for them
+     (after Inter, which keeps Latin text and numbers), and drop the tight tracking —
+     negative letter-spacing makes ideographs collide. */
+  :root:lang(ja) {
+    --font:
+      'Inter Variable', Inter, 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Yu Gothic UI', Meiryo,
+      system-ui, sans-serif;
+  }
+  :root:lang(zh) {
+    --font:
+      'Inter Variable', Inter, 'PingFang SC', 'Microsoft YaHei UI', 'Noto Sans SC', system-ui,
+      sans-serif;
+  }
+  :root:lang(ja) *,
+  :root:lang(zh) * {
+    letter-spacing: normal !important;
+  }
+
   button,
   input,
   select,

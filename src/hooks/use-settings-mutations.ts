@@ -26,6 +26,8 @@ export function useSettingsMutations() {
   const updateProfile = useMutation({
     mutationFn: async (data: ProfileUpdate) => {
       await authApi.updateProfile(data);
+      // A new language's strings arrive lazily: load them before the toast below uses them.
+      if (data.language) await i18n.loadLanguages(data.language);
     },
     onSuccess: (_data, variables) => {
       // Write the saved fields into the cache first: I18nProvider syncs the UI

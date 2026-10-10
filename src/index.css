@@ -176,7 +176,7 @@
 
   /* Japanese and Chinese: Inter has no CJK glyphs, so name the system faces for them
      (after Inter, which keeps Latin text and numbers), and drop the tight tracking —
-     negative letter-spacing makes ideographs collide. */
+     negative letter-spacing makes ideographs collide. Numbers (`.num`) keep theirs. */
   :root:lang(ja) {
     --font:
       'Inter Variable', Inter, 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Yu Gothic UI', Meiryo,
@@ -187,8 +187,8 @@
       'Inter Variable', Inter, 'PingFang SC', 'Microsoft YaHei UI', 'Noto Sans SC', system-ui,
       sans-serif;
   }
-  :root:lang(ja) *,
-  :root:lang(zh) * {
+  :root:lang(ja) :not(.num, .num *),
+  :root:lang(zh) :not(.num, .num *) {
     letter-spacing: normal !important;
   }
 

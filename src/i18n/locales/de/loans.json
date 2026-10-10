@@ -147,7 +147,7 @@
     "addDescription": "Kreditsumme, Zinssatz und Rate genügen; die Restschuld folgt dem Plan.",
     "editDescription": "Ändern Sie die Kreditbedingungen; die Restschuld wird neu berechnet.",
     "endDateHelp": "Wann der Kredit vertraglich fällig ist",
-    "rateValidity": "Gültigkeit des Zinssatzes (Ende der Zinsbindung)",
+    "rateValidity": "Zinsbindung bis",
     "rateValidityHelp": "Wann die Zinsbindung des aktuellen Zinssatzes endet",
     "startDateHelp": "Die Restschuld wird ab diesem Datum getilgt; Raten fallen jeweils am selben Tag des Monats an"
   },

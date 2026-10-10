@@ -92,6 +92,8 @@ interface SelectOptions {
   remember: boolean;
   /** Also give the category to the other payments the rewritten rule covers. */
   applyHistory: boolean;
+  /** Display name for a category `categories` does not hold yet (one created a moment ago). */
+  categoryName?: string;
 }
 
 /** Get category display info */
@@ -153,9 +155,11 @@ export function CategorySelector({
 
   const canLearn = enableLearning && !!bankAccountId && isCredit !== undefined;
   // What decides this payee's category today and how many other payments a remembered pick covers.
+  const previewKey = ['recategorization-preview', transactionId];
+  const loadPreview = () => categorizationApi.previewRecategorization(transactionId as string);
   const preview = useQuery({
-    queryKey: ['recategorization-preview', transactionId],
-    queryFn: () => categorizationApi.previewRecategorization(transactionId as string),
+    queryKey: previewKey,
+    queryFn: loadPreview,
     enabled: open && canLearn && !!transactionId,
     staleTime: 0,
   });
@@ -176,6 +180,16 @@ export function CategorySelector({
     onDeclineSuggestion?.();
   };
 
+  // The change is already saved when this runs, so a failed refresh is reported on its own and
+  // never hides the toast (and its undo) of the change that did happen.
+  const refreshAfterWrite = async () => {
+    try {
+      await refreshMoneyFlows(queryClient);
+    } catch (e) {
+      toast.error(tc('status.error'), { description: translateApiError(e as Error, tc) });
+    }
+  };
+
   const historyToast = (title: string, description: string | undefined, changed: ChangedRow[]) => {
     if (changed.length === 0) {
       toast(title, { description });
@@ -190,11 +204,12 @@ export function CategorySelector({
           void (async () => {
             try {
               const restored = await categorizationApi.restoreTransactionCategories(changed);
-              await refreshMoneyFlows(queryClient);
               toast(t('categorization.historyRestored', { count: restored }));
             } catch (e) {
               toast.error(tc('status.error'), { description: translateApiError(e as Error, tc) });
+              return;
             }
+            await refreshAfterWrite();
           })();
         },
       },
@@ -220,25 +235,34 @@ export function CategorySelector({
     // One-time categorization (switch off), or learning is disabled for this selector.
     if (!options.remember || !canLearn) return;
 
-    // Own-account transfers categorize themselves and payments without an identity cannot be
-    // remembered; a custom rule can still be retargeted either way.
-    const info = preview.data;
-    if (
-      info &&
-      (info.governing === 'ownAccount' || (!info.learnable && info.governing !== 'custom'))
-    ) {
-      return;
-    }
-    const pickedName = categoryNameById(categoryId, categories, categoryName);
+    const pickedName =
+      options.categoryName ?? categoryNameById(categoryId, categories, categoryName);
 
     try {
+      // What decides this payee decides where the pick goes, so it must not depend on whether the
+      // footer's preview happened to load in time: fetch it now when it is missing. Without a
+      // transaction id (add-transaction modal, report drilldown) there is no preview and the pick
+      // is plainly learned.
+      const info = transactionId
+        ? (preview.data ??
+          (await queryClient.fetchQuery({ queryKey: previewKey, queryFn: loadPreview })))
+        : undefined;
+
+      // Own-account transfers categorize themselves and payments without an identity cannot be
+      // remembered; a custom rule can still be retargeted either way.
+      if (
+        info &&
+        (info.governing === 'ownAccount' || (!info.learnable && info.governing !== 'custom'))
+      ) {
+        return;
+      }
+
       if (info?.governing === 'custom' && info.rule) {
         const changed = await categorizationApi.retargetCustomRule(
           info.rule.id,
           categoryId,
           options.applyHistory
         );
-        await refreshMoneyFlows(queryClient);
         historyToast(
           changed.length > 0
             ? t('categorization.ruleRetargetedApplied', {
@@ -250,6 +274,7 @@ export function CategorySelector({
           undefined,
           changed
         );
+        await refreshAfterWrite();
         return;
       }
 
@@ -272,7 +297,6 @@ export function CategorySelector({
         },
         options.applyHistory
       );
-      await refreshMoneyFlows(queryClient);
       const learnKey = payee || iban || 'unknown';
       historyToast(
         changed.length > 0
@@ -281,7 +305,9 @@ export function CategorySelector({
         changed.length > 0 ? `"${learnKey}" → ${pickedName}` : `"${learnKey}"`,
         changed
       );
+      await refreshAfterWrite();
     } catch (e) {
+      // The preview could not be fetched or the write failed: nothing was remembered, the row stays saved.
       toast.error(tc('status.error'), { description: translateApiError(e as Error, tc) });
     }
   };
@@ -496,6 +522,8 @@ export function CategorySelector({
             void handleSelect(created.id, {
               remember: !createSkipLearning,
               applyHistory: false,
+              // `categories` does not hold the new category yet.
+              categoryName: categoryName(created),
             })
           }
         />

@@ -12,6 +12,7 @@ import { PlanGroupRow } from '@/components/cashflow/PlanGroupRow';
 import { PlanItemRow } from '@/components/cashflow/PlanItemRow';
 import { planModule } from '@/components/cashflow/plan-modules';
 import { allExpanded } from '@/utils/plan-expansion';
+import { categoryInclusionKey, planInclusionKey } from '@/utils/plan-keys';
 
 export type SectionId = 'personal' | 'investments';
 export type ItemType = 'income' | 'expense';
@@ -33,7 +34,7 @@ interface PlanSectionCardProps {
   onDelete: (item: CashflowReportItem) => void;
 }
 
-const FOOT_LINK =
+const TEXT_LINK =
   'text-caption font-650 text-ink-2 underline-offset-[3px] hover:text-ink hover:underline focus-visible:outline-none focus-visible:shadow-focus';
 
 /** One planning section (personal or investments): income and expense groups, footer. */
@@ -79,15 +80,19 @@ export function PlanSectionCard({
       </div>
       {cats.length === 0 && (
         <p className="m-0 border-b border-line-soft px-[14px] py-3.5 text-center text-table text-ink-4">
-          {t(isIncome ? 'planning.table.noIncome' : 'planning.table.noExpenses')}
+          {t(isIncome ? 'planning.table.noIncome' : 'planning.table.noExpenses')}{' '}
+          <button type="button" onClick={() => onAdd(id, type)} className={TEXT_LINK}>
+            {t(isIncome ? 'planning.table.addIncome' : 'planning.table.addExpense')} →
+          </button>
         </p>
       )}
       {cats.map((category) => {
         const mod = planModule(category.key);
         const module = mod ? { label: tc(mod.labelKey), url: mod.url } : undefined;
-        const modules =
-          module && category.items.some((i) => !i.isUserDefined) ? [module.label] : [];
+        const moduleLabel =
+          module && category.items.some((i) => !i.isUserDefined) ? module.label : undefined;
         const open = expanded.has(category.key);
+        const controlsId = `plan-group-${id}-${category.key}`;
         return (
           <div key={category.key}>
             <PlanGroupRow
@@ -95,36 +100,39 @@ export function PlanSectionCard({
               isIncome={isIncome}
               expanded={open}
               reportCurrency={report.reportCurrency}
-              modules={modules}
+              moduleLabel={moduleLabel}
+              controlsId={controlsId}
               onToggleExpanded={() => onToggleExpanded(category.key)}
               onToggleInclusion={() =>
-                onToggleInclusion(`category:${category.key}`, 'category', !category.included)
+                onToggleInclusion(
+                  categoryInclusionKey(category.key),
+                  'category',
+                  !category.included
+                )
               }
               onAdd={() => onAdd(id, type, category.key)}
             />
-            {open &&
-              category.items.map((item) => (
-                <PlanItemRow
-                  key={item.id}
-                  item={item}
-                  isIncome={isIncome}
-                  categoryIncluded={category.included}
-                  reportCurrency={report.reportCurrency}
-                  viewType={viewType}
-                  replacedSourceName={sourceName(item)}
-                  module={module}
-                  onToggleInclusion={() =>
-                    onToggleInclusion(
-                      item.isUserDefined ? `item:${item.id}` : (item.sourceId ?? `item:${item.id}`),
-                      'item',
-                      !item.included
-                    )
-                  }
-                  onReplace={() => onReplace(id, type, item)}
-                  onEdit={() => onEdit(id, item, category.key)}
-                  onDelete={() => onDelete(item)}
-                />
-              ))}
+            <div id={controlsId} hidden={!open}>
+              {open &&
+                category.items.map((item) => (
+                  <PlanItemRow
+                    key={item.id}
+                    item={item}
+                    isIncome={isIncome}
+                    categoryIncluded={category.included}
+                    reportCurrency={report.reportCurrency}
+                    viewType={viewType}
+                    replacedSourceName={sourceName(item)}
+                    module={module}
+                    onToggleInclusion={() =>
+                      onToggleInclusion(planInclusionKey(item), 'item', !item.included)
+                    }
+                    onReplace={() => onReplace(id, type, item)}
+                    onEdit={() => onEdit(id, item, category.key)}
+                    onDelete={() => onDelete(item)}
+                  />
+                ))}
+            </div>
           </div>
         );
       })}
@@ -178,12 +186,12 @@ export function PlanSectionCard({
             <button
               type="button"
               onClick={() => onSetExpanded(allKeys, !everyOpen)}
-              className={FOOT_LINK}
+              className={TEXT_LINK}
             >
               {t(everyOpen ? 'planning.table.collapseAll' : 'planning.table.expandAll')}
             </button>
           )}
-          <button type="button" onClick={() => onAdd(id, 'expense')} className={FOOT_LINK}>
+          <button type="button" onClick={() => onAdd(id, 'expense')} className={TEXT_LINK}>
             {t('planning.table.addToSection')} →
           </button>
         </span>

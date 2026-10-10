@@ -12,23 +12,28 @@ interface PlanGroupRowProps {
   isIncome: boolean;
   expanded: boolean;
   reportCurrency: string;
-  /** Module labels of the automatic rows in this category, e.g. ["Úvěry"]. */
-  modules: string[];
+  /** Module label of the automatic rows in this category, e.g. "Úvěry". */
+  moduleLabel?: string;
+  /** id of the element that holds the items (`aria-controls`). */
+  controlsId: string;
   onToggleExpanded: () => void;
   onToggleInclusion: () => void;
   onAdd: () => void;
 }
 
 /**
- * One category of a planning section: whole row toggles its items, the total
- * counts the included rows (an excluded category shows what would count, muted).
+ * One category of a planning section. The chevron and name form a real button
+ * (`aria-expanded`); a click anywhere else on the row toggles too. The total
+ * counts the included rows; an excluded category shows, muted, what would count
+ * once it is back in the plan.
  */
 export function PlanGroupRow({
   category,
   isIncome,
   expanded,
   reportCurrency,
-  modules,
+  moduleLabel,
+  controlsId,
   onToggleExpanded,
   onToggleInclusion,
   onAdd,
@@ -39,7 +44,7 @@ export function PlanGroupRow({
   const name = t(`categories.${category.key}`, { defaultValue: category.name });
   const excludedCount = category.items.filter((i) => !i.included).length;
   const shownTotal = off
-    ? category.items.reduce((sum, i) => sum + Number(i.amount), 0)
+    ? category.items.filter((i) => i.selfIncluded).reduce((sum, i) => sum + Number(i.amount), 0)
     : Number(category.total);
   const meta = [
     t('planning.table.groupItems', { count: category.items.length }),
@@ -48,44 +53,36 @@ export function PlanGroupRow({
       : excludedCount > 0
         ? t('planning.table.groupExcluded', { count: excludedCount })
         : null,
-    modules.length > 0
-      ? t('planning.table.autoFrom', { modules: modules.join(', ') })
+    moduleLabel
+      ? t('planning.table.autoFrom', { modules: moduleLabel })
       : t('planning.table.manual'),
   ]
     .filter(Boolean)
     .join(' · ');
   return (
     <div
-      role="button"
-      tabIndex={0}
-      aria-expanded={expanded}
+      className={cn(PLAN_ROW_GRID, PLAN_ROW_SURFACE, 'min-h-[52px] cursor-pointer')}
       onClick={onToggleExpanded}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          onToggleExpanded();
-        }
-      }}
-      className={cn(
-        PLAN_ROW_GRID,
-        PLAN_ROW_SURFACE,
-        'min-h-[52px] cursor-pointer focus-visible:outline-none focus-visible:shadow-focus'
-      )}
       data-plan-group={category.key}
     >
-      <ChevronRight
-        className={cn(
-          'size-[14px] text-ink-4 transition-transform duration-fast',
-          expanded && 'rotate-90'
-        )}
-        aria-hidden
-      />
-      <div className="py-2">
-        <b className={cn('block text-table font-650', off ? 'text-ink-4' : 'text-ink')}>{name}</b>
-        <small className={cn('block text-micro font-500', off ? 'text-ink-5' : 'text-ink-4')}>
-          {meta}
-        </small>
-      </div>
+      <button
+        type="button"
+        aria-expanded={expanded}
+        aria-controls={controlsId}
+        className="col-span-2 grid grid-cols-[16px_1fr] items-center gap-x-2.5 rounded-r1 py-2 text-left focus-visible:outline-none focus-visible:shadow-focus"
+      >
+        <ChevronRight
+          className={cn(
+            'size-[14px] text-ink-4 transition-transform duration-fast',
+            expanded && 'rotate-90'
+          )}
+          aria-hidden
+        />
+        <span>
+          <b className={cn('block text-table font-650', off ? 'text-ink-4' : 'text-ink')}>{name}</b>
+          <small className="block text-micro font-500 text-ink-4">{meta}</small>
+        </span>
+      </button>
       <span
         className={cn(
           'inline-flex items-center gap-2.5 whitespace-nowrap text-table font-650 num',

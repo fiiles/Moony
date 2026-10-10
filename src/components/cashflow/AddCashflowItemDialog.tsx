@@ -1,7 +1,7 @@
 import { currencyDecimals, type CurrencyCode } from '@shared/currencies';
 import { preserveMoneyText } from '@/utils/money-flows';
 /* eslint-disable react-hooks/set-state-in-effect */
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -66,13 +66,17 @@ export default function AddCashflowItemDialog({
   const [selectedCategory, setSelectedCategory] = useState<string>('');
 
   const isEditing = !!editItem;
+  // The form is filled when the dialog opens, not on every refetch while it is open.
+  const wasOpen = useRef(false);
 
   // All categories are now editable - memoized to avoid useEffect dependency issues
   const availableCategories = useMemo(() => categories ?? [], [categories]);
 
   // Reset form when dialog opens/closes or editItem changes
   useEffect(() => {
-    if (open) {
+    const opening = open && !wasOpen.current;
+    wasOpen.current = open;
+    if (opening) {
       if (editItem) {
         setReplacementSourceId(editItem.replacementSourceId ?? 'none');
         setName(editItem.name);

@@ -445,7 +445,9 @@
       "outOfPlanCount_other": "{{count}} items out of plan",
       "expandAll": "Expand all",
       "collapseAll": "Collapse all",
-      "addToCategory": "Add an item to this category"
+      "addToCategory": "Add an item to this category",
+      "addIncome": "Add income",
+      "addExpense": "Add an expense"
     },
     "toast": {
       "added": "Item added to the plan",

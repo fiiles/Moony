@@ -219,6 +219,9 @@ pub struct CashflowReportItem {
     pub is_user_defined: bool,
     /// False when this row or its whole category is out of the plan; `amount` is still filled.
     pub included: bool,
+    /// False when the row's own key is stored, whatever its category says.
+    #[serde(rename = "selfIncluded")]
+    pub self_included: bool,
 }
 
 /// Native components of a composite automatic property-cost source.

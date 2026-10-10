@@ -464,7 +464,9 @@
       "outOfPlanCount_other": "{{count}} položek mimo plán",
       "expandAll": "Rozbalit vše",
       "collapseAll": "Sbalit vše",
-      "addToCategory": "Přidat položku do kategorie"
+      "addToCategory": "Přidat položku do kategorie",
+      "addIncome": "Přidat příjem",
+      "addExpense": "Přidat výdaj"
     },
     "toast": {
       "added": "Položka přidána do plánu",

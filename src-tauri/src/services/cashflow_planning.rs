@@ -1069,6 +1069,16 @@ pub fn set_plan_inclusion(
             [&data.key],
         )?;
     } else {
+        if let Some(id) = data.key.strip_prefix("item:") {
+            let exists: i64 = conn.query_row(
+                "SELECT COUNT(*) FROM cashflow_items WHERE id = ?1",
+                [id],
+                |row| row.get(0),
+            )?;
+            if exists == 0 {
+                return Err(AppError::NotFound(format!("Cashflow item {id} not found")));
+            }
+        }
         conn.execute(
             "INSERT OR IGNORE INTO cashflow_plan_exclusions (key, created_at) VALUES (?1, ?2)",
             rusqlite::params![data.key, chrono::Utc::now().timestamp()],
@@ -1211,7 +1221,8 @@ pub fn get_report_in_currency(
                             let source = (!i.is_user_defined).then(|| source_for(&c.key, &i.id));
                             let own_key =
                                 source.clone().unwrap_or_else(|| format!("item:{}", i.id));
-                            let included = category_included && !exclusions.contains(&own_key);
+                            let self_included = !exclusions.contains(&own_key);
+                            let included = category_included && self_included;
                             let original_components =
                                 if !i.is_user_defined && c.key.ends_with("RealEstateCosts") {
                                     property_components.get(&i.id).cloned().unwrap_or_default()
@@ -1250,6 +1261,7 @@ pub fn get_report_in_currency(
                                 original_frequency: i.original_frequency,
                                 is_user_defined: i.is_user_defined,
                                 included,
+                                self_included,
                                 source_id: source.clone(),
                                 replacement_source_id: manual
                                     .iter()
@@ -1561,6 +1573,12 @@ mod tests {
         let subs = find(&report, "subscriptions");
         assert!(subs.included);
         assert!(!subs.items[0].included, "its own key still excludes it");
+        assert!(!subs.items[0].self_included);
+        set_plan_inclusion(&conn, off("category:subscriptions")).unwrap();
+        let both = get_report_in_currency(&conn, "monthly", "CZK").unwrap();
+        assert!(!both.subscriptions_item(0).self_included);
+        assert!(!both.subscriptions_item(0).included);
+        set_plan_inclusion(&conn, on("category:subscriptions")).unwrap();
         set_plan_inclusion(&conn, on(format!("item:{id}"))).unwrap();
         let report = get_report_in_currency(&conn, "monthly", "CZK").unwrap();
         assert!(find(&report, "subscriptions").items[0].included);
@@ -1611,6 +1629,25 @@ mod tests {
             crate::models::FxQuality::Missing,
             "the row still says so"
         );
+    }
+
+    trait SubsItem {
+        fn subscriptions_item(&self, index: usize) -> &crate::models::CashflowReportItem;
+    }
+    impl SubsItem for CashflowReport {
+        fn subscriptions_item(&self, index: usize) -> &crate::models::CashflowReportItem {
+            &find(self, "subscriptions").items[index]
+        }
+    }
+
+    #[test]
+    fn excluding_an_unknown_manual_item_is_rejected() {
+        let conn = planning_db();
+        let err = set_plan_inclusion(&conn, off("item:missing")).unwrap_err();
+        assert!(matches!(err, AppError::NotFound(_)), "{err:?}");
+        assert!(load_plan_exclusions(&conn).unwrap().is_empty());
+        // Counting a never-excluded row in is a no-op, not an error.
+        set_plan_inclusion(&conn, on("item:missing")).unwrap();
     }
 
     #[test]

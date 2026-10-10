@@ -81,7 +81,7 @@ entry point. *Přidat položku do kategorie* opens the add dialog with that cate
 wrapped in try/catch, the page renders correctly without it). The investment section therefore opens
 as eight rows with totals instead of forty.
 
-**Empty states** unchanged ("V této sekci zatím nejsou plánované příjmy / výdaje").
+**Empty states**: "V této sekci zatím nejsou plánované příjmy / výdaje" followed by a link "Přidat příjem →" / "Přidat výdaj →" that opens the add dialog with that type, so the first income row of a section can be added from the page.
 
 ### Copy (cs / en)
 
@@ -130,8 +130,9 @@ Rules:
 - Report **quality** (missing FX) describes included items only, the same way replaced sources already
   stay out of it; an excluded row with a missing rate still shows "Kurz není k dispozici" in its row.
 - `automaticSources` (the inventory the add dialog offers for replacement) is unaffected by exclusions.
-- Deleting a manual item deletes its `item:` key. Keys of automatic sources that disappear (repaid loan,
-  sold stock) are harmless leftovers and are not cleaned, like `milestone_states`.
+- Deleting a manual item deletes its `item:` key; excluding an unknown `item:` is rejected. Keys of automatic
+  sources that disappear (repaid loan, sold stock) are kept, like `milestone_states`, so a source that comes
+  back comes back in the same state.
 - The projection does not read the planning report (`services/projection.rs` has no dependency on it),
   so exclusions change only this page and the MCP tool `cashflow_report`.
 
@@ -144,6 +145,8 @@ export interface CashflowReportItem {
   // …existing fields…
   /** False when this row or its category is out of the plan; the amount is still present. */
   included: boolean;
+  /** False when the row's own key is stored, whatever its category says (the muted total of an excluded category sums rows with selfIncluded). */
+  selfIncluded: boolean;
 }
 export interface CashflowCategory {
   // …existing fields…

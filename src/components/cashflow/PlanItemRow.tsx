@@ -9,7 +9,7 @@ import { PlanRowMenu, type PlanModuleLink } from '@/components/cashflow/PlanRowM
 export const PLAN_ROW_GRID =
   'grid grid-cols-[16px_1fr_auto_28px] items-center gap-x-2.5 pl-[14px] pr-[10px]';
 
-/** Row surface shared by group and item rows: hover well, "···" on hover / focus-within. */
+/** Row surface shared by group and item rows: hover well, "···" on hover / focus-within / open menu. */
 export const PLAN_ROW_SURFACE =
   'group/row border-b border-line-soft transition-colors duration-fast hover:bg-well focus-within:bg-well [&_[data-row-actions]]:opacity-0 [&_[data-row-actions]]:transition-opacity [&_[data-row-actions]]:duration-fast [&:hover_[data-row-actions]]:opacity-100 [&:focus-within_[data-row-actions]]:opacity-100 [&:has([data-state=open])_[data-row-actions]]:opacity-100';
 
@@ -28,7 +28,7 @@ interface PlanItemRowProps {
   onDelete: () => void;
 }
 
-/** One planning item under its category row. */
+/** One planning item under its category row (46 px dense row). */
 export function PlanItemRow({
   item,
   isIncome,
@@ -70,7 +70,7 @@ export function PlanItemRow({
     : t('planning.table.auto', { module: module?.label ?? '' });
   return (
     <div
-      className={cn(PLAN_ROW_GRID, PLAN_ROW_SURFACE, 'min-h-[44px] bg-paper')}
+      className={cn(PLAN_ROW_GRID, PLAN_ROW_SURFACE, 'min-h-[46px] bg-paper')}
       data-plan-item={item.id}
     >
       <span aria-hidden />
@@ -83,7 +83,7 @@ export function PlanItemRow({
             {t('readiness.replacing', { name: replacedSourceName })}
           </small>
         )}
-        <small className={cn('block text-micro font-500', off ? 'text-ink-5' : 'text-ink-4')}>
+        <small className="block text-micro font-500 text-ink-4">
           {origin} · {original}
         </small>
       </div>
@@ -101,7 +101,10 @@ export function PlanItemRow({
             ? t('readiness.fxUnavailable')
             : signedMoney(isIncome ? Number(item.amount) : -Number(item.amount))}
           {incomplete && !unavailable && (
-            <small className="block text-micro text-loss">{t('readiness.partialAmount')}</small>
+            // A row out of the plan no longer affects any total: its warning is muted.
+            <small className={cn('block text-micro', off ? 'text-ink-4' : 'text-loss')}>
+              {t('readiness.partialAmount')}
+            </small>
           )}
         </span>
       </span>

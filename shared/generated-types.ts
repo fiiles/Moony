@@ -176,7 +176,11 @@ export type CashflowReportItem = { originalComponents: CashflowOriginalComponent
 /**
  * False when this row or its whole category is out of the plan; `amount` is still filled.
  */
-included: boolean }
+included: boolean; 
+/**
+ * False when the row's own key is stored, whatever its category says.
+ */
+selfIncluded: boolean }
 
 /**
  * A cashflow section (Personal or Investments)

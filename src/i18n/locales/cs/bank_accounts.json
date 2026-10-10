@@ -709,5 +709,20 @@
     "submit": "Zaznamenat zůstatek",
     "success": "Zůstatek zaznamenán"
   },
-  "balanceHistory": { "deleted": "Záznam smazán" }
+  "balanceHistory": {
+    "title": "Historie zůstatku",
+    "sub_one": "{{count}} záznam · poslední {{date}}",
+    "sub_few": "{{count}} záznamy · poslední {{date}}",
+    "sub_other": "{{count}} záznamů · poslední {{date}}",
+    "empty": "Zatím žádný záznam zůstatku.",
+    "amount": "Částka",
+    "change": "Změna",
+    "source": "Zdroj",
+    "sourceManual": "ručně",
+    "sourceStatement": "z výpisu",
+    "delete": "Smazat záznam",
+    "deleteTitle": "Smazat záznam zůstatku?",
+    "deleteDescription": "Záznam {{amount}} ze dne {{date}} bude trvale odstraněn. Zůstatek účtu se přepočítá z nejnovějšího zbývajícího záznamu.",
+    "deleted": "Záznam smazán"
+  }
 }

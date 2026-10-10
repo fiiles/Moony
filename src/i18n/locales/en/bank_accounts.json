@@ -677,5 +677,19 @@
     "submit": "Record balance",
     "success": "Balance recorded"
   },
-  "balanceHistory": { "deleted": "Record deleted" }
+  "balanceHistory": {
+    "title": "Balance history",
+    "sub_one": "{{count}} record · latest {{date}}",
+    "sub_other": "{{count}} records · latest {{date}}",
+    "empty": "No balance record yet.",
+    "amount": "Amount",
+    "change": "Change",
+    "source": "Source",
+    "sourceManual": "by hand",
+    "sourceStatement": "from statement",
+    "delete": "Delete record",
+    "deleteTitle": "Delete this balance record?",
+    "deleteDescription": "The record of {{amount}} as of {{date}} will be removed for good. The account balance is recalculated from the newest remaining record.",
+    "deleted": "Record deleted"
+  }
 }

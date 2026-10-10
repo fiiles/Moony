@@ -48,7 +48,7 @@ import {
   useBankTransactionMutations,
   useBankAccountMutations,
 } from '@/hooks/use-bank-account-mutations';
-import type { CategorizationResult } from '@shared/schema';
+import type { CategorizationResult, TransactionFilters } from '@shared/schema';
 import { useCategoryName } from '@/hooks/use-categories';
 import { counterpartyLabel, transactionDetails } from '@/utils/transaction-text';
 import { useCurrency } from '@/lib/currency';
@@ -209,6 +209,20 @@ export default function BankAccountDetail() {
     setDatePreset('custom');
   };
 
+  // Ledger filters without paging; auto-categorize works on the same set
+  const ledgerFilters = {
+    categoryId: categoryFilter === 'all' ? undefined : categoryFilter,
+    txType: kind === 'all' ? undefined : kind === 'income' ? 'credit' : 'debit',
+    search: searchQuery.trim() || undefined,
+    dateFrom: dateFrom ? utcDayStart(dateFrom) : undefined,
+    dateTo: dateTo ? utcDayEnd(dateTo) : undefined,
+  } satisfies TransactionFilters;
+  // Uncategorized rows within the filters; a specific category filter has none
+  const uncategorizedFilters =
+    categoryFilter === 'all' || categoryFilter === 'uncategorized'
+      ? { ...ledgerFilters, categoryId: 'uncategorized' }
+      : null;
+
   // Ledger transactions for the selected range
   const {
     data: transactionsResult,
@@ -231,17 +245,24 @@ export default function BankAccountDetail() {
     queryFn: () =>
       accountId
         ? bankAccountsApi.getTransactions(accountId, {
+            ...ledgerFilters,
             limit: 100,
             offset: ledgerPage * 100,
-            categoryId: categoryFilter === 'all' ? undefined : categoryFilter,
-            txType: kind === 'all' ? undefined : kind === 'income' ? 'credit' : 'debit',
-            search: searchQuery.trim() || undefined,
             sortBy: sortColumn,
             ascending: sortDirection === 'asc',
-            dateFrom: dateFrom ? utcDayStart(dateFrom) : undefined,
-            dateTo: dateTo ? utcDayEnd(dateTo) : undefined,
           })
         : null,
+    enabled: !!accountId,
+  });
+
+  // How many filtered rows lack a category, across all ledger pages
+  const { data: uncategorizedTotal = 0 } = useQuery({
+    queryKey: ['bank-transactions', accountId, 'uncategorized-count', uncategorizedFilters],
+    queryFn: async () =>
+      accountId && uncategorizedFilters
+        ? (await bankAccountsApi.getTransactions(accountId, { ...uncategorizedFilters, limit: 1 }))
+            .total
+        : 0,
     enabled: !!accountId,
   });
 
@@ -410,14 +431,19 @@ export default function BankAccountDetail() {
     [lastMonthResult, account?.currency]
   );
 
-  // Auto-categorize all uncategorized transactions of the loaded range
+  // Auto-categorize every uncategorized transaction matching the filters, not just this page
   const handleAutoCategorize = async () => {
-    const uncategorized = transactions.filter((tx) => !getEffectiveCategory(tx));
-    if (uncategorized.length === 0) return;
+    if (!accountId || !uncategorizedFilters) return;
 
     setIsCategorizingBatch(true);
+    let uncategorized: BankTransaction[];
     let results: CategorizationResult[];
     try {
+      uncategorized = (await getCompleteBankHistory(accountId, uncategorizedFilters)).transactions;
+      if (uncategorized.length === 0) {
+        setIsCategorizingBatch(false);
+        return;
+      }
       results = await categorizationApi.categorizeBatch(
         uncategorized.map((tx) => ({
           id: tx.id,
@@ -444,12 +470,19 @@ export default function BankAccountDetail() {
         matchesToPersist.push({ txId: tx.id, categoryId: results[i].data.categoryId });
       }
     });
-    const writes = await Promise.allSettled(
-      matchesToPersist.map(async ({ txId, categoryId }) => {
-        await bankAccountsApi.updateTransactionCategory(txId, categoryId);
-        return { txId, categoryId };
-      })
-    );
+    // Bounded chunks: a whole-history run can match thousands of rows
+    const writes: PromiseSettledResult<void>[] = [];
+    for (let i = 0; i < matchesToPersist.length; i += 50) {
+      writes.push(
+        ...(await Promise.allSettled(
+          matchesToPersist
+            .slice(i, i + 50)
+            .map(({ txId, categoryId }) =>
+              bankAccountsApi.updateTransactionCategory(txId, categoryId)
+            )
+        ))
+      );
+    }
     const succeeded = writes.filter((write) => write.status === 'fulfilled').length;
     const failed = writes.length - succeeded;
     try {
@@ -469,7 +502,7 @@ export default function BankAccountDetail() {
     autoCategorizeRef.current = handleAutoCategorize;
   });
 
-  const uncategorizedCount = transactions.filter((tx) => !getEffectiveCategory(tx)).length;
+  const uncategorizedCount = uncategorizedTotal;
 
   const transactionsSettled = !txLoading && !anyTransactionLoading;
   const hasAnyTransaction = (anyTransactionResult?.total ?? 0) > 0;

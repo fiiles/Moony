@@ -12,7 +12,8 @@ use rusqlite::Connection;
 use crate::error::Result;
 use crate::models::fx::ConversionQuality;
 use crate::models::{
-    CalculatedDefaults, PortfolioProjection, ProjectionInput, ProjectionTimelinePoint,
+    CalculatedDefaults, PortfolioProjection, ProjectionInput, ProjectionSettings,
+    ProjectionTimelinePoint,
 };
 use crate::services::fx::{self, Quality, Quotes};
 use crate::services::net_worth;
@@ -20,6 +21,74 @@ use crate::services::projection_math::{
     contribution_future_value, parse_rate_setting, projection_date,
 };
 use crate::services::reporting::{money_in_currency, normalize_currency};
+
+/// All stored projection settings.
+pub fn list_settings(conn: &Connection) -> Result<Vec<ProjectionSettings>> {
+    let mut stmt = conn.prepare(
+        "SELECT id, asset_type, yearly_growth_rate, monthly_contribution,
+                contribution_currency, enabled, created_at, updated_at
+         FROM projection_settings",
+    )?;
+    let settings = stmt
+        .query_map([], |row| {
+            Ok(ProjectionSettings {
+                id: row.get(0)?,
+                asset_type: row.get(1)?,
+                yearly_growth_rate: row.get(2)?,
+                monthly_contribution: row.get(3)?,
+                contribution_currency: row.get(4)?,
+                enabled: row.get::<_, i32>(5)? != 0,
+                created_at: row.get(6)?,
+                updated_at: row.get(7)?,
+            })
+        })?
+        .filter_map(|r| r.ok())
+        .collect();
+    Ok(settings)
+}
+
+/// Upserts the settings by asset type. Every entry is validated before anything is written,
+/// and the batch is saved together or not at all.
+pub fn save_settings(conn: &Connection, settings: Vec<ProjectionSettings>) -> Result<()> {
+    for setting in &settings {
+        setting.validate()?;
+    }
+    let now = Utc::now().timestamp();
+    let tx = conn.unchecked_transaction()?;
+    for s in settings {
+        let id = if s.id.is_empty() {
+            uuid::Uuid::new_v4().to_string()
+        } else {
+            s.id
+        };
+        // validate() accepted it, so normalisation always yields a code
+        let currency = fx::normalize(&s.contribution_currency).unwrap_or(s.contribution_currency);
+        tx.execute(
+            "INSERT INTO projection_settings
+                (id, asset_type, yearly_growth_rate, monthly_contribution,
+                 contribution_currency, enabled, created_at, updated_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
+             ON CONFLICT(asset_type) DO UPDATE SET
+                yearly_growth_rate = excluded.yearly_growth_rate,
+                monthly_contribution = excluded.monthly_contribution,
+                contribution_currency = excluded.contribution_currency,
+                enabled = excluded.enabled,
+                updated_at = excluded.updated_at",
+            rusqlite::params![
+                id,
+                s.asset_type,
+                s.yearly_growth_rate,
+                s.monthly_contribution,
+                currency,
+                if s.enabled { 1 } else { 0 },
+                now,
+                now,
+            ],
+        )?;
+    }
+    tx.commit()?;
+    Ok(())
+}
 
 /// Projection in `report_currency` at the current quote snapshot.
 pub fn calculate_projection(
@@ -1653,5 +1722,76 @@ mod tests {
             projection.fx_quality.missing_currencies,
             vec!["KWD".to_string()]
         );
+    }
+
+    // =====================================================================
+    // SAVING SETTINGS
+    // =====================================================================
+
+    fn setting(asset: &str, amount: &str, currency: &str) -> ProjectionSettings {
+        ProjectionSettings {
+            id: String::new(),
+            asset_type: asset.into(),
+            yearly_growth_rate: String::new(),
+            monthly_contribution: amount.into(),
+            contribution_currency: currency.into(),
+            enabled: true,
+            created_at: 0,
+            updated_at: 0,
+        }
+    }
+
+    fn save_db() -> rusqlite::Connection {
+        let conn = rusqlite::Connection::open_in_memory().expect("in-memory db");
+        conn.execute_batch(
+            "CREATE TABLE projection_settings (
+                id TEXT PRIMARY KEY,
+                asset_type TEXT NOT NULL UNIQUE,
+                yearly_growth_rate TEXT NOT NULL DEFAULT '0',
+                monthly_contribution TEXT NOT NULL DEFAULT '0',
+                contribution_currency TEXT NOT NULL DEFAULT 'CZK',
+                enabled INTEGER NOT NULL DEFAULT 1,
+                created_at INTEGER NOT NULL DEFAULT 0,
+                updated_at INTEGER NOT NULL DEFAULT 0
+            );",
+        )
+        .expect("schema");
+        conn
+    }
+
+    #[test]
+    fn saving_normalises_the_currency_and_upserts_by_asset_type() {
+        let conn = save_db();
+        save_settings(&conn, vec![setting("savings", "100", " eur ")]).expect("save");
+        save_settings(&conn, vec![setting("savings", "250.5", "USD")]).expect("upsert");
+        let rows = list_settings(&conn).expect("list");
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].monthly_contribution, "250.5");
+        assert_eq!(rows[0].contribution_currency, "USD");
+        save_settings(&conn, vec![setting("bonds", "1", "eur")]).expect("save");
+        let bonds = list_settings(&conn)
+            .expect("list")
+            .into_iter()
+            .find(|s| s.asset_type == "bonds")
+            .expect("bonds");
+        assert_eq!(bonds.contribution_currency, "EUR");
+    }
+
+    #[test]
+    fn an_invalid_entry_rejects_the_whole_batch_before_any_write() {
+        let conn = save_db();
+        for bad in [
+            setting("bonds", "10", "EURO"),
+            setting("bonds", "10", ""),
+            setting("bonds", "10", "E1R"),
+            setting("bonds", "abc", "EUR"),
+            setting("bonds", "", "EUR"),
+            setting("bonds", "NaN", "EUR"),
+            setting("bonds", "-5", "EUR"),
+        ] {
+            let result = save_settings(&conn, vec![setting("savings", "1", "EUR"), bad]);
+            assert!(matches!(result, Err(crate::error::AppError::Validation(_))));
+        }
+        assert!(list_settings(&conn).expect("list").is_empty());
     }
 }

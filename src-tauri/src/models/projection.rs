@@ -3,6 +3,7 @@
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
+use crate::error::{AppError, Result};
 use crate::models::fx::ConversionQuality;
 
 /// Projection settings for a specific asset type
@@ -28,6 +29,27 @@ pub struct ProjectionSettings {
     pub created_at: i64,
     #[serde(rename = "updatedAt", default)]
     pub updated_at: i64,
+}
+
+impl ProjectionSettings {
+    /// Validate input data at the trust boundary: the contribution currency must be a
+    /// three-letter ISO code and the contribution a finite, non-negative amount.
+    pub fn validate(&self) -> Result<()> {
+        if crate::services::fx::normalize(&self.contribution_currency).is_none() {
+            return Err(AppError::Validation("validation.currencyInvalid".into()));
+        }
+        let amount = self
+            .monthly_contribution
+            .trim()
+            .parse::<f64>()
+            .ok()
+            .filter(|v| v.is_finite())
+            .ok_or_else(|| AppError::Validation("validation.invalidAmount".into()))?;
+        if amount < 0.0 {
+            return Err(AppError::Validation("validation.amountNonNegative".into()));
+        }
+        Ok(())
+    }
 }
 
 /// Input for calculating a projection (the report currency is a separate command argument).

@@ -49,6 +49,7 @@ export function PlanRowMenu({
   onAdd,
 }: PlanRowMenuProps) {
   const { t } = useTranslation('reports');
+  const { t: tc } = useTranslation('common');
   const [, navigate] = useLocation();
   const toggleLabel =
     kind === 'category'
@@ -106,7 +107,7 @@ export function PlanRowMenu({
         {kind === 'manual' && onEdit && (
           <DropdownMenuItem onSelect={onEdit}>
             <Pencil />
-            {t('addItem.editTitle')}
+            {tc('buttons.edit')}
           </DropdownMenuItem>
         )}
         {kind === 'manual' && onDelete && (
@@ -114,7 +115,7 @@ export function PlanRowMenu({
             <DropdownMenuSeparator />
             <DropdownMenuItem variant="danger" onSelect={onDelete}>
               <Trash2 />
-              {t('planning.deleteItem')}
+              {tc('buttons.delete')}
             </DropdownMenuItem>
           </>
         )}

@@ -11,7 +11,7 @@ export const PLAN_ROW_GRID =
 
 /** Row surface shared by group and item rows: hover well, "···" on hover / focus-within. */
 export const PLAN_ROW_SURFACE =
-  'group/row border-b border-line-soft transition-colors duration-fast hover:bg-well focus-within:bg-well [&_[data-row-actions]]:opacity-0 [&_[data-row-actions]]:transition-opacity [&_[data-row-actions]]:duration-fast [&:hover_[data-row-actions]]:opacity-100 [&:focus-within_[data-row-actions]]:opacity-100';
+  'group/row border-b border-line-soft transition-colors duration-fast hover:bg-well focus-within:bg-well [&_[data-row-actions]]:opacity-0 [&_[data-row-actions]]:transition-opacity [&_[data-row-actions]]:duration-fast [&:hover_[data-row-actions]]:opacity-100 [&:focus-within_[data-row-actions]]:opacity-100 [&:has([data-state=open])_[data-row-actions]]:opacity-100';
 
 interface PlanItemRowProps {
   item: CashflowReportItem;

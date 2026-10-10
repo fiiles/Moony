@@ -1,17 +1,30 @@
-/** The module an automatic planning row comes from, by category key (design system README §11). */
-export const PLAN_MODULES: Record<string, { labelKey: string; url: string }> = {
-  personalLoans: { labelKey: 'nav.loans', url: '/loans' },
-  investmentLoans: { labelKey: 'nav.loans', url: '/loans' },
-  personalInsurance: { labelKey: 'nav.insurance', url: '/insurance' },
-  investmentInsurance: { labelKey: 'nav.insurance', url: '/insurance' },
-  personalRealEstateCosts: { labelKey: 'nav.realEstate', url: '/real-estate' },
-  investmentRealEstateCosts: { labelKey: 'nav.realEstate', url: '/real-estate' },
-  rentalIncome: { labelKey: 'nav.realEstate', url: '/real-estate' },
-  stockDividends: { labelKey: 'nav.stocks', url: '/stocks' },
-  bondsInterest: { labelKey: 'nav.bonds', url: '/bonds' },
-  interestIncome: { labelKey: 'nav.bankAccounts', url: '/bank-accounts' },
+import { NAV_GROUPS, type NavItem } from '@/components/common/nav-config';
+
+export interface PlanModule {
+  labelKey: string;
+  url: string;
+}
+
+/** Nav item id of the module an automatic planning row comes from, by category key (design system README §11). */
+const MODULE_BY_CATEGORY: Record<string, string> = {
+  personalLoans: 'loans',
+  investmentLoans: 'loans',
+  personalInsurance: 'insurance',
+  investmentInsurance: 'insurance',
+  personalRealEstateCosts: 'realEstate',
+  investmentRealEstateCosts: 'realEstate',
+  rentalIncome: 'realEstate',
+  stockDividends: 'stocks',
+  bondsInterest: 'bonds',
+  interestIncome: 'bankAccounts',
 };
 
-export function planModule(categoryKey: string): { labelKey: string; url: string } | undefined {
-  return PLAN_MODULES[categoryKey];
+const NAV_ITEMS_BY_ID = new Map<string, NavItem>(
+  NAV_GROUPS.flatMap((group) => group.items).map((item) => [item.id, item])
+);
+
+/** Label key and route of the module behind a category, taken from the real navigation. */
+export function planModule(categoryKey: string): PlanModule | undefined {
+  const item = NAV_ITEMS_BY_ID.get(MODULE_BY_CATEGORY[categoryKey] ?? '');
+  return item ? { labelKey: item.labelKey, url: item.url } : undefined;
 }

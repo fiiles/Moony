@@ -419,7 +419,6 @@
       "none": "No planned income yet."
     },
     "table": {
-      "item": "Item",
       "netMonthly": "Net per month",
       "netYearly": "Net per year",
       "perMonth": "monthly",

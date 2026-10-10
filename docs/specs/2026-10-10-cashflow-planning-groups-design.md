@@ -30,7 +30,7 @@ state ("Mimo plán").
 
 Unchanged: page head, monthly / yearly switch, "Přidat položku", the three stats, the flow card and the
 two section cards with their head (title, sub, net on the right). Stats and the flow bar read the
-included totals only; the expenses stat note gains "· N položek mimo plán" when any row is excluded.
+included totals only; the expenses stat note gains "· N položek mimo plán" when any expense row is excluded (income exclusions show in the group meta and the section footer).
 
 ### The list inside a section card
 

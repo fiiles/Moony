@@ -69,7 +69,8 @@
   },
   "language": {
     "title": "Language and formats",
-    "description": "Numbers and dates follow the interface language."
+    "description": "Numbers and dates follow the interface language.",
+    "interface": "Interface language"
   },
   "menuVisibility": {
     "title": "Menu visibility",

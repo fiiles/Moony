@@ -14,6 +14,7 @@
     "nominal": "Face value",
     "issues_one": "{{count}} issue",
     "issues_other": "{{count}} issues",
+    "currencies_one": "{{count}} currency",
     "currencies_other": "{{count}} currencies",
     "yearlyCoupon": "Yearly coupon",
     "weightedRate": "weighted average {{rate}} p.a.",

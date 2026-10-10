@@ -69,7 +69,8 @@
   },
   "language": {
     "title": "Jazyk a formáty",
-    "description": "Čísla a data se formátují podle jazyka rozhraní."
+    "description": "Čísla a data se formátují podle jazyka rozhraní.",
+    "interface": "Jazyk aplikace"
   },
   "menuVisibility": {
     "title": "Viditelnost v menu",

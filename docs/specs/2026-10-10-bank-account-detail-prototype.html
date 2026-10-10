@@ -1,0 +1,749 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Moony — detail bankovního účtu (návrh)</title>
+<link rel="stylesheet" href="../design-system/moony.css">
+<style>
+  /* Prototype-only styles. Everything else comes from the design system. */
+  html { overflow-y: scroll; }
+  .sidebar { top: 42px; height: calc(100vh - 42px); }
+
+  /* Prototype bar (above the app) */
+  .proto-bar { position: sticky; top: 0; z-index: 6; display: flex; align-items: center; gap: 18px; height: 42px; padding: 0 20px; background: var(--dark-grad); box-shadow: var(--sh-dark); color: var(--ink-inverse-2); font-size: 11px; font-weight: 600; }
+  .proto-bar__tag { padding: 3px 7px; border-radius: 5px; background: rgba(255,255,255,.14); color: #fff; font-size: 9px; font-weight: 750; letter-spacing: .1em; text-transform: uppercase; }
+  .proto-bar__title { color: #fff; font-weight: 650; letter-spacing: -.01em; }
+  .proto-bar__mode { font-weight: 500; }
+  .proto-bar__mode b { color: #fff; font-weight: 650; }
+  .proto-bar__spacer { flex: 1; }
+  @media (max-width: 1320px) { .proto-bar__mode { display: none; } }
+  .proto-bar .seg { background: rgba(255,255,255,.11); }
+  .proto-bar .seg__btn { color: var(--ink-inverse-2); transition: none; }
+  .proto-bar .seg__btn:hover { color: #fff; }
+  .proto-bar .seg__btn.is-active { background: var(--paper); color: var(--ink); box-shadow: none; }
+  .proto-bar__toggle { display: inline-flex; align-items: center; gap: 10px; color: #fff; cursor: pointer; }
+  .proto-bar .switch input { background: rgba(255,255,255,.22); }
+  .proto-bar .switch input:checked { background: #f4f2ec; }
+  .proto-bar .switch input:checked::after { background: var(--dark); }
+
+  /* Design-note callouts */
+  .has-np { position: relative; }
+  .np { position: absolute; z-index: 4; display: none; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 10px; background: var(--dark-grad); box-shadow: var(--sh-dark), 0 0 0 2px var(--canvas); color: #fff; font-size: 10px; font-weight: 700; font-style: normal; line-height: 20px; text-align: center; pointer-events: none; }
+  .notes-on .np { display: block; }
+  .np--tl { left: -10px; top: -10px; }
+  .np--tc { left: 50%; top: -17px; margin-left: -10px; }
+  .np--inline { position: static; margin-left: auto; }
+  .notes-on .np--inline { display: inline-block; }
+  .notes-card { display: none; }
+  .notes-on .notes-card { display: block; }
+  .notes { display: grid; grid-template-columns: 1fr 1fr; column-gap: 44px; margin: 0; padding: 0 21px 10px; list-style: none; }
+  .notes li { display: grid; grid-template-columns: 24px 1fr; gap: 10px; align-items: start; padding: 13px 0; border-top: 1px solid var(--line-soft); color: var(--ink-2); font-size: var(--fs-table); line-height: 1.55; }
+  .notes li:nth-child(-n+2) { border-top: 0; }
+  .notes .np { position: static; display: inline-block; margin-top: 1px; box-shadow: var(--sh-dark); }
+  .notes b { display: block; color: var(--ink); font-weight: 650; }
+  .notes .badge { margin-top: 6px; }
+  .card--flat .card__head { padding-bottom: 16px; }
+
+  /* Page layout */
+  .stack { display: flex; flex-direction: column; gap: 17px; }
+  .stack .stats { margin-bottom: 0; }
+
+  /* Month arrows (flows card) */
+  .pnav { position: relative; display: inline-flex; align-items: center; gap: 4px; }
+  .flip { transform: scaleX(-1); }
+
+  /* Hero (balance) and flows card */
+  .hero__delta--quiet span { margin-left: 0; }
+  .hero--compact::after { display: none; }
+  .hero--compact { padding-top: 20px; }
+  .hero--compact .hero__value { margin: 6px 0; font-size: 22px; letter-spacing: -0.05em; }
+  .axis--slots span { flex: 1; text-align: center; }
+  .chart svg path { pointer-events: none; }
+  .chart .bar { cursor: pointer; transition: opacity var(--t-base); }
+  .chart .bar.is-muted { opacity: .35; }
+  .chart .slot { fill: transparent; cursor: pointer; }
+  .chart .slot:hover { fill: rgba(41,40,34,.035); }
+
+  /* Menus */
+  .menu-host { position: relative; text-align: right; }
+  .menu-host .menu { right: 0; top: calc(100% + 4px); text-align: left; }
+  .actions .menu-host .menu { top: calc(100% + 6px); }
+
+  /* Transakce card */
+  .led-grid { grid-template-columns: 62px minmax(0,1fr) 190px 150px; column-gap: 16px; }
+  .ledger-head { flex-wrap: wrap; }
+  .ledger-head .toolbar { flex-wrap: wrap; justify-content: flex-end; margin-left: auto; }
+  .ledger-sub { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px 12px; padding: 0 21px 15px; }
+  .ledger-period { position: relative; display: flex; align-items: center; gap: 8px; }
+  .ledger-period .input { width: 150px; height: 35px; padding: 0 9px; font-size: var(--fs-table); }
+  .select-wrap--period { width: 190px; }
+  .select-wrap--sm { width: 176px; }
+  .select-wrap--sm .select { height: 35px; font-size: var(--fs-table); }
+  .entity > div { min-width: 0; }
+  .entity b, .entity small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .empty--wide p { max-width: 400px; }
+  .empty .actions { justify-content: center; }
+  .pager { display: inline-flex; gap: 4px; }
+
+  /* Modals */
+  .modal__scroll { max-height: 420px; overflow-y: auto; }
+  .modal .table { border-top: 0; }
+  .modal .table__head, .modal .table__row { padding: 0 27px; column-gap: 12px; }
+  .modal .table__head { position: sticky; top: 0; z-index: 1; }
+  .hist-m { grid-template-columns: 116px minmax(0,1fr) minmax(0,1fr) 92px 32px; }
+  .imp-m { grid-template-columns: 76px minmax(0,1fr) 120px 82px 66px 184px; }
+  .modal .empty { padding: 40px 24px; }
+  .rate-cap { margin: 14px 0 16px; color: var(--ink-4); font-size: var(--fs-micro); font-weight: 500; line-height: 1.5; }
+  .row-2--date { grid-template-columns: 1fr 172px; }
+  .input-wrap--unit .input { padding-left: 11px; padding-right: 38px; }
+  .rec-note { display: flex; align-items: center; gap: 6px; margin: -4px 0 18px; color: var(--ink-3); font-size: var(--fs-caption); font-weight: 500; }
+  .rec-note[hidden] { display: none; }
+</style>
+</head>
+<body>
+
+<div class="proto-bar">
+  <span class="proto-bar__tag">Návrh</span>
+  <span class="proto-bar__title">Detail bankovního účtu</span>
+  <div class="seg" data-seg="scn" id="scn">
+    <button type="button" class="seg__btn" data-value="a">A · Spořicí účet</button>
+    <button type="button" class="seg__btn" data-value="b">B · Běžný účet</button>
+    <button type="button" class="seg__btn" data-value="c">C · Hlavní účet</button>
+    <button type="button" class="seg__btn" data-value="d">D · Spořicí s pohyby</button>
+    <button type="button" class="seg__btn" data-value="e">E · Nový účet</button>
+    <button type="button" class="seg__btn" data-value="f">F · Starý účet</button>
+  </div>
+  <span class="proto-bar__mode">Sekce: <b id="sections-name">zůstatek</b></span>
+  <span class="proto-bar__spacer"></span>
+  <label class="proto-bar__toggle"><span>Poznámky k návrhu</span><span class="switch"><input type="checkbox" id="notes-toggle"></span></label>
+</div>
+
+<div class="app">
+  <aside class="sidebar"></aside>
+  <main class="page" id="page"></main>
+</div>
+
+<div class="modal-scrim" id="m-rec">
+  <form class="modal" onsubmit="return false" aria-labelledby="rec-title">
+    <div class="modal__head">
+      <div><h2 id="rec-title">Zaznamenat zůstatek</h2><p>Zůstatek se uloží do historie účtu k vybranému dni.</p></div>
+      <button type="button" class="modal__close" aria-label="Zavřít" id="rec-x"></button>
+    </div>
+    <div class="modal__body">
+      <div class="row-2 row-2--date">
+        <div class="field">
+          <label class="field__label" for="rec-amt">Částka</label>
+          <div class="input-wrap input-wrap--unit"><input class="input" id="rec-amt" inputmode="decimal" autocomplete="off" placeholder="např. 450 000"><span class="unit">Kč</span></div>
+          <div class="field__hint">Zůstatek z výpisu nebo z bankovnictví. Importované transakce ho nemění.</div>
+        </div>
+        <div class="field">
+          <label class="field__label" for="rec-date">K datu</label>
+          <input class="input" type="date" id="rec-date" value="2026-10-10">
+        </div>
+      </div>
+      <div class="rec-note" id="rec-note" hidden></div>
+    </div>
+    <div class="modal__foot">
+      <button type="button" class="btn btn--ghost" id="rec-cancel">Zrušit</button>
+      <div class="actions"><button type="button" class="btn btn--primary" id="rec-ok">Zaznamenat zůstatek</button></div>
+    </div>
+  </form>
+</div>
+<div class="modal-scrim" id="m-hist"><div class="modal" role="dialog" aria-labelledby="hist-title"></div></div>
+<div class="modal-scrim" id="m-imp"><div class="modal" role="dialog" aria-labelledby="imp-title" style="width:800px"></div></div>
+<div class="modal-scrim" id="m-rate"><div class="modal modal--sm" role="dialog" aria-labelledby="rate-title"></div></div>
+
+<script src="../design-system/icons.js"></script>
+<script src="../design-system/shell.js"></script>
+<script src="../design-system/charts.js"></script>
+<script>
+(function () {
+'use strict';
+
+/* ===== Helpers ===== */
+var MON_N = ['leden','únor','březen','duben','květen','červen','červenec','srpen','září','říjen','listopad','prosinec'];
+var MON_G = ['ledna','února','března','dubna','května','června','července','srpna','září','října','listopadu','prosince'];
+var TODAY = new Date(2026, 9, 10);
+function $(s, r) { return (r || document).querySelector(s); }
+function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
+function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+function pl(n, a, b, c) { n = Math.abs(n); return n === 1 ? a : (n >= 2 && n <= 4 ? b : c); }
+function D(y, m, d) { return new Date(y, m - 1, d); }
+function addDays(d, n) { return new Date(d.getFullYear(), d.getMonth(), d.getDate() + n); }
+function dayDiff(a, b) { return Math.round((b - a) / 864e5); }
+function p2(n) { return (n < 10 ? '0' : '') + n; }
+function iso(d) { return d.getFullYear() + '-' + p2(d.getMonth() + 1) + '-' + p2(d.getDate()); }
+function parseIso(v) { var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v || ''); return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null; }
+function shortDay(d) { return d.getDate() + '. ' + (d.getMonth() + 1) + '.'; }
+function numOnly(n) { return fmtKc(n).replace(/[\s  ]*Kč$/, ''); }
+function R(arr, src) { return arr.map(function (r) { return { date: D(r[0], r[1], r[2]), v: r[3], src: src }; }); }
+function I(arr) { return arr.map(function (r) { return { date: D(r[0], r[1], r[2]), file: r[3], from: D(r[4], r[5], r[6]), to: D(r[7], r[8], r[9]), n: r[10], dup: 0 }; }); }
+function mkMonths(rows) { return rows.map(function (r) { return { y: r[0], m: r[1], a: r[2], b: r[3], n: r[4], nin: r[5], unc: r[6], cat: r[7] }; }); }
+
+/* ===== Demo data (today is 10. 10. 2026, all amounts CZK) ===== */
+/* Monthly flows: y, m, in, out, movements, inbound movements, uncategorized, biggest category */
+var MONTHS_BC = mkMonths([
+  [2025,11,61400,70200,58,3,1,'Potraviny'], [2025,12,54000,51300,61,4,2,'Zábava'], [2026,1,54000,48900,45,2,0,'Bydlení'],
+  [2026,2,55200,57600,43,3,0,'Potraviny'], [2026,3,54000,50100,47,3,1,'Potraviny'], [2026,4,54000,61900,46,2,0,'Doprava'],
+  [2026,5,58000,52400,46,3,1,'Potraviny'], [2026,6,54000,55700,49,3,0,'Bydlení'], [2026,7,54000,53300,44,2,2,'Potraviny'],
+  [2026,8,62300,58180,51,4,1,'Potraviny'], [2026,9,58200,64540,47,3,6,'Potraviny'], [2026,10,0,0,0,0,0,'']
+]);
+var MONTHS_D = mkMonths([
+  [2025,11,13260,0,2,2,0,''], [2025,12,13290,0,2,2,0,''], [2026,1,13300,0,2,2,0,''], [2026,2,13320,0,2,2,0,''], [2026,3,13330,0,2,2,0,''], [2026,4,13330,0,2,2,0,''],
+  [2026,5,13340,0,2,2,0,''], [2026,6,13380,0,2,2,0,''], [2026,7,13420,25000,3,2,0,'Převod'], [2026,8,13390,0,2,2,0,''], [2026,9,13430,0,2,2,0,''], [2026,10,0,0,0,0,0,'']
+]);
+/* Account F: last movement 14 months ago, everything is older than the 12-month window */
+var MONTHS_F = mkMonths([
+  [2025,3,52800,50100,41,2,0,'Potraviny'], [2025,4,52800,49300,44,2,0,'Bydlení'], [2025,5,53600,55200,47,3,0,'Potraviny'],
+  [2025,6,52800,48100,42,2,0,'Doprava'], [2025,7,52800,51700,45,2,1,'Potraviny'], [2025,8,52800,50900,39,2,3,'Potraviny']
+]);
+
+/* Ledger sample: page 1 of the newest month; {mm} becomes month/year of the month the rows are shown for */
+var LEDGER_BC = [
+  { d: 30, cp: 'Albert', det: 'Platba kartou · Albert Praha Budějovická', cat: 'Potraviny', amt: -1240 },
+  { d: 30, cp: 'Spotify', det: 'Předplatné · Spotify AB', cat: 'Zábava', amt: -199 },
+  { d: 29, cp: 'Shell', det: 'Platba kartou · čerpací stanice D1', cat: 'Doprava', amt: -1850 },
+  { d: 28, cp: 'Rohlík.cz', det: 'Online platba · objednávka 4471', cat: 'Potraviny', amt: -2310 },
+  { d: 26, cp: 'Lékárna Dr.Max', det: 'Platba kartou · Dr.Max Karlín', cat: 'Zdraví', amt: -430 },
+  { d: 25, cp: 'Zaměstnavatel s.r.o.', det: 'Příchozí platba · mzda {mm}', cat: 'Mzda', amt: 54000 },
+  { d: 24, cp: 'ČEZ', det: 'Trvalý příkaz · záloha na elektřinu', cat: 'Bydlení', amt: -2150 },
+  { d: 22, cp: 'Restaurace U Kalicha', det: 'Platba kartou · Praha 2', cat: '', amt: -890 },
+  { d: 20, cp: 'Alza.cz', det: 'Online platba · objednávka 9984213', cat: '', amt: -4990 },
+  { d: 18, cp: 'Lidl', det: 'Platba kartou · Lidl Praha 5', cat: 'Potraviny', amt: -1120 },
+  { d: 15, cp: 'O2', det: 'Inkaso · mobilní tarif', cat: 'Služby', amt: -649 },
+  { d: 12, cp: 'Decathlon', det: 'Platba kartou · OC Chodov', cat: '', amt: -2390 }
+];
+var LEDGER_D = [
+  { d: 30, cp: 'Moneta Money Bank', det: 'Připsaný úrok · {mm}', cat: 'Úrok', amt: 1430 },
+  { d: 1, cp: 'Vlastní převod', det: 'Trvalý příkaz · spoření z běžného účtu', cat: 'Spoření', amt: 12000 }
+];
+var CAT_DOT = { 'Potraviny': 's1', 'Bydlení': 's2', 'Doprava': 's3', 'Služby': 's4', 'Zdraví': 's3', 'Zábava': 's2', 'Mzda': 's1', 'Úrok': 's1', 'Spoření': 's2' };
+var ZONES = [{ lo: 0, hi: 500000, r: 4.10 }, { lo: 500000, hi: 1000000, r: 3.00 }, { lo: 1000000, hi: null, r: 0.10 }];
+/* plausible duplicates found per import (every import is error-free) */
+var DUPS = { 'csob_2026-09.csv': 2, 'csob_2026-07.csv': 1, 'csob_2026-05.csv': 3, 'csob_2026-04.csv': 1, 'csob_2025-12.csv': 3, 'fio_2026-09.csv': 1, 'fio_2026-07.csv': 2, 'fio_2026-05.csv': 1, 'fio_2026-03.csv': 1, 'moneta_2026-07.csv': 1, 'kb_2025-08.csv': 1, 'kb_2025-05.csv': 2 };
+
+/* No account-type logic: the sections of the page follow from the data. */
+var SC = {
+  a: {
+    id: 'a', name: 'Spořicí účet Raiffeisenbank', eyebrow: ['Raiffeisenbank', 'CZK', 'Spořicí účet'], iban: 'CZ65 5500 0000 0012 3456 7890',
+    zones: ZONES, imports: [],
+    records: R([[2026,10,3,450000],[2026,9,1,437800],[2026,8,1,425600],[2026,7,1,413500],[2026,6,2,401300],[2026,5,1,389200],[2026,4,1,377100],[2026,3,2,365000],[2026,2,1,353000],[2026,1,5,341000],[2025,12,28,353600],[2025,11,1,330000]], 'ručně')
+  },
+  b: {
+    id: 'b', name: 'Běžný účet ČSOB', eyebrow: ['ČSOB', 'CZK', 'Běžný účet'], iban: 'CZ27 0300 0000 0002 8465 1904',
+    zones: null, records: [], months: MONTHS_BC, ledger: LEDGER_BC,
+    imports: I([[2026,10,2,'csob_2026-09.csv',2026,9,1,2026,9,30,47],[2026,9,3,'csob_2026-08.csv',2026,8,1,2026,8,31,51],[2026,8,2,'csob_2026-07.csv',2026,7,1,2026,7,31,44],[2026,7,1,'csob_2026-06.csv',2026,6,1,2026,6,30,49],[2026,6,2,'csob_2026-05.csv',2026,5,1,2026,5,31,46],[2026,5,2,'csob_2026-04.csv',2026,4,1,2026,4,30,46],[2026,4,1,'csob_2026-03.csv',2026,3,1,2026,3,31,47],[2026,3,3,'csob_2026-02.csv',2026,2,1,2026,2,28,43],[2026,2,2,'csob_2026-01.csv',2026,1,1,2026,1,31,45],[2026,1,2,'csob_2025-12.csv',2025,12,1,2025,12,31,61],[2025,12,3,'csob_2025-11.csv',2025,11,1,2025,11,30,58]])
+  },
+  c: {
+    id: 'c', name: 'Hlavní účet Fio', eyebrow: ['Fio banka', 'CZK', 'Běžný účet'], iban: 'CZ58 2010 0000 0023 0145 8720',
+    zones: null, months: MONTHS_BC, ledger: LEDGER_BC,
+    records: R([[2026,9,30,84320],[2026,8,31,90660],[2026,7,31,86540],[2026,6,30,96200],[2026,5,31,94500],[2026,4,30,92100]], 'z výpisu'),
+    imports: I([[2026,10,2,'fio_2026-09.csv',2026,9,1,2026,9,30,47],[2026,9,1,'fio_2026-08.csv',2026,8,1,2026,8,31,51],[2026,8,1,'fio_2026-07.csv',2026,7,1,2026,7,31,44],[2026,7,2,'fio_2026-06.csv',2026,6,1,2026,6,30,49],[2026,6,1,'fio_2026-05.csv',2026,5,1,2026,5,31,46],[2026,5,2,'fio_2026-04.csv',2026,4,1,2026,4,30,46],[2026,4,1,'fio_2026-03.csv',2026,3,1,2026,3,31,47],[2026,3,2,'fio_2026-02.csv',2026,2,1,2026,2,28,43]])
+  },
+  d: {
+    id: 'd', name: 'Spořicí účet Moneta', eyebrow: ['Moneta', 'CZK', 'Spořicí účet'], iban: 'CZ12 0600 0000 0001 2345 6789',
+    zones: ZONES, months: MONTHS_D, ledger: LEDGER_D,
+    records: R([[2026,9,30,433560],[2026,8,31,420130],[2026,7,31,406740],[2026,6,30,418320],[2026,5,31,404940],[2026,4,30,391600]], 'z výpisu'),
+    imports: I([[2026,10,2,'moneta_2026-09.csv',2026,9,1,2026,9,30,2],[2026,9,1,'moneta_2026-08.csv',2026,8,1,2026,8,31,2],[2026,8,1,'moneta_2026-07.csv',2026,7,1,2026,7,31,3],[2026,7,1,'moneta_2026-06.csv',2026,6,1,2026,6,30,2],[2026,6,1,'moneta_2026-05.csv',2026,5,1,2026,5,31,2],[2026,5,1,'moneta_2026-04.csv',2026,4,1,2026,4,30,2]])
+  },
+  e: {
+    id: 'e', name: 'Rezerva Air Bank', eyebrow: ['Air Bank', 'CZK', 'Spořicí účet'], iban: 'CZ34 3030 0000 0012 9876 5432',
+    zones: null, records: [], imports: []
+  },
+  f: {
+    id: 'f', name: 'Starý účet KB', eyebrow: ['Komerční banka', 'CZK', 'Běžný účet'], iban: 'CZ91 0100 0000 0019 8765 4321',
+    zones: null, records: [], months: MONTHS_F, ledger: LEDGER_BC,
+    imports: I([[2025,9,2,'kb_2025-08.csv',2025,8,1,2025,8,31,39],[2025,8,1,'kb_2025-07.csv',2025,7,1,2025,7,31,45],[2025,7,2,'kb_2025-06.csv',2025,6,1,2025,6,30,42],[2025,6,2,'kb_2025-05.csv',2025,5,1,2025,5,31,47],[2025,5,2,'kb_2025-04.csv',2025,4,1,2025,4,30,44],[2025,4,1,'kb_2025-03.csv',2025,3,1,2025,3,31,41]])
+  }
+};
+Object.keys(SC).forEach(function (k) { SC[k].imports.forEach(function (m) { m.dup = DUPS[m.file] || 0; }); });
+
+/* ===== Sections follow the data ===== */
+function cur() { return SC[S.sc]; }
+function desc(sc) { return sc.records.slice().sort(function (x, y) { return y.date - x.date; }); }
+function asc(sc) { return sc.records.slice().sort(function (x, y) { return x.date - y.date; }); }
+function newestRec(sc) { return desc(sc)[0] || null; }
+function showBalance(sc) { var r = newestRec(sc); return !!r && r.v !== 0; }
+function monthData(sc, y, m) {
+  var M = sc.months || [];
+  for (var i = 0; i < M.length; i++) if (M[i].y === y && M[i].m === m) return M[i];
+  return { y: y, m: m, a: 0, b: 0, n: 0, nin: 0, unc: 0, cat: '' };
+}
+/* the last 12 calendar months ending with the current month (fixed window of the flows chart) */
+function flowsWin(sc) {
+  var out = [];
+  for (var i = 11; i >= 0; i--) { var d = new Date(TODAY.getFullYear(), TODAY.getMonth() - i, 1); out.push(monthData(sc, d.getFullYear(), d.getMonth() + 1)); }
+  return out;
+}
+function showFlows(sc) { return flowsWin(sc).some(function (m) { return m.n > 0; }); }
+function showLedger(sc) { return (sc.months || []).some(function (m) { return m.n > 0; }); }
+function newestTxMonth(sc) { var best = null; (sc.months || []).forEach(function (m) { if (m.n > 0 && (!best || m.y * 100 + m.m > best.y * 100 + best.m)) best = m; }); return best; }
+function sectionsOf(sc) {
+  var b = showBalance(sc), f = showFlows(sc), l = showLedger(sc);
+  return { balance: b, flows: f, ledger: l, empty: !b && !l };
+}
+
+/* ===== State ===== */
+var S = { sc: 'a', notes: false, fm: 11, per: 'last-month', cfrom: '', cto: '', filt: { dir: 'all', cat: '', q: '' } };
+var PERIODS = [['this-month', 'Tento měsíc'], ['last-month', 'Minulý měsíc'], ['this-quarter', 'Toto čtvrtletí'], ['last-quarter', 'Minulé čtvrtletí'], ['this-year', 'Tento rok'], ['last-year', 'Minulý rok'], ['all', 'Celé období'], ['custom', 'Vlastní']];
+function lastDayOf(y, m0) { return new Date(y, m0 + 1, 0); }
+function rangeOf(per) {
+  var y = TODAY.getFullYear(), m = TODAY.getMonth(), q = Math.floor(m / 3);
+  if (per === 'this-month') return [new Date(y, m, 1), lastDayOf(y, m)];
+  if (per === 'last-month') return [new Date(y, m - 1, 1), lastDayOf(y, m - 1)];
+  if (per === 'this-quarter') return [new Date(y, q * 3, 1), lastDayOf(y, q * 3 + 2)];
+  if (per === 'last-quarter') return [new Date(y, q * 3 - 3, 1), lastDayOf(y, q * 3 - 1)];
+  if (per === 'this-year') return [new Date(y, 0, 1), new Date(y, 11, 31)];
+  if (per === 'last-year') return [new Date(y - 1, 0, 1), new Date(y - 1, 11, 31)];
+  if (per === 'all') return [new Date(1990, 0, 1), new Date(2100, 11, 31)];
+  var f = parseIso(S.cfrom), t = parseIso(S.cto);
+  return [f || new Date(1990, 0, 1), t || new Date(2100, 11, 31)];
+}
+/* default ledger period: the month of the newest transaction */
+function resetView() {
+  var sc = cur(), win = flowsWin(sc), i;
+  S.fm = 11; for (i = 11; i >= 0; i--) if (win[i].n > 0) { S.fm = i; break; }
+  var nm = newestTxMonth(sc), lm = new Date(TODAY.getFullYear(), TODAY.getMonth() - 1, 1), tm = new Date(TODAY.getFullYear(), TODAY.getMonth(), 1);
+  S.per = 'last-month'; S.cfrom = ''; S.cto = '';
+  if (nm) {
+    if (nm.y === lm.getFullYear() && nm.m === lm.getMonth() + 1) S.per = 'last-month';
+    else if (nm.y === tm.getFullYear() && nm.m === tm.getMonth() + 1) S.per = 'this-month';
+    else { S.per = 'custom'; S.cfrom = iso(new Date(nm.y, nm.m - 1, 1)); S.cto = iso(lastDayOf(nm.y, nm.m - 1)); }
+  }
+  S.filt = { dir: 'all', cat: '', q: '' };
+}
+
+/* ===== HTML builders ===== */
+function seg(name, items, active) {
+  return '<div class="seg" data-seg="' + name + '">' + items.map(function (it) {
+    return '<button type="button" class="seg__btn' + (it[0] === active ? ' is-active' : '') + '" data-value="' + esc(it[0]) + '">' + esc(it[1] || it[0]) + '</button>';
+  }).join('') + '</div>';
+}
+function stat(label, value, note, cls) {
+  return '<div class="stat"><span class="stat__label">' + label + '</span><strong class="stat__value' + (cls ? ' ' + cls : '') + '">' + value + '</strong><span class="stat__note">' + note + '</span></div>';
+}
+function signCls(n) { return n > 0 ? 'gain' : (n < 0 ? 'loss' : ''); }
+function legendItem(swatch, text) { return '<span class="legend__item">' + swatch + text + '</span>'; }
+var SW_LINE = '<i class="legend__swatch"></i>';
+var SW_REC = '<i class="legend__swatch legend__swatch--dot" style="background:var(--chart-line)"></i>';
+function interestYear(bal, zones) {
+  var t = 0;
+  zones.forEach(function (z) { var hi = z.hi == null ? Infinity : z.hi; if (bal > z.lo) t += (Math.min(bal, hi) - z.lo) * z.r / 100; });
+  return Math.round(t);
+}
+function pct2(n) { return n.toFixed(2).replace('.', ',') + ' %'; }
+function pill(n, cls) { return '<i class="np ' + (cls || 'np--tl') + '">' + n + '</i>'; }
+
+function topbarHTML(sc) {
+  var status = 'Zatím bez dat', r = newestRec(sc);
+  if (sc.imports.length) status = 'Poslední import ' + fmtDay(sc.imports[0].date);
+  else if (r) status = 'Zůstatek k ' + fmtDay(r.date);
+  return '<div class="topbar"><span class="crumb"><a href="#">Bankovní účty</a><i>›</i><b>' + esc(sc.name) + '</b></span><span class="status">' + status + '</span></div>';
+}
+function headHTML(sc) {
+  return '<a class="back" href="#">' + icon('arrow-left', 14) + 'Zpět na účty</a>' +
+    '<div class="page-head"><div><div class="eyebrow">' + sc.eyebrow.map(esc).join('<span class="sep">·</span>') + '</div><h1>' + esc(sc.name) + '</h1><p>' + sc.iban + '</p></div>' +
+    '<div class="actions"><button type="button" class="btn has-np" data-act="rec">' + pill(2) + icon('wallet', 14) + 'Zaznamenat zůstatek</button>' +
+    '<button type="button" class="btn btn--primary" data-act="import">' + icon('upload', 14) + 'Importovat výpis</button>' +
+    '<span class="menu-host"><button type="button" class="btn btn--icon" data-act="menu" aria-label="Další akce">' + icon('ellipsis', 16) + '</button></span></div></div>';
+}
+
+/* ----- 1. Balance section: hero + 3 stats ----- */
+function heroInner(sc) {
+  var recs = desc(sc), c = recs[0], p = recs[1], delta, body = '', legend = '';
+  if (p) {
+    var d = c.v - p.v;
+    delta = '<div class="hero__delta ' + signCls(d) + '">' + (d > 0 ? '↗ ' : (d < 0 ? '↘ ' : '→ ')) + fmtSigned(d) + '<span>od ' + fmtDay(p.date) + '</span></div>';
+  } else delta = '<div class="hero__delta hero__delta--quiet"><span>Zatím jediný záznam zůstatku</span></div>';
+  if (recs.length >= 2) {
+    body = '<div class="chart" id="hc" style="margin:16px -4px 0;height:180px"></div><div class="chart__axis" id="hax"></div>';
+    legend = '<div class="legend">' + legendItem(SW_LINE, 'Zůstatek') + legendItem(SW_REC, 'Záznam zůstatku') + pill(5, 'np--inline') + '</div>';
+  }
+  return '<section class="card hero"><div class="hero__head"><div><div class="hero__label">Zůstatek k ' + fmtDay(c.date) + '</div><span class="hero__value num">' + fmtKc(c.v) + '</span>' + delta + '</div></div>' + body + legend + '</section>';
+}
+function balanceStats(sc) {
+  var recs = desc(sc), c = recs[0], s1, s2, s3, i;
+  var jan1 = D(TODAY.getFullYear(), 1, 1), base = null;
+  for (i = 0; i < recs.length; i++) if (!base && recs[i].date <= jan1) base = recs[i];
+  if (base && base !== c) { var d1 = c.v - base.v; s1 = stat('Změna letos', fmtSigned(d1), 'proti záznamu k ' + fmtDay(base.date), signCls(d1)); }
+  else s1 = stat('Změna letos', '—', 'bez záznamu k ' + fmtDay(jan1), '');
+  var yearAgo = new Date(TODAY.getFullYear() - 1, TODAY.getMonth(), TODAY.getDate()), b12 = null, short = false;
+  for (i = 0; i < recs.length; i++) if (!b12 && recs[i].date <= yearAgo) b12 = recs[i];
+  if (!b12 && recs.length > 1) { b12 = recs[recs.length - 1]; short = true; }
+  if (b12 && b12 !== c) {
+    var months = short ? Math.max(1, Math.round(dayDiff(b12.date, c.date) / 30.44)) : 12, avg = Math.round((c.v - b12.v) / months);
+    s2 = stat('Průměrně za měsíc', fmtSigned(avg), short ? 'za ' + months + ' ' + pl(months, 'měsíc', 'měsíce', 'měsíců') + ' od prvního záznamu' : 'za posledních 12 měsíců', signCls(avg));
+  } else s2 = stat('Průměrně za měsíc', '—', 'zatím málo záznamů', '');
+  if (sc.zones) { var it = interestYear(c.v, sc.zones); s3 = stat('Roční úrok', fmtKc(it), pct2(it / c.v * 100) + ' efektivně · pásmové úročení', ''); }
+  else s3 = stat('Roční úrok', '—', 'bez úročení', '');
+  return '<div class="stats stats--3">' + s1 + s2 + s3 + '</div>';
+}
+
+/* ----- 2. Flows section: value + arrows + 12 monthly bars ----- */
+function flowsInner(sc, asHero) {
+  var win = flowsWin(sc), m = win[S.fm], nm = MON_N[m.m - 1], net = m.a - m.b, value, delta;
+  if (m.n) {
+    value = fmtSigned(net);
+    delta = '<div class="hero__delta hero__delta--quiet"><span>' + fmtSigned(m.a) + ' příchozí · ' + (m.b ? fmtSigned(-m.b) : fmtKc(0)) + ' odchozí · ' + m.n + ' ' + pl(m.n, 'pohyb', 'pohyby', 'pohybů') + '</span></div>';
+  } else { value = '—'; delta = '<div class="hero__delta hero__delta--quiet"><span>V tomto měsíci nejsou žádné pohyby</span></div>'; }
+  var cls = m.n && signCls(net) ? ' ' + signCls(net) : '';
+  var arrows = '<div class="hero__aside"><div class="pnav has-np">' + pill(3) +
+    '<button type="button" class="btn btn--sm btn--icon" data-act="pprev" aria-label="Předchozí měsíc"' + (S.fm <= 0 ? ' disabled' : '') + '>' + icon('chevron-right', 14, 'flip') + '</button>' +
+    '<button type="button" class="btn btn--sm btn--icon" data-act="pnext" aria-label="Další měsíc"' + (S.fm >= 11 ? ' disabled' : '') + '>' + icon('chevron-right', 14) + '</button></div></div>';
+  return '<section class="card hero' + (asHero ? '' : ' hero--compact') + '"><div class="hero__head"><div><div class="hero__label">Bilance · ' + nm + ' ' + m.y + '</div><span class="hero__value num' + cls + '">' + value + '</span>' + delta + '</div>' + arrows + '</div>' +
+    '<div class="chart" id="hf" style="margin:16px -4px 0;height:180px"></div><div class="chart__axis axis--slots" id="hfax"></div>' +
+    '<div class="legend">' + legendItem('<i class="legend__swatch legend__swatch--block" style="background:var(--s1)"></i>', 'Příchozí') + legendItem('<i class="legend__swatch legend__swatch--block" style="background:var(--s3)"></i>', 'Odchozí') + '</div></section>';
+}
+
+/* ----- 3. Transakce card ----- */
+function selectedRange() { return rangeOf(S.per); }
+function overlapFrac(m, r) {
+  var a = new Date(m.y, m.m - 1, 1), b = lastDayOf(m.y, m.m - 1), dim = b.getDate();
+  var lo = a > r[0] ? a : r[0], hi = b < r[1] ? b : r[1], days = dayDiff(lo, hi) + 1;
+  return days <= 0 ? 0 : Math.min(1, days / dim);
+}
+function periodTotals(sc) {
+  var r = selectedRange(), n = 0, unc = 0, newest = null;
+  (sc.months || []).forEach(function (m) {
+    var f = overlapFrac(m, r);
+    if (f > 0 && m.n > 0) {
+      n += f === 1 ? m.n : Math.max(1, Math.round(m.n * f)); unc += f === 1 ? m.unc : Math.round(m.unc * f);
+      if (!newest || m.y * 100 + m.m > newest.y * 100 + newest.m) newest = m;
+    }
+  });
+  return { n: n, unc: unc, newest: newest, range: r };
+}
+function ledgerData() {
+  var sc = cur(), T = periodTotals(sc);
+  if (!T.n) return { total: 0, rows: [], unc: 0 };
+  var mo = T.newest, dim = lastDayOf(mo.y, mo.m - 1).getDate(), f = S.filt, q = f.q.trim().toLowerCase();
+  var rows = sc.ledger.map(function (r) {
+    return { d: Math.min(r.d, dim), m: mo.m, y: mo.y, cp: r.cp, det: r.det.replace('{mm}', p2(mo.m) + '/' + mo.y), cat: r.cat, amt: r.amt };
+  }).filter(function (r) {
+    var dt = new Date(r.y, r.m - 1, r.d);
+    if (dt < T.range[0] || dt > T.range[1]) return false;
+    if (f.dir === 'in' && r.amt < 0) return false;
+    if (f.dir === 'out' && r.amt > 0) return false;
+    if (f.cat && (r.cat || 'Nezařazeno') !== f.cat) return false;
+    if (q && (r.cp + ' ' + r.det + ' ' + r.cat).toLowerCase().indexOf(q) < 0) return false;
+    return true;
+  });
+  return { total: T.n, rows: rows, unc: T.unc };
+}
+function ledgerBodyHTML() {
+  var L = ledgerData(), f = S.filt, lastKey = null;
+  if (!L.total) {
+    return { table: '<div class="table"><div class="empty empty--wide" style="padding:36px 24px">' + icon('upload', 28) + '<h3>Žádné transakce v tomto období</h3><p>Zvolte jiné období nebo naimportujte výpis.</p></div></div>', foot: '<div class="table__foot"><span>0 transakcí</span><span></span></div>' };
+  }
+  var head = '<div class="table__head led-grid"><div>Datum</div><div>Protistrana</div><div>Kategorie</div><div class="cell--num">Částka</div></div>', rows = '';
+  if (!L.rows.length) rows = '<div class="empty" style="padding:36px 24px"><h3>Nic neodpovídá filtru</h3><p>Zkuste jiné hledání nebo kategorii.</p></div>';
+  L.rows.forEach(function (r) {
+    var key = r.y + '-' + r.m + '-' + r.d;
+    if (key !== lastKey) { rows += '<div class="table__group">' + r.d + '. ' + MON_G[r.m - 1] + '</div>'; lastKey = key; }
+    var chip = r.cat ? '<span class="chip"><i class="dot" style="background:var(--' + (CAT_DOT[r.cat] || 's2') + ')"></i>' + r.cat + '</span>' : '<span class="badge badge--outline">' + icon('circle-alert', 11) + 'Nezařazeno</span>';
+    var amt = r.amt < 0 ? '<div class="cell--num cell--name">' + fmtSigned(r.amt) + '</div>' : '<div class="cell--num delta gain">' + fmtSigned(r.amt) + '</div>';
+    rows += '<div class="table__row led-grid"><div class="faint">' + r.d + '. ' + r.m + '.</div><div class="entity"><div><b>' + esc(r.cp) + '</b><small>' + esc(r.det) + '</small></div></div><div>' + chip + '</div>' + amt + '</div>';
+  });
+  var filtered = f.dir !== 'all' || f.cat || f.q.trim();
+  var cnt = filtered ? L.rows.length + ' z ' + L.total + ' transakcí' : L.total + ' ' + pl(L.total, 'transakce', 'transakce', 'transakcí');
+  return { table: '<div class="table">' + head + rows + '</div>', foot: '<div class="table__foot"><span>' + cnt + ' · Strana 1</span><span class="pager"><button type="button" class="btn btn--ghost btn--icon btn--sm" disabled aria-label="Předchozí strana">' + icon('chevron-right', 14, 'flip') + '</button><button type="button" class="btn btn--ghost btn--icon btn--sm" aria-label="Další strana">' + icon('chevron-right', 14) + '</button></span></div>' };
+}
+function autoBtnHTML() {
+  var u = ledgerData().unc;
+  return '<button type="button" class="btn btn--sm" id="led-auto"' + (u ? '' : ' disabled') + '>' + icon('tag', 13) + 'Zařadit automaticky' + (u ? ' <span class="badge badge--dark">' + u + '</span>' : '') + '</button>';
+}
+function periodControlsHTML() {
+  var opts = PERIODS.map(function (p) { return '<option value="' + p[0] + '"' + (S.per === p[0] ? ' selected' : '') + '>' + p[1] + '</option>'; }).join('');
+  return '<div class="ledger-period has-np">' + pill(4) + '<div class="select-wrap select-wrap--period"><select class="select" id="led-per" aria-label="Období výpisu">' + opts + '</select>' + icon('chevron-down', 14) + '</div>' +
+    (S.per === 'custom' ? '<input class="input" type="date" id="led-from" aria-label="Od data" value="' + S.cfrom + '"><span class="faint">–</span><input class="input" type="date" id="led-to" aria-label="Do data" value="' + S.cto + '">' : '') + '</div>';
+}
+function ledgerSubHTML() { return periodControlsHTML() + autoBtnHTML(); }
+function ledgerInner(sc) {
+  var cats = [];
+  sc.ledger.forEach(function (r) { var c = r.cat || 'Nezařazeno'; if (cats.indexOf(c) < 0) cats.push(c); });
+  cats.sort(function (a, b) { return a === 'Nezařazeno' ? 1 : (b === 'Nezařazeno' ? -1 : a.localeCompare(b, 'cs')); });
+  var opts = '<option value="">Všechny kategorie</option>' + cats.map(function (c) { return '<option' + (S.filt.cat === c ? ' selected' : '') + '>' + c + '</option>'; }).join('');
+  var title = '<div><h2 class="card__title">Transakce</h2><p class="card__sub">Seskupené podle dne · nejnovější nahoře</p></div>';
+  var tools = '<div class="toolbar"><button type="button" class="btn btn--sm" data-act="addtx">' + icon('plus', 13) + 'Přidat transakci</button>' + seg('dir', [['all', 'Vše'], ['in', 'Příchozí'], ['out', 'Odchozí']], S.filt.dir) +
+    '<div class="select-wrap select-wrap--sm"><select class="select" id="led-cat" aria-label="Kategorie">' + opts + '</select>' + icon('chevron-down', 14) + '</div>' +
+    '<div class="search input-wrap">' + icon('search', 14) + '<input class="input" id="led-q" placeholder="Hledat v popisu" aria-label="Hledat v popisu" value="' + esc(S.filt.q) + '"></div></div>';
+  var b = ledgerBodyHTML();
+  return '<section class="card card--table"><div class="card__head ledger-head">' + title + tools + '</div><div class="ledger-sub" id="led-sub">' + ledgerSubHTML() + '</div><div id="led-body">' + b.table + '</div><div id="led-foot">' + b.foot + '</div></section>';
+}
+
+/* ----- 4. Empty state (no buttons: the head has both actions) ----- */
+function emptyInner() {
+  return '<section class="card card--table"><div class="empty empty--wide" style="padding:72px 24px">' + icon('wallet', 28) + '<h3>Účet zatím nemá žádná data</h3><p>Zaznamenejte zůstatek z výpisu nebo naimportujte výpis z banky.</p></div></section>';
+}
+
+/* ----- Design notes ----- */
+var NOTES = [
+  { n: 1, sc: 'abcdef', t: 'Sekce podle dat', s: 'Zůstatek se ukáže jen u zaznamenaného nenulového zůstatku, pohyby jen s transakcí za posledních 12 měsíců, výpis s jakoukoli transakcí. Typ účtu stránku nemění.' },
+  { n: 2, sc: 'abcdef', t: 'Obě akce vždy nahoře', s: 'Zaznamenat zůstatek a Importovat výpis jsou vždy v hlavičce, menu ··· drží jen zbytek.' },
+  { n: 3, sc: 'bcd', t: 'Pohyby: pevných 12 měsíců', s: 'Výchozí je poslední měsíc s pohybem, šipky listují po měsících a končí u současného měsíce. Okno je pevně posledních 12 měsíců. Bez zůstatku nad ním je to hlavní číslo stránky, jinak kompaktní hodnota.' },
+  { n: 4, sc: 'bcdf', t: 'Výpis filtruje po svém', s: 'Filtry období, kategorie a hledání zůstaly beze změny a nezávisí na šipkách grafu.' },
+  { n: 5, sc: 'acd', t: 'Čára končí posledním záznamem, osa dneškem', s: 'Mezera mezi posledním záznamem a „Dnes“ ukazuje stáří zůstatku bez jediné věty textu.' },
+  { n: 6, sc: 'e', t: 'Jeden prázdný stav', s: 'Účet bez nenulového zůstatku a bez transakcí má jen jednu kartu. Obě cesty, jak data dostat dovnitř, jsou v hlavičce.' }
+];
+function notesInner(sc) {
+  return '<section class="card card--flat notes-card"><div class="card__head"><div><h2 class="card__title">Poznámky k návrhu</h2><p class="card__sub">Čísla odpovídají značkám na stránce · scénář ' + sc.id.toUpperCase() + '</p></div></div><ol class="notes">' + NOTES.map(function (n) {
+    var here = n.sc.indexOf(sc.id) >= 0, where = n.sc.toUpperCase().split('').join(', ');
+    return '<li><i class="np">' + n.n + '</i><div><b>' + n.t + '</b>' + n.s + (here ? '' : '<br><span class="badge badge--outline">vidět ve scénáři ' + where + '</span>') + '</div></li>';
+  }).join('') + '</ol></section>';
+}
+
+/* ===== Render ===== */
+function firstSection(sec) { return sec.balance ? 'hero' : (sec.flows ? 'flows' : (sec.ledger ? 'ledger' : 'empty')); }
+function sectionHTML(n, sc, sec) {
+  var pre = firstSection(sec) === n ? pill(1) : '';
+  if (n === 'hero') return pre + heroInner(sc);
+  if (n === 'stats') return balanceStats(sc);
+  if (n === 'flows') return pre + flowsInner(sc, !sec.balance);
+  if (n === 'ledger') return pre + ledgerInner(sc);
+  return pre + emptyInner() + pill(6, 'np--tc');
+}
+function render() {
+  var sc = cur(), sec = sectionsOf(sc), html = topbarHTML(sc) + headHTML(sc) + '<div class="stack">', names = [];
+  function add(n, wrapCls) { html += '<div id="s-' + n + '"' + (wrapCls ? ' class="' + wrapCls + '"' : '') + '>' + sectionHTML(n, sc, sec) + '</div>'; }
+  if (sec.balance) { add('hero', 'has-np'); add('stats'); names.push('zůstatek'); }
+  if (sec.flows) { add('flows', 'has-np'); names.push('pohyby'); }
+  if (sec.ledger) { add('ledger', 'has-np'); names.push('výpis'); }
+  if (sec.empty) { add('empty', 'has-np'); names.push('prázdný stav'); }
+  $('#page').innerHTML = html + notesInner(sc) + '</div>';
+  $('#sections-name').textContent = names.join(' · ');
+  drawCharts();
+}
+function update(names) {
+  var sc = cur(), sec = sectionsOf(sc);
+  names.forEach(function (n) { var el = $('#s-' + n); if (el) el.innerHTML = sectionHTML(n, sc, sec); });
+  closeMenus(); drawCharts();
+}
+function refreshLedgerBody() {
+  var b = ledgerBodyHTML();
+  $('#led-body').innerHTML = b.table; $('#led-foot').innerHTML = b.foot;
+  var a = $('#led-auto'); if (a) a.outerHTML = autoBtnHTML();
+}
+
+/* ===== Charts ===== */
+function axisLabels(t0, t1) {
+  var span = dayDiff(t0, t1), out = [];
+  for (var i = 0; i < 5; i++) {
+    var d = new Date(t0.getTime() + (t1 - t0) * i / 4);
+    out.push(i === 4 ? 'Dnes' : (span < 100 ? shortDay(d) : CZ_MONTHS[d.getMonth()] + ' ' + String(d.getFullYear()).slice(2)));
+  }
+  return out;
+}
+/* Balance: straight segments through the records of the last 12 months; the axis runs to today, the line stops at the newest record. */
+function drawBalance(el, sc) {
+  var recs = asc(sc); if (recs.length < 2) return;
+  var last = recs[recs.length - 1], first = recs[0], pts = [], before = null, events = [];
+  var start = new Date(TODAY.getFullYear() - 1, TODAY.getMonth(), TODAY.getDate()); if (start < first.date) start = first.date;
+  recs.forEach(function (r) { if (r.date >= start) pts.push({ date: r.date, value: r.v, rec: r }); else before = r; });
+  if (before && pts.length && +pts[0].date !== +start) {
+    var f = pts[0], t = (start - before.date) / (f.date - before.date);
+    pts.unshift({ date: start, value: Math.round(before.v + (f.v - before.v) * t), anchor: true });
+  }
+  if (pts.length < 2) { el.innerHTML = ''; $('#hax').innerHTML = ''; return; }
+  var gap = last.date < TODAY;
+  if (gap) pts.push({ date: TODAY, value: last.v, future: true });
+  pts.forEach(function (p) {
+    if (p.rec && p.rec !== last) events.push({ date: p.date, type: 'out', kind: 'rec', html: '<b>' + fmtKc(p.rec.v) + '</b><small>' + fmtDay(p.date) + ' · ' + p.rec.src + '</small>' });
+  });
+  drawLine(el, pts, {
+    axisEl: $('#hax'), height: 180, events: events, splitAt: gap ? last.date : undefined, labels: axisLabels(pts[0].date, pts[pts.length - 1].date),
+    tipHtml: function (p) {
+      if (p.future) return '<b>Dnes</b><small>poslední záznam ' + fmtDay(last.date) + '</small>';
+      return '<b>' + fmtKc(Math.round(p.value)) + '</b><small>' + fmtDay(p.date) + (p.rec ? ' · ' + p.rec.src : ' · mezi záznamy') + '</small>';
+    }
+  });
+  $$('path[stroke-dasharray="4 4"]', el).forEach(function (n) { n.remove(); }); /* no dashed extension: the empty gap is the message */
+  $$('.ev', el).forEach(function (m) {
+    var e = events[+m.getAttribute('data-i')];
+    if (e && e.kind === 'rec') { m.setAttribute('fill', 'var(--chart-line)'); m.setAttribute('stroke', '#fff'); m.setAttribute('r', '4'); }
+  });
+}
+/* Flows: 12 calendar months ending with the current month, selected month full, the others muted. */
+function drawFlowBars(el, sc) {
+  var win = flowsWin(sc), H = 180;
+  var bars = win.map(function (m) { return { label: CZ_MONTHS[m.m - 1] + ' ' + String(m.y).slice(2), a: m.a, b: m.b }; });
+  drawBars(el, bars, { axisEl: $('#hfax'), height: H, names: ['Příchozí', 'Odchozí'] });
+  var svg = el.querySelector('svg'), W = +svg.getAttribute('width'), slot = (W - 54) / bars.length, slots = '', empties = '';
+  bars.forEach(function (b, i) {
+    slots += '<rect class="slot" data-i="' + i + '" x="' + (slot * i).toFixed(1) + '" y="0" width="' + slot.toFixed(1) + '" height="' + H + '" rx="6"/>';
+    if (!b.a && !b.b) empties += '<text x="' + (slot * i + slot / 2).toFixed(1) + '" y="' + (H - 14) + '" text-anchor="middle" fill="var(--ink-5)" font-size="9" font-weight="600" style="pointer-events:none">bez importu</text>';
+  });
+  svg.insertAdjacentHTML('afterbegin', slots);
+  svg.insertAdjacentHTML('beforeend', empties);
+  $$('.bar', el).forEach(function (r) { if (+r.getAttribute('data-i') !== S.fm) r.classList.add('is-muted'); });
+}
+function drawCharts() {
+  var sc = cur(), a = $('#hc'), b = $('#hf');
+  if (a) drawBalance(a, sc);
+  if (b) drawFlowBars(b, sc);
+}
+
+/* ===== Modals (opened from the ··· menu) ===== */
+function closeBtn(m) { return '<button type="button" class="modal__close" aria-label="Zavřít" data-act="close" data-m="' + m + '">' + icon('x', 15) + '</button>'; }
+function modalHead(id, title, sub, m) { return '<div class="modal__head"><div><h2 id="' + id + '">' + title + '</h2><p>' + sub + '</p></div>' + closeBtn(m) + '</div>'; }
+function closeFoot(m) { return '<div class="modal__foot"><button type="button" class="btn btn--ghost" data-act="close" data-m="' + m + '">Zavřít</button></div>'; }
+
+function histModalHTML(sc) {
+  var recs = desc(sc), rows = '', body;
+  var sub = recs.length ? recs.length + ' ' + pl(recs.length, 'záznam', 'záznamy', 'záznamů') + ' · poslední ' + fmtDay(recs[0].date) : 'Zatím žádný záznam.';
+  if (!recs.length) body = '<div class="empty">' + icon('wallet', 28) + '<h3>Zatím žádný záznam</h3><p>Zaznamenejte zůstatek z výpisu nebo z bankovnictví a Moony začne vést jeho historii.</p></div>';
+  else {
+    recs.forEach(function (r, i) {
+      var pv = recs[i + 1], chg = pv ? r.v - pv.v : null;
+      rows += '<div class="table__row hist-m"><div>' + fmtDay(r.date) + '</div><div class="cell--num cell--name">' + fmtKc(r.v) + '</div>' +
+        '<div class="cell--num ' + (chg == null ? 'faint' : 'delta ' + signCls(chg)) + '">' + (chg == null ? '—' : fmtSigned(chg)) + '</div>' +
+        '<div><span class="badge badge--outline">' + r.src + '</span></div>' +
+        '<div class="menu-host"><span class="row-actions"><button type="button" class="btn btn--ghost btn--icon btn--sm" data-act="rowmenu" data-i="' + i + '" aria-label="Možnosti záznamu">' + icon('ellipsis', 14) + '</button></span></div></div>';
+    });
+    body = '<div class="modal__scroll"><div class="table"><div class="table__head hist-m"><div>Datum</div><div class="cell--num">Částka</div><div class="cell--num">Změna</div><div>Zdroj</div><div></div></div>' + rows + '</div></div>';
+  }
+  return modalHead('hist-title', 'Historie zůstatku', sub, 'm-hist') + body + closeFoot('m-hist');
+}
+function impModalHTML(sc) {
+  var list = sc.imports, rows = '', body;
+  var sub = list.length ? 'Naposledy ' + fmtDay(list[0].date) + ' · ' + list.length + ' ' + pl(list.length, 'import', 'importy', 'importů') : 'Zatím žádný import.';
+  if (!list.length) body = '<div class="empty">' + icon('upload', 28) + '<h3>Zatím žádný import</h3><p>Naimportujte výpis z banky a jeho historie se objeví tady.</p></div>';
+  else {
+    list.forEach(function (m) {
+      rows += '<div class="table__row imp-m"><div>' + fmtDay(m.date) + '</div><div class="cell--name" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(m.file) + '</div>' +
+        '<div class="faint">' + shortDay(m.from) + ' – ' + fmtDay(m.to) + '</div><div class="cell--num">' + m.n + '</div><div class="cell--num ' + (m.dup ? '' : 'faint') + '">' + m.dup + '</div>' +
+        '<div class="cell--num"><span class="row-actions"><button type="button" class="btn btn--danger btn--sm" data-act="noop">Smazat importované transakce…</button></span></div></div>';
+    });
+    body = '<div class="modal__scroll"><div class="table"><div class="table__head imp-m"><div>Datum</div><div>Soubor</div><div>Období</div><div class="cell--num">Importováno</div><div class="cell--num">Duplicity</div><div></div></div>' + rows + '</div></div>';
+  }
+  return modalHead('imp-title', 'Historie importů', sub, 'm-imp') + body + closeFoot('m-imp');
+}
+function rateModalHTML(sc) {
+  var rows = '';
+  sc.zones.forEach(function (z) {
+    var lab = z.lo === 0 ? '0 – ' + numOnly(z.hi) + ' Kč' : (z.hi == null ? 'nad ' + numOnly(z.lo) + ' Kč' : numOnly(z.lo) + ' – ' + numOnly(z.hi) + ' Kč');
+    rows += '<div class="kv"><span>' + lab + '</span><b>' + pct2(z.r) + '</b></div>';
+  });
+  return modalHead('rate-title', 'Úročení', 'Pásmové úročení podle výše zůstatku', 'm-rate') + '<div class="modal__body">' + rows + '<p class="rate-cap">Efektivní sazba: roční úrok z aktuálního zůstatku dělený zůstatkem.</p></div>' + closeFoot('m-rate');
+}
+function openHist() { closeMenus(); $('#m-hist .modal').innerHTML = histModalHTML(cur()); openModal('m-hist'); }
+function openImports() { closeMenus(); $('#m-imp .modal').innerHTML = impModalHTML(cur()); openModal('m-imp'); }
+function openRate() { if (!cur().zones) return; closeMenus(); $('#m-rate .modal').innerHTML = rateModalHTML(cur()); openModal('m-rate'); }
+function recNote() {
+  var v = $('#rec-date').value, hit = null, note = $('#rec-note');
+  cur().records.forEach(function (r) { if (iso(r.date) === v) hit = r; });
+  if (hit) { note.innerHTML = icon('info', 13) + 'Záznam ze dne ' + fmtDay(hit.date) + ' bude nahrazen.'; note.hidden = false; } else note.hidden = true;
+}
+function openRec() {
+  $('#rec-amt').value = '';
+  $('#rec-date').value = iso(TODAY);
+  recNote(); closeMenus(); openModal('m-rec');
+}
+
+/* ===== Menus ===== */
+function closeMenus() { $$('.menu').forEach(function (m) { m.remove(); }); }
+function openMenu(btn, items) {
+  var host = btn.closest('.menu-host'), had = host.querySelector('.menu'), inModal = !!btn.closest('.modal');
+  closeMenus(); if (had) return;
+  host.insertAdjacentHTML('beforeend', '<div class="menu" role="menu">' + items.map(function (it) {
+    if (!it) return '<div class="menu__sep"></div>';
+    return '<button type="button" role="menuitem" class="menu__item' + (it.danger ? ' menu__item--danger' : '') + '" data-act="' + (it.act || 'noop') + '"' + (it.i != null ? ' data-i="' + it.i + '"' : '') + '>' + icon(it.ic, 14) + it.label + '</button>';
+  }).join('') + '</div>');
+  if (inModal) { /* menus inside a scrolling modal body are placed on the viewport so they are not clipped */
+    var m = host.querySelector('.menu'), r = btn.getBoundingClientRect();
+    m.style.position = 'fixed'; m.style.right = 'auto'; m.style.left = Math.round(r.right - m.offsetWidth) + 'px';
+    var below = r.bottom + 4; m.style.top = Math.round(below + m.offsetHeight > window.innerHeight - 8 ? r.top - m.offsetHeight - 4 : below) + 'px';
+  }
+}
+/* The page menu is static and holds only what is not already in the head. */
+function pageMenu(sc) {
+  var items = [{ ic: 'pencil', label: 'Upravit účet' }, { ic: 'plus', label: 'Přidat transakci', act: 'addtx' }, { ic: 'chart-line', label: 'Historie zůstatku', act: 'hist' }, { ic: 'file-text', label: 'Historie importů', act: 'imports' }];
+  if (sc.zones) items.push({ ic: 'landmark', label: 'Úročení', act: 'rate' });
+  items.push({ ic: 'tag', label: 'Pravidla kategorizace' }, null, { ic: 'trash-2', label: 'Smazat účet', danger: true });
+  return items;
+}
+
+/* ===== Events ===== */
+function syncUrl() {
+  try { history.replaceState(null, '', '?scenario=' + S.sc + (S.notes ? '&notes=1' : '')); } catch (e) { /* file:// may refuse */ }
+}
+function setScenario(id) {
+  S.sc = id; resetView();
+  $$('#scn .seg__btn').forEach(function (b) { b.classList.toggle('is-active', b.getAttribute('data-value') === id); });
+  render(); syncUrl();
+}
+document.addEventListener('click', function (e) {
+  var link = e.target.closest('a[href="#"]'); if (link) e.preventDefault();
+  var t = e.target.closest('[data-act]'), act = t && t.getAttribute('data-act');
+  if (act !== 'menu' && act !== 'rowmenu') closeMenus();
+  var sl = e.target.closest('#hf [data-i]');
+  if (!act && sl) { S.fm = +sl.getAttribute('data-i'); update(['flows']); return; }
+  if (!act) return;
+  if (act === 'rec') openRec();
+  else if (act === 'close') closeModal(t.getAttribute('data-m'));
+  else if (act === 'hist') openHist();
+  else if (act === 'imports') openImports();
+  else if (act === 'rate') openRate();
+  else if (act === 'menu') openMenu(t, pageMenu(cur()));
+  else if (act === 'rowmenu') openMenu(t, [{ ic: 'trash-2', label: 'Smazat záznam', danger: true, act: 'delrec', i: t.getAttribute('data-i') }]);
+  else if (act === 'delrec') {
+    var sc = cur(), r = desc(sc)[+t.getAttribute('data-i')]; sc.records = sc.records.filter(function (x) { return x !== r; });
+    render(); if ($('#m-hist').classList.contains('is-open')) $('#m-hist .modal').innerHTML = histModalHTML(cur()); toast('Záznam smazán');
+  }
+  else if (act === 'pprev' && S.fm > 0) { S.fm--; update(['flows']); }
+  else if (act === 'pnext' && S.fm < 11) { S.fm++; update(['flows']); }
+});
+document.addEventListener('segchange', function (e) {
+  var name = e.target.getAttribute('data-seg'), v = e.detail;
+  if (name === 'scn') setScenario(v);
+  else if (name === 'dir') { S.filt.dir = v; refreshLedgerBody(); }
+});
+document.addEventListener('input', function (e) {
+  var id = e.target.id;
+  if (id === 'led-q') { S.filt.q = e.target.value; refreshLedgerBody(); }
+  else if (id === 'led-from') { S.cfrom = e.target.value; refreshLedgerBody(); }
+  else if (id === 'led-to') { S.cto = e.target.value; refreshLedgerBody(); }
+  else if (id === 'rec-date') recNote();
+});
+document.addEventListener('change', function (e) {
+  var id = e.target.id;
+  if (id === 'led-cat') { S.filt.cat = e.target.value; refreshLedgerBody(); }
+  else if (id === 'led-per') {
+    var v = e.target.value;
+    if (v === 'custom' && S.per !== 'custom') { var r = rangeOf(S.per === 'all' ? 'last-month' : S.per); S.cfrom = iso(r[0]); S.cto = iso(r[1]); }
+    S.per = v; $('#led-sub').innerHTML = ledgerSubHTML(); refreshLedgerBody();
+  }
+  else if (id === 'led-from') { S.cfrom = e.target.value; refreshLedgerBody(); }
+  else if (id === 'led-to') { S.cto = e.target.value; refreshLedgerBody(); }
+  else if (id === 'rec-date') recNote();
+});
+document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeMenus(); });
+document.addEventListener('scroll', closeMenus, true);
+$('#notes-toggle').addEventListener('change', function (e) { S.notes = e.target.checked; document.body.classList.toggle('notes-on', S.notes); syncUrl(); });
+$('#rec-x').innerHTML = icon('x', 15);
+$('#rec-x').addEventListener('click', function () { closeModal('m-rec'); });
+$('#rec-cancel').addEventListener('click', function () { closeModal('m-rec'); });
+$('#rec-ok').addEventListener('click', function () { closeModal('m-rec'); toast('Zůstatek zaznamenán'); });
+var rz; window.addEventListener('resize', function () { clearTimeout(rz); rz = setTimeout(drawCharts, 120); });
+
+/* ===== Init ===== */
+(function init() {
+  var q = new URLSearchParams(location.search), id = q.get('scenario');
+  if (!SC[id]) id = 'a';
+  renderShell({ active: 'bankAccounts' });
+  if (q.get('notes') === '1') { S.notes = true; $('#notes-toggle').checked = true; document.body.classList.add('notes-on'); }
+  S.sc = id; resetView();
+  $$('#scn .seg__btn').forEach(function (b) { b.classList.toggle('is-active', b.getAttribute('data-value') === id); });
+  render();
+  var md = q.get('modal');
+  if (md === '1' || md === 'rec') { openRec(); if (q.get('date')) { $('#rec-date').value = q.get('date'); recNote(); } }
+  else if (md === 'hist') openHist();
+  else if (md === 'imports') openImports();
+  else if (md === 'rate') openRate();
+  if (q.get('menu') === '1') openMenu($('[data-act=menu]'), pageMenu(cur()));
+})();
+})();
+</script>
+</body>
+</html>

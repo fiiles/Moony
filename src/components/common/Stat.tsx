@@ -22,7 +22,10 @@ const toneText: Record<Tone, string> = {
   loss: 'text-loss',
 };
 
-/** Stat card (design system §6, `.stat`, E1): label 11, value 22, note 10. */
+/**
+ * Stat card (design system §6, `.stat`, E1): label 11, value 22, note 10. The value steps down
+ * with the card width (`.stat__value` in index.css) so a long amount never leaves a narrow card.
+ */
 export function Stat({
   label,
   value,
@@ -35,7 +38,7 @@ export function Stat({
   return (
     <div
       className={cn(
-        'rounded-r3 border border-line bg-stat-grad px-[19px] py-[18px] shadow-e1',
+        'stat rounded-r3 border border-line bg-stat-grad px-[19px] py-[18px] shadow-e1',
         className
       )}
     >
@@ -43,7 +46,7 @@ export function Stat({
         <span>{label}</span>
         {aside}
       </span>
-      <strong className={cn('mt-[10px] block text-stat text-ink num', toneText[tone])}>
+      <strong className={cn('stat__value mt-[10px] block text-stat text-ink num', toneText[tone])}>
         {value}
       </strong>
       {note && (
@@ -60,13 +63,16 @@ export function Stat({
   );
 }
 
-/** Three or four stats in a row (`.stats`, `.stats--3`), never more. */
+/**
+ * Three or four stats in a row (`.stats`, `.stats--3`), never more. `columns={2}` sets four stats
+ * 2 × 2 in a narrow column (calculator results beside the input form, `.stats--2x2`).
+ */
 export function Stats({
   columns = 4,
   className,
   children,
 }: {
-  columns?: 3 | 4;
+  columns?: 2 | 3 | 4;
   className?: string;
   children: ReactNode;
 }) {
@@ -74,7 +80,7 @@ export function Stats({
     <div
       className={cn(
         'mb-[17px] grid gap-[14px]',
-        columns === 3 ? 'grid-cols-3' : 'grid-cols-4',
+        { 2: 'grid-cols-2', 3: 'grid-cols-3', 4: 'grid-cols-4' }[columns],
         className
       )}
     >

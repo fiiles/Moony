@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import type { EnrichedStockInvestment } from '@shared/schema';
-import { amountOf, costPerUnit, toStockRow, topPerformer, totalOf } from './positions';
+import {
+  amountOf,
+  costPerUnit,
+  toStockRow,
+  topPerformer,
+  totalOf,
+  tradeCurrency,
+  tradePricePrefill,
+} from './positions';
 
 function stock(overrides: Partial<EnrichedStockInvestment> = {}): EnrichedStockInvestment {
   return {
@@ -85,5 +93,24 @@ describe('costPerUnit', () => {
     expect(costPerUnit(1000, 10)).toBe(100);
     expect(costPerUnit(null, 10)).toBeNull();
     expect(costPerUnit(1000, 0)).toBeNull();
+  });
+});
+
+describe('trade form defaults', () => {
+  it('prefills the price only when it is quoted in the trade currency', () => {
+    const same = toStockRow(stock({ price: '0.9531234', priceCurrency: 'USD' }));
+    expect(tradeCurrency(same)).toBe('USD');
+    expect(tradePricePrefill(same)).toBe(0.953123);
+    // average cost in CZK, quote in USD: the USD price must not land in a CZK field
+    const foreign = toStockRow(stock({ averagePriceCurrency: 'CZK', priceCurrency: 'USD' }));
+    expect(tradeCurrency(foreign)).toBe('CZK');
+    expect(tradePricePrefill(foreign)).toBe(0);
+  });
+
+  it('falls back to the price currency without an average cost currency', () => {
+    const row = toStockRow(stock({ averagePriceCurrency: '', priceCurrency: 'EUR' }));
+    expect(tradeCurrency(row)).toBe('EUR');
+    expect(tradePricePrefill(row)).toBe(110);
+    expect(tradePricePrefill(toStockRow(stock({ price: null })))).toBe(0);
   });
 });

@@ -26,6 +26,7 @@ import { CurrencyCombobox } from '@/components/common/CurrencyCombobox';
 import { investmentsApi } from '@/lib/tauri-api';
 import { useEffect } from 'react';
 import type { HoldingData } from '@/utils/stocks';
+import { tradeCurrency, tradePricePrefill } from '@/utils/positions';
 import { useTranslation } from 'react-i18next';
 
 const formSchema = z.object({
@@ -60,14 +61,9 @@ export function BuyInvestmentModal({ investment, open, onOpenChange }: BuyInvest
   // Currency is locked to the investment's base currency (set by first transaction)
   useEffect(() => {
     if (investment) {
-      // The stock's own currency (native fields of the row)
-      const investmentCurrency = (investment.originalAvgCostCurrency ||
-        investment.originalCurrency) as CurrencyCode;
-      form.setValue('currency', investmentCurrency);
-      // Prefill the native price. Six decimals, as the price is stored: a London share quoted
-      // in pence costs 0.953 £, not 0.95 £.
-      const priceToShow = investment.originalCurrentPrice;
-      form.setValue('pricePerUnit', priceToShow ? Number(priceToShow.toFixed(6)) : 0);
+      form.setValue('currency', tradeCurrency(investment) as CurrencyCode);
+      // The price is prefilled only when it is quoted in the locked currency
+      form.setValue('pricePerUnit', tradePricePrefill(investment));
     }
   }, [investment, form]);
 

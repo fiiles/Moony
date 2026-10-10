@@ -67,6 +67,26 @@ function baseRow(inv: EnrichedStockInvestment | EnrichedCryptoInvestment): Posit
   };
 }
 
+/**
+ * The currency a trade of this position is entered in: the average-cost (first transaction)
+ * currency, falling back to the price's own currency.
+ */
+export function tradeCurrency(row: PositionRowBase): string {
+  return row.originalAvgCostCurrency || row.originalCurrency;
+}
+
+/**
+ * The native price to prefill into a trade form, six decimals as the price is stored (a London
+ * share quoted in pence costs 0.953 £, not 0.95 £). Only when the price is quoted in the trade
+ * currency: a price in another currency would be read as that many units of the trade currency,
+ * so the field stays empty (0) instead.
+ */
+export function tradePricePrefill(row: PositionRowBase): number {
+  const sameCurrency =
+    row.originalCurrency.trim().toUpperCase() === tradeCurrency(row).trim().toUpperCase();
+  return sameCurrency && row.originalCurrentPrice ? Number(row.originalCurrentPrice.toFixed(6)) : 0;
+}
+
 /** A stock position row. */
 export interface StockRow extends PositionRowBase {
   companyName: string;

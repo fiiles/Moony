@@ -49,9 +49,7 @@
     "frequency": "Frequency",
     "category": "Category",
     "selectCategory": "Select category",
-    "type": "Type",
-    "income": "Income",
-    "expense": "Expense"
+    "description": "A recurring income or expense. The category decides where it counts in the plan."
   },
   "deleteConfirm": {
     "title": "Delete item?",
@@ -418,18 +416,12 @@
       "none": "No planned income yet."
     },
     "table": {
-      "item": "Item",
-      "category": "Category",
-      "frequency": "Frequency",
-      "monthly": "Monthly",
-      "yearly": "Yearly",
       "netMonthly": "Net per month",
       "netYearly": "Net per year",
       "perMonth": "monthly",
       "perYear": "yearly",
       "auto": "automatic from {{module}}",
       "manual": "manual",
-      "editInModule": "Edited in {{module}}",
       "incomeGroup": "Income · {{amount}}",
       "expenseGroup": "Expenses · {{amount}}",
       "noIncome": "No planned income in this section.",
@@ -438,12 +430,40 @@
       "incomes_other": "{{count}} incomes",
       "expenses_one": "{{count}} expense",
       "expenses_other": "{{count}} expenses",
-      "addToSection": "Add an item to this section"
+      "addToSection": "Add an item to this section",
+      "outOfPlan": "Out of plan",
+      "groupItems_one": "{{count}} item",
+      "groupItems_other": "{{count}} items",
+      "groupExcluded_one": "{{count}} out of plan",
+      "groupExcluded_other": "{{count}} out of plan",
+      "groupCategoryExcluded": "whole category out of plan",
+      "autoFrom": "automatic from {{modules}}",
+      "outOfPlanCount_one": "{{count}} item out of plan",
+      "outOfPlanCount_other": "{{count}} items out of plan",
+      "expandAll": "Expand all",
+      "collapseAll": "Collapse all",
+      "addToCategory": "Add an item to this category",
+      "addIncome": "Add income",
+      "addExpense": "Add an expense"
     },
     "toast": {
       "added": "Item added to the plan",
       "updated": "Item updated",
-      "deleted": "Item deleted"
+      "deleted": "Item deleted",
+      "excluded": "Left out of the plan",
+      "included": "Counted in again",
+      "categoryExcluded": "Category left out of the plan",
+      "categoryIncluded": "Category counted in again"
+    },
+    "menu": {
+      "label": "Options: {{name}}",
+      "exclude": "Leave out",
+      "include": "Count in",
+      "excludeCategory": "Leave the category out",
+      "includeCategory": "Count the category in",
+      "categoryExcluded": "The whole category is out of the plan",
+      "replace": "Replace with my own amount…",
+      "openModule": "Open in {{module}}"
     }
   },
   "actuals": {
@@ -518,10 +538,8 @@
     "countedTransactions": "{{count}} transactions",
     "previous": "Previous",
     "next": "Next",
-    "replacesSource": "Automatic source to replace",
-    "additionalItem": "Additional manual item",
     "retainedSource": "Previously linked source",
-    "replacementHelp": "A replacement excludes the selected automatic item from totals. Deleting the manual replacement restores the source.",
+    "replacementHelp": "While this manual item exists, the automatic one is not counted. Deleting the manual item brings it back.",
     "replacing": "Replaces {{name}}",
     "missingFx_one": "{{count}} movement excluded due to missing FX ({{currencies}}). Totals are incomplete.",
     "missingFx_other": "{{count}} movements excluded due to missing FX ({{currencies}}). Totals are incomplete.",

@@ -527,7 +527,7 @@ impl MoonyMcp {
     }
 
     #[tool(
-        description = "Get the planned income vs expenses cashflow report — the same report as the app's Cashflow planning page: user-defined cashflow items, active loan payments (repaid and expired loans are omitted), insurance premiums, property costs, savings interest, dividends, bond interest and rental income. A user item that replaces an automatic one (replacement) is counted once. View as monthly or yearly totals. Amounts are in the user's main currency, given as `mainCurrency`; same-currency items need no FX data, while foreign items use a current source/target rate pair. `estimate` is true and `quality.missingFxCurrencies` lists currencies whose conversion is unavailable. Mixed property costs retain their native `originalComponents`."
+        description = "Get the planned income vs expenses cashflow report — the same report as the app's Cashflow planning page: user-defined cashflow items, active loan payments (repaid and expired loans are omitted), insurance premiums, property costs, savings interest, dividends, bond interest and rental income. A user item that replaces an automatic one (replacement) is counted once. View as monthly or yearly totals. Amounts are in the user's main currency, given as `mainCurrency`; same-currency items need no FX data, while foreign items use a current source/target rate pair. `estimate` is true and `quality.missingFxCurrencies` lists currencies whose conversion is unavailable. Mixed property costs retain their native `originalComponents`. Rows the user left out of the plan (a row or its whole category) are still listed with `included: false` and are not counted in `summary`; sum only rows with `included: true`."
     )]
     fn cashflow_report(
         &self,
@@ -703,7 +703,7 @@ impl MoonyMcp {
     }
 
     #[tool(
-        description = "Create an other-asset holding (precious metals, art, collectibles, …) in Moony, optionally with an initial buy transaction.\n\nCall this only after presenting the parsed data to the user and receiving their confirmation.\nyieldType: none | percentage | fixed. Amounts are numeric strings; currency is a 3-letter ISO code (defaults to the user's main currency); dates are Unix timestamps (seconds). quantity and averagePurchasePrice are derived from transactions (via this call's initialTransaction or a later other_asset_transactions_create import) — any value passed for them is overwritten by the first import, so leave them unset."
+        description = "Create an other-asset holding (precious metals, art, collectibles, …) in Moony, optionally with an initial buy transaction.\n\nCall this only after presenting the parsed data to the user and receiving their confirmation.\nyieldType: none | fixed (yieldValue is a yearly amount in the asset currency) | percent_purchase (yearly % of the purchase cost) | percent_market (yearly % of the market value). Amounts are numeric strings; currency is a 3-letter ISO code (defaults to the user's main currency); dates are Unix timestamps (seconds). quantity and averagePurchasePrice are derived from transactions (via this call's initialTransaction or a later other_asset_transactions_create import) — any value passed for them is overwritten by the first import, so leave them unset."
     )]
     fn other_asset_create(
         &self,

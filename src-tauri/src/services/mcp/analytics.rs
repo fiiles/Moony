@@ -82,6 +82,7 @@ pub fn cashflow_report(conn: &Connection, view_type: Option<String>) -> Result<V
                         "originalCurrency": item.original_currency,
                         "originalFrequency": item.original_frequency,
                         "userDefined": item.is_user_defined,
+                        "included": item.included,
                         "fxQuality": item.fx_quality,
                     }));
                 }
@@ -389,6 +390,10 @@ mod tests {
                 investment_id TEXT NOT NULL,
                 tag_id TEXT NOT NULL
             );
+            CREATE TABLE cashflow_plan_exclusions (
+                key TEXT PRIMARY KEY,
+                created_at INTEGER NOT NULL DEFAULT 0
+            );
             CREATE TABLE cashflow_items (
                 name TEXT NOT NULL,
                 amount TEXT NOT NULL,
@@ -684,6 +689,7 @@ CREATE TABLE exchange_rate_history(date INTEGER,currency TEXT,rate REAL,PRIMARY 
 CREATE TABLE budget_goals(id TEXT PRIMARY KEY,category_id TEXT,timeframe TEXT,amount TEXT,currency TEXT,created_at INTEGER,updated_at INTEGER,UNIQUE(category_id,timeframe));
 CREATE TABLE budget_goal_versions(id TEXT PRIMARY KEY,category_id TEXT,timeframe TEXT,effective_month INTEGER,amount TEXT,currency TEXT,created_at INTEGER,UNIQUE(category_id,timeframe,effective_month));
 CREATE TABLE cashflow_items(id TEXT PRIMARY KEY,name TEXT,amount TEXT,currency TEXT,frequency TEXT,item_type TEXT,category TEXT,created_at INTEGER DEFAULT 0,updated_at INTEGER DEFAULT 0,replacement_source_id TEXT UNIQUE);
+CREATE TABLE cashflow_plan_exclusions(key TEXT PRIMARY KEY,created_at INTEGER NOT NULL DEFAULT 0);
 CREATE TABLE loans(id TEXT,name TEXT,principal TEXT,currency TEXT,interest_rate TEXT,monthly_payment TEXT,start_date INTEGER,end_date INTEGER,balance_anchor_amount TEXT,balance_anchor_date INTEGER);
 CREATE TABLE real_estate(id TEXT,name TEXT,type TEXT,recurring_costs TEXT,monthly_rent TEXT,monthly_rent_currency TEXT);
 CREATE TABLE real_estate_loans(real_estate_id TEXT,loan_id TEXT);
@@ -887,6 +893,32 @@ CREATE TABLE bonds(id TEXT,name TEXT,coupon_value TEXT,quantity TEXT,interest_ra
             vec!["Adjusted mortgage"],
             "no repaid loan, no double count"
         );
+        crate::services::cashflow_planning::set_plan_inclusion(
+            &conn,
+            crate::models::SetCashflowPlanInclusion {
+                key: "category:subscriptions".into(),
+                included: false,
+            },
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO cashflow_items(id,name,amount,currency,frequency,item_type,category) VALUES ('sub','Netflix','50','CZK','monthly','expense','subscriptions')",
+            [],
+        )
+        .unwrap();
+        let result = cashflow_report(&conn, None).expect("cashflow");
+        let app =
+            crate::services::cashflow_planning::get_report_in_currency(&conn, "monthly", "CZK")
+                .unwrap();
+        let netflix = result["expenses"]
+            .as_array()
+            .expect("expenses")
+            .iter()
+            .find(|i| i["name"] == "Netflix")
+            .expect("excluded row is still listed");
+        assert_eq!(netflix["included"], false);
+        assert_eq!(result["summary"]["totalExpenses"], app.total_expenses);
+        assert_eq!(result["summary"]["totalExpenses"], "9000.00");
     }
 
     #[test]

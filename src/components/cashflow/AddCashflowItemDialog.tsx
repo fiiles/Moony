@@ -1,7 +1,7 @@
 import { currencyDecimals, type CurrencyCode } from '@shared/currencies';
 import { preserveMoneyText } from '@/utils/money-flows';
 /* eslint-disable react-hooks/set-state-in-effect */
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -16,43 +16,51 @@ import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
 import { useTranslation } from 'react-i18next';
 import { useCurrency } from '@/lib/currency';
 import { CurrencyCombobox } from '@/components/common/CurrencyCombobox';
-import type { CashflowReportItem, CashflowCategory } from '@shared/schema';
+import type { CashflowReport, CashflowReportItem, InsertCashflowItem } from '@shared/schema';
 
 interface AddCashflowItemDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (data: import('@shared/schema').InsertCashflowItem) => void;
-  automaticSources?: CashflowReportItem[];
+  onSubmit: (data: InsertCashflowItem) => void;
+  /** Both sections: every category (grouped in the select) and the automatic sources for the replacement note. */
+  report: CashflowReport;
   editItem?: CashflowReportItem | null;
-  editCategory?: string;
-  itemType: 'income' | 'expense';
-  categories?: CashflowCategory[];
+  /** Category preselected for a new item (group row, empty-state link); an edited item keeps its own. */
+  presetCategory?: string;
+  /** Automatic source the new item replaces ("Nahradit vlastní částkou…"). */
+  presetReplacementSourceId?: string | null;
   isLoading?: boolean;
 }
 
+/**
+ * One dialog for a planned item: the category (grouped by section and
+ * income / expense) decides where it counts; a replacement of an automatic
+ * row is set only from the row menu and shown here as a note.
+ */
 export default function AddCashflowItemDialog({
   open,
   onOpenChange,
   onSubmit,
+  report,
   editItem,
-  editCategory,
-  itemType,
-  categories,
-  automaticSources = [],
+  presetCategory,
+  presetReplacementSourceId = null,
   isLoading,
 }: AddCashflowItemDialogProps) {
   const { t } = useTranslation('reports');
   const { t: tc } = useTranslation('common');
   const { currencyCode: userCurrency } = useCurrency();
 
-  const [replacementSourceId, setReplacementSourceId] = useState<string>('none');
+  const [replacementSourceId, setReplacementSourceId] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [amount, setAmount] = useState('');
   const [currency, setCurrency] = useState<string>(userCurrency);
@@ -60,52 +68,59 @@ export default function AddCashflowItemDialog({
   const [selectedCategory, setSelectedCategory] = useState<string>('');
 
   const isEditing = !!editItem;
+  // The form is filled when the dialog opens, not on every refetch while it is open.
+  const wasOpen = useRef(false);
 
-  // All categories are now editable - memoized to avoid useEffect dependency issues
-  const availableCategories = useMemo(() => categories ?? [], [categories]);
+  const groups = useMemo(
+    () => [
+      { labelKey: 'sections.personalIncome', categories: report.personal.income },
+      { labelKey: 'sections.personalExpenses', categories: report.personal.expenses },
+      { labelKey: 'sections.investmentIncome', categories: report.investments.income },
+      { labelKey: 'sections.investmentExpenses', categories: report.investments.expenses },
+    ],
+    [report]
+  );
+  const incomeKeys = useMemo(
+    () => new Set([...report.personal.income, ...report.investments.income].map((c) => c.key)),
+    [report]
+  );
+  const firstCategory = groups.flatMap((g) => g.categories)[0]?.key ?? '';
+  const replacedName = replacementSourceId
+    ? (report.automaticSources.find((s) => s.sourceId === replacementSourceId)?.name ??
+      t('readiness.retainedSource'))
+    : null;
 
-  // Reset form when dialog opens/closes or editItem changes
   useEffect(() => {
-    if (open) {
-      if (editItem) {
-        setReplacementSourceId(editItem.replacementSourceId ?? 'none');
-        setName(editItem.name);
-        setAmount(editItem.originalAmount.toString());
-        setCurrency(editItem.originalCurrency);
-        setFrequency(editItem.originalFrequency);
-        setSelectedCategory(editCategory || '');
-      } else {
-        setReplacementSourceId('none');
-        setName('');
-        setAmount('');
-        setCurrency(userCurrency);
-        setFrequency('monthly');
-        // Default to first category
-        if (availableCategories.length > 0) {
-          setSelectedCategory(availableCategories[0].key);
-        }
-      }
+    const opening = open && !wasOpen.current;
+    wasOpen.current = open;
+    if (!opening) return;
+    if (editItem) {
+      setReplacementSourceId(editItem.replacementSourceId);
+      setName(editItem.name);
+      setAmount(editItem.originalAmount.toString());
+      setCurrency(editItem.originalCurrency);
+      setFrequency(editItem.originalFrequency);
+      setSelectedCategory(editItem.category);
+    } else {
+      setReplacementSourceId(presetReplacementSourceId);
+      setName('');
+      setAmount('');
+      setCurrency(userCurrency);
+      setFrequency('monthly');
+      setSelectedCategory(presetCategory ?? firstCategory);
     }
-  }, [open, editItem, editCategory, availableCategories, userCurrency]);
+  }, [open, editItem, presetCategory, presetReplacementSourceId, firstCategory, userCurrency]);
 
-  // Update selected category when categories change (for new items)
-  useEffect(() => {
-    if (!isEditing && availableCategories.length > 0 && !selectedCategory) {
-      setSelectedCategory(availableCategories[0].key);
-    }
-  }, [availableCategories, isEditing, selectedCategory]);
+  const valid =
+    !!name.trim() &&
+    !!amount.trim() &&
+    Number.isFinite(Number(amount)) &&
+    Number(amount) > 0 &&
+    !!selectedCategory;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (
-      !name.trim() ||
-      !amount.trim() ||
-      !Number.isFinite(Number(amount)) ||
-      Number(amount) <= 0 ||
-      !selectedCategory
-    )
-      return;
-
+    if (!valid) return;
     onSubmit({
       name: name.trim(),
       amount: preserveMoneyText(
@@ -114,50 +129,55 @@ export default function AddCashflowItemDialog({
         Number(amount),
         currency
       ),
-      replacementSourceId: replacementSourceId === 'none' ? null : replacementSourceId,
+      replacementSourceId,
       currency,
       frequency,
-      itemType,
+      itemType: incomeKeys.has(selectedCategory) ? 'income' : 'expense',
       category: selectedCategory,
     });
   };
-
-  const dialogTitle = isEditing ? t('addItem.editTitle') : t('addItem.title');
-  const dialogDescription = itemType === 'income' ? t('addItem.income') : t('addItem.expense');
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>{dialogTitle}</DialogTitle>
-            <DialogDescription>{dialogDescription}</DialogDescription>
+            <DialogTitle>{isEditing ? t('addItem.editTitle') : t('addItem.title')}</DialogTitle>
+            <DialogDescription>{t('addItem.description')}</DialogDescription>
           </DialogHeader>
 
           <div className="grid gap-4 py-4">
-            {/* Category selector */}
-            {availableCategories.length > 0 && (
-              <div className="grid gap-2">
-                <Label htmlFor="category">{t('addItem.category')}</Label>
-                <Select
-                  value={selectedCategory}
-                  onValueChange={(value) => {
-                    setSelectedCategory(value);
-                    setReplacementSourceId('none');
-                  }}
-                  disabled={isEditing}
-                >
-                  <SelectTrigger id="category">
-                    <SelectValue placeholder={t('addItem.selectCategory')} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableCategories.map((cat) => (
-                      <SelectItem key={cat.key} value={cat.key}>
-                        {t(`categories.${cat.key}`)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+            <div className="grid gap-2">
+              <Label htmlFor="category">{t('addItem.category')}</Label>
+              <Select
+                value={selectedCategory}
+                onValueChange={setSelectedCategory}
+                disabled={isEditing}
+              >
+                <SelectTrigger id="category">
+                  <SelectValue placeholder={t('addItem.selectCategory')} />
+                </SelectTrigger>
+                <SelectContent>
+                  {groups.map((group) => (
+                    <SelectGroup key={group.labelKey}>
+                      <SelectLabel>{t(group.labelKey)}</SelectLabel>
+                      {group.categories.map((category) => (
+                        <SelectItem key={category.key} value={category.key}>
+                          {t(`categories.${category.key}`, { defaultValue: category.name })}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {replacedName && (
+              <div className="rounded-r2 bg-well px-3 py-2.5">
+                <b className="block text-caption font-650 text-ink">
+                  {t('readiness.replacing', { name: replacedName })}
+                </b>
+                <p className="mt-0.5 text-micro text-ink-4">{t('readiness.replacementHelp')}</p>
               </div>
             )}
 
@@ -200,41 +220,6 @@ export default function AddCashflowItemDialog({
             </div>
 
             <div className="grid gap-2">
-              <Label>{t('readiness.replacesSource')}</Label>
-              <Select value={replacementSourceId} onValueChange={setReplacementSourceId}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">{t('readiness.additionalItem')}</SelectItem>
-                  {automaticSources
-                    .filter(
-                      (source) =>
-                        source.category === selectedCategory &&
-                        source.itemType === itemType &&
-                        source.sourceId
-                    )
-                    .map((source) => (
-                      <SelectItem key={source.sourceId!} value={source.sourceId!}>
-                        {source.name} ·{' '}
-                        {source.originalCurrency === 'MULTI'
-                          ? source.originalComponents
-                              .map((component) => component.currency)
-                              .join(' + ')
-                          : source.originalCurrency}
-                      </SelectItem>
-                    ))}
-                  {replacementSourceId !== 'none' &&
-                    !automaticSources.some((source) => source.sourceId === replacementSourceId) && (
-                      <SelectItem value={replacementSourceId}>
-                        {t('readiness.retainedSource')}
-                      </SelectItem>
-                    )}
-                </SelectContent>
-              </Select>
-              <p className="text-micro text-ink-4">{t('readiness.replacementHelp')}</p>
-            </div>
-            <div className="grid gap-2">
               <Label htmlFor="frequency">{t('addItem.frequency')}</Label>
               <Select
                 value={frequency}
@@ -255,17 +240,7 @@ export default function AddCashflowItemDialog({
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
               {tc('buttons.cancel')}
             </Button>
-            <Button
-              type="submit"
-              disabled={
-                isLoading ||
-                !name.trim() ||
-                !amount.trim() ||
-                !Number.isFinite(Number(amount)) ||
-                Number(amount) <= 0 ||
-                !selectedCategory
-              }
-            >
+            <Button type="submit" disabled={isLoading || !valid}>
               {isLoading
                 ? tc('status.saving')
                 : isEditing

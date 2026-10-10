@@ -48,10 +48,7 @@
     "currency": "Währung",
     "frequency": "Intervall",
     "category": "Kategorie",
-    "selectCategory": "Kategorie auswählen",
-    "type": "Art",
-    "income": "Einnahme",
-    "expense": "Ausgabe"
+    "selectCategory": "Kategorie auswählen"
   },
   "deleteConfirm": {
     "title": "Posten löschen?",
@@ -418,18 +415,12 @@
       "none": "Noch keine geplanten Einnahmen."
     },
     "table": {
-      "item": "Posten",
-      "category": "Kategorie",
-      "frequency": "Intervall",
-      "monthly": "Monatlich",
-      "yearly": "Jährlich",
       "netMonthly": "Netto pro Monat",
       "netYearly": "Netto pro Jahr",
       "perMonth": "monatlich",
       "perYear": "jährlich",
       "auto": "automatisch aus {{module}}",
       "manual": "manuell",
-      "editInModule": "Bearbeitung in {{module}}",
       "incomeGroup": "Einnahmen · {{amount}}",
       "expenseGroup": "Ausgaben · {{amount}}",
       "noIncome": "Keine geplanten Einnahmen in diesem Bereich.",
@@ -518,8 +509,6 @@
     "countedTransactions": "{{count}} Transaktionen",
     "previous": "Zurück",
     "next": "Weiter",
-    "replacesSource": "Zu ersetzende automatische Quelle",
-    "additionalItem": "Zusätzlicher manueller Posten",
     "retainedSource": "Zuvor verknüpfte Quelle",
     "replacementHelp": "Ein Ersatz schließt den gewählten automatischen Posten aus den Summen aus. Löschen Sie den manuellen Ersatz, wird die Quelle wiederhergestellt.",
     "replacing": "Ersetzt {{name}}",

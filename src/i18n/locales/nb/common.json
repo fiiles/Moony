@@ -239,7 +239,6 @@
     "pendingPromotionInvalid": "Den ventende transaksjonen kunne ikke bokføres. Oppdater forhåndsvisningen og prøv igjen.",
     "balanceAsOfInvalid": "Velg en gyldig saldodato, senest i dag.",
     "balanceCurrencyMismatch": "Valutaen på kontoutskriftens saldo er en annen enn kontoens valuta.",
-    "balanceAnchorOlder": "Kontoutskriften er eldre enn kontoens registrerte saldodato.",
     "balanceAnchorUnknown": "Den eksisterende saldodatoen er ukjent. Bekreft først at du vil erstatte denne saldoen.",
     "balanceBatchMismatch": "Denne importen av kontoutskrift tilhører ikke denne kontoen.",
     "learningIdentity": "Oppgi en pålitelig kontoidentifikator eller en mottaker.",

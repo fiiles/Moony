@@ -239,7 +239,6 @@
     "pendingPromotionInvalid": "Den väntande transaktionen kunde inte bokföras. Uppdatera förhandsgranskningen och försök igen.",
     "balanceAsOfInvalid": "Välj ett giltigt saldodatum, senast i dag.",
     "balanceCurrencyMismatch": "Kontoutdragets saldovaluta skiljer sig från kontots valuta.",
-    "balanceAnchorOlder": "Kontoutdraget är äldre än kontots registrerade saldodatum.",
     "balanceAnchorUnknown": "Det befintliga saldodatumet är okänt. Bekräfta först att saldot ska ersättas.",
     "balanceBatchMismatch": "Den här kontoutdragsimporten tillhör inte det här kontot.",
     "learningIdentity": "Ange en tillförlitlig kontoidentifierare eller en mottagare.",

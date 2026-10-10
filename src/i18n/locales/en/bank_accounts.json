@@ -27,9 +27,6 @@
     "yearlyInterest": "Yearly interest",
     "perYear": "per year",
     "notFound": "Account not found",
-    "interestNote": "{{rate}} · {{amount}} a year",
-    "todayCount_one": "{{count}} transaction today",
-    "todayCount_other": "{{count}} transactions today",
     "excludedFromPortfolio": "Excluded from net worth"
   },
   "nativeBalance": {
@@ -61,9 +58,15 @@
     "editDescription": "Update the details of “{{name}}”.",
     "accountNumberPlaceholder": "e.g. 1234567890",
     "ibanPlaceholder": "e.g. DE89 3704 0044 0532 0130 00",
-    "balanceHint": "Entered by you and not changed by imported transactions — update it from your latest statement.",
     "includeInNetWorth": "Include in net worth",
-    "includeInNetWorthHelp": "Excluded accounts stay in the list but are left out of net worth, totals and charts."
+    "includeInNetWorthHelp": "Excluded accounts stay in the list but are left out of net worth, totals and charts.",
+    "openingBalance": "Opening balance",
+    "openingBalanceHint": "Optional. Becomes the first record of the balance history.",
+    "openingBalanceAsOf": "As of",
+    "currentBalance": "Balance {{amount}} as of {{date}}",
+    "currentBalanceUnknownDate": "Balance {{amount}} · unknown date",
+    "noBalance": "No balance recorded yet",
+    "recordNew": "Record a new balance"
   },
   "accounts": "Accounts",
   "transactions": "Transactions",
@@ -85,8 +88,7 @@
     "accountNumberOptional": "Account number (optional)",
     "interestRate": "Interest Rate",
     "rateValidUntil": "Rate valid until",
-    "interestType": "Interest Type",
-    "balanceManual": "Balance (manual)"
+    "interestType": "Interest Type"
   },
   "interestType": {
     "simple": "Simple",
@@ -153,14 +155,12 @@
     "description": "Add your first bank account to start tracking your finances.",
     "noTransactions": "No transactions yet",
     "noMatchingTransactions": "Nothing matches the chosen filter. Try clearing the category filter.",
-    "noTransactionsTitle": "No transactions yet",
-    "noTransactionsDescription": "Import a CSV statement from your bank to see where your money goes, or add a transaction by hand.",
-    "importCsv": "Import bank statement (CSV)",
-    "addManually": "Add transaction manually",
     "noTransactionsInPeriod": "No transactions in this period",
     "noTransactionsInPeriodHint": "This account has transactions in other periods.",
     "showAll": "Show all",
-    "noMatchingTransactionsTitle": "No transactions"
+    "noMatchingTransactionsTitle": "No transactions",
+    "noDataTitle": "No data on this account yet",
+    "noDataDescription": "Record the balance from your statement or import a bank statement."
   },
   "confirmDelete": {
     "title": "Delete account?",
@@ -374,8 +374,8 @@
   },
   "importHistory": {
     "title": "Import history",
-    "button": "Import history",
     "fileName": "File Name",
+    "period": "Period",
     "imported": "Imported",
     "errors": "Errors",
     "empty": "No imports yet. Import your first CSV file.",
@@ -390,17 +390,12 @@
     "undone": "Import undone"
   },
   "zones": {
-    "title": "Interest rate tiers",
     "fromAmount": "From Amount",
     "toAmount": "To Amount",
     "interestRate": "Interest Rate",
     "effective": "effective",
-    "effectiveRate": "Effective Rate",
-    "active": "Active",
-    "noZones": "No interest rate tiers configured",
     "unlimited": "Unlimited",
     "ratePercent": "Rate (%)",
-    "effectiveNote": "Effective rate {{rate}} · {{amount}} a year",
     "addZoneTitle": "Add New Tier",
     "editZoneTitle": "Edit Tier",
     "save": "Save",
@@ -513,18 +508,7 @@
     "totalTransactions": "Transactions",
     "income": "Income",
     "outcome": "Expenses",
-    "netFlow": "Net Flow",
-    "incomeIn": "Incoming in {{month}}",
-    "expenseIn": "Outgoing in {{month}}",
-    "monthBalance": "Month balance",
-    "incomeCount_one": "{{count}} incoming movement",
-    "incomeCount_other": "{{count}} incoming movements",
-    "txCount_one": "{{count}} transaction",
-    "txCount_other": "{{count}} transactions",
-    "mostIn": "most in {{category}}",
-    "none": "none yet",
-    "prevMonth": "in {{month}} {{amount}}",
-    "noPrevMonth": "no movements in {{month}}"
+    "netFlow": "Net Flow"
   },
   "categoryNames": {
     "cat_groceries": "Groceries",
@@ -550,23 +534,21 @@
   "eyebrow": "Cash",
   "status": {
     "lastMovement": "Last movement {{date}}",
-    "lastImport": "Last import {{date}}"
+    "lastImport": "Last import {{date}}",
+    "balanceAsOf": "Balance as of {{date}}",
+    "balanceUnknownDate": "Balance · unknown date",
+    "noData": "No data yet"
   },
-  "hero": {
-    "thisMonth": "this month",
-    "expensesExceed": "expenses exceed income",
-    "incomeExceeds": "income exceeds expenses",
-    "balanced": "income and expenses balanced",
-    "noMovementsThisMonth": "no movements this month"
+  "actions": {
+    "recordBalance": "Record balance",
+    "importStatement": "Import statement"
+  },
+  "menu": {
+    "balanceHistory": "Balance history",
+    "interest": "Interest"
   },
   "chart": {
-    "balance": "Balance",
-    "largeIncome": "Large incoming movement",
-    "largeExpense": "Large outgoing movement",
-    "thresholdNote": "Movements above {{amount}} are marked",
-    "reconstructed": "the line is reconstructed from the transactions",
-    "clusterTitle_one": "{{count}} movement",
-    "clusterTitle_other": "{{count}} movements"
+    "balance": "Balance"
   },
   "trend": {
     "title": "Cash over time",
@@ -605,7 +587,6 @@
     "next": "Next",
     "pending": "Pending",
     "transactionDetails": "Transaction details",
-    "balanceEstimate": "Estimated from the available booked ledger. Balance anchor: {{date}}. Statement coverage is not proven.",
     "foreignConverted": "Movements in {{currencies}} are converted to {{currency}} at the rate of their day in the totals and chart.",
     "foreignMissing": "Movements in {{currencies}} are left out of the totals and chart: no exchange rate for their day.",
     "promotions": "{{count}} pending entries will be booked",
@@ -617,10 +598,11 @@
     "mappingHelp": "Use a signed amount (+ incoming, − outgoing), or outgoing and incoming columns. The signed column wins if both layouts are selected.",
     "provenanceMappingHelp": "After the import we offer the statement's closing balance as the account's new balance. A bank transaction ID reliably identifies duplicates. Currency says what the amounts are in; without it the account currency applies. Counterparty account, bank code and country are optional; a missing bank code is never guessed.",
     "confirmDateFormat": "Confirm selected date format",
-    "balanceBlocked": "This statement balance uses different units or is older than the current dated anchor; it cannot replace it.",
+    "balanceBlocked": "The statement balance is in another currency and cannot be used.",
     "statementAsOf": "Statement balance as of {{date}}",
     "confirmBalance": "Set dated balance",
     "balanceConfirmDescription": "Set {{amount}} as of {{date}}? Current balance date: {{currentDate}}. An unknown current date needs your explicit confirmation. The balance is separate from imported transactions.",
+    "balanceOlderDescription": "Record {{amount}} as of {{date}} into the balance history? It is older than the current balance ({{currentDate}}), which stays unchanged.",
     "detail": {
       "bookingDate": "Booking date",
       "valueDate": "Value date",
@@ -664,5 +646,77 @@
     "countryHint": "Country of the counterparty account, e.g. CZ. Helps read domestic account numbers correctly.",
     "deleteBatchPromoted_one": "{{count}} pending entry from an earlier import that this import booked stays booked with this import's data.",
     "deleteBatchPromoted_other": "{{count}} pending entries from earlier imports that this import booked stay booked with this import's data."
+  },
+  "recordDialog": {
+    "title": "Record balance",
+    "description": "The balance is stored in the account's history for the chosen day.",
+    "amount": "Amount",
+    "amountPlaceholder": "e.g. 450 000",
+    "asOf": "As of",
+    "hint": "The balance from your statement or online banking. Imported transactions do not change it.",
+    "replaces": "The record of {{date}} will be replaced.",
+    "confirmUnknown": "Replace the current balance that has no date",
+    "submit": "Record balance",
+    "success": "Balance recorded"
+  },
+  "balanceHistory": {
+    "title": "Balance history",
+    "sub_one": "{{count}} record · latest {{date}}",
+    "sub_other": "{{count}} records · latest {{date}}",
+    "empty": "No balance record yet.",
+    "amount": "Amount",
+    "change": "Change",
+    "source": "Source",
+    "sourceManual": "by hand",
+    "sourceStatement": "from statement",
+    "delete": "Delete record",
+    "deleteTitle": "Delete this balance record?",
+    "deleteDescription": "The record of {{amount}} as of {{date}} will be removed for good. The account balance is recalculated from the newest remaining record.",
+    "deleted": "Record deleted"
+  },
+  "interest": {
+    "title": "Interest",
+    "zonedSub": "Tiered interest by balance",
+    "simpleSub": "Simple interest",
+    "effectiveLine": "{{rate}} effective · {{amount}} a year",
+    "caption": "The effective rate is the yearly interest on the current balance divided by the balance.",
+    "validUntil": "Rate valid until {{date}}",
+    "rate": "Rate"
+  },
+  "flows": {
+    "netIn": "Net · {{month}}",
+    "net": "Net",
+    "line_one": "{{credits}} in · {{debits}} out · {{count}} movement",
+    "line_other": "{{credits}} in · {{debits}} out · {{count}} movements",
+    "noMoves": "no movements",
+    "prev": "Previous month",
+    "next": "Next month",
+    "income": "Incoming",
+    "expense": "Outgoing",
+    "balance": "net",
+    "noImport": "no import"
+  },
+  "balanceHero": {
+    "label": "Balance as of {{date}}",
+    "unknownDate": "Balance · unknown date",
+    "since": "since {{date}}",
+    "firstRecord": "first record",
+    "record": "Balance record",
+    "recordTip": "{{date}} · {{source}}"
+  },
+  "balanceStats": {
+    "changeThisYear": "Change this year",
+    "vsRecordAt": "against the record of {{date}}",
+    "noRecordBeforeYear": "no record before the start of the year",
+    "avgPerMonth": "Average per month",
+    "last12Months": "over the last 12 months",
+    "sinceFirstRecord_one": "over {{count}} month since the first record",
+    "sinceFirstRecord_other": "over {{count}} months since the first record",
+    "singleRecord": "only one record so far",
+    "noRecord": "no balance record yet",
+    "yearlyInterest": "Yearly interest",
+    "effectiveZoned": "{{rate}} effective · tiered interest",
+    "simpleRate": "{{rate}} p.a.",
+    "noInterest": "no interest"
   }
 }

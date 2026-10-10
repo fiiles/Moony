@@ -62,6 +62,7 @@ import type {
   FxSnapshot,
   FxHistoryQuotes,
   CashflowItem,
+  SetCashflowPlanInclusion,
   ProjectionSettings,
   PortfolioProjection,
   // Bank account types
@@ -84,7 +85,8 @@ import type {
   CsvImportResult,
   CsvImportConfigInput,
   CsvImportBatch,
-  InsertBalanceAnchor,
+  InsertBalanceRecord,
+  BankBalanceRecord,
   // Stock tags types
   StockTag,
   InsertStockTag,
@@ -782,6 +784,10 @@ export const cashflowApi = {
     tauriInvoke<CashflowItem>('update_cashflow_item', { id, data }),
 
   deleteItem: (id: string) => tauriInvoke<void>('delete_cashflow_item', { id }),
+
+  /** Count a planning row in or leave it out of the plan (category, automatic source or manual item). */
+  setInclusion: (data: SetCashflowPlanInclusion) =>
+    tauriInvoke<void>('set_cashflow_plan_inclusion', { data }),
 };
 
 // ============================================================================
@@ -883,8 +889,13 @@ export const systemApi = {
 // ============================================================================
 
 export const bankAccountsApi = {
-  setBalanceAnchor: (accountId: string, data: InsertBalanceAnchor) =>
-    tauriInvoke<BankAccount>('set_bank_account_balance_anchor', { accountId, data }),
+  // Balance records (dated balances)
+  getBalanceRecords: (accountId: string) =>
+    tauriInvoke<BankBalanceRecord[]>('get_balance_records', { accountId }),
+  recordBalance: (accountId: string, data: InsertBalanceRecord) =>
+    tauriInvoke<BankAccount>('record_bank_account_balance', { accountId, data }),
+  deleteBalanceRecord: (recordId: string) =>
+    tauriInvoke<BankAccount>('delete_balance_record', { recordId }),
   // Bank accounts
   getAll: () => tauriInvoke<BankAccountWithInstitution[]>('get_all_bank_accounts'),
   get: (id: string) => tauriInvoke<BankAccountWithInstitution | null>('get_bank_account', { id }),

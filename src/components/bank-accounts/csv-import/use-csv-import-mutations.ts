@@ -42,11 +42,11 @@ export function useEnableRulePack() {
   });
 }
 
-export function useBalanceAnchor(accountId: string) {
+export function useRecordBalance(accountId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: import('@shared/schema').InsertBalanceAnchor) =>
-      bankAccountsApi.setBalanceAnchor(accountId, data),
+    mutationFn: (data: import('@shared/schema').InsertBalanceRecord) =>
+      bankAccountsApi.recordBalance(accountId, data),
     onSuccess: async () => {
       await refreshMoneyFlows(queryClient);
     },

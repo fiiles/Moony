@@ -498,6 +498,7 @@ describe('next steps', () => {
     canShowImported: true,
     canReviewUncategorized: true,
     accountBalance: '1000',
+    accountBalanceAsOf: 1759000000,
     ...overrides,
   });
 
@@ -531,48 +532,37 @@ describe('next steps', () => {
     expect(steps).toEqual(['rulePack', 'balance']);
   });
 
-  it('offers the balance only when it differs from the account balance', () => {
+  const statement = (amount: string, asOf = 1759000000): Partial<CsvImportResult> => ({
+    statementBalance: { amount, currency: 'CZK', asOf, line: 4, batchId: 'b' },
+  });
+
+  it('offers nothing new only for the same day and the same amount as the current balance', () => {
+    expect(nextStepsFor(result(statement('1000')), context())).not.toContain('balance');
+    expect(nextStepsFor(result(statement('1000.00')), context())).not.toContain('balance');
+    // Same day, another amount: a correction of that day's record
+    expect(nextStepsFor(result(statement('1000.01')), context())).toContain('balance');
+  });
+
+  it('offers an older statement day with a different amount as history', () => {
+    const older = 1759000000 - 30 * 86400;
+    expect(nextStepsFor(result(statement('900', older)), context())).toContain('balance');
+    // Even the same amount on another day is a record of its own
+    expect(nextStepsFor(result(statement('1000', older)), context())).toContain('balance');
+  });
+
+  it('compares the statement day, not the second', () => {
+    const dayStart = 20359 * 86400;
     expect(
       nextStepsFor(
-        result({
-          statementBalance: {
-            amount: '1000',
-            currency: 'CZK',
-            asOf: 1759000000,
-            line: 4,
-            batchId: 'b',
-          },
-        }),
-        context()
+        result(statement('1000', dayStart + 3600)),
+        context({ accountBalanceAsOf: dayStart })
       )
     ).not.toContain('balance');
+  });
+
+  it('offers the first dated record on an undated balance', () => {
     expect(
-      nextStepsFor(
-        result({
-          statementBalance: {
-            amount: '1000.00',
-            currency: 'CZK',
-            asOf: 1759000000,
-            line: 4,
-            batchId: 'b',
-          },
-        }),
-        context()
-      )
-    ).not.toContain('balance');
-    expect(
-      nextStepsFor(
-        result({
-          statementBalance: {
-            amount: '1000.01',
-            currency: 'CZK',
-            asOf: 1759000000,
-            line: 4,
-            batchId: 'b',
-          },
-        }),
-        context()
-      )
+      nextStepsFor(result(statement('1000')), context({ accountBalanceAsOf: null }))
     ).toContain('balance');
   });
 

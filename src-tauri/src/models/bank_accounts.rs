@@ -120,7 +120,7 @@ pub struct InsertBankAccount {
     pub bban: Option<String>,
     pub currency: Option<String>,
     pub balance: Option<String>,
-    /// Omitted preserves an unchanged anchor; null explicitly makes it unknown.
+    /// UTC day of the opening balance (create only; with it the create writes the first balance record). The update command ignores it.
     #[serde(
         rename = "balanceAsOf",
         default,
@@ -358,19 +358,44 @@ impl InsertSavingsAccountZone {
     }
 }
 
-/// Confirmed balance anchor, in the account currency and at a UTC booking day.
+/// A dated balance of a bank account (migration 013). The newest record is mirrored
+/// into `bank_accounts.balance` / `balance_as_of`.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct BankBalanceRecord {
+    pub id: String,
+    #[serde(rename = "bankAccountId")]
+    pub bank_account_id: String,
+    /// Balance in the account currency (canonical decimal string).
+    pub amount: String,
+    pub currency: String,
+    /// UTC day start (unix seconds).
+    #[serde(rename = "asOf")]
+    pub as_of: i64,
+    /// `manual` (entered by hand) or `statement` (confirmed from a CSV import).
+    pub source: String,
+    #[serde(rename = "sourceBatchId")]
+    pub source_batch_id: Option<String>,
+    #[serde(rename = "recordedAt")]
+    pub recorded_at: i64,
+}
+
+/// Input of `record_bank_account_balance`: one dated balance. `source` is derived:
+/// `statement` when a batch id is given, else `manual`.
 #[derive(Debug, Clone, Deserialize, Type)]
-pub struct InsertBalanceAnchor {
+pub struct InsertBalanceRecord {
     pub amount: String,
     pub currency: String,
     #[serde(rename = "asOf")]
     pub as_of: i64,
+    /// Required (true) only while the account has no dated record and its undated
+    /// balance is not 0: the first dated record replaces that number.
     #[serde(rename = "confirmUnknownAsOf", default)]
     pub confirm_unknown_as_of: bool,
     #[serde(rename = "sourceBatchId", default)]
     pub source_batch_id: Option<String>,
 }
-impl InsertBalanceAnchor {
+
+impl InsertBalanceRecord {
     pub fn validate(&self) -> Result<()> {
         let amount = self
             .amount
@@ -385,6 +410,7 @@ impl InsertBalanceAnchor {
         validate_balance_day(self.as_of)
     }
 }
+
 fn validate_balance_day(day: i64) -> Result<()> {
     if day <= 0
         || day % 86400 != 0
@@ -400,4 +426,39 @@ fn deserialize_balance_day<'de, D: serde::Deserializer<'de>>(
     deserializer: D,
 ) -> std::result::Result<Option<Option<i64>>, D::Error> {
     Option::<i64>::deserialize(deserializer).map(Some)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn insert_balance_record_validates_amount_currency_and_day() {
+        let ok = InsertBalanceRecord {
+            amount: "1200.50".into(),
+            currency: "EUR".into(),
+            as_of: 1767312000,
+            confirm_unknown_as_of: false,
+            source_batch_id: None,
+        };
+        assert!(ok.validate().is_ok());
+        for (amount, currency, as_of) in [
+            ("NaN", "EUR", 1767312000),
+            ("12", "EU", 1767312000),
+            ("12", "EUR", 1767312001),
+            ("12", "EUR", i64::MAX),
+        ] {
+            let bad = InsertBalanceRecord {
+                amount: amount.into(),
+                currency: currency.into(),
+                as_of,
+                confirm_unknown_as_of: false,
+                source_batch_id: None,
+            };
+            assert!(
+                bad.validate().is_err(),
+                "accepted {amount} {currency} {as_of}"
+            );
+        }
+    }
 }

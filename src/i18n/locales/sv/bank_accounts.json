@@ -27,9 +27,6 @@
     "yearlyInterest": "Årlig ränta",
     "perYear": "per år",
     "notFound": "Kontot hittades inte",
-    "interestNote": "{{rate}} · {{amount}} per år",
-    "todayCount_one": "{{count}} transaktion i dag",
-    "todayCount_other": "{{count}} transaktioner i dag",
     "excludedFromPortfolio": "Exkluderat från nettoförmögenheten"
   },
   "nativeBalance": {
@@ -61,7 +58,6 @@
     "editDescription": "Uppdatera uppgifterna för ”{{name}}”.",
     "accountNumberPlaceholder": "t.ex. 1234567890",
     "ibanPlaceholder": "t.ex. DE89 3704 0044 0532 0130 00",
-    "balanceHint": "Anges av dig och ändras inte av importerade transaktioner — uppdatera det utifrån ditt senaste kontoutdrag.",
     "includeInNetWorth": "Inkludera i nettoförmögenhet",
     "includeInNetWorthHelp": "Exkluderade konton finns kvar i listan men utelämnas från nettoförmögenhet, summor och diagram."
   },
@@ -85,8 +81,7 @@
     "accountNumberOptional": "Kontonummer (valfritt)",
     "interestRate": "Ränta",
     "rateValidUntil": "Ränta gäller till",
-    "interestType": "Räntetyp",
-    "balanceManual": "Saldo (manuellt)"
+    "interestType": "Räntetyp"
   },
   "interestType": {
     "simple": "Enkel",
@@ -153,10 +148,6 @@
     "description": "Lägg till ditt första bankkonto för att börja följa din ekonomi.",
     "noTransactions": "Inga transaktioner ännu",
     "noMatchingTransactions": "Ingenting matchar det valda filtret. Prova att rensa kategorifiltret.",
-    "noTransactionsTitle": "Inga transaktioner ännu",
-    "noTransactionsDescription": "Importera ett CSV-kontoutdrag från din bank för att se vart dina pengar går, eller lägg till en transaktion manuellt.",
-    "importCsv": "Importera kontoutdrag (CSV)",
-    "addManually": "Lägg till transaktion manuellt",
     "noTransactionsInPeriod": "Inga transaktioner under den här perioden",
     "noTransactionsInPeriodHint": "Det här kontot har transaktioner under andra perioder.",
     "showAll": "Visa alla",
@@ -374,7 +365,6 @@
   },
   "importHistory": {
     "title": "Importhistorik",
-    "button": "Importhistorik",
     "fileName": "Filnamn",
     "imported": "Importerade",
     "errors": "Fel",
@@ -390,17 +380,12 @@
     "undone": "Importen har ångrats"
   },
   "zones": {
-    "title": "Räntenivåer",
     "fromAmount": "Från belopp",
     "toAmount": "Till belopp",
     "interestRate": "Ränta",
     "effective": "effektiv",
-    "effectiveRate": "Effektiv ränta",
-    "active": "Aktiv",
-    "noZones": "Inga räntenivåer har konfigurerats",
     "unlimited": "Obegränsad",
     "ratePercent": "Ränta (%)",
-    "effectiveNote": "Effektiv ränta {{rate}} · {{amount}} per år",
     "addZoneTitle": "Lägg till ny nivå",
     "editZoneTitle": "Redigera nivå",
     "save": "Spara",
@@ -513,18 +498,7 @@
     "totalTransactions": "Transaktioner",
     "income": "Inkomster",
     "outcome": "Utgifter",
-    "netFlow": "Nettoflöde",
-    "incomeIn": "Inkommande i {{month, lower}}",
-    "expenseIn": "Utgående i {{month, lower}}",
-    "monthBalance": "Månadens saldo",
-    "incomeCount_one": "{{count}} inkommande rörelse",
-    "incomeCount_other": "{{count}} inkommande rörelser",
-    "txCount_one": "{{count}} transaktion",
-    "txCount_other": "{{count}} transaktioner",
-    "mostIn": "mest i {{category}}",
-    "none": "inga ännu",
-    "prevMonth": "i {{month, lower}} {{amount}}",
-    "noPrevMonth": "inga rörelser i {{month, lower}}"
+    "netFlow": "Nettoflöde"
   },
   "categoryNames": {
     "cat_groceries": "Matvaror",
@@ -552,21 +526,8 @@
     "lastMovement": "Senaste rörelse {{date}}",
     "lastImport": "Senaste import {{date}}"
   },
-  "hero": {
-    "thisMonth": "denna månad",
-    "expensesExceed": "utgifterna överstiger inkomsterna",
-    "incomeExceeds": "inkomsterna överstiger utgifterna",
-    "balanced": "inkomster och utgifter i balans",
-    "noMovementsThisMonth": "inga rörelser denna månad"
-  },
   "chart": {
-    "balance": "Saldo",
-    "largeIncome": "Stor inkommande rörelse",
-    "largeExpense": "Stor utgående rörelse",
-    "thresholdNote": "Rörelser över {{amount}} är markerade",
-    "reconstructed": "linjen är rekonstruerad från transaktionerna",
-    "clusterTitle_one": "{{count}} rörelse",
-    "clusterTitle_other": "{{count}} rörelser"
+    "balance": "Saldo"
   },
   "trend": {
     "title": "Kontanter över tid",
@@ -605,7 +566,6 @@
     "next": "Nästa",
     "pending": "Väntande",
     "transactionDetails": "Transaktionsdetaljer",
-    "balanceEstimate": "Uppskattat utifrån den tillgängliga bokförda huvudboken. Saldoreferens: {{date}}. Att kontoutdragen är kompletta är inte bekräftat.",
     "foreignConverted": "Rörelser i {{currencies}} räknas om till {{currency}} med kursen för deras dag i summorna och diagrammet.",
     "foreignMissing": "Rörelser i {{currencies}} utelämnas från summorna och diagrammet: ingen växelkurs för deras dag.",
     "promotions": "{{count}} väntande poster kommer att bokföras",

@@ -27,10 +27,6 @@
     "yearlyInterest": "Roční úrok",
     "perYear": "ročně",
     "notFound": "Účet nenalezen",
-    "interestNote": "{{rate}} · {{amount}} ročně",
-    "todayCount_one": "{{count}} transakce dnes",
-    "todayCount_few": "{{count}} transakce dnes",
-    "todayCount_other": "{{count}} transakcí dnes",
     "excludedFromPortfolio": "Vyloučeno z čistého jmění"
   },
   "nativeBalance": {
@@ -62,9 +58,15 @@
     "editDescription": "Upravte údaje účtu „{{name}}“.",
     "accountNumberPlaceholder": "např. 1234567890",
     "ibanPlaceholder": "např. DE89 3704 0044 0532 0130 00",
-    "balanceHint": "Zadáváte ho vy a importované transakce ho nemění — aktualizujte ho podle posledního výpisu.",
     "includeInNetWorth": "Zahrnout do čistého jmění",
-    "includeInNetWorthHelp": "Vyloučené účty zůstávají v seznamu, ale nepočítají se do čistého jmění, součtů ani grafů."
+    "includeInNetWorthHelp": "Vyloučené účty zůstávají v seznamu, ale nepočítají se do čistého jmění, součtů ani grafů.",
+    "openingBalance": "Počáteční zůstatek",
+    "openingBalanceHint": "Nepovinné. Vytvoří první záznam historie zůstatku.",
+    "openingBalanceAsOf": "K datu",
+    "currentBalance": "Zůstatek {{amount}} k {{date}}",
+    "currentBalanceUnknownDate": "Zůstatek {{amount}} · datum neznámé",
+    "noBalance": "Zůstatek zatím nezaznamenaný",
+    "recordNew": "Zaznamenat nový zůstatek"
   },
   "accounts": "Účty",
   "transactions": "Transakce",
@@ -86,8 +88,7 @@
     "accountNumberOptional": "Číslo účtu (volitelné)",
     "interestRate": "Úroková sazba",
     "rateValidUntil": "Sazba platí do",
-    "interestType": "Typ úročení",
-    "balanceManual": "Zůstatek (ručně)"
+    "interestType": "Typ úročení"
   },
   "interestType": {
     "simple": "Jednoduché",
@@ -156,14 +157,12 @@
     "description": "Přidejte svůj první bankovní účet a začněte sledovat své finance.",
     "noTransactions": "Zatím žádné transakce",
     "noMatchingTransactions": "Pro zvolený filtr nic neodpovídá. Zkuste zrušit filtr kategorie.",
-    "noTransactionsTitle": "Zatím žádné transakce",
-    "noTransactionsDescription": "Naimportujte CSV výpis z banky a uvidíte, kam vaše peníze odcházejí, nebo přidejte transakci ručně.",
-    "importCsv": "Importovat bankovní výpis (CSV)",
-    "addManually": "Přidat transakci ručně",
     "noTransactionsInPeriod": "V tomto období nejsou žádné transakce",
     "noTransactionsInPeriodHint": "Tento účet má transakce v jiných obdobích.",
     "showAll": "Zobrazit vše",
-    "noMatchingTransactionsTitle": "Žádné transakce"
+    "noMatchingTransactionsTitle": "Žádné transakce",
+    "noDataTitle": "Účet zatím nemá žádná data",
+    "noDataDescription": "Zaznamenejte zůstatek z výpisu nebo naimportujte výpis z banky."
   },
   "confirmDelete": {
     "title": "Smazat účet?",
@@ -388,8 +387,8 @@
   },
   "importHistory": {
     "title": "Historie importů",
-    "button": "Historie importů",
     "fileName": "Název souboru",
+    "period": "Období",
     "imported": "Importováno",
     "errors": "Chyby",
     "empty": "Zatím žádné importy. Importujte svůj první CSV soubor.",
@@ -408,17 +407,12 @@
     "undoDescription_other": "Vrátit import: smaže se {{count}} transakcí, které z něj vznikly, a záznam o importu. Tuto akci nelze vrátit zpět."
   },
   "zones": {
-    "title": "Úrokové pásma",
     "fromAmount": "Od částky",
     "toAmount": "Do částky",
     "interestRate": "Úroková sazba",
     "effective": "efektivní",
-    "effectiveRate": "Efektivní sazba",
-    "active": "Aktivní",
-    "noZones": "Nejsou nakonfigurována žádná úroková pásma",
     "unlimited": "Neomezeno",
     "ratePercent": "Sazba (%)",
-    "effectiveNote": "Efektivní sazba {{rate}} · {{amount}} ročně",
     "addZoneTitle": "Přidat novou zónu",
     "editZoneTitle": "Upravit zónu",
     "save": "Uložit",
@@ -536,20 +530,7 @@
     "totalTransactions": "Transakcí",
     "income": "Příjmy",
     "outcome": "Výdaje",
-    "netFlow": "Čistý tok",
-    "incomeIn": "Příchozí v měsíci {{month}}",
-    "expenseIn": "Odchozí v měsíci {{month}}",
-    "monthBalance": "Bilance měsíce",
-    "incomeCount_one": "{{count}} příchozí pohyb",
-    "incomeCount_few": "{{count}} příchozí pohyby",
-    "incomeCount_other": "{{count}} příchozích pohybů",
-    "txCount_one": "{{count}} transakce",
-    "txCount_few": "{{count}} transakce",
-    "txCount_other": "{{count}} transakcí",
-    "mostIn": "nejvíc {{category}}",
-    "none": "zatím žádné",
-    "prevMonth": "za {{month, lower}} {{amount}}",
-    "noPrevMonth": "za {{month, lower}} bez pohybu"
+    "netFlow": "Čistý tok"
   },
   "categoryNames": {
     "cat_groceries": "Potraviny",
@@ -575,24 +556,21 @@
   "eyebrow": "Hotovost",
   "status": {
     "lastMovement": "Poslední pohyb {{date}}",
-    "lastImport": "Poslední import {{date}}"
+    "lastImport": "Poslední import {{date}}",
+    "balanceAsOf": "Zůstatek k {{date}}",
+    "balanceUnknownDate": "Zůstatek · datum neznámé",
+    "noData": "Zatím bez dat"
   },
-  "hero": {
-    "thisMonth": "tento měsíc",
-    "expensesExceed": "výdaje převyšují příjmy",
-    "incomeExceeds": "příjmy převyšují výdaje",
-    "balanced": "příjmy a výdaje vyrovnané",
-    "noMovementsThisMonth": "tento měsíc bez pohybu"
+  "actions": {
+    "recordBalance": "Zaznamenat zůstatek",
+    "importStatement": "Importovat výpis"
+  },
+  "menu": {
+    "balanceHistory": "Historie zůstatku",
+    "interest": "Úročení"
   },
   "chart": {
-    "balance": "Zůstatek",
-    "largeIncome": "Velký příchozí pohyb",
-    "largeExpense": "Velký odchozí pohyb",
-    "thresholdNote": "Zobrazují se pohyby nad {{amount}}",
-    "reconstructed": "průběh je odvozený z transakcí",
-    "clusterTitle_one": "{{count}} pohyb",
-    "clusterTitle_few": "{{count}} pohyby",
-    "clusterTitle_other": "{{count}} pohybů"
+    "balance": "Zůstatek"
   },
   "trend": {
     "title": "Vývoj hotovosti",
@@ -632,7 +610,6 @@
     "next": "Další",
     "pending": "Čekající",
     "transactionDetails": "Podrobnosti transakce",
-    "balanceEstimate": "Odhad z dostupných zaúčtovaných pohybů. Zůstatek platí k: {{date}}. Úplnost výpisů není ověřena.",
     "foreignConverted": "Pohyby v {{currencies}} jsou v součtech a grafu převedeny na {{currency}} kurzem dne pohybu.",
     "foreignMissing": "Pohyby v {{currencies}} nejsou v součtech ani grafu: chybí kurz jejich dne.",
     "promotions": "{{count}} čekajících pohybů bude zaúčtováno",
@@ -644,10 +621,11 @@
     "mappingHelp": "Použijte částku se znaménkem (+ příchozí, − odchozí), nebo odchozí a příchozí sloupce. Pokud zvolíte obě možnosti, přednost má částka se znaménkem.",
     "provenanceMappingHelp": "Konečný zůstatek výpisu vám po importu nabídneme jako nový zůstatek účtu. ID transakce spolehlivě pozná duplicity. Měna určuje, v čem jsou částky; bez ní platí měna účtu. Číslo účtu protistrany, kód banky a země jsou volitelné; chybějící kód banky se nedoplňuje odhadem.",
     "confirmDateFormat": "Potvrdit vybraný formát data",
-    "balanceBlocked": "Zůstatek výpisu je v jiné měně nebo starší než současný datovaný zůstatek; nelze jej použít.",
+    "balanceBlocked": "Zůstatek výpisu je v jiné měně a nelze jej použít.",
     "statementAsOf": "Zůstatek výpisu k {{date}}",
     "confirmBalance": "Nastavit datovaný zůstatek",
     "balanceConfirmDescription": "Nastavit {{amount}} k {{date}}? Současné datum zůstatku: {{currentDate}}. Neznámé současné datum vyžaduje vaše výslovné potvrzení. Zůstatek je oddělený od importovaných transakcí.",
+    "balanceOlderDescription": "Zaznamenat {{amount}} k {{date}} do historie zůstatku? Je starší než současný zůstatek ({{currentDate}}), který zůstane beze změny.",
     "detail": {
       "bookingDate": "Datum zaúčtování",
       "valueDate": "Datum valuty",
@@ -696,5 +674,80 @@
     "deleteBatchPromoted_one": "{{count}} čekající položka z dřívějšího importu, kterou tento import zaúčtoval, zůstane zaúčtovaná s jeho údaji.",
     "deleteBatchPromoted_few": "{{count}} čekající položky z dřívějších importů, které tento import zaúčtoval, zůstanou zaúčtované s jeho údaji.",
     "deleteBatchPromoted_other": "{{count}} čekajících položek z dřívějších importů, které tento import zaúčtoval, zůstane zaúčtováno s jeho údaji."
+  },
+  "recordDialog": {
+    "title": "Zaznamenat zůstatek",
+    "description": "Zůstatek se uloží do historie účtu k vybranému dni.",
+    "amount": "Částka",
+    "amountPlaceholder": "např. 450 000",
+    "asOf": "K datu",
+    "hint": "Zůstatek z výpisu nebo z bankovnictví. Importované transakce ho nemění.",
+    "replaces": "Záznam ze dne {{date}} bude nahrazen.",
+    "confirmUnknown": "Nahradit současný zůstatek bez data",
+    "submit": "Zaznamenat zůstatek",
+    "success": "Zůstatek zaznamenán"
+  },
+  "balanceHistory": {
+    "title": "Historie zůstatku",
+    "sub_one": "{{count}} záznam · poslední {{date}}",
+    "sub_few": "{{count}} záznamy · poslední {{date}}",
+    "sub_other": "{{count}} záznamů · poslední {{date}}",
+    "empty": "Zatím žádný záznam zůstatku.",
+    "amount": "Částka",
+    "change": "Změna",
+    "source": "Zdroj",
+    "sourceManual": "ručně",
+    "sourceStatement": "z výpisu",
+    "delete": "Smazat záznam",
+    "deleteTitle": "Smazat záznam zůstatku?",
+    "deleteDescription": "Záznam {{amount}} ze dne {{date}} bude trvale odstraněn. Zůstatek účtu se přepočítá z nejnovějšího zbývajícího záznamu.",
+    "deleted": "Záznam smazán"
+  },
+  "interest": {
+    "title": "Úročení",
+    "zonedSub": "Pásmové úročení podle výše zůstatku",
+    "simpleSub": "Jednoduché úročení",
+    "effectiveLine": "{{rate}} efektivně · {{amount}} ročně",
+    "caption": "Efektivní sazba je roční úrok z aktuálního zůstatku dělený zůstatkem.",
+    "validUntil": "Sazba platí do {{date}}",
+    "rate": "Sazba"
+  },
+  "flows": {
+    "netIn": "Bilance · {{month}}",
+    "net": "Bilance",
+    "line_one": "{{credits}} příchozí · {{debits}} odchozí · {{count}} pohyb",
+    "line_few": "{{credits}} příchozí · {{debits}} odchozí · {{count}} pohyby",
+    "line_other": "{{credits}} příchozí · {{debits}} odchozí · {{count}} pohybů",
+    "noMoves": "bez pohybů",
+    "prev": "Předchozí měsíc",
+    "next": "Další měsíc",
+    "income": "Příchozí",
+    "expense": "Odchozí",
+    "balance": "bilance",
+    "noImport": "bez importu"
+  },
+  "balanceHero": {
+    "label": "Zůstatek k {{date}}",
+    "unknownDate": "Zůstatek · datum neznámé",
+    "since": "od {{date}}",
+    "firstRecord": "první záznam",
+    "record": "Záznam zůstatku",
+    "recordTip": "{{date}} · {{source}}"
+  },
+  "balanceStats": {
+    "changeThisYear": "Změna letos",
+    "vsRecordAt": "proti záznamu k {{date}}",
+    "noRecordBeforeYear": "bez záznamu před začátkem roku",
+    "avgPerMonth": "Průměrně za měsíc",
+    "last12Months": "za posledních 12 měsíců",
+    "sinceFirstRecord_one": "za {{count}} měsíc od prvního záznamu",
+    "sinceFirstRecord_few": "za {{count}} měsíce od prvního záznamu",
+    "sinceFirstRecord_other": "za {{count}} měsíců od prvního záznamu",
+    "singleRecord": "zatím jediný záznam",
+    "noRecord": "zatím žádný záznam",
+    "yearlyInterest": "Roční úrok",
+    "effectiveZoned": "{{rate}} efektivně · pásmové úročení",
+    "simpleRate": "{{rate}} p. a.",
+    "noInterest": "bez úročení"
   }
 }

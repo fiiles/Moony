@@ -77,6 +77,24 @@ interestRateValidUntil: number | null;
 excludeFromBalance: boolean; createdAt: number; updatedAt: number }) & { institution: Institution | null; effectiveInterestRate: number | null; projectedEarnings: number | null }
 
 /**
+ * A dated balance of a bank account (migration 013). The newest record is mirrored
+ * into `bank_accounts.balance` / `balance_as_of`.
+ */
+export type BankBalanceRecord = { id: string; bankAccountId: string; 
+/**
+ * Balance in the account currency (canonical decimal string).
+ */
+amount: string; currency: string; 
+/**
+ * UTC day start (unix seconds).
+ */
+asOf: number; 
+/**
+ * `manual` (entered by hand) or `statement` (confirmed from a CSV import).
+ */
+source: string; sourceBatchId: string | null; recordedAt: number }
+
+/**
  * Bank transaction entity
  */
 export type BankTransaction = { id: string; bankAccountId: string; transactionId: string | null; type: string; amount: string; currency: string; description: string | null; counterpartyName: string | null; counterpartyIban: string | null; counterpartyBankCode?: string | null; counterpartyCountry?: string | null; bookingDate: number; valueDate: number | null; categoryId: string | null; merchantCategoryCode: string | null; remittanceInfo: string | null; 
@@ -134,7 +152,15 @@ export type CashflowActuals = { reportCurrency: string; periodStart: number; per
 /**
  * A category with its items
  */
-export type CashflowCategory = { key: string; name: string; total: string; items: CashflowReportItem[]; isUserEditable: boolean }
+export type CashflowCategory = { key: string; name: string; 
+/**
+ * Sum of the included items only.
+ */
+total: string; items: CashflowReportItem[]; isUserEditable: boolean; 
+/**
+ * False when the whole category is out of the plan (`category:<key>`).
+ */
+included: boolean }
 
 /**
  * One row of a breakdown: the period's rows of one flow role in one category.
@@ -164,7 +190,15 @@ export type CashflowReport = { reportCurrency: string; quality: ReportQuality; r
 /**
  * Individual item in a cashflow category
  */
-export type CashflowReportItem = { originalComponents: CashflowOriginalComponent[]; convertedComponentCount: number; fxQuality: FxQuality; category: string; itemType: string; sourceId: string | null; replacementSourceId: string | null; id: string; name: string; amount: string; originalAmount: string; originalCurrency: string; originalFrequency: string; isUserDefined: boolean }
+export type CashflowReportItem = { originalComponents: CashflowOriginalComponent[]; convertedComponentCount: number; fxQuality: FxQuality; category: string; itemType: string; sourceId: string | null; replacementSourceId: string | null; id: string; name: string; amount: string; originalAmount: string; originalCurrency: string; originalFrequency: string; isUserDefined: boolean; 
+/**
+ * False when this row or its whole category is out of the plan; `amount` is still filled.
+ */
+included: boolean; 
+/**
+ * False when the row's own key is stored, whatever its category says.
+ */
+selfIncluded: boolean }
 
 /**
  * A cashflow section (Personal or Investments)
@@ -716,16 +750,22 @@ export type HistoryRecalcEvent = { ticker: string; status: RecalcStatus }
 export type InsertAssetValuation = { assetId: string; value: string; currency: string | null; valuedAt: number; note: string | null }
 
 /**
- * Confirmed balance anchor, in the account currency and at a UTC booking day.
+ * Input of `record_bank_account_balance`: one dated balance. `source` is derived:
+ * `statement` when a batch id is given, else `manual`.
  */
-export type InsertBalanceAnchor = { amount: string; currency: string; asOf: number; confirmUnknownAsOf?: boolean; sourceBatchId?: string | null }
+export type InsertBalanceRecord = { amount: string; currency: string; asOf: number; 
+/**
+ * Required (true) only while the account has no dated record and its undated
+ * balance is not 0: the first dated record replaces that number.
+ */
+confirmUnknownAsOf?: boolean; sourceBatchId?: string | null }
 
 /**
  * Data for creating/updating a bank account
  */
 export type InsertBankAccount = { name: string; accountType: string | null; iban: string | null; bban: string | null; currency: string | null; balance: string | null; 
 /**
- * Omitted preserves an unchanged anchor; null explicitly makes it unknown.
+ * UTC day of the opening balance (create only; with it the create writes the first balance record). The update command ignores it.
  */
 balanceAsOf?: number | null; institutionId: string | null; interestRate: string | null; hasZoneDesignation: boolean | null; terminationDate: number | null; 
 /**
@@ -1334,6 +1374,15 @@ headerSignature: string; config: StockImportConfig; createdAt: number }
  * Interest rate zone (tier) of a bank account
  */
 export type SavingsAccountZone = { id: string; savingsAccountId: string; fromAmount: string; toAmount: string | null; interestRate: string; createdAt: number }
+
+/**
+ * Count a planning row in or leave it out (`cashflow_plan_exclusions`).
+ */
+export type SetCashflowPlanInclusion = { 
+/**
+ * `category:<categoryKey>`, an automatic source id, or `item:<manual item id>`.
+ */
+key: string; included: boolean }
 
 export type SourceCount = { 
 /**

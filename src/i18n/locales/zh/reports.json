@@ -48,10 +48,7 @@
     "currency": "货币",
     "frequency": "频率",
     "category": "类别",
-    "selectCategory": "选择类别",
-    "type": "类型",
-    "income": "收入",
-    "expense": "支出"
+    "selectCategory": "选择类别"
   },
   "deleteConfirm": {
     "title": "删除项目？",
@@ -404,18 +401,12 @@
       "none": "还没有计划收入。"
     },
     "table": {
-      "item": "项目",
-      "category": "类别",
-      "frequency": "频率",
-      "monthly": "每月",
-      "yearly": "每年",
       "netMonthly": "每月净额",
       "netYearly": "每年净额",
       "perMonth": "每月",
       "perYear": "每年",
       "auto": "自动来自{{module}}",
       "manual": "手动",
-      "editInModule": "在{{module}}中编辑",
       "incomeGroup": "收入 · {{amount}}",
       "expenseGroup": "支出 · {{amount}}",
       "noIncome": "此部分没有计划收入。",
@@ -501,8 +492,6 @@
     "countedTransactions": "{{count}} 笔交易",
     "previous": "上一页",
     "next": "下一页",
-    "replacesSource": "要替换的自动来源",
-    "additionalItem": "额外的手动项目",
     "retainedSource": "之前关联的来源",
     "replacementHelp": "替换项会将所选的自动项目从合计中排除。删除手动替换项后，原来源会恢复。",
     "replacing": "替换{{name}}",

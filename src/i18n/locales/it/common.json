@@ -239,7 +239,6 @@
     "pendingPromotionInvalid": "Il movimento in sospeso non ha potuto essere contabilizzato. Aggiorna l'anteprima e riprova.",
     "balanceAsOfInvalid": "Scegli una data del saldo valida, non successiva a oggi.",
     "balanceCurrencyMismatch": "La valuta del saldo dell'estratto conto è diversa dalla valuta del conto.",
-    "balanceAnchorOlder": "L'estratto conto è più vecchio della data del saldo registrata per il conto.",
     "balanceAnchorUnknown": "La data del saldo esistente è sconosciuta. Conferma prima la sostituzione di questo saldo.",
     "balanceBatchMismatch": "Questo import di estratto conto non appartiene a questo conto.",
     "learningIdentity": "Indica un identificativo di conto affidabile o un beneficiario.",

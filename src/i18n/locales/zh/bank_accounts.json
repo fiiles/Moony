@@ -27,8 +27,6 @@
     "yearlyInterest": "年利息",
     "perYear": "每年",
     "notFound": "未找到账户",
-    "interestNote": "{{rate}} · 每年 {{amount}}",
-    "todayCount_other": "今天 {{count}} 笔交易",
     "excludedFromPortfolio": "不计入净资产"
   },
   "nativeBalance": {
@@ -60,7 +58,6 @@
     "editDescription": "更新“{{name}}”的详情。",
     "accountNumberPlaceholder": "例如：1234567890",
     "ibanPlaceholder": "例如：DE89 3704 0044 0532 0130 00",
-    "balanceHint": "由您手动输入，不会因导入的交易而改变——请根据最新账单更新。",
     "includeInNetWorth": "计入净资产",
     "includeInNetWorthHelp": "被排除的账户仍保留在列表中，但不计入净资产、合计和图表。"
   },
@@ -84,8 +81,7 @@
     "accountNumberOptional": "账号（可选）",
     "interestRate": "利率",
     "rateValidUntil": "利率有效期至",
-    "interestType": "利息类型",
-    "balanceManual": "余额（手动）"
+    "interestType": "利息类型"
   },
   "interestType": {
     "simple": "单一利率",
@@ -150,10 +146,6 @@
     "description": "添加您的第一个银行账户，开始记录您的财务。",
     "noTransactions": "还没有交易",
     "noMatchingTransactions": "没有与所选筛选条件相符的内容。请尝试清除类别筛选。",
-    "noTransactionsTitle": "还没有交易",
-    "noTransactionsDescription": "导入银行的 CSV 账单，看看钱都花在哪里，或手动添加一笔交易。",
-    "importCsv": "导入银行账单（CSV）",
-    "addManually": "手动添加交易",
     "noTransactionsInPeriod": "此时期没有交易",
     "noTransactionsInPeriodHint": "该账户在其他时期有交易。",
     "showAll": "显示全部",
@@ -363,7 +355,6 @@
   },
   "importHistory": {
     "title": "导入历史",
-    "button": "导入历史",
     "fileName": "文件名",
     "imported": "已导入",
     "errors": "错误",
@@ -377,17 +368,12 @@
     "undone": "导入已撤销"
   },
   "zones": {
-    "title": "利率档位",
     "fromAmount": "起始金额",
     "toAmount": "截止金额",
     "interestRate": "利率",
     "effective": "实际",
-    "effectiveRate": "实际利率",
-    "active": "启用",
-    "noZones": "尚未配置利率档位",
     "unlimited": "无上限",
     "ratePercent": "利率（%）",
-    "effectiveNote": "实际利率 {{rate}} · 每年 {{amount}}",
     "addZoneTitle": "添加新档位",
     "editZoneTitle": "编辑档位",
     "save": "保存",
@@ -495,16 +481,7 @@
     "totalTransactions": "交易",
     "income": "收入",
     "outcome": "支出",
-    "netFlow": "净流量",
-    "incomeIn": "{{month}}入账",
-    "expenseIn": "{{month}}出账",
-    "monthBalance": "当月结余",
-    "incomeCount_other": "{{count}} 笔入账流水",
-    "txCount_other": "{{count}} 笔交易",
-    "mostIn": "最多的是{{category}}",
-    "none": "暂无",
-    "prevMonth": "{{month}} {{amount}}",
-    "noPrevMonth": "{{month}}没有流水"
+    "netFlow": "净流量"
   },
   "categoryNames": {
     "cat_groceries": "食品杂货",
@@ -532,20 +509,8 @@
     "lastMovement": "最近流水 {{date}}",
     "lastImport": "最近导入 {{date}}"
   },
-  "hero": {
-    "thisMonth": "本月",
-    "expensesExceed": "支出超过收入",
-    "incomeExceeds": "收入超过支出",
-    "balanced": "收支平衡",
-    "noMovementsThisMonth": "本月没有流水"
-  },
   "chart": {
-    "balance": "余额",
-    "largeIncome": "大额入账流水",
-    "largeExpense": "大额出账流水",
-    "thresholdNote": "超过 {{amount}} 的流水已标出",
-    "reconstructed": "该曲线根据交易重建",
-    "clusterTitle_other": "{{count}} 笔流水"
+    "balance": "余额"
   },
   "trend": {
     "title": "现金走势",
@@ -583,7 +548,6 @@
     "next": "下一页",
     "pending": "待处理",
     "transactionDetails": "交易详情",
-    "balanceEstimate": "根据现有的已入账流水估算。余额基准日：{{date}}。无法确认账单是否完整。",
     "foreignConverted": "{{currencies}}的流水在合计和图表中按其当日汇率折算为 {{currency}}。",
     "foreignMissing": "{{currencies}}的流水未计入合计和图表：缺少当日汇率。",
     "promotions": "{{count}} 笔待处理的条目将被入账",

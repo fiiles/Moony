@@ -25,11 +25,12 @@ import { CurrencyCombobox } from '@/components/common/CurrencyCombobox';
 import { CurrencyCode, recordCurrency } from '@shared/currencies';
 import { BankAccountZoneManager } from '@/components/bank-accounts/BankAccountZoneManager';
 import { useTranslation } from 'react-i18next';
+import { useFormat } from '@/lib/use-format';
+import { todayIsoUtc } from '@/utils/period';
 
 type UpdateBankAccountData = {
   id: string;
   name?: string;
-  balance?: string;
   currency?: string;
   accountType?: AccountType;
   iban?: string;
@@ -62,6 +63,8 @@ interface BankAccountFormDialogProps {
   account?: BankAccountWithInstitution | null;
   isLoading?: boolean;
   initialZones?: ZoneData[];
+  /** Edit mode: opens the balance-record dialog (the form closes itself first). */
+  onRecordBalance?: () => void;
 }
 
 export function BankAccountFormDialog({
@@ -71,15 +74,20 @@ export function BankAccountFormDialog({
   account,
   isLoading = false,
   initialZones,
+  onRecordBalance,
 }: BankAccountFormDialogProps) {
   const { t } = useTranslation('bank_accounts');
   const { t: tc } = useTranslation('common');
   const { currencyCode: userCurrency } = useCurrency();
+  const fmt = useFormat();
   const isEditMode = !!account;
 
   // Form state
   const [name, setName] = useState('');
-  const [balance, setBalance] = useState('0');
+  // Create only: the optional opening balance and the day it was true. On edit balances are
+  // recorded through the balance dialog, never typed into this form.
+  const [balance, setBalance] = useState('');
+  const [balanceAsOf, setBalanceAsOf] = useState(todayIsoUtc());
   const [selectedCurrency, setSelectedCurrency] = useState<CurrencyCode>(userCurrency);
   const [accountType, setAccountType] = useState<AccountType>('checking');
   const [iban, setIban] = useState('');
@@ -181,7 +189,8 @@ export function BankAccountFormDialog({
       if (account) {
         // Edit mode
         setName(account.name);
-        setBalance(account.balance.toString());
+        setBalance('');
+        setBalanceAsOf(todayIsoUtc());
         setSelectedCurrency(recordCurrency(account.currency) as CurrencyCode);
         setAccountType(account.accountType as AccountType);
         setIban(account.iban || '');
@@ -202,7 +211,8 @@ export function BankAccountFormDialog({
       } else {
         // Add mode
         setName('');
-        setBalance('0');
+        setBalance('');
+        setBalanceAsOf(todayIsoUtc());
         setSelectedCurrency(userCurrency);
         setAccountType('checking');
         setIban('');
@@ -219,9 +229,11 @@ export function BankAccountFormDialog({
   // Validation keys live in `common.json` (`validation.*`), like the zod form messages.
   const nameError = !name.trim() ? tc('validation.accountNameRequired') : null;
   const balanceError =
-    balance.trim() === '' || !Number.isFinite(Number(balance))
+    balance.trim() !== '' && !Number.isFinite(Number(balance))
       ? tc('validation.balanceRequired')
-      : null;
+      : balance.trim() !== '' && (!balanceAsOf || balanceAsOf > todayIsoUtc())
+        ? tc('validation.balanceAsOfInvalid')
+        : null;
 
   const handleSubmit = () => {
     setSubmitted(true);
@@ -234,7 +246,6 @@ export function BankAccountFormDialog({
         {
           id: account.id,
           name: name.trim(),
-          ...(balance !== account.balance ? { balance } : {}),
           currency: selectedCurrency,
           accountType,
           iban: iban || undefined,
@@ -254,7 +265,8 @@ export function BankAccountFormDialog({
       onSubmit(
         {
           name: name.trim(),
-          balance,
+          balance: balance.trim() === '' ? undefined : balance.trim(),
+          balanceAsOf: balance.trim() === '' ? undefined : isoToUtcDaySec(balanceAsOf),
           currency: selectedCurrency,
           accountType,
           iban: iban || undefined,
@@ -272,6 +284,11 @@ export function BankAccountFormDialog({
   const handleClose = () => {
     onOpenChange(false);
   };
+
+  // Edit mode: the stored balance in the account's own currency (it is not editable here).
+  const storedBalance = account
+    ? fmt.money(Number(account.balance), recordCurrency(account.currency), { decimals: 0 })
+    : '';
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -323,29 +340,69 @@ export function BankAccountFormDialog({
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="balance">{t('fields.balance')} *</Label>
-              <Input
-                id="balance"
-                type="number"
-                step="0.01"
-                value={balance}
-                onChange={(e) => setBalance(e.target.value)}
-                placeholder="0.00"
-                aria-invalid={submitted && balanceError ? true : undefined}
-                aria-describedby={submitted && balanceError ? 'balance-error' : undefined}
-              />
-              {submitted && balanceError && (
-                <p
-                  id="balance-error"
-                  role="alert"
-                  className="flex items-center gap-[5px] text-micro font-600 text-loss"
-                >
-                  {balanceError}
+            {isEditMode && account ? (
+              <div className="grid gap-2">
+                <Label>{t('fields.balance')}</Label>
+                <p className="text-table text-ink-2">
+                  {Number(account.balance) === 0 && !account.balanceAsOf
+                    ? t('form.noBalance')
+                    : account.balanceAsOf
+                      ? t('form.currentBalance', {
+                          amount: storedBalance,
+                          date: fmt.day(account.balanceAsOf),
+                        })
+                      : t('form.currentBalanceUnknownDate', { amount: storedBalance })}
                 </p>
-              )}
-              <p className="text-micro font-500 text-ink-4">{t('form.balanceHint')}</p>
-            </div>
+                {onRecordBalance && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="justify-self-start"
+                    onClick={() => {
+                      onOpenChange(false);
+                      onRecordBalance();
+                    }}
+                  >
+                    {t('form.recordNew')}
+                  </Button>
+                )}
+              </div>
+            ) : (
+              <div className="grid gap-2">
+                <Label htmlFor="balance">{t('form.openingBalance')}</Label>
+                <div className="grid grid-cols-[1fr_150px] gap-2">
+                  <Input
+                    id="balance"
+                    type="number"
+                    step="0.01"
+                    value={balance}
+                    onChange={(e) => setBalance(e.target.value)}
+                    placeholder="0"
+                    aria-invalid={submitted && balanceError ? true : undefined}
+                    aria-describedby={submitted && balanceError ? 'balance-error' : undefined}
+                  />
+                  <Input
+                    type="date"
+                    value={balanceAsOf}
+                    max={todayIsoUtc()}
+                    onChange={(e) => setBalanceAsOf(e.target.value)}
+                    aria-label={t('form.openingBalanceAsOf')}
+                  />
+                </div>
+                {submitted && balanceError ? (
+                  <p
+                    id="balance-error"
+                    role="alert"
+                    className="flex items-center gap-[5px] text-micro font-600 text-loss"
+                  >
+                    {balanceError}
+                  </p>
+                ) : (
+                  <p className="text-micro font-500 text-ink-4">{t('form.openingBalanceHint')}</p>
+                )}
+              </div>
+            )}
             <div className="grid gap-2">
               <Label htmlFor="currency">{tc('labels.currency')}</Label>
               <CurrencyCombobox value={selectedCurrency} onChange={setSelectedCurrency} />

@@ -27,8 +27,6 @@
     "yearlyInterest": "年間の利息",
     "perYear": "年あたり",
     "notFound": "口座が見つかりません",
-    "interestNote": "{{rate}} · 年間 {{amount}}",
-    "todayCount_other": "本日 {{count}}件の取引",
     "excludedFromPortfolio": "純資産から除外"
   },
   "nativeBalance": {
@@ -60,7 +58,6 @@
     "editDescription": "「{{name}}」の詳細を更新します。",
     "accountNumberPlaceholder": "例：1234567890",
     "ibanPlaceholder": "例：DE89 3704 0044 0532 0130 00",
-    "balanceHint": "ご自身で入力する値で、インポートした取引では変わりません。最新の明細をもとに更新してください。",
     "includeInNetWorth": "純資産に含める",
     "includeInNetWorthHelp": "除外した口座は一覧に残りますが、純資産、合計、グラフからは外れます。"
   },
@@ -84,8 +81,7 @@
     "accountNumberOptional": "口座番号（任意）",
     "interestRate": "金利",
     "rateValidUntil": "金利の有効期限",
-    "interestType": "利息の種類",
-    "balanceManual": "残高（手動）"
+    "interestType": "利息の種類"
   },
   "interestType": {
     "simple": "単一",
@@ -150,10 +146,6 @@
     "description": "最初の銀行口座を追加して、資産の管理を始めましょう。",
     "noTransactions": "取引はまだありません",
     "noMatchingTransactions": "選択した条件に一致するものがありません。カテゴリの絞り込みを解除してみてください。",
-    "noTransactionsTitle": "取引はまだありません",
-    "noTransactionsDescription": "銀行の CSV 明細をインポートするか、取引を手動で追加すると、お金の流れが分かります。",
-    "importCsv": "銀行明細（CSV）をインポート",
-    "addManually": "取引を手動で追加",
     "noTransactionsInPeriod": "この期間の取引はありません",
     "noTransactionsInPeriodHint": "この口座には、他の期間の取引があります。",
     "showAll": "すべて表示",
@@ -363,7 +355,6 @@
   },
   "importHistory": {
     "title": "インポート履歴",
-    "button": "インポート履歴",
     "fileName": "ファイル名",
     "imported": "インポート済み",
     "errors": "エラー",
@@ -377,17 +368,12 @@
     "undone": "インポートを取り消しました"
   },
   "zones": {
-    "title": "金利の段階",
     "fromAmount": "下限額",
     "toAmount": "上限額",
     "interestRate": "金利",
     "effective": "実効",
-    "effectiveRate": "実効金利",
-    "active": "有効",
-    "noZones": "金利の段階が設定されていません",
     "unlimited": "上限なし",
     "ratePercent": "金利（%）",
-    "effectiveNote": "実効金利 {{rate}} · 年間 {{amount}}",
     "addZoneTitle": "新しい段階を追加",
     "editZoneTitle": "段階を編集",
     "save": "保存",
@@ -495,16 +481,7 @@
     "totalTransactions": "取引",
     "income": "収入",
     "outcome": "支出",
-    "netFlow": "純収支",
-    "incomeIn": "{{month}}の入金",
-    "expenseIn": "{{month}}の出金",
-    "monthBalance": "月の収支",
-    "incomeCount_other": "入金 {{count}}件",
-    "txCount_other": "{{count}}件の取引",
-    "mostIn": "最多は{{category}}",
-    "none": "まだありません",
-    "prevMonth": "{{month}}は{{amount}}",
-    "noPrevMonth": "{{month}}の入出金なし"
+    "netFlow": "純収支"
   },
   "categoryNames": {
     "cat_groceries": "食料品",
@@ -532,20 +509,8 @@
     "lastMovement": "最終の入出金 {{date}}",
     "lastImport": "最終インポート {{date}}"
   },
-  "hero": {
-    "thisMonth": "今月",
-    "expensesExceed": "支出が収入を上回っています",
-    "incomeExceeds": "収入が支出を上回っています",
-    "balanced": "収入と支出が均衡しています",
-    "noMovementsThisMonth": "今月の入出金なし"
-  },
   "chart": {
-    "balance": "残高",
-    "largeIncome": "大きな入金",
-    "largeExpense": "大きな出金",
-    "thresholdNote": "{{amount}}を超える入出金に印が付きます",
-    "reconstructed": "線は取引から再構成したものです",
-    "clusterTitle_other": "{{count}}件の入出金"
+    "balance": "残高"
   },
   "trend": {
     "title": "現金の推移",
@@ -583,7 +548,6 @@
     "next": "次へ",
     "pending": "保留中",
     "transactionDetails": "取引の詳細",
-    "balanceEstimate": "利用可能な計上済みの元帳から推定しています。残高の基準日：{{date}}。明細が網羅されている保証はありません。",
     "foreignConverted": "{{currencies}}建ての入出金は、合計とグラフでは、その日のレートで{{currency}}に換算されます。",
     "foreignMissing": "{{currencies}}建ての入出金は、その日の為替レートがないため、合計とグラフから除外されます。",
     "promotions": "保留中の{{count}}件の項目が計上されます",

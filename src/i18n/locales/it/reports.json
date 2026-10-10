@@ -48,10 +48,7 @@
     "currency": "Valuta",
     "frequency": "Frequenza",
     "category": "Categoria",
-    "selectCategory": "Seleziona categoria",
-    "type": "Tipo",
-    "income": "Entrata",
-    "expense": "Uscita"
+    "selectCategory": "Seleziona categoria"
   },
   "deleteConfirm": {
     "title": "Eliminare la voce?",
@@ -432,18 +429,12 @@
       "none": "Ancora nessuna entrata pianificata."
     },
     "table": {
-      "item": "Voce",
-      "category": "Categoria",
-      "frequency": "Frequenza",
-      "monthly": "Mensile",
-      "yearly": "Annuale",
       "netMonthly": "Netto al mese",
       "netYearly": "Netto all'anno",
       "perMonth": "mensile",
       "perYear": "annuale",
       "auto": "automatica da {{module}}",
       "manual": "manuale",
-      "editInModule": "Si modifica in {{module}}",
       "incomeGroup": "Entrate · {{amount}}",
       "expenseGroup": "Uscite · {{amount}}",
       "noIncome": "Nessuna entrata pianificata in questa sezione.",
@@ -535,8 +526,6 @@
     "countedTransactions": "{{count}} movimenti",
     "previous": "Precedente",
     "next": "Successivo",
-    "replacesSource": "Fonte automatica da sostituire",
-    "additionalItem": "Voce manuale aggiuntiva",
     "retainedSource": "Fonte collegata in precedenza",
     "replacementHelp": "Una sostituzione esclude dai totali la voce automatica selezionata. Eliminando la sostituzione manuale, la fonte viene ripristinata.",
     "replacing": "Sostituisce {{name}}",

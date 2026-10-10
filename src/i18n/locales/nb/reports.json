@@ -48,10 +48,7 @@
     "currency": "Valuta",
     "frequency": "Frekvens",
     "category": "Kategori",
-    "selectCategory": "Velg kategori",
-    "type": "Type",
-    "income": "Inntekt",
-    "expense": "Utgift"
+    "selectCategory": "Velg kategori"
   },
   "deleteConfirm": {
     "title": "Slette posten?",
@@ -418,18 +415,12 @@
       "none": "Ingen planlagte inntekter ennå."
     },
     "table": {
-      "item": "Post",
-      "category": "Kategori",
-      "frequency": "Frekvens",
-      "monthly": "Månedlig",
-      "yearly": "Årlig",
       "netMonthly": "Netto per måned",
       "netYearly": "Netto per år",
       "perMonth": "månedlig",
       "perYear": "årlig",
       "auto": "automatisk fra {{module}}",
       "manual": "manuell",
-      "editInModule": "Redigeres i {{module}}",
       "incomeGroup": "Inntekter · {{amount}}",
       "expenseGroup": "Utgifter · {{amount}}",
       "noIncome": "Ingen planlagte inntekter i denne seksjonen.",
@@ -518,8 +509,6 @@
     "countedTransactions": "{{count}} transaksjoner",
     "previous": "Forrige",
     "next": "Neste",
-    "replacesSource": "Automatisk kilde som skal erstattes",
-    "additionalItem": "Ekstra manuell post",
     "retainedSource": "Tidligere koblet kilde",
     "replacementHelp": "En erstatning utelater den valgte automatiske posten fra summene. Når du sletter den manuelle erstatningen, gjeninnføres kilden.",
     "replacing": "Erstatter {{name}}",

@@ -239,7 +239,6 @@
     "pendingPromotionInvalid": "Nie można zaksięgować oczekującej transakcji. Odśwież podgląd i spróbuj ponownie.",
     "balanceAsOfInvalid": "Wybierz prawidłową datę salda, nie późniejszą niż dziś.",
     "balanceCurrencyMismatch": "Waluta salda z wyciągu różni się od waluty konta.",
-    "balanceAnchorOlder": "Wyciąg jest starszy niż zapisana data salda konta.",
     "balanceAnchorUnknown": "Istniejąca data salda jest nieznana. Najpierw potwierdź zastąpienie tego salda.",
     "balanceBatchMismatch": "Ten import wyciągu nie należy do tego konta.",
     "learningIdentity": "Podaj wiarygodny identyfikator konta lub odbiorcę.",

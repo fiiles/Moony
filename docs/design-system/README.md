@@ -125,7 +125,7 @@ Each entry names the CSS class in `moony.css` and the React component that imple
 
 | Component | Class | React component | Rules |
 |---|---|---|---|
-| Button | `.btn`, `--primary`, `--ghost`, `--danger`, `--destructive`, `--sm`, `--icon` | `ui/button.tsx` (`cva` variants) | 36 px (32 small), radius 8, 11/650 label as a verb. One primary per page. Danger is text-only; destructive solid only inside confirm dialogs. Loading spins the icon, keeps the label. |
+| Button | `.btn`, `--primary`, `--ghost`, `--danger`, `--destructive`, `--sm`, `--icon` | `ui/button.tsx` (`cva` variants) | 36 px (32 small), radius 8, 11/650 label as a verb. One primary per page. Exception (owner decision 2026-10-10): the bank account detail head has two, Zaznamenat zůstatek and Importovat výpis. Danger is text-only; destructive solid only inside confirm dialogs. Loading spins the icon, keeps the label. |
 | Segmented control | `.seg`, `.seg__btn.is-active`, `--lg` | `ui/segmented.tsx` for period and 2–4-value filters; `ui/tabs.tsx` for page tabs | Paper pill with shadow on a `well-2` track. |
 | Field | `.field`, `.field__label`, `.field__hint`, `.field__error` | `ui/form.tsx` + `label.tsx` | Label above, 11/700; optional marker inline; hint only when useful; error replaces hint, red-brown with icon, says what to do. |
 | Input, select, textarea | `.input`, `.select` in `.select-wrap`, `.textarea`, `.input-wrap` with `.unit` | `ui/input.tsx`, `select.tsx`, `textarea.tsx` | 39 px, radius 8, unit inside right. Focus: `focus-border` + `focus-ring`. Invalid: `loss` border. |
@@ -133,7 +133,7 @@ Each entry names the CSS class in `moony.css` and the React component that imple
 | Search | `.search.input-wrap` | `ui/input.tsx` with a leading icon | 240 × 35 px with leading icon. |
 | Card | `.card`, `--flat`, `--table`, `.card__head/body/title/sub` | `ui/card.tsx` | E2 default, E1 flat, E3 table. Title 18/650, sub 10/500. |
 | Hero | `.hero`, `.hero__label/value/delta/aside` | `common/HeroCard.tsx` | One number, change with sign + context, period segment top right, chart below. Decorative circle is part of the material. |
-| Stat | `.stat`, `.stats`, `.stats--3` | `common/Stat.tsx` | Label 11, value 22, note 10. Three or four per row. |
+| Stat | `.stat`, `.stats`, `.stats--3`, `.stats--2x2` | `common/Stat.tsx` | Label 11, value 22, note 10. Three or four per row; four stats in a narrow column (calculator results beside the input form) sit 2 × 2 (`columns={2}`). The card is a size container: the value keeps 22 px down to a 163 px content box, then shrinks with the card (13.5 cqi, floor 16 px) so a long amount ("+ 16 682 338 Kč") never leaves the card at the 1080 px minimum width; every card in a row shares one size. |
 | Table | `.table`, `.table__head/row/group/foot`, `.cell--num`, `.cell--name`, `.entity`, `.logo`, `.row-actions` | `ui/table.tsx` + `InvestmentsTable` etc. | Head 40 px on `well`; rows 56 px (46–52 dense); hover `well`; whole row clickable; "···" on hover only; numbers right and tabular; no zebra, no vertical lines. |
 | Badge, chip | `.badge`, `--gain/--loss/--dark/--outline`, `.chip.is-active` | `ui/badge.tsx`, `ui/chip.tsx` | 20 px, no border. Green/red-brown only for positive/negative state. |
 | Progress | `.progress`, `--over`, `.progress__mark` | `ui/progress.tsx` | 6 px (10 px overview). Over limit uses `loss`. |
@@ -159,15 +159,16 @@ implementations.
 |---|---|---|
 | Overview | Dashboard | Greeting H1, period segment, hero (net worth + chart), 3 stats, "Co vás čeká" (a two-column agenda with date chips filled top to bottom, data upkeep folded into one line under it, hidden when empty), allocation ring + recent moves. |
 | List | Stocks, bank accounts | 3–4 stats, a trend card (`TrendCard`: title, one sentence, horizon segment, chart 170 px, legend; the same chrome and height on every list page), table card with search and toggles, add modal. Tables use a fixed layout so long text ends with an ellipsis instead of widening the table; no horizontal scroll at the minimum width. |
-| Detail | Stock detail, bank account detail | Back link, eyebrow, H1, action row, hero with time trace, 3–4 stats, ledger table + aside cards, modals. |
+| Detail | Stock detail | Back link, eyebrow, H1, action row, hero with time trace, 3–4 stats, ledger table + aside cards, modals. |
+| Detail (bank account) | Bank account detail | Back link, eyebrow, H1, two actions + ··· menu; sections by data: balance hero (line through dated balance records of the last year, axis to Dnes, line ending at the newest record) with 3 balance stats, a flows card (12-month bar window shifted by arrows, the newest month with movements selected), the full-width ledger with its own period filters; balance history, import history and interest tiers are modals from the ··· menu. |
 | Report | Cashflow | Actual income and expenses from bank transactions for a month, quarter or year: stats, bar chart card, income and expenses by category, money transfers in their own card, recategorization from the drilldown. |
-| Plan | Cashflow planning | Planned recurring items in personal and investment sections, items derived from Úvěry / Pojištění / Nemovitosti / Akcie marked as automatic, monthly / yearly switch, a 100 % flow bar instead of a Sankey diagram. |
+| Plan | Cashflow planning | Planned recurring items in personal and investment sections; every non-empty category is a collapsible row (chevron, name, "N položek · M mimo plán · automaticky z Úvěry", included total), items under it with origin and original amount in the sub-line; any row or whole category can be left out of the plan from its "···" menu (stays visible, muted, "Mimo plán" badge, not counted); monthly / yearly switch, a 100 % flow bar instead of a Sankey diagram. |
 | Planning | Budgets | Month navigation, stats, overview progress, category table with progress bars and state badges. |
 | Settings | Settings | Left sub-navigation (existing routes), stacked flat cards, danger zone last. |
 | Outlook | Projection | Horizon segment, hero with expected line, ± 2 p.p. scenario band, dashed "today + contributions" reference and future milestones (mortgage payoff, round net-worth marks), asset-class table, three scenarios, parameters modal. |
 | Analysis | Stocks analysis | Tag groups as chip filters that narrow everything below them (ring, TWR tag series, tag table, holdings; the stats stay portfolio-wide), allocation ring by strategy and the TWR card at equal height, TWR in percent per tag with the whole portfolio as the dark dashed reference and its return in the card head, legend with values under the chart, tag table, holdings with tags, manage and assign modals. |
 | Watchlist | Stock monitor and its detail | Native-currency prices, day change vs previous close, inline 52-week range bar with current price and target tick, target state badge; detail with target line on the chart, watch-start marker, markdown notes, key data. |
-| Calculator | Annuity calculator, real estate investment calculator | Inputs in flat cards left, live hero result right, chart with milestones (principal overtakes interest, half repaid; positive cashflow, half of loan, sale), yearly tables. Annuity adds an optional extra yearly payment with the saving it brings. |
+| Calculator | Annuity calculator, real estate investment calculator | Inputs in flat cards left, live hero result right (stats full width under both columns, or 2 × 2 under the hero when they stay in the results column), chart with milestones (principal overtakes interest, half repaid; positive cashflow, half of loan, sale), yearly tables. Annuity adds an optional extra yearly payment with the saving it brings. |
 | Crypto | Crypto, crypto detail | List archetype of Stocks with a share column and buy/sell markers on the aggregate trend (stocks show the same trade days); the detail mirrors Stock detail: cost-basis step line, buy/sell events, realized gain, holding period, "since first buy" card. |
 | Bonds | Bonds | Nearest maturity and weighted time to maturity as stats, a maturity-and-coupon ladder (principal returned and coupons per year), per-bond yearly coupon, "do roka" badge, matured issues behind a toggle. |
 | Real estate | Real estate, real estate detail | Appreciation, rental yield and equity / LTV per property, value-vs-equity trend; the detail has a valuation trace starting with the purchase (optional purchase date) followed by every estimate (the first estimate is recorded when the property is created), revaluations as events, cash-on-cash return, an annual balance that separates principal paydown from cashflow, a link to the real estate investment calculator and a "Přecenit" modal. |
@@ -209,7 +210,7 @@ Behavior: hovering a mark shows the event tooltip (type, quantity, price, total,
 the history table highlights its mark (`is-hot`, scale 1.35); clicking a mark scrolls to the row. Only
 events inside the selected period are drawn. Aggregate charts (net worth, cashflow) never draw events; the
 exceptions are the stocks and crypto list trends (one mark per trade day and direction, explaining the
-jumps a buy or a sell causes) and the loans trajectory (new loans and milestones). Bank accounts mark only movements above a threshold (an absolute floor of about 400 EUR, or 10 % of balance). If more
+jumps a buy or a sell causes) and the loans trajectory (new loans and milestones). Bank account charts draw no movement events; dated balance records are drawn as marks (○) on the balance line. If more
 than ~24 events fall in view, cluster neighbors into one mark with a count ("3 nákupy").
 
 ## 10. Copy and formatting
@@ -242,11 +243,17 @@ than ~24 events fall in view, cluster neighbors into one mark with a count ("3 n
    amount; ordinary reports do not carry persistent technical FX explanations. Show compact
    warnings only when missing data affects the result.
    *Cashflow planning* (`/reports/cashflow-planning`, label key `nav.cashflowPlanning`, cs "Plánování
-   cashflow", en "Cashflow planning") shows the planned recurring items; items derived from other domains
-   (`isUserEditable = false`: Úvěry, Pojištění, Nemovitosti, Akcie, Dluhopisy) carry a source badge instead
-   of row actions, and a 100 % flow bar (expense groups `s1`–`s4` + Ostatní, hatched remainder) replaces
-   the Sankey diagram. The two pages link to each other in the page subtitle; the projection reads the
-   planned report.
+   cashflow", en "Cashflow planning") shows the planned recurring items. Every non-empty category is a
+   collapsible group row with its included total (collapsed by default, remembered per browser); every
+   row has one "···" menu — automatic rows (`isUserDefined = false`: Úvěry, Pojištění, Nemovitosti, Akcie,
+   Dluhopisy, Bankovní účty) offer Nezapočítávat / Započítat, Nahradit vlastní částkou… and Otevřít v
+   modulu, manual rows Upravit / Nezapočítávat / Smazat, category rows Nezapočítávat kategorii / Přidat
+   položku do kategorie; the add dialog offers every category in one select grouped by section and
+   income / expense, and a replacement is set only from the row menu (shown in the dialog as a note).
+   A row left out stays listed, muted, with a "Mimo plán" badge and does not count
+   in totals, stats or the flow bar (persisted in `cashflow_plan_exclusions`, honoured by the MCP
+   `cashflow_report` tool too). A 100 % flow bar (expense groups `s1`–`s4` + Ostatní, hatched remainder)
+   replaces the Sankey diagram. The two pages link to each other in the page subtitle.
 
 ## 12. How the React app maps to this
 

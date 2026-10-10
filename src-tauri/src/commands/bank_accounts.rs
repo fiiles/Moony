@@ -555,12 +555,31 @@ pub async fn get_import_batches(
 pub async fn delete_import_batch(db: State<'_, Database>, batch_id: String) -> Result<usize> {
     db.with_conn(|conn| csv_import::delete_import_batch(conn, &batch_id))
 }
+/// Dated balances of an account, newest first.
 #[tauri::command]
-pub async fn set_bank_account_balance_anchor(
+pub async fn get_balance_records(
     db: State<'_, Database>,
     account_id: String,
-    data: crate::models::bank_accounts::InsertBalanceAnchor,
+) -> Result<Vec<crate::models::bank_accounts::BankBalanceRecord>> {
+    db.with_conn(|conn| bank_service::list_balance_records(conn, &account_id))
+}
+
+/// Record a dated balance (by hand or from a statement); returns the refreshed account.
+#[tauri::command]
+pub async fn record_bank_account_balance(
+    db: State<'_, Database>,
+    account_id: String,
+    data: crate::models::bank_accounts::InsertBalanceRecord,
 ) -> Result<BankAccount> {
     data.validate()?;
-    db.with_conn(|conn| bank_service::set_balance_anchor(conn, &account_id, &data))
+    db.with_conn(|conn| bank_service::record_balance(conn, &account_id, &data))
+}
+
+/// Delete one balance record; returns the account with the re-mirrored balance.
+#[tauri::command]
+pub async fn delete_balance_record(
+    db: State<'_, Database>,
+    record_id: String,
+) -> Result<BankAccount> {
+    db.with_conn(|conn| bank_service::delete_balance_record(conn, &record_id))
 }

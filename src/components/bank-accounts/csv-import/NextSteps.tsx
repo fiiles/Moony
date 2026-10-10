@@ -18,14 +18,14 @@ import { translateApiError } from '@/lib/translate-api-error';
 import type { BankAccount, CsvImportResult } from '@shared/schema';
 import { cn } from '@/lib/utils';
 import { formatBalance, nextStepsFor, regionName, type NextStepId } from './import-config';
-import { useBalanceAnchor, useEnableRulePack } from './use-csv-import-mutations';
+import { useRecordBalance, useEnableRulePack } from './use-csv-import-mutations';
 
 const STEP_ORDER: readonly NextStepId[] = ['show', 'review', 'rulePack', 'balance'];
 
 interface NextStepsProps {
   accountId: string;
   result: CsvImportResult;
-  /** Current account; its balance decides whether "set balance" is offered. */
+  /** Current account; its balance and its date decide whether "set balance" is offered. */
   account: BankAccount | null | undefined;
   /** Locale for the country name and the balance, e.g. `cs-CZ`. */
   locale: string;
@@ -62,7 +62,7 @@ export function NextSteps({
   const { t } = useTranslation('bank_accounts');
   const { t: tc } = useTranslation('common');
   const queryClient = useQueryClient();
-  const updateBalance = useBalanceAnchor(accountId);
+  const updateBalance = useRecordBalance(accountId);
   const enableRulePack = useEnableRulePack();
   const fmt = useFormat();
   const { currencyCode } = useCurrency();
@@ -75,15 +75,15 @@ export function NextSteps({
     canShowImported: onShowImported != null,
     canReviewUncategorized: onReviewUncategorized != null,
     accountBalance: account?.balance ?? null,
+    accountBalanceAsOf: account?.balanceAsOf ?? null,
   });
   // A step that was just carried out stays on screen, marked done, even though
   // it no longer applies (the balance now matches, the pack is enabled).
   const statement = result.statementBalance;
-  const balanceBlocked =
-    !statement ||
-    !account ||
-    statement.currency !== account.currency ||
-    (account.balanceAsOf != null && statement.asOf < account.balanceAsOf);
+  const balanceBlocked = !statement || !account || statement.currency !== account.currency;
+  // Older than the newest record: it goes into the history and the current balance stays.
+  const olderThanCurrent =
+    statement != null && account?.balanceAsOf != null && statement.asOf < account.balanceAsOf;
   const visible = STEP_ORDER.filter((id) => suggested.includes(id) || done.has(id));
   if (visible.length === 0) return null;
 
@@ -173,18 +173,23 @@ export function NextSteps({
           <DialogHeader>
             <DialogTitle>{t('readiness.confirmBalance')}</DialogTitle>
             <DialogDescription>
-              {t('readiness.balanceConfirmDescription', {
-                amount: formatBalance(
-                  statement?.amount ?? '0',
-                  statement?.currency,
-                  locale,
-                  currencyCode
-                ),
-                date: statement ? fmt.day(statement.asOf) : t('readiness.unknownDate'),
-                currentDate: account?.balanceAsOf
-                  ? fmt.day(account.balanceAsOf)
-                  : t('readiness.unknownDate'),
-              })}
+              {t(
+                olderThanCurrent
+                  ? 'readiness.balanceOlderDescription'
+                  : 'readiness.balanceConfirmDescription',
+                {
+                  amount: formatBalance(
+                    statement?.amount ?? '0',
+                    statement?.currency,
+                    locale,
+                    currencyCode
+                  ),
+                  date: statement ? fmt.day(statement.asOf) : t('readiness.unknownDate'),
+                  currentDate: account?.balanceAsOf
+                    ? fmt.day(account.balanceAsOf)
+                    : t('readiness.unknownDate'),
+                }
+              )}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

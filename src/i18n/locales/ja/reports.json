@@ -48,10 +48,7 @@
     "currency": "通貨",
     "frequency": "頻度",
     "category": "カテゴリ",
-    "selectCategory": "カテゴリを選択",
-    "type": "種類",
-    "income": "収入",
-    "expense": "支出"
+    "selectCategory": "カテゴリを選択"
   },
   "deleteConfirm": {
     "title": "項目を削除しますか？",
@@ -404,18 +401,12 @@
       "none": "計画上の収入はまだありません。"
     },
     "table": {
-      "item": "項目",
-      "category": "カテゴリ",
-      "frequency": "頻度",
-      "monthly": "月額",
-      "yearly": "年額",
       "netMonthly": "月間の純額",
       "netYearly": "年間の純額",
       "perMonth": "毎月",
       "perYear": "毎年",
       "auto": "{{module}}から自動",
       "manual": "手動",
-      "editInModule": "{{module}}で編集",
       "incomeGroup": "収入 · {{amount}}",
       "expenseGroup": "支出 · {{amount}}",
       "noIncome": "このセクションに計画上の収入はありません。",
@@ -501,8 +492,6 @@
     "countedTransactions": "{{count}}件の取引",
     "previous": "前へ",
     "next": "次へ",
-    "replacesSource": "置き換える自動ソース",
-    "additionalItem": "追加の手動項目",
     "retainedSource": "以前に紐付けたソース",
     "replacementHelp": "置き換えを設定すると、選択した自動項目は合計から除外されます。手動の置き換えを削除すると、元のソースが復元されます。",
     "replacing": "{{name}}を置き換え",

@@ -27,10 +27,6 @@
     "yearlyInterest": "Intereses anuales",
     "perYear": "al año",
     "notFound": "Cuenta no encontrada",
-    "interestNote": "{{rate}} · {{amount}} al año",
-    "todayCount_one": "{{count}} movimiento hoy",
-    "todayCount_many": "{{count}} movimientos hoy",
-    "todayCount_other": "{{count}} movimientos hoy",
     "excludedFromPortfolio": "Excluida del patrimonio neto"
   },
   "nativeBalance": {
@@ -62,7 +58,6 @@
     "editDescription": "Actualiza los datos de «{{name}}».",
     "accountNumberPlaceholder": "p. ej., 1234567890",
     "ibanPlaceholder": "p. ej., ES91 2100 0418 4502 0005 1332",
-    "balanceHint": "Lo introduces tú y los movimientos importados no lo modifican: actualízalo con tu último extracto.",
     "includeInNetWorth": "Incluir en el patrimonio neto",
     "includeInNetWorthHelp": "Las cuentas excluidas siguen en la lista, pero quedan fuera del patrimonio neto, los totales y los gráficos."
   },
@@ -86,8 +81,7 @@
     "accountNumberOptional": "Número de cuenta (opcional)",
     "interestRate": "Tipo de interés",
     "rateValidUntil": "Tipo válido hasta",
-    "interestType": "Tipo de intereses",
-    "balanceManual": "Saldo (manual)"
+    "interestType": "Tipo de intereses"
   },
   "interestType": {
     "simple": "Simple",
@@ -156,10 +150,6 @@
     "description": "Añade tu primera cuenta bancaria para empezar a seguir tus finanzas.",
     "noTransactions": "Aún no hay movimientos",
     "noMatchingTransactions": "Nada coincide con el filtro elegido. Prueba a quitar el filtro de categoría.",
-    "noTransactionsTitle": "Aún no hay movimientos",
-    "noTransactionsDescription": "Importa un extracto CSV de tu banco para ver adónde va tu dinero, o añade un movimiento a mano.",
-    "importCsv": "Importar extracto bancario (CSV)",
-    "addManually": "Añadir movimiento manualmente",
     "noTransactionsInPeriod": "No hay movimientos en este periodo",
     "noTransactionsInPeriodHint": "Esta cuenta tiene movimientos en otros periodos.",
     "showAll": "Mostrar todos",
@@ -385,7 +375,6 @@
   },
   "importHistory": {
     "title": "Historial de importaciones",
-    "button": "Historial de importaciones",
     "fileName": "Nombre del archivo",
     "imported": "Importados",
     "errors": "Errores",
@@ -403,17 +392,12 @@
     "undone": "Importación deshecha"
   },
   "zones": {
-    "title": "Tramos de tipo de interés",
     "fromAmount": "Importe desde",
     "toAmount": "Importe hasta",
     "interestRate": "Tipo de interés",
     "effective": "efectivo",
-    "effectiveRate": "Tipo efectivo",
-    "active": "Activo",
-    "noZones": "No hay tramos de tipo de interés configurados",
     "unlimited": "Sin límite",
     "ratePercent": "Tipo (%)",
-    "effectiveNote": "Tipo efectivo {{rate}} · {{amount}} al año",
     "addZoneTitle": "Añadir tramo nuevo",
     "editZoneTitle": "Editar tramo",
     "save": "Guardar",
@@ -531,20 +515,7 @@
     "totalTransactions": "Movimientos",
     "income": "Ingresos",
     "outcome": "Gastos",
-    "netFlow": "Flujo neto",
-    "incomeIn": "Entradas en {{month, lower}}",
-    "expenseIn": "Salidas en {{month, lower}}",
-    "monthBalance": "Saldo del mes",
-    "incomeCount_one": "{{count}} movimiento entrante",
-    "incomeCount_many": "{{count}} movimientos entrantes",
-    "incomeCount_other": "{{count}} movimientos entrantes",
-    "txCount_one": "{{count}} movimiento",
-    "txCount_many": "{{count}} movimientos",
-    "txCount_other": "{{count}} movimientos",
-    "mostIn": "sobre todo en {{category}}",
-    "none": "aún ninguno",
-    "prevMonth": "en {{month, lower}} {{amount}}",
-    "noPrevMonth": "sin movimientos en {{month, lower}}"
+    "netFlow": "Flujo neto"
   },
   "categoryNames": {
     "cat_groceries": "Supermercado",
@@ -572,22 +543,8 @@
     "lastMovement": "Último movimiento {{date}}",
     "lastImport": "Última importación {{date}}"
   },
-  "hero": {
-    "thisMonth": "este mes",
-    "expensesExceed": "los gastos superan a los ingresos",
-    "incomeExceeds": "los ingresos superan a los gastos",
-    "balanced": "ingresos y gastos equilibrados",
-    "noMovementsThisMonth": "sin movimientos este mes"
-  },
   "chart": {
-    "balance": "Saldo",
-    "largeIncome": "Movimiento entrante grande",
-    "largeExpense": "Movimiento saliente grande",
-    "thresholdNote": "Se marcan los movimientos superiores a {{amount}}",
-    "reconstructed": "la línea se reconstruye a partir de los movimientos",
-    "clusterTitle_one": "{{count}} movimiento",
-    "clusterTitle_many": "{{count}} movimientos",
-    "clusterTitle_other": "{{count}} movimientos"
+    "balance": "Saldo"
   },
   "trend": {
     "title": "Efectivo a lo largo del tiempo",
@@ -627,7 +584,6 @@
     "next": "Siguiente",
     "pending": "Pendiente",
     "transactionDetails": "Detalles del movimiento",
-    "balanceEstimate": "Estimado a partir del libro contabilizado disponible. Saldo de referencia: {{date}}. No se garantiza que los extractos estén completos.",
     "foreignConverted": "Los movimientos en {{currencies}} se convierten a {{currency}} al tipo de su día en los totales y el gráfico.",
     "foreignMissing": "Los movimientos en {{currencies}} se dejan fuera de los totales y el gráfico: no hay tipo de cambio para su día.",
     "promotions": "Se contabilizarán {{count}} apuntes pendientes",

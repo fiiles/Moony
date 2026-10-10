@@ -27,9 +27,6 @@
     "yearlyInterest": "Jahreszinsen",
     "perYear": "pro Jahr",
     "notFound": "Konto nicht gefunden",
-    "interestNote": "{{rate}} · {{amount}} pro Jahr",
-    "todayCount_one": "{{count}} Transaktion heute",
-    "todayCount_other": "{{count}} Transaktionen heute",
     "excludedFromPortfolio": "Aus dem Nettovermögen ausgeschlossen"
   },
   "nativeBalance": {
@@ -61,7 +58,6 @@
     "editDescription": "Details von „{{name}}“ aktualisieren.",
     "accountNumberPlaceholder": "z. B. 1234567890",
     "ibanPlaceholder": "z. B. DE89 3704 0044 0532 0130 00",
-    "balanceHint": "Von Ihnen eingegeben und durch importierte Transaktionen nicht verändert — aktualisieren Sie ihn anhand Ihres letzten Kontoauszugs.",
     "includeInNetWorth": "Im Nettovermögen berücksichtigen",
     "includeInNetWorthHelp": "Ausgeschlossene Konten bleiben in der Liste, werden aber bei Nettovermögen, Summen und Diagrammen nicht berücksichtigt."
   },
@@ -85,8 +81,7 @@
     "accountNumberOptional": "Kontonummer (optional)",
     "interestRate": "Zinssatz",
     "rateValidUntil": "Zinssatz gültig bis",
-    "interestType": "Zinsart",
-    "balanceManual": "Kontostand (manuell)"
+    "interestType": "Zinsart"
   },
   "interestType": {
     "simple": "Einfach",
@@ -153,10 +148,6 @@
     "description": "Fügen Sie Ihr erstes Bankkonto hinzu, um Ihre Finanzen zu verfolgen.",
     "noTransactions": "Noch keine Transaktionen",
     "noMatchingTransactions": "Nichts entspricht dem gewählten Filter. Setzen Sie den Kategoriefilter zurück.",
-    "noTransactionsTitle": "Noch keine Transaktionen",
-    "noTransactionsDescription": "Importieren Sie einen CSV-Kontoauszug Ihrer Bank, um zu sehen, wohin Ihr Geld fließt, oder fügen Sie eine Transaktion von Hand hinzu.",
-    "importCsv": "Kontoauszug importieren (CSV)",
-    "addManually": "Transaktion manuell hinzufügen",
     "noTransactionsInPeriod": "Keine Transaktionen in diesem Zeitraum",
     "noTransactionsInPeriodHint": "Dieses Konto hat Transaktionen in anderen Zeiträumen.",
     "showAll": "Alle anzeigen",
@@ -374,7 +365,6 @@
   },
   "importHistory": {
     "title": "Importverlauf",
-    "button": "Importverlauf",
     "fileName": "Dateiname",
     "imported": "Importiert",
     "errors": "Fehler",
@@ -390,17 +380,12 @@
     "undone": "Import rückgängig gemacht"
   },
   "zones": {
-    "title": "Zinsstaffeln",
     "fromAmount": "Ab Betrag",
     "toAmount": "Bis Betrag",
     "interestRate": "Zinssatz",
     "effective": "effektiv",
-    "effectiveRate": "Effektiver Zinssatz",
-    "active": "Aktiv",
-    "noZones": "Keine Zinsstaffeln konfiguriert",
     "unlimited": "Unbegrenzt",
     "ratePercent": "Zinssatz (%)",
-    "effectiveNote": "Effektiver Zinssatz {{rate}} · {{amount}} pro Jahr",
     "addZoneTitle": "Neue Staffel hinzufügen",
     "editZoneTitle": "Staffel bearbeiten",
     "save": "Speichern",
@@ -513,18 +498,7 @@
     "totalTransactions": "Transaktionen",
     "income": "Einnahmen",
     "outcome": "Ausgaben",
-    "netFlow": "Nettofluss",
-    "incomeIn": "Eingänge im {{month}}",
-    "expenseIn": "Ausgänge im {{month}}",
-    "monthBalance": "Monatssaldo",
-    "incomeCount_one": "{{count}} eingehende Bewegung",
-    "incomeCount_other": "{{count}} eingehende Bewegungen",
-    "txCount_one": "{{count}} Transaktion",
-    "txCount_other": "{{count}} Transaktionen",
-    "mostIn": "am meisten in {{category}}",
-    "none": "noch keine",
-    "prevMonth": "im {{month}} {{amount}}",
-    "noPrevMonth": "keine Bewegungen im {{month}}"
+    "netFlow": "Nettofluss"
   },
   "categoryNames": {
     "cat_groceries": "Lebensmittel",
@@ -552,21 +526,8 @@
     "lastMovement": "Letzte Bewegung {{date}}",
     "lastImport": "Letzter Import {{date}}"
   },
-  "hero": {
-    "thisMonth": "diesen Monat",
-    "expensesExceed": "Ausgaben übersteigen die Einnahmen",
-    "incomeExceeds": "Einnahmen übersteigen die Ausgaben",
-    "balanced": "Einnahmen und Ausgaben ausgeglichen",
-    "noMovementsThisMonth": "keine Bewegungen diesen Monat"
-  },
   "chart": {
-    "balance": "Kontostand",
-    "largeIncome": "Große eingehende Bewegung",
-    "largeExpense": "Große ausgehende Bewegung",
-    "thresholdNote": "Bewegungen über {{amount}} sind markiert",
-    "reconstructed": "die Linie wird aus den Transaktionen rekonstruiert",
-    "clusterTitle_one": "{{count}} Bewegung",
-    "clusterTitle_other": "{{count}} Bewegungen"
+    "balance": "Kontostand"
   },
   "trend": {
     "title": "Bargeld im Zeitverlauf",
@@ -605,7 +566,6 @@
     "next": "Weiter",
     "pending": "Vorgemerkt",
     "transactionDetails": "Transaktionsdetails",
-    "balanceEstimate": "Geschätzt aus den verfügbaren gebuchten Umsätzen. Saldo-Stichtag: {{date}}. Die Vollständigkeit der Kontoauszüge ist nicht nachgewiesen.",
     "foreignConverted": "Bewegungen in {{currencies}} werden in den Summen und im Diagramm zum Kurs ihres Tages in {{currency}} umgerechnet.",
     "foreignMissing": "Bewegungen in {{currencies}} bleiben in den Summen und im Diagramm unberücksichtigt: kein Wechselkurs für ihren Tag.",
     "promotions": "{{count}} vorgemerkte Einträge werden gebucht",

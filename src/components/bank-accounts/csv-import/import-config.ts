@@ -424,8 +424,10 @@ export interface NextStepContext {
   canShowImported: boolean;
   /** The caller can filter to uncategorized rows (`onReviewUncategorized`). */
   canReviewUncategorized: boolean;
-  /** The account's current (manual) balance; null until it has loaded. */
+  /** The account's current (newest-record) balance; null until it has loaded. */
   accountBalance: string | null;
+  /** UTC day of the current balance; null while it is an undated legacy balance. */
+  accountBalanceAsOf: number | null;
 }
 
 /** Whether the statement's closing balance is a different number than the account's. */
@@ -440,17 +442,24 @@ export function balanceDiffers(
   return Math.abs(statement - account) >= 0.005;
 }
 
+const sameUtcDay = (a: number, b: number) => Math.floor(a / 86400) === Math.floor(b / 86400);
+
 /** The calls to action for the result step, in the order they are shown. */
 export function nextStepsFor(result: CsvImportResult, context: NextStepContext): NextStepId[] {
   const steps: NextStepId[] = [];
   if (context.canShowImported && result.importedCount > 0) steps.push('show');
   if (context.canReviewUncategorized && result.uncategorizedCount > 0) steps.push('review');
   if (result.suggestedRulePack) steps.push('rulePack');
-  if (
-    result.statementBalance &&
-    balanceDiffers(result.statementBalance.amount, context.accountBalance)
-  )
-    steps.push('balance');
+  if (result.statementBalance && context.accountBalance != null) {
+    // An older statement is history worth recording; only the very record the account
+    // already has (same day, same amount) adds nothing.
+    const { amount, asOf } = result.statementBalance;
+    const nothingNew =
+      context.accountBalanceAsOf != null &&
+      sameUtcDay(asOf, context.accountBalanceAsOf) &&
+      !balanceDiffers(amount, context.accountBalance);
+    if (!nothingNew) steps.push('balance');
+  }
   return steps;
 }
 

@@ -307,6 +307,11 @@ pub struct BankAccountCreateArgs {
     pub currency: Option<String>,
     #[schemars(description = "Opening balance as a numeric string, defaults to \"0\"")]
     pub balance: Option<String>,
+    #[serde(rename = "balanceAsOf")]
+    #[schemars(
+        description = "UTC day (unix seconds, midnight) the opening balance applies to; with it the balance becomes the first dated balance record, without it the balance stays undated"
+    )]
+    pub balance_as_of: Option<i64>,
     #[serde(rename = "interestRate")]
     #[schemars(description = "Annual interest rate percent as a numeric string")]
     pub interest_rate: Option<String>,
@@ -341,7 +346,7 @@ pub fn bank_account_create(conn: &Connection, args: &BankAccountCreateArgs) -> R
         // that leaves the currency out means the user's own currency.
         currency: Some(currency_or_main(conn, args.currency.as_deref())?),
         balance: args.balance.clone(),
-        balance_as_of: None,
+        balance_as_of: args.balance_as_of.map(Some),
         institution_id: None,
         interest_rate: args.interest_rate.clone(),
         has_zone_designation: None,
@@ -900,6 +905,18 @@ mod tests {
                 imported_at INTEGER NOT NULL DEFAULT (unixepoch()),
                 date_from INTEGER,
                 date_to INTEGER
+            );
+
+            CREATE TABLE bank_balance_records (
+                id TEXT PRIMARY KEY,
+                bank_account_id TEXT NOT NULL REFERENCES bank_accounts(id) ON DELETE CASCADE,
+                amount TEXT NOT NULL,
+                currency TEXT NOT NULL,
+                as_of INTEGER NOT NULL,
+                source TEXT NOT NULL DEFAULT 'manual',
+                source_batch_id TEXT REFERENCES csv_import_batches(id) ON DELETE SET NULL,
+                recorded_at INTEGER NOT NULL DEFAULT (unixepoch()),
+                UNIQUE (bank_account_id, as_of)
             );
 
             CREATE TABLE bank_transactions (
@@ -1751,6 +1768,7 @@ mod tests {
             bban: None,
             currency: None,
             balance: None,
+            balance_as_of: None,
             interest_rate: None,
         }
     }
@@ -1763,6 +1781,38 @@ mod tests {
         assert_eq!(value["accountType"], "checking");
         assert_eq!(value["currency"], "CZK");
         assert_eq!(value["balance"], "0");
+    }
+
+    #[test]
+    fn account_create_with_balance_as_of_writes_the_first_balance_record() {
+        let conn = setup_test_db();
+        let day = 1_785_456_000; // 2026-07-31, UTC midnight
+        let mut args = account_args("Dated Account", None);
+        args.balance = Some("1500.00".into());
+        args.balance_as_of = Some(day);
+        let value = bank_account_create(&conn, &args).unwrap();
+        assert_eq!(value["balanceAsOf"], day);
+        let (amount, as_of): (String, i64) = conn
+            .query_row(
+                "SELECT amount, as_of FROM bank_balance_records WHERE bank_account_id = ?1",
+                [value["id"].as_str().unwrap()],
+                |r| Ok((r.get(0)?, r.get(1)?)),
+            )
+            .unwrap();
+        assert_eq!((amount.as_str(), as_of), ("1500.00", day));
+    }
+
+    #[test]
+    fn account_create_without_balance_as_of_leaves_the_balance_undated() {
+        let conn = setup_test_db();
+        let value = bank_account_create(&conn, &account_args("Undated Account", None)).unwrap();
+        assert!(value["balanceAsOf"].is_null());
+        let records: i64 = conn
+            .query_row("SELECT COUNT(*) FROM bank_balance_records", [], |r| {
+                r.get(0)
+            })
+            .unwrap();
+        assert_eq!(records, 0);
     }
 
     #[test]

@@ -74,6 +74,7 @@ pub(crate) fn setup() -> Connection {
             termination_date INTEGER,
             interest_rate_valid_until INTEGER,
             exclude_from_balance INTEGER NOT NULL DEFAULT 0,
+            balance_as_of INTEGER,
             created_at INTEGER NOT NULL DEFAULT (unixepoch()),
             updated_at INTEGER NOT NULL DEFAULT (unixepoch())
         );

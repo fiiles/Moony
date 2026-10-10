@@ -239,7 +239,6 @@
     "pendingPromotionInvalid": "Die vorgemerkte Transaktion konnte nicht übernommen werden. Aktualisieren Sie die Vorschau und versuchen Sie es erneut.",
     "balanceAsOfInvalid": "Wählen Sie ein gültiges Stichtagsdatum, nicht später als heute.",
     "balanceCurrencyMismatch": "Die Währung des Kontoauszugssaldos weicht von der Kontowährung ab.",
-    "balanceAnchorOlder": "Der Kontoauszug ist älter als das erfasste Saldodatum des Kontos.",
     "balanceAnchorUnknown": "Das bisherige Saldodatum ist unbekannt. Bestätigen Sie zuerst das Ersetzen dieses Saldos.",
     "balanceBatchMismatch": "Dieser Kontoauszugsimport gehört nicht zu diesem Konto.",
     "learningIdentity": "Geben Sie eine verlässliche Kontokennung oder einen Empfänger an.",

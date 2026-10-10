@@ -48,10 +48,7 @@
     "currency": "Moneda",
     "frequency": "Frecuencia",
     "category": "Categoría",
-    "selectCategory": "Elige una categoría",
-    "type": "Tipo",
-    "income": "Ingreso",
-    "expense": "Gasto"
+    "selectCategory": "Elige una categoría"
   },
   "deleteConfirm": {
     "title": "¿Eliminar el concepto?",
@@ -432,18 +429,12 @@
       "none": "Aún no hay ingresos previstos."
     },
     "table": {
-      "item": "Concepto",
-      "category": "Categoría",
-      "frequency": "Frecuencia",
-      "monthly": "Mensual",
-      "yearly": "Anual",
       "netMonthly": "Neto al mes",
       "netYearly": "Neto al año",
       "perMonth": "mensual",
       "perYear": "anual",
       "auto": "automático de {{module}}",
       "manual": "manual",
-      "editInModule": "Se edita en {{module}}",
       "incomeGroup": "Ingresos · {{amount}}",
       "expenseGroup": "Gastos · {{amount}}",
       "noIncome": "No hay ingresos previstos en esta sección.",
@@ -535,8 +526,6 @@
     "countedTransactions": "{{count}} movimientos",
     "previous": "Anterior",
     "next": "Siguiente",
-    "replacesSource": "Fuente automática que se sustituye",
-    "additionalItem": "Concepto manual adicional",
     "retainedSource": "Fuente vinculada anteriormente",
     "replacementHelp": "Una sustitución excluye de los totales el concepto automático seleccionado. Al eliminar la sustitución manual se restaura la fuente.",
     "replacing": "Sustituye a {{name}}",

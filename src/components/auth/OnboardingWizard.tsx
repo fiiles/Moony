@@ -47,6 +47,7 @@ import { useFormat } from '@/lib/use-format';
 import { authApi, categorizationApi, onboardingApi } from '@/lib/tauri-api';
 import { translateApiError } from '@/lib/translate-api-error';
 import { cn } from '@/lib/utils';
+import { todayIsoUtc, utcDayStart } from '@/utils/period';
 import {
   RULE_PACK_COUNTRY_IDS,
   countryOptionsFromPacks,
@@ -236,13 +237,17 @@ export function OnboardingWizard({ language, onFinished }: OnboardingWizardProps
       toast.error(tc('validation.nameRequired'));
       return;
     }
+    // A typed balance is today's balance: the account's first dated record.
+    const typedBalance = accountBalance.trim().replace(',', '.');
+    const hasBalance = typedBalance !== '' && Number.isFinite(Number(typedBalance));
     try {
       const account = await createAccount.mutateAsync({
         data: {
           name,
           accountType: 'checking',
           currency: accountCurrency,
-          balance: accountBalance.trim() === '' ? '0' : accountBalance.replace(',', '.'),
+          ...(typedBalance !== '' ? { balance: typedBalance } : {}),
+          ...(hasBalance ? { balanceAsOf: utcDayStart(todayIsoUtc()) } : {}),
         },
       });
       if (thenImport) {

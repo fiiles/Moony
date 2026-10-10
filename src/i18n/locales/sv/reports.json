@@ -48,10 +48,7 @@
     "currency": "Valuta",
     "frequency": "Frekvens",
     "category": "Kategori",
-    "selectCategory": "Välj kategori",
-    "type": "Typ",
-    "income": "Inkomst",
-    "expense": "Utgift"
+    "selectCategory": "Välj kategori"
   },
   "deleteConfirm": {
     "title": "Ta bort posten?",
@@ -418,18 +415,12 @@
       "none": "Inga planerade inkomster ännu."
     },
     "table": {
-      "item": "Post",
-      "category": "Kategori",
-      "frequency": "Frekvens",
-      "monthly": "Per månad",
-      "yearly": "Per år",
       "netMonthly": "Netto per månad",
       "netYearly": "Netto per år",
       "perMonth": "månadsvis",
       "perYear": "årsvis",
       "auto": "automatisk från {{module}}",
       "manual": "manuell",
-      "editInModule": "Redigeras i {{module}}",
       "incomeGroup": "Inkomster · {{amount}}",
       "expenseGroup": "Utgifter · {{amount}}",
       "noIncome": "Inga planerade inkomster i det här avsnittet.",
@@ -518,8 +509,6 @@
     "countedTransactions": "{{count}} transaktioner",
     "previous": "Föregående",
     "next": "Nästa",
-    "replacesSource": "Automatisk källa att ersätta",
-    "additionalItem": "Ytterligare manuell post",
     "retainedSource": "Tidigare kopplad källa",
     "replacementHelp": "En ersättning utesluter den valda automatiska posten från summorna. Om du tar bort den manuella ersättningen återställs källan.",
     "replacing": "Ersätter {{name}}",

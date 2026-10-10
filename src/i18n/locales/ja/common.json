@@ -239,7 +239,6 @@
     "pendingPromotionInvalid": "保留中の取引を確定できませんでした。プレビューを更新して、もう一度お試しください。",
     "balanceAsOfInvalid": "有効な残高の日付（本日以前）を選択してください。",
     "balanceCurrencyMismatch": "明細の残高の通貨が、口座の通貨と異なります。",
-    "balanceAnchorOlder": "明細が、口座に記録された残高の日付より古いものです。",
     "balanceAnchorUnknown": "既存の残高の日付が不明です。先にこの残高の置き換えを確認してください。",
     "balanceBatchMismatch": "この明細のインポートは、この口座のものではありません。",
     "learningIdentity": "信頼できる口座の識別子または支払先を指定してください。",

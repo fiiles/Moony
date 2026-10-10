@@ -27,9 +27,6 @@
     "yearlyInterest": "Årlig rente",
     "perYear": "per år",
     "notFound": "Kontoen ble ikke funnet",
-    "interestNote": "{{rate}} · {{amount}} i året",
-    "todayCount_one": "{{count}} transaksjon i dag",
-    "todayCount_other": "{{count}} transaksjoner i dag",
     "excludedFromPortfolio": "Utenfor nettoformuen"
   },
   "nativeBalance": {
@@ -61,7 +58,6 @@
     "editDescription": "Oppdater detaljene for «{{name}}».",
     "accountNumberPlaceholder": "f.eks. 1234567890",
     "ibanPlaceholder": "f.eks. DE89 3704 0044 0532 0130 00",
-    "balanceHint": "Legges inn av deg og endres ikke av importerte transaksjoner — oppdater den fra din siste kontoutskrift.",
     "includeInNetWorth": "Ta med i nettoformuen",
     "includeInNetWorthHelp": "Utelatte kontoer blir i listen, men holdes utenfor nettoformuen, summene og diagrammene."
   },
@@ -85,8 +81,7 @@
     "accountNumberOptional": "Kontonummer (valgfritt)",
     "interestRate": "Rente",
     "rateValidUntil": "Rente gyldig til",
-    "interestType": "Rentetype",
-    "balanceManual": "Saldo (manuell)"
+    "interestType": "Rentetype"
   },
   "interestType": {
     "simple": "Enkel",
@@ -153,10 +148,6 @@
     "description": "Legg til din første bankkonto for å begynne å følge økonomien din.",
     "noTransactions": "Ingen transaksjoner ennå",
     "noMatchingTransactions": "Ingenting samsvarer med det valgte filteret. Prøv å fjerne kategorifilteret.",
-    "noTransactionsTitle": "Ingen transaksjoner ennå",
-    "noTransactionsDescription": "Importer en CSV-kontoutskrift fra banken din for å se hvor pengene går, eller legg til en transaksjon manuelt.",
-    "importCsv": "Importer kontoutskrift (CSV)",
-    "addManually": "Legg til transaksjon manuelt",
     "noTransactionsInPeriod": "Ingen transaksjoner i denne perioden",
     "noTransactionsInPeriodHint": "Denne kontoen har transaksjoner i andre perioder.",
     "showAll": "Vis alle",
@@ -374,7 +365,6 @@
   },
   "importHistory": {
     "title": "Importhistorikk",
-    "button": "Importhistorikk",
     "fileName": "Filnavn",
     "imported": "Importert",
     "errors": "Feil",
@@ -390,17 +380,12 @@
     "undone": "Importen er angret"
   },
   "zones": {
-    "title": "Rentetrinn",
     "fromAmount": "Fra beløp",
     "toAmount": "Til beløp",
     "interestRate": "Rente",
     "effective": "effektiv",
-    "effectiveRate": "Effektiv rente",
-    "active": "Aktiv",
-    "noZones": "Ingen rentetrinn konfigurert",
     "unlimited": "Ubegrenset",
     "ratePercent": "Rente (%)",
-    "effectiveNote": "Effektiv rente {{rate}} · {{amount}} i året",
     "addZoneTitle": "Legg til nytt trinn",
     "editZoneTitle": "Rediger trinn",
     "save": "Lagre",
@@ -513,18 +498,7 @@
     "totalTransactions": "Transaksjoner",
     "income": "Inntekter",
     "outcome": "Utgifter",
-    "netFlow": "Nettostrøm",
-    "incomeIn": "Innkommende i {{month, lower}}",
-    "expenseIn": "Utgående i {{month, lower}}",
-    "monthBalance": "Månedens saldo",
-    "incomeCount_one": "{{count}} innkommende bevegelse",
-    "incomeCount_other": "{{count}} innkommende bevegelser",
-    "txCount_one": "{{count}} transaksjon",
-    "txCount_other": "{{count}} transaksjoner",
-    "mostIn": "mest i {{category}}",
-    "none": "ingen ennå",
-    "prevMonth": "i {{month, lower}} {{amount}}",
-    "noPrevMonth": "ingen bevegelser i {{month, lower}}"
+    "netFlow": "Nettostrøm"
   },
   "categoryNames": {
     "cat_groceries": "Dagligvarer",
@@ -552,21 +526,8 @@
     "lastMovement": "Siste bevegelse {{date}}",
     "lastImport": "Siste import {{date}}"
   },
-  "hero": {
-    "thisMonth": "denne måneden",
-    "expensesExceed": "utgiftene overstiger inntektene",
-    "incomeExceeds": "inntektene overstiger utgiftene",
-    "balanced": "inntekter og utgifter er i balanse",
-    "noMovementsThisMonth": "ingen bevegelser denne måneden"
-  },
   "chart": {
-    "balance": "Saldo",
-    "largeIncome": "Stor innkommende bevegelse",
-    "largeExpense": "Stor utgående bevegelse",
-    "thresholdNote": "Bevegelser over {{amount}} er markert",
-    "reconstructed": "linjen er rekonstruert fra transaksjonene",
-    "clusterTitle_one": "{{count}} bevegelse",
-    "clusterTitle_other": "{{count}} bevegelser"
+    "balance": "Saldo"
   },
   "trend": {
     "title": "Kontanter over tid",
@@ -605,7 +566,6 @@
     "next": "Neste",
     "pending": "Venter",
     "transactionDetails": "Transaksjonsdetaljer",
-    "balanceEstimate": "Estimert fra den tilgjengelige bokførte journalen. Saldoreferanse: {{date}}. Kontoutskriftenes dekning er ikke bekreftet.",
     "foreignConverted": "Bevegelser i {{currencies}} omregnes til {{currency}} med kursen for sin dag i summene og diagrammet.",
     "foreignMissing": "Bevegelser i {{currencies}} er utelatt fra summene og diagrammet: ingen valutakurs for deres dag.",
     "promotions": "{{count}} ventende poster blir bokført",

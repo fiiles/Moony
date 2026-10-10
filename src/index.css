@@ -246,6 +246,17 @@
     }
   }
 
+  /* Stat card (§6): the value keeps 22 px and only steps down (to 16 px) when the card is too
+     narrow for a long amount, e.g. four stats at the 1080 px minimum width. Engines without
+     container units drop the clamp and keep 22 px. */
+  .stat {
+    container-type: inline-size;
+  }
+
+  .stat .stat__value {
+    font-size: clamp(var(--fs-h3), 13.5cqi, var(--fs-stat));
+  }
+
   .skeleton {
     border-radius: var(--r-1);
     background: linear-gradient(90deg, var(--well-2) 25%, var(--well) 50%, var(--well-2) 75%);

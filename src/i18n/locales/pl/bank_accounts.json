@@ -27,11 +27,6 @@
     "yearlyInterest": "Odsetki roczne",
     "perYear": "rocznie",
     "notFound": "Nie znaleziono konta",
-    "interestNote": "{{rate}} · {{amount}} rocznie",
-    "todayCount_one": "{{count}} transakcja dzisiaj",
-    "todayCount_few": "{{count}} transakcje dzisiaj",
-    "todayCount_many": "{{count}} transakcji dzisiaj",
-    "todayCount_other": "{{count}} transakcji dzisiaj",
     "excludedFromPortfolio": "Wyłączone z majątku netto"
   },
   "nativeBalance": {
@@ -63,7 +58,6 @@
     "editDescription": "Zaktualizuj szczegóły konta „{{name}}”.",
     "accountNumberPlaceholder": "np. 1234567890",
     "ibanPlaceholder": "np. DE89 3704 0044 0532 0130 00",
-    "balanceHint": "Wpisywane przez ciebie i niezmieniane przez zaimportowane transakcje — zaktualizuj je na podstawie najnowszego wyciągu.",
     "includeInNetWorth": "Uwzględnij w majątku netto",
     "includeInNetWorthHelp": "Wyłączone konta zostają na liście, ale są pomijane w majątku netto, sumach i na wykresach."
   },
@@ -87,8 +81,7 @@
     "accountNumberOptional": "Numer konta (opcjonalnie)",
     "interestRate": "Oprocentowanie",
     "rateValidUntil": "Stawka ważna do",
-    "interestType": "Typ oprocentowania",
-    "balanceManual": "Saldo (ręczne)"
+    "interestType": "Typ oprocentowania"
   },
   "interestType": {
     "simple": "Proste",
@@ -159,10 +152,6 @@
     "description": "Dodaj pierwsze konto bankowe, aby zacząć śledzić swoje finanse.",
     "noTransactions": "Brak transakcji",
     "noMatchingTransactions": "Nic nie pasuje do wybranego filtra. Spróbuj wyczyścić filtr kategorii.",
-    "noTransactionsTitle": "Brak transakcji",
-    "noTransactionsDescription": "Zaimportuj wyciąg CSV z banku, aby zobaczyć, na co idą twoje pieniądze, lub dodaj transakcję ręcznie.",
-    "importCsv": "Importuj wyciąg bankowy (CSV)",
-    "addManually": "Dodaj transakcję ręcznie",
     "noTransactionsInPeriod": "Brak transakcji w tym okresie",
     "noTransactionsInPeriodHint": "To konto ma transakcje w innych okresach.",
     "showAll": "Pokaż wszystkie",
@@ -396,7 +385,6 @@
   },
   "importHistory": {
     "title": "Historia importów",
-    "button": "Historia importów",
     "fileName": "Nazwa pliku",
     "imported": "Zaimportowano",
     "errors": "Błędy",
@@ -416,17 +404,12 @@
     "undone": "Import cofnięty"
   },
   "zones": {
-    "title": "Progi oprocentowania",
     "fromAmount": "Od kwoty",
     "toAmount": "Do kwoty",
     "interestRate": "Oprocentowanie",
     "effective": "efektywne",
-    "effectiveRate": "Oprocentowanie efektywne",
-    "active": "Aktywny",
-    "noZones": "Nie skonfigurowano progów oprocentowania",
     "unlimited": "Bez limitu",
     "ratePercent": "Oprocentowanie (%)",
-    "effectiveNote": "Oprocentowanie efektywne {{rate}} · {{amount}} rocznie",
     "addZoneTitle": "Dodaj nowy próg",
     "editZoneTitle": "Edytuj próg",
     "save": "Zapisz",
@@ -549,22 +532,7 @@
     "totalTransactions": "Transakcje",
     "income": "Przychody",
     "outcome": "Wydatki",
-    "netFlow": "Przepływ netto",
-    "incomeIn": "Przychodzące – {{month, lower}}",
-    "expenseIn": "Wychodzące – {{month, lower}}",
-    "monthBalance": "Saldo miesiąca",
-    "incomeCount_one": "{{count}} ruch przychodzący",
-    "incomeCount_few": "{{count}} ruchy przychodzące",
-    "incomeCount_many": "{{count}} ruchów przychodzących",
-    "incomeCount_other": "{{count}} ruchu przychodzącego",
-    "txCount_one": "{{count}} transakcja",
-    "txCount_few": "{{count}} transakcje",
-    "txCount_many": "{{count}} transakcji",
-    "txCount_other": "{{count}} transakcji",
-    "mostIn": "najwięcej w: {{category}}",
-    "none": "jeszcze brak",
-    "prevMonth": "{{month}}: {{amount}}",
-    "noPrevMonth": "brak ruchów w: {{month, lower}}"
+    "netFlow": "Przepływ netto"
   },
   "categoryNames": {
     "cat_groceries": "Zakupy spożywcze",
@@ -592,23 +560,8 @@
     "lastMovement": "Ostatni ruch {{date}}",
     "lastImport": "Ostatni import {{date}}"
   },
-  "hero": {
-    "thisMonth": "w tym miesiącu",
-    "expensesExceed": "wydatki przekraczają przychody",
-    "incomeExceeds": "przychody przekraczają wydatki",
-    "balanced": "przychody i wydatki zrównoważone",
-    "noMovementsThisMonth": "brak ruchów w tym miesiącu"
-  },
   "chart": {
-    "balance": "Saldo",
-    "largeIncome": "Duży ruch przychodzący",
-    "largeExpense": "Duży ruch wychodzący",
-    "thresholdNote": "Ruchy powyżej {{amount}} są oznaczone",
-    "reconstructed": "linia jest odtworzona z transakcji",
-    "clusterTitle_one": "{{count}} ruch",
-    "clusterTitle_few": "{{count}} ruchy",
-    "clusterTitle_many": "{{count}} ruchów",
-    "clusterTitle_other": "{{count}} ruchu"
+    "balance": "Saldo"
   },
   "trend": {
     "title": "Gotówka w czasie",
@@ -649,7 +602,6 @@
     "next": "Następna",
     "pending": "Oczekująca",
     "transactionDetails": "Szczegóły transakcji",
-    "balanceEstimate": "Szacunek z dostępnej księgi zaksięgowanych transakcji. Data referencyjna salda: {{date}}. Kompletność wyciągów nie jest potwierdzona.",
     "foreignConverted": "Ruchy w {{currencies}} są w sumach i na wykresie przeliczane na {{currency}} po kursie z ich dnia.",
     "foreignMissing": "Ruchy w {{currencies}} są pomijane w sumach i na wykresie: brak kursu wymiany z ich dnia.",
     "promotions": "Oczekujących wpisów do zaksięgowania: {{count}}",

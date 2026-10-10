@@ -239,7 +239,6 @@
     "pendingPromotionInvalid": "No se ha podido contabilizar el movimiento pendiente. Actualiza la vista previa e inténtalo de nuevo.",
     "balanceAsOfInvalid": "Elige una fecha de saldo válida, no posterior a hoy.",
     "balanceCurrencyMismatch": "La moneda del saldo del extracto es distinta de la de la cuenta.",
-    "balanceAnchorOlder": "El extracto es anterior a la fecha de saldo registrada de la cuenta.",
     "balanceAnchorUnknown": "Se desconoce la fecha del saldo actual. Confirma antes la sustitución de este saldo.",
     "balanceBatchMismatch": "Esta importación de extracto no pertenece a esta cuenta.",
     "learningIdentity": "Indica un identificador de cuenta fiable o un beneficiario.",

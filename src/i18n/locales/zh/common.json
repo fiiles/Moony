@@ -239,7 +239,6 @@
     "pendingPromotionInvalid": "无法转入待处理的交易。请刷新预览后重试。",
     "balanceAsOfInvalid": "请选择有效的余额日期，且不晚于今天。",
     "balanceCurrencyMismatch": "账单余额的货币与账户货币不同。",
-    "balanceAnchorOlder": "该账单早于账户已记录的余额日期。",
     "balanceAnchorUnknown": "现有余额日期未知。请先确认替换此余额。",
     "balanceBatchMismatch": "此账单导入不属于该账户。",
     "learningIdentity": "请提供可靠的账户标识或收款方。",

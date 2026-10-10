@@ -27,10 +27,6 @@
     "yearlyInterest": "Interessi annui",
     "perYear": "all'anno",
     "notFound": "Conto non trovato",
-    "interestNote": "{{rate}} · {{amount}} all'anno",
-    "todayCount_one": "{{count}} movimento oggi",
-    "todayCount_many": "{{count}} movimenti oggi",
-    "todayCount_other": "{{count}} movimenti oggi",
     "excludedFromPortfolio": "Escluso dal patrimonio netto"
   },
   "nativeBalance": {
@@ -62,7 +58,6 @@
     "editDescription": "Aggiorna i dettagli di «{{name}}».",
     "accountNumberPlaceholder": "es. 1234567890",
     "ibanPlaceholder": "es. IT60 X054 2811 1010 0000 0123 456",
-    "balanceHint": "Inserito da te e non modificato dai movimenti importati — aggiornalo dal tuo ultimo estratto conto.",
     "includeInNetWorth": "Includi nel patrimonio netto",
     "includeInNetWorthHelp": "I conti esclusi restano nell'elenco ma sono lasciati fuori da patrimonio netto, totali e grafici."
   },
@@ -86,8 +81,7 @@
     "accountNumberOptional": "Numero di conto (facoltativo)",
     "interestRate": "Tasso di interesse",
     "rateValidUntil": "Tasso valido fino al",
-    "interestType": "Tipo di interesse",
-    "balanceManual": "Saldo (manuale)"
+    "interestType": "Tipo di interesse"
   },
   "interestType": {
     "simple": "Semplice",
@@ -156,10 +150,6 @@
     "description": "Aggiungi il tuo primo conto bancario per iniziare a tenere traccia delle tue finanze.",
     "noTransactions": "Ancora nessun movimento",
     "noMatchingTransactions": "Nulla corrisponde al filtro scelto. Prova a rimuovere il filtro per categoria.",
-    "noTransactionsTitle": "Ancora nessun movimento",
-    "noTransactionsDescription": "Importa un estratto conto CSV dalla tua banca per vedere dove va il tuo denaro, oppure aggiungi un movimento a mano.",
-    "importCsv": "Importa estratto conto (CSV)",
-    "addManually": "Aggiungi movimento a mano",
     "noTransactionsInPeriod": "Nessun movimento in questo periodo",
     "noTransactionsInPeriodHint": "Questo conto ha movimenti in altri periodi.",
     "showAll": "Mostra tutto",
@@ -385,7 +375,6 @@
   },
   "importHistory": {
     "title": "Storico degli import",
-    "button": "Storico degli import",
     "fileName": "Nome del file",
     "imported": "Importati",
     "errors": "Errori",
@@ -403,17 +392,12 @@
     "undone": "Import annullato"
   },
   "zones": {
-    "title": "Scaglioni del tasso di interesse",
     "fromAmount": "Da importo",
     "toAmount": "A importo",
     "interestRate": "Tasso di interesse",
     "effective": "effettivo",
-    "effectiveRate": "Tasso effettivo",
-    "active": "Attivo",
-    "noZones": "Nessuno scaglione del tasso di interesse configurato",
     "unlimited": "Illimitato",
     "ratePercent": "Tasso (%)",
-    "effectiveNote": "Tasso effettivo {{rate}} · {{amount}} all'anno",
     "addZoneTitle": "Aggiungi nuovo scaglione",
     "editZoneTitle": "Modifica scaglione",
     "save": "Salva",
@@ -531,20 +515,7 @@
     "totalTransactions": "Movimenti",
     "income": "Entrate",
     "outcome": "Uscite",
-    "netFlow": "Flusso netto",
-    "incomeIn": "In entrata a {{month, lower}}",
-    "expenseIn": "In uscita a {{month, lower}}",
-    "monthBalance": "Saldo del mese",
-    "incomeCount_one": "{{count}} movimento in entrata",
-    "incomeCount_many": "{{count}} movimenti in entrata",
-    "incomeCount_other": "{{count}} movimenti in entrata",
-    "txCount_one": "{{count}} movimento",
-    "txCount_many": "{{count}} movimenti",
-    "txCount_other": "{{count}} movimenti",
-    "mostIn": "soprattutto in {{category}}",
-    "none": "ancora nessuno",
-    "prevMonth": "a {{month, lower}} {{amount}}",
-    "noPrevMonth": "nessun movimento a {{month, lower}}"
+    "netFlow": "Flusso netto"
   },
   "categoryNames": {
     "cat_groceries": "Spesa alimentare",
@@ -572,22 +543,8 @@
     "lastMovement": "Ultimo movimento {{date}}",
     "lastImport": "Ultimo import {{date}}"
   },
-  "hero": {
-    "thisMonth": "questo mese",
-    "expensesExceed": "le uscite superano le entrate",
-    "incomeExceeds": "le entrate superano le uscite",
-    "balanced": "entrate e uscite in pareggio",
-    "noMovementsThisMonth": "nessun movimento questo mese"
-  },
   "chart": {
-    "balance": "Saldo",
-    "largeIncome": "Movimento in entrata elevato",
-    "largeExpense": "Movimento in uscita elevato",
-    "thresholdNote": "Sono segnalati i movimenti sopra {{amount}}",
-    "reconstructed": "la linea è ricostruita dai movimenti",
-    "clusterTitle_one": "{{count}} movimento",
-    "clusterTitle_many": "{{count}} movimenti",
-    "clusterTitle_other": "{{count}} movimenti"
+    "balance": "Saldo"
   },
   "trend": {
     "title": "Liquidità nel tempo",
@@ -627,7 +584,6 @@
     "next": "Successiva",
     "pending": "In sospeso",
     "transactionDetails": "Dettagli del movimento",
-    "balanceEstimate": "Stimato dal registro dei movimenti contabilizzati disponibile. Data di riferimento del saldo: {{date}}. La completezza degli estratti conto non è dimostrata.",
     "foreignConverted": "I movimenti in {{currencies}} sono convertiti in {{currency}} al cambio del loro giorno nei totali e nel grafico.",
     "foreignMissing": "I movimenti in {{currencies}} sono esclusi da totali e grafico: nessun tasso di cambio per il loro giorno.",
     "promotions": "{{count}} voci in sospeso verranno contabilizzate",

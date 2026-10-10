@@ -226,6 +226,7 @@ pub async fn run() {
             commands::cashflow::create_cashflow_item,
             commands::cashflow::update_cashflow_item,
             commands::cashflow::delete_cashflow_item,
+            commands::cashflow::set_cashflow_plan_inclusion,
             // Budgeting commands
             commands::budgeting::get_budgeting_report,
             commands::budgeting::get_category_transactions,
@@ -278,7 +279,9 @@ pub async fn run() {
             commands::bank_accounts::import_csv_transactions,
             commands::bank_accounts::get_import_batches,
             commands::bank_accounts::delete_import_batch,
-            commands::bank_accounts::set_bank_account_balance_anchor,
+            commands::bank_accounts::get_balance_records,
+            commands::bank_accounts::record_bank_account_balance,
+            commands::bank_accounts::delete_balance_record,
             // Stock CSV import commands (services::stock_import)
             commands::stock_import::inspect_stock_csv,
             commands::stock_import::resolve_stock_instruments,

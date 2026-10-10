@@ -53,16 +53,25 @@ interface AddTransactionModalProps {
   accountCurrency: string;
   /** Custom trigger element (defaults to the primary "Add Transaction" button) */
   trigger?: React.ReactNode;
+  /** Controlled open state; without it the modal keeps its own. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 export function AddTransactionModal({
   accountId,
   accountCurrency,
   trigger,
+  ...props
 }: AddTransactionModalProps) {
   const { t } = useTranslation('bank_accounts');
   const { t: tc } = useTranslation('common');
-  const [open, setOpen] = useState(false);
+  const [innerOpen, setInnerOpen] = useState(false);
+  const open = props.open ?? innerOpen;
+  const setOpen = (next: boolean) => {
+    setInnerOpen(next);
+    props.onOpenChange?.(next);
+  };
   const { createTransaction } = useBankTransactionMutations(accountId);
 
   // Fetch transaction categories
@@ -125,14 +134,16 @@ export function AddTransactionModal({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {trigger ?? (
-          <Button className="gap-2">
-            <Plus className="h-4 w-4" />
-            {t('transaction.add')}
-          </Button>
-        )}
-      </DialogTrigger>
+      {(trigger || props.open === undefined) && (
+        <DialogTrigger asChild>
+          {trigger ?? (
+            <Button className="gap-2">
+              <Plus className="h-4 w-4" />
+              {t('transaction.add')}
+            </Button>
+          )}
+        </DialogTrigger>
+      )}
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{t('transaction.add')}</DialogTitle>

@@ -25,6 +25,27 @@ All notable changes to Moony are documented in this file. The format follows
   rule covers, broken down by their current category, and categorizes them in the same step; the
   toast offers "Vrátit zpět". The same offer appears when a learned rule's category is changed on
   the rules page.
+- **Cashflow planning: categories as groups, rows in or out of the plan.** The planning page lists
+  every category as a collapsible row with its total, count and origin (the investment section opens
+  as a handful of rows instead of one line per dividend). Any row — automatic or manual — and any whole
+  category can be left out of the plan from its "···" menu without deleting it: it stays visible,
+  muted and labelled "Mimo plán", and stops counting in the totals, stats and flow bar. A category left
+  out also covers items that appear later. The menu of an automatic row also opens the existing
+  "replace with my own amount" flow and the source module. The add dialog offers every category
+  (income or expense) in one grouped list and no longer asks for an automatic source to replace. The
+  MCP tool `cashflow_report` carries `included` per item and its totals follow the same rule.
+- **Bank account detail rebuilt around dated balance records.** The balance history is a list of
+  dated records (recorded by hand or confirmed from a statement); the account's balance mirrors the
+  newest record. The page draws a balance line through the records, a 12-month flows chart, and
+  the ledger opens on the newest month with movements. Balance history, import history and
+  interest tiers moved to the ··· menu. The balance field left the edit form; new accounts take an
+  optional opening balance with a date.
+
+### Fixed
+
+- **Lists inside dialogs scroll with the wheel in the app window.** A select opened inside a modal
+  (the planning item's category, the settings category selects) no longer freezes under the dialog's
+  scroll lock in the Tauri webview; the same guard the currency picker already had.
 
 ### Changed
 

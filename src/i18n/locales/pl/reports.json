@@ -48,10 +48,7 @@
     "currency": "Waluta",
     "frequency": "Częstotliwość",
     "category": "Kategoria",
-    "selectCategory": "Wybierz kategorię",
-    "type": "Typ",
-    "income": "Przychód",
-    "expense": "Wydatek"
+    "selectCategory": "Wybierz kategorię"
   },
   "deleteConfirm": {
     "title": "Usunąć pozycję?",
@@ -446,18 +443,12 @@
       "none": "Brak planowanych przychodów."
     },
     "table": {
-      "item": "Pozycja",
-      "category": "Kategoria",
-      "frequency": "Częstotliwość",
-      "monthly": "Miesięcznie",
-      "yearly": "Rocznie",
       "netMonthly": "Netto miesięcznie",
       "netYearly": "Netto rocznie",
       "perMonth": "miesięcznie",
       "perYear": "rocznie",
       "auto": "automatycznie z: {{module}}",
       "manual": "ręcznie",
-      "editInModule": "Edytowane w: {{module}}",
       "incomeGroup": "Przychody · {{amount}}",
       "expenseGroup": "Wydatki · {{amount}}",
       "noIncome": "Brak planowanych przychodów w tej sekcji.",
@@ -552,8 +543,6 @@
     "countedTransactions": "{{count}} transakcji",
     "previous": "Poprzednia",
     "next": "Następna",
-    "replacesSource": "Źródło automatyczne do zastąpienia",
-    "additionalItem": "Dodatkowa pozycja ręczna",
     "retainedSource": "Wcześniej powiązane źródło",
     "replacementHelp": "Zastąpienie wyłącza wybraną pozycję automatyczną z sum. Usunięcie ręcznego zastąpienia przywraca źródło.",
     "replacing": "Zastępuje: {{name}}",

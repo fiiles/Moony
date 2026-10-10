@@ -114,7 +114,8 @@ pub fn collect_types() -> TypeCollection {
     types.register::<crate::services::csv_import::CsvImportPreview>();
     types.register::<crate::services::csv_import::types::StatementBalance>();
     types.register::<crate::services::csv_import::types::CsvImportBatch>();
-    types.register::<crate::models::bank_accounts::InsertBalanceAnchor>();
+    types.register::<crate::models::bank_accounts::BankBalanceRecord>();
+    types.register::<crate::models::bank_accounts::InsertBalanceRecord>();
     types.register::<crate::services::csv_import::CsvPreviewRow>();
     types.register::<crate::services::csv_import::CsvPreviewResult>();
     types.register::<crate::services::csv_import::CsvRowMessage>();
@@ -167,6 +168,7 @@ pub fn collect_types() -> TypeCollection {
     // Cashflow models
     types.register::<crate::models::CashflowItem>();
     types.register::<crate::models::InsertCashflowItem>();
+    types.register::<crate::models::SetCashflowPlanInclusion>();
     types.register::<crate::models::CashflowMonth>();
     types.register::<crate::models::CashflowGroup>();
     types.register::<crate::models::CashflowActuals>();

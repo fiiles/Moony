@@ -5,6 +5,7 @@
 //! This is the SINGLE SOURCE OF TRUTH for bank account operations.
 
 use crate::error::{AppError, Result};
+use crate::models::bank_accounts::{BankBalanceRecord, InsertBalanceRecord};
 use crate::models::{BankAccount, BankTransaction, InsertBankAccount, InsertBankTransaction};
 use rusqlite::{params, OptionalExtension};
 use uuid::Uuid;
@@ -65,6 +66,18 @@ pub fn create_account(
     data: &InsertBankAccount,
 ) -> Result<BankAccount> {
     data.validate()?;
+    // A dated opening balance becomes the first record, so it needs a real amount
+    if data.balance_as_of.flatten().is_some() {
+        let amount = data
+            .balance
+            .as_deref()
+            .filter(|b| !b.is_empty())
+            .and_then(|b| b.parse::<f64>().ok())
+            .filter(|n| n.is_finite());
+        if amount.is_none() {
+            return Err(AppError::Validation("validation.invalidAmount".into()));
+        }
+    }
 
     let id = Uuid::new_v4().to_string();
     let now = chrono::Utc::now().timestamp();
@@ -80,7 +93,8 @@ pub fn create_account(
     let has_zone = data.has_zone_designation.unwrap_or(false);
     let exclude = data.exclude_from_balance.unwrap_or(false);
 
-    conn.execute(
+    let tx = conn.unchecked_transaction()?;
+    tx.execute(
         "INSERT INTO bank_accounts (
             id, name, account_type, iban, bban, currency, balance,
             institution_id, data_source, interest_rate, has_zone_designation,
@@ -107,6 +121,16 @@ pub fn create_account(
             data.balance_as_of.flatten(),
         ],
     )?;
+    // A dated opening balance is the first record of the account's history
+    if let Some(day) = data.balance_as_of.flatten() {
+        tx.execute(
+            "INSERT INTO bank_balance_records
+                (id, bank_account_id, amount, currency, as_of, source, source_batch_id, recorded_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, 'manual', NULL, ?6)",
+            params![Uuid::new_v4().to_string(), id, balance, currency, day, now],
+        )?;
+    }
+    tx.commit()?;
 
     Ok(BankAccount {
         id,
@@ -133,6 +157,8 @@ pub fn create_account(
 
 /// Update an existing bank account
 /// This is the SINGLE SOURCE OF TRUTH for bank account updates
+///
+/// The currency is locked once the account has balance records; they carry it.
 pub fn update_account(
     conn: &rusqlite::Connection,
     id: &str,
@@ -143,20 +169,29 @@ pub fn update_account(
     // Get existing account first
     let existing = get_account_by_id(conn, id)?;
 
-    let account_type = data.account_type.clone().unwrap_or(existing.account_type);
-    let currency = data.currency.clone().unwrap_or(existing.currency.clone());
-    let changed = data.balance.as_deref().is_some_and(|v| {
-        super::dedup::canonical_amount(v) != super::dedup::canonical_amount(&existing.balance)
-    }) || data
+    if data
         .currency
         .as_deref()
-        .is_some_and(|c| !c.eq_ignore_ascii_case(&existing.currency));
-    let balance_as_of = match data.balance_as_of {
-        Some(day) => day,
-        None if changed => None,
-        None => existing.balance_as_of,
-    };
-    let balance = data.balance.clone().unwrap_or(existing.balance);
+        .is_some_and(|c| !c.eq_ignore_ascii_case(&existing.currency))
+    {
+        let has_records: bool = conn.query_row(
+            "SELECT EXISTS(SELECT 1 FROM bank_balance_records WHERE bank_account_id = ?1)",
+            [id],
+            |r| r.get(0),
+        )?;
+        if has_records {
+            return Err(AppError::Validation(
+                "validation.currencyLockedByRecords".into(),
+            ));
+        }
+    }
+
+    let account_type = data.account_type.clone().unwrap_or(existing.account_type);
+    let currency = data.currency.clone().unwrap_or(existing.currency.clone());
+    // The balance is never edited here: it mirrors the newest balance record
+    // (record_balance / delete_balance_record).
+    let balance = existing.balance.clone();
+    let balance_as_of = existing.balance_as_of;
     let has_zone = data
         .has_zone_designation
         .unwrap_or(existing.has_zone_designation);
@@ -481,10 +516,36 @@ pub fn set_transaction_flow(
     Ok(())
 }
 
-pub fn set_balance_anchor(
+/// Mirror the newest dated record into `bank_accounts.balance` / `balance_as_of`;
+/// without any record the account goes back to `'0'` / unknown date.
+fn refresh_balance_columns(conn: &rusqlite::Connection, account_id: &str) -> Result<()> {
+    let newest: Option<(String, i64)> = conn
+        .query_row(
+            "SELECT amount, as_of FROM bank_balance_records
+             WHERE bank_account_id = ?1 ORDER BY as_of DESC LIMIT 1",
+            [account_id],
+            |r| Ok((r.get(0)?, r.get(1)?)),
+        )
+        .optional()?;
+    match newest {
+        Some((amount, day)) => conn.execute(
+            "UPDATE bank_accounts SET balance = ?1, balance_as_of = ?2, updated_at = unixepoch() WHERE id = ?3",
+            params![amount, day, account_id],
+        )?,
+        None => conn.execute(
+            "UPDATE bank_accounts SET balance = '0', balance_as_of = NULL, updated_at = unixepoch() WHERE id = ?1",
+            [account_id],
+        )?,
+    };
+    Ok(())
+}
+
+/// Record a dated balance. The same day is replaced; an older day is history and
+/// leaves the current balance alone; the newest day becomes the current balance.
+pub fn record_balance(
     conn: &rusqlite::Connection,
     account_id: &str,
-    data: &crate::models::bank_accounts::InsertBalanceAnchor,
+    data: &InsertBalanceRecord,
 ) -> Result<BankAccount> {
     data.validate()?;
     let tx = conn.unchecked_transaction()?;
@@ -494,20 +555,21 @@ pub fn set_balance_anchor(
             "validation.balanceCurrencyMismatch".into(),
         ));
     }
-    match existing.balance_as_of {
-        Some(day) if data.as_of < day => {
-            return Err(AppError::Validation("validation.balanceAnchorOlder".into()))
-        }
-        None if !data.confirm_unknown_as_of => {
-            return Err(AppError::Validation(
-                "validation.balanceAnchorUnknown".into(),
-            ))
-        }
-        _ => {}
+    let has_dated: bool = tx.query_row(
+        "SELECT EXISTS(SELECT 1 FROM bank_balance_records WHERE bank_account_id = ?1)",
+        [account_id],
+        |r| r.get(0),
+    )?;
+    let undated_nonzero = existing.balance_as_of.is_none()
+        && super::dedup::canonical_amount(&existing.balance) != super::dedup::canonical_amount("0");
+    if !has_dated && undated_nonzero && !data.confirm_unknown_as_of {
+        return Err(AppError::Validation(
+            "validation.balanceAnchorUnknown".into(),
+        ));
     }
     if let Some(batch) = &data.source_batch_id {
         let belongs: bool = tx.query_row(
-            "SELECT EXISTS(SELECT 1 FROM csv_import_batches WHERE id=?1 AND bank_account_id=?2)",
+            "SELECT EXISTS(SELECT 1 FROM csv_import_batches WHERE id = ?1 AND bank_account_id = ?2)",
             params![batch, account_id],
             |r| r.get(0),
         )?;
@@ -517,11 +579,77 @@ pub fn set_balance_anchor(
             ));
         }
     }
+    let source = if data.source_batch_id.is_some() {
+        "statement"
+    } else {
+        "manual"
+    };
     tx.execute(
-        "UPDATE bank_accounts SET balance=?1,balance_as_of=?2,updated_at=unixepoch() WHERE id=?3",
-        params![data.amount, data.as_of, account_id],
+        "INSERT INTO bank_balance_records
+            (id, bank_account_id, amount, currency, as_of, source, source_batch_id, recorded_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, unixepoch())
+         ON CONFLICT(bank_account_id, as_of) DO UPDATE SET
+            amount = excluded.amount, currency = excluded.currency, source = excluded.source,
+            source_batch_id = excluded.source_batch_id, recorded_at = unixepoch()",
+        params![
+            Uuid::new_v4().to_string(),
+            account_id,
+            data.amount,
+            existing.currency,
+            data.as_of,
+            source,
+            data.source_batch_id,
+        ],
     )?;
+    refresh_balance_columns(&tx, account_id)?;
     let account = get_account_by_id(&tx, account_id)?;
+    tx.commit()?;
+    Ok(account)
+}
+
+/// Every dated balance of the account, newest first.
+pub fn list_balance_records(
+    conn: &rusqlite::Connection,
+    account_id: &str,
+) -> Result<Vec<BankBalanceRecord>> {
+    let mut stmt = conn.prepare(
+        "SELECT id, bank_account_id, amount, currency, as_of, source, source_batch_id, recorded_at
+         FROM bank_balance_records WHERE bank_account_id = ?1 ORDER BY as_of DESC",
+    )?;
+    let rows = stmt
+        .query_map([account_id], |r| {
+            Ok(BankBalanceRecord {
+                id: r.get(0)?,
+                bank_account_id: r.get(1)?,
+                amount: r.get(2)?,
+                currency: r.get(3)?,
+                as_of: r.get(4)?,
+                source: r.get(5)?,
+                source_batch_id: r.get(6)?,
+                recorded_at: r.get(7)?,
+            })
+        })?
+        .collect::<std::result::Result<Vec<_>, _>>()?;
+    Ok(rows)
+}
+
+/// Delete one record and re-mirror the newest remaining one into the columns.
+pub fn delete_balance_record(conn: &rusqlite::Connection, record_id: &str) -> Result<BankAccount> {
+    let tx = conn.unchecked_transaction()?;
+    let account_id: String = tx
+        .query_row(
+            "SELECT bank_account_id FROM bank_balance_records WHERE id = ?1",
+            [record_id],
+            |r| r.get(0),
+        )
+        .optional()?
+        .ok_or_else(|| AppError::NotFound(format!("Balance record not found: {record_id}")))?;
+    tx.execute(
+        "DELETE FROM bank_balance_records WHERE id = ?1",
+        [record_id],
+    )?;
+    refresh_balance_columns(&tx, &account_id)?;
+    let account = get_account_by_id(&tx, &account_id)?;
     tx.commit()?;
     Ok(account)
 }
@@ -591,6 +719,23 @@ mod tests {
                 categorization_source TEXT,
                 flow_kind TEXT,
                 UNIQUE(bank_account_id, transaction_id)
+            );
+
+            CREATE TABLE csv_import_batches (
+                id TEXT PRIMARY KEY,
+                bank_account_id TEXT NOT NULL
+            );
+
+            CREATE TABLE bank_balance_records (
+                id TEXT PRIMARY KEY,
+                bank_account_id TEXT NOT NULL REFERENCES bank_accounts(id) ON DELETE CASCADE,
+                amount TEXT NOT NULL,
+                currency TEXT NOT NULL,
+                as_of INTEGER NOT NULL,
+                source TEXT NOT NULL DEFAULT 'manual',
+                source_batch_id TEXT REFERENCES csv_import_batches(id) ON DELETE SET NULL,
+                recorded_at INTEGER NOT NULL DEFAULT (unixepoch()),
+                UNIQUE (bank_account_id, as_of)
             );
 
             INSERT INTO bank_accounts (id, name, currency, created_at, updated_at)
@@ -1018,80 +1163,197 @@ mod tests {
         set_transaction_category(&conn, "tx-1", Some("cat-1"), None).unwrap();
         assert!(stored_categorization_source(&conn, "tx-1").is_none());
     }
+
+    fn record(amount: &str, as_of: i64) -> crate::models::bank_accounts::InsertBalanceRecord {
+        crate::models::bank_accounts::InsertBalanceRecord {
+            amount: amount.into(),
+            currency: "EUR".into(),
+            as_of,
+            confirm_unknown_as_of: false,
+            source_batch_id: None,
+        }
+    }
+
+    const D1: i64 = 1767225600; // 2026-01-01
+    const D2: i64 = 1767312000; // 2026-01-02
+    const D3: i64 = 1767398400; // 2026-01-03
+
     #[test]
-    fn integrity_explicit_unknown_date_clears_unchanged_anchor() {
+    fn record_balance_mirrors_the_newest_record_into_the_columns() {
         let conn = setup_test_db();
-        conn.execute(
-            "UPDATE bank_accounts SET balance='100',balance_as_of=1767312000 WHERE id='acc-1'",
-            [],
-        )
-        .unwrap();
-        let edit: InsertBankAccount = serde_json::from_value(
-            serde_json::json!({"name":"Unknown date","balance":"100.00","balanceAsOf":null}),
-        )
-        .unwrap();
+        let a = record_balance(&conn, "acc-1", &record("100", D2)).unwrap();
+        assert_eq!((a.balance.as_str(), a.balance_as_of), ("100", Some(D2)));
+        // An older day is history and leaves the columns alone
+        let a = record_balance(&conn, "acc-1", &record("50", D1)).unwrap();
+        assert_eq!((a.balance.as_str(), a.balance_as_of), ("100", Some(D2)));
+        // A newer day becomes the current balance
+        let a = record_balance(&conn, "acc-1", &record("120", D3)).unwrap();
+        assert_eq!((a.balance.as_str(), a.balance_as_of), ("120", Some(D3)));
+        let list = list_balance_records(&conn, "acc-1").unwrap();
         assert_eq!(
-            update_account(&conn, "acc-1", &edit).unwrap().balance_as_of,
-            None
+            list.iter()
+                .map(|r| (r.as_of, r.amount.as_str(), r.source.as_str()))
+                .collect::<Vec<_>>(),
+            vec![
+                (D3, "120", "manual"),
+                (D2, "100", "manual"),
+                (D1, "50", "manual")
+            ]
         );
     }
 
     #[test]
-    fn integrity_balance_anchor_safeguards_and_manual_date_semantics() {
+    fn record_balance_replaces_the_same_day() {
         let conn = setup_test_db();
-        let mut anchor = crate::models::bank_accounts::InsertBalanceAnchor {
-            amount: "100".into(),
-            currency: "EUR".into(),
-            as_of: 1767312000,
-            confirm_unknown_as_of: false,
-            source_batch_id: None,
-        };
-        assert!(set_balance_anchor(&conn, "acc-1", &anchor).is_err());
-        anchor.confirm_unknown_as_of = true;
+        record_balance(&conn, "acc-1", &record("100", D2)).unwrap();
+        let a = record_balance(&conn, "acc-1", &record("101", D2)).unwrap();
+        assert_eq!(a.balance, "101");
+        let list = list_balance_records(&conn, "acc-1").unwrap();
+        assert_eq!(list.len(), 1);
+        assert_eq!(list[0].amount, "101");
+    }
+
+    #[test]
+    fn record_balance_rejects_wrong_currency_future_day_and_foreign_batch() {
+        let conn = setup_test_db();
+        let mut data = record("100", D2);
+        data.currency = "CZK".into();
+        assert!(record_balance(&conn, "acc-1", &data).is_err());
+        let future = chrono::Utc::now().timestamp().div_euclid(86400) * 86400 + 86400;
+        assert!(record_balance(&conn, "acc-1", &record("100", future)).is_err());
+        conn.execute_batch(
+            "INSERT INTO bank_accounts (id, name, currency, created_at, updated_at) VALUES ('acc-2', 'Other', 'EUR', 0, 0);
+             INSERT INTO csv_import_batches (id, bank_account_id) VALUES ('batch-2', 'acc-2');
+             INSERT INTO csv_import_batches (id, bank_account_id) VALUES ('batch-1', 'acc-1');",
+        )
+        .unwrap();
+        let mut foreign = record("100", D2);
+        foreign.source_batch_id = Some("batch-2".into());
+        assert!(record_balance(&conn, "acc-1", &foreign).is_err());
+        let mut own = record("100", D2);
+        own.source_batch_id = Some("batch-1".into());
+        record_balance(&conn, "acc-1", &own).unwrap();
+        let list = list_balance_records(&conn, "acc-1").unwrap();
         assert_eq!(
-            set_balance_anchor(&conn, "acc-1", &anchor)
-                .unwrap()
-                .balance_as_of,
-            Some(1767312000)
+            (list[0].source.as_str(), list[0].source_batch_id.as_deref()),
+            ("statement", Some("batch-1"))
         );
-        anchor.as_of = 1767225600;
-        assert!(set_balance_anchor(&conn, "acc-1", &anchor).is_err());
-        anchor.as_of = 1767398400;
-        anchor.currency = "CZK".into();
-        assert!(set_balance_anchor(&conn, "acc-1", &anchor).is_err());
-        anchor.currency = "EUR".into();
-        anchor.as_of = i64::MAX;
-        assert!(set_balance_anchor(&conn, "acc-1", &anchor).is_err());
-        anchor.as_of = chrono::Utc::now().timestamp().div_euclid(86400) * 86400 + 86400;
-        assert!(set_balance_anchor(&conn, "acc-1", &anchor).is_err());
-        anchor.as_of = 1767398401;
-        assert!(set_balance_anchor(&conn, "acc-1", &anchor).is_err());
-        assert_eq!(get_account_by_id(&conn, "acc-1").unwrap().balance, "100");
+    }
+
+    #[test]
+    fn undated_nonzero_balance_needs_confirmation_only_before_the_first_record() {
+        let conn = setup_test_db();
+        conn.execute(
+            "UPDATE bank_accounts SET balance='999' WHERE id='acc-1'",
+            [],
+        )
+        .unwrap();
+        assert!(record_balance(&conn, "acc-1", &record("100", D2)).is_err());
+        let mut confirmed = record("100", D2);
+        confirmed.confirm_unknown_as_of = true;
+        assert_eq!(
+            record_balance(&conn, "acc-1", &confirmed).unwrap().balance,
+            "100"
+        );
+        // From now on the flag is not needed
+        assert!(record_balance(&conn, "acc-1", &record("110", D3)).is_ok());
+        // An undated balance of exactly 0 never needs confirmation
+        conn.execute_batch(
+            "INSERT INTO bank_accounts (id, name, currency, balance, created_at, updated_at) VALUES ('acc-3', 'Zero', 'EUR', '0', 0, 0);",
+        )
+        .unwrap();
+        assert!(record_balance(&conn, "acc-3", &record("5", D2)).is_ok());
+    }
+
+    #[test]
+    fn delete_balance_record_refreshes_and_clears_the_columns() {
+        let conn = setup_test_db();
+        record_balance(&conn, "acc-1", &record("100", D2)).unwrap();
+        record_balance(&conn, "acc-1", &record("120", D3)).unwrap();
+        let newest = list_balance_records(&conn, "acc-1").unwrap()[0].id.clone();
+        let a = delete_balance_record(&conn, &newest).unwrap();
+        assert_eq!((a.balance.as_str(), a.balance_as_of), ("100", Some(D2)));
+        let last = list_balance_records(&conn, "acc-1").unwrap()[0].id.clone();
+        let a = delete_balance_record(&conn, &last).unwrap();
+        assert_eq!((a.balance.as_str(), a.balance_as_of), ("0", None));
+        assert!(delete_balance_record(&conn, "missing").is_err());
+    }
+
+    #[test]
+    fn create_account_with_a_dated_balance_writes_the_first_record() {
+        let conn = setup_test_db();
+        let mut data = minimal_insert("Opening");
+        data.currency = Some("EUR".into());
+        data.balance = Some("250".into());
+        data.balance_as_of = Some(Some(D2));
+        let account = create_account(&conn, &data).unwrap();
+        let list = list_balance_records(&conn, &account.id).unwrap();
+        assert_eq!(list.len(), 1);
+        assert_eq!(
+            (
+                list[0].amount.as_str(),
+                list[0].as_of,
+                list[0].currency.as_str()
+            ),
+            ("250", D2, "EUR")
+        );
+        // Without a date: undated balance, no record (unchanged behaviour)
+        let mut undated = minimal_insert("Undated");
+        undated.balance = Some("10".into());
+        let account = create_account(&conn, &undated).unwrap();
+        assert!(list_balance_records(&conn, &account.id).unwrap().is_empty());
+        assert_eq!(account.balance_as_of, None);
+    }
+
+    #[test]
+    fn create_account_with_a_date_needs_a_real_balance() {
+        let conn = setup_test_db();
+        for balance in [Some(String::new()), None, Some("abc".to_string())] {
+            let mut data = minimal_insert("Opening");
+            data.balance = balance;
+            data.balance_as_of = Some(Some(D2));
+            match create_account(&conn, &data) {
+                Err(AppError::Validation(key)) => assert_eq!(key, "validation.invalidAmount"),
+                other => panic!("expected a validation error, got {other:?}"),
+            }
+        }
+    }
+
+    #[test]
+    fn update_account_ignores_balance_fields() {
+        let conn = setup_test_db();
+        record_balance(&conn, "acc-1", &record("100", D2)).unwrap();
         let mut edit = minimal_insert("Renamed");
-        edit.balance = Some("100.00".into());
+        edit.currency = Some("EUR".into());
+        edit.balance = Some("5".into());
+        edit.balance_as_of = Some(None);
+        let a = update_account(&conn, "acc-1", &edit).unwrap();
         assert_eq!(
-            update_account(&conn, "acc-1", &edit).unwrap().balance_as_of,
-            Some(1767312000)
+            (a.name.as_str(), a.balance.as_str(), a.balance_as_of),
+            ("Renamed", "100", Some(D2))
         );
-        edit.balance = Some("101".into());
-        assert_eq!(
-            update_account(&conn, "acc-1", &edit).unwrap().balance_as_of,
-            None
-        );
-        anchor.as_of = 1767398400;
-        set_balance_anchor(&conn, "acc-1", &anchor).unwrap();
-        edit.balance = None;
+    }
+
+    #[test]
+    fn update_account_rejects_a_currency_change_while_records_exist() {
+        let conn = setup_test_db();
+        let mut edit = minimal_insert("EUR Account");
         edit.currency = Some("CZK".into());
+        // No records yet: the currency may change
         assert_eq!(
-            update_account(&conn, "acc-1", &edit).unwrap().balance_as_of,
-            None
+            update_account(&conn, "acc-1", &edit).unwrap().currency,
+            "CZK"
         );
-        conn.execute_batch("CREATE TABLE csv_import_batches(id TEXT,bank_account_id TEXT); INSERT INTO csv_import_batches VALUES ('other','different');").unwrap();
-        anchor.currency = "CZK".into();
-        anchor.source_batch_id = Some("other".into());
-        assert!(set_balance_anchor(&conn, "acc-1", &anchor).is_err());
-        anchor.source_batch_id = None;
-        anchor.amount = "NaN".into();
-        assert!(set_balance_anchor(&conn, "acc-1", &anchor).is_err());
+        edit.currency = Some("EUR".into());
+        update_account(&conn, "acc-1", &edit).unwrap();
+        record_balance(&conn, "acc-1", &record("100", D2)).unwrap();
+        edit.currency = Some("CZK".into());
+        assert!(matches!(
+            update_account(&conn, "acc-1", &edit),
+            Err(AppError::Validation(key)) if key == "validation.currencyLockedByRecords"
+        ));
+        // Same currency (any case) still passes
+        edit.currency = Some("eur".into());
+        assert!(update_account(&conn, "acc-1", &edit).is_ok());
     }
 }

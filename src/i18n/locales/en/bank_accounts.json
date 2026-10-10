@@ -61,9 +61,15 @@
     "editDescription": "Update the details of “{{name}}”.",
     "accountNumberPlaceholder": "e.g. 1234567890",
     "ibanPlaceholder": "e.g. DE89 3704 0044 0532 0130 00",
-    "balanceHint": "Entered by you and not changed by imported transactions — update it from your latest statement.",
     "includeInNetWorth": "Include in net worth",
-    "includeInNetWorthHelp": "Excluded accounts stay in the list but are left out of net worth, totals and charts."
+    "includeInNetWorthHelp": "Excluded accounts stay in the list but are left out of net worth, totals and charts.",
+    "openingBalance": "Opening balance",
+    "openingBalanceHint": "Optional. Becomes the first record of the balance history.",
+    "openingBalanceAsOf": "As of",
+    "currentBalance": "Balance {{amount}} as of {{date}}",
+    "currentBalanceUnknownDate": "Balance {{amount}} · unknown date",
+    "noBalance": "No balance recorded yet",
+    "recordNew": "Record a new balance"
   },
   "accounts": "Accounts",
   "transactions": "Transactions",
@@ -85,8 +91,7 @@
     "accountNumberOptional": "Account number (optional)",
     "interestRate": "Interest Rate",
     "rateValidUntil": "Rate valid until",
-    "interestType": "Interest Type",
-    "balanceManual": "Balance (manual)"
+    "interestType": "Interest Type"
   },
   "interestType": {
     "simple": "Simple",

@@ -62,9 +62,15 @@
     "editDescription": "Upravte údaje účtu „{{name}}“.",
     "accountNumberPlaceholder": "např. 1234567890",
     "ibanPlaceholder": "např. DE89 3704 0044 0532 0130 00",
-    "balanceHint": "Zadáváte ho vy a importované transakce ho nemění — aktualizujte ho podle posledního výpisu.",
     "includeInNetWorth": "Zahrnout do čistého jmění",
-    "includeInNetWorthHelp": "Vyloučené účty zůstávají v seznamu, ale nepočítají se do čistého jmění, součtů ani grafů."
+    "includeInNetWorthHelp": "Vyloučené účty zůstávají v seznamu, ale nepočítají se do čistého jmění, součtů ani grafů.",
+    "openingBalance": "Počáteční zůstatek",
+    "openingBalanceHint": "Nepovinné. Vytvoří první záznam historie zůstatku.",
+    "openingBalanceAsOf": "K datu",
+    "currentBalance": "Zůstatek {{amount}} k {{date}}",
+    "currentBalanceUnknownDate": "Zůstatek {{amount}} · datum neznámé",
+    "noBalance": "Zůstatek zatím nezaznamenaný",
+    "recordNew": "Zaznamenat nový zůstatek"
   },
   "accounts": "Účty",
   "transactions": "Transakce",
@@ -86,8 +92,7 @@
     "accountNumberOptional": "Číslo účtu (volitelné)",
     "interestRate": "Úroková sazba",
     "rateValidUntil": "Sazba platí do",
-    "interestType": "Typ úročení",
-    "balanceManual": "Zůstatek (ručně)"
+    "interestType": "Typ úročení"
   },
   "interestType": {
     "simple": "Jednoduché",

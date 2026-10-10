@@ -1,11 +1,10 @@
 import { createContext, useContext } from 'react';
-import { CurrencyCode, CurrencyDef } from '@shared/currencies';
+import { CurrencyCode } from '@shared/currencies';
 import type { FxQuotes } from '@shared/fx';
 
 export type CurrencyContextValue = {
   /** The profile (main) currency: reports default to it, and only it is shown as a symbol. */
   currencyCode: CurrencyCode;
-  currency: CurrencyDef;
   /** Current quotes (reference-based, derived codes included); undefined until loaded. */
   fx: FxQuotes | undefined;
   /** Fetched-at seconds of the quotes; part of every converted query key. */

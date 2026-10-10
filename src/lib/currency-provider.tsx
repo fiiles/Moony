@@ -5,7 +5,7 @@ import { portfolioApi } from '@/lib/tauri-api';
 import { CurrencyContext } from '@/lib/currency';
 import { useFxSnapshot, FX_SNAPSHOT_KEY, FX_HISTORY_KEY } from '@/hooks/use-fx';
 import { convert as fxConvertPure } from '@shared/fx';
-import { CURRENCIES, CurrencyCode, CurrencyDef } from '@shared/currencies';
+import { CurrencyCode } from '@shared/currencies';
 
 export function CurrencyProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
@@ -42,9 +42,6 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
     refreshRates();
   }, [userId, queryClient]); // re-runs on unlock (userId: undefined → number)
 
-  const currency =
-    (CURRENCIES as Record<CurrencyCode, CurrencyDef | undefined>)[currencyCode] ?? CURRENCIES.CZK;
-
   function convert(amount: number, from: string, to: string = currencyCode): number | null {
     return fxConvertPure(fx, amount, from, to);
   }
@@ -59,7 +56,6 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
     <CurrencyContext.Provider
       value={{
         currencyCode,
-        currency,
         fx,
         fxRevision,
         fxReady: !fxLoading,

@@ -284,6 +284,13 @@ export default function Budgeting() {
   const countLine = (count: number) =>
     count > 0 ? t('table.transactions', { count }) : t('table.noTransactions');
 
+  const openTransactions = (row: BudgetRow) =>
+    setTxTarget({
+      categoryId: row.categoryId,
+      name: row.name,
+      budgetCurrency: row.budgetCurrency ?? row.goal?.currency ?? undefined,
+    });
+
   const head = (
     <PageHead
       eyebrow={t('eyebrow')}
@@ -407,12 +414,15 @@ export default function Budgeting() {
         </TableHeader>
         <TableBody>
           {unbudgeted.map((row) => (
-            <TableRow key={row.categoryId} className="h-[52px]">
+            <TableRow
+              key={row.categoryId}
+              className="h-[52px] cursor-pointer"
+              onClick={() => setTxTarget({ categoryId: row.categoryId, name: row.name })}
+            >
               <TableCell>
                 <button
                   type="button"
                   className="block text-left font-650 text-ink underline-offset-[3px] hover:underline focus-visible:outline-none focus-visible:underline"
-                  onClick={() => setTxTarget({ categoryId: row.categoryId, name: row.name })}
                 >
                   {row.name}
                 </button>
@@ -435,7 +445,14 @@ export default function Budgeting() {
               <TableCell className="text-right font-650 text-ink num">{money(row.spent)}</TableCell>
               <TableCell className="text-right">
                 {row.canBudget && (
-                  <Button variant="ghost" size="sm" onClick={() => openAdd(row.categoryId)}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openAdd(row.categoryId);
+                    }}
+                  >
                     {t('actions.setLimit')}
                   </Button>
                 )}
@@ -526,18 +543,15 @@ export default function Budgeting() {
           </TableHeader>
           <TableBody>
             {rows.map((row) => (
-              <TableRow key={row.categoryId} className="h-[60px]">
+              <TableRow
+                key={row.categoryId}
+                className="h-[60px] cursor-pointer"
+                onClick={() => openTransactions(row)}
+              >
                 <TableCell>
                   <button
                     type="button"
                     className="block text-left font-650 text-ink underline-offset-[3px] hover:underline focus-visible:outline-none focus-visible:underline"
-                    onClick={() =>
-                      setTxTarget({
-                        categoryId: row.categoryId,
-                        name: row.name,
-                        budgetCurrency: row.budgetCurrency ?? row.goal?.currency ?? undefined,
-                      })
-                    }
                   >
                     {row.name}
                   </button>
@@ -596,7 +610,7 @@ export default function Budgeting() {
                 </TableCell>
                 <TableCell className="text-right">{stateBadge(row)}</TableCell>
                 <TableCell className="pr-3 text-right">
-                  <div data-row-actions>
+                  <div data-row-actions onClick={(e) => e.stopPropagation()}>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button
@@ -613,13 +627,7 @@ export default function Budgeting() {
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           disabled={row.count === 0}
-                          onSelect={() =>
-                            setTxTarget({
-                              categoryId: row.categoryId,
-                              name: row.name,
-                              budgetCurrency: row.budgetCurrency ?? row.goal?.currency ?? undefined,
-                            })
-                          }
+                          onSelect={() => openTransactions(row)}
                         >
                           {t('actions.showTransactions')}
                         </DropdownMenuItem>

@@ -376,6 +376,7 @@
     "title": "Import history",
     "button": "Import history",
     "fileName": "File Name",
+    "period": "Period",
     "imported": "Imported",
     "errors": "Errors",
     "empty": "No imports yet. Import your first CSV file.",
@@ -691,5 +692,14 @@
     "deleteTitle": "Delete this balance record?",
     "deleteDescription": "The record of {{amount}} as of {{date}} will be removed for good. The account balance is recalculated from the newest remaining record.",
     "deleted": "Record deleted"
+  },
+  "interest": {
+    "title": "Interest",
+    "zonedSub": "Tiered interest by balance",
+    "simpleSub": "Simple interest",
+    "effectiveLine": "{{rate}} effective · {{amount}} a year",
+    "caption": "The effective rate is the yearly interest on the current balance divided by the balance.",
+    "validUntil": "Rate valid until {{date}}",
+    "rate": "Rate"
   }
 }

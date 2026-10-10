@@ -24,6 +24,7 @@ listed so nobody resurrects them from git history or copies them as examples.
 | `src/components/insurance/{InsuranceCard,InsuranceDetailModal}.tsx` | Imported nowhere, hardcoded English | `InsuranceList`, `pages/InsuranceDetail.tsx` |
 | `src/components/common/ThemeToggle.tsx` | Imported nowhere | — |
 | Savings page: `src/pages/Accounts.tsx` (route `/accounts`), `src/hooks/use-savings-accounts.ts`, `src/hooks/use-savings-account-mutations.ts`, `src/components/savings/{SavingsAccountCard,SavingsAccountFormDialog,SavingsAccountsSummary,SavingsAccountsTable,SavingsAccountZonesModal,DeleteSavingsAccountDialog}.tsx` | Parallel implementation of `BankAccounts` over the same tables; only reachable by typing the URL | `src/pages/BankAccounts.tsx`, `use-bank-account*.ts` hooks, `components/bank-accounts/` |
+| `src/components/bank-accounts/ZonesInfoModal.tsx` | Unused since the zones moved to the detail page; replaced by the Úročení modal | `src/components/bank-accounts/InterestDialog.tsx` |
 
 ## Removed in the redesign sweep (do not re-add)
 

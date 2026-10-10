@@ -390,6 +390,7 @@
     "title": "Historie importů",
     "button": "Historie importů",
     "fileName": "Název souboru",
+    "period": "Období",
     "imported": "Importováno",
     "errors": "Chyby",
     "empty": "Zatím žádné importy. Importujte svůj první CSV soubor.",
@@ -724,5 +725,14 @@
     "deleteTitle": "Smazat záznam zůstatku?",
     "deleteDescription": "Záznam {{amount}} ze dne {{date}} bude trvale odstraněn. Zůstatek účtu se přepočítá z nejnovějšího zbývajícího záznamu.",
     "deleted": "Záznam smazán"
+  },
+  "interest": {
+    "title": "Úročení",
+    "zonedSub": "Pásmové úročení podle výše zůstatku",
+    "simpleSub": "Jednoduché úročení",
+    "effectiveLine": "{{rate}} efektivně · {{amount}} ročně",
+    "caption": "Efektivní sazba je roční úrok z aktuálního zůstatku dělený zůstatkem.",
+    "validUntil": "Sazba platí do {{date}}",
+    "rate": "Sazba"
   }
 }

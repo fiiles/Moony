@@ -527,6 +527,7 @@
     "importStatement": "导入账单"
   },
   "menu": {
+    "showDetail": "查看详情",
     "balanceHistory": "余额历史",
     "interest": "利息"
   },

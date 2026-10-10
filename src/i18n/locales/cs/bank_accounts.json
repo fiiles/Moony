@@ -566,6 +566,7 @@
     "importStatement": "Importovat výpis"
   },
   "menu": {
+    "showDetail": "Zobrazit detail",
     "balanceHistory": "Historie zůstatku",
     "interest": "Úročení"
   },

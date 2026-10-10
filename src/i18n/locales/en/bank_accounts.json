@@ -544,6 +544,7 @@
     "importStatement": "Import statement"
   },
   "menu": {
+    "showDetail": "Show detail",
     "balanceHistory": "Balance history",
     "interest": "Interest"
   },

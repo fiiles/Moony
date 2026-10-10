@@ -527,6 +527,7 @@
     "importStatement": "明細をインポート"
   },
   "menu": {
+    "showDetail": "詳細を表示",
     "balanceHistory": "残高履歴",
     "interest": "利息"
   },

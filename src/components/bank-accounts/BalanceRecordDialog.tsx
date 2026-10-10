@@ -91,7 +91,7 @@ export function BalanceRecordDialog({
           <DialogTitle>{t('recordDialog.title')}</DialogTitle>
           <DialogDescription>{t('recordDialog.description')}</DialogDescription>
         </DialogHeader>
-        <div className="grid grid-cols-[1fr_172px] gap-4">
+        <div className="grid grid-cols-[1fr_172px] items-start gap-4">
           <div className="grid gap-2">
             <Label htmlFor="balance-record-amount">{t('recordDialog.amount')}</Label>
             <InputWrap unit={currency}>

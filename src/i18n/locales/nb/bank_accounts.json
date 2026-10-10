@@ -544,6 +544,7 @@
     "importStatement": "Importer kontoutskrift"
   },
   "menu": {
+    "showDetail": "Vis detaljer",
     "balanceHistory": "Saldohistorikk",
     "interest": "Rente"
   },

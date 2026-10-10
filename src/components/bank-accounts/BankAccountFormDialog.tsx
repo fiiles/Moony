@@ -339,7 +339,7 @@ export function BankAccountFormDialog({
             </Select>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 items-start gap-4">
             {isEditMode && account ? (
               <div className="grid gap-2">
                 <Label>{t('fields.balance')}</Label>
@@ -356,7 +356,7 @@ export function BankAccountFormDialog({
                 {onRecordBalance && (
                   <Button
                     type="button"
-                    variant="ghost"
+                    variant="outline"
                     size="sm"
                     className="justify-self-start"
                     onClick={() => {

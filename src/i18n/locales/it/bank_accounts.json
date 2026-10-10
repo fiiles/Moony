@@ -561,6 +561,7 @@
     "importStatement": "Importa estratto conto"
   },
   "menu": {
+    "showDetail": "Mostra dettaglio",
     "balanceHistory": "Storico del saldo",
     "interest": "Interessi"
   },

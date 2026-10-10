@@ -578,6 +578,7 @@
     "importStatement": "Importuj wyciąg"
   },
   "menu": {
+    "showDetail": "Pokaż szczegóły",
     "balanceHistory": "Historia salda",
     "interest": "Oprocentowanie"
   },

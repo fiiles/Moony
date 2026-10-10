@@ -544,6 +544,7 @@
     "importStatement": "Kontoauszug importieren"
   },
   "menu": {
+    "showDetail": "Detail anzeigen",
     "balanceHistory": "Saldoverlauf",
     "interest": "Verzinsung"
   },

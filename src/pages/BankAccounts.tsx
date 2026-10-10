@@ -8,12 +8,14 @@ import {
   ArrowUp,
   ArrowUpDown,
   Ellipsis,
+  Eye,
   Landmark,
   Pencil,
   Plus,
   Search,
   Trash2,
   Upload,
+  Wallet,
 } from 'lucide-react';
 import type { BankAccountWithInstitution, InsertBankAccount } from '@shared/schema';
 import { recordCurrency } from '@shared/currencies';
@@ -53,6 +55,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { BankAccountFormDialog } from '@/components/bank-accounts/BankAccountFormDialog';
+import { BalanceRecordDialog } from '@/components/bank-accounts/BalanceRecordDialog';
+import { useBalanceRecords } from '@/hooks/use-balance-records';
 import { NativeBalance } from '@/components/bank-accounts/NativeBalance';
 import { cn } from '@/lib/utils';
 
@@ -92,6 +96,8 @@ export default function BankAccounts() {
 
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [editing, setEditing] = useState<BankAccountWithInstitution | null>(null);
+  const [recording, setRecording] = useState<BankAccountWithInstitution | null>(null);
+  const { records: recordingRecords } = useBalanceRecords(recording?.id);
   const [pendingDelete, setPendingDelete] = useState<BankAccountWithInstitution | null>(null);
   const [search, setSearch] = useState('');
   const [sortColumn, setSortColumn] = useState<SortColumn>('balance');
@@ -511,9 +517,19 @@ export default function BankAccounts() {
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
+                                <DropdownMenuItem
+                                  onSelect={() => setLocation(`/bank-accounts/${account.id}`)}
+                                >
+                                  <Eye />
+                                  {t('menu.showDetail')}
+                                </DropdownMenuItem>
                                 <DropdownMenuItem onSelect={() => setEditing(account)}>
                                   <Pencil />
                                   {t('editAccount')}
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onSelect={() => setRecording(account)}>
+                                  <Wallet />
+                                  {t('actions.recordBalance')}
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
                                   onSelect={() =>
@@ -592,6 +608,7 @@ export default function BankAccounts() {
           if (!open) setEditing(null);
         }}
         account={editing ?? undefined}
+        onRecordBalance={() => setRecording(editing)}
         onSubmit={(data) => {
           const { id, ...updateData } = data as InsertBankAccount & { id: string };
           updateAccount.mutate(
@@ -607,6 +624,16 @@ export default function BankAccounts() {
         }}
         isLoading={updateAccount.isPending}
       />
+      {recording && (
+        <BalanceRecordDialog
+          open
+          onOpenChange={(open) => {
+            if (!open) setRecording(null);
+          }}
+          account={recording}
+          records={recordingRecords}
+        />
+      )}
       <ConfirmDeleteDialog
         open={pendingDelete !== null}
         onOpenChange={(open) => {

@@ -544,6 +544,7 @@
     "importStatement": "Importera kontoutdrag"
   },
   "menu": {
+    "showDetail": "Visa detaljer",
     "balanceHistory": "Saldohistorik",
     "interest": "Ränta"
   },

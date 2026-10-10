@@ -17,9 +17,12 @@ use std::collections::HashMap;
 use rusqlite::{params, Connection};
 use uuid::Uuid;
 
+use super::apply::SOURCE_EXACT_MATCH;
+use super::recategorize;
 use super::tokenizer::{normalize_iban, normalize_payee_key};
 use super::CategorizationEngine;
 use crate::error::{AppError, Result};
+use crate::models::categorization::ChangedRow;
 use crate::services::bank_accounts::category_exists;
 
 /// Payee key for matching, or `None` when too short (or only a reference
@@ -178,6 +181,18 @@ pub fn learn_scoped(
     engine: &CategorizationEngine,
     data: &crate::models::categorization::InsertScopedLearning,
 ) -> Result<()> {
+    learn_scoped_and_apply(conn, engine, data, false).map(|_| ())
+}
+
+/// `learn_scoped`, and when `apply_history` is set, in the same transaction,
+/// every other payment the new rule covers gets its category (spec
+/// 2026-10-10). Returns what those rows held before, for undo.
+pub fn learn_scoped_and_apply(
+    conn: &Connection,
+    engine: &CategorizationEngine,
+    data: &crate::models::categorization::InsertScopedLearning,
+    apply_history: bool,
+) -> Result<Vec<ChangedRow>> {
     data.validate()?;
     if !category_exists(conn, &data.category_id)? {
         return Err(AppError::NotFound("Category not found".into()));
@@ -209,6 +224,27 @@ pub fn learn_scoped(
     let transaction = conn.unchecked_transaction()?;
     transaction.execute("DELETE FROM learned_payees WHERE bank_account_id=?1 AND is_credit=?2 AND normalized_payee IS ?3 AND counterparty_iban IS ?4", params![data.bank_account_id,data.is_credit,payee,identity])?;
     transaction.execute("INSERT INTO learned_payees(id,normalized_payee,original_payee,counterparty_iban,category_id,bank_account_id,is_credit) VALUES (?1,?2,?3,?4,?5,?6,?7)",params![Uuid::new_v4().to_string(),payee,if identity.is_some() { None } else { data.payee.as_deref() },identity,data.category_id,data.bank_account_id,data.is_credit])?;
+    let changed = if apply_history {
+        let scope = LearnedPayeeRow {
+            id: String::new(),
+            normalized_payee: payee.clone(),
+            original_payee: None,
+            counterparty_iban: identity.clone(),
+            category_id: data.category_id.clone(),
+            bank_account_id: Some(data.bank_account_id.clone()),
+            is_credit: Some(data.is_credit),
+            created_at: 0,
+            updated_at: 0,
+        };
+        let rows = recategorize::matching_rows(
+            &transaction,
+            &recategorize::Matcher::Learned(scope),
+            None,
+        )?;
+        recategorize::apply(&transaction, &rows, &data.category_id, SOURCE_EXACT_MATCH)?
+    } else {
+        Vec::new()
+    };
     transaction.commit()?;
     engine.learn_scoped(
         &data.bank_account_id,
@@ -217,7 +253,7 @@ pub fn learn_scoped(
         identity.as_deref(),
         &data.category_id,
     );
-    Ok(())
+    Ok(changed)
 }
 
 impl LearnedKey {
@@ -508,6 +544,74 @@ mod tests {
             )
             .unwrap(),
             0
+        );
+    }
+
+    #[test]
+    fn scoped_learning_can_give_the_category_to_earlier_payments() {
+        let conn = setup_test_db();
+        conn.execute_batch(
+            "DROP INDEX idx_learned_payees_composite;
+             CREATE TABLE bank_accounts(id TEXT PRIMARY KEY); INSERT INTO bank_accounts VALUES ('a'),('b');
+             INSERT INTO transaction_categories VALUES ('cat_dining'),('cat_groceries');
+             CREATE TABLE bank_transactions (
+                id TEXT PRIMARY KEY, bank_account_id TEXT NOT NULL, tx_type TEXT NOT NULL, amount TEXT NOT NULL,
+                description TEXT, counterparty_name TEXT, counterparty_iban TEXT, counterparty_bank_code TEXT,
+                counterparty_country TEXT, category_id TEXT, categorization_source TEXT, suggested_category_id TEXT);
+             INSERT INTO bank_transactions (id, bank_account_id, tx_type, amount, counterparty_name, category_id) VALUES
+               ('t1','a','debit','100','Albert','cat_dining'),
+               ('t2','a','debit','100','Albert',NULL),
+               ('t3','a','debit','100','Albert','cat_groceries'),
+               ('t4','b','debit','100','Albert','cat_dining'),
+               ('t5','a','credit','100','Albert','cat_dining');",
+        )
+        .unwrap();
+        let engine = CategorizationEngine::new_empty();
+        let data = crate::models::categorization::InsertScopedLearning {
+            bank_account_id: "a".into(),
+            is_credit: false,
+            payee: Some("Albert".into()),
+            counterparty_iban: None,
+            counterparty_bank_code: None,
+            counterparty_country: None,
+            category_id: "cat_groceries".into(),
+        };
+        let changed = learn_scoped_and_apply(&conn, &engine, &data, true).unwrap();
+        let mut ids: Vec<&str> = changed.iter().map(|c| c.id.as_str()).collect();
+        ids.sort();
+        assert_eq!(
+            ids,
+            vec!["t1", "t2"],
+            "same account and direction, not already groceries"
+        );
+        let source: Option<String> = conn
+            .query_row(
+                "SELECT categorization_source FROM bank_transactions WHERE id = 't1'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(source.as_deref(), Some("exact_match"));
+        let untouched: String = conn
+            .query_row(
+                "SELECT category_id FROM bank_transactions WHERE id = 't4'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(untouched, "cat_dining");
+        let mut tx = TransactionInput::new("new".into(), None, Some("Albert".into()), -50.0);
+        tx.bank_account_id = Some("a".into());
+        assert_eq!(
+            engine.categorize(&tx).category_id(),
+            Some("cat_groceries"),
+            "the rule is learned too"
+        );
+
+        let none = learn_scoped_and_apply(&conn, &engine, &data, false).unwrap();
+        assert!(
+            none.is_empty(),
+            "without apply_history nothing but the rule changes"
         );
     }
 

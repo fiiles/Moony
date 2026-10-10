@@ -442,7 +442,7 @@ mod tests {
             [],
         )
         .unwrap();
-        let rows = transactions(&conn, 0, i64::MAX, None).unwrap();
+        let rows = transactions_in_currency(&conn, 0, i64::MAX, None, "CZK").unwrap();
         let own = rows.iter().find(|r| r.id == "own").unwrap();
         assert_eq!(own.remittance_info.as_deref(), Some("Faktura 42"));
     }

@@ -337,7 +337,7 @@ duplicates: CsvRowMessage[];
  */
 skippedDuplicates: CsvRowMessage[]; skippedZero: number; 
 /**
- * Rows dropped by the row filter or rejected transaction status.
+ * Rows dropped by the row filter.
  */
 skippedFiltered: number; 
 /**

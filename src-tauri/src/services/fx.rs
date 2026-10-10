@@ -339,6 +339,15 @@ pub fn current() -> Quotes {
     with_store(|s| s.read().unwrap_or_else(|e| e.into_inner()).quotes.clone())
 }
 
+/// The quotes and their fetched-at time read under one guard, so a concurrent refresh can
+/// never pair the quotes of one load with the revision of another.
+pub fn current_with_fetched_at() -> (Quotes, Option<i64>) {
+    with_store(|s| {
+        let guard = s.read().unwrap_or_else(|e| e.into_inner());
+        (guard.quotes.clone(), guard.fetched_at)
+    })
+}
+
 /// Unix seconds the current snapshot was fetched; `0` while no rates have been loaded.
 pub fn current_revision() -> i64 {
     current_fetched_at().unwrap_or(0)
@@ -387,11 +396,11 @@ pub fn snapshot_units(quotes: &Quotes) -> HashMap<String, f64> {
 
 /// The current quotes as a wire snapshot (`revision` 0 while nothing has been loaded).
 pub fn snapshot() -> FxSnapshot {
-    let quotes = current();
+    let (quotes, fetched_at) = current_with_fetched_at();
     FxSnapshot {
         reference: quotes.reference().to_string(),
         units: snapshot_units(&quotes),
-        revision: current_revision(),
+        revision: fetched_at.unwrap_or(0),
     }
 }
 
@@ -614,6 +623,10 @@ mod tests {
         // plain set_current keeps the revision of the data it replaces
         set_current(Quotes::new("CZK"));
         assert_eq!(current_fetched_at(), Some(1_700_000_000));
+        let (quotes, fetched_at) = current_with_fetched_at();
+        assert_eq!(quotes.reference(), "CZK");
+        assert_eq!(fetched_at, Some(1_700_000_000));
+        assert_eq!(snapshot().revision, 1_700_000_000);
     }
 
     #[test]

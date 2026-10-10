@@ -12,7 +12,7 @@ use super::money::load_main_currency;
 /// alike, plus every supported currency code (a code without a rate is supported but not
 /// quoted right now).
 pub fn exchange_rates_list(conn: &Connection) -> Result<Value> {
-    let quotes = fx::current();
+    let (quotes, fetched_at) = fx::current_with_fetched_at();
     let rates: Vec<Value> = quotes
         .codes()
         .into_iter()
@@ -28,7 +28,7 @@ pub fn exchange_rates_list(conn: &Connection) -> Result<Value> {
     Ok(serde_json::json!({
         "baseCurrency": quotes.reference(),
         "mainCurrency": load_main_currency(conn)?,
-        "fetchedAt": fx::current_fetched_at(),
+        "fetchedAt": fetched_at,
         "rates": rates,
         "supportedCurrencies": fx::supported_codes(),
         "note": format!(

@@ -749,7 +749,7 @@ confirmUnknownAsOf?: boolean; sourceBatchId?: string | null }
  */
 export type InsertBankAccount = { name: string; accountType: string | null; iban: string | null; bban: string | null; currency: string | null; balance: string | null; 
 /**
- * Omitted preserves an unchanged anchor; null explicitly makes it unknown.
+ * UTC day of the opening balance (create only; with it the create writes the first balance record). The update command ignores it.
  */
 balanceAsOf?: number | null; institutionId: string | null; interestRate: string | null; hasZoneDesignation: boolean | null; terminationDate: number | null; 
 /**

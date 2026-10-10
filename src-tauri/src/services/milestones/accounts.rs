@@ -1,5 +1,5 @@
 //! Bank account milestones: a term account ending, a promotional rate ending, and one
-//! reminder for balances nobody updated for a month.
+//! reminder for balances nobody recorded or edited for a month.
 
 use rusqlite::Connection;
 
@@ -19,11 +19,12 @@ struct AccountRow {
     rate_end: Option<i64>,
     excluded: bool,
     updated_at: i64,
+    balance_as_of: Option<i64>,
 }
 
 pub(super) fn build(conn: &Connection, today: i64) -> Result<Vec<Milestone>> {
     let mut stmt = conn.prepare(
-        "SELECT id, name, termination_date, interest_rate_valid_until, exclude_from_balance, updated_at
+        "SELECT id, name, termination_date, interest_rate_valid_until, exclude_from_balance, updated_at, balance_as_of
          FROM bank_accounts ORDER BY name",
     )?;
     let accounts = stmt
@@ -35,6 +36,7 @@ pub(super) fn build(conn: &Connection, today: i64) -> Result<Vec<Milestone>> {
                 rate_end: r.get(3)?,
                 excluded: r.get::<_, i32>(4)? != 0,
                 updated_at: r.get(5)?,
+                balance_as_of: r.get(6)?,
             })
         })?
         .collect::<std::result::Result<Vec<_>, _>>()?;
@@ -75,7 +77,8 @@ pub(super) fn build(conn: &Connection, today: i64) -> Result<Vec<Milestone>> {
                 out.push(m);
             }
         }
-        let updated = day_floor(a.updated_at);
+        // A recorded balance dates the account; without one, the last edit does
+        let updated = day_floor(a.balance_as_of.unwrap_or(a.updated_at));
         if !a.excluded && updated < today - STALE_BALANCE_DAYS * DAY {
             stale += 1;
             oldest = Some(oldest.map_or(updated, |o| o.min(updated)));
@@ -154,5 +157,30 @@ mod tests {
         assert_eq!(list[0].count, Some(2));
         assert_eq!(list[0].since_day, Some(day(2026, 7, 1)));
         assert_eq!(list[0].key, format!("balances_stale:{}", day(2026, 7, 1)));
+    }
+
+    #[test]
+    fn a_fresh_balance_record_keeps_an_otherwise_old_account_out_of_stale() {
+        let conn = setup();
+        let today = day(2026, 8, 1);
+        // Edited two days ago, balance recorded a week ago: fresh
+        account(&conn, "acc-old-edit", None, None, false, today - 2 * DAY);
+        conn.execute(
+            "UPDATE bank_accounts SET balance_as_of = ?1 WHERE id = 'acc-old-edit'",
+            params![today - 7 * DAY],
+        )
+        .unwrap();
+        // Edited yesterday, but the balance dates from two months ago: stale
+        account(&conn, "acc-stale", None, None, false, today - DAY);
+        conn.execute(
+            "UPDATE bank_accounts SET balance_as_of = ?1 WHERE id = 'acc-stale'",
+            params![today - 60 * DAY],
+        )
+        .unwrap();
+        let list = build(&conn, today).unwrap();
+        let stale: Vec<_> = list.iter().filter(|m| m.kind == "balances_stale").collect();
+        assert_eq!(stale.len(), 1);
+        assert_eq!(stale[0].count, Some(1));
+        assert_eq!(stale[0].since_day, Some(today - 60 * DAY));
     }
 }

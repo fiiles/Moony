@@ -120,7 +120,7 @@ pub struct InsertBankAccount {
     pub bban: Option<String>,
     pub currency: Option<String>,
     pub balance: Option<String>,
-    /// Omitted preserves an unchanged anchor; null explicitly makes it unknown.
+    /// UTC day of the opening balance (create only; with it the create writes the first balance record). The update command ignores it.
     #[serde(
         rename = "balanceAsOf",
         default,

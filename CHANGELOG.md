@@ -20,6 +20,10 @@ All notable changes to Moony are documented in this file. The format follows
   missing, instead of being counted as if one unit were worth one crown. A cost converted at
   today's rate because its purchase day had no rate is marked as estimated. Rates older than 14
   days are reported as stale.
+- **Remembered corrections reach other payments.** The category picker in the bank ledger says
+  how many other payments of the same payee the remembered rule covers, broken down by their
+  current category, and categorizes them in the same step; the toast offers "Vrátit zpět". The
+  same offer appears when a learned rule's category is changed on the rules page.
 
 ### Changed
 
@@ -84,6 +88,11 @@ All notable changes to Moony are documented in this file. The format follows
   Investment income, and pensions, benefits and tax refunds go to Other income instead of Salary. The
   Czech "vratka" and "dobropis" keywords no longer file a refund as income: a refund belongs in the
   category of the original purchase, so it stays uncategorized for you to assign.
+- **A correction under a custom rule rewrites that rule.** When one of your own rules decides a
+  payee's category, remembering a correction changes the rule's category (it has precedence over
+  learned choices) and the picker says so, with a link to the rule. A payment that cannot be
+  remembered, or a transfer between your own accounts, now says why instead of silently learning
+  nothing.
 
 ### Fixed
 

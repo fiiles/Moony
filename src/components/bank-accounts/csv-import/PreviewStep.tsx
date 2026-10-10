@@ -11,6 +11,7 @@ import { useFormat } from '@/lib/use-format';
 import { translateApiError } from '@/lib/translate-api-error';
 import { translateRowMessage } from '@/utils/csv-import-messages';
 import { categoryDisplayName } from '@/utils/category-name';
+import { counterpartyLabel, transactionDetails } from '@/utils/transaction-text';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -274,15 +275,26 @@ export function PreviewStep({
                 <TableHead className="w-[110px] text-right">
                   {t('csvImport.preview.colAmount')}
                 </TableHead>
-                <TableHead>{t('csvImport.preview.colDescription')}</TableHead>
-                <TableHead className="w-[26%]">{t('csvImport.preview.colCategory')}</TableHead>
-                <TableHead className="w-[25%]">{t('csvImport.preview.colStatus')}</TableHead>
+                <TableHead>{t('transaction.counterparty')}</TableHead>
+                <TableHead>{t('transaction.detail')}</TableHead>
+                <TableHead className="w-[20%]">{t('csvImport.preview.colCategory')}</TableHead>
+                <TableHead className="w-[19%]">{t('csvImport.preview.colStatus')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {rows.map((row) => {
                 const amount = Number(row.amount);
                 const muted = row.status === 'duplicate' && !forced.has(row.line);
+                // Same columns as the account ledger
+                const text = {
+                  counterpartyName: row.counterparty,
+                  counterpartyIban: row.counterpartyIban,
+                  counterpartyBankCode: row.counterpartyBankCode,
+                  description: row.description,
+                  remittanceInfo: null,
+                };
+                const counterparty = counterpartyLabel(text);
+                const details = transactionDetails(text).join(' · ');
                 return (
                   <TableRow
                     key={row.line}
@@ -306,11 +318,21 @@ export function PreviewStep({
                       {formatPreviewAmount(row.amount, row.currency ?? accountCurrency, locale)}
                     </TableCell>
                     <TableCell className="max-w-0">
-                      <span className="block truncate" title={row.description ?? undefined}>
-                        {row.description || '—'}
-                        {row.counterparty && (
-                          <span className="text-ink-4"> · {row.counterparty}</span>
-                        )}
+                      <span className="block truncate" title={counterparty.title ?? undefined}>
+                        {counterparty.title ?? <span className="text-ink-4">—</span>}
+                      </span>
+                      {counterparty.subtitle && (
+                        <small
+                          className="block truncate text-micro font-500 text-ink-4 num"
+                          title={counterparty.subtitle}
+                        >
+                          {counterparty.subtitle}
+                        </small>
+                      )}
+                    </TableCell>
+                    <TableCell className="max-w-0">
+                      <span className="block truncate" title={details || undefined}>
+                        {details || '—'}
                       </span>
                     </TableCell>
                     <TableCell>{categoryCell(row)}</TableCell>

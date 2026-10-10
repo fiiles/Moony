@@ -226,7 +226,7 @@ skipRows?: number;
 /**
  * 0-based line of the header row; `None` = auto-detect.
  */
-headerRow?: number | null; dateColumn: string; valueDateColumn?: string | null; statusColumn?: string | null; pendingDateColumn?: string | null; 
+headerRow?: number | null; dateColumn: string; 
 /**
  * chrono format (`%d.%m.%Y`). Parsed strictly: a row that does not match
  * is an error, never re-read as another order. Empty or `auto` detects the
@@ -376,7 +376,7 @@ delimiter: string;
  * Encoding label (`UTF-8`, `Windows-1250`, …). Only consulted when the
  * file is not valid UTF-8 — see `decode_csv_content`.
  */
-encoding: string; dateColumn: string; valueDateColumn?: string | null; statusColumn?: string | null; pendingDateColumn?: string | null; 
+encoding: string; dateColumn: string; 
 /**
  * chrono format of the date column (`%d.%m.%Y`, `%Y-%m-%d %H:%M:%S`).
  */
@@ -446,7 +446,7 @@ suggestedRowFilter: CsvRowFilter | null }
 /**
  * One row of the preview table.
  */
-export type CsvPreviewRow = { valueDate: number | null; counterpartyIban: string | null; counterpartyBankCode: string | null; counterpartyCountry: string | null; transactionId: string | null; transactionStatus: string | null; rowBalance: string | null; canImportAnyway: boolean; line: number; bookingDate: number | null; 
+export type CsvPreviewRow = { counterpartyIban: string | null; counterpartyBankCode: string | null; counterpartyCountry: string | null; transactionId: string | null; rowBalance: string | null; canImportAnyway: boolean; line: number; bookingDate: number | null; 
 /**
  * Signed decimal string (`-250.5`), `None` when the amount is unreadable.
  */

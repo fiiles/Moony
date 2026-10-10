@@ -96,9 +96,6 @@ pub fn config_from_inspection(r: &CsvPreviewResult) -> CsvImportConfig {
         delimiter: r.delimiter.clone(),
         header_row: Some(r.header_row),
         date_column: mapped("date").unwrap_or_default(),
-        value_date_column: mapped("valueDate"),
-        status_column: mapped("status"),
-        pending_date_column: mapped("pendingDate"),
         counterparty_bank_code_column: mapped("counterpartyBankCode"),
         counterparty_country_column: mapped("counterpartyCountry"),
 
@@ -140,9 +137,6 @@ impl ResolvedPreset {
         CsvImportConfig {
             delimiter: delimiter.to_string(),
             date_column: self.date.clone(),
-            value_date_column: self.value_date.clone(),
-            status_column: self.status.clone(),
-            pending_date_column: self.pending_date.clone(),
             counterparty_bank_code_column: self.counterparty_bank_code.clone(),
             counterparty_country_column: self.counterparty_country.clone(),
 

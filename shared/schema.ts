@@ -1149,9 +1149,6 @@ export interface CsvPreset {
   delimiter: string;
   encoding: string;
   dateColumn: string;
-  valueDateColumn: string | null;
-  statusColumn: string | null;
-  pendingDateColumn: string | null;
   counterpartyBankCodeColumn: string | null;
   counterpartyCountryColumn: string | null;
   /** chrono format; may contain a time part (`%Y-%m-%d %H:%M:%S`). */
@@ -1260,9 +1257,6 @@ export interface CsvImportConfigInput {
   /** 0-based line of the header row; omit to auto-detect. */
   headerRow?: number | null;
   dateColumn: string;
-  valueDateColumn?: string | null;
-  statusColumn?: string | null;
-  pendingDateColumn?: string | null;
   counterpartyBankCodeColumn?: string | null;
   counterpartyCountryColumn?: string | null;
   /** chrono format, parsed strictly; "" or "auto" detects it. */
@@ -1305,18 +1299,16 @@ export interface CsvCategoryOverride {
 /**
  * ok: will be imported. error: cannot be imported (see `message`). duplicate: matches an
  * stored occurrence or bank ID; only possible composites allow `importAnywayLines`.
- * skipped: zero amount, rejected status or dropped by the row filter.
+ * skipped: zero amount or dropped by the row filter.
  * promoted: existing same-ID pending transaction will be booked in place.
  */
 export type CsvRowStatus = 'ok' | 'error' | 'duplicate' | 'skipped' | 'promoted';
 
 export interface CsvPreviewRow {
-  valueDate: number | null;
   counterpartyIban: string | null;
   counterpartyBankCode: string | null;
   counterpartyCountry: string | null;
   transactionId: string | null;
-  transactionStatus: TransactionStatus | null;
   rowBalance: string | null;
   canImportAnyway: boolean;
 

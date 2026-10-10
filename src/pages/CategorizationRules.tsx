@@ -68,13 +68,15 @@ import {
   idleCount,
   maxHits,
   packCountryName,
+  packIdFromTab,
+  packTabValue,
   ruleTypeKey,
   topRule,
 } from '@/utils/rule-hits';
 import { RULES_PAGE_PATH, parseNewRuleSearch } from '@/utils/rules-link';
 import { cn } from '@/lib/utils';
 
-type Tab = 'custom' | 'learned' | 'packs';
+type Tab = 'custom' | 'learned' | `pack:${string}`;
 const AUTOMATIC_SOURCES = new Set(['rule', 'exact_match', 'own_account']);
 
 export default function CategorizationRules() {
@@ -95,8 +97,7 @@ export default function CategorizationRules() {
     if (linkedNewRule) setLocation(RULES_PAGE_PATH, { replace: true });
   }, [linkedNewRule, setLocation]);
 
-  const [tab, setTab] = useState<Tab>('custom');
-  const [selectedPackId, setSelectedPackId] = useState('');
+  const [selectedTab, setSelectedTab] = useState<Tab>('custom');
   const [query, setQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState(ALL_CATEGORIES);
   const [page, setPage] = useState(0);
@@ -134,7 +135,14 @@ export default function CategorizationRules() {
     queryFn: () => categorizationApi.getRulePacks(),
   });
   const enabledPacks = rulePacks.filter((p) => p.enabled);
-  const activePackId = selectedPackId || enabledPacks[0]?.packId || rulePacks[0]?.packId || '';
+  // A pack tab whose pack was disabled in Settings no longer exists: show the first tab instead.
+  const selectedPackId = packIdFromTab(selectedTab);
+  const tab: Tab =
+    selectedPackId && rulePacks.length > 0 && !enabledPacks.some((p) => p.packId === selectedPackId)
+      ? 'custom'
+      : selectedTab;
+  // The pack whose tab is open; on the other tabs the first enabled pack feeds the top-rule stat.
+  const activePackId = packIdFromTab(tab) ?? enabledPacks[0]?.packId ?? rulePacks[0]?.packId ?? '';
   const activePack = rulePacks.find((p) => p.packId === activePackId);
   const { data: packRules = [] } = useQuery({
     queryKey: ['packRules', activePackId],
@@ -166,6 +174,8 @@ export default function CategorizationRules() {
   );
   const countryOf = (pack: { packId: string; country: string }) =>
     packCountryName(pack.packId, pack.country, getLocale());
+  const packLabel = (pack: { packId: string; country: string }) =>
+    pack.packId === 'global' ? t('tabs.packGlobal') : t('tabs.pack', { country: countryOf(pack) });
   const packCountries = enabledPacks.filter((p) => p.packId !== 'global').map(countryOf);
   const activeCountry = activePack ? countryOf(activePack) : '';
 
@@ -454,7 +464,7 @@ export default function CategorizationRules() {
         />
       </Stats>
 
-      <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)}>
+      <Tabs value={tab} onValueChange={(v) => setSelectedTab(v as Tab)}>
         <TabsList variant="underline">
           <TabsTrigger value="custom">
             {t('tabs.custom')} <span className="text-ink-4">{customRules.length}</span>
@@ -462,10 +472,11 @@ export default function CategorizationRules() {
           <TabsTrigger value="learned">
             {t('tabs.learned')} <span className="text-ink-4">{learnedRules.length}</span>
           </TabsTrigger>
-          <TabsTrigger value="packs">
-            {activePack ? t('tabs.pack', { country: activeCountry }) : t('tabs.packGeneric')}{' '}
-            <span className="text-ink-4">{packRules.length}</span>
-          </TabsTrigger>
+          {enabledPacks.map((pack) => (
+            <TabsTrigger key={pack.packId} value={packTabValue(pack.packId)}>
+              {packLabel(pack)} <span className="text-ink-4">{pack.ruleCount}</span>
+            </TabsTrigger>
+          ))}
         </TabsList>
 
         {/* ---------------- Custom rules ---------------- */}
@@ -714,121 +725,111 @@ export default function CategorizationRules() {
         </TabsContent>
 
         {/* ---------------- Pack rules ---------------- */}
-        <TabsContent value="packs" className="mt-0">
-          <Card variant="table">
-            <CardHeader>
-              <div>
-                <CardTitle>
-                  {activePack
-                    ? t('packTab.title', { country: activeCountry })
-                    : t('packRules.title')}
-                </CardTitle>
-                {activePack && (
-                  <CardDescription>
-                    {t('packTab.subtitle', {
-                      count: activePack.ruleCount,
-                      version: activePack.version,
-                    })}
-                  </CardDescription>
-                )}
-              </div>
-              <div className="flex items-center gap-3">
-                {activePack && (
-                  <Badge variant={activePack.enabled ? 'gain' : 'outline'}>
-                    {t(activePack.enabled ? 'packTab.enabled' : 'packTab.disabled')}
-                  </Badge>
-                )}
-                {rulePacks.length > 1 && (
-                  <Select value={activePackId} onValueChange={setSelectedPackId}>
-                    <SelectTrigger
-                      className="h-[35px] w-[180px] text-table"
-                      aria-label={t('packRules.selectPack')}
-                    >
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {rulePacks.map((pack) => (
-                        <SelectItem key={pack.packId} value={pack.packId}>
-                          {countryOf(pack)}
-                          {pack.enabled ? '' : ` — ${t('packRules.packDisabled')}`}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-                {searchBox(t('packTab.search'))}
-              </div>
-            </CardHeader>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[26%]">{t('packTab.rule')}</TableHead>
-                  <TableHead>{t('packTab.type')}</TableHead>
-                  <TableHead>{t('packTab.pattern')}</TableHead>
-                  <TableHead>{t('packTab.category')}</TableHead>
-                  <TableHead className="text-right">
-                    {t('hits.column', { days: HIT_DAYS })}
-                  </TableHead>
-                  <TableHead className="text-right">{t('packTab.on')}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredPack.map((rule) => (
-                  <TableRow key={rule.id} className={cn('h-14', rule.disabled && 'text-ink-4')}>
-                    <TableCell>
-                      <b className={cn('font-600', rule.disabled ? 'text-ink-3' : 'text-ink')}>
-                        {rule.name}
-                      </b>
-                      {rule.disabled && sub(t('packTab.disabledNote'))}
-                    </TableCell>
-                    <TableCell>
-                      <Badge>
-                        {t(`ruleTypes.${ruleTypeKey(rule.ruleType)}`, {
-                          defaultValue: rule.ruleType,
-                        })}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="max-w-[200px] truncate font-mono text-[11px] text-ink-3">
-                      {rule.pattern}
-                    </TableCell>
-                    <TableCell>{categoryCell(rule.categoryId)}</TableCell>
-                    <TableCell className="text-right">
-                      {hitsCell(rule.id, packMax, false)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Switch
-                        checked={!rule.disabled}
-                        disabled={togglePackRule.isPending}
-                        onCheckedChange={(checked) =>
-                          togglePackRule.mutate({ ruleId: rule.id, disabled: !checked })
-                        }
-                        aria-label={t('packTab.on')}
-                      />
-                    </TableCell>
+        {enabledPacks.map((pack) => (
+          <TabsContent key={pack.packId} value={packTabValue(pack.packId)} className="mt-0">
+            <Card variant="table">
+              <CardHeader>
+                <div>
+                  <CardTitle>
+                    {activePack
+                      ? t('packTab.title', { country: activeCountry })
+                      : t('packRules.title')}
+                  </CardTitle>
+                  {activePack && (
+                    <CardDescription>
+                      {t('packTab.subtitle', {
+                        count: activePack.ruleCount,
+                        version: activePack.version,
+                      })}
+                    </CardDescription>
+                  )}
+                </div>
+                <div className="flex items-center gap-3">
+                  {activePack && (
+                    <Badge variant={activePack.enabled ? 'gain' : 'outline'}>
+                      {t(activePack.enabled ? 'packTab.enabled' : 'packTab.disabled')}
+                    </Badge>
+                  )}
+                  <Link
+                    href="/settings/categorization"
+                    className="text-caption font-650 text-ink-2 hover:underline"
+                  >
+                    {t('packTab.settingsLink')}
+                  </Link>
+                  {searchBox(t('packTab.search'))}
+                </div>
+              </CardHeader>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[26%]">{t('packTab.rule')}</TableHead>
+                    <TableHead>{t('packTab.type')}</TableHead>
+                    <TableHead>{t('packTab.pattern')}</TableHead>
+                    <TableHead>{t('packTab.category')}</TableHead>
+                    <TableHead className="text-right">
+                      {t('hits.column', { days: HIT_DAYS })}
+                    </TableHead>
+                    <TableHead className="text-right">{t('packTab.on')}</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-            <div className="flex items-center justify-between gap-6 border-t border-line px-[14px] py-3 text-micro font-500 text-ink-4">
-              <span>
-                {t('packTab.footer', {
-                  shown: filteredPack.length,
-                  total: packRules.length,
-                  idle: idleCount(
-                    hits,
-                    packRules.map((r) => r.id)
-                  ),
-                })}
-              </span>
-              <Link
-                href="/settings"
-                className="font-600 text-ink-3 underline-offset-[3px] hover:text-ink hover:underline"
-              >
-                {t('packTab.settingsLink')}
-              </Link>
-            </div>
-          </Card>
-        </TabsContent>
+                </TableHeader>
+                <TableBody>
+                  {filteredPack.map((rule) => (
+                    <TableRow key={rule.id} className={cn('h-14', rule.disabled && 'text-ink-4')}>
+                      <TableCell>
+                        <b className={cn('font-600', rule.disabled ? 'text-ink-3' : 'text-ink')}>
+                          {rule.name}
+                        </b>
+                        {rule.disabled && sub(t('packTab.disabledNote'))}
+                      </TableCell>
+                      <TableCell>
+                        <Badge>
+                          {t(`ruleTypes.${ruleTypeKey(rule.ruleType)}`, {
+                            defaultValue: rule.ruleType,
+                          })}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="max-w-[200px] truncate font-mono text-[11px] text-ink-3">
+                        {rule.pattern}
+                      </TableCell>
+                      <TableCell>{categoryCell(rule.categoryId)}</TableCell>
+                      <TableCell className="text-right">
+                        {hitsCell(rule.id, packMax, false)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Switch
+                          checked={!rule.disabled}
+                          disabled={togglePackRule.isPending}
+                          onCheckedChange={(checked) =>
+                            togglePackRule.mutate({ ruleId: rule.id, disabled: !checked })
+                          }
+                          aria-label={t('packTab.on')}
+                        />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              <div className="flex items-center justify-between gap-6 border-t border-line px-[14px] py-3 text-micro font-500 text-ink-4">
+                <span>
+                  {t('packTab.footer', {
+                    shown: filteredPack.length,
+                    total: packRules.length,
+                    idle: idleCount(
+                      hits,
+                      packRules.map((r) => r.id)
+                    ),
+                  })}
+                </span>
+                <Link
+                  href="/settings"
+                  className="font-600 text-ink-3 underline-offset-[3px] hover:text-ink hover:underline"
+                >
+                  {t('packTab.settingsLink')}
+                </Link>
+              </div>
+            </Card>
+          </TabsContent>
+        ))}
       </Tabs>
 
       <ConfirmDeleteDialog

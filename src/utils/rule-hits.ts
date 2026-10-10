@@ -104,3 +104,17 @@ export function packCountryName(packId: string, fallback: string, locale: string
     return fallback;
   }
 }
+
+/** Tab value of one pack's tab on the rules page ("pack:cz"). */
+const PACK_TAB_PREFIX = 'pack:';
+
+export function packTabValue(packId: string): string {
+  return PACK_TAB_PREFIX + packId;
+}
+
+/** The pack id a tab value names, or `null` for the custom and learned tabs. */
+export function packIdFromTab(tab: string): string | null {
+  if (!tab.startsWith(PACK_TAB_PREFIX)) return null;
+  const id = tab.slice(PACK_TAB_PREFIX.length);
+  return id.length > 0 ? id : null;
+}

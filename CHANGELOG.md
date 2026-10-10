@@ -90,6 +90,8 @@ All notable changes to Moony are documented in this file. The format follows
 - **Stock prices lost their third decimal.** Adding a position, buying or selling rounded the price
   per share to two decimals, so a London share quoted in pence (0.953 £) was recorded as 0.95 £;
   the buy dialog also pre-filled the rounded price. The price is now kept as typed.
+- **Every enabled rule pack has its own tab** on the categorization rules page. Before, only the
+  first enabled pack was visible as a tab and the others hid behind a selector inside it.
 
 ## [0.9.1] - 2026-10-05
 

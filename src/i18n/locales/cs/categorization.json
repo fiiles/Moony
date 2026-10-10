@@ -5,7 +5,8 @@
     "custom": "Vlastní",
     "learned": "Naučená",
     "pack": "Balíček {{country}}",
-    "packGeneric": "Balíčky"
+    "packGeneric": "Balíčky",
+    "packGlobal": "Globální balíček"
   },
   "learnedRules": {
     "title": "Naučená pravidla",

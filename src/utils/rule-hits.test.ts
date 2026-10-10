@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import type { CustomRule, LearnedPayeeEntry, PackRuleInfo, RuleHitCount } from '@shared/schema';
-import { formatIbanDisplay, hitMap, idleCount, maxHits, ruleTypeKey, topRule } from './rule-hits';
+import {
+  formatIbanDisplay,
+  hitMap,
+  idleCount,
+  maxHits,
+  packIdFromTab,
+  packTabValue,
+  ruleTypeKey,
+  topRule,
+} from './rule-hits';
 
 const hits: RuleHitCount[] = [
   { ruleId: 'c1', hits: 3, lastHit: 1 },
@@ -68,5 +77,23 @@ describe('rule hits', () => {
     expect(formatIbanDisplay('CZ65 0800 0000 1920 0014 5399')).toBe('19-2000145399/0800');
     expect(formatIbanDisplay('DE89370400440532013000')).toBe('DE89370400440532013000');
     expect(formatIbanDisplay(null)).toBe('');
+  });
+});
+
+describe('pack tabs', () => {
+  it('names a pack tab by its id', () => {
+    expect(packTabValue('cz')).toBe('pack:cz');
+    expect(packTabValue('global')).toBe('pack:global');
+  });
+
+  it('reads the pack id back from a tab value', () => {
+    expect(packIdFromTab('pack:cz')).toBe('cz');
+    expect(packIdFromTab('pack:global')).toBe('global');
+  });
+
+  it('gives null for the custom and learned tabs and for an empty pack id', () => {
+    expect(packIdFromTab('custom')).toBeNull();
+    expect(packIdFromTab('learned')).toBeNull();
+    expect(packIdFromTab('pack:')).toBeNull();
   });
 });

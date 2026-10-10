@@ -5,7 +5,8 @@
     "custom": "Custom",
     "learned": "Learned",
     "pack": "Pack {{country}}",
-    "packGeneric": "Packs"
+    "packGeneric": "Packs",
+    "packGlobal": "Global pack"
   },
   "learnedRules": {
     "title": "Learned Rules",

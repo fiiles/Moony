@@ -41,7 +41,7 @@ describe('balanceSeries', () => {
   it('covers the last year, enters at the window start and ends at the newest record', () => {
     const records = [r('2025-08-01', 300000), r('2025-12-01', 340000), r('2026-10-03', 450000)];
     const series = balanceSeries(records, TODAY);
-    const start = TODAY - 365 * DAY; // 2025-10-10, between the first two records
+    const start = day('2026-10-03') - 365 * DAY; // 2025-10-03, between the first two records
     expect(series[0]).toEqual({ t: start, value: expect.any(Number), record: false });
     // Linear interpolation between 2025-08-01 (300000) and 2025-12-01 (340000)
     const t = (start - day('2025-08-01')) / (day('2025-12-01') - day('2025-08-01'));
@@ -50,6 +50,20 @@ describe('balanceSeries', () => {
       { t: day('2025-12-01'), value: 340000, record: true },
       { t: day('2026-10-03'), value: 450000, record: true },
     ]);
+  });
+  it('keeps the year before a stale newest record', () => {
+    const records = [r('2024-11-01', 300000), r('2025-03-01', 320000), r('2025-07-01', 340000)];
+    expect(balanceSeries(records, TODAY)).toEqual([
+      { t: day('2024-11-01'), value: 300000, record: true },
+      { t: day('2025-03-01'), value: 320000, record: true },
+      { t: day('2025-07-01'), value: 340000, record: true },
+    ]);
+  });
+  it('ignores records dated after today', () => {
+    const records = [r('2026-09-01', 1), r('2026-10-03', 2), r('2026-12-01', 3)];
+    const series = balanceSeries(records, TODAY);
+    expect(series.map((p) => p.t)).toEqual([day('2026-09-01'), day('2026-10-03')]);
+    expect(series).toHaveLength(2);
   });
   it('starts at the first record when the history is shorter than a year', () => {
     const records = [r('2026-04-30', 391600), r('2026-09-30', 433560)];

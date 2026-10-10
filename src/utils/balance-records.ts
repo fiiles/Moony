@@ -46,17 +46,20 @@ export function valueAt(records: readonly BalanceRecordLike[], day: number): num
 }
 
 /**
- * Points of the balance line: the records of the last year (from the first record
- * when the history is shorter), entered at the window start by the interpolated value
- * when a record lies before it. Empty with fewer than two records.
+ * Points of the balance line: the year ending at the newest record on or before `today`
+ * (from the first record when the history is shorter), entered at the window start by
+ * the interpolated value when a record lies before it. The axis the caller draws may run
+ * on to `today`, so a stale newest record shows as a gap. Records dated after `today`
+ * are ignored. Empty with fewer than two such records.
  */
 export function balanceSeries(
   records: readonly BalanceRecordLike[],
   today: number
 ): BalanceSeriesPoint[] {
-  const sorted = ascending(records);
+  const sorted = ascending(records).filter((r) => r.asOf <= today);
   if (sorted.length < 2) return [];
-  const start = Math.max(sorted[0].asOf, today - YEAR);
+  const newest = sorted[sorted.length - 1];
+  const start = Math.max(sorted[0].asOf, newest.asOf - YEAR);
   const inside = sorted.filter((r) => r.asOf >= start);
   const before = [...sorted].reverse().find((r) => r.asOf < start) ?? null;
   const points = inside.map((r) => ({ t: r.asOf, value: num(r.amount), record: true }));

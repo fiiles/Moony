@@ -143,7 +143,7 @@ impl InsertOtherAsset {
 
         // Yield type validation (if provided)
         if let Some(ref yield_type) = self.yield_type {
-            let valid_types = ["none", "percentage", "fixed"];
+            let valid_types = ["none", "fixed", "percent_purchase", "percent_market"];
             if !valid_types.contains(&yield_type.to_lowercase().as_str()) {
                 return Err(AppError::Validation("validation.yieldTypeInvalid".into()));
             }
@@ -203,5 +203,37 @@ impl InsertOtherAssetTransaction {
         }
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn asset_with_yield(yield_type: &str) -> InsertOtherAsset {
+        InsertOtherAsset {
+            name: "Gold".into(),
+            quantity: None,
+            market_price: None,
+            currency: None,
+            average_purchase_price: None,
+            yield_type: Some(yield_type.into()),
+            yield_value: Some("5".into()),
+        }
+    }
+
+    #[test]
+    fn accepts_every_yield_type_the_app_offers() {
+        for yield_type in ["none", "fixed", "percent_purchase", "percent_market"] {
+            assert!(
+                asset_with_yield(yield_type).validate().is_ok(),
+                "{yield_type} should be valid"
+            );
+        }
+    }
+
+    #[test]
+    fn rejects_unknown_yield_type() {
+        assert!(asset_with_yield("percentage").validate().is_err());
     }
 }

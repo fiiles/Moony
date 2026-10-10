@@ -77,7 +77,8 @@ fn all_migrations() -> Vec<(&'static str, &'static str)> {
         ("010_income_categories", MIGRATION_010),
         ("011_fx_eur_reference", MIGRATION_011),
         ("012_retire_czk_caches", MIGRATION_012),
-        ("013_balance_records", MIGRATION_013),
+        ("013_cashflow_plan_exclusions", MIGRATION_013),
+        ("014_balance_records", MIGRATION_014),
     ]
 }
 
@@ -1648,19 +1649,19 @@ mod tests {
         assert_eq!(count_rows(&conn, "other_asset_valuations"), 0);
     }
 
-    fn database_before_013() -> Connection {
+    fn database_before_014() -> Connection {
         let conn = Connection::open_in_memory().expect("in-memory db");
         let earlier: Vec<(&str, &str)> = all_migrations()
             .into_iter()
-            .filter(|(name, _)| *name < "013_balance_records")
+            .filter(|(name, _)| *name < "014_balance_records")
             .collect();
         run_chain(&conn, &earlier).expect("earlier migrations");
         conn
     }
 
     #[test]
-    fn migration_013_backfills_one_record_per_dated_balance() {
-        let conn = database_before_013();
+    fn migration_014_backfills_one_record_per_dated_balance() {
+        let conn = database_before_014();
         conn.execute_batch(
             "INSERT INTO bank_accounts (id, name, currency, balance, balance_as_of, updated_at)
                 VALUES ('dated', 'Dated', 'EUR', '1200.50', 1767312000, 1767400000);
@@ -2475,11 +2476,22 @@ ALTER TABLE stock_value_history DROP COLUMN value_czk;
 ALTER TABLE crypto_value_history DROP COLUMN value_czk;
 "#;
 
-/// 013: dated balance records. Every explicit balance update becomes a row; the
+/// Rows of the planning report the user leaves out of the plan without deleting
+/// them. Keys: `category:<categoryKey>`, an automatic source id (`loan:<id>`,
+/// `insurance:<id>`, `propertyCosts:<id>`, `account:<id>`, `stock:<ticker>`,
+/// `bond:<id>`, `rental:<id>`) or `item:<manual item id>`.
+pub(crate) const MIGRATION_013: &str = r#"
+CREATE TABLE IF NOT EXISTS cashflow_plan_exclusions (
+    key TEXT PRIMARY KEY,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch())
+);
+"#;
+
+/// 014: dated balance records. Every explicit balance update becomes a row; the
 /// `bank_accounts.balance` / `balance_as_of` columns mirror the newest record
 /// (services::bank_accounts::refresh_balance_columns). Undated balances are not
 /// backfilled: they stay an undated number until the user records a dated one.
-pub(crate) const MIGRATION_013: &str = r#"
+pub(crate) const MIGRATION_014: &str = r#"
 CREATE TABLE IF NOT EXISTS bank_balance_records (
     id TEXT PRIMARY KEY,
     bank_account_id TEXT NOT NULL REFERENCES bank_accounts(id) ON DELETE CASCADE,

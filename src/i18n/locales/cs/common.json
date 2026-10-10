@@ -234,6 +234,7 @@
     "milestoneKindUnknown": "Tento druh připomínky aplikace nezná.",
     "effectiveMonthInvalid": "Vyberte první den kalendářního měsíce.",
     "cashflowItemInvalid": "Zadejte platný název, kladnou částku, měnu, četnost a kategorii cashflow.",
+    "cashflowPlanKeyInvalid": "Neplatný klíč položky plánu.",
     "cashflowReplacementInvalid": "Vyberte dostupný automatický zdroj, který ještě není nahrazen.",
     "csvPreviewRangeInvalid": "Stránka náhledu musí obsahovat 1 až 200 řádků.",
     "pendingPromotionInvalid": "Čekající transakci se nepodařilo zaúčtovat. Obnovte náhled a zkuste to znovu.",

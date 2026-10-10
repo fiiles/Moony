@@ -226,6 +226,7 @@ pub async fn run() {
             commands::cashflow::create_cashflow_item,
             commands::cashflow::update_cashflow_item,
             commands::cashflow::delete_cashflow_item,
+            commands::cashflow::set_cashflow_plan_inclusion,
             // Budgeting commands
             commands::budgeting::get_budgeting_report,
             commands::budgeting::get_category_transactions,

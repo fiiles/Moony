@@ -82,6 +82,10 @@ describe('changeThisYear', () => {
   it('is null without a record on or before 1 January', () => {
     expect(changeThisYear([r('2026-04-30', 1), r('2026-09-30', 2)], TODAY)).toBeNull();
   });
+  it('is null when the newest record itself is the base', () => {
+    expect(changeThisYear([r('2025-12-28', 353600)], TODAY)).toBeNull();
+    expect(changeThisYear([r('2025-06-01', 1), r('2025-12-28', 2)], TODAY)).toBeNull();
+  });
 });
 
 describe('averageMonthlyChange', () => {

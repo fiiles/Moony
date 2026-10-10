@@ -558,6 +558,7 @@
     "lastMovement": "Poslední pohyb {{date}}",
     "lastImport": "Poslední import {{date}}",
     "balanceAsOf": "Zůstatek k {{date}}",
+    "balanceUnknownDate": "Zůstatek · datum neznámé",
     "noData": "Zatím bez dat"
   },
   "actions": {
@@ -620,10 +621,11 @@
     "mappingHelp": "Použijte částku se znaménkem (+ příchozí, − odchozí), nebo odchozí a příchozí sloupce. Pokud zvolíte obě možnosti, přednost má částka se znaménkem.",
     "provenanceMappingHelp": "Konečný zůstatek výpisu vám po importu nabídneme jako nový zůstatek účtu. ID transakce spolehlivě pozná duplicity. Měna určuje, v čem jsou částky; bez ní platí měna účtu. Číslo účtu protistrany, kód banky a země jsou volitelné; chybějící kód banky se nedoplňuje odhadem.",
     "confirmDateFormat": "Potvrdit vybraný formát data",
-    "balanceBlocked": "Zůstatek výpisu je v jiné měně nebo starší než současný datovaný zůstatek; nelze jej použít.",
+    "balanceBlocked": "Zůstatek výpisu je v jiné měně a nelze jej použít.",
     "statementAsOf": "Zůstatek výpisu k {{date}}",
     "confirmBalance": "Nastavit datovaný zůstatek",
     "balanceConfirmDescription": "Nastavit {{amount}} k {{date}}? Současné datum zůstatku: {{currentDate}}. Neznámé současné datum vyžaduje vaše výslovné potvrzení. Zůstatek je oddělený od importovaných transakcí.",
+    "balanceOlderDescription": "Zaznamenat {{amount}} k {{date}} do historie zůstatku? Je starší než současný zůstatek ({{currentDate}}), který zůstane beze změny.",
     "detail": {
       "bookingDate": "Datum zaúčtování",
       "valueDate": "Datum valuty",
@@ -730,8 +732,7 @@
     "since": "od {{date}}",
     "firstRecord": "první záznam",
     "record": "Záznam zůstatku",
-    "recordTip": "{{date}} · {{source}}",
-    "today": "Dnes"
+    "recordTip": "{{date}} · {{source}}"
   },
   "balanceStats": {
     "changeThisYear": "Změna letos",
@@ -743,6 +744,7 @@
     "sinceFirstRecord_few": "za {{count}} měsíce od prvního záznamu",
     "sinceFirstRecord_other": "za {{count}} měsíců od prvního záznamu",
     "singleRecord": "zatím jediný záznam",
+    "noRecord": "zatím žádný záznam",
     "yearlyInterest": "Roční úrok",
     "effectiveZoned": "{{rate}} efektivně · pásmové úročení",
     "simpleRate": "{{rate}} p. a.",

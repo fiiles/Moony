@@ -121,7 +121,13 @@ type Kind = 'all' | 'income' | 'outcome';
 
 const DAY = 86400;
 
+/** Route entry: another account remounts the page, so the flows window, month and ledger range reset. */
 export default function BankAccountDetail() {
+  const [, params] = useRoute('/bank-accounts/:id');
+  return <BankAccountDetailPage key={params?.id} />;
+}
+
+function BankAccountDetailPage() {
   const { t } = useTranslation('bank_accounts');
   const { t: tc } = useTranslation('common');
   const [, params] = useRoute('/bank-accounts/:id');
@@ -434,10 +440,12 @@ export default function BankAccountDetail() {
   const currentMonth = monthOf(today);
   const balance = parseFloat(account?.balance || '0');
   const hasAnyTransaction = (anyTransactionResult?.total ?? 0) > 0;
+  // Raw booked rows in any currency: the flows card (and its missing-rate note) must not
+  // wait for, or vanish with, the exchange rates
   const sections = detailSections({
     balance,
     hasAnyTransaction,
-    hasRecentRows: hasRecentRows(historyRows.rows, currentMonth),
+    hasRecentRows: hasRecentRows(history?.transactions ?? [], currentMonth),
   });
   const effectiveWindowEnd = windowEnd ?? currentMonth;
 
@@ -657,7 +665,9 @@ export default function BankAccountDetail() {
                 text: t('status.balanceAsOf', { date: fmt.day(account.balanceAsOf) }),
                 tone: 'neutral',
               }
-            : { text: t('status.noData'), tone: 'neutral' },
+            : account && Number(account.balance) !== 0 && account.balanceAsOf == null
+              ? { text: t('status.balanceUnknownDate'), tone: 'neutral' }
+              : { text: t('status.noData'), tone: 'neutral' },
   });
 
   // Sorting: a third click on the active column returns to the date order

@@ -66,6 +66,18 @@ pub fn create_account(
     data: &InsertBankAccount,
 ) -> Result<BankAccount> {
     data.validate()?;
+    // A dated opening balance becomes the first record, so it needs a real amount
+    if data.balance_as_of.flatten().is_some() {
+        let amount = data
+            .balance
+            .as_deref()
+            .filter(|b| !b.is_empty())
+            .and_then(|b| b.parse::<f64>().ok())
+            .filter(|n| n.is_finite());
+        if amount.is_none() {
+            return Err(AppError::Validation("validation.invalidAmount".into()));
+        }
+    }
 
     let id = Uuid::new_v4().to_string();
     let now = chrono::Utc::now().timestamp();
@@ -1291,6 +1303,20 @@ mod tests {
         let account = create_account(&conn, &undated).unwrap();
         assert!(list_balance_records(&conn, &account.id).unwrap().is_empty());
         assert_eq!(account.balance_as_of, None);
+    }
+
+    #[test]
+    fn create_account_with_a_date_needs_a_real_balance() {
+        let conn = setup_test_db();
+        for balance in [Some(String::new()), None, Some("abc".to_string())] {
+            let mut data = minimal_insert("Opening");
+            data.balance = balance;
+            data.balance_as_of = Some(Some(D2));
+            match create_account(&conn, &data) {
+                Err(AppError::Validation(key)) => assert_eq!(key, "validation.invalidAmount"),
+                other => panic!("expected a validation error, got {other:?}"),
+            }
+        }
     }
 
     #[test]

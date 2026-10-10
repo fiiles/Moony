@@ -536,6 +536,7 @@
     "lastMovement": "Last movement {{date}}",
     "lastImport": "Last import {{date}}",
     "balanceAsOf": "Balance as of {{date}}",
+    "balanceUnknownDate": "Balance · unknown date",
     "noData": "No data yet"
   },
   "actions": {
@@ -597,10 +598,11 @@
     "mappingHelp": "Use a signed amount (+ incoming, − outgoing), or outgoing and incoming columns. The signed column wins if both layouts are selected.",
     "provenanceMappingHelp": "After the import we offer the statement's closing balance as the account's new balance. A bank transaction ID reliably identifies duplicates. Currency says what the amounts are in; without it the account currency applies. Counterparty account, bank code and country are optional; a missing bank code is never guessed.",
     "confirmDateFormat": "Confirm selected date format",
-    "balanceBlocked": "This statement balance uses different units or is older than the current dated anchor; it cannot replace it.",
+    "balanceBlocked": "The statement balance is in another currency and cannot be used.",
     "statementAsOf": "Statement balance as of {{date}}",
     "confirmBalance": "Set dated balance",
     "balanceConfirmDescription": "Set {{amount}} as of {{date}}? Current balance date: {{currentDate}}. An unknown current date needs your explicit confirmation. The balance is separate from imported transactions.",
+    "balanceOlderDescription": "Record {{amount}} as of {{date}} into the balance history? It is older than the current balance ({{currentDate}}), which stays unchanged.",
     "detail": {
       "bookingDate": "Booking date",
       "valueDate": "Value date",
@@ -700,8 +702,7 @@
     "since": "since {{date}}",
     "firstRecord": "first record",
     "record": "Balance record",
-    "recordTip": "{{date}} · {{source}}",
-    "today": "Today"
+    "recordTip": "{{date}} · {{source}}"
   },
   "balanceStats": {
     "changeThisYear": "Change this year",
@@ -712,6 +713,7 @@
     "sinceFirstRecord_one": "over {{count}} month since the first record",
     "sinceFirstRecord_other": "over {{count}} months since the first record",
     "singleRecord": "only one record so far",
+    "noRecord": "no balance record yet",
     "yearlyInterest": "Yearly interest",
     "effectiveZoned": "{{rate}} effective · tiered interest",
     "simpleRate": "{{rate}} p.a.",

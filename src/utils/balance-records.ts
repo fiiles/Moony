@@ -72,7 +72,10 @@ export function balanceSeries(
   return points;
 }
 
-/** Newest record minus the value at 1 January of `today`'s UTC year; null without a base. */
+/**
+ * Newest record minus the value at 1 January of `today`'s UTC year; null without a base
+ * (including when the newest record itself is the base: there is no change to show).
+ */
 export function changeThisYear(
   records: readonly BalanceRecordLike[],
   today: number
@@ -82,7 +85,7 @@ export function changeThisYear(
   const jan1 = Date.UTC(new Date(today * 1000).getUTCFullYear(), 0, 1) / 1000;
   let base: BalanceRecordLike | null = null;
   for (const r of records) if (r.asOf <= jan1 && (!base || r.asOf > base.asOf)) base = r;
-  if (!base) return null;
+  if (!base || base === newest) return null;
   return { delta: num(newest.amount) - num(base.amount), baseDay: base.asOf };
 }
 

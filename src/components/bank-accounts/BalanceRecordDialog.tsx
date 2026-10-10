@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Info } from 'lucide-react';
 import type { BankBalanceRecord } from '@shared/schema';
@@ -42,6 +42,12 @@ export function BalanceRecordDialog({
   const [asOf, setAsOf] = useState(todayIsoUtc());
   const [confirmUnknown, setConfirmUnknown] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+
+  // A new opening starts without the previous attempt's error (the reset is stable)
+  const { reset: resetRecord } = recordBalance;
+  useEffect(() => {
+    if (open) resetRecord();
+  }, [open, resetRecord]);
 
   // Reset the form each time the dialog opens (render-time state, no effect)
   const [openedFor, setOpenedFor] = useState<boolean>(false);
@@ -146,7 +152,7 @@ export function BalanceRecordDialog({
           </Button>
           <Button
             onClick={submit}
-            disabled={recordBalance.isPending}
+            disabled={recordBalance.isPending || !asOf}
             loading={recordBalance.isPending}
           >
             {t('recordDialog.submit')}

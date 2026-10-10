@@ -177,7 +177,7 @@ export function BalanceSection({
               ? avg.sinceFirst
                 ? t('balanceStats.sinceFirstRecord', { count: avg.months })
                 : t('balanceStats.last12Months')
-              : t('balanceStats.singleRecord')
+              : t(records.length === 0 ? 'balanceStats.noRecord' : 'balanceStats.singleRecord')
           }
         />
         <Stat

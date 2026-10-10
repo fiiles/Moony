@@ -161,7 +161,7 @@ implementations.
 | List | Stocks, bank accounts | 3–4 stats, a trend card (`TrendCard`: title, one sentence, horizon segment, chart 170 px, legend; the same chrome and height on every list page), table card with search and toggles, add modal. Tables use a fixed layout so long text ends with an ellipsis instead of widening the table; no horizontal scroll at the minimum width. |
 | Detail | Stock detail, bank account detail | Back link, eyebrow, H1, action row, hero with time trace, 3–4 stats, ledger table + aside cards, modals. |
 | Report | Cashflow | Actual income and expenses from bank transactions for a month, quarter or year: stats, bar chart card, income and expenses by category, money transfers in their own card, recategorization from the drilldown. |
-| Plan | Cashflow planning | Planned recurring items in personal and investment sections, items derived from Úvěry / Pojištění / Nemovitosti / Akcie marked as automatic, monthly / yearly switch, a 100 % flow bar instead of a Sankey diagram. |
+| Plan | Cashflow planning | Planned recurring items in personal and investment sections; every non-empty category is a collapsible row (chevron, name, "N položek · M mimo plán · automaticky z Úvěry", included total), items under it with origin and original amount in the sub-line; any row or whole category can be left out of the plan from its "···" menu (stays visible, muted, "Mimo plán" badge, not counted); monthly / yearly switch, a 100 % flow bar instead of a Sankey diagram. |
 | Planning | Budgets | Month navigation, stats, overview progress, category table with progress bars and state badges. |
 | Settings | Settings | Left sub-navigation (existing routes), stacked flat cards, danger zone last. |
 | Outlook | Projection | Horizon segment, hero with expected line, ± 2 p.p. scenario band, dashed "today + contributions" reference and future milestones (mortgage payoff, round net-worth marks), asset-class table, three scenarios, parameters modal. |
@@ -242,11 +242,15 @@ than ~24 events fall in view, cluster neighbors into one mark with a count ("3 n
    amount; ordinary reports do not carry persistent technical FX explanations. Show compact
    warnings only when missing data affects the result.
    *Cashflow planning* (`/reports/cashflow-planning`, label key `nav.cashflowPlanning`, cs "Plánování
-   cashflow", en "Cashflow planning") shows the planned recurring items; items derived from other domains
-   (`isUserEditable = false`: Úvěry, Pojištění, Nemovitosti, Akcie, Dluhopisy) carry a source badge instead
-   of row actions, and a 100 % flow bar (expense groups `s1`–`s4` + Ostatní, hatched remainder) replaces
-   the Sankey diagram. The two pages link to each other in the page subtitle; the projection reads the
-   planned report.
+   cashflow", en "Cashflow planning") shows the planned recurring items. Every non-empty category is a
+   collapsible group row with its included total (collapsed by default, remembered per browser); every
+   row has one "···" menu — automatic rows (`isUserDefined = false`: Úvěry, Pojištění, Nemovitosti, Akcie,
+   Dluhopisy, Bankovní účty) offer Nezapočítávat / Započítat, Nahradit vlastní částkou… and Otevřít v
+   modulu, manual rows Upravit / Nezapočítávat / Smazat, category rows Nezapočítávat kategorii / Přidat
+   položku do kategorie. A row left out stays listed, muted, with a "Mimo plán" badge and does not count
+   in totals, stats or the flow bar (persisted in `cashflow_plan_exclusions`, honoured by the MCP
+   `cashflow_report` tool too). A 100 % flow bar (expense groups `s1`–`s4` + Ostatní, hatched remainder)
+   replaces the Sankey diagram. The two pages link to each other in the page subtitle.
 
 ## 12. How the React app maps to this
 

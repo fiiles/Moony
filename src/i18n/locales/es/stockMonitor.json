@@ -1,0 +1,201 @@
+{
+  "title": "Monitor de acciones",
+  "subtitle": "Acciones que estás valorando: precios en su propia moneda, precios objetivo y tus notas.",
+  "cancel": "Cancelar",
+  "search": {
+    "placeholder": "Busca una acción (símbolo o nombre) para empezar a seguirla",
+    "noResults": "No se han encontrado acciones",
+    "searching": "Buscando…"
+  },
+  "table": {
+    "stock": "Acción",
+    "price": "Precio",
+    "fiftyTwoWeekLow": "Mín. 52 sem.",
+    "targetPrice": "Objetivo",
+    "change": "Variación",
+    "changePct": "Variación %",
+    "held": "En cartera",
+    "pricesUpdatedAt": "Precios actualizados a las {{time}}",
+    "pricesNeverUpdated": "Aún no se han descargado los precios",
+    "fiftyTwoWeekHigh": "Máx. 52 sem.",
+    "title": "En seguimiento",
+    "sub": "Variación respecto al cierre anterior · rango de 52 semanas con el precio actual y el objetivo",
+    "sort": {
+      "name": "Por nombre",
+      "change": "Por variación",
+      "target": "Por objetivo"
+    },
+    "changeToday": "Variación hoy",
+    "range": "Rango 52 sem.",
+    "target": "Objetivo",
+    "setTarget": "Fijar objetivo",
+    "targetReached": "Objetivo {{price}} alcanzado",
+    "toTarget": "{{pct}} hasta el objetivo",
+    "waitsBelow": "espera una bajada",
+    "waitsAbove": "espera una subida",
+    "footer_one": "{{count}} acción · precios en su propia moneda, sin conversión",
+    "footer_many": "{{count}} acciones · precios en su propia moneda, sin conversión",
+    "footer_other": "{{count}} acciones · precios en su propia moneda, sin conversión",
+    "source": "Fuente Yahoo Finance · hasta 15 minutos de retraso"
+  },
+  "empty": {
+    "title": "No sigues ninguna acción",
+    "description": "Busca una acción arriba y síguela para empezar a monitorizarla."
+  },
+  "actions": {
+    "follow": "Seguir",
+    "unfollow": "Dejar de seguir",
+    "refresh": "Actualizar precios",
+    "followPortfolio": "Seguir {{count}} de la cartera",
+    "refreshShort": "Actualizar",
+    "buy": "Comprar para la cartera",
+    "openInPortfolio": "Abrir en la cartera",
+    "setTarget": "Fijar objetivo",
+    "editTarget": "Editar objetivo",
+    "notes": "Notas"
+  },
+  "unfollowConfirm": {
+    "title": "¿Dejar de seguir {{ticker}}?",
+    "description": "Se eliminarán el precio objetivo y las notas de esta acción."
+  },
+  "detail": {
+    "marketCap": "Capitalización",
+    "dividendYield": "Rentabilidad por dividendo",
+    "peRatio": "PER",
+    "fiftyTwoWeekLow": "Mínimo de 52 semanas",
+    "fiftyTwoWeekHigh": "Máximo de 52 semanas",
+    "previousClose": "Cierre anterior",
+    "noData": "No hay datos de precios (¿sin conexión?)",
+    "notFollowed": "Aún no sigues esta acción.",
+    "backToOverview": "Volver al resumen",
+    "periodStart": "Inicio de {{period}}: {{price}}",
+    "openInPortfolio": "Abrir en la cartera",
+    "back": "Volver a la lista de seguimiento",
+    "followedSince": "Siguiendo desde el {{date}}",
+    "notFollowedShort": "Aún no se sigue",
+    "held": "en tu cartera",
+    "notHeld": "no está en tu cartera",
+    "price": "Precio",
+    "today": "{{change}} hoy · cierre {{close}}",
+    "target": "Precio objetivo",
+    "toTarget": "faltan {{pct}}",
+    "targetReached": "objetivo alcanzado",
+    "periodChange": "variación {{change}}",
+    "legend": {
+      "price": "Precio",
+      "target": "Precio objetivo",
+      "watchStart": "Inicio del seguimiento"
+    },
+    "watchStartTarget": "objetivo {{price}}",
+    "stats": {
+      "exchangeNote": "en {{exchange}}",
+      "peNote": "precio sobre beneficios de los últimos 12 meses",
+      "dividendNote": "{{amount}} al año por acción",
+      "range": "Rango 52 sem.",
+      "min": "mín.",
+      "max": "máx.",
+      "rangeLabel": "Rango de 52 semanas {{low}} – {{high}}, precio actual {{current}}",
+      "rangeLabelTarget": "Rango de 52 semanas {{low}} – {{high}}, precio actual {{current}}, objetivo {{target}}"
+    },
+    "keyData": "Datos clave",
+    "kv": {
+      "previousClose": "Cierre anterior",
+      "changeToday": "Variación hoy",
+      "low": "Mín. 52 sem.",
+      "high": "Máx. 52 sem.",
+      "marketCap": "Capitalización",
+      "pe": "PER",
+      "dividend": "Rentab. por dividendo",
+      "exchange": "Bolsa",
+      "updated": "Precios actualizados"
+    },
+    "since": {
+      "title": "Desde que empezaste a seguirla",
+      "text": "En {{days}} el precio ha pasado de {{price}} a variar",
+      "toTarget": "{{amount}} hasta el objetivo.",
+      "noData": "La sigues desde hace {{days}}; el precio de ese día aún no está disponible.",
+      "days_one": "{{count}} día",
+      "days_many": "{{count}} días",
+      "days_other": "{{count}} días"
+    },
+    "followPrompt": "Al seguirla obtienes un precio objetivo, notas y la marca de inicio del seguimiento en el gráfico."
+  },
+  "target": {
+    "label": "Precio objetivo",
+    "set": "Fijar objetivo",
+    "edit": "Editar",
+    "clear": "Eliminar objetivo",
+    "save": "Guardar objetivo",
+    "cancel": "Cancelar",
+    "toTarget": "{{pct}} hasta el objetivo",
+    "placeholder": "p. ej., 250,00",
+    "title": "Precio objetivo",
+    "description": "El precio al que quieres actuar. Cuando la acción lo cruce, Moony la incluirá entre las próximas fechas del resumen.",
+    "field": "Objetivo",
+    "hintCurrent": "Precio actual {{price}}",
+    "hintHigh": "Máx. 52 sem. {{price}}",
+    "directionLabel": "Qué espera el objetivo",
+    "directionBelow": "Espera una bajada: comprar / comprar más",
+    "directionAbove": "Espera una subida: vender",
+    "explainBelow": "Moony te avisará cuando el precio baje a {{price}} ({{pct}} respecto al precio de hoy).",
+    "explainAbove": "Moony te avisará cuando el precio suba a {{price}} ({{pct}} respecto al precio de hoy).",
+    "explainBelowNoPrice": "Moony te avisará cuando el precio baje a {{price}}.",
+    "explainAboveNoPrice": "Moony te avisará cuando el precio suba a {{price}}.",
+    "explainReached": "El precio ya está en este objetivo o lo ha superado: Moony lo mostrará de inmediato."
+  },
+  "notes": {
+    "title": "Notas",
+    "edit": "Editar",
+    "write": "Escribir",
+    "preview": "Vista previa",
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "empty": "Aún no hay notas. Haz clic en Editar para añadir notas de análisis (admite markdown).",
+    "placeholder": "Escribe notas en markdown…",
+    "toolbar": {
+      "bold": "Negrita",
+      "italic": "Cursiva",
+      "heading": "Título",
+      "list": "Lista con viñetas",
+      "orderedList": "Lista numerada",
+      "link": "Enlace"
+    },
+    "sub": "Markdown · también editable mediante el asistente (MCP)",
+    "paragraphs_one": "{{count}} párrafo",
+    "paragraphs_many": "{{count}} párrafos",
+    "paragraphs_other": "{{count}} párrafos",
+    "markdownHint": "Markdown"
+  },
+  "chart": {
+    "noData": "No hay datos del gráfico para este periodo",
+    "currentPrice": "Precio actual",
+    "targetLabel": "Objetivo {{price}}"
+  },
+  "toast": {
+    "followed": "Ahora sigues {{ticker}}",
+    "unfollowed": "Has dejado de seguir {{ticker}}",
+    "followedPortfolio_one": "Ahora sigues 1 acción de tu cartera",
+    "followedPortfolio_many": "Ahora sigues {{count}} acciones de tu cartera",
+    "followedPortfolio_other": "Ahora sigues {{count}} acciones de tu cartera"
+  },
+  "eyebrow": "Lista de seguimiento",
+  "status": {
+    "updated": "Precios actualizados {{time}} · se refrescan cada 5 minutos",
+    "updatedShort": "Precios actualizados {{time}}",
+    "never": "Aún no se han cargado los precios"
+  },
+  "stats": {
+    "watched": "Acciones en seguimiento",
+    "heldNote_one": "{{count}} de ellas está en tu cartera",
+    "heldNote_many": "{{count}} de ellas están en tu cartera",
+    "heldNote_other": "{{count}} de ellas están en tu cartera",
+    "heldNoteNone": "ninguna está en tu cartera",
+    "atTarget": "En el precio objetivo",
+    "targetReached": "objetivo {{price}} alcanzado",
+    "toTarget": "{{pct}} hasta el objetivo",
+    "noTargets": "aún sin precios objetivo",
+    "topToday": "Mayor subida hoy",
+    "worstNote": "menor {{name}} {{change}}",
+    "noChanges": "sin cambios hoy"
+  }
+}

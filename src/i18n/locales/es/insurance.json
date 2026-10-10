@@ -1,0 +1,326 @@
+{
+  "title": "Seguros",
+  "eyebrow": "Protección",
+  "subtitle": "Qué tienes cubierto, cuánto cuesta y cuándo llegan los pagos y los aniversarios.",
+  "loading": "Cargando tus pólizas de seguro...",
+  "export": "Exportar",
+  "status": {
+    "nextPayment": "Próximo pago {{date}} · {{amount}}",
+    "none": "Sin pagos regulares",
+    "ended": "La póliza ha finalizado"
+  },
+  "empty": {
+    "title": "Aún no hay pólizas de seguro",
+    "description": "Añade tu primer contrato para ver qué está cubierto, cuánto pagas por ello y cuándo vencen los pagos."
+  },
+  "addPolicy": "Añadir póliza",
+  "policies_one": "{{count}} póliza activa",
+  "policies_many": "{{count}} pólizas activas",
+  "policies_other": "{{count}} pólizas activas",
+  "payments_one": "{{count}} pago",
+  "payments_many": "{{count}} pagos",
+  "payments_other": "{{count}} pagos",
+  "risks_one": "{{count}} riesgo",
+  "risks_many": "{{count}} riesgos",
+  "risks_other": "{{count}} riesgos",
+  "documentsCount_one": "{{count}} documento",
+  "documentsCount_many": "{{count}} documentos",
+  "documentsCount_other": "{{count}} documentos",
+  "duration": {
+    "years_one": "{{count}} año",
+    "years_many": "{{count}} años",
+    "years_other": "{{count}} años",
+    "months_one": "{{count}} mes",
+    "months_many": "{{count}} meses",
+    "months_other": "{{count}} meses",
+    "days_one": "{{count}} día",
+    "days_many": "{{count}} días",
+    "days_other": "{{count}} días"
+  },
+  "summary": {
+    "yearly": "Prima anual",
+    "yearlyNote": "{{monthly}} al mes · {{policies}}",
+    "nextPayment": "Próximo pago",
+    "nextPaymentNote": "{{amount}} · {{policies}}",
+    "noPayments": "no hay pagos regulares pendientes",
+    "coverage": "Cobertura total",
+    "coverageNote": "suma de límites · {{breakdown}}",
+    "noCoverage": "aún no se han introducido límites de cobertura",
+    "anniversary": "Aniversario más próximo",
+    "anniversaryNote": "{{name}} · en {{duration}} · momento de comparar ofertas",
+    "endNote": "{{name}} · el contrato termina en {{duration}}",
+    "noAnniversary": "ningún contrato activo"
+  },
+  "calendar": {
+    "title": "Calendario de pagos, próximos 12 meses",
+    "subtitle": "Según la frecuencia y la fecha de inicio de cada contrato · los pagos anuales destacan.",
+    "total": "total {{amount}}",
+    "monthly": "Primas mensuales",
+    "other": "Pagos trimestrales y anuales",
+    "anniversary": "Aniversario · {{name}}",
+    "peakNote": "El mes más cargado es {{month, lower}}: {{amount}}. Conviene apartar una reserva.",
+    "evenNote": "Los pagos son uniformes · {{amount}} al mes"
+  },
+  "table": {
+    "title": "Pólizas",
+    "subtitle": "Contratos activos",
+    "subtitleHidden": "Contratos activos · los finalizados están ocultos",
+    "showEnded": "Mostrar finalizadas",
+    "allTypes": "Todos los tipos",
+    "policy": "Póliza",
+    "premium": "Prima",
+    "coverage": "Cobertura",
+    "nextPayment": "Próximo pago",
+    "anniversary": "Aniversario",
+    "actions": "Acciones",
+    "perYear": "{{amount}} al año",
+    "perYearShort": "al año",
+    "moreLimits": "+{{count}} más",
+    "ended": "finalizada",
+    "endedOn": "finalizada",
+    "endOn": "fin del contrato",
+    "anniversaryShort": "aniversario del contrato",
+    "in": "en {{duration}}",
+    "noResults": {
+      "title": "Ninguna póliza de este tipo",
+      "description": "Prueba con otro filtro o añade un contrato nuevo."
+    },
+    "footer": {
+      "yearly": "{{amount}} al año",
+      "coverage": "cobertura {{amount}}",
+      "note": "Aniversario = el siguiente año de contrato desde la fecha de inicio · fin = la fecha acordada"
+    }
+  },
+  "types": {
+    "life": "Seguro de vida",
+    "health": "Seguro de salud",
+    "property": "Seguro del hogar",
+    "vehicle": "Seguro de vehículo",
+    "travel": "Seguro de viaje",
+    "liability": "Seguro de responsabilidad civil",
+    "accident": "Seguro de accidentes",
+    "other": "Otros",
+    "allTypes": "Todos los tipos"
+  },
+  "typeShort": {
+    "life": "Vida",
+    "health": "Salud",
+    "property": "Hogar",
+    "vehicle": "Vehículo",
+    "travel": "Viaje",
+    "liability": "Resp. civil",
+    "accident": "Accidentes",
+    "other": "Otros"
+  },
+  "frequencyShort": {
+    "monthly": "mensual",
+    "quarterly": "trimestral",
+    "semi_annually": "semestral",
+    "annually": "anual",
+    "one_time": "único"
+  },
+  "form": {
+    "addTitle": "Añadir póliza de seguro",
+    "editTitle": "Editar póliza de seguro",
+    "name": "Nombre de la póliza",
+    "namePlaceholder": "p. ej., Seguro del hogar",
+    "provider": "Aseguradora",
+    "providerPlaceholder": "p. ej., Compañía de seguros",
+    "type": "Tipo de póliza",
+    "premium": "Prima anual",
+    "coverage": "Importe de cobertura",
+    "currency": "Moneda",
+    "startDate": "Fecha de inicio",
+    "expiryDate": "Fecha de vencimiento",
+    "policyNumber": "Número de póliza",
+    "notes": "Notas"
+  },
+  "actions": {
+    "open": "Abrir",
+    "edit": "Editar",
+    "end": "Finalizar póliza",
+    "reactivate": "Reactivar póliza",
+    "delete": "Eliminar póliza",
+    "addDocument": "Añadir documento"
+  },
+  "endDialog": {
+    "title": "Finalizar póliza · {{name}}",
+    "description": "El contrato se conserva en el historial y sale del total de primas y del calendario de pagos.",
+    "date": "Fin del contrato",
+    "alertTitle": "La póliza pasa a las finalizadas",
+    "alertNote": "Puedes reactivarla cuando quieras desde el menú «···»; los documentos y los límites se conservan.",
+    "submit": "Finalizar póliza"
+  },
+  "confirmDelete": {
+    "title": "Eliminar póliza",
+    "description": "¿Eliminar «{{name}}»? Sus documentos se eliminarán con ella. Esta acción no se puede deshacer."
+  },
+  "toast": {
+    "added": "Póliza añadida",
+    "updated": "Póliza actualizada",
+    "deleted": "Póliza eliminada",
+    "ended": "Póliza finalizada",
+    "reactivated": "Póliza reactivada"
+  },
+  "modal": {
+    "basicInfo": "Información básica",
+    "paymentDetails": "Datos de pago",
+    "additionalInfo": "Información adicional",
+    "selectType": "Elige un tipo",
+    "selectStatus": "Elige un estado",
+    "addDescription": "Datos básicos del contrato, pagos y límites de cobertura; los documentos se añaden en el detalle.",
+    "editDescription": "Edita los datos de la póliza de seguro.",
+    "policyName": "Nombre de la póliza",
+    "policyNamePlaceholder": "p. ej., Seguro del hogar 2024",
+    "provider": "Aseguradora",
+    "providerPlaceholder": "p. ej., Allianz",
+    "policyNumber": "Número de póliza",
+    "policyNumberPlaceholder": "Número de contrato",
+    "paymentFrequency": "Frecuencia de pago",
+    "selectFrequency": "Elige una frecuencia",
+    "oneTimePayment": "Pago único (opcional)",
+    "oneTimePaymentRequired": "Pago único",
+    "regularPayment": "Pago regular",
+    "endDateOptional": "Fecha de fin (opcional)",
+    "coverageLimits": "Límites de cobertura",
+    "addLimit": "Añadir límite",
+    "removeLimit": "Quitar límite",
+    "limitTitle": "Título del límite",
+    "notesPlaceholder": "Condiciones especiales, contactos...",
+    "createPolicy": "Crear póliza",
+    "updatePolicy": "Actualizar póliza",
+    "status": {
+      "active": "Activa",
+      "inactive": "Inactiva"
+    },
+    "frequency": {
+      "monthly": "Mensual",
+      "quarterly": "Trimestral",
+      "semi_annually": "Semestral",
+      "annually": "Anual",
+      "one_time": "Único"
+    },
+    "linkRealEstate": "Vincular a un inmueble",
+    "selectRealEstate": "Elige un inmueble (opcional)",
+    "noRealEstateAvailable": "No hay inmuebles disponibles"
+  },
+  "detail": {
+    "backToList": "Volver a seguros",
+    "notFound": "Esta póliza ya no existe.",
+    "policyNumber": "n.º {{number}}",
+    "description": "Desde {{start}} {{end}} · {{premium}} {{frequency}}",
+    "descriptionOneTime": "Desde {{start}} {{end}} · pago único de {{premium}}",
+    "noEnd": "sin fin acordado",
+    "until": "hasta {{date}}",
+    "statusActive": "activa",
+    "statusEnded": "finalizada",
+    "period": {
+      "year": "1A",
+      "all": "Desde el inicio"
+    },
+    "hero": {
+      "paid": "Primas pagadas",
+      "paidNote": "{{payments}} desde {{month, lower}} · {{yearly}} al año",
+      "paidNoteOneTime": "pago único al contratar el {{date}}",
+      "coverage": "Cobertura total",
+      "coverageRatio": "{{ratio}}× la prima anual",
+      "coverageOneTime": "suma de los límites acordados",
+      "noCoverage": "no se han introducido límites de cobertura"
+    },
+    "chart": {
+      "paid": "Pagado en total",
+      "next12": "Próximos 12 pagos",
+      "tipPaid": "pagado en total",
+      "tipPlanned": "pago previsto",
+      "note": "{{payments}} · {{yearly}} al año",
+      "noteOneTime": "Pago único el {{date}}, sin más pagos"
+    },
+    "stats": {
+      "yearly": "Coste anual",
+      "yearlyNote": "{{premium}} {{frequency}} · {{share}} de tus primas",
+      "yearlyOneTime": "prima única, sin coste anual",
+      "nextPayment": "Próximo pago",
+      "nextPaymentNote": "en {{in}} · {{amount}} · después {{next}}",
+      "noNextPayment": "sin más pagos",
+      "anniversary": "Aniversario del contrato",
+      "anniversaryNote": "en {{in}} · ocasión para ajustar la cobertura o comparar ofertas",
+      "end": "Fin del contrato",
+      "endNote": "en {{in}} · la fecha de fin acordada",
+      "endedNote": "el contrato finalizó el {{date}}",
+      "duration": "Duración del contrato",
+      "durationNote": "sin fin acordado · {{docs}}",
+      "durationEnd": "hasta {{date}} · {{docs}}"
+    },
+    "limits": {
+      "title": "Límites de cobertura",
+      "subtitle": "Qué cubre el contrato y hasta qué importe",
+      "edit": "Editar límites",
+      "risk": "Riesgo",
+      "limit": "Límite",
+      "footer": "{{risks}} · cobertura total {{amount}}",
+      "empty": "Aún no se han introducido límites de cobertura. Añádelos editando la póliza."
+    },
+    "contract": {
+      "title": "Contrato",
+      "provider": "Aseguradora",
+      "number": "Número de contrato",
+      "type": "Tipo",
+      "start": "Inicio",
+      "end": "Fin",
+      "endNone": "indefinido",
+      "frequency": "Frecuencia",
+      "premium": "Prima",
+      "oneTime": "Pago único",
+      "oneTimeNone": "ninguno",
+      "property": "Inmueble"
+    },
+    "notes": {
+      "title": "Notas",
+      "edit": "Editar",
+      "empty": "Sin notas: añade contactos, condiciones y recordatorios editando la póliza.",
+      "updated": "Editado el {{date}}"
+    },
+    "documents": "Documentos"
+  },
+  "documents": {
+    "subtitle": "Guardados en la carpeta cifrada de la app",
+    "columns": {
+      "document": "Documento",
+      "type": "Tipo",
+      "uploaded": "Subido"
+    },
+    "description": "Adjunta contratos, certificados y otros documentos",
+    "add": "Añadir documento",
+    "addFirst": "Añadir el primer documento",
+    "addTitle": "Añadir documento",
+    "noDocuments": "Aún no hay documentos adjuntos",
+    "file": "Archivo",
+    "clickToSelect": "Haz clic para elegir un archivo",
+    "type": "Tipo de documento",
+    "selectType": "Elige un tipo",
+    "namePlaceholder": "p. ej., Contrato de seguro 2024",
+    "descriptionPlaceholder": "Notas adicionales sobre este documento...",
+    "uploading": "Subiendo...",
+    "upload": "Subir documento",
+    "open": "Abrir",
+    "delete": "Eliminar",
+    "added": "Documento añadido",
+    "deleted": "Documento eliminado",
+    "optional": "opcional",
+    "types": {
+      "contract": "Contrato",
+      "certificate": "Certificado",
+      "claim": "Siniestro",
+      "other": "Otros"
+    },
+    "deleteConfirm": {
+      "title": "Eliminar documento",
+      "description": "¿Eliminar «{{name}}»? El archivo se eliminará de forma permanente."
+    }
+  },
+  "mcp": {
+    "tipSummary": "¿No te apetece escribirlo todo? El asistente de IA puede añadir pólizas a partir de un contrato.",
+    "bannerBody": "Inicia el servidor MCP, sube a Claude el contrato, la oferta o el resumen de la póliza y pídele que añada la póliza por ti.",
+    "setupLink": "Configurar el servidor MCP"
+  }
+}

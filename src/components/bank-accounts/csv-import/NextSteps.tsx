@@ -18,7 +18,7 @@ import { translateApiError } from '@/lib/translate-api-error';
 import type { BankAccount, CsvImportResult } from '@shared/schema';
 import { cn } from '@/lib/utils';
 import { formatBalance, nextStepsFor, regionName, type NextStepId } from './import-config';
-import { useBalanceAnchor, useEnableRulePack } from './use-csv-import-mutations';
+import { useRecordBalance, useEnableRulePack } from './use-csv-import-mutations';
 
 const STEP_ORDER: readonly NextStepId[] = ['show', 'review', 'rulePack', 'balance'];
 
@@ -62,7 +62,7 @@ export function NextSteps({
   const { t } = useTranslation('bank_accounts');
   const { t: tc } = useTranslation('common');
   const queryClient = useQueryClient();
-  const updateBalance = useBalanceAnchor(accountId);
+  const updateBalance = useRecordBalance(accountId);
   const enableRulePack = useEnableRulePack();
   const fmt = useFormat();
   const { currencyCode } = useCurrency();

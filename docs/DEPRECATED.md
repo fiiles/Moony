@@ -61,7 +61,7 @@ The one-table stock import was replaced by the broker-aware wizard
 
 ## Retired statement balance path
 
-The CSV import `balanceUpdatePayload` helper is removed: copying a statement amount into `update_bank_account` lost its date and currency. Use `bankAccountsApi.setBalanceAnchor` with the structured `statementBalance`, and obtain explicit confirmation before replacing an existing balance with an unknown date.
+The CSV import `balanceUpdatePayload` helper and the later `setBalanceAnchor` / `set_bank_account_balance_anchor` command are gone. A balance is recorded with `bankAccountsApi.recordBalance` (`record_bank_account_balance`): every call is a dated row in `bank_balance_records`, the statement path passes `sourceBatchId`, and `confirmUnknownAsOf` is needed only while the account has no dated record and an undated nonzero balance. `update_bank_account` ignores `balance`/`balanceAsOf`; the detail page no longer reconstructs a balance line from transactions (`reconstructBalance`, `significantMovements`, `movementThreshold` were removed with it).
 
 ## Removed with explicit currencies (do not re-add)
 

@@ -77,6 +77,24 @@ interestRateValidUntil: number | null;
 excludeFromBalance: boolean; createdAt: number; updatedAt: number }) & { institution: Institution | null; effectiveInterestRate: number | null; projectedEarnings: number | null }
 
 /**
+ * A dated balance of a bank account (migration 013). The newest record is mirrored
+ * into `bank_accounts.balance` / `balance_as_of`.
+ */
+export type BankBalanceRecord = { id: string; bankAccountId: string; 
+/**
+ * Balance in the account currency (canonical decimal string).
+ */
+amount: string; currency: string; 
+/**
+ * UTC day start (unix seconds).
+ */
+asOf: number; 
+/**
+ * `manual` (entered by hand) or `statement` (confirmed from a CSV import).
+ */
+source: string; sourceBatchId: string | null; recordedAt: number }
+
+/**
  * Bank transaction entity
  */
 export type BankTransaction = { id: string; bankAccountId: string; transactionId: string | null; type: string; amount: string; currency: string; description: string | null; counterpartyName: string | null; counterpartyIban: string | null; counterpartyBankCode?: string | null; counterpartyCountry?: string | null; bookingDate: number; valueDate: number | null; categoryId: string | null; merchantCategoryCode: string | null; remittanceInfo: string | null; 
@@ -716,9 +734,15 @@ export type HistoryRecalcEvent = { ticker: string; status: RecalcStatus }
 export type InsertAssetValuation = { assetId: string; value: string; currency: string | null; valuedAt: number; note: string | null }
 
 /**
- * Confirmed balance anchor, in the account currency and at a UTC booking day.
+ * Input of `record_bank_account_balance`: one dated balance. `source` is derived:
+ * `statement` when a batch id is given, else `manual`.
  */
-export type InsertBalanceAnchor = { amount: string; currency: string; asOf: number; confirmUnknownAsOf?: boolean; sourceBatchId?: string | null }
+export type InsertBalanceRecord = { amount: string; currency: string; asOf: number; 
+/**
+ * Required (true) only while the account has no dated record and its undated
+ * balance is not 0: the first dated record replaces that number.
+ */
+confirmUnknownAsOf?: boolean; sourceBatchId?: string | null }
 
 /**
  * Data for creating/updating a bank account

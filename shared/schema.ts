@@ -959,7 +959,9 @@ export interface InsertBankAccount {
   iban?: string | null;
   bban?: string | null;
   currency?: string;
+  /** Opening balance (create only; the update command ignores it — balances are recorded). */
   balance?: string;
+  /** UTC day of the opening balance; with it the create writes the first balance record. */
   balanceAsOf?: number | null;
   institutionId?: string | null;
   interestRate?: string | null;
@@ -2229,10 +2231,29 @@ export interface StatementBalance {
   line: number;
   batchId: string;
 }
-export interface InsertBalanceAnchor {
+
+export type BalanceRecordSource = 'manual' | 'statement';
+
+/** A dated balance of a bank account; the newest one is mirrored into `BankAccount.balance`. */
+export interface BankBalanceRecord {
+  id: string;
+  bankAccountId: string;
+  /** Balance in the account currency. */
+  amount: string;
+  currency: string;
+  /** UTC day start (unix seconds). */
+  asOf: number;
+  source: BalanceRecordSource;
+  sourceBatchId: string | null;
+  recordedAt: number;
+}
+
+/** Input of `record_bank_account_balance`; the source is derived from `sourceBatchId`. */
+export interface InsertBalanceRecord {
   amount: string;
   currency: string;
   asOf: number;
+  /** Needed only while the account has no dated record and an undated nonzero balance. */
   confirmUnknownAsOf?: boolean;
   sourceBatchId?: string | null;
 }

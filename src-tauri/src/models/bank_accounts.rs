@@ -428,9 +428,6 @@ fn deserialize_balance_day<'de, D: serde::Deserializer<'de>>(
     Option::<i64>::deserialize(deserializer).map(Some)
 }
 
-/// Transitional alias; removed in the service/commands tasks.
-pub type InsertBalanceAnchor = InsertBalanceRecord;
-
 #[cfg(test)]
 mod tests {
     use super::*;

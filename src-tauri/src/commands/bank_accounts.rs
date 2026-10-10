@@ -559,8 +559,8 @@ pub async fn delete_import_batch(db: State<'_, Database>, batch_id: String) -> R
 pub async fn set_bank_account_balance_anchor(
     db: State<'_, Database>,
     account_id: String,
-    data: crate::models::bank_accounts::InsertBalanceAnchor,
+    data: crate::models::bank_accounts::InsertBalanceRecord,
 ) -> Result<BankAccount> {
     data.validate()?;
-    db.with_conn(|conn| bank_service::set_balance_anchor(conn, &account_id, &data))
+    db.with_conn(|conn| bank_service::record_balance(conn, &account_id, &data))
 }

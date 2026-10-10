@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Moony — prototyp: přepsání pravidla a dřívější platby</title>
+<title>Moony — prototyp: přepsání pravidla a další platby</title>
 <link rel="stylesheet" href="../design-system/moony.css">
 <style>
   /* Prototype for docs/specs/2026-10-10-rule-override-recategorize-history-design.md.
@@ -92,7 +92,7 @@
     </div>
     <div class="page-head">
       <div>
-        <div class="eyebrow">Prototyp <span class="sep">·</span> přepsání pravidla a dřívější platby</div>
+        <div class="eyebrow">Prototyp <span class="sep">·</span> přepsání pravidla a další platby</div>
         <h1 id="page-title">Běžný účet</h1>
         <p id="page-lead"></p>
       </div>
@@ -114,7 +114,7 @@
 
 <div class="modal-scrim" id="hist-modal">
   <div class="modal modal--sm" role="dialog" aria-labelledby="hist-title">
-    <div class="modal__head"><div><h2 id="hist-title">Zařadit i dřívější platby?</h2><p id="hist-text"></p></div></div>
+    <div class="modal__head"><div><h2 id="hist-title">Zařadit i další platby?</h2><p id="hist-text"></p></div></div>
     <div class="modal__foot" style="margin-top:4px">
       <button type="button" class="btn btn--ghost" id="hist-no">Jen nové platby</button>
       <div class="actions"><button type="button" class="btn btn--primary" id="hist-yes">Zařadit 14 plateb</button></div>
@@ -186,7 +186,7 @@ var scenario = "learned";
 var rows = clone(ROWS);
 var openRow = null;        // row id with the picker open
 var remember = true;       // the "Zapamatovat" switch
-var applyHist = true;      // the "Zařadit i dřívější platby" checkbox
+var applyHist = true;      // the "Zařadit i další platby" checkbox
 var previewReady = false;  // the preview query has answered
 var previewTimer;
 var ruleCat = "dining";    // scenario 3: the learned rule's category
@@ -230,10 +230,10 @@ function catButton(r) {
 function pickerFooter(r) {
   var p = PREVIEW[scenario];
   if (!previewReady) {
-    return '<div class="pick__foot">' + rememberRow(p) + '<div class="pick__wait"><span class="skeleton"></span>Zjišťuji dřívější platby…</div></div>';
+    return '<div class="pick__foot">' + rememberRow(p) + '<div class="pick__wait"><span class="skeleton"></span>Zjišťuji další platby…</div></div>';
   }
   var hist = remember && p.total > 0
-    ? '<label class="check pick__hist"><input type="checkbox" id="applyhist"' + (applyHist ? " checked" : "") + '><div><b>Zařadit i ' + plural(p.total, "dřívější platbu", "dřívější platby", "dřívějších plateb") + "</b><small>" + breakdown(p) + "</small></div></label>"
+    ? '<label class="check pick__hist"><input type="checkbox" id="applyhist"' + (applyHist ? " checked" : "") + '><div><b>Zařadit i ' + plural(p.total, "další platbu", "další platby", "dalších plateb") + "</b><small>" + breakdown(p) + "</small></div></label>"
     : "";
   return '<div class="pick__foot">' + rememberRow(p) + hist + "</div>";
 }
@@ -299,11 +299,11 @@ function pickCategory(rowId, catId) {
   if (!remember) return;
   var undo = { label: "Vrátit zpět", fn: function () { undoHistory(changed, hiddenCount); } };
   if (scenario === "learned") {
-    if (hiddenCount > 0) showToast({ title: "Naučeno · " + plural(hiddenCount, "dřívější platba zařazena", "dřívější platby zařazeny", "dřívějších plateb zařazeno"), desc: "„Albert“ → " + catName(catId), action: undo });
+    if (hiddenCount > 0) showToast({ title: "Naučeno · " + plural(hiddenCount, "další platba zařazena", "další platby zařazeny", "dalších plateb zařazeno"), desc: "„Albert“ → " + catName(catId), action: undo });
     else showToast({ title: "Kategorie naučena", desc: "„Albert“" });
   } else {
     var title = "Pravidlo „" + p.rule + "“ zařazuje jako " + catName(catId);
-    if (hiddenCount > 0) showToast({ title: title + " · " + plural(hiddenCount, "dřívější platba zařazena", "dřívější platby zařazeny", "dřívějších plateb zařazeno"), action: undo });
+    if (hiddenCount > 0) showToast({ title: title + " · " + plural(hiddenCount, "další platba zařazena", "další platby zařazeny", "dalších plateb zařazeno"), action: undo });
     else showToast({ title: title });
   }
 }
@@ -311,7 +311,7 @@ function pickCategory(rowId, catId) {
 function undoHistory(changed, count) {
   changed.forEach(function (c) { var r = byId(c.id); r.cat = c.prev; r.flash = true; });
   render();
-  showToast({ icon: "undo-2", title: "Dřívější platby vráceny (" + count + ")" });
+  showToast({ icon: "undo-2", title: "Změněné platby vráceny (" + count + ")" });
 }
 
 /* ---------- Rules page (learned tab) ---------- */
@@ -358,7 +358,7 @@ function pickRuleCategory(catId) {
   showToast({ title: "Kategorie pravidla změněna", desc: "„Albert“ → " + catName(catId) });
   if (count > 0) {
     pendingHistory = { catId: catId, count: count };
-    document.getElementById("hist-text").textContent = "Pravidlo pro „Albert“ (Běžný účet · odchozí) nově zařazuje jako " + catName(catId) + ". Zasáhne " + plural(count, "dřívější platbu", "dřívější platby", "dřívějších plateb") + ": " + breakdown(p) + ".";
+    document.getElementById("hist-text").textContent = "Pravidlo pro „Albert“ (Běžný účet · odchozí) nově zařazuje jako " + catName(catId) + ". Zasáhne " + plural(count, "další platbu", "další platby", "dalších plateb") + ": " + breakdown(p) + ".";
     document.getElementById("hist-yes").textContent = "Zařadit " + plural(count, "platbu", "platby", "plateb");
     setTimeout(function () { openModal("hist-modal"); }, 350);
   }
@@ -373,7 +373,7 @@ function renderStates() {
   var sw = '<label class="switch"><input type="checkbox" checked></label>';
   var remember = '<div class="pick__row"><label class="pick__lbl">' + icon("brain", 14) + "<div><b>Zapamatovat pro tento účet a směr</b><small>Tento účet · Odchozí · Albert. Spolehlivé účty platí pro různé názvy protistrany; jinak pouze tento příjemce.</small></div></label>" + sw + "</div>";
   document.getElementById("states").innerHTML =
-    "<div><h4>Načítání náhledu</h4><p>Přepínač nikdy nečeká na náhled; čeká jen řádek s počtem.</p>" + staticPick(remember + '<div class="pick__wait"><span class="skeleton"></span>Zjišťuji dřívější platby…</div>') + "</div>" +
+    "<div><h4>Načítání náhledu</h4><p>Přepínač nikdy nečeká na náhled; čeká jen řádek s počtem.</p>" + staticPick(remember + '<div class="pick__wait"><span class="skeleton"></span>Zjišťuji další platby…</div>') + "</div>" +
     "<div><h4>Převod mezi vlastními účty</h4><p>Vlastní účet má přednost před každým pravidlem. Řádek lze změnit ručně, nic se nepamatuje.</p>" + staticPick('<div class="pick__note">' + icon("arrow-right-left", 14) + "Převod mezi vlastními účty – zařazuje se automaticky.</div>") + "</div>" +
     "<div><h4>Nelze zapamatovat</h4><p>Bez protistrany delší než dva znaky a bez čísla účtu není co si pamatovat. Dnes se to tiše přeskočí.</p>" + staticPick('<div class="pick__note">' + icon("circle-alert", 14) + "Nelze zapamatovat – platba nemá protistranu ani číslo účtu.</div>") + "</div>";
 }
@@ -411,7 +411,7 @@ document.addEventListener("click", function (e) {
   if (t.closest("#hist-yes")) {
     closeModal("hist-modal");
     var h = pendingHistory; pendingHistory = null;
-    showToast({ title: plural(h.count, "dřívější platba zařazena", "dřívější platby zařazeny", "dřívějších plateb zařazeno"), desc: "„Albert“ → " + catName(h.catId), action: { label: "Vrátit zpět", fn: function () { showToast({ icon: "undo-2", title: "Dřívější platby vráceny (" + h.count + ")" }); } } });
+    showToast({ title: plural(h.count, "další platba zařazena", "další platby zařazeny", "dalších plateb zařazeno"), desc: "„Albert“ → " + catName(h.catId), action: { label: "Vrátit zpět", fn: function () { showToast({ icon: "undo-2", title: "Změněné platby vráceny (" + h.count + ")" }); } } });
     return;
   }
   if (!t.closest(".pick") && (openRow !== null || rulePickOpen)) { openRow = null; rulePickOpen = false; render(); }

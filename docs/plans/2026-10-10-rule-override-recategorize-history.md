@@ -1,8 +1,8 @@
-# Rule override and recategorizing earlier payments — implementation plan
+# Rule override and recategorizing other payments — implementation plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** When a user corrects a category and asks Moony to remember it, the rule that decides that payee's category is rewritten, the picker shows how many earlier payments the rule covers, and the user can give them the new category in the same step, reversibly. Plus one bug fix: every enabled rule pack gets its own tab on the rules page.
+**Goal:** When a user corrects a category and asks Moony to remember it, the rule that decides that payee's category is rewritten, the picker shows how many other payments the rule covers, and the user can give them the new category in the same step, reversibly. Plus one bug fix: every enabled rule pack gets its own tab on the rules page.
 
 **Architecture:** A new Rust service module `services/categorization/recategorize.rs` answers "which payments does this rule cover" (learned scope or custom rule), breaks them down by current category, applies a category to them and restores them. The engine gains `explain()` so the preview can name the layer that decides today. Thin commands expose preview, learn-with-history, retarget-custom-rule, learned-rule history and restore. The frontend adds a footer to the category picker (ledger) and a confirm dialog on the rules page.
 
@@ -60,7 +60,7 @@
 ```bash
 cd /Users/filipkral/Programování/FinanceApp/Moony-tauri-recategorize
 git add docs/specs/2026-10-10-rule-override-recategorize-history-design.md docs/specs/2026-10-10-rule-override-recategorize-history-prototype.html .claude/launch.json
-git commit -m "docs: spec and prototype for rule override and recategorizing earlier payments
+git commit -m "docs: spec and prototype for rule override and recategorizing other payments
 
 Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 ```
@@ -473,7 +473,7 @@ pub struct RecategorizationPreview {
     /// False when neither a payee key nor an account identity exists (nothing to remember).
     #[serde(rename = "learnable")]
     pub learnable: bool,
-    /// Earlier payments the rewritten rule matches, the edited row excluded.
+    /// Other payments the rewritten rule matches, the edited row excluded.
     #[serde(rename = "matches")]
     pub matches: usize,
     #[serde(rename = "byCategory")]
@@ -490,7 +490,7 @@ In `src-tauri/src/services/categorization/hits.rs` change `fn engine_for(rule: &
 Create `src-tauri/src/services/categorization/recategorize.rs` with the module doc, the `use` lines and ONLY the tests module first (the functions come in step 5):
 
 ```rust
-//! Recategorizing earlier payments when a rule is rewritten (spec
+//! Recategorizing other payments when a rule is rewritten (spec
 //! 2026-10-10-rule-override-recategorize-history): which payments a learned
 //! rule or a custom rule covers today, how their current categories break
 //! down, giving them the rule's category, and taking that back.
@@ -1260,7 +1260,7 @@ pub fn learn_scoped(
 }
 
 /// `learn_scoped`, and when `apply_history` is set, in the same transaction,
-/// every earlier payment the new rule covers gets its category (spec
+/// every other payment the new rule covers gets its category (spec
 /// 2026-10-10). Returns what those rows held before, for undo.
 pub fn learn_scoped_and_apply(
     conn: &Connection,
@@ -1314,7 +1314,7 @@ Run: `cd src-tauri && cargo fmt && cargo clippy -- -D warnings && cargo test && 
 
 ```bash
 git add src-tauri/src/services/categorization/learn.rs
-git commit -m "feat(categorization): learning can recategorize earlier payments in one transaction
+git commit -m "feat(categorization): learning can recategorize other payments in one transaction
 
 Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 ```
@@ -1349,7 +1349,7 @@ Replace `learn_categorization`:
 ```rust
 /// Learn from the user's manual categorization (scoped to one own account,
 /// direction and identity) and, with `apply_history`, give the category to
-/// every earlier payment the new rule covers. Returns the changed rows for undo.
+/// every other payment the new rule covers. Returns the changed rows for undo.
 #[tauri::command]
 pub async fn learn_categorization(
     state: State<'_, CategorizationState>,
@@ -1367,7 +1367,7 @@ pub async fn learn_categorization(
 Append after `update_learned_payee_category`:
 
 ```rust
-// ==================== Recategorizing earlier payments (spec 2026-10-10) ====================
+// ==================== Recategorizing other payments (spec 2026-10-10) ====================
 
 /// What remembering a correction on this transaction would rewrite and cover.
 #[tauri::command]
@@ -1484,7 +1484,7 @@ export interface RecategorizationPreview {
   rule: GoverningRule | null;
   /** False when neither a payee key nor an account identity exists. */
   learnable: boolean;
-  /** Earlier payments the rewritten rule matches, the edited row excluded. */
+  /** Other payments the rewritten rule matches, the edited row excluded. */
   matches: number;
   byCategory: CategoryCount[];
 }
@@ -1495,11 +1495,11 @@ export interface RecategorizationPreview {
 In `src/lib/tauri-api.ts` add `ChangedRow, RecategorizationPreview, InsertScopedLearning` to the type import list right above `export const categorizationApi` (the one importing from `'../../shared/schema'`). Replace the `learn` wrapper and append the five new ones inside `categorizationApi`:
 
 ```ts
-  /** Learn a scoped rule; with `applyHistory` the earlier payments it covers get the category too. */
+  /** Learn a scoped rule; with `applyHistory` the other payments it covers get the category too. */
   learn: (data: InsertScopedLearning, applyHistory = false) =>
     tauriInvoke<ChangedRow[]>('learn_categorization', { data, applyHistory }),
 
-  // ==================== Recategorizing earlier payments (spec 2026-10-10) ====================
+  // ==================== Recategorizing other payments (spec 2026-10-10) ====================
 
   /** What remembering a correction on this transaction would rewrite and cover. */
   previewRecategorization: (transactionId: string) =>
@@ -1533,7 +1533,7 @@ Expected: green.
 
 ```bash
 git add src-tauri/src/commands/categorization.rs src-tauri/src/lib.rs src-tauri/src/bindings.rs shared/generated-types.ts shared/schema.ts src/lib/tauri-api.ts
-git commit -m "feat(categorization): commands for previewing and recategorizing earlier payments
+git commit -m "feat(categorization): commands for previewing and recategorizing other payments
 
 Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 ```
@@ -1728,10 +1728,10 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 Add inside `"categorization"` of `src/i18n/locales/cs/bank_accounts.json`:
 
 ```json
-"historyChecking": "Zjišťuji dřívější platby…",
-"applyHistory_one": "Zařadit i {{count}} dřívější platbu",
-"applyHistory_few": "Zařadit i {{count}} dřívější platby",
-"applyHistory_other": "Zařadit i {{count}} dřívějších plateb",
+"historyChecking": "Zjišťuji další platby…",
+"applyHistory_one": "Zařadit i {{count}} další platbu",
+"applyHistory_few": "Zařadit i {{count}} další platby",
+"applyHistory_other": "Zařadit i {{count}} dalších plateb",
 "uncategorizedCount": "bez kategorie",
 "moreCategories": "+{{count}} dalších",
 "governedByRule": "Zařazuje vlastní pravidlo „{{rule}}“ → {{category}}",
@@ -1740,23 +1740,23 @@ Add inside `"categorization"` of `src/i18n/locales/cs/bank_accounts.json`:
 "editRule": "Upravit pravidlo →",
 "ownAccountNote": "Převod mezi vlastními účty – zařazuje se automaticky.",
 "notLearnable": "Nelze zapamatovat – platba nemá protistranu ani číslo účtu.",
-"learnedApplied_one": "Naučeno · {{count}} dřívější platba zařazena",
-"learnedApplied_few": "Naučeno · {{count}} dřívější platby zařazeny",
-"learnedApplied_other": "Naučeno · {{count}} dřívějších plateb zařazeno",
+"learnedApplied_one": "Naučeno · {{count}} další platba zařazena",
+"learnedApplied_few": "Naučeno · {{count}} další platby zařazeny",
+"learnedApplied_other": "Naučeno · {{count}} dalších plateb zařazeno",
 "ruleRetargeted": "Pravidlo „{{rule}}“ zařazuje jako {{category}}",
-"ruleRetargetedApplied_one": "Pravidlo „{{rule}}“ zařazuje jako {{category}} · {{count}} dřívější platba zařazena",
-"ruleRetargetedApplied_few": "Pravidlo „{{rule}}“ zařazuje jako {{category}} · {{count}} dřívější platby zařazeny",
-"ruleRetargetedApplied_other": "Pravidlo „{{rule}}“ zařazuje jako {{category}} · {{count}} dřívějších plateb zařazeno",
+"ruleRetargetedApplied_one": "Pravidlo „{{rule}}“ zařazuje jako {{category}} · {{count}} další platba zařazena",
+"ruleRetargetedApplied_few": "Pravidlo „{{rule}}“ zařazuje jako {{category}} · {{count}} další platby zařazeny",
+"ruleRetargetedApplied_other": "Pravidlo „{{rule}}“ zařazuje jako {{category}} · {{count}} dalších plateb zařazeno",
 "undoHistory": "Vrátit zpět",
-"historyRestored": "Dřívější platby vráceny ({{count}})"
+"historyRestored": "Změněné platby vráceny ({{count}})"
 ```
 
 And in `src/i18n/locales/en/bank_accounts.json`:
 
 ```json
-"historyChecking": "Checking earlier payments…",
-"applyHistory_one": "Also categorize {{count}} earlier payment",
-"applyHistory_other": "Also categorize {{count}} earlier payments",
+"historyChecking": "Checking other payments…",
+"applyHistory_one": "Also categorize {{count}} other payment",
+"applyHistory_other": "Also categorize {{count}} other payments",
 "uncategorizedCount": "no category",
 "moreCategories": "+{{count}} more",
 "governedByRule": "Categorized by your rule \"{{rule}}\" → {{category}}",
@@ -1765,13 +1765,13 @@ And in `src/i18n/locales/en/bank_accounts.json`:
 "editRule": "Edit rule →",
 "ownAccountNote": "Transfer between your own accounts – categorized automatically.",
 "notLearnable": "Cannot be remembered – the payment has no counterparty or account number.",
-"learnedApplied_one": "Learned · {{count}} earlier payment categorized",
-"learnedApplied_other": "Learned · {{count}} earlier payments categorized",
+"learnedApplied_one": "Learned · {{count}} other payment categorized",
+"learnedApplied_other": "Learned · {{count}} other payments categorized",
 "ruleRetargeted": "Rule \"{{rule}}\" now assigns {{category}}",
-"ruleRetargetedApplied_one": "Rule \"{{rule}}\" now assigns {{category}} · {{count}} earlier payment categorized",
-"ruleRetargetedApplied_other": "Rule \"{{rule}}\" now assigns {{category}} · {{count}} earlier payments categorized",
+"ruleRetargetedApplied_one": "Rule \"{{rule}}\" now assigns {{category}} · {{count}} other payment categorized",
+"ruleRetargetedApplied_other": "Rule \"{{rule}}\" now assigns {{category}} · {{count}} other payments categorized",
 "undoHistory": "Undo",
-"historyRestored": "Earlier payments restored ({{count}})"
+"historyRestored": "Changed payments restored ({{count}})"
 ```
 
 - [ ] **Step 2: Refresh key**
@@ -1785,7 +1785,7 @@ Imports to add: `useQuery` from `@tanstack/react-query` (next to `useQueryClient
 Add the prop:
 
 ```ts
-  /** The ledger row's id; enables the "earlier payments" preview in the picker footer. */
+  /** The ledger row's id; enables the "other payments" preview in the picker footer. */
   transactionId?: string;
 ```
 
@@ -2038,13 +2038,13 @@ Expected: green. Fix type errors from the `handleSelect` signature change (the `
 
 - [ ] **Step 7: Verify in the app (demo profile)**
 
-Start the demo profile from the worktree (`cd` there first, then `npm run tauri dev` through the `moony-demo` launch config as the main session does), open Bankovní účty → an account, open a categorized row's picker: the footer shows the toggle, "Zjišťuji dřívější platby…", then "Zařadit i N dřívějších plateb · …". Pick another category: the rows of that payee change, the toast carries "Vrátit zpět", undo restores them. This step is run by the main session, not a subagent; the subagent stops after the gates.
+Start the demo profile from the worktree (`cd` there first, then `npm run tauri dev` through the `moony-demo` launch config as the main session does), open Bankovní účty → an account, open a categorized row's picker: the footer shows the toggle, "Zjišťuji další platby…", then "Zařadit i N dalších plateb · …". Pick another category: the rows of that payee change, the toast carries "Vrátit zpět", undo restores them. This step is run by the main session, not a subagent; the subagent stops after the gates.
 
 - [ ] **Step 8: Commit**
 
 ```bash
 git add src/components/bank-accounts/CategorySelector.tsx src/pages/BankAccountDetail.tsx src/lib/money-flow-refresh.ts src/i18n/locales/cs/bank_accounts.json src/i18n/locales/en/bank_accounts.json
-git commit -m "feat(ledger): remembered corrections show and recategorize earlier payments
+git commit -m "feat(ledger): remembered corrections show and recategorize other payments
 
 Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 ```
@@ -2067,19 +2067,19 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 ```json
 "categoryChanged": "Kategorie pravidla změněna",
 "history": {
-  "title": "Zařadit i dřívější platby?",
-  "description_one": "Pravidlo pro „{{payee}}“ ({{account}} · {{direction}}) nově zařazuje jako {{category}}. Zasáhne {{count}} dřívější platbu: {{breakdown}}.",
-  "description_few": "Pravidlo pro „{{payee}}“ ({{account}} · {{direction}}) nově zařazuje jako {{category}}. Zasáhne {{count}} dřívější platby: {{breakdown}}.",
-  "description_other": "Pravidlo pro „{{payee}}“ ({{account}} · {{direction}}) nově zařazuje jako {{category}}. Zasáhne {{count}} dřívějších plateb: {{breakdown}}.",
+  "title": "Zařadit i další platby?",
+  "description_one": "Pravidlo pro „{{payee}}“ ({{account}} · {{direction}}) nově zařazuje jako {{category}}. Zasáhne {{count}} další platbu: {{breakdown}}.",
+  "description_few": "Pravidlo pro „{{payee}}“ ({{account}} · {{direction}}) nově zařazuje jako {{category}}. Zasáhne {{count}} další platby: {{breakdown}}.",
+  "description_other": "Pravidlo pro „{{payee}}“ ({{account}} · {{direction}}) nově zařazuje jako {{category}}. Zasáhne {{count}} dalších plateb: {{breakdown}}.",
   "onlyNew": "Jen nové platby",
   "apply_one": "Zařadit {{count}} platbu",
   "apply_few": "Zařadit {{count}} platby",
   "apply_other": "Zařadit {{count}} plateb",
-  "applied_one": "{{count}} dřívější platba zařazena",
-  "applied_few": "{{count}} dřívější platby zařazeny",
-  "applied_other": "{{count}} dřívějších plateb zařazeno",
+  "applied_one": "{{count}} další platba zařazena",
+  "applied_few": "{{count}} další platby zařazeny",
+  "applied_other": "{{count}} dalších plateb zařazeno",
   "undo": "Vrátit zpět",
-  "restored": "Dřívější platby vráceny ({{count}})",
+  "restored": "Změněné platby vráceny ({{count}})",
   "uncategorized": "bez kategorie",
   "more": "+{{count}} dalších"
 }
@@ -2090,16 +2090,16 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 ```json
 "categoryChanged": "Rule category changed",
 "history": {
-  "title": "Also categorize earlier payments?",
-  "description_one": "The rule for \"{{payee}}\" ({{account}} · {{direction}}) now assigns {{category}}. It covers {{count}} earlier payment: {{breakdown}}.",
-  "description_other": "The rule for \"{{payee}}\" ({{account}} · {{direction}}) now assigns {{category}}. It covers {{count}} earlier payments: {{breakdown}}.",
+  "title": "Also categorize other payments?",
+  "description_one": "The rule for \"{{payee}}\" ({{account}} · {{direction}}) now assigns {{category}}. It covers {{count}} other payment: {{breakdown}}.",
+  "description_other": "The rule for \"{{payee}}\" ({{account}} · {{direction}}) now assigns {{category}}. It covers {{count}} other payments: {{breakdown}}.",
   "onlyNew": "Only new payments",
   "apply_one": "Categorize {{count}} payment",
   "apply_other": "Categorize {{count}} payments",
-  "applied_one": "{{count}} earlier payment categorized",
-  "applied_other": "{{count}} earlier payments categorized",
+  "applied_one": "{{count}} other payment categorized",
+  "applied_other": "{{count}} other payments categorized",
   "undo": "Undo",
-  "restored": "Earlier payments restored ({{count}})",
+  "restored": "Changed payments restored ({{count}})",
   "uncategorized": "no category",
   "more": "+{{count}} more"
 }
@@ -2249,7 +2249,7 @@ Expected: green.
 
 ```bash
 git add src/pages/CategorizationRules.tsx src/i18n/locales/cs/categorization.json src/i18n/locales/en/categorization.json
-git commit -m "feat(rules): changing a learned rule offers to recategorize earlier payments
+git commit -m "feat(rules): changing a learned rule offers to recategorize other payments
 
 Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 ```
@@ -2275,8 +2275,8 @@ Under `## [Unreleased]`:
 `### Added`:
 
 ```markdown
-- **Remembered corrections reach earlier payments.** The category picker in the bank ledger says
-  how many earlier payments of the same payee the remembered rule covers, broken down by their
+- **Remembered corrections reach other payments.** The category picker in the bank ledger says
+  how many other payments of the same payee the remembered rule covers, broken down by their
   current category, and categorizes them in the same step; the toast offers "Vrátit zpět". The
   same offer appears when a learned rule's category is changed on the rules page.
 ```

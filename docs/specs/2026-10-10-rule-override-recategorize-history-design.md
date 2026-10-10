@@ -1,4 +1,4 @@
-# Rule override and recategorizing earlier payments
+# Rule override and recategorizing other payments
 
 Design proposal of 2026-10-10, awaiting the owner's review. When the user corrects a
 category in the bank ledger and asks Moony to remember it, the rule that decides this
@@ -9,7 +9,7 @@ in the same step. The bulk change is reversible from the toast.
 ## Problem
 
 - **Earlier payments keep the old category.** A correction with "Zapamatovat" replaces
-  the learned rule, so the next import is right. Every earlier payment of the same payee
+  the learned rule, so the next import is right. Every other payment of the same payee
   still carries the old category: the ledger and the reports disagree with the rule the
   user just made, and the only fix is to go through those rows one by one.
 - **A custom rule silently wins.** The waterfall is own accounts → custom rules → learned
@@ -25,10 +25,12 @@ in the same step. The bulk change is reversible from the toast.
 ## Principles
 
 1. **Show the consequence before the click.** The picker names what decides the category
-   today and how many earlier payments the rewritten rule covers, with a breakdown by their
+   today and how many other payments the rewritten rule covers, with a breakdown by their
    current category ("12× Stravování · 2× bez kategorie").
-2. **One concept everywhere: "Zařadit i dřívější platby".** It means: give the rule's
-   category to every payment the rule matches. No exceptions by provenance; the breakdown
+2. **One concept everywhere: "Zařadit i další platby".** It means: give the rule's
+   category to every payment the rule matches today, whatever its date, before or after
+   the corrected one, with no time window; only the corrected row itself is left out
+   (it already has the category). No exceptions by provenance; the breakdown
    is the safeguard, and the change is undoable. (A NULL provenance does not mean a human
    chose the category: the ledger's "Automatická kategorizace" button saves through the
    plain category update and records none, so "skip manual rows" would skip rows a rule
@@ -36,7 +38,7 @@ in the same step. The bulk change is reversible from the toast.
 3. **Rewrite the rule that actually decides.** A learned rule is replaced, as today. When a
    custom rule has precedence, remembering changes that rule's category instead of storing
    a learned rule that can never fire.
-4. **Reversible.** The toast offers "Vrátit zpět" for the earlier payments. The rule itself
+4. **Reversible.** The toast offers "Vrátit zpět" for the other payments. The rule itself
    stays rewritten; undoing it is forgetting or editing the rule, as today.
 5. **Never silent.** Everything changed in bulk is counted in the toast.
 
@@ -55,7 +57,7 @@ Chosen: inline in the category picker (ledger), with a confirm dialog on the rul
 
 `CategorySelector` gets a `transactionId` prop. When the popover opens with learning
 enabled, it loads one preview for the row (`preview_recategorization`), which says what
-decides the category today and which earlier payments the rewritten rule would cover.
+decides the category today and which other payments the rewritten rule would cover.
 The footer below "+ Nová kategorie" renders one of four states. The toggle is independent
 of the preview, so the footer never waits for it; only the history line does.
 
@@ -64,16 +66,16 @@ of the preview, so the footer never waits for it; only the history line does.
 ```
 🧠 Zapamatovat pro tento účet a směr                               [ON]
    Tento účet · Odchozí · Albert. Spolehlivé účty platí …
-☑ Zařadit i 14 dřívějších plateb
+☑ Zařadit i 14 dalších plateb
    12× Stravování · 2× bez kategorie
 ```
 
 - The toggle and its scope line are unchanged.
 - The history checkbox appears only while the toggle is on and the preview reports at
-  least one earlier payment. It is checked by default: a remembered correction is the
+  least one other payment. It is checked by default: a remembered correction is the
   strongest signal that the old category was wrong for this payee, and the count is
   visible before the click.
-- While the preview loads the line reads "Zjišťuji dřívější platby…"; with zero matches
+- While the preview loads the line reads "Zjišťuji další platby…"; with zero matches
   the line is absent.
 - The breakdown lists the three largest current categories, then "+N dalších"; rows
   without a category are "bez kategorie". Counts include every matching payment, whatever
@@ -87,7 +89,7 @@ of the preview, so the footer never waits for it; only the history line does.
    Upravit pravidlo →
 🧠 Změnit kategorii tohoto pravidla                                 [ON]
    Má přednost před naučenými volbami; platí všude, kde zasáhne.
-☑ Zařadit i 27 dřívějších plateb
+☑ Zařadit i 27 dalších plateb
    20× Stravování · 5× Potraviny · 2× bez kategorie
 ```
 
@@ -122,7 +124,7 @@ Picking a category other than the current one:
 2. With the toggle on:
    - default state: `learn_categorization` with `applyHistory` set from the checkbox. In one
      database transaction the learned row is replaced and, when asked, every matching
-     earlier payment whose category differs gets the new category with
+     other payment whose category differs gets the new category with
      `categorization_source = 'exact_match'` and a cleared suggestion. Returns the changed
      rows with their previous category and provenance.
    - custom-rule state: `retarget_custom_rule` with the rule id, the category and
@@ -136,11 +138,11 @@ Toasts (past tense, bottom right; the ones with an action stay 8 s):
 | Situation | Title | Description | Action |
 |---|---|---|---|
 | Learned, no history change | Kategorie naučena (existing) | „Albert" | — |
-| Learned, N earlier payments changed | Naučeno · {{count}} dřívějších plateb zařazeno | „Albert" → Potraviny | Vrátit zpět |
+| Learned, N other payments changed | Naučeno · {{count}} dalších plateb zařazeno | „Albert" → Potraviny | Vrátit zpět |
 | Rule retargeted, no history change | Pravidlo „Supermarkety" zařazuje jako Potraviny | — | — |
-| Rule retargeted, N changed | Pravidlo „Supermarkety" zařazuje jako Potraviny · {{count}} dřívějších plateb zařazeno | — | Vrátit zpět |
+| Rule retargeted, N changed | Pravidlo „Supermarkety" zařazuje jako Potraviny · {{count}} dalších plateb zařazeno | — | Vrátit zpět |
 | Checkbox on, nothing differed | the no-history toast of the same row | | |
-| Undo done | Dřívější platby vráceny ({{count}}) | | |
+| Undo done | Změněné platby vráceny ({{count}}) | | |
 
 "Vrátit zpět" calls `restore_transaction_categories` with the returned rows: each gets
 its previous category and provenance back; rows deleted meanwhile are skipped. The rule
@@ -157,14 +159,14 @@ known, so the dialog counts only the matching payments whose category differs fr
 new one (`matches` minus the new category's bucket). When that count is at least one, a
 confirm dialog (440 px) opens:
 
-> **Zařadit i dřívější platby?**
+> **Zařadit i další platby?**
 > Pravidlo pro „Albert" (Běžný účet · odchozí) nově zařazuje jako Potraviny. Zasáhne
-> 14 dřívějších plateb: 12× Stravování · 2× bez kategorie.
+> 14 dalších plateb: 12× Stravování · 2× bez kategorie.
 >
 > [Jen nové platby]  [Zařadit 14 plateb]
 
 "Jen nové platby" keeps the rule change and leaves history alone. The primary applies
-the rule (`apply_learned_rule_to_history`) and toasts "{{count}} dřívějších plateb
+the rule (`apply_learned_rule_to_history`) and toasts "{{count}} dalších plateb
 zařazeno" with "Vrátit zpět".
 
 **Custom tab.** The editor keeps its current preview and the "Zařadit nezařazené hned"
@@ -213,7 +215,7 @@ interface RecategorizationPreview {
   rule: { id: string; name: string; categoryId: string } | null;
   /** False when neither a payee key nor an account identity exists. */
   learnable: boolean;
-  /** Earlier payments the rewritten rule matches, the edited row excluded. */
+  /** Other payments the rewritten rule matches, the edited row excluded. */
   matches: number;
   byCategory: { categoryId: string | null; count: number }[];
 }
@@ -246,8 +248,8 @@ The MCP layer is untouched: learning stays a UI-only, human-only path.
 
 | Key | cs | en |
 |---|---|---|
-| `historyChecking` | Zjišťuji dřívější platby… | Checking earlier payments… |
-| `applyHistory` (plural forms) | Zařadit i {{count}} dřívější platbu / platby / plateb | Also categorize {{count}} earlier payment(s) |
+| `historyChecking` | Zjišťuji další platby… | Checking other payments… |
+| `applyHistory` (plural forms) | Zařadit i {{count}} další platbu / platby / plateb | Also categorize {{count}} other payment(s) |
 | `uncategorizedCount` | bez kategorie | no category |
 | `moreCategories` | +{{count}} dalších | +{{count}} more |
 | `governedByRule` | Zařazuje vlastní pravidlo „{{rule}}" → {{category}} | Categorized by your rule "{{rule}}" → {{category}} |
@@ -256,21 +258,21 @@ The MCP layer is untouched: learning stays a UI-only, human-only path.
 | `editRule` | Upravit pravidlo → | Edit rule → |
 | `ownAccountNote` | Převod mezi vlastními účty – zařazuje se automaticky. | Transfer between your own accounts – categorized automatically. |
 | `notLearnable` | Nelze zapamatovat – platba nemá protistranu ani číslo účtu. | Cannot be remembered – the payment has no counterparty or account number. |
-| `learnedApplied` (plural) | Naučeno · {{count}} dřívějších plateb zařazeno | Learned · {{count}} earlier payments categorized |
+| `learnedApplied` (plural) | Naučeno · {{count}} dalších plateb zařazeno | Learned · {{count}} other payments categorized |
 | `ruleRetargeted` | Pravidlo „{{rule}}" zařazuje jako {{category}} | Rule "{{rule}}" now assigns {{category}} |
-| `ruleRetargetedApplied` (plural) | Pravidlo „{{rule}}" zařazuje jako {{category}} · {{count}} dřívějších plateb zařazeno | Rule "{{rule}}" now assigns {{category}} · {{count}} earlier payments categorized |
+| `ruleRetargetedApplied` (plural) | Pravidlo „{{rule}}" zařazuje jako {{category}} · {{count}} dalších plateb zařazeno | Rule "{{rule}}" now assigns {{category}} · {{count}} other payments categorized |
 | `undoHistory` | Vrátit zpět | Undo |
-| `historyRestored` (plural) | Dřívější platby vráceny ({{count}}) | Earlier payments restored ({{count}}) |
+| `historyRestored` (plural) | Změněné platby vráceny ({{count}}) | Changed payments restored ({{count}}) |
 
 `categorization.learnedTab.history.*` (rules page dialog):
 
 | Key | cs | en |
 |---|---|---|
-| `title` | Zařadit i dřívější platby? | Also categorize earlier payments? |
-| `description` (plural) | Pravidlo pro „{{payee}}" ({{account}} · {{direction}}) nově zařazuje jako {{category}}. Zasáhne {{count}} dřívějších plateb: {{breakdown}}. | The rule for "{{payee}}" ({{account}} · {{direction}}) now assigns {{category}}. It covers {{count}} earlier payments: {{breakdown}}. |
+| `title` | Zařadit i další platby? | Also categorize other payments? |
+| `description` (plural) | Pravidlo pro „{{payee}}" ({{account}} · {{direction}}) nově zařazuje jako {{category}}. Zasáhne {{count}} dalších plateb: {{breakdown}}. | The rule for "{{payee}}" ({{account}} · {{direction}}) now assigns {{category}}. It covers {{count}} other payments: {{breakdown}}. |
 | `onlyNew` | Jen nové platby | Only new payments |
 | `apply` (plural) | Zařadit {{count}} plateb | Categorize {{count}} payments |
-| `applied` (plural) | {{count}} dřívějších plateb zařazeno | {{count}} earlier payments categorized |
+| `applied` (plural) | {{count}} dalších plateb zařazeno | {{count}} other payments categorized |
 
 Czech plural forms follow the existing `_one` / `_few` / `_other` pattern.
 

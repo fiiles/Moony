@@ -1,0 +1,196 @@
+{
+  "title": "Aksjemonitor",
+  "subtitle": "Aksjer du vurderer: kurser i egen valuta, målkurser og notatene dine.",
+  "cancel": "Avbryt",
+  "search": {
+    "placeholder": "Søk etter en aksje (symbol eller navn) for å begynne å følge den",
+    "noResults": "Ingen aksjer funnet",
+    "searching": "Søker…"
+  },
+  "table": {
+    "stock": "Aksje",
+    "price": "Kurs",
+    "fiftyTwoWeekLow": "52-ukers lav",
+    "targetPrice": "Mål",
+    "change": "Endring",
+    "changePct": "Endring %",
+    "held": "I porteføljen",
+    "pricesUpdatedAt": "Kurser oppdatert kl. {{time}}",
+    "pricesNeverUpdated": "Kursene er ikke hentet ennå",
+    "fiftyTwoWeekHigh": "52-ukers høy",
+    "title": "Fulgt",
+    "sub": "Endring mot forrige sluttkurs · 52-ukers spenn med gjeldende kurs og målet",
+    "sort": {
+      "name": "Etter navn",
+      "change": "Etter endring",
+      "target": "Etter mål"
+    },
+    "changeToday": "Endring i dag",
+    "range": "52-ukers spenn",
+    "target": "Mål",
+    "setTarget": "Sett mål",
+    "targetReached": "Målet {{price}} er nådd",
+    "toTarget": "{{pct}} til målet",
+    "waitsBelow": "venter på et fall",
+    "waitsAbove": "venter på en stigning",
+    "footer_one": "{{count}} aksje · kurser i egen valuta, uten omregning",
+    "footer_other": "{{count}} aksjer · kurser i egen valuta, uten omregning",
+    "source": "Kilde Yahoo Finance · opptil 15 minutter forsinket"
+  },
+  "empty": {
+    "title": "Ingen fulgte aksjer",
+    "description": "Søk etter en aksje ovenfor og følg den for å begynne å overvåke."
+  },
+  "actions": {
+    "follow": "Følg",
+    "unfollow": "Slutt å følge",
+    "refresh": "Oppdater kurser",
+    "followPortfolio": "Følg {{count}} fra porteføljen",
+    "refreshShort": "Oppdater",
+    "buy": "Kjøp inn i porteføljen",
+    "openInPortfolio": "Åpne i porteføljen",
+    "setTarget": "Sett mål",
+    "editTarget": "Rediger mål",
+    "notes": "Notater"
+  },
+  "unfollowConfirm": {
+    "title": "Slutte å følge {{ticker}}?",
+    "description": "Målkursen og notatene for denne aksjen slettes."
+  },
+  "detail": {
+    "marketCap": "Markedsverdi",
+    "dividendYield": "Direkteavkastning",
+    "peRatio": "P/E-tall",
+    "fiftyTwoWeekLow": "52-ukers lav",
+    "fiftyTwoWeekHigh": "52-ukers høy",
+    "previousClose": "Forrige sluttkurs",
+    "noData": "Ingen kursdata tilgjengelig (frakoblet?)",
+    "notFollowed": "Du følger ikke denne aksjen ennå.",
+    "backToOverview": "Tilbake til oversikten",
+    "periodStart": "Start av {{period}}: {{price}}",
+    "openInPortfolio": "Åpne i porteføljen",
+    "back": "Tilbake til følgelisten",
+    "followedSince": "Følger siden {{date}}",
+    "notFollowedShort": "Følges ikke ennå",
+    "held": "i porteføljen din",
+    "notHeld": "ikke i porteføljen din",
+    "price": "Kurs",
+    "today": "{{change}} i dag · slutt {{close}}",
+    "target": "Målkurs",
+    "toTarget": "{{pct}} igjen",
+    "targetReached": "målet er nådd",
+    "periodChange": "endring {{change}}",
+    "legend": {
+      "price": "Kurs",
+      "target": "Målkurs",
+      "watchStart": "Start på følgingen"
+    },
+    "watchStartTarget": "mål {{price}}",
+    "stats": {
+      "exchangeNote": "på {{exchange}}",
+      "peNote": "kurs i forhold til inntjening de siste 12 månedene",
+      "dividendNote": "{{amount}} i året per aksje",
+      "range": "52-ukers spenn",
+      "min": "min",
+      "max": "maks",
+      "rangeLabel": "52-ukers spenn {{low}} – {{high}}, gjeldende kurs {{current}}",
+      "rangeLabelTarget": "52-ukers spenn {{low}} – {{high}}, gjeldende kurs {{current}}, mål {{target}}"
+    },
+    "keyData": "Nøkkeldata",
+    "kv": {
+      "previousClose": "Forrige sluttkurs",
+      "changeToday": "Endring i dag",
+      "low": "52-ukers lav",
+      "high": "52-ukers høy",
+      "marketCap": "Markedsverdi",
+      "pe": "P/E-tall",
+      "dividend": "Direkteavkastning",
+      "exchange": "Børs",
+      "updated": "Kurser oppdatert"
+    },
+    "since": {
+      "title": "Siden du begynte å følge",
+      "change": "På {{days}} har kursen endret seg med <b>{{change}}</b> fra {{price}}.",
+      "toTarget": "Til målet gjenstår {{amount}}.",
+      "noData": "Følger i {{days}}; kursen fra den dagen er ikke tilgjengelig ennå.",
+      "days_one": "{{count}} dag",
+      "days_other": "{{count}} dager"
+    },
+    "followPrompt": "Når du følger aksjen, får du en målkurs, notater og en markering av start på følgingen i diagrammet."
+  },
+  "target": {
+    "label": "Målkurs",
+    "set": "Sett mål",
+    "edit": "Rediger",
+    "clear": "Slett mål",
+    "save": "Lagre mål",
+    "cancel": "Avbryt",
+    "toTarget": "{{pct}} til målet",
+    "placeholder": "f.eks. 250,00",
+    "title": "Målkurs",
+    "description": "Kursen du vil handle ved. Når aksjen krysser den, tar Moony den med blant milepælene på oversikten.",
+    "field": "Mål",
+    "hintCurrent": "Gjeldende kurs {{price}}",
+    "hintHigh": "52-ukers høy {{price}}",
+    "directionLabel": "Hva målet venter på",
+    "directionBelow": "Venter på et fall – kjøp / kjøp mer",
+    "directionAbove": "Venter på en stigning – selg",
+    "explainBelow": "Moony minner deg på det når kursen faller til {{price}} ({{pct}} fra dagens kurs).",
+    "explainAbove": "Moony minner deg på det når kursen stiger til {{price}} ({{pct}} fra dagens kurs).",
+    "explainBelowNoPrice": "Moony minner deg på det når kursen faller til {{price}}.",
+    "explainAboveNoPrice": "Moony minner deg på det når kursen stiger til {{price}}.",
+    "explainReached": "Kursen er allerede på eller forbi dette målet – Moony tar den med med en gang."
+  },
+  "notes": {
+    "title": "Notater",
+    "edit": "Rediger",
+    "write": "Skriv",
+    "preview": "Forhåndsvisning",
+    "save": "Lagre",
+    "cancel": "Avbryt",
+    "empty": "Ingen notater ennå. Klikk på Rediger for å legge til analysenotater (markdown støttes).",
+    "placeholder": "Skriv notater i markdown…",
+    "toolbar": {
+      "bold": "Fet",
+      "italic": "Kursiv",
+      "heading": "Overskrift",
+      "list": "Punktliste",
+      "orderedList": "Nummerert liste",
+      "link": "Lenke"
+    },
+    "sub": "Markdown · kan også redigeres via assistenten (MCP)",
+    "paragraphs_one": "{{count}} avsnitt",
+    "paragraphs_other": "{{count}} avsnitt",
+    "markdownHint": "Markdown"
+  },
+  "chart": {
+    "noData": "Ingen diagramdata for denne perioden",
+    "currentPrice": "Gjeldende kurs",
+    "targetLabel": "Mål {{price}}"
+  },
+  "toast": {
+    "followed": "Følger nå {{ticker}}",
+    "unfollowed": "Følger ikke lenger {{ticker}}",
+    "followedPortfolio_one": "Følger nå 1 aksje fra porteføljen din",
+    "followedPortfolio_other": "Følger nå {{count}} aksjer fra porteføljen din"
+  },
+  "eyebrow": "Følgeliste",
+  "status": {
+    "updated": "Kurser oppdatert {{time}} · oppdateres hvert 5. minutt",
+    "updatedShort": "Kurser oppdatert {{time}}",
+    "never": "Kursene er ikke lastet ennå"
+  },
+  "stats": {
+    "watched": "Fulgte aksjer",
+    "heldNote_one": "{{count}} av dem er i porteføljen din",
+    "heldNote_other": "{{count}} av dem er i porteføljen din",
+    "heldNoteNone": "ingen av dem er i porteføljen din",
+    "atTarget": "På målkurs",
+    "targetReached": "målet {{price}} er nådd",
+    "toTarget": "{{pct}} til målet",
+    "noTargets": "ingen målkurser ennå",
+    "topToday": "Mest i dag",
+    "worstNote": "minst {{name}} {{change}}",
+    "noChanges": "ingen endring i dag"
+  }
+}

@@ -1,0 +1,196 @@
+{
+  "title": "Aktiebevakning",
+  "subtitle": "Aktier du överväger: kurser i sin egen valuta, målkurser och dina anteckningar.",
+  "cancel": "Avbryt",
+  "search": {
+    "placeholder": "Sök en aktie (symbol eller namn) för att börja bevaka",
+    "noResults": "Inga aktier hittades",
+    "searching": "Söker…"
+  },
+  "table": {
+    "stock": "Aktie",
+    "price": "Kurs",
+    "fiftyTwoWeekLow": "Lägsta 52 v",
+    "targetPrice": "Mål",
+    "change": "Förändring",
+    "changePct": "Förändring %",
+    "held": "I portföljen",
+    "pricesUpdatedAt": "Kurserna uppdaterades {{time}}",
+    "pricesNeverUpdated": "Kurserna har inte hämtats ännu",
+    "fiftyTwoWeekHigh": "Högsta 52 v",
+    "title": "Bevakade",
+    "sub": "Förändring mot föregående stängning · 52-veckorsintervall med aktuell kurs och målet",
+    "sort": {
+      "name": "Efter namn",
+      "change": "Efter förändring",
+      "target": "Efter mål"
+    },
+    "changeToday": "Förändring i dag",
+    "range": "52-v-intervall",
+    "target": "Mål",
+    "setTarget": "Sätt mål",
+    "targetReached": "Målet {{price}} nått",
+    "toTarget": "{{pct}} till målet",
+    "waitsBelow": "väntar på en dipp",
+    "waitsAbove": "väntar på en uppgång",
+    "footer_one": "{{count}} aktie · kurser i sin egen valuta, ingen omräkning",
+    "footer_other": "{{count}} aktier · kurser i sin egen valuta, ingen omräkning",
+    "source": "Källa Yahoo Finance · upp till 15 minuter försenat"
+  },
+  "empty": {
+    "title": "Inga bevakade aktier",
+    "description": "Sök efter en aktie ovan och bevaka den för att börja övervaka."
+  },
+  "actions": {
+    "follow": "Bevaka",
+    "unfollow": "Sluta bevaka",
+    "refresh": "Uppdatera kurser",
+    "followPortfolio": "Bevaka {{count}} från portföljen",
+    "refreshShort": "Uppdatera",
+    "buy": "Köp till portföljen",
+    "openInPortfolio": "Öppna i portföljen",
+    "setTarget": "Sätt mål",
+    "editTarget": "Redigera mål",
+    "notes": "Anteckningar"
+  },
+  "unfollowConfirm": {
+    "title": "Sluta bevaka {{ticker}}?",
+    "description": "Målkursen och anteckningarna för den här aktien tas bort."
+  },
+  "detail": {
+    "marketCap": "Börsvärde",
+    "dividendYield": "Direktavkastning",
+    "peRatio": "P/E-tal",
+    "fiftyTwoWeekLow": "Lägsta 52 veckor",
+    "fiftyTwoWeekHigh": "Högsta 52 veckor",
+    "previousClose": "Föregående stängning",
+    "noData": "Ingen kursdata tillgänglig (offline?)",
+    "notFollowed": "Du bevakar inte den här aktien ännu.",
+    "backToOverview": "Tillbaka till översikten",
+    "periodStart": "Början av {{period}}: {{price}}",
+    "openInPortfolio": "Öppna i portföljen",
+    "back": "Tillbaka till bevakningslistan",
+    "followedSince": "Bevakas sedan {{date}}",
+    "notFollowedShort": "Bevakas inte ännu",
+    "held": "i din portfölj",
+    "notHeld": "inte i din portfölj",
+    "price": "Kurs",
+    "today": "{{change}} i dag · stängning {{close}}",
+    "target": "Målkurs",
+    "toTarget": "{{pct}} kvar",
+    "targetReached": "målet nått",
+    "periodChange": "förändring {{change}}",
+    "legend": {
+      "price": "Kurs",
+      "target": "Målkurs",
+      "watchStart": "Bevakningsstart"
+    },
+    "watchStartTarget": "mål {{price}}",
+    "stats": {
+      "exchangeNote": "på {{exchange}}",
+      "peNote": "kurs i förhållande till vinst de senaste 12 månaderna",
+      "dividendNote": "{{amount}} per år och aktie",
+      "range": "52-v-intervall",
+      "min": "min",
+      "max": "max",
+      "rangeLabel": "52-veckorsintervall {{low}} – {{high}}, aktuell kurs {{current}}",
+      "rangeLabelTarget": "52-veckorsintervall {{low}} – {{high}}, aktuell kurs {{current}}, mål {{target}}"
+    },
+    "keyData": "Nyckeldata",
+    "kv": {
+      "previousClose": "Föregående stängning",
+      "changeToday": "Förändring i dag",
+      "low": "Lägsta 52 v",
+      "high": "Högsta 52 v",
+      "marketCap": "Börsvärde",
+      "pe": "P/E-tal",
+      "dividend": "Direktavkastning",
+      "exchange": "Börs",
+      "updated": "Kurser uppdaterade"
+    },
+    "since": {
+      "title": "Sedan du började bevaka",
+      "change": "Under {{days}} har kursen rört sig från {{price}} med <b>{{change}}</b>.",
+      "toTarget": "{{amount}} till målet.",
+      "noData": "Bevakas i {{days}}; kursen från den dagen finns inte ännu.",
+      "days_one": "{{count}} dag",
+      "days_other": "{{count}} dagar"
+    },
+    "followPrompt": "Genom att bevaka får du en målkurs, anteckningar och bevakningsstart markerad i diagrammet."
+  },
+  "target": {
+    "label": "Målkurs",
+    "set": "Sätt mål",
+    "edit": "Redigera",
+    "clear": "Ta bort mål",
+    "save": "Spara mål",
+    "cancel": "Avbryt",
+    "toTarget": "{{pct}} till målet",
+    "placeholder": "t.ex. 250,00",
+    "title": "Målkurs",
+    "description": "Kursen då du vill agera. När aktien passerar den listar Moony den bland milstolparna i översikten.",
+    "field": "Mål",
+    "hintCurrent": "Aktuell kurs {{price}}",
+    "hintHigh": "Högsta 52 v {{price}}",
+    "directionLabel": "Vad målet väntar på",
+    "directionBelow": "Väntar på en dipp – köp / köp mer",
+    "directionAbove": "Väntar på en uppgång – sälj",
+    "explainBelow": "Moony påminner dig när kursen faller till {{price}} ({{pct}} från dagens kurs).",
+    "explainAbove": "Moony påminner dig när kursen stiger till {{price}} ({{pct}} från dagens kurs).",
+    "explainBelowNoPrice": "Moony påminner dig när kursen faller till {{price}}.",
+    "explainAboveNoPrice": "Moony påminner dig när kursen stiger till {{price}}.",
+    "explainReached": "Kursen är redan vid eller förbi det här målet – Moony listar den direkt."
+  },
+  "notes": {
+    "title": "Anteckningar",
+    "edit": "Redigera",
+    "write": "Skriv",
+    "preview": "Förhandsgranska",
+    "save": "Spara",
+    "cancel": "Avbryt",
+    "empty": "Inga anteckningar ännu. Klicka på Redigera för att lägga till analysanteckningar (markdown stöds).",
+    "placeholder": "Skriv anteckningar i markdown…",
+    "toolbar": {
+      "bold": "Fetstil",
+      "italic": "Kursiv",
+      "heading": "Rubrik",
+      "list": "Punktlista",
+      "orderedList": "Numrerad lista",
+      "link": "Länk"
+    },
+    "sub": "Markdown · kan även redigeras via assistenten (MCP)",
+    "paragraphs_one": "{{count}} stycke",
+    "paragraphs_other": "{{count}} stycken",
+    "markdownHint": "Markdown"
+  },
+  "chart": {
+    "noData": "Ingen diagramdata för den här perioden",
+    "currentPrice": "Aktuell kurs",
+    "targetLabel": "Mål {{price}}"
+  },
+  "toast": {
+    "followed": "Du bevakar nu {{ticker}}",
+    "unfollowed": "Du bevakar inte längre {{ticker}}",
+    "followedPortfolio_one": "Du bevakar nu 1 aktie från din portfölj",
+    "followedPortfolio_other": "Du bevakar nu {{count}} aktier från din portfölj"
+  },
+  "eyebrow": "Bevakningslista",
+  "status": {
+    "updated": "Kurserna uppdaterades {{time}} · uppdateras var 5:e minut",
+    "updatedShort": "Kurserna uppdaterades {{time}}",
+    "never": "Kurserna har inte lästs in ännu"
+  },
+  "stats": {
+    "watched": "Bevakade aktier",
+    "heldNote_one": "{{count}} av dem finns i din portfölj",
+    "heldNote_other": "{{count}} av dem finns i din portfölj",
+    "heldNoteNone": "ingen av dem finns i din portfölj",
+    "atTarget": "Vid målkurs",
+    "targetReached": "målet {{price}} nått",
+    "toTarget": "{{pct}} till målet",
+    "noTargets": "inga målkurser ännu",
+    "topToday": "Mest i dag",
+    "worstNote": "minst {{name}} {{change}}",
+    "noChanges": "ingen förändring i dag"
+  }
+}

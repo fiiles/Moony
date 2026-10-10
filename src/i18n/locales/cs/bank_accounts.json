@@ -365,7 +365,7 @@
       "summary_few": "{{count}} transakce od {{from}} do {{to}}.",
       "summary_other": "{{count}} transakcí od {{from}} do {{to}}.",
       "nothing": "Nic nebylo importováno.",
-      "balance": "Zůstatek z výpisu k {{date}}: {{balance}}.",
+      "statementBalance": "Zůstatek z výpisu k {{date}}: <b>{{balance}}</b>.",
       "imported": "Importováno",
       "duplicates": "Duplicity",
       "errors": "Chyby",

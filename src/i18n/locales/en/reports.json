@@ -393,8 +393,7 @@
   "planning": {
     "eyebrow": "Plan",
     "title": "Cashflow planning",
-    "subtitle": "Estimated recurring income and expenses. Actual flows from your accounts are in",
-    "link": "Cashflow",
+    "subtitleLinked": "Estimated recurring income and expenses. Actual flows from your accounts are in <link>Cashflow →</link>",
     "status": "Automatic items from Loans, Insurance, Real estate and Stocks",
     "addItem": "Add item",
     "deleteItem": "Delete item",
@@ -470,8 +469,7 @@
   "actuals": {
     "eyebrow": "Report",
     "title": "Cashflow",
-    "subtitle": "Actual income and expenses from all accounts for the chosen period. The recurring items you count on are in",
-    "link": "Cashflow planning",
+    "subtitleLinked": "Actual income and expenses from all accounts for the chosen period. The recurring items you count on are in <link>Cashflow planning →</link>",
     "transactions_one": "{{count}} transaction",
     "transactions_other": "{{count}} transactions",
     "export": "Export",

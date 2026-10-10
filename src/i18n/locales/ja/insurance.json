@@ -1,0 +1,312 @@
+{
+  "title": "保険",
+  "eyebrow": "保障",
+  "subtitle": "何が保障され、いくらかかり、支払いや更新日がいつ来るかを確認できます。",
+  "loading": "保険契約を読み込んでいます...",
+  "export": "エクスポート",
+  "status": {
+    "nextPayment": "次回の支払い {{date}} · {{amount}}",
+    "none": "定期的な支払いなし",
+    "ended": "契約は終了しました"
+  },
+  "empty": {
+    "title": "保険契約はまだありません",
+    "description": "最初の契約を追加すると、保障内容、保険料、支払い期日を確認できます。"
+  },
+  "addPolicy": "契約を追加",
+  "policies_other": "有効な契約 {{count}}件",
+  "payments_other": "支払い {{count}}回",
+  "risks_other": "リスク {{count}}件",
+  "documentsCount_other": "書類 {{count}}件",
+  "duration": {
+    "years_other": "{{count}}年",
+    "months_other": "{{count}}か月",
+    "days_other": "{{count}}日"
+  },
+  "summary": {
+    "yearly": "年間保険料",
+    "yearlyNote": "月額 {{monthly}} · {{policies}}",
+    "nextPayment": "次回の支払い",
+    "nextPaymentNote": "{{amount}} · {{policies}}",
+    "noPayments": "支払い予定はありません",
+    "coverage": "保障額の合計",
+    "coverageNote": "限度額の合計 · {{breakdown}}",
+    "noCoverage": "保障の限度額はまだ入力されていません",
+    "anniversary": "直近の更新日",
+    "anniversaryNote": "{{name}} · {{duration}}後 · 条件を比較する時期です",
+    "endNote": "{{name}} · 契約は{{duration}}後に終了",
+    "noAnniversary": "有効な契約はありません"
+  },
+  "calendar": {
+    "title": "支払いカレンダー（今後12か月）",
+    "subtitle": "各契約の支払い頻度と開始日から算出 · 年払いは強調表示されます。",
+    "total": "合計 {{amount}}",
+    "monthly": "月払いの保険料",
+    "other": "四半期払いと年払い",
+    "anniversary": "更新日 · {{name}}",
+    "peakNote": "最も負担が大きいのは{{month}}で、{{amount}}です。資金を確保しておきましょう。",
+    "evenNote": "支払いは均等です · 月額 {{amount}}"
+  },
+  "table": {
+    "title": "契約",
+    "subtitle": "有効な契約",
+    "subtitleHidden": "有効な契約 · 終了した契約は非表示",
+    "showEnded": "終了済みを表示",
+    "allTypes": "すべての種類",
+    "policy": "契約",
+    "premium": "保険料",
+    "coverage": "保障額",
+    "nextPayment": "次回の支払い",
+    "anniversary": "更新日",
+    "actions": "操作",
+    "perYear": "年間 {{amount}}",
+    "perYearShort": "年間",
+    "moreLimits": "他{{count}}件",
+    "ended": "終了",
+    "endedOn": "終了",
+    "endOn": "契約終了",
+    "anniversaryShort": "契約の更新日",
+    "in": "{{duration}}後",
+    "noResults": {
+      "title": "この種類の契約はありません",
+      "description": "別の絞り込みを試すか、新しい契約を追加してください。"
+    },
+    "footer": {
+      "yearly": "年間 {{amount}}",
+      "coverage": "保障額 {{amount}}",
+      "note": "更新日 = 開始日から数えた次の契約年度 · 終了 = 合意した日付"
+    }
+  },
+  "types": {
+    "life": "生命保険",
+    "health": "医療保険",
+    "property": "財産保険",
+    "vehicle": "自動車保険",
+    "travel": "旅行保険",
+    "liability": "賠償責任保険",
+    "accident": "傷害保険",
+    "other": "その他",
+    "allTypes": "すべての種類"
+  },
+  "typeShort": {
+    "life": "生命",
+    "health": "医療",
+    "property": "財産",
+    "vehicle": "自動車",
+    "travel": "旅行",
+    "liability": "賠償責任",
+    "accident": "傷害",
+    "other": "その他"
+  },
+  "frequencyShort": {
+    "monthly": "毎月",
+    "quarterly": "四半期ごと",
+    "semi_annually": "半年ごと",
+    "annually": "毎年",
+    "one_time": "一括"
+  },
+  "form": {
+    "addTitle": "保険契約を追加",
+    "editTitle": "保険契約を編集",
+    "name": "契約名",
+    "namePlaceholder": "例：住宅保険",
+    "provider": "保険会社",
+    "providerPlaceholder": "例：保険会社名",
+    "type": "契約の種類",
+    "premium": "年間保険料",
+    "coverage": "保障額",
+    "currency": "通貨",
+    "startDate": "開始日",
+    "expiryDate": "満了日",
+    "policyNumber": "契約番号",
+    "notes": "メモ"
+  },
+  "actions": {
+    "open": "開く",
+    "edit": "編集",
+    "end": "契約を終了",
+    "reactivate": "契約を再開",
+    "delete": "契約を削除",
+    "addDocument": "書類を追加"
+  },
+  "endDialog": {
+    "title": "契約を終了 · {{name}}",
+    "description": "契約は履歴に残り、保険料の合計と支払いカレンダーからは外れます。",
+    "date": "契約終了日",
+    "alertTitle": "契約は終了済みに移ります",
+    "alertNote": "「···」メニューからいつでも再開できます。書類と限度額は残ります。",
+    "submit": "契約を終了"
+  },
+  "confirmDelete": {
+    "title": "契約を削除",
+    "description": "「{{name}}」を削除しますか？書類も一緒に削除されます。この操作は元に戻せません。"
+  },
+  "toast": {
+    "added": "契約を追加しました",
+    "updated": "契約を更新しました",
+    "deleted": "契約を削除しました",
+    "ended": "契約を終了しました",
+    "reactivated": "契約を再開しました"
+  },
+  "modal": {
+    "basicInfo": "基本情報",
+    "paymentDetails": "支払いの詳細",
+    "additionalInfo": "追加情報",
+    "selectType": "種類を選択",
+    "selectStatus": "状態を選択",
+    "addDescription": "契約の基本情報、支払い、保障の限度額を入力します。書類は詳細画面で追加します。",
+    "editDescription": "保険契約の詳細を編集します。",
+    "policyName": "契約名",
+    "policyNamePlaceholder": "例：住宅保険 2024",
+    "provider": "保険会社",
+    "providerPlaceholder": "例：Allianz",
+    "policyNumber": "契約番号",
+    "policyNumberPlaceholder": "契約番号",
+    "paymentFrequency": "支払い頻度",
+    "selectFrequency": "頻度を選択",
+    "oneTimePayment": "一括払い（任意）",
+    "oneTimePaymentRequired": "一括払い",
+    "regularPayment": "定期払い",
+    "endDateOptional": "終了日（任意）",
+    "coverageLimits": "保障の限度額",
+    "addLimit": "限度額を追加",
+    "removeLimit": "限度額を削除",
+    "limitTitle": "限度額の名称",
+    "notesPlaceholder": "特約、連絡先など...",
+    "createPolicy": "契約を作成",
+    "updatePolicy": "契約を更新",
+    "status": {
+      "active": "有効",
+      "inactive": "無効"
+    },
+    "frequency": {
+      "monthly": "毎月",
+      "quarterly": "四半期ごと",
+      "semi_annually": "半年ごと",
+      "annually": "毎年",
+      "one_time": "一括"
+    },
+    "linkRealEstate": "不動産に紐付ける",
+    "selectRealEstate": "不動産を選択（任意）",
+    "noRealEstateAvailable": "選択できる不動産がありません"
+  },
+  "detail": {
+    "backToList": "保険に戻る",
+    "notFound": "この契約は存在しません。",
+    "policyNumber": "番号 {{number}}",
+    "description": "{{start}} ～ {{end}} · {{frequency}} {{premium}}",
+    "descriptionOneTime": "{{start}} ～ {{end}} · 一括 {{premium}}",
+    "noEnd": "期間の定めなし",
+    "until": "{{date}}",
+    "statusActive": "有効",
+    "statusEnded": "終了",
+    "period": {
+      "year": "1年",
+      "all": "開始以降"
+    },
+    "hero": {
+      "paid": "支払済みの保険料",
+      "paidNote": "{{month}}以降 {{payments}} · 年間 {{yearly}}",
+      "paidNoteOneTime": "{{date}}の契約時に一括払い",
+      "coverage": "保障額の合計",
+      "coverageRatio": "年間保険料の{{ratio}}倍",
+      "coverageOneTime": "合意した限度額の合計",
+      "noCoverage": "保障の限度額が入力されていません"
+    },
+    "chart": {
+      "paid": "累計の支払額",
+      "next12": "今後12回の支払い",
+      "tipPaid": "累計の支払額",
+      "tipPlanned": "支払い予定",
+      "note": "{{payments}} · 年間 {{yearly}}",
+      "noteOneTime": "{{date}}に一括払い。以降の支払いはありません"
+    },
+    "stats": {
+      "yearly": "年間費用",
+      "yearlyNote": "{{frequency}} {{premium}} · 保険料全体の{{share}}",
+      "yearlyOneTime": "一括払いの保険料のため、年間費用はありません",
+      "nextPayment": "次回の支払い",
+      "nextPaymentNote": "{{in}}後 · {{amount}} · その次は{{next}}",
+      "noNextPayment": "以降の支払いはありません",
+      "anniversary": "契約の更新日",
+      "anniversaryNote": "{{in}}後 · 保障の見直しや条件の比較の機会です",
+      "end": "契約終了",
+      "endNote": "{{in}}後 · 合意した終了日",
+      "endedNote": "契約は{{date}}に終了しました",
+      "duration": "契約期間",
+      "durationNote": "終了日の定めなし · {{docs}}",
+      "durationEnd": "{{date}}まで · {{docs}}"
+    },
+    "limits": {
+      "title": "保障の限度額",
+      "subtitle": "契約で保障される内容と上限額",
+      "edit": "限度額を編集",
+      "risk": "リスク",
+      "limit": "限度額",
+      "footer": "{{risks}} · 保障額の合計 {{amount}}",
+      "empty": "保障の限度額はまだ入力されていません。契約を編集して追加してください。"
+    },
+    "contract": {
+      "title": "契約",
+      "provider": "保険会社",
+      "number": "契約番号",
+      "type": "種類",
+      "start": "開始",
+      "end": "終了",
+      "endNone": "期間の定めなし",
+      "frequency": "支払い頻度",
+      "premium": "保険料",
+      "oneTime": "一括払い",
+      "oneTimeNone": "なし",
+      "property": "不動産"
+    },
+    "notes": {
+      "title": "メモ",
+      "edit": "編集",
+      "empty": "メモはありません。契約を編集して、連絡先、条件、リマインダーを追加できます。",
+      "updated": "{{date}}に編集"
+    },
+    "documents": "書類"
+  },
+  "documents": {
+    "subtitle": "アプリの暗号化フォルダに保存されます",
+    "columns": {
+      "document": "書類",
+      "type": "種類",
+      "uploaded": "追加日"
+    },
+    "description": "契約書、証書、その他の書類を添付します",
+    "add": "書類を追加",
+    "addFirst": "最初の書類を追加",
+    "addTitle": "書類を追加",
+    "noDocuments": "添付された書類はまだありません",
+    "file": "ファイル",
+    "clickToSelect": "クリックしてファイルを選択",
+    "type": "書類の種類",
+    "selectType": "種類を選択",
+    "namePlaceholder": "例：保険契約書 2024",
+    "descriptionPlaceholder": "この書類に関する補足メモ...",
+    "uploading": "アップロード中...",
+    "upload": "書類をアップロード",
+    "open": "開く",
+    "delete": "削除",
+    "added": "書類を追加しました",
+    "deleted": "書類を削除しました",
+    "optional": "任意",
+    "types": {
+      "contract": "契約書",
+      "certificate": "証書",
+      "claim": "請求",
+      "other": "その他"
+    },
+    "deleteConfirm": {
+      "title": "書類を削除",
+      "description": "「{{name}}」を削除しますか？ファイルは完全に削除されます。"
+    }
+  },
+  "mcp": {
+    "tipSummary": "すべてを手入力するのは大変ですか？AI アシスタントが契約書から契約を追加できます。",
+    "bannerBody": "MCP サーバーを起動し、契約書・見積書・保険証券の概要を Claude にアップロードして、契約の追加を依頼してください。",
+    "setupLink": "MCP サーバーを設定"
+  }
+}

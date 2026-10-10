@@ -1,0 +1,149 @@
+{
+  "title": "Otros activos",
+  "subtitle": "Oro, colecciones, participaciones y préstamos: todo lo que no tiene precio de mercado y valoras tú mismo.",
+  "loading": "Cargando tus otros activos...",
+  "empty": {
+    "title": "Aún no hay activos",
+    "description": "Añade oro, una colección o una participación: nombre, precio por unidad y una primera compra opcional. Las revalorizaciones irán dibujando la estimación a lo largo del tiempo."
+  },
+  "addAsset": "Añadir activo",
+  "summary": {
+    "totalValue": "Valor total",
+    "assetCount": "Activos",
+    "totalGainLoss": "Ganancia/pérdida total",
+    "value": "Valor",
+    "assets_one": "{{count}} activo",
+    "assets_many": "{{count}} activos",
+    "assets_other": "{{count}} activos",
+    "gain": "Ganancia sobre la compra",
+    "vsCostPct": "{{percent}} frente a un coste de compra de {{amount}}",
+    "noCost": "sin coste de compra",
+    "yearlyYield": "Rendimiento anual",
+    "yieldNote_one": "{{percent}} · de {{count}} activo que rinde",
+    "yieldNote_many": "{{percent}} · de {{count}} activos que rinden",
+    "yieldNote_other": "{{percent}} · de {{count}} activos que rinden",
+    "noYield": "ningún activo genera rendimiento",
+    "lastChange": "Último cambio"
+  },
+  "table": {
+    "title": "Activos",
+    "search": "Buscar activos",
+    "name": "Nombre",
+    "category": "Categoría",
+    "purchasePrice": "Precio de compra",
+    "marketPrice": "Precio de mercado",
+    "avgPurchasePrice": "Precio medio de compra",
+    "totalValue": "Valor total",
+    "currentValue": "Valor actual",
+    "purchaseDate": "Fecha de compra",
+    "gainLoss": "Ganancia/pérdida",
+    "actions": "Acciones",
+    "noAssets": "No se han encontrado activos. Añade tu primer activo para empezar.",
+    "subtitle": "Valor = cantidad × tu última estimación de precio",
+    "asset": "Activo",
+    "quantity": "Cantidad",
+    "unit": "uds.",
+    "price": "Precio / unidad",
+    "avgPurchase": "Compra / unidad",
+    "value": "Valor",
+    "gain": "Ganancia",
+    "yearly": "Anual",
+    "updated": "Actualizado",
+    "noChange": "sin cambios",
+    "yieldFixed": "importe fijo",
+    "yieldPercentPurchase": "{{value}} % del coste de compra",
+    "yieldPercentMarket": "{{value}} % del valor",
+    "noResults": {
+      "title": "Sin resultados",
+      "description": "Prueba con otro nombre."
+    },
+    "footer": {
+      "count_one": "{{count}} activo",
+      "count_many": "{{count}} activos",
+      "count_other": "{{count}} activos",
+      "value": "valor {{amount}}",
+      "cost": "coste de compra {{amount}}",
+      "yieldNote": "Rendimiento anual según el tipo elegido: importe fijo, % de la compra o % del valor"
+    }
+  },
+  "actions": {
+    "edit": "Editar",
+    "delete": "Eliminar",
+    "transactions": "Movimientos",
+    "buy": "Comprar",
+    "sell": "Vender",
+    "revalue": "Revalorizar"
+  },
+  "confirmDelete": {
+    "title": "¿Eliminar el activo?",
+    "description": "«{{name}}» y todos sus movimientos se eliminarán de forma permanente. Esta acción no se puede deshacer."
+  },
+  "confirmDeleteTransaction": {
+    "title": "¿Eliminar el movimiento?",
+    "description": "Se eliminará de forma permanente el movimiento de tipo {{type}} ({{quantity}} × {{price}}, {{date}}). Esta acción no se puede deshacer."
+  },
+  "toast": {
+    "added": "Activo añadido",
+    "updated": "Activo actualizado",
+    "deleted": "Activo eliminado",
+    "deleteError": "No se pudo eliminar el activo"
+  },
+  "modal": {
+    "add": {
+      "title": "Añadir otro activo",
+      "basicInfo": "Información del activo",
+      "assetName": "Nombre del activo",
+      "assetNamePlaceholder": "p. ej., Lingotes de oro",
+      "marketPrice": "Precio de mercado actual (por unidad)",
+      "initialPurchase": "Compra inicial (opcional)",
+      "pricePerUnit": "Precio / unidad",
+      "initialPurchaseHint": "Si lo rellenas, se añadirá un movimiento de «Compra».",
+      "yieldConfig": "Rendimiento (opcional)",
+      "yieldConfigDescription": "Ingresos que genera este activo cada año, por ejemplo alquiler o intereses.",
+      "submit": "Añadir activo",
+      "description": "Añade un activo personalizado nuevo a tu cartera.",
+      "yieldType": "Tipo de rendimiento",
+      "yieldValue": "Valor del rendimiento",
+      "yieldTypes": {
+        "none": "Ninguno",
+        "fixed": "Importe fijo (anual)",
+        "percentPurchase": "% del precio de compra",
+        "percentMarket": "% del precio de mercado"
+      },
+      "marketPriceHint": "Tu estimación por unidad hoy; cámbiala más adelante revalorizando.",
+      "total": "Primera compra al precio de hoy"
+    },
+    "buy": {
+      "titleNamed": "Comprar más {{name}}",
+      "description": "Añade más cantidad a tu activo.",
+      "pricePerUnit": "Precio por unidad",
+      "submit": "Añadir movimiento"
+    },
+    "sell": {
+      "titleNamed": "Vender {{name}}",
+      "description": "Registra una venta de este activo.",
+      "pricePerUnit": "Precio por unidad",
+      "submit": "Vender activo"
+    },
+    "transactions": {
+      "title": "Historial de movimientos",
+      "noTransactions": "No se han encontrado movimientos"
+    },
+    "edit": {
+      "title": "Editar · {{name}}",
+      "description": "Nombre, moneda y rendimiento. Cambia el precio revalorizando y la cantidad con compras y ventas.",
+      "currencyHint": "Moneda del precio y de la media de compra.",
+      "priceHint": "Cambia el precio de mercado con Revalorizar: así queda reflejado en el gráfico."
+    }
+  },
+  "eyebrow": "Cartera",
+  "export": "Exportar",
+  "status": {
+    "latest": "Último cambio {{date}}",
+    "manual": "Valorado manualmente"
+  },
+  "chart": {
+    "title": "Valor estimado a lo largo del tiempo",
+    "subtitle": "Plano entre revalorizaciones: los saltos son tus estimaciones y compras, no el mercado."
+  }
+}

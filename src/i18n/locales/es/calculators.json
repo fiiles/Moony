@@ -1,0 +1,196 @@
+{
+  "annuity": {
+    "title": "Calculadora de préstamos",
+    "subtitle": "Cuota, intereses totales y cuadro de amortización de cualquier préstamo. Los valores se actualizan mientras escribes.",
+    "eyebrow": "Calculadora",
+    "status": "Calculado en local, no se guarda nada",
+    "actions": {
+      "loadLoan": "Cargar de mis préstamos",
+      "export": "Exportar"
+    },
+    "form": {
+      "title": "Parámetros del préstamo",
+      "amount": "Importe del préstamo",
+      "years": "Plazo",
+      "yearsUnit": "años",
+      "rate": "Tipo de interés anual",
+      "frequency": "Frecuencia de pago",
+      "frequencies": {
+        "monthly": "Mensual",
+        "quarterly": "Trimestral",
+        "semiAnnually": "Semestral",
+        "annually": "Anual"
+      },
+      "extra": "Pago extra al año",
+      "optional": "opcional",
+      "extraHint": "Una vez al año, además de los pagos regulares y sin penalización."
+    },
+    "insight": {
+      "summary": "<b>{{extra}} extra al año</b> acorta el préstamo en {{years}} y ahorra <b>{{saving}}</b> en intereses. El cuadro de abajo muestra la variante sin pagos extra.",
+      "noExtra": "Introduce un pago extra para ver cuántos años e intereses ahorras."
+    },
+    "hero": {
+      "payment": {
+        "monthly": "Cuota mensual",
+        "quarterly": "Cuota trimestral",
+        "semiAnnually": "Cuota semestral",
+        "annually": "Cuota anual"
+      },
+      "total": "total {{amount}}",
+      "interestShare": "de los cuales intereses {{amount}} · {{percent}}",
+      "view": {
+        "years": "Por año",
+        "share": "Peso de los intereses"
+      }
+    },
+    "legend": {
+      "principal": "Capital",
+      "interest": "Intereses",
+      "milestone": "Hito"
+    },
+    "milestones": {
+      "cross": "El capital supera a los intereses",
+      "half": "La mitad de la deuda amortizada",
+      "year": "año {{year}}"
+    },
+    "years_one": "{{count}} año",
+    "years_many": "{{count}} años",
+    "years_other": "{{count}} años",
+    "payments_one": "{{count}} pago",
+    "payments_many": "{{count}} pagos",
+    "payments_other": "{{count}} pagos",
+    "stats": {
+      "totalPaid": "Pagas en total",
+      "totalInterest": "Intereses totales",
+      "totalInterestNote": "{{percent}} del importe prestado",
+      "withExtra": "Con el pago extra",
+      "withExtraNote": "intereses ahorrados · liquidado en {{short}} en lugar de {{long}}",
+      "firstShare": "Peso de los intereses en la primera cuota",
+      "firstShareNote": "en la última {{percent}}"
+    },
+    "table": {
+      "title": "Cuadro de amortización",
+      "subYears": "Totales por año · sin pagos extra",
+      "subPeriods": "Pagos individuales · sin pagos extra",
+      "granularity": {
+        "years": "Anual"
+      },
+      "year": "Año",
+      "period": "Periodo",
+      "payments": "Pagos",
+      "principal": "Capital",
+      "interest": "Intereses",
+      "balance": "Deuda pendiente",
+      "footer": "{{shown}} de {{total}} filas",
+      "showAll": "Mostrar todo el cuadro",
+      "showLess": "Mostrar solo el inicio",
+      "periodLabel": "{{year}} · periodo {{n}}"
+    },
+    "empty": "Introduce el importe, el plazo y el tipo del préstamo."
+  },
+  "estate": {
+    "title": "Rentabilidad de una inversión inmobiliaria",
+    "subtitle": "Evalúa un inmueble como inversión completa: alquiler y flujo de caja, amortización del préstamo, revalorización y la plusvalía de una venta futura.",
+    "eyebrow": "Calculadora",
+    "status": "Calculado en local, no se guarda nada",
+    "prefillNoRate": "El inmueble tiene un importe en una moneda sin tipo de cambio, así que no se ha cargado. La calculadora muestra valores de ejemplo.",
+    "actions": {
+      "loadProperty": "Cargar de mis inmuebles"
+    },
+    "yearsUnit": "años",
+    "years_one": "{{count}} año",
+    "years_many": "{{count}} años",
+    "years_other": "{{count}} años",
+    "purchase": {
+      "title": "Compra",
+      "price": "Precio de compra",
+      "loan": "Importe del préstamo",
+      "years": "Plazo",
+      "rate": "Tipo de interés",
+      "equity": "Capital propio",
+      "ltv": "LTV",
+      "payment": "Cuota mensual"
+    },
+    "rent": {
+      "title": "Alquiler",
+      "rent": "Alquiler mensual esperado",
+      "costs": "Gastos mensuales",
+      "vacancy": "Vacío",
+      "vacancyUnit": "meses/año",
+      "hint": "Gastos: mantenimiento, impuestos, seguro y fondo de reparaciones."
+    },
+    "projection": {
+      "title": "Proyección",
+      "rentGrowth": "Subida del alquiler",
+      "costsGrowth": "Subida de los gastos",
+      "priceGrowth": "Revalorización",
+      "perYear": "%/año",
+      "years": "Periodo de tenencia",
+      "oneTime": "Gastos únicos"
+    },
+    "sale": {
+      "title_one": "Venta tras {{count}} año",
+      "title_many": "Venta tras {{count}} años",
+      "title_other": "Venta tras {{count}} años",
+      "finalPrice": "Precio final",
+      "remainingLoan": "Préstamo pendiente",
+      "repaid": "Capital amortizado",
+      "cumulative": "Flujo de caja acumulado",
+      "equity": "Tu parte en la venta",
+      "totalReturn": "Rentabilidad total",
+      "pa": "{{percent}} anual",
+      "formula": "Rentabilidad = (precio final − préstamo pendiente − capital propio + flujo de caja acumulado) / capital propio. Antes de impuestos y costes de venta."
+    },
+    "hero": {
+      "label": "Rentabilidad total sobre tu capital",
+      "value": "{{percent}} al año",
+      "total": "total {{percent}} en {{years}}",
+      "components": "flujo de caja {{cashflow}} · amortización del capital · revalorización {{growth}}",
+      "cashflow": "Flujo de caja neto",
+      "cashflowNote": "al mes en el año 1 · bruto {{gross}}"
+    },
+    "legend": {
+      "equity": "Tu parte (valor − préstamo + flujo de caja)",
+      "band": "Revalorización ± 1 p. p.",
+      "invested": "Capital invertido",
+      "milestone": "Hito"
+    },
+    "chart": {
+      "purchase": "Compra",
+      "tipRow": "{{year}} · valor {{value}} · préstamo {{loan}} · flujo de caja acumulado {{cumulative}}",
+      "tipStart": "{{year}} · capital invertido {{invested}}"
+    },
+    "milestones": {
+      "positive": "Flujo de caja anual positivo",
+      "positiveLine": "desde {{year}}",
+      "half": "La mitad del préstamo amortizada",
+      "halfLine": "año {{year}}",
+      "sale": "Venta",
+      "saleLine": "{{year}} · precio {{price}} · préstamo {{loan}}"
+    },
+    "stats": {
+      "equity": "Capital propio",
+      "equityNote": "{{equity}} + gastos únicos {{once}}",
+      "grossYield": "Rentabilidad bruta por alquiler",
+      "grossYieldNote": "alquiler anual / precio de compra",
+      "cashflow": "Flujo de caja neto anual",
+      "cashflowNote": "en el año 1 · {{percent}} del capital propio",
+      "saleGain": "Plusvalía de la venta",
+      "saleGainNote": "precio − préstamo − capital propio · tras {{years}}"
+    },
+    "table": {
+      "title": "Resumen anual",
+      "sub": "El alquiler y los gastos crecen a los tipos indicados; la cuota es fija",
+      "year": "Año",
+      "rent": "Alquiler",
+      "costs": "Gastos",
+      "payments": "Pagos",
+      "cashflow": "FC neto",
+      "balance": "Préstamo pendiente",
+      "value": "Valor",
+      "footer": "{{years}} · flujo de caja neto acumulado {{cumulative}}",
+      "vacancyNote": "El vacío se descuenta del alquiler"
+    },
+    "empty": "Introduce el precio de compra y el alquiler."
+  }
+}

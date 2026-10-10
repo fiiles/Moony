@@ -1,0 +1,113 @@
+{
+  "eyebrow": "Din ekonomiska bild",
+  "greeting": {
+    "morning": "God morgon, {{name}}.",
+    "day": "God eftermiddag, {{name}}.",
+    "evening": "God kväll, {{name}}."
+  },
+  "welcomeFirst": "Välkommen, {{name}}.",
+  "asOf": "Nettoförmögenhet per {{date}}",
+  "loading": "Laddar din portfölj…",
+  "hero": {
+    "label": "Nettoförmögenhet"
+  },
+  "insight": {
+    "up": "Värdet stiger. Störst andel av förändringen: {{class}}.",
+    "down": "Värdet sjunker. Störst andel av förändringen: {{class}}.",
+    "flat": "Värdet är stabilt. Största rörelsen: {{class}}.",
+    "noHistory": "Trenden visas efter de första dagliga ögonblicksbilderna."
+  },
+  "stats": {
+    "netWorth": "Nettoförmögenhet",
+    "totalAssets": "Totala tillgångar",
+    "totalLiabilities": "Skulder",
+    "freeCash": "Fria medel",
+    "freeCashNote": "på bankkonton",
+    "unchanged": "oförändrat under perioden",
+    "noHistory": "ingen historik ännu"
+  },
+  "cards": {
+    "investments": "Aktier",
+    "savings": "Kontanter",
+    "bonds": "Obligationer",
+    "liabilities": "Skulder",
+    "crypto": "Krypto",
+    "realEstate": "Fastigheter",
+    "otherAssets": "Övriga tillgångar",
+    "other": "Övrigt",
+    "ofTotal": "{{percent}} av totalen"
+  },
+  "classes": {
+    "investments": "aktier",
+    "savings": "kontanter",
+    "bonds": "obligationer",
+    "liabilities": "skulder",
+    "crypto": "krypto",
+    "realEstate": "fastigheter",
+    "otherAssets": "övriga tillgångar"
+  },
+  "allocation": {
+    "title": "Tillgångsfördelning",
+    "open": "Öppna investeringar",
+    "center": "Tillgångar"
+  },
+  "moves": {
+    "title": "Senaste händelser",
+    "empty": "Banktransaktioner, köp och försäljningar visas här.",
+    "kind": {
+      "bankIn": "Inkommande betalning",
+      "bankOut": "Utgående betalning",
+      "buy": "Köp",
+      "sell": "Försäljning",
+      "cryptoBuy": "Kryptoköp",
+      "cryptoSell": "Kryptoförsäljning"
+    }
+  },
+  "changePeriod": {
+    "30D": "under de senaste 30 dagarna",
+    "90D": "under de senaste 90 dagarna",
+    "YTD": "sedan årsskiftet",
+    "1Y": "under det senaste året",
+    "5Y": "under de senaste 5 åren",
+    "All": "sedan den första posten"
+  },
+  "empty": {
+    "title": "Din nettoförmögenhet visas här",
+    "description": "Lägg till ett konto eller en investering så bygger Moony din översikt, dina diagram och trender utifrån det. Allt stannar på den här datorn.",
+    "addAccount": "Lägg till ett bankkonto och importera ett kontoutdrag",
+    "addInvestment": "Lägg till en investering",
+    "setBudget": "Sätt en budget"
+  },
+  "gettingStarted": {
+    "title": "Kom igång",
+    "subtitle": "Fyra steg som gör Moony användbart. Det här kortet försvinner när du är klar.",
+    "importStatement": "Importera ett kontoutdrag",
+    "importStatementHint": "Lägg till ett konto och importera en CSV från din bank.",
+    "addInvestment": "Lägg till en investering",
+    "addInvestmentHint": "Aktier, ETF:er eller krypto med livekurser.",
+    "setBudget": "Sätt en budget",
+    "setBudgetHint": "Månadsgränser per utgiftskategori.",
+    "makeBackup": "Gör en säkerhetskopia",
+    "makeBackupHint": "En fil med allt, i Inställningar → Data och säkerhetskopior.",
+    "dismiss": "Avfärda",
+    "done": "Klart"
+  },
+  "welcome": "Välkommen tillbaka, {{name}}!",
+  "overview": "Här är din ekonomiska översikt för idag.",
+  "charts": {
+    "netWorthTrend": "Utveckling av nettoförmögenhet",
+    "assetAllocation": "Tillgångsfördelning",
+    "assetsVsLiabilities": "Tillgångar mot skulder",
+    "assetsToLiabilitiesRatio": "Förhållande mellan tillgångar och skulder",
+    "assetClassTrend": "Nettoförmögenhet per tillgångsslag",
+    "noHistoricalData": "Ingen historisk data tillgänglig",
+    "estimatedBackfilled": "uppskattat (ifyllt i efterhand)",
+    "estimatedLegend": "Streckat: uppskattade dagar. Bankkonton, obligationer, fastigheter och lån förs över från närmaste registrerade dag."
+  },
+  "tooltips": {
+    "netWorth": "Nettoförmögenhet",
+    "totalAssets": "Totala tillgångar",
+    "totalLiabilities": "Totala skulder"
+  },
+  "changeSince": "jfr {{date}}"
+}

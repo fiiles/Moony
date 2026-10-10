@@ -98,9 +98,7 @@ export function SellOtherAssetModal({ asset, open, onOpenChange }: SellOtherAsse
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>
-            {t('modal.sell.title')} {asset.name}
-          </DialogTitle>
+          <DialogTitle>{t('modal.sell.titleNamed', { name: asset.name })}</DialogTitle>
           <DialogDescription>{t('modal.sell.description')}</DialogDescription>
         </DialogHeader>
         <Form {...form}>

@@ -103,9 +103,7 @@ export function SellInvestmentModal({ investment, open, onOpenChange }: SellInve
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>
-            {t('modal.sell.title')} {investment.ticker}
-          </DialogTitle>
+          <DialogTitle>{t('modal.sell.titleNamed', { name: investment.ticker })}</DialogTitle>
           <DialogDescription>{t('modal.sell.description')}</DialogDescription>
         </DialogHeader>
         <Form {...form}>

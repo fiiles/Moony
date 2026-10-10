@@ -1,0 +1,238 @@
+{
+  "title": "暗号資産",
+  "eyebrow": "ポートフォリオ",
+  "subtitle": "現在のレートで評価した暗号資産のポジション。取得原価は加重平均です。",
+  "loading": "暗号資産ポートフォリオを読み込んでいます...",
+  "empty": {
+    "title": "暗号資産はまだありません",
+    "description": "最初のコインを追加してください。CoinGecko で検索され、レートは自動で更新されます。"
+  },
+  "addCrypto": "暗号資産を追加",
+  "refreshPrices": "レートを更新",
+  "export": "エクスポート",
+  "summary": {
+    "value": "暗号資産の評価額",
+    "positions_other": "保有中のポジション {{count}}件",
+    "updatedToday": "レートは本日更新",
+    "updatedOn": "{{date}}時点のレート",
+    "notUpdated": "レートはまだ取得されていません",
+    "unrealizedGain": "含み益",
+    "unrealizedLoss": "含み損",
+    "vsInvestedPct": "投資額 {{amount}} に対して {{percent}}",
+    "realized": "確定損益",
+    "sells_other": "売却 {{count}}件 · 加重平均",
+    "noSells": "売却はまだありません",
+    "largest": "最大のポジション",
+    "largestNote": "暗号資産の評価額の{{share}} · 購入時から{{change}}",
+    "noPositions": "保有中のポジションなし"
+  },
+  "chart": {
+    "title": "暗号資産の評価額の推移",
+    "subtitle": "買付と売却をグラフ上に表示します。変動にはすべて理由があります。",
+    "legend": {
+      "value": "暗号資産の評価額",
+      "buy": "買付",
+      "sell": "売却"
+    },
+    "events": {
+      "buy": "{{tickers}}を買付",
+      "sell": "{{tickers}}を売却",
+      "cluster_other": "{{count}}件の取引"
+    }
+  },
+  "table": {
+    "title": "ポジション",
+    "subtitle": "レートは本日の為替で{{currency}}に換算 · 手動レートには印が付きます",
+    "search": "名称またはティッカーで検索",
+    "asset": "銘柄",
+    "quantity": "数量",
+    "avgCost": "平均取得単価",
+    "rate": "レート",
+    "value": "評価額",
+    "share": "構成比",
+    "return": "損益",
+    "actions": "操作",
+    "showClosed": "決済済みのポジションを表示",
+    "source": "CoinGecko",
+    "manualSource": "手動レート",
+    "closed": "{{date}}に決済",
+    "realized": "確定 {{amount}}",
+    "noResults": {
+      "title": "見つかりません",
+      "description": "別の名称またはティッカーをお試しください。",
+      "closedHidden": "別の名称またはティッカーをお試しください。決済済みのポジションは非表示です。"
+    },
+    "footer": {
+      "count_other": "{{count}}件のポジション",
+      "total": "合計",
+      "rates": "{{currency}}建ての評価額は本日のレートによる",
+      "closed_other": "決済済み {{count}}件"
+    }
+  },
+  "actions": {
+    "buy": "買付",
+    "sell": "売却",
+    "updatePrice": "レートを手動設定",
+    "delete": "ポジションを削除"
+  },
+  "badges": {
+    "manual": "手動"
+  },
+  "tooltip": {
+    "manualPrice": "手動で設定したレートです。削除するまで CoinGecko のレートより優先されます。"
+  },
+  "modal": {
+    "add": {
+      "title": "暗号資産を追加",
+      "description": "CoinGecko でコインを検索します。レートはその後自動で更新されます。",
+      "coin": "暗号資産",
+      "ticker": "ティッカー",
+      "search": "CoinGecko を検索",
+      "searchHint": "名称またはティッカーを入力すると、CoinGecko の候補が表示されます。",
+      "searching": "CoinGecko を検索しています…",
+      "searchError": "検索に失敗しました。接続、または設定の CoinGecko キーを確認してください。",
+      "noResults": "一致するコインがありません。ティッカーと名称は手入力できます。",
+      "rank": "#{{rank}}",
+      "quantity": "数量",
+      "pricePerUnit": "単価",
+      "purchaseDate": "購入日",
+      "total": "購入合計",
+      "submit": "ポジションを追加"
+    },
+    "buy": {
+      "title": "{{name}}を買付",
+      "description": "買付により数量が増え、平均取得単価が再計算されます。",
+      "quantity": "数量",
+      "pricePerUnit": "1 {{ticker}} あたりのレート",
+      "rateHint": "現在のレートが入力済みです。",
+      "total": "購入合計",
+      "submit": "買付を記録"
+    },
+    "sell": {
+      "title": "{{name}}を売却",
+      "description": "確定損益は平均取得単価を基準に計算されます。",
+      "quantity": "数量",
+      "all": "すべて（{{quantity}}）",
+      "tooMuch": "保有数量は {{quantity}} のみです。",
+      "pricePerUnit": "1 {{ticker}} あたりのレート",
+      "proceeds": "売却代金 {{amount}} · 確定損益",
+      "proceedsEmpty": "売却代金と確定損益",
+      "submit": "売却を記録"
+    },
+    "updatePrice": {
+      "title": "手動レート · {{name}}",
+      "description": "手動レートを削除するまで、CoinGecko のレートより優先されます。",
+      "price": "1 {{ticker}} あたりのレート",
+      "total": "ポジションの評価額（{{quantity}} {{ticker}}）",
+      "remove": "手動レートを削除",
+      "submit": "レートを保存"
+    }
+  },
+  "confirmDelete": {
+    "title": "ポジションを削除しますか？",
+    "description": "{{name}}（{{ticker}}）とそのすべての取引が完全に削除されます。この操作は元に戻せません。"
+  },
+  "toast": {
+    "added": "暗号資産を追加しました。レートを取得しています",
+    "bought": "買付を記録しました",
+    "sold": "売却を記録しました",
+    "deleted": "ポジションを削除しました",
+    "priceUpdated": "手動レートを保存しました",
+    "manualPriceDeleted": "手動レートを削除しました",
+    "pricesRefreshed_other": "CoinGecko から{{count}}件のレートを更新しました",
+    "pricesRefreshedDescription": "CoinGecko から現在のレートを取得しました",
+    "refreshFailed": "レートの更新に失敗しました",
+    "addFailed": "暗号資産の追加に失敗しました"
+  },
+  "detail": {
+    "backToList": "暗号資産に戻る",
+    "notFound": "ポジションが見つかりません",
+    "source": "CoinGecko",
+    "manualSource": "手動レート",
+    "quantityUnits": "{{quantity}} {{ticker}}",
+    "avgBuyPrice": "平均取得単価 {{price}}",
+    "lastBuy": "最終購入 {{date}}",
+    "refreshPrices": "レートを更新",
+    "buy": "買付",
+    "sell": "売却",
+    "menu": {
+      "editPrice": "レートを手動設定",
+      "delete": "ポジションを削除"
+    },
+    "status": {
+      "rateUpdated": "レート更新 {{when}}",
+      "todayAt": "本日 {{time}}"
+    },
+    "positionValue": "ポジションの評価額",
+    "vsInvestedPct": "投資額比 {{percent}}",
+    "rate": "レート",
+    "invested": "投資額",
+    "avgShort": "平均 {{price}}",
+    "unrealized": "含み損益",
+    "realized": "確定損益",
+    "sells_other": "売却 {{count}}件",
+    "noSells": "売却はまだありません",
+    "held": "保有期間",
+    "heldSince": "{{date}}から",
+    "shareOfCrypto": "暗号資産の評価額の{{share}}",
+    "duration": {
+      "years_other": "{{count}}年",
+      "months_other": "{{count}}か月",
+      "lessThanMonth": "1か月未満"
+    },
+    "transactions": {
+      "title": "取引履歴",
+      "date": "日付",
+      "type": "種類",
+      "quantity": "数量",
+      "price": "レート",
+      "total": "合計",
+      "empty": "取引はまだありません"
+    },
+    "priceNative": "レート（{{currency}}）",
+    "priceNativeMixed": "レート（元の通貨）",
+    "realizedRow": "確定 {{amount}}",
+    "ledger": {
+      "sub_other": "{{count}}件の取引 · 行にカーソルを合わせるとグラフ上で強調表示されます",
+      "filter": {
+        "all": "すべて",
+        "buys": "買付",
+        "sells": "売却"
+      },
+      "footer_other": "{{count}}件の取引",
+      "bought": "買付 {{amount}}",
+      "sold": "売却 {{amount}}",
+      "rates": "{{currency}}建てのレートは取引日の ECB レートによる"
+    },
+    "position": {
+      "title": "ポジション",
+      "quantity": "数量",
+      "avgPrice": "平均取得単価",
+      "currentPrice": "現在のレート",
+      "nativePrice": "{{currency}}建てのレート",
+      "shareOfCrypto": "暗号資産に占める割合",
+      "priceUpdated": "レート更新",
+      "setManual": "レートを手動設定",
+      "removeManual": "手動レートを削除"
+    },
+    "sinceFirst": {
+      "title": "最初の購入以降",
+      "text": "{{duration}}で、{{ticker}}のレートは{{firstPrice}}から{{rateChange}}変動しました。あなたのポジションの損益は{{positionChange}}{{realizedPart}}です。",
+      "realizedPart": "。売却による確定損益は{{amount}}",
+      "none": "購入はまだありません。"
+    },
+    "deleteTransaction": "取引を削除",
+    "transactionDeleted": "取引を削除しました",
+    "pricesRefreshed": "レートを更新しました",
+    "confirmDeleteTransaction": {
+      "title": "取引を削除しますか？",
+      "description": "{{type}}の取引（{{quantity}} × {{ticker}}、{{date}}、{{amount}}）を完全に削除します。この操作は元に戻せません。"
+    }
+  },
+  "coingeckoBanner": {
+    "title": "CoinGecko API キー（任意）",
+    "message": "キーがなくてもレートは取得できます。設定で無料の CoinGecko キーを追加すると、グラフ用のレート履歴も読み込まれます。",
+    "goToSettings": "設定を開く",
+    "dismiss": "閉じる"
+  }
+}

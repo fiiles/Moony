@@ -110,7 +110,7 @@
     },
     "since": {
       "title": "Since you started following",
-      "text": "Over {{days}} the price moved from {{price}} by",
+      "change": "Over {{days}} the price moved from {{price}} by <b>{{change}}</b>.",
       "toTarget": "{{amount}} to the target.",
       "noData": "Following for {{days}}; the price from that day is not available yet.",
       "days_one": "{{count}} day",

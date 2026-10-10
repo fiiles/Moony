@@ -423,7 +423,9 @@ export default function CryptoDetail() {
           }
           deltaNote={
             unrealized !== null && totalInvested !== null && totalInvested > 0
-              ? `${fmt.percent(unrealizedPct, 1, { signed: true })} ${t('detail.vsInvested')}`
+              ? t('detail.vsInvestedPct', {
+                  percent: fmt.percent(unrealizedPct, 1, { signed: true }),
+                })
               : undefined
           }
         />
@@ -459,7 +461,9 @@ export default function CryptoDetail() {
           label={t('detail.unrealized')}
           value={money(unrealized, { signed: true })}
           tone={tone(unrealized)}
-          note={`${fmt.percent(unrealizedPct, 1, { signed: true })} ${t('detail.vsInvested')}`}
+          note={t('detail.vsInvestedPct', {
+            percent: fmt.percent(unrealizedPct, 1, { signed: true }),
+          })}
         />
         <Stat
           label={t('detail.realized')}

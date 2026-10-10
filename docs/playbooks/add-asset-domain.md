@@ -47,9 +47,9 @@ canonical examples from `docs/architecture/overview.md`, and check
 11. **Components.** `src/components/<domain>/` — named exports; forms and dialogs
     per `docs/standards/typescript-frontend.md` rule 4 (react-hook-form +
     zodResolver, dialog state lifted to the page).
-12. **i18n.** New namespace in BOTH `src/i18n/locales/en/<ns>.json` AND
-    `src/i18n/locales/cs/<ns>.json`, registered in `src/i18n/index.ts` (`NAMESPACES`
-    list + `resources` map) — `docs/standards/i18n.md`.
+12. **i18n.** New namespace `src/i18n/locales/<lang>/<ns>.json` in EVERY locale,
+    registered in `src/i18n/index.ts` (`NAMESPACES` list + the English import in
+    `resources.en`) — `docs/standards/i18n.md`.
 13. **Portfolio integration.** Net-worth inclusion does not happen by itself:
     - give the class a native per-currency breakdown: one more field of `ClassBreakdowns`
       (`services/portfolio_history.rs`), filled from the class's own currency columns in

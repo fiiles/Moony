@@ -4,7 +4,7 @@ import { ReportQualityNote, ReportError } from '@/components/reports/ReportQuali
 import { useMemo, useState } from 'react';
 import { Link } from 'wouter';
 import { useQuery } from '@tanstack/react-query';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 import { Plus } from 'lucide-react';
 import type { CashflowReport, CashflowReportItem } from '@shared/schema';
 import { cashflowApi } from '@/lib/tauri-api';
@@ -149,15 +149,18 @@ export default function CashflowPlanning() {
       eyebrow={t('planning.eyebrow')}
       title={t('planning.title')}
       description={
-        <>
-          {t('planning.subtitle')}{' '}
-          <Link
-            href="/reports/cashflow"
-            className="font-650 text-ink-2 underline-offset-[3px] hover:text-ink hover:underline"
-          >
-            {t('planning.link')} →
-          </Link>
-        </>
+        <Trans
+          t={t}
+          i18nKey="planning.subtitleLinked"
+          components={{
+            link: (
+              <Link
+                href="/reports/cashflow"
+                className="font-650 text-ink-2 underline-offset-[3px] hover:text-ink hover:underline"
+              />
+            ),
+          }}
+        />
       }
       actions={
         <>

@@ -1,0 +1,319 @@
+{
+  "title": "Versicherungen",
+  "eyebrow": "Absicherung",
+  "subtitle": "Was Sie abgesichert haben, was es kostet und wann Zahlungen und Jahrestage anstehen.",
+  "loading": "Versicherungen werden geladen...",
+  "export": "Exportieren",
+  "status": {
+    "nextPayment": "Nächste Zahlung {{date}} · {{amount}}",
+    "none": "Keine regelmäßigen Zahlungen",
+    "ended": "Die Police ist beendet"
+  },
+  "empty": {
+    "title": "Noch keine Versicherungen",
+    "description": "Fügen Sie Ihren ersten Vertrag hinzu, um zu sehen, was abgesichert ist, was Sie dafür zahlen und wann Zahlungen fällig sind."
+  },
+  "addPolicy": "Police hinzufügen",
+  "policies_one": "{{count}} aktive Police",
+  "policies_other": "{{count}} aktive Policen",
+  "payments_one": "{{count}} Zahlung",
+  "payments_other": "{{count}} Zahlungen",
+  "risks_one": "{{count}} Risiko",
+  "risks_other": "{{count}} Risiken",
+  "documentsCount_one": "{{count}} Dokument",
+  "documentsCount_other": "{{count}} Dokumente",
+  "duration": {
+    "years_one": "{{count}} Jahr",
+    "years_other": "{{count}} Jahre",
+    "months_one": "{{count}} Monat",
+    "months_other": "{{count}} Monate",
+    "days_one": "{{count}} Tag",
+    "days_other": "{{count}} Tage"
+  },
+  "summary": {
+    "yearly": "Jahresbeitrag",
+    "yearlyNote": "{{monthly}} pro Monat · {{policies}}",
+    "nextPayment": "Nächste Zahlung",
+    "nextPaymentNote": "{{amount}} · {{policies}}",
+    "noPayments": "keine regelmäßige Zahlung fällig",
+    "coverage": "Gesamtdeckung",
+    "coverageNote": "Summe der Limits · {{breakdown}}",
+    "noCoverage": "noch keine Deckungslimits eingetragen",
+    "anniversary": "Nächster Jahrestag",
+    "anniversaryNote": "{{name}} · noch {{duration}} · Zeit, Angebote zu vergleichen",
+    "endNote": "{{name}} · Vertragsende, noch {{duration}}",
+    "noAnniversary": "kein aktiver Vertrag"
+  },
+  "calendar": {
+    "title": "Zahlungskalender, nächste 12 Monate",
+    "subtitle": "Aus Zahlungsintervall und Startdatum jedes Vertrags · Jahreszahlungen fallen auf.",
+    "total": "gesamt {{amount}}",
+    "monthly": "Monatliche Beiträge",
+    "other": "Vierteljährliche und jährliche Zahlungen",
+    "anniversary": "Jahrestag · {{name}}",
+    "peakNote": "Der teuerste Monat ist {{month}}: {{amount}} – legen Sie eine Rücklage an.",
+    "evenNote": "Die Zahlungen sind gleichmäßig · {{amount}} pro Monat"
+  },
+  "table": {
+    "title": "Policen",
+    "subtitle": "Aktive Verträge",
+    "subtitleHidden": "Aktive Verträge · beendete ausgeblendet",
+    "showEnded": "Beendete anzeigen",
+    "allTypes": "Alle Arten",
+    "policy": "Police",
+    "premium": "Beitrag",
+    "coverage": "Deckung",
+    "nextPayment": "Nächste Zahlung",
+    "anniversary": "Jahrestag",
+    "actions": "Aktionen",
+    "perYear": "{{amount}} pro Jahr",
+    "perYearShort": "pro Jahr",
+    "moreLimits": "+{{count}} weitere",
+    "ended": "beendet",
+    "endedOn": "beendet",
+    "endOn": "Vertragsende",
+    "anniversaryShort": "Vertragsjahrestag",
+    "in": "noch {{duration}}",
+    "noResults": {
+      "title": "Keine Police dieser Art",
+      "description": "Versuchen Sie einen anderen Filter oder fügen Sie einen neuen Vertrag hinzu."
+    },
+    "footer": {
+      "yearly": "{{amount}} pro Jahr",
+      "coverage": "Deckung {{amount}}",
+      "note": "Jahrestag = nächstes Vertragsjahr ab Startdatum · Ende = vereinbartes Datum"
+    }
+  },
+  "types": {
+    "life": "Lebensversicherung",
+    "health": "Krankenversicherung",
+    "property": "Sachversicherung",
+    "vehicle": "Fahrzeugversicherung",
+    "travel": "Reiseversicherung",
+    "liability": "Haftpflichtversicherung",
+    "accident": "Unfallversicherung",
+    "other": "Sonstiges",
+    "allTypes": "Alle Arten"
+  },
+  "typeShort": {
+    "life": "Leben",
+    "health": "Gesundheit",
+    "property": "Sachwerte",
+    "vehicle": "Fahrzeug",
+    "travel": "Reise",
+    "liability": "Haftpflicht",
+    "accident": "Unfall",
+    "other": "Sonstiges"
+  },
+  "frequencyShort": {
+    "monthly": "monatlich",
+    "quarterly": "vierteljährlich",
+    "semi_annually": "halbjährlich",
+    "annually": "jährlich",
+    "one_time": "einmalig"
+  },
+  "form": {
+    "addTitle": "Versicherungspolice hinzufügen",
+    "editTitle": "Versicherungspolice bearbeiten",
+    "name": "Name der Police",
+    "namePlaceholder": "z. B. Hausratversicherung",
+    "provider": "Versicherer",
+    "providerPlaceholder": "z. B. Versicherungsgesellschaft",
+    "type": "Art der Police",
+    "premium": "Jahresbeitrag",
+    "coverage": "Deckungssumme",
+    "currency": "Währung",
+    "startDate": "Startdatum",
+    "expiryDate": "Ablaufdatum",
+    "policyNumber": "Policennummer",
+    "notes": "Notizen"
+  },
+  "actions": {
+    "open": "Öffnen",
+    "edit": "Bearbeiten",
+    "end": "Police beenden",
+    "reactivate": "Police reaktivieren",
+    "delete": "Police löschen",
+    "addDocument": "Dokument hinzufügen"
+  },
+  "endDialog": {
+    "title": "Police beenden · {{name}}",
+    "description": "Der Vertrag bleibt im Verlauf, fließt aber nicht mehr in die Beitragssumme und den Zahlungskalender ein.",
+    "date": "Vertragsende",
+    "alertTitle": "Die Police wechselt zu den beendeten",
+    "alertNote": "Sie können sie jederzeit über das Menü „···“ reaktivieren; Dokumente und Limits bleiben erhalten.",
+    "submit": "Police beenden"
+  },
+  "confirmDelete": {
+    "title": "Police löschen",
+    "description": "„{{name}}“ löschen? Die zugehörigen Dokumente werden mitgelöscht. Das lässt sich nicht rückgängig machen."
+  },
+  "toast": {
+    "added": "Police hinzugefügt",
+    "updated": "Police aktualisiert",
+    "deleted": "Police gelöscht",
+    "ended": "Police beendet",
+    "reactivated": "Police reaktiviert"
+  },
+  "modal": {
+    "basicInfo": "Grunddaten",
+    "paymentDetails": "Zahlungsdetails",
+    "additionalInfo": "Weitere Angaben",
+    "selectType": "Art auswählen",
+    "selectStatus": "Status auswählen",
+    "addDescription": "Vertragsgrunddaten, Zahlungen und Deckungslimits; Dokumente fügen Sie in der Detailansicht hinzu.",
+    "editDescription": "Details der Versicherungspolice bearbeiten.",
+    "policyName": "Name der Police",
+    "policyNamePlaceholder": "z. B. Hausratversicherung 2024",
+    "provider": "Versicherer",
+    "providerPlaceholder": "z. B. Allianz",
+    "policyNumber": "Policennummer",
+    "policyNumberPlaceholder": "Vertragsnummer",
+    "paymentFrequency": "Zahlungsintervall",
+    "selectFrequency": "Intervall auswählen",
+    "oneTimePayment": "Einmalzahlung (optional)",
+    "oneTimePaymentRequired": "Einmalzahlung",
+    "regularPayment": "Regelmäßige Zahlung",
+    "endDateOptional": "Enddatum (optional)",
+    "coverageLimits": "Deckungslimits",
+    "addLimit": "Limit hinzufügen",
+    "removeLimit": "Limit entfernen",
+    "limitTitle": "Bezeichnung des Limits",
+    "notesPlaceholder": "Besondere Bedingungen, Kontakte...",
+    "createPolicy": "Police erstellen",
+    "updatePolicy": "Police aktualisieren",
+    "status": {
+      "active": "Aktiv",
+      "inactive": "Inaktiv"
+    },
+    "frequency": {
+      "monthly": "Monatlich",
+      "quarterly": "Vierteljährlich",
+      "semi_annually": "Halbjährlich",
+      "annually": "Jährlich",
+      "one_time": "Einmalig"
+    },
+    "linkRealEstate": "Mit Immobilie verknüpfen",
+    "selectRealEstate": "Immobilie auswählen (optional)",
+    "noRealEstateAvailable": "Keine Immobilie vorhanden"
+  },
+  "detail": {
+    "backToList": "Zurück zu Versicherungen",
+    "notFound": "Diese Police existiert nicht mehr.",
+    "policyNumber": "Nr. {{number}}",
+    "description": "Seit {{start}} {{end}} · {{premium}} {{frequency}}",
+    "descriptionOneTime": "Seit {{start}} {{end}} · einmalig {{premium}}",
+    "noEnd": "ohne vereinbartes Ende",
+    "until": "bis {{date}}",
+    "statusActive": "aktiv",
+    "statusEnded": "beendet",
+    "period": {
+      "year": "1J",
+      "all": "Seit Beginn"
+    },
+    "hero": {
+      "paid": "Gezahlte Beiträge",
+      "paidNote": "{{payments}} seit {{month}} · {{yearly}} pro Jahr",
+      "paidNoteOneTime": "Einmalzahlung bei Abschluss am {{date}}",
+      "coverage": "Gesamtdeckung",
+      "coverageRatio": "{{ratio}}× der Jahresbeitrag",
+      "coverageOneTime": "Summe der vereinbarten Limits",
+      "noCoverage": "keine Deckungslimits eingetragen"
+    },
+    "chart": {
+      "paid": "Insgesamt gezahlt",
+      "next12": "Nächste 12 Zahlungen",
+      "tipPaid": "insgesamt gezahlt",
+      "tipPlanned": "geplante Zahlung",
+      "note": "{{payments}} · {{yearly}} pro Jahr",
+      "noteOneTime": "Einmalzahlung am {{date}}, keine weiteren Zahlungen"
+    },
+    "stats": {
+      "yearly": "Jährliche Kosten",
+      "yearlyNote": "{{premium}} {{frequency}} · {{share}} Ihrer Beiträge",
+      "yearlyOneTime": "Einmalbeitrag, keine jährlichen Kosten",
+      "nextPayment": "Nächste Zahlung",
+      "nextPaymentNote": "noch {{in}} · {{amount}} · danach {{next}}",
+      "noNextPayment": "keine weiteren Zahlungen",
+      "anniversary": "Vertragsjahrestag",
+      "anniversaryNote": "noch {{in}} · Gelegenheit, die Deckung anzupassen oder Angebote zu vergleichen",
+      "end": "Vertragsende",
+      "endNote": "noch {{in}} · das vereinbarte Enddatum",
+      "endedNote": "der Vertrag endete am {{date}}",
+      "duration": "Vertragslaufzeit",
+      "durationNote": "ohne vereinbartes Ende · {{docs}}",
+      "durationEnd": "bis {{date}} · {{docs}}"
+    },
+    "limits": {
+      "title": "Deckungslimits",
+      "subtitle": "Was der Vertrag abdeckt und bis zu welcher Höhe",
+      "edit": "Limits bearbeiten",
+      "risk": "Risiko",
+      "limit": "Limit",
+      "footer": "{{risks}} · Gesamtdeckung {{amount}}",
+      "empty": "Noch keine Deckungslimits eingetragen. Fügen Sie sie über „Police bearbeiten“ hinzu."
+    },
+    "contract": {
+      "title": "Vertrag",
+      "provider": "Versicherer",
+      "number": "Vertragsnummer",
+      "type": "Art",
+      "start": "Beginn",
+      "end": "Ende",
+      "endNone": "unbefristet",
+      "frequency": "Intervall",
+      "premium": "Beitrag",
+      "oneTime": "Einmalzahlung",
+      "oneTimeNone": "keine",
+      "property": "Immobilie"
+    },
+    "notes": {
+      "title": "Notizen",
+      "edit": "Bearbeiten",
+      "empty": "Keine Notizen – ergänzen Sie Kontakte, Bedingungen und Erinnerungen über „Police bearbeiten“.",
+      "updated": "Bearbeitet {{date}}"
+    },
+    "documents": "Dokumente"
+  },
+  "documents": {
+    "subtitle": "Gespeichert im verschlüsselten Ordner der App",
+    "columns": {
+      "document": "Dokument",
+      "type": "Art",
+      "uploaded": "Hochgeladen"
+    },
+    "description": "Verträge, Bescheinigungen und weitere Dokumente anhängen",
+    "add": "Dokument hinzufügen",
+    "addFirst": "Erstes Dokument hinzufügen",
+    "addTitle": "Dokument hinzufügen",
+    "noDocuments": "Noch keine Dokumente angehängt",
+    "file": "Datei",
+    "clickToSelect": "Klicken, um eine Datei auszuwählen",
+    "type": "Dokumentart",
+    "selectType": "Art auswählen",
+    "namePlaceholder": "z. B. Versicherungsvertrag 2024",
+    "descriptionPlaceholder": "Weitere Hinweise zu diesem Dokument...",
+    "uploading": "Wird hochgeladen...",
+    "upload": "Dokument hochladen",
+    "open": "Öffnen",
+    "delete": "Löschen",
+    "added": "Dokument hinzugefügt",
+    "deleted": "Dokument gelöscht",
+    "optional": "optional",
+    "types": {
+      "contract": "Vertrag",
+      "certificate": "Bescheinigung",
+      "claim": "Schadensfall",
+      "other": "Sonstiges"
+    },
+    "deleteConfirm": {
+      "title": "Dokument löschen",
+      "description": "„{{name}}“ löschen? Die Datei wird dauerhaft entfernt."
+    }
+  },
+  "mcp": {
+    "tipSummary": "Keine Lust, alles einzutippen? Der KI-Assistent kann Policen aus einem Vertrag hinzufügen.",
+    "bannerBody": "Starten Sie den MCP-Server, laden Sie den Vertrag, das Angebot oder die Policenübersicht zu Claude hoch und bitten Sie ihn, die Police für Sie anzulegen.",
+    "setupLink": "MCP-Server einrichten"
+  }
+}

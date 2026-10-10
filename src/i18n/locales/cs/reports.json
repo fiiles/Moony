@@ -407,8 +407,7 @@
   "planning": {
     "eyebrow": "Plán",
     "title": "Plánování cashflow",
-    "subtitle": "Odhad pravidelných příjmů a výdajů. Skutečné toky z účtů najdete v",
-    "link": "Cashflow",
+    "subtitleLinked": "Odhad pravidelných příjmů a výdajů. Skutečné toky z účtů najdete v <link>Cashflow →</link>",
     "status": "Automatické položky z Úvěrů, Pojištění, Nemovitostí a Akcií",
     "addItem": "Přidat položku",
     "deleteItem": "Smazat položku",
@@ -489,8 +488,7 @@
   "actuals": {
     "eyebrow": "Report",
     "title": "Cashflow",
-    "subtitle": "Skutečné příjmy a výdaje ze všech účtů za zvolené období. Pravidelné položky, se kterými počítáte, jsou v",
-    "link": "Plánování cashflow",
+    "subtitleLinked": "Skutečné příjmy a výdaje ze všech účtů za zvolené období. Pravidelné položky, se kterými počítáte, jsou v <link>Plánování cashflow →</link>",
     "transactions_one": "{{count}} transakce",
     "transactions_few": "{{count}} transakce",
     "transactions_other": "{{count}} transakcí",

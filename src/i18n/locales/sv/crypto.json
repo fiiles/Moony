@@ -1,0 +1,249 @@
+{
+  "title": "Kryptovalutor",
+  "eyebrow": "Portfölj",
+  "subtitle": "Kryptoinnehav till aktuell kurs, anskaffningsvärde enligt viktat genomsnitt.",
+  "loading": "Laddar din kryptoportfölj...",
+  "empty": {
+    "title": "Inga kryptovalutor ännu",
+    "description": "Lägg till din första kryptovaluta: vi slår upp den på CoinGecko och kursen uppdateras automatiskt."
+  },
+  "addCrypto": "Lägg till kryptovaluta",
+  "refreshPrices": "Uppdatera kurser",
+  "export": "Exportera",
+  "summary": {
+    "value": "Kryptovärde",
+    "positions_one": "{{count}} öppet innehav",
+    "positions_other": "{{count}} öppna innehav",
+    "updatedToday": "kurser uppdaterade i dag",
+    "updatedOn": "kurser från {{date}}",
+    "notUpdated": "kurser har inte hämtats ännu",
+    "unrealizedGain": "Orealiserad avkastning",
+    "unrealizedLoss": "Orealiserad förlust",
+    "vsInvestedPct": "{{percent}} mot {{amount}} investerat",
+    "realized": "Realiserad avkastning",
+    "sells_one": "{{count}} försäljning · viktat genomsnitt",
+    "sells_other": "{{count}} försäljningar · viktat genomsnitt",
+    "noSells": "inga försäljningar ännu",
+    "largest": "Största innehavet",
+    "largestNote": "{{share}} av kryptovärdet · {{change}} sedan köpet",
+    "noPositions": "inget öppet innehav"
+  },
+  "chart": {
+    "title": "Kryptovärde över tid",
+    "subtitle": "Köp och försäljningar direkt i diagrammet – varje hopp har en förklaring.",
+    "legend": {
+      "value": "Kryptovärde",
+      "buy": "Köp",
+      "sell": "Försäljning"
+    },
+    "events": {
+      "buy": "Köpte {{tickers}}",
+      "sell": "Sålde {{tickers}}",
+      "cluster_one": "{{count}} transaktion",
+      "cluster_other": "{{count}} transaktioner"
+    }
+  },
+  "table": {
+    "title": "Innehav",
+    "subtitle": "Kurser omräknade till {{currency}} med dagens växelkurs · manuella kurser är markerade",
+    "search": "Sök på namn eller ticker",
+    "asset": "Tillgång",
+    "quantity": "Antal",
+    "avgCost": "Snittkostnad",
+    "rate": "Kurs",
+    "value": "Värde",
+    "share": "Andel",
+    "return": "Avkastning",
+    "actions": "Åtgärder",
+    "showClosed": "Visa stängda innehav",
+    "source": "CoinGecko",
+    "manualSource": "manuell kurs",
+    "closed": "stängt {{date}}",
+    "realized": "{{amount}} realiserat",
+    "noResults": {
+      "title": "Inga träffar",
+      "description": "Prova ett annat namn eller ticker.",
+      "closedHidden": "Prova ett annat namn eller ticker. Stängda innehav är dolda."
+    },
+    "footer": {
+      "count_one": "{{count}} innehav",
+      "count_other": "{{count}} innehav",
+      "total": "totalt",
+      "rates": "Värden i {{currency}} till dagens kurs",
+      "closed_one": "{{count}} stängt innehav",
+      "closed_other": "{{count}} stängda innehav"
+    }
+  },
+  "actions": {
+    "buy": "Köp",
+    "sell": "Sälj",
+    "updatePrice": "Ange kurs manuellt",
+    "delete": "Ta bort innehav"
+  },
+  "badges": {
+    "manual": "manuell"
+  },
+  "tooltip": {
+    "manualPrice": "Manuellt angiven kurs – ersätter CoinGecko tills du tar bort den."
+  },
+  "modal": {
+    "add": {
+      "title": "Lägg till kryptovaluta",
+      "description": "Slå upp kryptovalutan på CoinGecko; dess kurs uppdateras sedan automatiskt.",
+      "coin": "Kryptovaluta",
+      "ticker": "Ticker",
+      "search": "Sök på CoinGecko",
+      "searchHint": "Skriv ett namn eller en ticker för att se träffar från CoinGecko.",
+      "searching": "Söker på CoinGecko…",
+      "searchError": "Sökningen misslyckades. Kontrollera din anslutning eller CoinGecko-nyckeln i Inställningar.",
+      "noResults": "Ingen kryptovaluta matchar. Du kan fylla i ticker och namn manuellt.",
+      "rank": "#{{rank}}",
+      "quantity": "Antal",
+      "pricePerUnit": "Pris per enhet",
+      "purchaseDate": "Köpdatum",
+      "total": "Köpesumma",
+      "submit": "Lägg till innehav"
+    },
+    "buy": {
+      "title": "Köp {{name}}",
+      "description": "Köpet ökar antalet och räknar om snittkostnaden.",
+      "quantity": "Antal",
+      "pricePerUnit": "Kurs per 1 {{ticker}}",
+      "rateHint": "Förifyllt med aktuell kurs.",
+      "total": "Köpesumma",
+      "submit": "Registrera köp"
+    },
+    "sell": {
+      "title": "Sälj {{name}}",
+      "description": "Den realiserade avkastningen mäts mot snittkostnaden.",
+      "quantity": "Antal",
+      "all": "allt ({{quantity}})",
+      "tooMuch": "Du äger bara {{quantity}}.",
+      "pricePerUnit": "Kurs per 1 {{ticker}}",
+      "proceeds": "Intäkt {{amount}} · realiserad avkastning",
+      "proceedsEmpty": "Intäkt och realiserad avkastning",
+      "submit": "Registrera försäljning"
+    },
+    "updatePrice": {
+      "title": "Manuell kurs · {{name}}",
+      "description": "Ersätter CoinGecko-kursen tills du tar bort den manuella.",
+      "price": "Kurs per 1 {{ticker}}",
+      "total": "Innehavets värde ({{quantity}} {{ticker}})",
+      "remove": "Ta bort manuell kurs",
+      "submit": "Spara kurs"
+    }
+  },
+  "confirmDelete": {
+    "title": "Ta bort innehavet?",
+    "description": "{{name}} ({{ticker}}) och alla dess transaktioner tas bort permanent. Det går inte att ångra."
+  },
+  "toast": {
+    "added": "Kryptovalutan har lagts till, hämtar kursen",
+    "bought": "Köpet har registrerats",
+    "sold": "Försäljningen har registrerats",
+    "deleted": "Innehavet har tagits bort",
+    "priceUpdated": "Den manuella kursen har sparats",
+    "manualPriceDeleted": "Den manuella kursen har tagits bort",
+    "pricesRefreshed_one": "{{count}} kurs uppdaterad från CoinGecko",
+    "pricesRefreshed_other": "{{count}} kurser uppdaterade från CoinGecko",
+    "pricesRefreshedDescription": "Aktuella kurser hämtade från CoinGecko",
+    "refreshFailed": "Det gick inte att uppdatera kurserna",
+    "addFailed": "Det gick inte att lägga till kryptovalutan"
+  },
+  "detail": {
+    "backToList": "Tillbaka till krypto",
+    "notFound": "Innehavet hittades inte",
+    "source": "CoinGecko",
+    "manualSource": "manuell kurs",
+    "quantityUnits": "{{quantity}} {{ticker}}",
+    "avgBuyPrice": "snittkostnad {{price}}",
+    "lastBuy": "senaste köp {{date}}",
+    "refreshPrices": "Uppdatera kurs",
+    "buy": "Köp",
+    "sell": "Sälj",
+    "menu": {
+      "editPrice": "Ange kurs manuellt",
+      "delete": "Ta bort innehav"
+    },
+    "status": {
+      "rateUpdated": "Kursen uppdaterades {{when}}",
+      "todayAt": "i dag kl. {{time}}"
+    },
+    "positionValue": "Innehavets värde",
+    "vsInvestedPct": "{{percent}} mot investerat",
+    "rate": "Kurs",
+    "invested": "Investerat",
+    "avgShort": "snitt {{price}}",
+    "unrealized": "Orealiserad avkastning",
+    "realized": "Realiserad avkastning",
+    "sells_one": "{{count}} försäljning",
+    "sells_other": "{{count}} försäljningar",
+    "noSells": "inga försäljningar ännu",
+    "held": "Innehavstid",
+    "heldSince": "sedan {{date}}",
+    "shareOfCrypto": "{{share}} av kryptovärdet",
+    "duration": {
+      "years_one": "{{count}} år",
+      "years_other": "{{count}} år",
+      "months_one": "{{count}} månad",
+      "months_other": "{{count}} månader",
+      "lessThanMonth": "mindre än en månad"
+    },
+    "transactions": {
+      "title": "Transaktionshistorik",
+      "date": "Datum",
+      "type": "Typ",
+      "quantity": "Antal",
+      "price": "Kurs",
+      "total": "Totalt",
+      "empty": "Inga transaktioner ännu"
+    },
+    "priceNative": "Kurs ({{currency}})",
+    "priceNativeMixed": "Kurs (ursprunglig valuta)",
+    "realizedRow": "realiserat {{amount}}",
+    "ledger": {
+      "sub_one": "{{count}} transaktion · håll muspekaren över en rad för att markera den i diagrammet",
+      "sub_other": "{{count}} transaktioner · håll muspekaren över en rad för att markera den i diagrammet",
+      "filter": {
+        "all": "Alla",
+        "buys": "Köp",
+        "sells": "Försäljningar"
+      },
+      "footer_one": "{{count}} transaktion",
+      "footer_other": "{{count}} transaktioner",
+      "bought": "köpt {{amount}}",
+      "sold": "sålt {{amount}}",
+      "rates": "Kurser i {{currency}} enligt ECB-kursen på transaktionsdagen"
+    },
+    "position": {
+      "title": "Innehav",
+      "quantity": "Antal",
+      "avgPrice": "Snittkostnad",
+      "currentPrice": "Aktuell kurs",
+      "nativePrice": "Kurs i {{currency}}",
+      "shareOfCrypto": "Andel av krypto",
+      "priceUpdated": "Kursen uppdaterad",
+      "setManual": "Ange kurs manuellt",
+      "removeManual": "Ta bort manuell kurs"
+    },
+    "sinceFirst": {
+      "title": "Sedan det första köpet",
+      "text": "Under {{duration}} har {{ticker}}-kursen rört sig {{rateChange}} från {{firstPrice}}. Ditt innehav har gett {{positionChange}}{{realizedPart}}.",
+      "realizedPart": "; försäljningar realiserade {{amount}}",
+      "none": "Inget köp ännu."
+    },
+    "deleteTransaction": "Ta bort transaktion",
+    "transactionDeleted": "Transaktionen har tagits bort",
+    "pricesRefreshed": "Kursen har uppdaterats",
+    "confirmDeleteTransaction": {
+      "title": "Ta bort transaktionen?",
+      "description": "Transaktionen av typen {{type}} ({{quantity}} × {{ticker}}, {{date}}, {{amount}}) tas bort permanent. Det går inte att ångra."
+    }
+  },
+  "coingeckoBanner": {
+    "title": "API-nyckel för CoinGecko (valfritt)",
+    "message": "Kurser fungerar utan nyckel. En gratis CoinGecko-nyckel som läggs till i Inställningar läser också in kurshistorik till diagrammen.",
+    "goToSettings": "Öppna Inställningar",
+    "dismiss": "Avfärda"
+  }
+}

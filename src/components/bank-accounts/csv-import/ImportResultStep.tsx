@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 import { Check, ChevronDown } from 'lucide-react';
 import { useFormat } from '@/lib/use-format';
 import { useCurrency } from '@/lib/currency';
@@ -127,21 +127,20 @@ export function ImportResultStep({
               })
             : t('csvImport.done.nothing')}{' '}
           {result.statementBalance != null && (
-            <>
-              {t('csvImport.done.balance', {
-                date: fmt.day(result.statementBalance!.asOf),
-                balance: '',
-              }).replace(/\s*\.\s*$/, '')}{' '}
-              <b className="font-650 text-ink">
-                {formatBalance(
-                  result.statementBalance!.amount,
-                  result.statementBalance!.currency,
+            <Trans
+              t={t}
+              i18nKey="csvImport.done.statementBalance"
+              values={{
+                date: fmt.day(result.statementBalance.asOf),
+                balance: formatBalance(
+                  result.statementBalance.amount,
+                  result.statementBalance.currency,
                   locale,
                   currencyCode
-                )}
-              </b>
-              .
-            </>
+                ),
+              }}
+              components={{ b: <b className="font-650 text-ink" /> }}
+            />
           )}
         </p>
         <div className="my-4 grid grid-cols-4 gap-2.5">

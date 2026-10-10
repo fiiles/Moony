@@ -16,8 +16,8 @@ Checklist for a new routed page. Conventions and rationale are owned by
    `prefKey` when the user may hide it — copy an existing entry); the sidebar and the
    Settings → Menu visibility toggles both render from that file. A new `prefKey` also
    needs the field in `MenuPreferences` (`shared/schema.ts`) and the Rust profile. The
-   `labelKey` (`nav.<key>`) must be added to BOTH `src/i18n/locales/en/common.json` AND
-   `cs/common.json`. A page inside Settings is a section instead: add it to
+   `labelKey` (`nav.<key>`) must be added to `common.json` of EVERY locale
+   (`src/i18n/locales/<lang>/`). A page inside Settings is a section instead: add it to
    `src/components/settings/settings-sections.ts`, then give it an icon in
    `SettingsLayout.tsx` and a component in `src/pages/Settings.tsx` (both typed over the
    section ids, so the compiler lists what is missing).
@@ -26,9 +26,9 @@ Checklist for a new routed page. Conventions and rationale are owned by
    `src/hooks/use-<domain>-mutations.ts` with the full mutation contract
    (`docs/standards/typescript-frontend.md` rules 2–3). Never call `invoke()`
    outside `src/lib/tauri-api.ts`.
-5. **i18n namespace.** Page strings go in a domain namespace: create BOTH
-   `src/i18n/locales/en/<ns>.json` AND `cs/<ns>.json`, register the namespace in
-   `src/i18n/index.ts` (`NAMESPACES` list + `resources` map), and use
+5. **i18n namespace.** Page strings go in a domain namespace: create
+   `src/i18n/locales/<lang>/<ns>.json` for EVERY locale, register the namespace in
+   `src/i18n/index.ts` (`NAMESPACES` list + the English import in `resources.en`), and use
    `useTranslation('<ns>')` + `useTranslation('common')` per
    `docs/standards/i18n.md`.
 

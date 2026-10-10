@@ -1,0 +1,346 @@
+{
+  "title": "Préstamos",
+  "eyebrow": "Pasivos",
+  "subtitle": "Hipotecas y préstamos al consumo, con saldos según el cuadro de amortización.",
+  "status": "Saldos amortizados a {{date}}",
+  "loading": "Cargando tus préstamos...",
+  "export": "Exportar",
+  "empty": {
+    "title": "Aún no hay préstamos",
+    "description": "Añade tu primer préstamo para ver cuánto debes, cuánto te cuestan los intereses y cuándo te quedarás sin deudas."
+  },
+  "addLoan": "Añadir préstamo",
+  "loans_one": "{{count}} préstamo",
+  "loans_many": "{{count}} préstamos",
+  "loans_other": "{{count}} préstamos",
+  "summary": {
+    "outstanding": "Total pendiente",
+    "repaidOf": "{{percent}} amortizado de {{principal}} prestados",
+    "payments": "Cuotas mensuales",
+    "paymentsAfter": "desde {{month, lower}} solo {{amount}} · se liquidará {{name}}",
+    "paymentsYear": "{{amount}} al año",
+    "rate": "Tipo de interés medio",
+    "rateNote": "ponderado por saldo · intereses de los próximos 12 meses {{interest}}",
+    "fixation": "Fin del tipo fijo",
+    "fixationNote": "en {{duration}} · {{name}} {{rate}}",
+    "fixationExpired": "El tipo fijo de {{name}} terminó en {{month, lower}}: introduce el tipo nuevo",
+    "noFixation": "ningún tipo tiene fecha de fin de vigencia"
+  },
+  "chart": {
+    "title": "Evolución de la deuda",
+    "subtitle": "Saldos hasta ahora en línea continua; el futuro según los cuadros de amortización, discontinuo.",
+    "horizon": {
+      "5": "5 años",
+      "10": "10 años",
+      "all": "Hasta liquidar"
+    },
+    "legend": {
+      "outstanding": "Pendiente",
+      "schedule": "Según cuadro",
+      "newLoan": "Préstamo nuevo",
+      "milestone": "Hito"
+    },
+    "tipSchedule": "según cuadro",
+    "note": "Hoy {{today}} · en {{duration}} {{amount}}",
+    "noteDebtFree": "Hoy {{today}} · sin deudas en {{duration}}",
+    "noteNoPayoff": "Hoy {{today}} · con las cuotas actuales la deuda nunca se liquida",
+    "milestones": {
+      "paidOff": "{{name}} liquidado",
+      "paidOffPayments": "las cuotas bajan {{amount}} al mes",
+      "debtFree": "sin deudas",
+      "fixationEnd": "Fin del tipo fijo · {{name}}",
+      "half": "Mitad amortizada · {{name}}",
+      "balance": "saldo {{amount}}",
+      "newLoan": "Préstamo nuevo · {{name}}",
+      "several_one": "{{count}} hito",
+      "several_many": "{{count}} hitos",
+      "several_other": "{{count}} hitos"
+    },
+    "events": {
+      "several_one": "{{count}} evento",
+      "several_many": "{{count}} eventos",
+      "several_other": "{{count}} eventos"
+    }
+  },
+  "table": {
+    "title": "Préstamos",
+    "subtitle": "Ordenados por saldo",
+    "subtitleHidden": "Ordenados por saldo · préstamos liquidados ocultos",
+    "showMatured": "Mostrar liquidados",
+    "loan": "Préstamo",
+    "outstanding": "Pendiente",
+    "principal": "Capital",
+    "rate": "Tipo",
+    "payment": "Cuota",
+    "payoff": "Liquidado en",
+    "actions": "Acciones",
+    "since": "desde {{month, lower}}",
+    "repaid": "{{percent}} amortizado",
+    "matured": "liquidado",
+    "fixedUntil": "fijo hasta {{month, lower}}",
+    "fixationEnded": "tipo fijo terminado en {{month, lower}}",
+    "fixedRate": "tipo fijo",
+    "monthly": "mensual",
+    "noPayment": "sin cuota",
+    "in": "en {{duration}}",
+    "soonYear": "en menos de un año",
+    "soon": "en menos de 18 meses",
+    "noPayoff": "nunca con la cuota actual",
+    "capped": "más de 50 años",
+    "balanceAtEnd": "quedan {{amount}} en la fecha de fin",
+    "noResults": {
+      "title": "No hay préstamos activos",
+      "description": "Todos los préstamos están liquidados. Marca «Mostrar liquidados» para verlos."
+    },
+    "footer": {
+      "count_one": "{{count}} préstamo activo",
+      "count_many": "{{count}} préstamos activos",
+      "count_other": "{{count}} préstamos activos",
+      "outstanding": "pendiente {{amount}}",
+      "payments": "cuotas {{amount}} al mes",
+      "note": "Saldo = capital amortizado con las cuotas hasta la fecha, o el saldo que introdujiste a una fecha"
+    }
+  },
+  "duration": {
+    "years_one": "{{count}} año",
+    "years_many": "{{count}} años",
+    "years_other": "{{count}} años",
+    "months_one": "{{count}} mes",
+    "months_many": "{{count}} meses",
+    "months_other": "{{count}} meses"
+  },
+  "form": {
+    "addTitle": "Añadir préstamo",
+    "editTitle": "Editar préstamo",
+    "submit": "Añadir préstamo",
+    "name": "Nombre del préstamo",
+    "namePlaceholder": "p. ej., Hipoteca de la vivienda",
+    "originalAmount": "Capital",
+    "interestRate": "Tipo de interés",
+    "monthlyPayment": "Cuota mensual",
+    "startDate": "Fecha de inicio",
+    "endDate": "Fecha de fin",
+    "balance": {
+      "title": "Saldo pendiente",
+      "help": "Moony reduce el saldo con cada cuota mensual. Si conoces el saldo real, por ejemplo por un extracto bancario, introdúcelo con su fecha y el cálculo continuará desde ahí.",
+      "setManual": "Fijar el saldo a una fecha",
+      "amount": "Importe pendiente",
+      "date": "A fecha de",
+      "estimate": "Saldo estimado hoy: {{amount}}",
+      "noPayment": "Sin cuota mensual el saldo no se reduce."
+    }
+  },
+  "actions": {
+    "edit": "Editar",
+    "delete": "Eliminar préstamo",
+    "open": "Abrir",
+    "extraPayment": "Pago extra",
+    "balanceCheck": "Verificar saldo con el extracto",
+    "rateChange": "Registrar un cambio de tipo"
+  },
+  "confirmDelete": {
+    "title": "Eliminar préstamo",
+    "description": "¿Eliminar «{{name}}»? Sus eventos y vínculos con inmuebles se eliminarán con él. Esta acción no se puede deshacer."
+  },
+  "toast": {
+    "added": "Préstamo añadido",
+    "updated": "Préstamo actualizado",
+    "deleted": "Préstamo eliminado",
+    "eventAdded": "Evento registrado, cuadro recalculado",
+    "eventDeleted": "Evento eliminado"
+  },
+  "modal": {
+    "addDescription": "Bastan el capital, el tipo y la cuota; el saldo sigue el cuadro de amortización.",
+    "editDescription": "Cambia las condiciones del préstamo; el saldo se recalcula.",
+    "endDateHelp": "Cuándo vence el préstamo según el contrato",
+    "rateValidity": "Vigencia del tipo (fin del tipo fijo)",
+    "rateValidityHelp": "Cuándo termina el periodo de tipo fijo actual",
+    "startDateHelp": "El saldo se amortiza desde esta fecha; las cuotas caen el mismo día de cada mes"
+  },
+  "valuation": {
+    "automatic": "Amortizado desde {{date}} ({{amount}}) al {{rate}} con {{payment}} al mes.",
+    "manual": "A partir de tu saldo de {{amount}} del {{date}}, amortizado al {{rate}} con {{payment}} al mes.",
+    "static": "No hay cuota mensual, así que el saldo no se reduce: {{amount}} a {{date}}.",
+    "belowInterest": "La cuota no cubre los intereses, así que el saldo no baja."
+  },
+  "detail": {
+    "backToLoans": "Volver a préstamos",
+    "loading": "Cargando préstamo...",
+    "notFound": "Este préstamo ya no existe.",
+    "eyebrow": "Préstamo",
+    "description": "Capital {{principal}} desde {{month, lower}} · {{rate}}{{fixation}} · cuota {{payment}} al mes",
+    "descriptionNoPayment": "Capital {{principal}} desde {{month, lower}} · {{rate}} · sin cuota mensual",
+    "withFixation": " fijo hasta {{month, lower}}",
+    "status": {
+      "automatic": "Saldo según el cuadro",
+      "manual": "Saldo según el cuadro · a partir de tu saldo a {{date}}",
+      "static": "Sin cuota mensual · el saldo no baja"
+    },
+    "hero": {
+      "outstanding": "Pendiente",
+      "delta12": "en los últimos 12 meses · {{percent}} del capital amortizado",
+      "deltaSinceStart": "desde la disposición · {{percent}} del capital amortizado",
+      "payoff": "Liquidado en",
+      "payoffNote": "en {{duration}} con la cuota actual",
+      "paidOff": "Liquidado",
+      "noPayoff": "nunca con la cuota actual",
+      "noPayment": "sin cuota el saldo no baja",
+      "balanceAtEnd": "hasta {{month, lower}} · quedan {{amount}} en la fecha de fin"
+    },
+    "horizon": {
+      "past": "Hasta ahora",
+      "5": "5 años",
+      "all": "Hasta liquidar"
+    },
+    "chart": {
+      "legend": {
+        "balance": "Saldo",
+        "schedule": "Según cuadro",
+        "drawdown": "Disposición",
+        "extraPayment": "Pago extra",
+        "milestones": "Tipo fijo e hitos"
+      },
+      "tipBalance": "saldo",
+      "tipSchedule": "según cuadro",
+      "notePast": "Desde {{date}}: {{principal}} de capital amortizado y {{interest}} pagados en intereses",
+      "note5": "Saldo dentro de 5 años {{amount}}",
+      "note5Fixation": "Saldo dentro de 5 años {{amount}} · el tipo fijo termina en {{month, lower}}",
+      "noteAll": "Hasta liquidarlo aún pagas {{total}}, de los cuales {{interest}} son intereses",
+      "noteNoPayoff": "Con la cuota actual el préstamo nunca se liquida",
+      "events": {
+        "drawdown": "Disposición {{amount}}",
+        "extraPayment": "Pago extra {{amount}}",
+        "rateChange": "Tipo cambiado a {{rate}}",
+        "newPayment": "cuota {{amount}}",
+        "balanceCheck": "Saldo verificado con el extracto",
+        "fixationEnd": "Fin del tipo fijo",
+        "half": "Mitad del capital amortizada",
+        "payoff": "Préstamo liquidado",
+        "balance": "saldo {{amount}}"
+      }
+    },
+    "stats": {
+      "interest": "Intereses pagados",
+      "interestNote": "desde {{date}} · {{share}} de las cuotas pagadas",
+      "principal": "Capital amortizado",
+      "principalNote": "{{percent}} del capital",
+      "principalExtra": "de los cuales {{amount}} en pagos extra",
+      "remaining": "Cuotas pendientes",
+      "remainingNote": "{{duration}} · aún quedan {{interest}} de intereses por pagar",
+      "remainingNone": "nunca con la cuota actual",
+      "paidOff": "el préstamo está liquidado",
+      "fixation": "Fin del tipo fijo",
+      "fixationNote": "en {{duration}} · con {{up}} la cuota es {{upPayment}}, con {{down}} {{downPayment}}",
+      "nextPayment": "Próxima cuota",
+      "nextPaymentNote": "intereses {{interest}} · capital {{principal}}",
+      "noSchedule": "sin cuadro",
+      "remainingToEnd": "hasta {{month, lower}} · quedan {{amount}} · aún quedan {{interest}} de intereses por pagar"
+    },
+    "schedule": {
+      "title": "Cuadro de amortización",
+      "subtitle": "Intereses y capital de cada cuota · saldo tras ella",
+      "modes": {
+        "next12": "Próximas 12",
+        "years": "Por año",
+        "all": "Todas"
+      },
+      "payment": "Cuota",
+      "amount": "Importe",
+      "interest": "Intereses",
+      "principal": "Capital",
+      "balanceAfter": "Saldo tras la cuota",
+      "year": "Año",
+      "payments": "Cuotas",
+      "interestTotal": "Intereses",
+      "balanceEnd": "Saldo a fin de año",
+      "next": "próxima",
+      "footNext12": "Próximas 12 cuotas: intereses {{interest}} · capital {{principal}}",
+      "footYears_one": "{{count}} año · el peso de los intereses baja de {{from}} a {{to}} en el último año",
+      "footYears_many": "{{count}} años · el peso de los intereses baja de {{from}} a {{to}} en el último año",
+      "footYears_other": "{{count}} años · el peso de los intereses baja de {{from}} a {{to}} en el último año",
+      "footAll": "{{count}} cuotas desde {{date}} · las pasadas, atenuadas",
+      "empty": "Aún no hay cuadro. Fija una cuota mensual (Editar) para verlo.",
+      "paidOff": "Este préstamo está liquidado.",
+      "method": "Intereses = saldo × tipo ÷ 12, una cuota al mes el mismo día"
+    },
+    "whatIf": {
+      "title": "Pago extra",
+      "subtitle": "Qué efecto tendría en el plazo y en los intereses",
+      "amount": "Importe",
+      "hint": "Compara las dos opciones que ofrecen los bancos.",
+      "modes": {
+        "term": "Acortar el plazo",
+        "payment": "Reducir la cuota"
+      },
+      "termResult": "Liquidado {{duration}} antes",
+      "termNote": "Ahorras {{interest}} en intereses · la cuota sigue siendo {{payment}} · termina en {{month, lower}}",
+      "paymentResult": "La cuota baja {{amount}} al mes",
+      "paymentNote": "Cuota nueva {{payment}} · el plazo se mantiene hasta {{month, lower}} · intereses menores en {{interest}}",
+      "noEffect": "Introduce un importe de hasta {{amount}}, el saldo pendiente.",
+      "noPayment": "Sin cuota mensual no se puede calcular el efecto: añádela editando el préstamo.",
+      "record": "Registrar como realizado"
+    },
+    "events": {
+      "title": "Eventos",
+      "extraPayment": "Pago extra {{amount}}",
+      "extraPaymentNote": "el cuadro continúa desde el saldo reducido",
+      "newPayment": "cuota nueva {{amount}}",
+      "rateChange": "Tipo cambiado a {{rate}}",
+      "rateChangeNote": "el cuadro continúa desde el saldo de este día",
+      "balanceCheck": "Saldo verificado con el extracto",
+      "balanceCheckNote": "el cuadro se reinicia desde esta fecha",
+      "drawdown": "Disposición {{amount}}",
+      "drawdownNote": "inicio del préstamo",
+      "delete": "Quitar evento",
+      "confirmDelete": {
+        "title": "Quitar evento",
+        "description": "La entrada desaparece del gráfico y de la lista. El saldo que fijó el evento sigue vigente."
+      }
+    },
+    "warnings": {
+      "noPayment": "No hay cuota mensual, así que el saldo no se reduce. Edita el préstamo y añade la cuota para amortizarlo automáticamente.",
+      "paymentBelowInterest": "La cuota mensual no cubre los intereses (unos {{interest}} al mes), así que el saldo no baja. Revisa la cuota y el tipo de interés.",
+      "balanceAtEndDate": "En la fecha de fin ({{date}}) aún quedarían {{amount}} pendientes. Revisa la cuota, el tipo de interés y la fecha de fin.",
+      "scheduleTruncated": "El cuadro se corta tras {{count}} cuotas."
+    }
+  },
+  "eventDialog": {
+    "note": "Nota",
+    "extraPayment": {
+      "title": "Pago extra",
+      "description": "Reduce el saldo ese día y recalcula el cuadro; aparece en el gráfico como un evento.",
+      "amount": "Importe",
+      "date": "Fecha",
+      "usedFor": "El banco destinó el pago a",
+      "term": "Acortar el plazo",
+      "payment": "Reducir la cuota",
+      "alertTitle": "El saldo baja a {{amount}}",
+      "alertTerm": "Liquidado {{duration}} antes, con un ahorro de {{interest}} en intereses.",
+      "alertPayment": "Cuota nueva de {{payment}} al mes; el plazo se mantiene hasta {{month, lower}}.",
+      "alertTooMuch": "El importe supera el saldo de {{amount}}.",
+      "alertEmpty": "Introduce un importe para ver el efecto.",
+      "submit": "Registrar pago"
+    },
+    "rateChange": {
+      "title": "Cambio de tipo",
+      "description": "El tipo nuevo se aplica desde el día indicado; el cuadro continúa desde el saldo de ese día.",
+      "rate": "Tipo nuevo",
+      "payment": "Cuota nueva",
+      "paymentHint": "Vacío = la cuota sigue siendo {{amount}}",
+      "date": "Válido desde",
+      "alertTitle": "Intereses mensuales {{from}} → {{to}}",
+      "alertNote": "Con una cuota de {{payment}} el préstamo se liquida en {{month, lower}}.",
+      "alertNoPayoff": "Una cuota de {{payment}} no cubre los intereses; el saldo no bajaría.",
+      "submit": "Registrar cambio"
+    },
+    "balanceCheck": {
+      "title": "Verificar saldo con el extracto",
+      "description": "Introduce el saldo de tu extracto; el cuadro se reinicia desde ese día.",
+      "amount": "Saldo según el extracto",
+      "date": "A fecha de",
+      "alertTitle": "El cuadro suponía {{amount}}",
+      "alertNote": "Diferencia {{delta}} · desde {{date}} el cuadro usa tu saldo.",
+      "submit": "Guardar saldo"
+    }
+  }
+}

@@ -1,0 +1,134 @@
+{
+  "card": {
+    "title": "Det som kommer",
+    "settingsLink": "Rediger påminnelser",
+    "showAll": "Vis alle ({{count}})",
+    "showLess": "Vis færre",
+    "nothingDue": "Ingen kommende datoer.",
+    "upkeep": "Datavedlikehold",
+    "upkeepShow": "Vis {{count}}",
+    "upkeepHide": "Skjul",
+    "today": "I dag",
+    "target": "mål",
+    "rowMenu": "Påminnelsesvalg: {{title}}"
+  },
+  "status": {
+    "deadline": "{{title}} · {{when}}",
+    "more": "+{{count}}",
+    "title": "Frister de neste 14 dagene",
+    "openOverview": "Åpne oversikten"
+  },
+  "actions": {
+    "hide": "Skjul",
+    "remindWeek": "Påminn meg om en uke",
+    "remindMonth": "Påminn meg om en måned",
+    "undo": "Angre"
+  },
+  "toast": {
+    "hidden": "Skjult",
+    "snoozedWeek": "Utsatt en uke",
+    "snoozedMonth": "Utsatt en måned",
+    "muted": "Påminnelser av · {{group}}"
+  },
+  "relative": {
+    "today": "i dag",
+    "tomorrow": "i morgen",
+    "inDays_one": "om {{count}} dag",
+    "inDays_other": "om {{count}} dager",
+    "inMonths_one": "om {{count}} måned",
+    "inMonths_other": "om {{count}} måneder",
+    "daysAgo_one": "for {{count}} dag siden",
+    "daysAgo_other": "for {{count}} dager siden",
+    "monthsAgo_one": "for {{count}} måned siden",
+    "monthsAgo_other": "for {{count}} måneder siden"
+  },
+  "titles": {
+    "backup_stale": "Sikkerhetskopi av data",
+    "balances_stale": "Kontosaldoer"
+  },
+  "sub": {
+    "insurance_anniversary": "Siste dag for oppsigelse · årsdag {{date}}",
+    "insurance_anniversary_passed": "Avtalens årsdag · oppsigelsesfristen er utløpt",
+    "insurance_end": "Avtalen utløper",
+    "insurance_payment": "Betaling {{amount}}",
+    "loan_fixation_end": "Bindingstiden for renten utløper · på tide å sammenligne tilbud",
+    "loan_payoff": "Siste termin",
+    "bond_maturity": "Forfaller · {{amount}} kommer tilbake",
+    "bond_coupon": "Kupong {{amount}}",
+    "account_termination": "Kontoen avsluttes",
+    "savings_rate_end": "Kampanjerenten utløper",
+    "watch_target_below": "Kursen {{price}} falt til målet {{target}}",
+    "watch_target_above": "Kursen {{price}} nådde målet {{target}}",
+    "loan_fixation_expired": "Bindingstiden for renten utløp {{date}} · legg inn den nye renten",
+    "loan_balance_check": "Saldoen er ikke kontrollert siden {{date}} · sammenlign med en kontoutskrift",
+    "valuation_stale": "Ingen ny verdivurdering siden {{date}} · vurder den på nytt",
+    "backup_stale": "Siste sikkerhetskopi {{date}}",
+    "backup_never": "Ingen sikkerhetskopi ennå",
+    "balances_stale_one": "{{count}} konto er ikke oppdatert på over 30 dager",
+    "balances_stale_other": "{{count}} kontoer er ikke oppdatert på over 30 dager"
+  },
+  "short": {
+    "backup_stale": "ta sikkerhetskopi av dataene",
+    "balances_stale_one": "oppdater {{count}} saldo",
+    "balances_stale_other": "oppdater {{count}} saldoer",
+    "valuation_stale": "vurder {{title}} på nytt",
+    "loan_balance_check": "kontroller saldoen for {{title}}",
+    "loan_fixation_expired": "legg inn ny rente for {{title}}"
+  },
+  "groups": {
+    "insuranceDates": {
+      "label": "Årsdager og utløp for forsikringer",
+      "hint": "På oversikten opptil 3 måneder i forveien; årsdager med siste dag for oppsigelse.",
+      "mute": "Ikke påminn meg om forsikringsårsdager og utløp"
+    },
+    "insurancePayments": {
+      "label": "Forsikringsbetalinger",
+      "hint": "Kvartalsvise, halvårlige og årlige betalinger 14 dager i forveien.",
+      "mute": "Ikke påminn meg om forsikringsbetalinger"
+    },
+    "loans": {
+      "label": "Utløp av bindingstid og lånets sluttdato",
+      "hint": "Utløp av bindingstid 6 måneder i forveien, siste termin en måned i forveien.",
+      "mute": "Ikke påminn meg om bindingstid og sluttdato"
+    },
+    "bonds": {
+      "label": "Forfall og kuponger på obligasjoner",
+      "hint": "Forfall opptil 3 måneder i forveien, kupong en uke i forveien.",
+      "mute": "Ikke påminn meg om forfall og kuponger"
+    },
+    "accounts": {
+      "label": "Utløp av kontoer og kampanjerenter",
+      "hint": "Utløp av en konto eller kampanjerente opptil 3 måneder i forveien.",
+      "mute": "Ikke påminn meg om utløp av kontoer og renter"
+    },
+    "targets": {
+      "label": "Målkurser for aksjer",
+      "hint": "Når kursen når målet i den angitte retningen.",
+      "mute": "Ikke påminn meg om målkurser"
+    },
+    "backup": {
+      "label": "Sikkerhetskopier av data",
+      "hint": "Når den siste sikkerhetskopien er eldre enn 30 dager.",
+      "mute": "Ikke påminn meg om sikkerhetskopier"
+    },
+    "balances": {
+      "label": "Oppdatering av saldoer",
+      "hint": "Når en kontosaldo ikke er oppdatert på over 30 dager.",
+      "mute": "Ikke påminn meg om kontosaldoer"
+    },
+    "valuations": {
+      "label": "Verdivurderinger av eiendom",
+      "hint": "Når en verdivurdering av en eiendom er eldre enn ett år.",
+      "mute": "Ikke påminn meg om verdivurderinger av eiendom"
+    },
+    "loanChecks": {
+      "label": "Lånekontroller",
+      "hint": "En årlig saldokontroll og den nye renten når en bindingstid utløper.",
+      "mute": "Ikke påminn meg om lånekontroller"
+    }
+  },
+  "settings": {
+    "title": "Påminnelser på oversikten",
+    "description": "Hva kortet «Det som kommer» og topplinjen minner deg om. Slåtte av typer vises ingen steder."
+  }
+}

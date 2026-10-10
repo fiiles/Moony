@@ -1,0 +1,312 @@
+{
+  "title": "保险",
+  "eyebrow": "保障",
+  "subtitle": "您投保了什么、花费多少，以及付款和周年日何时到来。",
+  "loading": "正在加载您的保单…",
+  "export": "导出",
+  "status": {
+    "nextPayment": "下次付款 {{date}} · {{amount}}",
+    "none": "没有定期付款",
+    "ended": "保单已终止"
+  },
+  "empty": {
+    "title": "还没有保单",
+    "description": "添加您的第一份合同，即可查看保障内容、保费以及付款日期。"
+  },
+  "addPolicy": "添加保单",
+  "policies_other": "{{count}} 份有效保单",
+  "payments_other": "{{count}} 次付款",
+  "risks_other": "{{count}} 项风险",
+  "documentsCount_other": "{{count}} 份文档",
+  "duration": {
+    "years_other": "{{count}} 年",
+    "months_other": "{{count}} 个月",
+    "days_other": "{{count}} 天"
+  },
+  "summary": {
+    "yearly": "年保费",
+    "yearlyNote": "每月 {{monthly}} · {{policies}}",
+    "nextPayment": "下次付款",
+    "nextPaymentNote": "{{amount}} · {{policies}}",
+    "noPayments": "没有待付的定期款项",
+    "coverage": "总保额",
+    "coverageNote": "各限额之和 · {{breakdown}}",
+    "noCoverage": "尚未填写保额限额",
+    "anniversary": "最近的周年日",
+    "anniversaryNote": "{{name}} · {{duration}}后 · 该比较报价了",
+    "endNote": "{{name}} · 合同将在{{duration}}后到期",
+    "noAnniversary": "没有有效合同"
+  },
+  "calendar": {
+    "title": "付款日历，未来 12 个月",
+    "subtitle": "根据每份合同的频率和开始日期推算 · 年付款项会突出显示。",
+    "total": "合计 {{amount}}",
+    "monthly": "月度保费",
+    "other": "季度和年度付款",
+    "anniversary": "周年日 · {{name}}",
+    "peakNote": "付款最多的月份是 {{month}}：{{amount}}——请预留资金。",
+    "evenNote": "付款均匀 · 每月 {{amount}}"
+  },
+  "table": {
+    "title": "保单",
+    "subtitle": "有效合同",
+    "subtitleHidden": "有效合同 · 已终止的已隐藏",
+    "showEnded": "显示已终止",
+    "allTypes": "所有类型",
+    "policy": "保单",
+    "premium": "保费",
+    "coverage": "保额",
+    "nextPayment": "下次付款",
+    "anniversary": "周年日",
+    "actions": "操作",
+    "perYear": "每年 {{amount}}",
+    "perYearShort": "每年",
+    "moreLimits": "另有 {{count}} 项",
+    "ended": "已终止",
+    "endedOn": "已终止",
+    "endOn": "合同到期",
+    "anniversaryShort": "合同周年日",
+    "in": "{{duration}}后",
+    "noResults": {
+      "title": "没有此类型的保单",
+      "description": "请尝试其他筛选条件，或添加新合同。"
+    },
+    "footer": {
+      "yearly": "每年 {{amount}}",
+      "coverage": "保额 {{amount}}",
+      "note": "周年日 = 自开始日期起的下一个合同年度 · 到期 = 约定日期"
+    }
+  },
+  "types": {
+    "life": "人寿保险",
+    "health": "健康保险",
+    "property": "财产保险",
+    "vehicle": "车辆保险",
+    "travel": "旅行保险",
+    "liability": "责任保险",
+    "accident": "意外保险",
+    "other": "其他",
+    "allTypes": "所有类型"
+  },
+  "typeShort": {
+    "life": "人寿",
+    "health": "健康",
+    "property": "财产",
+    "vehicle": "车辆",
+    "travel": "旅行",
+    "liability": "责任",
+    "accident": "意外",
+    "other": "其他"
+  },
+  "frequencyShort": {
+    "monthly": "每月",
+    "quarterly": "每季度",
+    "semi_annually": "每半年",
+    "annually": "每年",
+    "one_time": "一次性"
+  },
+  "form": {
+    "addTitle": "添加保单",
+    "editTitle": "编辑保单",
+    "name": "保单名称",
+    "namePlaceholder": "例如：家庭财产保险",
+    "provider": "保险公司",
+    "providerPlaceholder": "例如：某保险公司",
+    "type": "保单类型",
+    "premium": "年保费",
+    "coverage": "保额",
+    "currency": "货币",
+    "startDate": "开始日期",
+    "expiryDate": "到期日期",
+    "policyNumber": "保单号",
+    "notes": "备注"
+  },
+  "actions": {
+    "open": "打开",
+    "edit": "编辑",
+    "end": "终止保单",
+    "reactivate": "重新启用保单",
+    "delete": "删除保单",
+    "addDocument": "添加文档"
+  },
+  "endDialog": {
+    "title": "终止保单 · {{name}}",
+    "description": "合同会保留在历史记录中，但不再计入保费合计和付款日历。",
+    "date": "合同终止日期",
+    "alertTitle": "该保单将转入已终止列表",
+    "alertNote": "您可以随时通过“···”菜单重新启用；文档和限额会保留。",
+    "submit": "终止保单"
+  },
+  "confirmDelete": {
+    "title": "删除保单",
+    "description": "删除“{{name}}”吗？其文档也会一并删除，此操作无法撤销。"
+  },
+  "toast": {
+    "added": "保单已添加",
+    "updated": "保单已更新",
+    "deleted": "保单已删除",
+    "ended": "保单已终止",
+    "reactivated": "保单已重新启用"
+  },
+  "modal": {
+    "basicInfo": "基本信息",
+    "paymentDetails": "付款详情",
+    "additionalInfo": "其他信息",
+    "selectType": "选择类型",
+    "selectStatus": "选择状态",
+    "addDescription": "合同基本信息、付款和保额限额；文档在详情页中添加。",
+    "editDescription": "编辑保单详情。",
+    "policyName": "保单名称",
+    "policyNamePlaceholder": "例如：家庭财产保险 2024",
+    "provider": "保险公司",
+    "providerPlaceholder": "例如：Allianz",
+    "policyNumber": "保单号",
+    "policyNumberPlaceholder": "合同编号",
+    "paymentFrequency": "付款频率",
+    "selectFrequency": "选择频率",
+    "oneTimePayment": "一次性付款（可选）",
+    "oneTimePaymentRequired": "一次性付款",
+    "regularPayment": "定期付款",
+    "endDateOptional": "结束日期（可选）",
+    "coverageLimits": "保额限额",
+    "addLimit": "添加限额",
+    "removeLimit": "移除限额",
+    "limitTitle": "限额名称",
+    "notesPlaceholder": "特殊条款、联系人…",
+    "createPolicy": "创建保单",
+    "updatePolicy": "更新保单",
+    "status": {
+      "active": "有效",
+      "inactive": "无效"
+    },
+    "frequency": {
+      "monthly": "每月",
+      "quarterly": "每季度",
+      "semi_annually": "每半年",
+      "annually": "每年",
+      "one_time": "一次性"
+    },
+    "linkRealEstate": "关联房产",
+    "selectRealEstate": "选择房产（可选）",
+    "noRealEstateAvailable": "没有可用的房产"
+  },
+  "detail": {
+    "backToList": "返回保险",
+    "notFound": "该保单已不存在。",
+    "policyNumber": "编号 {{number}}",
+    "description": "自 {{start}} {{end}} · {{premium}} {{frequency}}",
+    "descriptionOneTime": "自 {{start}} {{end}} · 一次性 {{premium}}",
+    "noEnd": "无约定结束日期",
+    "until": "至 {{date}}",
+    "statusActive": "有效",
+    "statusEnded": "已终止",
+    "period": {
+      "year": "1 年",
+      "all": "自开始起"
+    },
+    "hero": {
+      "paid": "已付保费",
+      "paidNote": "自 {{month}} 起 {{payments}} · 每年 {{yearly}}",
+      "paidNoteOneTime": "于 {{date}} 签约时一次性付款",
+      "coverage": "总保额",
+      "coverageRatio": "年保费的 {{ratio}} 倍",
+      "coverageOneTime": "约定限额之和",
+      "noCoverage": "尚未填写保额限额"
+    },
+    "chart": {
+      "paid": "累计已付",
+      "next12": "未来 12 次付款",
+      "tipPaid": "累计已付",
+      "tipPlanned": "计划付款",
+      "note": "{{payments}} · 每年 {{yearly}}",
+      "noteOneTime": "于 {{date}} 一次性付款，之后无需再付"
+    },
+    "stats": {
+      "yearly": "年度费用",
+      "yearlyNote": "{{frequency}} {{premium}} · 占您保费的 {{share}}",
+      "yearlyOneTime": "一次性保费，无年度费用",
+      "nextPayment": "下次付款",
+      "nextPaymentNote": "{{in}}后 · {{amount}} · 再下一次 {{next}}",
+      "noNextPayment": "没有后续付款",
+      "anniversary": "合同周年日",
+      "anniversaryNote": "{{in}}后 · 可借此调整保障或比较报价",
+      "end": "合同到期",
+      "endNote": "{{in}}后 · 约定的到期日",
+      "endedNote": "合同已于 {{date}} 终止",
+      "duration": "合同期限",
+      "durationNote": "无约定结束日期 · {{docs}}",
+      "durationEnd": "至 {{date}} · {{docs}}"
+    },
+    "limits": {
+      "title": "保额限额",
+      "subtitle": "合同的保障范围及最高赔付额",
+      "edit": "编辑限额",
+      "risk": "风险",
+      "limit": "限额",
+      "footer": "{{risks}} · 总保额 {{amount}}",
+      "empty": "尚未填写保额限额。可通过编辑保单添加。"
+    },
+    "contract": {
+      "title": "合同",
+      "provider": "保险公司",
+      "number": "合同编号",
+      "type": "类型",
+      "start": "开始",
+      "end": "结束",
+      "endNone": "无固定期限",
+      "frequency": "频率",
+      "premium": "保费",
+      "oneTime": "一次性付款",
+      "oneTimeNone": "无",
+      "property": "房产"
+    },
+    "notes": {
+      "title": "备注",
+      "edit": "编辑",
+      "empty": "暂无备注——可通过编辑保单添加联系人、条款和提醒。",
+      "updated": "编辑于 {{date}}"
+    },
+    "documents": "文档"
+  },
+  "documents": {
+    "subtitle": "存放在应用的加密文件夹中",
+    "columns": {
+      "document": "文档",
+      "type": "类型",
+      "uploaded": "上传时间"
+    },
+    "description": "附上合同、证书和其他文档",
+    "add": "添加文档",
+    "addFirst": "添加第一份文档",
+    "addTitle": "添加文档",
+    "noDocuments": "尚未附加文档",
+    "file": "文件",
+    "clickToSelect": "点击选择文件",
+    "type": "文档类型",
+    "selectType": "选择类型",
+    "namePlaceholder": "例如：保险合同 2024",
+    "descriptionPlaceholder": "关于此文档的补充说明…",
+    "uploading": "正在上传…",
+    "upload": "上传文档",
+    "open": "打开",
+    "delete": "删除",
+    "added": "文档已添加",
+    "deleted": "文档已删除",
+    "optional": "可选",
+    "types": {
+      "contract": "合同",
+      "certificate": "证书",
+      "claim": "理赔",
+      "other": "其他"
+    },
+    "deleteConfirm": {
+      "title": "删除文档",
+      "description": "删除“{{name}}”吗？该文件将被永久删除。"
+    }
+  },
+  "mcp": {
+    "tipSummary": "不想一项项手动输入？AI 助手可以根据合同为您添加保单。",
+    "bannerBody": "启动 MCP 服务器，将合同、报价单或保单摘要上传给 Claude，并让它为您添加保单。",
+    "setupLink": "设置 MCP 服务器"
+  }
+}

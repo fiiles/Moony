@@ -1,0 +1,353 @@
+{
+  "title": "Kredyty",
+  "eyebrow": "Zobowiązania",
+  "subtitle": "Kredyty hipoteczne i konsumenckie, salda wg harmonogramu spłat.",
+  "status": "Salda amortyzowane na dzień {{date}}",
+  "loading": "Wczytywanie kredytów...",
+  "export": "Eksport",
+  "empty": {
+    "title": "Brak kredytów",
+    "description": "Dodaj pierwszy kredyt, aby zobaczyć, ile zostało do spłaty, ile kosztują odsetki i kiedy skończysz ze spłatą długów."
+  },
+  "addLoan": "Dodaj kredyt",
+  "loans_one": "{{count}} kredyt",
+  "loans_few": "{{count}} kredyty",
+  "loans_many": "{{count}} kredytów",
+  "loans_other": "{{count}} kredytu",
+  "summary": {
+    "outstanding": "Do spłaty łącznie",
+    "repaidOf": "spłacono {{percent}} z pożyczonych {{principal}}",
+    "payments": "Raty miesięczne",
+    "paymentsAfter": "od {{month, lower}} tylko {{amount}} · spłata: {{name}}",
+    "paymentsYear": "{{amount}} rocznie",
+    "rate": "Śr. oprocentowanie",
+    "rateNote": "ważone saldem · odsetki w następnych 12 miesiącach {{interest}}",
+    "fixation": "Koniec stałej stopy",
+    "fixationNote": "za {{duration}} · {{name}} {{rate}}",
+    "fixationExpired": "Stała stopa kredytu {{name}} skończyła się {{month, lower}} – wpisz nową stopę",
+    "noFixation": "żadna stopa nie ma daty ważności"
+  },
+  "chart": {
+    "title": "Trajektoria zadłużenia",
+    "subtitle": "Dotychczasowe salda linią ciągłą, przyszłość wg harmonogramów spłat linią przerywaną.",
+    "horizon": {
+      "5": "5 lat",
+      "10": "10 lat",
+      "all": "Do spłaty"
+    },
+    "legend": {
+      "outstanding": "Do spłaty",
+      "schedule": "Wg harmonogramu",
+      "newLoan": "Nowy kredyt",
+      "milestone": "Kamień milowy"
+    },
+    "tipSchedule": "wg harmonogramu",
+    "note": "Dziś {{today}} · za {{duration}}: {{amount}}",
+    "noteDebtFree": "Dziś {{today}} · bez długów za {{duration}}",
+    "noteNoPayoff": "Dziś {{today}} · przy obecnych ratach dług nigdy nie zostanie spłacony",
+    "milestones": {
+      "paidOff": "Spłacono {{name}}",
+      "paidOffPayments": "raty spadają o {{amount}} miesięcznie",
+      "debtFree": "bez długów",
+      "fixationEnd": "Koniec stałej stopy · {{name}}",
+      "half": "Połowa spłacona · {{name}}",
+      "balance": "saldo {{amount}}",
+      "newLoan": "Nowy kredyt · {{name}}",
+      "several_one": "{{count}} kamień milowy",
+      "several_few": "{{count}} kamienie milowe",
+      "several_many": "{{count}} kamieni milowych",
+      "several_other": "{{count}} kamienia milowego"
+    },
+    "events": {
+      "several_one": "{{count}} zdarzenie",
+      "several_few": "{{count}} zdarzenia",
+      "several_many": "{{count}} zdarzeń",
+      "several_other": "{{count}} zdarzenia"
+    }
+  },
+  "table": {
+    "title": "Kredyty",
+    "subtitle": "Posortowane wg salda",
+    "subtitleHidden": "Posortowane wg salda · spłacone kredyty ukryte",
+    "showMatured": "Pokaż spłacone",
+    "loan": "Kredyt",
+    "outstanding": "Do spłaty",
+    "principal": "Kwota kredytu",
+    "rate": "Oprocentowanie",
+    "payment": "Rata",
+    "payoff": "Spłata do",
+    "actions": "Akcje",
+    "since": "od {{month, lower}}",
+    "repaid": "spłacono {{percent}}",
+    "matured": "spłacony",
+    "fixedUntil": "stała stopa do {{month, lower}}",
+    "fixationEnded": "stała stopa skończyła się {{month, lower}}",
+    "fixedRate": "stała stopa",
+    "monthly": "miesięcznie",
+    "noPayment": "brak raty",
+    "in": "za {{duration}}",
+    "soonYear": "w ciągu roku",
+    "soon": "w ciągu 18 miesięcy",
+    "noPayoff": "nigdy przy obecnej racie",
+    "capped": "ponad 50 lat",
+    "balanceAtEnd": "{{amount}} pozostaje w dniu zakończenia",
+    "noResults": {
+      "title": "Brak aktywnych kredytów",
+      "description": "Wszystkie kredyty są spłacone. Zaznacz „Pokaż spłacone”, aby je zobaczyć."
+    },
+    "footer": {
+      "count_one": "{{count}} aktywny kredyt",
+      "count_few": "{{count}} aktywne kredyty",
+      "count_many": "{{count}} aktywnych kredytów",
+      "count_other": "{{count}} aktywnego kredytu",
+      "outstanding": "do spłaty {{amount}}",
+      "payments": "raty {{amount}} miesięcznie",
+      "note": "Saldo = kapitał zamortyzowany dotychczasowymi ratami lub saldo wpisane na dany dzień"
+    }
+  },
+  "duration": {
+    "years_one": "{{count}} rok",
+    "years_few": "{{count}} lata",
+    "years_many": "{{count}} lat",
+    "years_other": "{{count}} roku",
+    "months_one": "{{count}} miesiąc",
+    "months_few": "{{count}} miesiące",
+    "months_many": "{{count}} miesięcy",
+    "months_other": "{{count}} miesiąca"
+  },
+  "form": {
+    "addTitle": "Dodaj kredyt",
+    "editTitle": "Edytuj kredyt",
+    "submit": "Dodaj kredyt",
+    "name": "Nazwa kredytu",
+    "namePlaceholder": "np. Kredyt hipoteczny na dom",
+    "originalAmount": "Kwota kredytu",
+    "interestRate": "Oprocentowanie",
+    "monthlyPayment": "Rata miesięczna",
+    "startDate": "Data początku",
+    "endDate": "Data zakończenia",
+    "balance": {
+      "title": "Saldo do spłaty",
+      "help": "Moony zmniejsza saldo z każdą miesięczną ratą. Jeśli znasz rzeczywiste saldo, na przykład z wyciągu bankowego, wpisz je wraz z datą, a obliczenia będą kontynuowane od tego punktu.",
+      "setManual": "Ustaw saldo na dzień",
+      "amount": "Kwota do spłaty",
+      "date": "Na dzień",
+      "estimate": "Szacowane saldo dziś: {{amount}}",
+      "noPayment": "Bez miesięcznej raty saldo się nie zmniejsza."
+    }
+  },
+  "actions": {
+    "edit": "Edytuj",
+    "delete": "Usuń kredyt",
+    "open": "Otwórz",
+    "extraPayment": "Nadpłata",
+    "balanceCheck": "Zweryfikuj saldo wg wyciągu",
+    "rateChange": "Zapisz zmianę oprocentowania"
+  },
+  "confirmDelete": {
+    "title": "Usuń kredyt",
+    "description": "Usunąć „{{name}}”? Razem z nim znikną jego zdarzenia i powiązania z nieruchomościami. Tej operacji nie można cofnąć."
+  },
+  "toast": {
+    "added": "Kredyt dodany",
+    "updated": "Kredyt zaktualizowany",
+    "deleted": "Kredyt usunięty",
+    "eventAdded": "Zdarzenie zapisane, harmonogram przeliczony",
+    "eventDeleted": "Zdarzenie usunięte"
+  },
+  "modal": {
+    "addDescription": "Wystarczy kwota kredytu, oprocentowanie i rata; saldo wynika z harmonogramu.",
+    "editDescription": "Zmień warunki kredytu; saldo zostanie przeliczone.",
+    "endDateHelp": "Kiedy kredyt ma być umownie spłacony",
+    "rateValidity": "Ważność stopy (koniec stałego oprocentowania)",
+    "rateValidityHelp": "Kiedy kończy się okres stałego oprocentowania obecnej stopy",
+    "startDateHelp": "Saldo jest amortyzowane od tej daty; raty przypadają w tym samym dniu każdego miesiąca"
+  },
+  "valuation": {
+    "automatic": "Amortyzowane od {{date}} ({{amount}}) przy {{rate}} z ratą {{payment}} miesięcznie.",
+    "manual": "Od twojego salda {{amount}} z dnia {{date}}, amortyzowane przy {{rate}} z ratą {{payment}} miesięcznie.",
+    "static": "Nie ustawiono miesięcznej raty, więc saldo się nie zmniejsza: {{amount}} na dzień {{date}}.",
+    "belowInterest": "Rata nie pokrywa odsetek, więc saldo nie spada."
+  },
+  "detail": {
+    "backToLoans": "Wróć do kredytów",
+    "loading": "Wczytywanie kredytu...",
+    "notFound": "Ten kredyt już nie istnieje.",
+    "eyebrow": "Kredyt",
+    "description": "Kwota {{principal}} od {{month, lower}} · {{rate}}{{fixation}} · rata {{payment}} miesięcznie",
+    "descriptionNoPayment": "Kwota {{principal}} od {{month, lower}} · {{rate}} · bez miesięcznej raty",
+    "withFixation": " stałe do {{month, lower}}",
+    "status": {
+      "automatic": "Saldo wg harmonogramu",
+      "manual": "Saldo wg harmonogramu · od twojego salda z dnia {{date}}",
+      "static": "Brak miesięcznej raty · saldo nie spada"
+    },
+    "hero": {
+      "outstanding": "Do spłaty",
+      "delta12": "w ostatnich 12 miesiącach · spłacono {{percent}} kapitału",
+      "deltaSinceStart": "od uruchomienia · spłacono {{percent}} kapitału",
+      "payoff": "Spłata do",
+      "payoffNote": "za {{duration}} przy obecnej racie",
+      "paidOff": "Spłacony",
+      "noPayoff": "nigdy przy obecnej racie",
+      "noPayment": "bez raty saldo nie spada",
+      "balanceAtEnd": "do {{month, lower}} · {{amount}} pozostaje w dniu zakończenia"
+    },
+    "horizon": {
+      "past": "Dotychczas",
+      "5": "5 lat",
+      "all": "Do spłaty"
+    },
+    "chart": {
+      "legend": {
+        "balance": "Saldo",
+        "schedule": "Wg harmonogramu",
+        "drawdown": "Uruchomienie",
+        "extraPayment": "Nadpłata",
+        "milestones": "Stała stopa i kamienie milowe"
+      },
+      "tipBalance": "saldo",
+      "tipSchedule": "wg harmonogramu",
+      "notePast": "Od {{date}}: spłacono {{principal}} kapitału i zapłacono {{interest}} odsetek",
+      "note5": "Saldo za 5 lat {{amount}}",
+      "note5Fixation": "Saldo za 5 lat {{amount}} · koniec stałej stopy {{month, lower}}",
+      "noteAll": "Do spłaty zapłacisz jeszcze {{total}}, z czego {{interest}} to odsetki",
+      "noteNoPayoff": "Przy obecnej racie kredyt nigdy nie zostanie spłacony",
+      "events": {
+        "drawdown": "Uruchomienie {{amount}}",
+        "extraPayment": "Nadpłata {{amount}}",
+        "rateChange": "Oprocentowanie zmienione na {{rate}}",
+        "newPayment": "rata {{amount}}",
+        "balanceCheck": "Saldo zweryfikowane wg wyciągu",
+        "fixationEnd": "Koniec stałej stopy",
+        "half": "Połowa kapitału spłacona",
+        "payoff": "Kredyt spłacony",
+        "balance": "saldo {{amount}}"
+      }
+    },
+    "stats": {
+      "interest": "Zapłacone odsetki",
+      "interestNote": "od {{date}} · {{share}} dokonanych płatności",
+      "principal": "Spłacony kapitał",
+      "principalNote": "{{percent}} kapitału",
+      "principalExtra": "w tym {{amount}} z nadpłat",
+      "remaining": "Pozostałe raty",
+      "remainingNote": "{{duration}} · jeszcze {{interest}} odsetek do zapłaty",
+      "remainingNone": "nigdy przy obecnej racie",
+      "paidOff": "kredyt jest spłacony",
+      "fixation": "Koniec stałej stopy",
+      "fixationNote": "za {{duration}} · przy {{up}} rata wyniesie {{upPayment}}, przy {{down}} {{downPayment}}",
+      "nextPayment": "Następna rata",
+      "nextPaymentNote": "odsetki {{interest}} · kapitał {{principal}}",
+      "noSchedule": "brak harmonogramu",
+      "remainingToEnd": "do {{month, lower}} · pozostaje {{amount}} · jeszcze {{interest}} odsetek do zapłaty"
+    },
+    "schedule": {
+      "title": "Harmonogram spłat",
+      "subtitle": "Odsetki i kapitał w każdej racie · saldo po niej",
+      "modes": {
+        "next12": "Następne 12",
+        "years": "Wg lat",
+        "all": "Wszystkie"
+      },
+      "payment": "Rata",
+      "amount": "Kwota",
+      "interest": "Odsetki",
+      "principal": "Kapitał",
+      "balanceAfter": "Saldo po",
+      "year": "Rok",
+      "payments": "Raty",
+      "interestTotal": "Odsetki",
+      "balanceEnd": "Saldo na koniec roku",
+      "next": "następna",
+      "footNext12": "Następne 12 rat: odsetki {{interest}} · kapitał {{principal}}",
+      "footYears_one": "{{count}} rok · udział odsetek spada z {{from}} do {{to}} w ostatnim roku",
+      "footYears_few": "{{count}} lata · udział odsetek spada z {{from}} do {{to}} w ostatnim roku",
+      "footYears_many": "{{count}} lat · udział odsetek spada z {{from}} do {{to}} w ostatnim roku",
+      "footYears_other": "{{count}} roku · udział odsetek spada z {{from}} do {{to}} w ostatnim roku",
+      "footAll": "{{count}} rat od {{date}} · minione przygaszone",
+      "empty": "Nie ma jeszcze harmonogramu. Ustaw miesięczną ratę (Edytuj), aby go zobaczyć.",
+      "paidOff": "Ten kredyt jest spłacony.",
+      "method": "Odsetki = saldo × oprocentowanie ÷ 12, jedna rata miesięcznie w tym samym dniu"
+    },
+    "whatIf": {
+      "title": "Nadpłata",
+      "subtitle": "Jak wpłynie na okres i odsetki",
+      "amount": "Kwota",
+      "hint": "Porównaj dwie opcje oferowane przez banki.",
+      "modes": {
+        "term": "Skróć okres",
+        "payment": "Obniż ratę"
+      },
+      "termResult": "Spłata o {{duration}} wcześniej",
+      "termNote": "Oszczędzasz {{interest}} odsetek · rata zostaje {{payment}} · koniec {{month, lower}}",
+      "paymentResult": "Rata spada o {{amount}} miesięcznie",
+      "paymentNote": "Nowa rata {{payment}} · okres zostaje do {{month, lower}} · odsetki niższe o {{interest}}",
+      "noEffect": "Wpisz kwotę do wysokości salda {{amount}}.",
+      "noPayment": "Bez miesięcznej raty nie da się obliczyć efektu – dodaj ją, edytując kredyt.",
+      "record": "Zapisz jako dokonaną"
+    },
+    "events": {
+      "title": "Zdarzenia",
+      "extraPayment": "Nadpłata {{amount}}",
+      "extraPaymentNote": "harmonogram jest kontynuowany od zmniejszonego salda",
+      "newPayment": "nowa rata {{amount}}",
+      "rateChange": "Oprocentowanie zmienione na {{rate}}",
+      "rateChangeNote": "harmonogram jest kontynuowany od salda z tego dnia",
+      "balanceCheck": "Saldo zweryfikowane wg wyciągu",
+      "balanceCheckNote": "harmonogram startuje od nowa od tej daty",
+      "drawdown": "Uruchomienie {{amount}}",
+      "drawdownNote": "początek kredytu",
+      "delete": "Usuń zdarzenie",
+      "confirmDelete": {
+        "title": "Usuń zdarzenie",
+        "description": "Wpis zniknie z wykresu i listy. Saldo ustawione przez zdarzenie nadal obowiązuje."
+      }
+    },
+    "warnings": {
+      "noPayment": "Nie ustawiono miesięcznej raty, więc saldo się nie zmniejsza. Edytuj kredyt i dodaj ratę, aby amortyzować go automatycznie.",
+      "paymentBelowInterest": "Miesięczna rata nie pokrywa odsetek (około {{interest}} miesięcznie), więc saldo nie spada. Sprawdź ratę i oprocentowanie.",
+      "balanceAtEndDate": "W dniu zakończenia ({{date}}) nadal pozostawałoby {{amount}} do spłaty. Sprawdź ratę, oprocentowanie i datę zakończenia.",
+      "scheduleTruncated": "Harmonogram jest obcięty po {{count}} ratach."
+    }
+  },
+  "eventDialog": {
+    "note": "Notatka",
+    "extraPayment": {
+      "title": "Nadpłata",
+      "description": "Obniża saldo w danym dniu i przelicza harmonogram; pojawia się na wykresie jako zdarzenie.",
+      "amount": "Kwota",
+      "date": "Data",
+      "usedFor": "Bank wykorzystał nadpłatę, aby",
+      "term": "Skrócić okres",
+      "payment": "Obniżyć ratę",
+      "alertTitle": "Saldo spada do {{amount}}",
+      "alertTerm": "Spłata o {{duration}} wcześniej, oszczędność {{interest}} odsetek.",
+      "alertPayment": "Nowa rata {{payment}} miesięcznie, okres zostaje do {{month, lower}}.",
+      "alertTooMuch": "Kwota przekracza saldo {{amount}}.",
+      "alertEmpty": "Wpisz kwotę, aby zobaczyć efekt.",
+      "submit": "Zapisz nadpłatę"
+    },
+    "rateChange": {
+      "title": "Zmiana oprocentowania",
+      "description": "Od podanego dnia obowiązuje nowa stopa; harmonogram jest kontynuowany od salda z tego dnia.",
+      "rate": "Nowe oprocentowanie",
+      "payment": "Nowa rata",
+      "paymentHint": "Puste = rata zostaje {{amount}}",
+      "date": "Obowiązuje od",
+      "alertTitle": "Odsetki miesięczne {{from}} → {{to}}",
+      "alertNote": "Przy racie {{payment}} kredyt zostanie spłacony {{month, lower}}.",
+      "alertNoPayoff": "Rata {{payment}} nie pokrywa odsetek; saldo by nie spadało.",
+      "submit": "Zapisz zmianę"
+    },
+    "balanceCheck": {
+      "title": "Zweryfikuj saldo wg wyciągu",
+      "description": "Wpisz saldo z wyciągu; harmonogram startuje od nowa od tego dnia.",
+      "amount": "Saldo wg wyciągu",
+      "date": "Na dzień",
+      "alertTitle": "Harmonogram zakładał {{amount}}",
+      "alertNote": "Różnica {{delta}} · od {{date}} harmonogram używa twojego salda.",
+      "submit": "Zapisz saldo"
+    }
+  }
+}

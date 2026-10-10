@@ -638,7 +638,9 @@ export default function RealEstateDetail() {
           }
           deltaNote={
             appreciation !== null && purchase !== null && purchase > 0
-              ? `${fmt.percent(appreciation / purchase, 1, { signed: true })} ${t('detail.vsPurchase')}`
+              ? t('detail.vsPurchasePct', {
+                  percent: fmt.percent(appreciation / purchase, 1, { signed: true }),
+                })
               : undefined
           }
         />

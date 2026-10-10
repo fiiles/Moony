@@ -1,0 +1,191 @@
+{
+  "title": "股票监控",
+  "subtitle": "您正在考虑的股票：以其自身货币计价的价格、目标价和您的笔记。",
+  "cancel": "取消",
+  "search": {
+    "placeholder": "搜索股票（代码或名称）以开始关注",
+    "noResults": "未找到股票",
+    "searching": "正在搜索…"
+  },
+  "table": {
+    "stock": "股票",
+    "price": "价格",
+    "fiftyTwoWeekLow": "52 周最低",
+    "targetPrice": "目标价",
+    "change": "涨跌",
+    "changePct": "涨跌幅",
+    "held": "已持有",
+    "pricesUpdatedAt": "价格更新于 {{time}}",
+    "pricesNeverUpdated": "尚未获取价格",
+    "fiftyTwoWeekHigh": "52 周最高",
+    "title": "关注中",
+    "sub": "相对前一收盘价的涨跌 · 52 周区间，含当前价格和目标价",
+    "sort": {
+      "name": "按名称",
+      "change": "按涨跌",
+      "target": "按目标价"
+    },
+    "changeToday": "今日涨跌",
+    "range": "52 周区间",
+    "target": "目标价",
+    "setTarget": "设置目标价",
+    "targetReached": "已达到目标价 {{price}}",
+    "toTarget": "距目标价 {{pct}}",
+    "waitsBelow": "等待回落",
+    "waitsAbove": "等待上涨",
+    "footer_other": "{{count}} 只股票 · 价格以各自货币计，不作换算",
+    "source": "来源 Yahoo Finance · 最多延迟 15 分钟"
+  },
+  "empty": {
+    "title": "没有关注的股票",
+    "description": "在上方搜索股票并关注，即可开始监控。"
+  },
+  "actions": {
+    "follow": "关注",
+    "unfollow": "取消关注",
+    "refresh": "刷新价格",
+    "followPortfolio": "关注投资组合中的 {{count}} 只",
+    "refreshShort": "刷新",
+    "buy": "买入到投资组合",
+    "openInPortfolio": "在投资组合中打开",
+    "setTarget": "设置目标价",
+    "editTarget": "编辑目标价",
+    "notes": "笔记"
+  },
+  "unfollowConfirm": {
+    "title": "取消关注 {{ticker}}？",
+    "description": "这只股票的目标价和笔记将被删除。"
+  },
+  "detail": {
+    "marketCap": "市值",
+    "dividendYield": "股息率",
+    "peRatio": "市盈率",
+    "fiftyTwoWeekLow": "52 周最低",
+    "fiftyTwoWeekHigh": "52 周最高",
+    "previousClose": "前收盘价",
+    "noData": "没有价格数据（离线？）",
+    "notFollowed": "您尚未关注这只股票。",
+    "backToOverview": "返回概览",
+    "periodStart": "{{period}}起点：{{price}}",
+    "openInPortfolio": "在投资组合中打开",
+    "back": "返回自选列表",
+    "followedSince": "自 {{date}} 起关注",
+    "notFollowedShort": "尚未关注",
+    "held": "在您的投资组合中",
+    "notHeld": "不在您的投资组合中",
+    "price": "价格",
+    "today": "今日 {{change}} · 收盘 {{close}}",
+    "target": "目标价",
+    "toTarget": "还差 {{pct}}",
+    "targetReached": "已达到目标价",
+    "periodChange": "涨跌 {{change}}",
+    "legend": {
+      "price": "价格",
+      "target": "目标价",
+      "watchStart": "开始关注"
+    },
+    "watchStartTarget": "目标价 {{price}}",
+    "stats": {
+      "exchangeNote": "在 {{exchange}}",
+      "peNote": "最近 12 个月的市盈率",
+      "dividendNote": "每股每年 {{amount}}",
+      "range": "52 周区间",
+      "min": "最低",
+      "max": "最高",
+      "rangeLabel": "52 周区间 {{low}} – {{high}}，当前价格 {{current}}",
+      "rangeLabelTarget": "52 周区间 {{low}} – {{high}}，当前价格 {{current}}，目标价 {{target}}"
+    },
+    "keyData": "关键数据",
+    "kv": {
+      "previousClose": "前收盘价",
+      "changeToday": "今日涨跌",
+      "low": "52 周最低",
+      "high": "52 周最高",
+      "marketCap": "市值",
+      "pe": "市盈率",
+      "dividend": "股息率",
+      "exchange": "交易所",
+      "updated": "价格更新时间"
+    },
+    "since": {
+      "title": "自您开始关注以来",
+      "change": "{{days}}内，价格从 {{price}} 变动了 <b>{{change}}</b>。",
+      "toTarget": "距目标价还差 {{amount}}。",
+      "noData": "已关注 {{days}}；暂时没有当天的价格。",
+      "days_other": "{{count}} 天"
+    },
+    "followPrompt": "关注后即可设置目标价、记笔记，并在图表上看到开始关注的标记。"
+  },
+  "target": {
+    "label": "目标价",
+    "set": "设置目标价",
+    "edit": "编辑",
+    "clear": "删除目标价",
+    "save": "保存目标价",
+    "cancel": "取消",
+    "toTarget": "距目标价 {{pct}}",
+    "placeholder": "例如 250.00",
+    "title": "目标价",
+    "description": "您想采取行动的价格。股票一旦越过该价格，Moony 会将其列入概览的里程碑中。",
+    "field": "目标价",
+    "hintCurrent": "当前价格 {{price}}",
+    "hintHigh": "52 周最高 {{price}}",
+    "directionLabel": "目标价等待的方向",
+    "directionBelow": "等待回落——买入 / 加仓",
+    "directionAbove": "等待上涨——卖出",
+    "explainBelow": "当价格跌至 {{price}}（较今日价格 {{pct}}）时，Moony 会提醒您。",
+    "explainAbove": "当价格涨至 {{price}}（较今日价格 {{pct}}）时，Moony 会提醒您。",
+    "explainBelowNoPrice": "当价格跌至 {{price}} 时，Moony 会提醒您。",
+    "explainAboveNoPrice": "当价格涨至 {{price}} 时，Moony 会提醒您。",
+    "explainReached": "价格已达到或越过此目标价——Moony 会立即将其列出。"
+  },
+  "notes": {
+    "title": "笔记",
+    "edit": "编辑",
+    "write": "编写",
+    "preview": "预览",
+    "save": "保存",
+    "cancel": "取消",
+    "empty": "还没有笔记。点击“编辑”添加研究笔记（支持 Markdown）。",
+    "placeholder": "用 Markdown 编写笔记…",
+    "toolbar": {
+      "bold": "粗体",
+      "italic": "斜体",
+      "heading": "标题",
+      "list": "无序列表",
+      "orderedList": "有序列表",
+      "link": "链接"
+    },
+    "sub": "Markdown · 也可通过助手（MCP）编辑",
+    "paragraphs_other": "{{count}} 段",
+    "markdownHint": "Markdown"
+  },
+  "chart": {
+    "noData": "此时间段没有图表数据",
+    "currentPrice": "当前价格",
+    "targetLabel": "目标价 {{price}}"
+  },
+  "toast": {
+    "followed": "已关注 {{ticker}}",
+    "unfollowed": "已取消关注 {{ticker}}",
+    "followedPortfolio_other": "已关注投资组合中的 {{count}} 只股票"
+  },
+  "eyebrow": "自选列表",
+  "status": {
+    "updated": "价格更新于 {{time}} · 每 5 分钟刷新一次",
+    "updatedShort": "价格更新于 {{time}}",
+    "never": "尚未加载价格"
+  },
+  "stats": {
+    "watched": "关注的股票",
+    "heldNote_other": "其中 {{count}} 只在您的投资组合中",
+    "heldNoteNone": "没有一只在您的投资组合中",
+    "atTarget": "已达目标价",
+    "targetReached": "已达到目标价 {{price}}",
+    "toTarget": "距目标价 {{pct}}",
+    "noTargets": "尚未设置目标价",
+    "topToday": "今日涨幅最大",
+    "worstNote": "最小：{{name}} {{change}}",
+    "noChanges": "今日无变动"
+  }
+}

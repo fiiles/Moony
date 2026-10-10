@@ -1,0 +1,726 @@
+{
+  "title": "株式と ETF",
+  "subtitle": "長期保有のポジションをひとつにまとめて確認できます。",
+  "loading": "株式を読み込んでいます...",
+  "empty": {
+    "title": "ポジションはまだありません",
+    "description": "最初の株式または ETF を追加するか、証券会社の CSV（日付、種別、ティッカー、数量、価格、通貨）から取引をインポートしてください。"
+  },
+  "addInvestment": "投資を追加",
+  "refreshPrices": "価格を更新",
+  "refreshing": "更新中...",
+  "importCSV": "CSV をインポート",
+  "summary": {
+    "totalValue": "ポートフォリオの評価額",
+    "totalGainLoss": "含み損益",
+    "unrealizedGain": "含み益",
+    "unrealizedLoss": "含み損",
+    "realizedGain": "確定益",
+    "realizedLoss": "確定損",
+    "estimatedDividend": "配当の予想",
+    "topPerformer": "最高パフォーマンス",
+    "basedOnLastYear": "昨年の配当に基づく",
+    "lastUpdated": "最終更新：{{date}}",
+    "realizedGainLoss": "確定損益",
+    "positions_other": "{{count}}件のポジション",
+    "updatedToday": "本日更新",
+    "updatedOn": "{{date}}に更新",
+    "notUpdated": "価格はまだ取得されていません",
+    "vsInvestedPct": "投資額比 {{percent}}",
+    "realizedNote": "確定 {{amount}}",
+    "next12Months": "今後12か月",
+    "topPosition": "最良のポジション",
+    "overallPct": "全体 {{percent}}",
+    "noPositions": "保有中のポジションなし"
+  },
+  "table": {
+    "title": "ポジション",
+    "search": "名称またはティッカーで検索",
+    "investment": "投資",
+    "quantity": "数量",
+    "avgCost": "平均取得単価",
+    "marketPrice": "市場価格",
+    "marketValue": "評価額",
+    "totalGainLoss": "含み損益",
+    "estDividend": "配当（予想）",
+    "actions": "操作",
+    "noHoldings": "保有銘柄が見つかりません。最初の株式を追加してください。",
+    "showZeroPositions": "数量ゼロのポジションを表示",
+    "hideZeroPositions": "ゼロを非表示",
+    "return": "損益",
+    "dividend": "配当",
+    "unit": "株",
+    "realized": "確定 {{amount}}",
+    "noResults": {
+      "title": "見つかりません",
+      "description": "別の名称またはティッカーをお試しください。",
+      "zeroHidden": "別の名称またはティッカーをお試しください。数量ゼロのポジションは非表示です。"
+    },
+    "footer": {
+      "count_other": "{{count}}件のポジション",
+      "total": "合計",
+      "largest": "最大のポジションはポートフォリオの{{percent}}",
+      "rates": "{{currency}}建ての評価額は本日のレートによる"
+    },
+    "showClosedPositions": "決済済みのポジションを表示",
+    "hideClosedPositions": "決済済みのポジションを非表示",
+    "closedPositionsHint": "数量が0のポジション",
+    "manageTags": "タグを管理",
+    "noMatches": "「{{query}}」に一致する保有銘柄はありません。",
+    "onlyClosedPositions": "ここには決済済みのポジションしかありません。「決済済みのポジションを表示」をオンにすると表示されます。"
+  },
+  "actions": {
+    "viewTransactions": "取引を見る",
+    "buy": "買付",
+    "sell": "売却",
+    "updatePrice": "価格を編集",
+    "updateDividend": "配当の予想を更新",
+    "delete": "削除",
+    "deletePosition": "ポジションを削除"
+  },
+  "badges": {
+    "manual": "手動"
+  },
+  "tooltips": {
+    "manualPrice": "手動で上書きした価格",
+    "manualDividend": "手動で上書きした配当"
+  },
+  "modals": {
+    "add": {
+      "title": "新しい株式を追加",
+      "searchLabel": "銘柄を検索",
+      "searchPlaceholder": "例：AAPL または Apple",
+      "quantity": "数量",
+      "purchasePrice": "購入価格",
+      "purchaseDate": "購入日",
+      "notes": "メモ"
+    },
+    "buy": {
+      "title": "買い増し",
+      "quantity": "数量",
+      "price": "1株あたりの価格",
+      "date": "購入日",
+      "fee": "取引手数料"
+    },
+    "sell": {
+      "title": "株式を売却",
+      "quantityToSell": "売却数量",
+      "availableQuantity": "保有数量：{{quantity}}株",
+      "price": "1株あたりの売却価格",
+      "date": "売却日",
+      "fee": "取引手数料"
+    },
+    "updatePrice": {
+      "title": "価格を手動で更新",
+      "currentPrice": "現在の価格",
+      "newPrice": "新しい価格",
+      "description": "この保有銘柄の価格を手動で上書きします。"
+    },
+    "updateDividend": {
+      "title": "配当の予想を更新",
+      "annualDividend": "1株あたりの年間配当",
+      "description": "この保有銘柄の1株あたりの年間配当を手動で設定します。"
+    },
+    "transactions": {
+      "title": "取引履歴",
+      "noTransactions": "取引が見つかりません"
+    },
+    "manualFormula": "計算式：{{value}} × {{quantity}}株"
+  },
+  "confirmDelete": {
+    "title": "ポジションを削除しますか？",
+    "description": "{{name}}とそのすべての取引が完全に削除されます。この操作は元に戻せません。"
+  },
+  "modal": {
+    "add": {
+      "title": "投資を追加",
+      "description": "新しいポジションは表に表示され、市場価格で評価されます。",
+      "companyDetails": "企業の詳細",
+      "companyName": "名称",
+      "ticker": "ティッカー",
+      "financialDetails": "財務の詳細",
+      "pricePerShare": "1株あたりの価格",
+      "quantity": "数量",
+      "selectTicker": "ティッカーを選択",
+      "multipleResults": "複数の結果が見つかりました。正しいティッカーシンボルを選択してください：",
+      "noTickerFound": "この企業名に該当するティッカーシンボルが見つかりません",
+      "searchError": "ティッカーシンボルの検索に失敗しました",
+      "selected": "選択済み",
+      "search": "Yahoo Finance を検索",
+      "searchHint": "Yahoo Finance を検索します。見つからない場合は、名称を自分で入力してください。",
+      "purchaseDate": "購入日",
+      "searchByName": "企業名で検索",
+      "searchByTicker": "ティッカーで検索",
+      "searching": "検索中..."
+    },
+    "buy": {
+      "titleNamed": "{{name}}の買付",
+      "descriptionFor": "{{ticker}}の買付取引を記録します。",
+      "quantity": "数量",
+      "pricePerShare": "1株あたりの価格",
+      "addPurchase": "買付を追加"
+    },
+    "sell": {
+      "titleNamed": "{{name}}の売却",
+      "description": "この保有銘柄の売却取引を記録します。",
+      "transactionDetails": "取引の詳細",
+      "pricePerShare": "1株あたりの価格",
+      "quantity": "数量",
+      "sellInvestment": "株式を売却"
+    },
+    "edit": {
+      "title": "取引を編集（{{type}}）",
+      "description": "この取引の詳細を変更します。",
+      "transactionDetails": "取引の詳細",
+      "submit": "取引を更新"
+    }
+  },
+  "toast": {
+    "added": "投資を追加しました",
+    "updated": "株式を更新しました",
+    "deleted": "ポジションを削除しました",
+    "pricesRefreshed_other": "{{count}}件の株価を更新しました",
+    "pricesRefreshedDescription": "Yahoo Finance から最新の価格を取得しました",
+    "rateLimitReached": "レート制限に達しました",
+    "rateLimitDescription": "{{updated}}件の価格を更新し、残りは{{remaining}}件です。1分後にもう一度お試しください。",
+    "refreshFailed": "価格の更新に失敗しました",
+    "noResults": "結果が見つかりません",
+    "tickerFound": "ティッカーが見つかりました",
+    "searchFailed": "検索に失敗しました",
+    "manualPriceDeleted": "手動の価格の上書きを削除しました",
+    "manualDividendDeleted": "手動の配当の上書きを削除しました"
+  },
+  "chart": {
+    "title": "ポートフォリオの評価額の推移",
+    "positionTitle": "ポジションの評価額の推移",
+    "bought": "買付",
+    "sold": "売却",
+    "subtitle": "積立と市場の変動を含みます。",
+    "legend": {
+      "value": "評価額",
+      "buy": "買付",
+      "sell": "売却"
+    },
+    "events": {
+      "buy": "{{tickers}}を買付",
+      "sell": "{{tickers}}を売却",
+      "cluster_other": "{{count}}件の取引"
+    }
+  },
+  "detail": {
+    "chartFxMissing": "{{currencies}}の為替レートがないため、グラフまたは投資額の線に欠けている日があります。",
+    "backToList": "株式に戻る",
+    "notFound": "保有銘柄が見つかりません",
+    "deleted": "ポジションを削除しました",
+    "transactionDeleted": "取引を削除しました",
+    "transactionUpdated": "取引を更新しました",
+    "pricesRefreshed": "価格を更新しました",
+    "manualPrice": "手動で上書きした価格",
+    "refresh": "更新",
+    "currentValue": "現在の評価額",
+    "shares": "株",
+    "totalInvested": "投資額の合計",
+    "avgPrice": "平均",
+    "unrealizedPnL": "含み損益",
+    "dividendYield": "配当利回り",
+    "year": "年",
+    "noDividend": "配当データなし",
+    "manual": "手動",
+    "updatePrice": "価格を更新",
+    "updateDividend": "配当を更新",
+    "tabs": {
+      "position": "ポジション",
+      "transactions": "取引"
+    },
+    "position": {
+      "title": "ポジションの詳細",
+      "quantity": "数量",
+      "avgPrice": "平均取得単価",
+      "currentPrice": "現在の価格",
+      "priceUpdated": "価格の更新"
+    },
+    "companyInfo": {
+      "title": "企業情報",
+      "sectorIndustry": "セクター · 業種",
+      "peRatio": "PER",
+      "forwardPe": "予想 PER",
+      "marketCap": "時価総額",
+      "beta": "ベータ",
+      "fiftyTwoWeekHigh": "52週高値",
+      "fiftyTwoWeekLow": "52週安値",
+      "dividendRate": "配当額",
+      "dividendYield": "配当利回り",
+      "etfNote": "Yahoo Finance は ETF についてこれらの数値を提供していません",
+      "noData": "Yahoo Finance には、この銘柄の企業データがありません",
+      "unavailable": "企業データを読み込めませんでした",
+      "retry": "再試行"
+    },
+    "transactions": {
+      "title": "取引履歴",
+      "date": "日付",
+      "type": "種類",
+      "quantity": "数量",
+      "originalPrice": "元の価格",
+      "price": "価格",
+      "total": "合計",
+      "empty": "取引はまだありません"
+    },
+    "confirmDelete": {
+      "title": "ポジションを削除しますか？",
+      "description": "{{name}}（{{ticker}}）とそのすべての取引が完全に削除されます。この操作は元に戻せません。"
+    },
+    "confirmDeleteTransaction": {
+      "title": "取引を削除しますか？",
+      "description": "{{type}}の取引（{{quantity}} × {{ticker}}、{{date}}、{{amount}}）を完全に削除します。この操作は元に戻せません。"
+    },
+    "editName": {
+      "title": "名称を編集",
+      "description": "新しい名称は、一覧、詳細、概要に表示されます。",
+      "label": "名称",
+      "save": "名称を保存"
+    },
+    "nameUpdated": "企業名を更新しました",
+    "openInMonitor": "株式モニターで開く",
+    "dividendYieldTooltip": "予想される年間配当を、このポジションの現在の評価額で割った値です。",
+    "priceNative": "価格（{{currency}}）",
+    "priceNativeMixed": "価格（元の通貨）",
+    "priceConverted": "価格（{{currency}}、当日の為替）",
+    "sharesCount_other": "{{count}}株",
+    "avgBuyPrice": "平均購入価格 {{price}}",
+    "lastBuy": "最終買付 {{date}}",
+    "positionValue": "ポジションの評価額",
+    "sinceBuyPct": "購入以降 {{percent}}",
+    "currentPrice": "現在の価格",
+    "invested": "投資額",
+    "avgShort": "平均 {{price}}",
+    "unrealized": "含み損益",
+    "vsInvestedPct": "投資額比 {{percent}}",
+    "realized": "確定損益",
+    "sells_other": "売却 {{count}}件",
+    "noSells": "売却はまだありません",
+    "dividends": "配当",
+    "dividendNote": "年間の予想 · 利回り {{percent}}",
+    "refreshPrices": "価格を更新",
+    "buy": "買付",
+    "sell": "売却",
+    "about": "企業について",
+    "source": "Yahoo Finance",
+    "deleteTransaction": "取引を削除",
+    "menu": {
+      "editPrice": "価格を編集",
+      "editDividend": "配当の予想を編集",
+      "editName": "名称を編集"
+    },
+    "status": {
+      "pricesUpdated": "価格更新 {{when}}",
+      "todayAt": "本日 {{time}}"
+    },
+    "legend": {
+      "value": "ポジションの評価額",
+      "invested": "投資額",
+      "investedLong": "投資額（購入価格）",
+      "return": "損益",
+      "buy": "買付",
+      "sell": "売却"
+    },
+    "events": {
+      "buy": "{{price}}で{{quantity}}を買付",
+      "sell": "{{price}}で{{quantity}}を売却",
+      "total": "合計 {{amount}}",
+      "cluster_other": "{{count}}件のイベント"
+    },
+    "ledger": {
+      "sub_other": "{{count}}件のイベント · 行にカーソルを合わせるとグラフ上で強調表示されます",
+      "filter": {
+        "all": "すべて",
+        "buys": "買付",
+        "sells": "売却"
+      },
+      "footer_other": "{{count}}件のイベント",
+      "since": "{{date}}から",
+      "rates": "{{currency}}建ての価格は取引日のレートによる"
+    }
+  },
+  "importWizard": {
+    "title": "CSV から取引をインポート",
+    "lead": "証券会社のエクスポートファイルや、ご自身で作成した表を使います。重複は自動で検出され、何かが書き込まれる前に、インポートされる内容を確認できます。",
+    "steps": {
+      "file": "ファイル",
+      "mapping": "列",
+      "review": "確認",
+      "done": "完了"
+    },
+    "next": "取引を確認",
+    "importButton_other": "{{count}}件の取引をインポート",
+    "importButtonIdle": "インポート",
+    "unsupportedFile": "インポートできるのは .csv と .txt ファイルのみです。Excel などの表計算ファイルは、先に CSV として保存してください。",
+    "direction": {
+      "buy": "買付",
+      "sell": "売却"
+    },
+    "roles": {
+      "date": "日付",
+      "direction": "売買の区分",
+      "type": "種類",
+      "symbol": "シンボル",
+      "isin": "ISIN",
+      "name": "名称",
+      "quantity": "数量",
+      "price": "1株あたりの価格",
+      "quantityPrice": "数量と価格",
+      "currency": "通貨",
+      "externalId": "取引 ID"
+    },
+    "file": {
+      "sourceHeading": "エクスポート元",
+      "savedTag": "保存済み",
+      "howToExport": "{{name}}からのエクスポート方法",
+      "dropTitle": "取引のファイルをここにドロップ",
+      "dropActive": "ファイルを放して開く",
+      "or": "または",
+      "choose": "ファイルを選択…",
+      "dropNote": ".csv または .txt · Excel ファイルは先に CSV として保存してください",
+      "sample": "サンプルファイルをダウンロード",
+      "sampleSaved": "サンプルファイルを保存しました",
+      "sampleFailed": "サンプルファイルを保存できませんでした",
+      "helpFailed": "ヘルプページを開けませんでした"
+    },
+    "sources": {
+      "xtb": {
+        "name": "XTB",
+        "guideTitle": "エクスポートの取得方法",
+        "guide": "xStation で「Account history → Cash operations」を開き、最初の取引からの期間を選択して「Export」をクリックし、CSV 形式を選びます。",
+        "note": "ファイルには入金、配当、手数料も含まれますが、インポートされるのは株式と ETF の買付と売却のみです。通貨は取引所から補完します。"
+      },
+      "trading212": {
+        "name": "Trading 212",
+        "guideTitle": "エクスポートの取得方法",
+        "guide": "アプリで「History」→ エクスポートのアイコンを開き、「Orders」にチェックを入れ、期間を選択して CSV をダウンロードします。",
+        "note": "1回のエクスポートは最大12か月分です。複数のファイルをアップロードしてください。重複は自動で認識されます。"
+      },
+      "degiro": {
+        "name": "Degiro",
+        "guideTitle": "エクスポートの取得方法",
+        "guide": "ウェブサイトで「Activity → Transactions」を開き、最初の取引からの期間を設定して「Export → CSV」をクリックします。口座明細（Account statement）は使用しないでください。"
+      },
+      "ibkr": {
+        "name": "Interactive Brokers",
+        "guideTitle": "エクスポートの取得方法",
+        "guide": "Client Portal で「Performance & Reports → Flex Queries」を開き、Trades セクションと、Symbol、ISIN、TradeDate、Buy/Sell、Quantity、TradePrice、CurrencyPrimary、AssetClass、TradeID の各フィールドを含む Activity Flex Query を CSV 形式で作成し、全期間で実行します。"
+      },
+      "moony": {
+        "name": "ご自身で作成した表（Moony テンプレート）",
+        "guideTitle": "表の記入方法",
+        "guide": "テンプレートをダウンロードし、Excel などの表計算ソフトで入力して、CSV として保存します。",
+        "excel": "どの言語の Excel で保存したファイルでも、そのまま使えます。区切り文字、エンコーディング、小数点は自動で検出します。Moony 自身のエクスポート（株式 → エクスポート）も同じ形式です。",
+        "columns": {
+          "date": {
+            "label": "日付",
+            "hint": "2024-01-15 または 15.01.2024"
+          },
+          "type": {
+            "label": "種類",
+            "hint": "buy / sell または nákup / prodej"
+          },
+          "symbol": {
+            "label": "シンボル",
+            "hint": "Yahoo Finance の表記（例：AAPL、VWCE.DE）"
+          },
+          "quantity": {
+            "label": "数量",
+            "hint": "株数（例：10 または 0.5）"
+          },
+          "price": {
+            "label": "1株あたりの価格",
+            "hint": "取引の通貨で（例：180.50）"
+          },
+          "currency": {
+            "label": "通貨",
+            "hint": "例：USD、EUR、CZK"
+          },
+          "name": {
+            "label": "名称",
+            "hint": "任意"
+          }
+        }
+      },
+      "custom": {
+        "name": "その他の証券会社",
+        "guideTitle": "ファイルに必要な項目",
+        "guide": "1取引につき1行で、日付、売買の区分、シンボルまたは ISIN、数量、1株あたりの価格、通貨が必要です。列の割り当ては次のステップで行い、Moony が割り当てを記憶します。"
+      },
+      "saved": {
+        "title": "保存済みの形式",
+        "guide": "同じ列を持つファイルは自動で認識され、割り当てが再利用されます。",
+        "delete": "形式を削除",
+        "deleteTitle": "この形式を削除しますか？",
+        "deleteDescription": "形式「{{name}}」は認識されなくなります。すでにインポートした取引は変わりません。"
+      },
+      "savedFallback": "保存済みの形式"
+    },
+    "recent": {
+      "title": "最近のインポート",
+      "undo": "元に戻す",
+      "undoFor": "インポート {{file}} を取り消す",
+      "trades_other": "{{count}}件の取引",
+      "tradesOf": "{{total}}件中{{remaining}}件の取引",
+      "showAll": "すべて表示（{{count}}）",
+      "showLess": "表示を減らす"
+    },
+    "filebar": {
+      "rows_other": "{{count}}行",
+      "detected": "認識済み",
+      "format": "区切り文字「{{delimiter}}」 · エンコーディング {{encoding}}",
+      "tab": "タブ"
+    },
+    "mismatch": {
+      "other": "{{chosen}}を選択しましたが、ファイルは{{detected}}のようです。{{detected}}用の割り当てを使用しました。",
+      "unknown": "このファイルは{{chosen}}の形式と一致しません。列を手動で割り当ててください。"
+    },
+    "mapping": {
+      "selectColumn": "列を選択",
+      "columnNone": "— 使用しない —",
+      "blankColumn": "列 {{position}}",
+      "blankColumnAfter": "列 {{position}}（「{{after}}」の次）",
+      "example": "例：{{values}}",
+      "summary": {
+        "title": "割り当て：{{source}}",
+        "hint": "この形式の既定の割り当てです。通常は、そのまま続けて問題ありません。",
+        "sign": "数量の符号",
+        "instrument": "取引所から",
+        "comment": "{{column}}（テキストから）",
+        "values": "列「{{column}}」の値",
+        "more_other": "他{{count}}件"
+      },
+      "edit": "割り当てを編集",
+      "backToPreset": "{{source}}の割り当てに戻す",
+      "required": "必須の列",
+      "optional": "任意の列",
+      "direction": "取引の売買区分",
+      "format": "形式",
+      "symbolOrIsin": "シンボルか ISIN のどちらかがあれば十分です。ISIN からは Yahoo Finance でシンボルを検索します。",
+      "currencyMode": {
+        "column": "列から",
+        "fixed": "単一の通貨",
+        "instrument": "取引所から"
+      },
+      "currencyColumn": "通貨の列",
+      "currencyFixed": "ファイル全体の通貨",
+      "currencyFixedHint": "ファイル内のすべての取引がこの通貨です。",
+      "currencyInstrumentHint": "銘柄が取引されている取引所から通貨を補完します。",
+      "directionMode": {
+        "typeColumn": "種類の列から",
+        "quantitySign": "数量の符号から"
+      },
+      "directionSignHint": "数量がマイナスなら売却、プラスなら買付です。",
+      "typeColumn": "種類の列",
+      "typeValue": "値",
+      "typeCount": "行数",
+      "typeLine": "最初の行",
+      "typeMeaning": "意味",
+      "typeTooMany": "この列は値の種類が多すぎて表にできません。別の列を選ぶか、数量の符号から売買区分を判定してください。",
+      "typeNoTrade": "少なくとも1つの値を買付または売却に割り当ててください。そうしないと、何もインポートされません。",
+      "typeCommentNote": "XTB では、コメントのテキストで売買区分が決まります。種類の値は、どの行が取引かを判断するためだけに使われます。",
+      "action": {
+        "buy": "買付",
+        "sell": "売却",
+        "skip": "スキップ"
+      },
+      "externalIdHint": "以降のインポートで重複を認識するのに役立ちます。",
+      "dateFormat": "日付の形式",
+      "dateFormatChoose": "形式を選択",
+      "dateFormatAmbiguous": "このファイルでは年月日の順序を判別できないため、推測です。下のプレビューで日付を確認するか、形式を自分で選択してください。",
+      "decimalSeparator": "小数点の区切り文字",
+      "decimalAuto": "自動検出（{{separator}}）",
+      "decimalComma": "カンマ（1 234,56）",
+      "decimalDot": "ピリオド（1,234.56）",
+      "headerRow": "ヘッダー行",
+      "skipRows": "ヘッダー後にスキップする行",
+      "layoutHelp": "ヘッダー行は列名が書かれた行で、それより上の行は無視されます。スキップする行は、ヘッダーの直後にあるデータ行です。",
+      "remember": "この形式の割り当てを記憶する",
+      "rememberHint": "同じ列を持つファイルは、次回から自動で認識されます。",
+      "formatName": "形式の名前",
+      "formatNamePlaceholder": "例：マイ証券会社",
+      "formatNameRequired": "形式の名前を入力してください。",
+      "missing": "不足：{{fields}}",
+      "field": {
+        "date": "日付",
+        "dateFormat": "日付の形式",
+        "symbol": "シンボルまたは ISIN",
+        "quantity": "数量",
+        "price": "1株あたりの価格",
+        "currency": "通貨",
+        "type": "種類の列"
+      },
+      "rawData": "CSV データのプレビュー",
+      "rawCounts": "列：{{columns}} · 行：{{rows}}"
+    },
+    "review": {
+      "incomplete": "列の割り当てを完了すると、確認画面が表示されます。",
+      "loading": "ファイルを読み込んでいます…",
+      "failed": "この設定ではファイルを確認できません",
+      "summary": {
+        "willImport": "インポート {{count}}",
+        "duplicates": "重複 {{count}}",
+        "skipped": "スキップ {{count}}",
+        "errors": "エラー {{count}}"
+      },
+      "feeNote": "手数料はインポートされません",
+      "nothingToImport": "インポートするものがありません。すべての行が、重複、スキップ、またはエラーです。",
+      "statusNew": "新規",
+      "statusSkipped": "スキップ",
+      "statusError": "エラー",
+      "statusDuplicate": "重複",
+      "duplicateImportAnyway": "それでもインポート",
+      "instruments": {
+        "title": "銘柄",
+        "security": "銘柄",
+        "currency": "通貨",
+        "trades": "取引",
+        "status": "状態",
+        "actions": "操作",
+        "progress": "Yahoo Finance で確認中… {{total}}件中{{done}}件",
+        "skipVerification": "確認をスキップ",
+        "retry": "再確認",
+        "checking": "確認中…",
+        "inFile": "ファイル内：{{symbol}}",
+        "edit": "編集",
+        "skip": "スキップ",
+        "include": "含める",
+        "editFor": "{{name}}を編集",
+        "skipFor": "{{name}}をスキップ",
+        "includeFor": "{{name}}を含める",
+        "state": {
+          "existing": "既存のポジション",
+          "new": "新規のポジション",
+          "unverified": "未確認",
+          "missingSymbol": "シンボルなし",
+          "skipped": "スキップ"
+        },
+        "reason": {
+          "failed": "Yahoo Finance から応答がありませんでした",
+          "notFound": "Yahoo Finance で見つかりません",
+          "unmatched": "このシンボルは、見つかったものの中にありません"
+        },
+        "missingReason": {
+          "enter": "シンボルを手入力してください",
+          "failed": "Yahoo Finance から応答がありませんでした。シンボルを手入力してください",
+          "notFound": "Yahoo Finance で見つかりません。シンボルを手入力してください"
+        },
+        "positionCurrency": "このポジションは{{currency}}建てです",
+        "missingHint_other": "{{count}}件の銘柄にシンボルを入力するか、スキップしてください。",
+        "unverifiedHint_other": "{{count}}件の銘柄を確認できませんでした。インポートは可能ですが、価格が更新されない場合があります。"
+      },
+      "rows": {
+        "title": "行",
+        "line": "行",
+        "date": "日付",
+        "direction": "売買の区分",
+        "symbol": "シンボル",
+        "quantity": "数量",
+        "price": "価格",
+        "currency": "通貨",
+        "status": "状態",
+        "footer": "{{total}}行中、最初の{{shown}}行",
+        "footerAll_other": "{{count}}行",
+        "showAll": "すべて表示",
+        "showLess": "表示を減らす",
+        "none": "この設定では、ファイルに行がありません。",
+        "truncated": "表に表示されるのは最大{{shown}}行です。上の件数はファイル全体のものです。"
+      }
+    },
+    "editor": {
+      "apply": "適用",
+      "searchResults": "Yahoo Finance の検索結果",
+      "found": "Yahoo Finance で見つかりました",
+      "searching": "検索中…",
+      "searchError": "検索に失敗しました",
+      "noResults": "見つかりません。別の名称またはシンボルをお試しください。",
+      "currencyFromFile": "ファイルから"
+    },
+    "currency": {
+      "gbx": "GBX（ペンス、GBP ÷ 100 として保存）"
+    },
+    "result": {
+      "title": "取引をインポートしました",
+      "titleNothing": "何もインポートされませんでした",
+      "nothing": "ファイルのすべての行が、重複、スキップ、またはエラーです。詳細は下をご覧ください。",
+      "summary_other": "{{from}}から{{to}}までの{{count}}件の取引。",
+      "summaryCount_other": "{{count}}件の取引をインポートしました。",
+      "imported": "インポート済み",
+      "duplicates": "重複",
+      "skipped": "スキップ",
+      "errors": "エラー",
+      "newPositions": "新規のポジション：",
+      "updatedPositions": "既存に追加：",
+      "moreTickers_other": "他{{count}}件",
+      "recalculating": "ポートフォリオの評価額の履歴を再計算しています…",
+      "showDuplicates": "重複を表示",
+      "showSkipped": "スキップした行を表示",
+      "showErrors": "エラーを表示",
+      "line": "{{line}}行目：{{message}}",
+      "whatNext": "次にやること",
+      "next": {
+        "show": "株式を表示",
+        "showHint": "新規および追加したポジションは、表に表示されています。",
+        "showAction": "表示",
+        "tags": "タグを割り当て",
+        "tagsHint": "新規のポジションにはまだタグがありません。株式分析で割り当ててください。",
+        "tagsAction": "割り当て",
+        "another": "別のファイルをインポート",
+        "anotherHint": "たとえば、以前の期間や別の口座のファイルです。",
+        "anotherAction": "ファイルを選択",
+        "undo": "インポートを取り消す",
+        "undoHint_other": "このファイルの{{count}}件の取引を削除します。",
+        "undoAction": "取り消す"
+      }
+    },
+    "undone": {
+      "title": "インポートを取り消しました",
+      "summary_other": "インポート「{{file}}」の{{count}}件の取引を削除しました。",
+      "removedPositions": "削除されたポジション："
+    },
+    "undo": {
+      "title": "このインポートを取り消しますか？",
+      "description_other": "インポート「{{file}}」の{{count}}件の取引を削除します。",
+      "consequences": "取引が1件も残らないポジションは削除されます。その後に編集した、このインポートの取引も削除されます。",
+      "confirm": "インポートを取り消す"
+    },
+    "toast": {
+      "inspectFailed": "ファイルを読み取れませんでした",
+      "importFailed": "インポートに失敗しました",
+      "undone_other": "インポートを取り消しました：{{count}}件の取引を削除",
+      "undoFailed": "インポートを取り消せませんでした",
+      "formatSaved": "形式「{{name}}」を保存しました",
+      "formatSaveFailed": "割り当てを記憶できませんでした",
+      "formatDeleted": "形式を削除しました",
+      "formatDeleteFailed": "形式を削除できませんでした"
+    },
+    "row": {
+      "notATrade": "買付でも売却でもありません",
+      "zeroQuantity": "数量がゼロです",
+      "assetClass": "別の資産クラスです",
+      "instrumentSkipped": "この銘柄はスキップされています",
+      "dateUnparseable": "日付を読み取れませんでした",
+      "numberUnparseable": "数値を読み取れませんでした",
+      "commentUnparseable": "コメントを読み取れませんでした",
+      "symbolMissing": "シンボルがありません",
+      "symbolMissingIsin": "シンボルがなく、ISIN「{{detail}}」も正しくありません",
+      "tickerInvalid": "シンボルが正しくありません",
+      "currencyMissing": "通貨がありません",
+      "currencyInvalid": "通貨が正しくありません",
+      "priceMissing": "価格がありません",
+      "sellExceedsHoldings": "売却数量がその日の保有数量を超えています",
+      "sellExceedsHoldingsHeld": "売却数量がその日の保有数量を超えています（保有 {{detail}}）",
+      "currencyMismatch": "ポジションの通貨と異なります",
+      "currencyMismatchPosition": "ポジションの通貨と異なります（{{detail}}）",
+      "duplicate": "同じ取引がすでに Moony にあります",
+      "duplicateById": "同じ証券会社の取引 ID の取引が、すでに Moony にあります",
+      "duplicateSimilar": "似た取引がすでに Moony にあります：同じ日、同じ数量で、価格の差は0.5 %以内です",
+      "cannotParse": "この行を読み取れませんでした",
+      "writeFailed": "取引を書き込めませんでした"
+    }
+  },
+  "eyebrow": "ポートフォリオ",
+  "export": "エクスポート"
+}

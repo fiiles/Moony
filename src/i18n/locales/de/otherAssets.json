@@ -1,0 +1,146 @@
+{
+  "title": "Sonstiges Vermögen",
+  "subtitle": "Gold, Sammlungen, Beteiligungen und Darlehen – alles ohne Marktpreis, das Sie selbst bewerten.",
+  "loading": "Sonstiges Vermögen wird geladen...",
+  "empty": {
+    "title": "Noch kein Vermögen",
+    "description": "Fügen Sie Gold, eine Sammlung oder eine Beteiligung hinzu: Name, Preis pro Stück und ein optionaler erster Kauf. Neubewertungen zeichnen dann die Schätzung im Zeitverlauf."
+  },
+  "addAsset": "Vermögenswert hinzufügen",
+  "summary": {
+    "totalValue": "Gesamtwert",
+    "assetCount": "Vermögenswerte",
+    "totalGainLoss": "Gesamtgewinn/-verlust",
+    "value": "Wert",
+    "assets_one": "{{count}} Vermögenswert",
+    "assets_other": "{{count}} Vermögenswerte",
+    "gain": "Gewinn gegenüber Kauf",
+    "vsCostPct": "{{percent}} ggü. Kaufpreis {{amount}}",
+    "noCost": "kein Kaufpreis",
+    "yearlyYield": "Jahresertrag",
+    "yieldNote_one": "{{percent}} · aus {{count}} ertragbringenden Vermögenswert",
+    "yieldNote_other": "{{percent}} · aus {{count}} ertragbringenden Vermögenswerten",
+    "noYield": "kein Vermögenswert wirft Erträge ab",
+    "lastChange": "Letzte Änderung"
+  },
+  "table": {
+    "title": "Vermögenswerte",
+    "search": "Vermögenswerte suchen",
+    "name": "Name",
+    "category": "Kategorie",
+    "purchasePrice": "Kaufpreis",
+    "marketPrice": "Marktpreis",
+    "avgPurchasePrice": "Ø Kaufpreis",
+    "totalValue": "Gesamtwert",
+    "currentValue": "Aktueller Wert",
+    "purchaseDate": "Kaufdatum",
+    "gainLoss": "Gewinn/Verlust",
+    "actions": "Aktionen",
+    "noAssets": "Keine Vermögenswerte gefunden. Fügen Sie Ihren ersten hinzu, um zu beginnen.",
+    "subtitle": "Wert = Menge × Ihre letzte Preisschätzung",
+    "asset": "Vermögenswert",
+    "quantity": "Menge",
+    "unit": "Stk.",
+    "price": "Preis / Stück",
+    "avgPurchase": "Kauf / Stück",
+    "value": "Wert",
+    "gain": "Gewinn",
+    "yearly": "Jährlich",
+    "updated": "Aktualisiert",
+    "noChange": "keine Änderung",
+    "yieldFixed": "fester Betrag",
+    "yieldPercentPurchase": "{{value}} % der Anschaffungskosten",
+    "yieldPercentMarket": "{{value}} % des Werts",
+    "noResults": {
+      "title": "Nichts gefunden",
+      "description": "Versuchen Sie einen anderen Namen."
+    },
+    "footer": {
+      "count_one": "{{count}} Vermögenswert",
+      "count_other": "{{count}} Vermögenswerte",
+      "value": "Wert {{amount}}",
+      "cost": "Anschaffungskosten {{amount}}",
+      "yieldNote": "Jahresertrag nach gewählter Art: fester Betrag, % des Kaufpreises oder % des Werts"
+    }
+  },
+  "actions": {
+    "edit": "Bearbeiten",
+    "delete": "Löschen",
+    "transactions": "Transaktionen",
+    "buy": "Kaufen",
+    "sell": "Verkaufen",
+    "revalue": "Neu bewerten"
+  },
+  "confirmDelete": {
+    "title": "Vermögenswert löschen?",
+    "description": "„{{name}}“ und alle zugehörigen Transaktionen werden dauerhaft entfernt. Das lässt sich nicht rückgängig machen."
+  },
+  "confirmDeleteTransaction": {
+    "title": "Transaktion löschen?",
+    "description": "Damit wird die Transaktion vom Typ {{type}} ({{quantity}} × {{price}}, {{date}}) dauerhaft gelöscht. Das lässt sich nicht rückgängig machen."
+  },
+  "toast": {
+    "added": "Vermögenswert hinzugefügt",
+    "updated": "Vermögenswert aktualisiert",
+    "deleted": "Vermögenswert gelöscht",
+    "deleteError": "Der Vermögenswert konnte nicht gelöscht werden"
+  },
+  "modal": {
+    "add": {
+      "title": "Sonstigen Vermögenswert hinzufügen",
+      "basicInfo": "Angaben zum Vermögenswert",
+      "assetName": "Name des Vermögenswerts",
+      "assetNamePlaceholder": "z. B. Goldbarren",
+      "marketPrice": "Aktueller Marktpreis (pro Stück)",
+      "initialPurchase": "Erster Kauf (optional)",
+      "pricePerUnit": "Preis / Stück",
+      "initialPurchaseHint": "Wenn ausgefüllt, wird eine Kauftransaktion angelegt.",
+      "yieldConfig": "Ertrag (optional)",
+      "yieldConfigDescription": "Erträge, die dieser Vermögenswert jedes Jahr abwirft, zum Beispiel Miete oder Zinsen.",
+      "submit": "Vermögenswert hinzufügen",
+      "description": "Fügen Sie Ihrem Portfolio einen neuen individuellen Vermögenswert hinzu.",
+      "yieldType": "Ertragsart",
+      "yieldValue": "Ertragswert",
+      "yieldTypes": {
+        "none": "Keiner",
+        "fixed": "Fester Betrag (jährlich)",
+        "percentPurchase": "% des Kaufpreises",
+        "percentMarket": "% des Marktpreises"
+      },
+      "marketPriceHint": "Ihre Schätzung pro Stück für heute; später durch Neubewertung änderbar.",
+      "total": "Erster Kauf zum heutigen Preis"
+    },
+    "buy": {
+      "titleNamed": "{{name}} zukaufen",
+      "description": "Erhöhen Sie die Menge dieses Vermögenswerts.",
+      "pricePerUnit": "Preis pro Stück",
+      "submit": "Transaktion hinzufügen"
+    },
+    "sell": {
+      "titleNamed": "{{name}} verkaufen",
+      "description": "Erfassen Sie einen Verkauf dieses Vermögenswerts.",
+      "pricePerUnit": "Preis pro Stück",
+      "submit": "Vermögenswert verkaufen"
+    },
+    "transactions": {
+      "title": "Transaktionsverlauf",
+      "noTransactions": "Keine Transaktionen gefunden"
+    },
+    "edit": {
+      "title": "Bearbeiten · {{name}}",
+      "description": "Name, Währung und Ertrag. Den Preis ändern Sie durch Neubewertung, die Menge durch Käufe und Verkäufe.",
+      "currencyHint": "Währung des Preises und des Kaufdurchschnitts.",
+      "priceHint": "Ändern Sie den Marktpreis mit „Neu bewerten“ – das hinterlässt eine Spur im Diagramm."
+    }
+  },
+  "eyebrow": "Portfolio",
+  "export": "Exportieren",
+  "status": {
+    "latest": "Letzte Änderung {{date}}",
+    "manual": "Manuell bewertet"
+  },
+  "chart": {
+    "title": "Geschätzter Wert im Zeitverlauf",
+    "subtitle": "Flach zwischen Neubewertungen – die Sprünge sind Ihre Schätzungen und Käufe, nicht der Markt."
+  }
+}

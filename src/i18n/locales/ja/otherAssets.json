@@ -1,0 +1,143 @@
+{
+  "title": "その他の資産",
+  "subtitle": "金、コレクション、出資、貸付など、市場価格がなく自分で評価するすべての資産。",
+  "loading": "その他の資産を読み込んでいます...",
+  "empty": {
+    "title": "資産はまだありません",
+    "description": "金、コレクション、出資などを追加してください。名称、単価、任意で最初の購入を入力します。再評価を重ねると、推定額の推移が描かれます。"
+  },
+  "addAsset": "資産を追加",
+  "summary": {
+    "totalValue": "評価額の合計",
+    "assetCount": "資産",
+    "totalGainLoss": "全体の損益",
+    "value": "評価額",
+    "assets_other": "{{count}}件の資産",
+    "gain": "購入額に対する損益",
+    "vsCostPct": "購入原価 {{amount}} に対して {{percent}}",
+    "noCost": "購入原価なし",
+    "yearlyYield": "年間の収益",
+    "yieldNote_other": "{{percent}} · 収益のある{{count}}件の資産から",
+    "noYield": "収益のある資産はありません",
+    "lastChange": "最終変更"
+  },
+  "table": {
+    "title": "資産",
+    "search": "資産を検索",
+    "name": "名称",
+    "category": "カテゴリ",
+    "purchasePrice": "購入価格",
+    "marketPrice": "市場価格",
+    "avgPurchasePrice": "平均購入価格",
+    "totalValue": "評価額の合計",
+    "currentValue": "現在の評価額",
+    "purchaseDate": "購入日",
+    "gainLoss": "損益",
+    "actions": "操作",
+    "noAssets": "資産が見つかりません。最初の資産を追加してください。",
+    "subtitle": "評価額 = 数量 × 最新の推定価格",
+    "asset": "資産",
+    "quantity": "数量",
+    "unit": "個",
+    "price": "単価",
+    "avgPurchase": "購入単価",
+    "value": "評価額",
+    "gain": "損益",
+    "yearly": "年間",
+    "updated": "更新日",
+    "noChange": "変更なし",
+    "yieldFixed": "固定額",
+    "yieldPercentPurchase": "購入原価の{{value}} %",
+    "yieldPercentMarket": "評価額の{{value}} %",
+    "noResults": {
+      "title": "見つかりません",
+      "description": "別の名称をお試しください。"
+    },
+    "footer": {
+      "count_other": "{{count}}件の資産",
+      "value": "評価額 {{amount}}",
+      "cost": "購入原価 {{amount}}",
+      "yieldNote": "選択した種類による年間の収益：固定額、購入額の％、または評価額の％"
+    }
+  },
+  "actions": {
+    "edit": "編集",
+    "delete": "削除",
+    "transactions": "取引",
+    "buy": "買付",
+    "sell": "売却",
+    "revalue": "再評価"
+  },
+  "confirmDelete": {
+    "title": "資産を削除しますか？",
+    "description": "「{{name}}」とそのすべての取引が完全に削除されます。この操作は元に戻せません。"
+  },
+  "confirmDeleteTransaction": {
+    "title": "取引を削除しますか？",
+    "description": "{{type}}の取引（{{quantity}} × {{price}}、{{date}}）を完全に削除します。この操作は元に戻せません。"
+  },
+  "toast": {
+    "added": "資産を追加しました",
+    "updated": "資産を更新しました",
+    "deleted": "資産を削除しました",
+    "deleteError": "資産を削除できませんでした"
+  },
+  "modal": {
+    "add": {
+      "title": "その他の資産を追加",
+      "basicInfo": "資産情報",
+      "assetName": "資産名",
+      "assetNamePlaceholder": "例：金の延べ棒",
+      "marketPrice": "現在の市場価格（単価）",
+      "initialPurchase": "最初の購入（任意）",
+      "pricePerUnit": "単価",
+      "initialPurchaseHint": "入力すると「買付」取引が追加されます。",
+      "yieldConfig": "収益（任意）",
+      "yieldConfigDescription": "この資産が毎年生み出す収入（家賃や利息など）。",
+      "submit": "資産を追加",
+      "description": "ポートフォリオに新しい資産を追加します。",
+      "yieldType": "収益の種類",
+      "yieldValue": "収益の値",
+      "yieldTypes": {
+        "none": "なし",
+        "fixed": "固定額（年間）",
+        "percentPurchase": "購入価格の％",
+        "percentMarket": "市場価格の％"
+      },
+      "marketPriceHint": "現在の単価の推定値です。後から再評価で変更できます。",
+      "total": "本日の価格での最初の購入"
+    },
+    "buy": {
+      "titleNamed": "{{name}}を買い増し",
+      "description": "資産の数量を追加します。",
+      "pricePerUnit": "単価",
+      "submit": "取引を追加"
+    },
+    "sell": {
+      "titleNamed": "{{name}}の売却",
+      "description": "この資産の売却取引を記録します。",
+      "pricePerUnit": "単価",
+      "submit": "資産を売却"
+    },
+    "transactions": {
+      "title": "取引履歴",
+      "noTransactions": "取引が見つかりません"
+    },
+    "edit": {
+      "title": "編集 · {{name}}",
+      "description": "名称、通貨、収益を編集します。価格は再評価で、数量は買付と売却で変更します。",
+      "currencyHint": "価格と購入平均の通貨です。",
+      "priceHint": "市場価格は「再評価」で変更してください。グラフに履歴が残ります。"
+    }
+  },
+  "eyebrow": "ポートフォリオ",
+  "export": "エクスポート",
+  "status": {
+    "latest": "最終変更 {{date}}",
+    "manual": "手動で評価"
+  },
+  "chart": {
+    "title": "推定評価額の推移",
+    "subtitle": "再評価の間は横ばいです。変動は市場ではなく、あなたの推定と購入によるものです。"
+  }
+}

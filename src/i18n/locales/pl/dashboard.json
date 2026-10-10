@@ -1,0 +1,113 @@
+{
+  "eyebrow": "Twój obraz finansów",
+  "greeting": {
+    "morning": "Dzień dobry, {{name}}.",
+    "day": "Dzień dobry, {{name}}.",
+    "evening": "Dobry wieczór, {{name}}."
+  },
+  "welcomeFirst": "Witaj, {{name}}.",
+  "asOf": "Majątek netto na dzień {{date}}",
+  "loading": "Wczytywanie portfela…",
+  "hero": {
+    "label": "Majątek netto"
+  },
+  "insight": {
+    "up": "Wartość rośnie. Największy udział w zmianie: {{class}}.",
+    "down": "Wartość spada. Największy udział w zmianie: {{class}}.",
+    "flat": "Wartość się utrzymuje. Największy ruch: {{class}}.",
+    "noHistory": "Trend pojawi się po pierwszych dziennych zapisach."
+  },
+  "stats": {
+    "netWorth": "Majątek netto",
+    "totalAssets": "Aktywa łącznie",
+    "totalLiabilities": "Zobowiązania",
+    "freeCash": "Wolna gotówka",
+    "freeCashNote": "na kontach bankowych",
+    "unchanged": "bez zmian w okresie",
+    "noHistory": "brak historii"
+  },
+  "cards": {
+    "investments": "Akcje",
+    "savings": "Gotówka",
+    "bonds": "Obligacje",
+    "liabilities": "Zobowiązania",
+    "crypto": "Kryptowaluty",
+    "realEstate": "Nieruchomości",
+    "otherAssets": "Inne aktywa",
+    "other": "Inne",
+    "ofTotal": "{{percent}} całości"
+  },
+  "classes": {
+    "investments": "akcje",
+    "savings": "gotówka",
+    "bonds": "obligacje",
+    "liabilities": "zobowiązania",
+    "crypto": "kryptowaluty",
+    "realEstate": "nieruchomości",
+    "otherAssets": "inne aktywa"
+  },
+  "allocation": {
+    "title": "Struktura aktywów",
+    "open": "Otwórz inwestycje",
+    "center": "Aktywa"
+  },
+  "moves": {
+    "title": "Ostatnie operacje",
+    "empty": "Tutaj pojawią się transakcje bankowe, zakupy i sprzedaże.",
+    "kind": {
+      "bankIn": "Płatność przychodząca",
+      "bankOut": "Płatność wychodząca",
+      "buy": "Zakup",
+      "sell": "Sprzedaż",
+      "cryptoBuy": "Zakup krypto",
+      "cryptoSell": "Sprzedaż krypto"
+    }
+  },
+  "changePeriod": {
+    "30D": "w ostatnich 30 dniach",
+    "90D": "w ostatnich 90 dniach",
+    "YTD": "od początku roku",
+    "1Y": "w ostatnim roku",
+    "5Y": "w ostatnich 5 latach",
+    "All": "od pierwszego zapisu"
+  },
+  "empty": {
+    "title": "Tutaj pojawi się twój majątek netto",
+    "description": "Dodaj konto lub inwestycję, a Moony zbuduje z nich twój przegląd, wykresy i trendy. Wszystko zostaje na tym komputerze.",
+    "addAccount": "Dodaj konto bankowe i zaimportuj wyciąg",
+    "addInvestment": "Dodaj inwestycję",
+    "setBudget": "Ustaw budżet"
+  },
+  "gettingStarted": {
+    "title": "Pierwsze kroki",
+    "subtitle": "Cztery kroki, dzięki którym Moony stanie się naprawdę przydatne. Ta karta zniknie, gdy skończysz.",
+    "importStatement": "Zaimportuj wyciąg bankowy",
+    "importStatementHint": "Dodaj konto i zaimportuj plik CSV z banku.",
+    "addInvestment": "Dodaj inwestycję",
+    "addInvestmentHint": "Akcje, ETF-y lub kryptowaluty z cenami na żywo.",
+    "setBudget": "Ustaw budżet",
+    "setBudgetHint": "Miesięczne limity dla kategorii wydatków.",
+    "makeBackup": "Zrób kopię zapasową",
+    "makeBackupHint": "Jeden plik ze wszystkim, w Ustawienia → Dane i kopie zapasowe.",
+    "dismiss": "Odrzuć",
+    "done": "Gotowe"
+  },
+  "welcome": "Witaj ponownie, {{name}}",
+  "overview": "Oto twój dzisiejszy przegląd finansów.",
+  "charts": {
+    "netWorthTrend": "Trend majątku netto",
+    "assetAllocation": "Struktura aktywów",
+    "assetsVsLiabilities": "Aktywa a zobowiązania",
+    "assetsToLiabilitiesRatio": "Stosunek aktywów do zobowiązań",
+    "assetClassTrend": "Majątek netto wg klas aktywów",
+    "noHistoricalData": "Brak danych historycznych",
+    "estimatedBackfilled": "szacunek (uzupełnione wstecz)",
+    "estimatedLegend": "Linia przerywana: dni szacowane. Konta bankowe, obligacje, nieruchomości i kredyty są przenoszone z najbliższego zapisanego dnia."
+  },
+  "tooltips": {
+    "netWorth": "Majątek netto",
+    "totalAssets": "Aktywa łącznie",
+    "totalLiabilities": "Zobowiązania łącznie"
+  },
+  "changeSince": "vs {{date}}"
+}

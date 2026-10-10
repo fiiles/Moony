@@ -1,0 +1,271 @@
+{
+  "title": "Kryptowaluty",
+  "eyebrow": "Portfel",
+  "subtitle": "Pozycje krypto po aktualnym kursie, koszt wg średniej ważonej.",
+  "loading": "Wczytywanie portfela krypto...",
+  "empty": {
+    "title": "Brak kryptowalut",
+    "description": "Dodaj pierwszą monetę: wyszukamy ją w CoinGecko, a jej kurs będzie się aktualizował sam."
+  },
+  "addCrypto": "Dodaj kryptowalutę",
+  "refreshPrices": "Odśwież kursy",
+  "export": "Eksport",
+  "summary": {
+    "value": "Wartość krypto",
+    "positions_one": "{{count}} otwarta pozycja",
+    "positions_few": "{{count}} otwarte pozycje",
+    "positions_many": "{{count}} otwartych pozycji",
+    "positions_other": "{{count}} otwartej pozycji",
+    "updatedToday": "kursy zaktualizowane dziś",
+    "updatedOn": "kursy z {{date}}",
+    "notUpdated": "kursy jeszcze nie pobrane",
+    "unrealizedGain": "Niezrealizowany zwrot",
+    "unrealizedLoss": "Niezrealizowana strata",
+    "vsInvestedPct": "{{percent}} względem {{amount}} zainwestowanych",
+    "realized": "Zrealizowany zwrot",
+    "sells_one": "{{count}} sprzedaż · średnia ważona",
+    "sells_few": "{{count}} sprzedaże · średnia ważona",
+    "sells_many": "{{count}} sprzedaży · średnia ważona",
+    "sells_other": "{{count}} sprzedaży · średnia ważona",
+    "noSells": "brak sprzedaży",
+    "largest": "Największa pozycja",
+    "largestNote": "{{share}} wartości krypto · {{change}} od zakupu",
+    "noPositions": "brak otwartej pozycji"
+  },
+  "chart": {
+    "title": "Wartość krypto w czasie",
+    "subtitle": "Zakupy i sprzedaże wprost na wykresie – każdy skok ma wyjaśnienie.",
+    "legend": {
+      "value": "Wartość krypto",
+      "buy": "Zakup",
+      "sell": "Sprzedaż"
+    },
+    "events": {
+      "buy": "Kupiono {{tickers}}",
+      "sell": "Sprzedano {{tickers}}",
+      "cluster_one": "{{count}} transakcja",
+      "cluster_few": "{{count}} transakcje",
+      "cluster_many": "{{count}} transakcji",
+      "cluster_other": "{{count}} transakcji"
+    }
+  },
+  "table": {
+    "title": "Pozycje",
+    "subtitle": "Kursy przeliczone na {{currency}} po dzisiejszym kursie wymiany · kursy ręczne są oznaczone",
+    "search": "Szukaj po nazwie lub tickerze",
+    "asset": "Aktywo",
+    "quantity": "Ilość",
+    "avgCost": "Śr. koszt",
+    "rate": "Kurs",
+    "value": "Wartość",
+    "share": "Udział",
+    "return": "Zwrot",
+    "actions": "Akcje",
+    "showClosed": "Pokaż zamknięte pozycje",
+    "source": "CoinGecko",
+    "manualSource": "kurs ręczny",
+    "closed": "zamknięta {{date}}",
+    "realized": "zrealizowano {{amount}}",
+    "noResults": {
+      "title": "Nic nie znaleziono",
+      "description": "Spróbuj innej nazwy lub tickera.",
+      "closedHidden": "Spróbuj innej nazwy lub tickera. Zamknięte pozycje są ukryte."
+    },
+    "footer": {
+      "count_one": "{{count}} pozycja",
+      "count_few": "{{count}} pozycje",
+      "count_many": "{{count}} pozycji",
+      "count_other": "{{count}} pozycji",
+      "total": "razem",
+      "rates": "Wartości w {{currency}} po dzisiejszym kursie",
+      "closed_one": "{{count}} zamknięta pozycja",
+      "closed_few": "{{count}} zamknięte pozycje",
+      "closed_many": "{{count}} zamkniętych pozycji",
+      "closed_other": "{{count}} zamkniętej pozycji"
+    }
+  },
+  "actions": {
+    "buy": "Kup",
+    "sell": "Sprzedaj",
+    "updatePrice": "Ustaw kurs ręcznie",
+    "delete": "Usuń pozycję"
+  },
+  "badges": {
+    "manual": "ręczny"
+  },
+  "tooltip": {
+    "manualPrice": "Kurs ustawiony ręcznie – zastępuje CoinGecko, dopóki go nie usuniesz."
+  },
+  "modal": {
+    "add": {
+      "title": "Dodaj kryptowalutę",
+      "description": "Wyszukaj monetę w CoinGecko; jej kurs będzie się potem aktualizował automatycznie.",
+      "coin": "Kryptowaluta",
+      "ticker": "Ticker",
+      "search": "Szukaj w CoinGecko",
+      "searchHint": "Wpisz nazwę lub ticker, aby zobaczyć dopasowania z CoinGecko.",
+      "searching": "Wyszukiwanie w CoinGecko…",
+      "searchError": "Wyszukiwanie nie powiodło się. Sprawdź połączenie lub klucz CoinGecko w Ustawieniach.",
+      "noResults": "Żadna moneta nie pasuje. Ticker i nazwę możesz wpisać ręcznie.",
+      "rank": "#{{rank}}",
+      "quantity": "Ilość",
+      "pricePerUnit": "Cena za sztukę",
+      "purchaseDate": "Data zakupu",
+      "total": "Suma zakupu",
+      "submit": "Dodaj pozycję"
+    },
+    "buy": {
+      "title": "Kup {{name}}",
+      "description": "Zakup zwiększa ilość i przelicza średni koszt.",
+      "quantity": "Ilość",
+      "pricePerUnit": "Kurs za 1 {{ticker}}",
+      "rateHint": "Wstępnie wypełnione aktualnym kursem.",
+      "total": "Suma zakupu",
+      "submit": "Zapisz zakup"
+    },
+    "sell": {
+      "title": "Sprzedaj {{name}}",
+      "description": "Zrealizowany zwrot jest liczony względem średniego kosztu.",
+      "quantity": "Ilość",
+      "all": "wszystko ({{quantity}})",
+      "tooMuch": "Posiadasz tylko {{quantity}}.",
+      "pricePerUnit": "Kurs za 1 {{ticker}}",
+      "proceeds": "Wpływy {{amount}} · zrealizowany zwrot",
+      "proceedsEmpty": "Wpływy i zrealizowany zwrot",
+      "submit": "Zapisz sprzedaż"
+    },
+    "updatePrice": {
+      "title": "Kurs ręczny · {{name}}",
+      "description": "Zastępuje kurs z CoinGecko, dopóki nie usuniesz kursu ręcznego.",
+      "price": "Kurs za 1 {{ticker}}",
+      "total": "Wartość pozycji ({{quantity}} {{ticker}})",
+      "remove": "Usuń kurs ręczny",
+      "submit": "Zapisz kurs"
+    }
+  },
+  "confirmDelete": {
+    "title": "Usunąć pozycję?",
+    "description": "{{name}} ({{ticker}}) i wszystkie jej transakcje zostaną usunięte na stałe. Tej operacji nie można cofnąć."
+  },
+  "toast": {
+    "added": "Kryptowaluta dodana, pobieranie kursu",
+    "bought": "Zakup zapisany",
+    "sold": "Sprzedaż zapisana",
+    "deleted": "Pozycja usunięta",
+    "priceUpdated": "Kurs ręczny zapisany",
+    "manualPriceDeleted": "Kurs ręczny usunięty",
+    "pricesRefreshed_one": "Zaktualizowano {{count}} kurs z CoinGecko",
+    "pricesRefreshed_few": "Zaktualizowano {{count}} kursy z CoinGecko",
+    "pricesRefreshed_many": "Zaktualizowano {{count}} kursów z CoinGecko",
+    "pricesRefreshed_other": "Zaktualizowano {{count}} kursu z CoinGecko",
+    "pricesRefreshedDescription": "Aktualne kursy pobrane z CoinGecko",
+    "refreshFailed": "Odświeżanie kursów nie powiodło się",
+    "addFailed": "Dodanie kryptowaluty nie powiodło się"
+  },
+  "detail": {
+    "backToList": "Wróć do krypto",
+    "notFound": "Nie znaleziono pozycji",
+    "source": "CoinGecko",
+    "manualSource": "kurs ręczny",
+    "quantityUnits": "{{quantity}} {{ticker}}",
+    "avgBuyPrice": "średni koszt {{price}}",
+    "lastBuy": "ostatni zakup {{date}}",
+    "refreshPrices": "Odśwież kurs",
+    "buy": "Kup",
+    "sell": "Sprzedaj",
+    "menu": {
+      "editPrice": "Ustaw kurs ręcznie",
+      "delete": "Usuń pozycję"
+    },
+    "status": {
+      "rateUpdated": "Kurs zaktualizowany {{when}}",
+      "todayAt": "dziś o {{time}}"
+    },
+    "positionValue": "Wartość pozycji",
+    "vsInvestedPct": "{{percent}} względem zainwestowanych",
+    "rate": "Kurs",
+    "invested": "Zainwestowano",
+    "avgShort": "średnio {{price}}",
+    "unrealized": "Niezrealizowany zwrot",
+    "realized": "Zrealizowany zwrot",
+    "sells_one": "{{count}} sprzedaż",
+    "sells_few": "{{count}} sprzedaże",
+    "sells_many": "{{count}} sprzedaży",
+    "sells_other": "{{count}} sprzedaży",
+    "noSells": "brak sprzedaży",
+    "held": "Okres posiadania",
+    "heldSince": "od {{date}}",
+    "shareOfCrypto": "{{share}} wartości krypto",
+    "duration": {
+      "years_one": "{{count}} rok",
+      "years_few": "{{count}} lata",
+      "years_many": "{{count}} lat",
+      "years_other": "{{count}} roku",
+      "months_one": "{{count}} miesiąc",
+      "months_few": "{{count}} miesiące",
+      "months_many": "{{count}} miesięcy",
+      "months_other": "{{count}} miesiąca",
+      "lessThanMonth": "mniej niż miesiąc"
+    },
+    "transactions": {
+      "title": "Historia transakcji",
+      "date": "Data",
+      "type": "Typ",
+      "quantity": "Ilość",
+      "price": "Kurs",
+      "total": "Razem",
+      "empty": "Brak transakcji"
+    },
+    "priceNative": "Kurs ({{currency}})",
+    "priceNativeMixed": "Kurs (waluta oryginalna)",
+    "realizedRow": "zrealizowano {{amount}}",
+    "ledger": {
+      "sub_one": "{{count}} transakcja · najedź na wiersz, aby podświetlić go na wykresie",
+      "sub_few": "{{count}} transakcje · najedź na wiersz, aby podświetlić go na wykresie",
+      "sub_many": "{{count}} transakcji · najedź na wiersz, aby podświetlić go na wykresie",
+      "sub_other": "{{count}} transakcji · najedź na wiersz, aby podświetlić go na wykresie",
+      "filter": {
+        "all": "Wszystkie",
+        "buys": "Zakupy",
+        "sells": "Sprzedaże"
+      },
+      "footer_one": "{{count}} transakcja",
+      "footer_few": "{{count}} transakcje",
+      "footer_many": "{{count}} transakcji",
+      "footer_other": "{{count}} transakcji",
+      "bought": "kupiono {{amount}}",
+      "sold": "sprzedano {{amount}}",
+      "rates": "Kursy w {{currency}} po kursie EBC z dnia transakcji"
+    },
+    "position": {
+      "title": "Pozycja",
+      "quantity": "Ilość",
+      "avgPrice": "Średni koszt",
+      "currentPrice": "Aktualny kurs",
+      "nativePrice": "Kurs w {{currency}}",
+      "shareOfCrypto": "Udział w krypto",
+      "priceUpdated": "Kurs zaktualizowany",
+      "setManual": "Ustaw kurs ręcznie",
+      "removeManual": "Usuń kurs ręczny"
+    },
+    "sinceFirst": {
+      "title": "Od pierwszego zakupu",
+      "text": "Przez {{duration}} kurs {{ticker}} zmienił się o {{rateChange}} względem {{firstPrice}}. Twoja pozycja przyniosła {{positionChange}}{{realizedPart}}.",
+      "realizedPart": "; sprzedaże zrealizowały {{amount}}",
+      "none": "Brak zakupów."
+    },
+    "deleteTransaction": "Usuń transakcję",
+    "transactionDeleted": "Transakcja usunięta",
+    "pricesRefreshed": "Kurs zaktualizowany",
+    "confirmDeleteTransaction": {
+      "title": "Usunąć transakcję?",
+      "description": "Transakcja ({{type}}: {{quantity}} × {{ticker}}, {{date}}, {{amount}}) zostanie usunięta na stałe. Tej operacji nie można cofnąć."
+    }
+  },
+  "coingeckoBanner": {
+    "title": "Klucz API CoinGecko (opcjonalny)",
+    "message": "Kursy działają bez klucza. Darmowy klucz CoinGecko dodany w Ustawieniach wczytuje też historię kursów do wykresów.",
+    "goToSettings": "Otwórz Ustawienia",
+    "dismiss": "Odrzuć"
+  }
+}

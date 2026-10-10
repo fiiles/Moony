@@ -1,0 +1,108 @@
+{
+  "title": "債券",
+  "eyebrow": "ポートフォリオ",
+  "subtitle": "満期まで保有する国債・社債。固定クーポンによる収益。",
+  "status": "額面で評価 · 経過利息なし",
+  "loading": "債券を読み込んでいます...",
+  "empty": {
+    "title": "債券はまだありません",
+    "description": "最初の銘柄を追加してください。額面、数量、クーポン、満期を入力すると、満期ラダーが自動で作成されます。"
+  },
+  "addBond": "債券を追加",
+  "export": "エクスポート",
+  "summary": {
+    "nominal": "額面",
+    "issues_other": "{{count}}銘柄",
+    "currencies_other": "{{count}}通貨",
+    "yearlyCoupon": "年間クーポン",
+    "weightedRate": "加重平均 年率 {{rate}}",
+    "nearestMaturity": "直近の満期",
+    "returns": "{{amount}}が戻ります",
+    "noMaturity": "満期のある銘柄はありません",
+    "avgToMaturity": "平均残存期間",
+    "years": "{{value}}年",
+    "lastMaturity": "額面で加重 · 最終 {{date}}",
+    "noneLive": "有効な銘柄はありません"
+  },
+  "until": {
+    "in": "{{duration}}後",
+    "soon": "1か月以内",
+    "past": "{{date}}に償還済み"
+  },
+  "duration": {
+    "years_other": "{{count}}年",
+    "months_other": "{{count}}か月"
+  },
+  "ladder": {
+    "title": "満期とクーポン",
+    "subtitle": "どの年にいくら戻るか：償還される額面と年間クーポン。",
+    "badge": "クーポンは毎年、満期日の応当日に支払い",
+    "principal": "償還される額面",
+    "coupons": "クーポン",
+    "nearest": "直近の満期",
+    "note": "{{year}}年までに、額面 {{principal}} とクーポン {{coupons}} が戻ります。"
+  },
+  "table": {
+    "title": "銘柄",
+    "subtitle": "満期順 · 近い順",
+    "search": "名称または ISIN で検索",
+    "showMatured": "償還済みを表示",
+    "bond": "債券",
+    "nominal": "額面 / 1口",
+    "quantity": "数量",
+    "units": "口",
+    "value": "評価額",
+    "coupon": "クーポン",
+    "yearly": "年間",
+    "maturity": "満期",
+    "actions": "操作",
+    "withinYear": "1年以内",
+    "matured": "償還済み",
+    "noMaturity": "満期なし",
+    "noResults": {
+      "title": "見つかりません",
+      "description": "別の名称または ISIN をお試しください。",
+      "maturedHidden": "別の名称または ISIN をお試しください。償還済みの銘柄は非表示です。"
+    },
+    "footer": {
+      "count_other": "{{count}}銘柄",
+      "nominal": "額面 {{amount}}",
+      "coupons": "クーポン 年間 {{amount}}",
+      "valuation": "評価額 = 額面 × 数量 · 市場価格は追跡しません"
+    }
+  },
+  "actions": {
+    "edit": "編集",
+    "delete": "削除"
+  },
+  "form": {
+    "addTitle": "債券を追加",
+    "editTitle": "債券を編集",
+    "addDescription": "評価額は額面 × 数量、収益はクーポン率から算出されます。",
+    "editDescription": "変更は評価額と満期ラダーに反映されます。",
+    "name": "名称",
+    "namePlaceholder": "例：国債 2031",
+    "isin": "ISIN",
+    "isinHint": "発行条件に記載された12文字。明細との照合に役立ちます。",
+    "nominal": "1口の額面",
+    "quantity": "数量",
+    "rate": "年間クーポン",
+    "maturity": "満期日",
+    "maturityHint": "満期を過ぎると、銘柄は償還済みに移り、純資産に含まれなくなります。",
+    "summaryValue": "評価額 {{value}} · クーポン 年間 {{coupon}}",
+    "summaryNext": "次の満期応当日は {{date}} です。",
+    "summaryMatures": "この銘柄は今年満期を迎えます。以降のクーポンはありません。",
+    "summaryNoMaturity": "満期なし – クーポンは毎年計上されます。",
+    "submitAdd": "債券を追加",
+    "submitEdit": "変更を保存"
+  },
+  "confirmDelete": {
+    "title": "債券を削除しますか？",
+    "description": "「{{name}}」は完全に削除されます。この操作は元に戻せません。"
+  },
+  "toast": {
+    "added": "債券を追加しました",
+    "updated": "債券を更新しました",
+    "deleted": "債券を削除しました"
+  }
+}

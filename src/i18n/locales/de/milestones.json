@@ -1,0 +1,134 @@
+{
+  "card": {
+    "title": "Was ansteht",
+    "settingsLink": "Erinnerungen bearbeiten",
+    "showAll": "Alle anzeigen ({{count}})",
+    "showLess": "Weniger anzeigen",
+    "nothingDue": "Keine anstehenden Termine.",
+    "upkeep": "Datenpflege",
+    "upkeepShow": "{{count}} anzeigen",
+    "upkeepHide": "Einklappen",
+    "today": "Heute",
+    "target": "Ziel",
+    "rowMenu": "Erinnerungsoptionen: {{title}}"
+  },
+  "status": {
+    "deadline": "{{title}} · {{when}}",
+    "more": "+{{count}}",
+    "title": "Fristen in den nächsten 14 Tagen",
+    "openOverview": "Übersicht öffnen"
+  },
+  "actions": {
+    "hide": "Ausblenden",
+    "remindWeek": "In einer Woche erinnern",
+    "remindMonth": "In einem Monat erinnern",
+    "undo": "Rückgängig"
+  },
+  "toast": {
+    "hidden": "Ausgeblendet",
+    "snoozedWeek": "Um eine Woche verschoben",
+    "snoozedMonth": "Um einen Monat verschoben",
+    "muted": "Erinnerungen aus · {{group}}"
+  },
+  "relative": {
+    "today": "heute",
+    "tomorrow": "morgen",
+    "inDays_one": "in {{count}} Tag",
+    "inDays_other": "in {{count}} Tagen",
+    "inMonths_one": "in {{count}} Monat",
+    "inMonths_other": "in {{count}} Monaten",
+    "daysAgo_one": "vor {{count}} Tag",
+    "daysAgo_other": "vor {{count}} Tagen",
+    "monthsAgo_one": "vor {{count}} Monat",
+    "monthsAgo_other": "vor {{count}} Monaten"
+  },
+  "titles": {
+    "backup_stale": "Datensicherung",
+    "balances_stale": "Kontostände"
+  },
+  "sub": {
+    "insurance_anniversary": "Letzter Kündigungstag · Jahrestag {{date}}",
+    "insurance_anniversary_passed": "Jahrestag des Vertrags · die Kündigungsfrist ist abgelaufen",
+    "insurance_end": "Vertrag endet",
+    "insurance_payment": "Zahlung {{amount}}",
+    "loan_fixation_end": "Zinsbindung endet · Zeit, Angebote zu vergleichen",
+    "loan_payoff": "Letzte Rate",
+    "bond_maturity": "Fällig · {{amount}} fließen zurück",
+    "bond_coupon": "Kupon {{amount}}",
+    "account_termination": "Konto endet",
+    "savings_rate_end": "Aktionszins endet",
+    "watch_target_below": "Kurs {{price}} ist auf das Ziel {{target}} gefallen",
+    "watch_target_above": "Kurs {{price}} hat das Ziel {{target}} erreicht",
+    "loan_fixation_expired": "Zinsbindung endete am {{date}} · neuen Zinssatz eintragen",
+    "loan_balance_check": "Saldo seit {{date}} nicht geprüft · mit einem Kontoauszug abgleichen",
+    "valuation_stale": "Keine neue Bewertung seit {{date}} · neu bewerten",
+    "backup_stale": "Letzte Sicherung {{date}}",
+    "backup_never": "Noch keine Sicherung",
+    "balances_stale_one": "{{count}} Konto seit über 30 Tagen nicht aktualisiert",
+    "balances_stale_other": "{{count}} Konten seit über 30 Tagen nicht aktualisiert"
+  },
+  "short": {
+    "backup_stale": "Daten sichern",
+    "balances_stale_one": "{{count}} Kontostand aktualisieren",
+    "balances_stale_other": "{{count}} Kontostände aktualisieren",
+    "valuation_stale": "{{title}} neu bewerten",
+    "loan_balance_check": "Saldo von {{title}} prüfen",
+    "loan_fixation_expired": "neuen Zinssatz von {{title}} eintragen"
+  },
+  "groups": {
+    "insuranceDates": {
+      "label": "Versicherungs-Jahrestage und -Enden",
+      "hint": "In der Übersicht bis zu 3 Monate im Voraus; Jahrestage mit dem letzten Kündigungstag.",
+      "mute": "Nicht an Versicherungs-Jahrestage und -Enden erinnern"
+    },
+    "insurancePayments": {
+      "label": "Versicherungszahlungen",
+      "hint": "Vierteljährliche, halbjährliche und jährliche Zahlungen 14 Tage im Voraus.",
+      "mute": "Nicht an Versicherungszahlungen erinnern"
+    },
+    "loans": {
+      "label": "Ende der Zinsbindung und Kreditende",
+      "hint": "Ende der Zinsbindung 6 Monate im Voraus, die letzte Rate einen Monat im Voraus.",
+      "mute": "Nicht an Zinsbindung und Kreditende erinnern"
+    },
+    "bonds": {
+      "label": "Anleihefälligkeiten und Kupons",
+      "hint": "Eine Fälligkeit bis zu 3 Monate im Voraus, ein Kupon eine Woche im Voraus.",
+      "mute": "Nicht an Fälligkeiten und Kupons erinnern"
+    },
+    "accounts": {
+      "label": "Ende von Konten und Aktionszinsen",
+      "hint": "Das Ende eines Kontos oder Aktionszinses bis zu 3 Monate im Voraus.",
+      "mute": "Nicht an das Ende von Konten und Zinsen erinnern"
+    },
+    "targets": {
+      "label": "Kursziele für Aktien",
+      "hint": "Wenn der Kurs das Ziel in der jeweiligen Richtung erreicht.",
+      "mute": "Nicht an Kursziele erinnern"
+    },
+    "backup": {
+      "label": "Datensicherungen",
+      "hint": "Wenn die letzte Sicherung älter als 30 Tage ist.",
+      "mute": "Nicht an Sicherungen erinnern"
+    },
+    "balances": {
+      "label": "Aktualisierung von Kontoständen",
+      "hint": "Wenn ein Kontostand seit über 30 Tagen nicht aktualisiert wurde.",
+      "mute": "Nicht an Kontostände erinnern"
+    },
+    "valuations": {
+      "label": "Immobilienbewertungen",
+      "hint": "Wenn eine Immobilienbewertung älter als ein Jahr ist.",
+      "mute": "Nicht an Immobilienbewertungen erinnern"
+    },
+    "loanChecks": {
+      "label": "Kreditprüfungen",
+      "hint": "Eine jährliche Saldoprüfung und der neue Zinssatz nach Ende der Zinsbindung.",
+      "mute": "Nicht an Kreditprüfungen erinnern"
+    }
+  },
+  "settings": {
+    "title": "Erinnerungen der Übersicht",
+    "description": "Woran die Karte „Was ansteht“ und die obere Leiste Sie erinnern. Ausgeschaltete Arten werden nirgends angezeigt."
+  }
+}

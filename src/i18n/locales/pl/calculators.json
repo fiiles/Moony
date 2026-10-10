@@ -1,0 +1,200 @@
+{
+  "annuity": {
+    "title": "Kalkulator rat równych",
+    "subtitle": "Rata, łączne odsetki i harmonogram spłat dla dowolnego kredytu. Wartości aktualizują się w trakcie wpisywania.",
+    "eyebrow": "Kalkulator",
+    "status": "Liczone lokalnie, nic nie jest zapisywane",
+    "actions": {
+      "loadLoan": "Wczytaj z moich kredytów",
+      "export": "Eksport"
+    },
+    "form": {
+      "title": "Parametry kredytu",
+      "amount": "Kwota kredytu",
+      "years": "Okres",
+      "yearsUnit": "lat",
+      "rate": "Roczne oprocentowanie",
+      "frequency": "Częstotliwość rat",
+      "frequencies": {
+        "monthly": "Miesięcznie",
+        "quarterly": "Kwartalnie",
+        "semiAnnually": "Półrocznie",
+        "annually": "Rocznie"
+      },
+      "extra": "Nadpłata rocznie",
+      "optional": "opcjonalnie",
+      "extraHint": "Raz w roku ponad regularne raty, bez prowizji."
+    },
+    "insight": {
+      "summary": "<b>{{extra}} nadpłaty rocznie</b> skracają kredyt o {{years}} i pozwalają zaoszczędzić <b>{{saving}}</b> na odsetkach. Harmonogram poniżej pokazuje wariant bez nadpłat.",
+      "noExtra": "Wpisz nadpłatę, aby zobaczyć, ile lat i odsetek zaoszczędzisz."
+    },
+    "hero": {
+      "payment": {
+        "monthly": "Rata miesięczna",
+        "quarterly": "Rata kwartalna",
+        "semiAnnually": "Rata półroczna",
+        "annually": "Rata roczna"
+      },
+      "total": "łącznie {{amount}}",
+      "interestShare": "w tym odsetki {{amount}} · {{percent}}",
+      "view": {
+        "years": "Wg lat",
+        "share": "Udział odsetek"
+      }
+    },
+    "legend": {
+      "principal": "Kapitał",
+      "interest": "Odsetki",
+      "milestone": "Kamień milowy"
+    },
+    "milestones": {
+      "cross": "Kapitał wyprzedza odsetki",
+      "half": "Połowa długu spłacona",
+      "year": "rok {{year}}"
+    },
+    "years_one": "{{count}} rok",
+    "years_few": "{{count}} lata",
+    "years_many": "{{count}} lat",
+    "years_other": "{{count}} roku",
+    "payments_one": "{{count}} rata",
+    "payments_few": "{{count}} raty",
+    "payments_many": "{{count}} rat",
+    "payments_other": "{{count}} raty",
+    "stats": {
+      "totalPaid": "Zapłacisz łącznie",
+      "totalInterest": "Odsetki łącznie",
+      "totalInterestNote": "{{percent}} pożyczonej kwoty",
+      "withExtra": "Z nadpłatą",
+      "withExtraNote": "zaoszczędzone odsetki · czas spłaty {{short}} zamiast {{long}}",
+      "firstShare": "Udział odsetek w pierwszej racie",
+      "firstShareNote": "w ostatniej {{percent}}"
+    },
+    "table": {
+      "title": "Harmonogram spłat",
+      "subYears": "Sumy za rok · bez nadpłat",
+      "subPeriods": "Poszczególne raty · bez nadpłat",
+      "granularity": {
+        "years": "Rocznie"
+      },
+      "year": "Rok",
+      "period": "Okres",
+      "payments": "Raty",
+      "principal": "Kapitał",
+      "interest": "Odsetki",
+      "balance": "Pozostały dług",
+      "footer": "{{shown}} z {{total}} wierszy",
+      "showAll": "Pokaż cały harmonogram",
+      "showLess": "Pokaż tylko początek",
+      "periodLabel": "{{year}} · okres {{n}}"
+    },
+    "empty": "Wpisz kwotę kredytu, okres i oprocentowanie."
+  },
+  "estate": {
+    "title": "Zwrot z inwestycji w nieruchomość",
+    "subtitle": "Oceń nieruchomość jako całą inwestycję: czynsz i przepływy pieniężne, spłatę kredytu, wzrost ceny i zysk z przyszłej sprzedaży.",
+    "eyebrow": "Kalkulator",
+    "status": "Liczone lokalnie, nic nie jest zapisywane",
+    "prefillNoRate": "Nieruchomość ma kwotę w walucie bez kursu wymiany, więc nie została wczytana. Kalkulator pokazuje przykładowe wartości.",
+    "actions": {
+      "loadProperty": "Wczytaj z moich nieruchomości"
+    },
+    "yearsUnit": "lat",
+    "years_one": "{{count}} rok",
+    "years_few": "{{count}} lata",
+    "years_many": "{{count}} lat",
+    "years_other": "{{count}} roku",
+    "purchase": {
+      "title": "Zakup",
+      "price": "Cena zakupu",
+      "loan": "Kwota kredytu",
+      "years": "Okres",
+      "rate": "Oprocentowanie",
+      "equity": "Wkład własny",
+      "ltv": "LTV",
+      "payment": "Rata miesięczna"
+    },
+    "rent": {
+      "title": "Wynajem",
+      "rent": "Oczekiwany czynsz miesięczny",
+      "costs": "Koszty miesięczne",
+      "vacancy": "Pustostany",
+      "vacancyUnit": "mies./rok",
+      "hint": "Koszty: utrzymanie, podatek, ubezpieczenie, fundusz remontowy."
+    },
+    "projection": {
+      "title": "Prognoza",
+      "rentGrowth": "Wzrost czynszu",
+      "costsGrowth": "Wzrost kosztów",
+      "priceGrowth": "Wzrost ceny",
+      "perYear": "%/rok",
+      "years": "Okres posiadania",
+      "oneTime": "Koszty jednorazowe"
+    },
+    "sale": {
+      "title_one": "Sprzedaż po {{count}} roku",
+      "title_few": "Sprzedaż po {{count}} latach",
+      "title_many": "Sprzedaż po {{count}} latach",
+      "title_other": "Sprzedaż po {{count}} roku",
+      "finalPrice": "Cena końcowa",
+      "remainingLoan": "Pozostały kredyt",
+      "repaid": "Spłacony kapitał",
+      "cumulative": "Skumulowane przepływy pieniężne",
+      "equity": "Twój udział przy sprzedaży",
+      "totalReturn": "Całkowity zwrot",
+      "pa": "{{percent}} rocznie",
+      "formula": "Zwrot = (cena końcowa − pozostały kredyt − wkład własny + skumulowane przepływy pieniężne) / wkład własny. Przed podatkami i kosztami sprzedaży."
+    },
+    "hero": {
+      "label": "Całkowity zwrot z twojego wkładu",
+      "value": "{{percent}} rocznie",
+      "total": "łącznie {{percent}} · okres: {{years}}",
+      "components": "przepływy {{cashflow}} · spłata kapitału · wzrost ceny {{growth}}",
+      "cashflow": "Przepływy netto",
+      "cashflowNote": "miesięcznie w roku 1 · brutto {{gross}}"
+    },
+    "legend": {
+      "equity": "Twój udział (wartość − kredyt + przepływy)",
+      "band": "Wzrost ceny ± 1 pp",
+      "invested": "Zainwestowany kapitał",
+      "milestone": "Kamień milowy"
+    },
+    "chart": {
+      "purchase": "Zakup",
+      "tipRow": "{{year}} · wartość {{value}} · kredyt {{loan}} · skumulowane przepływy {{cumulative}}",
+      "tipStart": "{{year}} · zainwestowany kapitał {{invested}}"
+    },
+    "milestones": {
+      "positive": "Dodatnie roczne przepływy pieniężne",
+      "positiveLine": "od {{year}}",
+      "half": "Połowa kredytu spłacona",
+      "halfLine": "rok {{year}}",
+      "sale": "Sprzedaż",
+      "saleLine": "{{year}} · cena {{price}} · kredyt {{loan}}"
+    },
+    "stats": {
+      "equity": "Wkład własny",
+      "equityNote": "{{equity}} + koszty jednorazowe {{once}}",
+      "grossYield": "Stopa najmu brutto",
+      "grossYieldNote": "roczny czynsz / cena zakupu",
+      "cashflow": "Roczne przepływy netto",
+      "cashflowNote": "w roku 1 · {{percent}} wkładu własnego",
+      "saleGain": "Zysk ze sprzedaży",
+      "saleGainNote": "cena − kredyt − wkład własny · horyzont: {{years}}"
+    },
+    "table": {
+      "title": "Podsumowanie roczne",
+      "sub": "Czynsz i koszty rosną w podanym tempie, rata jest stała",
+      "year": "Rok",
+      "rent": "Czynsz",
+      "costs": "Koszty",
+      "payments": "Raty",
+      "cashflow": "CF netto",
+      "balance": "Pozostały kredyt",
+      "value": "Wartość",
+      "footer": "{{years}} · skumulowane przepływy netto {{cumulative}}",
+      "vacancyNote": "Pustostany są odejmowane od czynszu"
+    },
+    "empty": "Wpisz cenę zakupu i czynsz."
+  }
+}

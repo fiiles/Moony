@@ -1,0 +1,188 @@
+{
+  "annuity": {
+    "title": "等额还款计算器",
+    "subtitle": "计算任意贷款的还款额、总利息和还款计划，数值随输入实时更新。",
+    "eyebrow": "计算器",
+    "status": "在本地计算，不保存任何内容",
+    "actions": {
+      "loadLoan": "从我的贷款载入",
+      "export": "导出"
+    },
+    "form": {
+      "title": "贷款参数",
+      "amount": "贷款金额",
+      "years": "期限",
+      "yearsUnit": "年",
+      "rate": "年利率",
+      "frequency": "还款频率",
+      "frequencies": {
+        "monthly": "每月",
+        "quarterly": "每季度",
+        "semiAnnually": "每半年",
+        "annually": "每年"
+      },
+      "extra": "每年额外还款",
+      "optional": "可选",
+      "extraHint": "每年在常规还款之外追加一次，无违约金。"
+    },
+    "insight": {
+      "summary": "<b>每年额外还款 {{extra}}</b>，可将贷款期限缩短 {{years}}，并节省 <b>{{saving}}</b> 利息。下方的还款计划显示的是不含额外还款的方案。",
+      "noExtra": "输入额外还款金额，即可查看能节省多少年限和利息。"
+    },
+    "hero": {
+      "payment": {
+        "monthly": "每月还款额",
+        "quarterly": "每季度还款额",
+        "semiAnnually": "每半年还款额",
+        "annually": "每年还款额"
+      },
+      "total": "合计 {{amount}}",
+      "interestShare": "其中利息 {{amount}} · {{percent}}",
+      "view": {
+        "years": "按年",
+        "share": "利息占比"
+      }
+    },
+    "legend": {
+      "principal": "本金",
+      "interest": "利息",
+      "milestone": "里程碑"
+    },
+    "milestones": {
+      "cross": "本金超过利息",
+      "half": "已还清一半债务",
+      "year": "第 {{year}} 年"
+    },
+    "years_other": "{{count}} 年",
+    "payments_other": "{{count}} 期",
+    "stats": {
+      "totalPaid": "您共需支付",
+      "totalInterest": "总利息",
+      "totalInterestNote": "占借款金额的 {{percent}}",
+      "withExtra": "加上额外还款",
+      "withExtraNote": "节省的利息 · {{short}}还清，而非 {{long}}",
+      "firstShare": "首期还款的利息占比",
+      "firstShareNote": "最后一期为 {{percent}}"
+    },
+    "table": {
+      "title": "还款计划",
+      "subYears": "按年合计 · 不含额外还款",
+      "subPeriods": "每期还款 · 不含额外还款",
+      "granularity": {
+        "years": "按年"
+      },
+      "year": "年份",
+      "period": "期数",
+      "payments": "还款",
+      "principal": "本金",
+      "interest": "利息",
+      "balance": "剩余债务",
+      "footer": "共 {{total}} 行，显示 {{shown}} 行",
+      "showAll": "显示完整计划",
+      "showLess": "仅显示开头部分",
+      "periodLabel": "{{year}} · 第 {{n}} 期"
+    },
+    "empty": "请输入贷款金额、期限和利率。"
+  },
+  "estate": {
+    "title": "房产投资回报",
+    "subtitle": "将房产作为整体投资来评估：租金与现金流、贷款偿还、价格增长以及未来出售的收益。",
+    "eyebrow": "计算器",
+    "status": "在本地计算，不保存任何内容",
+    "prefillNoRate": "该房产有一笔金额所用的货币没有汇率，因此未载入。计算器显示的是示例数值。",
+    "actions": {
+      "loadProperty": "从我的房产载入"
+    },
+    "yearsUnit": "年",
+    "years_other": "{{count}} 年",
+    "purchase": {
+      "title": "购入",
+      "price": "购入价格",
+      "loan": "贷款金额",
+      "years": "期限",
+      "rate": "利率",
+      "equity": "自有资金",
+      "ltv": "LTV",
+      "payment": "月供"
+    },
+    "rent": {
+      "title": "出租",
+      "rent": "预期月租金",
+      "costs": "月度费用",
+      "vacancy": "空置",
+      "vacancyUnit": "个月/年",
+      "hint": "费用：维护、税费、保险、维修基金。"
+    },
+    "projection": {
+      "title": "预测",
+      "rentGrowth": "租金增长",
+      "costsGrowth": "费用增长",
+      "priceGrowth": "价格增长",
+      "perYear": "%/年",
+      "years": "持有期",
+      "oneTime": "一次性费用"
+    },
+    "sale": {
+      "title_other": "{{count}} 年后出售",
+      "finalPrice": "最终价格",
+      "remainingLoan": "剩余贷款",
+      "repaid": "已还本金",
+      "cumulative": "累计现金流",
+      "equity": "出售时您的份额",
+      "totalReturn": "总回报",
+      "pa": "{{percent}} 年化",
+      "formula": "回报 =（最终价格 − 剩余贷款 − 自有资金 + 累计现金流）/ 自有资金。未计税费和出售成本。"
+    },
+    "hero": {
+      "label": "自有资金的总回报",
+      "value": "每年 {{percent}}",
+      "total": "{{years}}合计 {{percent}}",
+      "components": "现金流 {{cashflow}} · 本金偿还 · 价格增长 {{growth}}",
+      "cashflow": "净现金流",
+      "cashflowNote": "第 1 年每月 · 毛额 {{gross}}"
+    },
+    "legend": {
+      "equity": "您的份额（价值 − 贷款 + 现金流）",
+      "band": "价格增长 ± 1 个百分点",
+      "invested": "投入资金",
+      "milestone": "里程碑"
+    },
+    "chart": {
+      "purchase": "购入",
+      "tipRow": "{{year}} · 价值 {{value}} · 贷款 {{loan}} · 累计现金流 {{cumulative}}",
+      "tipStart": "{{year}} · 投入资金 {{invested}}"
+    },
+    "milestones": {
+      "positive": "年度现金流转正",
+      "positiveLine": "自 {{year}} 起",
+      "half": "已还清一半贷款",
+      "halfLine": "第 {{year}} 年",
+      "sale": "出售",
+      "saleLine": "{{year}} · 价格 {{price}} · 贷款 {{loan}}"
+    },
+    "stats": {
+      "equity": "自有资金",
+      "equityNote": "{{equity}} + 一次性费用 {{once}}",
+      "grossYield": "租金毛收益率",
+      "grossYieldNote": "年租金 / 购入价格",
+      "cashflow": "年度净现金流",
+      "cashflowNote": "第 1 年 · 占自有资金的 {{percent}}",
+      "saleGain": "出售收益",
+      "saleGainNote": "价格 − 贷款 − 自有资金 · {{years}}后"
+    },
+    "table": {
+      "title": "年度汇总",
+      "sub": "租金和费用按给定增长率增长，还款额固定",
+      "year": "年份",
+      "rent": "租金",
+      "costs": "费用",
+      "payments": "还款",
+      "cashflow": "净现金流",
+      "balance": "剩余贷款",
+      "value": "价值",
+      "footer": "{{years}} · 累计净现金流 {{cumulative}}",
+      "vacancyNote": "空置期已从租金中扣除"
+    },
+    "empty": "请输入购入价格和租金。"
+  }
+}

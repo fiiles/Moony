@@ -1,0 +1,795 @@
+{
+  "title": "Akcje i ETF-y",
+  "subtitle": "Twoje długoterminowe pozycje w jednym miejscu.",
+  "loading": "Wczytywanie akcji...",
+  "empty": {
+    "title": "Brak pozycji",
+    "description": "Dodaj pierwszą akcję lub ETF albo zaimportuj transakcje z pliku CSV od brokera (data, typ, ticker, ilość, cena, waluta)."
+  },
+  "addInvestment": "Dodaj inwestycję",
+  "refreshPrices": "Odśwież ceny",
+  "refreshing": "Odświeżanie...",
+  "importCSV": "Importuj CSV",
+  "summary": {
+    "totalValue": "Wartość portfela",
+    "totalGainLoss": "Niezrealizowany zysk/strata",
+    "unrealizedGain": "Niezrealizowany zysk",
+    "unrealizedLoss": "Niezrealizowana strata",
+    "realizedGain": "Zrealizowany zysk",
+    "realizedLoss": "Zrealizowana strata",
+    "estimatedDividend": "Szacunek dywidendy",
+    "topPerformer": "Najlepszy wynik",
+    "basedOnLastYear": "Na podstawie dywidend z zeszłego roku",
+    "lastUpdated": "Ostatnia aktualizacja: {{date}}",
+    "realizedGainLoss": "Zrealizowany zysk/strata",
+    "positions_one": "{{count}} pozycja",
+    "positions_few": "{{count}} pozycje",
+    "positions_many": "{{count}} pozycji",
+    "positions_other": "{{count}} pozycji",
+    "updatedToday": "zaktualizowano dziś",
+    "updatedOn": "zaktualizowano {{date}}",
+    "notUpdated": "ceny jeszcze nie pobrane",
+    "vsInvestedPct": "{{percent}} względem zainwestowanych",
+    "realizedNote": "zrealizowano {{amount}}",
+    "next12Months": "w następnych 12 miesiącach",
+    "topPosition": "Najlepsza pozycja",
+    "overallPct": "{{percent}} ogółem",
+    "noPositions": "brak otwartej pozycji"
+  },
+  "table": {
+    "title": "Pozycje",
+    "search": "Szukaj po nazwie lub tickerze",
+    "investment": "Inwestycja",
+    "quantity": "Ilość",
+    "avgCost": "Średnia cena",
+    "marketPrice": "Cena rynkowa",
+    "marketValue": "Wartość",
+    "totalGainLoss": "Niezrealizowany zysk/strata",
+    "estDividend": "Szac. dywidenda",
+    "actions": "Akcje",
+    "noHoldings": "Nie znaleziono pozycji. Dodaj pierwszą akcję, aby zacząć.",
+    "showZeroPositions": "Pokaż pozycje zerowe",
+    "hideZeroPositions": "Ukryj zerowe",
+    "return": "Zwrot",
+    "dividend": "Dywidenda",
+    "unit": "szt.",
+    "realized": "zrealizowano {{amount}}",
+    "noResults": {
+      "title": "Nic nie znaleziono",
+      "description": "Spróbuj innej nazwy lub tickera.",
+      "zeroHidden": "Spróbuj innej nazwy lub tickera. Pozycje zerowe są ukryte."
+    },
+    "footer": {
+      "count_one": "{{count}} pozycja",
+      "count_few": "{{count}} pozycje",
+      "count_many": "{{count}} pozycji",
+      "count_other": "{{count}} pozycji",
+      "total": "razem",
+      "largest": "największa pozycja {{percent}} portfela",
+      "rates": "Wartości w {{currency}} po dzisiejszym kursie"
+    },
+    "showClosedPositions": "Pokaż zamknięte pozycje",
+    "hideClosedPositions": "Ukryj zamknięte pozycje",
+    "closedPositionsHint": "Pozycje, których ilość wynosi 0",
+    "manageTags": "Zarządzaj tagami",
+    "noMatches": "Żadna pozycja nie pasuje do „{{query}}”.",
+    "onlyClosedPositions": "Są tu tylko zamknięte pozycje. Włącz „Pokaż zamknięte pozycje”, aby je zobaczyć."
+  },
+  "actions": {
+    "viewTransactions": "Pokaż transakcje",
+    "buy": "Kup",
+    "sell": "Sprzedaj",
+    "updatePrice": "Edytuj cenę",
+    "updateDividend": "Zmień szacunek dywidendy",
+    "delete": "Usuń",
+    "deletePosition": "Usuń pozycję"
+  },
+  "badges": {
+    "manual": "Ręczna"
+  },
+  "tooltips": {
+    "manualPrice": "Ręczne nadpisanie ceny",
+    "manualDividend": "Ręczne nadpisanie dywidendy"
+  },
+  "modals": {
+    "add": {
+      "title": "Dodaj nową akcję",
+      "searchLabel": "Wyszukaj akcję",
+      "searchPlaceholder": "np. AAPL lub Apple",
+      "quantity": "Ilość",
+      "purchasePrice": "Cena zakupu",
+      "purchaseDate": "Data zakupu",
+      "notes": "Notatki"
+    },
+    "buy": {
+      "title": "Dokup akcje",
+      "quantity": "Ilość",
+      "price": "Cena za akcję",
+      "date": "Data zakupu",
+      "fee": "Opłata transakcyjna"
+    },
+    "sell": {
+      "title": "Sprzedaj akcje",
+      "quantityToSell": "Ilość do sprzedaży",
+      "availableQuantity": "Dostępne: {{quantity}} akcji",
+      "price": "Cena sprzedaży za akcję",
+      "date": "Data sprzedaży",
+      "fee": "Opłata transakcyjna"
+    },
+    "updatePrice": {
+      "title": "Zmień cenę ręcznie",
+      "currentPrice": "Aktualna cena",
+      "newPrice": "Nowa cena",
+      "description": "Ustaw ręczne nadpisanie ceny dla tej pozycji."
+    },
+    "updateDividend": {
+      "title": "Zmień szacunek dywidendy",
+      "annualDividend": "Roczna dywidenda na akcję",
+      "description": "Ustaw ręczną roczną dywidendę na akcję dla tej pozycji."
+    },
+    "transactions": {
+      "title": "Historia transakcji",
+      "noTransactions": "Nie znaleziono transakcji"
+    },
+    "manualFormula": "Wzór: {{value}} × {{quantity}} akcji"
+  },
+  "confirmDelete": {
+    "title": "Usunąć pozycję?",
+    "description": "{{name}} i wszystkie jej transakcje zostaną usunięte na zawsze. Tej operacji nie można cofnąć."
+  },
+  "modal": {
+    "add": {
+      "title": "Dodaj inwestycję",
+      "description": "Nowa pozycja pojawi się w tabeli i zostanie wyceniona po cenie rynkowej.",
+      "companyDetails": "Dane spółki",
+      "companyName": "Nazwa",
+      "ticker": "Ticker",
+      "financialDetails": "Dane finansowe",
+      "pricePerShare": "Cena za akcję",
+      "quantity": "Ilość",
+      "selectTicker": "Wybierz ticker",
+      "multipleResults": "Znaleziono wiele wyników. Wybierz właściwy symbol tickera:",
+      "noTickerFound": "Nie znaleziono symboli tickerów dla tej nazwy spółki",
+      "searchError": "Nie udało się wyszukać symbolu tickera",
+      "selected": "Wybrano",
+      "search": "Szukaj w Yahoo Finance",
+      "searchHint": "Przeszukuje Yahoo Finance; jeśli nic nie znajdzie, wpisz nazwę samodzielnie.",
+      "purchaseDate": "Data zakupu",
+      "searchByName": "Szukaj po nazwie spółki",
+      "searchByTicker": "Szukaj po tickerze",
+      "searching": "Wyszukiwanie..."
+    },
+    "buy": {
+      "titleNamed": "Kup {{name}}",
+      "descriptionFor": "Zapisz transakcję zakupu dla {{ticker}}.",
+      "quantity": "Ilość",
+      "pricePerShare": "Cena za akcję",
+      "addPurchase": "Dodaj zakup"
+    },
+    "sell": {
+      "titleNamed": "Sprzedaj {{name}}",
+      "description": "Zapisz transakcję sprzedaży dla tej pozycji.",
+      "transactionDetails": "Szczegóły transakcji",
+      "pricePerShare": "Cena za akcję",
+      "quantity": "Ilość",
+      "sellInvestment": "Sprzedaj akcje"
+    },
+    "edit": {
+      "title": "Edytuj transakcję ({{type}})",
+      "description": "Zmień szczegóły tej transakcji.",
+      "transactionDetails": "Szczegóły transakcji",
+      "submit": "Zapisz transakcję"
+    }
+  },
+  "toast": {
+    "added": "Inwestycja dodana",
+    "updated": "Akcja zaktualizowana",
+    "deleted": "Pozycja usunięta",
+    "pricesRefreshed_one": "Zaktualizowano {{count}} cenę akcji",
+    "pricesRefreshed_few": "Zaktualizowano {{count}} ceny akcji",
+    "pricesRefreshed_many": "Zaktualizowano {{count}} cen akcji",
+    "pricesRefreshed_other": "Zaktualizowano {{count}} ceny akcji",
+    "pricesRefreshedDescription": "Pobrano najnowsze ceny z Yahoo Finance",
+    "rateLimitReached": "Osiągnięto limit zapytań",
+    "rateLimitDescription": "Zaktualizowano cen: {{updated}}, pozostało: {{remaining}}. Spróbuj ponownie za minutę.",
+    "refreshFailed": "Odświeżanie cen nie powiodło się",
+    "noResults": "Nie znaleziono wyników",
+    "tickerFound": "Ticker znaleziony",
+    "searchFailed": "Wyszukiwanie nie powiodło się",
+    "manualPriceDeleted": "Ręczne nadpisanie ceny usunięte",
+    "manualDividendDeleted": "Ręczne nadpisanie dywidendy usunięte"
+  },
+  "chart": {
+    "title": "Wartość portfela w czasie",
+    "positionTitle": "Wartość pozycji w czasie",
+    "bought": "Kupiono",
+    "sold": "Sprzedano",
+    "subtitle": "Wraz z wpłatami i ruchem rynku.",
+    "legend": {
+      "value": "Wartość",
+      "buy": "Zakup",
+      "sell": "Sprzedaż"
+    },
+    "events": {
+      "buy": "Kupiono {{tickers}}",
+      "sell": "Sprzedano {{tickers}}",
+      "cluster_one": "{{count}} transakcja",
+      "cluster_few": "{{count}} transakcje",
+      "cluster_many": "{{count}} transakcji",
+      "cluster_other": "{{count}} transakcji"
+    }
+  },
+  "detail": {
+    "chartFxMissing": "Na wykresie lub w linii zainwestowanych brakuje niektórych dni: brak kursu wymiany dla {{currencies}}.",
+    "backToList": "Wróć do akcji",
+    "notFound": "Nie znaleziono pozycji",
+    "deleted": "Pozycja usunięta",
+    "transactionDeleted": "Transakcja usunięta",
+    "transactionUpdated": "Transakcja zaktualizowana",
+    "pricesRefreshed": "Ceny odświeżone",
+    "manualPrice": "Ręczne nadpisanie ceny",
+    "refresh": "Odśwież",
+    "currentValue": "Wartość bieżąca",
+    "shares": "akcji",
+    "totalInvested": "Zainwestowano łącznie",
+    "avgPrice": "śr.",
+    "unrealizedPnL": "Niezrealizowany zysk/strata",
+    "dividendYield": "Stopa dywidendy",
+    "year": "rok",
+    "noDividend": "brak danych o dywidendzie",
+    "manual": "ręcznie",
+    "updatePrice": "Zmień cenę",
+    "updateDividend": "Zmień dywidendę",
+    "tabs": {
+      "position": "Pozycja",
+      "transactions": "Transakcje"
+    },
+    "position": {
+      "title": "Szczegóły pozycji",
+      "quantity": "Ilość",
+      "avgPrice": "Średnia cena",
+      "currentPrice": "Aktualna cena",
+      "priceUpdated": "Cena zaktualizowana"
+    },
+    "companyInfo": {
+      "title": "Informacje o spółce",
+      "sectorIndustry": "Sektor · branża",
+      "peRatio": "Wskaźnik C/Z",
+      "forwardPe": "Prognozowany C/Z",
+      "marketCap": "Kapitalizacja rynkowa",
+      "beta": "Beta",
+      "fiftyTwoWeekHigh": "Maks. 52 tyg.",
+      "fiftyTwoWeekLow": "Min. 52 tyg.",
+      "dividendRate": "Dywidenda roczna",
+      "dividendYield": "Stopa dywidendy",
+      "etfNote": "Yahoo Finance nie podaje tych danych dla ETF-ów",
+      "noData": "Yahoo Finance nie podaje danych o spółce dla tej akcji",
+      "unavailable": "Nie udało się wczytać danych o spółce",
+      "retry": "Spróbuj ponownie"
+    },
+    "transactions": {
+      "title": "Historia transakcji",
+      "date": "Data",
+      "type": "Typ",
+      "quantity": "Ilość",
+      "originalPrice": "Cena oryginalna",
+      "price": "Cena",
+      "total": "Razem",
+      "empty": "Brak transakcji"
+    },
+    "confirmDelete": {
+      "title": "Usunąć pozycję?",
+      "description": "{{name}} ({{ticker}}) i wszystkie jej transakcje zostaną usunięte na zawsze. Tej operacji nie można cofnąć."
+    },
+    "confirmDeleteTransaction": {
+      "title": "Usunąć transakcję?",
+      "description": "Transakcja ({{type}}: {{quantity}} × {{ticker}}, {{date}}, {{amount}}) zostanie usunięta na stałe. Tej operacji nie można cofnąć."
+    },
+    "editName": {
+      "title": "Edytuj nazwę",
+      "description": "Nowa nazwa pojawi się na liście, w szczegółach i w przeglądzie.",
+      "label": "Nazwa",
+      "save": "Zapisz nazwę"
+    },
+    "nameUpdated": "Nazwa spółki zaktualizowana",
+    "openInMonitor": "Otwórz w Monitorze akcji",
+    "dividendYieldTooltip": "Szacowane roczne dywidendy podzielone przez bieżącą wartość rynkową tej pozycji.",
+    "priceNative": "Cena ({{currency}})",
+    "priceNativeMixed": "Cena (waluta oryginalna)",
+    "priceConverted": "Cena ({{currency}}, kurs z dnia)",
+    "sharesCount_one": "{{count}} akcja",
+    "sharesCount_few": "{{count}} akcje",
+    "sharesCount_many": "{{count}} akcji",
+    "sharesCount_other": "{{count}} akcji",
+    "avgBuyPrice": "średnia cena zakupu {{price}}",
+    "lastBuy": "ostatni zakup {{date}}",
+    "positionValue": "Wartość pozycji",
+    "sinceBuyPct": "{{percent}} od zakupu",
+    "currentPrice": "Aktualna cena",
+    "invested": "Zainwestowano",
+    "avgShort": "średnio {{price}}",
+    "unrealized": "Niezrealizowany zwrot",
+    "vsInvestedPct": "{{percent}} względem zainwestowanych",
+    "realized": "Zrealizowany zwrot",
+    "sells_one": "{{count}} sprzedaż",
+    "sells_few": "{{count}} sprzedaże",
+    "sells_many": "{{count}} sprzedaży",
+    "sells_other": "{{count}} sprzedaży",
+    "noSells": "brak sprzedaży",
+    "dividends": "Dywidendy",
+    "dividendNote": "szacunek rocznie · stopa {{percent}}",
+    "refreshPrices": "Odśwież ceny",
+    "buy": "Kup",
+    "sell": "Sprzedaj",
+    "about": "O spółce",
+    "source": "Yahoo Finance",
+    "deleteTransaction": "Usuń transakcję",
+    "menu": {
+      "editPrice": "Edytuj cenę",
+      "editDividend": "Edytuj szacunek dywidendy",
+      "editName": "Edytuj nazwę"
+    },
+    "status": {
+      "pricesUpdated": "Ceny zaktualizowane {{when}}",
+      "todayAt": "dziś o {{time}}"
+    },
+    "legend": {
+      "value": "Wartość pozycji",
+      "invested": "zainwestowane",
+      "investedLong": "Zainwestowane (cena zakupu)",
+      "return": "zwrot",
+      "buy": "Zakup",
+      "sell": "Sprzedaż"
+    },
+    "events": {
+      "buy": "Zakup {{quantity}} po {{price}}",
+      "sell": "Sprzedaż {{quantity}} po {{price}}",
+      "total": "razem {{amount}}",
+      "cluster_one": "{{count}} zdarzenie",
+      "cluster_few": "{{count}} zdarzenia",
+      "cluster_many": "{{count}} zdarzeń",
+      "cluster_other": "{{count}} zdarzenia"
+    },
+    "ledger": {
+      "sub_one": "{{count}} zdarzenie · najedź na wiersz, aby podświetlić go na wykresie",
+      "sub_few": "{{count}} zdarzenia · najedź na wiersz, aby podświetlić go na wykresie",
+      "sub_many": "{{count}} zdarzeń · najedź na wiersz, aby podświetlić go na wykresie",
+      "sub_other": "{{count}} zdarzenia · najedź na wiersz, aby podświetlić go na wykresie",
+      "filter": {
+        "all": "Wszystkie",
+        "buys": "Zakupy",
+        "sells": "Sprzedaże"
+      },
+      "footer_one": "{{count}} zdarzenie",
+      "footer_few": "{{count}} zdarzenia",
+      "footer_many": "{{count}} zdarzeń",
+      "footer_other": "{{count}} zdarzenia",
+      "since": "od {{date}}",
+      "rates": "Ceny w {{currency}} po kursie z dnia transakcji"
+    }
+  },
+  "importWizard": {
+    "title": "Importuj transakcje z CSV",
+    "lead": "Eksport od brokera lub twoja własna tabela. Wykrywamy duplikaty, a przed zapisaniem czegokolwiek zobaczysz, co zostanie zaimportowane.",
+    "steps": {
+      "file": "Plik",
+      "mapping": "Kolumny",
+      "review": "Przegląd",
+      "done": "Gotowe"
+    },
+    "next": "Przejrzyj transakcje",
+    "importButton_one": "Importuj {{count}} transakcję",
+    "importButton_few": "Importuj {{count}} transakcje",
+    "importButton_many": "Importuj {{count}} transakcji",
+    "importButton_other": "Importuj {{count}} transakcji",
+    "importButtonIdle": "Importuj",
+    "unsupportedFile": "Można importować tylko pliki .csv i .txt. Najpierw zapisz plik Excel lub inny arkusz jako CSV.",
+    "direction": {
+      "buy": "Zakup",
+      "sell": "Sprzedaż"
+    },
+    "roles": {
+      "date": "Data",
+      "direction": "Kierunek",
+      "type": "Typ",
+      "symbol": "Symbol",
+      "isin": "ISIN",
+      "name": "Nazwa",
+      "quantity": "Ilość",
+      "price": "Cena za akcję",
+      "quantityPrice": "Ilość i cena",
+      "currency": "Waluta",
+      "externalId": "ID transakcji"
+    },
+    "file": {
+      "sourceHeading": "Skąd pochodzi eksport",
+      "savedTag": "zapisany",
+      "howToExport": "Jak wyeksportować z: {{name}}",
+      "dropTitle": "Upuść tutaj plik z transakcjami",
+      "dropActive": "Zwolnij plik, aby go otworzyć",
+      "or": "lub",
+      "choose": "Wybierz plik…",
+      "dropNote": ".csv lub .txt · pliki Excel najpierw zapisz jako CSV",
+      "sample": "Pobierz przykładowy plik",
+      "sampleSaved": "Przykładowy plik zapisany",
+      "sampleFailed": "Nie udało się zapisać przykładowego pliku",
+      "helpFailed": "Nie udało się otworzyć strony pomocy"
+    },
+    "sources": {
+      "xtb": {
+        "name": "XTB",
+        "guideTitle": "Jak pobrać eksport",
+        "guide": "W xStation otwórz Historia konta → Operacje gotówkowe, wybierz okres zaczynający się od pierwszej transakcji, kliknij Eksport i wybierz format CSV.",
+        "note": "Plik zawiera też wpłaty, dywidendy i opłaty – importowane są tylko zakupy i sprzedaże akcji i ETF-ów. Walutę uzupełniamy na podstawie giełdy."
+      },
+      "trading212": {
+        "name": "Trading 212",
+        "guideTitle": "Jak pobrać eksport",
+        "guide": "W aplikacji otwórz Historia → ikonę eksportu, zaznacz Zlecenia, wybierz okres i pobierz plik CSV.",
+        "note": "Jeden eksport obejmuje najwyżej 12 miesięcy – wgraj kilka plików, duplikaty rozpoznajemy."
+      },
+      "degiro": {
+        "name": "Degiro",
+        "guideTitle": "Jak pobrać eksport",
+        "guide": "Na stronie internetowej otwórz Aktywność → Transakcje, ustaw okres zaczynający się od pierwszej transakcji i kliknij Eksport → CSV. Nie używaj wyciągu z konta (Account statement)."
+      },
+      "ibkr": {
+        "name": "Interactive Brokers",
+        "guideTitle": "Jak pobrać eksport",
+        "guide": "W Client Portal otwórz Performance & Reports → Flex Queries, utwórz Activity Flex Query z sekcją Trades i polami Symbol, ISIN, TradeDate, Buy/Sell, Quantity, TradePrice, CurrencyPrimary, AssetClass i TradeID, format CSV, i uruchom je dla całego okresu."
+      },
+      "moony": {
+        "name": "Twoja własna tabela (szablon Moony)",
+        "guideTitle": "Jak wypełnić tabelę",
+        "guide": "Pobierz szablon, wypełnij go w Excelu lub innym arkuszu i zapisz jako CSV.",
+        "excel": "Plik zapisany przez Excel w dowolnym języku działa bez zmian – wykrywamy separator, kodowanie i znak dziesiętny. Własny eksport Moony (Akcje → Eksport) ma ten sam format.",
+        "columns": {
+          "date": {
+            "label": "Data",
+            "hint": "2024-01-15 lub 15.01.2024"
+          },
+          "type": {
+            "label": "Typ",
+            "hint": "buy / sell lub nákup / prodej"
+          },
+          "symbol": {
+            "label": "Symbol",
+            "hint": "jak w Yahoo Finance, np. AAPL, VWCE.DE"
+          },
+          "quantity": {
+            "label": "Ilość",
+            "hint": "liczba akcji, np. 10 lub 0.5"
+          },
+          "price": {
+            "label": "Cena za akcję",
+            "hint": "w walucie transakcji, np. 180.50"
+          },
+          "currency": {
+            "label": "Waluta",
+            "hint": "np. USD, EUR, CZK"
+          },
+          "name": {
+            "label": "Nazwa",
+            "hint": "opcjonalnie"
+          }
+        }
+      },
+      "custom": {
+        "name": "Inny broker",
+        "guideTitle": "Czego potrzebuje plik",
+        "guide": "Potrzebujemy jednego wiersza na transakcję: data, kierunek, symbol lub ISIN, ilość, cena za akcję i waluta. Kolumny przypiszesz w następnym kroku, a Moony zapamięta przypisanie."
+      },
+      "saved": {
+        "title": "Zapisany format",
+        "guide": "Plik z takimi samymi kolumnami jest rozpoznawany sam, a przypisanie jest używane ponownie.",
+        "delete": "Usuń format",
+        "deleteTitle": "Usunąć ten format?",
+        "deleteDescription": "Format „{{name}}” nie będzie już rozpoznawany. Już zaimportowane transakcje się nie zmienią."
+      },
+      "savedFallback": "Zapisany format"
+    },
+    "recent": {
+      "title": "Ostatnie importy",
+      "undo": "Cofnij",
+      "undoFor": "Cofnij import {{file}}",
+      "trades_one": "{{count}} transakcja",
+      "trades_few": "{{count}} transakcje",
+      "trades_many": "{{count}} transakcji",
+      "trades_other": "{{count}} transakcji",
+      "tradesOf": "{{remaining}} z {{total}} transakcji",
+      "showAll": "Pokaż wszystkie ({{count}})",
+      "showLess": "Pokaż mniej"
+    },
+    "filebar": {
+      "rows_one": "{{count}} wiersz",
+      "rows_few": "{{count}} wiersze",
+      "rows_many": "{{count}} wierszy",
+      "rows_other": "{{count}} wiersza",
+      "detected": "rozpoznano",
+      "format": "Separator „{{delimiter}}” · kodowanie {{encoding}}",
+      "tab": "tabulator"
+    },
+    "mismatch": {
+      "other": "Wybrano {{chosen}}, ale plik wygląda jak {{detected}}. Użyliśmy przypisania dla {{detected}}.",
+      "unknown": "Plik nie pasuje do formatu {{chosen}}. Przypisz kolumny ręcznie."
+    },
+    "mapping": {
+      "selectColumn": "Wybierz kolumnę",
+      "columnNone": "— nieużywana —",
+      "blankColumn": "Kolumna {{position}}",
+      "blankColumnAfter": "Kolumna {{position}} (po „{{after}}”)",
+      "example": "Np. {{values}}",
+      "summary": {
+        "title": "Przypisanie: {{source}}",
+        "hint": "Gotowe przypisanie tego formatu. Zwykle możesz po prostu kontynuować.",
+        "sign": "znak ilości",
+        "instrument": "z giełdy",
+        "comment": "{{column}} (z tekstu)",
+        "values": "Wartości w kolumnie {{column}}",
+        "more_one": "+{{count}} więcej",
+        "more_few": "+{{count}} więcej",
+        "more_many": "+{{count}} więcej",
+        "more_other": "+{{count}} więcej"
+      },
+      "edit": "Edytuj przypisanie",
+      "backToPreset": "Wróć do przypisania {{source}}",
+      "required": "Kolumny wymagane",
+      "optional": "Kolumny opcjonalne",
+      "direction": "Kierunek transakcji",
+      "format": "Format",
+      "symbolOrIsin": "Wystarczy symbol lub ISIN. Z ISIN znajdziemy symbol w Yahoo Finance.",
+      "currencyMode": {
+        "column": "Z kolumny",
+        "fixed": "Jedna waluta",
+        "instrument": "Z giełdy"
+      },
+      "currencyColumn": "Kolumna waluty",
+      "currencyFixed": "Waluta całego pliku",
+      "currencyFixedHint": "Każda transakcja w pliku jest w tej walucie.",
+      "currencyInstrumentHint": "Walutę uzupełniamy na podstawie giełdy, na której notowany jest instrument.",
+      "directionMode": {
+        "typeColumn": "Z kolumny typu",
+        "quantitySign": "Ze znaku ilości"
+      },
+      "directionSignHint": "Ujemna ilość to sprzedaż, dodatnia to zakup.",
+      "typeColumn": "Kolumna typu",
+      "typeValue": "Wartość",
+      "typeCount": "Wiersze",
+      "typeLine": "Pierwszy wiersz",
+      "typeMeaning": "Znaczenie",
+      "typeTooMany": "Ta kolumna ma zbyt wiele różnych wartości jak na tabelę. Wybierz inną kolumnę lub odczytaj kierunek ze znaku ilości.",
+      "typeNoTrade": "Przypisz co najmniej jedną wartość do zakupu lub sprzedaży, w przeciwnym razie nic nie zostanie zaimportowane.",
+      "typeCommentNote": "W XTB o kierunku decyduje tekst komentarza. Wartości typu decydują tylko o tym, które wiersze są transakcjami.",
+      "action": {
+        "buy": "Zakup",
+        "sell": "Sprzedaż",
+        "skip": "Pomiń"
+      },
+      "externalIdHint": "Pomaga rozpoznawać duplikaty w późniejszych importach.",
+      "dateFormat": "Format daty",
+      "dateFormatChoose": "Wybierz format",
+      "dateFormatAmbiguous": "W tym pliku nie da się rozróżnić kolejności dnia, miesiąca i roku, więc to tylko domysł. Sprawdź daty w podglądzie poniżej lub wybierz format samodzielnie.",
+      "decimalSeparator": "Separator dziesiętny",
+      "decimalAuto": "Wykryj automatycznie ({{separator}})",
+      "decimalComma": "Przecinek (1 234,56)",
+      "decimalDot": "Kropka (1,234.56)",
+      "headerRow": "Wiersz nagłówka",
+      "skipRows": "Pomiń wiersze po nagłówku",
+      "layoutHelp": "Wiersz nagłówka to linia z nazwami kolumn; linie nad nim są ignorowane. Pomijane wiersze to wiersze danych tuż po nagłówku.",
+      "remember": "Zapamiętaj przypisanie dla tego formatu",
+      "rememberHint": "Plik z takimi samymi kolumnami będzie wtedy rozpoznawany sam.",
+      "formatName": "Nazwa formatu",
+      "formatNamePlaceholder": "np. Mój broker",
+      "formatNameRequired": "Wpisz nazwę formatu.",
+      "missing": "Brakuje: {{fields}}",
+      "field": {
+        "date": "data",
+        "dateFormat": "format daty",
+        "symbol": "symbol lub ISIN",
+        "quantity": "ilość",
+        "price": "cena za akcję",
+        "currency": "waluta",
+        "type": "kolumna typu"
+      },
+      "rawData": "Podgląd danych CSV",
+      "rawCounts": "Kolumny: {{columns}} · Wiersze: {{rows}}"
+    },
+    "review": {
+      "incomplete": "Dokończ przypisanie kolumn, aby zobaczyć przegląd.",
+      "loading": "Odczytywanie pliku…",
+      "failed": "Pliku nie można przejrzeć przy tych ustawieniach",
+      "summary": {
+        "willImport": "Do importu: {{count}}",
+        "duplicates": "Duplikaty: {{count}}",
+        "skipped": "Pominięte: {{count}}",
+        "errors": "Błędy: {{count}}"
+      },
+      "feeNote": "Opłaty nie są importowane",
+      "nothingToImport": "Nie ma czego importować: każdy wiersz jest duplikatem, został pominięty lub ma błąd.",
+      "statusNew": "Nowa",
+      "statusSkipped": "Pominięta",
+      "statusError": "Błąd",
+      "statusDuplicate": "Duplikat",
+      "duplicateImportAnyway": "importuj mimo to",
+      "instruments": {
+        "title": "Instrumenty",
+        "security": "Instrument",
+        "currency": "Waluta",
+        "trades": "Transakcje",
+        "status": "Status",
+        "actions": "Akcje",
+        "progress": "Sprawdzanie w Yahoo Finance… {{done}} z {{total}}",
+        "skipVerification": "Pomiń sprawdzanie",
+        "retry": "Sprawdź ponownie",
+        "checking": "Sprawdzanie…",
+        "inFile": "w pliku {{symbol}}",
+        "edit": "Edytuj",
+        "skip": "Pomiń",
+        "include": "Uwzględnij",
+        "editFor": "Edytuj: {{name}}",
+        "skipFor": "Pomiń: {{name}}",
+        "includeFor": "Uwzględnij: {{name}}",
+        "state": {
+          "existing": "Istniejąca pozycja",
+          "new": "Nowa pozycja",
+          "unverified": "Niezweryfikowany",
+          "missingSymbol": "Brak symbolu",
+          "skipped": "Pominięty"
+        },
+        "reason": {
+          "failed": "Yahoo Finance nie odpowiedziało",
+          "notFound": "Nie znaleziono w Yahoo Finance",
+          "unmatched": "Symbolu nie ma wśród znalezionych"
+        },
+        "missingReason": {
+          "enter": "Wpisz symbol ręcznie",
+          "failed": "Yahoo Finance nie odpowiedziało – wpisz symbol ręcznie",
+          "notFound": "Nie znaleziono w Yahoo Finance – wpisz symbol ręcznie"
+        },
+        "positionCurrency": "Pozycja jest prowadzona w {{currency}}",
+        "missingHint_one": "Wpisz symbol dla {{count}} instrumentu albo go pomiń.",
+        "missingHint_few": "Wpisz symbol dla {{count}} instrumentów albo je pomiń.",
+        "missingHint_many": "Wpisz symbol dla {{count}} instrumentów albo je pomiń.",
+        "missingHint_other": "Wpisz symbol dla {{count}} instrumentu albo go pomiń.",
+        "unverifiedHint_one": "{{count}} instrumentu nie udało się zweryfikować. Nadal możesz go zaimportować, ale jego ceny mogą się nie aktualizować.",
+        "unverifiedHint_few": "{{count}} instrumentów nie udało się zweryfikować. Nadal możesz je zaimportować, ale ich ceny mogą się nie aktualizować.",
+        "unverifiedHint_many": "{{count}} instrumentów nie udało się zweryfikować. Nadal możesz je zaimportować, ale ich ceny mogą się nie aktualizować.",
+        "unverifiedHint_other": "{{count}} instrumentu nie udało się zweryfikować. Nadal możesz go zaimportować, ale jego ceny mogą się nie aktualizować."
+      },
+      "rows": {
+        "title": "Wiersze",
+        "line": "Lp.",
+        "date": "Data",
+        "direction": "Kierunek",
+        "symbol": "Symbol",
+        "quantity": "Ilość",
+        "price": "Cena",
+        "currency": "Waluta",
+        "status": "Status",
+        "footer": "Pierwsze {{shown}} z {{total}} wierszy",
+        "footerAll_one": "{{count}} wiersz",
+        "footerAll_few": "{{count}} wiersze",
+        "footerAll_many": "{{count}} wierszy",
+        "footerAll_other": "{{count}} wiersza",
+        "showAll": "Pokaż wszystkie",
+        "showLess": "Pokaż mniej",
+        "none": "Przy tych ustawieniach plik nie ma wierszy.",
+        "truncated": "Tabela pokazuje najwyżej {{shown}} wierszy; liczby powyżej obejmują cały plik."
+      }
+    },
+    "editor": {
+      "apply": "Zastosuj",
+      "searchResults": "Wyniki wyszukiwania w Yahoo Finance",
+      "found": "Znaleziono w Yahoo Finance",
+      "searching": "Wyszukiwanie…",
+      "searchError": "Wyszukiwanie nie powiodło się",
+      "noResults": "Nic nie znaleziono. Spróbuj innej nazwy lub symbolu.",
+      "currencyFromFile": "Z pliku"
+    },
+    "currency": {
+      "gbx": "GBX (pensy, zapisywane jako GBP ÷ 100)"
+    },
+    "result": {
+      "title": "Transakcje zaimportowane",
+      "titleNothing": "Nic nie zostało zaimportowane",
+      "nothing": "Każdy wiersz pliku jest duplikatem, został pominięty lub ma błąd. Szczegóły poniżej.",
+      "summary_one": "{{count}} transakcja od {{from}} do {{to}}.",
+      "summary_few": "{{count}} transakcje od {{from}} do {{to}}.",
+      "summary_many": "{{count}} transakcji od {{from}} do {{to}}.",
+      "summary_other": "{{count}} transakcji od {{from}} do {{to}}.",
+      "summaryCount_one": "Zaimportowano {{count}} transakcję.",
+      "summaryCount_few": "Zaimportowano {{count}} transakcje.",
+      "summaryCount_many": "Zaimportowano {{count}} transakcji.",
+      "summaryCount_other": "Zaimportowano {{count}} transakcji.",
+      "imported": "Zaimportowano",
+      "duplicates": "Duplikaty",
+      "skipped": "Pominięte",
+      "errors": "Błędy",
+      "newPositions": "Nowe pozycje:",
+      "updatedPositions": "Dodano do istniejących:",
+      "moreTickers_one": "+{{count}} więcej",
+      "moreTickers_few": "+{{count}} więcej",
+      "moreTickers_many": "+{{count}} więcej",
+      "moreTickers_other": "+{{count}} więcej",
+      "recalculating": "Przeliczanie historii wartości portfela…",
+      "showDuplicates": "Pokaż duplikaty",
+      "showSkipped": "Pokaż pominięte wiersze",
+      "showErrors": "Pokaż błędy",
+      "line": "Wiersz {{line}}: {{message}}",
+      "whatNext": "Co dalej",
+      "next": {
+        "show": "Pokaż akcje",
+        "showHint": "Nowe i powiększone pozycje są w tabeli.",
+        "showAction": "Pokaż",
+        "tags": "Przypisz tagi",
+        "tagsHint": "Nowe pozycje nie mają jeszcze tagów. Przypisz je w analizie akcji.",
+        "tagsAction": "Przypisz",
+        "another": "Zaimportuj kolejny plik",
+        "anotherHint": "Na przykład z wcześniejszego okresu lub z innego konta.",
+        "anotherAction": "Wybierz plik",
+        "undo": "Cofnij import",
+        "undoHint_one": "Usuwa {{count}} transakcję z tego pliku.",
+        "undoHint_few": "Usuwa {{count}} transakcje z tego pliku.",
+        "undoHint_many": "Usuwa {{count}} transakcji z tego pliku.",
+        "undoHint_other": "Usuwa {{count}} transakcji z tego pliku.",
+        "undoAction": "Cofnij"
+      }
+    },
+    "undone": {
+      "title": "Import cofnięty",
+      "summary_one": "Usunięto {{count}} transakcję z importu „{{file}}”.",
+      "summary_few": "Usunięto {{count}} transakcje z importu „{{file}}”.",
+      "summary_many": "Usunięto {{count}} transakcji z importu „{{file}}”.",
+      "summary_other": "Usunięto {{count}} transakcji z importu „{{file}}”.",
+      "removedPositions": "Usunięte pozycje:"
+    },
+    "undo": {
+      "title": "Cofnąć ten import?",
+      "description_one": "Usuniemy {{count}} transakcję z importu „{{file}}”.",
+      "description_few": "Usuniemy {{count}} transakcje z importu „{{file}}”.",
+      "description_many": "Usuniemy {{count}} transakcji z importu „{{file}}”.",
+      "description_other": "Usuniemy {{count}} transakcji z importu „{{file}}”.",
+      "consequences": "Pozycje pozostawione bez żadnej transakcji są usuwane. Transakcje z tego importu, które później edytowano, także są usuwane.",
+      "confirm": "Cofnij import"
+    },
+    "toast": {
+      "inspectFailed": "Nie udało się odczytać pliku",
+      "importFailed": "Import nie powiódł się",
+      "undone_one": "Import cofnięty: usunięto {{count}} transakcję",
+      "undone_few": "Import cofnięty: usunięto {{count}} transakcje",
+      "undone_many": "Import cofnięty: usunięto {{count}} transakcji",
+      "undone_other": "Import cofnięty: usunięto {{count}} transakcji",
+      "undoFailed": "Nie udało się cofnąć importu",
+      "formatSaved": "Format „{{name}}” zapisany",
+      "formatSaveFailed": "Nie udało się zapamiętać przypisania",
+      "formatDeleted": "Format usunięty",
+      "formatDeleteFailed": "Nie udało się usunąć formatu"
+    },
+    "row": {
+      "notATrade": "To nie jest zakup ani sprzedaż",
+      "zeroQuantity": "Zerowa ilość",
+      "assetClass": "Inna klasa aktywów",
+      "instrumentSkipped": "Instrument jest pominięty",
+      "dateUnparseable": "Nie udało się odczytać daty",
+      "numberUnparseable": "Nie udało się odczytać liczby",
+      "commentUnparseable": "Nie udało się odczytać komentarza",
+      "symbolMissing": "Brak symbolu",
+      "symbolMissingIsin": "Brak symbolu, a ISIN „{{detail}}” jest nieprawidłowy",
+      "tickerInvalid": "Nieprawidłowy symbol",
+      "currencyMissing": "Brak waluty",
+      "currencyInvalid": "Nieprawidłowa waluta",
+      "priceMissing": "Brak ceny",
+      "sellExceedsHoldings": "Sprzedaż przekracza stan posiadania w tym dniu",
+      "sellExceedsHoldingsHeld": "Sprzedaż przekracza stan posiadania w tym dniu (posiadane: {{detail}})",
+      "currencyMismatch": "Waluta różni się od waluty pozycji",
+      "currencyMismatchPosition": "Waluta różni się od waluty pozycji ({{detail}})",
+      "duplicate": "Ta sama transakcja jest już w Moony",
+      "duplicateById": "Transakcja z tym samym ID brokera jest już w Moony",
+      "duplicateSimilar": "Podobna transakcja jest już w Moony: ten sam dzień i ilość, cena w granicach 0,5 %",
+      "cannotParse": "Nie udało się odczytać wiersza",
+      "writeFailed": "Nie udało się zapisać transakcji"
+    }
+  },
+  "eyebrow": "Portfel",
+  "export": "Eksport"
+}

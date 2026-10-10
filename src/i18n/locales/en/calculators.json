@@ -26,9 +26,7 @@
       "extraHint": "Once a year on top of the regular payments, without a penalty."
     },
     "insight": {
-      "extraYearly": "{{extra}} extra a year",
-      "shortens": "shortens the loan by {{years}} and saves",
-      "onInterest": "in interest. The schedule below shows the variant without extra payments.",
+      "summary": "<b>{{extra}} extra a year</b> shortens the loan by {{years}} and saves <b>{{saving}}</b> in interest. The schedule below shows the variant without extra payments.",
       "noExtra": "Enter an extra payment to see how many years and how much interest you save."
     },
     "hero": {

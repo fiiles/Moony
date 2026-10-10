@@ -1,10 +1,11 @@
 /**
  * i18n Configuration
  *
- * Supports English (en) and Czech (cs) languages with namespace-based organization.
+ * The languages of `./languages.ts`, one namespace per domain. English is bundled (it is the
+ * fallback); every other locale is a lazy chunk loaded when the language is first used.
  * Language preference is stored in localStorage for pre-auth state and synced to user profile after login.
  */
-import i18n from 'i18next';
+import i18n, { type BackendModule, type ResourceKey } from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
 import { getFormatters } from '@/lib/format';
@@ -29,32 +30,17 @@ import enCategorization from './locales/en/categorization.json';
 import enStockMonitor from './locales/en/stockMonitor.json';
 import enMilestones from './locales/en/milestones.json';
 
-import csCommon from './locales/cs/common.json';
-import csDashboard from './locales/cs/dashboard.json';
-import csSettings from './locales/cs/settings.json';
-import csAuth from './locales/cs/auth.json';
-import csStocks from './locales/cs/stocks.json';
-import csLoans from './locales/cs/loans.json';
-import csCrypto from './locales/cs/crypto.json';
-import csBonds from './locales/cs/bonds.json';
-import csRealEstate from './locales/cs/realEstate.json';
-import csOtherAssets from './locales/cs/otherAssets.json';
-import csInsurance from './locales/cs/insurance.json';
-import csReports from './locales/cs/reports.json';
-import csCalculators from './locales/cs/calculators.json';
-import csBankAccounts from './locales/cs/bank_accounts.json';
-import csBudgeting from './locales/cs/budgeting.json';
-import csCategorization from './locales/cs/categorization.json';
-import csStockMonitor from './locales/cs/stockMonitor.json';
-import csMilestones from './locales/cs/milestones.json';
+import {
+  LANGUAGES,
+  SUPPORTED_LANGUAGES,
+  getLocaleForLanguage,
+  isSupportedLanguage,
+  matchLanguage,
+  type SupportedLanguage,
+} from './languages';
 
-export const SUPPORTED_LANGUAGES = ['en', 'cs'] as const;
-export type SupportedLanguage = (typeof SUPPORTED_LANGUAGES)[number];
-
-export const LANGUAGE_NAMES: Record<SupportedLanguage, { native: string; english: string }> = {
-  en: { native: 'English', english: 'English (US)' },
-  cs: { native: 'Čeština', english: 'Czech' },
-};
+export { LANGUAGES, SUPPORTED_LANGUAGES, getLocaleForLanguage, isSupportedLanguage };
+export type { SupportedLanguage };
 
 // Namespace definitions for type safety
 export const NAMESPACES = [
@@ -101,42 +87,56 @@ const resources = {
     categorization: enCategorization,
     milestones: enMilestones,
   },
-  cs: {
-    common: csCommon,
-    dashboard: csDashboard,
-    settings: csSettings,
-    auth: csAuth,
-    stocks: csStocks,
-    stockMonitor: csStockMonitor,
-    loans: csLoans,
-    crypto: csCrypto,
-    bonds: csBonds,
-    realEstate: csRealEstate,
-    otherAssets: csOtherAssets,
-    insurance: csInsurance,
-    reports: csReports,
-    calculators: csCalculators,
-    bank_accounts: csBankAccounts,
-    budgeting: csBudgeting,
-    categorization: csCategorization,
-    milestones: csMilestones,
+};
+
+/** Every non-English namespace file, as a lazy chunk. */
+const lazyBundles = import.meta.glob<ResourceKey>(['./locales/*/*.json', '!./locales/en/*.json'], {
+  import: 'default',
+});
+
+/** Reads a language's namespace from its lazy chunk; English never gets here (bundled). */
+const lazyBackend: BackendModule = {
+  type: 'backend',
+  init: () => {},
+  read(language, namespace, callback) {
+    const load = lazyBundles[`./locales/${language}/${namespace}.json`];
+    if (!load) {
+      callback(null, {});
+      return;
+    }
+    load().then(
+      (data) => callback(null, data),
+      (error: Error) => callback(error, null)
+    );
   },
 };
 
-i18n
+// `<html lang>` picks the CJK glyph variants and the `:lang()` typography rules.
+i18n.on('languageChanged', (language) => {
+  if (typeof document !== 'undefined') document.documentElement.lang = language;
+});
+
+/** Resolves once the initial language is loaded; `main.tsx` renders after it. */
+export const i18nReady = i18n
+  .use(lazyBackend)
   .use(LanguageDetector)
   .use(initReactI18next)
   .init({
     resources,
+    partialBundledLanguages: true,
+    supportedLngs: [...SUPPORTED_LANGUAGES],
+    load: 'currentOnly',
     fallbackLng: 'en',
     defaultNS: 'common',
     ns: NAMESPACES,
 
-    // Language detection options
+    // Language detection options: the stored choice, else the system language mapped onto a
+    // shipped one ("de-AT" → "de", "nn" → "nb"), else English.
     detection: {
       order: ['localStorage', 'navigator'],
       lookupLocalStorage: 'moony-language',
       caches: ['localStorage'],
+      convertDetectedLanguage: (language: string) => matchLanguage(language) ?? 'en',
     },
 
     interpolation: {
@@ -153,17 +153,6 @@ i18n
 i18n.services.formatter?.add('lower', (value, lng) => String(value).toLocaleLowerCase(lng));
 
 export default i18n;
-
-/**
- * Get the locale string for Intl APIs based on language
- */
-export function getLocaleForLanguage(lang: SupportedLanguage): string {
-  const localeMap: Record<SupportedLanguage, string> = {
-    en: 'en-US',
-    cs: 'cs-CZ',
-  };
-  return localeMap[lang] || 'en-US';
-}
 
 /**
  * Format a `Date` (local time zone) according to the current language.

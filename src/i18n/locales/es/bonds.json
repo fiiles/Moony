@@ -1,0 +1,118 @@
+{
+  "title": "Bonos",
+  "eyebrow": "Cartera",
+  "subtitle": "Bonos del Estado y corporativos mantenidos hasta el vencimiento, con rentabilidad por cupones fijos.",
+  "status": "Valorados a valor nominal · sin intereses devengados",
+  "loading": "Cargando tus bonos...",
+  "empty": {
+    "title": "Aún no hay bonos",
+    "description": "Añade la primera emisión: valor nominal, número de títulos, cupón y vencimiento. El calendario de vencimientos se construye solo."
+  },
+  "addBond": "Añadir bono",
+  "export": "Exportar",
+  "summary": {
+    "nominal": "Valor nominal",
+    "issues_one": "{{count}} emisión",
+    "issues_many": "{{count}} emisiones",
+    "issues_other": "{{count}} emisiones",
+    "currencies_one": "{{count}} moneda",
+    "currencies_many": "{{count}} monedas",
+    "currencies_other": "{{count}} monedas",
+    "yearlyCoupon": "Cupón anual",
+    "weightedRate": "media ponderada {{rate}} anual",
+    "nearestMaturity": "Próximo vencimiento",
+    "returns": "devuelve {{amount}}",
+    "noMaturity": "ninguna emisión tiene vencimiento",
+    "avgToMaturity": "Plazo medio hasta el vencimiento",
+    "years": "{{value}} años",
+    "lastMaturity": "ponderado por valor nominal · último {{date}}",
+    "noneLive": "ninguna emisión activa"
+  },
+  "until": {
+    "in": "en {{duration}}",
+    "soon": "en menos de un mes",
+    "past": "amortizado el {{date}}"
+  },
+  "duration": {
+    "years_one": "{{count}} año",
+    "years_many": "{{count}} años",
+    "years_other": "{{count}} años",
+    "months_one": "{{count}} mes",
+    "months_many": "{{count}} meses",
+    "months_other": "{{count}} meses"
+  },
+  "ladder": {
+    "title": "Vencimientos y cupones",
+    "subtitle": "Cuánto se recupera cada año: valor nominal amortizado y cupones anuales.",
+    "badge": "cupón anual en el aniversario del vencimiento",
+    "principal": "Valor nominal amortizado",
+    "coupons": "Cupones",
+    "nearest": "Próximo vencimiento",
+    "note": "Hasta {{year}} recuperas {{principal}} de valor nominal y {{coupons}} en cupones."
+  },
+  "table": {
+    "title": "Emisiones",
+    "subtitle": "Ordenadas por vencimiento · las más próximas primero",
+    "search": "Buscar por nombre o ISIN",
+    "showMatured": "Mostrar amortizados",
+    "bond": "Bono",
+    "nominal": "Valor nominal / título",
+    "quantity": "Títulos",
+    "units": "uds.",
+    "value": "Valor",
+    "coupon": "Cupón",
+    "yearly": "Anual",
+    "maturity": "Vencimiento",
+    "actions": "Acciones",
+    "withinYear": "en menos de un año",
+    "matured": "amortizado",
+    "noMaturity": "sin vencimiento",
+    "noResults": {
+      "title": "Sin resultados",
+      "description": "Prueba con otro nombre o ISIN.",
+      "maturedHidden": "Prueba con otro nombre o ISIN. Las emisiones amortizadas están ocultas."
+    },
+    "footer": {
+      "count_one": "{{count}} emisión",
+      "count_many": "{{count}} emisiones",
+      "count_other": "{{count}} emisiones",
+      "nominal": "valor nominal {{amount}}",
+      "coupons": "cupones {{amount}} al año",
+      "valuation": "Valor = valor nominal × títulos · el precio de mercado no se sigue"
+    }
+  },
+  "actions": {
+    "edit": "Editar",
+    "delete": "Eliminar"
+  },
+  "form": {
+    "addTitle": "Añadir bono",
+    "editTitle": "Editar bono",
+    "addDescription": "El valor sale del valor nominal × títulos y la rentabilidad, del tipo de cupón.",
+    "editDescription": "Los cambios se reflejan en el valor y en el calendario de vencimientos.",
+    "name": "Nombre",
+    "namePlaceholder": "p. ej., Bono del Estado checo 2031",
+    "isin": "ISIN",
+    "isinHint": "12 caracteres de las condiciones de emisión; ayuda a casar los extractos.",
+    "nominal": "Valor nominal de 1 título",
+    "quantity": "Títulos",
+    "rate": "Cupón anual",
+    "maturity": "Fecha de vencimiento",
+    "maturityHint": "Tras el vencimiento la emisión pasa a amortizada y deja de contar en el patrimonio neto.",
+    "summaryValue": "Valor {{value}} · cupón {{coupon}} al año",
+    "summaryNext": "Próximo aniversario del vencimiento: {{date}}.",
+    "summaryMatures": "La emisión vence este año; no habrá más cupones.",
+    "summaryNoMaturity": "Sin vencimiento: el cupón cuenta todos los años.",
+    "submitAdd": "Añadir bono",
+    "submitEdit": "Guardar cambios"
+  },
+  "confirmDelete": {
+    "title": "¿Eliminar el bono?",
+    "description": "«{{name}}» se eliminará de forma permanente. Esta acción no se puede deshacer."
+  },
+  "toast": {
+    "added": "Bono añadido",
+    "updated": "Bono actualizado",
+    "deleted": "Bono eliminado"
+  }
+}

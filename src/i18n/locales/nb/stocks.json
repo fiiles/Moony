@@ -1,0 +1,749 @@
+{
+  "title": "Aksjer og ETF-er",
+  "subtitle": "Dine langsiktige beholdninger på ett sted.",
+  "loading": "Laster aksjene dine...",
+  "empty": {
+    "title": "Ingen beholdninger ennå",
+    "description": "Legg til din første aksje eller ETF, eller importer handlene dine fra en CSV-fil fra megler (dato, type, ticker, antall, kurs, valuta)."
+  },
+  "addInvestment": "Legg til investering",
+  "refreshPrices": "Oppdater kurser",
+  "refreshing": "Oppdaterer...",
+  "importCSV": "Importer CSV",
+  "summary": {
+    "totalValue": "Porteføljeverdi",
+    "totalGainLoss": "Urealisert gevinst/tap",
+    "unrealizedGain": "Urealisert gevinst",
+    "unrealizedLoss": "Urealisert tap",
+    "realizedGain": "Realisert gevinst",
+    "realizedLoss": "Realisert tap",
+    "estimatedDividend": "Utbytteanslag",
+    "topPerformer": "Beste utvikling",
+    "basedOnLastYear": "Basert på fjorårets utbytte",
+    "lastUpdated": "Sist oppdatert: {{date}}",
+    "realizedGainLoss": "Realisert gevinst/tap",
+    "positions_one": "{{count}} beholdning",
+    "positions_other": "{{count}} beholdninger",
+    "updatedToday": "oppdatert i dag",
+    "updatedOn": "oppdatert {{date}}",
+    "notUpdated": "kursene er ikke hentet ennå",
+    "vsInvestedPct": "{{percent}} mot investert",
+    "realizedNote": "realisert {{amount}}",
+    "next12Months": "de neste 12 månedene",
+    "topPosition": "Beste beholdning",
+    "overallPct": "{{percent}} samlet",
+    "noPositions": "ingen åpen beholdning"
+  },
+  "table": {
+    "title": "Beholdninger",
+    "search": "Søk etter navn eller ticker",
+    "investment": "Investering",
+    "quantity": "Antall",
+    "avgCost": "Snittpris",
+    "marketPrice": "Markedskurs",
+    "marketValue": "Verdi",
+    "totalGainLoss": "Urealisert gevinst/tap",
+    "estDividend": "Est. utbytte",
+    "actions": "Handlinger",
+    "noHoldings": "Ingen beholdninger funnet. Legg til din første aksje for å komme i gang.",
+    "showZeroPositions": "Vis nullbeholdninger",
+    "hideZeroPositions": "Skjul null",
+    "return": "Avkastning",
+    "dividend": "Utbytte",
+    "unit": "stk.",
+    "realized": "{{amount}} realisert",
+    "noResults": {
+      "title": "Ingen treff",
+      "description": "Prøv et annet navn eller en annen ticker.",
+      "zeroHidden": "Prøv et annet navn eller en annen ticker. Nullbeholdninger er skjult."
+    },
+    "footer": {
+      "count_one": "{{count}} beholdning",
+      "count_other": "{{count}} beholdninger",
+      "total": "totalt",
+      "largest": "største beholdning {{percent}} av porteføljen",
+      "rates": "Verdier i {{currency}} til dagens kurs"
+    },
+    "showClosedPositions": "Vis avsluttede beholdninger",
+    "hideClosedPositions": "Skjul avsluttede beholdninger",
+    "closedPositionsHint": "Beholdninger med antall 0",
+    "manageTags": "Administrer etiketter",
+    "noMatches": "Ingen beholdninger samsvarer med «{{query}}».",
+    "onlyClosedPositions": "Bare avsluttede beholdninger her. Slå på «Vis avsluttede beholdninger» for å se dem."
+  },
+  "actions": {
+    "viewTransactions": "Vis transaksjoner",
+    "buy": "Kjøp",
+    "sell": "Selg",
+    "updatePrice": "Rediger kurs",
+    "updateDividend": "Oppdater utbytteanslag",
+    "delete": "Slett",
+    "deletePosition": "Slett beholdning"
+  },
+  "badges": {
+    "manual": "Manuell"
+  },
+  "tooltips": {
+    "manualPrice": "Manuelt overstyrt kurs",
+    "manualDividend": "Manuelt overstyrt utbytte"
+  },
+  "modals": {
+    "add": {
+      "title": "Legg til ny aksje",
+      "searchLabel": "Søk etter en aksje",
+      "searchPlaceholder": "f.eks. AAPL eller Apple",
+      "quantity": "Antall",
+      "purchasePrice": "Kjøpskurs",
+      "purchaseDate": "Kjøpsdato",
+      "notes": "Notater"
+    },
+    "buy": {
+      "title": "Kjøp flere aksjer",
+      "quantity": "Antall",
+      "price": "Kurs per aksje",
+      "date": "Kjøpsdato",
+      "fee": "Transaksjonsgebyr"
+    },
+    "sell": {
+      "title": "Selg aksjer",
+      "quantityToSell": "Antall som skal selges",
+      "availableQuantity": "Tilgjengelig: {{quantity}} aksjer",
+      "price": "Salgskurs per aksje",
+      "date": "Salgsdato",
+      "fee": "Transaksjonsgebyr"
+    },
+    "updatePrice": {
+      "title": "Oppdater kurs manuelt",
+      "currentPrice": "Gjeldende kurs",
+      "newPrice": "Ny kurs",
+      "description": "Sett en manuell kurs som overstyrer for denne beholdningen."
+    },
+    "updateDividend": {
+      "title": "Oppdater utbytteanslag",
+      "annualDividend": "Årlig utbytte per aksje",
+      "description": "Sett et manuelt årlig utbytte per aksje for denne beholdningen."
+    },
+    "transactions": {
+      "title": "Transaksjonshistorikk",
+      "noTransactions": "Ingen transaksjoner funnet"
+    },
+    "manualFormula": "Formel: {{value}} × {{quantity}} aksjer"
+  },
+  "confirmDelete": {
+    "title": "Slette beholdningen?",
+    "description": "{{name}} og alle transaksjonene fjernes for godt. Dette kan ikke angres."
+  },
+  "modal": {
+    "add": {
+      "title": "Legg til investering",
+      "description": "Den nye beholdningen vises i tabellen og verdsettes til markedskurs.",
+      "companyDetails": "Selskapsdetaljer",
+      "companyName": "Navn",
+      "ticker": "Ticker",
+      "financialDetails": "Økonomiske detaljer",
+      "pricePerShare": "Kurs per aksje",
+      "quantity": "Antall",
+      "selectTicker": "Velg ticker",
+      "multipleResults": "Flere treff funnet. Velg riktig tickersymbol:",
+      "noTickerFound": "Ingen tickersymboler funnet for dette selskapsnavnet",
+      "searchError": "Kunne ikke søke etter tickersymbol",
+      "selected": "Valgt",
+      "search": "Søk på Yahoo Finance",
+      "searchHint": "Søker på Yahoo Finance; hvis ingenting finnes, skriv inn navnet selv.",
+      "purchaseDate": "Kjøpsdato",
+      "searchByName": "Søk etter selskapsnavn",
+      "searchByTicker": "Søk etter ticker",
+      "searching": "Søker..."
+    },
+    "buy": {
+      "titleNamed": "Kjøp {{name}}",
+      "descriptionFor": "Registrer et kjøp for {{ticker}}.",
+      "quantity": "Antall",
+      "pricePerShare": "Kurs per aksje",
+      "addPurchase": "Legg til kjøp"
+    },
+    "sell": {
+      "titleNamed": "Selg {{name}}",
+      "description": "Registrer et salg av denne beholdningen.",
+      "transactionDetails": "Transaksjonsdetaljer",
+      "pricePerShare": "Kurs per aksje",
+      "quantity": "Antall",
+      "sellInvestment": "Selg aksje"
+    },
+    "edit": {
+      "title": "Rediger transaksjon ({{type}})",
+      "description": "Endre detaljene for denne transaksjonen.",
+      "transactionDetails": "Transaksjonsdetaljer",
+      "submit": "Oppdater transaksjon"
+    }
+  },
+  "toast": {
+    "added": "Investeringen er lagt til",
+    "updated": "Aksjen er oppdatert",
+    "deleted": "Beholdningen er slettet",
+    "pricesRefreshed_one": "Oppdaterte {{count}} aksjekurs",
+    "pricesRefreshed_other": "Oppdaterte {{count}} aksjekurser",
+    "pricesRefreshedDescription": "Hentet de nyeste kursene fra Yahoo Finance",
+    "rateLimitReached": "Grensen for forespørsler er nådd",
+    "rateLimitDescription": "Oppdaterte {{updated}} kurser, {{remaining}} gjenstår. Prøv igjen om et minutt.",
+    "refreshFailed": "Oppdatering av kurser mislyktes",
+    "noResults": "Ingen resultater funnet",
+    "tickerFound": "Ticker funnet",
+    "searchFailed": "Søket mislyktes",
+    "manualPriceDeleted": "Manuell kursoverstyring er fjernet",
+    "manualDividendDeleted": "Manuell utbytteoverstyring er fjernet"
+  },
+  "chart": {
+    "title": "Porteføljeverdi over tid",
+    "positionTitle": "Verdi av beholdningen over tid",
+    "bought": "Kjøpt",
+    "sold": "Solgt",
+    "subtitle": "Inkludert innskudd og markedsbevegelser.",
+    "legend": {
+      "value": "Verdi",
+      "buy": "Kjøp",
+      "sell": "Salg"
+    },
+    "events": {
+      "buy": "Kjøpte {{tickers}}",
+      "sell": "Solgte {{tickers}}",
+      "cluster_one": "{{count}} transaksjon",
+      "cluster_other": "{{count}} transaksjoner"
+    }
+  },
+  "detail": {
+    "chartFxMissing": "Noen dager mangler i diagrammet eller i linjen for investert beløp: ingen valutakurs for {{currencies}}.",
+    "backToList": "Tilbake til aksjer",
+    "notFound": "Beholdningen ble ikke funnet",
+    "deleted": "Beholdningen er slettet",
+    "transactionDeleted": "Transaksjonen er slettet",
+    "transactionUpdated": "Transaksjonen er oppdatert",
+    "pricesRefreshed": "Kursene er oppdatert",
+    "manualPrice": "Manuelt overstyrt kurs",
+    "refresh": "Oppdater",
+    "currentValue": "Nåverdi",
+    "shares": "aksjer",
+    "totalInvested": "Totalt investert",
+    "avgPrice": "snitt",
+    "unrealizedPnL": "Urealisert gevinst/tap",
+    "dividendYield": "Direkteavkastning",
+    "year": "år",
+    "noDividend": "ingen utbyttedata",
+    "manual": "manuell",
+    "updatePrice": "Oppdater kurs",
+    "updateDividend": "Oppdater utbytte",
+    "tabs": {
+      "position": "Beholdning",
+      "transactions": "Transaksjoner"
+    },
+    "position": {
+      "title": "Beholdningsdetaljer",
+      "quantity": "Antall",
+      "avgPrice": "Snittpris",
+      "currentPrice": "Gjeldende kurs",
+      "priceUpdated": "Kurs oppdatert"
+    },
+    "companyInfo": {
+      "title": "Selskapsinformasjon",
+      "sectorIndustry": "Sektor · bransje",
+      "peRatio": "P/E-tall",
+      "forwardPe": "Forventet P/E",
+      "marketCap": "Markedsverdi",
+      "beta": "Beta",
+      "fiftyTwoWeekHigh": "52-ukers høy",
+      "fiftyTwoWeekLow": "52-ukers lav",
+      "dividendRate": "Utbytte per aksje",
+      "dividendYield": "Direkteavkastning",
+      "etfNote": "Yahoo Finance oppgir ikke disse tallene for ETF-er",
+      "noData": "Yahoo Finance har ingen selskapsdata for denne aksjen",
+      "unavailable": "Selskapsdata kunne ikke lastes",
+      "retry": "Prøv igjen"
+    },
+    "transactions": {
+      "title": "Transaksjonshistorikk",
+      "date": "Dato",
+      "type": "Type",
+      "quantity": "Antall",
+      "originalPrice": "Opprinnelig kurs",
+      "price": "Kurs",
+      "total": "Sum",
+      "empty": "Ingen transaksjoner ennå"
+    },
+    "confirmDelete": {
+      "title": "Slette beholdningen?",
+      "description": "{{name}} ({{ticker}}) og alle transaksjonene fjernes for godt. Dette kan ikke angres."
+    },
+    "confirmDeleteTransaction": {
+      "title": "Slette transaksjonen?",
+      "description": "Dette sletter transaksjonen ({{type}}, {{quantity}} × {{ticker}}, {{date}}, {{amount}}) permanent. Dette kan ikke angres."
+    },
+    "editName": {
+      "title": "Rediger navn",
+      "description": "Det nye navnet vises i listen, detaljene og oversikten.",
+      "label": "Navn",
+      "save": "Lagre navn"
+    },
+    "nameUpdated": "Selskapsnavnet er oppdatert",
+    "openInMonitor": "Åpne i Aksjemonitor",
+    "dividendYieldTooltip": "Estimert årlig utbytte delt på gjeldende markedsverdi av denne beholdningen.",
+    "priceNative": "Kurs ({{currency}})",
+    "priceNativeMixed": "Kurs (opprinnelig valuta)",
+    "priceConverted": "Kurs ({{currency}}, dagens valutakurs)",
+    "sharesCount_one": "{{count}} aksje",
+    "sharesCount_other": "{{count}} aksjer",
+    "avgBuyPrice": "snittkjøpspris {{price}}",
+    "lastBuy": "siste kjøp {{date}}",
+    "positionValue": "Verdi av beholdningen",
+    "sinceBuyPct": "{{percent}} siden kjøp",
+    "currentPrice": "Gjeldende kurs",
+    "invested": "Investert",
+    "avgShort": "snitt {{price}}",
+    "unrealized": "Urealisert avkastning",
+    "vsInvestedPct": "{{percent}} mot investert",
+    "realized": "Realisert avkastning",
+    "sells_one": "{{count}} salg",
+    "sells_other": "{{count}} salg",
+    "noSells": "ingen salg ennå",
+    "dividends": "Utbytte",
+    "dividendNote": "anslag per år · avkastning {{percent}}",
+    "refreshPrices": "Oppdater kurser",
+    "buy": "Kjøp",
+    "sell": "Selg",
+    "about": "Om selskapet",
+    "source": "Yahoo Finance",
+    "deleteTransaction": "Slett transaksjon",
+    "menu": {
+      "editPrice": "Rediger kurs",
+      "editDividend": "Rediger utbytteanslag",
+      "editName": "Rediger navn"
+    },
+    "status": {
+      "pricesUpdated": "Kurser oppdatert {{when}}",
+      "todayAt": "i dag kl. {{time}}"
+    },
+    "legend": {
+      "value": "Verdi av beholdningen",
+      "invested": "investert",
+      "investedLong": "Investert (kjøpspris)",
+      "return": "avkastning",
+      "buy": "Kjøp",
+      "sell": "Salg"
+    },
+    "events": {
+      "buy": "Kjøp {{quantity}} til {{price}}",
+      "sell": "Salg {{quantity}} til {{price}}",
+      "total": "totalt {{amount}}",
+      "cluster_one": "{{count}} hendelse",
+      "cluster_other": "{{count}} hendelser"
+    },
+    "ledger": {
+      "sub_one": "{{count}} hendelse · hold musepekeren over en rad for å utheve den i diagrammet",
+      "sub_other": "{{count}} hendelser · hold musepekeren over en rad for å utheve den i diagrammet",
+      "filter": {
+        "all": "Alle",
+        "buys": "Kjøp",
+        "sells": "Salg"
+      },
+      "footer_one": "{{count}} hendelse",
+      "footer_other": "{{count}} hendelser",
+      "since": "siden {{date}}",
+      "rates": "Kurser i {{currency}} etter kursen på transaksjonsdagen"
+    }
+  },
+  "importWizard": {
+    "title": "Importer handler fra CSV",
+    "lead": "En eksport fra megler eller din egen tabell. Vi oppdager duplikater, og du ser hva som blir importert før noe skrives.",
+    "steps": {
+      "file": "Fil",
+      "mapping": "Kolonner",
+      "review": "Gjennomgang",
+      "done": "Ferdig"
+    },
+    "next": "Gå gjennom handler",
+    "importButton_one": "Importer {{count}} handel",
+    "importButton_other": "Importer {{count}} handler",
+    "importButtonIdle": "Importer",
+    "unsupportedFile": "Bare .csv- og .txt-filer kan importeres. Lagre et Excel-ark eller et annet regneark som CSV først.",
+    "direction": {
+      "buy": "Kjøp",
+      "sell": "Salg"
+    },
+    "roles": {
+      "date": "Dato",
+      "direction": "Retning",
+      "type": "Type",
+      "symbol": "Symbol",
+      "isin": "ISIN",
+      "name": "Navn",
+      "quantity": "Antall",
+      "price": "Kurs per aksje",
+      "quantityPrice": "Antall og kurs",
+      "currency": "Valuta",
+      "externalId": "Handels-ID"
+    },
+    "file": {
+      "sourceHeading": "Hvor eksporten kommer fra",
+      "savedTag": "lagret",
+      "howToExport": "Slik eksporterer du fra {{name}}",
+      "dropTitle": "Slipp filen med handlene dine her",
+      "dropActive": "Slipp filen for å åpne den",
+      "or": "eller",
+      "choose": "Velg fil…",
+      "dropNote": ".csv eller .txt · lagre Excel-filer som CSV først",
+      "sample": "Last ned en eksempelfil",
+      "sampleSaved": "Eksempelfilen er lagret",
+      "sampleFailed": "Eksempelfilen kunne ikke lagres",
+      "helpFailed": "Hjelpesiden kunne ikke åpnes"
+    },
+    "sources": {
+      "xtb": {
+        "name": "XTB",
+        "guideTitle": "Slik får du eksporten",
+        "guide": "Åpne Account history → Cash operations i xStation, velg en periode som starter ved din første handel, klikk på Export og velg CSV-formatet.",
+        "note": "Filen inneholder også innskudd, utbytte og gebyrer – bare kjøp og salg av aksjer og ETF-er importeres. Vi fyller inn valutaen fra børsen."
+      },
+      "trading212": {
+        "name": "Trading 212",
+        "guideTitle": "Slik får du eksporten",
+        "guide": "Åpne History → eksportikonet i appen, kryss av for Orders, velg en periode og last ned CSV-filen.",
+        "note": "Én eksport dekker høyst 12 måneder – last opp flere filer, vi gjenkjenner duplikater."
+      },
+      "degiro": {
+        "name": "Degiro",
+        "guideTitle": "Slik får du eksporten",
+        "guide": "Åpne Activity → Transactions på nettsiden, sett en periode som starter ved din første handel og klikk på Export → CSV. Ikke bruk kontoutskriften (Account statement)."
+      },
+      "ibkr": {
+        "name": "Interactive Brokers",
+        "guideTitle": "Slik får du eksporten",
+        "guide": "Åpne Performance & Reports → Flex Queries i Client Portal, opprett en Activity Flex Query med seksjonen Trades og feltene Symbol, ISIN, TradeDate, Buy/Sell, Quantity, TradePrice, CurrencyPrimary, AssetClass og TradeID, format CSV, og kjør den for hele perioden."
+      },
+      "moony": {
+        "name": "Din egen tabell (Moony-mal)",
+        "guideTitle": "Slik fyller du ut tabellen",
+        "guide": "Last ned malen, fyll den ut i Excel eller et annet regneark og lagre den som CSV.",
+        "excel": "En fil lagret av Excel på et hvilket som helst språk fungerer som den er – vi gjenkjenner skilletegn, tegnkoding og desimaltegn. Moonys egen eksport (Aksjer → Eksporter) har samme format.",
+        "columns": {
+          "date": {
+            "label": "Dato",
+            "hint": "2024-01-15 eller 15.01.2024"
+          },
+          "type": {
+            "label": "Type",
+            "hint": "buy / sell eller nákup / prodej"
+          },
+          "symbol": {
+            "label": "Symbol",
+            "hint": "som på Yahoo Finance, f.eks. AAPL, VWCE.DE"
+          },
+          "quantity": {
+            "label": "Antall",
+            "hint": "antall aksjer, f.eks. 10 eller 0.5"
+          },
+          "price": {
+            "label": "Kurs per aksje",
+            "hint": "i handelens valuta, f.eks. 180.50"
+          },
+          "currency": {
+            "label": "Valuta",
+            "hint": "f.eks. USD, EUR, CZK"
+          },
+          "name": {
+            "label": "Navn",
+            "hint": "valgfritt"
+          }
+        }
+      },
+      "custom": {
+        "name": "Annen megler",
+        "guideTitle": "Hva filen må ha",
+        "guide": "Vi trenger én rad per handel: dato, retning, symbol eller ISIN, antall, kurs per aksje og valuta. Du tilordner kolonnene i neste trinn, og Moony husker tilordningen."
+      },
+      "saved": {
+        "title": "Lagret format",
+        "guide": "En fil med de samme kolonnene gjenkjennes av seg selv, og tilordningen brukes på nytt.",
+        "delete": "Slett format",
+        "deleteTitle": "Slette dette formatet?",
+        "deleteDescription": "Formatet «{{name}}» gjenkjennes ikke lenger. Handler som allerede er importert, endres ikke."
+      },
+      "savedFallback": "Lagret format"
+    },
+    "recent": {
+      "title": "Siste importer",
+      "undo": "Angre",
+      "undoFor": "Angre importen {{file}}",
+      "trades_one": "{{count}} handel",
+      "trades_other": "{{count}} handler",
+      "tradesOf": "{{remaining}} av {{total}} handler",
+      "showAll": "Vis alle ({{count}})",
+      "showLess": "Vis færre"
+    },
+    "filebar": {
+      "rows_one": "{{count}} rad",
+      "rows_other": "{{count}} rader",
+      "detected": "gjenkjent",
+      "format": "Skilletegn «{{delimiter}}» · tegnkoding {{encoding}}",
+      "tab": "tabulator"
+    },
+    "mismatch": {
+      "other": "Du valgte {{chosen}}, men filen ser ut som {{detected}}. Vi brukte tilordningen for {{detected}}.",
+      "unknown": "Filen samsvarer ikke med formatet {{chosen}}. Tilordne kolonnene manuelt."
+    },
+    "mapping": {
+      "selectColumn": "Velg kolonne",
+      "columnNone": "— ikke brukt —",
+      "blankColumn": "Kolonne {{position}}",
+      "blankColumnAfter": "Kolonne {{position}} (etter «{{after}}»)",
+      "example": "F.eks. {{values}}",
+      "summary": {
+        "title": "Tilordning: {{source}}",
+        "hint": "Den ferdige tilordningen for dette formatet. Vanligvis kan du bare fortsette.",
+        "sign": "fortegn på antallet",
+        "instrument": "fra børsen",
+        "comment": "{{column}} (fra teksten)",
+        "values": "Verdier i kolonnen {{column}}",
+        "more_one": "+{{count}} til",
+        "more_other": "+{{count}} til"
+      },
+      "edit": "Rediger tilordning",
+      "backToPreset": "Tilbake til tilordningen for {{source}}",
+      "required": "Påkrevde kolonner",
+      "optional": "Valgfrie kolonner",
+      "direction": "Handelens retning",
+      "format": "Format",
+      "symbolOrIsin": "Et symbol eller en ISIN er nok. Fra en ISIN finner vi symbolet på Yahoo Finance.",
+      "currencyMode": {
+        "column": "Fra en kolonne",
+        "fixed": "Én valuta",
+        "instrument": "Fra børsen"
+      },
+      "currencyColumn": "Valutakolonne",
+      "currencyFixed": "Valuta for hele filen",
+      "currencyFixedHint": "Alle handler i filen er i denne valutaen.",
+      "currencyInstrumentHint": "Vi fyller inn valutaen fra børsen verdipapiret handles på.",
+      "directionMode": {
+        "typeColumn": "Fra en typekolonne",
+        "quantitySign": "Fra fortegnet på antallet"
+      },
+      "directionSignHint": "Et negativt antall er et salg, et positivt et kjøp.",
+      "typeColumn": "Typekolonne",
+      "typeValue": "Verdi",
+      "typeCount": "Rader",
+      "typeLine": "Første rad",
+      "typeMeaning": "Betydning",
+      "typeTooMany": "Denne kolonnen har for mange ulike verdier for en tabell. Velg en annen kolonne eller les retningen fra fortegnet på antallet.",
+      "typeNoTrade": "Tilordne minst én verdi til et kjøp eller et salg, ellers importeres ingenting.",
+      "typeCommentNote": "Hos XTB avgjør kommentarteksten retningen. Typeverdiene avgjør bare hvilke rader som er handler.",
+      "action": {
+        "buy": "Kjøp",
+        "sell": "Salg",
+        "skip": "Hopp over"
+      },
+      "externalIdHint": "Hjelper med å gjenkjenne duplikater i senere importer.",
+      "dateFormat": "Datoformat",
+      "dateFormatChoose": "Velg et format",
+      "dateFormatAmbiguous": "Rekkefølgen på dag, måned og år kan ikke skilles fra hverandre i denne filen, så det er et gjett. Sjekk datoene i forhåndsvisningen nedenfor eller velg formatet selv.",
+      "decimalSeparator": "Desimalskilletegn",
+      "decimalAuto": "Gjenkjenn automatisk ({{separator}})",
+      "decimalComma": "Komma (1 234,56)",
+      "decimalDot": "Punktum (1,234.56)",
+      "headerRow": "Overskriftsrad",
+      "skipRows": "Hopp over rader etter overskriften",
+      "layoutHelp": "Overskriftsraden er linjen med kolonnenavnene; linjer over den ignoreres. Rader som hoppes over, er datarader rett etter overskriften.",
+      "remember": "Husk tilordningen for dette formatet",
+      "rememberHint": "En fil med de samme kolonnene gjenkjennes da av seg selv.",
+      "formatName": "Formatnavn",
+      "formatNamePlaceholder": "f.eks. Min megler",
+      "formatNameRequired": "Skriv inn et navn på formatet.",
+      "missing": "Mangler: {{fields}}",
+      "field": {
+        "date": "dato",
+        "dateFormat": "datoformat",
+        "symbol": "symbol eller ISIN",
+        "quantity": "antall",
+        "price": "kurs per aksje",
+        "currency": "valuta",
+        "type": "typekolonne"
+      },
+      "rawData": "Forhåndsvis CSV-data",
+      "rawCounts": "Kolonner: {{columns}} · Rader: {{rows}}"
+    },
+    "review": {
+      "incomplete": "Fullfør kolonnetilordningen for å se gjennomgangen.",
+      "loading": "Leser filen…",
+      "failed": "Filen kan ikke gjennomgås med disse innstillingene",
+      "summary": {
+        "willImport": "Skal importeres {{count}}",
+        "duplicates": "Duplikater {{count}}",
+        "skipped": "Hoppet over {{count}}",
+        "errors": "Feil {{count}}"
+      },
+      "feeNote": "Gebyrer importeres ikke",
+      "nothingToImport": "Ingenting å importere: hver rad er et duplikat, hoppet over eller har en feil.",
+      "statusNew": "Ny",
+      "statusSkipped": "Hoppet over",
+      "statusError": "Feil",
+      "statusDuplicate": "Duplikat",
+      "duplicateImportAnyway": "importer likevel",
+      "instruments": {
+        "title": "Verdipapirer",
+        "security": "Verdipapir",
+        "currency": "Valuta",
+        "trades": "Handler",
+        "status": "Status",
+        "actions": "Handlinger",
+        "progress": "Sjekker på Yahoo Finance… {{done}} av {{total}}",
+        "skipVerification": "Hopp over sjekken",
+        "retry": "Sjekk igjen",
+        "checking": "Sjekker…",
+        "inFile": "i filen {{symbol}}",
+        "edit": "Rediger",
+        "skip": "Hopp over",
+        "include": "Ta med",
+        "editFor": "Rediger {{name}}",
+        "skipFor": "Hopp over {{name}}",
+        "includeFor": "Ta med {{name}}",
+        "state": {
+          "existing": "Eksisterende beholdning",
+          "new": "Ny beholdning",
+          "unverified": "Ikke bekreftet",
+          "missingSymbol": "Symbol mangler",
+          "skipped": "Hoppet over"
+        },
+        "reason": {
+          "failed": "Yahoo Finance svarte ikke",
+          "notFound": "Ikke funnet på Yahoo Finance",
+          "unmatched": "Symbolet er ikke blant dem som ble funnet"
+        },
+        "missingReason": {
+          "enter": "Skriv inn symbolet for hånd",
+          "failed": "Yahoo Finance svarte ikke – skriv inn symbolet for hånd",
+          "notFound": "Ikke funnet på Yahoo Finance – skriv inn symbolet for hånd"
+        },
+        "positionCurrency": "Beholdningen holdes i {{currency}}",
+        "missingHint_one": "Skriv inn et symbol for {{count}} verdipapir, eller hopp over det.",
+        "missingHint_other": "Skriv inn et symbol for {{count}} verdipapirer, eller hopp over dem.",
+        "unverifiedHint_one": "{{count}} verdipapir kunne ikke bekreftes. Du kan fortsatt importere det, men kursene oppdateres kanskje ikke.",
+        "unverifiedHint_other": "{{count}} verdipapirer kunne ikke bekreftes. Du kan fortsatt importere dem, men kursene oppdateres kanskje ikke."
+      },
+      "rows": {
+        "title": "Rader",
+        "line": "Linje",
+        "date": "Dato",
+        "direction": "Retning",
+        "symbol": "Symbol",
+        "quantity": "Antall",
+        "price": "Kurs",
+        "currency": "Valuta",
+        "status": "Status",
+        "footer": "Første {{shown}} av {{total}} rader",
+        "footerAll_one": "{{count}} rad",
+        "footerAll_other": "{{count}} rader",
+        "showAll": "Vis alle",
+        "showLess": "Vis færre",
+        "none": "Med disse innstillingene har filen ingen rader.",
+        "truncated": "Tabellen viser høyst {{shown}} rader; tallene ovenfor gjelder hele filen."
+      }
+    },
+    "editor": {
+      "apply": "Bruk",
+      "searchResults": "Søkeresultater på Yahoo Finance",
+      "found": "Funnet på Yahoo Finance",
+      "searching": "Søker…",
+      "searchError": "Søket mislyktes",
+      "noResults": "Ingen treff. Prøv et annet navn eller symbol.",
+      "currencyFromFile": "Fra filen"
+    },
+    "currency": {
+      "gbx": "GBX (pence, lagret som GBP ÷ 100)"
+    },
+    "result": {
+      "title": "Handlene er importert",
+      "titleNothing": "Ingenting ble importert",
+      "nothing": "Hver rad i filen er et duplikat, hoppet over eller har en feil. Detaljer nedenfor.",
+      "summary_one": "{{count}} handel fra {{from}} til {{to}}.",
+      "summary_other": "{{count}} handler fra {{from}} til {{to}}.",
+      "summaryCount_one": "{{count}} handel importert.",
+      "summaryCount_other": "{{count}} handler importert.",
+      "imported": "Importert",
+      "duplicates": "Duplikater",
+      "skipped": "Hoppet over",
+      "errors": "Feil",
+      "newPositions": "Nye beholdninger:",
+      "updatedPositions": "Lagt til eksisterende:",
+      "moreTickers_one": "+{{count}} til",
+      "moreTickers_other": "+{{count}} til",
+      "recalculating": "Beregner historikken for porteføljeverdi på nytt…",
+      "showDuplicates": "Vis duplikater",
+      "showSkipped": "Vis rader som ble hoppet over",
+      "showErrors": "Vis feil",
+      "line": "Rad {{line}}: {{message}}",
+      "whatNext": "Hva nå",
+      "next": {
+        "show": "Vis aksjer",
+        "showHint": "De nye og utvidede beholdningene står i tabellen.",
+        "showAction": "Vis",
+        "tags": "Tildel etiketter",
+        "tagsHint": "De nye beholdningene har ingen etiketter ennå. Tildel dem i aksjeanalysen.",
+        "tagsAction": "Tildel",
+        "another": "Importer en fil til",
+        "anotherHint": "For eksempel en tidligere periode eller en annen konto.",
+        "anotherAction": "Velg fil",
+        "undo": "Angre importen",
+        "undoHint_one": "Sletter {{count}} handel fra denne filen.",
+        "undoHint_other": "Sletter {{count}} handler fra denne filen.",
+        "undoAction": "Angre"
+      }
+    },
+    "undone": {
+      "title": "Importen er angret",
+      "summary_one": "{{count}} handel fra importen «{{file}}» ble slettet.",
+      "summary_other": "{{count}} handler fra importen «{{file}}» ble slettet.",
+      "removedPositions": "Fjernede beholdninger:"
+    },
+    "undo": {
+      "title": "Angre denne importen?",
+      "description_one": "Vi sletter {{count}} handel fra importen «{{file}}».",
+      "description_other": "Vi sletter {{count}} handler fra importen «{{file}}».",
+      "consequences": "Beholdninger uten noen handel igjen fjernes. Handler fra denne importen som du har redigert siden, slettes også.",
+      "confirm": "Angre importen"
+    },
+    "toast": {
+      "inspectFailed": "Filen kunne ikke leses",
+      "importFailed": "Importen mislyktes",
+      "undone_one": "Importen er angret: {{count}} handel slettet",
+      "undone_other": "Importen er angret: {{count}} handler slettet",
+      "undoFailed": "Importen kunne ikke angres",
+      "formatSaved": "Formatet «{{name}}» er lagret",
+      "formatSaveFailed": "Tilordningen kunne ikke huskes",
+      "formatDeleted": "Formatet er slettet",
+      "formatDeleteFailed": "Formatet kunne ikke slettes"
+    },
+    "row": {
+      "notATrade": "Ikke et kjøp eller et salg",
+      "zeroQuantity": "Antall på null",
+      "assetClass": "En annen aktivaklasse",
+      "instrumentSkipped": "Verdipapiret er hoppet over",
+      "dateUnparseable": "Datoen kunne ikke leses",
+      "numberUnparseable": "Tallet kunne ikke leses",
+      "commentUnparseable": "Kommentaren kunne ikke leses",
+      "symbolMissing": "Symbol mangler",
+      "symbolMissingIsin": "Symbol mangler, og ISIN-en «{{detail}}» er ikke gyldig",
+      "tickerInvalid": "Ugyldig symbol",
+      "currencyMissing": "Valuta mangler",
+      "currencyInvalid": "Ugyldig valuta",
+      "priceMissing": "Kurs mangler",
+      "sellExceedsHoldings": "Salget overstiger beholdningen den dagen",
+      "sellExceedsHoldingsHeld": "Salget overstiger beholdningen den dagen ({{detail}} holdt)",
+      "currencyMismatch": "Valutaen avviker fra beholdningens",
+      "currencyMismatchPosition": "Valutaen avviker fra beholdningens ({{detail}})",
+      "duplicate": "Den samme handelen finnes allerede i Moony",
+      "duplicateById": "En handel med samme megler-ID finnes allerede i Moony",
+      "duplicateSimilar": "En lignende handel finnes allerede i Moony: samme dag og antall, kurs innenfor 0,5 %",
+      "cannotParse": "Raden kunne ikke leses",
+      "writeFailed": "Handelen kunne ikke skrives"
+    }
+  },
+  "eyebrow": "Portefølje",
+  "export": "Eksporter"
+}

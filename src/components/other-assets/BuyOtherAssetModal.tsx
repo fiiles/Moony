@@ -99,9 +99,7 @@ export function BuyOtherAssetModal({ asset, open, onOpenChange }: BuyOtherAssetM
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>
-            {t('modal.buy.title')} {asset.name}
-          </DialogTitle>
+          <DialogTitle>{t('modal.buy.titleNamed', { name: asset.name })}</DialogTitle>
           <DialogDescription>{t('modal.buy.description')}</DialogDescription>
         </DialogHeader>
         <Form {...form}>

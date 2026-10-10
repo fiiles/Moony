@@ -1,0 +1,146 @@
+{
+  "title": "Andre eiendeler",
+  "subtitle": "Gull, samlinger, eierandeler og lån – alt uten markedskurs som du verdsetter selv.",
+  "loading": "Laster andre eiendeler...",
+  "empty": {
+    "title": "Ingen eiendeler ennå",
+    "description": "Legg til gull, en samling eller en eierandel: navn, pris per enhet og et valgfritt første kjøp. Omvurderinger tegner deretter anslaget over tid."
+  },
+  "addAsset": "Legg til eiendel",
+  "summary": {
+    "totalValue": "Total verdi",
+    "assetCount": "Eiendeler",
+    "totalGainLoss": "Samlet gevinst/tap",
+    "value": "Verdi",
+    "assets_one": "{{count}} eiendel",
+    "assets_other": "{{count}} eiendeler",
+    "gain": "Gevinst mot kjøpspris",
+    "vsCostPct": "{{percent}} mot kjøpskostnad {{amount}}",
+    "noCost": "ingen kjøpskostnad",
+    "yearlyYield": "Årlig avkastning",
+    "yieldNote_one": "{{percent}} · fra {{count}} eiendel med avkastning",
+    "yieldNote_other": "{{percent}} · fra {{count}} eiendeler med avkastning",
+    "noYield": "ingen eiendel gir avkastning",
+    "lastChange": "Siste endring"
+  },
+  "table": {
+    "title": "Eiendeler",
+    "search": "Søk i eiendeler",
+    "name": "Navn",
+    "category": "Kategori",
+    "purchasePrice": "Kjøpspris",
+    "marketPrice": "Markedskurs",
+    "avgPurchasePrice": "Gj.sn. kjøpspris",
+    "totalValue": "Total verdi",
+    "currentValue": "Nåverdi",
+    "purchaseDate": "Kjøpsdato",
+    "gainLoss": "Gevinst/tap",
+    "actions": "Handlinger",
+    "noAssets": "Ingen eiendeler funnet. Legg til den første eiendelen for å komme i gang.",
+    "subtitle": "Verdi = antall × ditt siste prisanslag",
+    "asset": "Eiendel",
+    "quantity": "Antall",
+    "unit": "stk.",
+    "price": "Pris / enhet",
+    "avgPurchase": "Kjøp / enhet",
+    "value": "Verdi",
+    "gain": "Gevinst",
+    "yearly": "Årlig",
+    "updated": "Oppdatert",
+    "noChange": "ingen endring",
+    "yieldFixed": "fast beløp",
+    "yieldPercentPurchase": "{{value}} % av kjøpskostnad",
+    "yieldPercentMarket": "{{value}} % av verdi",
+    "noResults": {
+      "title": "Ingen treff",
+      "description": "Prøv et annet navn."
+    },
+    "footer": {
+      "count_one": "{{count}} eiendel",
+      "count_other": "{{count}} eiendeler",
+      "value": "verdi {{amount}}",
+      "cost": "kjøpskostnad {{amount}}",
+      "yieldNote": "Årlig avkastning etter valgt type: fast beløp, % av kjøpspris eller % av verdi"
+    }
+  },
+  "actions": {
+    "edit": "Rediger",
+    "delete": "Slett",
+    "transactions": "Transaksjoner",
+    "buy": "Kjøp",
+    "sell": "Selg",
+    "revalue": "Omvurder"
+  },
+  "confirmDelete": {
+    "title": "Slette eiendelen?",
+    "description": "«{{name}}» og alle transaksjonene fjernes permanent. Dette kan ikke angres."
+  },
+  "confirmDeleteTransaction": {
+    "title": "Slette transaksjonen?",
+    "description": "Dette sletter transaksjonen ({{type}}, {{quantity}} × {{price}}, {{date}}) permanent. Dette kan ikke angres."
+  },
+  "toast": {
+    "added": "Eiendelen er lagt til",
+    "updated": "Eiendelen er oppdatert",
+    "deleted": "Eiendelen er slettet",
+    "deleteError": "Kunne ikke slette eiendelen"
+  },
+  "modal": {
+    "add": {
+      "title": "Legg til annen eiendel",
+      "basicInfo": "Eiendelsinformasjon",
+      "assetName": "Navn på eiendel",
+      "assetNamePlaceholder": "f.eks. Gullbarrer",
+      "marketPrice": "Nåværende markedskurs (per enhet)",
+      "initialPurchase": "Første kjøp (valgfritt)",
+      "pricePerUnit": "Pris / enhet",
+      "initialPurchaseHint": "Hvis utfylt, legges det til en «Kjøp»-transaksjon.",
+      "yieldConfig": "Avkastning (valgfritt)",
+      "yieldConfigDescription": "Inntekt eiendelen gir hvert år, for eksempel leie eller renter.",
+      "submit": "Legg til eiendel",
+      "description": "Legg til en ny egendefinert eiendel i porteføljen din.",
+      "yieldType": "Type avkastning",
+      "yieldValue": "Avkastningsverdi",
+      "yieldTypes": {
+        "none": "Ingen",
+        "fixed": "Fast beløp (årlig)",
+        "percentPurchase": "% av kjøpspris",
+        "percentMarket": "% av markedskurs"
+      },
+      "marketPriceHint": "Ditt anslag per enhet i dag; endre det senere ved å omvurdere.",
+      "total": "Første kjøp til dagens kurs"
+    },
+    "buy": {
+      "titleNamed": "Kjøp mer {{name}}",
+      "description": "Legg til mer av eiendelen din.",
+      "pricePerUnit": "Pris per enhet",
+      "submit": "Legg til transaksjon"
+    },
+    "sell": {
+      "titleNamed": "Selg {{name}}",
+      "description": "Registrer et salg av denne eiendelen.",
+      "pricePerUnit": "Pris per enhet",
+      "submit": "Selg eiendel"
+    },
+    "transactions": {
+      "title": "Transaksjonshistorikk",
+      "noTransactions": "Ingen transaksjoner funnet"
+    },
+    "edit": {
+      "title": "Rediger · {{name}}",
+      "description": "Navn, valuta og avkastning. Endre prisen ved å omvurdere, antallet med kjøp og salg.",
+      "currencyHint": "Valuta for prisen og kjøpssnittet.",
+      "priceHint": "Endre markedskursen med Omvurder – det setter spor i diagrammet."
+    }
+  },
+  "eyebrow": "Portefølje",
+  "export": "Eksporter",
+  "status": {
+    "latest": "Siste endring {{date}}",
+    "manual": "Verdsatt manuelt"
+  },
+  "chart": {
+    "title": "Estimert verdi over tid",
+    "subtitle": "Flat mellom omvurderinger – hoppene er dine anslag og kjøp, ikke markedet."
+  }
+}

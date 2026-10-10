@@ -1,0 +1,128 @@
+{
+  "card": {
+    "title": "今後の予定",
+    "settingsLink": "リマインダーを編集",
+    "showAll": "すべて表示（{{count}}）",
+    "showLess": "表示を減らす",
+    "nothingDue": "予定はありません。",
+    "upkeep": "データの更新",
+    "upkeepShow": "{{count}}件を表示",
+    "upkeepHide": "折りたたむ",
+    "today": "今日",
+    "target": "目標",
+    "rowMenu": "リマインダーのオプション：{{title}}"
+  },
+  "status": {
+    "deadline": "{{title}} · {{when}}",
+    "more": "+{{count}}",
+    "title": "今後14日間の期限",
+    "openOverview": "概要を開く"
+  },
+  "actions": {
+    "hide": "非表示",
+    "remindWeek": "1週間後に通知",
+    "remindMonth": "1か月後に通知",
+    "undo": "元に戻す"
+  },
+  "toast": {
+    "hidden": "非表示にしました",
+    "snoozedWeek": "1週間スヌーズしました",
+    "snoozedMonth": "1か月スヌーズしました",
+    "muted": "リマインダーをオフにしました · {{group}}"
+  },
+  "relative": {
+    "today": "今日",
+    "tomorrow": "明日",
+    "inDays_other": "{{count}}日後",
+    "inMonths_other": "{{count}}か月後",
+    "daysAgo_other": "{{count}}日前",
+    "monthsAgo_other": "{{count}}か月前"
+  },
+  "titles": {
+    "backup_stale": "データのバックアップ",
+    "balances_stale": "口座残高"
+  },
+  "sub": {
+    "insurance_anniversary": "解約期限の最終日 · 更新日 {{date}}",
+    "insurance_anniversary_passed": "契約の更新日 · 通知期間は過ぎました",
+    "insurance_end": "契約終了",
+    "insurance_payment": "支払い {{amount}}",
+    "loan_fixation_end": "固定金利の終了 · 他社の条件を比較する時期です",
+    "loan_payoff": "最終回の返済",
+    "bond_maturity": "満期 · {{amount}}が戻ります",
+    "bond_coupon": "クーポン {{amount}}",
+    "account_termination": "口座の終了",
+    "savings_rate_end": "優遇金利の終了",
+    "watch_target_below": "価格 {{price}} が目標 {{target}} まで下がりました",
+    "watch_target_above": "価格 {{price}} が目標 {{target}} に到達しました",
+    "loan_fixation_expired": "固定金利は {{date}} に終了 · 新しい金利を入力してください",
+    "loan_balance_check": "{{date}} から残高を確認していません · 明細と照合してください",
+    "valuation_stale": "{{date}} 以降、評価の更新がありません · 再評価してください",
+    "backup_stale": "最後のバックアップ {{date}}",
+    "backup_never": "バックアップはまだありません",
+    "balances_stale_other": "{{count}}件の口座が30日以上更新されていません"
+  },
+  "short": {
+    "backup_stale": "データをバックアップ",
+    "balances_stale_other": "{{count}}件の残高を更新",
+    "valuation_stale": "{{title}}を再評価",
+    "loan_balance_check": "{{title}}の残高を確認",
+    "loan_fixation_expired": "{{title}}の新しい金利を入力"
+  },
+  "groups": {
+    "insuranceDates": {
+      "label": "保険の更新日と終了日",
+      "hint": "概要には最大3か月先まで表示します。更新日には解約期限の最終日も表示します。",
+      "mute": "保険の更新日と終了日を通知しない"
+    },
+    "insurancePayments": {
+      "label": "保険料の支払い",
+      "hint": "四半期、半年、年払いの支払いを14日前に通知します。",
+      "mute": "保険料の支払いを通知しない"
+    },
+    "loans": {
+      "label": "固定金利の終了とローンの完済",
+      "hint": "固定金利の終了は6か月前、最終回の返済は1か月前に通知します。",
+      "mute": "固定金利と完済を通知しない"
+    },
+    "bonds": {
+      "label": "債券の満期とクーポン",
+      "hint": "満期は最大3か月前、クーポンは1週間前に通知します。",
+      "mute": "満期とクーポンを通知しない"
+    },
+    "accounts": {
+      "label": "口座と優遇金利の終了",
+      "hint": "口座や優遇金利の終了を最大3か月前に通知します。",
+      "mute": "口座と金利の終了を通知しない"
+    },
+    "targets": {
+      "label": "株式の目標価格",
+      "hint": "価格が設定した方向で目標に到達したときに通知します。",
+      "mute": "目標価格を通知しない"
+    },
+    "backup": {
+      "label": "データのバックアップ",
+      "hint": "最後のバックアップが30日より古いときに通知します。",
+      "mute": "バックアップを通知しない"
+    },
+    "balances": {
+      "label": "残高の更新",
+      "hint": "口座残高が30日以上更新されていないときに通知します。",
+      "mute": "口座残高を通知しない"
+    },
+    "valuations": {
+      "label": "不動産の評価",
+      "hint": "不動産の評価が1年より古いときに通知します。",
+      "mute": "不動産の評価を通知しない"
+    },
+    "loanChecks": {
+      "label": "ローンの確認",
+      "hint": "年1回の残高確認と、固定金利終了後の新しい金利について通知します。",
+      "mute": "ローンの確認を通知しない"
+    }
+  },
+  "settings": {
+    "title": "概要のリマインダー",
+    "description": "「今後の予定」カードとトップバーで通知する内容です。オフにした種類はどこにも表示されません。"
+  }
+}

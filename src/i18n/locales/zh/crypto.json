@@ -1,0 +1,238 @@
+{
+  "title": "加密货币",
+  "eyebrow": "投资组合",
+  "subtitle": "按当前汇率计价的加密货币持仓，成本采用加权平均法。",
+  "loading": "正在加载您的加密货币组合…",
+  "empty": {
+    "title": "还没有加密货币",
+    "description": "添加您的第一个币种：我们会在 CoinGecko 上查找它，汇率将自动保持最新。"
+  },
+  "addCrypto": "添加加密货币",
+  "refreshPrices": "刷新汇率",
+  "export": "导出",
+  "summary": {
+    "value": "加密货币价值",
+    "positions_other": "{{count}} 个未平仓持仓",
+    "updatedToday": "汇率今天已更新",
+    "updatedOn": "汇率截至 {{date}}",
+    "notUpdated": "尚未获取汇率",
+    "unrealizedGain": "未实现收益",
+    "unrealizedLoss": "未实现亏损",
+    "vsInvestedPct": "对比投入 {{amount}}：{{percent}}",
+    "realized": "已实现收益",
+    "sells_other": "{{count}} 次卖出 · 加权平均",
+    "noSells": "尚无卖出",
+    "largest": "最大持仓",
+    "largestNote": "占加密货币价值的 {{share}} · 自买入以来 {{change}}",
+    "noPositions": "没有未平仓持仓"
+  },
+  "chart": {
+    "title": "加密货币价值走势",
+    "subtitle": "买入和卖出直接标在图表上——每一次跳变都有解释。",
+    "legend": {
+      "value": "加密货币价值",
+      "buy": "买入",
+      "sell": "卖出"
+    },
+    "events": {
+      "buy": "买入 {{tickers}}",
+      "sell": "卖出 {{tickers}}",
+      "cluster_other": "{{count}} 笔交易"
+    }
+  },
+  "table": {
+    "title": "持仓",
+    "subtitle": "汇率按今日外汇折算为 {{currency}} · 手动汇率已标注",
+    "search": "按名称或代码搜索",
+    "asset": "资产",
+    "quantity": "数量",
+    "avgCost": "平均成本",
+    "rate": "汇率",
+    "value": "价值",
+    "share": "占比",
+    "return": "收益",
+    "actions": "操作",
+    "showClosed": "显示已平仓持仓",
+    "source": "CoinGecko",
+    "manualSource": "手动汇率",
+    "closed": "{{date}} 已平仓",
+    "realized": "已实现 {{amount}}",
+    "noResults": {
+      "title": "未找到结果",
+      "description": "请尝试其他名称或代码。",
+      "closedHidden": "请尝试其他名称或代码。已平仓的持仓已隐藏。"
+    },
+    "footer": {
+      "count_other": "{{count}} 个持仓",
+      "total": "合计",
+      "rates": "价值按今日汇率以 {{currency}} 计",
+      "closed_other": "{{count}} 个已平仓持仓"
+    }
+  },
+  "actions": {
+    "buy": "买入",
+    "sell": "卖出",
+    "updatePrice": "手动设置汇率",
+    "delete": "删除持仓"
+  },
+  "badges": {
+    "manual": "手动"
+  },
+  "tooltip": {
+    "manualPrice": "手动设置的汇率——在您移除之前，将覆盖 CoinGecko 的汇率。"
+  },
+  "modal": {
+    "add": {
+      "title": "添加加密货币",
+      "description": "在 CoinGecko 上查找币种，其汇率随后会自动更新。",
+      "coin": "加密货币",
+      "ticker": "代码",
+      "search": "搜索 CoinGecko",
+      "searchHint": "输入名称或代码以查看 CoinGecko 的匹配结果。",
+      "searching": "正在搜索 CoinGecko…",
+      "searchError": "搜索失败。请检查网络连接，或“设置”中的 CoinGecko 密钥。",
+      "noResults": "没有匹配的币种。您可以手动填写代码和名称。",
+      "rank": "#{{rank}}",
+      "quantity": "数量",
+      "pricePerUnit": "单价",
+      "purchaseDate": "买入日期",
+      "total": "买入总额",
+      "submit": "添加持仓"
+    },
+    "buy": {
+      "title": "买入 {{name}}",
+      "description": "买入会增加数量，并重新计算平均成本。",
+      "quantity": "数量",
+      "pricePerUnit": "每 1 {{ticker}} 的汇率",
+      "rateHint": "已预填当前汇率。",
+      "total": "买入总额",
+      "submit": "记录买入"
+    },
+    "sell": {
+      "title": "卖出 {{name}}",
+      "description": "已实现收益按平均成本计算。",
+      "quantity": "数量",
+      "all": "全部（{{quantity}}）",
+      "tooMuch": "您只持有 {{quantity}}。",
+      "pricePerUnit": "每 1 {{ticker}} 的汇率",
+      "proceeds": "卖出所得 {{amount}} · 已实现收益",
+      "proceedsEmpty": "卖出所得和已实现收益",
+      "submit": "记录卖出"
+    },
+    "updatePrice": {
+      "title": "手动汇率 · {{name}}",
+      "description": "在您移除手动汇率之前，将覆盖 CoinGecko 的汇率。",
+      "price": "每 1 {{ticker}} 的汇率",
+      "total": "持仓价值（{{quantity}} {{ticker}}）",
+      "remove": "移除手动汇率",
+      "submit": "保存汇率"
+    }
+  },
+  "confirmDelete": {
+    "title": "删除持仓？",
+    "description": "{{name}}（{{ticker}}）及其所有交易将被永久删除，此操作无法撤销。"
+  },
+  "toast": {
+    "added": "加密货币已添加，正在获取汇率",
+    "bought": "买入已记录",
+    "sold": "卖出已记录",
+    "deleted": "持仓已删除",
+    "priceUpdated": "手动汇率已保存",
+    "manualPriceDeleted": "手动汇率已移除",
+    "pricesRefreshed_other": "已从 CoinGecko 更新 {{count}} 个汇率",
+    "pricesRefreshedDescription": "已从 CoinGecko 获取当前汇率",
+    "refreshFailed": "汇率刷新失败",
+    "addFailed": "添加加密货币失败"
+  },
+  "detail": {
+    "backToList": "返回加密货币",
+    "notFound": "未找到持仓",
+    "source": "CoinGecko",
+    "manualSource": "手动汇率",
+    "quantityUnits": "{{quantity}} {{ticker}}",
+    "avgBuyPrice": "平均成本 {{price}}",
+    "lastBuy": "最近买入 {{date}}",
+    "refreshPrices": "刷新汇率",
+    "buy": "买入",
+    "sell": "卖出",
+    "menu": {
+      "editPrice": "手动设置汇率",
+      "delete": "删除持仓"
+    },
+    "status": {
+      "rateUpdated": "汇率更新于{{when}}",
+      "todayAt": "今天 {{time}}"
+    },
+    "positionValue": "持仓价值",
+    "vsInvestedPct": "对比投入 {{percent}}",
+    "rate": "汇率",
+    "invested": "投入",
+    "avgShort": "平均 {{price}}",
+    "unrealized": "未实现收益",
+    "realized": "已实现收益",
+    "sells_other": "{{count}} 次卖出",
+    "noSells": "尚无卖出",
+    "held": "持有时长",
+    "heldSince": "自 {{date}} 起",
+    "shareOfCrypto": "占加密货币价值的 {{share}}",
+    "duration": {
+      "years_other": "{{count}} 年",
+      "months_other": "{{count}} 个月",
+      "lessThanMonth": "不足一个月"
+    },
+    "transactions": {
+      "title": "交易记录",
+      "date": "日期",
+      "type": "类型",
+      "quantity": "数量",
+      "price": "汇率",
+      "total": "合计",
+      "empty": "还没有交易"
+    },
+    "priceNative": "汇率（{{currency}}）",
+    "priceNativeMixed": "汇率（原币种）",
+    "realizedRow": "已实现 {{amount}}",
+    "ledger": {
+      "sub_other": "{{count}} 笔交易 · 将鼠标悬停在某行上，即可在图表中高亮显示",
+      "filter": {
+        "all": "全部",
+        "buys": "买入",
+        "sells": "卖出"
+      },
+      "footer_other": "{{count}} 笔交易",
+      "bought": "买入 {{amount}}",
+      "sold": "卖出 {{amount}}",
+      "rates": "汇率以 {{currency}} 计，采用交易当日的欧洲央行汇率"
+    },
+    "position": {
+      "title": "持仓",
+      "quantity": "数量",
+      "avgPrice": "平均成本",
+      "currentPrice": "当前汇率",
+      "nativePrice": "{{currency}}汇率",
+      "shareOfCrypto": "占加密货币的比例",
+      "priceUpdated": "汇率更新时间",
+      "setManual": "手动设置汇率",
+      "removeManual": "移除手动汇率"
+    },
+    "sinceFirst": {
+      "title": "自首次买入以来",
+      "text": "{{duration}}以来，{{ticker}} 的汇率从 {{firstPrice}} 变动了 {{rateChange}}。您的持仓收益为 {{positionChange}}{{realizedPart}}。",
+      "realizedPart": "；卖出已实现 {{amount}}",
+      "none": "尚无买入。"
+    },
+    "deleteTransaction": "删除交易",
+    "transactionDeleted": "交易已删除",
+    "pricesRefreshed": "汇率已更新",
+    "confirmDeleteTransaction": {
+      "title": "删除交易？",
+      "description": "这将永久删除该笔{{type}}交易（{{quantity}} × {{ticker}}，{{date}}，{{amount}}），此操作无法撤销。"
+    }
+  },
+  "coingeckoBanner": {
+    "title": "CoinGecko API 密钥（可选）",
+    "message": "没有密钥也能获取汇率。在“设置”中添加免费的 CoinGecko 密钥后，还可加载图表所需的汇率历史。",
+    "goToSettings": "打开设置",
+    "dismiss": "关闭"
+  }
+}

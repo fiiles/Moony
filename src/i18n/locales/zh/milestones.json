@@ -1,0 +1,128 @@
+{
+  "card": {
+    "title": "即将到来",
+    "settingsLink": "编辑提醒",
+    "showAll": "显示全部（{{count}}）",
+    "showLess": "收起",
+    "nothingDue": "没有即将到来的日期。",
+    "upkeep": "数据维护",
+    "upkeepShow": "显示 {{count}} 项",
+    "upkeepHide": "折叠",
+    "today": "今天",
+    "target": "目标",
+    "rowMenu": "提醒选项：{{title}}"
+  },
+  "status": {
+    "deadline": "{{title}} · {{when}}",
+    "more": "+{{count}}",
+    "title": "未来 14 天内的截止日期",
+    "openOverview": "打开概览"
+  },
+  "actions": {
+    "hide": "隐藏",
+    "remindWeek": "一周后提醒我",
+    "remindMonth": "一个月后提醒我",
+    "undo": "撤销"
+  },
+  "toast": {
+    "hidden": "已隐藏",
+    "snoozedWeek": "已推迟一周",
+    "snoozedMonth": "已推迟一个月",
+    "muted": "提醒已关闭 · {{group}}"
+  },
+  "relative": {
+    "today": "今天",
+    "tomorrow": "明天",
+    "inDays_other": "{{count}} 天后",
+    "inMonths_other": "{{count}} 个月后",
+    "daysAgo_other": "{{count}} 天前",
+    "monthsAgo_other": "{{count}} 个月前"
+  },
+  "titles": {
+    "backup_stale": "数据备份",
+    "balances_stale": "账户余额"
+  },
+  "sub": {
+    "insurance_anniversary": "最后退保日 · 周年日 {{date}}",
+    "insurance_anniversary_passed": "合同周年日 · 通知期已过",
+    "insurance_end": "合同到期",
+    "insurance_payment": "付款 {{amount}}",
+    "loan_fixation_end": "固定利率结束 · 该比较报价了",
+    "loan_payoff": "最后一期还款",
+    "bond_maturity": "到期 · 回款 {{amount}}",
+    "bond_coupon": "票息 {{amount}}",
+    "account_termination": "账户到期",
+    "savings_rate_end": "优惠利率结束",
+    "watch_target_below": "价格 {{price}} 已跌至目标价 {{target}}",
+    "watch_target_above": "价格 {{price}} 已达到目标价 {{target}}",
+    "loan_fixation_expired": "固定利率已于 {{date}} 结束 · 请输入新利率",
+    "loan_balance_check": "自 {{date}} 起未核对余额 · 请与账单对照",
+    "valuation_stale": "自 {{date}} 起没有新的估值 · 请重新估值",
+    "backup_stale": "上次备份 {{date}}",
+    "backup_never": "还没有备份",
+    "balances_stale_other": "{{count}} 个账户已超过 30 天未更新"
+  },
+  "short": {
+    "backup_stale": "备份您的数据",
+    "balances_stale_other": "更新 {{count}} 个余额",
+    "valuation_stale": "重新估值 {{title}}",
+    "loan_balance_check": "核对{{title}}的余额",
+    "loan_fixation_expired": "输入{{title}}的新利率"
+  },
+  "groups": {
+    "insuranceDates": {
+      "label": "保险周年日和到期日",
+      "hint": "在概览中最多提前 3 个月显示；周年日会附带最后退保日。",
+      "mute": "不再提醒保险周年日和到期日"
+    },
+    "insurancePayments": {
+      "label": "保险付款",
+      "hint": "按季、半年和每年的付款提前 14 天提醒。",
+      "mute": "不再提醒保险付款"
+    },
+    "loans": {
+      "label": "固定利率结束和贷款还清",
+      "hint": "固定利率结束提前 6 个月提醒，最后一期还款提前一个月提醒。",
+      "mute": "不再提醒固定利率和还清"
+    },
+    "bonds": {
+      "label": "债券到期和票息",
+      "hint": "到期最多提前 3 个月提醒，票息提前一周提醒。",
+      "mute": "不再提醒到期和票息"
+    },
+    "accounts": {
+      "label": "账户和优惠利率到期",
+      "hint": "账户或优惠利率到期最多提前 3 个月提醒。",
+      "mute": "不再提醒账户和利率到期"
+    },
+    "targets": {
+      "label": "股票目标价",
+      "hint": "当价格朝目标方向达到目标价时提醒。",
+      "mute": "不再提醒目标价"
+    },
+    "backup": {
+      "label": "数据备份",
+      "hint": "当上次备份已超过 30 天时提醒。",
+      "mute": "不再提醒备份"
+    },
+    "balances": {
+      "label": "余额更新",
+      "hint": "当账户余额已超过 30 天未更新时提醒。",
+      "mute": "不再提醒账户余额"
+    },
+    "valuations": {
+      "label": "房产估值",
+      "hint": "当房产估值已超过一年时提醒。",
+      "mute": "不再提醒房产估值"
+    },
+    "loanChecks": {
+      "label": "贷款核对",
+      "hint": "每年核对一次余额，以及固定利率结束后输入新利率。",
+      "mute": "不再提醒贷款核对"
+    }
+  },
+  "settings": {
+    "title": "概览提醒",
+    "description": "“即将到来”卡片和顶部栏会提醒您的内容。已关闭的类型不会在任何位置显示。"
+  }
+}

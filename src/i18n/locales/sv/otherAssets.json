@@ -1,0 +1,146 @@
+{
+  "title": "Övriga tillgångar",
+  "subtitle": "Guld, samlingar, andelar och lån – allt utan marknadskurs som du värderar själv.",
+  "loading": "Laddar dina övriga tillgångar...",
+  "empty": {
+    "title": "Inga tillgångar ännu",
+    "description": "Lägg till guld, en samling eller en andel: namn, pris per enhet och ett valfritt första köp. Omvärderingar ritar sedan upp uppskattningen över tid."
+  },
+  "addAsset": "Lägg till tillgång",
+  "summary": {
+    "totalValue": "Totalt värde",
+    "assetCount": "Tillgångar",
+    "totalGainLoss": "Total vinst/förlust",
+    "value": "Värde",
+    "assets_one": "{{count}} tillgång",
+    "assets_other": "{{count}} tillgångar",
+    "gain": "Vinst mot inköp",
+    "vsCostPct": "{{percent}} mot inköpskostnad {{amount}}",
+    "noCost": "ingen inköpskostnad",
+    "yearlyYield": "Årlig avkastning",
+    "yieldNote_one": "{{percent}} · från {{count}} avkastande tillgång",
+    "yieldNote_other": "{{percent}} · från {{count}} avkastande tillgångar",
+    "noYield": "ingen tillgång ger någon avkastning",
+    "lastChange": "Senaste ändring"
+  },
+  "table": {
+    "title": "Tillgångar",
+    "search": "Sök tillgångar",
+    "name": "Namn",
+    "category": "Kategori",
+    "purchasePrice": "Inköpspris",
+    "marketPrice": "Marknadspris",
+    "avgPurchasePrice": "Snittinköpspris",
+    "totalValue": "Totalt värde",
+    "currentValue": "Aktuellt värde",
+    "purchaseDate": "Inköpsdatum",
+    "gainLoss": "Vinst/förlust",
+    "actions": "Åtgärder",
+    "noAssets": "Inga tillgångar hittades. Lägg till din första tillgång för att komma igång.",
+    "subtitle": "Värde = antal × din senaste prisuppskattning",
+    "asset": "Tillgång",
+    "quantity": "Antal",
+    "unit": "st",
+    "price": "Pris / enhet",
+    "avgPurchase": "Inköp / enhet",
+    "value": "Värde",
+    "gain": "Vinst",
+    "yearly": "Per år",
+    "updated": "Uppdaterad",
+    "noChange": "ingen förändring",
+    "yieldFixed": "fast belopp",
+    "yieldPercentPurchase": "{{value}} % av inköpskostnaden",
+    "yieldPercentMarket": "{{value}} % av värdet",
+    "noResults": {
+      "title": "Inga träffar",
+      "description": "Prova ett annat namn."
+    },
+    "footer": {
+      "count_one": "{{count}} tillgång",
+      "count_other": "{{count}} tillgångar",
+      "value": "värde {{amount}}",
+      "cost": "inköpskostnad {{amount}}",
+      "yieldNote": "Årlig avkastning enligt vald typ: fast belopp, % av inköp eller % av värde"
+    }
+  },
+  "actions": {
+    "edit": "Redigera",
+    "delete": "Ta bort",
+    "transactions": "Transaktioner",
+    "buy": "Köp",
+    "sell": "Sälj",
+    "revalue": "Omvärdera"
+  },
+  "confirmDelete": {
+    "title": "Ta bort tillgången?",
+    "description": "”{{name}}” och alla dess transaktioner tas bort permanent. Det går inte att ångra."
+  },
+  "confirmDeleteTransaction": {
+    "title": "Ta bort transaktionen?",
+    "description": "Transaktionen av typen {{type}} ({{quantity}} × {{price}}, {{date}}) tas bort permanent. Det går inte att ångra."
+  },
+  "toast": {
+    "added": "Tillgången har lagts till",
+    "updated": "Tillgången har uppdaterats",
+    "deleted": "Tillgången har tagits bort",
+    "deleteError": "Det gick inte att ta bort tillgången"
+  },
+  "modal": {
+    "add": {
+      "title": "Lägg till övrig tillgång",
+      "basicInfo": "Tillgångsinformation",
+      "assetName": "Tillgångens namn",
+      "assetNamePlaceholder": "t.ex. Guldtackor",
+      "marketPrice": "Aktuellt marknadspris (per enhet)",
+      "initialPurchase": "Första köp (valfritt)",
+      "pricePerUnit": "Pris / enhet",
+      "initialPurchaseHint": "Om det fylls i läggs en ”Köp”-transaktion till.",
+      "yieldConfig": "Avkastning (valfritt)",
+      "yieldConfigDescription": "Inkomst som tillgången ger varje år, till exempel hyra eller ränta.",
+      "submit": "Lägg till tillgång",
+      "description": "Lägg till en ny egen tillgång i din portfölj.",
+      "yieldType": "Avkastningstyp",
+      "yieldValue": "Avkastningsvärde",
+      "yieldTypes": {
+        "none": "Ingen",
+        "fixed": "Fast belopp (per år)",
+        "percentPurchase": "% av inköpspriset",
+        "percentMarket": "% av marknadspriset"
+      },
+      "marketPriceHint": "Din uppskattning per enhet i dag; ändra den senare genom att omvärdera.",
+      "total": "Första köp till dagens pris"
+    },
+    "buy": {
+      "titleNamed": "Köp mer {{name}}",
+      "description": "Lägg till mer antal till din tillgång.",
+      "pricePerUnit": "Pris per enhet",
+      "submit": "Lägg till transaktion"
+    },
+    "sell": {
+      "titleNamed": "Sälj {{name}}",
+      "description": "Registrera en försäljning av den här tillgången.",
+      "pricePerUnit": "Pris per enhet",
+      "submit": "Sälj tillgång"
+    },
+    "transactions": {
+      "title": "Transaktionshistorik",
+      "noTransactions": "Inga transaktioner hittades"
+    },
+    "edit": {
+      "title": "Redigera · {{name}}",
+      "description": "Namn, valuta och avkastning. Ändra priset genom att omvärdera, antalet med köp och försäljningar.",
+      "currencyHint": "Valuta för priset och inköpssnittet.",
+      "priceHint": "Ändra marknadspriset med Omvärdera – det lämnar ett spår i diagrammet."
+    }
+  },
+  "eyebrow": "Portfölj",
+  "export": "Exportera",
+  "status": {
+    "latest": "Senaste ändring {{date}}",
+    "manual": "Värderas manuellt"
+  },
+  "chart": {
+    "title": "Uppskattat värde över tid",
+    "subtitle": "Platt mellan omvärderingar – hoppen är dina uppskattningar och köp, inte marknaden."
+  }
+}

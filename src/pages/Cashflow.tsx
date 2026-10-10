@@ -13,7 +13,7 @@ import { periodFileStem } from '@/utils/period';
 import { useMemo, useState, type ReactNode } from 'react';
 import { Link } from 'wouter';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 import { Landmark } from 'lucide-react';
 import type { CashflowActuals, CashflowGroup } from '@shared/schema';
 import { cashflowApi } from '@/lib/tauri-api';
@@ -240,15 +240,18 @@ export default function Cashflow() {
       eyebrow={t('actuals.eyebrow')}
       title={t('actuals.title')}
       description={
-        <>
-          {t('actuals.subtitle')}{' '}
-          <Link
-            href="/reports/cashflow-planning"
-            className="font-650 text-ink-2 underline-offset-[3px] hover:text-ink hover:underline"
-          >
-            {t('actuals.link')} →
-          </Link>
-        </>
+        <Trans
+          t={t}
+          i18nKey="actuals.subtitleLinked"
+          components={{
+            link: (
+              <Link
+                href="/reports/cashflow-planning"
+                className="font-650 text-ink-2 underline-offset-[3px] hover:text-ink hover:underline"
+              />
+            ),
+          }}
+        />
       }
       actions={
         <>

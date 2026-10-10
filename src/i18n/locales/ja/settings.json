@@ -1,0 +1,202 @@
+{
+  "title": "設定",
+  "sections": {
+    "navLabel": "設定のセクション",
+    "general": "一般",
+    "security": "セキュリティ",
+    "data": "データとバックアップ",
+    "integrations": "連携",
+    "categorization": "分類",
+    "account": "アカウント",
+    "description": {
+      "general": "プロフィール、言語、通貨、メニューの表示内容。",
+      "security": "パスワード、自動ロック、アプリの更新。",
+      "data": "データの保存場所と、そのコピーの作成方法。",
+      "integrations": "価格取得用の API キーと、AI アシスタント向けのローカル MCP サーバー。",
+      "categorization": "ルールパック、カテゴリ、独自の分類ルール。",
+      "account": "このコンピュータからデータを削除します。"
+    }
+  },
+  "profile": {
+    "title": "プロフィール",
+    "description": "概要画面のあいさつにお名前が表示されます。",
+    "name": "名",
+    "surname": "姓",
+    "email": "メールアドレス",
+    "save": "変更を保存",
+    "saving": "保存中..."
+  },
+  "password": {
+    "title": "パスワードの変更",
+    "description": "パスワードを変更すると新しい復旧キーが発行され、古いキーは使えなくなります。",
+    "current": "現在のパスワード",
+    "new": "新しいパスワード",
+    "confirm": "新しいパスワード（確認）",
+    "update": "パスワードを更新",
+    "updating": "更新中...",
+    "saving": "保存中...",
+    "recoveryKeyTitle": "新しい復旧キーを保存",
+    "recoveryKeyDescription": "パスワードが変更され、新しい復旧キーが生成されます。",
+    "oldKeyInvalid": "古い復旧キーは使えなくなります。",
+    "confirmHint": "確定する前に、復旧キーを書き留めるかコピーしたことを確認してください。パスワードは上のボタンをクリックした後に変更されます。"
+  },
+  "apiKeys": {
+    "title": "API キー",
+    "description": "暗号資産の価格取得に使う任意の API キーを設定します。株価にはキーは不要です。",
+    "coingecko": {
+      "label": "CoinGecko API キー",
+      "getDemoKey": "デモキーを取得",
+      "placeholder": "任意 - 無料プランならキーなしでも動作します",
+      "hint": "暗号資産の価格と検索に使用します（無料プランでは過去の価格は読み込めません）",
+      "hint2": "無料プランでは過去の価格は読み込めません"
+    },
+    "save": "API キーを保存",
+    "saving": "保存中...",
+    "saved": "API キーを保存しました",
+    "savedDescription": "API キーを更新しました。",
+    "optional": "任意",
+    "show": "キーを表示",
+    "hide": "キーを非表示"
+  },
+  "currency": {
+    "title": "通貨",
+    "description": "サマリー、資産の概要、レポートで使う通貨を選択します。",
+    "example": "例：{{example}}",
+    "unsupportedMain": "基準通貨には為替レートの取得元がありません。通貨が混在する合計は換算できません。対応している基準通貨を選択してください。",
+    "main": "基準通貨",
+    "mainHint": "サマリー、資産の概要、レポートはこの通貨で表示されます：",
+    "nativeHint": "口座、取引、契約、予算に入力した金額は、元の通貨のまま保持されます。"
+  },
+  "language": {
+    "title": "言語と表示形式",
+    "description": "数値と日付は表示言語に従います。",
+    "interface": "表示言語"
+  },
+  "menuVisibility": {
+    "title": "メニューの表示",
+    "description": "使わない資産の種類を非表示にします。"
+  },
+  "dashboardPreferences": {
+    "title": "ダッシュボードの設定",
+    "description": "ダッシュボードの概要に表示する内容を設定します。",
+    "excludeRealEstate": "概要から自己居住用の不動産を除外",
+    "excludeRealEstateHint": "自己居住用の不動産は、純資産と総資産の計算に含まれません"
+  },
+  "mcpServer": {
+    "title": "AI アシスタント（MCP サーバー）",
+    "description": "標準の MCP プロトコルを通じて、AI アシスタント（Claude など）があなたの財務データを読み取り、一部のツールでは書き込めるようにします。サーバーは Moony に内蔵されており、このコンピュータ上（127.0.0.1）でのみ待ち受けます。ご注意：AI クライアントが読み取った内容は、そのクライアントによって処理されます。通常は提供元のクラウド上です。信頼できるクライアントに対してのみ有効にしてください。データベースが暗号化されているため、アプリのロックを解除しておく必要があります。",
+    "enable": "MCP サーバーを有効にする",
+    "enableHint": "ローカル URL で MCP を提供します。Moony のロックを解除している間のみアクセスできます",
+    "statusRunning": "MCP サーバーは {{url}} で稼働中です",
+    "statusError": "MCP サーバーを起動できませんでした：{{error}}",
+    "endpoint": "エンドポイント URL",
+    "token": "アクセストークン",
+    "tokenHint": "Authorization: Bearer ヘッダーとして送信されます。パスワードと同様に扱ってください。",
+    "regenerate": "再生成",
+    "regenerateHint": "再生成すると、現在のトークンを使っているすべてのクライアント設定が無効になります。",
+    "tokenRegenerated": "トークンを再生成しました。クライアントの設定を更新してください",
+    "port": "ポート",
+    "portHint": "既定のポートが他のアプリと競合する場合のみ変更してください。有効な範囲は 1024〜65535 です。",
+    "applyPort": "適用",
+    "portUpdated": "ポートを更新しました",
+    "setupHeading": "クライアントを接続：",
+    "setupClaudeCode": "Claude Code（ターミナルで実行）",
+    "setupClaudeDesktop": "Claude Desktop（claude_desktop_config.json）",
+    "setupJson": "その他の MCP クライアント（JSON 設定）",
+    "desktopNote": "Claude Desktop はローカルの HTTP サーバーに直接接続できないため、この設定では標準の mcp-remote ブリッジを使用します（Node.js が必要です）。",
+    "jsonNote": "HTTP トランスポートをネイティブにサポートするクライアント向け（例：Claude Code プロジェクトの .mcp.json）。",
+    "updateFailed": "MCP サーバーの設定を更新できませんでした",
+    "advancedBadge": "上級者向け",
+    "summary": "ローカルサーバー経由で、Claude などの AI アシスタントをあなたのデータに接続します。任意の機能です。",
+    "expand": "表示",
+    "collapse": "非表示"
+  },
+  "dangerZone": {
+    "title": "危険な操作",
+    "description": "これらの操作は元に戻せません。",
+    "deleteAccount": "アカウントを削除",
+    "confirmTitle": "本当によろしいですか？",
+    "confirmDescription": "この操作は元に戻せません。アカウントを完全に削除し、このデバイスからすべてのデータを消去します。Moony はローカル専用のアプリのため、当社のサーバーに削除対象のデータはありません。",
+    "deleting": "削除中...",
+    "backupFirst": "ヒント：先にバックアップを作成してください（設定 → データとバックアップ）。このデータを取り戻す唯一の方法です。",
+    "confirmLabel": "確認のため {{word}} と入力してください",
+    "deleteAll": "すべてのデータを削除",
+    "deleteAllHint": "このコンピュータ上のプロフィールとデータベース全体を削除します。アプリ外に保存したバックアップは残ります。",
+    "deleteButton": "データを削除…"
+  },
+  "toast": {
+    "profileUpdated": "プロフィールを更新しました",
+    "profileUpdatedDesc": "プロフィールの詳細を保存しました。",
+    "passwordChanged": "パスワードを変更しました",
+    "passwordChangedDesc": "パスワードを更新しました。新しい復旧キーは大切に保管してください。",
+    "preferencesUpdated": "設定を更新しました",
+    "preferencesUpdatedDesc": "メニューの表示設定を保存しました。",
+    "verificationFailed": "確認に失敗しました",
+    "updateFailed": "更新に失敗しました",
+    "deletionFailed": "削除に失敗しました",
+    "languageChanged": "言語を変更しました"
+  },
+  "rulePacks": {
+    "title": "分類ルールパック",
+    "description": "国ごとの組み込みの店舗ルールです。取引銀行の国に合うパックを有効にしてください。一致した取引はインポート時に自動で分類されます。",
+    "globalPack": "グローバルブランド",
+    "rulesCount_other": "{{count}}件のルール",
+    "updateFailed": "ルールパックを更新できませんでした"
+  },
+  "categorizationRules": {
+    "title": "分類ルール",
+    "description": "取引にカテゴリを割り当てるルールを確認、編集、追加します。",
+    "open": "ルールを管理",
+    "rowLabel": "独自のルール",
+    "rowHint": "ルールパックより優先されます。"
+  },
+  "data": {
+    "title": "データとバックアップ",
+    "description": "データの保存場所と、そのコピーの作成方法。",
+    "location": "データフォルダ",
+    "size": "ディスク使用量 {{size}}",
+    "openFolder": "フォルダを開く",
+    "backupNow": "今すぐバックアップ",
+    "backupSaved": "バックアップを保存しました",
+    "backupSavedDescription_other": "{{count}}個のファイルを{{path}}に書き込みました。",
+    "restore": "バックアップから復元…",
+    "restoreConfirmTitle": "データをこのバックアップで置き換えますか？",
+    "restoreConfirmDescription": "{{date}}のバックアップ（Moony {{version}}、添付ファイル {{attachments}}件、{{size}}）。現在のデータは削除されず、データフォルダ内の「pre-restore」フォルダに移動されます。復元後、Moony はロックされます。バックアップ作成時に使っていたパスワードでロックを解除してください。",
+    "restoreNewer": "このバックアップは新しいバージョンの Moony で作成されたため、このバージョンでは復元できません。",
+    "restoreConfirm": "復元",
+    "restoring": "復元中…",
+    "restored": "バックアップを復元しました",
+    "restoredDescription": "Moony をロックします。バックアップ時のパスワードでロックを解除してください。",
+    "exportAll": "すべてのデータをエクスポート（JSON）",
+    "exportSaved": "エクスポートを保存しました",
+    "exportSavedDescription": "{{tables}}個のテーブル、{{rows}}行を{{path}}に書き込みました。",
+    "verify": "データベースを検証",
+    "verifyOk": "データベースは正常です",
+    "verifyFailed": "データベースの検査で問題が見つかりました",
+    "hint": "バックアップには、暗号化されたデータベース、キーファイル（salt、key.enc、recovery.enc）、添付ファイルが含まれます。開けるのはパスワードまたは復旧キーを知っている人だけです。外付けドライブやご自身のクラウドストレージなど、安全な場所に保管してください。",
+    "backupRow": "バックアップ",
+    "exportRow": "エクスポート",
+    "exportHint": "すべてのテーブルを1つの JSON ファイルに出力します。",
+    "exportButton": "JSON をエクスポート",
+    "verifyRow": "データベースの検査",
+    "verifyHint": "暗号化されたデータベースの整合性を確認します。"
+  },
+  "autoLock": {
+    "title": "自動ロック",
+    "description": "一定時間操作がないと Moony をロックし、離席中のコンピュータで財務情報が開いたままにならないようにします。この設定はこのデバイスにのみ適用されます。",
+    "label": "操作がない場合に自動でロック",
+    "off": "しない",
+    "minutes_other": "{{count}}分",
+    "hint": "その時間を過ぎてコンピュータがスリープから復帰したときも、Moony はロックされます。サイドバーからいつでも手動でロックできます。"
+  },
+  "updates": {
+    "title": "アップデート",
+    "description": "Moony は GitHub に新しいバージョンがあるか確認できます。財務データは一切送信されません。",
+    "autoCheck": "アップデートを自動で確認",
+    "autoCheckHint": "Moony のロック解除後、セッションごとに1回確認します。この設定はこのデバイスにのみ適用されます。",
+    "checkNow": "今すぐ確認",
+    "manualCheck": "手動で確認"
+  },
+  "eyebrow": "アプリケーション",
+  "status": "データベースは暗号化済み · ディスク使用量 {{size}}"
+}

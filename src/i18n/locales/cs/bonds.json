@@ -15,6 +15,7 @@
     "issues_one": "{{count}} emise",
     "issues_few": "{{count}} emise",
     "issues_other": "{{count}} emisí",
+    "currencies_one": "{{count}} měna",
     "currencies_few": "{{count}} měny",
     "currencies_other": "{{count}} měn",
     "yearlyCoupon": "Roční kupón",

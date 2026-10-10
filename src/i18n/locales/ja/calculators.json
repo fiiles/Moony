@@ -1,0 +1,188 @@
+{
+  "annuity": {
+    "title": "元利均等返済シミュレーター",
+    "subtitle": "あらゆるローンの返済額、利息総額、返済スケジュールを計算します。入力に合わせて値が更新されます。",
+    "eyebrow": "シミュレーター",
+    "status": "ローカルで計算 · 何も保存されません",
+    "actions": {
+      "loadLoan": "登録済みのローンから読み込む",
+      "export": "エクスポート"
+    },
+    "form": {
+      "title": "ローンの条件",
+      "amount": "借入額",
+      "years": "返済期間",
+      "yearsUnit": "年",
+      "rate": "年利",
+      "frequency": "返済頻度",
+      "frequencies": {
+        "monthly": "毎月",
+        "quarterly": "四半期ごと",
+        "semiAnnually": "半年ごと",
+        "annually": "毎年"
+      },
+      "extra": "年間の追加返済",
+      "optional": "任意",
+      "extraHint": "通常の返済に加えて年1回、違約金なしで返済します。"
+    },
+    "insight": {
+      "summary": "<b>年間 {{extra}} を追加返済</b>すると、返済期間が{{years}}短縮され、<b>{{saving}}</b>の利息を節約できます。下の返済表は追加返済なしの場合です。",
+      "noExtra": "追加返済額を入力すると、何年短縮でき、利息をいくら節約できるかが分かります。"
+    },
+    "hero": {
+      "payment": {
+        "monthly": "月々の返済額",
+        "quarterly": "四半期ごとの返済額",
+        "semiAnnually": "半年ごとの返済額",
+        "annually": "年間の返済額"
+      },
+      "total": "合計 {{amount}}",
+      "interestShare": "うち利息 {{amount}} · {{percent}}",
+      "view": {
+        "years": "年別",
+        "share": "利息の割合"
+      }
+    },
+    "legend": {
+      "principal": "元金",
+      "interest": "利息",
+      "milestone": "節目"
+    },
+    "milestones": {
+      "cross": "元金が利息を上回る",
+      "half": "借入の半分を返済",
+      "year": "{{year}}年目"
+    },
+    "years_other": "{{count}}年",
+    "payments_other": "{{count}}回",
+    "stats": {
+      "totalPaid": "返済総額",
+      "totalInterest": "利息総額",
+      "totalInterestNote": "借入額の{{percent}}",
+      "withExtra": "追加返済ありの場合",
+      "withExtraNote": "利息を節約 · 完済は{{long}}ではなく{{short}}",
+      "firstShare": "初回返済に占める利息の割合",
+      "firstShareNote": "最終回は{{percent}}"
+    },
+    "table": {
+      "title": "返済スケジュール",
+      "subYears": "年ごとの合計 · 追加返済なし",
+      "subPeriods": "各回の返済 · 追加返済なし",
+      "granularity": {
+        "years": "年別"
+      },
+      "year": "年",
+      "period": "期",
+      "payments": "返済額",
+      "principal": "元金",
+      "interest": "利息",
+      "balance": "残債",
+      "footer": "{{total}}行中{{shown}}行",
+      "showAll": "スケジュール全体を表示",
+      "showLess": "最初の部分だけ表示",
+      "periodLabel": "{{year}}年 · 第{{n}}期"
+    },
+    "empty": "借入額、返済期間、金利を入力してください。"
+  },
+  "estate": {
+    "title": "不動産投資の利回り",
+    "subtitle": "不動産を一つの投資として評価します。家賃とキャッシュフロー、ローン返済、価格上昇、将来の売却益を対象とします。",
+    "eyebrow": "シミュレーター",
+    "status": "ローカルで計算 · 何も保存されません",
+    "prefillNoRate": "この不動産には為替レートのない通貨の金額があるため、読み込めませんでした。シミュレーターにはサンプル値が表示されています。",
+    "actions": {
+      "loadProperty": "登録済みの不動産から読み込む"
+    },
+    "yearsUnit": "年",
+    "years_other": "{{count}}年",
+    "purchase": {
+      "title": "購入",
+      "price": "購入価格",
+      "loan": "借入額",
+      "years": "返済期間",
+      "rate": "金利",
+      "equity": "自己資金",
+      "ltv": "LTV",
+      "payment": "月々の返済額"
+    },
+    "rent": {
+      "title": "賃貸",
+      "rent": "想定の月額家賃",
+      "costs": "月額の費用",
+      "vacancy": "空室",
+      "vacancyUnit": "か月/年",
+      "hint": "費用：維持費、税金、保険、修繕積立金。"
+    },
+    "projection": {
+      "title": "予測",
+      "rentGrowth": "家賃の上昇率",
+      "costsGrowth": "費用の上昇率",
+      "priceGrowth": "価格の上昇率",
+      "perYear": "%/年",
+      "years": "保有期間",
+      "oneTime": "一時費用"
+    },
+    "sale": {
+      "title_other": "{{count}}年後に売却",
+      "finalPrice": "売却価格",
+      "remainingLoan": "ローン残高",
+      "repaid": "返済済みの元金",
+      "cumulative": "累計キャッシュフロー",
+      "equity": "売却時のあなたの取り分",
+      "totalReturn": "総利回り",
+      "pa": "年率 {{percent}}",
+      "formula": "利回り =（売却価格 − ローン残高 − 自己資金 + 累計キャッシュフロー）/ 自己資金。税引前、売却費用を除く。"
+    },
+    "hero": {
+      "label": "自己資金に対する総利回り",
+      "value": "年率 {{percent}}",
+      "total": "{{years}}で合計 {{percent}}",
+      "components": "キャッシュフロー {{cashflow}} · 元金返済 · 価格上昇 {{growth}}",
+      "cashflow": "純キャッシュフロー",
+      "cashflowNote": "1年目の月額 · 総額 {{gross}}"
+    },
+    "legend": {
+      "equity": "あなたの取り分（価値 − ローン + キャッシュフロー）",
+      "band": "価格上昇率 ±1ポイント",
+      "invested": "投下資本",
+      "milestone": "節目"
+    },
+    "chart": {
+      "purchase": "購入",
+      "tipRow": "{{year}}年 · 価値 {{value}} · ローン {{loan}} · 累計キャッシュフロー {{cumulative}}",
+      "tipStart": "{{year}}年 · 投下資本 {{invested}}"
+    },
+    "milestones": {
+      "positive": "年間キャッシュフローが黒字化",
+      "positiveLine": "{{year}}年から",
+      "half": "ローンの半分を返済",
+      "halfLine": "{{year}}年目",
+      "sale": "売却",
+      "saleLine": "{{year}}年 · 価格 {{price}} · ローン {{loan}}"
+    },
+    "stats": {
+      "equity": "自己資金",
+      "equityNote": "{{equity}} + 一時費用 {{once}}",
+      "grossYield": "表面利回り",
+      "grossYieldNote": "年間家賃 / 購入価格",
+      "cashflow": "年間の純キャッシュフロー",
+      "cashflowNote": "1年目 · 自己資金の{{percent}}",
+      "saleGain": "売却益",
+      "saleGainNote": "価格 − ローン − 自己資金 · {{years}}後"
+    },
+    "table": {
+      "title": "年別サマリー",
+      "sub": "家賃と費用は指定の上昇率で増え、返済額は一定です",
+      "year": "年",
+      "rent": "家賃",
+      "costs": "費用",
+      "payments": "返済額",
+      "cashflow": "純CF",
+      "balance": "ローン残高",
+      "value": "価値",
+      "footer": "{{years}} · 累計の純キャッシュフロー {{cumulative}}",
+      "vacancyNote": "空室分は家賃から差し引かれます"
+    },
+    "empty": "購入価格と家賃を入力してください。"
+  }
+}

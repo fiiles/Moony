@@ -1,0 +1,319 @@
+{
+  "title": "Försäkringar",
+  "eyebrow": "Skydd",
+  "subtitle": "Vad du har försäkrat, vad det kostar och när betalningar och förnyelser infaller.",
+  "loading": "Laddar dina försäkringar...",
+  "export": "Exportera",
+  "status": {
+    "nextPayment": "Nästa betalning {{date}} · {{amount}}",
+    "none": "Inga regelbundna betalningar",
+    "ended": "Försäkringen har upphört"
+  },
+  "empty": {
+    "title": "Inga försäkringar ännu",
+    "description": "Lägg till ditt första avtal för att se vad som är försäkrat, vad du betalar för det och när betalningarna förfaller."
+  },
+  "addPolicy": "Lägg till försäkring",
+  "policies_one": "{{count}} aktiv försäkring",
+  "policies_other": "{{count}} aktiva försäkringar",
+  "payments_one": "{{count}} betalning",
+  "payments_other": "{{count}} betalningar",
+  "risks_one": "{{count}} risk",
+  "risks_other": "{{count}} risker",
+  "documentsCount_one": "{{count}} dokument",
+  "documentsCount_other": "{{count}} dokument",
+  "duration": {
+    "years_one": "{{count}} år",
+    "years_other": "{{count}} år",
+    "months_one": "{{count}} månad",
+    "months_other": "{{count}} månader",
+    "days_one": "{{count}} dag",
+    "days_other": "{{count}} dagar"
+  },
+  "summary": {
+    "yearly": "Årspremie",
+    "yearlyNote": "{{monthly}} per månad · {{policies}}",
+    "nextPayment": "Nästa betalning",
+    "nextPaymentNote": "{{amount}} · {{policies}}",
+    "noPayments": "ingen regelbunden betalning förfaller",
+    "coverage": "Totalt skydd",
+    "coverageNote": "summa av gränser · {{breakdown}}",
+    "noCoverage": "inga ersättningsgränser angivna ännu",
+    "anniversary": "Närmaste förnyelse",
+    "anniversaryNote": "{{name}} · om {{duration}} · dags att jämföra erbjudanden",
+    "endNote": "{{name}} · avtalet upphör om {{duration}}",
+    "noAnniversary": "inget aktivt avtal"
+  },
+  "calendar": {
+    "title": "Betalningskalender, kommande 12 månader",
+    "subtitle": "Utifrån varje avtals frekvens och startdatum · årsbetalningar syns tydligt.",
+    "total": "totalt {{amount}}",
+    "monthly": "Månadspremier",
+    "other": "Kvartals- och årsbetalningar",
+    "anniversary": "Förnyelse · {{name}}",
+    "peakNote": "Den tyngsta månaden är {{month, lower}}: {{amount}} – lägg undan en buffert.",
+    "evenNote": "Betalningarna är jämna · {{amount}} per månad"
+  },
+  "table": {
+    "title": "Försäkringar",
+    "subtitle": "Aktiva avtal",
+    "subtitleHidden": "Aktiva avtal · avslutade dolda",
+    "showEnded": "Visa avslutade",
+    "allTypes": "Alla typer",
+    "policy": "Försäkring",
+    "premium": "Premie",
+    "coverage": "Skydd",
+    "nextPayment": "Nästa betalning",
+    "anniversary": "Förnyelse",
+    "actions": "Åtgärder",
+    "perYear": "{{amount}} per år",
+    "perYearShort": "per år",
+    "moreLimits": "+{{count}} till",
+    "ended": "avslutad",
+    "endedOn": "avslutad",
+    "endOn": "avtalets slut",
+    "anniversaryShort": "avtalets förnyelse",
+    "in": "om {{duration}}",
+    "noResults": {
+      "title": "Ingen försäkring av den här typen",
+      "description": "Prova ett annat filter eller lägg till ett nytt avtal."
+    },
+    "footer": {
+      "yearly": "{{amount}} per år",
+      "coverage": "skydd {{amount}}",
+      "note": "Förnyelse = nästa avtalsår från startdatumet · slut = det avtalade datumet"
+    }
+  },
+  "types": {
+    "life": "Livförsäkring",
+    "health": "Sjukförsäkring",
+    "property": "Hemförsäkring",
+    "vehicle": "Fordonsförsäkring",
+    "travel": "Reseförsäkring",
+    "liability": "Ansvarsförsäkring",
+    "accident": "Olycksfallsförsäkring",
+    "other": "Övrigt",
+    "allTypes": "Alla typer"
+  },
+  "typeShort": {
+    "life": "Liv",
+    "health": "Sjuk",
+    "property": "Hem",
+    "vehicle": "Fordon",
+    "travel": "Resa",
+    "liability": "Ansvar",
+    "accident": "Olycksfall",
+    "other": "Övrigt"
+  },
+  "frequencyShort": {
+    "monthly": "månadsvis",
+    "quarterly": "kvartalsvis",
+    "semi_annually": "halvårsvis",
+    "annually": "årsvis",
+    "one_time": "engångs"
+  },
+  "form": {
+    "addTitle": "Lägg till försäkring",
+    "editTitle": "Redigera försäkring",
+    "name": "Försäkringens namn",
+    "namePlaceholder": "t.ex. Hemförsäkring",
+    "provider": "Försäkringsgivare",
+    "providerPlaceholder": "t.ex. Försäkringsbolag",
+    "type": "Försäkringstyp",
+    "premium": "Årspremie",
+    "coverage": "Försäkringsbelopp",
+    "currency": "Valuta",
+    "startDate": "Startdatum",
+    "expiryDate": "Slutdatum",
+    "policyNumber": "Försäkringsnummer",
+    "notes": "Anteckningar"
+  },
+  "actions": {
+    "open": "Öppna",
+    "edit": "Redigera",
+    "end": "Avsluta försäkring",
+    "reactivate": "Återaktivera försäkring",
+    "delete": "Ta bort försäkring",
+    "addDocument": "Lägg till dokument"
+  },
+  "endDialog": {
+    "title": "Avsluta försäkring · {{name}}",
+    "description": "Avtalet finns kvar i historiken och försvinner från premiesumman och betalningskalendern.",
+    "date": "Avtalets slut",
+    "alertTitle": "Försäkringen flyttas till de avslutade",
+    "alertNote": "Du kan återaktivera den när som helst från ”···”-menyn; dokument och gränser finns kvar.",
+    "submit": "Avsluta försäkring"
+  },
+  "confirmDelete": {
+    "title": "Ta bort försäkring",
+    "description": "Ta bort ”{{name}}”? Dess dokument tas bort med den. Det går inte att ångra."
+  },
+  "toast": {
+    "added": "Försäkringen har lagts till",
+    "updated": "Försäkringen har uppdaterats",
+    "deleted": "Försäkringen har tagits bort",
+    "ended": "Försäkringen har avslutats",
+    "reactivated": "Försäkringen har återaktiverats"
+  },
+  "modal": {
+    "basicInfo": "Grundläggande information",
+    "paymentDetails": "Betalningsuppgifter",
+    "additionalInfo": "Ytterligare information",
+    "selectType": "Välj typ",
+    "selectStatus": "Välj status",
+    "addDescription": "Avtalets grunder, betalningar och ersättningsgränser; dokument läggs till i detaljvyn.",
+    "editDescription": "Redigera försäkringens uppgifter.",
+    "policyName": "Försäkringens namn",
+    "policyNamePlaceholder": "t.ex. Hemförsäkring 2024",
+    "provider": "Försäkringsgivare",
+    "providerPlaceholder": "t.ex. If",
+    "policyNumber": "Försäkringsnummer",
+    "policyNumberPlaceholder": "Avtalsnummer",
+    "paymentFrequency": "Betalningsfrekvens",
+    "selectFrequency": "Välj frekvens",
+    "oneTimePayment": "Engångsbetalning (valfritt)",
+    "oneTimePaymentRequired": "Engångsbetalning",
+    "regularPayment": "Regelbunden betalning",
+    "endDateOptional": "Slutdatum (valfritt)",
+    "coverageLimits": "Ersättningsgränser",
+    "addLimit": "Lägg till gräns",
+    "removeLimit": "Ta bort gräns",
+    "limitTitle": "Gränsens namn",
+    "notesPlaceholder": "Särskilda villkor, kontakter...",
+    "createPolicy": "Skapa försäkring",
+    "updatePolicy": "Uppdatera försäkring",
+    "status": {
+      "active": "Aktiv",
+      "inactive": "Inaktiv"
+    },
+    "frequency": {
+      "monthly": "Månadsvis",
+      "quarterly": "Kvartalsvis",
+      "semi_annually": "Halvårsvis",
+      "annually": "Årsvis",
+      "one_time": "Engångs"
+    },
+    "linkRealEstate": "Koppla till fastighet",
+    "selectRealEstate": "Välj fastighet (valfritt)",
+    "noRealEstateAvailable": "Ingen fastighet tillgänglig"
+  },
+  "detail": {
+    "backToList": "Tillbaka till försäkringar",
+    "notFound": "Den här försäkringen finns inte längre.",
+    "policyNumber": "nr {{number}}",
+    "description": "Sedan {{start}} {{end}} · {{premium}} {{frequency}}",
+    "descriptionOneTime": "Sedan {{start}} {{end}} · engångs {{premium}}",
+    "noEnd": "utan avtalat slut",
+    "until": "till {{date}}",
+    "statusActive": "aktiv",
+    "statusEnded": "avslutad",
+    "period": {
+      "year": "1 år",
+      "all": "Sedan start"
+    },
+    "hero": {
+      "paid": "Betalda premier",
+      "paidNote": "{{payments}} sedan {{month, lower}} · {{yearly}} per år",
+      "paidNoteOneTime": "engångsbetalning vid tecknandet den {{date}}",
+      "coverage": "Totalt skydd",
+      "coverageRatio": "{{ratio}}× årspremien",
+      "coverageOneTime": "summan av de avtalade gränserna",
+      "noCoverage": "inga ersättningsgränser angivna"
+    },
+    "chart": {
+      "paid": "Betalt totalt",
+      "next12": "Kommande 12 betalningar",
+      "tipPaid": "betalt totalt",
+      "tipPlanned": "planerad betalning",
+      "note": "{{payments}} · {{yearly}} per år",
+      "noteOneTime": "Engångsbetalning den {{date}}, inga fler betalningar"
+    },
+    "stats": {
+      "yearly": "Årskostnad",
+      "yearlyNote": "{{premium}} {{frequency}} · {{share}} av dina premier",
+      "yearlyOneTime": "engångspremie, ingen årskostnad",
+      "nextPayment": "Nästa betalning",
+      "nextPaymentNote": "om {{in}} · {{amount}} · därefter {{next}}",
+      "noNextPayment": "inga fler betalningar",
+      "anniversary": "Avtalets förnyelse",
+      "anniversaryNote": "om {{in}} · en chans att justera skyddet eller jämföra erbjudanden",
+      "end": "Avtalets slut",
+      "endNote": "om {{in}} · det avtalade slutdatumet",
+      "endedNote": "avtalet upphörde {{date}}",
+      "duration": "Avtalets löptid",
+      "durationNote": "inget avtalat slut · {{docs}}",
+      "durationEnd": "till {{date}} · {{docs}}"
+    },
+    "limits": {
+      "title": "Ersättningsgränser",
+      "subtitle": "Vad avtalet täcker och upp till vilket belopp",
+      "edit": "Redigera gränser",
+      "risk": "Risk",
+      "limit": "Gräns",
+      "footer": "{{risks}} · totalt skydd {{amount}}",
+      "empty": "Inga ersättningsgränser angivna ännu. Lägg till dem genom att redigera försäkringen."
+    },
+    "contract": {
+      "title": "Avtal",
+      "provider": "Försäkringsgivare",
+      "number": "Avtalsnummer",
+      "type": "Typ",
+      "start": "Start",
+      "end": "Slut",
+      "endNone": "tillsvidare",
+      "frequency": "Frekvens",
+      "premium": "Premie",
+      "oneTime": "Engångsbetalning",
+      "oneTimeNone": "ingen",
+      "property": "Fastighet"
+    },
+    "notes": {
+      "title": "Anteckningar",
+      "edit": "Redigera",
+      "empty": "Inga anteckningar – lägg till kontakter, villkor och påminnelser genom att redigera försäkringen.",
+      "updated": "Redigerad {{date}}"
+    },
+    "documents": "Dokument"
+  },
+  "documents": {
+    "subtitle": "Lagras i appens krypterade mapp",
+    "columns": {
+      "document": "Dokument",
+      "type": "Typ",
+      "uploaded": "Uppladdat"
+    },
+    "description": "Bifoga avtal, intyg och andra dokument",
+    "add": "Lägg till dokument",
+    "addFirst": "Lägg till första dokumentet",
+    "addTitle": "Lägg till dokument",
+    "noDocuments": "Inga dokument bifogade ännu",
+    "file": "Fil",
+    "clickToSelect": "Klicka för att välja en fil",
+    "type": "Dokumenttyp",
+    "selectType": "Välj typ",
+    "namePlaceholder": "t.ex. Försäkringsavtal 2024",
+    "descriptionPlaceholder": "Ytterligare anteckningar om dokumentet...",
+    "uploading": "Laddar upp...",
+    "upload": "Ladda upp dokument",
+    "open": "Öppna",
+    "delete": "Ta bort",
+    "added": "Dokumentet har lagts till",
+    "deleted": "Dokumentet har tagits bort",
+    "optional": "valfritt",
+    "types": {
+      "contract": "Avtal",
+      "certificate": "Intyg",
+      "claim": "Skadeanmälan",
+      "other": "Övrigt"
+    },
+    "deleteConfirm": {
+      "title": "Ta bort dokument",
+      "description": "Ta bort ”{{name}}”? Filen tas bort permanent."
+    }
+  },
+  "mcp": {
+    "tipSummary": "Orkar du inte skriva in allt? AI-assistenten kan lägga till försäkringar utifrån ett avtal.",
+    "bannerBody": "Starta MCP-servern, ladda upp avtalet, erbjudandet eller försäkringsbrevet till Claude och be den lägga till försäkringen åt dig.",
+    "setupLink": "Ställ in MCP-servern"
+  }
+}

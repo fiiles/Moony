@@ -1,0 +1,191 @@
+{
+  "title": "株式モニター",
+  "subtitle": "検討中の銘柄：各銘柄の通貨での価格、目標価格、メモ。",
+  "cancel": "キャンセル",
+  "search": {
+    "placeholder": "銘柄（シンボルまたは名称）を検索してフォロー",
+    "noResults": "銘柄が見つかりません",
+    "searching": "検索中…"
+  },
+  "table": {
+    "stock": "銘柄",
+    "price": "価格",
+    "fiftyTwoWeekLow": "52週安値",
+    "targetPrice": "目標",
+    "change": "変動",
+    "changePct": "変動率",
+    "held": "保有中",
+    "pricesUpdatedAt": "{{time}}に価格を更新",
+    "pricesNeverUpdated": "価格はまだ取得されていません",
+    "fiftyTwoWeekHigh": "52週高値",
+    "title": "ウォッチ中",
+    "sub": "前日終値との差 · 現在価格と目標を含む52週レンジ",
+    "sort": {
+      "name": "名前順",
+      "change": "変動順",
+      "target": "目標順"
+    },
+    "changeToday": "本日の変動",
+    "range": "52週レンジ",
+    "target": "目標",
+    "setTarget": "目標を設定",
+    "targetReached": "目標 {{price}} に到達",
+    "toTarget": "目標まで{{pct}}",
+    "waitsBelow": "下落待ち",
+    "waitsAbove": "上昇待ち",
+    "footer_other": "{{count}}銘柄 · 価格は各銘柄の通貨で表示、換算なし",
+    "source": "出典 Yahoo Finance · 最大15分遅延"
+  },
+  "empty": {
+    "title": "フォロー中の銘柄はありません",
+    "description": "上で銘柄を検索してフォローすると、モニタリングを開始できます。"
+  },
+  "actions": {
+    "follow": "フォロー",
+    "unfollow": "フォロー解除",
+    "refresh": "価格を更新",
+    "followPortfolio": "ポートフォリオから{{count}}銘柄をフォロー",
+    "refreshShort": "更新",
+    "buy": "ポートフォリオに買付",
+    "openInPortfolio": "ポートフォリオで開く",
+    "setTarget": "目標を設定",
+    "editTarget": "目標を編集",
+    "notes": "メモ"
+  },
+  "unfollowConfirm": {
+    "title": "{{ticker}}のフォローを解除しますか？",
+    "description": "この銘柄の目標価格とメモは削除されます。"
+  },
+  "detail": {
+    "marketCap": "時価総額",
+    "dividendYield": "配当利回り",
+    "peRatio": "PER",
+    "fiftyTwoWeekLow": "52週安値",
+    "fiftyTwoWeekHigh": "52週高値",
+    "previousClose": "前日終値",
+    "noData": "価格データがありません（オフラインですか？）",
+    "notFollowed": "この銘柄はまだフォローしていません。",
+    "backToOverview": "概要に戻る",
+    "periodStart": "{{period}}の開始時点：{{price}}",
+    "openInPortfolio": "ポートフォリオで開く",
+    "back": "ウォッチリストに戻る",
+    "followedSince": "{{date}}からフォロー中",
+    "notFollowedShort": "未フォロー",
+    "held": "ポートフォリオに保有",
+    "notHeld": "ポートフォリオに未保有",
+    "price": "価格",
+    "today": "本日 {{change}} · 終値 {{close}}",
+    "target": "目標価格",
+    "toTarget": "あと{{pct}}",
+    "targetReached": "目標に到達",
+    "periodChange": "変動 {{change}}",
+    "legend": {
+      "price": "価格",
+      "target": "目標価格",
+      "watchStart": "ウォッチ開始"
+    },
+    "watchStartTarget": "目標 {{price}}",
+    "stats": {
+      "exchangeNote": "{{exchange}}上場",
+      "peNote": "過去12か月の株価収益率",
+      "dividendNote": "1株あたり年間 {{amount}}",
+      "range": "52週レンジ",
+      "min": "最小",
+      "max": "最大",
+      "rangeLabel": "52週レンジ {{low}} – {{high}}、現在価格 {{current}}",
+      "rangeLabelTarget": "52週レンジ {{low}} – {{high}}、現在価格 {{current}}、目標 {{target}}"
+    },
+    "keyData": "主要データ",
+    "kv": {
+      "previousClose": "前日終値",
+      "changeToday": "本日の変動",
+      "low": "52週安値",
+      "high": "52週高値",
+      "marketCap": "時価総額",
+      "pe": "PER",
+      "dividend": "配当利回り",
+      "exchange": "取引所",
+      "updated": "価格の更新"
+    },
+    "since": {
+      "title": "フォロー開始以降",
+      "change": "{{days}}の間に、価格は{{price}}から<b>{{change}}</b>変動しました。",
+      "toTarget": "目標まであと{{amount}}です。",
+      "noData": "{{days}}フォロー中です。その日の価格はまだ取得できません。",
+      "days_other": "{{count}}日"
+    },
+    "followPrompt": "フォローすると、目標価格、メモ、グラフ上のウォッチ開始マークが使えます。"
+  },
+  "target": {
+    "label": "目標価格",
+    "set": "目標を設定",
+    "edit": "編集",
+    "clear": "目標を削除",
+    "save": "目標を保存",
+    "cancel": "キャンセル",
+    "toTarget": "目標まで{{pct}}",
+    "placeholder": "例：250.00",
+    "title": "目標価格",
+    "description": "行動を起こしたい価格です。株価がこの価格を超えると、Moony は概要のマイルストーンに表示します。",
+    "field": "目標",
+    "hintCurrent": "現在価格 {{price}}",
+    "hintHigh": "52週高値 {{price}}",
+    "directionLabel": "目標が待つ方向",
+    "directionBelow": "下落待ち – 買付 / 買い増し",
+    "directionAbove": "上昇待ち – 売却",
+    "explainBelow": "価格が{{price}}（現在価格から{{pct}}）まで下がると、Moony が通知します。",
+    "explainAbove": "価格が{{price}}（現在価格から{{pct}}）まで上がると、Moony が通知します。",
+    "explainBelowNoPrice": "価格が{{price}}まで下がると、Moony が通知します。",
+    "explainAboveNoPrice": "価格が{{price}}まで上がると、Moony が通知します。",
+    "explainReached": "価格はすでにこの目標に達しているか超えています。Moony はすぐに表示します。"
+  },
+  "notes": {
+    "title": "メモ",
+    "edit": "編集",
+    "write": "作成",
+    "preview": "プレビュー",
+    "save": "保存",
+    "cancel": "キャンセル",
+    "empty": "メモはまだありません。「編集」をクリックして、リサーチメモを追加してください（Markdown 対応）。",
+    "placeholder": "Markdown でメモを書く…",
+    "toolbar": {
+      "bold": "太字",
+      "italic": "斜体",
+      "heading": "見出し",
+      "list": "箇条書き",
+      "orderedList": "番号付きリスト",
+      "link": "リンク"
+    },
+    "sub": "Markdown · アシスタント（MCP）からも編集できます",
+    "paragraphs_other": "{{count}}段落",
+    "markdownHint": "Markdown"
+  },
+  "chart": {
+    "noData": "この期間のグラフデータはありません",
+    "currentPrice": "現在価格",
+    "targetLabel": "目標 {{price}}"
+  },
+  "toast": {
+    "followed": "{{ticker}}をフォローしました",
+    "unfollowed": "{{ticker}}のフォローを解除しました",
+    "followedPortfolio_other": "ポートフォリオの{{count}}銘柄をフォローしました"
+  },
+  "eyebrow": "ウォッチリスト",
+  "status": {
+    "updated": "{{time}}に価格を更新 · 5分ごとに更新",
+    "updatedShort": "{{time}}に価格を更新",
+    "never": "価格はまだ読み込まれていません"
+  },
+  "stats": {
+    "watched": "ウォッチ中の銘柄",
+    "heldNote_other": "そのうち{{count}}銘柄をポートフォリオに保有",
+    "heldNoteNone": "ポートフォリオに保有しているものはありません",
+    "atTarget": "目標価格に到達",
+    "targetReached": "目標 {{price}} に到達",
+    "toTarget": "目標まで{{pct}}",
+    "noTargets": "目標価格はまだありません",
+    "topToday": "本日の最高",
+    "worstNote": "最低 {{name}} {{change}}",
+    "noChanges": "本日の変動なし"
+  }
+}

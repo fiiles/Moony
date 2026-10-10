@@ -1,0 +1,140 @@
+{
+  "card": {
+    "title": "Próximas fechas",
+    "settingsLink": "Editar recordatorios",
+    "showAll": "Mostrar todas ({{count}})",
+    "showLess": "Mostrar menos",
+    "nothingDue": "No hay fechas próximas.",
+    "upkeep": "Mantenimiento de datos",
+    "upkeepShow": "Mostrar {{count}}",
+    "upkeepHide": "Contraer",
+    "today": "Hoy",
+    "target": "objetivo",
+    "rowMenu": "Opciones del recordatorio: {{title}}"
+  },
+  "status": {
+    "deadline": "{{title}} · {{when}}",
+    "more": "+{{count}}",
+    "title": "Plazos de los próximos 14 días",
+    "openOverview": "Abrir resumen"
+  },
+  "actions": {
+    "hide": "Ocultar",
+    "remindWeek": "Recordármelo en una semana",
+    "remindMonth": "Recordármelo en un mes",
+    "undo": "Deshacer"
+  },
+  "toast": {
+    "hidden": "Oculto",
+    "snoozedWeek": "Pospuesto una semana",
+    "snoozedMonth": "Pospuesto un mes",
+    "muted": "Recordatorios desactivados · {{group}}"
+  },
+  "relative": {
+    "today": "hoy",
+    "tomorrow": "mañana",
+    "inDays_one": "en {{count}} día",
+    "inDays_many": "en {{count}} días",
+    "inDays_other": "en {{count}} días",
+    "inMonths_one": "en {{count}} mes",
+    "inMonths_many": "en {{count}} meses",
+    "inMonths_other": "en {{count}} meses",
+    "daysAgo_one": "hace {{count}} día",
+    "daysAgo_many": "hace {{count}} días",
+    "daysAgo_other": "hace {{count}} días",
+    "monthsAgo_one": "hace {{count}} mes",
+    "monthsAgo_many": "hace {{count}} meses",
+    "monthsAgo_other": "hace {{count}} meses"
+  },
+  "titles": {
+    "backup_stale": "Copia de seguridad de los datos",
+    "balances_stale": "Saldos de las cuentas"
+  },
+  "sub": {
+    "insurance_anniversary": "Último día para cancelar · aniversario {{date}}",
+    "insurance_anniversary_passed": "Aniversario del contrato · el plazo de preaviso ha pasado",
+    "insurance_end": "El contrato termina",
+    "insurance_payment": "Pago {{amount}}",
+    "loan_fixation_end": "Termina el tipo fijo · momento de comparar ofertas",
+    "loan_payoff": "Último pago",
+    "bond_maturity": "Vence · se recuperan {{amount}}",
+    "bond_coupon": "Cupón {{amount}}",
+    "account_termination": "La cuenta termina",
+    "savings_rate_end": "Termina el tipo promocional",
+    "watch_target_below": "El precio {{price}} ha bajado hasta el objetivo {{target}}",
+    "watch_target_above": "El precio {{price}} ha alcanzado el objetivo {{target}}",
+    "loan_fixation_expired": "El tipo fijo terminó el {{date}} · introduce el tipo nuevo",
+    "loan_balance_check": "Saldo sin revisar desde el {{date}} · compáralo con un extracto",
+    "valuation_stale": "Sin tasación nueva desde el {{date}} · vuelve a valorarlo",
+    "backup_stale": "Última copia de seguridad el {{date}}",
+    "backup_never": "Aún no hay copia de seguridad",
+    "balances_stale_one": "{{count}} cuenta sin actualizar desde hace más de 30 días",
+    "balances_stale_many": "{{count}} cuentas sin actualizar desde hace más de 30 días",
+    "balances_stale_other": "{{count}} cuentas sin actualizar desde hace más de 30 días"
+  },
+  "short": {
+    "backup_stale": "haz una copia de seguridad de tus datos",
+    "balances_stale_one": "actualiza {{count}} saldo",
+    "balances_stale_many": "actualiza {{count}} saldos",
+    "balances_stale_other": "actualiza {{count}} saldos",
+    "valuation_stale": "vuelve a valorar {{title}}",
+    "loan_balance_check": "revisa el saldo de {{title}}",
+    "loan_fixation_expired": "introduce el tipo nuevo de {{title}}"
+  },
+  "groups": {
+    "insuranceDates": {
+      "label": "Aniversarios y fines de seguros",
+      "hint": "En el resumen con hasta 3 meses de antelación; los aniversarios, con el último día para cancelar.",
+      "mute": "No recordarme aniversarios ni fines de seguros"
+    },
+    "insurancePayments": {
+      "label": "Pagos de seguros",
+      "hint": "Pagos trimestrales, semestrales y anuales con 14 días de antelación.",
+      "mute": "No recordarme pagos de seguros"
+    },
+    "loans": {
+      "label": "Fines de tipo fijo y liquidación de préstamos",
+      "hint": "El fin de un tipo fijo con 6 meses de antelación, el último pago con un mes.",
+      "mute": "No recordarme tipos fijos ni liquidaciones"
+    },
+    "bonds": {
+      "label": "Vencimientos y cupones de bonos",
+      "hint": "Un vencimiento con hasta 3 meses de antelación, un cupón con una semana.",
+      "mute": "No recordarme vencimientos ni cupones"
+    },
+    "accounts": {
+      "label": "Fines de cuentas y de tipos promocionales",
+      "hint": "El fin de una cuenta o de un tipo promocional con hasta 3 meses de antelación.",
+      "mute": "No recordarme fines de cuentas ni de tipos"
+    },
+    "targets": {
+      "label": "Precios objetivo de acciones",
+      "hint": "Cuando el precio alcanza el objetivo en su sentido.",
+      "mute": "No recordarme precios objetivo"
+    },
+    "backup": {
+      "label": "Copias de seguridad de los datos",
+      "hint": "Cuando la última copia de seguridad tiene más de 30 días.",
+      "mute": "No recordarme copias de seguridad"
+    },
+    "balances": {
+      "label": "Actualización de saldos",
+      "hint": "Cuando el saldo de una cuenta lleva más de 30 días sin actualizarse.",
+      "mute": "No recordarme saldos de cuentas"
+    },
+    "valuations": {
+      "label": "Tasaciones de inmuebles",
+      "hint": "Cuando la tasación de un inmueble tiene más de un año.",
+      "mute": "No recordarme tasaciones de inmuebles"
+    },
+    "loanChecks": {
+      "label": "Revisiones de préstamos",
+      "hint": "Una revisión anual del saldo y el tipo nuevo cuando termina un tipo fijo.",
+      "mute": "No recordarme revisiones de préstamos"
+    }
+  },
+  "settings": {
+    "title": "Recordatorios del resumen",
+    "description": "De qué te avisan la tarjeta «Próximas fechas» y la barra superior. Los tipos desactivados no se muestran en ningún sitio."
+  }
+}

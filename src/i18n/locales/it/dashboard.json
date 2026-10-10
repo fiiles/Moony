@@ -1,0 +1,113 @@
+{
+  "eyebrow": "Il tuo quadro finanziario",
+  "greeting": {
+    "morning": "Buongiorno, {{name}}.",
+    "day": "Buon pomeriggio, {{name}}.",
+    "evening": "Buonasera, {{name}}."
+  },
+  "welcomeFirst": "Benvenuto, {{name}}.",
+  "asOf": "Patrimonio netto al {{date}}",
+  "loading": "Caricamento del portafoglio…",
+  "hero": {
+    "label": "Patrimonio netto"
+  },
+  "insight": {
+    "up": "Il valore è in crescita. Contributo maggiore alla variazione: {{class}}.",
+    "down": "Il valore è in calo. Contributo maggiore alla variazione: {{class}}.",
+    "flat": "Il valore è stabile. Movimento maggiore: {{class}}.",
+    "noHistory": "L'andamento comparirà dopo i primi snapshot giornalieri."
+  },
+  "stats": {
+    "netWorth": "Patrimonio netto",
+    "totalAssets": "Attività totali",
+    "totalLiabilities": "Passività",
+    "freeCash": "Liquidità libera",
+    "freeCashNote": "sui conti bancari",
+    "unchanged": "invariato nel periodo",
+    "noHistory": "ancora nessuno storico"
+  },
+  "cards": {
+    "investments": "Azioni",
+    "savings": "Liquidità",
+    "bonds": "Obbligazioni",
+    "liabilities": "Passività",
+    "crypto": "Cripto",
+    "realEstate": "Immobili",
+    "otherAssets": "Altri beni",
+    "other": "Altro",
+    "ofTotal": "{{percent}} del totale"
+  },
+  "classes": {
+    "investments": "azioni",
+    "savings": "liquidità",
+    "bonds": "obbligazioni",
+    "liabilities": "passività",
+    "crypto": "cripto",
+    "realEstate": "immobili",
+    "otherAssets": "altri beni"
+  },
+  "allocation": {
+    "title": "Allocazione del patrimonio",
+    "open": "Apri investimenti",
+    "center": "Attività"
+  },
+  "moves": {
+    "title": "Ultimi movimenti",
+    "empty": "Qui compariranno movimenti bancari, acquisti e vendite.",
+    "kind": {
+      "bankIn": "Pagamento in entrata",
+      "bankOut": "Pagamento in uscita",
+      "buy": "Acquisto",
+      "sell": "Vendita",
+      "cryptoBuy": "Acquisto cripto",
+      "cryptoSell": "Vendita cripto"
+    }
+  },
+  "changePeriod": {
+    "30D": "negli ultimi 30 giorni",
+    "90D": "negli ultimi 90 giorni",
+    "YTD": "dall'inizio dell'anno",
+    "1Y": "nell'ultimo anno",
+    "5Y": "negli ultimi 5 anni",
+    "All": "dalla prima registrazione"
+  },
+  "empty": {
+    "title": "Qui comparirà il tuo patrimonio netto",
+    "description": "Aggiungi un conto o un investimento e Moony costruisce da lì panoramica, grafici e andamenti. Tutto resta su questo computer.",
+    "addAccount": "Aggiungi un conto bancario e importa un estratto conto",
+    "addInvestment": "Aggiungi un investimento",
+    "setBudget": "Imposta un budget"
+  },
+  "gettingStarted": {
+    "title": "Primi passi",
+    "subtitle": "Quattro passaggi che rendono Moony davvero utile. Questa scheda scompare quando hai finito.",
+    "importStatement": "Importa un estratto conto",
+    "importStatementHint": "Aggiungi un conto e importa un CSV dalla tua banca.",
+    "addInvestment": "Aggiungi un investimento",
+    "addInvestmentHint": "Azioni, ETF o cripto con prezzi in tempo reale.",
+    "setBudget": "Imposta un budget",
+    "setBudgetHint": "Limiti mensili per categoria di spesa.",
+    "makeBackup": "Fai un backup",
+    "makeBackupHint": "Un unico file con tutto, in Impostazioni → Dati e backup.",
+    "dismiss": "Chiudi",
+    "done": "Fatto"
+  },
+  "welcome": "Bentornato, {{name}}",
+  "overview": "Ecco la tua panoramica finanziaria di oggi.",
+  "charts": {
+    "netWorthTrend": "Andamento del patrimonio netto",
+    "assetAllocation": "Allocazione del patrimonio",
+    "assetsVsLiabilities": "Attività e passività",
+    "assetsToLiabilitiesRatio": "Rapporto attività/passività",
+    "assetClassTrend": "Patrimonio netto per classe di attività",
+    "noHistoricalData": "Nessun dato storico disponibile",
+    "estimatedBackfilled": "stimato (ricostruito)",
+    "estimatedLegend": "Tratteggio: giorni stimati. Conti bancari, obbligazioni, immobili e prestiti sono riportati dal giorno registrato più vicino."
+  },
+  "tooltips": {
+    "netWorth": "Patrimonio netto",
+    "totalAssets": "Attività totali",
+    "totalLiabilities": "Passività totali"
+  },
+  "changeSince": "rispetto al {{date}}"
+}

@@ -1,0 +1,260 @@
+{
+  "title": "Criptomonedas",
+  "eyebrow": "Cartera",
+  "subtitle": "Posiciones en cripto a la cotización actual, coste por media ponderada.",
+  "loading": "Cargando tu cartera de cripto...",
+  "empty": {
+    "title": "Aún no hay criptomonedas",
+    "description": "Añade tu primera moneda: la buscamos en CoinGecko y la cotización se mantiene actualizada sola."
+  },
+  "addCrypto": "Añadir criptomoneda",
+  "refreshPrices": "Actualizar cotizaciones",
+  "export": "Exportar",
+  "summary": {
+    "value": "Valor en cripto",
+    "positions_one": "{{count}} posición abierta",
+    "positions_many": "{{count}} posiciones abiertas",
+    "positions_other": "{{count}} posiciones abiertas",
+    "updatedToday": "cotizaciones actualizadas hoy",
+    "updatedOn": "cotizaciones del {{date}}",
+    "notUpdated": "cotizaciones aún sin descargar",
+    "unrealizedGain": "Rentabilidad latente",
+    "unrealizedLoss": "Pérdida latente",
+    "vsInvestedPct": "{{percent}} frente a {{amount}} invertidos",
+    "realized": "Rentabilidad realizada",
+    "sells_one": "{{count}} venta · media ponderada",
+    "sells_many": "{{count}} ventas · media ponderada",
+    "sells_other": "{{count}} ventas · media ponderada",
+    "noSells": "aún sin ventas",
+    "largest": "Mayor posición",
+    "largestNote": "{{share}} del valor en cripto · {{change}} desde la compra",
+    "noPositions": "ninguna posición abierta"
+  },
+  "chart": {
+    "title": "Valor en cripto a lo largo del tiempo",
+    "subtitle": "Compras y ventas directamente en el gráfico: cada salto tiene su explicación.",
+    "legend": {
+      "value": "Valor en cripto",
+      "buy": "Compra",
+      "sell": "Venta"
+    },
+    "events": {
+      "buy": "Compra de {{tickers}}",
+      "sell": "Venta de {{tickers}}",
+      "cluster_one": "{{count}} movimiento",
+      "cluster_many": "{{count}} movimientos",
+      "cluster_other": "{{count}} movimientos"
+    }
+  },
+  "table": {
+    "title": "Posiciones",
+    "subtitle": "Cotizaciones convertidas a {{currency}} al cambio de hoy · las manuales están marcadas",
+    "search": "Buscar por nombre o ticker",
+    "asset": "Activo",
+    "quantity": "Cantidad",
+    "avgCost": "Coste medio",
+    "rate": "Cotización",
+    "value": "Valor",
+    "share": "Peso",
+    "return": "Rentabilidad",
+    "actions": "Acciones",
+    "showClosed": "Mostrar posiciones cerradas",
+    "source": "CoinGecko",
+    "manualSource": "cotización manual",
+    "closed": "cerrada el {{date}}",
+    "realized": "{{amount}} realizados",
+    "noResults": {
+      "title": "Sin resultados",
+      "description": "Prueba con otro nombre o ticker.",
+      "closedHidden": "Prueba con otro nombre o ticker. Las posiciones cerradas están ocultas."
+    },
+    "footer": {
+      "count_one": "{{count}} posición",
+      "count_many": "{{count}} posiciones",
+      "count_other": "{{count}} posiciones",
+      "total": "total",
+      "rates": "Valores en {{currency}} a la cotización de hoy",
+      "closed_one": "{{count}} posición cerrada",
+      "closed_many": "{{count}} posiciones cerradas",
+      "closed_other": "{{count}} posiciones cerradas"
+    }
+  },
+  "actions": {
+    "buy": "Comprar",
+    "sell": "Vender",
+    "updatePrice": "Fijar cotización manual",
+    "delete": "Eliminar posición"
+  },
+  "badges": {
+    "manual": "manual"
+  },
+  "tooltip": {
+    "manualPrice": "Cotización fijada a mano: sustituye a la de CoinGecko hasta que la quites."
+  },
+  "modal": {
+    "add": {
+      "title": "Añadir criptomoneda",
+      "description": "Busca la moneda en CoinGecko; su cotización se actualizará automáticamente.",
+      "coin": "Criptomoneda",
+      "ticker": "Ticker",
+      "search": "Buscar en CoinGecko",
+      "searchHint": "Escribe un nombre o ticker para ver las coincidencias de CoinGecko.",
+      "searching": "Buscando en CoinGecko…",
+      "searchError": "La búsqueda ha fallado. Revisa tu conexión o la clave de CoinGecko en Ajustes.",
+      "noResults": "Ninguna moneda coincide. Puedes rellenar el ticker y el nombre a mano.",
+      "rank": "#{{rank}}",
+      "quantity": "Cantidad",
+      "pricePerUnit": "Precio por unidad",
+      "purchaseDate": "Fecha de compra",
+      "total": "Total de la compra",
+      "submit": "Añadir posición"
+    },
+    "buy": {
+      "title": "Comprar {{name}}",
+      "description": "La compra aumenta la cantidad y recalcula el coste medio.",
+      "quantity": "Cantidad",
+      "pricePerUnit": "Cotización por 1 {{ticker}}",
+      "rateHint": "Rellenada con la cotización actual.",
+      "total": "Total de la compra",
+      "submit": "Registrar compra"
+    },
+    "sell": {
+      "title": "Vender {{name}}",
+      "description": "La rentabilidad realizada se mide frente al coste medio.",
+      "quantity": "Cantidad",
+      "all": "todo ({{quantity}})",
+      "tooMuch": "Solo tienes {{quantity}}.",
+      "pricePerUnit": "Cotización por 1 {{ticker}}",
+      "proceeds": "Ingresos {{amount}} · rentabilidad realizada",
+      "proceedsEmpty": "Ingresos y rentabilidad realizada",
+      "submit": "Registrar venta"
+    },
+    "updatePrice": {
+      "title": "Cotización manual · {{name}}",
+      "description": "Sustituye a la cotización de CoinGecko hasta que quites la manual.",
+      "price": "Cotización por 1 {{ticker}}",
+      "total": "Valor de la posición ({{quantity}} {{ticker}})",
+      "remove": "Quitar cotización manual",
+      "submit": "Guardar cotización"
+    }
+  },
+  "confirmDelete": {
+    "title": "¿Eliminar la posición?",
+    "description": "{{name}} ({{ticker}}) y todos sus movimientos se eliminarán de forma permanente. Esta acción no se puede deshacer."
+  },
+  "toast": {
+    "added": "Criptomoneda añadida, descargando la cotización",
+    "bought": "Compra registrada",
+    "sold": "Venta registrada",
+    "deleted": "Posición eliminada",
+    "priceUpdated": "Cotización manual guardada",
+    "manualPriceDeleted": "Cotización manual quitada",
+    "pricesRefreshed_one": "{{count}} cotización actualizada desde CoinGecko",
+    "pricesRefreshed_many": "{{count}} cotizaciones actualizadas desde CoinGecko",
+    "pricesRefreshed_other": "{{count}} cotizaciones actualizadas desde CoinGecko",
+    "pricesRefreshedDescription": "Cotizaciones actuales descargadas de CoinGecko",
+    "refreshFailed": "No se pudieron actualizar las cotizaciones",
+    "addFailed": "No se pudo añadir la criptomoneda"
+  },
+  "detail": {
+    "backToList": "Volver a cripto",
+    "notFound": "Posición no encontrada",
+    "source": "CoinGecko",
+    "manualSource": "cotización manual",
+    "quantityUnits": "{{quantity}} {{ticker}}",
+    "avgBuyPrice": "coste medio {{price}}",
+    "lastBuy": "última compra el {{date}}",
+    "refreshPrices": "Actualizar cotización",
+    "buy": "Comprar",
+    "sell": "Vender",
+    "menu": {
+      "editPrice": "Fijar cotización manual",
+      "delete": "Eliminar posición"
+    },
+    "status": {
+      "rateUpdated": "Cotización actualizada {{when}}",
+      "todayAt": "hoy a las {{time}}"
+    },
+    "positionValue": "Valor de la posición",
+    "vsInvestedPct": "{{percent}} frente a lo invertido",
+    "rate": "Cotización",
+    "invested": "Invertido",
+    "avgShort": "media {{price}}",
+    "unrealized": "Rentabilidad latente",
+    "realized": "Rentabilidad realizada",
+    "sells_one": "{{count}} venta",
+    "sells_many": "{{count}} ventas",
+    "sells_other": "{{count}} ventas",
+    "noSells": "aún sin ventas",
+    "held": "Mantenida durante",
+    "heldSince": "desde el {{date}}",
+    "shareOfCrypto": "{{share}} del valor en cripto",
+    "duration": {
+      "years_one": "{{count}} año",
+      "years_many": "{{count}} años",
+      "years_other": "{{count}} años",
+      "months_one": "{{count}} mes",
+      "months_many": "{{count}} meses",
+      "months_other": "{{count}} meses",
+      "lessThanMonth": "menos de un mes"
+    },
+    "transactions": {
+      "title": "Historial de movimientos",
+      "date": "Fecha",
+      "type": "Tipo",
+      "quantity": "Cantidad",
+      "price": "Cotización",
+      "total": "Total",
+      "empty": "Aún no hay movimientos"
+    },
+    "priceNative": "Cotización ({{currency}})",
+    "priceNativeMixed": "Cotización (moneda original)",
+    "realizedRow": "realizado {{amount}}",
+    "ledger": {
+      "sub_one": "{{count}} movimiento · pasa el ratón por una fila para resaltarla en el gráfico",
+      "sub_many": "{{count}} movimientos · pasa el ratón por una fila para resaltarla en el gráfico",
+      "sub_other": "{{count}} movimientos · pasa el ratón por una fila para resaltarla en el gráfico",
+      "filter": {
+        "all": "Todos",
+        "buys": "Compras",
+        "sells": "Ventas"
+      },
+      "footer_one": "{{count}} movimiento",
+      "footer_many": "{{count}} movimientos",
+      "footer_other": "{{count}} movimientos",
+      "bought": "comprado {{amount}}",
+      "sold": "vendido {{amount}}",
+      "rates": "Cotizaciones en {{currency}} al tipo del BCE del día del movimiento"
+    },
+    "position": {
+      "title": "Posición",
+      "quantity": "Cantidad",
+      "avgPrice": "Coste medio",
+      "currentPrice": "Cotización actual",
+      "nativePrice": "Cotización en {{currency}}",
+      "shareOfCrypto": "Peso en cripto",
+      "priceUpdated": "Cotización actualizada",
+      "setManual": "Fijar cotización manual",
+      "removeManual": "Quitar cotización manual"
+    },
+    "sinceFirst": {
+      "title": "Desde la primera compra",
+      "text": "En {{duration}} la cotización de {{ticker}} varió {{rateChange}} desde {{firstPrice}}. Tu posición rindió {{positionChange}}{{realizedPart}}.",
+      "realizedPart": "; las ventas realizaron {{amount}}",
+      "none": "Aún no hay compras."
+    },
+    "deleteTransaction": "Eliminar movimiento",
+    "transactionDeleted": "Movimiento eliminado",
+    "pricesRefreshed": "Cotización actualizada",
+    "confirmDeleteTransaction": {
+      "title": "¿Eliminar el movimiento?",
+      "description": "Se eliminará de forma permanente el movimiento de tipo {{type}} ({{quantity}} × {{ticker}}, {{date}}, {{amount}}). Esta acción no se puede deshacer."
+    }
+  },
+  "coingeckoBanner": {
+    "title": "Clave de API de CoinGecko (opcional)",
+    "message": "Las cotizaciones funcionan sin clave. Una clave gratuita de CoinGecko añadida en Ajustes también carga el historial de cotizaciones para los gráficos.",
+    "goToSettings": "Abrir Ajustes",
+    "dismiss": "Descartar"
+  }
+}

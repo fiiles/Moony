@@ -1,0 +1,113 @@
+{
+  "title": "Obligasjoner",
+  "eyebrow": "Portefølje",
+  "subtitle": "Stats- og selskapsobligasjoner holdt til forfall, avkastning fra faste kuponger.",
+  "status": "Verdsatt til pålydende · ingen påløpte renter",
+  "loading": "Laster obligasjonene dine...",
+  "empty": {
+    "title": "Ingen obligasjoner ennå",
+    "description": "Legg til den første emisjonen: pålydende, antall, kupong og forfall. Forfallsstigen bygges av seg selv."
+  },
+  "addBond": "Legg til obligasjon",
+  "export": "Eksporter",
+  "summary": {
+    "nominal": "Pålydende",
+    "issues_one": "{{count}} emisjon",
+    "issues_other": "{{count}} emisjoner",
+    "currencies_one": "{{count}} valuta",
+    "currencies_other": "{{count}} valutaer",
+    "yearlyCoupon": "Årlig kupong",
+    "weightedRate": "vektet gjennomsnitt {{rate}} p.a.",
+    "nearestMaturity": "Nærmeste forfall",
+    "returns": "gir {{amount}}",
+    "noMaturity": "ingen emisjon har forfall",
+    "avgToMaturity": "Gjennomsnittlig tid til forfall",
+    "years": "{{value}} år",
+    "lastMaturity": "vektet etter pålydende · siste {{date}}",
+    "noneLive": "ingen aktive emisjoner"
+  },
+  "until": {
+    "in": "om {{duration}}",
+    "soon": "innen en måned",
+    "past": "innfridd {{date}}"
+  },
+  "duration": {
+    "years_one": "{{count}} år",
+    "years_other": "{{count}} år",
+    "months_one": "{{count}} måned",
+    "months_other": "{{count}} måneder"
+  },
+  "ladder": {
+    "title": "Forfall og kuponger",
+    "subtitle": "Hvor mye som kommer tilbake i hvilket år: innfridd pålydende og årlige kuponger.",
+    "badge": "kupong årlig på forfallsdagen",
+    "principal": "Innfridd pålydende",
+    "coupons": "Kuponger",
+    "nearest": "Nærmeste forfall",
+    "note": "Innen {{year}} får du tilbake {{principal}} i pålydende og {{coupons}} i kuponger."
+  },
+  "table": {
+    "title": "Emisjoner",
+    "subtitle": "Sortert etter forfall · nærmeste først",
+    "search": "Søk etter navn eller ISIN",
+    "showMatured": "Vis innfridde",
+    "bond": "Obligasjon",
+    "nominal": "Pålydende / enhet",
+    "quantity": "Antall",
+    "units": "stk.",
+    "value": "Verdi",
+    "coupon": "Kupong",
+    "yearly": "Årlig",
+    "maturity": "Forfall",
+    "actions": "Handlinger",
+    "withinYear": "innen et år",
+    "matured": "innfridd",
+    "noMaturity": "uten forfall",
+    "noResults": {
+      "title": "Ingen treff",
+      "description": "Prøv et annet navn eller en annen ISIN.",
+      "maturedHidden": "Prøv et annet navn eller en annen ISIN. Innfridde emisjoner er skjult."
+    },
+    "footer": {
+      "count_one": "{{count}} emisjon",
+      "count_other": "{{count}} emisjoner",
+      "nominal": "pålydende {{amount}}",
+      "coupons": "kuponger {{amount}} i året",
+      "valuation": "Verdi = pålydende × antall · markedskurs spores ikke"
+    }
+  },
+  "actions": {
+    "edit": "Rediger",
+    "delete": "Slett"
+  },
+  "form": {
+    "addTitle": "Legg til obligasjon",
+    "editTitle": "Rediger obligasjon",
+    "addDescription": "Verdien kommer fra pålydende × antall, avkastningen fra kupongrenten.",
+    "editDescription": "Endringene vises i verdien og i forfallsstigen.",
+    "name": "Navn",
+    "namePlaceholder": "f.eks. Norsk statsobligasjon 2031",
+    "isin": "ISIN",
+    "isinHint": "12 tegn fra emisjonsvilkårene; hjelper med å matche kontoutskrifter.",
+    "nominal": "Pålydende for 1 enhet",
+    "quantity": "Antall",
+    "rate": "Kupong per år",
+    "maturity": "Forfallsdato",
+    "maturityHint": "Etter forfall flyttes emisjonen til innfridde og teller ikke lenger med i nettoformuen.",
+    "summaryValue": "Verdi {{value}} · kupong {{coupon}} i året",
+    "summaryNext": "Neste forfallsdag {{date}}.",
+    "summaryMatures": "Emisjonen forfaller i år; ingen flere kuponger.",
+    "summaryNoMaturity": "Ingen forfall – kupongen teller hvert år.",
+    "submitAdd": "Legg til obligasjon",
+    "submitEdit": "Lagre endringer"
+  },
+  "confirmDelete": {
+    "title": "Slette obligasjonen?",
+    "description": "«{{name}}» fjernes permanent. Dette kan ikke angres."
+  },
+  "toast": {
+    "added": "Obligasjonen er lagt til",
+    "updated": "Obligasjonen er oppdatert",
+    "deleted": "Obligasjonen er slettet"
+  }
+}

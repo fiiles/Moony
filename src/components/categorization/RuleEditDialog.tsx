@@ -7,7 +7,7 @@ import { refreshMoneyFlows } from '@/lib/money-flow-refresh';
  */
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { RefreshCw } from 'lucide-react';
 import {
@@ -354,10 +354,13 @@ export default function RuleEditDialog({
               <span>{t('editor.matchesNone', { days: HIT_DAYS })}</span>
             ) : (
               <>
-                <b className="font-650 text-ink">
-                  {t('editor.matchesTitle', { count: preview.data.matches })}
-                </b>{' '}
-                {t('editor.matchesNote', { days: HIT_DAYS, open: preview.data.uncategorized })}
+                <Trans
+                  t={t}
+                  i18nKey="editor.matchesSummary"
+                  count={preview.data.matches}
+                  values={{ days: HIT_DAYS, open: preview.data.uncategorized }}
+                  components={{ b: <b className="font-650 text-ink" /> }}
+                />
                 <ul className="mb-0 mt-2 list-disc pl-4 text-micro text-ink-3">
                   {preview.data.samples.slice(0, 3).map((s, i) => (
                     <li key={i}>

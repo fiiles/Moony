@@ -16,7 +16,7 @@ import { recoverSchema, unlockSchema } from '@shared/schema';
 import { GREETING_NAME_KEY, LOCKED_AT_KEY, useAuth } from '@/hooks/use-auth';
 import { useFormat } from '@/lib/use-format';
 import { isAuthApiError } from '@/lib/api-error';
-import { SUPPORTED_LANGUAGES, type SupportedLanguage } from '@/i18n/index';
+import { isSupportedLanguage, type SupportedLanguage } from '@/i18n/index';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -33,7 +33,7 @@ import { Input } from '@/components/ui/input';
 import { MoonMark } from '@/components/common/MoonMark';
 import { OnboardingWizard } from '@/components/auth/OnboardingWizard';
 import { PasswordInput } from '@/components/auth/PasswordInput';
-import { LanguageSegment } from '@/components/auth/LanguageSegment';
+import { LanguageSelect } from '@/components/common/LanguageSelect';
 import { RecoveryKeyBox } from '@/components/auth/RecoveryKeyBox';
 import { cn } from '@/lib/utils';
 
@@ -92,21 +92,12 @@ export default function AuthPage() {
   const wizardActive = sawSetup && !wizardDone;
 
   // Language: the stored choice, else English
-  const [selectedLanguage, setSelectedLanguage] = useState<SupportedLanguage>(() => {
-    const stored = readStorage('moony-language');
-    return stored && SUPPORTED_LANGUAGES.includes(stored as SupportedLanguage)
-      ? (stored as SupportedLanguage)
-      : 'en';
-  });
-  const handleLanguageChange = (lang: SupportedLanguage) => {
-    setSelectedLanguage(lang);
-    i18n.changeLanguage(lang);
-    try {
-      localStorage.setItem('moony-language', lang);
-    } catch {
-      /* private mode */
-    }
-  };
+  // Language: the one i18n detected (stored choice, else the system language, else English).
+  const selectedLanguage: SupportedLanguage = isSupportedLanguage(i18n.language)
+    ? i18n.language
+    : 'en';
+  // changeLanguage loads the chunk, switches (re-rendering this page) and stores the choice.
+  const handleLanguageChange = (lang: SupportedLanguage) => void i18n.changeLanguage(lang);
 
   useEffect(() => {
     import('@tauri-apps/api/app')
@@ -168,10 +159,10 @@ export default function AuthPage() {
   if (wizardActive) {
     return (
       <div className="relative min-h-screen bg-canvas">
-        <LanguageSegment
+        <LanguageSelect
           className="absolute right-6 top-[22px] z-10"
-          language={selectedLanguage}
-          onLanguageChange={handleLanguageChange}
+          value={selectedLanguage}
+          onChange={handleLanguageChange}
         />
         <OnboardingWizard
           language={selectedLanguage}
@@ -186,10 +177,10 @@ export default function AuthPage() {
 
   return (
     <div className="relative grid min-h-screen place-items-center bg-canvas px-6 py-10">
-      <LanguageSegment
+      <LanguageSelect
         className="absolute right-6 top-[22px] z-10"
-        language={selectedLanguage}
-        onLanguageChange={handleLanguageChange}
+        value={selectedLanguage}
+        onChange={handleLanguageChange}
       />
 
       <Card className="w-[420px] max-w-full px-9 pb-[30px] pt-[34px]">

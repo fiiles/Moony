@@ -19,7 +19,7 @@
     "notUpdated": "rates not fetched yet",
     "unrealizedGain": "Unrealized return",
     "unrealizedLoss": "Unrealized loss",
-    "vsInvested": "vs. {{amount}} invested",
+    "vsInvestedPct": "{{percent}} vs. {{amount}} invested",
     "realized": "Realized return",
     "sells_one": "{{count}} sale · weighted average",
     "sells_other": "{{count}} sales · weighted average",
@@ -170,7 +170,7 @@
       "todayAt": "today at {{time}}"
     },
     "positionValue": "Position value",
-    "vsInvested": "vs. invested",
+    "vsInvestedPct": "{{percent}} vs. invested",
     "rate": "Rate",
     "invested": "Invested",
     "avgShort": "average {{price}}",
@@ -213,7 +213,7 @@
       "footer_other": "{{count}} transactions",
       "bought": "bought {{amount}}",
       "sold": "sold {{amount}}",
-      "rates": "Rates in {{currency}} at the CNB rate of the transaction day"
+      "rates": "Rates in {{currency}} at the ECB rate of the transaction day"
     },
     "position": {
       "title": "Position",

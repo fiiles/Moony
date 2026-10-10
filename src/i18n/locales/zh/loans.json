@@ -1,0 +1,332 @@
+{
+  "title": "贷款",
+  "eyebrow": "负债",
+  "subtitle": "房贷和消费贷款，余额按还款计划计算。",
+  "status": "余额已摊销至 {{date}}",
+  "loading": "正在加载您的贷款…",
+  "export": "导出",
+  "empty": {
+    "title": "还没有贷款",
+    "description": "添加您的第一笔贷款，即可看到您欠多少、利息花费多少，以及何时还清债务。"
+  },
+  "addLoan": "添加贷款",
+  "loans_other": "{{count}} 笔贷款",
+  "summary": {
+    "outstanding": "未偿总额",
+    "repaidOf": "借款 {{principal}}，已还 {{percent}}",
+    "payments": "月供",
+    "paymentsAfter": "自 {{month}} 起仅 {{amount}} · {{name}}将还清",
+    "paymentsYear": "每年 {{amount}}",
+    "rate": "平均利率",
+    "rateNote": "按余额加权 · 未来 12 个月的利息 {{interest}}",
+    "fixation": "固定利率期结束",
+    "fixationNote": "{{duration}}后 · {{name}} {{rate}}",
+    "fixationExpired": "{{name}}的固定利率期已于 {{month}} 结束——请输入新利率",
+    "noFixation": "没有设置利率有效期的贷款"
+  },
+  "chart": {
+    "title": "债务走势",
+    "subtitle": "实线为已发生的余额，虚线为按还款计划推算的未来余额。",
+    "horizon": {
+      "5": "5 年",
+      "10": "10 年",
+      "all": "直至还清"
+    },
+    "legend": {
+      "outstanding": "未偿余额",
+      "schedule": "按计划",
+      "newLoan": "新贷款",
+      "milestone": "里程碑"
+    },
+    "tipSchedule": "按计划",
+    "note": "今天 {{today}} · {{duration}}后 {{amount}}",
+    "noteDebtFree": "今天 {{today}} · {{duration}}后无债一身轻",
+    "noteNoPayoff": "今天 {{today}} · 按当前还款额，债务永远还不清",
+    "milestones": {
+      "paidOff": "{{name}}已还清",
+      "paidOffPayments": "月供减少 {{amount}}",
+      "debtFree": "无债一身轻",
+      "fixationEnd": "固定利率期结束 · {{name}}",
+      "half": "已还一半 · {{name}}",
+      "balance": "余额 {{amount}}",
+      "newLoan": "新贷款 · {{name}}",
+      "several_other": "{{count}} 个里程碑"
+    },
+    "events": {
+      "several_other": "{{count}} 个事件"
+    }
+  },
+  "table": {
+    "title": "贷款",
+    "subtitle": "按余额排序",
+    "subtitleHidden": "按余额排序 · 已还清的贷款已隐藏",
+    "showMatured": "显示已还清",
+    "loan": "贷款",
+    "outstanding": "未偿余额",
+    "principal": "本金",
+    "rate": "利率",
+    "payment": "还款额",
+    "payoff": "还清时间",
+    "actions": "操作",
+    "since": "自 {{month}} 起",
+    "repaid": "已还 {{percent}}",
+    "matured": "已还清",
+    "fixedUntil": "固定至 {{month}}",
+    "fixationEnded": "固定期已于 {{month}} 结束",
+    "fixedRate": "固定利率",
+    "monthly": "每月",
+    "noPayment": "无还款",
+    "in": "{{duration}}后",
+    "soonYear": "一年内",
+    "soon": "18 个月内",
+    "noPayoff": "按当前还款额永远还不清",
+    "capped": "超过 50 年",
+    "balanceAtEnd": "到期日仍剩 {{amount}}",
+    "noResults": {
+      "title": "没有未还清的贷款",
+      "description": "所有贷款都已还清。勾选“显示已还清”即可查看。"
+    },
+    "footer": {
+      "count_other": "{{count}} 笔未还清的贷款",
+      "outstanding": "未偿 {{amount}}",
+      "payments": "月供合计 {{amount}}",
+      "note": "余额 = 本金减去截至目前已还款摊销的部分，或您输入的某日余额"
+    }
+  },
+  "duration": {
+    "years_other": "{{count}} 年",
+    "months_other": "{{count}} 个月"
+  },
+  "form": {
+    "addTitle": "添加贷款",
+    "editTitle": "编辑贷款",
+    "submit": "添加贷款",
+    "name": "贷款名称",
+    "namePlaceholder": "例如：住房贷款",
+    "originalAmount": "本金",
+    "interestRate": "利率",
+    "monthlyPayment": "月供",
+    "startDate": "开始日期",
+    "endDate": "结束日期",
+    "balance": {
+      "title": "未偿余额",
+      "help": "Moony 会随每月还款减少余额。如果您知道实际余额（例如来自银行账单），请连同日期一并输入，计算将从该日起继续。",
+      "setManual": "设置某一日期的余额",
+      "amount": "未偿金额",
+      "date": "截至日期",
+      "estimate": "今日估算余额：{{amount}}",
+      "noPayment": "没有月供时，余额不会减少。"
+    }
+  },
+  "actions": {
+    "edit": "编辑",
+    "delete": "删除贷款",
+    "open": "打开",
+    "extraPayment": "额外还款",
+    "balanceCheck": "按账单核对余额",
+    "rateChange": "记录利率变更"
+  },
+  "confirmDelete": {
+    "title": "删除贷款",
+    "description": "删除“{{name}}”吗？其事件和房产关联也会一并删除，此操作无法撤销。"
+  },
+  "toast": {
+    "added": "贷款已添加",
+    "updated": "贷款已更新",
+    "deleted": "贷款已删除",
+    "eventAdded": "事件已记录，还款计划已重新计算",
+    "eventDeleted": "事件已移除"
+  },
+  "modal": {
+    "addDescription": "填写本金、利率和还款额即可；余额会按计划计算。",
+    "editDescription": "更改贷款条款；余额将重新计算。",
+    "endDateHelp": "合同约定的贷款到期日",
+    "rateValidity": "利率有效期（固定期结束）",
+    "rateValidityHelp": "当前利率的固定期何时结束",
+    "startDateHelp": "余额自此日期起摊销；还款在每月的同一天"
+  },
+  "valuation": {
+    "automatic": "自 {{date}} 起摊销（{{amount}}），利率 {{rate}}，每月还款 {{payment}}。",
+    "manual": "以您 {{date}} 的余额 {{amount}} 为起点，利率 {{rate}}，每月还款 {{payment}} 摊销。",
+    "static": "未设置月供，因此余额不会减少：截至 {{date}} 为 {{amount}}。",
+    "belowInterest": "还款额不足以支付利息，因此余额不会下降。"
+  },
+  "detail": {
+    "backToLoans": "返回贷款",
+    "loading": "正在加载贷款…",
+    "notFound": "该贷款已不存在。",
+    "eyebrow": "贷款",
+    "description": "本金 {{principal}}，自 {{month}} 起 · {{rate}}{{fixation}} · 月供 {{payment}}",
+    "descriptionNoPayment": "本金 {{principal}}，自 {{month}} 起 · {{rate}} · 无月供",
+    "withFixation": "，固定至 {{month}}",
+    "status": {
+      "automatic": "余额按计划计算",
+      "manual": "余额按计划计算 · 以您 {{date}} 的余额为起点",
+      "static": "无月供 · 余额不会下降"
+    },
+    "hero": {
+      "outstanding": "未偿余额",
+      "delta12": "近 12 个月 · 已还本金 {{percent}}",
+      "deltaSinceStart": "自放款以来 · 已还本金 {{percent}}",
+      "payoff": "还清时间",
+      "payoffNote": "按当前还款额，{{duration}}后",
+      "paidOff": "已还清",
+      "noPayoff": "按当前还款额永远还不清",
+      "noPayment": "没有还款，余额不会下降",
+      "balanceAtEnd": "至 {{month}} · 到期日仍剩 {{amount}}"
+    },
+    "horizon": {
+      "past": "至今",
+      "5": "5 年",
+      "all": "直至还清"
+    },
+    "chart": {
+      "legend": {
+        "balance": "余额",
+        "schedule": "按计划",
+        "drawdown": "放款",
+        "extraPayment": "额外还款",
+        "milestones": "固定期与里程碑"
+      },
+      "tipBalance": "余额",
+      "tipSchedule": "按计划",
+      "notePast": "自 {{date}} 起：已还本金 {{principal}}，已付利息 {{interest}}",
+      "note5": "5 年后的余额 {{amount}}",
+      "note5Fixation": "5 年后的余额 {{amount}} · 固定期于 {{month}} 结束",
+      "noteAll": "直至还清，您还需支付 {{total}}，其中利息 {{interest}}",
+      "noteNoPayoff": "按当前还款额，这笔贷款永远还不清",
+      "events": {
+        "drawdown": "放款 {{amount}}",
+        "extraPayment": "额外还款 {{amount}}",
+        "rateChange": "利率变更为 {{rate}}",
+        "newPayment": "还款额 {{amount}}",
+        "balanceCheck": "余额已按账单核对",
+        "fixationEnd": "固定利率期结束",
+        "half": "已还一半本金",
+        "payoff": "贷款已还清",
+        "balance": "余额 {{amount}}"
+      }
+    },
+    "stats": {
+      "interest": "已付利息",
+      "interestNote": "自 {{date}} 起 · 占已付款项的 {{share}}",
+      "principal": "已还本金",
+      "principalNote": "占本金的 {{percent}}",
+      "principalExtra": "其中额外还款 {{amount}}",
+      "remaining": "剩余还款",
+      "remainingNote": "{{duration}} · 仍需支付利息 {{interest}}",
+      "remainingNone": "按当前还款额永远还不清",
+      "paidOff": "贷款已还清",
+      "fixation": "固定利率期结束",
+      "fixationNote": "{{duration}}后 · 利率为 {{up}} 时还款额为 {{upPayment}}，为 {{down}} 时为 {{downPayment}}",
+      "nextPayment": "下次还款",
+      "nextPaymentNote": "利息 {{interest}} · 本金 {{principal}}",
+      "noSchedule": "无还款计划",
+      "remainingToEnd": "至 {{month}} · 剩余 {{amount}} · 仍需支付利息 {{interest}}"
+    },
+    "schedule": {
+      "title": "还款计划",
+      "subtitle": "每期还款中的利息和本金 · 还款后的余额",
+      "modes": {
+        "next12": "未来 12 期",
+        "years": "按年",
+        "all": "全部"
+      },
+      "payment": "还款",
+      "amount": "金额",
+      "interest": "利息",
+      "principal": "本金",
+      "balanceAfter": "还款后余额",
+      "year": "年份",
+      "payments": "还款",
+      "interestTotal": "利息",
+      "balanceEnd": "年末余额",
+      "next": "下一期",
+      "footNext12": "未来 12 期还款：利息 {{interest}} · 本金 {{principal}}",
+      "footYears_other": "{{count}} 年 · 利息占比从 {{from}} 降至最后一年的 {{to}}",
+      "footAll": "自 {{date}} 起共 {{count}} 期还款 · 已还的以淡色显示",
+      "empty": "还没有还款计划。请设置月供（编辑）后查看。",
+      "paidOff": "这笔贷款已还清。",
+      "method": "利息 = 余额 × 利率 ÷ 12，每月同一天还款一次"
+    },
+    "whatIf": {
+      "title": "额外还款",
+      "subtitle": "对期限和利息的影响",
+      "amount": "金额",
+      "hint": "比较银行提供的两种方案。",
+      "modes": {
+        "term": "缩短期限",
+        "payment": "降低还款额"
+      },
+      "termResult": "提前 {{duration}}还清",
+      "termNote": "节省利息 {{interest}} · 还款额仍为 {{payment}} · {{month}}结束",
+      "paymentResult": "月供减少 {{amount}}",
+      "paymentNote": "新还款额 {{payment}} · 期限仍至 {{month}} · 利息减少 {{interest}}",
+      "noEffect": "请输入不超过余额 {{amount}} 的金额。",
+      "noPayment": "没有月供就无法计算影响——请编辑贷款并添加月供。",
+      "record": "记为已还款"
+    },
+    "events": {
+      "title": "事件",
+      "extraPayment": "额外还款 {{amount}}",
+      "extraPaymentNote": "还款计划从减少后的余额继续",
+      "newPayment": "新还款额 {{amount}}",
+      "rateChange": "利率变更为 {{rate}}",
+      "rateChangeNote": "还款计划从当日余额继续",
+      "balanceCheck": "余额已按账单核对",
+      "balanceCheckNote": "还款计划从该日期重新开始",
+      "drawdown": "放款 {{amount}}",
+      "drawdownNote": "贷款开始",
+      "delete": "移除事件",
+      "confirmDelete": {
+        "title": "移除事件",
+        "description": "该记录将从图表和列表中消失。该事件设定的余额仍然有效。"
+      }
+    },
+    "warnings": {
+      "noPayment": "未设置月供，因此余额不会减少。请编辑贷款并添加还款额，以便自动摊销。",
+      "paymentBelowInterest": "月供不足以支付利息（每月约 {{interest}}），因此余额不会下降。请检查还款额和利率。",
+      "balanceAtEndDate": "到期日（{{date}}）仍有 {{amount}} 未还清。请检查还款额、利率和结束日期。",
+      "scheduleTruncated": "还款计划在 {{count}} 期后被截断。"
+    }
+  },
+  "eventDialog": {
+    "note": "备注",
+    "extraPayment": {
+      "title": "额外还款",
+      "description": "当天减少余额并重新计算还款计划；它会作为事件显示在图表中。",
+      "amount": "金额",
+      "date": "日期",
+      "usedFor": "银行将这笔还款用于",
+      "term": "缩短期限",
+      "payment": "降低还款额",
+      "alertTitle": "余额降至 {{amount}}",
+      "alertTerm": "提前 {{duration}}还清，节省利息 {{interest}}。",
+      "alertPayment": "新的月供为 {{payment}}，期限仍至 {{month}}。",
+      "alertTooMuch": "金额超过了余额 {{amount}}。",
+      "alertEmpty": "输入金额以查看影响。",
+      "submit": "记录还款"
+    },
+    "rateChange": {
+      "title": "利率变更",
+      "description": "新利率自指定日期起生效；还款计划从当日余额继续。",
+      "rate": "新利率",
+      "payment": "新还款额",
+      "paymentHint": "留空 = 还款额仍为 {{amount}}",
+      "date": "生效日期",
+      "alertTitle": "每月利息 {{from}} → {{to}}",
+      "alertNote": "按 {{payment}} 的还款额，贷款将于{{month}}还清。",
+      "alertNoPayoff": "{{payment}} 的还款额不足以支付利息，余额不会下降。",
+      "submit": "记录变更"
+    },
+    "balanceCheck": {
+      "title": "按账单核对余额",
+      "description": "输入账单上的余额；还款计划将从当日重新开始。",
+      "amount": "账单余额",
+      "date": "截至",
+      "alertTitle": "还款计划原先假设为 {{amount}}",
+      "alertNote": "差额 {{delta}} · 自 {{date}} 起，还款计划将采用您的余额。",
+      "submit": "保存余额"
+    }
+  }
+}

@@ -1,0 +1,332 @@
+{
+  "title": "ローン",
+  "eyebrow": "負債",
+  "subtitle": "住宅ローンと消費者ローン。残高は返済スケジュールに基づきます。",
+  "status": "{{date}}時点で償却した残高",
+  "loading": "ローンを読み込んでいます...",
+  "export": "エクスポート",
+  "empty": {
+    "title": "ローンはまだありません",
+    "description": "最初のローンを追加すると、借入残高、利息のコスト、完済の時期を確認できます。"
+  },
+  "addLoan": "ローンを追加",
+  "loans_other": "{{count}}件のローン",
+  "summary": {
+    "outstanding": "残高合計",
+    "repaidOf": "借入額 {{principal}} のうち{{percent}}を返済済み",
+    "payments": "月々の返済額",
+    "paymentsAfter": "{{month}}以降は{{amount}}のみ · {{name}}を完済",
+    "paymentsYear": "年間 {{amount}}",
+    "rate": "平均金利",
+    "rateNote": "残高で加重 · 今後12か月の利息 {{interest}}",
+    "fixation": "固定金利の終了",
+    "fixationNote": "{{duration}}後 · {{name}} {{rate}}",
+    "fixationExpired": "{{name}}の固定金利は{{month}}に終了しました。新しい金利を入力してください",
+    "noFixation": "有効期限のある金利はありません"
+  },
+  "chart": {
+    "title": "債務の推移",
+    "subtitle": "これまでの残高は実線、今後の返済スケジュールに基づく残高は破線で表示します。",
+    "horizon": {
+      "5": "5年",
+      "10": "10年",
+      "all": "完済まで"
+    },
+    "legend": {
+      "outstanding": "残高",
+      "schedule": "スケジュール",
+      "newLoan": "新規ローン",
+      "milestone": "節目"
+    },
+    "tipSchedule": "スケジュール",
+    "note": "現在 {{today}} · {{duration}}後 {{amount}}",
+    "noteDebtFree": "現在 {{today}} · {{duration}}後に完済",
+    "noteNoPayoff": "現在 {{today}} · 現在の返済額では完済できません",
+    "milestones": {
+      "paidOff": "{{name}}を完済",
+      "paidOffPayments": "月々の返済額が{{amount}}減ります",
+      "debtFree": "完済",
+      "fixationEnd": "固定金利の終了 · {{name}}",
+      "half": "半分を返済 · {{name}}",
+      "balance": "残高 {{amount}}",
+      "newLoan": "新規ローン · {{name}}",
+      "several_other": "{{count}}件の節目"
+    },
+    "events": {
+      "several_other": "{{count}}件のイベント"
+    }
+  },
+  "table": {
+    "title": "ローン",
+    "subtitle": "残高順",
+    "subtitleHidden": "残高順 · 完済したローンは非表示",
+    "showMatured": "完済済みを表示",
+    "loan": "ローン",
+    "outstanding": "残高",
+    "principal": "元金",
+    "rate": "金利",
+    "payment": "返済額",
+    "payoff": "完済時期",
+    "actions": "操作",
+    "since": "{{month}}から",
+    "repaid": "{{percent}}を返済",
+    "matured": "完済",
+    "fixedUntil": "{{month}}まで固定",
+    "fixationEnded": "{{month}}に固定期間が終了",
+    "fixedRate": "固定金利",
+    "monthly": "毎月",
+    "noPayment": "返済なし",
+    "in": "{{duration}}後",
+    "soonYear": "1年以内",
+    "soon": "18か月以内",
+    "noPayoff": "現在の返済額では完済できません",
+    "capped": "50年超",
+    "balanceAtEnd": "終了日に{{amount}}が残ります",
+    "noResults": {
+      "title": "有効なローンはありません",
+      "description": "すべてのローンが完済されています。「完済済みを表示」にチェックすると表示されます。"
+    },
+    "footer": {
+      "count_other": "有効なローン {{count}}件",
+      "outstanding": "残高 {{amount}}",
+      "payments": "返済額 月額 {{amount}}",
+      "note": "残高 = これまでの返済で償却した元金、または入力した日付時点の残高"
+    }
+  },
+  "duration": {
+    "years_other": "{{count}}年",
+    "months_other": "{{count}}か月"
+  },
+  "form": {
+    "addTitle": "ローンを追加",
+    "editTitle": "ローンを編集",
+    "submit": "ローンを追加",
+    "name": "ローン名",
+    "namePlaceholder": "例：住宅ローン",
+    "originalAmount": "元金",
+    "interestRate": "金利",
+    "monthlyPayment": "月々の返済額",
+    "startDate": "開始日",
+    "endDate": "終了日",
+    "balance": {
+      "title": "残高",
+      "help": "Moony は毎月の返済ごとに残高を減らします。銀行の明細などで実際の残高が分かる場合は、日付とあわせて入力すると、そこから計算が続きます。",
+      "setManual": "日付を指定して残高を設定",
+      "amount": "残高",
+      "date": "基準日",
+      "estimate": "現在の推定残高：{{amount}}",
+      "noPayment": "月々の返済額がないと、残高は減りません。"
+    }
+  },
+  "actions": {
+    "edit": "編集",
+    "delete": "ローンを削除",
+    "open": "開く",
+    "extraPayment": "追加返済",
+    "balanceCheck": "明細で残高を確認",
+    "rateChange": "金利の変更を記録"
+  },
+  "confirmDelete": {
+    "title": "ローンを削除",
+    "description": "「{{name}}」を削除しますか？イベントと不動産との紐付けも一緒に削除されます。この操作は元に戻せません。"
+  },
+  "toast": {
+    "added": "ローンを追加しました",
+    "updated": "ローンを更新しました",
+    "deleted": "ローンを削除しました",
+    "eventAdded": "イベントを記録し、スケジュールを再計算しました",
+    "eventDeleted": "イベントを削除しました"
+  },
+  "modal": {
+    "addDescription": "元金、金利、返済額があれば十分です。残高はスケジュールに従って計算されます。",
+    "editDescription": "ローンの条件を変更します。残高は再計算されます。",
+    "endDateHelp": "契約上のローンの満期",
+    "rateValidity": "金利の有効期限（固定期間の終了）",
+    "rateValidityHelp": "現在の金利の固定期間が終わる日",
+    "startDateHelp": "残高はこの日から償却されます。返済は毎月同じ日に行われます"
+  },
+  "valuation": {
+    "automatic": "{{date}}（{{amount}}）から、金利{{rate}}、月々{{payment}}の返済で償却。",
+    "manual": "{{date}}時点の残高 {{amount}} から、金利{{rate}}、月々{{payment}}の返済で償却。",
+    "static": "月々の返済額が設定されていないため、残高は減りません：{{date}}時点で{{amount}}。",
+    "belowInterest": "返済額が利息に満たないため、残高は減りません。"
+  },
+  "detail": {
+    "backToLoans": "ローンに戻る",
+    "loading": "ローンを読み込んでいます...",
+    "notFound": "このローンは存在しません。",
+    "eyebrow": "ローン",
+    "description": "元金 {{principal}} · {{month}}から · {{rate}}{{fixation}} · 月々の返済額 {{payment}}",
+    "descriptionNoPayment": "元金 {{principal}} · {{month}}から · {{rate}} · 月々の返済なし",
+    "withFixation": "（{{month}}まで固定）",
+    "status": {
+      "automatic": "スケジュールに基づく残高",
+      "manual": "スケジュールに基づく残高 · {{date}}時点のあなたの残高から",
+      "static": "月々の返済なし · 残高は減りません"
+    },
+    "hero": {
+      "outstanding": "残高",
+      "delta12": "過去12か月 · 元金の{{percent}}を返済済み",
+      "deltaSinceStart": "実行以降 · 元金の{{percent}}を返済済み",
+      "payoff": "完済時期",
+      "payoffNote": "現在の返済額で{{duration}}後",
+      "paidOff": "完済",
+      "noPayoff": "現在の返済額では完済できません",
+      "noPayment": "返済がないと残高は減りません",
+      "balanceAtEnd": "{{month}}まで · 終了日に{{amount}}が残ります"
+    },
+    "horizon": {
+      "past": "これまで",
+      "5": "5年",
+      "all": "完済まで"
+    },
+    "chart": {
+      "legend": {
+        "balance": "残高",
+        "schedule": "スケジュール",
+        "drawdown": "実行",
+        "extraPayment": "追加返済",
+        "milestones": "固定期間と節目"
+      },
+      "tipBalance": "残高",
+      "tipSchedule": "スケジュール",
+      "notePast": "{{date}}以降：元金 {{principal}} を返済し、利息 {{interest}} を支払いました",
+      "note5": "5年後の残高 {{amount}}",
+      "note5Fixation": "5年後の残高 {{amount}} · 固定期間は{{month}}に終了",
+      "noteAll": "完済まであと{{total}}を支払い、うち利息は{{interest}}です",
+      "noteNoPayoff": "現在の返済額ではローンは完済できません",
+      "events": {
+        "drawdown": "実行 {{amount}}",
+        "extraPayment": "追加返済 {{amount}}",
+        "rateChange": "金利を{{rate}}に変更",
+        "newPayment": "返済額 {{amount}}",
+        "balanceCheck": "明細で残高を確認",
+        "fixationEnd": "固定期間の終了",
+        "half": "元金の半分を返済",
+        "payoff": "ローンを完済",
+        "balance": "残高 {{amount}}"
+      }
+    },
+    "stats": {
+      "interest": "支払済みの利息",
+      "interestNote": "{{date}}以降 · これまでの返済額の{{share}}",
+      "principal": "返済済みの元金",
+      "principalNote": "元金の{{percent}}",
+      "principalExtra": "うち追加返済 {{amount}}",
+      "remaining": "残りの返済",
+      "remainingNote": "{{duration}} · 残りの利息 {{interest}}",
+      "remainingNone": "現在の返済額では完済できません",
+      "paidOff": "ローンは完済されました",
+      "fixation": "固定金利の終了",
+      "fixationNote": "{{duration}}後 · {{up}}なら返済額は{{upPayment}}、{{down}}なら{{downPayment}}",
+      "nextPayment": "次回の返済",
+      "nextPaymentNote": "利息 {{interest}} · 元金 {{principal}}",
+      "noSchedule": "スケジュールなし",
+      "remainingToEnd": "{{month}}まで · 残り {{amount}} · 残りの利息 {{interest}}"
+    },
+    "schedule": {
+      "title": "返済スケジュール",
+      "subtitle": "各回の利息と元金 · 返済後の残高",
+      "modes": {
+        "next12": "今後12回",
+        "years": "年別",
+        "all": "すべて"
+      },
+      "payment": "返済",
+      "amount": "金額",
+      "interest": "利息",
+      "principal": "元金",
+      "balanceAfter": "返済後の残高",
+      "year": "年",
+      "payments": "返済額",
+      "interestTotal": "利息",
+      "balanceEnd": "年末の残高",
+      "next": "次回",
+      "footNext12": "今後12回の返済：利息 {{interest}} · 元金 {{principal}}",
+      "footYears_other": "{{count}}年 · 利息の割合は初年度の{{from}}から最終年度の{{to}}に低下",
+      "footAll": "{{date}}以降の{{count}}回の返済 · 過去の分は淡色表示",
+      "empty": "スケジュールはまだありません。月々の返済額を設定（編集）すると表示されます。",
+      "paidOff": "このローンは完済されています。",
+      "method": "利息 = 残高 × 金利 ÷ 12。毎月同じ日に1回返済"
+    },
+    "whatIf": {
+      "title": "追加返済",
+      "subtitle": "期間と利息への影響",
+      "amount": "金額",
+      "hint": "銀行が提示する2つの方法を比較します。",
+      "modes": {
+        "term": "期間を短縮",
+        "payment": "返済額を軽減"
+      },
+      "termResult": "{{duration}}早く完済",
+      "termNote": "利息を{{interest}}節約 · 返済額は{{payment}}のまま · {{month}}に終了",
+      "paymentResult": "返済額が月々{{amount}}減ります",
+      "paymentNote": "新しい返済額 {{payment}} · 期間は{{month}}のまま · 利息は{{interest}}減少",
+      "noEffect": "残高 {{amount}} までの金額を入力してください。",
+      "noPayment": "月々の返済額がないと効果を計算できません。ローンを編集して追加してください。",
+      "record": "実行済みとして記録"
+    },
+    "events": {
+      "title": "イベント",
+      "extraPayment": "追加返済 {{amount}}",
+      "extraPaymentNote": "スケジュールは減った残高から続きます",
+      "newPayment": "新しい返済額 {{amount}}",
+      "rateChange": "金利を{{rate}}に変更",
+      "rateChangeNote": "スケジュールはこの日の残高から続きます",
+      "balanceCheck": "明細で残高を確認",
+      "balanceCheckNote": "スケジュールはこの日から再計算されます",
+      "drawdown": "実行 {{amount}}",
+      "drawdownNote": "ローンの開始",
+      "delete": "イベントを削除",
+      "confirmDelete": {
+        "title": "イベントを削除",
+        "description": "この項目はグラフと一覧から消えます。イベントで設定された残高はそのまま有効です。"
+      }
+    },
+    "warnings": {
+      "noPayment": "月々の返済額が設定されていないため、残高は減りません。ローンを編集して返済額を追加すると、自動で償却されます。",
+      "paymentBelowInterest": "月々の返済額が利息（月約{{interest}}）に満たないため、残高は減りません。返済額と金利を確認してください。",
+      "balanceAtEndDate": "終了日（{{date}}）時点で{{amount}}が残る見込みです。返済額、金利、終了日を確認してください。",
+      "scheduleTruncated": "スケジュールは{{count}}回で打ち切られています。"
+    }
+  },
+  "eventDialog": {
+    "note": "メモ",
+    "extraPayment": {
+      "title": "追加返済",
+      "description": "その日の残高を減らし、スケジュールを再計算します。グラフにはイベントとして表示されます。",
+      "amount": "金額",
+      "date": "日付",
+      "usedFor": "銀行はこの返済を次の目的に充当しました",
+      "term": "期間を短縮",
+      "payment": "返済額を軽減",
+      "alertTitle": "残高は{{amount}}に減ります",
+      "alertTerm": "完済が{{duration}}早まり、利息を{{interest}}節約できます。",
+      "alertPayment": "新しい返済額は月々{{payment}}、期間は{{month}}のままです。",
+      "alertTooMuch": "金額が残高 {{amount}} を超えています。",
+      "alertEmpty": "金額を入力すると効果が表示されます。",
+      "submit": "返済を記録"
+    },
+    "rateChange": {
+      "title": "金利の変更",
+      "description": "指定した日から新しい金利が適用され、スケジュールはその日の残高から続きます。",
+      "rate": "新しい金利",
+      "payment": "新しい返済額",
+      "paymentHint": "空欄 = 返済額は{{amount}}のまま",
+      "date": "適用開始日",
+      "alertTitle": "月間の利息 {{from}} → {{to}}",
+      "alertNote": "返済額が{{payment}}の場合、{{month}}に完済します。",
+      "alertNoPayoff": "返済額{{payment}}では利息を賄えないため、残高は減りません。",
+      "submit": "変更を記録"
+    },
+    "balanceCheck": {
+      "title": "明細で残高を確認",
+      "description": "明細の残高を入力してください。スケジュールはその日から再計算されます。",
+      "amount": "明細上の残高",
+      "date": "基準日",
+      "alertTitle": "スケジュール上の残高は{{amount}}でした",
+      "alertNote": "差額 {{delta}} · {{date}}以降、スケジュールはあなたの残高を使用します。",
+      "submit": "残高を保存"
+    }
+  }
+}

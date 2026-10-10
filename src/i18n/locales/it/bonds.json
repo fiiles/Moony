@@ -1,0 +1,118 @@
+{
+  "title": "Obbligazioni",
+  "eyebrow": "Portafoglio",
+  "subtitle": "Obbligazioni governative e societarie detenute fino alla scadenza, con rendimento da cedole fisse.",
+  "status": "Valutate al valore nominale · senza ratei",
+  "loading": "Caricamento delle obbligazioni...",
+  "empty": {
+    "title": "Ancora nessuna obbligazione",
+    "description": "Aggiungi la prima emissione: valore nominale, numero di unità, cedola e scadenza. La scala delle scadenze si costruisce da sola."
+  },
+  "addBond": "Aggiungi obbligazione",
+  "export": "Esporta",
+  "summary": {
+    "nominal": "Valore nominale",
+    "issues_one": "{{count}} emissione",
+    "issues_many": "{{count}} emissioni",
+    "issues_other": "{{count}} emissioni",
+    "currencies_one": "{{count}} valuta",
+    "currencies_many": "{{count}} valute",
+    "currencies_other": "{{count}} valute",
+    "yearlyCoupon": "Cedola annua",
+    "weightedRate": "media ponderata {{rate}} annuo",
+    "nearestMaturity": "Prossima scadenza",
+    "returns": "rimborsa {{amount}}",
+    "noMaturity": "nessuna emissione ha una scadenza",
+    "avgToMaturity": "Durata media residua",
+    "years": "{{value}} anni",
+    "lastMaturity": "ponderata per valore nominale · ultima {{date}}",
+    "noneLive": "nessuna emissione attiva"
+  },
+  "until": {
+    "in": "tra {{duration}}",
+    "soon": "entro un mese",
+    "past": "rimborsata il {{date}}"
+  },
+  "duration": {
+    "years_one": "{{count}} anno",
+    "years_many": "{{count}} anni",
+    "years_other": "{{count}} anni",
+    "months_one": "{{count}} mese",
+    "months_many": "{{count}} mesi",
+    "months_other": "{{count}} mesi"
+  },
+  "ladder": {
+    "title": "Scadenze e cedole",
+    "subtitle": "Quanto rientra in quale anno: valore nominale rimborsato e cedole annue.",
+    "badge": "cedola annua alla ricorrenza della scadenza",
+    "principal": "Valore nominale rimborsato",
+    "coupons": "Cedole",
+    "nearest": "Prossima scadenza",
+    "note": "Entro il {{year}} recuperi {{principal}} di valore nominale e {{coupons}} di cedole."
+  },
+  "table": {
+    "title": "Emissioni",
+    "subtitle": "Ordinate per scadenza · prima la più vicina",
+    "search": "Cerca per nome o ISIN",
+    "showMatured": "Mostra rimborsate",
+    "bond": "Obbligazione",
+    "nominal": "Valore nominale / unità",
+    "quantity": "Unità",
+    "units": "pz",
+    "value": "Valore",
+    "coupon": "Cedola",
+    "yearly": "Annua",
+    "maturity": "Scadenza",
+    "actions": "Azioni",
+    "withinYear": "entro un anno",
+    "matured": "rimborsata",
+    "noMaturity": "senza scadenza",
+    "noResults": {
+      "title": "Nessun risultato",
+      "description": "Prova con un altro nome o ISIN.",
+      "maturedHidden": "Prova con un altro nome o ISIN. Le emissioni rimborsate sono nascoste."
+    },
+    "footer": {
+      "count_one": "{{count}} emissione",
+      "count_many": "{{count}} emissioni",
+      "count_other": "{{count}} emissioni",
+      "nominal": "valore nominale {{amount}}",
+      "coupons": "cedole {{amount}} all'anno",
+      "valuation": "Valore = valore nominale × unità · il prezzo di mercato non è monitorato"
+    }
+  },
+  "actions": {
+    "edit": "Modifica",
+    "delete": "Elimina"
+  },
+  "form": {
+    "addTitle": "Aggiungi obbligazione",
+    "editTitle": "Modifica obbligazione",
+    "addDescription": "Il valore deriva da valore nominale × unità, il rendimento dal tasso della cedola.",
+    "editDescription": "Le modifiche si riflettono sul valore e sulla scala delle scadenze.",
+    "name": "Nome",
+    "namePlaceholder": "es. Obbligazione governativa ceca 2031",
+    "isin": "ISIN",
+    "isinHint": "12 caratteri dalle condizioni di emissione; aiuta ad abbinare gli estratti conto.",
+    "nominal": "Valore nominale di 1 unità",
+    "quantity": "Unità",
+    "rate": "Cedola annua",
+    "maturity": "Data di scadenza",
+    "maturityHint": "Dopo la scadenza l'emissione passa tra le rimborsate e non conta più nel patrimonio netto.",
+    "summaryValue": "Valore {{value}} · cedola {{coupon}} all'anno",
+    "summaryNext": "Prossima ricorrenza della scadenza: {{date}}.",
+    "summaryMatures": "L'emissione scade quest'anno; nessuna ulteriore cedola.",
+    "summaryNoMaturity": "Nessuna scadenza – la cedola conta ogni anno.",
+    "submitAdd": "Aggiungi obbligazione",
+    "submitEdit": "Salva modifiche"
+  },
+  "confirmDelete": {
+    "title": "Eliminare l'obbligazione?",
+    "description": "«{{name}}» verrà rimossa definitivamente. L'operazione non si può annullare."
+  },
+  "toast": {
+    "added": "Obbligazione aggiunta",
+    "updated": "Obbligazione aggiornata",
+    "deleted": "Obbligazione eliminata"
+  }
+}

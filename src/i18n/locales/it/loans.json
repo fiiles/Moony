@@ -1,0 +1,346 @@
+{
+  "title": "Prestiti",
+  "eyebrow": "Passività",
+  "subtitle": "Mutui e prestiti al consumo, saldi secondo il piano di rimborso.",
+  "status": "Saldi ammortizzati al {{date}}",
+  "loading": "Caricamento dei prestiti...",
+  "export": "Esporta",
+  "empty": {
+    "title": "Ancora nessun prestito",
+    "description": "Aggiungi il tuo primo prestito per vedere quanto devi, quanto ti costano gli interessi e quando sarai senza debiti."
+  },
+  "addLoan": "Aggiungi prestito",
+  "loans_one": "{{count}} prestito",
+  "loans_many": "{{count}} prestiti",
+  "loans_other": "{{count}} prestiti",
+  "summary": {
+    "outstanding": "Debito residuo totale",
+    "repaidOf": "{{percent}} rimborsato su {{principal}} presi in prestito",
+    "payments": "Rate mensili",
+    "paymentsAfter": "da {{month, lower}} solo {{amount}} · {{name}} sarà estinto",
+    "paymentsYear": "{{amount}} all'anno",
+    "rate": "Tasso medio",
+    "rateNote": "ponderato per saldo · interessi nei prossimi 12 mesi {{interest}}",
+    "fixation": "Fine del tasso fisso",
+    "fixationNote": "tra {{duration}} · {{name}} {{rate}}",
+    "fixationExpired": "Il tasso fisso di {{name}} è terminato a {{month, lower}} – inserisci il nuovo tasso",
+    "noFixation": "nessun tasso ha una scadenza di validità"
+  },
+  "chart": {
+    "title": "Andamento del debito",
+    "subtitle": "Saldi finora a linea continua, il futuro secondo i piani di rimborso tratteggiato.",
+    "horizon": {
+      "5": "5 anni",
+      "10": "10 anni",
+      "all": "Fino all'estinzione"
+    },
+    "legend": {
+      "outstanding": "Debito residuo",
+      "schedule": "Da piano",
+      "newLoan": "Nuovo prestito",
+      "milestone": "Traguardo"
+    },
+    "tipSchedule": "da piano",
+    "note": "Oggi {{today}} · tra {{duration}} {{amount}}",
+    "noteDebtFree": "Oggi {{today}} · senza debiti tra {{duration}}",
+    "noteNoPayoff": "Oggi {{today}} · con le rate attuali il debito non si estingue mai",
+    "milestones": {
+      "paidOff": "{{name}} estinto",
+      "paidOffPayments": "le rate calano di {{amount}} al mese",
+      "debtFree": "senza debiti",
+      "fixationEnd": "Fine del tasso fisso · {{name}}",
+      "half": "Metà rimborsata · {{name}}",
+      "balance": "saldo {{amount}}",
+      "newLoan": "Nuovo prestito · {{name}}",
+      "several_one": "{{count}} traguardo",
+      "several_many": "{{count}} traguardi",
+      "several_other": "{{count}} traguardi"
+    },
+    "events": {
+      "several_one": "{{count}} evento",
+      "several_many": "{{count}} eventi",
+      "several_other": "{{count}} eventi"
+    }
+  },
+  "table": {
+    "title": "Prestiti",
+    "subtitle": "Ordinati per saldo",
+    "subtitleHidden": "Ordinati per saldo · prestiti estinti nascosti",
+    "showMatured": "Mostra estinti",
+    "loan": "Prestito",
+    "outstanding": "Debito residuo",
+    "principal": "Capitale",
+    "rate": "Tasso",
+    "payment": "Rata",
+    "payoff": "Estinto entro",
+    "actions": "Azioni",
+    "since": "da {{month, lower}}",
+    "repaid": "{{percent}} rimborsato",
+    "matured": "estinto",
+    "fixedUntil": "fisso fino a {{month, lower}}",
+    "fixationEnded": "tasso fisso terminato a {{month, lower}}",
+    "fixedRate": "tasso fisso",
+    "monthly": "mensile",
+    "noPayment": "nessuna rata",
+    "in": "tra {{duration}}",
+    "soonYear": "entro un anno",
+    "soon": "entro 18 mesi",
+    "noPayoff": "mai con la rata attuale",
+    "capped": "oltre 50 anni",
+    "balanceAtEnd": "{{amount}} residui alla data di fine",
+    "noResults": {
+      "title": "Nessun prestito attivo",
+      "description": "Tutti i prestiti sono estinti. Spunta «Mostra estinti» per vederli."
+    },
+    "footer": {
+      "count_one": "{{count}} prestito attivo",
+      "count_many": "{{count}} prestiti attivi",
+      "count_other": "{{count}} prestiti attivi",
+      "outstanding": "debito residuo {{amount}}",
+      "payments": "rate {{amount}} al mese",
+      "note": "Saldo = capitale ammortizzato con le rate versate finora, oppure il saldo che hai inserito a una certa data"
+    }
+  },
+  "duration": {
+    "years_one": "{{count}} anno",
+    "years_many": "{{count}} anni",
+    "years_other": "{{count}} anni",
+    "months_one": "{{count}} mese",
+    "months_many": "{{count}} mesi",
+    "months_other": "{{count}} mesi"
+  },
+  "form": {
+    "addTitle": "Aggiungi prestito",
+    "editTitle": "Modifica prestito",
+    "submit": "Aggiungi prestito",
+    "name": "Nome del prestito",
+    "namePlaceholder": "es. Mutuo casa",
+    "originalAmount": "Capitale",
+    "interestRate": "Tasso di interesse",
+    "monthlyPayment": "Rata mensile",
+    "startDate": "Data di inizio",
+    "endDate": "Data di fine",
+    "balance": {
+      "title": "Debito residuo",
+      "help": "Moony riduce il saldo a ogni rata mensile. Se conosci il saldo reale, per esempio da un estratto conto, inseriscilo con la sua data e il calcolo prosegue da lì.",
+      "setManual": "Imposta il saldo a una data",
+      "amount": "Debito residuo",
+      "date": "Alla data",
+      "estimate": "Saldo stimato oggi: {{amount}}",
+      "noPayment": "Senza una rata mensile il saldo non si riduce."
+    }
+  },
+  "actions": {
+    "edit": "Modifica",
+    "delete": "Elimina prestito",
+    "open": "Apri",
+    "extraPayment": "Versamento extra",
+    "balanceCheck": "Verifica il saldo con l'estratto conto",
+    "rateChange": "Registra una variazione di tasso"
+  },
+  "confirmDelete": {
+    "title": "Elimina prestito",
+    "description": "Eliminare «{{name}}»? Verranno eliminati anche i suoi eventi e i collegamenti agli immobili. L'operazione non si può annullare."
+  },
+  "toast": {
+    "added": "Prestito aggiunto",
+    "updated": "Prestito aggiornato",
+    "deleted": "Prestito eliminato",
+    "eventAdded": "Evento registrato, piano ricalcolato",
+    "eventDeleted": "Evento rimosso"
+  },
+  "modal": {
+    "addDescription": "Bastano capitale, tasso e rata; il saldo segue il piano.",
+    "editDescription": "Modifica le condizioni del prestito; il saldo viene ricalcolato.",
+    "endDateHelp": "Quando il prestito scade per contratto",
+    "rateValidity": "Validità del tasso (fine del tasso fisso)",
+    "rateValidityHelp": "Quando termina il periodo di tasso fisso attuale",
+    "startDateHelp": "Il saldo si ammortizza da questa data; le rate cadono lo stesso giorno di ogni mese"
+  },
+  "valuation": {
+    "automatic": "Ammortizzato dal {{date}} ({{amount}}) al {{rate}} con {{payment}} al mese.",
+    "manual": "Dal tuo saldo di {{amount}} del {{date}}, ammortizzato al {{rate}} con {{payment}} al mese.",
+    "static": "Non è impostata alcuna rata mensile, quindi il saldo non si riduce: {{amount}} al {{date}}.",
+    "belowInterest": "La rata non copre gli interessi, quindi il saldo non scende."
+  },
+  "detail": {
+    "backToLoans": "Torna ai prestiti",
+    "loading": "Caricamento del prestito...",
+    "notFound": "Questo prestito non esiste più.",
+    "eyebrow": "Prestito",
+    "description": "Capitale {{principal}} da {{month, lower}} · {{rate}}{{fixation}} · rata {{payment}} al mese",
+    "descriptionNoPayment": "Capitale {{principal}} da {{month, lower}} · {{rate}} · nessuna rata mensile",
+    "withFixation": " fisso fino a {{month, lower}}",
+    "status": {
+      "automatic": "Saldo da piano",
+      "manual": "Saldo da piano · dal tuo saldo del {{date}}",
+      "static": "Nessuna rata mensile · il saldo non scende"
+    },
+    "hero": {
+      "outstanding": "Debito residuo",
+      "delta12": "negli ultimi 12 mesi · {{percent}} del capitale rimborsato",
+      "deltaSinceStart": "dall'erogazione · {{percent}} del capitale rimborsato",
+      "payoff": "Estinto entro",
+      "payoffNote": "tra {{duration}} con la rata attuale",
+      "paidOff": "Estinto",
+      "noPayoff": "mai con la rata attuale",
+      "noPayment": "senza una rata il saldo non scende",
+      "balanceAtEnd": "fino a {{month, lower}} · {{amount}} residui alla data di fine"
+    },
+    "horizon": {
+      "5": "5 anni",
+      "past": "Finora",
+      "all": "Fino all'estinzione"
+    },
+    "chart": {
+      "legend": {
+        "balance": "Saldo",
+        "schedule": "Da piano",
+        "drawdown": "Erogazione",
+        "extraPayment": "Versamento extra",
+        "milestones": "Tasso fisso e traguardi"
+      },
+      "tipBalance": "saldo",
+      "tipSchedule": "da piano",
+      "notePast": "Dal {{date}}: {{principal}} di capitale rimborsato e {{interest}} pagati in interessi",
+      "note5": "Saldo tra 5 anni {{amount}}",
+      "note5Fixation": "Saldo tra 5 anni {{amount}} · fine del tasso fisso a {{month, lower}}",
+      "noteAll": "Fino all'estinzione pagherai ancora {{total}}, di cui {{interest}} di interessi",
+      "noteNoPayoff": "Con la rata attuale il prestito non si estingue mai",
+      "events": {
+        "drawdown": "Erogazione {{amount}}",
+        "extraPayment": "Versamento extra {{amount}}",
+        "rateChange": "Tasso cambiato a {{rate}}",
+        "newPayment": "rata {{amount}}",
+        "balanceCheck": "Saldo verificato con l'estratto conto",
+        "fixationEnd": "Fine del tasso fisso",
+        "half": "Metà del capitale rimborsata",
+        "payoff": "Prestito estinto",
+        "balance": "saldo {{amount}}"
+      }
+    },
+    "stats": {
+      "interest": "Interessi pagati",
+      "interestNote": "dal {{date}} · {{share}} delle rate versate",
+      "principal": "Capitale rimborsato",
+      "principalNote": "{{percent}} del capitale",
+      "principalExtra": "di cui {{amount}} in versamenti extra",
+      "remaining": "Rate rimanenti",
+      "remainingNote": "{{duration}} · {{interest}} di interessi ancora da pagare",
+      "remainingNone": "mai con la rata attuale",
+      "paidOff": "il prestito è estinto",
+      "fixation": "Fine del tasso fisso",
+      "fixationNote": "tra {{duration}} · a {{up}} la rata è {{upPayment}}, a {{down}} {{downPayment}}",
+      "nextPayment": "Prossima rata",
+      "nextPaymentNote": "interessi {{interest}} · capitale {{principal}}",
+      "noSchedule": "nessun piano",
+      "remainingToEnd": "fino a {{month, lower}} · {{amount}} residui · {{interest}} di interessi ancora da pagare"
+    },
+    "schedule": {
+      "title": "Piano di rimborso",
+      "subtitle": "Interessi e capitale in ogni rata · saldo dopo la rata",
+      "modes": {
+        "next12": "Prossime 12",
+        "years": "Per anno",
+        "all": "Tutte"
+      },
+      "payment": "Rata",
+      "amount": "Importo",
+      "interest": "Interessi",
+      "principal": "Capitale",
+      "balanceAfter": "Saldo dopo",
+      "year": "Anno",
+      "payments": "Rate",
+      "interestTotal": "Interessi",
+      "balanceEnd": "Saldo a fine anno",
+      "next": "prossima",
+      "footNext12": "Prossime 12 rate: interessi {{interest}} · capitale {{principal}}",
+      "footYears_one": "{{count}} anno · la quota di interessi scende da {{from}} a {{to}} nell'ultimo anno",
+      "footYears_many": "{{count}} anni · la quota di interessi scende da {{from}} a {{to}} nell'ultimo anno",
+      "footYears_other": "{{count}} anni · la quota di interessi scende da {{from}} a {{to}} nell'ultimo anno",
+      "footAll": "{{count}} rate dal {{date}} · quelle passate in grigio",
+      "empty": "Non c'è ancora un piano. Imposta una rata mensile (Modifica) per vederlo.",
+      "paidOff": "Questo prestito è estinto.",
+      "method": "Interessi = saldo × tasso ÷ 12, una rata al mese lo stesso giorno"
+    },
+    "whatIf": {
+      "title": "Versamento extra",
+      "subtitle": "Che effetto avrebbe su durata e interessi",
+      "amount": "Importo",
+      "hint": "Confronta le due opzioni offerte dalle banche.",
+      "modes": {
+        "term": "Riduci la durata",
+        "payment": "Riduci la rata"
+      },
+      "termResult": "Estinto {{duration}} prima",
+      "termNote": "Risparmi {{interest}} di interessi · la rata resta {{payment}} · termina a {{month, lower}}",
+      "paymentResult": "La rata cala di {{amount}} al mese",
+      "paymentNote": "Nuova rata {{payment}} · la durata resta fino a {{month, lower}} · interessi inferiori di {{interest}}",
+      "noEffect": "Inserisci un importo fino al saldo di {{amount}}.",
+      "noPayment": "Senza una rata mensile l'effetto non si può calcolare – aggiungila modificando il prestito.",
+      "record": "Registra come effettuato"
+    },
+    "events": {
+      "title": "Eventi",
+      "extraPayment": "Versamento extra {{amount}}",
+      "extraPaymentNote": "il piano prosegue dal saldo ridotto",
+      "newPayment": "nuova rata {{amount}}",
+      "rateChange": "Tasso cambiato a {{rate}}",
+      "rateChangeNote": "il piano prosegue dal saldo di questo giorno",
+      "balanceCheck": "Saldo verificato con l'estratto conto",
+      "balanceCheckNote": "il piano riparte da questa data",
+      "drawdown": "Erogazione {{amount}}",
+      "drawdownNote": "inizio del prestito",
+      "delete": "Rimuovi evento",
+      "confirmDelete": {
+        "title": "Rimuovi evento",
+        "description": "La voce scompare dal grafico e dall'elenco. Il saldo impostato dall'evento resta in vigore."
+      }
+    },
+    "warnings": {
+      "noPayment": "Non è impostata alcuna rata mensile, quindi il saldo non si riduce. Modifica il prestito e aggiungi la rata per ammortizzarlo automaticamente.",
+      "paymentBelowInterest": "La rata mensile non copre gli interessi (circa {{interest}} al mese), quindi il saldo non scende. Controlla la rata e il tasso di interesse.",
+      "balanceAtEndDate": "Alla data di fine ({{date}}) risulterebbero ancora {{amount}} da rimborsare. Controlla la rata, il tasso di interesse e la data di fine.",
+      "scheduleTruncated": "Il piano è troncato dopo {{count}} rate."
+    }
+  },
+  "eventDialog": {
+    "note": "Nota",
+    "extraPayment": {
+      "title": "Versamento extra",
+      "description": "Riduce il saldo in quel giorno e ricalcola il piano; compare nel grafico come evento.",
+      "amount": "Importo",
+      "date": "Data",
+      "usedFor": "La banca ha usato il versamento per",
+      "term": "Ridurre la durata",
+      "payment": "Ridurre la rata",
+      "alertTitle": "Il saldo scende a {{amount}}",
+      "alertTerm": "Estinto {{duration}} prima, con un risparmio di {{interest}} di interessi.",
+      "alertPayment": "Nuova rata {{payment}} al mese, la durata resta fino a {{month, lower}}.",
+      "alertTooMuch": "L'importo supera il saldo di {{amount}}.",
+      "alertEmpty": "Inserisci un importo per vedere l'effetto.",
+      "submit": "Registra versamento"
+    },
+    "rateChange": {
+      "title": "Variazione di tasso",
+      "description": "Dal giorno indicato si applica il nuovo tasso; il piano prosegue dal saldo di quel giorno.",
+      "rate": "Nuovo tasso",
+      "payment": "Nuova rata",
+      "paymentHint": "Vuoto = la rata resta {{amount}}",
+      "date": "Valido dal",
+      "alertTitle": "Interessi mensili {{from}} → {{to}}",
+      "alertNote": "Con una rata di {{payment}} il prestito si estingue a {{month, lower}}.",
+      "alertNoPayoff": "Una rata di {{payment}} non copre gli interessi; il saldo non scenderebbe.",
+      "submit": "Registra variazione"
+    },
+    "balanceCheck": {
+      "title": "Verifica il saldo con l'estratto conto",
+      "description": "Inserisci il saldo dal tuo estratto conto; il piano riparte da quel giorno.",
+      "amount": "Saldo da estratto conto",
+      "date": "Alla data",
+      "alertTitle": "Il piano prevedeva {{amount}}",
+      "alertNote": "Differenza {{delta}} · dal {{date}} il piano usa il tuo saldo.",
+      "submit": "Salva saldo"
+    }
+  }
+}

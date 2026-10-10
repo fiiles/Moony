@@ -338,7 +338,14 @@ export default function RealEstatePage() {
               label={t('summary.appreciationTitle')}
               value={signedMoney(totals.appreciation)}
               tone={totals.appreciation >= 0 ? 'gain' : 'loss'}
-              note={`${fmt.percent(totals.purchase > 0 ? totals.appreciation / totals.purchase : 0, 1, { signed: true })} ${t('summary.vsPurchase', { amount: money(totals.purchase) })}`}
+              note={t('summary.vsPurchasePct', {
+                percent: fmt.percent(
+                  totals.purchase > 0 ? totals.appreciation / totals.purchase : 0,
+                  1,
+                  { signed: true }
+                ),
+                amount: money(totals.purchase),
+              })}
             />
             <Stat
               label={t('summary.equity')}

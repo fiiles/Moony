@@ -1,0 +1,134 @@
+{
+  "card": {
+    "title": "Vad som väntar",
+    "settingsLink": "Redigera påminnelser",
+    "showAll": "Visa alla ({{count}})",
+    "showLess": "Visa färre",
+    "nothingDue": "Inga kommande datum.",
+    "upkeep": "Dataunderhåll",
+    "upkeepShow": "Visa {{count}}",
+    "upkeepHide": "Dölj",
+    "today": "I dag",
+    "target": "mål",
+    "rowMenu": "Alternativ för påminnelsen: {{title}}"
+  },
+  "status": {
+    "deadline": "{{title}} · {{when}}",
+    "more": "+{{count}}",
+    "title": "Tidsfrister de kommande 14 dagarna",
+    "openOverview": "Öppna översikten"
+  },
+  "actions": {
+    "hide": "Dölj",
+    "remindWeek": "Påminn mig om en vecka",
+    "remindMonth": "Påminn mig om en månad",
+    "undo": "Ångra"
+  },
+  "toast": {
+    "hidden": "Dold",
+    "snoozedWeek": "Pausad i en vecka",
+    "snoozedMonth": "Pausad i en månad",
+    "muted": "Påminnelser av · {{group}}"
+  },
+  "relative": {
+    "today": "i dag",
+    "tomorrow": "i morgon",
+    "inDays_one": "om {{count}} dag",
+    "inDays_other": "om {{count}} dagar",
+    "inMonths_one": "om {{count}} månad",
+    "inMonths_other": "om {{count}} månader",
+    "daysAgo_one": "för {{count}} dag sedan",
+    "daysAgo_other": "för {{count}} dagar sedan",
+    "monthsAgo_one": "för {{count}} månad sedan",
+    "monthsAgo_other": "för {{count}} månader sedan"
+  },
+  "titles": {
+    "backup_stale": "Säkerhetskopia av data",
+    "balances_stale": "Kontosaldon"
+  },
+  "sub": {
+    "insurance_anniversary": "Sista dag att säga upp · förnyelse {{date}}",
+    "insurance_anniversary_passed": "Avtalets förnyelse · uppsägningstiden har passerat",
+    "insurance_end": "Avtalet upphör",
+    "insurance_payment": "Betalning {{amount}}",
+    "loan_fixation_end": "Räntebindningen upphör · dags att jämföra erbjudanden",
+    "loan_payoff": "Sista betalningen",
+    "bond_maturity": "Förfaller · {{amount}} kommer tillbaka",
+    "bond_coupon": "Kupong {{amount}}",
+    "account_termination": "Kontot upphör",
+    "savings_rate_end": "Kampanjräntan upphör",
+    "watch_target_below": "Kursen {{price}} föll till målet {{target}}",
+    "watch_target_above": "Kursen {{price}} nådde målet {{target}}",
+    "loan_fixation_expired": "Räntebindningen upphörde {{date}} · ange den nya räntan",
+    "loan_balance_check": "Saldot inte kontrollerat sedan {{date}} · jämför med ett kontoutdrag",
+    "valuation_stale": "Ingen ny värdering sedan {{date}} · omvärdera",
+    "backup_stale": "Senaste säkerhetskopia {{date}}",
+    "backup_never": "Ingen säkerhetskopia ännu",
+    "balances_stale_one": "{{count}} konto inte uppdaterat på över 30 dagar",
+    "balances_stale_other": "{{count}} konton inte uppdaterade på över 30 dagar"
+  },
+  "short": {
+    "backup_stale": "säkerhetskopiera dina data",
+    "balances_stale_one": "uppdatera {{count}} saldo",
+    "balances_stale_other": "uppdatera {{count}} saldon",
+    "valuation_stale": "omvärdera {{title}}",
+    "loan_balance_check": "kontrollera saldot för {{title}}",
+    "loan_fixation_expired": "ange den nya räntan för {{title}}"
+  },
+  "groups": {
+    "insuranceDates": {
+      "label": "Försäkringsförnyelser och slutdatum",
+      "hint": "I översikten upp till 3 månader i förväg; förnyelser med sista dag att säga upp.",
+      "mute": "Påminn mig inte om försäkringsförnyelser och slutdatum"
+    },
+    "insurancePayments": {
+      "label": "Försäkringsbetalningar",
+      "hint": "Kvartals-, halvårs- och årsbetalningar 14 dagar i förväg.",
+      "mute": "Påminn mig inte om försäkringsbetalningar"
+    },
+    "loans": {
+      "label": "Slut på räntebindning och slutbetalning av lån",
+      "hint": "Slut på räntebindning 6 månader i förväg, sista betalningen en månad i förväg.",
+      "mute": "Påminn mig inte om räntebindningar och slutbetalningar"
+    },
+    "bonds": {
+      "label": "Obligationers förfall och kuponger",
+      "hint": "Ett förfall upp till 3 månader i förväg, en kupong en vecka i förväg.",
+      "mute": "Påminn mig inte om förfall och kuponger"
+    },
+    "accounts": {
+      "label": "Slut på konton och kampanjräntor",
+      "hint": "Slut på ett konto eller en kampanjränta upp till 3 månader i förväg.",
+      "mute": "Påminn mig inte om slut på konton och räntor"
+    },
+    "targets": {
+      "label": "Målkurser för aktier",
+      "hint": "När kursen når målet i sin riktning.",
+      "mute": "Påminn mig inte om målkurser"
+    },
+    "backup": {
+      "label": "Säkerhetskopior av data",
+      "hint": "När den senaste säkerhetskopian är äldre än 30 dagar.",
+      "mute": "Påminn mig inte om säkerhetskopior"
+    },
+    "balances": {
+      "label": "Saldouppdateringar",
+      "hint": "När ett kontosaldo inte har uppdaterats på över 30 dagar.",
+      "mute": "Påminn mig inte om kontosaldon"
+    },
+    "valuations": {
+      "label": "Fastighetsvärderingar",
+      "hint": "När en fastighetsvärdering är äldre än ett år.",
+      "mute": "Påminn mig inte om fastighetsvärderingar"
+    },
+    "loanChecks": {
+      "label": "Lånekontroller",
+      "hint": "En årlig saldokontroll och den nya räntan när en räntebindning upphör.",
+      "mute": "Påminn mig inte om lånekontroller"
+    }
+  },
+  "settings": {
+    "title": "Påminnelser i översikten",
+    "description": "Vad kortet ”Vad som väntar” och översta fältet påminner dig om. Avstängda typer visas ingenstans."
+  }
+}

@@ -243,7 +243,8 @@
     "balanceAnchorUnknown": "Datum současného zůstatku není známé. Nejprve potvrďte jeho nahrazení.",
     "balanceBatchMismatch": "Tento import výpisu nepatří k tomuto účtu.",
     "learningIdentity": "Zadejte spolehlivý identifikátor účtu nebo příjemce.",
-    "paginationInvalid": "Vyberte platnou stránku historie."
+    "paginationInvalid": "Vyberte platnou stránku historie.",
+    "systemRule": "Systémová pravidla nelze upravit."
   },
   "auth": {
     "wrongPassword": "Zadané heslo je nesprávné. Zkuste to prosím znovu.",

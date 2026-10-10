@@ -243,7 +243,8 @@
     "balanceAnchorUnknown": "The existing balance date is unknown. Confirm replacing this balance first.",
     "balanceBatchMismatch": "This statement import does not belong to this account.",
     "learningIdentity": "Provide a reliable account identifier or a payee.",
-    "paginationInvalid": "Select a valid history page."
+    "paginationInvalid": "Select a valid history page.",
+    "systemRule": "System rules cannot be changed."
   },
   "auth": {
     "wrongPassword": "The password you entered is incorrect. Please try again.",

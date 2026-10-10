@@ -13,6 +13,7 @@ pub mod hits;
 pub mod learn;
 pub mod own_accounts;
 pub mod packs;
+pub mod recategorize;
 pub mod rules;
 pub mod tokenizer;
 pub mod types;

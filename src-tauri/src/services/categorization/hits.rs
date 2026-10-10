@@ -177,7 +177,7 @@ fn custom_rules(conn: &Connection) -> Result<Vec<CategorizationRule>> {
 }
 
 /// A single-rule engine; the rule is forced active.
-fn engine_for(rule: &CategorizationRule) -> RuleEngine {
+pub(crate) fn engine_for(rule: &CategorizationRule) -> RuleEngine {
     let mut rule = rule.clone();
     rule.is_active = true;
     RuleEngine::new(vec![rule])
@@ -206,7 +206,7 @@ fn count_rule(rule: &CategorizationRule, rows: &[TxRow]) -> RuleHitCount {
 /// The learned rule's match, mirroring `ExactMatchEngine::apply`: an IBAN rule
 /// matches on the IBAN alone, a payee rule on the payee key (or its legacy
 /// punctuation-stripped form).
-fn learned_matches(row: &learn::LearnedPayeeRow, tx: &TransactionInput) -> bool {
+pub(crate) fn learned_matches(row: &learn::LearnedPayeeRow, tx: &TransactionInput) -> bool {
     if let (Some(account), Some(credit)) = (row.bank_account_id.as_deref(), row.is_credit) {
         if tx.bank_account_id.as_deref() != Some(account) || tx.is_credit != credit {
             return false;

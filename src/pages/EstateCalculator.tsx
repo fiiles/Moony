@@ -608,7 +608,7 @@ function Calculator({ initial }: { initial?: { property: RealEstate; loans: Loan
             />
           </HeroCard>
 
-          <Stats className="mb-0">
+          <Stats columns={2} className="mb-0">
             <Stat
               label={t('estate.stats.equity')}
               value={money(result.invested)}

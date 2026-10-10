@@ -79,5 +79,5 @@ export function useBankAccountActivity(accounts: readonly BankAccountWithInstitu
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accounts, recentSignature, latestSignature, ratesReady, convertAt]);
 
-  return { activity, since };
+  return activity;
 }

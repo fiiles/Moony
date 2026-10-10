@@ -1,7 +1,7 @@
 import { completeAccountIdentifier } from '@/utils/iban-utils';
 import { useMemo, useState, type ReactNode } from 'react';
 import { useLocation } from 'wouter';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import {
   ArrowDown,
@@ -26,8 +26,9 @@ import { useCurrency } from '@/lib/currency';
 import { useMainConvert } from '@/hooks/use-fx';
 import { accountTotals } from '@/utils/bank-account-summary';
 import { compareConverted } from '@/utils/fx-totals';
-import { uncategorizedLink } from '@/utils/bank-activity';
 import { ConversionQualityNote } from '@/components/reports/ReportQualityNote';
+import { ReportTransactionsDialog } from '@/components/reports/ReportTransactionsDialog';
+import { cashflowApi } from '@/lib/tauri-api';
 import { useFormat } from '@/lib/use-format';
 import { useShellPage } from '@/components/shell/shell-context';
 import { utcDayFloor } from '@/utils/chart-axis';
@@ -88,12 +89,26 @@ export default function BankAccounts() {
   const [, setLocation] = useLocation();
   const { accounts, isLoading } = useBankAccounts();
   const { createAccount, updateAccount, deleteAccount } = useBankAccountMutations();
-  const { currencyCode, fxReady } = useCurrency();
+  const { currencyCode, fxReady, fxRevision } = useCurrency();
   const convert = useMainConvert();
   const fmt = useFormat();
   const money = (value: number) => fmt.money(value, currencyCode);
   const queryClient = useQueryClient();
-  const { activity, since: recentSince } = useBankAccountActivity(accounts);
+  const activity = useBankAccountActivity(accounts);
+
+  // Every booked uncategorized payment on every account over all time: the same rows the
+  // review dialog lists, so the stat and the list never disagree
+  const uncategorizedEnd = utcDayFloor(Date.now() / 1000) + 86400 - 1;
+  const { data: uncategorizedRows } = useQuery({
+    queryKey: ['bank-transactions', 'uncategorized-all', currencyCode, uncategorizedEnd],
+    queryFn: () =>
+      cashflowApi.getTransactions(0, uncategorizedEnd, {
+        categoryId: 'uncategorized',
+        reportCurrency: currencyCode,
+      }),
+  });
+  const uncategorized = uncategorizedRows?.length ?? 0;
+  const [reviewOpen, setReviewOpen] = useState(false);
 
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [editing, setEditing] = useState<BankAccountWithInstitution | null>(null);
@@ -113,19 +128,13 @@ export default function BankAccounts() {
       accounts.map((account) => ({ ...account, last30: activity.get(account.id)?.last30 })),
       convert
     );
-    let uncategorized = 0;
     let latest: number | null = null;
     const currencies = new Set<string>();
     for (const account of accounts) {
       currencies.add(recordCurrency(account.currency));
-      // Transactions to categorize and the newest movement concern every account
-      const a = activity.get(account.id);
-      if (a) {
-        uncategorized += a.last30.uncategorized;
-        if (a.last && (latest === null || a.last.bookingDate > latest)) {
-          latest = a.last.bookingDate;
-        }
-      }
+      // The newest movement concerns every account
+      const last = activity.get(account.id)?.last;
+      if (last && (latest === null || last.bookingDate > latest)) latest = last.bookingDate;
     }
     return {
       balance: sums.included,
@@ -134,7 +143,6 @@ export default function BankAccounts() {
       expense: sums.expense,
       net: sums.income - sums.expense,
       missing: sums.missing,
-      uncategorized,
       currencies,
       latest,
     };
@@ -227,11 +235,6 @@ export default function BankAccounts() {
     if (day === today - 86400) return tc('time.yesterday');
     return fmt.day(ts, { day: 'numeric', month: 'short' });
   };
-
-  const mostUncategorized = accounts.reduce<BankAccountWithInstitution | null>((best, a) => {
-    const n = activity.get(a.id)?.last30.uncategorized ?? 0;
-    return !best || n > (activity.get(best.id)?.last30.uncategorized ?? 0) ? a : best;
-  }, null);
 
   // Today's point of the cash trend is the page total: the balances counted in net worth
   // through the same converter (an account without a rate stays out and is named)
@@ -334,19 +337,20 @@ export default function BankAccounts() {
               }
             />
             <Stat
-              label={t('metrics.uncategorized30')}
-              value={fmt.number(totals.uncategorized)}
+              label={t('metrics.uncategorized')}
+              value={fmt.number(uncategorized)}
               note={
-                totals.uncategorized > 0 && mostUncategorized ? (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setLocation(uncategorizedLink(mostUncategorized.id, recentSince))
-                    }
-                    className="text-caption font-650 text-ink-2 underline-offset-[3px] hover:text-ink hover:underline focus-visible:outline-none focus-visible:shadow-focus"
-                  >
-                    {t('metrics.categorize')} →
-                  </button>
+                uncategorized > 0 ? (
+                  <>
+                    {t('metrics.uncategorizedAllTime')} ·{' '}
+                    <button
+                      type="button"
+                      onClick={() => setReviewOpen(true)}
+                      className="text-caption font-650 text-ink-2 underline-offset-[3px] hover:text-ink hover:underline focus-visible:outline-none focus-visible:shadow-focus"
+                    >
+                      {t('metrics.categorize')} →
+                    </button>
+                  </>
                 ) : (
                   t('metrics.allCategorized')
                 )
@@ -648,6 +652,18 @@ export default function BankAccounts() {
         }
         isPending={deleteAccount.isPending}
         confirmLabel={t('deleteAccount')}
+      />
+      <ReportTransactionsDialog
+        target={
+          reviewOpen ? { name: t('metrics.uncategorized'), categoryId: 'uncategorized' } : null
+        }
+        start={0}
+        end={uncategorizedEnd}
+        periodLabel={tc('time.allTime')}
+        showContribution={false}
+        reportCurrency={currencyCode}
+        fxRevision={fxRevision}
+        onClose={() => setReviewOpen(false)}
       />
     </>
   );

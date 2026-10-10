@@ -130,9 +130,10 @@
     "expensesOverIncome": "utgiftene oversteg inntektene med {{percent}}",
     "incomeOverExpenses": "inntektene oversteg utgiftene med {{percent}}",
     "balanced": "inntekter og utgifter var i balanse",
-    "uncategorized30": "Ukategoriserte transaksjoner",
+    "uncategorized": "Ukategoriserte transaksjoner",
+    "uncategorizedAllTime": "hele perioden",
     "categorize": "Tildel kategorier",
-    "allCategorized": "alt fra de siste 30 dagene er kategorisert",
+    "allCategorized": "alt er kategorisert",
     "excludedHint": "(+ {{amount}} utelatt)"
   },
   "messages": {

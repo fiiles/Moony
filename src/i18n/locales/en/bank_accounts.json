@@ -130,9 +130,10 @@
     "expensesOverIncome": "expenses exceeded income by {{percent}}",
     "incomeOverExpenses": "income exceeded expenses by {{percent}}",
     "balanced": "income and expenses balanced",
-    "uncategorized30": "Uncategorized transactions",
+    "uncategorized": "Uncategorized transactions",
+    "uncategorizedAllTime": "all time",
     "categorize": "Assign categories",
-    "allCategorized": "everything from the last 30 days is categorized",
+    "allCategorized": "everything is categorized",
     "excludedHint": "(+ {{amount}} excluded)"
   },
   "messages": {

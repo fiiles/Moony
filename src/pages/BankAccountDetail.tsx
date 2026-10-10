@@ -65,7 +65,6 @@ import { formatAmountWithCode, formatAmountInCurrency } from '@/utils/format-amo
 import {
   detailSections,
   hasRecentRows,
-  ledgerDeepLink,
   ledgerPresetForMonth,
   monthEnd,
   monthOf,
@@ -161,18 +160,13 @@ function BankAccountDetailPage() {
   const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
 
   // Ledger filters (UTC calendar, ADR 0008). The ledger opens on the newest month with
-  // movements, set once from the data below; a ?category= deep link (from the list page)
-  // starts ready, on the range from its ?from= date (the list page's counted window) or on
-  // everything without one.
-  const { category: linkedCategory, from: linkedFrom } = ledgerDeepLink(search);
-  const [ledgerReady, setLedgerReady] = useState<boolean>(!!linkedCategory);
-  const [dateFrom, setDateFrom] = useState<string>(linkedCategory ? (linkedFrom ?? '') : '');
+  // movements, set once from the data below.
+  const [ledgerReady, setLedgerReady] = useState(false);
+  const [dateFrom, setDateFrom] = useState<string>('');
   const [dateTo, setDateTo] = useState<string>('');
-  const [datePreset, setDatePreset] = useState<string>(
-    linkedCategory ? (linkedFrom ? 'custom' : 'allTime') : 'thisMonth'
-  );
+  const [datePreset, setDatePreset] = useState<string>('thisMonth');
   const [kind, setKind] = useState<Kind>('all');
-  const [categoryFilter, setCategoryFilter] = useState<string>(linkedCategory ?? 'all');
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [ledgerPage, setLedgerPage] = useState(0);
   const [selectedTransaction, setSelectedTransaction] = useState<BankTransaction | null>(null);

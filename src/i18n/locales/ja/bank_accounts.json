@@ -128,9 +128,10 @@
     "expensesOverIncome": "支出が収入を{{percent}}上回りました",
     "incomeOverExpenses": "収入が支出を{{percent}}上回りました",
     "balanced": "収入と支出が均衡しています",
-    "uncategorized30": "未分類の取引",
+    "uncategorized": "未分類の取引",
+    "uncategorizedAllTime": "全期間",
     "categorize": "カテゴリを割り当て",
-    "allCategorized": "過去30日間の取引はすべて分類済みです",
+    "allCategorized": "すべての取引が分類済みです",
     "excludedHint": "（+ 除外分 {{amount}}）"
   },
   "messages": {

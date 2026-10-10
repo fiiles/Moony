@@ -132,9 +132,10 @@
     "expensesOverIncome": "los gastos superaron a los ingresos en un {{percent}}",
     "incomeOverExpenses": "los ingresos superaron a los gastos en un {{percent}}",
     "balanced": "ingresos y gastos equilibrados",
-    "uncategorized30": "Movimientos sin categoría",
+    "uncategorized": "Movimientos sin categoría",
+    "uncategorizedAllTime": "todo el periodo",
     "categorize": "Asignar categorías",
-    "allCategorized": "todo lo de los últimos 30 días está categorizado",
+    "allCategorized": "todo está categorizado",
     "excludedHint": "(+ {{amount}} excluidos)"
   },
   "messages": {

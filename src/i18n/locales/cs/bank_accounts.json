@@ -132,9 +132,10 @@
     "expensesOverIncome": "výdaje převýšily příjmy o {{percent}}",
     "incomeOverExpenses": "příjmy převýšily výdaje o {{percent}}",
     "balanced": "příjmy a výdaje vyrovnané",
-    "uncategorized30": "Nezařazené transakce",
+    "uncategorized": "Nezařazené transakce",
+    "uncategorizedAllTime": "za celé období",
     "categorize": "Zařadit do kategorií",
-    "allCategorized": "vše za posledních 30 dní je zařazené",
+    "allCategorized": "vše je zařazené",
     "excludedHint": "(+ {{amount}} vyloučeno)"
   },
   "messages": {

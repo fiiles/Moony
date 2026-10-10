@@ -132,9 +132,10 @@
     "expensesOverIncome": "le uscite hanno superato le entrate del {{percent}}",
     "incomeOverExpenses": "le entrate hanno superato le uscite del {{percent}}",
     "balanced": "entrate e uscite in pareggio",
-    "uncategorized30": "Movimenti senza categoria",
+    "uncategorized": "Movimenti senza categoria",
+    "uncategorizedAllTime": "intero periodo",
     "categorize": "Assegna categorie",
-    "allCategorized": "tutto degli ultimi 30 giorni è categorizzato",
+    "allCategorized": "è tutto categorizzato",
     "excludedHint": "(+ {{amount}} esclusi)"
   },
   "messages": {

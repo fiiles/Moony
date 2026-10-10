@@ -130,9 +130,10 @@
     "expensesOverIncome": "Ausgaben überstiegen die Einnahmen um {{percent}}",
     "incomeOverExpenses": "Einnahmen überstiegen die Ausgaben um {{percent}}",
     "balanced": "Einnahmen und Ausgaben ausgeglichen",
-    "uncategorized30": "Nicht kategorisierte Transaktionen",
+    "uncategorized": "Nicht kategorisierte Transaktionen",
+    "uncategorizedAllTime": "gesamter Zeitraum",
     "categorize": "Kategorien zuweisen",
-    "allCategorized": "alles aus den letzten 30 Tagen ist kategorisiert",
+    "allCategorized": "alles ist kategorisiert",
     "excludedHint": "(+ {{amount}} ausgeschlossen)"
   },
   "messages": {

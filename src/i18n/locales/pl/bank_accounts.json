@@ -134,9 +134,10 @@
     "expensesOverIncome": "wydatki przekroczyły przychody o {{percent}}",
     "incomeOverExpenses": "przychody przekroczyły wydatki o {{percent}}",
     "balanced": "przychody i wydatki zrównoważone",
-    "uncategorized30": "Transakcje bez kategorii",
+    "uncategorized": "Transakcje bez kategorii",
+    "uncategorizedAllTime": "cały okres",
     "categorize": "Przypisz kategorie",
-    "allCategorized": "wszystko z ostatnich 30 dni jest zakategoryzowane",
+    "allCategorized": "wszystko jest zakategoryzowane",
     "excludedHint": "(+ {{amount}} wyłączone)"
   },
   "messages": {

@@ -60,11 +60,17 @@ function ReportTransactionsDialogContent({
   accountIds,
   reportCurrency,
   fxRevision,
+  periodLabel,
+  showContribution = true,
   onClose,
 }: {
   target: ReportTarget | null;
   start: number;
   end: number;
+  /** Shown instead of the start – end dates (e.g. "All time" for an open-ended list). */
+  periodLabel?: string;
+  /** The column of each row's contribution to the report line; off for a plain review list. */
+  showContribution?: boolean;
   accountIds?: string[];
   reportCurrency: string;
   fxRevision: number;
@@ -130,8 +136,9 @@ function ReportTransactionsDialogContent({
         <DialogHeader>
           <DialogTitle>{target?.name}</DialogTitle>
           <DialogDescription>
-            {fmt.day(start)} – {fmt.day(end)} ·{' '}
-            {t('readiness.drilldownUnits', { currency: reportCurrency })}
+            {periodLabel ?? `${fmt.day(start)} – ${fmt.day(end)}`}
+            {showContribution &&
+              ` · ${t('readiness.drilldownUnits', { currency: reportCurrency })}`}
           </DialogDescription>
         </DialogHeader>
         {snapshot === null && isError ? (
@@ -148,9 +155,11 @@ function ReportTransactionsDialogContent({
                   <TableHead>{tBank('transaction.detail')}</TableHead>
                   <TableHead>{t('readiness.category')}</TableHead>
                   <TableHead className="text-right">{t('readiness.native')}</TableHead>
-                  <TableHead className="text-right">
-                    {t('readiness.contribution', { currency: reportCurrency })}
-                  </TableHead>
+                  {showContribution && (
+                    <TableHead className="text-right">
+                      {t('readiness.contribution', { currency: reportCurrency })}
+                    </TableHead>
+                  )}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -210,13 +219,15 @@ function ReportTransactionsDialogContent({
                           { signed: true }
                         )}
                       </TableCell>
-                      <TableCell className="text-right num">
-                        {tx.signedAmount === null
-                          ? t('readiness.fxUnavailable')
-                          : formatReportMoney(fmt, Number(tx.signedAmount), tx.reportCurrency, {
-                              signed: true,
-                            })}
-                      </TableCell>
+                      {showContribution && (
+                        <TableCell className="text-right num">
+                          {tx.signedAmount === null
+                            ? t('readiness.fxUnavailable')
+                            : formatReportMoney(fmt, Number(tx.signedAmount), tx.reportCurrency, {
+                                signed: true,
+                              })}
+                        </TableCell>
+                      )}
                     </TableRow>
                   );
                 })}

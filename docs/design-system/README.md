@@ -247,7 +247,9 @@ than ~24 events fall in view, cluster neighbors into one mark with a count ("3 n
    row has one "···" menu — automatic rows (`isUserDefined = false`: Úvěry, Pojištění, Nemovitosti, Akcie,
    Dluhopisy, Bankovní účty) offer Nezapočítávat / Započítat, Nahradit vlastní částkou… and Otevřít v
    modulu, manual rows Upravit / Nezapočítávat / Smazat, category rows Nezapočítávat kategorii / Přidat
-   položku do kategorie. A row left out stays listed, muted, with a "Mimo plán" badge and does not count
+   položku do kategorie; the add dialog offers every category in one select grouped by section and
+   income / expense, and a replacement is set only from the row menu (shown in the dialog as a note).
+   A row left out stays listed, muted, with a "Mimo plán" badge and does not count
    in totals, stats or the flow bar (persisted in `cashflow_plan_exclusions`, honoured by the MCP
    `cashflow_report` tool too). A 100 % flow bar (expense groups `s1`–`s4` + Ostatní, hatched remainder)
    replaces the Sankey diagram. The two pages link to each other in the page subtitle.

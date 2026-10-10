@@ -31,8 +31,9 @@ All notable changes to Moony are documented in this file. The format follows
   category can be left out of the plan from its "···" menu without deleting it: it stays visible,
   muted and labelled "Mimo plán", and stops counting in the totals, stats and flow bar. A category left
   out also covers items that appear later. The menu of an automatic row also opens the existing
-  "replace with my own amount" flow and the source module. The MCP tool `cashflow_report` carries
-  `included` per item and its totals follow the same rule.
+  "replace with my own amount" flow and the source module. The add dialog offers every category
+  (income or expense) in one grouped list and no longer asks for an automatic source to replace. The
+  MCP tool `cashflow_report` carries `included` per item and its totals follow the same rule.
 
 ### Changed
 

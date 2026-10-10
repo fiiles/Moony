@@ -49,9 +49,7 @@
     "frequency": "Frequency",
     "category": "Category",
     "selectCategory": "Select category",
-    "type": "Type",
-    "income": "Income",
-    "expense": "Expense"
+    "description": "A recurring income or expense. The category decides where it counts in the plan."
   },
   "deleteConfirm": {
     "title": "Delete item?",
@@ -542,10 +540,8 @@
     "countedTransactions": "{{count}} transactions",
     "previous": "Previous",
     "next": "Next",
-    "replacesSource": "Automatic source to replace",
-    "additionalItem": "Additional manual item",
     "retainedSource": "Previously linked source",
-    "replacementHelp": "A replacement excludes the selected automatic item from totals. Deleting the manual replacement restores the source.",
+    "replacementHelp": "While this manual item exists, the automatic one is not counted. Deleting the manual item brings it back.",
     "replacing": "Replaces {{name}}",
     "missingFx_one": "{{count}} movement excluded due to missing FX ({{currencies}}). Totals are incomplete.",
     "missingFx_other": "{{count}} movements excluded due to missing FX ({{currencies}}). Totals are incomplete.",

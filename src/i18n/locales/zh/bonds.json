@@ -1,0 +1,108 @@
+{
+  "title": "债券",
+  "eyebrow": "投资组合",
+  "subtitle": "持有至到期的国债和公司债券，收益来自固定票息。",
+  "status": "按面值估值 · 不含应计利息",
+  "loading": "正在加载您的债券…",
+  "empty": {
+    "title": "还没有债券",
+    "description": "添加第一只债券：面值、数量、票息和到期日。到期阶梯会自动生成。"
+  },
+  "addBond": "添加债券",
+  "export": "导出",
+  "summary": {
+    "nominal": "面值",
+    "issues_other": "{{count}} 只债券",
+    "currencies_other": "{{count}} 种货币",
+    "yearlyCoupon": "年票息",
+    "weightedRate": "加权平均 {{rate}} 年化",
+    "nearestMaturity": "最近到期",
+    "returns": "回款 {{amount}}",
+    "noMaturity": "没有债券设有到期日",
+    "avgToMaturity": "平均剩余期限",
+    "years": "{{value}} 年",
+    "lastMaturity": "按面值加权 · 最晚 {{date}}",
+    "noneLive": "没有存续的债券"
+  },
+  "until": {
+    "in": "{{duration}}后",
+    "soon": "一个月内",
+    "past": "{{date}} 已兑付"
+  },
+  "duration": {
+    "years_other": "{{count}} 年",
+    "months_other": "{{count}} 个月"
+  },
+  "ladder": {
+    "title": "到期与票息",
+    "subtitle": "每年回款多少：兑付的面值和年票息。",
+    "badge": "票息每年在到期周年日支付",
+    "principal": "兑付的面值",
+    "coupons": "票息",
+    "nearest": "最近到期",
+    "note": "到 {{year}} 年，您将收回面值 {{principal}} 和票息 {{coupons}}。"
+  },
+  "table": {
+    "title": "债券列表",
+    "subtitle": "按到期日排序 · 最近的在前",
+    "search": "按名称或 ISIN 搜索",
+    "showMatured": "显示已兑付",
+    "bond": "债券",
+    "nominal": "面值 / 单位",
+    "quantity": "数量",
+    "units": "份",
+    "value": "价值",
+    "coupon": "票息",
+    "yearly": "每年",
+    "maturity": "到期",
+    "actions": "操作",
+    "withinYear": "一年内",
+    "matured": "已兑付",
+    "noMaturity": "无到期日",
+    "noResults": {
+      "title": "未找到结果",
+      "description": "请尝试其他名称或 ISIN。",
+      "maturedHidden": "请尝试其他名称或 ISIN。已兑付的债券已隐藏。"
+    },
+    "footer": {
+      "count_other": "{{count}} 只债券",
+      "nominal": "面值 {{amount}}",
+      "coupons": "每年票息 {{amount}}",
+      "valuation": "价值 = 面值 × 数量 · 不跟踪市场价格"
+    }
+  },
+  "actions": {
+    "edit": "编辑",
+    "delete": "删除"
+  },
+  "form": {
+    "addTitle": "添加债券",
+    "editTitle": "编辑债券",
+    "addDescription": "价值由面值 × 数量得出，收益由票息率得出。",
+    "editDescription": "更改会体现在价值和到期阶梯中。",
+    "name": "名称",
+    "namePlaceholder": "例如：捷克国债 2031",
+    "isin": "ISIN",
+    "isinHint": "发行条款中的 12 位字符；有助于匹配账单。",
+    "nominal": "每单位面值",
+    "quantity": "数量",
+    "rate": "年票息",
+    "maturity": "到期日",
+    "maturityHint": "到期后，该债券将转为已兑付，不再计入净资产。",
+    "summaryValue": "价值 {{value}} · 每年票息 {{coupon}}",
+    "summaryNext": "下一个到期周年日为 {{date}}。",
+    "summaryMatures": "该债券今年到期；之后不再有票息。",
+    "summaryNoMaturity": "无到期日——每年都计入票息。",
+    "submitAdd": "添加债券",
+    "submitEdit": "保存更改"
+  },
+  "confirmDelete": {
+    "title": "删除债券？",
+    "description": "“{{name}}”将被永久删除，此操作无法撤销。"
+  },
+  "toast": {
+    "added": "债券已添加",
+    "updated": "债券已更新",
+    "deleted": "债券已删除"
+  }
+}

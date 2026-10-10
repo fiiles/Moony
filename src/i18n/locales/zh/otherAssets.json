@@ -1,0 +1,143 @@
+{
+  "title": "其他资产",
+  "subtitle": "黄金、收藏品、股权和借出的款项——所有没有市场价格、由您自行估值的资产。",
+  "loading": "正在加载您的其他资产…",
+  "empty": {
+    "title": "还没有资产",
+    "description": "添加黄金、收藏品或股权：名称、单价，以及可选的首次买入。之后的重新估值会随时间绘制出估值曲线。"
+  },
+  "addAsset": "添加资产",
+  "summary": {
+    "totalValue": "总价值",
+    "assetCount": "资产",
+    "totalGainLoss": "总体盈亏",
+    "value": "价值",
+    "assets_other": "{{count}} 项资产",
+    "gain": "相对买入的收益",
+    "vsCost": "对比买入成本 {{amount}}",
+    "noCost": "无买入成本",
+    "yearlyYield": "年收益",
+    "yieldNote_other": "{{percent}} · 来自 {{count}} 项产生收益的资产",
+    "noYield": "没有资产产生收益",
+    "lastChange": "最近变动"
+  },
+  "table": {
+    "title": "资产",
+    "search": "搜索资产",
+    "name": "名称",
+    "category": "类别",
+    "purchasePrice": "买入价格",
+    "marketPrice": "市场价格",
+    "avgPurchasePrice": "平均买入价",
+    "totalValue": "总价值",
+    "currentValue": "当前价值",
+    "purchaseDate": "买入日期",
+    "gainLoss": "盈亏",
+    "actions": "操作",
+    "noAssets": "没有找到资产。请添加您的第一项资产开始使用。",
+    "subtitle": "价值 = 数量 × 您最新的估价",
+    "asset": "资产",
+    "quantity": "数量",
+    "unit": "件",
+    "price": "价格 / 单位",
+    "avgPurchase": "买入价 / 单位",
+    "value": "价值",
+    "gain": "收益",
+    "yearly": "每年",
+    "updated": "更新时间",
+    "noChange": "无变动",
+    "yieldFixed": "固定金额",
+    "yieldPercentPurchase": "买入成本的 {{value}} %",
+    "yieldPercentMarket": "价值的 {{value}} %",
+    "noResults": {
+      "title": "未找到结果",
+      "description": "请尝试其他名称。"
+    },
+    "footer": {
+      "count_other": "{{count}} 项资产",
+      "value": "价值 {{amount}}",
+      "cost": "买入成本 {{amount}}",
+      "yieldNote": "年收益按所选类型计算：固定金额、买入成本的百分比或价值的百分比"
+    }
+  },
+  "actions": {
+    "edit": "编辑",
+    "delete": "删除",
+    "transactions": "交易",
+    "buy": "买入",
+    "sell": "卖出",
+    "revalue": "重新估值"
+  },
+  "confirmDelete": {
+    "title": "删除资产？",
+    "description": "“{{name}}”及其所有交易将被永久删除，此操作无法撤销。"
+  },
+  "confirmDeleteTransaction": {
+    "title": "删除交易？",
+    "description": "这将永久删除该笔{{type}}交易（{{quantity}} × {{price}}，{{date}}）。此操作无法撤销。"
+  },
+  "toast": {
+    "added": "资产已添加",
+    "updated": "资产已更新",
+    "deleted": "资产已删除",
+    "deleteError": "删除资产失败"
+  },
+  "modal": {
+    "add": {
+      "title": "添加其他资产",
+      "basicInfo": "资产信息",
+      "assetName": "资产名称",
+      "assetNamePlaceholder": "例如：金条",
+      "marketPrice": "当前市场价格（每单位）",
+      "initialPurchase": "首次买入（可选）",
+      "pricePerUnit": "价格 / 单位",
+      "initialPurchaseHint": "填写后将同时添加一笔“买入”交易。",
+      "yieldConfig": "收益（可选）",
+      "yieldConfigDescription": "该资产每年产生的收入，例如租金或利息。",
+      "submit": "添加资产",
+      "description": "向您的投资组合添加一项自定义资产。",
+      "yieldType": "收益类型",
+      "yieldValue": "收益数值",
+      "yieldTypes": {
+        "none": "无",
+        "fixed": "固定金额（每年）",
+        "percentPurchase": "买入价格的百分比",
+        "percentMarket": "市场价格的百分比"
+      },
+      "marketPriceHint": "您对今日单价的估计；之后可通过重新估值来更改。",
+      "total": "按今日价格的首次买入"
+    },
+    "buy": {
+      "title": "继续买入",
+      "description": "为该资产增加数量。",
+      "pricePerUnit": "单价",
+      "submit": "添加交易"
+    },
+    "sell": {
+      "title": "卖出",
+      "description": "记录该资产的一笔卖出交易。",
+      "pricePerUnit": "单价",
+      "submit": "卖出资产"
+    },
+    "transactions": {
+      "title": "交易记录",
+      "noTransactions": "没有找到交易"
+    },
+    "edit": {
+      "title": "编辑 · {{name}}",
+      "description": "名称、货币和收益。价格通过重新估值更改，数量通过买入和卖出更改。",
+      "currencyHint": "价格和买入均价所用的货币。",
+      "priceHint": "请通过“重新估值”更改市场价格——它会在图表中留下记录。"
+    }
+  },
+  "eyebrow": "投资组合",
+  "export": "导出",
+  "status": {
+    "latest": "最近变动 {{date}}",
+    "manual": "手动估值"
+  },
+  "chart": {
+    "title": "估值随时间的变化",
+    "subtitle": "两次重新估值之间保持平稳——曲线的跳变来自您的估值和买入，而非市场。"
+  }
+}

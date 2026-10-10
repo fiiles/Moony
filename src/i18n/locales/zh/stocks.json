@@ -1,0 +1,726 @@
+{
+  "title": "股票与 ETF",
+  "subtitle": "您的长期持仓，集中在一处。",
+  "loading": "正在加载您的股票…",
+  "empty": {
+    "title": "还没有持仓",
+    "description": "添加您的第一只股票或 ETF，或从券商的 CSV 文件导入交易（日期、类型、代码、数量、价格、货币）。"
+  },
+  "addInvestment": "添加投资",
+  "refreshPrices": "刷新价格",
+  "refreshing": "正在刷新…",
+  "importCSV": "导入 CSV",
+  "summary": {
+    "totalValue": "投资组合价值",
+    "totalGainLoss": "未实现盈亏",
+    "unrealizedGain": "未实现收益",
+    "unrealizedLoss": "未实现亏损",
+    "realizedGain": "已实现收益",
+    "realizedLoss": "已实现亏损",
+    "estimatedDividend": "股息估算",
+    "topPerformer": "表现最佳",
+    "basedOnLastYear": "基于去年的股息",
+    "lastUpdated": "最后更新：{{date}}",
+    "realizedGainLoss": "已实现盈亏",
+    "positions_other": "{{count}} 个持仓",
+    "updatedToday": "今天已更新",
+    "updatedOn": "更新于 {{date}}",
+    "notUpdated": "尚未获取价格",
+    "vsInvested": "对比投入",
+    "realizedNote": "已实现 {{amount}}",
+    "next12Months": "未来 12 个月",
+    "topPosition": "最佳持仓",
+    "overall": "总体",
+    "noPositions": "没有未平仓持仓"
+  },
+  "table": {
+    "title": "持仓",
+    "search": "按名称或代码搜索",
+    "investment": "投资",
+    "quantity": "数量",
+    "avgCost": "平均价格",
+    "marketPrice": "市场价格",
+    "marketValue": "价值",
+    "totalGainLoss": "未实现盈亏",
+    "estDividend": "预计股息",
+    "actions": "操作",
+    "noHoldings": "没有找到持仓。请添加您的第一只股票开始使用。",
+    "showZeroPositions": "显示零持仓",
+    "hideZeroPositions": "隐藏零持仓",
+    "return": "收益",
+    "dividend": "股息",
+    "unit": "股",
+    "realized": "已实现 {{amount}}",
+    "noResults": {
+      "title": "未找到结果",
+      "description": "请尝试其他名称或代码。",
+      "zeroHidden": "请尝试其他名称或代码。零持仓已隐藏。"
+    },
+    "footer": {
+      "count_other": "{{count}} 个持仓",
+      "total": "合计",
+      "largest": "最大持仓占投资组合的 {{percent}}",
+      "rates": "价值按今日汇率以 {{currency}} 计"
+    },
+    "showClosedPositions": "显示已平仓持仓",
+    "hideClosedPositions": "隐藏已平仓持仓",
+    "closedPositionsHint": "数量为 0 的持仓",
+    "manageTags": "管理标签",
+    "noMatches": "没有与“{{query}}”相符的持仓。",
+    "onlyClosedPositions": "这里只有已平仓的持仓。开启“显示已平仓持仓”即可查看。"
+  },
+  "actions": {
+    "viewTransactions": "查看交易",
+    "buy": "买入",
+    "sell": "卖出",
+    "updatePrice": "编辑价格",
+    "updateDividend": "更新股息估值",
+    "delete": "删除",
+    "deletePosition": "删除持仓"
+  },
+  "badges": {
+    "manual": "手动"
+  },
+  "tooltips": {
+    "manualPrice": "手动覆盖的价格",
+    "manualDividend": "手动覆盖的股息"
+  },
+  "modals": {
+    "add": {
+      "title": "添加新股票",
+      "searchLabel": "搜索股票",
+      "searchPlaceholder": "例如：AAPL 或 Apple",
+      "quantity": "数量",
+      "purchasePrice": "买入价格",
+      "purchaseDate": "买入日期",
+      "notes": "备注"
+    },
+    "buy": {
+      "title": "继续买入",
+      "quantity": "数量",
+      "price": "每股价格",
+      "date": "买入日期",
+      "fee": "交易手续费"
+    },
+    "sell": {
+      "title": "卖出股票",
+      "quantityToSell": "卖出数量",
+      "availableQuantity": "可用：{{quantity}} 股",
+      "price": "每股卖出价",
+      "date": "卖出日期",
+      "fee": "交易手续费"
+    },
+    "updatePrice": {
+      "title": "手动更新价格",
+      "currentPrice": "当前价格",
+      "newPrice": "新价格",
+      "description": "为该持仓手动覆盖价格。"
+    },
+    "updateDividend": {
+      "title": "更新股息估值",
+      "annualDividend": "每股年股息",
+      "description": "为该持仓手动设置每股年股息。"
+    },
+    "transactions": {
+      "title": "交易记录",
+      "noTransactions": "没有找到交易"
+    },
+    "manualFormula": "计算公式：{{value}} × {{quantity}} 股"
+  },
+  "confirmDelete": {
+    "title": "删除持仓？",
+    "description": "{{name}}及其所有交易将被永久删除，此操作无法撤销。"
+  },
+  "modal": {
+    "add": {
+      "title": "添加投资",
+      "description": "新持仓会显示在表格中，并按其市场价格估值。",
+      "companyDetails": "公司详情",
+      "companyName": "名称",
+      "ticker": "代码",
+      "financialDetails": "财务详情",
+      "pricePerShare": "每股价格",
+      "quantity": "数量",
+      "selectTicker": "选择代码",
+      "multipleResults": "找到多个结果。请选择正确的股票代码：",
+      "noTickerFound": "没有找到该公司名称对应的股票代码",
+      "searchError": "搜索股票代码失败",
+      "selected": "已选择",
+      "search": "搜索 Yahoo Finance",
+      "searchHint": "在 Yahoo Finance 上搜索；如果没有找到，请自行输入名称。",
+      "purchaseDate": "买入日期",
+      "searchByName": "按公司名称搜索",
+      "searchByTicker": "按代码搜索",
+      "searching": "正在搜索…"
+    },
+    "buy": {
+      "title": "买入",
+      "description": "记录一笔买入交易：",
+      "quantity": "数量",
+      "pricePerShare": "每股价格",
+      "addPurchase": "添加买入"
+    },
+    "sell": {
+      "title": "卖出",
+      "description": "记录该持仓的一笔卖出交易。",
+      "transactionDetails": "交易详情",
+      "pricePerShare": "每股价格",
+      "quantity": "数量",
+      "sellInvestment": "卖出股票"
+    },
+    "edit": {
+      "title": "编辑交易（{{type}}）",
+      "description": "修改此交易的详情。",
+      "transactionDetails": "交易详情",
+      "submit": "更新交易"
+    }
+  },
+  "toast": {
+    "added": "投资已添加",
+    "updated": "股票已更新",
+    "deleted": "持仓已删除",
+    "pricesRefreshed_other": "已更新 {{count}} 只股票的价格",
+    "pricesRefreshedDescription": "已成功从 Yahoo Finance 获取最新价格",
+    "rateLimitReached": "已达到频率限制",
+    "rateLimitDescription": "已更新 {{updated}} 个价格，还剩 {{remaining}} 个。请一分钟后重试。",
+    "refreshFailed": "价格刷新失败",
+    "noResults": "未找到结果",
+    "tickerFound": "已找到股票代码",
+    "searchFailed": "搜索失败",
+    "manualPriceDeleted": "手动价格覆盖已移除",
+    "manualDividendDeleted": "手动股息覆盖已移除"
+  },
+  "chart": {
+    "title": "投资组合价值走势",
+    "positionTitle": "持仓价值走势",
+    "bought": "买入",
+    "sold": "卖出",
+    "subtitle": "包含投入资金和市场波动。",
+    "legend": {
+      "value": "价值",
+      "buy": "买入",
+      "sell": "卖出"
+    },
+    "events": {
+      "buy": "买入 {{tickers}}",
+      "sell": "卖出 {{tickers}}",
+      "cluster_other": "{{count}} 笔交易"
+    }
+  },
+  "detail": {
+    "chartFxMissing": "图表或投入线缺少部分日期：缺少 {{currencies}} 的汇率。",
+    "backToList": "返回股票",
+    "notFound": "未找到持仓",
+    "deleted": "持仓已删除",
+    "transactionDeleted": "交易已删除",
+    "transactionUpdated": "交易已更新",
+    "pricesRefreshed": "价格已刷新",
+    "manualPrice": "手动覆盖的价格",
+    "refresh": "刷新",
+    "currentValue": "当前价值",
+    "shares": "股",
+    "totalInvested": "总投入",
+    "avgPrice": "平均",
+    "unrealizedPnL": "未实现盈亏",
+    "dividendYield": "股息率",
+    "year": "年",
+    "noDividend": "没有股息数据",
+    "manual": "手动",
+    "updatePrice": "更新价格",
+    "updateDividend": "更新股息",
+    "tabs": {
+      "position": "持仓",
+      "transactions": "交易"
+    },
+    "position": {
+      "title": "持仓详情",
+      "quantity": "数量",
+      "avgPrice": "平均价格",
+      "currentPrice": "当前价格",
+      "priceUpdated": "价格更新时间"
+    },
+    "companyInfo": {
+      "title": "公司信息",
+      "sectorIndustry": "板块 · 行业",
+      "peRatio": "市盈率",
+      "forwardPe": "预期市盈率",
+      "marketCap": "市值",
+      "beta": "贝塔系数",
+      "fiftyTwoWeekHigh": "52 周最高",
+      "fiftyTwoWeekLow": "52 周最低",
+      "dividendRate": "股息额",
+      "dividendYield": "股息率",
+      "etfNote": "Yahoo Finance 不提供 ETF 的这些数据",
+      "noData": "Yahoo Finance 没有这只股票的公司数据",
+      "unavailable": "无法加载公司数据",
+      "retry": "重试"
+    },
+    "transactions": {
+      "title": "交易记录",
+      "date": "日期",
+      "type": "类型",
+      "quantity": "数量",
+      "originalPrice": "原始价格",
+      "price": "价格",
+      "total": "合计",
+      "empty": "还没有交易"
+    },
+    "confirmDelete": {
+      "title": "删除持仓？",
+      "description": "{{name}}（{{ticker}}）及其所有交易将被永久删除，此操作无法撤销。"
+    },
+    "confirmDeleteTransaction": {
+      "title": "删除交易？",
+      "description": "这将永久删除该笔{{type}}交易（{{quantity}} × {{ticker}}，{{date}}，{{amount}}）。此操作无法撤销。"
+    },
+    "editName": {
+      "title": "编辑名称",
+      "description": "新名称会显示在列表、详情页和概览中。",
+      "label": "名称",
+      "save": "保存名称"
+    },
+    "nameUpdated": "公司名称已更新",
+    "openInMonitor": "在股票监控中打开",
+    "dividendYieldTooltip": "预计年股息除以该持仓当前的市场价值。",
+    "priceNative": "价格（{{currency}}）",
+    "priceNativeMixed": "价格（原币种）",
+    "priceConverted": "价格（{{currency}}，当日汇率）",
+    "sharesCount_other": "{{count}} 股",
+    "avgBuyPrice": "平均买入价 {{price}}",
+    "lastBuy": "最近买入 {{date}}",
+    "positionValue": "持仓价值",
+    "sinceBuy": "自买入以来",
+    "currentPrice": "当前价格",
+    "invested": "投入",
+    "avgShort": "平均 {{price}}",
+    "unrealized": "未实现收益",
+    "vsInvested": "对比投入",
+    "realized": "已实现收益",
+    "sells_other": "{{count}} 次卖出",
+    "noSells": "尚无卖出",
+    "dividends": "股息",
+    "dividendNote": "每年预计 · 股息率 {{percent}}",
+    "refreshPrices": "刷新价格",
+    "buy": "买入",
+    "sell": "卖出",
+    "about": "关于公司",
+    "source": "Yahoo Finance",
+    "deleteTransaction": "删除交易",
+    "menu": {
+      "editPrice": "编辑价格",
+      "editDividend": "编辑股息估值",
+      "editName": "编辑名称"
+    },
+    "status": {
+      "pricesUpdated": "价格更新于{{when}}",
+      "todayAt": "今天 {{time}}"
+    },
+    "legend": {
+      "value": "持仓价值",
+      "invested": "投入",
+      "investedLong": "投入（买入价）",
+      "return": "收益",
+      "buy": "买入",
+      "sell": "卖出"
+    },
+    "events": {
+      "buy": "以 {{price}} 买入 {{quantity}}",
+      "sell": "以 {{price}} 卖出 {{quantity}}",
+      "total": "合计 {{amount}}",
+      "cluster_other": "{{count}} 个事件"
+    },
+    "ledger": {
+      "sub_other": "{{count}} 个事件 · 将鼠标悬停在某行上，即可在图表中高亮显示",
+      "filter": {
+        "all": "全部",
+        "buys": "买入",
+        "sells": "卖出"
+      },
+      "footer_other": "{{count}} 个事件",
+      "since": "自 {{date}} 起",
+      "rates": "价格以 {{currency}} 计，采用交易当日的汇率"
+    }
+  },
+  "importWizard": {
+    "title": "从 CSV 导入交易",
+    "lead": "券商导出的文件或您自己的表格。我们会识别重复项，并在写入任何内容之前让您看到将要导入的内容。",
+    "steps": {
+      "file": "文件",
+      "mapping": "列",
+      "review": "核对",
+      "done": "完成"
+    },
+    "next": "核对交易",
+    "importButton_other": "导入 {{count}} 笔交易",
+    "importButtonIdle": "导入",
+    "unsupportedFile": "只能导入 .csv 和 .txt 文件。请先将 Excel 或其他电子表格另存为 CSV。",
+    "direction": {
+      "buy": "买入",
+      "sell": "卖出"
+    },
+    "roles": {
+      "date": "日期",
+      "direction": "方向",
+      "type": "类型",
+      "symbol": "代码",
+      "isin": "ISIN",
+      "name": "名称",
+      "quantity": "数量",
+      "price": "每股价格",
+      "quantityPrice": "数量和价格",
+      "currency": "货币",
+      "externalId": "交易 ID"
+    },
+    "file": {
+      "sourceHeading": "导出文件的来源",
+      "savedTag": "已保存",
+      "howToExport": "如何从{{name}}导出",
+      "dropTitle": "将包含您交易的文件拖到这里",
+      "dropActive": "松开即可打开文件",
+      "or": "或",
+      "choose": "选择文件…",
+      "dropNote": ".csv 或 .txt · Excel 文件请先另存为 CSV",
+      "sample": "下载示例文件",
+      "sampleSaved": "示例文件已保存",
+      "sampleFailed": "无法保存示例文件",
+      "helpFailed": "无法打开帮助页面"
+    },
+    "sources": {
+      "xtb": {
+        "name": "XTB",
+        "guideTitle": "如何获取导出文件",
+        "guide": "在 xStation 中打开 Account history → Cash operations，选择从您第一笔交易开始的时间段，点击 Export 并选择 CSV 格式。",
+        "note": "该文件还包含存款、股息和费用——仅导入股票和 ETF 的买入和卖出。货币将根据交易所自动填写。"
+      },
+      "trading212": {
+        "name": "Trading 212",
+        "guideTitle": "如何获取导出文件",
+        "guide": "在应用中打开 History → 导出图标，勾选 Orders，选择时间段并下载 CSV。",
+        "note": "一次导出最多涵盖 12 个月——可以上传多个文件，我们会识别重复项。"
+      },
+      "degiro": {
+        "name": "Degiro",
+        "guideTitle": "如何获取导出文件",
+        "guide": "在网站上打开 Activity → Transactions，设置从您第一笔交易开始的时间段，然后点击 Export → CSV。请不要使用账户对账单（Account statement）。"
+      },
+      "ibkr": {
+        "name": "Interactive Brokers",
+        "guideTitle": "如何获取导出文件",
+        "guide": "在 Client Portal 中打开 Performance & Reports → Flex Queries，创建一个 Activity Flex Query，包含 Trades 部分以及字段 Symbol、ISIN、TradeDate、Buy/Sell、Quantity、TradePrice、CurrencyPrimary、AssetClass 和 TradeID，格式选择 CSV，并对整个时间段运行。"
+      },
+      "moony": {
+        "name": "您自己的表格（Moony 模板）",
+        "guideTitle": "如何填写表格",
+        "guide": "下载模板，在 Excel 或其他电子表格中填写，并另存为 CSV。",
+        "excel": "任何语言的 Excel 保存的文件都可以直接使用——我们会自动识别分隔符、编码和小数点。Moony 自己的导出（股票 → 导出）也是同样的格式。",
+        "columns": {
+          "date": {
+            "label": "日期",
+            "hint": "2024-01-15 或 15.01.2024"
+          },
+          "type": {
+            "label": "类型",
+            "hint": "buy / sell 或 nákup / prodej"
+          },
+          "symbol": {
+            "label": "代码",
+            "hint": "与 Yahoo Finance 上一致，例如 AAPL、VWCE.DE"
+          },
+          "quantity": {
+            "label": "数量",
+            "hint": "股数，例如 10 或 0.5"
+          },
+          "price": {
+            "label": "每股价格",
+            "hint": "以交易货币计，例如 180.50"
+          },
+          "currency": {
+            "label": "货币",
+            "hint": "例如 USD、EUR、CZK"
+          },
+          "name": {
+            "label": "名称",
+            "hint": "可选"
+          }
+        }
+      },
+      "custom": {
+        "name": "其他券商",
+        "guideTitle": "文件需要包含什么",
+        "guide": "每笔交易一行：日期、方向、代码或 ISIN、数量、每股价格和货币。您将在下一步分配各列，Moony 会记住这个映射。"
+      },
+      "saved": {
+        "title": "已保存的格式",
+        "guide": "列相同的文件会被自动识别，并再次使用该映射。",
+        "delete": "删除格式",
+        "deleteTitle": "删除此格式？",
+        "deleteDescription": "格式“{{name}}”将不再被识别。已经导入的交易不会改变。"
+      },
+      "savedFallback": "已保存的格式"
+    },
+    "recent": {
+      "title": "最近的导入",
+      "undo": "撤销",
+      "undoFor": "撤销导入 {{file}}",
+      "trades_other": "{{count}} 笔交易",
+      "tradesOf": "{{total}} 笔交易中的 {{remaining}} 笔",
+      "showAll": "显示全部（{{count}}）",
+      "showLess": "收起"
+    },
+    "filebar": {
+      "rows_other": "{{count}} 行",
+      "detected": "已识别",
+      "format": "分隔符“{{delimiter}}” · 编码 {{encoding}}",
+      "tab": "制表符"
+    },
+    "mismatch": {
+      "other": "您选择了{{chosen}}，但该文件看起来像{{detected}}。我们使用了{{detected}}的映射。",
+      "unknown": "该文件与{{chosen}}格式不符。请手动分配各列。"
+    },
+    "mapping": {
+      "selectColumn": "选择列",
+      "columnNone": "— 不使用 —",
+      "blankColumn": "第 {{position}} 列",
+      "blankColumnAfter": "第 {{position}} 列（在“{{after}}”之后）",
+      "example": "例如 {{values}}",
+      "summary": {
+        "title": "映射：{{source}}",
+        "hint": "此格式的预设映射。通常直接继续即可。",
+        "sign": "数量的正负号",
+        "instrument": "来自交易所",
+        "comment": "{{column}}（来自文本）",
+        "values": "“{{column}}”列中的值",
+        "more_other": "另有 {{count}} 项"
+      },
+      "edit": "编辑映射",
+      "backToPreset": "返回{{source}}的映射",
+      "required": "必填列",
+      "optional": "可选列",
+      "direction": "交易方向",
+      "format": "格式",
+      "symbolOrIsin": "代码或 ISIN 二选一即可。我们会根据 ISIN 在 Yahoo Finance 上查找代码。",
+      "currencyMode": {
+        "column": "来自某一列",
+        "fixed": "统一货币",
+        "instrument": "来自交易所"
+      },
+      "currencyColumn": "货币列",
+      "currencyFixed": "整个文件的货币",
+      "currencyFixedHint": "文件中的每笔交易都使用这种货币。",
+      "currencyInstrumentHint": "我们会根据该证券挂牌的交易所填写货币。",
+      "directionMode": {
+        "typeColumn": "来自类型列",
+        "quantitySign": "来自数量的正负号"
+      },
+      "directionSignHint": "负数数量为卖出，正数为买入。",
+      "typeColumn": "类型列",
+      "typeValue": "值",
+      "typeCount": "行数",
+      "typeLine": "首行",
+      "typeMeaning": "含义",
+      "typeTooMany": "该列的不同取值太多，无法列成表格。请选择其他列，或根据数量的正负号判断方向。",
+      "typeNoTrade": "请至少将一个值指定为买入或卖出，否则不会导入任何内容。",
+      "typeCommentNote": "对于 XTB，备注文本决定方向。类型值只决定哪些行是交易。",
+      "action": {
+        "buy": "买入",
+        "sell": "卖出",
+        "skip": "跳过"
+      },
+      "externalIdHint": "有助于在之后的导入中识别重复项。",
+      "dateFormat": "日期格式",
+      "dateFormatChoose": "选择格式",
+      "dateFormatAmbiguous": "此文件中无法区分日、月、年的顺序，因此只是推测。请检查下方预览中的日期，或自行选择格式。",
+      "decimalSeparator": "小数分隔符",
+      "decimalAuto": "自动检测（{{separator}}）",
+      "decimalComma": "逗号（1 234,56）",
+      "decimalDot": "句点（1,234.56）",
+      "headerRow": "表头行",
+      "skipRows": "跳过表头之后的行数",
+      "layoutHelp": "表头行是包含列名的那一行；其上方的行会被忽略。跳过的行是紧跟在表头之后的数据行。",
+      "remember": "记住此格式的映射",
+      "rememberHint": "之后，列相同的文件会被自动识别。",
+      "formatName": "格式名称",
+      "formatNamePlaceholder": "例如：我的券商",
+      "formatNameRequired": "请输入格式名称。",
+      "missing": "缺少：{{fields}}",
+      "field": {
+        "date": "日期",
+        "dateFormat": "日期格式",
+        "symbol": "代码或 ISIN",
+        "quantity": "数量",
+        "price": "每股价格",
+        "currency": "货币",
+        "type": "类型列"
+      },
+      "rawData": "预览 CSV 数据",
+      "rawCounts": "列数：{{columns}} · 行数：{{rows}}"
+    },
+    "review": {
+      "incomplete": "请先完成列映射，再查看核对结果。",
+      "loading": "正在读取文件…",
+      "failed": "无法用这些设置核对该文件",
+      "summary": {
+        "willImport": "待导入 {{count}}",
+        "duplicates": "重复 {{count}}",
+        "skipped": "已跳过 {{count}}",
+        "errors": "错误 {{count}}"
+      },
+      "feeNote": "不会导入手续费",
+      "nothingToImport": "没有可导入的内容：每一行都是重复项、已跳过或有错误。",
+      "statusNew": "新增",
+      "statusSkipped": "已跳过",
+      "statusError": "错误",
+      "statusDuplicate": "重复",
+      "duplicateImportAnyway": "仍然导入",
+      "instruments": {
+        "title": "证券",
+        "security": "证券",
+        "currency": "货币",
+        "trades": "交易",
+        "status": "状态",
+        "actions": "操作",
+        "progress": "正在 Yahoo Finance 上核对… {{done}} / {{total}}",
+        "skipVerification": "跳过核对",
+        "retry": "重新核对",
+        "checking": "正在核对…",
+        "inFile": "文件中为 {{symbol}}",
+        "edit": "编辑",
+        "skip": "跳过",
+        "include": "包含",
+        "editFor": "编辑{{name}}",
+        "skipFor": "跳过{{name}}",
+        "includeFor": "包含{{name}}",
+        "state": {
+          "existing": "已有持仓",
+          "new": "新持仓",
+          "unverified": "未核实",
+          "missingSymbol": "缺少代码",
+          "skipped": "已跳过"
+        },
+        "reason": {
+          "failed": "Yahoo Finance 没有响应",
+          "notFound": "在 Yahoo Finance 上未找到",
+          "unmatched": "该代码不在找到的结果之中"
+        },
+        "missingReason": {
+          "enter": "请手动输入代码",
+          "failed": "Yahoo Finance 没有响应——请手动输入代码",
+          "notFound": "在 Yahoo Finance 上未找到——请手动输入代码"
+        },
+        "positionCurrency": "该持仓以 {{currency}} 持有",
+        "missingHint_other": "请为 {{count}} 只证券输入代码，或将其跳过。",
+        "unverifiedHint_other": "{{count}} 只证券无法核实。您仍可导入，但其价格可能不会更新。"
+      },
+      "rows": {
+        "title": "行",
+        "line": "行号",
+        "date": "日期",
+        "direction": "方向",
+        "symbol": "代码",
+        "quantity": "数量",
+        "price": "价格",
+        "currency": "货币",
+        "status": "状态",
+        "footer": "前 {{shown}} 行，共 {{total}} 行",
+        "footerAll_other": "{{count}} 行",
+        "showAll": "显示全部",
+        "showLess": "收起",
+        "none": "按这些设置，该文件没有任何行。",
+        "truncated": "表格最多显示 {{shown}} 行；上方的计数涵盖整个文件。"
+      }
+    },
+    "editor": {
+      "apply": "应用",
+      "searchResults": "Yahoo Finance 上的搜索结果",
+      "found": "已在 Yahoo Finance 上找到",
+      "searching": "正在搜索…",
+      "searchError": "搜索失败",
+      "noResults": "没有找到结果。请尝试其他名称或代码。",
+      "currencyFromFile": "来自文件"
+    },
+    "currency": {
+      "gbx": "GBX（便士，按 GBP ÷ 100 存储）"
+    },
+    "result": {
+      "title": "交易已导入",
+      "titleNothing": "没有导入任何内容",
+      "nothing": "文件中的每一行都是重复项、已跳过或有错误。详情见下方。",
+      "summary_other": "{{from}} 至 {{to}} 的 {{count}} 笔交易。",
+      "summaryCount_other": "已导入 {{count}} 笔交易。",
+      "imported": "已导入",
+      "duplicates": "重复",
+      "skipped": "已跳过",
+      "errors": "错误",
+      "newPositions": "新持仓：",
+      "updatedPositions": "加入已有持仓：",
+      "moreTickers_other": "另有 {{count}} 项",
+      "recalculating": "正在重新计算投资组合价值历史…",
+      "showDuplicates": "显示重复项",
+      "showSkipped": "显示已跳过的行",
+      "showErrors": "显示错误",
+      "line": "第 {{line}} 行：{{message}}",
+      "whatNext": "下一步",
+      "next": {
+        "show": "查看股票",
+        "showHint": "新增和扩充的持仓都在表格中。",
+        "showAction": "查看",
+        "tags": "分配标签",
+        "tagsHint": "新持仓还没有标签。请在股票分析中分配。",
+        "tagsAction": "分配",
+        "another": "导入另一个文件",
+        "anotherHint": "例如更早的时期或另一个账户。",
+        "anotherAction": "选择文件",
+        "undo": "撤销导入",
+        "undoHint_other": "将删除该文件中的 {{count}} 笔交易。",
+        "undoAction": "撤销"
+      }
+    },
+    "undone": {
+      "title": "导入已撤销",
+      "summary_other": "导入“{{file}}”中的 {{count}} 笔交易已被删除。",
+      "removedPositions": "已移除的持仓："
+    },
+    "undo": {
+      "title": "撤销此次导入？",
+      "description_other": "我们将删除导入“{{file}}”中的 {{count}} 笔交易。",
+      "consequences": "没有任何交易的持仓会被移除。此次导入的交易中，之后被您编辑过的也会一并删除。",
+      "confirm": "撤销导入"
+    },
+    "toast": {
+      "inspectFailed": "无法读取该文件",
+      "importFailed": "导入失败",
+      "undone_other": "导入已撤销：已删除 {{count}} 笔交易",
+      "undoFailed": "无法撤销此次导入",
+      "formatSaved": "格式“{{name}}”已保存",
+      "formatSaveFailed": "无法记住此映射",
+      "formatDeleted": "格式已删除",
+      "formatDeleteFailed": "无法删除该格式"
+    },
+    "row": {
+      "notATrade": "不是买入或卖出",
+      "zeroQuantity": "数量为零",
+      "assetClass": "属于其他资产类别",
+      "instrumentSkipped": "该证券已被跳过",
+      "dateUnparseable": "无法读取日期",
+      "numberUnparseable": "无法读取数字",
+      "commentUnparseable": "无法读取备注",
+      "symbolMissing": "缺少代码",
+      "symbolMissingIsin": "缺少代码，且 ISIN“{{detail}}”无效",
+      "tickerInvalid": "代码无效",
+      "currencyMissing": "缺少货币",
+      "currencyInvalid": "货币无效",
+      "priceMissing": "缺少价格",
+      "sellExceedsHoldings": "卖出数量超过了当天的持有数量",
+      "sellExceedsHoldingsHeld": "卖出数量超过了当天的持有数量（持有 {{detail}}）",
+      "currencyMismatch": "货币与该持仓的不同",
+      "currencyMismatchPosition": "货币与该持仓的不同（{{detail}}）",
+      "duplicate": "Moony 中已有同样的交易",
+      "duplicateById": "Moony 中已有券商 ID 相同的交易",
+      "duplicateSimilar": "Moony 中已有类似的交易：同一天、数量相同，价格相差在 0.5 % 以内",
+      "cannotParse": "无法读取该行",
+      "writeFailed": "无法写入该交易"
+    }
+  },
+  "eyebrow": "投资组合",
+  "export": "导出"
+}

@@ -1,0 +1,202 @@
+{
+  "title": "设置",
+  "sections": {
+    "navLabel": "设置分区",
+    "general": "常规",
+    "security": "安全",
+    "data": "数据与备份",
+    "integrations": "集成",
+    "categorization": "分类",
+    "account": "账户",
+    "description": {
+      "general": "个人资料、语言、货币，以及菜单中显示的内容。",
+      "security": "密码、自动锁定和应用更新。",
+      "data": "您的数据存放在哪里，以及如何保留一份副本。",
+      "integrations": "用于价格的 API 密钥，以及供 AI 助手使用的本地 MCP 服务器。",
+      "categorization": "规则包、类别和您自己的分类规则。",
+      "account": "从这台电脑上删除您的数据。"
+    }
+  },
+  "profile": {
+    "title": "个人资料",
+    "description": "您的名字会显示在概览的问候语中。",
+    "name": "名字",
+    "surname": "姓氏",
+    "email": "电子邮箱",
+    "save": "保存更改",
+    "saving": "正在保存…"
+  },
+  "password": {
+    "title": "更改密码",
+    "description": "更改密码后会生成新的恢复密钥；旧密钥将失效。",
+    "current": "当前密码",
+    "new": "新密码",
+    "confirm": "确认新密码",
+    "update": "更新密码",
+    "updating": "正在更新…",
+    "saving": "正在保存…",
+    "recoveryKeyTitle": "保存您的新恢复密钥",
+    "recoveryKeyDescription": "您的密码将被更改，并生成新的恢复密钥。",
+    "oldKeyInvalid": "您的旧恢复密钥将不再有效！",
+    "confirmHint": "确认之前，请务必已记下或复制您的恢复密钥。只有在您点击上方按钮后，密码才会更改。"
+  },
+  "apiKeys": {
+    "title": "API 密钥",
+    "description": "配置获取加密货币价格时使用的可选 API 密钥。股票价格无需密钥。",
+    "coingecko": {
+      "label": "CoinGecko API 密钥",
+      "getDemoKey": "获取演示密钥",
+      "placeholder": "可选——免费套餐无需密钥也能使用",
+      "hint": "用于加密货币价格和搜索（免费套餐不支持加载历史价格）",
+      "hint2": "免费套餐不支持加载历史价格"
+    },
+    "save": "保存 API 密钥",
+    "saving": "正在保存…",
+    "saved": "API 密钥已保存",
+    "savedDescription": "您的 API 密钥已更新。",
+    "optional": "可选",
+    "show": "显示密钥",
+    "hide": "隐藏密钥"
+  },
+  "currency": {
+    "title": "货币",
+    "description": "选择用于汇总、资产概览和报表的货币。",
+    "example": "例如 {{example}}",
+    "unsupportedMain": "您的主货币没有汇率来源。混合多种货币的合计无法换算——请选择受支持的主货币。",
+    "main": "主货币",
+    "mainHint": "汇总、资产概览和报表以该货币显示：",
+    "nativeHint": "账户、交易、合同和预算中输入的金额保留其原始货币。"
+  },
+  "language": {
+    "title": "语言和格式",
+    "description": "数字和日期遵循界面语言。",
+    "interface": "界面语言"
+  },
+  "menuVisibility": {
+    "title": "菜单显示",
+    "description": "隐藏您不使用的资产类型。"
+  },
+  "dashboardPreferences": {
+    "title": "概览偏好",
+    "description": "自定义概览中显示的内容。",
+    "excludeRealEstate": "概览中不计入自住房产",
+    "excludeRealEstateHint": "自住房产不会计入净资产和总资产"
+  },
+  "mcpServer": {
+    "title": "AI 助手（MCP 服务器）",
+    "description": "让 AI 助手（如 Claude）通过标准 MCP 协议读取您的财务数据，并在选定的工具中写入。该服务器内置于 Moony，仅在这台电脑上监听（127.0.0.1）。注意：AI 客户端读取的任何内容都将由该客户端处理——通常是在其提供商的云端。请只为您信任的客户端启用。由于数据库已加密，应用必须处于解锁状态。",
+    "enable": "启用 MCP 服务器",
+    "enableHint": "在本地地址提供 MCP 服务，仅在 Moony 解锁时可访问",
+    "statusRunning": "MCP 服务器正在运行：{{url}}",
+    "statusError": "MCP 服务器启动失败：{{error}}",
+    "endpoint": "端点 URL",
+    "token": "访问令牌",
+    "tokenHint": "以 Authorization: Bearer 请求头发送。请像对待密码一样保管它。",
+    "regenerate": "重新生成",
+    "regenerateHint": "重新生成会使所有使用当前令牌的客户端配置失效。",
+    "tokenRegenerated": "令牌已重新生成——请更新您的客户端配置",
+    "port": "端口",
+    "portHint": "仅当默认端口与其他应用冲突时才需更改。有效范围 1024–65535。",
+    "applyPort": "应用",
+    "portUpdated": "端口已更新",
+    "setupHeading": "连接客户端：",
+    "setupClaudeCode": "Claude Code（在终端中运行）",
+    "setupClaudeDesktop": "Claude Desktop（claude_desktop_config.json）",
+    "setupJson": "其他 MCP 客户端（JSON 配置）",
+    "desktopNote": "Claude Desktop 无法直接访问本地 HTTP 服务器，因此此配置使用标准的 mcp-remote 桥接（需要 Node.js）。",
+    "jsonNote": "适用于原生支持 HTTP 传输的客户端（例如 Claude Code 项目中的 .mcp.json）。",
+    "updateFailed": "更新 MCP 服务器设置失败",
+    "advancedBadge": "面向高级用户",
+    "summary": "通过本地服务器将 Claude 等 AI 助手连接到您的数据。可选。",
+    "expand": "展开",
+    "collapse": "收起"
+  },
+  "dangerZone": {
+    "title": "危险区域",
+    "description": "这些操作无法撤销。",
+    "deleteAccount": "删除账户",
+    "confirmTitle": "您确定要这样做吗？",
+    "confirmDescription": "此操作无法撤销。这将永久删除您的账户，并从此设备上移除您的所有数据。由于 Moony 是纯本地应用，我们的服务器上没有需要删除的数据。",
+    "deleting": "正在删除…",
+    "backupFirst": "提示：请先创建备份（设置 → 数据与备份）——这是找回这些数据的唯一方法。",
+    "confirmLabel": "请输入 {{word}} 以确认",
+    "deleteAll": "删除所有数据",
+    "deleteAllHint": "移除这台电脑上的个人资料和整个数据库。保存在应用之外的备份不受影响。",
+    "deleteButton": "删除数据…"
+  },
+  "toast": {
+    "profileUpdated": "个人资料已更新",
+    "profileUpdatedDesc": "您的个人资料已保存。",
+    "passwordChanged": "密码已更改",
+    "passwordChangedDesc": "您的密码已成功更新。请务必妥善保管新的恢复密钥！",
+    "preferencesUpdated": "偏好设置已更新",
+    "preferencesUpdatedDesc": "菜单显示设置已保存。",
+    "verificationFailed": "验证失败",
+    "updateFailed": "更新失败",
+    "deletionFailed": "删除失败",
+    "languageChanged": "语言已更改"
+  },
+  "rulePacks": {
+    "title": "分类规则包",
+    "description": "按国家提供的内置商户规则。请启用与您银行所在地相符的规则包；导入时，匹配的交易会自动分类。",
+    "globalPack": "全球品牌",
+    "rulesCount_other": "{{count}} 条规则",
+    "updateFailed": "更新规则包失败"
+  },
+  "categorizationRules": {
+    "title": "分类规则",
+    "description": "查看、编辑和添加为您的交易指定类别的规则。",
+    "open": "管理规则",
+    "rowLabel": "您的规则",
+    "rowHint": "它们优先于规则包。"
+  },
+  "data": {
+    "title": "数据与备份",
+    "description": "您的数据存放在哪里，以及如何保留一份副本。",
+    "location": "数据文件夹",
+    "size": "占用磁盘 {{size}}",
+    "openFolder": "打开文件夹",
+    "backupNow": "立即备份",
+    "backupSaved": "备份已保存",
+    "backupSavedDescription_other": "已将 {{count}} 个文件写入 {{path}}。",
+    "restore": "从备份恢复…",
+    "restoreConfirmTitle": "用此备份替换您的数据？",
+    "restoreConfirmDescription": "备份创建于 {{date}}（Moony {{version}}，{{attachments}} 个附件，{{size}}）。您当前的数据将被移至数据文件夹内的“pre-restore”文件夹，而不会被删除。之后 Moony 会锁定；请使用创建该备份时的密码解锁。",
+    "restoreNewer": "此备份由更新版本的 Moony 创建，无法用当前版本恢复。",
+    "restoreConfirm": "恢复",
+    "restoring": "正在恢复…",
+    "restored": "备份已恢复",
+    "restoredDescription": "Moony 现在将锁定。请使用该备份的密码解锁。",
+    "exportAll": "导出所有数据（JSON）",
+    "exportSaved": "导出已保存",
+    "exportSavedDescription": "已将 {{tables}} 张表、{{rows}} 行数据写入 {{path}}。",
+    "verify": "检查数据库",
+    "verifyOk": "数据库状态良好",
+    "verifyFailed": "数据库检查发现问题",
+    "hint": "备份包含加密数据库、密钥文件（salt、key.enc、recovery.enc）和您的附件。只有使用您的密码或恢复密钥才能打开——请将其保存在安全的地方，例如外部硬盘或您自己的云存储。",
+    "backupRow": "备份",
+    "exportRow": "导出",
+    "exportHint": "所有表合并为一个 JSON 文件。",
+    "exportButton": "导出 JSON",
+    "verifyRow": "数据库检查",
+    "verifyHint": "检查加密数据库的完整性。"
+  },
+  "autoLock": {
+    "title": "自动锁定",
+    "description": "在一段时间无操作后锁定 Moony，避免无人看管的电脑暴露您的财务信息。此设置仅适用于当前设备。",
+    "label": "无操作后自动锁定",
+    "off": "从不",
+    "minutes_other": "{{count}} 分钟",
+    "hint": "如果电脑在该时间后从睡眠中唤醒，Moony 也会锁定。您随时可以通过侧边栏手动锁定。"
+  },
+  "updates": {
+    "title": "更新",
+    "description": "Moony 可以向 GitHub 查询是否有新版本。不会发送任何您的财务数据。",
+    "autoCheck": "自动检查更新",
+    "autoCheckHint": "每个会话在您解锁 Moony 后检查一次。此设置仅适用于当前设备。",
+    "checkNow": "立即检查",
+    "manualCheck": "手动检查"
+  },
+  "eyebrow": "应用",
+  "status": "数据库已加密 · 占用磁盘 {{size}}"
+}

@@ -1,0 +1,113 @@
+{
+  "eyebrow": "您的财务全貌",
+  "greeting": {
+    "morning": "早上好，{{name}}。",
+    "day": "下午好，{{name}}。",
+    "evening": "晚上好，{{name}}。"
+  },
+  "welcomeFirst": "欢迎，{{name}}。",
+  "asOf": "{{date}} 的净资产",
+  "loading": "正在加载您的投资组合…",
+  "hero": {
+    "label": "净资产"
+  },
+  "insight": {
+    "up": "价值在上升。变化贡献最大的是：{{class}}。",
+    "down": "价值在下降。变化贡献最大的是：{{class}}。",
+    "flat": "价值保持稳定。波动最大的是：{{class}}。",
+    "noHistory": "记录几天的每日快照后将显示趋势。"
+  },
+  "stats": {
+    "netWorth": "净资产",
+    "totalAssets": "总资产",
+    "totalLiabilities": "负债",
+    "freeCash": "可用现金",
+    "freeCashNote": "银行账户中",
+    "unchanged": "期间内无变化",
+    "noHistory": "暂无历史数据"
+  },
+  "cards": {
+    "investments": "股票",
+    "savings": "现金",
+    "bonds": "债券",
+    "liabilities": "负债",
+    "crypto": "加密货币",
+    "realEstate": "房产",
+    "otherAssets": "其他资产",
+    "other": "其他",
+    "ofTotal": "占总额的 {{percent}}"
+  },
+  "classes": {
+    "investments": "股票",
+    "savings": "现金",
+    "bonds": "债券",
+    "liabilities": "负债",
+    "crypto": "加密货币",
+    "realEstate": "房产",
+    "otherAssets": "其他资产"
+  },
+  "allocation": {
+    "title": "资产配置",
+    "open": "打开投资",
+    "center": "资产"
+  },
+  "moves": {
+    "title": "近期动态",
+    "empty": "银行交易、买入和卖出将显示在这里。",
+    "kind": {
+      "bankIn": "收款",
+      "bankOut": "付款",
+      "buy": "买入",
+      "sell": "卖出",
+      "cryptoBuy": "加密货币买入",
+      "cryptoSell": "加密货币卖出"
+    }
+  },
+  "changePeriod": {
+    "30D": "近 30 天",
+    "90D": "近 90 天",
+    "YTD": "年初至今",
+    "1Y": "近一年",
+    "5Y": "近 5 年",
+    "All": "自首条记录起"
+  },
+  "empty": {
+    "title": "您的净资产将显示在这里",
+    "description": "添加账户或投资后，Moony 会据此生成您的概览、图表和趋势。所有内容都保存在这台电脑上。",
+    "addAccount": "添加银行账户并导入账单",
+    "addInvestment": "添加投资",
+    "setBudget": "设置预算"
+  },
+  "gettingStarted": {
+    "title": "快速上手",
+    "subtitle": "四个步骤让 Moony 真正派上用场。完成后此卡片会消失。",
+    "importStatement": "导入银行账单",
+    "importStatementHint": "添加账户并导入银行的 CSV 文件。",
+    "addInvestment": "添加投资",
+    "addInvestmentHint": "股票、ETF 或加密货币，价格实时更新。",
+    "setBudget": "设置预算",
+    "setBudgetHint": "为每个支出类别设置月度限额。",
+    "makeBackup": "创建备份",
+    "makeBackupHint": "包含全部内容的单个文件，位于“设置”→“数据与备份”。",
+    "dismiss": "关闭",
+    "done": "已完成"
+  },
+  "welcome": "欢迎回来，{{name}}！",
+  "overview": "这是您今天的财务概览。",
+  "charts": {
+    "netWorthTrend": "净资产趋势",
+    "assetAllocation": "资产配置",
+    "assetsVsLiabilities": "资产与负债",
+    "assetsToLiabilitiesRatio": "资产负债比",
+    "assetClassTrend": "按资产类别的净资产",
+    "noHistoricalData": "暂无历史数据",
+    "estimatedBackfilled": "估算值（回填）",
+    "estimatedLegend": "虚线：估算的日期。银行账户、债券、房产和贷款沿用最近一个有记录日的数值。"
+  },
+  "tooltips": {
+    "netWorth": "净资产",
+    "totalAssets": "总资产",
+    "totalLiabilities": "总负债"
+  },
+  "changeSince": "对比 {{date}}"
+}

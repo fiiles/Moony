@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Moony — Plánování cashflow: skupiny a zahrnutí (návrh)</title>
+<link rel="stylesheet" href="../design-system/moony.css">
+<style>
+  /* Prototype-only styles. Everything else comes from the design system. */
+  html { overflow-y: scroll; }
+  .sidebar { top: 42px; height: calc(100vh - 42px); }
+
+  .proto-bar { position: sticky; top: 0; z-index: 6; display: flex; align-items: center; gap: 18px; height: 42px; padding: 0 20px; background: var(--dark-grad); box-shadow: var(--sh-dark); color: var(--ink-inverse-2); font-size: 11px; font-weight: 600; }
+  .proto-bar__tag { padding: 3px 7px; border-radius: 5px; background: rgba(255,255,255,.14); color: #fff; font-size: 9px; font-weight: 750; letter-spacing: .1em; text-transform: uppercase; }
+  .proto-bar__title { color: #fff; font-weight: 650; letter-spacing: -.01em; }
+  .proto-bar__spacer { flex: 1; }
+  .proto-bar .seg { background: rgba(255,255,255,.11); }
+  .proto-bar .seg__btn { color: var(--ink-inverse-2); transition: none; }
+  .proto-bar .seg__btn:hover { color: #fff; }
+  .proto-bar .seg__btn.is-active { background: var(--paper); color: var(--ink); box-shadow: none; }
+  .proto-bar__toggle { display: inline-flex; align-items: center; gap: 10px; color: #fff; cursor: pointer; }
+  .proto-bar .switch input { background: rgba(255,255,255,.22); }
+  .proto-bar .switch input:checked { background: #f4f2ec; }
+  .proto-bar .switch input:checked::after { background: var(--dark); }
+
+  /* Design-note callouts */
+  .has-np { position: relative; }
+  .np { position: absolute; z-index: 4; display: none; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 10px; background: var(--dark-grad); box-shadow: var(--sh-dark), 0 0 0 2px var(--canvas); color: #fff; font-size: 10px; font-weight: 700; font-style: normal; line-height: 20px; text-align: center; pointer-events: none; }
+  .notes-on .np { display: block; }
+  .notes-on .card--table { overflow: visible; }
+  .np--tl { left: -10px; top: -10px; }
+  .np--l { left: -10px; top: 50%; margin-top: -10px; }
+  .notes-card { display: none; }
+  .notes-on .notes-card { display: block; }
+  .notes { display: grid; grid-template-columns: 1fr 1fr; column-gap: 44px; margin: 0; padding: 0 21px 10px; list-style: none; }
+  .notes li { display: grid; grid-template-columns: 24px 1fr; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--line-soft); font-size: var(--fs-table); color: var(--ink-2); }
+  .notes li i { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 10px; background: var(--dark); color: #fff; font-size: 10px; font-weight: 700; font-style: normal; }
+  .notes li b { color: var(--ink); }
+
+  /* Flow card (as implemented today) */
+  .flow-card { position: relative; overflow: hidden; margin-bottom: 28px; padding: 20px 21px 18px; }
+  .flow-card::after { content: ""; position: absolute; right: -100px; top: -120px; width: 340px; height: 180px; border-radius: 50%; background: var(--hero-orb, radial-gradient(closest-side, rgba(0,0,0,.05), transparent)); pointer-events: none; }
+  .flow-card > * { position: relative; z-index: 1; }
+  .flow-head { display: flex; justify-content: space-between; align-items: center; gap: 24px; }
+  .flow-head h3 { margin: 0; font-size: var(--fs-h3); font-weight: 650; letter-spacing: -.02em; }
+  .flow-head p { margin: 5px 0 0; color: var(--ink-4); font-size: var(--fs-micro); font-weight: 500; }
+  .flow-bar { display: flex; height: 34px; margin: 18px 0 14px; overflow: hidden; border-radius: var(--r-2); background: var(--well-2); }
+  .flow-bar i { display: block; height: 100%; box-shadow: inset -2px 0 0 var(--paper); }
+  .flow-bar i:last-child { box-shadow: none; }
+  .flow-legend { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px 24px; }
+  .flow-legend div { display: grid; grid-template-columns: 8px 1fr auto; gap: 10px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--line-soft); color: var(--ink-2); font-size: var(--fs-caption); }
+  .flow-legend i { width: 8px; height: 8px; border: 1px solid var(--line-strong); border-radius: 2px; }
+  .flow-legend b { color: var(--ink); font-weight: 650; }
+
+  /* Plan list */
+  .sections { display: grid; gap: 18px; }
+  .card__head .net { text-align: right; }
+  .card__head .net small { display: block; color: var(--ink-4); font-size: var(--fs-micro); font-weight: 600; }
+  .card__head .net b { font-size: 16px; font-weight: 650; letter-spacing: -.03em; }
+  .plan { border-top: 1px solid var(--line); }
+  .plan__block { padding: 9px 14px 6px; background: var(--paper); border-bottom: 1px solid var(--line-soft); color: var(--ink-4); font-size: var(--fs-micro); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+  .plan__row { position: relative; display: grid; grid-template-columns: 16px 1fr auto 28px; gap: 0 10px; align-items: center; min-height: 46px; padding: 0 10px 0 14px; border-bottom: 1px solid var(--line-soft); color: var(--ink-2); font-size: var(--fs-table); transition: background var(--t-fast); }
+  .plan__row:hover, .plan__row.is-open { background: var(--well); }
+  .plan__row--group { min-height: 52px; cursor: pointer; }
+  .plan__row--group .entity b { font-size: var(--fs-table); }
+  .plan__row--group:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--line-strong); }
+  .plan__row--group .chev { color: var(--ink-4); transition: transform var(--t-fast); }
+  .plan__row--group[aria-expanded="true"] .chev { transform: rotate(90deg); }
+  .plan__items { display: none; }
+  .plan__items.is-open { display: block; }
+  .plan__row--item { min-height: 44px; background: var(--paper); }
+  .plan__row--item:hover, .plan__row--item.is-open { background: var(--well); }
+  .plan__items .plan__row--item:last-child { border-bottom: 1px solid var(--line-soft); }
+  .plan__amt { display: inline-flex; align-items: center; gap: 10px; font-weight: 650; color: var(--ink); white-space: nowrap; }
+  .plan__amt.gain { color: var(--gain); }
+  .plan__row.is-off .entity b, .plan__row.is-off .plan__amt, .plan__row.is-off .plan__amt.gain { color: var(--ink-4); }
+  .plan__row.is-off .entity small { color: var(--ink-5); }
+  .plan__row .row-actions .btn { color: var(--ink-3); }
+  .plan__row .menu { right: 10px; top: calc(100% - 6px); }
+  .plan__row .menu__item[disabled] { color: var(--ink-4); cursor: default; }
+  .plan__row .menu__item[disabled]:hover { background: none; }
+  .plan__foot { display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; border-top: 1px solid var(--line); color: var(--ink-4); font-size: var(--fs-micro); font-weight: 500; }
+  .plan__foot .links { display: flex; gap: 18px; }
+  .plan__foot .link { color: var(--ink-2); font-size: var(--fs-caption); font-weight: 650; text-underline-offset: 3px; }
+  .plan__foot .link:hover { color: var(--ink); text-decoration: underline; }
+  .plan__empty { padding: 14px; text-align: center; color: var(--ink-4); font-size: var(--fs-table); border-bottom: 1px solid var(--line-soft); }
+</style>
+</head>
+<body>
+
+<div class="proto-bar">
+  <span class="proto-bar__tag">Návrh</span>
+  <span class="proto-bar__title">Plánování cashflow · skupiny a zahrnutí do plánu</span>
+  <div class="seg" id="scn">
+    <button type="button" class="seg__btn" data-value="a">A · Výchozí (sbaleno)</button>
+    <button type="button" class="seg__btn" data-value="b">B · Rozbalené dividendy</button>
+    <button type="button" class="seg__btn" data-value="c">C · Dividendy mimo plán</button>
+  </div>
+  <span class="proto-bar__spacer"></span>
+  <label class="proto-bar__toggle"><span>Poznámky k návrhu</span><span class="switch"><input type="checkbox" id="notes-toggle"></span></label>
+</div>
+
+<div class="app">
+  <aside class="sidebar"></aside>
+  <main class="page" id="page"></main>
+</div>
+
+<script src="../design-system/icons.js"></script>
+<script src="../design-system/shell.js"></script>
+<script>
+function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+function kc(n) { return fmtKc(Math.round(n), 0); }
+function signed(n) { return (n >= 0 ? '+ ' : '− ') + kc(Math.abs(n)); }
+function pct(p) { return Math.round(p * 100) + ' %'; }
+
+/* ---------- Data (demo profile, monthly view, CZK) ---------- */
+var MOD = { loans: 'Úvěry', insurance: 'Pojištění', realEstate: 'Nemovitosti', stocks: 'Akcie', bonds: 'Dluhopisy', bank: 'Bankovní účty' };
+var CAT = {
+  personalIncome: 'Osobní příjmy', personalLoans: 'Splátky úvěrů', personalInsurance: 'Platby pojištění', personalRealEstateCosts: 'Náklady na osobní nemovitosti',
+  subscriptions: 'Předplatné', consumptionCosts: 'Spotřební náklady', otherPersonalCosts: 'Ostatní osobní náklady',
+  interestIncome: 'Úrokové příjmy', stockDividends: 'Dividendy z akcií', bondsInterest: 'Úroky z dluhopisů', rentalIncome: 'Příjem z pronájmu',
+  investmentLoans: 'Úvěry na investiční nemovitosti', investmentInsurance: 'Pojištění investičních nemovitostí', investmentRealEstateCosts: 'Náklady na investiční nemovitosti'
+};
+var USD = 23.1;
+function usdDiv(name, yearlyUsd) { return { name: name, amount: yearlyUsd * USD / 12, orig: yearlyUsd.toLocaleString('cs-CZ', { maximumFractionDigits: 0 }) + ' USD ročně', mod: 'stocks' }; }
+function czkDiv(name, yearly) { return { name: name, amount: yearly / 12, orig: kc(yearly) + ' ročně', mod: 'stocks' }; }
+var DIVS = [
+  usdDiv('Apple', 48), usdDiv('Microsoft', 90), usdDiv('Johnson & Johnson', 124), usdDiv('Coca-Cola', 78), usdDiv('PepsiCo', 108),
+  usdDiv('Procter & Gamble', 81), usdDiv("McDonald's", 67), usdDiv('Realty Income', 190), czkDiv('ČEZ', 5200), czkDiv('Komerční banka', 3640),
+  czkDiv('Philip Morris ČR', 2600), czkDiv('Moneta Money Bank', 1800), usdDiv('Verizon', 133), usdDiv('AT&T', 111), usdDiv('Pfizer', 84),
+  usdDiv('AbbVie', 155), usdDiv('Exxon Mobil', 114), usdDiv('Chevron', 98), usdDiv('3M', 56), usdDiv('Caterpillar', 52),
+  usdDiv('Home Depot', 90), usdDiv("Lowe's", 46), usdDiv('Target', 44), usdDiv('Walmart', 25), usdDiv('Visa', 21),
+  usdDiv('Mastercard', 13), usdDiv('JPMorgan Chase', 92), usdDiv('Nvidia', 2), usdDiv('Broadcom', 63), usdDiv('Texas Instruments', 104)
+];
+var SECTIONS = [
+  { id: 'personal', title: 'Osobní cashflow', sub: 'Vaše osobní příjmy a životní náklady',
+    income: [
+      { key: 'personalIncome', items: [ { name: 'Mzda', amount: 78000, orig: 'měsíčně' }, { name: 'Vedlejší příjem', amount: 6000, orig: 'měsíčně' } ] }
+    ],
+    expenses: [
+      { key: 'personalLoans', items: [ { name: 'Hypotéka Praha 6', amount: 24500, orig: 'měsíčně', mod: 'loans' }, { name: 'Auto Škoda Octavia', amount: 7900, orig: 'měsíčně', mod: 'loans' } ] },
+      { key: 'personalInsurance', items: [ { name: 'Životní pojištění Kooperativa', amount: 1250, orig: '15 000 Kč ročně', mod: 'insurance' }, { name: 'Pojištění domácnosti', amount: 290, orig: '3 480 Kč ročně', mod: 'insurance' } ] },
+      { key: 'personalRealEstateCosts', items: [ { name: 'Byt Praha 6 · provoz', amount: 4800, orig: 'měsíčně', mod: 'realEstate' } ] },
+      { key: 'subscriptions', items: [ { name: 'Netflix', amount: 299, orig: 'měsíčně' }, { name: 'Spotify', amount: 179, orig: 'měsíčně' }, { name: 'iCloud+', amount: 79, orig: 'měsíčně' }, { name: 'O2 tarif', amount: 599, orig: 'měsíčně' } ] },
+      { key: 'consumptionCosts', items: [ { name: 'Potraviny', amount: 12000, orig: 'měsíčně' }, { name: 'Doprava', amount: 2400, orig: 'měsíčně' }, { name: 'Restaurace', amount: 3500, orig: 'měsíčně' } ] },
+      { key: 'otherPersonalCosts', items: [ { name: 'Dárky', amount: 800, orig: '9 600 Kč ročně' } ] }
+    ] },
+  { id: 'investments', title: 'Investiční cashflow', sub: 'Příjmy a výdaje z vašich investic',
+    income: [
+      { key: 'interestIncome', items: [ { name: 'Spořicí účet Air Bank', amount: 620, orig: '4,1 % p. a.', mod: 'bank' }, { name: 'Trinity Bank', amount: 1150, orig: '4,6 % p. a.', mod: 'bank' } ] },
+      { key: 'stockDividends', items: DIVS },
+      { key: 'bondsInterest', items: [ { name: 'Dluhopis ČSOB 4,5 %', amount: 1875, orig: '22 500 Kč ročně', mod: 'bonds' } ] },
+      { key: 'rentalIncome', items: [ { name: 'Byt Brno · nájem', amount: 14500, orig: 'měsíčně', mod: 'realEstate' } ] }
+    ],
+    expenses: [
+      { key: 'investmentLoans', items: [ { name: 'Hypotéka Brno', amount: 9800, orig: 'měsíčně', mod: 'loans' } ] },
+      { key: 'investmentInsurance', items: [ { name: 'Pojištění bytu Brno', amount: 210, orig: '2 520 Kč ročně', mod: 'insurance' } ] },
+      { key: 'investmentRealEstateCosts', items: [ { name: 'Byt Brno · provoz', amount: 2100, orig: 'měsíčně', mod: 'realEstate' } ] }
+    ] }
+];
+SECTIONS.forEach(function (s) { ['income', 'expenses'].forEach(function (k) { s[k].forEach(function (c) { c.items.forEach(function (it, i) { it.id = c.key + ':' + i; }); }); }); });
+
+/* ---------- State ---------- */
+var state = { expanded: {}, offItems: {}, offCats: {}, menu: null, notes: false };
+var SCN = {
+  a: { expanded: {}, offItems: { 'personalLoans:0': 1 }, offCats: {} },
+  b: { expanded: { personalLoans: 1, stockDividends: 1 }, offItems: { 'personalLoans:0': 1, 'stockDividends:27': 1, 'stockDividends:10': 1 }, offCats: {} },
+  c: { expanded: { stockDividends: 1 }, offItems: { 'personalLoans:0': 1 }, offCats: { stockDividends: 1 } }
+};
+var scn = 'a';
+function applyScenario(id) { scn = id; var s = SCN[id]; state.expanded = Object.assign({}, s.expanded); state.offItems = Object.assign({}, s.offItems); state.offCats = Object.assign({}, s.offCats); state.menu = null; document.querySelectorAll('#scn .seg__btn').forEach(function (b) { b.classList.toggle('is-active', b.dataset.value === id); }); render(); }
+
+function itemOn(c, it) { return !state.offCats[c.key] && !state.offItems[it.id]; }
+function catTotal(c) { return c.items.reduce(function (s, it) { return s + (itemOn(c, it) ? it.amount : 0); }, 0); }
+function catAll(c) { return c.items.reduce(function (s, it) { return s + it.amount; }, 0); }
+function sum(cats) { return cats.reduce(function (s, c) { return s + catTotal(c); }, 0); }
+function plural(n, one, few, many) { return n + ' ' + (n === 1 ? one : (n >= 2 && n <= 4 ? few : many)); }
+
+/* ---------- Rendering ---------- */
+function topbarHTML() { return '<div class="topbar"><span class="crumb"><a href="#">Peníze</a><i>›</i><b>Plánování cashflow</b></span><span class="status">Automatické položky z Úvěrů, Pojištění, Nemovitostí a Akcií</span></div>'; }
+function headHTML() {
+  return '<div class="page-head"><div><div class="eyebrow">Plán</div><h1>Plánování cashflow</h1><p>Odhad pravidelných příjmů a výdajů. Skutečné toky z účtů najdete v <a class="link" href="#"><b>Cashflow →</b></a></p></div>' +
+    '<div class="actions"><div class="seg seg--lg"><button type="button" class="seg__btn is-active">Měsíčně</button><button type="button" class="seg__btn">Ročně</button></div><button type="button" class="btn btn--primary">' + icon('plus', 14) + 'Přidat položku</button></div></div>';
+}
+function statsHTML(t) {
+  var free = t.income > 0 ? t.net / t.income : 0;
+  var autoExp = 0; SECTIONS.forEach(function (s) { s.expenses.forEach(function (c) { c.items.forEach(function (it) { if (it.mod && itemOn(c, it)) autoExp += it.amount; }); }); });
+  var netCls = t.net > 0 ? ' gain' : (t.net < 0 ? ' loss' : '');
+  return '<div class="stats stats--3 has-np"><i class="np np--tl">5</i>' +
+    '<div class="stat"><div class="stat__label">Plánované příjmy</div><span class="stat__value num">' + kc(t.income) + '</span><span class="stat__note">osobní ' + kc(t.pIncome) + ' · investiční ' + kc(t.iIncome) + '</span></div>' +
+    '<div class="stat"><div class="stat__label">Plánované výdaje</div><span class="stat__value num">' + kc(t.expenses) + '</span><span class="stat__note">z toho automaticky z modulů ' + kc(autoExp) + (t.offCount ? ' · ' + plural(t.offCount, 'položka', 'položky', 'položek') + ' mimo plán' : '') + '</span></div>' +
+    '<div class="stat"><div class="stat__label">Čisté cashflow</div><span class="stat__value num' + netCls + '">' + signed(t.net) + '</span><span class="stat__note">' + (t.net >= 0 ? pct(free) + ' příjmů zůstává volných' : 'výdaje převyšují příjmy o ' + kc(-t.net)) + '</span></div></div>';
+}
+var FLOW = ['var(--s1)', 'var(--s2)', 'var(--s3)', 'var(--s4)', 'var(--s-other)'];
+function flowHTML(t) {
+  if (t.income <= 0) return '';
+  var cats = []; SECTIONS.forEach(function (s) { s.expenses.forEach(function (c) { var v = catTotal(c); if (v > 0) cats.push({ label: CAT[c.key], value: v }); }); });
+  cats.sort(function (a, b) { return b.value - a.value; });
+  var seg = cats.slice(0, 4); var rest = cats.slice(4);
+  if (rest.length) seg.push({ label: 'Ostatní', value: rest.reduce(function (s, c) { return s + c.value; }, 0) });
+  seg = seg.map(function (c, i) { return { label: c.label, value: c.value, share: c.value / t.income, color: FLOW[i] }; });
+  if (t.net > 0) seg.push({ label: 'Zbývá k investování', value: t.net, share: t.net / t.income, color: 'repeating-linear-gradient(135deg, var(--paper) 0 4px, var(--well-2) 4px 6px)', sw: 'repeating-linear-gradient(135deg, var(--paper) 0 2px, var(--well-3) 2px 3px)' });
+  var free = Math.max(0, t.net / t.income);
+  return '<section class="card flow-card"><div class="flow-head"><div><h3>Kam směřují plánované příjmy</h3><p>Výdaje podle kategorií napříč oběma sekcemi, zbytek je volný k investování.</p></div><span class="badge">' + pct(free) + ' příjmů volných</span></div>' +
+    '<div class="flow-bar">' + seg.map(function (s) { return '<i style="width:' + (s.share * 100) + '%;background:' + s.color + '" title="' + esc(s.label) + '"></i>'; }).join('') + '</div>' +
+    '<div class="flow-legend">' + seg.map(function (s) { return '<div><i style="background:' + (s.sw || s.color) + '"></i><span>' + esc(s.label) + '</span><b class="num">' + kc(s.value) + ' · ' + pct(s.share) + '</b></div>'; }).join('') + '</div></section>';
+}
+function groupMeta(c) {
+  var n = c.items.length, off = c.items.filter(function (it) { return state.offItems[it.id]; }).length;
+  var mods = {}; c.items.forEach(function (it) { if (it.mod) mods[it.mod] = 1; }); var modList = Object.keys(mods).map(function (m) { return MOD[m]; });
+  var parts = [plural(n, 'položka', 'položky', 'položek')];
+  if (state.offCats[c.key]) parts.push('celá kategorie mimo plán');
+  else if (off) parts.push(off + ' mimo plán');
+  if (modList.length) parts.push('automaticky z ' + modList.join(', '));
+  else parts.push('ručně');
+  return parts.join(' · ');
+}
+function menuHTML(kind, c, it) {
+  var items = [];
+  if (kind === 'group') {
+    items.push(state.offCats[c.key] ? { ic: 'check', l: 'Započítat kategorii', a: 'cat-on' } : { ic: 'eye-off', l: 'Nezapočítávat kategorii', a: 'cat-off' });
+    items.push({ ic: 'plus', l: 'Přidat položku do kategorie', a: 'add' });
+  } else {
+    var catOff = state.offCats[c.key];
+    if (catOff) items.push({ ic: 'eye-off', l: 'Celá kategorie je mimo plán', dis: true });
+    else items.push(state.offItems[it.id] ? { ic: 'check', l: 'Započítat', a: 'item-on' } : { ic: 'eye-off', l: 'Nezapočítávat', a: 'item-off' });
+    if (it.mod) { items.push({ ic: 'pencil', l: 'Nahradit vlastní částkou…', a: 'replace' }); items.push({ ic: 'arrow-up-right', l: 'Otevřít v modulu ' + MOD[it.mod], a: 'open' }); }
+    else { items.push({ ic: 'pencil', l: 'Upravit', a: 'edit' }); items.push({ sep: true }); items.push({ ic: 'trash-2', l: 'Smazat', a: 'delete', danger: true }); }
+  }
+  return '<div class="menu" role="menu">' + items.map(function (m) {
+    if (m.sep) return '<div class="menu__sep"></div>';
+    return '<button type="button" class="menu__item' + (m.danger ? ' menu__item--danger' : '') + '" role="menuitem"' + (m.dis ? ' disabled' : '') + ' data-act="' + (m.a || '') + '">' + icon(m.ic, 14) + esc(m.l) + '</button>';
+  }).join('') + '</div>';
+}
+function rowHTML(kind, c, it, isIncome, np) {
+  var open = state.menu && state.menu.key === (kind === 'group' ? c.key : it.id);
+  var off = kind === 'group' ? !!state.offCats[c.key] : !itemOn(c, it);
+  var amount = kind === 'group' ? (off ? catAll(c) : catTotal(c)) : it.amount;
+  var badge = (kind === 'group' ? off : (off && !state.offCats[c.key])) ? '<span class="badge badge--outline">Mimo plán</span>' : '';
+  var amt = '<span class="plan__amt num' + (isIncome ? ' gain' : '') + '">' + badge + (isIncome ? '+ ' : '− ') + kc(amount) + '</span>';
+  var name = kind === 'group' ? CAT[c.key] : it.name;
+  var meta = kind === 'group' ? groupMeta(c) : ((it.mod ? 'automaticky z ' + MOD[it.mod] : 'ručně') + ' · ' + it.orig);
+  var label = 'Možnosti: ' + name;
+  var actions = '<span class="row-actions"><button type="button" class="btn btn--ghost btn--icon btn--sm" aria-label="' + esc(label) + '" title="' + esc(label) + '" data-menu="' + (kind === 'group' ? c.key : it.id) + '">' + icon('ellipsis', 14) + '</button></span>';
+  var cls = 'plan__row plan__row--' + kind + (off ? ' is-off' : '') + (open ? ' is-open' : '') + (np ? ' has-np' : '');
+  var attrs = kind === 'group' ? ' role="button" tabindex="0" aria-expanded="' + (state.expanded[c.key] ? 'true' : 'false') + '" data-group="' + c.key + '"' : ' data-item="' + it.id + '"';
+  return '<div class="' + cls + '"' + attrs + '>' + (np ? '<i class="np np--l">' + np + '</i>' : '') +
+    '<span>' + (kind === 'group' ? icon('chevron-right', 14, 'chev') : '') + '</span>' +
+    '<div class="entity"><div><b>' + esc(name) + '</b><small>' + esc(meta) + '</small></div></div>' +
+    amt + actions + (open ? menuHTML(kind, c, it) : '') + '</div>';
+}
+function blockHTML(label, cats, isIncome, np) {
+  var html = '<div class="plan__block">' + label + ' · ' + kc(sum(cats)) + '</div>';
+  var shown = cats.filter(function (c) { return c.items.length; });
+  if (!shown.length) return html + '<div class="plan__empty">V této sekci zatím nejsou plánované ' + (isIncome ? 'příjmy' : 'výdaje') + '.</div>';
+  shown.forEach(function (c, i) {
+    html += rowHTML('group', c, null, isIncome, np && i === 0 ? np : null);
+    html += '<div class="plan__items' + (state.expanded[c.key] ? ' is-open' : '') + '">' + c.items.map(function (it, j) { return rowHTML('item', c, it, isIncome, (np && i === 0 && state.offItems[it.id]) ? (np + 1) : null); }).join('') + '</div>';
+  });
+  return html;
+}
+function sectionHTML(s, np) {
+  var inc = s.income.reduce(function (n, c) { return n + c.items.length; }, 0), exp = s.expenses.reduce(function (n, c) { return n + c.items.length; }, 0);
+  var off = 0; [].concat(s.income, s.expenses).forEach(function (c) { c.items.forEach(function (it) { if (!itemOn(c, it)) off++; }); });
+  var net = sum(s.income) - sum(s.expenses);
+  var cats = [].concat(s.income, s.expenses).filter(function (c) { return c.items.length; });
+  var allOpen = cats.every(function (c) { return state.expanded[c.key]; });
+  return '<section class="card card--table"><div class="card__head"><div><h2 class="card__title">' + esc(s.title) + '</h2><p class="card__sub">' + esc(s.sub) + '</p></div><div class="net"><small>Čisté měsíčně</small><b class="num ' + (net >= 0 ? 'gain' : 'loss') + '">' + signed(net) + '</b></div></div>' +
+    '<div class="plan">' + blockHTML('Příjmy', s.income, true, np) + blockHTML('Výdaje', s.expenses, false, s.id === 'personal' ? np : null) + '</div>' +
+    '<div class="plan__foot has-np">' + (np ? '<i class="np np--l">' + (np + 3) + '</i>' : '') + '<span>' + plural(inc, 'příjem', 'příjmy', 'příjmů') + ' · ' + plural(exp, 'výdaj', 'výdaje', 'výdajů') + (off ? ' · ' + plural(off, 'položka', 'položky', 'položek') + ' mimo plán' : '') + '</span>' +
+    '<span class="links"><a class="link" href="#" data-expand="' + s.id + '">' + (allOpen ? 'Sbalit vše' : 'Rozbalit vše') + '</a><a class="link" href="#">Přidat položku do sekce →</a></span></div></section>';
+}
+var NOTES = [
+  '<b>Kategorie jako řádek.</b> Každá neprázdná kategorie je jeden řádek se součtem, počtem položek a původem (automaticky z modulu / ručně). Kliknutím se rozbalí. Prázdné kategorie se nezobrazují. Sloupec „Kategorie“ a hlavička tabulky zmizely, původní částka a frekvence jsou v podřádku položky.',
+  '<b>Mimo plán.</b> Vyloučená položka zůstává vidět, ale je ztlumená a nese štítek „Mimo plán“. Nic se nemaže, částka se jen nepočítá do součtů, statistik ani toku.',
+  '<b>Jedna akce pro každý řádek: „···“.</b> Na hoveru/fokusu. Automatická položka: Nezapočítávat / Započítat, Nahradit vlastní částkou… (dnešní skryté „nahrazení“ dostává viditelný vstup), Otevřít v modulu. Ruční položka: Upravit, Nezapočítávat, Smazat. Kategorie: Nezapočítávat celou kategorii (platí i pro položky, které přibudou později), Přidat položku do kategorie.',
+  '<b>Patička sekce.</b> Počty, kolik položek je mimo plán, „Rozbalit vše / Sbalit vše“ a přidání položky. Rozbalení si stránka pamatuje.',
+  '<b>Statistiky a tok bez změny.</b> Čtou jen započítané položky; výdaje ukazují, kolik položek je mimo plán. Vyloučení je uložené v databázi – stejnou pravdu čte i MCP nástroj <code>cashflow_report</code>.'
+];
+function notesHTML() { return '<section class="card card--flat notes-card"><div class="card__head"><div><h2 class="card__title">Poznámky k návrhu</h2><p class="card__sub">Čísla odpovídají značkám na stránce · scénář ' + scn.toUpperCase() + '</p></div></div><ol class="notes">' + NOTES.map(function (n, i) { return '<li><i>' + (i + 1) + '</i><span>' + n + '</span></li>'; }).join('') + '</ol></section>'; }
+
+function totals() {
+  var p = SECTIONS[0], v = SECTIONS[1];
+  var t = { pIncome: sum(p.income), iIncome: sum(v.income), pExp: sum(p.expenses), iExp: sum(v.expenses), offCount: 0 };
+  t.income = t.pIncome + t.iIncome; t.expenses = t.pExp + t.iExp; t.net = t.income - t.expenses;
+  SECTIONS.forEach(function (s) { s.expenses.forEach(function (c) { c.items.forEach(function (it) { if (!itemOn(c, it)) t.offCount++; }); }); });
+  return t;
+}
+function render() {
+  var t = totals();
+  document.getElementById('page').innerHTML = topbarHTML() + headHTML() + statsHTML(t) + flowHTML(t) + '<div class="sections">' + sectionHTML(SECTIONS[0], 1) + sectionHTML(SECTIONS[1], null) + '</div>' + notesHTML();
+  document.body.classList.toggle('notes-on', state.notes);
+}
+
+/* ---------- Interaction ---------- */
+document.addEventListener('click', function (e) {
+  var mb = e.target.closest('[data-menu]');
+  if (mb) { e.preventDefault(); e.stopPropagation(); var k = mb.dataset.menu; state.menu = state.menu && state.menu.key === k ? null : { key: k }; render(); return; }
+  var mi = e.target.closest('.menu__item');
+  if (mi) {
+    var row = mi.closest('.plan__row'); var act = mi.dataset.act;
+    if (row.dataset.group) { var g = row.dataset.group; if (act === 'cat-off') state.offCats[g] = 1; if (act === 'cat-on') delete state.offCats[g]; if (act === 'add') toast('Otevře dialog s předvyplněnou kategorií'); }
+    else { var id = row.dataset.item; if (act === 'item-off') state.offItems[id] = 1; if (act === 'item-on') delete state.offItems[id]; if (act === 'replace') toast('Otevře dialog „Přidat položku“ s nahrazovaným zdrojem'); if (act === 'open') toast('Přejde do modulu'); if (act === 'edit') toast('Otevře úpravu položky'); if (act === 'delete') toast('Otevře potvrzení smazání'); }
+    state.menu = null; render(); return;
+  }
+  if (e.target.closest('.menu')) return;
+  if (state.menu) { state.menu = null; render(); }
+  var g = e.target.closest('[data-group]');
+  if (g) { var k2 = g.dataset.group; state.expanded[k2] = !state.expanded[k2]; render(); return; }
+  var ex = e.target.closest('[data-expand]');
+  if (ex) { e.preventDefault(); var s = SECTIONS.filter(function (x) { return x.id === ex.dataset.expand; })[0]; var cats = [].concat(s.income, s.expenses).filter(function (c) { return c.items.length; }); var all = cats.every(function (c) { return state.expanded[c.key]; }); cats.forEach(function (c) { if (all) delete state.expanded[c.key]; else state.expanded[c.key] = 1; }); render(); return; }
+  var sb = e.target.closest('#scn .seg__btn'); if (sb) applyScenario(sb.dataset.value);
+});
+document.addEventListener('keydown', function (e) {
+  if (e.key === 'Escape' && state.menu) { state.menu = null; render(); }
+  if ((e.key === 'Enter' || e.key === ' ') && e.target.dataset && e.target.dataset.group) { e.preventDefault(); e.target.click(); }
+});
+document.getElementById('notes-toggle').addEventListener('change', function (e) { state.notes = e.target.checked; render(); });
+
+renderShell({ active: 'cashflowPlanning' });
+var h = location.hash.replace('#', '');
+if (h.indexOf('notes') >= 0) { state.notes = true; document.getElementById('notes-toggle').checked = true; }
+var preset = (h.match(/[abc]/) || ['a'])[0];
+applyScenario(preset);
+if (h.indexOf('menu=') >= 0) { state.menu = { key: decodeURIComponent(h.split('menu=')[1].split('&')[0]) }; render(); }
+</script>
+</body>
+</html>

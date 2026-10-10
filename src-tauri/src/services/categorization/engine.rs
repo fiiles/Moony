@@ -16,6 +16,21 @@ use super::rules::RuleEngine;
 use super::types::{CategorizationResult, CategorizationRule, TransactionInput};
 use crate::services::financial_semantics::AccountIdentities;
 
+/// The waterfall layer that decided a transaction's category.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Layer {
+    /// The counterparty is one of the user's own accounts.
+    OwnAccount,
+    /// A user-defined custom rule.
+    Custom,
+    /// A learned payee (exact match).
+    Learned,
+    /// A locale rule pack.
+    Pack,
+    /// Nothing matched.
+    None,
+}
+
 /// Main categorization engine orchestrating all classification methods
 pub struct CategorizationEngine {
     /// User-defined custom merchant rules (after own accounts)
@@ -81,52 +96,46 @@ impl CategorizationEngine {
             .unwrap_or(false)
     }
 
-    /// Categorize a single transaction using waterfall approach
-    ///
-    /// Flow (priority order):
-    /// 1. Check own account identity (internal transfer)
-    /// 2. Try custom rules
-    /// 3. Try exact payee match
-    /// 4. Try DEFAULT rules (system rules)
-    /// 5. Return None if nothing matches
-    pub fn categorize(&self, tx: &TransactionInput) -> CategorizationResult {
-        // Own accounts take precedence over every category rule.
+    /// Categorize and say which layer decided. Flow (priority order):
+    /// own account → custom rules → learned payees → locale packs → none.
+    pub fn explain(&self, tx: &TransactionInput) -> (Layer, CategorizationResult) {
         if self.is_internal_transfer(
             tx.counterparty_iban.as_deref(),
             tx.counterparty_bank_code.as_deref(),
             tx.counterparty_country.as_deref(),
         ) {
-            return CategorizationResult::Match {
-                category_id: "cat_internal_transfers".to_string(),
-                source: super::types::CategorizationSource::Rule {
-                    rule_id: "own_account_iban".to_string(),
-                    rule_name: "Internal Transfer (own account)".to_string(),
+            return (
+                Layer::OwnAccount,
+                CategorizationResult::Match {
+                    category_id: "cat_internal_transfers".to_string(),
+                    source: super::types::CategorizationSource::Rule {
+                        rule_id: "own_account_iban".to_string(),
+                        rule_name: "Internal Transfer (own account)".to_string(),
+                    },
                 },
-            };
+            );
         }
-
-        // Try custom merchant rules.
         if let Ok(rules) = self.custom_rule_engine.read() {
             if let Some((result, _stop_processing)) = rules.apply(tx) {
-                return result;
+                return (Layer::Custom, result);
             }
         }
-
-        // Try learned payees.
         if let Ok(exact) = self.exact_match.read() {
             if let Some(result) = exact.apply(tx) {
-                return result;
+                return (Layer::Learned, result);
             }
         }
-
-        // Step 4: Try DEFAULT rules (system rules)
         if let Ok(rules) = self.default_rule_engine.read() {
             if let Some((result, _stop_processing)) = rules.apply(tx) {
-                return result;
+                return (Layer::Pack, result);
             }
         }
+        (Layer::None, CategorizationResult::None)
+    }
 
-        CategorizationResult::None
+    /// Categorize a single transaction using the waterfall approach.
+    pub fn categorize(&self, tx: &TransactionInput) -> CategorizationResult {
+        self.explain(tx).1
     }
 
     /// Categorize multiple transactions (batch)
@@ -762,5 +771,46 @@ mod tests {
 
         engine.forget_payee_simple("Test Payee");
         assert!(!engine.categorize(&tx).has_category());
+    }
+
+    #[test]
+    fn explain_names_the_layer_that_decides() {
+        let pack_rule = CategorizationRule::new(
+            "cz/albert".into(),
+            "Albert".into(),
+            RuleType::Contains,
+            "albert".into(),
+            "cat_groceries".into(),
+        );
+        let engine = CategorizationEngine::new(vec![pack_rule]);
+        engine.set_own_ibans(vec!["CZ6508000000192000145399".into()]);
+        engine.update_custom_rules(vec![CategorizationRule::new(
+            "custom-1".into(),
+            "Supermarkety".into(),
+            RuleType::Contains,
+            "lidl".into(),
+            "cat_dining".into(),
+        )]);
+        engine.learn_scoped("acc-1", false, Some("Rohlik.cz"), None, "cat_groceries");
+
+        let mut own = TransactionInput::new("t1".into(), Some("transfer".into()), None, -100.0);
+        own.counterparty_iban = Some("CZ65 0800 0000 1920 0014 5399".into());
+        assert_eq!(engine.explain(&own).0, Layer::OwnAccount);
+
+        let custom = TransactionInput::new("t2".into(), Some("Lidl".into()), None, -100.0);
+        assert_eq!(engine.explain(&custom).0, Layer::Custom);
+
+        let mut learned =
+            TransactionInput::new("t3".into(), None, Some("Rohlik.cz".into()), -100.0);
+        learned.bank_account_id = Some("acc-1".into());
+        assert_eq!(engine.explain(&learned).0, Layer::Learned);
+
+        let pack = TransactionInput::new("t4".into(), Some("Albert".into()), None, -100.0);
+        assert_eq!(engine.explain(&pack).0, Layer::Pack);
+
+        let none = TransactionInput::new("t5".into(), Some("xyz".into()), None, -100.0);
+        let (layer, result) = engine.explain(&none);
+        assert_eq!(layer, Layer::None);
+        assert!(!result.has_category());
     }
 }

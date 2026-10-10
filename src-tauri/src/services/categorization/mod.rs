@@ -18,7 +18,7 @@ pub mod tokenizer;
 pub mod types;
 
 // Re-export main types and engine
-pub use engine::CategorizationEngine;
+pub use engine::{CategorizationEngine, Layer};
 pub use types::{
     CategorizationResult, CategorizationRule, CategorizationSource, RuleType, TransactionInput,
 };

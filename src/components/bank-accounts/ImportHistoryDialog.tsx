@@ -75,11 +75,16 @@ export function ImportHistoryDialog({
               <TableBody>
                 {batches.map((batch) => (
                   <TableRow key={batch.id} className="h-[50px]">
-                    <TableCell>{fmt.dateTime(batch.importedAt)}</TableCell>
-                    <TableCell className="max-w-[220px] truncate font-650 text-ink">
+                    <TableCell className="whitespace-nowrap">
+                      {fmt.dateTime(batch.importedAt)}
+                    </TableCell>
+                    <TableCell
+                      className="max-w-[220px] truncate font-650 text-ink"
+                      title={batch.fileName}
+                    >
                       {batch.fileName}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="whitespace-nowrap">
                       {batch.dateRange
                         ? `${fmt.day(batch.dateRange.from)} – ${fmt.day(batch.dateRange.to ?? batch.dateRange.from)}`
                         : t('readiness.unknownDate')}
@@ -88,12 +93,16 @@ export function ImportHistoryDialog({
                     <TableCell className="text-right num">{batch.duplicateCount}</TableCell>
                     <TableCell className="text-right num">{batch.errorCount}</TableCell>
                     <TableCell className="text-right">
-                      <Button variant="danger" size="sm" onClick={() => onUndo(batch)}>
-                        <Undo2 />
-                        {t(
-                          batch.linkedCount ? 'readiness.deleteImported' : 'readiness.deleteRecord'
-                        )}
-                      </Button>
+                      <div data-row-actions>
+                        <Button variant="danger" size="sm" onClick={() => onUndo(batch)}>
+                          <Undo2 />
+                          {t(
+                            batch.linkedCount
+                              ? 'readiness.deleteImported'
+                              : 'readiness.deleteRecord'
+                          )}
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}

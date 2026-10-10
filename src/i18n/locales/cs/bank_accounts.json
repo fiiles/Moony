@@ -697,6 +697,17 @@
     "deleteBatchPromoted_few": "{{count}} čekající položky z dřívějších importů, které tento import zaúčtoval, zůstanou zaúčtované s jeho údaji.",
     "deleteBatchPromoted_other": "{{count}} čekajících položek z dřívějších importů, které tento import zaúčtoval, zůstane zaúčtováno s jeho údaji."
   },
-  "recordDialog": { "success": "Zůstatek zaznamenán" },
+  "recordDialog": {
+    "title": "Zaznamenat zůstatek",
+    "description": "Zůstatek se uloží do historie účtu k vybranému dni.",
+    "amount": "Částka",
+    "amountPlaceholder": "např. 450 000",
+    "asOf": "K datu",
+    "hint": "Zůstatek z výpisu nebo z bankovnictví. Importované transakce ho nemění.",
+    "replaces": "Záznam ze dne {{date}} bude nahrazen.",
+    "confirmUnknown": "Nahradit současný zůstatek bez data",
+    "submit": "Zaznamenat zůstatek",
+    "success": "Zůstatek zaznamenán"
+  },
   "balanceHistory": { "deleted": "Záznam smazán" }
 }

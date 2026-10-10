@@ -665,6 +665,17 @@
     "deleteBatchPromoted_one": "{{count}} pending entry from an earlier import that this import booked stays booked with this import's data.",
     "deleteBatchPromoted_other": "{{count}} pending entries from earlier imports that this import booked stay booked with this import's data."
   },
-  "recordDialog": { "success": "Balance recorded" },
+  "recordDialog": {
+    "title": "Record balance",
+    "description": "The balance is stored in the account's history for the chosen day.",
+    "amount": "Amount",
+    "amountPlaceholder": "e.g. 450 000",
+    "asOf": "As of",
+    "hint": "The balance from your statement or online banking. Imported transactions do not change it.",
+    "replaces": "The record of {{date}} will be replaced.",
+    "confirmUnknown": "Replace the current balance that has no date",
+    "submit": "Record balance",
+    "success": "Balance recorded"
+  },
   "balanceHistory": { "deleted": "Record deleted" }
 }

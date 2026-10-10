@@ -96,14 +96,19 @@ impl CategorizationEngine {
             .unwrap_or(false)
     }
 
-    /// Categorize and say which layer decided. Flow (priority order):
-    /// own account → custom rules → learned payees → locale packs → none.
-    pub fn explain(&self, tx: &TransactionInput) -> (Layer, CategorizationResult) {
-        if self.is_internal_transfer(
+    /// True when the counterparty is one of the user's own accounts — the layer that wins over every rule.
+    pub fn is_own_account(&self, tx: &TransactionInput) -> bool {
+        self.is_internal_transfer(
             tx.counterparty_iban.as_deref(),
             tx.counterparty_bank_code.as_deref(),
             tx.counterparty_country.as_deref(),
-        ) {
+        )
+    }
+
+    /// Categorize and say which layer decided. Flow (priority order):
+    /// own account → custom rules → learned payees → locale packs → none.
+    pub fn explain(&self, tx: &TransactionInput) -> (Layer, CategorizationResult) {
+        if self.is_own_account(tx) {
             return (
                 Layer::OwnAccount,
                 CategorizationResult::Match {

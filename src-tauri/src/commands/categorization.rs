@@ -513,7 +513,7 @@ pub async fn retarget_custom_rule(
     apply_history: bool,
 ) -> crate::error::Result<Vec<ChangedRow>> {
     let changed = db.with_conn(|conn| {
-        recategorize::retarget_custom_rule(conn, &rule_id, &category_id, apply_history)
+        recategorize::retarget_custom_rule(conn, &state.0, &rule_id, &category_id, apply_history)
     })?;
     reload_custom_rules(&state, &db).map_err(crate::error::AppError::Internal)?;
     log::info!("Retargeted custom rule {} to {}", rule_id, category_id);
@@ -523,19 +523,21 @@ pub async fn retarget_custom_rule(
 /// What a stored learned rule covers today (the rules page).
 #[tauri::command]
 pub async fn preview_learned_rule_history(
+    state: State<'_, CategorizationState>,
     db: State<'_, Database>,
     id: String,
 ) -> crate::error::Result<RecategorizationPreview> {
-    db.with_conn(|conn| recategorize::preview_for_learned_rule(conn, &id))
+    db.with_conn(|conn| recategorize::preview_for_learned_rule(conn, &state.0, &id))
 }
 
 /// Give a stored learned rule's category to every payment it covers.
 #[tauri::command]
 pub async fn apply_learned_rule_to_history(
+    state: State<'_, CategorizationState>,
     db: State<'_, Database>,
     id: String,
 ) -> crate::error::Result<Vec<ChangedRow>> {
-    db.with_conn(|conn| recategorize::apply_learned_rule(conn, &id))
+    db.with_conn(|conn| recategorize::apply_learned_rule(conn, &state.0, &id))
 }
 
 /// Undo a bulk recategorization: put back the previous category and provenance.

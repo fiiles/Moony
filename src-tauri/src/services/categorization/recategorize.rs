@@ -109,9 +109,12 @@ pub fn load_transaction_input(conn: &Connection, id: &str) -> Result<Option<Tran
 }
 
 /// The payments `matcher` covers today, `exclude` (the row being edited) left out.
-/// All time, every status.
+/// All time, every status. Transfers between the user's own accounts are never
+/// covered: that layer wins over every rule in the waterfall, so a rule never
+/// reaches them either.
 pub fn matching_rows(
     conn: &Connection,
+    engine: &CategorizationEngine,
     matcher: &Matcher,
     exclude: Option<&str>,
 ) -> Result<Vec<MatchedRow>> {
@@ -119,16 +122,19 @@ pub fn matching_rows(
         Matcher::Learned(row) => load_candidates(conn, row.bank_account_id.as_deref())?,
         Matcher::Custom(_) => load_candidates(conn, None)?,
     };
-    let engine = match matcher {
+    let rule_engine = match matcher {
         Matcher::Custom(rule) => Some(engine_for(rule)),
         Matcher::Learned(_) => None,
     };
     Ok(candidates
         .into_iter()
         .filter(|c| exclude != Some(c.input.id.as_str()))
+        .filter(|c| !engine.is_own_account(&c.input))
         .filter(|c| match matcher {
             Matcher::Learned(row) => learned_matches(row, &c.input),
-            Matcher::Custom(_) => engine.as_ref().is_some_and(|e| e.apply(&c.input).is_some()),
+            Matcher::Custom(_) => rule_engine
+                .as_ref()
+                .is_some_and(|e| e.apply(&c.input).is_some()),
         })
         .map(|c| MatchedRow {
             id: c.input.id,
@@ -200,19 +206,35 @@ pub fn apply(
 /// Put back what `apply` changed. Rows deleted meanwhile are skipped; a
 /// previous category deleted meanwhile becomes "no category", and the previous
 /// source goes with it (provenance never outlives the category it described).
+///
+/// One transaction: a failure part-way leaves every row as it was, and each
+/// distinct previous category is looked up once.
 pub fn restore(conn: &Connection, rows: &[ChangedRow]) -> Result<usize> {
+    let tx = conn.unchecked_transaction()?;
+    let mut known: HashMap<String, bool> = HashMap::new();
     let mut restored = 0;
     for row in rows {
         let category = match row.previous_category_id.as_deref() {
-            Some(c) if category_exists(conn, c)? => Some(c),
-            _ => None,
+            Some(c) => {
+                let exists = match known.get(c) {
+                    Some(&exists) => exists,
+                    None => {
+                        let exists = category_exists(&tx, c)?;
+                        known.insert(c.to_string(), exists);
+                        exists
+                    }
+                };
+                exists.then_some(c)
+            }
+            None => None,
         };
         let source = category.and(row.previous_source.as_deref());
-        restored += conn.execute(
+        restored += tx.execute(
             "UPDATE bank_transactions SET category_id = ?1, categorization_source = ?2 WHERE id = ?3",
             params![category, source, row.id],
         )?;
     }
+    tx.commit()?;
     Ok(restored)
 }
 
@@ -290,6 +312,7 @@ pub fn load_custom_rule(conn: &Connection, id: &str) -> Result<Option<(Categoriz
 /// to every payment the rule covers. One transaction; the caller reloads the engine.
 pub fn retarget_custom_rule(
     conn: &Connection,
+    engine: &CategorizationEngine,
     rule_id: &str,
     category_id: &str,
     apply_history: bool,
@@ -313,7 +336,7 @@ pub fn retarget_custom_rule(
     // The live engine loads only active rules, so an inactive one never reached
     // any payment: retargeting it must not rewrite history either.
     let changed = if apply_history && rule.is_active {
-        let rows = matching_rows(&tx, &Matcher::Custom(rule), None)?;
+        let rows = matching_rows(&tx, engine, &Matcher::Custom(rule), None)?;
         apply(&tx, &rows, category_id, SOURCE_RULE)?
     } else {
         Vec::new()
@@ -371,7 +394,12 @@ pub fn preview_for_transaction(
             None => None,
         };
         if let Some((rule, _)) = loaded {
-            let rows = matching_rows(conn, &Matcher::Custom(rule.clone()), Some(transaction_id))?;
+            let rows = matching_rows(
+                conn,
+                engine,
+                &Matcher::Custom(rule.clone()),
+                Some(transaction_id),
+            )?;
             let governing = GoverningRule {
                 id: rule.id,
                 name: rule.name,
@@ -389,7 +417,7 @@ pub fn preview_for_transaction(
     match learned_scope_for(&tx) {
         None => Ok(empty_preview(governing, false)),
         Some(scope) => {
-            let rows = matching_rows(conn, &Matcher::Learned(scope), Some(transaction_id))?;
+            let rows = matching_rows(conn, engine, &Matcher::Learned(scope), Some(transaction_id))?;
             Ok(preview_of(governing, None, &rows))
         }
     }
@@ -403,17 +431,25 @@ fn stored_learned_rule(conn: &Connection, id: &str) -> Result<LearnedPayeeRow> {
 }
 
 /// What a stored learned rule covers today (the rules page).
-pub fn preview_for_learned_rule(conn: &Connection, id: &str) -> Result<RecategorizationPreview> {
+pub fn preview_for_learned_rule(
+    conn: &Connection,
+    engine: &CategorizationEngine,
+    id: &str,
+) -> Result<RecategorizationPreview> {
     let row = stored_learned_rule(conn, id)?;
-    let rows = matching_rows(conn, &Matcher::Learned(row), None)?;
+    let rows = matching_rows(conn, engine, &Matcher::Learned(row), None)?;
     Ok(preview_of("learned", None, &rows))
 }
 
 /// Give a stored learned rule's category to every payment it covers.
-pub fn apply_learned_rule(conn: &Connection, id: &str) -> Result<Vec<ChangedRow>> {
+pub fn apply_learned_rule(
+    conn: &Connection,
+    engine: &CategorizationEngine,
+    id: &str,
+) -> Result<Vec<ChangedRow>> {
     let row = stored_learned_rule(conn, id)?;
     let tx = conn.unchecked_transaction()?;
-    let rows = matching_rows(&tx, &Matcher::Learned(row.clone()), None)?;
+    let rows = matching_rows(&tx, engine, &Matcher::Learned(row.clone()), None)?;
     let changed = apply(&tx, &rows, &row.category_id, SOURCE_EXACT_MATCH)?;
     tx.commit()?;
     Ok(changed)
@@ -534,7 +570,13 @@ mod tests {
             Some("cat_dining"),
             None,
         );
-        let rows = matching_rows(&conn, &Matcher::Learned(albert_scope()), Some("t1")).unwrap();
+        let rows = matching_rows(
+            &conn,
+            &CategorizationEngine::new_empty(),
+            &Matcher::Learned(albert_scope()),
+            Some("t1"),
+        )
+        .unwrap();
         let ids: Vec<&str> = rows.iter().map(|r| r.id.as_str()).collect();
         assert_eq!(
             ids,
@@ -580,7 +622,13 @@ mod tests {
             "albert".into(),
             "cat_dining".into(),
         );
-        let rows = matching_rows(&conn, &Matcher::Custom(rule), None).unwrap();
+        let rows = matching_rows(
+            &conn,
+            &CategorizationEngine::new_empty(),
+            &Matcher::Custom(rule),
+            None,
+        )
+        .unwrap();
         let mut ids: Vec<&str> = rows.iter().map(|r| r.id.as_str()).collect();
         ids.sort();
         assert_eq!(ids, vec!["t1", "t2"]);
@@ -657,7 +705,13 @@ mod tests {
             [],
         )
         .unwrap();
-        let rows = matching_rows(&conn, &Matcher::Learned(albert_scope()), None).unwrap();
+        let rows = matching_rows(
+            &conn,
+            &CategorizationEngine::new_empty(),
+            &Matcher::Learned(albert_scope()),
+            None,
+        )
+        .unwrap();
         let changed = apply(&conn, &rows, "cat_groceries", SOURCE_EXACT_MATCH).unwrap();
         let mut changed_ids: Vec<&str> = changed.iter().map(|c| c.id.as_str()).collect();
         changed_ids.sort();
@@ -724,7 +778,14 @@ mod tests {
             None,
         );
 
-        let changed = retarget_custom_rule(&conn, "r1", "cat_groceries", false).unwrap();
+        let changed = retarget_custom_rule(
+            &conn,
+            &CategorizationEngine::new_empty(),
+            "r1",
+            "cat_groceries",
+            false,
+        )
+        .unwrap();
         assert!(changed.is_empty());
         let (category, priority, stop): (String, i32, i32) = conn
             .query_row("SELECT category_id, priority, stop_processing FROM categorization_rules WHERE id = 'r1'", [], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))
@@ -739,7 +800,14 @@ mod tests {
             "history untouched without apply"
         );
 
-        let changed = retarget_custom_rule(&conn, "r1", "cat_gifts", true).unwrap();
+        let changed = retarget_custom_rule(
+            &conn,
+            &CategorizationEngine::new_empty(),
+            "r1",
+            "cat_gifts",
+            true,
+        )
+        .unwrap();
         let mut ids: Vec<&str> = changed.iter().map(|c| c.id.as_str()).collect();
         ids.sort();
         assert_eq!(ids, vec!["t1", "t2"]);
@@ -761,7 +829,13 @@ mod tests {
             Some("cat_dining"),
             Some("rule"),
         );
-        let rows = matching_rows(&conn, &Matcher::Learned(albert_scope()), None).unwrap();
+        let rows = matching_rows(
+            &conn,
+            &CategorizationEngine::new_empty(),
+            &Matcher::Learned(albert_scope()),
+            None,
+        )
+        .unwrap();
         let changed = apply(&conn, &rows, "cat_groceries", SOURCE_EXACT_MATCH).unwrap();
         assert_eq!(changed.len(), 1);
         conn.execute(
@@ -794,7 +868,14 @@ mod tests {
             Some("cat_dining"),
             Some("rule"),
         );
-        let changed = retarget_custom_rule(&conn, "r_off", "cat_gifts", true).unwrap();
+        let changed = retarget_custom_rule(
+            &conn,
+            &CategorizationEngine::new_empty(),
+            "r_off",
+            "cat_gifts",
+            true,
+        )
+        .unwrap();
         assert!(
             changed.is_empty(),
             "an inactive rule never reached any payment"
@@ -821,11 +902,25 @@ mod tests {
             [],
         ).unwrap();
         assert!(matches!(
-            retarget_custom_rule(&conn, "sys", "cat_gifts", false).unwrap_err(),
+            retarget_custom_rule(
+                &conn,
+                &CategorizationEngine::new_empty(),
+                "sys",
+                "cat_gifts",
+                false
+            )
+            .unwrap_err(),
             AppError::Validation(_)
         ));
         assert!(matches!(
-            retarget_custom_rule(&conn, "nope", "cat_gifts", false).unwrap_err(),
+            retarget_custom_rule(
+                &conn,
+                &CategorizationEngine::new_empty(),
+                "nope",
+                "cat_gifts",
+                false
+            )
+            .unwrap_err(),
             AppError::NotFound(_)
         ));
     }
@@ -961,18 +1056,234 @@ mod tests {
             Some("cat_groceries"),
             None,
         );
-        let p = preview_for_learned_rule(&conn, "l1").unwrap();
+        let p = preview_for_learned_rule(&conn, &CategorizationEngine::new_empty(), "l1").unwrap();
         assert_eq!(p.governing, "learned");
         assert_eq!(p.matches, 2);
-        let changed = apply_learned_rule(&conn, "l1").unwrap();
+        let changed = apply_learned_rule(&conn, &CategorizationEngine::new_empty(), "l1").unwrap();
         assert_eq!(changed.len(), 1);
         assert_eq!(
             category_of(&conn, "t1"),
             (Some("cat_groceries".into()), Some("exact_match".into()))
         );
         assert!(matches!(
-            preview_for_learned_rule(&conn, "missing").unwrap_err(),
+            preview_for_learned_rule(&conn, &CategorizationEngine::new_empty(), "missing")
+                .unwrap_err(),
             AppError::NotFound(_)
         ));
+    }
+
+    const OWN_IBAN: &str = "CZ6508000000192000145399";
+
+    fn set_counterparty_iban(conn: &Connection, id: &str, iban: &str) {
+        conn.execute(
+            "UPDATE bank_transactions SET counterparty_iban = ?1 WHERE id = ?2",
+            params![iban, id],
+        )
+        .expect("set iban");
+    }
+
+    #[test]
+    fn rules_never_cover_transfers_between_the_users_own_accounts() {
+        let conn = setup();
+        insert_tx(&conn, "normal", "acc-1", "debit", "Albert", None, None);
+        insert_tx(&conn, "own", "acc-1", "debit", "Albert", None, None);
+        set_counterparty_iban(&conn, "own", OWN_IBAN);
+        let engine = CategorizationEngine::new_empty();
+        engine.set_own_ibans(vec![OWN_IBAN.into()]);
+
+        let ids =
+            |rows: Vec<MatchedRow>| -> Vec<String> { rows.into_iter().map(|r| r.id).collect() };
+        assert_eq!(
+            ids(matching_rows(&conn, &engine, &Matcher::Learned(albert_scope()), None).unwrap()),
+            vec!["normal".to_string()],
+            "the payee scope skips the own-account transfer the waterfall files elsewhere"
+        );
+        let rule = CategorizationRule::new(
+            "r1".into(),
+            "Supermarkety".into(),
+            RuleType::Contains,
+            "albert".into(),
+            "cat_dining".into(),
+        );
+        assert_eq!(
+            ids(matching_rows(&conn, &engine, &Matcher::Custom(rule), None).unwrap()),
+            vec!["normal".to_string()],
+            "a custom rule skips it too"
+        );
+        assert_eq!(
+            matching_rows(
+                &conn,
+                &CategorizationEngine::new_empty(),
+                &Matcher::Learned(albert_scope()),
+                None
+            )
+            .unwrap()
+            .len(),
+            2,
+            "without the own-account IBAN both rows are covered"
+        );
+    }
+
+    #[test]
+    fn identity_scope_covers_the_account_whatever_the_name() {
+        let conn = setup();
+        insert_tx(
+            &conn,
+            "same",
+            "acc-1",
+            "debit",
+            "Different Name",
+            None,
+            None,
+        );
+        set_counterparty_iban(&conn, "same", OWN_IBAN);
+        insert_tx(&conn, "other_iban", "acc-1", "debit", "Albert", None, None);
+        set_counterparty_iban(&conn, "other_iban", "CZ5508000000001234567899");
+        insert_tx(
+            &conn,
+            "other_acc",
+            "acc-2",
+            "debit",
+            "Different Name",
+            None,
+            None,
+        );
+        set_counterparty_iban(&conn, "other_acc", OWN_IBAN);
+        let scope = LearnedPayeeRow {
+            id: String::new(),
+            normalized_payee: None,
+            original_payee: None,
+            counterparty_iban: Some(OWN_IBAN.into()),
+            category_id: "cat_groceries".into(),
+            bank_account_id: Some("acc-1".into()),
+            is_credit: Some(false),
+            created_at: 0,
+            updated_at: 0,
+        };
+        let rows = matching_rows(
+            &conn,
+            &CategorizationEngine::new_empty(),
+            &Matcher::Learned(scope),
+            None,
+        )
+        .unwrap();
+        let ids: Vec<&str> = rows.iter().map(|r| r.id.as_str()).collect();
+        assert_eq!(
+            ids,
+            vec!["same"],
+            "same IBAN on this account and direction, under any name; another IBAN or another account stays out"
+        );
+    }
+
+    #[test]
+    fn learned_scope_keys_match_what_learning_stores() {
+        use crate::models::categorization::InsertScopedLearning;
+        // (payee, iban, bank code, country)
+        let cases: [(Option<&str>, Option<&str>, Option<&str>, Option<&str>); 3] = [
+            (Some("Albert"), None, None, None),
+            (
+                None,
+                Some("CZ65 0800 0000 1920 0014 5399"),
+                Some("0800"),
+                Some("CZ"),
+            ),
+            (Some("AB"), None, None, None),
+        ];
+        for (payee, iban, bank_code, country) in cases {
+            let conn = setup();
+            let mut tx = TransactionInput::new("t".into(), None, payee.map(String::from), -10.0);
+            tx.bank_account_id = Some("acc-1".into());
+            tx.counterparty_iban = iban.map(String::from);
+            tx.counterparty_bank_code = bank_code.map(String::from);
+            tx.counterparty_country = country.map(String::from);
+            let scope = learned_scope_for(&tx);
+
+            let data = InsertScopedLearning {
+                bank_account_id: "acc-1".into(),
+                is_credit: false,
+                payee: payee.map(String::from),
+                counterparty_iban: iban.map(String::from),
+                counterparty_bank_code: bank_code.map(String::from),
+                counterparty_country: country.map(String::from),
+                category_id: "cat_dining".into(),
+            };
+            let learned = learn::learn_scoped_and_apply(
+                &conn,
+                &CategorizationEngine::new_empty(),
+                &data,
+                false,
+            );
+            let stored: Option<(Option<String>, Option<String>)> = conn
+                .query_row(
+                    "SELECT normalized_payee, counterparty_iban FROM learned_payees",
+                    [],
+                    |r| Ok((r.get(0)?, r.get(1)?)),
+                )
+                .optional()
+                .unwrap();
+            match scope {
+                Some(scope) => {
+                    assert!(learned.is_ok(), "learning accepts {payee:?} / {iban:?}");
+                    assert_eq!(
+                        stored,
+                        Some((scope.normalized_payee, scope.counterparty_iban)),
+                        "the preview keys {payee:?} / {iban:?} the way learning stores it"
+                    );
+                }
+                None => {
+                    assert!(
+                        matches!(learned, Err(AppError::Validation(_))),
+                        "{payee:?} / {iban:?} identifies nobody: learning refuses it"
+                    );
+                    assert_eq!(stored, None, "and stores nothing");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn restore_is_all_or_nothing() {
+        let conn = setup();
+        insert_tx(
+            &conn,
+            "t1",
+            "acc-1",
+            "debit",
+            "Albert",
+            Some("cat_groceries"),
+            Some("exact_match"),
+        );
+        insert_tx(
+            &conn,
+            "t2",
+            "acc-1",
+            "debit",
+            "Albert",
+            Some("cat_groceries"),
+            Some("exact_match"),
+        );
+        let undo = vec![
+            ChangedRow {
+                id: "t1".into(),
+                previous_category_id: Some("cat_dining".into()),
+                previous_source: None,
+            },
+            ChangedRow {
+                id: "t2".into(),
+                previous_category_id: Some("cat_dining".into()),
+                previous_source: None,
+            },
+        ];
+        conn.execute_batch(
+            "CREATE TRIGGER block_t2 BEFORE UPDATE ON bank_transactions WHEN NEW.id = 't2'
+             BEGIN SELECT RAISE(ABORT, 'blocked'); END;",
+        )
+        .unwrap();
+        assert!(restore(&conn, &undo).is_err());
+        assert_eq!(
+            category_of(&conn, "t1"),
+            (Some("cat_groceries".into()), Some("exact_match".into())),
+            "the first row was rolled back with the failed second one"
+        );
     }
 }

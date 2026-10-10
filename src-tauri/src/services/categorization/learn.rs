@@ -238,6 +238,7 @@ pub fn learn_scoped_and_apply(
         };
         let rows = recategorize::matching_rows(
             &transaction,
+            engine,
             &recategorize::Matcher::Learned(scope),
             None,
         )?;
@@ -685,6 +686,79 @@ mod tests {
         let restarted = CategorizationEngine::new_empty();
         load_learned_payees(&conn, &restarted).unwrap();
         assert_eq!(restarted.categorize(&tx).category_id(), Some("old"));
+    }
+
+    #[test]
+    fn scoped_learning_failed_history_apply_rolls_back_rule_payments_and_engine() {
+        let conn = setup_test_db();
+        conn.execute_batch(
+            "DROP INDEX idx_learned_payees_composite;
+             CREATE TABLE bank_accounts(id TEXT PRIMARY KEY); INSERT INTO bank_accounts VALUES ('a');
+             INSERT INTO transaction_categories VALUES ('old'),('new');
+             CREATE TABLE bank_transactions (
+                id TEXT PRIMARY KEY, bank_account_id TEXT NOT NULL, tx_type TEXT NOT NULL, amount TEXT NOT NULL,
+                description TEXT, counterparty_name TEXT, counterparty_iban TEXT, counterparty_bank_code TEXT,
+                counterparty_country TEXT, category_id TEXT, categorization_source TEXT, suggested_category_id TEXT);
+             INSERT INTO bank_transactions (id, bank_account_id, tx_type, amount, counterparty_name, category_id) VALUES
+               ('t1','a','debit','100','Albert','old'),
+               ('t2','a','debit','100','Albert','old');",
+        )
+        .unwrap();
+        let engine = CategorizationEngine::new_empty();
+        let mut data = crate::models::categorization::InsertScopedLearning {
+            bank_account_id: "a".into(),
+            is_credit: false,
+            payee: Some("Albert".into()),
+            counterparty_iban: None,
+            counterparty_bank_code: None,
+            counterparty_country: None,
+            category_id: "old".into(),
+        };
+        learn_scoped(&conn, &engine, &data).unwrap();
+        conn.execute_batch(
+            "CREATE TRIGGER block_update BEFORE UPDATE ON bank_transactions
+             BEGIN SELECT RAISE(ABORT, 'blocked'); END;",
+        )
+        .unwrap();
+
+        data.category_id = "new".into();
+        assert!(
+            learn_scoped_and_apply(&conn, &engine, &data, true).is_err(),
+            "the payment update is blocked, so the whole call fails"
+        );
+
+        let stored: Vec<String> = conn
+            .prepare("SELECT category_id FROM learned_payees")
+            .unwrap()
+            .query_map([], |r| r.get(0))
+            .unwrap()
+            .collect::<std::result::Result<_, _>>()
+            .unwrap();
+        assert_eq!(stored, vec!["old"], "the stored rule was not replaced");
+        let mut tx = TransactionInput::new("tx".into(), None, Some("Albert".into()), -100.0);
+        tx.bank_account_id = Some("a".into());
+        assert_eq!(
+            engine.categorize(&tx).category_id(),
+            Some("old"),
+            "the engine still answers the old category"
+        );
+        let payments: Vec<(String, String, Option<String>)> = conn
+            .prepare(
+                "SELECT id, category_id, categorization_source FROM bank_transactions ORDER BY id",
+            )
+            .unwrap()
+            .query_map([], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))
+            .unwrap()
+            .collect::<std::result::Result<_, _>>()
+            .unwrap();
+        assert_eq!(
+            payments,
+            vec![
+                ("t1".to_string(), "old".to_string(), None),
+                ("t2".to_string(), "old".to_string(), None),
+            ],
+            "no payment changed"
+        );
     }
 
     #[test]

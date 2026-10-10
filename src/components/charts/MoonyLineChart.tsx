@@ -67,6 +67,11 @@ export interface MoonyLineChartProps<E extends ChartEvent = ChartEvent> {
    * actual point (README §8 "projected").
    */
   projectedFrom?: number;
+  /**
+   * Unix seconds the time axis extends to when later than the last point: a balance
+   * line that stops at the newest record while the axis still ends with "Dnes".
+   */
+  axisEnd?: number;
   className?: string;
 }
 
@@ -121,6 +126,7 @@ export function MoonyLineChart<E extends ChartEvent = ChartEvent>({
   onEventClick,
   hideAxis = false,
   projectedFrom,
+  axisEnd,
   className,
 }: MoonyLineChartProps<E>) {
   const fmt = useFormat();
@@ -133,7 +139,8 @@ export function MoonyLineChart<E extends ChartEvent = ChartEvent>({
 
   const data: Row[] = useMemo(() => splitRows(points, projectedFrom), [points, projectedFrom]);
   const t0 = data[0]?.t ?? 0;
-  const t1 = data[data.length - 1]?.t ?? t0;
+  const lastT = data[data.length - 1]?.t ?? t0;
+  const t1 = axisEnd !== undefined && axisEnd > lastT ? axisEnd : lastT;
   const hasCost = data.some((p) => p.cost !== undefined);
   const hasProjected = data.some((p) => p.projected !== undefined);
 

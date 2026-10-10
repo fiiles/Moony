@@ -714,5 +714,28 @@
     "expense": "Outgoing",
     "balance": "net",
     "noImport": "no import"
+  },
+  "balanceHero": {
+    "label": "Balance as of {{date}}",
+    "unknownDate": "Balance · unknown date",
+    "since": "since {{date}}",
+    "firstRecord": "first record",
+    "record": "Balance record",
+    "recordTip": "{{date}} · {{source}}",
+    "today": "Today"
+  },
+  "balanceStats": {
+    "changeThisYear": "Change this year",
+    "vsRecordAt": "against the record of {{date}}",
+    "noRecordBeforeYear": "no record before the start of the year",
+    "avgPerMonth": "Average per month",
+    "last12Months": "over the last 12 months",
+    "sinceFirstRecord_one": "over {{count}} month since the first record",
+    "sinceFirstRecord_other": "over {{count}} months since the first record",
+    "singleRecord": "only one record so far",
+    "yearlyInterest": "Yearly interest",
+    "effectiveZoned": "{{rate}} effective · tiered interest",
+    "simpleRate": "{{rate}} p.a.",
+    "noInterest": "no interest"
   }
 }

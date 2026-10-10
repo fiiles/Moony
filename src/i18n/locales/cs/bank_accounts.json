@@ -748,5 +748,29 @@
     "expense": "Odchozí",
     "balance": "bilance",
     "noImport": "bez importu"
+  },
+  "balanceHero": {
+    "label": "Zůstatek k {{date}}",
+    "unknownDate": "Zůstatek · datum neznámé",
+    "since": "od {{date}}",
+    "firstRecord": "první záznam",
+    "record": "Záznam zůstatku",
+    "recordTip": "{{date}} · {{source}}",
+    "today": "Dnes"
+  },
+  "balanceStats": {
+    "changeThisYear": "Změna letos",
+    "vsRecordAt": "proti záznamu k {{date}}",
+    "noRecordBeforeYear": "bez záznamu před začátkem roku",
+    "avgPerMonth": "Průměrně za měsíc",
+    "last12Months": "za posledních 12 měsíců",
+    "sinceFirstRecord_one": "za {{count}} měsíc od prvního záznamu",
+    "sinceFirstRecord_few": "za {{count}} měsíce od prvního záznamu",
+    "sinceFirstRecord_other": "za {{count}} měsíců od prvního záznamu",
+    "singleRecord": "zatím jediný záznam",
+    "yearlyInterest": "Roční úrok",
+    "effectiveZoned": "{{rate}} efektivně · pásmové úročení",
+    "simpleRate": "{{rate}} p. a.",
+    "noInterest": "bez úročení"
   }
 }

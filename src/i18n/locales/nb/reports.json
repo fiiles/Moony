@@ -48,7 +48,8 @@
     "currency": "Valuta",
     "frequency": "Frekvens",
     "category": "Kategori",
-    "selectCategory": "Velg kategori"
+    "selectCategory": "Velg kategori",
+    "description": "En fast inntekt eller utgift. Kategorien avgjør hvor den telles i planen."
   },
   "deleteConfirm": {
     "title": "Slette posten?",
@@ -429,12 +430,40 @@
       "incomes_other": "{{count}} inntekter",
       "expenses_one": "{{count}} utgift",
       "expenses_other": "{{count}} utgifter",
-      "addToSection": "Legg til en post i denne seksjonen"
+      "addToSection": "Legg til en post i denne seksjonen",
+      "outOfPlan": "Utenfor planen",
+      "groupItems_one": "{{count}} post",
+      "groupItems_other": "{{count}} poster",
+      "groupExcluded_one": "{{count}} utenfor planen",
+      "groupExcluded_other": "{{count}} utenfor planen",
+      "groupCategoryExcluded": "hele kategorien utenfor planen",
+      "autoFrom": "automatisk fra {{modules}}",
+      "outOfPlanCount_one": "{{count}} post utenfor planen",
+      "outOfPlanCount_other": "{{count}} poster utenfor planen",
+      "expandAll": "Utvid alle",
+      "collapseAll": "Skjul alle",
+      "addToCategory": "Legg til en post i denne kategorien",
+      "addIncome": "Legg til inntekt",
+      "addExpense": "Legg til utgift"
     },
     "toast": {
       "added": "Posten er lagt til i planen",
       "updated": "Posten er oppdatert",
-      "deleted": "Posten er slettet"
+      "deleted": "Posten er slettet",
+      "excluded": "Utelatt fra planen",
+      "included": "Regnes med igjen",
+      "categoryExcluded": "Kategorien er utelatt fra planen",
+      "categoryIncluded": "Kategorien regnes med igjen"
+    },
+    "menu": {
+      "label": "Alternativer: {{name}}",
+      "exclude": "Utelat",
+      "include": "Ta med",
+      "excludeCategory": "Utelat kategorien",
+      "includeCategory": "Ta med kategorien",
+      "categoryExcluded": "Hele kategorien er utenfor planen",
+      "replace": "Erstatt med eget beløp…",
+      "openModule": "Åpne i {{module}}"
     }
   },
   "actuals": {
@@ -510,7 +539,7 @@
     "previous": "Forrige",
     "next": "Neste",
     "retainedSource": "Tidligere koblet kilde",
-    "replacementHelp": "En erstatning utelater den valgte automatiske posten fra summene. Når du sletter den manuelle erstatningen, gjeninnføres kilden.",
+    "replacementHelp": "Så lenge denne manuelle posten finnes, regnes ikke den automatiske med. Når du sletter den manuelle posten, kommer den automatiske tilbake.",
     "replacing": "Erstatter {{name}}",
     "missingFx_one": "{{count}} bevegelse er utelatt på grunn av manglende valutakurs ({{currencies}}). Summene er ufullstendige.",
     "missingFx_other": "{{count}} bevegelser er utelatt på grunn av manglende valutakurs ({{currencies}}). Summene er ufullstendige.",

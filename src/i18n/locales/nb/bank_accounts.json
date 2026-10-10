@@ -59,7 +59,14 @@
     "accountNumberPlaceholder": "f.eks. 1234567890",
     "ibanPlaceholder": "f.eks. DE89 3704 0044 0532 0130 00",
     "includeInNetWorth": "Ta med i nettoformuen",
-    "includeInNetWorthHelp": "Utelatte kontoer blir i listen, men holdes utenfor nettoformuen, summene og diagrammene."
+    "includeInNetWorthHelp": "Utelatte kontoer blir i listen, men holdes utenfor nettoformuen, summene og diagrammene.",
+    "openingBalance": "Inngående saldo",
+    "openingBalanceHint": "Valgfritt. Blir første registrering i saldohistorikken.",
+    "openingBalanceAsOf": "Per dato",
+    "currentBalance": "Saldo {{amount}} per {{date}}",
+    "currentBalanceUnknownDate": "Saldo {{amount}} · ukjent dato",
+    "noBalance": "Ingen saldo registrert ennå",
+    "recordNew": "Registrer ny saldo"
   },
   "accounts": "Kontoer",
   "transactions": "Transaksjoner",
@@ -151,7 +158,9 @@
     "noTransactionsInPeriod": "Ingen transaksjoner i denne perioden",
     "noTransactionsInPeriodHint": "Denne kontoen har transaksjoner i andre perioder.",
     "showAll": "Vis alle",
-    "noMatchingTransactionsTitle": "Ingen transaksjoner"
+    "noMatchingTransactionsTitle": "Ingen transaksjoner",
+    "noDataTitle": "Ingen data på denne kontoen ennå",
+    "noDataDescription": "Registrer saldoen fra kontoutskriften din eller importer en kontoutskrift fra banken."
   },
   "confirmDelete": {
     "title": "Slette kontoen?",
@@ -366,6 +375,7 @@
   "importHistory": {
     "title": "Importhistorikk",
     "fileName": "Filnavn",
+    "period": "Periode",
     "imported": "Importert",
     "errors": "Feil",
     "empty": "Ingen importer ennå. Importer din første CSV-fil.",
@@ -524,7 +534,18 @@
   "eyebrow": "Kontanter",
   "status": {
     "lastMovement": "Siste bevegelse {{date}}",
-    "lastImport": "Siste import {{date}}"
+    "lastImport": "Siste import {{date}}",
+    "balanceAsOf": "Saldo per {{date}}",
+    "balanceUnknownDate": "Saldo · ukjent dato",
+    "noData": "Ingen data ennå"
+  },
+  "actions": {
+    "recordBalance": "Registrer saldo",
+    "importStatement": "Importer kontoutskrift"
+  },
+  "menu": {
+    "balanceHistory": "Saldohistorikk",
+    "interest": "Rente"
   },
   "chart": {
     "balance": "Saldo"
@@ -577,10 +598,11 @@
     "mappingHelp": "Bruk et beløp med fortegn (+ innkommende, − utgående), eller kolonner for utgående og innkommende. Kolonnen med fortegn vinner hvis begge oppsett er valgt.",
     "provenanceMappingHelp": "Etter importen tilbyr vi kontoutskriftens sluttsaldo som kontoens nye saldo. En banktransaksjons-ID identifiserer duplikater pålitelig. Valuta sier hvilken valuta beløpene er i; uten den gjelder kontoens valuta. Motpartens konto, bankkode og land er valgfrie; en manglende bankkode blir aldri gjettet.",
     "confirmDateFormat": "Bekreft valgt datoformat",
-    "balanceBlocked": "Denne kontoutskriftens saldo bruker andre enheter eller er eldre enn den gjeldende daterte saldoreferansen; den kan ikke erstatte den.",
+    "balanceBlocked": "Saldoen i kontoutskriften er i en annen valuta og kan ikke brukes.",
     "statementAsOf": "Saldo ifølge kontoutskriften per {{date}}",
     "confirmBalance": "Sett datert saldo",
     "balanceConfirmDescription": "Sette {{amount}} per {{date}}? Gjeldende saldodato: {{currentDate}}. En ukjent gjeldende dato krever din eksplisitte bekreftelse. Saldoen er adskilt fra importerte transaksjoner.",
+    "balanceOlderDescription": "Registrere {{amount}} per {{date}} i saldohistorikken? Den er eldre enn gjeldende saldo ({{currentDate}}), som forblir uendret.",
     "detail": {
       "bookingDate": "Bokføringsdato",
       "valueDate": "Valørdato",
@@ -624,5 +646,77 @@
     "countryHint": "Landet til motpartens konto, f.eks. CZ. Hjelper med å lese innenlandske kontonumre riktig.",
     "deleteBatchPromoted_one": "{{count}} ventende post fra en tidligere import som denne importen bokførte, forblir bokført med denne importens data.",
     "deleteBatchPromoted_other": "{{count}} ventende poster fra tidligere importer som denne importen bokførte, forblir bokført med denne importens data."
+  },
+  "recordDialog": {
+    "title": "Registrer saldo",
+    "description": "Saldoen lagres i kontoens historikk for den valgte dagen.",
+    "amount": "Beløp",
+    "amountPlaceholder": "f.eks. 450 000",
+    "asOf": "Per dato",
+    "hint": "Saldoen fra kontoutskriften eller nettbanken. Importerte transaksjoner endrer den ikke.",
+    "replaces": "Registreringen fra {{date}} blir erstattet.",
+    "confirmUnknown": "Erstatt gjeldende saldo uten dato",
+    "submit": "Registrer saldo",
+    "success": "Saldo registrert"
+  },
+  "balanceHistory": {
+    "title": "Saldohistorikk",
+    "sub_one": "{{count}} registrering · siste {{date}}",
+    "sub_other": "{{count}} registreringer · siste {{date}}",
+    "empty": "Ingen saldoregistrering ennå.",
+    "amount": "Beløp",
+    "change": "Endring",
+    "source": "Kilde",
+    "sourceManual": "manuell",
+    "sourceStatement": "fra kontoutskrift",
+    "delete": "Slett registrering",
+    "deleteTitle": "Slette denne saldoregistreringen?",
+    "deleteDescription": "Registreringen på {{amount}} per {{date}} fjernes for godt. Kontosaldoen beregnes på nytt fra den nyeste gjenværende registreringen.",
+    "deleted": "Registrering slettet"
+  },
+  "interest": {
+    "title": "Rente",
+    "zonedSub": "Trinnvis rente etter saldo",
+    "simpleSub": "Enkel rente",
+    "effectiveLine": "{{rate}} effektiv · {{amount}} i året",
+    "caption": "Effektiv rente er årlig rente på gjeldende saldo delt på saldoen.",
+    "validUntil": "Renten gjelder til {{date}}",
+    "rate": "Rente"
+  },
+  "flows": {
+    "netIn": "Netto · {{month, lower}}",
+    "net": "Netto",
+    "line_one": "{{credits}} inn · {{debits}} ut · {{count}} bevegelse",
+    "line_other": "{{credits}} inn · {{debits}} ut · {{count}} bevegelser",
+    "noMoves": "ingen bevegelser",
+    "prev": "Forrige måned",
+    "next": "Neste måned",
+    "income": "Innkommende",
+    "expense": "Utgående",
+    "balance": "netto",
+    "noImport": "ingen import"
+  },
+  "balanceHero": {
+    "label": "Saldo per {{date}}",
+    "unknownDate": "Saldo · ukjent dato",
+    "since": "siden {{date}}",
+    "firstRecord": "første registrering",
+    "record": "Saldoregistrering",
+    "recordTip": "{{date}} · {{source}}"
+  },
+  "balanceStats": {
+    "changeThisYear": "Endring i år",
+    "vsRecordAt": "mot registreringen fra {{date}}",
+    "noRecordBeforeYear": "ingen registrering før årsskiftet",
+    "avgPerMonth": "Gjennomsnitt per måned",
+    "last12Months": "de siste 12 månedene",
+    "sinceFirstRecord_one": "over {{count}} måned siden første registrering",
+    "sinceFirstRecord_other": "over {{count}} måneder siden første registrering",
+    "singleRecord": "foreløpig bare én registrering",
+    "noRecord": "ingen saldoregistrering ennå",
+    "yearlyInterest": "Årlig rente",
+    "effectiveZoned": "{{rate}} effektiv · trinnvis rente",
+    "simpleRate": "{{rate}} p.a.",
+    "noInterest": "ingen rente"
   }
 }

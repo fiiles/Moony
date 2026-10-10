@@ -48,7 +48,8 @@
     "currency": "通貨",
     "frequency": "頻度",
     "category": "カテゴリ",
-    "selectCategory": "カテゴリを選択"
+    "selectCategory": "カテゴリを選択",
+    "description": "定期的な収入または支出です。カテゴリによって、計画のどこに計上されるかが決まります。"
   },
   "deleteConfirm": {
     "title": "項目を削除しますか？",
@@ -413,12 +414,37 @@
       "noExpenses": "このセクションに計画上の支出はありません。",
       "incomes_other": "収入 {{count}}件",
       "expenses_other": "支出 {{count}}件",
-      "addToSection": "このセクションに項目を追加"
+      "addToSection": "このセクションに項目を追加",
+      "outOfPlan": "計画外",
+      "groupItems_other": "{{count}}件の項目",
+      "groupExcluded_other": "計画外 {{count}}件",
+      "groupCategoryExcluded": "カテゴリ全体が計画外",
+      "autoFrom": "{{modules}}から自動",
+      "outOfPlanCount_other": "計画外の項目 {{count}}件",
+      "expandAll": "すべて展開",
+      "collapseAll": "すべて折りたたむ",
+      "addToCategory": "このカテゴリに項目を追加",
+      "addIncome": "収入を追加",
+      "addExpense": "支出を追加"
     },
     "toast": {
       "added": "項目を計画に追加しました",
       "updated": "項目を更新しました",
-      "deleted": "項目を削除しました"
+      "deleted": "項目を削除しました",
+      "excluded": "計画から除外しました",
+      "included": "計画に戻しました",
+      "categoryExcluded": "カテゴリを計画から除外しました",
+      "categoryIncluded": "カテゴリを計画に戻しました"
+    },
+    "menu": {
+      "label": "オプション：{{name}}",
+      "exclude": "除外する",
+      "include": "含める",
+      "excludeCategory": "カテゴリを除外する",
+      "includeCategory": "カテゴリを含める",
+      "categoryExcluded": "カテゴリ全体が計画外です",
+      "replace": "任意の金額に置き換え…",
+      "openModule": "{{module}}で開く"
     }
   },
   "actuals": {
@@ -493,7 +519,7 @@
     "previous": "前へ",
     "next": "次へ",
     "retainedSource": "以前に紐付けたソース",
-    "replacementHelp": "置き換えを設定すると、選択した自動項目は合計から除外されます。手動の置き換えを削除すると、元のソースが復元されます。",
+    "replacementHelp": "この手動の項目がある間、自動の項目は計上されません。手動の項目を削除すると、自動の項目が元に戻ります。",
     "replacing": "{{name}}を置き換え",
     "missingFx_other": "為替レートがないため{{count}}件の入出金を除外しました（{{currencies}}）。合計は不完全です。",
     "countedTransactions_zero": "取引なし",

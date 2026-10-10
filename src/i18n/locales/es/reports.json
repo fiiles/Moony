@@ -48,7 +48,8 @@
     "currency": "Moneda",
     "frequency": "Frecuencia",
     "category": "Categoría",
-    "selectCategory": "Elige una categoría"
+    "selectCategory": "Elige una categoría",
+    "description": "Un ingreso o gasto recurrente. La categoría decide dónde cuenta en el plan."
   },
   "deleteConfirm": {
     "title": "¿Eliminar el concepto?",
@@ -445,12 +446,43 @@
       "expenses_one": "{{count}} gasto",
       "expenses_many": "{{count}} gastos",
       "expenses_other": "{{count}} gastos",
-      "addToSection": "Añadir un concepto a esta sección"
+      "addToSection": "Añadir un concepto a esta sección",
+      "outOfPlan": "Fuera del plan",
+      "groupItems_one": "{{count}} concepto",
+      "groupItems_many": "{{count}} conceptos",
+      "groupItems_other": "{{count}} conceptos",
+      "groupExcluded_one": "{{count}} fuera del plan",
+      "groupExcluded_many": "{{count}} fuera del plan",
+      "groupExcluded_other": "{{count}} fuera del plan",
+      "groupCategoryExcluded": "toda la categoría fuera del plan",
+      "autoFrom": "automático de {{modules}}",
+      "outOfPlanCount_one": "{{count}} concepto fuera del plan",
+      "outOfPlanCount_many": "{{count}} conceptos fuera del plan",
+      "outOfPlanCount_other": "{{count}} conceptos fuera del plan",
+      "expandAll": "Expandir todo",
+      "collapseAll": "Contraer todo",
+      "addToCategory": "Añadir un concepto a esta categoría",
+      "addIncome": "Añadir ingreso",
+      "addExpense": "Añadir gasto"
     },
     "toast": {
       "added": "Concepto añadido al plan",
       "updated": "Concepto actualizado",
-      "deleted": "Concepto eliminado"
+      "deleted": "Concepto eliminado",
+      "excluded": "Excluido del plan",
+      "included": "De nuevo en el plan",
+      "categoryExcluded": "Categoría excluida del plan",
+      "categoryIncluded": "Categoría de nuevo en el plan"
+    },
+    "menu": {
+      "label": "Opciones: {{name}}",
+      "exclude": "No contar",
+      "include": "Contar",
+      "excludeCategory": "No contar la categoría",
+      "includeCategory": "Contar la categoría",
+      "categoryExcluded": "Toda la categoría está fuera del plan",
+      "replace": "Sustituir por un importe propio…",
+      "openModule": "Abrir en {{module}}"
     }
   },
   "actuals": {
@@ -527,7 +559,7 @@
     "previous": "Anterior",
     "next": "Siguiente",
     "retainedSource": "Fuente vinculada anteriormente",
-    "replacementHelp": "Una sustitución excluye de los totales el concepto automático seleccionado. Al eliminar la sustitución manual se restaura la fuente.",
+    "replacementHelp": "Mientras exista este concepto manual, el automático no se cuenta. Al eliminar el concepto manual, el automático vuelve.",
     "replacing": "Sustituye a {{name}}",
     "missingFx_one": "{{count}} movimiento excluido por falta de tipo de cambio ({{currencies}}). Los totales están incompletos.",
     "missingFx_many": "{{count}} movimientos excluidos por falta de tipo de cambio ({{currencies}}). Los totales están incompletos.",

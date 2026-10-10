@@ -234,6 +234,7 @@
     "milestoneKindUnknown": "Denne typen påminnelse er ukjent.",
     "effectiveMonthInvalid": "Velg den første dagen i en kalendermåned.",
     "cashflowItemInvalid": "Skriv inn et gyldig navn, positivt beløp, valuta, frekvens og kontantstrømkategori.",
+    "cashflowPlanKeyInvalid": "Ugyldig nøkkel for planposten.",
     "cashflowReplacementInvalid": "Velg en tilgjengelig automatisk kilde som ikke allerede er erstattet.",
     "csvPreviewRangeInvalid": "Forhåndsvisningssiden må inneholde mellom 1 og 200 rader.",
     "pendingPromotionInvalid": "Den ventende transaksjonen kunne ikke bokføres. Oppdater forhåndsvisningen og prøv igjen.",
@@ -241,6 +242,7 @@
     "balanceCurrencyMismatch": "Valutaen på kontoutskriftens saldo er en annen enn kontoens valuta.",
     "balanceAnchorUnknown": "Den eksisterende saldodatoen er ukjent. Bekreft først at du vil erstatte denne saldoen.",
     "balanceBatchMismatch": "Denne importen av kontoutskrift tilhører ikke denne kontoen.",
+    "currencyLockedByRecords": "Valutaen kan ikke endres så lenge kontoen har saldoregistreringer.",
     "learningIdentity": "Oppgi en pålitelig kontoidentifikator eller en mottaker.",
     "paginationInvalid": "Velg en gyldig historikkside.",
     "systemRule": "Systemregler kan ikke endres."

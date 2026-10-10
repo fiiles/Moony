@@ -59,7 +59,14 @@
     "accountNumberPlaceholder": "t.ex. 1234567890",
     "ibanPlaceholder": "t.ex. DE89 3704 0044 0532 0130 00",
     "includeInNetWorth": "Inkludera i nettoförmögenhet",
-    "includeInNetWorthHelp": "Exkluderade konton finns kvar i listan men utelämnas från nettoförmögenhet, summor och diagram."
+    "includeInNetWorthHelp": "Exkluderade konton finns kvar i listan men utelämnas från nettoförmögenhet, summor och diagram.",
+    "openingBalance": "Ingående saldo",
+    "openingBalanceHint": "Valfritt. Blir den första posten i saldohistoriken.",
+    "openingBalanceAsOf": "Per datum",
+    "currentBalance": "Saldo {{amount}} per {{date}}",
+    "currentBalanceUnknownDate": "Saldo {{amount}} · okänt datum",
+    "noBalance": "Inget saldo registrerat ännu",
+    "recordNew": "Registrera nytt saldo"
   },
   "accounts": "Konton",
   "transactions": "Transaktioner",
@@ -151,7 +158,9 @@
     "noTransactionsInPeriod": "Inga transaktioner under den här perioden",
     "noTransactionsInPeriodHint": "Det här kontot har transaktioner under andra perioder.",
     "showAll": "Visa alla",
-    "noMatchingTransactionsTitle": "Inga transaktioner"
+    "noMatchingTransactionsTitle": "Inga transaktioner",
+    "noDataTitle": "Inga data på det här kontot ännu",
+    "noDataDescription": "Registrera saldot från ditt kontoutdrag eller importera ett kontoutdrag."
   },
   "confirmDelete": {
     "title": "Ta bort kontot?",
@@ -366,6 +375,7 @@
   "importHistory": {
     "title": "Importhistorik",
     "fileName": "Filnamn",
+    "period": "Period",
     "imported": "Importerade",
     "errors": "Fel",
     "empty": "Inga importer ännu. Importera din första CSV-fil.",
@@ -524,7 +534,18 @@
   "eyebrow": "Kontanter",
   "status": {
     "lastMovement": "Senaste rörelse {{date}}",
-    "lastImport": "Senaste import {{date}}"
+    "lastImport": "Senaste import {{date}}",
+    "balanceAsOf": "Saldo per {{date}}",
+    "balanceUnknownDate": "Saldo · okänt datum",
+    "noData": "Inga data ännu"
+  },
+  "actions": {
+    "recordBalance": "Registrera saldo",
+    "importStatement": "Importera kontoutdrag"
+  },
+  "menu": {
+    "balanceHistory": "Saldohistorik",
+    "interest": "Ränta"
   },
   "chart": {
     "balance": "Saldo"
@@ -577,10 +598,11 @@
     "mappingHelp": "Använd ett belopp med tecken (+ inkommande, − utgående), eller kolumner för utgående och inkommande. Kolumnen med tecken har företräde om båda layouterna är valda.",
     "provenanceMappingHelp": "Efter importen erbjuder vi kontoutdragets utgående saldo som kontots nya saldo. Bankens transaktions-ID identifierar dubbletter på ett tillförlitligt sätt. Valutan anger vilken valuta beloppen är i; utan den gäller kontots valuta. Motpartens konto, bankkod och land är valfria; en saknad bankkod gissas aldrig.",
     "confirmDateFormat": "Bekräfta valt datumformat",
-    "balanceBlocked": "Det här kontoutdragets saldo använder andra enheter eller är äldre än den nuvarande daterade referensen; det kan inte ersätta den.",
+    "balanceBlocked": "Saldot enligt kontoutdraget är i en annan valuta och kan inte användas.",
     "statementAsOf": "Saldo enligt kontoutdraget per {{date}}",
     "confirmBalance": "Sätt daterat saldo",
     "balanceConfirmDescription": "Sätta {{amount}} per {{date}}? Nuvarande saldodatum: {{currentDate}}. Ett okänt nuvarande datum kräver din uttryckliga bekräftelse. Saldot är skilt från importerade transaktioner.",
+    "balanceOlderDescription": "Registrera {{amount}} per {{date}} i saldohistoriken? Det är äldre än nuvarande saldo ({{currentDate}}), som lämnas oförändrat.",
     "detail": {
       "bookingDate": "Bokföringsdatum",
       "valueDate": "Valutadatum",
@@ -624,5 +646,77 @@
     "countryHint": "Land för motpartens konto, t.ex. CZ. Hjälper till att läsa inhemska kontonummer rätt.",
     "deleteBatchPromoted_one": "{{count}} väntande post från en tidigare import som den här importen bokförde förblir bokförd med den här importens data.",
     "deleteBatchPromoted_other": "{{count}} väntande poster från tidigare importer som den här importen bokförde förblir bokförda med den här importens data."
+  },
+  "recordDialog": {
+    "title": "Registrera saldo",
+    "description": "Saldot sparas i kontots historik för den valda dagen.",
+    "amount": "Belopp",
+    "amountPlaceholder": "t.ex. 450 000",
+    "asOf": "Per datum",
+    "hint": "Saldot enligt ditt kontoutdrag eller internetbanken. Importerade transaktioner ändrar det inte.",
+    "replaces": "Posten från {{date}} kommer att ersättas.",
+    "confirmUnknown": "Ersätt det nuvarande saldot som saknar datum",
+    "submit": "Registrera saldo",
+    "success": "Saldot har registrerats"
+  },
+  "balanceHistory": {
+    "title": "Saldohistorik",
+    "sub_one": "{{count}} post · senaste {{date}}",
+    "sub_other": "{{count}} poster · senaste {{date}}",
+    "empty": "Ingen saldopost ännu.",
+    "amount": "Belopp",
+    "change": "Förändring",
+    "source": "Källa",
+    "sourceManual": "manuellt",
+    "sourceStatement": "från kontoutdrag",
+    "delete": "Ta bort post",
+    "deleteTitle": "Ta bort den här saldoposten?",
+    "deleteDescription": "Posten på {{amount}} per {{date}} tas bort permanent. Kontots saldo räknas om från den senaste kvarvarande posten.",
+    "deleted": "Posten har tagits bort"
+  },
+  "interest": {
+    "title": "Ränta",
+    "zonedSub": "Räntenivåer efter saldo",
+    "simpleSub": "Enkel ränta",
+    "effectiveLine": "{{rate}} effektivt · {{amount}} per år",
+    "caption": "Den effektiva räntan är den årliga räntan på det nuvarande saldot delad med saldot.",
+    "validUntil": "Räntan gäller till {{date}}",
+    "rate": "Räntesats"
+  },
+  "flows": {
+    "netIn": "Netto · {{month, lower}}",
+    "net": "Netto",
+    "line_one": "{{credits}} in · {{debits}} ut · {{count}} rörelse",
+    "line_other": "{{credits}} in · {{debits}} ut · {{count}} rörelser",
+    "noMoves": "inga rörelser",
+    "prev": "Föregående månad",
+    "next": "Nästa månad",
+    "income": "Inkommande",
+    "expense": "Utgående",
+    "balance": "netto",
+    "noImport": "ingen import"
+  },
+  "balanceHero": {
+    "label": "Saldo per {{date}}",
+    "unknownDate": "Saldo · okänt datum",
+    "since": "sedan {{date}}",
+    "firstRecord": "första posten",
+    "record": "Saldopost",
+    "recordTip": "{{date}} · {{source}}"
+  },
+  "balanceStats": {
+    "changeThisYear": "Förändring i år",
+    "vsRecordAt": "mot posten från {{date}}",
+    "noRecordBeforeYear": "ingen post före årets början",
+    "avgPerMonth": "Genomsnitt per månad",
+    "last12Months": "under de senaste 12 månaderna",
+    "sinceFirstRecord_one": "under {{count}} månad sedan första posten",
+    "sinceFirstRecord_other": "under {{count}} månader sedan första posten",
+    "singleRecord": "bara en post hittills",
+    "noRecord": "ingen saldopost ännu",
+    "yearlyInterest": "Årlig ränta",
+    "effectiveZoned": "{{rate}} effektivt · räntenivåer",
+    "simpleRate": "{{rate}} per år",
+    "noInterest": "ingen ränta"
   }
 }

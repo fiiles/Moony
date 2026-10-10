@@ -234,6 +234,7 @@
     "milestoneKindUnknown": "Den här typen av påminnelse är okänd.",
     "effectiveMonthInvalid": "Välj den första dagen i en kalendermånad.",
     "cashflowItemInvalid": "Ange ett giltigt namn, ett positivt belopp, en valuta, en frekvens och en kassaflödeskategori.",
+    "cashflowPlanKeyInvalid": "Ogiltig nyckel för planpost.",
     "cashflowReplacementInvalid": "Välj en tillgänglig automatisk källa som inte redan har ersatts.",
     "csvPreviewRangeInvalid": "Förhandsgranskningssidan måste innehålla mellan 1 och 200 rader.",
     "pendingPromotionInvalid": "Den väntande transaktionen kunde inte bokföras. Uppdatera förhandsgranskningen och försök igen.",
@@ -241,6 +242,7 @@
     "balanceCurrencyMismatch": "Kontoutdragets saldovaluta skiljer sig från kontots valuta.",
     "balanceAnchorUnknown": "Det befintliga saldodatumet är okänt. Bekräfta först att saldot ska ersättas.",
     "balanceBatchMismatch": "Den här kontoutdragsimporten tillhör inte det här kontot.",
+    "currencyLockedByRecords": "Valutan kan inte ändras så länge kontot har saldoposter.",
     "learningIdentity": "Ange en tillförlitlig kontoidentifierare eller en mottagare.",
     "paginationInvalid": "Välj en giltig historiksida.",
     "systemRule": "Systemregler kan inte ändras."

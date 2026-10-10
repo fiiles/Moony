@@ -48,7 +48,8 @@
     "currency": "Waluta",
     "frequency": "Częstotliwość",
     "category": "Kategoria",
-    "selectCategory": "Wybierz kategorię"
+    "selectCategory": "Wybierz kategorię",
+    "description": "Cykliczny przychód lub wydatek. Kategoria decyduje, gdzie jest wliczany w planie."
   },
   "deleteConfirm": {
     "title": "Usunąć pozycję?",
@@ -461,12 +462,46 @@
       "expenses_few": "{{count}} wydatki",
       "expenses_many": "{{count}} wydatków",
       "expenses_other": "{{count}} wydatku",
-      "addToSection": "Dodaj pozycję do tej sekcji"
+      "addToSection": "Dodaj pozycję do tej sekcji",
+      "outOfPlan": "Poza planem",
+      "groupItems_one": "{{count}} pozycja",
+      "groupItems_few": "{{count}} pozycje",
+      "groupItems_many": "{{count}} pozycji",
+      "groupItems_other": "{{count}} pozycji",
+      "groupExcluded_one": "{{count}} poza planem",
+      "groupExcluded_few": "{{count}} poza planem",
+      "groupExcluded_many": "{{count}} poza planem",
+      "groupExcluded_other": "{{count}} poza planem",
+      "groupCategoryExcluded": "cała kategoria poza planem",
+      "autoFrom": "automatycznie z: {{modules}}",
+      "outOfPlanCount_one": "{{count}} pozycja poza planem",
+      "outOfPlanCount_few": "{{count}} pozycje poza planem",
+      "outOfPlanCount_many": "{{count}} pozycji poza planem",
+      "outOfPlanCount_other": "{{count}} pozycji poza planem",
+      "expandAll": "Rozwiń wszystko",
+      "collapseAll": "Zwiń wszystko",
+      "addToCategory": "Dodaj pozycję do tej kategorii",
+      "addIncome": "Dodaj przychód",
+      "addExpense": "Dodaj wydatek"
     },
     "toast": {
       "added": "Pozycja dodana do planu",
       "updated": "Pozycja zaktualizowana",
-      "deleted": "Pozycja usunięta"
+      "deleted": "Pozycja usunięta",
+      "excluded": "Pozycja wyłączona z planu",
+      "included": "Pozycja znów w planie",
+      "categoryExcluded": "Kategoria wyłączona z planu",
+      "categoryIncluded": "Kategoria znów w planie"
+    },
+    "menu": {
+      "label": "Opcje: {{name}}",
+      "exclude": "Nie wliczaj",
+      "include": "Wlicz",
+      "excludeCategory": "Nie wliczaj kategorii",
+      "includeCategory": "Wlicz kategorię",
+      "categoryExcluded": "Cała kategoria jest poza planem",
+      "replace": "Zastąp własną kwotą…",
+      "openModule": "Otwórz w: {{module}}"
     }
   },
   "actuals": {
@@ -544,7 +579,7 @@
     "previous": "Poprzednia",
     "next": "Następna",
     "retainedSource": "Wcześniej powiązane źródło",
-    "replacementHelp": "Zastąpienie wyłącza wybraną pozycję automatyczną z sum. Usunięcie ręcznego zastąpienia przywraca źródło.",
+    "replacementHelp": "Dopóki istnieje ta pozycja ręczna, pozycja automatyczna nie jest liczona. Usunięcie pozycji ręcznej ją przywraca.",
     "replacing": "Zastępuje: {{name}}",
     "missingFx_one": "Pominięto {{count}} operację z powodu braku kursu wymiany ({{currencies}}). Sumy są niepełne.",
     "missingFx_few": "Pominięto {{count}} operacje z powodu braku kursu wymiany ({{currencies}}). Sumy są niepełne.",

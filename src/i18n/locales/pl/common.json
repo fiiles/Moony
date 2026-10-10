@@ -234,6 +234,7 @@
     "milestoneKindUnknown": "Ten rodzaj przypomnienia jest nieznany.",
     "effectiveMonthInvalid": "Wybierz pierwszy dzień miesiąca kalendarzowego.",
     "cashflowItemInvalid": "Wpisz prawidłową nazwę, dodatnią kwotę, walutę, częstotliwość i kategorię przepływu.",
+    "cashflowPlanKeyInvalid": "Nieprawidłowy klucz pozycji planu.",
     "cashflowReplacementInvalid": "Wybierz dostępne źródło automatyczne, które nie zostało jeszcze zastąpione.",
     "csvPreviewRangeInvalid": "Strona podglądu musi zawierać od 1 do 200 wierszy.",
     "pendingPromotionInvalid": "Nie można zaksięgować oczekującej transakcji. Odśwież podgląd i spróbuj ponownie.",
@@ -241,6 +242,7 @@
     "balanceCurrencyMismatch": "Waluta salda z wyciągu różni się od waluty konta.",
     "balanceAnchorUnknown": "Istniejąca data salda jest nieznana. Najpierw potwierdź zastąpienie tego salda.",
     "balanceBatchMismatch": "Ten import wyciągu nie należy do tego konta.",
+    "currencyLockedByRecords": "Waluty nie można zmienić, dopóki konto ma zapisy salda.",
     "learningIdentity": "Podaj wiarygodny identyfikator konta lub odbiorcę.",
     "paginationInvalid": "Wybierz prawidłową stronę historii.",
     "systemRule": "Reguł systemowych nie można zmieniać."

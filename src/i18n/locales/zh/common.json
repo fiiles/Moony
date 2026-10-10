@@ -234,6 +234,7 @@
     "milestoneKindUnknown": "此提醒类型未知。",
     "effectiveMonthInvalid": "请选择某个日历月的第一天。",
     "cashflowItemInvalid": "请输入有效的名称、正数金额、货币、频率和现金流类别。",
+    "cashflowPlanKeyInvalid": "计划项目键无效。",
     "cashflowReplacementInvalid": "请选择一个可用且尚未被替换的自动来源。",
     "csvPreviewRangeInvalid": "预览页必须包含 1 到 200 行。",
     "pendingPromotionInvalid": "无法转入待处理的交易。请刷新预览后重试。",
@@ -241,6 +242,7 @@
     "balanceCurrencyMismatch": "账单余额的货币与账户货币不同。",
     "balanceAnchorUnknown": "现有余额日期未知。请先确认替换此余额。",
     "balanceBatchMismatch": "此账单导入不属于该账户。",
+    "currencyLockedByRecords": "账户有余额记录时，无法更改货币。",
     "learningIdentity": "请提供可靠的账户标识或收款方。",
     "paginationInvalid": "请选择有效的历史记录页。",
     "systemRule": "系统规则无法更改。"

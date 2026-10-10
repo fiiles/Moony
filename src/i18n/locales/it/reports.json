@@ -48,7 +48,8 @@
     "currency": "Valuta",
     "frequency": "Frequenza",
     "category": "Categoria",
-    "selectCategory": "Seleziona categoria"
+    "selectCategory": "Seleziona categoria",
+    "description": "Un'entrata o uscita ricorrente. La categoria decide dove viene conteggiata nel piano."
   },
   "deleteConfirm": {
     "title": "Eliminare la voce?",
@@ -445,12 +446,43 @@
       "expenses_one": "{{count}} uscita",
       "expenses_many": "{{count}} uscite",
       "expenses_other": "{{count}} uscite",
-      "addToSection": "Aggiungi una voce a questa sezione"
+      "addToSection": "Aggiungi una voce a questa sezione",
+      "outOfPlan": "Fuori piano",
+      "groupItems_one": "{{count}} voce",
+      "groupItems_many": "{{count}} voci",
+      "groupItems_other": "{{count}} voci",
+      "groupExcluded_one": "{{count}} fuori piano",
+      "groupExcluded_many": "{{count}} fuori piano",
+      "groupExcluded_other": "{{count}} fuori piano",
+      "groupCategoryExcluded": "intera categoria fuori piano",
+      "autoFrom": "automatica da {{modules}}",
+      "outOfPlanCount_one": "{{count}} voce fuori piano",
+      "outOfPlanCount_many": "{{count}} voci fuori piano",
+      "outOfPlanCount_other": "{{count}} voci fuori piano",
+      "expandAll": "Espandi tutto",
+      "collapseAll": "Comprimi tutto",
+      "addToCategory": "Aggiungi una voce a questa categoria",
+      "addIncome": "Aggiungi entrata",
+      "addExpense": "Aggiungi uscita"
     },
     "toast": {
       "added": "Voce aggiunta al piano",
       "updated": "Voce aggiornata",
-      "deleted": "Voce eliminata"
+      "deleted": "Voce eliminata",
+      "excluded": "Escluso dal piano",
+      "included": "Di nuovo nel piano",
+      "categoryExcluded": "Categoria esclusa dal piano",
+      "categoryIncluded": "Categoria di nuovo nel piano"
+    },
+    "menu": {
+      "label": "Opzioni: {{name}}",
+      "exclude": "Non conteggiare",
+      "include": "Conteggia",
+      "excludeCategory": "Non conteggiare la categoria",
+      "includeCategory": "Conteggia la categoria",
+      "categoryExcluded": "L'intera categoria è fuori dal piano",
+      "replace": "Sostituisci con un importo personale…",
+      "openModule": "Apri in {{module}}"
     }
   },
   "actuals": {
@@ -527,7 +559,7 @@
     "previous": "Precedente",
     "next": "Successivo",
     "retainedSource": "Fonte collegata in precedenza",
-    "replacementHelp": "Una sostituzione esclude dai totali la voce automatica selezionata. Eliminando la sostituzione manuale, la fonte viene ripristinata.",
+    "replacementHelp": "Finché esiste questa voce manuale, quella automatica non viene conteggiata. Eliminando la voce manuale, quella automatica torna.",
     "replacing": "Sostituisce {{name}}",
     "missingFx_one": "{{count}} movimento escluso per mancanza del tasso di cambio ({{currencies}}). I totali sono incompleti.",
     "missingFx_many": "{{count}} movimenti esclusi per mancanza del tasso di cambio ({{currencies}}). I totali sono incompleti.",

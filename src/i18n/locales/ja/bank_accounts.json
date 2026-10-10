@@ -59,7 +59,14 @@
     "accountNumberPlaceholder": "例：1234567890",
     "ibanPlaceholder": "例：DE89 3704 0044 0532 0130 00",
     "includeInNetWorth": "純資産に含める",
-    "includeInNetWorthHelp": "除外した口座は一覧に残りますが、純資産、合計、グラフからは外れます。"
+    "includeInNetWorthHelp": "除外した口座は一覧に残りますが、純資産、合計、グラフからは外れます。",
+    "openingBalance": "開始残高",
+    "openingBalanceHint": "任意。残高履歴の最初の記録になります。",
+    "openingBalanceAsOf": "基準日",
+    "currentBalance": "残高 {{amount}}（{{date}}時点）",
+    "currentBalanceUnknownDate": "残高 {{amount}} · 日付不明",
+    "noBalance": "残高はまだ記録されていません",
+    "recordNew": "新しい残高を記録"
   },
   "accounts": "口座",
   "transactions": "取引",
@@ -149,7 +156,9 @@
     "noTransactionsInPeriod": "この期間の取引はありません",
     "noTransactionsInPeriodHint": "この口座には、他の期間の取引があります。",
     "showAll": "すべて表示",
-    "noMatchingTransactionsTitle": "取引なし"
+    "noMatchingTransactionsTitle": "取引なし",
+    "noDataTitle": "この口座にはまだデータがありません",
+    "noDataDescription": "明細の残高を記録するか、銀行の明細をインポートしてください。"
   },
   "confirmDelete": {
     "title": "口座を削除しますか？",
@@ -356,6 +365,7 @@
   "importHistory": {
     "title": "インポート履歴",
     "fileName": "ファイル名",
+    "period": "期間",
     "imported": "インポート済み",
     "errors": "エラー",
     "empty": "インポートはまだありません。最初の CSV ファイルをインポートしてください。",
@@ -507,7 +517,18 @@
   "eyebrow": "現金",
   "status": {
     "lastMovement": "最終の入出金 {{date}}",
-    "lastImport": "最終インポート {{date}}"
+    "lastImport": "最終インポート {{date}}",
+    "balanceAsOf": "{{date}}時点の残高",
+    "balanceUnknownDate": "残高 · 日付不明",
+    "noData": "データなし"
+  },
+  "actions": {
+    "recordBalance": "残高を記録",
+    "importStatement": "明細をインポート"
+  },
+  "menu": {
+    "balanceHistory": "残高履歴",
+    "interest": "利息"
   },
   "chart": {
     "balance": "残高"
@@ -559,10 +580,11 @@
     "mappingHelp": "符号付きの金額（+ 入金、− 出金）か、出金と入金の列を使用します。両方のレイアウトを選択した場合は、符号付きの列が優先されます。",
     "provenanceMappingHelp": "インポート後、明細の期末残高を口座の新しい残高として提案します。銀行の取引 ID により、重複を確実に識別できます。通貨は金額の単位を示し、ない場合は口座の通貨が適用されます。取引相手の口座、銀行コード、国は任意です。銀行コードがない場合に推測されることはありません。",
     "confirmDateFormat": "選択した日付の形式を確認",
-    "balanceBlocked": "この明細の残高は単位が異なるか、現在の日付付きの基準より古いため、置き換えられません。",
+    "balanceBlocked": "この明細の残高は別の通貨のため、使用できません。",
     "statementAsOf": "{{date}}時点の明細の残高",
     "confirmBalance": "日付付きの残高を設定",
     "balanceConfirmDescription": "{{date}}時点で{{amount}}に設定しますか？現在の残高の日付：{{currentDate}}。現在の日付が不明な場合は、明示的な確認が必要です。この残高は、インポートした取引とは別です。",
+    "balanceOlderDescription": "{{date}}時点の{{amount}}を残高履歴に記録しますか？現在の残高（{{currentDate}}）より古い記録のため、現在の残高は変わりません。",
     "detail": {
       "bookingDate": "計上日",
       "valueDate": "起算日",
@@ -601,5 +623,74 @@
     "countryColumn": "取引相手の国",
     "countryHint": "取引相手の口座の国（例：CZ）。国内の口座番号を正しく読み取るのに役立ちます。",
     "deleteBatchPromoted_other": "以前のインポートの保留中の項目のうち、このインポートが計上した{{count}}件は、このインポートのデータで計上されたままになります。"
+  },
+  "recordDialog": {
+    "title": "残高を記録",
+    "description": "残高は、選択した日付で口座の履歴に保存されます。",
+    "amount": "金額",
+    "amountPlaceholder": "例：450,000",
+    "asOf": "基準日",
+    "hint": "明細またはネットバンキングの残高です。インポートした取引では変わりません。",
+    "replaces": "{{date}}の記録は置き換えられます。",
+    "confirmUnknown": "日付のない現在の残高を置き換える",
+    "submit": "残高を記録",
+    "success": "残高を記録しました"
+  },
+  "balanceHistory": {
+    "title": "残高履歴",
+    "sub_other": "{{count}}件の記録 · 最新 {{date}}",
+    "empty": "残高の記録はまだありません。",
+    "amount": "金額",
+    "change": "増減",
+    "source": "ソース",
+    "sourceManual": "手動",
+    "sourceStatement": "明細から",
+    "delete": "記録を削除",
+    "deleteTitle": "この残高の記録を削除しますか？",
+    "deleteDescription": "{{date}}時点の{{amount}}の記録を完全に削除します。口座の残高は、残った最新の記録から再計算されます。",
+    "deleted": "記録を削除しました"
+  },
+  "interest": {
+    "title": "利息",
+    "zonedSub": "残高に応じた段階金利",
+    "simpleSub": "単純金利",
+    "effectiveLine": "実効{{rate}} · 年{{amount}}",
+    "caption": "実効金利は、現在の残高に対する年間利息を残高で割った値です。",
+    "validUntil": "金利は{{date}}まで有効",
+    "rate": "金利"
+  },
+  "flows": {
+    "netIn": "差引 · {{month}}",
+    "net": "差引",
+    "line_other": "入金 {{credits}} · 出金 {{debits}} · {{count}}件",
+    "noMoves": "入出金なし",
+    "prev": "前の月",
+    "next": "次の月",
+    "income": "入金",
+    "expense": "出金",
+    "balance": "差引",
+    "noImport": "インポートなし"
+  },
+  "balanceHero": {
+    "label": "{{date}}時点の残高",
+    "unknownDate": "残高 · 日付不明",
+    "since": "{{date}}以降",
+    "firstRecord": "最初の記録",
+    "record": "残高の記録",
+    "recordTip": "{{date}} · {{source}}"
+  },
+  "balanceStats": {
+    "changeThisYear": "今年の増減",
+    "vsRecordAt": "{{date}}の記録との比較",
+    "noRecordBeforeYear": "年初より前の記録なし",
+    "avgPerMonth": "月平均",
+    "last12Months": "過去12か月",
+    "sinceFirstRecord_other": "最初の記録から{{count}}か月",
+    "singleRecord": "記録はまだ1件のみ",
+    "noRecord": "残高の記録はまだありません",
+    "yearlyInterest": "年間利息",
+    "effectiveZoned": "実効{{rate}} · 段階金利",
+    "simpleRate": "年率{{rate}}",
+    "noInterest": "利息なし"
   }
 }

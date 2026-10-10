@@ -59,7 +59,14 @@
     "accountNumberPlaceholder": "np. 1234567890",
     "ibanPlaceholder": "np. DE89 3704 0044 0532 0130 00",
     "includeInNetWorth": "Uwzględnij w majątku netto",
-    "includeInNetWorthHelp": "Wyłączone konta zostają na liście, ale są pomijane w majątku netto, sumach i na wykresach."
+    "includeInNetWorthHelp": "Wyłączone konta zostają na liście, ale są pomijane w majątku netto, sumach i na wykresach.",
+    "openingBalance": "Saldo początkowe",
+    "openingBalanceHint": "Opcjonalne. Staje się pierwszym zapisem historii salda.",
+    "openingBalanceAsOf": "Na dzień",
+    "currentBalance": "Saldo {{amount}} na dzień {{date}}",
+    "currentBalanceUnknownDate": "Saldo {{amount}} · data nieznana",
+    "noBalance": "Nie zapisano jeszcze salda",
+    "recordNew": "Zapisz nowe saldo"
   },
   "accounts": "Konta",
   "transactions": "Transakcje",
@@ -155,7 +162,9 @@
     "noTransactionsInPeriod": "Brak transakcji w tym okresie",
     "noTransactionsInPeriodHint": "To konto ma transakcje w innych okresach.",
     "showAll": "Pokaż wszystkie",
-    "noMatchingTransactionsTitle": "Brak transakcji"
+    "noMatchingTransactionsTitle": "Brak transakcji",
+    "noDataTitle": "To konto nie ma jeszcze danych",
+    "noDataDescription": "Zapisz saldo z wyciągu lub zaimportuj wyciąg bankowy."
   },
   "confirmDelete": {
     "title": "Usunąć konto?",
@@ -386,6 +395,7 @@
   "importHistory": {
     "title": "Historia importów",
     "fileName": "Nazwa pliku",
+    "period": "Okres",
     "imported": "Zaimportowano",
     "errors": "Błędy",
     "empty": "Brak importów. Zaimportuj pierwszy plik CSV.",
@@ -558,7 +568,18 @@
   "eyebrow": "Gotówka",
   "status": {
     "lastMovement": "Ostatni ruch {{date}}",
-    "lastImport": "Ostatni import {{date}}"
+    "lastImport": "Ostatni import {{date}}",
+    "balanceAsOf": "Saldo na dzień {{date}}",
+    "balanceUnknownDate": "Saldo · data nieznana",
+    "noData": "Brak danych"
+  },
+  "actions": {
+    "recordBalance": "Zapisz saldo",
+    "importStatement": "Importuj wyciąg"
+  },
+  "menu": {
+    "balanceHistory": "Historia salda",
+    "interest": "Oprocentowanie"
   },
   "chart": {
     "balance": "Saldo"
@@ -613,10 +634,11 @@
     "mappingHelp": "Użyj kwoty ze znakiem (+ przychodzące, − wychodzące) albo kolumn wychodzących i przychodzących. Jeśli wybrano oba układy, wygrywa kolumna ze znakiem.",
     "provenanceMappingHelp": "Po imporcie zaproponujemy saldo końcowe z wyciągu jako nowe saldo konta. Identyfikator transakcji bankowej niezawodnie wskazuje duplikaty. Waluta mówi, w czym są kwoty; bez niej obowiązuje waluta konta. Konto kontrahenta, kod banku i kraj są opcjonalne; brakujący kod banku nigdy nie jest zgadywany.",
     "confirmDateFormat": "Potwierdź wybrany format daty",
-    "balanceBlocked": "To saldo z wyciągu używa innych jednostek lub jest starsze niż obecna data referencyjna salda; nie może go zastąpić.",
+    "balanceBlocked": "Saldo z wyciągu jest w innej walucie i nie można go użyć.",
     "statementAsOf": "Saldo z wyciągu na dzień {{date}}",
     "confirmBalance": "Ustaw saldo z datą",
     "balanceConfirmDescription": "Ustawić {{amount}} na dzień {{date}}? Obecna data salda: {{currentDate}}. Nieznana obecna data wymaga twojego jawnego potwierdzenia. Saldo jest oddzielne od zaimportowanych transakcji.",
+    "balanceOlderDescription": "Zapisać {{amount}} na dzień {{date}} w historii salda? To starszy zapis niż obecne saldo ({{currentDate}}), które pozostaje bez zmian.",
     "detail": {
       "bookingDate": "Data księgowania",
       "valueDate": "Data waluty",
@@ -670,5 +692,83 @@
     "deleteBatchPromoted_few": "{{count}} oczekujące wpisy z wcześniejszych importów, które ten import zaksięgował, pozostają zaksięgowane z danymi tego importu.",
     "deleteBatchPromoted_many": "{{count}} oczekujących wpisów z wcześniejszych importów, które ten import zaksięgował, pozostaje zaksięgowanych z danymi tego importu.",
     "deleteBatchPromoted_other": "{{count}} oczekującego wpisu z wcześniejszych importów, który ten import zaksięgował, pozostaje zaksięgowany z danymi tego importu."
+  },
+  "recordDialog": {
+    "title": "Zapisz saldo",
+    "description": "Saldo zostanie zapisane w historii konta na wybrany dzień.",
+    "amount": "Kwota",
+    "amountPlaceholder": "np. 450 000",
+    "asOf": "Na dzień",
+    "hint": "Saldo z wyciągu lub z bankowości internetowej. Zaimportowane transakcje go nie zmieniają.",
+    "replaces": "Zapis z dnia {{date}} zostanie zastąpiony.",
+    "confirmUnknown": "Zastąp obecne saldo bez daty",
+    "submit": "Zapisz saldo",
+    "success": "Saldo zapisane"
+  },
+  "balanceHistory": {
+    "title": "Historia salda",
+    "sub_one": "{{count}} zapis · ostatni {{date}}",
+    "sub_few": "{{count}} zapisy · ostatni {{date}}",
+    "sub_many": "{{count}} zapisów · ostatni {{date}}",
+    "sub_other": "{{count}} zapisu · ostatni {{date}}",
+    "empty": "Brak zapisów salda.",
+    "amount": "Kwota",
+    "change": "Zmiana",
+    "source": "Źródło",
+    "sourceManual": "ręcznie",
+    "sourceStatement": "z wyciągu",
+    "delete": "Usuń zapis",
+    "deleteTitle": "Usunąć ten zapis salda?",
+    "deleteDescription": "Zapis {{amount}} z dnia {{date}} zostanie trwale usunięty. Saldo konta zostanie przeliczone na podstawie najnowszego pozostałego zapisu.",
+    "deleted": "Zapis usunięty"
+  },
+  "interest": {
+    "title": "Oprocentowanie",
+    "zonedSub": "Progowe oprocentowanie według salda",
+    "simpleSub": "Proste oprocentowanie",
+    "effectiveLine": "{{rate}} efektywnie · {{amount}} rocznie",
+    "caption": "Efektywna stawka to roczne odsetki od bieżącego salda podzielone przez saldo.",
+    "validUntil": "Stawka obowiązuje do {{date}}",
+    "rate": "Stawka"
+  },
+  "flows": {
+    "netIn": "Bilans · {{month, lower}}",
+    "net": "Bilans",
+    "line_one": "przychodzące {{credits}} · wychodzące {{debits}} · {{count}} ruch",
+    "line_few": "przychodzące {{credits}} · wychodzące {{debits}} · {{count}} ruchy",
+    "line_many": "przychodzące {{credits}} · wychodzące {{debits}} · {{count}} ruchów",
+    "line_other": "przychodzące {{credits}} · wychodzące {{debits}} · {{count}} ruchu",
+    "noMoves": "brak ruchów",
+    "prev": "Poprzedni miesiąc",
+    "next": "Następny miesiąc",
+    "income": "Przychodzące",
+    "expense": "Wychodzące",
+    "balance": "bilans",
+    "noImport": "brak importu"
+  },
+  "balanceHero": {
+    "label": "Saldo na dzień {{date}}",
+    "unknownDate": "Saldo · data nieznana",
+    "since": "od {{date}}",
+    "firstRecord": "pierwszy zapis",
+    "record": "Zapis salda",
+    "recordTip": "{{date}} · {{source}}"
+  },
+  "balanceStats": {
+    "changeThisYear": "Zmiana w tym roku",
+    "vsRecordAt": "względem zapisu z {{date}}",
+    "noRecordBeforeYear": "brak zapisu sprzed początku roku",
+    "avgPerMonth": "Średnio miesięcznie",
+    "last12Months": "w ostatnich 12 miesiącach",
+    "sinceFirstRecord_one": "od pierwszego zapisu: {{count}} miesiąc",
+    "sinceFirstRecord_few": "od pierwszego zapisu: {{count}} miesiące",
+    "sinceFirstRecord_many": "od pierwszego zapisu: {{count}} miesięcy",
+    "sinceFirstRecord_other": "od pierwszego zapisu: {{count}} miesiąca",
+    "singleRecord": "dotąd tylko jeden zapis",
+    "noRecord": "brak jeszcze zapisu salda",
+    "yearlyInterest": "Roczne odsetki",
+    "effectiveZoned": "{{rate}} efektywnie · oprocentowanie progowe",
+    "simpleRate": "{{rate}} rocznie",
+    "noInterest": "bez oprocentowania"
   }
 }

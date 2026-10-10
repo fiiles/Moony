@@ -48,7 +48,8 @@
     "currency": "Währung",
     "frequency": "Intervall",
     "category": "Kategorie",
-    "selectCategory": "Kategorie auswählen"
+    "selectCategory": "Kategorie auswählen",
+    "description": "Eine wiederkehrende Einnahme oder Ausgabe. Die Kategorie bestimmt, wo sie im Plan zählt."
   },
   "deleteConfirm": {
     "title": "Posten löschen?",
@@ -429,12 +430,40 @@
       "incomes_other": "{{count}} Einnahmen",
       "expenses_one": "{{count}} Ausgabe",
       "expenses_other": "{{count}} Ausgaben",
-      "addToSection": "Posten zu diesem Bereich hinzufügen"
+      "addToSection": "Posten zu diesem Bereich hinzufügen",
+      "outOfPlan": "Nicht im Plan",
+      "groupItems_one": "{{count}} Posten",
+      "groupItems_other": "{{count}} Posten",
+      "groupExcluded_one": "{{count}} nicht im Plan",
+      "groupExcluded_other": "{{count}} nicht im Plan",
+      "groupCategoryExcluded": "ganze Kategorie nicht im Plan",
+      "autoFrom": "automatisch aus {{modules}}",
+      "outOfPlanCount_one": "{{count}} Posten nicht im Plan",
+      "outOfPlanCount_other": "{{count}} Posten nicht im Plan",
+      "expandAll": "Alle aufklappen",
+      "collapseAll": "Alle zuklappen",
+      "addToCategory": "Posten zu dieser Kategorie hinzufügen",
+      "addIncome": "Einnahme hinzufügen",
+      "addExpense": "Ausgabe hinzufügen"
     },
     "toast": {
       "added": "Posten zum Plan hinzugefügt",
       "updated": "Posten aktualisiert",
-      "deleted": "Posten gelöscht"
+      "deleted": "Posten gelöscht",
+      "excluded": "Aus dem Plan genommen",
+      "included": "Wieder berücksichtigt",
+      "categoryExcluded": "Kategorie aus dem Plan genommen",
+      "categoryIncluded": "Kategorie wieder berücksichtigt"
+    },
+    "menu": {
+      "label": "Optionen: {{name}}",
+      "exclude": "Ausschließen",
+      "include": "Berücksichtigen",
+      "excludeCategory": "Kategorie ausschließen",
+      "includeCategory": "Kategorie berücksichtigen",
+      "categoryExcluded": "Die ganze Kategorie ist nicht im Plan",
+      "replace": "Durch eigenen Betrag ersetzen…",
+      "openModule": "In {{module}} öffnen"
     }
   },
   "actuals": {
@@ -510,7 +539,7 @@
     "previous": "Zurück",
     "next": "Weiter",
     "retainedSource": "Zuvor verknüpfte Quelle",
-    "replacementHelp": "Ein Ersatz schließt den gewählten automatischen Posten aus den Summen aus. Löschen Sie den manuellen Ersatz, wird die Quelle wiederhergestellt.",
+    "replacementHelp": "Solange dieser manuelle Posten existiert, wird der automatische nicht gezählt. Wenn Sie den manuellen Posten löschen, kommt der automatische zurück.",
     "replacing": "Ersetzt {{name}}",
     "missingFx_one": "{{count}} Bewegung wegen fehlenden Wechselkurses ausgeschlossen ({{currencies}}). Die Summen sind unvollständig.",
     "missingFx_other": "{{count}} Bewegungen wegen fehlenden Wechselkurses ausgeschlossen ({{currencies}}). Die Summen sind unvollständig.",

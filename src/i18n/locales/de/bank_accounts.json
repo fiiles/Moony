@@ -59,7 +59,14 @@
     "accountNumberPlaceholder": "z. B. 1234567890",
     "ibanPlaceholder": "z. B. DE89 3704 0044 0532 0130 00",
     "includeInNetWorth": "Im Nettovermögen berücksichtigen",
-    "includeInNetWorthHelp": "Ausgeschlossene Konten bleiben in der Liste, werden aber bei Nettovermögen, Summen und Diagrammen nicht berücksichtigt."
+    "includeInNetWorthHelp": "Ausgeschlossene Konten bleiben in der Liste, werden aber bei Nettovermögen, Summen und Diagrammen nicht berücksichtigt.",
+    "openingBalance": "Anfangssaldo",
+    "openingBalanceHint": "Optional. Wird zum ersten Eintrag des Saldoverlaufs.",
+    "openingBalanceAsOf": "Stichtag",
+    "currentBalance": "Saldo {{amount}} zum {{date}}",
+    "currentBalanceUnknownDate": "Saldo {{amount}} · Datum unbekannt",
+    "noBalance": "Noch kein Saldo erfasst",
+    "recordNew": "Neuen Saldo erfassen"
   },
   "accounts": "Konten",
   "transactions": "Transaktionen",
@@ -151,7 +158,9 @@
     "noTransactionsInPeriod": "Keine Transaktionen in diesem Zeitraum",
     "noTransactionsInPeriodHint": "Dieses Konto hat Transaktionen in anderen Zeiträumen.",
     "showAll": "Alle anzeigen",
-    "noMatchingTransactionsTitle": "Keine Transaktionen"
+    "noMatchingTransactionsTitle": "Keine Transaktionen",
+    "noDataTitle": "Noch keine Daten auf diesem Konto",
+    "noDataDescription": "Erfassen Sie den Saldo aus Ihrem Kontoauszug oder importieren Sie einen Kontoauszug."
   },
   "confirmDelete": {
     "title": "Konto löschen?",
@@ -366,6 +375,7 @@
   "importHistory": {
     "title": "Importverlauf",
     "fileName": "Dateiname",
+    "period": "Zeitraum",
     "imported": "Importiert",
     "errors": "Fehler",
     "empty": "Noch keine Importe. Importieren Sie Ihre erste CSV-Datei.",
@@ -524,7 +534,18 @@
   "eyebrow": "Bargeld",
   "status": {
     "lastMovement": "Letzte Bewegung {{date}}",
-    "lastImport": "Letzter Import {{date}}"
+    "lastImport": "Letzter Import {{date}}",
+    "balanceAsOf": "Saldo zum {{date}}",
+    "balanceUnknownDate": "Saldo · Datum unbekannt",
+    "noData": "Noch keine Daten"
+  },
+  "actions": {
+    "recordBalance": "Saldo erfassen",
+    "importStatement": "Kontoauszug importieren"
+  },
+  "menu": {
+    "balanceHistory": "Saldoverlauf",
+    "interest": "Verzinsung"
   },
   "chart": {
     "balance": "Kontostand"
@@ -577,10 +598,11 @@
     "mappingHelp": "Verwenden Sie einen Betrag mit Vorzeichen (+ eingehend, − ausgehend) oder getrennte Spalten für ausgehend und eingehend. Die Spalte mit Vorzeichen hat Vorrang, wenn beide Varianten gewählt sind.",
     "provenanceMappingHelp": "Nach dem Import bieten wir den Schlusssaldo des Kontoauszugs als neuen Kontostand an. Eine Transaktions-ID der Bank erkennt Duplikate zuverlässig. Die Währung gibt an, in welcher Währung die Beträge stehen; ohne sie gilt die Kontowährung. Konto der Gegenpartei, Bankleitzahl und Land sind optional; eine fehlende Bankleitzahl wird nie geraten.",
     "confirmDateFormat": "Gewähltes Datumsformat bestätigen",
-    "balanceBlocked": "Dieser Kontoauszugssaldo verwendet andere Einheiten oder ist älter als der aktuelle datierte Stichtag; er kann ihn nicht ersetzen.",
+    "balanceBlocked": "Der Saldo des Kontoauszugs ist in einer anderen Währung und kann nicht verwendet werden.",
     "statementAsOf": "Kontoauszugssaldo zum {{date}}",
     "confirmBalance": "Datierten Saldo festlegen",
     "balanceConfirmDescription": "{{amount}} zum {{date}} festlegen? Aktuelles Saldodatum: {{currentDate}}. Ein unbekanntes aktuelles Datum erfordert Ihre ausdrückliche Bestätigung. Der Saldo ist von den importierten Transaktionen getrennt.",
+    "balanceOlderDescription": "{{amount}} zum {{date}} in den Saldoverlauf eintragen? Er ist älter als der aktuelle Saldo ({{currentDate}}), der unverändert bleibt.",
     "detail": {
       "bookingDate": "Buchungsdatum",
       "valueDate": "Wertstellung",
@@ -624,5 +646,77 @@
     "countryHint": "Land des Kontos der Gegenpartei, z. B. CZ. Hilft, inländische Kontonummern korrekt zu lesen.",
     "deleteBatchPromoted_one": "{{count}} vorgemerkter Eintrag aus einem früheren Import, den dieser Import gebucht hat, bleibt mit den Daten dieses Imports gebucht.",
     "deleteBatchPromoted_other": "{{count}} vorgemerkte Einträge aus früheren Importen, die dieser Import gebucht hat, bleiben mit den Daten dieses Imports gebucht."
+  },
+  "recordDialog": {
+    "title": "Saldo erfassen",
+    "description": "Der Saldo wird im Verlauf des Kontos für den gewählten Tag gespeichert.",
+    "amount": "Betrag",
+    "amountPlaceholder": "z. B. 450 000",
+    "asOf": "Stichtag",
+    "hint": "Der Saldo laut Kontoauszug oder Online-Banking. Importierte Transaktionen ändern ihn nicht.",
+    "replaces": "Der Eintrag vom {{date}} wird ersetzt.",
+    "confirmUnknown": "Aktuellen Saldo ohne Datum ersetzen",
+    "submit": "Saldo erfassen",
+    "success": "Saldo erfasst"
+  },
+  "balanceHistory": {
+    "title": "Saldoverlauf",
+    "sub_one": "{{count}} Eintrag · letzter {{date}}",
+    "sub_other": "{{count}} Einträge · letzter {{date}}",
+    "empty": "Noch kein Saldoeintrag.",
+    "amount": "Betrag",
+    "change": "Änderung",
+    "source": "Quelle",
+    "sourceManual": "manuell",
+    "sourceStatement": "aus Kontoauszug",
+    "delete": "Eintrag löschen",
+    "deleteTitle": "Diesen Saldoeintrag löschen?",
+    "deleteDescription": "Der Eintrag über {{amount}} zum {{date}} wird endgültig entfernt. Der Kontosaldo wird aus dem neuesten verbleibenden Eintrag neu berechnet.",
+    "deleted": "Eintrag gelöscht"
+  },
+  "interest": {
+    "title": "Verzinsung",
+    "zonedSub": "Gestaffelte Verzinsung nach Kontostand",
+    "simpleSub": "Einfache Verzinsung",
+    "effectiveLine": "{{rate}} effektiv · {{amount}} im Jahr",
+    "caption": "Der effektive Zinssatz sind die jährlichen Zinsen auf den aktuellen Kontostand, geteilt durch den Kontostand.",
+    "validUntil": "Zinssatz gültig bis {{date}}",
+    "rate": "Zinssatz"
+  },
+  "flows": {
+    "netIn": "Netto · {{month}}",
+    "net": "Netto",
+    "line_one": "{{credits}} Eingang · {{debits}} Ausgang · {{count}} Bewegung",
+    "line_other": "{{credits}} Eingang · {{debits}} Ausgang · {{count}} Bewegungen",
+    "noMoves": "keine Bewegungen",
+    "prev": "Vorheriger Monat",
+    "next": "Nächster Monat",
+    "income": "Eingehend",
+    "expense": "Ausgehend",
+    "balance": "netto",
+    "noImport": "kein Import"
+  },
+  "balanceHero": {
+    "label": "Saldo zum {{date}}",
+    "unknownDate": "Saldo · Datum unbekannt",
+    "since": "seit {{date}}",
+    "firstRecord": "erster Eintrag",
+    "record": "Saldoeintrag",
+    "recordTip": "{{date}} · {{source}}"
+  },
+  "balanceStats": {
+    "changeThisYear": "Änderung in diesem Jahr",
+    "vsRecordAt": "gegenüber dem Eintrag vom {{date}}",
+    "noRecordBeforeYear": "kein Eintrag vor Jahresbeginn",
+    "avgPerMonth": "Ø pro Monat",
+    "last12Months": "in den letzten 12 Monaten",
+    "sinceFirstRecord_one": "über {{count}} Monat seit dem ersten Eintrag",
+    "sinceFirstRecord_other": "über {{count}} Monate seit dem ersten Eintrag",
+    "singleRecord": "bisher nur ein Eintrag",
+    "noRecord": "noch kein Saldoeintrag",
+    "yearlyInterest": "Jahreszinsen",
+    "effectiveZoned": "{{rate}} effektiv · gestaffelte Verzinsung",
+    "simpleRate": "{{rate}} p. a.",
+    "noInterest": "unverzinst"
   }
 }

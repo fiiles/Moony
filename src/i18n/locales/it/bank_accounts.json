@@ -59,7 +59,14 @@
     "accountNumberPlaceholder": "es. 1234567890",
     "ibanPlaceholder": "es. IT60 X054 2811 1010 0000 0123 456",
     "includeInNetWorth": "Includi nel patrimonio netto",
-    "includeInNetWorthHelp": "I conti esclusi restano nell'elenco ma sono lasciati fuori da patrimonio netto, totali e grafici."
+    "includeInNetWorthHelp": "I conti esclusi restano nell'elenco ma sono lasciati fuori da patrimonio netto, totali e grafici.",
+    "openingBalance": "Saldo iniziale",
+    "openingBalanceHint": "Facoltativo. Diventa la prima registrazione dello storico del saldo.",
+    "openingBalanceAsOf": "Alla data",
+    "currentBalance": "Saldo {{amount}} al {{date}}",
+    "currentBalanceUnknownDate": "Saldo {{amount}} · data sconosciuta",
+    "noBalance": "Nessun saldo ancora registrato",
+    "recordNew": "Registra un nuovo saldo"
   },
   "accounts": "Conti",
   "transactions": "Movimenti",
@@ -153,7 +160,9 @@
     "noTransactionsInPeriod": "Nessun movimento in questo periodo",
     "noTransactionsInPeriodHint": "Questo conto ha movimenti in altri periodi.",
     "showAll": "Mostra tutto",
-    "noMatchingTransactionsTitle": "Nessun movimento"
+    "noMatchingTransactionsTitle": "Nessun movimento",
+    "noDataTitle": "Questo conto non ha ancora dati",
+    "noDataDescription": "Registra il saldo dal tuo estratto conto o importa un estratto conto bancario."
   },
   "confirmDelete": {
     "title": "Eliminare il conto?",
@@ -376,6 +385,7 @@
   "importHistory": {
     "title": "Storico degli import",
     "fileName": "Nome del file",
+    "period": "Periodo",
     "imported": "Importati",
     "errors": "Errori",
     "empty": "Ancora nessun import. Importa il tuo primo file CSV.",
@@ -541,7 +551,18 @@
   "eyebrow": "Liquidità",
   "status": {
     "lastMovement": "Ultimo movimento {{date}}",
-    "lastImport": "Ultimo import {{date}}"
+    "lastImport": "Ultimo import {{date}}",
+    "balanceAsOf": "Saldo al {{date}}",
+    "balanceUnknownDate": "Saldo · data sconosciuta",
+    "noData": "Ancora nessun dato"
+  },
+  "actions": {
+    "recordBalance": "Registra saldo",
+    "importStatement": "Importa estratto conto"
+  },
+  "menu": {
+    "balanceHistory": "Storico del saldo",
+    "interest": "Interessi"
   },
   "chart": {
     "balance": "Saldo"
@@ -595,10 +616,11 @@
     "mappingHelp": "Usa un importo con segno (+ entrata, − uscita), oppure colonne di uscite ed entrate. Se sono selezionate entrambe le strutture, prevale la colonna con segno.",
     "provenanceMappingHelp": "Dopo l'import ti proponiamo il saldo finale dell'estratto conto come nuovo saldo del conto. L'ID del movimento bancario identifica i duplicati in modo affidabile. La valuta indica in quale valuta sono gli importi; senza di essa vale la valuta del conto. Conto, codice banca e paese della controparte sono facoltativi; un codice banca mancante non viene mai ipotizzato.",
     "confirmDateFormat": "Conferma il formato della data selezionato",
-    "balanceBlocked": "Il saldo di questo estratto conto usa unità diverse o è più vecchio dell'attuale data di riferimento; non può sostituirlo.",
+    "balanceBlocked": "Il saldo dell'estratto conto è in un'altra valuta e non può essere usato.",
     "statementAsOf": "Saldo dell'estratto conto al {{date}}",
     "confirmBalance": "Imposta il saldo datato",
     "balanceConfirmDescription": "Impostare {{amount}} al {{date}}? Data del saldo attuale: {{currentDate}}. Una data attuale sconosciuta richiede la tua conferma esplicita. Il saldo è separato dai movimenti importati.",
+    "balanceOlderDescription": "Registrare {{amount}} al {{date}} nello storico del saldo? È più vecchio del saldo attuale ({{currentDate}}), che resta invariato.",
     "detail": {
       "bookingDate": "Data di contabilizzazione",
       "valueDate": "Data valuta",
@@ -647,5 +669,80 @@
     "deleteBatchPromoted_one": "{{count}} voce in sospeso di un import precedente che questo import ha contabilizzato resta contabilizzata con i dati di questo import.",
     "deleteBatchPromoted_many": "{{count}} voci in sospeso di import precedenti che questo import ha contabilizzato restano contabilizzate con i dati di questo import.",
     "deleteBatchPromoted_other": "{{count}} voci in sospeso di import precedenti che questo import ha contabilizzato restano contabilizzate con i dati di questo import."
+  },
+  "recordDialog": {
+    "title": "Registra saldo",
+    "description": "Il saldo viene salvato nello storico del conto per il giorno scelto.",
+    "amount": "Importo",
+    "amountPlaceholder": "es. 450 000",
+    "asOf": "Alla data",
+    "hint": "Il saldo dall'estratto conto o dall'home banking. I movimenti importati non lo modificano.",
+    "replaces": "La registrazione del {{date}} verrà sostituita.",
+    "confirmUnknown": "Sostituisci il saldo attuale senza data",
+    "submit": "Registra saldo",
+    "success": "Saldo registrato"
+  },
+  "balanceHistory": {
+    "title": "Storico del saldo",
+    "sub_one": "{{count}} registrazione · ultima {{date}}",
+    "sub_many": "{{count}} registrazioni · ultima {{date}}",
+    "sub_other": "{{count}} registrazioni · ultima {{date}}",
+    "empty": "Ancora nessuna registrazione del saldo.",
+    "amount": "Importo",
+    "change": "Variazione",
+    "source": "Fonte",
+    "sourceManual": "manuale",
+    "sourceStatement": "da estratto conto",
+    "delete": "Elimina registrazione",
+    "deleteTitle": "Eliminare questa registrazione del saldo?",
+    "deleteDescription": "La registrazione di {{amount}} al {{date}} verrà rimossa definitivamente. Il saldo del conto viene ricalcolato dalla registrazione più recente rimasta.",
+    "deleted": "Registrazione eliminata"
+  },
+  "interest": {
+    "title": "Interessi",
+    "zonedSub": "Interessi a scaglioni in base al saldo",
+    "simpleSub": "Interesse semplice",
+    "effectiveLine": "{{rate}} effettivo · {{amount}} all'anno",
+    "caption": "Il tasso effettivo è l'interesse annuo sul saldo attuale diviso per il saldo.",
+    "validUntil": "Tasso valido fino al {{date}}",
+    "rate": "Tasso"
+  },
+  "flows": {
+    "netIn": "Netto · {{month, lower}}",
+    "net": "Netto",
+    "line_one": "{{credits}} in entrata · {{debits}} in uscita · {{count}} movimento",
+    "line_many": "{{credits}} in entrata · {{debits}} in uscita · {{count}} movimenti",
+    "line_other": "{{credits}} in entrata · {{debits}} in uscita · {{count}} movimenti",
+    "noMoves": "nessun movimento",
+    "prev": "Mese precedente",
+    "next": "Mese successivo",
+    "income": "In entrata",
+    "expense": "In uscita",
+    "balance": "netto",
+    "noImport": "nessuna importazione"
+  },
+  "balanceHero": {
+    "label": "Saldo al {{date}}",
+    "unknownDate": "Saldo · data sconosciuta",
+    "since": "dal {{date}}",
+    "firstRecord": "prima registrazione",
+    "record": "Registrazione del saldo",
+    "recordTip": "{{date}} · {{source}}"
+  },
+  "balanceStats": {
+    "changeThisYear": "Variazione quest'anno",
+    "vsRecordAt": "rispetto alla registrazione del {{date}}",
+    "noRecordBeforeYear": "nessuna registrazione prima dell'inizio dell'anno",
+    "avgPerMonth": "Media mensile",
+    "last12Months": "negli ultimi 12 mesi",
+    "sinceFirstRecord_one": "in {{count}} mese dalla prima registrazione",
+    "sinceFirstRecord_many": "in {{count}} mesi dalla prima registrazione",
+    "sinceFirstRecord_other": "in {{count}} mesi dalla prima registrazione",
+    "singleRecord": "finora una sola registrazione",
+    "noRecord": "ancora nessuna registrazione del saldo",
+    "yearlyInterest": "Interessi annui",
+    "effectiveZoned": "{{rate}} effettivo · interessi a scaglioni",
+    "simpleRate": "{{rate}} annuo",
+    "noInterest": "senza interessi"
   }
 }

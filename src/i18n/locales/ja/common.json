@@ -234,6 +234,7 @@
     "milestoneKindUnknown": "この種類のリマインダーは不明です。",
     "effectiveMonthInvalid": "暦月の1日を選択してください。",
     "cashflowItemInvalid": "有効な名称、正の金額、通貨、頻度、キャッシュフローのカテゴリを入力してください。",
+    "cashflowPlanKeyInvalid": "計画項目のキーが正しくありません。",
     "cashflowReplacementInvalid": "まだ置き換えられていない、利用可能な自動ソースを選択してください。",
     "csvPreviewRangeInvalid": "プレビューのページは1〜200行にしてください。",
     "pendingPromotionInvalid": "保留中の取引を確定できませんでした。プレビューを更新して、もう一度お試しください。",
@@ -241,6 +242,7 @@
     "balanceCurrencyMismatch": "明細の残高の通貨が、口座の通貨と異なります。",
     "balanceAnchorUnknown": "既存の残高の日付が不明です。先にこの残高の置き換えを確認してください。",
     "balanceBatchMismatch": "この明細のインポートは、この口座のものではありません。",
+    "currencyLockedByRecords": "口座に残高の記録がある間は、通貨を変更できません。",
     "learningIdentity": "信頼できる口座の識別子または支払先を指定してください。",
     "paginationInvalid": "有効な履歴ページを選択してください。",
     "systemRule": "システムルールは変更できません。"

@@ -59,7 +59,14 @@
     "accountNumberPlaceholder": "例如：1234567890",
     "ibanPlaceholder": "例如：DE89 3704 0044 0532 0130 00",
     "includeInNetWorth": "计入净资产",
-    "includeInNetWorthHelp": "被排除的账户仍保留在列表中，但不计入净资产、合计和图表。"
+    "includeInNetWorthHelp": "被排除的账户仍保留在列表中，但不计入净资产、合计和图表。",
+    "openingBalance": "期初余额",
+    "openingBalanceHint": "可选。将成为余额历史中的第一条记录。",
+    "openingBalanceAsOf": "截至日期",
+    "currentBalance": "余额 {{amount}}，截至 {{date}}",
+    "currentBalanceUnknownDate": "余额 {{amount}} · 日期未知",
+    "noBalance": "尚未记录余额",
+    "recordNew": "记录新余额"
   },
   "accounts": "账户",
   "transactions": "交易",
@@ -149,7 +156,9 @@
     "noTransactionsInPeriod": "此时期没有交易",
     "noTransactionsInPeriodHint": "该账户在其他时期有交易。",
     "showAll": "显示全部",
-    "noMatchingTransactionsTitle": "没有交易"
+    "noMatchingTransactionsTitle": "没有交易",
+    "noDataTitle": "此账户暂无数据",
+    "noDataDescription": "请记录账单上的余额，或导入银行账单。"
   },
   "confirmDelete": {
     "title": "删除账户？",
@@ -356,6 +365,7 @@
   "importHistory": {
     "title": "导入历史",
     "fileName": "文件名",
+    "period": "期间",
     "imported": "已导入",
     "errors": "错误",
     "empty": "还没有导入记录。请导入您的第一个 CSV 文件。",
@@ -507,7 +517,18 @@
   "eyebrow": "现金",
   "status": {
     "lastMovement": "最近流水 {{date}}",
-    "lastImport": "最近导入 {{date}}"
+    "lastImport": "最近导入 {{date}}",
+    "balanceAsOf": "截至 {{date}} 的余额",
+    "balanceUnknownDate": "余额 · 日期未知",
+    "noData": "暂无数据"
+  },
+  "actions": {
+    "recordBalance": "记录余额",
+    "importStatement": "导入账单"
+  },
+  "menu": {
+    "balanceHistory": "余额历史",
+    "interest": "利息"
   },
   "chart": {
     "balance": "余额"
@@ -559,10 +580,11 @@
     "mappingHelp": "使用带符号的金额（+ 入账，− 出账），或使用出账列和入账列。如果两种布局都选了，则以带符号的列为准。",
     "provenanceMappingHelp": "导入后，我们会提供账单的期末余额，作为账户的新余额。银行交易 ID 可可靠地识别重复项。货币表示金额所用的货币；未提供时采用账户货币。交易对方账号、银行代码和国家为可选项；缺失的银行代码不会被猜测。",
     "confirmDateFormat": "确认所选日期格式",
-    "balanceBlocked": "此账单余额使用了不同的单位，或早于当前带日期的基准，无法替换它。",
+    "balanceBlocked": "此账单余额使用的货币不同，无法使用。",
     "statementAsOf": "截至 {{date}} 的账单余额",
     "confirmBalance": "设置带日期的余额",
     "balanceConfirmDescription": "将 {{date}} 的余额设为 {{amount}}？当前余额日期：{{currentDate}}。当前日期未知时，需要您明确确认。该余额与导入的交易相互独立。",
+    "balanceOlderDescription": "将截至 {{date}} 的 {{amount}} 记入余额历史？它早于当前余额（{{currentDate}}），当前余额保持不变。",
     "detail": {
       "bookingDate": "记账日期",
       "valueDate": "起息日",
@@ -601,5 +623,74 @@
     "countryColumn": "交易对方国家",
     "countryHint": "交易对方账户所在国家，例如 CZ。有助于正确读取境内账号。",
     "deleteBatchPromoted_other": "之前导入中、被此次导入入账的 {{count}} 笔待处理条目，仍保留为按此次导入数据入账的状态。"
+  },
+  "recordDialog": {
+    "title": "记录余额",
+    "description": "余额将保存到账户历史中所选日期名下。",
+    "amount": "金额",
+    "amountPlaceholder": "例如：450 000",
+    "asOf": "截至日期",
+    "hint": "账单或网银上的余额。导入的交易不会改变它。",
+    "replaces": "{{date}} 的记录将被替换。",
+    "confirmUnknown": "替换当前没有日期的余额",
+    "submit": "记录余额",
+    "success": "余额已记录"
+  },
+  "balanceHistory": {
+    "title": "余额历史",
+    "sub_other": "{{count}} 条记录 · 最近 {{date}}",
+    "empty": "还没有余额记录。",
+    "amount": "金额",
+    "change": "变动",
+    "source": "来源",
+    "sourceManual": "手动",
+    "sourceStatement": "来自账单",
+    "delete": "删除记录",
+    "deleteTitle": "删除此余额记录？",
+    "deleteDescription": "截至 {{date}} 的 {{amount}} 记录将被永久删除。账户余额将根据剩余的最新记录重新计算。",
+    "deleted": "记录已删除"
+  },
+  "interest": {
+    "title": "利息",
+    "zonedSub": "按余额分档计息",
+    "simpleSub": "单利",
+    "effectiveLine": "实际 {{rate}} · 每年 {{amount}}",
+    "caption": "实际利率是当前余额的年利息除以余额。",
+    "validUntil": "利率有效期至 {{date}}",
+    "rate": "利率"
+  },
+  "flows": {
+    "netIn": "净额 · {{month}}",
+    "net": "净额",
+    "line_other": "入账 {{credits}} · 出账 {{debits}} · {{count}} 笔流水",
+    "noMoves": "无流水",
+    "prev": "上个月",
+    "next": "下个月",
+    "income": "入账",
+    "expense": "出账",
+    "balance": "净额",
+    "noImport": "未导入"
+  },
+  "balanceHero": {
+    "label": "截至 {{date}} 的余额",
+    "unknownDate": "余额 · 日期未知",
+    "since": "自 {{date}} 起",
+    "firstRecord": "首条记录",
+    "record": "余额记录",
+    "recordTip": "{{date}} · {{source}}"
+  },
+  "balanceStats": {
+    "changeThisYear": "今年变动",
+    "vsRecordAt": "相对于 {{date}} 的记录",
+    "noRecordBeforeYear": "年初之前没有记录",
+    "avgPerMonth": "月均",
+    "last12Months": "近 12 个月",
+    "sinceFirstRecord_other": "自首条记录起共 {{count}} 个月",
+    "singleRecord": "目前仅有一条记录",
+    "noRecord": "尚无余额记录",
+    "yearlyInterest": "年利息",
+    "effectiveZoned": "实际 {{rate}} · 分档计息",
+    "simpleRate": "年化 {{rate}}",
+    "noInterest": "无利息"
   }
 }

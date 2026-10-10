@@ -234,6 +234,7 @@
     "milestoneKindUnknown": "Este tipo de recordatorio es desconocido.",
     "effectiveMonthInvalid": "Elige el primer día de un mes natural.",
     "cashflowItemInvalid": "Introduce un nombre válido, un importe positivo, una moneda, una frecuencia y una categoría de flujo de caja.",
+    "cashflowPlanKeyInvalid": "Clave de concepto del plan no válida.",
     "cashflowReplacementInvalid": "Elige una fuente automática disponible que no esté ya sustituida.",
     "csvPreviewRangeInvalid": "La página de vista previa debe contener entre 1 y 200 filas.",
     "pendingPromotionInvalid": "No se ha podido contabilizar el movimiento pendiente. Actualiza la vista previa e inténtalo de nuevo.",
@@ -241,6 +242,7 @@
     "balanceCurrencyMismatch": "La moneda del saldo del extracto es distinta de la de la cuenta.",
     "balanceAnchorUnknown": "Se desconoce la fecha del saldo actual. Confirma antes la sustitución de este saldo.",
     "balanceBatchMismatch": "Esta importación de extracto no pertenece a esta cuenta.",
+    "currencyLockedByRecords": "No se puede cambiar la moneda mientras la cuenta tenga registros de saldo.",
     "learningIdentity": "Indica un identificador de cuenta fiable o un beneficiario.",
     "paginationInvalid": "Selecciona una página del historial válida.",
     "systemRule": "Las reglas del sistema no se pueden modificar."

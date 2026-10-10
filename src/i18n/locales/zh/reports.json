@@ -48,7 +48,8 @@
     "currency": "货币",
     "frequency": "频率",
     "category": "类别",
-    "selectCategory": "选择类别"
+    "selectCategory": "选择类别",
+    "description": "定期收入或支出。类别决定它在计划中计入哪里。"
   },
   "deleteConfirm": {
     "title": "删除项目？",
@@ -413,12 +414,37 @@
       "noExpenses": "此部分没有计划支出。",
       "incomes_other": "{{count}} 项收入",
       "expenses_other": "{{count}} 项支出",
-      "addToSection": "向此部分添加项目"
+      "addToSection": "向此部分添加项目",
+      "outOfPlan": "计划外",
+      "groupItems_other": "{{count}} 项",
+      "groupExcluded_other": "{{count}} 项在计划外",
+      "groupCategoryExcluded": "整个类别在计划外",
+      "autoFrom": "自动来自{{modules}}",
+      "outOfPlanCount_other": "{{count}} 项在计划外",
+      "expandAll": "全部展开",
+      "collapseAll": "全部收起",
+      "addToCategory": "向此类别添加项目",
+      "addIncome": "添加收入",
+      "addExpense": "添加支出"
     },
     "toast": {
       "added": "项目已添加到计划",
       "updated": "项目已更新",
-      "deleted": "项目已删除"
+      "deleted": "项目已删除",
+      "excluded": "已从计划中排除",
+      "included": "已重新计入",
+      "categoryExcluded": "类别已从计划中排除",
+      "categoryIncluded": "类别已重新计入"
+    },
+    "menu": {
+      "label": "选项：{{name}}",
+      "exclude": "不计入",
+      "include": "计入",
+      "excludeCategory": "不计入该类别",
+      "includeCategory": "计入该类别",
+      "categoryExcluded": "整个类别在计划外",
+      "replace": "替换为自定义金额…",
+      "openModule": "在{{module}}中打开"
     }
   },
   "actuals": {
@@ -493,7 +519,7 @@
     "previous": "上一页",
     "next": "下一页",
     "retainedSource": "之前关联的来源",
-    "replacementHelp": "替换项会将所选的自动项目从合计中排除。删除手动替换项后，原来源会恢复。",
+    "replacementHelp": "只要这个手动项目存在，自动项目就不会计入。删除手动项目后，自动项目会恢复。",
     "replacing": "替换{{name}}",
     "missingFx_other": "{{count}} 笔流水因缺少汇率而被排除（{{currencies}}）。合计不完整。",
     "countedTransactions_zero": "没有交易",

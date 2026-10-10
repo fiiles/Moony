@@ -234,6 +234,7 @@
     "milestoneKindUnknown": "Diese Art von Erinnerung ist unbekannt.",
     "effectiveMonthInvalid": "Wählen Sie den ersten Tag eines Kalendermonats.",
     "cashflowItemInvalid": "Geben Sie einen gültigen Namen, einen positiven Betrag, eine Währung, ein Intervall und eine Cashflow-Kategorie ein.",
+    "cashflowPlanKeyInvalid": "Ungültiger Schlüssel der Planposition.",
     "cashflowReplacementInvalid": "Wählen Sie eine verfügbare automatische Quelle, die noch nicht ersetzt wurde.",
     "csvPreviewRangeInvalid": "Die Vorschauseite muss zwischen 1 und 200 Zeilen enthalten.",
     "pendingPromotionInvalid": "Die vorgemerkte Transaktion konnte nicht übernommen werden. Aktualisieren Sie die Vorschau und versuchen Sie es erneut.",
@@ -241,6 +242,7 @@
     "balanceCurrencyMismatch": "Die Währung des Kontoauszugssaldos weicht von der Kontowährung ab.",
     "balanceAnchorUnknown": "Das bisherige Saldodatum ist unbekannt. Bestätigen Sie zuerst das Ersetzen dieses Saldos.",
     "balanceBatchMismatch": "Dieser Kontoauszugsimport gehört nicht zu diesem Konto.",
+    "currencyLockedByRecords": "Die Währung kann nicht geändert werden, solange das Konto Saldoeinträge hat.",
     "learningIdentity": "Geben Sie eine verlässliche Kontokennung oder einen Empfänger an.",
     "paginationInvalid": "Wählen Sie eine gültige Verlaufsseite.",
     "systemRule": "Systemregeln können nicht geändert werden."

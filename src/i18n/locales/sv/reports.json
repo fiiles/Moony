@@ -48,7 +48,8 @@
     "currency": "Valuta",
     "frequency": "Frekvens",
     "category": "Kategori",
-    "selectCategory": "Välj kategori"
+    "selectCategory": "Välj kategori",
+    "description": "En återkommande inkomst eller utgift. Kategorin avgör var den räknas i planen."
   },
   "deleteConfirm": {
     "title": "Ta bort posten?",
@@ -429,12 +430,40 @@
       "incomes_other": "{{count}} inkomster",
       "expenses_one": "{{count}} utgift",
       "expenses_other": "{{count}} utgifter",
-      "addToSection": "Lägg till en post i det här avsnittet"
+      "addToSection": "Lägg till en post i det här avsnittet",
+      "outOfPlan": "Utanför planen",
+      "groupItems_one": "{{count}} post",
+      "groupItems_other": "{{count}} poster",
+      "groupExcluded_one": "{{count}} utanför planen",
+      "groupExcluded_other": "{{count}} utanför planen",
+      "groupCategoryExcluded": "hela kategorin utanför planen",
+      "autoFrom": "automatiskt från {{modules}}",
+      "outOfPlanCount_one": "{{count}} post utanför planen",
+      "outOfPlanCount_other": "{{count}} poster utanför planen",
+      "expandAll": "Expandera alla",
+      "collapseAll": "Fäll ihop alla",
+      "addToCategory": "Lägg till en post i den här kategorin",
+      "addIncome": "Lägg till inkomst",
+      "addExpense": "Lägg till utgift"
     },
     "toast": {
       "added": "Posten har lagts till i planen",
       "updated": "Posten har uppdaterats",
-      "deleted": "Posten har tagits bort"
+      "deleted": "Posten har tagits bort",
+      "excluded": "Utelämnad från planen",
+      "included": "Räknas med igen",
+      "categoryExcluded": "Kategorin utelämnad från planen",
+      "categoryIncluded": "Kategorin räknas med igen"
+    },
+    "menu": {
+      "label": "Alternativ: {{name}}",
+      "exclude": "Utelämna",
+      "include": "Räkna med",
+      "excludeCategory": "Utelämna kategorin",
+      "includeCategory": "Räkna med kategorin",
+      "categoryExcluded": "Hela kategorin är utanför planen",
+      "replace": "Ersätt med eget belopp…",
+      "openModule": "Öppna i {{module}}"
     }
   },
   "actuals": {
@@ -510,7 +539,7 @@
     "previous": "Föregående",
     "next": "Nästa",
     "retainedSource": "Tidigare kopplad källa",
-    "replacementHelp": "En ersättning utesluter den valda automatiska posten från summorna. Om du tar bort den manuella ersättningen återställs källan.",
+    "replacementHelp": "Så länge den här manuella posten finns räknas inte den automatiska. Om du tar bort den manuella posten kommer den tillbaka.",
     "replacing": "Ersätter {{name}}",
     "missingFx_one": "{{count}} rörelse utelämnad på grund av saknad växelkurs ({{currencies}}). Summorna är ofullständiga.",
     "missingFx_other": "{{count}} rörelser utelämnade på grund av saknad växelkurs ({{currencies}}). Summorna är ofullständiga.",

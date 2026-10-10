@@ -1,5 +1,9 @@
+import { completeAccountIdentifier } from './iban-utils';
+
 interface TransactionText {
   counterpartyName: string | null;
+  counterpartyIban: string | null;
+  counterpartyBankCode: string | null;
   description: string | null;
   remittanceInfo: string | null;
 }
@@ -7,15 +11,22 @@ interface TransactionText {
 const clean = (value: string | null) => value?.trim() || null;
 const key = (value: string) => value.toLocaleLowerCase().replace(/\s+/g, ' ');
 
-/** Row headline: the counterparty, else the bank's description of the movement. */
-export function transactionTitle(tx: TransactionText): string | null {
-  return clean(tx.counterpartyName) ?? clean(tx.description);
+/**
+ * Who the money went to or came from: the name over the full account number,
+ * or the account number alone when the name is unknown.
+ */
+export function counterpartyLabel(tx: TransactionText): {
+  title: string | null;
+  subtitle: string | null;
+} {
+  const name = clean(tx.counterpartyName);
+  const account = completeAccountIdentifier(tx.counterpartyIban, null, tx.counterpartyBankCode);
+  return name ? { title: name, subtitle: account } : { title: account, subtitle: null };
 }
 
-/** Free-text details of a row, without repeating the headline or each other. */
+/** What the payment was for: the description and the remittance info, each once. */
 export function transactionDetails(tx: TransactionText): string[] {
-  const title = transactionTitle(tx);
-  const seen = new Set(title ? [key(title)] : []);
+  const seen = new Set<string>();
   const details: string[] = [];
   for (const value of [clean(tx.description), clean(tx.remittanceInfo)]) {
     if (!value || seen.has(key(value))) continue;

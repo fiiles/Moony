@@ -50,7 +50,7 @@ import {
 } from '@/hooks/use-bank-account-mutations';
 import type { CategorizationResult } from '@shared/schema';
 import { useCategoryName } from '@/hooks/use-categories';
-import { transactionDetails, transactionTitle } from '@/utils/transaction-text';
+import { counterpartyLabel, transactionDetails } from '@/utils/transaction-text';
 import { useCurrency } from '@/lib/currency';
 import { useLanguage } from '@/i18n/I18nProvider';
 import { useFormat } from '@/lib/use-format';
@@ -1285,12 +1285,7 @@ export default function BankAccountDetail() {
                   if (showGroup) lastGroup = group;
                   const credit = tx.type === 'credit';
                   const amount = Math.abs(parseFloat(tx.amount) || 0);
-                  const title = transactionTitle(tx) ?? t('table.movement');
-                  const accountNumber = completeAccountIdentifier(
-                    tx.counterpartyIban,
-                    null,
-                    tx.counterpartyBankCode
-                  );
+                  const counterparty = counterpartyLabel(tx);
                   const detail = [
                     ...transactionDetails(tx),
                     !grouped ? fmt.day(tx.bookingDate) : null,
@@ -1331,15 +1326,22 @@ export default function BankAccountDetail() {
                               )}
                             </span>
                             <div className="min-w-0">
-                              <b className="block truncate text-table font-650" title={title}>
-                                {title}
-                              </b>
-                              {accountNumber && (
+                              {counterparty.title ? (
+                                <b
+                                  className="block truncate text-table font-650"
+                                  title={counterparty.title}
+                                >
+                                  {counterparty.title}
+                                </b>
+                              ) : (
+                                <span className="text-ink-4">—</span>
+                              )}
+                              {counterparty.subtitle && (
                                 <small
                                   className="block truncate text-micro font-500 text-ink-4 num"
-                                  title={accountNumber}
+                                  title={counterparty.subtitle}
                                 >
-                                  {accountNumber}
+                                  {counterparty.subtitle}
                                 </small>
                               )}
                             </div>

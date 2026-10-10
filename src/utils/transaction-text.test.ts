@@ -1,45 +1,61 @@
 import { describe, expect, it } from 'vitest';
-import { transactionDetails, transactionTitle } from './transaction-text';
+import { counterpartyLabel, transactionDetails } from './transaction-text';
 
 const tx = (
   counterpartyName: string | null,
-  description: string | null,
-  remittanceInfo: string | null
-) => ({ counterpartyName, description, remittanceInfo });
+  counterpartyIban: string | null,
+  description: string | null = null,
+  remittanceInfo: string | null = null
+) => ({
+  counterpartyName,
+  counterpartyIban,
+  counterpartyBankCode: null,
+  description,
+  remittanceInfo,
+});
 
-describe('transactionTitle', () => {
-  it('prefers the counterparty name', () => {
-    expect(transactionTitle(tx('Albert', 'Platba kartou', null))).toBe('Albert');
+describe('counterpartyLabel', () => {
+  it('shows the name with the full account number underneath', () => {
+    expect(counterpartyLabel(tx('Albert', 'CZ6508000000192000145399'))).toEqual({
+      title: 'Albert',
+      subtitle: '19-2000145399/0800',
+    });
   });
 
-  it('falls back to the description when the name is blank', () => {
-    expect(transactionTitle(tx('  ', 'Platba kartou', null))).toBe('Platba kartou');
+  it('promotes the account number when the name is unknown', () => {
+    expect(counterpartyLabel(tx('  ', 'CZ6508000000192000145399'))).toEqual({
+      title: '19-2000145399/0800',
+      subtitle: null,
+    });
   });
 
-  it('is null without any text', () => {
-    expect(transactionTitle(tx(null, null, null))).toBeNull();
+  it('never borrows the description', () => {
+    expect(counterpartyLabel(tx(null, null, 'Platba kartou'))).toEqual({
+      title: null,
+      subtitle: null,
+    });
   });
 });
 
 describe('transactionDetails', () => {
   it('lists the description and the remittance info', () => {
-    expect(transactionDetails(tx('Albert', 'Platba kartou', 'Nákup 42'))).toEqual([
+    expect(transactionDetails(tx('Albert', null, 'Platba kartou', 'Nákup 42'))).toEqual([
       'Platba kartou',
       'Nákup 42',
     ]);
   });
 
-  it('skips text already shown as the title', () => {
-    expect(transactionDetails(tx(null, 'Platba kartou', 'Nákup 42'))).toEqual(['Nákup 42']);
+  it('keeps the description even without a counterparty name', () => {
+    expect(transactionDetails(tx(null, null, 'Platba kartou'))).toEqual(['Platba kartou']);
   });
 
   it('skips duplicates regardless of case and spacing', () => {
-    expect(transactionDetails(tx('Albert', 'Nájem  říjen', 'nájem říjen'))).toEqual([
+    expect(transactionDetails(tx('Albert', null, 'Nájem  říjen', 'nájem říjen'))).toEqual([
       'Nájem  říjen',
     ]);
   });
 
   it('ignores blank values', () => {
-    expect(transactionDetails(tx('Albert', ' ', null))).toEqual([]);
+    expect(transactionDetails(tx('Albert', null, ' ', null))).toEqual([]);
   });
 });

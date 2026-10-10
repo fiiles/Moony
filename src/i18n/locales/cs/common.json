@@ -242,6 +242,7 @@
     "balanceAnchorOlder": "Výpis je starší než zaznamenané datum zůstatku účtu.",
     "balanceAnchorUnknown": "Datum současného zůstatku není známé. Nejprve potvrďte jeho nahrazení.",
     "balanceBatchMismatch": "Tento import výpisu nepatří k tomuto účtu.",
+    "currencyLockedByRecords": "Měnu nelze změnit, dokud má účet záznamy zůstatku.",
     "learningIdentity": "Zadejte spolehlivý identifikátor účtu nebo příjemce.",
     "paginationInvalid": "Vyberte platnou stránku historie.",
     "systemRule": "Systémová pravidla nelze upravit."

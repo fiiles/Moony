@@ -145,6 +145,8 @@ pub fn create_account(
 
 /// Update an existing bank account
 /// This is the SINGLE SOURCE OF TRUTH for bank account updates
+///
+/// The currency is locked once the account has balance records; they carry it.
 pub fn update_account(
     conn: &rusqlite::Connection,
     id: &str,
@@ -154,6 +156,23 @@ pub fn update_account(
 
     // Get existing account first
     let existing = get_account_by_id(conn, id)?;
+
+    if data
+        .currency
+        .as_deref()
+        .is_some_and(|c| !c.eq_ignore_ascii_case(&existing.currency))
+    {
+        let has_records: bool = conn.query_row(
+            "SELECT EXISTS(SELECT 1 FROM bank_balance_records WHERE bank_account_id = ?1)",
+            [id],
+            |r| r.get(0),
+        )?;
+        if has_records {
+            return Err(AppError::Validation(
+                "validation.currencyLockedByRecords".into(),
+            ));
+        }
+    }
 
     let account_type = data.account_type.clone().unwrap_or(existing.account_type);
     let currency = data.currency.clone().unwrap_or(existing.currency.clone());
@@ -1287,5 +1306,28 @@ mod tests {
             (a.name.as_str(), a.balance.as_str(), a.balance_as_of),
             ("Renamed", "100", Some(D2))
         );
+    }
+
+    #[test]
+    fn update_account_rejects_a_currency_change_while_records_exist() {
+        let conn = setup_test_db();
+        let mut edit = minimal_insert("EUR Account");
+        edit.currency = Some("CZK".into());
+        // No records yet: the currency may change
+        assert_eq!(
+            update_account(&conn, "acc-1", &edit).unwrap().currency,
+            "CZK"
+        );
+        edit.currency = Some("EUR".into());
+        update_account(&conn, "acc-1", &edit).unwrap();
+        record_balance(&conn, "acc-1", &record("100", D2)).unwrap();
+        edit.currency = Some("CZK".into());
+        assert!(matches!(
+            update_account(&conn, "acc-1", &edit),
+            Err(AppError::Validation(key)) if key == "validation.currencyLockedByRecords"
+        ));
+        // Same currency (any case) still passes
+        edit.currency = Some("eur".into());
+        assert!(update_account(&conn, "acc-1", &edit).is_ok());
     }
 }

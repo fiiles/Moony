@@ -242,6 +242,7 @@
     "balanceAnchorOlder": "The statement is older than the account's recorded balance date.",
     "balanceAnchorUnknown": "The existing balance date is unknown. Confirm replacing this balance first.",
     "balanceBatchMismatch": "This statement import does not belong to this account.",
+    "currencyLockedByRecords": "The currency cannot change while the account has balance records.",
     "learningIdentity": "Provide a reliable account identifier or a payee.",
     "paginationInvalid": "Select a valid history page.",
     "systemRule": "System rules cannot be changed."

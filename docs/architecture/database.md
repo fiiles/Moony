@@ -239,6 +239,7 @@ Grouped by owning domain (see the domain map in `overview.md`).
 | Table | Purpose | Notable columns / constraints |
 |---|---|---|
 | `cashflow_items` | User-defined recurring income/expense items | `amount` TEXT, `frequency`, `item_type`, `category` |
+| `cashflow_plan_exclusions` | Planning rows the user leaves out of the plan without deleting them | `key TEXT PRIMARY KEY`: `category:<categoryKey>` (whole category, including items added later), an automatic source id (`loan:<id>`, `insurance:<id>`, `propertyCosts:<id>`, `account:<id>`, `stock:<ticker>`, `bond:<id>`, `rental:<id>`) or `item:<manual item id>`; `created_at` (migration 013). Deleting a manual item deletes its key; keys of vanished automatic sources are harmless leftovers |
 | `projection_settings` | Growth/contribution assumptions per asset class | `asset_type UNIQUE`; `yearly_growth_rate`, `monthly_contribution` TEXT in its own `contribution_currency` (stored as typed, converted to the report currency by the projection; legacy rows are CZK amounts) |
 
 ### Milestones

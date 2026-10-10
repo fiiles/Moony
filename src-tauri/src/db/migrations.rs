@@ -77,6 +77,7 @@ fn all_migrations() -> Vec<(&'static str, &'static str)> {
         ("010_income_categories", MIGRATION_010),
         ("011_fx_eur_reference", MIGRATION_011),
         ("012_retire_czk_caches", MIGRATION_012),
+        ("013_cashflow_plan_exclusions", MIGRATION_013),
     ]
 }
 
@@ -2406,6 +2407,17 @@ ALTER TABLE portfolio_metrics_history DROP COLUMN total_real_estate_investment;
 ALTER TABLE portfolio_metrics_history DROP COLUMN total_other_assets;
 ALTER TABLE stock_value_history DROP COLUMN value_czk;
 ALTER TABLE crypto_value_history DROP COLUMN value_czk;
+"#;
+
+/// Rows of the planning report the user leaves out of the plan without deleting
+/// them. Keys: `category:<categoryKey>`, an automatic source id (`loan:<id>`,
+/// `insurance:<id>`, `propertyCosts:<id>`, `account:<id>`, `stock:<ticker>`,
+/// `bond:<id>`, `rental:<id>`) or `item:<manual item id>`.
+pub(crate) const MIGRATION_013: &str = r#"
+CREATE TABLE IF NOT EXISTS cashflow_plan_exclusions (
+    key TEXT PRIMARY KEY,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch())
+);
 "#;
 
 #[cfg(test)]

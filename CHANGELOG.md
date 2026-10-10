@@ -35,6 +35,12 @@ All notable changes to Moony are documented in this file. The format follows
   (income or expense) in one grouped list and no longer asks for an automatic source to replace. The
   MCP tool `cashflow_report` carries `included` per item and its totals follow the same rule.
 
+### Fixed
+
+- **Lists inside dialogs scroll with the wheel in the app window.** A select opened inside a modal
+  (the planning item's category, the settings category selects) no longer freezes under the dialog's
+  scroll lock in the Tauri webview; the same guard the currency picker already had.
+
 ### Changed
 
 - **No base currency.** CZK is no longer the unit Moony sums in. Net worth, history, positions,

@@ -17,6 +17,7 @@ export async function refreshMoneyFlows(client: QueryClient, refreshIdentities =
     'effective-transaction-flows',
     'cashflow-report',
     'learnedPayees',
+    'recategorization-preview',
     'customRules',
     'ruleHits',
     'categorizationOverview',

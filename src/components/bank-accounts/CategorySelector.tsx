@@ -1,5 +1,5 @@
 import { completeAccountIdentifier } from '@/utils/iban-utils';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { refreshMoneyFlows } from '@/lib/money-flow-refresh';
 import { translateApiError } from '@/lib/translate-api-error';
 /**
@@ -14,7 +14,20 @@ import { translateApiError } from '@/lib/translate-api-error';
  */
 
 import { useState, useMemo } from 'react';
-import { Check, ChevronsUpDown, Sparkles, Tag, X, Brain, Plus, ListPlus } from 'lucide-react';
+import {
+  ArrowRightLeft,
+  Check,
+  ChevronsUpDown,
+  CircleAlert,
+  Flag,
+  Sparkles,
+  Tag,
+  X,
+  Brain,
+  Plus,
+  ListPlus,
+} from 'lucide-react';
+import { useLocation } from 'wouter';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
@@ -27,15 +40,19 @@ import {
 } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Switch } from '@/components/ui/switch';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { categorizationApi } from '@/lib/tauri-api';
-import type { TransactionCategory } from '@shared/schema';
+import type { ChangedRow, RecategorizationPreview, TransactionCategory } from '@shared/schema';
 import { useTranslation } from 'react-i18next';
 
 import { CategoryIcon } from '@/components/common/CategoryIcon';
 import { CategoryFormDialog } from '@/components/categories/CategoryFormDialog';
 import { useCategoryName } from '@/hooks/use-categories';
+import type { NamedCategory } from '@/utils/category-name';
+import { formatBreakdown } from '@/utils/recategorization';
+import { editRuleHref } from '@/utils/rules-link';
 
 interface CategorySelectorProps {
   currentCategoryId?: string | null;
@@ -65,6 +82,16 @@ interface CategorySelectorProps {
    * picker — the primary way to categorize a recurring payee for good.
    */
   onCreateRule?: () => void;
+  /** The ledger row's id; enables the "other payments" preview in the picker footer. */
+  transactionId?: string;
+}
+
+/** What a pick does besides setting the row's category. */
+interface SelectOptions {
+  /** Learn from this pick (or, when a custom rule decides, retarget that rule). */
+  remember: boolean;
+  /** Also give the category to the other payments the rewritten rule covers. */
+  applyHistory: boolean;
 }
 
 /** Get category display info */
@@ -81,6 +108,16 @@ function getCategoryDisplay(categoryId: string | null, categories: TransactionCa
     iconName: category.icon || 'tag',
     color: category.color || '#6b7280',
   };
+}
+
+/** Display name of the category with this id; the raw id when it is not in the list. */
+function categoryNameById(
+  id: string,
+  categories: TransactionCategory[],
+  categoryName: (category: NamedCategory) => string
+): string {
+  const category = categories.find((c) => c.id === id);
+  return category ? categoryName(category) : id;
 }
 
 export function CategorySelector({
@@ -101,6 +138,7 @@ export function CategorySelector({
   enableLearning = true,
   rowLabel,
   onCreateRule,
+  transactionId,
 }: CategorySelectorProps) {
   const { t } = useTranslation('bank_accounts');
   const { t: tc } = useTranslation('common');
@@ -111,6 +149,16 @@ export function CategorySelector({
   const [createOpen, setCreateOpen] = useState(false);
   // Whether the "Remember for future" toggle was off when "+ New category" was clicked.
   const [createSkipLearning, setCreateSkipLearning] = useState(false);
+  const [, setLocation] = useLocation();
+
+  const canLearn = enableLearning && !!bankAccountId && isCredit !== undefined;
+  // What decides this payee's category today and how many other payments a remembered pick covers.
+  const preview = useQuery({
+    queryKey: ['recategorization-preview', transactionId],
+    queryFn: () => categorizationApi.previewRecategorization(transactionId as string),
+    enabled: open && canLearn && !!transactionId,
+    staleTime: 0,
+  });
 
   const currentCategory = useMemo(
     () => getCategoryDisplay(currentCategoryId ?? null, categories),
@@ -128,7 +176,35 @@ export function CategorySelector({
     onDeclineSuggestion?.();
   };
 
-  const handleSelect = async (categoryId: string, skipLearning: boolean = false) => {
+  const historyToast = (title: string, description: string | undefined, changed: ChangedRow[]) => {
+    if (changed.length === 0) {
+      toast(title, { description });
+      return;
+    }
+    toast(title, {
+      description,
+      duration: 8000,
+      action: {
+        label: t('categorization.undoHistory'),
+        onClick: () => {
+          void (async () => {
+            try {
+              const restored = await categorizationApi.restoreTransactionCategories(changed);
+              await refreshMoneyFlows(queryClient);
+              toast(t('categorization.historyRestored', { count: restored }));
+            } catch (e) {
+              toast.error(tc('status.error'), { description: translateApiError(e as Error, tc) });
+            }
+          })();
+        },
+      },
+    });
+  };
+
+  const handleSelect = async (
+    categoryId: string,
+    options: SelectOptions = { remember: true, applyHistory: false }
+  ) => {
     if (categoryId === currentCategoryId) return;
 
     setIsSaving(true);
@@ -141,36 +217,72 @@ export function CategorySelector({
     setIsSaving(false);
     setOpen(false);
 
-    // Skip learning if explicitly requested (one-time categorization)
-    // OR if learning is disabled for this selector
-    if (skipLearning || !enableLearning) {
+    // One-time categorization (switch off), or learning is disabled for this selector.
+    if (!options.remember || !canLearn) return;
+
+    // Own-account transfers categorize themselves and payments without an identity cannot be
+    // remembered; a custom rule can still be retargeted either way.
+    const info = preview.data;
+    if (
+      info &&
+      (info.governing === 'ownAccount' || (!info.learnable && info.governing !== 'custom'))
+    ) {
       return;
     }
+    const pickedName = categoryNameById(categoryId, categories, categoryName);
 
-    // The new rule is limited to this own account, direction and reliable identity.
-    const payee =
-      counterpartyName && counterpartyName.trim().length > 2 ? counterpartyName.trim() : null;
-    const iban =
-      counterpartyIban && counterpartyIban.trim().length > 5 ? counterpartyIban.trim() : null;
+    try {
+      if (info?.governing === 'custom' && info.rule) {
+        const changed = await categorizationApi.retargetCustomRule(
+          info.rule.id,
+          categoryId,
+          options.applyHistory
+        );
+        await refreshMoneyFlows(queryClient);
+        historyToast(
+          changed.length > 0
+            ? t('categorization.ruleRetargetedApplied', {
+                rule: info.rule.name,
+                category: pickedName,
+                count: changed.length,
+              })
+            : t('categorization.ruleRetargeted', { rule: info.rule.name, category: pickedName }),
+          undefined,
+          changed
+        );
+        return;
+      }
 
-    // Only learn if we have at least payee or iban
-    if ((payee || iban) && bankAccountId && isCredit !== undefined) {
-      try {
-        await categorizationApi.learn({
+      // The new rule is limited to this own account, direction and reliable identity.
+      const payee =
+        counterpartyName && counterpartyName.trim().length > 2 ? counterpartyName.trim() : null;
+      const iban =
+        counterpartyIban && counterpartyIban.trim().length > 5 ? counterpartyIban.trim() : null;
+      // Only learn if we have at least payee or iban
+      if (!payee && !iban) return;
+      const changed = await categorizationApi.learn(
+        {
           payee,
           counterpartyIban: iban,
           categoryId,
-          bankAccountId,
-          isCredit,
+          bankAccountId: bankAccountId as string,
+          isCredit: isCredit as boolean,
           counterpartyBankCode: counterpartyBankCode ?? null,
           counterpartyCountry: counterpartyCountry ?? null,
-        });
-        await refreshMoneyFlows(queryClient);
-        const learnKey = payee || iban || 'unknown';
-        toast(t('categorization.learned'), { description: `"${learnKey}"` });
-      } catch (e) {
-        toast.error(tc('status.error'), { description: translateApiError(e as Error, tc) });
-      }
+        },
+        options.applyHistory
+      );
+      await refreshMoneyFlows(queryClient);
+      const learnKey = payee || iban || 'unknown';
+      historyToast(
+        changed.length > 0
+          ? t('categorization.learnedApplied', { count: changed.length })
+          : t('categorization.learned'),
+        changed.length > 0 ? `"${learnKey}" → ${pickedName}` : `"${learnKey}"`,
+        changed
+      );
+    } catch (e) {
+      toast.error(tc('status.error'), { description: translateApiError(e as Error, tc) });
     }
   };
 
@@ -178,6 +290,16 @@ export function CategorySelector({
     setOpen(false);
     setCreateSkipLearning(skipLearning);
     setCreateOpen(true);
+  };
+
+  // What the picker footer needs from the preview, shared by the three render sites.
+  const previewProps = {
+    preview: preview.data,
+    previewLoading: preview.isFetching && !preview.data,
+    onEditRule: (ruleId: string) => {
+      setOpen(false);
+      setLocation(editRuleHref(ruleId));
+    },
   };
 
   const renderSelector = () => {
@@ -212,6 +334,7 @@ export function CategorySelector({
                 })}
                 enableLearning={enableLearning}
                 onCreate={handleRequestCreate}
+                {...previewProps}
               />
             </PopoverContent>
           </Popover>
@@ -285,6 +408,7 @@ export function CategorySelector({
                 })}
                 enableLearning={enableLearning}
                 onCreate={handleRequestCreate}
+                {...previewProps}
               />
             </PopoverContent>
           </Popover>
@@ -352,6 +476,7 @@ export function CategorySelector({
             })}
             enableLearning={enableLearning}
             onCreate={handleRequestCreate}
+            {...previewProps}
           />
         </PopoverContent>
       </Popover>
@@ -367,7 +492,12 @@ export function CategorySelector({
           onOpenChange={(next) => {
             if (!next) setCreateOpen(false);
           }}
-          onSaved={(created) => void handleSelect(created.id, createSkipLearning)}
+          onSaved={(created) =>
+            void handleSelect(created.id, {
+              remember: !createSkipLearning,
+              applyHistory: false,
+            })
+          }
         />
       )}
     </>
@@ -383,19 +513,36 @@ function CategoryCommandList({
   scopeLabel,
   busy = false,
   onCreate,
+  preview,
+  previewLoading = false,
+  onEditRule,
 }: {
   categories: TransactionCategory[];
   selectedId?: string | null;
-  onSelect: (id: string, skipLearning: boolean) => void;
+  onSelect: (id: string, options: SelectOptions) => void;
   enableLearning?: boolean;
   scopeLabel: string;
   busy?: boolean;
   /** Called with `skipLearning` when "+ New category" is clicked. */
   onCreate: (skipLearning: boolean) => void;
+  /** What decides this payee's category today and what a remembered pick would cover. */
+  preview?: RecategorizationPreview;
+  previewLoading?: boolean;
+  /** Opens a custom rule's editor. */
+  onEditRule?: (ruleId: string) => void;
 }) {
   const { t } = useTranslation('bank_accounts');
   const categoryName = useCategoryName();
   const [rememberForFuture, setRememberForFuture] = useState(true);
+  const [applyHistory, setApplyHistory] = useState(true);
+
+  // The checkbox is only on screen when the preview found other payments; a pick made before that
+  // never recategorizes history the user has not seen.
+  const historyOptions: SelectOptions = {
+    remember: rememberForFuture,
+    applyHistory: applyHistory && (preview?.matches ?? 0) > 0,
+  };
+  const governingRule = preview?.governing === 'custom' ? preview.rule : null;
 
   // Sort categories by sortOrder
   const sortedCategories = useMemo(() => {
@@ -415,7 +562,7 @@ function CategoryCommandList({
               key={category.id}
               disabled={busy}
               value={categoryName(category)}
-              onSelect={() => onSelect(category.id, !rememberForFuture)}
+              onSelect={() => onSelect(category.id, historyOptions)}
               className="flex items-center gap-2 py-2"
             >
               <Check
@@ -443,24 +590,95 @@ function CategoryCommandList({
         <Plus className="h-4 w-4 shrink-0" />
         {t('categoryManagement.newCategory')}
       </button>
-      {/* Toggle for learning preference - only if learning is enabled */}
+      {/* Learning footer - only if learning is enabled */}
       {enableLearning && (
-        <div className="border-t px-3 py-2.5">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <Brain className="h-3.5 w-3.5 text-ink-3" />
-              <Label htmlFor="remember-toggle" className="text-xs text-ink-3 cursor-pointer">
-                {t('categorization.rememberForFuture')}
-                <small className="block font-400">{scopeLabel}</small>
-              </Label>
-            </div>
-            <Switch
-              id="remember-toggle"
-              checked={rememberForFuture}
-              onCheckedChange={setRememberForFuture}
-              className="scale-75"
-            />
-          </div>
+        <div className="grid gap-2 border-t px-3 py-2.5">
+          {preview?.governing === 'ownAccount' ? (
+            <p className="m-0 flex items-start gap-2 text-xs text-ink-3">
+              <ArrowRightLeft className="mt-px h-3.5 w-3.5 shrink-0 text-ink-4" />
+              {t('categorization.ownAccountNote')}
+            </p>
+          ) : preview && !preview.learnable && preview.governing !== 'custom' ? (
+            <p className="m-0 flex items-start gap-2 text-xs text-ink-3">
+              <CircleAlert className="mt-px h-3.5 w-3.5 shrink-0 text-ink-4" />
+              {t('categorization.notLearnable')}
+            </p>
+          ) : (
+            <>
+              {governingRule && (
+                <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5 rounded-md bg-well px-2.5 py-2 text-xs font-medium text-ink-2">
+                  <Flag className="row-span-2 mt-px h-3.5 w-3.5 text-ink-3" />
+                  <span>
+                    {t('categorization.governedByRule', {
+                      rule: governingRule.name,
+                      category: categoryNameById(
+                        governingRule.categoryId,
+                        categories,
+                        categoryName
+                      ),
+                    })}
+                  </span>
+                  {onEditRule && (
+                    <button
+                      type="button"
+                      className="justify-self-start text-[10px] font-650 text-ink-2 hover:underline"
+                      onClick={() => onEditRule(governingRule.id)}
+                    >
+                      {t('categorization.editRule')}
+                    </button>
+                  )}
+                </div>
+              )}
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex items-start gap-2">
+                  <Brain className="mt-px h-3.5 w-3.5 shrink-0 text-ink-3" />
+                  <Label htmlFor="remember-toggle" className="cursor-pointer text-xs text-ink-3">
+                    {governingRule
+                      ? t('categorization.retargetRule')
+                      : t('categorization.rememberForFuture')}
+                    <small className="block font-400">
+                      {governingRule ? t('categorization.retargetRuleScope') : scopeLabel}
+                    </small>
+                  </Label>
+                </div>
+                <Switch
+                  id="remember-toggle"
+                  checked={rememberForFuture}
+                  onCheckedChange={setRememberForFuture}
+                  className="scale-75"
+                />
+              </div>
+              {rememberForFuture && previewLoading && (
+                <p className="m-0 text-[10px] text-ink-4" aria-live="polite">
+                  {t('categorization.historyChecking')}
+                </p>
+              )}
+              {rememberForFuture && preview && preview.matches > 0 && (
+                <label className="flex cursor-pointer items-start gap-2 text-xs text-ink-2">
+                  <Checkbox
+                    className="mt-px"
+                    checked={applyHistory}
+                    onCheckedChange={(v) => setApplyHistory(v === true)}
+                  />
+                  <span>
+                    <b className="block font-600">
+                      {t('categorization.applyHistory', { count: preview.matches })}
+                    </b>
+                    <small className="block text-[10px] text-ink-4">
+                      {formatBreakdown(
+                        preview.byCategory,
+                        (id) => categoryNameById(id, categories, categoryName),
+                        {
+                          uncategorized: t('categorization.uncategorizedCount'),
+                          more: (n) => t('categorization.moreCategories', { count: n }),
+                        }
+                      )}
+                    </small>
+                  </span>
+                </label>
+              )}
+            </>
+          )}
         </div>
       )}
     </Command>

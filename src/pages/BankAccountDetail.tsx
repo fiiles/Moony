@@ -1449,6 +1449,7 @@ export default function BankAccountDetail() {
                         <TableCell>
                           <CategorySelector
                             currentCategoryId={getEffectiveCategory(tx)}
+                            transactionId={tx.id}
                             suggestedCategoryId={tx.suggestedCategoryId}
                             counterpartyName={tx.counterpartyName}
                             counterpartyIban={tx.counterpartyIban}

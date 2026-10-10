@@ -27,17 +27,6 @@ pub fn month_start(timestamp: i64) -> Option<i64> {
         .and_hms_opt(0, 0, 0)
         .map(|d| d.and_utc().timestamp())
 }
-/// Uses only recorded rates on or before booking (up to ten days for weekends).
-/// DB failures propagate; absence is explicit and no global 1:1 fallback is used.
-/// An unusable stored rate (not finite or not positive) counts as missing.
-pub fn historical_czk(
-    conn: &Connection,
-    amount: f64,
-    currency: &str,
-    day: i64,
-) -> Result<Option<f64>> {
-    historical_amount(conn, amount, currency, "CZK", day)
-}
 /// Currency codes are normalized at the reporting boundary; unavailable quotes
 /// remain missing even for syntactically valid currencies outside the provider.
 pub fn normalize_currency(currency: &str) -> Result<String> {
@@ -67,6 +56,9 @@ pub fn money_in_currency(amount: f64, currency: &str) -> String {
         rounded = if rounded == 0.0 { 0.0 } else { rounded }
     )
 }
+/// Uses only recorded rates on or before booking (up to ten days for weekends).
+/// DB failures propagate; absence is explicit and no global 1:1 fallback is used.
+/// An unusable stored rate (not finite or not positive) counts as missing.
 /// Cross quotes must share a valid day; never combine separate last-known dates.
 /// Same-currency facts bypass database/rate access, including non-provider codes.
 pub fn historical_amount(
@@ -151,14 +143,6 @@ pub fn effective_flows(conn: &Connection, ids: &[String]) -> Result<Vec<Effectiv
         }
     }
     Ok(out)
-}
-pub fn transactions(
-    conn: &Connection,
-    start: i64,
-    end: i64,
-    accounts: Option<&[String]>,
-) -> Result<Vec<ReportTransaction>> {
-    transactions_in_currency(conn, start, end, accounts, "CZK")
 }
 pub fn transactions_in_currency(
     conn: &Connection,
@@ -436,7 +420,7 @@ mod tests {
         .unwrap();
         let a = effective_flows(&conn, &["own".into()]).unwrap();
         assert_eq!(a[0].effective_flow_kind, FlowKind::Income);
-        let a = transactions(&conn, 0, i64::MAX, None).unwrap();
+        let a = transactions_in_currency(&conn, 0, i64::MAX, None, "CZK").unwrap();
         assert_eq!(
             a.iter()
                 .find(|r| r.id == "own")
@@ -452,11 +436,15 @@ mod tests {
     #[test]
     fn booked_scoped_rows_share_effective_meaning_and_flag_missing_currency() {
         let conn = db();
-        let rows = transactions(&conn, 1704067200, 1706745599, Some(&["a".into()])).unwrap();
+        let rows =
+            transactions_in_currency(&conn, 1704067200, 1706745599, Some(&["a".into()]), "CZK")
+                .unwrap();
         assert_eq!(rows.len(), 3);
-        assert!(transactions(&conn, 0, i64::MAX, Some(&[]))
-            .unwrap()
-            .is_empty());
+        assert!(
+            transactions_in_currency(&conn, 0, i64::MAX, Some(&[]), "CZK")
+                .unwrap()
+                .is_empty()
+        );
         let own = rows.iter().find(|r| r.id == "own").unwrap();
         assert_eq!(own.effective_flow_kind, FlowKind::Transfer);
         assert_eq!(own.flow_source, crate::models::FlowSource::OwnAccount);
@@ -485,7 +473,8 @@ mod tests {
              INSERT INTO exchange_rate_history VALUES (1704067200,'YYY',0.0);",
         )
         .unwrap();
-        let rows = transactions(&conn, 0, i64::MAX, None).expect("report stays usable");
+        let rows =
+            transactions_in_currency(&conn, 0, i64::MAX, None, "CZK").expect("report stays usable");
         for id in ["inf", "nan", "badrate"] {
             let row = rows.iter().find(|r| r.id == id).unwrap();
             assert!(row.signed_amount.is_none(), "{id}");
@@ -503,7 +492,7 @@ mod tests {
     fn strict_fx_uses_recorded_rates_and_propagates_schema_errors() {
         let conn = db();
         assert_eq!(
-            historical_czk(&conn, 10.0, "ZZZ", 1704067200).unwrap(),
+            historical_amount(&conn, 10.0, "ZZZ", "CZK", 1704067200).unwrap(),
             None
         );
         conn.execute(
@@ -512,15 +501,15 @@ mod tests {
         )
         .unwrap();
         assert_eq!(
-            historical_czk(&conn, 10.0, "ZZZ", 1704067200 + 86400).unwrap(),
+            historical_amount(&conn, 10.0, "ZZZ", "CZK", 1704067200 + 86400).unwrap(),
             Some(250.0)
         );
         assert_eq!(
-            historical_czk(&conn, 10.0, "ZZZ", 1704067200 + 11 * 86400).unwrap(),
+            historical_amount(&conn, 10.0, "ZZZ", "CZK", 1704067200 + 11 * 86400).unwrap(),
             None
         );
         conn.execute("DROP TABLE exchange_rate_history", [])
             .unwrap();
-        assert!(historical_czk(&conn, 10.0, "ZZZ", 1704067200).is_err());
+        assert!(historical_amount(&conn, 10.0, "ZZZ", "CZK", 1704067200).is_err());
     }
 }

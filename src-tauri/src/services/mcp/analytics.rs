@@ -787,7 +787,15 @@ CREATE TABLE bonds(id TEXT,name TEXT,coupon_value TEXT,quantity TEXT,interest_ra
         assert_eq!(cat["remaining"], "500.00");
         assert_eq!(cat["usagePercent"], "50.0");
         assert_eq!(cat["overBudget"], false);
-        let app = crate::services::budgeting::get_report(&conn, SEP, OCT - 1, "monthly").unwrap();
+        let app = crate::services::budgeting::get_report_in_currency(
+            &conn,
+            SEP,
+            OCT - 1,
+            "monthly",
+            None,
+            "CZK",
+        )
+        .unwrap();
         assert_eq!(result["summary"]["totalExpenses"], app.total_expenses);
         assert_eq!(result["quality"]["missingFxCount"], 0);
     }
@@ -857,7 +865,9 @@ CREATE TABLE bonds(id TEXT,name TEXT,coupon_value TEXT,quantity TEXT,interest_ra
         .expect("replacement");
 
         let result = cashflow_report(&conn, None).expect("cashflow");
-        let app = crate::services::cashflow_planning::get_report(&conn, "monthly").unwrap();
+        let app =
+            crate::services::cashflow_planning::get_report_in_currency(&conn, "monthly", "CZK")
+                .unwrap();
 
         assert_eq!(result["mainCurrency"], "CZK");
         assert_eq!(result["viewType"], "monthly");

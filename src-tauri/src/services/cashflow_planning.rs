@@ -1080,9 +1080,6 @@ fn active_loan_ids(conn: &rusqlite::Connection, day: i64) -> Result<HashSet<Stri
     }
     Ok(active)
 }
-pub fn get_report(conn: &rusqlite::Connection, view_type: &str) -> Result<CashflowReport> {
-    get_report_in_currency(conn, view_type, "CZK")
-}
 pub fn get_report_in_currency(
     conn: &rusqlite::Connection,
     view_type: &str,
@@ -1090,10 +1087,7 @@ pub fn get_report_in_currency(
 ) -> Result<CashflowReport> {
     let report_currency = crate::services::reporting::normalize_currency(report_currency)?;
     let money = |v| crate::services::reporting::money_in_currency(v, &report_currency);
-    let mut fx = PlanningFx {
-        target: report_currency.clone(),
-        ..PlanningFx::default()
-    };
+    let mut fx = PlanningFx::new(report_currency.clone());
     let raw = get_raw_report(conn, view_type, &mut fx)?;
     for section in [&raw.personal, &raw.investments] {
         for item in section
@@ -1305,7 +1299,7 @@ fn validate_replacement(
         } else {
             None
         };
-        let report = get_report(conn, "monthly")?;
+        let report = get_report_in_currency(conn, "monthly", "CZK")?;
         if previous.as_ref() != Some(source)
             && !report
                 .automatic_sources
@@ -1332,17 +1326,15 @@ struct PlanningFx {
     quality: crate::models::ReportQuality,
     last_missing: bool,
 }
-impl Default for PlanningFx {
-    fn default() -> Self {
+impl PlanningFx {
+    fn new(target: String) -> Self {
         Self {
-            target: "CZK".into(),
+            target,
             quotes: crate::services::fx::current(),
             quality: crate::models::ReportQuality::default(),
             last_missing: false,
         }
     }
-}
-impl PlanningFx {
     /// Units of `currency` per unit of the quote reference, when quoted.
     fn rate(&self, currency: &str) -> Option<f64> {
         self.quotes.units(currency)
@@ -1448,11 +1440,8 @@ mod tests {
         assert_eq!(cross_report.total_expenses, "200.00");
         assert_eq!(cross_report.automatic_sources[0].amount, "200.00");
         // Also assert the unrounded annual composite before period normalization.
-        let mut fx = PlanningFx {
-            target: "GBP".into(),
-            quotes: crate::services::fx::Quotes::from_stored([("GBP", 2.5), ("USD", 2.75)]),
-            ..PlanningFx::default()
-        };
+        let mut fx = PlanningFx::new("GBP".into());
+        fx.quotes = crate::services::fx::Quotes::from_stored([("GBP", 2.5), ("USD", 2.75)]);
         let (annual, q) = property_costs_annualized(
             r#"[{"amount":100,"currency":"GBP","frequency":"monthly"},{"amount":110,"currency":"USD","frequency":"monthly"}]"#,
             &mut fx,
@@ -1560,7 +1549,7 @@ mod tests {
     #[test]
     fn replacement_avoids_double_count_retains_inventory_and_restores_on_delete() {
         let conn = planning_db();
-        let before = get_report(&conn, "monthly").unwrap();
+        let before = get_report_in_currency(&conn, "monthly", "CZK").unwrap();
         assert_eq!(before.total_expenses, "100.00");
         let item = InsertCashflowItem {
             name: "Adjusted loan".into(),
@@ -1576,7 +1565,7 @@ mod tests {
         let mut wrong = item;
         wrong.replacement_source_id = Some("loan:missing".into());
         assert!(create_cashflow_item(&conn, wrong).is_err());
-        let report = get_report(&conn, "monthly").unwrap();
+        let report = get_report_in_currency(&conn, "monthly", "CZK").unwrap();
         assert_eq!(report.total_expenses, "100.00");
         assert_eq!(report.automatic_sources.len(), 1);
         assert!(report
@@ -1587,7 +1576,9 @@ mod tests {
             .all(|i| i.is_user_defined));
         delete_cashflow_item(&conn, created.id).unwrap();
         assert_eq!(
-            get_report(&conn, "monthly").unwrap().total_expenses,
+            get_report_in_currency(&conn, "monthly", "CZK")
+                .unwrap()
+                .total_expenses,
             "100.00"
         );
     }
@@ -1595,7 +1586,7 @@ mod tests {
     fn planned_unknown_fx_is_excluded_and_marked_without_one_to_one_fallback() {
         let conn = planning_db();
         conn.execute("UPDATE loans SET currency='XPM'", []).unwrap();
-        let report = get_report(&conn, "monthly").unwrap();
+        let report = get_report_in_currency(&conn, "monthly", "CZK").unwrap();
         assert_eq!(report.total_expenses, "0.00");
         assert_eq!(report.quality.missing_fx_count, 1);
         assert_eq!(report.automatic_sources.len(), 1);
@@ -1614,7 +1605,7 @@ mod tests {
             [r#"[{"amount":500,"frequency":"monthly"}]"#],
         )
         .unwrap();
-        let report = get_report(&conn, "monthly").unwrap();
+        let report = get_report_in_currency(&conn, "monthly", "CZK").unwrap();
         assert_eq!(report.total_income, "0.00", "rent must not count as CZK");
         assert_eq!(report.total_expenses, "0.00", "cost must not count as CZK");
         assert_eq!(report.quality.missing_fx_count, 2);
@@ -1640,7 +1631,7 @@ mod tests {
                 kind,
                 serde_json::json!([{"amount":100,"frequency":"monthly","currency":"XPK"}]),
             );
-            let report = get_report(&conn, "monthly").unwrap();
+            let report = get_report_in_currency(&conn, "monthly", "CZK").unwrap();
             let source = report
                 .automatic_sources
                 .iter()
@@ -1672,7 +1663,7 @@ mod tests {
                         serde_json::json!([known, missing])
                     };
                     insert_property(&conn, kind, costs);
-                    let report = get_report(&conn, "monthly").unwrap();
+                    let report = get_report_in_currency(&conn, "monthly", "CZK").unwrap();
                     let source=report.automatic_sources.iter().find(|s|s.source_id.as_deref()==Some("propertyCosts:property")).unwrap_or_else(||panic!("missing inventory: {kind},CZK{czk_amount},missing_first{missing_first}"));
                     assert_eq!(source.amount, format!("{czk_amount}.00"));
                     assert_eq!(
@@ -1743,12 +1734,12 @@ mod tests {
     fn absent_dividend_values_are_optional_but_query_and_type_failures_propagate() {
         let conn = planning_db();
         conn.execute_batch("CREATE TABLE dividend_overrides(ticker TEXT,yearly_dividend_sum TEXT,currency TEXT); CREATE TABLE dividend_data(ticker TEXT,yearly_dividend_sum TEXT,currency TEXT); INSERT INTO stock_investments VALUES ('TEST','Test stock','2');").unwrap();
-        let report = get_report(&conn, "monthly").unwrap();
+        let report = get_report_in_currency(&conn, "monthly", "CZK").unwrap();
         assert_eq!(report.investments.total_income, "0.00");
         conn.execute("INSERT INTO dividend_data VALUES ('TEST','12','CZK')", [])
             .unwrap();
         assert_eq!(
-            get_report(&conn, "monthly")
+            get_report_in_currency(&conn, "monthly", "CZK")
                 .unwrap()
                 .investments
                 .total_income,
@@ -1757,12 +1748,18 @@ mod tests {
         conn.execute("UPDATE dividend_data SET yearly_dividend_sum=x'FF'", [])
             .unwrap();
         assert!(
-            matches!(get_report(&conn, "monthly"), Err(AppError::Database(_))),
+            matches!(
+                get_report_in_currency(&conn, "monthly", "CZK"),
+                Err(AppError::Database(_))
+            ),
             "type failure must not become absent dividend"
         );
         conn.execute("DROP TABLE dividend_data", []).unwrap();
         assert!(
-            matches!(get_report(&conn, "monthly"), Err(AppError::Database(_))),
+            matches!(
+                get_report_in_currency(&conn, "monthly", "CZK"),
+                Err(AppError::Database(_))
+            ),
             "schema failure must not become absent dividend"
         );
     }

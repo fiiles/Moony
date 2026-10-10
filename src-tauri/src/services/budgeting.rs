@@ -229,23 +229,6 @@ pub fn delete_goal(conn: &Connection, id: &str) -> Result<()> {
 // ========================== Budgeting Report ==========================
 
 /// Get the full budgeting report for a time period
-pub fn get_report(
-    conn: &Connection,
-    start_date: i64,
-    end_date: i64,
-    timeframe: &str,
-) -> Result<BudgetingReport> {
-    get_report_scoped(conn, start_date, end_date, timeframe, None)
-}
-pub fn get_report_scoped(
-    conn: &Connection,
-    start_date: i64,
-    end_date: i64,
-    timeframe: &str,
-    accounts: Option<&[String]>,
-) -> Result<BudgetingReport> {
-    get_report_in_currency(conn, start_date, end_date, timeframe, accounts, "CZK")
-}
 pub fn get_report_in_currency(
     conn: &Connection,
     start_date: i64,
@@ -594,14 +577,6 @@ fn period_limits(
     }
     Ok(out)
 }
-pub fn get_category_transactions(
-    conn: &Connection,
-    category_id: &str,
-    start: i64,
-    end: i64,
-) -> Result<Vec<BudgetingTransaction>> {
-    get_category_transactions_in_currency(conn, category_id, start, end, "CZK")
-}
 pub fn get_category_transactions_in_currency(
     conn: &Connection,
     category_id: &str,
@@ -628,26 +603,6 @@ pub fn get_category_transactions_in_currency(
 }
 
 // ========================== Async wrappers for Database ==========================
-
-/// Get budgeting report (async wrapper)
-pub async fn get_budgeting_report(
-    db: &Database,
-    start_date: i64,
-    end_date: i64,
-    timeframe: String,
-) -> Result<BudgetingReport> {
-    db.with_conn(|conn| get_report(conn, start_date, end_date, &timeframe))
-}
-
-/// Get category transactions (async wrapper)
-pub async fn get_transactions_for_category(
-    db: &Database,
-    category_id: String,
-    start_date: i64,
-    end_date: i64,
-) -> Result<Vec<BudgetingTransaction>> {
-    db.with_conn(|conn| get_category_transactions(conn, &category_id, start_date, end_date))
-}
 
 /// Get all budget goals (async wrapper)
 pub async fn get_budget_goals(db: &Database) -> Result<Vec<BudgetGoal>> {
@@ -766,7 +721,7 @@ mod tests {
     }
 
     fn limit_for(conn: &Connection, month: i64, next: i64) -> Option<String> {
-        get_report(conn, month, next - 1, "monthly")
+        get_report_in_currency(conn, month, next - 1, "monthly", None, "CZK")
             .unwrap()
             .expense_categories[0]
             .budget_limit
@@ -1080,7 +1035,7 @@ mod tests {
             },
         )
         .unwrap();
-        let report = get_report(&conn, jan, feb - 1, "monthly").unwrap();
+        let report = get_report_in_currency(&conn, jan, feb - 1, "monthly", None, "CZK").unwrap();
         assert_eq!(
             report.expense_categories.len(),
             1,
@@ -1091,7 +1046,7 @@ mod tests {
             Some("1000.12")
         );
         delete_goal(&conn, &goal.id).unwrap();
-        let report = get_report(&conn, jan, feb - 1, "monthly").unwrap();
+        let report = get_report_in_currency(&conn, jan, feb - 1, "monthly", None, "CZK").unwrap();
         assert_eq!(
             report.expense_categories[0].budget_limit.as_deref(),
             Some("1000.12")
@@ -1109,7 +1064,8 @@ mod tests {
           ('ir','acc1',1790812800,'100','CZK','cat_income','debit'),
           ('ci','acc1',1790812800,'2000','CZK','custom-income','credit');").unwrap();
         conn.execute("INSERT INTO bank_transactions(id,bank_account_id,booking_date,amount,currency,tx_type,status) VALUES ('pending','acc1',1790812800,'9999','CZK','debit','pending')",[]).unwrap();
-        let report = get_report(&conn, 1790812800, 1791158400, "monthly").unwrap();
+        let report =
+            get_report_in_currency(&conn, 1790812800, 1791158400, "monthly", None, "CZK").unwrap();
         assert_eq!(report.total_expenses, "500.00");
         assert_eq!(report.total_income, "2900.00");
         let cashflow = crate::services::cashflow_actuals::get_actuals_in_currency(
@@ -1123,8 +1079,14 @@ mod tests {
         .unwrap();
         assert_eq!(cashflow.total_expenses, "500.00");
         assert_eq!(cashflow.total_income, "2900.00");
-        let drilldown =
-            get_category_transactions(&conn, "cat_groceries", 1790812800, 1791158400).unwrap();
+        let drilldown = get_category_transactions_in_currency(
+            &conn,
+            "cat_groceries",
+            1790812800,
+            1791158400,
+            "CZK",
+        )
+        .unwrap();
         assert_eq!(drilldown.len(), 1);
         assert_eq!(drilldown[0].signed_amount.as_deref(), Some("-500.00"));
 
@@ -1158,21 +1120,23 @@ mod tests {
             .unwrap();
         }
         add_rate(&conn, feb, "CZK", 25.0);
-        let quarter = get_report(&conn, jan, 1711929599, "quarterly").unwrap();
+        let quarter =
+            get_report_in_currency(&conn, jan, 1711929599, "quarterly", None, "CZK").unwrap();
         assert_eq!(
             quarter.expense_categories[0].budget_limit.as_deref(),
             Some("6500.12")
         );
-        let old = get_report(&conn, jan, feb - 1, "monthly").unwrap();
+        let old = get_report_in_currency(&conn, jan, feb - 1, "monthly", None, "CZK").unwrap();
         assert_eq!(
             old.expense_categories[0].budget_limit.as_deref(),
             Some("1000.12")
         );
-        let before = get_report(&conn, 1672531200, 1675209599, "monthly").unwrap();
+        let before =
+            get_report_in_currency(&conn, 1672531200, 1675209599, "monthly", None, "CZK").unwrap();
         assert!(before.expense_categories.is_empty());
         let future_goal = get_all_goals(&conn).unwrap().remove(0);
         delete_goal(&conn, &future_goal.id).unwrap();
-        let old = get_report(&conn, jan, feb - 1, "monthly").unwrap();
+        let old = get_report_in_currency(&conn, jan, feb - 1, "monthly", None, "CZK").unwrap();
         assert_eq!(
             old.expense_categories[0].budget_limit.as_deref(),
             Some("1000.12")
@@ -1227,7 +1191,8 @@ mod tests {
     fn test_get_report_empty() {
         let conn = setup_test_db();
 
-        let report = get_report(&conn, 0, i64::MAX, "monthly").expect("Failed to get report");
+        let report = get_report_in_currency(&conn, 0, i64::MAX, "monthly", None, "CZK")
+            .expect("Failed to get report");
 
         assert_eq!(report.total_income, "0.00");
         assert_eq!(report.total_expenses, "0.00");
@@ -1251,7 +1216,8 @@ mod tests {
         )
         .expect("Failed to insert transactions");
 
-        let report = get_report(&conn, 0, i64::MAX, "monthly").expect("Failed to get report");
+        let report = get_report_in_currency(&conn, 0, i64::MAX, "monthly", None, "CZK")
+            .expect("Failed to get report");
 
         assert_eq!(report.total_income, "1000.00");
         assert_eq!(report.total_expenses, "150.50");
@@ -1354,16 +1320,22 @@ mod tests {
         .expect("insert");
 
         // UTC period bounds: 2026-09-01T00:00:00Z ..= 2026-09-30T23:59:59Z
-        let report = get_report(&conn, 1_788_220_800, 1_790_812_799, "monthly").expect("report");
+        let report =
+            get_report_in_currency(&conn, 1_788_220_800, 1_790_812_799, "monthly", None, "CZK")
+                .expect("report");
         assert_eq!(report.total_expenses, "100.00");
 
         // Local-time bounds from a UTC+2 client (the old frontend behaviour):
         // 2026-08-31T22:00:00Z ..= 2026-09-29T22:00:00Z — the transaction is lost.
-        let local = get_report(&conn, 1_788_213_600, 1_790_719_200, "monthly").expect("report");
+        let local =
+            get_report_in_currency(&conn, 1_788_213_600, 1_790_719_200, "monthly", None, "CZK")
+                .expect("report");
         assert_eq!(local.total_expenses, "0.00");
 
         // ...and the following month (starting 2026-09-30T22:00:00Z) misses it too.
-        let next = get_report(&conn, 1_790_805_600, 1_793_397_600, "monthly").expect("report");
+        let next =
+            get_report_in_currency(&conn, 1_790_805_600, 1_793_397_600, "monthly", None, "CZK")
+                .expect("report");
         assert_eq!(next.total_expenses, "0.00");
     }
 
@@ -1378,7 +1350,9 @@ mod tests {
         )
         .expect("insert");
         // 2026-01-01T00:00:00Z ..= 2026-12-31T23:59:59Z
-        let report = get_report(&conn, 1_767_225_600, 1_798_761_599, "yearly").expect("report");
+        let report =
+            get_report_in_currency(&conn, 1_767_225_600, 1_798_761_599, "yearly", None, "CZK")
+                .expect("report");
         assert_eq!(report.total_income, "250.00");
     }
 
@@ -1407,7 +1381,8 @@ mod tests {
         )
         .expect("insert");
 
-        let report = get_report(&conn, 1704067200, 1706745599, "monthly").expect("report");
+        let report = get_report_in_currency(&conn, 1704067200, 1706745599, "monthly", None, "CZK")
+            .expect("report");
         let groceries = &report.expense_categories[0];
         // 250 CZK spent of a 1 000 CZK budget = 25 % (not 250 % as with a CZK assumption)
         assert!((groceries.budget_percentage.expect("pct") - 25.0).abs() < 1e-9);
@@ -1451,7 +1426,8 @@ mod tests {
         add_expense(&conn, "tx1", january, "100", "XTB");
         add_expense(&conn, "tx2", june, "100", "XTB");
 
-        let report = get_report(&conn, 0, i64::MAX, "yearly").expect("report");
+        let report =
+            get_report_in_currency(&conn, 0, i64::MAX, "yearly", None, "CZK").expect("report");
         // 100 * 24.5 + 100 * 24.0 — not 2 * 100 * 25.2
         assert_eq!(report.total_expenses, "4850.00");
         assert_eq!(report.expense_categories[0].total_amount, "4850.00");
@@ -1470,7 +1446,8 @@ mod tests {
         add_expense(&conn, "tx2", day + 7200, "30", "XTB");
         add_expense(&conn, "tx3", day, "500", "CZK");
 
-        let report = get_report(&conn, 0, i64::MAX, "monthly").expect("report");
+        let report =
+            get_report_in_currency(&conn, 0, i64::MAX, "monthly", None, "CZK").expect("report");
         // 40 XTB at 24.5 = 980, plus 500 CZK
         assert_eq!(report.total_expenses, "1480.00");
     }
@@ -1482,7 +1459,8 @@ mod tests {
         let conn = setup_test_db();
         add_fx_history(&conn);
         add_expense(&conn, "tx1", 1_705_276_800, "100", "XTB");
-        let report = get_report(&conn, 0, i64::MAX, "monthly").expect("report");
+        let report =
+            get_report_in_currency(&conn, 0, i64::MAX, "monthly", None, "CZK").expect("report");
         assert_eq!(report.total_expenses, "0.00");
         assert_eq!(report.quality.missing_fx_count, 1);
         assert_eq!(report.quality.missing_fx_currencies, vec!["XTB"]);
@@ -1493,7 +1471,8 @@ mod tests {
         add_rate(&conn, 1_705_276_800 + 30 * 86_400, "CZK", 20.0);
         add_rate(&conn, 1_705_276_800 + 30 * 86_400, "XTB", 1.0);
         add_expense(&conn, "tx1", 1_705_276_800, "100", "XTB");
-        let report = get_report(&conn, 0, i64::MAX, "monthly").expect("report");
+        let report =
+            get_report_in_currency(&conn, 0, i64::MAX, "monthly", None, "CZK").expect("report");
         assert_eq!(report.total_expenses, "0.00");
         assert_eq!(report.quality.missing_fx_count, 1);
         assert_eq!(report.quality.missing_fx_currencies, vec!["XTB"]);
@@ -1509,7 +1488,8 @@ mod tests {
           INSERT INTO bank_transactions(id,bank_account_id,booking_date,amount,currency,tx_type,flow_kind,category_id) VALUES
           ('income-as-expense','acc1',1704067200,'100','CZK','debit','expense','cat_income'),
           ('transfer-as-expense','acc1',1704067200,'50','CZK','debit','expense','cat_internal_transfers');").unwrap();
-        let report = get_report(&conn, 1704067200, 1704153599, "monthly").unwrap();
+        let report =
+            get_report_in_currency(&conn, 1704067200, 1704153599, "monthly", None, "CZK").unwrap();
         assert_eq!(report.total_expenses, "150.00");
         assert_eq!(report.expense_categories.len(), 2);
         assert!(report
@@ -1525,7 +1505,8 @@ mod tests {
                 && group.total_amount == "50.00"
                 && group.transaction_count == 1));
         conn.execute_batch("UPDATE transaction_categories SET kind='expense' WHERE id='cat_income'; UPDATE bank_transactions SET flow_kind=NULL WHERE id='income-as-expense';").unwrap();
-        let by_role = get_report(&conn, 1704067200, 1704153599, "monthly").unwrap();
+        let by_role =
+            get_report_in_currency(&conn, 1704067200, 1704153599, "monthly", None, "CZK").unwrap();
         assert_eq!(by_role.total_expenses, "150.00");
         assert_eq!(by_role.expense_categories.len(), 2);
     }
@@ -1540,7 +1521,8 @@ mod tests {
           ('income1','acc1',1704067200,'200','CZK','credit',NULL,'booked'),
           ('income2','acc1',1704067200,'300','CZK','credit',NULL,'booked'),
           ('pending','acc1',1704067200,'100','CZK','debit',NULL,'pending');").unwrap();
-        let report = get_report(&conn, 1704067200, 1704153599, "monthly").unwrap();
+        let report =
+            get_report_in_currency(&conn, 1704067200, 1704153599, "monthly", None, "CZK").unwrap();
         assert_eq!(report.uncategorized_expenses, "0.00");
         // Like the expense count below, the AED row counts without a quote.
         assert_eq!(report.uncategorized_transaction_count, 5);
@@ -1548,8 +1530,10 @@ mod tests {
             serde_json::to_value(&report).unwrap()["uncategorizedExpenseTransactionCount"],
             3
         );
-        let drilldown =
-            crate::services::reporting::transactions(&conn, 1704067200, 1704153599, None).unwrap();
+        let drilldown = crate::services::reporting::transactions_in_currency(
+            &conn, 1704067200, 1704153599, None, "CZK",
+        )
+        .unwrap();
         assert_eq!(
             drilldown
                 .iter()
@@ -1574,7 +1558,8 @@ mod tests {
         )
         .expect("insert");
 
-        let report = get_report(&conn, 0, i64::MAX, "monthly").expect("report");
+        let report =
+            get_report_in_currency(&conn, 0, i64::MAX, "monthly", None, "CZK").expect("report");
 
         assert_eq!(report.total_income, "80000.00");
         assert_eq!(report.total_expenses, "25000.00");
@@ -1599,7 +1584,8 @@ mod tests {
         )
         .expect("insert");
 
-        let report = get_report(&conn, 0, i64::MAX, "monthly").expect("report");
+        let report =
+            get_report_in_currency(&conn, 0, i64::MAX, "monthly", None, "CZK").expect("report");
         assert_eq!(report.total_income, "3200.00");
         assert_eq!(report.net_balance, "3200.00");
     }
@@ -1616,7 +1602,8 @@ mod tests {
         )
         .expect("insert");
 
-        let report = get_report(&conn, 0, i64::MAX, "monthly").expect("report");
+        let report =
+            get_report_in_currency(&conn, 0, i64::MAX, "monthly", None, "CZK").expect("report");
         assert_eq!(report.total_income, "500.00");
         assert_eq!(report.total_expenses, "0.00");
         assert_eq!(report.net_balance, "500.00");

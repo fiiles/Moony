@@ -1,0 +1,196 @@
+{
+  "title": "Aktienmonitor",
+  "subtitle": "Aktien, die Sie in Betracht ziehen: Kurse in ihrer eigenen Währung, Kursziele und Ihre Notizen.",
+  "cancel": "Abbrechen",
+  "search": {
+    "placeholder": "Aktie suchen (Symbol oder Name), um sie zu beobachten",
+    "noResults": "Keine Aktien gefunden",
+    "searching": "Suche läuft…"
+  },
+  "table": {
+    "stock": "Aktie",
+    "price": "Kurs",
+    "fiftyTwoWeekLow": "52-Wochen-Tief",
+    "targetPrice": "Ziel",
+    "change": "Änderung",
+    "changePct": "Änderung %",
+    "held": "Im Portfolio",
+    "pricesUpdatedAt": "Kurse aktualisiert um {{time}}",
+    "pricesNeverUpdated": "Kurse wurden noch nicht abgerufen",
+    "fiftyTwoWeekHigh": "52-Wochen-Hoch",
+    "title": "Beobachtet",
+    "sub": "Änderung gegenüber dem Vortagesschluss · 52-Wochen-Spanne mit aktuellem Kurs und Ziel",
+    "sort": {
+      "name": "Nach Name",
+      "change": "Nach Änderung",
+      "target": "Nach Ziel"
+    },
+    "changeToday": "Änderung heute",
+    "range": "52-W-Spanne",
+    "target": "Ziel",
+    "setTarget": "Ziel festlegen",
+    "targetReached": "Ziel {{price}} erreicht",
+    "toTarget": "{{pct}} bis zum Ziel",
+    "waitsBelow": "wartet auf einen Rücksetzer",
+    "waitsAbove": "wartet auf einen Anstieg",
+    "footer_one": "{{count}} Aktie · Kurse in ihrer eigenen Währung, keine Umrechnung",
+    "footer_other": "{{count}} Aktien · Kurse in ihrer eigenen Währung, keine Umrechnung",
+    "source": "Quelle Yahoo Finance · bis zu 15 Minuten verzögert"
+  },
+  "empty": {
+    "title": "Keine beobachteten Aktien",
+    "description": "Suchen Sie oben eine Aktie und beobachten Sie sie, um mit dem Monitoring zu beginnen."
+  },
+  "actions": {
+    "follow": "Beobachten",
+    "unfollow": "Nicht mehr beobachten",
+    "refresh": "Kurse aktualisieren",
+    "followPortfolio": "{{count}} aus Portfolio beobachten",
+    "refreshShort": "Aktualisieren",
+    "buy": "Ins Portfolio kaufen",
+    "openInPortfolio": "Im Portfolio öffnen",
+    "setTarget": "Ziel festlegen",
+    "editTarget": "Ziel bearbeiten",
+    "notes": "Notizen"
+  },
+  "unfollowConfirm": {
+    "title": "{{ticker}} nicht mehr beobachten?",
+    "description": "Kursziel und Notizen zu dieser Aktie werden gelöscht."
+  },
+  "detail": {
+    "marketCap": "Marktkapitalisierung",
+    "dividendYield": "Dividendenrendite",
+    "peRatio": "KGV",
+    "fiftyTwoWeekLow": "52-Wochen-Tief",
+    "fiftyTwoWeekHigh": "52-Wochen-Hoch",
+    "previousClose": "Vortagesschluss",
+    "noData": "Keine Kursdaten verfügbar (offline?)",
+    "notFollowed": "Sie beobachten diese Aktie noch nicht.",
+    "backToOverview": "Zurück zur Übersicht",
+    "periodStart": "Beginn {{period}}: {{price}}",
+    "openInPortfolio": "Im Portfolio öffnen",
+    "back": "Zurück zur Beobachtungsliste",
+    "followedSince": "Beobachtet seit {{date}}",
+    "notFollowedShort": "Noch nicht beobachtet",
+    "held": "in Ihrem Portfolio",
+    "notHeld": "nicht in Ihrem Portfolio",
+    "price": "Kurs",
+    "today": "{{change}} heute · Schluss {{close}}",
+    "target": "Kursziel",
+    "toTarget": "noch {{pct}}",
+    "targetReached": "Ziel erreicht",
+    "periodChange": "Änderung {{change}}",
+    "legend": {
+      "price": "Kurs",
+      "target": "Kursziel",
+      "watchStart": "Beobachtungsbeginn"
+    },
+    "watchStartTarget": "Ziel {{price}}",
+    "stats": {
+      "exchangeNote": "an der {{exchange}}",
+      "peNote": "Kurs-Gewinn-Verhältnis der letzten 12 Monate",
+      "dividendNote": "{{amount}} pro Jahr je Aktie",
+      "range": "52-W-Spanne",
+      "min": "Min.",
+      "max": "Max.",
+      "rangeLabel": "52-Wochen-Spanne {{low}} – {{high}}, aktueller Kurs {{current}}",
+      "rangeLabelTarget": "52-Wochen-Spanne {{low}} – {{high}}, aktueller Kurs {{current}}, Ziel {{target}}"
+    },
+    "keyData": "Eckdaten",
+    "kv": {
+      "previousClose": "Vortagesschluss",
+      "changeToday": "Änderung heute",
+      "low": "52-W-Tief",
+      "high": "52-W-Hoch",
+      "marketCap": "Marktkapitalisierung",
+      "pe": "KGV",
+      "dividend": "Dividendenrendite",
+      "exchange": "Börse",
+      "updated": "Kurse aktualisiert"
+    },
+    "since": {
+      "title": "Seit Beobachtungsbeginn",
+      "text": "Über {{days}} hinweg hat sich der Kurs, ausgehend von {{price}}, um",
+      "toTarget": "Bis zum Ziel fehlen {{amount}}.",
+      "noData": "Beobachtungsdauer: {{days}}; der Kurs von damals liegt noch nicht vor.",
+      "days_one": "{{count}} Tag",
+      "days_other": "{{count}} Tage"
+    },
+    "followPrompt": "Mit dem Beobachten erhalten Sie ein Kursziel, Notizen und die Markierung des Beobachtungsbeginns im Diagramm."
+  },
+  "target": {
+    "label": "Kursziel",
+    "set": "Ziel festlegen",
+    "edit": "Bearbeiten",
+    "clear": "Ziel löschen",
+    "save": "Ziel speichern",
+    "cancel": "Abbrechen",
+    "toTarget": "{{pct}} bis zum Ziel",
+    "placeholder": "z. B. 250,00",
+    "title": "Kursziel",
+    "description": "Der Kurs, bei dem Sie handeln möchten. Sobald die Aktie ihn überschreitet, führt Moony sie in der Übersicht unter den Meilensteinen auf.",
+    "field": "Ziel",
+    "hintCurrent": "Aktueller Kurs {{price}}",
+    "hintHigh": "52-W-Hoch {{price}}",
+    "directionLabel": "Worauf das Ziel wartet",
+    "directionBelow": "Wartet auf einen Rücksetzer – kaufen / zukaufen",
+    "directionAbove": "Wartet auf einen Anstieg – verkaufen",
+    "explainBelow": "Moony erinnert Sie, wenn der Kurs auf {{price}} fällt ({{pct}} vom heutigen Kurs).",
+    "explainAbove": "Moony erinnert Sie, wenn der Kurs auf {{price}} steigt ({{pct}} vom heutigen Kurs).",
+    "explainBelowNoPrice": "Moony erinnert Sie, wenn der Kurs auf {{price}} fällt.",
+    "explainAboveNoPrice": "Moony erinnert Sie, wenn der Kurs auf {{price}} steigt.",
+    "explainReached": "Der Kurs liegt bereits auf oder jenseits dieses Ziels – Moony führt es sofort auf."
+  },
+  "notes": {
+    "title": "Notizen",
+    "edit": "Bearbeiten",
+    "write": "Schreiben",
+    "preview": "Vorschau",
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "empty": "Noch keine Notizen. Klicken Sie auf „Bearbeiten“, um Recherchenotizen hinzuzufügen (Markdown wird unterstützt).",
+    "placeholder": "Markdown-Notizen schreiben…",
+    "toolbar": {
+      "bold": "Fett",
+      "italic": "Kursiv",
+      "heading": "Überschrift",
+      "list": "Aufzählung",
+      "orderedList": "Nummerierte Liste",
+      "link": "Link"
+    },
+    "sub": "Markdown · auch über den Assistenten (MCP) bearbeitbar",
+    "paragraphs_one": "{{count}} Absatz",
+    "paragraphs_other": "{{count}} Absätze",
+    "markdownHint": "Markdown"
+  },
+  "chart": {
+    "noData": "Keine Diagrammdaten für diesen Zeitraum",
+    "currentPrice": "Aktueller Kurs",
+    "targetLabel": "Ziel {{price}}"
+  },
+  "toast": {
+    "followed": "{{ticker}} wird jetzt beobachtet",
+    "unfollowed": "{{ticker}} wird nicht mehr beobachtet",
+    "followedPortfolio_one": "1 Aktie aus Ihrem Portfolio wird jetzt beobachtet",
+    "followedPortfolio_other": "{{count}} Aktien aus Ihrem Portfolio werden jetzt beobachtet"
+  },
+  "eyebrow": "Beobachtungsliste",
+  "status": {
+    "updated": "Kurse aktualisiert {{time}} · Aktualisierung alle 5 Minuten",
+    "updatedShort": "Kurse aktualisiert {{time}}",
+    "never": "Kurse noch nicht geladen"
+  },
+  "stats": {
+    "watched": "Beobachtete Aktien",
+    "heldNote_one": "{{count}} davon ist in Ihrem Portfolio",
+    "heldNote_other": "{{count}} davon sind in Ihrem Portfolio",
+    "heldNoteNone": "keine davon ist in Ihrem Portfolio",
+    "atTarget": "Am Kursziel",
+    "targetReached": "Ziel {{price}} erreicht",
+    "toTarget": "{{pct}} bis zum Ziel",
+    "noTargets": "noch keine Kursziele",
+    "topToday": "Stärkster heute",
+    "worstNote": "schwächster {{name}} {{change}}",
+    "noChanges": "heute keine Änderung"
+  }
+}

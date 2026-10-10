@@ -1,0 +1,194 @@
+{
+  "annuity": {
+    "title": "Annuitätenrechner",
+    "subtitle": "Rate, Gesamtzinsen und Tilgungsplan für jeden Kredit. Die Werte aktualisieren sich beim Tippen.",
+    "eyebrow": "Rechner",
+    "status": "Lokal berechnet, nichts wird gespeichert",
+    "actions": {
+      "loadLoan": "Aus meinen Krediten laden",
+      "export": "Exportieren"
+    },
+    "form": {
+      "title": "Kreditparameter",
+      "amount": "Kreditbetrag",
+      "years": "Laufzeit",
+      "yearsUnit": "Jahre",
+      "rate": "Jahreszins",
+      "frequency": "Zahlungsintervall",
+      "frequencies": {
+        "monthly": "Monatlich",
+        "quarterly": "Vierteljährlich",
+        "semiAnnually": "Halbjährlich",
+        "annually": "Jährlich"
+      },
+      "extra": "Sonderzahlung pro Jahr",
+      "optional": "optional",
+      "extraHint": "Einmal pro Jahr zusätzlich zu den regulären Raten, ohne Vorfälligkeitsentschädigung."
+    },
+    "insight": {
+      "extraYearly": "{{extra}} Sonderzahlung pro Jahr",
+      "shortens": "verkürzt die Laufzeit um {{years}} und spart",
+      "onInterest": "an Zinsen. Der Plan unten zeigt die Variante ohne Sonderzahlungen.",
+      "noExtra": "Geben Sie eine Sonderzahlung ein, um zu sehen, wie viele Jahre und wie viel Zinsen Sie sparen."
+    },
+    "hero": {
+      "payment": {
+        "monthly": "Monatliche Rate",
+        "quarterly": "Vierteljährliche Rate",
+        "semiAnnually": "Halbjährliche Rate",
+        "annually": "Jährliche Rate"
+      },
+      "total": "gesamt {{amount}}",
+      "interestShare": "davon Zinsen {{amount}} · {{percent}}",
+      "view": {
+        "years": "Nach Jahr",
+        "share": "Zinsanteil"
+      }
+    },
+    "legend": {
+      "principal": "Tilgung",
+      "interest": "Zinsen",
+      "milestone": "Meilenstein"
+    },
+    "milestones": {
+      "cross": "Tilgung übersteigt Zinsen",
+      "half": "Hälfte der Schuld getilgt",
+      "year": "Jahr {{year}}"
+    },
+    "years_one": "{{count}} Jahr",
+    "years_other": "{{count}} Jahre",
+    "payments_one": "{{count}} Rate",
+    "payments_other": "{{count}} Raten",
+    "stats": {
+      "totalPaid": "Sie zahlen insgesamt",
+      "totalInterest": "Gesamtzinsen",
+      "totalInterestNote": "{{percent}} des geliehenen Betrags",
+      "withExtra": "Mit der Sonderzahlung",
+      "withExtraNote": "gesparte Zinsen · Laufzeit {{short}} statt {{long}}",
+      "firstShare": "Zinsanteil der ersten Rate",
+      "firstShareNote": "in der letzten {{percent}}"
+    },
+    "table": {
+      "title": "Tilgungsplan",
+      "subYears": "Summen pro Jahr · ohne Sonderzahlungen",
+      "subPeriods": "Einzelne Raten · ohne Sonderzahlungen",
+      "granularity": {
+        "years": "Jährlich"
+      },
+      "year": "Jahr",
+      "period": "Periode",
+      "payments": "Zahlungen",
+      "principal": "Tilgung",
+      "interest": "Zinsen",
+      "balance": "Restschuld",
+      "footer": "{{shown}} von {{total}} Zeilen",
+      "showAll": "Gesamten Plan anzeigen",
+      "showLess": "Nur den Anfang anzeigen",
+      "periodLabel": "{{year}} · Periode {{n}}"
+    },
+    "empty": "Geben Sie Kreditbetrag, Laufzeit und Zinssatz ein."
+  },
+  "estate": {
+    "title": "Rendite einer Immobilieninvestition",
+    "subtitle": "Bewerten Sie eine Immobilie als Gesamtinvestition: Miete und Cashflow, Kredittilgung, Preissteigerung und Gewinn aus einem späteren Verkauf.",
+    "eyebrow": "Rechner",
+    "status": "Lokal berechnet, nichts wird gespeichert",
+    "prefillNoRate": "Die Immobilie hat einen Betrag in einer Währung ohne Wechselkurs und wurde deshalb nicht geladen. Der Rechner zeigt die Beispielwerte.",
+    "actions": {
+      "loadProperty": "Aus meinen Immobilien laden"
+    },
+    "yearsUnit": "Jahre",
+    "years_one": "{{count}} Jahr",
+    "years_other": "{{count}} Jahre",
+    "purchase": {
+      "title": "Kauf",
+      "price": "Kaufpreis",
+      "loan": "Kreditbetrag",
+      "years": "Laufzeit",
+      "rate": "Zinssatz",
+      "equity": "Eigenkapital",
+      "ltv": "LTV",
+      "payment": "Monatliche Rate"
+    },
+    "rent": {
+      "title": "Vermietung",
+      "rent": "Erwartete Monatsmiete",
+      "costs": "Monatliche Kosten",
+      "vacancy": "Leerstand",
+      "vacancyUnit": "Mon./Jahr",
+      "hint": "Kosten: Instandhaltung, Steuer, Versicherung, Rücklage."
+    },
+    "projection": {
+      "title": "Prognose",
+      "rentGrowth": "Mietsteigerung",
+      "costsGrowth": "Kostensteigerung",
+      "priceGrowth": "Preissteigerung",
+      "perYear": "%/Jahr",
+      "years": "Haltedauer",
+      "oneTime": "Einmalkosten"
+    },
+    "sale": {
+      "title_one": "Verkauf nach {{count}} Jahr",
+      "title_other": "Verkauf nach {{count}} Jahren",
+      "finalPrice": "Endpreis",
+      "remainingLoan": "Restkredit",
+      "repaid": "Getilgter Betrag",
+      "cumulative": "Kumulierter Cashflow",
+      "equity": "Ihr Anteil beim Verkauf",
+      "totalReturn": "Gesamtrendite",
+      "pa": "{{percent}} p. a.",
+      "formula": "Rendite = (Endpreis − Restkredit − Eigenkapital + kumulierter Cashflow) / Eigenkapital. Vor Steuern und Verkaufskosten."
+    },
+    "hero": {
+      "label": "Gesamtrendite auf Ihr Eigenkapital",
+      "value": "{{percent}} pro Jahr",
+      "total": "gesamt {{percent}} über {{years}}",
+      "components": "Cashflow {{cashflow}} · Tilgung · Preissteigerung {{growth}}",
+      "cashflow": "Netto-Cashflow",
+      "cashflowNote": "pro Monat in Jahr 1 · brutto {{gross}}"
+    },
+    "legend": {
+      "equity": "Ihr Anteil (Wert − Kredit + Cashflow)",
+      "band": "Preissteigerung ± 1 PP",
+      "invested": "Eingesetztes Kapital",
+      "milestone": "Meilenstein"
+    },
+    "chart": {
+      "purchase": "Kauf",
+      "tipRow": "{{year}} · Wert {{value}} · Kredit {{loan}} · kumulierter Cashflow {{cumulative}}",
+      "tipStart": "{{year}} · eingesetztes Kapital {{invested}}"
+    },
+    "milestones": {
+      "positive": "Positiver Jahres-Cashflow",
+      "positiveLine": "ab {{year}}",
+      "half": "Hälfte des Kredits getilgt",
+      "halfLine": "Jahr {{year}}",
+      "sale": "Verkauf",
+      "saleLine": "{{year}} · Preis {{price}} · Kredit {{loan}}"
+    },
+    "stats": {
+      "equity": "Eigenkapital",
+      "equityNote": "{{equity}} + Einmalkosten {{once}}",
+      "grossYield": "Brutto-Mietrendite",
+      "grossYieldNote": "Jahresmiete / Kaufpreis",
+      "cashflow": "Jährlicher Netto-Cashflow",
+      "cashflowNote": "in Jahr 1 · {{percent}} des Eigenkapitals",
+      "saleGain": "Gewinn aus dem Verkauf",
+      "saleGainNote": "Preis − Kredit − Eigenkapital · Haltedauer {{years}}"
+    },
+    "table": {
+      "title": "Jahresübersicht",
+      "sub": "Miete und Kosten steigen mit den angegebenen Raten, die Rate bleibt fest",
+      "year": "Jahr",
+      "rent": "Miete",
+      "costs": "Kosten",
+      "payments": "Zahlungen",
+      "cashflow": "Netto-CF",
+      "balance": "Restkredit",
+      "value": "Wert",
+      "footer": "{{years}} · kumulierter Netto-Cashflow {{cumulative}}",
+      "vacancyNote": "Leerstand wird von der Miete abgezogen"
+    },
+    "empty": "Geben Sie Kaufpreis und Miete ein."
+  }
+}

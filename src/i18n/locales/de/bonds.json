@@ -1,0 +1,113 @@
+{
+  "title": "Anleihen",
+  "eyebrow": "Portfolio",
+  "subtitle": "Staats- und Unternehmensanleihen bis zur Fälligkeit gehalten, Rendite aus festen Kupons.",
+  "status": "Bewertet zum Nennwert · ohne Stückzinsen",
+  "loading": "Anleihen werden geladen...",
+  "empty": {
+    "title": "Noch keine Anleihen",
+    "description": "Fügen Sie die erste Emission hinzu: Nennwert, Stückzahl, Kupon und Fälligkeit. Die Fälligkeitsleiter baut sich von selbst auf."
+  },
+  "addBond": "Anleihe hinzufügen",
+  "export": "Exportieren",
+  "summary": {
+    "nominal": "Nennwert",
+    "issues_one": "{{count}} Emission",
+    "issues_other": "{{count}} Emissionen",
+    "currencies_one": "{{count}} Währung",
+    "currencies_other": "{{count}} Währungen",
+    "yearlyCoupon": "Kupon pro Jahr",
+    "weightedRate": "gewichteter Durchschnitt {{rate}} p. a.",
+    "nearestMaturity": "Nächste Fälligkeit",
+    "returns": "bringt {{amount}} zurück",
+    "noMaturity": "keine Emission hat eine Fälligkeit",
+    "avgToMaturity": "Durchschnittliche Restlaufzeit",
+    "years": "{{value}} Jahre",
+    "lastMaturity": "nach Nennwert gewichtet · letzte {{date}}",
+    "noneLive": "keine aktive Emission"
+  },
+  "until": {
+    "in": "noch {{duration}}",
+    "soon": "innerhalb eines Monats",
+    "past": "getilgt am {{date}}"
+  },
+  "duration": {
+    "years_one": "{{count}} Jahr",
+    "years_other": "{{count}} Jahre",
+    "months_one": "{{count}} Monat",
+    "months_other": "{{count}} Monate"
+  },
+  "ladder": {
+    "title": "Fälligkeiten und Kupons",
+    "subtitle": "Wie viel in welchem Jahr zurückfließt: getilgter Nennwert und jährliche Kupons.",
+    "badge": "Kupon jährlich zum Fälligkeitstag",
+    "principal": "Getilgter Nennwert",
+    "coupons": "Kupons",
+    "nearest": "Nächste Fälligkeit",
+    "note": "Bis {{year}} erhalten Sie {{principal}} Nennwert und {{coupons}} an Kupons zurück."
+  },
+  "table": {
+    "title": "Emissionen",
+    "subtitle": "Nach Fälligkeit sortiert · nächste zuerst",
+    "search": "Nach Name oder ISIN suchen",
+    "showMatured": "Getilgte anzeigen",
+    "bond": "Anleihe",
+    "nominal": "Nennwert / Stück",
+    "quantity": "Stück",
+    "units": "Stk.",
+    "value": "Wert",
+    "coupon": "Kupon",
+    "yearly": "Jährlich",
+    "maturity": "Fälligkeit",
+    "actions": "Aktionen",
+    "withinYear": "innerhalb eines Jahres",
+    "matured": "getilgt",
+    "noMaturity": "ohne Fälligkeit",
+    "noResults": {
+      "title": "Nichts gefunden",
+      "description": "Versuchen Sie einen anderen Namen oder eine andere ISIN.",
+      "maturedHidden": "Versuchen Sie einen anderen Namen oder eine andere ISIN. Getilgte Emissionen sind ausgeblendet."
+    },
+    "footer": {
+      "count_one": "{{count}} Emission",
+      "count_other": "{{count}} Emissionen",
+      "nominal": "Nennwert {{amount}}",
+      "coupons": "Kupons {{amount}} pro Jahr",
+      "valuation": "Wert = Nennwert × Stück · der Marktpreis wird nicht verfolgt"
+    }
+  },
+  "actions": {
+    "edit": "Bearbeiten",
+    "delete": "Löschen"
+  },
+  "form": {
+    "addTitle": "Anleihe hinzufügen",
+    "editTitle": "Anleihe bearbeiten",
+    "addDescription": "Der Wert ergibt sich aus Nennwert × Stück, die Rendite aus dem Kuponsatz.",
+    "editDescription": "Änderungen wirken sich auf den Wert und die Fälligkeitsleiter aus.",
+    "name": "Name",
+    "namePlaceholder": "z. B. Tschechische Staatsanleihe 2031",
+    "isin": "ISIN",
+    "isinHint": "12 Zeichen aus den Emissionsbedingungen; erleichtert die Zuordnung zu Kontoauszügen.",
+    "nominal": "Nennwert von 1 Stück",
+    "quantity": "Stück",
+    "rate": "Kupon pro Jahr",
+    "maturity": "Fälligkeitsdatum",
+    "maturityHint": "Nach der Fälligkeit wechselt die Emission zu „getilgt“ und zählt nicht mehr zum Nettovermögen.",
+    "summaryValue": "Wert {{value}} · Kupon {{coupon}} pro Jahr",
+    "summaryNext": "Nächster Fälligkeitstag {{date}}.",
+    "summaryMatures": "Die Emission wird dieses Jahr fällig; kein weiterer Kupon.",
+    "summaryNoMaturity": "Keine Fälligkeit – der Kupon zählt jedes Jahr.",
+    "submitAdd": "Anleihe hinzufügen",
+    "submitEdit": "Änderungen speichern"
+  },
+  "confirmDelete": {
+    "title": "Anleihe löschen?",
+    "description": "„{{name}}“ wird dauerhaft entfernt. Das lässt sich nicht rückgängig machen."
+  },
+  "toast": {
+    "added": "Anleihe hinzugefügt",
+    "updated": "Anleihe aktualisiert",
+    "deleted": "Anleihe gelöscht"
+  }
+}

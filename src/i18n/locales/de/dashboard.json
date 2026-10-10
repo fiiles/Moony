@@ -1,0 +1,113 @@
+{
+  "eyebrow": "Ihre finanzielle Lage",
+  "greeting": {
+    "morning": "Guten Morgen, {{name}}.",
+    "day": "Guten Tag, {{name}}.",
+    "evening": "Guten Abend, {{name}}."
+  },
+  "welcomeFirst": "Willkommen, {{name}}.",
+  "asOf": "Nettovermögen zum {{date}}",
+  "loading": "Portfolio wird geladen…",
+  "hero": {
+    "label": "Nettovermögen"
+  },
+  "insight": {
+    "up": "Der Wert steigt. Größter Anteil an der Veränderung: {{class}}.",
+    "down": "Der Wert sinkt. Größter Anteil an der Veränderung: {{class}}.",
+    "flat": "Der Wert bleibt stabil. Größte Bewegung: {{class}}.",
+    "noHistory": "Der Trend erscheint nach den ersten täglichen Momentaufnahmen."
+  },
+  "stats": {
+    "netWorth": "Nettovermögen",
+    "totalAssets": "Gesamtvermögen",
+    "totalLiabilities": "Verbindlichkeiten",
+    "freeCash": "Freies Geld",
+    "freeCashNote": "auf Bankkonten",
+    "unchanged": "im Zeitraum unverändert",
+    "noHistory": "noch kein Verlauf"
+  },
+  "cards": {
+    "investments": "Aktien",
+    "savings": "Bargeld",
+    "bonds": "Anleihen",
+    "liabilities": "Verbindlichkeiten",
+    "crypto": "Krypto",
+    "realEstate": "Immobilien",
+    "otherAssets": "Sonstiges Vermögen",
+    "other": "Sonstiges",
+    "ofTotal": "{{percent}} vom Gesamtwert"
+  },
+  "classes": {
+    "investments": "Aktien",
+    "savings": "Bargeld",
+    "bonds": "Anleihen",
+    "liabilities": "Verbindlichkeiten",
+    "crypto": "Krypto",
+    "realEstate": "Immobilien",
+    "otherAssets": "Sonstiges Vermögen"
+  },
+  "allocation": {
+    "title": "Vermögensaufteilung",
+    "open": "Geldanlagen öffnen",
+    "center": "Vermögen"
+  },
+  "moves": {
+    "title": "Letzte Bewegungen",
+    "empty": "Banktransaktionen, Käufe und Verkäufe erscheinen hier.",
+    "kind": {
+      "bankIn": "Zahlungseingang",
+      "bankOut": "Zahlungsausgang",
+      "buy": "Kauf",
+      "sell": "Verkauf",
+      "cryptoBuy": "Krypto-Kauf",
+      "cryptoSell": "Krypto-Verkauf"
+    }
+  },
+  "changePeriod": {
+    "30D": "in den letzten 30 Tagen",
+    "90D": "in den letzten 90 Tagen",
+    "YTD": "seit Jahresbeginn",
+    "1Y": "im letzten Jahr",
+    "5Y": "in den letzten 5 Jahren",
+    "All": "seit dem ersten Eintrag"
+  },
+  "empty": {
+    "title": "Hier erscheint Ihr Nettovermögen",
+    "description": "Fügen Sie ein Konto oder eine Geldanlage hinzu, und Moony erstellt daraus Ihre Übersicht, Diagramme und Trends. Alles bleibt auf diesem Computer.",
+    "addAccount": "Bankkonto hinzufügen und Kontoauszug importieren",
+    "addInvestment": "Geldanlage hinzufügen",
+    "setBudget": "Budget festlegen"
+  },
+  "gettingStarted": {
+    "title": "Erste Schritte",
+    "subtitle": "Vier Schritte, mit denen Moony nützlich wird. Diese Karte verschwindet, sobald Sie fertig sind.",
+    "importStatement": "Kontoauszug importieren",
+    "importStatementHint": "Konto hinzufügen und eine CSV-Datei Ihrer Bank importieren.",
+    "addInvestment": "Geldanlage hinzufügen",
+    "addInvestmentHint": "Aktien, ETFs oder Krypto mit Live-Kursen.",
+    "setBudget": "Budget festlegen",
+    "setBudgetHint": "Monatliche Limits pro Ausgabenkategorie.",
+    "makeBackup": "Sicherung erstellen",
+    "makeBackupHint": "Eine Datei mit allem, unter Einstellungen → Daten und Sicherungen.",
+    "dismiss": "Ausblenden",
+    "done": "Erledigt"
+  },
+  "welcome": "Willkommen zurück, {{name}}",
+  "overview": "Hier ist Ihre finanzielle Übersicht für heute.",
+  "charts": {
+    "netWorthTrend": "Entwicklung des Nettovermögens",
+    "assetAllocation": "Vermögensaufteilung",
+    "assetsVsLiabilities": "Vermögen und Verbindlichkeiten",
+    "assetsToLiabilitiesRatio": "Verhältnis von Vermögen zu Verbindlichkeiten",
+    "assetClassTrend": "Nettovermögen nach Anlageklasse",
+    "noHistoricalData": "Keine historischen Daten vorhanden",
+    "estimatedBackfilled": "geschätzt (nachgetragen)",
+    "estimatedLegend": "Gestrichelt: geschätzte Tage. Bankkonten, Anleihen, Immobilien und Kredite werden vom nächstgelegenen erfassten Tag übernommen."
+  },
+  "tooltips": {
+    "netWorth": "Nettovermögen",
+    "totalAssets": "Gesamtvermögen",
+    "totalLiabilities": "Gesamtverbindlichkeiten"
+  },
+  "changeSince": "ggü. {{date}}"
+}

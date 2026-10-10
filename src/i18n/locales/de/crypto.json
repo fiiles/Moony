@@ -1,0 +1,249 @@
+{
+  "title": "Kryptowährungen",
+  "eyebrow": "Portfolio",
+  "subtitle": "Krypto-Positionen zum aktuellen Kurs, Einstand nach gewichtetem Durchschnitt.",
+  "loading": "Krypto-Portfolio wird geladen...",
+  "empty": {
+    "title": "Noch keine Kryptowährungen",
+    "description": "Fügen Sie Ihre erste Münze hinzu: Wir suchen sie bei CoinGecko, und der Kurs aktualisiert sich von selbst."
+  },
+  "addCrypto": "Kryptowährung hinzufügen",
+  "refreshPrices": "Kurse aktualisieren",
+  "export": "Exportieren",
+  "summary": {
+    "value": "Krypto-Wert",
+    "positions_one": "{{count}} offene Position",
+    "positions_other": "{{count}} offene Positionen",
+    "updatedToday": "Kurse heute aktualisiert",
+    "updatedOn": "Kurse vom {{date}}",
+    "notUpdated": "Kurse noch nicht abgerufen",
+    "unrealizedGain": "Nicht realisierte Rendite",
+    "unrealizedLoss": "Nicht realisierter Verlust",
+    "vsInvested": "ggü. {{amount}} investiert",
+    "realized": "Realisierte Rendite",
+    "sells_one": "{{count}} Verkauf · gewichteter Durchschnitt",
+    "sells_other": "{{count}} Verkäufe · gewichteter Durchschnitt",
+    "noSells": "noch keine Verkäufe",
+    "largest": "Größte Position",
+    "largestNote": "{{share}} des Krypto-Werts · {{change}} seit Kauf",
+    "noPositions": "keine offene Position"
+  },
+  "chart": {
+    "title": "Krypto-Wert im Zeitverlauf",
+    "subtitle": "Käufe und Verkäufe direkt im Diagramm – jeder Sprung hat eine Erklärung.",
+    "legend": {
+      "value": "Krypto-Wert",
+      "buy": "Kauf",
+      "sell": "Verkauf"
+    },
+    "events": {
+      "buy": "Gekauft: {{tickers}}",
+      "sell": "Verkauft: {{tickers}}",
+      "cluster_one": "{{count}} Transaktion",
+      "cluster_other": "{{count}} Transaktionen"
+    }
+  },
+  "table": {
+    "title": "Positionen",
+    "subtitle": "Kurse zum heutigen Wechselkurs in {{currency}} umgerechnet · manuelle Kurse sind markiert",
+    "search": "Nach Name oder Ticker suchen",
+    "asset": "Wert",
+    "quantity": "Menge",
+    "avgCost": "Ø Einstand",
+    "rate": "Kurs",
+    "value": "Wert",
+    "share": "Anteil",
+    "return": "Rendite",
+    "actions": "Aktionen",
+    "showClosed": "Geschlossene Positionen anzeigen",
+    "source": "CoinGecko",
+    "manualSource": "manueller Kurs",
+    "closed": "geschlossen am {{date}}",
+    "realized": "{{amount}} realisiert",
+    "noResults": {
+      "title": "Nichts gefunden",
+      "description": "Versuchen Sie einen anderen Namen oder Ticker.",
+      "closedHidden": "Versuchen Sie einen anderen Namen oder Ticker. Geschlossene Positionen sind ausgeblendet."
+    },
+    "footer": {
+      "count_one": "{{count}} Position",
+      "count_other": "{{count}} Positionen",
+      "total": "gesamt",
+      "rates": "Werte in {{currency}} zum heutigen Kurs",
+      "closed_one": "{{count}} geschlossene Position",
+      "closed_other": "{{count}} geschlossene Positionen"
+    }
+  },
+  "actions": {
+    "buy": "Kaufen",
+    "sell": "Verkaufen",
+    "updatePrice": "Kurs manuell festlegen",
+    "delete": "Position löschen"
+  },
+  "badges": {
+    "manual": "manuell"
+  },
+  "tooltip": {
+    "manualPrice": "Manuell festgelegter Kurs – überschreibt CoinGecko, bis Sie ihn entfernen."
+  },
+  "modal": {
+    "add": {
+      "title": "Kryptowährung hinzufügen",
+      "description": "Suchen Sie die Münze bei CoinGecko; ihr Kurs wird dann automatisch aktualisiert.",
+      "coin": "Kryptowährung",
+      "ticker": "Ticker",
+      "search": "CoinGecko durchsuchen",
+      "searchHint": "Geben Sie einen Namen oder Ticker ein, um Treffer von CoinGecko zu sehen.",
+      "searching": "CoinGecko wird durchsucht…",
+      "searchError": "Suche fehlgeschlagen. Prüfen Sie Ihre Verbindung oder den CoinGecko-Schlüssel in den Einstellungen.",
+      "noResults": "Keine passende Münze. Ticker und Name können Sie von Hand eintragen.",
+      "rank": "#{{rank}}",
+      "quantity": "Menge",
+      "pricePerUnit": "Preis pro Einheit",
+      "purchaseDate": "Kaufdatum",
+      "total": "Kaufsumme",
+      "submit": "Position hinzufügen"
+    },
+    "buy": {
+      "title": "{{name}} kaufen",
+      "description": "Der Kauf erhöht die Menge und berechnet den durchschnittlichen Einstand neu.",
+      "quantity": "Menge",
+      "pricePerUnit": "Kurs pro 1 {{ticker}}",
+      "rateHint": "Mit dem aktuellen Kurs vorausgefüllt.",
+      "total": "Kaufsumme",
+      "submit": "Kauf erfassen"
+    },
+    "sell": {
+      "title": "{{name}} verkaufen",
+      "description": "Die realisierte Rendite wird am durchschnittlichen Einstand gemessen.",
+      "quantity": "Menge",
+      "all": "alles ({{quantity}})",
+      "tooMuch": "Sie halten nur {{quantity}}.",
+      "pricePerUnit": "Kurs pro 1 {{ticker}}",
+      "proceeds": "Erlös {{amount}} · realisierte Rendite",
+      "proceedsEmpty": "Erlös und realisierte Rendite",
+      "submit": "Verkauf erfassen"
+    },
+    "updatePrice": {
+      "title": "Manueller Kurs · {{name}}",
+      "description": "Überschreibt den CoinGecko-Kurs, bis Sie den manuellen entfernen.",
+      "price": "Kurs pro 1 {{ticker}}",
+      "total": "Positionswert ({{quantity}} {{ticker}})",
+      "remove": "Manuellen Kurs entfernen",
+      "submit": "Kurs speichern"
+    }
+  },
+  "confirmDelete": {
+    "title": "Position löschen?",
+    "description": "{{name}} ({{ticker}}) und alle zugehörigen Transaktionen werden dauerhaft entfernt. Das lässt sich nicht rückgängig machen."
+  },
+  "toast": {
+    "added": "Kryptowährung hinzugefügt, Kurs wird abgerufen",
+    "bought": "Kauf erfasst",
+    "sold": "Verkauf erfasst",
+    "deleted": "Position gelöscht",
+    "priceUpdated": "Manueller Kurs gespeichert",
+    "manualPriceDeleted": "Manueller Kurs entfernt",
+    "pricesRefreshed_one": "{{count}} Kurs von CoinGecko aktualisiert",
+    "pricesRefreshed_other": "{{count}} Kurse von CoinGecko aktualisiert",
+    "pricesRefreshedDescription": "Aktuelle Kurse von CoinGecko abgerufen",
+    "refreshFailed": "Kursaktualisierung fehlgeschlagen",
+    "addFailed": "Die Kryptowährung konnte nicht hinzugefügt werden"
+  },
+  "detail": {
+    "backToList": "Zurück zu Krypto",
+    "notFound": "Position nicht gefunden",
+    "source": "CoinGecko",
+    "manualSource": "manueller Kurs",
+    "quantityUnits": "{{quantity}} {{ticker}}",
+    "avgBuyPrice": "Ø Einstand {{price}}",
+    "lastBuy": "letzter Kauf {{date}}",
+    "refreshPrices": "Kurs aktualisieren",
+    "buy": "Kaufen",
+    "sell": "Verkaufen",
+    "menu": {
+      "editPrice": "Kurs manuell festlegen",
+      "delete": "Position löschen"
+    },
+    "status": {
+      "rateUpdated": "Kurs aktualisiert {{when}}",
+      "todayAt": "heute um {{time}}"
+    },
+    "positionValue": "Positionswert",
+    "vsInvested": "ggü. Investition",
+    "rate": "Kurs",
+    "invested": "Investiert",
+    "avgShort": "Ø {{price}}",
+    "unrealized": "Nicht realisierte Rendite",
+    "realized": "Realisierte Rendite",
+    "sells_one": "{{count}} Verkauf",
+    "sells_other": "{{count}} Verkäufe",
+    "noSells": "noch keine Verkäufe",
+    "held": "Haltedauer",
+    "heldSince": "seit {{date}}",
+    "shareOfCrypto": "{{share}} des Krypto-Werts",
+    "duration": {
+      "years_one": "{{count}} Jahr",
+      "years_other": "{{count}} Jahre",
+      "months_one": "{{count}} Monat",
+      "months_other": "{{count}} Monate",
+      "lessThanMonth": "weniger als ein Monat"
+    },
+    "transactions": {
+      "title": "Transaktionsverlauf",
+      "date": "Datum",
+      "type": "Art",
+      "quantity": "Menge",
+      "price": "Kurs",
+      "total": "Gesamt",
+      "empty": "Noch keine Transaktionen"
+    },
+    "priceNative": "Kurs ({{currency}})",
+    "priceNativeMixed": "Kurs (Originalwährung)",
+    "realizedRow": "realisiert {{amount}}",
+    "ledger": {
+      "sub_one": "{{count}} Transaktion · Zeile überfahren, um sie im Diagramm hervorzuheben",
+      "sub_other": "{{count}} Transaktionen · Zeile überfahren, um sie im Diagramm hervorzuheben",
+      "filter": {
+        "all": "Alle",
+        "buys": "Käufe",
+        "sells": "Verkäufe"
+      },
+      "footer_one": "{{count}} Transaktion",
+      "footer_other": "{{count}} Transaktionen",
+      "bought": "gekauft {{amount}}",
+      "sold": "verkauft {{amount}}",
+      "rates": "Kurse in {{currency}} zum ČNB-Kurs des Transaktionstags"
+    },
+    "position": {
+      "title": "Position",
+      "quantity": "Menge",
+      "avgPrice": "Ø Einstand",
+      "currentPrice": "Aktueller Kurs",
+      "nativePrice": "Kurs in {{currency}}",
+      "shareOfCrypto": "Anteil am Krypto-Wert",
+      "priceUpdated": "Kurs aktualisiert",
+      "setManual": "Kurs manuell festlegen",
+      "removeManual": "Manuellen Kurs entfernen"
+    },
+    "sinceFirst": {
+      "title": "Seit dem ersten Kauf",
+      "text": "Über {{duration}} hinweg hat sich der Kurs von {{ticker}} um {{rateChange}} verändert, ausgehend von {{firstPrice}}. Ihre Position erzielte {{positionChange}}{{realizedPart}}.",
+      "realizedPart": "; Verkäufe realisierten {{amount}}",
+      "none": "Noch kein Kauf."
+    },
+    "deleteTransaction": "Transaktion löschen",
+    "transactionDeleted": "Transaktion gelöscht",
+    "pricesRefreshed": "Kurs aktualisiert",
+    "confirmDeleteTransaction": {
+      "title": "Transaktion löschen?",
+      "description": "Damit wird die Transaktion vom Typ {{type}} ({{quantity}} × {{ticker}}, {{date}}, {{amount}}) dauerhaft gelöscht. Das lässt sich nicht rückgängig machen."
+    }
+  },
+  "coingeckoBanner": {
+    "title": "CoinGecko-API-Schlüssel (optional)",
+    "message": "Kurse funktionieren ohne Schlüssel. Ein kostenloser CoinGecko-Schlüssel in den Einstellungen lädt zusätzlich den Kursverlauf für die Diagramme.",
+    "goToSettings": "Einstellungen öffnen",
+    "dismiss": "Ausblenden"
+  }
+}

@@ -7,6 +7,10 @@ CREATE INDEX idx_bank_accounts_institution ON bank_accounts(institution_id)
 == index idx_bank_accounts_type ==
 CREATE INDEX idx_bank_accounts_type ON bank_accounts(account_type)
 
+== index idx_bank_balance_records_account_day ==
+CREATE INDEX idx_bank_balance_records_account_day
+    ON bank_balance_records(bank_account_id, as_of DESC)
+
 == index idx_bank_transactions_account ==
 CREATE INDEX idx_bank_transactions_account ON bank_transactions(bank_account_id)
 
@@ -153,6 +157,19 @@ CREATE TABLE bank_accounts (
     created_at INTEGER NOT NULL DEFAULT (unixepoch()),
     updated_at INTEGER NOT NULL DEFAULT (unixepoch())
 , interest_rate_valid_until INTEGER, balance_as_of INTEGER)
+
+== table bank_balance_records ==
+CREATE TABLE bank_balance_records (
+    id TEXT PRIMARY KEY,
+    bank_account_id TEXT NOT NULL REFERENCES bank_accounts(id) ON DELETE CASCADE,
+    amount TEXT NOT NULL,
+    currency TEXT NOT NULL,
+    as_of INTEGER NOT NULL,
+    source TEXT NOT NULL DEFAULT 'manual',
+    source_batch_id TEXT REFERENCES csv_import_batches(id) ON DELETE SET NULL,
+    recorded_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    UNIQUE (bank_account_id, as_of)
+)
 
 == table bank_transactions ==
 CREATE TABLE bank_transactions (

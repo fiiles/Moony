@@ -77,6 +77,7 @@ fn all_migrations() -> Vec<(&'static str, &'static str)> {
         ("010_income_categories", MIGRATION_010),
         ("011_fx_eur_reference", MIGRATION_011),
         ("012_retire_czk_caches", MIGRATION_012),
+        ("013_balance_records", MIGRATION_013),
     ]
 }
 
@@ -1646,6 +1647,72 @@ mod tests {
         assert_eq!(count_rows(&conn, "real_estate_valuations"), 0);
         assert_eq!(count_rows(&conn, "other_asset_valuations"), 0);
     }
+
+    fn database_before_013() -> Connection {
+        let conn = Connection::open_in_memory().expect("in-memory db");
+        let earlier: Vec<(&str, &str)> = all_migrations()
+            .into_iter()
+            .filter(|(name, _)| *name < "013_balance_records")
+            .collect();
+        run_chain(&conn, &earlier).expect("earlier migrations");
+        conn
+    }
+
+    #[test]
+    fn migration_013_backfills_one_record_per_dated_balance() {
+        let conn = database_before_013();
+        conn.execute_batch(
+            "INSERT INTO bank_accounts (id, name, currency, balance, balance_as_of, updated_at)
+                VALUES ('dated', 'Dated', 'EUR', '1200.50', 1767312000, 1767400000);
+             INSERT INTO bank_accounts (id, name, currency, balance, balance_as_of, updated_at)
+                VALUES ('undated', 'Undated', 'CZK', '999', NULL, 1767400000);",
+        )
+        .expect("accounts");
+        run_migrations(&conn).expect("migrate to the current chain");
+
+        let rows: Vec<(String, String, String, i64, String, i64)> = conn
+            .prepare(
+                "SELECT bank_account_id, amount, currency, as_of, source, recorded_at
+                 FROM bank_balance_records ORDER BY bank_account_id",
+            )
+            .expect("select")
+            .query_map([], |r| {
+                Ok((
+                    r.get(0)?,
+                    r.get(1)?,
+                    r.get(2)?,
+                    r.get(3)?,
+                    r.get(4)?,
+                    r.get(5)?,
+                ))
+            })
+            .expect("rows")
+            .collect::<std::result::Result<Vec<_>, _>>()
+            .expect("rows");
+        assert_eq!(
+            rows,
+            vec![(
+                "dated".to_string(),
+                "1200.50".to_string(),
+                "EUR".to_string(),
+                1767312000,
+                "manual".to_string(),
+                1767400000
+            )]
+        );
+        let id: String = conn
+            .query_row("SELECT id FROM bank_balance_records", [], |r| r.get(0))
+            .expect("id");
+        assert_eq!(id.len(), 36, "ids are lowercase UUID v4 strings: {id}");
+        // One record per account and day
+        assert!(conn
+            .execute(
+                "INSERT INTO bank_balance_records (id, bank_account_id, amount, currency, as_of, source)
+                 VALUES ('dup', 'dated', '1', 'EUR', 1767312000, 'manual')",
+                [],
+            )
+            .is_err());
+    }
 }
 
 /// Tests of `003_stock_import_batches`. A module of its own so they do not
@@ -2406,6 +2473,32 @@ ALTER TABLE portfolio_metrics_history DROP COLUMN total_real_estate_investment;
 ALTER TABLE portfolio_metrics_history DROP COLUMN total_other_assets;
 ALTER TABLE stock_value_history DROP COLUMN value_czk;
 ALTER TABLE crypto_value_history DROP COLUMN value_czk;
+"#;
+
+/// 013: dated balance records. Every explicit balance update becomes a row; the
+/// `bank_accounts.balance` / `balance_as_of` columns mirror the newest record
+/// (services::bank_accounts::refresh_balance_columns). Undated balances are not
+/// backfilled: they stay an undated number until the user records a dated one.
+pub(crate) const MIGRATION_013: &str = r#"
+CREATE TABLE IF NOT EXISTS bank_balance_records (
+    id TEXT PRIMARY KEY,
+    bank_account_id TEXT NOT NULL REFERENCES bank_accounts(id) ON DELETE CASCADE,
+    amount TEXT NOT NULL,
+    currency TEXT NOT NULL,
+    as_of INTEGER NOT NULL,
+    source TEXT NOT NULL DEFAULT 'manual',
+    source_batch_id TEXT REFERENCES csv_import_batches(id) ON DELETE SET NULL,
+    recorded_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    UNIQUE (bank_account_id, as_of)
+);
+CREATE INDEX IF NOT EXISTS idx_bank_balance_records_account_day
+    ON bank_balance_records(bank_account_id, as_of DESC);
+-- The ids are lowercase UUID v4 built in SQL (same recipe as migration 008).
+INSERT INTO bank_balance_records (id, bank_account_id, amount, currency, as_of, source, source_batch_id, recorded_at)
+SELECT lower(hex(randomblob(4)) || '-' || hex(randomblob(2)) || '-4' || substr(hex(randomblob(2)), 2) || '-' || substr('89ab', 1 + (random() & 3), 1) || substr(hex(randomblob(2)), 2) || '-' || hex(randomblob(6))),
+       id, balance, currency, balance_as_of, 'manual', NULL, updated_at
+FROM bank_accounts
+WHERE balance_as_of IS NOT NULL;
 "#;
 
 #[cfg(test)]

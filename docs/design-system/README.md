@@ -24,8 +24,8 @@ Principles:
    least noise around it.
 2. **Depth comes from surfaces, not borders.** The canvas is one tone darker than content; sidebar, cards
    and the table are layers with soft warm light. No frame around every element.
-3. **Color means something or is absent.** Green is only positive change. Red-brown is only negative
-   change, destructive actions and validation errors. Data series are monochrome.
+3. **Color means something or is absent.** Green is only positive change. Red is only negative change,
+   destructive actions and validation errors. Data series use one muted indigo family (§8).
 4. **Values relate to time.** Where it helps, a chart carries a "time trace": the events (buy, sell,
    dividend, large movement) that explain why a value changed. See §9.
 5. **Copy works.** Labels label, buttons name their outcome, empty states say what to do. No exclamation
@@ -52,9 +52,10 @@ Validation that was run (dataviz palette validator, OKLab):
 
 | Check | Result | Consequence in the system |
 |---|---|---|
-| Series s1–s4 adjacent ΔE | ≥ 17 (normal and CVD) | Max 4 monochrome series, 5th+ folds into "Ostatní". |
-| Light series vs paper contrast | s3 2.8:1, s4 1.5:1 | Every series always has a legend with values or a direct label. |
-| `gain` vs `loss` deutan ΔE | 3.8 (indistinguishable) | Sign glyph or arrow is mandatory next to every signed value. Color never carries direction alone. |
+| Series s1–s4 adjacent ΔE | ≥ 15.4 (normal and CVD) | Max 4 series of the indigo family, 5th+ folds into "Ostatní". |
+| Light series vs paper contrast | s3 4.4:1, s4 2.3:1 | Every series always has a legend with values or a direct label. |
+| `gain` vs `loss` CVD ΔE | 9.5 (protan, worst case) | Distinguishable, but a sign glyph or arrow is still mandatory next to every signed value. Color never carries direction alone. |
+| `gain` / `loss` text contrast | 5.3:1 / 5.2:1 on paper, 4.7:1 / 4.6:1 on their soft tints | Both work as 10 px badge text. |
 
 Dark theme: not in v1. The app ships light only.
 
@@ -116,7 +117,7 @@ with Nastavení pinned above the account row. **Peníze** ends with Cashflow and
   fit a 900 px window; the middle region scrolls, Nastavení and the account stay pinned.
 - Account row: avatar initials, name, "Účet a zámek aplikace"; click opens the existing menu (Pravidla
   kategorizace, Zamknout aplikaci).
-- Top bar status: dot + text. `status--fresh` green for fresh prices, `status--stale` red-brown for stale.
+- Top bar status: dot + text. `status--fresh` green for fresh prices, `status--stale` red for stale.
 - Milestones indicator: left of the update status, a neutral `.status` with `ink-2` text, shown only when a deadline (notice deadline, contract or fixed-rate end, maturity, account or promotional-rate end) is at most 14 days away; it names the nearest one ("Spořicí účet · za 10 dní", "+N" for more) and opens a popover with those deadlines. Information, data upkeep and target prices never appear there.
 
 ## 6. Components
@@ -127,7 +128,7 @@ Each entry names the CSS class in `moony.css` and the React component that imple
 |---|---|---|---|
 | Button | `.btn`, `--primary`, `--ghost`, `--danger`, `--destructive`, `--sm`, `--icon` | `ui/button.tsx` (`cva` variants) | 36 px (32 small), radius 8, 11/650 label as a verb. One primary per page. Exception (owner decision 2026-10-10): the bank account detail head has two, Zaznamenat zůstatek and Importovat výpis. Danger is text-only; destructive solid only inside confirm dialogs. Loading spins the icon, keeps the label. |
 | Segmented control | `.seg`, `.seg__btn.is-active`, `--lg` | `ui/segmented.tsx` for period and 2–4-value filters; `ui/tabs.tsx` for page tabs | Paper pill with shadow on a `well-2` track. |
-| Field | `.field`, `.field__label`, `.field__hint`, `.field__error` | `ui/form.tsx` + `label.tsx` | Label above, 11/700; optional marker inline; hint only when useful; error replaces hint, red-brown with icon, says what to do. |
+| Field | `.field`, `.field__label`, `.field__hint`, `.field__error` | `ui/form.tsx` + `label.tsx` | Label above, 11/700; optional marker inline; hint only when useful; error replaces hint, red with icon, says what to do. |
 | Input, select, textarea | `.input`, `.select` in `.select-wrap`, `.textarea`, `.input-wrap` with `.unit` | `ui/input.tsx`, `select.tsx`, `textarea.tsx` | 39 px, radius 8, unit inside right. Focus: `focus-border` + `focus-ring`. Invalid: `loss` border. |
 | Checkbox, switch | `.check`, `.switch` | `ui/checkbox.tsx`, `switch.tsx` | Dark material when on. |
 | Search | `.search.input-wrap` | `ui/input.tsx` with a leading icon | 240 × 35 px with leading icon. |
@@ -135,7 +136,8 @@ Each entry names the CSS class in `moony.css` and the React component that imple
 | Hero | `.hero`, `.hero__label/value/delta/aside` | `common/HeroCard.tsx` | One number, change with sign + context, period segment top right, chart below. Decorative circle is part of the material. |
 | Stat | `.stat`, `.stats`, `.stats--3`, `.stats--2x2` | `common/Stat.tsx` | Label 11, value 22, note 10. Three or four per row; four stats in a narrow column (calculator results beside the input form) sit 2 × 2 (`columns={2}`). The card is a size container: the value keeps 22 px down to a 163 px content box, then shrinks with the card (13.5 cqi, floor 16 px) so a long amount ("+ 16 682 338 Kč") never leaves the card at the 1080 px minimum width; every card in a row shares one size. |
 | Table | `.table`, `.table__head/row/group/foot`, `.cell--num`, `.cell--name`, `.entity`, `.logo`, `.row-actions` | `ui/table.tsx` + `InvestmentsTable` etc. | Head 40 px on `well`; rows 56 px (46–52 dense); hover `well`; whole row clickable; "···" on hover only; numbers right and tabular; no zebra, no vertical lines. |
-| Badge, chip | `.badge`, `--gain/--loss/--dark/--outline`, `.chip.is-active` | `ui/badge.tsx`, `ui/chip.tsx` | 20 px, no border. Green/red-brown only for positive/negative state. |
+| Badge, chip | `.badge`, `--gain/--loss/--dark/--outline`, `.chip.is-active` | `ui/badge.tsx`, `ui/chip.tsx` | 20 px, no border. Green/red only for positive/negative state. |
+| Change badge | `.badge--gain` / `.badge--loss` with a ▲ / ▼ glyph | `common/ChangeBadge.tsx` (`ChangeBadge`, `ChangeNote`) | Every signed percentage change: "▲ 0,42 %" green, "▼ 1,3 %" red, no glyph and neutral when it rounds to zero. The glyph carries the direction, the number is unsigned (assistive tech hears the sign). In a gain column the badge sits on the first line and the signed amount under it in `ink-4`; in a stat note `ChangeNote` puts the badge into the translated sentence and the note stays neutral (the stat value keeps its green/red). Signed amounts stay text. |
 | Progress | `.progress`, `--over`, `.progress__mark` | `ui/progress.tsx` | 6 px (10 px overview). Over limit uses `loss`. |
 | Modal | `.modal-scrim.is-open`, `.modal`, `--sm`, `.modal__head/body/foot/close` | `ui/dialog.tsx`, `alert-dialog.tsx` | 560 px (confirm 440), radius 17, 180 ms open. Title + one sentence; footer on `well` with ghost "Zrušit" left and the primary named like the title right. A destructive action of the same modal ("Smazat cíl", "Odebrat ruční cenu") is a text-only danger button directly left of the primary; "Zrušit" stays at the left edge whether it is shown or not. Esc closes, first field focused. |
 | Menu | `.menu`, `.menu__item`, `--danger`, `.menu__sep` | `ui/dropdown-menu.tsx` | E4, 190 px min, 12/550 items. |
@@ -192,7 +194,9 @@ Charts use Recharts with these rules (`charts.js` draws the same shapes by hand 
 - Allocation ring: `s1`–`s4` + `s-other`, legend with amounts and percentages, never color alone.
 - Hover always: crosshair + tooltip on lines, tooltip on bars. Tooltip is `.tip`. Value charts offer the horizons 30 dní · 3 měsíce · Letos · Rok · Vše, bounded on UTC days.
 - Baseline: zero for "Vše" and bars; truncated for short periods with 15 % headroom below.
-- Only one hue family per chart; green/red-brown never appear in series.
+- Only one hue family per chart: the indigo series `s1`–`s4` (decision 2026-10-10: the warm greys read
+  as unfinished and `s4` was nearly invisible; plain blue felt cold on the warm canvas). Green/red never
+  appear in series, and value lines stay `chart-line` whatever the direction of the period.
 
 ## 9. Time trace
 

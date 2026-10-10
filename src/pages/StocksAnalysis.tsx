@@ -48,6 +48,7 @@ import { ManageTagsDialog } from '@/components/stocks-analysis/ManageTagsDialog'
 import { AssignTagsDialog } from '@/components/stocks-analysis/AssignTagsDialog';
 import { ConversionQualityNote } from '@/components/reports/ReportQualityNote';
 import { cn } from '@/lib/utils';
+import { ChangeBadge } from '@/components/common/ChangeBadge';
 
 const PERIODS = ['3m', 'ytd', '1y'] as const;
 type Period = (typeof PERIODS)[number];
@@ -316,14 +317,7 @@ export default function StocksAnalysis() {
     Math.abs(v) < 1000
       ? fmt.money(v, reportCurrency, { decimals: 0 })
       : fmt.money(v, reportCurrency, { compact: true });
-  const gainText = (pct: number | null) =>
-    pct === null ? (
-      '—'
-    ) : (
-      <b className={cn('font-650', pct >= 0 ? 'text-gain' : 'text-loss')}>
-        {fmt.percent(pct / 100, 1, { signed: true })}
-      </b>
-    );
+  const gainText = (pct: number | null) => (pct === null ? '—' : <ChangeBadge ratio={pct / 100} />);
   const openAssign = (stockIds: string[]) => setAssign({ open: true, stockIds });
 
   const allocationSub = filterActive
@@ -424,11 +418,15 @@ export default function StocksAnalysis() {
         <Stat
           label={t('stocksAnalysis.stats.bestTag')}
           value={best ? best.tag.name : '—'}
-          tone={best ? (best.unrealizedGainPercent >= 0 ? 'gain' : 'loss') : 'neutral'}
           note={
-            best
-              ? `${fmt.percent(best.unrealizedGainPercent / 100, 1, { signed: true })} · ${t('stocksAnalysis.stats.positions', { count: best.holdingsCount })}`
-              : t('stocksAnalysis.stats.noTags')
+            best ? (
+              <span className="inline-flex flex-wrap items-center gap-x-1.5 gap-y-1">
+                <ChangeBadge ratio={best.unrealizedGainPercent / 100} />
+                <span>· {t('stocksAnalysis.stats.positions', { count: best.holdingsCount })}</span>
+              </span>
+            ) : (
+              t('stocksAnalysis.stats.noTags')
+            )
           }
         />
         <Stat

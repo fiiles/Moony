@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { Stat, Stats } from '@/components/common/Stat';
+import { ChangeNote } from '@/components/common/ChangeBadge';
 import { useFormat } from '@/lib/use-format';
 import { utcDayFloor } from '@/utils/chart-axis';
 import { cn } from '@/lib/utils';
@@ -68,10 +69,15 @@ export function CryptoSummary({
         }
         value={money(metrics.overallGainLoss, true)}
         tone={tone(metrics.overallGainLoss)}
-        note={t('summary.vsInvestedPct', {
-          percent: fmt.percent(metrics.overallGainLossPercent / 100, 1, { signed: true }),
-          amount: money(metrics.totalCost),
-        })}
+        noteTone="neutral"
+        note={
+          <ChangeNote
+            ratio={metrics.overallGainLossPercent / 100}
+            render={(percent) =>
+              t('summary.vsInvestedPct', { percent, amount: money(metrics.totalCost) })
+            }
+          />
+        }
       />
       <Stat
         label={t('summary.realized')}
@@ -84,14 +90,17 @@ export function CryptoSummary({
         label={t('summary.largest')}
         value={largest?.name ?? '—'}
         note={
-          largest
-            ? t('summary.largestNote', {
-                share: fmt.percent(largest.share, 0),
-                change: fmt.percent(largest.gainLossPercent / 100, 1, { signed: true }),
-              })
-            : t('summary.noPositions')
+          largest ? (
+            <ChangeNote
+              ratio={largest.gainLossPercent / 100}
+              render={(change) =>
+                t('summary.largestNote', { share: fmt.percent(largest.share, 0), change })
+              }
+            />
+          ) : (
+            t('summary.noPositions')
+          )
         }
-        noteTone={largest ? tone(largest.gainLossPercent) : 'neutral'}
       />
     </Stats>
   );

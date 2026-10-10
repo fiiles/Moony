@@ -38,19 +38,19 @@
   --dark-grad-hover: linear-gradient(145deg, var(--dark-hover-hi), var(--dark-hover-lo));
 
   /* ---- Semantic: the only two chromatic colors in the UI ---- */
-  --gain: #50745f;          /* positive change ONLY (never decoration) */
-  --gain-soft: #e9efeb;     /* tint for gain badges */
-  --loss: #945c4d;          /* negative change, destructive, validation errors */
-  --loss-soft: #f3e9e6;
+  --gain: #107a60;          /* positive change ONLY (never decoration) */
+  --gain-soft: #e6f5ee;     /* tint for gain badges */
+  --loss: #bf4224;          /* negative change, destructive, validation errors */
+  --loss-soft: #fcece6;
 
-  /* ---- Data series (monochrome, max 4 + other; validated ΔE ≥ 15 between neighbours) ---- */
-  --s1: #2b2a25;
-  --s2: #66635b;
-  --s3: #9d9990;
-  --s4: #d2cfc7;
+  /* ---- Data series (one muted indigo family, max 4 + other; validated ΔE ≥ 15 between neighbours) ---- */
+  --s1: #212339;
+  --s2: #454a73;
+  --s3: #7176a0;
+  --s4: #a6a9c8;
   --s-other: #ebe9e3;       /* "Ostatní" bucket, always labeled */
-  --chart-line: #34312b;    /* primary value line */
-  --chart-area: #dedddb;    /* area fill start (fades to transparent) */
+  --chart-line: #3c3f67;    /* primary value line */
+  --chart-area: #e1e1ee;    /* area fill start (fades to transparent) */
   --chart-grid: #efeeea;
   --chart-cost: #a8a49b;    /* dashed "invested" step line */
   --chart-axis: #aaa7a0;

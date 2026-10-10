@@ -48,7 +48,7 @@ import {
   type TargetPriceTarget,
 } from '@/components/stock-monitor/TargetPriceDialog';
 import { AddInvestmentModal } from '@/components/stocks/AddInvestmentModal';
-import { cn } from '@/lib/utils';
+import { ChangeBadge, ChangeNote } from '@/components/common/ChangeBadge';
 
 type SortKey = 'name' | 'change' | 'target';
 
@@ -147,7 +147,6 @@ export default function StockMonitor() {
     .sort((a, b) => b.change.pct - a.change.pct);
   const best = changes[0];
   const worst = changes[changes.length - 1];
-  const pct = (v: number) => fmt.percent(v / 100, 1, { signed: true });
   const toTarget = (x: { row: WatchedStockRow; current: number; target: number }) =>
     t('stats.toTarget', { pct: fmt.percent(Math.abs(x.target / x.current - 1), 1) });
 
@@ -308,16 +307,27 @@ export default function StockMonitor() {
         />
         <Stat
           label={t('stats.topToday')}
-          value={best ? `${displayName(best.row)} ${pct(best.change.pct)}` : '—'}
-          tone={best ? (best.change.pct >= 0 ? 'gain' : 'loss') : 'neutral'}
-          noteTone="neutral"
+          value={best ? displayName(best.row) : '—'}
           note={
-            worst && changes.length > 1
-              ? t('stats.worstNote', {
-                  name: displayName(worst.row),
-                  change: pct(worst.change.pct),
-                })
-              : t('stats.noChanges')
+            best ? (
+              <span className="inline-flex flex-wrap items-center gap-x-1.5 gap-y-1">
+                <ChangeBadge ratio={best.change.pct / 100} digits={2} />
+                {worst && changes.length > 1 && (
+                  <>
+                    <span aria-hidden>·</span>
+                    <ChangeNote
+                      ratio={worst.change.pct / 100}
+                      digits={2}
+                      render={(change) =>
+                        t('stats.worstNote', { name: displayName(worst.row), change })
+                      }
+                    />
+                  </>
+                )}
+              </span>
+            ) : (
+              t('stats.noChanges')
+            )
           }
         />
       </Stats>
@@ -383,10 +393,8 @@ export default function StockMonitor() {
                   <TableCell className="text-right num">
                     {change ? (
                       <>
-                        <b className={cn('font-650', change.abs >= 0 ? 'text-gain' : 'text-loss')}>
-                          {fmt.percent(change.pct / 100, 1, { signed: true })}
-                        </b>
-                        <small className="mt-0.5 block text-[10px] font-500 text-ink-4">
+                        <ChangeBadge ratio={change.pct / 100} digits={2} />
+                        <small className="mt-[3px] block text-[10px] font-500 text-ink-4">
                           {formatNativePrice(
                             change.abs,
                             row.currency,

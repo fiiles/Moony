@@ -39,6 +39,7 @@ import {
 } from '@/components/ui/table';
 import { AssetLogo } from '@/components/common/AssetLogo';
 import { cn } from '@/lib/utils';
+import { ChangeBadge } from '@/components/common/ChangeBadge';
 
 type SortColumn = 'name' | 'quantity' | 'price' | 'avgPurchase' | 'value' | 'gain' | 'yield';
 
@@ -249,18 +250,7 @@ export function OtherAssetsTable({
                   <TableCell className="text-right font-650 text-ink num">
                     <ConvertedMoney value={r.value} amount={r.valueNative} currency={currency} />
                   </TableCell>
-                  <TableCell
-                    className={cn(
-                      'text-right num',
-                      r.gain === null
-                        ? 'text-ink-4'
-                        : r.gain > 0
-                          ? 'text-gain'
-                          : r.gain < 0
-                            ? 'text-loss'
-                            : 'text-ink-4'
-                    )}
-                  >
+                  <TableCell className="text-right num text-ink-4">
                     {r.costNative === 0 || r.gain === 0 ? (
                       t('table.noChange')
                     ) : r.gain === null ? (
@@ -275,8 +265,8 @@ export function OtherAssetsTable({
                       />
                     ) : (
                       <>
-                        <span className="font-650">{fmt.money(r.gain, currencyCode, signed)}</span>
-                        {sub(fmt.percent(r.gainPct ?? 0, 1, { signed: true }))}
+                        <ChangeBadge ratio={r.gainPct ?? 0} />
+                        {sub(fmt.money(r.gain, currencyCode, signed))}
                       </>
                     )}
                   </TableCell>

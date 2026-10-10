@@ -6,7 +6,7 @@
  */
 const cache = new Map<string, string>();
 
-/** `token('chart-line')` → "#34312b". Falls back to `var(--name)` outside a DOM. */
+/** `token('chart-line')` → "#3c3f67". Falls back to `var(--name)` outside a DOM. */
 export function token(name: string): string {
   const cached = cache.get(name);
   if (cached) return cached;

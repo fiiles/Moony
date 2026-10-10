@@ -1388,10 +1388,7 @@ export default function BankAccountDetail() {
                             )}
                           </div>
                         </TableCell>
-                        <TableCell
-                          className="truncate text-micro font-500 text-ink-4"
-                          title={detail || undefined}
-                        >
+                        <TableCell className="truncate" title={detail || undefined}>
                           {detail}
                         </TableCell>
                         <TableCell>

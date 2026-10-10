@@ -1,0 +1,113 @@
+{
+  "eyebrow": "あなたの資産状況",
+  "greeting": {
+    "morning": "おはようございます、{{name}}さん。",
+    "day": "こんにちは、{{name}}さん。",
+    "evening": "こんばんは、{{name}}さん。"
+  },
+  "welcomeFirst": "ようこそ、{{name}}さん。",
+  "asOf": "{{date}}時点の純資産",
+  "loading": "ポートフォリオを読み込んでいます…",
+  "hero": {
+    "label": "純資産"
+  },
+  "insight": {
+    "up": "資産は増加中です。変動への寄与が最も大きいのは{{class}}です。",
+    "down": "資産は減少中です。変動への寄与が最も大きいのは{{class}}です。",
+    "flat": "資産は横ばいです。最も動いたのは{{class}}です。",
+    "noHistory": "推移は、数日分のスナップショットが貯まると表示されます。"
+  },
+  "stats": {
+    "netWorth": "純資産",
+    "totalAssets": "総資産",
+    "totalLiabilities": "負債",
+    "freeCash": "自由に使える現金",
+    "freeCashNote": "銀行口座内",
+    "unchanged": "期間中は変わりません",
+    "noHistory": "履歴はまだありません"
+  },
+  "cards": {
+    "investments": "株式",
+    "savings": "現金",
+    "bonds": "債券",
+    "liabilities": "負債",
+    "crypto": "暗号資産",
+    "realEstate": "不動産",
+    "otherAssets": "その他の資産",
+    "other": "その他",
+    "ofTotal": "全体の{{percent}}"
+  },
+  "classes": {
+    "investments": "株式",
+    "savings": "現金",
+    "bonds": "債券",
+    "liabilities": "負債",
+    "crypto": "暗号資産",
+    "realEstate": "不動産",
+    "otherAssets": "その他の資産"
+  },
+  "allocation": {
+    "title": "資産配分",
+    "open": "投資を開く",
+    "center": "資産"
+  },
+  "moves": {
+    "title": "最近の動き",
+    "empty": "銀行取引、買付、売却がここに表示されます。",
+    "kind": {
+      "bankIn": "入金",
+      "bankOut": "出金",
+      "buy": "買付",
+      "sell": "売却",
+      "cryptoBuy": "暗号資産の買付",
+      "cryptoSell": "暗号資産の売却"
+    }
+  },
+  "changePeriod": {
+    "30D": "過去30日間",
+    "90D": "過去90日間",
+    "YTD": "年初来",
+    "1Y": "過去1年間",
+    "5Y": "過去5年間",
+    "All": "最初の記録以降"
+  },
+  "empty": {
+    "title": "ここに純資産が表示されます",
+    "description": "口座または投資を追加すると、Moony が概要、グラフ、推移を作成します。すべてのデータはこのコンピュータ内に保存されます。",
+    "addAccount": "銀行口座を追加して明細をインポート",
+    "addInvestment": "投資を追加",
+    "setBudget": "予算を設定"
+  },
+  "gettingStarted": {
+    "title": "はじめに",
+    "subtitle": "Moony を活用するための4つのステップです。完了するとこのカードは消えます。",
+    "importStatement": "銀行明細をインポート",
+    "importStatementHint": "口座を追加して、銀行の CSV をインポートします。",
+    "addInvestment": "投資を追加",
+    "addInvestmentHint": "株式、ETF、暗号資産をリアルタイム価格付きで。",
+    "setBudget": "予算を設定",
+    "setBudgetHint": "支出カテゴリごとの月次上限。",
+    "makeBackup": "バックアップを作成",
+    "makeBackupHint": "すべてを1つのファイルに。設定 → データとバックアップから。",
+    "dismiss": "閉じる",
+    "done": "完了"
+  },
+  "welcome": "おかえりなさい、{{name}}さん",
+  "overview": "本日の資産概要です。",
+  "charts": {
+    "netWorthTrend": "純資産の推移",
+    "assetAllocation": "資産配分",
+    "assetsVsLiabilities": "資産と負債",
+    "assetsToLiabilitiesRatio": "資産負債比率",
+    "assetClassTrend": "資産クラス別の純資産",
+    "noHistoricalData": "履歴データがありません",
+    "estimatedBackfilled": "推定値（補完）",
+    "estimatedLegend": "破線は推定の日です。銀行口座、債券、不動産、ローンは、記録のある直近の日の値を引き継いでいます。"
+  },
+  "tooltips": {
+    "netWorth": "純資産",
+    "totalAssets": "総資産",
+    "totalLiabilities": "負債合計"
+  },
+  "changeSince": "{{date}}比"
+}

@@ -68,9 +68,10 @@ export function BalanceHistoryDialog({
             </DialogDescription>
           </DialogHeader>
           {records.length > 0 && (
-            <div className="-mx-[27px] max-h-[420px] overflow-y-auto border-t border-line">
-              <Table>
-                <TableHeader className="sticky top-0 z-[1] bg-well">
+            <div className="-mx-[27px]">
+              <Table containerClassName="max-h-[420px] overflow-y-auto">
+                {/* The head's hairline is an inset shadow on the cells: a collapsed border would scroll away with the rows. */}
+                <TableHeader className="sticky top-0 z-[1] bg-well [&_th]:shadow-[inset_0_-1px_0_var(--line)] [&_tr]:border-b-0">
                   <TableRow>
                     <TableHead>{tc('labels.date')}</TableHead>
                     <TableHead className="text-right">{t('balanceHistory.amount')}</TableHead>

@@ -8,20 +8,21 @@ import { cn } from '@/lib/utils';
  * right and tabular (`num text-right` on the cell). No zebra, no vertical
  * lines, no colored cell backgrounds. Row actions ("···") appear on hover.
  */
-const Table = React.forwardRef<HTMLTableElement, React.HTMLAttributes<HTMLTableElement>>(
-  ({ className, ...props }, ref) => (
-    <div className="relative w-full overflow-auto">
-      <table
-        ref={ref}
-        className={cn(
-          'w-full caption-bottom border-t border-line text-table text-ink-2',
-          className
-        )}
-        {...props}
-      />
-    </div>
-  )
-);
+const Table = React.forwardRef<
+  HTMLTableElement,
+  React.HTMLAttributes<HTMLTableElement> & {
+    /** Merged into the scroll wrapper, e.g. `max-h-[420px]` so a sticky head sticks inside it. */
+    containerClassName?: string;
+  }
+>(({ className, containerClassName, ...props }, ref) => (
+  <div className={cn('relative w-full overflow-auto', containerClassName)}>
+    <table
+      ref={ref}
+      className={cn('w-full caption-bottom border-t border-line text-table text-ink-2', className)}
+      {...props}
+    />
+  </div>
+));
 Table.displayName = 'Table';
 
 const TableHeader = React.forwardRef<

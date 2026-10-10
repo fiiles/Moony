@@ -25,6 +25,12 @@ All notable changes to Moony are documented in this file. The format follows
   rule covers, broken down by their current category, and categorizes them in the same step; the
   toast offers "Vrátit zpět". The same offer appears when a learned rule's category is changed on
   the rules page.
+- **Bank account detail rebuilt around dated balance records.** The balance history is a list of
+  dated records (recorded by hand or confirmed from a statement); the account's balance mirrors the
+  newest record. The page draws a balance line through the records, a 12-month flows chart, and
+  the ledger opens on the newest month with movements. Balance history, import history and
+  interest tiers moved to the ··· menu. The balance field left the edit form; new accounts take an
+  optional opening balance with a date.
 
 ### Changed
 

@@ -125,7 +125,7 @@ Each entry names the CSS class in `moony.css` and the React component that imple
 
 | Component | Class | React component | Rules |
 |---|---|---|---|
-| Button | `.btn`, `--primary`, `--ghost`, `--danger`, `--destructive`, `--sm`, `--icon` | `ui/button.tsx` (`cva` variants) | 36 px (32 small), radius 8, 11/650 label as a verb. One primary per page. Danger is text-only; destructive solid only inside confirm dialogs. Loading spins the icon, keeps the label. |
+| Button | `.btn`, `--primary`, `--ghost`, `--danger`, `--destructive`, `--sm`, `--icon` | `ui/button.tsx` (`cva` variants) | 36 px (32 small), radius 8, 11/650 label as a verb. One primary per page. Exception (owner decision 2026-10-10): the bank account detail head has two, Zaznamenat zůstatek and Importovat výpis. Danger is text-only; destructive solid only inside confirm dialogs. Loading spins the icon, keeps the label. |
 | Segmented control | `.seg`, `.seg__btn.is-active`, `--lg` | `ui/segmented.tsx` for period and 2–4-value filters; `ui/tabs.tsx` for page tabs | Paper pill with shadow on a `well-2` track. |
 | Field | `.field`, `.field__label`, `.field__hint`, `.field__error` | `ui/form.tsx` + `label.tsx` | Label above, 11/700; optional marker inline; hint only when useful; error replaces hint, red-brown with icon, says what to do. |
 | Input, select, textarea | `.input`, `.select` in `.select-wrap`, `.textarea`, `.input-wrap` with `.unit` | `ui/input.tsx`, `select.tsx`, `textarea.tsx` | 39 px, radius 8, unit inside right. Focus: `focus-border` + `focus-ring`. Invalid: `loss` border. |
@@ -159,7 +159,8 @@ implementations.
 |---|---|---|
 | Overview | Dashboard | Greeting H1, period segment, hero (net worth + chart), 3 stats, "Co vás čeká" (a two-column agenda with date chips filled top to bottom, data upkeep folded into one line under it, hidden when empty), allocation ring + recent moves. |
 | List | Stocks, bank accounts | 3–4 stats, a trend card (`TrendCard`: title, one sentence, horizon segment, chart 170 px, legend; the same chrome and height on every list page), table card with search and toggles, add modal. Tables use a fixed layout so long text ends with an ellipsis instead of widening the table; no horizontal scroll at the minimum width. |
-| Detail | Stock detail, bank account detail | Back link, eyebrow, H1, action row, hero with time trace, 3–4 stats, ledger table + aside cards, modals. |
+| Detail | Stock detail | Back link, eyebrow, H1, action row, hero with time trace, 3–4 stats, ledger table + aside cards, modals. |
+| Detail (bank account) | Bank account detail | Back link, eyebrow, H1, two actions + ··· menu; sections by data: balance hero (line through dated balance records of the last year, axis to Dnes, line ending at the newest record) with 3 balance stats, a flows card (12-month bar window shifted by arrows, the newest month with movements selected), the full-width ledger with its own period filters; balance history, import history and interest tiers are modals from the ··· menu. |
 | Report | Cashflow | Actual income and expenses from bank transactions for a month, quarter or year: stats, bar chart card, income and expenses by category, money transfers in their own card, recategorization from the drilldown. |
 | Plan | Cashflow planning | Planned recurring items in personal and investment sections, items derived from Úvěry / Pojištění / Nemovitosti / Akcie marked as automatic, monthly / yearly switch, a 100 % flow bar instead of a Sankey diagram. |
 | Planning | Budgets | Month navigation, stats, overview progress, category table with progress bars and state badges. |
@@ -209,7 +210,7 @@ Behavior: hovering a mark shows the event tooltip (type, quantity, price, total,
 the history table highlights its mark (`is-hot`, scale 1.35); clicking a mark scrolls to the row. Only
 events inside the selected period are drawn. Aggregate charts (net worth, cashflow) never draw events; the
 exceptions are the stocks and crypto list trends (one mark per trade day and direction, explaining the
-jumps a buy or a sell causes) and the loans trajectory (new loans and milestones). Bank accounts mark only movements above a threshold (an absolute floor of about 400 EUR, or 10 % of balance). If more
+jumps a buy or a sell causes) and the loans trajectory (new loans and milestones). Bank account charts draw no movement events; dated balance records are drawn as marks (○) on the balance line. If more
 than ~24 events fall in view, cluster neighbors into one mark with a count ("3 nákupy").
 
 ## 10. Copy and formatting

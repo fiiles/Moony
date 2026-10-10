@@ -287,7 +287,7 @@ export default function BankAccountDetail() {
     enabled: !!accountId && !!account?.hasZoneDesignation,
   });
 
-  const { data: importBatches } = useQuery({
+  const { data: importBatches, isLoading: importBatchesLoading } = useQuery({
     queryKey: ['import-batches', accountId],
     queryFn: () => (accountId ? bankAccountsApi.getImportBatches(accountId) : null),
     enabled: !!accountId,
@@ -638,10 +638,14 @@ export default function BankAccountDetail() {
   );
   const latestTx = anyTransactionResult?.transactions[0] ?? null;
 
+  // No status while the import history or the "any transaction" lookup is still loading,
+  // so the top bar does not flash "no data" before the real status is known.
+  const statusPending = importBatchesLoading || anyTransactionLoading;
   useShellPage({
     crumb: account?.name,
-    status:
-      lastImport !== null
+    status: statusPending
+      ? undefined
+      : lastImport !== null
         ? { text: t('status.lastImport', { date: fmt.day(lastImport) }), tone: 'neutral' }
         : latestTx
           ? {
@@ -816,7 +820,6 @@ export default function BankAccountDetail() {
           formatValue={formatAccountAmount}
         />
       )}
-      {sections.balance && !sections.flows && foreignNotes}
       {sections.flows && (
         <div className={sections.balance ? 'mt-[17px]' : undefined}>
           <FlowsCard
@@ -1067,7 +1070,7 @@ export default function BankAccountDetail() {
                             </TableCell>
                           </TableRow>
                         )}
-                        <TableRow id={`tx-${tx.id}`} className="h-[52px]">
+                        <TableRow className="h-[52px]">
                           <TableCell>
                             <div className="flex min-w-0 items-center gap-[10px] text-ink">
                               <span className="grid size-[30px] shrink-0 place-items-center rounded-full bg-well-2 text-ink-2">

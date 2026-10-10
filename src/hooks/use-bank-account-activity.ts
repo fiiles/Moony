@@ -5,10 +5,8 @@ import type { BankAccountWithInstitution, BankTransaction } from '@shared/schema
 import { recordCurrency } from '@shared/currencies';
 import { bankAccountsApi } from '@/lib/tauri-api';
 import { useDatedFx } from '@/hooks/use-fx';
-import { summarizeFlow, type FlowSummary } from '@/utils/bank-activity';
+import { recentWindowStart, summarizeFlow, type FlowSummary } from '@/utils/bank-activity';
 import { bookedInAccountCurrency } from '@/utils/money-flows';
-
-const DAY = 86400;
 
 export interface AccountActivity {
   /** Flow of the last 30 days in the account currency, other currencies converted at their day. */
@@ -26,7 +24,7 @@ export interface AccountActivity {
  * small query per account for each; accounts are few.
  */
 export function useBankAccountActivity(accounts: readonly BankAccountWithInstitution[]) {
-  const since = Math.floor(Date.now() / 1000 / DAY) * DAY - 30 * DAY;
+  const since = recentWindowStart(Date.now() / 1000);
 
   const recent = useQueries({
     queries: accounts.map((account) => ({
@@ -81,5 +79,5 @@ export function useBankAccountActivity(accounts: readonly BankAccountWithInstitu
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accounts, recentSignature, latestSignature, ratesReady, convertAt]);
 
-  return activity;
+  return { activity, since };
 }

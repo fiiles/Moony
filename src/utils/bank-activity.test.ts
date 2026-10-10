@@ -9,7 +9,10 @@ import {
   monthlyFlows,
   newestMonthWithRows,
   oldestMonthWithRows,
+  ledgerDeepLink,
+  recentWindowStart,
   summarizeFlow,
+  uncategorizedLink,
   type FlowTransaction,
 } from './bank-activity';
 
@@ -224,5 +227,35 @@ describe('hasRecentRows / detailSections / ledgerPresetForMonth', () => {
     expect(ledgerPresetForMonth(current, current)).toBe('thisMonth');
     expect(ledgerPresetForMonth(current - 1, current)).toBe('lastMonth');
     expect(ledgerPresetForMonth(current - 2, current)).toBe('custom');
+  });
+});
+
+describe('recent window and the uncategorized deep link', () => {
+  it('starts at the UTC midnight 30 days before today', () => {
+    expect(recentWindowStart(D0 + 15 * 3600)).toBe(D0 - 30 * DAY);
+    expect(recentWindowStart(D0)).toBe(D0 - 30 * DAY);
+  });
+
+  it('links the ledger to the uncategorized rows of the counted window', () => {
+    const since = Date.UTC(2026, 8, 10) / 1000;
+    expect(uncategorizedLink('acc-1', since)).toBe(
+      '/bank-accounts/acc-1?category=uncategorized&from=2026-09-10'
+    );
+  });
+
+  it('reads the category and a valid from date back from the link', () => {
+    expect(ledgerDeepLink('?category=uncategorized&from=2026-09-10')).toEqual({
+      category: 'uncategorized',
+      from: '2026-09-10',
+    });
+    expect(ledgerDeepLink('category=uncategorized')).toEqual({
+      category: 'uncategorized',
+      from: null,
+    });
+    expect(ledgerDeepLink('?category=uncategorized&from=garbage')).toEqual({
+      category: 'uncategorized',
+      from: null,
+    });
+    expect(ledgerDeepLink('?import=1')).toEqual({ category: null, from: null });
   });
 });

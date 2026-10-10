@@ -4,6 +4,8 @@
  * the account's own currency; the caller converts.
  */
 
+import { isoDateFromUtcTimestamp } from './period';
+
 export interface FlowTransaction {
   id: string;
   currency?: string;
@@ -215,4 +217,27 @@ export function ledgerPresetForMonth(
 /** Last day (UTC, unix seconds, 23:59:59) of a month index. */
 export function monthEnd(month: number): number {
   return monthStart(month + 1) - 1;
+}
+
+const DAY = 86400;
+const RECENT_DAYS = 30;
+
+/** Start of the list page's recent window: the UTC midnight 30 days before today. */
+export function recentWindowStart(nowSeconds: number): number {
+  return Math.floor(nowSeconds / DAY) * DAY - RECENT_DAYS * DAY;
+}
+
+/** Ledger of an account filtered to the uncategorized rows booked since `since`. */
+export function uncategorizedLink(accountId: string, since: number): string {
+  return `/bank-accounts/${accountId}?category=uncategorized&from=${isoDateFromUtcTimestamp(since)}`;
+}
+
+/** Category and start date a deep link opens the ledger with (`from` only as YYYY-MM-DD). */
+export function ledgerDeepLink(search: string): { category: string | null; from: string | null } {
+  const params = new URLSearchParams(search);
+  const from = params.get('from');
+  return {
+    category: params.get('category'),
+    from: from && /^\d{4}-\d{2}-\d{2}$/.test(from) ? from : null,
+  };
 }

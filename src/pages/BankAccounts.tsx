@@ -26,6 +26,7 @@ import { useCurrency } from '@/lib/currency';
 import { useMainConvert } from '@/hooks/use-fx';
 import { accountTotals } from '@/utils/bank-account-summary';
 import { compareConverted } from '@/utils/fx-totals';
+import { uncategorizedLink } from '@/utils/bank-activity';
 import { ConversionQualityNote } from '@/components/reports/ReportQualityNote';
 import { useFormat } from '@/lib/use-format';
 import { useShellPage } from '@/components/shell/shell-context';
@@ -92,7 +93,7 @@ export default function BankAccounts() {
   const fmt = useFormat();
   const money = (value: number) => fmt.money(value, currencyCode);
   const queryClient = useQueryClient();
-  const activity = useBankAccountActivity(accounts);
+  const { activity, since: recentSince } = useBankAccountActivity(accounts);
 
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [editing, setEditing] = useState<BankAccountWithInstitution | null>(null);
@@ -340,7 +341,7 @@ export default function BankAccounts() {
                   <button
                     type="button"
                     onClick={() =>
-                      setLocation(`/bank-accounts/${mostUncategorized.id}?category=uncategorized`)
+                      setLocation(uncategorizedLink(mostUncategorized.id, recentSince))
                     }
                     className="text-caption font-650 text-ink-2 underline-offset-[3px] hover:text-ink hover:underline focus-visible:outline-none focus-visible:shadow-focus"
                   >

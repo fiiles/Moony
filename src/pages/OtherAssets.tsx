@@ -17,6 +17,7 @@ import { EmptyState } from '@/components/common/EmptyState';
 import { ExportButton } from '@/components/common/ExportButton';
 import { ConfirmDeleteDialog } from '@/components/common/ConfirmDeleteDialog';
 import { Stat, StatSkeleton, Stats } from '@/components/common/Stat';
+import { ChangeNote } from '@/components/common/ChangeBadge';
 import PortfolioTrendCard from '@/components/common/PortfolioTrendCard';
 import { OtherAssetsTable } from '@/components/other-assets/OtherAssetsTable';
 import { otherAssetRow, otherAssetsSummary, type OtherAssetBuy } from '@/utils/other-assets';
@@ -190,13 +191,18 @@ export default function OtherAssets() {
               label={t('summary.gain')}
               value={signedMoney(gain)}
               tone={gain > 0 ? 'gain' : gain < 0 ? 'loss' : 'neutral'}
+              noteTone="neutral"
               note={
-                totals.gainCost > 0
-                  ? t('summary.vsCostPct', {
-                      percent: fmt.percent(gain / totals.gainCost, 1, { signed: true }),
-                      amount: money(totals.gainCost),
-                    })
-                  : t('summary.noCost')
+                totals.gainCost > 0 ? (
+                  <ChangeNote
+                    ratio={gain / totals.gainCost}
+                    render={(percent) =>
+                      t('summary.vsCostPct', { percent, amount: money(totals.gainCost) })
+                    }
+                  />
+                ) : (
+                  t('summary.noCost')
+                )
               }
             />
             <Stat

@@ -31,6 +31,7 @@ import { formatMarketCap } from '@/utils/stock-monitor';
 import { BackLink, PageHead } from '@/components/shell/PageHead';
 import { HeroValue } from '@/components/common/HeroCard';
 import { Stat, Stats } from '@/components/common/Stat';
+import { ChangeNote } from '@/components/common/ChangeBadge';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -558,9 +559,13 @@ export default function StockDetail() {
           label={t('detail.unrealized')}
           value={money(unrealized, { signed: true })}
           tone={tone(unrealized)}
-          note={t('detail.vsInvestedPct', {
-            percent: fmt.percent(unrealizedPct, 1, { signed: true }),
-          })}
+          noteTone="neutral"
+          note={
+            <ChangeNote
+              ratio={unrealizedPct}
+              render={(percent) => t('detail.vsInvestedPct', { percent })}
+            />
+          }
         />
         <Stat
           label={t('detail.realized')}

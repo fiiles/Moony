@@ -57,6 +57,7 @@ import PortfolioTrendCard from '@/components/common/PortfolioTrendCard';
 import { AddRealEstateModal } from '@/components/real-estate/AddRealEstateModal';
 import { RevalueDialog } from '@/components/valuations/RevalueDialog';
 import { cn } from '@/lib/utils';
+import { ChangeBadge, ChangeNote } from '@/components/common/ChangeBadge';
 
 type SortColumn = 'name' | 'value' | 'appreciation' | 'rent' | 'equity';
 type Modal = 'edit' | 'revalue' | 'delete' | null;
@@ -263,6 +264,11 @@ export default function RealEstatePage() {
     r.purchase !== null
       ? money(r.purchase)
       : fmt.money(r.purchaseNative.amount, r.purchaseNative.currency, { decimals: 0 });
+  /** Appreciation as a ratio of the purchase price (0 without a known price). */
+  const appreciationRatio = (r: PropertyRow) =>
+    r.appreciation !== null && r.purchase !== null && r.purchase > 0
+      ? r.appreciation / r.purchase
+      : 0;
   /** Muted second line of a cell: one line, the full text in the title. */
   const sub = (text: string, title: string = text) => (
     <small className="mt-[3px] block truncate text-micro font-500 text-ink-4" title={title}>
@@ -338,14 +344,15 @@ export default function RealEstatePage() {
               label={t('summary.appreciationTitle')}
               value={signedMoney(totals.appreciation)}
               tone={totals.appreciation >= 0 ? 'gain' : 'loss'}
-              note={t('summary.vsPurchasePct', {
-                percent: fmt.percent(
-                  totals.purchase > 0 ? totals.appreciation / totals.purchase : 0,
-                  1,
-                  { signed: true }
-                ),
-                amount: money(totals.purchase),
-              })}
+              noteTone="neutral"
+              note={
+                <ChangeNote
+                  ratio={totals.purchase > 0 ? totals.appreciation / totals.purchase : 0}
+                  render={(percent) =>
+                    t('summary.vsPurchasePct', { percent, amount: money(totals.purchase) })
+                  }
+                />
+              }
             />
             <Stat
               label={t('summary.equity')}
@@ -508,28 +515,18 @@ export default function RealEstatePage() {
                                 : undefined
                             )}
                         </TableCell>
-                        <TableCell
-                          className={cn(
-                            'text-right num',
-                            !r.excluded &&
-                              r.appreciation !== null &&
-                              (r.appreciation >= 0 ? 'text-gain' : 'text-loss')
-                          )}
-                        >
+                        <TableCell className="text-right num">
                           {r.appreciation === null ? (
                             main('—', 'text-ink-4')
-                          ) : (
+                          ) : r.excluded ? (
                             <>
                               {main(signedMoney(r.appreciation), 'font-650')}
-                              {sub(
-                                fmt.percent(
-                                  r.purchase !== null && r.purchase > 0
-                                    ? r.appreciation / r.purchase
-                                    : 0,
-                                  1,
-                                  { signed: true }
-                                )
-                              )}
+                              {sub(fmt.percent(appreciationRatio(r), 1, { signed: true }))}
+                            </>
+                          ) : (
+                            <>
+                              <ChangeBadge ratio={appreciationRatio(r)} />
+                              {sub(signedMoney(r.appreciation))}
                             </>
                           )}
                         </TableCell>

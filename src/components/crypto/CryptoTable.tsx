@@ -40,6 +40,7 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { AssetLogo } from '@/components/common/AssetLogo';
 import { cn } from '@/lib/utils';
+import { ChangeBadge } from '@/components/common/ChangeBadge';
 
 /** A crypto position as the list shows it: the backend's figures plus its share. */
 export interface CryptoTableRow extends CryptoRow {
@@ -341,15 +342,10 @@ export function CryptoTable({
                     ) : h.gainLoss === null ? (
                       <span className="text-ink-4">—</span>
                     ) : (
-                      <span
-                        className={cn(
-                          'block font-650',
-                          h.gainLoss >= 0 ? 'text-gain' : 'text-loss'
-                        )}
-                      >
-                        {fmt.money(h.gainLoss, currency, { signed: true, decimals: 0 })}
-                        <small className="mt-[3px] block text-micro font-600">
-                          {fmt.percent((h.gainLossPercent ?? 0) / 100, 1, { signed: true })}
+                      <span className="block">
+                        <ChangeBadge ratio={(h.gainLossPercent ?? 0) / 100} />
+                        <small className="mt-[3px] block text-micro font-500 text-ink-4">
+                          {fmt.money(h.gainLoss, currency, { signed: true, decimals: 0 })}
                         </small>
                       </span>
                     )}

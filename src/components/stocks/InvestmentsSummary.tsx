@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { Stat, Stats } from '@/components/common/Stat';
+import { ChangeNote } from '@/components/common/ChangeBadge';
 import { useFormat } from '@/lib/use-format';
 import { utcDayFloor } from '@/utils/chart-axis';
 import { cn } from '@/lib/utils';
@@ -52,18 +53,22 @@ export function InvestmentsSummary({
         ? t('summary.updatedToday')
         : t('summary.updatedOn', { date: fmt.day(fetched) });
 
-  const unrealizedNote = [
-    t('summary.vsInvestedPct', {
-      percent: fmt.percent(metrics.overallGainLossPercent / 100, 1, { signed: true }),
-    }),
-    realizedGain !== 0
-      ? t('summary.realizedNote', {
-          amount: fmt.money(realizedGain, currency, { signed: true, decimals: 0 }),
-        })
-      : null,
-  ]
-    .filter(Boolean)
-    .join(' · ');
+  const unrealizedNote = (
+    <span className="inline-flex flex-wrap items-center gap-x-1.5 gap-y-1">
+      <ChangeNote
+        ratio={metrics.overallGainLossPercent / 100}
+        render={(percent) => t('summary.vsInvestedPct', { percent })}
+      />
+      {realizedGain !== 0 && (
+        <span>
+          ·{' '}
+          {t('summary.realizedNote', {
+            amount: fmt.money(realizedGain, currency, { signed: true, decimals: 0 }),
+          })}
+        </span>
+      )}
+    </span>
+  );
 
   return (
     <Stats
@@ -85,6 +90,7 @@ export function InvestmentsSummary({
         }
         value={money(metrics.overallGainLoss, true)}
         tone={tone(metrics.overallGainLoss)}
+        noteTone="neutral"
         note={unrealizedNote}
       />
       <Stat
@@ -96,15 +102,15 @@ export function InvestmentsSummary({
         label={t('summary.topPosition')}
         value={metrics.topPerformer?.companyName || metrics.topPerformer?.ticker || '—'}
         note={
-          metrics.topPerformer
-            ? t('summary.overallPct', {
-                percent: fmt.percent(metrics.topPerformer.gainLossPercent / 100, 1, {
-                  signed: true,
-                }),
-              })
-            : t('summary.noPositions')
+          metrics.topPerformer ? (
+            <ChangeNote
+              ratio={metrics.topPerformer.gainLossPercent / 100}
+              render={(percent) => t('summary.overallPct', { percent })}
+            />
+          ) : (
+            t('summary.noPositions')
+          )
         }
-        noteTone={metrics.topPerformer ? tone(metrics.topPerformer.gainLossPercent) : 'neutral'}
       />
     </Stats>
   );

@@ -43,6 +43,7 @@ import { useCurrency } from '@/lib/currency';
 import { useFormat } from '@/lib/use-format';
 import { priceDecimals } from '@shared/currencies';
 import { cn } from '@/lib/utils';
+import { ChangeBadge } from '@/components/common/ChangeBadge';
 
 type SortColumn =
   'name' | 'quantity' | 'avgCost' | 'currentPrice' | 'marketValue' | 'gainLoss' | 'dividend';
@@ -344,13 +345,8 @@ export function InvestmentsTable({
                     ) : h.gainLoss === null ? (
                       <span className="text-ink-4">—</span>
                     ) : (
-                      <span
-                        className={cn(
-                          'block font-650',
-                          h.gainLoss >= 0 ? 'text-gain' : 'text-loss'
-                        )}
-                      >
-                        {fmt.percent((h.gainLossPercent ?? 0) / 100, 1, { signed: true })}
+                      <span className="block">
+                        <ChangeBadge ratio={(h.gainLossPercent ?? 0) / 100} />
                         <small className="mt-[3px] block text-micro font-500 text-ink-4">
                           {fmt.money(h.gainLoss, currency, { signed: true, decimals: 0 })}
                         </small>

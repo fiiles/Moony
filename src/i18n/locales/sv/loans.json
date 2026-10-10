@@ -1,0 +1,339 @@
+{
+  "title": "Lån",
+  "eyebrow": "Skulder",
+  "subtitle": "Bolån och konsumentlån, saldon enligt amorteringsplanen.",
+  "status": "Saldon amorterade per {{date}}",
+  "loading": "Laddar dina lån...",
+  "export": "Exportera",
+  "empty": {
+    "title": "Inga lån ännu",
+    "description": "Lägg till ditt första lån för att se vad du är skyldig, vad räntan kostar dig och när du blir skuldfri."
+  },
+  "addLoan": "Lägg till lån",
+  "loans_one": "{{count}} lån",
+  "loans_other": "{{count}} lån",
+  "summary": {
+    "outstanding": "Total skuld",
+    "repaidOf": "{{percent}} återbetalt av {{principal}} lånat",
+    "payments": "Månadsbetalningar",
+    "paymentsAfter": "från {{month, lower}} bara {{amount}} · {{name}} är då betalt",
+    "paymentsYear": "{{amount}} per år",
+    "rate": "Snittränta",
+    "rateNote": "viktat efter saldo · ränta de kommande 12 månaderna {{interest}}",
+    "fixation": "Räntebindningen upphör",
+    "fixationNote": "om {{duration}} · {{name}} {{rate}}",
+    "fixationExpired": "Räntebindningen för {{name}} upphörde {{month, lower}} – ange den nya räntan",
+    "noFixation": "ingen ränta har något slutdatum"
+  },
+  "chart": {
+    "title": "Skuldens utveckling",
+    "subtitle": "Hittills faktiska saldon heldragna, framtiden enligt amorteringsplanerna streckad.",
+    "horizon": {
+      "5": "5 år",
+      "10": "10 år",
+      "all": "Tills betalt"
+    },
+    "legend": {
+      "outstanding": "Skuld",
+      "schedule": "Enligt plan",
+      "newLoan": "Nytt lån",
+      "milestone": "Milstolpe"
+    },
+    "tipSchedule": "enligt plan",
+    "note": "I dag {{today}} · om {{duration}} {{amount}}",
+    "noteDebtFree": "I dag {{today}} · skuldfri om {{duration}}",
+    "noteNoPayoff": "I dag {{today}} · med nuvarande betalningar blir skulden aldrig betald",
+    "milestones": {
+      "paidOff": "{{name}} betalt",
+      "paidOffPayments": "betalningarna minskar med {{amount}} per månad",
+      "debtFree": "skuldfri",
+      "fixationEnd": "Räntebindningen upphör · {{name}}",
+      "half": "Hälften återbetald · {{name}}",
+      "balance": "saldo {{amount}}",
+      "newLoan": "Nytt lån · {{name}}",
+      "several_one": "{{count}} milstolpe",
+      "several_other": "{{count}} milstolpar"
+    },
+    "events": {
+      "several_one": "{{count}} händelse",
+      "several_other": "{{count}} händelser"
+    }
+  },
+  "table": {
+    "title": "Lån",
+    "subtitle": "Sorterat efter saldo",
+    "subtitleHidden": "Sorterat efter saldo · betalda lån dolda",
+    "showMatured": "Visa betalda",
+    "loan": "Lån",
+    "outstanding": "Skuld",
+    "principal": "Lånebelopp",
+    "rate": "Ränta",
+    "payment": "Betalning",
+    "payoff": "Betalt senast",
+    "actions": "Åtgärder",
+    "since": "sedan {{month, lower}}",
+    "repaid": "{{percent}} återbetalt",
+    "matured": "betalt",
+    "fixedUntil": "bunden till {{month, lower}}",
+    "fixationEnded": "bindningen upphörde {{month, lower}}",
+    "fixedRate": "fast ränta",
+    "monthly": "månadsvis",
+    "noPayment": "ingen betalning",
+    "in": "om {{duration}}",
+    "soonYear": "inom ett år",
+    "soon": "inom 18 månader",
+    "noPayoff": "aldrig med nuvarande betalning",
+    "capped": "mer än 50 år",
+    "balanceAtEnd": "{{amount}} kvar vid slutdatumet",
+    "noResults": {
+      "title": "Inga aktiva lån",
+      "description": "Alla lån är betalda. Bocka i ”Visa betalda” för att se dem."
+    },
+    "footer": {
+      "count_one": "{{count}} aktivt lån",
+      "count_other": "{{count}} aktiva lån",
+      "outstanding": "skuld {{amount}}",
+      "payments": "betalningar {{amount}} per månad",
+      "note": "Saldo = lånebelopp amorterat med hittills gjorda betalningar, eller det saldo du angav per ett datum"
+    }
+  },
+  "duration": {
+    "years_one": "{{count}} år",
+    "years_other": "{{count}} år",
+    "months_one": "{{count}} månad",
+    "months_other": "{{count}} månader"
+  },
+  "form": {
+    "addTitle": "Lägg till lån",
+    "editTitle": "Redigera lån",
+    "submit": "Lägg till lån",
+    "name": "Lånets namn",
+    "namePlaceholder": "t.ex. Bolån för bostaden",
+    "originalAmount": "Lånebelopp",
+    "interestRate": "Ränta",
+    "monthlyPayment": "Månadsbetalning",
+    "startDate": "Startdatum",
+    "endDate": "Slutdatum",
+    "balance": {
+      "title": "Utestående saldo",
+      "help": "Moony minskar saldot med varje månadsbetalning. Om du känner till det verkliga saldot, till exempel från ett kontoutdrag, ange det med datum så fortsätter beräkningen därifrån.",
+      "setManual": "Ange saldot per ett datum",
+      "amount": "Utestående belopp",
+      "date": "Per datum",
+      "estimate": "Beräknat saldo i dag: {{amount}}",
+      "noPayment": "Utan månadsbetalning minskar inte saldot."
+    }
+  },
+  "actions": {
+    "edit": "Redigera",
+    "delete": "Ta bort lån",
+    "open": "Öppna",
+    "extraPayment": "Extra betalning",
+    "balanceCheck": "Kontrollera saldot mot kontoutdrag",
+    "rateChange": "Registrera en ränteändring"
+  },
+  "confirmDelete": {
+    "title": "Ta bort lån",
+    "description": "Ta bort ”{{name}}”? Dess händelser och fastighetskopplingar tas bort med det. Det går inte att ångra."
+  },
+  "toast": {
+    "added": "Lånet har lagts till",
+    "updated": "Lånet har uppdaterats",
+    "deleted": "Lånet har tagits bort",
+    "eventAdded": "Händelsen har registrerats, planen är omräknad",
+    "eventDeleted": "Händelsen har tagits bort"
+  },
+  "modal": {
+    "addDescription": "Lånebelopp, ränta och betalning räcker; saldot följer planen.",
+    "editDescription": "Ändra lånevillkoren; saldot räknas om.",
+    "endDateHelp": "När lånet enligt avtalet förfaller",
+    "rateValidity": "Räntans giltighet (slut på räntebindning)",
+    "rateValidityHelp": "När den nuvarande räntans bindningstid upphör",
+    "startDateHelp": "Saldot amorteras från det här datumet; betalningar infaller samma dag varje månad"
+  },
+  "valuation": {
+    "automatic": "Amorterat från {{date}} ({{amount}}) med {{rate}} och {{payment}} per månad.",
+    "manual": "Från ditt saldo på {{amount}} den {{date}}, amorterat med {{rate}} och {{payment}} per månad.",
+    "static": "Ingen månadsbetalning är angiven, så saldot minskar inte: {{amount}} per {{date}}.",
+    "belowInterest": "Betalningen täcker inte räntan, så saldot minskar inte."
+  },
+  "detail": {
+    "backToLoans": "Tillbaka till lån",
+    "loading": "Laddar lånet...",
+    "notFound": "Det här lånet finns inte längre.",
+    "eyebrow": "Lån",
+    "description": "Lånebelopp {{principal}} sedan {{month, lower}} · {{rate}}{{fixation}} · betalning {{payment}} per månad",
+    "descriptionNoPayment": "Lånebelopp {{principal}} sedan {{month, lower}} · {{rate}} · ingen månadsbetalning",
+    "withFixation": " bunden till {{month, lower}}",
+    "status": {
+      "automatic": "Saldo enligt plan",
+      "manual": "Saldo enligt plan · från ditt saldo per {{date}}",
+      "static": "Ingen månadsbetalning · saldot minskar inte"
+    },
+    "hero": {
+      "outstanding": "Skuld",
+      "delta12": "de senaste 12 månaderna · {{percent}} av lånebeloppet återbetalt",
+      "deltaSinceStart": "sedan utbetalningen · {{percent}} av lånebeloppet återbetalt",
+      "payoff": "Betalt senast",
+      "payoffNote": "om {{duration}} med nuvarande betalning",
+      "paidOff": "Betalt",
+      "noPayoff": "aldrig med nuvarande betalning",
+      "noPayment": "utan betalning minskar inte saldot",
+      "balanceAtEnd": "till {{month, lower}} · {{amount}} kvar vid slutdatumet"
+    },
+    "horizon": {
+      "past": "Hittills",
+      "5": "5 år",
+      "all": "Tills betalt"
+    },
+    "chart": {
+      "legend": {
+        "balance": "Saldo",
+        "schedule": "Enligt plan",
+        "drawdown": "Utbetalning",
+        "extraPayment": "Extra betalning",
+        "milestones": "Räntebindning och milstolpar"
+      },
+      "tipBalance": "saldo",
+      "tipSchedule": "enligt plan",
+      "notePast": "Sedan {{date}}: {{principal}} i kapital återbetalt och {{interest}} betalt i ränta",
+      "note5": "Saldo om 5 år {{amount}}",
+      "note5Fixation": "Saldo om 5 år {{amount}} · räntebindningen upphör {{month, lower}}",
+      "noteAll": "Tills lånet är betalt betalar du ännu {{total}}, varav {{interest}} är ränta",
+      "noteNoPayoff": "Med nuvarande betalning blir lånet aldrig betalt",
+      "events": {
+        "drawdown": "Utbetalning {{amount}}",
+        "extraPayment": "Extra betalning {{amount}}",
+        "rateChange": "Räntan ändrades till {{rate}}",
+        "newPayment": "betalning {{amount}}",
+        "balanceCheck": "Saldot kontrollerat mot kontoutdrag",
+        "fixationEnd": "Räntebindningen upphör",
+        "half": "Hälften av lånebeloppet återbetalt",
+        "payoff": "Lånet betalt",
+        "balance": "saldo {{amount}}"
+      }
+    },
+    "stats": {
+      "interest": "Betald ränta",
+      "interestNote": "sedan {{date}} · {{share}} av gjorda betalningar",
+      "principal": "Amorterat",
+      "principalNote": "{{percent}} av lånebeloppet",
+      "principalExtra": "varav {{amount}} i extra betalningar",
+      "remaining": "Kvarstående betalningar",
+      "remainingNote": "{{duration}} · {{interest}} i ränta kvar att betala",
+      "remainingNone": "aldrig med nuvarande betalning",
+      "paidOff": "lånet är betalt",
+      "fixation": "Räntebindningen upphör",
+      "fixationNote": "om {{duration}} · vid {{up}} blir betalningen {{upPayment}}, vid {{down}} {{downPayment}}",
+      "nextPayment": "Nästa betalning",
+      "nextPaymentNote": "ränta {{interest}} · amortering {{principal}}",
+      "noSchedule": "ingen plan",
+      "remainingToEnd": "till {{month, lower}} · {{amount}} kvar · {{interest}} i ränta kvar att betala"
+    },
+    "schedule": {
+      "title": "Amorteringsplan",
+      "subtitle": "Ränta och amortering i varje betalning · saldo efter den",
+      "modes": {
+        "next12": "Nästa 12",
+        "years": "Per år",
+        "all": "Alla"
+      },
+      "payment": "Betalning",
+      "amount": "Belopp",
+      "interest": "Ränta",
+      "principal": "Amortering",
+      "balanceAfter": "Saldo efter",
+      "year": "År",
+      "payments": "Betalningar",
+      "interestTotal": "Ränta",
+      "balanceEnd": "Saldo vid årets slut",
+      "next": "nästa",
+      "footNext12": "Nästa 12 betalningar: ränta {{interest}} · amortering {{principal}}",
+      "footYears_one": "{{count}} år · räntandelen sjunker från {{from}} till {{to}} under det sista året",
+      "footYears_other": "{{count}} år · räntandelen sjunker från {{from}} till {{to}} under det sista året",
+      "footAll": "{{count}} betalningar sedan {{date}} · tidigare nedtonade",
+      "empty": "Det finns ingen plan ännu. Ange en månadsbetalning (Redigera) för att se en.",
+      "paidOff": "Det här lånet är betalt.",
+      "method": "Ränta = saldo × ränta ÷ 12, en betalning per månad samma dag"
+    },
+    "whatIf": {
+      "title": "Extra betalning",
+      "subtitle": "Vad den skulle göra med löptiden och räntan",
+      "amount": "Belopp",
+      "hint": "Jämför de två alternativ som banker erbjuder.",
+      "modes": {
+        "term": "Förkorta löptiden",
+        "payment": "Sänk betalningen"
+      },
+      "termResult": "Betalt {{duration}} tidigare",
+      "termNote": "Du sparar {{interest}} i ränta · betalningen förblir {{payment}} · slutar {{month, lower}}",
+      "paymentResult": "Betalningen sjunker med {{amount}} per månad",
+      "paymentNote": "Ny betalning {{payment}} · löptiden består till {{month, lower}} · ränta lägre med {{interest}}",
+      "noEffect": "Ange ett belopp upp till saldot på {{amount}}.",
+      "noPayment": "Utan månadsbetalning går effekten inte att beräkna – lägg till den genom att redigera lånet.",
+      "record": "Registrera som gjord"
+    },
+    "events": {
+      "title": "Händelser",
+      "extraPayment": "Extra betalning {{amount}}",
+      "extraPaymentNote": "planen fortsätter från det minskade saldot",
+      "newPayment": "ny betalning {{amount}}",
+      "rateChange": "Räntan ändrades till {{rate}}",
+      "rateChangeNote": "planen fortsätter från saldot den här dagen",
+      "balanceCheck": "Saldot kontrollerat mot kontoutdrag",
+      "balanceCheckNote": "planen startar om från det här datumet",
+      "drawdown": "Utbetalning {{amount}}",
+      "drawdownNote": "lånets start",
+      "delete": "Ta bort händelse",
+      "confirmDelete": {
+        "title": "Ta bort händelse",
+        "description": "Posten försvinner från diagrammet och listan. Det saldo som händelsen angav gäller fortfarande."
+      }
+    },
+    "warnings": {
+      "noPayment": "Ingen månadsbetalning är angiven, så saldot minskar inte. Redigera lånet och lägg till betalningen för att amortera automatiskt.",
+      "paymentBelowInterest": "Månadsbetalningen täcker inte räntan (cirka {{interest}} per månad), så saldot minskar inte. Kontrollera betalningen och räntan.",
+      "balanceAtEndDate": "Vid slutdatumet ({{date}}) skulle {{amount}} fortfarande vara utestående. Kontrollera betalningen, räntan och slutdatumet.",
+      "scheduleTruncated": "Planen är avkortad efter {{count}} betalningar."
+    }
+  },
+  "eventDialog": {
+    "note": "Anteckning",
+    "extraPayment": {
+      "title": "Extra betalning",
+      "description": "Sänker saldot den dagen och räknar om planen; den visas i diagrammet som en händelse.",
+      "amount": "Belopp",
+      "date": "Datum",
+      "usedFor": "Banken använde betalningen för att",
+      "term": "Förkorta löptiden",
+      "payment": "Sänka betalningen",
+      "alertTitle": "Saldot sjunker till {{amount}}",
+      "alertTerm": "Betalt {{duration}} tidigare, med {{interest}} sparad ränta.",
+      "alertPayment": "Ny betalning {{payment}} per månad, löptiden består till {{month, lower}}.",
+      "alertTooMuch": "Beloppet överstiger saldot på {{amount}}.",
+      "alertEmpty": "Ange ett belopp för att se effekten.",
+      "submit": "Registrera betalning"
+    },
+    "rateChange": {
+      "title": "Ränteändring",
+      "description": "Från angiven dag gäller den nya räntan; planen fortsätter från den dagens saldo.",
+      "rate": "Ny ränta",
+      "payment": "Ny betalning",
+      "paymentHint": "Tomt = betalningen förblir {{amount}}",
+      "date": "Gäller från",
+      "alertTitle": "Månadsränta {{from}} → {{to}}",
+      "alertNote": "Med en betalning på {{payment}} är lånet betalt {{month, lower}}.",
+      "alertNoPayoff": "En betalning på {{payment}} täcker inte räntan; saldot skulle inte minska.",
+      "submit": "Registrera ändring"
+    },
+    "balanceCheck": {
+      "title": "Kontrollera saldot mot kontoutdrag",
+      "description": "Ange saldot från ditt kontoutdrag; planen startar om från den dagen.",
+      "amount": "Saldo enligt kontoutdrag",
+      "date": "Per",
+      "alertTitle": "Planen förutsatte {{amount}}",
+      "alertNote": "Skillnad {{delta}} · från {{date}} använder planen ditt saldo.",
+      "submit": "Spara saldo"
+    }
+  }
+}

@@ -1,0 +1,194 @@
+{
+  "annuity": {
+    "title": "Annuitetskalkylator",
+    "subtitle": "Betalning, total ränta och amorteringsplan för vilket lån som helst. Värdena uppdateras medan du skriver.",
+    "eyebrow": "Kalkylator",
+    "status": "Beräknas lokalt, ingenting sparas",
+    "actions": {
+      "loadLoan": "Hämta från mina lån",
+      "export": "Exportera"
+    },
+    "form": {
+      "title": "Lånevillkor",
+      "amount": "Lånebelopp",
+      "years": "Löptid",
+      "yearsUnit": "år",
+      "rate": "Årlig ränta",
+      "frequency": "Betalningsfrekvens",
+      "frequencies": {
+        "monthly": "Månadsvis",
+        "quarterly": "Kvartalsvis",
+        "semiAnnually": "Halvårsvis",
+        "annually": "Årsvis"
+      },
+      "extra": "Extra betalning per år",
+      "optional": "valfritt",
+      "extraHint": "En gång per år utöver de ordinarie betalningarna, utan avgift."
+    },
+    "insight": {
+      "extraYearly": "{{extra}} extra per år",
+      "shortens": "förkortar lånet med {{years}} och sparar",
+      "onInterest": "i ränta. Planen nedan visar varianten utan extra betalningar.",
+      "noExtra": "Ange en extra betalning för att se hur många år och hur mycket ränta du sparar."
+    },
+    "hero": {
+      "payment": {
+        "monthly": "Månadsbetalning",
+        "quarterly": "Kvartalsbetalning",
+        "semiAnnually": "Halvårsbetalning",
+        "annually": "Årsbetalning"
+      },
+      "total": "totalt {{amount}}",
+      "interestShare": "varav ränta {{amount}} · {{percent}}",
+      "view": {
+        "years": "Per år",
+        "share": "Räntandel"
+      }
+    },
+    "legend": {
+      "principal": "Amortering",
+      "interest": "Ränta",
+      "milestone": "Milstolpe"
+    },
+    "milestones": {
+      "cross": "Amorteringen går om räntan",
+      "half": "Hälften av skulden återbetald",
+      "year": "år {{year}}"
+    },
+    "years_one": "{{count}} år",
+    "years_other": "{{count}} år",
+    "payments_one": "{{count}} betalning",
+    "payments_other": "{{count}} betalningar",
+    "stats": {
+      "totalPaid": "Du betalar totalt",
+      "totalInterest": "Total ränta",
+      "totalInterestNote": "{{percent}} av det lånade beloppet",
+      "withExtra": "Med den extra betalningen",
+      "withExtraNote": "sparad ränta · klart på {{short}} i stället för {{long}}",
+      "firstShare": "Räntandel i den första betalningen",
+      "firstShareNote": "i den sista {{percent}}"
+    },
+    "table": {
+      "title": "Amorteringsplan",
+      "subYears": "Summor per år · utan extra betalningar",
+      "subPeriods": "Enskilda betalningar · utan extra betalningar",
+      "granularity": {
+        "years": "Årsvis"
+      },
+      "year": "År",
+      "period": "Period",
+      "payments": "Betalningar",
+      "principal": "Amortering",
+      "interest": "Ränta",
+      "balance": "Återstående skuld",
+      "footer": "{{shown}} av {{total}} rader",
+      "showAll": "Visa hela planen",
+      "showLess": "Visa bara början",
+      "periodLabel": "{{year}} · period {{n}}"
+    },
+    "empty": "Ange lånebelopp, löptid och ränta."
+  },
+  "estate": {
+    "title": "Avkastning på fastighetsinvestering",
+    "subtitle": "Utvärdera en fastighet som en helhetsinvestering: hyra och kassaflöde, lånebetalning, prisutveckling och vinsten vid en framtida försäljning.",
+    "eyebrow": "Kalkylator",
+    "status": "Beräknas lokalt, ingenting sparas",
+    "prefillNoRate": "Fastigheten har ett belopp i en valuta utan växelkurs, så den hämtades inte. Kalkylatorn visar exempelvärdena.",
+    "actions": {
+      "loadProperty": "Hämta från mina fastigheter"
+    },
+    "yearsUnit": "år",
+    "years_one": "{{count}} år",
+    "years_other": "{{count}} år",
+    "purchase": {
+      "title": "Köp",
+      "price": "Köpesumma",
+      "loan": "Lånebelopp",
+      "years": "Löptid",
+      "rate": "Ränta",
+      "equity": "Eget kapital",
+      "ltv": "Belåningsgrad",
+      "payment": "Månadsbetalning"
+    },
+    "rent": {
+      "title": "Uthyrning",
+      "rent": "Förväntad månadshyra",
+      "costs": "Månadskostnader",
+      "vacancy": "Vakans",
+      "vacancyUnit": "mån./år",
+      "hint": "Kostnader: underhåll, skatt, försäkring, reparationsfond."
+    },
+    "projection": {
+      "title": "Prognos",
+      "rentGrowth": "Hyresökning",
+      "costsGrowth": "Kostnadsökning",
+      "priceGrowth": "Prisutveckling",
+      "perYear": "%/år",
+      "years": "Innehavstid",
+      "oneTime": "Engångskostnader"
+    },
+    "sale": {
+      "title_one": "Försäljning efter {{count}} år",
+      "title_other": "Försäljning efter {{count}} år",
+      "finalPrice": "Slutpris",
+      "remainingLoan": "Kvarvarande lån",
+      "repaid": "Amorterat",
+      "cumulative": "Ackumulerat kassaflöde",
+      "equity": "Din andel vid försäljningen",
+      "totalReturn": "Total avkastning",
+      "pa": "{{percent}} per år",
+      "formula": "Avkastning = (slutpris − kvarvarande lån − eget kapital + ackumulerat kassaflöde) / eget kapital. Före skatt och försäljningskostnader."
+    },
+    "hero": {
+      "label": "Total avkastning på ditt egna kapital",
+      "value": "{{percent}} per år",
+      "total": "totalt {{percent}} över {{years}}",
+      "components": "kassaflöde {{cashflow}} · amortering · prisutveckling {{growth}}",
+      "cashflow": "Nettokassaflöde",
+      "cashflowNote": "per månad år 1 · brutto {{gross}}"
+    },
+    "legend": {
+      "equity": "Din andel (värde − lån + kassaflöde)",
+      "band": "Prisutveckling ± 1 procentenhet",
+      "invested": "Investerat kapital",
+      "milestone": "Milstolpe"
+    },
+    "chart": {
+      "purchase": "Köp",
+      "tipRow": "{{year}} · värde {{value}} · lån {{loan}} · ackumulerat kassaflöde {{cumulative}}",
+      "tipStart": "{{year}} · investerat kapital {{invested}}"
+    },
+    "milestones": {
+      "positive": "Positivt årligt kassaflöde",
+      "positiveLine": "från {{year}}",
+      "half": "Hälften av lånet återbetalt",
+      "halfLine": "år {{year}}",
+      "sale": "Försäljning",
+      "saleLine": "{{year}} · pris {{price}} · lån {{loan}}"
+    },
+    "stats": {
+      "equity": "Eget kapital",
+      "equityNote": "{{equity}} + engångskostnader {{once}}",
+      "grossYield": "Bruttohyresavkastning",
+      "grossYieldNote": "årshyra / köpesumma",
+      "cashflow": "Årligt nettokassaflöde",
+      "cashflowNote": "år 1 · {{percent}} av eget kapital",
+      "saleGain": "Vinst vid försäljning",
+      "saleGainNote": "pris − lån − eget kapital · efter {{years}}"
+    },
+    "table": {
+      "title": "Årssammanfattning",
+      "sub": "Hyra och kostnader ökar med angivna takter, betalningen är fast",
+      "year": "År",
+      "rent": "Hyra",
+      "costs": "Kostnader",
+      "payments": "Betalningar",
+      "cashflow": "Netto-KF",
+      "balance": "Kvarvarande lån",
+      "value": "Värde",
+      "footer": "{{years}} · ackumulerat nettokassaflöde {{cumulative}}",
+      "vacancyNote": "Vakans dras av från hyran"
+    },
+    "empty": "Ange köpesumma och hyra."
+  }
+}

@@ -1,0 +1,113 @@
+{
+  "title": "Obligationer",
+  "eyebrow": "Portfölj",
+  "subtitle": "Stats- och företagsobligationer som hålls till förfall, avkastning från fasta kuponger.",
+  "status": "Värderas till nominellt värde · ingen upplupen ränta",
+  "loading": "Laddar dina obligationer...",
+  "empty": {
+    "title": "Inga obligationer ännu",
+    "description": "Lägg till den första emissionen: nominellt värde, antal enheter, kupong och förfall. Förfallostegen byggs upp automatiskt."
+  },
+  "addBond": "Lägg till obligation",
+  "export": "Exportera",
+  "summary": {
+    "nominal": "Nominellt värde",
+    "issues_one": "{{count}} emission",
+    "issues_other": "{{count}} emissioner",
+    "currencies_one": "{{count}} valuta",
+    "currencies_other": "{{count}} valutor",
+    "yearlyCoupon": "Årlig kupong",
+    "weightedRate": "viktat genomsnitt {{rate}} per år",
+    "nearestMaturity": "Närmaste förfall",
+    "returns": "ger {{amount}}",
+    "noMaturity": "ingen emission har förfallodag",
+    "avgToMaturity": "Genomsnittlig tid till förfall",
+    "years": "{{value}} år",
+    "lastMaturity": "viktat efter nominellt värde · sista {{date}}",
+    "noneLive": "ingen aktiv emission"
+  },
+  "until": {
+    "in": "om {{duration}}",
+    "soon": "inom en månad",
+    "past": "återbetald {{date}}"
+  },
+  "duration": {
+    "years_one": "{{count}} år",
+    "years_other": "{{count}} år",
+    "months_one": "{{count}} månad",
+    "months_other": "{{count}} månader"
+  },
+  "ladder": {
+    "title": "Förfall och kuponger",
+    "subtitle": "Hur mycket som kommer tillbaka vilket år: återbetalt nominellt värde och årliga kuponger.",
+    "badge": "kupong årligen på förfallodagen",
+    "principal": "Återbetalt nominellt värde",
+    "coupons": "Kuponger",
+    "nearest": "Närmaste förfall",
+    "note": "Till och med {{year}} får du tillbaka {{principal}} i nominellt värde och {{coupons}} i kuponger."
+  },
+  "table": {
+    "title": "Emissioner",
+    "subtitle": "Sorterat efter förfall · närmast först",
+    "search": "Sök på namn eller ISIN",
+    "showMatured": "Visa återbetalda",
+    "bond": "Obligation",
+    "nominal": "Nominellt värde / st",
+    "quantity": "Antal",
+    "units": "st",
+    "value": "Värde",
+    "coupon": "Kupong",
+    "yearly": "Per år",
+    "maturity": "Förfall",
+    "actions": "Åtgärder",
+    "withinYear": "inom ett år",
+    "matured": "återbetald",
+    "noMaturity": "inget förfall",
+    "noResults": {
+      "title": "Inga träffar",
+      "description": "Prova ett annat namn eller ISIN.",
+      "maturedHidden": "Prova ett annat namn eller ISIN. Återbetalda emissioner är dolda."
+    },
+    "footer": {
+      "count_one": "{{count}} emission",
+      "count_other": "{{count}} emissioner",
+      "nominal": "nominellt värde {{amount}}",
+      "coupons": "kuponger {{amount}} per år",
+      "valuation": "Värde = nominellt värde × antal · marknadskursen följs inte"
+    }
+  },
+  "actions": {
+    "edit": "Redigera",
+    "delete": "Ta bort"
+  },
+  "form": {
+    "addTitle": "Lägg till obligation",
+    "editTitle": "Redigera obligation",
+    "addDescription": "Värdet beräknas som nominellt värde × antal, avkastningen från kupongräntan.",
+    "editDescription": "Ändringar syns i värdet och i förfallostegen.",
+    "name": "Namn",
+    "namePlaceholder": "t.ex. Tjeckisk statsobligation 2031",
+    "isin": "ISIN",
+    "isinHint": "12 tecken från emissionsvillkoren; hjälper till att matcha kontoutdrag.",
+    "nominal": "Nominellt värde för 1 enhet",
+    "quantity": "Antal",
+    "rate": "Kupong per år",
+    "maturity": "Förfallodatum",
+    "maturityHint": "Efter förfall flyttas emissionen till återbetalda och räknas inte längre in i nettoförmögenheten.",
+    "summaryValue": "Värde {{value}} · kupong {{coupon}} per år",
+    "summaryNext": "Nästa förfallodag {{date}}.",
+    "summaryMatures": "Emissionen förfaller i år; ingen ytterligare kupong.",
+    "summaryNoMaturity": "Inget förfall – kupongen räknas varje år.",
+    "submitAdd": "Lägg till obligation",
+    "submitEdit": "Spara ändringar"
+  },
+  "confirmDelete": {
+    "title": "Ta bort obligationen?",
+    "description": "”{{name}}” tas bort permanent. Det går inte att ångra."
+  },
+  "toast": {
+    "added": "Obligationen har lagts till",
+    "updated": "Obligationen har uppdaterats",
+    "deleted": "Obligationen har tagits bort"
+  }
+}

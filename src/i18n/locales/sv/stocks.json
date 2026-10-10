@@ -1,0 +1,749 @@
+{
+  "title": "Aktier och ETF:er",
+  "subtitle": "Dina långsiktiga innehav på ett ställe.",
+  "loading": "Laddar dina aktier...",
+  "empty": {
+    "title": "Inga innehav ännu",
+    "description": "Lägg till din första aktie eller ETF, eller importera dina affärer från en CSV från en mäklare (datum, typ, ticker, antal, kurs, valuta)."
+  },
+  "addInvestment": "Lägg till investering",
+  "refreshPrices": "Uppdatera kurser",
+  "refreshing": "Uppdaterar...",
+  "importCSV": "Importera CSV",
+  "summary": {
+    "totalValue": "Portföljvärde",
+    "totalGainLoss": "Orealiserad vinst/förlust",
+    "unrealizedGain": "Orealiserad vinst",
+    "unrealizedLoss": "Orealiserad förlust",
+    "realizedGain": "Realiserad vinst",
+    "realizedLoss": "Realiserad förlust",
+    "estimatedDividend": "Utdelningsuppskattning",
+    "topPerformer": "Bästa innehav",
+    "basedOnLastYear": "Baserat på förra årets utdelningar",
+    "lastUpdated": "Senast uppdaterad: {{date}}",
+    "realizedGainLoss": "Realiserad vinst/förlust",
+    "positions_one": "{{count}} innehav",
+    "positions_other": "{{count}} innehav",
+    "updatedToday": "uppdaterad i dag",
+    "updatedOn": "uppdaterad {{date}}",
+    "notUpdated": "kurser har inte hämtats ännu",
+    "vsInvested": "mot investerat",
+    "realizedNote": "realiserat {{amount}}",
+    "next12Months": "de kommande 12 månaderna",
+    "topPosition": "Bästa innehav",
+    "overall": "totalt",
+    "noPositions": "inget öppet innehav"
+  },
+  "table": {
+    "title": "Innehav",
+    "search": "Sök på namn eller ticker",
+    "investment": "Investering",
+    "quantity": "Antal",
+    "avgCost": "Snittpris",
+    "marketPrice": "Marknadspris",
+    "marketValue": "Värde",
+    "totalGainLoss": "Orealiserad vinst/förlust",
+    "estDividend": "Beräknad utdelning",
+    "actions": "Åtgärder",
+    "noHoldings": "Inga innehav hittades. Lägg till din första aktie för att komma igång.",
+    "showZeroPositions": "Visa nollinnehav",
+    "hideZeroPositions": "Dölj nollinnehav",
+    "return": "Avkastning",
+    "dividend": "Utdelning",
+    "unit": "st",
+    "realized": "{{amount}} realiserat",
+    "noResults": {
+      "title": "Inga träffar",
+      "description": "Prova ett annat namn eller ticker.",
+      "zeroHidden": "Prova ett annat namn eller ticker. Nollinnehav är dolda."
+    },
+    "footer": {
+      "count_one": "{{count}} innehav",
+      "count_other": "{{count}} innehav",
+      "total": "totalt",
+      "largest": "största innehavet {{percent}} av portföljen",
+      "rates": "Värden i {{currency}} till dagens kurs"
+    },
+    "showClosedPositions": "Visa stängda innehav",
+    "hideClosedPositions": "Dölj stängda innehav",
+    "closedPositionsHint": "Innehav med antalet 0",
+    "manageTags": "Hantera etiketter",
+    "noMatches": "Inga innehav matchar ”{{query}}”.",
+    "onlyClosedPositions": "Här finns bara stängda innehav. Slå på ”Visa stängda innehav” för att se dem."
+  },
+  "actions": {
+    "viewTransactions": "Visa transaktioner",
+    "buy": "Köp",
+    "sell": "Sälj",
+    "updatePrice": "Redigera kurs",
+    "updateDividend": "Uppdatera utdelningsuppskattning",
+    "delete": "Ta bort",
+    "deletePosition": "Ta bort innehav"
+  },
+  "badges": {
+    "manual": "Manuell"
+  },
+  "tooltips": {
+    "manualPrice": "Manuellt angiven kurs",
+    "manualDividend": "Manuellt angiven utdelning"
+  },
+  "modals": {
+    "add": {
+      "title": "Lägg till ny aktie",
+      "searchLabel": "Sök efter en aktie",
+      "searchPlaceholder": "t.ex. AAPL eller Apple",
+      "quantity": "Antal",
+      "purchasePrice": "Inköpspris",
+      "purchaseDate": "Köpdatum",
+      "notes": "Anteckningar"
+    },
+    "buy": {
+      "title": "Köp fler aktier",
+      "quantity": "Antal",
+      "price": "Pris per aktie",
+      "date": "Köpdatum",
+      "fee": "Transaktionsavgift"
+    },
+    "sell": {
+      "title": "Sälj aktier",
+      "quantityToSell": "Antal att sälja",
+      "availableQuantity": "Tillgängligt: {{quantity}} aktier",
+      "price": "Försäljningspris per aktie",
+      "date": "Försäljningsdatum",
+      "fee": "Transaktionsavgift"
+    },
+    "updatePrice": {
+      "title": "Uppdatera kurs manuellt",
+      "currentPrice": "Aktuell kurs",
+      "newPrice": "Ny kurs",
+      "description": "Ange en manuell kurs för det här innehavet."
+    },
+    "updateDividend": {
+      "title": "Uppdatera utdelningsuppskattning",
+      "annualDividend": "Årlig utdelning per aktie",
+      "description": "Ange en manuell årlig utdelning per aktie för det här innehavet."
+    },
+    "transactions": {
+      "title": "Transaktionshistorik",
+      "noTransactions": "Inga transaktioner hittades"
+    },
+    "manualFormula": "Formel: {{value}} × {{quantity}} aktier"
+  },
+  "confirmDelete": {
+    "title": "Ta bort innehavet?",
+    "description": "{{name}} och alla dess transaktioner tas bort för gott. Det går inte att ångra."
+  },
+  "modal": {
+    "add": {
+      "title": "Lägg till investering",
+      "description": "Det nya innehavet visas i tabellen och värderas till sitt marknadspris.",
+      "companyDetails": "Företagsuppgifter",
+      "companyName": "Namn",
+      "ticker": "Ticker",
+      "financialDetails": "Ekonomiska uppgifter",
+      "pricePerShare": "Pris per aktie",
+      "quantity": "Antal",
+      "selectTicker": "Välj ticker",
+      "multipleResults": "Flera träffar hittades. Välj rätt tickersymbol:",
+      "noTickerFound": "Inga tickersymboler hittades för det här företagsnamnet",
+      "searchError": "Det gick inte att söka efter tickersymbolen",
+      "selected": "Vald",
+      "search": "Sök på Yahoo Finance",
+      "searchHint": "Söker på Yahoo Finance; om inget hittas, skriv namnet själv.",
+      "purchaseDate": "Köpdatum",
+      "searchByName": "Sök på företagsnamn",
+      "searchByTicker": "Sök på ticker",
+      "searching": "Söker..."
+    },
+    "buy": {
+      "title": "Köp",
+      "description": "Registrera ett köp för",
+      "quantity": "Antal",
+      "pricePerShare": "Pris per aktie",
+      "addPurchase": "Lägg till köp"
+    },
+    "sell": {
+      "title": "Sälj",
+      "description": "Registrera en försäljning av det här innehavet.",
+      "transactionDetails": "Transaktionsuppgifter",
+      "pricePerShare": "Pris per aktie",
+      "quantity": "Antal",
+      "sellInvestment": "Sälj aktie"
+    },
+    "edit": {
+      "title": "Redigera transaktion ({{type}})",
+      "description": "Ändra uppgifterna för den här transaktionen.",
+      "transactionDetails": "Transaktionsuppgifter",
+      "submit": "Uppdatera transaktion"
+    }
+  },
+  "toast": {
+    "added": "Investeringen har lagts till",
+    "updated": "Aktien har uppdaterats",
+    "deleted": "Innehavet har tagits bort",
+    "pricesRefreshed_one": "{{count}} aktiekurs uppdaterad",
+    "pricesRefreshed_other": "{{count}} aktiekurser uppdaterade",
+    "pricesRefreshedDescription": "De senaste kurserna hämtades från Yahoo Finance",
+    "rateLimitReached": "Gränsen för anrop nådd",
+    "rateLimitDescription": "{{updated}} kurser uppdaterade, {{remaining}} återstår. Försök igen om en minut.",
+    "refreshFailed": "Det gick inte att uppdatera kurserna",
+    "noResults": "Inga träffar",
+    "tickerFound": "Ticker hittad",
+    "searchFailed": "Sökningen misslyckades",
+    "manualPriceDeleted": "Den manuella kursen har tagits bort",
+    "manualDividendDeleted": "Den manuella utdelningen har tagits bort"
+  },
+  "chart": {
+    "title": "Portföljvärde över tid",
+    "positionTitle": "Innehavets värde över tid",
+    "bought": "Köpt",
+    "sold": "Sålt",
+    "subtitle": "Inklusive insättningar och marknadsrörelser.",
+    "legend": {
+      "value": "Värde",
+      "buy": "Köp",
+      "sell": "Försäljning"
+    },
+    "events": {
+      "buy": "Köpte {{tickers}}",
+      "sell": "Sålde {{tickers}}",
+      "cluster_one": "{{count}} transaktion",
+      "cluster_other": "{{count}} transaktioner"
+    }
+  },
+  "detail": {
+    "chartFxMissing": "Vissa dagar saknas i diagrammet eller i linjen för investerat belopp: ingen växelkurs för {{currencies}}.",
+    "backToList": "Tillbaka till aktier",
+    "notFound": "Innehavet hittades inte",
+    "deleted": "Innehavet har tagits bort",
+    "transactionDeleted": "Transaktionen har tagits bort",
+    "transactionUpdated": "Transaktionen har uppdaterats",
+    "pricesRefreshed": "Kurserna har uppdaterats",
+    "manualPrice": "Manuellt angiven kurs",
+    "refresh": "Uppdatera",
+    "currentValue": "Aktuellt värde",
+    "shares": "aktier",
+    "totalInvested": "Totalt investerat",
+    "avgPrice": "snitt",
+    "unrealizedPnL": "Orealiserad vinst/förlust",
+    "dividendYield": "Direktavkastning",
+    "year": "år",
+    "noDividend": "ingen utdelningsdata",
+    "manual": "manuell",
+    "updatePrice": "Uppdatera kurs",
+    "updateDividend": "Uppdatera utdelning",
+    "tabs": {
+      "position": "Innehav",
+      "transactions": "Transaktioner"
+    },
+    "position": {
+      "title": "Innehavsuppgifter",
+      "quantity": "Antal",
+      "avgPrice": "Snittpris",
+      "currentPrice": "Aktuell kurs",
+      "priceUpdated": "Kurs uppdaterad"
+    },
+    "companyInfo": {
+      "title": "Företagsinformation",
+      "sectorIndustry": "Sektor · bransch",
+      "peRatio": "P/E-tal",
+      "forwardPe": "Förväntat P/E-tal",
+      "marketCap": "Börsvärde",
+      "beta": "Beta",
+      "fiftyTwoWeekHigh": "Högsta 52 veckor",
+      "fiftyTwoWeekLow": "Lägsta 52 veckor",
+      "dividendRate": "Utdelning",
+      "dividendYield": "Direktavkastning",
+      "etfNote": "Yahoo Finance redovisar inte de här siffrorna för ETF:er",
+      "noData": "Yahoo Finance redovisar ingen företagsdata för den här aktien",
+      "unavailable": "Företagsdata kunde inte läsas in",
+      "retry": "Försök igen"
+    },
+    "transactions": {
+      "title": "Transaktionshistorik",
+      "date": "Datum",
+      "type": "Typ",
+      "quantity": "Antal",
+      "originalPrice": "Ursprunglig kurs",
+      "price": "Kurs",
+      "total": "Totalt",
+      "empty": "Inga transaktioner ännu"
+    },
+    "confirmDelete": {
+      "title": "Ta bort innehavet?",
+      "description": "{{name}} ({{ticker}}) och alla dess transaktioner tas bort för gott. Det går inte att ångra."
+    },
+    "confirmDeleteTransaction": {
+      "title": "Ta bort transaktionen?",
+      "description": "Transaktionen av typen {{type}} ({{quantity}} × {{ticker}}, {{date}}, {{amount}}) tas bort permanent. Det går inte att ångra."
+    },
+    "editName": {
+      "title": "Redigera namn",
+      "description": "Det nya namnet visas i listan, detaljvyn och översikten.",
+      "label": "Namn",
+      "save": "Spara namn"
+    },
+    "nameUpdated": "Företagsnamnet har uppdaterats",
+    "openInMonitor": "Öppna i Aktiebevakning",
+    "dividendYieldTooltip": "Beräknade årliga utdelningar delat med det aktuella marknadsvärdet av innehavet.",
+    "priceNative": "Kurs ({{currency}})",
+    "priceNativeMixed": "Kurs (ursprunglig valuta)",
+    "priceConverted": "Kurs ({{currency}}, dagens växelkurs)",
+    "sharesCount_one": "{{count}} aktie",
+    "sharesCount_other": "{{count}} aktier",
+    "avgBuyPrice": "genomsnittligt inköpspris {{price}}",
+    "lastBuy": "senaste köp {{date}}",
+    "positionValue": "Innehavets värde",
+    "sinceBuy": "sedan köpet",
+    "currentPrice": "Aktuell kurs",
+    "invested": "Investerat",
+    "avgShort": "snitt {{price}}",
+    "unrealized": "Orealiserad avkastning",
+    "vsInvested": "mot investerat",
+    "realized": "Realiserad avkastning",
+    "sells_one": "{{count}} försäljning",
+    "sells_other": "{{count}} försäljningar",
+    "noSells": "ingen försäljning ännu",
+    "dividends": "Utdelningar",
+    "dividendNote": "uppskattning per år · avkastning {{percent}}",
+    "refreshPrices": "Uppdatera kurser",
+    "buy": "Köp",
+    "sell": "Sälj",
+    "about": "Om företaget",
+    "source": "Yahoo Finance",
+    "deleteTransaction": "Ta bort transaktion",
+    "menu": {
+      "editPrice": "Redigera kurs",
+      "editDividend": "Redigera utdelningsuppskattning",
+      "editName": "Redigera namn"
+    },
+    "status": {
+      "pricesUpdated": "Kurserna uppdaterades {{when}}",
+      "todayAt": "i dag kl. {{time}}"
+    },
+    "legend": {
+      "value": "Innehavets värde",
+      "invested": "investerat",
+      "investedLong": "Investerat (inköpspris)",
+      "return": "avkastning",
+      "buy": "Köp",
+      "sell": "Försäljning"
+    },
+    "events": {
+      "buy": "Köp {{quantity}} till {{price}}",
+      "sell": "Försäljning {{quantity}} till {{price}}",
+      "total": "totalt {{amount}}",
+      "cluster_one": "{{count}} händelse",
+      "cluster_other": "{{count}} händelser"
+    },
+    "ledger": {
+      "sub_one": "{{count}} händelse · håll muspekaren över en rad för att markera den i diagrammet",
+      "sub_other": "{{count}} händelser · håll muspekaren över en rad för att markera den i diagrammet",
+      "filter": {
+        "all": "Alla",
+        "buys": "Köp",
+        "sells": "Försäljningar"
+      },
+      "footer_one": "{{count}} händelse",
+      "footer_other": "{{count}} händelser",
+      "since": "sedan {{date}}",
+      "rates": "Kurser i {{currency}} enligt kursen på transaktionsdagen"
+    }
+  },
+  "importWizard": {
+    "title": "Importera affärer från CSV",
+    "lead": "En export från en mäklare eller din egen tabell. Vi hittar dubbletter, och du ser vad som kommer att importeras innan något skrivs.",
+    "steps": {
+      "file": "Fil",
+      "mapping": "Kolumner",
+      "review": "Granska",
+      "done": "Klart"
+    },
+    "next": "Granska affärer",
+    "importButton_one": "Importera {{count}} affär",
+    "importButton_other": "Importera {{count}} affärer",
+    "importButtonIdle": "Importera",
+    "unsupportedFile": "Bara .csv- och .txt-filer kan importeras. Spara först ett Excel-dokument eller annat kalkylblad som CSV.",
+    "direction": {
+      "buy": "Köp",
+      "sell": "Försäljning"
+    },
+    "roles": {
+      "date": "Datum",
+      "direction": "Riktning",
+      "type": "Typ",
+      "symbol": "Symbol",
+      "isin": "ISIN",
+      "name": "Namn",
+      "quantity": "Antal",
+      "price": "Pris per aktie",
+      "quantityPrice": "Antal och pris",
+      "currency": "Valuta",
+      "externalId": "Affärs-ID"
+    },
+    "file": {
+      "sourceHeading": "Varifrån exporten kommer",
+      "savedTag": "sparad",
+      "howToExport": "Så här exporterar du från {{name}}",
+      "dropTitle": "Släpp filen med dina affärer här",
+      "dropActive": "Släpp filen för att öppna den",
+      "or": "eller",
+      "choose": "Välj fil…",
+      "dropNote": ".csv eller .txt · spara Excel-filer som CSV först",
+      "sample": "Ladda ner en exempelfil",
+      "sampleSaved": "Exempelfilen har sparats",
+      "sampleFailed": "Exempelfilen kunde inte sparas",
+      "helpFailed": "Hjälpsidan kunde inte öppnas"
+    },
+    "sources": {
+      "xtb": {
+        "name": "XTB",
+        "guideTitle": "Så får du exporten",
+        "guide": "Öppna Account history → Cash operations i xStation, välj en period som börjar vid din första affär, klicka på Export och välj CSV-formatet.",
+        "note": "Filen innehåller också insättningar, utdelningar och avgifter – bara köp och försäljningar av aktier och ETF:er importeras. Vi fyller i valutan utifrån börsen."
+      },
+      "trading212": {
+        "name": "Trading 212",
+        "guideTitle": "Så får du exporten",
+        "guide": "Öppna History → exportikonen i appen, bocka i Orders, välj en period och ladda ner CSV-filen.",
+        "note": "En export täcker högst 12 månader – ladda upp flera filer, vi känner igen dubbletter."
+      },
+      "degiro": {
+        "name": "Degiro",
+        "guideTitle": "Så får du exporten",
+        "guide": "Öppna Activity → Transactions på webbplatsen, ange en period som börjar vid din första affär och klicka på Export → CSV. Använd inte kontoutdraget (Account statement)."
+      },
+      "ibkr": {
+        "name": "Interactive Brokers",
+        "guideTitle": "Så får du exporten",
+        "guide": "Öppna Performance & Reports → Flex Queries i Client Portal, skapa en Activity Flex Query med avsnittet Trades och fälten Symbol, ISIN, TradeDate, Buy/Sell, Quantity, TradePrice, CurrencyPrimary, AssetClass och TradeID, format CSV, och kör den för hela perioden."
+      },
+      "moony": {
+        "name": "Din egen tabell (Moony-mall)",
+        "guideTitle": "Så fyller du i tabellen",
+        "guide": "Ladda ner mallen, fyll i den i Excel eller ett annat kalkylprogram och spara den som CSV.",
+        "excel": "En fil som sparats av Excel på vilket språk som helst fungerar som den är – vi identifierar avgränsare, teckenkodning och decimaltecken. Moonys egen export (Aktier → Exportera) har samma format.",
+        "columns": {
+          "date": {
+            "label": "Datum",
+            "hint": "2024-01-15 eller 15.01.2024"
+          },
+          "type": {
+            "label": "Typ",
+            "hint": "buy / sell eller nákup / prodej"
+          },
+          "symbol": {
+            "label": "Symbol",
+            "hint": "som på Yahoo Finance, t.ex. AAPL, VWCE.DE"
+          },
+          "quantity": {
+            "label": "Antal",
+            "hint": "antal aktier, t.ex. 10 eller 0.5"
+          },
+          "price": {
+            "label": "Pris per aktie",
+            "hint": "i affärens valuta, t.ex. 180.50"
+          },
+          "currency": {
+            "label": "Valuta",
+            "hint": "t.ex. USD, EUR, CZK"
+          },
+          "name": {
+            "label": "Namn",
+            "hint": "valfritt"
+          }
+        }
+      },
+      "custom": {
+        "name": "Annan mäklare",
+        "guideTitle": "Vad filen behöver",
+        "guide": "Vi behöver en rad per affär: datum, riktning, symbol eller ISIN, antal, pris per aktie och valuta. Du kopplar kolumnerna i nästa steg och Moony kommer ihåg kopplingen."
+      },
+      "saved": {
+        "title": "Sparat format",
+        "guide": "En fil med samma kolumner känns igen automatiskt och kopplingen används igen.",
+        "delete": "Ta bort format",
+        "deleteTitle": "Ta bort det här formatet?",
+        "deleteDescription": "Formatet ”{{name}}” kommer inte längre att kännas igen. Affärer som redan importerats ändras inte."
+      },
+      "savedFallback": "Sparat format"
+    },
+    "recent": {
+      "title": "Senaste importer",
+      "undo": "Ångra",
+      "undoFor": "Ångra importen {{file}}",
+      "trades_one": "{{count}} affär",
+      "trades_other": "{{count}} affärer",
+      "tradesOf": "{{remaining}} av {{total}} affärer",
+      "showAll": "Visa alla ({{count}})",
+      "showLess": "Visa färre"
+    },
+    "filebar": {
+      "rows_one": "{{count}} rad",
+      "rows_other": "{{count}} rader",
+      "detected": "identifierad",
+      "format": "Avgränsare ”{{delimiter}}” · teckenkodning {{encoding}}",
+      "tab": "tabb"
+    },
+    "mismatch": {
+      "other": "Du valde {{chosen}}, men filen ser ut som {{detected}}. Vi använde kopplingen för {{detected}}.",
+      "unknown": "Filen matchar inte formatet {{chosen}}. Koppla kolumnerna manuellt."
+    },
+    "mapping": {
+      "selectColumn": "Välj kolumn",
+      "columnNone": "— används inte —",
+      "blankColumn": "Kolumn {{position}}",
+      "blankColumnAfter": "Kolumn {{position}} (efter ”{{after}}”)",
+      "example": "T.ex. {{values}}",
+      "summary": {
+        "title": "Koppling: {{source}}",
+        "hint": "Den färdiga kopplingen för det här formatet. Oftast kan du bara fortsätta.",
+        "sign": "kvantitetens tecken",
+        "instrument": "från börsen",
+        "comment": "{{column}} (från texten)",
+        "values": "Värden i kolumnen {{column}}",
+        "more_one": "+{{count}} till",
+        "more_other": "+{{count}} till"
+      },
+      "edit": "Redigera koppling",
+      "backToPreset": "Tillbaka till kopplingen för {{source}}",
+      "required": "Obligatoriska kolumner",
+      "optional": "Valfria kolumner",
+      "direction": "Affärens riktning",
+      "format": "Format",
+      "symbolOrIsin": "En symbol eller ett ISIN räcker. Utifrån ett ISIN hittar vi symbolen på Yahoo Finance.",
+      "currencyMode": {
+        "column": "Från en kolumn",
+        "fixed": "En valuta",
+        "instrument": "Från börsen"
+      },
+      "currencyColumn": "Valutakolumn",
+      "currencyFixed": "Valuta för hela filen",
+      "currencyFixedHint": "Alla affärer i filen är i den här valutan.",
+      "currencyInstrumentHint": "Vi fyller i valutan utifrån den börs som värdepapperet handlas på.",
+      "directionMode": {
+        "typeColumn": "Från en typkolumn",
+        "quantitySign": "Från kvantitetens tecken"
+      },
+      "directionSignHint": "Ett negativt antal är en försäljning, ett positivt ett köp.",
+      "typeColumn": "Typkolumn",
+      "typeValue": "Värde",
+      "typeCount": "Rader",
+      "typeLine": "Första raden",
+      "typeMeaning": "Betydelse",
+      "typeTooMany": "Den här kolumnen har för många olika värden för en tabell. Välj en annan kolumn eller läs riktningen från kvantitetens tecken.",
+      "typeNoTrade": "Koppla minst ett värde till ett köp eller en försäljning, annars importeras ingenting.",
+      "typeCommentNote": "Hos XTB avgör kommentarens text riktningen. Typvärdena avgör bara vilka rader som är affärer.",
+      "action": {
+        "buy": "Köp",
+        "sell": "Försäljning",
+        "skip": "Hoppa över"
+      },
+      "externalIdHint": "Hjälper till att känna igen dubbletter vid senare importer.",
+      "dateFormat": "Datumformat",
+      "dateFormatChoose": "Välj ett format",
+      "dateFormatAmbiguous": "Ordningen på dag, månad och år kan inte avgöras i den här filen, så det är en gissning. Kontrollera datumen i förhandsgranskningen nedan eller välj format själv.",
+      "decimalSeparator": "Decimaltecken",
+      "decimalAuto": "Identifiera automatiskt ({{separator}})",
+      "decimalComma": "Komma (1 234,56)",
+      "decimalDot": "Punkt (1,234.56)",
+      "headerRow": "Rubrikrad",
+      "skipRows": "Hoppa över rader efter rubriken",
+      "layoutHelp": "Rubrikraden är raden med kolumnnamnen; rader ovanför den ignoreras. Överhoppade rader är datarader direkt efter rubriken.",
+      "remember": "Kom ihåg kopplingen för det här formatet",
+      "rememberHint": "En fil med samma kolumner känns då igen automatiskt.",
+      "formatName": "Formatets namn",
+      "formatNamePlaceholder": "t.ex. Min mäklare",
+      "formatNameRequired": "Ange ett namn för formatet.",
+      "missing": "Saknas: {{fields}}",
+      "field": {
+        "date": "datum",
+        "dateFormat": "datumformat",
+        "symbol": "symbol eller ISIN",
+        "quantity": "antal",
+        "price": "pris per aktie",
+        "currency": "valuta",
+        "type": "typkolumn"
+      },
+      "rawData": "Förhandsgranska CSV-data",
+      "rawCounts": "Kolumner: {{columns}} · Rader: {{rows}}"
+    },
+    "review": {
+      "incomplete": "Slutför kolumnkopplingen för att se granskningen.",
+      "loading": "Läser filen…",
+      "failed": "Filen kan inte granskas med de här inställningarna",
+      "summary": {
+        "willImport": "Att importera {{count}}",
+        "duplicates": "Dubbletter {{count}}",
+        "skipped": "Överhoppade {{count}}",
+        "errors": "Fel {{count}}"
+      },
+      "feeNote": "Avgifter importeras inte",
+      "nothingToImport": "Inget att importera: varje rad är en dubblett, överhoppad eller har ett fel.",
+      "statusNew": "Ny",
+      "statusSkipped": "Överhoppad",
+      "statusError": "Fel",
+      "statusDuplicate": "Dubblett",
+      "duplicateImportAnyway": "importera ändå",
+      "instruments": {
+        "title": "Värdepapper",
+        "security": "Värdepapper",
+        "currency": "Valuta",
+        "trades": "Affärer",
+        "status": "Status",
+        "actions": "Åtgärder",
+        "progress": "Kontrollerar på Yahoo Finance… {{done}} av {{total}}",
+        "skipVerification": "Hoppa över kontrollen",
+        "retry": "Kontrollera igen",
+        "checking": "Kontrollerar…",
+        "inFile": "i filen {{symbol}}",
+        "edit": "Redigera",
+        "skip": "Hoppa över",
+        "include": "Inkludera",
+        "editFor": "Redigera {{name}}",
+        "skipFor": "Hoppa över {{name}}",
+        "includeFor": "Inkludera {{name}}",
+        "state": {
+          "existing": "Befintligt innehav",
+          "new": "Nytt innehav",
+          "unverified": "Inte verifierat",
+          "missingSymbol": "Symbol saknas",
+          "skipped": "Överhoppat"
+        },
+        "reason": {
+          "failed": "Yahoo Finance svarade inte",
+          "notFound": "Hittades inte på Yahoo Finance",
+          "unmatched": "Symbolen finns inte bland de hittade"
+        },
+        "missingReason": {
+          "enter": "Ange symbolen manuellt",
+          "failed": "Yahoo Finance svarade inte – ange symbolen manuellt",
+          "notFound": "Hittades inte på Yahoo Finance – ange symbolen manuellt"
+        },
+        "positionCurrency": "Innehavet är i {{currency}}",
+        "missingHint_one": "Ange en symbol för {{count}} värdepapper, eller hoppa över det.",
+        "missingHint_other": "Ange en symbol för {{count}} värdepapper, eller hoppa över dem.",
+        "unverifiedHint_one": "{{count}} värdepapper kunde inte verifieras. Du kan ändå importera det, men dess kurser kanske inte uppdateras.",
+        "unverifiedHint_other": "{{count}} värdepapper kunde inte verifieras. Du kan ändå importera dem, men deras kurser kanske inte uppdateras."
+      },
+      "rows": {
+        "title": "Rader",
+        "line": "Rad",
+        "date": "Datum",
+        "direction": "Riktning",
+        "symbol": "Symbol",
+        "quantity": "Antal",
+        "price": "Kurs",
+        "currency": "Valuta",
+        "status": "Status",
+        "footer": "De första {{shown}} av {{total}} rader",
+        "footerAll_one": "{{count}} rad",
+        "footerAll_other": "{{count}} rader",
+        "showAll": "Visa alla",
+        "showLess": "Visa färre",
+        "none": "Med de här inställningarna har filen inga rader.",
+        "truncated": "Tabellen visar högst {{shown}} rader; antalen ovan gäller hela filen."
+      }
+    },
+    "editor": {
+      "apply": "Tillämpa",
+      "searchResults": "Sökresultat på Yahoo Finance",
+      "found": "Hittades på Yahoo Finance",
+      "searching": "Söker…",
+      "searchError": "Sökningen misslyckades",
+      "noResults": "Inga träffar. Prova ett annat namn eller en annan symbol.",
+      "currencyFromFile": "Från filen"
+    },
+    "currency": {
+      "gbx": "GBX (pence, lagras som GBP ÷ 100)"
+    },
+    "result": {
+      "title": "Affärerna har importerats",
+      "titleNothing": "Ingenting importerades",
+      "nothing": "Varje rad i filen är en dubblett, överhoppad eller har ett fel. Detaljer finns nedan.",
+      "summary_one": "{{count}} affär från {{from}} till {{to}}.",
+      "summary_other": "{{count}} affärer från {{from}} till {{to}}.",
+      "summaryCount_one": "{{count}} affär importerad.",
+      "summaryCount_other": "{{count}} affärer importerade.",
+      "imported": "Importerade",
+      "duplicates": "Dubbletter",
+      "skipped": "Överhoppade",
+      "errors": "Fel",
+      "newPositions": "Nya innehav:",
+      "updatedPositions": "Tillagt till befintliga:",
+      "moreTickers_one": "+{{count}} till",
+      "moreTickers_other": "+{{count}} till",
+      "recalculating": "Räknar om historiken över portföljvärdet…",
+      "showDuplicates": "Visa dubbletter",
+      "showSkipped": "Visa överhoppade rader",
+      "showErrors": "Visa fel",
+      "line": "Rad {{line}}: {{message}}",
+      "whatNext": "Vad nu",
+      "next": {
+        "show": "Visa aktier",
+        "showHint": "De nya och utökade innehaven finns i tabellen.",
+        "showAction": "Visa",
+        "tags": "Tilldela etiketter",
+        "tagsHint": "De nya innehaven har inga etiketter ännu. Tilldela dem i aktieanalysen.",
+        "tagsAction": "Tilldela",
+        "another": "Importera en annan fil",
+        "anotherHint": "Till exempel en tidigare period eller ett annat konto.",
+        "anotherAction": "Välj fil",
+        "undo": "Ångra importen",
+        "undoHint_one": "Tar bort {{count}} affär från den här filen.",
+        "undoHint_other": "Tar bort {{count}} affärer från den här filen.",
+        "undoAction": "Ångra"
+      }
+    },
+    "undone": {
+      "title": "Importen har ångrats",
+      "summary_one": "{{count}} affär från importen ”{{file}}” har tagits bort.",
+      "summary_other": "{{count}} affärer från importen ”{{file}}” har tagits bort.",
+      "removedPositions": "Borttagna innehav:"
+    },
+    "undo": {
+      "title": "Ångra den här importen?",
+      "description_one": "Vi tar bort {{count}} affär från importen ”{{file}}”.",
+      "description_other": "Vi tar bort {{count}} affärer från importen ”{{file}}”.",
+      "consequences": "Innehav som blir utan någon affär tas bort. Affärer från den här importen som du har redigerat sedan dess tas också bort.",
+      "confirm": "Ångra importen"
+    },
+    "toast": {
+      "inspectFailed": "Filen kunde inte läsas",
+      "importFailed": "Importen misslyckades",
+      "undone_one": "Importen har ångrats: {{count}} affär borttagen",
+      "undone_other": "Importen har ångrats: {{count}} affärer borttagna",
+      "undoFailed": "Importen kunde inte ångras",
+      "formatSaved": "Formatet ”{{name}}” har sparats",
+      "formatSaveFailed": "Kopplingen kunde inte sparas",
+      "formatDeleted": "Formatet har tagits bort",
+      "formatDeleteFailed": "Formatet kunde inte tas bort"
+    },
+    "row": {
+      "notATrade": "Varken köp eller försäljning",
+      "zeroQuantity": "Noll i antal",
+      "assetClass": "Ett annat tillgångsslag",
+      "instrumentSkipped": "Värdepapperet hoppas över",
+      "dateUnparseable": "Datumet kunde inte läsas",
+      "numberUnparseable": "Talet kunde inte läsas",
+      "commentUnparseable": "Kommentaren kunde inte läsas",
+      "symbolMissing": "Symbol saknas",
+      "symbolMissingIsin": "Symbol saknas, och ISIN ”{{detail}}” är inte giltigt",
+      "tickerInvalid": "Ogiltig symbol",
+      "currencyMissing": "Valuta saknas",
+      "currencyInvalid": "Ogiltig valuta",
+      "priceMissing": "Pris saknas",
+      "sellExceedsHoldings": "Försäljningen överstiger innehavet den dagen",
+      "sellExceedsHoldingsHeld": "Försäljningen överstiger innehavet den dagen ({{detail}} innehas)",
+      "currencyMismatch": "Valutan skiljer sig från innehavets",
+      "currencyMismatchPosition": "Valutan skiljer sig från innehavets ({{detail}})",
+      "duplicate": "Samma affär finns redan i Moony",
+      "duplicateById": "En affär med samma mäklar-ID finns redan i Moony",
+      "duplicateSimilar": "En liknande affär finns redan i Moony: samma dag och antal, pris inom 0,5 %",
+      "cannotParse": "Raden kunde inte läsas",
+      "writeFailed": "Affären kunde inte skrivas"
+    }
+  },
+  "eyebrow": "Portfölj",
+  "export": "Exportera"
+}

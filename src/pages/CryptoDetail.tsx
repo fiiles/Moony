@@ -234,14 +234,40 @@ export default function CryptoDetail() {
       reportCurrency,
       tx.transactionDate
     );
-  // A total is shown only when every one of its rows converted
+  // A total is known only when every one of its rows converted
   const totalOf = (rows: CryptoTransaction[]): number | null =>
     rows.reduce<number | null>((sum, tx) => {
       const price = txDisplayPrice(tx);
       return sum === null || price === null ? null : sum + (parseFloat(tx.quantity) || 0) * price;
     }, 0);
-  const boughtTotal = totalOf(buys);
-  const soldTotal = totalOf(sells);
+  // The ledger footer's bought/sold figure: an unknown total shows "—" (with the missing marker
+  // once the rates have loaded) instead of vanishing, so a partial ledger never reads as complete
+  const footerTotal = (kind: 'bought' | 'sold', rows: CryptoTransaction[]) => {
+    if (rows.length === 0) return null;
+    const total = totalOf(rows);
+    if (total !== null) {
+      return total > 0
+        ? ` · ${t(`detail.ledger.${kind}`, { amount: fmt.money(total, reportCurrency, { decimals: 0 }) })}`
+        : null;
+    }
+    const missing = Array.from(
+      new Set(
+        rows.filter((tx) => txDisplayPrice(tx) === null).map((tx) => tx.currency || currencyCode)
+      )
+    );
+    const flagged = ratesReady && missing.length > 0;
+    return (
+      <>
+        {' · '}
+        <span
+          className={cn(flagged && 'text-loss')}
+          title={flagged ? missingRateTitle(missing.join(', ')) : undefined}
+        >
+          {t(`detail.ledger.${kind}`, { amount: '—' })}
+        </span>
+      </>
+    );
+  };
 
   const scrollToRow = (ids: string[]) => {
     document
@@ -587,12 +613,8 @@ export default function CryptoDetail() {
           <div className="flex items-center justify-between border-t border-line px-[14px] py-3 text-micro font-500 text-ink-4">
             <span>
               {t('detail.ledger.footer', { count: ledger.length })}
-              {boughtTotal !== null &&
-                boughtTotal > 0 &&
-                ` · ${t('detail.ledger.bought', { amount: fmt.money(boughtTotal, reportCurrency, { decimals: 0 }) })}`}
-              {soldTotal !== null &&
-                soldTotal > 0 &&
-                ` · ${t('detail.ledger.sold', { amount: fmt.money(soldTotal, reportCurrency, { decimals: 0 }) })}`}
+              {footerTotal('bought', buys)}
+              {footerTotal('sold', sells)}
             </span>
             <span>{t('detail.ledger.rates', { currency: reportCurrency })}</span>
           </div>

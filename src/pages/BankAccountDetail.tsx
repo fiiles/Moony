@@ -8,8 +8,9 @@ import {
 } from '@/components/ui/dialog';
 import { refreshMoneyFlows } from '@/lib/money-flow-refresh';
 import { getCompleteBankHistory } from '@/lib/bank-history';
-import { nativeBookedTransactions, rowFlowLabel } from '@/utils/money-flows';
-import { useState, useMemo, useEffect, useRef, Fragment } from 'react';
+import { bookedInAccountCurrency, rowFlowLabel, type AccountConvertAt } from '@/utils/money-flows';
+import { useDatedFx } from '@/hooks/use-fx';
+import { useState, useMemo, useEffect, useRef, useCallback, Fragment } from 'react';
 import { useRoute, useLocation, useSearch } from 'wouter';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -417,19 +418,70 @@ export default function BankAccountDetail() {
       </Button>
     </p>
   ) : null;
-  // Account-native amounts only; other currency rows are excluded from summaries/chart.
+  // Summaries and the chart are in the account currency: rows from another currency
+  // pocket are converted at the rate of their booking day, unconvertible ones left out.
   const accountCurrency = recordCurrency(account?.currency) as CurrencyCode;
   const formatAccountAmount = (value: number) =>
     formatAmountInCurrency(value, accountCurrency, getLocale(), currencyCode);
 
+  const firstForeignDay = useMemo(() => {
+    const days = [
+      ...(thisMonthResult?.transactions ?? []),
+      ...(lastMonthResult?.transactions ?? []),
+      ...(chartResult?.transactions ?? []),
+    ]
+      .filter((tx) => tx.status === 'booked' && tx.currency !== accountCurrency)
+      .map((tx) => tx.bookingDate);
+    return days.length > 0 ? Math.min(...days) : undefined;
+  }, [thisMonthResult, lastMonthResult, chartResult, accountCurrency]);
+  const { ready: foreignRatesReady, convertAt } = useDatedFx(firstForeignDay);
+  const toAccountCurrency = useCallback<AccountConvertAt>(
+    (amount, from, timestamp) =>
+      foreignRatesReady ? convertAt(amount, from, accountCurrency, timestamp) : null,
+    [foreignRatesReady, convertAt, accountCurrency]
+  );
+  const monthNowRows = useMemo(
+    () =>
+      bookedInAccountCurrency(
+        thisMonthResult?.transactions ?? [],
+        accountCurrency,
+        toAccountCurrency
+      ),
+    [thisMonthResult, accountCurrency, toAccountCurrency]
+  );
+  const monthPrevRows = useMemo(
+    () =>
+      bookedInAccountCurrency(
+        lastMonthResult?.transactions ?? [],
+        accountCurrency,
+        toAccountCurrency
+      ),
+    [lastMonthResult, accountCurrency, toAccountCurrency]
+  );
+  const chartRows = useMemo(
+    () =>
+      bookedInAccountCurrency(chartResult?.transactions ?? [], accountCurrency, toAccountCurrency),
+    [chartResult, accountCurrency, toAccountCurrency]
+  );
   const monthNow = useMemo(
-    () => summarizeFlow(thisMonthResult?.transactions ?? [], account?.currency),
-    [thisMonthResult, account?.currency]
+    () => summarizeFlow(monthNowRows.rows, accountCurrency),
+    [monthNowRows, accountCurrency]
   );
   const monthPrev = useMemo(
-    () => summarizeFlow(lastMonthResult?.transactions ?? [], account?.currency),
-    [lastMonthResult, account?.currency]
+    () => summarizeFlow(monthPrevRows.rows, accountCurrency),
+    [monthPrevRows, accountCurrency]
   );
+  // Currencies named in the notes under the hero: converted, or left out for lack of a rate
+  // (only once the daily rates have loaded, so loading never reads as missing)
+  const foreignNote = useMemo(() => {
+    const all = [monthNowRows, monthPrevRows, chartRows];
+    const union = (pick: (r: (typeof all)[number]) => string[]) =>
+      [...new Set(all.flatMap(pick))].sort();
+    return {
+      converted: union((r) => r.converted),
+      missing: foreignRatesReady ? union((r) => r.missing) : [],
+    };
+  }, [monthNowRows, monthPrevRows, chartRows, foreignRatesReady]);
 
   // Auto-categorize every uncategorized transaction matching the filters, not just this page
   const handleAutoCategorize = async () => {
@@ -626,10 +678,7 @@ export default function BankAccountDetail() {
           : undefined,
   });
 
-  const chartTxs = useMemo(
-    () => nativeBookedTransactions(chartResult?.transactions ?? [], accountCurrency),
-    [chartResult, accountCurrency]
-  );
+  const chartTxs = chartRows.rows;
   const chartPoints = useMemo(() => {
     const firstTx = chartTxs.reduce<number | null>(
       (min, tx) => (min === null || tx.bookingDate < min ? tx.bookingDate : min),
@@ -955,12 +1004,18 @@ export default function BankAccountDetail() {
           date: account.balanceAsOf ? fmt.day(account.balanceAsOf) : t('readiness.unknownDate'),
         })}
       </p>
-      {[
-        ...(thisMonthResult?.transactions ?? []),
-        ...(lastMonthResult?.transactions ?? []),
-        ...(chartResult?.transactions ?? []),
-      ].some((tx) => tx.status === 'booked' && tx.currency !== currency) && (
-        <p className="mb-3 text-micro text-loss">{t('readiness.nativeOnly', { currency })}</p>
+      {foreignNote.converted.length > 0 && (
+        <p className="mb-3 text-micro text-ink-4">
+          {t('readiness.foreignConverted', {
+            currencies: foreignNote.converted.join(', '),
+            currency: accountCurrency,
+          })}
+        </p>
+      )}
+      {foreignNote.missing.length > 0 && (
+        <p className="mb-3 text-micro text-loss">
+          {t('readiness.foreignMissing', { currencies: foreignNote.missing.join(', ') })}
+        </p>
       )}
       <Stats columns={3} className="mt-[17px]">
         <Stat

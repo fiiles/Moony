@@ -1,0 +1,430 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Moony — prototyp: přepsání pravidla a dřívější platby</title>
+<link rel="stylesheet" href="../design-system/moony.css">
+<style>
+  /* Prototype for docs/specs/2026-10-10-rule-override-recategorize-history-design.md.
+     Uses the design-system contract only; nothing here is production code. */
+  .page { padding-bottom: 140px; }
+  .page-head p { max-width: 660px; }
+  .ledger.card--table, .rules.card--table { overflow: visible; }
+  .ledger .table__head, .ledger .table__row { grid-template-columns: 2.1fr 2.3fr 2.1fr 1.1fr 44px; }
+  .ledger .table__row { min-height: 52px; }
+  .cell--cat { position: relative; }
+  .catbtn { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; height: 28px; padding: 0 8px; border: 0; border-radius: var(--r-1); background: none; color: var(--ink); font-size: var(--fs-table); font-weight: 600; white-space: nowrap; }
+  .catbtn:hover { background: var(--well-2); }
+  .catbtn .ic { color: var(--ink-3); flex: none; }
+  .catbtn.is-empty { color: var(--ink-3); font-weight: 480; }
+  .catbtn.is-empty:hover { color: var(--ink); }
+  .catbtn.is-changed { animation: flash 1.6s var(--ease); }
+  @keyframes flash { 0%, 40% { background: var(--gain-soft); } 100% { background: transparent; } }
+  .detail { color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cell--num.is-credit { color: var(--gain); }
+
+  /* Category picker (the app's CategorySelector popover) */
+  .pick { position: absolute; z-index: 6; left: -6px; top: calc(100% + 4px); width: 300px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); box-shadow: var(--sh-pop); text-align: left; font-weight: 450; }
+  .pick--static { position: static; width: 300px; }
+  .pick--narrow { width: 240px; }
+  .pick__search { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-bottom: 1px solid var(--line-soft); color: var(--ink-4); }
+  .pick__search input { flex: 1; min-width: 0; border: 0; outline: 0; background: none; font-size: var(--fs-body); color: var(--ink); }
+  .pick__list { max-height: 236px; overflow-y: auto; padding: 5px; }
+  .pick__item { display: flex; align-items: center; gap: 8px; width: 100%; padding: 7px 8px; border: 0; border-radius: var(--r-1); background: none; color: var(--ink-2); font-size: var(--fs-table); font-weight: 550; text-align: left; }
+  .pick__item:hover { background: var(--well); color: var(--ink); }
+  .pick__item .tick { flex: none; width: 14px; color: var(--ink); opacity: 0; }
+  .pick__item.is-selected .tick { opacity: 1; }
+  .pick__item .ic { color: var(--ink-3); flex: none; }
+  .pick__new { display: flex; align-items: center; gap: 8px; width: 100%; padding: 9px 13px; border: 0; border-top: 1px solid var(--line-soft); background: none; color: var(--ink-3); font-size: var(--fs-table); font-weight: 550; text-align: left; }
+  .pick__new:hover { background: var(--well); color: var(--ink); }
+  .pick__foot { display: grid; gap: 9px; padding: 10px 12px 11px; border-top: 1px solid var(--line-soft); }
+  .pick__row { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+  .pick__lbl { display: flex; gap: 8px; align-items: flex-start; color: var(--ink-3); font-size: var(--fs-caption); cursor: pointer; }
+  .pick__lbl .ic { flex: none; margin-top: 1px; }
+  .pick__lbl b { display: block; color: var(--ink-2); font-weight: 600; }
+  .pick__lbl small { display: block; margin-top: 2px; color: var(--ink-4); font-size: var(--fs-micro); font-weight: 500; line-height: 1.4; }
+  .pick__row .switch { flex: none; margin-top: 1px; }
+  .pick__gov { display: grid; grid-template-columns: auto 1fr; gap: 3px 8px; padding: 8px 10px; border-radius: var(--r-1); background: var(--well); color: var(--ink-2); font-size: var(--fs-caption); font-weight: 600; line-height: 1.35; }
+  .pick__gov .ic { grid-row: 1 / span 2; margin-top: 1px; color: var(--ink-3); }
+  .pick__gov .link { justify-self: start; font-size: var(--fs-micro); white-space: nowrap; }
+  .pick__hist { align-items: flex-start; font-size: var(--fs-caption); }
+  .pick__hist input { flex: none; margin-top: 1px; }
+  .pick__hist b { display: block; color: var(--ink-2); font-weight: 600; }
+  .pick__hist small { display: block; margin-top: 2px; color: var(--ink-4); font-size: var(--fs-micro); font-weight: 500; }
+  .pick__wait { display: flex; align-items: center; gap: 8px; min-height: 16px; color: var(--ink-4); font-size: var(--fs-micro); font-weight: 500; }
+  .pick__wait .skeleton { width: 16px; height: 16px; border-radius: 4px; }
+  .pick__note { display: flex; gap: 8px; align-items: flex-start; color: var(--ink-3); font-size: var(--fs-caption); font-weight: 500; line-height: 1.4; }
+  .pick__note .ic { flex: none; margin-top: 1px; color: var(--ink-4); }
+
+  /* Toast with a description line and an action (sonner in the app) */
+  .toast { align-items: flex-start; max-width: 400px; }
+  .toast__text { flex: 1; min-width: 0; }
+  .toast__text b { display: block; font-weight: 600; line-height: 1.4; }
+  .toast__text small { display: block; margin-top: 2px; color: var(--ink-3); font-size: var(--fs-caption); font-weight: 500; }
+  .toast .btn { flex: none; margin-left: 4px; }
+
+  /* Rules page, learned tab */
+  .rules .table__head, .rules .table__row { grid-template-columns: 36px 2fr 2.2fr 1.7fr 1.2fr 1fr 44px; }
+  .rules .table__row { min-height: 56px; }
+  .scope { display: block; margin-top: 3px; color: var(--ink-4); font-size: var(--fs-micro); font-weight: 500; }
+  .mono { font-family: ui-monospace, SF Mono, Menlo, monospace; font-size: 11px; color: var(--ink-3); }
+  .chipbtn { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; padding: 3px 7px; border: 1px dashed var(--line-strong); border-radius: 6px; background: var(--paper); color: var(--ink-2); font-size: var(--fs-micro); font-weight: 650; }
+  .chipbtn:hover { border-color: var(--ink-3); }
+  .chipbtn .ic { color: var(--ink-3); }
+  .hits { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
+  .hits .progress { width: 44px; }
+
+  .states { display: grid; grid-template-columns: repeat(3, 300px); gap: 24px; align-items: start; }
+  .states h4 { margin: 0 0 8px; color: var(--ink-4); font-size: var(--fs-eyebrow); font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+  .states p { margin: 0 0 10px; max-width: 300px; color: var(--ink-3); font-size: var(--fs-caption); line-height: 1.45; }
+  .scenario-note { display: flex; align-items: center; gap: 10px; margin: 0 0 18px; color: var(--ink-3); font-size: var(--fs-table); }
+  .scenario-note .badge { flex: none; }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar"></aside>
+  <main class="page">
+    <div class="topbar">
+      <div class="crumb"><a href="#">Bankovní účty</a><i>/</i><b>Běžný účet</b></div>
+      <span class="badge badge--outline">Prototyp · nic se neukládá</span>
+    </div>
+    <div class="page-head">
+      <div>
+        <div class="eyebrow">Prototyp <span class="sep">·</span> přepsání pravidla a dřívější platby</div>
+        <h1 id="page-title">Běžný účet</h1>
+        <p id="page-lead"></p>
+      </div>
+      <div class="seg seg--lg" id="scenario">
+        <button class="seg__btn is-active" data-scenario="learned">1 · Naučené pravidlo</button>
+        <button class="seg__btn" data-scenario="custom">2 · Vlastní pravidlo má přednost</button>
+        <button class="seg__btn" data-scenario="rules">3 · Stránka pravidel</button>
+      </div>
+    </div>
+
+    <section id="view"></section>
+
+    <div class="section-head" style="margin-top:44px"><h2>Další stavy patičky výběru kategorie</h2></div>
+    <div class="states" id="states"></div>
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div class="modal-scrim" id="hist-modal">
+  <div class="modal modal--sm" role="dialog" aria-labelledby="hist-title">
+    <div class="modal__head"><div><h2 id="hist-title">Zařadit i dřívější platby?</h2><p id="hist-text"></p></div></div>
+    <div class="modal__foot" style="margin-top:4px">
+      <button type="button" class="btn btn--ghost" id="hist-no">Jen nové platby</button>
+      <div class="actions"><button type="button" class="btn btn--primary" id="hist-yes">Zařadit 14 plateb</button></div>
+    </div>
+  </div>
+</div>
+
+<script src="../design-system/icons.js"></script>
+<script src="../design-system/shell.js"></script>
+<script>
+/* Icons the style guide set lacks (Lucide, ISC). */
+Object.assign(window.ICONS, {
+  "brain": "<path d=\"M12 18V5\"/><path d=\"M15 13a4.17 4.17 0 0 1-3-4 4.17 4.17 0 0 1-3 4\"/><path d=\"M17.598 6.5A3 3 0 1 0 12 5a3 3 0 1 0-5.598 1.5\"/><path d=\"M17.997 5.125a4 4 0 0 1 2.526 5.77\"/><path d=\"M18 18a4 4 0 0 0 2-7.464\"/><path d=\"M19.967 17.483A4 4 0 1 1 12 18a4 4 0 1 1-7.967-.517\"/><path d=\"M6 18a4 4 0 0 1-2-7.464\"/><path d=\"M6.003 5.125a4 4 0 0 0-2.526 5.77\"/>",
+  "flag": "<path d=\"M4 22V4a1 1 0 0 1 .4-.8A6 6 0 0 1 8 2c3 0 5 2 7.333 2q2 0 3.067-.8A1 1 0 0 1 20 4v10a1 1 0 0 1-.4.8A6 6 0 0 1 16 16c-3 0-5-2-8-2a6 6 0 0 0-4 1.528\"/>",
+  "undo-2": "<path d=\"M9 14 4 9l5-5\"/><path d=\"M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11\"/>",
+  "sparkles": "<path d=\"M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z\"/><path d=\"M20 2v4\"/><path d=\"M22 4h-4\"/><circle cx=\"4\" cy=\"20\" r=\"2\"/>",
+  "list-plus": "<path d=\"M16 5H3\"/><path d=\"M11 12H3\"/><path d=\"M16 19H3\"/><path d=\"M18 9v6\"/><path d=\"M21 12h-6\"/>",
+  "utensils": "<path d=\"M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2\"/><path d=\"M7 2v20\"/><path d=\"M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7\"/>",
+  "shopping-basket": "<path d=\"m15 11-1 9\"/><path d=\"m19 11-4-7\"/><path d=\"M2 11h20\"/><path d=\"m3.5 11 1.6 7.4a2 2 0 0 0 2 1.6h9.8a2 2 0 0 0 2-1.6l1.7-7.4\"/><path d=\"M4.5 15.5h15\"/><path d=\"m5 11 4-7\"/><path d=\"m9 11 1 9\"/>",
+  "car": "<path d=\"M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2\"/><circle cx=\"7\" cy=\"17\" r=\"2\"/><path d=\"M9 17h6\"/><circle cx=\"17\" cy=\"17\" r=\"2\"/>",
+  "film": "<rect width=\"18\" height=\"18\" x=\"3\" y=\"3\" rx=\"2\"/><path d=\"M7 3v18\"/><path d=\"M3 7.5h4\"/><path d=\"M3 12h18\"/><path d=\"M3 16.5h4\"/><path d=\"M17 3v18\"/><path d=\"M17 7.5h4\"/><path d=\"M17 16.5h4\"/>",
+  "heart-pulse": "<path d=\"M2 9.5a5.5 5.5 0 0 1 9.591-3.676.56.56 0 0 0 .818 0A5.49 5.49 0 0 1 22 9.5c0 2.29-1.5 4-3 5.5l-5.492 5.313a2 2 0 0 1-3 .019L5 15c-1.5-1.5-3-3.2-3-5.5\"/><path d=\"M3.22 13H9.5l.5-1 2 4.5 2-7 1.5 3.5h5.27\"/>",
+  "gift": "<path d=\"M12 7v14\"/><path d=\"M20 11v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-8\"/><rect x=\"3\" y=\"7\" width=\"18\" height=\"4\" rx=\"1\"/>",
+  "banknote": "<rect width=\"20\" height=\"12\" x=\"2\" y=\"6\" rx=\"2\"/><circle cx=\"12\" cy=\"12\" r=\"2\"/><path d=\"M6 12h.01M18 12h.01\"/>",
+  "arrow-right-left": "<path d=\"m16 3 4 4-4 4\"/><path d=\"M20 7H4\"/><path d=\"m8 21-4-4 4-4\"/><path d=\"M4 17h16\"/>"
+});
+
+/* ---------- Data ---------- */
+var CATS = [
+  { id: "dining", name: "Stravování", icon: "utensils" },
+  { id: "groceries", name: "Potraviny", icon: "shopping-basket" },
+  { id: "transport", name: "Doprava", icon: "car" },
+  { id: "housing", name: "Bydlení", icon: "house" },
+  { id: "fun", name: "Zábava", icon: "film" },
+  { id: "health", name: "Zdraví", icon: "heart-pulse" },
+  { id: "gifts", name: "Dárky", icon: "gift" },
+  { id: "salary", name: "Mzda", icon: "banknote" }
+];
+function cat(id) { return CATS.filter(function (c) { return c.id === id; })[0]; }
+function catName(id) { return id ? cat(id).name : "bez kategorie"; }
+
+var ROWS = [
+  { id: 1, day: "Dnes", cp: "Albert", detail: "Platba kartou ···4521", cat: "dining", amt: -1246, albert: true, market: true },
+  { id: 2, day: "Dnes", cp: "Netflix", detail: "Předplatné", cat: "fun", amt: -319 },
+  { id: 3, day: "Včera", cp: "Albert", detail: "Platba kartou ···4521", cat: "dining", amt: -532, albert: true, market: true },
+  { id: 4, day: "Včera", cp: "Lidl", detail: "Platba kartou ···4521", cat: "groceries", amt: -876, market: true },
+  { id: 5, day: "6. 10. 2026", cp: "Zaměstnavatel s.r.o.", detail: "Mzda 9/2026", cat: "salary", amt: 58400 },
+  { id: 6, day: "3. 10. 2026", cp: "Albert", detail: "Platba kartou ···4521", cat: "dining", amt: -1980, albert: true, market: true },
+  { id: 7, day: "1. 10. 2026", cp: "Albert", detail: "Platba kartou ···4521", cat: null, amt: -245, albert: true, market: true },
+  { id: 8, day: "28. 9. 2026", cp: "Rohlík.cz", detail: "Objednávka 88213", cat: "groceries", amt: -1412 },
+  { id: 9, day: "27. 9. 2026", cp: "Billa", detail: "Platba kartou ···4521", cat: "dining", amt: -410, market: true }
+];
+
+/* What the backend preview returns for the Albert row in each scenario
+   (counts include payments outside the visible page). */
+var PREVIEW = {
+  learned: { total: 14, by: [["dining", 12], [null, 2]], key: "albert" },
+  custom: { total: 27, by: [["dining", 20], ["groceries", 5], [null, 2]], key: "market", rule: "Supermarkety", ruleCat: "dining" }
+};
+var LEADS = {
+  learned: "Klikněte na kategorii u dnešní platby Albert a vyberte Potraviny. Kategorii dnes určuje naučené pravidlo, nové ho nahradí.",
+  custom: "Totéž, ale platby od Albert dnes zařazuje vaše vlastní pravidlo „Supermarkety“. Vlastní pravidla mají přednost před naučenými, takže zapamatování mění toto pravidlo.",
+  rules: "Nastavení → Pravidla kategorizace → Naučená. Klikněte na kategorii pravidla Albert a vyberte Potraviny."
+};
+var TITLES = { learned: "Běžný účet", custom: "Běžný účet", rules: "Pravidla kategorizace" };
+
+/* ---------- State ---------- */
+var scenario = "learned";
+var rows = clone(ROWS);
+var openRow = null;        // row id with the picker open
+var remember = true;       // the "Zapamatovat" switch
+var applyHist = true;      // the "Zařadit i dřívější platby" checkbox
+var previewReady = false;  // the preview query has answered
+var previewTimer;
+var ruleCat = "dining";    // scenario 3: the learned rule's category
+var rulePickOpen = false;
+var pendingHistory = null; // scenario 3: {catId, count}
+
+function clone(a) { return JSON.parse(JSON.stringify(a)); }
+function byId(id) { return rows.filter(function (r) { return r.id === id; })[0]; }
+function plural(n, one, few, other) { return n + " " + (n === 1 ? one : n >= 2 && n <= 4 ? few : other); }
+function breakdown(p) {
+  return p.by.map(function (b) { return b[1] + "× " + catName(b[0]); }).join(" · ");
+}
+function bucket(p, catId) { var b = p.by.filter(function (x) { return x[0] === catId; })[0]; return b ? b[1] : 0; }
+function matches(r, p) { return !!r[p.key]; }
+
+/* ---------- Toast ---------- */
+var toastTimer;
+function showToast(o) {
+  var t = document.getElementById("toast");
+  t.innerHTML = icon(o.icon || "check", 14) +
+    '<div class="toast__text"><b>' + o.title + "</b>" + (o.desc ? "<small>" + o.desc + "</small>" : "") + "</div>" +
+    (o.action ? '<button type="button" class="btn btn--primary btn--sm" id="toast-act">' + o.action.label + "</button>" : "");
+  if (o.action) document.getElementById("toast-act").onclick = function () { hideToast(); o.action.fn(); };
+  t.classList.remove("is-on");
+  requestAnimationFrame(function () { t.classList.add("is-on"); });
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(hideToast, o.action ? 8000 : 2600);
+}
+function hideToast() { document.getElementById("toast").classList.remove("is-on"); }
+
+/* ---------- Ledger ---------- */
+function catButton(r) {
+  if (!r.cat) {
+    return '<button type="button" class="catbtn is-empty" data-open-pick="' + r.id + '" aria-label="Nastavit kategorii pro ' + r.cp + '">' + icon("tag", 14) + "<span>Vyberte…</span></button>" +
+      '<button type="button" class="btn btn--ghost btn--icon btn--sm" title="Vytvořit pravidlo">' + icon("list-plus", 14) + "</button>";
+  }
+  var c = cat(r.cat);
+  return '<button type="button" class="catbtn' + (r.flash ? " is-changed" : "") + '" data-open-pick="' + r.id + '">' + icon(c.icon, 14) + "<span>" + c.name + "</span></button>";
+}
+
+function pickerFooter(r) {
+  var p = PREVIEW[scenario];
+  if (!previewReady) {
+    return '<div class="pick__foot">' + rememberRow(p) + '<div class="pick__wait"><span class="skeleton"></span>Zjišťuji dřívější platby…</div></div>';
+  }
+  var hist = remember && p.total > 0
+    ? '<label class="check pick__hist"><input type="checkbox" id="applyhist"' + (applyHist ? " checked" : "") + '><div><b>Zařadit i ' + plural(p.total, "dřívější platbu", "dřívější platby", "dřívějších plateb") + "</b><small>" + breakdown(p) + "</small></div></label>"
+    : "";
+  return '<div class="pick__foot">' + rememberRow(p) + hist + "</div>";
+}
+function rememberRow(p) {
+  var sw = '<label class="switch"><input type="checkbox" id="remember"' + (remember ? " checked" : "") + "></label>";
+  if (scenario === "custom") {
+    return '<div class="pick__gov">' + icon("flag", 13) + "<span>Zařazuje vlastní pravidlo „" + p.rule + "“ → " + catName(p.ruleCat) + '</span><button type="button" class="link" id="edit-rule">Upravit pravidlo →</button></div>' +
+      '<div class="pick__row"><label class="pick__lbl" for="remember">' + icon("brain", 14) + "<div><b>Změnit kategorii tohoto pravidla</b><small>Má přednost před naučenými volbami; platí všude, kde zasáhne.</small></div></label>" + sw + "</div>";
+  }
+  return '<div class="pick__row"><label class="pick__lbl" for="remember">' + icon("brain", 14) + "<div><b>Zapamatovat pro tento účet a směr</b><small>Tento účet · Odchozí · Albert. Spolehlivé účty platí pro různé názvy protistrany; jinak pouze tento příjemce.</small></div></label>" + sw + "</div>";
+}
+
+function picker(r) {
+  var items = CATS.map(function (c) {
+    return '<button type="button" class="pick__item' + (c.id === r.cat ? " is-selected" : "") + '" data-pick-cat="' + c.id + '">' + icon("check", 14, "tick") + icon(c.icon, 14) + "<span>" + c.name + "</span></button>";
+  }).join("");
+  return '<div class="pick" role="dialog">' +
+    '<div class="pick__search">' + icon("search", 14) + '<input placeholder="Hledat…" autofocus></div>' +
+    '<div class="pick__list">' + items + "</div>" +
+    '<button type="button" class="pick__new">' + icon("plus", 14) + "Nová kategorie</button>" +
+    pickerFooter(r) + "</div>";
+}
+
+function ledgerCard() {
+  var html = '<section class="card card--table ledger">' +
+    '<div class="card__head"><div><h2 class="card__title">Transakce</h2><p class="card__sub">Běžný účet · Česká spořitelna · CZK</p></div>' +
+    '<div class="toolbar"><div class="search input-wrap">' + icon("search", 14) + '<input class="input" placeholder="Hledat"></div>' +
+    '<div class="seg"><button class="seg__btn">Měsíc</button><button class="seg__btn is-active">3M</button><button class="seg__btn">Vše</button></div>' +
+    '<button type="button" class="btn">' + icon("sparkles", 14) + 'Automatická kategorizace <span class="badge badge--dark">1</span></button></div></div>' +
+    '<div class="table"><div class="table__head"><div>Protistrana</div><div>Detail</div><div>Kategorie</div><div class="cell--num">Částka</div><div><span class="sr-only">Akce</span></div></div>';
+  var lastDay = null;
+  rows.forEach(function (r) {
+    if (r.day !== lastDay) { html += '<div class="table__group">' + r.day + "</div>"; lastDay = r.day; }
+    var credit = r.amt > 0;
+    html += '<div class="table__row' + (openRow === r.id ? " is-hot" : "") + '">' +
+      '<div class="entity"><i class="logo logo--soft">' + r.cp.charAt(0) + "</i><b>" + r.cp + "</b></div>" +
+      '<div class="detail" title="' + r.detail + '">' + r.detail + "</div>" +
+      '<div class="cell--cat">' + catButton(r) + (openRow === r.id ? picker(r) : "") + "</div>" +
+      '<div class="cell--num cell--name' + (credit ? " is-credit" : "") + '">' + fmtSigned(r.amt) + "</div>" +
+      '<div class="cell--num row-actions"><button type="button" class="btn btn--ghost btn--icon btn--sm" aria-label="Více">' + icon("ellipsis", 14) + "</button></div>" +
+      "</div>";
+  });
+  html += '</div><div class="table__foot"><span>Strana 1 · zobrazeno 9 / celkem 312</span><span>Zůstatek k 9. 10. 2026 · 184 600 Kč</span></div></section>';
+  return html;
+}
+
+function pickCategory(rowId, catId) {
+  var row = byId(rowId);
+  if (row.cat === catId) { openRow = null; render(); return; }
+  var p = PREVIEW[scenario];
+  rows.forEach(function (r) { r.flash = false; });
+  row.cat = catId; row.flash = true;
+  var changed = [];
+  var hiddenCount = 0;
+  if (remember && applyHist) {
+    rows.forEach(function (r) {
+      if (r.id !== rowId && matches(r, p) && r.cat !== catId) { changed.push({ id: r.id, prev: r.cat }); r.cat = catId; r.flash = true; }
+    });
+    hiddenCount = p.total - bucket(p, catId);
+  }
+  openRow = null;
+  render();
+  if (!remember) return;
+  var undo = { label: "Vrátit zpět", fn: function () { undoHistory(changed, hiddenCount); } };
+  if (scenario === "learned") {
+    if (hiddenCount > 0) showToast({ title: "Naučeno · " + plural(hiddenCount, "dřívější platba zařazena", "dřívější platby zařazeny", "dřívějších plateb zařazeno"), desc: "„Albert“ → " + catName(catId), action: undo });
+    else showToast({ title: "Kategorie naučena", desc: "„Albert“" });
+  } else {
+    var title = "Pravidlo „" + p.rule + "“ zařazuje jako " + catName(catId);
+    if (hiddenCount > 0) showToast({ title: title + " · " + plural(hiddenCount, "dřívější platba zařazena", "dřívější platby zařazeny", "dřívějších plateb zařazeno"), action: undo });
+    else showToast({ title: title });
+  }
+}
+
+function undoHistory(changed, count) {
+  changed.forEach(function (c) { var r = byId(c.id); r.cat = c.prev; r.flash = true; });
+  render();
+  showToast({ icon: "undo-2", title: "Dřívější platby vráceny (" + count + ")" });
+}
+
+/* ---------- Rules page (learned tab) ---------- */
+function rulePicker() {
+  var items = CATS.map(function (c) {
+    return '<button type="button" class="pick__item' + (c.id === ruleCat ? " is-selected" : "") + '" data-rule-cat="' + c.id + '">' + icon("check", 14, "tick") + icon(c.icon, 14) + "<span>" + c.name + "</span></button>";
+  }).join("");
+  return '<div class="pick pick--narrow" role="dialog"><div class="pick__search">' + icon("search", 14) + '<input placeholder="Hledat…" autofocus></div><div class="pick__list">' + items + "</div></div>";
+}
+function chip(catId, attrs) {
+  var c = cat(catId);
+  return '<button type="button" class="chipbtn" ' + (attrs || "") + ">" + icon(c.icon, 12) + c.name + "</button>";
+}
+function ruleRow(o) {
+  return '<div class="table__row">' +
+    '<div><label class="check"><input type="checkbox"></label></div>' +
+    "<div>" + (o.payee ? '<b class="cell--name">' + o.payee + "</b>" : '<span class="faint">jen podle IBAN</span>') + "</div>" +
+    '<div><span class="mono">' + (o.iban || "—") + '</span><span class="scope">' + o.scope + "</span></div>" +
+    '<div class="cell--cat">' + chip(o.cat, o.pick ? 'data-open-rulepick="1"' : "") + (o.pick && rulePickOpen ? rulePicker() : "") + "</div>" +
+    '<div class="hits"><div class="progress"><div class="progress__bar" style="width:' + o.bar + '%"></div></div><span class="num">' + o.hits + "</span></div>" +
+    '<div class="cell--num faint">' + o.last + "</div>" +
+    '<div class="cell--num row-actions"><button type="button" class="btn btn--ghost btn--icon btn--sm" aria-label="Zapomenout pravidlo">' + icon("x", 14) + "</button></div>" +
+    "</div>";
+}
+function rulesCard() {
+  return '<div class="subnav-tabs"><button type="button">Vlastní</button><button type="button" class="is-active">Naučená</button><button type="button">Balíček CZ</button></div>' +
+    '<section class="card card--table rules">' +
+    '<div class="card__head"><div><h2 class="card__title">Naučená pravidla</h2><p class="card__sub">Vznikají z vašich ručních oprav · protistrana nebo IBAN → kategorie</p></div>' +
+    '<div class="toolbar"><div class="search input-wrap">' + icon("search", 14) + '<input class="input" placeholder="Hledat protistranu"></div></div></div>' +
+    '<div class="table"><div class="table__head"><div></div><div>Protistrana</div><div>IBAN</div><div>Kategorie</div><div class="cell--num">Zásahy 90 dní</div><div class="cell--num">Naposledy</div><div></div></div>' +
+    ruleRow({ payee: "Albert", scope: "Pouze účet Běžný účet · Odchozí", cat: ruleCat, pick: true, hits: 17, bar: 100, last: "9. 10. 2026" }) +
+    ruleRow({ payee: "Rohlík.cz", scope: "Pouze účet Běžný účet · Odchozí", cat: "groceries", hits: 6, bar: 35, last: "28. 9. 2026" }) +
+    ruleRow({ payee: "Netflix", scope: "Pouze účet Běžný účet · Odchozí", cat: "fun", hits: 3, bar: 18, last: "8. 10. 2026" }) +
+    ruleRow({ payee: "", iban: "CZ65 0800 0000 1920 0014 5399", scope: "Pouze účet Běžný účet · Odchozí", cat: "housing", hits: 3, bar: 18, last: "1. 10. 2026" }) +
+    '</div><div class="table__foot"><span>4 pravidla</span><span>Zásahy za posledních 90 dní</span></div></section>';
+}
+function pickRuleCategory(catId) {
+  rulePickOpen = false;
+  if (catId === ruleCat) { render(); return; }
+  var p = PREVIEW.learned;
+  var count = p.total - bucket(p, catId);
+  ruleCat = catId;
+  render();
+  showToast({ title: "Kategorie pravidla změněna", desc: "„Albert“ → " + catName(catId) });
+  if (count > 0) {
+    pendingHistory = { catId: catId, count: count };
+    document.getElementById("hist-text").textContent = "Pravidlo pro „Albert“ (Běžný účet · odchozí) nově zařazuje jako " + catName(catId) + ". Zasáhne " + plural(count, "dřívější platbu", "dřívější platby", "dřívějších plateb") + ": " + breakdown(p) + ".";
+    document.getElementById("hist-yes").textContent = "Zařadit " + plural(count, "platbu", "platby", "plateb");
+    setTimeout(function () { openModal("hist-modal"); }, 350);
+  }
+}
+
+/* ---------- Static footer states ---------- */
+function staticPick(footer) {
+  var items = CATS.slice(0, 2).map(function (c) { return '<button type="button" class="pick__item">' + icon("check", 14, "tick") + icon(c.icon, 14) + "<span>" + c.name + "</span></button>"; }).join("");
+  return '<div class="pick pick--static"><div class="pick__search">' + icon("search", 14) + '<input placeholder="Hledat…"></div><div class="pick__list" style="max-height:none">' + items + '<div class="faint" style="padding:4px 8px;font-size:10px">…</div></div><button type="button" class="pick__new">' + icon("plus", 14) + 'Nová kategorie</button><div class="pick__foot">' + footer + "</div></div>";
+}
+function renderStates() {
+  var sw = '<label class="switch"><input type="checkbox" checked></label>';
+  var remember = '<div class="pick__row"><label class="pick__lbl">' + icon("brain", 14) + "<div><b>Zapamatovat pro tento účet a směr</b><small>Tento účet · Odchozí · Albert. Spolehlivé účty platí pro různé názvy protistrany; jinak pouze tento příjemce.</small></div></label>" + sw + "</div>";
+  document.getElementById("states").innerHTML =
+    "<div><h4>Načítání náhledu</h4><p>Přepínač nikdy nečeká na náhled; čeká jen řádek s počtem.</p>" + staticPick(remember + '<div class="pick__wait"><span class="skeleton"></span>Zjišťuji dřívější platby…</div>') + "</div>" +
+    "<div><h4>Převod mezi vlastními účty</h4><p>Vlastní účet má přednost před každým pravidlem. Řádek lze změnit ručně, nic se nepamatuje.</p>" + staticPick('<div class="pick__note">' + icon("arrow-right-left", 14) + "Převod mezi vlastními účty – zařazuje se automaticky.</div>") + "</div>" +
+    "<div><h4>Nelze zapamatovat</h4><p>Bez protistrany delší než dva znaky a bez čísla účtu není co si pamatovat. Dnes se to tiše přeskočí.</p>" + staticPick('<div class="pick__note">' + icon("circle-alert", 14) + "Nelze zapamatovat – platba nemá protistranu ani číslo účtu.</div>") + "</div>";
+}
+
+/* ---------- Render + events ---------- */
+function render() {
+  document.getElementById("page-title").textContent = TITLES[scenario];
+  document.getElementById("page-lead").textContent = LEADS[scenario];
+  document.getElementById("view").innerHTML = scenario === "rules" ? rulesCard() : ledgerCard();
+  var f = document.querySelector(".pick input[autofocus]");
+  if (f) f.focus({ preventScroll: true });
+}
+
+document.addEventListener("click", function (e) {
+  var t = e.target;
+  var seg = t.closest("[data-scenario]");
+  if (seg) {
+    scenario = seg.dataset.scenario; rows = clone(ROWS); openRow = null; rulePickOpen = false; ruleCat = "dining"; remember = true; applyHist = true; hideToast();
+    render(); return;
+  }
+  var openBtn = t.closest("[data-open-pick]");
+  if (openBtn) {
+    openRow = parseInt(openBtn.dataset.openPick, 10); previewReady = false; clearTimeout(previewTimer);
+    previewTimer = setTimeout(function () { previewReady = true; if (openRow !== null) render(); }, 700);
+    render(); return;
+  }
+  var pickBtn = t.closest("[data-pick-cat]");
+  if (pickBtn) { pickCategory(openRow, pickBtn.dataset.pickCat); return; }
+  if (t.closest("#edit-rule")) { showToast({ icon: "info", title: "Otevře se editor pravidla „Supermarkety“", desc: "Nastavení → Pravidla kategorizace" }); return; }
+  var ruleOpen = t.closest("[data-open-rulepick]");
+  if (ruleOpen) { rulePickOpen = true; render(); return; }
+  var ruleCatBtn = t.closest("[data-rule-cat]");
+  if (ruleCatBtn) { pickRuleCategory(ruleCatBtn.dataset.ruleCat); return; }
+  if (t.closest("#hist-no")) { closeModal("hist-modal"); pendingHistory = null; return; }
+  if (t.closest("#hist-yes")) {
+    closeModal("hist-modal");
+    var h = pendingHistory; pendingHistory = null;
+    showToast({ title: plural(h.count, "dřívější platba zařazena", "dřívější platby zařazeny", "dřívějších plateb zařazeno"), desc: "„Albert“ → " + catName(h.catId), action: { label: "Vrátit zpět", fn: function () { showToast({ icon: "undo-2", title: "Dřívější platby vráceny (" + h.count + ")" }); } } });
+    return;
+  }
+  if (!t.closest(".pick") && (openRow !== null || rulePickOpen)) { openRow = null; rulePickOpen = false; render(); }
+});
+document.addEventListener("change", function (e) {
+  if (e.target.id === "remember") { remember = e.target.checked; render(); }
+  if (e.target.id === "applyhist") { applyHist = e.target.checked; }
+});
+document.addEventListener("keydown", function (e) { if (e.key === "Escape" && (openRow !== null || rulePickOpen)) { openRow = null; rulePickOpen = false; render(); } });
+
+renderShell({ active: "bankAccounts" });
+renderStates();
+render();
+</script>
+</body>
+</html>

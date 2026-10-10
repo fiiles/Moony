@@ -42,6 +42,18 @@
       "port": 8765
     },
     {
+      "name": "docs",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8766",
+        "--directory",
+        "docs"
+      ],
+      "port": 8766
+    },
+    {
       "name": "moony-demo-alt",
       "runtimeExecutable": "sh",
       "runtimeArgs": [

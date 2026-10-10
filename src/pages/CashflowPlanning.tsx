@@ -1,14 +1,11 @@
 import { useReportMoney } from '@/lib/use-report-money';
 import { useCurrency } from '@/lib/currency';
 import { ReportQualityNote, ReportError } from '@/components/reports/ReportQualityNote';
-import { refreshMoneyFlows } from '@/lib/money-flow-refresh';
-import { translateApiError } from '@/lib/translate-api-error';
-import { useMemo, useState, type ReactNode } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from 'wouter';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { toast } from 'sonner';
-import { Pencil, Plus, Repeat, Trash2 } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import type {
   CashflowReport,
   CashflowReportItem,
@@ -22,60 +19,61 @@ import { PageHead } from '@/components/shell/PageHead';
 import { Segmented } from '@/components/ui/segmented';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { Card } from '@/components/ui/card';
 import { Stat, StatSkeleton, Stats } from '@/components/common/Stat';
 import { ConfirmDeleteDialog } from '@/components/common/ConfirmDeleteDialog';
 import { FlowBar, type FlowSegment } from '@/components/cashflow/FlowBar';
 import { flowColor } from '@/components/cashflow/flow-colors';
 import AddCashflowItemDialog from '@/components/cashflow/AddCashflowItemDialog';
-import { cn } from '@/lib/utils';
+import {
+  PlanSectionCard,
+  type ItemType,
+  type SectionId,
+} from '@/components/cashflow/PlanSectionCard';
+import { useCashflowPlanningMutations } from '@/hooks/use-cashflow-planning-mutations';
+import { readExpanded, setKeys, toggleKey, writeExpanded } from '@/utils/plan-expansion';
 
 type ViewType = 'monthly' | 'yearly';
-type SectionId = 'personal' | 'investments';
 
-/** The module an automatic item is derived from, by category key (README §11). */
-const SOURCE_BY_CATEGORY: Record<string, string> = {
-  personalLoans: 'nav.loans',
-  investmentLoans: 'nav.loans',
-  personalInsurance: 'nav.insurance',
-  investmentInsurance: 'nav.insurance',
-  personalRealEstateCosts: 'nav.realEstate',
-  investmentRealEstateCosts: 'nav.realEstate',
-  rentalIncome: 'nav.realEstate',
-  stockDividends: 'nav.stocks',
-  bondsInterest: 'nav.bonds',
-  interestIncome: 'nav.bankAccounts',
-};
+/** `localStorage` can throw on access (blocked storage); the page then simply forgets. */
+function planStorage(): Storage | null {
+  try {
+    return window.localStorage;
+  } catch {
+    return null;
+  }
+}
 
 /**
- * Planned cashflow (design system §7 Plan, §11): today's cashflow page,
- * renamed. Recurring items in the personal and investment sections, items
- * derived from Úvěry / Pojištění / Nemovitosti / Akcie / Dluhopisy marked as
- * automatic, a monthly/yearly switch and a 100 % flow bar instead of the Sankey.
+ * Planned cashflow (design system §7 Plan, §11): recurring items in the
+ * personal and investment sections, every non-empty category as a collapsible
+ * group with its included total, rows automatic from Úvěry / Pojištění /
+ * Nemovitosti / Akcie / Dluhopisy / Bankovní účty, any row or category can be
+ * left out of the plan from its "···" menu, a monthly/yearly switch and a 100 %
+ * flow bar instead of the Sankey.
  */
 export default function CashflowPlanning() {
   const { t } = useTranslation('reports');
-  const { t: tc } = useTranslation('common');
   const { currencyCode, fxRevision } = useCurrency();
   const fmt = useFormat();
-  const queryClient = useQueryClient();
 
   const [viewType, setViewType] = useState<ViewType>('monthly');
   const [addDialogOpen, setAddDialogOpen] = useState(false);
-  const [addDialogType, setAddDialogType] = useState<'income' | 'expense'>('expense');
+  const [addDialogType, setAddDialogType] = useState<ItemType>('expense');
   const [addDialogSection, setAddDialogSection] = useState<SectionId>('personal');
+  const [addPreset, setAddPreset] = useState<{
+    category?: string;
+    replacementSourceId?: string | null;
+  }>({});
   const [editItem, setEditItem] = useState<CashflowReportItem | null>(null);
   const [editCategory, setEditCategory] = useState<string>('');
   const [editSection, setEditSection] = useState<SectionId>('personal');
   const [deleteItem, setDeleteItem] = useState<CashflowReportItem | null>(null);
+  const [expanded, setExpanded] = useState<Set<string>>(() => readExpanded(planStorage()));
+  const persistExpanded = (next: Set<string>) => {
+    setExpanded(next);
+    writeExpanded(planStorage(), next);
+  };
 
   useShellPage({ status: { text: t('planning.status'), tone: 'neutral' } });
 
@@ -89,80 +87,50 @@ export default function CashflowPlanning() {
     queryFn: () => cashflowApi.getReport(viewType, currencyCode),
     refetchOnMount: 'always',
   });
-  const { money, signedMoney, nativeMoney } = useReportMoney(report?.reportCurrency);
+  const { money, signedMoney } = useReportMoney(report?.reportCurrency);
+  const { createMutation, updateMutation, deleteMutation, inclusionMutation } =
+    useCashflowPlanningMutations();
 
-  const createMutation = useMutation({
-    mutationFn: cashflowApi.createItem,
-    onSuccess: async () => {
-      await refreshMoneyFlows(queryClient);
-      setAddDialogOpen(false);
-      toast(t('planning.toast.added'));
-    },
-    onError: (error: Error) =>
-      toast.error(tc('status.error'), { description: translateApiError(error, tc) }),
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: ({
-      id,
-      data,
-    }: {
-      id: string;
-      data: Parameters<typeof cashflowApi.updateItem>[1];
-    }) => cashflowApi.updateItem(id, data),
-    onSuccess: async () => {
-      await refreshMoneyFlows(queryClient);
-      setEditItem(null);
-      setEditCategory('');
-      toast(t('planning.toast.updated'));
-    },
-    onError: (error: Error) =>
-      toast.error(tc('status.error'), { description: translateApiError(error, tc) }),
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: cashflowApi.deleteItem,
-    onSuccess: async () => {
-      await refreshMoneyFlows(queryClient);
-      setDeleteItem(null);
-      toast(t('planning.toast.deleted'));
-    },
-    onError: (error: Error) =>
-      toast.error(tc('status.error'), { description: translateApiError(error, tc) }),
-  });
-
-  const openAdd = (section: SectionId, type: 'income' | 'expense') => {
+  const openAdd = (
+    section: SectionId,
+    type: ItemType,
+    category?: string,
+    replacementSourceId: string | null = null
+  ) => {
     setAddDialogSection(section);
     setAddDialogType(type);
+    setAddPreset({ category, replacementSourceId });
     setAddDialogOpen(true);
   };
 
   const sectionOf = (id: SectionId): CashflowSection | undefined =>
     id === 'personal' ? report?.personal : report?.investments;
 
-  const dialogCategories = (
-    section: SectionId,
-    type: 'income' | 'expense'
-  ): CashflowCategoryType[] => {
+  const dialogCategories = (section: SectionId, type: ItemType): CashflowCategoryType[] => {
     const s = sectionOf(section);
     if (!s) return [];
     return type === 'income' ? s.income : s.expenses;
   };
-  const editType = (): 'income' | 'expense' => {
+  const editType = (): ItemType => {
     const s = sectionOf(editSection);
     return s && s.income.some((c) => c.key === editCategory) ? 'income' : 'expense';
   };
 
-  // Automatic expenses (derived from other modules) and the flow bar segments
-  const autoExpenses = useMemo(() => {
-    if (!report) return 0;
-    return [report.personal, report.investments]
+  // Automatic expenses still in the plan, and how many expense rows are out of it
+  const { autoExpenses, offExpenseCount } = useMemo(() => {
+    if (!report) return { autoExpenses: 0, offExpenseCount: 0 };
+    const items = [report.personal, report.investments]
       .flatMap((s) => s.expenses)
-      .flatMap((c) => c.items)
-      .filter((i) => !i.isUserDefined)
-      .reduce((sum, i) => sum + Number(i.amount), 0);
+      .flatMap((c) => c.items);
+    return {
+      autoExpenses: items
+        .filter((i) => !i.isUserDefined && i.included)
+        .reduce((sum, i) => sum + Number(i.amount), 0),
+      offExpenseCount: items.filter((i) => !i.included).length,
+    };
   }, [report]);
 
+  // Category totals already count included rows only
   const flow = useMemo((): FlowSegment[] => {
     if (!report || Number(report.totalIncome) <= 0) return [];
     const byCategory = [report.personal, report.investments]
@@ -207,201 +175,6 @@ export default function CashflowPlanning() {
     report && Number(report.totalIncome) > 0
       ? Number(report.netCashflow) / Number(report.totalIncome)
       : 0;
-
-  const sectionCard = (id: SectionId, title: string, sub: string) => {
-    const section = sectionOf(id);
-    if (!section) return null;
-    const incomeItems = section.income.flatMap((c) =>
-      c.items.map((i) => ({ item: i, category: c }))
-    );
-    const expenseItems = section.expenses.flatMap((c) =>
-      c.items.map((i) => ({ item: i, category: c }))
-    );
-    const row = (
-      { item, category }: { item: CashflowReportItem; category: CashflowCategoryType },
-      isIncome: boolean
-    ) => {
-      const sourceKey = !item.isUserDefined ? SOURCE_BY_CATEGORY[category.key] : undefined;
-      const source = sourceKey ? tc(sourceKey) : undefined;
-      const incomplete = item.fxQuality === 'missing';
-      const unavailable = incomplete && item.convertedComponentCount === 0;
-      const original =
-        item.originalCurrency === 'MULTI'
-          ? item.originalComponents
-              .map((component) => {
-                const frequency =
-                  component.frequency === 'yearly'
-                    ? t('planning.table.perYear')
-                    : component.frequency === 'monthly'
-                      ? t('planning.table.perMonth')
-                      : '';
-                return `${nativeMoney(Number(component.amount), component.currency)}${frequency ? ` · ${frequency}` : ''}`;
-              })
-              .join(' · ')
-          : item.originalFrequency === 'yearly'
-            ? `${t('planning.table.perYear')} · ${nativeMoney(Number(item.originalAmount), item.originalCurrency)}`
-            : item.originalFrequency === 'monthly' && viewType === 'yearly'
-              ? `${t('planning.table.perMonth')} · ${nativeMoney(Number(item.originalAmount), item.originalCurrency)}`
-              : t('planning.table.perMonth');
-      return (
-        <TableRow key={item.id} className="h-12">
-          <TableCell>
-            <b className="block text-table font-650 text-ink">{item.name}</b>
-            {item.replacementSourceId && (
-              <small className="block text-micro text-ink-4">
-                {t('readiness.replacing', {
-                  name:
-                    report?.automaticSources.find(
-                      (source) => source.sourceId === item.replacementSourceId
-                    )?.name ?? t('readiness.retainedSource'),
-                })}
-              </small>
-            )}
-            <span className="mt-[3px] inline-flex items-center gap-[5px] text-micro font-500 text-ink-4">
-              {source ? (
-                <>
-                  <Repeat className="size-[11px]" aria-hidden />
-                  {t('planning.table.auto', { module: source })}
-                </>
-              ) : (
-                t('planning.table.manual')
-              )}
-            </span>
-          </TableCell>
-          <TableCell>{t(`categories.${category.key}`, { defaultValue: category.name })}</TableCell>
-          <TableCell className="text-ink-4">{original}</TableCell>
-          <TableCell className={cn('text-right font-650 num', isIncome ? 'text-gain' : 'text-ink')}>
-            {unavailable
-              ? t('readiness.fxUnavailable')
-              : signedMoney(isIncome ? Number(item.amount) : -Number(item.amount))}
-            {incomplete && !unavailable && (
-              <small className="block text-micro text-loss">{t('readiness.partialAmount')}</small>
-            )}
-          </TableCell>
-          <TableCell className="text-right">
-            {item.isUserDefined ? (
-              <div data-row-actions className="inline-flex gap-0.5">
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label={tc('buttons.edit')}
-                  title={tc('buttons.edit')}
-                  onClick={() => {
-                    setEditItem(item);
-                    setEditCategory(category.key);
-                    setEditSection(id);
-                  }}
-                >
-                  <Pencil />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label={tc('buttons.delete')}
-                  title={tc('buttons.delete')}
-                  onClick={() => setDeleteItem(item)}
-                >
-                  <Trash2 />
-                </Button>
-              </div>
-            ) : (
-              <Badge
-                variant="outline"
-                title={source ? t('planning.table.editInModule', { module: source }) : undefined}
-              >
-                {source}
-              </Badge>
-            )}
-          </TableCell>
-        </TableRow>
-      );
-    };
-    const groupRow = (label: string): ReactNode => (
-      <TableRow className="h-auto hover:bg-transparent">
-        <TableCell
-          colSpan={5}
-          className="bg-paper px-[14px] pb-1.5 pt-[9px] text-micro font-700 uppercase tracking-[0.06em] text-ink-4"
-        >
-          {label}
-        </TableCell>
-      </TableRow>
-    );
-    return (
-      <Card variant="table">
-        <CardHeader>
-          <div>
-            <CardTitle>{title}</CardTitle>
-            <CardDescription>{sub}</CardDescription>
-          </div>
-          <div className="text-right">
-            <small className="block text-micro font-600 text-ink-4">
-              {t(viewType === 'yearly' ? 'planning.table.netYearly' : 'planning.table.netMonthly')}
-            </small>
-            <b
-              className={cn(
-                'text-[16px] font-650 tracking-[-0.03em] num',
-                Number(section.netCashflow) >= 0 ? 'text-gain' : 'text-loss'
-              )}
-            >
-              {signedMoney(Number(section.netCashflow))}
-            </b>
-          </div>
-        </CardHeader>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-[36%]">{t('planning.table.item')}</TableHead>
-              <TableHead>{t('planning.table.category')}</TableHead>
-              <TableHead>{t('planning.table.frequency')}</TableHead>
-              <TableHead className="text-right">
-                {t(viewType === 'yearly' ? 'planning.table.yearly' : 'planning.table.monthly')}
-              </TableHead>
-              <TableHead className="w-28">
-                <span className="sr-only">{tc('labels.actions')}</span>
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {groupRow(
-              t('planning.table.incomeGroup', { amount: money(Number(section.totalIncome)) })
-            )}
-            {incomeItems.length === 0 && (
-              <TableRow className="hover:bg-transparent">
-                <TableCell colSpan={5} className="text-center text-table text-ink-4">
-                  {t('planning.table.noIncome')}
-                </TableCell>
-              </TableRow>
-            )}
-            {incomeItems.map((e) => row(e, true))}
-            {groupRow(
-              t('planning.table.expenseGroup', { amount: money(Number(section.totalExpenses)) })
-            )}
-            {expenseItems.length === 0 && (
-              <TableRow className="hover:bg-transparent">
-                <TableCell colSpan={5} className="text-center text-table text-ink-4">
-                  {t('planning.table.noExpenses')}
-                </TableCell>
-              </TableRow>
-            )}
-            {expenseItems.map((e) => row(e, false))}
-          </TableBody>
-        </Table>
-        <div className="flex items-center justify-between border-t border-line px-[14px] py-3 text-micro font-500 text-ink-4">
-          <span>
-            {t('planning.table.incomes', { count: incomeItems.length })} ·{' '}
-            {t('planning.table.expenses', { count: expenseItems.length })}
-          </span>
-          <button
-            type="button"
-            onClick={() => openAdd(id, 'expense')}
-            className="text-caption font-650 text-ink-2 underline-offset-[3px] hover:text-ink hover:underline focus-visible:outline-none focus-visible:shadow-focus"
-          >
-            {t('planning.table.addToSection')} →
-          </button>
-        </div>
-      </Card>
-    );
-  };
 
   const head = (
     <PageHead
@@ -458,6 +231,27 @@ export default function CashflowPlanning() {
     );
   }
 
+  const sectionProps = {
+    report,
+    viewType,
+    expanded,
+    onToggleExpanded: (key: string) => persistExpanded(toggleKey(expanded, key)),
+    onSetExpanded: (keys: string[], open: boolean) =>
+      persistExpanded(setKeys(expanded, keys, open)),
+    onToggleInclusion: (key: string, kind: 'item' | 'category', included: boolean) =>
+      inclusionMutation.mutate({ key, kind, included }),
+    onAdd: (section: SectionId, type: ItemType, category?: string) =>
+      openAdd(section, type, category),
+    onReplace: (section: SectionId, type: ItemType, item: CashflowReportItem) =>
+      openAdd(section, type, item.category, item.sourceId),
+    onEdit: (section: SectionId, item: CashflowReportItem, category: string) => {
+      setEditItem(item);
+      setEditCategory(category);
+      setEditSection(section);
+    },
+    onDelete: setDeleteItem,
+  };
+
   return (
     <>
       {head}
@@ -475,7 +269,11 @@ export default function CashflowPlanning() {
         <Stat
           label={t('planning.stats.expenses')}
           value={money(Number(report.totalExpenses))}
-          note={t('planning.stats.expensesNote', { amount: money(autoExpenses) })}
+          note={
+            offExpenseCount > 0
+              ? `${t('planning.stats.expensesNote', { amount: money(autoExpenses) })} · ${t('planning.table.outOfPlanCount', { count: offExpenseCount })}`
+              : t('planning.stats.expensesNote', { amount: money(autoExpenses) })
+          }
         />
         <Stat
           label={t('planning.stats.net')}
@@ -541,21 +339,33 @@ export default function CashflowPlanning() {
       </Card>
 
       <div className="grid gap-[18px]">
-        {sectionCard('personal', t('sections.personal'), t('sections.personalDescription'))}
-        {sectionCard(
-          'investments',
-          t('sections.investments'),
-          t('sections.investmentsDescription')
-        )}
+        <PlanSectionCard
+          id="personal"
+          title={t('sections.personal')}
+          sub={t('sections.personalDescription')}
+          section={report.personal}
+          {...sectionProps}
+        />
+        <PlanSectionCard
+          id="investments"
+          title={t('sections.investments')}
+          sub={t('sections.investmentsDescription')}
+          section={report.investments}
+          {...sectionProps}
+        />
       </div>
 
       <AddCashflowItemDialog
         open={addDialogOpen}
         onOpenChange={setAddDialogOpen}
-        onSubmit={(data) => createMutation.mutate(data)}
+        onSubmit={(data) =>
+          createMutation.mutate(data, { onSuccess: () => setAddDialogOpen(false) })
+        }
         itemType={addDialogType}
         automaticSources={report.automaticSources}
         categories={dialogCategories(addDialogSection, addDialogType)}
+        presetCategory={addPreset.category}
+        presetReplacementSourceId={addPreset.replacementSourceId}
         isLoading={createMutation.isPending}
       />
       <AddCashflowItemDialog
@@ -566,7 +376,18 @@ export default function CashflowPlanning() {
             setEditCategory('');
           }
         }}
-        onSubmit={(data) => editItem && updateMutation.mutate({ id: editItem.id, data })}
+        onSubmit={(data) =>
+          editItem &&
+          updateMutation.mutate(
+            { id: editItem.id, data },
+            {
+              onSuccess: () => {
+                setEditItem(null);
+                setEditCategory('');
+              },
+            }
+          )
+        }
         editItem={editItem}
         editCategory={editCategory}
         itemType={editType()}
@@ -579,7 +400,10 @@ export default function CashflowPlanning() {
         onOpenChange={(open) => !open && setDeleteItem(null)}
         title={t('deleteConfirm.title')}
         description={t('deleteConfirm.descriptionNamed', { name: deleteItem?.name ?? '' })}
-        onConfirm={() => deleteItem && deleteMutation.mutate(deleteItem.id)}
+        onConfirm={() =>
+          deleteItem &&
+          deleteMutation.mutate(deleteItem.id, { onSuccess: () => setDeleteItem(null) })
+        }
         isPending={deleteMutation.isPending}
         confirmLabel={t('planning.deleteItem')}
       />

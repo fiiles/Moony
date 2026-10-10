@@ -234,6 +234,7 @@
     "milestoneKindUnknown": "This kind of reminder is unknown.",
     "effectiveMonthInvalid": "Choose the first day of a calendar month.",
     "cashflowItemInvalid": "Enter a valid name, positive amount, currency, frequency and cashflow category.",
+    "cashflowPlanKeyInvalid": "Invalid plan row key.",
     "cashflowReplacementInvalid": "Choose an available automatic source that is not already replaced.",
     "csvPreviewRangeInvalid": "Preview page must contain between 1 and 200 rows.",
     "pendingPromotionInvalid": "The pending transaction could not be promoted. Refresh the preview and try again.",

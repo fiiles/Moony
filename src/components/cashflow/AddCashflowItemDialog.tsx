@@ -1,7 +1,7 @@
 import { currencyDecimals, type CurrencyCode } from '@shared/currencies';
 import { preserveMoneyText } from '@/utils/money-flows';
 /* eslint-disable react-hooks/set-state-in-effect */
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -35,6 +35,10 @@ interface AddCashflowItemDialogProps {
   itemType: 'income' | 'expense';
   categories?: CashflowCategory[];
   isLoading?: boolean;
+  /** Category preselected when the dialog opens for a new item (from a group row). */
+  presetCategory?: string;
+  /** Automatic source preselected in "Automatický zdroj k nahrazení" (from an automatic row). */
+  presetReplacementSourceId?: string | null;
 }
 
 export default function AddCashflowItemDialog({
@@ -47,6 +51,8 @@ export default function AddCashflowItemDialog({
   categories,
   automaticSources = [],
   isLoading,
+  presetCategory,
+  presetReplacementSourceId = null,
 }: AddCashflowItemDialogProps) {
   const { t } = useTranslation('reports');
   const { t: tc } = useTranslation('common');
@@ -60,13 +66,17 @@ export default function AddCashflowItemDialog({
   const [selectedCategory, setSelectedCategory] = useState<string>('');
 
   const isEditing = !!editItem;
+  // The form is filled when the dialog opens, not on every refetch while it is open.
+  const wasOpen = useRef(false);
 
   // All categories are now editable - memoized to avoid useEffect dependency issues
   const availableCategories = useMemo(() => categories ?? [], [categories]);
 
   // Reset form when dialog opens/closes or editItem changes
   useEffect(() => {
-    if (open) {
+    const opening = open && !wasOpen.current;
+    wasOpen.current = open;
+    if (opening) {
       if (editItem) {
         setReplacementSourceId(editItem.replacementSourceId ?? 'none');
         setName(editItem.name);
@@ -75,18 +85,26 @@ export default function AddCashflowItemDialog({
         setFrequency(editItem.originalFrequency);
         setSelectedCategory(editCategory || '');
       } else {
-        setReplacementSourceId('none');
+        setReplacementSourceId(presetReplacementSourceId ?? 'none');
         setName('');
         setAmount('');
         setCurrency(userCurrency);
         setFrequency('monthly');
-        // Default to first category
-        if (availableCategories.length > 0) {
-          setSelectedCategory(availableCategories[0].key);
-        }
+        // The group row's category, else the first one
+        const preset = availableCategories.find((c) => c.key === presetCategory);
+        if (preset) setSelectedCategory(preset.key);
+        else if (availableCategories.length > 0) setSelectedCategory(availableCategories[0].key);
       }
     }
-  }, [open, editItem, editCategory, availableCategories, userCurrency]);
+  }, [
+    open,
+    editItem,
+    editCategory,
+    availableCategories,
+    userCurrency,
+    presetCategory,
+    presetReplacementSourceId,
+  ]);
 
   // Update selected category when categories change (for new items)
   useEffect(() => {

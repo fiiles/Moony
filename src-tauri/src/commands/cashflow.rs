@@ -1,7 +1,7 @@
 //! Thin cashflow report and planning commands.
 use crate::db::Database;
 use crate::error::Result;
-use crate::models::{CashflowItem, CashflowReport, InsertCashflowItem};
+use crate::models::{CashflowItem, CashflowReport, InsertCashflowItem, SetCashflowPlanInclusion};
 use crate::services::{cashflow_actuals, cashflow_planning};
 use tauri::State;
 #[tauri::command]
@@ -57,6 +57,14 @@ pub async fn update_cashflow_item(
 #[tauri::command]
 pub async fn delete_cashflow_item(db: State<'_, Database>, id: String) -> Result<()> {
     db.with_conn(|conn| cashflow_planning::delete_cashflow_item(conn, id))
+}
+#[tauri::command]
+pub async fn set_cashflow_plan_inclusion(
+    db: State<'_, Database>,
+    data: SetCashflowPlanInclusion,
+) -> Result<()> {
+    data.validate()?;
+    db.with_conn(|conn| cashflow_planning::set_plan_inclusion(conn, data))
 }
 #[tauri::command]
 #[allow(clippy::too_many_arguments)]

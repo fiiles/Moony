@@ -231,6 +231,12 @@ CREATE TABLE cashflow_items (
     category TEXT NOT NULL DEFAULT 'income'
 , replacement_source_id TEXT)
 
+== table cashflow_plan_exclusions ==
+CREATE TABLE cashflow_plan_exclusions (
+    key TEXT PRIMARY KEY,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch())
+)
+
 == table categorization_rules ==
 CREATE TABLE categorization_rules (
     id TEXT PRIMARY KEY,

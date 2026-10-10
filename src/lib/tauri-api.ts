@@ -62,6 +62,7 @@ import type {
   FxSnapshot,
   FxHistoryQuotes,
   CashflowItem,
+  SetCashflowPlanInclusion,
   ProjectionSettings,
   PortfolioProjection,
   // Bank account types
@@ -782,6 +783,10 @@ export const cashflowApi = {
     tauriInvoke<CashflowItem>('update_cashflow_item', { id, data }),
 
   deleteItem: (id: string) => tauriInvoke<void>('delete_cashflow_item', { id }),
+
+  /** Count a planning row in or leave it out of the plan (category, automatic source or manual item). */
+  setInclusion: (data: SetCashflowPlanInclusion) =>
+    tauriInvoke<void>('set_cashflow_plan_inclusion', { data }),
 };
 
 // ============================================================================

@@ -433,18 +433,12 @@
       "none": "Zatím žádné plánované příjmy."
     },
     "table": {
-      "item": "Položka",
-      "category": "Kategorie",
-      "frequency": "Frekvence",
-      "monthly": "Měsíčně",
-      "yearly": "Ročně",
       "netMonthly": "Čisté měsíčně",
       "netYearly": "Čisté ročně",
       "perMonth": "měsíčně",
       "perYear": "ročně",
       "auto": "automaticky z {{module}}",
       "manual": "ručně",
-      "editInModule": "Upravuje se v modulu {{module}}",
       "incomeGroup": "Příjmy · {{amount}}",
       "expenseGroup": "Výdaje · {{amount}}",
       "noIncome": "V této sekci zatím nejsou plánované příjmy.",
@@ -455,12 +449,43 @@
       "expenses_one": "{{count}} výdaj",
       "expenses_few": "{{count}} výdaje",
       "expenses_other": "{{count}} výdajů",
-      "addToSection": "Přidat položku do sekce"
+      "addToSection": "Přidat položku do sekce",
+      "outOfPlan": "Mimo plán",
+      "groupItems_one": "{{count}} položka",
+      "groupItems_few": "{{count}} položky",
+      "groupItems_other": "{{count}} položek",
+      "groupExcluded_one": "{{count}} mimo plán",
+      "groupExcluded_few": "{{count}} mimo plán",
+      "groupExcluded_other": "{{count}} mimo plán",
+      "groupCategoryExcluded": "celá kategorie mimo plán",
+      "autoFrom": "automaticky z {{modules}}",
+      "outOfPlanCount_one": "{{count}} položka mimo plán",
+      "outOfPlanCount_few": "{{count}} položky mimo plán",
+      "outOfPlanCount_other": "{{count}} položek mimo plán",
+      "expandAll": "Rozbalit vše",
+      "collapseAll": "Sbalit vše",
+      "addToCategory": "Přidat položku do kategorie",
+      "addIncome": "Přidat příjem",
+      "addExpense": "Přidat výdaj"
     },
     "toast": {
       "added": "Položka přidána do plánu",
       "updated": "Položka upravena",
-      "deleted": "Položka smazána"
+      "deleted": "Položka smazána",
+      "excluded": "Položka vyřazena z plánu",
+      "included": "Položka opět v plánu",
+      "categoryExcluded": "Kategorie vyřazena z plánu",
+      "categoryIncluded": "Kategorie opět v plánu"
+    },
+    "menu": {
+      "label": "Možnosti: {{name}}",
+      "exclude": "Nezapočítávat",
+      "include": "Započítat",
+      "excludeCategory": "Nezapočítávat kategorii",
+      "includeCategory": "Započítat kategorii",
+      "categoryExcluded": "Celá kategorie je mimo plán",
+      "replace": "Nahradit vlastní částkou…",
+      "openModule": "Otevřít v modulu {{module}}"
     }
   },
   "actuals": {

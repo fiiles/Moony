@@ -2,7 +2,7 @@
 use crate::error::{AppError, Result};
 use crate::models::frequency::annualize;
 use crate::models::CashflowReport;
-use crate::models::{CashflowItem, InsertCashflowItem};
+use crate::models::{CashflowItem, InsertCashflowItem, SetCashflowPlanInclusion};
 use crate::services::interest_tiers;
 use std::collections::{HashMap, HashSet};
 use uuid::Uuid;
@@ -1039,8 +1039,52 @@ pub fn delete_cashflow_item(conn: &rusqlite::Connection, id: String) -> Result<(
         if conn.execute("DELETE FROM cashflow_items WHERE id = ?1", [&id])? == 0 {
             return Err(AppError::NotFound(format!("Cashflow item {id} not found")));
         }
+        conn.execute(
+            "DELETE FROM cashflow_plan_exclusions WHERE key = ?1",
+            [format!("item:{id}")],
+        )?;
         Ok(())
     }
+}
+
+/// Every key the user left out of the plan (see migration 013).
+pub fn load_plan_exclusions(conn: &rusqlite::Connection) -> Result<HashSet<String>> {
+    let mut stmt = conn.prepare("SELECT key FROM cashflow_plan_exclusions")?;
+    let keys = stmt
+        .query_map([], |row| row.get::<_, String>(0))?
+        .collect::<std::result::Result<HashSet<_>, _>>()?;
+    Ok(keys)
+}
+
+/// Leave a category, automatic source or manual item out of the plan, or count
+/// it in again. Idempotent in both directions.
+pub fn set_plan_inclusion(
+    conn: &rusqlite::Connection,
+    data: SetCashflowPlanInclusion,
+) -> Result<()> {
+    data.validate()?;
+    if data.included {
+        conn.execute(
+            "DELETE FROM cashflow_plan_exclusions WHERE key = ?1",
+            [&data.key],
+        )?;
+    } else {
+        if let Some(id) = data.key.strip_prefix("item:") {
+            let exists: i64 = conn.query_row(
+                "SELECT COUNT(*) FROM cashflow_items WHERE id = ?1",
+                [id],
+                |row| row.get(0),
+            )?;
+            if exists == 0 {
+                return Err(AppError::NotFound(format!("Cashflow item {id} not found")));
+            }
+        }
+        conn.execute(
+            "INSERT OR IGNORE INTO cashflow_plan_exclusions (key, created_at) VALUES (?1, ?2)",
+            rusqlite::params![data.key, chrono::Utc::now().timestamp()],
+        )?;
+    }
+    Ok(())
 }
 
 fn active_loan_ids(conn: &rusqlite::Connection, day: i64) -> Result<HashSet<String>> {
@@ -1106,6 +1150,7 @@ pub fn get_report_in_currency(
         }
     }
     let manual = get_all_cashflow_items(conn)?;
+    let exclusions = load_plan_exclusions(conn)?;
     let replacements: HashMap<_, _> = manual
         .iter()
         .filter_map(|i| {
@@ -1168,11 +1213,16 @@ pub fn get_report_in_currency(
         let mut categories = |raw: Vec<RawCashflowCategory>, direction: &str| {
             raw.into_iter()
                 .map(|c| {
+                    let category_included = !exclusions.contains(&format!("category:{}", c.key));
                     let items = c
                         .items
                         .into_iter()
                         .filter_map(|i| {
                             let source = (!i.is_user_defined).then(|| source_for(&c.key, &i.id));
+                            let own_key =
+                                source.clone().unwrap_or_else(|| format!("item:{}", i.id));
+                            let self_included = !exclusions.contains(&own_key);
+                            let included = category_included && self_included;
                             let original_components =
                                 if !i.is_user_defined && c.key.ends_with("RealEstateCosts") {
                                     property_components.get(&i.id).cloned().unwrap_or_default()
@@ -1210,6 +1260,8 @@ pub fn get_report_in_currency(
                                 original_currency: i.original_currency,
                                 original_frequency: i.original_frequency,
                                 is_user_defined: i.is_user_defined,
+                                included,
+                                self_included,
                                 source_id: source.clone(),
                                 replacement_source_id: manual
                                     .iter()
@@ -1222,11 +1274,13 @@ pub fn get_report_in_currency(
                                     return None;
                                 }
                             }
-                            if item.original_components.is_empty() {
-                                fx.record_quality(&item.original_currency);
-                            } else {
-                                for component in &item.original_components {
-                                    fx.record_quality(&component.currency);
+                            if included {
+                                if item.original_components.is_empty() {
+                                    fx.record_quality(&item.original_currency);
+                                } else {
+                                    for component in &item.original_components {
+                                        fx.record_quality(&component.currency);
+                                    }
                                 }
                             }
                             Some(item)
@@ -1234,6 +1288,7 @@ pub fn get_report_in_currency(
                         .collect::<Vec<_>>();
                     let total: f64 = items
                         .iter()
+                        .filter(|i| i.included)
                         .map(|i| i.amount.parse::<f64>().expect("money"))
                         .sum();
                     crate::models::CashflowCategory {
@@ -1242,6 +1297,7 @@ pub fn get_report_in_currency(
                         total: money(total),
                         items,
                         is_user_editable: c.is_user_editable,
+                        included: category_included,
                     }
                 })
                 .collect::<Vec<_>>()
@@ -1400,8 +1456,207 @@ mod tests {
  CREATE TABLE bank_accounts(id TEXT,name TEXT,balance TEXT,currency TEXT,interest_rate TEXT,has_zone_designation INTEGER,account_type TEXT,exclude_from_balance INTEGER);
  CREATE TABLE stock_investments(ticker TEXT,company_name TEXT,quantity TEXT);
  CREATE TABLE bonds(id TEXT,name TEXT,coupon_value TEXT,quantity TEXT,interest_rate TEXT,currency TEXT);
+ CREATE TABLE cashflow_plan_exclusions(key TEXT PRIMARY KEY,created_at INTEGER NOT NULL DEFAULT 0);
  INSERT INTO loans VALUES ('active','Loan','1000000','CZK','0','100',1704067200,NULL,NULL,NULL);").unwrap();
         conn
+    }
+
+    fn manual(
+        conn: &rusqlite::Connection,
+        name: &str,
+        amount: &str,
+        category: &str,
+        item_type: &str,
+    ) -> String {
+        create_cashflow_item(
+            conn,
+            InsertCashflowItem {
+                name: name.into(),
+                amount: amount.into(),
+                currency: Some("CZK".into()),
+                frequency: "monthly".into(),
+                item_type: item_type.into(),
+                category: category.into(),
+                replacement_source_id: None,
+            },
+        )
+        .unwrap()
+        .id
+    }
+
+    fn find<'a>(report: &'a CashflowReport, category: &str) -> &'a crate::models::CashflowCategory {
+        [&report.personal, &report.investments]
+            .into_iter()
+            .flat_map(|s| s.income.iter().chain(&s.expenses))
+            .find(|c| c.key == category)
+            .unwrap_or_else(|| panic!("category {category}"))
+    }
+
+    fn off(key: impl Into<String>) -> SetCashflowPlanInclusion {
+        SetCashflowPlanInclusion {
+            key: key.into(),
+            included: false,
+        }
+    }
+
+    fn on(key: impl Into<String>) -> SetCashflowPlanInclusion {
+        SetCashflowPlanInclusion {
+            key: key.into(),
+            included: true,
+        }
+    }
+
+    #[test]
+    fn plan_inclusion_is_stored_and_idempotent() {
+        let conn = planning_db();
+        set_plan_inclusion(&conn, off("loan:active")).unwrap();
+        set_plan_inclusion(&conn, off("loan:active")).unwrap();
+        set_plan_inclusion(&conn, off("category:stockDividends")).unwrap();
+        let keys = load_plan_exclusions(&conn).unwrap();
+        assert_eq!(keys.len(), 2);
+        assert!(keys.contains("loan:active") && keys.contains("category:stockDividends"));
+        set_plan_inclusion(&conn, on("loan:active")).unwrap();
+        set_plan_inclusion(&conn, on("loan:active")).unwrap();
+        let keys = load_plan_exclusions(&conn).unwrap();
+        assert_eq!(keys.len(), 1);
+        assert!(!keys.contains("loan:active"));
+        assert!(set_plan_inclusion(&conn, off("crypto:btc")).is_err());
+    }
+
+    #[test]
+    fn excluded_automatic_item_is_listed_but_not_counted() {
+        let conn = planning_db();
+        manual(&conn, "Netflix", "50", "subscriptions", "expense");
+        set_plan_inclusion(&conn, off("loan:active")).unwrap();
+        let report = get_report_in_currency(&conn, "monthly", "CZK").unwrap();
+        let loans = find(&report, "personalLoans");
+        assert!(loans.included);
+        assert_eq!(loans.items.len(), 1);
+        assert!(!loans.items[0].included);
+        assert_eq!(loans.items[0].amount, "100.00", "amount stays visible");
+        assert_eq!(loans.total, "0.00");
+        assert_eq!(report.personal.total_expenses, "50.00");
+        assert_eq!(report.total_expenses, "50.00");
+        assert_eq!(report.net_cashflow, "-50.00");
+        assert!(report
+            .automatic_sources
+            .iter()
+            .any(|s| s.source_id.as_deref() == Some("loan:active")));
+    }
+
+    #[test]
+    fn excluded_category_covers_manual_and_later_items() {
+        let conn = planning_db();
+        let first = manual(&conn, "Netflix", "50", "subscriptions", "expense");
+        set_plan_inclusion(&conn, off("category:subscriptions")).unwrap();
+        let later = manual(&conn, "Spotify", "30", "subscriptions", "expense");
+        let report = get_report_in_currency(&conn, "monthly", "CZK").unwrap();
+        let subs = find(&report, "subscriptions");
+        assert!(!subs.included);
+        assert_eq!(subs.items.len(), 2);
+        assert!(subs.items.iter().all(|i| !i.included));
+        assert!(
+            subs.items.iter().any(|i| i.id == first) && subs.items.iter().any(|i| i.id == later)
+        );
+        assert_eq!(subs.total, "0.00");
+        assert_eq!(report.total_expenses, "100.00", "only the loan counts");
+    }
+
+    #[test]
+    fn item_key_and_category_key_exclude_independently() {
+        let conn = planning_db();
+        let id = manual(&conn, "Netflix", "50", "subscriptions", "expense");
+        set_plan_inclusion(&conn, off(format!("item:{id}"))).unwrap();
+        set_plan_inclusion(&conn, off("category:subscriptions")).unwrap();
+        set_plan_inclusion(&conn, on("category:subscriptions")).unwrap();
+        let report = get_report_in_currency(&conn, "monthly", "CZK").unwrap();
+        let subs = find(&report, "subscriptions");
+        assert!(subs.included);
+        assert!(!subs.items[0].included, "its own key still excludes it");
+        assert!(!subs.items[0].self_included);
+        set_plan_inclusion(&conn, off("category:subscriptions")).unwrap();
+        let both = get_report_in_currency(&conn, "monthly", "CZK").unwrap();
+        assert!(!both.subscriptions_item(0).self_included);
+        assert!(!both.subscriptions_item(0).included);
+        set_plan_inclusion(&conn, on("category:subscriptions")).unwrap();
+        set_plan_inclusion(&conn, on(format!("item:{id}"))).unwrap();
+        let report = get_report_in_currency(&conn, "monthly", "CZK").unwrap();
+        assert!(find(&report, "subscriptions").items[0].included);
+        assert_eq!(report.total_expenses, "150.00");
+    }
+
+    #[test]
+    fn replacement_hides_source_and_replacement_can_be_excluded() {
+        let conn = planning_db();
+        let replacement = create_cashflow_item(
+            &conn,
+            InsertCashflowItem {
+                name: "Adjusted loan".into(),
+                amount: "80".into(),
+                currency: Some("CZK".into()),
+                frequency: "monthly".into(),
+                item_type: "expense".into(),
+                category: "personalLoans".into(),
+                replacement_source_id: Some("loan:active".into()),
+            },
+        )
+        .unwrap();
+        set_plan_inclusion(&conn, off("loan:active")).unwrap();
+        let report = get_report_in_currency(&conn, "monthly", "CZK").unwrap();
+        let loans = find(&report, "personalLoans");
+        assert_eq!(loans.items.len(), 1, "replaced source stays absent");
+        assert_eq!(loans.items[0].id, replacement.id);
+        assert!(loans.items[0].included);
+        assert_eq!(report.total_expenses, "80.00");
+        set_plan_inclusion(&conn, off(format!("item:{}", replacement.id))).unwrap();
+        let report = get_report_in_currency(&conn, "monthly", "CZK").unwrap();
+        assert_eq!(report.total_expenses, "0.00");
+    }
+
+    #[test]
+    fn excluded_item_with_missing_rate_does_not_degrade_quality() {
+        let conn = planning_db();
+        conn.execute("UPDATE loans SET currency='XRS'", []).unwrap();
+        let before = get_report_in_currency(&conn, "monthly", "CZK").unwrap();
+        assert!(!before.quality.missing_fx_currencies.is_empty());
+        set_plan_inclusion(&conn, off("loan:active")).unwrap();
+        let after = get_report_in_currency(&conn, "monthly", "CZK").unwrap();
+        assert!(after.quality.missing_fx_currencies.is_empty());
+        let row = &find(&after, "personalLoans").items[0];
+        assert!(!row.included);
+        assert_eq!(
+            row.fx_quality,
+            crate::models::FxQuality::Missing,
+            "the row still says so"
+        );
+    }
+
+    trait SubsItem {
+        fn subscriptions_item(&self, index: usize) -> &crate::models::CashflowReportItem;
+    }
+    impl SubsItem for CashflowReport {
+        fn subscriptions_item(&self, index: usize) -> &crate::models::CashflowReportItem {
+            &find(self, "subscriptions").items[index]
+        }
+    }
+
+    #[test]
+    fn excluding_an_unknown_manual_item_is_rejected() {
+        let conn = planning_db();
+        let err = set_plan_inclusion(&conn, off("item:missing")).unwrap_err();
+        assert!(matches!(err, AppError::NotFound(_)), "{err:?}");
+        assert!(load_plan_exclusions(&conn).unwrap().is_empty());
+        // Counting a never-excluded row in is a no-op, not an error.
+        set_plan_inclusion(&conn, on("item:missing")).unwrap();
+    }
+
+    #[test]
+    fn deleting_a_manual_item_drops_its_key() {
+        let conn = planning_db();
+        let id = manual(&conn, "Netflix", "50", "subscriptions", "expense");
+        set_plan_inclusion(&conn, off(format!("item:{id}"))).unwrap();
+        delete_cashflow_item(&conn, id).unwrap();
+        assert!(load_plan_exclusions(&conn).unwrap().is_empty());
     }
     #[test]
     fn target_replaced_missing_source_does_not_make_active_plan_incomplete() {

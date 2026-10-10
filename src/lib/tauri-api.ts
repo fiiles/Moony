@@ -113,6 +113,9 @@ import type {
   CategorizationRule,
   CategorizationStats,
   LearnedPayeeEntry,
+  InsertScopedLearning,
+  ChangedRow,
+  RecategorizationPreview,
   CustomRule,
   CustomRuleInput,
   RuleHitCount,
@@ -1030,6 +1033,9 @@ export type {
   CategorizationRule,
   CategorizationStats,
   LearnedPayeeEntry,
+  InsertScopedLearning,
+  ChangedRow,
+  RecategorizationPreview,
   CustomRule,
   CustomRuleInput,
   RulePackInfo,
@@ -1045,8 +1051,31 @@ export const categorizationApi = {
   categorizeBatch: (transactions: TransactionInput[]) =>
     tauriInvoke<CategorizationResult[]>('categorize_batch', { transactions }),
 
-  learn: (data: import('@shared/schema').InsertScopedLearning) =>
-    tauriInvoke<void>('learn_categorization', { data }),
+  /** Learn a scoped rule; with `applyHistory` the other payments it covers get the category too. */
+  learn: (data: InsertScopedLearning, applyHistory = false) =>
+    tauriInvoke<ChangedRow[]>('learn_categorization', { data, applyHistory }),
+
+  // ==================== Recategorizing other payments (spec 2026-10-10) ====================
+
+  /** What remembering a correction on this transaction would rewrite and cover. */
+  previewRecategorization: (transactionId: string) =>
+    tauriInvoke<RecategorizationPreview>('preview_recategorization', { transactionId }),
+
+  /** Point the custom rule that decides today at another category; optionally recategorize its matches. */
+  retargetCustomRule: (ruleId: string, categoryId: string, applyHistory: boolean) =>
+    tauriInvoke<ChangedRow[]>('retarget_custom_rule', { ruleId, categoryId, applyHistory }),
+
+  /** What a stored learned rule covers today (the rules page). */
+  previewLearnedRuleHistory: (id: string) =>
+    tauriInvoke<RecategorizationPreview>('preview_learned_rule_history', { id }),
+
+  /** Give a stored learned rule's category to every payment it covers. */
+  applyLearnedRuleToHistory: (id: string) =>
+    tauriInvoke<ChangedRow[]>('apply_learned_rule_to_history', { id }),
+
+  /** Undo a bulk recategorization. Returns how many rows were restored. */
+  restoreTransactionCategories: (rows: ChangedRow[]) =>
+    tauriInvoke<number>('restore_transaction_categories', { rows }),
 
   // Forget a learned payee combination
   forget: (payee: string | null, counterpartyIban: string | null) =>

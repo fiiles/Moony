@@ -177,6 +177,15 @@ export type CashflowSection = { income: CashflowCategory[]; expenses: CashflowCa
 export type CategorizationOverview = { total: number; categorized: number; bySource: SourceCount[] }
 
 /**
+ * One current-category bucket of the payments a rewritten rule covers.
+ */
+export type CategoryCount = { 
+/**
+ * `None` = the payments without a category.
+ */
+categoryId: string | null; count: number }
+
+/**
  * Category spending summary for a period
  */
 export type CategorySpendingSummary = { budgetCurrency: string | null; budgetSpent: string | null; budgetLimitNative: string | null; budgetLimitFxQuality: FxQuality | null; budgetLimit: string | null; categoryId: string; categoryName: string; categoryIcon: string | null; categoryColor: string | null; totalAmount: string; transactionCount: number; budgetGoal: BudgetGoal | null; budgetPercentage: number | null }
@@ -185,6 +194,11 @@ export type CategorySpendingSummary = { budgetCurrency: string | null; budgetSpe
  * How many rows reference a category — what a delete would have to move.
  */
 export type CategoryUsage = { categoryId: string; transactions: number; rules: number; learnedPayees: number; budgetGoals: number }
+
+/**
+ * A payment a bulk recategorization changed, with what it held before (for undo).
+ */
+export type ChangedRow = { id: string; previousCategoryId: string | null; previousSource: string | null }
 
 /**
  * What a converted response could not (or only approximately) convert.
@@ -685,6 +699,11 @@ units: Partial<{ [key in string]: number }>;
  * Unix seconds of the last fetch; 0 when no rates are loaded.
  */
 revision: number }
+
+/**
+ * The custom rule that decides a transaction's category today.
+ */
+export type GoverningRule = { id: string; name: string; categoryId: string }
 
 /**
  * Payload of the `history-recalculation` event.
@@ -1226,6 +1245,27 @@ export type RealEstatePhotoBatch = { id: string; realEstateId: string; photoDate
  * Where a ticker's rebuild stands.
  */
 export type RecalcStatus = "running" | "done" | "failed"
+
+/**
+ * What rewriting the rule behind a transaction would cover (spec 2026-10-10).
+ */
+export type RecategorizationPreview = { 
+/**
+ * `ownAccount` | `custom` | `learned` | `pack` | `none` — the layer that decides today.
+ */
+governing: string; 
+/**
+ * Set when `governing` is `custom`.
+ */
+rule: GoverningRule | null; 
+/**
+ * False when neither a payee key nor an account identity exists (nothing to remember).
+ */
+learnable: boolean; 
+/**
+ * Other payments the rewritten rule matches, the edited row excluded.
+ */
+matches: number; byCategory: CategoryCount[] }
 
 /**
  * Recurring cost for real estate

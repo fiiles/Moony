@@ -220,6 +220,10 @@ pub fn collect_types() -> TypeCollection {
     types.register::<crate::commands::auth::McpServerStatus>();
     types.register::<crate::models::categorization::InsertScopedLearning>();
     types.register::<crate::models::categorization::LearnedPayeeEntry>();
+    types.register::<crate::models::categorization::CategoryCount>();
+    types.register::<crate::models::categorization::ChangedRow>();
+    types.register::<crate::models::categorization::GoverningRule>();
+    types.register::<crate::models::categorization::RecategorizationPreview>();
     types.register::<crate::commands::categorization::RulePackInfo>();
     types.register::<crate::commands::categorization::PackRuleInfo>();
     types.register::<crate::services::categorization::hits::RuleHitCount>();

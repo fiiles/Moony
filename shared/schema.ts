@@ -1150,6 +1150,39 @@ export interface LearnedPayeeEntry {
   updatedAt: number;
 }
 
+/** One current-category bucket of the payments a rewritten rule covers (`categoryId` null = no category). */
+export interface CategoryCount {
+  categoryId: string | null;
+  count: number;
+}
+
+/** A payment a bulk recategorization changed, with what it held before (for undo). */
+export interface ChangedRow {
+  id: string;
+  previousCategoryId: string | null;
+  previousSource: string | null;
+}
+
+/** The custom rule that decides a transaction's category today. */
+export interface GoverningRule {
+  id: string;
+  name: string;
+  categoryId: string;
+}
+
+/** What rewriting the rule behind a transaction would cover. */
+export interface RecategorizationPreview {
+  /** The layer that decides today. */
+  governing: 'ownAccount' | 'custom' | 'learned' | 'pack' | 'none';
+  /** Set when `governing` is 'custom'. */
+  rule: GoverningRule | null;
+  /** False when neither a payee key nor an account identity exists. */
+  learnable: boolean;
+  /** Other payments the rewritten rule matches, the edited row excluded. */
+  matches: number;
+  byCategory: CategoryCount[];
+}
+
 /** Custom categorization rule from the database */
 export interface CustomRule {
   id: string;

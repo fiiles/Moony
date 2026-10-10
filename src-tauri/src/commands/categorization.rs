@@ -12,7 +12,9 @@ use tauri::State;
 use uuid::Uuid;
 
 use crate::db::Database;
+use crate::models::categorization::{ChangedRow, RecategorizationPreview};
 use crate::services::categorization::learn;
+use crate::services::categorization::recategorize;
 use crate::services::categorization::{
     CategorizationEngine, CategorizationResult, CategorizationRule, TransactionInput,
 };
@@ -45,22 +47,20 @@ pub async fn categorize_batch(
         .map_err(|e| format!("Batch categorization panicked: {}", e))
 }
 
-/// Learn from user's manual categorization with hierarchical matching
-///
-/// This stores the payee/iban → category mapping for instant future lookups
-/// AND persists it to the database for future app sessions. New rules are scoped.
-///
-/// Hierarchical priority:
-/// - iban = IBAN default (catches any payee for this iban)
-/// - payee = payee default (catches any iban for this payee)
+/// Learn from the user's manual categorization (scoped to one own account,
+/// direction and identity) and, with `apply_history`, give the category to
+/// every other payment the new rule covers. Returns the changed rows for undo.
 #[tauri::command]
 pub async fn learn_categorization(
     state: State<'_, CategorizationState>,
     db: State<'_, Database>,
     data: crate::models::categorization::InsertScopedLearning,
-) -> crate::error::Result<()> {
+    apply_history: Option<bool>,
+) -> crate::error::Result<Vec<ChangedRow>> {
     data.validate()?;
-    db.with_conn(|conn| learn::learn_scoped(conn, &state.0, &data))
+    db.with_conn(|conn| {
+        learn::learn_scoped_and_apply(conn, &state.0, &data, apply_history.unwrap_or(false))
+    })
 }
 
 /// Accept a pending MCP category suggestion on a transaction.
@@ -488,6 +488,63 @@ pub async fn update_learned_payee_category(
     }
 
     Ok(())
+}
+
+// ==================== Recategorizing other payments (spec 2026-10-10) ====================
+
+/// What remembering a correction on this transaction would rewrite and cover.
+#[tauri::command]
+pub async fn preview_recategorization(
+    state: State<'_, CategorizationState>,
+    db: State<'_, Database>,
+    transaction_id: String,
+) -> crate::error::Result<RecategorizationPreview> {
+    db.with_conn(|conn| recategorize::preview_for_transaction(conn, &state.0, &transaction_id))
+}
+
+/// Point a custom rule at another category (it has precedence over learned
+/// choices) and, when asked, recategorize every payment it covers.
+#[tauri::command]
+pub async fn retarget_custom_rule(
+    state: State<'_, CategorizationState>,
+    db: State<'_, Database>,
+    rule_id: String,
+    category_id: String,
+    apply_history: bool,
+) -> crate::error::Result<Vec<ChangedRow>> {
+    let changed = db.with_conn(|conn| {
+        recategorize::retarget_custom_rule(conn, &rule_id, &category_id, apply_history)
+    })?;
+    reload_custom_rules(&state, &db).map_err(crate::error::AppError::Internal)?;
+    log::info!("Retargeted custom rule {} to {}", rule_id, category_id);
+    Ok(changed)
+}
+
+/// What a stored learned rule covers today (the rules page).
+#[tauri::command]
+pub async fn preview_learned_rule_history(
+    db: State<'_, Database>,
+    id: String,
+) -> crate::error::Result<RecategorizationPreview> {
+    db.with_conn(|conn| recategorize::preview_for_learned_rule(conn, &id))
+}
+
+/// Give a stored learned rule's category to every payment it covers.
+#[tauri::command]
+pub async fn apply_learned_rule_to_history(
+    db: State<'_, Database>,
+    id: String,
+) -> crate::error::Result<Vec<ChangedRow>> {
+    db.with_conn(|conn| recategorize::apply_learned_rule(conn, &id))
+}
+
+/// Undo a bulk recategorization: put back the previous category and provenance.
+#[tauri::command]
+pub async fn restore_transaction_categories(
+    db: State<'_, Database>,
+    rows: Vec<ChangedRow>,
+) -> crate::error::Result<usize> {
+    db.with_conn(|conn| recategorize::restore(conn, &rows))
 }
 
 // ==================== Custom Rules Management ====================

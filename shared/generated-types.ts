@@ -134,7 +134,15 @@ export type CashflowActuals = { reportCurrency: string; periodStart: number; per
 /**
  * A category with its items
  */
-export type CashflowCategory = { key: string; name: string; total: string; items: CashflowReportItem[]; isUserEditable: boolean }
+export type CashflowCategory = { key: string; name: string; 
+/**
+ * Sum of the included items only.
+ */
+total: string; items: CashflowReportItem[]; isUserEditable: boolean; 
+/**
+ * False when the whole category is out of the plan (`category:<key>`).
+ */
+included: boolean }
 
 /**
  * One row of a breakdown: the period's rows of one flow role in one category.
@@ -164,7 +172,11 @@ export type CashflowReport = { reportCurrency: string; quality: ReportQuality; r
 /**
  * Individual item in a cashflow category
  */
-export type CashflowReportItem = { originalComponents: CashflowOriginalComponent[]; convertedComponentCount: number; fxQuality: FxQuality; category: string; itemType: string; sourceId: string | null; replacementSourceId: string | null; id: string; name: string; amount: string; originalAmount: string; originalCurrency: string; originalFrequency: string; isUserDefined: boolean }
+export type CashflowReportItem = { originalComponents: CashflowOriginalComponent[]; convertedComponentCount: number; fxQuality: FxQuality; category: string; itemType: string; sourceId: string | null; replacementSourceId: string | null; id: string; name: string; amount: string; originalAmount: string; originalCurrency: string; originalFrequency: string; isUserDefined: boolean; 
+/**
+ * False when this row or its whole category is out of the plan; `amount` is still filled.
+ */
+included: boolean }
 
 /**
  * A cashflow section (Personal or Investments)
@@ -1334,6 +1346,15 @@ headerSignature: string; config: StockImportConfig; createdAt: number }
  * Interest rate zone (tier) of a bank account
  */
 export type SavingsAccountZone = { id: string; savingsAccountId: string; fromAmount: string; toAmount: string | null; interestRate: string; createdAt: number }
+
+/**
+ * Count a planning row in or leave it out (`cashflow_plan_exclusions`).
+ */
+export type SetCashflowPlanInclusion = { 
+/**
+ * `category:<categoryKey>`, an automatic source id, or `item:<manual item id>`.
+ */
+key: string; included: boolean }
 
 export type SourceCount = { 
 /**

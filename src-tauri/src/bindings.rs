@@ -167,6 +167,7 @@ pub fn collect_types() -> TypeCollection {
     // Cashflow models
     types.register::<crate::models::CashflowItem>();
     types.register::<crate::models::InsertCashflowItem>();
+    types.register::<crate::models::SetCashflowPlanInclusion>();
     types.register::<crate::models::CashflowMonth>();
     types.register::<crate::models::CashflowGroup>();
     types.register::<crate::models::CashflowActuals>();

@@ -25,6 +25,14 @@ All notable changes to Moony are documented in this file. The format follows
   rule covers, broken down by their current category, and categorizes them in the same step; the
   toast offers "Vrátit zpět". The same offer appears when a learned rule's category is changed on
   the rules page.
+- **Cashflow planning: categories as groups, rows in or out of the plan.** The planning page lists
+  every category as a collapsible row with its total, count and origin (the investment section opens
+  as a handful of rows instead of one line per dividend). Any row — automatic or manual — and any whole
+  category can be left out of the plan from its "···" menu without deleting it: it stays visible,
+  muted and labelled "Mimo plán", and stops counting in the totals, stats and flow bar. A category left
+  out also covers items that appear later. The menu of an automatic row also opens the existing
+  "replace with my own amount" flow and the source module. The MCP tool `cashflow_report` carries
+  `included` per item and its totals follow the same rule.
 
 ### Changed
 

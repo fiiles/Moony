@@ -36,6 +36,67 @@ pub struct InsertCashflowItem {
     pub category: String, // Category key
 }
 
+/// Category keys of the planning report (personal first, then investments).
+pub const CASHFLOW_CATEGORIES: [&str; 16] = [
+    "personalIncome",
+    "personalLoans",
+    "personalInsurance",
+    "personalRealEstateCosts",
+    "subscriptions",
+    "consumptionCosts",
+    "otherPersonalCosts",
+    "interestIncome",
+    "stockDividends",
+    "bondsInterest",
+    "rentalIncome",
+    "otherInvestmentIncome",
+    "investmentLoans",
+    "investmentInsurance",
+    "investmentRealEstateCosts",
+    "otherInvestmentCosts",
+];
+
+/// Type prefixes of automatic source ids (`<prefix>:<native id>`), shared by
+/// replacements (`cashflow_items.replacement_source_id`) and plan exclusions.
+pub const PLAN_SOURCE_PREFIXES: [&str; 7] = [
+    "loan",
+    "insurance",
+    "propertyCosts",
+    "account",
+    "stock",
+    "bond",
+    "rental",
+];
+
+/// Count a planning row in or leave it out (`cashflow_plan_exclusions`).
+#[derive(Debug, Clone, Deserialize, Type)]
+pub struct SetCashflowPlanInclusion {
+    /// `category:<categoryKey>`, an automatic source id, or `item:<manual item id>`.
+    pub key: String,
+    pub included: bool,
+}
+
+impl SetCashflowPlanInclusion {
+    pub fn validate(&self) -> crate::error::Result<()> {
+        use crate::error::AppError;
+        let invalid = || AppError::Validation("validation.cashflowPlanKeyInvalid".into());
+        let (prefix, rest) = self.key.split_once(':').ok_or_else(invalid)?;
+        if rest.is_empty() || rest.chars().any(char::is_whitespace) {
+            return Err(invalid());
+        }
+        let known = match prefix {
+            "category" => CASHFLOW_CATEGORIES.contains(&rest),
+            "item" => true,
+            other => PLAN_SOURCE_PREFIXES.contains(&other),
+        };
+        if known {
+            Ok(())
+        } else {
+            Err(invalid())
+        }
+    }
+}
+
 impl InsertCashflowItem {
     pub fn validate(&self) -> crate::error::Result<()> {
         use crate::error::AppError;
@@ -57,25 +118,7 @@ impl InsertCashflowItem {
                 "validation.cashflowItemInvalid".into(),
             ));
         }
-        let categories = [
-            "personalIncome",
-            "personalLoans",
-            "personalInsurance",
-            "personalRealEstateCosts",
-            "subscriptions",
-            "consumptionCosts",
-            "otherPersonalCosts",
-            "interestIncome",
-            "stockDividends",
-            "bondsInterest",
-            "rentalIncome",
-            "otherInvestmentIncome",
-            "investmentLoans",
-            "investmentInsurance",
-            "investmentRealEstateCosts",
-            "otherInvestmentCosts",
-        ];
-        if !categories.contains(&self.category.as_str()) {
+        if !CASHFLOW_CATEGORIES.contains(&self.category.as_str()) {
             return Err(AppError::Validation(
                 "validation.cashflowItemInvalid".into(),
             ));
@@ -99,6 +142,33 @@ impl InsertCashflowItem {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn plan_inclusion_keys_are_validated() {
+        let ok = |key: &str| {
+            SetCashflowPlanInclusion {
+                key: key.into(),
+                included: false,
+            }
+            .validate()
+        };
+        assert!(ok("category:stockDividends").is_ok());
+        assert!(ok("item:0f3c").is_ok());
+        for prefix in PLAN_SOURCE_PREFIXES {
+            assert!(ok(&format!("{prefix}:abc")).is_ok(), "{prefix}");
+        }
+        for bad in [
+            "",
+            "stockDividends",
+            "category:",
+            "category:unknown",
+            "item:",
+            "item:has space",
+            "crypto:btc",
+            " loan:abc",
+        ] {
+            assert!(ok(bad).is_err(), "accepted {bad:?}");
+        }
+    }
     #[test]
     fn planned_items_reject_nonfinite_and_invalid_enum_values() {
         let mut item = InsertCashflowItem {
@@ -147,6 +217,8 @@ pub struct CashflowReportItem {
     pub original_frequency: String, // "monthly" or "yearly"
     #[serde(rename = "isUserDefined")]
     pub is_user_defined: bool,
+    /// False when this row or its whole category is out of the plan; `amount` is still filled.
+    pub included: bool,
 }
 
 /// Native components of a composite automatic property-cost source.
@@ -162,10 +234,13 @@ pub struct CashflowOriginalComponent {
 pub struct CashflowCategory {
     pub key: String,
     pub name: String,
+    /// Sum of the included items only.
     pub total: String,
     pub items: Vec<CashflowReportItem>,
     #[serde(rename = "isUserEditable")]
     pub is_user_editable: bool,
+    /// False when the whole category is out of the plan (`category:<key>`).
+    pub included: bool,
 }
 
 /// A cashflow section (Personal or Investments)

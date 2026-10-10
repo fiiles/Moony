@@ -776,14 +776,25 @@ export interface CashflowReportItem {
   originalCurrency: string;
   originalFrequency: 'monthly' | 'yearly';
   isUserDefined: boolean;
+  /** False when this row or its whole category is out of the plan; `amount` is still filled. */
+  included: boolean;
 }
 
 export interface CashflowCategory {
   key: string;
   name: string;
+  /** Sum of the included items only. */
   total: string;
   items: CashflowReportItem[];
   isUserEditable: boolean;
+  /** False when the whole category is out of the plan. */
+  included: boolean;
+}
+
+/** Count a planning row in or leave it out: `category:<key>`, an automatic source id, or `item:<id>`. */
+export interface SetCashflowPlanInclusion {
+  key: string;
+  included: boolean;
 }
 
 export interface CashflowSection {

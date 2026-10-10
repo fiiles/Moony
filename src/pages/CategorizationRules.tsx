@@ -131,6 +131,11 @@ export default function CategorizationRules() {
     count: number;
     description: string;
   } | null>(null);
+  // Closing clears `pendingHistory` while the exit animation still plays; keep the last text
+  // (same as `ConfirmDeleteDialog`) so the dialog does not blank or read "0 payments" meanwhile.
+  const [lastHistory, setLastHistory] = useState(pendingHistory);
+  if (pendingHistory && pendingHistory !== lastHistory) setLastHistory(pendingHistory);
+  const shownHistory = pendingHistory ?? lastHistory;
   const [ruleDialogOpen, setRuleDialogOpen] = useState(linkedNewRule !== null);
   const [editingRule, setEditingRule] = useState<CustomRule | null>(null);
   const [rulePrefill, setRulePrefill] = useState<RuleEditPrefill | null>(() =>
@@ -286,12 +291,14 @@ export default function CategorizationRules() {
   const updateLearnedCategory = useMutation({
     mutationFn: async ({ id, categoryId }: { id: string; categoryId: string }) => {
       await categorizationApi.updateLearnedPayeeCategory(id, categoryId);
-      const preview = await categorizationApi.previewLearnedRuleHistory(id);
+      // The rule is already saved; a failed preview only means no offer, never a failed change.
+      const preview = await categorizationApi.previewLearnedRuleHistory(id).catch(() => null);
       return { id, categoryId, preview };
     },
     onSuccess: async ({ id, categoryId, preview }) => {
       await invalidateAll();
       toast(t('learnedTab.categoryChanged'));
+      if (!preview) return;
       const count = changedByPick(preview, categoryId);
       if (count === 0) return;
       const rule = learnedRules.find((r) => r.id === id);
@@ -308,10 +315,15 @@ export default function CategorizationRules() {
           account: accounts.find((a) => a.id === rule?.bankAccountId)?.name ?? '—',
           direction: t(rule?.isCredit ? 'incoming' : 'outgoing').toLowerCase(),
           category: nameOf(categoryId),
-          breakdown: formatBreakdown(preview.byCategory, nameOf, {
-            uncategorized: t('learnedTab.history.uncategorized'),
-            more: (n) => t('learnedTab.history.more', { count: n }),
-          }),
+          // Only the payments that would change: the new category's own bucket is left out.
+          breakdown: formatBreakdown(
+            preview.byCategory.filter((b) => b.categoryId !== categoryId),
+            nameOf,
+            {
+              uncategorized: t('learnedTab.history.uncategorized'),
+              more: (n) => t('learnedTab.history.more', { count: n }),
+            }
+          ),
         }),
       });
     },
@@ -322,7 +334,12 @@ export default function CategorizationRules() {
     onSuccess: async (changed: ChangedRow[]) => {
       await invalidateAll();
       setPendingHistory(null);
-      toast(t('learnedTab.history.applied', { count: changed.length }), {
+      const message = t('learnedTab.history.applied', { count: changed.length });
+      if (changed.length === 0) {
+        toast(message);
+        return;
+      }
+      toast(message, {
         duration: 8000,
         action: {
           label: t('learnedTab.history.undo'),
@@ -944,13 +961,13 @@ export default function CategorizationRules() {
       <AlertDialog
         open={pendingHistory !== null}
         onOpenChange={(open) => {
-          if (!open) setPendingHistory(null);
+          if (!open && !applyHistory.isPending) setPendingHistory(null);
         }}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{t('learnedTab.history.title')}</AlertDialogTitle>
-            <AlertDialogDescription>{pendingHistory?.description}</AlertDialogDescription>
+            <AlertDialogDescription>{shownHistory?.description}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={applyHistory.isPending}>
@@ -965,7 +982,7 @@ export default function CategorizationRules() {
             >
               {applyHistory.isPending
                 ? tc('status.saving')
-                : t('learnedTab.history.apply', { count: pendingHistory?.count ?? 0 })}
+                : t('learnedTab.history.apply', { count: shownHistory?.count ?? 0 })}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

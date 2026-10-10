@@ -32,3 +32,15 @@ export function parseNewRuleSearch(search: string): NewRuleParams | null {
     categoryId: query.get('category') || null,
   };
 }
+
+/** Link to the rules page that opens one custom rule's editor (`?edit=<id>`). */
+export function editRuleHref(ruleId: string): string {
+  const query = new URLSearchParams({ edit: ruleId });
+  return `${RULES_PAGE_PATH}?${query.toString()}`;
+}
+
+/** The rule id an `?edit=` link asks to open, or `null`. */
+export function parseEditRuleSearch(search: string): string | null {
+  const id = new URLSearchParams(search).get('edit');
+  return id ? id : null;
+}

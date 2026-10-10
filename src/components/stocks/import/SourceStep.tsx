@@ -55,7 +55,7 @@ export function SourceStep({
   isDragging,
 }: SourceStepProps) {
   const { t } = useTranslation('stocks');
-  // The supported UI language (`cs` or `en`), whatever the detector found first.
+  // The supported UI language, whatever the detector found first (Czech gets the Czech sample).
   const { language } = useLanguage();
 
   const downloadSample = async () => {

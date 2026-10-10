@@ -220,6 +220,7 @@
     }
   },
   "packTab": {
+    "globalName": "Global",
     "title": "Rule pack · {{country}}",
     "subtitle_one": "{{count}} rule · version {{version}} · switch off one by one",
     "subtitle_other": "{{count}} rules · version {{version}} · switch off one by one",

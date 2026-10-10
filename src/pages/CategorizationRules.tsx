@@ -174,10 +174,15 @@ export default function CategorizationRules() {
   );
   const countryOf = (pack: { packId: string; country: string }) =>
     packCountryName(pack.packId, pack.country, getLocale());
+  // The pack's name wherever a sentence names it: the country, or "Global" for the global pack.
+  const packName = (pack: { packId: string; country: string }) =>
+    pack.packId === 'global' ? t('packTab.globalName') : countryOf(pack);
   const packLabel = (pack: { packId: string; country: string }) =>
     pack.packId === 'global' ? t('tabs.packGlobal') : t('tabs.pack', { country: countryOf(pack) });
-  const packCountries = enabledPacks.filter((p) => p.packId !== 'global').map(countryOf);
-  const activeCountry = activePack ? countryOf(activePack) : '';
+  // The flow names the country packs; with only the global pack enabled it names that one.
+  const countryPacks = enabledPacks.filter((p) => p.packId !== 'global');
+  const flowPackNames = (countryPacks.length > 0 ? countryPacks : enabledPacks).map(packName);
+  const activePackName = activePack ? packName(activePack) : '';
 
   useShellPage({
     crumb: t('crumb'),
@@ -397,9 +402,9 @@ export default function CategorizationRules() {
         </Badge>
         <span className="text-ink-5">→</span>
         <Badge variant="outline" className="h-6 text-caption">
-          {packCountries.length === 1
-            ? t('flow.pack', { country: packCountries[0] })
-            : t('flow.packs', { countries: packCountries.join(', ') || 'global' })}
+          {flowPackNames.length === 1
+            ? t('flow.pack', { country: flowPackNames[0] })
+            : t('flow.packs', { countries: flowPackNames.join(', ') || '—' })}
         </Badge>
         <span className="text-ink-5">{t('flow.none')}</span>
       </div>
@@ -457,7 +462,7 @@ export default function CategorizationRules() {
                       ? t('stats.sourceCustom')
                       : top.source === 'learned'
                         ? t('stats.sourceLearned')
-                        : t('stats.sourcePack', { country: activeCountry }),
+                        : t('stats.sourcePack', { country: activePackName }),
                 })
               : t('stats.topNone')
           }
@@ -732,7 +737,7 @@ export default function CategorizationRules() {
                 <div>
                   <CardTitle>
                     {activePack
-                      ? t('packTab.title', { country: activeCountry })
+                      ? t('packTab.title', { country: activePackName })
                       : t('packRules.title')}
                   </CardTitle>
                   {activePack && (

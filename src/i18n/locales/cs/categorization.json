@@ -224,6 +224,7 @@
     }
   },
   "packTab": {
+    "globalName": "Globální",
     "title": "Balíček pravidel · {{country}}",
     "subtitle_one": "{{count}} pravidlo · verze {{version}} · vypínáte jednotlivě",
     "subtitle_few": "{{count}} pravidla · verze {{version}} · vypínáte jednotlivě",

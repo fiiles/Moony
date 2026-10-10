@@ -1,0 +1,123 @@
+{
+  "title": "Obligacje",
+  "eyebrow": "Portfel",
+  "subtitle": "Obligacje skarbowe i korporacyjne trzymane do wykupu, dochód ze stałych kuponów.",
+  "status": "Wycena wg wartości nominalnej · bez narosłych odsetek",
+  "loading": "Wczytywanie obligacji...",
+  "empty": {
+    "title": "Brak obligacji",
+    "description": "Dodaj pierwszą emisję: wartość nominalną, liczbę sztuk, kupon i termin wykupu. Drabina terminów wykupu zbuduje się sama."
+  },
+  "addBond": "Dodaj obligację",
+  "export": "Eksport",
+  "summary": {
+    "nominal": "Wartość nominalna",
+    "issues_one": "{{count}} emisja",
+    "issues_few": "{{count}} emisje",
+    "issues_many": "{{count}} emisji",
+    "issues_other": "{{count}} emisji",
+    "currencies_one": "{{count}} waluta",
+    "currencies_few": "{{count}} waluty",
+    "currencies_many": "{{count}} walut",
+    "currencies_other": "{{count}} waluty",
+    "yearlyCoupon": "Kupon roczny",
+    "weightedRate": "średnia ważona {{rate}} rocznie",
+    "nearestMaturity": "Najbliższy wykup",
+    "returns": "zwraca {{amount}}",
+    "noMaturity": "żadna emisja nie ma terminu wykupu",
+    "avgToMaturity": "Średni czas do wykupu",
+    "years": "{{value}} roku",
+    "lastMaturity": "ważone wartością nominalną · ostatni {{date}}",
+    "noneLive": "brak aktywnych emisji"
+  },
+  "until": {
+    "in": "za {{duration}}",
+    "soon": "w ciągu miesiąca",
+    "past": "wykupiono {{date}}"
+  },
+  "duration": {
+    "years_one": "{{count}} rok",
+    "years_few": "{{count}} lata",
+    "years_many": "{{count}} lat",
+    "years_other": "{{count}} roku",
+    "months_one": "{{count}} miesiąc",
+    "months_few": "{{count}} miesiące",
+    "months_many": "{{count}} miesięcy",
+    "months_other": "{{count}} miesiąca"
+  },
+  "ladder": {
+    "title": "Terminy wykupu i kupony",
+    "subtitle": "Ile wraca w którym roku: wykupiona wartość nominalna i roczne kupony.",
+    "badge": "kupon co roku w rocznicę wykupu",
+    "principal": "Wykupiona wartość nominalna",
+    "coupons": "Kupony",
+    "nearest": "Najbliższy wykup",
+    "note": "Do {{year}} odzyskasz {{principal}} wartości nominalnej oraz {{coupons}} w kuponach."
+  },
+  "table": {
+    "title": "Emisje",
+    "subtitle": "Posortowane wg terminu wykupu · najbliższe pierwsze",
+    "search": "Szukaj po nazwie lub ISIN",
+    "showMatured": "Pokaż wykupione",
+    "bond": "Obligacja",
+    "nominal": "Wart. nominalna / szt.",
+    "quantity": "Sztuki",
+    "units": "szt.",
+    "value": "Wartość",
+    "coupon": "Kupon",
+    "yearly": "Rocznie",
+    "maturity": "Termin wykupu",
+    "actions": "Akcje",
+    "withinYear": "w ciągu roku",
+    "matured": "wykupiona",
+    "noMaturity": "bez terminu wykupu",
+    "noResults": {
+      "title": "Nic nie znaleziono",
+      "description": "Spróbuj innej nazwy lub ISIN.",
+      "maturedHidden": "Spróbuj innej nazwy lub ISIN. Wykupione emisje są ukryte."
+    },
+    "footer": {
+      "count_one": "{{count}} emisja",
+      "count_few": "{{count}} emisje",
+      "count_many": "{{count}} emisji",
+      "count_other": "{{count}} emisji",
+      "nominal": "wartość nominalna {{amount}}",
+      "coupons": "kupony {{amount}} rocznie",
+      "valuation": "Wartość = wartość nominalna × sztuki · cena rynkowa nie jest śledzona"
+    }
+  },
+  "actions": {
+    "edit": "Edytuj",
+    "delete": "Usuń"
+  },
+  "form": {
+    "addTitle": "Dodaj obligację",
+    "editTitle": "Edytuj obligację",
+    "addDescription": "Wartość wynika z wartości nominalnej × sztuk, dochód ze stopy kuponu.",
+    "editDescription": "Zmiany widać w wartości i w drabinie terminów wykupu.",
+    "name": "Nazwa",
+    "namePlaceholder": "np. Obligacja skarbowa Czech 2031",
+    "isin": "ISIN",
+    "isinHint": "12 znaków z warunków emisji; pomaga dopasować wyciągi.",
+    "nominal": "Wartość nominalna 1 sztuki",
+    "quantity": "Sztuki",
+    "rate": "Kupon rocznie",
+    "maturity": "Termin wykupu",
+    "maturityHint": "Po terminie wykupu emisja przechodzi do wykupionych i nie wlicza się już do majątku netto.",
+    "summaryValue": "Wartość {{value}} · kupon {{coupon}} rocznie",
+    "summaryNext": "Następna rocznica wykupu {{date}}.",
+    "summaryMatures": "Emisja zostanie wykupiona w tym roku; bez kolejnego kuponu.",
+    "summaryNoMaturity": "Bez terminu wykupu – kupon liczy się co roku.",
+    "submitAdd": "Dodaj obligację",
+    "submitEdit": "Zapisz zmiany"
+  },
+  "confirmDelete": {
+    "title": "Usunąć obligację?",
+    "description": "„{{name}}” zostanie usunięta na stałe. Tej operacji nie można cofnąć."
+  },
+  "toast": {
+    "added": "Obligacja dodana",
+    "updated": "Obligacja zaktualizowana",
+    "deleted": "Obligacja usunięta"
+  }
+}

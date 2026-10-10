@@ -1,0 +1,152 @@
+{
+  "title": "Inne aktywa",
+  "subtitle": "Złoto, kolekcje, udziały i pożyczki – wszystko bez ceny rynkowej, co wyceniasz samodzielnie.",
+  "loading": "Wczytywanie innych aktywów...",
+  "empty": {
+    "title": "Brak aktywów",
+    "description": "Dodaj złoto, kolekcję lub udział: nazwę, cenę za sztukę i opcjonalnie pierwszy zakup. Kolejne wyceny narysują szacunek w czasie."
+  },
+  "addAsset": "Dodaj aktywo",
+  "summary": {
+    "totalValue": "Wartość łączna",
+    "assetCount": "Aktywa",
+    "totalGainLoss": "Łączny zysk/strata",
+    "value": "Wartość",
+    "assets_one": "{{count}} aktywo",
+    "assets_few": "{{count}} aktywa",
+    "assets_many": "{{count}} aktywów",
+    "assets_other": "{{count}} aktywa",
+    "gain": "Zysk względem zakupu",
+    "vsCost": "vs koszt zakupu {{amount}}",
+    "noCost": "brak kosztu zakupu",
+    "yearlyYield": "Dochód roczny",
+    "yieldNote_one": "{{percent}} · z {{count}} aktywa z dochodem",
+    "yieldNote_few": "{{percent}} · z {{count}} aktywów z dochodem",
+    "yieldNote_many": "{{percent}} · z {{count}} aktywów z dochodem",
+    "yieldNote_other": "{{percent}} · z {{count}} aktywa z dochodem",
+    "noYield": "żadne aktywo nie przynosi dochodu",
+    "lastChange": "Ostatnia zmiana"
+  },
+  "table": {
+    "title": "Aktywa",
+    "search": "Szukaj aktywów",
+    "name": "Nazwa",
+    "category": "Kategoria",
+    "purchasePrice": "Cena zakupu",
+    "marketPrice": "Cena rynkowa",
+    "avgPurchasePrice": "Śr. cena zakupu",
+    "totalValue": "Wartość łączna",
+    "currentValue": "Wartość bieżąca",
+    "purchaseDate": "Data zakupu",
+    "gainLoss": "Zysk/strata",
+    "actions": "Akcje",
+    "noAssets": "Nie znaleziono aktywów. Dodaj pierwsze aktywo, aby zacząć.",
+    "subtitle": "Wartość = ilość × twoja ostatnia wycena ceny",
+    "asset": "Aktywo",
+    "quantity": "Ilość",
+    "unit": "szt.",
+    "price": "Cena / szt.",
+    "avgPurchase": "Zakup / szt.",
+    "value": "Wartość",
+    "gain": "Zysk",
+    "yearly": "Rocznie",
+    "updated": "Zaktualizowano",
+    "noChange": "bez zmian",
+    "yieldFixed": "stała kwota",
+    "yieldPercentPurchase": "{{value}}% kosztu zakupu",
+    "yieldPercentMarket": "{{value}}% wartości",
+    "noResults": {
+      "title": "Nic nie znaleziono",
+      "description": "Spróbuj innej nazwy."
+    },
+    "footer": {
+      "count_one": "{{count}} aktywo",
+      "count_few": "{{count}} aktywa",
+      "count_many": "{{count}} aktywów",
+      "count_other": "{{count}} aktywa",
+      "value": "wartość {{amount}}",
+      "cost": "koszt zakupu {{amount}}",
+      "yieldNote": "Dochód roczny według wybranego typu: stała kwota, % kosztu zakupu lub % wartości"
+    }
+  },
+  "actions": {
+    "edit": "Edytuj",
+    "delete": "Usuń",
+    "transactions": "Transakcje",
+    "buy": "Kup",
+    "sell": "Sprzedaj",
+    "revalue": "Przeszacuj"
+  },
+  "confirmDelete": {
+    "title": "Usunąć aktywo?",
+    "description": "„{{name}}” i wszystkie jego transakcje zostaną usunięte na stałe. Tej operacji nie można cofnąć."
+  },
+  "confirmDeleteTransaction": {
+    "title": "Usunąć transakcję?",
+    "description": "Transakcja ({{type}}: {{quantity}} × {{price}}, {{date}}) zostanie usunięta na stałe. Tej operacji nie można cofnąć."
+  },
+  "toast": {
+    "added": "Aktywo dodane",
+    "updated": "Aktywo zaktualizowane",
+    "deleted": "Aktywo usunięte",
+    "deleteError": "Nie udało się usunąć aktywa"
+  },
+  "modal": {
+    "add": {
+      "title": "Dodaj inne aktywo",
+      "basicInfo": "Informacje o aktywie",
+      "assetName": "Nazwa aktywa",
+      "assetNamePlaceholder": "np. Sztabki złota",
+      "marketPrice": "Aktualna cena rynkowa (za sztukę)",
+      "initialPurchase": "Pierwszy zakup (opcjonalnie)",
+      "pricePerUnit": "Cena / szt.",
+      "initialPurchaseHint": "Jeśli wypełnione, doda transakcję „Zakup”.",
+      "yieldConfig": "Dochód (opcjonalnie)",
+      "yieldConfigDescription": "Dochód, który to aktywo przynosi rocznie, na przykład czynsz lub odsetki.",
+      "submit": "Dodaj aktywo",
+      "description": "Dodaj nowe własne aktywo do portfela.",
+      "yieldType": "Typ dochodu",
+      "yieldValue": "Wartość dochodu",
+      "yieldTypes": {
+        "none": "Brak",
+        "fixed": "Stała kwota (rocznie)",
+        "percentPurchase": "% ceny zakupu",
+        "percentMarket": "% ceny rynkowej"
+      },
+      "marketPriceHint": "Twój szacunek ceny za sztukę na dziś; później zmienisz go przez przeszacowanie.",
+      "total": "Pierwszy zakup po dzisiejszej cenie"
+    },
+    "buy": {
+      "title": "Dokup",
+      "description": "Zwiększ ilość tego aktywa.",
+      "pricePerUnit": "Cena za sztukę",
+      "submit": "Dodaj transakcję"
+    },
+    "sell": {
+      "title": "Sprzedaj",
+      "description": "Zapisz transakcję sprzedaży tego aktywa.",
+      "pricePerUnit": "Cena za sztukę",
+      "submit": "Sprzedaj aktywo"
+    },
+    "transactions": {
+      "title": "Historia transakcji",
+      "noTransactions": "Nie znaleziono transakcji"
+    },
+    "edit": {
+      "title": "Edycja · {{name}}",
+      "description": "Nazwa, waluta i dochód. Cenę zmieniasz przeszacowaniem, ilość zakupami i sprzedażami.",
+      "currencyHint": "Waluta ceny i średniej ceny zakupu.",
+      "priceHint": "Cenę rynkową zmienisz przez Przeszacuj – zostawia to ślad na wykresie."
+    }
+  },
+  "eyebrow": "Portfel",
+  "export": "Eksport",
+  "status": {
+    "latest": "Ostatnia zmiana {{date}}",
+    "manual": "Wycena ręczna"
+  },
+  "chart": {
+    "title": "Szacowana wartość w czasie",
+    "subtitle": "Płasko między przeszacowaniami – skoki to twoje szacunki i zakupy, nie rynek."
+  }
+}

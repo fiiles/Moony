@@ -1,0 +1,146 @@
+{
+  "card": {
+    "title": "Co cię czeka",
+    "settingsLink": "Edytuj przypomnienia",
+    "showAll": "Pokaż wszystkie ({{count}})",
+    "showLess": "Pokaż mniej",
+    "nothingDue": "Brak nadchodzących terminów.",
+    "upkeep": "Aktualizacja danych",
+    "upkeepShow": "Pokaż {{count}}",
+    "upkeepHide": "Zwiń",
+    "today": "Dziś",
+    "target": "cel",
+    "rowMenu": "Opcje przypomnienia: {{title}}"
+  },
+  "status": {
+    "deadline": "{{title}} · {{when}}",
+    "more": "+{{count}}",
+    "title": "Terminy w ciągu 14 dni",
+    "openOverview": "Otwórz przegląd"
+  },
+  "actions": {
+    "hide": "Ukryj",
+    "remindWeek": "Przypomnij za tydzień",
+    "remindMonth": "Przypomnij za miesiąc",
+    "undo": "Cofnij"
+  },
+  "toast": {
+    "hidden": "Ukryto",
+    "snoozedWeek": "Odłożono na tydzień",
+    "snoozedMonth": "Odłożono na miesiąc",
+    "muted": "Przypomnienia wyłączone · {{group}}"
+  },
+  "relative": {
+    "today": "dziś",
+    "tomorrow": "jutro",
+    "inDays_one": "za {{count}} dzień",
+    "inDays_few": "za {{count}} dni",
+    "inDays_many": "za {{count}} dni",
+    "inDays_other": "za {{count}} dnia",
+    "inMonths_one": "za {{count}} miesiąc",
+    "inMonths_few": "za {{count}} miesiące",
+    "inMonths_many": "za {{count}} miesięcy",
+    "inMonths_other": "za {{count}} miesiąca",
+    "daysAgo_one": "{{count}} dzień temu",
+    "daysAgo_few": "{{count}} dni temu",
+    "daysAgo_many": "{{count}} dni temu",
+    "daysAgo_other": "{{count}} dnia temu",
+    "monthsAgo_one": "{{count}} miesiąc temu",
+    "monthsAgo_few": "{{count}} miesiące temu",
+    "monthsAgo_many": "{{count}} miesięcy temu",
+    "monthsAgo_other": "{{count}} miesiąca temu"
+  },
+  "titles": {
+    "backup_stale": "Kopia zapasowa danych",
+    "balances_stale": "Salda kont"
+  },
+  "sub": {
+    "insurance_anniversary": "Ostatni dzień na wypowiedzenie · rocznica {{date}}",
+    "insurance_anniversary_passed": "Rocznica umowy · okres wypowiedzenia minął",
+    "insurance_end": "Umowa kończy się",
+    "insurance_payment": "Płatność {{amount}}",
+    "loan_fixation_end": "Koniec stałego oprocentowania · czas porównać oferty",
+    "loan_payoff": "Ostatnia rata",
+    "bond_maturity": "Wykup · wraca {{amount}}",
+    "bond_coupon": "Kupon {{amount}}",
+    "account_termination": "Konto wygasa",
+    "savings_rate_end": "Koniec promocyjnego oprocentowania",
+    "watch_target_below": "Cena {{price}} spadła do celu {{target}}",
+    "watch_target_above": "Cena {{price}} osiągnęła cel {{target}}",
+    "loan_fixation_expired": "Stałe oprocentowanie skończyło się {{date}} · wpisz nową stopę",
+    "loan_balance_check": "Saldo niesprawdzane od {{date}} · porównaj z wyciągiem",
+    "valuation_stale": "Brak nowej wyceny od {{date}} · przeszacuj",
+    "backup_stale": "Ostatnia kopia zapasowa {{date}}",
+    "backup_never": "Brak kopii zapasowej",
+    "balances_stale_one": "{{count}} konto nie było aktualizowane od ponad 30 dni",
+    "balances_stale_few": "{{count}} konta nie były aktualizowane od ponad 30 dni",
+    "balances_stale_many": "{{count}} kont nie było aktualizowanych od ponad 30 dni",
+    "balances_stale_other": "{{count}} konta nie było aktualizowane od ponad 30 dni"
+  },
+  "short": {
+    "backup_stale": "zrób kopię zapasową danych",
+    "balances_stale_one": "zaktualizuj {{count}} saldo",
+    "balances_stale_few": "zaktualizuj {{count}} salda",
+    "balances_stale_many": "zaktualizuj {{count}} sald",
+    "balances_stale_other": "zaktualizuj {{count}} salda",
+    "valuation_stale": "przeszacuj: {{title}}",
+    "loan_balance_check": "sprawdź saldo: {{title}}",
+    "loan_fixation_expired": "wpisz nową stopę: {{title}}"
+  },
+  "groups": {
+    "insuranceDates": {
+      "label": "Rocznice i końce ubezpieczeń",
+      "hint": "W przeglądzie do 3 miesięcy naprzód; rocznice z ostatnim dniem na wypowiedzenie.",
+      "mute": "Nie przypominaj o rocznicach i końcu ubezpieczeń"
+    },
+    "insurancePayments": {
+      "label": "Płatności ubezpieczeń",
+      "hint": "Płatności kwartalne, półroczne i roczne z 14-dniowym wyprzedzeniem.",
+      "mute": "Nie przypominaj o płatnościach ubezpieczeń"
+    },
+    "loans": {
+      "label": "Końce stałego oprocentowania i spłaty kredytów",
+      "hint": "Koniec stałego oprocentowania 6 miesięcy naprzód, ostatnia rata miesiąc naprzód.",
+      "mute": "Nie przypominaj o stałym oprocentowaniu i spłatach"
+    },
+    "bonds": {
+      "label": "Wykupy obligacji i kupony",
+      "hint": "Wykup do 3 miesięcy naprzód, kupon tydzień naprzód.",
+      "mute": "Nie przypominaj o wykupach i kuponach"
+    },
+    "accounts": {
+      "label": "Końce kont i stawek promocyjnych",
+      "hint": "Koniec konta lub stawki promocyjnej do 3 miesięcy naprzód.",
+      "mute": "Nie przypominaj o końcu kont i stawek"
+    },
+    "targets": {
+      "label": "Ceny docelowe akcji",
+      "hint": "Gdy cena osiągnie cel w danym kierunku.",
+      "mute": "Nie przypominaj o cenach docelowych"
+    },
+    "backup": {
+      "label": "Kopie zapasowe danych",
+      "hint": "Gdy ostatnia kopia zapasowa jest starsza niż 30 dni.",
+      "mute": "Nie przypominaj o kopiach zapasowych"
+    },
+    "balances": {
+      "label": "Aktualizacja sald",
+      "hint": "Gdy saldo konta nie było aktualizowane od ponad 30 dni.",
+      "mute": "Nie przypominaj o saldach kont"
+    },
+    "valuations": {
+      "label": "Wyceny nieruchomości",
+      "hint": "Gdy wycena nieruchomości jest starsza niż rok.",
+      "mute": "Nie przypominaj o wycenach nieruchomości"
+    },
+    "loanChecks": {
+      "label": "Kontrole kredytów",
+      "hint": "Coroczna kontrola salda i nowa stopa po końcu stałego oprocentowania.",
+      "mute": "Nie przypominaj o kontrolach kredytów"
+    }
+  },
+  "settings": {
+    "title": "Przypomnienia w przeglądzie",
+    "description": "O czym przypomina karta „Co cię czeka” i górny pasek. Wyłączone rodzaje nie pokazują się nigdzie."
+  }
+}

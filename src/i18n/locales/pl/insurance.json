@@ -1,0 +1,333 @@
+{
+  "title": "Ubezpieczenia",
+  "eyebrow": "Ochrona",
+  "subtitle": "Co masz ubezpieczone, ile to kosztuje i kiedy przypadają płatności i rocznice.",
+  "loading": "Wczytywanie polis ubezpieczeniowych...",
+  "export": "Eksport",
+  "status": {
+    "nextPayment": "Następna płatność {{date}} · {{amount}}",
+    "none": "Brak regularnych płatności",
+    "ended": "Polisa wygasła"
+  },
+  "empty": {
+    "title": "Brak polis ubezpieczeniowych",
+    "description": "Dodaj pierwszą umowę, aby zobaczyć, co jest objęte ochroną, ile za nią płacisz i kiedy przypadają płatności."
+  },
+  "addPolicy": "Dodaj polisę",
+  "policies_one": "{{count}} aktywna polisa",
+  "policies_few": "{{count}} aktywne polisy",
+  "policies_many": "{{count}} aktywnych polis",
+  "policies_other": "{{count}} aktywnej polisy",
+  "payments_one": "{{count}} płatność",
+  "payments_few": "{{count}} płatności",
+  "payments_many": "{{count}} płatności",
+  "payments_other": "{{count}} płatności",
+  "risks_one": "{{count}} ryzyko",
+  "risks_few": "{{count}} ryzyka",
+  "risks_many": "{{count}} ryzyk",
+  "risks_other": "{{count}} ryzyka",
+  "documentsCount_one": "{{count}} dokument",
+  "documentsCount_few": "{{count}} dokumenty",
+  "documentsCount_many": "{{count}} dokumentów",
+  "documentsCount_other": "{{count}} dokumentu",
+  "duration": {
+    "years_one": "{{count}} rok",
+    "years_few": "{{count}} lata",
+    "years_many": "{{count}} lat",
+    "years_other": "{{count}} roku",
+    "months_one": "{{count}} miesiąc",
+    "months_few": "{{count}} miesiące",
+    "months_many": "{{count}} miesięcy",
+    "months_other": "{{count}} miesiąca",
+    "days_one": "{{count}} dzień",
+    "days_few": "{{count}} dni",
+    "days_many": "{{count}} dni",
+    "days_other": "{{count}} dnia"
+  },
+  "summary": {
+    "yearly": "Składka roczna",
+    "yearlyNote": "{{monthly}} miesięcznie · {{policies}}",
+    "nextPayment": "Następna płatność",
+    "nextPaymentNote": "{{amount}} · {{policies}}",
+    "noPayments": "brak zbliżających się regularnych płatności",
+    "coverage": "Ochrona łącznie",
+    "coverageNote": "suma limitów · {{breakdown}}",
+    "noCoverage": "nie wpisano jeszcze limitów ochrony",
+    "anniversary": "Najbliższa rocznica",
+    "anniversaryNote": "{{name}} · za {{duration}} · czas porównać oferty",
+    "endNote": "{{name}} · umowa kończy się za {{duration}}",
+    "noAnniversary": "brak aktywnej umowy"
+  },
+  "calendar": {
+    "title": "Kalendarz płatności, następne 12 miesięcy",
+    "subtitle": "Wg częstotliwości i daty początku każdej umowy · płatności roczne są wyróżnione.",
+    "total": "łącznie {{amount}}",
+    "monthly": "Składki miesięczne",
+    "other": "Płatności kwartalne i roczne",
+    "anniversary": "Rocznica · {{name}}",
+    "peakNote": "Najbardziej obciążony miesiąc to {{month}} ({{amount}}) – odłóż rezerwę.",
+    "evenNote": "Płatności są równe · {{amount}} miesięcznie"
+  },
+  "table": {
+    "title": "Polisy",
+    "subtitle": "Aktywne umowy",
+    "subtitleHidden": "Aktywne umowy · zakończone ukryte",
+    "showEnded": "Pokaż zakończone",
+    "allTypes": "Wszystkie typy",
+    "policy": "Polisa",
+    "premium": "Składka",
+    "coverage": "Ochrona",
+    "nextPayment": "Następna płatność",
+    "anniversary": "Rocznica",
+    "actions": "Akcje",
+    "perYear": "{{amount}} rocznie",
+    "perYearShort": "rocznie",
+    "moreLimits": "+{{count}} więcej",
+    "ended": "zakończona",
+    "endedOn": "zakończona",
+    "endOn": "koniec umowy",
+    "anniversaryShort": "rocznica umowy",
+    "in": "za {{duration}}",
+    "noResults": {
+      "title": "Brak polis tego typu",
+      "description": "Spróbuj innego filtra lub dodaj nową umowę."
+    },
+    "footer": {
+      "yearly": "{{amount}} rocznie",
+      "coverage": "ochrona {{amount}}",
+      "note": "Rocznica = następny rok umowy od daty początku · koniec = ustalona data"
+    }
+  },
+  "types": {
+    "life": "Ubezpieczenie na życie",
+    "health": "Ubezpieczenie zdrowotne",
+    "property": "Ubezpieczenie mienia",
+    "vehicle": "Ubezpieczenie pojazdu",
+    "travel": "Ubezpieczenie turystyczne",
+    "liability": "Ubezpieczenie OC",
+    "accident": "Ubezpieczenie od wypadków",
+    "other": "Inne",
+    "allTypes": "Wszystkie typy"
+  },
+  "typeShort": {
+    "life": "Życie",
+    "health": "Zdrowie",
+    "property": "Mienie",
+    "vehicle": "Pojazd",
+    "travel": "Podróże",
+    "liability": "OC",
+    "accident": "Wypadki",
+    "other": "Inne"
+  },
+  "frequencyShort": {
+    "monthly": "miesięcznie",
+    "quarterly": "kwartalnie",
+    "semi_annually": "półrocznie",
+    "annually": "rocznie",
+    "one_time": "jednorazowo"
+  },
+  "form": {
+    "addTitle": "Dodaj polisę ubezpieczeniową",
+    "editTitle": "Edytuj polisę ubezpieczeniową",
+    "name": "Nazwa polisy",
+    "namePlaceholder": "np. Ubezpieczenie domu",
+    "provider": "Ubezpieczyciel",
+    "providerPlaceholder": "np. Towarzystwo ubezpieczeniowe",
+    "type": "Typ polisy",
+    "premium": "Składka roczna",
+    "coverage": "Suma ubezpieczenia",
+    "currency": "Waluta",
+    "startDate": "Data początku",
+    "expiryDate": "Data wygaśnięcia",
+    "policyNumber": "Numer polisy",
+    "notes": "Notatki"
+  },
+  "actions": {
+    "open": "Otwórz",
+    "edit": "Edytuj",
+    "end": "Zakończ polisę",
+    "reactivate": "Aktywuj polisę ponownie",
+    "delete": "Usuń polisę",
+    "addDocument": "Dodaj dokument"
+  },
+  "endDialog": {
+    "title": "Zakończ polisę · {{name}}",
+    "description": "Umowa zostaje w historii, a znika z sumy składek i kalendarza płatności.",
+    "date": "Koniec umowy",
+    "alertTitle": "Polisa przechodzi do zakończonych",
+    "alertNote": "Możesz ją w każdej chwili aktywować ponownie z menu „···”; dokumenty i limity zostają.",
+    "submit": "Zakończ polisę"
+  },
+  "confirmDelete": {
+    "title": "Usuń polisę",
+    "description": "Usunąć „{{name}}”? Razem z nią znikną jej dokumenty. Tej operacji nie można cofnąć."
+  },
+  "toast": {
+    "added": "Polisa dodana",
+    "updated": "Polisa zaktualizowana",
+    "deleted": "Polisa usunięta",
+    "ended": "Polisa zakończona",
+    "reactivated": "Polisa aktywowana ponownie"
+  },
+  "modal": {
+    "basicInfo": "Informacje podstawowe",
+    "paymentDetails": "Szczegóły płatności",
+    "additionalInfo": "Informacje dodatkowe",
+    "selectType": "Wybierz typ",
+    "selectStatus": "Wybierz status",
+    "addDescription": "Podstawy umowy, płatności i limity ochrony; dokumenty dodaje się w szczegółach.",
+    "editDescription": "Edytuj szczegóły polisy ubezpieczeniowej.",
+    "policyName": "Nazwa polisy",
+    "policyNamePlaceholder": "np. Ubezpieczenie domu 2024",
+    "provider": "Ubezpieczyciel",
+    "providerPlaceholder": "np. Allianz",
+    "policyNumber": "Numer polisy",
+    "policyNumberPlaceholder": "Numer umowy",
+    "paymentFrequency": "Częstotliwość płatności",
+    "selectFrequency": "Wybierz częstotliwość",
+    "oneTimePayment": "Płatność jednorazowa (opcjonalnie)",
+    "oneTimePaymentRequired": "Płatność jednorazowa",
+    "regularPayment": "Płatność regularna",
+    "endDateOptional": "Data zakończenia (opcjonalnie)",
+    "coverageLimits": "Limity ochrony",
+    "addLimit": "Dodaj limit",
+    "removeLimit": "Usuń limit",
+    "limitTitle": "Nazwa limitu",
+    "notesPlaceholder": "Szczególne warunki, kontakty...",
+    "createPolicy": "Utwórz polisę",
+    "updatePolicy": "Zapisz polisę",
+    "status": {
+      "active": "Aktywna",
+      "inactive": "Nieaktywna"
+    },
+    "frequency": {
+      "monthly": "Miesięcznie",
+      "quarterly": "Kwartalnie",
+      "semi_annually": "Półrocznie",
+      "annually": "Rocznie",
+      "one_time": "Jednorazowo"
+    },
+    "linkRealEstate": "Powiąż z nieruchomością",
+    "selectRealEstate": "Wybierz nieruchomość (opcjonalnie)",
+    "noRealEstateAvailable": "Brak dostępnych nieruchomości"
+  },
+  "detail": {
+    "backToList": "Wróć do ubezpieczeń",
+    "notFound": "Ta polisa już nie istnieje.",
+    "policyNumber": "nr {{number}}",
+    "description": "Od {{start}} {{end}} · {{premium}} {{frequency}}",
+    "descriptionOneTime": "Od {{start}} {{end}} · jednorazowo {{premium}}",
+    "noEnd": "bez ustalonego końca",
+    "until": "do {{date}}",
+    "statusActive": "aktywna",
+    "statusEnded": "zakończona",
+    "period": {
+      "year": "1R",
+      "all": "Od początku"
+    },
+    "hero": {
+      "paid": "Zapłacone składki",
+      "paidNote": "{{payments}} od {{month}} · {{yearly}} rocznie",
+      "paidNoteOneTime": "jednorazowa płatność przy zawarciu dnia {{date}}",
+      "coverage": "Ochrona łącznie",
+      "coverageRatio": "{{ratio}}× roczna składka",
+      "coverageOneTime": "suma ustalonych limitów",
+      "noCoverage": "nie wpisano limitów ochrony"
+    },
+    "chart": {
+      "paid": "Zapłacono łącznie",
+      "next12": "Następne 12 płatności",
+      "tipPaid": "zapłacono łącznie",
+      "tipPlanned": "planowana płatność",
+      "note": "{{payments}} · {{yearly}} rocznie",
+      "noteOneTime": "Płatność jednorazowa {{date}}, bez dalszych płatności"
+    },
+    "stats": {
+      "yearly": "Koszt roczny",
+      "yearlyNote": "{{premium}} {{frequency}} · {{share}} twoich składek",
+      "yearlyOneTime": "składka jednorazowa, bez kosztu rocznego",
+      "nextPayment": "Następna płatność",
+      "nextPaymentNote": "za {{in}} · {{amount}} · potem {{next}}",
+      "noNextPayment": "brak dalszych płatności",
+      "anniversary": "Rocznica umowy",
+      "anniversaryNote": "za {{in}} · okazja, by dostosować ochronę lub porównać oferty",
+      "end": "Koniec umowy",
+      "endNote": "za {{in}} · ustalona data zakończenia",
+      "endedNote": "umowa zakończyła się {{date}}",
+      "duration": "Czas trwania umowy",
+      "durationNote": "bez ustalonego końca · {{docs}}",
+      "durationEnd": "do {{date}} · {{docs}}"
+    },
+    "limits": {
+      "title": "Limity ochrony",
+      "subtitle": "Co obejmuje umowa i do jakiej kwoty",
+      "edit": "Edytuj limity",
+      "risk": "Ryzyko",
+      "limit": "Limit",
+      "footer": "{{risks}} · ochrona łącznie {{amount}}",
+      "empty": "Nie wpisano jeszcze limitów ochrony. Dodasz je, edytując polisę."
+    },
+    "contract": {
+      "title": "Umowa",
+      "provider": "Ubezpieczyciel",
+      "number": "Numer umowy",
+      "type": "Typ",
+      "start": "Początek",
+      "end": "Koniec",
+      "endNone": "bezterminowa",
+      "frequency": "Częstotliwość",
+      "premium": "Składka",
+      "oneTime": "Płatność jednorazowa",
+      "oneTimeNone": "brak",
+      "property": "Nieruchomość"
+    },
+    "notes": {
+      "title": "Notatki",
+      "edit": "Edytuj",
+      "empty": "Brak notatek – kontakty, warunki i przypomnienia dodasz, edytując polisę.",
+      "updated": "Edytowano {{date}}"
+    },
+    "documents": "Dokumenty"
+  },
+  "documents": {
+    "subtitle": "Przechowywane w zaszyfrowanym folderze aplikacji",
+    "columns": {
+      "document": "Dokument",
+      "type": "Typ",
+      "uploaded": "Dodano"
+    },
+    "description": "Dołącz umowy, certyfikaty i inne dokumenty",
+    "add": "Dodaj dokument",
+    "addFirst": "Dodaj pierwszy dokument",
+    "addTitle": "Dodaj dokument",
+    "noDocuments": "Nie dołączono jeszcze dokumentów",
+    "file": "Plik",
+    "clickToSelect": "Kliknij, aby wybrać plik",
+    "type": "Typ dokumentu",
+    "selectType": "Wybierz typ",
+    "namePlaceholder": "np. Umowa ubezpieczenia 2024",
+    "descriptionPlaceholder": "Dodatkowe uwagi o tym dokumencie...",
+    "uploading": "Przesyłanie...",
+    "upload": "Prześlij dokument",
+    "open": "Otwórz",
+    "delete": "Usuń",
+    "added": "Dokument dodany",
+    "deleted": "Dokument usunięty",
+    "optional": "opcjonalnie",
+    "types": {
+      "contract": "Umowa",
+      "certificate": "Certyfikat",
+      "claim": "Zgłoszenie szkody",
+      "other": "Inne"
+    },
+    "deleteConfirm": {
+      "title": "Usuń dokument",
+      "description": "Usunąć „{{name}}”? Plik zostanie usunięty na stałe."
+    }
+  },
+  "mcp": {
+    "tipSummary": "Nie chce ci się wszystkiego wpisywać? Asystent AI może dodać polisy na podstawie umowy.",
+    "bannerBody": "Uruchom serwer MCP, prześlij Claude umowę, ofertę lub podsumowanie polisy i poproś, by dodał polisę za ciebie.",
+    "setupLink": "Skonfiguruj serwer MCP"
+  }
+}

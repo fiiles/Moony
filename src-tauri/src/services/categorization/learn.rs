@@ -576,14 +576,60 @@ mod tests {
             counterparty_country: None,
             category_id: "cat_groceries".into(),
         };
+        let payments = |conn: &Connection| -> Vec<(String, Option<String>, Option<String>)> {
+            conn.prepare(
+                "SELECT id, category_id, categorization_source FROM bank_transactions ORDER BY id",
+            )
+            .unwrap()
+            .query_map([], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))
+            .unwrap()
+            .collect::<std::result::Result<_, _>>()
+            .unwrap()
+        };
+        let row = |id: &str, category: Option<&str>, source: Option<&str>| {
+            (
+                id.to_string(),
+                category.map(String::from),
+                source.map(String::from),
+            )
+        };
+        let seeded = vec![
+            row("t1", Some("cat_dining"), None),
+            row("t2", None, None),
+            row("t3", Some("cat_groceries"), None),
+            row("t4", Some("cat_dining"), None),
+            row("t5", Some("cat_dining"), None),
+        ];
+
+        // Without apply_history only the rule is written, checked on the
+        // freshly seeded payments so the guard is what keeps them untouched.
+        let none = learn_scoped_and_apply(&conn, &engine, &data, false).unwrap();
+        assert!(
+            none.is_empty(),
+            "without apply_history nothing but the rule changes"
+        );
+        assert_eq!(payments(&conn), seeded, "no payment was written");
+        let rules: i64 = conn
+            .query_row("SELECT COUNT(*) FROM learned_payees", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(rules, 1, "the rule itself is persisted");
+
         let changed = learn_scoped_and_apply(&conn, &engine, &data, true).unwrap();
-        let mut ids: Vec<&str> = changed.iter().map(|c| c.id.as_str()).collect();
-        ids.sort();
+        let mut changed_rows: Vec<&ChangedRow> = changed.iter().collect();
+        changed_rows.sort_by(|a, b| a.id.cmp(&b.id));
+        let ids: Vec<&str> = changed_rows.iter().map(|c| c.id.as_str()).collect();
         assert_eq!(
             ids,
             vec!["t1", "t2"],
             "same account and direction, not already groceries"
         );
+        assert_eq!(
+            changed_rows[0].previous_category_id.as_deref(),
+            Some("cat_dining")
+        );
+        assert_eq!(changed_rows[0].previous_source, None);
+        assert_eq!(changed_rows[1].previous_category_id, None);
+        assert_eq!(changed_rows[1].previous_source, None);
         let source: Option<String> = conn
             .query_row(
                 "SELECT categorization_source FROM bank_transactions WHERE id = 't1'",
@@ -606,12 +652,6 @@ mod tests {
             engine.categorize(&tx).category_id(),
             Some("cat_groceries"),
             "the rule is learned too"
-        );
-
-        let none = learn_scoped_and_apply(&conn, &engine, &data, false).unwrap();
-        assert!(
-            none.is_empty(),
-            "without apply_history nothing but the rule changes"
         );
     }
 

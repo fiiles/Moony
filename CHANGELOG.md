@@ -25,13 +25,16 @@ All notable changes to Moony are documented in this file. The format follows
 
 - **No base currency.** CZK is no longer the unit Moony sums in. Net worth, history, positions,
   tags, stock analysis, returns (TWR) and the projection are computed from the native amounts of
-  every account and holding and are shown in your main currency; a EUR profile holding only EUR
+  every account and holding and are shown in your main currency; an EUR profile holding only EUR
   assets sees the same numbers whatever the CZK rate does.
 - **Gains in your currency.** The gain of a foreign stock or coin is the value today minus what you
-  paid, each purchase converted at its own day's rate, in your main currency. A EUR profile no
+  paid, each purchase converted at its own day's rate, in your main currency. An EUR profile no
   longer sees the CZK/EUR move inside the gain of a USD stock; the time-weighted return is
   computed in your main currency the same way. The dividend per share keeps its own currency; the
   yearly dividend of a position is shown in your main currency.
+- **Portfolio history comes from the stored breakdowns.** The history chart is computed from the
+  per-currency breakdowns stored for each day, converted in your main currency. Past days can shift
+  slightly where the old CZK totals disagreed with their own breakdowns.
 - **Pages convert historical values at their own day.** The debt trajectory, the real estate value
   trace and purchase price, other-asset cost and recent moves use the rate of the day of each
   value instead of today's; every page refreshes when rates are refreshed, without unlocking.
@@ -55,7 +58,8 @@ All notable changes to Moony are documented in this file. The format follows
   `missingCurrencies`; `fxEstimated` is true when a cost used today's rate. `investments_list` and
   `crypto_list` return an object (`{mainCurrency, investments | crypto, summary, missingCurrencies,
   fxEstimated}`) instead of an array and add `value`, `costBasis`, `unrealizedGain`,
-  `unrealizedGainPct`, `realizedGain` and `annualDividend` per row. `stock_value_history` and
+  `unrealizedGainPct` and `realizedGain` per row, plus `annualDividend` for dividend-paying
+  stocks. `stock_value_history` and
   `crypto_value_history` rows no longer carry `id` and add `costBasis`. `stocks_analysis`,
   `tag_metrics`, `portfolio_get_metrics` and `portfolio_get_history` report gains in the main
   currency with the cost at each purchase day's rate. `exchange_rates_list` quotes against an

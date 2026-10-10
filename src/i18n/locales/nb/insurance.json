@@ -1,0 +1,319 @@
+{
+  "title": "Forsikringer",
+  "eyebrow": "Beskyttelse",
+  "subtitle": "Hva du har dekket, hva det koster og når betalinger og årsdager kommer.",
+  "loading": "Laster forsikringene dine...",
+  "export": "Eksporter",
+  "status": {
+    "nextPayment": "Neste betaling {{date}} · {{amount}}",
+    "none": "Ingen faste betalinger",
+    "ended": "Forsikringen er avsluttet"
+  },
+  "empty": {
+    "title": "Ingen forsikringer ennå",
+    "description": "Legg til din første avtale for å se hva som er dekket, hva du betaler for det og når betalingene forfaller."
+  },
+  "addPolicy": "Legg til forsikring",
+  "policies_one": "{{count}} aktiv forsikring",
+  "policies_other": "{{count}} aktive forsikringer",
+  "payments_one": "{{count}} betaling",
+  "payments_other": "{{count}} betalinger",
+  "risks_one": "{{count}} risiko",
+  "risks_other": "{{count}} risikoer",
+  "documentsCount_one": "{{count}} dokument",
+  "documentsCount_other": "{{count}} dokumenter",
+  "duration": {
+    "years_one": "{{count}} år",
+    "years_other": "{{count}} år",
+    "months_one": "{{count}} måned",
+    "months_other": "{{count}} måneder",
+    "days_one": "{{count}} dag",
+    "days_other": "{{count}} dager"
+  },
+  "summary": {
+    "yearly": "Årlig premie",
+    "yearlyNote": "{{monthly}} i måneden · {{policies}}",
+    "nextPayment": "Neste betaling",
+    "nextPaymentNote": "{{amount}} · {{policies}}",
+    "noPayments": "ingen fast betaling forfaller",
+    "coverage": "Total dekning",
+    "coverageNote": "sum av grenser · {{breakdown}}",
+    "noCoverage": "ingen dekningsgrenser lagt inn ennå",
+    "anniversary": "Nærmeste årsdag",
+    "anniversaryNote": "{{name}} · om {{duration}} · på tide å sammenligne tilbud",
+    "endNote": "{{name}} · avtalen utløper om {{duration}}",
+    "noAnniversary": "ingen aktiv avtale"
+  },
+  "calendar": {
+    "title": "Betalingskalender, neste 12 måneder",
+    "subtitle": "Fra hver avtales frekvens og startdato · årlige betalinger skiller seg ut.",
+    "total": "totalt {{amount}}",
+    "monthly": "Månedlige premier",
+    "other": "Kvartalsvise og årlige betalinger",
+    "anniversary": "Årsdag · {{name}}",
+    "peakNote": "Den tyngste måneden er {{month}}: {{amount}} – sett av en reserve.",
+    "evenNote": "Betalingene er jevne · {{amount}} i måneden"
+  },
+  "table": {
+    "title": "Forsikringer",
+    "subtitle": "Aktive avtaler",
+    "subtitleHidden": "Aktive avtaler · avsluttede er skjult",
+    "showEnded": "Vis avsluttede",
+    "allTypes": "Alle typer",
+    "policy": "Forsikring",
+    "premium": "Premie",
+    "coverage": "Dekning",
+    "nextPayment": "Neste betaling",
+    "anniversary": "Årsdag",
+    "actions": "Handlinger",
+    "perYear": "{{amount}} i året",
+    "perYearShort": "i året",
+    "moreLimits": "+{{count}} til",
+    "ended": "avsluttet",
+    "endedOn": "avsluttet",
+    "endOn": "avtalens slutt",
+    "anniversaryShort": "avtalens årsdag",
+    "in": "om {{duration}}",
+    "noResults": {
+      "title": "Ingen forsikring av denne typen",
+      "description": "Prøv et annet filter eller legg til en ny avtale."
+    },
+    "footer": {
+      "yearly": "{{amount}} i året",
+      "coverage": "dekning {{amount}}",
+      "note": "Årsdag = neste avtaleår regnet fra startdatoen · slutt = den avtalte datoen"
+    }
+  },
+  "types": {
+    "life": "Livsforsikring",
+    "health": "Helseforsikring",
+    "property": "Eiendomsforsikring",
+    "vehicle": "Kjøretøyforsikring",
+    "travel": "Reiseforsikring",
+    "liability": "Ansvarsforsikring",
+    "accident": "Ulykkesforsikring",
+    "other": "Annet",
+    "allTypes": "Alle typer"
+  },
+  "typeShort": {
+    "life": "Liv",
+    "health": "Helse",
+    "property": "Eiendom",
+    "vehicle": "Kjøretøy",
+    "travel": "Reise",
+    "liability": "Ansvar",
+    "accident": "Ulykke",
+    "other": "Annet"
+  },
+  "frequencyShort": {
+    "monthly": "månedlig",
+    "quarterly": "kvartalsvis",
+    "semi_annually": "halvårlig",
+    "annually": "årlig",
+    "one_time": "engangs"
+  },
+  "form": {
+    "addTitle": "Legg til forsikring",
+    "editTitle": "Rediger forsikring",
+    "name": "Forsikringsnavn",
+    "namePlaceholder": "f.eks. Boligforsikring",
+    "provider": "Forsikringsselskap",
+    "providerPlaceholder": "f.eks. Forsikringsselskap",
+    "type": "Forsikringstype",
+    "premium": "Årlig premie",
+    "coverage": "Dekningsbeløp",
+    "currency": "Valuta",
+    "startDate": "Startdato",
+    "expiryDate": "Utløpsdato",
+    "policyNumber": "Polisenummer",
+    "notes": "Notater"
+  },
+  "actions": {
+    "open": "Åpne",
+    "edit": "Rediger",
+    "end": "Avslutt forsikring",
+    "reactivate": "Aktiver forsikring på nytt",
+    "delete": "Slett forsikring",
+    "addDocument": "Legg til dokument"
+  },
+  "endDialog": {
+    "title": "Avslutt forsikring · {{name}}",
+    "description": "Avtalen blir liggende i historikken og forsvinner fra premiesummen og betalingskalenderen.",
+    "date": "Avtalens slutt",
+    "alertTitle": "Forsikringen flyttes til de avsluttede",
+    "alertNote": "Du kan aktivere den på nytt når som helst fra «···»-menyen; dokumenter og grenser beholdes.",
+    "submit": "Avslutt forsikring"
+  },
+  "confirmDelete": {
+    "title": "Slett forsikring",
+    "description": "Slette «{{name}}»? Dokumentene følger med. Dette kan ikke angres."
+  },
+  "toast": {
+    "added": "Forsikringen er lagt til",
+    "updated": "Forsikringen er oppdatert",
+    "deleted": "Forsikringen er slettet",
+    "ended": "Forsikringen er avsluttet",
+    "reactivated": "Forsikringen er aktivert på nytt"
+  },
+  "modal": {
+    "basicInfo": "Grunnleggende informasjon",
+    "paymentDetails": "Betalingsdetaljer",
+    "additionalInfo": "Tilleggsinformasjon",
+    "selectType": "Velg type",
+    "selectStatus": "Velg status",
+    "addDescription": "Avtalens grunnlag, betalinger og dekningsgrenser; dokumenter legges til i detaljvisningen.",
+    "editDescription": "Rediger detaljene for forsikringen.",
+    "policyName": "Forsikringsnavn",
+    "policyNamePlaceholder": "f.eks. Boligforsikring 2024",
+    "provider": "Selskap",
+    "providerPlaceholder": "f.eks. Gjensidige",
+    "policyNumber": "Polisenummer",
+    "policyNumberPlaceholder": "Avtalenummer",
+    "paymentFrequency": "Betalingsfrekvens",
+    "selectFrequency": "Velg frekvens",
+    "oneTimePayment": "Engangsbetaling (valgfritt)",
+    "oneTimePaymentRequired": "Engangsbetaling",
+    "regularPayment": "Fast betaling",
+    "endDateOptional": "Sluttdato (valgfritt)",
+    "coverageLimits": "Dekningsgrenser",
+    "addLimit": "Legg til grense",
+    "removeLimit": "Fjern grense",
+    "limitTitle": "Navn på grense",
+    "notesPlaceholder": "Særlige vilkår, kontakter...",
+    "createPolicy": "Opprett forsikring",
+    "updatePolicy": "Oppdater forsikring",
+    "status": {
+      "active": "Aktiv",
+      "inactive": "Inaktiv"
+    },
+    "frequency": {
+      "monthly": "Månedlig",
+      "quarterly": "Kvartalsvis",
+      "semi_annually": "Halvårlig",
+      "annually": "Årlig",
+      "one_time": "Engangsbetaling"
+    },
+    "linkRealEstate": "Koble til eiendom",
+    "selectRealEstate": "Velg eiendom (valgfritt)",
+    "noRealEstateAvailable": "Ingen eiendommer tilgjengelig"
+  },
+  "detail": {
+    "backToList": "Tilbake til forsikringer",
+    "notFound": "Denne forsikringen finnes ikke lenger.",
+    "policyNumber": "nr. {{number}}",
+    "description": "Siden {{start}} {{end}} · {{premium}} {{frequency}}",
+    "descriptionOneTime": "Siden {{start}} {{end}} · engangs {{premium}}",
+    "noEnd": "uten avtalt slutt",
+    "until": "til {{date}}",
+    "statusActive": "aktiv",
+    "statusEnded": "avsluttet",
+    "period": {
+      "year": "1 år",
+      "all": "Siden start"
+    },
+    "hero": {
+      "paid": "Betalte premier",
+      "paidNote": "{{payments}} siden {{month}} · {{yearly}} i året",
+      "paidNoteOneTime": "engangsbetaling ved tegning {{date}}",
+      "coverage": "Total dekning",
+      "coverageRatio": "{{ratio}}× årspremien",
+      "coverageOneTime": "sum av de avtalte grensene",
+      "noCoverage": "ingen dekningsgrenser lagt inn"
+    },
+    "chart": {
+      "paid": "Betalt totalt",
+      "next12": "Neste 12 betalinger",
+      "tipPaid": "betalt totalt",
+      "tipPlanned": "planlagt betaling",
+      "note": "{{payments}} · {{yearly}} i året",
+      "noteOneTime": "Engangsbetaling {{date}}, ingen flere betalinger"
+    },
+    "stats": {
+      "yearly": "Årlig kostnad",
+      "yearlyNote": "{{premium}} {{frequency}} · {{share}} av premiene dine",
+      "yearlyOneTime": "engangspremie, ingen årlig kostnad",
+      "nextPayment": "Neste betaling",
+      "nextPaymentNote": "om {{in}} · {{amount}} · deretter {{next}}",
+      "noNextPayment": "ingen flere betalinger",
+      "anniversary": "Avtalens årsdag",
+      "anniversaryNote": "om {{in}} · en sjanse til å justere dekningen eller sammenligne tilbud",
+      "end": "Avtalens slutt",
+      "endNote": "om {{in}} · den avtalte sluttdatoen",
+      "endedNote": "avtalen ble avsluttet {{date}}",
+      "duration": "Avtalens varighet",
+      "durationNote": "ingen avtalt slutt · {{docs}}",
+      "durationEnd": "til {{date}} · {{docs}}"
+    },
+    "limits": {
+      "title": "Dekningsgrenser",
+      "subtitle": "Hva avtalen dekker og opptil hvor mye",
+      "edit": "Rediger grenser",
+      "risk": "Risiko",
+      "limit": "Grense",
+      "footer": "{{risks}} · total dekning {{amount}}",
+      "empty": "Ingen dekningsgrenser lagt inn ennå. Legg dem til ved å redigere forsikringen."
+    },
+    "contract": {
+      "title": "Avtale",
+      "provider": "Forsikringsselskap",
+      "number": "Avtalenummer",
+      "type": "Type",
+      "start": "Start",
+      "end": "Slutt",
+      "endNone": "løpende",
+      "frequency": "Frekvens",
+      "premium": "Premie",
+      "oneTime": "Engangsbetaling",
+      "oneTimeNone": "ingen",
+      "property": "Eiendom"
+    },
+    "notes": {
+      "title": "Notater",
+      "edit": "Rediger",
+      "empty": "Ingen notater – legg til kontakter, vilkår og påminnelser ved å redigere forsikringen.",
+      "updated": "Redigert {{date}}"
+    },
+    "documents": "Dokumenter"
+  },
+  "documents": {
+    "subtitle": "Lagret i appens krypterte mappe",
+    "columns": {
+      "document": "Dokument",
+      "type": "Type",
+      "uploaded": "Lastet opp"
+    },
+    "description": "Legg ved avtaler, bevis og andre dokumenter",
+    "add": "Legg til dokument",
+    "addFirst": "Legg til første dokument",
+    "addTitle": "Legg til dokument",
+    "noDocuments": "Ingen dokumenter lagt ved ennå",
+    "file": "Fil",
+    "clickToSelect": "Klikk for å velge en fil",
+    "type": "Dokumenttype",
+    "selectType": "Velg type",
+    "namePlaceholder": "f.eks. Forsikringsavtale 2024",
+    "descriptionPlaceholder": "Ekstra notater om dette dokumentet...",
+    "uploading": "Laster opp...",
+    "upload": "Last opp dokument",
+    "open": "Åpne",
+    "delete": "Slett",
+    "added": "Dokumentet er lagt til",
+    "deleted": "Dokumentet er slettet",
+    "optional": "valgfritt",
+    "types": {
+      "contract": "Avtale",
+      "certificate": "Forsikringsbevis",
+      "claim": "Skademelding",
+      "other": "Annet"
+    },
+    "deleteConfirm": {
+      "title": "Slett dokument",
+      "description": "Slette «{{name}}»? Filen fjernes permanent."
+    }
+  },
+  "mcp": {
+    "tipSummary": "Har du ikke lyst til å skrive alt inn? AI-assistenten kan legge til forsikringer fra en avtale.",
+    "bannerBody": "Start MCP-serveren, last opp avtalen, tilbudet eller forsikringsoppsummeringen til Claude, og be den legge til forsikringen for deg.",
+    "setupLink": "Sett opp MCP-server"
+  }
+}

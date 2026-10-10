@@ -1,0 +1,113 @@
+{
+  "eyebrow": "Din økonomiske oversikt",
+  "greeting": {
+    "morning": "God morgen, {{name}}.",
+    "day": "God dag, {{name}}.",
+    "evening": "God kveld, {{name}}."
+  },
+  "welcomeFirst": "Velkommen, {{name}}.",
+  "asOf": "Nettoformue per {{date}}",
+  "loading": "Laster porteføljen din…",
+  "hero": {
+    "label": "Nettoformue"
+  },
+  "insight": {
+    "up": "Verdien stiger. Største andel av endringen: {{class}}.",
+    "down": "Verdien faller. Største andel av endringen: {{class}}.",
+    "flat": "Verdien holder seg. Største bevegelse: {{class}}.",
+    "noHistory": "Utviklingen vises etter de første dagsøyeblikksbildene."
+  },
+  "stats": {
+    "netWorth": "Nettoformue",
+    "totalAssets": "Sum eiendeler",
+    "totalLiabilities": "Gjeld",
+    "freeCash": "Ledige kontanter",
+    "freeCashNote": "på bankkontoer",
+    "unchanged": "uendret i perioden",
+    "noHistory": "ingen historikk ennå"
+  },
+  "cards": {
+    "investments": "Aksjer",
+    "savings": "Kontanter",
+    "bonds": "Obligasjoner",
+    "liabilities": "Gjeld",
+    "crypto": "Krypto",
+    "realEstate": "Eiendom",
+    "otherAssets": "Andre eiendeler",
+    "other": "Annet",
+    "ofTotal": "{{percent}} av totalen"
+  },
+  "classes": {
+    "investments": "aksjer",
+    "savings": "kontanter",
+    "bonds": "obligasjoner",
+    "liabilities": "gjeld",
+    "crypto": "krypto",
+    "realEstate": "eiendom",
+    "otherAssets": "andre eiendeler"
+  },
+  "allocation": {
+    "title": "Aktivafordeling",
+    "open": "Åpne investeringer",
+    "center": "Eiendeler"
+  },
+  "moves": {
+    "title": "Siste bevegelser",
+    "empty": "Banktransaksjoner, kjøp og salg vises her.",
+    "kind": {
+      "bankIn": "Innbetaling",
+      "bankOut": "Utbetaling",
+      "buy": "Kjøp",
+      "sell": "Salg",
+      "cryptoBuy": "Kryptokjøp",
+      "cryptoSell": "Kryptosalg"
+    }
+  },
+  "changePeriod": {
+    "30D": "de siste 30 dagene",
+    "90D": "de siste 90 dagene",
+    "YTD": "siden årsskiftet",
+    "1Y": "det siste året",
+    "5Y": "de siste 5 årene",
+    "All": "siden første registrering"
+  },
+  "empty": {
+    "title": "Nettoformuen din vises her",
+    "description": "Legg til en konto eller en investering, så bygger Moony oversikten, diagrammene og utviklingen din ut fra dem. Alt blir på denne datamaskinen.",
+    "addAccount": "Legg til en bankkonto og importer en kontoutskrift",
+    "addInvestment": "Legg til en investering",
+    "setBudget": "Sett et budsjett"
+  },
+  "gettingStarted": {
+    "title": "Kom i gang",
+    "subtitle": "Fire trinn som gjør Moony nyttig. Dette kortet forsvinner når du er ferdig.",
+    "importStatement": "Importer en kontoutskrift",
+    "importStatementHint": "Legg til en konto og importer en CSV-fil fra banken din.",
+    "addInvestment": "Legg til en investering",
+    "addInvestmentHint": "Aksjer, ETF-er eller krypto med sanntidskurser.",
+    "setBudget": "Sett et budsjett",
+    "setBudgetHint": "Månedlige grenser per utgiftskategori.",
+    "makeBackup": "Ta en sikkerhetskopi",
+    "makeBackupHint": "Én fil med alt, under Innstillinger → Data og sikkerhetskopier.",
+    "dismiss": "Lukk",
+    "done": "Ferdig"
+  },
+  "welcome": "Velkommen tilbake, {{name}}",
+  "overview": "Her er din økonomiske oversikt for i dag.",
+  "charts": {
+    "netWorthTrend": "Utvikling i nettoformue",
+    "assetAllocation": "Aktivafordeling",
+    "assetsVsLiabilities": "Eiendeler mot gjeld",
+    "assetsToLiabilitiesRatio": "Forholdet mellom eiendeler og gjeld",
+    "assetClassTrend": "Nettoformue per aktivaklasse",
+    "noHistoricalData": "Ingen historiske data tilgjengelig",
+    "estimatedBackfilled": "estimert (etterfylt)",
+    "estimatedLegend": "Stiplet: estimerte dager. Bankkontoer, obligasjoner, eiendom og lån videreføres fra nærmeste registrerte dag."
+  },
+  "tooltips": {
+    "netWorth": "Nettoformue",
+    "totalAssets": "Sum eiendeler",
+    "totalLiabilities": "Sum gjeld"
+  },
+  "changeSince": "mot {{date}}"
+}

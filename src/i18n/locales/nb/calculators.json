@@ -1,0 +1,194 @@
+{
+  "annuity": {
+    "title": "Annuitetskalkulator",
+    "subtitle": "Termin, samlede renter og nedbetalingsplan for et hvilket som helst lån. Verdiene oppdateres mens du skriver.",
+    "eyebrow": "Kalkulator",
+    "status": "Beregnet lokalt, ingenting lagres",
+    "actions": {
+      "loadLoan": "Hent fra lånene mine",
+      "export": "Eksporter"
+    },
+    "form": {
+      "title": "Lånevilkår",
+      "amount": "Lånebeløp",
+      "years": "Løpetid",
+      "yearsUnit": "år",
+      "rate": "Årlig rente",
+      "frequency": "Betalingsfrekvens",
+      "frequencies": {
+        "monthly": "Månedlig",
+        "quarterly": "Kvartalsvis",
+        "semiAnnually": "Halvårlig",
+        "annually": "Årlig"
+      },
+      "extra": "Ekstra avdrag i året",
+      "optional": "valgfritt",
+      "extraHint": "Én gang i året i tillegg til de vanlige terminene, uten gebyr."
+    },
+    "insight": {
+      "extraYearly": "{{extra}} ekstra i året",
+      "shortens": "forkorter lånet med {{years}} og sparer",
+      "onInterest": "i renter. Planen nedenfor viser varianten uten ekstra avdrag.",
+      "noExtra": "Skriv inn ekstra avdrag for å se hvor mange år og hvor mye rente du sparer."
+    },
+    "hero": {
+      "payment": {
+        "monthly": "Månedlig termin",
+        "quarterly": "Kvartalsvis termin",
+        "semiAnnually": "Halvårlig termin",
+        "annually": "Årlig termin"
+      },
+      "total": "totalt {{amount}}",
+      "interestShare": "hvorav renter {{amount}} · {{percent}}",
+      "view": {
+        "years": "Etter år",
+        "share": "Rentandel"
+      }
+    },
+    "legend": {
+      "principal": "Avdrag",
+      "interest": "Renter",
+      "milestone": "Milepæl"
+    },
+    "milestones": {
+      "cross": "Avdragene overtar for rentene",
+      "half": "Halvparten av gjelden er nedbetalt",
+      "year": "år {{year}}"
+    },
+    "years_one": "{{count}} år",
+    "years_other": "{{count}} år",
+    "payments_one": "{{count}} termin",
+    "payments_other": "{{count}} terminer",
+    "stats": {
+      "totalPaid": "Du betaler totalt",
+      "totalInterest": "Samlede renter",
+      "totalInterestNote": "{{percent}} av lånebeløpet",
+      "withExtra": "Med ekstra avdrag",
+      "withExtraNote": "spart rente · ferdig på {{short}} i stedet for {{long}}",
+      "firstShare": "Rentandel i første termin",
+      "firstShareNote": "i den siste {{percent}}"
+    },
+    "table": {
+      "title": "Nedbetalingsplan",
+      "subYears": "Summer per år · uten ekstra avdrag",
+      "subPeriods": "Enkeltterminer · uten ekstra avdrag",
+      "granularity": {
+        "years": "Årlig"
+      },
+      "year": "År",
+      "period": "Periode",
+      "payments": "Terminer",
+      "principal": "Avdrag",
+      "interest": "Renter",
+      "balance": "Restgjeld",
+      "footer": "{{shown}} av {{total}} rader",
+      "showAll": "Vis hele planen",
+      "showLess": "Vis bare starten",
+      "periodLabel": "{{year}} · periode {{n}}"
+    },
+    "empty": "Skriv inn lånebeløp, løpetid og rente."
+  },
+  "estate": {
+    "title": "Avkastning på eiendomsinvestering",
+    "subtitle": "Vurder en eiendom som en samlet investering: leie og kontantstrøm, nedbetaling av lån, prisvekst og gevinsten ved et fremtidig salg.",
+    "eyebrow": "Kalkulator",
+    "status": "Beregnet lokalt, ingenting lagres",
+    "prefillNoRate": "Eiendommen har et beløp i en valuta uten valutakurs, så den ble ikke hentet. Kalkulatoren viser eksempelverdiene.",
+    "actions": {
+      "loadProperty": "Hent fra eiendommene mine"
+    },
+    "yearsUnit": "år",
+    "years_one": "{{count}} år",
+    "years_other": "{{count}} år",
+    "purchase": {
+      "title": "Kjøp",
+      "price": "Kjøpspris",
+      "loan": "Lånebeløp",
+      "years": "Løpetid",
+      "rate": "Rente",
+      "equity": "Egenkapital",
+      "ltv": "LTV",
+      "payment": "Månedlig termin"
+    },
+    "rent": {
+      "title": "Utleie",
+      "rent": "Forventet månedsleie",
+      "costs": "Månedlige kostnader",
+      "vacancy": "Ledighet",
+      "vacancyUnit": "mnd./år",
+      "hint": "Kostnader: vedlikehold, skatt, forsikring, reparasjonsfond."
+    },
+    "projection": {
+      "title": "Prognose",
+      "rentGrowth": "Leievekst",
+      "costsGrowth": "Kostnadsvekst",
+      "priceGrowth": "Prisvekst",
+      "perYear": "%/år",
+      "years": "Eierperiode",
+      "oneTime": "Engangskostnader"
+    },
+    "sale": {
+      "title_one": "Salg etter {{count}} år",
+      "title_other": "Salg etter {{count}} år",
+      "finalPrice": "Salgspris",
+      "remainingLoan": "Restlån",
+      "repaid": "Nedbetalt avdrag",
+      "cumulative": "Akkumulert kontantstrøm",
+      "equity": "Din andel ved salget",
+      "totalReturn": "Total avkastning",
+      "pa": "{{percent}} p.a.",
+      "formula": "Avkastning = (salgspris − restlån − egenkapital + akkumulert kontantstrøm) / egenkapital. Før skatter og salgskostnader."
+    },
+    "hero": {
+      "label": "Total avkastning på egenkapitalen din",
+      "value": "{{percent}} i året",
+      "total": "totalt {{percent}} over {{years}}",
+      "components": "kontantstrøm {{cashflow}} · nedbetaling av avdrag · prisvekst {{growth}}",
+      "cashflow": "Netto kontantstrøm",
+      "cashflowNote": "per måned i år 1 · brutto {{gross}}"
+    },
+    "legend": {
+      "equity": "Din andel (verdi − lån + kontantstrøm)",
+      "band": "Prisvekst ± 1 pp.",
+      "invested": "Investert kapital",
+      "milestone": "Milepæl"
+    },
+    "chart": {
+      "purchase": "Kjøp",
+      "tipRow": "{{year}} · verdi {{value}} · lån {{loan}} · akkumulert kontantstrøm {{cumulative}}",
+      "tipStart": "{{year}} · investert kapital {{invested}}"
+    },
+    "milestones": {
+      "positive": "Positiv årlig kontantstrøm",
+      "positiveLine": "fra {{year}}",
+      "half": "Halvparten av lånet er nedbetalt",
+      "halfLine": "år {{year}}",
+      "sale": "Salg",
+      "saleLine": "{{year}} · pris {{price}} · lån {{loan}}"
+    },
+    "stats": {
+      "equity": "Egenkapital",
+      "equityNote": "{{equity}} + engangskostnader {{once}}",
+      "grossYield": "Brutto leieavkastning",
+      "grossYieldNote": "årsleie / kjøpspris",
+      "cashflow": "Årlig netto kontantstrøm",
+      "cashflowNote": "i år 1 · {{percent}} av egenkapitalen",
+      "saleGain": "Gevinst ved salget",
+      "saleGainNote": "pris − lån − egenkapital · etter {{years}}"
+    },
+    "table": {
+      "title": "Årsoversikt",
+      "sub": "Leie og kostnader vokser med de oppgitte satsene, terminen er fast",
+      "year": "År",
+      "rent": "Leie",
+      "costs": "Kostnader",
+      "payments": "Terminer",
+      "cashflow": "Netto KS",
+      "balance": "Restlån",
+      "value": "Verdi",
+      "footer": "{{years}} · akkumulert netto kontantstrøm {{cumulative}}",
+      "vacancyNote": "Ledighet trekkes fra leien"
+    },
+    "empty": "Skriv inn kjøpspris og leie."
+  }
+}

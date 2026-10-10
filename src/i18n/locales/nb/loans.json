@@ -1,0 +1,339 @@
+{
+  "title": "Lån",
+  "eyebrow": "Gjeld",
+  "subtitle": "Boliglån og forbrukslån, saldoer etter nedbetalingsplanen.",
+  "status": "Saldoer nedbetalt per {{date}}",
+  "loading": "Laster lånene dine...",
+  "export": "Eksporter",
+  "empty": {
+    "title": "Ingen lån ennå",
+    "description": "Legg til ditt første lån for å se hva du skylder, hva renten koster deg og når du blir gjeldfri."
+  },
+  "addLoan": "Legg til lån",
+  "loans_one": "{{count}} lån",
+  "loans_other": "{{count}} lån",
+  "summary": {
+    "outstanding": "Total restgjeld",
+    "repaidOf": "{{percent}} nedbetalt av {{principal}} lånt",
+    "payments": "Månedlige terminer",
+    "paymentsAfter": "fra {{month}} bare {{amount}} · {{name}} er nedbetalt",
+    "paymentsYear": "{{amount}} i året",
+    "rate": "Gj.sn. rente",
+    "rateNote": "vektet etter saldo · renter de neste 12 månedene {{interest}}",
+    "fixation": "Bindingstiden utløper",
+    "fixationNote": "om {{duration}} · {{name}} {{rate}}",
+    "fixationExpired": "Bindingstiden for {{name}} utløp {{month}} – legg inn den nye renten",
+    "noFixation": "ingen rente har en utløpsdato"
+  },
+  "chart": {
+    "title": "Gjeldsutvikling",
+    "subtitle": "Saldoer til nå heltrukket, fremtiden etter nedbetalingsplanene stiplet.",
+    "horizon": {
+      "5": "5 år",
+      "10": "10 år",
+      "all": "Til nedbetalt"
+    },
+    "legend": {
+      "outstanding": "Restgjeld",
+      "schedule": "Etter plan",
+      "newLoan": "Nytt lån",
+      "milestone": "Milepæl"
+    },
+    "tipSchedule": "etter plan",
+    "note": "I dag {{today}} · om {{duration}} {{amount}}",
+    "noteDebtFree": "I dag {{today}} · gjeldfri om {{duration}}",
+    "noteNoPayoff": "I dag {{today}} · med nåværende terminer blir gjelden aldri nedbetalt",
+    "milestones": {
+      "paidOff": "{{name}} er nedbetalt",
+      "paidOffPayments": "terminene synker med {{amount}} i måneden",
+      "debtFree": "gjeldfri",
+      "fixationEnd": "Bindingstiden utløper · {{name}}",
+      "half": "Halvparten nedbetalt · {{name}}",
+      "balance": "saldo {{amount}}",
+      "newLoan": "Nytt lån · {{name}}",
+      "several_one": "{{count}} milepæl",
+      "several_other": "{{count}} milepæler"
+    },
+    "events": {
+      "several_one": "{{count}} hendelse",
+      "several_other": "{{count}} hendelser"
+    }
+  },
+  "table": {
+    "title": "Lån",
+    "subtitle": "Sortert etter saldo",
+    "subtitleHidden": "Sortert etter saldo · nedbetalte lån er skjult",
+    "showMatured": "Vis nedbetalte",
+    "loan": "Lån",
+    "outstanding": "Restgjeld",
+    "principal": "Hovedstol",
+    "rate": "Rente",
+    "payment": "Termin",
+    "payoff": "Nedbetalt innen",
+    "actions": "Handlinger",
+    "since": "siden {{month}}",
+    "repaid": "{{percent}} nedbetalt",
+    "matured": "nedbetalt",
+    "fixedUntil": "bundet til {{month}}",
+    "fixationEnded": "bindingen utløp {{month}}",
+    "fixedRate": "fast rente",
+    "monthly": "månedlig",
+    "noPayment": "ingen termin",
+    "in": "om {{duration}}",
+    "soonYear": "innen et år",
+    "soon": "innen 18 måneder",
+    "noPayoff": "aldri med nåværende termin",
+    "capped": "mer enn 50 år",
+    "balanceAtEnd": "{{amount}} igjen ved sluttdatoen",
+    "noResults": {
+      "title": "Ingen aktive lån",
+      "description": "Alle lån er nedbetalt. Kryss av for «Vis nedbetalte» for å se dem."
+    },
+    "footer": {
+      "count_one": "{{count}} aktivt lån",
+      "count_other": "{{count}} aktive lån",
+      "outstanding": "restgjeld {{amount}}",
+      "payments": "terminer {{amount}} i måneden",
+      "note": "Saldo = hovedstol nedbetalt med terminene til nå, eller saldoen du la inn per en dato"
+    }
+  },
+  "duration": {
+    "years_one": "{{count}} år",
+    "years_other": "{{count}} år",
+    "months_one": "{{count}} måned",
+    "months_other": "{{count}} måneder"
+  },
+  "form": {
+    "addTitle": "Legg til lån",
+    "editTitle": "Rediger lån",
+    "submit": "Legg til lån",
+    "name": "Lånenavn",
+    "namePlaceholder": "f.eks. Boliglån",
+    "originalAmount": "Hovedstol",
+    "interestRate": "Rente",
+    "monthlyPayment": "Månedlig termin",
+    "startDate": "Startdato",
+    "endDate": "Sluttdato",
+    "balance": {
+      "title": "Restgjeld",
+      "help": "Moony reduserer saldoen med hver månedlige termin. Hvis du kjenner den faktiske saldoen, for eksempel fra en kontoutskrift, legger du den inn med dato, og beregningen fortsetter derfra.",
+      "setManual": "Sett saldoen per en dato",
+      "amount": "Restgjeld",
+      "date": "Per dato",
+      "estimate": "Estimert saldo i dag: {{amount}}",
+      "noPayment": "Uten en månedlig termin reduseres ikke saldoen."
+    }
+  },
+  "actions": {
+    "edit": "Rediger",
+    "delete": "Slett lån",
+    "open": "Åpne",
+    "extraPayment": "Ekstra avdrag",
+    "balanceCheck": "Bekreft saldo fra kontoutskrift",
+    "rateChange": "Registrer en renteendring"
+  },
+  "confirmDelete": {
+    "title": "Slett lån",
+    "description": "Slette «{{name}}»? Hendelsene og eiendomskoblingene følger med. Dette kan ikke angres."
+  },
+  "toast": {
+    "added": "Lånet er lagt til",
+    "updated": "Lånet er oppdatert",
+    "deleted": "Lånet er slettet",
+    "eventAdded": "Hendelsen er registrert, planen er beregnet på nytt",
+    "eventDeleted": "Hendelsen er fjernet"
+  },
+  "modal": {
+    "addDescription": "Hovedstol, rente og termin er nok; saldoen følger planen.",
+    "editDescription": "Endre lånevilkårene; saldoen beregnes på nytt.",
+    "endDateHelp": "Når lånet forfaller ifølge avtalen",
+    "rateValidity": "Rentens gyldighet (slutt på bindingstid)",
+    "rateValidityHelp": "Når bindingstiden for gjeldende rente utløper",
+    "startDateHelp": "Saldoen nedbetales fra denne datoen; terminene forfaller samme dag hver måned"
+  },
+  "valuation": {
+    "automatic": "Nedbetalt fra {{date}} ({{amount}}) med {{rate}} rente og {{payment}} per måned.",
+    "manual": "Fra saldoen din på {{amount}} den {{date}}, nedbetalt med {{rate}} rente og {{payment}} per måned.",
+    "static": "Ingen månedlig termin er satt, så saldoen reduseres ikke: {{amount}} per {{date}}.",
+    "belowInterest": "Terminen dekker ikke rentene, så saldoen faller ikke."
+  },
+  "detail": {
+    "backToLoans": "Tilbake til lån",
+    "loading": "Laster lån...",
+    "notFound": "Dette lånet finnes ikke lenger.",
+    "eyebrow": "Lån",
+    "description": "Hovedstol {{principal}} siden {{month}} · {{rate}}{{fixation}} · termin {{payment}} i måneden",
+    "descriptionNoPayment": "Hovedstol {{principal}} siden {{month}} · {{rate}} · ingen månedlig termin",
+    "withFixation": " bundet til {{month}}",
+    "status": {
+      "automatic": "Saldo etter plan",
+      "manual": "Saldo etter plan · fra saldoen din per {{date}}",
+      "static": "Ingen månedlig termin · saldoen faller ikke"
+    },
+    "hero": {
+      "outstanding": "Restgjeld",
+      "delta12": "de siste 12 månedene · {{percent}} av hovedstolen nedbetalt",
+      "deltaSinceStart": "siden utbetalingen · {{percent}} av hovedstolen nedbetalt",
+      "payoff": "Nedbetalt innen",
+      "payoffNote": "om {{duration}} med nåværende termin",
+      "paidOff": "Nedbetalt",
+      "noPayoff": "aldri med nåværende termin",
+      "noPayment": "uten termin faller ikke saldoen",
+      "balanceAtEnd": "til {{month}} · {{amount}} igjen ved sluttdatoen"
+    },
+    "horizon": {
+      "past": "Til nå",
+      "5": "5 år",
+      "all": "Til nedbetalt"
+    },
+    "chart": {
+      "legend": {
+        "balance": "Saldo",
+        "schedule": "Etter plan",
+        "drawdown": "Utbetaling",
+        "extraPayment": "Ekstra avdrag",
+        "milestones": "Binding og milepæler"
+      },
+      "tipBalance": "saldo",
+      "tipSchedule": "etter plan",
+      "notePast": "Siden {{date}}: {{principal}} av hovedstolen nedbetalt og {{interest}} betalt i renter",
+      "note5": "Saldo om 5 år {{amount}}",
+      "note5Fixation": "Saldo om 5 år {{amount}} · bindingstiden utløper {{month}}",
+      "noteAll": "Til nedbetalt betaler du fortsatt {{total}}, hvorav {{interest}} er renter",
+      "noteNoPayoff": "Med nåværende termin blir lånet aldri nedbetalt",
+      "events": {
+        "drawdown": "Utbetaling {{amount}}",
+        "extraPayment": "Ekstra avdrag {{amount}}",
+        "rateChange": "Renten endret til {{rate}}",
+        "newPayment": "termin {{amount}}",
+        "balanceCheck": "Saldo bekreftet fra kontoutskrift",
+        "fixationEnd": "Bindingstiden utløper",
+        "half": "Halvparten av hovedstolen nedbetalt",
+        "payoff": "Lånet er nedbetalt",
+        "balance": "saldo {{amount}}"
+      }
+    },
+    "stats": {
+      "interest": "Betalte renter",
+      "interestNote": "siden {{date}} · {{share}} av betalingene til nå",
+      "principal": "Nedbetalt hovedstol",
+      "principalNote": "{{percent}} av hovedstolen",
+      "principalExtra": "hvorav {{amount}} i ekstra avdrag",
+      "remaining": "Gjenstående terminer",
+      "remainingNote": "{{duration}} · {{interest}} i renter gjenstår å betale",
+      "remainingNone": "aldri med nåværende termin",
+      "paidOff": "lånet er nedbetalt",
+      "fixation": "Bindingstiden utløper",
+      "fixationNote": "om {{duration}} · ved {{up}} blir terminen {{upPayment}}, ved {{down}} {{downPayment}}",
+      "nextPayment": "Neste termin",
+      "nextPaymentNote": "renter {{interest}} · avdrag {{principal}}",
+      "noSchedule": "ingen plan",
+      "remainingToEnd": "til {{month}} · {{amount}} igjen · {{interest}} i renter gjenstår å betale"
+    },
+    "schedule": {
+      "title": "Nedbetalingsplan",
+      "subtitle": "Renter og avdrag i hver termin · saldo etter den",
+      "modes": {
+        "next12": "Neste 12",
+        "years": "Etter år",
+        "all": "Alle"
+      },
+      "payment": "Termin",
+      "amount": "Beløp",
+      "interest": "Renter",
+      "principal": "Avdrag",
+      "balanceAfter": "Saldo etter",
+      "year": "År",
+      "payments": "Terminer",
+      "interestTotal": "Renter",
+      "balanceEnd": "Saldo ved årsslutt",
+      "next": "neste",
+      "footNext12": "Neste 12 terminer: renter {{interest}} · avdrag {{principal}}",
+      "footYears_one": "{{count}} år · rentedelen faller fra {{from}} til {{to}} det siste året",
+      "footYears_other": "{{count}} år · rentedelen faller fra {{from}} til {{to}} det siste året",
+      "footAll": "{{count}} terminer siden {{date}} · tidligere nedtonet",
+      "empty": "Det finnes ingen plan ennå. Sett en månedlig termin (Rediger) for å se en.",
+      "paidOff": "Dette lånet er nedbetalt.",
+      "method": "Renter = saldo × rente ÷ 12, én termin i måneden på samme dag"
+    },
+    "whatIf": {
+      "title": "Ekstra avdrag",
+      "subtitle": "Hva det ville gjort med løpetiden og rentene",
+      "amount": "Beløp",
+      "hint": "Sammenlign de to alternativene bankene tilbyr.",
+      "modes": {
+        "term": "Forkort løpetiden",
+        "payment": "Senk terminen"
+      },
+      "termResult": "Nedbetalt {{duration}} tidligere",
+      "termNote": "Du sparer {{interest}} i renter · terminen forblir {{payment}} · slutter {{month}}",
+      "paymentResult": "Terminen synker med {{amount}} i måneden",
+      "paymentNote": "Ny termin {{payment}} · løpetiden forblir til {{month}} · renter lavere med {{interest}}",
+      "noEffect": "Skriv inn et beløp opptil saldoen på {{amount}}.",
+      "noPayment": "Uten en månedlig termin kan effekten ikke beregnes – legg den til ved å redigere lånet.",
+      "record": "Registrer som gjennomført"
+    },
+    "events": {
+      "title": "Hendelser",
+      "extraPayment": "Ekstra avdrag {{amount}}",
+      "extraPaymentNote": "planen fortsetter fra den reduserte saldoen",
+      "newPayment": "ny termin {{amount}}",
+      "rateChange": "Renten endret til {{rate}}",
+      "rateChangeNote": "planen fortsetter fra saldoen denne dagen",
+      "balanceCheck": "Saldo bekreftet fra kontoutskrift",
+      "balanceCheckNote": "planen starter på nytt fra denne datoen",
+      "drawdown": "Utbetaling {{amount}}",
+      "drawdownNote": "start på lånet",
+      "delete": "Fjern hendelse",
+      "confirmDelete": {
+        "title": "Fjern hendelse",
+        "description": "Oppføringen forsvinner fra diagrammet og listen. Saldoen hendelsen satte, forblir gjeldende."
+      }
+    },
+    "warnings": {
+      "noPayment": "Ingen månedlig termin er satt, så saldoen reduseres ikke. Rediger lånet og legg til terminen for å nedbetale automatisk.",
+      "paymentBelowInterest": "Den månedlige terminen dekker ikke rentene (omtrent {{interest}} per måned), så saldoen faller ikke. Sjekk terminen og renten.",
+      "balanceAtEndDate": "Ved sluttdatoen ({{date}}) ville {{amount}} fortsatt stå igjen. Sjekk terminen, renten og sluttdatoen.",
+      "scheduleTruncated": "Planen er kuttet etter {{count}} terminer."
+    }
+  },
+  "eventDialog": {
+    "note": "Notat",
+    "extraPayment": {
+      "title": "Ekstra avdrag",
+      "description": "Reduserer saldoen den dagen og beregner planen på nytt; det vises i diagrammet som en hendelse.",
+      "amount": "Beløp",
+      "date": "Dato",
+      "usedFor": "Banken brukte innbetalingen til å",
+      "term": "Forkorte løpetiden",
+      "payment": "Senke terminen",
+      "alertTitle": "Saldoen synker til {{amount}}",
+      "alertTerm": "Nedbetalt {{duration}} tidligere, med {{interest}} spart i renter.",
+      "alertPayment": "Ny termin {{payment}} i måneden, løpetiden forblir til {{month}}.",
+      "alertTooMuch": "Beløpet overstiger saldoen på {{amount}}.",
+      "alertEmpty": "Skriv inn et beløp for å se effekten.",
+      "submit": "Registrer innbetaling"
+    },
+    "rateChange": {
+      "title": "Renteendring",
+      "description": "Fra den oppgitte dagen gjelder den nye renten; planen fortsetter fra den dagens saldo.",
+      "rate": "Ny rente",
+      "payment": "Ny termin",
+      "paymentHint": "Tom = terminen forblir {{amount}}",
+      "date": "Gjelder fra",
+      "alertTitle": "Månedlige renter {{from}} → {{to}}",
+      "alertNote": "Med en termin på {{payment}} er lånet nedbetalt {{month}}.",
+      "alertNoPayoff": "En termin på {{payment}} dekker ikke rentene; saldoen ville ikke falt.",
+      "submit": "Registrer endring"
+    },
+    "balanceCheck": {
+      "title": "Bekreft saldo fra kontoutskrift",
+      "description": "Skriv inn saldoen fra kontoutskriften din; planen starter på nytt fra den dagen.",
+      "amount": "Saldo ifølge kontoutskrift",
+      "date": "Per",
+      "alertTitle": "Planen forutsatte {{amount}}",
+      "alertNote": "Differanse {{delta}} · fra {{date}} bruker planen saldoen din.",
+      "submit": "Lagre saldo"
+    }
+  }
+}

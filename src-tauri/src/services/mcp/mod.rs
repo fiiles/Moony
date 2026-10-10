@@ -703,7 +703,7 @@ impl MoonyMcp {
     }
 
     #[tool(
-        description = "Create an other-asset holding (precious metals, art, collectibles, …) in Moony, optionally with an initial buy transaction.\n\nCall this only after presenting the parsed data to the user and receiving their confirmation.\nyieldType: none | percentage | fixed. Amounts are numeric strings; currency is a 3-letter ISO code (defaults to the user's main currency); dates are Unix timestamps (seconds). quantity and averagePurchasePrice are derived from transactions (via this call's initialTransaction or a later other_asset_transactions_create import) — any value passed for them is overwritten by the first import, so leave them unset."
+        description = "Create an other-asset holding (precious metals, art, collectibles, …) in Moony, optionally with an initial buy transaction.\n\nCall this only after presenting the parsed data to the user and receiving their confirmation.\nyieldType: none | fixed (yieldValue is a yearly amount in the asset currency) | percent_purchase (yearly % of the purchase cost) | percent_market (yearly % of the market value). Amounts are numeric strings; currency is a 3-letter ISO code (defaults to the user's main currency); dates are Unix timestamps (seconds). quantity and averagePurchasePrice are derived from transactions (via this call's initialTransaction or a later other_asset_transactions_create import) — any value passed for them is overwritten by the first import, so leave them unset."
     )]
     fn other_asset_create(
         &self,

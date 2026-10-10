@@ -18,6 +18,9 @@ import { ChartTip, FloatingTip } from '@/components/charts/ChartTip';
 import { AXIS_WIDTH } from '@/components/charts/ChartAxis';
 import { cn } from '@/lib/utils';
 
+/** Above Recharts' active dot (1200) and cursor line (1100), below labels (2000). */
+const MARK_Z_INDEX = 1300;
+
 export interface BandPoint {
   /** Position on the x axis (index, year, month number) — evenly spaced. */
   x: number;
@@ -180,6 +183,7 @@ export function MoonyBandChart({
                 stroke={tk.line}
                 strokeWidth={2}
                 ifOverflow="visible"
+                zIndex={MARK_Z_INDEX}
                 className="cursor-pointer"
                 onMouseEnter={(_props: unknown, e: unknown) => {
                   const target = (e as React.MouseEvent).currentTarget as SVGCircleElement | null;

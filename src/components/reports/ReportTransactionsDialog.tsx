@@ -11,8 +11,7 @@ import { useCategories } from '@/hooks/use-categories';
 import { cn } from '@/lib/utils';
 import { formatReportMoney } from '@/utils/report-currencies';
 import { rowFlowLabel } from '@/utils/money-flows';
-import { completeAccountIdentifier } from '@/utils/iban-utils';
-import { transactionDetails, transactionTitle } from '@/utils/transaction-text';
+import { counterpartyLabel, transactionDetails } from '@/utils/transaction-text';
 import { isMovedOut, movedCount } from '@/utils/report-drilldown';
 import { CategorySelector } from '@/components/bank-accounts/CategorySelector';
 import {
@@ -155,19 +154,16 @@ function ReportTransactionsDialogContent({
                   const category = categoryOf(tx);
                   const isMoved = changes.has(tx.id) && isMovedOut(target?.categoryId, category);
                   const note = isMoved ? t('readiness.moved') : flowNote(tx, credit);
-                  const title = transactionTitle(tx);
-                  const accountNumber = completeAccountIdentifier(
-                    tx.counterpartyIban,
-                    null,
-                    tx.counterpartyBankCode
-                  );
+                  const counterparty = counterpartyLabel(tx);
                   return (
                     <TableRow key={tx.id} className={cn(isMoved && 'opacity-50')}>
                       <TableCell className="whitespace-nowrap">{fmt.day(tx.bookingDate)}</TableCell>
                       <TableCell>
-                        {title ?? '—'}
-                        {accountNumber && (
-                          <small className="block text-micro text-ink-4 num">{accountNumber}</small>
+                        {counterparty.title ?? <span className="text-ink-4">—</span>}
+                        {counterparty.subtitle && (
+                          <small className="block text-micro text-ink-4 num">
+                            {counterparty.subtitle}
+                          </small>
                         )}
                       </TableCell>
                       <TableCell>
@@ -188,7 +184,7 @@ function ReportTransactionsDialogContent({
                           isCredit={credit}
                           categories={categories}
                           onCategoryChange={(categoryId) => changeCategory(tx, categoryId)}
-                          rowLabel={title ?? undefined}
+                          rowLabel={tx.description || tx.counterpartyName || undefined}
                           compact
                         />
                       </TableCell>

@@ -679,7 +679,7 @@ CREATE TABLE institutions(id TEXT,country TEXT);
 CREATE TABLE bank_accounts(id TEXT,name TEXT,currency TEXT,iban TEXT,bban TEXT,institution_id TEXT,balance TEXT DEFAULT '0',interest_rate TEXT DEFAULT '0',has_zone_designation INTEGER DEFAULT 0,account_type TEXT DEFAULT 'checking',exclude_from_balance INTEGER DEFAULT 0);
 CREATE TABLE transaction_categories(id TEXT,name TEXT,kind TEXT,icon TEXT,color TEXT);
 INSERT INTO transaction_categories VALUES ('cat_groceries','Groceries','expense',NULL,NULL);
-CREATE TABLE bank_transactions(id TEXT,bank_account_id TEXT,tx_type TEXT,amount TEXT,currency TEXT,booking_date INTEGER,category_id TEXT,status TEXT DEFAULT 'booked',description TEXT,counterparty_name TEXT,counterparty_iban TEXT,counterparty_bank_code TEXT,counterparty_country TEXT,flow_kind TEXT);
+CREATE TABLE bank_transactions(id TEXT,bank_account_id TEXT,tx_type TEXT,amount TEXT,currency TEXT,booking_date INTEGER,category_id TEXT,status TEXT DEFAULT 'booked',description TEXT,counterparty_name TEXT,counterparty_iban TEXT,counterparty_bank_code TEXT,counterparty_country TEXT,flow_kind TEXT,remittance_info TEXT);
 CREATE TABLE exchange_rate_history(date INTEGER,currency TEXT,rate REAL,PRIMARY KEY(date,currency));
 CREATE TABLE budget_goals(id TEXT PRIMARY KEY,category_id TEXT,timeframe TEXT,amount TEXT,currency TEXT,created_at INTEGER,updated_at INTEGER,UNIQUE(category_id,timeframe));
 CREATE TABLE budget_goal_versions(id TEXT PRIMARY KEY,category_id TEXT,timeframe TEXT,effective_month INTEGER,amount TEXT,currency TEXT,created_at INTEGER,UNIQUE(category_id,timeframe,effective_month));

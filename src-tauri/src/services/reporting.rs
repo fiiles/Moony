@@ -153,7 +153,7 @@ pub fn transactions_in_currency(
 ) -> Result<Vec<ReportTransaction>> {
     let report_currency = normalize_currency(report_currency)?;
     let own = AccountIdentities::load(conn)?;
-    let mut stmt=conn.prepare("SELECT bt.id,bt.booking_date,bt.amount,bt.currency,bt.description,bt.counterparty_name,bt.counterparty_iban,bt.category_id,bt.bank_account_id,ba.name,bt.tx_type,bt.flow_kind,tc.kind,bt.counterparty_bank_code,bt.counterparty_country FROM bank_transactions bt JOIN bank_accounts ba ON ba.id=bt.bank_account_id LEFT JOIN transaction_categories tc ON tc.id=bt.category_id WHERE bt.booking_date>=?1 AND bt.booking_date<=?2 AND bt.status='booked' ORDER BY bt.booking_date DESC,bt.id")?;
+    let mut stmt=conn.prepare("SELECT bt.id,bt.booking_date,bt.amount,bt.currency,bt.description,bt.counterparty_name,bt.counterparty_iban,bt.category_id,bt.bank_account_id,ba.name,bt.tx_type,bt.flow_kind,tc.kind,bt.counterparty_bank_code,bt.counterparty_country,bt.remittance_info FROM bank_transactions bt JOIN bank_accounts ba ON ba.id=bt.bank_account_id LEFT JOIN transaction_categories tc ON tc.id=bt.category_id WHERE bt.booking_date>=?1 AND bt.booking_date<=?2 AND bt.status='booked' ORDER BY bt.booking_date DESC,bt.id")?;
     let rows = stmt.query_map(params![start, end], |r| {
         Ok((
             ReportTransaction {
@@ -162,6 +162,7 @@ pub fn transactions_in_currency(
                 amount: r.get(2)?,
                 currency: r.get(3)?,
                 description: r.get(4)?,
+                remittance_info: r.get(15)?,
                 counterparty_name: r.get(5)?,
                 counterparty_iban: r.get(6)?,
                 counterparty_bank_code: r.get(13)?,
@@ -303,7 +304,7 @@ mod tests {
         let conn = Connection::open_in_memory().unwrap();
         conn.execute_batch("CREATE TABLE bank_accounts(id TEXT,name TEXT,iban TEXT,bban TEXT,institution_id TEXT); CREATE TABLE institutions(id TEXT,country TEXT);
   CREATE TABLE transaction_categories(id TEXT,name TEXT,kind TEXT);
-  CREATE TABLE bank_transactions(id TEXT,booking_date INTEGER,amount TEXT,currency TEXT,description TEXT,counterparty_name TEXT,counterparty_iban TEXT, counterparty_bank_code TEXT, counterparty_country TEXT, import_line INTEGER, row_balance TEXT,category_id TEXT,bank_account_id TEXT,tx_type TEXT,flow_kind TEXT,status TEXT);
+  CREATE TABLE bank_transactions(id TEXT,booking_date INTEGER,amount TEXT,currency TEXT,description TEXT,remittance_info TEXT,counterparty_name TEXT,counterparty_iban TEXT, counterparty_bank_code TEXT, counterparty_country TEXT, import_line INTEGER, row_balance TEXT,category_id TEXT,bank_account_id TEXT,tx_type TEXT,flow_kind TEXT,status TEXT);
   CREATE TABLE exchange_rate_history(date INTEGER,currency TEXT,rate REAL);
   INSERT INTO bank_accounts(id,name,iban,bban) VALUES ('a','Main',NULL,NULL),('b','Excluded savings','CZ6508000000192000145399',NULL);
   INSERT INTO transaction_categories VALUES ('custom','Salary','income');
@@ -431,6 +432,19 @@ mod tests {
         conn.execute("UPDATE bank_transactions SET flow_kind='expense',counterparty_country='CZ' WHERE id='own'",[]).unwrap();
         let a = effective_flows(&conn, &["own".into()]).unwrap();
         assert_eq!(a[0].effective_flow_kind, FlowKind::Expense);
+    }
+
+    #[test]
+    fn rows_carry_the_remittance_info_for_drilldowns() {
+        let conn = db();
+        conn.execute(
+            "UPDATE bank_transactions SET remittance_info='Faktura 42' WHERE id='own'",
+            [],
+        )
+        .unwrap();
+        let rows = transactions(&conn, 0, i64::MAX, None).unwrap();
+        let own = rows.iter().find(|r| r.id == "own").unwrap();
+        assert_eq!(own.remittance_info.as_deref(), Some("Faktura 42"));
     }
 
     #[test]

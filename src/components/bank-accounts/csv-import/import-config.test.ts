@@ -279,12 +279,10 @@ describe('date format helpers', () => {
 describe('summarizePreview', () => {
   const row = (line: number, status: CsvPreviewRow['status']): CsvPreviewRow => ({
     line,
-    valueDate: null,
     counterpartyIban: null,
     counterpartyBankCode: null,
     counterpartyCountry: null,
     transactionId: null,
-    transactionStatus: 'booked',
     rowBalance: null,
     canImportAnyway: status === 'duplicate',
     bookingDate: 1_700_000_000,
@@ -666,10 +664,11 @@ it('keeps structured identifier and value-date mapping in the import config', ()
   };
   const config = buildImportConfig(mappingFromInspection(inspection), inspection, 0);
   expect(config).toMatchObject({
-    valueDateColumn: 'Value',
     counterpartyBankCodeColumn: 'Kód banky',
     counterpartyCountryColumn: 'Country',
   });
+  // The value date is still detected (so it is not taken for the date) but never imported.
+  expect(config).not.toHaveProperty('valueDateColumn');
 });
 
 it('round-trips manually mapped advanced columns and clears them back to null', () => {
@@ -683,31 +682,19 @@ it('round-trips manually mapped advanced columns and clears them back to null', 
     ...EMPTY_MAPPING,
     dateColumn: 'Date',
     amountColumn: 'Amount',
-    valueDateColumn: 'Valuta',
-    statusColumn: 'State',
-    pendingDateColumn: 'Started',
     counterpartyBankCodeColumn: 'Kód banky protiúčtu',
     counterpartyCountryColumn: 'Země',
   };
   expect(buildImportConfig(manual, ins, 0)).toMatchObject({
-    valueDateColumn: 'Valuta',
-    statusColumn: 'State',
-    pendingDateColumn: 'Started',
     counterpartyBankCodeColumn: 'Kód banky protiúčtu',
     counterpartyCountryColumn: 'Země',
   });
   const cleared = {
     ...manual,
-    valueDateColumn: '',
-    statusColumn: '',
-    pendingDateColumn: '',
     counterpartyBankCodeColumn: '',
     counterpartyCountryColumn: '',
   };
   expect(buildImportConfig(cleared, ins, 0)).toMatchObject({
-    valueDateColumn: null,
-    statusColumn: null,
-    pendingDateColumn: null,
     counterpartyBankCodeColumn: null,
     counterpartyCountryColumn: null,
   });

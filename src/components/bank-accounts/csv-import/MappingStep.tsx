@@ -106,7 +106,8 @@ interface MappingStepProps {
 /**
  * Step 2 (prototype csv-import.html): the file bar, then two columns — the
  * required columns and the format on the left, the optional columns on the
- * right — with the detection's confidence next to each label.
+ * right — with the detection's confidence next to each label, and the raw
+ * file rows across the full width below.
  */
 export function MappingStep({
   dateConfirmed,
@@ -409,16 +410,6 @@ export function MappingStep({
             <p className="mb-3 text-micro text-ink-4">{t('readiness.advancedColumnsHelp')}</p>
             <div className="space-y-4">
               <ColumnSelect
-                id="csv-value-date-column"
-                label={t('readiness.valueDateColumn')}
-                optional
-                value={mapping.valueDateColumn}
-                headers={headers}
-                onChange={(valueDateColumn) => onMappingChange({ valueDateColumn })}
-                confidence={confidence('valueDate')}
-                hint={t('readiness.valueDateHint')}
-              />
-              <ColumnSelect
                 id="csv-bank-code-column"
                 label={t('readiness.bankCodeColumn')}
                 optional
@@ -442,26 +433,6 @@ export function MappingStep({
                 confidence={confidence('counterpartyCountry')}
                 hint={t('readiness.countryHint')}
               />
-              <ColumnSelect
-                id="csv-status-column"
-                label={t('readiness.statusColumn')}
-                optional
-                value={mapping.statusColumn}
-                headers={headers}
-                onChange={(statusColumn) => onMappingChange({ statusColumn })}
-                confidence={confidence('status')}
-                hint={t('readiness.statusHint')}
-              />
-              <ColumnSelect
-                id="csv-pending-date-column"
-                label={t('readiness.pendingDateColumn')}
-                optional
-                value={mapping.pendingDateColumn}
-                headers={headers}
-                onChange={(pendingDateColumn) => onMappingChange({ pendingDateColumn })}
-                confidence={confidence('pendingDate')}
-                hint={t('readiness.pendingDateHint')}
-              />
             </div>
           </div>
           {rowFilter && (
@@ -482,8 +453,11 @@ export function MappingStep({
               </span>
             </label>
           )}
-          <RawDataPreview inspection={inspection} />
         </div>
+      </div>
+
+      <div className="mt-5">
+        <RawDataPreview inspection={inspection} />
       </div>
     </div>
   );

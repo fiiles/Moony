@@ -62,12 +62,6 @@ pub struct CsvPreset {
     pub encoding: String,
     #[serde(rename = "dateColumn")]
     pub date_column: String,
-    #[serde(rename = "valueDateColumn", default)]
-    pub value_date_column: Option<String>,
-    #[serde(rename = "statusColumn", default)]
-    pub status_column: Option<String>,
-    #[serde(rename = "pendingDateColumn", default)]
-    pub pending_date_column: Option<String>,
     /// chrono format of the date column (`%d.%m.%Y`, `%Y-%m-%d %H:%M:%S`).
     #[serde(rename = "dateFormat")]
     pub date_format: String,
@@ -306,9 +300,6 @@ pub struct ResolvedPreset {
     pub date: String,
     pub counterparty_country: Option<String>,
     pub counterparty_bank_code: Option<String>,
-    pub value_date: Option<String>,
-    pub status: Option<String>,
-    pub pending_date: Option<String>,
     pub amount: Option<String>,
     pub debit: Option<String>,
     pub credit: Option<String>,
@@ -351,9 +342,6 @@ pub fn resolve_preset(preset: &CsvPreset, headers: &[String]) -> Option<Resolved
         date,
         counterparty_country: resolve_opt(&preset.counterparty_country_column),
         counterparty_bank_code: resolve_opt(&preset.counterparty_bank_code_column),
-        value_date: resolve_opt(&preset.value_date_column),
-        status: resolve_opt(&preset.status_column),
-        pending_date: resolve_opt(&preset.pending_date_column),
         amount,
         debit,
         credit,

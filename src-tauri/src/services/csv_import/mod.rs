@@ -127,7 +127,6 @@ pub fn preview_import(
         _ => None,
     }));
     let mut rows: Vec<CsvPreviewRow> = Vec::new();
-    let mut pending_categories: HashMap<String, Option<(String, Option<String>)>> = HashMap::new();
     let (mut ok_count, mut error_count, mut duplicate_count, mut skipped_count) = (0, 0, 0, 0);
     let mut categorized_count = 0usize;
     let mut forced_duplicate_count = 0usize;
@@ -142,12 +141,6 @@ pub fn preview_import(
                     .map(|(id, source)| (id, Some(source.to_string())));
                 match checker.check(insert) {
                     None => {
-                        if insert.status.as_deref() == Some("pending") {
-                            if let Some(id) = insert.transaction_id.as_ref() {
-                                pending_categories.insert(id.clone(), category.clone());
-                            }
-                        }
-                        checker.record_written(insert, "preview");
                         ok_count += 1;
                         if category.is_some() {
                             categorized_count += 1;
@@ -156,17 +149,8 @@ pub fn preview_import(
                         (CsvRowStatus::Ok, None)
                     }
                     Some(dedup::BankOccurrence::Promote(id)) => {
-                        category = if id == "preview" {
-                            insert
-                                .transaction_id
-                                .as_ref()
-                                .and_then(|id| pending_categories.get(id))
-                                .cloned()
-                                .flatten()
-                        } else {
-                            let (category_id, source): (Option<String>,Option<String>)=conn.query_row("SELECT category_id,categorization_source FROM bank_transactions WHERE id=?1",[id],|r|Ok((r.get(0)?,r.get(1)?)))?;
-                            category_id.map(|id| (id, source))
-                        };
+                        let (category_id, source): (Option<String>,Option<String>)=conn.query_row("SELECT category_id,categorization_source FROM bank_transactions WHERE id=?1",[id],|r|Ok((r.get(0)?,r.get(1)?)))?;
+                        category = category_id.map(|id| (id, source));
                         promoted_count += 1;
                         extend_range(&mut date_range, insert.booking_date);
                         (
@@ -189,12 +173,6 @@ pub fn preview_import(
                             && (!config.skip_duplicates
                                 || config.import_anyway_lines.contains(&row.line))
                         {
-                            if insert.status.as_deref() == Some("pending") {
-                                if let Some(id) = insert.transaction_id.as_ref() {
-                                    pending_categories.insert(id.clone(), category.clone());
-                                }
-                            }
-                            checker.record_written(insert, "preview");
                             forced_duplicate_count += 1;
                             if category.is_some() {
                                 categorized_count += 1;
@@ -227,12 +205,10 @@ pub fn preview_import(
                     .as_ref()
                     .is_some_and(|m| m.key == "csvImport.duplicate");
             rows.push(CsvPreviewRow {
-                value_date: candidate.and_then(|t| t.value_date),
                 counterparty_iban: candidate.and_then(|t| t.counterparty_iban.clone()),
                 counterparty_bank_code: candidate.and_then(|t| t.counterparty_bank_code.clone()),
                 counterparty_country: candidate.and_then(|t| t.counterparty_country.clone()),
                 transaction_id: candidate.and_then(|t| t.transaction_id.clone()),
-                transaction_status: row.transaction_status.clone(),
                 row_balance: row.balance.map(|b| b.to_string()),
                 can_import_anyway,
 
@@ -352,14 +328,12 @@ fn last_balance(rows: &[ParsedRow]) -> Option<String> {
 }
 
 /// Newest booking day; descending statements select the first row on that day,
-/// ascending statements select the last. Pending rows (including zeros) never
-/// provide a booked statement balance.
+/// ascending statements select the last.
 fn statement_balance_row(rows: &[ParsedRow]) -> Option<&ParsedRow> {
     let dated: Vec<_> = rows
         .iter()
         .filter(|r| {
             r.booking_date.is_some()
-                && r.transaction_status.as_deref() != Some("pending")
                 && matches!(r.state, RowState::Candidate(_) | RowState::SkippedZero(_))
         })
         .collect();

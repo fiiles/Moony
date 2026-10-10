@@ -655,7 +655,7 @@ mod tests {
                 description TEXT,
                 counterparty_name TEXT,
                 category_id TEXT,
-                tx_type TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'booked', flow_kind TEXT, counterparty_iban TEXT, counterparty_bank_code TEXT, counterparty_country TEXT
+                tx_type TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'booked', flow_kind TEXT, counterparty_iban TEXT, counterparty_bank_code TEXT, counterparty_country TEXT, remittance_info TEXT
             );
 
             CREATE TABLE budget_goals (

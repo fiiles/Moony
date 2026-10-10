@@ -35,6 +35,10 @@ interface AddCashflowItemDialogProps {
   itemType: 'income' | 'expense';
   categories?: CashflowCategory[];
   isLoading?: boolean;
+  /** Category preselected when the dialog opens for a new item (from a group row). */
+  presetCategory?: string;
+  /** Automatic source preselected in "Automatický zdroj k nahrazení" (from an automatic row). */
+  presetReplacementSourceId?: string | null;
 }
 
 export default function AddCashflowItemDialog({
@@ -47,6 +51,8 @@ export default function AddCashflowItemDialog({
   categories,
   automaticSources = [],
   isLoading,
+  presetCategory,
+  presetReplacementSourceId = null,
 }: AddCashflowItemDialogProps) {
   const { t } = useTranslation('reports');
   const { t: tc } = useTranslation('common');
@@ -75,18 +81,26 @@ export default function AddCashflowItemDialog({
         setFrequency(editItem.originalFrequency);
         setSelectedCategory(editCategory || '');
       } else {
-        setReplacementSourceId('none');
+        setReplacementSourceId(presetReplacementSourceId ?? 'none');
         setName('');
         setAmount('');
         setCurrency(userCurrency);
         setFrequency('monthly');
-        // Default to first category
-        if (availableCategories.length > 0) {
-          setSelectedCategory(availableCategories[0].key);
-        }
+        // The group row's category, else the first one
+        const preset = availableCategories.find((c) => c.key === presetCategory);
+        if (preset) setSelectedCategory(preset.key);
+        else if (availableCategories.length > 0) setSelectedCategory(availableCategories[0].key);
       }
     }
-  }, [open, editItem, editCategory, availableCategories, userCurrency]);
+  }, [
+    open,
+    editItem,
+    editCategory,
+    availableCategories,
+    userCurrency,
+    presetCategory,
+    presetReplacementSourceId,
+  ]);
 
   // Update selected category when categories change (for new items)
   useEffect(() => {

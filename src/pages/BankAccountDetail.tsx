@@ -50,6 +50,7 @@ import {
 } from '@/hooks/use-bank-account-mutations';
 import type { CategorizationResult } from '@shared/schema';
 import { useCategoryName } from '@/hooks/use-categories';
+import { transactionDetails, transactionTitle } from '@/utils/transaction-text';
 import { useCurrency } from '@/lib/currency';
 import { useLanguage } from '@/i18n/I18nProvider';
 import { useFormat } from '@/lib/use-format';
@@ -1284,10 +1285,14 @@ export default function BankAccountDetail() {
                   if (showGroup) lastGroup = group;
                   const credit = tx.type === 'credit';
                   const amount = Math.abs(parseFloat(tx.amount) || 0);
-                  const title = tx.counterpartyName || tx.description || t('table.movement');
+                  const title = transactionTitle(tx) ?? t('table.movement');
+                  const accountNumber = completeAccountIdentifier(
+                    tx.counterpartyIban,
+                    null,
+                    tx.counterpartyBankCode
+                  );
                   const detail = [
-                    tx.counterpartyName ? tx.description : null,
-                    completeAccountIdentifier(tx.counterpartyIban, null, tx.counterpartyBankCode),
+                    ...transactionDetails(tx),
                     !grouped ? fmt.day(tx.bookingDate) : null,
                   ]
                     .filter(Boolean)
@@ -1325,9 +1330,19 @@ export default function BankAccountDetail() {
                                 <Receipt className="size-3.5" strokeWidth={1.75} aria-hidden />
                               )}
                             </span>
-                            <b className="min-w-0 truncate text-table font-650" title={title}>
-                              {title}
-                            </b>
+                            <div className="min-w-0">
+                              <b className="block truncate text-table font-650" title={title}>
+                                {title}
+                              </b>
+                              {accountNumber && (
+                                <small
+                                  className="block truncate text-micro font-500 text-ink-4 num"
+                                  title={accountNumber}
+                                >
+                                  {accountNumber}
+                                </small>
+                              )}
+                            </div>
                             {tx.status === 'pending' && (
                               <Badge className="shrink-0">{t('readiness.pending')}</Badge>
                             )}

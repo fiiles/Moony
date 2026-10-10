@@ -513,7 +513,6 @@
     "drilldownUnits": "Native movement and report contribution in {{currency}}",
     "loading": "Loading…",
     "date": "Date",
-    "description": "Description",
     "native": "Native movement",
     "contribution": "Report contribution ({{currency}})",
     "fxUnavailable": "FX unavailable",

@@ -52,6 +52,8 @@ pub struct ReportTransaction {
     pub amount: String,
     pub currency: String,
     pub description: Option<String>,
+    #[serde(rename = "remittanceInfo")]
+    pub remittance_info: Option<String>,
     #[serde(rename = "counterpartyName")]
     pub counterparty_name: Option<String>,
     #[serde(rename = "counterpartyIban")]

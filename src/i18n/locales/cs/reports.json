@@ -530,7 +530,6 @@
     "drilldownUnits": "Původní pohyb a příspěvek do přehledu v {{currency}}",
     "loading": "Načítání…",
     "date": "Datum",
-    "description": "Popis",
     "native": "Původní pohyb",
     "contribution": "Příspěvek do přehledu ({{currency}})",
     "fxUnavailable": "Kurz není k dispozici",

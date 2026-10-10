@@ -1090,7 +1090,7 @@ export type ReportQuality = { missingFxCount: number; missingFxCurrencies: strin
  */
 invalidAmountCount: number }
 
-export type ReportTransaction = { reportCurrency: string; id: string; bookingDate: number; amount: string; currency: string; description: string | null; counterpartyName: string | null; counterpartyIban: string | null; counterpartyBankCode: string | null; counterpartyCountry: string | null; categoryId: string | null; bankAccountId: string; bankAccountName: string; txType: string; effectiveFlowKind: FlowKind; flowSource: FlowSource; signedAmount: string | null; fxQuality: FxQuality }
+export type ReportTransaction = { reportCurrency: string; id: string; bookingDate: number; amount: string; currency: string; description: string | null; remittanceInfo: string | null; counterpartyName: string | null; counterpartyIban: string | null; counterpartyBankCode: string | null; counterpartyCountry: string | null; categoryId: string | null; bankAccountId: string; bankAccountName: string; txType: string; effectiveFlowKind: FlowKind; flowSource: FlowSource; signedAmount: string | null; fxQuality: FxQuality }
 
 /**
  * How often one rule matched in the period (TS `RuleHitCount`).

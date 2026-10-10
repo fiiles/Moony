@@ -11,6 +11,8 @@ import { useCategories } from '@/hooks/use-categories';
 import { cn } from '@/lib/utils';
 import { formatReportMoney } from '@/utils/report-currencies';
 import { rowFlowLabel } from '@/utils/money-flows';
+import { completeAccountIdentifier } from '@/utils/iban-utils';
+import { transactionDetails, transactionTitle } from '@/utils/transaction-text';
 import { isMovedOut, movedCount } from '@/utils/report-drilldown';
 import { CategorySelector } from '@/components/bank-accounts/CategorySelector';
 import {
@@ -120,7 +122,7 @@ function ReportTransactionsDialogContent({
 
   return (
     <Dialog open={!!target} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-[880px]">
+      <DialogContent className="max-w-[1040px]">
         <DialogHeader>
           <DialogTitle>{target?.name}</DialogTitle>
           <DialogDescription>
@@ -138,7 +140,8 @@ function ReportTransactionsDialogContent({
               <TableHeader>
                 <TableRow>
                   <TableHead>{t('readiness.date')}</TableHead>
-                  <TableHead>{t('readiness.description')}</TableHead>
+                  <TableHead>{tBank('transaction.counterparty')}</TableHead>
+                  <TableHead>{tBank('transaction.detail')}</TableHead>
                   <TableHead>{t('readiness.category')}</TableHead>
                   <TableHead className="text-right">{t('readiness.native')}</TableHead>
                   <TableHead className="text-right">
@@ -152,11 +155,23 @@ function ReportTransactionsDialogContent({
                   const category = categoryOf(tx);
                   const isMoved = changes.has(tx.id) && isMovedOut(target?.categoryId, category);
                   const note = isMoved ? t('readiness.moved') : flowNote(tx, credit);
+                  const title = transactionTitle(tx);
+                  const accountNumber = completeAccountIdentifier(
+                    tx.counterpartyIban,
+                    null,
+                    tx.counterpartyBankCode
+                  );
                   return (
                     <TableRow key={tx.id} className={cn(isMoved && 'opacity-50')}>
                       <TableCell className="whitespace-nowrap">{fmt.day(tx.bookingDate)}</TableCell>
                       <TableCell>
-                        {tx.description || tx.counterpartyName || '—'}
+                        {title ?? '—'}
+                        {accountNumber && (
+                          <small className="block text-micro text-ink-4 num">{accountNumber}</small>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {transactionDetails(tx).join(' · ') || '—'}
                         <small className="block text-micro text-ink-4">
                           {tx.bankAccountName}
                           {note && ` · ${note}`}
@@ -173,7 +188,7 @@ function ReportTransactionsDialogContent({
                           isCredit={credit}
                           categories={categories}
                           onCategoryChange={(categoryId) => changeCategory(tx, categoryId)}
-                          rowLabel={tx.description || tx.counterpartyName || undefined}
+                          rowLabel={title ?? undefined}
                           compact
                         />
                       </TableCell>

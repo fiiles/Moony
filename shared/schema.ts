@@ -1958,6 +1958,7 @@ export interface BudgetingTransaction {
   amount: string;
   currency: string;
   description: string | null;
+  remittanceInfo: string | null;
   counterpartyName: string | null;
   counterpartyIban: string | null;
   counterpartyBankCode: string | null;

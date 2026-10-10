@@ -227,6 +227,9 @@
       "description_one": "Pravidlo pro „{{payee}}“ ({{account}} · {{direction}}) nově zařazuje jako {{category}}. Zasáhne {{count}} další platbu: {{breakdown}}.",
       "description_few": "Pravidlo pro „{{payee}}“ ({{account}} · {{direction}}) nově zařazuje jako {{category}}. Zasáhne {{count}} další platby: {{breakdown}}.",
       "description_other": "Pravidlo pro „{{payee}}“ ({{account}} · {{direction}}) nově zařazuje jako {{category}}. Zasáhne {{count}} dalších plateb: {{breakdown}}.",
+      "descriptionLegacy_one": "Pravidlo pro „{{payee}}“ (všechny účty a směry) nově zařazuje jako {{category}}. Zasáhne {{count}} další platbu: {{breakdown}}.",
+      "descriptionLegacy_few": "Pravidlo pro „{{payee}}“ (všechny účty a směry) nově zařazuje jako {{category}}. Zasáhne {{count}} další platby: {{breakdown}}.",
+      "descriptionLegacy_other": "Pravidlo pro „{{payee}}“ (všechny účty a směry) nově zařazuje jako {{category}}. Zasáhne {{count}} dalších plateb: {{breakdown}}.",
       "onlyNew": "Jen nové platby",
       "apply_one": "Zařadit {{count}} platbu",
       "apply_few": "Zařadit {{count}} platby",
@@ -237,7 +240,9 @@
       "undo": "Vrátit zpět",
       "restored": "Změněné platby vráceny ({{count}})",
       "uncategorized": "bez kategorie",
-      "more": "+{{count}} dalších"
+      "more_one": "+{{count}} další",
+      "more_few": "+{{count}} další",
+      "more_other": "+{{count}} dalších"
     }
   },
   "packTab": {

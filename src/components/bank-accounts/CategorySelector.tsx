@@ -649,7 +649,7 @@ function CategoryCommandList({
                   {onEditRule && (
                     <button
                       type="button"
-                      className="justify-self-start text-[10px] font-650 text-ink-2 hover:underline"
+                      className="justify-self-start text-micro font-650 text-ink-2 hover:underline"
                       onClick={() => onEditRule(governingRule.id)}
                     >
                       {t('categorization.editRule')}
@@ -660,10 +660,15 @@ function CategoryCommandList({
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-start gap-2">
                   <Brain className="mt-px h-3.5 w-3.5 shrink-0 text-ink-3" />
-                  <Label htmlFor="remember-toggle" className="cursor-pointer text-xs text-ink-3">
-                    {governingRule
-                      ? t('categorization.retargetRule')
-                      : t('categorization.rememberForFuture')}
+                  <Label
+                    htmlFor="remember-toggle"
+                    className="cursor-pointer flex-col items-start justify-start gap-0.5 text-xs leading-snug text-ink-3"
+                  >
+                    <span>
+                      {governingRule
+                        ? t('categorization.retargetRule')
+                        : t('categorization.rememberForFuture')}
+                    </span>
                     <small className="block font-400">
                       {governingRule ? t('categorization.retargetRuleScope') : scopeLabel}
                     </small>
@@ -677,7 +682,7 @@ function CategoryCommandList({
                 />
               </div>
               {rememberForFuture && previewLoading && (
-                <p className="m-0 text-[10px] text-ink-4" aria-live="polite">
+                <p className="m-0 text-micro font-500 text-ink-4" aria-live="polite">
                   {t('categorization.historyChecking')}
                 </p>
               )}
@@ -692,7 +697,7 @@ function CategoryCommandList({
                     <b className="block font-600">
                       {t('categorization.applyHistory', { count: preview.matches })}
                     </b>
-                    <small className="block text-[10px] text-ink-4">
+                    <small className="block text-micro font-500 text-ink-4">
                       {formatBreakdown(
                         preview.byCategory,
                         (id) => categoryNameById(id, categories, categoryName),

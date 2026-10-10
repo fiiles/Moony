@@ -40,7 +40,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input, InputWrap } from '@/components/ui/input';
@@ -302,29 +302,34 @@ export default function CategorizationRules() {
       const count = changedByPick(preview, categoryId);
       if (count === 0) return;
       const rule = learnedRules.find((r) => r.id === id);
+      const options = {
+        count,
+        // The text the user knows the payee by comes first.
+        payee:
+          rule?.originalPayee ||
+          rule?.normalizedPayee ||
+          formatIbanDisplay(rule?.counterpartyIban ?? null) ||
+          '—',
+        account: accounts.find((a) => a.id === rule?.bankAccountId)?.name ?? '—',
+        direction: t(rule?.isCredit ? 'incoming' : 'outgoing').toLowerCase(),
+        category: nameOf(categoryId),
+        // Only the payments that would change: the new category's own bucket is left out.
+        breakdown: formatBreakdown(
+          preview.byCategory.filter((b) => b.categoryId !== categoryId),
+          nameOf,
+          {
+            uncategorized: t('learnedTab.history.uncategorized'),
+            more: (n) => t('learnedTab.history.more', { count: n }),
+          }
+        ),
+      };
       setPendingHistory({
         id,
         count,
-        description: t('learnedTab.history.description', {
-          count,
-          payee:
-            rule?.normalizedPayee ||
-            rule?.originalPayee ||
-            formatIbanDisplay(rule?.counterpartyIban ?? null) ||
-            '—',
-          account: accounts.find((a) => a.id === rule?.bankAccountId)?.name ?? '—',
-          direction: t(rule?.isCredit ? 'incoming' : 'outgoing').toLowerCase(),
-          category: nameOf(categoryId),
-          // Only the payments that would change: the new category's own bucket is left out.
-          breakdown: formatBreakdown(
-            preview.byCategory.filter((b) => b.categoryId !== categoryId),
-            nameOf,
-            {
-              uncategorized: t('learnedTab.history.uncategorized'),
-              more: (n) => t('learnedTab.history.more', { count: n }),
-            }
-          ),
-        }),
+        // A legacy broad rule belongs to no account and no direction.
+        description: rule?.bankAccountId
+          ? t('learnedTab.history.description', options)
+          : t('learnedTab.history.descriptionLegacy', options),
       });
     },
     onError,
@@ -974,6 +979,7 @@ export default function CategorizationRules() {
               {t('learnedTab.history.onlyNew')}
             </AlertDialogCancel>
             <AlertDialogAction
+              className={buttonVariants({ variant: 'default' })}
               onClick={(e) => {
                 e.preventDefault();
                 if (pendingHistory) applyHistory.mutate(pendingHistory.id);

@@ -3,12 +3,12 @@ import type { CategoryCount } from '@shared/schema';
 interface BreakdownLabels {
   /** Label of the bucket without a category ("bez kategorie"). */
   uncategorized: string;
-  /** Label for the folded tail ("+2 dalších"). */
+  /** Label for the folded tail ("+2 další"). */
   more: (count: number) => string;
 }
 
 /**
- * "12× Stravování · 2× bez kategorie · +1 dalších": the `max` largest buckets of a
+ * "12× Stravování · 2× bez kategorie · +1 další": the `max` largest buckets of a
  * recategorization preview, the rest folded into one count.
  */
 export function formatBreakdown(

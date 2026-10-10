@@ -222,6 +222,8 @@
       "title": "Also categorize other payments?",
       "description_one": "The rule for \"{{payee}}\" ({{account}} · {{direction}}) now assigns {{category}}. It covers {{count}} other payment: {{breakdown}}.",
       "description_other": "The rule for \"{{payee}}\" ({{account}} · {{direction}}) now assigns {{category}}. It covers {{count}} other payments: {{breakdown}}.",
+      "descriptionLegacy_one": "The rule for \"{{payee}}\" (all accounts and directions) now assigns {{category}}. It covers {{count}} other payment: {{breakdown}}.",
+      "descriptionLegacy_other": "The rule for \"{{payee}}\" (all accounts and directions) now assigns {{category}}. It covers {{count}} other payments: {{breakdown}}.",
       "onlyNew": "Only new payments",
       "apply_one": "Categorize {{count}} payment",
       "apply_other": "Categorize {{count}} payments",
@@ -230,7 +232,8 @@
       "undo": "Undo",
       "restored": "Changed payments restored ({{count}})",
       "uncategorized": "no category",
-      "more": "+{{count}} more"
+      "more_one": "+{{count}} more",
+      "more_other": "+{{count}} more"
     }
   },
   "packTab": {

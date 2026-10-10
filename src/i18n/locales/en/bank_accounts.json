@@ -704,6 +704,7 @@
   },
   "flows": {
     "netIn": "Net · {{month}}",
+    "net": "Net",
     "line_one": "{{credits}} in · {{debits}} out · {{count}} movement",
     "line_other": "{{credits}} in · {{debits}} out · {{count}} movements",
     "noMoves": "no movements",

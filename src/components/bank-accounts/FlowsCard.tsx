@@ -59,7 +59,8 @@ export function FlowsCard({
     b: f.expense,
     muted: win.selected !== null && f.month !== win.selected,
   }));
-  const net = selected ? selected.income - selected.expense : 0;
+  const hasRows = !!selected && selected.count > 0;
+  const net = selected && hasRows ? selected.income - selected.expense : 0;
 
   const arrows = (
     <div className="flex items-center gap-1">
@@ -96,12 +97,16 @@ export function FlowsCard({
       label={
         win.selected !== null
           ? t('flows.netIn', { month: monthName(win.selected) })
-          : t('flows.noMoves')
+          : t('flows.net')
       }
-      value={selected ? money(net, true) : '—'}
+      value={
+        <span className={net > 0 ? 'text-gain' : net < 0 ? 'text-loss' : undefined}>
+          {hasRows ? money(net, true) : '—'}
+        </span>
+      }
       tone={net > 0 ? 'gain' : net < 0 ? 'loss' : 'neutral'}
       deltaNote={
-        selected && selected.count > 0
+        selected && hasRows
           ? t('flows.line', {
               credits: money(selected.income, true),
               debits: money(-selected.expense, true),

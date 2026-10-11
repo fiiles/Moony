@@ -356,6 +356,7 @@
       "saved": "Tagi przypisane"
     },
     "groups": {
+      "none": "Bez podziału",
       "sector": "Sektor",
       "currency": "Waluta",
       "autoTitle": "Automatycznie z danych o akcji"
@@ -411,6 +412,7 @@
       "bestWorst": "najlepsza i najgorsza",
       "bestWorstSelection": "najlepsza i najgorsza w wyborze",
       "onlyPart": "jedyna część wyboru",
+      "selectionNote": "wybrane pozycje",
       "noPart": "Nic z wyboru nie należy do: {{group}}",
       "aheadOfIndex": "przed {{index}} {{value}}",
       "behindIndex": "za {{index}} {{value}}",
@@ -450,8 +452,11 @@
       "captionMore": "Pozostałe są tylko w tabeli pod wykresem.",
       "captionEmpty": "Żadna wybrana pozycja nie ma tagu z grupy {{group}}. Linia przerywana: cały portfel.",
       "captionNoGroups": "Utwórz grupę tagów, aby zobaczyć wyniki jej części. Na razie tylko cały portfel.",
+      "captionNone": "Bez podziału: wykres pokazuje cały portfel.",
+      "captionNoneSelected": "Bez podziału: linia ciągła sumuje wybrane pozycje, linia przerywana to cały portfel.",
       "drawdown": "Spadek od szczytu",
       "tipDrawdown": "Spadek portfela {{value}}",
+      "maxDrawdown": "największy spadek {{value}}",
       "dragTip": "{{days}} dni · puść, aby ustawić okres",
       "portfolio": "Cały portfel",
       "today": "Dziś",
@@ -478,11 +483,13 @@
       "filterBy": "Filtruj: {{name}}",
       "noneTag": "Bez tagu",
       "noneSector": "Bez sektora",
+      "selection": "Wybór",
       "captionTags": "Każda pozycja ma w grupie najwyżej jeden tag, więc udziały dają 100 %, a wkłady sumują się do zwrotu portfela.",
       "captionSector": "Sektor z danych o akcji · ETF-y nie mają sektora i trafiają do wiersza Bez sektora.",
       "captionCurrency": "Zwroty w {{currency}} · pod każdą walutą zwrot w walucie pozycji i wpływ kursu.",
       "captionMore": "Wykres rysuje najwyżej cztery linie; pozostałe są tylko w tabeli.",
-      "captionSelection": "Wkłady dotyczą zwrotu całego portfela."
+      "captionSelection": "Wkłady dotyczą zwrotu całego portfela.",
+      "captionNone": "Bez podziału: wybór to jeden wiersz; jego wkład dotyczy zwrotu całego portfela."
     }
   },
   "planning": {

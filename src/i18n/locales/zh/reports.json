@@ -320,6 +320,7 @@
       "saved": "标签已分配"
     },
     "groups": {
+      "none": "不拆分",
       "sector": "板块",
       "currency": "货币",
       "autoTitle": "根据股票数据自动确定"
@@ -369,6 +370,7 @@
       "bestWorst": "最好与最差",
       "bestWorstSelection": "所选中最好与最差",
       "onlyPart": "所选中的唯一部分",
+      "selectionNote": "所选持仓",
       "noPart": "所选持仓中没有属于 {{group}} 的",
       "aheadOfIndex": "领先 {{index}}（{{value}}）",
       "behindIndex": "落后 {{index}}（{{value}}）",
@@ -405,8 +407,11 @@
       "captionMore": "其余的只显示在图表下方的表格中。",
       "captionEmpty": "所选持仓中没有带有标签组“{{group}}”标签的。虚线：整个投资组合。",
       "captionNoGroups": "创建标签组，即可查看各部分的表现。目前仅显示整个投资组合。",
+      "captionNone": "不拆分：图表显示整个投资组合。",
+      "captionNoneSelected": "不拆分：实线汇总所选持仓，虚线是整个投资组合。",
       "drawdown": "自高点回撤",
       "tipDrawdown": "投资组合回撤 {{value}}",
+      "maxDrawdown": "最大回撤 {{value}}",
       "dragTip": "{{days}} 天 · 松开即可设定时期",
       "portfolio": "整个投资组合",
       "today": "今天",
@@ -430,11 +435,13 @@
       "filterBy": "筛选：{{name}}",
       "noneTag": "无标签",
       "noneSector": "无板块",
+      "selection": "所选",
       "captionTags": "每个持仓在标签组中最多有一个标签，因此占比合计为 100%，各项贡献相加即为投资组合收益率。",
       "captionSector": "板块来自股票数据 · ETF 没有板块，归入“无板块”一行。",
       "captionCurrency": "收益以 {{currency}} 计 · 每种货币下方是该持仓本币收益率和汇率影响。",
       "captionMore": "图表最多绘制四条线，其余只显示在表格中。",
-      "captionSelection": "贡献是针对整个投资组合收益率的。"
+      "captionSelection": "贡献是针对整个投资组合收益率的。",
+      "captionNone": "不拆分：所选部分为一行，其贡献是针对整个投资组合收益率的。"
     }
   },
   "planning": {

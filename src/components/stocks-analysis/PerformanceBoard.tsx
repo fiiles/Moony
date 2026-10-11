@@ -8,7 +8,7 @@ import { formatPoints, toneOf } from '@/utils/performance-format';
 import { fxEffect, type ModelRow } from './performance-model';
 
 /** The kind of split a board belongs to; it decides the caption. */
-export type BoardKind = 'tags' | 'sector' | 'currency' | null;
+export type BoardKind = 'none' | 'tags' | 'sector' | 'currency' | null;
 
 interface PerformanceBoardProps {
   rows: readonly ModelRow[];
@@ -44,7 +44,8 @@ const HATCH: CSSProperties = {
 };
 
 function Swatch({ row }: { row: ModelRow }) {
-  if (row.kind === 'portfolio') {
+  // The portfolio is dashed as a reference next to parts; on its own (`main`) it is solid
+  if (row.kind === 'portfolio' && !row.main) {
     return (
       <i
         aria-hidden
@@ -115,7 +116,8 @@ export function PerformanceBoard({
   const portfolioReturn = portfolio?.twr[point] ?? null;
 
   const subLine = (row: ModelRow): ReactNode => {
-    if (row.kind === 'portfolio') return t('stocksAnalysis.board.reference');
+    // On its own the portfolio is the main line, not a reference
+    if (row.kind === 'portfolio') return row.main ? null : t('stocksAnalysis.board.reference');
     if (row.kind === 'index') return t('stocksAnalysis.board.index');
     if (kind === 'currency' && row.currency !== null) {
       if (row.currency === currency) return t('stocksAnalysis.board.noFx');
@@ -181,9 +183,11 @@ export function PerformanceBoard({
               {row.name}
             </b>
           )}
-          <small className="mt-0.5 block truncate text-micro font-500 text-ink-4">
-            {subLine(row)}
-          </small>
+          {subLine(row) !== null && (
+            <small className="mt-0.5 block truncate text-micro font-500 text-ink-4">
+              {subLine(row)}
+            </small>
+          )}
         </span>
         <span
           role="cell"
@@ -244,12 +248,16 @@ export function PerformanceBoard({
   };
 
   const caption = [
+    kind === 'none' &&
+      filterActive &&
+      rows.some((row) => row.kind === 'part') &&
+      t('stocksAnalysis.board.captionNone'),
     kind === 'tags' && t('stocksAnalysis.board.captionTags'),
     kind === 'sector' && t('stocksAnalysis.board.captionSector'),
     kind === 'currency' && t('stocksAnalysis.board.captionCurrency', { currency }),
     rows.some((row) => row.kind === 'part' && !row.drawn && !row.isNone) &&
       t('stocksAnalysis.board.captionMore'),
-    kind !== null && filterActive && t('stocksAnalysis.board.captionSelection'),
+    kind !== null && kind !== 'none' && filterActive && t('stocksAnalysis.board.captionSelection'),
   ]
     .filter(Boolean)
     .join(' ');

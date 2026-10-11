@@ -21,13 +21,15 @@ import {
 } from '@/utils/stock-analysis';
 import {
   ALL_FROM,
+  chooseGroup,
+  compareGroups,
   dayFromIso,
-  groupParts,
   presetRange,
   positionCurrency,
   seriesSpecs,
-  compareGroups,
+  splitParts,
   utcDay,
+  withNoSplit,
   type DayRange,
   type PeriodPreset,
   type PositionLite,
@@ -164,21 +166,23 @@ export default function StocksAnalysis() {
   );
   const selectedLite = useMemo(() => selectPositions(lite, chosenIds), [lite, chosenIds]);
 
-  // Ways to split: tag groups, then the automatic Sektor and Měna; default is the first
-  const splitOptions = useMemo(() => compareGroups(groups, tags, lite), [groups, tags, lite]);
-  const group = splitOptions.find((g) => g.key === groupChoice) ?? splitOptions[0] ?? null;
+  // Ways to split: tag groups, then the automatic Sektor and Měna; the default is the first of
+  // them. "Nerozdělovat" comes first in the control and is remembered like any other choice.
+  const realOptions = useMemo(() => compareGroups(groups, tags, lite), [groups, tags, lite]);
+  const splitOptions = useMemo(() => withNoSplit(realOptions), [realOptions]);
+  const group = chooseGroup(realOptions, groupChoice);
 
   const request = useMemo<StockPerformanceRequest>(
     () => ({
       fromTs: range.from,
       toTs: range.to,
       reportCurrency: currencyCode,
-      series: seriesSpecs(selectedLite, tags, group, currencyCode).map(
+      series: seriesSpecs(selectedLite, tags, group, currencyCode, filterActive).map(
         ({ key, investmentIds, currency }) =>
           currency ? { key, investmentIds, currency } : { key, investmentIds }
       ),
     }),
-    [range, currencyCode, selectedLite, tags, group]
+    [range, currencyCode, selectedLite, tags, group, filterActive]
   );
   const performance = useStockPerformance(stocks.length > 0 ? request : null);
 
@@ -204,10 +208,11 @@ export default function StocksAnalysis() {
     () => sumKnown(selected.map((s) => endValueOf(s.id))),
     [selected, endValueOf]
   );
-  // The parts of the chosen group in the selection, by value, the first four drawn
+  // The parts of the chosen group in the selection, by value, the first four drawn. "Nerozdělovat"
+  // has none, or with a filter the selection as one part.
   const parts = useMemo(
-    () => (group ? rankParts(groupParts(selectedLite, group, tags), endValueOf) : []),
-    [group, selectedLite, tags, endValueOf]
+    () => (group ? rankParts(splitParts(selectedLite, group, tags, filterActive), endValueOf) : []),
+    [group, selectedLite, tags, filterActive, endValueOf]
   );
 
   /** Commit a period (and the last custom range): remember it, and learn the first day from "Vše". */

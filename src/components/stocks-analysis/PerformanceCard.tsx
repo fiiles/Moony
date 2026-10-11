@@ -9,9 +9,12 @@ import {
   PERIOD_PRESETS,
   dayFromIso,
   isoDay,
+  maxDrawdownTo,
   rebaseReturns,
   resolveRangeInput,
   seriesValueAt,
+  splitControl,
+  splitDividers,
   type CompareGroup,
   type DayRange,
   type Part,
@@ -58,9 +61,6 @@ import {
   type RankedPart,
 } from './performance-model';
 
-/** Above this many ways to split, "Rozdělit podle" is a select instead of a segmented control. */
-const MAX_SEGMENTED_GROUPS = 4;
-
 const toneClass: Record<Tone, string> = { gain: 'text-gain', loss: 'text-loss', flat: '' };
 
 export interface PerformanceCardProps {
@@ -81,11 +81,17 @@ export interface PerformanceCardProps {
   onPeriodChange: (period: PeriodPreset) => void;
   /** A custom range from the inputs or the chart; the page switches the period to "Vlastní". */
   onCustomChange: (range: DayRange) => void;
-  /** The ways to split the portfolio and the chosen one (`null`: nothing to split by). */
+  /**
+   * The choices of "Rozdělit podle" ("don't split" first, see `withNoSplit`; none without a real
+   * option) and the chosen one (`null`: nothing to split by).
+   */
   splitOptions: readonly CompareGroup[];
   group: CompareGroup | null;
   onGroupChange: (key: string) => void;
-  /** The parts of the chosen group in the selection, by value, with their drawing. */
+  /**
+   * The parts of the chosen group in the selection, by value, with their drawing. With "don't
+   * split": none, or the selection while a filter is on.
+   */
   parts: readonly RankedPart[];
   /** Held positions: the hero figures count the whole portfolio. */
   positionCount: number;
@@ -242,8 +248,11 @@ export function PerformanceCard({
 
   // --- rows, lines -----------------------------------------------------------------------------
 
+  // "Don't split" has no group to name above the board's first column
   const groupLabel =
-    group === null ? '' : groupName(group, (kind) => t(`stocksAnalysis.groups.${kind}`));
+    group === null || group.kind === 'none'
+      ? ''
+      : groupName(group, (kind) => t(`stocksAnalysis.groups.${kind}`));
   const nameOf = useCallback(
     (part: Part): string =>
       partName(
@@ -252,6 +261,7 @@ export function PerformanceCard({
         {
           tag: t('stocksAnalysis.board.noneTag'),
           sector: t('stocksAnalysis.board.noneSector'),
+          selection: t('stocksAnalysis.board.selection'),
         },
         (name) => sectorLabel(name, t)
       ),
@@ -271,9 +281,10 @@ export function PerformanceCard({
             filterActive,
             index: indexLine,
             reportCurrency: data.currency,
+            splitKind: group?.kind ?? null,
           })
         : [],
-    [data, parts, nameOf, t, totalValue, selectedValue, filterActive, indexLine]
+    [data, parts, nameOf, t, totalValue, selectedValue, filterActive, indexLine, group]
   );
 
   // While the next response loads, the previous one stays on screen (`stale`). What is derived
@@ -330,6 +341,30 @@ export function PerformanceCard({
         </span>
       );
     };
+    if (view.group.kind === 'none') {
+      // The selection is the only part; without it (no filter) the deepest drawdown fills the line
+      if (ranked.length > 0) {
+        return (
+          <>
+            {named(ranked[0])}
+            <span className="font-450 text-ink-4">
+              {t('stocksAnalysis.performance.selectionNote')}
+            </span>
+          </>
+        );
+      }
+      const portfolioRow = view.rows.find((row) => row.kind === 'portfolio');
+      if (!portfolioRow) return null;
+      return (
+        <span className="font-450 text-ink-4">
+          {t('stocksAnalysis.performance.maxDrawdown', {
+            value: fmt.percent(maxDrawdownTo(portfolioRow.drawdown, point) / 100, 1, {
+              signed: true,
+            }),
+          })}
+        </span>
+      );
+    }
     if (ranked.length > 1) {
       return (
         <>
@@ -389,6 +424,14 @@ export function PerformanceCard({
   const caption = (): ReactNode => {
     if (view.group === null) return t('stocksAnalysis.performance.captionNoGroups');
     const drawn = view.rows.filter((row) => row.kind === 'part' && row.drawn);
+    if (view.group.kind === 'none') {
+      // The selection line exists only while a filter selects something
+      return t(
+        drawn.length > 0
+          ? 'stocksAnalysis.performance.captionNoneSelected'
+          : 'stocksAnalysis.performance.captionNone'
+      );
+    }
     if (drawn.length === 0) {
       return t('stocksAnalysis.performance.captionEmpty', { group: view.groupLabel });
     }
@@ -468,7 +511,8 @@ export function PerformanceCard({
 
   const splitLabel = (g: CompareGroup) =>
     groupName(g, (kind) => t(`stocksAnalysis.groups.${kind}`));
-  const firstAuto = splitOptions.findIndex((g) => g.kind !== 'tags');
+  const control = splitControl(splitOptions);
+  const dividers = splitDividers(splitOptions);
   const boardKind: BoardKind = view.group?.kind ?? null;
   const hasChart = dates.length >= 2;
   const lastLabel = view.endsToday
@@ -487,7 +531,7 @@ export function PerformanceCard({
           {/* Toolbar */}
           <div className="mt-5 flex flex-wrap items-center justify-between gap-x-[18px] gap-y-[10px]">
             <div className="flex items-center gap-[10px]">
-              {splitOptions.length > 0 && group && (
+              {control !== 'hidden' && group && (
                 <>
                   <span
                     className="text-micro font-600 text-ink-4"
@@ -495,7 +539,7 @@ export function PerformanceCard({
                   >
                     {t('stocksAnalysis.performance.splitBy')}
                   </span>
-                  {splitOptions.length > MAX_SEGMENTED_GROUPS ? (
+                  {control === 'select' ? (
                     <Select value={group.key} onValueChange={onGroupChange}>
                       <SelectTrigger
                         aria-label={t('stocksAnalysis.performance.splitBy')}
@@ -506,7 +550,7 @@ export function PerformanceCard({
                       <SelectContent>
                         {splitOptions.map((g, i) => (
                           <Fragment key={g.key}>
-                            {i === firstAuto && i > 0 && <SelectSeparator />}
+                            {dividers[i] && <SelectSeparator />}
                             <SelectItem value={g.key}>{splitLabel(g)}</SelectItem>
                           </Fragment>
                         ))}
@@ -520,14 +564,14 @@ export function PerformanceCard({
                       options={splitOptions.map((g, i) => ({
                         value: g.key,
                         label:
-                          g.kind === 'tags' ? (
-                            splitLabel(g)
-                          ) : (
+                          g.kind === 'sector' || g.kind === 'currency' ? (
                             <span title={t('stocksAnalysis.groups.autoTitle')}>
                               {splitLabel(g)}
                             </span>
+                          ) : (
+                            splitLabel(g)
                           ),
-                        divider: i === firstAuto && i > 0,
+                        divider: dividers[i],
                       }))}
                     />
                   )}

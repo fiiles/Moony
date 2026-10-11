@@ -332,6 +332,7 @@
       "saved": "Etiketter tildelt"
     },
     "groups": {
+      "none": "Ikke del opp",
       "sector": "Sektor",
       "currency": "Valuta",
       "autoTitle": "Automatisk fra aksjens data"
@@ -383,6 +384,7 @@
       "bestWorst": "best og dårligst",
       "bestWorstSelection": "best og dårligst i utvalget",
       "onlyPart": "eneste del av utvalget",
+      "selectionNote": "valgte beholdninger",
       "noPart": "Ingenting i utvalget tilhører {{group}}",
       "aheadOfIndex": "foran {{index}} {{value}}",
       "behindIndex": "bak {{index}} {{value}}",
@@ -420,8 +422,11 @@
       "captionMore": "De andre står bare i tabellen under diagrammet.",
       "captionEmpty": "Ingen valgt beholdning har en etikett i gruppen {{group}}. Stiplet: hele porteføljen.",
       "captionNoGroups": "Opprett en etikettgruppe for å se hvordan delene presterer. Foreløpig bare hele porteføljen.",
+      "captionNone": "Ikke delt opp: Diagrammet viser hele porteføljen.",
+      "captionNoneSelected": "Ikke delt opp: Den heltrukne linjen summerer de valgte beholdningene, den stiplede er hele porteføljen.",
       "drawdown": "Fall fra toppen",
       "tipDrawdown": "Porteføljens fall {{value}}",
+      "maxDrawdown": "største fall {{value}}",
       "dragTip": "{{days}} dager · slipp for å sette perioden",
       "portfolio": "Hele porteføljen",
       "today": "I dag",
@@ -446,11 +451,13 @@
       "filterBy": "Filtrer: {{name}}",
       "noneTag": "Ingen etikett",
       "noneSector": "Ingen sektor",
+      "selection": "Utvalg",
       "captionTags": "Hver beholdning har høyst én etikett i en gruppe, så andelene summerer seg til 100 % og bidragene summerer seg til porteføljens avkastning.",
       "captionSector": "Sektor fra aksjens data · ETF-er har ingen sektor og står på raden Ingen sektor.",
       "captionCurrency": "Avkastning i {{currency}} · under hver valuta står avkastningen i beholdningens egen valuta og valutakurseffekten.",
       "captionMore": "Diagrammet tegner høyst fire linjer; de andre står bare i tabellen.",
-      "captionSelection": "Bidragene gjelder avkastningen i hele porteføljen."
+      "captionSelection": "Bidragene gjelder avkastningen i hele porteføljen.",
+      "captionNone": "Ikke delt opp: Utvalget er én rad; bidraget gjelder avkastningen i hele porteføljen."
     }
   },
   "planning": {

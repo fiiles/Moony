@@ -55,7 +55,10 @@ export function savePeriod(choice: PeriodChoice, storage?: WritableStorage): voi
   }
 }
 
-/** The remembered "Rozdělit podle" key (`group:<id>`, `sector`, `currency`); the page validates it. */
+/**
+ * The remembered "Rozdělit podle" key (`none`, `group:<id>`, `sector`, `currency`); the page
+ * validates it (`chooseGroup`).
+ */
 export function loadGroupKey(storage?: ReadableStorage): string | null {
   return readSetting(GROUP_KEY, storage);
 }

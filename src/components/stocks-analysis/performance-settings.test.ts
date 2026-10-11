@@ -98,4 +98,11 @@ describe('group key', () => {
     expect(storage.data.get(GROUP_KEY)).toBe('sector');
     expect(loadGroupKey(storage)).toBe('sector');
   });
+
+  it('remembers "don\'t split" like any other choice', () => {
+    const storage = memory();
+    saveGroupKey('none', storage);
+    expect(storage.data.get(GROUP_KEY)).toBe('none');
+    expect(loadGroupKey(storage)).toBe('none');
+  });
 });

@@ -1,6 +1,6 @@
 import type { TFunction } from 'i18next';
 import type { PerformanceSeries, StockPerformance, StockTag } from '@shared/schema';
-import { drawdown, type CompareGroup, type Part } from '@/utils/stock-performance';
+import { SELECTION_KEY, drawdown, type CompareGroup, type Part } from '@/utils/stock-performance';
 import type { PerformanceLine } from './PerformanceChart';
 
 /** The chart draws at most this many parts; the rest are listed in the board only. */
@@ -34,10 +34,13 @@ export function sumKnown(values: readonly (number | null)[]): number | null {
   return known ? sum : null;
 }
 
-/** Name of a group: the tag group's own name, else the label of the automatic group. */
+/**
+ * Name of a group: the tag group's own name, else the label of the automatic group or of "don't
+ * split".
+ */
 export function groupName(
   group: CompareGroup,
-  autoLabel: (kind: 'sector' | 'currency') => string
+  autoLabel: (kind: 'none' | 'sector' | 'currency') => string
 ): string {
   return group.kind === 'tags' ? group.group.name : autoLabel(group.kind);
 }
@@ -71,16 +74,18 @@ export function sectorLabel(name: string, t: TFunction): string {
 
 /**
  * Name of a part of the chosen group: its tag, sector or currency; the part without a tag or
- * sector reads `none.sector` in the sector group and `none.tag` in a tag group. `sector` names a
- * sector for display (`sectorLabel`); the part's own `sector` stays the Yahoo name.
+ * sector reads `names.sector` in the sector group and `names.tag` in a tag group; the selection
+ * of "don't split" reads `names.selection`. `sector` names a sector for display (`sectorLabel`);
+ * the part's own `sector` stays the Yahoo name.
  */
 export function partName(
   part: Part,
   kind: CompareGroup['kind'] | undefined,
-  none: { tag: string; sector: string },
+  names: { tag: string; sector: string; selection: string },
   sector: (name: string) => string = (name) => name
 ): string {
-  if (part.isNone) return kind === 'sector' ? none.sector : none.tag;
+  if (part.key === SELECTION_KEY) return names.selection;
+  if (part.isNone) return kind === 'sector' ? names.sector : names.tag;
   if (part.tag) return part.tag.name;
   if (part.sector !== null) return sector(part.sector);
   return part.currency ?? part.key;
@@ -129,6 +134,8 @@ export interface ModelRow {
   isNone: boolean;
   /** The row has a line in the chart. */
   drawn: boolean;
+  /** The portfolio is the only line (no split): solid instead of the dashed reference. */
+  main: boolean;
   /** CSS colour of a drawn part. */
   color: string | null;
   /** Muted row: the part without a tag or sector, or a part that is not drawn. */
@@ -162,6 +169,11 @@ export interface BuildRowsInput {
   filterActive: boolean;
   index: { name: string; ticker: string; twr: (number | null)[] } | null;
   reportCurrency: string;
+  /**
+   * The kind of split on screen. With "don't split" and no part (no filter), the portfolio is the
+   * one line there is and `main` makes it solid.
+   */
+  splitKind?: CompareGroup['kind'] | null;
 }
 
 /**
@@ -190,6 +202,7 @@ export function buildRows(input: BuildRowsInput): ModelRow[] {
       currency: part.currency,
       isNone: part.isNone,
       drawn,
+      main: false,
       color,
       quiet: part.isNone || !drawn,
       twr: series.twr,
@@ -212,6 +225,7 @@ export function buildRows(input: BuildRowsInput): ModelRow[] {
     currency: null,
     isNone: false,
     drawn: true,
+    main: input.splitKind === 'none' && input.ranked.length === 0,
     color: 'var(--chart-line)',
     quiet: false,
     twr: [...input.portfolio],
@@ -233,6 +247,7 @@ export function buildRows(input: BuildRowsInput): ModelRow[] {
           currency: null,
           isNone: false,
           drawn: true,
+          main: false,
           color: 'var(--ink-4)',
           quiet: false,
           twr: input.index.twr,
@@ -249,7 +264,10 @@ export function buildRows(input: BuildRowsInput): ModelRow[] {
   return [...parts, portfolio, ...index, ...none];
 }
 
-/** The chart's lines: the drawn parts, then the index, then the portfolio as the reference. */
+/**
+ * The chart's lines: the drawn parts, then the index, then the portfolio as the dashed reference
+ * (solid when it is the main line, see `ModelRow.main`).
+ */
 export function chartLines(rows: readonly ModelRow[]): PerformanceLine[] {
   const line = (row: ModelRow, variant: PerformanceLine['variant']): PerformanceLine => ({
     id: row.id,
@@ -262,7 +280,9 @@ export function chartLines(rows: readonly ModelRow[]): PerformanceLine[] {
   return [
     ...rows.filter((r) => r.kind === 'part' && r.drawn).map((r) => line(r, 'solid')),
     ...rows.filter((r) => r.kind === 'index').map((r) => line(r, 'index')),
-    ...rows.filter((r) => r.kind === 'portfolio').map((r) => line(r, 'reference')),
+    ...rows
+      .filter((r) => r.kind === 'portfolio')
+      .map((r) => line(r, r.main ? 'main' : 'reference')),
   ];
 }
 

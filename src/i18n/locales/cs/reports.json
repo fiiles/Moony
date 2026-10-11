@@ -344,6 +344,7 @@
       "saved": "Štítky přiřazeny"
     },
     "groups": {
+      "none": "Nerozdělovat",
       "sector": "Sektor",
       "currency": "Měna",
       "autoTitle": "Automaticky z údajů o akcii"
@@ -397,6 +398,7 @@
       "bestWorst": "nejlepší a nejhorší",
       "bestWorstSelection": "nejlepší a nejhorší ve výběru",
       "onlyPart": "jediná část výběru",
+      "selectionNote": "vybrané pozice",
       "noPart": "Ve výběru nic ze skupiny {{group}}",
       "aheadOfIndex": "před indexem {{index}} {{value}}",
       "behindIndex": "za indexem {{index}} {{value}}",
@@ -435,8 +437,11 @@
       "captionMore": "Další jsou jen v tabulce pod grafem.",
       "captionEmpty": "Ve výběru není žádná pozice se štítkem skupiny {{group}}. Čárkovaně celé portfolio.",
       "captionNoGroups": "Založte skupinu štítků a uvidíte, jak si vedou její části. Zatím jen celé portfolio.",
+      "captionNone": "Bez rozdělení: graf ukazuje celé portfolio.",
+      "captionNoneSelected": "Bez rozdělení: plná čára sčítá vybrané pozice, čárkovaná je celé portfolio.",
       "drawdown": "Propad od maxima",
       "tipDrawdown": "Propad portfolia {{value}}",
+      "maxDrawdown": "největší propad {{value}}",
       "dragTip": "{{days}} dní · pusťte myš a období se nastaví",
       "portfolio": "Celé portfolio",
       "today": "Dnes",
@@ -462,11 +467,13 @@
       "filterBy": "Filtrovat: {{name}}",
       "noneTag": "Bez štítku",
       "noneSector": "Bez sektoru",
+      "selection": "Výběr",
       "captionTags": "Každá pozice má ve skupině nejvýš jeden štítek, takže podíly dají 100 % a příspěvky se sečtou na výnos portfolia.",
       "captionSector": "Sektor podle údajů o akcii · ETF sektor nemají a patří do řádku Bez sektoru.",
       "captionCurrency": "Výnos v {{currency}} · pod měnou je výnos v měně pozice a vliv kurzu.",
       "captionMore": "Graf kreslí nejvýš čtyři čáry, další jsou jen v tabulce.",
-      "captionSelection": "Příspěvek je k výnosu celého portfolia."
+      "captionSelection": "Příspěvek je k výnosu celého portfolia.",
+      "captionNone": "Bez rozdělení: výběr je jeden řádek, jeho příspěvek je k výnosu celého portfolia."
     }
   },
   "planning": {

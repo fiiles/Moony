@@ -332,6 +332,7 @@
       "saved": "Tags assigned"
     },
     "groups": {
+      "none": "Don't split",
       "sector": "Sector",
       "currency": "Currency",
       "autoTitle": "Automatically from the stock's data"
@@ -383,6 +384,7 @@
       "bestWorst": "best and worst",
       "bestWorstSelection": "best and worst in the selection",
       "onlyPart": "the only part of the selection",
+      "selectionNote": "selected positions",
       "noPart": "Nothing in the selection belongs to {{group}}",
       "aheadOfIndex": "ahead of {{index}} {{value}}",
       "behindIndex": "behind {{index}} {{value}}",
@@ -420,8 +422,11 @@
       "captionMore": "The others are only in the table below the chart.",
       "captionEmpty": "No selected position has a tag of the group {{group}}. Dashed: the whole portfolio.",
       "captionNoGroups": "Create a tag group to see how its parts perform. For now, the whole portfolio only.",
+      "captionNone": "Not split: the chart shows the whole portfolio.",
+      "captionNoneSelected": "Not split: the solid line adds up the selected positions, the dashed one is the whole portfolio.",
       "drawdown": "Drawdown from peak",
       "tipDrawdown": "Portfolio drawdown {{value}}",
+      "maxDrawdown": "deepest drawdown {{value}}",
       "dragTip": "{{days}} days · release to set the period",
       "portfolio": "Whole portfolio",
       "today": "Today",
@@ -446,11 +451,13 @@
       "filterBy": "Filter: {{name}}",
       "noneTag": "No tag",
       "noneSector": "No sector",
+      "selection": "Selection",
       "captionTags": "Each position has at most one tag in a group, so shares add up to 100 % and contributions add up to the portfolio return.",
       "captionSector": "Sector from the stock's data · ETFs have no sector and sit in the No sector row.",
       "captionCurrency": "Returns in {{currency}} · under each currency, the return in the position's own currency and the exchange rate effect.",
       "captionMore": "The chart draws at most four lines; the others are only in the table.",
-      "captionSelection": "Contributions are to the whole portfolio's return."
+      "captionSelection": "Contributions are to the whole portfolio's return.",
+      "captionNone": "Not split: the selection is one row; its contribution is to the whole portfolio's return."
     }
   },
   "planning": {

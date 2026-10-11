@@ -3,9 +3,13 @@ import type { StockTag, StockTagGroup } from '@shared/schema';
 import {
   ALL_FROM,
   DAY,
+  MAX_SEGMENTED_SPLITS,
   MAX_SERIES,
+  NO_SPLIT,
   PERIOD_PRESETS,
+  SELECTION_KEY,
   bucketKind,
+  chooseGroup,
   compareGroups,
   concentration,
   dateAxisTicks,
@@ -15,6 +19,7 @@ import {
   groupParts,
   isoDay,
   maxDrawdownTo,
+  noSplitParts,
   parseCustomRange,
   partKey,
   positionCurrency,
@@ -24,8 +29,12 @@ import {
   sameIndexLine,
   seriesSpecs,
   seriesValueAt,
+  splitControl,
+  splitDividers,
+  splitParts,
   splitTop,
   utcDay,
+  withNoSplit,
   type CompareGroup,
   type PositionLite,
 } from './stock-performance';
@@ -644,6 +653,10 @@ describe('partKey', () => {
   it('uses the currency code', () => {
     expect(partKey(pos('a', { currency: 'CZK' }), currencyGroup)).toBe('currency:CZK');
   });
+
+  it('puts every position of "don\'t split" into the selection', () => {
+    expect(partKey(pos('a', { tags: [growth] }), NO_SPLIT)).toBe(SELECTION_KEY);
+  });
 });
 
 describe('groupParts', () => {
@@ -688,6 +701,155 @@ describe('groupParts', () => {
     expect(parts.map((p) => p.currency)).toEqual(['CZK', 'EUR', 'USD']);
     expect(parts.every((p) => !p.isNone)).toBe(true);
     expect(parts[2].positionIds).toEqual(['a', 'c']);
+  });
+});
+
+describe("don't split", () => {
+  const a = pos('a', { sector: 'Technologie', tags: [growth] });
+  const b = pos('b', { currency: 'EUR', tags: [dividend] });
+  const real = compareGroups(allGroups, allTags, [a, b]); // strategy, region, sector, currency
+
+  it('is the key "none" with its own kind', () => {
+    expect(NO_SPLIT).toEqual({ kind: 'none', key: 'none' });
+    expect(SELECTION_KEY).toBe('selection');
+  });
+
+  describe('withNoSplit', () => {
+    it('puts "don\'t split" before the real options', () => {
+      const choices = withNoSplit(real);
+      expect(choices.map((g) => g.key)).toEqual([
+        'none',
+        'group:g-strategy',
+        'group:g-region',
+        'sector',
+        'currency',
+      ]);
+      expect(choices[0]).toBe(NO_SPLIT);
+    });
+
+    it('offers nothing without a real option', () => {
+      expect(withNoSplit([])).toEqual([]);
+    });
+  });
+
+  describe('chooseGroup', () => {
+    it('defaults to the first real option, not to "don\'t split"', () => {
+      expect(chooseGroup(real, null)?.key).toBe('group:g-strategy');
+    });
+
+    it('keeps the remembered real option', () => {
+      expect(chooseGroup(real, 'sector')?.key).toBe('sector');
+      expect(chooseGroup(real, 'group:g-region')?.key).toBe('group:g-region');
+    });
+
+    it('keeps "none" whenever a real option exists', () => {
+      expect(chooseGroup(real, 'none')).toBe(NO_SPLIT);
+      expect(chooseGroup(real.slice(2), 'none')).toBe(NO_SPLIT);
+    });
+
+    it('falls back to the first real option for a key that no longer exists', () => {
+      expect(chooseGroup(real, 'group:deleted')?.key).toBe('group:g-strategy');
+      expect(chooseGroup(real.slice(2), 'group:g-strategy')?.key).toBe('sector');
+    });
+
+    it('is no group at all without a real option, even when "none" is remembered', () => {
+      expect(chooseGroup([], null)).toBeNull();
+      expect(chooseGroup([], 'none')).toBeNull();
+      expect(chooseGroup([], 'sector')).toBeNull();
+    });
+  });
+
+  describe('splitDividers', () => {
+    it('divides "don\'t split", the tag groups and the automatic groups', () => {
+      expect(splitDividers(withNoSplit(real))).toEqual([false, true, false, true, false]);
+    });
+
+    it('has one divider less where a kind is missing', () => {
+      const auto = real.filter((g) => g.kind !== 'tags');
+      const tagsOnly = real.filter((g) => g.kind === 'tags');
+      expect(splitDividers(withNoSplit(auto))).toEqual([false, true, false]);
+      expect(splitDividers(withNoSplit(tagsOnly))).toEqual([false, true, false]);
+      expect(splitDividers(withNoSplit(real.slice(2, 3)))).toEqual([false, true]);
+    });
+
+    it('is empty without choices', () => {
+      expect(splitDividers([])).toEqual([]);
+    });
+  });
+
+  describe('splitControl', () => {
+    const many = (count: number) =>
+      Array.from({ length: count }, (_, i): CompareGroup => ({
+        kind: 'tags',
+        key: `group:${i}`,
+        group: tagGroup(`${i}`, `G${i}`, i),
+        tags: [],
+      }));
+
+    it('is hidden without a real option', () => {
+      expect(splitControl([])).toBe('hidden');
+      expect(splitControl([NO_SPLIT])).toBe('hidden');
+    });
+
+    it('is segmented up to four real options and a select beyond', () => {
+      expect(MAX_SEGMENTED_SPLITS).toBe(4);
+      expect(splitControl(withNoSplit(many(1)))).toBe('segmented');
+      expect(splitControl(withNoSplit(many(4)))).toBe('segmented');
+      expect(splitControl(withNoSplit(many(5)))).toBe('select');
+    });
+
+    it('does not count "don\'t split" (four real options plus it are five buttons)', () => {
+      const choices = withNoSplit(many(4));
+      expect(choices).toHaveLength(5);
+      expect(splitControl(choices)).toBe('segmented');
+    });
+  });
+
+  describe('noSplitParts', () => {
+    const selected = [a, b];
+
+    it('has no part while no filter is on', () => {
+      expect(noSplitParts(selected, false)).toEqual([]);
+    });
+
+    it('is one part, the selection, with a filter on', () => {
+      expect(noSplitParts(selected, true)).toEqual([
+        {
+          key: 'selection',
+          positionIds: ['a', 'b'],
+          tag: null,
+          sector: null,
+          currency: null,
+          isNone: false,
+        },
+      ]);
+    });
+
+    it('has no part when the filter selects nothing', () => {
+      expect(noSplitParts([], true)).toEqual([]);
+    });
+  });
+
+  describe('splitParts', () => {
+    it('gives "don\'t split" the selection only with a filter on', () => {
+      expect(splitParts([a, b], NO_SPLIT, allTags, false)).toEqual([]);
+      expect(splitParts([a, b], NO_SPLIT, allTags, true).map((p) => p.key)).toEqual(['selection']);
+    });
+
+    it('gives a real group its own parts whatever the filter', () => {
+      const strategyGroup = real[0];
+      expect(splitParts([a, b], strategyGroup, allTags, false)).toEqual(
+        groupParts([a, b], strategyGroup, allTags)
+      );
+      expect(splitParts([a, b], strategyGroup, allTags, true).map((p) => p.key)).toEqual([
+        'tag:t-div',
+        'tag:t-growth',
+      ]);
+    });
+
+    it('leaves groupParts without parts for "don\'t split" (it is not a currency group)', () => {
+      expect(groupParts([a, b], NO_SPLIT, allTags)).toEqual([]);
+    });
   });
 });
 
@@ -758,6 +920,32 @@ describe('seriesSpecs', () => {
   it('is empty for no selected positions', () => {
     expect(seriesSpecs([], allTags, byKey('sector'), 'CZK')).toEqual([]);
   });
+
+  it('adds the selection series of "don\'t split" with a filter on', () => {
+    const specs = seriesSpecs(selected, allTags, NO_SPLIT, 'CZK', true);
+    expect(specs).toEqual([
+      { key: 'tag:t-usa', investmentIds: ['a', 'b'] },
+      { key: 'tag:t-growth', investmentIds: ['a'] },
+      { key: 'tag:t-div', investmentIds: ['b'] },
+      { key: 'selection', investmentIds: ['a', 'b', 'c'] },
+    ]);
+  });
+
+  it('asks for no selection series of "don\'t split" without a filter', () => {
+    const expected = seriesSpecs(selected, allTags, null, 'CZK');
+    expect(seriesSpecs(selected, allTags, NO_SPLIT, 'CZK', false)).toEqual(expected);
+    expect(seriesSpecs(selected, allTags, NO_SPLIT, 'CZK')).toEqual(expected);
+    expect(expected.some((s) => s.key === 'selection')).toBe(false);
+  });
+
+  it('never adds the selection series for a real group, filter or not', () => {
+    const keys = seriesSpecs(selected, allTags, byKey('sector'), 'CZK', true).map((s) => s.key);
+    expect(keys).not.toContain('selection');
+  });
+
+  it('asks for no selection series when the filter selects nothing', () => {
+    expect(seriesSpecs([], allTags, NO_SPLIT, 'CZK', true)).toEqual([]);
+  });
 });
 
 describe('seriesSpecs limit', () => {
@@ -807,6 +995,13 @@ describe('seriesSpecs limit', () => {
   it('drops them all without a chosen split too (the portfolio line needs no series)', () => {
     const { tags, positions } = crowd(150);
     expect(seriesSpecs(positions, tags, null, 'CZK')).toEqual([]);
+  });
+
+  it('keeps the selection series of "don\'t split" when the tag series are dropped', () => {
+    const { tags, positions } = crowd(150);
+    const specs = seriesSpecs(positions, tags, NO_SPLIT, 'CZK', true);
+    expect(specs.map((s) => s.key)).toEqual(['selection']);
+    expect(specs[0].investmentIds).toHaveLength(150);
   });
 
   it('never exceeds the limit, even for one oversized group', () => {

@@ -1,6 +1,7 @@
 /**
  * Pure helpers for the stocks analysis page: period bounds, custom range validation, date axis
- * ticks, drawdown, flow buckets, comparison groups, chart series specs and concentration.
+ * ticks, drawdown, flow buckets, comparison groups (and the "don't split" choice), chart series
+ * specs and concentration.
  *
  * All timestamps are unix seconds at UTC midnight (ADR 0008); calendar maths uses the UTC
  * accessors only, never local time.
@@ -309,10 +310,22 @@ export interface PositionLite {
   tags: readonly Pick<StockTag, 'id' | 'groupId'>[];
 }
 
+/**
+ * A way to split the selected positions into lines and rows. `none` ("Nerozdělovat") splits
+ * nothing: without a filter the chart shows the whole portfolio only, with a filter the selection
+ * is the one part. It is a choice of the control, not an option `compareGroups` finds in the data.
+ */
 export type CompareGroup =
+  | { kind: 'none'; key: 'none' }
   | { kind: 'tags'; key: string; group: StockTagGroup; tags: StockTag[] }
   | { kind: 'sector'; key: 'sector' }
   | { kind: 'currency'; key: 'currency' };
+
+/** The "don't split" choice; its key is what the page remembers. */
+export const NO_SPLIT: CompareGroup = { kind: 'none', key: 'none' };
+
+/** Key of the one part of "don't split" with a filter on: the selected positions together. */
+export const SELECTION_KEY = 'selection';
 
 function byName(a: { name: string }, b: { name: string }): number {
   return a.name.localeCompare(b.name);
@@ -344,8 +357,53 @@ export function compareGroups(
   return out;
 }
 
+/**
+ * What the "Rozdělit podle" control offers: "don't split" first, then the real options. Without a
+ * real option there is nothing to choose from, so no control at all.
+ */
+export function withNoSplit(options: readonly CompareGroup[]): CompareGroup[] {
+  return options.length > 0 ? [NO_SPLIT, ...options] : [];
+}
+
+/**
+ * The chosen way to split. `key` is the remembered choice: "none" is always there (once any real
+ * option exists), a key that no longer exists falls back to the first real option, and with no
+ * real option there is no group (`null`: the whole portfolio only, no control).
+ */
+export function chooseGroup(
+  options: readonly CompareGroup[],
+  key: string | null
+): CompareGroup | null {
+  if (options.length === 0) return null;
+  if (key === NO_SPLIT.key) return NO_SPLIT;
+  return options.find((g) => g.key === key) ?? options[0];
+}
+
+/**
+ * Whether a divider precedes each choice: where the kind of choice changes, which is "don't
+ * split", then the tag groups, then the automatic groups.
+ */
+export function splitDividers(choices: readonly CompareGroup[]): boolean[] {
+  const family = (g: CompareGroup) => (g.kind === 'none' ? 0 : g.kind === 'tags' ? 1 : 2);
+  return choices.map((g, i) => i > 0 && family(g) !== family(choices[i - 1]));
+}
+
+/** Most real options that fit a segmented control; more turn it into a select. */
+export const MAX_SEGMENTED_SPLITS = 4;
+
+/**
+ * How the control for `choices` (see `withNoSplit`) is drawn: not at all without a real option,
+ * a segmented control for up to four real options, else a select. "Don't split" does not count.
+ */
+export function splitControl(choices: readonly CompareGroup[]): 'hidden' | 'segmented' | 'select' {
+  const real = choices.filter((g) => g.kind !== 'none').length;
+  if (real === 0) return 'hidden';
+  return real > MAX_SEGMENTED_SPLITS ? 'select' : 'segmented';
+}
+
 /** The part of `g` a position belongs to. */
 export function partKey(p: PositionLite, g: CompareGroup): string {
+  if (g.kind === 'none') return SELECTION_KEY;
   if (g.kind === 'tags') {
     const tag = p.tags.find((t) => t.groupId === g.group.id);
     return tag ? `tag:${tag.id}` : `none:${g.group.id}`;
@@ -365,7 +423,8 @@ export interface Part {
 
 /**
  * The non-empty parts of `g`: tags in group order (by name), sectors and currencies
- * alphabetical; the part without a tag or sector last.
+ * alphabetical; the part without a tag or sector last. "Don't split" has no parts of its own
+ * (see `noSplitParts`).
  */
 export function groupParts(
   positions: readonly PositionLite[],
@@ -400,13 +459,42 @@ export function groupParts(
       add(`sector:${sector}`, { tag: null, sector, currency: null, isNone: false });
     }
     add('sector:', { tag: null, sector: null, currency: null, isNone: true });
-  } else {
+  } else if (g.kind === 'currency') {
     const codes = [...new Set(positions.map((p) => p.currency))].sort((a, b) => a.localeCompare(b));
     for (const currency of codes) {
       add(`currency:${currency}`, { tag: null, sector: null, currency, isNone: false });
     }
   }
   return parts;
+}
+
+/**
+ * The parts of "don't split": none while no filter is on (the chart shows the whole portfolio
+ * only), else one part, the selection, holding every selected position. Nothing selected is no
+ * part either.
+ */
+export function noSplitParts(selected: readonly PositionLite[], filterActive: boolean): Part[] {
+  if (!filterActive || selected.length === 0) return [];
+  return [
+    {
+      key: SELECTION_KEY,
+      positionIds: selected.map((p) => p.id),
+      tag: null,
+      sector: null,
+      currency: null,
+      isNone: false,
+    },
+  ];
+}
+
+/** The parts of the chosen way to split, "don't split" included (it needs `filterActive`). */
+export function splitParts(
+  selected: readonly PositionLite[],
+  g: CompareGroup,
+  tags: readonly StockTag[],
+  filterActive: boolean
+): Part[] {
+  return g.kind === 'none' ? noSplitParts(selected, filterActive) : groupParts(selected, g, tags);
 }
 
 export interface SeriesSpecLite {
@@ -420,9 +508,10 @@ export const MAX_SERIES = 256;
 
 /**
  * Series to request from the backend: one per tag carried by a selected position (`tag:<id>`),
- * plus the parts of `g` that are not tag parts (`none:…`, `sector:…`, `currency:…`), and for a
- * currency part whose code differs from `reportCurrency` also `<key>:native` computed in that
- * currency. Keys are unique, the order is stable.
+ * plus the parts of `g` that are not tag parts (`none:…`, `sector:…`, `currency:…`, or the
+ * `selection` of "don't split" while `filterActive`), and for a currency part whose code differs
+ * from `reportCurrency` also `<key>:native` computed in that currency. Keys are unique, the order
+ * is stable.
  *
  * The request never holds more than `MAX_SERIES`. Past it the tag series of tags outside the
  * chosen group (all of them without a tag group) are dropped first: only the chosen split is
@@ -433,7 +522,8 @@ export function seriesSpecs(
   selected: readonly PositionLite[],
   tags: readonly StockTag[],
   g: CompareGroup | null,
-  reportCurrency: string
+  reportCurrency: string,
+  filterActive = false
 ): SeriesSpecLite[] {
   const specs = new Map<string, SeriesSpecLite>();
   const outside = new Set<string>();
@@ -452,7 +542,7 @@ export function seriesSpecs(
   }
 
   if (g) {
-    for (const part of groupParts(selected, g, tags)) {
+    for (const part of splitParts(selected, g, tags, filterActive)) {
       if (part.key.startsWith('tag:')) continue;
       add({ key: part.key, investmentIds: part.positionIds });
       if (part.currency !== null && part.currency !== reportCurrency) {

@@ -31,7 +31,7 @@ interface ContributionCardProps {
   selected: readonly AnalysisPosition[];
   /** The parts of the chosen group in the selection, by value. */
   parts: readonly RankedPart[];
-  /** The chosen way to split (`null`: nothing to split by). */
+  /** The chosen way to split (`null`: nothing to split by; "don't split" counts as none). */
   group: CompareGroup | null;
   filterActive: boolean;
 }
@@ -86,7 +86,9 @@ export function ContributionCard({
     [selected, parts, group, filterActive]
   );
   const view = useHeldWhile(live, stale);
-  const mode: Mode = chosen === 'group' && view.group ? 'group' : 'positions';
+  // "Don't split" is no group: there are only the positions, and no switch
+  const grouped = view.group !== null && view.group.kind !== 'none';
+  const mode: Mode = chosen === 'group' && grouped ? 'group' : 'positions';
 
   const byPosition = useMemo(
     () => new Map((data?.positions ?? []).map((p) => [p.investmentId, p])),
@@ -96,6 +98,7 @@ export function ContributionCard({
   const kind = view.group?.kind;
   const noneTag = t('stocksAnalysis.board.noneTag');
   const noneSector = t('stocksAnalysis.board.noneSector');
+  const selectionName = t('stocksAnalysis.board.selection');
   const other = t('stocksAnalysis.contribution.other');
 
   const rows = useMemo(
@@ -104,14 +107,29 @@ export function ContributionCard({
         ? contributionRows(positionItems(view.selected, byPosition), 'magnitude', other)
         : contributionRows(
             partItems(view.parts, bySeries, (part) =>
-              partName(part, kind, { tag: noneTag, sector: noneSector }, (name) =>
-                sectorLabel(name, t)
+              partName(
+                part,
+                kind,
+                { tag: noneTag, sector: noneSector, selection: selectionName },
+                (name) => sectorLabel(name, t)
               )
             ),
             'value',
             other
           ),
-    [mode, view.selected, view.parts, byPosition, bySeries, kind, noneTag, noneSector, other, t]
+    [
+      mode,
+      view.selected,
+      view.parts,
+      byPosition,
+      bySeries,
+      kind,
+      noneTag,
+      noneSector,
+      selectionName,
+      other,
+      t,
+    ]
   );
   const layout = useMemo(() => barLayout(rows.map((row) => row.points)), [rows]);
 
@@ -126,9 +144,10 @@ export function ContributionCard({
 
   const percent = (value: number) => fmt.percent(value / 100, 1, { signed: true });
   const points = (value: number) => formatPoints(fmt.number, value, pp);
-  const label = view.group
-    ? groupName(view.group, (auto) => t(`stocksAnalysis.groups.${auto}`))
-    : '';
+  const label =
+    grouped && view.group
+      ? groupName(view.group, (auto) => t(`stocksAnalysis.groups.${auto}`))
+      : '';
 
   const subtitle = (): string => {
     const value = percent(portfolioReturn);
@@ -141,8 +160,9 @@ export function ContributionCard({
       );
     }
     if (mode === 'positions') return t('stocksAnalysis.contribution.subPositions', { value });
+    // The group mode is only there for a real group, never for "don't split"
     const key = { tags: 'subTags', sector: 'subSectors', currency: 'subCurrencies' }[
-      kind ?? 'tags'
+      kind === 'sector' || kind === 'currency' ? kind : 'tags'
     ];
     return t(`stocksAnalysis.contribution.${key}`, { value, group: label });
   };
@@ -204,23 +224,24 @@ export function ContributionCard({
           <CardTitle className="text-[16px]">{t('stocksAnalysis.contribution.title')}</CardTitle>
           <CardDescription>{subtitle()}</CardDescription>
         </div>
-        <Segmented
-          value={mode}
-          onValueChange={setChosen}
-          aria-label={t('stocksAnalysis.contribution.title')}
-          options={[
-            { value: 'positions', label: t('stocksAnalysis.contribution.byPosition') },
-            {
-              value: 'group',
-              label: (
-                <span title={t('stocksAnalysis.contribution.byGroupTitle')}>
-                  {t('stocksAnalysis.contribution.byGroup')}
-                </span>
-              ),
-              disabled: view.group === null,
-            },
-          ]}
-        />
+        {grouped && (
+          <Segmented
+            value={mode}
+            onValueChange={setChosen}
+            aria-label={t('stocksAnalysis.contribution.title')}
+            options={[
+              { value: 'positions', label: t('stocksAnalysis.contribution.byPosition') },
+              {
+                value: 'group',
+                label: (
+                  <span title={t('stocksAnalysis.contribution.byGroupTitle')}>
+                    {t('stocksAnalysis.contribution.byGroup')}
+                  </span>
+                ),
+              },
+            ]}
+          />
+        )}
       </CardHeader>
       <ul className="m-0 flex flex-1 list-none flex-col p-0">
         {rows.length === 0 ? (

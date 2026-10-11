@@ -1,11 +1,9 @@
 # Stocks analysis: performance first, one tag per group, custom periods
 
-Approved by the owner on 2026-10-11 after four prototype rounds. Visual reference:
-`docs/specs/2026-10-11-stocks-analysis-prototype.html` (open it through the `docs` launch
-config; switch on "Poznámky k návrhu" for the numbered decisions). The prototype is a frozen
-snapshot like this spec; it fakes its numbers from synthetic daily prices. Where the two
-differ, this spec wins. Two prototype-only things are not built: the allocation ring toggle
-(the ring is dropped) and the proto bar.
+Approved by the owner on 2026-10-11 after four rounds of an HTML prototype. The owner had the
+prototype deleted after the merge, so this spec is the only record of the design. Two
+prototype-only things were not built: the allocation ring toggle (the ring is dropped) and the
+proto bar.
 
 ## Problem
 
@@ -193,8 +191,8 @@ UI then says the index could not be loaded. Ticker validation: 1–24 characters
 
 ### Copy
 
-All strings in all ten locales (`reports` namespace, `stocksAnalysis.*`). The Czech copy of
-the prototype is the reference. Keys of the removed stats row, ring and old TWR card are
+All strings in all ten locales (`reports` namespace, `stocksAnalysis.*`). The Czech copy in the
+plan's Copy appendix is the reference. Keys of the removed stats row, ring and old TWR card are
 deleted from every locale.
 
 ## Testing

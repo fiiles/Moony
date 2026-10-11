@@ -8,7 +8,7 @@
 
 **Tech Stack:** Tauri 2 (Rust, rusqlite/SQLCipher, specta), React 19 + TypeScript, TanStack Query, Recharts 3, react-i18next (10 locales), Vitest, cargo test.
 
-**Spec:** `docs/specs/2026-10-11-stocks-analysis-redesign-design.md`. Visual reference: `docs/specs/2026-10-11-stocks-analysis-prototype.html` (the spec wins where they differ; the allocation ring toggle and the proto bar are not built).
+**Spec:** `docs/specs/2026-10-11-stocks-analysis-redesign-design.md`. The HTML prototype used during the design (and as a reference by the tasks) was deleted after the merge at the owner's request.
 
 ## Global Constraints
 

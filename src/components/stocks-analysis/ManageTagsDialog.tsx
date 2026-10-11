@@ -49,7 +49,7 @@ interface ManageTagsDialogProps {
 }
 
 /**
- * "Spravovat štítky" (prototype `stocks-analysis.html`): tags listed by
+ * "Spravovat štítky" (spec `docs/specs/2026-10-11-stocks-analysis-redesign-design.md`): tags listed by
  * group as chips — each chip opens a menu to move it to another group or
  * delete it — and a form that creates a tag in an existing or a new group.
  * A group holds one tag per position, so a move that would give a position two

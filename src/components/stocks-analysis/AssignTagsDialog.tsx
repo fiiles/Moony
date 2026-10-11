@@ -61,7 +61,7 @@ function selectionFor(
 }
 
 /**
- * "Přiřadit štítky" (prototype `stocks-analysis-prototype.html`, the assign dialog): pick
+ * "Přiřadit štítky" (spec `docs/specs/2026-10-11-stocks-analysis-redesign-design.md`): pick
  * positions and, per tag group, one tag. A group is a choice — the chosen tag replaces the
  * position's current one, "Bez štítku" removes it, and for several positions "Beze změny" leaves
  * it. Tags without a group can be combined freely.

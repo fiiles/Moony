@@ -1554,32 +1554,6 @@ export interface InsertStockTag {
   groupId?: string | null;
 }
 
-export interface TwrDataPoint {
-  /** Calendar date as "YYYY-MM-DD" */
-  date: string;
-  /** Cumulative TWR in percent (0.0 at start of range) */
-  twr: number;
-}
-
-export interface TwrSeries {
-  /** Tag this series belongs to. null = whole portfolio or untagged. */
-  tag: StockTag | null;
-  /** True when this series represents stocks with no tags assigned. */
-  isUntagged: boolean;
-  data: TwrDataPoint[];
-}
-
-/**
- * Time-weighted return series computed in a report currency: each day's value and cash flows
- * are converted at that day's rate. A holding that cannot be converted is left out of that day
- * (the others keep chaining) and counted in `fxQuality`.
- */
-export interface StockTwr {
-  currency: string;
-  fxQuality: ConversionQuality;
-  series: TwrSeries[];
-}
-
 /** One line of the performance chart: a set of held positions. */
 export interface PerformanceSeriesSpec {
   /** Caller-chosen identifier, echoed in the response; unique within a request. */

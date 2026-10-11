@@ -22,7 +22,7 @@ export function useHistoryRecalculation(): readonly string[] {
       if (event.payload.status !== 'running') {
         queryClient.invalidateQueries({ queryKey: ['portfolio-history'] });
         queryClient.invalidateQueries({ queryKey: ['ticker-history'] });
-        queryClient.invalidateQueries({ queryKey: ['stock-twr'] });
+        queryClient.invalidateQueries({ queryKey: ['stock-performance'] });
       }
     });
 

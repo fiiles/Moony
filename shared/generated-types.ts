@@ -1980,13 +1980,6 @@ export type StockTag = { id: string; name: string; color: string | null; groupId
 export type StockTagGroup = { id: string; name: string; description: string | null; createdAt: number }
 
 /**
- * Time-weighted return series computed in a report currency: each day's value and cash flows
- * are converted at that day's rate. A holding that cannot be converted is left out of that day
- * (the others keep chaining) and counted in `fxQuality`.
- */
-export type StockTwr = { currency: string; fxQuality: ConversionQuality; series: TwrSeries[] }
-
-/**
  * One value of the type column and what it means (TS `StockTypeValueMapping`).
  */
 export type StockTypeValueMapping = { 
@@ -2088,32 +2081,6 @@ export type TransactionStatus = "booked" | "pending"
  * Transaction type
  */
 export type TransactionType = "credit" | "debit"
-
-/**
- * A single data point in a TWR time series.
- */
-export type TwrDataPoint = { 
-/**
- * Calendar date as "YYYY-MM-DD"
- */
-date: string; 
-/**
- * Cumulative time-weighted return in percent (0.0 at start of range)
- */
-twr: number }
-
-/**
- * A complete TWR series for one tag, untagged stocks, or the whole portfolio.
- */
-export type TwrSeries = { 
-/**
- * The tag this series belongs to. None = whole portfolio or untagged.
- */
-tag: StockTag | null; 
-/**
- * True when this series represents stocks with no tags assigned.
- */
-isUntagged: boolean; data: TwrDataPoint[] }
 
 /**
  * What a value of the type column means.

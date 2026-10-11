@@ -98,7 +98,6 @@ import type {
   StockPosition,
   InvestmentWithDetails,
   CryptoPositions,
-  StockTwr,
   StockPerformance,
   StockPerformanceRequest,
   StockBenchmark,
@@ -289,30 +288,6 @@ export const investmentsApi = {
 
   backfillHistory: (ticker: string) =>
     tauriInvoke<BackfillResult>('backfill_stock_ticker_history', { ticker }),
-
-  /**
-   * Time-weighted return per tag and for the whole portfolio. `investmentIds` narrows every tag
-   * series to those positions; the whole-portfolio series is never narrowed. The returns are
-   * computed in `reportCurrency` (values and flows converted at their own day).
-   */
-  getStockTwr: (
-    tagIds: string[],
-    includePortfolio: boolean,
-    includeUntagged: boolean,
-    fromTs: number,
-    toTs: number,
-    reportCurrency: string,
-    investmentIds?: string[]
-  ) =>
-    tauriInvoke<StockTwr>('get_stock_twr', {
-      tagIds,
-      includePortfolio,
-      includeUntagged,
-      investmentIds,
-      fromTs,
-      toTs,
-      reportCurrency,
-    }),
 
   /**
    * Performance of the held positions over a period in `request.reportCurrency`: time-weighted

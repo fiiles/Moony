@@ -32,9 +32,6 @@ pub fn collect_types() -> TypeCollection {
     types.register::<crate::models::StockPriceOverride>();
     types.register::<crate::models::DividendOverride>();
     types.register::<crate::models::TickerValueHistory>();
-    types.register::<crate::models::TwrDataPoint>();
-    types.register::<crate::models::TwrSeries>();
-    types.register::<crate::models::StockTwr>();
     types.register::<crate::models::PerformanceSeriesSpec>();
     types.register::<crate::models::StockPerformanceRequest>();
     types.register::<crate::models::PerformanceSeries>();

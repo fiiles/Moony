@@ -1,7 +1,7 @@
 //! Performance of the held stock positions over a period, for the stocks analysis page.
 //!
-//! A daily engine chain-links the existing TWR method (`investments::compute_twr_for_tickers`)
-//! over every held position at once. For each position `p` and day `s` of the range, in the
+//! A daily engine chain-links the time-weighted return over every held position at once. For
+//! each position `p` and day `s` of the range, in the
 //! report currency (values and flows converted at their own day):
 //!
 //! - `base_p(s) = V_p(s-1) + F_p(s)` and `gain_p(s) = V_p(s) - V_p(s-1) - F_p(s)`, where `V` is
@@ -31,6 +31,8 @@
 
 use std::collections::HashMap;
 
+use chrono::DateTime;
+use rusqlite::types::Value;
 use rusqlite::{params_from_iter, Connection};
 
 use crate::error::{AppError, Result};
@@ -40,9 +42,6 @@ use crate::models::{
     StockPerformance, StockPerformanceRequest,
 };
 use crate::services::fx::{History, Quality, DAY};
-use crate::services::investments::{
-    load_day_holdings, load_twr_history, lookup_ticker_at, ts_to_date_str, DayHolding, ReportFx,
-};
 use crate::services::price_api::HistoricalPrice;
 use crate::services::reporting::{money_in_currency, normalize_currency};
 
@@ -50,6 +49,120 @@ use crate::services::reporting::{money_in_currency, normalize_currency};
 const MAX_POINTS: usize = 400;
 /// A base or quantity at or below this is zero.
 const EPSILON: f64 = 1e-9;
+
+/// Convert a Unix timestamp to a "YYYY-MM-DD" date string (UTC).
+fn ts_to_date_str(ts: i64) -> String {
+    DateTime::from_timestamp(ts, 0)
+        .map(|dt| dt.format("%Y-%m-%d").to_string())
+        .unwrap_or_default()
+}
+
+/// One recorded day of a ticker's value history: the native price and its currency. The
+/// quantity of a day comes from the transactions (`Quantities`), not from the row.
+#[derive(Debug, Clone)]
+struct DayHolding {
+    ts: i64,
+    price: f64,
+    currency: String,
+}
+
+/// The most recent recorded holding of a ticker at or before `target_ts`.
+///
+/// Uses binary search — O(log N) — so entries must be sorted ascending by timestamp
+/// (as guaranteed by the SQL `ORDER BY ticker, recorded_at ASC` in `load_day_holdings`).
+fn lookup_ticker_at<'a>(
+    history: &'a HashMap<String, Vec<DayHolding>>,
+    ticker: &str,
+    target_ts: i64,
+) -> Option<&'a DayHolding> {
+    let entries = history.get(ticker)?;
+    // partition_point returns the index of the first element where ts > target_ts,
+    // so the last element at or before target_ts is at idx-1 (if idx > 0).
+    let idx = entries.partition_point(|entry| entry.ts <= target_ts);
+    idx.checked_sub(1).map(|i| &entries[i])
+}
+
+/// The report currency of a performance computation and the day quotes it converts with.
+struct ReportFx<'a> {
+    currency: &'a str,
+    history: &'a History,
+}
+
+/// The recorded holdings of `tickers` in `from_ts..=to_ts` plus each ticker's last row before
+/// `from_ts` (the base of the first day), ascending by day per ticker.
+fn load_day_holdings(
+    conn: &rusqlite::Connection,
+    tickers: &[String],
+    from_ts: i64,
+    to_ts: i64,
+) -> Result<HashMap<String, Vec<DayHolding>>> {
+    let mut history: HashMap<String, Vec<DayHolding>> = HashMap::new();
+    if tickers.is_empty() {
+        return Ok(history);
+    }
+
+    // Build SQL with two IN clause copies (tickers appear twice: once for main range, once for pre-range lookup)
+    // params: ?1=from_ts, ?2=to_ts, ?3..?(n+2)=tickers (main range), ?(n+3)..?(2n+2)=tickers (pre-range)
+    let n = tickers.len();
+    let main_placeholders: Vec<String> = (3..=n + 2).map(|i| format!("?{i}")).collect();
+    let pre_placeholders: Vec<String> = (n + 3..=2 * n + 2).map(|i| format!("?{i}")).collect();
+    let sql = format!(
+        "SELECT ticker, recorded_at, CAST(price AS REAL), currency \
+         FROM stock_value_history \
+         WHERE ticker IN ({main}) AND recorded_at >= ?1 AND recorded_at <= ?2 \
+         UNION ALL \
+         SELECT s.ticker, s.recorded_at, CAST(s.price AS REAL), s.currency \
+         FROM stock_value_history s \
+         WHERE s.ticker IN ({pre}) \
+           AND s.recorded_at = ( \
+               SELECT MAX(recorded_at) FROM stock_value_history \
+               WHERE ticker = s.ticker AND recorded_at < ?1 \
+           ) \
+         ORDER BY ticker, recorded_at ASC",
+        main = main_placeholders.join(", "),
+        pre = pre_placeholders.join(", "),
+    );
+
+    let params: Vec<Value> = std::iter::once(Value::Integer(from_ts))
+        .chain(std::iter::once(Value::Integer(to_ts)))
+        .chain(tickers.iter().map(|t| Value::Text(t.clone()))) // main range
+        .chain(tickers.iter().map(|t| Value::Text(t.clone()))) // pre-range
+        .collect();
+
+    let mut stmt = conn.prepare(&sql)?;
+    let rows = stmt.query_map(params_from_iter(params), |row| {
+        Ok((
+            row.get::<_, String>(0)?,
+            DayHolding {
+                ts: row.get(1)?,
+                price: row.get(2)?,
+                currency: row.get(3)?,
+            },
+        ))
+    })?;
+    for row in rows {
+        let (ticker, holding) = row?;
+        history.entry(ticker).or_default().push(holding);
+    }
+    Ok(history)
+}
+
+/// The day quotes a report of `from_ts..=to_ts` converts with: the requested range limited to
+/// the span of `stock_value_history` (a transient absurd range loads nothing extra), plus the
+/// day before it, which is the base of the first day's return.
+fn load_fx_history(conn: &rusqlite::Connection, from_ts: i64, to_ts: i64) -> Result<History> {
+    let (first, last): (Option<i64>, Option<i64>) = conn.query_row(
+        "SELECT MIN(recorded_at), MAX(recorded_at) FROM stock_value_history",
+        [],
+        |row| Ok((row.get(0)?, row.get(1)?)),
+    )?;
+    let (Some(first), Some(last)) = (first, last) else {
+        return Ok(History::default());
+    };
+    let start = from_ts.max(first) - 86400;
+    let end = to_ts.min(last);
+    History::load(conn, start, end.max(start))
+}
 
 /// A held stock position.
 struct Held {
@@ -386,7 +499,7 @@ pub fn stock_performance(
         None => (request.from_ts, request.from_ts),
     };
     let days = day_range(from_ts, to_ts);
-    let fx_history = load_twr_history(conn, from_ts, to_ts)?;
+    let fx_history = load_fx_history(conn, from_ts, to_ts)?;
     let fx = ReportFx {
         currency: &currency,
         history: &fx_history,
@@ -625,7 +738,6 @@ pub fn benchmark_series(
 mod tests {
     use super::*;
     use crate::models::PerformanceSeriesSpec;
-    use crate::services::investments::ts_to_date_str;
 
     const DAY: i64 = 86_400;
     const DAY0: i64 = 1_700_000_000 / DAY * DAY;
@@ -1010,6 +1122,34 @@ mod tests {
         assert_eq!(report.series[1].key, "native");
         assert_eq!(report.series[1].twr, [0.0, 0.0]);
         assert_eq!(report.series[1].contribution, None);
+        assert!(report.fx_quality.missing_currencies.is_empty());
+    }
+
+    #[test]
+    fn a_flow_in_another_currency_is_converted_at_its_own_day() {
+        // 10 units on day 0 (20000 CZK), 10 more bought on day 1 at an unchanged price while
+        // USD/CZK goes 20 -> 25. The purchase is a flow of 1000 USD = 25000 CZK at its own
+        // day (not 20000), so day 1 returns (50000 - 20000 - 25000) / (20000 + 25000).
+        let conn = setup_db();
+        seed(
+            &conn,
+            "usd",
+            "USDCO",
+            "20",
+            "USD",
+            &[(10.0, 100.0), (20.0, 100.0), (20.0, 100.0)],
+        );
+        for (at, rate) in [(0, 20.0), (1, 25.0), (2, 25.0)] {
+            add_usd_czk(&conn, day(at), rate);
+        }
+
+        let report = perf(&conn, day(0), day(2), vec![]);
+
+        let expected = 100.0 * 5000.0 / 45000.0;
+        close(report.portfolio[1], expected, 1e-9);
+        close(report.portfolio[2], expected, 1e-9);
+        assert_eq!(report.net_flows, ["0.00", "25000.00", "25000.00"]);
+        assert_eq!(last(&report.values), &Some("50000.00".to_string()));
         assert!(report.fx_quality.missing_currencies.is_empty());
     }
 

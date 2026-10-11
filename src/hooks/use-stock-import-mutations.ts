@@ -17,7 +17,7 @@ const STOCK_IMPORT_KEYS = [
   ['dividend-summary'],
   ['stocks-analysis'],
   ['tag-metrics'],
-  ['stock-twr'],
+  ['stock-performance'],
   ['stock-import-batches'],
 ] as const;
 

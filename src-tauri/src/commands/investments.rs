@@ -6,7 +6,7 @@ use crate::error::{AppError, Result};
 use crate::models::{
     DividendOverride, InsertInvestmentTransaction, InsertStockInvestment, InvestmentTransaction,
     InvestmentWithDetails, StockBenchmark, StockInvestment, StockPerformance,
-    StockPerformanceRequest, StockPosition, StockPositions, StockPriceOverride, StockTag, StockTwr,
+    StockPerformanceRequest, StockPosition, StockPositions, StockPriceOverride, StockTag,
 };
 use crate::services::fx;
 use crate::services::history_recalc::HistoryRecalc;
@@ -607,43 +607,6 @@ pub async fn get_stock_value_history(
             (start_date, end_date),
             &report_currency,
             &fx::current(),
-        )
-    })
-}
-
-/// Get time-weighted return series for a set of stock tags and/or the whole portfolio.
-///
-/// `tag_ids`: IDs of tags to compute separate series for.
-/// `include_portfolio`: if true, also include a whole-portfolio series.
-/// `include_untagged`: if true, include a series for stocks with no tags assigned.
-/// `investment_ids`: when given, every tag (and untagged) series covers only these positions;
-/// the whole-portfolio series is never narrowed.
-/// `from_ts` / `to_ts`: Unix timestamps (seconds, midnight UTC) for the date range.
-/// `report_currency`: the currency the returns are computed in (values and flows converted at
-/// their own day).
-///
-/// When `tag_ids` is empty and `include_untagged` is false, only the portfolio series is returned.
-#[tauri::command]
-#[allow(clippy::too_many_arguments)] // flat wire arguments
-pub async fn get_stock_twr(
-    db: State<'_, Database>,
-    tag_ids: Vec<String>,
-    include_portfolio: bool,
-    include_untagged: bool,
-    investment_ids: Option<Vec<String>>,
-    from_ts: i64,
-    to_ts: i64,
-    report_currency: String,
-) -> Result<StockTwr> {
-    db.with_conn(|conn| {
-        investment_service::twr_series(
-            conn,
-            &tag_ids,
-            include_portfolio,
-            include_untagged,
-            investment_ids.as_deref(),
-            from_ts..=to_ts,
-            &report_currency,
         )
     })
 }

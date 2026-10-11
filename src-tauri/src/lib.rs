@@ -99,7 +99,6 @@ pub async fn run() {
             commands::investments::set_manual_dividend,
             commands::investments::delete_manual_dividend,
             commands::investments::get_stock_value_history,
-            commands::investments::get_stock_twr,
             commands::investments::get_stock_performance,
             commands::investments::get_stock_benchmark,
             // Crypto commands

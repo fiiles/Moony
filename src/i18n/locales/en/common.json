@@ -245,7 +245,12 @@
     "currencyLockedByRecords": "The currency cannot change while the account has balance records.",
     "learningIdentity": "Provide a reliable account identifier or a payee.",
     "paginationInvalid": "Select a valid history page.",
-    "systemRule": "System rules cannot be changed."
+    "systemRule": "System rules cannot be changed.",
+    "tagNameRequired": "Enter a tag name.",
+    "tagNameTooLong": "A name can have at most 60 characters.",
+    "tagNotFound": "This tag no longer exists.",
+    "oneTagPerGroup": "A position can have only one tag from each group.",
+    "tagGroupConflict": "Some positions already have another tag in that group."
   },
   "auth": {
     "wrongPassword": "The password you entered is incorrect. Please try again.",

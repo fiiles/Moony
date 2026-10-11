@@ -50,6 +50,7 @@ pub mod quote_unit;
 pub mod real_estate;
 pub mod stock_import;
 pub mod stock_monitor;
+pub mod stock_tags;
 pub mod ticker_history;
 pub mod valuations;
 

@@ -343,13 +343,24 @@
       "save": "Přiřadit štítky",
       "saved": "Štítky přiřazeny"
     },
-    "metricsChart": "Podíl štítků na portfoliu",
     "groups": {
       "sector": "Sektor",
       "currency": "Měna",
       "autoTitle": "Automaticky z údajů o akcii"
     },
-    "metricsChartDescription": "Podíl hodnoty portfolia připadající na jednotlivé štítky. Pozice může mít více štítků, proto může součet přesáhnout 100 %.",
+    "sectors": {
+      "technology": "Technologie",
+      "financialServices": "Finanční služby",
+      "healthcare": "Zdravotnictví",
+      "consumerCyclical": "Cyklická spotřeba",
+      "consumerDefensive": "Základní spotřeba",
+      "energy": "Energetika",
+      "industrials": "Průmysl",
+      "basicMaterials": "Základní suroviny",
+      "realEstate": "Nemovitosti",
+      "utilities": "Veřejné služby",
+      "communicationServices": "Komunikační služby"
+    },
     "pp": "p. b.",
     "periods": {
       "3m": "3 měsíce",

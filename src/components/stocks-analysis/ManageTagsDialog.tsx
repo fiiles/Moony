@@ -94,7 +94,6 @@ export function ManageTagsDialog({
     queryClient.invalidateQueries({ queryKey: ['stock-tags'] });
     queryClient.invalidateQueries({ queryKey: ['stock-tag-groups'] });
     queryClient.invalidateQueries({ queryKey: ['stocks-analysis'] });
-    queryClient.invalidateQueries({ queryKey: ['tag-metrics'] });
     queryClient.invalidateQueries({ queryKey: ['stock-performance'] });
   };
   const fail = (error: Error) =>

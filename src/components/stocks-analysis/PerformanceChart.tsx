@@ -57,6 +57,16 @@ const DD_HEIGHT = 84;
 const TOTAL_HEIGHT = TWR_HEIGHT + PANEL_GAP + DD_HEIGHT;
 /** Right gutter shared by both panels: value ticks and, in the TWR panel, the end labels. */
 const GUTTER = 128;
+/** Left edge of a tick and of an end label inside the gutter. */
+const GUTTER_INSET = 10;
+/**
+ * An end label may run past the gutter into the card's right padding: 24 px of padding less the
+ * 4 px the chart is pulled out by (`-mx-1` in `PerformanceCard`), leaving 4 px to the card edge.
+ */
+const LABEL_OVERHANG = 20;
+const LABEL_EDGE = 4;
+/** Widest an end label gets before its name is ellipsized. */
+const END_LABEL_MAX = GUTTER + LABEL_OVERHANG - GUTTER_INSET - LABEL_EDGE;
 const TWR_PAD_TOP = 14;
 const TWR_PAD_BOTTOM = 4;
 const DD_PAD_BOTTOM = 2;
@@ -522,10 +532,10 @@ export function PerformanceChart({
               <span
                 key={v}
                 className={cn(
-                  'absolute left-[10px] -translate-y-1/2 whitespace-nowrap text-micro num',
+                  'absolute -translate-y-1/2 whitespace-nowrap text-micro num',
                   v === 0 ? 'font-600 text-ink-3' : 'font-500 text-chart-axis'
                 )}
-                style={{ top: y }}
+                style={{ top: y, left: GUTTER_INSET }}
               >
                 {formatPercent(v, twr.digits)}
               </span>
@@ -535,8 +545,13 @@ export function PerformanceChart({
             <span
               key={e.line.id}
               title={e.line.name}
-              className="pointer-events-auto absolute left-[10px] flex max-w-[114px] -translate-y-1/2 cursor-default items-center gap-1.5 whitespace-nowrap text-micro font-650 text-ink-2 transition-opacity duration-fast num"
-              style={{ top: e.y, opacity: dimmed(e.line.id) ? DIM_LABEL : 1 }}
+              className="pointer-events-auto absolute flex -translate-y-1/2 cursor-default items-center gap-1.5 whitespace-nowrap text-micro font-650 text-ink-2 transition-opacity duration-fast num"
+              style={{
+                top: e.y,
+                left: GUTTER_INSET,
+                maxWidth: END_LABEL_MAX,
+                opacity: dimmed(e.line.id) ? DIM_LABEL : 1,
+              }}
               onMouseEnter={() => onHighlight(e.line.id)}
               onMouseLeave={() => onHighlight(null)}
             >
@@ -565,10 +580,10 @@ export function PerformanceChart({
             <span
               key={v}
               className={cn(
-                'absolute left-[10px] -translate-y-1/2 whitespace-nowrap text-micro num',
+                'absolute -translate-y-1/2 whitespace-nowrap text-micro num',
                 v === 0 ? 'font-600 text-ink-3' : 'font-500 text-chart-axis'
               )}
-              style={{ top: ddY(v) }}
+              style={{ top: ddY(v), left: GUTTER_INSET }}
             >
               {formatPercent(v, dd.digits)}
             </span>

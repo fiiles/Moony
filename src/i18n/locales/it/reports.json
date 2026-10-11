@@ -343,13 +343,24 @@
       "save": "Assegna tag",
       "saved": "Tag assegnati"
     },
-    "metricsChart": "Quota del portafoglio per tag",
     "groups": {
       "sector": "Settore",
       "currency": "Valuta",
       "autoTitle": "Automaticamente dai dati dell'azione"
     },
-    "metricsChartDescription": "La quota di ogni tag sul valore del portafoglio. Una posizione può avere più tag, quindi le quote possono sommarsi a più del 100%.",
+    "sectors": {
+      "technology": "Tecnologia",
+      "financialServices": "Servizi finanziari",
+      "healthcare": "Sanità",
+      "consumerCyclical": "Beni di consumo ciclici",
+      "consumerDefensive": "Beni di consumo difensivi",
+      "energy": "Energia",
+      "industrials": "Industria",
+      "basicMaterials": "Materie prime",
+      "realEstate": "Immobiliare",
+      "utilities": "Servizi di pubblica utilità",
+      "communicationServices": "Servizi di comunicazione"
+    },
     "pp": "p.p.",
     "periods": {
       "3m": "3 mesi",

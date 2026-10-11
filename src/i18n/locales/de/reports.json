@@ -331,13 +331,24 @@
       "save": "Tags zuweisen",
       "saved": "Tags zugewiesen"
     },
-    "metricsChart": "Anteil am Portfolio nach Tag",
     "groups": {
       "sector": "Sektor",
       "currency": "Währung",
       "autoTitle": "Automatisch aus den Daten der Aktie"
     },
-    "metricsChartDescription": "Der Anteil jedes Tags am Wert Ihres Portfolios. Eine Position kann mehrere Tags tragen, daher können die Anteile zusammen mehr als 100 % ergeben.",
+    "sectors": {
+      "technology": "Technologie",
+      "financialServices": "Finanzdienstleistungen",
+      "healthcare": "Gesundheitswesen",
+      "consumerCyclical": "Zyklische Konsumgüter",
+      "consumerDefensive": "Basiskonsumgüter",
+      "energy": "Energie",
+      "industrials": "Industrie",
+      "basicMaterials": "Grundstoffe",
+      "realEstate": "Immobilien",
+      "utilities": "Versorger",
+      "communicationServices": "Kommunikationsdienste"
+    },
     "pp": "Pp.",
     "periods": {
       "3m": "3 Monate",

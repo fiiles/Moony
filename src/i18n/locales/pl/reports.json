@@ -355,13 +355,24 @@
       "save": "Przypisz tagi",
       "saved": "Tagi przypisane"
     },
-    "metricsChart": "Udział w portfelu wg tagu",
     "groups": {
       "sector": "Sektor",
       "currency": "Waluta",
       "autoTitle": "Automatycznie z danych o akcji"
     },
-    "metricsChartDescription": "Udział każdego tagu w wartości twojego portfela. Pozycja może mieć kilka tagów, więc udziały mogą sumować się do ponad 100%.",
+    "sectors": {
+      "technology": "Technologie",
+      "financialServices": "Usługi finansowe",
+      "healthcare": "Opieka zdrowotna",
+      "consumerCyclical": "Dobra konsumpcyjne cykliczne",
+      "consumerDefensive": "Dobra konsumpcyjne podstawowe",
+      "energy": "Energia",
+      "industrials": "Przemysł",
+      "basicMaterials": "Surowce",
+      "realEstate": "Nieruchomości",
+      "utilities": "Użyteczność publiczna",
+      "communicationServices": "Usługi komunikacyjne"
+    },
     "pp": "p.p.",
     "periods": {
       "3m": "3 miesiące",

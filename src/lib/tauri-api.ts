@@ -93,7 +93,6 @@ import type {
   StockTagGroup,
   InsertStockTagGroup,
   StocksAnalysis,
-  TagMetricsReport,
   StockPositions,
   StockPosition,
   InvestmentWithDetails,
@@ -1013,9 +1012,6 @@ export const stockTagsApi = {
 
   getAnalysis: (reportCurrency: string) =>
     tauriInvoke<StocksAnalysis>('get_stocks_analysis', { reportCurrency }),
-
-  getTagMetrics: (tagIds: string[], reportCurrency: string) =>
-    tauriInvoke<TagMetricsReport>('get_tag_metrics', { tagIds, reportCurrency }),
 
   // Tag Group operations
   getAllGroups: () => tauriInvoke<StockTagGroup[]>('get_all_stock_tag_groups'),

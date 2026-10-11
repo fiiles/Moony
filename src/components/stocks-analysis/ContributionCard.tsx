@@ -17,7 +17,7 @@ import {
   positionItems,
   type ContributionItem,
 } from './contribution-model';
-import { groupName, partName, type RankedPart } from './performance-model';
+import { groupName, partName, sectorLabel, type RankedPart } from './performance-model';
 import { useHeldWhile } from './use-held-while';
 
 type Mode = 'positions' | 'group';
@@ -104,12 +104,14 @@ export function ContributionCard({
         ? contributionRows(positionItems(view.selected, byPosition), 'magnitude', other)
         : contributionRows(
             partItems(view.parts, bySeries, (part) =>
-              partName(part, kind, { tag: noneTag, sector: noneSector })
+              partName(part, kind, { tag: noneTag, sector: noneSector }, (name) =>
+                sectorLabel(name, t)
+              )
             ),
             'value',
             other
           ),
-    [mode, view.selected, view.parts, byPosition, bySeries, kind, noneTag, noneSector, other]
+    [mode, view.selected, view.parts, byPosition, bySeries, kind, noneTag, noneSector, other, t]
   );
   const layout = useMemo(() => barLayout(rows.map((row) => row.points)), [rows]);
 

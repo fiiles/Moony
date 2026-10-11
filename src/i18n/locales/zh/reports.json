@@ -319,13 +319,24 @@
       "save": "分配标签",
       "saved": "标签已分配"
     },
-    "metricsChart": "按标签占投资组合的比例",
     "groups": {
       "sector": "板块",
       "currency": "货币",
       "autoTitle": "根据股票数据自动确定"
     },
-    "metricsChartDescription": "每个标签占您投资组合价值的比例。一个持仓可以有多个标签，因此各比例之和可能超过 100%。",
+    "sectors": {
+      "technology": "科技",
+      "financialServices": "金融服务",
+      "healthcare": "医疗保健",
+      "consumerCyclical": "周期性消费品",
+      "consumerDefensive": "防御性消费品",
+      "energy": "能源",
+      "industrials": "工业",
+      "basicMaterials": "基础材料",
+      "realEstate": "房地产",
+      "utilities": "公用事业",
+      "communicationServices": "通信服务"
+    },
     "pp": "个百分点",
     "periods": {
       "3m": "3 个月",

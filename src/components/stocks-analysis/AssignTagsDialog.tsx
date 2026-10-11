@@ -139,7 +139,6 @@ function AssignForm({
     // Also after a failure: positions saved before it keep their new tags
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['stocks-analysis'] });
-      queryClient.invalidateQueries({ queryKey: ['tag-metrics'] });
       queryClient.invalidateQueries({ queryKey: ['stock-performance'] });
     },
     onSuccess: () => {

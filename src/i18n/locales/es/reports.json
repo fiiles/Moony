@@ -343,13 +343,24 @@
       "save": "Asignar etiquetas",
       "saved": "Etiquetas asignadas"
     },
-    "metricsChart": "Peso de la cartera por etiqueta",
     "groups": {
       "sector": "Sector",
       "currency": "Moneda",
       "autoTitle": "Automáticamente a partir de los datos de la acción"
     },
-    "metricsChartDescription": "Peso de cada etiqueta en el valor de tu cartera. Una posición puede tener varias etiquetas, así que los pesos pueden sumar más del 100 %.",
+    "sectors": {
+      "technology": "Tecnología",
+      "financialServices": "Servicios financieros",
+      "healthcare": "Salud",
+      "consumerCyclical": "Consumo cíclico",
+      "consumerDefensive": "Consumo defensivo",
+      "energy": "Energía",
+      "industrials": "Industria",
+      "basicMaterials": "Materiales básicos",
+      "realEstate": "Inmobiliario",
+      "utilities": "Servicios públicos",
+      "communicationServices": "Servicios de comunicación"
+    },
     "pp": "p. p.",
     "periods": {
       "3m": "3 meses",

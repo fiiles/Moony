@@ -1699,31 +1699,6 @@ export interface StocksAnalysis {
   items: StockInvestmentWithTags[];
 }
 
-/**
- * Sums over a tag's positions, every known amount counted (the rule of `PositionTotals`: a
- * total is `null` when the tag's positions hold amounts for it but none of them converted).
- */
-export interface TagMetrics {
-  tag: StockTag;
-  value: string | null;
-  costBasis: string | null;
-  unrealizedGain: string | null;
-  /** Percent of the cost of the positions in `unrealizedGain`; 0 without a cost basis. */
-  unrealizedGainPercent: number;
-  yearlyDividend: string | null;
-  /** The tag's value in percent of the known value of every position. */
-  portfolioPercent: number;
-  /** Positions carrying the tag, summed or not. */
-  holdingsCount: number;
-  fxQuality: ConversionQuality;
-}
-
-export interface TagMetricsReport {
-  currency: string;
-  fxQuality: ConversionQuality;
-  tags: TagMetrics[];
-}
-
 // ============================================================================
 // MCP Server Types
 // ============================================================================

@@ -2,9 +2,7 @@
 
 use crate::db::Database;
 use crate::error::Result;
-use crate::models::{
-    InsertStockTag, InsertStockTagGroup, StockTag, StockTagGroup, StocksAnalysis, TagMetricsReport,
-};
+use crate::models::{InsertStockTag, InsertStockTagGroup, StockTag, StockTagGroup, StocksAnalysis};
 use crate::services::{position_reports, stock_tags};
 use tauri::State;
 
@@ -105,14 +103,4 @@ pub async fn get_stocks_analysis(
     report_currency: String,
 ) -> Result<StocksAnalysis> {
     db.with_conn(|conn| position_reports::stocks_analysis(conn, &report_currency))
-}
-
-/// Metrics per tag in `report_currency`; every tag when `tag_ids` is empty.
-#[tauri::command]
-pub async fn get_tag_metrics(
-    db: State<'_, Database>,
-    tag_ids: Vec<String>,
-    report_currency: String,
-) -> Result<TagMetricsReport> {
-    db.with_conn(|conn| position_reports::tag_metrics(conn, &report_currency, &tag_ids))
 }

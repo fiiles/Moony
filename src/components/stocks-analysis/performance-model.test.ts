@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import type { TFunction } from 'i18next';
 import type { PerformanceSeries, StockTag } from '@shared/schema';
 import type { CompareGroup, Part } from '@/utils/stock-performance';
+import reportsEn from '@/i18n/locales/en/reports.json';
 import {
   MAX_DRAWN,
   amountOf,
@@ -12,6 +14,7 @@ import {
   partName,
   rankParts,
   rankedAt,
+  sectorLabel,
   sumKnown,
   type BuildRowsInput,
   type RankedPart,
@@ -332,5 +335,86 @@ describe('groupName and partName', () => {
     expect(partName(part('none:g', [], { isNone: true }), 'tags', none)).toBe('No tag');
     expect(partName(part('sector:', [], { isNone: true }), 'sector', none)).toBe('No sector');
     expect(partName(part('none:g', [], { isNone: true }), undefined, none)).toBe('No tag');
+  });
+
+  it('shows a sector through the given translation, a tag or currency as it is', () => {
+    const shout = (name: string) => name.toUpperCase();
+    expect(partName(part('sector:Tech', [], { sector: 'Tech' }), 'sector', none, shout)).toBe(
+      'TECH'
+    );
+    expect(partName(part('tag:a', [], { tag: tag('a') }), 'tags', none, shout)).toBe('A');
+    expect(partName(part('currency:usd', [], { currency: 'usd' }), 'currency', none, shout)).toBe(
+      'usd'
+    );
+    expect(partName(part('sector:', [], { isNone: true }), 'sector', none, shout)).toBe(
+      'No sector'
+    );
+  });
+});
+
+describe('sectorLabel', () => {
+  const dictionary: Record<string, string> = {
+    'stocksAnalysis.sectors.technology': 'Technologie',
+    'stocksAnalysis.sectors.financialServices': 'Finanční služby',
+    'stocksAnalysis.sectors.healthcare': 'Zdravotnictví',
+    'stocksAnalysis.sectors.consumerCyclical': 'Cyklická spotřeba',
+    'stocksAnalysis.sectors.consumerDefensive': 'Základní spotřeba',
+    'stocksAnalysis.sectors.energy': 'Energetika',
+    'stocksAnalysis.sectors.industrials': 'Průmysl',
+    'stocksAnalysis.sectors.basicMaterials': 'Základní suroviny',
+    'stocksAnalysis.sectors.realEstate': 'Nemovitosti',
+    'stocksAnalysis.sectors.utilities': 'Veřejné služby',
+    'stocksAnalysis.sectors.communicationServices': 'Komunikační služby',
+  };
+  const t = ((key: string) => dictionary[key] ?? `?${key}`) as unknown as TFunction;
+
+  it('translates each of the eleven Yahoo sectors', () => {
+    expect(sectorLabel('Technology', t)).toBe('Technologie');
+    expect(sectorLabel('Financial Services', t)).toBe('Finanční služby');
+    expect(sectorLabel('Healthcare', t)).toBe('Zdravotnictví');
+    expect(sectorLabel('Consumer Cyclical', t)).toBe('Cyklická spotřeba');
+    expect(sectorLabel('Consumer Defensive', t)).toBe('Základní spotřeba');
+    expect(sectorLabel('Energy', t)).toBe('Energetika');
+    expect(sectorLabel('Industrials', t)).toBe('Průmysl');
+    expect(sectorLabel('Basic Materials', t)).toBe('Základní suroviny');
+    expect(sectorLabel('Real Estate', t)).toBe('Nemovitosti');
+    expect(sectorLabel('Utilities', t)).toBe('Veřejné služby');
+    expect(sectorLabel('Communication Services', t)).toBe('Komunikační služby');
+  });
+
+  it('matches ignoring case and spaces', () => {
+    expect(sectorLabel('technology', t)).toBe('Technologie');
+    expect(sectorLabel('FINANCIAL SERVICES', t)).toBe('Finanční služby');
+    expect(sectorLabel('  real   estate ', t)).toBe('Nemovitosti');
+    expect(sectorLabel('BasicMaterials', t)).toBe('Základní suroviny');
+  });
+
+  it('shows an unknown name as it came', () => {
+    expect(sectorLabel('Crypto Mining', t)).toBe('Crypto Mining');
+    expect(sectorLabel('', t)).toBe('');
+  });
+
+  it('maps every sector to a key the English locale carries', () => {
+    const sectors: Record<string, string> = reportsEn.stocksAnalysis.sectors;
+    const lookup = ((key: string) =>
+      sectors[key.replace('stocksAnalysis.sectors.', '')] ?? `?${key}`) as unknown as TFunction;
+    const yahoo = [
+      'Technology',
+      'Financial Services',
+      'Healthcare',
+      'Consumer Cyclical',
+      'Consumer Defensive',
+      'Energy',
+      'Industrials',
+      'Basic Materials',
+      'Real Estate',
+      'Utilities',
+      'Communication Services',
+    ];
+    for (const name of yahoo) {
+      // The English copy is the Yahoo name; a key the file lacks would read "?stocksAnalysis…"
+      expect(sectorLabel(name, lookup).toLowerCase()).toBe(name.toLowerCase());
+    }
+    expect(Object.keys(sectors)).toHaveLength(yahoo.length);
   });
 });

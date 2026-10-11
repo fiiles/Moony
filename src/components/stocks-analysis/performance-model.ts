@@ -1,3 +1,4 @@
+import type { TFunction } from 'i18next';
 import type { PerformanceSeries, StockPerformance, StockTag } from '@shared/schema';
 import { drawdown, type CompareGroup, type Part } from '@/utils/stock-performance';
 import type { PerformanceLine } from './PerformanceChart';
@@ -42,16 +43,47 @@ export function groupName(
 }
 
 /**
+ * The sectors Yahoo reports, normalised (lower case, no spaces), and the `stocksAnalysis.sectors.<key>`
+ * of the `reports` namespace that translates each.
+ */
+const SECTOR_KEYS: Readonly<Record<string, string>> = {
+  technology: 'technology',
+  financialservices: 'financialServices',
+  healthcare: 'healthcare',
+  consumercyclical: 'consumerCyclical',
+  consumerdefensive: 'consumerDefensive',
+  energy: 'energy',
+  industrials: 'industrials',
+  basicmaterials: 'basicMaterials',
+  realestate: 'realEstate',
+  utilities: 'utilities',
+  communicationservices: 'communicationServices',
+};
+
+/**
+ * A sector as the UI language names it. Yahoo reports English names ("Financial Services"), matched
+ * ignoring case and spaces; a name that is not one of its eleven sectors is shown as it came.
+ */
+export function sectorLabel(name: string, t: TFunction): string {
+  const key = SECTOR_KEYS[name.toLowerCase().replace(/\s+/g, '')];
+  return key ? String(t(`stocksAnalysis.sectors.${key}`)) : name;
+}
+
+/**
  * Name of a part of the chosen group: its tag, sector or currency; the part without a tag or
- * sector reads `none.sector` in the sector group and `none.tag` in a tag group.
+ * sector reads `none.sector` in the sector group and `none.tag` in a tag group. `sector` names a
+ * sector for display (`sectorLabel`); the part's own `sector` stays the Yahoo name.
  */
 export function partName(
   part: Part,
   kind: CompareGroup['kind'] | undefined,
-  none: { tag: string; sector: string }
+  none: { tag: string; sector: string },
+  sector: (name: string) => string = (name) => name
 ): string {
   if (part.isNone) return kind === 'sector' ? none.sector : none.tag;
-  return part.tag?.name ?? part.sector ?? part.currency ?? part.key;
+  if (part.tag) return part.tag.name;
+  if (part.sector !== null) return sector(part.sector);
+  return part.currency ?? part.key;
 }
 
 /** A part of the chosen group with its value as of the end of the period and how it is drawn. */

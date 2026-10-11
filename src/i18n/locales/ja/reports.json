@@ -319,13 +319,24 @@
       "save": "タグを割り当て",
       "saved": "タグを割り当てました"
     },
-    "metricsChart": "タグ別のポートフォリオ構成比",
     "groups": {
       "sector": "セクター",
       "currency": "通貨",
       "autoTitle": "銘柄のデータから自動で設定"
     },
-    "metricsChartDescription": "各タグがポートフォリオ評価額に占める割合です。1つの保有銘柄に複数のタグを付けられるため、合計が100%を超えることがあります。",
+    "sectors": {
+      "technology": "テクノロジー",
+      "financialServices": "金融サービス",
+      "healthcare": "ヘルスケア",
+      "consumerCyclical": "一般消費財",
+      "consumerDefensive": "生活必需品",
+      "energy": "エネルギー",
+      "industrials": "資本財",
+      "basicMaterials": "素材",
+      "realEstate": "不動産",
+      "utilities": "公益事業",
+      "communicationServices": "コミュニケーション・サービス"
+    },
     "pp": "pt",
     "periods": {
       "3m": "3か月",

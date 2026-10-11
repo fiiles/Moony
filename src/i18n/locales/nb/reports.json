@@ -331,13 +331,24 @@
       "save": "Tildel etiketter",
       "saved": "Etiketter tildelt"
     },
-    "metricsChart": "Andel av porteføljen per etikett",
     "groups": {
       "sector": "Sektor",
       "currency": "Valuta",
       "autoTitle": "Automatisk fra aksjens data"
     },
-    "metricsChartDescription": "Hver etikettens andel av porteføljeverdien. En beholdning kan ha flere etiketter, så andelene kan summere seg til mer enn 100 %.",
+    "sectors": {
+      "technology": "Teknologi",
+      "financialServices": "Finansielle tjenester",
+      "healthcare": "Helse",
+      "consumerCyclical": "Syklisk forbruk",
+      "consumerDefensive": "Defensivt forbruk",
+      "energy": "Energi",
+      "industrials": "Industri",
+      "basicMaterials": "Råvarer",
+      "realEstate": "Eiendom",
+      "utilities": "Forsyning",
+      "communicationServices": "Kommunikasjonstjenester"
+    },
     "pp": "pp",
     "periods": {
       "3m": "3 måneder",

@@ -331,13 +331,24 @@
       "save": "Assign tags",
       "saved": "Tags assigned"
     },
-    "metricsChart": "Share of portfolio by tag",
     "groups": {
       "sector": "Sector",
       "currency": "Currency",
       "autoTitle": "Automatically from the stock's data"
     },
-    "metricsChartDescription": "Each tag’s share of your portfolio value. A holding can carry several tags, so the shares may add up to more than 100%.",
+    "sectors": {
+      "technology": "Technology",
+      "financialServices": "Financial services",
+      "healthcare": "Healthcare",
+      "consumerCyclical": "Consumer cyclical",
+      "consumerDefensive": "Consumer defensive",
+      "energy": "Energy",
+      "industrials": "Industrials",
+      "basicMaterials": "Basic materials",
+      "realEstate": "Real estate",
+      "utilities": "Utilities",
+      "communicationServices": "Communication services"
+    },
     "pp": "pp",
     "periods": {
       "3m": "3 months",

@@ -301,7 +301,6 @@ pub async fn run() {
             commands::stock_tags::get_investment_tags,
             commands::stock_tags::set_investment_tags,
             commands::stock_tags::get_stocks_analysis,
-            commands::stock_tags::get_tag_metrics,
             // Stock tag group commands
             commands::stock_tags::get_all_stock_tag_groups,
             commands::stock_tags::create_stock_tag_group,

@@ -22,7 +22,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { sumKnown } from './performance-model';
+import { sectorLabel, sumKnown } from './performance-model';
 import { holdingRows, portfolioConcentration } from './tables-model';
 
 const HEAD_WRAP = '[&_th]:whitespace-normal [&_th]:leading-[1.2]';
@@ -167,7 +167,7 @@ export function HoldingsTable({
                           {[
                             s.ticker,
                             positionCurrency(s),
-                            s.sector ?? t('stocksAnalysis.holdings.etf'),
+                            s.sector ? sectorLabel(s.sector, t) : t('stocksAnalysis.holdings.etf'),
                           ].join(' · ')}
                         </small>
                       </div>

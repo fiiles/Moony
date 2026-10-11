@@ -17,7 +17,6 @@ const STOCK_TRANSACTION_KEYS = [
   ['all-stock-transactions'],
   ['dividend-summary'],
   ['stocks-analysis'],
-  ['tag-metrics'],
   ['stock-performance'],
 ] as const;
 

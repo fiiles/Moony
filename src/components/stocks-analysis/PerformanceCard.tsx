@@ -52,6 +52,7 @@ import {
   groupName,
   partName,
   rankedAt,
+  sectorLabel,
   type IndexId,
   type RankedPart,
 } from './performance-model';
@@ -241,10 +242,15 @@ export function PerformanceCard({
     group === null ? '' : groupName(group, (kind) => t(`stocksAnalysis.groups.${kind}`));
   const nameOf = useCallback(
     (part: Part): string =>
-      partName(part, group?.kind, {
-        tag: t('stocksAnalysis.board.noneTag'),
-        sector: t('stocksAnalysis.board.noneSector'),
-      }),
+      partName(
+        part,
+        group?.kind,
+        {
+          tag: t('stocksAnalysis.board.noneTag'),
+          sector: t('stocksAnalysis.board.noneSector'),
+        },
+        (name) => sectorLabel(name, t)
+      ),
     [group, t]
   );
   const rows = useMemo(

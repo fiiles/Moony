@@ -65,6 +65,24 @@ fn stock_names(conn: &Connection) -> Result<HashMap<String, (String, String)>> {
     Ok(rows)
 }
 
+/// The trimmed, non-empty sector of every ticker in the cached quote data (`stock_data`).
+fn stock_sectors(conn: &Connection) -> Result<HashMap<String, String>> {
+    let mut stmt =
+        conn.prepare("SELECT ticker, sector FROM stock_data WHERE sector IS NOT NULL")?;
+    let rows = stmt.query_map([], |row| {
+        Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+    })?;
+    let mut sectors = HashMap::new();
+    for row in rows {
+        let (ticker, sector) = row?;
+        let sector = sector.trim();
+        if !sector.is_empty() {
+            sectors.insert(ticker, sector.to_string());
+        }
+    }
+    Ok(sectors)
+}
+
 fn enrich_stock(
     conn: &Connection,
     item: &PositionValue,
@@ -236,6 +254,7 @@ pub fn stocks_analysis(conn: &Connection, report_currency: &str) -> Result<Stock
     let positions = positions::value_positions(conn, AssetKind::Stock, report_currency, now())?;
     let mut names = stock_names(conn)?;
     let mut tags = tags_by_investment(conn)?;
+    let sectors = stock_sectors(conn)?;
     let currency = positions.currency.clone();
     let mut items: Vec<StockInvestmentWithTags> = positions
         .items
@@ -257,6 +276,7 @@ pub fn stocks_analysis(conn: &Connection, report_currency: &str) -> Result<Stock
                 unrealized_gain: money(item.unrealized_gain, &currency),
                 unrealized_gain_percent: item.unrealized_gain_percent,
                 yearly_dividend: money(item.yearly_dividend, &currency),
+                sector: sectors.get(&item.ticker).cloned(),
                 tags: tags.remove(&item.investment_id).unwrap_or_default(),
             }
         })
@@ -346,6 +366,130 @@ mod tests {
         // A stale stored quantity gives way to the replayed one
         assert_eq!(wire_quantity("5", 2.0), "2");
         assert_eq!(wire_quantity("", 1.5), "1.5");
+    }
+
+    /// A minimal database for `stocks_analysis`: three CZK stocks held without transactions
+    /// (so no rates are needed); AAPL has a padded sector, ETF1 an empty one and NOQUOTE no
+    /// `stock_data` row at all.
+    fn setup_analysis_db() -> Connection {
+        let conn = Connection::open_in_memory().expect("in-memory db");
+        conn.execute_batch(
+            r#"
+            CREATE TABLE stock_investments (
+                id TEXT PRIMARY KEY,
+                ticker TEXT NOT NULL UNIQUE,
+                company_name TEXT NOT NULL,
+                quantity TEXT NOT NULL,
+                currency TEXT NOT NULL DEFAULT 'CZK'
+            );
+            CREATE TABLE investment_transactions (
+                id TEXT PRIMARY KEY,
+                investment_id TEXT NOT NULL,
+                type TEXT NOT NULL,
+                ticker TEXT NOT NULL,
+                company_name TEXT NOT NULL,
+                quantity TEXT NOT NULL,
+                price_per_unit TEXT NOT NULL,
+                currency TEXT NOT NULL,
+                transaction_date INTEGER NOT NULL,
+                created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+                import_batch_id TEXT,
+                external_id TEXT
+            );
+            CREATE TABLE stock_data (
+                id TEXT PRIMARY KEY,
+                ticker TEXT NOT NULL UNIQUE,
+                original_price TEXT NOT NULL,
+                currency TEXT NOT NULL DEFAULT 'USD',
+                price_date INTEGER NOT NULL,
+                fetched_at INTEGER NOT NULL DEFAULT (unixepoch()),
+                sector TEXT
+            );
+            CREATE TABLE stock_price_overrides (
+                id TEXT PRIMARY KEY,
+                ticker TEXT NOT NULL UNIQUE,
+                price TEXT NOT NULL,
+                currency TEXT NOT NULL DEFAULT 'CZK',
+                updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+            );
+            CREATE TABLE dividend_data (
+                id TEXT PRIMARY KEY,
+                ticker TEXT NOT NULL UNIQUE,
+                yearly_dividend_sum TEXT NOT NULL DEFAULT '0',
+                currency TEXT NOT NULL DEFAULT 'USD',
+                last_fetched_at INTEGER NOT NULL DEFAULT (unixepoch()),
+                created_at INTEGER NOT NULL DEFAULT (unixepoch())
+            );
+            CREATE TABLE dividend_overrides (
+                id TEXT PRIMARY KEY,
+                ticker TEXT NOT NULL UNIQUE,
+                yearly_dividend_sum TEXT NOT NULL,
+                currency TEXT NOT NULL DEFAULT 'CZK',
+                updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+            );
+            CREATE TABLE exchange_rate_history (
+                date INTEGER NOT NULL,
+                currency TEXT NOT NULL,
+                rate REAL NOT NULL,
+                PRIMARY KEY (date, currency)
+            );
+            CREATE TABLE stock_tags (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL UNIQUE,
+                color TEXT,
+                created_at INTEGER NOT NULL DEFAULT 0,
+                group_id TEXT
+            );
+            CREATE TABLE stock_investment_tags (
+                investment_id TEXT NOT NULL,
+                tag_id TEXT NOT NULL,
+                PRIMARY KEY (investment_id, tag_id)
+            );
+            "#,
+        )
+        .expect("schema");
+        for (id, ticker, sector) in [
+            ("i-aapl", "AAPL", Some(" Technology ")),
+            ("i-etf", "ETF1", Some("   ")),
+            ("i-none", "NOQUOTE", None),
+        ] {
+            conn.execute(
+                "INSERT INTO stock_investments (id, ticker, company_name, quantity)
+                 VALUES (?1, ?2, ?2, '1')",
+                rusqlite::params![id, ticker],
+            )
+            .expect("investment");
+            if id != "i-none" {
+                conn.execute(
+                    "INSERT INTO stock_data (id, ticker, original_price, currency, price_date, sector)
+                     VALUES (?1, ?2, '100', 'CZK', 0, ?3)",
+                    rusqlite::params![id, ticker, sector],
+                )
+                .expect("quote");
+            }
+        }
+        conn
+    }
+
+    #[test]
+    fn analysis_items_carry_the_trimmed_sector() {
+        let conn = setup_analysis_db();
+
+        let analysis = stocks_analysis(&conn, "CZK").expect("analysis");
+
+        let sector_of = |ticker: &str| {
+            analysis
+                .items
+                .iter()
+                .find(|item| item.ticker == ticker)
+                .unwrap_or_else(|| panic!("{ticker} missing"))
+                .sector
+                .clone()
+        };
+        assert_eq!(sector_of("AAPL").as_deref(), Some("Technology"));
+        // blank sector (an ETF) and a missing quote row both report no sector
+        assert_eq!(sector_of("ETF1"), None);
+        assert_eq!(sector_of("NOQUOTE"), None);
     }
 
     fn item(id: &str, value: Option<f64>, cost: Option<f64>, dividend: f64) -> PositionValue {

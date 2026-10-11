@@ -5,14 +5,15 @@ use crate::db::Database;
 use crate::error::{AppError, Result};
 use crate::models::{
     DividendOverride, InsertInvestmentTransaction, InsertStockInvestment, InvestmentTransaction,
-    InvestmentWithDetails, StockInvestment, StockPosition, StockPositions, StockPriceOverride,
-    StockTag, StockTwr,
+    InvestmentWithDetails, StockInvestment, StockPerformance, StockPerformanceRequest,
+    StockPosition, StockPositions, StockPriceOverride, StockTag, StockTwr,
 };
 use crate::services::fx;
 use crate::services::history_recalc::HistoryRecalc;
 use crate::services::investments as investment_service;
 use crate::services::position_reports;
 use crate::services::pricing::AssetKind;
+use crate::services::stock_performance;
 use crate::services::ticker_history;
 use tauri::{AppHandle, Emitter, State};
 use uuid::Uuid;
@@ -638,4 +639,16 @@ pub async fn get_stock_twr(
             &report_currency,
         )
     })
+}
+
+/// Performance of the held positions over a period in `request.report_currency`: time-weighted
+/// and money-weighted return, value and deposits, the requested series and every position's
+/// return and contribution (see `services::stock_performance`).
+#[tauri::command]
+pub async fn get_stock_performance(
+    db: State<'_, Database>,
+    request: StockPerformanceRequest,
+) -> Result<StockPerformance> {
+    request.validate()?;
+    db.with_conn(|conn| stock_performance::stock_performance(conn, &request))
 }

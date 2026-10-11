@@ -102,6 +102,9 @@ pub struct StockInvestmentWithTags {
     pub unrealized_gain_percent: Option<f64>,
     #[serde(rename = "yearlyDividend")]
     pub yearly_dividend: Option<String>,
+    /// Sector from the cached quote data; `None` for ETFs and unknown.
+    #[serde(rename = "sector")]
+    pub sector: Option<String>,
     pub tags: Vec<StockTag>,
 }
 

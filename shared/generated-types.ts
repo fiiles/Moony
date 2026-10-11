@@ -1111,6 +1111,39 @@ export type OtherAssetTransaction = { id: string; assetId: string; type: string;
 export type PackRuleInfo = { id: string; name: string; ruleType: string; pattern: string; categoryId: string; priority: number; disabled: boolean }
 
 /**
+ * The chart data of one requested series, on the dates of the report.
+ */
+export type PerformanceSeries = { key: string; 
+/**
+ * Cumulative time-weighted return of the series' own positions in percent per date
+ * (first 0).
+ */
+twr: number[]; 
+/**
+ * Percentage points of the whole-portfolio return the series brought, cumulative per date;
+ * `null` for a series computed in another currency.
+ */
+contribution: number[] | null }
+
+/**
+ * One line of the performance chart: a set of held positions.
+ */
+export type PerformanceSeriesSpec = { 
+/**
+ * Caller-chosen identifier, echoed in the response; unique within a request.
+ */
+key: string; 
+/**
+ * The positions of the series. Ids of positions that are not held are ignored.
+ */
+investmentIds: string[]; 
+/**
+ * Compute this series in another currency (the native return of a currency group); it then
+ * has no contribution.
+ */
+currency: string | null }
+
+/**
  * One recorded day of the portfolio history in the response currency (converted at that
  * day's rates). Amounts are decimal TEXT, `null` when nothing in the class converted.
  */
@@ -1167,6 +1200,27 @@ realEstateByCurrency: Partial<{ [key in string]: number }>; loansByCurrency: Par
  * `fxQuality`.
  */
 export type PortfolioProjection = { currency: string; fxQuality: ConversionQuality; horizonYears: number; viewType: string; timeline: ProjectionTimelinePoint[]; projectedNetWorth: string; totalContributions: string; totalGrowth: string; calculatedDefaults: CalculatedDefaults }
+
+/**
+ * One held position over the whole period.
+ */
+export type PositionPerformance = { investmentId: string; 
+/**
+ * Time-weighted return of the position over the period, in percent.
+ */
+twr: number; 
+/**
+ * Percentage points of the whole-portfolio return the position brought.
+ */
+contribution: number; 
+/**
+ * Value on the first date, decimal TEXT; `null` when it cannot be converted.
+ */
+startValue: string | null; 
+/**
+ * Value on the last date, decimal TEXT; `null` when it cannot be converted.
+ */
+endValue: string | null }
 
 /**
  * Sums in the report currency over every known amount: `value`, `costBasis` and
@@ -1752,7 +1806,11 @@ averagePrice: string; averagePriceCurrency: string;
 /**
  * Current price in its own currency; `null` when unpriced.
  */
-price: string | null; priceCurrency: string | null; value: string | null; costBasis: string | null; unrealizedGain: string | null; unrealizedGainPercent: number | null; yearlyDividend: string | null; tags: StockTag[] }
+price: string | null; priceCurrency: string | null; value: string | null; costBasis: string | null; unrealizedGain: string | null; unrealizedGainPercent: number | null; yearlyDividend: string | null; 
+/**
+ * Sector from the cached quote data; `None` for ETFs and unknown.
+ */
+sector: string | null; tags: StockTag[] }
 
 /**
  * Detail for any ticker — works for un-followed tickers too (followed=false,
@@ -1772,6 +1830,55 @@ trailingDividendYield: string | null; exchange: string | null; priceFetchedAt: n
  * When the stock was added to the watchlist (unix seconds); None when not followed.
  */
 followedAt: number | null }
+
+/**
+ * Performance of the held positions in `currency`: the whole portfolio, the requested series
+ * and every position, all on the same `dates`.
+ */
+export type StockPerformance = { 
+/**
+ * The report currency.
+ */
+currency: string; fxQuality: ConversionQuality; 
+/**
+ * Emitted days as `YYYY-MM-DD`, at most 400 plus the last day (every n-th day on long
+ * ranges).
+ */
+dates: string[]; 
+/**
+ * Cumulative time-weighted return of the whole portfolio in percent per date (first 0).
+ */
+portfolio: number[]; 
+/**
+ * Portfolio value per date (decimal TEXT); `null` when no held position converts that day.
+ */
+values: (string | null)[]; 
+/**
+ * Net deposits (buys minus sells) cumulated since the first date, decimal TEXT.
+ */
+netFlows: string[]; 
+/**
+ * Money-weighted return from the first date to each date (modified Dietz, cumulative),
+ * in percent.
+ */
+mwr: number[]; series: PerformanceSeries[]; positions: PositionPerformance[] }
+
+/**
+ * Request of the performance report: the period, the currency and the series to chart.
+ */
+export type StockPerformanceRequest = { 
+/**
+ * First day (unix seconds, UTC midnight); clamped to the first recorded day.
+ */
+fromTs: number; 
+/**
+ * Last day (unix seconds, UTC midnight); clamped to the last recorded day.
+ */
+toTs: number; 
+/**
+ * The currency values, flows and returns are converted to, each at its own day.
+ */
+reportCurrency: string; series: PerformanceSeriesSpec[] }
 
 /**
  * One stock position in `currency`; `fxQuality` covers this position only.

@@ -250,7 +250,10 @@
     "tagNameTooLong": "Název může mít nejvýš 60 znaků.",
     "tagNotFound": "Štítek už neexistuje.",
     "oneTagPerGroup": "Pozice může mít z každé skupiny jen jeden štítek.",
-    "tagGroupConflict": "Některé pozice už mají v té skupině jiný štítek."
+    "tagGroupConflict": "Některé pozice už mají v té skupině jiný štítek.",
+    "periodInvalid": "Začátek období musí být před jeho koncem.",
+    "tooManySeries": "Najednou je požadováno příliš mnoho čar.",
+    "seriesKeyInvalid": "Neplatný požadavek na čáru grafu."
   },
   "auth": {
     "wrongPassword": "Zadané heslo je nesprávné. Zkuste to prosím znovu.",

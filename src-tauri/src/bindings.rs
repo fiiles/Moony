@@ -35,6 +35,11 @@ pub fn collect_types() -> TypeCollection {
     types.register::<crate::models::TwrDataPoint>();
     types.register::<crate::models::TwrSeries>();
     types.register::<crate::models::StockTwr>();
+    types.register::<crate::models::PerformanceSeriesSpec>();
+    types.register::<crate::models::StockPerformanceRequest>();
+    types.register::<crate::models::PerformanceSeries>();
+    types.register::<crate::models::PositionPerformance>();
+    types.register::<crate::models::StockPerformance>();
     types.register::<crate::models::TickerValueHistoryReport>();
     types.register::<crate::services::history_recalc::HistoryRecalcEvent>();
 

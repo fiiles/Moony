@@ -99,6 +99,8 @@ import type {
   InvestmentWithDetails,
   CryptoPositions,
   StockTwr,
+  StockPerformance,
+  StockPerformanceRequest,
   TickerValueHistoryReport,
   McpServerStatus,
   // Stock Monitor types
@@ -310,6 +312,14 @@ export const investmentsApi = {
       toTs,
       reportCurrency,
     }),
+
+  /**
+   * Performance of the held positions over a period in `request.reportCurrency`: time-weighted
+   * and money-weighted return, value and deposits, the requested series and every position's
+   * return and contribution.
+   */
+  getStockPerformance: (request: StockPerformanceRequest) =>
+    tauriInvoke<StockPerformance>('get_stock_performance', { request }),
 };
 
 // ============================================================================

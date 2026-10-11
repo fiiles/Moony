@@ -839,7 +839,7 @@ pub fn ensure_sell_within_holdings(
 }
 
 /// Convert a Unix timestamp to a "YYYY-MM-DD" date string (UTC).
-fn ts_to_date_str(ts: i64) -> String {
+pub(crate) fn ts_to_date_str(ts: i64) -> String {
     DateTime::from_timestamp(ts, 0)
         .map(|dt| dt.format("%Y-%m-%d").to_string())
         .unwrap_or_default()
@@ -847,18 +847,18 @@ fn ts_to_date_str(ts: i64) -> String {
 
 /// One recorded day of a ticker's position, in native terms.
 #[derive(Debug, Clone)]
-struct DayHolding {
-    ts: i64,
-    quantity: f64,
-    price: f64,
-    currency: String,
+pub(crate) struct DayHolding {
+    pub(crate) ts: i64,
+    pub(crate) quantity: f64,
+    pub(crate) price: f64,
+    pub(crate) currency: String,
 }
 
 /// The most recent recorded holding of a ticker at or before `target_ts`.
 ///
 /// Uses binary search — O(log N) — so entries must be sorted ascending by timestamp
-/// (as guaranteed by the SQL `ORDER BY ticker, recorded_at ASC` in `compute_twr_for_tickers`).
-fn lookup_ticker_at<'a>(
+/// (as guaranteed by the SQL `ORDER BY ticker, recorded_at ASC` in `load_day_holdings`).
+pub(crate) fn lookup_ticker_at<'a>(
     history: &'a HashMap<String, Vec<DayHolding>>,
     ticker: &str,
     target_ts: i64,
@@ -871,37 +871,22 @@ fn lookup_ticker_at<'a>(
 }
 
 /// The report currency of a TWR computation and the day quotes it converts with.
-struct ReportFx<'a> {
-    currency: &'a str,
-    history: &'a History,
+pub(crate) struct ReportFx<'a> {
+    pub(crate) currency: &'a str,
+    pub(crate) history: &'a History,
 }
 
-/// Compute daily chain-linked time-weighted return for a group of tickers, in a report
-/// currency.
-///
-/// Returns one `TwrDataPoint` per calendar day from `from_ts` to `to_ts` inclusive.
-/// The first point is always `{ date: from_ts, twr: 0.0 }`.
-/// Cash flows are estimated from quantity changes in `stock_value_history`. A day's value is
-/// the native `quantity × price` converted at that day's rate and a flow is converted at the
-/// day it happened, so a currency moving alone shows up as return in a report currency other
-/// than the position's. A holding any of whose conversions fails is left out of that day only
-/// (the miss is counted in `quality`); the other holdings keep chaining.
-///
-/// `from_ts` and `to_ts` must be Unix timestamps (seconds, midnight UTC); `fx.history` must
-/// cover them (and the day before `from_ts`).
-fn compute_twr_for_tickers(
+/// The recorded holdings of `tickers` in `from_ts..=to_ts` plus each ticker's last row before
+/// `from_ts` (the base of the first day), ascending by day per ticker.
+pub(crate) fn load_day_holdings(
     conn: &rusqlite::Connection,
     tickers: &[String],
     from_ts: i64,
     to_ts: i64,
-    fx: &ReportFx<'_>,
-    quality: &mut Quality,
-) -> Result<Vec<crate::models::TwrDataPoint>> {
+) -> Result<HashMap<String, Vec<DayHolding>>> {
+    let mut history: HashMap<String, Vec<DayHolding>> = HashMap::new();
     if tickers.is_empty() {
-        return Ok(vec![crate::models::TwrDataPoint {
-            date: ts_to_date_str(from_ts),
-            twr: 0.0,
-        }]);
+        return Ok(history);
     }
 
     // Build SQL with two IN clause copies (tickers appear twice: once for main range, once for pre-range lookup)
@@ -932,25 +917,54 @@ fn compute_twr_for_tickers(
         .chain(tickers.iter().map(|t| Value::Text(t.clone()))) // pre-range
         .collect();
 
-    let mut history: HashMap<String, Vec<DayHolding>> = HashMap::new();
-    {
-        let mut stmt = conn.prepare(&sql)?;
-        let rows = stmt.query_map(params_from_iter(params), |row| {
-            Ok((
-                row.get::<_, String>(0)?,
-                DayHolding {
-                    ts: row.get(1)?,
-                    quantity: row.get(2)?,
-                    price: row.get(3)?,
-                    currency: row.get(4)?,
-                },
-            ))
-        })?;
-        for row in rows {
-            let (ticker, holding) = row?;
-            history.entry(ticker).or_default().push(holding);
-        }
+    let mut stmt = conn.prepare(&sql)?;
+    let rows = stmt.query_map(params_from_iter(params), |row| {
+        Ok((
+            row.get::<_, String>(0)?,
+            DayHolding {
+                ts: row.get(1)?,
+                quantity: row.get(2)?,
+                price: row.get(3)?,
+                currency: row.get(4)?,
+            },
+        ))
+    })?;
+    for row in rows {
+        let (ticker, holding) = row?;
+        history.entry(ticker).or_default().push(holding);
     }
+    Ok(history)
+}
+
+/// Compute daily chain-linked time-weighted return for a group of tickers, in a report
+/// currency.
+///
+/// Returns one `TwrDataPoint` per calendar day from `from_ts` to `to_ts` inclusive.
+/// The first point is always `{ date: from_ts, twr: 0.0 }`.
+/// Cash flows are estimated from quantity changes in `stock_value_history`. A day's value is
+/// the native `quantity × price` converted at that day's rate and a flow is converted at the
+/// day it happened, so a currency moving alone shows up as return in a report currency other
+/// than the position's. A holding any of whose conversions fails is left out of that day only
+/// (the miss is counted in `quality`); the other holdings keep chaining.
+///
+/// `from_ts` and `to_ts` must be Unix timestamps (seconds, midnight UTC); `fx.history` must
+/// cover them (and the day before `from_ts`).
+fn compute_twr_for_tickers(
+    conn: &rusqlite::Connection,
+    tickers: &[String],
+    from_ts: i64,
+    to_ts: i64,
+    fx: &ReportFx<'_>,
+    quality: &mut Quality,
+) -> Result<Vec<crate::models::TwrDataPoint>> {
+    if tickers.is_empty() {
+        return Ok(vec![crate::models::TwrDataPoint {
+            date: ts_to_date_str(from_ts),
+            twr: 0.0,
+        }]);
+    }
+
+    let history = load_day_holdings(conn, tickers, from_ts, to_ts)?;
 
     // Date inputs fire per keystroke, so transient absurd ranges reach this
     // function (typing "2024" passes through year 0002 → from_ts ≈ -62e9).
@@ -1222,7 +1236,11 @@ pub fn twr_series(
 /// The day quotes the TWR of `from_ts..=to_ts` converts with: the requested range limited to
 /// the span of `stock_value_history` (a transient absurd range loads nothing extra), plus the
 /// day before it, which is the base of the first day's return.
-fn load_twr_history(conn: &rusqlite::Connection, from_ts: i64, to_ts: i64) -> Result<History> {
+pub(crate) fn load_twr_history(
+    conn: &rusqlite::Connection,
+    from_ts: i64,
+    to_ts: i64,
+) -> Result<History> {
     let (first, last): (Option<i64>, Option<i64>) = conn.query_row(
         "SELECT MIN(recorded_at), MAX(recorded_at) FROM stock_value_history",
         [],

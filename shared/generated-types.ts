@@ -2007,34 +2007,6 @@ suggested: TypeValueAction }
 export type StocksAnalysis = { currency: string; fxQuality: ConversionQuality; items: StockInvestmentWithTags[] }
 
 /**
- * Sums over a tag's positions in the response's report currency, every known amount counted
- * (the rule of `PositionTotals`: a total is `null` when the tag's positions hold amounts for it
- * but none of them could be converted).
- */
-export type TagMetrics = { tag: StockTag; value: string | null; costBasis: string | null; unrealizedGain: string | null; 
-/**
- * Percent of the cost of the positions in `unrealizedGain`; 0 without a cost basis.
- */
-unrealizedGainPercent: number; yearlyDividend: string | null; 
-/**
- * The tag's value in percent of the known value of every position.
- */
-portfolioPercent: number; 
-/**
- * Positions carrying the tag, summed or not.
- */
-holdingsCount: number; 
-/**
- * What the tag's positions could not convert.
- */
-fxQuality: ConversionQuality }
-
-/**
- * Metrics per tag in `currency`.
- */
-export type TagMetricsReport = { currency: string; fxQuality: ConversionQuality; tags: TagMetrics[] }
-
-/**
  * One recorded day of a ticker's position. Quantity, price and currency are the native facts;
  * `value` is `quantity × price` converted at that day's rate (common-day rule), `null` when it
  * cannot be converted.

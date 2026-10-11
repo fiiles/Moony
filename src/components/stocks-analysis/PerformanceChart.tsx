@@ -1,4 +1,4 @@
-import { memo, useMemo, useRef, useState, type MouseEvent } from 'react';
+import { memo, useEffect, useEffectEvent, useMemo, useRef, useState, type MouseEvent } from 'react';
 import {
   Area,
   ComposedChart,
@@ -322,7 +322,9 @@ interface Drag extends Pointer {
  *
  * Recharts draws the lines and areas. Pointer handling lives on one overlay that spans both
  * panels and the strip between them: a chart-level handler per panel would end a drag at the
- * strip and could not draw the crosshair through it.
+ * strip and could not draw the crosshair through it. Once a drag has started, `window` follows
+ * the pointer: it may leave the plot (into the value gutter, past the card) and releasing there
+ * selects up to the first or last day, as the pointer's position is clamped to the plot.
  */
 export function PerformanceChart({
   dates,
@@ -417,10 +419,11 @@ export function PerformanceChart({
 
   // --- pointer ---------------------------------------------------------------------------------
 
-  const pointerAt = (e: MouseEvent<HTMLDivElement>): Pointer | null => {
+  /** The point under a horizontal client position; clamped to the plot, so past an edge it is the first or last day. */
+  const pointerAtX = (clientX: number): Pointer | null => {
     const rect = overlayRef.current?.getBoundingClientRect();
     if (!rect || rect.width <= 0 || n === 0) return null;
-    const x = Math.min(Math.max(e.clientX - rect.left, 0), rect.width);
+    const x = Math.min(Math.max(clientX - rect.left, 0), rect.width);
     const index = nearestIndex(points, t0 + (x / rect.width) * span);
     return index < 0 ? null : { index, width: rect.width };
   };
@@ -432,12 +435,10 @@ export function PerformanceChart({
   };
 
   const handleMove = (e: MouseEvent<HTMLDivElement>) => {
-    const p = pointerAt(e);
+    // A drag follows the pointer on `window` (below), also outside the plot
+    if (dragFrom.current !== null) return;
+    const p = pointerAtX(e.clientX);
     if (!p) return;
-    if (dragFrom.current !== null) {
-      setDrag({ ...p, from: dragFrom.current });
-      return;
-    }
     setHover(p);
     scrub(p.index);
   };
@@ -445,18 +446,27 @@ export function PerformanceChart({
   const handleDown = (e: MouseEvent<HTMLDivElement>) => {
     if (e.button !== 0) return;
     e.preventDefault();
-    const p = pointerAt(e);
+    const p = pointerAtX(e.clientX);
     if (!p) return;
     dragFrom.current = p.index;
     setHover(null);
     setDrag({ ...p, from: p.index });
   };
 
-  const handleUp = (e: MouseEvent<HTMLDivElement>) => {
+  /** Pointer moved during a drag, anywhere on the page. */
+  const moveDrag = useEffectEvent((clientX: number) => {
+    const from = dragFrom.current;
+    const p = pointerAtX(clientX);
+    if (from === null || !p) return;
+    setDrag({ ...p, from });
+  });
+
+  /** Button released, anywhere on the page: select up to the point under the pointer. */
+  const finishDrag = useEffectEvent((clientX: number) => {
     const from = dragFrom.current;
     if (from === null) return;
     dragFrom.current = null;
-    const p = pointerAt(e);
+    const p = pointerAtX(clientX);
     const lo = Math.min(from, p?.index ?? from);
     const hi = Math.max(from, p?.index ?? from);
     setDrag(null);
@@ -466,12 +476,27 @@ export function PerformanceChart({
       scrub(null);
       onRangeSelect(dates[lo], dates[hi]);
     }
-  };
+  });
+
+  // A drag is tracked on `window`, so leaving the plot (into the gutter, past the card) neither
+  // cancels it nor loses the release; both listeners go with the drag and with the chart
+  const dragging = drag !== null;
+  useEffect(() => {
+    if (!dragging) return;
+    const move = (e: globalThis.MouseEvent) => moveDrag(e.clientX);
+    const up = (e: globalThis.MouseEvent) => finishDrag(e.clientX);
+    window.addEventListener('mousemove', move);
+    window.addEventListener('mouseup', up);
+    return () => {
+      window.removeEventListener('mousemove', move);
+      window.removeEventListener('mouseup', up);
+    };
+  }, [dragging]);
 
   const handleLeave = () => {
-    dragFrom.current = null;
+    // Leaving mid-drag keeps the drag; hovering away just hides the crosshair
+    if (dragFrom.current !== null) return;
     setHover(null);
-    setDrag(null);
     scrub(null);
   };
 
@@ -604,7 +629,6 @@ export function PerformanceChart({
         style={{ right: GUTTER, height: TOTAL_HEIGHT }}
         onMouseMove={handleMove}
         onMouseDown={handleDown}
-        onMouseUp={handleUp}
         onMouseLeave={handleLeave}
       >
         {ends.map((e) => (

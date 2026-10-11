@@ -1,8 +1,8 @@
-//! Wire responses of the stock, crypto, stocks-analysis and tag-metrics commands, built from
-//! the positions service (ADR 0011). Every response captures one quote snapshot, declares its
-//! report currency and reports what it could not convert in `fxQuality`. Converted amounts are
-//! decimal TEXT at the report currency's minor unit, `null` when unknown; native prices and
-//! dividends keep their own currency.
+//! Wire responses of the stock, crypto and stocks-analysis commands, built from the positions
+//! service (ADR 0011). Every response captures one quote snapshot, declares its report currency
+//! and reports what it could not convert in `fxQuality`. Converted amounts are decimal TEXT at
+//! the report currency's minor unit, `null` when unknown; native prices and dividends keep their
+//! own currency.
 
 use std::collections::HashMap;
 
@@ -13,10 +13,10 @@ use crate::models::fx::ConversionQuality;
 use crate::models::{
     CryptoPositions, EnrichedCryptoInvestment, EnrichedStockInvestment,
     PositionTotals as WirePositionTotals, StockInvestmentWithTags, StockPosition, StockPositions,
-    StockTag, StocksAnalysis, TagMetrics, TagMetricsReport,
+    StockTag, StocksAnalysis,
 };
 use crate::services::positions::{
-    self, resolve_dividend, AssetKind, PositionTotals, PositionValue, Positions,
+    self, resolve_dividend, AssetKind, PositionTotals, PositionValue,
 };
 use crate::services::pricing;
 use crate::services::reporting::money_in_currency;
@@ -289,70 +289,6 @@ pub fn stocks_analysis(conn: &Connection, report_currency: &str) -> Result<Stock
     })
 }
 
-/// The tags to report: all of them (by name) when `tag_ids` is empty, else the given ones that
-/// exist.
-fn load_tags(conn: &Connection, tag_ids: &[String]) -> Result<Vec<StockTag>> {
-    let mut stmt =
-        conn.prepare("SELECT id, name, color, group_id, created_at FROM stock_tags ORDER BY name")?;
-    let tags = stmt
-        .query_map([], |row| read_tag(row, 0))?
-        .collect::<rusqlite::Result<Vec<_>>>()?;
-    if tag_ids.is_empty() {
-        return Ok(tags);
-    }
-    let mut by_id: HashMap<String, StockTag> =
-        tags.into_iter().map(|tag| (tag.id.clone(), tag)).collect();
-    Ok(tag_ids.iter().filter_map(|id| by_id.remove(id)).collect())
-}
-
-fn tag_metrics_from(
-    positions: &Positions,
-    tags: Vec<StockTag>,
-    tag_map: &HashMap<String, Vec<String>>,
-) -> TagMetricsReport {
-    let currency = positions.currency.as_str();
-    let portfolio_value = positions::totals(&positions.items).value;
-    let mut by_tag = positions::tag_totals(positions, tag_map);
-    let tags = tags
-        .into_iter()
-        .map(|tag| {
-            let totals = by_tag.remove(&tag.id).unwrap_or_default();
-            TagMetrics {
-                value: money(totals.value, currency),
-                cost_basis: money(totals.cost_basis, currency),
-                unrealized_gain: money(totals.unrealized_gain, currency),
-                unrealized_gain_percent: totals.unrealized_gain_percent(),
-                yearly_dividend: money(totals.yearly_dividend, currency),
-                portfolio_percent: match (totals.value, portfolio_value) {
-                    (Some(value), Some(portfolio)) if portfolio > 0.0 => value / portfolio * 100.0,
-                    _ => 0.0,
-                },
-                holdings_count: i32::try_from(totals.count).unwrap_or(i32::MAX),
-                fx_quality: ConversionQuality::from(&totals.quality),
-                tag,
-            }
-        })
-        .collect();
-    // Every position counted once, whichever tags it carries
-    TagMetricsReport {
-        currency: currency.to_string(),
-        fx_quality: ConversionQuality::from(&positions.quality),
-        tags,
-    }
-}
-
-/// Metrics per tag in `report_currency` (every tag when `tag_ids` is empty).
-pub fn tag_metrics(
-    conn: &Connection,
-    report_currency: &str,
-    tag_ids: &[String],
-) -> Result<TagMetricsReport> {
-    let positions = positions::value_positions(conn, AssetKind::Stock, report_currency, now())?;
-    let tags = load_tags(conn, tag_ids)?;
-    let tag_map = positions::investment_tag_ids(conn)?;
-    Ok(tag_metrics_from(&positions, tags, &tag_map))
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -518,90 +454,24 @@ mod tests {
         }
     }
 
-    fn tag(id: &str) -> StockTag {
-        StockTag {
-            id: id.to_string(),
-            name: id.to_string(),
-            color: None,
-            group_id: None,
-            created_at: 0,
-        }
-    }
-
     #[test]
-    fn tag_metrics_are_text_in_the_report_currency_with_quality_per_tag() {
-        let mut quality = Quality::default();
-        quality.track("KWD", None);
-        let positions = Positions {
-            currency: "EUR".to_string(),
-            items: vec![
-                item("a", Some(300.0), Some(200.0), 6.0),
-                item("b", Some(100.0), Some(100.0), 1.0),
-                item("c", None, Some(50.0), 9.0),
-            ],
-            quality,
-        };
-        let tag_map: HashMap<String, Vec<String>> = [
-            ("a".to_string(), vec!["growth".to_string()]),
-            ("c".to_string(), vec!["growth".to_string()]),
-        ]
-        .into_iter()
-        .collect();
-
-        let report = tag_metrics_from(&positions, vec![tag("growth"), tag("empty")], &tag_map);
-
-        assert_eq!(report.currency, "EUR");
-        assert_eq!(
-            report.fx_quality.missing_currencies,
-            vec!["KWD".to_string()]
-        );
-        let growth = &report.tags[0];
-        assert_eq!(growth.value.as_deref(), Some("300.00"));
-        // the known cost of the unpriced position counts too; its gain does not
-        assert_eq!(growth.cost_basis.as_deref(), Some("250.00"));
-        assert_eq!(growth.unrealized_gain.as_deref(), Some("100.00"));
-        assert!((growth.unrealized_gain_percent - 50.0).abs() < 1e-9);
-        assert_eq!(growth.yearly_dividend.as_deref(), Some("6.00"));
-        assert!((growth.portfolio_percent - 75.0).abs() < 1e-9);
-        assert_eq!(growth.holdings_count, 2);
-        assert_eq!(
-            growth.fx_quality.missing_currencies,
-            vec!["KWD".to_string()]
-        );
-        let empty = &report.tags[1];
-        assert_eq!(empty.value.as_deref(), Some("0.00"));
-        assert_eq!(empty.holdings_count, 0);
-        assert!(empty.fx_quality.missing_currencies.is_empty());
-    }
-
-    #[test]
-    fn totals_are_null_when_nothing_held_in_them_converted() {
-        // Transactions exist, but neither the value nor the cost converted
+    fn totals_are_text_in_the_report_currency_and_null_when_nothing_converted() {
+        // Transactions exist, but neither the value nor the cost of one position converted
         let mut failed = item("c", None, None, 0.0);
         failed.has_cost_record = true;
-        let mut quality = Quality::default();
-        quality.track("KWD", None);
-        let positions = Positions {
-            currency: "EUR".to_string(),
-            items: vec![item("a", Some(300.0), Some(200.0), 6.0), failed],
-            quality,
-        };
-        let tag_map: HashMap<String, Vec<String>> = [("c".to_string(), vec!["gulf".to_string()])]
-            .into_iter()
-            .collect();
-
-        let report = tag_metrics_from(&positions, vec![tag("gulf")], &tag_map);
-
-        let gulf = &report.tags[0];
-        // a priced position whose value and cost failed: unknown, not 0
-        assert_eq!(gulf.value, None);
-        assert_eq!(gulf.cost_basis, None);
-        assert_eq!(gulf.unrealized_gain, None);
-        assert_eq!(gulf.yearly_dividend, Some("0.00".to_string()));
-        assert_eq!(gulf.portfolio_percent, 0.0);
-        // the whole portfolio still knows its converted position
-        let all = wire_totals(&positions::totals(&positions.items), "EUR");
+        let all = wire_totals(
+            &positions::totals(&[item("a", Some(300.0), Some(200.0), 6.0), failed.clone()]),
+            "EUR",
+        );
+        // the portfolio still knows its converted position
         assert_eq!(all.value.as_deref(), Some("300.00"));
         assert_eq!(all.cost_basis.as_deref(), Some("200.00"));
+
+        // a priced position whose value and cost failed: unknown, not 0
+        let lost = wire_totals(&positions::totals(&[failed]), "EUR");
+        assert_eq!(lost.value, None);
+        assert_eq!(lost.cost_basis, None);
+        assert_eq!(lost.unrealized_gain, None);
+        assert_eq!(lost.yearly_dividend.as_deref(), Some("0.00"));
     }
 }

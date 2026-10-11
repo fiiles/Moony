@@ -3,6 +3,8 @@ import type { StockTag } from '@shared/schema';
 import {
   FILTER_ALL,
   chosenTagIds,
+  heldPositions,
+  isHeld,
   moveConflicts,
   nextTagIds,
   selectPositions,
@@ -45,6 +47,37 @@ describe('chosenTagIds', () => {
   it('ignores a choice that is no longer one of the group tags', () => {
     // The tag was deleted, or the key belongs to a group that is gone
     expect(chosenTagIds([strategy], { strategy: 'deleted', gone: 'growth' })).toEqual([]);
+  });
+});
+
+describe('isHeld / heldPositions', () => {
+  it('holds a position with a positive quantity, whole or fractional', () => {
+    expect(isHeld({ quantity: '10' })).toBe(true);
+    expect(isHeld({ quantity: '0.00000001' })).toBe(true);
+  });
+
+  it('does not hold a sold-out, negative or unreadable quantity', () => {
+    expect(isHeld({ quantity: '0' })).toBe(false);
+    expect(isHeld({ quantity: '0.00000000' })).toBe(false);
+    expect(isHeld({ quantity: '-1' })).toBe(false);
+    expect(isHeld({ quantity: '' })).toBe(false);
+    expect(isHeld({ quantity: 'n/a' })).toBe(false);
+  });
+
+  it('keeps the held positions in order and does not touch the input', () => {
+    const all = [
+      { id: 'a', quantity: '5' },
+      { id: 'closed', quantity: '0' },
+      { id: 'b', quantity: '1.5' },
+    ];
+    const held = heldPositions(all);
+    expect(held.map((p) => p.id)).toEqual(['a', 'b']);
+    expect(all).toHaveLength(3);
+    expect(held).not.toBe(all);
+  });
+
+  it('is empty when every position is sold out', () => {
+    expect(heldPositions([{ quantity: '0' }, { quantity: '0.0' }])).toEqual([]);
   });
 });
 

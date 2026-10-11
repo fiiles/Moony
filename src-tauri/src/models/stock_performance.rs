@@ -9,7 +9,7 @@ use super::fx::ConversionQuality;
 use crate::error::{AppError, Result};
 
 /// Most series one request may ask for.
-const MAX_SERIES: usize = 64;
+const MAX_SERIES: usize = 256;
 
 /// One line of the performance chart: a set of held positions.
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
@@ -195,13 +195,13 @@ mod tests {
             "validation.periodInvalid"
         );
 
-        // at most 64 series
-        let many: Vec<_> = (0..65).map(|i| spec(&format!("k{i}"))).collect();
+        // at most 256 series
+        let many: Vec<_> = (0..257).map(|i| spec(&format!("k{i}"))).collect();
         assert_eq!(
             key_of(request(0, 86_400, many).validate()),
             "validation.tooManySeries"
         );
-        let limit: Vec<_> = (0..64).map(|i| spec(&format!("k{i}"))).collect();
+        let limit: Vec<_> = (0..256).map(|i| spec(&format!("k{i}"))).collect();
         assert!(request(0, 86_400, limit).validate().is_ok());
 
         // keys are non-empty and unique

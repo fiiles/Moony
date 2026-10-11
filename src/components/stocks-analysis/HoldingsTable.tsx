@@ -41,6 +41,8 @@ interface HoldingsTableProps {
   endDate: number;
   /** Report currency of every amount. */
   currency: string;
+  /** The figures are the previous period's: the next response is loading. */
+  stale: boolean;
   /** Open the assign dialog for these positions. */
   onAssign: (positionIds: string[]) => void;
 }
@@ -59,6 +61,7 @@ export function HoldingsTable({
   endsToday,
   endDate,
   currency,
+  stale,
   onAssign,
 }: HoldingsTableProps) {
   const { t } = useTranslation('reports');
@@ -83,7 +86,7 @@ export function HoldingsTable({
   const share = endTotal !== null && endTotal > 0 ? rowsValue / endTotal : 0;
 
   return (
-    <Card variant="table">
+    <Card variant="table" className={cn('transition-opacity duration-base', stale && 'opacity-50')}>
       <CardHeader>
         <div>
           <CardTitle>{t('stocksAnalysis.holdings.title')}</CardTitle>

@@ -155,8 +155,6 @@ pub fn collect_types() -> TypeCollection {
     types.register::<crate::models::InsertStockTagGroup>();
     types.register::<crate::models::StockInvestmentWithTags>();
     types.register::<crate::models::StocksAnalysis>();
-    types.register::<crate::models::TagMetrics>();
-    types.register::<crate::models::TagMetricsReport>();
 
     // Stock Monitor models
     types.register::<crate::models::WatchedStock>();

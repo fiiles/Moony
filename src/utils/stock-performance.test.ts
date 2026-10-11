@@ -3,6 +3,7 @@ import type { StockTag, StockTagGroup } from '@shared/schema';
 import {
   ALL_FROM,
   DAY,
+  MAX_SERIES,
   PERIOD_PRESETS,
   bucketKind,
   compareGroups,
@@ -18,6 +19,9 @@ import {
   partKey,
   positionCurrency,
   presetRange,
+  rebaseReturns,
+  resolveRangeInput,
+  sameIndexLine,
   seriesSpecs,
   seriesValueAt,
   splitTop,
@@ -67,6 +71,16 @@ describe('utcDay / isoDay / dayFromIso', () => {
 
   it('round-trips', () => {
     expect(dayFromIso(isoDay(TODAY))).toBe(TODAY);
+  });
+
+  it('reads a year below 100 as that year, not as 19xx (a half-typed year of a date input)', () => {
+    const year2 = dayFromIso('0002-01-05');
+    expect(year2).not.toBeNull();
+    expect(new Date((year2 as number) * 1000).getUTCFullYear()).toBe(2);
+    expect(isoDay(year2 as number)).toBe('0002-01-05');
+    expect(isoDay(dayFromIso('0099-12-31') as number)).toBe('0099-12-31');
+    expect(dayFromIso('0004-02-29')).not.toBeNull(); // year 4 is a leap year
+    expect(dayFromIso('0002-02-29')).toBeNull();
   });
 });
 
@@ -138,6 +152,114 @@ describe('parseCustomRange', () => {
   it('reports an order error when clamping leaves no room', () => {
     expect(parseCustomRange('2030-01-01', '2031-01-01', min, max)).toEqual({ error: 'order' });
     expect(parseCustomRange('2010-01-01', '2011-01-01', min, max)).toEqual({ error: 'order' });
+  });
+});
+
+describe('resolveRangeInput', () => {
+  const min = d('2024-03-01');
+  const max = d('2026-10-11');
+
+  it('commits a complete range inside the bounds at once (the native picker stays instant)', () => {
+    expect(resolveRangeInput('2025-01-01', '2025-06-30', min, max, 'from')).toEqual({
+      kind: 'commit',
+      range: { from: d('2025-01-01'), to: d('2025-06-30') },
+    });
+    expect(resolveRangeInput('2025-01-01', '2025-06-30', min, max, 'to')).toEqual({
+      kind: 'commit',
+      range: { from: d('2025-01-01'), to: d('2025-06-30') },
+    });
+  });
+
+  it('accepts the bounds themselves', () => {
+    expect(resolveRangeInput('2024-03-01', '2026-10-11', min, max, 'from')).toEqual({
+      kind: 'commit',
+      range: { from: min, to: max },
+    });
+  });
+
+  it('keeps a half-typed year as a draft instead of committing the clamped minimum', () => {
+    // Typing 2025 digit by digit: the date input reports 0002-…, 0020-…, 0202-… on the way
+    for (const typed of ['0002-01-05', '0020-01-05', '0202-01-05']) {
+      expect(resolveRangeInput(typed, '2026-06-30', min, max, 'from')).toEqual({
+        kind: 'draft',
+        error: null,
+      });
+    }
+    expect(resolveRangeInput('2025-01-05', '2026-06-30', min, max, 'from').kind).toBe('commit');
+  });
+
+  it('keeps any date outside the bounds as a draft while typing', () => {
+    expect(resolveRangeInput('2024-02-29', '2026-06-30', min, max, 'from')).toEqual({
+      kind: 'draft',
+      error: null,
+    });
+    expect(resolveRangeInput('2025-01-01', '2026-10-12', min, max, 'to')).toEqual({
+      kind: 'draft',
+      error: null,
+    });
+    expect(resolveRangeInput('2025-01-01', '2030-01-01', min, max, 'to')).toEqual({
+      kind: 'draft',
+      error: null,
+    });
+  });
+
+  it('judges only the date being edited, the other one is clamped as before', () => {
+    expect(resolveRangeInput('2025-01-01', '2030-01-01', min, max, 'from')).toEqual({
+      kind: 'commit',
+      range: { from: d('2025-01-01'), to: max },
+    });
+  });
+
+  it('never commits an incomplete value, typing or settling', () => {
+    expect(resolveRangeInput('', '2025-06-30', min, max, 'from')).toEqual({
+      kind: 'draft',
+      error: 'missing',
+    });
+    expect(resolveRangeInput('2025-01-01', '', min, max, 'to')).toEqual({
+      kind: 'draft',
+      error: 'missing',
+    });
+    expect(resolveRangeInput('2025-01-01', '', min, max, null)).toEqual({
+      kind: 'draft',
+      error: 'missing',
+    });
+    expect(resolveRangeInput('2025-01-01', '30. 6. 2025', min, max, 'to')).toEqual({
+      kind: 'draft',
+      error: 'missing',
+    });
+  });
+
+  it('reports the order error at once for dates inside the bounds', () => {
+    expect(resolveRangeInput('2025-06-30', '2025-01-01', min, max, 'from')).toEqual({
+      kind: 'draft',
+      error: 'order',
+    });
+    expect(resolveRangeInput('2025-01-01', '2025-01-02', min, max, 'to')).toEqual({
+      kind: 'draft',
+      error: 'order',
+    });
+  });
+
+  it('settles a draft outside the bounds clamped, as parseCustomRange does', () => {
+    expect(resolveRangeInput('0202-01-05', '2025-06-30', min, max, null)).toEqual({
+      kind: 'commit',
+      range: { from: min, to: d('2025-06-30') },
+    });
+    expect(resolveRangeInput('2020-01-01', '2030-01-01', min, max, null)).toEqual({
+      kind: 'commit',
+      range: { from: min, to: max },
+    });
+  });
+
+  it('settles to the order error when clamping leaves no room', () => {
+    expect(resolveRangeInput('2030-01-01', '2031-01-01', min, max, null)).toEqual({
+      kind: 'draft',
+      error: 'order',
+    });
+    expect(resolveRangeInput('2010-01-01', '2011-01-01', min, max, null)).toEqual({
+      kind: 'draft',
+      error: 'order',
+    });
   });
 });
 
@@ -638,6 +760,64 @@ describe('seriesSpecs', () => {
   });
 });
 
+describe('seriesSpecs limit', () => {
+  /** `perGroup` tags in each of two groups, every position carrying one tag of both. */
+  function crowd(perGroup: number) {
+    const groups = [tagGroup('g-a', 'A', 1), tagGroup('g-b', 'B', 2)];
+    const tags = groups.flatMap((g) =>
+      Array.from({ length: perGroup }, (_, i) => tag(`${g.id}-${i}`, `${g.name}${i}`, g.id))
+    );
+    const positions = Array.from({ length: perGroup }, (_, i) =>
+      pos(`p${i}`, { tags: [tags[i], tags[perGroup + i]] })
+    );
+    return { groups, tags, positions };
+  }
+
+  it('is the backend limit', () => {
+    expect(MAX_SERIES).toBe(256);
+  });
+
+  it('keeps every tag series while they fit', () => {
+    const { groups, tags, positions } = crowd(100);
+    const g = compareGroups(groups, tags, positions)[0];
+    expect(seriesSpecs(positions, tags, g, 'CZK')).toHaveLength(200);
+  });
+
+  it('drops the tag series outside the chosen group first when there are too many', () => {
+    const { groups, tags, positions } = crowd(150);
+    const options = compareGroups(groups, tags, positions);
+    const specs = seriesSpecs(positions, tags, options[1], 'CZK');
+    expect(specs.length).toBeLessThanOrEqual(MAX_SERIES);
+    const keys = specs.map((s) => s.key);
+    // all 150 tags of the chosen group B stay, none of group A
+    expect(keys.filter((k) => k.startsWith('tag:g-b-'))).toHaveLength(150);
+    expect(keys.some((k) => k.startsWith('tag:g-a-'))).toBe(false);
+  });
+
+  it('drops every tag series when the chosen split is not a tag group', () => {
+    const { groups, tags, positions } = crowd(150);
+    const sectors = positions.map((p, i) => ({ ...p, sector: i < 75 ? 'X' : 'Y' }));
+    const g = compareGroups(groups, tags, sectors).find((o) => o.key === 'sector') as CompareGroup;
+    expect(seriesSpecs(sectors, tags, g, 'CZK').map((s) => s.key)).toEqual([
+      'sector:X',
+      'sector:Y',
+    ]);
+  });
+
+  it('drops them all without a chosen split too (the portfolio line needs no series)', () => {
+    const { tags, positions } = crowd(150);
+    expect(seriesSpecs(positions, tags, null, 'CZK')).toEqual([]);
+  });
+
+  it('never exceeds the limit, even for one oversized group', () => {
+    const { groups, tags, positions } = crowd(300);
+    const specs = seriesSpecs(positions, tags, compareGroups(groups, tags, positions)[0], 'CZK');
+    expect(specs).toHaveLength(MAX_SERIES);
+    expect(new Set(specs.map((s) => s.key)).size).toBe(MAX_SERIES);
+    expect(specs.every((s) => s.key.startsWith('tag:g-a-'))).toBe(true);
+  });
+});
+
 describe('positionCurrency', () => {
   it('prefers the price currency and falls back to the average price currency', () => {
     expect(positionCurrency({ priceCurrency: 'USD', averagePriceCurrency: 'EUR' })).toBe('USD');
@@ -713,5 +893,54 @@ describe('seriesValueAt', () => {
 
   it('is all null for an empty benchmark', () => {
     expect(seriesValueAt([1, 2], [], [])).toEqual([null, null]);
+  });
+});
+
+describe('rebaseReturns', () => {
+  it('moves the zero point to the first value (returns compound, they do not subtract)', () => {
+    // +10 % at the start, +21 % later: 1.21 / 1.10 − 1 = +10 %
+    const rebased = rebaseReturns([10, 21, 0]);
+    expect(rebased[0]).toBeCloseTo(0, 10);
+    expect(rebased[1]).toBeCloseTo(10, 10);
+    expect(rebased[2]).toBeCloseTo((1 / 1.1 - 1) * 100, 10);
+  });
+
+  it('leaves a series that already starts at zero as it is', () => {
+    expect(rebaseReturns([0, 5, -2])).toEqual([0, 5, -2]);
+  });
+
+  it('keeps gaps as gaps', () => {
+    expect(rebaseReturns([10, null, 21])[1]).toBeNull();
+  });
+
+  it('has nothing to rebase from when the first day has no value', () => {
+    expect(rebaseReturns([null, 5, 6])).toEqual([null, null, null]);
+    expect(rebaseReturns([])).toEqual([]);
+  });
+
+  it('is all gaps for a total loss at the start (no base to divide by)', () => {
+    expect(rebaseReturns([-100, 5])).toEqual([null, null]);
+  });
+});
+
+describe('sameIndexLine', () => {
+  const request = { ticker: 'SPY', reportCurrency: 'CZK' };
+
+  it('lets the previous line stand in for the same index in the same currency', () => {
+    expect(sameIndexLine({ ...request }, request)).toBe(true);
+  });
+
+  it('does not show another index under the new name', () => {
+    expect(sameIndexLine({ ticker: 'QQQ', reportCurrency: 'CZK' }, request)).toBe(false);
+  });
+
+  it('does not carry returns over to another currency', () => {
+    expect(sameIndexLine({ ticker: 'SPY', reportCurrency: 'EUR' }, request)).toBe(false);
+  });
+
+  it('has nothing to keep without a previous or a next request', () => {
+    expect(sameIndexLine(null, request)).toBe(false);
+    expect(sameIndexLine(undefined, request)).toBe(false);
+    expect(sameIndexLine(request, null)).toBe(false);
   });
 });

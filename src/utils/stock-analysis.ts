@@ -9,6 +9,19 @@ import { amountOf } from '@/utils/positions';
 /** The value of a tag group that is not filtering. */
 export const FILTER_ALL = 'all';
 
+/**
+ * Whether a position is still held. The analysis report lists every position of the account,
+ * sold-out ones (quantity 0) included, while the performance engine covers only held positions.
+ */
+export function isHeld(position: { quantity: string }): boolean {
+  return Number(position.quantity) > 0;
+}
+
+/** The held positions in their order: what the whole analysis page shows (see `isHeld`). */
+export function heldPositions<T extends { quantity: string }>(positions: readonly T[]): T[] {
+  return positions.filter(isHeld);
+}
+
 /** One row of chips: a group of tags of which one can be chosen. */
 export interface ChipGroup {
   key: string;

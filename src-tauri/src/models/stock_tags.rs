@@ -119,45 +119,6 @@ pub struct StocksAnalysis {
     pub items: Vec<StockInvestmentWithTags>,
 }
 
-/// Sums over a tag's positions in the response's report currency, every known amount counted
-/// (the rule of `PositionTotals`: a total is `null` when the tag's positions hold amounts for it
-/// but none of them could be converted).
-#[derive(Debug, Clone, Serialize, Deserialize, Type)]
-pub struct TagMetrics {
-    pub tag: StockTag,
-    #[serde(rename = "value")]
-    pub value: Option<String>,
-    #[serde(rename = "costBasis")]
-    pub cost_basis: Option<String>,
-    #[serde(rename = "unrealizedGain")]
-    pub unrealized_gain: Option<String>,
-    /// Percent of the cost of the positions in `unrealizedGain`; 0 without a cost basis.
-    #[serde(rename = "unrealizedGainPercent")]
-    pub unrealized_gain_percent: f64,
-    #[serde(rename = "yearlyDividend")]
-    pub yearly_dividend: Option<String>,
-    /// The tag's value in percent of the known value of every position.
-    #[serde(rename = "portfolioPercent")]
-    pub portfolio_percent: f64,
-    /// Positions carrying the tag, summed or not.
-    #[serde(rename = "holdingsCount")]
-    pub holdings_count: i32,
-    /// What the tag's positions could not convert.
-    #[serde(rename = "fxQuality")]
-    pub fx_quality: ConversionQuality,
-}
-
-/// Metrics per tag in `currency`.
-#[derive(Debug, Clone, Serialize, Deserialize, Type)]
-pub struct TagMetricsReport {
-    #[serde(rename = "currency")]
-    pub currency: String,
-    #[serde(rename = "fxQuality")]
-    pub fx_quality: ConversionQuality,
-    #[serde(rename = "tags")]
-    pub tags: Vec<TagMetrics>,
-}
-
 /// Tag group with its tags
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StockTagGroupWithTags {

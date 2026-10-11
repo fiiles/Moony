@@ -9,7 +9,8 @@ import {
   PERIOD_PRESETS,
   dayFromIso,
   isoDay,
-  parseCustomRange,
+  rebaseReturns,
+  resolveRangeInput,
   seriesValueAt,
   type CompareGroup,
   type DayRange,
@@ -221,15 +222,18 @@ export function PerformanceCard({
       : null
   );
   const benchmarkData = benchmark.data;
+  // The previous period's index stands in while the next loads: dim it, and read it from the
+  // first day of the period on screen (see `rebaseReturns`)
+  const indexStale = choice !== null && benchmark.isPlaceholderData;
   const indexLine = useMemo(() => {
     if (!choice || !benchmarkData || benchmarkData.dates.length === 0) return null;
     const benchDates = benchmarkData.dates.map((iso) => dayFromIso(iso) ?? 0);
-    return {
-      name: choice.name,
-      ticker: choice.ticker,
-      twr: seriesValueAt(dates, benchDates, benchmarkData.twr),
-    };
-  }, [choice, benchmarkData, dates]);
+    const twr = seriesValueAt(dates, benchDates, benchmarkData.twr);
+    const shown = indexStale ? rebaseReturns(twr) : twr;
+    // A stand-in that does not reach back to the first day has nothing sound to show yet
+    if (indexStale && shown.every((value) => value === null)) return null;
+    return { name: choice.name, ticker: choice.ticker, twr: shown };
+  }, [choice, benchmarkData, dates, indexStale]);
   const indexFailed =
     choice !== null &&
     data !== undefined &&
@@ -428,22 +432,32 @@ export function PerformanceCard({
     setRangeError(null);
     onCustomChange({ from, to });
   };
-  const changeInput = (side: 'from' | 'to', value: string) => {
-    if (!custom) return;
-    const next = {
-      from: draft?.from ?? isoDay(custom.from),
-      to: draft?.to ?? isoDay(custom.to),
-      [side]: value,
-    };
-    const parsed = parseCustomRange(next.from, next.to, minDate, today);
-    if ('error' in parsed) {
+  /** Commit the range the inputs hold, or keep them as a draft (see `resolveRangeInput`). */
+  const applyInputs = (next: { from: string; to: string }, typing: 'from' | 'to' | null) => {
+    const decision = resolveRangeInput(next.from, next.to, minDate, today, typing);
+    if (decision.kind === 'draft') {
       setDraft(next);
-      setRangeError(parsed.error);
+      setRangeError(decision.error);
       return;
     }
     setDraft(null);
     setRangeError(null);
-    onCustomChange(parsed.range);
+    onCustomChange(decision.range);
+  };
+  const changeInput = (side: 'from' | 'to', value: string) => {
+    if (!custom) return;
+    applyInputs(
+      {
+        from: draft?.from ?? isoDay(custom.from),
+        to: draft?.to ?? isoDay(custom.to),
+        [side]: value,
+      },
+      side
+    );
+  };
+  /** Blur or Enter: a draft outside the bounds is committed clamped to them. */
+  const settleInputs = () => {
+    if (draft) applyInputs(draft, null);
   };
 
   // --- states ----------------------------------------------------------------------------------
@@ -463,7 +477,7 @@ export function PerformanceCard({
 
   const money = (value: number, signed: boolean) =>
     fmt.money(value, currency, { decimals: 0, signed });
-  const dim = stale && 'opacity-50';
+  const dim = (stale || indexStale) && 'opacity-50';
 
   return (
     <HeroCard
@@ -598,6 +612,8 @@ export function PerformanceCard({
                     aria-label={t('stocksAnalysis.performance.from')}
                     aria-invalid={rangeError !== null}
                     onChange={(e) => changeInput('from', e.target.value)}
+                    onBlur={settleInputs}
+                    onKeyDown={(e) => e.key === 'Enter' && settleInputs()}
                     className="h-[35px] w-[140px] text-table"
                   />
                   <span className="text-ink-5">→</span>
@@ -612,6 +628,8 @@ export function PerformanceCard({
                     aria-label={t('stocksAnalysis.performance.to')}
                     aria-invalid={rangeError !== null}
                     onChange={(e) => changeInput('to', e.target.value)}
+                    onBlur={settleInputs}
+                    onKeyDown={(e) => e.key === 'Enter' && settleInputs()}
                     className="h-[35px] w-[140px] text-table"
                   />
                 </div>
@@ -683,7 +701,7 @@ export function PerformanceCard({
         value={figures ? percent(figures.twr) : '—'}
         tone={toneOf(figures?.twr)}
         large
-        stale={stale}
+        stale={stale || indexStale}
       >
         <div className="flex min-h-[18px] flex-wrap items-baseline gap-x-1.5 gap-y-1 text-table font-650">
           {delta()}

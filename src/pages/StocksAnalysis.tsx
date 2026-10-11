@@ -14,6 +14,7 @@ import { useCurrency } from '@/lib/currency';
 import { useStockPerformance } from '@/hooks/use-stock-performance';
 import {
   chosenTagIds,
+  heldPositions,
   positionTotals,
   selectPositions,
   toAnalysisPosition,
@@ -55,9 +56,15 @@ import {
   type PeriodChoice,
 } from '@/components/stocks-analysis/performance-settings';
 import { TagsTable } from '@/components/stocks-analysis/TagsTable';
+import { useHeldWhile } from '@/components/stocks-analysis/use-held-while';
 import { ConversionQualityNote } from '@/components/reports/ReportQualityNote';
 
 const UNGROUPED = '__ungrouped__';
+
+// Stand-ins while a query has no data: one array for all renders, so what is derived from them
+// (and held by `useHeldWhile`) keeps its identity
+const NO_TAGS: StockTag[] = [];
+const NO_GROUPS: StockTagGroup[] = [];
 
 /**
  * Stock analysis (design system §7 Analysis): the scope card with the chip filters per tag group,
@@ -67,6 +74,10 @@ const UNGROUPED = '__ungrouped__';
  * parts, the board, the contribution card and the tables; the hero figures, the dashed portfolio
  * line and the deposits card stay whole-portfolio. This component only holds the state and wires
  * the data.
+ *
+ * The analysis is of the held positions: sold-out ones (quantity 0) are in the report but not in
+ * the performance engine, so they are left out of everything on the page except the two tag
+ * dialogs, whose move conflicts the backend counts over every position.
  */
 export default function StocksAnalysis() {
   const { t } = useTranslation('reports');
@@ -85,11 +96,11 @@ export default function StocksAnalysis() {
     stockIds: [],
   });
 
-  const { data: tags = [], isLoading: tagsLoading } = useQuery<StockTag[]>({
+  const { data: tags = NO_TAGS, isLoading: tagsLoading } = useQuery<StockTag[]>({
     queryKey: ['stock-tags'],
     queryFn: stockTagsApi.getAll,
   });
-  const { data: groups = [], isLoading: groupsLoading } = useQuery<StockTagGroup[]>({
+  const { data: groups = NO_GROUPS, isLoading: groupsLoading } = useQuery<StockTagGroup[]>({
     queryKey: ['stock-tag-groups'],
     queryFn: stockTagsApi.getAllGroups,
   });
@@ -99,7 +110,9 @@ export default function StocksAnalysis() {
   });
   // Amounts in the report currency of the response (ADR 0011); null = not convertible
   const reportCurrency = analysis?.currency ?? currencyCode;
-  const stocks = useMemo(() => (analysis?.items ?? []).map(toAnalysisPosition), [analysis]);
+  // Every position of the report (the tag dialogs) and the held ones (the analysis)
+  const allStocks = useMemo(() => (analysis?.items ?? []).map(toAnalysisPosition), [analysis]);
+  const stocks = useMemo(() => heldPositions(allStocks), [allStocks]);
 
   // Tag groups for the filters; ungrouped tags form a row of their own
   const filterGroups = useMemo<ScopeGroup[]>(() => {
@@ -199,7 +212,8 @@ export default function StocksAnalysis() {
 
   /** Commit a period (and the last custom range): remember it, and learn the first day from "Vše". */
   const commitPeriod = (choice: PeriodChoice) => {
-    if (period === 'all' && performance.data) {
+    // Only from the response of "Vše" itself, not from the previous period's one still on screen
+    if (period === 'all' && performance.data && !performance.isPlaceholderData) {
       const first = dayFromIso(performance.data.dates[0] ?? '');
       if (first !== null) setFirstDate(first);
     }
@@ -233,6 +247,35 @@ export default function StocksAnalysis() {
   const endDate = (lastDay ? dayFromIso(lastDay) : null) ?? range.to;
   const openAssign = (stockIds: string[]) => setAssign({ open: true, stockIds });
 
+  // While the next response loads, `performance.data` is still the previous one. The tables read
+  // it together with the selection and the end of the period, so they keep every input of that
+  // previous state (dimmed, like the cards) instead of mixing old figures with the new selection.
+  const tablesLive = useMemo(
+    () => ({
+      stocks,
+      selected,
+      endValueOf,
+      endTotal,
+      series: performance.data?.series,
+      performanceById,
+      filterActive,
+      endsToday,
+      endDate,
+    }),
+    [
+      stocks,
+      selected,
+      endValueOf,
+      endTotal,
+      performance.data,
+      performanceById,
+      filterActive,
+      endsToday,
+      endDate,
+    ]
+  );
+  const tables = useHeldWhile(tablesLive, performance.isPlaceholderData);
+
   const head = (
     <PageHead
       eyebrow={t('stocksAnalysis.eyebrow')}
@@ -260,12 +303,12 @@ export default function StocksAnalysis() {
         onOpenChange={setManageOpen}
         tags={tags}
         groups={groups}
-        positions={stocks}
+        positions={allStocks}
       />
       <AssignTagsDialog
         open={assign.open}
         onOpenChange={(open) => setAssign((a) => ({ ...a, open }))}
-        stocks={stocks}
+        stocks={allStocks}
         tags={tags}
         groups={groups}
         initialStockIds={assign.stockIds}
@@ -369,27 +412,29 @@ export default function StocksAnalysis() {
 
       <TagsTable
         groups={filterGroups}
-        selected={selected}
-        total={stocks.length}
-        endValueOf={endValueOf}
-        endTotal={endTotal}
-        series={performance.data?.series}
-        filterActive={filterActive}
-        endsToday={endsToday}
-        endDate={endDate}
+        selected={tables.selected}
+        total={tables.stocks.length}
+        endValueOf={tables.endValueOf}
+        endTotal={tables.endTotal}
+        series={tables.series}
+        filterActive={tables.filterActive}
+        endsToday={tables.endsToday}
+        endDate={tables.endDate}
         currency={reportCurrency}
+        stale={performance.isPlaceholderData}
         onManage={() => setManageOpen(true)}
       />
 
       <HoldingsTable
-        stocks={stocks}
-        selected={selected}
-        endValueOf={endValueOf}
-        endTotal={endTotal}
-        performance={performanceById}
-        endsToday={endsToday}
-        endDate={endDate}
+        stocks={tables.stocks}
+        selected={tables.selected}
+        endValueOf={tables.endValueOf}
+        endTotal={tables.endTotal}
+        performance={tables.performanceById}
+        endsToday={tables.endsToday}
+        endDate={tables.endDate}
         currency={reportCurrency}
+        stale={performance.isPlaceholderData}
         onAssign={openAssign}
       />
 

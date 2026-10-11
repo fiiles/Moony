@@ -40,6 +40,8 @@ interface TagsTableProps {
   endDate: number;
   /** Report currency of every amount. */
   currency: string;
+  /** The figures are the previous period's: the next response is loading. */
+  stale: boolean;
   onManage: () => void;
 }
 
@@ -60,6 +62,7 @@ export function TagsTable({
   endsToday,
   endDate,
   currency,
+  stale,
   onManage,
 }: TagsTableProps) {
   const { t } = useTranslation('reports');
@@ -87,7 +90,10 @@ export function TagsTable({
     : t('stocksAnalysis.tagsTable.sub');
 
   return (
-    <Card variant="table" className="mb-[18px]">
+    <Card
+      variant="table"
+      className={cn('mb-[18px] transition-opacity duration-base', stale && 'opacity-50')}
+    >
       <CardHeader>
         <div>
           <CardTitle>{t('stocksAnalysis.tagsTable.title')}</CardTitle>

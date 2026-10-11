@@ -47,8 +47,9 @@ export function dayFromIso(iso: string): number | null {
   const year = Number(match[1]);
   const month = Number(match[2]);
   const day = Number(match[3]);
-  const ms = Date.UTC(year, month - 1, day);
-  const date = new Date(ms);
+  // Not `Date.UTC(year, …)`: it reads the years 0–99 as 1900–1999
+  const date = new Date(0);
+  date.setUTCFullYear(year, month - 1, day);
   if (
     date.getUTCFullYear() !== year ||
     date.getUTCMonth() !== month - 1 ||
@@ -56,7 +57,7 @@ export function dayFromIso(iso: string): number | null {
   ) {
     return null;
   }
-  return ms / 1000;
+  return date.getTime() / 1000;
 }
 
 /** Same calendar day `months` months earlier (UTC); a day that does not exist there is clamped. */
@@ -111,6 +112,41 @@ export function parseCustomRange(
   const to = Math.min(Math.max(rawTo, min), max);
   if (from > to - 2 * DAY) return { error: 'order' };
   return { range: { from, to } };
+}
+
+/** What the custom range does with the date inputs after an edit (see `resolveRangeInput`). */
+export type RangeInputDecision =
+  { kind: 'commit'; range: DayRange } | { kind: 'draft'; error: RangeError | null };
+
+/**
+ * Decide what an edit of the two custom date inputs does. A date input reports every digit typed
+ * into its year, so `0002-01-05`, `0020-01-05` and `0202-01-05` precede `2025-01-05`; clamping
+ * and committing those would overwrite the field mid-typing and request the whole history.
+ *
+ * - While typing (`typing` names the input just edited), the range commits at once only when that
+ *   date lies inside `[min, max]` as typed, which keeps the native picker instant. Outside it the
+ *   inputs stay a draft without an error: the person is probably still typing.
+ * - Settling (`typing` is `null`: blur or Enter) commits whatever is complete, clamped to
+ *   `[min, max]` as `parseCustomRange` does.
+ * - An incomplete value (`missing`) or a wrong order (`order`) never commits; it stays a draft
+ *   with that error, typing or settling.
+ */
+export function resolveRangeInput(
+  fromIso: string,
+  toIso: string,
+  min: number,
+  max: number,
+  typing: 'from' | 'to' | null
+): RangeInputDecision {
+  const edited = dayFromIso(typing === 'to' ? toIso : fromIso);
+  const complete = dayFromIso(fromIso) !== null && dayFromIso(toIso) !== null;
+  if (complete && typing !== null && edited !== null && (edited < min || edited > max)) {
+    return { kind: 'draft', error: null };
+  }
+  const parsed = parseCustomRange(fromIso, toIso, min, max);
+  return 'error' in parsed
+    ? { kind: 'draft', error: parsed.error }
+    : { kind: 'commit', range: parsed.range };
 }
 
 // ---------------------------------------------------------------------------
@@ -379,11 +415,19 @@ export interface SeriesSpecLite {
   currency?: string | null;
 }
 
+/** Most series one performance request may ask for (the backend's `validation.tooManySeries`). */
+export const MAX_SERIES = 256;
+
 /**
  * Series to request from the backend: one per tag carried by a selected position (`tag:<id>`),
  * plus the parts of `g` that are not tag parts (`none:…`, `sector:…`, `currency:…`), and for a
  * currency part whose code differs from `reportCurrency` also `<key>:native` computed in that
  * currency. Keys are unique, the order is stable.
+ *
+ * The request never holds more than `MAX_SERIES`. Past it the tag series of tags outside the
+ * chosen group (all of them without a tag group) are dropped first: only the chosen split is
+ * charted, the others only feed the tags table's period return. Should the chosen group alone
+ * be too big, the first `MAX_SERIES` stay.
  */
 export function seriesSpecs(
   selected: readonly PositionLite[],
@@ -392,15 +436,19 @@ export function seriesSpecs(
   reportCurrency: string
 ): SeriesSpecLite[] {
   const specs = new Map<string, SeriesSpecLite>();
+  const outside = new Set<string>();
   const add = (spec: SeriesSpecLite) => {
     if (!specs.has(spec.key)) specs.set(spec.key, spec);
   };
+  const chosenGroupId = g?.kind === 'tags' ? g.group.id : null;
 
   for (const tag of tags) {
     const investmentIds = selected
       .filter((p) => p.tags.some((t) => t.id === tag.id))
       .map((p) => p.id);
-    if (investmentIds.length > 0) add({ key: `tag:${tag.id}`, investmentIds });
+    if (investmentIds.length === 0) continue;
+    add({ key: `tag:${tag.id}`, investmentIds });
+    if (chosenGroupId === null || tag.groupId !== chosenGroupId) outside.add(`tag:${tag.id}`);
   }
 
   if (g) {
@@ -416,7 +464,10 @@ export function seriesSpecs(
       }
     }
   }
-  return [...specs.values()];
+
+  const all = [...specs.values()];
+  if (all.length <= MAX_SERIES) return all;
+  return all.filter((spec) => !outside.has(spec.key)).slice(0, MAX_SERIES);
 }
 
 /** The currency a position is quoted in: its price currency, else its average price currency. */
@@ -481,4 +532,41 @@ export function seriesValueAt(
     out.push(j >= 0 ? bench[j] : null);
   }
   return out;
+}
+
+/**
+ * Cumulative returns (percent) re-based to start at 0 on their first entry: `(1 + r) / (1 + r₀) − 1`.
+ * An index line fetched for a longer period read on a shorter one then still starts at 0. All
+ * `null` when the first entry is missing or a total loss, as there is nothing to re-base from.
+ */
+export function rebaseReturns(values: readonly (number | null)[]): (number | null)[] {
+  const first = values[0];
+  if (first === null || first === undefined || first <= -100) return values.map(() => null);
+  // Already based at zero (a line fetched for this very period): no float noise
+  if (first === 0) return [...values];
+  const base = 100 + first;
+  return values.map((value) => (value === null ? null : ((100 + value) / base - 1) * 100));
+}
+
+/** What identifies an index line apart from its period: the ticker and the report currency. */
+export interface IndexLineId {
+  ticker: string;
+  reportCurrency: string;
+}
+
+/**
+ * Whether the previous index request's response may stand in for the next one while it loads:
+ * the same index in the same currency, only the period moved. Another index would show its
+ * predecessor's returns under the new name.
+ */
+export function sameIndexLine(
+  previous: IndexLineId | null | undefined,
+  next: IndexLineId | null | undefined
+): boolean {
+  return (
+    !!previous &&
+    !!next &&
+    previous.ticker === next.ticker &&
+    previous.reportCurrency === next.reportCurrency
+  );
 }

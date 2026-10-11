@@ -3,6 +3,7 @@ import {
   axisStamps,
   clusterEvents,
   isShortSpan,
+  labelStep,
   nearestIndex,
   niceStep,
   niceTicks,
@@ -141,5 +142,22 @@ describe('clusterEvents (README §9)', () => {
     const out = clusterEvents(events, 0, 30 * DAY, 2);
     expect(out[0].type).toBe('income');
     expect(out[0].id).toBe('e0');
+  });
+});
+
+describe('labelStep', () => {
+  it('shows every label while they fit', () => {
+    expect(labelStep(12, 300, 24)).toBe(1);
+    expect(labelStep(12, 288, 24)).toBe(1);
+  });
+
+  it('thins the labels when they would overlap', () => {
+    expect(labelStep(15, 200, 25)).toBe(2);
+    expect(labelStep(40, 200, 25)).toBe(5);
+  });
+
+  it('shows every label before the width is known', () => {
+    expect(labelStep(15, 0, 25)).toBe(1);
+    expect(labelStep(0, 200, 25)).toBe(1);
   });
 });

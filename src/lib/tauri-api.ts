@@ -93,12 +93,13 @@ import type {
   StockTagGroup,
   InsertStockTagGroup,
   StocksAnalysis,
-  TagMetricsReport,
   StockPositions,
   StockPosition,
   InvestmentWithDetails,
   CryptoPositions,
-  StockTwr,
+  StockPerformance,
+  StockPerformanceRequest,
+  StockBenchmark,
   TickerValueHistoryReport,
   McpServerStatus,
   // Stock Monitor types
@@ -288,24 +289,21 @@ export const investmentsApi = {
     tauriInvoke<BackfillResult>('backfill_stock_ticker_history', { ticker }),
 
   /**
-   * Time-weighted return per tag and for the whole portfolio. `investmentIds` narrows every tag
-   * series to those positions; the whole-portfolio series is never narrowed. The returns are
-   * computed in `reportCurrency` (values and flows converted at their own day).
+   * Performance of the held positions over a period in `request.reportCurrency`: time-weighted
+   * and money-weighted return, value and deposits, the requested series and every position's
+   * return and contribution.
    */
-  getStockTwr: (
-    tagIds: string[],
-    includePortfolio: boolean,
-    includeUntagged: boolean,
-    fromTs: number,
-    toTs: number,
-    reportCurrency: string,
-    investmentIds?: string[]
-  ) =>
-    tauriInvoke<StockTwr>('get_stock_twr', {
-      tagIds,
-      includePortfolio,
-      includeUntagged,
-      investmentIds,
+  getStockPerformance: (request: StockPerformanceRequest) =>
+    tauriInvoke<StockPerformance>('get_stock_performance', { request }),
+
+  /**
+   * Daily returns of a market index (any Yahoo ticker, e.g. `CSPX.L`) from `fromTs` to `toTs` in
+   * `reportCurrency`, each day converted at its own rate. Fetches the closes online; offline or
+   * for an unknown ticker `dates` is empty.
+   */
+  getStockBenchmark: (ticker: string, fromTs: number, toTs: number, reportCurrency: string) =>
+    tauriInvoke<StockBenchmark>('get_stock_benchmark', {
+      ticker,
       fromTs,
       toTs,
       reportCurrency,
@@ -1014,9 +1012,6 @@ export const stockTagsApi = {
 
   getAnalysis: (reportCurrency: string) =>
     tauriInvoke<StocksAnalysis>('get_stocks_analysis', { reportCurrency }),
-
-  getTagMetrics: (tagIds: string[], reportCurrency: string) =>
-    tauriInvoke<TagMetricsReport>('get_tag_metrics', { tagIds, reportCurrency }),
 
   // Tag Group operations
   getAllGroups: () => tauriInvoke<StockTagGroup[]>('get_all_stock_tag_groups'),

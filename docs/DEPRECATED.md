@@ -87,6 +87,21 @@ table, valued unknown currencies 1:1 and returned unlabelled CZK numbers.
 | `constants::DEFAULT_BASE_CURRENCY` | There is no base currency; reports declare theirs | The profile (main) currency or the request's `reportCurrency` |
 | CZK-scale UI defaults (annuity/estate calculator amounts, the what-if 1 000 step) and scattered `\|\| 'CZK'` record-currency fallbacks | Meaningless outside CZK; fallbacks repeated by hand | EUR constants scaled by `scaledDefault` (filled once quotes load, empty without a rate), `whatIfStep` (1 % of the balance), `recordCurrency(code)` (the storage default `CZK` for a record without a currency, shared by labels and valuation) |
 
+## Removed with the stocks analysis redesign (do not re-add)
+
+The analysis page moved to one performance card over a daily engine
+(`docs/specs/2026-10-11-stocks-analysis-redesign-design.md`). The old path computed one TWR series per
+tag chip, so a position carrying two tags of one group showed three different values for the same tag.
+
+| Removed | Why it was removed | Use instead |
+|---|---|---|
+| `get_stock_twr` (command), `investmentsApi.getStockTwr`, the types `TwrSeries`, `StockTwr`, `TwrDataPoint`, and `twr_series` / `compute_twr_for_tickers` in `services/investments.rs` | One series per tag, chain-linked per request; no contribution, money-weighted return or deposits, and no common partition of the portfolio | `get_stock_performance` (`investmentsApi.getStockPerformance`, `useStockPerformance`) over `services/stock_performance.rs`; query key `['stock-performance']` |
+| `src/utils/twr.ts` (`twrPercent`, `twrTickDigits`) | Index-100 axis helpers of the old lines chart (`100 + twr`); 0 importers after the page rebuild | `src/utils/stock-performance.ts` |
+| The stats row and the allocation ring of the stocks analysis page | The ring squeezed the TWR chart to half the width and 190 px, and split a position that carried several tags of one group | The performance card and its board (`src/components/stocks-analysis/`) |
+| Several tags of one group on a position | A tag group is one partition of the portfolio: with two tags of a group on a position its slices counted it twice and did not add up to the portfolio | One tag per group, enforced by the tag service and migration 015 (ADR 0013) |
+| `get_tag_metrics` (command), `stockTagsApi.getTagMetrics`, the `['tag-metrics']` query key and its invalidations, the `TagMetrics` / `TagMetricsReport` interfaces in `shared/schema.ts` | The page reads its per-tag figures from the performance response; nothing in the UI called the command after the rebuild. The Rust service `position_reports::tag_metrics` (with `tag_metrics_from`) and the `TagMetrics` / `TagMetricsReport` Rust types, their `bindings.rs` registration and `generated-types.ts` entries went with it (the MCP tool `tag_metrics` has its own `mcp::analytics::tag_metrics` on `positions::tag_totals`) | `get_stock_performance` (`useStockPerformance`) for return and contribution per part; `get_stocks_analysis` for positions with their tags |
+| `src/components/stocks/TagShareBars.tsx`, `src/utils/tag-share.ts` (`buildTagShareRows`) and the keys `stocksAnalysis.metricsChart` / `stocksAnalysis.metricsChartDescription` | The "share of portfolio by tag" bars were not rendered anywhere after the redesign (0 importers); a position could carry several tags, so their shares could add up past 100 % | The value share column of the performance board and the contribution card |
+
 ## Deprecated type sources
 
 | Path | Why deprecated | Use instead |

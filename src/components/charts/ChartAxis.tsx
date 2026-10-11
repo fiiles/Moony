@@ -47,14 +47,21 @@ export function TimeAxis({ t0, t1, count = 5, gutter = AXIS_WIDTH, className }: 
   );
 }
 
-/** Category axis under a bar chart: one label per bar, centred under it. */
+/**
+ * Category axis under a bar chart: one label per bar, centred under it. `centered` keeps every
+ * slot the width of its bar and never wraps a label: one wider than its slot (a month with its
+ * year) spreads equally to both sides, which the bars' own labels may rely on when blanks sit
+ * next to it.
+ */
 export function CategoryAxis({
   labels,
   gutter = AXIS_WIDTH,
+  centered = false,
   className,
 }: {
   labels: string[];
   gutter?: number;
+  centered?: boolean;
   className?: string;
 }) {
   return (
@@ -63,11 +70,17 @@ export function CategoryAxis({
       className={cn('mt-1.5 flex text-micro font-500 text-chart-axis', className)}
       style={{ paddingRight: gutter }}
     >
-      {labels.map((l, i) => (
-        <span key={i} className="flex-1 text-center">
-          {l}
-        </span>
-      ))}
+      {labels.map((l, i) =>
+        centered ? (
+          <span key={i} className="flex min-w-0 flex-1 justify-center">
+            <span className="shrink-0 whitespace-nowrap">{l}</span>
+          </span>
+        ) : (
+          <span key={i} className="flex-1 text-center">
+            {l}
+          </span>
+        )
+      )}
     </div>
   );
 }

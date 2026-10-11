@@ -245,7 +245,16 @@
     "currencyLockedByRecords": "Valutan kan inte ändras så länge kontot har saldoposter.",
     "learningIdentity": "Ange en tillförlitlig kontoidentifierare eller en mottagare.",
     "paginationInvalid": "Välj en giltig historiksida.",
-    "systemRule": "Systemregler kan inte ändras."
+    "systemRule": "Systemregler kan inte ändras.",
+    "tagNameRequired": "Ange ett namn på etiketten.",
+    "tagNameTooLong": "Ett namn får vara högst 60 tecken.",
+    "tagNotFound": "Etiketten finns inte längre.",
+    "oneTagPerGroup": "Ett innehav kan bara ha en etikett från varje grupp.",
+    "tagGroupConflict": "Vissa innehav har redan en annan etikett i den gruppen.",
+    "periodInvalid": "Periodens början måste ligga före dess slut.",
+    "tooManySeries": "För många linjer begärdes på en gång.",
+    "seriesKeyInvalid": "Ogiltig begäran om diagramlinje.",
+    "benchmarkTickerInvalid": "Ogiltig indexticker."
   },
   "auth": {
     "wrongPassword": "Lösenordet du angav är fel. Försök igen.",

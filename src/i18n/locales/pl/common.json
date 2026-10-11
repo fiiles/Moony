@@ -245,7 +245,16 @@
     "currencyLockedByRecords": "Waluty nie można zmienić, dopóki konto ma zapisy salda.",
     "learningIdentity": "Podaj wiarygodny identyfikator konta lub odbiorcę.",
     "paginationInvalid": "Wybierz prawidłową stronę historii.",
-    "systemRule": "Reguł systemowych nie można zmieniać."
+    "systemRule": "Reguł systemowych nie można zmieniać.",
+    "tagNameRequired": "Podaj nazwę tagu.",
+    "tagNameTooLong": "Nazwa może mieć najwyżej 60 znaków.",
+    "tagNotFound": "Ten tag już nie istnieje.",
+    "oneTagPerGroup": "Pozycja może mieć tylko jeden tag z każdej grupy.",
+    "tagGroupConflict": "Niektóre pozycje mają już w tej grupie inny tag.",
+    "periodInvalid": "Początek okresu musi być przed jego końcem.",
+    "tooManySeries": "Zażądano naraz zbyt wielu linii.",
+    "seriesKeyInvalid": "Nieprawidłowe żądanie linii wykresu.",
+    "benchmarkTickerInvalid": "Nieprawidłowy ticker indeksu."
   },
   "auth": {
     "wrongPassword": "Wpisane hasło jest nieprawidłowe. Spróbuj ponownie.",

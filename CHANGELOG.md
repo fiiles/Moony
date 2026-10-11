@@ -40,6 +40,26 @@ All notable changes to Moony are documented in this file. The format follows
   the ledger opens on the newest month with movements. Balance history, import history and
   interest tiers moved to the ··· menu. The balance field left the edit form; new accounts take an
   optional opening balance with a date.
+- **Stocks analysis rebuilt around performance.** One wide card shows the time-weighted return of
+  the whole portfolio, the money-weighted return (which reflects when you deposited) with its gap
+  to the time-weighted one, and the change of value split into net deposits and market growth. The
+  return chart is larger and has a drawdown panel under it; both share a date axis with labels at
+  real dates (month starts, quarters, years). "Rozdělit podle" splits the selected positions by a
+  tag group or by the automatic groups Sektor and Měna (offered only when they split your
+  portfolio); the table under the chart is the legend and shows each part's return, difference to
+  the portfolio, contribution in percentage points, maximum drawdown, share and value. Hovering
+  the chart rewrites the figures and the table to that day. New cards show each position's
+  contribution to the return and deposits against market change per week, month, quarter or
+  year; the tag and holdings tables gain the return for the period. "Které pozice analyzovat"
+  replaces the chip filters with a summary and a rule sentence. The stats row and the allocation
+  ring are gone.
+- **Custom periods in the stocks analysis.** Besides 3 měsíce, Letos, Rok, 3 roky and Vše there is
+  Vlastní: type the dates or drag a range in the chart. The page remembers the period and the
+  chosen split per device.
+- **Compare with an index.** The stocks analysis can draw S&P 500 (through CSPX.L) or MSCI World
+  (through IWDA.L) as a dotted line and name how far ahead or behind it you were. The prices are
+  fetched from Yahoo when you switch the index on and are not stored; offline the page says the
+  index could not be loaded.
 
 ### Fixed
 
@@ -115,6 +135,16 @@ All notable changes to Moony are documented in this file. The format follows
   learned choices) and the picker says so, with a link to the rule. A payment that cannot be
   remembered, or a transfer between your own accounts, now says why instead of silently learning
   nothing.
+- **One tag per group.** A tag group now splits your portfolio into parts, so a position has at
+  most one tag from each group; tags without a group stay free labels that can overlap and
+  filter but never split. The assign dialog offers one choice per group, and moving a tag into a
+  group is refused when a position would then carry two tags of it (the dialog names them). Before
+  this rule a position could carry several tags of one group and the same tag showed different
+  values in the ring, the table and the chart. Migration 015 resolves such duplicates from
+  earlier versions on the first start after the update: the tag assigned first stays, the other
+  assignments of that group are removed (tags themselves are kept); the database is copied next
+  to itself first, as for any migration. For overlapping labels use tags without a group, or
+  two groups.
 
 ### Fixed
 - **The category picker stays inside the window.** When a row sits near the top or bottom of the

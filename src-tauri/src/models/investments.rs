@@ -378,34 +378,3 @@ impl InsertInvestmentTransaction {
         Ok(())
     }
 }
-
-/// A single data point in a TWR time series.
-#[derive(Debug, Clone, Serialize, Deserialize, Type)]
-pub struct TwrDataPoint {
-    /// Calendar date as "YYYY-MM-DD"
-    pub date: String,
-    /// Cumulative time-weighted return in percent (0.0 at start of range)
-    pub twr: f64,
-}
-
-/// A complete TWR series for one tag, untagged stocks, or the whole portfolio.
-#[derive(Debug, Clone, Serialize, Deserialize, Type)]
-pub struct TwrSeries {
-    /// The tag this series belongs to. None = whole portfolio or untagged.
-    pub tag: Option<StockTag>,
-    /// True when this series represents stocks with no tags assigned.
-    #[serde(rename = "isUntagged")]
-    pub is_untagged: bool,
-    pub data: Vec<TwrDataPoint>,
-}
-
-/// Time-weighted return series computed in a report currency: each day's value and cash flows
-/// are converted at that day's rate. A holding that cannot be converted is left out of that day
-/// (the others keep chaining) and counted in `fxQuality`.
-#[derive(Debug, Clone, Serialize, Deserialize, Type)]
-pub struct StockTwr {
-    pub currency: String,
-    #[serde(rename = "fxQuality")]
-    pub fx_quality: crate::models::fx::ConversionQuality,
-    pub series: Vec<TwrSeries>,
-}

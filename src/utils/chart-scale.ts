@@ -62,6 +62,15 @@ export function axisStamps(t0: number, t1: number, n = 5): number[] {
   return out;
 }
 
+/**
+ * Show every n-th label of a category axis so that `count` labels of about `minLabelWidth` px fit
+ * into `width` px: 1 when they all fit (or the width is not known yet).
+ */
+export function labelStep(count: number, width: number, minLabelWidth: number): number {
+  if (!(count > 0) || !(width > 0) || !(minLabelWidth > 0)) return 1;
+  return Math.max(1, Math.ceil((count * minLabelWidth) / width));
+}
+
 /** Spans under this many days label the axis with "2. 10."; longer ones with "zář 26". */
 export const SHORT_SPAN_DAYS = 100;
 

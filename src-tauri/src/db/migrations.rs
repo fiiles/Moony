@@ -79,6 +79,7 @@ fn all_migrations() -> Vec<(&'static str, &'static str)> {
         ("012_retire_czk_caches", MIGRATION_012),
         ("013_cashflow_plan_exclusions", MIGRATION_013),
         ("014_balance_records", MIGRATION_014),
+        ("015_one_tag_per_group", MIGRATION_015),
     ]
 }
 
@@ -1714,6 +1715,95 @@ mod tests {
             )
             .is_err());
     }
+
+    fn database_before_015() -> Connection {
+        let conn = Connection::open_in_memory().expect("in-memory db");
+        conn.execute_batch("PRAGMA foreign_keys = ON;")
+            .expect("foreign keys");
+        let earlier: Vec<(&str, &str)> = all_migrations()
+            .into_iter()
+            .filter(|(name, _)| *name < "015_one_tag_per_group")
+            .collect();
+        run_chain(&conn, &earlier).expect("earlier migrations");
+        conn
+    }
+
+    fn tag_assignments(conn: &Connection) -> Vec<(String, String)> {
+        conn.prepare(
+            "SELECT investment_id, tag_id FROM stock_investment_tags
+             ORDER BY investment_id, tag_id",
+        )
+        .expect("select")
+        .query_map([], |r| Ok((r.get(0)?, r.get(1)?)))
+        .expect("rows")
+        .collect::<std::result::Result<Vec<_>, _>>()
+        .expect("rows")
+    }
+
+    #[test]
+    fn migration_015_keeps_the_first_tag_of_each_group_per_position() {
+        let conn = database_before_015();
+        conn.execute_batch(
+            "INSERT INTO stock_tag_groups (id, name) VALUES ('g1', 'Strategy'), ('g2', 'Region');
+             INSERT INTO stock_tags (id, name, group_id) VALUES
+                ('a', 'Alfa', 'g1'), ('b', 'Beta', 'g1'), ('c', 'Gama', 'g2'),
+                ('d', 'Delta', NULL), ('e', 'Echo', 'g1');
+             INSERT INTO stock_investments (id, ticker, company_name, quantity, currency) VALUES
+                ('i1', 'AAA', 'AAA', '1', 'USD'), ('i2', 'BBB', 'BBB', '1', 'USD'),
+                ('i3', 'CCC', 'CCC', '1', 'USD');
+             INSERT INTO stock_investment_tags (investment_id, tag_id, created_at) VALUES
+                ('i1', 'b', 100), ('i1', 'a', 200), ('i1', 'c', 50), ('i1', 'd', 10),
+                ('i2', 'a', 100), ('i2', 'b', 100), ('i2', 'e', 100),
+                ('i3', 'e', 300);",
+        )
+        .expect("seed");
+
+        run_migrations(&conn).expect("migrate to the current chain");
+
+        let pairs: Vec<(&str, &str)> = [
+            // i1: the older Beta wins over Alfa; Gama (other group) and Delta (no group) stay.
+            ("i1", "b"),
+            ("i1", "c"),
+            ("i1", "d"),
+            // i2: all equally old, Alfa sorts first.
+            ("i2", "a"),
+            // i3: a single tag is untouched.
+            ("i3", "e"),
+        ]
+        .into();
+        assert_eq!(
+            tag_assignments(&conn),
+            pairs
+                .into_iter()
+                .map(|(i, t)| (i.to_string(), t.to_string()))
+                .collect::<Vec<_>>()
+        );
+        // The tags themselves stay.
+        let tags: i64 = conn
+            .query_row("SELECT COUNT(*) FROM stock_tags", [], |r| r.get(0))
+            .expect("count");
+        assert_eq!(tags, 5);
+    }
+
+    #[test]
+    fn migration_015_changes_no_schema_and_is_idempotent() {
+        let conn = database_before_015();
+        conn.execute_batch(
+            "INSERT INTO stock_tag_groups (id, name) VALUES ('g1', 'Strategy');
+             INSERT INTO stock_tags (id, name, group_id) VALUES ('a', 'Alfa', 'g1'), ('b', 'Beta', 'g1');
+             INSERT INTO stock_investments (id, ticker, company_name, quantity, currency)
+                VALUES ('i1', 'AAA', 'AAA', '1', 'USD');
+             INSERT INTO stock_investment_tags (investment_id, tag_id, created_at)
+                VALUES ('i1', 'a', 5), ('i1', 'b', 5);",
+        )
+        .expect("seed");
+        run_migrations(&conn).expect("first run");
+        run_migrations(&conn).expect("second run");
+        assert_eq!(
+            tag_assignments(&conn),
+            vec![("i1".to_string(), "a".to_string())]
+        );
+    }
 }
 
 /// Tests of `003_stock_import_batches`. A module of its own so they do not
@@ -2511,6 +2601,26 @@ SELECT lower(hex(randomblob(4)) || '-' || hex(randomblob(2)) || '-4' || substr(h
        id, balance, currency, balance_as_of, 'manual', NULL, updated_at
 FROM bank_accounts
 WHERE balance_as_of IS NOT NULL;
+"#;
+
+/// 015: a tag group is one partition of the portfolio, so a position keeps at most one tag per
+/// group. For every position and group the first assigned tag stays (earliest `created_at` of
+/// the assignment, then tag name) and the other assignments of that group are deleted. Tags
+/// themselves and ungrouped tags are untouched. No schema change.
+pub(crate) const MIGRATION_015: &str = r#"
+DELETE FROM stock_investment_tags
+WHERE EXISTS (
+    SELECT 1
+    FROM stock_tags t
+    JOIN stock_investment_tags o ON o.investment_id = stock_investment_tags.investment_id
+    JOIN stock_tags ot ON ot.id = o.tag_id
+    WHERE t.id = stock_investment_tags.tag_id
+      AND t.group_id IS NOT NULL
+      AND ot.group_id = t.group_id
+      AND o.tag_id <> stock_investment_tags.tag_id
+      AND (o.created_at < stock_investment_tags.created_at
+           OR (o.created_at = stock_investment_tags.created_at AND ot.name < t.name))
+);
 "#;
 
 #[cfg(test)]

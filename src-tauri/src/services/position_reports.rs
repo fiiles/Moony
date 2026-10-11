@@ -1,8 +1,8 @@
-//! Wire responses of the stock, crypto, stocks-analysis and tag-metrics commands, built from
-//! the positions service (ADR 0011). Every response captures one quote snapshot, declares its
-//! report currency and reports what it could not convert in `fxQuality`. Converted amounts are
-//! decimal TEXT at the report currency's minor unit, `null` when unknown; native prices and
-//! dividends keep their own currency.
+//! Wire responses of the stock, crypto and stocks-analysis commands, built from the positions
+//! service (ADR 0011). Every response captures one quote snapshot, declares its report currency
+//! and reports what it could not convert in `fxQuality`. Converted amounts are decimal TEXT at
+//! the report currency's minor unit, `null` when unknown; native prices and dividends keep their
+//! own currency.
 
 use std::collections::HashMap;
 
@@ -13,10 +13,10 @@ use crate::models::fx::ConversionQuality;
 use crate::models::{
     CryptoPositions, EnrichedCryptoInvestment, EnrichedStockInvestment,
     PositionTotals as WirePositionTotals, StockInvestmentWithTags, StockPosition, StockPositions,
-    StockTag, StocksAnalysis, TagMetrics, TagMetricsReport,
+    StockTag, StocksAnalysis,
 };
 use crate::services::positions::{
-    self, resolve_dividend, AssetKind, PositionTotals, PositionValue, Positions,
+    self, resolve_dividend, AssetKind, PositionTotals, PositionValue,
 };
 use crate::services::pricing;
 use crate::services::reporting::money_in_currency;
@@ -63,6 +63,24 @@ fn stock_names(conn: &Connection) -> Result<HashMap<String, (String, String)>> {
         .query_map([], |row| Ok((row.get(0)?, (row.get(1)?, row.get(2)?))))?
         .collect::<rusqlite::Result<_>>()?;
     Ok(rows)
+}
+
+/// The trimmed, non-empty sector of every ticker in the cached quote data (`stock_data`).
+fn stock_sectors(conn: &Connection) -> Result<HashMap<String, String>> {
+    let mut stmt =
+        conn.prepare("SELECT ticker, sector FROM stock_data WHERE sector IS NOT NULL")?;
+    let rows = stmt.query_map([], |row| {
+        Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+    })?;
+    let mut sectors = HashMap::new();
+    for row in rows {
+        let (ticker, sector) = row?;
+        let sector = sector.trim();
+        if !sector.is_empty() {
+            sectors.insert(ticker, sector.to_string());
+        }
+    }
+    Ok(sectors)
 }
 
 fn enrich_stock(
@@ -236,6 +254,7 @@ pub fn stocks_analysis(conn: &Connection, report_currency: &str) -> Result<Stock
     let positions = positions::value_positions(conn, AssetKind::Stock, report_currency, now())?;
     let mut names = stock_names(conn)?;
     let mut tags = tags_by_investment(conn)?;
+    let sectors = stock_sectors(conn)?;
     let currency = positions.currency.clone();
     let mut items: Vec<StockInvestmentWithTags> = positions
         .items
@@ -257,6 +276,7 @@ pub fn stocks_analysis(conn: &Connection, report_currency: &str) -> Result<Stock
                 unrealized_gain: money(item.unrealized_gain, &currency),
                 unrealized_gain_percent: item.unrealized_gain_percent,
                 yearly_dividend: money(item.yearly_dividend, &currency),
+                sector: sectors.get(&item.ticker).cloned(),
                 tags: tags.remove(&item.investment_id).unwrap_or_default(),
             }
         })
@@ -267,70 +287,6 @@ pub fn stocks_analysis(conn: &Connection, report_currency: &str) -> Result<Stock
         fx_quality: ConversionQuality::from(&positions.quality),
         items,
     })
-}
-
-/// The tags to report: all of them (by name) when `tag_ids` is empty, else the given ones that
-/// exist.
-fn load_tags(conn: &Connection, tag_ids: &[String]) -> Result<Vec<StockTag>> {
-    let mut stmt =
-        conn.prepare("SELECT id, name, color, group_id, created_at FROM stock_tags ORDER BY name")?;
-    let tags = stmt
-        .query_map([], |row| read_tag(row, 0))?
-        .collect::<rusqlite::Result<Vec<_>>>()?;
-    if tag_ids.is_empty() {
-        return Ok(tags);
-    }
-    let mut by_id: HashMap<String, StockTag> =
-        tags.into_iter().map(|tag| (tag.id.clone(), tag)).collect();
-    Ok(tag_ids.iter().filter_map(|id| by_id.remove(id)).collect())
-}
-
-fn tag_metrics_from(
-    positions: &Positions,
-    tags: Vec<StockTag>,
-    tag_map: &HashMap<String, Vec<String>>,
-) -> TagMetricsReport {
-    let currency = positions.currency.as_str();
-    let portfolio_value = positions::totals(&positions.items).value;
-    let mut by_tag = positions::tag_totals(positions, tag_map);
-    let tags = tags
-        .into_iter()
-        .map(|tag| {
-            let totals = by_tag.remove(&tag.id).unwrap_or_default();
-            TagMetrics {
-                value: money(totals.value, currency),
-                cost_basis: money(totals.cost_basis, currency),
-                unrealized_gain: money(totals.unrealized_gain, currency),
-                unrealized_gain_percent: totals.unrealized_gain_percent(),
-                yearly_dividend: money(totals.yearly_dividend, currency),
-                portfolio_percent: match (totals.value, portfolio_value) {
-                    (Some(value), Some(portfolio)) if portfolio > 0.0 => value / portfolio * 100.0,
-                    _ => 0.0,
-                },
-                holdings_count: i32::try_from(totals.count).unwrap_or(i32::MAX),
-                fx_quality: ConversionQuality::from(&totals.quality),
-                tag,
-            }
-        })
-        .collect();
-    // Every position counted once, whichever tags it carries
-    TagMetricsReport {
-        currency: currency.to_string(),
-        fx_quality: ConversionQuality::from(&positions.quality),
-        tags,
-    }
-}
-
-/// Metrics per tag in `report_currency` (every tag when `tag_ids` is empty).
-pub fn tag_metrics(
-    conn: &Connection,
-    report_currency: &str,
-    tag_ids: &[String],
-) -> Result<TagMetricsReport> {
-    let positions = positions::value_positions(conn, AssetKind::Stock, report_currency, now())?;
-    let tags = load_tags(conn, tag_ids)?;
-    let tag_map = positions::investment_tag_ids(conn)?;
-    Ok(tag_metrics_from(&positions, tags, &tag_map))
 }
 
 #[cfg(test)]
@@ -346,6 +302,130 @@ mod tests {
         // A stale stored quantity gives way to the replayed one
         assert_eq!(wire_quantity("5", 2.0), "2");
         assert_eq!(wire_quantity("", 1.5), "1.5");
+    }
+
+    /// A minimal database for `stocks_analysis`: three CZK stocks held without transactions
+    /// (so no rates are needed); AAPL has a padded sector, ETF1 an empty one and NOQUOTE no
+    /// `stock_data` row at all.
+    fn setup_analysis_db() -> Connection {
+        let conn = Connection::open_in_memory().expect("in-memory db");
+        conn.execute_batch(
+            r#"
+            CREATE TABLE stock_investments (
+                id TEXT PRIMARY KEY,
+                ticker TEXT NOT NULL UNIQUE,
+                company_name TEXT NOT NULL,
+                quantity TEXT NOT NULL,
+                currency TEXT NOT NULL DEFAULT 'CZK'
+            );
+            CREATE TABLE investment_transactions (
+                id TEXT PRIMARY KEY,
+                investment_id TEXT NOT NULL,
+                type TEXT NOT NULL,
+                ticker TEXT NOT NULL,
+                company_name TEXT NOT NULL,
+                quantity TEXT NOT NULL,
+                price_per_unit TEXT NOT NULL,
+                currency TEXT NOT NULL,
+                transaction_date INTEGER NOT NULL,
+                created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+                import_batch_id TEXT,
+                external_id TEXT
+            );
+            CREATE TABLE stock_data (
+                id TEXT PRIMARY KEY,
+                ticker TEXT NOT NULL UNIQUE,
+                original_price TEXT NOT NULL,
+                currency TEXT NOT NULL DEFAULT 'USD',
+                price_date INTEGER NOT NULL,
+                fetched_at INTEGER NOT NULL DEFAULT (unixepoch()),
+                sector TEXT
+            );
+            CREATE TABLE stock_price_overrides (
+                id TEXT PRIMARY KEY,
+                ticker TEXT NOT NULL UNIQUE,
+                price TEXT NOT NULL,
+                currency TEXT NOT NULL DEFAULT 'CZK',
+                updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+            );
+            CREATE TABLE dividend_data (
+                id TEXT PRIMARY KEY,
+                ticker TEXT NOT NULL UNIQUE,
+                yearly_dividend_sum TEXT NOT NULL DEFAULT '0',
+                currency TEXT NOT NULL DEFAULT 'USD',
+                last_fetched_at INTEGER NOT NULL DEFAULT (unixepoch()),
+                created_at INTEGER NOT NULL DEFAULT (unixepoch())
+            );
+            CREATE TABLE dividend_overrides (
+                id TEXT PRIMARY KEY,
+                ticker TEXT NOT NULL UNIQUE,
+                yearly_dividend_sum TEXT NOT NULL,
+                currency TEXT NOT NULL DEFAULT 'CZK',
+                updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+            );
+            CREATE TABLE exchange_rate_history (
+                date INTEGER NOT NULL,
+                currency TEXT NOT NULL,
+                rate REAL NOT NULL,
+                PRIMARY KEY (date, currency)
+            );
+            CREATE TABLE stock_tags (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL UNIQUE,
+                color TEXT,
+                created_at INTEGER NOT NULL DEFAULT 0,
+                group_id TEXT
+            );
+            CREATE TABLE stock_investment_tags (
+                investment_id TEXT NOT NULL,
+                tag_id TEXT NOT NULL,
+                PRIMARY KEY (investment_id, tag_id)
+            );
+            "#,
+        )
+        .expect("schema");
+        for (id, ticker, sector) in [
+            ("i-aapl", "AAPL", Some(" Technology ")),
+            ("i-etf", "ETF1", Some("   ")),
+            ("i-none", "NOQUOTE", None),
+        ] {
+            conn.execute(
+                "INSERT INTO stock_investments (id, ticker, company_name, quantity)
+                 VALUES (?1, ?2, ?2, '1')",
+                rusqlite::params![id, ticker],
+            )
+            .expect("investment");
+            if id != "i-none" {
+                conn.execute(
+                    "INSERT INTO stock_data (id, ticker, original_price, currency, price_date, sector)
+                     VALUES (?1, ?2, '100', 'CZK', 0, ?3)",
+                    rusqlite::params![id, ticker, sector],
+                )
+                .expect("quote");
+            }
+        }
+        conn
+    }
+
+    #[test]
+    fn analysis_items_carry_the_trimmed_sector() {
+        let conn = setup_analysis_db();
+
+        let analysis = stocks_analysis(&conn, "CZK").expect("analysis");
+
+        let sector_of = |ticker: &str| {
+            analysis
+                .items
+                .iter()
+                .find(|item| item.ticker == ticker)
+                .unwrap_or_else(|| panic!("{ticker} missing"))
+                .sector
+                .clone()
+        };
+        assert_eq!(sector_of("AAPL").as_deref(), Some("Technology"));
+        // blank sector (an ETF) and a missing quote row both report no sector
+        assert_eq!(sector_of("ETF1"), None);
+        assert_eq!(sector_of("NOQUOTE"), None);
     }
 
     fn item(id: &str, value: Option<f64>, cost: Option<f64>, dividend: f64) -> PositionValue {
@@ -374,90 +454,24 @@ mod tests {
         }
     }
 
-    fn tag(id: &str) -> StockTag {
-        StockTag {
-            id: id.to_string(),
-            name: id.to_string(),
-            color: None,
-            group_id: None,
-            created_at: 0,
-        }
-    }
-
     #[test]
-    fn tag_metrics_are_text_in_the_report_currency_with_quality_per_tag() {
-        let mut quality = Quality::default();
-        quality.track("KWD", None);
-        let positions = Positions {
-            currency: "EUR".to_string(),
-            items: vec![
-                item("a", Some(300.0), Some(200.0), 6.0),
-                item("b", Some(100.0), Some(100.0), 1.0),
-                item("c", None, Some(50.0), 9.0),
-            ],
-            quality,
-        };
-        let tag_map: HashMap<String, Vec<String>> = [
-            ("a".to_string(), vec!["growth".to_string()]),
-            ("c".to_string(), vec!["growth".to_string()]),
-        ]
-        .into_iter()
-        .collect();
-
-        let report = tag_metrics_from(&positions, vec![tag("growth"), tag("empty")], &tag_map);
-
-        assert_eq!(report.currency, "EUR");
-        assert_eq!(
-            report.fx_quality.missing_currencies,
-            vec!["KWD".to_string()]
-        );
-        let growth = &report.tags[0];
-        assert_eq!(growth.value.as_deref(), Some("300.00"));
-        // the known cost of the unpriced position counts too; its gain does not
-        assert_eq!(growth.cost_basis.as_deref(), Some("250.00"));
-        assert_eq!(growth.unrealized_gain.as_deref(), Some("100.00"));
-        assert!((growth.unrealized_gain_percent - 50.0).abs() < 1e-9);
-        assert_eq!(growth.yearly_dividend.as_deref(), Some("6.00"));
-        assert!((growth.portfolio_percent - 75.0).abs() < 1e-9);
-        assert_eq!(growth.holdings_count, 2);
-        assert_eq!(
-            growth.fx_quality.missing_currencies,
-            vec!["KWD".to_string()]
-        );
-        let empty = &report.tags[1];
-        assert_eq!(empty.value.as_deref(), Some("0.00"));
-        assert_eq!(empty.holdings_count, 0);
-        assert!(empty.fx_quality.missing_currencies.is_empty());
-    }
-
-    #[test]
-    fn totals_are_null_when_nothing_held_in_them_converted() {
-        // Transactions exist, but neither the value nor the cost converted
+    fn totals_are_text_in_the_report_currency_and_null_when_nothing_converted() {
+        // Transactions exist, but neither the value nor the cost of one position converted
         let mut failed = item("c", None, None, 0.0);
         failed.has_cost_record = true;
-        let mut quality = Quality::default();
-        quality.track("KWD", None);
-        let positions = Positions {
-            currency: "EUR".to_string(),
-            items: vec![item("a", Some(300.0), Some(200.0), 6.0), failed],
-            quality,
-        };
-        let tag_map: HashMap<String, Vec<String>> = [("c".to_string(), vec!["gulf".to_string()])]
-            .into_iter()
-            .collect();
-
-        let report = tag_metrics_from(&positions, vec![tag("gulf")], &tag_map);
-
-        let gulf = &report.tags[0];
-        // a priced position whose value and cost failed: unknown, not 0
-        assert_eq!(gulf.value, None);
-        assert_eq!(gulf.cost_basis, None);
-        assert_eq!(gulf.unrealized_gain, None);
-        assert_eq!(gulf.yearly_dividend, Some("0.00".to_string()));
-        assert_eq!(gulf.portfolio_percent, 0.0);
-        // the whole portfolio still knows its converted position
-        let all = wire_totals(&positions::totals(&positions.items), "EUR");
+        let all = wire_totals(
+            &positions::totals(&[item("a", Some(300.0), Some(200.0), 6.0), failed.clone()]),
+            "EUR",
+        );
+        // the portfolio still knows its converted position
         assert_eq!(all.value.as_deref(), Some("300.00"));
         assert_eq!(all.cost_basis.as_deref(), Some("200.00"));
+
+        // a priced position whose value and cost failed: unknown, not 0
+        let lost = wire_totals(&positions::totals(&[failed]), "EUR");
+        assert_eq!(lost.value, None);
+        assert_eq!(lost.cost_basis, None);
+        assert_eq!(lost.unrealized_gain, None);
+        assert_eq!(lost.yearly_dividend.as_deref(), Some("0.00"));
     }
 }

@@ -4,6 +4,22 @@ use serde::{Deserialize, Serialize};
 use specta::Type;
 
 use super::fx::ConversionQuality;
+use crate::error::{AppError, Result};
+
+/// Longest tag or tag group name, in characters.
+const MAX_NAME_CHARS: usize = 60;
+
+/// A tag or group name must be non-blank (after trimming) and at most 60 characters.
+fn validate_name(name: &str) -> Result<()> {
+    let name = name.trim();
+    if name.is_empty() {
+        return Err(AppError::Validation("validation.tagNameRequired".into()));
+    }
+    if name.chars().count() > MAX_NAME_CHARS {
+        return Err(AppError::Validation("validation.tagNameTooLong".into()));
+    }
+    Ok(())
+}
 
 /// Stock tag group for organizing related tags
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
@@ -20,6 +36,13 @@ pub struct StockTagGroup {
 pub struct InsertStockTagGroup {
     pub name: String,
     pub description: Option<String>,
+}
+
+impl InsertStockTagGroup {
+    /// Validate input data at the trust boundary.
+    pub fn validate(&self) -> Result<()> {
+        validate_name(&self.name)
+    }
 }
 
 /// Stock tag for categorizing investments (e.g., Growth, Value, Dividend)
@@ -41,6 +64,13 @@ pub struct InsertStockTag {
     pub color: Option<String>,
     #[serde(rename = "groupId")]
     pub group_id: Option<String>,
+}
+
+impl InsertStockTag {
+    /// Validate input data at the trust boundary.
+    pub fn validate(&self) -> Result<()> {
+        validate_name(&self.name)
+    }
 }
 
 /// A stock position with its tags, in the response's report currency (converted amounts are
@@ -72,6 +102,9 @@ pub struct StockInvestmentWithTags {
     pub unrealized_gain_percent: Option<f64>,
     #[serde(rename = "yearlyDividend")]
     pub yearly_dividend: Option<String>,
+    /// Sector from the cached quote data; `None` for ETFs and unknown.
+    #[serde(rename = "sector")]
+    pub sector: Option<String>,
     pub tags: Vec<StockTag>,
 }
 
@@ -84,45 +117,6 @@ pub struct StocksAnalysis {
     pub fx_quality: ConversionQuality,
     #[serde(rename = "items")]
     pub items: Vec<StockInvestmentWithTags>,
-}
-
-/// Sums over a tag's positions in the response's report currency, every known amount counted
-/// (the rule of `PositionTotals`: a total is `null` when the tag's positions hold amounts for it
-/// but none of them could be converted).
-#[derive(Debug, Clone, Serialize, Deserialize, Type)]
-pub struct TagMetrics {
-    pub tag: StockTag,
-    #[serde(rename = "value")]
-    pub value: Option<String>,
-    #[serde(rename = "costBasis")]
-    pub cost_basis: Option<String>,
-    #[serde(rename = "unrealizedGain")]
-    pub unrealized_gain: Option<String>,
-    /// Percent of the cost of the positions in `unrealizedGain`; 0 without a cost basis.
-    #[serde(rename = "unrealizedGainPercent")]
-    pub unrealized_gain_percent: f64,
-    #[serde(rename = "yearlyDividend")]
-    pub yearly_dividend: Option<String>,
-    /// The tag's value in percent of the known value of every position.
-    #[serde(rename = "portfolioPercent")]
-    pub portfolio_percent: f64,
-    /// Positions carrying the tag, summed or not.
-    #[serde(rename = "holdingsCount")]
-    pub holdings_count: i32,
-    /// What the tag's positions could not convert.
-    #[serde(rename = "fxQuality")]
-    pub fx_quality: ConversionQuality,
-}
-
-/// Metrics per tag in `currency`.
-#[derive(Debug, Clone, Serialize, Deserialize, Type)]
-pub struct TagMetricsReport {
-    #[serde(rename = "currency")]
-    pub currency: String,
-    #[serde(rename = "fxQuality")]
-    pub fx_quality: ConversionQuality,
-    #[serde(rename = "tags")]
-    pub tags: Vec<TagMetrics>,
 }
 
 /// Tag group with its tags

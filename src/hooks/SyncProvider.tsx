@@ -140,6 +140,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
         ['all-stock-transactions'],
         ['dividend-summary'],
         ['stocks-analysis'],
+        ['stock-performance'],
       ],
       crypto: [['crypto'], ['crypto-detail'], ['crypto-transactions'], ['all-crypto-transactions']],
       bonds: [['bonds']],

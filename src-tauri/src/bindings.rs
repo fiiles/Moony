@@ -32,9 +32,12 @@ pub fn collect_types() -> TypeCollection {
     types.register::<crate::models::StockPriceOverride>();
     types.register::<crate::models::DividendOverride>();
     types.register::<crate::models::TickerValueHistory>();
-    types.register::<crate::models::TwrDataPoint>();
-    types.register::<crate::models::TwrSeries>();
-    types.register::<crate::models::StockTwr>();
+    types.register::<crate::models::PerformanceSeriesSpec>();
+    types.register::<crate::models::StockPerformanceRequest>();
+    types.register::<crate::models::PerformanceSeries>();
+    types.register::<crate::models::PositionPerformance>();
+    types.register::<crate::models::StockPerformance>();
+    types.register::<crate::models::StockBenchmark>();
     types.register::<crate::models::TickerValueHistoryReport>();
     types.register::<crate::services::history_recalc::HistoryRecalcEvent>();
 
@@ -152,8 +155,6 @@ pub fn collect_types() -> TypeCollection {
     types.register::<crate::models::InsertStockTagGroup>();
     types.register::<crate::models::StockInvestmentWithTags>();
     types.register::<crate::models::StocksAnalysis>();
-    types.register::<crate::models::TagMetrics>();
-    types.register::<crate::models::TagMetricsReport>();
 
     // Stock Monitor models
     types.register::<crate::models::WatchedStock>();

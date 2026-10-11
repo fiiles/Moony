@@ -13,6 +13,8 @@ export interface SegmentedOption<T extends string> {
   value: T;
   label: React.ReactNode;
   disabled?: boolean;
+  /** Draws a thin rule before this option (`.seg__sep`): it splits two kinds of choices. */
+  divider?: boolean;
 }
 
 export interface SegmentedProps<T extends string> extends Omit<
@@ -55,18 +57,22 @@ function SegmentedInner<T extends string>(
       {...props}
     >
       {options.map((option) => (
-        <ToggleGroupPrimitive.Item
-          key={option.value}
-          value={option.value}
-          disabled={option.disabled}
-          className={cn(
-            'inline-flex items-center justify-center whitespace-nowrap rounded-r1 font-600 text-ink-3 transition-colors duration-fast hover:text-ink focus-visible:outline-none focus-visible:shadow-focus disabled:pointer-events-none disabled:opacity-45 data-[state=on]:bg-paper data-[state=on]:text-ink data-[state=on]:shadow-seg',
-            size === 'lg' ? 'h-[30px] px-3 text-caption' : 'h-[26px] px-[10px] text-micro',
-            fullWidth && 'flex-1'
+        <React.Fragment key={option.value}>
+          {option.divider && (
+            <span aria-hidden className="mx-1 h-[14px] w-px shrink-0 self-center bg-line-strong" />
           )}
-        >
-          {option.label}
-        </ToggleGroupPrimitive.Item>
+          <ToggleGroupPrimitive.Item
+            value={option.value}
+            disabled={option.disabled}
+            className={cn(
+              'inline-flex items-center justify-center whitespace-nowrap rounded-r1 font-600 text-ink-3 transition-colors duration-fast hover:text-ink focus-visible:outline-none focus-visible:shadow-focus disabled:pointer-events-none disabled:opacity-45 data-[state=on]:bg-paper data-[state=on]:text-ink data-[state=on]:shadow-seg',
+              size === 'lg' ? 'h-[30px] px-3 text-caption' : 'h-[26px] px-[10px] text-micro',
+              fullWidth && 'flex-1'
+            )}
+          >
+            {option.label}
+          </ToggleGroupPrimitive.Item>
+        </React.Fragment>
       ))}
     </ToggleGroupPrimitive.Root>
   );

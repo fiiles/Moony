@@ -245,7 +245,16 @@
     "currencyLockedByRecords": "口座に残高の記録がある間は、通貨を変更できません。",
     "learningIdentity": "信頼できる口座の識別子または支払先を指定してください。",
     "paginationInvalid": "有効な履歴ページを選択してください。",
-    "systemRule": "システムルールは変更できません。"
+    "systemRule": "システムルールは変更できません。",
+    "tagNameRequired": "タグ名を入力してください。",
+    "tagNameTooLong": "名前は60文字以内で入力してください。",
+    "tagNotFound": "このタグはもう存在しません。",
+    "oneTagPerGroup": "1つのポジションに付けられるタグは、各グループにつき1つだけです。",
+    "tagGroupConflict": "一部のポジションには、そのグループの別のタグがすでに付いています。",
+    "periodInvalid": "期間の開始日は終了日より前にしてください。",
+    "tooManySeries": "一度にリクエストされた線が多すぎます。",
+    "seriesKeyInvalid": "グラフの線のリクエストが正しくありません。",
+    "benchmarkTickerInvalid": "指数のティッカーが正しくありません。"
   },
   "auth": {
     "wrongPassword": "入力したパスワードが正しくありません。もう一度お試しください。",

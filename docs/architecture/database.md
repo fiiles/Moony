@@ -165,7 +165,7 @@ Grouped by owning domain (see the domain map in `overview.md`).
 | `dividend_data` | Fetched yearly dividend sums per ticker | `ticker UNIQUE`; `yearly_dividend_sum` TEXT in `currency` (converted from the quote unit like a price) |
 | `dividend_overrides` | Manual dividend overrides (win over `dividend_data`) | `ticker UNIQUE` |
 | `stock_tags` | User tags for grouping investments | `name UNIQUE`; `group_id` FK ON DELETE SET NULL |
-| `stock_investment_tags` | Investment ↔ tag many-to-many join | Composite PK `(investment_id, tag_id)`; both FKs ON DELETE CASCADE |
+| `stock_investment_tags` | Investment ↔ tag many-to-many join | Composite PK `(investment_id, tag_id)`; both FKs ON DELETE CASCADE; at most one tag per tag group per investment, enforced by the tag service (`services/stock_tags.rs`; migration 015 removed older duplicates: the earliest assignment of each group stays, then by tag name); tags without a group may overlap |
 | `stock_tag_groups` | Optional grouping of tags (e.g. "Strategy") | `name UNIQUE` |
 | `stock_value_history` | Daily native value per ticker (also feeds portfolio trend) | `UNIQUE(ticker, recorded_at)`; native `quantity`, `price`+`currency`, `is_stale`; values convert per response at the row's day (the `value_czk` cache was dropped in migration 012) |
 

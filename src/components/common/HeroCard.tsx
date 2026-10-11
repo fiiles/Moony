@@ -64,13 +64,15 @@ interface HeroCardProps {
 /**
  * Hero card (design system §6, `.hero`, E2): one dominant number, its change
  * with sign and context, a period switch top right, the chart below. The
- * decorative circle top right is part of the material.
+ * decorative circle top right is part of the material; it overflows the card, so the card
+ * clips (`overflow-clip`) rather than hides: `overflow-hidden` is a scroll container, and a
+ * focused menu inside would scroll the card sideways and cut off its left edge.
  */
 export function HeroCard({ children, aside, chart, className }: HeroCardProps) {
   return (
     <Card
       className={cn(
-        'relative overflow-hidden px-6 pb-4 pt-6 after:pointer-events-none after:absolute after:-right-[100px] after:-top-[120px] after:h-[180px] after:w-[340px] after:rounded-full after:bg-hero-orb after:content-[""]',
+        'relative overflow-clip px-6 pb-4 pt-6 after:pointer-events-none after:absolute after:-right-[100px] after:-top-[120px] after:h-[180px] after:w-[340px] after:rounded-full after:bg-hero-orb after:content-[""]',
         className
       )}
     >

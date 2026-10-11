@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { FILTER_ALL, chosenTagIds, selectPositions, tagTotals } from './stock-analysis';
+import type { StockTag } from '@shared/schema';
+import {
+  FILTER_ALL,
+  chosenTagIds,
+  heldPositions,
+  isHeld,
+  moveConflicts,
+  nextTagIds,
+  selectPositions,
+  tagTotals,
+} from './stock-analysis';
 
 const growth = { id: 'growth' };
 const value = { id: 'value' };
@@ -37,6 +47,37 @@ describe('chosenTagIds', () => {
   it('ignores a choice that is no longer one of the group tags', () => {
     // The tag was deleted, or the key belongs to a group that is gone
     expect(chosenTagIds([strategy], { strategy: 'deleted', gone: 'growth' })).toEqual([]);
+  });
+});
+
+describe('isHeld / heldPositions', () => {
+  it('holds a position with a positive quantity, whole or fractional', () => {
+    expect(isHeld({ quantity: '10' })).toBe(true);
+    expect(isHeld({ quantity: '0.00000001' })).toBe(true);
+  });
+
+  it('does not hold a sold-out, negative or unreadable quantity', () => {
+    expect(isHeld({ quantity: '0' })).toBe(false);
+    expect(isHeld({ quantity: '0.00000000' })).toBe(false);
+    expect(isHeld({ quantity: '-1' })).toBe(false);
+    expect(isHeld({ quantity: '' })).toBe(false);
+    expect(isHeld({ quantity: 'n/a' })).toBe(false);
+  });
+
+  it('keeps the held positions in order and does not touch the input', () => {
+    const all = [
+      { id: 'a', quantity: '5' },
+      { id: 'closed', quantity: '0' },
+      { id: 'b', quantity: '1.5' },
+    ];
+    const held = heldPositions(all);
+    expect(held.map((p) => p.id)).toEqual(['a', 'b']);
+    expect(all).toHaveLength(3);
+    expect(held).not.toBe(all);
+  });
+
+  it('is empty when every position is sold out', () => {
+    expect(heldPositions([{ quantity: '0' }, { quantity: '0.0' }])).toEqual([]);
   });
 });
 
@@ -148,5 +189,139 @@ describe('tagTotals', () => {
     expect(tagTotals(selected, 'growth').count).toBe(1);
     expect(tagTotals(selected, 'growth').value).toBe(500);
     expect(tagTotals(selected, 'usa').count).toBe(0);
+  });
+});
+
+function tag(id: string, groupId: string | null): StockTag {
+  return { id, name: id, color: null, groupId, createdAt: 0 };
+}
+
+describe('nextTagIds', () => {
+  const growthTag = tag('growth', 'strategy');
+  const valueTag = tag('value', 'strategy');
+  const usaTag = tag('usa', 'region');
+  const europeTag = tag('europe', 'region');
+  const watchTag = tag('watch', null);
+  const incomeTag = tag('income', null);
+  const all = [growthTag, valueTag, usaTag, europeTag, watchTag, incomeTag];
+
+  it('keeps the tag of a group left on keep', () => {
+    const next = nextTagIds(
+      [growthTag, usaTag],
+      { strategy: 'keep', region: 'keep' },
+      [],
+      true,
+      all
+    );
+    expect(next).toEqual(['growth', 'usa']);
+  });
+
+  it('removes the tag of a group set to none, and only that one', () => {
+    const next = nextTagIds(
+      [growthTag, usaTag],
+      { strategy: 'none', region: 'keep' },
+      [],
+      true,
+      all
+    );
+    expect(next).toEqual(['usa']);
+  });
+
+  it('replaces the tag of a group with the chosen one', () => {
+    const next = nextTagIds(
+      [growthTag, usaTag],
+      { strategy: 'value', region: 'keep' },
+      [],
+      true,
+      all
+    );
+    expect(next).toEqual(['usa', 'value']);
+  });
+
+  it('gives a position without a tag the chosen one and leaves other groups alone', () => {
+    expect(nextTagIds([], { strategy: 'growth', region: 'none' }, [], true, all)).toEqual([
+      'growth',
+    ]);
+    expect(nextTagIds([], { strategy: 'keep', region: 'keep' }, [], true, all)).toEqual([]);
+  });
+
+  it('sets the free tags exactly for a single position', () => {
+    const next = nextTagIds([growthTag, watchTag], { strategy: 'keep' }, ['income'], true, all);
+    // watch is unchecked, so it goes; income is added
+    expect(next).toEqual(['growth', 'income']);
+    expect(nextTagIds([watchTag], { strategy: 'keep' }, [], true, all)).toEqual([]);
+  });
+
+  it('adds the free tags to several positions and keeps the ones they have', () => {
+    const next = nextTagIds(
+      [growthTag, watchTag],
+      { strategy: 'keep' },
+      ['income', 'watch'],
+      false,
+      all
+    );
+    expect(next).toEqual(['growth', 'watch', 'income']);
+    // with nothing checked the existing free tags stay
+    expect(nextTagIds([watchTag], { strategy: 'keep' }, [], false, all)).toEqual(['watch']);
+  });
+
+  it('applies keep, none and replace per group across several positions', () => {
+    const picks = { strategy: 'value', region: 'keep' };
+    expect(nextTagIds([growthTag, europeTag], picks, [], false, all)).toEqual(['europe', 'value']);
+    expect(nextTagIds([], picks, [], false, all)).toEqual(['value']);
+  });
+
+  it('keeps a tag of a group the picks do not mention', () => {
+    expect(nextTagIds([europeTag], { strategy: 'growth' }, [], true, all)).toEqual([
+      'europe',
+      'growth',
+    ]);
+  });
+
+  it('ignores a pick that is not a tag of its group (deleted or moved meanwhile)', () => {
+    // 'ghost' no longer exists and 'usa' belongs to another group: the current tag stays
+    expect(nextTagIds([growthTag], { strategy: 'ghost' }, [], true, all)).toEqual(['growth']);
+    expect(nextTagIds([growthTag], { strategy: 'usa' }, [], true, all)).toEqual(['growth']);
+  });
+
+  it('ignores a free id that is unknown or belongs to a group, and lists no tag twice', () => {
+    expect(nextTagIds([], {}, ['ghost', 'growth', 'watch', 'watch'], true, all)).toEqual(['watch']);
+  });
+});
+
+describe('moveConflicts', () => {
+  const growthTag = tag('growth', 'strategy');
+  const valueTag = tag('value', 'strategy');
+  const usaTag = tag('usa', 'region');
+  const positions = [
+    { companyName: 'Apple', tags: [growthTag, usaTag] },
+    { companyName: 'SAP', tags: [growthTag] },
+    { companyName: 'Nestlé', tags: [valueTag, usaTag] },
+    { companyName: 'Visa', tags: [usaTag] },
+  ];
+
+  it('lists the positions that would carry two tags of the group', () => {
+    // growth into region: Apple has usa already
+    expect(moveConflicts(positions, 'growth', 'region')).toEqual(['Apple']);
+    // usa into strategy: Apple (growth) and Nestlé (value) would carry two there
+    expect(moveConflicts(positions, 'usa', 'strategy')).toEqual(['Apple', 'Nestlé']);
+  });
+
+  it('is empty when the positions that carry the tag have nothing else in the group', () => {
+    // SAP has only growth and Visa only usa: moving either tag to the other group is fine
+    expect(moveConflicts([positions[1]], 'growth', 'region')).toEqual([]);
+    expect(moveConflicts([positions[3]], 'usa', 'strategy')).toEqual([]);
+  });
+
+  it('ignores positions that do not carry the moved tag', () => {
+    // SAP has no usa and Visa no strategy tag, so only Apple and Nestlé can conflict
+    expect(moveConflicts(positions, 'usa', 'strategy')).toEqual(['Apple', 'Nestlé']);
+    expect(moveConflicts(positions, 'value', 'region')).toEqual(['Nestlé']);
+  });
+
+  it('is empty for a tag nobody carries and for a group nobody uses', () => {
+    expect(moveConflicts(positions, 'unused', 'region')).toEqual([]);
+    expect(moveConflicts(positions, 'growth', 'empty-group')).toEqual([]);
+    expect(moveConflicts([], 'growth', 'region')).toEqual([]);
   });
 });

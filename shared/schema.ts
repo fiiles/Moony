@@ -1554,30 +1554,94 @@ export interface InsertStockTag {
   groupId?: string | null;
 }
 
-export interface TwrDataPoint {
-  /** Calendar date as "YYYY-MM-DD" */
-  date: string;
-  /** Cumulative TWR in percent (0.0 at start of range) */
-  twr: number;
+/** One line of the performance chart: a set of held positions. */
+export interface PerformanceSeriesSpec {
+  /** Caller-chosen identifier, echoed in the response; unique within a request. */
+  key: string;
+  /** The positions of the series. Ids of positions that are not held are ignored. */
+  investmentIds: string[];
+  /**
+   * Compute this series in another currency (the native return of a currency group); it then
+   * has no contribution.
+   */
+  currency?: string | null;
 }
 
-export interface TwrSeries {
-  /** Tag this series belongs to. null = whole portfolio or untagged. */
-  tag: StockTag | null;
-  /** True when this series represents stocks with no tags assigned. */
-  isUntagged: boolean;
-  data: TwrDataPoint[];
+/** Request of the performance report: the period, the currency and the series to chart. */
+export interface StockPerformanceRequest {
+  /** First day (unix seconds, UTC midnight); clamped to the first recorded day. */
+  fromTs: number;
+  /** Last day (unix seconds, UTC midnight); clamped to the last recorded day. */
+  toTs: number;
+  /** The currency values, flows and returns are converted to, each at its own day. */
+  reportCurrency: string;
+  series: PerformanceSeriesSpec[];
+}
+
+/** The chart data of one requested series, on the dates of the report. */
+export interface PerformanceSeries {
+  key: string;
+  /** Cumulative time-weighted return of the series' own positions in percent per date (first 0). */
+  twr: number[];
+  /**
+   * Percentage points of the whole-portfolio return the series brought, cumulative per date;
+   * null for a series computed in another currency.
+   */
+  contribution: number[] | null;
+}
+
+/** One held position over the whole period. */
+export interface PositionPerformance {
+  investmentId: string;
+  /** Time-weighted return of the position over the period, in percent. */
+  twr: number;
+  /** Percentage points of the whole-portfolio return the position brought. */
+  contribution: number;
+  /** Value on the first date, decimal TEXT; null when it cannot be converted. */
+  startValue: string | null;
+  /** Value on the last date, decimal TEXT; null when it cannot be converted. */
+  endValue: string | null;
 }
 
 /**
- * Time-weighted return series computed in a report currency: each day's value and cash flows
- * are converted at that day's rate. A holding that cannot be converted is left out of that day
- * (the others keep chaining) and counted in `fxQuality`.
+ * Performance of the held positions in `currency`: the whole portfolio, the requested series and
+ * every position, all on the same `dates`.
  */
-export interface StockTwr {
+export interface StockPerformance {
+  /** The report currency. */
   currency: string;
   fxQuality: ConversionQuality;
-  series: TwrSeries[];
+  /** Emitted days as `YYYY-MM-DD`, at most 400 plus the last day (every n-th day on long ranges). */
+  dates: string[];
+  /** Cumulative time-weighted return of the whole portfolio in percent per date (first 0). */
+  portfolio: number[];
+  /** Portfolio value per date (decimal TEXT); null when no held position converts that day. */
+  values: (string | null)[];
+  /** Net deposits (buys minus sells) cumulated since the first date, decimal TEXT. */
+  netFlows: string[];
+  /** Money-weighted return from the first date to each date (modified Dietz, cumulative), in percent. */
+  mwr: number[];
+  series: PerformanceSeries[];
+  positions: PositionPerformance[];
+}
+
+/**
+ * Daily returns of a market index (or any Yahoo ticker) over the period, for the comparison line
+ * of the performance chart.
+ */
+export interface StockBenchmark {
+  /** The validated ticker the prices were fetched for. */
+  ticker: string;
+  /** The report currency the returns are computed in. */
+  currency: string;
+  fxQuality: ConversionQuality;
+  /**
+   * Days as `YYYY-MM-DD`, one per calendar day (the last close carries over non-trading days);
+   * empty when the ticker has no prices.
+   */
+  dates: string[];
+  /** Cumulative return of the index in percent per date, the first date being 0. */
+  twr: number[];
 }
 
 /**
@@ -1624,6 +1688,8 @@ export interface StockInvestmentWithTags {
   unrealizedGain: string | null;
   unrealizedGainPercent: number | null;
   yearlyDividend: string | null;
+  /** Sector from the cached quote data; null for ETFs and unknown. */
+  sector: string | null;
   tags: StockTag[];
 }
 
@@ -1631,31 +1697,6 @@ export interface StocksAnalysis {
   currency: string;
   fxQuality: ConversionQuality;
   items: StockInvestmentWithTags[];
-}
-
-/**
- * Sums over a tag's positions, every known amount counted (the rule of `PositionTotals`: a
- * total is `null` when the tag's positions hold amounts for it but none of them converted).
- */
-export interface TagMetrics {
-  tag: StockTag;
-  value: string | null;
-  costBasis: string | null;
-  unrealizedGain: string | null;
-  /** Percent of the cost of the positions in `unrealizedGain`; 0 without a cost basis. */
-  unrealizedGainPercent: number;
-  yearlyDividend: string | null;
-  /** The tag's value in percent of the known value of every position. */
-  portfolioPercent: number;
-  /** Positions carrying the tag, summed or not. */
-  holdingsCount: number;
-  fxQuality: ConversionQuality;
-}
-
-export interface TagMetricsReport {
-  currency: string;
-  fxQuality: ConversionQuality;
-  tags: TagMetrics[];
 }
 
 // ============================================================================

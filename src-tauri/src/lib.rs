@@ -99,7 +99,8 @@ pub async fn run() {
             commands::investments::set_manual_dividend,
             commands::investments::delete_manual_dividend,
             commands::investments::get_stock_value_history,
-            commands::investments::get_stock_twr,
+            commands::investments::get_stock_performance,
+            commands::investments::get_stock_benchmark,
             // Crypto commands
             commands::crypto::get_all_crypto,
             commands::crypto::create_crypto,
@@ -300,7 +301,6 @@ pub async fn run() {
             commands::stock_tags::get_investment_tags,
             commands::stock_tags::set_investment_tags,
             commands::stock_tags::get_stocks_analysis,
-            commands::stock_tags::get_tag_metrics,
             // Stock tag group commands
             commands::stock_tags::get_all_stock_tag_groups,
             commands::stock_tags::create_stock_tag_group,

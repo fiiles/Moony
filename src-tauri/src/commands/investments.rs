@@ -5,17 +5,25 @@ use crate::db::Database;
 use crate::error::{AppError, Result};
 use crate::models::{
     DividendOverride, InsertInvestmentTransaction, InsertStockInvestment, InvestmentTransaction,
-    InvestmentWithDetails, StockInvestment, StockPosition, StockPositions, StockPriceOverride,
-    StockTag, StockTwr,
+    InvestmentWithDetails, StockBenchmark, StockInvestment, StockPerformance,
+    StockPerformanceRequest, StockPosition, StockPositions, StockPriceOverride, StockTag,
 };
 use crate::services::fx;
 use crate::services::history_recalc::HistoryRecalc;
 use crate::services::investments as investment_service;
 use crate::services::position_reports;
+use crate::services::price_api;
 use crate::services::pricing::AssetKind;
+use crate::services::stock_performance;
 use crate::services::ticker_history;
 use tauri::{AppHandle, Emitter, State};
 use uuid::Uuid;
+
+/// Days of closes fetched before a benchmark's first day: its base is the last close on or
+/// before it, which on a Monday is Friday's (a long weekend plus a holiday is a handful of days).
+const BENCHMARK_LEAD_SECONDS: i64 = 10 * 86_400;
+/// The last day's own close is stamped within that day; Yahoo's end is exclusive.
+const BENCHMARK_TAIL_SECONDS: i64 = 86_400;
 
 /// Every stock position in `report_currency` (positions service, one quote snapshot).
 #[tauri::command]
@@ -603,38 +611,45 @@ pub async fn get_stock_value_history(
     })
 }
 
-/// Get time-weighted return series for a set of stock tags and/or the whole portfolio.
-///
-/// `tag_ids`: IDs of tags to compute separate series for.
-/// `include_portfolio`: if true, also include a whole-portfolio series.
-/// `include_untagged`: if true, include a series for stocks with no tags assigned.
-/// `investment_ids`: when given, every tag (and untagged) series covers only these positions;
-/// the whole-portfolio series is never narrowed.
-/// `from_ts` / `to_ts`: Unix timestamps (seconds, midnight UTC) for the date range.
-/// `report_currency`: the currency the returns are computed in (values and flows converted at
-/// their own day).
-///
-/// When `tag_ids` is empty and `include_untagged` is false, only the portfolio series is returned.
+/// Performance of the held positions over a period in `request.report_currency`: time-weighted
+/// and money-weighted return, value and deposits, the requested series and every position's
+/// return and contribution (see `services::stock_performance`).
 #[tauri::command]
-#[allow(clippy::too_many_arguments)] // flat wire arguments
-pub async fn get_stock_twr(
+pub async fn get_stock_performance(
     db: State<'_, Database>,
-    tag_ids: Vec<String>,
-    include_portfolio: bool,
-    include_untagged: bool,
-    investment_ids: Option<Vec<String>>,
+    request: StockPerformanceRequest,
+) -> Result<StockPerformance> {
+    request.validate()?;
+    db.with_conn(|conn| stock_performance::stock_performance(conn, &request))
+}
+
+/// Daily returns of a market index (any Yahoo ticker, e.g. `CSPX.L`, `^GSPC`) over a period in
+/// `report_currency`, for the comparison line of the performance chart. The closes are fetched
+/// from Yahoo first (a few days before `from_ts` for the base), so the DB lock is held only for
+/// the conversion; offline or an unknown ticker returns empty `dates`.
+#[tauri::command]
+pub async fn get_stock_benchmark(
+    db: State<'_, Database>,
+    ticker: String,
     from_ts: i64,
     to_ts: i64,
     report_currency: String,
-) -> Result<StockTwr> {
+) -> Result<StockBenchmark> {
+    let ticker = stock_performance::validate_benchmark_ticker(&ticker)?;
+    let mut fetched = price_api::get_historical_stock_prices_yahoo(
+        std::slice::from_ref(&ticker),
+        from_ts.saturating_sub(BENCHMARK_LEAD_SECONDS),
+        to_ts.saturating_add(BENCHMARK_TAIL_SECONDS),
+    )
+    .await?;
+    let prices = fetched.remove(&ticker).unwrap_or_default();
     db.with_conn(|conn| {
-        investment_service::twr_series(
+        stock_performance::benchmark_series(
             conn,
-            &tag_ids,
-            include_portfolio,
-            include_untagged,
-            investment_ids.as_deref(),
-            from_ts..=to_ts,
+            &ticker,
+            &prices,
+            from_ts,
+            to_ts,
             &report_currency,
         )
     })

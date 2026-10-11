@@ -245,7 +245,16 @@
     "currencyLockedByRecords": "账户有余额记录时，无法更改货币。",
     "learningIdentity": "请提供可靠的账户标识或收款方。",
     "paginationInvalid": "请选择有效的历史记录页。",
-    "systemRule": "系统规则无法更改。"
+    "systemRule": "系统规则无法更改。",
+    "tagNameRequired": "请输入标签名称。",
+    "tagNameTooLong": "名称最多 60 个字符。",
+    "tagNotFound": "该标签已不存在。",
+    "oneTagPerGroup": "每个标签组中，一个持仓只能有一个标签。",
+    "tagGroupConflict": "部分持仓在该标签组中已有其他标签。",
+    "periodInvalid": "时期的开始日期必须早于结束日期。",
+    "tooManySeries": "一次请求的线条过多。",
+    "seriesKeyInvalid": "图表线条请求无效。",
+    "benchmarkTickerInvalid": "指数代码无效。"
   },
   "auth": {
     "wrongPassword": "您输入的密码不正确，请重试。",

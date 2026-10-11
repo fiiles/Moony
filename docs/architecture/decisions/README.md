@@ -20,6 +20,7 @@ and what it costs. ADRs are dated point-in-time records — facts in them
 | [0010](0010-new-identifier-and-single-schema-baseline.md) | New app identifier and a single schema baseline | 2026-10-04 | Accepted |
 | [0011](0011-native-money-and-report-currencies.md) | Native money and explicit report currencies | 2026-10-08 | Accepted; CZK cache clause superseded by 0012 |
 | [0012](0012-explicit-currencies-and-eur-rate-reference.md) | Explicit currencies and the EUR rate reference | 2026-10-09 | Accepted |
+| [0013](0013-tag-groups-partition-the-portfolio.md) | Tag groups partition the portfolio | 2026-10-11 | Accepted |
 
 ## Rules
 
@@ -27,7 +28,7 @@ and what it costs. ADRs are dated point-in-time records — facts in them
   different. To change a decision, write a **new ADR** with the next number
   that links back to the one it supersedes. The only edit ever made to an old
   ADR is flipping its `## Status` to `Superseded by [NNNN](NNNN-....md)`.
-- Numbering is sequential and zero-padded; the next free number is `0013`.
+- Numbering is sequential and zero-padded; the next free number is `0014`.
 - Filename: `NNNN-short-kebab-title.md`. Add every new ADR to the index table
   above.
 - Keep each ADR to one page or less.

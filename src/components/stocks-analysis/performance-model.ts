@@ -1,5 +1,5 @@
 import type { PerformanceSeries, StockPerformance, StockTag } from '@shared/schema';
-import { drawdown, type Part } from '@/utils/stock-performance';
+import { drawdown, type CompareGroup, type Part } from '@/utils/stock-performance';
 import type { PerformanceLine } from './PerformanceChart';
 
 /** The chart draws at most this many parts; the rest are listed in the board only. */
@@ -31,6 +31,27 @@ export function sumKnown(values: readonly (number | null)[]): number | null {
     known = true;
   }
   return known ? sum : null;
+}
+
+/** Name of a group: the tag group's own name, else the label of the automatic group. */
+export function groupName(
+  group: CompareGroup,
+  autoLabel: (kind: 'sector' | 'currency') => string
+): string {
+  return group.kind === 'tags' ? group.group.name : autoLabel(group.kind);
+}
+
+/**
+ * Name of a part of the chosen group: its tag, sector or currency; the part without a tag or
+ * sector reads `none.sector` in the sector group and `none.tag` in a tag group.
+ */
+export function partName(
+  part: Part,
+  kind: CompareGroup['kind'] | undefined,
+  none: { tag: string; sector: string }
+): string {
+  if (part.isNone) return kind === 'sector' ? none.sector : none.tag;
+  return part.tag?.name ?? part.sector ?? part.currency ?? part.key;
 }
 
 /** A part of the chosen group with its value as of the end of the period and how it is drawn. */

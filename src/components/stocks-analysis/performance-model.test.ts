@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { PerformanceSeries, StockTag } from '@shared/schema';
-import type { Part } from '@/utils/stock-performance';
+import type { CompareGroup, Part } from '@/utils/stock-performance';
 import {
   MAX_DRAWN,
   amountOf,
@@ -8,6 +8,8 @@ import {
   chartLines,
   figuresAt,
   fxEffect,
+  groupName,
+  partName,
   rankParts,
   rankedAt,
   sumKnown,
@@ -301,5 +303,34 @@ describe('figuresAt', () => {
 
   it('returns null past the last point', () => {
     expect(figuresAt(performance, 3)).toBeNull();
+  });
+});
+
+describe('groupName and partName', () => {
+  const tagGroup = {
+    kind: 'tags',
+    key: 'group:g1',
+    group: { id: 'g1', name: 'Strategy', description: null, createdAt: 0 },
+    tags: [],
+  } as unknown as CompareGroup;
+  const auto = (kind: 'sector' | 'currency') => (kind === 'sector' ? 'Sektor' : 'Měna');
+  const none = { tag: 'No tag', sector: 'No sector' };
+
+  it('names a tag group by itself and an automatic group by its label', () => {
+    expect(groupName(tagGroup, auto)).toBe('Strategy');
+    expect(groupName({ kind: 'sector', key: 'sector' }, auto)).toBe('Sektor');
+    expect(groupName({ kind: 'currency', key: 'currency' }, auto)).toBe('Měna');
+  });
+
+  it('names a part by its tag, sector or currency', () => {
+    expect(partName(part('tag:a', [], { tag: tag('a') }), 'tags', none)).toBe('A');
+    expect(partName(part('sector:Tech', [], { sector: 'Tech' }), 'sector', none)).toBe('Tech');
+    expect(partName(part('currency:USD', [], { currency: 'USD' }), 'currency', none)).toBe('USD');
+  });
+
+  it('names the part without a tag or sector by the kind of group', () => {
+    expect(partName(part('none:g', [], { isNone: true }), 'tags', none)).toBe('No tag');
+    expect(partName(part('sector:', [], { isNone: true }), 'sector', none)).toBe('No sector');
+    expect(partName(part('none:g', [], { isNone: true }), undefined, none)).toBe('No tag');
   });
 });

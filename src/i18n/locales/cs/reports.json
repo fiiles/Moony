@@ -261,20 +261,59 @@
       "empty": "Pro zvolené období zatím nejsou data.",
       "fxMissing": "Výnosy jsou v měně {{currency}}. Dny bez kurzu pro {{currencies}} v grafu chybí."
     },
+    "contribution": {
+      "title": "Příspěvek k výnosu",
+      "byPosition": "Pozice",
+      "byGroup": "Podle skupiny",
+      "byGroupTitle": "Skupinu určuje Rozdělit podle v kartě výkonnosti",
+      "subPositions": "Kolik procentních bodů z výnosu {{value}} přinesla každá pozice",
+      "subTags": "Kolik procentních bodů z výnosu {{value}} přinesl každý štítek skupiny {{group}}",
+      "subSectors": "Kolik procentních bodů z výnosu {{value}} přinesl každý sektor",
+      "subCurrencies": "Kolik procentních bodů z výnosu {{value}} přinesla každá měna",
+      "subSelection": "Výběr přinesl {{part}} z {{value}} výnosu portfolia",
+      "subSelectionGroup": "Výběr přinesl {{part}} z {{value}} výnosu portfolia · rozděleno podle skupiny {{group}}",
+      "other": "Ostatní",
+      "portfolio": "Celé portfolio",
+      "selection": "Výběr celkem",
+      "periodReturn": "výnos za období {{value}}"
+    },
+    "flows": {
+      "title": "Vklady a zhodnocení",
+      "sub": "Celé portfolio · {{unit}} od {{from}}",
+      "subTo": "Celé portfolio · {{unit}} od {{from}} do {{to}}",
+      "units": {
+        "week": "po týdnech",
+        "month": "po měsících",
+        "quarter": "po čtvrtletích",
+        "year": "po letech"
+      },
+      "quarter": "{{quarter}}. Q {{year}}",
+      "start": "Na začátku",
+      "deposits": "Čisté vklady",
+      "market": "Zhodnocení trhu",
+      "end": "Dnes",
+      "endAt": "K {{date}}",
+      "legendDeposits": "Čisté vklady · nákupy minus prodeje",
+      "change": "Změna hodnoty"
+    },
     "tagsTable": {
       "title": "Štítky",
-      "sub": "Součty za pozice se štítkem · pozice může mít víc štítků",
+      "sub": "Ve skupině dají podíly 100 % · štítky bez skupiny se mohou překrývat",
       "selectedNote": "podíl vždy z celého portfolia",
       "tag": "Štítek",
       "positions": "Pozice",
       "value": "Hodnota",
       "share": "Podíl",
-      "gain": "Výnos",
+      "gain": "Nerealizovaný zisk",
       "dividend": "Dividenda ročně",
       "empty": {
         "title": "Zatím žádné štítky",
         "description": "Vytvořte štítky, například Růstové nebo USA, a přiřaďte je pozicím."
-      }
+      },
+      "periodReturn": "Výnos za období",
+      "gainToday": "Nerealiz. zisk dnes",
+      "noGroup": "bez skupiny",
+      "valueAt": "K {{date}}"
     },
     "holdings": {
       "title": "Pozice a jejich štítky",
@@ -283,14 +322,18 @@
       "stock": "Akcie",
       "tags": "Štítky",
       "value": "Hodnota",
-      "gain": "Výnos",
+      "gain": "Nerealizovaný zisk",
       "noTag": "Bez štítku",
       "assign": "Přiřadit",
       "editTags": "Upravit štítky",
       "emptyFilter": {
         "title": "Žádná pozice",
         "description": "Zvolené kombinaci štítků neodpovídá žádná pozice."
-      }
+      },
+      "periodReturn": "Výnos za období",
+      "etf": "ETF",
+      "concentration": "5 největších tvoří {{share}} · efektivně {{count}} pozice",
+      "concentrationTitle": "Koncentrace celého portfolia. Efektivní počet pozic: kolik stejně velkých pozic by mělo stejnou koncentraci."
     },
     "empty": {
       "title": "Zatím žádné akciové pozice",

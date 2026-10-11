@@ -49,6 +49,8 @@ import {
   buildRows,
   chartLines,
   figuresAt,
+  groupName,
+  partName,
   rankedAt,
   type IndexId,
   type RankedPart,
@@ -236,20 +238,13 @@ export function PerformanceCard({
   // --- rows, lines -----------------------------------------------------------------------------
 
   const groupLabel =
-    group === null
-      ? ''
-      : group.kind === 'tags'
-        ? group.group.name
-        : t(`stocksAnalysis.groups.${group.kind}`);
+    group === null ? '' : groupName(group, (kind) => t(`stocksAnalysis.groups.${kind}`));
   const nameOf = useCallback(
-    (part: Part): string => {
-      if (part.isNone) {
-        return group?.kind === 'sector'
-          ? t('stocksAnalysis.board.noneSector')
-          : t('stocksAnalysis.board.noneTag');
-      }
-      return part.tag?.name ?? part.sector ?? part.currency ?? part.key;
-    },
+    (part: Part): string =>
+      partName(part, group?.kind, {
+        tag: t('stocksAnalysis.board.noneTag'),
+        sector: t('stocksAnalysis.board.noneSector'),
+      }),
     [group, t]
   );
   const rows = useMemo(
@@ -452,7 +447,7 @@ export function PerformanceCard({
   if (!data) return null;
 
   const splitLabel = (g: CompareGroup) =>
-    g.kind === 'tags' ? g.group.name : t(`stocksAnalysis.groups.${g.kind}`);
+    groupName(g, (kind) => t(`stocksAnalysis.groups.${kind}`));
   const firstAuto = splitOptions.findIndex((g) => g.kind !== 'tags');
   const boardKind: BoardKind = view.group?.kind ?? null;
   const hasChart = dates.length >= 2;

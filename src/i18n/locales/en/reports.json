@@ -249,20 +249,59 @@
       "empty": "No data for the chosen period yet.",
       "fxMissing": "Returns are in {{currency}}. Days without an exchange rate for {{currencies}} are left out of the chart."
     },
+    "contribution": {
+      "title": "Contribution to return",
+      "byPosition": "Positions",
+      "byGroup": "By group",
+      "byGroupTitle": "The group is chosen with Split by in the performance card",
+      "subPositions": "Percentage points of the {{value}} return each position brought",
+      "subTags": "Percentage points of the {{value}} return each tag of the group {{group}} brought",
+      "subSectors": "Percentage points of the {{value}} return each sector brought",
+      "subCurrencies": "Percentage points of the {{value}} return each currency brought",
+      "subSelection": "The selection brought {{part}} of the portfolio's {{value}} return",
+      "subSelectionGroup": "The selection brought {{part}} of the portfolio's {{value}} return · split by {{group}}",
+      "other": "Other",
+      "portfolio": "Whole portfolio",
+      "selection": "Selection total",
+      "periodReturn": "period return {{value}}"
+    },
+    "flows": {
+      "title": "Deposits and market",
+      "sub": "Whole portfolio · {{unit}} from {{from}}",
+      "subTo": "Whole portfolio · {{unit}} from {{from}} to {{to}}",
+      "units": {
+        "week": "by week",
+        "month": "by month",
+        "quarter": "by quarter",
+        "year": "by year"
+      },
+      "quarter": "Q{{quarter}} {{year}}",
+      "start": "At the start",
+      "deposits": "Net deposits",
+      "market": "Market",
+      "end": "Today",
+      "endAt": "On {{date}}",
+      "legendDeposits": "Net deposits · buys minus sells",
+      "change": "Change in value"
+    },
     "tagsTable": {
       "title": "Tags",
-      "sub": "Totals over tagged positions · a position can carry several tags",
+      "sub": "Shares within a group add up to 100 % · tags without a group can overlap",
       "selectedNote": "share is always of the whole portfolio",
       "tag": "Tag",
       "positions": "Positions",
       "value": "Value",
       "share": "Share",
-      "gain": "Return",
+      "gain": "Unrealized gain",
       "dividend": "Dividend a year",
       "empty": {
         "title": "No tags yet",
         "description": "Create tags such as Growth or USA and assign them to positions."
-      }
+      },
+      "periodReturn": "Period return",
+      "gainToday": "Unrealized gain today",
+      "noGroup": "no group",
+      "valueAt": "On {{date}}"
     },
     "holdings": {
       "title": "Positions and their tags",
@@ -271,14 +310,18 @@
       "stock": "Stock",
       "tags": "Tags",
       "value": "Value",
-      "gain": "Return",
+      "gain": "Unrealized gain",
       "noTag": "No tag",
       "assign": "Assign",
       "editTags": "Edit tags",
       "emptyFilter": {
         "title": "No position",
         "description": "No position matches the chosen tags."
-      }
+      },
+      "periodReturn": "Period return",
+      "etf": "ETF",
+      "concentration": "top 5 hold {{share}} · effectively {{count}} positions",
+      "concentrationTitle": "Concentration of the whole portfolio. Effective number of positions: how many equally sized positions would be as concentrated."
     },
     "empty": {
       "title": "No stock positions yet",

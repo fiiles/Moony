@@ -344,6 +344,7 @@
       "saved": "Etiquetas asignadas"
     },
     "groups": {
+      "none": "Sin dividir",
       "sector": "Sector",
       "currency": "Moneda",
       "autoTitle": "Automáticamente a partir de los datos de la acción"
@@ -397,6 +398,7 @@
       "bestWorst": "mejor y peor",
       "bestWorstSelection": "mejor y peor de la selección",
       "onlyPart": "única parte de la selección",
+      "selectionNote": "posiciones seleccionadas",
       "noPart": "Nada de la selección pertenece a {{group}}",
       "aheadOfIndex": "por delante de {{index}} {{value}}",
       "behindIndex": "por detrás de {{index}} {{value}}",
@@ -435,8 +437,11 @@
       "captionMore": "Las demás solo están en la tabla bajo el gráfico.",
       "captionEmpty": "Ninguna posición seleccionada tiene una etiqueta del grupo {{group}}. Discontinua: toda la cartera.",
       "captionNoGroups": "Crea un grupo de etiquetas para ver cómo rinden sus partes. Por ahora, solo toda la cartera.",
+      "captionNone": "Sin dividir: el gráfico muestra toda la cartera.",
+      "captionNoneSelected": "Sin dividir: la línea continua suma las posiciones seleccionadas, la discontinua es toda la cartera.",
       "drawdown": "Caída desde el máximo",
       "tipDrawdown": "Caída de la cartera {{value}}",
+      "maxDrawdown": "caída máxima {{value}}",
       "dragTip": "{{days}} días · suelta para fijar el periodo",
       "portfolio": "Toda la cartera",
       "today": "Hoy",
@@ -462,11 +467,13 @@
       "filterBy": "Filtrar: {{name}}",
       "noneTag": "Sin etiqueta",
       "noneSector": "Sin sector",
+      "selection": "Selección",
       "captionTags": "Cada posición tiene como máximo una etiqueta por grupo, así que los pesos suman 100 % y las contribuciones suman la rentabilidad de la cartera.",
       "captionSector": "Sector según los datos de la acción · los ETF no tienen sector y van en la fila Sin sector.",
       "captionCurrency": "Rentabilidades en {{currency}} · bajo cada moneda, la rentabilidad en la moneda propia de la posición y el efecto del tipo de cambio.",
       "captionMore": "El gráfico dibuja como máximo cuatro líneas; las demás solo están en la tabla.",
-      "captionSelection": "Las contribuciones son a la rentabilidad de toda la cartera."
+      "captionSelection": "Las contribuciones son a la rentabilidad de toda la cartera.",
+      "captionNone": "Sin dividir: la selección es una sola fila; su contribución es a la rentabilidad de toda la cartera."
     }
   },
   "planning": {

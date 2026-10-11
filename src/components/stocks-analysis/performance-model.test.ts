@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { TFunction } from 'i18next';
 import type { PerformanceSeries, StockTag } from '@shared/schema';
-import type { CompareGroup, Part } from '@/utils/stock-performance';
+import { NO_SPLIT, type CompareGroup, type Part } from '@/utils/stock-performance';
 import reportsEn from '@/i18n/locales/en/reports.json';
 import {
   MAX_DRAWN,
@@ -202,6 +202,46 @@ describe('buildRows', () => {
     expect(rows.map((r) => r.id)).toEqual(['tag:growth', 'portfolio']);
   });
 
+  it('draws the portfolio dashed unless "don\'t split" leaves it alone', () => {
+    const mainOf = (overrides: Partial<BuildRowsInput>) =>
+      buildRows(input(overrides)).find((r) => r.id === 'portfolio')?.main;
+    expect(mainOf({})).toBe(false);
+    expect(mainOf({ splitKind: 'tags' })).toBe(false);
+    // a tag group with no part in the selection still says "dashed: the whole portfolio"
+    expect(mainOf({ splitKind: 'tags', ranked: [], series: [] })).toBe(false);
+    expect(mainOf({ splitKind: null, ranked: [], series: [] })).toBe(false);
+    expect(mainOf({ splitKind: 'none', ranked: [], series: [] })).toBe(true);
+  });
+
+  it('keeps the portfolio the dashed reference next to the selection of "don\'t split"', () => {
+    const selection = part('selection', ['a', 'b']);
+    const rows = buildRows(
+      input({
+        splitKind: 'none',
+        filterActive: true,
+        series: [series('selection', [0, 4, 9], [0, 2, 5])],
+        ranked: [ranked(selection, 60, true, 'var(--s1)')],
+        selectedValue: 60,
+        nameOf: (p) => (p.key === 'selection' ? 'Selection' : p.key),
+      })
+    );
+    expect(rows.map((r) => r.id)).toEqual(['selection', 'portfolio']);
+    expect(rows[0]).toMatchObject({
+      kind: 'part',
+      name: 'Selection',
+      drawn: true,
+      main: false,
+      color: 'var(--s1)',
+      quiet: false,
+      tag: null,
+      count: 2,
+      share: 1,
+      twr: [0, 4, 9],
+      contribution: [0, 2, 5],
+    });
+    expect(rows[1].main).toBe(false);
+  });
+
   it('shows the portfolio as 100 percent, or no share while a selection is active', () => {
     expect(buildRows(input()).find((r) => r.id === 'portfolio')).toMatchObject({
       share: 1,
@@ -267,6 +307,40 @@ describe('chartLines', () => {
     const lines = chartLines(buildRows(input({ ranked: [], series: [] })));
     expect(lines.map((l) => l.id)).toEqual(['portfolio']);
   });
+
+  it('draws the portfolio of "don\'t split" as the solid main line, the index dotted', () => {
+    const none = { ranked: [], series: [], splitKind: 'none' as const };
+    expect(chartLines(buildRows(input(none))).map((l) => [l.id, l.variant])).toEqual([
+      ['portfolio', 'main'],
+    ]);
+    const withIndex = chartLines(
+      buildRows(input({ ...none, index: { name: 'MSCI World', ticker: 'IWDA.L', twr: [0, 1, 2] } }))
+    );
+    expect(withIndex.map((l) => [l.id, l.variant])).toEqual([
+      ['index', 'index'],
+      ['portfolio', 'main'],
+    ]);
+    expect(withIndex[1].color).toBe('var(--chart-line)');
+  });
+
+  it('draws the selection of "don\'t split" solid in s1 against the dashed portfolio', () => {
+    const selection = part('selection', ['a']);
+    const lines = chartLines(
+      buildRows(
+        input({
+          splitKind: 'none',
+          filterActive: true,
+          series: [series('selection', [0, 4, 9])],
+          ranked: [ranked(selection, 10, true, 'var(--s1)')],
+          nameOf: () => 'Selection',
+        })
+      )
+    );
+    expect(lines.map((l) => [l.id, l.variant, l.color])).toEqual([
+      ['selection', 'solid', 'var(--s1)'],
+      ['portfolio', 'reference', 'var(--chart-line)'],
+    ]);
+  });
 });
 
 describe('rankedAt', () => {
@@ -275,6 +349,22 @@ describe('rankedAt', () => {
     expect(rankedAt(rows, 2).map((r) => r.row.id)).toEqual(['tag:growth', 'tag:value']);
     expect(rankedAt(rows, 1).map((r) => r.twr)).toEqual([5, -1]);
     expect(rankedAt(rows, 9)).toEqual([]);
+  });
+
+  it('reads the selection of "don\'t split" as the one part, never the portfolio', () => {
+    const rows = buildRows(
+      input({
+        splitKind: 'none',
+        filterActive: true,
+        series: [series('selection', [0, 4, 9])],
+        ranked: [ranked(part('selection', ['a']), 10, true, 'var(--s1)')],
+      })
+    );
+    expect(rankedAt(rows, 2).map((r) => [r.row.id, r.twr])).toEqual([['selection', 9]]);
+    // no part (no filter): nothing to rank, the hero shows the drawdown instead
+    expect(rankedAt(buildRows(input({ splitKind: 'none', ranked: [], series: [] })), 2)).toEqual(
+      []
+    );
   });
 });
 
@@ -316,13 +406,15 @@ describe('groupName and partName', () => {
     group: { id: 'g1', name: 'Strategy', description: null, createdAt: 0 },
     tags: [],
   } as unknown as CompareGroup;
-  const auto = (kind: 'sector' | 'currency') => (kind === 'sector' ? 'Sektor' : 'Měna');
-  const none = { tag: 'No tag', sector: 'No sector' };
+  const auto = (kind: 'none' | 'sector' | 'currency') =>
+    ({ none: 'Nerozdělovat', sector: 'Sektor', currency: 'Měna' })[kind];
+  const none = { tag: 'No tag', sector: 'No sector', selection: 'Selection' };
 
   it('names a tag group by itself and an automatic group by its label', () => {
     expect(groupName(tagGroup, auto)).toBe('Strategy');
     expect(groupName({ kind: 'sector', key: 'sector' }, auto)).toBe('Sektor');
     expect(groupName({ kind: 'currency', key: 'currency' }, auto)).toBe('Měna');
+    expect(groupName(NO_SPLIT, auto)).toBe('Nerozdělovat');
   });
 
   it('names a part by its tag, sector or currency', () => {
@@ -335,6 +427,14 @@ describe('groupName and partName', () => {
     expect(partName(part('none:g', [], { isNone: true }), 'tags', none)).toBe('No tag');
     expect(partName(part('sector:', [], { isNone: true }), 'sector', none)).toBe('No sector');
     expect(partName(part('none:g', [], { isNone: true }), undefined, none)).toBe('No tag');
+  });
+
+  it('names the selection part of "don\'t split" whatever the kind of group', () => {
+    const selection = part('selection', ['a', 'b']);
+    expect(partName(selection, 'none', none)).toBe('Selection');
+    expect(partName(selection, undefined, none)).toBe('Selection');
+    // not through the sector translation
+    expect(partName(selection, 'none', none, (name) => name.toUpperCase())).toBe('Selection');
   });
 
   it('shows a sector through the given translation, a tag or currency as it is', () => {

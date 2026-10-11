@@ -344,6 +344,7 @@
       "saved": "Tag assegnati"
     },
     "groups": {
+      "none": "Non suddividere",
       "sector": "Settore",
       "currency": "Valuta",
       "autoTitle": "Automaticamente dai dati dell'azione"
@@ -397,6 +398,7 @@
       "bestWorst": "migliore e peggiore",
       "bestWorstSelection": "migliore e peggiore nella selezione",
       "onlyPart": "unica parte della selezione",
+      "selectionNote": "posizioni selezionate",
       "noPart": "Nella selezione nulla appartiene a {{group}}",
       "aheadOfIndex": "davanti a {{index}} {{value}}",
       "behindIndex": "dietro a {{index}} {{value}}",
@@ -435,8 +437,11 @@
       "captionMore": "Le altre sono solo nella tabella sotto il grafico.",
       "captionEmpty": "Nessuna posizione selezionata ha un tag del gruppo {{group}}. Tratteggiata: l'intero portafoglio.",
       "captionNoGroups": "Crea un gruppo di tag per vedere come rendono le sue parti. Per ora, solo l'intero portafoglio.",
+      "captionNone": "Non suddiviso: il grafico mostra l'intero portafoglio.",
+      "captionNoneSelected": "Non suddiviso: la linea continua somma le posizioni selezionate, quella tratteggiata è l'intero portafoglio.",
       "drawdown": "Calo dal massimo",
       "tipDrawdown": "Calo del portafoglio {{value}}",
+      "maxDrawdown": "calo massimo {{value}}",
       "dragTip": "{{days}} giorni · rilascia per impostare il periodo",
       "portfolio": "Intero portafoglio",
       "today": "Oggi",
@@ -462,11 +467,13 @@
       "filterBy": "Filtra: {{name}}",
       "noneTag": "Nessun tag",
       "noneSector": "Nessun settore",
+      "selection": "Selezione",
       "captionTags": "Ogni posizione ha al massimo un tag per gruppo, quindi le quote sommano 100 % e i contributi sommano il rendimento del portafoglio.",
       "captionSector": "Settore dai dati dell'azione · gli ETF non hanno un settore e stanno nella riga Nessun settore.",
       "captionCurrency": "Rendimenti in {{currency}} · sotto ogni valuta, il rendimento nella valuta della posizione e l'effetto del cambio.",
       "captionMore": "Il grafico disegna al massimo quattro linee; le altre sono solo nella tabella.",
-      "captionSelection": "I contributi si riferiscono al rendimento dell'intero portafoglio."
+      "captionSelection": "I contributi si riferiscono al rendimento dell'intero portafoglio.",
+      "captionNone": "Non suddiviso: la selezione è una sola riga; il suo contributo si riferisce al rendimento dell'intero portafoglio."
     }
   },
   "planning": {

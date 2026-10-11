@@ -332,6 +332,7 @@
       "saved": "Etiketterna har tilldelats"
     },
     "groups": {
+      "none": "Dela inte upp",
       "sector": "Sektor",
       "currency": "Valuta",
       "autoTitle": "Automatiskt från aktiens uppgifter"
@@ -383,6 +384,7 @@
       "bestWorst": "bäst och sämst",
       "bestWorstSelection": "bäst och sämst i urvalet",
       "onlyPart": "enda delen av urvalet",
+      "selectionNote": "valda innehav",
       "noPart": "Inget i urvalet tillhör {{group}}",
       "aheadOfIndex": "före {{index}} {{value}}",
       "behindIndex": "efter {{index}} {{value}}",
@@ -420,8 +422,11 @@
       "captionMore": "De andra finns bara i tabellen under diagrammet.",
       "captionEmpty": "Inget valt innehav har en etikett i gruppen {{group}}. Streckad: hela portföljen.",
       "captionNoGroups": "Skapa en etikettgrupp för att se hur dess delar presterar. Tills vidare bara hela portföljen.",
+      "captionNone": "Inte uppdelat: diagrammet visar hela portföljen.",
+      "captionNoneSelected": "Inte uppdelat: den heldragna linjen summerar de valda innehaven, den streckade är hela portföljen.",
       "drawdown": "Nedgång från toppen",
       "tipDrawdown": "Portföljens nedgång {{value}}",
+      "maxDrawdown": "största nedgång {{value}}",
       "dragTip": "{{days}} dagar · släpp för att ange perioden",
       "portfolio": "Hela portföljen",
       "today": "I dag",
@@ -446,11 +451,13 @@
       "filterBy": "Filtrera: {{name}}",
       "noneTag": "Ingen etikett",
       "noneSector": "Ingen sektor",
+      "selection": "Urval",
       "captionTags": "Varje innehav har högst en etikett i en grupp, så andelarna summerar till 100 % och bidragen summerar till portföljens avkastning.",
       "captionSector": "Sektor enligt aktiens uppgifter · ETF:er har ingen sektor och hamnar på raden Ingen sektor.",
       "captionCurrency": "Avkastning i {{currency}} · under varje valuta visas avkastningen i innehavets egen valuta och valutakurseffekten.",
       "captionMore": "Diagrammet ritar högst fyra linjer; de andra finns bara i tabellen.",
-      "captionSelection": "Bidragen avser hela portföljens avkastning."
+      "captionSelection": "Bidragen avser hela portföljens avkastning.",
+      "captionNone": "Inte uppdelat: urvalet är en rad; bidraget avser hela portföljens avkastning."
     }
   },
   "planning": {

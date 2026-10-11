@@ -332,6 +332,7 @@
       "saved": "Tags zugewiesen"
     },
     "groups": {
+      "none": "Nicht aufteilen",
       "sector": "Sektor",
       "currency": "Währung",
       "autoTitle": "Automatisch aus den Daten der Aktie"
@@ -383,6 +384,7 @@
       "bestWorst": "beste und schlechteste",
       "bestWorstSelection": "beste und schlechteste in der Auswahl",
       "onlyPart": "einziger Teil der Auswahl",
+      "selectionNote": "ausgewählte Positionen",
       "noPart": "Nichts in der Auswahl gehört zu {{group}}",
       "aheadOfIndex": "vor {{index}} {{value}}",
       "behindIndex": "hinter {{index}} {{value}}",
@@ -420,8 +422,11 @@
       "captionMore": "Die übrigen stehen nur in der Tabelle unter dem Diagramm.",
       "captionEmpty": "Keine ausgewählte Position hat einen Tag der Gruppe {{group}}. Gestrichelt: das gesamte Portfolio.",
       "captionNoGroups": "Legen Sie eine Tag-Gruppe an, um zu sehen, wie ihre Teile abschneiden. Vorerst nur das gesamte Portfolio.",
+      "captionNone": "Nicht aufgeteilt: Das Diagramm zeigt das gesamte Portfolio.",
+      "captionNoneSelected": "Nicht aufgeteilt: Die durchgezogene Linie summiert die ausgewählten Positionen, die gestrichelte ist das gesamte Portfolio.",
       "drawdown": "Drawdown vom Höchststand",
       "tipDrawdown": "Portfolio-Drawdown {{value}}",
+      "maxDrawdown": "größter Drawdown {{value}}",
       "dragTip": "{{days}} Tage · loslassen, um den Zeitraum zu setzen",
       "portfolio": "Gesamtes Portfolio",
       "today": "Heute",
@@ -446,11 +451,13 @@
       "filterBy": "Filtern: {{name}}",
       "noneTag": "Kein Tag",
       "noneSector": "Kein Sektor",
+      "selection": "Auswahl",
       "captionTags": "Jede Position hat in einer Gruppe höchstens einen Tag, daher ergeben die Anteile 100 % und die Beiträge summieren sich zur Portfolio-Rendite.",
       "captionSector": "Sektor aus den Daten der Aktie · ETFs haben keinen Sektor und stehen in der Zeile „Kein Sektor“.",
       "captionCurrency": "Renditen in {{currency}} · unter jeder Währung die Rendite in der Währung der Position und der Wechselkurseffekt.",
       "captionMore": "Das Diagramm zeigt höchstens vier Linien; die übrigen stehen nur in der Tabelle.",
-      "captionSelection": "Die Beiträge beziehen sich auf die Rendite des gesamten Portfolios."
+      "captionSelection": "Die Beiträge beziehen sich auf die Rendite des gesamten Portfolios.",
+      "captionNone": "Nicht aufgeteilt: Die Auswahl ist eine Zeile; ihr Beitrag bezieht sich auf die Rendite des gesamten Portfolios."
     }
   },
   "planning": {

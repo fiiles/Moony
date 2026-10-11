@@ -46,7 +46,9 @@ All notable changes to Moony are documented in this file. The format follows
   return chart is larger and has a drawdown panel under it; both share a date axis with labels at
   real dates (month starts, quarters, years). "Rozdělit podle" splits the selected positions by a
   tag group or by the automatic groups Sektor and Měna (offered only when they split your
-  portfolio); the table under the chart is the legend and shows each part's return, difference to
+  portfolio), or not at all with "Nerozdělovat": the chart then shows the whole portfolio as one
+  solid line, and with a filter on the selected positions as one solid line against the dashed
+  portfolio; the table under the chart is the legend and shows each part's return, difference to
   the portfolio, contribution in percentage points, maximum drawdown, share and value. Hovering
   the chart rewrites the figures and the table to that day. New cards show each position's
   contribution to the return and deposits against market change per week, month, quarter or

@@ -20,8 +20,12 @@ export interface PerformanceLine {
   name: string;
   /** CSS colour (`var(--s1)` …). */
   color: string;
-  /** `reference` = dashed `chart-line` (the portfolio), `index` = dotted `ink-4`. */
-  variant: 'solid' | 'reference' | 'index';
+  /**
+   * `reference` = dashed `chart-line` (the portfolio next to its parts), `main` = solid
+   * `chart-line` (the portfolio when nothing is split, there is nothing to compare it with),
+   * `index` = dotted `ink-4`.
+   */
+  variant: 'solid' | 'reference' | 'main' | 'index';
   twr: (number | null)[];
   drawdown: (number | null)[];
 }
@@ -29,7 +33,7 @@ export interface PerformanceLine {
 export interface PerformanceChartProps {
   /** Unix seconds, one per point. */
   dates: number[];
-  /** Parts first, then the index, then the reference. */
+  /** Parts first, then the index, then the portfolio (reference or main). */
   lines: PerformanceLine[];
   highlighted: string | null;
   onHighlight: (id: string | null) => void;
@@ -112,11 +116,18 @@ function finite(values: readonly (number | null)[]): number[] {
   return values.filter((v): v is number => v !== null && Number.isFinite(v));
 }
 
+/** The portfolio's line, whether dashed next to its parts or solid on its own. */
+function isPortfolio(line: Pick<PerformanceLine, 'variant'>): boolean {
+  return line.variant === 'reference' || line.variant === 'main';
+}
+
 /** Dash pattern, caps and widths per line variant (TWR panel, drawdown panel). */
 function strokeOf(variant: PerformanceLine['variant'], first: boolean) {
   switch (variant) {
     case 'reference':
       return { dash: '4 4', cap: 'butt' as const, twr: 2, dd: 1.5 };
+    case 'main':
+      return { dash: undefined, cap: 'round' as const, twr: 2.25, dd: 1.5 };
     case 'index':
       return { dash: '0.1 4', cap: 'round' as const, twr: 2.5, dd: 2.2 };
     default:
@@ -126,7 +137,7 @@ function strokeOf(variant: PerformanceLine['variant'], first: boolean) {
 
 /** The swatch in front of an end label: a ring, a dashed or a dotted stub. */
 function Swatch({ variant, color }: { variant: PerformanceLine['variant']; color: string }) {
-  if (variant === 'solid') {
+  if (variant === 'solid' || variant === 'main') {
     return (
       <i
         className="size-[7px] shrink-0 rounded-full border-2 bg-paper"
@@ -250,7 +261,7 @@ const TwrPlot = memo(function TwrPlot({
   );
 });
 
-/** The drawdown lines, with the reference also as an area under the zero line. */
+/** The drawdown lines, with the portfolio's also as an area under the zero line. */
 const DdPlot = memo(function DdPlot({
   rows,
   lines,
@@ -262,7 +273,7 @@ const DdPlot = memo(function DdPlot({
   scale,
 }: PlotProps & { scale: Scale }) {
   const firstSolid = lines.findIndex((l) => l.variant === 'solid');
-  const reference = lines.findIndex((l) => l.variant === 'reference');
+  const reference = lines.findIndex(isPortfolio);
   return (
     <ResponsiveContainer width="100%" height="100%">
       <ComposedChart data={rows} margin={{ top: 0, right: 0, bottom: DD_PAD_BOTTOM, left: 0 }}>
@@ -315,10 +326,10 @@ interface Drag extends Pointer {
 }
 
 /**
- * Time-weighted return of up to four parts, the whole portfolio (dashed) and an index (dotted),
- * with the drawdown from the running peak in a second panel under one shared date axis
- * (design system §8). Hovering draws a crosshair across both panels and a tooltip sorted by
- * value; dragging across the plot selects a custom range.
+ * Time-weighted return of up to four parts, the whole portfolio (dashed, or solid when it is the
+ * only line) and an index (dotted), with the drawdown from the running peak in a second panel
+ * under one shared date axis (design system §8). Hovering draws a crosshair across both panels
+ * and a tooltip sorted by value; dragging across the plot selects a custom range.
  *
  * Recharts draws the lines and areas. Pointer handling lives on one overlay that spans both
  * panels and the strip between them: a chart-level handler per panel would end a drag at the
@@ -356,7 +367,7 @@ export function PerformanceChart({
   const colors = useMemo(() => lines.map((l) => resolveColor(l.color)), [lines]);
   // A highlight that no longer matches a line (a filter changed) dims nothing
   const active = lines.some((l) => l.id === highlighted) ? highlighted : null;
-  const reference = lines.findIndex((l) => l.variant === 'reference');
+  const reference = lines.findIndex(isPortfolio);
 
   const rows = useMemo(
     () =>

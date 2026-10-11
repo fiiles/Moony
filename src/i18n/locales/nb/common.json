@@ -245,7 +245,16 @@
     "currencyLockedByRecords": "Valutaen kan ikke endres så lenge kontoen har saldoregistreringer.",
     "learningIdentity": "Oppgi en pålitelig kontoidentifikator eller en mottaker.",
     "paginationInvalid": "Velg en gyldig historikkside.",
-    "systemRule": "Systemregler kan ikke endres."
+    "systemRule": "Systemregler kan ikke endres.",
+    "tagNameRequired": "Skriv inn et navn på etiketten.",
+    "tagNameTooLong": "Et navn kan ha høyst 60 tegn.",
+    "tagNotFound": "Denne etiketten finnes ikke lenger.",
+    "oneTagPerGroup": "En beholdning kan bare ha én etikett fra hver gruppe.",
+    "tagGroupConflict": "Noen beholdninger har allerede en annen etikett i den gruppen.",
+    "periodInvalid": "Starten på perioden må være før slutten.",
+    "tooManySeries": "For mange linjer ble forespurt samtidig.",
+    "seriesKeyInvalid": "Ugyldig forespørsel om diagramlinje.",
+    "benchmarkTickerInvalid": "Ugyldig indeksticker."
   },
   "auth": {
     "wrongPassword": "Passordet du skrev inn er feil. Prøv igjen.",

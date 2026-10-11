@@ -245,7 +245,16 @@
     "currencyLockedByRecords": "No se puede cambiar la moneda mientras la cuenta tenga registros de saldo.",
     "learningIdentity": "Indica un identificador de cuenta fiable o un beneficiario.",
     "paginationInvalid": "Selecciona una página del historial válida.",
-    "systemRule": "Las reglas del sistema no se pueden modificar."
+    "systemRule": "Las reglas del sistema no se pueden modificar.",
+    "tagNameRequired": "Introduce un nombre para la etiqueta.",
+    "tagNameTooLong": "Un nombre puede tener como máximo 60 caracteres.",
+    "tagNotFound": "Esta etiqueta ya no existe.",
+    "oneTagPerGroup": "Una posición solo puede tener una etiqueta de cada grupo.",
+    "tagGroupConflict": "Algunas posiciones ya tienen otra etiqueta en ese grupo.",
+    "periodInvalid": "El inicio del periodo debe ser anterior a su final.",
+    "tooManySeries": "Se han pedido demasiadas líneas a la vez.",
+    "seriesKeyInvalid": "Solicitud de línea del gráfico no válida.",
+    "benchmarkTickerInvalid": "Ticker de índice no válido."
   },
   "auth": {
     "wrongPassword": "La contraseña introducida es incorrecta. Inténtalo de nuevo.",

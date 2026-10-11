@@ -6,6 +6,14 @@
 //!
 //! - `base_p(s) = V_p(s-1) + F_p(s)` and `gain_p(s) = V_p(s) - V_p(s-1) - F_p(s)`, where `V` is
 //!   the value and `F` the flow (quantity change times the day's native price);
+//! - the quantity of a day comes from the transactions (the running buys minus sells dated at or
+//!   before the day, as `ticker_history` plans the rows), the native price and its currency from
+//!   the last `stock_value_history` row at or before the day. A day without a position has no
+//!   row (a rebuild deletes it), so the quantity must not be read from the last row: it would
+//!   carry the old quantity through the gap and book a re-buy as a sale. A sell-out is priced
+//!   with the last row before it. Shares with no row at or before their day have no known value
+//!   and the holding drops out of that day like a failed conversion (without a counted miss:
+//!   no conversion was attempted);
 //! - a set `S` of positions chains `R_S(s) = sum_S gain / sum_S base`, so its time-weighted
 //!   return is `prod (1 + R_S) - 1`; the whole portfolio is the set of every held position;
 //! - the contribution of `S` to the portfolio return is
@@ -23,7 +31,7 @@
 
 use std::collections::HashMap;
 
-use rusqlite::Connection;
+use rusqlite::{params_from_iter, Connection};
 
 use crate::error::{AppError, Result};
 use crate::models::fx::ConversionQuality;
@@ -38,7 +46,7 @@ use crate::services::investments::{
 use crate::services::price_api::HistoricalPrice;
 use crate::services::reporting::{money_in_currency, normalize_currency};
 
-/// Most dates a report emits before the last day is added.
+/// Most dates a report emits, the first and the last day included.
 const MAX_POINTS: usize = 400;
 /// A base or quantity at or below this is zero.
 const EPSILON: f64 = 1e-9;
@@ -76,42 +84,95 @@ struct Daily {
     flow: Vec<Vec<Option<f64>>>,
 }
 
-/// The value of `holding` converted at `at`; an empty holding is worth nothing and needs no rate.
+/// The shares of each ticker held on a day, from the transactions: the running sum of buys minus
+/// sells dated at or before the day, clamped at zero. This is the rule `ticker_history` rebuilds
+/// the value rows with (`load_position_changes`), so a day on which nothing is held reads 0
+/// even though its row was deleted.
+struct Quantities {
+    /// Per ticker, ascending by date: the running position after each transaction.
+    steps: HashMap<String, Vec<(i64, f64)>>,
+}
+
+impl Quantities {
+    /// Every transaction of `tickers`, in one query. `CAST(.. AS REAL)` keeps SQLite's leniency
+    /// about malformed quantity text, as `ticker_history` does.
+    fn load(conn: &Connection, tickers: &[String]) -> Result<Self> {
+        let mut steps: HashMap<String, Vec<(i64, f64)>> = HashMap::new();
+        if tickers.is_empty() {
+            return Ok(Self { steps });
+        }
+        let placeholders = vec!["?"; tickers.len()].join(", ");
+        let mut stmt = conn.prepare(&format!(
+            "SELECT ticker, transaction_date,
+                    CASE WHEN type = 'buy' THEN CAST(quantity AS REAL)
+                         ELSE -CAST(quantity AS REAL) END
+             FROM investment_transactions
+             WHERE ticker IN ({placeholders})
+             ORDER BY ticker, transaction_date"
+        ))?;
+        let rows = stmt.query_map(params_from_iter(tickers), |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, i64>(1)?,
+                row.get::<_, f64>(2)?,
+            ))
+        })?;
+        for row in rows {
+            let (ticker, date, change) = row?;
+            let running = steps.entry(ticker).or_default();
+            let position = running.last().map_or(0.0, |&(_, position)| position);
+            running.push((date, position + change));
+        }
+        Ok(Self { steps })
+    }
+
+    /// The shares of `ticker` held on `day` (midnight UTC); 0 when nothing is held.
+    fn at(&self, ticker: &str, day: i64) -> f64 {
+        let Some(steps) = self.steps.get(ticker) else {
+            return 0.0;
+        };
+        let applied = steps.partition_point(|&(date, _)| date <= day);
+        let position = applied.checked_sub(1).map_or(0.0, |i| steps[i].1);
+        if position > EPSILON {
+            position
+        } else {
+            0.0
+        }
+    }
+}
+
+/// The value of `quantity` shares priced with `price` (the last row at or before `at`),
+/// converted at `at`. No shares are worth nothing and need neither a price nor a rate; shares
+/// without any price row have an unknown value (`None`, no conversion was attempted).
 fn value_at(
     fx: &ReportFx<'_>,
-    holding: Option<&DayHolding>,
+    quantity: f64,
+    price: Option<&DayHolding>,
     at: i64,
     quality: &mut Quality,
 ) -> Option<f64> {
-    let Some(h) = holding.filter(|h| h.quantity > EPSILON) else {
+    if quantity <= EPSILON {
         return Some(0.0);
-    };
+    }
+    let h = price?;
     fx.history
-        .convert_on_tracked(quality, h.quantity * h.price, &h.currency, fx.currency, at)
+        .convert_on_tracked(quality, quantity * h.price, &h.currency, fx.currency, at)
 }
 
-/// The cash flow of a day: the quantity change priced with the day's own native price and
-/// converted at that day. `None` when the conversion failed.
+/// The cash flow of a day: the change of the quantity priced with the day's own native price
+/// (a sold-out day has no row, so it is the last row before it) and converted at that day.
+/// `None` when the price is unknown or the conversion failed.
 fn flow_at(
     fx: &ReportFx<'_>,
-    prev: Option<&DayHolding>,
-    curr: Option<&DayHolding>,
+    delta: f64,
+    price: Option<&DayHolding>,
     day: i64,
     quality: &mut Quality,
 ) -> Option<f64> {
-    let delta = curr.map_or(0.0, |h| h.quantity) - prev.map_or(0.0, |h| h.quantity);
     if delta.abs() <= EPSILON {
         return Some(0.0);
     }
-    // A sold-out position is priced with the day before it
-    let priced = if curr.is_some_and(|h| h.quantity > EPSILON) {
-        curr
-    } else {
-        prev
-    };
-    let Some(h) = priced else {
-        return Some(0.0);
-    };
+    let h = price?;
     fx.history
         .convert_on_tracked(quality, delta * h.price, &h.currency, fx.currency, day)
 }
@@ -120,6 +181,7 @@ fn flow_at(
 /// into `fx.currency`. Every value is converted once, as it was when it was "today".
 fn build_daily(
     history: &HashMap<String, Vec<DayHolding>>,
+    quantities: &Quantities,
     tickers: &[&str],
     days: &[i64],
     fx: &ReportFx<'_>,
@@ -134,24 +196,25 @@ fn build_daily(
         flow: grid(),
     };
     for (p, ticker) in tickers.iter().enumerate() {
-        let mut prev: Option<&DayHolding> = None;
+        let mut prev_quantity = 0.0;
         let mut prev_value: Option<f64> = None;
         for (k, &day) in days.iter().enumerate() {
-            let curr = lookup_ticker_at(history, ticker, day);
-            let value = value_at(fx, curr, day, quality);
+            let quantity = quantities.at(ticker, day);
+            let price = lookup_ticker_at(history, ticker, day);
+            let value = value_at(fx, quantity, price, day, quality);
             daily.value[k][p] = value;
             if k == 0 {
                 daily.flow[k][p] = Some(0.0);
             } else if let (Some(v), Some(v_prev)) = (value, prev_value) {
                 // A holding that cannot be converted drops out of this day only; the miss is
                 // already recorded.
-                if let Some(flow) = flow_at(fx, prev, curr, day, quality) {
+                if let Some(flow) = flow_at(fx, quantity - prev_quantity, price, day, quality) {
                     daily.flow[k][p] = Some(flow);
                     daily.base[k][p] = Some(v_prev + flow);
                     daily.gain[k][p] = Some(v - v_prev - flow);
                 }
             }
-            prev = curr;
+            prev_quantity = quantity;
             prev_value = value;
         }
     }
@@ -248,11 +311,10 @@ fn money_weighted(values: &[Option<f64>], flows: &[f64]) -> Vec<f64> {
     out
 }
 
-/// The days to emit out of `count`: the first, every n-th and the last, so that a report never
-/// holds more than `MAX_POINTS` plus the last day. Chaining ran every day; only the output is
-/// sampled.
+/// The days to emit out of `count`: the first, every n-th and the last, at most `MAX_POINTS` in
+/// all. Chaining ran every day; only the output is sampled.
 fn emitted_indices(count: usize) -> Vec<usize> {
-    let every = count.div_ceil(MAX_POINTS).max(1);
+    let every = count.saturating_sub(1).div_ceil(MAX_POINTS - 1).max(1);
     let mut indices: Vec<usize> = (0..count).step_by(every).collect();
     if indices.last().is_some_and(|&last| last + 1 != count) {
         indices.push(count - 1);
@@ -331,8 +393,16 @@ pub fn stock_performance(
     };
     let mut quality = Quality::default();
 
+    let quantities = Quantities::load(conn, &tickers)?;
     let ticker_refs: Vec<&str> = tickers.iter().map(String::as_str).collect();
-    let daily = build_daily(&history, &ticker_refs, &days, &fx, &mut quality);
+    let daily = build_daily(
+        &history,
+        &quantities,
+        &ticker_refs,
+        &days,
+        &fx,
+        &mut quality,
+    );
     let all: Vec<usize> = (0..held.len()).collect();
     let weights = Weights::of_portfolio(&daily, &all);
     let indices = emitted_indices(days.len());
@@ -376,8 +446,14 @@ pub fn stock_performance(
                     currency: &code,
                     history: &fx_history,
                 };
-                let native_daily =
-                    build_daily(&history, &member_tickers, &days, &native_fx, &mut quality);
+                let native_daily = build_daily(
+                    &history,
+                    &quantities,
+                    &member_tickers,
+                    &days,
+                    &native_fx,
+                    &mut quality,
+                );
                 let local: Vec<usize> = (0..member_tickers.len()).collect();
                 (chain(&native_daily, &local), None)
             }
@@ -577,6 +653,13 @@ mod tests {
                 currency TEXT NOT NULL,
                 UNIQUE(ticker, recorded_at)
             );
+            CREATE TABLE investment_transactions (
+                id TEXT PRIMARY KEY,
+                type TEXT NOT NULL,
+                ticker TEXT NOT NULL,
+                quantity TEXT NOT NULL,
+                transaction_date INTEGER NOT NULL
+            );
             CREATE TABLE exchange_rate_history (
                 date INTEGER NOT NULL,
                 currency TEXT NOT NULL,
@@ -588,8 +671,57 @@ mod tests {
         conn
     }
 
+    fn insert_investment(conn: &Connection, id: &str, ticker: &str, held: &str) {
+        conn.execute(
+            "INSERT INTO stock_investments (id, ticker, quantity) VALUES (?1, ?2, ?3)",
+            rusqlite::params![id, ticker, held],
+        )
+        .expect("investment");
+    }
+
+    /// One recorded day of the value history on `day(at)`.
+    fn insert_row(
+        conn: &Connection,
+        ticker: &str,
+        at: i64,
+        quantity: f64,
+        price: f64,
+        currency: &str,
+    ) {
+        conn.execute(
+            "INSERT INTO stock_value_history (id, ticker, recorded_at, quantity, price, currency)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+            rusqlite::params![
+                format!("{ticker}-{at}"),
+                ticker,
+                day(at),
+                quantity.to_string(),
+                price.to_string(),
+                currency
+            ],
+        )
+        .expect("history row");
+    }
+
+    /// A buy (`quantity > 0`) or a sell (`quantity < 0`) of `quantity` shares on `day(at)`.
+    fn insert_tx(conn: &Connection, ticker: &str, at: i64, quantity: f64) {
+        conn.execute(
+            "INSERT INTO investment_transactions (id, type, ticker, quantity, transaction_date)
+             VALUES (?1, ?2, ?3, ?4, ?5)",
+            rusqlite::params![
+                uuid::Uuid::new_v4().to_string(),
+                if quantity > 0.0 { "buy" } else { "sell" },
+                ticker,
+                quantity.abs().to_string(),
+                day(at)
+            ],
+        )
+        .expect("transaction");
+    }
+
     /// A position `id` of `ticker` whose recorded days are `rows[i] = (quantity, price)` on
-    /// `day(i)`. `held` is the stored quantity (0 closes the position).
+    /// `day(i)`, with the transactions those quantities imply (a buy or sell on the day the
+    /// quantity changes). `held` is the stored quantity (0 closes the position).
     fn seed(
         conn: &Connection,
         id: &str,
@@ -598,25 +730,15 @@ mod tests {
         currency: &str,
         rows: &[(f64, f64)],
     ) {
-        conn.execute(
-            "INSERT INTO stock_investments (id, ticker, quantity) VALUES (?1, ?2, ?3)",
-            rusqlite::params![id, ticker, held],
-        )
-        .expect("investment");
+        insert_investment(conn, id, ticker, held);
+        let mut previous = 0.0;
         for (i, (quantity, price)) in rows.iter().enumerate() {
-            conn.execute(
-                "INSERT INTO stock_value_history (id, ticker, recorded_at, quantity, price, currency)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
-                rusqlite::params![
-                    format!("{ticker}-{i}"),
-                    ticker,
-                    day(i as i64),
-                    quantity.to_string(),
-                    price.to_string(),
-                    currency
-                ],
-            )
-            .expect("history row");
+            let at = i as i64;
+            insert_row(conn, ticker, at, *quantity, *price, currency);
+            if (quantity - previous).abs() > 1e-9 {
+                insert_tx(conn, ticker, at, quantity - previous);
+            }
+            previous = *quantity;
         }
     }
 
@@ -908,15 +1030,28 @@ mod tests {
         close(*last(&inner.portfolio), (110.0 / 105.0 - 1.0) * 100.0, 1e-9);
     }
 
+    /// 1000 days whose price moves every day and whose position grows from 10 to 15 shares on
+    /// day 500 (a deposit in the middle of the period).
+    fn seed_long_history(conn: &Connection) -> Vec<f64> {
+        let prices: Vec<f64> = (0..1000).map(|i| 100.0 + f64::from(i % 17)).collect();
+        let rows: Vec<(f64, f64)> = prices
+            .iter()
+            .enumerate()
+            .map(|(i, price)| (if i < 500 { 10.0 } else { 15.0 }, *price))
+            .collect();
+        seed(conn, "aapl", "AAPL", "15", "CZK", &rows);
+        prices
+    }
+
     #[test]
     fn emits_at_most_400_points_and_always_the_last_day() {
         let conn = setup_db();
-        let prices: Vec<f64> = (0..1000).map(|i| 100.0 + f64::from(i % 17)).collect();
-        seed_czk(&conn, "aapl", "AAPL", 10.0, &prices);
+        let prices = seed_long_history(&conn);
 
         let report = perf(&conn, day(0), day(999), vec![series("all", &["aapl"])]);
 
-        assert!(report.dates.len() <= 401, "{} points", report.dates.len());
+        // 1000 days emit every third one (0, 3, ..., 999), the last day included
+        assert!(report.dates.len() <= 400, "{} points", report.dates.len());
         assert!(report.dates.len() > 300);
         assert_eq!(report.dates[0], ts_to_date_str(day(0)));
         assert_eq!(last(&report.dates), &ts_to_date_str(day(999)));
@@ -932,15 +1067,205 @@ mod tests {
             Some(n)
         );
         // sampling skips days, never accuracy: the last point is the full chain
-        close(
-            *last(&report.portfolio),
-            (prices[999] / prices[0] - 1.0) * 100.0,
-            1e-9,
-        );
+        // (the deposit on day 500 is not return)
+        let hand = hand_twr(&[&(0..1000)
+            .map(|i| (if i < 500 { 10.0 } else { 15.0 }, prices[i]))
+            .collect::<Vec<_>>()]);
+        close(*last(&report.portfolio), *last(&hand), 1e-9);
 
         // a short history emits every day
         let short = perf(&conn, day(0), day(9), vec![]);
         assert_eq!(short.dates.len(), 10);
+    }
+
+    #[test]
+    fn an_emitted_index_is_the_same_day_in_every_column() {
+        let conn = setup_db();
+        seed_long_history(&conn);
+        let ids = series("all", &["aapl"]);
+
+        let report = perf(&conn, day(0), day(999), vec![ids.clone()]);
+
+        // every third day is emitted; each emitted index must equal the figures of a report
+        // that ends on exactly that day (its last point is that day, whatever the sampling)
+        let step = 3;
+        assert_eq!(report.dates.len(), 334);
+        let contribution = report.series[0]
+            .contribution
+            .as_ref()
+            .expect("contribution");
+        for i in [1, 50, 166, 167, 200, 300, 333] {
+            let at = i as i64 * step;
+            assert_eq!(report.dates[i], ts_to_date_str(day(at)), "date {i}");
+
+            let until = perf(&conn, day(0), day(at), vec![ids.clone()]);
+            assert_eq!(last(&until.dates), &report.dates[i], "date {i}");
+            close(*last(&until.portfolio), report.portfolio[i], 1e-9);
+            assert_eq!(last(&until.values), &report.values[i], "values {i}");
+            assert_eq!(last(&until.net_flows), &report.net_flows[i], "netFlows {i}");
+            close(*last(&until.mwr), report.mwr[i], 1e-9);
+            close(*last(&until.series[0].twr), report.series[0].twr[i], 1e-9);
+            close(
+                *last(until.series[0].contribution.as_ref().expect("contribution")),
+                contribution[i],
+                1e-9,
+            );
+        }
+        // the deposit on day 500 sits between emitted days 166 (day 498) and 167 (day 501)
+        assert_eq!(report.net_flows[166], "0.00");
+        assert_ne!(report.net_flows[167], "0.00");
+    }
+
+    #[test]
+    fn emitted_indices_never_exceed_the_cap_and_keep_both_ends() {
+        for count in [
+            0, 1, 2, 3, 399, 400, 401, 402, 798, 799, 800, 801, 1000, 1001, 5000, 123_457,
+        ] {
+            let indices = emitted_indices(count);
+            assert!(indices.len() <= MAX_POINTS, "{count}: {}", indices.len());
+            if count == 0 {
+                assert!(indices.is_empty());
+                continue;
+            }
+            assert_eq!(indices[0], 0, "{count}");
+            assert_eq!(*last(&indices), count - 1, "{count}");
+            assert!(indices.windows(2).all(|w| w[0] < w[1]), "{count}");
+        }
+        // a range that fits is emitted whole
+        assert_eq!(emitted_indices(400), (0..400).collect::<Vec<_>>());
+    }
+
+    #[test]
+    fn a_sold_out_gap_is_not_a_return_and_a_rebuy_is_not_a_sale() {
+        let conn = setup_db();
+        insert_investment(&conn, "aapl", "AAPL", "5");
+        // buy 10 on day 1, sell them on day 10, buy 5 on day 20; the history has no row for
+        // the days the position is not held (10..=19)
+        insert_tx(&conn, "AAPL", 1, 10.0);
+        insert_tx(&conn, "AAPL", 10, -10.0);
+        insert_tx(&conn, "AAPL", 20, 5.0);
+        for at in 1..=9 {
+            insert_row(&conn, "AAPL", at, 10.0, 100.0, "CZK");
+        }
+        for at in 20..=25 {
+            insert_row(&conn, "AAPL", at, 5.0, 130.0, "CZK");
+        }
+
+        let report = perf(&conn, day(1), day(25), vec![series("a", &["aapl"])]);
+
+        assert_eq!(report.dates.len(), 25);
+        // no price moved while the position was held: no return anywhere
+        for (i, twr) in report.portfolio.iter().enumerate() {
+            close(*twr, 0.0, 1e-9);
+            close(report.series[0].twr[i], 0.0, 1e-9);
+        }
+        // the sale at day 9's price (-1000 on day 10) and the rebuy at 130 (+650 on day 20)
+        assert_eq!(last(&report.net_flows), "-350.00");
+        assert_eq!(report.net_flows[8], "0.00");
+        assert_eq!(report.net_flows[9], "-1000.00");
+        assert_eq!(report.net_flows[18], "-1000.00");
+        assert_eq!(report.net_flows[19], "-350.00");
+        // worth nothing while nothing was held, whatever the stale row says
+        assert_eq!(report.values[8], Some("1000.00".to_string()));
+        for i in 9..19 {
+            assert_eq!(report.values[i], Some("0.00".to_string()), "day {}", i + 1);
+        }
+        assert_eq!(last(&report.values), &Some("650.00".to_string()));
+        // the position's own figures agree
+        assert_eq!(report.positions.len(), 1);
+        close(report.positions[0].twr, 0.0, 1e-9);
+        close(report.positions[0].contribution, 0.0, 1e-9);
+        assert_eq!(report.positions[0].start_value.as_deref(), Some("1000.00"));
+        assert_eq!(report.positions[0].end_value.as_deref(), Some("650.00"));
+        assert!(report.fx_quality.missing_currencies.is_empty());
+    }
+
+    #[test]
+    fn the_quantity_comes_from_the_transactions_not_from_the_last_row() {
+        let conn = setup_db();
+        insert_investment(&conn, "aapl", "AAPL", "3");
+        // two buys on the same day and a partial sell: 4 + 2 - 3 shares from day 2 on
+        insert_tx(&conn, "AAPL", 0, 4.0);
+        insert_tx(&conn, "AAPL", 0, 2.0);
+        insert_tx(&conn, "AAPL", 2, -3.0);
+        // the rows keep a stale quantity of 6; only their price counts
+        for (at, price) in [(0, 100.0), (1, 110.0), (2, 110.0), (3, 110.0)] {
+            insert_row(&conn, "AAPL", at, 6.0, price, "CZK");
+        }
+
+        let report = perf(&conn, day(0), day(3), vec![]);
+
+        assert_eq!(
+            report.values,
+            [
+                Some("600.00".into()),
+                Some("660.00".into()),
+                Some("330.00".into()),
+                Some("330.00".into())
+            ]
+        );
+        // the partial sell at 110 is a flow of -330, not a loss: +10 % then +0 %
+        assert_eq!(report.net_flows, ["0.00", "0.00", "-330.00", "-330.00"]);
+        close(*last(&report.portfolio), 10.0, 1e-9);
+    }
+
+    #[test]
+    fn a_holding_without_a_rate_on_one_day_keeps_the_partition_exact() {
+        // CZ (a CZK stock) and US (a USD stock) over 16 days. USD is quoted on day 0 and from
+        // day 12 on, so day 11 is the only day outside the ten-day window of the last quote:
+        // US drops out of day 11 (and, with no value to chain from, of day 12), CZ keeps going.
+        let conn = setup_db();
+        let cz: Vec<f64> = (0..16).map(|i| 100.0 + f64::from(i * i % 11)).collect();
+        let us: Vec<f64> = (0..16).map(|i| 50.0 + f64::from(i * 3 % 7)).collect();
+        seed_czk(&conn, "cz", "CZ", 10.0, &cz);
+        seed(
+            &conn,
+            "us",
+            "US",
+            "20",
+            "USD",
+            &us.iter().map(|price| (20.0, *price)).collect::<Vec<_>>(),
+        );
+        add_usd_czk(&conn, day(0), 20.0);
+        for at in 12..16 {
+            add_usd_czk(&conn, day(at), 20.0 + at as f64 / 10.0);
+        }
+
+        let report = perf(
+            &conn,
+            day(0),
+            day(15),
+            vec![series("cz", &["cz"]), series("us", &["us"])],
+        );
+
+        // the miss happened and is counted ...
+        assert!(report
+            .fx_quality
+            .missing_currencies
+            .contains(&"USD".to_string()));
+        assert!(report.fx_quality.missing_count > 0);
+        let us_position = report
+            .positions
+            .iter()
+            .find(|p| p.investment_id == "us")
+            .expect("us");
+        assert!(us_position.end_value.is_some());
+        // ... the value of day 11 counts the holding that converts ...
+        assert_eq!(
+            report.values[11],
+            Some(money_in_currency(10.0 * cz[11], "CZK"))
+        );
+        // ... and at every date the contributions of the partition add up to the portfolio
+        let a = report.series[0].contribution.as_ref().expect("cz");
+        let b = report.series[1].contribution.as_ref().expect("us");
+        assert_eq!(report.dates.len(), 16);
+        for k in 0..report.dates.len() {
+            close(a[k] + b[k], report.portfolio[k], 1e-9);
+        }
+        let sum: f64 = report.positions.iter().map(|p| p.contribution).sum();
+        close(sum, *last(&report.portfolio), 1e-9);
+        // the portfolio does move, so the identity is not trivially 0 = 0
+        assert!(report.portfolio.iter().any(|twr| twr.abs() > 0.1));
     }
 
     #[test]

@@ -1,0 +1,1124 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Moony — Analýza akcií: výkonnost štítků (návrh)</title>
+<link rel="stylesheet" href="../design-system/moony.css">
+<style>
+  /* Prototype-only styles. Everything else comes from the design system. */
+  html { overflow-y: scroll; }
+  .sidebar { top: 42px; height: calc(100vh - 42px); }
+
+  /* Prototype bar (above the app) */
+  .proto-bar { position: sticky; top: 0; z-index: 6; display: flex; align-items: center; gap: 18px; height: 42px; padding: 0 20px; background: var(--dark-grad); box-shadow: var(--sh-dark); color: var(--ink-inverse-2); font-size: 11px; font-weight: 600; }
+  .proto-bar__tag { padding: 3px 7px; border-radius: 5px; background: rgba(255,255,255,.14); color: #fff; font-size: 9px; font-weight: 750; letter-spacing: .1em; text-transform: uppercase; }
+  .proto-bar__title { color: #fff; font-weight: 650; letter-spacing: -.01em; }
+  .proto-bar__spacer { flex: 1; }
+  .proto-bar .seg { background: rgba(255,255,255,.11); }
+  .proto-bar .seg__btn { color: var(--ink-inverse-2); transition: none; }
+  .proto-bar .seg__btn:hover { color: #fff; }
+  .proto-bar .seg__btn.is-active { background: var(--paper); color: var(--ink); box-shadow: none; }
+  .proto-bar__toggle { display: inline-flex; align-items: center; gap: 10px; color: #fff; cursor: pointer; }
+  .proto-bar .switch input { background: rgba(255,255,255,.22); }
+  .proto-bar .switch input:checked { background: #f4f2ec; }
+  .proto-bar .switch input:checked::after { background: var(--dark); }
+  .proto-bar__hint { font-weight: 500; }
+  @media (max-width: 1360px) { .proto-bar__hint--long { display: none; } }
+
+  /* Design-note callouts */
+  .has-np { position: relative; }
+  .np { position: absolute; z-index: 4; display: none; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 10px; background: var(--dark-grad); box-shadow: var(--sh-dark), 0 0 0 2px var(--canvas); color: #fff; font-size: 10px; font-weight: 700; font-style: normal; line-height: 20px; text-align: center; pointer-events: none; letter-spacing: 0; text-transform: none; }
+  .notes-on .np { display: block; }
+  .np--tl { left: -10px; top: -10px; }
+  .np--tr { right: -10px; top: -10px; }
+  .np--inline { position: static; margin-left: 8px; vertical-align: middle; }
+  .notes-on .np--inline { display: inline-block; }
+  .notes-card { display: none; }
+  .notes-on .notes-card { display: block; }
+  .notes { display: grid; grid-template-columns: 1fr 1fr; column-gap: 44px; margin: 0; padding: 0 21px 10px; list-style: none; }
+  .notes li { display: grid; grid-template-columns: 24px 1fr; gap: 10px; align-items: start; padding: 13px 0; border-top: 1px solid var(--line-soft); color: var(--ink-2); font-size: var(--fs-table); line-height: 1.55; }
+  .notes li:nth-child(-n+2) { border-top: 0; }
+  .notes .np { position: static; display: inline-block; margin-top: 1px; box-shadow: var(--sh-dark); }
+  .notes b { display: block; color: var(--ink); font-weight: 650; }
+  .notes .badge { margin-top: 6px; }
+  .notes-on .hero, .notes-on .card--table { overflow: visible; }
+
+  /* Page */
+  .stack { display: flex; flex-direction: column; gap: 18px; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .filters { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 22px; margin-bottom: 18px; }
+  .filters__group { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+  .filters__group .eyebrow { margin: 0 4px 0 0; }
+  .filters .chip { cursor: pointer; }
+  .filters__clear, .link { background: none; border: 0; padding: 0; color: var(--ink-2); font-size: var(--fs-caption); font-weight: 650; text-underline-offset: 3px; cursor: pointer; }
+  .filters__clear:hover, .link:hover { color: var(--ink); text-decoration: underline; }
+  .filters__untagged { margin-left: auto; color: var(--ink-3); font-size: var(--fs-caption); font-weight: 500; }
+  .filters__untagged .link { margin-left: 6px; }
+
+  /* Hero: time-weighted return, money-weighted return, change of value */
+  .hero--twr { padding: 22px 24px 0; }
+  .hero__figs { display: flex; align-items: flex-start; gap: 28px; }
+  .hero__fig + .hero__fig { padding-left: 28px; border-left: 1px solid var(--line-soft); }
+  .hero__fig { min-width: 0; }
+  .hero--twr .hero__label { display: flex; align-items: center; }
+  .hero--twr .hero__value { margin: 8px 0 6px; }
+  .hero--twr .hero__value--sm { margin: 10px 0 7px; font-size: var(--fs-stat); letter-spacing: -0.05em; }
+  .hero--twr .hero__delta { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 6px; }
+  .hero--twr .hero__delta .sep { color: var(--ink-5); font-weight: 450; }
+  .hero--twr .hero__delta span.faint { margin: 0; }
+  .hero__when { margin-top: 5px; color: var(--ink-4); font-size: var(--fs-micro); font-weight: 500; }
+  .hero__when b { color: var(--ink-3); font-weight: 650; }
+  .hero__note { color: var(--ink-4); font-size: var(--fs-micro); font-weight: 500; line-height: 1.65; white-space: nowrap; }
+  .hero__note b { color: var(--ink-2); font-weight: 650; }
+  .hero > .toolbar { z-index: 3; }
+  .toolbar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px 18px; margin-top: 20px; }
+  .toolbar__group { display: flex; align-items: center; gap: 10px; }
+  .ctl-label { color: var(--ink-4); font-size: var(--fs-micro); font-weight: 600; }
+  .seg__sep { align-self: center; width: 1px; height: 14px; margin: 0 4px; background: var(--line-strong); }
+  .menu-host { position: relative; }
+  .menu-host .menu { top: calc(100% + 6px); right: 0; }
+  .menu-host .menu[hidden] { display: none; }
+  .menu__item small { margin-left: auto; color: var(--ink-4); font-size: var(--fs-micro); font-weight: 500; }
+  .menu__item .ic-check { width: 14px; color: var(--ink); }
+  .btn--sm .ic { width: 13px; height: 13px; }
+  .btn.is-on { border-color: var(--focus-border); color: var(--ink); }
+
+  .twr { position: relative; margin: 14px -4px 0; }
+  .twr svg { display: block; width: 100%; overflow: visible; }
+  .twr .ln, .twr .ev-ring { transition: opacity var(--t-fast); }
+  .twr.is-dim .ln:not(.is-hot), .twr.is-dim .ev-ring:not(.is-hot) { opacity: .25; }
+  .twr__labels { position: absolute; top: 0; right: 0; pointer-events: none; }
+  .twr__label { position: absolute; left: 10px; display: inline-flex; align-items: center; gap: 6px; transform: translateY(-50%); white-space: nowrap; color: var(--ink-2); font-size: var(--fs-micro); font-weight: 650; font-variant-numeric: tabular-nums; pointer-events: auto; cursor: default; transition: opacity var(--t-fast); }
+  .twr__label i { width: 7px; height: 7px; border: 2px solid var(--chart-line); border-radius: 50%; background: var(--paper); flex: none; }
+  .twr__label.is-ref i { width: 11px; height: 0; border: 0; border-top: 2px dashed var(--chart-line); border-radius: 0; }
+  .twr__label.is-idx i { width: 11px; height: 0; border: 0; border-top: 2px dotted var(--ink-4); border-radius: 0; }
+  .twr.is-dim .twr__label:not(.is-hot) { opacity: .35; }
+  .twr .hit { cursor: crosshair; }
+  .taxis { position: relative; height: 16px; margin: 6px -4px 0; color: var(--chart-axis); font-size: var(--fs-micro); font-weight: 500; }
+  .taxis span { position: absolute; top: 0; transform: translateX(-50%); white-space: nowrap; }
+  .taxis span.is-last { transform: translateX(-100%); color: var(--ink-3); font-weight: 600; }
+  .taxis span.is-year { color: var(--ink-3); font-weight: 650; }
+
+  /* Scoreboard under the chart: the legend with numbers */
+  .board { margin: 16px -24px 0; border-top: 1px solid var(--line-soft); }
+  .board__head, .board__row { display: grid; grid-template-columns: 22px minmax(0, 1.25fr) 116px 112px 84px 92px minmax(0, 1fr) 118px; align-items: center; gap: 0 14px; padding: 0 24px; }
+  .board__head { height: 34px; white-space: nowrap; color: var(--ink-4); font-size: var(--fs-thead); font-weight: var(--fw-thead); letter-spacing: var(--ls-thead); text-transform: uppercase; }
+  .board__row { min-height: 40px; border-top: 1px solid var(--line-soft); color: var(--ink-2); font-size: var(--fs-table); cursor: default; transition: background var(--t-fast); }
+  .board__row.is-clickable { cursor: pointer; }
+  .board__row:hover, .board__row.is-hot { background: var(--well); }
+  .board__row.is-quiet:hover { background: transparent; }
+  .board__row .nm { min-width: 0; padding: 7px 0; }
+  .board__row .nm b { display: block; overflow: hidden; color: var(--ink); font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+  .board__row .nm small { display: block; margin-top: 2px; color: var(--ink-4); font-size: var(--fs-micro); font-weight: 500; white-space: nowrap; }
+  .board__row .nm .pos { color: var(--ink-4); font-size: var(--fs-micro); font-weight: 500; }
+  .board__row .r, .board__head .r { text-align: right; }
+  .board__row .num { font-variant-numeric: tabular-nums; }
+  .board__row .twr-v { font-weight: 650; }
+  .board__row .dim { color: var(--ink-4); }
+  .board__row.is-quiet .nm b, .board__row.is-quiet .twr-v { color: var(--ink-3); font-weight: 600; }
+  .board__cap { margin: 0; padding: 10px 24px 13px; border-top: 1px solid var(--line-soft); color: var(--ink-4); font-size: var(--fs-micro); font-weight: 500; }
+  .sw { display: block; width: 14px; height: 2.5px; border-radius: 1px; background: var(--chart-line); }
+  .sw--dash { background: repeating-linear-gradient(90deg, var(--chart-line) 0 3px, transparent 3px 5px); }
+  .sw--dot { height: 2px; background: repeating-linear-gradient(90deg, var(--ink-4) 0 2px, transparent 2px 4px); }
+  .sw--none { height: 8px; width: 8px; border: 1px solid var(--line-strong); border-radius: 2px; background: repeating-linear-gradient(135deg, transparent 0 2px, var(--line-strong) 2px 3px); }
+  .share { display: flex; align-items: center; gap: 10px; }
+  .share .bar { flex: 1; height: 6px; border-radius: 3px; background: var(--well-3); overflow: hidden; }
+  .share .bar i { display: block; height: 100%; border-radius: 3px; background: var(--s1); }
+  .share span { width: 40px; text-align: right; font-weight: 600; color: var(--ink-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  /* Contribution card */
+  .card--fill { display: flex; flex-direction: column; }
+  .card--fill .card__head { align-items: flex-start; }
+  .crows { flex: 1; display: flex; flex-direction: column; }
+  .crow { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr) 84px; gap: 14px; align-items: center; min-height: 40px; padding: 0 21px; border-top: 1px solid var(--line-soft); color: var(--ink-2); font-size: var(--fs-table); }
+  .crow .entity b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .crow .entity .logo { width: 24px; height: 24px; font-size: 8.5px; }
+  .crow__name { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .crow__name b { overflow: hidden; color: var(--ink); font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+  .crow__name small { color: var(--ink-4); font-size: var(--fs-micro); font-weight: 500; white-space: nowrap; }
+  .ctrack { position: relative; height: 16px; }
+  .ctrack .zero { position: absolute; top: -12px; bottom: -12px; width: 1px; background: var(--line-strong); }
+  .ctrack .cbar { position: absolute; top: 4px; height: 8px; border-radius: 2px; background: var(--s2); }
+  .ctrack .cbar.is-neg { background: var(--s3); }
+  .cval { text-align: right; font-weight: 650; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .crow--foot { margin-top: auto; background: var(--well); border-top: 1px solid var(--line); border-radius: 0 0 var(--r-4) var(--r-4); }
+  .crow--foot .crow__name b { font-weight: 700; }
+  .crow--muted .crow__name b { color: var(--ink-3); font-weight: 600; }
+
+  /* Deposits and market card */
+  .bridge { display: grid; grid-template-columns: repeat(4, 1fr); margin: 0 21px; border: 1px solid var(--line-soft); border-radius: var(--r-2); background: var(--paper); }
+  .bridge div { padding: 10px 12px 11px; }
+  .bridge div + div { border-left: 1px solid var(--line-soft); }
+  .bridge small { display: block; color: var(--ink-4); font-size: var(--fs-micro); font-weight: 600; }
+  .bridge b { display: block; margin-top: 4px; color: var(--ink); font-size: 14px; font-weight: 650; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .fbars { position: relative; flex: 1 1 auto; min-height: 168px; margin: 18px 17px 0; }
+  .fbars svg { display: block; width: 100%; overflow: visible; }
+  .fbars .slot:hover rect.bg { fill: var(--well); }
+  .baxis { position: relative; height: 16px; margin: 6px 17px 0; color: var(--chart-axis); font-size: var(--fs-micro); font-weight: 500; }
+  .baxis span { position: absolute; top: 0; transform: translateX(-50%); white-space: nowrap; }
+  .card--fill .legend { margin: 10px 21px 18px; }
+
+  /* Allocation ring (optional variant) */
+  .ring-wrap { display: flex; align-items: center; gap: 36px; padding: 6px 21px 22px; }
+  .ring--lg { width: 184px; height: 184px; flex: none; }
+  .ring--lg::after { inset: 30px; }
+  .ring--lg .ring__center { font-size: 10px; }
+  .ring--lg .ring__center b { font-size: 18px; }
+  .ring-legend { flex: 1; display: grid; }
+  .ring-legend div { display: grid; grid-template-columns: 10px 1fr auto auto; gap: 12px; align-items: center; height: 32px; border-bottom: 1px solid var(--line-soft); color: var(--ink-2); font-size: var(--fs-table); }
+  .ring-legend div:last-child { border-bottom: 0; }
+  .ring-legend i { width: 8px; height: 8px; border-radius: 50%; }
+  .ring-legend b { color: var(--ink); font-weight: 650; font-variant-numeric: tabular-nums; }
+  .ring-legend .pct { width: 36px; text-align: right; color: var(--ink-3); font-weight: 600; }
+
+  /* Tables */
+  .tags-table .table__head, .tags-table .table__row { grid-template-columns: 2fr .7fr 1.1fr .7fr 1.1fr 1.1fr 1.1fr; }
+  .tags-table.is-narrow .table__head, .tags-table.is-narrow .table__row { grid-template-columns: 1.4fr .55fr 1fr .55fr 1.45fr; }
+  .tags-table.is-narrow .table__head { white-space: nowrap; }
+  .tags-table .table__row { min-height: 48px; }
+  .hold-table .table__head, .hold-table .table__row { grid-template-columns: 2.1fr 1.5fr 1fr 1fr 1.2fr 40px; column-gap: 16px; }
+  .hold-table .table__row { min-height: 58px; }
+  .tag-name { display: inline-flex; align-items: center; gap: 8px; }
+  .tag-name .grp { color: var(--ink-4); font-size: 10px; font-weight: 500; }
+  .badges { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .table__row .btn--icon { width: 28px; height: 28px; }
+  .card__head .search { width: 220px; }
+  .conc { border-bottom: 1px dotted var(--ink-5); cursor: help; }
+
+  /* Round 4: the scope card and the split caption explain the two controls */
+  .scope { margin-bottom: 18px; padding: 15px 18px 12px; }
+  .scope__head { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; margin-bottom: 11px; }
+  .scope__head h2 { margin: 0; font-size: var(--fs-h3); font-weight: var(--fw-h3); letter-spacing: var(--ls-h3); }
+  .scope__sum { color: var(--ink-3); font-size: var(--fs-caption); font-weight: 500; white-space: nowrap; }
+  .scope__sum b { color: var(--ink); font-weight: 650; }
+  .scope__sum .link { margin-left: 10px; }
+  .scope .filters { margin-bottom: 0; }
+  .scope__foot { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line-soft); }
+  .scope__hint { color: var(--ink-4); font-size: var(--fs-micro); font-weight: 500; line-height: 1.55; }
+  .scope__hint b { color: var(--ink-2); font-weight: 650; }
+  .scope .filters__untagged { margin-left: 0; white-space: nowrap; }
+  .subbar { display: flex; justify-content: space-between; align-items: flex-start; gap: 18px; margin-top: 12px; }
+  .split-cap { display: flex; gap: 7px; align-items: flex-start; max-width: 600px; color: var(--ink-3); font-size: var(--fs-micro); font-weight: 500; line-height: 1.55; }
+  .split-cap .ic { flex: none; margin-top: 1px; color: var(--ink-4); }
+  .split-cap b { color: var(--ink-2); font-weight: 650; }
+  .period-range { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; flex: none; }
+  .period-range__inputs { display: flex; align-items: center; gap: 8px; }
+  .period-range__inputs .input { width: 140px; height: 35px; font-size: var(--fs-table); }
+  .period-range__inputs .arrow { color: var(--ink-5); }
+  .period-range__hint { color: var(--ink-4); font-size: var(--fs-micro); font-weight: 500; }
+  .period-range .field__error { margin-top: 0; }
+  .period-range [hidden] { display: none; }
+  .card__head .seg { flex: none; }
+  .seg__btn { white-space: nowrap; }
+
+  /* Round 3: custom range, conflict alert, assign dialog */
+  .range-row { display: flex; justify-content: flex-end; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .range-row .input { width: 140px; height: 35px; font-size: var(--fs-table); }
+  .range-row .arrow { color: var(--ink-5); }
+  .range-row .hint { margin-right: auto; color: var(--ink-4); font-size: var(--fs-micro); font-weight: 500; }
+  .range-row .field__error { width: 100%; justify-content: flex-end; margin-top: 0; }
+  .range-row .field__error[hidden] { display: none; }
+  .twr .hit.is-dragging { cursor: ew-resize; }
+  .conflict { margin: -4px 0 18px; align-items: center; }
+  .conflict .actions { margin-left: auto; }
+  .badge--muted { background: none; border: 1px dashed var(--line-strong); color: var(--ink-4); text-decoration: line-through; text-decoration-color: var(--ink-5); }
+  .warn { display: inline-flex; align-items: center; gap: 5px; color: var(--ink-2); font-size: var(--fs-micro); font-weight: 650; }
+  .warn .ic { color: var(--ink-3); }
+  .badges .link { font-size: var(--fs-micro); }
+
+  .modal--assign { width: 640px; }
+  .modal--assign .modal__head { position: relative; }
+  .as-list { max-height: 196px; overflow-y: auto; margin: 0 0 18px; border: 1px solid var(--line); border-radius: var(--r-2); }
+  .as-row { display: grid; grid-template-columns: 18px 26px 1fr auto; gap: 10px; align-items: center; padding: 7px 12px; border-top: 1px solid var(--line-soft); font-size: var(--fs-table); cursor: pointer; }
+  .as-row:first-child { border-top: 0; }
+  .as-row:hover { background: var(--well); }
+  .as-row .logo { width: 24px; height: 24px; font-size: 8.5px; }
+  .as-row b { display: block; color: var(--ink); font-weight: 650; }
+  .as-row small { color: var(--ink-4); font-size: var(--fs-micro); font-weight: 500; }
+  .as-row .cur { color: var(--ink-4); font-size: var(--fs-micro); font-weight: 500; text-align: right; }
+  .as-group { display: grid; grid-template-columns: 132px 1fr; gap: 10px; align-items: start; padding: 11px 0; border-top: 1px solid var(--line-soft); }
+  .as-group:first-of-type { border-top: 0; }
+  .as-group__label b { display: block; color: var(--ink-2); font-size: var(--fs-caption); font-weight: 700; }
+  .as-group__label small { color: var(--ink-4); font-size: var(--fs-micro); font-weight: 500; }
+  .as-group .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .as-group .chip { cursor: pointer; }
+  .as-group .chip--quiet { border-style: dashed; color: var(--ink-3); }
+  .as-group .chip--quiet.is-active { border-style: solid; }
+  .as-note { grid-column: 2; display: flex; align-items: center; gap: 6px; color: var(--ink-2); font-size: var(--fs-micro); font-weight: 600; }
+  .as-note .ic { color: var(--ink-3); }
+</style>
+</head>
+<body>
+
+<div class="proto-bar">
+  <span class="proto-bar__tag">Návrh</span>
+  <span class="proto-bar__title">Analýza akcií · výkonnost v celé šířce</span>
+  <span class="proto-bar__hint">Prstenec rozdělení:</span>
+  <div class="seg" id="ring-seg">
+    <button type="button" class="seg__btn is-active" data-value="off">Vypnutý (doporučeno)</button>
+    <button type="button" class="seg__btn" data-value="on">Zapnutý</button>
+  </div>
+  <span class="proto-bar__hint proto-bar__hint--long">Najeďte myší na graf a čísla se přepíší k danému dni · tažením vyberete vlastní období</span>
+  <span class="proto-bar__spacer"></span>
+  <label class="proto-bar__toggle"><span>Poznámky k návrhu</span><span class="switch"><input type="checkbox" id="notes-toggle"></span></label>
+</div>
+
+<div class="app">
+  <aside class="sidebar"></aside>
+  <main class="page" id="page"></main>
+</div>
+
+<div class="modal-scrim" id="m-assign">
+  <form class="modal modal--assign" onsubmit="return false" aria-labelledby="as-title">
+    <div class="modal__head has-np">
+      <i class="np np--tl">19</i>
+      <div><h2 id="as-title">Přiřadit štítky</h2><p>Vyberte pozice a štítky, které jim chcete dát.</p></div>
+      <button type="button" class="modal__close" aria-label="Zavřít" data-close></button>
+    </div>
+    <div class="modal__body" id="as-body"></div>
+    <div class="modal__foot">
+      <button type="button" class="btn btn--ghost" data-close>Zrušit</button>
+      <div class="actions"><button type="button" class="btn btn--primary" id="as-save">Přiřadit štítky</button></div>
+    </div>
+  </form>
+</div>
+
+<script src="../design-system/icons.js"></script>
+<script src="../design-system/shell.js"></script>
+<script src="../design-system/charts.js"></script>
+<script>
+(function () {
+'use strict';
+
+/* ===== Helpers ===== */
+var MON = ['led', 'úno', 'bře', 'dub', 'kvě', 'čvn', 'čvc', 'srp', 'zář', 'říj', 'lis', 'pro'];
+function $(s, r) { return (r || document).querySelector(s); }
+function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
+function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+function pl(n, a, b, c) { n = Math.abs(n); return n === 1 ? a : (n >= 2 && n <= 4 ? b : c); }
+function D(y, m, d) { return new Date(y, m - 1, d); }
+function addMonths(d, n) { return new Date(d.getFullYear(), d.getMonth() + n, d.getDate()); }
+function dayDiff(a, b) { return Math.round((b - a) / 864e5); }
+function sum(arr, f) { return arr.reduce(function (s, x) { return s + f(x); }, 0); }
+function p2(n) { return (n < 10 ? '0' : '') + n; }
+function iso(d) { return d.getFullYear() + '-' + p2(d.getMonth() + 1) + '-' + p2(d.getDate()); }
+function parseIso(v) { var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v || ''); return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null; }
+function num(a, dec) { return Math.abs(a).toFixed(dec).replace('.', ','); }
+function isZero(v, dec) { return Math.abs(v) < 0.5 * Math.pow(10, -dec); }
+function pct(p, dec) { dec = dec == null ? 1 : dec; return (isZero(p, dec) ? '' : (p > 0 ? '+ ' : '− ')) + num(p, dec) + ' %'; }
+function pb(p) { return (isZero(p, 1) ? '' : (p > 0 ? '+ ' : '− ')) + num(p, 1) + ' p. b.'; }
+function ddText(p) { return isZero(p, 1) ? '0,0 %' : '− ' + num(p, 1) + ' %'; }
+function signCls(v) { return v > 0.05 ? 'gain' : (v < -0.05 ? 'loss' : ''); }
+function arrow(v) { return v > 0.05 ? '▲ ' : (v < -0.05 ? '▼ ' : ''); }
+function changeBadge(p) { var c = signCls(p); return '<span class="badge' + (c ? ' badge--' + c : '') + '">' + arrow(p) + num(p, 1) + ' %</span>'; }
+function kc(n) { return fmtKc(Math.round(n)); }
+function kcSigned(n) { return isZero(n, 0) ? '0 Kč' : fmtSigned(Math.round(n)); }
+function shortKc(n) { return n >= 1e6 ? (n / 1e6).toFixed(2).replace(/\.?0+$/, '').replace('.', ',') + ' mil. Kč' : Math.round(n / 1000).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + ' tis. Kč'; }
+function kcTick(v) {
+  if (Math.abs(v) < 1) return '0';
+  var a = Math.abs(v), s = v < 0 ? '− ' : '';
+  return s + (a >= 1e6 ? (a / 1e6).toFixed(1).replace('.', ',').replace(',0', '') + ' mil.' : Math.round(a / 1000) + ' tis.');
+}
+function rng(seed) {
+  var h = 1779033703 ^ seed.length;
+  for (var i = 0; i < seed.length; i++) { h = Math.imul(h ^ seed.charCodeAt(i), 3432918353); h = (h << 13) | (h >>> 19); }
+  var a = h >>> 0;
+  return function () { a |= 0; a = (a + 0x6D2B79F5) | 0; var t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+}
+function pill(n, cls, style) { return '<i class="np ' + (cls || 'np--tl') + '"' + (style ? ' style="' + style + '"' : '') + '>' + n + '</i>'; }
+function niceStep(span, n) { var raw = span / n, mag = Math.pow(10, Math.floor(Math.log10(raw))); return [1, 2, 2.5, 5, 10].map(function (m) { return m * mag; }).filter(function (v) { return v >= raw; })[0]; }
+function tickDigits(step) { return step >= 1 ? 0 : (step >= 0.1 ? 1 : 2); }
+
+/* ===== Demo data (today is 11. 10. 2026, all amounts CZK) ===== */
+var TODAY = D(2026, 10, 11);
+var FIRST_BUY = D(2021, 3, 3);
+var N = dayDiff(FIRST_BUY, TODAY) + 1;
+function dayAt(i) { return new Date(FIRST_BUY.getFullYear(), FIRST_BUY.getMonth(), FIRST_BUY.getDate() + i); }
+function idxOf(d) { return Math.max(0, Math.min(N - 1, dayDiff(FIRST_BUY, d))); }
+var J = idxOf(D(2026, 1, 1));
+
+/* A tag group is one way to split the portfolio: a position has at most one tag per group.
+   Tags without a group are free labels: they overlap, filter and appear in the tags table, but
+   the portfolio is never split by them. */
+var GROUPS = [
+  { id: 'strategy', label: 'Strategie', none: 'Bez štítku', tags: [{ id: 'growth', name: 'Růst' }, { id: 'div', name: 'Dividendy' }, { id: 'value', name: 'Hodnota' }] },
+  { id: 'region', label: 'Region', none: 'Bez štítku', tags: [{ id: 'usa', name: 'USA' }, { id: 'eu', name: 'Evropa' }, { id: 'world', name: 'Svět' }] }
+];
+var FREE = { id: 'free', label: 'Štítky', free: true, tags: [{ id: 'core', name: 'Jádro' }, { id: 'esg', name: 'ESG' }] };
+/* tags in assignment order; the migration has left at most one tag per group (ČEZ had Dividendy and Hodnota, kept Dividendy) */
+var POS = [
+  { t: 'VOO', n: 'Vanguard S&P 500 ETF', v: 280107, g: 70.0, ytd: 9.8, beta: 1, vol: 0.002, tags: ['div', 'world', 'core'], div: 2908, sector: null, cur: 'USD' },
+  { t: 'AAPL', n: 'Apple Inc.', v: 183018, g: 89.5, ytd: 6.1, beta: 1.15, vol: 0.009, tags: ['growth', 'usa'], div: 0, sector: 'Technologie', cur: 'USD' },
+  { t: 'NVDA', n: 'NVIDIA Corporation', v: 149580, g: 145.7, ytd: 24.5, beta: 1.6, vol: 0.016, tags: ['growth', 'usa'], div: 916, sector: 'Technologie', cur: 'USD' },
+  { t: 'MSFT', n: 'Microsoft Corporation', v: 139630, g: 60.8, ytd: 8.0, beta: 1.05, vol: 0.008, tags: ['div', 'usa', 'core', 'esg'], div: 1865, sector: 'Technologie', cur: 'USD' },
+  { t: 'ASML', n: 'ASML Holding', v: 96400, g: 31.2, ytd: 3.4, beta: 1.3, vol: 0.012, tags: ['growth', 'eu', 'esg'], div: 420, sector: 'Technologie', cur: 'EUR' },
+  { t: 'BRK.B', n: 'Berkshire Hathaway B', v: 88900, g: 22.4, ytd: 4.2, beta: 0.85, vol: 0.006, tags: ['value', 'usa', 'core'], div: 0, sector: 'Finance', cur: 'USD' },
+  { t: 'NESN', n: 'Nestlé', v: 72300, g: -4.6, ytd: -9.8, beta: 0.6, vol: 0.007, tags: ['div', 'eu', 'esg'], div: 2140, sector: 'Spotřební zboží', cur: 'CHF' },
+  { t: 'CEZ', n: 'ČEZ', v: 64200, g: 38.9, ytd: 7.1, beta: 0.7, vol: 0.009, tags: ['div', 'eu'], div: 3310, sector: 'Veřejné služby', cur: 'CZK' },
+  { t: 'EWG.L', n: 'W.A.G Payment Solutions', v: 21300, g: 4.2, ytd: -14.0, beta: 1.1, vol: 0.02, tags: [], div: 0, sector: 'Finance', cur: 'GBP' }
+];
+var BY_T = {}; POS.forEach(function (p) { BY_T[p.t] = p; });
+
+/* Automatic groups, built from the quote data: no tagging needed */
+var AUTO = [
+  { id: 'sector', label: 'Sektor', auto: true, none: 'Bez sektoru', key: function (p) { return p.sector ? 'sec:' + p.sector : null; }, name: function (p) { return p.sector; } },
+  { id: 'currency', label: 'Měna', auto: true, none: 'Bez měny', key: function (p) { return 'cur:' + p.cur; }, name: function (p) { return p.cur; } }
+];
+AUTO.forEach(function (g) {
+  var seen = {}; g.tags = [];
+  POS.forEach(function (p) { var k = g.key(p); if (k && !seen[k]) { seen[k] = true; g.tags.push({ id: k, name: g.name(p), cur: g.id === 'currency' ? p.cur : null }); } });
+});
+AUTO = AUTO.filter(function (g) { return g.tags.length >= 2; });
+var COMPARE = GROUPS.concat(AUTO);
+var TAGS = {}; GROUPS.concat([FREE]).concat(AUTO).forEach(function (g) { g.tags.forEach(function (t) { t.group = g; TAGS[t.id] = t; }); });
+function groupById(id) { return COMPARE.filter(function (g) { return g.id === id; })[0]; }
+function groupTags(p, g) { return p.tags.filter(function (id) { return TAGS[id] && TAGS[id].group === g; }); }
+/* The tag a position counts under in a group: the only one, or the first assigned while an
+   older conflict is unresolved */
+function memberOf(p, g) {
+  if (g.auto) { var k = g.key(p); return k ? [k] : []; }
+  if (g.free) return groupTags(p, g);
+  return groupTags(p, g).slice(0, 1);
+}
+function conflicts() {
+  var out = [];
+  POS.forEach(function (p) { GROUPS.forEach(function (g) { var ts = groupTags(p, g); if (ts.length > 1) out.push({ p: p, g: g, tags: ts }); }); });
+  return out;
+}
+
+/* ===== Daily price history: one path per position, index 1 = today =====
+   A common market factor plus the position's own noise, bridged so that the return this year
+   and the return before it match the demo figures. Every period is a slice of the same history. */
+function bridgedPath(seed, beta, vol, pre, ytd, market) {
+  var r = rng(seed), L = [0], acc = 0, d;
+  for (d = 1; d < N; d++) { acc += (market ? beta * market[d] : 0) + (r() + r() + r() - 1.5) * 2 * vol; L.push(acc); }
+  var k1 = (Math.log(1 + pre / 100) - (L[J] - L[0])) / J, k2 = (Math.log(1 + ytd / 100) - (L[N - 1] - L[J])) / (N - 1 - J), out = new Array(N);
+  for (d = 0; d < N; d++) out[d] = L[d] + (d <= J ? k1 * d : k1 * J + k2 * (d - J));
+  var end = out[N - 1];
+  for (d = 0; d < N; d++) out[d] = Math.exp(out[d] - end);
+  return out;
+}
+var MARKET = (function () { var r = rng('market'), m = [0]; for (var d = 1; d < N; d++) m.push((r() + r() + r() - 1.5) * 2 * 0.0072); return m; })();
+POS.forEach(function (p) { p.I = bridgedPath('pos|' + p.t, p.beta, p.vol, ((1 + p.g / 100) / (1 + p.ytd / 100) - 1) * 100, p.ytd, MARKET); });
+var INDEXES = [
+  { id: 'sp500', name: 'S&P 500', via: 'VOO', I: BY_T.VOO.I },
+  { id: 'msci', name: 'MSCI World', via: 'IWDA', I: bridgedPath('msci', 0.95, 0.002, 48, 8.9, MARKET) }
+];
+/* Koruna price of one unit of each currency, index 1 = today */
+var FX_PRE = { USD: 3.0, EUR: -1.0, CHF: 8.0, GBP: -4.0 }, FX_YTD = { USD: -4.1, EUR: -0.6, CHF: 1.2, GBP: -2.3 };
+var FXP = { CZK: null };
+Object.keys(FX_YTD).forEach(function (c) { FXP[c] = bridgedPath('fx|' + c, 0, 0.0038, FX_PRE[c], FX_YTD[c], null); });
+
+/* ===== Periods ===== */
+var PRESETS = [
+  { id: '3m', label: '3 měsíce' }, { id: 'ytd', label: 'Letos' }, { id: '1y', label: 'Rok' },
+  { id: '3y', label: '3 roky' }, { id: 'all', label: 'Vše' }, { id: 'custom', label: 'Vlastní' }
+];
+function presetFrom(id) {
+  if (id === '3m') return addMonths(TODAY, -3);
+  if (id === 'ytd') return D(2026, 1, 1);
+  if (id === '1y') return addMonths(TODAY, -12);
+  if (id === '3y') return addMonths(TODAY, -36);
+  return FIRST_BUY;
+}
+
+/* ===== State ===== */
+var state = { group: 'strategy', period: 'ytd', custom: null, filters: {}, ring: false, index: null, cmode: 'pos', rangeError: null };
+function rangeOf() {
+  if (state.period === 'custom' && state.custom) return { from: state.custom.from, to: state.custom.to, custom: true };
+  return { from: presetFrom(state.period), to: TODAY, custom: false };
+}
+function filterGroups() { return GROUPS.concat([FREE]); }
+function chosenIds() { return Object.keys(state.filters).map(function (k) { return state.filters[k]; }).filter(Boolean); }
+function selected() {
+  return POS.filter(function (p) {
+    return filterGroups().every(function (g) { var id = state.filters[g.id]; return !id || memberOf(p, g).indexOf(id) >= 0; });
+  });
+}
+
+/* ===== Model for the current state ===== */
+var COLORS = ['var(--s1)', 'var(--s2)', 'var(--s3)', 'var(--s4)'];
+function sampleGrid(a, b) { var span = b - a, step = span <= 420 ? 1 : (span <= 1300 ? 3 : 7), out = []; for (var d = a; d < b; d += step) out.push(d); out.push(b); return out; }
+function drawdown(v) { var peak = -Infinity; return v.map(function (x) { var ix = 100 + x; peak = Math.max(peak, ix); return (ix / peak - 1) * 100; }); }
+function minTo(arr, i) { var m = 0; for (var k = 0; k <= i; k++) m = Math.min(m, arr[k]); return m; }
+
+function model() {
+  var g = groupById(state.group), sel = selected(), rg = rangeOf(), a = idxOf(rg.from), b = idxOf(rg.to);
+  var gi = sampleGrid(a, b), dates = gi.map(dayAt), n = gi.length;
+  var baseAll = sum(POS, function (p) { return p.v * p.I[a]; });
+  var endVal = function (p) { return p.v * p.I[b]; };
+  var totalEnd = sum(POS, endVal), selEnd = sum(sel, endVal);
+  function line(ps) { var base = sum(ps, function (p) { return p.v * p.I[a]; }); return gi.map(function (d) { return (sum(ps, function (p) { return p.v * p.I[d]; }) / base - 1) * 100; }); }
+  function mk(id, name, tag, ps) {
+    var v = line(ps), value = sum(ps, endVal);
+    return { id: id, name: name, tag: tag, ps: ps, v: v, dd: drawdown(v), value: value, share: selEnd ? value / selEnd : 0, count: ps.length,
+      c: gi.map(function (d) { return sum(ps, function (p) { return p.v * (p.I[d] - p.I[a]); }) / baseAll * 100; }) };
+  }
+  var byTag = {}, noneList = [];
+  sel.forEach(function (p) { var m = memberOf(p, g); if (!m.length) noneList.push(p); else (byTag[m[0]] = byTag[m[0]] || []).push(p); });
+  var rows = g.tags.filter(function (t) { return byTag[t.id]; }).map(function (t) { return mk(t.id, t.name, t, byTag[t.id]); });
+  rows.sort(function (x, y) { return y.value - x.value; });
+  rows.forEach(function (r, i) { r.drawn = i < 4; r.color = i < 4 ? COLORS[i] : null; });
+  var none = noneList.length ? mk('none', g.none, null, noneList) : null;
+  if (none) none.quiet = true;
+  var pv = line(POS);
+  var portfolio = { id: 'portfolio', name: 'Celé portfolio', color: 'var(--chart-line)', dashed: true, drawn: true, v: pv, dd: drawdown(pv) };
+  var index = null;
+  if (state.index) {
+    var ix = INDEXES.filter(function (x) { return x.id === state.index; })[0], iv = gi.map(function (d) { return (ix.I[d] / ix.I[a] - 1) * 100; });
+    index = { id: 'index', name: ix.name, via: ix.via, color: 'var(--ink-4)', dotted: true, drawn: true, v: iv, dd: drawdown(iv) };
+  }
+  var pos = {};
+  POS.forEach(function (p) { pos[p.t] = { r: (p.I[b] / p.I[a] - 1) * 100, c: p.v * (p.I[b] - p.I[a]) / baseAll * 100, end: endVal(p) }; });
+  return { g: g, sel: sel, rg: rg, a: a, b: b, gi: gi, dates: dates, n: n, filterActive: chosenIds().length > 0, rows: rows, none: none, portfolio: portfolio, index: index,
+    pos: pos, totalEnd: totalEnd, selEnd: selEnd, fm: flowModel(gi, dates, pv, totalEnd), atToday: b === N - 1 };
+}
+
+/* ===== Deposits and market: a value path consistent with the portfolio TWR ===== */
+function flowModel(gi, dates, port, Vend) {
+  var P = port.map(function (v) { return 1 + v / 100; }), n = gi.length, from = dates[0], to = dates[n - 1], span = gi[n - 1] - gi[0];
+  var r = rng('flows|' + gi[0] + '|' + gi[n - 1]), flows = [], sold = false;
+  var d = new Date(from.getFullYear(), from.getMonth(), 5);
+  if (d <= from) d = new Date(from.getFullYear(), from.getMonth() + 1, 5);
+  for (; d <= to; d = new Date(d.getFullYear(), d.getMonth() + 1, 5)) {
+    var amt = 0.6 + 0.8 * r();
+    if (r() < 0.14) amt += 2 + 2 * r();
+    if (!sold && flows.length > 2 && r() < 0.1) { amt = -(2.4 + r()); sold = true; }
+    flows.push({ d: d, a: amt });
+  }
+  if (n > 12) {
+    var peak = Math.floor(n * 0.2);
+    for (var q = peak; q < Math.floor(n * 0.85); q++) if (port[q] > port[peak]) peak = q;
+    flows.push({ d: dates[peak], a: 4.2 });
+    flows.sort(function (x, y) { return x.d - y.d; });
+  }
+  var idx = 0;
+  flows.forEach(function (f) { while (idx < n - 1 && dates[idx] < f.d) idx++; f.i = Math.max(1, idx); });
+  var Pn = P[n - 1], V0 = gi[0] === 0 ? 42000 : Vend * Math.max(0.4, 1 - 0.13 * span / 283) / Pn;
+  var S = sum(flows, function (f) { return f.a * Pn / P[f.i]; }), k = S > 0 ? (Vend - V0 * Pn) / S : 0;
+  if (k <= 0) { k = 0; V0 = Vend / Pn; }
+  var dep = []; for (var j = 0; j < n; j++) dep.push(0);
+  flows.forEach(function (f) { dep[f.i] += f.a * k; });
+  var V = [V0], F = [0];
+  for (var i = 1; i < n; i++) { V.push(V[i - 1] * P[i] / P[i - 1] + dep[i]); F.push(F[i - 1] + dep[i]); }
+  return { V: V, F: F, dep: dep, V0: V0 };
+}
+/* Money-weighted return to point i (modified Dietz, cumulative like the TWR) */
+function mwrAt(fm, dates, i) {
+  if (i === 0) return 0;
+  var T = dates[i] - dates[0], wsum = 0;
+  for (var k = 1; k <= i; k++) if (fm.dep[k]) wsum += fm.dep[k] * (dates[i] - dates[k]) / T;
+  return (fm.V[i] - fm.V0 - fm.F[i]) / (fm.V0 + wsum) * 100;
+}
+function buckets(m) {
+  var span = m.b - m.a, kind = span <= 100 ? 'week' : (span <= 450 ? 'month' : (span <= 1300 ? 'quarter' : 'year')), out = [], cur = null, dates = m.dates, fm = m.fm;
+  function keyOf(d) {
+    if (kind === 'week') return Math.floor(dayDiff(dates[0], d) / 7);
+    if (kind === 'month') return d.getFullYear() * 12 + d.getMonth();
+    if (kind === 'quarter') return d.getFullYear() * 4 + Math.floor(d.getMonth() / 3);
+    return d.getFullYear();
+  }
+  function labelOf(d) {
+    if (kind === 'week') return d.getDate() + '. ' + (d.getMonth() + 1) + '.';
+    if (kind === 'month') return MON[d.getMonth()] + (d.getMonth() === 0 || !out.length ? ' ' + String(d.getFullYear()).slice(2) : '');
+    if (kind === 'quarter') return (Math.floor(d.getMonth() / 3) + 1) + '. Q ' + String(d.getFullYear()).slice(2);
+    return String(d.getFullYear());
+  }
+  for (var i = 1; i < dates.length; i++) {
+    var key = keyOf(dates[i]);
+    if (!cur || cur.key !== key) { cur = { key: key, label: labelOf(dates[i]), from: dates[i], start: i - 1, end: i, dep: 0 }; out.push(cur); }
+    cur.end = i; cur.to = dates[i]; cur.dep += fm.dep[i];
+  }
+  out.forEach(function (bk) { bk.mkt = fm.V[bk.end] - fm.V[bk.start] - bk.dep; });
+  return { kind: kind, list: out };
+}
+
+/* ===== Chart: TWR on top, drawdown under it, one time axis, drag to pick a range ===== */
+function axisTicks(t0, t1) {
+  var days = dayDiff(t0, t1), out = [], d;
+  if (days <= 110) {
+    d = new Date(t0.getFullYear(), t0.getMonth(), 1);
+    while (d <= t1) {
+      [1, 15].forEach(function (day) { var x = new Date(d.getFullYear(), d.getMonth(), day); if (x > t0 && x < t1) out.push({ d: x, label: day + '. ' + (x.getMonth() + 1) + '.' }); });
+      d = new Date(d.getFullYear(), d.getMonth() + 1, 1);
+    }
+  } else if (days <= 420) {
+    d = new Date(t0.getFullYear(), t0.getMonth() + 1, 1);
+    while (d < t1) { out.push({ d: d, label: MON[d.getMonth()] + (d.getMonth() === 0 ? ' ' + String(d.getFullYear()).slice(2) : ''), year: d.getMonth() === 0 }); d = new Date(d.getFullYear(), d.getMonth() + 1, 1); }
+  } else if (days <= 1300) {
+    d = new Date(t0.getFullYear(), Math.ceil((t0.getMonth() + 1) / 3) * 3, 1);
+    while (d < t1) { out.push({ d: d, label: MON[d.getMonth()] + ' ' + String(d.getFullYear()).slice(2), year: d.getMonth() === 0 }); d = new Date(d.getFullYear(), d.getMonth() + 3, 1); }
+  } else {
+    d = new Date(t0.getFullYear() + 1, 0, 1);
+    while (d < t1) { out.push({ d: d, label: String(d.getFullYear()), year: true }); d = new Date(d.getFullYear() + 1, 0, 1); }
+  }
+  return out;
+}
+var H1 = 280, GAP = 34, H2 = 84;
+function drawTwr(el, dates, lines, opts) {
+  var W = el.clientWidth, H = H1 + GAP + H2, padR = 128, padT = 14, n = dates.length;
+  var lo = 0, hi = 0, dlo = 0;
+  lines.forEach(function (s) { s.v.forEach(function (v) { lo = Math.min(lo, v); hi = Math.max(hi, v); }); s.dd.forEach(function (v) { dlo = Math.min(dlo, v); }); });
+  var span = hi - lo || 1; lo -= span * 0.04; hi += span * 0.06;
+  var step = niceStep(hi - lo, 5); lo = Math.floor(lo / step) * step; hi = Math.ceil(hi / step) * step;
+  var dstep = niceStep(Math.max(1, -dlo), 2); dlo = Math.floor(dlo / dstep) * dstep; if (dlo === 0) dlo = -dstep;
+  var t0 = dates[0].getTime(), t1 = dates[n - 1].getTime();
+  var x = function (i) { return (dates[i].getTime() - t0) / (t1 - t0) * (W - padR); };
+  var xd = function (d) { return (d.getTime() - t0) / (t1 - t0) * (W - padR); };
+  var y = function (v) { return padT + (1 - (v - lo) / (hi - lo)) * (H1 - padT - 4); };
+  var top2 = H1 + GAP, y2 = function (v) { return top2 + (v / dlo) * (H2 - 2); };
+  var dg = tickDigits(step), grid = '', labs = '', gv;
+  for (gv = lo; gv <= hi + 1e-9; gv += step) {
+    var gy = y(gv).toFixed(1), zero = Math.abs(gv) < 1e-9;
+    grid += '<path d="M0 ' + gy + 'H' + (W - padR + 6) + '" stroke="' + (zero ? 'var(--line-strong)' : 'var(--chart-grid)') + '" fill="none"/>';
+    labs += '<text x="' + (W - padR + 10) + '" y="' + (+gy + 3) + '" fill="' + (zero ? 'var(--ink-3)' : 'var(--chart-axis)') + '" font-size="10" font-weight="' + (zero ? 600 : 500) + '">' + pct(gv, dg) + '</text>';
+  }
+  var ddg = tickDigits(dstep);
+  for (gv = 0; gv >= dlo - 1e-9; gv -= dstep) {
+    var ry = y2(gv).toFixed(1), z = Math.abs(gv) < 1e-9;
+    grid += '<path d="M0 ' + ry + 'H' + (W - padR + 6) + '" stroke="' + (z ? 'var(--line-strong)' : 'var(--chart-grid)') + '" fill="none"/>';
+    labs += '<text x="' + (W - padR + 10) + '" y="' + (+ry + 3) + '" fill="' + (z ? 'var(--ink-3)' : 'var(--chart-axis)') + '" font-size="10" font-weight="' + (z ? 600 : 500) + '">' + (z ? '0 %' : '− ' + num(-gv, ddg) + ' %') + '</text>';
+  }
+  var panel = '<text x="0" y="' + (top2 - 12) + '" fill="var(--ink-4)" font-size="9.5" font-weight="700" letter-spacing=".9">PROPAD OD MAXIMA</text>';
+  var ticks = axisTicks(dates[0], dates[n - 1]), tickMarks = '';
+  ticks.forEach(function (t) { tickMarks += '<path d="M' + xd(t.d).toFixed(1) + ' ' + H + 'v5" stroke="var(--chart-axis)" stroke-opacity=".7"/>'; });
+  var dash = function (s) { return s.dashed ? ' stroke-dasharray="4 4" stroke-linecap="butt"' : (s.dotted ? ' stroke-dasharray="0.1 4" stroke-linecap="round"' : ' stroke-linecap="round"'); };
+  var paths = '', rings = '', ddArea = '';
+  lines.forEach(function (s) {
+    var d = '', d2 = '';
+    s.v.forEach(function (v, i) { d += (i ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(v).toFixed(1); });
+    s.dd.forEach(function (v, i) { d2 += (i ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y2(v).toFixed(1); });
+    if (s.id === 'portfolio') ddArea = '<path d="' + d2 + 'L' + x(n - 1).toFixed(1) + ' ' + top2 + 'L0 ' + top2 + 'Z" fill="var(--chart-area)" fill-opacity=".75"/>';
+    var wd = s.dotted ? 2.5 : (s.dashed ? 2 : 2.25);
+    paths += '<path class="ln" data-id="' + s.id + '" d="' + d + '" fill="none" stroke="' + s.color + '" stroke-width="' + wd + '"' + dash(s) + ' stroke-linejoin="round"/>';
+    paths += '<path class="ln" data-id="' + s.id + '" d="' + d2 + '" fill="none" stroke="' + s.color + '" stroke-width="' + (s.dotted ? 2.2 : 1.5) + '"' + dash(s) + ' stroke-linejoin="round"/>';
+    rings += '<circle class="ev-ring" data-id="' + s.id + '" cx="' + x(n - 1).toFixed(1) + '" cy="' + y(s.v[n - 1]).toFixed(1) + '" r="4" fill="#fff" stroke="' + s.color + '" stroke-width="2"/>';
+  });
+  el.innerHTML = '<svg width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '">' + grid + labs + panel + tickMarks + ddArea + paths + '<g class="hover"></g>' + rings +
+    '<rect class="hit" x="0" y="0" width="' + (W - padR) + '" height="' + H + '" fill="transparent"/></svg><div class="twr__labels" style="width:' + padR + 'px;height:' + H1 + 'px"></div>' +
+    pill(9, 'np--tl', 'top:' + (top2 - 26) + 'px;left:-14px');
+  var labels = lines.map(function (s) { return { s: s, yy: y(s.v[n - 1]) }; }).sort(function (p, q) { return p.yy - q.yy; });
+  for (var k = 1; k < labels.length; k++) if (labels[k].yy - labels[k - 1].yy < 14) labels[k].yy = labels[k - 1].yy + 14;
+  $('.twr__labels', el).innerHTML = labels.map(function (l) {
+    return '<span class="twr__label' + (l.s.dashed ? ' is-ref' : '') + (l.s.dotted ? ' is-idx' : '') + '" data-id="' + l.s.id + '" style="top:' + l.yy.toFixed(1) + 'px"><i style="border-color:' + l.s.color + '"></i>' + esc(l.s.name) + ' ' + pct(l.s.v[n - 1]) + '</span>';
+  }).join('');
+  if (opts.axisEl) {
+    var html = '', lastX = W - padR;
+    opts.axisEl.style.marginRight = padR + 'px';
+    ticks.forEach(function (t) { var tx = xd(t.d); if (tx > lastX - 54 || tx < 14) return; html += '<span' + (t.year ? ' class="is-year"' : '') + ' style="left:' + tx.toFixed(1) + 'px">' + t.label + '</span>'; });
+    opts.axisEl.innerHTML = html + '<span class="is-last" style="left:' + lastX + 'px">' + opts.lastLabel + '</span>' + pill(2);
+  }
+  var hit = $('.hit', el), hover = $('.hover', el), drag = null;
+  function nearest(ev) { var r = el.getBoundingClientRect(), mx = ev.clientX - r.left, best = 0, bd = Infinity; for (var q = 0; q < n; q++) { var dx = Math.abs(x(q) - mx); if (dx < bd) { bd = dx; best = q; } } return best; }
+  hit.addEventListener('mousedown', function (ev) { ev.preventDefault(); drag = { i0: nearest(ev), i1: null }; hit.classList.add('is-dragging'); });
+  hit.addEventListener('mousemove', function (ev) {
+    var r = el.getBoundingClientRect(), i = nearest(ev), px = x(i);
+    if (drag) {
+      drag.i1 = i;
+      var lo2 = Math.min(drag.i0, i), hi2 = Math.max(drag.i0, i);
+      hover.innerHTML = '<rect x="' + x(lo2).toFixed(1) + '" y="' + padT + '" width="' + Math.max(1, x(hi2) - x(lo2)).toFixed(1) + '" height="' + (H - padT) + '" fill="var(--ink)" fill-opacity=".06"/>' +
+        '<path d="M' + x(lo2).toFixed(1) + ' ' + padT + 'V' + H + 'M' + x(hi2).toFixed(1) + ' ' + padT + 'V' + H + '" stroke="var(--ink-3)" stroke-dasharray="2 3"/>';
+      showTip(ev.clientX, r.top + padT + 8, '<b>' + fmtDay(dates[lo2]) + ' – ' + fmtDay(dates[hi2]) + '</b><small>' + dayDiff(dates[lo2], dates[hi2]) + ' dní · pusťte myš a období se nastaví</small>');
+      return;
+    }
+    hover.innerHTML = '<path d="M' + px + ' ' + padT + 'V' + H + '" stroke="var(--ink-4)" stroke-dasharray="2 3"/>' + lines.map(function (s) {
+      return '<circle cx="' + px + '" cy="' + y(s.v[i]) + '" r="3.5" fill="#fff" stroke="' + s.color + '" stroke-width="2"/><circle cx="' + px + '" cy="' + y2(s.dd[i]) + '" r="3" fill="#fff" stroke="' + s.color + '" stroke-width="1.5"/>';
+    }).join('');
+    var sorted = lines.slice().sort(function (p, q) { return q.v[i] - p.v[i]; }), port = lines.filter(function (s) { return s.id === 'portfolio'; })[0];
+    showTip(ev.clientX, r.top + padT + 8, '<b>' + fmtDay(dates[i]) + '</b>' + sorted.map(function (s) { return '<small>' + esc(s.name) + ' ' + pct(s.v[i]) + '</small>'; }).join('') +
+      (port ? '<small>Propad portfolia ' + ddText(port.dd[i]) + '</small>' : ''));
+    if (opts.onScrub) opts.onScrub(i);
+  });
+  hit.addEventListener('mouseup', function () {
+    if (!drag) return;
+    var i0 = Math.min(drag.i0, drag.i1 == null ? drag.i0 : drag.i1), i1 = Math.max(drag.i0, drag.i1 == null ? drag.i0 : drag.i1);
+    drag = null; hit.classList.remove('is-dragging'); hideTip();
+    if (dayDiff(dates[i0], dates[i1]) >= 2 && opts.onRange) opts.onRange(dates[i0], dates[i1]);
+  });
+  hit.addEventListener('mouseleave', function () { drag = null; hit.classList.remove('is-dragging'); hover.innerHTML = ''; hideTip(); if (opts.onLeave) opts.onLeave(); });
+  $$('.twr__label', el).forEach(function (l) {
+    l.addEventListener('mouseenter', function () { setHot(l.dataset.id); });
+    l.addEventListener('mouseleave', function () { setHot(null); });
+  });
+}
+function setHot(id) {
+  var el = $('#twr'); if (!el) return;
+  el.classList.toggle('is-dim', !!id);
+  $$('.ln, .ev-ring, .twr__label', el).forEach(function (p) { p.classList.toggle('is-hot', p.dataset.id === id); });
+  $$('.board__row', $('#page')).forEach(function (r) { r.classList.toggle('is-hot', !!id && r.dataset.id === id); });
+}
+
+/* ===== Bars: net deposits and market change per bucket ===== */
+function drawFlowBars(el, axisEl, list) {
+  var W = el.clientWidth, H = Math.max(168, el.clientHeight), padR = 58, padT = 10, padB = 4, nb = list.length;
+  if (!nb) { el.innerHTML = ''; axisEl.innerHTML = ''; return; }
+  var lo = 0, hi = 0; list.forEach(function (bk) { lo = Math.min(lo, bk.dep, bk.mkt); hi = Math.max(hi, bk.dep, bk.mkt); });
+  var step = niceStep((hi - lo) || 1, 4); lo = Math.floor(lo / step) * step; hi = Math.ceil(hi / step) * step; if (hi <= 0) hi = step;
+  var y = function (v) { return padT + (1 - (v - lo) / (hi - lo)) * (H - padT - padB); };
+  var grid = '', labs = '';
+  for (var gv = lo; gv <= hi + 1; gv += step) {
+    var gy = y(gv).toFixed(1), z = Math.abs(gv) < 1;
+    grid += '<path d="M0 ' + gy + 'H' + (W - padR + 6) + '" stroke="' + (z ? 'var(--line-strong)' : 'var(--chart-grid)') + '" fill="none"/>';
+    labs += '<text x="' + (W - padR + 10) + '" y="' + (+gy + 3) + '" fill="' + (z ? 'var(--ink-3)' : 'var(--chart-axis)') + '" font-size="10" font-weight="' + (z ? 600 : 500) + '">' + kcTick(gv) + '</text>';
+  }
+  var slot = (W - padR) / nb, bw = Math.max(3, Math.min(13, slot * 0.3)), base = y(0), bars = '';
+  function bar(v, bx, fill) { var top = Math.min(y(v), base), h = Math.max(1, Math.abs(y(v) - base)); return '<rect x="' + bx.toFixed(1) + '" y="' + top.toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + h.toFixed(1) + '" rx="2" fill="' + fill + '"/>'; }
+  list.forEach(function (bk, i) {
+    var cx = slot * i + slot / 2;
+    bars += '<g class="slot" data-i="' + i + '"><rect class="bg" x="' + (slot * i + 1).toFixed(1) + '" y="0" width="' + (slot - 2).toFixed(1) + '" height="' + H + '" rx="4" fill="transparent"/>' +
+      bar(bk.dep, cx - bw - 1, 'var(--s3)') + bar(bk.mkt, cx + 1, 'var(--s1)') + '</g>';
+  });
+  el.innerHTML = '<svg width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '">' + grid + labs + bars + '</svg>';
+  var every = Math.max(1, Math.ceil(nb * 46 / (W - padR))), html = '';
+  list.forEach(function (bk, i) { if (i % every === 0) html += '<span style="left:' + (slot * i + slot / 2).toFixed(1) + 'px">' + bk.label + '</span>'; });
+  axisEl.style.marginRight = (padR + 17) + 'px';
+  axisEl.innerHTML = html;
+  $$('.slot', el).forEach(function (s) {
+    s.addEventListener('mouseenter', function () {
+      var bk = list[+s.dataset.i], r = s.getBoundingClientRect();
+      showTip(r.left + r.width / 2, r.top + 4, '<b>' + fmtDay(bk.from) + ' – ' + fmtDay(bk.to) + '</b><small>Čisté vklady ' + kcSigned(bk.dep) + '</small><small>Zhodnocení trhu ' + kcSigned(bk.mkt) + '</small><small>Změna hodnoty ' + kcSigned(bk.dep + bk.mkt) + '</small>');
+    });
+    s.addEventListener('mouseleave', hideTip);
+  });
+}
+
+/* ===== Render ===== */
+function topbarHTML() { return '<div class="topbar"><span class="crumb"><a href="#">Nástroje</a><i>›</i><b>Analýza akcií</b></span><span class="status status--fresh">Data aktuální</span></div>'; }
+function headHTML() {
+  return '<div class="page-head"><div><div class="eyebrow">Portfolio</div><h1>Analýza akcií</h1><p>Rozdělte pozice vlastními štítky a porovnejte, jak si jednotlivé skupiny vedou.</p></div>' +
+    '<div class="actions"><button type="button" class="btn">' + icon('tag', 14) + 'Spravovat štítky</button><button type="button" class="btn btn--primary" data-assign="">' + icon('plus', 14) + 'Přiřadit štítky</button></div></div>';
+}
+function filtersHTML(m) {
+  var untagged = POS.filter(function (p) { return !p.tags.length; });
+  var chosen = filterGroups().map(function (g) { var id = state.filters[g.id]; return id ? TAGS[id].name : null; }).filter(Boolean);
+  var groups = filterGroups().map(function (g) {
+    var cur = state.filters[g.id] || 'all';
+    return '<div class="filters__group"><span class="eyebrow"' + (g.free ? ' title="Štítky bez skupiny se mohou překrývat"' : '') + '>' + esc(g.label) + '</span><button type="button" class="chip' + (cur === 'all' ? ' is-active' : '') + '" data-filter="' + g.id + '" data-tag="all">Vše</button>' +
+      g.tags.map(function (t) { return '<button type="button" class="chip' + (cur === t.id ? ' is-active' : '') + '" data-filter="' + g.id + '" data-tag="' + t.id + '">' + esc(t.name) + '</button>'; }).join('') + '</div>';
+  }).join('');
+  var summary = m.filterActive
+    ? '<b>' + m.sel.length + ' z ' + POS.length + ' pozic</b> · ' + kc(m.selEnd) + '<button type="button" class="link" data-act="clear">Zrušit výběr</button>'
+    : '<b>Všech ' + POS.length + ' pozic</b> · ' + kc(m.totalEnd);
+  var hint = m.filterActive
+    ? 'V analýze jsou jen pozice se ' + (chosen.length > 1 ? 'štítky ' : 'štítkem ') + chosen.map(function (x) { return '<b>' + esc(x) + '</b>'; }).join(' a zároveň ') + '. Horní čísla karty výkonnosti a čárkovaná čára zůstávají za celé portfolio.'
+    : 'Klepněte na štítek a v analýze zůstanou jen pozice, které ho mají. Štítky ze dvou skupin musí pozice mít oba.';
+  return '<section class="card card--flat scope has-np">' + pill(11) +
+    '<div class="scope__head"><h2>Které pozice analyzovat</h2><span class="scope__sum">' + summary + '</span></div>' +
+    '<div class="filters">' + groups + '</div>' +
+    '<div class="scope__foot"><span class="scope__hint">' + hint + '</span>' +
+    (untagged.length ? '<span class="filters__untagged">' + untagged.length + ' ' + pl(untagged.length, 'pozice bez štítku', 'pozice bez štítku', 'pozic bez štítku') + '<button type="button" class="link" data-assign="' + untagged.map(function (p) { return p.t; }).join(',') + '">Přiřadit štítky →</button></span>' : '') +
+    '</div></section>';
+}
+/* What the lines add up: one sentence under "Rozdělit podle" */
+function splitCaption(m) {
+  var g = m.g, drawn = m.rows.filter(function (r) { return r.drawn; }), more = m.rows.length > drawn.length;
+  if (!drawn.length) return icon('info', 13) + '<span>Ve výběru není žádná pozice se štítkem skupiny ' + esc(g.label) + '. Čárkovaně celé portfolio.</span>';
+  var what = g.id === 'sector' ? 'pozice jednoho sektoru' : (g.id === 'currency' ? 'pozice v jedné měně' : 'pozice s jedním štítkem skupiny ' + esc(g.label));
+  return icon('info', 13) + '<span>Každá čára sčítá ' + (m.filterActive ? 'vybrané ' : '') + what + ': ' + drawn.map(function (r) { return '<b>' + esc(r.name) + '</b>'; }).join(', ') + '. Čárkovaně celé portfolio.' +
+    (more ? ' Další jsou jen v tabulce pod grafem.' : '') + (g.id === 'sector' ? ' Sektor se bere z údajů o akcii.' : '') + (g.id === 'currency' ? ' Výnos je v korunách.' : '') + '</span>';
+}
+function heroHTML(m) {
+  var segBtn = function (g) { return '<button type="button" class="seg__btn' + (g.id === state.group ? ' is-active' : '') + '" data-value="' + g.id + '"' + (g.auto ? ' title="Automaticky z údajů o akcii"' : '') + '>' + esc(g.label) + '</button>'; };
+  var groupSeg = GROUPS.map(segBtn).join('') + '<i class="seg__sep" aria-hidden="true"></i>' + AUTO.map(segBtn).join('');
+  var periodSeg = PRESETS.map(function (p) { return '<button type="button" class="seg__btn' + (p.id === state.period ? ' is-active' : '') + '" data-value="' + p.id + '">' + p.label + '</button>'; }).join('');
+  var ix = state.index ? INDEXES.filter(function (x) { return x.id === state.index; })[0] : null;
+  var menu = '<div class="menu" id="idx-menu" hidden>' +
+    [{ id: null, name: 'Bez srovnání' }].concat(INDEXES).map(function (x) {
+      return '<button type="button" class="menu__item" data-index="' + (x.id || '') + '"><span class="ic-check">' + (state.index === x.id ? icon('check', 13) : '') + '</span>' + esc(x.name) + (x.via ? '<small>přes ' + x.via + '</small>' : '') + '</button>';
+    }).join('') + '</div>';
+  var range = '';
+  if (state.period === 'custom') {
+    range = '<div class="period-range has-np"><div class="period-range__inputs"><span class="ctl-label">Od</span>' +
+      '<input class="input" type="date" id="rg-from" value="' + iso(m.rg.from) + '" min="' + iso(FIRST_BUY) + '" max="' + iso(TODAY) + '" aria-label="Od">' +
+      '<span class="arrow">→</span><span class="ctl-label">Do</span><input class="input" type="date" id="rg-to" value="' + iso(m.rg.to) + '" min="' + iso(FIRST_BUY) + '" max="' + iso(TODAY) + '" aria-label="Do"></div>' +
+      '<span class="period-range__hint" id="rg-hint"' + (state.rangeError ? ' hidden' : '') + '>Úsek lze vybrat i tažením myší v grafu.</span>' +
+      '<span class="field__error" id="rg-err"' + (state.rangeError ? '' : ' hidden') + '>' + icon('circle-alert', 12) + (state.rangeError ? esc(state.rangeError) : '') + '</span></div>';
+  }
+  return '<section class="card hero hero--twr has-np">' + pill(1) +
+    '<div class="hero__figs">' +
+      '<div class="hero__fig"><div class="hero__label">Časově vážený výnos · celé portfolio' + pill(3, 'np--inline') + '</div>' +
+        '<b class="hero__value num" id="hv-twr"></b><div class="hero__delta" id="hv-delta"></div><div class="hero__when" id="hv-when"></div></div>' +
+      '<div class="hero__fig"><div class="hero__label">Peněžně vážený výnos' + pill(4, 'np--inline') + '</div>' +
+        '<b class="hero__value hero__value--sm num" id="hv-mwr"></b><div class="hero__note" id="hv-mwr-note"></div></div>' +
+      '<div class="hero__fig"><div class="hero__label">Změna hodnoty' + pill(5, 'np--inline') + '</div>' +
+        '<b class="hero__value hero__value--sm num" id="hv-chg"></b><div class="hero__note" id="hv-chg-note"></div></div>' +
+    '</div>' +
+    '<div class="toolbar">' +
+      '<div class="toolbar__group"><span class="ctl-label" title="Na jaké části se vybrané pozice rozdělí: každá část je jedna čára v grafu a jeden řádek v tabulce">Rozdělit podle' + pill(6, 'np--inline') + '</span><div class="seg" id="seg-group">' + groupSeg + '</div></div>' +
+      '<div class="toolbar__group">' +
+        '<span class="menu-host has-np">' + pill(7, 'np--tr') + '<button type="button" class="btn btn--sm' + (ix ? ' is-on' : '') + '" id="idx-btn" aria-haspopup="menu">' + icon('chart-line', 13) + (ix ? 'Index: ' + esc(ix.name) : 'Srovnat s indexem') + icon('chevron-down', 12) + '</button>' + menu + '</span>' +
+        '<span class="ctl-label">Období' + pill(8, 'np--inline') + '</span><div class="seg" id="seg-period">' + periodSeg + '</div>' +
+      '</div>' +
+    '</div>' +
+    '<div class="subbar"><p class="split-cap" id="split-cap">' + splitCaption(m) + '</p>' + range + '</div>' +
+    '<div class="twr has-np" id="twr"></div><div class="taxis has-np" id="taxis"></div>' +
+    '<div class="board has-np" id="board"></div>' +
+  '</section>';
+}
+function fxAt(m, s, k) {
+  var cur = s.tag && s.tag.cur, f = cur && FXP[cur];
+  if (!f) return 0;
+  var nat = ((1 + s.v[k] / 100) * f[m.gi[0]] / f[m.gi[k]] - 1) * 100;
+  return s.v[k] - nat;
+}
+function fxSub(m, s, k) {
+  if (s.tag.cur === 'CZK') return 'bez vlivu kurzu';
+  var e = fxAt(m, s, k);
+  return 'v ' + s.tag.cur + ' ' + pct(s.v[k] - e) + ' · kurz ' + pb(e);
+}
+function boardHTML(m) {
+  var n = m.n - 1, pv = m.portfolio.v[n], g = m.g;
+  var sub = function (s) {
+    if (g.id === 'currency' && s.tag) return '<small data-fx="' + s.id + '">' + fxSub(m, s, n) + '</small>';
+    return '<small>' + s.count + ' ' + pl(s.count, 'pozice', 'pozice', 'pozic') + (s.drawn === false ? ' · bez čáry' : '') + '</small>';
+  };
+  var row = function (s, kind) {
+    var v = s.v[n], swatch = kind === 'portfolio' ? '<i class="sw sw--dash"></i>' : (kind === 'index' ? '<i class="sw sw--dot"></i>' : (s.drawn ? '<i class="sw" style="background:' + s.color + '"></i>' : '<i class="sw sw--none"></i>'));
+    var clickable = s.tag && !s.tag.group.auto, quiet = kind === 'none' || (kind === 'tag' && !s.drawn);
+    var share = s.share != null ? Math.round(s.share * 100) : null;
+    var shareCell = kind === 'portfolio' ? (m.filterActive ? '<span class="dim">—</span>' : '<span class="share"><i class="bar"><i style="width:100%;background:var(--chart-line)"></i></i><span>100 %</span></span>') :
+      (share == null ? '<span class="dim">—</span>' : '<span class="share"><i class="bar"><i style="width:' + share + '%;background:' + (s.drawn ? s.color : 'var(--s-other)') + '"></i></i><span>' + share + ' %</span></span>');
+    var contrib = s.c ? '<span class="r num" data-c="' + s.id + '">' + pb(s.c[n]) + '</span>' : '<span class="r num dim">—</span>';
+    var value = kind === 'portfolio' ? kc(m.totalEnd) : (kind === 'index' ? '<span class="dim">přes ' + s.via + '</span>' : kc(s.value));
+    return '<div class="board__row' + (clickable ? ' is-clickable' : '') + (quiet ? ' is-quiet' : '') + '" data-id="' + s.id + '"' + (clickable ? ' title="Filtrovat: ' + esc(s.name) + '"' : '') + '>' + swatch +
+      '<span class="nm"><b>' + esc(s.name) + '</b>' + (kind === 'portfolio' ? '<small>referenční čára</small>' : (kind === 'index' ? '<small>tečkovaně · srovnání</small>' : sub(s))) + '</span>' +
+      '<span class="r num twr-v ' + signCls(v) + '" data-twr="' + s.id + '">' + pct(v) + '</span>' +
+      '<span class="r num" data-vs="' + s.id + '">' + (kind === 'portfolio' ? '<span class="dim">—</span>' : pb(v - pv)) + '</span>' +
+      contrib + '<span class="r num" data-dd="' + s.id + '">' + ddText(minTo(s.dd, n)) + '</span>' +
+      shareCell + '<span class="r num">' + value + '</span></div>';
+  };
+  var html = '<div class="board__head"><span></span><span>' + esc(g.label) + '</span><span class="r">Výnos za období</span><span class="r">Proti portfoliu</span><span class="r">Příspěvek</span><span class="r">Max. propad</span><span>Podíl na hodnotě' + (m.filterActive ? ' výběru' : '') + '</span><span class="r">' + (m.atToday ? 'Hodnota' : 'K ' + fmtDay(m.rg.to)) + '</span></div>';
+  m.rows.forEach(function (s) { html += row(s, 'tag'); });
+  html += row(m.portfolio, 'portfolio');
+  if (m.index) html += row(m.index, 'index');
+  if (m.none) html += row(m.none, 'none');
+  var cap;
+  if (g.id === 'sector') cap = 'Sektor podle údajů o akcii · ETF sektor nemají a patří do řádku Bez sektoru.';
+  else if (g.id === 'currency') cap = 'Výnos v korunách · pod měnou je výnos v měně pozice a vliv kurzu koruny.';
+  else {
+    cap = 'Každá pozice má ve skupině nejvýš jeden štítek, takže podíly dají 100 % a příspěvky se sečtou na výnos portfolia.';
+    var cs = conflicts().filter(function (c) { return c.g === g; });
+    if (cs.length) cap += ' ' + esc(cs[0].p.n) + ' se zatím počítá jen jako ' + esc(TAGS[cs[0].tags[0]].name) + '.';
+  }
+  if (m.rows.some(function (r) { return !r.drawn; })) cap += ' Graf kreslí nejvýš čtyři čáry, další jsou jen v tabulce.';
+  if (m.filterActive) cap += ' Příspěvek je k výnosu celého portfolia.';
+  return pill(10) + html + '<p class="board__cap has-np">' + (g.auto ? '' : pill(17, 'np--tl', 'top:2px;left:-14px')) + cap + '</p>';
+}
+function heroText(m, i) {
+  var n = i == null ? m.n - 1 : i, pv = m.portfolio.v[n], fm = m.fm;
+  var hv = $('#hv-twr'); hv.textContent = pct(pv); hv.className = 'hero__value num ' + signCls(pv);
+  var delta = $('#hv-delta');
+  if (m.index) {
+    var gap = pv - m.index.v[n];
+    delta.innerHTML = '<span class="' + signCls(gap) + '">' + arrow(gap) + num(gap, 1) + ' p. b.</span><span class="faint">' + (gap >= 0 ? 'před indexem' : 'za indexem') + ' ' + esc(m.index.name) + ' ' + pct(m.index.v[n]) + '</span>';
+  } else {
+    var ranked = m.rows.filter(function (r) { return r.drawn; }).sort(function (a, b) { return b.v[n] - a.v[n]; });
+    if (ranked.length > 1) {
+      var best = ranked[0], worst = ranked[ranked.length - 1];
+      delta.innerHTML = '<span class="' + signCls(best.v[n]) + '">' + arrow(best.v[n]) + esc(best.name) + ' ' + pct(best.v[n]) + '</span><span class="sep">·</span><span class="' + signCls(worst.v[n]) + '">' + arrow(worst.v[n]) + esc(worst.name) + ' ' + pct(worst.v[n]) + '</span><span class="faint">nejlepší a nejhorší' + (m.filterActive ? ' ve výběru' : '') + '</span>';
+    } else if (ranked.length === 1) {
+      delta.innerHTML = '<span class="' + signCls(ranked[0].v[n]) + '">' + arrow(ranked[0].v[n]) + esc(ranked[0].name) + ' ' + pct(ranked[0].v[n]) + '</span><span class="faint">jediná skupina výběru</span>';
+    } else delta.innerHTML = '<span class="faint">Ve výběru nic ze skupiny ' + esc(m.g.label) + '</span>';
+  }
+  var end = i == null ? (m.atToday ? 'do dnes' : 'do <b>' + fmtDay(m.rg.to) + '</b>') : 'k <b>' + fmtDay(m.dates[n]) + '</b>';
+  $('#hv-when').innerHTML = 'od <b>' + fmtDay(m.rg.from) + '</b> ' + end + ' · ' + POS.length + ' pozic';
+  var mw = mwrAt(fm, m.dates, n), mv = $('#hv-mwr');
+  mv.textContent = pct(mw); mv.className = 'hero__value hero__value--sm num ' + signCls(mw);
+  $('#hv-mwr-note').innerHTML = 'zohledňuje, kdy jste vkládali<br>' + (isZero(mw - pv, 1) ? '<b>stejně</b> jako časově vážený' : '<b>' + pb(mw - pv) + '</b> proti časově váženému');
+  var chg = fm.V[n] - fm.V0, cv = $('#hv-chg');
+  cv.textContent = kcSigned(chg); cv.className = 'hero__value hero__value--sm num ' + signCls(chg);
+  $('#hv-chg-note').innerHTML = 'čisté vklady <b>' + kcSigned(fm.F[n]) + '</b><br>zhodnocení trhu <b>' + kcSigned(fm.V[n] - fm.V0 - fm.F[n]) + '</b>';
+}
+function updateBoard(m, i) {
+  var n = i == null ? m.n - 1 : i, pv = m.portfolio.v[n];
+  m.rows.concat([m.portfolio]).concat(m.index ? [m.index] : []).concat(m.none ? [m.none] : []).forEach(function (s) {
+    var v = s.v[n], tv = $('[data-twr="' + s.id + '"]'), vs = $('[data-vs="' + s.id + '"]'), c = $('[data-c="' + s.id + '"]'), d = $('[data-dd="' + s.id + '"]'), fx = $('[data-fx="' + s.id + '"]');
+    if (tv) { tv.textContent = pct(v); tv.className = 'r num twr-v ' + signCls(v); }
+    if (vs && s.id !== 'portfolio') vs.textContent = pb(v - pv);
+    if (c && s.c) c.textContent = pb(s.c[n]);
+    if (d) d.textContent = ddText(minTo(s.dd, n));
+    if (fx && s.tag) fx.textContent = fxSub(m, s, n);
+  });
+}
+
+/* Contribution: which positions (or groups) made the portfolio return */
+function contribHTML(m) {
+  var items, foot, sub, R = m.portfolio.v[m.n - 1];
+  if (state.cmode === 'pos') {
+    var list = m.sel.map(function (p) { var q = m.pos[p.t]; return { name: p.n, ticker: p.t, c: q.c, r: q.r, i: POS.indexOf(p) }; })
+      .sort(function (a, b) { return Math.abs(b.c) - Math.abs(a.c); });
+    items = list.length <= 9 ? list : list.slice(0, 8);
+    var rest = list.length <= 9 ? [] : list.slice(8);
+    if (rest.length) items.push({ name: 'Ostatní', sub: rest.length + ' ' + pl(rest.length, 'pozice', 'pozice', 'pozic'), c: sum(rest, function (x) { return x.c; }), muted: true });
+  } else {
+    items = m.rows.concat(m.none ? [m.none] : []).map(function (r) { return { name: r.name, sub: r.count + ' ' + pl(r.count, 'pozice', 'pozice', 'pozic'), c: r.c[m.n - 1], muted: !!r.quiet }; })
+      .sort(function (a, b) { return b.c - a.c; });
+  }
+  var selC = sum(m.sel, function (p) { return m.pos[p.t].c; });
+  var byGroup = m.g.id === 'currency' ? 'přinesla každá měna' : (m.g.id === 'sector' ? 'přinesl každý sektor' : 'přinesl každý štítek skupiny ' + esc(m.g.label));
+  if (m.filterActive) { foot = { name: 'Výběr celkem', c: selC }; sub = 'Výběr přinesl ' + pb(selC) + ' z ' + pct(R) + ' výnosu portfolia' + (state.cmode === 'tag' ? ' · rozděleno podle skupiny ' + esc(m.g.label) : ''); }
+  else { foot = { name: 'Celé portfolio', c: R }; sub = 'Kolik procentních bodů z výnosu ' + pct(R) + ' ' + (state.cmode === 'pos' ? 'přinesla každá pozice' : byGroup); }
+  var maxPos = Math.max(0, Math.max.apply(null, items.map(function (x) { return x.c; }))), maxNeg = Math.max(0, -Math.min.apply(null, items.map(function (x) { return x.c; })));
+  var span = (maxPos + maxNeg) || 1, zero = maxNeg / span * 100;
+  var rows = items.map(function (x) {
+    var w = Math.abs(x.c) / span * 100, left = x.c >= 0 ? zero : zero - w;
+    var name = x.ticker ? '<span class="entity"><i class="logo logo--' + ((x.i % 4) + 1) + '">' + esc(x.ticker.slice(0, 2)) + '</i><b>' + esc(x.name) + '</b></span>' :
+      '<b>' + esc(x.name) + '</b>' + (x.sub ? '<small>' + esc(x.sub) + '</small>' : '');
+    return '<div class="crow' + (x.muted ? ' crow--muted' : '') + '"><span class="crow__name">' + name + '</span>' +
+      '<span class="ctrack"><i class="zero" style="left:' + zero + '%"></i><i class="cbar' + (x.c < 0 ? ' is-neg' : '') + '" style="left:' + left + '%;width:' + Math.max(0.6, w) + '%"></i></span>' +
+      '<span class="cval ' + signCls(x.c) + '"' + (x.r != null ? ' title="výnos za období ' + pct(x.r) + '"' : '') + '>' + pb(x.c) + '</span></div>';
+  }).join('');
+  var seg = '<div class="seg" id="seg-cmode"><button type="button" class="seg__btn' + (state.cmode === 'pos' ? ' is-active' : '') + '" data-value="pos">Pozice</button><button type="button" class="seg__btn' + (state.cmode === 'tag' ? ' is-active' : '') + '" data-value="tag" title="Skupinu určuje Rozdělit podle v kartě výkonnosti">Podle skupiny</button></div>';
+  return '<section class="card card--fill has-np">' + pill(12) + '<div class="card__head"><div><h2 class="card__title" style="font-size:16px">Příspěvek k výnosu</h2><p class="card__sub">' + sub + '</p></div>' + seg + '</div>' +
+    '<div class="crows">' + rows + '<div class="crow crow--foot"><span class="crow__name"><b>' + foot.name + '</b></span><span></span><span class="cval ' + signCls(foot.c) + '">' + pb(foot.c) + '</span></div></div></section>';
+}
+/* Deposits and market: what moved the portfolio value */
+function flowsHTML(m) {
+  var fm = m.fm, n = m.n - 1, mkt = fm.V[n] - fm.V0 - fm.F[n], kind = buckets(m).kind;
+  var unit = { week: 'po týdnech', month: 'po měsících', quarter: 'po čtvrtletích', year: 'po letech' }[kind];
+  return '<section class="card card--fill has-np">' + pill(13) + '<div class="card__head"><div><h2 class="card__title" style="font-size:16px">Vklady a zhodnocení</h2><p class="card__sub">Celé portfolio · ' + unit + ' od ' + fmtDay(m.rg.from) + (m.atToday ? '' : ' do ' + fmtDay(m.rg.to)) + '</p></div></div>' +
+    '<div class="bridge"><div><small>Na začátku</small><b>' + kc(fm.V0) + '</b></div><div><small>Čisté vklady</small><b>' + kcSigned(fm.F[n]) + '</b></div><div><small>Zhodnocení trhu</small><b class="' + signCls(mkt) + '">' + kcSigned(mkt) + '</b></div><div><small>' + (m.atToday ? 'Dnes' : 'K ' + fmtDay(m.rg.to)) + '</small><b>' + kc(fm.V[n]) + '</b></div></div>' +
+    '<div class="fbars" id="fbars"></div><div class="baxis" id="baxis"></div>' +
+    '<div class="legend"><span class="legend__item"><i class="legend__swatch legend__swatch--block" style="background:var(--s3)"></i>Čisté vklady · nákupy minus prodeje</span><span class="legend__item"><i class="legend__swatch legend__swatch--block" style="background:var(--s1)"></i>Zhodnocení trhu</span></div></section>';
+}
+function ringHTML(m) {
+  var all = m.rows.concat(m.none ? [m.none] : []), legend = '';
+  all.forEach(function (r) {
+    var col = r.drawn ? r.color : 'var(--s-other)';
+    legend += '<div><i style="background:' + col + (col === 'var(--s-other)' ? ';border:1px solid var(--line-strong)' : '') + '"></i><span>' + esc(r.name) + '</span><b>' + kc(r.value) + '</b><span class="pct">' + Math.round(r.share * 100) + ' %</span></div>';
+  });
+  return '<section class="card has-np">' + pill(16) + '<div class="card__head"><div><h2 class="card__title" style="font-size:16px">Rozdělení podle skupiny ' + esc(m.g.label) + '</h2><p class="card__sub">Podíl na hodnotě ' + (m.filterActive ? 'výběru' : 'portfolia') + '</p></div></div>' +
+    '<div class="ring-wrap"><div class="ring ring--lg" id="ring"><div class="ring__center">' + (m.filterActive ? 'Výběr' : 'Portfolio') + '<b>' + shortKc(m.selEnd) + '</b></div></div><div class="ring-legend">' + legend + '</div></div></section>';
+}
+function tagsTableHTML(m, narrow) {
+  var rows = [];
+  filterGroups().forEach(function (g) {
+    g.tags.forEach(function (t) {
+      var ps = m.sel.filter(function (p) { return memberOf(p, g).indexOf(t.id) >= 0; });
+      if (m.filterActive && !ps.length) return;
+      var value = sum(ps, function (p) { return m.pos[p.t].end; }), base = sum(ps, function (p) { return p.v * p.I[m.a]; });
+      var cost = sum(ps, function (p) { return p.v / (1 + p.g / 100); }), now = sum(ps, function (p) { return p.v; });
+      rows.push({ t: t, g: g, count: ps.length, value: value, r: base ? (value / base - 1) * 100 : null, gain: cost ? (now / cost - 1) * 100 : 0, div: sum(ps, function (p) { return p.div; }) });
+    });
+  });
+  var gainHead = m.atToday ? 'Nerealizovaný zisk' : 'Nerealiz. zisk dnes';
+  var head = narrow
+    ? '<div class="table__head"><span>Štítek</span><span class="cell--num">Pozice</span><span class="cell--num">Hodnota</span><span class="cell--num">Podíl</span><span class="cell--num">' + gainHead + '</span></div>'
+    : '<div class="table__head"><span>Štítek</span><span class="cell--num">Pozice</span><span class="cell--num">Hodnota</span><span class="cell--num">Podíl</span><span class="cell--num">Výnos za období</span><span class="cell--num">' + gainHead + '</span><span class="cell--num">Dividenda ročně</span></div>';
+  var body = rows.map(function (x) {
+    var has = x.count > 0;
+    return '<div class="table__row"><span class="tag-name"><span class="badge">' + esc(x.t.name) + '</span><span class="grp">' + (x.g.free ? 'bez skupiny' : esc(x.g.label)) + '</span></span>' +
+      '<span class="cell--num">' + x.count + '</span><span class="cell--num cell--name">' + (has ? kc(x.value) : '<span class="faint">—</span>') + '</span>' +
+      '<span class="cell--num">' + (has ? Math.round(x.value / m.totalEnd * 100) + ' %' : '—') + '</span>' +
+      (narrow ? '' : '<span class="cell--num num ' + (has ? signCls(x.r) : '') + '" style="font-weight:650">' + (has ? pct(x.r) : '—') + '</span>') +
+      '<span class="cell--num">' + (has ? changeBadge(x.gain) : '—') + '</span>' +
+      (narrow ? '' : '<span class="cell--num">' + (x.div > 0 ? kc(x.div) : '<span class="faint">—</span>') + '</span>') + '</div>';
+  }).join('');
+  return '<section class="card card--table tags-table has-np' + (narrow ? ' is-narrow' : '') + '">' + pill(14) + '<div class="card__head"><div><h2 class="card__title">Štítky</h2><p class="card__sub">' +
+    (m.filterActive ? 'Vybrané pozice: ' + m.sel.length + ' z ' + POS.length + ' · podíl vždy z celého portfolia' : 'Ve skupině dají podíly 100 % · štítky bez skupiny se mohou překrývat') + '</p></div></div><div class="table">' + head + body + '</div></section>';
+}
+function holdingsHTML(m) {
+  var rows = m.sel.slice().sort(function (a, b) { return m.pos[b.t].end - m.pos[a.t].end; });
+  var all = POS.slice().sort(function (a, b) { return m.pos[b.t].end - m.pos[a.t].end; }), top5 = sum(all.slice(0, 5), function (p) { return m.pos[p.t].end; }) / m.totalEnd;
+  var neff = 1 / sum(POS, function (p) { return Math.pow(m.pos[p.t].end / m.totalEnd, 2); });
+  var body = rows.map(function (p) {
+    var q = m.pos[p.t], i = POS.indexOf(p), badges = '';
+    if (!p.tags.length) badges = '<span class="badge badge--outline">Bez štítku</span><button type="button" class="link" data-assign="' + p.t + '">Přiřadit</button>';
+    else {
+      badges = p.tags.map(function (id) {
+        var g = TAGS[id].group, counted = g.free || memberOf(p, g)[0] === id;
+        return '<span class="badge' + (counted ? '' : ' badge--muted') + '"' + (counted ? '' : ' title="Nepočítá se: ve skupině ' + esc(g.label) + ' platí první přiřazený štítek"') + '>' + esc(TAGS[id].name) + '</span>';
+      }).join('');
+      var cf = conflicts().filter(function (c) { return c.p === p; });
+      if (cf.length) badges += '<button type="button" class="link warn" data-assign="' + p.t + '">' + icon('circle-alert', 12) + 'Vybrat jeden</button>';
+    }
+    return '<div class="table__row"><span class="entity"><i class="logo logo--' + ((i % 4) + 1) + '">' + esc(p.t.slice(0, 2)) + '</i><div><b>' + esc(p.n) + '</b><small>' + esc(p.t) + ' · ' + p.cur + (p.sector ? ' · ' + esc(p.sector) : ' · ETF') + '</small></div></span>' +
+      '<span class="badges">' + badges + '</span>' +
+      '<span class="cell--num cell--name">' + kc(q.end) + '</span>' +
+      '<span class="cell--num num ' + signCls(q.r) + '" style="font-weight:650">' + pct(q.r) + '</span>' +
+      '<span class="cell--num">' + changeBadge(p.g) + '</span>' +
+      '<span class="cell--num row-actions"><button type="button" class="btn btn--ghost btn--icon" aria-label="Upravit štítky" data-assign="' + p.t + '">' + icon('tag', 14) + '</button></span></div>';
+  }).join('');
+  return '<section class="card card--table hold-table has-np">' + pill(15) + '<div class="card__head"><div><h2 class="card__title">Pozice a jejich štítky</h2><p class="card__sub">' + rows.length + ' z ' + POS.length + ' pozic · ' + kc(m.selEnd) + ' · ' + Math.round(m.selEnd / m.totalEnd * 100) + ' % portfolia · ' +
+    '<span class="conc" title="Koncentrace celého portfolia. Efektivní počet pozic: kolik stejně velkých pozic by mělo stejnou koncentraci.">5 největších tvoří ' + Math.round(top5 * 100) + ' % · efektivně ' + neff.toFixed(1).replace('.', ',') + ' pozice</span></p></div>' +
+    '<div class="input-wrap search">' + icon('search', 14) + '<input class="input" placeholder="Hledat pozici" aria-label="Hledat pozici"></div></div>' +
+    '<div class="table"><div class="table__head"><span>Akcie</span><span>Štítky</span><span class="cell--num">' + (m.atToday ? 'Hodnota' : 'K ' + fmtDay(m.rg.to)) + '</span><span class="cell--num">Výnos za období</span><span class="cell--num">' + (m.atToday ? 'Nerealizovaný zisk' : 'Nerealiz. zisk dnes') + '</span><span></span></div>' + body + '</div></section>';
+}
+
+var NOTES = [
+  { n: 1, t: 'Výkonnost je hlavní karta stránky', s: 'Graf TWR má celou šířku a 280 px výšky (dosud polovina šířky a 190 px vedle prstence). Řádek statistik zmizel: hodnota a její změna jsou v hero kartě, neoznačené pozice u filtrů, nejlepší štítek v tabulce pod grafem, dividendy v tabulce Štítky.' },
+  { n: 2, t: 'Časová osa na skutečných datech', s: 'Popisky sedí na začátcích měsíců (do 110 dní 1. a 15. den, do 3,5 roku čtvrtletí, déle roky), leden nese rok a každý popisek má na ose značku. Poslední je Dnes, u vlastního období končícího dřív jeho datum.' },
+  { n: 3, t: 'Každé číslo říká, ke kterému dni patří', s: 'Najetí myší na graf přepíše všechna tři čísla hero karty i tabulku pod grafem na hodnoty k tomu dni („od 1. 1. 2026 k 14. 5. 2026“). Karty pod hero zůstávají ke konci období.' },
+  { n: 4, t: 'Peněžně vážený výnos vedle časově váženého', s: 'TWR měří investice bez vlivu vkladů, peněžně vážený výnos měří, jak se zhodnotily právě vaše peníze včetně načasování. Rozdíl v p. b. říká, jestli načasování pomohlo. Modifikovaná Dietzova metoda za stejné období, kumulativně jako TWR. U vyspělého portfolia s malými vklady vyjde skoro stejně, rozdíl je vidět u delších období.' },
+  { n: 5, t: 'Změna hodnoty rozdělená na vklady a trh', s: 'Změna hodnoty portfolia za období je součet čistých vkladů (nákupy minus prodeje) a zhodnocení trhu. Odpovídá na otázku, kolik z přírůstku jsem vložil a kolik vydělal trh.' },
+  { n: 6, t: 'Rozdělit podle', s: 'Dříve „Porovnat podle“. Určuje, na jaké části se vybrané pozice rozdělí: každá část je jedna čára v grafu, jeden řádek v tabulce pod ním, v prstenci i v příspěvku k výnosu. Věta pod přepínačem říká, co čáry právě sčítají. Nabízí skupiny štítků v pořadí založení a za oddělovačem automatické skupiny Sektor a Měna. Automatická skupina se ukáže, jen když portfolio rozdělí aspoň na dvě části (kdo má vše v korunách, Měnu neuvidí). Bez ruční skupiny je výchozí Sektor. Štítky bez skupiny tu nejsou. Víc než čtyři volby promění přepínač v rozbalovací výběr.' },
+  { n: 7, t: 'Srovnání s indexem (volitelné, mění backend)', s: 'Tečkovaná čára S&P 500 nebo MSCI World přes zvolený ETF a hero věta „o x p. b. před indexem / za indexem“. Jediná část návrhu, která potřebuje nová data: denní historii indexu stáhnout z Yahoo a uložit (migrace, tabulka, volba indexu zapamatovaná pro stránku).' },
+  { n: 8, t: 'Období: předvolby a vlastní od–do', s: '3 měsíce · Letos · Rok · 3 roky · Vše · Vlastní. Vlastní ukáže pole Od a Do (stejně jako pohyby na bankovním účtu), úsek jde vybrat i tažením myší v grafu. Od nesmí být před prvním nákupem, Do po dnešku, Od musí být před Do. Celá stránka se řídí obdobím: výnosy, příspěvky, vklady i hodnoty, které se ukazují k datu Do. Nerealizovaný zisk a dividendy zůstávají k dnešku a v hlavičce to říkají. Vlastní období si stránka pamatuje.' },
+  { n: 9, t: 'Propad od maxima', s: 'Panel pod výnosem sdílí časovou osu a ukazuje, jak hluboko pod předchozím vrcholem byla každá čára; portfolio má plochu. Sloupec Max. propad v tabulce. Počítá se z TWR řad na frontendu.' },
+  { n: 10, t: 'Tabulka pod grafem je legenda', s: 'Řádek na štítek: barva čáry, výnos za období, rozdíl proti portfoliu, příspěvek k výnosu portfolia, největší propad, podíl na hodnotě a hodnota. Graf kreslí nejvýš 4 čáry, další štítky a Bez štítku jsou jen v tabulce (šrafovaná značka). Najetí zvýrazní čáru, klepnutí na ruční štítek zapne filtr.' },
+  { n: 11, t: 'Které pozice analyzovat', s: 'Výběr pozic je vlastní karta: nadpis říká, co dělá, vpravo je souhrn (Všech 9 pozic, nebo 2 z 9 pozic a Zrušit výběr) a pod čipy věta s pravidlem. Ve skupině se volí jeden štítek nebo Vše, štítky ze dvou skupin platí zároveň. Při aktivním výběru věta vyjmenuje zvolené štítky a připomene, že horní čísla a čárkovaná čára zůstávají za celé portfolio. Od čtvrté skupiny se další schovají pod Další filtry. Vpravo dole počet pozic bez štítku s odkazem.' },
+  { n: 12, t: 'Příspěvek k výnosu', s: 'Kolik p. b. z výnosu portfolia přinesla každá pozice, nebo každá část skupiny; součet dává výnos portfolia. Malá pozice s velkým výnosem portfolio skoro nepohne a tady je to vidět. Přepínač Pozice / Podle skupiny: druhá volba bere skupinu z Rozdělit podle a podtitulek ji jmenuje („přinesl každý štítek skupiny Strategie“). S filtrem ukazuje vybrané pozice a kolik z výnosu portfolia výběr přinesl.' },
+  { n: 13, t: 'Vklady a zhodnocení v čase', s: 'Čisté vklady a zhodnocení trhu po týdnech, měsících, čtvrtletích nebo letech podle délky období. Je vidět, kdy jste vkládali a jestli do propadu, nebo do růstu. Nad grafem hodnota na začátku a na konci období. Vždy za celé portfolio.' },
+  { n: 14, t: 'Tabulka Štítky', s: 'Výnos za období (TWR) a Nerealizovaný zisk od nákupu vedle sebe. U štítků ze skupiny je jméno skupiny a podíly ve skupině dají 100 %; štítky bez skupiny jsou označené „bez skupiny“ a mohou se překrývat.' },
+  { n: 15, t: 'Pozice: výnos za období a koncentrace', s: 'Sloupec Výnos za období (vyžaduje TWR jedné pozice v backendu). Podtitulek ukazuje podíl pěti největších pozic a efektivní počet pozic; ETF se počítá jako jedna pozice, proto jen informace bez varování. Pod tickerem měna a sektor.' },
+  { n: 16, t: 'Prstenec rozdělení je volitelný', s: 'Doporučení: vypnout. Sloupec Podíl v tabulce pod grafem ukazuje totéž rozdělení. Zapnutý prstenec (přepínač v liště návrhu) sedí vedle zúžené tabulky Štítky.' },
+  { n: 17, t: 'Skupina je jedno rozdělení portfolia', s: 'Rozhodnutí: pozice má v každé skupině nejvýš jeden štítek. Nic se nedělí ani nepočítá dvakrát: podíly dají 100 %, příspěvky se sečtou na výnos portfolia a čára TWR štítku bere celé pozice jako dnes backend. Překrývající se označení patří do dvou skupin nebo mezi štítky bez skupiny. Platí i pro filtr: pozice patří jen pod svůj štítek.' },
+  { n: 18, t: 'Migrace starších dat', s: 'Rozhodnutí: pozice, které dnes mají ve skupině víc štítků, srovná migrace při aktualizaci. Zůstane první přiřazený štítek (podle data přiřazení, při shodě podle názvu štítku), ostatní přiřazení se smažou a štítky samotné zůstanou. Stránka proto nemá žádné upozornění ani výjimku ve výpočtu. V ukázce měl ČEZ Dividendy i Hodnota, po migraci má Dividendy.' },
+  { n: 19, t: 'Vynucení pravidla', s: 'Dialog Přiřadit štítky nabízí ve skupině jednu volbu, která nahradí dosavadní štítek; u víc pozic je výchozí Beze změny a štítky bez skupiny lze vybrat víc. Backend druhý štítek stejné skupiny při ukládání odmítne. Spravovat štítky odmítne přesunout štítek do skupiny, ve které by tím některá pozice měla dva štítky, a dotčené pozice vyjmenuje.' }
+];
+function notesHTML() {
+  return '<section class="card card--flat notes-card"><div class="card__head"><div><h2 class="card__title">Poznámky k návrhu</h2><p class="card__sub">Čísla odpovídají značkám na stránce</p></div></div><ol class="notes">' +
+    NOTES.map(function (x) {
+      var where = x.n === 16 && !state.ring ? 'vidět se zapnutým prstencem' : (x.n === 19 ? 'vidět v dialogu Přiřadit štítky' : (x.n === 18 ? 'běží jednou při aktualizaci, na stránce není' : ''));
+      return '<li><i class="np">' + x.n + '</i><div><b>' + x.t + '</b>' + x.s + (where ? '<br><span class="badge badge--outline">' + where + '</span>' : '') + '</div></li>';
+    }).join('') + '</ol></section>';
+}
+
+var current;
+function render() {
+  var m = current = model(), yScroll = window.scrollY;
+  var html = topbarHTML() + headHTML() + filtersHTML(m) + '<div class="stack">' + heroHTML(m) +
+    '<div class="two">' + contribHTML(m) + flowsHTML(m) + '</div>';
+  html += state.ring ? '<div class="two">' + ringHTML(m) + tagsTableHTML(m, true) + '</div>' : tagsTableHTML(m, false);
+  html += holdingsHTML(m) + notesHTML() + '</div>';
+  $('#page').innerHTML = html;
+  $('#board').innerHTML = boardHTML(m);
+  heroText(m, null);
+  var lines = m.rows.filter(function (r) { return r.drawn; }).concat([m.portfolio]).concat(m.index ? [m.index] : []);
+  drawTwr($('#twr'), m.dates, lines, {
+    axisEl: $('#taxis'), lastLabel: m.atToday ? 'Dnes' : fmtDay(m.rg.to),
+    onScrub: function (i) { heroText(m, i); updateBoard(m, i); },
+    onLeave: function () { heroText(m, null); updateBoard(m, null); },
+    onRange: function (from, to) { state.period = 'custom'; state.custom = { from: from, to: to }; state.rangeError = null; render(); }
+  });
+  drawFlowBars($('#fbars'), $('#baxis'), buckets(m).list);
+  if (state.ring) drawRing($('#ring'), m.rows.concat(m.none ? [m.none] : []).map(function (r) { return { pct: r.share * 100, color: r.drawn ? r.color : 'var(--s-other)' }; }));
+  bind(m);
+  window.scrollTo(0, yScroll);
+}
+function bind(m) {
+  $('#seg-group').addEventListener('segchange', function (e) { state.group = e.detail; render(); });
+  $('#seg-period').addEventListener('segchange', function (e) {
+    if (e.detail === 'custom' && !state.custom) state.custom = { from: m.rg.from, to: m.rg.to };
+    state.period = e.detail; state.rangeError = null; render();
+  });
+  $('#seg-cmode').addEventListener('segchange', function (e) { state.cmode = e.detail; render(); });
+  $$('.filters .chip').forEach(function (c) {
+    c.addEventListener('click', function () { if (c.dataset.tag === 'all') delete state.filters[c.dataset.filter]; else state.filters[c.dataset.filter] = c.dataset.tag; render(); });
+  });
+  var clear = $('[data-act="clear"]'); if (clear) clear.addEventListener('click', function () { state.filters = {}; render(); });
+  $('#idx-btn').addEventListener('click', function (e) { e.stopPropagation(); var mn = $('#idx-menu'); mn.hidden = !mn.hidden; });
+  $$('#idx-menu .menu__item').forEach(function (b) { b.addEventListener('click', function () { state.index = b.dataset.index || null; render(); }); });
+  ['#rg-from', '#rg-to'].forEach(function (sel) {
+    var inp = $(sel); if (!inp) return;
+    inp.addEventListener('change', function () {
+      var f = parseIso($('#rg-from').value), t = parseIso($('#rg-to').value), err = null;
+      if (!f || !t) err = 'Vyplňte obě data.';
+      else {
+        if (f < FIRST_BUY) f = FIRST_BUY;
+        if (t > TODAY) t = TODAY;
+        if (dayDiff(f, t) < 2) err = 'Začátek musí být aspoň dva dny před koncem.';
+      }
+      if (err) { state.rangeError = err; var box = $('#rg-err'); box.hidden = false; box.innerHTML = icon('circle-alert', 12) + esc(err); $('#rg-hint').hidden = true; return; }
+      state.custom = { from: f, to: t }; state.rangeError = null; render();
+    });
+  });
+  $$('.board__row', $('#board')).forEach(function (r) {
+    var id = r.dataset.id, t = TAGS[id], drawn = m.rows.concat([m.portfolio, m.index]).some(function (s) { return s && s.id === id && s.drawn; });
+    r.addEventListener('mouseenter', function () { if (drawn) setHot(id); });
+    r.addEventListener('mouseleave', function () { setHot(null); });
+    if (t && !t.group.auto) r.addEventListener('click', function () { state.filters[t.group.id] = id; render(); });
+  });
+}
+
+/* ===== Assign tags dialog: one tag per group ===== */
+var assign = { ids: [], order: [], pick: {}, free: {} };
+function openAssign(ids) {
+  assign.ids = ids.slice();
+  assign.order = POS.filter(function (q) { return ids.indexOf(q.t) >= 0; }).concat(POS.filter(function (q) { return ids.indexOf(q.t) < 0; }));
+  resetPicks();
+  renderAssign();
+  openModal('m-assign');
+}
+function single() { return assign.ids.length === 1 ? BY_T[assign.ids[0]] : null; }
+function resetPicks() {
+  var p = single(); assign.pick = {}; assign.free = {};
+  GROUPS.forEach(function (g) {
+    if (!p) { assign.pick[g.id] = 'keep'; return; }
+    var ts = groupTags(p, g);
+    assign.pick[g.id] = ts.length === 1 ? ts[0] : (ts.length ? null : 'none');
+  });
+  FREE.tags.forEach(function (t) { assign.free[t.id] = p ? p.tags.indexOf(t.id) >= 0 : false; });
+}
+function renderAssign() {
+  var p = single(), multi = assign.ids.length > 1;
+  var list = assign.order.map(function (q) {
+    var on = assign.ids.indexOf(q.t) >= 0, i = POS.indexOf(q);
+    return '<label class="as-row"><span class="check"><input type="checkbox" data-pos="' + q.t + '"' + (on ? ' checked' : '') + '></span><i class="logo logo--' + ((i % 4) + 1) + '">' + esc(q.t.slice(0, 2)) + '</i><span><b>' + esc(q.n) + '</b><small>' + esc(q.t) + '</small></span>' +
+      '<span class="cur">' + (q.tags.length ? q.tags.map(function (id) { return esc(TAGS[id].name); }).join(' · ') : 'bez štítku') + '</span></label>';
+  }).join('');
+  var groups = GROUPS.map(function (g) {
+    var chosen = assign.pick[g.id], chips = '';
+    if (multi || !p) chips += '<button type="button" class="chip chip--quiet' + (chosen === 'keep' ? ' is-active' : '') + '" data-g="' + g.id + '" data-v="keep">Beze změny</button>';
+    chips += g.tags.map(function (t) { return '<button type="button" class="chip' + (chosen === t.id ? ' is-active' : '') + '" data-g="' + g.id + '" data-v="' + t.id + '">' + esc(t.name) + '</button>'; }).join('');
+    chips += '<button type="button" class="chip chip--quiet' + (chosen === 'none' ? ' is-active' : '') + '" data-g="' + g.id + '" data-v="none">Bez štítku</button>';
+    var note = '';
+    if (p) { var ts = groupTags(p, g); if (ts.length > 1 && chosen === null) note = '<div class="as-note">' + icon('circle-alert', 12) + 'Teď ' + ts.map(function (id) { return TAGS[id].name; }).join(' a ') + '. Vyberte jeden.</div>'; }
+    return '<div class="as-group"><div class="as-group__label"><b>' + esc(g.label) + '</b><small>jeden štítek</small></div><div class="chips">' + chips + '</div>' + note + '</div>';
+  }).join('');
+  var free = '<div class="as-group"><div class="as-group__label"><b>Bez skupiny</b><small>lze vybrat víc</small></div><div class="chips">' +
+    FREE.tags.map(function (t) { return '<button type="button" class="chip' + (assign.free[t.id] ? ' is-active' : '') + '" data-free="' + t.id + '">' + esc(t.name) + '</button>'; }).join('') + '</div></div>';
+  $('#as-body').innerHTML = '<div class="field"><div class="field__label"><span>Pozice</span><span class="opt">' + assign.ids.length + ' ' + pl(assign.ids.length, 'vybraná', 'vybrané', 'vybraných') + '</span></div><div class="as-list">' + list + '</div></div>' +
+    '<div class="field"><div class="field__label"><span>Štítky</span></div>' + groups + free +
+    '<div class="field__hint">Pozice má v každé skupině nejvýš jeden štítek. Vybraný štítek nahradí ten dosavadní' + (multi ? ', skupiny na Beze změny zůstanou, jak jsou. Štítky bez skupiny se přidají.' : '.') + '</div></div>';
+  $('#as-save').disabled = !assign.ids.length;
+  $$('#as-body [data-pos]').forEach(function (c) {
+    c.addEventListener('change', function () {
+      var t = c.dataset.pos, i = assign.ids.indexOf(t);
+      if (c.checked && i < 0) assign.ids.push(t); else if (!c.checked && i >= 0) assign.ids.splice(i, 1);
+      resetPicks(); renderAssign();
+    });
+  });
+  $$('#as-body [data-g]').forEach(function (b) { b.addEventListener('click', function () { assign.pick[b.dataset.g] = b.dataset.v; renderAssign(); }); });
+  $$('#as-body [data-free]').forEach(function (b) { b.addEventListener('click', function () { assign.free[b.dataset.free] = !assign.free[b.dataset.free]; renderAssign(); }); });
+}
+function saveAssign() {
+  var multi = assign.ids.length > 1;
+  assign.ids.forEach(function (t) {
+    var p = BY_T[t];
+    GROUPS.forEach(function (g) {
+      var v = assign.pick[g.id];
+      if (v === 'keep' || v === null || v === undefined) return;
+      p.tags = p.tags.filter(function (id) { return TAGS[id].group !== g; });
+      if (v !== 'none') p.tags.push(v);
+    });
+    FREE.tags.forEach(function (ft) {
+      var has = p.tags.indexOf(ft.id) >= 0;
+      if (assign.free[ft.id] && !has) p.tags.push(ft.id);
+      if (!multi && !assign.free[ft.id] && has) p.tags = p.tags.filter(function (id) { return id !== ft.id; });
+    });
+  });
+  closeModal('m-assign');
+  toast('Štítky přiřazeny');
+  render();
+}
+
+renderShell({ active: 'stocksAnalysis' });
+render();
+var resizeTimer;
+window.addEventListener('resize', function () { clearTimeout(resizeTimer); resizeTimer = setTimeout(render, 120); });
+document.addEventListener('click', function (e) {
+  var mn = $('#idx-menu'); if (mn && !mn.hidden && !e.target.closest('.menu-host')) mn.hidden = true;
+  var a = e.target.closest('[data-assign]');
+  if (a && a.closest('#page')) { var v = a.dataset.assign; openAssign(v ? v.split(',') : []); }
+});
+$$('#m-assign [data-close]').forEach(function (b) { b.addEventListener('click', function () { closeModal('m-assign'); }); });
+$('#m-assign .modal__close').innerHTML = icon('x', 14);
+$('#as-save').addEventListener('click', saveAssign);
+$('#ring-seg').addEventListener('segchange', function (e) { state.ring = e.detail === 'on'; render(); });
+$('#notes-toggle').addEventListener('change', function (e) { document.body.classList.toggle('notes-on', e.target.checked); });
+})();
+</script>
+</body>
+</html>

@@ -1,4 +1,4 @@
-import type { StockInvestmentWithTags } from '@shared/schema';
+import type { StockInvestmentWithTags, StockTag } from '@shared/schema';
 import { amountOf } from '@/utils/positions';
 
 /**
@@ -134,4 +134,71 @@ export function positionTotals(positions: readonly TotalsPosition[]): TagTotals 
  */
 export function tagTotals(positions: readonly TotalsPosition[], tagId: string): TagTotals {
   return positionTotals(positions.filter((p) => p.tags.some((tag) => tag.id === tagId)));
+}
+
+/** A group row left on "Beze změny": the position keeps whatever tag it has in that group. */
+export const PICK_KEEP = 'keep';
+/** A group row set to "Bez štítku": the position loses its tag in that group. */
+export const PICK_NONE = 'none';
+
+/**
+ * The tags a position gets from the assign dialog. A tag group is one choice: per group
+ * `picks[groupId]` is `'keep'` (the position keeps its tag there), `'none'` (removed) or the id
+ * of a tag of that group (replaces the current one). A group the picks do not mention, or a pick
+ * that is not a tag of its group any more, keeps the current tag. Tags without a group are
+ * `free`: for a single position they are exactly the checked ones, for several positions the
+ * checked ones are added to the free tags each position already has.
+ */
+export function nextTagIds(
+  current: readonly StockTag[],
+  picks: Readonly<Record<string, string>>,
+  free: readonly string[],
+  single: boolean,
+  tags: readonly StockTag[]
+): string[] {
+  const result: string[] = [];
+  const add = (id: string) => {
+    if (!result.includes(id)) result.push(id);
+  };
+  const pickOf = (groupId: string): string | null => {
+    const pick = picks[groupId];
+    if (pick === undefined || pick === PICK_KEEP) return null;
+    if (pick === PICK_NONE) return PICK_NONE;
+    return tags.some((tag) => tag.id === pick && tag.groupId === groupId) ? pick : null;
+  };
+
+  for (const tag of current) {
+    if (tag.groupId === null) {
+      // Free tags are replaced by the checked ones for a single position, kept for several
+      if (!single) add(tag.id);
+    } else if (pickOf(tag.groupId) === null) {
+      add(tag.id);
+    }
+  }
+  for (const groupId of Object.keys(picks)) {
+    const pick = pickOf(groupId);
+    if (pick !== null && pick !== PICK_NONE) add(pick);
+  }
+  for (const id of free) {
+    if (tags.some((tag) => tag.id === id && tag.groupId === null)) add(id);
+  }
+  return result;
+}
+
+/**
+ * The positions that would carry two tags of `groupId` if tag `tagId` moved into it: those that
+ * have the tag and already carry another tag of the group. Names, in the order of `positions`.
+ */
+export function moveConflicts(
+  positions: readonly { companyName: string; tags: readonly StockTag[] }[],
+  tagId: string,
+  groupId: string
+): string[] {
+  return positions
+    .filter(
+      (position) =>
+        position.tags.some((tag) => tag.id === tagId) &&
+        position.tags.some((tag) => tag.id !== tagId && tag.groupId === groupId)
+    )
+    .map((position) => position.companyName);
 }

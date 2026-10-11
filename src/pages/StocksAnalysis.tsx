@@ -360,12 +360,14 @@ export default function StocksAnalysis() {
         onOpenChange={setManageOpen}
         tags={tags}
         groups={groups}
+        positions={stocks}
       />
       <AssignTagsDialog
         open={assign.open}
         onOpenChange={(open) => setAssign((a) => ({ ...a, open }))}
         stocks={stocks}
         tags={tags}
+        groups={groups}
         initialStockIds={assign.stockIds}
       />
     </>

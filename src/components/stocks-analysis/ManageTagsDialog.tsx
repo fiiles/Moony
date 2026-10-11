@@ -2,9 +2,11 @@ import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { ChevronDown, Trash2 } from 'lucide-react';
-import type { StockTag, StockTagGroup } from '@shared/schema';
+import { ChevronDown, CircleAlert, Trash2 } from 'lucide-react';
+import type { StockInvestmentWithTags, StockTag, StockTagGroup } from '@shared/schema';
 import { stockTagsApi } from '@/lib/tauri-api';
+import { translateApiError } from '@/lib/translate-api-error';
+import { moveConflicts } from '@/utils/stock-analysis';
 import {
   Dialog,
   DialogContent,
@@ -42,14 +44,24 @@ interface ManageTagsDialogProps {
   onOpenChange: (open: boolean) => void;
   tags: StockTag[];
   groups: StockTagGroup[];
+  /** The positions with their tags: a tag cannot move into a group they already have another tag in. */
+  positions: StockInvestmentWithTags[];
 }
 
 /**
  * "Spravovat štítky" (prototype `stocks-analysis.html`): tags listed by
  * group as chips — each chip opens a menu to move it to another group or
  * delete it — and a form that creates a tag in an existing or a new group.
+ * A group holds one tag per position, so a move that would give a position two
+ * tags of the target group is refused next to the tag, naming those positions.
  */
-export function ManageTagsDialog({ open, onOpenChange, tags, groups }: ManageTagsDialogProps) {
+export function ManageTagsDialog({
+  open,
+  onOpenChange: setOpen,
+  tags,
+  groups,
+  positions,
+}: ManageTagsDialogProps) {
   const { t } = useTranslation('reports');
   const { t: tc } = useTranslation('common');
   const queryClient = useQueryClient();
@@ -64,18 +76,29 @@ export function ManageTagsDialog({ open, onOpenChange, tags, groups }: ManageTag
       ? groupChoice
       : (groups[0]?.id ?? NO_GROUP);
   const [newGroupName, setNewGroupName] = useState('');
+  const [moveError, setMoveError] = useState<{
+    tagId: string;
+    group: string;
+    positions: string;
+  } | null>(null);
   const [pendingDelete, setPendingDelete] = useState<
     { kind: 'tag'; tag: StockTag } | { kind: 'group'; group: StockTagGroup } | null
   >(null);
+
+  const onOpenChange = (next: boolean) => {
+    if (!next) setMoveError(null);
+    setOpen(next);
+  };
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ['stock-tags'] });
     queryClient.invalidateQueries({ queryKey: ['stock-tag-groups'] });
     queryClient.invalidateQueries({ queryKey: ['stocks-analysis'] });
     queryClient.invalidateQueries({ queryKey: ['tag-metrics'] });
-    queryClient.invalidateQueries({ queryKey: ['stock-twr'] });
+    queryClient.invalidateQueries({ queryKey: ['stock-performance'] });
   };
-  const fail = (error: Error) => toast.error(tc('status.error'), { description: error.message });
+  const fail = (error: Error) =>
+    toast.error(tc('status.error'), { description: translateApiError(error, tc) });
 
   const createMutation = useMutation({
     mutationFn: async () => {
@@ -106,6 +129,17 @@ export function ManageTagsDialog({ open, onOpenChange, tags, groups }: ManageTag
     },
     onError: fail,
   });
+
+  /** Moves the tag unless a position would end up with two tags of the target group. */
+  const requestMove = (tag: StockTag, group: StockTagGroup | null) => {
+    const conflicts = group ? moveConflicts(positions, tag.id, group.id) : [];
+    if (group && conflicts.length > 0) {
+      setMoveError({ tagId: tag.id, group: group.name, positions: conflicts.join(', ') });
+      return;
+    }
+    setMoveError(null);
+    moveMutation.mutate({ tag, groupId: group?.id ?? null });
+  };
 
   const deleteMutation = useMutation({
     mutationFn: async (target: NonNullable<typeof pendingDelete>) => {
@@ -146,15 +180,12 @@ export function ManageTagsDialog({ open, onOpenChange, tags, groups }: ManageTag
         {groups
           .filter((g) => g.id !== tag.groupId)
           .map((g) => (
-            <DropdownMenuItem
-              key={g.id}
-              onSelect={() => moveMutation.mutate({ tag, groupId: g.id })}
-            >
+            <DropdownMenuItem key={g.id} onSelect={() => requestMove(tag, g)}>
               {g.name}
             </DropdownMenuItem>
           ))}
         {tag.groupId && (
-          <DropdownMenuItem onSelect={() => moveMutation.mutate({ tag, groupId: null })}>
+          <DropdownMenuItem onSelect={() => requestMove(tag, null)}>
             {t('stocksAnalysis.manage.noGroup')}
           </DropdownMenuItem>
         )}
@@ -210,6 +241,20 @@ export function ManageTagsDialog({ open, onOpenChange, tags, groups }: ManageTag
                   </span>
                 )}
               </div>
+              {moveError && groupTags.some((x) => x.id === moveError.tagId) && (
+                <p
+                  role="alert"
+                  className="mt-2 flex items-center gap-[5px] text-micro font-600 text-loss"
+                >
+                  <CircleAlert className="size-3 shrink-0" aria-hidden />
+                  <span>
+                    {t('stocksAnalysis.manage.moveConflict', {
+                      group: moveError.group,
+                      positions: moveError.positions,
+                    })}
+                  </span>
+                </p>
+              )}
             </div>
           ))}
         </div>

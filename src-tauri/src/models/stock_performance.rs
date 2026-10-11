@@ -125,6 +125,27 @@ pub struct StockPerformance {
     pub positions: Vec<PositionPerformance>,
 }
 
+/// Daily returns of a market index (or any Yahoo ticker) over the period, for the comparison
+/// line of the performance chart (`get_stock_benchmark`).
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct StockBenchmark {
+    /// The validated ticker the prices were fetched for.
+    #[serde(rename = "ticker")]
+    pub ticker: String,
+    /// The report currency the returns are computed in.
+    #[serde(rename = "currency")]
+    pub currency: String,
+    #[serde(rename = "fxQuality")]
+    pub fx_quality: ConversionQuality,
+    /// Days as `YYYY-MM-DD`, one per calendar day (the last close carries over non-trading
+    /// days); empty when the ticker has no prices.
+    #[serde(rename = "dates")]
+    pub dates: Vec<String>,
+    /// Cumulative return of the index in percent per date, the first date being 0.
+    #[serde(rename = "twr")]
+    pub twr: Vec<f64>,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

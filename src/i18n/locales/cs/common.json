@@ -253,7 +253,8 @@
     "tagGroupConflict": "Některé pozice už mají v té skupině jiný štítek.",
     "periodInvalid": "Začátek období musí být před jeho koncem.",
     "tooManySeries": "Najednou je požadováno příliš mnoho čar.",
-    "seriesKeyInvalid": "Neplatný požadavek na čáru grafu."
+    "seriesKeyInvalid": "Neplatný požadavek na čáru grafu.",
+    "benchmarkTickerInvalid": "Neplatný ticker indexu."
   },
   "auth": {
     "wrongPassword": "Zadané heslo je nesprávné. Zkuste to prosím znovu.",

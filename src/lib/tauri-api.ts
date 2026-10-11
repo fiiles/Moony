@@ -101,6 +101,7 @@ import type {
   StockTwr,
   StockPerformance,
   StockPerformanceRequest,
+  StockBenchmark,
   TickerValueHistoryReport,
   McpServerStatus,
   // Stock Monitor types
@@ -320,6 +321,19 @@ export const investmentsApi = {
    */
   getStockPerformance: (request: StockPerformanceRequest) =>
     tauriInvoke<StockPerformance>('get_stock_performance', { request }),
+
+  /**
+   * Daily returns of a market index (any Yahoo ticker, e.g. `CSPX.L`) from `fromTs` to `toTs` in
+   * `reportCurrency`, each day converted at its own rate. Fetches the closes online; offline or
+   * for an unknown ticker `dates` is empty.
+   */
+  getStockBenchmark: (ticker: string, fromTs: number, toTs: number, reportCurrency: string) =>
+    tauriInvoke<StockBenchmark>('get_stock_benchmark', {
+      ticker,
+      fromTs,
+      toTs,
+      reportCurrency,
+    }),
 };
 
 // ============================================================================

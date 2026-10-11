@@ -1450,6 +1450,29 @@ source: string; count: number }
 export type StatementBalance = { amount: string; currency: string; asOf: number; line: number; batchId: string }
 
 /**
+ * Daily returns of a market index (or any Yahoo ticker) over the period, for the comparison
+ * line of the performance chart (`get_stock_benchmark`).
+ */
+export type StockBenchmark = { 
+/**
+ * The validated ticker the prices were fetched for.
+ */
+ticker: string; 
+/**
+ * The report currency the returns are computed in.
+ */
+currency: string; fxQuality: ConversionQuality; 
+/**
+ * Days as `YYYY-MM-DD`, one per calendar day (the last close carries over non-trading
+ * days); empty when the ticker has no prices.
+ */
+dates: string[]; 
+/**
+ * Cumulative return of the index in percent per date, the first date being 0.
+ */
+twr: number[] }
+
+/**
  * A column suggested for a role (TS `StockColumnSuggestion`). Roles: `date`,
  * `type`, `symbol`, `isin`, `name`, `quantity`, `price`, `currency`,
  * `externalId`, `fee`.

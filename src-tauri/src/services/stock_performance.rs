@@ -16,21 +16,26 @@
 //! A holding any of whose conversions fails drops out of that day only (its `base` and `gain`
 //! are unknown) and is counted in `fxQuality`; the other holdings keep chaining. The
 //! money-weighted return is the cumulative modified Dietz return of the portfolio value.
+//!
+//! The optional comparison line is a market index fetched on demand (`benchmark_series`): its
+//! daily closes are carried over non-trading days, converted at each day's rate and rebased to
+//! the first day, so it moves with the exchange rate the same way a holding does.
 
 use std::collections::HashMap;
 
 use rusqlite::Connection;
 
-use crate::error::Result;
+use crate::error::{AppError, Result};
 use crate::models::fx::ConversionQuality;
 use crate::models::{
-    PerformanceSeries, PerformanceSeriesSpec, PositionPerformance, StockPerformance,
-    StockPerformanceRequest,
+    PerformanceSeries, PerformanceSeriesSpec, PositionPerformance, StockBenchmark,
+    StockPerformance, StockPerformanceRequest,
 };
-use crate::services::fx::{Quality, DAY};
+use crate::services::fx::{History, Quality, DAY};
 use crate::services::investments::{
     load_day_holdings, load_twr_history, lookup_ticker_at, ts_to_date_str, DayHolding, ReportFx,
 };
+use crate::services::price_api::HistoricalPrice;
 use crate::services::reporting::{money_in_currency, normalize_currency};
 
 /// Most dates a report emits before the last day is added.
@@ -421,6 +426,122 @@ pub fn stock_performance(
         positions,
         fx_quality: ConversionQuality::from(&quality),
         currency,
+    })
+}
+
+/// Longest ticker a benchmark may have.
+const MAX_TICKER_LEN: usize = 24;
+
+/// The ticker of a benchmark, trimmed and uppercased: 1 to 24 characters of `A-Z 0-9 . - ^ =`
+/// (`CSPX.L`, `^GSPC`, `EURUSD=X`). The ticker goes into a request to a third party, so only
+/// what a Yahoo symbol can contain passes.
+pub fn validate_benchmark_ticker(ticker: &str) -> Result<String> {
+    let ticker = ticker.trim();
+    let valid = !ticker.is_empty()
+        && ticker.len() <= MAX_TICKER_LEN
+        && ticker
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '-' | '^' | '='));
+    if valid {
+        Ok(ticker.to_ascii_uppercase())
+    } else {
+        Err(AppError::Validation(
+            "validation.benchmarkTickerInvalid".into(),
+        ))
+    }
+}
+
+/// The start of the UTC day `ts` falls on.
+fn day_start(ts: i64) -> i64 {
+    ts.div_euclid(DAY) * DAY
+}
+
+/// The closes that can be used (finite and positive), oldest first.
+fn usable_closes(prices: &[HistoricalPrice]) -> Vec<&HistoricalPrice> {
+    let mut closes: Vec<&HistoricalPrice> = prices
+        .iter()
+        .filter(|close| close.price.is_finite() && close.price > 0.0)
+        .collect();
+    closes.sort_by_key(|close| close.timestamp);
+    closes
+}
+
+/// The close known at the end of `day`: the latest one on or before it, so a Saturday carries
+/// Friday's close forward and a day before the first close has none.
+fn close_on<'a>(closes: &[&'a HistoricalPrice], day: i64) -> Option<&'a HistoricalPrice> {
+    let known = closes.partition_point(|close| close.timestamp < day + DAY);
+    known.checked_sub(1).map(|i| closes[i])
+}
+
+/// The days a benchmark covers: `from_ts..=to_ts` limited to the days between the first and the
+/// last close, because nothing exists to carry before the first one and a transient absurd range
+/// (typing a year in a date input) must not run for millions of iterations while holding the DB
+/// lock. Empty without closes.
+fn benchmark_days(closes: &[&HistoricalPrice], from_ts: i64, to_ts: i64) -> Vec<i64> {
+    let (Some(first), Some(last)) = (closes.first(), closes.last()) else {
+        return Vec::new();
+    };
+    let start = day_start(from_ts).max(day_start(first.timestamp));
+    let end = day_start(to_ts).min(day_start(last.timestamp)).max(start);
+    (start..=end).step_by(DAY as usize).collect()
+}
+
+/// The cumulative return in percent of a market index (or any ticker) over a period, in the
+/// report currency, for the comparison line of the performance chart.
+///
+/// `prices` are the fetched daily closes; they need not be sorted and carry their own currency.
+/// Every day of the period (limited to the days that have closes) is valued with the latest
+/// close known on it, converted at that day's rate, so a foreign index carries the exchange rate
+/// like a holding does. The base is the value on the first day: the last close on or before
+/// `from_ts`, or the index's first close when it started trading later. A day that cannot be
+/// converted is left out and counted in `fxQuality`; the first convertible day is the base (0).
+/// Without closes the series is empty.
+pub fn benchmark_series(
+    conn: &Connection,
+    ticker: &str,
+    prices: &[HistoricalPrice],
+    from_ts: i64,
+    to_ts: i64,
+    report_currency: &str,
+) -> Result<StockBenchmark> {
+    let currency = normalize_currency(report_currency)?;
+    let closes = usable_closes(prices);
+    let days = benchmark_days(&closes, from_ts, to_ts);
+    let mut quality = Quality::default();
+    let (mut dates, mut twr) = (Vec::new(), Vec::new());
+
+    if let (Some(&first), Some(&last)) = (days.first(), days.last()) {
+        let fx_history = History::load(conn, first, last)?;
+        let mut base: Option<f64> = None;
+        for day in days {
+            let Some(close) = close_on(&closes, day) else {
+                continue;
+            };
+            let Some(value) = fx_history.convert_on_tracked(
+                &mut quality,
+                close.price,
+                &close.currency,
+                &currency,
+                day,
+            ) else {
+                continue;
+            };
+            if base.is_none() && value > EPSILON {
+                base = Some(value);
+            }
+            if let Some(base) = base {
+                dates.push(ts_to_date_str(day));
+                twr.push((value / base - 1.0) * 100.0);
+            }
+        }
+    }
+
+    Ok(StockBenchmark {
+        ticker: ticker.to_string(),
+        currency,
+        fx_quality: ConversionQuality::from(&quality),
+        dates,
+        twr,
     })
 }
 
@@ -924,5 +1045,205 @@ mod tests {
             series: vec![],
         };
         assert!(stock_performance(&conn, &request).is_err());
+    }
+
+    // ----- benchmark -----
+
+    fn price(at: i64, price: f64, currency: &str) -> HistoricalPrice {
+        HistoricalPrice {
+            timestamp: at,
+            price,
+            currency: currency.to_string(),
+        }
+    }
+
+    /// The benchmark of `prices` from `from` to `to` in `currency`.
+    fn bench(
+        conn: &Connection,
+        prices: &[HistoricalPrice],
+        from: i64,
+        to: i64,
+        currency: &str,
+    ) -> StockBenchmark {
+        benchmark_series(conn, "CSPX.L", prices, from, to, currency).expect("benchmark")
+    }
+
+    #[test]
+    fn benchmark_carries_the_last_close_over_non_trading_days() {
+        let conn = setup_db();
+        // closes on days 0, 3 and 4 only: days 1 and 2 are a weekend
+        let prices = [
+            price(day(0), 100.0, "CZK"),
+            price(day(3), 110.0, "CZK"),
+            price(day(4), 121.0, "CZK"),
+        ];
+
+        let report = bench(&conn, &prices, day(0), day(4), "CZK");
+
+        assert_eq!(report.ticker, "CSPX.L");
+        assert_eq!(report.currency, "CZK");
+        assert_eq!(
+            report.dates,
+            (0..5).map(|i| ts_to_date_str(day(i))).collect::<Vec<_>>()
+        );
+        assert_eq!(report.twr.len(), 5);
+        assert_eq!(report.twr[0], 0.0);
+        close(report.twr[1], 0.0, 1e-9);
+        close(report.twr[2], 0.0, 1e-9);
+        close(report.twr[3], 10.0, 1e-9);
+        close(report.twr[4], 21.0, 1e-9);
+        assert!(report.fx_quality.missing_currencies.is_empty());
+    }
+
+    #[test]
+    fn benchmark_converts_each_day_at_its_own_rate() {
+        let conn = setup_db();
+        add_usd_czk(&conn, day(0), 20.0);
+        add_usd_czk(&conn, day(1), 21.0);
+        // flat USD prices while the dollar gains 5 % against the koruna
+        let prices = [price(day(0), 100.0, "USD"), price(day(1), 100.0, "USD")];
+
+        let in_czk = bench(&conn, &prices, day(0), day(1), "CZK");
+        let in_usd = bench(&conn, &prices, day(0), day(1), "USD");
+
+        assert_eq!(in_czk.currency, "CZK");
+        close(*last(&in_czk.twr), 5.0, 1e-9);
+        assert_eq!(in_usd.currency, "USD");
+        close(*last(&in_usd.twr), 0.0, 1e-9);
+        assert!(in_czk.fx_quality.missing_currencies.is_empty());
+    }
+
+    #[test]
+    fn benchmark_without_prices_is_empty() {
+        let conn = setup_db();
+
+        let report = bench(&conn, &[], day(0), day(4), "CZK");
+
+        assert_eq!(report.ticker, "CSPX.L");
+        assert!(report.dates.is_empty());
+        assert!(report.twr.is_empty());
+    }
+
+    #[test]
+    fn benchmark_base_is_the_last_close_on_or_before_the_start() {
+        let conn = setup_db();
+        // the close three days before the period is the base; the first day shows 0
+        let prices = [price(day(-3), 100.0, "CZK"), price(day(1), 110.0, "CZK")];
+
+        let report = bench(&conn, &prices, day(0), day(1), "CZK");
+
+        assert_eq!(report.dates, [day(0), day(1)].map(ts_to_date_str));
+        assert_eq!(report.twr[0], 0.0);
+        close(report.twr[1], 10.0, 1e-9);
+    }
+
+    #[test]
+    fn benchmark_starts_on_its_first_close_when_none_precedes_the_period() {
+        let conn = setup_db();
+        let prices = [price(day(2), 50.0, "CZK"), price(day(3), 55.0, "CZK")];
+
+        let report = bench(&conn, &prices, day(0), day(3), "CZK");
+
+        assert_eq!(report.dates, [day(2), day(3)].map(ts_to_date_str));
+        assert_eq!(report.twr[0], 0.0);
+        close(report.twr[1], 10.0, 1e-9);
+    }
+
+    #[test]
+    fn benchmark_range_is_bounded_by_the_prices() {
+        let conn = setup_db();
+        let prices = [
+            price(day(0), 100.0, "CZK"),
+            price(day(1), 105.0, "CZK"),
+            price(day(2), 110.0, "CZK"),
+        ];
+
+        // a transient absurd range (typing a year passes through year 0002)
+        let report = bench(&conn, &prices, -62_000_000_000, 253_402_300_799, "CZK");
+
+        assert_eq!(report.dates, [day(0), day(1), day(2)].map(ts_to_date_str));
+        close(*last(&report.twr), 10.0, 1e-9);
+    }
+
+    #[test]
+    fn benchmark_skips_days_that_cannot_be_converted_and_counts_them() {
+        let conn = setup_db();
+        // only CZK is quoted, so a USD close has no rate on any day
+        for at in [day(0), day(1)] {
+            conn.execute(
+                "INSERT INTO exchange_rate_history (date, currency, rate) VALUES (?1, 'CZK', 25.0)",
+                [at],
+            )
+            .expect("rate");
+        }
+        let prices = [price(day(0), 100.0, "USD"), price(day(1), 110.0, "USD")];
+
+        let report = bench(&conn, &prices, day(0), day(1), "CZK");
+
+        assert!(report.dates.is_empty());
+        assert!(report.twr.is_empty());
+        assert_eq!(report.fx_quality.missing_currencies, ["USD"]);
+        assert!(report.fx_quality.missing_count > 0);
+    }
+
+    #[test]
+    fn benchmark_ignores_unusable_prices_and_rejects_a_bad_currency() {
+        let conn = setup_db();
+        let prices = [
+            price(day(0), 100.0, "CZK"),
+            price(day(1), 0.0, "CZK"),
+            price(day(2), f64::NAN, "CZK"),
+            price(day(3), 120.0, "CZK"),
+        ];
+
+        let report = bench(&conn, &prices, day(0), day(3), "czk");
+
+        // the zero and the NaN never replace the last valid close
+        assert_eq!(report.currency, "CZK");
+        close(report.twr[1], 0.0, 1e-9);
+        close(report.twr[2], 0.0, 1e-9);
+        close(report.twr[3], 20.0, 1e-9);
+        assert!(benchmark_series(&conn, "X", &prices, day(0), day(3), "??").is_err());
+    }
+
+    fn ticker_key(result: Result<String>) -> String {
+        match result {
+            Err(AppError::Validation(key)) => key,
+            other => panic!("expected a validation error, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn validate_benchmark_ticker_accepts_indices_and_etfs() {
+        for ticker in ["CSPX.L", "^GSPC", "IWDA.L", "BRK-B", "EURUSD=X", "A"] {
+            assert_eq!(
+                validate_benchmark_ticker(ticker).expect("valid"),
+                ticker.to_string()
+            );
+        }
+        // trimmed and uppercased
+        assert_eq!(
+            validate_benchmark_ticker("  cspx.l ").expect("valid"),
+            "CSPX.L"
+        );
+        assert_eq!(
+            validate_benchmark_ticker(&"A".repeat(24)).expect("24 characters"),
+            "A".repeat(24)
+        );
+    }
+
+    #[test]
+    fn validate_benchmark_ticker_rejects_the_rest() {
+        for ticker in ["", "   ", "a b", "AB$", "SPX/L", "ČEZ", "A,B"] {
+            assert_eq!(
+                ticker_key(validate_benchmark_ticker(ticker)),
+                "validation.benchmarkTickerInvalid",
+                "{ticker:?}"
+            );
+        }
+        assert_eq!(
+            ticker_key(validate_benchmark_ticker(&"A".repeat(25))),
+            "validation.benchmarkTickerInvalid"
+        );
     }
 }

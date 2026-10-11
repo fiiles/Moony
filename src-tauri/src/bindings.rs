@@ -40,6 +40,7 @@ pub fn collect_types() -> TypeCollection {
     types.register::<crate::models::PerformanceSeries>();
     types.register::<crate::models::PositionPerformance>();
     types.register::<crate::models::StockPerformance>();
+    types.register::<crate::models::StockBenchmark>();
     types.register::<crate::models::TickerValueHistoryReport>();
     types.register::<crate::services::history_recalc::HistoryRecalcEvent>();
 

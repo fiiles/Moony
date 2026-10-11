@@ -1652,6 +1652,25 @@ export interface StockPerformance {
 }
 
 /**
+ * Daily returns of a market index (or any Yahoo ticker) over the period, for the comparison line
+ * of the performance chart.
+ */
+export interface StockBenchmark {
+  /** The validated ticker the prices were fetched for. */
+  ticker: string;
+  /** The report currency the returns are computed in. */
+  currency: string;
+  fxQuality: ConversionQuality;
+  /**
+   * Days as `YYYY-MM-DD`, one per calendar day (the last close carries over non-trading days);
+   * empty when the ticker has no prices.
+   */
+  dates: string[];
+  /** Cumulative return of the index in percent per date, the first date being 0. */
+  twr: number[];
+}
+
+/**
  * One recorded day of a ticker's position. Quantity, price and currency are the native facts;
  * `value` is `quantity × price` converted at that day's rate (common-day rule), null when it
  * cannot be converted.

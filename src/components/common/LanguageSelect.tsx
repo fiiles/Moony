@@ -27,6 +27,8 @@ interface LanguageSelectProps {
   variant?: 'quiet' | 'field';
   /** Shows each language's format with this currency; without it, a plain number. */
   currency?: string;
+  /** First-run setup only needs language names; settings retain format examples. */
+  showFormatSample?: boolean;
   disabled?: boolean;
   className?: string;
 }
@@ -48,6 +50,7 @@ export function LanguageSelect({
   onChange,
   variant = 'quiet',
   currency,
+  showFormatSample = true,
   disabled,
   className,
 }: LanguageSelectProps) {
@@ -71,7 +74,10 @@ export function LanguageSelect({
           <ChevronDown aria-hidden className={cn(variant === 'field' && 'ml-auto')} />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="min-w-[230px]">
+      <DropdownMenuContent
+        align="end"
+        className={showFormatSample ? 'min-w-[230px]' : 'min-w-[160px]'}
+      >
         <DropdownMenuRadioGroup
           value={value}
           onValueChange={(code) => {
@@ -81,9 +87,11 @@ export function LanguageSelect({
           {LANGUAGES.map((language) => (
             <DropdownMenuRadioItem key={language.code} value={language.code}>
               <span lang={language.code}>{language.native}</span>
-              <span className="ml-auto pl-4 font-500 text-ink-4 num">
-                {formatSample(language.locale, currency)}
-              </span>
+              {showFormatSample && (
+                <span className="ml-auto pl-4 font-500 text-ink-4 num">
+                  {formatSample(language.locale, currency)}
+                </span>
+              )}
             </DropdownMenuRadioItem>
           ))}
         </DropdownMenuRadioGroup>

@@ -165,6 +165,7 @@ export default function AuthPage() {
         <header className="pointer-events-none absolute inset-x-0 top-0 z-10 flex h-16 items-center justify-end px-6">
           <LanguageSelect
             className="pointer-events-auto"
+            showFormatSample={false}
             value={selectedLanguage}
             onChange={handleLanguageChange}
           />

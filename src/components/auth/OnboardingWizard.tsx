@@ -301,6 +301,7 @@ export function OnboardingWizard({ language, onFinished }: OnboardingWizardProps
 
   return (
     <div
+      key={step}
       ref={wizardRef}
       className="onboarding-wizard grid min-h-svh grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]"
     >

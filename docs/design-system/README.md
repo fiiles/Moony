@@ -48,8 +48,8 @@ Source of truth: `tokens.css`. Summary of the families (names map 1:1 to the fil
 - **Spacing** 4-px scale `sp-1` … `sp-9`, layout widths, control heights
 - **Motion** `t-fast` 120 ms, `t-base` 180 ms, one ease curve
 
-Main-window page navigation uses a 240 ms entrance in `shell/PageTransition`: opacity 0.6 → 1 and a
-4 px upward settle, with the same ease curve. The sidebar and top bar stay still. Only pathname
+Main-window page navigation uses a 400 ms entrance in `shell/PageTransition`: opacity 0.2 → 1 and an
+8 px upward settle, with an ease-out curve. The sidebar and top bar stay still. Only pathname
 changes trigger it; query filters and data refreshes do not. It preserves page component state,
 leaves no transform after completion, and skips or cancels the animation for reduced motion.
 

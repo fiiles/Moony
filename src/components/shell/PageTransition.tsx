@@ -13,10 +13,10 @@ export function PageTransition({ children }: { children: ReactNode }) {
 
     const animation = content.animate(
       [
-        { opacity: 0.6, transform: 'translateY(4px)' },
+        { opacity: 0.2, transform: 'translateY(8px)' },
         { opacity: 1, transform: 'translateY(0)' },
       ],
-      { duration: 240, easing: 'cubic-bezier(0.2, 0.7, 0.2, 1)' }
+      { duration: 400, easing: 'ease-out' }
     );
     const handleMotionChange = () => {
       if (motion.matches) animation.cancel();

@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { AppSidebar } from '@/components/shell/AppSidebar';
 import { TopBar } from '@/components/shell/TopBar';
 import { ShellProvider } from '@/components/shell/ShellProvider';
+import { PageTransition } from '@/components/shell/PageTransition';
 
 /**
  * Application frame (design system §4): a 264 px sidebar (E1) beside the
@@ -16,7 +17,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <main className="min-w-0">
           <div className="mx-auto w-full max-w-page px-[var(--page-pad-x)] pb-14 pt-[var(--page-pad-t)]">
             <TopBar />
-            {children}
+            <PageTransition>{children}</PageTransition>
           </div>
         </main>
       </div>

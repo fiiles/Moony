@@ -161,9 +161,13 @@ export default function AuthPage() {
 
   if (wizardActive) {
     return (
-      <div className="onboarding-shell min-h-screen bg-canvas">
-        <header className="flex h-16 items-center justify-end px-6">
-          <LanguageSelect value={selectedLanguage} onChange={handleLanguageChange} />
+      <div className="onboarding-shell relative min-h-screen bg-canvas">
+        <header className="pointer-events-none absolute inset-x-0 top-0 z-10 flex h-16 items-center justify-end px-6">
+          <LanguageSelect
+            className="pointer-events-auto"
+            value={selectedLanguage}
+            onChange={handleLanguageChange}
+          />
         </header>
         {introDone ? (
           <OnboardingWizard

@@ -302,9 +302,9 @@ export function OnboardingWizard({ language, onFinished }: OnboardingWizardProps
   return (
     <div
       ref={wizardRef}
-      className="onboarding-wizard grid min-h-[calc(100svh-64px)] grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]"
+      className="onboarding-wizard grid min-h-svh grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]"
     >
-      <section className="flex flex-col justify-center px-6 py-8 lg:px-10 xl:px-14">
+      <section className="flex flex-col justify-center px-6 pb-8 pt-20 lg:px-10 lg:py-12 xl:px-14">
         <div className="mx-auto w-full max-w-[480px]">
           <div className="mb-9 flex items-center gap-[11px]">
             <MoonMark />

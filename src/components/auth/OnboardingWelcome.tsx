@@ -29,7 +29,7 @@ export function OnboardingWelcome({ onContinue }: { onContinue: () => void }) {
 
   return (
     <section
-      className="onboarding-intro relative flex min-h-[calc(100svh-64px)] flex-col items-center justify-center overflow-hidden px-6 pb-24 text-center"
+      className="onboarding-intro relative flex min-h-svh flex-col items-center justify-center overflow-hidden px-6 pb-24 pt-16 text-center"
       data-testid="onboarding-intro"
     >
       <div className="onboarding-intro-content relative flex flex-col items-center">

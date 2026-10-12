@@ -57,9 +57,9 @@ export function OnboardingPreview({ areas, name, netWorth, caption }: Onboarding
     );
 
   return (
-    <section className="relative flex items-center justify-center overflow-hidden border-t border-line bg-[linear-gradient(160deg,var(--well),var(--canvas))] px-6 pb-10 pt-16 lg:border-l lg:border-t-0 lg:p-10 xl:p-12">
+    <section className="relative flex items-center justify-center overflow-hidden border-t border-line bg-[linear-gradient(160deg,var(--well),var(--canvas))] px-6 pb-10 pt-16 lg:border-l lg:border-t-0 lg:px-10 lg:pb-10 lg:pt-28 xl:px-12 xl:pb-12">
       <div className="pointer-events-none absolute -right-[200px] -top-[220px] size-[520px] rounded-full bg-canvas-glow" />
-      <div className="absolute inset-x-6 top-6 text-eyebrow uppercase text-ink-4 lg:inset-x-10 xl:inset-x-12">
+      <div className="absolute inset-x-6 top-6 text-eyebrow uppercase text-ink-4 lg:inset-x-10 lg:top-20 xl:inset-x-12">
         <span>{caption}</span>
       </div>
       <div

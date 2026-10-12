@@ -33,8 +33,9 @@ body:has(.onboarding-shell) {
   animation-delay: 750ms;
 }
 
-.onboarding-wizard {
-  animation: onboarding-arrive 300ms ease-out both;
+.onboarding-wizard,
+.onboarding-step {
+  animation: onboarding-arrive 500ms ease-out both;
 }
 
 @keyframes onboarding-orbit {
@@ -97,7 +98,8 @@ body:has(.onboarding-shell) {
 @media (prefers-reduced-motion: reduce) {
   .onboarding-intro-content,
   .onboarding-intro-content *,
-  .onboarding-wizard {
+  .onboarding-wizard,
+  .onboarding-step {
     animation: none;
   }
 }

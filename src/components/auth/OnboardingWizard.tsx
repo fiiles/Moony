@@ -301,7 +301,6 @@ export function OnboardingWizard({ language, onFinished }: OnboardingWizardProps
 
   return (
     <div
-      key={step}
       ref={wizardRef}
       className="onboarding-wizard grid min-h-svh grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]"
     >
@@ -326,7 +325,7 @@ export function OnboardingWizard({ language, onFinished }: OnboardingWizardProps
 
           {/* ---------------- 1. Privacy ---------------- */}
           {step === 'welcome' && (
-            <div data-testid="onboarding-welcome">
+            <div className="onboarding-step" data-testid="onboarding-welcome">
               <StepHead
                 title={t('onboarding.welcome.title')}
                 lead={t('onboarding.welcome.subtitle')}
@@ -394,7 +393,7 @@ export function OnboardingWizard({ language, onFinished }: OnboardingWizardProps
                 onSubmit={setupForm.handleSubmit((data) =>
                   setupMutation.mutate({ ...data, language, currency })
                 )}
-                className="space-y-4"
+                className="onboarding-step space-y-4"
                 data-testid="onboarding-account"
               >
                 <StepHead
@@ -506,7 +505,7 @@ export function OnboardingWizard({ language, onFinished }: OnboardingWizardProps
 
           {/* ---------------- 3. Recovery key ---------------- */}
           {step === 'recovery' && recoveryKey && (
-            <div data-testid="onboarding-recovery">
+            <div className="onboarding-step" data-testid="onboarding-recovery">
               <StepHead
                 title={t('onboarding.recovery.title')}
                 lead={t('onboarding.recovery.subtitle')}
@@ -577,7 +576,7 @@ export function OnboardingWizard({ language, onFinished }: OnboardingWizardProps
 
           {/* ---------------- 4. Areas ---------------- */}
           {step === 'areas' && unlocked && (
-            <div data-testid="onboarding-areas">
+            <div className="onboarding-step" data-testid="onboarding-areas">
               <StepHead title={t('onboarding.areas.title')} lead={t('onboarding.areas.subtitle')} />
               <div className="mb-5 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
                 <AreaCard
@@ -634,7 +633,7 @@ export function OnboardingWizard({ language, onFinished }: OnboardingWizardProps
 
           {/* ---------------- 5. First account ---------------- */}
           {step === 'firstAccount' && unlocked && (
-            <div data-testid="onboarding-first-account">
+            <div className="onboarding-step" data-testid="onboarding-first-account">
               <StepHead
                 title={t('onboarding.firstAccount.title')}
                 lead={t('onboarding.firstAccount.subtitle')}

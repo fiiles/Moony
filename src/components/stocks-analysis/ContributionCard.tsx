@@ -5,18 +5,13 @@ import { useFormat } from '@/lib/use-format';
 import { cn } from '@/lib/utils';
 import type { CompareGroup } from '@/utils/stock-performance';
 import type { AnalysisPosition } from '@/utils/stock-analysis';
-import { formatPoints, toneOf } from '@/utils/performance-format';
-import { AssetLogo } from '@/components/common/AssetLogo';
+import { formatPoints } from '@/utils/performance-format';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Segmented } from '@/components/ui/segmented';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  barLayout,
-  contributionRows,
-  partItems,
-  positionItems,
-  type ContributionItem,
-} from './contribution-model';
+import { barLayout, contributionRows, partItems, positionItems } from './contribution-model';
+import { ContributionOtherDialog } from './ContributionOtherDialog';
+import { CARD_GRID, ContributionRow, ContributionTotalRow } from './ContributionRow';
 import { groupName, partName, sectorLabel, type RankedPart } from './performance-model';
 import { useHeldWhile } from './use-held-while';
 
@@ -35,13 +30,6 @@ interface ContributionCardProps {
   group: CompareGroup | null;
   filterActive: boolean;
 }
-
-/**
- * Name, bar, value. Compact below 1360 px (the card is 351 px wide at the 1080 px minimum), the
- * design's widths from there.
- */
-const GRID =
-  'grid grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_72px] items-center gap-x-3 px-[21px] min-[1360px]:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)_84px] min-[1360px]:gap-x-[14px]';
 
 /** Skeleton in the shape of the card: the head and five rows. */
 export function ContributionSkeleton() {
@@ -80,6 +68,7 @@ export function ContributionCard({
   const fmt = useFormat();
   const pp = t('stocksAnalysis.pp');
   const [chosen, setChosen] = useState<Mode>('positions');
+  const [otherOpen, setOtherOpen] = useState(false);
 
   const live = useMemo(
     () => ({ selected, parts, group, filterActive }),
@@ -167,109 +156,83 @@ export function ContributionCard({
     return t(`stocksAnalysis.contribution.${key}`, { value, group: label });
   };
 
-  const toneClass = (value: number) => {
-    const tone = toneOf(value);
-    return tone === 'gain' ? 'text-gain' : tone === 'loss' ? 'text-loss' : 'text-ink-2';
-  };
-
-  const renderRow = (row: ContributionItem, i: number) => (
-    <li key={row.id} className={cn(GRID, 'min-h-[40px] border-t border-line-soft text-table')}>
-      <span className="flex min-w-0 items-center gap-[10px]">
-        {row.ticker !== null && (
-          <AssetLogo ticker={row.ticker} type="stock" className="size-6 text-[8.5px]" />
-        )}
-        <span className="min-w-0 py-[7px]">
-          <b
-            className={cn(
-              'block truncate text-table',
-              row.muted ? 'font-600 text-ink-3' : 'font-650 text-ink'
-            )}
-          >
-            {row.name}
-          </b>
-          {row.positions !== null && (
-            <small className="mt-0.5 block truncate text-micro font-500 text-ink-4">
-              {t('stocksAnalysis.board.positions', { count: row.positions })}
-            </small>
-          )}
-        </span>
-      </span>
-      <span aria-hidden className="relative block h-4">
-        <i
-          className="absolute -bottom-3 -top-3 w-px bg-line-strong"
-          style={{ left: `${layout.zero}%` }}
-        />
-        <i
-          className={cn('absolute top-1 h-2 rounded-[2px]', row.points < 0 ? 'bg-s3' : 'bg-s2')}
-          style={{ left: `${layout.bars[i].left}%`, width: `${layout.bars[i].width}%` }}
-        />
-      </span>
-      <span
-        className={cn('text-right font-650 num whitespace-nowrap', toneClass(row.points))}
-        title={
-          row.periodReturn === null
-            ? undefined
-            : t('stocksAnalysis.contribution.periodReturn', { value: percent(row.periodReturn) })
-        }
-      >
-        {points(row.points)}
-      </span>
-    </li>
-  );
+  // The "rest" row folds the smallest effects; it opens a list of them
+  const last = rows.at(-1);
+  const otherRow = last?.folded ? last : undefined;
+  const otherSubtitle =
+    mode === 'positions'
+      ? t('stocksAnalysis.contribution.otherSubPositions', { value: percent(portfolioReturn) })
+      : t('stocksAnalysis.contribution.otherSubParts', {
+          value: percent(portfolioReturn),
+          group: label,
+        });
 
   return (
-    <Card className={cn('flex flex-col transition-opacity duration-base', stale && 'opacity-50')}>
-      <CardHeader className="flex-wrap items-start">
-        <div className="min-w-0 flex-1 basis-[190px]">
-          <CardTitle className="text-[16px]">{t('stocksAnalysis.contribution.title')}</CardTitle>
-          <CardDescription>{subtitle()}</CardDescription>
-        </div>
-        {grouped && (
-          <Segmented
-            value={mode}
-            onValueChange={setChosen}
-            aria-label={t('stocksAnalysis.contribution.title')}
-            options={[
-              { value: 'positions', label: t('stocksAnalysis.contribution.byPosition') },
-              {
-                value: 'group',
-                label: (
-                  <span title={t('stocksAnalysis.contribution.byGroupTitle')}>
-                    {t('stocksAnalysis.contribution.byGroup')}
-                  </span>
-                ),
-              },
-            ]}
-          />
-        )}
-      </CardHeader>
-      <ul className="m-0 flex flex-1 list-none flex-col p-0">
-        {rows.length === 0 ? (
-          <li className="border-t border-line-soft px-[21px] py-6 text-center text-table text-ink-3">
-            {t('stocksAnalysis.performance.empty')}
-          </li>
-        ) : (
-          rows.map(renderRow)
-        )}
-        <li
-          className={cn(
-            GRID,
-            'mt-auto min-h-[40px] rounded-b-r4 border-t border-line bg-well text-table'
+    <>
+      <Card className={cn('flex flex-col transition-opacity duration-base', stale && 'opacity-50')}>
+        <CardHeader className="flex-wrap items-start">
+          <div className="min-w-0 flex-1 basis-[190px]">
+            <CardTitle className="text-[16px]">{t('stocksAnalysis.contribution.title')}</CardTitle>
+            <CardDescription>{subtitle()}</CardDescription>
+          </div>
+          {grouped && (
+            <Segmented
+              value={mode}
+              onValueChange={setChosen}
+              aria-label={t('stocksAnalysis.contribution.title')}
+              options={[
+                { value: 'positions', label: t('stocksAnalysis.contribution.byPosition') },
+                {
+                  value: 'group',
+                  label: (
+                    <span title={t('stocksAnalysis.contribution.byGroupTitle')}>
+                      {t('stocksAnalysis.contribution.byGroup')}
+                    </span>
+                  ),
+                },
+              ]}
+            />
           )}
-        >
-          <b className="truncate font-700 text-ink">
-            {t(
+        </CardHeader>
+        <ul className="m-0 flex flex-1 list-none flex-col p-0">
+          {rows.length === 0 ? (
+            <li className="border-t border-line-soft px-[21px] py-6 text-center text-table text-ink-3">
+              {t('stocksAnalysis.performance.empty')}
+            </li>
+          ) : (
+            rows.map((row, i) => (
+              <ContributionRow
+                key={row.id}
+                row={row}
+                zero={layout.zero}
+                bar={layout.bars[i]}
+                grid={CARD_GRID}
+                onOpen={row.folded ? () => setOtherOpen(true) : undefined}
+                openLabel={t('stocksAnalysis.contribution.otherOpen')}
+              />
+            ))
+          )}
+          <ContributionTotalRow
+            label={t(
               view.filterActive
                 ? 'stocksAnalysis.contribution.selection'
                 : 'stocksAnalysis.contribution.portfolio'
             )}
-          </b>
-          <span />
-          <span className={cn('text-right font-650 num whitespace-nowrap', toneClass(footPoints))}>
-            {points(footPoints)}
-          </span>
-        </li>
-      </ul>
-    </Card>
+            points={footPoints}
+            grid={CARD_GRID}
+            className="mt-auto rounded-b-r4"
+          />
+        </ul>
+      </Card>
+      {otherRow?.folded && (
+        <ContributionOtherDialog
+          open={otherOpen}
+          onOpenChange={setOtherOpen}
+          items={otherRow.folded}
+          total={otherRow.points}
+          description={otherSubtitle}
+        />
+      )}
+    </>
   );
 }

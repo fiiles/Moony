@@ -16,6 +16,11 @@ export interface ContributionItem {
   periodReturn: number | null;
   /** Quiet row: the part without a tag or sector, a part the chart does not draw, the rest. */
   muted: boolean;
+  /**
+   * What the rest row stands for, largest contribution first (the sum of their points is the
+   * row's own); `null` for every other row.
+   */
+  folded: readonly ContributionItem[] | null;
 }
 
 /** How the rows are ordered: positions by the size of their effect, parts best first. */
@@ -23,7 +28,8 @@ export type ContributionOrder = 'magnitude' | 'value';
 
 /**
  * Rows ordered, then folded: with more than nine rows the eight largest effects stay and the
- * others become one muted "rest" row that sums them (`otherName`), at the end.
+ * others become one muted "rest" row that sums them (`otherName`), at the end. The row keeps the
+ * folded items (`folded`), best contribution first, so they can be listed on their own.
  */
 export function contributionRows(
   items: readonly ContributionItem[],
@@ -45,6 +51,7 @@ export function contributionRows(
       points: rest.reduce((sum, item) => sum + item.points, 0),
       periodReturn: null,
       muted: true,
+      folded: [...rest].sort((a, b) => b.points - a.points),
     },
   ];
 }
@@ -104,6 +111,7 @@ export function positionItems(
         points: figures.contribution,
         periodReturn: figures.twr,
         muted: false,
+        folded: null,
       },
     ];
   });
@@ -133,6 +141,7 @@ export function partItems(
         points,
         periodReturn: found.twr.at(-1) ?? null,
         muted: part.isNone || !drawn,
+        folded: null,
       },
     ];
   });

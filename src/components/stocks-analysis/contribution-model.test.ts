@@ -18,6 +18,7 @@ function item(id: string, points: number, extra: Partial<ContributionItem> = {})
     points,
     periodReturn: null,
     muted: false,
+    folded: null,
     ...extra,
   };
 }
@@ -78,6 +79,61 @@ describe('contributionRows', () => {
     const other = contributionRows(parts, 'value', 'Other').at(-1);
     expect(other?.positions).toBe(6);
   });
+
+  describe('the folded items', () => {
+    const long = [
+      item('a', 5),
+      item('b', -4),
+      item('c', 3),
+      item('d', 2),
+      item('e', 1.5),
+      item('f', 1),
+      item('g', 0.8),
+      item('h', 0.6),
+      item('i', -0.3),
+      item('j', 0.2),
+      item('k', -0.1),
+    ];
+
+    it('are kept on the rest row, best contribution first and losses last', () => {
+      const other = contributionRows(long, 'magnitude', 'Other').at(-1);
+      expect(other?.folded?.map((r) => r.id)).toEqual(['j', 'k', 'i']);
+    });
+
+    it('add up to the rest row and stand for as many positions as it counts', () => {
+      const other = contributionRows(long, 'magnitude', 'Other').at(-1);
+      const folded = other?.folded ?? [];
+      expect(folded.reduce((sum, r) => sum + r.points, 0)).toBeCloseTo(other?.points ?? NaN);
+      expect(folded.reduce((sum, r) => sum + (r.positions ?? 1), 0)).toBe(other?.positions);
+    });
+
+    it('keep their own figures, so the list can show them like the card does', () => {
+      const parts = Array.from({ length: 10 }, (_, i) =>
+        item(`t${i}`, 10 - i, { positions: 2, periodReturn: i, muted: i === 9, ticker: null })
+      );
+      const other = contributionRows(parts, 'value', 'Other').at(-1);
+      expect(other?.folded?.map((r) => r.id)).toEqual(['t8', 't9']);
+      expect(other?.folded?.[1]).toMatchObject({ positions: 2, periodReturn: 9, muted: true });
+    });
+
+    it('stay sorted when the rows themselves are ordered by size', () => {
+      // The card orders positions by magnitude: the rest holds small gains and small losses mixed
+      const other = contributionRows(long, 'magnitude', 'Other').at(-1);
+      const points = other?.folded?.map((r) => r.points) ?? [];
+      expect(points).toEqual([...points].sort((x, y) => y - x));
+    });
+
+    it('exist only on the rest row', () => {
+      const rows = contributionRows(long, 'magnitude', 'Other');
+      expect(rows.slice(0, -1).every((r) => r.folded === null)).toBe(true);
+      expect(rows.at(-1)?.folded).toHaveLength(3);
+    });
+
+    it('are absent when nothing is folded', () => {
+      const rows = contributionRows(long.slice(0, 9), 'magnitude', 'Other');
+      expect(rows.every((r) => r.folded === null)).toBe(true);
+    });
+  });
 });
 
 describe('barLayout', () => {
@@ -127,6 +183,7 @@ describe('positionItems', () => {
       periodReturn: 12,
       muted: false,
       positions: null,
+      folded: null,
     });
   });
 });
@@ -175,6 +232,7 @@ describe('partItems', () => {
         points: 4,
         periodReturn: 9,
         muted: false,
+        folded: null,
       },
       {
         id: 'tag:b',
@@ -184,6 +242,7 @@ describe('partItems', () => {
         points: -1,
         periodReturn: -3,
         muted: true,
+        folded: null,
       },
       {
         id: 'none:g',
@@ -193,6 +252,7 @@ describe('partItems', () => {
         points: 0.2,
         periodReturn: 1,
         muted: true,
+        folded: null,
       },
     ]);
   });

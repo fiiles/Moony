@@ -49,9 +49,10 @@ export function FlowsSkeleton() {
 
 /**
  * "Vklady a zhodnocení": what moved the value of the whole portfolio, split into net deposits and
- * the market. A bridge from the value at the start to the value at the end, and bars per week,
- * month, quarter or year (by the length of the period): market `s1`, deposits `s3`, both below
- * the zero line when negative. The bars fill the height the neighbouring card sets.
+ * the portfolio gain (the positions' own change in value). A bridge from the value at the start to
+ * the value at the end, and bars per week, month, quarter or year (by the length of the period):
+ * gain `s1`, deposits `s3`, both below the zero line when negative. The bars fill the height the
+ * neighbouring card sets.
  */
 export function FlowsCard({ data, loading, stale, endsToday }: FlowsCardProps) {
   const { t } = useTranslation('reports');

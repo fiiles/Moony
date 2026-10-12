@@ -42,7 +42,7 @@ All notable changes to Moony are documented in this file. The format follows
   optional opening balance with a date.
 - **Stocks analysis rebuilt around performance.** One wide card shows the time-weighted return of
   the whole portfolio, the money-weighted return (which reflects when you deposited) with its gap
-  to the time-weighted one, and the change of value split into net deposits and market growth. The
+  to the time-weighted one, and the change of value split into net deposits and portfolio gain. The
   return chart is larger and has a drawdown panel under it; both share a date axis with labels at
   real dates (month starts, quarters, years). "Rozdělit podle" splits the selected positions by a
   tag group or by the automatic groups Sektor and Měna (offered only when they split your
@@ -51,8 +51,9 @@ All notable changes to Moony are documented in this file. The format follows
   portfolio; the table under the chart is the legend and shows each part's return, difference to
   the portfolio, contribution in percentage points, maximum drawdown, share and value. Hovering
   the chart rewrites the figures and the table to that day. New cards show each position's
-  contribution to the return and deposits against market change per week, month, quarter or
-  year; the tag and holdings tables gain the return for the period. "Které pozice analyzovat"
+  contribution to the return (its "Ostatní" row opens a list of the positions it folds) and
+  deposits against portfolio gain per week, month, quarter or year; the tag and holdings tables
+  gain the return for the period. "Které pozice analyzovat"
   replaces the chip filters with a summary and a rule sentence. The stats row and the allocation
   ring are gone.
 - **Custom periods in the stocks analysis.** Besides 3 měsíce, Letos, Rok, 3 roky and Vše there is

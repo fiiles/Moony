@@ -149,53 +149,70 @@ export function tagTotals(positions: readonly TotalsPosition[], tagId: string): 
   return positionTotals(positions.filter((p) => p.tags.some((tag) => tag.id === tagId)));
 }
 
-/** A group row left on "Beze změny": the position keeps whatever tag it has in that group. */
-export const PICK_KEEP = 'keep';
-/** A group row set to "Bez štítku": the position loses its tag in that group. */
-export const PICK_NONE = 'none';
+/**
+ * The tags of one position after choosing in a tag group: the group is a single choice, so the
+ * tag the position has there is replaced by `tagId`, or just removed for `null` ("Bez štítku").
+ * Tags of other groups and tags without a group stay. A `tagId` that is not a tag of the group
+ * (deleted or moved meanwhile) changes nothing.
+ */
+export function pickGroupTag(
+  tagIds: readonly string[],
+  tags: readonly StockTag[],
+  groupId: string,
+  tagId: string | null
+): string[] {
+  if (tagId !== null && !tags.some((tag) => tag.id === tagId && tag.groupId === groupId)) {
+    return [...tagIds];
+  }
+  const inGroup = new Set(tags.filter((tag) => tag.groupId === groupId).map((tag) => tag.id));
+  const next = tagIds.filter((id) => !inGroup.has(id));
+  if (tagId !== null) next.push(tagId);
+  return next;
+}
 
 /**
- * The tags a position gets from the assign dialog. A tag group is one choice: per group
- * `picks[groupId]` is `'keep'` (the position keeps its tag there), `'none'` (removed) or the id
- * of a tag of that group (replaces the current one). A group the picks do not mention, or a pick
- * that is not a tag of its group any more, keeps the current tag. Tags without a group are
- * `free`: for a single position they are exactly the checked ones, for several positions the
- * checked ones are added to the free tags each position already has.
+ * The tags of one position after clicking a tag without a group: tags without a group combine
+ * freely, so the click adds the tag or, if the position has it, removes it. A tag that is not
+ * one without a group (it belongs to a group, or does not exist) changes nothing.
  */
-export function nextTagIds(
-  current: readonly StockTag[],
-  picks: Readonly<Record<string, string>>,
-  free: readonly string[],
-  single: boolean,
-  tags: readonly StockTag[]
+export function toggleFreeTag(
+  tagIds: readonly string[],
+  tags: readonly StockTag[],
+  tagId: string
 ): string[] {
-  const result: string[] = [];
-  const add = (id: string) => {
-    if (!result.includes(id)) result.push(id);
-  };
-  const pickOf = (groupId: string): string | null => {
-    const pick = picks[groupId];
-    if (pick === undefined || pick === PICK_KEEP) return null;
-    if (pick === PICK_NONE) return PICK_NONE;
-    return tags.some((tag) => tag.id === pick && tag.groupId === groupId) ? pick : null;
-  };
+  if (!tags.some((tag) => tag.id === tagId && tag.groupId === null)) return [...tagIds];
+  return tagIds.includes(tagId) ? tagIds.filter((id) => id !== tagId) : [...tagIds, tagId];
+}
 
-  for (const tag of current) {
-    if (tag.groupId === null) {
-      // Free tags are replaced by the checked ones for a single position, kept for several
-      if (!single) add(tag.id);
-    } else if (pickOf(tag.groupId) === null) {
-      add(tag.id);
-    }
-  }
-  for (const groupId of Object.keys(picks)) {
-    const pick = pickOf(groupId);
-    if (pick !== null && pick !== PICK_NONE) add(pick);
-  }
-  for (const id of free) {
-    if (tags.some((tag) => tag.id === id && tag.groupId === null)) add(id);
-  }
-  return result;
+/**
+ * The positions whose draft tags differ from the saved ones (the order of the tags does not
+ * matter), in the order of `positions`. A position without a draft is unchanged, and so is a
+ * draft of a position that is not in the list.
+ */
+export function changedPositions(
+  positions: readonly { id: string; tags: readonly { id: string }[] }[],
+  drafts: ReadonlyMap<string, readonly string[]>
+): string[] {
+  const key = (ids: readonly string[]) => [...ids].sort().join('\n');
+  return positions
+    .filter((position) => {
+      const draft = drafts.get(position.id);
+      return draft !== undefined && key(draft) !== key(position.tags.map((tag) => tag.id));
+    })
+    .map((position) => position.id);
+}
+
+/**
+ * The position the assign dialog opens on: the first of `preferredIds` that is in the list,
+ * else the first position without a tag, else the first position; `null` for no positions.
+ */
+export function initialActiveId(
+  positions: readonly { id: string; tags: readonly unknown[] }[],
+  preferredIds: readonly string[]
+): string | null {
+  const preferred = preferredIds.find((id) => positions.some((position) => position.id === id));
+  if (preferred !== undefined) return preferred;
+  return (positions.find((position) => position.tags.length === 0) ?? positions[0])?.id ?? null;
 }
 
 /**

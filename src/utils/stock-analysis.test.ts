@@ -2,13 +2,16 @@ import { describe, expect, it } from 'vitest';
 import type { StockTag } from '@shared/schema';
 import {
   FILTER_ALL,
+  changedPositions,
   chosenTagIds,
   heldPositions,
+  initialActiveId,
   isHeld,
   moveConflicts,
-  nextTagIds,
+  pickGroupTag,
   selectPositions,
   tagTotals,
+  toggleFreeTag,
 } from './stock-analysis';
 
 const growth = { id: 'growth' };
@@ -196,96 +199,151 @@ function tag(id: string, groupId: string | null): StockTag {
   return { id, name: id, color: null, groupId, createdAt: 0 };
 }
 
-describe('nextTagIds', () => {
+describe('pickGroupTag', () => {
   const growthTag = tag('growth', 'strategy');
   const valueTag = tag('value', 'strategy');
   const usaTag = tag('usa', 'region');
-  const europeTag = tag('europe', 'region');
+  const watchTag = tag('watch', null);
+  const all = [growthTag, valueTag, usaTag, watchTag];
+
+  it('replaces the tag the position has in the group and leaves the other tags alone', () => {
+    expect(pickGroupTag(['growth', 'usa', 'watch'], all, 'strategy', 'value')).toEqual([
+      'usa',
+      'watch',
+      'value',
+    ]);
+  });
+
+  it('gives a position without a tag in the group the chosen one', () => {
+    expect(pickGroupTag(['usa'], all, 'strategy', 'growth')).toEqual(['usa', 'growth']);
+    expect(pickGroupTag([], all, 'strategy', 'growth')).toEqual(['growth']);
+  });
+
+  it('removes the tag of the group for null, and only that one', () => {
+    expect(pickGroupTag(['growth', 'usa', 'watch'], all, 'strategy', null)).toEqual([
+      'usa',
+      'watch',
+    ]);
+    expect(pickGroupTag(['usa'], all, 'strategy', null)).toEqual(['usa']);
+  });
+
+  it('keeps the choice when the chosen tag is picked again', () => {
+    expect(pickGroupTag(['growth', 'usa'], all, 'strategy', 'growth')).toEqual(['usa', 'growth']);
+  });
+
+  it('ignores a tag that is not a tag of the group (deleted or moved meanwhile)', () => {
+    expect(pickGroupTag(['growth'], all, 'strategy', 'ghost')).toEqual(['growth']);
+    expect(pickGroupTag(['growth'], all, 'strategy', 'usa')).toEqual(['growth']);
+    expect(pickGroupTag(['growth'], all, 'strategy', 'watch')).toEqual(['growth']);
+  });
+
+  it('does not change the list it is given', () => {
+    const current = ['growth', 'usa'];
+    pickGroupTag(current, all, 'strategy', 'value');
+    expect(current).toEqual(['growth', 'usa']);
+  });
+});
+
+describe('toggleFreeTag', () => {
+  const growthTag = tag('growth', 'strategy');
   const watchTag = tag('watch', null);
   const incomeTag = tag('income', null);
-  const all = [growthTag, valueTag, usaTag, europeTag, watchTag, incomeTag];
+  const all = [growthTag, watchTag, incomeTag];
 
-  it('keeps the tag of a group left on keep', () => {
-    const next = nextTagIds(
-      [growthTag, usaTag],
-      { strategy: 'keep', region: 'keep' },
-      [],
-      true,
-      all
-    );
-    expect(next).toEqual(['growth', 'usa']);
+  it('adds a tag without a group that the position does not have', () => {
+    expect(toggleFreeTag(['growth'], all, 'watch')).toEqual(['growth', 'watch']);
+    expect(toggleFreeTag(['watch'], all, 'income')).toEqual(['watch', 'income']);
   });
 
-  it('removes the tag of a group set to none, and only that one', () => {
-    const next = nextTagIds(
-      [growthTag, usaTag],
-      { strategy: 'none', region: 'keep' },
-      [],
-      true,
-      all
-    );
-    expect(next).toEqual(['usa']);
-  });
-
-  it('replaces the tag of a group with the chosen one', () => {
-    const next = nextTagIds(
-      [growthTag, usaTag],
-      { strategy: 'value', region: 'keep' },
-      [],
-      true,
-      all
-    );
-    expect(next).toEqual(['usa', 'value']);
-  });
-
-  it('gives a position without a tag the chosen one and leaves other groups alone', () => {
-    expect(nextTagIds([], { strategy: 'growth', region: 'none' }, [], true, all)).toEqual([
+  it('removes one it already has, and only that one', () => {
+    expect(toggleFreeTag(['growth', 'watch', 'income'], all, 'watch')).toEqual([
       'growth',
-    ]);
-    expect(nextTagIds([], { strategy: 'keep', region: 'keep' }, [], true, all)).toEqual([]);
-  });
-
-  it('sets the free tags exactly for a single position', () => {
-    const next = nextTagIds([growthTag, watchTag], { strategy: 'keep' }, ['income'], true, all);
-    // watch is unchecked, so it goes; income is added
-    expect(next).toEqual(['growth', 'income']);
-    expect(nextTagIds([watchTag], { strategy: 'keep' }, [], true, all)).toEqual([]);
-  });
-
-  it('adds the free tags to several positions and keeps the ones they have', () => {
-    const next = nextTagIds(
-      [growthTag, watchTag],
-      { strategy: 'keep' },
-      ['income', 'watch'],
-      false,
-      all
-    );
-    expect(next).toEqual(['growth', 'watch', 'income']);
-    // with nothing checked the existing free tags stay
-    expect(nextTagIds([watchTag], { strategy: 'keep' }, [], false, all)).toEqual(['watch']);
-  });
-
-  it('applies keep, none and replace per group across several positions', () => {
-    const picks = { strategy: 'value', region: 'keep' };
-    expect(nextTagIds([growthTag, europeTag], picks, [], false, all)).toEqual(['europe', 'value']);
-    expect(nextTagIds([], picks, [], false, all)).toEqual(['value']);
-  });
-
-  it('keeps a tag of a group the picks do not mention', () => {
-    expect(nextTagIds([europeTag], { strategy: 'growth' }, [], true, all)).toEqual([
-      'europe',
-      'growth',
+      'income',
     ]);
   });
 
-  it('ignores a pick that is not a tag of its group (deleted or moved meanwhile)', () => {
-    // 'ghost' no longer exists and 'usa' belongs to another group: the current tag stays
-    expect(nextTagIds([growthTag], { strategy: 'ghost' }, [], true, all)).toEqual(['growth']);
-    expect(nextTagIds([growthTag], { strategy: 'usa' }, [], true, all)).toEqual(['growth']);
+  it('ignores a tag that belongs to a group or does not exist', () => {
+    expect(toggleFreeTag(['watch'], all, 'growth')).toEqual(['watch']);
+    expect(toggleFreeTag(['watch'], all, 'ghost')).toEqual(['watch']);
   });
 
-  it('ignores a free id that is unknown or belongs to a group, and lists no tag twice', () => {
-    expect(nextTagIds([], {}, ['ghost', 'growth', 'watch', 'watch'], true, all)).toEqual(['watch']);
+  it('does not change the list it is given', () => {
+    const current = ['watch'];
+    toggleFreeTag(current, all, 'income');
+    expect(current).toEqual(['watch']);
+  });
+});
+
+describe('changedPositions', () => {
+  const originals = [
+    { id: 'a', tags: [{ id: 'growth' }, { id: 'usa' }] },
+    { id: 'b', tags: [] },
+    { id: 'c', tags: [{ id: 'value' }] },
+  ];
+
+  it('is empty without drafts and for drafts equal to the saved tags', () => {
+    expect(changedPositions(originals, new Map())).toEqual([]);
+    const same = new Map([
+      ['a', ['growth', 'usa']],
+      ['b', []],
+    ]);
+    expect(changedPositions(originals, same)).toEqual([]);
+  });
+
+  it('ignores the order of the tags', () => {
+    expect(changedPositions(originals, new Map([['a', ['usa', 'growth']]]))).toEqual([]);
+  });
+
+  it('lists the positions whose tags differ, in the order of the positions', () => {
+    const drafts = new Map([
+      ['c', []],
+      ['a', ['growth']],
+      ['b', ['watch']],
+    ]);
+    expect(changedPositions(originals, drafts)).toEqual(['a', 'b', 'c']);
+  });
+
+  it('treats a tag added and removed again as unchanged', () => {
+    expect(changedPositions(originals, new Map([['b', []]]))).toEqual([]);
+  });
+
+  it('ignores a draft of a position that is not in the list', () => {
+    expect(changedPositions(originals, new Map([['ghost', ['growth']]]))).toEqual([]);
+  });
+});
+
+describe('initialActiveId', () => {
+  const positions = [
+    { id: 'a', tags: [{ id: 'growth' }] },
+    { id: 'b', tags: [] },
+    { id: 'c', tags: [] },
+  ];
+
+  it('opens on the first id it is given', () => {
+    expect(initialActiveId(positions, ['c', 'b'])).toBe('c');
+    expect(initialActiveId(positions, ['a'])).toBe('a');
+  });
+
+  it('skips ids that are not in the list', () => {
+    expect(initialActiveId(positions, ['ghost', 'c'])).toBe('c');
+  });
+
+  it('opens on the first position without a tag when it is given no id', () => {
+    expect(initialActiveId(positions, [])).toBe('b');
+    expect(initialActiveId(positions, ['ghost'])).toBe('b');
+  });
+
+  it('opens on the first position when all of them have a tag', () => {
+    const tagged = [
+      { id: 'x', tags: [{ id: 'growth' }] },
+      { id: 'y', tags: [{ id: 'value' }] },
+    ];
+    expect(initialActiveId(tagged, [])).toBe('x');
+  });
+
+  it('is null for no positions', () => {
+    expect(initialActiveId([], [])).toBeNull();
+    expect(initialActiveId([], ['a'])).toBeNull();
   });
 });
 

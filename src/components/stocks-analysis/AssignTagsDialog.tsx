@@ -1,12 +1,28 @@
-import { useId, useMemo, useState, type ReactNode } from 'react';
+import {
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type ReactNode,
+} from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import { Search } from 'lucide-react';
 import { toast } from 'sonner';
 import type { StockInvestmentWithTags, StockTag, StockTagGroup } from '@shared/schema';
 import { stockTagsApi } from '@/lib/tauri-api';
 import { translateApiError } from '@/lib/translate-api-error';
 import { cn } from '@/lib/utils';
-import { PICK_KEEP, PICK_NONE, nextTagIds } from '@/utils/stock-analysis';
+import { matchesSearch } from '@/utils/holdings-search';
+import {
+  changedPositions,
+  initialActiveId,
+  pickGroupTag,
+  toggleFreeTag,
+} from '@/utils/stock-analysis';
+import { AssetLogo } from '@/components/common/AssetLogo';
 import {
   Dialog,
   DialogContent,
@@ -15,8 +31,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Label, LabelHint } from '@/components/ui/label';
+import { Input, InputWrap } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Chip } from '@/components/ui/chip';
 
@@ -26,45 +42,15 @@ interface AssignTagsDialogProps {
   stocks: StockInvestmentWithTags[];
   tags: StockTag[];
   groups: StockTagGroup[];
-  /** Position(s) preselected when the dialog opens. */
+  /** The position the dialog opens on is the first of these; none opens on an untagged one. */
   initialStockIds: string[];
 }
 
-/** What the chips show: per group the choice, plus the checked tags without a group. */
-interface Selection {
-  stockIds: string[];
-  /** Per tag group: `PICK_KEEP`, `PICK_NONE` or the id of the chosen tag. */
-  picks: Record<string, string>;
-  /** Ids of the checked tags without a group. */
-  free: string[];
-}
-
 /**
- * The starting choices for these positions. One position starts from its own tags (a group it
- * has no tag in starts on "Bez štítku"); several start with every group on "Beze změny" and
- * nothing checked, so saving without touching a chip changes nothing.
- */
-function selectionFor(
-  stockIds: string[],
-  stocks: readonly StockInvestmentWithTags[],
-  groups: readonly StockTagGroup[]
-): Selection {
-  const only = stockIds.length === 1 ? stocks.find((s) => s.id === stockIds[0]) : undefined;
-  const picks: Record<string, string> = {};
-  for (const group of groups) {
-    picks[group.id] = only
-      ? (only.tags.find((tag) => tag.groupId === group.id)?.id ?? PICK_NONE)
-      : PICK_KEEP;
-  }
-  const free = only ? only.tags.filter((tag) => tag.groupId === null).map((tag) => tag.id) : [];
-  return { stockIds, picks, free };
-}
-
-/**
- * "Přiřadit štítky" (spec `docs/specs/2026-10-11-stocks-analysis-redesign-design.md`): pick
- * positions and, per tag group, one tag. A group is a choice — the chosen tag replaces the
- * position's current one, "Bez štítku" removes it, and for several positions "Beze změny" leaves
- * it. Tags without a group can be combined freely.
+ * "Přiřadit štítky": click a position, pick its tags. The chips always edit the active position
+ * only; every position keeps its own draft while the dialog is open, and one save writes all the
+ * changed ones. A tag group is a single choice ("Bez štítku" or one of its tags), tags without a
+ * group combine freely.
  */
 export function AssignTagsDialog(props: AssignTagsDialogProps) {
   const { t } = useTranslation('reports');
@@ -75,7 +61,7 @@ export function AssignTagsDialog(props: AssignTagsDialogProps) {
           <DialogTitle>{t('stocksAnalysis.assign.title')}</DialogTitle>
           <DialogDescription>{t('stocksAnalysis.assign.description')}</DialogDescription>
         </DialogHeader>
-        {/* Mounted per opening so the choices start from the preselected position */}
+        {/* Mounted per opening so the drafts and the active position start over */}
         {props.open && <AssignForm {...props} />}
       </DialogContent>
     </Dialog>
@@ -112,31 +98,72 @@ function AssignForm({
     [tags]
   );
 
-  const [selection, setSelection] = useState<Selection>(() =>
-    selectionFor(initialStockIds, stocks, groups)
-  );
-  const { stockIds, picks, free } = selection;
-  const single = stockIds.length === 1;
+  const [activeId, setActiveId] = useState(() => initialActiveId(stocks, initialStockIds));
+  // Tag ids per edited position: a draft stays while the dialog is open, whatever is active
+  const [drafts, setDrafts] = useState<ReadonlyMap<string, readonly string[]>>(() => new Map());
+  const [query, setQuery] = useState('');
 
-  // The positions the dialog opened for come first; their order then stays put while ticking
-  const [firstIds] = useState(initialStockIds);
-  const ordered = useMemo(
-    () => [
-      ...firstIds.flatMap((id) => stocks.filter((s) => s.id === id)),
-      ...stocks.filter((s) => !firstIds.includes(s.id)),
-    ],
-    [stocks, firstIds]
+  const active = stocks.find((s) => s.id === activeId);
+  const tagIdsOf = (stock: StockInvestmentWithTags): readonly string[] =>
+    drafts.get(stock.id) ?? stock.tags.map((tag) => tag.id);
+  const changed = useMemo(() => changedPositions(stocks, drafts), [stocks, drafts]);
+  const visible = useMemo(
+    () => stocks.filter((s) => matchesSearch(query, [s.companyName, s.ticker])),
+    [stocks, query]
   );
+
+  /** The tags a position will have after saving, as the list shows them. */
+  const tagNamesOf = (stock: StockInvestmentWithTags): string[] =>
+    tagIdsOf(stock)
+      .flatMap((id) => {
+        const tag = tags.find((x) => x.id === id) ?? stock.tags.find((x) => x.id === id);
+        return tag ? [tag.name] : [];
+      })
+      .sort((a, b) => a.localeCompare(b));
+
+  const edit = (change: (tagIds: readonly string[]) => string[]) => {
+    if (!active) return;
+    const base = tagIdsOf(active);
+    setDrafts((prev) => new Map(prev).set(active.id, change(prev.get(active.id) ?? base)));
+  };
+
+  const listRef = useRef<HTMLUListElement>(null);
+  // Open with the active position in view (the list scrolls, a long portfolio hides it)
+  useEffect(() => {
+    const list = listRef.current;
+    const row = list?.querySelector<HTMLElement>('[aria-current="true"]');
+    if (list && row) {
+      list.scrollTop = Math.max(0, row.offsetTop - (list.clientHeight - row.offsetHeight) / 2);
+    }
+    // Once, on opening: later clicks and arrow keys keep the list where the user put it
+  }, []);
+
+  // Up and Down move the active position; the row that was reached takes the focus
+  const onListKeyDown = (event: KeyboardEvent<HTMLUListElement>) => {
+    if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+    const at = visible.findIndex((s) => s.id === activeId);
+    const next =
+      event.key === 'ArrowDown'
+        ? visible[Math.min(at + 1, visible.length - 1)]
+        : visible[Math.max(at - 1, 0)];
+    if (!next) return;
+    event.preventDefault();
+    setActiveId(next.id);
+    listRef.current
+      ?.querySelector<HTMLElement>(`[data-position-id="${CSS.escape(next.id)}"]`)
+      ?.focus();
+  };
+  // One row of the list is in the tab order: the active one, else the first that is shown
+  const tabStopId = visible.some((s) => s.id === activeId) ? activeId : visible[0]?.id;
 
   const mutation = useMutation({
     mutationFn: async () => {
-      for (const id of stockIds) {
-        const stock = stocks.find((s) => s.id === id);
-        if (!stock) continue;
-        await stockTagsApi.setForInvestment(id, nextTagIds(stock.tags, picks, free, single, tags));
+      for (const id of changed) {
+        await stockTagsApi.setForInvestment(id, [...(drafts.get(id) ?? [])]);
       }
     },
-    // Also after a failure: positions saved before it keep their new tags
+    // Also after a failure: positions saved before it keep their new tags (and, once the report
+    // is fetched again, show no change any more)
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['stocks-analysis'] });
       queryClient.invalidateQueries({ queryKey: ['stock-performance'] });
@@ -149,118 +176,141 @@ function AssignForm({
       toast.error(tc('status.error'), { description: translateApiError(error, tc) }),
   });
 
-  // A different set of positions starts the choices over (what "unchanged" means depends on it)
-  const togglePosition = (id: string) =>
-    setSelection(
-      selectionFor(
-        stockIds.includes(id) ? stockIds.filter((x) => x !== id) : [...stockIds, id],
-        stocks,
-        groups
-      )
-    );
-  const pick = (groupId: string, value: string) =>
-    setSelection((prev) => ({ ...prev, picks: { ...prev.picks, [groupId]: value } }));
-  const toggleFree = (id: string) =>
-    setSelection((prev) => ({
-      ...prev,
-      free: prev.free.includes(id) ? prev.free.filter((x) => x !== id) : [...prev.free, id],
-    }));
+  const activeTagIds = active ? tagIdsOf(active) : [];
 
   return (
     <form
       onSubmit={(e) => {
         e.preventDefault();
-        if (stockIds.length > 0) mutation.mutate();
+        if (changed.length > 0) mutation.mutate();
       }}
     >
-      <Label className="mb-2">
-        {t('stocksAnalysis.assign.positions')}
-        <LabelHint>{t('stocksAnalysis.assign.selected', { count: stockIds.length })}</LabelHint>
-      </Label>
-      <div className="max-h-[196px] overflow-y-auto rounded-r2 border border-line">
-        {ordered.map((s) => (
-          <label
-            key={s.id}
-            className="grid cursor-pointer grid-cols-[16px_1fr_auto] items-center gap-[10px] border-t border-line-soft px-3 py-[7px] text-table text-ink transition-colors duration-fast first:border-t-0 hover:bg-well"
-          >
-            <Checkbox
-              checked={stockIds.includes(s.id)}
-              onCheckedChange={() => togglePosition(s.id)}
-            />
-            <span className="min-w-0 truncate">
-              <span className="font-650">{s.companyName}</span>{' '}
-              <span className="text-micro font-500 text-ink-4">{s.ticker}</span>
-            </span>
-            <span className="text-right text-micro font-500 text-ink-4">
-              {s.tags.length > 0
-                ? s.tags.map((x) => x.name).join(' · ')
-                : t('stocksAnalysis.assign.none')}
-            </span>
-          </label>
-        ))}
-      </div>
+      <Label className="mb-2">{t('stocksAnalysis.assign.positions')}</Label>
+      <InputWrap icon={<Search />} className="mb-2">
+        <Input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          // Enter belongs to the list here, not to the form's save
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') e.preventDefault();
+          }}
+          placeholder={t('stocksAnalysis.assign.search')}
+          aria-label={t('stocksAnalysis.assign.search')}
+        />
+      </InputWrap>
+      <ul
+        ref={listRef}
+        aria-label={t('stocksAnalysis.assign.positions')}
+        onKeyDown={onListKeyDown}
+        className="relative m-0 max-h-[196px] list-none overflow-y-auto rounded-r2 border border-line p-0"
+      >
+        {visible.map((s) => {
+          const names = tagNamesOf(s);
+          const isActive = s.id === activeId;
+          return (
+            <li key={s.id} className="border-t border-line-soft first:border-t-0">
+              <button
+                type="button"
+                data-position-id={s.id}
+                aria-current={isActive ? 'true' : undefined}
+                tabIndex={s.id === tabStopId ? 0 : -1}
+                onClick={() => setActiveId(s.id)}
+                className={cn(
+                  'relative grid w-full grid-cols-[30px_1fr_auto] items-center gap-[10px] px-3 py-[7px] text-left transition-colors duration-fast hover:bg-well/60 focus-visible:z-10 focus-visible:outline-none focus-visible:shadow-focus',
+                  isActive &&
+                    'bg-well before:absolute before:inset-y-0 before:left-0 before:w-[2px] before:bg-dark'
+                )}
+              >
+                <AssetLogo ticker={s.ticker} type="stock" />
+                <span className="min-w-0">
+                  <b className="block truncate text-table font-650 text-ink">{s.companyName}</b>
+                  <small
+                    className={cn(
+                      'mt-[2px] block truncate text-micro font-500',
+                      names.length > 0 ? 'text-ink-3' : 'text-ink-4'
+                    )}
+                  >
+                    {names.length > 0 ? names.join(' · ') : t('stocksAnalysis.holdings.noTag')}
+                  </small>
+                </span>
+                {changed.includes(s.id) && (
+                  <span className="inline-flex items-center gap-1.5 text-micro font-600 text-ink-2">
+                    <span aria-hidden className="size-1.5 rounded-full bg-dark" />
+                    {t('stocksAnalysis.assign.changed')}
+                  </span>
+                )}
+              </button>
+            </li>
+          );
+        })}
+      </ul>
 
-      <Label className="mb-1 mt-5">{t('stocksAnalysis.assign.tags')}</Label>
+      {active && (
+        <Label className="mb-1 mt-5">
+          {t('stocksAnalysis.assign.forPosition', {
+            name: `${active.companyName} · ${active.ticker}`,
+          })}
+        </Label>
+      )}
       {rows.length === 0 && freeTags.length === 0 ? (
         <p className="py-2 text-table text-ink-3">{t('stocksAnalysis.assign.noTags')}</p>
       ) : (
-        <div>
-          {rows.map(({ group, tags: groupTags }) => (
-            <ChipRow key={group.id} label={group.name} hint={t('stocksAnalysis.assign.oneTag')}>
-              {!single && (
-                <Chip
-                  active={picks[group.id] === PICK_KEEP}
-                  className={quiet(picks[group.id] === PICK_KEEP)}
-                  onClick={() => pick(group.id, PICK_KEEP)}
-                >
-                  {t('stocksAnalysis.assign.keep')}
-                </Chip>
-              )}
-              {groupTags.map((tag) => (
-                <Chip
-                  key={tag.id}
-                  active={picks[group.id] === tag.id}
-                  onClick={() => pick(group.id, tag.id)}
-                >
-                  {tag.name}
-                </Chip>
-              ))}
-              <Chip
-                active={picks[group.id] === PICK_NONE}
-                className={quiet(picks[group.id] === PICK_NONE)}
-                onClick={() => pick(group.id, PICK_NONE)}
+        active && (
+          <div>
+            {rows.map(({ group, tags: groupTags }) => {
+              const chosen = groupTags.find((tag) => activeTagIds.includes(tag.id));
+              return (
+                <ChipRow key={group.id} label={group.name} hint={t('stocksAnalysis.assign.oneTag')}>
+                  <Chip
+                    active={chosen === undefined}
+                    className={quiet(chosen === undefined)}
+                    onClick={() => edit((ids) => pickGroupTag(ids, tags, group.id, null))}
+                  >
+                    {t('stocksAnalysis.assign.none')}
+                  </Chip>
+                  {groupTags.map((tag) => (
+                    <Chip
+                      key={tag.id}
+                      active={chosen?.id === tag.id}
+                      onClick={() => edit((ids) => pickGroupTag(ids, tags, group.id, tag.id))}
+                    >
+                      {tag.name}
+                    </Chip>
+                  ))}
+                </ChipRow>
+              );
+            })}
+            {freeTags.length > 0 && (
+              <ChipRow
+                label={t('stocksAnalysis.assign.noGroup')}
+                hint={t('stocksAnalysis.assign.manyTags')}
               >
-                {t('stocksAnalysis.assign.none')}
-              </Chip>
-            </ChipRow>
-          ))}
-          {freeTags.length > 0 && (
-            <ChipRow
-              label={t('stocksAnalysis.assign.noGroup')}
-              hint={t('stocksAnalysis.assign.manyTags')}
-            >
-              {freeTags.map((tag) => (
-                <Chip
-                  key={tag.id}
-                  active={free.includes(tag.id)}
-                  onClick={() => toggleFree(tag.id)}
-                >
-                  {tag.name}
-                </Chip>
-              ))}
-            </ChipRow>
-          )}
-        </div>
+                {freeTags.map((tag) => (
+                  <Chip
+                    key={tag.id}
+                    active={activeTagIds.includes(tag.id)}
+                    onClick={() => edit((ids) => toggleFreeTag(ids, tags, tag.id))}
+                  >
+                    {tag.name}
+                  </Chip>
+                ))}
+              </ChipRow>
+            )}
+          </div>
+        )
       )}
-      <p className="mt-2 text-micro font-500 text-ink-4">
-        {single ? t('stocksAnalysis.assign.hintSingle') : t('stocksAnalysis.assign.hintMany')}
-      </p>
+      <p className="mt-2 text-micro font-500 text-ink-4">{t('stocksAnalysis.assign.hint')}</p>
 
       <DialogFooter className="mt-5">
         <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
           {tc('buttons.cancel')}
         </Button>
-        <Button type="submit" disabled={stockIds.length === 0} loading={mutation.isPending}>
+        {changed.length > 0 && (
+          <span className="text-micro font-500 text-ink-4">
+            {t('stocksAnalysis.assign.changedCount', { count: changed.length })}
+          </span>
+        )}
+        <Button type="submit" disabled={changed.length === 0} loading={mutation.isPending}>
           {t('stocksAnalysis.assign.save')}
         </Button>
       </DialogFooter>
@@ -268,7 +318,7 @@ function AssignForm({
   );
 }
 
-/** "Beze změny" and "Bez štítku" are not tags: dashed and muted until chosen. */
+/** "Bez štítku" is not a tag: dashed and muted until chosen. */
 const quiet = (active: boolean) => cn(!active && 'border-dashed text-ink-3');
 
 /** One tag group: its name and rule on the left, the chips on the right. */

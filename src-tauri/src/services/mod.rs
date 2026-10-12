@@ -20,6 +20,7 @@ pub mod csv_presets;
 pub mod currency;
 pub mod date_parser;
 pub mod dedup;
+pub mod document_files;
 pub mod financial_semantics;
 pub mod fx;
 pub mod fx_backfill;

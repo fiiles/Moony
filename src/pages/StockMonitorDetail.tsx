@@ -276,20 +276,6 @@ export default function StockMonitorDetail() {
                 {hasTarget ? t('actions.editTarget') : t('actions.setTarget')}
               </Button>
             )}
-            {detail.followed ? (
-              <Button variant="danger" onClick={() => setConfirmUnfollow(true)}>
-                {t('actions.unfollow')}
-              </Button>
-            ) : (
-              <Button
-                onClick={() => followMutation.mutate(detail.ticker)}
-                loading={followMutation.isPending}
-                data-testid="follow-button"
-              >
-                <Eye />
-                {t('actions.follow')}
-              </Button>
-            )}
             {detail.isHeld && detail.heldInvestmentId ? (
               <Button variant="outline" asChild>
                 <Link href={`/stocks/${detail.heldInvestmentId}`}>
@@ -303,6 +289,20 @@ export default function StockMonitorDetail() {
               >
                 <Plus />
                 {t('actions.buy')}
+              </Button>
+            )}
+            {detail.followed ? (
+              <Button variant="danger" onClick={() => setConfirmUnfollow(true)}>
+                {t('actions.unfollow')}
+              </Button>
+            ) : (
+              <Button
+                onClick={() => followMutation.mutate(detail.ticker)}
+                loading={followMutation.isPending}
+                data-testid="follow-button"
+              >
+                <Eye />
+                {t('actions.follow')}
               </Button>
             )}
           </>

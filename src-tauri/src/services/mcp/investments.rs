@@ -713,7 +713,9 @@ mod bulk_tests {
         };
         let report = stock_transactions_create(&mut conn, &args).unwrap();
         assert_eq!(report.created, 0);
-        assert!(!report.errors.is_empty());
+        assert_eq!(report.errors.len(), 1);
+        // The error names the oversell, not the ticker's first (valid) row.
+        assert_eq!(report.errors[0].index, 1);
         assert_eq!(tx_count(&conn), 0);
     }
 

@@ -828,10 +828,26 @@ pub fn bulk_create_stock_transactions(
             |r| r.get(0),
         )?;
         if let Err(error) = ensure_valid_holdings_history(&tx, "investment_transactions", &id) {
-            let index = order
-                .iter()
-                .copied()
-                .find(|&i| rows[i].ticker.eq_ignore_ascii_case(ticker))
+            let ticker_rows = || {
+                order
+                    .iter()
+                    .copied()
+                    .filter(|&i| rows[i].ticker.eq_ignore_ascii_case(ticker))
+            };
+            let blamed = oversold_day(&tx, "investment_transactions", &id)?.and_then(|day| {
+                blamed_sell_row(
+                    ticker_rows().map(|i| {
+                        (
+                            i,
+                            rows[i].transaction_date.div_euclid(86_400) * 86_400,
+                            rows[i].tx_type.eq_ignore_ascii_case("sell"),
+                        )
+                    }),
+                    day,
+                )
+            });
+            let index = blamed
+                .or_else(|| ticker_rows().next())
                 .expect("written ticker has a source row");
             drop(tx);
             return Ok(BulkWriteReport {
@@ -1002,12 +1018,45 @@ pub(crate) fn exact_held_quantity(
     validate_holdings_history(conn, tx_table, investment_id, None)
 }
 
+/// The first UTC day on which the stored history sells more than it holds, if any.
+pub(crate) fn oversold_day(
+    conn: &rusqlite::Connection,
+    tx_table: &str,
+    investment_id: &str,
+) -> Result<Option<i64>> {
+    Ok(walk_holdings_history(conn, tx_table, investment_id, None)?.err())
+}
+
+/// The incoming row to blame for a history oversold on `oversold_day`: the latest
+/// sell dated on or before it (it consumed the holdings), first in input order on ties.
+/// Rows are `(input index, UTC day, is_sell)`.
+pub(crate) fn blamed_sell_row(
+    rows: impl IntoIterator<Item = (usize, i64, bool)>,
+    oversold_day: i64,
+) -> Option<usize> {
+    rows.into_iter()
+        .filter(|&(_, day, is_sell)| is_sell && day <= oversold_day)
+        .max_by_key(|&(index, day, _)| (day, std::cmp::Reverse(index)))
+        .map(|(index, _, _)| index)
+}
+
 fn validate_holdings_history(
     conn: &rusqlite::Connection,
     tx_table: &str,
     investment_id: &str,
     proposed: Option<(i64, &str, &str)>,
 ) -> Result<String> {
+    walk_holdings_history(conn, tx_table, investment_id, proposed)?
+        .map_err(|_| AppError::Validation("validation.sellExceedsHoldings".into()))
+}
+
+/// The exact held quantity, or the first oversold UTC day as the inner error.
+fn walk_holdings_history(
+    conn: &rusqlite::Connection,
+    tx_table: &str,
+    investment_id: &str,
+    proposed: Option<(i64, &str, &str)>,
+) -> Result<std::result::Result<String, i64>> {
     let scope_col = if tx_table == "other_asset_transactions" {
         "asset_id"
     } else {
@@ -1054,7 +1103,7 @@ fn validate_holdings_history(
         .unwrap_or(0);
     let mut held = vec![0_u8]; // least significant digit first
     let mut approximate = 0.0_f64;
-    for (_, kind, quantity) in history {
+    for (day, kind, quantity) in history {
         let fractional = quantity.split_once('.').map_or(0, |(_, f)| f.len());
         let mut digits = vec![0_u8; scale - fractional];
         digits.extend(
@@ -1083,9 +1132,7 @@ fn validate_holdings_history(
                 || (digits.len() == held.len()
                     && digits.iter().rev().cmp(held.iter().rev()).is_gt())
             {
-                return Err(AppError::Validation(
-                    "validation.sellExceedsHoldings".into(),
-                ));
+                return Ok(Err(day));
             }
             let mut borrow = 0_i8;
             for (i, digit) in held.iter_mut().enumerate() {
@@ -1113,7 +1160,7 @@ fn validate_holdings_history(
         }
         quantity.insert(quantity.len() - scale, '.');
     }
-    Ok(dedup::canonical_amount(&quantity))
+    Ok(Ok(dedup::canonical_amount(&quantity)))
 }
 
 #[cfg(test)]
@@ -2088,6 +2135,25 @@ mod bulk_writer_tests {
         assert_eq!(report.errors.len(), 1);
         assert_eq!(count(&conn, "investment_transactions"), 2);
         assert_eq!(count(&conn, "stock_import_batches"), 0);
+    }
+
+    #[test]
+    fn oversell_is_blamed_on_the_sell_that_consumed_the_holdings() {
+        let d = 86_400;
+        // A valid early sell and a later oversell: the later one is blamed.
+        assert_eq!(
+            blamed_sell_row([(0, d, false), (1, 2 * d, true), (2, 5 * d, true)], 5 * d),
+            Some(2)
+        );
+        // A backdated sell that breaks a stored later sale is blamed, not later rows.
+        assert_eq!(
+            blamed_sell_row([(0, 2 * d, true), (1, 9 * d, true)], 6 * d),
+            Some(0)
+        );
+        // Same-day sells: the first in input order.
+        assert_eq!(blamed_sell_row([(3, d, true), (1, d, true)], d), Some(1));
+        // Only buys (a legacy oversold history): nothing to blame.
+        assert_eq!(blamed_sell_row([(0, d, false)], d), None);
     }
 
     #[test]

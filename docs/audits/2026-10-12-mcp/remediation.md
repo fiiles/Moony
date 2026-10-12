@@ -30,7 +30,7 @@ Secondary: numbered insurance contract retries, empty premium normalized to 0, a
 
 ## Late review findings
 
-Independent review after the main implementation found four gaps, then a final review found two more. All are fixed with tests:
+Independent review after the main implementation found four gaps, then a final review found two more and live testing one more. All are fixed with tests:
 
 1. Strict price API for the durable worker: network, HTTP, parse and provider errors never acknowledge a job; UI callers keep the best-effort policy.
 2. Worker DB access pinned to the open session epoch; a close/reopen during a network await cannot write into a different session. A generation token keeps a newer write's job.
@@ -41,11 +41,24 @@ Independent review after the main implementation found four gaps, then a final r
 
 Final reviews of strict API + session guard, bank dedup + other assets, and stock/crypto edit/delete/undo found no further defects.
 
+7. Live MCP testing found that a rejected merged batch named the ticker's first row (stocks, crypto) or the last written row (other assets) instead of the oversell. The holdings walk now reports the first oversold UTC day, and the error names the latest incoming sell on or before it (`blamed_sell_row`). The durable worker also logs `[MCP refresh] <domain> completed`.
+
+## Live MCP test (2026-10-12, dev build against the owner's real profile, backed up beforehand)
+
+Driven over HTTP against the running app's MCP server.
+
+- Read-only: 26 tools across every domain answered without error; the live schemas carry `personal`/`investment` property types and `importAnyway`.
+- Rejected without any change to holdings (verified before/after): oversell, sell before the only buy, mixed batch with an oversell (atomic), `NaN`/`inf`/`1e400`/padded/empty numbers, year-10000 dates, crypto oversell, conflicting CoinGecko id, `house` property type, real-estate `NaN` price and invalid date, numbered insurance retry, `NaN` loan principal, overflowing bond total, invalid Stock Monitor target (no implicit follow).
+- Accepted with exact results: MCP stock batch with `importBatchId`; sells listed before their backdated (weekend) buys for stocks, crypto and other assets; distinct source IDs kept, repeated source ID skipped; re-sent fill in other spelling, case and intraday time flagged `possibleDuplicate`, imported only with `importAnyway`; crypto in another currency (and not a duplicate of the same numbers in EUR); crypto buy from 2024; new stock and new coin, coin without CoinGecko id rejected; other-asset initial buy with EUR price converted to CZK; canonical insurance and account enums, empty premium stored as 0; savings account without a rate with a working cashflow report; intraday bank date stored at UTC midnight and re-import flagged; non-midnight bond maturity normalized.
+- Stored aggregates equal the exact transaction sums (a legacy f64 BTC aggregate `0.45241950999999997` was recomputed exactly from its transactions).
+- The durable worker drained stocks, crypto (from 2024-06-03, within the clamped CoinGecko window) and other assets with no warning.
+- Stock currency is one per position in the app and MCP alike, so a USD fill for an EUR stock is rejected by design.
+
 ## Verification (2026-10-12, final, after all source changes)
 
 - `cargo fmt --check`: clean.
 - `cargo clippy --offline -- -D warnings`: passed.
-- `cargo test --offline`: 1768 passed, 0 failed, 5 ignored.
+- `cargo test --offline`: 1769 passed, 0 failed, 5 ignored.
 - `regenerate_schema_snapshot` and `generate_bindings` reproduce the checked-in files byte for byte. The `generated-types.ts` diff is layout and doc comments only (no type shape changes). Its trailing whitespace after `;` before a doc comment is canonical specta output (281 such lines already on `main`), so `git diff --check` flags it; every other path is clean.
 - Node 24.14.0: `npm run lint`, `npm run typecheck`, `npm run format:check` passed; Vitest 93 files / 1468 tests passed. Node 22 fails the pre-existing RSD CLDR assertion, unrelated.
 

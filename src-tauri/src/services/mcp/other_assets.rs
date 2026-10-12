@@ -237,6 +237,24 @@ pub fn other_asset_transactions_create(
     }
     if created > 0 {
         if let Err(error) = other_assets_service::recalculate_asset_totals(&tx, &args.asset_id) {
+            let index = crate::services::investments::oversold_day(
+                &tx,
+                "other_asset_transactions",
+                &args.asset_id,
+            )?
+            .and_then(|day| {
+                crate::services::investments::blamed_sell_row(
+                    args.transactions.iter().enumerate().map(|(i, row)| {
+                        (
+                            i,
+                            row.transaction_date.div_euclid(86_400) * 86_400,
+                            row.tx_type.eq_ignore_ascii_case("sell"),
+                        )
+                    }),
+                    day,
+                )
+            })
+            .unwrap_or(last_created_index);
             tx.rollback()?;
             return Ok(BulkWriteReport {
                 import_batch_id: None,
@@ -244,7 +262,7 @@ pub fn other_asset_transactions_create(
                 created: 0,
                 skipped_duplicates: vec![],
                 errors: vec![RowError {
-                    index: last_created_index,
+                    index,
                     message: error.to_string(),
                 }],
             });
@@ -789,6 +807,15 @@ mod tests {
         let rejected = other_asset_transactions_create(&mut conn, &args).unwrap();
         assert_eq!(rejected.created, 0);
         assert!(!rejected.errors.is_empty());
+        assert_eq!(tx_count(&conn, &id), 0);
+        // The error names the oversell even when a later-listed row was written last.
+        args.transactions = vec![
+            tx_row("sell", "2", "10", 1700086400),
+            tx_row("buy", "1", "10", 1700000000),
+        ];
+        let rejected = other_asset_transactions_create(&mut conn, &args).unwrap();
+        assert_eq!(rejected.errors.len(), 1);
+        assert_eq!(rejected.errors[0].index, 0);
         assert_eq!(tx_count(&conn, &id), 0);
         args.transactions = vec![
             tx_row("buy", "1", "10", 1700000000),

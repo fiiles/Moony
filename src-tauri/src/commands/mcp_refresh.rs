@@ -38,10 +38,11 @@ pub(crate) fn resume(app: tauri::AppHandle, db: Database) {
             for job in jobs {
                 match run(&session, &job).await {
                     Ok(()) => {
-                        if let Err(e) =
-                            session.with_conn(|conn| mcp_refresh::acknowledge(conn, &job))
-                        {
-                            log::warn!("[MCP refresh] completion will be retried: {e}");
+                        match session.with_conn(|conn| mcp_refresh::acknowledge(conn, &job)) {
+                            Ok(()) => log::info!("[MCP refresh] {} completed", job.domain),
+                            Err(e) => {
+                                log::warn!("[MCP refresh] completion will be retried: {e}")
+                            }
                         }
                     }
                     Err(e) => log::warn!("[MCP refresh] {} remains pending: {e}", job.domain),

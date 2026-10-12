@@ -357,12 +357,32 @@ pub fn crypto_transactions_create(
         }
         created += 1;
     }
-    for (index, id) in written {
+    for (first_index, id) in written {
         if let Err(error) = crate::services::investments::ensure_valid_holdings_history(
             &tx,
             "crypto_transactions",
             &id,
         ) {
+            let ticker = &args.transactions[first_index].ticker;
+            let index =
+                crate::services::investments::oversold_day(&tx, "crypto_transactions", &id)?
+                    .and_then(|day| {
+                        crate::services::investments::blamed_sell_row(
+                            args.transactions
+                                .iter()
+                                .enumerate()
+                                .filter(|(_, row)| row.ticker.eq_ignore_ascii_case(ticker))
+                                .map(|(i, row)| {
+                                    (
+                                        i,
+                                        row.transaction_date.div_euclid(86_400) * 86_400,
+                                        row.tx_type.eq_ignore_ascii_case("sell"),
+                                    )
+                                }),
+                            day,
+                        )
+                    })
+                    .unwrap_or(first_index);
             drop(tx);
             return Ok(BulkWriteReport {
                 import_batch_id: None,
@@ -822,7 +842,9 @@ mod bulk_tests {
         )
         .unwrap();
         assert_eq!(report.created, 0);
-        assert!(!report.errors.is_empty());
+        assert_eq!(report.errors.len(), 1);
+        // The error names the oversell, not the ticker's first (valid) row.
+        assert_eq!(report.errors[0].index, 1);
         assert_eq!(tx_count(&conn), 0);
         crypto_transactions_create(
             &mut conn,

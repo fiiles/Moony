@@ -1179,7 +1179,13 @@ mod tests {
     fn learned_scope_keys_match_what_learning_stores() {
         use crate::models::categorization::InsertScopedLearning;
         // (payee, iban, bank code, country)
-        let cases: [(Option<&str>, Option<&str>, Option<&str>, Option<&str>); 3] = [
+        type Case<'a> = (
+            Option<&'a str>,
+            Option<&'a str>,
+            Option<&'a str>,
+            Option<&'a str>,
+        );
+        let cases: [Case; 3] = [
             (Some("Albert"), None, None, None),
             (
                 None,

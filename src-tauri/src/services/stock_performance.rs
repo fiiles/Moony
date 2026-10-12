@@ -1519,8 +1519,8 @@ mod tests {
         }
         // before the buy the portfolio is A alone
         let own = hand_twr(&[&a_rows]);
-        for k in 0..3 {
-            close(report.portfolio[k], own[k], 1e-9);
+        for (actual, expected) in report.portfolio.iter().zip(&own).take(3) {
+            close(*actual, *expected, 1e-9);
         }
         // the whole return is A's contribution
         let a = report.series[0].contribution.as_ref().expect("a");

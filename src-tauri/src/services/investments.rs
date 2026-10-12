@@ -1736,8 +1736,8 @@ mod tests {
         let sale =
             add_transaction_to_investment(&conn, &id, &tx(&id, "sell", "8", 1_700_000_000 + 86400))
                 .unwrap();
-        let err =
-            delete_transactions(&conn, &[first.id.clone()]).expect_err("cannot orphan the sale");
+        let err = delete_transactions(&conn, std::slice::from_ref(&first.id))
+            .expect_err("cannot orphan the sale");
         assert!(
             matches!(err, AppError::Validation(key) if key == "validation.sellExceedsHoldings")
         );

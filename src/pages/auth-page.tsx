@@ -14,6 +14,7 @@ import { CircleAlert, RefreshCw } from 'lucide-react';
 import { z } from 'zod';
 import { recoverSchema, unlockSchema } from '@shared/schema';
 import { GREETING_NAME_KEY, LOCKED_AT_KEY, useAuth } from '@/hooks/use-auth';
+import { useSettingsMutations } from '@/hooks/use-settings-mutations';
 import { useFormat } from '@/lib/use-format';
 import { isAuthApiError } from '@/lib/api-error';
 import { isSupportedLanguage, type SupportedLanguage } from '@/i18n/index';
@@ -80,6 +81,7 @@ export default function AuthPage() {
   const [, setLocation] = useLocation();
   const { t, i18n } = useTranslation('auth');
   const { t: tc } = useTranslation('common');
+  const { updateProfile } = useSettingsMutations();
   const fmt = useFormat();
   const [panel, setPanel] = useState<Panel>('unlock');
   const [keySaved, setKeySaved] = useState(false);
@@ -94,13 +96,20 @@ export default function AuthPage() {
   if (appStatus === 'needs_setup' && !sawSetup) setSawSetup(true);
   const wizardActive = sawSetup && !wizardDone;
 
-  // Language: the stored choice, else English
   // Language: the one i18n detected (stored choice, else the system language, else English).
   const selectedLanguage: SupportedLanguage = isSupportedLanguage(i18n.language)
     ? i18n.language
     : 'en';
-  // changeLanguage loads the chunk, switches (re-rendering this page) and stores the choice.
-  const handleLanguageChange = (lang: SupportedLanguage) => void i18n.changeLanguage(lang);
+  const handleLanguageChange = (lang: SupportedLanguage) => {
+    if (lang === selectedLanguage) return;
+    if (appStatus === 'unlocked') {
+      // The last onboarding steps already have a profile. Save its language first
+      // so I18nProvider does not restore the previous choice when the UI switches.
+      updateProfile.mutate({ language: lang }, { onSuccess: () => void i18n.changeLanguage(lang) });
+    } else {
+      void i18n.changeLanguage(lang);
+    }
+  };
 
   useEffect(() => {
     import('@tauri-apps/api/app')
@@ -168,6 +177,7 @@ export default function AuthPage() {
             showFormatSample={false}
             value={selectedLanguage}
             onChange={handleLanguageChange}
+            disabled={updateProfile.isPending}
           />
         </header>
         {introDone ? (

@@ -1,0 +1,103 @@
+/* The finance workspace has a desktop minimum width; first-run setup can stack. */
+body:has(.onboarding-shell) {
+  min-width: 0;
+}
+
+.onboarding-intro-content {
+  animation: onboarding-depart 300ms 2300ms ease-in forwards;
+}
+
+.onboarding-intro-orbit {
+  animation: onboarding-orbit 1500ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+.onboarding-intro-halo {
+  animation: onboarding-halo 1800ms ease-out both;
+}
+
+.onboarding-intro-moon {
+  animation: onboarding-moon 1100ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+.onboarding-intro-brand,
+.onboarding-intro-title,
+.onboarding-intro-tagline {
+  animation: onboarding-arrive 600ms 350ms ease-out both;
+}
+
+.onboarding-intro-title {
+  animation-delay: 550ms;
+}
+
+.onboarding-intro-tagline {
+  animation-delay: 750ms;
+}
+
+.onboarding-wizard {
+  animation: onboarding-arrive 300ms ease-out both;
+}
+
+@keyframes onboarding-orbit {
+  from {
+    opacity: 0;
+    transform: scale(1.5) rotate(-35deg);
+  }
+  35% {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.5) rotate(0);
+  }
+}
+
+@keyframes onboarding-halo {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  45% {
+    opacity: 1;
+  }
+  to {
+    opacity: 0.5;
+    transform: scale(1.25);
+  }
+}
+
+@keyframes onboarding-moon {
+  from {
+    opacity: 0;
+    transform: scale(0.65) rotate(-25deg);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) rotate(0);
+  }
+}
+
+@keyframes onboarding-arrive {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes onboarding-depart {
+  to {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .onboarding-intro-content,
+  .onboarding-intro-content *,
+  .onboarding-wizard {
+    animation: none;
+  }
+}

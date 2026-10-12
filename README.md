@@ -86,10 +86,12 @@ Builds are provided for x86_64.
 
 ### First run
 
-A short wizard asks for your main currency and country, a name and password, shows your
+A brief, skippable welcome animation leads into a wizard (reduced motion skips the animation).
+The wizard asks for your main currency and country, a name and password, shows your
 **recovery key** (save it — see [Data and backups](#data-and-backups)), lets you choose what to
 track, and offers to add your first account and import a bank statement. The dashboard then
-shows a *Getting started* checklist.
+shows a *Getting started* checklist. Closing the statement import keeps you in the last
+setup step; you can reopen the import for the same account or explicitly continue to the app.
 
 ### Updating
 

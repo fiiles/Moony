@@ -7,7 +7,7 @@
  * account is created (steps 4–5 run unlocked); `onFinished` hands control
  * back to the auth page.
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -64,6 +64,7 @@ import { CsvImportDialog } from '@/components/bank-accounts/CsvImportDialog';
 import { PasswordInput } from '@/components/auth/PasswordInput';
 import { RecoveryKeyBox } from '@/components/auth/RecoveryKeyBox';
 import { OnboardingPreview, type PreviewAreas } from '@/components/auth/OnboardingPreview';
+import './onboarding.css';
 
 type Step = 'welcome' | 'account' | 'recovery' | 'areas' | 'firstAccount';
 const STEPS: Step[] = ['welcome', 'account', 'recovery', 'areas', 'firstAccount'];
@@ -87,7 +88,12 @@ function passwordStrength(password: string): 'weak' | 'fair' | 'strong' | null {
 function StepHead({ title, lead }: { title: string; lead: string }) {
   return (
     <>
-      <h1 className="m-0 text-[26px] font-650 tracking-[-0.05em] text-ink">{title}</h1>
+      <h1
+        tabIndex={-1}
+        className="m-0 text-[26px] font-650 tracking-[-0.05em] text-ink outline-none"
+      >
+        {title}
+      </h1>
       <p className="mb-6 mt-2 text-body leading-[1.5] text-ink-3">{lead}</p>
     </>
   );
@@ -101,6 +107,11 @@ export function OnboardingWizard({ language, onFinished }: OnboardingWizardProps
   const { appStatus, setupMutation, confirmSetupMutation, recoveryKey, clearRecoveryKey } =
     useAuth();
   const { createAccount } = useBankAccountMutations();
+  const wizardRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    wizardRef.current?.querySelector('h1')?.focus({ preventScroll: true });
+  }, []);
 
   const systemRegion = useMemo(() => regionFromLocale(navigator.language), []);
   const [step, setStep] = useState<Step>('welcome');
@@ -210,7 +221,8 @@ export function OnboardingWizard({ language, onFinished }: OnboardingWizardProps
   const [accountName, setAccountName] = useState('');
   const [accountCurrency, setAccountCurrency] = useState<CurrencyCode>(currency);
   const [accountBalance, setAccountBalance] = useState('');
-  const [importAccountId, setImportAccountId] = useState<string | null>(null);
+  const [createdAccountId, setCreatedAccountId] = useState<string | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
   const [finishing, setFinishing] = useState(false);
 
   useEffect(() => setAccountCurrency(currency), [currency]);
@@ -232,6 +244,12 @@ export function OnboardingWizard({ language, onFinished }: OnboardingWizardProps
   };
 
   const createFirstAccount = async (thenImport: boolean) => {
+    if (createdAccountId) {
+      if (thenImport) setImportOpen(true);
+      else await finish();
+      return;
+    }
+
     const name = accountName.trim();
     if (!name) {
       toast.error(tc('validation.nameRequired'));
@@ -250,8 +268,9 @@ export function OnboardingWizard({ language, onFinished }: OnboardingWizardProps
           ...(hasBalance ? { balanceAsOf: utcDayStart(todayIsoUtc()) } : {}),
         },
       });
+      setCreatedAccountId(account.id);
       if (thenImport) {
-        setImportAccountId(account.id);
+        setImportOpen(true);
       } else {
         await finish();
       }
@@ -281,8 +300,11 @@ export function OnboardingWizard({ language, onFinished }: OnboardingWizardProps
   );
 
   return (
-    <div className="grid min-h-screen grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-      <section className="flex flex-col justify-center px-14 py-12">
+    <div
+      ref={wizardRef}
+      className="onboarding-wizard grid min-h-[calc(100svh-64px)] grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]"
+    >
+      <section className="flex flex-col justify-center px-6 py-8 lg:px-10 xl:px-14">
         <div className="mx-auto w-full max-w-[480px]">
           <div className="mb-9 flex items-center gap-[11px]">
             <MoonMark />
@@ -321,10 +343,11 @@ export function OnboardingWizard({ language, onFinished }: OnboardingWizardProps
                   </div>
                 ))}
               </div>
-              <div className="mb-5 grid grid-cols-2 gap-3">
+              <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div className="space-y-1.5">
-                  <Label>{t('onboarding.welcome.currency')}</Label>
+                  <Label htmlFor="onboarding-currency">{t('onboarding.welcome.currency')}</Label>
                   <CurrencyCombobox
+                    id="onboarding-currency"
                     data-testid="onboarding-currency"
                     value={currency}
                     onChange={setCurrency}
@@ -335,9 +358,9 @@ export function OnboardingWizard({ language, onFinished }: OnboardingWizardProps
                   </p>
                 </div>
                 <div className="space-y-1.5">
-                  <Label>{t('onboarding.welcome.country')}</Label>
+                  <Label htmlFor="onboarding-country">{t('onboarding.welcome.country')}</Label>
                   <Select value={country} onValueChange={setCountry}>
-                    <SelectTrigger data-testid="onboarding-country">
+                    <SelectTrigger id="onboarding-country" data-testid="onboarding-country">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -555,7 +578,7 @@ export function OnboardingWizard({ language, onFinished }: OnboardingWizardProps
           {step === 'areas' && unlocked && (
             <div data-testid="onboarding-areas">
               <StepHead title={t('onboarding.areas.title')} lead={t('onboarding.areas.subtitle')} />
-              <div className="mb-5 grid grid-cols-2 gap-2.5">
+              <div className="mb-5 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
                 <AreaCard
                   title={t('onboarding.areas.accounts.title')}
                   description={t('onboarding.areas.accounts.description')}
@@ -615,6 +638,13 @@ export function OnboardingWizard({ language, onFinished }: OnboardingWizardProps
                 title={t('onboarding.firstAccount.title')}
                 lead={t('onboarding.firstAccount.subtitle')}
               />
+              {createdAccountId && (
+                <Alert className="mb-5" data-testid="first-account-saved">
+                  <Check aria-hidden />
+                  <AlertTitle>{t('onboarding.firstAccount.saved')}</AlertTitle>
+                  <AlertDescription>{t('onboarding.firstAccount.savedHint')}</AlertDescription>
+                </Alert>
+              )}
               <div className="space-y-4">
                 <div className="space-y-1.5">
                   <Label htmlFor="first-account-name">{t('onboarding.firstAccount.name')}</Label>
@@ -622,6 +652,7 @@ export function OnboardingWizard({ language, onFinished }: OnboardingWizardProps
                     id="first-account-name"
                     autoFocus
                     value={accountName}
+                    disabled={createdAccountId !== null}
                     onChange={(e) => setAccountName(e.target.value)}
                     placeholder={t('onboarding.firstAccount.namePlaceholder')}
                     data-testid="first-account-name"
@@ -639,6 +670,7 @@ export function OnboardingWizard({ language, onFinished }: OnboardingWizardProps
                         inputMode="decimal"
                         step="0.01"
                         value={accountBalance}
+                        disabled={createdAccountId !== null}
                         onChange={(e) => setAccountBalance(e.target.value)}
                         placeholder="0"
                       />
@@ -648,19 +680,31 @@ export function OnboardingWizard({ language, onFinished }: OnboardingWizardProps
                     </p>
                   </div>
                   <div className="space-y-1.5">
-                    <Label>{t('onboarding.firstAccount.currency')}</Label>
-                    <CurrencyCombobox value={accountCurrency} onChange={setAccountCurrency} />
+                    <Label htmlFor="first-account-currency">
+                      {t('onboarding.firstAccount.currency')}
+                    </Label>
+                    <CurrencyCombobox
+                      id="first-account-currency"
+                      value={accountCurrency}
+                      onChange={setAccountCurrency}
+                      showName={false}
+                      disabled={createdAccountId !== null}
+                    />
                   </div>
                 </div>
               </div>
-              <div className="mb-3.5 mt-5 grid grid-cols-2 gap-3">
+              <div className="mb-3.5 mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <Button
                   variant="outline"
                   onClick={() => createFirstAccount(true)}
                   disabled={createAccount.isPending || finishing}
                   data-testid="first-account-import"
                 >
-                  {t('onboarding.firstAccount.createAndImport')}
+                  {t(
+                    createdAccountId
+                      ? 'onboarding.firstAccount.importTransactions'
+                      : 'onboarding.firstAccount.createAndImport'
+                  )}
                 </Button>
                 <Button
                   onClick={() => createFirstAccount(false)}
@@ -668,31 +712,34 @@ export function OnboardingWizard({ language, onFinished }: OnboardingWizardProps
                   loading={createAccount.isPending}
                   data-testid="first-account-create"
                 >
-                  {t('onboarding.firstAccount.create')}
+                  {t(
+                    createdAccountId
+                      ? 'onboarding.firstAccount.continueToApp'
+                      : 'onboarding.firstAccount.create'
+                  )}
                 </Button>
               </div>
-              <div className="flex justify-end">
-                <button
-                  type="button"
-                  onClick={finish}
-                  disabled={createAccount.isPending || finishing}
-                  className="text-table font-600 text-ink-3 underline-offset-[3px] hover:text-ink hover:underline disabled:pointer-events-none disabled:opacity-50"
-                  data-testid="first-account-skip"
-                >
-                  {t('onboarding.firstAccount.skip')} →
-                </button>
-              </div>
+              {!createdAccountId && (
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={finish}
+                    disabled={createAccount.isPending || finishing}
+                    className="text-table font-600 text-ink-3 underline-offset-[3px] hover:text-ink hover:underline disabled:pointer-events-none disabled:opacity-50"
+                    data-testid="first-account-skip"
+                  >
+                    {t('onboarding.firstAccount.skip')} →
+                  </button>
+                </div>
+              )}
 
-              {importAccountId && (
+              {importOpen && createdAccountId && (
                 <CsvImportDialog
                   open
                   onOpenChange={(open) => {
-                    if (!open) {
-                      setImportAccountId(null);
-                      void finish();
-                    }
+                    setImportOpen(open);
                   }}
-                  accountId={importAccountId}
+                  accountId={createdAccountId}
                 />
               )}
             </div>

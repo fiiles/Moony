@@ -1,5 +1,5 @@
 import { forwardRef, useEffect, useMemo, useRef, useState } from 'react';
-import { Check, ChevronsUpDown } from 'lucide-react';
+import { Check, ChevronDown } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -98,8 +98,8 @@ export const CurrencyCombobox = forwardRef<HTMLButtonElement, CurrencyComboboxPr
             aria-haspopup="listbox"
             disabled={disabled}
             className={cn(
-              'h-9 w-full justify-between bg-transparent px-3 font-normal',
-              !value && 'text-ink-3',
+              'h-input w-full justify-between gap-2 bg-paper bg-none px-[11px] text-left text-body font-450 text-ink shadow-none transition-[border-color,box-shadow] hover:border-line-hover hover:bg-paper hover:shadow-none focus-visible:border-focus focus-visible:shadow-focus disabled:cursor-not-allowed disabled:bg-well disabled:text-ink-4 disabled:opacity-100 aria-[invalid=true]:border-loss [&_svg]:text-ink-4 [&:hover_svg]:text-ink-4',
+              !value && 'text-ink-5',
               className
             )}
             {...rest}
@@ -107,16 +107,16 @@ export const CurrencyCombobox = forwardRef<HTMLButtonElement, CurrencyComboboxPr
             <span className="truncate">
               {value ? (
                 <>
-                  <span className="font-medium">{value}</span>
+                  <span>{value}</span>
                   {showName && selectedName && selectedName !== value && (
-                    <span className="text-ink-3"> · {selectedName}</span>
+                    <span> · {selectedName}</span>
                   )}
                 </>
               ) : (
                 (placeholder ?? t('labels.selectCurrency'))
               )}
             </span>
-            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+            <ChevronDown className="shrink-0 text-ink-4" aria-hidden />
           </Button>
         </PopoverTrigger>
         <PopoverContent

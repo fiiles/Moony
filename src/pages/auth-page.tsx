@@ -5,7 +5,7 @@
  * language as a segmented control. The first run renders the onboarding
  * wizard instead.
  */
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
@@ -32,6 +32,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { MoonMark } from '@/components/common/MoonMark';
 import { OnboardingWizard } from '@/components/auth/OnboardingWizard';
+import { OnboardingWelcome } from '@/components/auth/OnboardingWelcome';
 import { PasswordInput } from '@/components/auth/PasswordInput';
 import { LanguageSelect } from '@/components/common/LanguageSelect';
 import { RecoveryKeyBox } from '@/components/auth/RecoveryKeyBox';
@@ -88,6 +89,8 @@ export default function AuthPage() {
   // it reports completion (its last steps run after the account exists).
   const [sawSetup, setSawSetup] = useState(false);
   const [wizardDone, setWizardDone] = useState(false);
+  const [introDone, setIntroDone] = useState(false);
+  const finishIntro = useCallback(() => setIntroDone(true), []);
   if (appStatus === 'needs_setup' && !sawSetup) setSawSetup(true);
   const wizardActive = sawSetup && !wizardDone;
 
@@ -158,19 +161,21 @@ export default function AuthPage() {
 
   if (wizardActive) {
     return (
-      <div className="relative min-h-screen bg-canvas">
-        <LanguageSelect
-          className="absolute right-6 top-[22px] z-10"
-          value={selectedLanguage}
-          onChange={handleLanguageChange}
-        />
-        <OnboardingWizard
-          language={selectedLanguage}
-          onFinished={() => {
-            setWizardDone(true);
-            setLocation('/');
-          }}
-        />
+      <div className="onboarding-shell min-h-screen bg-canvas">
+        <header className="flex h-16 items-center justify-end px-6">
+          <LanguageSelect value={selectedLanguage} onChange={handleLanguageChange} />
+        </header>
+        {introDone ? (
+          <OnboardingWizard
+            language={selectedLanguage}
+            onFinished={() => {
+              setWizardDone(true);
+              setLocation('/');
+            }}
+          />
+        ) : (
+          <OnboardingWelcome onContinue={finishIntro} />
+        )}
       </div>
     );
   }

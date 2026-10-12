@@ -6,8 +6,17 @@ All notable changes to Moony are documented in this file. The format follows
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-10-12
+
+This is the beta for 1.0.0. It changes how amounts in other currencies are counted and runs
+several data migrations on the first start (the database is copied next to itself first, see
+below), so keep the `moony.db.bak-<time>` copy until you have checked your numbers.
+
 ### Added
 
+- **Ten languages.** Besides English and Czech, the app speaks German, Spanish, Italian, Norwegian
+  (bokmål), Polish, Swedish, Japanese and Simplified Chinese. The language picker in Settings is a
+  dropdown; the translations are machine-made, so reports of awkward wording are welcome.
 - **Main currency from 36 currencies.** The main currency can be any currency with an
   exchange-rate source: the 30 the ECB publishes plus AED, SAR, QAR, BHD, OMR (fixed pegs to the
   US dollar) and BGN (fixed peg to the euro), whose rates Moony derives from the dollar or euro rate
@@ -66,9 +75,22 @@ All notable changes to Moony are documented in this file. The format follows
 
 ### Fixed
 
+- **Attached documents open again.** Insurance and real estate documents attached before 0.9.0
+  pointed at the old data folder, so opening them did nothing. Moony now finds the file in the
+  current data folder and says so when a file is really missing.
 - **Lists inside dialogs scroll with the wheel in the app window.** A select opened inside a modal
   (the planning item's category, the settings category selects) no longer freezes under the dialog's
   scroll lock in the Tauri webview; the same guard the currency picker already had.
+
+- **The category picker stays inside the window.** When a row sits near the top or bottom of the
+  screen the picker is capped to the space on its side and its list scrolls, instead of running
+  past the edge where its footer could not be reached. A toast's "Vrátit zpět" can be clicked while
+  a dialog is open and no longer closes the dialog.
+- **Stock prices lost their third decimal.** Adding a position, buying or selling rounded the price
+  per share to two decimals, so a London share quoted in pence (0.953 £) was recorded as 0.95 £;
+  the buy dialog also pre-filled the rounded price. The price is now kept as typed.
+- **Every enabled rule pack has its own tab** on the categorization rules page. Before, only the
+  first enabled pack was visible as a tab and the others hid behind a selector inside it.
 
 ### Changed
 
@@ -148,17 +170,16 @@ All notable changes to Moony are documented in this file. The format follows
   assignments of that group are removed (tags themselves are kept); the database is copied next
   to itself first, as for any migration. For overlapping labels use tags without a group, or
   two groups.
-
-### Fixed
-- **The category picker stays inside the window.** When a row sits near the top or bottom of the
-  screen the picker is capped to the space on its side and its list scrolls, instead of running
-  past the edge where its footer could not be reached. A toast's "Vrátit zpět" can be clicked while
-  a dialog is open and no longer closes the dialog.
-- **Stock prices lost their third decimal.** Adding a position, buying or selling rounded the price
-  per share to two decimals, so a London share quoted in pence (0.953 £) was recorded as 0.95 £;
-  the buy dialog also pre-filled the rounded price. The price is now kept as typed.
-- **Every enabled rule pack has its own tab** on the categorization rules page. Before, only the
-  first enabled pack was visible as a tab and the others hid behind a selector inside it.
+- **MCP imports keep the same rules as the app.** Writes through the MCP server are validated
+  like the app's own forms: a sale above the holding (counted in date order over the whole
+  batch), an unknown or conflicting coin ID, a non-finite number, an invalid date or a case
+  variant of an enum is refused with the offending row named. Stock imports through MCP are
+  recorded as import batches that can be undone. Duplicates are compared by value, currency and
+  day. Exchange rates, prices and history are refreshed by a background job that survives a
+  locked app and resumes after unlock (migration 016). Positions that were already oversold
+  before this version cannot be edited, deleted or undone until the sale is corrected.
+- **Dependencies.** Tauri 2.12.3 and its plugins, Yahoo Finance client 5, zip 9 for backups and
+  the usual minor updates; two unused front-end packages were removed.
 
 ## [0.9.1] - 2026-10-05
 
@@ -337,6 +358,7 @@ local tool). Everything below is new to the public.
 - The updater only offers versions higher than the installed one, so a machine running an
   older 1.x build from the previous private repository must install 0.9.0 by hand.
 
-[Unreleased]: https://github.com/fiiles/Moony/compare/v0.9.1...HEAD
+[Unreleased]: https://github.com/fiiles/Moony/compare/v0.10.0...HEAD
+[0.10.0]: https://github.com/fiiles/Moony/compare/v0.9.1...v0.10.0
 [0.9.1]: https://github.com/fiiles/Moony/compare/v0.9.0...v0.9.1
 [0.9.0]: https://github.com/fiiles/Moony/releases/tag/v0.9.0

@@ -50,7 +50,14 @@ pub fn minor_units(currency: &str) -> usize {
 pub fn money_in_currency(amount: f64, currency: &str) -> String {
     let decimals = minor_units(currency);
     let scale = 10_f64.powi(decimals as i32);
-    let rounded = (amount * scale).round() / scale;
+    let scaled = amount * scale;
+    // At these magnitudes f64 spacing already exceeds the currency's minor
+    // unit; scaling for rounding must not turn a finite amount into infinity.
+    let rounded = if scaled.is_finite() {
+        scaled.round() / scale
+    } else {
+        amount
+    };
     format!(
         "{rounded:.decimals$}",
         rounded = if rounded == 0.0 { 0.0 } else { rounded }
@@ -348,6 +355,16 @@ mod tests {
         assert_eq!(normalize_currency(" eur ").unwrap(), "EUR");
         assert!(normalize_currency("EURO").is_err());
     }
+    #[test]
+    fn large_finite_money_survives_currency_precision_rounding() {
+        for currency in ["EUR", "KWD", "JPY"] {
+            for amount in [1e308, -1e308] {
+                let formatted = money_in_currency(amount, currency);
+                assert_eq!(formatted.parse::<f64>().expect("money"), amount);
+            }
+        }
+    }
+
     #[test]
     fn minor_units_follow_the_iso_list_not_the_ui_cash_style() {
         // ISO exceptions beyond the currency picker (SIX List One, 2026-09-17).

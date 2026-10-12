@@ -210,8 +210,13 @@ impl InsertBankTransaction {
             }
         }
 
-        if self.booking_date <= 0 {
+        let booking_day =
+            super::validation::utc_day(self.booking_date, "validation.bookingDateInvalid")?;
+        if booking_day <= 0 {
             return Err(AppError::Validation("validation.bookingDateInvalid".into()));
+        }
+        if let Some(value_date) = self.value_date {
+            super::validation::utc_day(value_date, "validation.valueDateInvalid")?;
         }
 
         if let Some(ref status) = self.status {
@@ -495,8 +500,13 @@ mod tests {
     #[test]
     fn validate_rejects_non_positive_booking_date() {
         let mut tx = valid_tx();
-        tx.booking_date = 0;
-        assert!(tx.validate().is_err());
+        for timestamp in [0, 1, 86_399] {
+            tx.booking_date = timestamp;
+            assert!(
+                tx.validate().is_err(),
+                "accepted forbidden UTC booking day {timestamp}"
+            );
+        }
     }
 
     #[test]

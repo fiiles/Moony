@@ -159,3 +159,21 @@ describe('getFormatters', () => {
     expect(getFormatters('en-US', undefined)).not.toBe(getFormatters('cs-CZ', undefined));
   });
 });
+
+// Imported legacy data must not crash an entire transaction list.
+describe('invalid stored dates', () => {
+  it('renders malformed Unix dates as an empty value', () => {
+    const fmt = createFormatters('cs-CZ', 'CZK');
+    for (const value of [
+      NaN,
+      Infinity,
+      -Infinity,
+      Number.MAX_VALUE,
+      Number('9223372036854775807'),
+    ]) {
+      expect(fmt.day(value)).toBe('');
+      expect(fmt.dateTime(value)).toBe('');
+      expect(fmt.time(value)).toBe('');
+    }
+  });
+});

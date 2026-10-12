@@ -573,7 +573,7 @@ use crate::services::backfill;
 /// it, `None` before the first one. Look-back only; the name is kept
 /// so the history callers stay untouched, the rule lives in
 /// `services::backfill::price_at_or_before`.
-fn find_closest_price(
+pub(crate) fn find_closest_price(
     prices: &[HistoricalPrice],
     target_timestamp: i64,
 ) -> Option<&HistoricalPrice> {
@@ -1690,13 +1690,34 @@ pub async fn recalculate_crypto_ticker_history(
     coingecko_id: &str,
     from_timestamp: i64,
 ) -> Result<()> {
+    recalculate_crypto_ticker_history_with_policy(db, ticker, coingecko_id, from_timestamp, false)
+        .await
+}
+
+pub(crate) async fn recalculate_crypto_ticker_history_strict(
+    db: &Database,
+    ticker: &str,
+    coingecko_id: &str,
+    from_timestamp: i64,
+) -> Result<()> {
+    recalculate_crypto_ticker_history_with_policy(db, ticker, coingecko_id, from_timestamp, true)
+        .await
+}
+
+async fn recalculate_crypto_ticker_history_with_policy(
+    db: &Database,
+    ticker: &str,
+    coingecko_id: &str,
+    from_timestamp: i64,
+    strict: bool,
+) -> Result<()> {
     log::debug!(
         "[RECALC] Starting crypto ticker-specific recalculation for {} from {}",
         ticker,
         from_timestamp
     );
 
-    let from_day = (from_timestamp / 86400) * 86400;
+    let from_day = from_timestamp.div_euclid(86400) * 86400;
     let now = chrono::Utc::now().timestamp();
     let today_start = (now / 86400) * 86400;
 
@@ -1719,13 +1740,24 @@ pub async fn recalculate_crypto_ticker_history(
     crypto_map.insert(coingecko_id.to_string(), ticker.to_string());
 
     let api_keys = crate::services::price_api::get_api_keys(db)?;
-    let crypto_prices = crate::services::price_api::get_historical_crypto_prices_coingecko(
-        api_keys.coingecko.as_deref(),
-        &crypto_map,
-        from_day,
-        today_start,
-    )
-    .await?;
+    let fetch_from = crate::services::price_api::coingecko_history_start(from_day, today_start);
+    let crypto_prices = if strict {
+        crate::services::price_api::get_historical_crypto_prices_coingecko_strict(
+            api_keys.coingecko.as_deref(),
+            &crypto_map,
+            fetch_from,
+            today_start,
+        )
+        .await?
+    } else {
+        crate::services::price_api::get_historical_crypto_prices_coingecko(
+            api_keys.coingecko.as_deref(),
+            &crypto_map,
+            fetch_from,
+            today_start,
+        )
+        .await?
+    };
 
     // Get the last known price before the recalculation start date to seed the fallback
     // This ensures continuity if the API fails for the first few days
@@ -2072,11 +2104,9 @@ pub async fn trigger_import_recalculation(
             schedule_stock_history_rebuild(&app, &db, &recalc, jobs);
         }
         "crypto" => {
-            for (ticker, coingecko_id) in &tickers {
-                let resolved = match coingecko_id {
-                    Some(cg) => Some(cg.clone()),
-                    None => resolve_coingecko_id(&db, ticker).await,
-                };
+            for (ticker, _) in &tickers {
+                // Caller identifiers are hints, never the authority for persisted history.
+                let resolved = resolve_coingecko_id(&db, ticker).await;
                 match resolved {
                     Some(cg) => {
                         if let Err(e) = trigger_historical_recalculation_for_crypto_ticker(

@@ -254,7 +254,13 @@
     "periodInvalid": "时期的开始日期必须早于结束日期。",
     "tooManySeries": "一次请求的线条过多。",
     "seriesKeyInvalid": "图表线条请求无效。",
-    "benchmarkTickerInvalid": "指数代码无效。"
+    "benchmarkTickerInvalid": "指数代码无效。",
+    "propertyTypeInvalid": "房产类型必须为自用或投资",
+    "insurancePolicyAlreadyExists": "该保险公司和保单号的保单已存在",
+    "exchangeRateUnavailable": "在取得交易日期的汇率之前，无法保存交易",
+    "dateInvalid": "无效的日期",
+    "valueDateInvalid": "无效的起息日",
+    "maturityDateInvalid": "无效的到期日"
   },
   "auth": {
     "wrongPassword": "您输入的密码不正确，请重试。",

@@ -222,7 +222,7 @@ pub fn stock_value_history(
 // Write tools (Task 9: mirrors the canonical bulk engine in services/mcp/bank_accounts.rs)
 // ============================================================================
 
-#[derive(Debug, Deserialize, schemars::JsonSchema)]
+#[derive(Debug, Clone, Deserialize, schemars::JsonSchema)]
 pub struct StockTransactionRow {
     #[schemars(description = "Ticker symbol, e.g. AAPL")]
     pub ticker: String,
@@ -244,12 +244,25 @@ pub struct StockTransactionRow {
     #[serde(rename = "transactionDate")]
     #[schemars(description = "Unix timestamp (seconds)")]
     pub transaction_date: i64,
+    #[serde(rename = "externalId")]
+    #[schemars(
+        description = "Stable source transaction identifier; repeated IDs are deduplicated"
+    )]
+    pub external_id: Option<String>,
+    #[serde(rename = "importAnyway", default)]
+    #[schemars(
+        description = "Import a genuine identical fill even when its values match an existing transaction"
+    )]
+    pub import_anyway: bool,
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct StockTransactionsCreateArgs {
     #[schemars(length(max = MAX_BULK_ROWS))]
     pub transactions: Vec<StockTransactionRow>,
+    #[serde(rename = "fileName")]
+    #[schemars(description = "Name of the source file for the undoable stock import history")]
+    pub file_name: Option<String>,
 }
 
 /// Two-phase bulk import through the shared writer
@@ -276,19 +289,41 @@ pub fn stock_transactions_create(
             price_per_unit: row.price_per_unit.clone(),
             currency: row.currency.clone(),
             transaction_date: row.transaction_date,
-            external_id: None,
-            allow_duplicate: false,
+            external_id: row
+                .external_id
+                .as_deref()
+                .map(str::trim)
+                .filter(|id| !id.is_empty())
+                .map(|id| format!("mcp:{id}")),
+            allow_duplicate: row.import_anyway,
         })
-        .collect();
-    let report = investment_service::bulk_create_stock_transactions(conn, &rows, None)?;
+        .collect::<Vec<_>>();
+    let batch = investment_service::NewStockImportBatch {
+        file_name: args
+            .file_name
+            .as_deref()
+            .map(str::trim)
+            .filter(|name| !name.is_empty())
+            .unwrap_or("MCP import")
+            .to_string(),
+        source: "mcp".to_string(),
+    };
+    let report = investment_service::bulk_create_stock_transactions(conn, &rows, Some(&batch))?;
 
     Ok(BulkWriteReport {
+        import_batch_id: report.batch_id,
         promoted: 0,
         created: report.created,
         skipped_duplicates: report
             .skipped_duplicates
             .into_iter()
-            .map(|row| SkippedRow::new(row.index, row.message))
+            .map(|row| {
+                if row.possible_duplicate {
+                    SkippedRow::possible_duplicate(row.index, row.message)
+                } else {
+                    SkippedRow::new(row.index, row.message)
+                }
+            })
             .collect(),
         errors: report
             .errors
@@ -387,6 +422,8 @@ mod bulk_tests {
             price_per_unit: price.to_string(),
             currency: currency.to_string(),
             transaction_date: date,
+            external_id: None,
+            import_anyway: false,
         }
     }
 
@@ -435,6 +472,7 @@ mod bulk_tests {
     fn happy_path_auto_creates_holding_and_recalculates() {
         let mut conn = setup_test_db();
         let args = StockTransactionsCreateArgs {
+            file_name: None,
             transactions: vec![
                 row("aapl", "buy", "1", "100", "USD", 1_700_000_000),
                 row("aapl", "buy", "2", "110", "USD", 1_700_100_000),
@@ -467,6 +505,7 @@ mod bulk_tests {
         // recalc's rowid tiebreak) — not argument order — controls processing
         // order. Buy 10 @ 100, sell 4 @ 110, both dated the same second.
         let args = StockTransactionsCreateArgs {
+            file_name: None,
             transactions: vec![
                 row("aapl", "sell", "4", "110", "USD", 1_700_000_000),
                 row("aapl", "buy", "10", "100", "USD", 1_700_000_000),
@@ -490,6 +529,7 @@ mod bulk_tests {
         let mut conn = setup_test_db();
         // Seed an existing AAPL position so we can prove it's untouched too.
         let seed = StockTransactionsCreateArgs {
+            file_name: None,
             transactions: vec![row("aapl", "buy", "5", "100", "USD", 1_699_000_000)],
         };
         assert_eq!(
@@ -498,6 +538,7 @@ mod bulk_tests {
         );
 
         let args = StockTransactionsCreateArgs {
+            file_name: None,
             transactions: vec![
                 row("aapl", "buy", "3", "150", "USD", 1_700_000_000), // would succeed alone
                 row("msft", "sell", "2", "300", "USD", 1_700_100_000), // no position -> fails
@@ -519,6 +560,7 @@ mod bulk_tests {
     fn duplicate_row_is_skipped_not_inserted() {
         let mut conn = setup_test_db();
         let seed = StockTransactionsCreateArgs {
+            file_name: None,
             transactions: vec![row("aapl", "buy", "10", "100", "USD", 1_700_000_000)],
         };
         assert_eq!(
@@ -527,6 +569,7 @@ mod bulk_tests {
         );
 
         let args = StockTransactionsCreateArgs {
+            file_name: None,
             transactions: vec![
                 row("aapl", "buy", "10", "100", "USD", 1_700_000_000), // exact duplicate
                 row("aapl", "buy", "5", "105", "USD", 1_700_100_000),  // distinct
@@ -545,6 +588,7 @@ mod bulk_tests {
     fn empty_batch_creates_nothing() {
         let mut conn = setup_test_db();
         let args = StockTransactionsCreateArgs {
+            file_name: None,
             transactions: vec![],
         };
         let report = stock_transactions_create(&mut conn, &args).unwrap();
@@ -570,7 +614,10 @@ mod bulk_tests {
                 1_700_000_000 + i as i64,
             ));
         }
-        let args = StockTransactionsCreateArgs { transactions };
+        let args = StockTransactionsCreateArgs {
+            transactions,
+            file_name: None,
+        };
         let err = stock_transactions_create(&mut conn, &args).unwrap_err();
         match err {
             crate::error::AppError::Validation(msg) => {
@@ -599,6 +646,7 @@ mod bulk_tests {
         let mut bad = row("aapl", "buy", "10", "100", "USD", 1_700_000_000);
         bad.tx_type = "banana".into();
         let args = StockTransactionsCreateArgs {
+            file_name: None,
             transactions: vec![bad, row("msft", "buy", "5", "200", "USD", 1_700_100_000)],
         };
         let report = stock_transactions_create(&mut conn, &args).unwrap();
@@ -616,6 +664,7 @@ mod bulk_tests {
     fn currency_mismatch_rolls_back_whole_batch() {
         let mut conn = setup_test_db();
         let seed = StockTransactionsCreateArgs {
+            file_name: None,
             transactions: vec![row("aapl", "buy", "5", "100", "USD", 1_699_000_000)],
         };
         assert_eq!(
@@ -624,6 +673,7 @@ mod bulk_tests {
         );
 
         let args = StockTransactionsCreateArgs {
+            file_name: None,
             transactions: vec![row("aapl", "buy", "1", "100", "EUR", 1_700_000_000)],
         };
         let report = stock_transactions_create(&mut conn, &args).unwrap();
@@ -636,6 +686,7 @@ mod bulk_tests {
     #[test]
     fn distinct_tickers_dedupes_and_uppercases() {
         let args = StockTransactionsCreateArgs {
+            file_name: None,
             transactions: vec![
                 row("aapl", "buy", "1", "100", "USD", 1),
                 row("AAPL", "sell", "1", "100", "USD", 2),
@@ -650,8 +701,157 @@ mod bulk_tests {
     }
 
     #[test]
+    fn integrity_oversell_rolls_back_even_when_later_buy_covers_it() {
+        let mut conn = setup_test_db();
+        let args = StockTransactionsCreateArgs {
+            file_name: None,
+            transactions: vec![
+                row("AAPL", "buy", "1", "100", "USD", 1_700_000_000),
+                row("AAPL", "sell", "2", "100", "USD", 1_700_100_000),
+                row("AAPL", "buy", "3", "100", "USD", 1_700_200_000),
+            ],
+        };
+        let report = stock_transactions_create(&mut conn, &args).unwrap();
+        assert_eq!(report.created, 0);
+        assert!(!report.errors.is_empty());
+        assert_eq!(tx_count(&conn), 0);
+    }
+
+    #[test]
+    fn integrity_backdated_sell_protects_existing_future_sales() {
+        let mut conn = setup_test_db();
+        stock_transactions_create(
+            &mut conn,
+            &StockTransactionsCreateArgs {
+                file_name: None,
+                transactions: vec![
+                    row("AAPL", "buy", "10", "100", "USD", 1_700_000_000),
+                    row("AAPL", "sell", "8", "100", "USD", 1_700_200_000),
+                ],
+            },
+        )
+        .unwrap();
+        let report = stock_transactions_create(
+            &mut conn,
+            &StockTransactionsCreateArgs {
+                file_name: None,
+                transactions: vec![row("AAPL", "sell", "5", "100", "USD", 1_700_100_000)],
+            },
+        )
+        .unwrap();
+        assert_eq!(report.created, 0);
+        assert!(!report.errors.is_empty());
+        assert_eq!(holding_quantity(&conn, "AAPL"), Some("2".into()));
+    }
+
+    #[test]
+    fn integrity_duplicate_uses_numeric_values_and_currency() {
+        let mut conn = setup_test_db();
+        stock_transactions_create(
+            &mut conn,
+            &StockTransactionsCreateArgs {
+                file_name: None,
+                transactions: vec![row("AAPL", "buy", "10", "100", "USD", 1_700_000_000)],
+            },
+        )
+        .unwrap();
+        let report = stock_transactions_create(
+            &mut conn,
+            &StockTransactionsCreateArgs {
+                file_name: None,
+                transactions: vec![row("AAPL", "buy", "10.0", "1e2", "USD", 1_700_000_000)],
+            },
+        )
+        .unwrap();
+        assert_eq!(report.created, 0);
+        assert_eq!(report.skipped_duplicates.len(), 1);
+        let report = stock_transactions_create(
+            &mut conn,
+            &StockTransactionsCreateArgs {
+                file_name: None,
+                transactions: vec![
+                    row("AAPL", "buy", "10", "100", "EUR", 1_700_000_000),
+                    row("AAPL", "buy", "1", "100", "USD", 1_700_100_000),
+                ],
+            },
+        )
+        .unwrap();
+        assert_eq!(report.created, 0);
+        assert!(!report.errors.is_empty());
+        assert_eq!(tx_count(&conn), 1);
+    }
+
+    #[test]
+    fn integrity_mcp_stock_import_records_owned_batch() {
+        let mut conn = setup_test_db();
+        let report = stock_transactions_create(
+            &mut conn,
+            &StockTransactionsCreateArgs {
+                file_name: None,
+                transactions: vec![row("AAPL", "buy", "1", "100", "USD", 1_700_000_000)],
+            },
+        )
+        .unwrap();
+        assert_eq!(report.created, 1);
+        let (source, count, owned): (String, i64, i64) = conn.query_row(
+            "SELECT source, trade_count, (SELECT count(*) FROM investment_transactions WHERE import_batch_id = stock_import_batches.id) FROM stock_import_batches", [],
+            |r| Ok((r.get(0)?,r.get(1)?,r.get(2)?))).unwrap();
+        assert_eq!((source, count, owned), ("mcp".into(), 1, 1));
+    }
+
+    #[test]
+    fn integrity_identical_fills_need_explicit_override_and_external_ids_are_stable() {
+        let mut conn = setup_test_db();
+        let mut first = row("AAPL", "buy", "1", "100", "USD", 1_700_000_000);
+        first.external_id = Some("trade-1".into());
+        let report = stock_transactions_create(
+            &mut conn,
+            &StockTransactionsCreateArgs {
+                file_name: Some("broker.csv".into()),
+                transactions: vec![first.clone()],
+            },
+        )
+        .unwrap();
+        assert!(report.import_batch_id.is_some());
+        let duplicate = stock_transactions_create(
+            &mut conn,
+            &StockTransactionsCreateArgs {
+                file_name: None,
+                transactions: vec![first.clone()],
+            },
+        )
+        .unwrap();
+        assert_eq!(duplicate.created, 0);
+        assert_eq!(duplicate.skipped_duplicates.len(), 1);
+        first.import_anyway = true;
+        first.external_id = Some("trade-2".into());
+        let second = stock_transactions_create(
+            &mut conn,
+            &StockTransactionsCreateArgs {
+                file_name: None,
+                transactions: vec![first.clone()],
+            },
+        )
+        .unwrap();
+        assert_eq!(second.created, 1);
+        assert_eq!(holding_quantity(&conn, "AAPL"), Some("2".into()));
+        first.price_per_unit = "101".into();
+        let conflict = stock_transactions_create(
+            &mut conn,
+            &StockTransactionsCreateArgs {
+                file_name: None,
+                transactions: vec![first],
+            },
+        )
+        .unwrap();
+        assert_eq!(conflict.created, 0);
+        assert_eq!(conflict.errors.len(), 1);
+    }
+
+    #[test]
     fn earliest_date_picks_the_minimum() {
         let args = StockTransactionsCreateArgs {
+            file_name: None,
             transactions: vec![
                 row("aapl", "buy", "1", "100", "USD", 500),
                 row("aapl", "buy", "1", "100", "USD", 100),
@@ -659,6 +859,79 @@ mod bulk_tests {
             ],
         };
         assert_eq!(earliest_date(&args), Some(100));
+    }
+    #[test]
+    fn source_ids_preserve_distinct_identical_fills_and_id_retries_are_certain() {
+        let mut conn = setup_test_db();
+        let mut a = row("AAPL", "buy", "1", "100", "USD", 1_700_000_000);
+        a.external_id = Some("fill-1".into());
+        let mut b = a.clone();
+        b.external_id = Some("fill-2".into());
+        let args = StockTransactionsCreateArgs {
+            transactions: vec![a, b],
+            file_name: Some("fills.csv".into()),
+        };
+        let report = stock_transactions_create(&mut conn, &args).unwrap();
+        assert_eq!(report.created, 2, "{report:?}");
+        let batch_id = report.import_batch_id.unwrap();
+        let (name, count): (String, i64) = conn
+            .query_row(
+                "SELECT file_name,trade_count FROM stock_import_batches WHERE id=?1",
+                [&batch_id],
+                |r| Ok((r.get(0)?, r.get(1)?)),
+            )
+            .unwrap();
+        assert_eq!((name.as_str(), count), ("fills.csv", 2));
+        let retry = stock_transactions_create(&mut conn, &args).unwrap();
+        assert_eq!(retry.created, 0);
+        assert_eq!(retry.skipped_duplicates.len(), 2);
+        assert!(retry
+            .skipped_duplicates
+            .iter()
+            .all(|row| !row.possible_duplicate));
+        assert!(retry.import_batch_id.is_none());
+        let undone =
+            crate::services::stock_import::batches::undo_batch(&mut conn, &batch_id).unwrap();
+        assert_eq!(undone.removed, 2);
+        assert_eq!(tx_count(&conn), 0);
+        assert_eq!(holding_count(&conn), 0);
+    }
+
+    #[test]
+    fn heuristic_duplicates_are_possible_and_can_be_overridden() {
+        let mut conn = setup_test_db();
+        let a = row("AAPL", "buy", "1", "100", "USD", 1_700_000_000);
+        stock_transactions_create(
+            &mut conn,
+            &StockTransactionsCreateArgs {
+                transactions: vec![a.clone()],
+                file_name: None,
+            },
+        )
+        .unwrap();
+        let report = stock_transactions_create(
+            &mut conn,
+            &StockTransactionsCreateArgs {
+                transactions: vec![a.clone()],
+                file_name: None,
+            },
+        )
+        .unwrap();
+        assert!(report.skipped_duplicates[0].possible_duplicate);
+        let mut forced = a;
+        forced.import_anyway = true;
+        assert_eq!(
+            stock_transactions_create(
+                &mut conn,
+                &StockTransactionsCreateArgs {
+                    transactions: vec![forced],
+                    file_name: None
+                }
+            )
+            .unwrap()
+            .created,
+            1
+        );
     }
 }
 

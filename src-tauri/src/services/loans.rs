@@ -21,7 +21,12 @@ const LOAN_COLUMNS: &str = "l.id, l.name, l.principal, l.currency, l.interest_ra
 
 /// Money TEXT with 2 decimals; never "-0.00".
 fn money_text(value: f64) -> String {
-    let rounded = (value * 100.0).round() / 100.0;
+    let scaled = value * 100.0;
+    let rounded = if scaled.is_finite() {
+        scaled.round() / 100.0
+    } else {
+        value
+    };
     format!("{:.2}", if rounded == 0.0 { 0.0 } else { rounded })
 }
 
@@ -198,18 +203,31 @@ pub fn create_loan(conn: &Connection, data: &InsertLoan) -> Result<Loan> {
         .monthly_payment
         .clone()
         .unwrap_or_else(|| "0".to_string());
-    let start_date = data.start_date.unwrap_or(now);
-    let anchor = data.balance_anchor();
+    let start_date = crate::models::validation::utc_day(
+        data.start_date.unwrap_or(now),
+        "validation.dateInvalid",
+    )?;
+    let end_date = data
+        .end_date
+        .map(|date| crate::models::validation::utc_day(date, "validation.dateInvalid"))
+        .transpose()?;
+    let validity_date = data
+        .interest_rate_validity_date
+        .map(|date| crate::models::validation::utc_day(date, "validation.dateInvalid"))
+        .transpose()?;
+    let anchor = data
+        .balance_anchor()
+        .map(|(amount, day)| {
+            crate::models::validation::utc_day(day, "validation.dateInvalid")
+                .map(|day| (amount, day))
+        })
+        .transpose()?;
 
     // InsertLoan::validate() only checks ordering when BOTH start_date and
     // end_date are provided by the caller; start_date defaults to `now` right
     // above, so an end_date-only input (end_date <= now) would otherwise
     // persist an end-before-start loan. Re-check against the effective date.
-    check_dates(
-        start_date,
-        data.end_date,
-        anchor.as_ref().map(|(_, day)| *day),
-    )?;
+    check_dates(start_date, end_date, anchor.as_ref().map(|(_, day)| *day))?;
 
     conn.execute(
         "INSERT INTO loans (id, name, principal, currency, interest_rate, interest_rate_validity_date,
@@ -222,10 +240,10 @@ pub fn create_loan(conn: &Connection, data: &InsertLoan) -> Result<Loan> {
             data.principal,
             currency,
             interest_rate,
-            data.interest_rate_validity_date,
+            validity_date,
             monthly_payment,
             start_date,
-            data.end_date,
+            end_date,
             anchor.as_ref().map(|(amount, _)| amount),
             anchor.as_ref().map(|(_, day)| day),
             now
@@ -246,10 +264,28 @@ pub fn update_loan(conn: &Connection, id: &str, data: &InsertLoan) -> Result<Loa
         })
         .optional()?
         .ok_or_else(|| AppError::NotFound("Loan not found".into()))?;
-    let anchor = data.balance_anchor();
+    let start_date = data
+        .start_date
+        .map(|date| crate::models::validation::utc_day(date, "validation.dateInvalid"))
+        .transpose()?;
+    let end_date = data
+        .end_date
+        .map(|date| crate::models::validation::utc_day(date, "validation.dateInvalid"))
+        .transpose()?;
+    let validity_date = data
+        .interest_rate_validity_date
+        .map(|date| crate::models::validation::utc_day(date, "validation.dateInvalid"))
+        .transpose()?;
+    let anchor = data
+        .balance_anchor()
+        .map(|(amount, day)| {
+            crate::models::validation::utc_day(day, "validation.dateInvalid")
+                .map(|day| (amount, day))
+        })
+        .transpose()?;
     check_dates(
-        data.start_date.unwrap_or(existing_start),
-        data.end_date,
+        start_date.unwrap_or(existing_start),
+        end_date,
         anchor.as_ref().map(|(_, day)| *day),
     )?;
 
@@ -266,10 +302,10 @@ pub fn update_loan(conn: &Connection, id: &str, data: &InsertLoan) -> Result<Loa
             data.principal,
             data.currency,
             data.interest_rate,
-            data.interest_rate_validity_date,
+            validity_date,
             data.monthly_payment,
-            data.start_date,
-            data.end_date,
+            start_date,
+            end_date,
             anchor.as_ref().map(|(amount, _)| amount),
             anchor.as_ref().map(|(_, day)| day),
             now,
@@ -472,11 +508,55 @@ mod tests {
         assert_eq!(loan.currency, "CZK");
         assert_eq!(loan.interest_rate, "0");
         assert_eq!(loan.monthly_payment, "0");
-        assert!(loan.start_date >= before);
+        assert_eq!(loan.start_date, before.div_euclid(86_400) * 86_400);
         assert_eq!(loan.balance_anchor_amount, None);
         assert_eq!(loan.balance_anchor_date, None);
         // no payment: the balance is the principal
         assert_eq!(loan.outstanding_balance, "10000.00");
+    }
+
+    #[test]
+    fn large_finite_principal_remains_finite_when_formatting_its_balance() {
+        let conn = setup_test_db();
+        let mut data = valid_insert();
+        data.principal = "1e308".into();
+        let loan = create_loan(&conn, &data).expect("loan");
+        assert_eq!(
+            loan.outstanding_balance.parse::<f64>().expect("balance"),
+            1e308
+        );
+    }
+
+    #[test]
+    fn blank_loan_numbers_are_rejected_without_mutating_existing_facts() {
+        let conn = setup_test_db();
+        let existing = create_loan(&conn, &valid_insert()).expect("existing loan");
+        for blank in ["", "  ", " 1.25 "] {
+            for field in ["interest", "payment"] {
+                let mut data = valid_insert();
+                if field == "interest" {
+                    data.interest_rate = Some(blank.into());
+                } else {
+                    data.monthly_payment = Some(blank.into());
+                }
+                assert!(
+                    create_loan(&conn, &data).is_err(),
+                    "create accepted {field}={blank:?}"
+                );
+                assert!(
+                    update_loan(&conn, &existing.id, &data).is_err(),
+                    "update accepted {field}={blank:?}"
+                );
+            }
+        }
+        let facts: (i64, String, String) = conn
+            .query_row(
+                "SELECT count(*), interest_rate, monthly_payment FROM loans",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+            )
+            .expect("facts");
+        assert_eq!(facts, (1, "0".into(), "0".into()));
     }
 
     #[test]

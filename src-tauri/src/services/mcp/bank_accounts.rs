@@ -105,10 +105,14 @@ pub struct BankTransactionRow {
     #[serde(default)]
     pub status: Option<String>,
     #[serde(rename = "bookingDate")]
-    #[schemars(description = "Booking date as Unix timestamp (seconds)")]
+    #[schemars(
+        description = "Booking calendar date as Unix seconds, after 1970-01-01 and through 9999-12-31; normalized to UTC midnight"
+    )]
     pub booking_date: i64,
     #[serde(rename = "valueDate")]
-    #[schemars(description = "Value date as Unix timestamp (seconds)")]
+    #[schemars(
+        description = "Value calendar date as Unix seconds, years 0001-9999; normalized to UTC midnight"
+    )]
     pub value_date: Option<i64>,
     #[serde(rename = "categoryId")]
     #[schemars(
@@ -212,11 +216,18 @@ pub fn bank_transactions_create(
     }
     if !errors.is_empty() || args.transactions.is_empty() {
         return Ok(BulkWriteReport {
+            import_batch_id: None,
             promoted: 0,
             created: 0,
             skipped_duplicates: vec![],
             errors,
         });
+    }
+
+    // MCP account creation can happen without a renderer reloading the engine.
+    // Refresh from committed accounts before any unattended categorization.
+    if let Some(engine) = engine {
+        crate::services::categorization::own_accounts::refresh_own_ibans(conn, engine)?;
     }
 
     // Dedup runs INSIDE the transaction, so it also catches duplicates within
@@ -235,7 +246,10 @@ pub fn bank_transactions_create(
         .map(str::trim)
         .filter(|name| !name.is_empty())
         .unwrap_or("MCP");
-    let dates = args.transactions.iter().map(|r| r.booking_date);
+    let dates = args
+        .transactions
+        .iter()
+        .map(|r| r.booking_date.div_euclid(86_400) * 86_400);
     let period = dates.clone().min().zip(dates.max());
     crate::services::csv_import::insert_batch(
         &tx,
@@ -250,6 +264,14 @@ pub fn bank_transactions_create(
     let mut skipped: Vec<SkippedRow> = Vec::new();
     for (i, row) in args.transactions.iter().enumerate() {
         let mut insert = row_to_insert(&args.account_id, row);
+        insert.booking_date = crate::models::validation::utc_day(
+            insert.booking_date,
+            "validation.bookingDateInvalid",
+        )?;
+        insert.value_date = insert
+            .value_date
+            .map(|day| crate::models::validation::utc_day(day, "validation.valueDateInvalid"))
+            .transpose()?;
         match checker.check(&insert) {
             Some(dedup::BankOccurrence::Certain) => {
                 skipped.push(SkippedRow::new(
@@ -287,6 +309,7 @@ pub fn bank_transactions_create(
     tx.commit()?;
 
     Ok(BulkWriteReport {
+        import_batch_id: Some(batch_id),
         promoted,
         created,
         skipped_duplicates: skipped,
@@ -442,6 +465,7 @@ pub fn bank_transactions_categorize(
     }
     if !errors.is_empty() {
         return Ok(BulkWriteReport {
+            import_batch_id: None,
             promoted: 0,
             created: 0,
             skipped_duplicates: vec![],
@@ -465,6 +489,7 @@ pub fn bank_transactions_categorize(
     }
     tx.commit()?;
     Ok(BulkWriteReport {
+        import_batch_id: None,
         promoted: 0,
         created,
         skipped_duplicates: skipped,
@@ -576,6 +601,7 @@ pub fn bank_transactions_assign_import(
     if !errors.is_empty() || args.transaction_ids.is_empty() {
         errors.sort_by_key(|e| e.index);
         return Ok(BulkWriteReport {
+            import_batch_id: None,
             promoted: 0,
             created: 0,
             skipped_duplicates: vec![],
@@ -619,6 +645,7 @@ pub fn bank_transactions_assign_import(
     crate::services::csv_import::finish_batch(&tx, &batch_id, found_rows.len(), 0, 0, 0)?;
     tx.commit()?;
     Ok(BulkWriteReport {
+        import_batch_id: Some(batch_id),
         promoted: 0,
         created: found_rows.len(),
         skipped_duplicates: vec![],
@@ -877,6 +904,8 @@ mod tests {
                 updated_at INTEGER NOT NULL DEFAULT 0
             );
 
+            CREATE TABLE institutions (id TEXT PRIMARY KEY, country TEXT);
+
             CREATE TABLE user_profile (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 currency TEXT NOT NULL DEFAULT 'CZK'
@@ -1017,7 +1046,7 @@ mod tests {
         assert_eq!(batch.file_name, "statement.csv");
         assert_eq!((batch.imported_count, batch.linked_count), (2, 2));
         let range = batch.date_range.as_ref().unwrap();
-        assert_eq!((range.from, range.to), (1700000100, 1700000200));
+        assert_eq!((range.from, range.to), (1699920000, 1699920000));
         let owned: i64 = conn.query_row("SELECT COUNT(*) FROM bank_transactions WHERE import_batch_id=?1 AND data_source='api_sync'", [&batch.id], |r| r.get(0)).unwrap();
         assert_eq!(owned, 2);
 
@@ -1114,7 +1143,7 @@ mod tests {
         assert_eq!(batch.imported_at, 1787220668);
         assert_eq!((batch.imported_count, batch.linked_count), (2, 2));
         let range = batch.date_range.as_ref().unwrap();
-        assert_eq!((range.from, range.to), (1700000100, 1700000200));
+        assert_eq!((range.from, range.to), (1699920000, 1699920000));
         assert_eq!(delete_import_batch(&conn, &batch.id).unwrap(), 2);
         assert_eq!(tx_count(&conn), 1);
         let survivor: String = conn
@@ -1594,6 +1623,47 @@ mod tests {
             |r| Ok((r.get(0)?, r.get(1)?)),
         )
         .unwrap()
+    }
+
+    #[test]
+    fn create_refreshes_own_accounts_for_an_engine_without_renderer_updates() {
+        let mut conn = setup_test_db();
+        let engine = CategorizationEngine::new_empty();
+        conn.execute("INSERT INTO transaction_categories (id,name,kind) VALUES ('cat_internal_transfers','Internal Transfers','transfer')", []).expect("transfer category");
+        bank_account_create(
+            &conn,
+            &BankAccountCreateArgs {
+                name: "Fresh own account".into(),
+                account_type: None,
+                iban: Some("DE89370400440532013000".into()),
+                bban: None,
+                currency: Some("EUR".into()),
+                balance: None,
+                balance_as_of: None,
+                interest_rate: None,
+            },
+        )
+        .expect("new account");
+        let mut payment = row("debit", "10", 1700000000, Some("Transfer to savings"));
+        payment.counterparty_iban = Some("DE89370400440532013000".into());
+        let report = bank_transactions_create(
+            &mut conn,
+            &BankTransactionsCreateArgs {
+                file_name: None,
+                account_id: "acc-1".into(),
+                transactions: vec![payment],
+            },
+            Some(&engine),
+        )
+        .expect("import");
+        assert_eq!(report.created, 1);
+        assert_eq!(
+            category_and_source(&conn, "Transfer to savings"),
+            (
+                Some("cat_internal_transfers".into()),
+                Some("own_account".into())
+            )
+        );
     }
 
     #[test]

@@ -182,6 +182,7 @@ pub async fn unlock(
             log::error!("[local-api] MCP server failed to start on unlock: {}", e);
         }
     }
+    crate::commands::mcp_refresh::resume(app, (*db).clone());
     Ok(profile)
 }
 
@@ -206,13 +207,15 @@ pub async fn confirm_recover(
     data: ConfirmRecoverData,
 ) -> Result<UserProfile> {
     let db_path = get_db_path(&app)?;
-    auth::confirm_recover(
+    let profile = auth::confirm_recover(
         &db,
         db_path,
         &data.old_recovery_key,
         &data.new_password,
         &data.new_recovery_key,
-    )
+    )?;
+    crate::commands::mcp_refresh::resume(app, (*db).clone());
+    Ok(profile)
 }
 
 /// Lock account (logout)

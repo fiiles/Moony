@@ -765,7 +765,8 @@
       "duplicateSimilar": "Un'operazione simile è già presente in Moony: stesso giorno e quantità, prezzo entro lo 0,5 %",
       "cannotParse": "Impossibile leggere la riga",
       "writeFailed": "Impossibile scrivere l'operazione"
-    }
+    },
+    "mcpSource": "MCP"
   },
   "eyebrow": "Portafoglio",
   "export": "Esporta"

@@ -99,6 +99,11 @@ pub fn undo_batch(
             tx.execute("DELETE FROM stock_investments WHERE id = ?1", [&position])?;
             removed_positions.push(ticker.clone());
         } else {
+            crate::services::investments::ensure_valid_holdings_history(
+                &tx,
+                "investment_transactions",
+                &position,
+            )?;
             recalculate_investment_metrics(&tx, &position)?;
         }
         tickers.push(ticker);
@@ -388,5 +393,29 @@ mod tests {
         assert_eq!(count(&conn, "investment_transactions"), 1, "rolled back");
         assert_eq!(count(&conn, "stock_import_batches"), 1);
         assert_eq!(quantity(&conn, "AAPL").as_deref(), Some("10"));
+    }
+    #[test]
+    fn undo_rejects_a_batch_whose_buys_support_later_sales_and_rolls_back_every_ticker() {
+        let mut conn = db();
+        let first = run_import(
+            &mut conn,
+            vec![
+                buy(1, day(0), "AAPL", 10.0, 100.0),
+                buy(2, day(0), "MSFT", 1.0, 100.0),
+            ],
+            "buys.csv",
+        );
+        run_import(
+            &mut conn,
+            vec![sell(1, day(1), "AAPL", 8.0, 100.0)],
+            "sales.csv",
+        );
+        let batch_id = first.batch_id.unwrap();
+        let err = undo_batch(&mut conn, &batch_id).expect_err("later sale needs this buy");
+        assert!(matches!(err,AppError::Validation(key) if key=="validation.sellExceedsHoldings"));
+        assert_eq!(count(&conn, "investment_transactions"), 3);
+        assert_eq!(count(&conn, "stock_import_batches"), 2);
+        assert_eq!(quantity(&conn, "AAPL").as_deref(), Some("2"));
+        assert_eq!(quantity(&conn, "MSFT").as_deref(), Some("1"));
     }
 }

@@ -766,7 +766,8 @@
       "duplicateSimilar": "Podobný obchod už v Moony je: stejný den a počet kusů, cena se liší nejvýš o 0,5 %",
       "cannotParse": "Řádek se nepodařilo přečíst",
       "writeFailed": "Obchod se nepodařilo zapsat"
-    }
+    },
+    "mcpSource": "MCP"
   },
   "eyebrow": "Portfolio",
   "export": "Export"

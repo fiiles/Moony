@@ -80,6 +80,7 @@ fn all_migrations() -> Vec<(&'static str, &'static str)> {
         ("013_cashflow_plan_exclusions", MIGRATION_013),
         ("014_balance_records", MIGRATION_014),
         ("015_one_tag_per_group", MIGRATION_015),
+        ("016_mcp_pending_refresh", MIGRATION_016),
     ]
 }
 
@@ -2620,6 +2621,16 @@ WHERE EXISTS (
       AND o.tag_id <> stock_investment_tags.tag_id
       AND (o.created_at < stock_investment_tags.created_at
            OR (o.created_at = stock_investment_tags.created_at AND ot.name < t.name))
+);
+"#;
+
+/// Durable follow-up intents; contains no financial facts and never changes import ownership.
+pub(crate) const MIGRATION_016: &str = r#"
+CREATE TABLE mcp_pending_refresh (
+    id TEXT PRIMARY KEY,
+    domain TEXT NOT NULL UNIQUE,
+    earliest_date INTEGER,
+    generation TEXT NOT NULL
 );
 "#;
 

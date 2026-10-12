@@ -34,6 +34,7 @@ pub mod loans;
 pub mod local_api;
 pub mod logging;
 pub mod mcp;
+pub mod mcp_refresh;
 pub mod milestones;
 pub mod net_worth;
 pub mod onboarding;

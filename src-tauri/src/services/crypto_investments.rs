@@ -6,6 +6,7 @@
 
 use crate::error::Result;
 use crate::models::{CryptoInvestment, CryptoTransaction, InsertCryptoTransaction};
+use rusqlite::OptionalExtension;
 use uuid::Uuid;
 
 /// Recalculate crypto investment metrics from transactions
@@ -25,55 +26,20 @@ use uuid::Uuid;
 /// buys-before-sells order, so this pins today's observed behavior with zero
 /// change for existing data.
 pub fn recalculate_crypto_metrics(conn: &rusqlite::Connection, investment_id: &str) -> Result<()> {
-    // Get all transactions for this investment (including currency), sorted by
-    // date; rowid is the deterministic tiebreak for same-date/same-second rows
-    // (see above).
-    let mut stmt = conn.prepare(
-        "SELECT type, quantity, price_per_unit, currency FROM crypto_transactions WHERE investment_id = ?1 ORDER BY transaction_date ASC, created_at ASC, rowid ASC"
-    )?;
-
-    let txs: Vec<(String, f64, f64, String)> = stmt
-        .query_map([investment_id], |row| {
-            let tx_type: String = row.get(0)?;
-            let qty: String = row.get(1)?;
-            let price: String = row.get(2)?;
-            let currency: String = row.get(3)?;
-            Ok((
-                tx_type,
-                qty.parse().unwrap_or(0.0),
-                price.parse().unwrap_or(0.0),
-                currency.to_uppercase(),
-            ))
-        })?
-        .filter_map(|r| r.ok())
-        .collect();
-
-    // If no transactions, nothing to recalculate
-    if txs.is_empty() {
+    let native_currency:Option<String>=conn.query_row(
+        "SELECT currency FROM crypto_transactions WHERE investment_id=?1 ORDER BY transaction_date,created_at,rowid LIMIT 1",
+        [investment_id],|r|r.get(0),
+    ).optional()?;
+    let Some(native_currency) = native_currency else {
         return Ok(());
-    }
+    };
+    let total_qty = crate::services::investments::exact_held_quantity(
+        conn,
+        "crypto_transactions",
+        investment_id,
+    )?;
+    let native_currency = native_currency.to_ascii_uppercase();
 
-    // Native currency is the currency of the first transaction
-    let native_currency = txs[0].3.clone();
-
-    let mut total_qty = 0.0f64;
-
-    for (tx_type, qty, _price, _currency) in txs {
-        if tx_type == "buy" {
-            total_qty += qty;
-        } else if tx_type == "sell" {
-            total_qty -= qty;
-        }
-    }
-
-    // Prevent negative values
-    if total_qty < 0.0 {
-        total_qty = 0.0;
-    }
-
-    // Quantity is the only stored derived value; cost basis and average price
-    // are derived on read from transactions at their day's exchange rates
-    // (services/cost_basis.rs) — never converted at today's rate here.
     conn.execute(
         "UPDATE crypto_investments SET quantity = ?1, currency = ?2 WHERE id = ?3",
         rusqlite::params![total_qty.to_string(), native_currency, investment_id],
@@ -97,8 +63,14 @@ pub fn create_crypto_transaction_internal(
     currency: &str,
     transaction_date: i64,
 ) -> Result<CryptoTransaction> {
+    let quantity = crate::services::dedup::canonical_amount(quantity);
+    let price_per_unit = crate::services::dedup::canonical_amount(price_per_unit);
+    let tx_type = tx_type.to_ascii_lowercase();
+    let currency = currency.to_ascii_uppercase();
     let tx_id = Uuid::new_v4().to_string();
     let now = chrono::Utc::now().timestamp();
+    let transaction_date =
+        crate::models::validation::utc_day(transaction_date, "validation.dateInvalid")?;
 
     conn.execute(
         "INSERT INTO crypto_transactions
@@ -144,16 +116,27 @@ pub fn get_or_create_crypto(
     let ticker_upper = ticker.to_uppercase();
 
     // Check if investment already exists
-    let existing: Option<String> = conn
+    let existing: Option<(String, String)> = conn
         .query_row(
-            "SELECT id FROM crypto_investments WHERE ticker = ?1",
+            "SELECT id, coingecko_id FROM crypto_investments WHERE ticker = ?1",
             [&ticker_upper],
-            |row| row.get(0),
+            |row| Ok((row.get(0)?, row.get(1)?)),
         )
-        .ok();
+        .optional()?;
 
     match existing {
-        Some(id) => Ok(id),
+        Some((id, stored_coingecko_id)) => {
+            if coingecko_id
+                .map(str::trim)
+                .filter(|id| !id.is_empty())
+                .is_some_and(|id| id != stored_coingecko_id)
+            {
+                return Err(crate::error::AppError::Validation(format!(
+                    "{ticker_upper}: coingeckoId conflicts with stored holding"
+                )));
+            }
+            Ok(id)
+        }
         None => {
             let id = Uuid::new_v4().to_string();
 
@@ -208,6 +191,11 @@ pub fn create_crypto_with_transaction(
     name: &str,
     initial_transaction: Option<&InsertCryptoTransaction>,
 ) -> Result<CryptoInvestment> {
+    if let Some(data) = initial_transaction {
+        data.validate()?;
+    }
+    let transaction = conn.unchecked_transaction()?;
+    let conn = &transaction;
     let ticker_upper = ticker.to_uppercase();
 
     // Get or create the investment
@@ -215,24 +203,13 @@ pub fn create_crypto_with_transaction(
 
     // Create initial transaction if provided
     if let Some(tx) = initial_transaction {
-        create_crypto_transaction_internal(
-            conn,
-            &investment_id,
-            &ticker_upper,
-            name,
-            &tx.tx_type,
-            &tx.quantity,
-            &tx.price_per_unit,
-            &tx.currency,
-            tx.transaction_date,
-        )?;
-
-        // Recalculate metrics from the transaction
-        recalculate_crypto_metrics(conn, &investment_id)?;
+        add_transaction_to_crypto(conn, &investment_id, tx)?;
     }
 
     // Return the investment
-    get_crypto_by_id(conn, &investment_id)
+    let investment = get_crypto_by_id(conn, &investment_id)?;
+    transaction.commit()?;
+    Ok(investment)
 }
 
 /// Add a transaction to an existing crypto investment
@@ -241,6 +218,7 @@ pub fn add_transaction_to_crypto(
     investment_id: &str,
     data: &InsertCryptoTransaction,
 ) -> Result<CryptoTransaction> {
+    data.validate()?;
     // Get crypto investment info
     let (ticker, name): (String, String) = conn.query_row(
         "SELECT ticker, name FROM crypto_investments WHERE id = ?1",
@@ -274,9 +252,44 @@ pub fn add_transaction_to_crypto(
     Ok(tx)
 }
 
+/// Delete a crypto transaction and return its date and persisted price identity
+/// for the historical rebuild, even when deleting the holding's last row.
+pub fn delete_transaction(
+    conn: &rusqlite::Connection,
+    tx_id: &str,
+) -> Result<(i64, String, String)> {
+    let transaction = conn.unchecked_transaction()?;
+    let conn = &transaction;
+    let (date,investment_id,ticker,coingecko_id): (i64,String,String,String) = conn.query_row(
+        "SELECT t.transaction_date,t.investment_id,i.ticker,i.coingecko_id FROM crypto_transactions t JOIN crypto_investments i ON i.id=t.investment_id WHERE t.id=?1",[tx_id],
+        |r| Ok((r.get(0)?,r.get(1)?,r.get(2)?,r.get(3)?)),
+    ).optional()?.ok_or_else(|| crate::error::AppError::NotFound("Transaction not found".into()))?;
+    conn.execute("DELETE FROM crypto_transactions WHERE id=?1", [tx_id])?;
+    let count: i64 = conn.query_row(
+        "SELECT count(*) FROM crypto_transactions WHERE investment_id=?1",
+        [&investment_id],
+        |r| r.get(0),
+    )?;
+    if count == 0 {
+        conn.execute(
+            "DELETE FROM crypto_investments WHERE id=?1",
+            [&investment_id],
+        )?;
+    } else {
+        crate::services::investments::ensure_valid_holdings_history(
+            conn,
+            "crypto_transactions",
+            &investment_id,
+        )?;
+        recalculate_crypto_metrics(conn, &investment_id)?;
+    }
+    transaction.commit()?;
+    Ok((date, ticker, coingecko_id))
+}
+
 /// Unified import logic for a single crypto transaction. Mirrors
 /// services/investments.rs::import_single_transaction semantics: type check,
-/// sell-requires-position, currency match, get-or-create, insert, recalc.
+/// sell-requires-position, CoinGecko identity, get-or-create, insert, recalc.
 /// A NEW coin additionally requires a CoinGecko id (NOT NULL column, needed
 /// for price fetching).
 #[allow(clippy::too_many_arguments)]
@@ -291,7 +304,73 @@ pub fn import_single_crypto_transaction(
     currency: &str,
     transaction_date: i64,
 ) -> Result<String> {
+    import_crypto_row(
+        conn,
+        ticker,
+        name,
+        coingecko_id,
+        tx_type,
+        quantity,
+        price_per_unit,
+        currency,
+        transaction_date,
+        true,
+    )
+}
+
+/// Only the transactional bulk writer may defer holdings replay until every
+/// incoming row has been inserted. It must validate the final history before commit.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn import_crypto_transaction_deferred(
+    conn: &rusqlite::Connection,
+    ticker: &str,
+    name: &str,
+    coingecko_id: Option<&str>,
+    tx_type: &str,
+    quantity: &str,
+    price_per_unit: &str,
+    currency: &str,
+    transaction_date: i64,
+) -> Result<String> {
+    import_crypto_row(
+        conn,
+        ticker,
+        name,
+        coingecko_id,
+        tx_type,
+        quantity,
+        price_per_unit,
+        currency,
+        transaction_date,
+        false,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn import_crypto_row(
+    conn: &rusqlite::Connection,
+    ticker: &str,
+    name: &str,
+    coingecko_id: Option<&str>,
+    tx_type: &str,
+    quantity: &str,
+    price_per_unit: &str,
+    currency: &str,
+    transaction_date: i64,
+    validate_holdings: bool,
+) -> Result<String> {
     use crate::error::AppError;
+    InsertCryptoTransaction {
+        investment_id: None,
+        tx_type: tx_type.into(),
+        ticker: ticker.into(),
+        name: name.into(),
+        quantity: quantity.into(),
+        price_per_unit: price_per_unit.into(),
+        currency: currency.into(),
+        transaction_date,
+    }
+    .validate()?;
     let ticker_upper = ticker.to_uppercase();
     let tx_type_lower = tx_type.to_lowercase();
 
@@ -302,13 +381,13 @@ pub fn import_single_crypto_transaction(
         )));
     }
 
-    let existing: Option<String> = conn
+    let existing: Option<(String, String)> = conn
         .query_row(
-            "SELECT id FROM crypto_investments WHERE ticker = ?1",
+            "SELECT id, coingecko_id FROM crypto_investments WHERE ticker = ?1",
             [&ticker_upper],
-            |row| row.get(0),
+            |row| Ok((row.get(0)?, row.get(1)?)),
         )
-        .ok();
+        .optional()?;
 
     if tx_type_lower == "sell" && existing.is_none() {
         return Err(AppError::Validation(format!(
@@ -318,39 +397,42 @@ pub fn import_single_crypto_transaction(
     }
 
     let investment_id = match existing {
-        Some(id) => {
-            let tx_count: i64 = conn.query_row(
-                "SELECT COUNT(*) FROM crypto_transactions WHERE investment_id = ?1",
-                [&id],
-                |row| row.get(0),
-            )?;
-            if tx_count > 0 {
-                let inv_currency: String = conn
-                    .query_row(
-                        "SELECT currency FROM crypto_investments WHERE id = ?1",
-                        [&id],
-                        |row| row.get(0),
-                    )
-                    .unwrap_or_else(|_| currency.to_uppercase());
-                if inv_currency.to_uppercase() != currency.to_uppercase() {
-                    return Err(AppError::Validation(format!(
-                        "{}: Currency mismatch - holding uses {} but transaction is in {}",
-                        ticker_upper, inv_currency, currency
-                    )));
-                }
+        Some((id, stored_coingecko_id)) => {
+            if coingecko_id
+                .map(str::trim)
+                .filter(|id| !id.is_empty())
+                .is_some_and(|id| id != stored_coingecko_id)
+            {
+                return Err(AppError::Validation(format!(
+                    "{ticker_upper}: coingeckoId conflicts with stored holding"
+                )));
             }
             id
         }
         None => {
-            let cg = coingecko_id.filter(|s| !s.is_empty()).ok_or_else(|| {
-                AppError::Validation(format!(
-                    "{}: new coin requires a coingeckoId (e.g. \"bitcoin\") for price fetching",
-                    ticker_upper
-                ))
-            })?;
+            let cg = coingecko_id
+                .map(str::trim)
+                .filter(|s| !s.is_empty())
+                .ok_or_else(|| {
+                    AppError::Validation(format!(
+                        "{}: new coin requires a coingeckoId (e.g. \"bitcoin\") for price fetching",
+                        ticker_upper
+                    ))
+                })?;
             get_or_create_crypto(conn, &ticker_upper, Some(cg), name)?
         }
     };
+
+    if validate_holdings {
+        crate::services::investments::ensure_sell_within_holdings(
+            conn,
+            "crypto_transactions",
+            &investment_id,
+            &tx_type_lower,
+            quantity,
+            transaction_date,
+        )?;
+    }
 
     create_crypto_transaction_internal(
         conn,
@@ -364,7 +446,9 @@ pub fn import_single_crypto_transaction(
         transaction_date,
     )?;
 
-    recalculate_crypto_metrics(conn, &investment_id)?;
+    if validate_holdings {
+        recalculate_crypto_metrics(conn, &investment_id)?;
+    }
 
     Ok(investment_id)
 }
@@ -535,7 +619,7 @@ mod tests {
     }
 
     #[test]
-    fn import_rejects_currency_mismatch_with_existing_coin() {
+    fn import_accepts_another_currency_for_existing_coin() {
         let conn = setup_test_db();
         import_single_crypto_transaction(
             &conn,
@@ -549,9 +633,122 @@ mod tests {
             1700000000,
         )
         .unwrap();
-        assert!(import_single_crypto_transaction(
+        import_single_crypto_transaction(
             &conn, "BTC", "Bitcoin", None, "buy", "1", "40000", "USD", 1700000001,
         )
+        .expect("crypto transactions retain their native price currency");
+        let currencies: Vec<String> = conn
+            .prepare("SELECT currency FROM crypto_transactions ORDER BY rowid")
+            .unwrap()
+            .query_map([], |r| r.get(0))
+            .unwrap()
+            .map(|row| row.unwrap())
+            .collect();
+        assert_eq!(currencies, vec!["CZK", "USD"]);
+    }
+    #[test]
+    fn initial_sale_is_rejected_without_leaving_an_empty_crypto_position() {
+        let conn = setup_test_db();
+        let data = InsertCryptoTransaction {
+            investment_id: None,
+            tx_type: "sell".into(),
+            ticker: "BTC".into(),
+            name: "Bitcoin".into(),
+            quantity: "1".into(),
+            price_per_unit: "100".into(),
+            currency: "USD".into(),
+            transaction_date: 1_700_000_000,
+        };
+        assert!(create_crypto_with_transaction(
+            &conn,
+            "BTC",
+            Some("bitcoin"),
+            "Bitcoin",
+            Some(&data)
+        )
         .is_err());
+        let rows: i64 = conn
+            .query_row("SELECT count(*) FROM crypto_investments", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(rows, 0);
+    }
+    #[test]
+    fn decimal_liquidation_stores_exact_zero_crypto_quantity() {
+        let conn = setup_test_db();
+        let id = get_or_create_crypto(&conn, "BTC", Some("bitcoin"), "Bitcoin").unwrap();
+        for (kind, qty, day) in [("buy", "0.1", 0), ("buy", "0.2", 1), ("sell", "0.3", 2)] {
+            let data = InsertCryptoTransaction {
+                investment_id: Some(id.clone()),
+                tx_type: kind.into(),
+                ticker: "BTC".into(),
+                name: "Bitcoin".into(),
+                quantity: qty.into(),
+                price_per_unit: "100".into(),
+                currency: "USD".into(),
+                transaction_date: 1_700_000_000 + day * 86400,
+            };
+            add_transaction_to_crypto(&conn, &id, &data).unwrap();
+        }
+        let quantity: String = conn
+            .query_row(
+                "SELECT quantity FROM crypto_investments WHERE id=?1",
+                [&id],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(quantity, "0");
+    }
+
+    fn deletion_fixture(conn: &Connection) -> (String, CryptoTransaction, CryptoTransaction) {
+        let id = get_or_create_crypto(conn, "BTC", Some("bitcoin"), "Bitcoin").unwrap();
+        let data = |kind: &str, qty: &str, day: i64| InsertCryptoTransaction {
+            investment_id: Some(id.clone()),
+            tx_type: kind.into(),
+            ticker: "BTC".into(),
+            name: "Bitcoin".into(),
+            quantity: qty.into(),
+            price_per_unit: "100".into(),
+            currency: "USD".into(),
+            transaction_date: 1_700_000_000 + day * 86400,
+        };
+        let buy = add_transaction_to_crypto(conn, &id, &data("buy", "10", 0)).unwrap();
+        let sale = add_transaction_to_crypto(conn, &id, &data("sell", "8", 1)).unwrap();
+        (id, buy, sale)
+    }
+
+    #[test]
+    fn crypto_delete_cannot_remove_a_buy_needed_by_a_future_sale() {
+        let conn = setup_test_db();
+        let (id, buy, _) = deletion_fixture(&conn);
+        let err = delete_transaction(&conn, &buy.id).expect_err("cannot orphan future sale");
+        assert!(matches!(err,AppError::Validation(key) if key=="validation.sellExceedsHoldings"));
+        let count: i64 = conn
+            .query_row("SELECT count(*) FROM crypto_transactions", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(count, 2);
+        assert_eq!(get_crypto_by_id(&conn, &id).unwrap().quantity, "2");
+    }
+
+    #[test]
+    fn crypto_delete_returns_persisted_history_identity_and_cleans_up_last_row() {
+        let conn = setup_test_db();
+        let (id, buy, sale) = deletion_fixture(&conn);
+        assert_eq!(
+            delete_transaction(&conn, &sale.id).unwrap(),
+            (sale.transaction_date, "BTC".into(), "bitcoin".into())
+        );
+        assert_eq!(get_crypto_by_id(&conn, &id).unwrap().quantity, "10");
+        assert_eq!(
+            delete_transaction(&conn, &buy.id).unwrap(),
+            (buy.transaction_date, "BTC".into(), "bitcoin".into())
+        );
+        let count: i64 = conn
+            .query_row("SELECT count(*) FROM crypto_investments", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(count, 0);
+        assert!(matches!(
+            delete_transaction(&conn, "missing"),
+            Err(AppError::NotFound(_))
+        ));
     }
 }

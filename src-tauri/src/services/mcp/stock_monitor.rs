@@ -129,9 +129,11 @@ pub fn watchlist_notes_get(conn: &Connection, ticker: &str) -> Result<Value> {
 /// Append a section to the notes so a caller adds one entry without resending
 /// the whole document.
 pub fn watchlist_append_notes(conn: &Connection, ticker: &str, notes: String) -> Result<Value> {
-    let followed_now = ensure_followed(conn, ticker)?;
     let appended_chars = notes.trim().len();
-    let watched = watchlist::append_notes(conn, ticker, &notes)?;
+    let (followed_now, watched) = atomic_watchlist_write(conn, |conn| {
+        let followed_now = ensure_followed(conn, ticker)?;
+        Ok((followed_now, watchlist::append_notes(conn, ticker, &notes)?))
+    })?;
     Ok(json!({
         "ticker": watched.ticker,
         "notesBytes": watched.notes.len(),
@@ -144,8 +146,10 @@ pub fn watchlist_append_notes(conn: &Connection, ticker: &str, notes: String) ->
 /// Replace the notes of a ticker, following it first when needed so an agent
 /// can capture research in one call.
 pub fn watchlist_update_notes(conn: &Connection, ticker: &str, notes: String) -> Result<Value> {
-    let followed_now = ensure_followed(conn, ticker)?;
-    let watched = watchlist::update_notes(conn, ticker, notes)?;
+    let (followed_now, watched) = atomic_watchlist_write(conn, |conn| {
+        let followed_now = ensure_followed(conn, ticker)?;
+        Ok((followed_now, watchlist::update_notes(conn, ticker, notes)?))
+    })?;
     Ok(json!({
         "ticker": watched.ticker,
         "notesBytes": watched.notes.len(),
@@ -162,8 +166,13 @@ pub fn watchlist_set_target_price(
     target_price: Option<String>,
     direction: Option<String>,
 ) -> Result<Value> {
-    let followed_now = ensure_followed(conn, ticker)?;
-    let watched = watchlist::set_target_price(conn, ticker, target_price, direction)?;
+    let (followed_now, watched) = atomic_watchlist_write(conn, |conn| {
+        let followed_now = ensure_followed(conn, ticker)?;
+        Ok((
+            followed_now,
+            watchlist::set_target_price(conn, ticker, target_price, direction)?,
+        ))
+    })?;
     Ok(json!({
         "ticker": watched.ticker,
         "targetPrice": watched.target_price,
@@ -171,6 +180,25 @@ pub fn watchlist_set_target_price(
         "notesBytes": watched.notes.len(),
         "followedByThisCall": followed_now,
     }))
+}
+
+/// Compose the implicit follow with its requested edit, including when the
+/// caller already owns a transaction. Failed edits cannot leave a follow behind.
+fn atomic_watchlist_write<T>(
+    conn: &Connection,
+    write: impl FnOnce(&Connection) -> Result<T>,
+) -> Result<T> {
+    conn.execute_batch("SAVEPOINT watchlist_mcp_write")?;
+    match write(conn) {
+        Ok(value) => {
+            conn.execute_batch("RELEASE watchlist_mcp_write")?;
+            Ok(value)
+        }
+        Err(error) => {
+            conn.execute_batch("ROLLBACK TO watchlist_mcp_write; RELEASE watchlist_mcp_write")?;
+            Err(error)
+        }
+    }
 }
 
 /// Follow `ticker` unless it already is; returns true when this call added it.
@@ -307,8 +335,7 @@ mod tests {
         ));
         // The rejected target must not have left a half-followed row behind
         let listed = watchlist_list(&conn).expect("list");
-        assert_eq!(listed["count"], 1, "only the valid ensure_followed row");
-        assert_eq!(listed["watchlist"][0]["ticker"], "AAPL");
+        assert_eq!(listed["count"], 0, "failed target must not follow a ticker");
     }
 
     #[test]
@@ -416,5 +443,25 @@ mod tests {
         assert_eq!(row["currentPrice"], "230.10");
         assert_eq!(row["previousClose"], "228.50");
         assert_eq!(row["isHeld"], true);
+    }
+    #[test]
+    fn audit_assets_rejected_notes_do_not_create_a_watchlist_row() {
+        let conn = setup_test_db();
+        assert!(watchlist_update_notes(&conn, "AAPL", "x".repeat(102_401)).is_err());
+        assert!(watchlist_append_notes(&conn, "MSFT", "x".repeat(102_401)).is_err());
+        assert_eq!(watchlist_list(&conn).unwrap()["count"], 0);
+    }
+
+    #[test]
+    fn audit_assets_watchlist_failure_inside_outer_transaction_is_atomic() {
+        let conn = setup_test_db();
+        let outer = conn.unchecked_transaction().unwrap();
+        assert!(watchlist_set_target_price(&outer, "AAPL", Some("-5".into()), None).is_err());
+        let result = watchlist_update_notes(&outer, "MSFT", "Valid notes".into()).unwrap();
+        assert_eq!(result["ticker"], "MSFT");
+        outer.commit().unwrap();
+        let listed = watchlist_list(&conn).unwrap();
+        assert_eq!(listed["count"], 1);
+        assert_eq!(listed["watchlist"][0]["ticker"], "MSFT");
     }
 }

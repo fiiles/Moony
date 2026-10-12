@@ -890,6 +890,168 @@ pub struct BackfillProgress {
     pub completed: bool,
 }
 
+/// Keep the historical UI behavior for invalid boundaries, but never silently
+/// replace a durable task's requested date range with today's date.
+fn historical_boundary(timestamp: i64, strict: bool) -> Result<time::OffsetDateTime> {
+    match time::OffsetDateTime::from_unix_timestamp(timestamp) {
+        Ok(date) => Ok(date),
+        Err(error) if strict => Err(AppError::ExternalApi(format!(
+            "Invalid historical boundary: {error}"
+        ))),
+        Err(_) => Ok(time::OffsetDateTime::now_utc()),
+    }
+}
+
+/// Sparse or explicitly empty quote arrays are legitimate (nontrading periods
+/// or pre-inception ranges). Missing payloads and provider errors are not.
+fn historical_stock_points(
+    response: &YResponse,
+    ticker: &str,
+    strict: bool,
+) -> Result<Vec<HistoricalPrice>> {
+    if strict {
+        if response.chart.error.is_some() {
+            return Err(AppError::ExternalApi(
+                "Yahoo historical provider error".into(),
+            ));
+        }
+        let blocks = response
+            .chart
+            .result
+            .as_ref()
+            .filter(|blocks| !blocks.is_empty())
+            .ok_or_else(|| {
+                AppError::ExternalApi("Yahoo historical quote payload missing".into())
+            })?;
+        for block in blocks {
+            // The crate keeps indicator arrays private; inspect its serialized
+            // shape before quotes(), which indexes missing quote blocks.
+            let indicators = serde_json::to_value(&block.indicators).map_err(|error| {
+                AppError::ExternalApi(format!("Yahoo historical payload invalid: {error}"))
+            })?;
+            let quote = indicators
+                .get("quote")
+                .and_then(serde_json::Value::as_array)
+                .and_then(|quotes| quotes.first())
+                .ok_or_else(|| AppError::ExternalApi("Yahoo historical quotes missing".into()))?;
+            let closes = quote.get("close").and_then(serde_json::Value::as_array);
+            // A window without a trading day (weekend, holiday, before listing) arrives
+            // without timestamps and with an empty quote object.
+            let Some(timestamps) = block.timestamp.as_ref() else {
+                if closes.is_none_or(|closes| closes.is_empty()) {
+                    return Ok(vec![]);
+                }
+                return Err(AppError::ExternalApi(
+                    "Yahoo historical timestamps missing".into(),
+                ));
+            };
+            let closes = closes
+                .ok_or_else(|| AppError::ExternalApi("Yahoo historical closes missing".into()))?;
+            // Days listed without any close are non-trading rows, not a failed fetch.
+            if (timestamps.is_empty() && closes.is_empty())
+                || (!closes.is_empty() && closes.iter().all(serde_json::Value::is_null))
+            {
+                return Ok(vec![]);
+            }
+        }
+    }
+    let prices = history_points(response, ticker).map_err(|error| {
+        AppError::ExternalApi(format!("Yahoo historical quote parse failed: {error}"))
+    })?;
+    if strict
+        && (prices.is_empty()
+            || prices
+                .iter()
+                .any(|point| !point.price.is_finite() || point.price <= 0.0))
+    {
+        return Err(AppError::ExternalApi(
+            "Yahoo historical valid quotes missing".into(),
+        ));
+    }
+    Ok(prices)
+}
+
+/// A caller must propagate this result before exposing the accumulated map.
+/// Best-effort callers retain successful symbols, strict callers fail the batch.
+fn collect_historical_symbol(
+    results: &mut HashMap<String, Vec<HistoricalPrice>>,
+    ticker: &str,
+    fetched: Result<Vec<HistoricalPrice>>,
+    strict: bool,
+) -> Result<()> {
+    match fetched {
+        Ok(prices) => {
+            if !prices.is_empty() {
+                results.insert(ticker.to_string(), prices);
+            }
+            Ok(())
+        }
+        Err(error) if strict => Err(error),
+        Err(error) => {
+            log::debug!("[HISTORICAL] {} - error: {}", ticker, error);
+            Ok(())
+        }
+    }
+}
+
+fn parse_crypto_history_response(body: &str, strict: bool) -> Result<Vec<HistoricalPrice>> {
+    #[derive(Deserialize)]
+    struct RangeResponse {
+        prices: Option<Vec<(f64, f64)>>,
+        error: Option<serde_json::Value>,
+        status: Option<serde_json::Value>,
+    }
+    let data: RangeResponse = serde_json::from_str(body).map_err(|error| {
+        AppError::ExternalApi(format!("CoinGecko historical parse failed: {error}"))
+    })?;
+    if strict
+        && (data.error.is_some()
+            || data
+                .status
+                .as_ref()
+                .and_then(|status| status.get("error_code"))
+                .is_some())
+    {
+        return Err(AppError::ExternalApi(
+            "CoinGecko historical provider error".into(),
+        ));
+    }
+    let prices = match data.prices {
+        Some(prices) => prices,
+        None if strict => {
+            return Err(AppError::ExternalApi(
+                "CoinGecko historical prices missing".into(),
+            ))
+        }
+        None => return Ok(vec![]),
+    };
+    let mut daily_prices: HashMap<i64, f64> = HashMap::new();
+    for (ts_ms, price) in prices {
+        if strict && (!ts_ms.is_finite() || !price.is_finite() || price <= 0.0) {
+            return Err(AppError::ExternalApi(
+                "CoinGecko historical quote invalid".into(),
+            ));
+        }
+        let timestamp = (ts_ms / 1000.0) as i64;
+        let day = if strict {
+            crate::models::validation::utc_day(timestamp, "validation.invalidDate").map_err(
+                |_| AppError::ExternalApi("CoinGecko historical timestamp invalid".into()),
+            )?
+        } else {
+            (timestamp / 86400) * 86400
+        };
+        daily_prices.insert(day, price);
+    }
+    Ok(daily_prices
+        .into_iter()
+        .map(|(timestamp, price)| HistoricalPrice {
+            timestamp,
+            price,
+            currency: "USD".into(),
+        })
+        .collect())
+}
+
 /// Get historical stock prices from Yahoo Finance for a date range
 /// Returns a map of ticker -> (date_timestamp -> price)
 /// Uses batched requests with throttling to avoid rate limits
@@ -897,6 +1059,25 @@ pub async fn get_historical_stock_prices_yahoo(
     tickers: &[String],
     start_timestamp: i64,
     end_timestamp: i64,
+) -> Result<HashMap<String, Vec<HistoricalPrice>>> {
+    get_historical_stock_prices_yahoo_impl(tickers, start_timestamp, end_timestamp, false).await
+}
+
+/// Fetch every requested symbol successfully or return an error, so durable
+/// backfills never acknowledge a network or provider failure as completed.
+pub async fn get_historical_stock_prices_yahoo_strict(
+    tickers: &[String],
+    start_timestamp: i64,
+    end_timestamp: i64,
+) -> Result<HashMap<String, Vec<HistoricalPrice>>> {
+    get_historical_stock_prices_yahoo_impl(tickers, start_timestamp, end_timestamp, true).await
+}
+
+async fn get_historical_stock_prices_yahoo_impl(
+    tickers: &[String],
+    start_timestamp: i64,
+    end_timestamp: i64,
+    strict: bool,
 ) -> Result<HashMap<String, Vec<HistoricalPrice>>> {
     if tickers.is_empty() {
         return Ok(HashMap::new());
@@ -915,6 +1096,11 @@ pub async fn get_historical_stock_prices_yahoo(
     let provider = match yahoo_connector() {
         Ok(p) => p,
         Err(e) => {
+            if strict {
+                return Err(AppError::ExternalApi(format!(
+                    "Yahoo connector failed: {e}"
+                )));
+            }
             log::warn!(
                 "[YAHOO HISTORICAL] Connector failed (offline?): {} - returning empty",
                 e
@@ -924,10 +1110,8 @@ pub async fn get_historical_stock_prices_yahoo(
     };
 
     // Convert timestamps to time::OffsetDateTime
-    let start = time::OffsetDateTime::from_unix_timestamp(start_timestamp)
-        .unwrap_or(time::OffsetDateTime::now_utc());
-    let end = time::OffsetDateTime::from_unix_timestamp(end_timestamp)
-        .unwrap_or(time::OffsetDateTime::now_utc());
+    let start = historical_boundary(start_timestamp, strict)?;
+    let end = historical_boundary(end_timestamp, strict)?;
 
     // Process in batches of 5 with 500ms delay between batches
     for (batch_idx, chunk) in tickers.chunks(5).enumerate() {
@@ -936,29 +1120,13 @@ pub async fn get_historical_stock_prices_yahoo(
         }
 
         for ticker in chunk {
-            match provider.get_quote_history(ticker, start, end).await {
-                Ok(response) => {
-                    // The closes are in the unit the response reports (pence become pounds)
-                    match history_points(&response, ticker) {
-                        Ok(prices) => {
-                            if !prices.is_empty() {
-                                log::debug!(
-                                    "[YAHOO HISTORICAL] {} - got {} historical prices",
-                                    ticker,
-                                    prices.len()
-                                );
-                                results.insert(ticker.clone(), prices);
-                            }
-                        }
-                        Err(e) => {
-                            log::debug!("[YAHOO HISTORICAL] {} - no quotes: {}", ticker, e);
-                        }
-                    }
-                }
-                Err(e) => {
-                    log::debug!("[YAHOO HISTORICAL] {} - error: {}", ticker, e);
-                }
-            }
+            let fetched = match provider.get_quote_history(ticker, start, end).await {
+                Ok(response) => historical_stock_points(&response, ticker, strict),
+                Err(error) => Err(AppError::ExternalApi(format!(
+                    "Yahoo historical request failed: {error}"
+                ))),
+            };
+            collect_historical_symbol(&mut results, ticker, fetched, strict)?;
         }
     }
 
@@ -1023,6 +1191,13 @@ pub async fn get_historical_crypto_price_coingecko(
     Ok(None)
 }
 
+/// The first day a CoinGecko range request may ask for. The public and demo tiers (the only
+/// ones Moony sends keys for) reject ranges reaching more than 365 days back, so an older
+/// window would fail on every retry; earlier days fall back to the last known price.
+pub fn coingecko_history_start(from_day: i64, today_start: i64) -> i64 {
+    from_day.max(today_start - 365 * 86_400)
+}
+
 /// Get historical crypto prices for multiple coins over a date range
 /// Uses CoinGecko's market_chart/range endpoint which is more efficient
 pub async fn get_historical_crypto_prices_coingecko(
@@ -1030,6 +1205,41 @@ pub async fn get_historical_crypto_prices_coingecko(
     id_to_ticker: &HashMap<String, String>,
     start_timestamp: i64,
     end_timestamp: i64,
+) -> Result<HashMap<String, Vec<HistoricalPrice>>> {
+    get_historical_crypto_prices_coingecko_impl(
+        api_key,
+        id_to_ticker,
+        start_timestamp,
+        end_timestamp,
+        false,
+    )
+    .await
+}
+
+/// Strict counterpart for durable work: a failed coin prevents a partial
+/// result from being mistaken for a completed backfill.
+pub async fn get_historical_crypto_prices_coingecko_strict(
+    api_key: Option<&str>,
+    id_to_ticker: &HashMap<String, String>,
+    start_timestamp: i64,
+    end_timestamp: i64,
+) -> Result<HashMap<String, Vec<HistoricalPrice>>> {
+    get_historical_crypto_prices_coingecko_impl(
+        api_key,
+        id_to_ticker,
+        start_timestamp,
+        end_timestamp,
+        true,
+    )
+    .await
+}
+
+async fn get_historical_crypto_prices_coingecko_impl(
+    api_key: Option<&str>,
+    id_to_ticker: &HashMap<String, String>,
+    start_timestamp: i64,
+    end_timestamp: i64,
+    strict: bool,
 ) -> Result<HashMap<String, Vec<HistoricalPrice>>> {
     if id_to_ticker.is_empty() {
         return Ok(HashMap::new());
@@ -1076,49 +1286,31 @@ pub async fn get_historical_crypto_prices_coingecko(
                         coingecko_id,
                         results.len()
                     );
+                    if strict {
+                        return Err(AppError::ExternalApi(
+                            "CoinGecko historical rate limit exceeded".into(),
+                        ));
+                    }
                     break;
                 }
                 if response.status().is_success() {
-                    #[derive(Deserialize)]
-                    struct RangeResponse {
-                        prices: Option<Vec<(f64, f64)>>, // [[timestamp_ms, price], ...]
-                    }
-
-                    if let Ok(data) = response.json::<RangeResponse>().await {
-                        if let Some(prices) = data.prices {
-                            // Convert to daily prices (CoinGecko returns hourly for short ranges)
-                            // Group by day and take the last price for each day
-                            let mut daily_prices: HashMap<i64, f64> = HashMap::new();
-                            for (ts_ms, price) in prices {
-                                let ts = (ts_ms / 1000.0) as i64;
-                                // Round to start of day (UTC)
-                                let day_start = (ts / 86400) * 86400;
-                                daily_prices.insert(day_start, price);
-                            }
-
-                            let historical: Vec<HistoricalPrice> = daily_prices
-                                .into_iter()
-                                .map(|(ts, price)| HistoricalPrice {
-                                    timestamp: ts,
-                                    price,
-                                    currency: "USD".to_string(),
-                                })
-                                .collect();
-
-                            if !historical.is_empty() {
-                                log::debug!(
-                                    "[COINGECKO HISTORICAL] {} - got {} daily prices",
-                                    ticker,
-                                    historical.len()
-                                );
-                                results.insert(ticker.clone(), historical);
-                            }
-                        }
-                    }
+                    let fetched = match response.text().await {
+                        Ok(body) => parse_crypto_history_response(&body, strict),
+                        Err(error) => Err(AppError::ExternalApi(format!(
+                            "CoinGecko historical response failed: {error}"
+                        ))),
+                    };
+                    collect_historical_symbol(&mut results, ticker, fetched, strict)?;
                 } else {
                     // Log the actual error response body
                     let status = response.status();
                     let error_body = response.text().await.unwrap_or_default();
+                    if strict {
+                        return Err(AppError::ExternalApi(coingecko_error_message(
+                            status,
+                            &error_body,
+                        )));
+                    }
                     log::debug!(
                         "[COINGECKO HISTORICAL] {} - HTTP error: {} - Body: {}",
                         ticker,
@@ -1128,7 +1320,14 @@ pub async fn get_historical_crypto_prices_coingecko(
                 }
             }
             Err(e) => {
-                log::debug!("[COINGECKO HISTORICAL] {} - error: {}", ticker, e);
+                collect_historical_symbol(
+                    &mut results,
+                    ticker,
+                    Err(AppError::ExternalApi(format!(
+                        "CoinGecko historical request failed: {e}"
+                    ))),
+                    strict,
+                )?;
             }
         }
     }
@@ -2167,5 +2366,173 @@ mod tests {
             fmt_price(&unit("ZAc", "NPN.JO"), Some(130635.0)).as_deref(),
             Some("1306.35")
         );
+    }
+    #[test]
+    fn strict_history_fails_after_a_partial_symbol_success() {
+        let mut results = HashMap::new();
+        collect_historical_symbol(
+            &mut results,
+            "AAPL",
+            Ok(vec![HistoricalPrice {
+                timestamp: 1700000000,
+                price: 100.0,
+                currency: "USD".into(),
+            }]),
+            true,
+        )
+        .unwrap();
+        assert!(collect_historical_symbol(
+            &mut results,
+            "MSFT",
+            Err(AppError::ExternalApi("offline".into())),
+            true
+        )
+        .is_err());
+        assert!(collect_historical_symbol(
+            &mut results,
+            "MSFT",
+            Err(AppError::ExternalApi("offline".into())),
+            false
+        )
+        .is_ok());
+        assert_eq!(results.len(), 1);
+    }
+
+    #[test]
+    fn strict_yahoo_history_rejects_missing_payload_and_provider_errors() {
+        let mut missing = chart(Some("USD"), &[100.0], &[], json!({}));
+        missing.chart.result = Some(vec![]);
+        assert!(historical_stock_points(&missing, "AAPL", true).is_err());
+        let provider = YResponse::from_json(json!({"chart":{"result":null,"error":{"code":"Not Found","description":"Unknown symbol"}}})).unwrap();
+        assert!(historical_stock_points(&provider, "AAPL", true).is_err());
+        let mut payload =
+            serde_json::to_value(chart(Some("USD"), &[100.0], &[], json!({}))).unwrap();
+        payload["chart"]["result"][0]["meta"]
+            .as_object_mut()
+            .unwrap()
+            .remove("tradingPeriods");
+        payload["chart"]["result"][0]["indicators"]["quote"] = json!([]);
+        let missing_quotes = YResponse::from_json(payload).unwrap();
+        assert!(historical_stock_points(&missing_quotes, "AAPL", true).is_err());
+    }
+
+    #[test]
+    fn strict_history_accepts_explicit_empty_arrays_and_sparse_trading_days() {
+        let empty = chart(Some("USD"), &[], &[], json!({}));
+        assert!(historical_stock_points(&empty, "AAPL", true)
+            .unwrap()
+            .is_empty());
+        let mut sparse = chart(Some("USD"), &[100.0, 101.0], &[], json!({}));
+        sparse.chart.result.as_mut().unwrap()[0]
+            .timestamp
+            .as_mut()
+            .unwrap()[1] += 3 * 86400;
+        assert_eq!(
+            historical_stock_points(&sparse, "AAPL", true)
+                .unwrap()
+                .len(),
+            2
+        );
+        // A weekend or holiday window has no trading day: Yahoo omits the timestamps and
+        // returns an empty quote object, or lists the days with null closes.
+        let mut payload =
+            serde_json::to_value(chart(Some("USD"), &[100.0], &[], json!({}))).unwrap();
+        payload["chart"]["result"][0]
+            .as_object_mut()
+            .unwrap()
+            .remove("timestamp");
+        payload["chart"]["result"][0]["meta"]
+            .as_object_mut()
+            .unwrap()
+            .remove("tradingPeriods");
+        payload["chart"]["result"][0]["indicators"]["quote"] = json!([{}]);
+        let no_trading_day = YResponse::from_json(payload).unwrap();
+        assert!(historical_stock_points(&no_trading_day, "AAPL", true)
+            .unwrap()
+            .is_empty());
+        let mut payload =
+            serde_json::to_value(chart(Some("USD"), &[100.0, 101.0], &[], json!({}))).unwrap();
+        let block = &mut payload["chart"]["result"][0];
+        block.as_object_mut().unwrap().remove("events");
+        block["meta"]
+            .as_object_mut()
+            .unwrap()
+            .remove("tradingPeriods");
+        block["indicators"] = json!({ "quote": [{
+            "open": [null, null], "high": [null, null], "low": [null, null],
+            "close": [null, null], "volume": [null, null],
+        }] });
+        let null_closes = YResponse::from_json(payload).unwrap();
+        assert!(historical_stock_points(&null_closes, "AAPL", true)
+            .unwrap()
+            .is_empty());
+        assert!(parse_crypto_history_response(r#"{"prices":[]}"#, true)
+            .unwrap()
+            .is_empty());
+        assert_eq!(
+            parse_crypto_history_response(
+                r#"{"prices":[[1700000000000,100],[1700400000000,101]]}"#,
+                true
+            )
+            .unwrap()
+            .len(),
+            2
+        );
+    }
+
+    #[test]
+    fn coingecko_history_requests_stay_within_the_demo_tier_year() {
+        let today = 20_000 * 86_400;
+        let recent = today - 30 * 86_400;
+        assert_eq!(coingecko_history_start(recent, today), recent);
+        assert_eq!(
+            coingecko_history_start(today - 5 * 365 * 86_400, today),
+            today - 365 * 86_400
+        );
+    }
+
+    #[test]
+    fn strict_coingecko_history_rejects_http_success_error_payloads_and_bad_quotes() {
+        for body in [
+            r#"{}"#,
+            r#"{"prices":null}"#,
+            r#"{"error":"rate limit"}"#,
+            r#"{"status":{"error_code":429,"error_message":"limit"},"prices":[]}"#,
+            r#"{"prices":[[1700000000000,0]]}"#,
+            r#"{"prices":[[1e308,100]]}"#,
+            "<html>broken</html>",
+        ] {
+            assert!(parse_crypto_history_response(body, true).is_err(), "{body}");
+        }
+        assert!(parse_crypto_history_response("{}", false)
+            .unwrap()
+            .is_empty());
+        let prices = parse_crypto_history_response(
+            r#"{"prices":[[1700000000000,100],[1700000001000,101]]}"#,
+            true,
+        )
+        .unwrap();
+        assert_eq!(prices.len(), 1);
+        assert_eq!(prices[0].price, 101.0);
+        assert_eq!(prices[0].currency, "USD");
+    }
+
+    #[tokio::test]
+    async fn strict_history_empty_inputs_need_no_network_or_valid_boundaries() {
+        assert!(
+            get_historical_stock_prices_yahoo_strict(&[], i64::MAX, i64::MIN)
+                .await
+                .unwrap()
+                .is_empty()
+        );
+        assert!(get_historical_crypto_prices_coingecko_strict(
+            None,
+            &HashMap::new(),
+            i64::MAX,
+            i64::MIN
+        )
+        .await
+        .unwrap()
+        .is_empty());
     }
 }

@@ -785,7 +785,11 @@ export type InsertBankTransaction = { bankAccountId: string; transactionId: stri
 /**
  * Data for creating/updating bond
  */
-export type InsertBond = { name: string; isin: string | null; couponValue: string; quantity: string | null; currency: string | null; interestRate: string | null; maturityDate: number | null }
+export type InsertBond = { name: string; isin: string | null; couponValue: string; quantity: string | null; currency: string | null; interestRate: string | null; 
+/**
+ * Calendar date as Unix seconds, years 0001-9999; stored at UTC midnight.
+ */
+maturityDate: number | null }
 
 /**
  * Data for creating/updating a budget goal
@@ -822,12 +826,28 @@ export type InsertInvestmentTransaction = { investmentId: string | null; type: s
 /**
  * Data for creating/updating loan
  */
-export type InsertLoan = { name: string; principal: string; currency: string | null; interestRate: string | null; interestRateValidityDate: number | null; monthlyPayment: string | null; startDate: number | null; endDate: number | null; 
+export type InsertLoan = { name: string; principal: string; currency: string | null; interestRate: string | null; 
+/**
+ * Calendar date as Unix seconds, years 0001-9999; stored at UTC midnight.
+ */
+interestRateValidityDate: number | null; monthlyPayment: string | null; 
+/**
+ * Calendar date as Unix seconds, years 0001-9999; stored at UTC midnight.
+ */
+startDate: number | null; 
+/**
+ * Calendar date as Unix seconds, years 0001-9999; stored at UTC midnight.
+ */
+endDate: number | null; 
 /**
  * Manual outstanding balance; must come with `balance_anchor_date`.
  * Both absent means "amortize from the principal at the start date".
  */
-balanceAnchorAmount: string | null; balanceAnchorDate: number | null }
+balanceAnchorAmount: string | null; 
+/**
+ * Calendar date as Unix seconds, years 0001-9999; stored at UTC midnight.
+ */
+balanceAnchorDate: number | null }
 
 /**
  * Data for recording a loan event.

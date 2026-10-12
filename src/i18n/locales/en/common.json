@@ -254,7 +254,13 @@
     "periodInvalid": "The start of the period must be before its end.",
     "tooManySeries": "Too many lines requested at once.",
     "seriesKeyInvalid": "Invalid chart line request.",
-    "benchmarkTickerInvalid": "Invalid index ticker."
+    "benchmarkTickerInvalid": "Invalid index ticker.",
+    "propertyTypeInvalid": "Property type must be personal or investment",
+    "insurancePolicyAlreadyExists": "A policy with this provider and policy number already exists",
+    "exchangeRateUnavailable": "The transaction cannot be saved until exchange rates for its date are available",
+    "dateInvalid": "Invalid calendar date",
+    "valueDateInvalid": "Invalid value date",
+    "maturityDateInvalid": "Invalid maturity date"
   },
   "auth": {
     "wrongPassword": "The password you entered is incorrect. Please try again.",

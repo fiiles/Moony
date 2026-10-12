@@ -1,0 +1,176 @@
+//! Runtime orchestration for durable MCP bookkeeping. Financial queue logic is in services.
+use std::collections::HashMap;
+use std::sync::atomic::{AtomicBool, Ordering};
+
+use tauri::Emitter;
+
+use super::portfolio;
+use crate::db::Database;
+use crate::error::{AppError, Result};
+use crate::services::{fx_backfill, history_recalc, mcp_refresh, price_api};
+
+static ACTIVE: AtomicBool = AtomicBool::new(false);
+static REQUESTED: AtomicBool = AtomicBool::new(false);
+
+/// A renderer is never needed. Retries happen on the next mutation or unlock; failed jobs
+/// remain on disk. One worker drains all domains and concurrent writes request another pass.
+pub(crate) fn resume(app: tauri::AppHandle, db: Database) {
+    REQUESTED.store(true, Ordering::SeqCst);
+    if ACTIVE.swap(true, Ordering::SeqCst) {
+        return;
+    }
+    tauri::async_runtime::spawn(async move {
+        while REQUESTED.swap(false, Ordering::SeqCst) {
+            let session = match db.current_session() {
+                Ok(session) => session,
+                Err(e) => {
+                    log::warn!("[MCP refresh] session unavailable: {e}");
+                    break;
+                }
+            };
+            let jobs = match session.with_conn(mcp_refresh::pending) {
+                Ok(jobs) => jobs,
+                Err(e) => {
+                    log::warn!("[MCP refresh] pending work unavailable: {e}");
+                    break;
+                }
+            };
+            for job in jobs {
+                match run(&session, &job).await {
+                    Ok(()) => {
+                        if let Err(e) =
+                            session.with_conn(|conn| mcp_refresh::acknowledge(conn, &job))
+                        {
+                            log::warn!("[MCP refresh] completion will be retried: {e}");
+                        }
+                    }
+                    Err(e) => log::warn!("[MCP refresh] {} remains pending: {e}", job.domain),
+                }
+                // Even a partial refresh can have produced useful new quotes/snapshots.
+                app.emit("recalculation-complete", ()).ok();
+            }
+        }
+        ACTIVE.store(false, Ordering::SeqCst);
+        // Close the race between the last pending check and releasing the active flag.
+        if REQUESTED.load(Ordering::SeqCst) {
+            resume(app, db);
+        }
+    });
+}
+
+async fn run(db: &Database, job: &mcp_refresh::PendingRefresh) -> Result<()> {
+    // Immediately record committed native holdings even when offline. A partial quote refresh
+    // can write useful new prices and still fail; snapshot those facts before retaining the job.
+    portfolio::update_todays_snapshot(db).await?;
+    let refreshed = refresh_derived_data(db, job).await;
+    let snapshot = portfolio::update_todays_snapshot(db).await;
+    refreshed?;
+    snapshot
+}
+
+async fn refresh_derived_data(db: &Database, job: &mcp_refresh::PendingRefresh) -> Result<()> {
+    fx_backfill::ensure_fx_coverage(db).await?;
+    let today = chrono::Utc::now().timestamp().div_euclid(86_400) * 86_400;
+    match job.domain.as_str() {
+        "stocks" => {
+            let tickers = db.with_conn(mcp_refresh::stock_tickers)?;
+            let refreshed =
+                price_api::refresh_stock_prices_yahoo(db, tickers.clone(), false).await?;
+            // The price API reports partial failures without returning Err. Keep the durable job
+            // until each held ticker has a current quote, including quotes reused from its cache.
+            db.with_conn(|conn| {
+                mcp_refresh::require_current_stock_prices(
+                    conn,
+                    &tickers,
+                    chrono::Utc::now().timestamp(),
+                )
+            })?;
+            price_api::refresh_dividends(db, tickers.clone()).await?;
+            let jobs = db.with_conn(|conn| history_recalc::rebuild_jobs(conn, &tickers))?;
+            let mut aggregate_from = job.earliest_date;
+            for (ticker, first_date) in jobs {
+                let from = if refreshed.unit_changed.contains(&ticker) {
+                    first_date
+                } else {
+                    job.earliest_date.unwrap_or(first_date).max(first_date)
+                };
+                aggregate_from = Some(aggregate_from.map_or(from, |old| old.min(from)));
+                if from < today {
+                    history_recalc::rebuild_stock_ticker_strict(
+                        db,
+                        &ticker,
+                        from,
+                        today,
+                        portfolio::find_closest_price,
+                    )
+                    .await?;
+                }
+            }
+            if let Some(from) = aggregate_from {
+                if from < today {
+                    history_recalc::aggregate_stocks(db, from, today).await?;
+                }
+            }
+        }
+        "crypto" => {
+            // Resolve every identifier from committed data, including on restart.
+            let identities = db.with_conn(mcp_refresh::crypto_identities)?;
+            let map: HashMap<String, String> = identities.iter().cloned().collect();
+            // A provider id shared by aliases needs separate quote writes; never silently drop
+            // one of the stored tickers through HashMap collection.
+            if map.len() != identities.len() {
+                for (id, ticker) in &identities {
+                    let keys = price_api::get_api_keys(db)?;
+                    let one = HashMap::from([(id.clone(), ticker.clone())]);
+                    let quotes =
+                        price_api::refresh_crypto_prices(db, keys.coingecko.as_deref(), one)
+                            .await?;
+                    if quotes.is_empty() {
+                        return Err(AppError::Internal(format!(
+                            "Crypto price refresh incomplete for {ticker}"
+                        )));
+                    }
+                }
+            }
+            let keys = price_api::get_api_keys(db)?;
+            if map.len() == identities.len() {
+                let result =
+                    price_api::refresh_crypto_prices(db, keys.coingecko.as_deref(), map).await?;
+                if result.len() < identities.len() {
+                    return Err(AppError::Internal("Crypto price refresh incomplete".into()));
+                }
+            }
+            if let Some(from) = job.earliest_date {
+                for (id, ticker) in identities {
+                    if from < today {
+                        portfolio::recalculate_crypto_ticker_history_strict(db, &ticker, &id, from)
+                            .await?;
+                    }
+                }
+                if from < today {
+                    db.with_conn(|conn| {
+                        crate::services::portfolio_history::aggregate_ticker_history(
+                            conn,
+                            crate::services::portfolio_history::AssetClassKind::Crypto,
+                            from,
+                            today,
+                        )
+                    })?;
+                }
+            }
+        }
+        "other-assets" => {
+            let earliest = db.with_conn(mcp_refresh::earliest_other_asset_date)?;
+            if let Some(from) = job.earliest_date.or(earliest) {
+                portfolio::trigger_historical_recalculation_for_asset(
+                    db,
+                    from,
+                    portfolio::AssetType::OtherAssets,
+                )
+                .await?;
+            }
+        }
+        _ => {}
+    }
+    Ok(())
+}

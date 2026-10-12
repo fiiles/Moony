@@ -10,56 +10,88 @@ use crate::services::valuations::{self, ValuationKind};
 use rusqlite::OptionalExtension;
 use uuid::Uuid;
 
-/// Recalculate and persist an asset's aggregate quantity and average
-/// purchase price from its transaction history. MOVED verbatim from
-/// commands/other_assets.rs.
+/// Recalculate native totals, converting each purchase at its own UTC day.
+/// Missing historical FX is an error: callers keep the write and totals atomic.
 pub fn recalculate_asset_totals(conn: &rusqlite::Connection, asset_id: &str) -> Result<()> {
-    let mut stmt = conn.prepare(
-        "SELECT type, quantity, price_per_unit FROM other_asset_transactions WHERE asset_id = ?1",
+    use crate::models::validation::finite_number;
+    use crate::services::fx;
+    let exact_quantity = crate::services::investments::exact_held_quantity(
+        conn,
+        "other_asset_transactions",
+        asset_id,
     )?;
-
-    let rows = stmt.query_map([asset_id], |row| {
-        Ok((
-            row.get::<_, String>(0)?,
-            row.get::<_, String>(1)?,
-            row.get::<_, String>(2)?,
-        ))
-    })?;
-
+    let (currency, market_price): (String, String) = conn.query_row(
+        "SELECT currency, market_price FROM other_assets WHERE id = ?1",
+        [asset_id],
+        |r| Ok((r.get(0)?, r.get(1)?)),
+    )?;
+    let market_price = finite_number(
+        if market_price.is_empty() {
+            "0"
+        } else {
+            &market_price
+        },
+        "validation.invalidPrice",
+    )?;
+    let mut stmt = conn.prepare(
+        "SELECT type, quantity, price_per_unit, currency, transaction_date FROM other_asset_transactions WHERE asset_id = ?1",
+    )?;
+    let rows = stmt
+        .query_map([asset_id], |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, String>(2)?,
+                row.get::<_, String>(3)?,
+                row.get::<_, i64>(4)?,
+            ))
+        })?
+        .collect::<rusqlite::Result<Vec<_>>>()?;
+    let foreign_days: Vec<i64> = rows
+        .iter()
+        .filter(|r| r.0 == "buy" && !r.3.eq_ignore_ascii_case(&currency))
+        .map(|r| r.4)
+        .collect();
+    let history = match (foreign_days.iter().min(), foreign_days.iter().max()) {
+        (Some(start), Some(end)) => fx::History::load(conn, *start, *end)?,
+        _ => fx::History::default(),
+    };
     let mut total_quantity = 0.0;
     let mut total_cost = 0.0;
     let mut total_buy_quantity = 0.0;
-
-    for row in rows {
-        let (tx_type, qty_str, price_str) = row?;
-        let qty = qty_str.parse::<f64>().unwrap_or(0.0);
-        let price = price_str.parse::<f64>().unwrap_or(0.0);
-
+    for (tx_type, qty, price, tx_currency, day) in rows {
+        let qty = finite_number(&qty, "validation.invalidQuantity")?;
+        let price = finite_number(&price, "validation.invalidPrice")?;
         if tx_type == "buy" {
+            let price = history
+                .convert_on(price, &tx_currency, &currency, day)
+                .ok_or_else(|| AppError::Validation("validation.exchangeRateUnavailable".into()))?;
             total_quantity += qty;
             total_buy_quantity += qty;
             total_cost += qty * price;
         } else if tx_type == "sell" {
             total_quantity -= qty;
         }
+        if !total_quantity.is_finite() || !total_buy_quantity.is_finite() || !total_cost.is_finite()
+        {
+            return Err(AppError::Validation("validation.invalidAmount".into()));
+        }
     }
-
     let average_purchase_price = if total_buy_quantity > 0.0 {
         total_cost / total_buy_quantity
     } else {
         0.0
     };
-
+    if !average_purchase_price.is_finite()
+        || !(total_quantity * average_purchase_price).is_finite()
+        || !(total_quantity * market_price).is_finite()
+    {
+        return Err(AppError::Validation("validation.invalidAmount".into()));
+    }
     conn.execute(
         "UPDATE other_assets SET quantity = ?1, average_purchase_price = ?2, updated_at = ?3 WHERE id = ?4",
-        rusqlite::params![
-            total_quantity.to_string(),
-            average_purchase_price.to_string(),
-            chrono::Utc::now().timestamp(),
-            asset_id
-        ],
+        rusqlite::params![exact_quantity, average_purchase_price.to_string(), chrono::Utc::now().timestamp(), asset_id],
     )?;
-
     Ok(())
 }
 
@@ -69,11 +101,7 @@ pub fn recalculate_asset_totals(conn: &rusqlite::Connection, asset_id: &str) -> 
 /// at the creation day), so the first revaluation does not overwrite the only
 /// record of the original estimate.
 ///
-/// Quirk preserved from the original command: totals are NOT recalculated
-/// after the initial transaction, so `quantity`/`averagePurchasePrice` on the
-/// returned/stored asset stay at their inserted defaults even when an
-/// `initial_transaction` is supplied. This is byte-compatible with today's
-/// UI behavior — noted, not fixed.
+/// An initial transaction is authoritative for the initial quantity and cost.
 pub fn create_asset(
     conn: &rusqlite::Connection,
     data: &InsertOtherAsset,
@@ -89,8 +117,9 @@ pub fn create_asset(
     let market_price = data.market_price.clone().unwrap_or_else(|| "0".to_string());
     let currency = data
         .currency
-        .clone()
-        .unwrap_or_else(|| crate::constants::STORAGE_DEFAULT_CURRENCY.to_string());
+        .as_deref()
+        .unwrap_or(crate::constants::STORAGE_DEFAULT_CURRENCY)
+        .to_ascii_uppercase();
 
     // The asset, its first estimate and its initial transaction are saved together or not at all
     let db_tx = conn.unchecked_transaction()?;
@@ -107,7 +136,7 @@ pub fn create_asset(
             data.average_purchase_price
                 .clone()
                 .unwrap_or_else(|| "0".to_string()),
-            data.yield_type.clone().unwrap_or_else(|| "none".to_string()),
+            data.yield_type.as_deref().unwrap_or("none").to_lowercase(),
             data.yield_value,
             now,
         ],
@@ -136,13 +165,14 @@ pub fn create_asset(
                 tx_id,
                 id,
                 tx_type,
-                tx.quantity,
-                tx.price_per_unit,
-                tx.currency,
-                tx.transaction_date,
+                crate::services::dedup::canonical_amount(&tx.quantity),
+                crate::services::dedup::canonical_amount(&tx.price_per_unit),
+                tx.currency.to_ascii_uppercase(),
+                crate::models::validation::utc_day(tx.transaction_date, "validation.invalidDate")?,
                 now
             ],
         )?;
+        recalculate_asset_totals(&db_tx, &id)?;
     }
     db_tx.commit()?;
 
@@ -181,6 +211,25 @@ pub fn create_asset_transaction(
     asset_id: &str,
     data: &InsertOtherAssetTransaction,
 ) -> Result<OtherAssetTransaction> {
+    create_asset_transaction_impl(conn, asset_id, data, true)
+}
+
+/// The transactional MCP batch validates and recalculates only its final merged
+/// history, so an incoming buy may fund a backdated sale regardless of row order.
+pub(crate) fn create_asset_transaction_in_batch(
+    conn: &rusqlite::Connection,
+    asset_id: &str,
+    data: &InsertOtherAssetTransaction,
+) -> Result<OtherAssetTransaction> {
+    create_asset_transaction_impl(conn, asset_id, data, false)
+}
+
+fn create_asset_transaction_impl(
+    conn: &rusqlite::Connection,
+    asset_id: &str,
+    data: &InsertOtherAssetTransaction,
+    recalculate: bool,
+) -> Result<OtherAssetTransaction> {
     data.validate()?;
 
     let exists: Option<String> = conn
@@ -206,34 +255,49 @@ pub fn create_asset_transaction(
     // value (mirrors services/bank_accounts.rs::create_transaction).
     let tx_type = data.tx_type.to_lowercase();
 
-    // 1. Insert Transaction
-    conn.execute(
-        "INSERT INTO other_asset_transactions
-         (id, asset_id, type, quantity, price_per_unit, currency, transaction_date, created_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
-        rusqlite::params![
-            id,
-            asset_id,
-            tx_type,
-            data.quantity,
-            data.price_per_unit,
-            data.currency,
-            data.transaction_date,
-            now
-        ],
-    )?;
-
-    // 2. Recalculate Asset Totals
-    recalculate_asset_totals(conn, asset_id)?;
+    let transaction_date =
+        crate::models::validation::utc_day(data.transaction_date, "validation.invalidDate")?;
+    let quantity = crate::services::dedup::canonical_amount(&data.quantity);
+    let price_per_unit = crate::services::dedup::canonical_amount(&data.price_per_unit);
+    let currency = data.currency.to_ascii_uppercase();
+    // Savepoints compose with the outer MCP batch transaction and also protect
+    // standalone UI writes when historical FX or aggregate arithmetic fails.
+    conn.execute_batch("SAVEPOINT other_asset_write")?;
+    let write_result = (|| -> Result<()> {
+        conn.execute(
+            "INSERT INTO other_asset_transactions
+             (id, asset_id, type, quantity, price_per_unit, currency, transaction_date, created_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+            rusqlite::params![
+                id,
+                asset_id,
+                tx_type,
+                quantity,
+                price_per_unit,
+                currency,
+                transaction_date,
+                now
+            ],
+        )?;
+        if recalculate {
+            recalculate_asset_totals(conn, asset_id)?;
+        }
+        conn.execute_batch("RELEASE other_asset_write")?;
+        Ok(())
+    })();
+    if let Err(error) = write_result {
+        conn.execute_batch("ROLLBACK TO other_asset_write; RELEASE other_asset_write")?;
+        return Err(error);
+    }
 
     Ok(OtherAssetTransaction {
         id,
         asset_id: asset_id.to_string(),
         tx_type,
-        quantity: data.quantity.clone(),
-        price_per_unit: data.price_per_unit.clone(),
-        currency: data.currency.clone(),
-        transaction_date: data.transaction_date,
+        quantity,
+        price_per_unit,
+        currency,
+        transaction_date,
         created_at: now,
     })
 }
@@ -399,7 +463,7 @@ mod tests {
     }
 
     #[test]
-    fn create_asset_with_initial_transaction_does_not_recalculate() {
+    fn create_asset_with_initial_transaction_recalculates() {
         let conn = setup_test_db();
         let asset = create_asset(&conn, &valid_asset(), Some(&valid_tx())).unwrap();
 
@@ -413,9 +477,9 @@ mod tests {
             .unwrap();
         assert_eq!(tx_count, 1);
 
-        // ...but totals are untouched (preserved quirk).
-        assert_eq!(asset.quantity, "0");
-        assert_eq!(asset.average_purchase_price, "0");
+        // Totals come from the recorded purchase.
+        assert_eq!(asset.quantity, "2");
+        assert_eq!(asset.average_purchase_price, "5000");
     }
 
     #[test]
@@ -503,5 +567,184 @@ mod tests {
             )
             .unwrap();
         assert_eq!(stored_type, "buy");
+    }
+    #[test]
+    fn audit_assets_initial_transaction_derives_totals() {
+        let conn = setup_test_db();
+        let asset = create_asset(&conn, &valid_asset(), Some(&valid_tx())).unwrap();
+        assert_eq!(asset.quantity, "2");
+        assert_eq!(asset.average_purchase_price, "5000");
+    }
+
+    #[test]
+    fn audit_assets_mixed_currency_costs_use_transaction_day_rates() {
+        let conn = setup_test_db();
+        conn.execute_batch(
+            "CREATE TABLE exchange_rate_history (date INTEGER, currency TEXT, rate REAL);",
+        )
+        .unwrap();
+        let mut asset_data = valid_asset();
+        asset_data.currency = Some("EUR".into());
+        let mut euro_buy = valid_tx();
+        euro_buy.quantity = "1".into();
+        euro_buy.price_per_unit = "10".into();
+        euro_buy.currency = "EUR".into();
+        let asset = create_asset(&conn, &asset_data, Some(&euro_buy)).unwrap();
+        let mut crown_buy = euro_buy.clone();
+        crown_buy.currency = "CZK".into();
+        crown_buy.price_per_unit = "100".into();
+        conn.execute(
+            "INSERT INTO exchange_rate_history VALUES (?1, 'CZK', 25)",
+            [crown_buy.transaction_date.div_euclid(86_400) * 86_400],
+        )
+        .unwrap();
+        create_asset_transaction(&conn, &asset.id, &crown_buy).unwrap();
+        let avg: String = conn
+            .query_row(
+                "SELECT average_purchase_price FROM other_assets WHERE id=?1",
+                [&asset.id],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(avg, "7");
+    }
+
+    #[test]
+    fn audit_assets_missing_fx_rolls_back_the_transaction_and_totals() {
+        let conn = setup_test_db();
+        conn.execute_batch(
+            "CREATE TABLE exchange_rate_history (date INTEGER, currency TEXT, rate REAL);",
+        )
+        .unwrap();
+        let asset = create_asset(&conn, &valid_asset(), Some(&valid_tx())).unwrap();
+        let mut foreign_buy = valid_tx();
+        foreign_buy.currency = "EUR".into();
+        assert!(create_asset_transaction(&conn, &asset.id, &foreign_buy).is_err());
+        let count: i64 = conn
+            .query_row("SELECT COUNT(*) FROM other_asset_transactions", [], |r| {
+                r.get(0)
+            })
+            .unwrap();
+        assert_eq!(count, 1);
+        let qty: String = conn
+            .query_row(
+                "SELECT quantity FROM other_assets WHERE id=?1",
+                [&asset.id],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(qty, "2");
+    }
+
+    #[test]
+    fn audit_assets_overflow_rolls_back_initial_asset() {
+        let conn = setup_test_db();
+        let mut buy = valid_tx();
+        buy.quantity = "1e308".into();
+        buy.price_per_unit = "1e308".into();
+        assert!(create_asset(&conn, &valid_asset(), Some(&buy)).is_err());
+        let count: i64 = conn
+            .query_row("SELECT COUNT(*) FROM other_assets", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(count, 0);
+    }
+
+    #[test]
+    fn audit_assets_transaction_dates_are_bounded_and_canonical() {
+        let conn = setup_test_db();
+        let asset = create_asset(&conn, &valid_asset(), None).unwrap();
+        let tx = create_asset_transaction(&conn, &asset.id, &valid_tx()).unwrap();
+        assert_eq!(tx.transaction_date, 1_699_920_000);
+        let mut bad = valid_tx();
+        bad.transaction_date = i64::MAX;
+        assert!(create_asset_transaction(&conn, &asset.id, &bad).is_err());
+    }
+
+    #[test]
+    fn audit_assets_missing_fx_in_nested_write_leaves_outer_transaction_usable() {
+        let conn = setup_test_db();
+        conn.execute_batch(
+            "CREATE TABLE exchange_rate_history (date INTEGER, currency TEXT, rate REAL);",
+        )
+        .unwrap();
+        let asset = create_asset(&conn, &valid_asset(), None).unwrap();
+        let outer = conn.unchecked_transaction().unwrap();
+        let mut foreign = valid_tx();
+        foreign.currency = "EUR".into();
+        assert!(create_asset_transaction(&outer, &asset.id, &foreign).is_err());
+        create_asset_transaction(&outer, &asset.id, &valid_tx()).unwrap();
+        outer.commit().unwrap();
+        let count: i64 = conn
+            .query_row("SELECT COUNT(*) FROM other_asset_transactions", [], |r| {
+                r.get(0)
+            })
+            .unwrap();
+        assert_eq!(count, 1);
+    }
+
+    #[test]
+    fn audit_assets_transaction_rejects_overflowing_market_value() {
+        let conn = setup_test_db();
+        let mut data = valid_asset();
+        data.market_price = Some("1e308".into());
+        let asset = create_asset(&conn, &data, None).unwrap();
+        let mut buy = valid_tx();
+        buy.quantity = "2".into();
+        buy.price_per_unit = "1".into();
+        assert!(create_asset_transaction(&conn, &asset.id, &buy).is_err());
+        let totals: (String, i64) = conn.query_row("SELECT quantity, (SELECT COUNT(*) FROM other_asset_transactions) FROM other_assets WHERE id=?1", [&asset.id], |row| Ok((row.get(0)?, row.get(1)?))).unwrap();
+        assert_eq!(totals, ("0".into(), 0));
+    }
+    #[test]
+    fn audit_assets_initial_sale_is_rejected_atomically() {
+        let conn = setup_test_db();
+        let mut sale = valid_tx();
+        sale.tx_type = "sell".into();
+        assert!(create_asset(&conn, &valid_asset(), Some(&sale)).is_err());
+        let count: i64 = conn
+            .query_row("SELECT COUNT(*) FROM other_assets", [], |row| row.get(0))
+            .unwrap();
+        assert_eq!(count, 0);
+    }
+    #[test]
+    fn audit_assets_manual_backdated_sale_preserves_future_sales() {
+        let conn = setup_test_db();
+        let mut buy = valid_tx();
+        buy.quantity = "1".into();
+        let asset = create_asset(&conn, &valid_asset(), Some(&buy)).unwrap();
+        let mut sale = buy.clone();
+        sale.tx_type = "sell".into();
+        sale.transaction_date += 2 * 86400;
+        create_asset_transaction(&conn, &asset.id, &sale).unwrap();
+        sale.transaction_date -= 86400;
+        assert!(create_asset_transaction(&conn, &asset.id, &sale).is_err());
+        let count: i64 = conn
+            .query_row("SELECT COUNT(*) FROM other_asset_transactions", [], |row| {
+                row.get(0)
+            })
+            .unwrap();
+        assert_eq!(count, 2);
+    }
+    #[test]
+    fn audit_assets_exact_liquidation_leaves_zero_quantity() {
+        let conn = setup_test_db();
+        let mut buy = valid_tx();
+        buy.quantity = "0.1".into();
+        let asset = create_asset(&conn, &valid_asset(), Some(&buy)).unwrap();
+        buy.quantity = "0.2".into();
+        create_asset_transaction(&conn, &asset.id, &buy).unwrap();
+        let mut sale = buy.clone();
+        sale.tx_type = "sell".into();
+        sale.quantity = "0.3".into();
+        let written = create_asset_transaction(&conn, &asset.id, &sale);
+        assert!(written.is_ok());
+        let quantity: String = conn
+            .query_row(
+                "SELECT quantity FROM other_assets WHERE id=?1",
+                [&asset.id],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(quantity, "0");
     }
 }

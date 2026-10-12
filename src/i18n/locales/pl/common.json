@@ -254,7 +254,13 @@
     "periodInvalid": "Początek okresu musi być przed jego końcem.",
     "tooManySeries": "Zażądano naraz zbyt wielu linii.",
     "seriesKeyInvalid": "Nieprawidłowe żądanie linii wykresu.",
-    "benchmarkTickerInvalid": "Nieprawidłowy ticker indeksu."
+    "benchmarkTickerInvalid": "Nieprawidłowy ticker indeksu.",
+    "propertyTypeInvalid": "Typ nieruchomości musi być prywatny lub inwestycyjny",
+    "insurancePolicyAlreadyExists": "Polisa z tym ubezpieczycielem i numerem już istnieje",
+    "exchangeRateUnavailable": "Transakcji nie można zapisać, dopóki kursy walut z jej daty nie będą dostępne",
+    "dateInvalid": "Nieprawidłowa data",
+    "valueDateInvalid": "Nieprawidłowa data waluty",
+    "maturityDateInvalid": "Nieprawidłowa data zapadalności"
   },
   "auth": {
     "wrongPassword": "Wpisane hasło jest nieprawidłowe. Spróbuj ponownie.",

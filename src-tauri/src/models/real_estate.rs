@@ -208,13 +208,17 @@ impl InsertRealEstate {
                 "validation.propertyTypeRequired".into(),
             ));
         }
+        if !["personal", "investment"].contains(&self.property_type.to_lowercase().as_str()) {
+            return Err(AppError::Validation(
+                "validation.propertyTypeInvalid".into(),
+            ));
+        }
 
         // Purchase price validation (if provided)
         if let Some(ref price) = self.purchase_price {
             if !price.is_empty() {
-                let price_val: f64 = price
-                    .parse()
-                    .map_err(|_| AppError::Validation("validation.invalidAmount".into()))?;
+                let price_val =
+                    super::validation::finite_number(price, "validation.invalidAmount")?;
                 if price_val < 0.0 {
                     return Err(AppError::Validation("validation.priceNonNegative".into()));
                 }
@@ -224,9 +228,8 @@ impl InsertRealEstate {
         // Market price validation (if provided)
         if let Some(ref price) = self.market_price {
             if !price.is_empty() {
-                let price_val: f64 = price
-                    .parse()
-                    .map_err(|_| AppError::Validation("validation.invalidAmount".into()))?;
+                let price_val =
+                    super::validation::finite_number(price, "validation.invalidAmount")?;
                 if price_val < 0.0 {
                     return Err(AppError::Validation("validation.priceNonNegative".into()));
                 }
@@ -236,9 +239,10 @@ impl InsertRealEstate {
         // Monthly rent validation (if provided)
         if let Some(ref rent) = self.monthly_rent {
             if !rent.is_empty() {
-                let rent_val: f64 = rent
-                    .parse()
-                    .map_err(|_| AppError::Validation("validation.invalidAmount".into()))?;
+                let rent_val = super::validation::finite_number(rent, "validation.invalidAmount")?;
+                if !(rent_val * 12.0).is_finite() {
+                    return Err(AppError::Validation("validation.invalidAmount".into()));
+                }
                 if rent_val < 0.0 {
                     return Err(AppError::Validation("validation.rentNonNegative".into()));
                 }
@@ -248,6 +252,7 @@ impl InsertRealEstate {
         // Purchase date: a day up to and including today, compared as UTC
         // calendar days (ADR 0008), so a later hour of today is still today.
         if let Some(purchase_date) = self.purchase_date {
+            super::validation::utc_day(purchase_date, "validation.invalidDate")?;
             if purchase_date.div_euclid(86_400) > now.div_euclid(86_400) {
                 return Err(AppError::Validation(
                     "validation.purchaseDateInFuture".into(),
@@ -274,7 +279,18 @@ impl InsertRealEstate {
         // here instead of silently mis-annualizing it.
         if let Some(ref costs) = self.recurring_costs {
             for cost in costs {
+                if !cost.amount.is_finite() || cost.amount < 0.0 {
+                    return Err(AppError::Validation("validation.invalidAmount".into()));
+                }
                 let freq = cost.frequency.to_lowercase();
+                let periods = match freq.as_str() {
+                    "monthly" => 12.0,
+                    "quarterly" => 4.0,
+                    _ => 1.0,
+                };
+                if !(cost.amount * periods).is_finite() {
+                    return Err(AppError::Validation("validation.invalidAmount".into()));
+                }
                 if !["monthly", "quarterly", "yearly"].contains(&freq.as_str()) {
                     return Err(AppError::Validation(
                         "validation.recurringCostFrequencyInvalid".into(),
@@ -306,13 +322,12 @@ impl InsertRealEstateOneTimeCost {
         if self.amount.is_empty() {
             return Err(AppError::Validation("validation.amountRequired".into()));
         }
-        let amount: f64 = self
-            .amount
-            .parse()
-            .map_err(|_| AppError::Validation("validation.invalidAmount".into()))?;
+        let amount = super::validation::finite_number(&self.amount, "validation.invalidAmount")?;
         if amount < 0.0 {
             return Err(AppError::Validation("validation.amountNonNegative".into()));
         }
+
+        super::validation::utc_day(self.date, "validation.invalidDate")?;
 
         // Currency validation (if provided)
         if let Some(ref currency) = self.currency {
@@ -415,5 +430,28 @@ mod tests {
         let now = chrono::Utc::now().timestamp();
         assert!(with_purchase_date(Some(now - DAY)).validate().is_ok());
         assert!(with_purchase_date(Some(now + 2 * DAY)).validate().is_err());
+    }
+    #[test]
+    fn audit_assets_property_type_rejects_building_categories() {
+        for invalid in ["house", "apartment", "land", "unknown"] {
+            let mut data = property();
+            data.property_type = invalid.into();
+            assert!(data.validate().is_err(), "{invalid}");
+        }
+    }
+    #[test]
+    fn audit_assets_property_amounts_are_finite() {
+        for invalid in ["NaN", "inf", "-inf", "1e999"] {
+            let mut data = property();
+            data.purchase_price = Some(invalid.into());
+            assert!(data.validate().is_err(), "{invalid}");
+        }
+    }
+
+    #[test]
+    fn audit_assets_rejects_overflowing_annual_rent() {
+        let mut property = property();
+        property.monthly_rent = Some("1e308".into());
+        assert!(property.validate().is_err());
     }
 }

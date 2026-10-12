@@ -107,13 +107,18 @@ pub fn real_estate_detail(conn: &Connection, id: &str) -> Result<Value> {
 // tool has its own shape rather than exposing InsertRealEstate directly.
 // ============================================================================
 
+fn property_type_schema(_: &mut schemars::SchemaGenerator) -> schemars::Schema {
+    schemars::json_schema!({"type": "string", "enum": ["personal", "investment"]})
+}
+
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct RealEstateCreateArgs {
     pub name: String,
     pub address: String,
     #[serde(rename = "type")]
     #[schemars(
-        description = "Property type, e.g. apartment, house, land; \"personal\" usage is inferred elsewhere — pass the type shown in the app"
+        schema_with = "property_type_schema",
+        description = "Property classification: personal (own use) or investment (income-producing). Required canonical value."
     )]
     pub property_type: String,
     #[serde(rename = "purchasePrice")]
@@ -122,7 +127,7 @@ pub struct RealEstateCreateArgs {
     pub purchase_price_currency: Option<String>,
     #[serde(rename = "purchaseDate")]
     #[schemars(
-        description = "Day the property was bought, as unix seconds (the UTC midnight of that day, e.g. 1700000000 is 2023-11-14); optional, never in the future. The detail chart of the property starts its value trace there"
+        description = "Day the property was bought, as unix seconds (the UTC midnight of that day, e.g. 1699920000 is 2023-11-14); optional, never in the future. The detail chart of the property starts its value trace there"
     )]
     pub purchase_date: Option<i64>,
     #[serde(rename = "marketPrice")]
@@ -302,7 +307,7 @@ mod tests {
         RealEstateCreateArgs {
             name: name.to_string(),
             address: "Nová 2".into(),
-            property_type: "apartment".into(),
+            property_type: "personal".into(),
             purchase_price: Some("4000000".into()),
             purchase_price_currency: None,
             purchase_date: None,

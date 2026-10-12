@@ -254,7 +254,13 @@
     "periodInvalid": "Periodens början måste ligga före dess slut.",
     "tooManySeries": "För många linjer begärdes på en gång.",
     "seriesKeyInvalid": "Ogiltig begäran om diagramlinje.",
-    "benchmarkTickerInvalid": "Ogiltig indexticker."
+    "benchmarkTickerInvalid": "Ogiltig indexticker.",
+    "propertyTypeInvalid": "Fastighetstypen måste vara privat eller investering",
+    "insurancePolicyAlreadyExists": "En försäkring med detta bolag och försäkringsnummer finns redan",
+    "exchangeRateUnavailable": "Transaktionen kan inte sparas förrän valutakurser för dess datum är tillgängliga",
+    "dateInvalid": "Ogiltigt datum",
+    "valueDateInvalid": "Ogiltigt valutadatum",
+    "maturityDateInvalid": "Ogiltigt förfallodatum"
   },
   "auth": {
     "wrongPassword": "Lösenordet du angav är fel. Försök igen.",

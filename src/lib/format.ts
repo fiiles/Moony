@@ -153,6 +153,7 @@ export function createFormatters(locale: string, mainCurrency: string | undefine
   };
 
   const day: Formatters['day'] = (unixSeconds, opts = {}) => {
+    if (!Number.isFinite(new Date(unixSeconds * 1000).getTime())) return '';
     // Explicit options replace the default numeric date (a caller asking for
     // "Sep 30" must not get the year appended).
     const base: Intl.DateTimeFormatOptions = Object.keys(opts).length
@@ -161,8 +162,9 @@ export function createFormatters(locale: string, mainCurrency: string | undefine
     return dateFormat(locale, { ...base, timeZone: 'UTC' }).format(new Date(unixSeconds * 1000));
   };
 
-  const dateTime: Formatters['dateTime'] = (unixSeconds, opts = {}) =>
-    dateFormat(locale, {
+  const dateTime: Formatters['dateTime'] = (unixSeconds, opts = {}) => {
+    if (!Number.isFinite(new Date(unixSeconds * 1000).getTime())) return '';
+    return dateFormat(locale, {
       year: 'numeric',
       month: 'numeric',
       day: 'numeric',
@@ -170,11 +172,14 @@ export function createFormatters(locale: string, mainCurrency: string | undefine
       minute: '2-digit',
       ...opts,
     }).format(new Date(unixSeconds * 1000));
+  };
 
-  const time: Formatters['time'] = (unixSeconds, opts = {}) =>
-    dateFormat(locale, { hour: '2-digit', minute: '2-digit', ...opts }).format(
+  const time: Formatters['time'] = (unixSeconds, opts = {}) => {
+    if (!Number.isFinite(new Date(unixSeconds * 1000).getTime())) return '';
+    return dateFormat(locale, { hour: '2-digit', minute: '2-digit', ...opts }).format(
       new Date(unixSeconds * 1000)
     );
+  };
 
   const date: Formatters['date'] = (value, opts = {}) => {
     const d = typeof value === 'string' ? new Date(value) : value;

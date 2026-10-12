@@ -16,6 +16,7 @@ pub mod export;
 pub mod insurance;
 pub mod investments;
 pub mod loans;
+pub(crate) mod mcp_refresh;
 pub mod milestones;
 pub mod onboarding;
 pub mod other_assets;

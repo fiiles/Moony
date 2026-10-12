@@ -742,7 +742,8 @@
       "duplicateSimilar": "A similar trade is already in Moony: same day and quantity, price within 0.5 %",
       "cannotParse": "The row could not be read",
       "writeFailed": "The trade could not be written"
-    }
+    },
+    "mcpSource": "MCP"
   },
   "eyebrow": "Portfolio",
   "export": "Export"

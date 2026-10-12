@@ -216,28 +216,26 @@ impl InsertBankAccount {
             }
         }
 
-        // Balance validation (if provided)
+        // A supplied balance must be a real financial fact; only omission defaults to zero.
         if let Some(ref balance) = self.balance {
-            if !balance.is_empty() {
-                let amount = balance
-                    .parse::<f64>()
-                    .map_err(|_| AppError::Validation("validation.invalidAmount".into()))?;
-                if !amount.is_finite() {
-                    return Err(AppError::Validation("validation.invalidAmount".into()));
-                }
-            }
+            super::validation::finite_number(balance, "validation.invalidAmount")?;
         }
 
         // Interest rate validation (if provided)
         if let Some(ref rate) = self.interest_rate {
             if !rate.is_empty() {
-                let rate_val: f64 = rate
-                    .parse()
-                    .map_err(|_| AppError::Validation("validation.invalidAmount".into()))?;
+                let rate_val = super::validation::finite_number(rate, "validation.invalidAmount")?;
                 if !(0.0..=100.0).contains(&rate_val) {
                     return Err(AppError::Validation("validation.interestRateRange".into()));
                 }
             }
+        }
+
+        for date in [self.termination_date, self.interest_rate_valid_until]
+            .into_iter()
+            .flatten()
+        {
+            super::validation::utc_day(date, "validation.dateInvalid")?;
         }
 
         Ok(())
@@ -348,6 +346,9 @@ impl InsertSavingsAccountZone {
         let rate: f64 = self.interest_rate.parse().map_err(|_| {
             AppError::Validation(format!("Invalid interest rate '{}'", self.interest_rate))
         })?;
+        if !rate.is_finite() {
+            return Err(AppError::Validation("validation.invalidAmount".into()));
+        }
         if !(0.0..=100.0).contains(&rate) {
             return Err(AppError::Validation(
                 "Interest rate must be between 0 and 100".into(),
@@ -414,7 +415,7 @@ impl InsertBalanceRecord {
 fn validate_balance_day(day: i64) -> Result<()> {
     if day <= 0
         || day % 86400 != 0
-        || chrono::DateTime::from_timestamp(day, 0).is_none()
+        || super::validation::utc_day(day, "validation.balanceAsOfInvalid").is_err()
         || day > chrono::Utc::now().timestamp().div_euclid(86400) * 86400
     {
         return Err(AppError::Validation("validation.balanceAsOfInvalid".into()));

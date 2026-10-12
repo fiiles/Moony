@@ -9,6 +9,7 @@ pub use migrations::{applied_migration_names, known_migration_names};
 use crate::error::{AppError, Result};
 use rusqlite::Connection;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
 /// Database state managed by Tauri
@@ -21,6 +22,9 @@ pub struct Database {
     conn: Arc<Mutex<Option<Connection>>>,
     /// Path to the database file
     db_path: Arc<Mutex<Option<PathBuf>>>,
+    /// Advanced under the connection mutex whenever a session opens or closes.
+    session_epoch: Arc<AtomicU64>,
+    expected_session: Option<u64>,
 }
 
 impl Database {
@@ -29,6 +33,8 @@ impl Database {
         Self {
             conn: Arc::new(Mutex::new(None)),
             db_path: Arc::new(Mutex::new(None)),
+            session_epoch: Arc::new(AtomicU64::new(0)),
+            expected_session: None,
         }
     }
 
@@ -95,10 +101,12 @@ impl Database {
         }
 
         // Store connection and path
-        *self
+        let mut guard = self
             .conn
             .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(conn);
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        self.session_epoch.fetch_add(1, Ordering::SeqCst);
+        *guard = Some(conn);
         *self
             .db_path
             .lock()
@@ -132,10 +140,12 @@ impl Database {
         // Note: No exchange rates to load on fresh database
 
         // Store connection and path
-        *self
+        let mut guard = self
             .conn
             .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(conn);
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        self.session_epoch.fetch_add(1, Ordering::SeqCst);
+        *guard = Some(conn);
         *self
             .db_path
             .lock()
@@ -146,10 +156,29 @@ impl Database {
 
     /// Close the database connection (lock the app)
     pub fn close(&self) {
-        *self
+        let mut guard = self
             .conn
             .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner) = None;
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        self.session_epoch.fetch_add(1, Ordering::SeqCst);
+        *guard = None;
+    }
+
+    /// Pin async work to the currently open connection session. After logout/restore,
+    /// every read or write through this clone fails rather than touching a new database.
+    pub(crate) fn current_session(&self) -> Result<Self> {
+        let guard = self
+            .conn
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let epoch = self.session_epoch.load(Ordering::SeqCst);
+        require_session(self.expected_session, epoch)?;
+        if guard.is_none() {
+            return Err(AppError::Auth("Database is locked".into()));
+        }
+        let mut scoped = self.clone();
+        scoped.expected_session = Some(epoch);
+        Ok(scoped)
     }
 
     /// Execute a function with the database connection
@@ -162,6 +191,10 @@ impl Database {
             .conn
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner);
+        require_session(
+            self.expected_session,
+            self.session_epoch.load(Ordering::SeqCst),
+        )?;
         let conn = guard
             .as_ref()
             .ok_or_else(|| AppError::Auth("Database is locked".into()))?;
@@ -177,6 +210,10 @@ impl Database {
             .conn
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner);
+        require_session(
+            self.expected_session,
+            self.session_epoch.load(Ordering::SeqCst),
+        )?;
         let conn = guard
             .as_mut()
             .ok_or_else(|| AppError::Auth("Database is locked".into()))?;
@@ -210,6 +247,13 @@ impl Database {
             .unwrap_or_else(std::sync::PoisonError::into_inner)
             .clone()
     }
+}
+
+fn require_session(expected: Option<u64>, current: u64) -> Result<()> {
+    if expected.is_some_and(|epoch| epoch != current) {
+        return Err(AppError::Auth("Database session changed".into()));
+    }
+    Ok(())
 }
 
 /// How many pre-migration copies to keep next to the database.
@@ -305,6 +349,15 @@ impl Default for Database {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn pinned_async_work_cannot_cross_a_close_and_reopen() {
+        assert!(require_session(Some(7), 7).is_ok());
+        assert!(require_session(Some(7), 8).is_err()); // close
+        assert!(require_session(Some(7), 9).is_err()); // reopen, including the same path
+        assert!(require_session(Some(9), 9).is_ok());
+        assert!(require_session(None, 9).is_ok()); // normal app handles follow the new session
+    }
 
     #[test]
     fn backup_database_file_copies_and_prunes() {

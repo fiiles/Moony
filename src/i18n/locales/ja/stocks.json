@@ -719,7 +719,8 @@
       "duplicateSimilar": "似た取引がすでに Moony にあります：同じ日、同じ数量で、価格の差は0.5 %以内です",
       "cannotParse": "この行を読み取れませんでした",
       "writeFailed": "取引を書き込めませんでした"
-    }
+    },
+    "mcpSource": "MCP"
   },
   "eyebrow": "ポートフォリオ",
   "export": "エクスポート"

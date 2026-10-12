@@ -32,6 +32,7 @@ pub mod stock_monitor;
 pub mod stock_performance;
 pub mod stock_tags;
 pub mod user;
+pub mod validation;
 pub mod valuations;
 
 // Re-export commonly used types

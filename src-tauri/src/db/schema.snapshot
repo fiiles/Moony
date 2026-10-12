@@ -469,6 +469,14 @@ CREATE TABLE loans (
     balance_anchor_date INTEGER
 )
 
+== table mcp_pending_refresh ==
+CREATE TABLE mcp_pending_refresh (
+    id TEXT PRIMARY KEY,
+    domain TEXT NOT NULL UNIQUE,
+    earliest_date INTEGER,
+    generation TEXT NOT NULL
+)
+
 == table milestone_states ==
 CREATE TABLE milestone_states (
     key TEXT PRIMARY KEY,

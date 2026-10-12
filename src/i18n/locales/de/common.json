@@ -254,7 +254,13 @@
     "periodInvalid": "Der Beginn des Zeitraums muss vor seinem Ende liegen.",
     "tooManySeries": "Es wurden zu viele Linien auf einmal angefordert.",
     "seriesKeyInvalid": "Ungültige Anforderung einer Diagrammlinie.",
-    "benchmarkTickerInvalid": "Ungültiger Index-Ticker."
+    "benchmarkTickerInvalid": "Ungültiger Index-Ticker.",
+    "propertyTypeInvalid": "Der Immobilientyp muss privat oder eine Investition sein",
+    "insurancePolicyAlreadyExists": "Eine Police mit diesem Anbieter und dieser Policennummer existiert bereits",
+    "exchangeRateUnavailable": "Die Transaktion kann erst gespeichert werden, wenn Wechselkurse für ihr Datum verfügbar sind",
+    "dateInvalid": "Ungültiges Datum",
+    "valueDateInvalid": "Ungültiges Wertstellungsdatum",
+    "maturityDateInvalid": "Ungültiges Fälligkeitsdatum"
   },
   "auth": {
     "wrongPassword": "Das eingegebene Passwort ist falsch. Bitte versuchen Sie es erneut.",

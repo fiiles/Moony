@@ -131,7 +131,7 @@ impl InsertInsurancePolicy {
         }
 
         // Provider validation
-        if self.provider.is_empty() {
+        if self.provider.trim().is_empty() {
             return Err(AppError::Validation("validation.providerRequired".into()));
         }
         if self.provider.len() > 100 {
@@ -154,9 +154,13 @@ impl InsertInsurancePolicy {
         // Regular payment validation (if provided)
         if let Some(ref payment) = self.regular_payment {
             if !payment.is_empty() {
-                let payment_val: f64 = payment
-                    .parse()
-                    .map_err(|_| AppError::Validation("validation.invalidAmount".into()))?;
+                let payment_val =
+                    super::validation::finite_number(payment, "validation.invalidAmount")?;
+                if !crate::models::frequency::annualize(payment_val, &self.payment_frequency)
+                    .is_finite()
+                {
+                    return Err(AppError::Validation("validation.invalidAmount".into()));
+                }
                 if payment_val < 0.0 {
                     return Err(AppError::Validation("validation.paymentNonNegative".into()));
                 }
@@ -166,9 +170,8 @@ impl InsertInsurancePolicy {
         // One-time payment validation (if provided)
         if let Some(ref payment) = self.one_time_payment {
             if !payment.is_empty() {
-                let payment_val: f64 = payment
-                    .parse()
-                    .map_err(|_| AppError::Validation("validation.invalidAmount".into()))?;
+                let payment_val =
+                    super::validation::finite_number(payment, "validation.invalidAmount")?;
                 if payment_val < 0.0 {
                     return Err(AppError::Validation("validation.paymentNonNegative".into()));
                 }
@@ -187,11 +190,20 @@ impl InsertInsurancePolicy {
             }
         }
 
-        // Date validation
+        // Dates describe calendar days; compare their canonical values.
+        let start = super::validation::utc_day(self.start_date, "validation.invalidDate")?;
         if let Some(end) = self.end_date {
-            if end <= self.start_date {
+            let end = super::validation::utc_day(end, "validation.invalidDate")?;
+            if end <= start {
                 return Err(AppError::Validation("validation.endDateAfterStart".into()));
             }
+        }
+        if self.limits.as_ref().is_some_and(|limits| {
+            limits
+                .iter()
+                .any(|limit| !limit.amount.is_finite() || limit.amount < 0.0)
+        }) {
+            return Err(AppError::Validation("validation.invalidAmount".into()));
         }
 
         // Status validation (if provided)
@@ -279,5 +291,11 @@ mod tests {
         let mut policy = valid_policy();
         policy.status = None;
         assert!(policy.validate().is_ok());
+    }
+    #[test]
+    fn audit_assets_rejects_overflowing_annual_premium() {
+        let mut policy = valid_policy();
+        policy.regular_payment = Some("1e308".into());
+        assert!(policy.validate().is_err());
     }
 }

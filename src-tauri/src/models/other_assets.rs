@@ -30,7 +30,7 @@ pub struct OtherAsset {
 pub struct InsertOtherAsset {
     pub name: String,
     #[schemars(
-        description = "Starting quantity. Recalculated from buy/sell transactions once any exist, so any value passed here is overwritten by the first transaction import; if you also pass initialTransaction, this stays at its inserted value (default \"0\") until the NEXT import triggers recalculation (preserved quirk) — prefer omitting this and relying on initialTransaction/other_asset_transactions_create instead"
+        description = "Starting quantity when no transactions are provided. When initialTransaction is provided, quantity is derived from it atomically. Later transaction imports recalculate quantity from all buy/sell transactions."
     )]
     pub quantity: Option<String>,
     #[serde(rename = "marketPrice")]
@@ -38,7 +38,7 @@ pub struct InsertOtherAsset {
     pub currency: Option<String>,
     #[serde(rename = "averagePurchasePrice")]
     #[schemars(
-        description = "Starting average purchase price. Recalculated from buy transactions once any exist, so any value passed here is overwritten by the first transaction import; if you also pass initialTransaction, this stays at its inserted value (default \"0\") until the NEXT import triggers recalculation (preserved quirk) — prefer omitting this and relying on initialTransaction/other_asset_transactions_create instead"
+        description = "Starting average purchase price in the asset currency when no transactions are provided. When initialTransaction is provided, the average is derived atomically using transaction-day FX. Later imports recalculate the average from all buys."
     )]
     pub average_purchase_price: Option<String>,
     #[serde(rename = "yieldType")]
@@ -97,9 +97,7 @@ impl InsertOtherAsset {
         // Quantity validation (if provided)
         if let Some(ref qty) = self.quantity {
             if !qty.is_empty() {
-                let qty_val: f64 = qty
-                    .parse()
-                    .map_err(|_| AppError::Validation("validation.invalidQuantity".into()))?;
+                let qty_val = super::validation::finite_number(qty, "validation.invalidQuantity")?;
                 if qty_val < 0.0 {
                     return Err(AppError::Validation(
                         "validation.quantityNonNegative".into(),
@@ -111,9 +109,7 @@ impl InsertOtherAsset {
         // Market price validation (if provided)
         if let Some(ref price) = self.market_price {
             if !price.is_empty() {
-                let price_val: f64 = price
-                    .parse()
-                    .map_err(|_| AppError::Validation("validation.invalidPrice".into()))?;
+                let price_val = super::validation::finite_number(price, "validation.invalidPrice")?;
                 if price_val < 0.0 {
                     return Err(AppError::Validation("validation.priceNonNegative".into()));
                 }
@@ -123,14 +119,30 @@ impl InsertOtherAsset {
         // Average purchase price validation (if provided)
         if let Some(ref price) = self.average_purchase_price {
             if !price.is_empty() {
-                let price_val: f64 = price
-                    .parse()
-                    .map_err(|_| AppError::Validation("validation.invalidPrice".into()))?;
+                let price_val = super::validation::finite_number(price, "validation.invalidPrice")?;
                 if price_val < 0.0 {
                     return Err(AppError::Validation(
                         "validation.averagePriceNonNegative".into(),
                     ));
                 }
+            }
+        }
+
+        let quantity = self
+            .quantity
+            .as_deref()
+            .filter(|v| !v.is_empty())
+            .unwrap_or("0");
+        let quantity = super::validation::finite_number(quantity, "validation.invalidQuantity")?;
+        for price in [&self.market_price, &self.average_purchase_price]
+            .into_iter()
+            .flatten()
+        {
+            if !price.is_empty()
+                && !(quantity * super::validation::finite_number(price, "validation.invalidPrice")?)
+                    .is_finite()
+            {
+                return Err(AppError::Validation("validation.invalidAmount".into()));
             }
         }
 
@@ -152,9 +164,7 @@ impl InsertOtherAsset {
         // Yield value validation (if provided)
         if let Some(ref yield_val) = self.yield_value {
             if !yield_val.is_empty() {
-                let yv: f64 = yield_val
-                    .parse()
-                    .map_err(|_| AppError::Validation("validation.invalidAmount".into()))?;
+                let yv = super::validation::finite_number(yield_val, "validation.invalidAmount")?;
                 if yv < 0.0 {
                     return Err(AppError::Validation("validation.yieldNonNegative".into()));
                 }
@@ -177,21 +187,21 @@ impl InsertOtherAssetTransaction {
         }
 
         // Quantity validation
-        let qty: f64 = self
-            .quantity
-            .parse()
-            .map_err(|_| AppError::Validation("validation.invalidQuantity".into()))?;
+        let qty = super::validation::finite_number(&self.quantity, "validation.invalidQuantity")?;
         if qty <= 0.0 {
             return Err(AppError::Validation("validation.quantityPositive".into()));
         }
 
         // Price validation
-        let price: f64 = self
-            .price_per_unit
-            .parse()
-            .map_err(|_| AppError::Validation("validation.invalidPrice".into()))?;
+        let price =
+            super::validation::finite_number(&self.price_per_unit, "validation.invalidPrice")?;
         if price <= 0.0 {
             return Err(AppError::Validation("validation.pricePositive".into()));
+        }
+
+        super::validation::utc_day(self.transaction_date, "validation.invalidDate")?;
+        if !(qty * price).is_finite() {
+            return Err(AppError::Validation("validation.invalidAmount".into()));
         }
 
         // Currency validation
@@ -235,5 +245,27 @@ mod tests {
     #[test]
     fn rejects_unknown_yield_type() {
         assert!(asset_with_yield("percentage").validate().is_err());
+    }
+    #[test]
+    fn audit_assets_rejects_nonfinite_amounts() {
+        for invalid in ["NaN", "inf", "-inf", "1e999"] {
+            let mut asset = asset_with_yield("fixed");
+            asset.yield_value = Some(invalid.into());
+            assert!(asset.validate().is_err(), "yield {invalid}");
+            asset = asset_with_yield("none");
+            asset.quantity = Some(invalid.into());
+            assert!(asset.validate().is_err(), "quantity {invalid}");
+            asset = asset_with_yield("none");
+            asset.market_price = Some(invalid.into());
+            assert!(asset.validate().is_err(), "market price {invalid}");
+        }
+    }
+
+    #[test]
+    fn audit_assets_rejects_overflowing_initial_holdings() {
+        let mut asset = asset_with_yield("none");
+        asset.quantity = Some("1e308".into());
+        asset.market_price = Some("1e308".into());
+        assert!(asset.validate().is_err());
     }
 }

@@ -11,6 +11,7 @@ export function useSourceLabel(formats: readonly SavedStockImportFormat[]) {
   const { t } = useTranslation('stocks');
   return useCallback(
     (source: string): string => {
+      if (source === 'mcp') return t('importWizard.mcpSource');
       if (isSourceId(source)) return t(`importWizard.sources.${source}.name`);
       return (
         formats.find((format) => format.id === source)?.name ??

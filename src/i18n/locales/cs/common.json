@@ -254,7 +254,13 @@
     "periodInvalid": "Začátek období musí být před jeho koncem.",
     "tooManySeries": "Najednou je požadováno příliš mnoho čar.",
     "seriesKeyInvalid": "Neplatný požadavek na čáru grafu.",
-    "benchmarkTickerInvalid": "Neplatný ticker indexu."
+    "benchmarkTickerInvalid": "Neplatný ticker indexu.",
+    "propertyTypeInvalid": "Typ nemovitosti musí být osobní nebo investiční",
+    "insurancePolicyAlreadyExists": "Pojistka se stejným poskytovatelem a číslem již existuje",
+    "exchangeRateUnavailable": "Transakci lze uložit až po načtení kurzů pro její datum",
+    "dateInvalid": "Neplatné datum",
+    "valueDateInvalid": "Neplatné datum valuty",
+    "maturityDateInvalid": "Neplatné datum splatnosti"
   },
   "auth": {
     "wrongPassword": "Zadané heslo je nesprávné. Zkuste to prosím znovu.",

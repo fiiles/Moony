@@ -254,7 +254,13 @@
     "periodInvalid": "期間の開始日は終了日より前にしてください。",
     "tooManySeries": "一度にリクエストされた線が多すぎます。",
     "seriesKeyInvalid": "グラフの線のリクエストが正しくありません。",
-    "benchmarkTickerInvalid": "指数のティッカーが正しくありません。"
+    "benchmarkTickerInvalid": "指数のティッカーが正しくありません。",
+    "propertyTypeInvalid": "不動産の種類は個人用または投資用である必要があります",
+    "insurancePolicyAlreadyExists": "この保険会社と証券番号の保険は既に存在します",
+    "exchangeRateUnavailable": "取引日の為替レートが利用可能になるまで取引を保存できません",
+    "dateInvalid": "無効な日付です",
+    "valueDateInvalid": "無効な起算日です",
+    "maturityDateInvalid": "無効な満期日です"
   },
   "auth": {
     "wrongPassword": "入力したパスワードが正しくありません。もう一度お試しください。",

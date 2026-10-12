@@ -1,4 +1,4 @@
-import { refreshMoneyFlows } from '@/lib/money-flow-refresh';
+import { MONEY_FLOW_KEYS } from '@/lib/money-flow-refresh';
 import { invalidateAfterPriceRefresh } from '@/lib/price-refresh';
 import { useState, useEffect, useRef, useCallback, ReactNode } from 'react';
 import { portfolioApi, priceApi } from '@/lib/tauri-api';
@@ -126,12 +126,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
   // against the real hooks/pages (grep for `queryKey: ['`) as of this writing.
   useEffect(() => {
     const domainKeys: Record<string, string[][]> = {
-      bank: [
-        ['bank-accounts'],
-        ['bank-account'],
-        ['bank-transactions'],
-        ['transaction-categories'],
-      ],
+      bank: MONEY_FLOW_KEYS.map((key) => [key]),
       stocks: [
         ['investments'],
         ['investment'],
@@ -141,19 +136,21 @@ export function SyncProvider({ children }: { children: ReactNode }) {
         ['dividend-summary'],
         ['stocks-analysis'],
         ['stock-performance'],
+        ['stock-import-batches'],
+        ['stock-monitor'],
       ],
       crypto: [['crypto'], ['crypto-detail'], ['crypto-transactions'], ['all-crypto-transactions']],
       bonds: [['bonds']],
       loans: [['loans'], ['loan-schedule'], ['real-estate-loans'], ['available-loans']],
-      'real-estate': [['real-estate']],
+      'real-estate': [['real-estate'], ['real-estate-valuations'], ['real-estate-costs']],
       'other-assets': [['other-assets'], ['other-asset-transactions']],
-      insurance: [['insurance']],
+      insurance: [['insurance'], ['available-insurances'], ['real-estate-insurances']],
       // Stock Monitor watchlist: rows only — see the net-worth guard below
       'stock-monitor': [['stock-monitor']],
     };
 
-    const unlisten = listen<McpDataChangedPayload>('mcp-data-changed', async (event) => {
-      const { domain, tickers, earliestDate } = event.payload;
+    const unlisten = listen<McpDataChangedPayload>('mcp-data-changed', (event) => {
+      const { domain } = event.payload;
 
       for (const key of domainKeys[domain] ?? []) {
         queryClient.invalidateQueries({ queryKey: key });
@@ -161,85 +158,19 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       // Not a useMutation, so the MutationCache refresh does not cover MCP writes.
       queryClient.invalidateQueries({ queryKey: ['milestones'] });
 
-      // Following a stock, or noting a target on it, changes nothing about what
-      // the user owns — so the watchlist skips the portfolio/snapshot ritual
-      // (spec D10 of the Stock Monitor design, same deviation the UI makes).
-      if (domain === 'bank') {
-        try {
-          await refreshMoneyFlows(queryClient, true);
-        } catch (error) {
-          console.error('[Sync] Bank refresh failed:', error);
-        }
-      }
-      const affectsNetWorth = domain !== 'stock-monitor' && domain !== 'bank';
-      if (affectsNetWorth) {
-        queryClient.invalidateQueries({ queryKey: ['portfolio-metrics'] });
-        queryClient.invalidateQueries({ queryKey: ['cashflow-report'] });
-
-        try {
-          await portfolioApi.recordSnapshot();
-          queryClient.invalidateQueries({ queryKey: ['portfolio-history'] });
-        } catch (error) {
-          console.error('[Sync] MCP refresh: snapshot failed:', error);
-        }
-      }
-
-      // Only market-priced domains need a price/dividend refresh.
-      const isPricedDomain = domain === 'stocks' || domain === 'crypto';
-
-      if (isPricedDomain) {
-        // Same fire-and-forget refresh the Add modals use — new holdings have
-        // no current price until this runs.
-        const refresh =
-          domain === 'stocks' ? priceApi.refreshStockPrices() : priceApi.refreshCryptoPrices();
-        refresh
-          .then(() => {
-            void invalidateAfterPriceRefresh(queryClient);
-
-            if (domain === 'stocks') {
-              // Newly imported tickers have no dividend data until this runs
-              // too (mirrors the background refresh after a stock CSV import).
-              return priceApi.refreshDividends().then(() => {
-                queryClient.invalidateQueries({ queryKey: ['investments'] });
-                queryClient.invalidateQueries({ queryKey: ['dividend-summary'] });
-              });
-            }
-          })
-          .then(() => {
-            // Prices (and, for stocks, dividends) are fresh now — re-record
-            // today's snapshot so a same-day import of a brand-new ticker
-            // isn't left undervalued until the next mutation (recordSnapshot
-            // is an idempotent upsert; record_todays_ticker_values skips
-            // tickers that had no price yet, which is why this re-run matters).
-            portfolioApi
-              .recordSnapshot()
-              .then(() => queryClient.invalidateQueries({ queryKey: ['portfolio-history'] }))
-              .catch((error) =>
-                console.error('[Sync] MCP refresh: re-record snapshot failed:', error)
-              );
-          })
-          .catch((error) => console.error('[Sync] MCP refresh: price refresh failed:', error));
-      }
-
-      // Retroactive imports leave the portfolio history stale until it is recalculated.
-      // Priced domains recalculate per ticker, so an empty ticker list means
-      // there is nothing to recalculate; other assets have no tickers at all and
-      // are recalculated as a whole asset class, so the earliest date is the only
-      // condition (the Rust command's `_` arm routes it to AssetType::OtherAssets).
-      if (isPricedDomain || domain === 'other-assets') {
-        // Local midnight, not the backend's UTC day boundary — the mismatch
-        // (at most the local UTC offset) only ever widens the window and
-        // fires an extra, idempotent recalculation; it never suppresses one
-        // that's actually needed.
-        const todayStart = Math.floor(new Date().setHours(0, 0, 0, 0) / 1000);
-        const isRetroactive = earliestDate !== null && earliestDate < todayStart;
-        const hasScope = isPricedDomain ? tickers.length > 0 : true;
-        if (isRetroactive && hasScope) {
-          portfolioApi
-            .triggerImportRecalculation(domain, tickers, earliestDate)
-            .catch((error) =>
-              console.error('[Sync] MCP refresh: historical recalculation failed:', error)
-            );
+      // Financial bookkeeping is durable backend work. Events only refresh views,
+      // including when no renderer was mounted at the moment of the import.
+      if (domain !== 'stock-monitor') {
+        for (const key of [
+          'projection',
+          'portfolio-metrics',
+          'cashflow-report',
+          'portfolio-history',
+          'budgeting-report',
+          'budgeting-category-transactions',
+          'cashflow-actuals',
+        ]) {
+          queryClient.invalidateQueries({ queryKey: [key] });
         }
       }
     });

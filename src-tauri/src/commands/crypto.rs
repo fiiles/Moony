@@ -271,90 +271,26 @@ pub async fn delete_crypto_transaction(
     app: AppHandle,
     tx_id: String,
 ) -> Result<()> {
-    // Get transaction info before deleting (for historical recalc)
-    let tx_info: Option<(i64, String, String)> = db.with_conn(|conn| {
-        // Get transaction date and investment_id
-        let info: Option<(i64, String)> = conn
-            .query_row(
-                "SELECT transaction_date, investment_id FROM crypto_transactions WHERE id = ?1",
-                [&tx_id],
-                |row| Ok((row.get(0)?, row.get(1)?)),
-            )
-            .ok();
-
-        if let Some((date, inv_id)) = info {
-            // Get ticker and coingecko_id from the investment
-            let crypto_info: Option<(String, String)> = conn
-                .query_row(
-                    "SELECT ticker, coingecko_id FROM crypto_investments WHERE id = ?1",
-                    [&inv_id],
-                    |row| {
-                        Ok((
-                            row.get(0)?,
-                            row.get::<_, Option<String>>(1)?.unwrap_or_default(),
-                        ))
-                    },
-                )
-                .ok();
-
-            if let Some((ticker, coingecko_id)) = crypto_info {
-                return Ok(Some((date, ticker, coingecko_id)));
-            }
-        }
-        Ok(None)
-    })?;
-
-    db.with_conn(|conn| {
-        // Get investment_id before deleting
-        let investment_id: String = conn.query_row(
-            "SELECT investment_id FROM crypto_transactions WHERE id = ?1",
-            [&tx_id],
-            |row| row.get(0),
-        )?;
-
-        conn.execute("DELETE FROM crypto_transactions WHERE id = ?1", [&tx_id])?;
-
-        // Check if any transactions remain
-        let tx_count: i64 = conn.query_row(
-            "SELECT COUNT(*) FROM crypto_transactions WHERE investment_id = ?1",
-            [&investment_id],
-            |row| row.get(0),
-        )?;
-
-        if tx_count == 0 {
-            // No transactions left - delete the crypto investment entirely
-            conn.execute(
-                "DELETE FROM crypto_investments WHERE id = ?1",
-                [&investment_id],
-            )?;
-        } else {
-            // Recalculate crypto investment metrics
-            crypto_service::recalculate_crypto_metrics(conn, &investment_id)?;
-        }
-
-        Ok(())
-    })?;
+    let (date, ticker, coingecko_id) =
+        db.with_conn(|conn| crypto_service::delete_transaction(conn, &tx_id))?;
 
     // Update portfolio snapshot
     crate::commands::portfolio::update_todays_snapshot(&db)
         .await
         .ok();
 
-    // Trigger per-ticker historical recalculation if transaction was historical
-    if let Some((date, ticker, coingecko_id)) = tx_info {
-        if !coingecko_id.is_empty() {
-            crate::commands::portfolio::trigger_historical_recalculation_for_crypto_ticker(
-                &db,
-                date,
-                &ticker,
-                &coingecko_id,
-            )
-            .await
-            .ok();
-        }
-
-        app.emit("recalculation-complete", ()).ok();
+    // Use the persisted price identity captured in the deletion transaction.
+    if !coingecko_id.is_empty() {
+        crate::commands::portfolio::trigger_historical_recalculation_for_crypto_ticker(
+            &db,
+            date,
+            &ticker,
+            &coingecko_id,
+        )
+        .await
+        .ok();
     }
+    app.emit("recalculation-complete", ()).ok();
 
     Ok(())
 }

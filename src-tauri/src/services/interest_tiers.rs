@@ -60,7 +60,7 @@ pub fn yearly_interest(balance: f64, tiers: &[InterestTier]) -> f64 {
             let upper = tier.to.map_or(balance, |to| balance.min(to));
             let in_band = upper - tier.from;
             if in_band > 0.0 {
-                in_band * tier.rate / 100.0
+                in_band * (tier.rate / 100.0)
             } else {
                 0.0
             }
@@ -106,13 +106,20 @@ pub fn account_yearly_interest(
     base_rate: f64,
     has_zones: bool,
 ) -> Result<f64> {
-    if has_zones {
+    let interest = if has_zones {
         let tiers = load_account_tiers(conn, bank_account_id)?;
-        if !tiers.is_empty() {
-            return Ok(yearly_interest(balance, &tiers));
+        if tiers.is_empty() {
+            balance * (base_rate / 100.0)
+        } else {
+            yearly_interest(balance, &tiers)
         }
+    } else {
+        balance * (base_rate / 100.0)
+    };
+    if !interest.is_finite() {
+        return Err(AppError::Validation("validation.invalidAmount".into()));
     }
-    Ok(balance * base_rate / 100.0)
+    Ok(interest)
 }
 
 #[cfg(test)]
@@ -141,6 +148,28 @@ mod tests {
     #[derive(serde::Deserialize)]
     struct Fixture {
         cases: Vec<Case>,
+    }
+
+    #[test]
+    fn unrepresentable_aggregate_interest_returns_an_error() {
+        let conn = rusqlite::Connection::open_in_memory().expect("database");
+        conn.execute_batch("CREATE TABLE bank_account_zones(bank_account_id TEXT,from_amount TEXT,to_amount TEXT,interest_rate TEXT); INSERT INTO bank_account_zones VALUES ('account','0',NULL,'100'), ('account','0',NULL,'100');").expect("tiers");
+        assert!(account_yearly_interest(&conn, "account", 1e308, 0.0, true).is_err());
+    }
+
+    #[test]
+    fn large_finite_interest_avoids_intermediate_percentage_overflow() {
+        let conn = rusqlite::Connection::open_in_memory().expect("database");
+        let tiers = [InterestTier {
+            from: 0.0,
+            to: None,
+            rate: 100.0,
+        }];
+        assert_eq!(yearly_interest(1e308, &tiers), 1e308);
+        assert_eq!(
+            account_yearly_interest(&conn, "account", 1e308, 100.0, false).expect("flat interest"),
+            1e308
+        );
     }
 
     #[test]

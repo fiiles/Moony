@@ -742,7 +742,8 @@
       "duplicateSimilar": "En lignende handel finnes allerede i Moony: samme dag og antall, kurs innenfor 0,5 %",
       "cannotParse": "Raden kunne ikke leses",
       "writeFailed": "Handelen kunne ikke skrives"
-    }
+    },
+    "mcpSource": "MCP"
   },
   "eyebrow": "Portefølje",
   "export": "Eksporter"

@@ -35,6 +35,7 @@ pub struct InsertBond {
     pub currency: Option<String>,
     #[serde(rename = "interestRate")]
     pub interest_rate: Option<String>,
+    /// Calendar date as Unix seconds, years 0001-9999; stored at UTC midnight.
     #[serde(rename = "maturityDate")]
     pub maturity_date: Option<i64>,
 }
@@ -67,23 +68,17 @@ impl InsertBond {
                 "validation.couponValueRequired".into(),
             ));
         }
-        let coupon: f64 = self
-            .coupon_value
-            .parse()
-            .map_err(|_| AppError::Validation("validation.invalidAmount".into()))?;
+        let coupon =
+            super::validation::finite_number(&self.coupon_value, "validation.invalidAmount")?;
         if coupon < 0.0 {
             return Err(AppError::Validation("validation.amountRequired".into()));
         }
 
         // Quantity validation (if provided)
         if let Some(ref qty) = self.quantity {
-            if !qty.is_empty() {
-                let qty_val: f64 = qty
-                    .parse()
-                    .map_err(|_| AppError::Validation("validation.invalidQuantity".into()))?;
-                if qty_val <= 0.0 {
-                    return Err(AppError::Validation("validation.quantityPositive".into()));
-                }
+            let qty_val = super::validation::finite_number(qty, "validation.invalidQuantity")?;
+            if qty_val <= 0.0 {
+                return Err(AppError::Validation("validation.quantityPositive".into()));
             }
         }
 
@@ -96,18 +91,23 @@ impl InsertBond {
 
         // Interest rate validation (if provided)
         if let Some(ref rate) = self.interest_rate {
-            if !rate.is_empty() {
-                let rate_val: f64 = rate
-                    .parse()
-                    .map_err(|_| AppError::Validation("validation.interestRatePositive".into()))?;
-                if !(0.0..=100.0).contains(&rate_val) {
-                    return Err(AppError::Validation(
-                        "validation.interestRatePositive".into(),
-                    ));
-                }
+            let rate_val =
+                super::validation::finite_number(rate, "validation.interestRatePositive")?;
+            if !(0.0..=100.0).contains(&rate_val) {
+                return Err(AppError::Validation(
+                    "validation.interestRatePositive".into(),
+                ));
             }
         }
 
+        let quantity = self.quantity.as_deref().unwrap_or("1");
+        let quantity = super::validation::finite_number(quantity, "validation.invalidQuantity")?;
+        if !(coupon * quantity).is_finite() {
+            return Err(AppError::Validation("validation.invalidAmount".into()));
+        }
+        if let Some(date) = self.maturity_date {
+            super::validation::utc_day(date, "validation.maturityDateInvalid")?;
+        }
         Ok(())
     }
 }

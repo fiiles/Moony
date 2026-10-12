@@ -742,7 +742,8 @@
       "duplicateSimilar": "En liknande affär finns redan i Moony: samma dag och antal, pris inom 0,5 %",
       "cannotParse": "Raden kunde inte läsas",
       "writeFailed": "Affären kunde inte skrivas"
-    }
+    },
+    "mcpSource": "MCP"
   },
   "eyebrow": "Portfölj",
   "export": "Exportera"

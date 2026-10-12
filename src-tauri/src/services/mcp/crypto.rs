@@ -2,7 +2,7 @@
 //! (services/local_api.rs) (ADR 0006).
 
 use rmcp::schemars;
-use rusqlite::Connection;
+use rusqlite::{Connection, OptionalExtension};
 use serde::Deserialize;
 use serde_json::Value;
 
@@ -147,7 +147,7 @@ pub fn crypto_value_history(
 // and services/mcp/investments.rs::stock_transactions_create)
 // ============================================================================
 
-#[derive(Debug, Deserialize, schemars::JsonSchema)]
+#[derive(Debug, Clone, Deserialize, schemars::JsonSchema)]
 pub struct CryptoTransactionRow {
     #[schemars(description = "Ticker symbol, e.g. BTC")]
     pub ticker: String,
@@ -173,6 +173,11 @@ pub struct CryptoTransactionRow {
     #[serde(rename = "transactionDate")]
     #[schemars(description = "Unix timestamp (seconds)")]
     pub transaction_date: i64,
+    #[serde(rename = "importAnyway", default)]
+    #[schemars(
+        description = "Import a genuine identical fill even when its values match an existing transaction"
+    )]
+    pub import_anyway: bool,
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
@@ -198,7 +203,7 @@ fn validate_crypto_row(row: &CryptoTransactionRow) -> Result<()> {
 /// Two-phase bulk import. Phase 1: every row field-validates. Phase 2: one SQL
 /// transaction; rows sorted by date (buys before sells within a date — a sell
 /// may need a position created earlier in the same batch); duplicates skipped;
-/// business-rule failures mid-batch (sell without position, currency mismatch,
+/// business-rule failures mid-batch (sell without position, conflicting identity,
 /// new coin missing a coingeckoId) roll the WHOLE batch back and are reported
 /// as that row's error.
 pub fn crypto_transactions_create(
@@ -218,6 +223,7 @@ pub fn crypto_transactions_create(
     }
     if !errors.is_empty() {
         return Ok(BulkWriteReport {
+            import_batch_id: None,
             promoted: 0,
             created: 0,
             skipped_duplicates: vec![],
@@ -225,11 +231,40 @@ pub fn crypto_transactions_create(
         });
     }
 
+    // Reject conflicting IDs across the entire request, including rows that
+    // would otherwise be skipped as duplicates.
+    let mut identities = std::collections::HashMap::<String, String>::new();
+    for (index, row) in args.transactions.iter().enumerate() {
+        if let Some(id) = row
+            .coingecko_id
+            .as_deref()
+            .map(str::trim)
+            .filter(|id| !id.is_empty())
+        {
+            let ticker = row.ticker.to_uppercase();
+            if identities
+                .insert(ticker.clone(), id.to_string())
+                .is_some_and(|previous| previous != id)
+            {
+                return Ok(BulkWriteReport {
+                    import_batch_id: None,
+                    promoted: 0,
+                    created: 0,
+                    skipped_duplicates: vec![],
+                    errors: vec![RowError {
+                        index,
+                        message: format!("{ticker}: conflicting coingeckoId values in batch"),
+                    }],
+                });
+            }
+        }
+    }
+
     let mut order: Vec<usize> = (0..args.transactions.len()).collect();
     order.sort_by_key(|&i| {
         let r = &args.transactions[i];
         (
-            r.transaction_date,
+            r.transaction_date.div_euclid(86_400),
             if r.tx_type.to_lowercase() == "buy" {
                 0
             } else {
@@ -239,51 +274,113 @@ pub fn crypto_transactions_create(
     });
 
     let tx = conn.transaction()?;
+    let mut written: Vec<(usize, String)> = Vec::new();
     let mut created = 0usize;
     let mut skipped: Vec<SkippedRow> = Vec::new();
     for &i in &order {
         let row = &args.transactions[i];
         let ticker_upper = row.ticker.to_uppercase();
-        if let Some(reason) = dedup::find_duplicate_crypto_transaction(
-            &tx,
-            &ticker_upper,
-            row.transaction_date,
-            &row.tx_type.to_lowercase(),
-            &row.quantity,
-            &row.price_per_unit,
-        )? {
-            skipped.push(SkippedRow::new(i, reason));
-            continue;
+        let provided_id = row
+            .coingecko_id
+            .as_deref()
+            .map(str::trim)
+            .filter(|id| !id.is_empty());
+        if let Some(provided_id) = provided_id {
+            let stored_id: Option<String> = tx
+                .query_row(
+                    "SELECT coingecko_id FROM crypto_investments WHERE ticker = ?1",
+                    [&ticker_upper],
+                    |r| r.get(0),
+                )
+                .optional()?;
+            if stored_id.is_some_and(|id| id != provided_id) {
+                drop(tx);
+                return Ok(BulkWriteReport {
+                    import_batch_id: None,
+                    promoted: 0,
+                    created: 0,
+                    skipped_duplicates: vec![],
+                    errors: vec![RowError {
+                        index: i,
+                        message: format!(
+                            "{ticker_upper}: coingeckoId conflicts with stored holding"
+                        ),
+                    }],
+                });
+            }
+        }
+        if !row.import_anyway {
+            if let Some(reason) = dedup::find_duplicate_crypto_transaction(
+                &tx,
+                &ticker_upper,
+                crate::models::validation::utc_day(row.transaction_date, "validation.dateInvalid")?,
+                &row.tx_type.to_lowercase(),
+                &row.quantity,
+                &row.price_per_unit,
+                &row.currency,
+            )? {
+                skipped.push(SkippedRow::possible_duplicate(i, reason));
+                continue;
+            }
         }
         let name_or_ticker = row.name.as_deref().unwrap_or(&row.ticker);
-        if let Err(e) = crypto_service::import_single_crypto_transaction(
+        match crypto_service::import_crypto_transaction_deferred(
             &tx,
             &row.ticker,
             name_or_ticker,
-            row.coingecko_id.as_deref(),
+            identities.get(&ticker_upper).map(String::as_str),
             &row.tx_type,
             &row.quantity,
             &row.price_per_unit,
             &row.currency,
             row.transaction_date,
         ) {
-            // roll back everything; report the failing row
+            Ok(id) => {
+                if !written.iter().any(|(_, existing)| existing == &id) {
+                    written.push((i, id));
+                }
+            }
+            Err(e) => {
+                // roll back everything; report the failing row
+                drop(tx);
+                return Ok(BulkWriteReport {
+                    import_batch_id: None,
+                    promoted: 0,
+                    created: 0,
+                    skipped_duplicates: vec![],
+                    errors: vec![RowError {
+                        index: i,
+                        message: e.to_string(),
+                    }],
+                });
+            }
+        }
+        created += 1;
+    }
+    for (index, id) in written {
+        if let Err(error) = crate::services::investments::ensure_valid_holdings_history(
+            &tx,
+            "crypto_transactions",
+            &id,
+        ) {
             drop(tx);
             return Ok(BulkWriteReport {
+                import_batch_id: None,
                 promoted: 0,
                 created: 0,
                 skipped_duplicates: vec![],
                 errors: vec![RowError {
-                    index: i,
-                    message: e.to_string(),
+                    index,
+                    message: error.to_string(),
                 }],
             });
         }
-        created += 1;
+        crypto_service::recalculate_crypto_metrics(&tx, &id)?;
     }
     tx.commit()?;
 
     Ok(BulkWriteReport {
+        import_batch_id: None,
         promoted: 0,
         created,
         skipped_duplicates: skipped,
@@ -291,17 +388,8 @@ pub fn crypto_transactions_create(
     })
 }
 
-/// Distinct tickers touched by this batch, paired with a CoinGecko id (the
-/// recalculation trigger needs it). If the same ticker appears with and
-/// without an id in one batch, the Some(id) entry wins.
-///
-/// Note: if a batch supplies two *different* CoinGecko ids for one new
-/// ticker, this picks the first one encountered in input order, while the
-/// id actually persisted to `crypto_investments` is whichever row phase 2
-/// processes first (buys before sells within a date, by rowid within a
-/// tie — see `recalculate_crypto_metrics`). Those two "first"s can disagree.
-/// Such input is malformed (one ticker cannot have two CoinGecko ids); this
-/// is noted, not fixed — the two-phase validator doesn't currently reject it.
+/// Legacy input helper for touched tickers. Callers that schedule pricing work
+/// must load CoinGecko IDs from the committed holdings instead of this input.
 pub fn distinct_tickers(args: &CryptoTransactionsCreateArgs) -> Vec<(String, Option<String>)> {
     let mut map: std::collections::BTreeMap<String, Option<String>> =
         std::collections::BTreeMap::new();
@@ -383,6 +471,7 @@ mod bulk_tests {
             price_per_unit: price.to_string(),
             currency: currency.to_string(),
             transaction_date: date,
+            import_anyway: false,
         }
     }
 
@@ -711,6 +800,202 @@ mod bulk_tests {
     }
 
     #[test]
+    fn integrity_crypto_oversell_and_backdated_sell_are_atomic() {
+        let mut conn = setup_test_db();
+        let report = crypto_transactions_create(
+            &mut conn,
+            &CryptoTransactionsCreateArgs {
+                transactions: vec![
+                    row(
+                        "BTC",
+                        Some("bitcoin"),
+                        "buy",
+                        "1",
+                        "100",
+                        "USD",
+                        1_700_000_000,
+                    ),
+                    row("BTC", None, "sell", "2", "100", "USD", 1_700_100_000),
+                    row("BTC", None, "buy", "3", "100", "USD", 1_700_200_000),
+                ],
+            },
+        )
+        .unwrap();
+        assert_eq!(report.created, 0);
+        assert!(!report.errors.is_empty());
+        assert_eq!(tx_count(&conn), 0);
+        crypto_transactions_create(
+            &mut conn,
+            &CryptoTransactionsCreateArgs {
+                transactions: vec![
+                    row(
+                        "BTC",
+                        Some("bitcoin"),
+                        "buy",
+                        "10",
+                        "100",
+                        "USD",
+                        1_700_000_000,
+                    ),
+                    row("BTC", None, "sell", "8", "100", "USD", 1_700_200_000),
+                ],
+            },
+        )
+        .unwrap();
+        let report = crypto_transactions_create(
+            &mut conn,
+            &CryptoTransactionsCreateArgs {
+                transactions: vec![row("BTC", None, "sell", "5", "100", "USD", 1_700_100_000)],
+            },
+        )
+        .unwrap();
+        assert_eq!(report.created, 0);
+        assert!(!report.errors.is_empty());
+        assert_eq!(holding_quantity(&conn, "BTC"), Some("2".into()));
+    }
+
+    #[test]
+    fn integrity_crypto_identity_conflicts_reject_the_whole_batch() {
+        let mut conn = setup_test_db();
+        let report = crypto_transactions_create(
+            &mut conn,
+            &CryptoTransactionsCreateArgs {
+                transactions: vec![
+                    row(
+                        "BTC",
+                        Some("ethereum"),
+                        "buy",
+                        "1",
+                        "100",
+                        "USD",
+                        1_700_100_000,
+                    ),
+                    row(
+                        "BTC",
+                        Some("bitcoin"),
+                        "buy",
+                        "1",
+                        "100",
+                        "USD",
+                        1_700_000_000,
+                    ),
+                ],
+            },
+        )
+        .unwrap();
+        assert_eq!(report.created, 0);
+        assert!(!report.errors.is_empty());
+        assert_eq!(holding_count(&conn), 0);
+        crypto_transactions_create(
+            &mut conn,
+            &CryptoTransactionsCreateArgs {
+                transactions: vec![row(
+                    "BTC",
+                    Some("bitcoin"),
+                    "buy",
+                    "1",
+                    "100",
+                    "USD",
+                    1_700_000_000,
+                )],
+            },
+        )
+        .unwrap();
+        let report = crypto_transactions_create(
+            &mut conn,
+            &CryptoTransactionsCreateArgs {
+                transactions: vec![row(
+                    "BTC",
+                    Some("ethereum"),
+                    "buy",
+                    "1",
+                    "100",
+                    "USD",
+                    1_700_000_000,
+                )],
+            },
+        )
+        .unwrap();
+        assert_eq!(report.created, 0);
+        assert!(!report.errors.is_empty());
+        assert_eq!(tx_count(&conn), 1);
+    }
+
+    #[test]
+    fn integrity_crypto_numeric_dedup_and_multiple_currencies() {
+        let mut conn = setup_test_db();
+        crypto_transactions_create(
+            &mut conn,
+            &CryptoTransactionsCreateArgs {
+                transactions: vec![row(
+                    "BTC",
+                    Some("bitcoin"),
+                    "buy",
+                    "10",
+                    "100",
+                    "USD",
+                    1_700_000_000,
+                )],
+            },
+        )
+        .unwrap();
+        let report = crypto_transactions_create(
+            &mut conn,
+            &CryptoTransactionsCreateArgs {
+                transactions: vec![
+                    row("BTC", None, "buy", "10.0", "100.00", "USD", 1_700_000_000),
+                    row("BTC", None, "buy", "10", "100", "EUR", 1_700_000_000),
+                ],
+            },
+        )
+        .unwrap();
+        assert!(report.errors.is_empty(), "{:?}", report.errors);
+        assert_eq!(report.created, 1);
+        assert_eq!(report.skipped_duplicates.len(), 1);
+        assert_eq!(holding_quantity(&conn, "BTC"), Some("20".into()));
+    }
+
+    #[test]
+    fn integrity_crypto_identical_fill_requires_explicit_override() {
+        let mut conn = setup_test_db();
+        let first = row(
+            "BTC",
+            Some("bitcoin"),
+            "buy",
+            "1",
+            "100",
+            "USD",
+            1_700_000_000,
+        );
+        crypto_transactions_create(
+            &mut conn,
+            &CryptoTransactionsCreateArgs {
+                transactions: vec![first.clone()],
+            },
+        )
+        .unwrap();
+        let skipped = crypto_transactions_create(
+            &mut conn,
+            &CryptoTransactionsCreateArgs {
+                transactions: vec![first.clone()],
+            },
+        )
+        .unwrap();
+        assert_eq!(skipped.created, 0);
+        let mut genuine_fill = first;
+        genuine_fill.import_anyway = true;
+        let imported = crypto_transactions_create(
+            &mut conn,
+            &CryptoTransactionsCreateArgs {
+                transactions: vec![genuine_fill],
+            },
+        )
+        .unwrap();
+        assert_eq!(imported.created, 1);
+        assert_eq!(holding_quantity(&conn, "BTC"), Some("2".into()));
+    }
+
+    #[test]
     fn earliest_date_picks_the_minimum() {
         let args = CryptoTransactionsCreateArgs {
             transactions: vec![
@@ -720,6 +1005,131 @@ mod bulk_tests {
             ],
         };
         assert_eq!(earliest_date(&args), Some(100));
+    }
+    #[test]
+    fn merged_crypto_batch_history_is_validated_after_all_rows() {
+        let mut conn = setup_test_db();
+        const D: i64 = 1_699_920_000;
+        let seed = CryptoTransactionsCreateArgs {
+            transactions: vec![
+                row("BTC", Some("bitcoin"), "buy", "10", "100", "USD", D),
+                row("BTC", None, "sell", "8", "100", "USD", D + 3 * 86400),
+            ],
+        };
+        assert_eq!(
+            crypto_transactions_create(&mut conn, &seed)
+                .unwrap()
+                .created,
+            2
+        );
+        let args = CryptoTransactionsCreateArgs {
+            transactions: vec![
+                row("BTC", None, "sell", "5", "100", "USD", D + 86400),
+                row("BTC", None, "buy", "5", "100", "USD", D + 2 * 86400),
+            ],
+        };
+        let report = crypto_transactions_create(&mut conn, &args).unwrap();
+        assert_eq!(report.created, 2, "{report:?}");
+        assert_eq!(holding_quantity(&conn, "BTC").as_deref(), Some("2"));
+        let bad = CryptoTransactionsCreateArgs {
+            transactions: vec![row("BTC", None, "sell", "3", "100", "USD", D + 86400)],
+        };
+        let report = crypto_transactions_create(&mut conn, &bad).unwrap();
+        assert_eq!(report.created, 0);
+        assert_eq!(tx_count(&conn), 4);
+    }
+
+    #[test]
+    fn crypto_duplicate_is_possible_and_override_preserves_identical_fill() {
+        let mut conn = setup_test_db();
+        let a = row(
+            "BTC",
+            Some("bitcoin"),
+            "buy",
+            "1",
+            "100",
+            "USD",
+            1_700_000_000,
+        );
+        crypto_transactions_create(
+            &mut conn,
+            &CryptoTransactionsCreateArgs {
+                transactions: vec![a.clone()],
+            },
+        )
+        .unwrap();
+        let mut same = a.clone();
+        same.quantity = "1.00".into();
+        same.price_per_unit = "1e2".into();
+        same.transaction_date += 1;
+        let retry = crypto_transactions_create(
+            &mut conn,
+            &CryptoTransactionsCreateArgs {
+                transactions: vec![same],
+            },
+        )
+        .unwrap();
+        assert_eq!(retry.created, 0);
+        assert!(retry.skipped_duplicates[0].possible_duplicate);
+        let mut forced = a;
+        forced.import_anyway = true;
+        assert_eq!(
+            crypto_transactions_create(
+                &mut conn,
+                &CryptoTransactionsCreateArgs {
+                    transactions: vec![forced]
+                }
+            )
+            .unwrap()
+            .created,
+            1
+        );
+    }
+
+    #[test]
+    fn crypto_keeps_distinct_transaction_currencies_and_rejects_conflicting_ids() {
+        let mut conn = setup_test_db();
+        let a = row(
+            "BTC",
+            Some("bitcoin"),
+            "buy",
+            "1",
+            "100",
+            "USD",
+            1_700_000_000,
+        );
+        let mut b = a.clone();
+        b.currency = "EUR".into();
+        let report = crypto_transactions_create(
+            &mut conn,
+            &CryptoTransactionsCreateArgs {
+                transactions: vec![a.clone(), b.clone()],
+            },
+        )
+        .unwrap();
+        assert_eq!(report.created, 2, "{report:?}");
+        let mut conflicting = a.clone();
+        conflicting.coingecko_id = Some("ethereum".into());
+        let report = crypto_transactions_create(
+            &mut conn,
+            &CryptoTransactionsCreateArgs {
+                transactions: vec![conflicting.clone()],
+            },
+        )
+        .unwrap();
+        assert_eq!(report.created, 0);
+        assert!(report.errors[0].message.contains("coingeckoId"));
+        let mut fresh = setup_test_db();
+        let report = crypto_transactions_create(
+            &mut fresh,
+            &CryptoTransactionsCreateArgs {
+                transactions: vec![a, conflicting],
+            },
+        )
+        .unwrap();
+        assert_eq!(report.created, 0);
+        assert_eq!(holding_count(&fresh), 0);
+        assert_eq!(tx_count(&conn), 2);
     }
 }
 

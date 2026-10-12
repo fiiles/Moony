@@ -155,7 +155,10 @@ mod tests {
 
         let listed = loans_list(&conn).unwrap();
         let row = &listed[0];
-        assert_eq!(row["interestRateValidityDate"], 1_800_000_000i64);
+        assert_eq!(
+            row["interestRateValidityDate"],
+            1_800_000_000i64.div_euclid(86_400) * 86_400
+        );
     }
 
     #[test]

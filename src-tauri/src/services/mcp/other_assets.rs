@@ -82,6 +82,11 @@ pub struct OtherAssetTransactionRow {
     #[serde(rename = "transactionDate")]
     #[schemars(description = "Unix timestamp (seconds)")]
     pub transaction_date: i64,
+    #[serde(default, rename = "importAnyway")]
+    #[schemars(
+        description = "Import an identical-looking transaction only after the user confirms it is a distinct trade"
+    )]
+    pub import_anyway: bool,
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
@@ -179,6 +184,7 @@ pub fn other_asset_transactions_create(
     }
     if !errors.is_empty() {
         return Ok(BulkWriteReport {
+            import_batch_id: None,
             promoted: 0,
             created: 0,
             skipped_duplicates: vec![],
@@ -190,25 +196,64 @@ pub fn other_asset_transactions_create(
     // the batch itself: after row 3 inserts, an identical row 7 matches it.
     let tx = conn.transaction()?;
     let mut created = 0usize;
+    let mut last_created_index = 0;
     let mut skipped: Vec<SkippedRow> = Vec::new();
     for (i, row) in args.transactions.iter().enumerate() {
         if let Some(reason) = dedup::find_duplicate_other_asset_transaction(
             &tx,
             &args.asset_id,
-            row.transaction_date,
+            crate::models::validation::utc_day(row.transaction_date, "validation.invalidDate")?,
             &row.tx_type.to_lowercase(),
             &row.quantity,
             &row.price_per_unit,
+            &row.currency,
         )? {
-            skipped.push(SkippedRow::new(i, reason));
-            continue;
+            if !row.import_anyway {
+                skipped.push(SkippedRow::possible_duplicate(i, reason));
+                continue;
+            }
         }
-        other_assets_service::create_asset_transaction(&tx, &args.asset_id, &row_to_insert(row))?;
+        if let Err(error) = other_assets_service::create_asset_transaction_in_batch(
+            &tx,
+            &args.asset_id,
+            &row_to_insert(row),
+        ) {
+            // The caller gets the offending input index, and no prior row or
+            // duplicate classification is reported as committed after rollback.
+            tx.rollback()?;
+            return Ok(BulkWriteReport {
+                import_batch_id: None,
+                promoted: 0,
+                created: 0,
+                skipped_duplicates: vec![],
+                errors: vec![RowError {
+                    index: i,
+                    message: error.to_string(),
+                }],
+            });
+        }
         created += 1;
+        last_created_index = i;
+    }
+    if created > 0 {
+        if let Err(error) = other_assets_service::recalculate_asset_totals(&tx, &args.asset_id) {
+            tx.rollback()?;
+            return Ok(BulkWriteReport {
+                import_batch_id: None,
+                promoted: 0,
+                created: 0,
+                skipped_duplicates: vec![],
+                errors: vec![RowError {
+                    index: last_created_index,
+                    message: error.to_string(),
+                }],
+            });
+        }
     }
     tx.commit()?;
 
     Ok(BulkWriteReport {
+        import_batch_id: None,
         promoted: 0,
         created,
         skipped_duplicates: skipped,
@@ -221,7 +266,12 @@ pub fn other_asset_transactions_create(
 /// has to be recalculated (mirrors `investments::earliest_date`). Other assets have
 /// no tickers, so this is the only scope the recalculation needs.
 pub fn earliest_date(args: &OtherAssetTransactionsCreateArgs) -> Option<i64> {
-    args.transactions.iter().map(|r| r.transaction_date).min()
+    args.transactions
+        .iter()
+        .filter_map(|r| {
+            crate::models::validation::utc_day(r.transaction_date, "validation.invalidDate").ok()
+        })
+        .min()
 }
 
 #[cfg(test)]
@@ -297,6 +347,7 @@ mod tests {
             price_per_unit: price.to_string(),
             currency: "CZK".to_string(),
             transaction_date: date,
+            import_anyway: false,
         }
     }
 
@@ -627,7 +678,7 @@ mod tests {
                 tx_row("buy", "1", "1000", 300),
             ],
         };
-        assert_eq!(earliest_date(&args), Some(100));
+        assert_eq!(earliest_date(&args), Some(0));
     }
 
     #[test]
@@ -637,5 +688,138 @@ mod tests {
             transactions: vec![],
         };
         assert_eq!(earliest_date(&args), None);
+    }
+    #[test]
+    fn audit_assets_possible_duplicates_can_be_imported_explicitly() {
+        let mut conn = setup_test_db();
+        let id = seed_asset(&conn, "Gold coins");
+        let args: OtherAssetTransactionsCreateArgs = serde_json::from_value(serde_json::json!({
+            "assetId": id,
+            "transactions": [{"type":"buy", "quantity":"2", "pricePerUnit":"5000", "currency":"CZK", "transactionDate":1700000000}]
+        })).unwrap();
+        assert_eq!(
+            other_asset_transactions_create(&mut conn, &args)
+                .unwrap()
+                .created,
+            1
+        );
+        let duplicate = other_asset_transactions_create(&mut conn, &args).unwrap();
+        assert_eq!(duplicate.skipped_duplicates.len(), 1);
+        assert!(duplicate.skipped_duplicates[0].possible_duplicate);
+        let confirmed: OtherAssetTransactionsCreateArgs = serde_json::from_value(serde_json::json!({
+            "assetId": id,
+            "transactions": [{"type":"buy", "quantity":"2.00", "pricePerUnit":"5000.0", "currency":"CZK", "transactionDate":1700000000, "importAnyway": true}]
+        })).unwrap();
+        assert_eq!(
+            other_asset_transactions_create(&mut conn, &confirmed)
+                .unwrap()
+                .created,
+            1
+        );
+        assert_eq!(tx_count(&conn, &id), 2);
+    }
+
+    #[test]
+    fn audit_assets_missing_fx_batch_returns_row_error_and_rolls_back() {
+        let mut conn = setup_test_db();
+        conn.execute_batch(
+            "CREATE TABLE exchange_rate_history (date INTEGER, currency TEXT, rate REAL);",
+        )
+        .unwrap();
+        let id = seed_asset(&conn, "Gold coins");
+        let mut foreign = tx_row("buy", "1", "10", 1_700_000_000);
+        foreign.currency = "EUR".into();
+        let report = other_asset_transactions_create(
+            &mut conn,
+            &OtherAssetTransactionsCreateArgs {
+                asset_id: id.clone(),
+                transactions: vec![tx_row("buy", "2", "5000", 1_700_000_000), foreign],
+            },
+        )
+        .unwrap();
+        assert_eq!(report.created, 0);
+        assert_eq!(report.errors.len(), 1);
+        assert_eq!(report.errors[0].index, 1);
+        assert!(report.errors[0].message.contains("exchangeRateUnavailable"));
+        assert_eq!(tx_count(&conn, &id), 0);
+        assert_eq!(asset_totals(&conn, &id), ("0".into(), "0".into()));
+    }
+
+    #[test]
+    fn audit_assets_dedup_canonicalizes_numbers_days_and_keeps_distinct_currency() {
+        let mut conn = setup_test_db();
+        conn.execute_batch("CREATE TABLE exchange_rate_history (date INTEGER, currency TEXT, rate REAL); INSERT INTO exchange_rate_history VALUES (1699920000, 'CZK', 25);").unwrap();
+        let id = seed_asset(&conn, "Gold coins");
+        let first = OtherAssetTransactionsCreateArgs {
+            asset_id: id.clone(),
+            transactions: vec![tx_row("Buy", "2", "5000", 1_700_000_000)],
+        };
+        assert_eq!(
+            other_asset_transactions_create(&mut conn, &first)
+                .unwrap()
+                .created,
+            1
+        );
+        let mut foreign = tx_row("buy", "2", "5000", 1_700_000_001);
+        foreign.currency = "EUR".into();
+        let report = other_asset_transactions_create(
+            &mut conn,
+            &OtherAssetTransactionsCreateArgs {
+                asset_id: id.clone(),
+                transactions: vec![tx_row("buy", "2.00", "5e3", 1_700_000_001), foreign],
+            },
+        )
+        .unwrap();
+        assert_eq!(report.created, 1);
+        assert_eq!(report.skipped_duplicates.len(), 1);
+        assert_eq!(report.skipped_duplicates[0].index, 0);
+        assert_eq!(tx_count(&conn, &id), 2);
+    }
+    #[test]
+    fn audit_assets_bulk_oversell_rolls_back_and_validates_merged_backdates() {
+        let mut conn = setup_test_db();
+        let id = seed_asset(&conn, "Gold");
+        let mut args = OtherAssetTransactionsCreateArgs {
+            asset_id: id.clone(),
+            transactions: vec![
+                tx_row("buy", "1", "10", 1700000000),
+                tx_row("sell", "2", "10", 1700086400),
+            ],
+        };
+        let rejected = other_asset_transactions_create(&mut conn, &args).unwrap();
+        assert_eq!(rejected.created, 0);
+        assert!(!rejected.errors.is_empty());
+        assert_eq!(tx_count(&conn, &id), 0);
+        args.transactions = vec![
+            tx_row("buy", "1", "10", 1700000000),
+            tx_row("sell", "1", "10", 1700172800),
+        ];
+        assert_eq!(
+            other_asset_transactions_create(&mut conn, &args)
+                .unwrap()
+                .created,
+            2
+        );
+        // The new sale initially invalidates the stored later sale; its same-day
+        // funding buy completes a valid merged history, regardless of input order.
+        args.transactions = vec![
+            tx_row("sell", "1", "10", 1700086400),
+            tx_row("buy", "1", "10", 1700086400),
+        ];
+        assert_eq!(
+            other_asset_transactions_create(&mut conn, &args)
+                .unwrap()
+                .created,
+            2
+        );
+        assert_eq!(asset_totals(&conn, &id).0, "0");
+        args.transactions = vec![tx_row("sell", "0.00000000000000000001", "10", 1700086400)];
+        assert_eq!(
+            other_asset_transactions_create(&mut conn, &args)
+                .unwrap()
+                .created,
+            0
+        );
+        assert_eq!(tx_count(&conn, &id), 4);
     }
 }

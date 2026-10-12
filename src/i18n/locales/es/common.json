@@ -254,7 +254,13 @@
     "periodInvalid": "El inicio del periodo debe ser anterior a su final.",
     "tooManySeries": "Se han pedido demasiadas líneas a la vez.",
     "seriesKeyInvalid": "Solicitud de línea del gráfico no válida.",
-    "benchmarkTickerInvalid": "Ticker de índice no válido."
+    "benchmarkTickerInvalid": "Ticker de índice no válido.",
+    "propertyTypeInvalid": "El tipo de inmueble debe ser personal o de inversión",
+    "insurancePolicyAlreadyExists": "Ya existe una póliza con este proveedor y número",
+    "exchangeRateUnavailable": "La transacción no se puede guardar hasta que estén disponibles los tipos de cambio de su fecha",
+    "dateInvalid": "Fecha no válida",
+    "valueDateInvalid": "Fecha valor no válida",
+    "maturityDateInvalid": "Fecha de vencimiento no válida"
   },
   "auth": {
     "wrongPassword": "La contraseña introducida es incorrecta. Inténtalo de nuevo.",

@@ -350,22 +350,21 @@ impl InsertInvestmentTransaction {
         }
 
         // Quantity validation
-        let qty: f64 = self
-            .quantity
-            .parse()
-            .map_err(|_| AppError::Validation("validation.invalidQuantity".into()))?;
+        let qty = super::validation::finite_number(&self.quantity, "validation.invalidQuantity")?;
         if qty <= 0.0 {
             return Err(AppError::Validation("validation.quantityPositive".into()));
         }
 
         // Price validation
-        let price: f64 = self
-            .price_per_unit
-            .parse()
-            .map_err(|_| AppError::Validation("validation.invalidPrice".into()))?;
+        let price =
+            super::validation::finite_number(&self.price_per_unit, "validation.invalidPrice")?;
         if price <= 0.0 {
             return Err(AppError::Validation("validation.pricePositive".into()));
         }
+        if !(qty * price).is_finite() {
+            return Err(AppError::Validation("validation.invalidAmount".into()));
+        }
+        super::validation::utc_day(self.transaction_date, "validation.dateInvalid")?;
 
         // Currency validation
         if self.currency.len() != 3 {
@@ -376,5 +375,37 @@ impl InsertInvestmentTransaction {
         }
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod integrity_tests {
+    use super::*;
+
+    fn transaction() -> InsertInvestmentTransaction {
+        serde_json::from_value(serde_json::json!({"type":"buy", "ticker":"AAPL", "companyName":"Apple", "quantity":"1", "pricePerUnit":"10", "currency":"USD", "transactionDate":1767225600})).expect("transaction")
+    }
+
+    #[test]
+    fn quantities_prices_and_cost_products_must_be_finite() {
+        for invalid in ["NaN", "inf", "-inf", "1e999"] {
+            let mut row = transaction();
+            row.quantity = invalid.into();
+            assert!(row.validate().is_err(), "quantity {invalid}");
+            let mut row = transaction();
+            row.price_per_unit = invalid.into();
+            assert!(row.validate().is_err(), "price {invalid}");
+        }
+        let mut row = transaction();
+        row.quantity = "1e308".into();
+        row.price_per_unit = "1e308".into();
+        assert!(row.validate().is_err(), "overflowing product");
+    }
+
+    #[test]
+    fn transaction_date_must_be_a_supported_calendar_day() {
+        let mut row = transaction();
+        row.transaction_date = i64::MAX;
+        assert!(row.validate().is_err());
     }
 }

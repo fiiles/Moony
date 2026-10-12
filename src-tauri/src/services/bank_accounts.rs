@@ -84,7 +84,8 @@ pub fn create_account(
     let account_type = data
         .account_type
         .clone()
-        .unwrap_or_else(|| "checking".to_string());
+        .unwrap_or_else(|| "checking".to_string())
+        .to_ascii_lowercase();
     let currency = data
         .currency
         .clone()
@@ -92,6 +93,20 @@ pub fn create_account(
     let balance = data.balance.clone().unwrap_or_else(|| "0".to_string());
     let has_zone = data.has_zone_designation.unwrap_or(false);
     let exclude = data.exclude_from_balance.unwrap_or(false);
+    let interest_rate = data
+        .interest_rate
+        .as_deref()
+        .filter(|rate| !rate.trim().is_empty())
+        .unwrap_or("0")
+        .to_string();
+    let termination_date = data
+        .termination_date
+        .map(|date| crate::models::validation::utc_day(date, "validation.dateInvalid"))
+        .transpose()?;
+    let interest_rate_valid_until = data
+        .interest_rate_valid_until
+        .map(|date| crate::models::validation::utc_day(date, "validation.dateInvalid"))
+        .transpose()?;
 
     let tx = conn.unchecked_transaction()?;
     tx.execute(
@@ -111,13 +126,13 @@ pub fn create_account(
             balance,
             data.institution_id,
             "manual",
-            data.interest_rate,
+            interest_rate,
             has_zone as i32,
-            data.termination_date,
+            termination_date,
             now,
             now,
             exclude as i32,
-            data.interest_rate_valid_until,
+            interest_rate_valid_until,
             data.balance_as_of.flatten(),
         ],
     )?;
@@ -145,10 +160,10 @@ pub fn create_account(
         external_account_id: None,
         data_source: "manual".to_string(),
         last_synced_at: None,
-        interest_rate: data.interest_rate.clone(),
+        interest_rate: Some(interest_rate),
         has_zone_designation: has_zone,
-        termination_date: data.termination_date,
-        interest_rate_valid_until: data.interest_rate_valid_until,
+        termination_date,
+        interest_rate_valid_until,
         exclude_from_balance: exclude,
         created_at: now,
         updated_at: now,
@@ -164,6 +179,7 @@ pub fn update_account(
     id: &str,
     data: &InsertBankAccount,
 ) -> Result<BankAccount> {
+    data.validate()?;
     let now = chrono::Utc::now().timestamp();
 
     // Get existing account first
@@ -186,7 +202,25 @@ pub fn update_account(
         }
     }
 
-    let account_type = data.account_type.clone().unwrap_or(existing.account_type);
+    let account_type = data
+        .account_type
+        .clone()
+        .unwrap_or(existing.account_type)
+        .to_ascii_lowercase();
+    let interest_rate = data
+        .interest_rate
+        .as_deref()
+        .filter(|rate| !rate.trim().is_empty())
+        .unwrap_or("0")
+        .to_string();
+    let termination_date = data
+        .termination_date
+        .map(|date| crate::models::validation::utc_day(date, "validation.dateInvalid"))
+        .transpose()?;
+    let interest_rate_valid_until = data
+        .interest_rate_valid_until
+        .map(|date| crate::models::validation::utc_day(date, "validation.dateInvalid"))
+        .transpose()?;
     let currency = data.currency.clone().unwrap_or(existing.currency.clone());
     // The balance is never edited here: it mirrors the newest balance record
     // (record_balance / delete_balance_record).
@@ -214,12 +248,12 @@ pub fn update_account(
             currency,
             balance,
             data.institution_id,
-            data.interest_rate,
+            interest_rate,
             has_zone as i32,
-            data.termination_date,
+            termination_date,
             exclude as i32,
             now,
-            data.interest_rate_valid_until,
+            interest_rate_valid_until,
             id,
             balance_as_of,
         ],
@@ -238,10 +272,10 @@ pub fn update_account(
         external_account_id: existing.external_account_id,
         data_source: existing.data_source,
         last_synced_at: existing.last_synced_at,
-        interest_rate: data.interest_rate.clone(),
+        interest_rate: Some(interest_rate),
         has_zone_designation: has_zone,
-        termination_date: data.termination_date,
-        interest_rate_valid_until: data.interest_rate_valid_until,
+        termination_date,
+        interest_rate_valid_until,
         exclude_from_balance: exclude,
         created_at: existing.created_at,
         updated_at: now,
@@ -339,6 +373,12 @@ pub fn create_transaction_with_origin(
 
     let id = Uuid::new_v4().to_string();
     let now = chrono::Utc::now().timestamp();
+    let booking_date =
+        crate::models::validation::utc_day(data.booking_date, "validation.bookingDateInvalid")?;
+    let value_date = data
+        .value_date
+        .map(|day| crate::models::validation::utc_day(day, "validation.valueDateInvalid"))
+        .transpose()?;
 
     // Normalize enum-like fields to lowercase so stored values match both
     // validate()'s lowercase comparisons and the dedup queries, which compare
@@ -384,8 +424,8 @@ pub fn create_transaction_with_origin(
             data.description,
             data.counterparty_name,
             data.counterparty_iban,
-            data.booking_date,
-            data.value_date,
+            booking_date,
+            value_date,
             data.category_id,
             status,
             data_source,
@@ -411,8 +451,8 @@ pub fn create_transaction_with_origin(
         counterparty_iban: data.counterparty_iban.clone(),
         counterparty_bank_code: data.counterparty_bank_code.clone(),
         counterparty_country: data.counterparty_country.clone(),
-        booking_date: data.booking_date,
-        value_date: data.value_date,
+        booking_date,
+        value_date,
         category_id: data.category_id.clone(),
         merchant_category_code: None,
         remittance_info: None,
@@ -453,7 +493,13 @@ pub fn promote_pending_transaction(
             "validation.pendingPromotionInvalid".into(),
         ));
     }
-    let count=conn.execute("UPDATE bank_transactions SET status='booked',booking_date=?1,value_date=?2,amount=?3,currency=COALESCE(?4,currency),tx_type=?5,description=COALESCE(?6,description),counterparty_name=COALESCE(?7,counterparty_name),counterparty_iban=COALESCE(?8,counterparty_iban),counterparty_bank_code=COALESCE(?9,counterparty_bank_code),counterparty_country=COALESCE(?10,counterparty_country) WHERE id=?11 AND bank_account_id=?12 AND transaction_id=?13 AND status='pending'",params![data.booking_date,data.value_date,data.amount,data.currency,data.tx_type.to_lowercase(),data.description,data.counterparty_name,data.counterparty_iban,data.counterparty_bank_code,data.counterparty_country,id,data.bank_account_id,stored_id])?;
+    let booking_date =
+        crate::models::validation::utc_day(data.booking_date, "validation.bookingDateInvalid")?;
+    let value_date = data
+        .value_date
+        .map(|day| crate::models::validation::utc_day(day, "validation.valueDateInvalid"))
+        .transpose()?;
+    let count=conn.execute("UPDATE bank_transactions SET status='booked',booking_date=?1,value_date=?2,amount=?3,currency=COALESCE(?4,currency),tx_type=?5,description=COALESCE(?6,description),counterparty_name=COALESCE(?7,counterparty_name),counterparty_iban=COALESCE(?8,counterparty_iban),counterparty_bank_code=COALESCE(?9,counterparty_bank_code),counterparty_country=COALESCE(?10,counterparty_country) WHERE id=?11 AND bank_account_id=?12 AND transaction_id=?13 AND status='pending'",params![booking_date,value_date,data.amount,data.currency,data.tx_type.to_lowercase(),data.description,data.counterparty_name,data.counterparty_iban,data.counterparty_bank_code,data.counterparty_country,id,data.bank_account_id,stored_id])?;
     if count != 1 {
         return Err(AppError::Validation(
             "validation.pendingPromotionInvalid".into(),
@@ -772,6 +818,47 @@ mod tests {
     }
 
     #[test]
+    fn savings_defaults_and_enum_case_match_the_form_on_create_and_update() {
+        let conn = setup_test_db();
+        let mut data = minimal_insert("Savings");
+        data.account_type = Some("SAVINGS".into());
+        let created = create_account(&conn, &data).expect("create savings");
+        assert_eq!(created.account_type, "savings");
+        assert_eq!(created.interest_rate.as_deref(), Some("0"));
+        let stored = get_account_by_id(&conn, &created.id).expect("read savings");
+        assert_eq!(stored.interest_rate, created.interest_rate);
+        let updated = update_account(&conn, &created.id, &data).expect("update savings");
+        assert_eq!(updated.account_type, "savings");
+        assert_eq!(updated.interest_rate.as_deref(), Some("0"));
+    }
+
+    #[test]
+    fn bank_transaction_dates_are_bounded_and_stored_as_utc_days() {
+        let conn = setup_test_db();
+        let mut data: InsertBankTransaction = serde_json::from_value(serde_json::json!({
+            "bankAccountId":"acc-1", "type":"debit", "amount":"10",
+            "bookingDate":1767225600 + 3600, "valueDate":1767312000 + 40000
+        }))
+        .expect("input");
+        let created = create_transaction(&conn, &data).expect("create");
+        assert_eq!(created.booking_date, 1767225600);
+        assert_eq!(created.value_date, Some(1767312000));
+        for field in ["booking", "value"] {
+            data.booking_date = 1767225600;
+            data.value_date = None;
+            if field == "booking" {
+                data.booking_date = i64::MAX;
+            } else {
+                data.value_date = Some(i64::MAX);
+            }
+            assert!(
+                create_transaction(&conn, &data).is_err(),
+                "accepted invalid {field} day"
+            );
+        }
+    }
+
+    #[test]
     fn validate_rejects_nonfinite_account_zone_amounts() {
         for amount in ["NaN", "inf", "-inf", "1e999"] {
             for field in ["fromAmount", "toAmount"] {
@@ -791,6 +878,24 @@ mod tests {
             data.balance = Some(balance.into());
             assert!(data.validate().is_err(), "accepted {balance}");
         }
+    }
+
+    #[test]
+    fn blank_opening_balances_are_rejected_before_writing() {
+        let conn = setup_test_db();
+        for blank in ["", "  ", " 1.25 "] {
+            let mut data = minimal_insert("Blank balance");
+            data.balance = Some(blank.into());
+            assert!(create_account(&conn, &data).is_err());
+        }
+        let count: i64 = conn
+            .query_row(
+                "SELECT count(*) FROM bank_accounts WHERE name = 'Blank balance'",
+                [],
+                |row| row.get(0),
+            )
+            .expect("count");
+        assert_eq!(count, 0);
     }
 
     #[test]
@@ -863,12 +968,13 @@ mod tests {
         let mut data = minimal_insert("Spořák");
         data.interest_rate_valid_until = Some(1_790_000_000);
         let created = create_account(&conn, &data).expect("create");
-        assert_eq!(created.interest_rate_valid_until, Some(1_790_000_000));
+        let expected_day = 1_790_000_000i64.div_euclid(86_400) * 86_400;
+        assert_eq!(created.interest_rate_valid_until, Some(expected_day));
         assert_eq!(
             get_account_by_id(&conn, &created.id)
                 .expect("read")
                 .interest_rate_valid_until,
-            Some(1_790_000_000)
+            Some(expected_day)
         );
         data.interest_rate_valid_until = None;
         let updated = update_account(&conn, &created.id, &data).expect("update");

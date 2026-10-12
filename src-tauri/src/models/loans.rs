@@ -100,18 +100,22 @@ pub struct InsertLoan {
     pub currency: Option<String>,
     #[serde(rename = "interestRate")]
     pub interest_rate: Option<String>,
+    /// Calendar date as Unix seconds, years 0001-9999; stored at UTC midnight.
     #[serde(rename = "interestRateValidityDate")]
     pub interest_rate_validity_date: Option<i64>,
     #[serde(rename = "monthlyPayment")]
     pub monthly_payment: Option<String>,
+    /// Calendar date as Unix seconds, years 0001-9999; stored at UTC midnight.
     #[serde(rename = "startDate")]
     pub start_date: Option<i64>,
+    /// Calendar date as Unix seconds, years 0001-9999; stored at UTC midnight.
     #[serde(rename = "endDate")]
     pub end_date: Option<i64>,
     /// Manual outstanding balance; must come with `balance_anchor_date`.
     /// Both absent means "amortize from the principal at the start date".
     #[serde(rename = "balanceAnchorAmount")]
     pub balance_anchor_amount: Option<String>,
+    /// Calendar date as Unix seconds, years 0001-9999; stored at UTC midnight.
     #[serde(rename = "balanceAnchorDate")]
     pub balance_anchor_date: Option<i64>,
 }
@@ -151,35 +155,41 @@ impl InsertLoan {
 
         // Interest rate validation (if provided)
         if let Some(ref rate) = self.interest_rate {
-            if !rate.is_empty() {
-                let rate_val: f64 = rate
-                    .parse()
-                    .map_err(|_| AppError::Validation("validation.interestRatePositive".into()))?;
-                if !(0.0..=100.0).contains(&rate_val) {
-                    return Err(AppError::Validation(
-                        "validation.interestRatePositive".into(),
-                    ));
-                }
+            let rate_val =
+                super::validation::finite_number(rate, "validation.interestRatePositive")?;
+            if !(0.0..=100.0).contains(&rate_val) {
+                return Err(AppError::Validation(
+                    "validation.interestRatePositive".into(),
+                ));
             }
         }
 
         // Monthly payment validation (if provided)
         if let Some(ref payment) = self.monthly_payment {
-            if !payment.is_empty() {
-                let payment_val: f64 = payment
-                    .parse()
-                    .map_err(|_| AppError::Validation("validation.invalidAmount".into()))?;
-                if !payment_val.is_finite() || payment_val < 0.0 {
-                    return Err(AppError::Validation(
-                        "validation.monthlyPaymentPositive".into(),
-                    ));
-                }
+            let payment_val: f64 = payment
+                .parse()
+                .map_err(|_| AppError::Validation("validation.invalidAmount".into()))?;
+            if !payment_val.is_finite() || payment_val < 0.0 {
+                return Err(AppError::Validation(
+                    "validation.monthlyPaymentPositive".into(),
+                ));
             }
         }
 
         // Date validation
+        for date in [
+            self.start_date,
+            self.end_date,
+            self.interest_rate_validity_date,
+            self.balance_anchor_date,
+        ]
+        .into_iter()
+        .flatten()
+        {
+            super::validation::utc_day(date, "validation.dateInvalid")?;
+        }
         if let (Some(start), Some(end)) = (self.start_date, self.end_date) {
-            if end <= start {
+            if end.div_euclid(86_400) <= start.div_euclid(86_400) {
                 return Err(AppError::Validation("validation.endDateAfterStart".into()));
             }
         }

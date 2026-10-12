@@ -485,7 +485,8 @@ fn get_raw_report(
                 row.get::<_, String>(1)?,
                 row.get::<_, String>(2)?,
                 row.get::<_, String>(3)?,
-                row.get::<_, String>(4)?,
+                row.get::<_, Option<String>>(4)?
+                    .unwrap_or_else(|| "0".to_string()),
                 row.get::<_, i32>(5)?,
             ))
         })?;
@@ -612,7 +613,7 @@ fn get_raw_report(
             let coupon_value: f64 = crate::services::reporting::parse_money(&bond.2)?;
             let quantity: f64 = crate::services::reporting::parse_money(&bond.3)?;
             let interest_rate: f64 = crate::services::reporting::parse_money(&bond.4)?;
-            let yearly_interest = coupon_value * quantity * interest_rate / 100.0;
+            let yearly_interest = coupon_value * quantity * (interest_rate / 100.0);
             let yearly_interest_czk = fx.convert(yearly_interest, &bond.5);
             let normalized = normalize_to_period(yearly_interest_czk, "yearly", target_period);
 
@@ -1326,6 +1327,9 @@ pub fn get_report_in_currency(
         + investments.total_income.parse::<f64>().expect("money");
     let expense = personal.total_expenses.parse::<f64>().expect("money")
         + investments.total_expenses.parse::<f64>().expect("money");
+    if !income.is_finite() || !expense.is_finite() || !(income - expense).is_finite() {
+        return Err(AppError::Validation("validation.invalidAmount".into()));
+    }
     Ok(CashflowReport {
         report_currency: report_currency.clone(),
         view_type: raw.view_type,
@@ -1445,6 +1449,44 @@ impl PlanningFx {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn unrepresentable_aggregate_income_returns_an_error() {
+        let conn = planning_db();
+        conn.execute_batch("INSERT INTO bonds VALUES ('large-1','Large bond 1','1e308','1','100','EUR'), ('large-2','Large bond 2','1e308','1','100','EUR');").expect("bonds");
+        assert!(get_report_in_currency(&conn, "yearly", "EUR").is_err());
+    }
+
+    #[test]
+    fn large_finite_bond_interest_is_representable_in_the_plan() {
+        let conn = planning_db();
+        conn.execute(
+            "INSERT INTO bonds VALUES ('large','Large bond','1e308','1','100','EUR')",
+            [],
+        )
+        .expect("bond");
+        let report = get_report_in_currency(&conn, "yearly", "EUR").expect("finite plan");
+        assert_eq!(
+            report
+                .investments
+                .total_income
+                .parse::<f64>()
+                .expect("income"),
+            1e308
+        );
+    }
+
+    #[test]
+    fn legacy_savings_without_an_interest_rate_does_not_break_the_plan() {
+        let conn = planning_db();
+        conn.execute(
+            "INSERT INTO bank_accounts VALUES ('saving','Savings','1000','EUR',NULL,0,'savings',0)",
+            [],
+        )
+        .expect("savings");
+        let report = get_report_in_currency(&conn, "monthly", "EUR").expect("read plan");
+        assert_eq!(report.investments.total_income, "0.00");
+    }
     fn planning_db() -> rusqlite::Connection {
         let conn = rusqlite::Connection::open_in_memory().unwrap();
         conn.execute_batch("CREATE TABLE loans(id TEXT,name TEXT,principal TEXT,currency TEXT,interest_rate TEXT,monthly_payment TEXT,start_date INTEGER,end_date INTEGER,balance_anchor_amount TEXT,balance_anchor_date INTEGER);

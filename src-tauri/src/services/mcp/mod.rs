@@ -36,8 +36,7 @@ use crate::db::Database;
 use crate::services::categorization::CategorizationEngine;
 
 /// Payload for the `mcp-data-changed` event emitted to the app UI whenever an
-/// MCP tool call writes data (rule-7 refresh happens in the SyncProvider
-/// listener, not here).
+/// MCP tool call writes data (bookkeeping is durable backend work and SyncProvider invalidates views).
 #[derive(Clone, serde::Serialize)]
 struct McpDataChanged {
     domain: String,
@@ -156,6 +155,8 @@ pub struct RowError {
 /// sell without position, currency mismatch, missing coingeckoId).
 #[derive(Debug, serde::Serialize)]
 pub struct BulkWriteReport {
+    #[serde(rename = "importBatchId", skip_serializing_if = "Option::is_none")]
+    pub import_batch_id: Option<String>,
     pub promoted: usize,
     pub created: usize,
     #[serde(rename = "skippedDuplicates")]
@@ -231,8 +232,34 @@ impl MoonyMcp {
         engine
     }
 
-    /// Notify the app UI that MCP changed data (rule-7 refresh happens in
-    /// the SyncProvider listener). Best-effort — a missing/closed frontend
+    /// Save intent before a write, while holding the same database lock. This deliberately
+    /// precedes the domain transaction: a failed write may refresh unchanged data, but a
+    /// committed write can never lose its follow-up work in a process crash.
+    fn write_conn<T>(
+        &self,
+        domain: &str,
+        earliest: Option<i64>,
+        f: impl FnOnce(&rusqlite::Connection) -> crate::error::Result<T>,
+    ) -> crate::error::Result<T> {
+        self.db.with_conn(|conn| {
+            crate::services::mcp_refresh::enqueue(conn, domain, earliest)?;
+            f(conn)
+        })
+    }
+
+    fn write_conn_mut<T>(
+        &self,
+        domain: &str,
+        earliest: Option<i64>,
+        f: impl FnOnce(&mut rusqlite::Connection) -> crate::error::Result<T>,
+    ) -> crate::error::Result<T> {
+        self.db.with_conn_mut(|conn| {
+            crate::services::mcp_refresh::enqueue(conn, domain, earliest)?;
+            f(conn)
+        })
+    }
+
+    /// Schedule durable bookkeeping and notify the app UI that MCP changed data. Best-effort — a missing/closed frontend
     /// window is fine, so emit errors are swallowed.
     fn emit_data_changed(
         &self,
@@ -240,6 +267,9 @@ impl MoonyMcp {
         tickers: &[(String, Option<String>)],
         earliest_date: Option<i64>,
     ) {
+        if domain != "stock-monitor" {
+            crate::commands::mcp_refresh::resume(self.app.clone(), self.db.clone());
+        }
         let _ = self.app.emit(
             "mcp-data-changed",
             McpDataChanged {
@@ -520,9 +550,9 @@ impl MoonyMcp {
         &self,
         Parameters(body): Parameters<crate::models::InsertInsurancePolicy>,
     ) -> Result<CallToolResult, McpError> {
-        let result = self
-            .db
-            .with_conn(|conn| insurance::insurance_create(conn, body));
+        let result = self.write_conn("insurance", None, |conn| {
+            insurance::insurance_create(conn, body)
+        });
         self.create_tool_result("insurance", result)
     }
 
@@ -583,9 +613,9 @@ impl MoonyMcp {
         &self,
         Parameters(args): Parameters<bank_accounts::BankAccountCreateArgs>,
     ) -> Result<CallToolResult, McpError> {
-        let result = self
-            .db
-            .with_conn(|conn| bank_accounts::bank_account_create(conn, &args));
+        let result = self.write_conn("bank", None, |conn| {
+            bank_accounts::bank_account_create(conn, &args)
+        });
         self.create_tool_result("bank", result)
     }
 
@@ -596,8 +626,11 @@ impl MoonyMcp {
         &self,
         Parameters(args): Parameters<bank_accounts::BankTransactionsCreateArgs>,
     ) -> Result<CallToolResult, McpError> {
+        if let Err(e) = check_bulk_size(args.transactions.len()) {
+            return to_result(Err(e));
+        }
         let engine = self.categorization_engine();
-        let report = self.db.with_conn_mut(|conn| {
+        let report = self.write_conn_mut("bank", None, |conn| {
             bank_accounts::bank_transactions_create(conn, &args, engine.as_deref())
         });
         // Valid nonempty requests also write history when all rows are duplicates
@@ -618,9 +651,12 @@ impl MoonyMcp {
         &self,
         Parameters(args): Parameters<bank_accounts::BankTransactionsCategorizeArgs>,
     ) -> Result<CallToolResult, McpError> {
-        let report = self
-            .db
-            .with_conn_mut(|conn| bank_accounts::bank_transactions_categorize(conn, &args));
+        if let Err(e) = check_bulk_size(args.assignments.len()) {
+            return to_result(Err(e));
+        }
+        let report = self.write_conn_mut("bank", None, |conn| {
+            bank_accounts::bank_transactions_categorize(conn, &args)
+        });
         self.bulk_tool_result("bank", &[], None, report)
     }
 
@@ -631,38 +667,59 @@ impl MoonyMcp {
         &self,
         Parameters(args): Parameters<bank_accounts::BankTransactionsAssignImportArgs>,
     ) -> Result<CallToolResult, McpError> {
-        let report = self
-            .db
-            .with_conn_mut(|conn| bank_accounts::bank_transactions_assign_import(conn, &args));
+        if let Err(e) = check_bulk_size(args.transaction_ids.len()) {
+            return to_result(Err(e));
+        }
+        let report = self.write_conn_mut("bank", None, |conn| {
+            bank_accounts::bank_transactions_assign_import(conn, &args)
+        });
         self.bulk_tool_result("bank", &[], None, report)
     }
 
     #[tool(
-        description = "Bulk-import stock buy/sell transactions (designed for parsed broker exports). Holdings are created automatically on the first buy of a new ticker — no separate create call needed. A sell requires an existing position; every transaction of one ticker must use one currency.\n\nCall this only after presenting the parsed data to the user and receiving their confirmation. Import in batches of about 100 rows at a time (max 200 per call); split larger exports across multiple calls — safe to do because duplicate rows are skipped and reported.\nAll-or-nothing: invalid rows or business-rule failures (sell without position, currency mismatch) reject the whole batch with per-row errors. Duplicates (same ticker+date+type+quantity+price) are skipped and reported.\ntype: buy | sell. Dates: Unix timestamps (seconds). Quantities/prices: positive numeric strings."
+        description = "Bulk-import stock buy/sell transactions (designed for parsed broker exports). Holdings are created automatically on the first buy of a new ticker — no separate create call needed. A sell requires an existing position; every transaction of one ticker must use one currency.\n\nCall this only after presenting the parsed data to the user and receiving their confirmation. Import in batches of about 100 rows at a time (max 200 per call); split larger exports across multiple calls — safe to do because duplicate rows are skipped and reported.\nAll-or-nothing: invalid rows or business-rule failures (sell without position, currency mismatch) reject the whole batch with per-row errors. Each successful import records an undoable import batch; pass fileName when known. Pass externalId for the broker row identity. Possible duplicates (same ticker+UTC day+type+numeric quantity+numeric price+currency) are skipped and reported; importAnyway allows confirmed distinct fills.\ntype: buy | sell. Dates: Unix timestamps (seconds). Quantities/prices: positive numeric strings."
     )]
     fn stock_transactions_create(
         &self,
         Parameters(args): Parameters<investments::StockTransactionsCreateArgs>,
     ) -> Result<CallToolResult, McpError> {
-        let report = self
-            .db
-            .with_conn_mut(|conn| investments::stock_transactions_create(conn, &args));
+        if let Err(e) = check_bulk_size(args.transactions.len()) {
+            return to_result(Err(e));
+        }
+        let report = self.write_conn_mut("stocks", investments::earliest_date(&args), |conn| {
+            investments::stock_transactions_create(conn, &args)
+        });
         let tickers = investments::distinct_tickers(&args);
         let earliest = investments::earliest_date(&args);
         self.bulk_tool_result("stocks", &tickers, earliest, report)
     }
 
     #[tool(
-        description = "Bulk-import cryptocurrency buy/sell transactions (designed for parsed exchange exports). Holdings are created automatically on the first buy of a new coin — supply coingeckoId (e.g. \"bitcoin\") for coins not yet in Moony so prices can be fetched. A sell requires an existing position; every transaction of one coin must use one currency.\n\nCall this only after presenting the parsed data to the user and receiving their confirmation. Import in batches of about 100 rows at a time (max 200 per call); split larger exports across multiple calls — safe to do because duplicate rows are skipped and reported.\nAll-or-nothing with per-row errors; duplicates (same ticker+date+type+quantity+price) are skipped and reported.\ntype: buy | sell. Dates: Unix timestamps (seconds). Quantities/prices: positive numeric strings."
+        description = "Bulk-import cryptocurrency buy/sell transactions (designed for parsed exchange exports). Holdings are created automatically on the first buy of a new coin — supply coingeckoId (e.g. \"bitcoin\") for coins not yet in Moony so prices can be fetched. A sell requires an existing position and sufficient chronological holdings. Prices retain each transaction currency; CoinGecko identity must match the existing holding.\n\nCall this only after presenting the parsed data to the user and receiving their confirmation. Import in batches of about 100 rows at a time (max 200 per call); split larger exports across multiple calls — safe to do because duplicate rows are skipped and reported.\nAll-or-nothing with per-row errors; possible duplicates (same ticker+UTC day+type+numeric quantity+numeric price+currency) are skipped and reported; importAnyway allows confirmed distinct fills.\ntype: buy | sell. Dates: Unix timestamps (seconds). Quantities/prices: positive numeric strings."
     )]
     fn crypto_transactions_create(
         &self,
         Parameters(args): Parameters<crypto::CryptoTransactionsCreateArgs>,
     ) -> Result<CallToolResult, McpError> {
-        let report = self
+        if let Err(e) = check_bulk_size(args.transactions.len()) {
+            return to_result(Err(e));
+        }
+        let report = self.write_conn_mut("crypto", crypto::earliest_date(&args), |conn| {
+            crypto::crypto_transactions_create(conn, &args)
+        });
+        let requested: Vec<String> = crypto::distinct_tickers(&args)
+            .into_iter()
+            .map(|(ticker, _)| ticker)
+            .collect();
+        let tickers = self
             .db
-            .with_conn_mut(|conn| crypto::crypto_transactions_create(conn, &args));
-        let tickers = crypto::distinct_tickers(&args);
+            .with_conn(|conn| {
+                crate::services::mcp_refresh::committed_crypto_tickers(conn, &requested)
+            })
+            .unwrap_or_else(|e| {
+                log::warn!("[MCP] committed crypto metadata unavailable: {e}");
+                Vec::new()
+            });
         let earliest = crypto::earliest_date(&args);
         self.bulk_tool_result("crypto", &tickers, earliest, report)
     }
@@ -674,7 +731,7 @@ impl MoonyMcp {
         &self,
         Parameters(args): Parameters<crate::models::InsertBond>,
     ) -> Result<CallToolResult, McpError> {
-        let result = self.db.with_conn(|conn| bonds::bond_create(conn, &args));
+        let result = self.write_conn("bonds", None, |conn| bonds::bond_create(conn, &args));
         self.create_tool_result("bonds", result)
     }
 
@@ -685,7 +742,7 @@ impl MoonyMcp {
         &self,
         Parameters(args): Parameters<crate::models::InsertLoan>,
     ) -> Result<CallToolResult, McpError> {
-        let result = self.db.with_conn(|conn| loans::loan_create(conn, &args));
+        let result = self.write_conn("loans", None, |conn| loans::loan_create(conn, &args));
         self.create_tool_result("loans", result)
     }
 
@@ -696,9 +753,9 @@ impl MoonyMcp {
         &self,
         Parameters(args): Parameters<real_estate::RealEstateCreateArgs>,
     ) -> Result<CallToolResult, McpError> {
-        let result = self
-            .db
-            .with_conn(|conn| real_estate::real_estate_create(conn, &args));
+        let result = self.write_conn("real-estate", None, |conn| {
+            real_estate::real_estate_create(conn, &args)
+        });
         self.create_tool_result("real-estate", result)
     }
 
@@ -709,22 +766,26 @@ impl MoonyMcp {
         &self,
         Parameters(args): Parameters<other_assets::OtherAssetCreateArgs>,
     ) -> Result<CallToolResult, McpError> {
-        let result = self
-            .db
-            .with_conn(|conn| other_assets::other_asset_create(conn, &args));
+        let result = self.write_conn("other-assets", None, |conn| {
+            other_assets::other_asset_create(conn, &args)
+        });
         self.create_tool_result("other-assets", result)
     }
 
     #[tool(
-        description = "Bulk-import buy/sell transactions for one existing other asset.\n\nCall this only after presenting the parsed data to the user and receiving their confirmation. Import in batches of about 100 rows at a time (max 200 per call); split larger exports across multiple calls — safe to do because duplicate rows are skipped and reported.\nAll-or-nothing with per-row errors; duplicates (same asset+date+type+quantity+price) are skipped and reported. type: buy | sell."
+        description = "Bulk-import buy/sell transactions for one existing other asset.\n\nCall this only after presenting the parsed data to the user and receiving their confirmation. Import in batches of about 100 rows at a time (max 200 per call); split larger exports across multiple calls — safe to do because duplicate rows are skipped and reported.\nAll-or-nothing with per-row errors; possible duplicates (same asset+UTC day+type+numeric quantity+numeric price+currency) are skipped and reported; importAnyway allows confirmed distinct purchases. Costs in another currency require an available historical FX quote. type: buy | sell."
     )]
     fn other_asset_transactions_create(
         &self,
         Parameters(args): Parameters<other_assets::OtherAssetTransactionsCreateArgs>,
     ) -> Result<CallToolResult, McpError> {
-        let report = self
-            .db
-            .with_conn_mut(|conn| other_assets::other_asset_transactions_create(conn, &args));
+        if let Err(e) = check_bulk_size(args.transactions.len()) {
+            return to_result(Err(e));
+        }
+        let report =
+            self.write_conn_mut("other-assets", other_assets::earliest_date(&args), |conn| {
+                other_assets::other_asset_transactions_create(conn, &args)
+            });
         // No tickers (other assets aren't priced per symbol), but the earliest
         // date still matters: a backdated row needs the portfolio history recalculated,
         // exactly as the UI path does (commands/other_assets.rs).

@@ -420,56 +420,8 @@ pub async fn update_investment_transaction(
     // Validate inputs at the trust boundary
     data.validate()?;
 
-    let result = db.with_conn(|conn| {
-        // Get investment_id and the date before the edit (history must
-        // be rebuilt from the earlier of the old and the new date).
-        let (investment_id, old_date): (String, i64) = conn.query_row(
-            "SELECT investment_id, transaction_date FROM investment_transactions WHERE id = ?1",
-            [&tx_id],
-            |row| Ok((row.get(0)?, row.get(1)?)),
-        )?;
-
-        conn.execute(
-            "UPDATE investment_transactions
-             SET type = ?2, quantity = ?3, price_per_unit = ?4, currency = ?5, transaction_date = ?6
-             WHERE id = ?1",
-            rusqlite::params![
-                tx_id,
-                data.tx_type,
-                data.quantity,
-                data.price_per_unit,
-                data.currency,
-                data.transaction_date,
-            ],
-        )?;
-
-        investment_service::recalculate_investment_metrics(conn, &investment_id)?;
-
-        // Fetch updated transaction
-        let tx = conn.query_row(
-            "SELECT id, investment_id, type, ticker, company_name, quantity, price_per_unit,
-                    currency, transaction_date, created_at
-             FROM investment_transactions WHERE id = ?1",
-            [&tx_id],
-            |row| {
-                Ok(InvestmentTransaction {
-                    id: row.get(0)?,
-                    investment_id: row.get(1)?,
-                    tx_type: row.get(2)?,
-                    ticker: row.get(3)?,
-                    company_name: row.get(4)?,
-                    quantity: row.get(5)?,
-                    price_per_unit: row.get(6)?,
-                    currency: row.get(7)?,
-                    transaction_date: row.get(8)?,
-                    created_at: row.get(9)?,
-                })
-            },
-        )?;
-
-        Ok((tx, old_date))
-    })?;
-    let (result, old_date) = result;
+    let (result, old_date) =
+        db.with_conn(|conn| investment_service::update_transaction(conn, &tx_id, &data))?;
 
     // Update portfolio snapshot
     portfolio::update_todays_snapshot(&db).await.ok();

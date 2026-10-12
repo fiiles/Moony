@@ -34,6 +34,9 @@ grouping below follows the domain map in `docs/architecture/overview.md`.
   columns and `value_czk` of `stock_value_history` and `crypto_value_history` (ADR 0012). Both
   migrations rewrite data, so the pre-migration copy of the database (see "Data folder artefacts")
   is the rollback.
+- `016_mcp_pending_refresh` adds a durable follow-up queue for MCP writes. Each domain coalesces
+  its earliest affected day; a generation token prevents concurrent imports from losing work.
+  It stores no financial facts and never assigns ownership to historical unbatched imports.
 - To add one: define `const MIGRATION_0NN: &str = r#"..."#;` (next free
   number) and append a `("0NN_short_name", MIGRATION_0NN)` entry to the `Vec`
   returned by `all_migrations()`. Numbers are zero-padded, sequential, never

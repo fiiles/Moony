@@ -292,6 +292,28 @@ pub async fn rebuild_stock_ticker(
     until_day: i64,
     price_rule: PriceRule,
 ) -> Result<RebuildStats> {
+    rebuild_stock_ticker_with_policy(db, ticker, from_ts, until_day, price_rule, false).await
+}
+
+/// Durable imports must retain their retry intent when the history provider fails.
+pub async fn rebuild_stock_ticker_strict(
+    db: &Database,
+    ticker: &str,
+    from_ts: i64,
+    until_day: i64,
+    price_rule: PriceRule,
+) -> Result<RebuildStats> {
+    rebuild_stock_ticker_with_policy(db, ticker, from_ts, until_day, price_rule, true).await
+}
+
+async fn rebuild_stock_ticker_with_policy(
+    db: &Database,
+    ticker: &str,
+    from_ts: i64,
+    until_day: i64,
+    price_rule: PriceRule,
+    strict: bool,
+) -> Result<RebuildStats> {
     let from_day = floor_day(from_ts);
     if from_day > until_day {
         return Ok(RebuildStats::default());
@@ -305,8 +327,13 @@ pub async fn rebuild_stock_ticker(
         )?)
     })?;
     let quotes = if has_transactions {
-        price_api::get_historical_stock_prices_yahoo(&[ticker.to_string()], from_day, until_day)
-            .await?
+        let tickers = [ticker.to_string()];
+        if strict {
+            price_api::get_historical_stock_prices_yahoo_strict(&tickers, from_day, until_day)
+                .await?
+        } else {
+            price_api::get_historical_stock_prices_yahoo(&tickers, from_day, until_day).await?
+        }
     } else {
         Default::default()
     };

@@ -6,7 +6,7 @@
 //! remain TEXT; bank keys canonicalize decimal spelling without rounding.
 
 use crate::error::Result;
-use rusqlite::{Connection, OptionalExtension};
+use rusqlite::Connection;
 
 /// Snapshot of existing occurrences: newly accepted ID-less rows are genuine
 /// occurrences, while reimports consume only stored matches one at a time.
@@ -108,7 +108,7 @@ fn composite_key(t: &crate::models::InsertBankTransaction, currency: &str) -> St
     // No value date: the CSV import stopped reading it, and rows stored with
     // one must still match the same row read again without it.
     serde_json::json!([
-        t.booking_date,
+        t.booking_date.div_euclid(86_400),
         canonical_amount(&t.amount),
         t.currency
             .as_deref()
@@ -242,28 +242,41 @@ fn find_duplicate_in_tx_table(
     tx_type: &str,
     quantity: &str,
     price_per_unit: &str,
+    currency: &str,
+    external_id: Option<&str>,
 ) -> Result<Option<String>> {
     let sql = format!(
-        "SELECT id FROM {table}
-         WHERE {scope_col} = ?1 AND transaction_date = ?2 AND type = ?3
-           AND quantity = ?4 AND price_per_unit = ?5"
+        "SELECT transaction_date, quantity, price_per_unit, currency FROM {table}
+         WHERE {scope_col} = ?1 AND type = ?2"
     );
-    let hit: Option<String> = conn
-        .query_row(
-            &sql,
-            rusqlite::params![
-                scope_val,
-                transaction_date,
-                tx_type,
-                quantity,
-                price_per_unit
-            ],
-            |row| row.get(0),
-        )
-        .optional()?;
-    Ok(hit.map(|_| {
-        "identical transaction (same date, type, quantity, price) already exists".to_string()
-    }))
+    // A different stable source ID proves this is a separate genuine fill.
+    // Same-ID retries/conflicts are handled by the stock writer before this heuristic.
+    let sql = if table == "investment_transactions" && normalized_bank_id(external_id).is_some() {
+        format!("{sql} AND (external_id IS NULL OR trim(external_id) = '')")
+    } else {
+        sql
+    };
+    let mut stmt = conn.prepare(&sql)?;
+    let mut rows = stmt.query(rusqlite::params![scope_val, tx_type])?;
+    let quantity = canonical_amount(quantity);
+    let price_per_unit = canonical_amount(price_per_unit);
+    while let Some(row) = rows.next()? {
+        let stored_date: i64 = row.get(0)?;
+        let stored_quantity: String = row.get(1)?;
+        let stored_price: String = row.get(2)?;
+        let stored_currency: String = row.get(3)?;
+        if stored_date.div_euclid(86_400) == transaction_date.div_euclid(86_400)
+            && canonical_amount(&stored_quantity) == quantity
+            && canonical_amount(&stored_price) == price_per_unit
+            && stored_currency.eq_ignore_ascii_case(currency)
+        {
+            return Ok(Some(
+                "identical transaction (same date, type, quantity, price) already exists"
+                    .to_string(),
+            ));
+        }
+    }
+    Ok(None)
 }
 
 /// Exact stock duplicate lookup.
@@ -274,6 +287,7 @@ pub fn find_duplicate_stock_transaction(
     tx_type: &str,
     quantity: &str,
     price_per_unit: &str,
+    currency: &str,
 ) -> Result<Option<String>> {
     find_duplicate_in_tx_table(
         conn,
@@ -284,6 +298,34 @@ pub fn find_duplicate_stock_transaction(
         tx_type,
         quantity,
         price_per_unit,
+        currency,
+        None,
+    )
+}
+
+/// Stock heuristic with source identity: different IDs are distinct fills.
+#[allow(clippy::too_many_arguments)]
+pub fn find_duplicate_stock_transaction_with_origin(
+    conn: &Connection,
+    ticker_upper: &str,
+    transaction_date: i64,
+    tx_type: &str,
+    quantity: &str,
+    price_per_unit: &str,
+    currency: &str,
+    external_id: Option<&str>,
+) -> Result<Option<String>> {
+    find_duplicate_in_tx_table(
+        conn,
+        "investment_transactions",
+        "ticker",
+        ticker_upper,
+        transaction_date,
+        tx_type,
+        quantity,
+        price_per_unit,
+        currency,
+        external_id,
     )
 }
 
@@ -295,6 +337,7 @@ pub fn find_duplicate_crypto_transaction(
     tx_type: &str,
     quantity: &str,
     price_per_unit: &str,
+    currency: &str,
 ) -> Result<Option<String>> {
     find_duplicate_in_tx_table(
         conn,
@@ -305,6 +348,8 @@ pub fn find_duplicate_crypto_transaction(
         tx_type,
         quantity,
         price_per_unit,
+        currency,
+        None,
     )
 }
 
@@ -316,6 +361,7 @@ pub fn find_duplicate_other_asset_transaction(
     tx_type: &str,
     quantity: &str,
     price_per_unit: &str,
+    currency: &str,
 ) -> Result<Option<String>> {
     find_duplicate_in_tx_table(
         conn,
@@ -326,6 +372,8 @@ pub fn find_duplicate_other_asset_transaction(
         tx_type,
         quantity,
         price_per_unit,
+        currency,
+        None,
     )
 }
 
@@ -354,6 +402,7 @@ mod tests {
                 type TEXT NOT NULL,
                 quantity TEXT NOT NULL,
                 price_per_unit TEXT NOT NULL,
+                currency TEXT NOT NULL DEFAULT 'USD',
                 transaction_date INTEGER NOT NULL
             );
             CREATE TABLE crypto_transactions (
@@ -362,6 +411,7 @@ mod tests {
                 type TEXT NOT NULL,
                 quantity TEXT NOT NULL,
                 price_per_unit TEXT NOT NULL,
+                currency TEXT NOT NULL DEFAULT 'USD',
                 transaction_date INTEGER NOT NULL
             );
             CREATE TABLE other_asset_transactions (
@@ -370,6 +420,7 @@ mod tests {
                 type TEXT NOT NULL,
                 quantity TEXT NOT NULL,
                 price_per_unit TEXT NOT NULL,
+                currency TEXT NOT NULL DEFAULT 'USD',
                 transaction_date INTEGER NOT NULL
             );
         "#,
@@ -406,6 +457,26 @@ mod tests {
     }
 
     #[test]
+    fn legacy_intraday_bank_rows_match_normalized_reimports() {
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch("CREATE TABLE bank_accounts(id TEXT,currency TEXT);
+            INSERT INTO bank_accounts VALUES ('a','EUR');
+            CREATE TABLE bank_transactions(id TEXT,bank_account_id TEXT,transaction_id TEXT,
+                booking_date INTEGER,value_date INTEGER,amount TEXT,currency TEXT,tx_type TEXT,
+                description TEXT,counterparty_name TEXT,counterparty_iban TEXT,
+                counterparty_bank_code TEXT,counterparty_country TEXT,status TEXT);
+            INSERT INTO bank_transactions(id,bank_account_id,booking_date,amount,currency,tx_type,status)
+                VALUES ('legacy','a',1700000000,'12.00','EUR','credit','booked');").unwrap();
+        let mut checker = BankOccurrenceChecker::load(&conn, "a").unwrap();
+        let row = serde_json::from_value(serde_json::json!({
+            "bankAccountId":"a", "bookingDate":1699920000,
+            "amount":"12", "currency":"EUR", "type":"credit"
+        }))
+        .unwrap();
+        assert_eq!(checker.check(&row), Some(BankOccurrence::Possible));
+    }
+
+    #[test]
     fn stock_exact_match() {
         let conn = setup_test_db();
         conn.execute(
@@ -414,16 +485,16 @@ mod tests {
             [],
         )
         .unwrap();
-        assert!(
-            find_duplicate_stock_transaction(&conn, "AAPL", 1700000000, "buy", "10", "150.5")
-                .unwrap()
-                .is_some()
-        );
-        assert!(
-            find_duplicate_stock_transaction(&conn, "AAPL", 1700000000, "sell", "10", "150.5")
-                .unwrap()
-                .is_none()
-        );
+        assert!(find_duplicate_stock_transaction(
+            &conn, "AAPL", 1700000000, "buy", "10", "150.5", "USD"
+        )
+        .unwrap()
+        .is_some());
+        assert!(find_duplicate_stock_transaction(
+            &conn, "AAPL", 1700000000, "sell", "10", "150.5", "USD"
+        )
+        .unwrap()
+        .is_none());
     }
 
     #[test]
@@ -436,12 +507,18 @@ mod tests {
         )
         .unwrap();
         assert!(find_duplicate_crypto_transaction(
-            &conn, "BTC", 1700000000, "buy", "0.5", "900000"
+            &conn, "BTC", 1700000000, "buy", "0.5", "900000", "USD"
         )
         .unwrap()
         .is_some());
         assert!(find_duplicate_crypto_transaction(
-            &conn, "BTC", 1700000001, "buy", "0.5", "900000"
+            &conn,
+            "BTC",
+            1700000000 + 86400,
+            "buy",
+            "0.5",
+            "900000",
+            "USD"
         )
         .unwrap()
         .is_none());
@@ -457,12 +534,50 @@ mod tests {
         )
         .unwrap();
         assert!(find_duplicate_other_asset_transaction(
-            &conn, "gold-1", 1700000000, "buy", "2", "5000"
+            &conn, "gold-1", 1700000000, "buy", "2", "5000", "USD"
         )
         .unwrap()
         .is_some());
         assert!(find_duplicate_other_asset_transaction(
-            &conn, "silver-9", 1700000000, "buy", "2", "5000"
+            &conn, "silver-9", 1700000000, "buy", "2", "5000", "USD"
+        )
+        .unwrap()
+        .is_none());
+    }
+
+    #[test]
+    fn decimal_identity_is_exact_currency_aware_and_scoped_to_utc_day() {
+        let conn = setup_test_db();
+        conn.execute("INSERT INTO investment_transactions (id,ticker,type,quantity,price_per_unit,currency,transaction_date) VALUES ('s','AAPL','buy','10.000','100.00','USD',1700000000)", []).unwrap();
+        assert!(find_duplicate_stock_transaction(
+            &conn, "AAPL", 1700000001, "buy", "1e1", "1e2", "usd"
+        )
+        .unwrap()
+        .is_some());
+        assert!(find_duplicate_stock_transaction(
+            &conn,
+            "AAPL",
+            1700000001,
+            "buy",
+            "10.000000000000000001",
+            "100",
+            "USD"
+        )
+        .unwrap()
+        .is_none());
+        assert!(find_duplicate_stock_transaction(
+            &conn, "AAPL", 1700000001, "buy", "10", "100", "EUR"
+        )
+        .unwrap()
+        .is_none());
+        assert!(find_duplicate_stock_transaction(
+            &conn,
+            "AAPL",
+            1700000000 + 86400,
+            "buy",
+            "10",
+            "100",
+            "USD"
         )
         .unwrap()
         .is_none());

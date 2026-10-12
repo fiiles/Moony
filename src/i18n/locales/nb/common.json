@@ -254,7 +254,13 @@
     "periodInvalid": "Starten på perioden må være før slutten.",
     "tooManySeries": "For mange linjer ble forespurt samtidig.",
     "seriesKeyInvalid": "Ugyldig forespørsel om diagramlinje.",
-    "benchmarkTickerInvalid": "Ugyldig indeksticker."
+    "benchmarkTickerInvalid": "Ugyldig indeksticker.",
+    "propertyTypeInvalid": "Eiendomstypen må være privat eller investering",
+    "insurancePolicyAlreadyExists": "En forsikring med dette selskapet og polisenummeret finnes allerede",
+    "exchangeRateUnavailable": "Transaksjonen kan ikke lagres før valutakurser for datoen er tilgjengelige",
+    "dateInvalid": "Ugyldig dato",
+    "valueDateInvalid": "Ugyldig valuteringsdato",
+    "maturityDateInvalid": "Ugyldig forfallsdato"
   },
   "auth": {
     "wrongPassword": "Passordet du skrev inn er feil. Prøv igjen.",

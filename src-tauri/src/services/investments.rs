@@ -32,62 +32,17 @@ pub fn recalculate_investment_metrics(
     conn: &rusqlite::Connection,
     investment_id: &str,
 ) -> Result<()> {
-    // Get all transactions for this investment, ordered chronologically; rowid
-    // is the deterministic tiebreak for same-date/same-second rows (see above).
-    let mut stmt = conn.prepare(
-        "SELECT type, quantity, price_per_unit FROM investment_transactions WHERE investment_id = ?1 ORDER BY transaction_date ASC, created_at ASC, rowid ASC"
+    let has_transactions: bool = conn.query_row(
+        "SELECT EXISTS(SELECT 1 FROM investment_transactions WHERE investment_id=?1)",
+        [investment_id],
+        |r| r.get(0),
     )?;
-
-    let txs: Vec<(String, f64, f64)> = stmt
-        .query_map([investment_id], |row| {
-            let type_: String = row.get(0)?;
-            let qty_str: String = row.get(1)?;
-            let price_str: String = row.get(2)?;
-
-            // Tolerant parsing: legacy data may contain suffixes (e.g. a unit string)
-            let qty = qty_str
-                .split_whitespace()
-                .next()
-                .unwrap_or("0")
-                .parse::<f64>()
-                .unwrap_or(0.0);
-            let price = price_str
-                .split_whitespace()
-                .next()
-                .unwrap_or("0")
-                .parse::<f64>()
-                .unwrap_or(0.0);
-
-            Ok((type_, qty, price))
-        })?
-        .filter_map(|r| r.ok())
-        .collect();
-
-    // No transactions yet (defensive: migration 008 backfills a synthetic buy
-    // for legacy manual positions, and creation now requires an initial
-    // transaction) — leave the stored quantity as-is instead of zeroing it.
-    if txs.is_empty() {
+    // Transaction-less legacy positions retain their manually recorded quantity.
+    if !has_transactions {
         return Ok(());
     }
+    let total_qty = exact_held_quantity(conn, "investment_transactions", investment_id)?;
 
-    let mut total_qty = 0.0f64;
-
-    for (tx_type, qty, _price) in txs {
-        if tx_type == "buy" {
-            total_qty += qty;
-        } else if tx_type == "sell" {
-            total_qty -= qty;
-        }
-    }
-
-    // Prevent negative values
-    if total_qty < 0.0 {
-        total_qty = 0.0;
-    }
-
-    // Quantity is the only stored derived value; cost basis and average price
-    // are derived on read from transactions at their day's exchange rates
-    // (services/cost_basis.rs).
     conn.execute(
         "UPDATE stock_investments SET quantity = ?1 WHERE id = ?2",
         rusqlite::params![total_qty.to_string(), investment_id],
@@ -177,12 +132,53 @@ pub fn delete_transactions(
                 [investment_id],
             )?;
         } else {
+            ensure_valid_holdings_history(&db_tx, "investment_transactions", investment_id)?;
             recalculate_investment_metrics(&db_tx, investment_id)?;
         }
     }
 
     db_tx.commit()?;
     Ok(earliest_by_ticker.into_iter().collect())
+}
+
+/// Edit a stock transaction and return its original date for history rebuilding.
+pub fn update_transaction(
+    conn: &rusqlite::Connection,
+    tx_id: &str,
+    data: &InsertInvestmentTransaction,
+) -> Result<(InvestmentTransaction, i64)> {
+    data.validate()?;
+    let transaction = conn.unchecked_transaction()?;
+    let conn = &transaction;
+    let (investment_id, old_date): (String, i64) = conn
+        .query_row(
+            "SELECT investment_id,transaction_date FROM investment_transactions WHERE id=?1",
+            [tx_id],
+            |r| Ok((r.get(0)?, r.get(1)?)),
+        )
+        .optional()?
+        .ok_or_else(|| AppError::NotFound("Transaction not found".into()))?;
+    let currency: String = conn.query_row(
+        "SELECT currency FROM stock_investments WHERE id=?1",
+        [&investment_id],
+        |r| r.get(0),
+    )?;
+    if !currency.eq_ignore_ascii_case(&data.currency) {
+        return Err(AppError::Validation(format!(
+            "Currency mismatch: investment uses {currency} but transaction is in {}",
+            data.currency
+        )));
+    }
+    let date = crate::models::validation::utc_day(data.transaction_date, "validation.dateInvalid")?;
+    conn.execute("UPDATE investment_transactions SET type=?2,quantity=?3,price_per_unit=?4,currency=?5,transaction_date=?6 WHERE id=?1",
+        rusqlite::params![tx_id,data.tx_type.to_ascii_lowercase(),dedup::canonical_amount(&data.quantity),dedup::canonical_amount(&data.price_per_unit),data.currency.to_ascii_uppercase(),date])?;
+    ensure_valid_holdings_history(conn, "investment_transactions", &investment_id)?;
+    recalculate_investment_metrics(conn, &investment_id)?;
+    let result = conn.query_row("SELECT id,investment_id,type,ticker,company_name,quantity,price_per_unit,currency,transaction_date,created_at FROM investment_transactions WHERE id=?1", [tx_id], |r| Ok(InvestmentTransaction {
+        id:r.get(0)?,investment_id:r.get(1)?,tx_type:r.get(2)?,ticker:r.get(3)?,company_name:r.get(4)?,quantity:r.get(5)?,price_per_unit:r.get(6)?,currency:r.get(7)?,transaction_date:r.get(8)?,created_at:r.get(9)?,
+    }))?;
+    transaction.commit()?;
+    Ok((result, old_date))
 }
 
 /// Where a stock transaction came from. Hand-made and MCP-created ones have
@@ -211,9 +207,14 @@ pub fn create_transaction_internal(
     transaction_date: i64,
     origin: TransactionOrigin<'_>,
 ) -> Result<InvestmentTransaction> {
+    let quantity = dedup::canonical_amount(quantity);
+    let price_per_unit = dedup::canonical_amount(price_per_unit);
+    let tx_type = tx_type.to_ascii_lowercase();
     let tx_id = Uuid::new_v4().to_string();
     let now = chrono::Utc::now().timestamp();
     let currency_upper = currency.to_uppercase();
+    let transaction_date =
+        crate::models::validation::utc_day(transaction_date, "validation.dateInvalid")?;
 
     conn.execute(
         "INSERT INTO investment_transactions
@@ -392,6 +393,45 @@ pub fn import_single_transaction_with_origin(
     transaction_date: i64,
     origin: TransactionOrigin<'_>,
 ) -> Result<ImportedTransaction> {
+    import_stock_row(
+        conn,
+        ticker,
+        company_name,
+        tx_type,
+        quantity,
+        price_per_unit,
+        currency,
+        transaction_date,
+        origin,
+        true,
+    )
+}
+
+// Only the bulk writer may defer holdings validation until all rows are present.
+#[allow(clippy::too_many_arguments)]
+fn import_stock_row(
+    conn: &rusqlite::Connection,
+    ticker: &str,
+    company_name: &str,
+    tx_type: &str,
+    quantity: &str,
+    price_per_unit: &str,
+    currency: &str,
+    transaction_date: i64,
+    origin: TransactionOrigin<'_>,
+    validate_holdings: bool,
+) -> Result<ImportedTransaction> {
+    InsertInvestmentTransaction {
+        investment_id: None,
+        tx_type: tx_type.into(),
+        ticker: ticker.into(),
+        company_name: company_name.into(),
+        quantity: quantity.into(),
+        price_per_unit: price_per_unit.into(),
+        currency: currency.into(),
+        transaction_date,
+    }
+    .validate()?;
     let ticker_upper = ticker.to_uppercase();
     let tx_type_lower = tx_type.to_lowercase();
 
@@ -410,7 +450,7 @@ pub fn import_single_transaction_with_origin(
             [&ticker_upper],
             |row| row.get(0),
         )
-        .ok();
+        .optional()?;
 
     // For sell transactions, require existing investment
     if tx_type_lower == "sell" && existing.is_none() {
@@ -425,13 +465,11 @@ pub fn import_single_transaction_with_origin(
     let investment_id = match existing {
         Some(id) => {
             // Validate currency matches for existing investment
-            let inv_currency: String = conn
-                .query_row(
-                    "SELECT currency FROM stock_investments WHERE id = ?1",
-                    [&id],
-                    |row| row.get(0),
-                )
-                .unwrap_or_else(|_| currency.to_uppercase());
+            let inv_currency: String = conn.query_row(
+                "SELECT currency FROM stock_investments WHERE id = ?1",
+                [&id],
+                |row| row.get(0),
+            )?;
 
             if inv_currency.to_uppercase() != currency.to_uppercase() {
                 return Err(AppError::Validation(format!(
@@ -452,6 +490,17 @@ pub fn import_single_transaction_with_origin(
         }
     };
 
+    if validate_holdings {
+        ensure_sell_within_holdings(
+            conn,
+            "investment_transactions",
+            &investment_id,
+            &tx_type_lower,
+            quantity,
+            transaction_date,
+        )?;
+    }
+
     // Create transaction using the shared function
     create_transaction_internal(
         conn,
@@ -467,7 +516,9 @@ pub fn import_single_transaction_with_origin(
     )?;
 
     // Recalculate metrics
-    recalculate_investment_metrics(conn, &investment_id)?;
+    if validate_holdings {
+        recalculate_investment_metrics(conn, &investment_id)?;
+    }
 
     Ok(ImportedTransaction {
         description: format!(
@@ -521,6 +572,7 @@ pub struct NewStockImportBatch {
 pub struct BulkRowIssue {
     pub index: usize,
     pub message: String,
+    pub possible_duplicate: bool,
 }
 
 /// What [`bulk_create_stock_transactions`] did. `errors` non-empty implies
@@ -582,6 +634,7 @@ pub fn bulk_create_stock_transactions(
         .enumerate()
         .filter_map(|(index, row)| {
             validate_bulk_row(row).err().map(|e| BulkRowIssue {
+                possible_duplicate: false,
                 index,
                 message: e.to_string(),
             })
@@ -599,7 +652,7 @@ pub fn bulk_create_stock_transactions(
     order.sort_by_key(|&i| {
         let row = &rows[i];
         (
-            row.transaction_date,
+            row.transaction_date.div_euclid(86_400),
             if row.tx_type.eq_ignore_ascii_case("buy") {
                 0
             } else {
@@ -626,16 +679,96 @@ pub fn bulk_create_stock_transactions(
     let mut report = BulkWriteReport::default();
     for &i in &order {
         let row = &rows[i];
+        // A stock has one native transaction currency. Check this before
+        // deduplication so a same-valued row in another currency cannot hide
+        // an incompatible import.
+        let ticker_upper = row.ticker.to_uppercase();
+        let existing_currency: Option<String> = tx
+            .query_row(
+                "SELECT currency FROM stock_investments WHERE ticker = ?1",
+                [&ticker_upper],
+                |r| r.get(0),
+            )
+            .optional()?;
+        if let Some(existing_currency) = existing_currency {
+            if !existing_currency.eq_ignore_ascii_case(&row.currency) {
+                drop(tx);
+                return Ok(BulkWriteReport {
+                    errors: vec![BulkRowIssue { possible_duplicate: false, index: i, message: format!(
+                        "Currency mismatch: {ticker_upper} uses {existing_currency} but transaction is in {}",
+                        row.currency
+                    ) }],
+                    ..BulkWriteReport::default()
+                });
+            }
+        }
+        if batch.is_some_and(|batch| batch.source == "mcp") {
+            if let Some(external_id) = row
+                .external_id
+                .as_deref()
+                .map(str::trim)
+                .filter(|id| !id.is_empty())
+            {
+                let stored: Option<(String, i64, String, String, String, String)> = tx
+                    .query_row(
+                        "SELECT ticker, transaction_date, type, quantity, price_per_unit, currency
+                     FROM investment_transactions WHERE external_id = ?1 LIMIT 1",
+                        [external_id],
+                        |r| {
+                            Ok((
+                                r.get(0)?,
+                                r.get(1)?,
+                                r.get(2)?,
+                                r.get(3)?,
+                                r.get(4)?,
+                                r.get(5)?,
+                            ))
+                        },
+                    )
+                    .optional()?;
+                if let Some((ticker, date, kind, quantity, price, currency)) = stored {
+                    if ticker != ticker_upper
+                        || date != row.transaction_date.div_euclid(86_400) * 86_400
+                        || !kind.eq_ignore_ascii_case(&row.tx_type)
+                        || dedup::canonical_amount(&quantity)
+                            != dedup::canonical_amount(&row.quantity)
+                        || dedup::canonical_amount(&price)
+                            != dedup::canonical_amount(&row.price_per_unit)
+                        || !currency.eq_ignore_ascii_case(&row.currency)
+                    {
+                        drop(tx);
+                        return Ok(BulkWriteReport {
+                            errors: vec![BulkRowIssue {
+                                possible_duplicate: false,
+                                index: i,
+                                message: "externalId already belongs to a different transaction"
+                                    .into(),
+                            }],
+                            ..BulkWriteReport::default()
+                        });
+                    }
+                    report.skipped_duplicates.push(BulkRowIssue {
+                        possible_duplicate: false,
+                        index: i,
+                        message: "externalId already imported".into(),
+                    });
+                    continue;
+                }
+            }
+        }
         if !row.allow_duplicate {
-            if let Some(reason) = dedup::find_duplicate_stock_transaction(
+            if let Some(reason) = dedup::find_duplicate_stock_transaction_with_origin(
                 &tx,
-                &row.ticker.to_uppercase(),
-                row.transaction_date,
+                &ticker_upper,
+                row.transaction_date.div_euclid(86_400) * 86_400,
                 &row.tx_type.to_lowercase(),
                 &row.quantity,
                 &row.price_per_unit,
+                &row.currency,
+                row.external_id.as_deref(),
             )? {
                 report.skipped_duplicates.push(BulkRowIssue {
+                    possible_duplicate: true,
                     index: i,
                     message: reason,
                 });
@@ -647,7 +780,7 @@ pub fn bulk_create_stock_transactions(
             .as_deref()
             .map(str::trim)
             .filter(|id| !id.is_empty());
-        match import_single_transaction_with_origin(
+        match import_stock_row(
             &tx,
             &row.ticker,
             row.company_name.as_deref().unwrap_or(&row.ticker),
@@ -660,6 +793,7 @@ pub fn bulk_create_stock_transactions(
                 import_batch_id: batch_id.as_deref(),
                 external_id,
             },
+            false,
         ) {
             Ok(written) => {
                 report.created += 1;
@@ -675,6 +809,7 @@ pub fn bulk_create_stock_transactions(
                 drop(tx);
                 return Ok(BulkWriteReport {
                     errors: vec![BulkRowIssue {
+                        possible_duplicate: false,
                         index: i,
                         message: e.to_string(),
                     }],
@@ -682,6 +817,33 @@ pub fn bulk_create_stock_transactions(
                 });
             }
         }
+    }
+
+    // Validate the final merged histories, rather than rejecting a sale before
+    // a later incoming buy can make an already stored future sale valid.
+    for ticker in &report.written_tickers {
+        let id: String = tx.query_row(
+            "SELECT id FROM stock_investments WHERE ticker=?1",
+            [ticker],
+            |r| r.get(0),
+        )?;
+        if let Err(error) = ensure_valid_holdings_history(&tx, "investment_transactions", &id) {
+            let index = order
+                .iter()
+                .copied()
+                .find(|&i| rows[i].ticker.eq_ignore_ascii_case(ticker))
+                .expect("written ticker has a source row");
+            drop(tx);
+            return Ok(BulkWriteReport {
+                errors: vec![BulkRowIssue {
+                    index,
+                    message: error.to_string(),
+                    possible_duplicate: false,
+                }],
+                ..BulkWriteReport::default()
+            });
+        }
+        recalculate_investment_metrics(&tx, &id)?;
     }
 
     if let Some(id) = batch_id {
@@ -707,6 +869,11 @@ pub fn create_investment_with_transaction(
     company_name: &str,
     initial_transaction: Option<&InsertInvestmentTransaction>,
 ) -> Result<StockInvestment> {
+    if let Some(data) = initial_transaction {
+        data.validate()?;
+    }
+    let transaction = conn.unchecked_transaction()?;
+    let conn = &transaction;
     let ticker_upper = ticker.to_uppercase();
 
     // Determine currency from initial transaction (first transaction sets the currency)
@@ -719,25 +886,13 @@ pub fn create_investment_with_transaction(
 
     // Create initial transaction if provided
     if let Some(tx) = initial_transaction {
-        create_transaction_internal(
-            conn,
-            &investment_id,
-            &ticker_upper,
-            company_name,
-            &tx.tx_type,
-            &tx.quantity,
-            &tx.price_per_unit,
-            &tx.currency,
-            tx.transaction_date,
-            TransactionOrigin::default(),
-        )?;
-
-        // Recalculate metrics from the transaction
-        recalculate_investment_metrics(conn, &investment_id)?;
+        add_transaction_to_investment(conn, &investment_id, tx)?;
     }
 
     // Return the investment
-    get_investment_by_id(conn, &investment_id)
+    let investment = get_investment_by_id(conn, &investment_id)?;
+    transaction.commit()?;
+    Ok(investment)
 }
 
 /// Add a transaction to an existing investment
@@ -747,6 +902,7 @@ pub fn add_transaction_to_investment(
     investment_id: &str,
     data: &InsertInvestmentTransaction,
 ) -> Result<InvestmentTransaction> {
+    data.validate()?;
     // Get investment info including currency
     let (ticker, company_name, inv_currency): (String, String, String) = conn.query_row(
         "SELECT ticker, company_name, currency FROM stock_investments WHERE id = ?1",
@@ -809,8 +965,8 @@ pub fn held_quantity_at(
     Ok(held.max(0.0))
 }
 
-/// A sell may not exceed what is held on its date. Shared by the
-/// stock and crypto write paths; imports keep their own ordering semantics.
+/// Validate all stored and proposed transactions on canonical UTC calendar days.
+/// A backdated sale must leave every already stored future sale valid too.
 pub fn ensure_sell_within_holdings(
     conn: &rusqlite::Connection,
     tx_table: &str,
@@ -819,17 +975,145 @@ pub fn ensure_sell_within_holdings(
     quantity: &str,
     date: i64,
 ) -> Result<()> {
-    if tx_type != "sell" {
-        return Ok(());
+    validate_holdings_history(
+        conn,
+        tx_table,
+        investment_id,
+        Some((date, tx_type, quantity)),
+    )
+    .map(|_| ())
+}
+
+/// Bulk writers call this once their whole tentative history is present, before commit.
+pub(crate) fn ensure_valid_holdings_history(
+    conn: &rusqlite::Connection,
+    tx_table: &str,
+    investment_id: &str,
+) -> Result<()> {
+    validate_holdings_history(conn, tx_table, investment_id, None).map(|_| ())
+}
+
+/// Exact quantity of a valid stored transaction history, for derived metrics.
+pub(crate) fn exact_held_quantity(
+    conn: &rusqlite::Connection,
+    tx_table: &str,
+    investment_id: &str,
+) -> Result<String> {
+    validate_holdings_history(conn, tx_table, investment_id, None)
+}
+
+fn validate_holdings_history(
+    conn: &rusqlite::Connection,
+    tx_table: &str,
+    investment_id: &str,
+    proposed: Option<(i64, &str, &str)>,
+) -> Result<String> {
+    let scope_col = if tx_table == "other_asset_transactions" {
+        "asset_id"
+    } else {
+        "investment_id"
+    };
+    let mut stmt = conn.prepare(&format!(
+        "SELECT transaction_date, type, quantity FROM {tx_table} WHERE {scope_col} = ?1 ORDER BY rowid"
+    ))?;
+    let mut history = stmt
+        .query_map([investment_id], |r| {
+            Ok((
+                r.get::<_, i64>(0)?,
+                r.get::<_, String>(1)?,
+                r.get::<_, String>(2)?,
+            ))
+        })?
+        .collect::<std::result::Result<Vec<_>, _>>()?;
+    if let Some((date, kind, quantity)) = proposed {
+        history.push((date, kind.into(), quantity.into()));
     }
-    let qty: f64 = quantity.trim().parse().unwrap_or(0.0);
-    let held = held_quantity_at(conn, tx_table, investment_id, date)?;
-    if qty > held + 1e-9 {
-        return Err(AppError::Validation(
-            "validation.sellExceedsHoldings".into(),
-        ));
+    for (date, kind, quantity) in &mut history {
+        *date = crate::models::validation::utc_day(*date, "validation.dateInvalid")?;
+        *kind = kind.to_ascii_lowercase();
+        if kind != "buy" && kind != "sell" {
+            return Err(AppError::Validation(
+                "validation.transactionTypeInvalid".into(),
+            ));
+        }
+        if crate::models::validation::finite_number(quantity, "validation.quantityPositive")? <= 0.0
+        {
+            return Err(AppError::Validation("validation.quantityPositive".into()));
+        }
+        *quantity = dedup::canonical_amount(quantity);
     }
-    Ok(())
+    history.sort_by_key(|(date, kind, _)| (*date, kind == "sell"));
+
+    // Exact base-ten integer arithmetic at the greatest fractional scale in
+    // this history. Float epsilons can permit tiny oversells or reject a full
+    // liquidation of decimal fills; quantities stay exact for this invariant.
+    let scale = history
+        .iter()
+        .map(|(_, _, q)| q.split_once('.').map_or(0, |(_, f)| f.len()))
+        .max()
+        .unwrap_or(0);
+    let mut held = vec![0_u8]; // least significant digit first
+    let mut approximate = 0.0_f64;
+    for (_, kind, quantity) in history {
+        let fractional = quantity.split_once('.').map_or(0, |(_, f)| f.len());
+        let mut digits = vec![0_u8; scale - fractional];
+        digits.extend(
+            quantity
+                .bytes()
+                .rev()
+                .filter(|b| *b != b'.')
+                .map(|b| b - b'0'),
+        );
+        while digits.len() > 1 && digits.last() == Some(&0) {
+            digits.pop();
+        }
+        let amount =
+            crate::models::validation::finite_number(&quantity, "validation.quantityPositive")?;
+        if kind == "buy" {
+            held.resize(held.len().max(digits.len()) + 1, 0);
+            let mut carry = 0;
+            for (i, digit) in held.iter_mut().enumerate() {
+                let sum = *digit + digits.get(i).copied().unwrap_or(0) + carry;
+                *digit = sum % 10;
+                carry = sum / 10;
+            }
+            approximate += amount;
+        } else {
+            if digits.len() > held.len()
+                || (digits.len() == held.len()
+                    && digits.iter().rev().cmp(held.iter().rev()).is_gt())
+            {
+                return Err(AppError::Validation(
+                    "validation.sellExceedsHoldings".into(),
+                ));
+            }
+            let mut borrow = 0_i8;
+            for (i, digit) in held.iter_mut().enumerate() {
+                let difference = *digit as i8 - digits.get(i).copied().unwrap_or(0) as i8 - borrow;
+                *digit = difference.rem_euclid(10) as u8;
+                borrow = i8::from(difference < 0);
+            }
+            approximate -= amount;
+        }
+        while held.len() > 1 && held.last() == Some(&0) {
+            held.pop();
+        }
+        if !approximate.is_finite() {
+            return Err(AppError::Validation("validation.invalidQuantity".into()));
+        }
+    }
+    let mut quantity: String = held
+        .iter()
+        .rev()
+        .map(|digit| char::from(b'0' + *digit))
+        .collect();
+    if scale > 0 {
+        if quantity.len() <= scale {
+            quantity = format!("{}{}", "0".repeat(scale + 1 - quantity.len()), quantity);
+        }
+        quantity.insert(quantity.len() - scale, '.');
+    }
+    Ok(dedup::canonical_amount(&quantity))
 }
 
 #[cfg(test)]
@@ -962,8 +1246,14 @@ mod tests {
         assert_eq!(
             jobs,
             vec![
-                ("AAPL".to_string(), 1_700_000_000),
-                ("MSFT".to_string(), 1_700_300_000)
+                (
+                    "AAPL".to_string(),
+                    1_700_000_000_i64.div_euclid(86_400) * 86_400
+                ),
+                (
+                    "MSFT".to_string(),
+                    1_700_300_000_i64.div_euclid(86_400) * 86_400
+                )
             ],
             "one start date per ticker, the earliest deleted"
         );
@@ -1365,6 +1655,141 @@ mod tests {
         let result = import_single_transaction(&conn, "AMD", "AMD", "buy", "5", "90", "EUR", 1);
         assert!(result.is_err());
     }
+    #[test]
+    fn initial_sale_is_rejected_without_leaving_an_empty_stock_position() {
+        let conn = setup_test_db();
+        let data = tx("unused", "sell", "1", 1_700_000_000);
+        assert!(create_investment_with_transaction(&conn, "AAPL", "Apple", Some(&data)).is_err());
+        let rows: i64 = conn
+            .query_row("SELECT count(*) FROM stock_investments", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(rows, 0);
+    }
+    #[test]
+    fn create_existing_stock_rejects_a_second_native_currency() {
+        let conn = setup_test_db();
+        let mut data = tx("unused", "buy", "1", 1_700_000_000);
+        create_investment_with_transaction(&conn, "AAPL", "Apple", Some(&data)).unwrap();
+        data.currency = "EUR".into();
+        data.transaction_date += 86_400;
+        assert!(create_investment_with_transaction(&conn, "AAPL", "Apple", Some(&data)).is_err());
+        let count: i64 = conn
+            .query_row("SELECT count(*) FROM investment_transactions", [], |r| {
+                r.get(0)
+            })
+            .unwrap();
+        assert_eq!(count, 1);
+    }
+    #[test]
+    fn stock_delete_cannot_remove_a_buy_needed_by_a_future_sale() {
+        let conn = setup_test_db();
+        let id = get_or_create_investment(&conn, "AAPL", "Apple", "USD").unwrap();
+        let first = add_transaction_to_investment(&conn, &id, &tx(&id, "buy", "10", 1_700_000_000))
+            .unwrap();
+        let sale =
+            add_transaction_to_investment(&conn, &id, &tx(&id, "sell", "8", 1_700_000_000 + 86400))
+                .unwrap();
+        let err =
+            delete_transactions(&conn, &[first.id.clone()]).expect_err("cannot orphan the sale");
+        assert!(
+            matches!(err, AppError::Validation(key) if key == "validation.sellExceedsHoldings")
+        );
+        let rows: i64 = conn
+            .query_row("SELECT count(*) FROM investment_transactions", [], |r| {
+                r.get(0)
+            })
+            .unwrap();
+        assert_eq!(rows, 2);
+        assert_eq!(get_investment_by_id(&conn, &id).unwrap().quantity, "2");
+        let jobs = delete_transactions(&conn, &[first.id, sale.id]).unwrap();
+        assert_eq!(jobs, vec![("AAPL".into(), first.transaction_date)]);
+    }
+
+    #[test]
+    fn decimal_liquidation_stores_exact_zero_stock_quantity() {
+        let conn = setup_test_db();
+        let id = get_or_create_investment(&conn, "AAPL", "Apple", "USD").unwrap();
+        for (kind, qty, day) in [("buy", "0.1", 0), ("buy", "0.2", 1), ("sell", "0.3", 2)] {
+            add_transaction_to_investment(
+                &conn,
+                &id,
+                &tx(&id, kind, qty, 1_700_000_000 + day * 86400),
+            )
+            .unwrap();
+        }
+        let quantity: String = conn
+            .query_row(
+                "SELECT quantity FROM stock_investments WHERE id=?1",
+                [&id],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(quantity, "0");
+    }
+
+    #[test]
+    fn stock_edits_cannot_invalidate_future_sales_and_leave_the_original_row_unchanged() {
+        let conn = setup_test_db();
+        let id = get_or_create_investment(&conn, "AAPL", "Apple", "USD").unwrap();
+        let buy = add_transaction_to_investment(&conn, &id, &tx(&id, "buy", "10", 1_700_000_000))
+            .unwrap();
+        add_transaction_to_investment(&conn, &id, &tx(&id, "sell", "8", 1_700_000_000 + 3 * 86400))
+            .unwrap();
+        let mut too_small = tx(&id, "buy", "5", buy.transaction_date);
+        for bad in [
+            &too_small,
+            &tx(&id, "buy", "10", buy.transaction_date + 4 * 86400),
+        ] {
+            let err = update_transaction(&conn, &buy.id, bad)
+                .expect_err("future sale requires this purchase");
+            assert!(
+                matches!(err,AppError::Validation(key) if key=="validation.sellExceedsHoldings")
+            );
+            let (qty, date): (String, i64) = conn
+                .query_row(
+                    "SELECT quantity,transaction_date FROM investment_transactions WHERE id=?1",
+                    [&buy.id],
+                    |r| Ok((r.get(0)?, r.get(1)?)),
+                )
+                .unwrap();
+            assert_eq!((qty, date), ("10".into(), buy.transaction_date));
+            assert_eq!(get_investment_by_id(&conn, &id).unwrap().quantity, "2");
+        }
+        too_small.quantity = "10".into();
+        too_small.currency = "EUR".into();
+        assert!(update_transaction(&conn, &buy.id, &too_small).is_err());
+        let currency: String = conn
+            .query_row(
+                "SELECT currency FROM investment_transactions WHERE id=?1",
+                [&buy.id],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(currency, "USD");
+    }
+
+    #[test]
+    fn stock_edit_returns_the_original_history_start_and_persists_canonical_values() {
+        let conn = setup_test_db();
+        let id = get_or_create_investment(&conn, "AAPL", "Apple", "USD").unwrap();
+        let buy = add_transaction_to_investment(&conn, &id, &tx(&id, "buy", "10", 1_700_000_000))
+            .unwrap();
+        let mut data = tx(&id, "BUY", "12.00", buy.transaction_date + 86400 + 123);
+        data.currency = "usd".into();
+        data.price_per_unit = "1e2".into();
+        let (edited, old_date) = update_transaction(&conn, &buy.id, &data).unwrap();
+        assert_eq!(old_date, buy.transaction_date);
+        assert_eq!(edited.transaction_date, buy.transaction_date + 86400);
+        assert_eq!(edited.quantity, "12");
+        assert_eq!(edited.price_per_unit, "100");
+        assert_eq!(edited.tx_type, "buy");
+        assert_eq!(edited.currency, "USD");
+        assert_eq!(get_investment_by_id(&conn, &id).unwrap().quantity, "12");
+        assert!(matches!(
+            update_transaction(&conn, "missing", &data),
+            Err(AppError::NotFound(_))
+        ));
+    }
 }
 
 /// Tests of the shared bulk writer (ADR 0007). A module of its own, after the
@@ -1620,5 +2045,106 @@ mod bulk_writer_tests {
         assert_eq!(report.created, 1);
         assert!(report.created_positions.is_empty());
         assert_eq!(report.written_tickers, vec!["AAPL"]);
+    }
+
+    #[test]
+    fn merged_batch_history_allows_a_later_buy_before_an_existing_sale() {
+        let mut conn = setup_test_db();
+        let seed = [
+            bulk_row("AAPL", "buy", "10", "100", D0),
+            bulk_row("AAPL", "sell", "8", "100", D0 + 3 * DAY),
+        ];
+        assert_eq!(
+            bulk_create_stock_transactions(&mut conn, &seed, None)
+                .unwrap()
+                .created,
+            2
+        );
+        let rows = [
+            bulk_row("AAPL", "sell", "5", "100", D0 + DAY),
+            bulk_row("AAPL", "buy", "5", "100", D0 + 2 * DAY),
+        ];
+        let report =
+            bulk_create_stock_transactions(&mut conn, &rows, Some(&batch("valid.csv"))).unwrap();
+        assert_eq!(report.created, 2, "{report:?}");
+        assert_eq!(count(&conn, "investment_transactions"), 4);
+    }
+
+    #[test]
+    fn merged_batch_history_rolls_back_a_backdated_sale_invalidating_a_future_sale() {
+        let mut conn = setup_test_db();
+        let seed = [
+            bulk_row("AAPL", "buy", "10", "100", D0),
+            bulk_row("AAPL", "sell", "8", "100", D0 + 3 * DAY),
+        ];
+        bulk_create_stock_transactions(&mut conn, &seed, None).unwrap();
+        let report = bulk_create_stock_transactions(
+            &mut conn,
+            &[bulk_row("AAPL", "sell", "5", "100", D0 + DAY)],
+            Some(&batch("bad.csv")),
+        )
+        .unwrap();
+        assert_eq!(report.created, 0);
+        assert_eq!(report.errors.len(), 1);
+        assert_eq!(count(&conn, "investment_transactions"), 2);
+        assert_eq!(count(&conn, "stock_import_batches"), 0);
+    }
+
+    #[test]
+    fn exact_holdings_reject_even_a_sub_nanounit_oversell() {
+        let mut conn = setup_test_db();
+        let report = bulk_create_stock_transactions(
+            &mut conn,
+            &[
+                bulk_row("AAPL", "buy", "0.0000000001", "1", D0),
+                bulk_row("AAPL", "sell", "0.0000000002", "1", D0 + DAY),
+            ],
+            None,
+        )
+        .unwrap();
+        assert_eq!(report.created, 0, "{report:?}");
+        assert_eq!(count(&conn, "stock_investments"), 0);
+    }
+
+    #[test]
+    fn exact_holdings_accept_complete_decimal_liquidation() {
+        let mut conn = setup_test_db();
+        let report = bulk_create_stock_transactions(
+            &mut conn,
+            &[
+                bulk_row("AAPL", "buy", "0.1", "1", D0),
+                bulk_row("AAPL", "buy", "0.2", "2", D0),
+                bulk_row("AAPL", "sell", "0.3", "1", D0 + DAY),
+            ],
+            None,
+        )
+        .unwrap();
+        assert_eq!(report.created, 3, "{report:?}");
+    }
+
+    #[test]
+    fn manual_backdated_sale_preserves_future_holdings() {
+        let mut conn = setup_test_db();
+        bulk_create_stock_transactions(
+            &mut conn,
+            &[
+                bulk_row("AAPL", "buy", "10", "100", D0),
+                bulk_row("AAPL", "sell", "8", "100", D0 + 3 * DAY),
+            ],
+            None,
+        )
+        .unwrap();
+        assert!(import_single_transaction(
+            &conn,
+            "AAPL",
+            "Apple",
+            "sell",
+            "5",
+            "100",
+            "USD",
+            D0 + DAY
+        )
+        .is_err());
+        assert_eq!(count(&conn, "investment_transactions"), 2);
     }
 }

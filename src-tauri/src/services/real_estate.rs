@@ -98,7 +98,7 @@ pub fn create_property(conn: &Connection, data: &InsertRealEstate) -> Result<Str
             id,
             data.name,
             data.address,
-            data.property_type,
+            data.property_type.to_lowercase(),
             data.purchase_price
                 .clone()
                 .unwrap_or_else(|| "0".to_string()),
@@ -181,7 +181,7 @@ pub fn update_property(
         rusqlite::params![
             data.name,
             data.address,
-            data.property_type,
+            data.property_type.to_lowercase(),
             data.purchase_price,
             data.purchase_price_currency,
             data.purchase_date.map(day_floor),
@@ -222,9 +222,10 @@ pub fn update_property(
 /// Stores a one-time cost; a missing currency takes the storage default.
 pub fn create_one_time_cost(
     conn: &Connection,
-    data: InsertRealEstateOneTimeCost,
+    mut data: InsertRealEstateOneTimeCost,
 ) -> Result<RealEstateOneTimeCost> {
     data.validate()?;
+    data.date = crate::models::validation::utc_day(data.date, "validation.invalidDate")?;
     let id = Uuid::new_v4().to_string();
     let now = chrono::Utc::now().timestamp();
     let currency = data
@@ -252,9 +253,10 @@ pub fn create_one_time_cost(
 pub fn update_one_time_cost(
     conn: &Connection,
     cost_id: &str,
-    data: InsertRealEstateOneTimeCost,
+    mut data: InsertRealEstateOneTimeCost,
 ) -> Result<RealEstateOneTimeCost> {
     data.validate()?;
+    data.date = crate::models::validation::utc_day(data.date, "validation.invalidDate")?;
     let currency = data
         .currency
         .unwrap_or_else(|| crate::constants::STORAGE_DEFAULT_CURRENCY.to_string());
@@ -351,7 +353,7 @@ mod tests {
         InsertRealEstate {
             name: "Cottage".into(),
             address: "1 Main St".into(),
-            property_type: "house".into(),
+            property_type: "personal".into(),
             purchase_price: None,
             purchase_price_currency: None,
             purchase_date: None,
@@ -400,7 +402,7 @@ mod tests {
 
         assert_eq!(name, "Cottage");
         assert_eq!(address, "1 Main St");
-        assert_eq!(property_type, "house");
+        assert_eq!(property_type, "personal");
         assert_eq!(purchase_price, "0");
         assert_eq!(purchase_price_currency, "CZK");
 
@@ -622,7 +624,7 @@ mod tests {
         assert_eq!(stored.id, id);
         assert_eq!(stored.name, "Cottage");
         assert_eq!(stored.address, "1 Main St");
-        assert_eq!(stored.property_type, "house");
+        assert_eq!(stored.property_type, "personal");
         assert_eq!(stored.purchase_price, "2900000");
         assert_eq!(stored.purchase_price_currency, "EUR");
         assert_eq!(stored.purchase_date, Some(bought));
@@ -877,5 +879,22 @@ mod tests {
         let mut bad = cost_input(None);
         bad.name = String::new();
         assert!(update_one_time_cost(&conn, &explicit.id, bad).is_err());
+    }
+    #[test]
+    fn audit_assets_property_type_case_is_canonical_on_create_and_update() {
+        let conn = setup_test_db();
+        let mut data = valid_insert();
+        data.property_type = "PERSONAL".into();
+        let id = create_property(&conn, &data).unwrap();
+        assert_eq!(
+            get_property(&conn, &id).unwrap().unwrap().property_type,
+            "personal"
+        );
+        data.property_type = "Investment".into();
+        update_property(&conn, &id, &data, chrono::Utc::now().timestamp()).unwrap();
+        assert_eq!(
+            get_property(&conn, &id).unwrap().unwrap().property_type,
+            "investment"
+        );
     }
 }

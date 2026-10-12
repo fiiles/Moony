@@ -161,7 +161,7 @@ export function AddRecurringCostModal({ realEstate, trigger }: AddRecurringCostM
                 name="frequency"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{t('detail.frequency')}</FormLabel>
+                    <FormLabel>{t('detail.recurringTable.frequency')}</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>

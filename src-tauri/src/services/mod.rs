@@ -24,6 +24,7 @@ pub mod document_files;
 pub mod financial_semantics;
 pub mod fx;
 pub mod fx_backfill;
+pub mod history_days;
 pub mod history_recalc;
 pub mod http;
 pub mod insurance;

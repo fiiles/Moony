@@ -374,7 +374,7 @@ async fn rebuild_stock_ticker_with_policy(
 
 /// Day ranges `[start, end)` of at most `step` seconds covering
 /// `[from_day, until_day)`.
-fn chunk_ranges(from_day: i64, until_day: i64, step: i64) -> Vec<(i64, i64)> {
+pub(crate) fn chunk_ranges(from_day: i64, until_day: i64, step: i64) -> Vec<(i64, i64)> {
     let mut ranges = Vec::new();
     let mut start = from_day;
     while start < until_day {

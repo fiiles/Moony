@@ -36,6 +36,14 @@ impl SnapshotSource {
             SnapshotSource::Backfill => "backfill",
         }
     }
+
+    fn from_stored(text: &str) -> Self {
+        if text == "live" {
+            SnapshotSource::Live
+        } else {
+            SnapshotSource::Backfill
+        }
+    }
 }
 
 /// Native per-currency amounts for every asset class of one snapshot day.
@@ -279,6 +287,142 @@ pub fn update_classes(
     Ok(())
 }
 
+/// A set of classes of a stored row, for [`update_class_set`]. Real estate is one member: it
+/// stands for both columns (combined and personal subset).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct ClassSet {
+    pub savings: bool,
+    pub investments: bool,
+    pub crypto: bool,
+    pub bonds: bool,
+    pub real_estate: bool,
+    pub loans: bool,
+    pub other_assets: bool,
+}
+
+impl ClassSet {
+    /// Every class.
+    pub const ALL: ClassSet = ClassSet {
+        savings: true,
+        investments: true,
+        crypto: true,
+        bonds: true,
+        real_estate: true,
+        loans: true,
+        other_assets: true,
+    };
+}
+
+/// Rewrite the classes in `classes` on the existing row of `day_timestamp`'s day from
+/// `breakdowns`; every other column (the other classes, `source`, the timestamp) is untouched.
+/// One statement, so a day is never half-written. Returns the rows changed (0 when the day has
+/// no row: a missing day is created by [`upsert_snapshot`], never here).
+pub fn update_class_set(
+    conn: &Connection,
+    day_timestamp: i64,
+    breakdowns: &ClassBreakdowns,
+    classes: ClassSet,
+) -> Result<usize> {
+    use rusqlite::types::Value;
+
+    let day_start = (day_timestamp / SECONDS_PER_DAY) * SECONDS_PER_DAY;
+    let mut assignments: Vec<(&str, String)> = Vec::new();
+    if classes.savings {
+        assignments.push(("savings_by_currency", breakdown_json(&breakdowns.savings)));
+    }
+    if classes.investments {
+        assignments.push((
+            "investments_by_currency",
+            breakdown_json(&breakdowns.investments),
+        ));
+    }
+    if classes.crypto {
+        assignments.push(("crypto_by_currency", breakdown_json(&breakdowns.crypto)));
+    }
+    if classes.bonds {
+        assignments.push(("bonds_by_currency", breakdown_json(&breakdowns.bonds)));
+    }
+    if classes.real_estate {
+        let combined = merged(
+            &breakdowns.real_estate_personal,
+            &breakdowns.real_estate_investment,
+        );
+        assignments.push(("real_estate_by_currency", breakdown_json(&combined)));
+        assignments.push((
+            "real_estate_personal_by_currency",
+            breakdown_json(&breakdowns.real_estate_personal),
+        ));
+    }
+    if classes.loans {
+        assignments.push(("loans_by_currency", breakdown_json(&breakdowns.loans)));
+    }
+    if classes.other_assets {
+        assignments.push((
+            "other_assets_by_currency",
+            breakdown_json(&breakdowns.other_assets),
+        ));
+    }
+    if assignments.is_empty() {
+        return Ok(0);
+    }
+
+    let set_clause = assignments
+        .iter()
+        .enumerate()
+        .map(|(index, (column, _))| format!("{column} = ?{}", index + 1))
+        .collect::<Vec<_>>()
+        .join(", ");
+    let from = assignments.len() + 1;
+    let sql = format!(
+        "UPDATE portfolio_metrics_history SET {set_clause}
+         WHERE recorded_at >= ?{from} AND recorded_at < ?{}",
+        from + 1
+    );
+    let mut values: Vec<Value> = assignments
+        .into_iter()
+        .map(|(_, json)| Value::Text(json))
+        .collect();
+    values.push(Value::Integer(day_start));
+    values.push(Value::Integer(day_start + SECONDS_PER_DAY));
+    Ok(conn.execute(&sql, rusqlite::params_from_iter(values))?)
+}
+
+/// Provenance of the stored row of every day in `[from_day, until_day_exclusive)` that has
+/// one, keyed by the day's midnight. A day with several rows counts as `Live` when any of
+/// them is.
+pub fn day_sources(
+    conn: &Connection,
+    from_day: i64,
+    until_day_exclusive: i64,
+) -> Result<BTreeMap<i64, SnapshotSource>> {
+    let mut stmt = conn.prepare(
+        "SELECT (recorded_at / 86400) * 86400, source FROM portfolio_metrics_history
+         WHERE recorded_at >= ?1 AND recorded_at < ?2",
+    )?;
+    let rows = stmt.query_map([from_day, until_day_exclusive], |row| {
+        Ok((row.get::<_, i64>(0)?, row.get::<_, String>(1)?))
+    })?;
+    let mut sources: BTreeMap<i64, SnapshotSource> = BTreeMap::new();
+    for row in rows {
+        let (day, source) = row?;
+        let source = SnapshotSource::from_stored(&source);
+        let entry = sources.entry(day).or_insert(source);
+        if source == SnapshotSource::Live {
+            *entry = SnapshotSource::Live;
+        }
+    }
+    Ok(sources)
+}
+
+/// Delete the reconstructed (`source = 'backfill'`) rows dated before `before`; authentic
+/// live rows are never deleted. Returns the rows removed.
+pub fn delete_backfill_before(conn: &Connection, before: i64) -> Result<usize> {
+    Ok(conn.execute(
+        "DELETE FROM portfolio_metrics_history WHERE source = 'backfill' AND recorded_at < ?1",
+        [before],
+    )?)
+}
+
 /// Rebuild the stocks or crypto class of every snapshot day in
 /// `[from_day, until_day_exclusive)` from the per-ticker value history.
 ///
@@ -415,7 +559,7 @@ fn aggregate_days(conn: &Connection, kind: AssetClassKind, days: &[i64]) -> Resu
 
 /// One ticker's history rows and position changes, with cursors for
 /// `aggregate_ticker_history`'s day-by-day walk.
-struct TickerSeries {
+pub(crate) struct TickerSeries {
     /// `(recorded_at, quantity * price, currency)`, oldest first.
     rows: Vec<(i64, f64, String)>,
     /// `(transaction_date, signed quantity)`, oldest first.
@@ -429,7 +573,7 @@ impl TickerSeries {
     /// Advance both cursors to "strictly before `cutoff`" (cutoffs only grow)
     /// and return the latest row's native value and currency while the
     /// position is positive; `None` for a sold-out or never-bought ticker.
-    fn value_before(&mut self, cutoff: i64) -> Option<(f64, &str)> {
+    pub(crate) fn value_before(&mut self, cutoff: i64) -> Option<(f64, &str)> {
         while self.rows_before < self.rows.len() && self.rows[self.rows_before].0 < cutoff {
             self.rows_before += 1;
         }
@@ -449,7 +593,7 @@ impl TickerSeries {
 
 /// Every ticker's history rows and position changes dated before `before`
 /// (changes: any date; they only matter up to the day being aggregated).
-fn load_ticker_series(
+pub(crate) fn load_ticker_series(
     conn: &Connection,
     history_table: &str,
     tx_table: &str,
@@ -1100,6 +1244,166 @@ mod tests {
             column(&conn, D1, "crypto_by_currency"),
             map(&[("CZK", 999.0)])
         );
+    }
+
+    fn full_breakdowns() -> ClassBreakdowns {
+        ClassBreakdowns {
+            savings: map(&[("CZK", 1.0)]),
+            investments: map(&[("CZK", 2.0)]),
+            crypto: map(&[("CZK", 3.0)]),
+            bonds: map(&[("CZK", 4.0)]),
+            real_estate_personal: map(&[("EUR", 5.0)]),
+            real_estate_investment: map(&[("EUR", 6.0)]),
+            loans: map(&[("CZK", 7.0)]),
+            other_assets: map(&[("CZK", 8.0)]),
+        }
+    }
+
+    #[test]
+    fn update_class_set_rewrites_exactly_the_selected_classes() {
+        let conn = setup_test_db();
+        let recorded = ClassBreakdowns {
+            savings: map(&[("CZK", 100.0)]),
+            loans: map(&[("CZK", 700.0)]),
+            bonds: map(&[("CZK", 400.0)]),
+            real_estate_personal: map(&[("EUR", 50.0)]),
+            ..Default::default()
+        };
+        upsert_snapshot(&conn, TEST_DAY + 4000, SnapshotSource::Live, &recorded).expect("live");
+
+        let changed = update_class_set(
+            &conn,
+            TEST_DAY,
+            &full_breakdowns(),
+            ClassSet {
+                savings: true,
+                real_estate: true,
+                other_assets: true,
+                ..Default::default()
+            },
+        )
+        .expect("update");
+        assert_eq!(changed, 1);
+
+        assert_eq!(
+            column(&conn, TEST_DAY, "savings_by_currency"),
+            map(&[("CZK", 1.0)])
+        );
+        assert_eq!(
+            column(&conn, TEST_DAY, "other_assets_by_currency"),
+            map(&[("CZK", 8.0)])
+        );
+        assert_eq!(
+            column(&conn, TEST_DAY, "real_estate_by_currency"),
+            map(&[("EUR", 11.0)]),
+            "combined: personal plus investment"
+        );
+        assert_eq!(
+            column(&conn, TEST_DAY, "real_estate_personal_by_currency"),
+            map(&[("EUR", 5.0)])
+        );
+        // the unselected classes and the provenance stay
+        assert_eq!(
+            column(&conn, TEST_DAY, "loans_by_currency"),
+            map(&[("CZK", 700.0)])
+        );
+        assert_eq!(
+            column(&conn, TEST_DAY, "bonds_by_currency"),
+            map(&[("CZK", 400.0)])
+        );
+        assert_eq!(provenance(&conn), (TEST_DAY + 4000, "live".to_string()));
+    }
+
+    #[test]
+    fn update_class_set_without_a_row_or_a_class_changes_nothing() {
+        let conn = setup_test_db();
+        assert_eq!(
+            update_class_set(&conn, TEST_DAY, &full_breakdowns(), ClassSet::ALL).expect("none"),
+            0
+        );
+        upsert_snapshot(
+            &conn,
+            TEST_DAY,
+            SnapshotSource::Backfill,
+            &full_breakdowns(),
+        )
+        .expect("row");
+        assert_eq!(
+            update_class_set(
+                &conn,
+                TEST_DAY,
+                &ClassBreakdowns::default(),
+                ClassSet::default()
+            )
+            .expect("empty set"),
+            0
+        );
+        assert_eq!(
+            column(&conn, TEST_DAY, "loans_by_currency"),
+            map(&[("CZK", 7.0)])
+        );
+    }
+
+    #[test]
+    fn day_sources_report_the_provenance_per_day_and_live_wins() {
+        let conn = setup_test_db();
+        let breakdowns = ClassBreakdowns::default();
+        upsert_snapshot(&conn, TEST_DAY, SnapshotSource::Backfill, &breakdowns).expect("a");
+        upsert_snapshot(
+            &conn,
+            TEST_DAY + DAY + 500,
+            SnapshotSource::Live,
+            &breakdowns,
+        )
+        .expect("b");
+        conn.execute(
+            "INSERT INTO portfolio_metrics_history (id, recorded_at, source)
+             VALUES ('dup', ?1, 'backfill')",
+            [TEST_DAY + DAY + 900],
+        )
+        .expect("a second row of the live day");
+        upsert_snapshot(
+            &conn,
+            TEST_DAY + 5 * DAY,
+            SnapshotSource::Backfill,
+            &breakdowns,
+        )
+        .expect("outside");
+
+        let sources = day_sources(&conn, TEST_DAY, TEST_DAY + 2 * DAY).expect("sources");
+        assert_eq!(sources.len(), 2);
+        assert_eq!(sources[&TEST_DAY], SnapshotSource::Backfill);
+        assert_eq!(sources[&(TEST_DAY + DAY)], SnapshotSource::Live);
+    }
+
+    #[test]
+    fn delete_backfill_before_keeps_live_rows_and_later_days() {
+        let conn = setup_test_db();
+        let breakdowns = ClassBreakdowns::default();
+        upsert_snapshot(&conn, TEST_DAY, SnapshotSource::Backfill, &breakdowns).expect("old");
+        upsert_snapshot(&conn, TEST_DAY + DAY + 7, SnapshotSource::Live, &breakdowns)
+            .expect("old live");
+        upsert_snapshot(
+            &conn,
+            TEST_DAY + 3 * DAY,
+            SnapshotSource::Backfill,
+            &breakdowns,
+        )
+        .expect("kept");
+
+        assert_eq!(
+            delete_backfill_before(&conn, TEST_DAY + 3 * DAY).expect("delete"),
+            1
+        );
+
+        let days: Vec<i64> = conn
+            .prepare("SELECT recorded_at FROM portfolio_metrics_history ORDER BY recorded_at")
+            .expect("prepare")
+            .query_map([], |row| row.get(0))
+            .expect("query")
+            .collect::<rusqlite::Result<_>>()
+            .expect("rows");
+        assert_eq!(days, vec![TEST_DAY + DAY + 7, TEST_DAY + 3 * DAY]);
     }
 
     #[test]

@@ -257,17 +257,21 @@ impl Facts {
     }
 
     /// Real estate, split by the property's current type: `(personal, investment, known)`.
-    /// Before the purchase date a property is worth 0. Otherwise the newest valuation on or
-    /// before the day applies (of one day, the last entered), else the purchase price. A
-    /// property without a purchase date counts nothing before its first valuation, and that
-    /// day is unknown.
+    /// A property without any valuation is not counted on any day. Before the purchase date
+    /// a property is worth 0. Otherwise the newest valuation on or before the day applies
+    /// (of one day, the last entered), else the purchase price. A property without a
+    /// purchase date counts nothing before its first valuation, and that day is unknown.
     fn real_estate_on(&mut self, day: i64) -> (Breakdown, Breakdown, bool) {
         let mut personal = Breakdown::new();
         let mut investment = Breakdown::new();
         let mut known = true;
         for property in &mut self.properties {
             property.valuations.advance(day);
-            if property.purchase_date.is_some_and(|bought| day < bought) {
+            // No estimate at all, no value line (`valuationTrace`; today's market price is 0
+            // too): the purchase price opens the line only once an estimate exists.
+            if property.valuations.first().is_none()
+                || property.purchase_date.is_some_and(|bought| day < bought)
+            {
                 continue;
             }
             let target = if property.personal {
@@ -1215,6 +1219,29 @@ mod tests {
     }
 
     #[test]
+    fn a_property_without_any_valuation_is_not_counted_on_any_day() {
+        let conn = setup_test_db();
+        // Bought for 3000 but never estimated: the purchase price opens the value line only
+        // once the property has an estimate (`valuationTrace`), and today's market price is 0.
+        property(
+            &conn,
+            "p",
+            "investment",
+            Some((d(10), "3000", "CZK")),
+            ("0", "CZK"),
+        );
+
+        for day in [d(9), d(10), d(40)] {
+            let values = values_on(&conn, day);
+            assert!(
+                values.breakdowns.real_estate_investment.is_empty(),
+                "day {day}"
+            );
+            assert!(values.known.real_estate, "nothing to cover on day {day}");
+        }
+    }
+
+    #[test]
     fn the_newest_valuation_applies_and_of_one_day_the_last_created() {
         let conn = setup_test_db();
         property(&conn, "p", "investment", None, ("0", "CZK"));
@@ -1894,6 +1921,14 @@ mod tests {
         property_valuation(&conn, "flat", today - 400 * DAY, "4000000", "CZK", 1);
         property(&conn, "plot", "investment", None, ("100", "CZK"));
         property_valuation(&conn, "plot", today - 100 * DAY, "100", "CZK", 1);
+        // bought but never estimated: no value line, and a market price of 0 today
+        property(
+            &conn,
+            "bare",
+            "investment",
+            Some((today - 60 * DAY, "9000000", "CZK")),
+            ("0", "CZK"),
+        );
 
         // other assets: bought 3, sold 1 (quantity 2), valuations mirrored into the price
         asset(&conn, "gold", "CZK", "2", "70");

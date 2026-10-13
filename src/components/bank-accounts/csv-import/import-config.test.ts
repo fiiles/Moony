@@ -19,6 +19,7 @@ import {
   fileNameFromPath,
   formatBalance,
   formatPreviewAmount,
+  groupPresetsByCountry,
   isDateFormatGuess,
   isMappingComplete,
   isSupportedCsvPath,
@@ -716,5 +717,46 @@ describe('encoding override', () => {
   it('writes the encoding the file was read with into the preview and import config', () => {
     const config = buildImportConfig(mapping(), inspection({ encoding: 'Shift_JIS' }), 0);
     expect(config.encoding).toBe('Shift_JIS');
+  });
+});
+
+describe('groupPresetsByCountry', () => {
+  const preset = (id: string, bankName: string, country: string) =>
+    ({ id, bankName, country, institutionId: null }) as CsvPreset;
+  const presets = [
+    preset('chase', 'Chase', 'US'),
+    preset('dkb', 'DKB', 'DE'),
+    preset('air', 'Air Bank', 'CZ'),
+    preset('revolut', 'Revolut', 'GB'),
+    preset('csob', 'ČSOB', 'CZ'),
+    preset('n26', 'N26', 'DE'),
+  ];
+
+  it('puts the profile country first and the rest in the order of their localized names', () => {
+    const groups = groupPresetsByCountry(presets, 'de', 'en-US');
+    expect(groups.map((g) => g.country)).toEqual(['DE', 'CZ', 'GB', 'US']);
+    expect(groups.map((g) => g.name)).toEqual([
+      'Germany',
+      'Czechia',
+      'United Kingdom',
+      'United States',
+    ]);
+    expect(groups[0].presets.map((p) => p.id)).toEqual(['dkb', 'n26']);
+    expect(groups[1].presets.map((p) => p.id)).toEqual(['air', 'csob']);
+  });
+
+  it('orders by the language of the interface when the country is unknown', () => {
+    expect(groupPresetsByCountry(presets, null, 'cs-CZ').map((g) => g.name)).toEqual([
+      'Česko',
+      'Německo',
+      'Spojené království',
+      'Spojené státy',
+    ]);
+  });
+
+  it('ignores the case of the profile country and an unknown one', () => {
+    expect(groupPresetsByCountry(presets, 'us', 'en-US')[0].country).toBe('US');
+    expect(groupPresetsByCountry(presets, 'XX', 'en-US')[0].country).toBe('CZ');
+    expect(groupPresetsByCountry([], 'US', 'en-US')).toEqual([]);
   });
 });

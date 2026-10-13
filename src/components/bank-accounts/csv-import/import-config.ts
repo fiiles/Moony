@@ -429,6 +429,38 @@ export function presetLabel(preset: Pick<CsvPreset, 'bankName' | 'country'>): st
   return `${preset.bankName} (${preset.country})`;
 }
 
+export interface PresetGroup {
+  /** ISO 3166-1 alpha-2, upper case. */
+  country: string;
+  /** Localized country name. */
+  name: string;
+  presets: CsvPreset[];
+}
+
+/**
+ * Presets grouped by the country of their bank: the profile's country first, the other groups by
+ * their localized country name; the banks inside a group are sorted like `sortPresets`.
+ */
+export function groupPresetsByCountry(
+  presets: readonly CsvPreset[],
+  userCountry: string | null | undefined,
+  locale: string
+): PresetGroup[] {
+  const own = userCountry?.trim().toUpperCase();
+  const byCountry = new Map<string, CsvPreset[]>();
+  for (const preset of sortPresets(presets)) {
+    const code = preset.country.toUpperCase();
+    byCountry.set(code, [...(byCountry.get(code) ?? []), preset]);
+  }
+  return [...byCountry]
+    .map(([country, list]) => ({ country, name: regionName(country, locale), presets: list }))
+    .sort((a, b) => {
+      if (a.country === own) return -1;
+      if (b.country === own) return 1;
+      return a.name.localeCompare(b.name, locale);
+    });
+}
+
 /** The preset seeded for an institution, used to pre-select the bank on step 1. */
 export function presetIdForInstitution(
   presets: readonly CsvPreset[],

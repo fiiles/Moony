@@ -93,6 +93,11 @@ impl<T> Steps<T> {
     fn first(&self) -> Option<&(i64, T)> {
         self.rows.first()
     }
+
+    /// No row at all, whatever the cursor passed.
+    fn is_empty(&self) -> bool {
+        self.rows.is_empty()
+    }
 }
 
 /// Rows of `(owner, day, row)` grouped by owner, each group in the order given.
@@ -135,8 +140,11 @@ struct Loan {
 struct OtherAsset {
     currency: String,
     market_price: f64,
+    /// The stored quantity: what an asset without transactions carries.
+    stored_quantity: f64,
     /// Signed quantity changes of the transactions.
     changes: Steps<f64>,
+    /// The quantity the transactions passed so far leave.
     quantity: f64,
     valuations: Steps<Amount>,
 }
@@ -292,10 +300,25 @@ impl Facts {
 
     /// Other assets: the quantity the transactions leave on the day times the valuation of
     /// the day (`valuations::value_at_day`: the newest valuation on or before it, else the
-    /// earliest, else the market price), in the valuation's currency.
+    /// earliest, else the market price), in the valuation's currency. An asset with no
+    /// transactions but a stored quantity (an MCP-created one) has nothing dated: like an
+    /// undated account it carries today's quantity times today's price in its own currency
+    /// (`net_worth::compute_breakdowns`) and is not a fact.
     fn other_assets_on(&mut self, day: i64) -> (Breakdown, bool) {
         let mut breakdown = Breakdown::new();
+        let mut known = true;
         for asset in &mut self.assets {
+            if asset.changes.is_empty() {
+                if asset.stored_quantity > QUANTITY_EPSILON {
+                    add(
+                        &mut breakdown,
+                        &asset.currency,
+                        asset.stored_quantity * asset.market_price,
+                    );
+                    known = false;
+                }
+                continue;
+            }
             for (_, change) in asset.changes.advance(day) {
                 asset.quantity += change;
             }
@@ -322,7 +345,7 @@ impl Facts {
                 ),
             }
         }
-        (breakdown, true)
+        (breakdown, known)
     }
 }
 
@@ -486,21 +509,23 @@ fn load_other_assets(conn: &Connection) -> Result<Vec<OtherAsset>> {
     let mut changes = grouped(rows);
 
     let mut stmt =
-        conn.prepare("SELECT id, currency, market_price FROM other_assets ORDER BY id")?;
+        conn.prepare("SELECT id, currency, market_price, quantity FROM other_assets ORDER BY id")?;
     let assets = stmt
         .query_map([], |row| {
             Ok((
                 row.get::<_, String>(0)?,
                 row.get::<_, String>(1)?,
                 row.get::<_, String>(2)?,
+                row.get::<_, String>(3)?,
             ))
         })?
         .collect::<rusqlite::Result<Vec<_>>>()?;
     Ok(assets
         .into_iter()
-        .map(|(id, currency, market_price)| OtherAsset {
+        .map(|(id, currency, market_price, quantity)| OtherAsset {
             currency,
             market_price: parse_money(&market_price, 0.0, "other_assets.market_price"),
+            stored_quantity: parse_money(&quantity, 0.0, "other_assets.quantity"),
             changes: Steps::new(changes.remove(&id).unwrap_or_default()),
             quantity: 0.0,
             valuations: Steps::new(valuations.remove(&id).unwrap_or_default()),
@@ -529,15 +554,18 @@ fn load_bonds(conn: &Connection) -> Result<Breakdown> {
 }
 
 /// The first day any fact is dated (A2), the start of every history: the first transaction
-/// of stocks, crypto and other assets, the first balance record, each property's purchase
-/// date (else its first valuation) and each loan's start. Never before 2000-01-01. Bonds
-/// and accounts without records have no date and do not count. `None` without a dated fact.
+/// of stocks, crypto and other assets, the first balance record of an account that counts, each
+/// property's purchase date (else its first valuation) and each loan's start. Never before
+/// 2000-01-01. Bonds, accounts without records and other assets without transactions have no
+/// date and do not count. `None` without a dated fact.
 pub fn earliest_fact_day(conn: &Connection) -> Result<Option<i64>> {
     const SOURCES: [&str; 6] = [
         "SELECT MIN(transaction_date) FROM investment_transactions",
         "SELECT MIN(transaction_date) FROM crypto_transactions",
         "SELECT MIN(transaction_date) FROM other_asset_transactions",
-        "SELECT MIN(as_of) FROM bank_balance_records",
+        // The history never counts an account outside the balance (`load_accounts`)
+        "SELECT MIN(as_of) FROM bank_balance_records
+         WHERE bank_account_id IN (SELECT id FROM bank_accounts WHERE exclude_from_balance = 0)",
         "SELECT MIN(COALESCE(purchase_date,
                 (SELECT MIN(valued_at) FROM real_estate_valuations
                  WHERE real_estate_id = real_estate.id)))
@@ -1342,6 +1370,47 @@ mod tests {
         assert!(values.known.other_assets);
     }
 
+    #[test]
+    fn an_other_asset_with_a_quantity_and_no_transactions_is_carried_as_unknown() {
+        // An MCP-created asset: a quantity and a price, no dated transaction. Like an undated
+        // account it carries today's quantity times today's price on every day.
+        let conn = setup_test_db();
+        asset(&conn, "mcp", "CZK", "3", "100");
+        asset(&conn, "empty", "CZK", "0", "50");
+        asset_valuation(&conn, "mcp", d(5), "80", "EUR", 1);
+
+        for day in [-1000, 0, 7] {
+            let values = values_on(&conn, d(day));
+            assert_eq!(
+                values.breakdowns.other_assets,
+                map(&[("CZK", 300.0)]),
+                "the asset's own quantity, price and currency, like today's breakdown: {day}"
+            );
+            assert!(!values.known.other_assets, "{day}");
+        }
+    }
+
+    #[test]
+    fn a_carried_other_asset_makes_the_class_unknown_next_to_dated_ones() {
+        let conn = setup_test_db();
+        asset(&conn, "dated", "CZK", "1", "10");
+        asset_tx(&conn, "dated", "buy", "1", d(3));
+        asset(&conn, "mcp", "EUR", "2", "5");
+
+        let values = values_on(&conn, d(4));
+        assert_eq!(
+            values.breakdowns.other_assets,
+            map(&[("CZK", 10.0), ("EUR", 10.0)])
+        );
+        assert!(!values.known.other_assets);
+        // an asset that was bought and sold out is dated, not carried
+        asset_tx(&conn, "dated", "sell", "1", d(6));
+        assert_eq!(
+            values_on(&conn, d(7)).breakdowns.other_assets,
+            map(&[("EUR", 10.0)])
+        );
+    }
+
     /// The valuation rule is `valuations::value_at_day`'s: the amounts must not drift apart.
     #[test]
     fn other_asset_values_follow_value_at_day() {
@@ -1423,6 +1492,19 @@ mod tests {
         bond(&conn, "b", "1", "1", "CZK");
         property(&conn, "p", "personal", None, ("0", "CZK"));
         assert_eq!(earliest_fact_day(&conn).unwrap(), None);
+    }
+
+    #[test]
+    fn balance_records_of_an_account_outside_the_balance_are_not_a_fact() {
+        // The history never counts such an account, so its records must not start it earlier.
+        let conn = setup_test_db();
+        account(&conn, "out", "CZK", "1", true);
+        record(&conn, "out", d(-100), "1", "CZK");
+        assert_eq!(earliest_fact_day(&conn).unwrap(), None);
+
+        account(&conn, "in", "CZK", "1", false);
+        record(&conn, "in", d(-10), "1", "CZK");
+        assert_eq!(earliest_fact_day(&conn).unwrap(), Some(d(-10)));
     }
 
     #[test]
@@ -1703,6 +1785,29 @@ mod tests {
                 .filter(|(_, source, _)| source == "backfill")
                 .count(),
             27
+        );
+    }
+
+    #[test]
+    fn a_live_row_keeps_its_other_assets_while_a_carried_asset_is_not_a_fact() {
+        let conn = setup_test_db();
+        let today = d(30);
+        account(&conn, "a", "CZK", "100", false);
+        record(&conn, "a", d(0), "100", "CZK");
+        asset(&conn, "mcp", "CZK", "3", "100");
+        live_row(&conn, d(10));
+
+        rebuild_days(&conn, d(0), today).expect("rebuild");
+
+        assert_eq!(
+            column(&conn, d(10), "other_assets_by_currency"),
+            map(&[("CZK", 888.0)]),
+            "the recorded value stays on the live row"
+        );
+        assert_eq!(
+            column(&conn, d(11), "other_assets_by_currency"),
+            map(&[("CZK", 300.0)]),
+            "a new row carries today's quantity times its price"
         );
     }
 

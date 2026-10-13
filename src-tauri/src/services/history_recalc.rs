@@ -288,6 +288,39 @@ impl HistoryRecalc {
     }
 }
 
+/// Held by a worker for as long as it drains the queue. A batch that panics unwinds past the
+/// worker without it ever marking itself idle, and `worker_active` would stay true: every later
+/// rebuild would queue behind a worker that no longer exists and never run. The guard marks the
+/// queue idle again in that case, so the next job starts a new worker. A worker that finished
+/// normally already went idle through [`HistoryRecalc::take_batch`] (and a new worker may own the
+/// queue by now), so it calls [`WorkerGuard::finish`] and the drop leaves the queue alone.
+struct WorkerGuard<'a> {
+    state: &'a HistoryRecalc,
+    finished: bool,
+}
+
+impl<'a> WorkerGuard<'a> {
+    fn new(state: &'a HistoryRecalc) -> Self {
+        Self {
+            state,
+            finished: false,
+        }
+    }
+
+    fn finish(&mut self) {
+        self.finished = true;
+    }
+}
+
+impl Drop for WorkerGuard<'_> {
+    fn drop(&mut self) {
+        if !self.finished {
+            log::warn!("[RECALC] The rebuild worker stopped unexpectedly; the queue is open again");
+            self.state.lock().worker_active = false;
+        }
+    }
+}
+
 fn floor_day(ts: i64) -> i64 {
     ts.div_euclid(SECONDS_PER_DAY) * SECONDS_PER_DAY
 }
@@ -326,6 +359,7 @@ pub fn schedule(
     let state = state.clone();
     let db = db.clone();
     tauri::async_runtime::spawn(async move {
+        let mut guard = WorkerGuard::new(&state);
         while let Some((batch, completions)) = state.take_batch() {
             if !batch.crypto.is_empty() {
                 // A historical crypto transaction may predate the FX timeseries: extend it
@@ -345,6 +379,7 @@ pub fn schedule(
                 completion(&outcome);
             }
         }
+        guard.finish();
     });
 }
 
@@ -452,24 +487,15 @@ async fn rebuild_unseeded_tickers(
     price_rule: PriceRule,
     strict: bool,
 ) {
-    let (earliest, until) = range;
-    // From the ticker's first transaction at the earliest: a days job dated 0 ("from the first
-    // fact") must not ask a provider for quotes back to 1970.
-    let missing = tickers_without_history(db, kind, earliest, until, queued).and_then(|missing| {
-        db.with_conn(|conn| match kind {
-            AssetKind::Stock => rebuild_jobs(conn, &missing),
-            AssetKind::Crypto => crypto_rebuild_jobs(conn, &missing),
-        })
-    });
-    let missing = match missing {
+    let until = range.1;
+    let missing = match unseeded_ticker_jobs(db, kind, range, queued) {
         Ok(missing) => missing,
         Err(e) => {
             log::warn!("[RECALC] Could not look for tickers without history: {e}");
             return;
         }
     };
-    for (ticker, first_transaction) in missing {
-        let from = earliest.max(first_transaction);
+    for (ticker, from) in missing {
         let rebuilt = match kind {
             AssetKind::Stock => {
                 rebuild_stock_ticker_with_policy(db, &ticker, from, until, price_rule, strict).await
@@ -483,6 +509,29 @@ async fn rebuild_unseeded_tickers(
             log::warn!("[RECALC] Backfilling a ticker's history failed: {e}");
         }
     }
+}
+
+/// The tickers [`rebuild_unseeded_tickers`] fetches quotes for, each with the day its rebuild
+/// starts: the later of the batch's earliest day and its first transaction (a days job dated 0,
+/// "from the first fact", must not ask a provider for quotes back to 1970). Only a ticker that
+/// can be missing from the portfolio days qualifies (see [`tickers_without_history`]); the
+/// rest costs no provider call.
+fn unseeded_ticker_jobs(
+    db: &Database,
+    kind: AssetKind,
+    range: (i64, i64),
+    queued: &BTreeMap<String, i64>,
+) -> Result<Vec<(String, i64)>> {
+    let (earliest, until) = range;
+    let missing = tickers_without_history(db, kind, earliest, until, queued)?;
+    let firsts = db.with_conn(|conn| match kind {
+        AssetKind::Stock => rebuild_jobs(conn, &missing),
+        AssetKind::Crypto => crypto_rebuild_jobs(conn, &missing),
+    })?;
+    Ok(firsts
+        .into_iter()
+        .map(|(ticker, first_transaction)| (ticker, earliest.max(first_transaction)))
+        .collect())
 }
 
 /// Re-derive the portfolio days of `[from_day, until_day)` from the dated facts (A4): the
@@ -588,7 +637,11 @@ pub fn all_ticker_jobs(conn: &rusqlite::Connection) -> Result<Vec<Job>> {
     Ok(jobs)
 }
 
-/// Held tickers of `kind` (outside `skip`) that have no history row in `from..=until`.
+/// Held tickers of `kind` (outside `skip`) that have no history row in `from..=until`. A ticker
+/// is held in the window when its transactions leave a position at the start of the window, or
+/// when it trades inside it (a buy opens one, a sell closes one that was held). A holding that
+/// was sold out before the window has no days in it to value: it needs no rows and must never
+/// cost a provider call.
 fn tickers_without_history(
     db: &Database,
     kind: AssetKind,
@@ -596,17 +649,38 @@ fn tickers_without_history(
     until: i64,
     skip: &BTreeMap<String, i64>,
 ) -> Result<Vec<String>> {
-    let (investments, history) = match kind {
-        AssetKind::Stock => ("stock_investments", "stock_value_history"),
-        AssetKind::Crypto => ("crypto_investments", "crypto_value_history"),
+    let (investments, transactions, history) = match kind {
+        AssetKind::Stock => (
+            "stock_investments",
+            "investment_transactions",
+            "stock_value_history",
+        ),
+        AssetKind::Crypto => (
+            "crypto_investments",
+            "crypto_transactions",
+            "crypto_value_history",
+        ),
     };
     let from_day = floor_day(from);
     db.with_conn(|conn| {
         let mut stmt = conn.prepare(&format!(
-            "SELECT DISTINCT ticker FROM {investments}
-             WHERE ticker NOT IN (
+            "SELECT DISTINCT i.ticker FROM {investments} i
+             WHERE i.ticker NOT IN (
                  SELECT ticker FROM {history}
                  WHERE recorded_at >= ?1 AND recorded_at <= ?2
+             )
+             AND (
+                 COALESCE((
+                     SELECT SUM(CASE WHEN t.type = 'buy' THEN CAST(t.quantity AS REAL)
+                                     ELSE -CAST(t.quantity AS REAL) END)
+                     FROM {transactions} t
+                     WHERE t.ticker = i.ticker AND t.transaction_date < ?1
+                 ), 0) > {HELD_EPSILON}
+                 OR EXISTS (
+                     SELECT 1 FROM {transactions} t
+                     WHERE t.ticker = i.ticker AND t.transaction_date >= ?1
+                       AND t.transaction_date < ?2
+                 )
              )"
         ))?;
         let rows = stmt.query_map([from_day, until], |row| row.get::<_, String>(0))?;
@@ -620,6 +694,9 @@ fn tickers_without_history(
         Ok(tickers)
     })
 }
+
+/// Below this a quantity left by buys and sells is float residue, not a position.
+const HELD_EPSILON: f64 = 0.000_001;
 
 /// Rebuild one ticker's history rows from `from_ts` through `until_day`:
 /// quotes are fetched without the database lock, the plan is computed in one
@@ -982,6 +1059,44 @@ mod tests {
         assert_eq!(second.stocks["AAPL"], 2 * DAY);
         assert_eq!(second.crypto["BTC"], 3 * DAY);
         assert!(!queue.is_pending_ticker("AAPL"));
+    }
+
+    #[test]
+    fn a_worker_that_panics_leaves_the_queue_open_for_the_next_job() {
+        let state = HistoryRecalc::new();
+        assert!(state.enqueue([Job::Days(86_400)], None), "starts a worker");
+
+        // The worker takes its batch, then the batch panics.
+        let outcome = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            let _guard = WorkerGuard::new(&state);
+            let _batch = state.take_batch().expect("a batch");
+            panic!("a batch failed");
+        }));
+        assert!(outcome.is_err());
+
+        assert!(
+            state.enqueue([Job::Days(172_800)], None),
+            "a later rebuild starts a new worker instead of waiting for the dead one"
+        );
+    }
+
+    #[test]
+    fn a_worker_that_finished_does_not_reopen_the_queue_for_a_second_worker() {
+        let state = HistoryRecalc::new();
+        assert!(state.enqueue([Job::Days(86_400)], None));
+        let mut guard = WorkerGuard::new(&state);
+        assert!(state.take_batch().is_some());
+        assert!(state.take_batch().is_none(), "idle");
+
+        // A job queued right after starts the next worker…
+        assert!(state.enqueue([Job::Days(172_800)], None));
+        // …which the first worker finishing must not push aside.
+        guard.finish();
+        drop(guard);
+        assert!(
+            !state.enqueue([Job::Days(259_200)], None),
+            "the second worker is still the only one"
+        );
     }
 
     #[test]
@@ -1478,6 +1593,163 @@ mod tests {
             })
             .expect("count");
         assert_eq!(rows, 0);
+    }
+
+    /// A holding with its transactions `(type, day)`; the stored quantity is what they leave.
+    fn seed_holding(db: &Database, crypto: bool, ticker: &str, trades: &[(&str, i64)]) {
+        let transactions = if crypto {
+            "crypto_transactions"
+        } else {
+            "investment_transactions"
+        };
+        let held: i64 = trades
+            .iter()
+            .map(|(kind, _)| if *kind == "buy" { 1 } else { -1 })
+            .sum();
+        db.with_conn(|conn| {
+            if crypto {
+                conn.execute(
+                    "INSERT INTO crypto_investments (id, ticker, coingecko_id, name, quantity)
+                     VALUES (?1, ?2, 'id', ?2, ?3)",
+                    rusqlite::params![format!("inv-{ticker}"), ticker, held.to_string()],
+                )?;
+            } else {
+                conn.execute(
+                    "INSERT INTO stock_investments (id, ticker, company_name, quantity)
+                     VALUES (?1, ?2, ?2, ?3)",
+                    rusqlite::params![format!("inv-{ticker}"), ticker, held.to_string()],
+                )?;
+            }
+            for (index, (kind, day)) in trades.iter().enumerate() {
+                let name_column = if crypto { "name" } else { "company_name" };
+                conn.execute(
+                    &format!(
+                        "INSERT INTO {transactions}
+                         (id, investment_id, type, ticker, {name_column}, quantity, price_per_unit,
+                          currency, transaction_date)
+                         VALUES (?1, ?2, ?3, ?4, ?4, '1', '10', 'USD', ?5)"
+                    ),
+                    rusqlite::params![
+                        format!("tx-{ticker}-{index}"),
+                        format!("inv-{ticker}"),
+                        kind,
+                        ticker,
+                        day
+                    ],
+                )?;
+            }
+            Ok(())
+        })
+        .expect("seed holding");
+    }
+
+    fn seed_history_row(db: &Database, crypto: bool, ticker: &str, day: i64) {
+        let table = if crypto {
+            "crypto_value_history"
+        } else {
+            "stock_value_history"
+        };
+        db.with_conn(|conn| {
+            conn.execute(
+                &format!(
+                    "INSERT INTO {table} (id, ticker, recorded_at, quantity, price, currency)
+                     VALUES (?1, ?2, ?3, '1', '10', 'USD')"
+                ),
+                rusqlite::params![format!("h-{ticker}-{day}"), ticker, day],
+            )?;
+            Ok(())
+        })
+        .expect("seed history row");
+    }
+
+    /// The network-bound step looks up the tickers this returns (and nothing else): a holding
+    /// that was sold out before the window needs no rows in it, so it must not cost a provider
+    /// call on every unrelated batch.
+    #[tokio::test]
+    async fn only_tickers_held_in_the_window_are_looked_up() {
+        for crypto in [false, true] {
+            let kind = if crypto {
+                AssetKind::Crypto
+            } else {
+                AssetKind::Stock
+            };
+            let (_dir, db) = open_test_db(if crypto { 11 } else { 10 });
+            let today = today_start();
+            let from = today - 10 * DAY;
+            // held through the window, without a single row in it
+            seed_holding(&db, crypto, "HELD", &[("buy", today - 100 * DAY)]);
+            // sold out before the window, no trade inside it
+            seed_holding(
+                &db,
+                crypto,
+                "SOLD",
+                &[("buy", today - 100 * DAY), ("sell", today - 50 * DAY)],
+            );
+            // sold inside the window: held on its first days
+            seed_holding(
+                &db,
+                crypto,
+                "SOLD_IN",
+                &[("buy", today - 100 * DAY), ("sell", today - 5 * DAY)],
+            );
+            // bought inside the window
+            seed_holding(&db, crypto, "NEW", &[("buy", today - 3 * DAY)]);
+            // bought today: no past day holds it
+            seed_holding(&db, crypto, "TODAY", &[("buy", today)]);
+            // held and already covered
+            seed_holding(&db, crypto, "COVERED", &[("buy", today - 100 * DAY)]);
+            seed_history_row(&db, crypto, "COVERED", today - 4 * DAY);
+            // held but queued on its own
+            seed_holding(&db, crypto, "QUEUED", &[("buy", today - 100 * DAY)]);
+            let queued = BTreeMap::from([("QUEUED".to_string(), from)]);
+
+            let mut found = tickers_without_history(&db, kind, from, today, &queued)
+                .expect("tickers without history");
+            found.sort();
+            assert_eq!(found, vec!["HELD", "NEW", "SOLD_IN"], "crypto: {crypto}");
+
+            // the same through the plan of the days-only batch: each starts at the later of the
+            // batch's earliest day and its first transaction
+            let mut jobs = unseeded_ticker_jobs(&db, kind, (from, today), &queued).expect("jobs");
+            jobs.sort();
+            assert_eq!(
+                jobs,
+                vec![
+                    ("HELD".to_string(), from),
+                    ("NEW".to_string(), today - 3 * DAY),
+                    ("SOLD_IN".to_string(), from),
+                ],
+                "crypto: {crypto}"
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn a_days_only_batch_with_only_sold_out_holdings_looks_up_nothing() {
+        let (_dir, db) = open_test_db(12);
+        let today = today_start();
+        for (crypto, ticker) in [(false, "OLD"), (true, "OLDCOIN")] {
+            seed_holding(
+                &db,
+                crypto,
+                ticker,
+                &[("buy", today - 100 * DAY), ("sell", today - 50 * DAY)],
+            );
+        }
+        let none = BTreeMap::new();
+        for kind in [AssetKind::Stock, AssetKind::Crypto] {
+            assert!(
+                unseeded_ticker_jobs(&db, kind, (today - 10 * DAY, today), &none)
+                    .expect("jobs")
+                    .is_empty()
+            );
+        }
+        // …and a start before the sale does hold them in the window
+        assert_eq!(
+            unseeded_ticker_jobs(&db, AssetKind::Stock, (today - 60 * DAY, today), &none)
+                .expect("jobs"),
+            vec![("OLD".to_string(), today - 60 * DAY)]
+        );
     }
 
     #[tokio::test]

@@ -33,11 +33,12 @@ write on top of carried statics, leaves every past day dependent on a row that m
 - **Class rules.** An account counts nothing before its first record, and carries its current
   balance when it has none. A loan follows the estimate until its first manual balance. A property
   counts from its purchase date at its newest valuation, and not at all without one. An other asset
-  is the quantity its transactions leave times the valuation of the day. Bonds have no date and
-  carry today's value. Stocks and crypto come from the ticker histories.
+  is the quantity its transactions leave times the valuation of the day; one with a quantity and no
+  transactions (an MCP-created asset) carries today's quantity times its price like an undated
+  account. Bonds have no date and carry today's value. Stocks and crypto come from the ticker histories.
 - **Facts win over live rows, with a guard.** A backfill or new row is written whole. A live row is
-  rewritten only for a class whose every item the facts cover that day; undated accounts, bonds and
-  the estimated past of an overridden loan are not covered. History starts at the earliest dated
+  rewritten only for a class whose every item the facts cover that day; undated accounts, undated other
+  assets, bonds and the estimated past of an overridden loan are not covered. History starts at the earliest dated
   fact: backfill rows before it are deleted, live rows never.
 - **One rebuild, once.** The first start of this version rebuilds every day, and every ticker from
   its first transaction; `app_config.history_rebuild_version` is stored once the days rebuild

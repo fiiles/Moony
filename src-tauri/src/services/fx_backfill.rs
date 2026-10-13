@@ -43,6 +43,7 @@ const CURRENCY_COLUMNS: &[(&str, &str)] = &[
     ("crypto_transactions", "currency"),
     ("bank_transactions", "currency"),
     ("bank_accounts", "currency"),
+    ("bank_balance_records", "currency"),
     ("stock_data", "currency"),
     ("stock_data", "quote_currency"),
     ("crypto_prices", "currency"),
@@ -76,6 +77,8 @@ const DATED_CURRENCY_FACTS: &[(&str, &str, &str)] = &[
     ("investment_transactions", "currency", "transaction_date"),
     ("crypto_transactions", "currency", "transaction_date"),
     ("bank_transactions", "currency", "booking_date"),
+    // A balance record holds from its day, in its own currency (the savings of a past day)
+    ("bank_balance_records", "currency", "as_of"),
     ("other_asset_transactions", "currency", "transaction_date"),
     ("real_estate_valuations", "currency", "valued_at"),
     ("other_asset_valuations", "currency", "valued_at"),
@@ -95,6 +98,18 @@ const DATED_CURRENCY_FACTS: &[(&str, &str, &str)] = &[
     ("stock_value_history", "currency", "recorded_at"),
     ("crypto_value_history", "currency", "recorded_at"),
 ];
+
+/// `(table, currency column, SQL of the fact's day, (table, column) that SQL reads)` for dated
+/// facts whose day is not a column of their own table. An other asset without a valuation is
+/// priced in its own currency from its first transaction (`history_days`), whatever currency the
+/// purchase was paid in.
+const DERIVED_DATED_FACTS: &[(&str, &str, &str, (&str, &str))] = &[(
+    "other_assets",
+    "currency",
+    "(SELECT MIN(transaction_date) FROM other_asset_transactions
+      WHERE asset_id = other_assets.id)",
+    ("other_asset_transactions", "transaction_date"),
+)];
 
 /// Days after which a held currency's newest stored rate counts as stale.
 pub const STALE_AFTER_DAYS: i64 = 14;
@@ -154,6 +169,8 @@ const CONVERTED_CURRENCY_SOURCES: &[(&str, &str, &str, &str)] = &[
     ("investment_transactions", "currency", "", ""),
     ("crypto_transactions", "currency", "", ""),
     ("bank_transactions", "currency", "", ""),
+    // The savings of a past day are the newest record's amount in the record's currency
+    ("bank_balance_records", "currency", "", ""),
     // The accounts net worth counts (`net_worth.rs`)
     (
         "bank_accounts",
@@ -270,6 +287,18 @@ fn earliest_day(conn: &Connection, currency: &str) -> Result<Option<i64>> {
         let sql = format!(
             "SELECT MIN({date_column}) FROM {table} WHERE UPPER(TRIM({currency_column})) = ?1"
         );
+        for code in &codes {
+            let day: Option<i64> = conn.query_row(&sql, [code.as_str()], |r| r.get(0))?;
+            earliest = earliest.into_iter().chain(day).min();
+        }
+    }
+    for (table, currency_column, day_sql, (read_table, read_column)) in DERIVED_DATED_FACTS {
+        if !has_column(conn, table, currency_column)? || !has_column(conn, read_table, read_column)?
+        {
+            continue;
+        }
+        let sql =
+            format!("SELECT MIN({day_sql}) FROM {table} WHERE UPPER(TRIM({currency_column})) = ?1");
         for code in &codes {
             let day: Option<i64> = conn.query_row(&sql, [code.as_str()], |r| r.get(0))?;
             earliest = earliest.into_iter().chain(day).min();
@@ -680,6 +709,58 @@ mod tests {
         assert_eq!(
             missing_fx_ranges(&conn, TODAY).expect("ranges"),
             vec![(TODAY - 610 * D, TODAY - 20 * D)]
+        );
+    }
+
+    #[test]
+    fn a_balance_record_extends_the_history_its_currency_needs() {
+        // The savings of a past day are the newest record's amount in the record's own
+        // currency: converting it needs rates from the record's day, whatever the account is.
+        let conn = setup_db();
+        conn.execute_batch(&format!(
+            "CREATE TABLE bank_balance_records (
+                 id TEXT PRIMARY KEY, bank_account_id TEXT NOT NULL, amount TEXT NOT NULL,
+                 currency TEXT NOT NULL, as_of INTEGER NOT NULL);
+             INSERT INTO bank_balance_records (id, bank_account_id, amount, currency, as_of)
+             VALUES ('r', 'a', '100', 'GBP', {});",
+            TODAY - 500 * D
+        ))
+        .expect("seed");
+        add_rate(&conn, TODAY - 20 * D, "GBP");
+        add_rate(&conn, TODAY, "GBP");
+
+        assert_eq!(held_currencies(&conn).expect("held"), vec!["GBP"]);
+        assert_eq!(
+            missing_fx_ranges(&conn, TODAY).expect("ranges"),
+            vec![(TODAY - 510 * D, TODAY - 20 * D)]
+        );
+    }
+
+    #[test]
+    fn an_other_asset_is_priced_in_its_own_currency_from_its_first_transaction() {
+        // Without a valuation the history prices the asset at its market price in the asset's
+        // currency from the first transaction, whatever currency the purchase was paid in.
+        let conn = setup_db();
+        conn.execute_batch(&format!(
+            "CREATE TABLE other_assets (id TEXT PRIMARY KEY, currency TEXT NOT NULL);
+             CREATE TABLE other_asset_transactions (
+                 id TEXT PRIMARY KEY, asset_id TEXT NOT NULL, currency TEXT NOT NULL,
+                 transaction_date INTEGER NOT NULL);
+             INSERT INTO other_assets (id, currency) VALUES ('a', 'CHF');
+             INSERT INTO other_asset_transactions (id, asset_id, currency, transaction_date)
+             VALUES ('t', 'a', 'USD', {});",
+            TODAY - 300 * D
+        ))
+        .expect("seed");
+        // the purchase currency is covered back to the transaction, the asset's is not
+        add_rate(&conn, TODAY - 310 * D, "USD");
+        add_rate(&conn, TODAY, "USD");
+        add_rate(&conn, TODAY - 20 * D, "CHF");
+        add_rate(&conn, TODAY, "CHF");
+
+        assert_eq!(
+            missing_fx_ranges(&conn, TODAY).expect("ranges"),
+            vec![(TODAY - 310 * D, TODAY - 20 * D)]
         );
     }
 

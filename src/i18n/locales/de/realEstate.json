@@ -375,7 +375,9 @@
       "convertFailed": "„{{name}}“ konnte nicht konvertiert werden. Bitte wandeln Sie die Datei manuell in JPG um.",
       "unsupportedFormat": "„{{name}}“ hat ein nicht unterstütztes Format. Verwenden Sie JPG, PNG, GIF, WebP oder HEIC.",
       "noValidFiles": "Keine gültigen Dateien zum Hochladen."
-    }
+    },
+    "photosSaved_one": "{{count}} Foto gespeichert",
+    "photosSaved_other": "{{count}} Fotos gespeichert"
   },
   "documents": {
     "title": "Dokumente",

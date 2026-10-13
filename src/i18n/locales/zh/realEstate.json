@@ -370,7 +370,8 @@
       "convertFailed": "无法转换“{{name}}”。请手动转换为 JPG。",
       "unsupportedFormat": "“{{name}}”的格式不受支持。请使用 JPG、PNG、GIF、WebP 或 HEIC。",
       "noValidFiles": "没有可上传的有效文件。"
-    }
+    },
+    "photosSaved_other": "已保存 {{count}} 张照片"
   },
   "documents": {
     "title": "文档",

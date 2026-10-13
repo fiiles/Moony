@@ -375,7 +375,9 @@
       "convertFailed": "Det gick inte att konvertera ”{{name}}”. Konvertera den till JPG manuellt.",
       "unsupportedFormat": "”{{name}}” har ett format som inte stöds. Använd JPG, PNG, GIF, WebP eller HEIC.",
       "noValidFiles": "Inga giltiga filer att ladda upp."
-    }
+    },
+    "photosSaved_one": "{{count}} foto sparat",
+    "photosSaved_other": "{{count}} foton sparade"
   },
   "documents": {
     "title": "Dokument",

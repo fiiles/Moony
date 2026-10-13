@@ -55,7 +55,7 @@ export function PaymentCalendarCard({ rows, today }: PaymentCalendarCardProps) {
             even
               ? t('calendar.evenNote', { amount: money(total / 12) })
               : t('calendar.peakNote', {
-                  month: fmt.month(new Date(peak.month * 1000)),
+                  month: fmt.monthInSentence(new Date(peak.month * 1000)),
                   amount: money(peak.monthly + peak.other),
                 })
           }

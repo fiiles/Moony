@@ -52,7 +52,7 @@ export function FlowsCard({
     win.selected !== null ? (flows.find((f) => f.month === win.selected) ?? null) : null;
   const money = (v: number, signed = false) => fmt.money(v, currency, { signed, decimals: 0 });
   const monthName = (month: number) =>
-    fmt.month(monthLabelDate(month), { month: 'long', year: 'numeric' });
+    fmt.monthInSentence(monthLabelDate(month), { month: 'long', year: 'numeric' });
   const bars: BarGroup[] = flows.map((f) => ({
     label: fmt.month(monthLabelDate(f.month), { month: 'short', year: '2-digit' }),
     a: f.income,

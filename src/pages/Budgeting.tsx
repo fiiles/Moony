@@ -591,7 +591,7 @@ export default function Budgeting() {
                     (() => {
                       const next = scheduledVersions(row.goal.versions, currentMonthStart())[0];
                       if (!next) return null;
-                      const month = fmt.month(new Date(next.effectiveMonth * 1000));
+                      const month = fmt.monthInSentence(new Date(next.effectiveMonth * 1000));
                       return (
                         <small className="mt-0.5 block text-micro font-500 text-ink-4">
                           {next.amount == null

@@ -380,7 +380,10 @@
       "convertFailed": "Soubor „{{name}}“ se nepodařilo převést. Převeďte ho ručně na JPG.",
       "unsupportedFormat": "Soubor „{{name}}“ má nepodporovaný formát. Použijte JPG, PNG, GIF, WebP nebo HEIC.",
       "noValidFiles": "Není co nahrát: žádný soubor není platný."
-    }
+    },
+    "photosSaved_one": "{{count}} fotografie uložena",
+    "photosSaved_few": "{{count}} fotografie uloženy",
+    "photosSaved_other": "{{count}} fotografií uloženo"
   },
   "documents": {
     "title": "Dokumenty",

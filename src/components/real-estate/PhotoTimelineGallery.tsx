@@ -325,7 +325,7 @@ export function PhotoTimelineGallery({ realEstateId }: PhotoTimelineGalleryProps
           await copyFile(sourcePath, destPath);
           count++;
         }
-        toast(tc('status.success'), { description: `${count} photos saved` });
+        toast(tc('status.success'), { description: t('gallery.photosSaved', { count }) });
       }
     } catch (error) {
       console.error(error);

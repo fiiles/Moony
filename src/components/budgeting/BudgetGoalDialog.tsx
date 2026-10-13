@@ -101,7 +101,7 @@ export function BudgetGoalDialog({
   const editing = !!goal;
   const versions = useMemo(() => goal?.versions ?? [], [goal]);
   const nowMonth = currentMonthStart();
-  const monthLabel = (month: number) => fmt.month(new Date(month * 1000));
+  const monthLabel = (month: number) => fmt.monthInSentence(new Date(month * 1000));
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),

@@ -128,15 +128,21 @@ export interface Loan {
   monthlyPayment: string;
   startDate: number;
   endDate: number | null;
-  /** Real balance entered by the user; amortization continues from it (set together with the date). */
+  /** Read-only mirror of the newest manual balance record (`balance_check` event); null without one. */
   balanceAnchorAmount: string | null;
-  /** UTC day (unix seconds) the manual balance applies to. */
+  /** UTC day (unix seconds) of the newest manual balance record. */
   balanceAnchorDate: number | null;
-  /** Read-only: amortized balance as of today in the loan's own currency (2 decimals). */
+  /** Read-only: balance as of today from the loan ledger, in the loan's own currency (2 decimals). */
   outstandingBalance: string;
+  /** Read-only: `manual` when a manual balance record holds today's balance, else `estimated`. */
+  balanceMode: LoanBalanceMode;
+  /** Read-only: the loan's events, oldest first (day, then creation time). */
+  events: LoanEvent[];
   createdAt: number;
   updatedAt: number;
 }
+
+export type LoanBalanceMode = 'estimated' | 'manual';
 
 /** One payment of a loan's repayment schedule (money as TEXT, 2 decimals). */
 export interface LoanScheduleRow {
@@ -173,20 +179,24 @@ export interface LoanSchedule {
   warnings: string[];
 }
 
-/** Extra payment, rate change or balance check that re-anchored a loan's amortization (migration 014). */
+/** Extra payment, rate change or manual balance record of a loan; the loan ledger replays them (migrations 014, 019). */
 export interface LoanEvent {
   id: string;
   loanId: string;
-  /** `extra_payment` | `rate_change` | `balance_check` */
+  /** `extra_payment` | `rate_change` | `balance_check` (the manual balance record) */
   kind: LoanEventKind;
   /** UTC-midnight day of the event */
   eventDay: number;
-  /** Extra payment amount, or the balance confirmed by a statement */
+  /** Extra payment amount, or the manual balance of a `balance_check` record */
   amount: string | null;
   /** New annual rate in percent (`rate_change`) */
   rate: string | null;
   /** New regular payment (`rate_change`, or an `extra_payment` the bank used to lower it) */
   monthlyPayment: string | null;
+  /** Annual rate in force before a `rate_change`; null on legacy rows and other kinds */
+  previousRate: string | null;
+  /** Regular payment in force before an event that sets a new one; null on legacy rows and other kinds */
+  previousMonthlyPayment: string | null;
   note: string | null;
   createdAt: number;
 }

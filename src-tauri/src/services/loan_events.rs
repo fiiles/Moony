@@ -1,20 +1,31 @@
-//! Loan events (redesign phase 2): extra payments, rate changes and balance
-//! checks. Each event is stored for the detail page's time trace and applies
-//! its side effect to the loan in the same transaction, through the existing
-//! balance anchor: the amortization simply continues from the
-//! balance on the event day. Deleting an event keeps the anchor it set; the UI
-//! says so.
+//! Loan events: extra payments, rate changes and manual balance records.
 //!
-//! Known limitation inherited from the anchor: payments fall due on the
-//! anchor's day of month, so an event dated mid-month shifts the schedule's
-//! due days to that day.
+//! The events are the facts of the loan ledger (`loan_amortization::loan_balance_at`
+//! walks them); nothing is applied to the loan besides the stored row:
+//! - `extra_payment` and `rate_change` store the event only. A rate change (and an
+//!   extra payment that lowers the regular payment) also records the terms in
+//!   force before it (`previous_rate`, `previous_monthly_payment`) and moves the
+//!   loan's current rate / payment to the new ones.
+//! - `balance_check` is the manual balance record: it holds exactly from its day
+//!   until the user changes or removes it. One record per day; the same day
+//!   replaces. `loans.balance_anchor_amount` / `balance_anchor_date` mirror the
+//!   newest record (NULL without one) and are written only here
+//!   ([`refresh_anchor_mirror`]), like `bank_accounts.balance` mirrors the newest
+//!   balance record.
+//! - Deleting an event leaves nothing of it behind: the walk is re-derived from the
+//!   remaining rows, the mirror follows the newest record and the loan's current
+//!   terms return to what the remaining events (or the deleted event's recorded
+//!   previous terms) say.
 
 use crate::error::{AppError, Result};
 use crate::models::{InsertLoanEvent, LoanEvent};
-use crate::services::loan_amortization::{day_floor, outstanding_balance_at};
+use crate::services::loan_amortization::{day_floor, loan_balance_at};
 use crate::services::loans;
 use rusqlite::{Connection, OptionalExtension, Row};
 use uuid::Uuid;
+
+const COLUMNS: &str = "id, loan_id, kind, event_day, amount, rate, monthly_payment, \
+     previous_rate, previous_monthly_payment, note, created_at";
 
 fn read_row(row: &Row) -> rusqlite::Result<LoanEvent> {
     Ok(LoanEvent {
@@ -25,24 +36,35 @@ fn read_row(row: &Row) -> rusqlite::Result<LoanEvent> {
         amount: row.get(4)?,
         rate: row.get(5)?,
         monthly_payment: row.get(6)?,
-        note: row.get(7)?,
-        created_at: row.get(8)?,
+        previous_rate: row.get(7)?,
+        previous_monthly_payment: row.get(8)?,
+        note: row.get(9)?,
+        created_at: row.get(10)?,
     })
 }
 
-const COLUMNS: &str =
-    "id, loan_id, kind, event_day, amount, rate, monthly_payment, note, created_at";
-
-/// Money TEXT with 2 decimals; never "-0.00".
-fn money_text(value: f64) -> String {
-    let rounded = (value * 100.0).round() / 100.0;
-    format!("{:.2}", if rounded == 0.0 { 0.0 } else { rounded })
+/// A trimmed text, `None` when absent or blank.
+fn clean(text: Option<&str>) -> Option<String> {
+    text.map(str::trim)
+        .filter(|text| !text.is_empty())
+        .map(str::to_string)
 }
 
-/// Events of one loan, oldest first.
+/// A rate or payment of the ledger as stored text (`4.1`, `15200`).
+fn number_text(value: f64) -> String {
+    if value.is_finite() {
+        format!("{value}")
+    } else {
+        "0".to_string()
+    }
+}
+
+/// Events of one loan, oldest first: by day, then creation time, then insertion
+/// (the order the ledger walk applies them in).
 pub fn list_events(conn: &Connection, loan_id: &str) -> Result<Vec<LoanEvent>> {
     let mut stmt = conn.prepare(&format!(
-        "SELECT {COLUMNS} FROM loan_events WHERE loan_id = ?1 ORDER BY event_day ASC, created_at ASC"
+        "SELECT {COLUMNS} FROM loan_events WHERE loan_id = ?1
+         ORDER BY event_day ASC, created_at ASC, rowid ASC"
     ))?;
     let rows = stmt.query_map([loan_id], read_row)?;
     let mut out = Vec::new();
@@ -52,130 +74,333 @@ pub fn list_events(conn: &Connection, loan_id: &str) -> Result<Vec<LoanEvent>> {
     Ok(out)
 }
 
-fn set_anchor(conn: &Connection, loan_id: &str, amount: f64, day: i64, now: i64) -> Result<()> {
+/// Write the anchor columns of `loans` as a mirror of the newest manual balance
+/// record (day, creation time, insertion), NULL when the loan has none.
+pub fn refresh_anchor_mirror(conn: &Connection, loan_id: &str, now: i64) -> Result<()> {
+    let newest: Option<(Option<String>, i64)> = conn
+        .query_row(
+            "SELECT amount, event_day FROM loan_events
+             WHERE loan_id = ?1 AND kind = 'balance_check'
+             ORDER BY event_day DESC, created_at DESC, rowid DESC LIMIT 1",
+            [loan_id],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+        .optional()?;
+    let (amount, day) = match newest {
+        Some((amount, day)) => (amount, Some(day)),
+        None => (None, None),
+    };
     conn.execute(
-        "UPDATE loans SET balance_anchor_amount = ?1, balance_anchor_date = ?2, updated_at = ?3 WHERE id = ?4",
-        rusqlite::params![money_text(amount.max(0.0)), day, now, loan_id],
+        "UPDATE loans SET balance_anchor_amount = ?1, balance_anchor_date = ?2, updated_at = ?3
+         WHERE id = ?4",
+        rusqlite::params![amount, day, now, loan_id],
     )?;
     Ok(())
 }
 
-/// Record an event and apply its effect on the loan. `today` is the valuation
-/// day used to read the loan (UTC).
-pub fn add_event(conn: &Connection, data: &InsertLoanEvent, today: i64) -> Result<LoanEvent> {
-    data.validate()?;
-    let loan = loans::get_loan(conn, &data.loan_id, today)?;
-    let terms = loans::loan_terms(&loan)?;
-    let day = day_floor(data.event_day);
-    if day < terms.start_day {
-        return Err(AppError::Validation(
-            "validation.loanEventBeforeStart".into(),
-        ));
-    }
-    let now = chrono::Utc::now().timestamp();
-
-    match data.kind.as_str() {
-        "extra_payment" => {
-            let before = outstanding_balance_at(&terms, day);
-            set_anchor(conn, &loan.id, before - data.amount_value(), day, now)?;
-            // "Snížit splátku": the bank kept the term and lowered the regular payment.
-            if let Some(payment) = data
-                .monthly_payment
-                .as_deref()
-                .map(str::trim)
-                .filter(|p| !p.is_empty())
-            {
-                conn.execute(
-                    "UPDATE loans SET monthly_payment = ?1, updated_at = ?2 WHERE id = ?3",
-                    rusqlite::params![payment, now, loan.id],
-                )?;
-            }
-        }
-        "rate_change" => {
-            let before = outstanding_balance_at(&terms, day);
-            let rate = data.rate.as_deref().map(str::trim).unwrap_or("0");
-            let payment = data
-                .monthly_payment
-                .as_deref()
-                .map(str::trim)
-                .filter(|p| !p.is_empty());
-            conn.execute(
-                "UPDATE loans SET interest_rate = ?1, monthly_payment = COALESCE(?2, monthly_payment),
-                 interest_rate_validity_date = NULL, updated_at = ?3 WHERE id = ?4",
-                rusqlite::params![rate, payment, now, loan.id],
-            )?;
-            set_anchor(conn, &loan.id, before, day, now)?;
-        }
-        _ => {
-            set_anchor(conn, &loan.id, data.amount_value(), day, now)?;
-        }
-    }
-
-    let id = Uuid::new_v4().to_string();
-    let note = data
-        .note
-        .as_deref()
-        .map(str::trim)
-        .filter(|n| !n.is_empty())
-        .map(str::to_string);
-    let amount = data
-        .amount
-        .as_deref()
-        .map(str::trim)
-        .filter(|a| !a.is_empty())
-        .map(str::to_string);
-    let rate = data
-        .rate
-        .as_deref()
-        .map(str::trim)
-        .filter(|r| !r.is_empty())
-        .map(str::to_string);
-    let monthly_payment = data
-        .monthly_payment
-        .as_deref()
-        .map(str::trim)
-        .filter(|p| !p.is_empty())
-        .map(str::to_string);
+/// Create the manual balance record of `day` (UTC midnight is taken from any
+/// time of that day); a record of the same day is replaced. Re-mirrors the
+/// anchor columns. The caller validates the loan, the amount and the day and
+/// owns the transaction.
+pub fn add_manual_balance(
+    conn: &Connection,
+    loan_id: &str,
+    day: i64,
+    amount: &str,
+    note: Option<&str>,
+    now: i64,
+) -> Result<LoanEvent> {
+    let day = day_floor(day);
+    let amount = amount.trim().to_string();
+    let note = clean(note);
     conn.execute(
-        "INSERT INTO loan_events (id, loan_id, kind, event_day, amount, rate, monthly_payment, note, created_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
-        rusqlite::params![id, loan.id, data.kind, day, amount, rate, monthly_payment, note, now],
+        "DELETE FROM loan_events WHERE loan_id = ?1 AND kind = 'balance_check' AND event_day = ?2",
+        rusqlite::params![loan_id, day],
     )?;
+    let id = Uuid::new_v4().to_string();
+    conn.execute(
+        "INSERT INTO loan_events (id, loan_id, kind, event_day, amount, note, created_at)
+         VALUES (?1, ?2, 'balance_check', ?3, ?4, ?5, ?6)",
+        rusqlite::params![id, loan_id, day, amount, note, now],
+    )?;
+    refresh_anchor_mirror(conn, loan_id, now)?;
     Ok(LoanEvent {
         id,
-        loan_id: loan.id,
-        kind: data.kind.clone(),
+        loan_id: loan_id.to_string(),
+        kind: "balance_check".to_string(),
         event_day: day,
-        amount,
-        rate,
-        monthly_payment,
+        amount: Some(amount),
+        rate: None,
+        monthly_payment: None,
+        previous_rate: None,
+        previous_monthly_payment: None,
         note,
         created_at: now,
     })
 }
 
-/// Remove an event from the trace. The loan keeps the anchor the event set.
-pub fn delete_event(conn: &Connection, id: &str) -> Result<()> {
-    let exists: Option<String> = conn
-        .query_row("SELECT id FROM loan_events WHERE id = ?1", [id], |row| {
-            row.get(0)
-        })
+/// The loan form's manual balance: the record of `day` is created or replaced,
+/// older and newer records stay. A record that already says the same is left
+/// alone, so saving an unchanged form does not reorder the events of its day.
+/// The caller validates and owns the transaction.
+pub fn upsert_form_balance(
+    conn: &Connection,
+    loan_id: &str,
+    day: i64,
+    amount: &str,
+    now: i64,
+) -> Result<()> {
+    let day = day_floor(day);
+    let existing: Option<String> = conn
+        .query_row(
+            "SELECT amount FROM loan_events
+             WHERE loan_id = ?1 AND kind = 'balance_check' AND event_day = ?2
+             ORDER BY created_at DESC, rowid DESC LIMIT 1",
+            rusqlite::params![loan_id, day],
+            |row| row.get(0),
+        )
         .optional()?;
-    if exists.is_none() {
-        return Err(AppError::NotFound("Loan event not found".into()));
+    let same = existing
+        .as_deref()
+        .and_then(|text| text.trim().parse::<f64>().ok())
+        .zip(amount.trim().parse::<f64>().ok())
+        .is_some_and(|(stored, new)| stored == new);
+    if same {
+        return refresh_anchor_mirror(conn, loan_id, now);
     }
-    conn.execute("DELETE FROM loan_events WHERE id = ?1", [id])?;
+    add_manual_balance(conn, loan_id, day, amount, None, now).map(|_| ())
+}
+
+/// Switch the loan back to the estimate: delete every manual balance record
+/// (D8) and clear the mirror. The caller owns the transaction.
+pub fn delete_manual_balances(conn: &Connection, loan_id: &str, now: i64) -> Result<()> {
+    conn.execute(
+        "DELETE FROM loan_events WHERE loan_id = ?1 AND kind = 'balance_check'",
+        [loan_id],
+    )?;
+    refresh_anchor_mirror(conn, loan_id, now)
+}
+
+/// Move the loan's current rate and / or payment to what the ledger holds after
+/// its last event, for the fields an event just added or removed carries. A
+/// backdated event therefore leaves the current terms of a later one alone.
+fn sync_current_terms(
+    conn: &Connection,
+    loan_id: &str,
+    rate: bool,
+    payment: bool,
+    now: i64,
+) -> Result<()> {
+    if !rate && !payment {
+        return Ok(());
+    }
+    let entry = loans::load_ledger(conn, loan_id)?;
+    let Some(last_day) = entry.ledger.events.iter().map(|event| event.day).max() else {
+        return Ok(());
+    };
+    let terms = &entry.ledger.terms;
+    // An event dated before the start is still applied (the walk starts at the start).
+    let state = loan_balance_at(&entry.ledger, last_day.max(terms.start_day));
+    if rate && state.annual_rate_pct != terms.annual_rate_pct {
+        conn.execute(
+            "UPDATE loans SET interest_rate = ?1, updated_at = ?2 WHERE id = ?3",
+            rusqlite::params![number_text(state.annual_rate_pct), now, loan_id],
+        )?;
+    }
+    if payment && state.monthly_payment != terms.monthly_payment {
+        conn.execute(
+            "UPDATE loans SET monthly_payment = ?1, updated_at = ?2 WHERE id = ?3",
+            rusqlite::params![number_text(state.monthly_payment), now, loan_id],
+        )?;
+    }
+    Ok(())
+}
+
+/// Record an event. `today` is the valuation day used to read the loan (UTC).
+///
+/// - `balance_check`: a manual balance record ([`add_manual_balance`]).
+/// - `rate_change`: stores the rate (and payment) with the terms in force on its
+///   day, clears the fixation date and moves the loan's current terms.
+/// - `extra_payment`: stores the payment; a new regular payment ("Snížit splátku")
+///   is stored with the one it replaced and becomes the loan's current payment.
+///
+/// None of them writes the anchor columns except through the manual record.
+pub fn add_event(conn: &Connection, data: &InsertLoanEvent, today: i64) -> Result<LoanEvent> {
+    data.validate()?;
+    let loan = loans::get_loan(conn, &data.loan_id, today)?;
+    let day = day_floor(data.event_day);
+    if day < day_floor(loan.start_date) {
+        return Err(AppError::Validation(
+            "validation.loanEventBeforeStart".into(),
+        ));
+    }
+    let now = chrono::Utc::now().timestamp();
+    let note = clean(data.note.as_deref());
+    let amount = clean(data.amount.as_deref());
+
+    let tx = conn.unchecked_transaction()?;
+    let saved = if data.kind == "balance_check" {
+        add_manual_balance(
+            &tx,
+            &loan.id,
+            day,
+            amount.as_deref().unwrap_or("0"),
+            note.as_deref(),
+            now,
+        )?
+    } else {
+        let rate = clean(data.rate.as_deref());
+        let monthly_payment = clean(data.monthly_payment.as_deref());
+        let is_rate_change = data.kind == "rate_change";
+        // The terms in force on the event's day, before this event.
+        let in_force = loan_balance_at(&loans::loan_ledger(&loan)?, day);
+        let previous_rate = is_rate_change.then(|| number_text(in_force.annual_rate_pct));
+        let previous_monthly_payment = (is_rate_change || monthly_payment.is_some())
+            .then(|| number_text(in_force.monthly_payment));
+        let id = Uuid::new_v4().to_string();
+        tx.execute(
+            "INSERT INTO loan_events (id, loan_id, kind, event_day, amount, rate, monthly_payment,
+             previous_rate, previous_monthly_payment, note, created_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
+            rusqlite::params![
+                id,
+                loan.id,
+                data.kind,
+                day,
+                amount,
+                rate,
+                monthly_payment,
+                previous_rate,
+                previous_monthly_payment,
+                note,
+                now
+            ],
+        )?;
+        if is_rate_change {
+            tx.execute(
+                "UPDATE loans SET interest_rate_validity_date = NULL, updated_at = ?1 WHERE id = ?2",
+                rusqlite::params![now, loan.id],
+            )?;
+        }
+        sync_current_terms(
+            &tx,
+            &loan.id,
+            is_rate_change,
+            monthly_payment.is_some(),
+            now,
+        )?;
+        LoanEvent {
+            id,
+            loan_id: loan.id.clone(),
+            kind: data.kind.clone(),
+            event_day: day,
+            amount,
+            rate,
+            monthly_payment,
+            previous_rate,
+            previous_monthly_payment,
+            note,
+            created_at: now,
+        }
+    };
+    tx.commit()?;
+    Ok(saved)
+}
+
+/// Remove an event. Nothing of it stays: a manual record re-mirrors the anchor
+/// columns, and an event that changed the loan's rate or payment hands the
+/// terms it replaced on and returns the loan's current terms to what is left.
+pub fn delete_event(conn: &Connection, id: &str) -> Result<()> {
+    let event: LoanEvent = conn
+        .query_row(
+            &format!("SELECT {COLUMNS} FROM loan_events WHERE id = ?1"),
+            [id],
+            read_row,
+        )
+        .optional()?
+        .ok_or_else(|| AppError::NotFound("Loan event not found".into()))?;
+    let now = chrono::Utc::now().timestamp();
+    let events = list_events(conn, &event.loan_id)?;
+    let position = events.iter().position(|other| other.id == event.id);
+
+    let tx = conn.unchecked_transaction()?;
+    // The ledger starts from the previous terms of the earliest event that
+    // carries them. When that is this event, the next carrier takes them over,
+    // or, with none left, the loan row itself becomes the source.
+    for is_rate in [true, false] {
+        let previous = |e: &LoanEvent| {
+            if is_rate {
+                e.previous_rate.clone()
+            } else {
+                e.previous_monthly_payment.clone()
+            }
+        };
+        let Some(value) = previous(&event) else {
+            continue;
+        };
+        if events.iter().position(|e| previous(e).is_some()) != position {
+            continue;
+        }
+        let next =
+            position.and_then(|at| events.iter().skip(at + 1).find(|e| previous(e).is_some()));
+        match next {
+            Some(next) => {
+                let column = if is_rate {
+                    "previous_rate"
+                } else {
+                    "previous_monthly_payment"
+                };
+                tx.execute(
+                    &format!("UPDATE loan_events SET {column} = ?1 WHERE id = ?2"),
+                    rusqlite::params![value, next.id],
+                )?;
+            }
+            None => {
+                let carries_new = if is_rate {
+                    event.kind == "rate_change"
+                } else {
+                    event.monthly_payment.is_some()
+                };
+                if carries_new {
+                    let column = if is_rate {
+                        "interest_rate"
+                    } else {
+                        "monthly_payment"
+                    };
+                    tx.execute(
+                        &format!("UPDATE loans SET {column} = ?1, updated_at = ?2 WHERE id = ?3"),
+                        rusqlite::params![value, now, event.loan_id],
+                    )?;
+                }
+            }
+        }
+    }
+    tx.execute("DELETE FROM loan_events WHERE id = ?1", [id])?;
+    if event.kind == "balance_check" {
+        refresh_anchor_mirror(&tx, &event.loan_id, now)?;
+    }
+    sync_current_terms(
+        &tx,
+        &event.loan_id,
+        event.kind == "rate_change",
+        event.monthly_payment.is_some(),
+        now,
+    )?;
+    tx.commit()?;
     Ok(())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::services::loan_amortization::LedgerMode;
     use rusqlite::Connection;
 
     const DAY: i64 = 86_400;
     /// 2024-01-01 (UTC) as a day number × seconds.
     const START: i64 = 19_723 * DAY;
+    /// One year later (2024 is a leap year): 2025-01-01, twelve payments in.
+    const YEAR_ON: i64 = START + 366 * DAY;
 
     fn setup_test_db() -> Connection {
         let conn = Connection::open_in_memory().expect("in-memory db");
@@ -196,7 +421,8 @@ mod tests {
                 loan_id TEXT NOT NULL REFERENCES loans(id) ON DELETE CASCADE,
                 kind TEXT NOT NULL CHECK (kind IN ('extra_payment', 'rate_change', 'balance_check')),
                 event_day INTEGER NOT NULL, amount TEXT, rate TEXT, monthly_payment TEXT, note TEXT,
-                created_at INTEGER NOT NULL DEFAULT (unixepoch())
+                created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+                previous_rate TEXT, previous_monthly_payment TEXT
             );
             "#,
         )
@@ -221,6 +447,24 @@ mod tests {
         }
     }
 
+    fn extra(day: i64, amount: &str) -> InsertLoanEvent {
+        let mut data = event("extra_payment", day);
+        data.amount = Some(amount.into());
+        data
+    }
+
+    fn rate_change(day: i64, rate: &str) -> InsertLoanEvent {
+        let mut data = event("rate_change", day);
+        data.rate = Some(rate.into());
+        data
+    }
+
+    fn record(day: i64, amount: &str) -> InsertLoanEvent {
+        let mut data = event("balance_check", day);
+        data.amount = Some(amount.into());
+        data
+    }
+
     fn anchor(conn: &Connection) -> (Option<String>, Option<i64>) {
         conn.query_row(
             "SELECT balance_anchor_amount, balance_anchor_date FROM loans WHERE id = 'l1'",
@@ -230,82 +474,285 @@ mod tests {
         .unwrap()
     }
 
-    #[test]
-    fn extra_payment_anchors_the_reduced_balance_on_its_day() {
-        let conn = setup_test_db();
-        // Zero interest, 10 000 a month: after 12 payments the balance is 880 000.
-        let day = START + 366 * DAY; // one year later (2024 is a leap year)
-        let mut data = event("extra_payment", day + 3_600);
-        data.amount = Some("100000".into());
-        let saved = add_event(&conn, &data, day + 30 * DAY).unwrap();
-        assert_eq!(saved.event_day, day);
-        assert_eq!(saved.amount.as_deref(), Some("100000"));
-        let (amount, anchor_day) = anchor(&conn);
-        assert_eq!(amount.as_deref(), Some("780000.00"));
-        assert_eq!(anchor_day, Some(day));
-        assert_eq!(list_events(&conn, "l1").unwrap().len(), 1);
+    fn terms(conn: &Connection) -> (String, String) {
+        conn.query_row(
+            "SELECT interest_rate, monthly_payment FROM loans WHERE id = 'l1'",
+            [],
+            |r| Ok((r.get(0)?, r.get(1)?)),
+        )
+        .unwrap()
+    }
+
+    /// Balance and mode of the loan on `day`, from the ledger.
+    fn balance_on(conn: &Connection, day: i64) -> (String, LedgerMode) {
+        let loan = loans::get_loan(conn, "l1", day).unwrap();
+        let state = loan_balance_at(&loans::loan_ledger(&loan).unwrap(), day);
+        (loan.outstanding_balance, state.mode)
     }
 
     #[test]
-    fn extra_payment_can_lower_the_regular_payment() {
+    fn extra_payment_is_stored_and_never_writes_the_anchor() {
         let conn = setup_test_db();
-        let day = START + 366 * DAY;
-        let mut data = event("extra_payment", day);
-        data.amount = Some("100000".into());
+        // Zero interest, 10 000 a month: after 12 payments the balance is 880 000.
+        let saved =
+            add_event(&conn, &extra(YEAR_ON + 3_600, "100000"), YEAR_ON + 30 * DAY).unwrap();
+        assert_eq!(saved.event_day, YEAR_ON);
+        assert_eq!(saved.amount.as_deref(), Some("100000"));
+        assert_eq!(saved.previous_monthly_payment, None);
+        assert_eq!(list_events(&conn, "l1").unwrap().len(), 1);
+        assert_eq!(anchor(&conn), (None, None));
+        // The ledger takes the payment off the estimate.
+        assert_eq!(
+            balance_on(&conn, YEAR_ON - DAY),
+            ("890000.00".into(), LedgerMode::Estimated)
+        );
+        assert_eq!(
+            balance_on(&conn, YEAR_ON + 30 * DAY),
+            ("780000.00".into(), LedgerMode::Estimated)
+        );
+    }
+
+    #[test]
+    fn extra_payment_can_lower_the_regular_payment_and_remembers_the_old_one() {
+        let conn = setup_test_db();
+        let mut data = extra(YEAR_ON, "100000");
         data.monthly_payment = Some("8500".into());
-        add_event(&conn, &data, day).unwrap();
-        let payment: String = conn
+        let saved = add_event(&conn, &data, YEAR_ON).unwrap();
+        assert_eq!(terms(&conn), ("0".into(), "8500".into()));
+        assert_eq!(saved.previous_monthly_payment.as_deref(), Some("10000"));
+        assert_eq!(saved.previous_rate, None);
+        let stored = list_events(&conn, "l1").unwrap();
+        assert_eq!(stored[0].previous_monthly_payment.as_deref(), Some("10000"));
+        // Before the event the old payment applies, after it the new one.
+        assert_eq!(balance_on(&conn, YEAR_ON - DAY).0, "890000.00");
+        assert_eq!(balance_on(&conn, YEAR_ON).0, "780000.00");
+        assert_eq!(balance_on(&conn, YEAR_ON + 31 * DAY).0, "771500.00");
+        assert_eq!(anchor(&conn), (None, None));
+    }
+
+    #[test]
+    fn rate_change_records_the_previous_terms_and_moves_the_current_ones() {
+        let conn = setup_test_db();
+        conn.execute(
+            "UPDATE loans SET interest_rate_validity_date = ?1 WHERE id = 'l1'",
+            [YEAR_ON],
+        )
+        .unwrap();
+        let mut data = rate_change(YEAR_ON, "4.1");
+        data.monthly_payment = Some("15200".into());
+        let saved = add_event(&conn, &data, YEAR_ON).unwrap();
+        assert_eq!(terms(&conn), ("4.1".into(), "15200".into()));
+        assert_eq!(saved.previous_rate.as_deref(), Some("0"));
+        assert_eq!(saved.previous_monthly_payment.as_deref(), Some("10000"));
+        let validity: Option<i64> = conn
             .query_row(
-                "SELECT monthly_payment FROM loans WHERE id = 'l1'",
+                "SELECT interest_rate_validity_date FROM loans WHERE id = 'l1'",
                 [],
                 |r| r.get(0),
             )
             .unwrap();
-        assert_eq!(payment, "8500");
-        assert_eq!(anchor(&conn), (Some("780000.00".into()), Some(day)));
+        assert_eq!(validity, None, "a rate change resolves the fixation date");
+        assert_eq!(anchor(&conn), (None, None));
+        // Estimated: the day becomes the segment anchor and the new terms apply from it.
+        assert_eq!(balance_on(&conn, YEAR_ON - DAY).0, "890000.00");
+        assert_eq!(balance_on(&conn, YEAR_ON).0, "880000.00");
+        let after_one = 880_000.0 * (1.0 + 0.041 / 12.0) - 15_200.0;
+        assert_eq!(
+            balance_on(&conn, YEAR_ON + 31 * DAY).0,
+            format!("{after_one:.2}")
+        );
     }
 
     #[test]
-    fn rate_change_updates_the_rate_and_continues_from_that_days_balance() {
+    fn a_rate_change_without_a_payment_keeps_the_payment_and_records_it() {
         let conn = setup_test_db();
-        let day = START + 366 * DAY;
-        let mut data = event("rate_change", day);
-        data.rate = Some("4.1".into());
-        data.monthly_payment = Some("15200".into());
-        add_event(&conn, &data, day).unwrap();
-        let (rate, payment): (String, String) = conn
-            .query_row(
-                "SELECT interest_rate, monthly_payment FROM loans WHERE id = 'l1'",
-                [],
-                |r| Ok((r.get(0)?, r.get(1)?)),
-            )
-            .unwrap();
-        assert_eq!(rate, "4.1");
-        assert_eq!(payment, "15200");
-        let (amount, anchor_day) = anchor(&conn);
-        assert_eq!(amount.as_deref(), Some("880000.00"));
-        assert_eq!(anchor_day, Some(day));
+        let saved = add_event(&conn, &rate_change(YEAR_ON, "3"), YEAR_ON).unwrap();
+        assert_eq!(terms(&conn), ("3".into(), "10000".into()));
+        assert_eq!(saved.previous_monthly_payment.as_deref(), Some("10000"));
     }
 
     #[test]
-    fn balance_check_sets_the_anchor_verbatim() {
+    fn a_manual_balance_is_a_record_and_the_anchor_mirrors_it() {
         let conn = setup_test_db();
         let day = START + 100 * DAY;
-        let mut data = event("balance_check", day);
-        data.amount = Some("950000".into());
+        let mut data = record(day, "950000");
         data.note = Some("  statement ".into());
         let saved = add_event(&conn, &data, day).unwrap();
+        assert_eq!(saved.kind, "balance_check");
         assert_eq!(saved.note.as_deref(), Some("statement"));
-        assert_eq!(anchor(&conn), (Some("950000.00".into()), Some(day)));
+        assert_eq!(anchor(&conn), (Some("950000".into()), Some(day)));
+        assert_eq!(
+            balance_on(&conn, day + 90 * DAY),
+            ("950000.00".into(), LedgerMode::Manual)
+        );
+        // Nothing before the record is overridden.
+        assert_eq!(balance_on(&conn, day - DAY).1, LedgerMode::Estimated);
+    }
+
+    #[test]
+    fn a_manual_balance_of_the_same_day_replaces_the_record() {
+        let conn = setup_test_db();
+        let day = START + 100 * DAY;
+        add_event(&conn, &record(day, "950000"), day).unwrap();
+        add_event(&conn, &record(day + 3_600, "940000"), day).unwrap();
+        let stored = list_events(&conn, "l1").unwrap();
+        assert_eq!(stored.len(), 1);
+        assert_eq!(stored[0].amount.as_deref(), Some("940000"));
+        assert_eq!(anchor(&conn), (Some("940000".into()), Some(day)));
+    }
+
+    #[test]
+    fn the_anchor_mirrors_the_newest_record_not_the_last_entered() {
+        let conn = setup_test_db();
+        let (older, newer) = (START + 100 * DAY, START + 200 * DAY);
+        add_event(&conn, &record(newer, "900000"), newer).unwrap();
+        add_event(&conn, &record(older, "950000"), newer).unwrap();
+        assert_eq!(anchor(&conn), (Some("900000".into()), Some(newer)));
+    }
+
+    #[test]
+    fn deleting_a_manual_record_restores_the_previous_one_then_the_estimate() {
+        let conn = setup_test_db();
+        let (first, second) = (START + 100 * DAY, START + 200 * DAY);
+        let kept = add_event(&conn, &record(first, "950000"), second).unwrap();
+        let removed = add_event(&conn, &record(second, "900000"), second).unwrap();
+        assert_eq!(anchor(&conn), (Some("900000".into()), Some(second)));
+        assert_eq!(balance_on(&conn, second + 30 * DAY).0, "900000.00");
+
+        delete_event(&conn, &removed.id).unwrap();
+        assert_eq!(anchor(&conn), (Some("950000".into()), Some(first)));
+        assert_eq!(
+            balance_on(&conn, second + 30 * DAY),
+            ("950000.00".into(), LedgerMode::Manual)
+        );
+
+        delete_event(&conn, &kept.id).unwrap();
+        assert_eq!(anchor(&conn), (None, None));
+        assert_eq!(
+            balance_on(&conn, second + 30 * DAY).1,
+            LedgerMode::Estimated
+        );
+        assert!(matches!(
+            delete_event(&conn, &kept.id),
+            Err(AppError::NotFound(_))
+        ));
+    }
+
+    #[test]
+    fn an_extra_payment_in_manual_mode_is_the_record_minus_the_payment() {
+        let conn = setup_test_db();
+        let day = START + 100 * DAY;
+        add_event(&conn, &record(day, "900000"), day).unwrap();
+        add_event(&conn, &extra(day + 10 * DAY, "50000"), day + 60 * DAY).unwrap();
+        assert_eq!(
+            balance_on(&conn, day + 5 * DAY),
+            ("900000.00".into(), LedgerMode::Manual)
+        );
+        assert_eq!(
+            balance_on(&conn, day + 60 * DAY),
+            ("850000.00".into(), LedgerMode::Manual)
+        );
+        // The mirror still says what the user entered.
+        assert_eq!(anchor(&conn), (Some("900000".into()), Some(day)));
+    }
+
+    #[test]
+    fn a_rate_change_in_manual_mode_leaves_the_balance_alone() {
+        let conn = setup_test_db();
+        let day = START + 100 * DAY;
+        add_event(&conn, &record(day, "900000"), day).unwrap();
+        add_event(&conn, &rate_change(day + 10 * DAY, "5"), day + 60 * DAY).unwrap();
+        assert_eq!(
+            balance_on(&conn, day + 60 * DAY),
+            ("900000.00".into(), LedgerMode::Manual)
+        );
+        assert_eq!(terms(&conn).0, "5");
+        assert_eq!(anchor(&conn), (Some("900000".into()), Some(day)));
+    }
+
+    #[test]
+    fn a_backdated_rate_change_gets_the_terms_in_force_and_keeps_the_later_ones_current() {
+        let conn = setup_test_db();
+        let (older, newer) = (START + 100 * DAY, START + 200 * DAY);
+        add_event(&conn, &rate_change(newer, "4"), newer).unwrap();
+        let backdated = add_event(&conn, &rate_change(older, "3"), newer).unwrap();
+        // Before the older change the loan still had its original rate.
+        assert_eq!(backdated.previous_rate.as_deref(), Some("0"));
+        // The newer change stays the current rate.
+        assert_eq!(terms(&conn).0, "4");
+        let loan = loans::get_loan(&conn, "l1", newer + 40 * DAY).unwrap();
+        let ledger = loans::loan_ledger(&loan).unwrap();
+        assert_eq!(loan_balance_at(&ledger, START).annual_rate_pct, 0.0);
+        assert_eq!(loan_balance_at(&ledger, older + DAY).annual_rate_pct, 3.0);
+        assert_eq!(loan_balance_at(&ledger, newer + DAY).annual_rate_pct, 4.0);
+    }
+
+    #[test]
+    fn deleting_the_only_rate_change_gives_the_loan_its_previous_terms_back() {
+        let conn = setup_test_db();
+        let mut data = rate_change(YEAR_ON, "4.1");
+        data.monthly_payment = Some("15200".into());
+        let saved = add_event(&conn, &data, YEAR_ON).unwrap();
+        delete_event(&conn, &saved.id).unwrap();
+        assert_eq!(terms(&conn), ("0".into(), "10000".into()));
+        assert_eq!(balance_on(&conn, YEAR_ON + 31 * DAY).0, "870000.00");
+    }
+
+    #[test]
+    fn deleting_the_latest_change_returns_to_the_earlier_one() {
+        let conn = setup_test_db();
+        let (first, second) = (START + 100 * DAY, START + 200 * DAY);
+        add_event(&conn, &rate_change(first, "4"), second).unwrap();
+        let latest = add_event(&conn, &rate_change(second, "3"), second).unwrap();
+        delete_event(&conn, &latest.id).unwrap();
+        assert_eq!(terms(&conn).0, "4");
+    }
+
+    #[test]
+    fn deleting_the_earliest_change_hands_the_initial_terms_to_the_next() {
+        let conn = setup_test_db();
+        let (first, second) = (START + 100 * DAY, START + 200 * DAY);
+        let earliest = add_event(&conn, &rate_change(first, "4"), second).unwrap();
+        add_event(&conn, &rate_change(second, "3"), second).unwrap();
+        delete_event(&conn, &earliest.id).unwrap();
+        // The remaining change recorded 4 % as its previous rate; the original 0 % is
+        // the loan's initial rate again.
+        let remaining = list_events(&conn, "l1").unwrap();
+        assert_eq!(remaining.len(), 1);
+        assert_eq!(remaining[0].previous_rate.as_deref(), Some("0"));
+        assert_eq!(terms(&conn).0, "3");
+        let loan = loans::get_loan(&conn, "l1", second).unwrap();
+        let ledger = loans::loan_ledger(&loan).unwrap();
+        assert_eq!(loan_balance_at(&ledger, first + DAY).annual_rate_pct, 0.0);
+        assert_eq!(loan_balance_at(&ledger, second + DAY).annual_rate_pct, 3.0);
+    }
+
+    #[test]
+    fn deleting_the_earliest_lowering_of_the_payment_restores_the_original_payment() {
+        let conn = setup_test_db();
+        let mut data = extra(YEAR_ON, "1000");
+        data.monthly_payment = Some("8500".into());
+        let saved = add_event(&conn, &data, YEAR_ON).unwrap();
+        delete_event(&conn, &saved.id).unwrap();
+        assert_eq!(terms(&conn).1, "10000");
+        assert!(list_events(&conn, "l1").unwrap().is_empty());
+        assert_eq!(anchor(&conn), (None, None));
+    }
+
+    #[test]
+    fn deleting_a_plain_extra_payment_changes_no_terms() {
+        let conn = setup_test_db();
+        let saved = add_event(&conn, &extra(YEAR_ON, "1000"), YEAR_ON).unwrap();
+        delete_event(&conn, &saved.id).unwrap();
+        assert_eq!(terms(&conn), ("0".into(), "10000".into()));
+        assert_eq!(balance_on(&conn, YEAR_ON).0, "880000.00");
     }
 
     #[test]
     fn events_before_the_start_and_bad_kinds_are_rejected() {
         let conn = setup_test_db();
-        let mut data = event("extra_payment", START - DAY);
-        data.amount = Some("1000".into());
         assert!(matches!(
-            add_event(&conn, &data, START),
+            add_event(&conn, &extra(START - DAY, "1000"), START),
             Err(AppError::Validation(msg)) if msg == "validation.loanEventBeforeStart"
         ));
         assert!(matches!(
@@ -320,21 +767,64 @@ mod tests {
             add_event(&conn, &event("rate_change", START), START),
             Err(AppError::Validation(msg)) if msg == "validation.interestRatePositive"
         ));
+        let mut unknown = extra(START, "1000");
+        unknown.loan_id = "nope".into();
+        assert!(matches!(
+            add_event(&conn, &unknown, START),
+            Err(AppError::NotFound(_))
+        ));
     }
 
     #[test]
-    fn delete_removes_the_row_but_keeps_the_anchor() {
+    fn the_form_balance_creates_replaces_and_keeps_the_other_days() {
+        let conn = setup_test_db();
+        let (first, second) = (START + 100 * DAY, START + 200 * DAY);
+        upsert_form_balance(&conn, "l1", first, "950000", 10).unwrap();
+        upsert_form_balance(&conn, "l1", second, "900000", 20).unwrap();
+        upsert_form_balance(&conn, "l1", first + 3_600, "960000", 30).unwrap();
+        let stored: Vec<(i64, Option<String>)> = list_events(&conn, "l1")
+            .unwrap()
+            .into_iter()
+            .map(|e| (e.event_day, e.amount))
+            .collect();
+        assert_eq!(
+            stored,
+            vec![
+                (first, Some("960000".to_string())),
+                (second, Some("900000".to_string()))
+            ]
+        );
+        // The newest record stays the mirror.
+        assert_eq!(anchor(&conn), (Some("900000".into()), Some(second)));
+    }
+
+    #[test]
+    fn saving_an_unchanged_form_balance_leaves_the_record_alone() {
         let conn = setup_test_db();
         let day = START + 100 * DAY;
-        let mut data = event("balance_check", day);
-        data.amount = Some("950000".into());
-        let saved = add_event(&conn, &data, day).unwrap();
-        delete_event(&conn, &saved.id).unwrap();
-        assert!(list_events(&conn, "l1").unwrap().is_empty());
-        assert_eq!(anchor(&conn).1, Some(day));
-        assert!(matches!(
-            delete_event(&conn, &saved.id),
-            Err(AppError::NotFound(_))
-        ));
+        let saved = add_manual_balance(&conn, "l1", day, "950000", Some("statement"), 10).unwrap();
+        upsert_form_balance(&conn, "l1", day, "950000.00", 99).unwrap();
+        let stored = list_events(&conn, "l1").unwrap();
+        assert_eq!(stored.len(), 1);
+        assert_eq!(stored[0].id, saved.id);
+        assert_eq!(stored[0].created_at, 10);
+        assert_eq!(stored[0].note.as_deref(), Some("statement"));
+    }
+
+    #[test]
+    fn switching_the_form_off_deletes_every_manual_record_and_only_those() {
+        let conn = setup_test_db();
+        let day = START + 100 * DAY;
+        add_manual_balance(&conn, "l1", day, "950000", None, 10).unwrap();
+        add_manual_balance(&conn, "l1", day + 30 * DAY, "900000", None, 11).unwrap();
+        add_event(&conn, &extra(day + 5 * DAY, "1000"), day + 60 * DAY).unwrap();
+        delete_manual_balances(&conn, "l1", 20).unwrap();
+        let kinds: Vec<String> = list_events(&conn, "l1")
+            .unwrap()
+            .into_iter()
+            .map(|e| e.kind)
+            .collect();
+        assert_eq!(kinds, vec!["extra_payment"]);
+        assert_eq!(anchor(&conn), (None, None));
     }
 }

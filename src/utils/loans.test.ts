@@ -22,6 +22,8 @@ function loan(partial: Partial<Loan>): Loan {
     balanceAnchorAmount: null,
     balanceAnchorDate: null,
     outstandingBalance: '870000.00',
+    balanceMode: 'estimated',
+    events: [],
     createdAt: 0,
     updatedAt: 0,
     ...partial,

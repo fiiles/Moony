@@ -176,6 +176,7 @@ mod tests {
                 balance_anchor_amount TEXT,
                 balance_anchor_date INTEGER
             );
+            CREATE TABLE loan_events(id TEXT PRIMARY KEY,loan_id TEXT,kind TEXT,event_day INTEGER,amount TEXT,rate TEXT,monthly_payment TEXT,previous_rate TEXT,previous_monthly_payment TEXT,note TEXT,created_at INTEGER);
             CREATE TABLE stock_investments (id TEXT PRIMARY KEY, ticker TEXT NOT NULL, quantity TEXT NOT NULL, currency TEXT NOT NULL);
             CREATE TABLE investment_transactions (investment_id TEXT, type TEXT, quantity TEXT, price_per_unit TEXT, currency TEXT, transaction_date INTEGER, created_at INTEGER);
             CREATE TABLE stock_data (
@@ -262,6 +263,31 @@ mod tests {
         assert_eq!(result["breakdown"]["real_estate_personal"], "80.00");
         assert!(result.get("net_worth_czk").is_none());
         assert!(result.get("note").is_none());
+    }
+
+    #[test]
+    fn portfolio_metrics_values_a_loan_from_its_ledger() {
+        let conn = setup_db("CZK");
+        let today = crate::services::loan_amortization::today_utc_day();
+        let started = today - 400 * 86_400;
+        // 1 000 000 at 12 000 a month, no interest; the user entered 700 000 100 days ago
+        // and paid 5 000 extra 10 days ago: a manual balance holds, minus the extra payment.
+        conn.execute_batch(&format!(
+            "INSERT INTO loans (id, principal, currency, monthly_payment, start_date)
+                 VALUES ('l1', '1000000', 'CZK', '12000', {started});
+             INSERT INTO loan_events (id, loan_id, kind, event_day, amount, created_at)
+                 VALUES ('e1', 'l1', 'balance_check', {}, '700000', 1),
+                        ('e2', 'l1', 'extra_payment', {}, '5000', 2);",
+            today - 100 * 86_400,
+            today - 10 * 86_400
+        ))
+        .expect("loan");
+
+        let result = portfolio_metrics(&conn, false).expect("metrics");
+
+        // Liabilities are 695 000, the figure the loan's own page shows today.
+        assert_eq!(result["breakdown"]["loans"], "695000.00");
+        assert_eq!(result["total_liabilities"], "695000.00");
     }
 
     #[test]

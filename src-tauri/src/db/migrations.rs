@@ -83,6 +83,7 @@ fn all_migrations() -> Vec<(&'static str, &'static str)> {
         ("016_mcp_pending_refresh", MIGRATION_016),
         ("017_profile_country", MIGRATION_017),
         ("018_insurance_notice_days", MIGRATION_018),
+        ("019_loan_manual_records", MIGRATION_019),
     ]
 }
 
@@ -2677,6 +2678,38 @@ pub(crate) const MIGRATION_018: &str = r#"
 ALTER TABLE user_profile ADD COLUMN insurance_notice_days INTEGER;
 "#;
 
+/// 019: manual loan balances are records that hold. A `balance_check` event is a manual balance
+/// record; `loans.balance_anchor_amount` / `balance_anchor_date` become a mirror of the newest one
+/// (services::loan_events::refresh_anchor_mirror), like `bank_accounts.balance` mirrors the
+/// newest `bank_balance_records` row. An anchor entered in the loan form (no event on its day)
+/// becomes a record; an anchor that an extra payment or a rate change re-anchored is not one (the
+/// event already explains it and the ledger replays it). `previous_rate` and
+/// `previous_monthly_payment` hold the terms in force before an event that changes them; legacy
+/// rows keep NULL. The ids are lowercase UUID v4 built in SQL (same recipe as migration 014).
+pub(crate) const MIGRATION_019: &str = r#"
+ALTER TABLE loan_events ADD COLUMN previous_rate TEXT;
+ALTER TABLE loan_events ADD COLUMN previous_monthly_payment TEXT;
+
+INSERT INTO loan_events (id, loan_id, kind, event_day, amount, created_at)
+SELECT lower(hex(randomblob(4)) || '-' || hex(randomblob(2)) || '-4' || substr(hex(randomblob(2)), 2) || '-' || substr('89ab', 1 + (random() & 3), 1) || substr(hex(randomblob(2)), 2) || '-' || hex(randomblob(6))),
+       l.id, 'balance_check', l.balance_anchor_date, l.balance_anchor_amount, l.updated_at
+FROM loans l
+WHERE l.balance_anchor_amount IS NOT NULL AND l.balance_anchor_date IS NOT NULL
+  AND NOT EXISTS (
+      SELECT 1 FROM loan_events e WHERE e.loan_id = l.id AND e.event_day = l.balance_anchor_date
+  );
+
+UPDATE loans SET
+    balance_anchor_amount = (
+        SELECT e.amount FROM loan_events e
+        WHERE e.loan_id = loans.id AND e.kind = 'balance_check'
+        ORDER BY e.event_day DESC, e.created_at DESC, e.rowid DESC LIMIT 1),
+    balance_anchor_date = (
+        SELECT e.event_day FROM loan_events e
+        WHERE e.loan_id = loans.id AND e.kind = 'balance_check'
+        ORDER BY e.event_day DESC, e.created_at DESC, e.rowid DESC LIMIT 1);
+"#;
+
 #[cfg(test)]
 mod migration_012 {
     use super::*;
@@ -3144,5 +3177,189 @@ mod migration_018 {
             )
             .expect("declared type");
         assert_eq!(declared, "INTEGER");
+    }
+}
+
+#[cfg(test)]
+mod migration_019 {
+    use super::*;
+
+    const DAY: i64 = 86_400;
+
+    fn database_before_019() -> Connection {
+        let conn = Connection::open_in_memory().expect("in-memory db");
+        let earlier: Vec<(&str, &str)> = all_migrations()
+            .into_iter()
+            .filter(|(name, _)| *name < "019_loan_manual_records")
+            .collect();
+        run_chain(&conn, &earlier).expect("earlier migrations");
+        conn
+    }
+
+    /// `(amount, event_day)` of the loan's manual records, oldest first.
+    fn records(conn: &Connection, loan: &str) -> Vec<(String, i64)> {
+        conn.prepare(
+            "SELECT amount, event_day FROM loan_events
+             WHERE loan_id = ?1 AND kind = 'balance_check' ORDER BY event_day, created_at",
+        )
+        .expect("select")
+        .query_map([loan], |r| Ok((r.get(0)?, r.get(1)?)))
+        .expect("rows")
+        .collect::<std::result::Result<Vec<_>, _>>()
+        .expect("rows")
+    }
+
+    fn mirror(conn: &Connection, loan: &str) -> (Option<String>, Option<i64>) {
+        conn.query_row(
+            "SELECT balance_anchor_amount, balance_anchor_date FROM loans WHERE id = ?1",
+            [loan],
+            |r| Ok((r.get(0)?, r.get(1)?)),
+        )
+        .expect("mirror")
+    }
+
+    fn loan(conn: &Connection, id: &str, anchor: Option<(&str, i64)>) {
+        conn.execute(
+            "INSERT INTO loans (id, name, principal, start_date, balance_anchor_amount,
+                                balance_anchor_date, updated_at)
+             VALUES (?1, ?1, '1000000', ?2, ?3, ?4, 1767400000)",
+            rusqlite::params![
+                id,
+                1_700_000_000 / DAY * DAY,
+                anchor.map(|a| a.0),
+                anchor.map(|a| a.1)
+            ],
+        )
+        .expect("loan");
+    }
+
+    fn event(conn: &Connection, id: &str, loan: &str, kind: &str, day: i64, amount: &str, at: i64) {
+        conn.execute(
+            "INSERT INTO loan_events (id, loan_id, kind, event_day, amount, created_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+            rusqlite::params![id, loan, kind, day, amount, at],
+        )
+        .expect("event");
+    }
+
+    #[test]
+    fn a_form_anchor_becomes_a_manual_record_and_stays_the_mirror() {
+        let conn = database_before_019();
+        let day = 1_750_000_000 / DAY * DAY;
+        loan(&conn, "form", Some(("800000", day)));
+        run_migrations(&conn).expect("migrate to the current chain");
+
+        assert_eq!(records(&conn, "form"), vec![("800000".to_string(), day)]);
+        assert_eq!(mirror(&conn, "form"), (Some("800000".into()), Some(day)));
+        let (id, created_at): (String, i64) = conn
+            .query_row(
+                "SELECT id, created_at FROM loan_events WHERE loan_id = 'form'",
+                [],
+                |r| Ok((r.get(0)?, r.get(1)?)),
+            )
+            .expect("record");
+        assert_eq!(id.len(), 36, "ids are lowercase UUID v4 strings: {id}");
+        assert_eq!(id, id.to_lowercase());
+        assert_eq!(
+            created_at, 1767400000,
+            "the record takes the loan's updated_at"
+        );
+    }
+
+    #[test]
+    fn an_anchor_an_event_set_is_not_a_record_and_the_mirror_follows_the_records() {
+        let conn = database_before_019();
+        let day = 1_750_000_000 / DAY * DAY;
+        // The extra payment of the day re-anchored the loan: no record is made, the mirror clears.
+        loan(&conn, "extra", Some(("780000.00", day)));
+        event(&conn, "e1", "extra", "extra_payment", day, "100000", 10);
+        // An older statement check stays the newest record and so the mirror.
+        loan(&conn, "check", Some(("700000.00", day + 30 * DAY)));
+        event(
+            &conn,
+            "c1",
+            "check",
+            "balance_check",
+            day - 10 * DAY,
+            "900000",
+            10,
+        );
+        event(
+            &conn,
+            "c2",
+            "check",
+            "balance_check",
+            day + 30 * DAY,
+            "700000.00",
+            20,
+        );
+        // Neither anchor nor events: nothing to do.
+        loan(&conn, "plain", None);
+        run_migrations(&conn).expect("migrate to the current chain");
+
+        assert!(records(&conn, "extra").is_empty());
+        assert_eq!(mirror(&conn, "extra"), (None, None));
+        assert_eq!(
+            records(&conn, "check"),
+            vec![
+                ("900000".to_string(), day - 10 * DAY),
+                ("700000.00".to_string(), day + 30 * DAY)
+            ]
+        );
+        assert_eq!(
+            mirror(&conn, "check"),
+            (Some("700000.00".into()), Some(day + 30 * DAY))
+        );
+        assert!(records(&conn, "plain").is_empty());
+        assert_eq!(mirror(&conn, "plain"), (None, None));
+    }
+
+    #[test]
+    fn the_new_columns_are_nullable_text_and_legacy_events_keep_null() {
+        let conn = database_before_019();
+        loan(&conn, "l", None);
+        event(
+            &conn,
+            "r1",
+            "l",
+            "rate_change",
+            1_750_000_000 / DAY * DAY,
+            "0",
+            10,
+        );
+        run_migrations(&conn).expect("migrate to the current chain");
+        let (previous_rate, previous_payment): (Option<String>, Option<String>) = conn
+            .query_row(
+                "SELECT previous_rate, previous_monthly_payment FROM loan_events WHERE id = 'r1'",
+                [],
+                |r| Ok((r.get(0)?, r.get(1)?)),
+            )
+            .expect("columns");
+        assert_eq!((previous_rate, previous_payment), (None, None));
+        for column in ["previous_rate", "previous_monthly_payment"] {
+            let declared: String = conn
+                .query_row(
+                    "SELECT type FROM pragma_table_info('loan_events') WHERE name = ?1",
+                    [column],
+                    |r| r.get(0),
+                )
+                .expect("declared type");
+            assert_eq!(declared, "TEXT", "{column}");
+        }
+    }
+
+    #[test]
+    fn two_form_anchors_get_their_own_ids() {
+        let conn = database_before_019();
+        let day = 1_750_000_000 / DAY * DAY;
+        loan(&conn, "a", Some(("1", day)));
+        loan(&conn, "b", Some(("2", day)));
+        run_migrations(&conn).expect("migrate to the current chain");
+        let distinct: i64 = conn
+            .query_row("SELECT COUNT(DISTINCT id) FROM loan_events", [], |r| {
+                r.get(0)
+            })
+            .expect("count");
+        assert_eq!(distinct, 2);
     }
 }

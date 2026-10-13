@@ -691,6 +691,7 @@ CREATE TABLE budget_goal_versions(id TEXT PRIMARY KEY,category_id TEXT,timeframe
 CREATE TABLE cashflow_items(id TEXT PRIMARY KEY,name TEXT,amount TEXT,currency TEXT,frequency TEXT,item_type TEXT,category TEXT,created_at INTEGER DEFAULT 0,updated_at INTEGER DEFAULT 0,replacement_source_id TEXT UNIQUE);
 CREATE TABLE cashflow_plan_exclusions(key TEXT PRIMARY KEY,created_at INTEGER NOT NULL DEFAULT 0);
 CREATE TABLE loans(id TEXT,name TEXT,principal TEXT,currency TEXT,interest_rate TEXT,monthly_payment TEXT,start_date INTEGER,end_date INTEGER,balance_anchor_amount TEXT,balance_anchor_date INTEGER);
+CREATE TABLE loan_events(id TEXT PRIMARY KEY,loan_id TEXT,kind TEXT,event_day INTEGER,amount TEXT,rate TEXT,monthly_payment TEXT,previous_rate TEXT,previous_monthly_payment TEXT,note TEXT,created_at INTEGER);
 CREATE TABLE real_estate(id TEXT,name TEXT,type TEXT,recurring_costs TEXT,monthly_rent TEXT,monthly_rent_currency TEXT);
 CREATE TABLE real_estate_loans(real_estate_id TEXT,loan_id TEXT);
 CREATE TABLE real_estate_insurances(real_estate_id TEXT,insurance_id TEXT);

@@ -58,6 +58,19 @@ pub(crate) fn setup() -> Connection {
             balance_anchor_amount TEXT,
             balance_anchor_date INTEGER
         );
+        CREATE TABLE loan_events (
+            id TEXT PRIMARY KEY,
+            loan_id TEXT NOT NULL REFERENCES loans(id) ON DELETE CASCADE,
+            kind TEXT NOT NULL,
+            event_day INTEGER NOT NULL,
+            amount TEXT,
+            rate TEXT,
+            monthly_payment TEXT,
+            note TEXT,
+            created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+            previous_rate TEXT,
+            previous_monthly_payment TEXT
+        );
         CREATE TABLE bonds (
             id TEXT PRIMARY KEY,
             name TEXT NOT NULL,

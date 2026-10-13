@@ -454,6 +454,39 @@ describe('loanBalanceAt / planFrom rules', () => {
     expect(cents(loanBalanceAt(l, day('2023-02-15')).balance)).toBe(cents(98_500));
   });
 
+  it('starts from the payment an extra payment replaced', () => {
+    const extra = event('2024-03-20', 1, 'extra_payment', {
+      amount: 10_000,
+      monthlyPayment: 1_500,
+      previousMonthlyPayment: 2_000,
+    });
+    const l = ledgerOf('2023-01-15', [extra], { monthlyPayment: 1_500 });
+    // One payment at the replaced 2 000, not at the loan's current 1 500.
+    expect(cents(loanBalanceAt(l, day('2023-02-15')).balance)).toBe(cents(98_500));
+    expect(loanBalanceAt(l, day('2024-03-20')).monthlyPayment).toBe(1_500);
+  });
+
+  it('takes each initial term from the earliest event that carries it', () => {
+    const extra = event('2023-09-05', 1, 'extra_payment', {
+      amount: 5_000,
+      monthlyPayment: 1_700,
+      previousMonthlyPayment: 2_000,
+    });
+    const change = event('2024-06-10', 2, 'rate_change', {
+      rate: 4.5,
+      previousRate: 6,
+      previousMonthlyPayment: 1_700,
+    });
+    const l = ledgerOf('2023-01-15', [change, extra], {
+      annualRatePct: 4.5,
+      monthlyPayment: 1_700,
+    });
+    const first = loanBalanceAt(l, day('2023-02-15'));
+    expect(first.annualRatePct).toBe(6);
+    expect(first.monthlyPayment).toBe(2_000);
+    expect(cents(first.balance)).toBe(cents(98_500));
+  });
+
   it('plans an empty schedule from a zero manual balance', () => {
     const l = ledgerOf('2023-01-15', [event('2024-01-10', 1, 'balance_check', { amount: 0 })]);
     const state = loanBalanceAt(l, day('2026-01-01'));

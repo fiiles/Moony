@@ -333,7 +333,7 @@ impl MoonyMcp {
     }
 
     #[tool(
-        description = "List all loans (mortgages, personal loans, etc.) with original principal, outstandingBalance (amortized from the annuity as of today, in the loan's currency), currency, interest rate, monthly payment, start date, end date and the optional manual balance (balanceAnchorAmount/balanceAnchorDate)."
+        description = "List all loans (mortgages, personal loans, etc.) with original principal, outstandingBalance (the loan's balance as of today in its currency: amortized from the payments, less extra payments, unless the user entered a manual balance, which holds exactly until they change it), balanceMode (\"estimated\" = amortized from the payments, \"manual\" = a manual balance record holds today's balance), currency, interest rate, monthly payment, start date, end date and the newest manual balance (balanceAnchorAmount/balanceAnchorDate, null without one)."
     )]
     fn loans_list(&self) -> Result<CallToolResult, McpError> {
         to_result(self.db.with_conn(loans::loans_list))
@@ -738,7 +738,7 @@ impl MoonyMcp {
     }
 
     #[tool(
-        description = "Create a loan (mortgage, personal loan, …) in Moony.\n\nCall this only after presenting the parsed data to the user and receiving their confirmation.\nprincipal is the original amount and must be positive; currency is a 3-letter ISO code (defaults to the user's main currency); interestRate is a percent 0–100; startDate/endDate are Unix timestamps (seconds); endDate must be after startDate. The balance is amortized from principal at startDate; optionally pass balanceAnchorAmount together with balanceAnchorDate (Unix seconds, not before startDate) to start from a real balance instead."
+        description = "Create a loan (mortgage, personal loan, …) in Moony.\n\nCall this only after presenting the parsed data to the user and receiving their confirmation.\nprincipal is the original amount and must be positive; currency is a 3-letter ISO code (defaults to the user's main currency); interestRate is a percent 0–100; startDate/endDate are Unix timestamps (seconds); endDate must be after startDate. The balance is amortized from principal at startDate; optionally pass balanceAnchorAmount together with balanceAnchorDate (Unix seconds, not before startDate) to record a manual balance as of that day: it holds exactly from that day (nothing is amortized after it) until the user changes or removes it."
     )]
     fn loan_create(
         &self,

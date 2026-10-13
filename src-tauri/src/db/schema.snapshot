@@ -450,7 +450,7 @@ CREATE TABLE loan_events (
     monthly_payment TEXT,
     note TEXT,
     created_at INTEGER NOT NULL DEFAULT (unixepoch())
-)
+, previous_rate TEXT, previous_monthly_payment TEXT)
 
 == table loans ==
 CREATE TABLE loans (

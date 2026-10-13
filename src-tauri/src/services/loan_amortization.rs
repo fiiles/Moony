@@ -335,7 +335,8 @@ pub struct LedgerEvent {
     pub monthly_payment: Option<f64>,
     /// Rate change: the rate in force before it (`None` on legacy rows).
     pub previous_rate: Option<f64>,
-    /// Rate change: the payment in force before it (`None` on legacy rows).
+    /// Rate change, or an extra payment that sets a new payment: the payment in
+    /// force before it (`None` on legacy rows and on events that leave it as is).
     pub previous_monthly_payment: Option<f64>,
 }
 
@@ -389,21 +390,20 @@ fn ordered_events(ledger: &LoanLedger) -> Vec<&LedgerEvent> {
     events
 }
 
-/// Rate and payment before any event: the first rate change's previous terms
-/// when it recorded them, else the loan's current terms (legacy rows).
+/// Rate and payment before any event: each is the previous value recorded by the
+/// EARLIEST event that carries one (any kind: a rate change records both, an extra
+/// payment that lowers the payment records the payment), else the loan's current
+/// terms (legacy rows).
 fn initial_terms(terms: &LoanTerms, events: &[&LedgerEvent]) -> (f64, f64) {
-    let first_rate_change = events
+    let rate = events
         .iter()
-        .find(|event| event.kind == LedgerEventKind::RateChange);
-    match first_rate_change {
-        Some(change) => (
-            change.previous_rate.unwrap_or(terms.annual_rate_pct),
-            change
-                .previous_monthly_payment
-                .unwrap_or(terms.monthly_payment),
-        ),
-        None => (terms.annual_rate_pct, terms.monthly_payment),
-    }
+        .find_map(|event| event.previous_rate)
+        .unwrap_or(terms.annual_rate_pct);
+    let payment = events
+        .iter()
+        .find_map(|event| event.previous_monthly_payment)
+        .unwrap_or(terms.monthly_payment);
+    (rate, payment)
 }
 
 /// Balance of the current estimated segment after every payment due on or
@@ -451,8 +451,9 @@ fn apply_event(state: &mut LedgerState, event: &LedgerEvent) {
 /// Balance of a loan on `day`: the ledger walk (spec B2).
 ///
 /// Before the start day the balance is 0. Otherwise the walk starts as
-/// `Estimated` from (principal, start day) and applies the events dated on or
-/// before `day` in (day, created_at) order:
+/// `Estimated` from (principal, start day), with the terms in force before the
+/// first event (`initial_terms`), and applies the events dated on or before `day`
+/// in (day, created_at) order:
 /// - estimated segments amortize monthly between events, on the segment
 ///   anchor's day of month;
 /// - a manual record (`BalanceCheck`) sets the balance and switches to
@@ -1048,6 +1049,43 @@ mod tests {
             cents(loan_balance_at(&l, day("2023-02-15")).balance),
             cents(98_500.0)
         );
+    }
+
+    #[test]
+    fn an_extra_payment_that_lowers_the_payment_records_the_one_it_replaced() {
+        let mut extra = event("2024-03-20", 1, LedgerEventKind::ExtraPayment);
+        extra.amount = Some(10_000.0);
+        extra.monthly_payment = Some(1_500.0);
+        extra.previous_monthly_payment = Some(2_000.0);
+        let mut l = ledger("2023-01-15", vec![extra]);
+        l.terms.monthly_payment = 1_500.0;
+        // One payment at the replaced 2 000, not at the loan's current 1 500.
+        let first = loan_balance_at(&l, day("2023-02-15"));
+        assert_eq!(cents(first.balance), cents(98_500.0));
+        assert_eq!(
+            loan_balance_at(&l, day("2024-03-20")).monthly_payment,
+            1_500.0
+        );
+    }
+
+    #[test]
+    fn each_initial_term_comes_from_the_earliest_event_that_carries_it() {
+        let mut extra = event("2023-09-05", 1, LedgerEventKind::ExtraPayment);
+        extra.amount = Some(5_000.0);
+        extra.monthly_payment = Some(1_700.0);
+        extra.previous_monthly_payment = Some(2_000.0);
+        let mut change = event("2024-06-10", 2, LedgerEventKind::RateChange);
+        change.rate = Some(4.5);
+        change.previous_rate = Some(6.0);
+        change.previous_monthly_payment = Some(1_700.0);
+        // Slice order does not matter: the walk orders by (day, created_at).
+        let mut l = ledger("2023-01-15", vec![change, extra]);
+        l.terms.annual_rate_pct = 4.5;
+        l.terms.monthly_payment = 1_700.0;
+        let first = loan_balance_at(&l, day("2023-02-15"));
+        assert_eq!(first.annual_rate_pct, 6.0);
+        assert_eq!(first.monthly_payment, 2_000.0);
+        assert_eq!(cents(first.balance), cents(98_500.0));
     }
 
     #[test]

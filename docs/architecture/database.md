@@ -43,6 +43,12 @@ grouping below follows the domain map in `docs/architecture/overview.md`.
 - `018_insurance_notice_days` adds `user_profile.insurance_notice_days`, the notice the insurance
   anniversary milestone counts back from. NULL follows the profile country (43 days for CZ and SK,
   no reminder elsewhere), 0 switches the reminder off.
+- `019_loan_manual_records` makes manual loan balances records that hold. It adds
+  `loan_events.previous_rate` / `previous_monthly_payment` (the terms in force before an event that
+  changes them; legacy rows keep NULL). A form-entered anchor with no event on its day becomes a
+  `balance_check` record (the manual balance record); an anchor that an extra payment or a rate
+  change re-anchored does not (the ledger replays those events). `loans.balance_anchor_*` then
+  mirror the newest record, NULL without one.
 - To add one: define `const MIGRATION_0NN: &str = r#"..."#;` (next free
   number) and append a `("0NN_short_name", MIGRATION_0NN)` entry to the `Vec`
   returned by `all_migrations()`. Numbers are zero-padded, sequential, never
@@ -198,8 +204,8 @@ Grouped by owning domain (see the domain map in `overview.md`).
 
 | Table | Purpose | Notable columns / constraints |
 |---|---|---|
-| `loans` | Loans/mortgages | `principal` (the original amount, never reduced), `monthly_payment`, `interest_rate` + `interest_rate_validity_date`, `start_date`/`end_date`; `balance_anchor_amount` TEXT + `balance_anchor_date` INTEGER (UTC day): both NULL = amortize from `principal` at `start_date`, both set = the user's real balance as of that day, amortization continues from it. The outstanding balance is computed on read (`services/loan_amortization.rs`), never stored; `portfolio_metrics_history.total_loans_principal` and `loans_by_currency` hold the outstanding totals |
-| `loan_events` | Extra payments, rate changes and balance checks of a loan | FK `loan_id` ON DELETE CASCADE; `kind` CHECK (`extra_payment`/`rate_change`/`balance_check`), `event_day` INTEGER (UTC day), `amount`/`rate`/`monthly_payment` TEXT; index `(loan_id, event_day)`. Adding an event re-anchors the loan (`services/loan_events.rs`) |
+| `loans` | Loans/mortgages | `principal` (the original amount, never reduced), `monthly_payment`, `interest_rate` + `interest_rate_validity_date`, `start_date`/`end_date`; `balance_anchor_amount` TEXT + `balance_anchor_date` INTEGER (UTC day) are a **mirror of the newest manual balance record** (a `balance_check` row of `loan_events`; both NULL without one), written only by `services/loan_events.rs` (`refresh_anchor_mirror`). The outstanding balance is computed on read from the loan's events (`loan_balance_at` in `services/loan_amortization.rs`), never stored; `portfolio_metrics_history.total_loans_principal` and `loans_by_currency` hold the outstanding totals |
+| `loan_events` | Extra payments, rate changes and manual balance records of a loan; the facts of the loan ledger | FK `loan_id` ON DELETE CASCADE; `kind` CHECK (`extra_payment`/`rate_change`/`balance_check`; `balance_check` is the manual balance record: it holds exactly from its day, one per day, the same day replaces), `event_day` INTEGER (UTC day), `amount`/`rate`/`monthly_payment` TEXT, `previous_rate`/`previous_monthly_payment` TEXT (terms in force before the event, migration 019; NULL on legacy rows); index `(loan_id, event_day)` |
 
 ### Real estate
 

@@ -244,7 +244,10 @@ export interface LedgerEvent {
   monthlyPayment?: number | null;
   /** Rate change: the rate in force before it (null on legacy rows). */
   previousRate?: number | null;
-  /** Rate change: the payment in force before it (null on legacy rows). */
+  /**
+   * Rate change, or an extra payment that sets a new payment: the payment in force before it
+   * (null on legacy rows and on events that leave it as is).
+   */
   previousMonthlyPayment?: number | null;
 }
 
@@ -287,17 +290,23 @@ function orderedEvents(ledger: LoanLedger): LedgerEvent[] {
 }
 
 /**
- * Rate and payment before any event: the first rate change's previous terms when it
- * recorded them, else the loan's current terms (legacy rows).
+ * Rate and payment before any event: each is the previous value recorded by the EARLIEST event
+ * that carries one (any kind: a rate change records both, an extra payment that lowers the
+ * payment records the payment), else the loan's current terms (legacy rows).
  */
 function initialTerms(
   terms: LoanTerms,
   events: LedgerEvent[]
 ): { annualRatePct: number; monthlyPayment: number } {
-  const change = events.find((event) => event.kind === 'rate_change');
+  const rate = events.find(
+    (event) => event.previousRate !== null && event.previousRate !== undefined
+  );
+  const payment = events.find(
+    (event) => event.previousMonthlyPayment !== null && event.previousMonthlyPayment !== undefined
+  );
   return {
-    annualRatePct: change?.previousRate ?? terms.annualRatePct,
-    monthlyPayment: change?.previousMonthlyPayment ?? terms.monthlyPayment,
+    annualRatePct: rate?.previousRate ?? terms.annualRatePct,
+    monthlyPayment: payment?.previousMonthlyPayment ?? terms.monthlyPayment,
   };
 }
 
@@ -341,8 +350,8 @@ function applyEvent(state: LedgerState, event: LedgerEvent): void {
  * Balance of a loan on `day`: the ledger walk (spec B2).
  *
  * Before the start day the balance is 0. Otherwise the walk starts as `estimated` from
- * (principal, start day) and applies the events dated on or before `day` in
- * (day, created time) order:
+ * (principal, start day), with the terms in force before the first event (`initialTerms`), and
+ * applies the events dated on or before `day` in (day, created time) order:
  * - estimated segments amortize monthly between events, on the segment anchor's day of month;
  * - a manual record (`balance_check`) sets the balance and switches to `manual`: nothing is
  *   amortized after it;

@@ -1903,6 +1903,234 @@
         },
         "anchorDay": "2023-06-10"
       }
+    },
+    {
+      "name": "ledger-extra-payment-lower-payment-previous-recorded",
+      "note": "The loan row already holds the lowered payment (1500), as the service writes it; the extra payment records the payment it replaced (2000), so the walk before it uses 2000.",
+      "ledger": {
+        "terms": {
+          "principal": 100000,
+          "annualRatePct": 6,
+          "monthlyPayment": 1500,
+          "startDay": "2023-01-15",
+          "endDay": null
+        },
+        "events": [
+          {
+            "day": "2024-03-20",
+            "createdAt": 1,
+            "kind": "extra_payment",
+            "amount": 10000,
+            "rate": null,
+            "monthlyPayment": 1500,
+            "previousRate": null,
+            "previousMonthlyPayment": 2000
+          }
+        ]
+      },
+      "balances": [
+        {
+          "on": "2023-02-14",
+          "balance": 100000.0,
+          "mode": "estimated",
+          "segmentAnchorDay": "2023-01-15"
+        },
+        {
+          "on": "2023-02-15",
+          "balance": 98500.0,
+          "mode": "estimated",
+          "segmentAnchorDay": "2023-01-15"
+        },
+        {
+          "on": "2024-03-19",
+          "balance": 78303.66,
+          "mode": "estimated",
+          "segmentAnchorDay": "2023-01-15"
+        },
+        {
+          "on": "2024-03-20",
+          "balance": 68303.66,
+          "mode": "estimated",
+          "segmentAnchorDay": "2024-03-20"
+        },
+        {
+          "on": "2024-04-20",
+          "balance": 67145.18,
+          "mode": "estimated",
+          "segmentAnchorDay": "2024-03-20"
+        },
+        {
+          "on": "2025-03-20",
+          "balance": 54013.14,
+          "mode": "estimated",
+          "segmentAnchorDay": "2024-03-20"
+        }
+      ],
+      "plan": {
+        "today": "2024-09-01",
+        "mode": "estimated",
+        "anchorAmount": 68303.66,
+        "annualRatePct": 6.0,
+        "monthlyPayment": 1500.0,
+        "schedule": {
+          "maxRows": 600,
+          "end": "paid",
+          "rowCount": 52,
+          "lastBalance": 0.0,
+          "firstRows": [
+            {
+              "dueDay": "2024-04-20",
+              "payment": 1500.0,
+              "interest": 341.52,
+              "principalPart": 1158.48,
+              "balanceAfter": 67145.18
+            },
+            {
+              "dueDay": "2024-05-20",
+              "payment": 1500.0,
+              "interest": 335.73,
+              "principalPart": 1164.27,
+              "balanceAfter": 65980.9
+            },
+            {
+              "dueDay": "2024-06-20",
+              "payment": 1500.0,
+              "interest": 329.9,
+              "principalPart": 1170.1,
+              "balanceAfter": 64810.81
+            }
+          ]
+        },
+        "anchorDay": "2024-03-20"
+      }
+    },
+    {
+      "name": "ledger-initial-terms-from-the-earliest-carrier-per-field",
+      "note": "Each initial term comes from the earliest event that carries it, whatever its kind: the extra payment gives the first payment (2000), the rate change the first rate (6 %); the rate change's own previous payment (1700) is not an initial term.",
+      "ledger": {
+        "terms": {
+          "principal": 100000,
+          "annualRatePct": 4.5,
+          "monthlyPayment": 1700,
+          "startDay": "2023-01-15",
+          "endDay": null
+        },
+        "events": [
+          {
+            "day": "2023-09-05",
+            "createdAt": 1,
+            "kind": "extra_payment",
+            "amount": 5000,
+            "rate": null,
+            "monthlyPayment": 1700,
+            "previousRate": null,
+            "previousMonthlyPayment": 2000
+          },
+          {
+            "day": "2024-06-10",
+            "createdAt": 2,
+            "kind": "rate_change",
+            "amount": null,
+            "rate": 4.5,
+            "monthlyPayment": null,
+            "previousRate": 6,
+            "previousMonthlyPayment": 1700
+          }
+        ]
+      },
+      "balances": [
+        {
+          "on": "2023-02-15",
+          "balance": 98500.0,
+          "mode": "estimated",
+          "segmentAnchorDay": "2023-01-15"
+        },
+        {
+          "on": "2023-08-15",
+          "balance": 89341.18,
+          "mode": "estimated",
+          "segmentAnchorDay": "2023-01-15"
+        },
+        {
+          "on": "2023-09-04",
+          "balance": 89341.18,
+          "mode": "estimated",
+          "segmentAnchorDay": "2023-01-15"
+        },
+        {
+          "on": "2023-09-05",
+          "balance": 84341.18,
+          "mode": "estimated",
+          "segmentAnchorDay": "2023-09-05"
+        },
+        {
+          "on": "2023-10-05",
+          "balance": 83062.89,
+          "mode": "estimated",
+          "segmentAnchorDay": "2023-09-05"
+        },
+        {
+          "on": "2024-06-09",
+          "balance": 72603.74,
+          "mode": "estimated",
+          "segmentAnchorDay": "2023-09-05"
+        },
+        {
+          "on": "2024-06-10",
+          "balance": 72603.74,
+          "mode": "estimated",
+          "segmentAnchorDay": "2024-06-10"
+        },
+        {
+          "on": "2024-07-10",
+          "balance": 71176.0,
+          "mode": "estimated",
+          "segmentAnchorDay": "2024-06-10"
+        },
+        {
+          "on": "2025-06-10",
+          "balance": 55113.09,
+          "mode": "estimated",
+          "segmentAnchorDay": "2024-06-10"
+        }
+      ],
+      "plan": {
+        "today": "2024-12-01",
+        "mode": "estimated",
+        "anchorAmount": 72603.74,
+        "annualRatePct": 4.5,
+        "monthlyPayment": 1700.0,
+        "schedule": {
+          "maxRows": 600,
+          "end": "paid",
+          "rowCount": 47,
+          "lastBalance": 0.0,
+          "firstRows": [
+            {
+              "dueDay": "2024-07-10",
+              "payment": 1700.0,
+              "interest": 272.26,
+              "principalPart": 1427.74,
+              "balanceAfter": 71176.0
+            },
+            {
+              "dueDay": "2024-08-10",
+              "payment": 1700.0,
+              "interest": 266.91,
+              "principalPart": 1433.09,
+              "balanceAfter": 69742.91
+            },
+            {
+              "dueDay": "2024-09-10",
+              "payment": 1700.0,
+              "interest": 261.54,
+              "principalPart": 1438.46,
+              "balanceAfter": 68304.45
+            }
+          ]
+        },
+        "anchorDay": "2024-06-10"
+      }
     }
   ]
 }

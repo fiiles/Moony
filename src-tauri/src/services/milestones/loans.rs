@@ -1,17 +1,37 @@
 //! Loan milestones: the end of a fixed rate, an expired fixation without a new rate, the
-//! last payment and a yearly balance check against a statement.
+//! last payment and a yearly request for a current balance (a manual balance record).
 
 use rusqlite::Connection;
 
 use super::{dated, milestone, DAY, TONE_INFO};
 use crate::error::Result;
-use crate::models::Milestone;
+use crate::models::{Loan, Milestone};
 use crate::services::loan_amortization::day_floor;
 use crate::services::loans as loans_service;
 
 const FIXATION_LEAD_DAYS: i64 = 180;
 const PAYOFF_LEAD_DAYS: i64 = 30;
 const BALANCE_CHECK_DAYS: i64 = 365;
+
+/// The day the balance was last confirmed: the newest manual balance record, else
+/// the latest of the start day and the event days (an extra payment or a rate
+/// change shows the user is keeping the loan up to date).
+fn last_checked_day(loan: &Loan) -> i64 {
+    let newest_manual = loan
+        .events
+        .iter()
+        .filter(|event| event.kind == "balance_check")
+        .map(|event| day_floor(event.event_day))
+        .max();
+    newest_manual.unwrap_or_else(|| {
+        loan.events
+            .iter()
+            .map(|event| day_floor(event.event_day))
+            .chain(std::iter::once(day_floor(loan.start_date)))
+            .max()
+            .unwrap_or_else(|| day_floor(loan.start_date))
+    })
+}
 
 pub(super) fn build(conn: &Connection, today: i64) -> Result<Vec<Milestone>> {
     let mut out = Vec::new();
@@ -68,8 +88,7 @@ pub(super) fn build(conn: &Connection, today: i64) -> Result<Vec<Milestone>> {
             Err(e) => log::warn!("[MILESTONES] loan schedule skipped: {e}"),
         }
 
-        // Every extra payment, rate change and balance check moves the anchor.
-        let checked = day_floor(loan.balance_anchor_date.unwrap_or(loan.start_date));
+        let checked = last_checked_day(&loan);
         if checked < today - BALANCE_CHECK_DAYS * DAY {
             let mut m = milestone(
                 "loan_balance_check",
@@ -91,6 +110,7 @@ mod tests {
     use super::*;
     use rusqlite::params;
 
+    /// A loan; `anchor` is the day of a manual balance record (a `balance_check` event).
     fn loan(
         conn: &Connection,
         id: &str,
@@ -107,6 +127,24 @@ mod tests {
                     anchor.map(|_| "900000"), anchor],
         )
         .expect("loan");
+        if let Some(day) = anchor {
+            event(conn, id, "balance_check", day, "900000");
+        }
+    }
+
+    fn event(conn: &Connection, loan_id: &str, kind: &str, day: i64, amount: &str) {
+        conn.execute(
+            "INSERT INTO loan_events (id, loan_id, kind, event_day, amount)
+             VALUES (?1, ?2, ?3, ?4, ?5)",
+            params![
+                format!("{loan_id}-{kind}-{day}"),
+                loan_id,
+                kind,
+                day,
+                amount
+            ],
+        )
+        .expect("event");
     }
 
     #[test]
@@ -206,6 +244,66 @@ mod tests {
         assert_eq!(
             checks[0].key,
             format!("loan_balance_check:old:{}", day(2020, 1, 1))
+        );
+    }
+
+    #[test]
+    fn the_last_checked_day_is_the_newest_manual_record() {
+        let conn = setup();
+        // An old record, then a newer one: the newer one counts.
+        loan(
+            &conn,
+            "a",
+            day(2020, 1, 1),
+            None,
+            "8000",
+            Some(day(2022, 1, 1)),
+        );
+        event(&conn, "a", "balance_check", day(2026, 3, 1), "800000");
+        // A recent extra payment does not make up for a missing manual balance.
+        loan(
+            &conn,
+            "b",
+            day(2024, 1, 1),
+            None,
+            "8000",
+            Some(day(2024, 6, 1)),
+        );
+        event(&conn, "b", "extra_payment", day(2026, 9, 1), "5000");
+        let list = build(&conn, day(2026, 10, 5)).unwrap();
+        let checks: Vec<_> = list
+            .iter()
+            .filter(|m| m.kind == "loan_balance_check")
+            .collect();
+        assert_eq!(checks.len(), 1);
+        assert_eq!(checks[0].source_id.as_deref(), Some("b"));
+        assert_eq!(checks[0].since_day, Some(day(2024, 6, 1)));
+    }
+
+    #[test]
+    fn without_a_manual_record_the_latest_event_or_the_start_counts() {
+        let conn = setup();
+        // Never touched since the start.
+        loan(&conn, "never", day(2020, 1, 1), None, "8000", None);
+        // A rate change last year-and-a-bit ago is older than a year.
+        loan(&conn, "old-event", day(2020, 1, 1), None, "8000", None);
+        event(&conn, "old-event", "rate_change", day(2025, 5, 1), "0");
+        // An extra payment this year keeps it fresh.
+        loan(&conn, "fresh", day(2020, 1, 1), None, "8000", None);
+        event(&conn, "fresh", "extra_payment", day(2026, 4, 1), "5000");
+        let list = build(&conn, day(2026, 10, 5)).unwrap();
+        let mut checks: Vec<(String, i64)> = list
+            .iter()
+            .filter(|m| m.kind == "loan_balance_check")
+            .map(|m| (m.source_id.clone().unwrap(), m.since_day.unwrap()))
+            .collect();
+        checks.sort();
+        assert_eq!(
+            checks,
+            vec![
+                ("never".to_string(), day(2020, 1, 1)),
+                ("old-event".to_string(), day(2025, 5, 1))
+            ]
         );
     }
 

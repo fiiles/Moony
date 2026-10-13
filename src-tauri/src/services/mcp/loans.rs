@@ -8,8 +8,9 @@ use serde_json::Value;
 use super::money::currency_or_main;
 
 pub fn loans_list(conn: &Connection) -> Result<Value> {
-    // Through the loans service so every loan carries its amortized balance as
-    // of today; the shape stays the one the tool always returned.
+    // Through the loans service so every loan carries the balance of today's
+    // ledger walk and its mode; the shape is the one the tool always returned
+    // plus `balanceMode`.
     let loans = crate::services::loans::list_loans(
         conn,
         crate::services::loan_amortization::today_utc_day(),
@@ -23,6 +24,7 @@ pub fn loans_list(conn: &Connection) -> Result<Value> {
                     "name": loan.name,
                     "principal": loan.principal,
                     "outstandingBalance": loan.outstanding_balance,
+                    "balanceMode": loan.balance_mode,
                     "balanceAnchorAmount": loan.balance_anchor_amount,
                     "balanceAnchorDate": loan.balance_anchor_date,
                     "currency": loan.currency,
@@ -92,6 +94,19 @@ mod tests {
                 updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
                 balance_anchor_amount TEXT,
                 balance_anchor_date INTEGER
+            );
+            CREATE TABLE loan_events (
+                id TEXT PRIMARY KEY,
+                loan_id TEXT NOT NULL REFERENCES loans(id) ON DELETE CASCADE,
+                kind TEXT NOT NULL CHECK (kind IN ('extra_payment', 'rate_change', 'balance_check')),
+                event_day INTEGER NOT NULL,
+                amount TEXT,
+                rate TEXT,
+                monthly_payment TEXT,
+                note TEXT,
+                created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+                previous_rate TEXT,
+                previous_monthly_payment TEXT
             );
             "#,
         )
@@ -176,22 +191,56 @@ mod tests {
         assert!(outstanding < 1_000_000.0, "payments since 2020 reduce it");
         assert!(row["balanceAnchorAmount"].is_null());
         assert!(row["balanceAnchorDate"].is_null());
+        assert_eq!(row["balanceMode"], "estimated");
     }
 
     #[test]
-    fn list_exposes_a_manual_balance_as_the_amortization_start() {
+    fn list_exposes_a_manual_balance_that_holds_and_its_mode() {
+        let conn = setup_test_db();
+        let mut loan = valid_loan("Mortgage - main flat");
+        loan.start_date = Some(1_577_836_800); // 2020-01-01
+        loan.monthly_payment = Some("1000".into());
+        loan.balance_anchor_amount = Some("400000".into());
+        loan.balance_anchor_date = Some(1_735_689_600); // 2025-01-01
+        loan_create(&conn, &loan).unwrap();
+
+        let listed = loans_list(&conn).unwrap();
+        // A manual balance holds: the payments since it do not amortize it.
+        assert_eq!(listed[0]["outstandingBalance"], "400000.00");
+        assert_eq!(listed[0]["balanceMode"], "manual");
+        // The anchor columns are the mirror of the newest record.
+        assert_eq!(listed[0]["balanceAnchorAmount"], "400000");
+        assert_eq!(listed[0]["balanceAnchorDate"], 1_735_689_600i64);
+    }
+
+    #[test]
+    fn create_with_an_anchor_creates_a_manual_record() {
         let conn = setup_test_db();
         let mut loan = valid_loan("Mortgage - main flat");
         loan.start_date = Some(1_577_836_800); // 2020-01-01
         loan.balance_anchor_amount = Some("400000".into());
-        loan.balance_anchor_date = Some(4_102_444_800); // 2100-01-01, in the future
-        loan_create(&conn, &loan).unwrap();
+        loan.balance_anchor_date = Some(1_735_689_600); // 2025-01-01
+        let created = loan_create(&conn, &loan).unwrap();
 
-        let listed = loans_list(&conn).unwrap();
-        // no payment, and the anchor is still ahead: the balance is the anchor
-        assert_eq!(listed[0]["outstandingBalance"], "400000.00");
-        assert_eq!(listed[0]["balanceAnchorAmount"], "400000");
-        assert_eq!(listed[0]["balanceAnchorDate"], 4_102_444_800i64);
+        let records: Vec<(String, i64, Option<String>)> = conn
+            .prepare("SELECT kind, event_day, amount FROM loan_events WHERE loan_id = ?1")
+            .unwrap()
+            .query_map([created["id"].as_str().unwrap()], |r| {
+                Ok((r.get(0)?, r.get(1)?, r.get(2)?))
+            })
+            .unwrap()
+            .collect::<std::result::Result<_, _>>()
+            .unwrap();
+        assert_eq!(
+            records,
+            vec![(
+                "balance_check".to_string(),
+                1_735_689_600i64,
+                Some("400000".to_string())
+            )]
+        );
+        assert_eq!(created["balanceMode"], "manual");
+        assert_eq!(created["events"][0]["kind"], "balance_check");
     }
 
     #[test]

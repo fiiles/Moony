@@ -1,5 +1,7 @@
-//! Loan events: extra payments, rate changes and balance checks that explain
-//! why a loan's balance moved (redesign phase 2, loan detail time trace).
+//! Loan events: extra payments, rate changes and manual balance records that
+//! explain why a loan's balance moved (redesign phase 2, loan detail time trace).
+//! `balance_check` is the stored kind of a manual balance record: it holds
+//! exactly from its day until the user changes or removes it.
 
 use crate::error::{AppError, Result};
 use serde::{Deserialize, Serialize};
@@ -18,13 +20,21 @@ pub struct LoanEvent {
     /// UTC day of the event (ADR 0008).
     #[serde(rename = "eventDay")]
     pub event_day: i64,
-    /// Extra payment amount, or the balance confirmed by a statement.
+    /// Extra payment amount, or the manual balance of a `balance_check` record.
     pub amount: Option<String>,
     /// New annual rate in percent (`rate_change`).
     pub rate: Option<String>,
     /// New regular payment (`rate_change`, or an `extra_payment` the bank used to lower it).
     #[serde(rename = "monthlyPayment")]
     pub monthly_payment: Option<String>,
+    /// Annual rate in force before a `rate_change`; `None` on rows written before
+    /// migration 019 and on other kinds.
+    #[serde(rename = "previousRate")]
+    pub previous_rate: Option<String>,
+    /// Regular payment in force before an event that sets a new one (`rate_change`,
+    /// `extra_payment` with a new payment); `None` on legacy rows and other kinds.
+    #[serde(rename = "previousMonthlyPayment")]
+    pub previous_monthly_payment: Option<String>,
     pub note: Option<String>,
     #[serde(rename = "createdAt")]
     pub created_at: i64,
@@ -115,13 +125,5 @@ impl InsertLoanEvent {
             }
         }
         Ok(())
-    }
-
-    /// Parsed amount (extra payment or checked balance); only valid after `validate()`.
-    pub fn amount_value(&self) -> f64 {
-        self.amount
-            .as_deref()
-            .and_then(|v| v.trim().parse::<f64>().ok())
-            .unwrap_or(0.0)
     }
 }

@@ -8,7 +8,7 @@ use crate::services::loan_amortization::today_utc_day;
 use crate::services::loans as loans_service;
 use tauri::State;
 
-/// Get all loans, each with its amortized outstanding balance as of today
+/// Get all loans, each with its events and its ledger balance as of today
 #[tauri::command]
 pub async fn get_all_loans(db: State<'_, Database>) -> Result<Vec<Loan>> {
     db.with_conn(|conn| loans_service::list_loans(conn, today_utc_day()))
@@ -109,7 +109,7 @@ pub async fn get_available_loans(db: State<'_, Database>) -> Result<Vec<Loan>> {
 // Loan events (redesign phase 2)
 // ---------------------------------------------------------------------------
 
-/// Extra payments, rate changes and balance checks of a loan, oldest first.
+/// Extra payments, rate changes and manual balance records of a loan, oldest first.
 #[tauri::command]
 pub async fn get_loan_events(
     db: State<'_, Database>,
@@ -118,7 +118,8 @@ pub async fn get_loan_events(
     db.with_conn(|conn| crate::services::loan_events::list_events(conn, &loan_id))
 }
 
-/// Record an event; it re-anchors the amortization on its day (see the service).
+/// Record an event: an extra payment, a rate change or a manual balance record
+/// (`balance_check`; a record of the same day is replaced). See the service.
 #[tauri::command]
 pub async fn add_loan_event(
     db: State<'_, Database>,
@@ -137,7 +138,7 @@ pub async fn add_loan_event(
     Ok(saved)
 }
 
-/// Remove an event from the trace (the anchor it set stays).
+/// Remove an event; nothing of it stays (see the service).
 #[tauri::command]
 pub async fn delete_loan_event(db: State<'_, Database>, event_id: String) -> Result<()> {
     db.with_conn(|conn| crate::services::loan_events::delete_event(conn, &event_id))

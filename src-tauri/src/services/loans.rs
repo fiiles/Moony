@@ -1,15 +1,20 @@
 //! Loans business logic. Extracted from commands/loans.rs so the Tauri
 //! command and the MCP write tool share one validated path (ADR 0007).
 //!
-//! Every loan read goes through here so each `Loan` carries its amortized
-//! `outstanding_balance`; the maths lives in `services/loan_amortization.rs`.
+//! Every loan read goes through here so each `Loan` carries its events and the
+//! balance of today's ledger walk (`loan_amortization::loan_balance_at`,
+//! `balance_mode`); the maths lives in `services/loan_amortization.rs`. A manual
+//! balance is a `balance_check` record of `loan_events`; the anchor columns of
+//! `loans` only mirror the newest one (`loan_events::refresh_anchor_mirror`).
 
 use crate::error::{AppError, Result};
 use crate::models::loans::anchor_before_start;
-use crate::models::{InsertLoan, Loan, LoanSchedule, LoanScheduleRow};
+use crate::models::{InsertLoan, Loan, LoanEvent, LoanSchedule, LoanScheduleRow};
 use crate::services::loan_amortization::{
-    self as amortization, day_floor, today_utc_day, LoanTerms, ScheduleEnd, MAX_SCHEDULE_ROWS,
+    self as amortization, day_floor, loan_balance_at, plan_from, today_utc_day, LedgerEvent,
+    LedgerEventKind, LedgerMode, LoanLedger, LoanTerms, ScheduleEnd, MAX_SCHEDULE_ROWS,
 };
+use crate::services::loan_events;
 use rusqlite::{Connection, OptionalExtension, Row};
 use std::collections::HashMap;
 use uuid::Uuid;
@@ -44,49 +49,109 @@ fn parse_amount(value: &str, field: &str) -> Result<f64> {
     }
 }
 
-/// Parsed amortization inputs from the stored loan columns.
-#[allow(clippy::too_many_arguments)]
+/// `Some(number)` for a stored optional money/percent text; `None` when absent
+/// or blank. Corrupt text is an error (ADR 0001), never a silent 0.
+fn parse_optional(value: Option<&str>, field: &str) -> Result<Option<f64>> {
+    match value.map(str::trim).filter(|text| !text.is_empty()) {
+        Some(text) => parse_amount(text, field).map(Some),
+        None => Ok(None),
+    }
+}
+
+/// Amortization inputs from the stored loan columns: the loan's current rate and
+/// payment, no anchor (the events are the source of every manual balance).
 fn terms_from_columns(
     principal: &str,
     interest_rate: &str,
     monthly_payment: &str,
     start_date: i64,
     end_date: Option<i64>,
-    anchor_amount: Option<&str>,
-    anchor_date: Option<i64>,
 ) -> Result<LoanTerms> {
-    let anchor = match (anchor_amount, anchor_date) {
-        (Some(amount), Some(day)) if !amount.trim().is_empty() => Some((
-            parse_amount(amount, "balance_anchor_amount")?,
-            day_floor(day),
-        )),
-        _ => None,
-    };
     Ok(LoanTerms {
         principal: parse_amount(principal, "principal")?,
         annual_rate_pct: parse_amount(interest_rate, "interest_rate")?,
         monthly_payment: parse_amount(monthly_payment, "monthly_payment")?,
         start_day: day_floor(start_date),
-        anchor_amount: anchor.map(|(amount, _)| amount),
-        anchor_day: anchor.map(|(_, day)| day),
+        anchor_amount: None,
+        anchor_day: None,
         end_day: end_date.map(day_floor),
     })
 }
 
-/// Amortization inputs of a loan.
-pub fn loan_terms(loan: &Loan) -> Result<LoanTerms> {
-    terms_from_columns(
+fn ledger_event(event: &LoanEvent) -> Result<LedgerEvent> {
+    let kind = match event.kind.as_str() {
+        "extra_payment" => LedgerEventKind::ExtraPayment,
+        "rate_change" => LedgerEventKind::RateChange,
+        "balance_check" => LedgerEventKind::BalanceCheck,
+        other => {
+            return Err(AppError::Internal(format!(
+                "loan_events.kind: unknown value {other}"
+            )))
+        }
+    };
+    Ok(LedgerEvent {
+        day: day_floor(event.event_day),
+        created_at: event.created_at,
+        kind,
+        amount: parse_optional(event.amount.as_deref(), "loan_events.amount")?,
+        rate: parse_optional(event.rate.as_deref(), "loan_events.rate")?,
+        monthly_payment: parse_optional(
+            event.monthly_payment.as_deref(),
+            "loan_events.monthly_payment",
+        )?,
+        previous_rate: parse_optional(event.previous_rate.as_deref(), "loan_events.previous_rate")?,
+        previous_monthly_payment: parse_optional(
+            event.previous_monthly_payment.as_deref(),
+            "loan_events.previous_monthly_payment",
+        )?,
+    })
+}
+
+/// The ledger of a loan from its stored terms and its events (oldest first).
+fn ledger_from_parts(
+    principal: &str,
+    interest_rate: &str,
+    monthly_payment: &str,
+    start_date: i64,
+    end_date: Option<i64>,
+    events: &[LoanEvent],
+) -> Result<LoanLedger> {
+    Ok(LoanLedger {
+        terms: terms_from_columns(
+            principal,
+            interest_rate,
+            monthly_payment,
+            start_date,
+            end_date,
+        )?,
+        events: events
+            .iter()
+            .map(ledger_event)
+            .collect::<Result<Vec<_>>>()?,
+    })
+}
+
+/// The ledger of a loan: its current terms and its events (`loan.events`).
+pub fn loan_ledger(loan: &Loan) -> Result<LoanLedger> {
+    ledger_from_parts(
         &loan.principal,
         &loan.interest_rate,
         &loan.monthly_payment,
         loan.start_date,
         loan.end_date,
-        loan.balance_anchor_amount.as_deref(),
-        loan.balance_anchor_date,
+        &loan.events,
     )
 }
 
-/// Row in `LOAN_COLUMNS` order; `outstanding_balance` is filled by the caller.
+/// A loan's id and currency with its ledger (net worth, projection, history).
+#[derive(Debug, Clone)]
+pub struct LoanLedgerEntry {
+    pub id: String,
+    pub currency: String,
+    pub ledger: LoanLedger,
+}
+
+/// Row in `LOAN_COLUMNS` order; events and the balance fields are filled by the caller.
 fn read_loan(row: &Row) -> rusqlite::Result<Loan> {
     Ok(Loan {
         id: row.get(0)?,
@@ -101,15 +166,46 @@ fn read_loan(row: &Row) -> rusqlite::Result<Loan> {
         balance_anchor_amount: row.get(9)?,
         balance_anchor_date: row.get(10)?,
         outstanding_balance: String::new(),
+        balance_mode: String::new(),
+        events: Vec::new(),
         created_at: row.get(11)?,
         updated_at: row.get(12)?,
     })
 }
 
-fn fill_outstanding(loan: &mut Loan, today: i64) -> Result<()> {
-    let terms = loan_terms(loan)?;
-    loan.outstanding_balance = money_text(amortization::outstanding_balance_at(&terms, today));
+/// Name of a ledger mode on the wire.
+pub fn balance_mode_name(mode: LedgerMode) -> &'static str {
+    match mode {
+        LedgerMode::Estimated => "estimated",
+        LedgerMode::Manual => "manual",
+    }
+}
+
+/// `outstanding_balance` and `balance_mode` of `today` from the loan's ledger.
+fn fill_balance(loan: &mut Loan, today: i64) -> Result<()> {
+    let state = loan_balance_at(&loan_ledger(loan)?, today);
+    loan.outstanding_balance = money_text(state.balance);
+    loan.balance_mode = balance_mode_name(state.mode).to_string();
     Ok(())
+}
+
+/// Loans matching `FROM loans l <sql_tail>` with their events attached (oldest
+/// first); the balance fields are still empty.
+fn query_loans_with_events(
+    conn: &Connection,
+    sql_tail: &str,
+    params: impl rusqlite::Params,
+) -> Result<Vec<Loan>> {
+    let sql = format!("SELECT {LOAN_COLUMNS} FROM loans l {sql_tail}");
+    let mut stmt = conn.prepare(&sql)?;
+    let rows = stmt.query_map(params, read_loan)?;
+    let mut loans = Vec::new();
+    for row in rows {
+        let mut loan = row?;
+        loan.events = loan_events::list_events(conn, &loan.id)?;
+        loans.push(loan);
+    }
+    Ok(loans)
 }
 
 /// Loans matching `FROM loans l <sql_tail>`, valued as of `today`.
@@ -119,14 +215,9 @@ fn query_loans(
     params: impl rusqlite::Params,
     today: i64,
 ) -> Result<Vec<Loan>> {
-    let sql = format!("SELECT {LOAN_COLUMNS} FROM loans l {sql_tail}");
-    let mut stmt = conn.prepare(&sql)?;
-    let rows = stmt.query_map(params, read_loan)?;
-    let mut loans = Vec::new();
-    for row in rows {
-        let mut loan = row?;
-        fill_outstanding(&mut loan, today)?;
-        loans.push(loan);
+    let mut loans = query_loans_with_events(conn, sql_tail, params)?;
+    for loan in &mut loans {
+        fill_balance(loan, today)?;
     }
     Ok(loans)
 }
@@ -229,11 +320,11 @@ pub fn create_loan(conn: &Connection, data: &InsertLoan) -> Result<Loan> {
     // persist an end-before-start loan. Re-check against the effective date.
     check_dates(start_date, end_date, anchor.as_ref().map(|(_, day)| *day))?;
 
-    conn.execute(
+    let tx = conn.unchecked_transaction()?;
+    tx.execute(
         "INSERT INTO loans (id, name, principal, currency, interest_rate, interest_rate_validity_date,
-         monthly_payment, start_date, end_date, balance_anchor_amount, balance_anchor_date,
-         created_at, updated_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?12)",
+         monthly_payment, start_date, end_date, created_at, updated_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?10)",
         rusqlite::params![
             id,
             data.name,
@@ -244,17 +335,22 @@ pub fn create_loan(conn: &Connection, data: &InsertLoan) -> Result<Loan> {
             monthly_payment,
             start_date,
             end_date,
-            anchor.as_ref().map(|(amount, _)| amount),
-            anchor.as_ref().map(|(_, day)| day),
             now
         ],
     )?;
+    // The anchor of the form is a manual balance record; the anchor columns follow it.
+    if let Some((amount, day)) = &anchor {
+        loan_events::add_manual_balance(&tx, &id, *day, amount, None, now)?;
+    }
+    tx.commit()?;
 
     get_loan(conn, &id, today_utc_day())
 }
 
-/// Update a loan. A missing manual balance clears a previous one (the loan
-/// goes back to amortizing from its principal).
+/// Update a loan. The form's manual balance is a record: with a balance and a day
+/// the record of that day is created or replaced (older records stay); without
+/// one every manual record of the loan is deleted and the loan is estimated
+/// again (D8). The anchor columns follow the newest record.
 pub fn update_loan(conn: &Connection, id: &str, data: &InsertLoan) -> Result<Loan> {
     data.validate()?;
 
@@ -290,13 +386,13 @@ pub fn update_loan(conn: &Connection, id: &str, data: &InsertLoan) -> Result<Loa
     )?;
 
     let now = chrono::Utc::now().timestamp();
-    conn.execute(
+    let tx = conn.unchecked_transaction()?;
+    tx.execute(
         "UPDATE loans SET name = ?1, principal = ?2,
          currency = COALESCE(?3, currency), interest_rate = COALESCE(?4, interest_rate),
          interest_rate_validity_date = ?5, monthly_payment = COALESCE(?6, monthly_payment),
-         start_date = COALESCE(?7, start_date), end_date = ?8,
-         balance_anchor_amount = ?9, balance_anchor_date = ?10, updated_at = ?11
-         WHERE id = ?12",
+         start_date = COALESCE(?7, start_date), end_date = ?8, updated_at = ?9
+         WHERE id = ?10",
         rusqlite::params![
             data.name,
             data.principal,
@@ -306,76 +402,110 @@ pub fn update_loan(conn: &Connection, id: &str, data: &InsertLoan) -> Result<Loa
             data.monthly_payment,
             start_date,
             end_date,
-            anchor.as_ref().map(|(amount, _)| amount),
-            anchor.as_ref().map(|(_, day)| day),
             now,
             id
         ],
     )?;
+    match &anchor {
+        Some((amount, day)) => loan_events::upsert_form_balance(&tx, id, *day, amount, now)?,
+        None => loan_events::delete_manual_balances(&tx, id, now)?,
+    }
+    tx.commit()?;
 
     get_loan(conn, id, today_utc_day())
 }
 
-/// Every loan's currency and amortization inputs (net worth, projection).
-pub fn loan_terms_with_currency(conn: &Connection) -> Result<Vec<(String, LoanTerms)>> {
-    let mut stmt = conn.prepare(
-        "SELECT currency, principal, interest_rate, monthly_payment, start_date, end_date,
-                balance_anchor_amount, balance_anchor_date
-         FROM loans",
-    )?;
-    let rows = stmt.query_map([], |row| {
+/// Loans matching `FROM loans l <sql_tail>` as ledgers. Only the columns the maths
+/// needs are read, so the callers that value many loans stay light.
+fn query_ledgers(
+    conn: &Connection,
+    sql_tail: &str,
+    params: impl rusqlite::Params,
+) -> Result<Vec<LoanLedgerEntry>> {
+    let sql = format!(
+        "SELECT l.id, l.currency, l.principal, l.interest_rate, l.monthly_payment,
+                l.start_date, l.end_date
+         FROM loans l {sql_tail}"
+    );
+    let mut stmt = conn.prepare(&sql)?;
+    let rows = stmt.query_map(params, |row| {
         Ok((
             row.get::<_, String>(0)?,
             row.get::<_, String>(1)?,
             row.get::<_, String>(2)?,
             row.get::<_, String>(3)?,
-            row.get::<_, i64>(4)?,
-            row.get::<_, Option<i64>>(5)?,
-            row.get::<_, Option<String>>(6)?,
-            row.get::<_, Option<i64>>(7)?,
+            row.get::<_, String>(4)?,
+            row.get::<_, i64>(5)?,
+            row.get::<_, Option<i64>>(6)?,
         ))
     })?;
-    let mut loans = Vec::new();
+    let mut entries = Vec::new();
     for row in rows {
-        let (currency, principal, rate, payment, start, end, anchor_amount, anchor_date) = row?;
-        let terms = terms_from_columns(
-            &principal,
-            &rate,
-            &payment,
-            start,
-            end,
-            anchor_amount.as_deref(),
-            anchor_date,
-        )?;
-        loans.push((currency, terms));
+        let (id, currency, principal, rate, payment, start, end) = row?;
+        let events = loan_events::list_events(conn, &id)?;
+        entries.push(LoanLedgerEntry {
+            ledger: ledger_from_parts(&principal, &rate, &payment, start, end, &events)?,
+            id,
+            currency,
+        });
     }
-    Ok(loans)
+    Ok(entries)
+}
+
+/// One loan with its ledger, or `NotFound`.
+pub fn load_ledger(conn: &Connection, id: &str) -> Result<LoanLedgerEntry> {
+    query_ledgers(conn, "WHERE l.id = ?1", [id])?
+        .into_iter()
+        .next()
+        .ok_or_else(|| AppError::NotFound("Loan not found".into()))
+}
+
+/// Every loan with its ledger (net worth, projection, cashflow, history).
+pub fn load_ledgers(conn: &Connection) -> Result<Vec<LoanLedgerEntry>> {
+    query_ledgers(conn, "ORDER BY l.id", [])
 }
 
 /// Outstanding balance per currency as of `today`: the liabilities of net
-/// worth and snapshots (unrounded, like every other native breakdown).
+/// worth and snapshots (unrounded, like every other native breakdown). Each
+/// loan's value is `loan_balance_at(today)`, the figure of its own page.
 pub fn outstanding_by_currency(conn: &Connection, today: i64) -> Result<HashMap<String, f64>> {
     let mut by_currency: HashMap<String, f64> = HashMap::new();
-    for (currency, terms) in loan_terms_with_currency(conn)? {
-        *by_currency.entry(currency).or_insert(0.0) +=
-            amortization::outstanding_balance_at(&terms, today);
+    for entry in load_ledgers(conn)? {
+        *by_currency.entry(entry.currency).or_insert(0.0) +=
+            loan_balance_at(&entry.ledger, today).balance;
     }
     Ok(by_currency)
 }
 
 /// Repayment schedule and totals of one loan as of `today` (loan detail page).
+///
+/// The schedule is the plan ahead of the ledger (`plan_from`): from the current
+/// estimated segment, or, when a manual balance holds, from today's balance
+/// with the terms in force. `anchor_*`, `principal_repaid`, `interest_paid` and
+/// `payments_made` describe that plan's start; with a manual balance nothing
+/// has been paid since it (the balance holds), so they are today and 0.
 pub fn loan_schedule(conn: &Connection, id: &str, today: i64) -> Result<LoanSchedule> {
     let loan = get_loan(conn, id, today)?;
-    let terms = loan_terms(&loan)?;
-    let (anchor_amount, anchor_day) = terms.anchor();
-    let elapsed = amortization::elapsed_to(&terms, today);
-    let schedule = amortization::schedule(&terms, MAX_SCHEDULE_ROWS);
+    let ledger = loan_ledger(&loan)?;
+    let state = loan_balance_at(&ledger, today);
+    let plan = plan_from(&ledger, today);
+    let manual = state.mode == LedgerMode::Manual;
+    let (plan_anchor_amount, plan_anchor_day) = plan.anchor();
+    let elapsed = amortization::elapsed_to(&plan, today);
+    let schedule = amortization::schedule(&plan, MAX_SCHEDULE_ROWS);
+    // A manual balance holds as of today; the plan's anchor day is only the
+    // payment cycle it continues on.
+    let (anchor_amount, anchor_day) = if manual {
+        (state.balance, day_floor(today))
+    } else {
+        (plan_anchor_amount, plan_anchor_day)
+    };
 
     let mut warnings = Vec::new();
-    if terms.monthly_payment <= 0.0 && anchor_amount > 0.0 {
+    if plan.monthly_payment <= 0.0 && plan_anchor_amount > 0.0 {
         warnings.push("noPayment".to_string());
     }
-    if amortization::payment_below_interest(&terms) {
+    if amortization::payment_below_interest(&plan) {
         warnings.push("paymentBelowInterest".to_string());
     }
     match schedule.end {
@@ -411,7 +541,7 @@ pub fn loan_schedule(conn: &Connection, id: &str, today: i64) -> Result<LoanSche
         as_of_day: day_floor(today),
         anchor_amount: money_text(anchor_amount),
         anchor_day,
-        anchor_is_manual: terms.is_manual_anchor(),
+        anchor_is_manual: manual,
         outstanding_balance: money_text(elapsed.balance),
         principal_repaid: money_text(anchor_amount - elapsed.balance),
         interest_paid: money_text(elapsed.interest_paid),
@@ -469,10 +599,57 @@ mod tests {
                 loan_id TEXT NOT NULL,
                 PRIMARY KEY (real_estate_id, loan_id)
             );
+            CREATE TABLE loan_events (
+                id TEXT PRIMARY KEY,
+                loan_id TEXT NOT NULL REFERENCES loans(id) ON DELETE CASCADE,
+                kind TEXT NOT NULL CHECK (kind IN ('extra_payment', 'rate_change', 'balance_check')),
+                event_day INTEGER NOT NULL,
+                amount TEXT,
+                rate TEXT,
+                monthly_payment TEXT,
+                note TEXT,
+                created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+                previous_rate TEXT,
+                previous_monthly_payment TEXT
+            );
             "#,
         )
         .expect("schema");
         conn
+    }
+
+    /// Insert a loan event row directly (kind, day, amount / rate / payment, creation time).
+    fn put_event(
+        conn: &Connection,
+        loan_id: &str,
+        kind: &str,
+        event_day: i64,
+        amount: Option<&str>,
+        created_at: i64,
+    ) {
+        conn.execute(
+            "INSERT INTO loan_events (id, loan_id, kind, event_day, amount, created_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+            rusqlite::params![
+                Uuid::new_v4().to_string(),
+                loan_id,
+                kind,
+                event_day,
+                amount,
+                created_at
+            ],
+        )
+        .expect("insert event");
+    }
+
+    /// Manual balance records of a loan: (day, amount), oldest first.
+    fn records(conn: &Connection, loan_id: &str) -> Vec<(i64, String)> {
+        loan_events::list_events(conn, loan_id)
+            .unwrap()
+            .into_iter()
+            .filter(|event| event.kind == "balance_check")
+            .map(|event| (event.event_day, event.amount.unwrap()))
+            .collect()
     }
 
     fn valid_insert() -> InsertLoan {
@@ -603,7 +780,7 @@ mod tests {
     }
 
     #[test]
-    fn create_loan_stores_and_returns_the_manual_balance() {
+    fn create_loan_stores_the_form_balance_as_a_record_that_holds() {
         let conn = setup_test_db();
         let mut data = valid_insert();
         data.start_date = Some(day("2020-01-15"));
@@ -613,13 +790,27 @@ mod tests {
         data.balance_anchor_amount = Some("800000".into());
         data.balance_anchor_date = Some(day("2025-06-15"));
         let loan = create_loan(&conn, &data).unwrap();
+        // The anchor columns mirror the record.
         assert_eq!(loan.balance_anchor_amount.as_deref(), Some("800000"));
         assert_eq!(loan.balance_anchor_date, Some(day("2025-06-15")));
-        // amortized from the anchor, not from the principal at the start
-        let from_anchor =
-            amortization::outstanding_balance_at(&loan_terms(&loan).unwrap(), today_utc_day());
-        assert_eq!(loan.outstanding_balance, money_text(from_anchor));
-        assert!(from_anchor < 800_000.0);
+        assert_eq!(
+            records(&conn, &loan.id),
+            vec![(day("2025-06-15"), "800000".to_string())]
+        );
+        assert_eq!(loan.events.len(), 1);
+        assert_eq!(loan.events[0].kind, "balance_check");
+        // Nothing is amortized after it: the balance is what the user entered.
+        assert_eq!(loan.outstanding_balance, "800000.00");
+        assert_eq!(loan.balance_mode, "manual");
+    }
+
+    #[test]
+    fn a_loan_without_a_manual_balance_is_estimated() {
+        let conn = setup_test_db();
+        mortgage(&conn, "m1", "CZK");
+        let loan = get_loan(&conn, "m1", day("2021-01-15")).unwrap();
+        assert_eq!(loan.balance_mode, "estimated");
+        assert!(loan.events.is_empty());
     }
 
     #[test]
@@ -694,30 +885,115 @@ mod tests {
         assert_eq!(linked[0].outstanding_balance, "985246.30");
     }
 
-    #[test]
-    fn update_sets_and_clears_the_manual_balance() {
-        let conn = setup_test_db();
+    fn mortgage_data() -> InsertLoan {
         let mut data = valid_insert();
         data.start_date = Some(day("2020-01-15"));
         data.principal = "1000000".into();
         data.interest_rate = Some("5".into());
         data.monthly_payment = Some("5368.22".into());
+        data
+    }
+
+    #[test]
+    fn update_switches_the_manual_balance_on_and_off() {
+        let conn = setup_test_db();
+        let mut data = mortgage_data();
         let created = create_loan(&conn, &data).unwrap();
         assert_eq!(created.balance_anchor_amount, None);
+        assert_eq!(created.balance_mode, "estimated");
 
+        // On: a record of that day, and it holds long after (the payments do not amortize it).
         data.balance_anchor_amount = Some("700000".into());
         data.balance_anchor_date = Some(day("2026-01-01"));
         let with_anchor = update_loan(&conn, &created.id, &data).unwrap();
         assert_eq!(with_anchor.balance_anchor_amount.as_deref(), Some("700000"));
         assert_eq!(with_anchor.balance_anchor_date, Some(day("2026-01-01")));
-        let stored = get_loan(&conn, &created.id, day("2026-01-01")).unwrap();
-        assert_eq!(stored.outstanding_balance, "700000.00");
+        assert_eq!(with_anchor.balance_mode, "manual");
+        assert_eq!(records(&conn, &created.id).len(), 1);
+        let later = get_loan(&conn, &created.id, day("2030-01-01")).unwrap();
+        assert_eq!(later.outstanding_balance, "700000.00");
+        let before = get_loan(&conn, &created.id, day("2025-12-31")).unwrap();
+        assert_eq!(before.balance_mode, "estimated");
 
+        // Off: every manual record goes and the loan is estimated again.
         data.balance_anchor_amount = None;
         data.balance_anchor_date = None;
         let cleared = update_loan(&conn, &created.id, &data).unwrap();
         assert_eq!(cleared.balance_anchor_amount, None);
         assert_eq!(cleared.balance_anchor_date, None);
+        assert_eq!(cleared.balance_mode, "estimated");
+        assert!(records(&conn, &created.id).is_empty());
+    }
+
+    #[test]
+    fn update_replaces_the_record_of_the_same_day_and_keeps_the_older_ones() {
+        let conn = setup_test_db();
+        let mut data = mortgage_data();
+        let created = create_loan(&conn, &data).unwrap();
+
+        data.balance_anchor_amount = Some("700000".into());
+        data.balance_anchor_date = Some(day("2025-01-01"));
+        update_loan(&conn, &created.id, &data).unwrap();
+        // The same day with a new amount replaces it.
+        data.balance_anchor_amount = Some("690000".into());
+        update_loan(&conn, &created.id, &data).unwrap();
+        assert_eq!(
+            records(&conn, &created.id),
+            vec![(day("2025-01-01"), "690000".to_string())]
+        );
+        // A later day adds a record; the older one stays and is no longer the mirror.
+        data.balance_anchor_amount = Some("650000".into());
+        data.balance_anchor_date = Some(day("2025-07-01"));
+        let loan = update_loan(&conn, &created.id, &data).unwrap();
+        assert_eq!(
+            records(&conn, &created.id),
+            vec![
+                (day("2025-01-01"), "690000".to_string()),
+                (day("2025-07-01"), "650000".to_string())
+            ]
+        );
+        assert_eq!(loan.balance_anchor_amount.as_deref(), Some("650000"));
+        assert_eq!(loan.balance_anchor_date, Some(day("2025-07-01")));
+        // Between the records the first holds.
+        let between = get_loan(&conn, &created.id, day("2025-04-01")).unwrap();
+        assert_eq!(between.outstanding_balance, "690000.00");
+        // Saving the unchanged form again changes nothing.
+        let again = update_loan(&conn, &created.id, &data).unwrap();
+        assert_eq!(again.events.len(), 2);
+        assert_eq!(again.events[1].id, loan.events[1].id);
+    }
+
+    #[test]
+    fn switching_off_deletes_every_manual_record_but_not_the_other_events() {
+        let conn = setup_test_db();
+        let mut data = mortgage_data();
+        data.balance_anchor_amount = Some("700000".into());
+        data.balance_anchor_date = Some(day("2025-01-01"));
+        let created = create_loan(&conn, &data).unwrap();
+        put_event(
+            &conn,
+            &created.id,
+            "balance_check",
+            day("2025-06-01"),
+            Some("650000"),
+            5,
+        );
+        put_event(
+            &conn,
+            &created.id,
+            "extra_payment",
+            day("2025-03-01"),
+            Some("10000"),
+            6,
+        );
+        data.balance_anchor_amount = None;
+        data.balance_anchor_date = None;
+        let cleared = update_loan(&conn, &created.id, &data).unwrap();
+        assert!(records(&conn, &created.id).is_empty());
+        assert_eq!(cleared.events.len(), 1);
+        assert_eq!(cleared.events[0].kind, "extra_payment");
+        assert_eq!(cleared.balance_anchor_amount, None);
+        assert_eq!(cleared.balance_mode, "estimated");
     }
 
     #[test]
@@ -852,21 +1128,172 @@ mod tests {
     }
 
     #[test]
-    fn schedule_after_a_manual_balance_starts_from_it() {
+    fn schedule_after_a_manual_balance_holds_it_and_plans_from_today() {
         let conn = setup_test_db();
         conn.execute(
-            "INSERT INTO loans (id, name, principal, interest_rate, monthly_payment, start_date,
-                                balance_anchor_amount, balance_anchor_date)
-             VALUES ('l1', 'Overridden', '1000000', '4.2', '6000', ?1, '800000', ?2)",
-            rusqlite::params![day("2020-01-15"), day("2025-06-15")],
+            "INSERT INTO loans (id, name, principal, interest_rate, monthly_payment, start_date)
+             VALUES ('l1', 'Overridden', '1000000', '4.2', '6000', ?1)",
+            [day("2020-01-15")],
         )
         .unwrap();
-        let schedule = loan_schedule(&conn, "l1", day("2025-09-15")).unwrap();
+        put_event(
+            &conn,
+            "l1",
+            "balance_check",
+            day("2025-06-15"),
+            Some("800000"),
+            1,
+        );
+        let schedule = loan_schedule(&conn, "l1", day("2025-09-20")).unwrap();
         assert!(schedule.anchor_is_manual);
+        // The balance holds: no payment has amortized it since the record.
+        assert_eq!(schedule.outstanding_balance, "800000.00");
         assert_eq!(schedule.anchor_amount, "800000.00");
-        assert_eq!(schedule.anchor_day, day("2025-06-15"));
-        assert_eq!(schedule.outstanding_balance, "790366.36");
-        assert_eq!(schedule.payments_made, 3);
-        assert_eq!(schedule.rows[0].due_day, day("2025-07-15"));
+        assert_eq!(schedule.anchor_day, day("2025-09-20"));
+        assert_eq!(schedule.payments_made, 0);
+        assert_eq!(schedule.principal_repaid, "0.00");
+        assert_eq!(schedule.interest_paid, "0.00");
+        // The plan ahead pays on the loan's 15th, starting after today.
+        assert_eq!(schedule.rows[0].due_day, day("2025-10-15"));
+        assert_eq!(schedule.rows[0].balance_after, "796800.00");
+        assert_eq!(
+            schedule.payments_remaining,
+            Some(schedule.rows.len() as u32)
+        );
+    }
+
+    #[test]
+    fn schedule_continues_from_an_estimated_segment_after_an_extra_payment() {
+        let conn = setup_test_db();
+        mortgage(&conn, "m1", "CZK");
+        put_event(
+            &conn,
+            "m1",
+            "extra_payment",
+            day("2021-01-20"),
+            Some("100000"),
+            1,
+        );
+        let schedule = loan_schedule(&conn, "m1", day("2021-03-25")).unwrap();
+        assert!(!schedule.anchor_is_manual);
+        // 12 payments to 15 Jan 2021, then the extra payment on 20 Jan starts a segment
+        // whose payments fall on the 20th.
+        assert_eq!(schedule.anchor_day, day("2021-01-20"));
+        assert_eq!(schedule.anchor_amount, "885246.30");
+        assert_eq!(schedule.payments_made, 2);
+        assert_eq!(schedule.rows[0].due_day, day("2021-02-20"));
+    }
+
+    #[test]
+    fn a_loan_that_has_not_started_is_worth_nothing_today() {
+        let conn = setup_test_db();
+        mortgage(&conn, "m1", "CZK");
+        let early = get_loan(&conn, "m1", day("2019-12-31")).unwrap();
+        assert_eq!(early.outstanding_balance, "0.00");
+        assert_eq!(early.balance_mode, "estimated");
+        assert_eq!(
+            outstanding_by_currency(&conn, day("2019-12-31")).unwrap()["CZK"],
+            0.0
+        );
+    }
+
+    #[test]
+    fn events_come_with_the_loan_oldest_first() {
+        let conn = setup_test_db();
+        mortgage(&conn, "m1", "CZK");
+        put_event(
+            &conn,
+            "m1",
+            "balance_check",
+            day("2022-01-10"),
+            Some("900000"),
+            3,
+        );
+        put_event(
+            &conn,
+            "m1",
+            "extra_payment",
+            day("2021-01-20"),
+            Some("1000"),
+            9,
+        );
+        put_event(
+            &conn,
+            "m1",
+            "extra_payment",
+            day("2021-01-20"),
+            Some("2000"),
+            4,
+        );
+        let loans = list_loans(&conn, day("2023-01-01")).unwrap();
+        let order: Vec<(i64, i64)> = loans[0]
+            .events
+            .iter()
+            .map(|e| (e.event_day, e.created_at))
+            .collect();
+        assert_eq!(
+            order,
+            vec![
+                (day("2021-01-20"), 4),
+                (day("2021-01-20"), 9),
+                (day("2022-01-10"), 3)
+            ]
+        );
+        assert_eq!(loans[0].balance_mode, "manual");
+        // The lists that filter loans carry the events too.
+        assert_eq!(
+            list_available_loans(&conn, day("2023-01-01")).unwrap()[0]
+                .events
+                .len(),
+            3
+        );
+    }
+
+    #[test]
+    fn todays_value_everywhere_is_the_ledger_balance() {
+        let conn = setup_test_db();
+        mortgage(&conn, "m1", "CZK");
+        mortgage(&conn, "m2", "EUR");
+        put_event(
+            &conn,
+            "m1",
+            "extra_payment",
+            day("2021-01-20"),
+            Some("100000"),
+            1,
+        );
+        put_event(
+            &conn,
+            "m2",
+            "balance_check",
+            day("2021-06-01"),
+            Some("500000"),
+            1,
+        );
+        let today = day("2023-05-05");
+        let totals = outstanding_by_currency(&conn, today).unwrap();
+        for loan in list_loans(&conn, today).unwrap() {
+            let ledger = loan_ledger(&loan).unwrap();
+            let balance = loan_balance_at(&ledger, today).balance;
+            assert_eq!(loan.outstanding_balance, money_text(balance));
+            assert_eq!(totals[&loan.currency], balance);
+        }
+        assert_eq!(totals["EUR"], 500_000.0);
+    }
+
+    #[test]
+    fn a_corrupt_event_amount_is_an_error_not_a_zero() {
+        let conn = setup_test_db();
+        mortgage(&conn, "m1", "CZK");
+        put_event(
+            &conn,
+            "m1",
+            "extra_payment",
+            day("2021-01-20"),
+            Some("abc"),
+            1,
+        );
+        assert!(list_loans(&conn, day("2023-01-01")).is_err());
+        assert!(outstanding_by_currency(&conn, day("2023-01-01")).is_err());
     }
 }

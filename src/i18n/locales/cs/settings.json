@@ -27,7 +27,7 @@
     "saving": "Ukládám...",
     "country": "Země",
     "countryNone": "Jiná / není v seznamu",
-    "countryHint": "Podle země se na prvním místě nabídnou formáty výpisů vaší banky, zvolí se kódování souborů a nastaví výchozí hodnoty, třeba výpovědní lhůta pojištění."
+    "countryHint": "Podle země se na prvním místě nabídnou formáty výpisů vaší banky a zvolí se kódování souborů."
   },
   "password": {
     "title": "Změna hesla",

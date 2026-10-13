@@ -27,7 +27,7 @@
     "saving": "Zapisywanie...",
     "country": "Kraj",
     "countryNone": "Inny / nie ma na liście",
-    "countryHint": "Służy do wyświetlania na początku formatów wyciągów Twojego banku, wyboru kodowania plików oraz ustawień domyślnych dla kraju, np. okresu wypowiedzenia ubezpieczenia."
+    "countryHint": "Służy do wyświetlania na początku formatów wyciągów Twojego banku i wyboru kodowania plików."
   },
   "password": {
     "title": "Zmień hasło",

@@ -27,7 +27,7 @@
     "saving": "Salvataggio...",
     "country": "Paese",
     "countryNone": "Altro / non in elenco",
-    "countryHint": "Serve a mostrare per primi i formati di estratto conto della tua banca, a scegliere la codifica dei file e a impostare valori predefiniti per paese, come il preavviso delle assicurazioni."
+    "countryHint": "Serve a mostrare per primi i formati di estratto conto della tua banca e a scegliere la codifica dei file."
   },
   "password": {
     "title": "Cambia password",

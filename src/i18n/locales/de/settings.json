@@ -27,7 +27,7 @@
     "saving": "Wird gespeichert...",
     "country": "Land",
     "countryNone": "Anderes / nicht aufgeführt",
-    "countryHint": "Damit erscheinen die Kontoauszugsformate Ihrer Bank zuerst, wird die Dateikodierung gewählt und werden Länderstandards wie die Kündigungsfrist von Versicherungen gesetzt."
+    "countryHint": "Damit erscheinen die Kontoauszugsformate Ihrer Bank zuerst und wird die Dateikodierung gewählt."
   },
   "password": {
     "title": "Passwort ändern",

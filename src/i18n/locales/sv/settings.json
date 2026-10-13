@@ -27,7 +27,7 @@
     "saving": "Sparar...",
     "country": "Land",
     "countryNone": "Annat / finns inte i listan",
-    "countryHint": "Används för att visa bankens kontoutdragsformat först, välja filkodning och ställa in landsstandarder som uppsägningstiden för försäkringar."
+    "countryHint": "Används för att visa bankens kontoutdragsformat först och välja filkodning."
   },
   "password": {
     "title": "Ändra lösenord",

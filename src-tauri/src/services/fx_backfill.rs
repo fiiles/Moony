@@ -23,6 +23,7 @@ use rusqlite::Connection;
 use crate::db::Database;
 use crate::error::Result;
 use crate::services::fx;
+use crate::services::history_days::earliest_fact_day;
 
 const DAY: i64 = 86_400;
 /// The currency every stored rate is quoted against; it never has a row of its own.
@@ -110,6 +111,57 @@ const DERIVED_DATED_FACTS: &[(&str, &str, &str, (&str, &str))] = &[(
       WHERE asset_id = other_assets.id)",
     ("other_asset_transactions", "transaction_date"),
 )];
+
+/// SQL selecting the currency of every item the history carries back to the first fact day
+/// (`history_days`): an account that counts and has no balance record, a bond, and an other
+/// asset with a quantity and no transactions. They have no date of their own, yet every past
+/// day from the first fact on converts them, so their currencies need rates back to that day.
+const CARRIED_CURRENCY_SOURCES: &[&str] = &[
+    "SELECT currency FROM bank_accounts
+     WHERE exclude_from_balance = 0
+       AND NOT EXISTS (SELECT 1 FROM bank_balance_records r
+                       WHERE r.bank_account_id = bank_accounts.id)",
+    "SELECT currency FROM bonds",
+    "SELECT currency FROM other_assets
+     WHERE CAST(quantity AS REAL) > 0
+       AND NOT EXISTS (SELECT 1 FROM other_asset_transactions t
+                       WHERE t.asset_id = other_assets.id)",
+];
+
+/// The currencies of the carried items and the day they are carried back to.
+struct Carried {
+    /// The first fact day (`earliest_fact_day`); `None` when no fact is dated, then history
+    /// has no past day and nothing is carried.
+    from: Option<i64>,
+    /// Normalised codes, as stored on the items.
+    codes: BTreeSet<String>,
+}
+
+impl Carried {
+    fn load(conn: &Connection) -> Result<Self> {
+        let mut codes = BTreeSet::new();
+        for sql in CARRIED_CURRENCY_SOURCES {
+            let mut stmt = conn.prepare(sql)?;
+            let rows = stmt.query_map([], |r| r.get::<_, String>(0))?;
+            codes.extend(
+                rows.filter_map(|r| r.ok())
+                    .filter_map(|c| fx::normalize(&c)),
+            );
+        }
+        let from = if codes.is_empty() {
+            None
+        } else {
+            earliest_fact_day(conn)?
+        };
+        Ok(Self { from, codes })
+    }
+
+    /// The carry day when any of `codes` has a carried item.
+    fn day_for(&self, codes: &[String]) -> Option<i64> {
+        self.from
+            .filter(|_| codes.iter().any(|code| self.codes.contains(code)))
+    }
+}
 
 /// Days after which a held currency's newest stored rate counts as stale.
 pub const STALE_AFTER_DAYS: i64 = 14;
@@ -276,10 +328,11 @@ fn codes_behind(currency: &str) -> Vec<String> {
     codes
 }
 
-/// Earliest day of any dated fact in `currency` (or in a currency pegged to it).
-fn earliest_day(conn: &Connection, currency: &str) -> Result<Option<i64>> {
+/// Earliest day of any dated fact in `currency` (or in a currency pegged to it), or of an item
+/// in it that history carries back to the first fact day.
+fn earliest_day(conn: &Connection, currency: &str, carried: &Carried) -> Result<Option<i64>> {
     let codes = codes_behind(currency);
-    let mut earliest: Option<i64> = None;
+    let mut earliest: Option<i64> = carried.day_for(&codes);
     for (table, currency_column, date_column) in DATED_CURRENCY_FACTS {
         if !has_column(conn, table, currency_column)? || !has_column(conn, table, date_column)? {
             continue;
@@ -340,7 +393,9 @@ fn needed_start(earliest_tx: i64) -> i64 {
 /// even when another currency was backfilled further back. A currency
 /// without any recorded rate is not fetched again and again; it stays
 /// reported as missing. A currency without any dated fact (a bare balance
-/// or quote) needs no prefix, only the tail.
+/// or quote) needs no prefix, only the tail, unless history carries an item in it back to the
+/// first fact day (an undated account, a bond, an asset without transactions): then it needs
+/// rates from that day.
 pub fn missing_fx_ranges(conn: &Connection, today: i64) -> Result<Vec<(i64, i64)>> {
     let symbols = held_currencies(conn)?;
     if symbols.is_empty() {
@@ -348,10 +403,11 @@ pub fn missing_fx_ranges(conn: &Connection, today: i64) -> Result<Vec<(i64, i64)
     }
     // A fact in the reference currency (or one pegged to it) needs no quote of its own, but
     // converting it into any held currency needs that currency's quote from its day on.
-    let reference_first = earliest_day(conn, REFERENCE)?;
+    let carried = Carried::load(conn)?;
+    let reference_first = earliest_day(conn, REFERENCE, &carried)?;
     let mut earliest = Vec::new();
     for symbol in &symbols {
-        let own_first = earliest_day(conn, symbol)?;
+        let own_first = earliest_day(conn, symbol, &carried)?;
         if let Some(day) = own_first.into_iter().chain(reference_first).min() {
             earliest.push((symbol, day));
         }
@@ -540,7 +596,36 @@ mod tests {
                 booking_date INTEGER NOT NULL,
                 currency TEXT NOT NULL
             );
-            CREATE TABLE bank_accounts (id TEXT PRIMARY KEY, currency TEXT NOT NULL);
+            CREATE TABLE bank_accounts (
+                id TEXT PRIMARY KEY,
+                currency TEXT NOT NULL,
+                exclude_from_balance INTEGER NOT NULL DEFAULT 0
+            );
+            CREATE TABLE bank_balance_records (
+                id TEXT PRIMARY KEY,
+                bank_account_id TEXT NOT NULL,
+                amount TEXT NOT NULL,
+                currency TEXT NOT NULL,
+                as_of INTEGER NOT NULL
+            );
+            CREATE TABLE bonds (id TEXT PRIMARY KEY, currency TEXT NOT NULL);
+            CREATE TABLE other_assets (
+                id TEXT PRIMARY KEY,
+                currency TEXT NOT NULL,
+                quantity TEXT NOT NULL DEFAULT '0'
+            );
+            CREATE TABLE other_asset_transactions (
+                id TEXT PRIMARY KEY,
+                asset_id TEXT NOT NULL,
+                currency TEXT NOT NULL,
+                transaction_date INTEGER NOT NULL
+            );
+            CREATE TABLE real_estate_valuations (
+                id TEXT PRIMARY KEY,
+                real_estate_id TEXT NOT NULL,
+                currency TEXT NOT NULL,
+                valued_at INTEGER NOT NULL
+            );
             CREATE TABLE stock_data (ticker TEXT PRIMARY KEY, currency TEXT NOT NULL);
             CREATE TABLE real_estate (
                 id TEXT PRIMARY KEY,
@@ -718,10 +803,7 @@ mod tests {
         // currency: converting it needs rates from the record's day, whatever the account is.
         let conn = setup_db();
         conn.execute_batch(&format!(
-            "CREATE TABLE bank_balance_records (
-                 id TEXT PRIMARY KEY, bank_account_id TEXT NOT NULL, amount TEXT NOT NULL,
-                 currency TEXT NOT NULL, as_of INTEGER NOT NULL);
-             INSERT INTO bank_balance_records (id, bank_account_id, amount, currency, as_of)
+            "INSERT INTO bank_balance_records (id, bank_account_id, amount, currency, as_of)
              VALUES ('r', 'a', '100', 'GBP', {});",
             TODAY - 500 * D
         ))
@@ -742,11 +824,7 @@ mod tests {
         // currency from the first transaction, whatever currency the purchase was paid in.
         let conn = setup_db();
         conn.execute_batch(&format!(
-            "CREATE TABLE other_assets (id TEXT PRIMARY KEY, currency TEXT NOT NULL);
-             CREATE TABLE other_asset_transactions (
-                 id TEXT PRIMARY KEY, asset_id TEXT NOT NULL, currency TEXT NOT NULL,
-                 transaction_date INTEGER NOT NULL);
-             INSERT INTO other_assets (id, currency) VALUES ('a', 'CHF');
+            "INSERT INTO other_assets (id, currency) VALUES ('a', 'CHF');
              INSERT INTO other_asset_transactions (id, asset_id, currency, transaction_date)
              VALUES ('t', 'a', 'USD', {});",
             TODAY - 300 * D
@@ -761,6 +839,65 @@ mod tests {
         assert_eq!(
             missing_fx_ranges(&conn, TODAY).expect("ranges"),
             vec![(TODAY - 310 * D, TODAY - 20 * D)]
+        );
+    }
+
+    #[test]
+    fn carried_items_get_rates_back_to_the_first_fact() {
+        // History starts at the USD buy and carries the items that have no date of their own
+        // back to it: an account without records (GBP), a bond (CHF) and an asset with a
+        // quantity and no transactions (PLN). Converting them on the old days needs their
+        // rates from the buy on.
+        let conn = setup_db();
+        add_stock_tx(&conn, "t1", "USD", TODAY - 400 * D);
+        conn.execute_batch(
+            "INSERT INTO bank_accounts (id, currency) VALUES ('a', 'GBP');
+             INSERT INTO bonds (id, currency) VALUES ('b', 'CHF');
+             INSERT INTO other_assets (id, currency, quantity) VALUES ('o', 'PLN', '3');
+             -- not carried: an account outside the balance
+             INSERT INTO bank_accounts (id, currency, exclude_from_balance) VALUES ('x', 'SEK', 1);",
+        )
+        .expect("seed");
+        add_rate(&conn, TODAY - 410 * D, "USD");
+        add_rate(&conn, TODAY, "USD");
+        for ccy in ["GBP", "CHF", "PLN"] {
+            add_rate(&conn, TODAY - 20 * D, ccy);
+            add_rate(&conn, TODAY, ccy);
+        }
+        // an excluded account is not in history, so SEK is not carried: its rates stay as they are
+        add_rate(&conn, TODAY - 5 * D, "SEK");
+        add_rate(&conn, TODAY, "SEK");
+
+        assert_eq!(
+            held_currencies(&conn).expect("held"),
+            vec!["CHF", "GBP", "PLN", "SEK", "USD"]
+        );
+        assert_eq!(
+            missing_fx_ranges(&conn, TODAY).expect("ranges"),
+            vec![(TODAY - 410 * D, TODAY - 20 * D)]
+        );
+    }
+
+    #[test]
+    fn a_carried_reference_currency_item_extends_every_held_history() {
+        // The history starts at the USD buy and carries a EUR account without records back to
+        // it. The CZK profile has no dated fact of its own but converts that account, so CZK
+        // needs rates from the buy on.
+        let conn = setup_db();
+        conn.execute_batch(
+            "INSERT INTO user_profile (id, currency) VALUES (1, 'CZK');
+             INSERT INTO bank_accounts (id, currency) VALUES ('a', 'EUR');",
+        )
+        .expect("seed");
+        add_stock_tx(&conn, "t1", "USD", TODAY - 400 * D);
+        add_rate(&conn, TODAY - 410 * D, "USD");
+        add_rate(&conn, TODAY, "USD");
+        add_rate(&conn, TODAY - 10 * D, "CZK");
+        add_rate(&conn, TODAY, "CZK");
+
+        assert_eq!(
+            missing_fx_ranges(&conn, TODAY).expect("ranges"),
+            vec![(TODAY - 410 * D, TODAY - 10 * D)]
         );
     }
 

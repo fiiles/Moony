@@ -266,21 +266,43 @@ work, please open an issue. `demo-home/`, `demo-data/`, `firstrun-home/` and
 
 ### Screenshots
 
-`scripts/screenshots.mjs` captures the README screenshots from a running dev app (started with
-`npm run tauri dev` on an unlocked demo profile, with the browser dev bridge above) using
-headless Chrome. Each page is loaded in a fresh profile with the English interface, waited for
-until its data is on screen, and captured at 1440 × 900 CSS px with a 2× scale. It has no
-dependencies.
+`scripts/screenshots.mjs` captures the README and website screenshots from a running dev app with
+headless Chrome (no dependencies beyond Node and Chrome; set `CHROME_PATH` if Chrome is not in a
+standard place). It goes through the [browser dev bridge](#browser-dev-bridge-optional), so start
+the app first and unlock it (`npm run tauri dev` on the [demo profile](#demo-data), or on an
+anonymized copy of a real one):
 
 ```bash
-node scripts/screenshots.mjs [--base http://localhost:1420] [--out docs/screenshots]
-                             [--account <bankAccountId>] [--fixture <csv path>]
+node scripts/screenshots.mjs --base http://localhost:1420 --out docs/screenshots           # README, English
+node scripts/screenshots.mjs --lang cs --out /tmp/shots --set all                          # Czech, every page
 ```
 
-Set `CHROME_PATH` if Chrome is not in a standard location. The images are named
-`dashboard.png`, `bank-accounts.png`, `import.png`, `settings.png`, `account-detail.png` and
-`stocks.png`, which is what the README references. Use the demo profile only: the screenshots
-must never show real data.
+| Option | Default | |
+|---|---|---|
+| `--base` | `http://localhost:1420` | Vite dev URL of the running app |
+| `--out` | `docs/screenshots` | Output folder |
+| `--lang` | `en` | UI language of the shots (`en`, `cs`, or any shipped code) |
+| `--suffix` | empty for `en`, `-<lang>` otherwise | Appended to the file names: `dashboard.png`, `dashboard-cs.png` |
+| `--set` | `readme` | `readme`: `dashboard`, `bank-accounts`, `stocks`, `settings`, `account-detail` and, with `--fixture`, `import`. `site` (website, LinkedIn): `dashboard`, `account-detail`, `cashflow`, `planning`, `stocks`, `stocks-analysis`, `crypto`, `real-estate`, `settings`. `all`: both |
+| `--account` | first account with a balance history, else the first account | Bank account for `account-detail` and `import` |
+| `--fixture` | none | CSV for the `import` shot (e.g. `src-tauri/tests/fixtures/csv/revolut.csv`); English only, skipped with a note for other languages. Pass the `--account` of a matching bank to get its preset detected |
+| `--width` / `--height` / `--port` | `1440` / `900` / `9333` | Viewport (captured at 2×) and Chrome's debugging port |
+
+Things to know:
+
+- **Language.** An unlocked app takes its language from the profile, not from the browser, so the
+  script reads the profile's language through the bridge, sets `--lang` with `update_user_profile`
+  when it differs, captures, and puts the original back (also on Ctrl-C or an error; only a hard
+  kill leaves it changed, then set it back in Settings → General). The profile is therefore
+  written to during a run, once on each side. The lock screen reads `localStorage['moony-language']`;
+  the script seeds it too.
+- **Profile check.** Before anything is captured or written, the script loads `/` and aborts unless
+  the page shows "Alex" (the demo profile and the anonymized sample profiles are all called Alex); any
+  other name means a real profile is behind that dev server, and the script stops at once.
+- **Readiness** is judged on DOM structure only (charts, table rows, no `.skeleton`, `<html lang>`),
+  never on UI words, so one script serves every language. Keep it that way when adding a page.
+- The demo profile has no dated balance records, so `account-detail` shows the balance hero without
+  a history line there; an anonymized real profile does.
 
 ### Project structure
 

@@ -65,11 +65,12 @@ Out of scope:
   device (malware, a keylogger, someone using the computer while the app is unlocked).
   Lock the app, use full-disk encryption and a strong password.
 - **Attachments are stored unencrypted** (photos and documents in the data folder). This is
-  documented in [PRIVACY.md](./PRIVACY.md) and is a known roadmap item, not a new finding.
+  documented in [PRIVACY.md](./PRIVACY.md) and listed in the [roadmap](./ROADMAP.md), so it is
+  not a new finding.
 - Weak or reused passwords chosen by the user, and loss of both password and recovery key
   (there is deliberately no backdoor).
 - Releases being **unsigned** by Apple and Microsoft for now (see the install notes in
-  [README.md](./README.md#install)); the in-app updater still verifies its own signature.
+  [README.md](./README.md#download-and-install)); the in-app updater still verifies its own signature.
 - What a third-party AI client does with data after you connected it over MCP.
 - Vulnerabilities in dependencies with no demonstrable effect on Moony — please report them
   upstream. Reports that only restate the output of an automated scanner, denial of service of

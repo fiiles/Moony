@@ -6,6 +6,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { listen } from '@tauri-apps/api/event';
 import type { McpDataChangedPayload } from '@shared/schema';
 import { SyncContext } from './sync-context';
+import { useAuth } from './use-auth';
 import { FX_HISTORY_KEY, FX_SNAPSHOT_KEY } from './use-fx';
 
 export function SyncProvider({ children }: { children: ReactNode }) {
@@ -15,8 +16,8 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     ReturnType<typeof portfolioApi.startBackfill>
   > | null>(null);
   const isSyncingRef = useRef(false);
-  const hasRun = useRef(false);
   const queryClient = useQueryClient();
+  const { appStatus } = useAuth();
 
   const startBackfill = useCallback(async () => {
     // Use ref to prevent concurrent runs
@@ -46,10 +47,12 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // Auto-run on mount (after login): refresh stale prices then queue the history rebuild
+  // Auto-run after every unlock: refresh stale prices then queue the history rebuild. Every
+  // command fails while the database is locked, and the provider mounts before the lock screen
+  // is answered, so a timer from mount would fire against a locked database and the one-time
+  // rebuild would never run.
   useEffect(() => {
-    if (hasRun.current) return;
-    hasRun.current = true;
+    if (appStatus !== 'unlocked') return;
 
     const runStartupSync = async () => {
       // Step 1: refresh any stale prices so charts and values are up to date
@@ -84,7 +87,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     const timer = setTimeout(runStartupSync, 5000);
 
     return () => clearTimeout(timer);
-  }, [startBackfill, queryClient]);
+  }, [appStatus, startBackfill, queryClient]);
 
   // Record today's snapshot (called after asset changes)
   const recordTodaySnapshot = useCallback(async () => {

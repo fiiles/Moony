@@ -131,6 +131,6 @@
     "title": "Påminnelser i översikten",
     "description": "Vad kortet ”Vad som väntar” och översta fältet påminner dig om. Avstängda typer visas ingenstans.",
     "insuranceNotice": "Uppsägningstid för försäkring (dagar)",
-    "insuranceNoticeHint": "Hur många dagar före den årliga förnyelsen en uppsägning måste ha kommit fram till försäkringsbolaget. 0 stänger av påminnelsen om förnyelsen. Förinställt på 43 dagar endast för Tjeckien och Slovakien."
+    "insuranceNoticeHint": "Hur många dagar före den årliga förnyelsen en uppsägning måste ha kommit fram till försäkringsbolaget. 0 stänger av påminnelsen om förnyelsen."
   }
 }

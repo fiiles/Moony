@@ -292,10 +292,10 @@ mod tests {
         .unwrap();
     }
 
-    /// The database most tests use: a Czech profile, whose notice defaults to 43 days.
+    /// The database most tests use: a Czech profile with the six-week (43-day) notice.
     fn setup() -> Connection {
         let conn = setup_without_profile();
-        profile(&conn, Some("CZ"), None);
+        profile(&conn, Some("CZ"), Some(43));
         conn
     }
 
@@ -645,33 +645,24 @@ mod tests {
     }
 
     #[test]
-    fn the_effective_notice_follows_the_stored_value_then_the_country() {
-        assert_eq!(effective_insurance_notice_days(Some("CZ"), None), Some(43));
-        assert_eq!(effective_insurance_notice_days(Some("sk"), None), Some(43));
-        assert_eq!(effective_insurance_notice_days(Some("US"), None), None);
-        assert_eq!(effective_insurance_notice_days(None, None), None);
-        assert_eq!(effective_insurance_notice_days(Some("CZ"), Some(0)), None);
-        assert_eq!(
-            effective_insurance_notice_days(Some("US"), Some(60)),
-            Some(60)
-        );
-        assert_eq!(
-            effective_insurance_notice_days(Some("CZ"), Some(60)),
-            Some(60)
-        );
+    fn the_effective_notice_is_the_stored_value_else_50_days() {
+        assert_eq!(effective_insurance_notice_days(None), Some(50));
+        assert_eq!(effective_insurance_notice_days(Some(0)), None);
+        assert_eq!(effective_insurance_notice_days(Some(60)), Some(60));
     }
 
     #[test]
-    fn a_czech_profile_gets_the_anniversary_with_the_43_day_notice() {
-        let conn = setup();
+    fn a_profile_without_its_own_notice_gets_the_50_day_default() {
+        let conn = setup_without_profile();
+        profile(&conn, Some("US"), None);
         policy(&conn, "p1", day(2020, 12, 24), None, "monthly", "300");
         let list = list_milestones(&conn, day(2026, 10, 20)).unwrap();
         assert_eq!(kinds(&list), vec!["insurance_anniversary"]);
-        assert_eq!(list[0].action_day, Some(day(2026, 12, 24) - 43 * DAY));
+        assert_eq!(list[0].action_day, Some(day(2026, 12, 24) - 50 * DAY));
     }
 
     #[test]
-    fn a_us_profile_has_no_anniversary_reminder_until_it_sets_a_notice() {
+    fn the_anniversary_reminder_follows_the_profile_notice() {
         let conn = setup_without_profile();
         policy(&conn, "p1", day(2020, 12, 24), None, "monthly", "300");
         let today = day(2026, 10, 20);
@@ -682,16 +673,14 @@ mod tests {
                 .filter(|m| m.kind == "insurance_anniversary")
                 .collect::<Vec<_>>()
         };
-        // No profile row yet, then a US profile: nothing to remind about.
+        // No profile row yet: nothing to remind about.
         assert!(anniversaries(&conn).is_empty());
-        profile(&conn, Some("US"), None);
-        assert!(anniversaries(&conn).is_empty());
-        // Its own notice period switches the reminder on.
+        // Its own notice period sets the deadline.
         profile(&conn, Some("US"), Some(30));
         let list = anniversaries(&conn);
         assert_eq!(list.len(), 1);
         assert_eq!(list[0].action_day, Some(day(2026, 12, 24) - 30 * DAY));
-        // 0 turns it off again, even for a Czech profile.
+        // 0 turns it off.
         profile(&conn, Some("CZ"), Some(0));
         assert!(anniversaries(&conn).is_empty());
     }
@@ -699,7 +688,7 @@ mod tests {
     #[test]
     fn without_a_notice_period_an_anniversary_snooze_is_capped_by_the_anniversary_itself() {
         let conn = setup_without_profile();
-        profile(&conn, Some("US"), None);
+        profile(&conn, Some("US"), Some(0));
         let today = day(2026, 10, 5);
         let snooze = |due: i64| {
             let key = format!("insurance_anniversary:p1:{due}");

@@ -137,6 +137,6 @@
     "title": "Recordatorios del resumen",
     "description": "De qué te avisan la tarjeta «Próximas fechas» y la barra superior. Los tipos desactivados no se muestran en ningún sitio.",
     "insuranceNotice": "Preaviso de cancelación del seguro (días)",
-    "insuranceNoticeHint": "Cuántos días antes del aniversario anual debe llegar la cancelación a la aseguradora. 0 desactiva el recordatorio del aniversario. Solo Chequia y Eslovaquia vienen preajustadas a 43 días."
+    "insuranceNoticeHint": "Cuántos días antes del aniversario anual debe llegar la cancelación a la aseguradora. 0 desactiva el recordatorio del aniversario."
   }
 }

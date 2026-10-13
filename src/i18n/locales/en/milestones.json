@@ -131,6 +131,6 @@
     "title": "Overview reminders",
     "description": "What the “What's coming up” card and the top bar remind you of. Turned-off kinds show nowhere.",
     "insuranceNotice": "Insurance cancellation notice (days)",
-    "insuranceNoticeHint": "How many days before the yearly anniversary a cancellation must reach the insurer. 0 turns the anniversary reminder off. Preset to 43 days for Czechia and Slovakia only."
+    "insuranceNoticeHint": "How many days before the yearly anniversary a cancellation must reach the insurer. 0 turns the anniversary reminder off."
   }
 }

@@ -137,6 +137,6 @@
     "title": "Připomínky na přehledu",
     "description": "Co připomíná karta „Co vás čeká“ na přehledu a horní lišta. Vypnuté druhy se nezobrazí nikde.",
     "insuranceNotice": "Výpovědní lhůta pojištění (dny)",
-    "insuranceNoticeHint": "Kolik dní před ročním výročím musí výpověď dorazit pojišťovně. 0 vypne připomínku výročí. Předvoleno 43 dnů jen pro Česko a Slovensko."
+    "insuranceNoticeHint": "Kolik dní před ročním výročím musí výpověď dorazit pojišťovně. 0 vypne připomínku výročí."
   }
 }

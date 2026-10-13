@@ -779,8 +779,9 @@ impl MoonyMcp {
         &self,
         Parameters(args): Parameters<other_assets::OtherAssetCreateArgs>,
     ) -> Result<CallToolResult, McpError> {
-        // The initial transaction dates the asset's first quantity: history from its day (an
-        // asset without one is not counted until a transaction import).
+        // The initial transaction dates the asset's first quantity: history from its day. An
+        // asset without one has no date: with a quantity it is carried on every day, so the
+        // history is rebuilt from the first fact.
         let earliest = args
             .initial_transaction
             .as_ref()

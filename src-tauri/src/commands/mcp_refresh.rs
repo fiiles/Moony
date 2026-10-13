@@ -158,32 +158,49 @@ async fn refresh_derived_data(db: &Database, job: &mcp_refresh::PendingRefresh) 
                     return Err(AppError::Internal("Crypto price refresh incomplete".into()));
                 }
             }
-            if let Some(from) = job.earliest_date {
-                if from < today {
-                    for (_, ticker) in identities {
-                        history_recalc::rebuild_crypto_ticker_strict(
-                            db,
-                            &ticker,
-                            from,
-                            today,
-                            portfolio::find_closest_price,
-                        )
-                        .await?;
+            // A job without a date is "from the first fact" (it wins over every dated write
+            // queued next to it): each coin from its first transaction, the days from the
+            // first fact (`rebuild_days_async` clamps day 0).
+            let from = job.earliest_date.unwrap_or(0);
+            if from < today {
+                let tickers: Vec<String> = identities
+                    .iter()
+                    .map(|(_, ticker)| ticker.clone())
+                    .collect();
+                let firsts: HashMap<String, i64> = db
+                    .with_conn(|conn| history_recalc::crypto_rebuild_jobs(conn, &tickers))?
+                    .into_iter()
+                    .collect();
+                for ticker in &tickers {
+                    let from = match job.earliest_date {
+                        Some(from) => from,
+                        None => match firsts.get(ticker) {
+                            Some(first) => *first,
+                            None => continue,
+                        },
+                    };
+                    if from >= today {
+                        continue;
                     }
-                    history_recalc::rebuild_days_async(db, from, today).await?;
+                    history_recalc::rebuild_crypto_ticker_strict(
+                        db,
+                        ticker,
+                        from,
+                        today,
+                        portfolio::find_closest_price,
+                    )
+                    .await?;
                 }
+                history_recalc::rebuild_days_async(db, from, today).await?;
             }
         }
         // The portfolio days follow from the dated facts: an other asset's transactions (the
         // import and the create tool give the earliest day), and accounts, real estate, loans and
         // bonds. A job without a date comes from a write whose date is not known up front (an
-        // undated account balance, a bond): from the first fact (`rebuild_days` clamps day 0).
-        "other-assets" => {
-            if let Some(from) = job.earliest_date {
-                rebuild_days_from(db, from, today).await?;
-            }
-        }
-        "bank-accounts" | "real-estate" | "loans" | "bonds" => {
+        // undated account balance, a bond, an other asset with a quantity and no transaction,
+        // which is carried on every day) or that wins over every dated write queued next to it:
+        // from the first fact (`rebuild_days` clamps day 0).
+        "other-assets" | "bank-accounts" | "real-estate" | "loans" | "bonds" => {
             rebuild_days_from(db, job.earliest_date.unwrap_or(0), today).await?;
         }
         _ => {}

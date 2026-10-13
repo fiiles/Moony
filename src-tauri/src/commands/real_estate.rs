@@ -9,8 +9,9 @@ use crate::models::{
     RealEstatePhotoBatch, UpdatePhotoBatch,
 };
 use crate::services::history_plan::{self, PropertyFacts};
-use crate::services::history_recalc::{HistoryRecalc, Job};
+use crate::services::history_recalc::HistoryRecalc;
 use crate::services::real_estate as real_estate_service;
+use crate::services::valuations::ValuationKind;
 use std::fs;
 use std::path::PathBuf;
 use tauri::{AppHandle, Manager, State};
@@ -65,19 +66,25 @@ pub async fn update_real_estate(
     id: String,
     data: InsertRealEstate,
 ) -> Result<RealEstate> {
-    let (before, updated) = db.with_conn(|conn| {
+    let (before, updated, valuations) = db.with_conn(|conn| {
         let before = real_estate_service::get_property(conn, &id)?;
+        let earliest_before =
+            history_plan::earliest_valuation_day(conn, ValuationKind::RealEstate, &id)?;
         real_estate_service::update_property(conn, &id, &data, chrono::Utc::now().timestamp())?;
         let updated = real_estate_service::get_property(conn, &id)?
             .ok_or_else(|| AppError::NotFound("Real estate not found".into()))?;
-        Ok((before, updated))
+        let earliest_after =
+            history_plan::earliest_valuation_day(conn, ValuationKind::RealEstate, &id)?;
+        Ok((before, updated, (earliest_before, earliest_after)))
     })?;
-    // From the earlier of the old and new purchase date; a type or currency change moves the
-    // property on every day it is counted
+    // From the earliest of the old and new purchase date and the first valuation; a price change
+    // that wrote the property's first estimate counts from the purchase date; a type or currency
+    // change moves the property on every day it is counted
     if let Some(before) = before {
         let job = history_plan::property_updated(
             &PropertyFacts::from(&before),
             &PropertyFacts::from(&updated),
+            valuations,
         );
         if let Some(job) = job {
             schedule_history_rebuild(&app, &db, &recalc, vec![job]);
@@ -891,18 +898,18 @@ pub async fn add_real_estate_valuation(
     recalc: State<'_, HistoryRecalc>,
     data: crate::models::InsertAssetValuation,
 ) -> Result<crate::models::AssetValuation> {
-    let saved = db.with_conn(|conn| {
-        crate::services::valuations::add_valuation(
-            conn,
-            crate::services::valuations::ValuationKind::RealEstate,
-            &data,
-        )
+    let (saved, job) = db.with_conn(|conn| {
+        let saved =
+            crate::services::valuations::add_valuation(conn, ValuationKind::RealEstate, &data)?;
+        let job = history_plan::property_valuation_changed(conn, &saved.asset_id, saved.valued_at)?;
+        Ok((saved, job))
     })?;
     crate::commands::portfolio::update_todays_snapshot(&db)
         .await
         .ok();
-    // A backdated estimate changes the history of the days it applies to
-    schedule_history_rebuild(&app, &db, &recalc, vec![Job::Days(saved.valued_at)]);
+    // An estimate changes the days it applies to; the first one also opens the days back to
+    // the purchase date
+    schedule_history_rebuild(&app, &db, &recalc, vec![job]);
     Ok(saved)
 }
 
@@ -914,16 +921,17 @@ pub async fn delete_real_estate_valuation(
     recalc: State<'_, HistoryRecalc>,
     valuation_id: String,
 ) -> Result<()> {
-    let valued_at = db.with_conn(|conn| {
-        crate::services::valuations::delete_valuation(
+    let job = db.with_conn(|conn| {
+        let removed = crate::services::valuations::delete_valuation(
             conn,
-            crate::services::valuations::ValuationKind::RealEstate,
+            ValuationKind::RealEstate,
             &valuation_id,
-        )
+        )?;
+        history_plan::property_valuation_changed(conn, &removed.asset_id, removed.valued_at)
     })?;
     crate::commands::portfolio::update_todays_snapshot(&db)
         .await
         .ok();
-    schedule_history_rebuild(&app, &db, &recalc, vec![Job::Days(valued_at)]);
+    schedule_history_rebuild(&app, &db, &recalc, vec![job]);
     Ok(())
 }

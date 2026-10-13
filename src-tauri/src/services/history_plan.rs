@@ -24,6 +24,7 @@ use crate::services::history_recalc::{
     all_ticker_jobs, crypto_rebuild_jobs, rebuild_jobs, BatchOutcome, Job,
 };
 use crate::services::portfolio_history::SECONDS_PER_DAY;
+use crate::services::valuations::{self, ValuationKind};
 
 const DAY: i64 = SECONDS_PER_DAY;
 
@@ -277,24 +278,87 @@ pub fn property_created(purchase_date: Option<i64>, first_valuation: Option<i64>
     }
 }
 
+/// The earliest of the days that are given: an edit or a valuation changes history from whichever
+/// came first.
+fn earliest_of(days: impl IntoIterator<Item = Option<i64>>) -> Option<i64> {
+    days.into_iter().flatten().min()
+}
+
+/// A valuation of a property was added or deleted on `valued_at`. A property counts from its
+/// purchase date (at the purchase price) and not at all without an estimate, so the first
+/// estimate changes the days before it as far back as the purchase date: queue from the earliest
+/// of the valuation day, the purchase date and the earliest valuation day.
+pub fn property_valuation_job(
+    valued_at: i64,
+    purchase_date: Option<i64>,
+    earliest_valuation: Option<i64>,
+) -> Job {
+    Job::Days(
+        earliest_of([Some(valued_at), purchase_date, earliest_valuation]).unwrap_or(valued_at),
+    )
+}
+
+/// [`property_valuation_job`] for a property in the database, read after the valuation was
+/// added or deleted: the earliest valuation left is never later than the one before the change
+/// when that matters (an added valuation is `valued_at` or later than the earliest; a deleted
+/// one leaves the next earliest, and `valued_at` itself covers the one that went).
+pub fn property_valuation_changed(
+    conn: &Connection,
+    property_id: &str,
+    valued_at: i64,
+) -> Result<Job> {
+    let purchase_date: Option<i64> = conn
+        .query_row(
+            "SELECT purchase_date FROM real_estate WHERE id = ?1",
+            [property_id],
+            |row| row.get(0),
+        )
+        .optional()?
+        .flatten();
+    let earliest: Option<i64> = conn.query_row(
+        "SELECT MIN(valued_at) FROM real_estate_valuations WHERE real_estate_id = ?1",
+        [property_id],
+        |row| row.get(0),
+    )?;
+    Ok(property_valuation_job(valued_at, purchase_date, earliest))
+}
+
 /// An edited property. A change of type or currency moves the property between classes or
 /// units on every day it is counted: from the first fact. A change of the purchase date or
-/// price changes the line from the earlier of the old and new purchase date. Anything else
+/// price changes the line from the earliest of the old purchase date, the new one and the first
+/// valuation day (a property counts from its first estimate when it has no purchase date, so a
+/// date set or cleared moves that start). An edit that wrote the property's first estimate (a
+/// price change is a valuation dated today) changes the days from the purchase date on.
+/// `earliest_valuation` is the earliest valuation day before and after the edit. Anything else
 /// (a name, a rent, a photo) is not part of the history.
-pub fn property_updated(old: &PropertyFacts, new: &PropertyFacts) -> Option<Job> {
+pub fn property_updated(
+    old: &PropertyFacts,
+    new: &PropertyFacts,
+    earliest_valuation: (Option<i64>, Option<i64>),
+) -> Option<Job> {
     if old.property_type != new.property_type
         || old.purchase_currency != new.purchase_currency
         || old.market_currency != new.market_currency
     {
         return Some(Job::Days(0));
     }
-    if old.purchase_date == new.purchase_date && old.purchase_price == new.purchase_price {
-        return None;
+    let (before, after) = earliest_valuation;
+    let mut days = Vec::new();
+    if old.purchase_date != new.purchase_date || old.purchase_price != new.purchase_price {
+        // A price without a purchase date is not part of the history
+        days.push(
+            earliest_of([old.purchase_date, new.purchase_date])
+                .map(|date| after.map_or(date, |first| first.min(date))),
+        );
     }
-    match (old.purchase_date, new.purchase_date) {
-        (Some(a), Some(b)) => Some(Job::Days(a.min(b))),
-        (a, b) => a.or(b).map(Job::Days),
+    if before != after {
+        days.push(
+            after.map(|first| {
+                earliest_of([Some(first), new.purchase_date, before]).unwrap_or(first)
+            }),
+        );
     }
+    earliest_of(days).map(Job::Days)
 }
 
 /// A deleted property leaves the value of every day it was counted on.
@@ -302,13 +366,99 @@ pub fn property_deleted() -> Job {
     Job::Days(0)
 }
 
+/// The days of an other asset's history that an edit can change.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OtherAssetEdit<'a> {
+    pub old_currency: &'a str,
+    /// The currency of the edit; `None` keeps the stored one.
+    pub new_currency: Option<&'a str>,
+    /// The asset's first transaction day. `None` for an asset without transactions, which is
+    /// carried at today's quantity and price on every day (`history_days`).
+    pub first_transaction: Option<i64>,
+    /// The stored quantity changed (the history of an asset with transactions comes from them).
+    pub quantity_changed: bool,
+    /// The earliest valuation day after the edit when it wrote the valuation log (a price
+    /// change is a valuation dated today), else `None`.
+    pub logged_earliest: Option<i64>,
+    /// Today's UTC day.
+    pub today: i64,
+}
+
 /// An edited other asset. A currency change relabels the asset in every day's other-assets
-/// breakdown: from the first fact. `new_currency` is `None` when the edit carries none (the
-/// stored one stays). A price edit is a valuation dated today (no history to repair), and
-/// quantities and costs come from transactions, so nothing else is part of the history.
-pub fn other_asset_updated(old_currency: &str, new_currency: Option<&str>) -> Option<Job> {
-    let new_currency = new_currency?.trim();
-    (!old_currency.trim().eq_ignore_ascii_case(new_currency)).then_some(Job::Days(0))
+/// breakdown: from the first fact. An asset without transactions is carried at today's quantity
+/// and price: a changed quantity or price moves every day, from the first fact. A price change is
+/// a valuation dated today; it moves history only when it is the earliest estimate of the asset
+/// (the days before the first valuation use it), from the first transaction. Quantities and costs
+/// of an asset with transactions come from them, so nothing else is part of the history.
+pub fn other_asset_updated(edit: &OtherAssetEdit) -> Option<Job> {
+    let currency_changed = edit
+        .new_currency
+        .is_some_and(|new| !edit.old_currency.trim().eq_ignore_ascii_case(new.trim()));
+    if currency_changed {
+        return Some(Job::Days(0));
+    }
+    let Some(first_transaction) = edit.first_transaction else {
+        return (edit.quantity_changed || edit.logged_earliest.is_some()).then_some(Job::Days(0));
+    };
+    edit.logged_earliest
+        .is_some_and(|earliest| earliest >= edit.today)
+        .then(|| other_asset_valuation_job(edit.today, Some(first_transaction)))
+}
+
+/// A new other asset: an initial transaction dates its first quantity (from its day). Without
+/// one, an asset with a quantity is carried on every day (from the first fact); with none it is
+/// not counted.
+pub fn other_asset_created(initial_transaction: Option<i64>, quantity: &str) -> Option<Job> {
+    if let Some(day) = initial_transaction {
+        return Some(Job::Days(day));
+    }
+    quantity
+        .trim()
+        .parse::<f64>()
+        .is_ok_and(|quantity| quantity > 0.0)
+        .then_some(Job::Days(0))
+}
+
+/// A valuation of an other asset was added or deleted on `valued_at`. The first valuation also
+/// prices the days before it (`valuations::value_at_day` falls back to the earliest), so queue
+/// from the earlier of the valuation day and the asset's first transaction. An asset without
+/// transactions is carried at today's quantity and price on every day, so a new price moves
+/// all of them: from the first fact.
+pub fn other_asset_valuation_job(valued_at: i64, first_transaction: Option<i64>) -> Job {
+    Job::Days(first_transaction.map_or(0, |first| first.min(valued_at)))
+}
+
+/// [`other_asset_valuation_job`] for an asset in the database.
+pub fn other_asset_valuation_changed(
+    conn: &Connection,
+    asset_id: &str,
+    valued_at: i64,
+) -> Result<Job> {
+    Ok(other_asset_valuation_job(
+        valued_at,
+        first_asset_transaction_day(conn, asset_id)?,
+    ))
+}
+
+/// The day of an other asset's first transaction; `None` without transactions.
+pub fn first_asset_transaction_day(conn: &Connection, asset_id: &str) -> Result<Option<i64>> {
+    // MIN over no rows is one row holding NULL.
+    Ok(conn.query_row(
+        "SELECT MIN(transaction_date) FROM other_asset_transactions WHERE asset_id = ?1",
+        [asset_id],
+        |row| row.get(0),
+    )?)
+}
+
+/// The earliest valuation day of a property or other asset; `None` without valuations.
+pub fn earliest_valuation_day(
+    conn: &Connection,
+    kind: ValuationKind,
+    owner_id: &str,
+) -> Result<Option<i64>> {
+    Ok(valuations::list_valuations(conn, kind, owner_id)?
+        .first()
+        .map(|valuation| valuation.valued_at))
 }
 
 /// A deleted other asset: from its first transaction (it was counted from there), else the
@@ -761,31 +911,46 @@ mod tests {
         assert_eq!(property_created(None, None), None);
     }
 
+    const NO_VALUATION: (Option<i64>, Option<i64>) = (None, None);
+
     #[test]
     fn a_property_edit_queues_from_the_earlier_purchase_date_or_the_first_fact() {
         let old = facts("investment", Some(d(-100)), "5000", "CZK");
-        assert_eq!(property_updated(&old, &old.clone()), None);
+        assert_eq!(property_updated(&old, &old.clone(), NO_VALUATION), None);
 
         // the purchase date moves later: the days it no longer covers change too
         assert_eq!(
-            property_updated(&old, &facts("investment", Some(d(-40)), "5000", "CZK")),
+            property_updated(
+                &old,
+                &facts("investment", Some(d(-40)), "5000", "CZK"),
+                NO_VALUATION
+            ),
             Some(Job::Days(d(-100)))
         );
         // …or earlier
         assert_eq!(
-            property_updated(&old, &facts("investment", Some(d(-300)), "5000", "CZK")),
+            property_updated(
+                &old,
+                &facts("investment", Some(d(-300)), "5000", "CZK"),
+                NO_VALUATION
+            ),
             Some(Job::Days(d(-300)))
         );
         // a new price from the purchase date on
         assert_eq!(
-            property_updated(&old, &facts("investment", Some(d(-100)), "6000", "CZK")),
+            property_updated(
+                &old,
+                &facts("investment", Some(d(-100)), "6000", "CZK"),
+                NO_VALUATION
+            ),
             Some(Job::Days(d(-100)))
         );
         // a date set where there was none
         assert_eq!(
             property_updated(
                 &facts("investment", None, "5000", "CZK"),
-                &facts("investment", Some(d(-20)), "5000", "CZK")
+                &facts("investment", Some(d(-20)), "5000", "CZK"),
+                NO_VALUATION
             ),
             Some(Job::Days(d(-20)))
         );
@@ -793,20 +958,161 @@ mod tests {
         assert_eq!(
             property_updated(
                 &facts("investment", None, "5000", "CZK"),
-                &facts("investment", None, "6000", "CZK")
+                &facts("investment", None, "6000", "CZK"),
+                NO_VALUATION
             ),
             None
         );
         // the type or the currency changes every day the property is counted
         assert_eq!(
-            property_updated(&old, &facts("personal", Some(d(-100)), "5000", "CZK")),
+            property_updated(
+                &old,
+                &facts("personal", Some(d(-100)), "5000", "CZK"),
+                NO_VALUATION
+            ),
             Some(Job::Days(0))
         );
         assert_eq!(
-            property_updated(&old, &facts("investment", Some(d(-100)), "5000", "EUR")),
+            property_updated(
+                &old,
+                &facts("investment", Some(d(-100)), "5000", "EUR"),
+                NO_VALUATION
+            ),
             Some(Job::Days(0))
         );
         assert_eq!(property_deleted(), Job::Days(0));
+    }
+
+    #[test]
+    fn a_purchase_date_edit_also_queues_from_the_first_valuation_day() {
+        // Without a purchase date the property counts from its first valuation: setting a date
+        // after it stops the days between, so the edit changes history from the valuation.
+        let valuations = (Some(d(-200)), Some(d(-200)));
+        assert_eq!(
+            property_updated(
+                &facts("investment", None, "5000", "CZK"),
+                &facts("investment", Some(d(-20)), "5000", "CZK"),
+                valuations
+            ),
+            Some(Job::Days(d(-200)))
+        );
+        // …and clearing a date moves the start to the first valuation
+        assert_eq!(
+            property_updated(
+                &facts("investment", Some(d(-20)), "5000", "CZK"),
+                &facts("investment", None, "5000", "CZK"),
+                valuations
+            ),
+            Some(Job::Days(d(-200)))
+        );
+        // a first valuation after both dates changes nothing earlier than the dates
+        assert_eq!(
+            property_updated(
+                &facts("investment", Some(d(-100)), "5000", "CZK"),
+                &facts("investment", Some(d(-40)), "5000", "CZK"),
+                (Some(d(-10)), Some(d(-10)))
+            ),
+            Some(Job::Days(d(-100)))
+        );
+    }
+
+    #[test]
+    fn an_edit_that_wrote_the_first_valuation_queues_from_the_purchase_date() {
+        // A price change is a valuation dated today. It is the property's first estimate: the
+        // property now counts from its purchase date at the purchase price.
+        let same = facts("investment", Some(d(-100)), "5000", "CZK");
+        assert_eq!(
+            property_updated(&same, &same.clone(), (None, Some(d(0)))),
+            Some(Job::Days(d(-100)))
+        );
+        // without a purchase date it counts from the estimate: today, which a rebuild leaves alone
+        let undated = facts("investment", None, "5000", "CZK");
+        assert_eq!(
+            property_updated(&undated, &undated.clone(), (None, Some(d(0)))),
+            Some(Job::Days(d(0)))
+        );
+        // a later estimate on top of an earlier log moves nothing
+        assert_eq!(
+            property_updated(&same, &same.clone(), (Some(d(-50)), Some(d(-50)))),
+            None
+        );
+    }
+
+    #[test]
+    fn a_property_valuation_queues_from_the_valuation_the_purchase_date_or_the_first_valuation() {
+        // the first valuation also opens the days from the purchase date
+        assert_eq!(
+            property_valuation_job(d(-10), Some(d(-100)), Some(d(-10))),
+            Job::Days(d(-100))
+        );
+        // no purchase date: from the valuation
+        assert_eq!(
+            property_valuation_job(d(-10), None, Some(d(-10))),
+            Job::Days(d(-10))
+        );
+        // a valuation added after an earlier one still goes from the earliest (never later)
+        assert_eq!(
+            property_valuation_job(d(-10), Some(d(-5)), Some(d(-60))),
+            Job::Days(d(-60))
+        );
+        // the last valuation deleted: no earliest left
+        assert_eq!(
+            property_valuation_job(d(-10), Some(d(-100)), None),
+            Job::Days(d(-100))
+        );
+        assert_eq!(
+            property_valuation_job(d(-10), None, None),
+            Job::Days(d(-10))
+        );
+    }
+
+    #[test]
+    fn a_property_valuation_in_the_database_reads_the_purchase_date_and_the_earliest_valuation() {
+        let conn = setup_test_db();
+        conn.execute(
+            "INSERT INTO real_estate (id, type, purchase_date) VALUES ('p', 'investment', ?1)",
+            [d(-100)],
+        )
+        .expect("property");
+        conn.execute(
+            "INSERT INTO real_estate (id, type) VALUES ('nodate', 'investment')",
+            [],
+        )
+        .expect("property without a date");
+        // the first valuation, added: it opens the days from the purchase date
+        conn.execute(
+            "INSERT INTO real_estate_valuations (id, real_estate_id, value, valued_at)
+             VALUES ('v1', 'p', '1000', ?1), ('n1', 'nodate', '1000', ?1)",
+            [d(-10)],
+        )
+        .expect("valuation");
+        assert_eq!(
+            property_valuation_changed(&conn, "p", d(-10)).expect("job"),
+            Job::Days(d(-100))
+        );
+        assert_eq!(
+            property_valuation_changed(&conn, "nodate", d(-10)).expect("job"),
+            Job::Days(d(-10))
+        );
+        // a later valuation still goes from the property's earliest one
+        conn.execute(
+            "INSERT INTO real_estate_valuations (id, real_estate_id, value, valued_at)
+             VALUES ('v2', 'nodate', '2000', ?1)",
+            [d(-2)],
+        )
+        .expect("later valuation");
+        assert_eq!(
+            property_valuation_changed(&conn, "nodate", d(-2)).expect("job"),
+            Job::Days(d(-10)),
+            "from the property's earliest valuation, never later than it"
+        );
+        // the earliest deleted: its own day covers the days it priced
+        conn.execute("DELETE FROM real_estate_valuations WHERE id = 'n1'", [])
+            .expect("delete");
+        assert_eq!(
+            property_valuation_changed(&conn, "nodate", d(-10)).expect("job"),
+            Job::Days(d(-10))
+        );
     }
 
     #[test]
@@ -823,23 +1129,144 @@ mod tests {
         assert_eq!(bond_changed(), Job::Days(0));
     }
 
+    fn edit(new_currency: Option<&str>) -> OtherAssetEdit<'_> {
+        OtherAssetEdit {
+            old_currency: "CZK",
+            new_currency,
+            first_transaction: Some(d(-30)),
+            quantity_changed: false,
+            logged_earliest: None,
+            today: d(0),
+        }
+    }
+
     #[test]
-    fn an_other_asset_edit_queues_the_first_fact_only_for_a_currency_change() {
+    fn an_other_asset_edit_queues_the_first_fact_for_a_currency_change() {
         assert_eq!(
-            other_asset_updated("CZK", Some("EUR")),
+            other_asset_updated(&edit(Some("EUR"))),
             Some(Job::Days(0)),
             "every day's other-assets breakdown is in another currency"
         );
         assert_eq!(
-            other_asset_updated("CZK", Some("czk")),
+            other_asset_updated(&edit(Some("czk"))),
             None,
             "case is no change"
         );
-        assert_eq!(other_asset_updated("CZK", Some(" CZK ")), None);
+        assert_eq!(other_asset_updated(&edit(Some(" CZK "))), None);
         assert_eq!(
-            other_asset_updated("CZK", None),
+            other_asset_updated(&edit(None)),
             None,
             "no currency in the edit keeps the stored one"
+        );
+    }
+
+    #[test]
+    fn a_price_edit_that_is_the_earliest_valuation_reprices_the_days_before_it() {
+        // The log's earliest estimate is today's: the days before it use it
+        // (`value_at_day` falls back to the earliest), from the first transaction.
+        let first_estimate = OtherAssetEdit {
+            logged_earliest: Some(d(0)),
+            ..edit(None)
+        };
+        assert_eq!(
+            other_asset_updated(&first_estimate),
+            Some(Job::Days(d(-30)))
+        );
+        // an estimate on top of an earlier log changes today only
+        let later_estimate = OtherAssetEdit {
+            logged_earliest: Some(d(-20)),
+            ..edit(None)
+        };
+        assert_eq!(other_asset_updated(&later_estimate), None);
+        // a quantity edit of an asset with transactions is not part of the history
+        let quantity = OtherAssetEdit {
+            quantity_changed: true,
+            ..edit(None)
+        };
+        assert_eq!(other_asset_updated(&quantity), None);
+    }
+
+    #[test]
+    fn an_asset_without_transactions_is_carried_so_a_quantity_or_price_edit_moves_every_day() {
+        let undated = OtherAssetEdit {
+            first_transaction: None,
+            ..edit(None)
+        };
+        assert_eq!(other_asset_updated(&undated), None);
+        assert_eq!(
+            other_asset_updated(&OtherAssetEdit {
+                quantity_changed: true,
+                ..undated.clone()
+            }),
+            Some(Job::Days(0))
+        );
+        assert_eq!(
+            other_asset_updated(&OtherAssetEdit {
+                logged_earliest: Some(d(-20)),
+                ..undated
+            }),
+            Some(Job::Days(0)),
+            "the carried price changed, whatever the log holds"
+        );
+    }
+
+    #[test]
+    fn a_new_other_asset_queues_its_first_transaction_or_the_first_fact_when_it_has_a_quantity() {
+        assert_eq!(
+            other_asset_created(Some(d(-30)), "0"),
+            Some(Job::Days(d(-30)))
+        );
+        assert_eq!(
+            other_asset_created(None, "3"),
+            Some(Job::Days(0)),
+            "carried at today's quantity on every day"
+        );
+        assert_eq!(other_asset_created(None, "0"), None);
+        assert_eq!(other_asset_created(None, ""), None);
+    }
+
+    #[test]
+    fn an_other_asset_valuation_queues_from_the_valuation_or_the_first_transaction() {
+        // the first valuation also prices the days before it, back to the first transaction
+        assert_eq!(
+            other_asset_valuation_job(d(-5), Some(d(-30))),
+            Job::Days(d(-30))
+        );
+        // a valuation dated before the first transaction
+        assert_eq!(
+            other_asset_valuation_job(d(-50), Some(d(-30))),
+            Job::Days(d(-50))
+        );
+        // an asset without transactions is carried at today's price on every day
+        assert_eq!(other_asset_valuation_job(d(-5), None), Job::Days(0));
+    }
+
+    #[test]
+    fn an_other_asset_valuation_in_the_database_reads_the_first_transaction() {
+        let conn = setup_test_db();
+        conn.execute("INSERT INTO other_assets (id) VALUES ('a'), ('bare')", [])
+            .expect("assets");
+        conn.execute(
+            "INSERT INTO other_asset_transactions (id, asset_id, type, quantity, transaction_date)
+             VALUES ('t1', 'a', 'buy', '1', ?1), ('t2', 'a', 'buy', '1', ?2)",
+            [d(-30), d(-10)],
+        )
+        .expect("transactions");
+        assert_eq!(
+            other_asset_valuation_changed(&conn, "a", d(-5)).expect("job"),
+            Job::Days(d(-30))
+        );
+        assert_eq!(
+            other_asset_valuation_changed(&conn, "bare", d(-5)).expect("job"),
+            Job::Days(0)
+        );
+        assert_eq!(
+            first_asset_transaction_day(&conn, "bare").expect("none"),
+            None
+        );
+        assert_eq!(
+            earliest_valuation_day(&conn, ValuationKind::OtherAsset, "a").expect("none"),
+            None
         );
     }
 

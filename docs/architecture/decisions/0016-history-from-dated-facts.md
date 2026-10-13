@@ -43,12 +43,15 @@ write on top of carried statics, leaves every past day dependent on a row that m
 - **What no fact dates follows the nearest live row.** An account without records, an other asset
   with a quantity and no transactions and the bonds have no dated value, and today's value is not
   their value on a past day. On a backfill or new row a class that is not fully covered is
-  `derived(D) + R`: R is the "unknown remainder" of the nearest live row L (the nearest one on or
-  before D, else the earliest later one; today's row only when it is the only live row), per
-  currency, `recorded(L) - derived(L)`, where derived(L) is what the facts give for L (an item not
-  counted on L adds nothing, so it stays in R). R is 0 for a class the facts cover on L, because
-  that live row is rewritten to the derived values, which also keeps a rebuild idempotent. With no
-  live row R is the undated items at today's value. A negative R is kept for savings (an overdraft)
+  `derived(D) + R`: R is the "unknown remainder" of a live row L, per currency,
+  `recorded(L) - derived(L)`, where derived(L) is what the facts give for L. L must count every item
+  the facts count on D, or the remainder (which holds such an item as recorded) would count it
+  again. An item is counted from its first record, valuation or purchase on, so L is dated on or
+  after the latest first day among the items counted on D, per class. The nearest such row on or
+  before D wins, else the earliest later one (always qualifying; today's row, the latest, serves
+  when it is the only one). When none qualifies, or there is no live row at all, R is the undated
+  items at today's value. R is 0 for a class the facts cover on L, because that live row is
+  rewritten to the derived values, which also keeps a rebuild idempotent. A negative R is kept for savings (an overdraft)
   and counts as 0 elsewhere; below half a cent it is dropped. A loan's estimated past before its
   first manual balance is a dated estimate, so it stays derived and R only pins it to the live row.
   Without this rule a class jumped between today's undated values on rebuilt days and the recorded
@@ -72,11 +75,11 @@ write on top of carried statics, leaves every past day dependent on a row that m
 - A live row keeps a recorded class value the facts do not cover, which may be stale, and the
   rebuilt days near it follow it: a rebuilt row depends on which live rows exist, so a new live day
   changes the rows after it at the next rebuild.
-- The remainder is a live row's value minus the facts, not the undated items themselves. A live row
-  recorded before an account's first balance record already holds that account, so while a class is
-  not fully covered the days after the record (up to the next live row) count it twice, once in the
-  record and once in the remainder. Property types that changed since the live row was recorded can
-  do the same between personal and investment.
+- The remainder is a live row's value minus the facts, not the undated items themselves, and the
+  live row is chosen so that it counts the same items as the day. A sold-out other asset still
+  counts "from its first day on": a later live row does not hold it, so nothing is counted twice.
+  Property types that changed since the live row was recorded can still shift an amount between
+  personal and investment real estate on rows near it.
 - Known limits: bonds are undated; CoinGecko's free and demo tiers serve 365 days, older crypto days
   keep the last known price; a legacy rate change without `previous_*` uses the current rate before
   it; the account page interpolates between records, history steps. A valuation dated in the future

@@ -238,17 +238,23 @@ A class is `known` on D when every item in it is.
   savings, with an undated account in it, is not followed by a rebuilt day at today's 0.4M):
   - `value(D) = derived(D) + R`, per class and per currency (real estate: personal and
     investment each).
-  - **The live row L** is the nearest one dated on or before D, else the earliest later one.
-    Today's live row is a live row like any other, so it serves only when it is the profile's only
-    one.
+  - **The live row L**, chosen per class, is one at which every item counted (derived) on D was
+    counted too; otherwise the remainder, which holds an item as it was recorded, would count it
+    again next to the derived part (a live row recorded before an account's first record already
+    holds that account). An item is counted from its first record, valuation or purchase date on
+    (an other asset from the first day its transactions leave a quantity, and a later sale does not
+    uncount it), so L qualifies when it is dated on or after the latest first day among the items
+    counted on D. The nearest qualifying live row on or before D wins, else the earliest one after
+    D (it always qualifies). Today's live row is a live row like any other, so it serves when it
+    is the only one. If none qualifies, R is the undated part itself, as without a live row.
   - **The unknown remainder** `R = recorded(L) − derived(L)`, per currency. `recorded(L)` is the
     stored value of the live row and `derived(L)` is what A1 derives for L, an item not counted on
     L adding nothing (so it stays in R). A class that is `known` on L has `R = 0`: that row is
     rewritten to the derived values (below), and reading the derived values keeps a rebuild
     idempotent.
   - A class with no uncovered item on D has `R = 0` (it is `known`; for bonds, there are none).
-  - **Without a live row** R is the undated part itself (undated accounts and assets at their
-    current value, the bonds): today's behaviour.
+  - **Without a usable live row** R is the undated part itself (undated accounts and assets at
+    their current value, the bonds): today's behaviour.
   - **Sign.** A negative R is kept for savings only, where an overdraft is a legitimate negative
     amount. For the other classes, which cannot be negative, a negative R is a stale record and
     counts as 0. An |R| below 0.005 is float residue and is dropped with its zero entry.
@@ -364,7 +370,10 @@ equal `compute_breakdowns`.
   - the unknown remainder (A3): two undated accounts and one dated one with live rows recorded in
     between: the gap days equal the dated part plus the remainder of the nearest live row, with no
     jump; bonds follow the nearest live row's; without a live row, today's values; a fully known
-    class ignores the live rows; negative savings remainder kept, other classes' dropped;
+    class ignores the live rows; negative savings remainder kept, other classes' dropped; a live row
+    recorded before an account's first record is not the source of the days after the record (the
+    account is counted once; savings, other assets, real estate); with no qualifying live row the
+    undated items keep today's value;
   - deleting the earliest fact deletes the earlier backfill rows;
   - idempotence;
   - chunked output equals one pass;

@@ -21,7 +21,7 @@ How Moony handles more than one currency. The rules behind it are recorded in
   rate: it stays visible in its own currency, the totals leave it out, and a note names the
   missing currency. A value whose purchase day had no usable rate and was converted at today's
   rate is marked as estimated. Values in your main currency need no rate at all.
-- **Symbols.** Only the main currency is shown with its compact symbol ("$", "Kč"); every other
+- **Symbols.** Only the main currency is shown with its compact symbol ("$", "€"); every other
   currency is shown with its ISO code.
 
 Where the rates come from, and what is sent to get them, is listed in

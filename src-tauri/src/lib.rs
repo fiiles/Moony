@@ -47,6 +47,12 @@ pub async fn run() {
                         from.display(),
                         dir.display()
                     ),
+                    Ok(services::data_dir::Moved::Partial(from, left_behind)) => log::warn!(
+                        "[DATA] moved the data folder from {} to {}, but {} could be neither renamed nor copied and stays in the old folder",
+                        from.display(),
+                        dir.display(),
+                        left_behind.join(", ")
+                    ),
                     Err(e) => log::error!("[DATA] could not move the legacy data folder: {e}"),
                 },
                 Err(e) => log::error!("[DATA] app data dir unavailable: {e}"),

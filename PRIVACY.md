@@ -118,9 +118,10 @@ uninstalling the app does not delete it by default.
 
 **Upgrading from 0.10.0 or earlier:** those versions kept the folder under the old identifier
 `com.filipkral.moony`. The first start of 0.10.1 moves that folder to the new name (same volume:
-a rename; otherwise a copy, in which case the old folder stays until you delete it). Interface
-preferences stored by the web view (language on the lock screen, auto-lock) start from their
-defaults once; your data and settings inside the database are unchanged.
+a rename; otherwise a copy, in which case the old folder stays until you delete it; an
+attachment that cannot be moved stays there and Moony still finds it). Interface preferences
+stored by the web view (language on the lock screen, auto-lock) start from their defaults once;
+your data and settings inside the database are unchanged.
 
 ## Backups and the recovery key
 

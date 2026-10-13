@@ -10,7 +10,7 @@ use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 
-use crate::services::backup::DB_FILE_NAME;
+use crate::services::backup::{DB_FILE_NAME, KEY_FILES};
 
 /// Identifier of releases 0.9.0–0.10.0. Its data folder sits next to the current one.
 pub const LEGACY_IDENTIFIER: &str = "com.filipkral.moony";
@@ -31,6 +31,9 @@ pub enum Moved {
     /// At least one entry could not be renamed (another volume, a locked file) and was copied;
     /// the copied originals stay in the legacy folder.
     Copied(PathBuf),
+    /// The profile moved, but the named entries (attachments, backups, ...) could neither be
+    /// renamed nor copied and stay in the legacy folder. Stored document paths still find them.
+    Partial(PathBuf, Vec<String>),
 }
 
 /// Move the pre-0.10.1 data folder into `new_dir` once.
@@ -48,8 +51,13 @@ pub enum Moved {
 /// First come all other entries (key files, attachments, backups, ...), then the `moony.db-wal`
 /// and `moony.db-shm` side files, then `moony.db`. A crash anywhere before the last rename
 /// leaves `moony.db` in the legacy folder, so the next start repeats the merge and moves
-/// whatever is still missing; a crash after it leaves nothing behind. A failure while moving
-/// any entry aborts before the database is touched.
+/// whatever is still missing; a crash after it leaves nothing behind.
+///
+/// Only an *essential* entry ([`is_essential`]: the database, its side files, the key files)
+/// that can be neither renamed nor copied aborts the move with an error, before the database is
+/// touched; the next start retries. Any other entry that cannot be moved (attachments, backups)
+/// is logged, left in the legacy folder and reported as [`Moved::Partial`]: the user keeps the
+/// profile, and the documents left behind stay reachable through their stored paths.
 pub fn migrate_legacy_data_dir(new_dir: &Path) -> io::Result<Moved> {
     if new_dir.join(DB_FILE_NAME).exists() {
         return Ok(Moved::Nothing);
@@ -61,15 +69,22 @@ pub fn migrate_legacy_data_dir(new_dir: &Path) -> io::Result<Moved> {
     if !legacy.join(DB_FILE_NAME).is_file() {
         return Ok(Moved::Nothing);
     }
-    merge_legacy_into(&legacy, new_dir, &|from, to| fs::rename(from, to))
+    merge_legacy_into(
+        &legacy,
+        new_dir,
+        &|from, to| fs::rename(from, to),
+        &copy_entry_into_place,
+    )
 }
 
-/// The merge behind [`migrate_legacy_data_dir`]; `move_entry` is `fs::rename` in the app and a
-/// stand-in that fails in the tests (a real cross-volume rename cannot be staged in a temp dir).
+/// The merge behind [`migrate_legacy_data_dir`]. `move_entry` is `fs::rename` and `copy_entry`
+/// is [`copy_entry_into_place`] in the app; the tests pass stand-ins that fail (a cross-volume
+/// rename or a locked file cannot be staged in a temp dir).
 fn merge_legacy_into(
     legacy: &Path,
     new_dir: &Path,
     move_entry: &dyn Fn(&Path, &Path) -> io::Result<()>,
+    copy_entry: &dyn Fn(&Path, &Path) -> io::Result<()>,
 ) -> io::Result<Moved> {
     fs::create_dir_all(new_dir)?;
     let names = fs::read_dir(legacy)?
@@ -77,6 +92,7 @@ fn merge_legacy_into(
         .collect::<io::Result<Vec<_>>>()?;
 
     let mut copied = false;
+    let mut left_behind: Vec<String> = Vec::new();
     for name in in_move_order(names) {
         if name == FINDER_FILE {
             continue;
@@ -87,14 +103,25 @@ fn merge_legacy_into(
             continue;
         }
         let source = legacy.join(&name);
-        if let Err(e) = move_entry(&source, &target) {
+        if let Err(rename_error) = move_entry(&source, &target) {
             log::warn!(
-                "[DATA] could not rename {} to {} ({e}); copying instead",
+                "[DATA] could not rename {} to {} ({rename_error}); copying instead",
                 source.display(),
                 target.display()
             );
-            copy_entry_into_place(&source, &target)?;
-            copied = true;
+            match copy_entry(&source, &target) {
+                Ok(()) => copied = true,
+                // Without an essential entry the profile cannot work: stop before `moony.db`.
+                Err(copy_error) if is_essential(&name) => return Err(copy_error),
+                Err(copy_error) => {
+                    log::warn!(
+                        "[DATA] {} could be neither renamed nor copied ({copy_error}); it stays in {}",
+                        name.to_string_lossy(),
+                        legacy.display()
+                    );
+                    left_behind.push(name.to_string_lossy().into_owned());
+                }
+            }
         }
     }
 
@@ -104,11 +131,20 @@ fn merge_legacy_into(
         log::warn!("[DATA] could not write {MARKER}: {e}");
     }
     let from = legacy.to_path_buf();
-    Ok(if copied {
+    Ok(if !left_behind.is_empty() {
+        Moved::Partial(from, left_behind)
+    } else if copied {
         Moved::Copied(from)
     } else {
         Moved::Moved(from)
     })
+}
+
+/// Entries without which the profile cannot work: the database, its side files and the key
+/// files. Everything else (attachments, backups, logs) is expendable for the move.
+fn is_essential(name: &OsStr) -> bool {
+    KEY_FILES.iter().any(|key_file| name == *key_file)
+        || DB_SIDE_FILES.iter().any(|side| name == *side)
 }
 
 /// Entries in the order they must move: everything else (alphabetical), then the database side
@@ -214,6 +250,11 @@ mod tests {
     /// A rename that always fails, as when the two folders sit on different volumes.
     fn rename_never_works(_: &Path, _: &Path) -> io::Result<()> {
         Err(io::Error::other("cross-device link"))
+    }
+
+    /// A copy that always fails, as when the disk is full or a file is locked.
+    fn copy_never_works(_: &Path, _: &Path) -> io::Result<()> {
+        Err(io::Error::other("file is locked"))
     }
 
     /// Names of the entries of a folder, sorted.
@@ -412,7 +453,8 @@ mod tests {
         let new = root.path().join(NEW_NAME);
         profile(&legacy);
 
-        let result = merge_legacy_into(&legacy, &new, &rename_never_works).unwrap();
+        let result =
+            merge_legacy_into(&legacy, &new, &rename_never_works, &copy_entry_into_place).unwrap();
 
         assert!(matches!(result, Moved::Copied(ref from) if *from == legacy));
         assert_eq!(fs::read(new.join("moony.db")).unwrap(), b"db");
@@ -449,7 +491,8 @@ mod tests {
             }
         };
 
-        let result = merge_legacy_into(&legacy, &new, &fail_for_documents).unwrap();
+        let result =
+            merge_legacy_into(&legacy, &new, &fail_for_documents, &copy_entry_into_place).unwrap();
 
         assert!(matches!(result, Moved::Copied(_)));
         assert!(new.join("insurance_documents/a.pdf").is_file());
@@ -475,7 +518,7 @@ mod tests {
         std::os::unix::fs::symlink(root.path().join("nowhere"), legacy.join("key.enc/link"))
             .unwrap();
 
-        let result = merge_legacy_into(&legacy, &new, &rename_never_works);
+        let result = merge_legacy_into(&legacy, &new, &rename_never_works, &copy_entry_into_place);
 
         assert!(result.is_err());
         assert!(legacy.join("moony.db").is_file());
@@ -484,7 +527,9 @@ mod tests {
         assert!(!new.join(MARKER).exists());
         // The next start (with the same obstacle) repeats the attempt instead of declaring the
         // profile finished ...
-        assert!(merge_legacy_into(&legacy, &new, &rename_never_works).is_err());
+        assert!(
+            merge_legacy_into(&legacy, &new, &rename_never_works, &copy_entry_into_place).is_err()
+        );
         assert!(!new.join("moony.db").exists());
         // ... and once the obstacle is gone it completes the move.
         fs::remove_dir_all(legacy.join("key.enc")).unwrap();
@@ -527,6 +572,121 @@ mod tests {
 
         assert_eq!(fs::read(new.join("salt")).unwrap(), b"fresh");
         assert_eq!(names(&new), ["salt"]);
+    }
+
+    #[test]
+    fn a_non_essential_entry_that_cannot_be_moved_stays_behind_and_the_profile_moves() {
+        let root = tempfile::tempdir().unwrap();
+        let legacy = root.path().join(LEGACY_IDENTIFIER);
+        let new = root.path().join(NEW_NAME);
+        profile(&legacy);
+        fs::write(legacy.join("moony.db.bak-1"), b"backup").unwrap();
+        // `insurance_documents` can neither be renamed nor copied; the backup file moves fine.
+        let fail_for_documents = |from: &Path, to: &Path| {
+            if from.file_name().is_some_and(|n| n == "insurance_documents") {
+                Err(io::Error::other("busy"))
+            } else {
+                fs::rename(from, to)
+            }
+        };
+        let copy_fails_for_documents = |from: &Path, to: &Path| {
+            if from.file_name().is_some_and(|n| n == "insurance_documents") {
+                Err(io::Error::other("busy"))
+            } else {
+                copy_entry_into_place(from, to)
+            }
+        };
+
+        let result = merge_legacy_into(
+            &legacy,
+            &new,
+            &fail_for_documents,
+            &copy_fails_for_documents,
+        )
+        .unwrap();
+
+        assert!(
+            matches!(&result, Moved::Partial(from, left) if *from == legacy
+                && left.as_slice() == ["insurance_documents"]),
+            "{result:?}"
+        );
+        // The profile is complete in the new folder, including the database ...
+        assert_eq!(fs::read(new.join("moony.db")).unwrap(), b"db");
+        assert_eq!(fs::read(new.join("salt")).unwrap(), b"s");
+        assert_eq!(fs::read(new.join("key.enc")).unwrap(), b"k");
+        assert_eq!(fs::read(new.join("moony.db.bak-1")).unwrap(), b"backup");
+        assert!(new.join(MARKER).is_file());
+        // ... and the entry that failed is untouched in the legacy folder.
+        assert!(!new.join("insurance_documents").exists());
+        assert_eq!(
+            fs::read(legacy.join("insurance_documents/a.pdf")).unwrap(),
+            b"pdf"
+        );
+        assert!(!legacy.join("moony.db").exists());
+        // The next start sees a finished profile and leaves both folders alone.
+        assert!(matches!(
+            migrate_legacy_data_dir(&new).unwrap(),
+            Moved::Nothing
+        ));
+        assert!(legacy.join("insurance_documents/a.pdf").is_file());
+    }
+
+    #[test]
+    fn every_essential_entry_that_cannot_be_moved_aborts_before_the_database() {
+        for essential in [
+            "salt",
+            "key.enc",
+            "recovery.enc",
+            "moony.db-wal",
+            "moony.db-shm",
+            "moony.db-journal",
+        ] {
+            let root = tempfile::tempdir().unwrap();
+            let legacy = root.path().join(LEGACY_IDENTIFIER);
+            let new = root.path().join(NEW_NAME);
+            profile(&legacy);
+            fs::write(legacy.join(essential), b"x").unwrap();
+            let fail_for_it = move |from: &Path, to: &Path| {
+                if from.file_name().is_some_and(|n| n == essential) {
+                    Err(io::Error::other("busy"))
+                } else {
+                    fs::rename(from, to)
+                }
+            };
+
+            let result = merge_legacy_into(&legacy, &new, &fail_for_it, &copy_never_works);
+
+            assert!(result.is_err(), "{essential} must abort the move");
+            assert!(legacy.join("moony.db").is_file(), "{essential}");
+            assert!(!new.join("moony.db").exists(), "{essential}");
+            assert!(!new.join(MARKER).exists(), "{essential}");
+        }
+    }
+
+    #[test]
+    fn only_the_database_its_side_files_and_the_key_files_are_essential() {
+        for name in [
+            "moony.db",
+            "moony.db-wal",
+            "moony.db-shm",
+            "moony.db-journal",
+            "salt",
+            "key.enc",
+            "recovery.enc",
+        ] {
+            assert!(is_essential(OsStr::new(name)), "{name}");
+        }
+        for name in [
+            "insurance_documents",
+            "real_estate_photos",
+            "real_estate_documents",
+            "moony.db.bak-1700000000",
+            "pre-restore-1700000000",
+            "logs",
+            ".seed_demo",
+        ] {
+            assert!(!is_essential(OsStr::new(name)), "{name}");
+        }
     }
 
     #[test]

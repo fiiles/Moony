@@ -28,6 +28,10 @@ exactly the users who are least careful, and the result looks like lost data.
   stays in the old one (on Linux the log plugin has already created `logs/` there), every entry
   is renamed, or copied when the rename fails, and `moony.db` moves last, so an interrupted move
   is finished by the next start and a half-filled folder is never taken for a profile.
+- **Only the profile is essential.** If the database, its side files or a key file can be neither
+  renamed nor copied, the move stops before `moony.db` and the next start retries. Any other
+  entry (attachments, backups) that cannot be moved is logged and left in the old folder; the
+  user keeps the profile.
 - **A new folder that holds `moony.db` is never touched.** After a copy the old folder is never
   deleted automatically; after a pure rename it is removed only when it is empty.
 - **There is no second rename, ever.** The next change would make every user migrate twice.
@@ -38,8 +42,9 @@ exactly the users who are least careful, and the result looks like lost data.
   log folder starts fresh; the old log and web view folders stay where they are and hold no
   financial data. Data and settings inside the database are unchanged.
 - Attached documents keep the absolute path they had when they were added. Opening and deleting
-  re-root such a path under the current data folder (`services::document_files`); photos are
-  stored relative and need nothing.
+  look under the current data folder first (`services::document_files`), so a copy-style move
+  never lands on a stale original, and fall back to the stored path, which still finds a
+  document that stayed in the old folder; photos are stored relative and need nothing.
 - Going back to 0.10.0 after the move shows the first-run wizard, because 0.10.0 looks in the old
   folder. Downgrades are not supported.
 - On Windows the NSIS installer keeps its install folder under `Software\<publisher>\Moony`. With

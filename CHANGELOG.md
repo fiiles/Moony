@@ -6,6 +6,8 @@ All notable changes to Moony are documented in this file. The format follows
 
 ## [Unreleased]
 
+## [0.10.1] - 2026-10-13
+
 ### Added
 
 - **Banking country in the profile.** Settings → General has a "Country" select under the e-mail
@@ -468,7 +470,8 @@ local tool). Everything below is new to the public.
 - The updater only offers versions higher than the installed one, so a machine running an
   older 1.x build from the previous private repository must install 0.9.0 by hand.
 
-[Unreleased]: https://github.com/fiiles/Moony/compare/v0.10.0...HEAD
+[Unreleased]: https://github.com/fiiles/Moony/compare/v0.10.1...HEAD
+[0.10.1]: https://github.com/fiiles/Moony/releases/tag/v0.10.1
 [0.10.0]: https://github.com/fiiles/Moony/compare/v0.9.1...v0.10.0
 [0.9.1]: https://github.com/fiiles/Moony/compare/v0.9.0...v0.9.1
 [0.9.0]: https://github.com/fiiles/Moony/releases/tag/v0.9.0

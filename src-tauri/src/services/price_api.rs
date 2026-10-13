@@ -439,21 +439,43 @@ pub async fn refresh_stock_prices_yahoo_with_ttl(
 pub(crate) fn get_currency_from_ticker(ticker: &str) -> &'static str {
     if let Some(suffix) = ticker.split('.').nth(1) {
         match suffix.to_uppercase().as_str() {
-            "L" | "LON" => "GBP",          // London
-            "PA" => "EUR",                 // Paris
-            "AS" => "EUR",                 // Amsterdam
-            "BR" => "EUR",                 // Brussels
-            "DE" | "F" | "XETRA" => "EUR", // Germany
-            "SW" => "CHF",                 // Swiss
-            "ST" => "SEK",                 // Stockholm
-            "HE" => "EUR",                 // Helsinki
-            "MI" => "EUR",                 // Milan
-            "VI" => "EUR",                 // Vienna
-            "PR" => "CZK",                 // Prague
-            "T" | "TYO" => "JPY",          // Tokyo
-            "HK" => "HKD",                 // Hong Kong
-            "SS" | "SZ" => "CNY",          // Shanghai/Shenzhen
-            "AM" => "EUR",                 // Amsterdam
+            "L" | "LON" => "GBP",               // London
+            "PA" => "EUR",                      // Paris
+            "AS" => "EUR",                      // Amsterdam
+            "BR" => "EUR",                      // Brussels
+            "DE" | "F" | "XETRA" => "EUR",      // Germany
+            "SW" => "CHF",                      // Swiss
+            "ST" => "SEK",                      // Stockholm
+            "HE" => "EUR",                      // Helsinki
+            "MI" => "EUR",                      // Milan
+            "VI" => "EUR",                      // Vienna
+            "PR" => "CZK",                      // Prague
+            "T" | "TYO" => "JPY",               // Tokyo
+            "HK" => "HKD",                      // Hong Kong
+            "SS" | "SZ" => "CNY",               // Shanghai/Shenzhen
+            "AM" => "EUR",                      // Amsterdam
+            "WA" => "PLN",                      // Warsaw
+            "MC" | "LS" | "IR" | "AT" => "EUR", // Madrid, Lisbon, Dublin, Athens
+            "CO" => "DKK",                      // Copenhagen
+            "OL" => "NOK",                      // Oslo
+            "TO" | "V" | "NE" | "CN" => "CAD",  // Toronto, TSX Venture, NEO, CSE
+            "AX" => "AUD",                      // ASX
+            "NS" | "BO" => "INR",               // NSE, BSE
+            "SI" => "SGD",                      // Singapore
+            "KS" | "KQ" => "KRW",               // KOSPI, KOSDAQ
+            "TW" | "TWO" => "TWD",              // Taiwan, Taiwan OTC
+            "BD" => "HUF",                      // Budapest
+            "SA" => "BRL",                      // São Paulo
+            "MX" => "MXN",                      // Mexico
+            "TA" => "ILS",                      // Tel Aviv
+            "JO" => "ZAR",                      // Johannesburg
+            "IS" => "TRY",                      // Istanbul
+            "NZ" => "NZD",                      // New Zealand
+            "BK" => "THB",                      // Bangkok
+            "JK" => "IDR",                      // Jakarta
+            "KL" => "MYR",                      // Kuala Lumpur
+            "SN" => "CLP",                      // Santiago
+            "BA" => "ARS",                      // Buenos Aires
             _ => "USD",
         }
     } else {
@@ -1708,6 +1730,53 @@ pub async fn get_stock_price_range(ticker: &str, period: &str) -> Result<Vec<Sto
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn ticker_suffixes_of_the_main_exchanges_name_their_currency() {
+        for (ticker, currency) in [
+            ("CDR.WA", "PLN"),
+            ("SAN.MC", "EUR"),
+            ("NOVO-B.CO", "DKK"),
+            ("EQNR.OL", "NOK"),
+            ("SHOP.TO", "CAD"),
+            ("ABC.V", "CAD"),
+            ("BHP.AX", "AUD"),
+            ("RELIANCE.NS", "INR"),
+            ("500325.BO", "INR"),
+            ("D05.SI", "SGD"),
+            ("005930.KS", "KRW"),
+            ("247540.KQ", "KRW"),
+            ("2330.TW", "TWD"),
+            ("6488.TWO", "TWD"),
+            ("EDP.LS", "EUR"),
+            ("RYA.IR", "EUR"),
+            ("OTP.BD", "HUF"),
+            ("PETR4.SA", "BRL"),
+            ("WALMEX.MX", "MXN"),
+            ("TEVA.TA", "ILS"),
+            ("NPN.JO", "ZAR"),
+            ("THYAO.IS", "TRY"),
+            ("OPAP.AT", "EUR"),
+            ("FPH.NZ", "NZD"),
+            ("PTT.BK", "THB"),
+            ("BBCA.JK", "IDR"),
+            ("1155.KL", "MYR"),
+            ("COPEC.SN", "CLP"),
+            ("GGAL.BA", "ARS"),
+            // already there
+            ("VOD.L", "GBP"),
+            ("SAP.DE", "EUR"),
+            ("7203.T", "JPY"),
+            ("0700.HK", "HKD"),
+            ("600519.SS", "CNY"),
+        ] {
+            assert_eq!(get_currency_from_ticker(ticker), currency, "{ticker}");
+        }
+        // No suffix, or a share-class suffix: USD.
+        for ticker in ["AAPL", "BRK.B", "BF.B"] {
+            assert_eq!(get_currency_from_ticker(ticker), "USD", "{ticker}");
+        }
+    }
 
     #[test]
     fn crypto_price_keeps_sub_cent_precision() {

@@ -27,6 +27,7 @@ pub fn fallback_encoding_for_country(country: Option<&str>) -> &'static encoding
         Some("RU" | "UA" | "BG" | "BY") => encoding_rs::WINDOWS_1251,
         Some("GR" | "CY") => encoding_rs::WINDOWS_1253,
         Some("TR") => encoding_rs::WINDOWS_1254,
+        Some("LT" | "LV" | "EE") => encoding_rs::WINDOWS_1257,
         Some("JP") => encoding_rs::SHIFT_JIS,
         Some("CN") => encoding_rs::GBK,
         Some("KR") => encoding_rs::EUC_KR,
@@ -353,6 +354,15 @@ mod tests {
     }
 
     #[test]
+    fn a_baltic_file_is_read_as_windows_1257_for_lithuania() {
+        let text = "Suma;Gavėjas";
+        let bytes = bytes_in(encoding_rs::WINDOWS_1257, text);
+        let decoded = decode_csv_content_for_country(&bytes, None, Some("LT"));
+        assert_eq!(decoded.text, text);
+        assert_eq!(decoded.encoding, "windows-1257");
+    }
+
+    #[test]
     fn utf8_still_wins_over_the_country_and_a_failing_multibyte_guess_falls_back() {
         let utf8 = decode_csv_content_for_country("Částka".as_bytes(), None, Some("JP"));
         assert_eq!((utf8.text.as_str(), utf8.encoding), ("Částka", "UTF-8"));
@@ -365,6 +375,7 @@ mod tests {
     fn the_fallback_table_is_case_and_space_insensitive() {
         use encoding_rs::{
             BIG5, WINDOWS_1250, WINDOWS_1251, WINDOWS_1252, WINDOWS_1253, WINDOWS_1254,
+            WINDOWS_1257,
         };
         for (country, expected) in [
             (Some("cz"), WINDOWS_1250),
@@ -373,6 +384,9 @@ mod tests {
             (Some("UA"), WINDOWS_1251),
             (Some("GR"), WINDOWS_1253),
             (Some("TR"), WINDOWS_1254),
+            (Some("LT"), WINDOWS_1257),
+            (Some("lv"), WINDOWS_1257),
+            (Some("EE"), WINDOWS_1257),
             (Some("HK"), BIG5),
             (Some("DE"), WINDOWS_1252),
             (Some(""), WINDOWS_1252),

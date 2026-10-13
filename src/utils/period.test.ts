@@ -5,6 +5,7 @@ import {
   chartPeriodStart,
   getUtcPeriodRange,
   isoDateFromUtcTimestamp,
+  monthOffsetOf,
   utcDayEnd,
   utcDayStart,
 } from './period';
@@ -157,5 +158,20 @@ describe('periodFileStem', () => {
     expect(periodFileStem('quarterly', new Date(Date.UTC(2026, 0, 1)))).toBe('2026-q1');
     expect(periodFileStem('monthly', new Date(Date.UTC(2026, 9, 1)))).toBe('2026-10');
     expect(periodFileStem('monthly', new Date(Date.UTC(2026, 2, 1)))).toBe('2026-03');
+  });
+});
+
+describe('monthOffsetOf', () => {
+  const now = new Date(Date.UTC(2026, 9, 13, 12));
+  const day = (y: number, m: number, d: number) => Date.UTC(y, m, d) / 1000;
+
+  it('counts calendar months back from the current one', () => {
+    expect(monthOffsetOf(day(2026, 9, 1), now)).toBe(0);
+    expect(monthOffsetOf(day(2026, 8, 30), now)).toBe(-1);
+    expect(monthOffsetOf(day(2025, 11, 31), now)).toBe(-10);
+  });
+
+  it('treats a future day as the current month', () => {
+    expect(monthOffsetOf(day(2027, 0, 5), now)).toBe(0);
   });
 });

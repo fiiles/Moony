@@ -63,6 +63,17 @@ export function getUtcPeriodRange(
 }
 
 /** File-name stem of a period starting on `startDate`: `2026`, `2026-q4` or `2026-10`. */
+/**
+ * Monthly offset (0 = current month, -1 = previous, …) of the month containing
+ * the UTC day `day`; a future day counts as the current month.
+ */
+export function monthOffsetOf(day: number, now: Date = new Date()): number {
+  const date = new Date(day * SECOND);
+  const months =
+    (date.getUTCFullYear() - now.getUTCFullYear()) * 12 + date.getUTCMonth() - now.getUTCMonth();
+  return Math.min(0, months);
+}
+
 export function periodFileStem(timeframe: PeriodTimeframe, startDate: Date): string {
   const year = startDate.getUTCFullYear();
   const month = startDate.getUTCMonth();

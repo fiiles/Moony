@@ -1240,6 +1240,9 @@ export const budgetingApi = {
       reportCurrency,
     }),
 
+  // Booking day of the newest booked bank transaction (null without transactions)
+  getLatestTransactionDate: () => tauriInvoke<number | null>('get_latest_transaction_date'),
+
   // Get all budget goals
   getBudgetGoals: () => tauriInvoke<BudgetGoal[]>('get_budget_goals'),
 

@@ -605,6 +605,16 @@ pub fn get_category_transactions_in_currency(
     .collect())
 }
 
+/// Booking day of the newest booked bank transaction, if any — the budgets page
+/// opens on that month instead of an empty current one.
+pub fn latest_booking_date(conn: &Connection) -> Result<Option<i64>> {
+    Ok(conn.query_row(
+        "SELECT MAX(booking_date) FROM bank_transactions WHERE status='booked'",
+        [],
+        |row| row.get(0),
+    )?)
+}
+
 // ========================== Async wrappers for Database ==========================
 
 /// Get all budget goals (async wrapper)
@@ -626,6 +636,19 @@ pub async fn delete_budget_goal(db: &Database, id: String) -> Result<()> {
 mod tests {
     use super::*;
     use rusqlite::Connection;
+
+    #[test]
+    fn latest_booking_date_skips_pending_rows() {
+        let conn = setup_test_db();
+        assert_eq!(latest_booking_date(&conn).unwrap(), None);
+        conn.execute_batch(
+            "INSERT INTO bank_transactions(id,bank_account_id,booking_date,amount,currency,tx_type) VALUES ('a','acc1',100,'1','CZK','debit');
+             INSERT INTO bank_transactions(id,bank_account_id,booking_date,amount,currency,tx_type) VALUES ('b','acc1',300,'1','CZK','debit');
+             INSERT INTO bank_transactions(id,bank_account_id,booking_date,amount,currency,tx_type,status) VALUES ('c','acc1',900,'1','CZK','debit','pending');",
+        )
+        .unwrap();
+        assert_eq!(latest_booking_date(&conn).unwrap(), Some(300));
+    }
 
     fn setup_test_db() -> Connection {
         let conn = Connection::open_in_memory().expect("Failed to open in-memory db");

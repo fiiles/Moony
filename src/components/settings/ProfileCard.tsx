@@ -62,12 +62,15 @@ export function ProfileCard() {
     <SettingsCard title={t('profile.title')} description={t('profile.description')}>
       <Form {...form}>
         <form
-          onSubmit={form.handleSubmit((data) =>
+          onSubmit={form.handleSubmit((data) => {
+            // Send the country only when the select changed it: a name or e-mail edit must not
+            // rewrite it (or refresh the reminders that depend on it). '' clears the country.
+            const chosen = country === NONE ? '' : country.toUpperCase();
             updateProfile.mutate({
               ...data,
-              country: country === NONE ? '' : country.toUpperCase(),
-            })
-          )}
+              ...(chosen !== (user?.country ?? '') ? { country: chosen } : {}),
+            });
+          })}
         >
           <div className="grid grid-cols-2 gap-3">
             <FormField

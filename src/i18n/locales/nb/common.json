@@ -260,7 +260,8 @@
     "exchangeRateUnavailable": "Transaksjonen kan ikke lagres før valutakurser for datoen er tilgjengelige",
     "dateInvalid": "Ugyldig dato",
     "valueDateInvalid": "Ugyldig valuteringsdato",
-    "maturityDateInvalid": "Ugyldig forfallsdato"
+    "maturityDateInvalid": "Ugyldig forfallsdato",
+    "countryInvalid": "Velg et land fra listen."
   },
   "auth": {
     "wrongPassword": "Passordet du skrev inn er feil. Prøv igjen.",

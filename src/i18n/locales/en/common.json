@@ -260,7 +260,8 @@
     "exchangeRateUnavailable": "The transaction cannot be saved until exchange rates for its date are available",
     "dateInvalid": "Invalid calendar date",
     "valueDateInvalid": "Invalid value date",
-    "maturityDateInvalid": "Invalid maturity date"
+    "maturityDateInvalid": "Invalid maturity date",
+    "countryInvalid": "Choose a country from the list."
   },
   "auth": {
     "wrongPassword": "The password you entered is incorrect. Please try again.",

@@ -260,7 +260,8 @@
     "exchangeRateUnavailable": "Transaktionen kan inte sparas förrän valutakurser för dess datum är tillgängliga",
     "dateInvalid": "Ogiltigt datum",
     "valueDateInvalid": "Ogiltigt valutadatum",
-    "maturityDateInvalid": "Ogiltigt förfallodatum"
+    "maturityDateInvalid": "Ogiltigt förfallodatum",
+    "countryInvalid": "Välj ett land i listan."
   },
   "auth": {
     "wrongPassword": "Lösenordet du angav är fel. Försök igen.",

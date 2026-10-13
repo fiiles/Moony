@@ -20,6 +20,8 @@ export interface UserProfile {
   excludePersonalRealEstate: boolean;
   coingeckoModalDismissed?: boolean;
   mcpServerEnabled?: boolean;
+  /** ISO 3166-1 alpha-2 (`"CZ"`), null until chosen (wizard, Settings). */
+  country: string | null;
   createdAt: number;
 }
 

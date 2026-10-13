@@ -260,7 +260,8 @@
     "exchangeRateUnavailable": "La transacción no se puede guardar hasta que estén disponibles los tipos de cambio de su fecha",
     "dateInvalid": "Fecha no válida",
     "valueDateInvalid": "Fecha valor no válida",
-    "maturityDateInvalid": "Fecha de vencimiento no válida"
+    "maturityDateInvalid": "Fecha de vencimiento no válida",
+    "countryInvalid": "Elige un país de la lista."
   },
   "auth": {
     "wrongPassword": "La contraseña introducida es incorrecta. Inténtalo de nuevo.",

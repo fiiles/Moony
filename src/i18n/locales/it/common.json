@@ -260,7 +260,8 @@
     "exchangeRateUnavailable": "La transazione non può essere salvata finché non sono disponibili i tassi di cambio della sua data",
     "dateInvalid": "Data non valida",
     "valueDateInvalid": "Data valuta non valida",
-    "maturityDateInvalid": "Data di scadenza non valida"
+    "maturityDateInvalid": "Data di scadenza non valida",
+    "countryInvalid": "Scegli un paese dall'elenco."
   },
   "auth": {
     "wrongPassword": "La password inserita non è corretta. Riprova.",

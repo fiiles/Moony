@@ -24,7 +24,10 @@
     "surname": "Efternamn",
     "email": "E-post",
     "save": "Spara ändringar",
-    "saving": "Sparar..."
+    "saving": "Sparar...",
+    "country": "Land",
+    "countryNone": "Annat / finns inte i listan",
+    "countryHint": "Används för att visa bankens kontoutdragsformat först, välja filkodning och ställa in landsstandarder som uppsägningstiden för försäkringar."
   },
   "password": {
     "title": "Ändra lösenord",

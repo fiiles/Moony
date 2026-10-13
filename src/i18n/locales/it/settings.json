@@ -24,7 +24,10 @@
     "surname": "Cognome",
     "email": "Email",
     "save": "Salva modifiche",
-    "saving": "Salvataggio..."
+    "saving": "Salvataggio...",
+    "country": "Paese",
+    "countryNone": "Altro / non in elenco",
+    "countryHint": "Serve a mostrare per primi i formati di estratto conto della tua banca, a scegliere la codifica dei file e a impostare valori predefiniti per paese, come il preavviso delle assicurazioni."
   },
   "password": {
     "title": "Cambia password",

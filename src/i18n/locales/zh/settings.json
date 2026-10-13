@@ -24,7 +24,10 @@
     "surname": "姓氏",
     "email": "电子邮箱",
     "save": "保存更改",
-    "saving": "正在保存…"
+    "saving": "正在保存…",
+    "country": "国家/地区",
+    "countryNone": "其他 / 未列出",
+    "countryHint": "用于优先显示您银行的账单格式、选择文件编码，并设置保险解约通知期等国家默认值。"
   },
   "password": {
     "title": "更改密码",

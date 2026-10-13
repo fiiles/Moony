@@ -24,7 +24,10 @@
     "surname": "Surname",
     "email": "Email",
     "save": "Save Changes",
-    "saving": "Saving..."
+    "saving": "Saving...",
+    "country": "Country",
+    "countryNone": "Other / not listed",
+    "countryHint": "Used to list your bank's statement formats first, to choose the file encoding of statements and for country defaults such as the insurance notice period."
   },
   "password": {
     "title": "Change Password",

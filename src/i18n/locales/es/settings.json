@@ -24,7 +24,10 @@
     "surname": "Apellidos",
     "email": "Correo electrónico",
     "save": "Guardar cambios",
-    "saving": "Guardando..."
+    "saving": "Guardando...",
+    "country": "País",
+    "countryNone": "Otro / no aparece",
+    "countryHint": "Sirve para mostrar primero los formatos de extracto de tu banco, elegir la codificación de los archivos y aplicar valores por país, como el preaviso de los seguros."
   },
   "password": {
     "title": "Cambiar contraseña",

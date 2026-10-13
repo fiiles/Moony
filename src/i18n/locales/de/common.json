@@ -260,7 +260,8 @@
     "exchangeRateUnavailable": "Die Transaktion kann erst gespeichert werden, wenn Wechselkurse für ihr Datum verfügbar sind",
     "dateInvalid": "Ungültiges Datum",
     "valueDateInvalid": "Ungültiges Wertstellungsdatum",
-    "maturityDateInvalid": "Ungültiges Fälligkeitsdatum"
+    "maturityDateInvalid": "Ungültiges Fälligkeitsdatum",
+    "countryInvalid": "Wählen Sie ein Land aus der Liste."
   },
   "auth": {
     "wrongPassword": "Das eingegebene Passwort ist falsch. Bitte versuchen Sie es erneut.",

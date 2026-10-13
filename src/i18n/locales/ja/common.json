@@ -260,7 +260,8 @@
     "exchangeRateUnavailable": "取引日の為替レートが利用可能になるまで取引を保存できません",
     "dateInvalid": "無効な日付です",
     "valueDateInvalid": "無効な起算日です",
-    "maturityDateInvalid": "無効な満期日です"
+    "maturityDateInvalid": "無効な満期日です",
+    "countryInvalid": "一覧から国を選んでください。"
   },
   "auth": {
     "wrongPassword": "入力したパスワードが正しくありません。もう一度お試しください。",

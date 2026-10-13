@@ -24,7 +24,10 @@
     "surname": "Příjmení",
     "email": "E-mail",
     "save": "Uložit změny",
-    "saving": "Ukládám..."
+    "saving": "Ukládám...",
+    "country": "Země",
+    "countryNone": "Jiná / není v seznamu",
+    "countryHint": "Podle země se na prvním místě nabídnou formáty výpisů vaší banky, zvolí se kódování souborů a nastaví výchozí hodnoty, třeba výpovědní lhůta pojištění."
   },
   "password": {
     "title": "Změna hesla",

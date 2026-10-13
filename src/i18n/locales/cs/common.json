@@ -260,7 +260,8 @@
     "exchangeRateUnavailable": "Transakci lze uložit až po načtení kurzů pro její datum",
     "dateInvalid": "Neplatné datum",
     "valueDateInvalid": "Neplatné datum valuty",
-    "maturityDateInvalid": "Neplatné datum splatnosti"
+    "maturityDateInvalid": "Neplatné datum splatnosti",
+    "countryInvalid": "Vyberte zemi ze seznamu."
   },
   "auth": {
     "wrongPassword": "Zadané heslo je nesprávné. Zkuste to prosím znovu.",

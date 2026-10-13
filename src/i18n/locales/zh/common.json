@@ -260,7 +260,8 @@
     "exchangeRateUnavailable": "在取得交易日期的汇率之前，无法保存交易",
     "dateInvalid": "无效的日期",
     "valueDateInvalid": "无效的起息日",
-    "maturityDateInvalid": "无效的到期日"
+    "maturityDateInvalid": "无效的到期日",
+    "countryInvalid": "请从列表中选择一个国家/地区。"
   },
   "auth": {
     "wrongPassword": "您输入的密码不正确，请重试。",

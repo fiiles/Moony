@@ -37,6 +37,9 @@ grouping below follows the domain map in `docs/architecture/overview.md`.
 - `016_mcp_pending_refresh` adds a durable follow-up queue for MCP writes. Each domain coalesces
   its earliest affected day; a generation token prevents concurrent imports from losing work.
   It stores no financial facts and never assigns ownership to historical unbatched imports.
+- `017_profile_country` adds `user_profile.country`. A profile that predates it gets `CZ` (an enabled
+  `cz` rule pack, the Czech UI or CZK as main currency) or `SK` (an enabled `sk` pack); every other
+  profile stays NULL.
 - To add one: define `const MIGRATION_0NN: &str = r#"..."#;` (next free
   number) and append a `("0NN_short_name", MIGRATION_0NN)` entry to the `Vec`
   returned by `all_migrations()`. Numbers are zero-padded, sequential, never
@@ -128,7 +131,7 @@ Grouped by owning domain (see the domain map in `overview.md`).
 | Table | Purpose | Notable columns / constraints |
 |---|---|---|
 | `app_config` | Key-value app settings incl. recovery-key hash | `key TEXT PRIMARY KEY`, `value TEXT`; the CoinGecko API key (`api_key_coingecko`) is the only API key still read; `stock_import_formats` holds the custom stock CSV mappings (JSON array, newest first, at most 20; `services/stock_import/formats.rs`); `milestones.mutedKinds` holds the milestone kinds the user turned off (JSON array of kind names; `services/milestones/`); `fx_reference` records the currency stored rates are quoted against (`EUR` since migration 011) |
-| `user_profile` | Single-row user profile and preferences | `INTEGER AUTOINCREMENT` PK (convention exception); `currency DEFAULT 'CZK'` (the main currency; creation and update accept only the 36 codes with an exchange-rate source, `validation.currencyUnsupported`; an older unsupported value is kept as is), `language`, `menu_preferences` JSON, `coingecko_modal_dismissed`, `mcp_server_enabled` gates the local API server, `mcp_server_token` TEXT (NULL until the server is first enabled), `mcp_server_port` INTEGER (NULL = default 41414) |
+| `user_profile` | Single-row user profile and preferences | `INTEGER AUTOINCREMENT` PK (convention exception); `currency DEFAULT 'CZK'` (the main currency; creation and update accept only the 36 codes with an exchange-rate source, `validation.currencyUnsupported`; an older unsupported value is kept as is), `language`, `menu_preferences` JSON, `coingecko_modal_dismissed`, `mcp_server_enabled` gates the local API server, `mcp_server_token` TEXT (NULL until the server is first enabled), `mcp_server_port` INTEGER (NULL = default 41414), `country` TEXT (ISO 3166-1 alpha-2 of the profile, NULL until set in the wizard or Settings; migration 017) |
 
 ### Bank accounts
 

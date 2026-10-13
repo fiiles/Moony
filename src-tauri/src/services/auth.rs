@@ -5,7 +5,7 @@
 
 use crate::db::Database;
 use crate::error::{AppError, Result};
-use crate::models::user::{validate_main_currency, DEFAULT_MAIN_CURRENCY};
+use crate::models::user::{normalize_country, validate_main_currency, DEFAULT_MAIN_CURRENCY};
 use crate::models::{InsertUserProfile, MenuPreferences, UpdateUserProfile, UserProfile};
 use crate::services::crypto;
 use std::fs;
@@ -419,7 +419,7 @@ pub fn get_user_profile(db: &Database) -> Result<Option<UserProfile>> {
         let mut stmt = conn.prepare(
             "SELECT id, name, surname, email, menu_preferences, currency,
                     language, exclude_personal_real_estate, coingecko_modal_dismissed,
-                    mcp_server_enabled, created_at
+                    mcp_server_enabled, created_at, country
              FROM user_profile LIMIT 1",
         )?;
 
@@ -440,6 +440,7 @@ pub fn get_user_profile(db: &Database) -> Result<Option<UserProfile>> {
                 coingecko_modal_dismissed: row.get::<_, i32>(8)? != 0,
                 mcp_server_enabled: row.get::<_, i32>(9)? != 0,
                 created_at: row.get(10)?,
+                country: row.get(11)?,
             })
         });
 
@@ -507,6 +508,11 @@ fn apply_profile_update(conn: &rusqlite::Connection, updates: &UpdateUserProfile
     if let Some(enabled) = updates.mcp_server_enabled {
         set_clauses.push("mcp_server_enabled = ?".to_string());
         params.push(Box::new(enabled as i32));
+    }
+
+    if let Some(ref country) = updates.country {
+        set_clauses.push("country = ?".to_string());
+        params.push(Box::new(normalize_country(country)?));
     }
 
     if set_clauses.is_empty() {
@@ -962,7 +968,8 @@ mod tests {
                 exclude_personal_real_estate INTEGER NOT NULL DEFAULT 0,
                 language TEXT NOT NULL DEFAULT 'en',
                 coingecko_modal_dismissed INTEGER NOT NULL DEFAULT 0,
-                mcp_server_enabled INTEGER NOT NULL DEFAULT 0
+                mcp_server_enabled INTEGER NOT NULL DEFAULT 0,
+                country TEXT
             );
             INSERT INTO user_profile (id, currency) VALUES (1, 'CZK');
             "#,
@@ -971,18 +978,34 @@ mod tests {
         conn
     }
 
-    fn currency_update(code: &str) -> UpdateUserProfile {
+    /// An update that changes nothing; tests set the one field they care about.
+    fn empty_update() -> UpdateUserProfile {
         UpdateUserProfile {
             name: None,
             surname: None,
             email: None,
             menu_preferences: None,
-            currency: Some(code.to_string()),
+            currency: None,
             language: None,
             exclude_personal_real_estate: None,
             coingecko_modal_dismissed: None,
             mcp_server_enabled: None,
+            country: None,
         }
+    }
+
+    fn currency_update(code: &str) -> UpdateUserProfile {
+        UpdateUserProfile {
+            currency: Some(code.to_string()),
+            ..empty_update()
+        }
+    }
+
+    fn stored_country(conn: &rusqlite::Connection) -> Option<String> {
+        conn.query_row("SELECT country FROM user_profile WHERE id = 1", [], |r| {
+            r.get(0)
+        })
+        .expect("country")
     }
 
     fn stored_currency(conn: &rusqlite::Connection) -> String {
@@ -1008,6 +1031,67 @@ mod tests {
         let conn = profile_conn();
         apply_profile_update(&conn, &currency_update("aed")).unwrap();
         assert_eq!(stored_currency(&conn), "AED");
+    }
+
+    #[test]
+    fn the_country_is_stored_upper_case_and_cleared_by_an_empty_string() {
+        let conn = profile_conn();
+        let set = |code: &str| UpdateUserProfile {
+            country: Some(code.to_string()),
+            ..empty_update()
+        };
+        apply_profile_update(&conn, &set("cz")).unwrap();
+        assert_eq!(stored_country(&conn).as_deref(), Some("CZ"));
+        apply_profile_update(&conn, &set("")).unwrap();
+        assert_eq!(stored_country(&conn), None);
+        let err = apply_profile_update(&conn, &set("Narnia")).unwrap_err();
+        assert!(matches!(err, AppError::Validation(key) if key == "validation.countryInvalid"));
+        // A failed update changed nothing.
+        assert_eq!(stored_country(&conn), None);
+    }
+
+    /// The wizard and Settings write the country through `update_user_profile` and the app reads it
+    /// back through `get_user_profile`: on a real (SQLCipher, fully migrated) database, so the
+    /// hand-written SELECT and its column index are exercised too.
+    #[test]
+    fn the_saved_country_comes_back_with_the_profile_and_clearing_it_gives_null() {
+        let dir = tempdir().expect("tempdir");
+        let db = Database::new();
+        let key = crypto::master_key_to_hex(&[7u8; 32]);
+        db.create_with_key(dir.path().join("moony.db"), &key)
+            .expect("create db");
+        db.with_conn(|conn| {
+            conn.execute(
+                "INSERT INTO user_profile (name, surname, email) VALUES ('A', 'B', 'a@b.c')",
+                [],
+            )?;
+            Ok(())
+        })
+        .expect("profile row");
+        let country_of =
+            |updates: UpdateUserProfile| update_user_profile(&db, updates).expect("update").country;
+        let set = |code: &str| UpdateUserProfile {
+            country: Some(code.to_string()),
+            ..empty_update()
+        };
+
+        assert_eq!(get_user_profile(&db).unwrap().unwrap().country, None);
+        assert_eq!(country_of(set("gb")).as_deref(), Some("GB"));
+        assert_eq!(
+            get_user_profile(&db).unwrap().unwrap().country.as_deref(),
+            Some("GB")
+        );
+        // An update that does not mention the country keeps it.
+        assert_eq!(
+            country_of(UpdateUserProfile {
+                name: Some("C".into()),
+                ..empty_update()
+            })
+            .as_deref(),
+            Some("GB")
+        );
+        assert_eq!(country_of(set("")), None);
+        assert_eq!(get_user_profile(&db).unwrap().unwrap().country, None);
     }
 
     #[test]

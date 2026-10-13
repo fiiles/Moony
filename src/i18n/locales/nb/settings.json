@@ -24,7 +24,10 @@
     "surname": "Etternavn",
     "email": "E-post",
     "save": "Lagre endringer",
-    "saving": "Lagrer..."
+    "saving": "Lagrer...",
+    "country": "Land",
+    "countryNone": "Annet / ikke på listen",
+    "countryHint": "Brukes til å vise bankens kontoutskriftsformater først, velge filkoding og sette landsstandarder som oppsigelsesfristen for forsikring."
   },
   "password": {
     "title": "Endre passord",

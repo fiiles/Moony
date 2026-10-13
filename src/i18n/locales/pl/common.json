@@ -260,7 +260,8 @@
     "exchangeRateUnavailable": "Transakcji nie można zapisać, dopóki kursy walut z jej daty nie będą dostępne",
     "dateInvalid": "Nieprawidłowa data",
     "valueDateInvalid": "Nieprawidłowa data waluty",
-    "maturityDateInvalid": "Nieprawidłowa data zapadalności"
+    "maturityDateInvalid": "Nieprawidłowa data zapadalności",
+    "countryInvalid": "Wybierz kraj z listy."
   },
   "auth": {
     "wrongPassword": "Wpisane hasło jest nieprawidłowe. Spróbuj ponownie.",

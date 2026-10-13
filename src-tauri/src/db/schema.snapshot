@@ -755,7 +755,7 @@ CREATE TABLE user_profile (
     mcp_server_enabled INTEGER NOT NULL DEFAULT 0,
     mcp_server_token TEXT,
     mcp_server_port INTEGER
-)
+, country TEXT)
 
 == table watched_stocks ==
 CREATE TABLE watched_stocks (

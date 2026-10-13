@@ -81,6 +81,7 @@ fn all_migrations() -> Vec<(&'static str, &'static str)> {
         ("014_balance_records", MIGRATION_014),
         ("015_one_tag_per_group", MIGRATION_015),
         ("016_mcp_pending_refresh", MIGRATION_016),
+        ("017_profile_country", MIGRATION_017),
     ]
 }
 
@@ -2634,6 +2635,23 @@ CREATE TABLE mcp_pending_refresh (
 );
 "#;
 
+/// 017: the profile remembers its country (ISO 3166-1 alpha-2, upper case). Until now only the
+/// enabled rule packs hinted at it. CSV encoding, the insurance notice default and the order of
+/// the bank presets read it. Profiles that predate the column get CZ or SK from what they already
+/// say (an enabled `cz`/`sk` pack, the Czech UI, CZK as main currency); everyone else stays NULL
+/// and can pick a country in Settings.
+pub(crate) const MIGRATION_017: &str = r#"
+ALTER TABLE user_profile ADD COLUMN country TEXT;
+
+UPDATE user_profile SET country = CASE
+    WHEN EXISTS (SELECT 1 FROM app_config WHERE key = 'rule_packs_enabled' AND value LIKE '%"cz"%') THEN 'CZ'
+    WHEN EXISTS (SELECT 1 FROM app_config WHERE key = 'rule_packs_enabled' AND value LIKE '%"sk"%') THEN 'SK'
+    WHEN language = 'cs' OR currency = 'CZK' THEN 'CZ'
+    ELSE NULL
+END
+WHERE country IS NULL;
+"#;
+
 #[cfg(test)]
 mod migration_012 {
     use super::*;
@@ -2915,5 +2933,85 @@ mod migration_012 {
             (quantity.as_str(), price.as_str(), currency.as_str()),
             ("10", "10", "USD")
         );
+    }
+}
+
+#[cfg(test)]
+mod migration_017 {
+    use super::*;
+
+    /// A database as it was before `017`: every migration that comes earlier in the chain.
+    fn database_before_017() -> Connection {
+        let conn = Connection::open_in_memory().expect("in-memory db");
+        let earlier: Vec<(&str, &str)> = all_migrations()
+            .into_iter()
+            .filter(|(name, _)| *name < "017_profile_country")
+            .collect();
+        run_chain(&conn, &earlier).expect("earlier migrations");
+        conn
+    }
+
+    /// The country a profile gets when the chain runs over a database that already had it.
+    fn country_after_migrating(
+        language: &str,
+        currency: &str,
+        packs: Option<&str>,
+    ) -> Option<String> {
+        let conn = database_before_017();
+        conn.execute(
+            "INSERT INTO user_profile (name, surname, email, currency, language)
+             VALUES ('A', 'B', 'a@b.c', ?1, ?2)",
+            [currency, language],
+        )
+        .expect("profile");
+        if let Some(packs) = packs {
+            conn.execute(
+                "INSERT INTO app_config (key, value) VALUES ('rule_packs_enabled', ?1)",
+                [packs],
+            )
+            .expect("packs");
+        }
+        run_migrations(&conn).expect("migrate to the current chain");
+        conn.query_row("SELECT country FROM user_profile", [], |r| r.get(0))
+            .expect("country")
+    }
+
+    #[test]
+    fn czech_profiles_are_recognised_by_pack_language_or_currency() {
+        let cz = |language, currency, packs| country_after_migrating(language, currency, packs);
+        assert_eq!(
+            cz("en", "EUR", Some(r#"["global","cz"]"#)).as_deref(),
+            Some("CZ")
+        );
+        assert_eq!(cz("cs", "EUR", None).as_deref(), Some("CZ"));
+        assert_eq!(cz("en", "CZK", None).as_deref(), Some("CZ"));
+    }
+
+    #[test]
+    fn a_slovak_pack_gives_sk_and_every_other_profile_stays_unset() {
+        assert_eq!(
+            country_after_migrating("en", "EUR", Some(r#"["global","sk"]"#)).as_deref(),
+            Some("SK")
+        );
+        assert_eq!(
+            country_after_migrating("en", "EUR", Some(r#"["global","de"]"#)),
+            None
+        );
+        assert_eq!(country_after_migrating("en", "USD", None), None);
+    }
+
+    #[test]
+    fn the_column_is_nullable_text_and_a_second_run_changes_nothing() {
+        let conn = database_before_017();
+        run_migrations(&conn).expect("first run");
+        run_migrations(&conn).expect("second run");
+        let declared: String = conn
+            .query_row(
+                "SELECT type FROM pragma_table_info('user_profile') WHERE name = 'country'",
+                [],
+                |r| r.get(0),
+            )
+            .expect("column");
+        assert_eq!(declared, "TEXT");
     }
 }

@@ -2092,12 +2092,20 @@ export type UpdateTransactionCategory = { kind?: FlowKind | null; name: string |
 /**
  * Data for updating user profile (partial updates)
  */
-export type UpdateUserProfile = { name: string | null; surname: string | null; email: string | null; menuPreferences: MenuPreferences | null; currency: string | null; language: string | null; excludePersonalRealEstate: boolean | null; coingeckoModalDismissed: boolean | null; mcpServerEnabled: boolean | null }
+export type UpdateUserProfile = { name: string | null; surname: string | null; email: string | null; menuPreferences: MenuPreferences | null; currency: string | null; language: string | null; excludePersonalRealEstate: boolean | null; coingeckoModalDismissed: boolean | null; mcpServerEnabled: boolean | null; 
+/**
+ * `Some("")` clears the country; otherwise two ASCII letters (stored upper case).
+ */
+country: string | null }
 
 /**
  * User profile stored in database
  */
-export type UserProfile = { id: number; name: string; surname: string; email: string; menuPreferences: MenuPreferences; currency: string; language: string; excludePersonalRealEstate: boolean; coingeckoModalDismissed?: boolean; mcpServerEnabled?: boolean; createdAt: number }
+export type UserProfile = { id: number; name: string; surname: string; email: string; menuPreferences: MenuPreferences; currency: string; language: string; excludePersonalRealEstate: boolean; coingeckoModalDismissed?: boolean; mcpServerEnabled?: boolean; 
+/**
+ * ISO 3166-1 alpha-2 country of the profile (`CZ`), None until set.
+ */
+country: string | null; createdAt: number }
 
 /**
  * A followed stock (row in watched_stocks)

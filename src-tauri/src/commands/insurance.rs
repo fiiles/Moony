@@ -226,7 +226,11 @@ pub async fn add_insurance_document(
 
 /// Delete an insurance document
 #[tauri::command]
-pub async fn delete_insurance_document(db: State<'_, Database>, document_id: String) -> Result<()> {
+pub async fn delete_insurance_document(
+    app: tauri::AppHandle,
+    db: State<'_, Database>,
+    document_id: String,
+) -> Result<()> {
     use std::fs;
 
     // Get file path before deleting
@@ -251,8 +255,22 @@ pub async fn delete_insurance_document(db: State<'_, Database>, document_id: Str
         Ok(())
     })?;
 
-    // Delete file (ignore errors if file doesn't exist)
-    let _ = fs::remove_file(&file_path);
+    // The stored path can be stale (the data folder was renamed by hand), so resolve it the way
+    // `open_insurance_document` does. A missing file is not an error.
+    let target = app
+        .path()
+        .app_data_dir()
+        .ok()
+        .and_then(|dir| {
+            crate::services::document_files::resolve_document_path(
+                &dir,
+                "insurance_documents",
+                &file_path,
+            )
+            .ok()
+        })
+        .unwrap_or_else(|| std::path::PathBuf::from(&file_path));
+    let _ = fs::remove_file(target);
 
     Ok(())
 }

@@ -3,12 +3,12 @@
 //! Everything goes through the `log` facade; `tauri-plugin-log` writes it to the
 //! per-OS app log directory so a bug report can attach a real log file:
 //!
-//! | OS      | Log file                                                          |
-//! |---------|-------------------------------------------------------------------|
-//! | macOS   | `~/Library/Logs/com.filipkral.moony/moony.log`              |
-//! | Windows | `%LOCALAPPDATA%\com.filipkral.moony\logs\moony.log`         |
-//! | Linux   | `$XDG_DATA_HOME/com.filipkral.moony/logs/moony.log`         |
-//! |         | (`~/.local/share/com.filipkral.moony/logs/moony.log`)       |
+//! | OS      | Log file                                                   |
+//! |---------|------------------------------------------------------------|
+//! | macOS   | `~/Library/Logs/com.moonyfinance.desktop/moony.log`        |
+//! | Windows | `%LOCALAPPDATA%\com.moonyfinance.desktop\logs\moony.log`   |
+//! | Linux   | `$XDG_DATA_HOME/com.moonyfinance.desktop/logs/moony.log`   |
+//! |         | (`~/.local/share/com.moonyfinance.desktop/logs/moony.log`) |
 //!
 //! Timestamps are UTC. The file is capped at [`MAX_LOG_FILE_BYTES`] and rotated
 //! to dated archives; only [`ARCHIVED_LOGS_TO_KEEP`] archives are kept, so the

@@ -17,6 +17,7 @@ use db::Database;
 use services::categorization::CategorizationEngine;
 use services::local_api::LocalApiServer;
 use services::logging;
+use tauri::Manager;
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 #[tokio::main]
 pub async fn run() {
@@ -29,7 +30,27 @@ pub async fn run() {
     // The log plugin goes first so every other plugin's `log` output is captured.
     tauri::Builder::default()
         .plugin(logging::plugin())
-        .setup(|_app| {
+        .setup(|app| {
+            // First, before the banner and before any command can open the database: an install
+            // from 0.10.0 or earlier keeps its data under the old identifier. The log plugin is
+            // already registered, so these lines reach the log file.
+            match app.path().app_data_dir() {
+                Ok(dir) => match services::data_dir::migrate_legacy_data_dir(&dir) {
+                    Ok(services::data_dir::Moved::Nothing) => {}
+                    Ok(services::data_dir::Moved::Moved(from)) => log::info!(
+                        "[DATA] moved the data folder from {} to {}",
+                        from.display(),
+                        dir.display()
+                    ),
+                    Ok(services::data_dir::Moved::Copied(from)) => log::warn!(
+                        "[DATA] copied the data folder from {} to {}; what could not be renamed was copied and its original left in the old folder",
+                        from.display(),
+                        dir.display()
+                    ),
+                    Err(e) => log::error!("[DATA] could not move the legacy data folder: {e}"),
+                },
+                Err(e) => log::error!("[DATA] app data dir unavailable: {e}"),
+            }
             logging::log_startup_banner();
             Ok(())
         })

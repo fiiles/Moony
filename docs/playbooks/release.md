@@ -67,6 +67,10 @@ Then, by hand:
       Artifacts land in `src-tauri/target/release/bundle/`.
 - [ ] Migrations added since the last release were tried against a copy of a database written
       by that release (`docs/playbooks/add-db-migration.md`).
+- [ ] The "Upgrading from 0.10.0" paragraph at the top of `releaseBody` in
+      `.github/workflows/release.yml` is for 0.10.x only (the update dialog of an installed 0.10.0
+      shows these notes and Moony does not move the data folder); remove it after the first 0.11
+      release.
 
 ## Version bump
 

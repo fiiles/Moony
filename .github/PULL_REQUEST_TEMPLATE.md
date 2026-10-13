@@ -1,5 +1,5 @@
 <!--
-Thanks for contributing! For anything larger than a small fix, please open an issue first
+Thanks for contributing. For anything larger than a small fix, please open an issue first
 so we can agree on the approach (see CONTRIBUTING.md). The checklist mirrors the gates in
 docs/standards/workflow.md.
 -->

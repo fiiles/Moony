@@ -25,7 +25,7 @@ docs/standards/workflow.md.
 
 ## Licensing
 
-By submitting this pull request I agree to the terms in "Licensing of Contributions" in
+By submitting this pull request I agree to the terms in "Licensing of contributions" in
 `CONTRIBUTING.md`: my contribution is licensed under the AGPL-3.0, and I additionally grant the
 maintainer the right to relicense it under other terms (dual licensing).
 

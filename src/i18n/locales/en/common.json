@@ -271,7 +271,8 @@
     "coingeckoIdConflict": "{{ticker}}: the CoinGecko ID differs from the one stored for this coin.",
     "coingeckoIdForNewCoin": "{{ticker}}: a new coin needs its CoinGecko ID (for example bitcoin) to fetch prices.",
     "stockImportLine": "Line {{line}}: {{reason}}",
-    "stockImportRowFailed": "the row could not be saved."
+    "stockImportRowFailed": "the row could not be saved.",
+    "onboardingFlagUnknown": "Unknown onboarding step."
   },
   "auth": {
     "wrongPassword": "The password you entered is incorrect. Please try again.",

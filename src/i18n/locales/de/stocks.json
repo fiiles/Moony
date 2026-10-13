@@ -740,8 +740,7 @@
       "duplicate": "Derselbe Trade ist bereits in Moony",
       "duplicateById": "Ein Trade mit derselben Broker-ID ist bereits in Moony",
       "duplicateSimilar": "Ein ähnlicher Trade ist bereits in Moony: gleicher Tag und gleiche Menge, Kurs innerhalb von 0,5 %",
-      "cannotParse": "Die Zeile konnte nicht gelesen werden",
-      "writeFailed": "Der Trade konnte nicht geschrieben werden"
+      "cannotParse": "Die Zeile konnte nicht gelesen werden"
     },
     "mcpSource": "MCP"
   },

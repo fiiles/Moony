@@ -271,7 +271,8 @@
     "coingeckoIdConflict": "{{ticker}}：CoinGecko ID がこの暗号資産に保存されているものと異なります。",
     "coingeckoIdForNewCoin": "{{ticker}}：新しい暗号資産の価格を取得するには、CoinGecko ID（例：bitcoin）が必要です。",
     "stockImportLine": "{{line}} 行目：{{reason}}",
-    "stockImportRowFailed": "この行を保存できませんでした。"
+    "stockImportRowFailed": "この行を保存できませんでした。",
+    "onboardingFlagUnknown": "不明な初期設定のステップです。"
   },
   "auth": {
     "wrongPassword": "入力したパスワードが正しくありません。もう一度お試しください。",

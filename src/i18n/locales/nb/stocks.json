@@ -740,8 +740,7 @@
       "duplicate": "Den samme handelen finnes allerede i Moony",
       "duplicateById": "En handel med samme megler-ID finnes allerede i Moony",
       "duplicateSimilar": "En lignende handel finnes allerede i Moony: samme dag og antall, kurs innenfor 0,5 %",
-      "cannotParse": "Raden kunne ikke leses",
-      "writeFailed": "Handelen kunne ikke skrives"
+      "cannotParse": "Raden kunne ikke leses"
     },
     "mcpSource": "MCP"
   },

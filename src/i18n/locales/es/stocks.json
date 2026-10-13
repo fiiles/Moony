@@ -763,8 +763,7 @@
       "duplicate": "La misma operación ya está en Moony",
       "duplicateById": "Ya hay en Moony una operación con el mismo ID del bróker",
       "duplicateSimilar": "Ya hay en Moony una operación similar: mismo día y cantidad, precio dentro del 0,5 %",
-      "cannotParse": "No se pudo leer la fila",
-      "writeFailed": "No se pudo escribir la operación"
+      "cannotParse": "No se pudo leer la fila"
     },
     "mcpSource": "MCP"
   },

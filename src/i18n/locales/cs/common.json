@@ -271,7 +271,8 @@
     "coingeckoIdConflict": "{{ticker}}: CoinGecko ID se liší od uloženého u této kryptoměny.",
     "coingeckoIdForNewCoin": "{{ticker}}: nová kryptoměna potřebuje pro načítání cen své CoinGecko ID (například bitcoin).",
     "stockImportLine": "Řádek {{line}}: {{reason}}",
-    "stockImportRowFailed": "řádek se nepodařilo uložit."
+    "stockImportRowFailed": "řádek se nepodařilo uložit.",
+    "onboardingFlagUnknown": "Neznámý krok úvodního nastavení."
   },
   "auth": {
     "wrongPassword": "Zadané heslo je nesprávné. Zkuste to prosím znovu.",

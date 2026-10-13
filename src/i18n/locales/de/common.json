@@ -271,7 +271,8 @@
     "coingeckoIdConflict": "{{ticker}}: Die CoinGecko-ID weicht von der für diese Kryptowährung gespeicherten ab.",
     "coingeckoIdForNewCoin": "{{ticker}}: Für eine neue Kryptowährung wird die CoinGecko-ID (zum Beispiel bitcoin) benötigt, um Kurse abzurufen.",
     "stockImportLine": "Zeile {{line}}: {{reason}}",
-    "stockImportRowFailed": "die Zeile konnte nicht gespeichert werden."
+    "stockImportRowFailed": "die Zeile konnte nicht gespeichert werden.",
+    "onboardingFlagUnknown": "Unbekannter Einrichtungsschritt."
   },
   "auth": {
     "wrongPassword": "Das eingegebene Passwort ist falsch. Bitte versuchen Sie es erneut.",

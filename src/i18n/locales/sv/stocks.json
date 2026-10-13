@@ -740,8 +740,7 @@
       "duplicate": "Samma affär finns redan i Moony",
       "duplicateById": "En affär med samma mäklar-ID finns redan i Moony",
       "duplicateSimilar": "En liknande affär finns redan i Moony: samma dag och antal, pris inom 0,5 %",
-      "cannotParse": "Raden kunde inte läsas",
-      "writeFailed": "Affären kunde inte skrivas"
+      "cannotParse": "Raden kunde inte läsas"
     },
     "mcpSource": "MCP"
   },

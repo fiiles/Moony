@@ -786,8 +786,7 @@
       "duplicate": "Ta sama transakcja jest już w Moony",
       "duplicateById": "Transakcja z tym samym ID brokera jest już w Moony",
       "duplicateSimilar": "Podobna transakcja jest już w Moony: ten sam dzień i ilość, cena w granicach 0,5 %",
-      "cannotParse": "Nie udało się odczytać wiersza",
-      "writeFailed": "Nie udało się zapisać transakcji"
+      "cannotParse": "Nie udało się odczytać wiersza"
     },
     "mcpSource": "MCP"
   },

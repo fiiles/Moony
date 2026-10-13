@@ -271,7 +271,8 @@
     "coingeckoIdConflict": "{{ticker}}：CoinGecko ID 与该币种已保存的 ID 不一致。",
     "coingeckoIdForNewCoin": "{{ticker}}：新币种需要 CoinGecko ID（例如 bitcoin）才能获取价格。",
     "stockImportLine": "第 {{line}} 行：{{reason}}",
-    "stockImportRowFailed": "无法保存该行。"
+    "stockImportRowFailed": "无法保存该行。",
+    "onboardingFlagUnknown": "未知的初始设置步骤。"
   },
   "auth": {
     "wrongPassword": "您输入的密码不正确，请重试。",

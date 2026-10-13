@@ -271,7 +271,8 @@
     "coingeckoIdConflict": "{{ticker}}: identyfikator CoinGecko różni się od zapisanego dla tej kryptowaluty.",
     "coingeckoIdForNewCoin": "{{ticker}}: nowa kryptowaluta wymaga identyfikatora CoinGecko (na przykład bitcoin), aby pobierać ceny.",
     "stockImportLine": "Wiersz {{line}}: {{reason}}",
-    "stockImportRowFailed": "nie udało się zapisać wiersza."
+    "stockImportRowFailed": "nie udało się zapisać wiersza.",
+    "onboardingFlagUnknown": "Nieznany krok konfiguracji początkowej."
   },
   "auth": {
     "wrongPassword": "Wpisane hasło jest nieprawidłowe. Spróbuj ponownie.",

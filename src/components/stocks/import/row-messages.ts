@@ -40,9 +40,6 @@ const DUPLICATE_KEYS: readonly string[] = [
 ];
 const DUPLICATE_KEY_PREFIX = 'importWizard.row.duplicate';
 const ROW_KEY = /importWizard\.row\.[A-Za-z0-9]+/;
-/** The abort of a write that found a rule broken: "line 12: <reason>". */
-const WRITE_FAILURE = /\bline (\d+): ([\s\S]+)$/;
-const TRANSLATABLE_REASON = /^(validation|importWizard\.row)\.[A-Za-z0-9]+$/;
 
 export interface RowMessageContext {
   /** `stocks` namespace. */
@@ -93,22 +90,14 @@ export function rowMessageLine(message: StockRowMessage, context: RowMessageCont
 
 /**
  * What to tell the user about a failed command. `ApiError` messages are already
- * translated, except a rule the write found broken: the backend then names the
- * row ("line 12: …") and gives a key as the reason, which `ApiError` cannot
- * translate (`importWizard.row.*` lives in the `stocks` namespace).
+ * translated, including the abort of a write that found a rule broken
+ * (`validation.stockImportLine|{"line":12,"reason":"validation.…"}` reads "Line 12: …").
+ * Only a bare `importWizard.row.*` key needs this module: it lives in the `stocks`
+ * namespace, which `ApiError` cannot translate.
  */
 export function importErrorText(error: unknown, context: RowMessageContext): string {
   const raw =
     error instanceof ApiError ? error.raw : error instanceof Error ? error.message : String(error);
-
-  // "line 12: validation.sellExceedsHoldings": say which row, in words. A reason that is
-  // not a key (curated English, technical text) is not shown.
-  const failure = WRITE_FAILURE.exec(raw);
-  if (failure) {
-    const reason = failure[2].trim();
-    const key = TRANSLATABLE_REASON.test(reason) ? reason : 'importWizard.row.writeFailed';
-    return rowMessageLine({ line: Number(failure[1]), key, detail: null }, context);
-  }
 
   const key = ROW_KEY.exec(raw)?.[0];
   if (key) return rowMessageText({ line: 0, key, detail: null }, context);

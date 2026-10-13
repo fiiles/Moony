@@ -271,7 +271,8 @@
     "coingeckoIdConflict": "{{ticker}}: CoinGecko-ID:t skiljer sig från det som sparats för den här kryptovalutan.",
     "coingeckoIdForNewCoin": "{{ticker}}: en ny kryptovaluta behöver sitt CoinGecko-ID (till exempel bitcoin) för att hämta kurser.",
     "stockImportLine": "Rad {{line}}: {{reason}}",
-    "stockImportRowFailed": "raden kunde inte sparas."
+    "stockImportRowFailed": "raden kunde inte sparas.",
+    "onboardingFlagUnknown": "Okänt steg i den inledande konfigurationen."
   },
   "auth": {
     "wrongPassword": "Lösenordet du angav är fel. Försök igen.",

@@ -271,7 +271,8 @@
     "coingeckoIdConflict": "{{ticker}}: el ID de CoinGecko difiere del guardado para esta moneda.",
     "coingeckoIdForNewCoin": "{{ticker}}: una moneda nueva necesita su ID de CoinGecko (por ejemplo bitcoin) para obtener precios.",
     "stockImportLine": "Línea {{line}}: {{reason}}",
-    "stockImportRowFailed": "no se pudo guardar la fila."
+    "stockImportRowFailed": "no se pudo guardar la fila.",
+    "onboardingFlagUnknown": "Paso de configuración inicial desconocido."
   },
   "auth": {
     "wrongPassword": "La contraseña introducida es incorrecta. Inténtalo de nuevo.",

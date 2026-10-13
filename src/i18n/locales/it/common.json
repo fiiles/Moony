@@ -271,7 +271,8 @@
     "coingeckoIdConflict": "{{ticker}}: l'ID CoinGecko è diverso da quello salvato per questa moneta.",
     "coingeckoIdForNewCoin": "{{ticker}}: una nuova moneta richiede il suo ID CoinGecko (ad esempio bitcoin) per recuperare i prezzi.",
     "stockImportLine": "Riga {{line}}: {{reason}}",
-    "stockImportRowFailed": "non è stato possibile salvare la riga."
+    "stockImportRowFailed": "non è stato possibile salvare la riga.",
+    "onboardingFlagUnknown": "Passaggio della configurazione iniziale sconosciuto."
   },
   "auth": {
     "wrongPassword": "La password inserita non è corretta. Riprova.",

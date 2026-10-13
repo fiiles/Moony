@@ -371,7 +371,10 @@
     },
     "columnNone": "— används inte —",
     "pendingPromoted": "Den väntande transaktionen kommer att bokföras",
-    "editColumns": "Redigera kolumner"
+    "editColumns": "Redigera kolumner",
+    "encoding": "Teckenkodning",
+    "encodingAuto": "Identifiera automatiskt ({{encoding}})",
+    "encodingHint": "Ändra om accenter eller icke-latinska tecken ser fel ut i förhandsgranskningen."
   },
   "importHistory": {
     "title": "Importhistorik",

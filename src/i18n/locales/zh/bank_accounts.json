@@ -361,7 +361,10 @@
     },
     "columnNone": "— 不使用 —",
     "pendingPromoted": "待处理的交易将被入账",
-    "editColumns": "编辑列"
+    "editColumns": "编辑列",
+    "encoding": "文本编码",
+    "encodingAuto": "自动识别（{{encoding}}）",
+    "encodingHint": "如果预览中重音字母或非拉丁字符显示不正确，请更改此项。"
   },
   "importHistory": {
     "title": "导入历史",

@@ -9,11 +9,13 @@ import type {
 import {
   AUTO_VALUE,
   EMPTY_MAPPING,
+  ENCODING_CHOICES,
   SAMPLE_CSV,
   balanceDiffers,
   buildImportConfig,
   dateFormatChoices,
   dateFormatLabel,
+  encodingArgument,
   fileNameFromPath,
   formatBalance,
   formatPreviewAmount,
@@ -687,5 +689,32 @@ it('round-trips manually mapped advanced columns and clears them back to null', 
   expect(buildImportConfig(cleared, ins, 0)).toMatchObject({
     counterpartyBankCodeColumn: null,
     counterpartyCountryColumn: null,
+  });
+});
+
+describe('encoding override', () => {
+  it('offers the encodings the import dialog documents, Auto handled separately', () => {
+    expect(ENCODING_CHOICES.map((choice) => choice.value)).toEqual([
+      'UTF-8',
+      'windows-1250',
+      'windows-1252',
+      'ISO-8859-1',
+      'ISO-8859-2',
+      'Shift_JIS',
+      'GBK',
+      'Big5',
+      'EUC-KR',
+      'windows-1251',
+    ]);
+  });
+
+  it('sends nothing for Auto and the chosen name otherwise', () => {
+    expect(encodingArgument(AUTO_VALUE)).toBeUndefined();
+    expect(encodingArgument('Shift_JIS')).toBe('Shift_JIS');
+  });
+
+  it('writes the encoding the file was read with into the preview and import config', () => {
+    const config = buildImportConfig(mapping(), inspection({ encoding: 'Shift_JIS' }), 0);
+    expect(config.encoding).toBe('Shift_JIS');
   });
 });

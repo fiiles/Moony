@@ -461,7 +461,8 @@ pub async fn get_csv_preset_by_institution(
 /// Inspect a CSV file: headers, header row, bank preset, suggested mappings,
 /// date format and decimal separator. `delimiter`, `header_row`, `preset_id`
 /// and `encoding` override the detection when given; `skip_rows` skips data
-/// rows after the header.
+/// rows after the header; `country` (the profile country) picks the legacy
+/// encoding of a file that is not UTF-8.
 #[tauri::command]
 pub async fn parse_csv_file(
     file_path: String,
@@ -470,6 +471,7 @@ pub async fn parse_csv_file(
     header_row: Option<usize>,
     preset_id: Option<String>,
     encoding: Option<String>,
+    country: Option<String>,
 ) -> Result<csv_import::CsvPreviewResult> {
     let bytes = read_csv_file(&file_path)?;
     csv_import::inspect_csv(
@@ -480,6 +482,7 @@ pub async fn parse_csv_file(
             skip_rows: skip_rows.unwrap_or(0),
             preset_id: preset_id.as_deref(),
             encoding: encoding.as_deref(),
+            country: country.as_deref(),
         },
     )
 }

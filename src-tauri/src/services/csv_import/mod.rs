@@ -31,8 +31,10 @@ use crate::services::dedup;
 
 pub use amounts::{clean_and_parse_amount, detect_decimal_separator, AmountError};
 pub use columns::{normalize_header, suggest_column_mappings};
-pub use decode::{decode_csv_content, detect_csv_delimiter, detect_header_row};
-pub use inspect::{decode_for_import, inspect_csv, InspectOptions};
+pub use decode::{
+    decode_csv_content, decode_csv_content_for_country, detect_csv_delimiter, detect_header_row,
+};
+pub use inspect::{decode_for_import, decode_for_import_in, inspect_csv, InspectOptions};
 pub use rows::{parse_rows, ParsedCsv, ParsedRow, RowState};
 pub use types::{
     CsvCategoryOverride, CsvDateRange, CsvImportConfig, CsvImportPreview, CsvImportResult,

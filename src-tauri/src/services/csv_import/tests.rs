@@ -1789,15 +1789,43 @@ fn a_repeating_id_column_is_not_suggested_as_transaction_id() {
 
 #[test]
 fn windows_1250_file_is_decoded_with_the_czech_preset_encoding() {
-    // ČS exports in Windows-1250 are not valid UTF-8; the preset's encoding
-    // applies and the diacritics survive.
+    // ČS exports in Windows-1250 are not valid UTF-8; with the Czech profile
+    // country the diacritics survive and the preset is recognised from them.
     let text = "Datum zaúčtování;Částka;Měna;Název protiúčtu;Číslo protiúčtu;Zpráva pro příjemce;Variabilní symbol;Typ transakce\n01.09.2026;-89,00;CZK;Příjemce Žluťoučký;;Nákup;;Platba kartou\n";
     let (bytes, _, _) = encoding_rs::WINDOWS_1250.encode(text);
     assert!(std::str::from_utf8(&bytes).is_err());
-    let r = inspect_csv(&bytes, &InspectOptions::default()).unwrap();
+    let r = inspect_csv(
+        &bytes,
+        &InspectOptions {
+            country: Some("CZ"),
+            ..Default::default()
+        },
+    )
+    .unwrap();
     assert_eq!(r.encoding, "windows-1250");
     assert_eq!(r.detected_preset_id.as_deref(), Some("ceska-sporitelna"));
     assert_eq!(r.sample_rows[0][3], "Příjemce Žluťoučký");
+}
+
+#[test]
+fn a_preset_that_pins_windows_1252_overrides_the_country_guess() {
+    // A Sparkasse export in Windows-1252 opened by a Czech profile: the first read (Windows-1250)
+    // still matches the preset by its ASCII headers, and the preset's encoding re-reads the file
+    // so that "£" is not turned into "Ł".
+    let text = "Buchungstag;Verwendungszweck;Beguenstigter/Zahlungspflichtiger;Betrag\n01.09.26;Zahlung £5;Café London;-5,00\n";
+    let (bytes, _, _) = encoding_rs::WINDOWS_1252.encode(text);
+    assert!(std::str::from_utf8(&bytes).is_err());
+    let r = inspect_csv(
+        &bytes,
+        &InspectOptions {
+            country: Some("CZ"),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    assert_eq!(r.detected_preset_id.as_deref(), Some("sparkasse"));
+    assert_eq!(r.encoding, "windows-1252");
+    assert_eq!(r.sample_rows[0][1], "Zahlung £5");
 }
 
 #[test]
@@ -2186,5 +2214,55 @@ fn a_us_statement_without_ibans_imports_its_own_account_transfers_as_internal_tr
             None,
             Some("cat_internal_transfers")
         ]
+    );
+}
+
+#[test]
+fn a_named_encoding_is_used_as_given_and_the_country_picks_the_legacy_fallback() {
+    use encoding_rs::{SHIFT_JIS, WINDOWS_1250};
+
+    let (sjis, _, _) = SHIFT_JIS.encode("日付,摘要,金額\n2026/10/12,コンビニ,-500\n");
+    // Detection with the profile country.
+    let r = inspect_csv(
+        &sjis,
+        &InspectOptions {
+            country: Some("JP"),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    assert_eq!(r.encoding, "Shift_JIS");
+    assert_eq!(r.headers, vec!["日付", "摘要", "金額"]);
+    // Without a country the same bytes are read as Windows-1252...
+    let r = inspect_csv(&sjis, &InspectOptions::default()).unwrap();
+    assert_eq!(r.encoding, "windows-1252");
+    // ...until the user names the encoding.
+    let r = inspect_csv(
+        &sjis,
+        &InspectOptions {
+            encoding: Some("Shift_JIS"),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    assert_eq!(
+        (r.encoding.as_str(), r.headers[0].as_str()),
+        ("Shift_JIS", "日付")
+    );
+
+    // A named encoding beats valid UTF-8, and a lossy UTF-8 read is allowed when asked for.
+    let forced = decode_for_import_in("Částka".as_bytes(), Some("windows-1250"), None, None);
+    assert_eq!(forced.encoding, "windows-1250");
+    assert_ne!(forced.text, "Částka");
+    let lossy = decode_for_import_in(&[0x4B, 0xF8], Some("UTF-8"), None, None);
+    assert_eq!(
+        (lossy.encoding, lossy.text.as_str()),
+        ("UTF-8", "K\u{FFFD}")
+    );
+    // Poland reads an unpinned file as Windows-1250.
+    let (cp1250, _, _) = WINDOWS_1250.encode("Částka;Datum\n");
+    assert_eq!(
+        decode_for_import_in(&cp1250, None, None, Some("PL")).text,
+        "Částka;Datum\n"
     );
 }

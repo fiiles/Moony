@@ -11,7 +11,8 @@ use crate::services::date_parser;
 use super::amounts::detect_decimal_separator;
 use super::columns::{find_column, suggest_column_mappings};
 use super::decode::{
-    decode_csv_content, detect_csv_delimiter, detect_header_row, read_headers, DecodedCsv,
+    decode_csv_content_for_country, decode_forced, detect_csv_delimiter, detect_header_row,
+    read_headers, DecodedCsv,
 };
 use super::rows::{data_records, has_duplicates, SAMPLE_ROWS};
 use super::types::CsvPreviewResult;
@@ -28,23 +29,42 @@ pub struct InspectOptions<'a> {
     pub preset_id: Option<&'a str>,
     /// Force a text encoding.
     pub encoding: Option<&'a str>,
+    /// ISO 3166-1 alpha-2 country of the profile: picks the legacy encoding of a file that is
+    /// not UTF-8.
+    pub country: Option<&'a str>,
 }
 
-/// Decode a file for import or inspection.
-///
-/// Valid UTF-8 (or a BOM) decides on its own. For legacy encodings the header
-/// row of a first decode is matched against the presets, and when the matching
-/// preset names a different encoding the file is decoded again with it — a
-/// Windows-1252 export of a German bank must not be read as Windows-1250 just
-/// because that comes first in the fallback order. Deterministic for a given
-/// file, so the inspection and the later import agree.
+/// [`decode_for_import_in`] without a country (the encoding is named or the profile has none).
 pub fn decode_for_import(
     bytes: &[u8],
     encoding: Option<&str>,
     forced_preset: Option<&CsvPreset>,
 ) -> DecodedCsv {
-    let hint = encoding.or(forced_preset.map(|p| p.encoding.as_str()));
-    let first = decode_csv_content(bytes, hint);
+    decode_for_import_in(bytes, encoding, forced_preset, None)
+}
+
+/// Decode a file for import or inspection.
+///
+/// An encoding the caller names is used as given, even when the bytes also read as UTF-8 (the
+/// import dialog's override, and the encoding a previous inspection reported). Otherwise valid
+/// UTF-8 (or a BOM) decides on its own. For legacy encodings the header row of a first decode is
+/// matched against the presets, and when the matching preset names a different encoding the file
+/// is decoded again with it — a Windows-1252 export of a German bank must not be read as
+/// Windows-1250 just because that is the guess for the profile country. `country` picks the legacy
+/// fallback. Deterministic for a given file, so the inspection and the later import agree.
+pub fn decode_for_import_in(
+    bytes: &[u8],
+    encoding: Option<&str>,
+    forced_preset: Option<&CsvPreset>,
+    country: Option<&str>,
+) -> DecodedCsv {
+    if let Some(forced) =
+        encoding.and_then(|label| encoding_rs::Encoding::for_label(label.trim().as_bytes()))
+    {
+        return decode_forced(bytes, forced);
+    }
+    let hint = forced_preset.map(|p| p.encoding.as_str());
+    let first = decode_csv_content_for_country(bytes, hint, country);
     if encoding.is_some() || first.encoding == "UTF-8" || first.encoding.starts_with("UTF-16") {
         return first;
     }
@@ -57,7 +77,7 @@ pub fn decode_for_import(
         .and_then(|p| encoding_rs::Encoding::for_label(p.encoding.as_bytes()))
         .filter(|enc| *enc != encoding_rs::UTF_8 && enc.name() != first.encoding);
     match preferred {
-        Some(enc) => decode_csv_content(bytes, Some(enc.name())),
+        Some(enc) => decode_csv_content_for_country(bytes, Some(enc.name()), country),
         None => first,
     }
 }
@@ -133,7 +153,7 @@ fn cells_of<'a>(
 /// user can correct.
 pub fn inspect_csv(bytes: &[u8], options: &InspectOptions<'_>) -> Result<CsvPreviewResult> {
     let forced_preset = options.preset_id.and_then(csv_presets::get_preset);
-    let decoded = decode_for_import(bytes, options.encoding, forced_preset);
+    let decoded = decode_for_import_in(bytes, options.encoding, forced_preset, options.country);
     let content = &decoded.text;
 
     let delimiter = options

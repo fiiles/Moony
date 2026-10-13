@@ -45,6 +45,29 @@ export const DATE_FORMATS: ReadonlyArray<{ value: string; label: string }> = [
   { value: '%y-%m-%d', label: 'YY-MM-DD' },
 ];
 
+/**
+ * Text encodings offered next to "Auto". The names are what the backend resolves through
+ * `encoding_rs`, so they are notation and not translated; `ISO-8859-1` is read as Windows-1252,
+ * its superset.
+ */
+export const ENCODING_CHOICES: ReadonlyArray<{ value: string; label: string }> = [
+  { value: 'UTF-8', label: 'UTF-8' },
+  { value: 'windows-1250', label: 'Windows-1250' },
+  { value: 'windows-1252', label: 'Windows-1252' },
+  { value: 'ISO-8859-1', label: 'ISO-8859-1' },
+  { value: 'ISO-8859-2', label: 'ISO-8859-2' },
+  { value: 'Shift_JIS', label: 'Shift_JIS' },
+  { value: 'GBK', label: 'GBK' },
+  { value: 'Big5', label: 'Big5' },
+  { value: 'EUC-KR', label: 'EUC-KR' },
+  { value: 'windows-1251', label: 'Windows-1251' },
+];
+
+/** The `encoding` argument of `parseCsvFile` for a select value: nothing for Auto. */
+export function encodingArgument(choice: string): string | undefined {
+  return choice === AUTO_VALUE ? undefined : choice;
+}
+
 export type DecimalSetting = typeof AUTO_VALUE | ',' | '.';
 
 /** Everything the user can change on step 2 (column names are CSV header texts, '' = none). */

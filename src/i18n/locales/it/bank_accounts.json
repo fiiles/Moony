@@ -381,7 +381,10 @@
     },
     "columnNone": "— non usata —",
     "pendingPromoted": "Il movimento in sospeso verrà contabilizzato",
-    "editColumns": "Modifica colonne"
+    "editColumns": "Modifica colonne",
+    "encoding": "Codifica del testo",
+    "encodingAuto": "Rilevamento automatico ({{encoding}})",
+    "encodingHint": "Cambiala se gli accenti o le lettere non latine appaiono errati nell'anteprima."
   },
   "importHistory": {
     "title": "Storico degli import",

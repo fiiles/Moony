@@ -943,7 +943,8 @@ export const bankAccountsApi = {
   /**
    * Inspect a file. Every argument after `filePath` overrides a detection:
    * `delimiter`, `skipRows` (data rows after the header), `headerRow` (0-based line),
-   * `presetId` (apply this bank preset instead of auto-detecting), `encoding`.
+   * `presetId` (apply this bank preset instead of auto-detecting), `encoding`,
+   * `country` (the profile country: picks the legacy encoding of a file that is not UTF-8).
    */
   parseCsvFile: (
     filePath: string,
@@ -951,7 +952,8 @@ export const bankAccountsApi = {
     skipRows?: number,
     headerRow?: number,
     presetId?: string,
-    encoding?: string
+    encoding?: string,
+    country?: string
   ) =>
     tauriInvoke<CsvPreviewResult>('parse_csv_file', {
       filePath,
@@ -960,6 +962,7 @@ export const bankAccountsApi = {
       headerRow,
       presetId,
       encoding,
+      country,
     }),
   /** Dry run: parsed rows with ok / error / duplicate / skipped status; writes nothing. */
   previewCsvImport: (accountId: string, filePath: string, config: CsvImportConfigInput) =>

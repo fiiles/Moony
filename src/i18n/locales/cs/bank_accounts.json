@@ -384,7 +384,10 @@
     },
     "columnNone": "— nepoužít —",
     "pendingPromoted": "Čekající transakce bude zaúčtována",
-    "editColumns": "Upravit sloupce"
+    "editColumns": "Upravit sloupce",
+    "encoding": "Kódování textu",
+    "encodingAuto": "Automaticky ({{encoding}})",
+    "encodingHint": "Změňte, pokud jsou v náhledu špatně vidět diakritika nebo jiná písma."
   },
   "importHistory": {
     "title": "Historie importů",

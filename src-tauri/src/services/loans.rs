@@ -259,6 +259,16 @@ pub fn get_loan(conn: &Connection, id: &str, today: i64) -> Result<Loan> {
         .ok_or_else(|| AppError::NotFound("Loan not found".into()))
 }
 
+/// The start day of a loan: the first day its history changes when the loan is edited or
+/// deleted. `None` for a loan that does not exist.
+pub fn loan_start_date(conn: &Connection, id: &str) -> Result<Option<i64>> {
+    Ok(conn
+        .query_row("SELECT start_date FROM loans WHERE id = ?1", [id], |row| {
+            row.get(0)
+        })
+        .optional()?)
+}
+
 /// Dates that depend on the effective start (which may be defaulted or kept).
 fn check_dates(start: i64, end: Option<i64>, anchor_date: Option<i64>) -> Result<()> {
     if let Some(end) = end {
@@ -675,6 +685,19 @@ mod tests {
             rusqlite::params![id, currency, day("2020-01-15") + 9 * 3_600],
         )
         .expect("insert loan");
+    }
+
+    #[test]
+    fn the_start_date_of_a_loan_is_readable_before_it_changes() {
+        let conn = setup_test_db();
+        let mut data = valid_insert();
+        data.start_date = Some(day("2021-03-04"));
+        let loan = create_loan(&conn, &data).unwrap();
+        assert_eq!(
+            loan_start_date(&conn, &loan.id).unwrap(),
+            Some(day("2021-03-04"))
+        );
+        assert_eq!(loan_start_date(&conn, "missing").unwrap(), None);
     }
 
     #[test]

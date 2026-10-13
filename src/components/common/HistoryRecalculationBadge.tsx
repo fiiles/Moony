@@ -4,8 +4,8 @@ import { Badge } from '@/components/ui/badge';
 import { useHistoryRecalculation } from '@/hooks/use-history-recalculation';
 
 /**
- * Header badge shown while the backend rebuilds a stock ticker's history after a transaction
- * change. Same pattern as `SyncStatusBadge`: nothing when idle.
+ * Header badge shown while the backend rebuilds a stock or crypto ticker's history after a
+ * transaction change. Same pattern as `SyncStatusBadge`: nothing when idle.
  */
 export function HistoryRecalculationBadge() {
   const { t } = useTranslation('common');

@@ -8,7 +8,7 @@ use crate::models::{
     TransactionFilters, TransactionQueryResult,
 };
 use rusqlite::params;
-use tauri::State;
+use tauri::{AppHandle, State};
 use uuid::Uuid;
 
 // ============================================================================
@@ -21,6 +21,8 @@ use crate::services::bank_accounts as bank_service;
 use crate::services::categorization::own_accounts;
 use crate::services::csv_import;
 use crate::services::csv_presets;
+use crate::services::history_plan;
+use crate::services::history_recalc::{HistoryRecalc, Job};
 
 /// Keep the categorization engine's own-account IBANs in step with the
 /// accounts table: they used to be read only at unlock, so an account
@@ -178,7 +180,9 @@ pub async fn get_bank_account(
 /// Create a new bank account
 #[tauri::command]
 pub async fn create_bank_account(
+    app: AppHandle,
     db: State<'_, Database>,
+    recalc: State<'_, HistoryRecalc>,
     engine: State<'_, CategorizationState>,
     data: InsertBankAccount,
 ) -> Result<BankAccount> {
@@ -191,13 +195,20 @@ pub async fn create_bank_account(
     // 2. Handle side effects (portfolio updates)
     portfolio::update_todays_snapshot(&db).await.ok();
 
+    // 3. The opening record's day (an undated balance counts on every day)
+    if let Some(job) = history_plan::account_created(&result) {
+        portfolio::schedule_history_rebuild(&app, &db, &recalc, vec![job]);
+    }
+
     Ok(result)
 }
 
 /// Update an existing bank account
 #[tauri::command]
 pub async fn update_bank_account(
+    app: AppHandle,
     db: State<'_, Database>,
+    recalc: State<'_, HistoryRecalc>,
     engine: State<'_, CategorizationState>,
     id: String,
     data: InsertBankAccount,
@@ -206,11 +217,20 @@ pub async fn update_bank_account(
     data.validate()?;
 
     // 2. Delegate to service layer
-    let result = db.with_conn(|conn| bank_service::update_account(conn, &id, &data))?;
+    let (before, result) = db.with_conn(|conn| {
+        let before = bank_service::get_account_by_id(conn, &id)?;
+        let updated = bank_service::update_account(conn, &id, &data)?;
+        Ok((before, updated))
+    })?;
     refresh_own_ibans(&db, &engine);
 
     // 3. Handle side effects (portfolio updates)
     portfolio::update_todays_snapshot(&db).await.ok();
+
+    // 4. Leaving or entering the balance, or a currency change, moves every day
+    if let Some(job) = history_plan::account_updated(&before, &result) {
+        portfolio::schedule_history_rebuild(&app, &db, &recalc, vec![job]);
+    }
 
     Ok(result)
 }
@@ -218,7 +238,9 @@ pub async fn update_bank_account(
 /// Delete a bank account and all its transactions
 #[tauri::command]
 pub async fn delete_bank_account(
+    app: AppHandle,
     db: State<'_, Database>,
+    recalc: State<'_, HistoryRecalc>,
     engine: State<'_, CategorizationState>,
     id: String,
 ) -> Result<()> {
@@ -228,6 +250,9 @@ pub async fn delete_bank_account(
 
     // 2. Handle side effects (portfolio updates)
     portfolio::update_todays_snapshot(&db).await.ok();
+
+    // 3. The account leaves the savings of every day it was counted on
+    portfolio::schedule_history_rebuild(&app, &db, &recalc, vec![history_plan::account_deleted()]);
 
     Ok(())
 }
@@ -570,19 +595,41 @@ pub async fn get_balance_records(
 /// Record a dated balance (by hand or from a statement); returns the refreshed account.
 #[tauri::command]
 pub async fn record_bank_account_balance(
+    app: AppHandle,
     db: State<'_, Database>,
+    recalc: State<'_, HistoryRecalc>,
     account_id: String,
     data: crate::models::bank_accounts::InsertBalanceRecord,
 ) -> Result<BankAccount> {
     data.validate()?;
-    db.with_conn(|conn| bank_service::record_balance(conn, &account_id, &data))
+    let (before, account) = db.with_conn(|conn| {
+        let before = bank_service::get_account_by_id(conn, &account_id)?;
+        let account = bank_service::record_balance(conn, &account_id, &data)?;
+        Ok((before, account))
+    })?;
+    // The record holds from its day on (a statement balance from a CSV import comes this way)
+    portfolio::schedule_history_rebuild(
+        &app,
+        &db,
+        &recalc,
+        vec![history_plan::balance_recorded(&before, data.as_of)],
+    );
+    Ok(account)
 }
 
 /// Delete one balance record; returns the account with the re-mirrored balance.
 #[tauri::command]
 pub async fn delete_balance_record(
+    app: AppHandle,
     db: State<'_, Database>,
+    recalc: State<'_, HistoryRecalc>,
     record_id: String,
 ) -> Result<BankAccount> {
-    db.with_conn(|conn| bank_service::delete_balance_record(conn, &record_id))
+    let (account, as_of) = db.with_conn(|conn| {
+        let as_of = bank_service::balance_record_day(conn, &record_id)?;
+        let account = bank_service::delete_balance_record(conn, &record_id)?;
+        Ok((account, as_of))
+    })?;
+    portfolio::schedule_history_rebuild(&app, &db, &recalc, vec![Job::Days(as_of)]);
+    Ok(account)
 }

@@ -93,14 +93,6 @@ pub fn crypto_identities(conn: &Connection) -> Result<Vec<(String, String)>> {
     Ok(rows)
 }
 
-pub fn earliest_other_asset_date(conn: &Connection) -> Result<Option<i64>> {
-    Ok(conn.query_row(
-        "SELECT MIN(transaction_date) FROM other_asset_transactions",
-        [],
-        |r| r.get(0),
-    )?)
-}
-
 /// A failed partial API response must not mark durable work complete. A manually overridden
 /// price is already authoritative and does not depend on a quote provider being available.
 pub fn require_current_stock_prices(conn: &Connection, tickers: &[String], now: i64) -> Result<()> {

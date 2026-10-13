@@ -14,7 +14,7 @@ use tauri::{AppHandle, Emitter, State};
 use crate::commands::portfolio;
 use crate::db::Database;
 use crate::error::{AppError, Result};
-use crate::services::history_recalc::HistoryRecalc;
+use crate::services::history_recalc::{HistoryRecalc, Job};
 use crate::services::stock_import::{
     batches, formats, import, inspect, instruments, parse, preview, SavedStockImportFormat,
     StockCsvInspectOptions, StockCsvInspection, StockImportBatch, StockImportConfig,
@@ -54,8 +54,11 @@ async fn after_stock_change(
     if let Some(day) = earliest_day {
         let unique: BTreeSet<String> = tickers.into_iter().collect();
         if !unique.is_empty() {
-            let jobs = unique.into_iter().map(|ticker| (ticker, day)).collect();
-            portfolio::schedule_stock_history_rebuild(app, db, recalc, jobs);
+            let jobs = unique
+                .into_iter()
+                .map(|ticker| Job::StockTicker(ticker, day))
+                .collect();
+            portfolio::schedule_history_rebuild(app, db, recalc, jobs);
         }
     }
 

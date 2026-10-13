@@ -28,6 +28,9 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       setIsSyncing(true);
       setProgress({ current: 0, total: 0 });
 
+      // The command plans and queues what the start needs (the one-time rebuild of the whole
+      // history, else the missing days) and returns at once; the rebuild runs in the background
+      // and `recalculation-complete` (below) refetches the views when a batch is done.
       const result = await portfolioApi.startBackfill();
 
       setProgress({
@@ -35,21 +38,15 @@ export function SyncProvider({ children }: { children: ReactNode }) {
         total: result.total_days,
       });
       setLastResult(result);
-
-      // If we processed any days, invalidate portfolio queries to refresh dashboard
-      if (result.days_processed > 0) {
-        queryClient.invalidateQueries({ queryKey: ['portfolio-history'] });
-        queryClient.invalidateQueries({ queryKey: ['portfolio-metrics'] });
-      }
     } catch (error) {
       console.error('[Sync] Backfill failed:', error);
     } finally {
       isSyncingRef.current = false;
       setIsSyncing(false);
     }
-  }, [queryClient]);
+  }, []);
 
-  // Auto-run on mount (after login): refresh stale prices then backfill history
+  // Auto-run on mount (after login): refresh stale prices then queue the history rebuild
   useEffect(() => {
     if (hasRun.current) return;
     hasRun.current = true;
@@ -79,7 +76,8 @@ export function SyncProvider({ children }: { children: ReactNode }) {
         console.error('[Sync] Auto price refresh failed:', error);
       }
 
-      // Step 2: backfill missing historical snapshots (prices are now fresh)
+      // Step 2: queue the history rebuild, the whole history once and later the missing days
+      // (prices are now fresh)
       await startBackfill();
     };
 
@@ -127,6 +125,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const domainKeys: Record<string, string[][]> = {
       bank: MONEY_FLOW_KEYS.map((key) => [key]),
+      'bank-accounts': MONEY_FLOW_KEYS.map((key) => [key]),
       stocks: [
         ['investments'],
         ['investment'],

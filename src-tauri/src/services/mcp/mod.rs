@@ -615,10 +615,12 @@ impl MoonyMcp {
         &self,
         Parameters(args): Parameters<bank_accounts::BankAccountCreateArgs>,
     ) -> Result<CallToolResult, McpError> {
-        let result = self.write_conn("bank", None, |conn| {
+        // A dated opening balance is the first balance record of the account, an undated one
+        // counts on every day (no date: the history is rebuilt from its first fact).
+        let result = self.write_conn("bank-accounts", args.balance_as_of, |conn| {
             bank_accounts::bank_account_create(conn, &args)
         });
-        self.create_tool_result("bank", result)
+        self.create_tool_result("bank-accounts", result)
     }
 
     #[tool(
@@ -733,6 +735,7 @@ impl MoonyMcp {
         &self,
         Parameters(args): Parameters<crate::models::InsertBond>,
     ) -> Result<CallToolResult, McpError> {
+        // Bonds have no purchase date: no date, the history is rebuilt from its first fact.
         let result = self.write_conn("bonds", None, |conn| bonds::bond_create(conn, &args));
         self.create_tool_result("bonds", result)
     }
@@ -744,7 +747,11 @@ impl MoonyMcp {
         &self,
         Parameters(args): Parameters<crate::models::InsertLoan>,
     ) -> Result<CallToolResult, McpError> {
-        let result = self.write_conn("loans", None, |conn| loans::loan_create(conn, &args));
+        // The loan counts from its start day (today when it has none: no history to repair).
+        let start = args
+            .start_date
+            .unwrap_or_else(crate::services::loan_amortization::today_utc_day);
+        let result = self.write_conn("loans", Some(start), |conn| loans::loan_create(conn, &args));
         self.create_tool_result("loans", result)
     }
 
@@ -755,7 +762,11 @@ impl MoonyMcp {
         &self,
         Parameters(args): Parameters<real_estate::RealEstateCreateArgs>,
     ) -> Result<CallToolResult, McpError> {
-        let result = self.write_conn("real-estate", None, |conn| {
+        // The value line starts at the purchase date (its first estimate is dated today).
+        let from = args
+            .purchase_date
+            .unwrap_or_else(crate::services::loan_amortization::today_utc_day);
+        let result = self.write_conn("real-estate", Some(from), |conn| {
             real_estate::real_estate_create(conn, &args)
         });
         self.create_tool_result("real-estate", result)
@@ -768,7 +779,13 @@ impl MoonyMcp {
         &self,
         Parameters(args): Parameters<other_assets::OtherAssetCreateArgs>,
     ) -> Result<CallToolResult, McpError> {
-        let result = self.write_conn("other-assets", None, |conn| {
+        // The initial transaction dates the asset's first quantity: history from its day (an
+        // asset without one is not counted until a transaction import).
+        let earliest = args
+            .initial_transaction
+            .as_ref()
+            .map(|transaction| transaction.transaction_date);
+        let result = self.write_conn("other-assets", earliest, |conn| {
             other_assets::other_asset_create(conn, &args)
         });
         self.create_tool_result("other-assets", result)

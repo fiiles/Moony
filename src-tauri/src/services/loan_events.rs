@@ -310,8 +310,9 @@ pub fn add_event(conn: &Connection, data: &InsertLoanEvent, today: i64) -> Resul
 
 /// Remove an event. Nothing of it stays: a manual record re-mirrors the anchor
 /// columns, and an event that changed the loan's rate or payment hands the
-/// terms it replaced on and returns the loan's current terms to what is left.
-pub fn delete_event(conn: &Connection, id: &str) -> Result<()> {
+/// terms it replaced on and returns the loan's current terms to what is left. Returns
+/// the day of the removed event: the first day the loan's history changes.
+pub fn delete_event(conn: &Connection, id: &str) -> Result<i64> {
     let event: LoanEvent = conn
         .query_row(
             &format!("SELECT {COLUMNS} FROM loan_events WHERE id = ?1"),
@@ -388,7 +389,7 @@ pub fn delete_event(conn: &Connection, id: &str) -> Result<()> {
         now,
     )?;
     tx.commit()?;
-    Ok(())
+    Ok(event.event_day)
 }
 
 #[cfg(test)]

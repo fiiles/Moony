@@ -1733,8 +1733,8 @@ export interface McpDataChangedPayload {
   earliestDate: number | null;
 }
 
-// Payload for the `history-recalculation` event emitted by the background rebuild of a stock
-// ticker's value history (src-tauri/src/services/history_recalc.rs). `running` when the
+// Payload for the `history-recalculation` event emitted by the background rebuild of a stock or
+// crypto ticker's value history (src-tauri/src/services/history_recalc.rs). `running` when the
 // ticker's rebuild starts, then `done` (or `failed`) when its batch finishes.
 export type HistoryRecalculationStatus = 'running' | 'done' | 'failed';
 

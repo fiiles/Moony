@@ -1,9 +1,12 @@
 //! Bond commands
 
+use crate::commands::portfolio::schedule_history_rebuild;
 use crate::db::Database;
 use crate::error::{AppError, Result};
 use crate::models::{Bond, InsertBond};
-use tauri::State;
+use crate::services::history_plan;
+use crate::services::history_recalc::HistoryRecalc;
+use tauri::{AppHandle, State};
 
 /// Get all bonds
 #[tauri::command]
@@ -35,24 +38,47 @@ pub async fn get_all_bonds(db: State<'_, Database>) -> Result<Vec<Bond>> {
 
 /// Create bond
 #[tauri::command]
-pub async fn create_bond(db: State<'_, Database>, data: InsertBond) -> Result<Bond> {
-    db.with_conn(|conn| crate::services::bonds::create_bond(conn, &data))
+pub async fn create_bond(
+    app: AppHandle,
+    db: State<'_, Database>,
+    recalc: State<'_, HistoryRecalc>,
+    data: InsertBond,
+) -> Result<Bond> {
+    let created = db.with_conn(|conn| crate::services::bonds::create_bond(conn, &data))?;
+    // Bonds have no purchase date: they carry their current value on every day
+    schedule_history_rebuild(&app, &db, &recalc, vec![history_plan::bond_changed()]);
+    Ok(created)
 }
 
 /// Update bond
 #[tauri::command]
-pub async fn update_bond(db: State<'_, Database>, id: String, data: InsertBond) -> Result<Bond> {
-    db.with_conn(|conn| crate::services::bonds::update_bond(conn, &id, &data))
+pub async fn update_bond(
+    app: AppHandle,
+    db: State<'_, Database>,
+    recalc: State<'_, HistoryRecalc>,
+    id: String,
+    data: InsertBond,
+) -> Result<Bond> {
+    let updated = db.with_conn(|conn| crate::services::bonds::update_bond(conn, &id, &data))?;
+    schedule_history_rebuild(&app, &db, &recalc, vec![history_plan::bond_changed()]);
+    Ok(updated)
 }
 
 /// Delete bond
 #[tauri::command]
-pub async fn delete_bond(db: State<'_, Database>, id: String) -> Result<()> {
+pub async fn delete_bond(
+    app: AppHandle,
+    db: State<'_, Database>,
+    recalc: State<'_, HistoryRecalc>,
+    id: String,
+) -> Result<()> {
     db.with_conn(|conn| {
         let changes = conn.execute("DELETE FROM bonds WHERE id = ?1", [&id])?;
         if changes == 0 {
             return Err(AppError::NotFound("Bond not found".into()));
         }
         Ok(())
-    })
+    })?;
+    schedule_history_rebuild(&app, &db, &recalc, vec![history_plan::bond_changed()]);
+    Ok(())
 }

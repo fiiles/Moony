@@ -76,6 +76,15 @@ below), so keep the `moony.db.bak-<time>` copy until you have checked your numbe
   (through IWDA.L) as a dotted line and name how far ahead or behind it you were. The prices are
   fetched from Yahoo when you switch the index on and are not stored; offline the page says the
   index could not be loaded.
+- **First-run welcome.** The first run opens with a short brand animation that you can skip
+  (reduced motion skips it) and that leads into the setup wizard. The language choice has a
+  header of its own in the intro and in the wizard, the fourth step is called "What to track", and
+  the currency fields look like the other selects while staying searchable. Closing the statement
+  import in the last step no longer finishes the setup: the account you created stays, its fields
+  become read-only, the import can be reopened for the same account without creating a duplicate,
+  and a separate button enters the app.
+- **Page transitions.** A page fades and slides in over 0.4 seconds when you move between pages in
+  the main window; reduced motion turns it off.
 
 ### Fixed
 
@@ -174,6 +183,10 @@ below), so keep the `moony.db.bak-<time>` copy until you have checked your numbe
   assignments of that group are removed (tags themselves are kept); the database is copied next
   to itself first, as for any migration. For overlapping labels use tags without a group, or
   two groups.
+- **Tags are assigned one position at a time.** The assign dialog lists your positions with a search
+  box: click a position and pick its tags (one choice per group, any number of tags without a
+  group). The dialog counts the changed positions, and one "Save tags" writes the changes of all
+  of them together.
 - **MCP imports keep the same rules as the app.** Writes through the MCP server are validated
   like the app's own forms: a sale above the holding (counted in date order over the whole
   batch), an unknown or conflicting coin ID, a non-finite number, an invalid date or a case

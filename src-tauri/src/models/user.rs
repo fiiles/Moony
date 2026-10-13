@@ -58,7 +58,7 @@ pub struct UserProfile {
     /// ISO 3166-1 alpha-2 country of the profile (`CZ`), None until set.
     pub country: Option<String>,
     /// The cancellation notice of insurance policies in days that the milestones use: the stored
-    /// value, else 43 for Czechia and Slovakia, else None (no anniversary reminder).
+    /// value, else 50; None when it is 0 (no anniversary reminder).
     #[serde(rename = "insuranceNoticeDays")]
     pub insurance_notice_days: Option<i64>,
     #[serde(rename = "createdAt")]

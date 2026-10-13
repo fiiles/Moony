@@ -443,7 +443,6 @@ pub fn get_user_profile(db: &Database) -> Result<Option<UserProfile>> {
                 mcp_server_enabled: row.get::<_, i32>(9)? != 0,
                 created_at: row.get(10)?,
                 insurance_notice_days: crate::services::milestones::effective_insurance_notice_days(
-                    country.as_deref(),
                     stored_notice,
                 ),
                 country,
@@ -1168,12 +1167,11 @@ mod tests {
             ..empty_update()
         };
 
-        // No country: no notice. Czechia and Slovakia default to 43, other countries to nothing.
-        assert_eq!(notice(), None);
-        assert_eq!(update(country("cz")).insurance_notice_days, Some(43));
-        assert_eq!(update(country("SK")).insurance_notice_days, Some(43));
-        assert_eq!(update(country("us")).insurance_notice_days, None);
-        // A stored value wins over the country; 0 switches the reminder off.
+        // Every profile defaults to 50 days, whatever its country.
+        assert_eq!(notice(), Some(50));
+        assert_eq!(update(country("cz")).insurance_notice_days, Some(50));
+        assert_eq!(update(country("us")).insurance_notice_days, Some(50));
+        // A stored value wins; 0 switches the reminder off.
         assert_eq!(update(days(30)).insurance_notice_days, Some(30));
         assert_eq!(update(country("cz")).insurance_notice_days, Some(30));
         assert_eq!(update(days(0)).insurance_notice_days, None);

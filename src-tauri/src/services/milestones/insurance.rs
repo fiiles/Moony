@@ -11,40 +11,30 @@ use crate::error::Result;
 use crate::models::{Milestone, PaymentFrequency};
 use crate::services::loan_amortization::{day_floor, due_day};
 
-/// Countries whose insurance contracts end "to the end of the insurance period" with a notice of
-/// six weeks (Czech and Slovak civil code); the period ends the day before the anniversary, so
-/// the last safe delivery day is the anniversary minus 43 days (the earlier date is the safe one).
-/// Elsewhere the rule differs (any time with a pro-rata refund, a renewal notice, three months, …),
-/// so the profile sets its own period or gets no anniversary reminder.
-const DEFAULT_NOTICE_COUNTRIES: [&str; 2] = ["CZ", "SK"];
-const DEFAULT_NOTICE_DAYS: i64 = 43;
+/// The notice period a profile gets until it sets its own: 50 days covers the common six-week
+/// rule (Czech and Slovak civil code) with a margin, and is a sensible reminder elsewhere.
+const DEFAULT_NOTICE_DAYS: i64 = 50;
 
 /// The notice period of the profile in days, None for "no anniversary reminder": the stored value
-/// (`0` = none) wins, otherwise 43 for Czechia and Slovakia and nothing for any other country.
-pub fn effective_notice_days(country: Option<&str>, stored: Option<i64>) -> Option<i64> {
+/// (`0` = none) wins, otherwise the 50-day default.
+pub fn effective_notice_days(stored: Option<i64>) -> Option<i64> {
     match stored {
         Some(0) => None,
         Some(days) if days > 0 => Some(days),
-        _ => country
-            .filter(|c| {
-                DEFAULT_NOTICE_COUNTRIES
-                    .iter()
-                    .any(|default| default.eq_ignore_ascii_case(c.trim()))
-            })
-            .map(|_| DEFAULT_NOTICE_DAYS),
+        _ => Some(DEFAULT_NOTICE_DAYS),
     }
 }
 
 /// [`effective_notice_days`] of the stored profile; None without a profile row.
 pub(crate) fn profile_notice_days(conn: &Connection) -> Result<Option<i64>> {
-    let row: Option<(Option<String>, Option<i64>)> = conn
+    let row: Option<Option<i64>> = conn
         .query_row(
-            "SELECT country, insurance_notice_days FROM user_profile ORDER BY id LIMIT 1",
+            "SELECT insurance_notice_days FROM user_profile ORDER BY id LIMIT 1",
             [],
-            |r| Ok((r.get(0)?, r.get(1)?)),
+            |r| r.get(0),
         )
         .optional()?;
-    Ok(row.and_then(|(country, stored)| effective_notice_days(country.as_deref(), stored)))
+    Ok(row.and_then(effective_notice_days))
 }
 
 /// Remind four weeks before the notice deadline (about ten weeks before the anniversary).

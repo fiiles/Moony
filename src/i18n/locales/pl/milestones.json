@@ -143,6 +143,6 @@
     "title": "Przypomnienia w przeglądzie",
     "description": "O czym przypomina karta „Co cię czeka” i górny pasek. Wyłączone rodzaje nie pokazują się nigdzie.",
     "insuranceNotice": "Okres wypowiedzenia ubezpieczenia (dni)",
-    "insuranceNoticeHint": "Na ile dni przed coroczną rocznicą wypowiedzenie musi dotrzeć do ubezpieczyciela. 0 wyłącza przypomnienie o rocznicy. Wartość 43 dni jest ustawiona domyślnie tylko dla Czech i Słowacji."
+    "insuranceNoticeHint": "Na ile dni przed coroczną rocznicą wypowiedzenie musi dotrzeć do ubezpieczyciela. 0 wyłącza przypomnienie o rocznicy."
   }
 }

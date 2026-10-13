@@ -131,6 +131,6 @@
     "title": "Påminnelser på oversikten",
     "description": "Hva kortet «Det som kommer» og topplinjen minner deg om. Slåtte av typer vises ingen steder.",
     "insuranceNotice": "Oppsigelsesfrist for forsikring (dager)",
-    "insuranceNoticeHint": "Hvor mange dager før årsdagen en oppsigelse må være hos forsikringsselskapet. 0 slår av påminnelsen om årsdagen. Forhåndsinnstilt til 43 dager bare for Tsjekkia og Slovakia."
+    "insuranceNoticeHint": "Hvor mange dager før årsdagen en oppsigelse må være hos forsikringsselskapet. 0 slår av påminnelsen om årsdagen."
   }
 }

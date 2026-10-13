@@ -137,6 +137,6 @@
     "title": "Promemoria della panoramica",
     "description": "Ciò di cui ti avvisano la scheda «Cosa ti aspetta» e la barra superiore. I tipi disattivati non compaiono da nessuna parte.",
     "insuranceNotice": "Preavviso di disdetta dell'assicurazione (giorni)",
-    "insuranceNoticeHint": "Quanti giorni prima della ricorrenza annuale la disdetta deve arrivare all'assicuratore. 0 disattiva il promemoria della ricorrenza. Preimpostato a 43 giorni solo per Cechia e Slovacchia."
+    "insuranceNoticeHint": "Quanti giorni prima della ricorrenza annuale la disdetta deve arrivare all'assicuratore. 0 disattiva il promemoria della ricorrenza."
   }
 }

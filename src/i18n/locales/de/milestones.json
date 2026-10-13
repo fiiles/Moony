@@ -131,6 +131,6 @@
     "title": "Erinnerungen der Übersicht",
     "description": "Woran die Karte „Was ansteht“ und die obere Leiste Sie erinnern. Ausgeschaltete Arten werden nirgends angezeigt.",
     "insuranceNotice": "Kündigungsfrist der Versicherung (Tage)",
-    "insuranceNoticeHint": "Wie viele Tage vor dem Jahrestag eine Kündigung beim Versicherer eingehen muss. 0 schaltet die Erinnerung an den Jahrestag aus. Nur für Tschechien und die Slowakei mit 43 Tagen voreingestellt."
+    "insuranceNoticeHint": "Wie viele Tage vor dem Jahrestag eine Kündigung beim Versicherer eingehen muss. 0 schaltet die Erinnerung an den Jahrestag aus."
   }
 }

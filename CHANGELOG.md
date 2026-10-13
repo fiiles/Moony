@@ -6,6 +6,10 @@ All notable changes to Moony are documented in this file. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- PRIVACY.md lists every outbound host and describes what Delete Account leaves behind.
+
 ## [0.10.0] - 2026-10-12
 
 This is the beta for 1.0.0. It changes how amounts in other currencies are counted and runs

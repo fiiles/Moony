@@ -15,7 +15,7 @@
 - Ten rules of `AGENTS.md` apply to every task; in particular: never call `invoke()` outside `src/lib/tauri-api.ts`; `shared/schema.ts` is the wire contract (7-step procedure in `docs/standards/type-contract.md`); new Rust types get per-field `#[serde(rename = "camelCase")]`, are registered in `bindings.rs` and `shared/generated-types.ts` is regenerated with `cd src-tauri && cargo test generate_bindings -- --ignored`; business logic lives in `src-tauri/src/services/` taking `&Connection`, errors are `AppError`, no `.unwrap()` outside tests; migrations are append-only (`013_balance_records` is the next number); mutations invalidate domain keys + `["portfolio-metrics"]` + `["cashflow-report"]`, then `recordSnapshot()` + `["portfolio-history"]` (all of that is what `refreshMoneyFlows()` in `src/lib/money-flow-refresh.ts` does); every user-facing string lands in BOTH `src/i18n/locales/en/*.json` and `src/i18n/locales/cs/*.json`; check `docs/DEPRECATED.md` before copying a pattern.
 - Money is TEXT, timestamps are unix epoch INTEGER (UTC day starts for dates), PKs are TEXT UUIDs; amounts are formatted through `useFormat().money(amount, currency, opts)` with the account currency, never a hard-coded "Kč".
 - Copy rules (design system §10): sentence case, no exclamation marks, true minus (`useFormat` does it), "pohyb/pohyby/pohybů" for movements in the hero and the flows card, "transakce" only inside the ledger card. Buttons are verbs.
-- Work in the sibling worktree `../Moony-tauri-bank-detail` on branch `feat/bank-account-detail-redesign` (Task 0). Never commit, reset or switch branches in the shared checkout `/Users/filipkral/Programování/FinanceApp/Moony-tauri` (other sessions use it).
+- Work in the sibling worktree `../Moony-tauri-bank-detail` on branch `feat/bank-account-detail-redesign` (Task 0). Never commit, reset or switch branches in the shared checkout `../Moony-tauri` (other sessions use it).
 - Gates before every commit: `npm run lint`, `npm run typecheck`, `npm run format:check` (run `npm run format` first), `npm test`; for Rust tasks `cd src-tauri && cargo test` and `cargo clippy`.
 - Commit messages end with `Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>`.
 
@@ -29,13 +29,13 @@
 
 - [ ] **Step 1: Create the worktree from main**
 
-Run from `/Users/filipkral/Programování/FinanceApp/Moony-tauri`:
+Run from `../Moony-tauri`:
 
 ```bash
 git worktree add ../Moony-tauri-bank-detail -b feat/bank-account-detail-redesign main
 ```
 
-Expected: a new directory `/Users/filipkral/Programování/FinanceApp/Moony-tauri-bank-detail` on the new branch.
+Expected: a new directory `../Moony-tauri-bank-detail` on the new branch.
 
 - [ ] **Step 2: Copy the untracked design documents into the worktree**
 
@@ -3200,9 +3200,9 @@ npm run typecheck && npm run lint && npm run format:check && npm test && (cd src
 - [ ] **Step 2: Merge into main through a temporary worktree (never in the shared checkout)**
 
 ```bash
-cd /Users/filipkral/Programování/FinanceApp
+cd ..
 git -C Moony-tauri worktree add /tmp/moony-main-merge main
-cd /tmp/moony-main-merge && git merge --no-ff feat/bank-account-detail-redesign -m "Merge branch 'feat/bank-account-detail-redesign'" && cd /Users/filipkral/Programování/FinanceApp
+cd /tmp/moony-main-merge && git merge --no-ff feat/bank-account-detail-redesign -m "Merge branch 'feat/bank-account-detail-redesign'" && cd -
 git -C Moony-tauri worktree remove /tmp/moony-main-merge
 git -C Moony-tauri merge-base --is-ancestor feat/bank-account-detail-redesign main && echo "merged"
 ```

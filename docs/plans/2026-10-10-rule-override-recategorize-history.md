@@ -10,7 +10,7 @@
 
 **Spec:** `docs/specs/2026-10-10-rule-override-recategorize-history-design.md` (prototype next to it).
 
-**Worktree:** everything happens in `/Users/filipkral/Programování/FinanceApp/Moony-tauri-recategorize` on branch `feat/recategorize-history`. Never touch the shared checkout `Moony-tauri`.
+**Worktree:** everything happens in `../Moony-tauri-recategorize` on branch `feat/recategorize-history`. Never touch the shared checkout `Moony-tauri`.
 
 ## Global constraints
 
@@ -58,7 +58,7 @@
 - [ ] **Step 1: Commit**
 
 ```bash
-cd /Users/filipkral/Programování/FinanceApp/Moony-tauri-recategorize
+cd ../Moony-tauri-recategorize
 git add docs/specs/2026-10-10-rule-override-recategorize-history-design.md docs/specs/2026-10-10-rule-override-recategorize-history-prototype.html .claude/launch.json
 git commit -m "docs: spec and prototype for rule override and recategorizing other payments
 

@@ -1,4 +1,4 @@
-   Compiling moony v0.9.1 (/Users/filipkral/Programování/FinanceApp/Moony-tauri/src-tauri)
+   Compiling moony v0.9.1 (src-tauri)
     Finished `test` profile [unoptimized + debuginfo] target(s) in 14.08s
      Running unittests src/lib.rs (target/debug/deps/moony_lib-87ac917110b57d90)
 

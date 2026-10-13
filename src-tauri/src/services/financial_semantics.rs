@@ -108,7 +108,8 @@ pub fn account_number_key(identifier: &str) -> Option<String> {
         .then_some(digits)
 }
 
-/// Preserve each account row's pairing. A reliable IBAN is authoritative; otherwise only a domestic number of at least 11 digits (sort code, routing or BSB plus account) can prove own.
+/// Preserve each account row's pairing. A reliable IBAN is authoritative; otherwise only a
+/// domestic number of at least 11 digits (sort code, routing or BSB plus account) can prove own.
 pub(crate) fn load_account_identifiers(conn: &Connection) -> Result<Vec<String>> {
     let mut stmt=conn.prepare("SELECT ba.iban,ba.bban,i.country FROM bank_accounts ba LEFT JOIN institutions i ON i.id=ba.institution_id")?;
     let rows = stmt.query_map([], |r| {

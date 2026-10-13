@@ -65,6 +65,9 @@
     { "id": "gb/premium-bonds", "name": "Premium Bonds", "ruleType": "contains", "pattern": "premium bonds", "categoryId": "cat_savings", "priority": 50 },
     { "id": "gb/mortgage", "name": "Mortgage Payment", "ruleType": "word", "pattern": "mortgage", "categoryId": "cat_loan_payments", "priority": 50 },
     { "id": "gb/xfer-own", "name": "Savings pot and own-account transfers", "ruleType": "regex", "pattern": "savings? pot|\\bround ?ups?\\b|flexible saver|regular saver|\\b(?:tfr|trf|transfer)\\b[^a-z0-9]{0,4}(?:to|from)\\b[^a-z0-9]{0,4}(?:own|my) (?:account|acc|a/c)\\b", "categoryId": "cat_internal_transfers", "priority": 44 },
-    { "id": "gb/cc-repayment", "name": "Credit card repayment (UK issuers)", "ruleType": "regex", "pattern": "barclaycard|\\bmbna\\b|vanquis|\\bamex\\b|american express", "categoryId": "cat_internal_transfers", "priority": 44 }
+    { "id": "gb/cc-repayment", "name": "Credit card repayment (UK issuers)", "ruleType": "regex", "pattern": "barclaycard|\\bmbna\\b|vanquis|(?:\\bamex\\b|american express)[^a-z0-9]{0,4}(?:[a-z0-9]+\\s+){0,2}?(?:payment|pymt|pmt|repayment|bill|dd|d/d|direct debit)\\b", "categoryId": "cat_internal_transfers", "priority": 44 },
+    { "id": "gb/cc-fees", "name": "Card issuer fees (not a repayment)", "ruleType": "regex", "pattern": "\\b(?:barclaycard|amex|american express|mbna|vanquis)\\b[^a-z0-9]{0,4}(?:[a-z0-9]+\\s+){0,2}?(?:(?:annual|membership|late|card) fees?|merchant services)\\b", "categoryId": "cat_other", "priority": 45 },
+    { "id": "gb/cc-interest", "name": "Card issuer interest charged (not a repayment)", "ruleType": "regex", "pattern": "\\b(?:barclaycard|amex|american express|mbna|vanquis)\\b[^a-z0-9]{0,4}(?:[a-z0-9]+\\s+){0,2}?interest\\b", "categoryId": "cat_loan_payments", "priority": 45 },
+    { "id": "gb/cc-cashback", "name": "Card issuer cashback (not a repayment)", "ruleType": "regex", "pattern": "\\b(?:barclaycard|amex|american express|mbna|vanquis)\\b[^a-z0-9]{0,4}(?:[a-z0-9]+\\s+){0,2}?(?:cash ?back|rewards?)\\b", "categoryId": "cat_other_income", "priority": 45 }
   ]
 }

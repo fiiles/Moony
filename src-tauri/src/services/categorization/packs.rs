@@ -478,6 +478,23 @@ mod tests {
             .map(String::from)
     }
 
+    /// The id of the rule that decided, when a rule did.
+    fn rule_of(engine: &CategorizationEngine, text: &str) -> Option<String> {
+        use super::super::types::{CategorizationResult, CategorizationSource};
+        match engine.categorize(&TransactionInput::new(
+            "t".into(),
+            Some(text.into()),
+            None,
+            -50.0,
+        )) {
+            CategorizationResult::Match {
+                source: CategorizationSource::Rule { rule_id, .. },
+                ..
+            } => Some(rule_id),
+            _ => None,
+        }
+    }
+
     /// (country pack, description): each one a real statement line of that market.
     const OWN_ACCOUNT_SAMPLES: &[(&str, &str)] = &[
         ("us", "Online Transfer to Savings"),
@@ -495,6 +512,8 @@ mod tests {
         ("gb", "MBNA LIMITED"),
         ("gb", "ROUND UP"),
         ("gb", "TFR TO OWN A/C"),
+        ("gb", "AMEX PAYMENT"),
+        ("gb", "AMERICAN EXPRESS DD"),
         ("ca", "TFR-FR SAV 1234"),
         ("ca", "Transfer to chequing"),
         ("ca", "VISA PYMT"),
@@ -506,14 +525,23 @@ mod tests {
         ("ie", "TFR TO DEMAND DEPOSIT"),
         ("sg", "Transfer to Multiplier"),
         ("hk", "轉賬 自己戶口"),
+        ("hk", "信用卡還款"),
         ("hk", "Transfer to Time Deposit"),
         ("jp", "口座間振替"),
         ("jp", "普通預金から定期預金へ"),
+        ("jp", "積立定期預金へ"),
         ("jp", "ＶＩＳＡカード代金"),
         ("cn", "转入余额宝"),
+        ("cn", "余额宝-自动转入"),
+        ("cn", "零钱通转出"),
+        ("cn", "转入零钱通"),
         ("cn", "银证转账"),
         ("kr", "본인계좌이체"),
+        ("kr", "본인 계좌로 이체"),
+        ("kr", "내 계좌로"),
         ("kr", "적금 납입"),
+        ("kr", "적금이체"),
+        ("kr", "정기예금 가입"),
         ("kr", "카드대금"),
     ];
 
@@ -572,19 +600,23 @@ mod tests {
         }
     }
 
+    /// Every market pack that carries own-transfer rules, English-speaking first.
+    const ENGLISH_MARKETS: &[&str] = &["global", "us", "gb", "ca", "au", "nz", "ie", "sg", "hk"];
+
     #[test]
     fn payments_to_people_card_purchases_and_bills_are_not_own_account_transfers() {
-        let engine = pack_engine(&["global", "us", "gb"]);
+        // Unknown payees only: a merchant rule of a pack must not be what keeps a line out.
+        let engine = pack_engine(ENGLISH_MARKETS);
         for text in [
             "Zelle payment to John Smith",
             "VENMO PAYMENT 1234",
-            "CARD PAYMENT TO TESCO STORES 4444",
-            "DIRECT DEBIT NETFLIX.COM",
+            "CARD PAYMENT TO ACME WIDGETS 4444",
+            "DIRECT DEBIT ACME WIDGETS",
             "STANDING ORDER J SMITH RENT",
             "FASTER PAYMENT FROM J SMITH",
             "Salary transfer from ACME Ltd",
             "Transfer to Current Energy Ltd",
-            "Debit card payment IKEA",
+            "DEBIT CARD PAYMENT XYZ LTD",
         ] {
             assert_ne!(
                 category_of(&engine, text).as_deref(),
@@ -597,6 +629,149 @@ mod tests {
             category_of(&engine, "Savings interest credited").as_deref(),
             Some("cat_investment_income")
         );
+    }
+
+    #[test]
+    fn cheque_numbers_are_not_account_masks_but_masked_accounts_are() {
+        let engine = pack_engine(&["global", "us"]);
+        for text in ["CHK 1234", "CHK #1234 RENT", "CHECKING 1234 FEE"] {
+            assert_ne!(
+                category_of(&engine, text).as_deref(),
+                Some(TRANSFER),
+                "{text}"
+            );
+        }
+        for text in [
+            "ONLINE TRANSFER FROM CHK ...5678",
+            "Transfer to SAV XXXX1234",
+            "Transfer to SAV ***1234",
+        ] {
+            assert_eq!(
+                category_of(&engine, text).as_deref(),
+                Some(TRANSFER),
+                "{text}"
+            );
+        }
+    }
+
+    #[test]
+    fn card_networks_processors_and_bookkeeping_are_not_own_account_transfers() {
+        let engine = pack_engine(ENGLISH_MARKETS);
+        for text in [
+            // debit-card purchases and network fees, not a card bill
+            "Visa Debit Purchase Payment",
+            "MASTERCARD PAYMENT SERVICES",
+            // BPAY to a government agency that happens to say VISA
+            "BPAY DEPT HOME AFFAIRS VISA",
+            // merchant-acquiring and card-interest lines
+            "Square credit card processing payment",
+            "STRIPE credit card payment received",
+            "credit card interest payment",
+            // "own account" without a transfer
+            "Own account bookkeeping services",
+            // Hong Kong: paying with a credit card is a purchase, repaying it is not
+            "信用卡付款",
+        ] {
+            assert_ne!(
+                category_of(&engine, text).as_deref(),
+                Some(TRANSFER),
+                "{text}"
+            );
+        }
+    }
+
+    #[test]
+    fn card_issuer_fees_interest_and_cashback_are_not_repayments() {
+        let engine = pack_engine(&["global", "gb"]);
+        for (text, category) in [
+            ("BARCLAYCARD ANNUAL FEE", "cat_other"),
+            ("AMEX MEMBERSHIP FEE", "cat_other"),
+            ("AMERICAN EXPRESS MERCHANT SERVICES", "cat_other"),
+            ("MBNA INTEREST", "cat_loan_payments"),
+            ("BARCLAYCARD INTEREST CHARGED", "cat_loan_payments"),
+            ("AMEX CASHBACK", "cat_other_income"),
+        ] {
+            assert_eq!(
+                category_of(&engine, text).as_deref(),
+                Some(category),
+                "{text}"
+            );
+        }
+        // The repayment lines of the same issuers stay transfers; a bare "amex" purchase is not one.
+        for text in ["BARCLAYCARD", "MBNA LIMITED", "AMEX PAYMENT", "AMEX DD"] {
+            assert_eq!(
+                category_of(&engine, text).as_deref(),
+                Some(TRANSFER),
+                "{text}"
+            );
+        }
+        assert_ne!(
+            category_of(&engine, "AMEX TRAVEL LONDON").as_deref(),
+            Some(TRANSFER)
+        );
+    }
+
+    #[test]
+    fn interest_and_earnings_lines_in_native_scripts_are_not_own_account_transfers() {
+        for (pack, text) in [
+            ("kr", "적금이자"),
+            ("kr", "정기예금이자"),
+            ("jp", "定期預金利息"),
+            ("jp", "積立定期預金利息"),
+            ("cn", "余额宝收益"),
+            ("cn", "余额宝-收益发放"),
+            ("cn", "零钱通收益"),
+        ] {
+            let engine = pack_engine(&["global", pack]);
+            assert_ne!(
+                category_of(&engine, text).as_deref(),
+                Some(TRANSFER),
+                "{pack}: {text}"
+            );
+        }
+        // Korean has an interest rule, so these are categorized rather than left blank; a loan's
+        // interest stays a loan payment.
+        let kr = pack_engine(&["global", "kr"]);
+        for text in ["적금이자", "정기예금이자", "예금 이자 입금"] {
+            assert_eq!(
+                category_of(&kr, text).as_deref(),
+                Some("cat_investment_income"),
+                "{text}"
+            );
+        }
+        for text in ["대출이자", "대출 이자 납부"] {
+            assert_eq!(
+                category_of(&kr, text).as_deref(),
+                Some("cat_loan_payments"),
+                "{text}"
+            );
+        }
+    }
+
+    #[test]
+    fn country_pack_rules_work_without_the_global_pack() {
+        // (pack, line, the rule that must decide it): the pack is enabled alone, so nothing in
+        // `global` can be what makes these lines transfers.
+        for (pack, text, rule) in [
+            ("ca", "TFR-FR SAV 1234", "ca/xfer-tfr"),
+            ("jp", "カード返済 10/12", "jp/card-repay"),
+            ("kr", "내계좌로 이체", "kr/xfer-my-account"),
+            ("kr", "정기예금 가입", "kr/xfer-term-deposit"),
+            (
+                "us",
+                "ONLINE TRANSFER FROM CHK ...5678",
+                "us/xfer-account-mask",
+            ),
+            ("us", "Transfer to SAV XXXX1234", "us/xfer-account-mask"),
+        ] {
+            let engine = pack_engine(&[pack]);
+            assert_eq!(
+                category_of(&engine, text).as_deref(),
+                Some(TRANSFER),
+                "{pack}: {text}"
+            );
+            assert_eq!(rule_of(&engine, text).as_deref(), Some(rule), "{text}");
+        }
     }
 
     #[test]

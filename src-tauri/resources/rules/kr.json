@@ -66,8 +66,17 @@
     { "id": "kr/salary-geubyeo", "name": "급여 (salary)", "ruleType": "contains", "pattern": "급여", "categoryId": "cat_income", "priority": 60 },
     { "id": "kr/xfer-own-account", "name": "본인계좌", "ruleType": "contains", "pattern": "본인계좌", "categoryId": "cat_internal_transfers", "priority": 44 },
     { "id": "kr/xfer-my-account", "name": "내계좌", "ruleType": "contains", "pattern": "내계좌", "categoryId": "cat_internal_transfers", "priority": 44 },
-    { "id": "kr/xfer-savings", "name": "적금", "ruleType": "contains", "pattern": "적금", "categoryId": "cat_internal_transfers", "priority": 44 },
-    { "id": "kr/xfer-term-deposit", "name": "정기예금", "ruleType": "contains", "pattern": "정기예금", "categoryId": "cat_internal_transfers", "priority": 44 },
-    { "id": "kr/card-bill", "name": "카드대금", "ruleType": "contains", "pattern": "카드대금", "categoryId": "cat_internal_transfers", "priority": 44 }
+    { "id": "kr/xfer-savings", "name": "적금 납입", "ruleType": "contains", "pattern": "적금 납입", "categoryId": "cat_internal_transfers", "priority": 44 },
+    { "id": "kr/xfer-term-deposit", "name": "정기예금 가입", "ruleType": "contains", "pattern": "정기예금 가입", "categoryId": "cat_internal_transfers", "priority": 44 },
+    { "id": "kr/card-bill", "name": "카드대금", "ruleType": "contains", "pattern": "카드대금", "categoryId": "cat_internal_transfers", "priority": 44 },
+    { "id": "kr/xfer-own-account-spaced", "name": "본인 계좌", "ruleType": "contains", "pattern": "본인 계좌", "categoryId": "cat_internal_transfers", "priority": 44 },
+    { "id": "kr/xfer-my-account-spaced", "name": "내 계좌", "ruleType": "contains", "pattern": "내 계좌", "categoryId": "cat_internal_transfers", "priority": 44 },
+    { "id": "kr/xfer-savings-compact", "name": "적금납입", "ruleType": "contains", "pattern": "적금납입", "categoryId": "cat_internal_transfers", "priority": 44 },
+    { "id": "kr/xfer-savings-transfer", "name": "적금이체", "ruleType": "contains", "pattern": "적금이체", "categoryId": "cat_internal_transfers", "priority": 44 },
+    { "id": "kr/xfer-savings-deposit", "name": "적금 입금", "ruleType": "contains", "pattern": "적금 입금", "categoryId": "cat_internal_transfers", "priority": 44 },
+    { "id": "kr/xfer-term-deposit-in", "name": "정기예금 입금", "ruleType": "contains", "pattern": "정기예금 입금", "categoryId": "cat_internal_transfers", "priority": 44 },
+    { "id": "kr/loan-interest", "name": "대출이자 (loan interest)", "ruleType": "contains", "pattern": "대출이자", "categoryId": "cat_loan_payments", "priority": 45 },
+    { "id": "kr/loan-interest-spaced", "name": "대출 이자 (loan interest)", "ruleType": "contains", "pattern": "대출 이자", "categoryId": "cat_loan_payments", "priority": 45 },
+    { "id": "kr/interest", "name": "이자 (interest)", "ruleType": "contains", "pattern": "이자", "categoryId": "cat_investment_income", "priority": 45 }
   ]
 }

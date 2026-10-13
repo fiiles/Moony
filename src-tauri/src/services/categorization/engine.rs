@@ -38,7 +38,8 @@ pub struct CategorizationEngine {
     /// System/default rules (checked after learned payees)
     default_rule_engine: RwLock<RuleEngine>,
     exact_match: RwLock<ExactMatchEngine>,
-    /// User's own IBANs for internal transfer detection
+    /// The user's own account identifiers (valid IBANs and digits-only domestic numbers such as
+    /// sort code + account) for internal transfer detection. The name predates the domestic keys.
     own_ibans: RwLock<AccountIdentities>,
 }
 
@@ -60,9 +61,10 @@ impl CategorizationEngine {
         Self::new(Vec::new())
     }
 
-    /// Set the user's own IBANs for internal transfer detection
+    /// Set the user's own account identifiers (IBANs, and domestic numbers of 11 or more digits)
+    /// for internal transfer detection
     ///
-    /// When a transaction's counterparty IBAN matches any of these,
+    /// When a transaction's counterparty identifier matches any of these,
     /// it will be categorized as "Internal Transfer" before merchant and learned rules.
     pub fn set_own_ibans(&self, ibans: Vec<String>) {
         let normalized = AccountIdentities::from_identifiers(ibans);
@@ -71,7 +73,8 @@ impl CategorizationEngine {
         }
     }
 
-    /// Check if counterparty IBAN matches user's own accounts
+    /// Check if the counterparty identifier (IBAN, or domestic number with its bank column)
+    /// matches one of the user's own accounts
     fn is_internal_transfer(
         &self,
         counterparty_iban: Option<&str>,

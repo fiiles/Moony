@@ -64,6 +64,6 @@
     { "id": "ca/belairdirect", "name": "belairdirect", "ruleType": "contains", "pattern": "belairdirect", "categoryId": "cat_insurance", "priority": 50 },
     { "id": "ca/mortgage", "name": "Mortgage Payment", "ruleType": "contains", "pattern": "mortgage", "categoryId": "cat_loan_payments", "priority": 45 },
     { "id": "ca/xfer-tfr", "name": "TFR to or from own account", "ruleType": "regex", "pattern": "\\b(?:tfr|xfer|transfer)[- ]?(?:to|fr|from)\\b[^a-z0-9]{0,4}(?:[a-z0-9]+\\s+){0,2}?(?:sav|savings|chq|chequing|checking)\\b", "categoryId": "cat_internal_transfers", "priority": 44 },
-    { "id": "ca/cc-payment", "name": "Credit card payment (CA)", "ruleType": "regex", "pattern": "\\b(?:visa|mastercard|master card|amex)\\b[^a-z0-9]{0,4}(?:[a-z0-9]+\\s+){0,2}?(?:pmt|pymt|payment)\\b|\\bpayment ?- ?thank you\\b", "categoryId": "cat_internal_transfers", "priority": 44 }
+    { "id": "ca/cc-payment", "name": "Credit card payment (CA)", "ruleType": "regex", "pattern": "\\b(?:visa|mastercard|master card|amex)\\b[^a-z0-9]{0,4}(?:pmt|pymt|payment)\\b(?:[^a-z]*$|[^a-z0-9]{0,4}(?:thank|web|online|mobile|auto|ach|pre)\\b)|\\bpayment ?- ?thank you\\b", "categoryId": "cat_internal_transfers", "priority": 44 }
   ]
 }

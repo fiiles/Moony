@@ -298,7 +298,7 @@ Moony/
 │   └── tauri.conf.json     # Tauri configuration
 ├── shared/                 # Shared types and calculations
 ├── docs/                   # Standards, architecture, ADRs, playbooks, specs, plans
-├── scripts/                # Maintenance scripts (third-party licence inventory, screenshots)
+├── scripts/                # Maintenance scripts (third-party license inventory, screenshots)
 └── public/                 # Static assets
 ```
 
@@ -368,7 +368,7 @@ Column names the generic detector does not know yet (a new language) are added t
 Stock exports are read by one adapter per source (XTB, Trading 212, Degiro, Interactive
 Brokers and Moony's own table), each a module under
 [`src-tauri/src/services/stock_import/adapters/`](./src-tauri/src/services/stock_import/adapters/).
-An adapter recognises a file from its headers and produces the configuration the generic
+An adapter recognizes a file from its headers and produces the configuration the generic
 parser reads it with, so a user with that broker's export needs no manual column mapping.
 Everything else (preview, duplicates, holdings checks, import, undo) is shared. The design is
 in [`docs/specs/2026-10-04-stock-csv-import-wizard-design.md`](./docs/specs/2026-10-04-stock-csv-import-wizard-design.md).

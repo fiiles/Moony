@@ -60,10 +60,10 @@ tablet app, or a budget shared by a household (one profile on one computer, no s
 
 **Bank presets.** Revolut, Wise, N26, Fio, Česká spořitelna, Komerční banka, Air Bank, ČSOB,
 mBank, Raiffeisenbank, MONETA, Chase, Sparkasse, DKB, ING Germany and a generic UK debit/credit
-layout are recognised from the header row. Eight of them (Air Bank, ČSOB, DKB, ING Germany,
+layout are recognized from the header row. Eight of them (Air Bank, ČSOB, DKB, ING Germany,
 Komerční banka, mBank, MONETA, Raiffeisenbank) have no real sample statement in the tests yet:
 they are checked only against a synthetic file built from the preset itself and stay best-effort
-until someone with that bank confirms them. If your file is not recognised or maps wrongly,
+until someone with that bank confirms them. If your file is not recognized or maps wrongly,
 open an issue with the header row only. A new bank is one small JSON file, see
 [CONTRIBUTING.md](./CONTRIBUTING.md#adding-a-bank-preset).
 
@@ -71,8 +71,8 @@ open an issue with the header row only. A new bank is one small JSON file, see
 
 Get the installer for your system from the
 [latest release](https://github.com/fiiles/Moony/releases/latest) (all versions are on the
-[Releases](https://github.com/fiiles/Moony/releases) page). Builds are made for macOS (Apple
-Silicon and Intel), Windows (x64) and Linux (x86_64, built on Ubuntu 24.04).
+[Releases](https://github.com/fiiles/Moony/releases) page). Builds: macOS (Apple Silicon and
+Intel), Windows (x64), Linux (x86_64, built on Ubuntu 24.04).
 
 > **Moony's installers are not code-signed yet.** Signing needs an Apple Developer Program
 > membership and a Windows code-signing certificate, which the project does not have; it is
@@ -140,10 +140,10 @@ the generator at a folder that holds real data.
 ## First run and updates
 
 A brief, skippable welcome leads into a wizard: main currency and country, a name and password,
-your **recovery key** (save it, it is the only way to reset a forgotten password), what to
-track, and optionally a first account and a statement import. After you unlock Moony it asks
-GitHub whether a newer version exists and offers a one-click update, verified against the
-project's public key. You can switch the automatic check off in *Settings → Security → Updates*.
+your **recovery key** (save it: it is the only way to reset a forgotten password), what to track,
+and optionally a first account and a statement import. After you unlock Moony it asks GitHub
+whether a newer version exists and offers a one-click update, verified against the project's
+public key. You can switch the check off in *Settings → Security → Updates*.
 
 ## Privacy and security at a glance
 
@@ -152,9 +152,10 @@ The full, checkable version is in **[PRIVACY.md](./PRIVACY.md)**; vulnerabilitie
 
 - **Local only.** An AES-256 encrypted SQLite database (SQLCipher) in your user profile. No
   account, no cloud, no sync, and no telemetry: no analytics, no usage statistics, no crash reports.
-- **What leaves your computer.** Tickers, ISINs, crypto IDs, search text, currencies and date
-  ranges go to Yahoo Finance, CoinGecko, the ECB and Frankfurter for prices and rates, and the
-  update check goes to GitHub. Balances, amounts, names and documents are not sent. Offline,
+- **What leaves your computer.** Ticker symbols, ISINs, crypto IDs, search text, currencies and
+  date ranges go to Yahoo Finance, CoinGecko and Frankfurter for prices and rates; the ECB's daily
+  rates are downloaded, and the update check goes to GitHub. Balances, amounts, names and
+  documents are not sent (an AI client you connect through MCP is the exception). Offline,
   prices and rates simply go stale.
 - **Not encrypted.** Attached documents and photos are plain files in the data folder, so are
   the attachments inside a backup ZIP, and the JSON export is plain text. Use full-disk encryption.
@@ -189,14 +190,13 @@ reads, usually in its provider's cloud. Tool names and result shapes may still c
 ## Data sources and attribution
 
 - **Yahoo Finance** supplies stock prices, history, dividends, ticker search and company data
-  through an unofficial, undocumented interface that a community library
-  ([`yahoo_finance_api`](https://crates.io/crates/yahoo_finance_api)) uses. It needs no API key,
-  but it can change, break or be rate-limited without notice, and Moony is not affiliated with
-  Yahoo. A price can always be set by hand.
+  through an unofficial, undocumented interface used by a community library
+  ([`yahoo_finance_api`](https://crates.io/crates/yahoo_finance_api)). It can change, break or be
+  rate-limited without notice, and Moony is not affiliated with Yahoo. A price can always be set
+  by hand.
 - **CoinGecko** supplies crypto prices. Price data by [CoinGecko](https://www.coingecko.com).
-- **European Central Bank** (euro foreign exchange reference rates, daily; source: ECB, published
-  for information purposes only) and **[Frankfurter](https://frankfurter.dev)** (rate history)
-  supply exchange rates.
+- **European Central Bank** (daily euro reference rates; source: ECB, published for information
+  purposes only) and **[Frankfurter](https://frankfurter.dev)** (rate history) supply exchange rates.
 
 **Moony is not financial, tax or investment advice.** Prices, rates and calculated figures can be
 wrong or out of date; check anything that matters against your bank and broker statements.
@@ -206,17 +206,17 @@ wrong or out of date; check anything that matters against your bank and broker s
 Moony 0.10 is the beta for 1.0. Databases created with 0.10.x will open in 1.0 without manual
 steps: database changes are append-only migrations, and Moony copies the database next to itself
 (`moony.db.bak-<time>`, the newest three are kept) before applying one. Two limits: an older
-version cannot open the database after an update, so keep a backup, and the MCP interface may
-still change before 1.0. See [CHANGELOG.md](./CHANGELOG.md) and [ROADMAP.md](./ROADMAP.md).
+version refuses a database that a newer one has migrated, so keep a backup, and the MCP interface
+may still change before 1.0. See [CHANGELOG.md](./CHANGELOG.md) and [ROADMAP.md](./ROADMAP.md).
 
 ## Built with AI assistance
 
 Moony is developed by one maintainer working with AI coding agents. The agents follow written
 rules ([AGENTS.md](./AGENTS.md), [`docs/standards/`](./docs/standards/)) and a tiered process
-([`docs/standards/workflow.md`](./docs/standards/workflow.md)): a design and a plan for larger
-changes, tests first for fixes, and gates every change must pass (lint, type check, unit tests,
-`cargo clippy -- -D warnings`, and `cargo audit` in CI). That reduces mistakes but does not
-remove them, so please report what you find.
+([`workflow.md`](./docs/standards/workflow.md)): a design and a plan for larger changes, tests
+first for fixes, and gates every change must pass (lint, type check, unit tests, clippy and
+`cargo audit` in CI). That reduces mistakes but does not remove them, so please report what you
+find.
 
 ## Help and community
 
@@ -236,11 +236,11 @@ use, study, modify and share it, and forks are allowed, including commercially, 
 distribute (or make available over a network) that is based on Moony must be released in full
 under the AGPL-3.0 as well, with complete source code. No closed-source forks.
 
-The name "Moony" and the app icon are not covered by this licence; a modified version should use
-a different name and icon. A commercial licence is available on request: ask in
+The name "Moony" and the app icon are not covered by this license; a modified version should use
+a different name and icon. A commercial license is available on request: ask in
 [GitHub Discussions](https://github.com/fiiles/Moony/discussions).
 
 Moony is distributed WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See [LICENSE](./LICENSE) for the full text.
-The licences of the npm packages and Rust crates Moony is built from are inventoried in
+The licenses of the npm packages and Rust crates Moony is built from are inventoried in
 [THIRD_PARTY_LICENSES.md](./THIRD_PARTY_LICENSES.md).

@@ -92,4 +92,4 @@ reasonable time to fix a problem before you go public.
   archives signed with the project's updater key. The release process and what is still
   missing (platform code signing) are described in
   [`docs/playbooks/release.md`](./docs/playbooks/release.md).
-- A third-party licence inventory is in [THIRD_PARTY_LICENSES.md](./THIRD_PARTY_LICENSES.md).
+- A third-party license inventory is in [THIRD_PARTY_LICENSES.md](./THIRD_PARTY_LICENSES.md).

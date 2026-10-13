@@ -7,7 +7,7 @@ guaranteed response time.
 
 | You want to | Go to |
 | --- | --- |
-| Ask how to do something, talk through an idea, or ask about a commercial licence | [GitHub Discussions](https://github.com/fiiles/Moony/discussions) |
+| Ask how to do something, talk through an idea, or ask about a commercial license | [GitHub Discussions](https://github.com/fiiles/Moony/discussions) |
 | Report a bug | [A new issue](https://github.com/fiiles/Moony/issues/new/choose) with the **Bug report** form |
 | Suggest a feature | The **Feature request** form on the same page (for a larger idea, start in Discussions) |
 | Report a vulnerability | [SECURITY.md](./SECURITY.md). Do not open a public issue, discussion or pull request |

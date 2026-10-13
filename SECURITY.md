@@ -65,11 +65,12 @@ Out of scope:
   device (malware, a keylogger, someone using the computer while the app is unlocked).
   Lock the app, use full-disk encryption and a strong password.
 - **Attachments are stored unencrypted** (photos and documents in the data folder). This is
-  documented in [PRIVACY.md](./PRIVACY.md) and is a known roadmap item, not a new finding.
+  documented in [PRIVACY.md](./PRIVACY.md) and listed in the [roadmap](./ROADMAP.md), so it is
+  not a new finding.
 - Weak or reused passwords chosen by the user, and loss of both password and recovery key
   (there is deliberately no backdoor).
 - Releases being **unsigned** by Apple and Microsoft for now (see the install notes in
-  [README.md](./README.md#install)); the in-app updater still verifies its own signature.
+  [README.md](./README.md#download-and-install)); the in-app updater still verifies its own signature.
 - What a third-party AI client does with data after you connected it over MCP.
 - Vulnerabilities in dependencies with no demonstrable effect on Moony — please report them
   upstream. Reports that only restate the output of an automated scanner, denial of service of
@@ -84,11 +85,13 @@ reasonable time to fix a problem before you go public.
 ## How we keep dependencies and releases in check
 
 - `cargo audit --deny warnings` runs in CI and blocks the build on any advisory (including
-  unmaintained or yanked crates); see [`.github/workflows/ci.yml`](./.github/workflows/ci.yml).
+  unmaintained or yanked crates) except the few that are listed with a reason in
+  [`.cargo/audit.toml`](./.cargo/audit.toml); see
+  [`.github/workflows/ci.yml`](./.github/workflows/ci.yml).
 - Dependabot opens security-update pull requests for npm, Cargo and GitHub Actions
   ([`.github/dependabot.yml`](./.github/dependabot.yml)).
 - Releases are built by GitHub Actions from version tags; the in-app updater only installs
   archives signed with the project's updater key. The release process and what is still
   missing (platform code signing) are described in
   [`docs/playbooks/release.md`](./docs/playbooks/release.md).
-- A third-party licence inventory is in [THIRD_PARTY_LICENSES.md](./THIRD_PARTY_LICENSES.md).
+- A third-party license inventory is in [THIRD_PARTY_LICENSES.md](./THIRD_PARTY_LICENSES.md).

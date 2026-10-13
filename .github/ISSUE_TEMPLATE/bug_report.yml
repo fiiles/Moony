@@ -17,8 +17,8 @@ body:
     id: version
     attributes:
       label: Moony version
-      description: Click the (i) About button in the top bar of the app and copy the version number.
-      placeholder: e.g. 0.9.0
+      description: Open the account menu at the bottom of the sidebar, choose About and copy the version number.
+      placeholder: e.g. 0.10.0
     validations:
       required: true
   - type: input
@@ -69,11 +69,19 @@ body:
     attributes:
       label: Logs
       description: |
-        Open the (i) About dialog, click **Open logs**, and paste the relevant lines from the newest
-        log file. Logs can contain ticker symbols and file paths — read them before posting.
+        Open the About dialog (account menu at the bottom of the sidebar), click **Open logs**, and
+        paste the relevant lines from the newest log file. Logs can contain ticker symbols and file
+        paths — read them before posting.
       render: text
   - type: textarea
     id: extra
     attributes:
       label: Anything else?
-      description: Language (English/Czech), display currency, whether it happens every time, workarounds.
+      description: Interface language, main currency, whether you upgraded from an earlier version, whether it happens every time, workarounds.
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy
+      options:
+        - label: I have removed balances, account numbers and names from the report
+          required: true

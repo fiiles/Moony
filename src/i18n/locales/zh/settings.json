@@ -116,12 +116,12 @@
     "description": "这些操作无法撤销。",
     "deleteAccount": "删除账户",
     "confirmTitle": "您确定要这样做吗？",
-    "confirmDescription": "此操作无法撤销。这将永久删除您的账户，并从此设备上移除您的所有数据。由于 Moony 是纯本地应用，我们的服务器上没有需要删除的数据。",
+    "confirmDescription": "此操作无法撤销。这将从此设备上永久删除数据库、密钥文件和附件。Moony 保存在数据库旁边的副本（moony.db.bak-…、pre-restore-…）会留在数据文件夹中；可通过 设置 → 数据与备份 → 打开文件夹 找到它。由于 Moony 是纯本地应用，我们的服务器上没有需要删除的数据。",
     "deleting": "正在删除…",
     "backupFirst": "提示：请先创建备份（设置 → 数据与备份）——这是找回这些数据的唯一方法。",
     "confirmLabel": "请输入 {{word}} 以确认",
     "deleteAll": "删除所有数据",
-    "deleteAllHint": "移除这台电脑上的个人资料和整个数据库。保存在应用之外的备份不受影响。",
+    "deleteAllHint": "移除这台电脑上的数据库、密钥文件和附件。数据库旁边的副本（moony.db.bak-…、pre-restore-…）会留在数据文件夹中（数据与备份 → 打开文件夹），保存在应用之外的备份同样不受影响。",
     "deleteButton": "删除数据…"
   },
   "toast": {

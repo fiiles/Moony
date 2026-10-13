@@ -1,9 +1,9 @@
 # Contributing to Moony
 
-Thank you for your interest in Moony! This document describes how the project is
+Thank you for your interest in Moony. This document describes how the project is
 actually developed and how you can contribute.
 
-## How This Project Is Developed
+## How this project is developed
 
 Moony is maintained by a **solo maintainer working with AI agents**, using
 **trunk-based development on `main`** — small, frequent commits, no long-lived
@@ -31,20 +31,20 @@ The authoritative process lives in
 - **Instructions for AI coding agents** live in [`AGENTS.md`](./AGENTS.md)
   (`CLAUDE.md` imports it); they point at the same standards.
 
-## How to Contribute
+## How to contribute
 
 External contributions are welcome, with the caveat that this is primarily a
 personal project:
 
-- 🐛 **Bug reports** — the most valuable contribution (see below)
-- ✨ **Feature ideas** — open an issue for discussion before writing code
-- 📝 **Documentation fixes**
-- 🌍 **Translations and i18n improvements**
+- **Bug reports** — the most valuable contribution (see below)
+- **Feature ideas** — open an issue for discussion before writing code
+- **Documentation fixes**
+- **Translations and i18n improvements** — see [Translations](#translations)
 
 If you want to submit code, open an issue first to align on the approach, then
 open a pull request against `main`. The pull-request template asks what changed,
 why and how you tested it, and has a checklist that mirrors the gates above
-(lint/typecheck/tests/clippy, English **and** Czech strings, migration rules,
+(lint/typecheck/tests/clippy, strings in all ten languages, migration rules,
 regenerated types). Add an entry under *Unreleased* in
 [`CHANGELOG.md`](./CHANGELOG.md) for user-visible changes, and update
 [`PRIVACY.md`](./PRIVACY.md) if a change adds a network request or stores new
@@ -54,7 +54,7 @@ on every PR).
 Please follow the [Code of Conduct](./CODE_OF_CONDUCT.md). Security problems go
 through [`SECURITY.md`](./SECURITY.md), not a public issue.
 
-## Licensing of Contributions
+## Licensing of contributions
 
 Moony is licensed under the **GNU Affero General Public License v3.0** (see
 [LICENSE](./LICENSE)). By submitting a contribution you agree that:
@@ -70,15 +70,88 @@ Point 2 keeps dual licensing possible — without it, every past contributor wou
 have to be asked for permission before Moony could ever be offered under terms
 other than the AGPL.
 
-## Development Setup
+## Development setup
+
+### Tech stack
+
+Frontend:
+
+- **React 19** with TypeScript, **Vite** for development and building
+- **Tailwind CSS** and **shadcn/ui** components (Radix UI primitives)
+- **TanStack Query** for data fetching and caching, **wouter** for routing
+- **Recharts** for charts, **react-hook-form** and **zod** for forms
+- **i18next** for the ten interface languages
+
+Backend:
+
+- **[Tauri 2](https://v2.tauri.app/)**, the cross-platform desktop framework, with **Rust** for
+  the backend logic
+- **SQLite with SQLCipher**, the encrypted local database
+- **reqwest** for the outbound HTTP calls
+- **rmcp** for the embedded MCP server (Model Context Protocol)
 
 ### Prerequisites
 
-- **Node.js** 22 or later (CI uses Node 22; Vite 8 and ESLint 10 do not run on older versions)
-- **Rust** (latest stable, via [rustup](https://rustup.rs/))
-- Platform-specific dependencies (see [README.md](./README.md#prerequisites))
+Most people only need the [installers](./README.md#download-and-install). To build or develop
+Moony yourself, install:
+
+- [Node.js](https://nodejs.org/) 22 or newer (CI uses Node 22; Vite 8 and ESLint 10 do not run
+  on older versions)
+- [Rust](https://www.rust-lang.org/tools/install) (latest stable, via rustup)
+- The [Tauri 2 prerequisites](https://v2.tauri.app/start/prerequisites/) for your OS, summarized
+  below
+
+#### Windows
+
+1. **Install Rust** from [rustup.rs](https://win.rustup.rs/x86_64), follow the prompts and
+   restart your terminal.
+2. **Install Microsoft C++ Build Tools** (required by Rust) from
+   [Visual Studio Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/) and
+   select the **"Desktop development with C++"** workload. It includes the MSVC compiler and the
+   Windows SDK.
+3. **Install WebView2** (usually pre-installed on Windows 10/11). If it is missing, download it
+   from [Microsoft Edge WebView2](https://developer.microsoft.com/en-us/microsoft-edge/webview2/).
+4. **Install OpenSSL** (SQLCipher needs a crypto library; the release build uses a static one
+   from vcpkg):
+
+   ```powershell
+   vcpkg install openssl:x64-windows-static-md
+   $env:OPENSSL_DIR = "<your vcpkg root>\installed\x64-windows-static-md"
+   $env:OPENSSL_STATIC = "1"
+   ```
+
+5. **Verify** with `rustc --version`, `cargo --version` and `node --version`.
+
+#### macOS
+
+1. **Install the Xcode Command Line Tools:** `xcode-select --install`
+2. **Install Rust:**
+
+   ```bash
+   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+   source $HOME/.cargo/env
+   ```
+
+3. **Verify** with `rustc --version`, `cargo --version` and `node --version`.
+
+#### Linux (Ubuntu/Debian)
+
+1. **Install system dependencies:**
+
+   ```bash
+   sudo apt update
+   sudo apt install libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
+   ```
+
+2. **Install Rust** as on macOS above.
+3. **Verify** with `rustc --version`, `cargo --version` and `node --version`.
+
+For other distributions, see the
+[Tauri Linux prerequisites](https://v2.tauri.app/start/prerequisites/#linux).
 
 ### Commands
+
+Clone the repository (`git clone https://github.com/fiiles/Moony.git && cd Moony`), then:
 
 ```bash
 # Install frontend dependencies
@@ -90,8 +163,8 @@ npm run tauri dev
 # Run frontend only (for UI development)
 npm run dev
 
-# Build for production
-npm run tauri build
+# Build for production without the project's updater signing key
+npm run tauri build -- --no-sign
 
 # Quality gates (run before committing)
 npm run lint && npm run typecheck && npm test
@@ -101,6 +174,21 @@ cd src-tauri && cargo fmt --check && cargo clippy -- -D warnings && cargo test
 npm run licenses                                      # regenerate THIRD_PARTY_LICENSES.md
 cargo audit --file src-tauri/Cargo.lock --deny warnings   # from the repo root, as CI does it
 ```
+
+**Why `--no-sign`.** `src-tauri/tauri.conf.json` turns on `createUpdaterArtifacts`, so a plain
+`npm run tauri build` fails at the end with "A public key has been found, but no private key"
+unless the environment variable `TAURI_SIGNING_PRIVATE_KEY` holds the project's updater key,
+which only the maintainer has. With `--no-sign` the installers are built and the updater
+signature is skipped (the build prints a warning). Add `--no-bundle` to build only the binary
+(`src-tauri/target/release/`). What you build is not an official release and is not signed with
+the project's key. Moony contains no telemetry, in official builds and in builds from source.
+
+### Recommended editor setup
+
+- [VS Code](https://code.visualstudio.com/)
+- [Tauri extension](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode)
+- [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
+- [ESLint](https://marketplace.visualstudio.com/items?itemName=dbaeumer.vscode-eslint)
 
 ### Browser dev bridge (optional)
 
@@ -176,7 +264,25 @@ The Linux and Windows recipes are not tested as regularly as the macOS one; if o
 work, please open an issue. `demo-home/`, `demo-data/`, `firstrun-home/` and
 `demo-config.json` are ignored by git.
 
-### Project Structure
+### Screenshots
+
+`scripts/screenshots.mjs` captures the README screenshots from a running dev app (started with
+`npm run tauri dev` on an unlocked demo profile, with the browser dev bridge above) using
+headless Chrome. Each page is loaded in a fresh profile with the English interface, waited for
+until its data is on screen, and captured at 1440 × 900 CSS px with a 2× scale. It has no
+dependencies.
+
+```bash
+node scripts/screenshots.mjs [--base http://localhost:1420] [--out docs/screenshots]
+                             [--account <bankAccountId>] [--fixture <csv path>]
+```
+
+Set `CHROME_PATH` if Chrome is not in a standard location. The images are named
+`dashboard.png`, `bank-accounts.png`, `import.png`, `settings.png`, `account-detail.png` and
+`stocks.png`, which is what the README references. Use the demo profile only: the screenshots
+must never show real data.
+
+### Project structure
 
 ```
 Moony/
@@ -198,7 +304,7 @@ Moony/
 │   └── tauri.conf.json     # Tauri configuration
 ├── shared/                 # Shared types and calculations
 ├── docs/                   # Standards, architecture, ADRs, playbooks, specs, plans
-├── scripts/                # Maintenance scripts (third-party licence inventory)
+├── scripts/                # Maintenance scripts (third-party license inventory, screenshots)
 └── public/                 # Static assets
 ```
 
@@ -268,7 +374,7 @@ Column names the generic detector does not know yet (a new language) are added t
 Stock exports are read by one adapter per source (XTB, Trading 212, Degiro, Interactive
 Brokers and Moony's own table), each a module under
 [`src-tauri/src/services/stock_import/adapters/`](./src-tauri/src/services/stock_import/adapters/).
-An adapter recognises a file from its headers and produces the configuration the generic
+An adapter recognizes a file from its headers and produces the configuration the generic
 parser reads it with, so a user with that broker's export needs no manual column mapping.
 Everything else (preview, duplicates, holdings checks, import, undo) is shared. The design is
 in [`docs/specs/2026-10-04-stock-csv-import-wizard-design.md`](./docs/specs/2026-10-04-stock-csv-import-wizard-design.md).
@@ -308,28 +414,43 @@ in [`docs/specs/2026-10-04-stock-csv-import-wizard-design.md`](./docs/specs/2026
    - `SOURCE_IDS`, the `BrokerId` union and `SOURCE_HELP_URLS` in
      `src/components/stocks/import/import-config.ts` (the help link opens the broker's own page
      about exporting a history; the test next to it checks every broker has one);
-   - `stocks.importWizard.sources.<id>` in **both** `src/i18n/locales/cs/stocks.json` and
-     `en/stocks.json`: `name`, `guideTitle`, `guide` (where to click, which report, which period,
+   - `stocks.importWizard.sources.<id>` in **every** `src/i18n/locales/<lang>/stocks.json` (ten
+     languages; `src/i18n/locales.test.ts` fails otherwise): `name`, `guideTitle`, `guide` (where to click, which report, which period,
      which format, in one or two sentences) and an optional `note` for the broker's caveats (a
      file with deposits and dividends in it, a limit on the period). The note is shown again on
      the mapping step.
 6. Run `cd src-tauri && cargo test stock_import` and `npm test`.
 
 Row messages (`importWizard.row.*`) are i18n keys, never English prose: a new kind of skipped
-row or error needs its key in both locale files and a case in the parser.
+row or error needs its key in every locale file and a case in the parser.
 
-## Code Style
+## Translations
+
+The app ships in ten languages: English, Czech, German, Spanish, Italian, Norwegian (bokmål),
+Polish, Swedish, Japanese and Simplified Chinese. English is the source and Czech is the
+maintainer's own copy. **The other eight are machine-translated**, so awkward wording is likely
+and corrections are welcome.
+
+To fix a translation, edit the string in `src/i18n/locales/<lang>/<namespace>.json` and open a
+pull request. An issue that names the screen, the language and the better wording works too.
+Keep the keys and the `{{variables}}` unchanged and follow the terminology in
+[`docs/standards/i18n-glossary.md`](./docs/standards/i18n-glossary.md). `npm test` runs
+`src/i18n/locales.test.ts`, which checks that every language has the same keys, plural forms
+and variables as English. A new string must be added to all ten languages in the same change
+([`docs/standards/i18n.md`](./docs/standards/i18n.md)).
+
+## Code style
 
 Follow the standards in [`docs/standards/`](./docs/standards/). Highlights:
 
 - **TypeScript/React** — typed components, TanStack Query for data fetching,
   shadcn/ui components, react-hook-form + zod for forms, all user-facing
-  strings translated in both locales (`docs/standards/i18n.md`)
+  strings translated in all ten languages (`docs/standards/i18n.md`)
 - **Rust** — commands in `commands/`, business logic in `services/`, proper
   `Result` error handling, tests per `docs/standards/testing.md`
 - **CSS** — Tailwind utilities on the design-system tokens (`docs/design-system/`); light theme only
 
-## Commit Message Guidelines
+## Commit message guidelines
 
 We follow the [Conventional Commits](https://www.conventionalcommits.org/)
 specification:
@@ -351,18 +472,19 @@ refactor(auth): simplify password validation logic
 
 Keep commits small and focused — one logical change per commit.
 
-## Reporting Bugs
+## Reporting bugs
 
 Use the **Bug report** form when you open an issue; it asks for the same things:
 
-1. **Moony version** — click the (i) About button in the top bar of the app
+1. **Moony version** — open the account menu at the bottom of the sidebar and choose
+   **About**
 2. **Operating system and version** (and Apple Silicon vs. Intel on macOS, the
    distribution on Linux), and whether you installed from a release or built
    from source
 3. **Steps to reproduce** — a small sample CSV with fake values helps a lot
 4. **Expected behavior** vs **actual behavior**, with the exact error message and
    screenshots if applicable
-5. **Logs** — open the About dialog, click **Open logs**, and paste the relevant
+5. **Logs** — in the About dialog, click **Open logs**, and paste the relevant
    lines from the newest log file (they can contain ticker symbols and file
    paths — read them before posting)
 
@@ -371,7 +493,7 @@ Never paste real financial data; reproduce with made-up values or the
 build from source — then please add them too. For security problems, do **not**
 file a public issue; see [`SECURITY.md`](./SECURITY.md).
 
-## Suggesting Features
+## Suggesting features
 
 For new features:
 
@@ -380,13 +502,14 @@ For new features:
 3. **Describe the feature** and its use case
 4. **Wait for discussion** before starting work
 
-## Questions?
+## Questions
 
 If you have questions about contributing, feel free to:
 
-- Open a discussion on GitHub
+- Open a discussion on [GitHub Discussions](https://github.com/fiiles/Moony/discussions)
 - Check existing issues and discussions
+- Read [SUPPORT.md](./SUPPORT.md) for where to ask what
 
 ---
 
-Thank you for contributing to Moony! 🌙
+Thank you for contributing to Moony.

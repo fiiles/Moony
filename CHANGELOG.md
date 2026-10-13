@@ -6,6 +6,14 @@ All notable changes to Moony are documented in this file. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- PRIVACY.md lists every outbound host and describes what Delete Account leaves behind.
+- **Delete Account says what stays.** The confirmation dialog and the hint next to the button, in
+  all ten languages, no longer promise that all data is removed: the database, the key files and
+  the attachments go, while the copies Moony keeps next to the database (`moony.db.bak-…`,
+  `pre-restore-…`) stay in the data folder, which *Data and backups → Open folder* opens.
+
 ## [0.10.0] - 2026-10-12
 
 This is the beta for 1.0.0. It changes how amounts in other currencies are counted and runs
@@ -32,13 +40,13 @@ below), so keep the `moony.db.bak-<time>` copy until you have checked your numbe
 - **Remembered corrections reach other payments.** The category picker in the bank ledger and in
   the cashflow report's drilldown says how many other payments of the same payee the remembered
   rule covers, broken down by their current category, and categorizes them in the same step; the
-  toast offers "Vrátit zpět". The same offer appears when a learned rule's category is changed on
+  toast offers "Undo". The same offer appears when a learned rule's category is changed on
   the rules page.
 - **Cashflow planning: categories as groups, rows in or out of the plan.** The planning page lists
   every category as a collapsible row with its total, count and origin (the investment section opens
   as a handful of rows instead of one line per dividend). Any row — automatic or manual — and any whole
   category can be left out of the plan from its "···" menu without deleting it: it stays visible,
-  muted and labelled "Mimo plán", and stops counting in the totals, stats and flow bar. A category left
+  muted and labelled "Out of plan", and stops counting in the totals, stats and flow bar. A category left
   out also covers items that appear later. The menu of an automatic row also opens the existing
   "replace with my own amount" flow and the source module. The add dialog offers every category
   (income or expense) in one grouped list and no longer asks for an automatic source to replace. The
@@ -53,25 +61,34 @@ below), so keep the `moony.db.bak-<time>` copy until you have checked your numbe
   the whole portfolio, the money-weighted return (which reflects when you deposited) with its gap
   to the time-weighted one, and the change of value split into net deposits and portfolio gain. The
   return chart is larger and has a drawdown panel under it; both share a date axis with labels at
-  real dates (month starts, quarters, years). "Rozdělit podle" splits the selected positions by a
-  tag group or by the automatic groups Sektor and Měna (offered only when they split your
-  portfolio), or not at all with "Nerozdělovat": the chart then shows the whole portfolio as one
+  real dates (month starts, quarters, years). "Split by" splits the selected positions by a
+  tag group or by the automatic groups Sector and Currency (offered only when they split your
+  portfolio), or not at all with "Don't split": the chart then shows the whole portfolio as one
   solid line, and with a filter on the selected positions as one solid line against the dashed
   portfolio; the table under the chart is the legend and shows each part's return, difference to
   the portfolio, contribution in percentage points, maximum drawdown, share and value. Hovering
   the chart rewrites the figures and the table to that day. New cards show each position's
-  contribution to the return (its "Ostatní" row opens a list of the positions it folds) and
+  contribution to the return (its "Other" row opens a list of the positions it folds) and
   deposits against portfolio gain per week, month, quarter or year; the tag and holdings tables
-  gain the return for the period. "Které pozice analyzovat"
+  gain the return for the period. "Which positions to analyse"
   replaces the chip filters with a summary and a rule sentence. The stats row and the allocation
   ring are gone.
-- **Custom periods in the stocks analysis.** Besides 3 měsíce, Letos, Rok, 3 roky and Vše there is
-  Vlastní: type the dates or drag a range in the chart. The page remembers the period and the
+- **Custom periods in the stocks analysis.** Besides 3 months, This year, Year, 3 years and All there is
+  Custom: type the dates or drag a range in the chart. The page remembers the period and the
   chosen split per device.
 - **Compare with an index.** The stocks analysis can draw S&P 500 (through CSPX.L) or MSCI World
   (through IWDA.L) as a dotted line and name how far ahead or behind it you were. The prices are
   fetched from Yahoo when you switch the index on and are not stored; offline the page says the
   index could not be loaded.
+- **First-run welcome.** The first run opens with a short brand animation that you can skip
+  (reduced motion skips it) and that leads into the setup wizard. The language choice has a
+  header of its own in the intro and in the wizard, the fourth step is called "What to track", and
+  the currency fields look like the other selects while staying searchable. Closing the statement
+  import in the last step no longer finishes the setup: the account you created stays, its fields
+  become read-only, the import can be reopened for the same account without creating a duplicate,
+  and a separate button enters the app.
+- **Page transitions.** A page fades and slides in over 0.4 seconds when you move between pages in
+  the main window; reduced motion turns it off.
 
 ### Fixed
 
@@ -84,7 +101,7 @@ below), so keep the `moony.db.bak-<time>` copy until you have checked your numbe
 
 - **The category picker stays inside the window.** When a row sits near the top or bottom of the
   screen the picker is capped to the space on its side and its list scrolls, instead of running
-  past the edge where its footer could not be reached. A toast's "Vrátit zpět" can be clicked while
+  past the edge where its footer could not be reached. A toast's "Undo" can be clicked while
   a dialog is open and no longer closes the dialog.
 - **Stock prices lost their third decimal.** Adding a position, buying or selling rounded the price
   per share to two decimals, so a London share quoted in pence (0.953 £) was recorded as 0.95 £;
@@ -113,7 +130,7 @@ below), so keep the `moony.db.bak-<time>` copy until you have checked your numbe
   CZK as an ordinary quote, so the app no longer depends on the CZK feed. Rate history is now also
   downloaded for every currency you hold (balances, properties, loans, bonds, other assets,
   insurance, budgets), not only for transaction currencies.
-- **Symbols.** Only the main currency is shown with its compact symbol ("$", "Kč"); every other
+- **Symbols.** Only the main currency is shown with its compact symbol ("$", "€"); every other
   currency is shown with its ISO code, so "$" and "kr" can no longer mean several currencies.
 - **Calculator defaults** (annuity, real estate, the what-if step) scale to your main currency or
   start empty instead of using crown-sized numbers.
@@ -170,6 +187,10 @@ below), so keep the `moony.db.bak-<time>` copy until you have checked your numbe
   assignments of that group are removed (tags themselves are kept); the database is copied next
   to itself first, as for any migration. For overlapping labels use tags without a group, or
   two groups.
+- **Tags are assigned one position at a time.** The assign dialog lists your positions with a search
+  box: click a position and pick its tags (one choice per group, any number of tags without a
+  group). The dialog counts the changed positions, and one "Save tags" writes the changes of all
+  of them together.
 - **MCP imports keep the same rules as the app.** Writes through the MCP server are validated
   like the app's own forms: a sale above the holding (counted in date order over the whole
   batch), an unknown or conflicting coin ID, a non-finite number, an invalid date or a case
@@ -205,22 +226,22 @@ below), so keep the `moony.db.bak-<time>` copy until you have checked your numbe
   other asset is recorded when it is created.
 - **Company data on the position detail.** Sector, industry, P/E, market cap and the other key
   figures of a holding are downloaded (at most once a day) and shown on the stock detail.
-- **Upcoming items on the overview.** A "Co vás čeká" card on the dashboard is an agenda of what
+- **Upcoming items on the overview.** A "What's coming up" card on the dashboard is an agenda of what
   is coming: each item has a date chip with the day and how far away it is (dark only for a deadline
-  at most a week off), in two columns, six at first and "Zobrazit vše" for the rest. It covers
+  at most a week off), in two columns, six at first and "Show all" for the rest. It covers
   insurance anniversaries with the last day to give notice, contract ends and larger insurance
   payments, fixed-rate ends, loan payoff, bond maturity and coupons, term-account and
   promotional-rate ends, and watchlist targets the price has reached. Information (insurance
   payments, bond coupons, loan payoff) appears only inside its reminder window. Data upkeep (a stale
   backup, bank balances, property valuations, loan balances to compare with a statement) is folded
-  into one quiet line under it. The "···" menu of every item offers "Skrýt" (until the data changes,
-  for upkeep), "Připomenout za týden" (not for an item at most a week off; "za měsíc" for upkeep)
-  and "Nepřipomínat …" for a whole group, each confirmed by a toast with "Vrátit". Settings → Obecné
-  has a card "Připomínky na přehledu" to turn a group back on. The top bar shows only a deadline
+  into one quiet line under it. The "···" menu of every item offers "Hide" (until the data changes,
+  for upkeep), "Remind me in a week" (not for an item at most a week off; "Remind me in a month" for upkeep)
+  and "Don't remind me about …" for a whole group, each confirmed by a toast with "Undo". Settings → General
+  has a card "Overview reminders" to turn a group back on. The top bar shows only a deadline
   (notice, contract or fixed-rate end, maturity, account or promotional-rate end) at most 14 days
-  away, as "Spořicí účet · za 10 dní".
+  away, as "Savings account · in 10 days".
 - **Rate valid until on bank accounts.** An account can carry the date its promotional rate ends
-  ("Sazba platí do"); it shows up among the upcoming items.
+  ("Rate valid until"); it shows up among the upcoming items.
 - **Watchlist targets that wait for a dip or a rise.** A target now remembers whether it waits for
   the price to fall (a buy) or to rise (a sell), is pre-selected from the typed price and can be
   switched in the target dialog.

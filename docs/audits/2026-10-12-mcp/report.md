@@ -42,7 +42,7 @@ Nebyly otevírány osobní databáze, prováděny importy do běžící aplikace
 
 **Reprodukce:** přes `stock_transactions_create` nebo `crypto_transactions_create` zapsat v rostoucích dnech nákup 1 kusu, prodej 2 kusů a nákup 3 kusů. Všechny řádky se přijmou. U akcií test prokazuje uložené množství `2`, zatímco `cost_basis::replayed_quantity` vrátí `3`, protože nepřípustný prodej ořízne. Vznikne rozpor mezi uloženými souhrny a množstvím použitým při ocenění.
 
-Importní větve volají interní INSERT bez `ensure_sell_within_holdings`: [akcie](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src-tauri/src/services/investments.rs:455), [krypto](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src-tauri/src/services/crypto_investments.rs:355). Ruční zápis tuto kontrolu má: [akcie](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src-tauri/src/services/investments.rs:765), [krypto](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src-tauri/src/services/crypto_investments.rs:251). Akciový CSV wizard navíc simuluje obchody před zápisem.
+Importní větve volají interní INSERT bez `ensure_sell_within_holdings`: [akcie](../../../src-tauri/src/services/investments.rs#L455), [krypto](../../../src-tauri/src/services/crypto_investments.rs#L355). Ruční zápis tuto kontrolu má: [akcie](../../../src-tauri/src/services/investments.rs#L765), [krypto](../../../src-tauri/src/services/crypto_investments.rs#L251). Akciový CSV wizard navíc simuluje obchody před zápisem.
 
 **Náprava:** sjednotit kontrolu v doménové zapisovací službě. Ověřit časově seřazenou kombinaci existujících a nových obchodů, včetně pozdějších již uložených prodejů; samotná kontrola množství v den nového prodeje nemusí zachytit dopad zpětně vloženého obchodu. Selhání musí vrátit celou MCP dávku.
 
@@ -50,7 +50,7 @@ Importní větve volají interní INSERT bez `ensure_sell_within_holdings`: [akc
 
 **Reprodukce:** `other_asset_create` s `asset.name`, `asset.marketPrice` a `initialTransaction` typu buy, quantity `1`, price `10`; vynechat `asset.quantity` a `asset.averagePurchasePrice`, jak doporučuje popis nástroje. Transakce vznikne, ale vrácené i uložené množství a průměrná cena zůstávají `0`. Čisté jmění používá uložené množství, takže aktivum má nulovou hodnotu navzdory evidovanému nákupu.
 
-Příčina je [zápis počáteční transakce bez přepočtu před commitem](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src-tauri/src/services/other_assets.rs:125). UI problém obchází tím, že [počáteční množství a cenu předvyplní](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src/components/other-assets/AddOtherAssetModal.tsx:98). Existující testy služby toto historické chování dokonce zachovávají; nejde proto jen o chybějící test.
+Příčina je [zápis počáteční transakce bez přepočtu před commitem](../../../src-tauri/src/services/other_assets.rs#L125). UI problém obchází tím, že [počáteční množství a cenu předvyplní](../../../src/components/other-assets/AddOtherAssetModal.tsx#L98). Existující testy služby toto historické chování dokonce zachovávají; nejde proto jen o chybějící test.
 
 **Náprava:** při počáteční transakci odvodit a uložit souhrny uvnitř stejné SQL transakce. Nevyžadovat, aby klient poslal dvakrát vzájemně konzistentní finanční údaje.
 
@@ -58,15 +58,15 @@ Příčina je [zápis počáteční transakce bez přepočtu před commitem](/Us
 
 **Reprodukce:** v DB existuje BTC s ID `bitcoin`. Importovat další zpětně datovaný nákup BTC s `coingeckoId: "ethereum"`. Služba ponechá identitu držby `bitcoin`, ale event předá `ethereum`. Jiná varianta: dva řádky nového tickeru mají rozdílná ID a odlišné pořadí vstupu/dnů; seřazený zápis a výběr ID pro event zvolí jiný řádek.
 
-Event vybírá ID [z původních argumentů](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src-tauri/src/services/mcp/crypto.rs:308). Přepočet [důvěřuje dodanému ID](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src-tauri/src/commands/portfolio.rs:2075), sestaví [mapu tohoto ID na původní ticker](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src-tauri/src/commands/portfolio.rs:1718) a následně ukládá jeho ceny pod tento ticker do historie. Při dostupném cenovém API se tak historické ocenění BTC může odvozovat od ETH, přestože aktuální držba má správnou identitu.
+Event vybírá ID [z původních argumentů](../../../src-tauri/src/services/mcp/crypto.rs#L308). Přepočet [důvěřuje dodanému ID](../../../src-tauri/src/commands/portfolio.rs#L2075), sestaví [mapu tohoto ID na původní ticker](../../../src-tauri/src/commands/portfolio.rs#L1718) a následně ukládá jeho ceny pod tento ticker do historie. Při dostupném cenovém API se tak historické ocenění BTC může odvozovat od ETH, přestože aktuální držba má správnou identitu.
 
 **Náprava:** odmítnout konfliktní ID vůči existující držbě i uvnitř dávky. Rozsah přepočtu a cenovou identitu odvozovat z úspěšně zapsaných dat, nikoli z původního požadavku.
 
 ## F04 — Běžné založení spořicího účtu rozbije cashflow plán
 
-**Reprodukce:** `bank_account_create({name:"Savings", accountType:"savings"})`. `interestRate` je volitelný, ale jeho vynechání uloží SQL NULL. Cashflow plán [čte tento sloupec jako povinný String a propaguje chybu](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src-tauri/src/services/cashflow_planning.rs:482). Selže celý plán/report, i když nový účet má nulový zůstatek.
+**Reprodukce:** `bank_account_create({name:"Savings", accountType:"savings"})`. `interestRate` je volitelný, ale jeho vynechání uloží SQL NULL. Cashflow plán [čte tento sloupec jako povinný String a propaguje chybu](../../../src-tauri/src/services/cashflow_planning.rs#L482). Selže celý plán/report, i když nový účet má nulový zůstatek.
 
-[MCP předává chybějící hodnotu](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src-tauri/src/services/mcp/bank_accounts.rs:351), [sdílená služba ji zapisuje](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src-tauri/src/services/bank_accounts.rs:114). UI obvykle posílá `"0"`. Reprodukční test nejprve ověřil fungující report, poté selhání po založení účtu a obnovení po změně jediného sloupce NULL → `0`.
+[MCP předává chybějící hodnotu](../../../src-tauri/src/services/mcp/bank_accounts.rs#L351), [sdílená služba ji zapisuje](../../../src-tauri/src/services/bank_accounts.rs#L114). UI obvykle posílá `"0"`. Reprodukční test nejprve ověřil fungující report, poté selhání po založení účtu a obnovení po změně jediného sloupce NULL → `0`.
 
 **Náprava:** definovat výchozí sazbu ve sdílené službě a čtení existujících NULL hodnot ošetřit podle doménového významu. Oprava musí pokrýt i již vzniklé účty.
 
@@ -74,7 +74,7 @@ Event vybírá ID [z původních argumentů](/Users/filipkral/Programování/F
 
 **Reprodukce:** nákup akcie/krypta/ostatního aktiva s quantity `"NaN"`; u krypta také pricePerUnit `"inf"`. Validace i import projdou a finanční sloupce mohou obsahovat `NaN`/nekonečno; u držby je prokázáno uložené množství `NaN`.
 
-Validace parsuje `f64` a používá pouze porovnání s nulou: [akcie](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src-tauri/src/models/investments.rs:353), [krypto](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src-tauri/src/models/crypto.rs:192), [ostatní aktiva](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src-tauri/src/models/other_assets.rs:179). `NaN <= 0` je false. Výpočty pak mohou vracet nedefinované hodnoty nebo je při čtení potlačovat; úspěšný zápis tak nezaručuje použitelný finanční fakt. Obdobné nedostatky jsou při statické kontrole vidět u některých částek dluhopisů, nemovitostí a pojištění. Bankovní transakce a relevantní validace úvěrů již konečnost kontrolují.
+Validace parsuje `f64` a používá pouze porovnání s nulou: [akcie](../../../src-tauri/src/models/investments.rs#L353), [krypto](../../../src-tauri/src/models/crypto.rs#L192), [ostatní aktiva](../../../src-tauri/src/models/other_assets.rs#L179). `NaN <= 0` je false. Výpočty pak mohou vracet nedefinované hodnoty nebo je při čtení potlačovat; úspěšný zápis tak nezaručuje použitelný finanční fakt. Obdobné nedostatky jsou při statické kontrole vidět u některých částek dluhopisů, nemovitostí a pojištění. Bankovní transakce a relevantní validace úvěrů již konečnost kontrolují.
 
 **Náprava:** centrální pravidlo pro číselné finanční vstupy, kontrola `is_finite()` před rozsahem, včetně přetečení zápisů typu `1e999`. Vedle vstupu jednotlivých hodnot prověřit i přetečení jejich součinů/součtů. Doplnit negativní testy a opravu zachovat ve sdílených validátorech.
 
@@ -82,7 +82,7 @@ Validace parsuje `f64` a používá pouze porovnání s nulou: [akcie](/Users/fi
 
 **Reprodukce:** import jedné či více akciových transakcí přes MCP vytvoří 0 řádků v `stock_import_batches` a nové transakce mají `import_batch_id = NULL`. V historii akciových importů není co vrátit.
 
-MCP volá [sdílený bulk writer s parametrem dávky `None`](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src-tauri/src/services/mcp/investments.rs:283); CSV wizard předává metadata dávky. Akciová infrastruktura pro sledování a undo tedy existuje, ale MCP ji nevyužívá.
+MCP volá [sdílený bulk writer s parametrem dávky `None`](../../../src-tauri/src/services/mcp/investments.rs#L283); CSV wizard předává metadata dávky. Akciová infrastruktura pro sledování a undo tedy existuje, ale MCP ji nevyužívá.
 
 **Náprava:** stejně jako u bank vytvořit dávku pro MCP import, propojit nové řádky a umožnit bezpečné vrácení přes stávající historii. V API vracet identitu dávky a promítnout změnu do invalidací. U již importovaných nepropojených obchodů nepřiřazovat původ odhadem.
 
@@ -90,7 +90,7 @@ MCP volá [sdílený bulk writer s parametrem dávky `None`](/Users/filipkral/Pr
 
 **Reprodukce:** import nákupu s quantity `"10"`, price `"100"`; opakování téhož s `"10.0"`, `"100.00"`. Oba zápisy projdou a množství vzroste na `20`. Potvrzeno testem akcií i krypta; ostatní aktiva používají stejný helper.
 
-[SQL porovnává peněžní/množstevní TEXT přímo](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src-tauri/src/services/dedup.rs:246). LLM může při dalším parsování exportu změnit formát bez změny hodnoty. Tvrzení, že překrývající se dávky jsou bezpečné díky deduplikaci, tak platí jen při stejném textovém formátu. Bankovní deduplikace již numerické zápisy kanonizuje.
+[SQL porovnává peněžní/množstevní TEXT přímo](../../../src-tauri/src/services/dedup.rs#L246). LLM může při dalším parsování exportu změnit formát bez změny hodnoty. Tvrzení, že překrývající se dávky jsou bezpečné díky deduplikaci, tak platí jen při stejném textovém formátu. Bankovní deduplikace již numerické zápisy kanonizuje.
 
 **Náprava:** přesná kanonizace desetinných hodnot při porovnávání a ukládání, ideálně doplněná identitou obchodu od zdroje. Nekanonizovat přes ztrátový float tak, aby splynuly odlišné přesné hodnoty.
 
@@ -100,15 +100,15 @@ MCP volá [sdílený bulk writer s parametrem dávky `None`](/Users/filipkral/Pr
 
 **Reprodukce B:** již existující AAPL USD nákup; dávka obsahuje stejná čísla a datum v EUR plus další platný USD obchod. EUR řádek je přeskočen jako duplicita ještě před kontrolou měny, druhý řádek se uloží. Dávka tedy neodmítne měnový rozpor, přestože to deklaruje popis nástroje.
 
-Příčina je opět [klíč bez měny](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src-tauri/src/services/dedup.rs:246) a pořadí deduplikace vůči byznysové validaci.
+Příčina je opět [klíč bez měny](../../../src-tauri/src/services/dedup.rs#L246) a pořadí deduplikace vůči byznysové validaci.
 
 **Náprava:** zahrnout kanonickou měnu do identity a ověřit měnovou kompatibilitu před přeskočením řádku. U domény, která podporuje více měn, musí oba odlišné obchody zůstat zachované.
 
 ## F09 — Schéma nemovitosti navádí k neplatné klasifikaci
 
-MCP schéma [uvádí `apartment`, `house`, `land`](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src-tauri/src/services/mcp/real_estate.rs:114), zatímco aplikace pro toto pole používá `personal` / `investment`. Sdílená validace přijímá libovolný neprázdný řetězec.
+MCP schéma [uvádí `apartment`, `house`, `land`](../../../src-tauri/src/services/mcp/real_estate.rs#L114), zatímco aplikace pro toto pole používá `personal` / `investment`. Sdílená validace přijímá libovolný neprázdný řetězec.
 
-**Reprodukce:** vlastní bydlení s `type: "house"` se uloží. [Čisté jmění](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src-tauri/src/services/net_worth.rs:121) jej zařadí mezi investice, protože není přesně `personal`. [Cashflow](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src-tauri/src/services/cashflow_planning.rs:162) jej naopak považuje za osobní, protože není přesně `investment`. Volba vyloučit vlastní bydlení z majetku jej nevyloučí.
+**Reprodukce:** vlastní bydlení s `type: "house"` se uloží. [Čisté jmění](../../../src-tauri/src/services/net_worth.rs#L121) jej zařadí mezi investice, protože není přesně `personal`. [Cashflow](../../../src-tauri/src/services/cashflow_planning.rs#L162) jej naopak považuje za osobní, protože není přesně `investment`. Volba vyloučit vlastní bydlení z majetku jej nevyloučí.
 
 **Náprava:** popsat a vynutit kanonický enum ve schématu i sdíleném modelu; opravit příklady. Stávající neplatné hodnoty nelze vždy automaticky převést, protože `house` neříká, zda je dům investiční nebo osobní.
 
@@ -116,7 +116,7 @@ MCP schéma [uvádí `apartment`, `house`, `land`](/Users/filipkral/Programová
 
 **Reprodukce:** aktivum v EUR, jeden kus za 10 EUR a druhý za 100 CZK. Uložená průměrná pořizovací cena je `55 EUR`; při kurzu 25 CZK/EUR by správně vyšla `7 EUR`.
 
-[Výpočet nečte měnu transakce a sčítá ceny bez konverze](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src-tauri/src/services/other_assets.rs:17). Jde o sdílenou chybu, dosažitelnou UI i MCP. Týká se uloženého průměru a jeho spotřebitelů, například výnosu `percent_purchase`; frontend některé celkové náklady odvozuje zvlášť z historie, takže ne každý údaj na stránce musí být chybný stejně.
+[Výpočet nečte měnu transakce a sčítá ceny bez konverze](../../../src-tauri/src/services/other_assets.rs#L17). Jde o sdílenou chybu, dosažitelnou UI i MCP. Týká se uloženého průměru a jeho spotřebitelů, například výnosu `percent_purchase`; frontend některé celkové náklady odvozuje zvlášť z historie, takže ne každý údaj na stránce musí být chybný stejně.
 
 **Náprava:** buď transakční měnu omezit na měnu aktiva, nebo pořizovací cenu odvozovat pomocí historických převodů přes `services/fx.rs` a explicitně zacházet s chybějícími kurzy. Nikdy nesčítat holá čísla různých měn.
 
@@ -124,13 +124,13 @@ MCP schéma [uvádí `apartment`, `house`, `land`](/Users/filipkral/Programová
 
 **Reprodukce A:** účet `accountType: "SAVINGS"`, balance `1000`, interestRate `5` projde a uloží se v původní podobě. Cashflow hledá pouze `account_type = 'savings'`, takže úrok chybí. Celý report testem projde, ale příjem je vynechán; změna pouze velikosti písmen jej vrátí.
 
-**Reprodukce B:** pojištění se `status: "ACTIVE"` projde [case-insensitive validací](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src-tauri/src/models/insurance.rs:197), uloží se doslova a [cashflow vybere pouze `status = 'active'`](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src-tauri/src/services/cashflow_planning.rs:325). Pojistné je vynecháno.
+**Reprodukce B:** pojištění se `status: "ACTIVE"` projde [case-insensitive validací](../../../src-tauri/src/models/insurance.rs#L197), uloží se doslova a [cashflow vybere pouze `status = 'active'`](../../../src-tauri/src/services/cashflow_planning.rs#L325). Pojistné je vynecháno.
 
 **Náprava:** enumové hodnoty kanonizovat ve společných create/update službách, ideálně pomocí typovaných enumů. UI obvykle posílá kanonickou podobu, proto jde o typický problém při přímém importu přes API.
 
 ## F12 — Bankovní MCP import nedoplňuje historické směnné kurzy
 
-UI po [ruční transakci](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src-tauri/src/commands/bank_accounts.rs:319) i [CSV importu](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src-tauri/src/commands/bank_accounts.rs:538) spouští `spawn_fx_backfill`. MCP bankovní zápis tuto návaznost nemá. Jeho [frontendový listener](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src/hooks/SyncProvider.tsx:167) obnoví dotazy a snapshot, ale nedoplní kurzovou historii.
+UI po [ruční transakci](../../../src-tauri/src/commands/bank_accounts.rs#L319) i [CSV importu](../../../src-tauri/src/commands/bank_accounts.rs#L538) spouští `spawn_fx_backfill`. MCP bankovní zápis tuto návaznost nemá. Jeho [frontendový listener](../../../src/hooks/SyncProvider.tsx#L167) obnoví dotazy a snapshot, ale nedoplní kurzovou historii.
 
 **Scénář:** kurzová historie pokrývá současnost; přes MCP se přidá starý cizoměnový výpis. Historický report nemá potřebné kurzy a částky vynechá s informací o chybějícím FX. Stejný import přes UI automaticky zkusí historii doplnit. Samotný refresh dotazů chybějící kurzy nezíská; napraví se až jiným spouštěčem doplnění, například dalším refreshem FX.
 
@@ -138,7 +138,7 @@ UI po [ruční transakci](/Users/filipkral/Programování/FinanceApp/Moony-tau
 
 ## F13 — Půlnoc v lokální zóně není stejná jako backendový UTC den
 
-[Listener používá lokální půlnoc](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src/hooks/SyncProvider.tsx:234), ačkoli backend přepočítává po UTC dnech. Komentář v kódu chybně tvrdí, že rozdíl může pouze rozšířit okno.
+[Listener používá lokální půlnoc](../../../src/hooks/SyncProvider.tsx#L234), ačkoli backend přepočítává po UTC dnech. Komentář v kódu chybně tvrdí, že rozdíl může pouze rozšířit okno.
 
 **Reprodukce:** zóna Europe/Prague, aktuální datum 12. 10. 2026, importní datum `2026-10-11T23:00:00Z`. Lokální hranice dne je `2026-10-11T22:00:00Z`; frontend vrátí `isRetroactive = false`. Backendová hranice je `2026-10-12T00:00:00Z`, takže přepočet je potřeba. MCP aktuálně intradenní epochy přijímá. Pro kanonické UTC půlnoci se tento konkrétní scénář neprojeví; oba problémy se musí řešit společně s F14.
 
@@ -146,15 +146,15 @@ UI po [ruční transakci](/Users/filipkral/Programování/FinanceApp/Moony-tau
 
 ## F14 — Validace kalendářních dat dovolí neplatné a nekanonické epochy
 
-**Reprodukce:** MCP bankovní transakce s `bookingDate: 9223372036854775807` nebo stejnou `valueDate` projde. U bookingDate se kontroluje pouze kladnost, valueDate není kontrolována. Extrémní datum se přenese i do časového rozsahu importu. [Formátování](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src/lib/format.ts:155) pak vyvolá `RangeError: Invalid time value`; postižen je seznam, detail nebo historie importů podle toho, které pole je neplatné.
+**Reprodukce:** MCP bankovní transakce s `bookingDate: 9223372036854775807` nebo stejnou `valueDate` projde. U bookingDate se kontroluje pouze kladnost, valueDate není kontrolována. Extrémní datum se přenese i do časového rozsahu importu. [Formátování](../../../src/lib/format.ts#L155) pak vyvolá `RangeError: Invalid time value`; postižen je seznam, detail nebo historie importů podle toho, které pole je neplatné.
 
-[Validace](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src-tauri/src/models/bank_transactions.rs:213) také nevynucuje UTC půlnoc požadovanou ADR 0008. Běžnější scénář než extrémní číslo: tatáž bez-ID transakce importovaná z CSV s půlnocí a poté přes MCP s polednem stejného dne může obejít přesný datumový klíč deduplikace. Investiční datumy rovněž vyžadují sjednocení kontraktu; současné popisy často uvádějí jen „Unix seconds“.
+[Validace](../../../src-tauri/src/models/bank_transactions.rs#L213) také nevynucuje UTC půlnoc požadovanou ADR 0008. Běžnější scénář než extrémní číslo: tatáž bez-ID transakce importovaná z CSV s půlnocí a poté přes MCP s polednem stejného dne může obejít přesný datumový klíč deduplikace. Investiční datumy rovněž vyžadují sjednocení kontraktu; současné popisy často uvádějí jen „Unix seconds“.
 
 **Náprava:** validační/normalizační pravidlo pro všechny kalendářní datumy, podporovaný rozsah, UTC den a explicitní práci s volitelnými datumy. Bezpečně zobrazit již uložené neplatné hodnoty, aby se uživatel mohl dostat k jejich odstranění. Při normalizaci starších dat zachovat identitu finančních faktů.
 
 ## F15 — Krypto UI a MCP mají rozdílnou politiku transakčních měn
 
-**Reprodukce:** po nákupu BTC v USD provést nákup BTC v EUR. Ruční `add_transaction_to_crypto` jej přijme, MCP import [odmítne rozdíl proti měně držby](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src-tauri/src/services/crypto_investments.rs:327). Reprodukční test volal obě služby na ekvivalentních DB a potvrdil rozdíl.
+**Reprodukce:** po nákupu BTC v USD provést nákup BTC v EUR. Ruční `add_transaction_to_crypto` jej přijme, MCP import [odmítne rozdíl proti měně držby](../../../src-tauri/src/services/crypto_investments.rs#L327). Reprodukční test volal obě služby na ekvivalentních DB a potvrdil rozdíl.
 
 Současný `cost_basis` přitom výslovně podporuje transakce krypta ve více měnách s historickým přepočtem. Nejde o tiché poškození při odmítnutí: MCP odmítne celou dávku. Jde o funkční nesoulad, který komplikuje import burzovních exportů a může uživatele vést k chybnému přeznačení měny.
 
@@ -164,7 +164,7 @@ Současný `cost_basis` přitom výslovně podporuje transakce krypta ve více m
 
 - **Dva skutečně identické obchody:** akcie/krypto/ostatní aktiva je považují za duplicitu i uvnitř jednoho exportu. Je to popsané chování, nikoli překvapivá odchylka implementace, ale pro dva shodné burzovní filly může být nedostatečné. MCP akciové schéma navíc nepropouští existující `external_id` ani `allow_duplicate`; banky mají occurrence matching a potvrzovaný `importAnyway`. Doporučení: zdrojové ID a možnost rozlišit skutečné opakování bez změny finančních hodnot.
 - **Opakované založení pojištění:** stejný provider + policyNumber lze importovat znovu a vzniknou dvě pojistky i dvojnásobné plánované pojistné. Potvrzeno testem. Nástroj neslibuje idempotenci a UI rovněž nemá ochranu; jde o riziko opakování po timeoutu a rozdíl vůči MCP create nástrojům, které kontrolují duplicity. Doporučení: definovat identitu pojistky a způsob práce s opakovaným požadavkem, ne plošně zakázat dvě legitimní podobné pojistky.
-- **Stock Monitor mění data i při chybném požadavku:** `watchlist_set_target_price` [nejdříve založí sledování a teprve poté validuje cíl](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src-tauri/src/services/mcp/stock_monitor.rs:165). Chybná cena/direction vrátí chybu, ale nový sledovaný ticker zůstane. Nižší dopad: nejde o finanční držbu. Validovat před zápisem nebo obě operace spojit atomicky.
+- **Stock Monitor mění data i při chybném požadavku:** `watchlist_set_target_price` [nejdříve založí sledování a teprve poté validuje cíl](../../../src-tauri/src/services/mcp/stock_monitor.rs#L165). Chybná cena/direction vrátí chybu, ale nový sledovaný ticker zůstane. Nižší dopad: nejde o finanční držbu. Validovat před zápisem nebo obě operace spojit atomicky.
 - **Krypto a ostatní aktiva nemají stejnou infrastrukturu dávek jako akcie/banky.** Chybějící undo v těchto doménách je současné produktové omezení i na straně UI, nikoli další stejná odchylka jako F06.
 - **Zůstatky bankovních účtů jsou samostatná fakta.** Import transakcí nemá automaticky přepsat bankovní zůstatek. CSV nabízí následné potvrzené zapsání statement balance; MCP nemá odpovídající nástroj pro nový záznam zůstatku na existujícím účtu. To omezuje úplnost importu, ale samo o sobě nejde o chybný součet transakcí.
 - **Vedlejší účinky závisí na rendereru.** MCP commit je backendový, snapshot a řada přepočtů jsou best-effort přes event a frontend. Událost není trvalá fronta a výsledek nástroje nečeká na dokončení přepočtů. Pád/reload UI či okamžité zamčení může přerušit návaznosti; startup doplňuje chybějící dny, ale automaticky neopraví všechny již existující zastaralé snapshoty. Jde o architektonické riziko vyplývající z implementace, nikoli o další dynamicky reprodukovaný nález tohoto auditu.
@@ -203,6 +203,6 @@ Současný `cost_basis` přitom výslovně podporuje transakce krypta ve více m
 
 První sandboxový běh dvou HTTP testů neprošel kvůli zakázanému localhost bindu. Samostatné i následné úplné spuštění s povoleným loopbackem prošlo. Není to zjištěná chyba MCP ani zamlčené selhání testů. Lint a produkční build nebyly pro tento audit bez změny implementace spouštěny.
 
-[Spouštěč reprodukcí](/Users/filipkral/Programování/FinanceApp/Moony-tauri/docs/audits/2026-10-12-mcp/reproduce.py) kopíruje zdroje do dočasného adresáře, přidá proof moduly a spustí tři skupiny testů. Používá samostatný Cargo target, neotevírá SQLCipher profil a po skončení odstraní dočasné zdroje. Vyžaduje dostupný Rust toolchain a již stažené Cargo závislosti; první sestavení může trvat déle. Sestavení testů a jejich spuštění bylo v auditu provedeno; výsledná pomocná varianta spouštěče byla následně zkontrolována syntakticky a vůči vykonanému postupu.
+[Spouštěč reprodukcí](../../../docs/audits/2026-10-12-mcp/reproduce.py) kopíruje zdroje do dočasného adresáře, přidá proof moduly a spustí tři skupiny testů. Používá samostatný Cargo target, neotevírá SQLCipher profil a po skončení odstraní dočasné zdroje. Vyžaduje dostupný Rust toolchain a již stažené Cargo závislosti; první sestavení může trvat déle. Sestavení testů a jejich spuštění bylo v auditu provedeno; výsledná pomocná varianta spouštěče byla následně zkontrolována syntakticky a vůči vykonanému postupu.
 
-Podklady: [banky](/Users/filipkral/Programování/FinanceApp/Moony-tauri/docs/audits/2026-10-12-mcp/proofs/bank.rs), [akcie](/Users/filipkral/Programování/FinanceApp/Moony-tauri/docs/audits/2026-10-12-mcp/proofs/stocks.rs), [krypto](/Users/filipkral/Programování/FinanceApp/Moony-tauri/docs/audits/2026-10-12-mcp/proofs/crypto.rs), [ostatní aktiva a entity](/Users/filipkral/Programování/FinanceApp/Moony-tauri/docs/audits/2026-10-12-mcp/proofs/assets.rs). Při opravách se očekávané výsledky musí změnit: například oversell má být odmítnut, nikoli přijímán jen proto, aby charakterizační test dál procházel.
+Podklady: [banky](../../../docs/audits/2026-10-12-mcp/proofs/bank.rs), [akcie](../../../docs/audits/2026-10-12-mcp/proofs/stocks.rs), [krypto](../../../docs/audits/2026-10-12-mcp/proofs/crypto.rs), [ostatní aktiva a entity](../../../docs/audits/2026-10-12-mcp/proofs/assets.rs). Při opravách se očekávané výsledky musí změnit: například oversell má být odmítnut, nikoli přijímán jen proto, aby charakterizační test dál procházel.

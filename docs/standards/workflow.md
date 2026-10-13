@@ -42,7 +42,7 @@ A task is done when all of the following hold:
    ```
 2. **Tests** written per `docs/standards/testing.md` (regression test for bug fixes,
    co-located tests for new pure functions, service tests for new Rust logic).
-3. **Both locales updated** for any user-facing string (`docs/standards/i18n.md`).
+3. **All ten locales updated** for any user-facing string (`docs/standards/i18n.md`).
 4. **Docs updated** if behavior changed: README for features,
    `docs/architecture/database.md` for tables, an ADR for architectural decisions.
 

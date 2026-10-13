@@ -39,7 +39,7 @@ Doporučení:
 - Mazání provést v jedné SQL transakci, vrátit počet odstraněných položek a podpořit obnovu.
 - Starší nenavázaná data nespojovat se souborem automaticky jen podle částky a data.
 
-Důkaz: [mazání importu](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src-tauri/src/commands/bank_accounts.rs:649), [zápis importu](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src-tauri/src/services/csv_import/mod.rs:409), sonda `audit_delete_only_removes_rows_owned_by_that_batch`.
+Důkaz: [mazání importu](../../src-tauri/src/commands/bank_accounts.rs#L649), [zápis importu](../../src-tauri/src/services/csv_import/mod.rs#L409), sonda `audit_delete_only_removes_rows_owned_by_that_batch`.
 
 ### Proč import nabízí debet, kredit, zůstatek a ID transakce?
 
@@ -56,7 +56,7 @@ Samostatné sloupce debet/kredit v běžném seznamu transakcí nejsou potřebn�
 
 Pokud je vybrána jediná částka, má přednost před debetem/kreditem. Rozhraní dnes ukazuje všechny možnosti najednou. Doporučuji přepínač **„Jeden sloupec částky / Příchozí a odchozí zvlášť“**, který nabídne jen relevantní pole.
 
-Důkaz: [výpočet částky](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src-tauri/src/services/csv_import/rows.rs:181), [význam importních polí](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src-tauri/src/services/csv_import/types.rs:48), [mapování](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src/components/bank-accounts/csv-import/MappingStep.tsx:176).
+Důkaz: [výpočet částky](../../src-tauri/src/services/csv_import/rows.rs#L181), [význam importních polí](../../src-tauri/src/services/csv_import/types.rs#L48), [mapování](../../src/components/bank-accounts/csv-import/MappingStep.tsx#L176).
 
 ### Číslo účtu bez kódu banky
 
@@ -68,7 +68,7 @@ U vlastního účtu se preferuje uložené `bban` před převodem z IBANu. Pokud
 
 Doporučení: české číslo `123456789/0800` nebo `19-123456789/0800`; zahraniční IBAN skutečně jako IBAN; ostatní domácí formáty podle země. Kód banky nelze spolehlivě odhadnout z názvu protistrany.
 
-Důkaz: [Fio preset](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src-tauri/resources/csv-presets/fio.json), [fixture s kódem banky](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src-tauri/tests/fixtures/csv/fio.csv), [zobrazení protistrany](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src/pages/BankAccountDetail.tsx:1252), [formátování](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src/utils/iban-utils.ts).
+Důkaz: [Fio preset](../../src-tauri/resources/csv-presets/fio.json), [fixture s kódem banky](../../src-tauri/tests/fixtures/csv/fio.csv), [zobrazení protistrany](../../src/pages/BankAccountDetail.tsx#L1252), [formátování](../../src/utils/iban-utils.ts).
 
 ## Nálezy, které brání důvěryhodnému spuštění
 
@@ -80,7 +80,7 @@ Přidání účtu obnoví sadu IBANů v paměti, ale nepřezkoumá již zařazen
 
 **Změna:** oddělit povahu toku od spotřební kategorie; vlastní převody identifikovat přes normalizovanou identitu účtu a případně propojený pár. Automatické pravidlo obchodníka nesmí nepozorovaně změnit povahu potvrzeného vlastního převodu. Explicitní zásah uživatele umožnit s vysvětlením. U známého vlastního cíle nemusí v aplikaci existovat obě strany převodu.
 
-Důkaz: [waterfall](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src-tauri/src/services/categorization/engine.rs:84), [vlastní IBANy](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src-tauri/src/services/categorization/own_accounts.rs:22), [automatická kategorizace](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src/pages/BankAccountDetail.tsx:390). Ověřeno sondou.
+Důkaz: [waterfall](../../src-tauri/src/services/categorization/engine.rs#L84), [vlastní IBANy](../../src-tauri/src/services/categorization/own_accounts.rs#L22), [automatická kategorizace](../../src/pages/BankAccountDetail.tsx#L390). Ověřeno sondou.
 
 ### A02 · P1 · Import zahazuje identifikátor banky a zkresluje identitu protistrany
 
@@ -96,7 +96,7 @@ Ani doplnění polí neudělá z podobnosti jistotu: dvě totožné kávy jsou p
 
 **Změna:** bankovní ID oddělit jako jistou duplicitu; podobnost jako „Možná duplicita“. Zahrnout měnu a identitu protistrany, kanonizovat peněžní hodnoty a respektovat násobnost shod v překrývajících se výpisech. Zajistit přístup ke všem sporným řádkům.
 
-Důkaz: [klíč v souboru](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src-tauri/src/services/csv_import/mod.rs:63), [kontrola DB](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src-tauri/src/services/dedup.rs:43). Oba rozdílné scénáře ověřeny sondou.
+Důkaz: [klíč v souboru](../../src-tauri/src/services/csv_import/mod.rs#L63), [kontrola DB](../../src-tauri/src/services/dedup.rs#L43). Oba rozdílné scénáře ověřeny sondou.
 
 ### A04 · P1 · Vratky dávají různé výsledky v rozpočtech a cashflow
 
@@ -106,7 +106,7 @@ Reprodukce: restaurace `−1 000 Kč`, vratka potravin `+500 Kč`, bez nákupu p
 
 **Změna:** zachovat znaménko i v agregacích. Odděleně evidovat hrubé nákupy, vratky a čisté výdaje. Spotřební limit lze hodnotit podle nezáporné spotřeby, ale tím se nesmí přepisovat finanční součet. U vratky přes hranici období ukázat datum přijetí a původní nákup, je-li propojený.
 
-Důkaz: [rozpočtové ořezávání](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src-tauri/src/services/budgeting.rs:300), [cashflow ořezávání](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src-tauri/src/services/cashflow_actuals.rs:280), [skrytí skupin](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src/pages/Cashflow.tsx:97). Rozdíl 1 000/500 ověřen sondou.
+Důkaz: [rozpočtové ořezávání](../../src-tauri/src/services/budgeting.rs#L300), [cashflow ořezávání](../../src-tauri/src/services/cashflow_actuals.rs#L280), [skrytí skupin](../../src/pages/Cashflow.tsx#L97). Rozdíl 1 000/500 ověřen sondou.
 
 ### A05 · P1 · Příjem existuje jen v jedné pevně zadané kategorii; jeho storno mizí
 
@@ -116,7 +116,7 @@ Sonda: mzda `+1 000`, její vrácení `−100`, vlastní kategorie příjmu `+2 
 
 **Změna:** kategorie musí mít explicitní roli nebo povaha transakce samostatný atribut. Refund a příjem se nesmějí odvozovat pouze ze jména/ID kategorie. Překategorizování musí mít předvídatelný dopad na report.
 
-Důkaz: [interpretace cashflow](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src-tauri/src/services/cashflow_actuals.rs:225), [interpretace rozpočtu](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src-tauri/src/services/budgeting.rs:234). Ověřeno sondou.
+Důkaz: [interpretace cashflow](../../src-tauri/src/services/cashflow_actuals.rs#L225), [interpretace rozpočtu](../../src-tauri/src/services/budgeting.rs#L234). Ověřeno sondou.
 
 ### A06 · P1 · Detail účtu sčítá různé měny jako jednu
 
@@ -124,7 +124,7 @@ Import i ruční formulář dovolují měnu transakce odlišnou od měny účtu.
 
 **Změna:** buď mít každý měnový podúčet odděleně a přijímat jen jeho zaúčtovanou měnu, nebo ukládat původní i skutečně zaúčtovanou částku. Nepočítat smíšený účet prostým součtem nominálních čísel. Směna je samostatná operace, včetně poplatku.
 
-Důkaz: [pomocné výpočty](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src/utils/bank-activity.ts:35), [jejich použití](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src/pages/BankAccountDetail.tsx:380), [měna ruční transakce](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src/components/bank-accounts/AddTransactionModal.tsx:106). Ověřeno kódem.
+Důkaz: [pomocné výpočty](../../src/utils/bank-activity.ts#L35), [jejich použití](../../src/pages/BankAccountDetail.tsx#L380), [měna ruční transakce](../../src/components/bank-accounts/AddTransactionModal.tsx#L106). Ověřeno kódem.
 
 ### A07 · P1 · Změna transakcí neobnovuje všechny odvozené pohledy
 
@@ -134,7 +134,7 @@ Cashflow má vynucené obnovení při vstupu, což část problému zmírňuje; 
 
 **Změna:** jeden společný kontrakt mutací peněžních dat. Obnovit reporty, drill-downy, počty nezařazených a relevantní účty. Snapshoty řešit podle existujících pravidel a toho, zda operace mění evidovaný zůstatek.
 
-Důkaz: [mutace transakcí](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src/hooks/use-bank-account-mutations.ts:172), [změna kategorie](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src/pages/BankAccountDetail.tsx:464), [automatické zařazení](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src/pages/BankAccountDetail.tsx:407), [drill-down klíč](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src/components/budgeting/CategoryTransactionsDialog.tsx:64).
+Důkaz: [mutace transakcí](../../src/hooks/use-bank-account-mutations.ts#L172), [změna kategorie](../../src/pages/BankAccountDetail.tsx#L464), [automatické zařazení](../../src/pages/BankAccountDetail.tsx#L407), [drill-down klíč](../../src/components/budgeting/CategoryTransactionsDialog.tsx#L64).
 
 ### A08 · P1 · Starý nebo cizoměnový výpis může přepsat dnešní zůstatek
 
@@ -144,7 +144,7 @@ Sonda potvrdila, že výpis s `100 EUR` pro účet CZK vrací pouze `"100"`. Nep
 
 **Změna:** zůstatek evidovat jako `částka + měna + platnost ke dni + zdroj`. Nabízet „Potvrdit zůstatek k 30. 9.“. Starší výpis nesmí automaticky působit jako dnešní stav. Neúplný graf označit jako odhad.
 
-Důkaz: [výběr zůstatku](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src-tauri/src/services/csv_import/mod.rs:361), [podmínka nabídky](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src/components/bank-accounts/csv-import/import-config.ts:413), [aktualizace](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src/components/bank-accounts/csv-import/NextSteps.tsx:116). Ověřeno sondou a kódem.
+Důkaz: [výběr zůstatku](../../src-tauri/src/services/csv_import/mod.rs#L361), [podmínka nabídky](../../src/components/bank-accounts/csv-import/import-config.ts#L413), [aktualizace](../../src/components/bank-accounts/csv-import/NextSteps.tsx#L116). Ověřeno sondou a kódem.
 
 ### A09 · P1 · Nečíselné konečné hodnoty projdou validací backendu
 
@@ -152,7 +152,7 @@ Důkaz: [výběr zůstatku](/Users/filipkral/Programování/FinanceApp/Moony-tau
 
 **Změna:** explicitně vyžadovat konečnou kladnou hodnotu, platnou měnu a doménovou přesnost; pro peníze zvážit decimal reprezentaci ve výpočtech. TEXT v DB sám o sobě nezaručuje přesnost ani validitu.
 
-Důkaz: [validace transakce](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src-tauri/src/models/bank_transactions.rs:118), [validace rozpočtu](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src-tauri/src/models/budgeting.rs:31). Transakční validace ověřena sondou.
+Důkaz: [validace transakce](../../src-tauri/src/models/bank_transactions.rs#L118), [validace rozpočtu](../../src-tauri/src/models/budgeting.rs#L31). Transakční validace ověřena sondou.
 
 ### A10 · P1 · Neznámý kurz dává nesprávné součty; historický fallback není v reportu rozlišen
 
@@ -162,7 +162,7 @@ Globální kategorizační sada nedokládá, že pro danou zemi fungují kurzy, 
 
 **Změna:** chybějící kurz neoceňovat 1:1; zobrazit neoceněnou část zvlášť. U odhadovaného historického kurzu přenést stav až do reportu a exportu. Rozlišit interní účetní bázi CZK od uživatelovy reportovací měny.
 
-Důkaz: [kurzový fallback](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src-tauri/src/services/currency.rs:45), [historické kurzy](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src-tauri/src/services/currency.rs:477), [existující upozornění](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src/components/shell/DataStatus.tsx:66).
+Důkaz: [kurzový fallback](../../src-tauri/src/services/currency.rs#L45), [historické kurzy](../../src-tauri/src/services/currency.rs#L477), [existující upozornění](../../src/components/shell/DataStatus.tsx#L66).
 
 ### A19 · P1 · Čekající transakce vstupují do „skutečných“ reportů
 
@@ -170,7 +170,7 @@ Transakční model podporuje `pending`, ale SQL rozpočtů a skutečného cashfl
 
 **Změna:** do skutečných součtů zahrnout zaúčtované položky. Čekající pohyby ukazovat odděleně jako očekávané a při následném zaúčtování je propojit nebo nahradit, aby nevznikla druhá platba. Zrušená autorizace nesmí trvale zůstat výdajem.
 
-Důkaz: [SQL skutečného cashflow](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src-tauri/src/services/cashflow_actuals.rs:171), [SQL rozpočtů](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src-tauri/src/services/budgeting.rs:166), sonda `audit_pending_transactions_are_included_in_actuals_and_budgets`.
+Důkaz: [SQL skutečného cashflow](../../src-tauri/src/services/cashflow_actuals.rs#L171), [SQL rozpočtů](../../src-tauri/src/services/budgeting.rs#L166), sonda `audit_pending_transactions_are_included_in_actuals_and_budgets`.
 
 ## Další funkční a UX problémy
 
@@ -182,7 +182,7 @@ Náhled importu zpřístupňuje jen prvních 200 řádků, zatímco počty plat�
 
 **Změna:** stránkované hledání a filtry na backendu, agregace bez limitu; stránkování celého importního náhledu a samostatný seznam všech chyb/duplicit.
 
-Důkaz: [načítání detailu](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src/pages/BankAccountDetail.tsx:202), [aktivity účtů](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src/hooks/use-bank-account-activity.ts:34), [limit náhledu](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src-tauri/src/services/csv_import/mod.rs:43).
+Důkaz: [načítání detailu](../../src/pages/BankAccountDetail.tsx#L202), [aktivity účtů](../../src/hooks/use-bank-account-activity.ts#L34), [limit náhledu](../../src-tauri/src/services/csv_import/mod.rs#L43).
 
 ### A12 · P2 · Selhání reportu vypadá jako nekonečné načítání
 
@@ -190,7 +190,7 @@ Cashflow a rozpočty neřeší query error jako vlastní stav. Podmínka `!data`
 
 **Změna:** rozlišit načítání, chybu, chybějící výpisy, nulový tok a dostupná data; nabídnout „Zkusit znovu“. Nezaměňovat chybějící podklady za finanční nulu.
 
-Důkaz: [cashflow](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src/pages/Cashflow.tsx:271), [rozpočty](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src/pages/Budgeting.tsx:375).
+Důkaz: [cashflow](../../src/pages/Cashflow.tsx#L271), [rozpočty](../../src/pages/Budgeting.tsx#L375).
 
 ### A13 · P2 · Editace limitu mění i historické vyhodnocení rozpočtů
 
@@ -198,7 +198,7 @@ Cíl je jeden záznam kategorie + timeframe bez účinnosti od určitého obdob�
 
 **Změna:** výchozí změna „Od tohoto měsíce“, verzované limity podle období; samostatná explicitní možnost přepočíst minulost. Srozumitelně rozlišit opakovaný limit a jednorázový rozpočet.
 
-Důkaz: [upsert cíle](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src-tauri/src/services/budgeting.rs:73), [použití v reportu](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src-tauri/src/services/budgeting.rs:144).
+Důkaz: [upsert cíle](../../src-tauri/src/services/budgeting.rs#L73), [použití v reportu](../../src-tauri/src/services/budgeting.rs#L144).
 
 ### A14 · P2 · Doporučený limit a průměr cashflow ignorují pokrytí dat
 
@@ -208,7 +208,7 @@ V běžícím pohledu byl aktuální měsíc prázdný, ale zahrnutý do dvanác
 
 **Změna:** evidovat importované intervaly po účtech; ukazovat „Průměr ze 3 doložených celých měsíců“. Bez pokrytí nabídnout orientační hodnotu s jasným označením nebo doporučení vynechat.
 
-Důkaz: [šestiměsíční doporučení](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src/components/budgeting/BudgetGoalDialog.tsx:106), [průměry cashflow](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src/pages/Cashflow.tsx:302).
+Důkaz: [šestiměsíční doporučení](../../src/components/budgeting/BudgetGoalDialog.tsx#L106), [průměry cashflow](../../src/pages/Cashflow.tsx#L302).
 
 ### A15 · P2 · Srovnání období není souměřitelné a YTD není jasně pojmenované
 
@@ -216,7 +216,7 @@ Důkaz: [šestiměsíční doporučení](/Users/filipkral/Programování/Finance
 
 **Změna:** zobrazit přesná data porovnání a pokrytí. Nabídnout dokončené měsíce nebo stejný počet dní. Pro YTD použít jasně definované loňské YTD, případně současnou variantu výslovně pojmenovat.
 
-Důkaz: [hranice období](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src-tauri/src/services/cashflow_actuals.rs:64), [etikety a srovnání](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src/pages/Cashflow.tsx:74).
+Důkaz: [hranice období](../../src-tauri/src/services/cashflow_actuals.rs#L64), [etikety a srovnání](../../src/pages/Cashflow.tsx#L74).
 
 ### A16 · P2 · Učení kategorie je příliš široké a není navázané na úspěch uložení
 
@@ -226,7 +226,7 @@ Callback uložení není awaitovaný; učení může proběhnout, i když změna
 
 **Změna:** oddělit „Jen tuto transakci“ a „Vytvořit pravidlo…“, ukázat rozsah pravidla a ukázkové shody. Učení a změnu zapsat bezpečně, teprve potom měnit paměť/UI. Hromadná akce má vrátit skutečně uložené a neúspěšné položky.
 
-Důkaz: [výběr a učení](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src/components/bank-accounts/CategorySelector.tsx:116), [výchozí zapamatování](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src/components/bank-accounts/CategorySelector.tsx:341), [paměť před DB](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src-tauri/src/services/categorization/learn.rs:131), [hromadné zařazení](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src/pages/BankAccountDetail.tsx:394).
+Důkaz: [výběr a učení](../../src/components/bank-accounts/CategorySelector.tsx#L116), [výchozí zapamatování](../../src/components/bank-accounts/CategorySelector.tsx#L341), [paměť před DB](../../src-tauri/src/services/categorization/learn.rs#L131), [hromadné zařazení](../../src/pages/BankAccountDetail.tsx#L394).
 
 ### A17 · P2 · Plánované cashflow může dál počítat splacený úvěr a stejné položky dvakrát
 
@@ -236,7 +236,7 @@ Kladným bodem je již existující odlišení automatického a ručního zdroje
 
 **Změna:** respektovat aktivní stav a aktuální dluh, umožnit nahradit automatickou položku, rozlišit normalizovaný měsíční odhad a časový plán plateb. Přejmenovat výsledek na „Plánovaný měsíční přebytek“.
 
-Důkaz: [úvěry v plánu](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src-tauri/src/commands/cashflow.rs:256), [druhá úvěrová část](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src-tauri/src/commands/cashflow.rs:585), [normalizace frekvence](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src-tauri/src/commands/cashflow.rs:70). Ověřeno kódem; reálný splacený úvěr nebyl měněn.
+Důkaz: [úvěry v plánu](../../src-tauri/src/commands/cashflow.rs#L256), [druhá úvěrová část](../../src-tauri/src/commands/cashflow.rs#L585), [normalizace frekvence](../../src-tauri/src/commands/cashflow.rs#L70). Ověřeno kódem; reálný splacený úvěr nebyl měněn.
 
 ### A18 · P2 · Datum valuty se sice rozpoznává, ale neukládá
 
@@ -244,7 +244,7 @@ Detektor zná `valueDate`; importní konfigurace pro něj nemá samostatné pole
 
 **Změna:** volitelně zachovat datum valuty v detailu, vysvětlit, které datum řídí report. Ambiguity DD/MM vs. MM/DD v mezinárodních exportech explicitně potvrdit pomocí příkladů.
 
-Důkaz: [zápis řádku](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src-tauri/src/services/csv_import/rows.rs:438), [konfigurace](/Users/filipkral/Programování/FinanceApp/Moony-tauri/src-tauri/src/services/csv_import/types.rs:48).
+Důkaz: [zápis řádku](../../src-tauri/src/services/csv_import/rows.rs#L438), [konfigurace](../../src-tauri/src/services/csv_import/types.rs#L48).
 
 ## Navrhovaná změna produktu
 
@@ -398,8 +398,8 @@ Vznik návrhu není pokyn k přepisování historických dat. Změny wire contra
 - `npm run typecheck`: **prošlo**, exit code 0.
 - `cargo test`: **1 393 knihovních testů prošlo, 4 ignorované**, dále 7 + 10 testů binárních nástrojů a 1 doctest prošly. První sandboxový běh selhal pouze u dvou HTTP testů kvůli zákazu otevřít lokální port; opakování s oprávněním prošlo.
 - **8 auditních sond prošlo.** Jsou charakterizační: potvrzují současné chování, včetně popsaných chyb; jejich zelený výsledek není doklad správnosti produktu.
-- [Zdroj sond](/Users/filipkral/Programování/FinanceApp/Moony-tauri/docs/audits/2026-10-06-money-flows-probes.rs).
-- [Výstup sond](/Users/filipkral/Programování/FinanceApp/Moony-tauri/docs/audits/2026-10-06-money-flows-probes-output.txt).
+- [Zdroj sond](../../docs/audits/2026-10-06-money-flows-probes.rs).
+- [Výstup sond](../../docs/audits/2026-10-06-money-flows-probes-output.txt).
 
 Pro reprodukci sond dočasně přidat na konec `src-tauri/src/services/mod.rs`:
 

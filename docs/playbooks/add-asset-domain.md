@@ -81,4 +81,4 @@ git diff --exit-code shared/generated-types.ts
 
 Plus a manual app run: `npm run tauri dev` → create, edit, and delete an entity of
 the new class; confirm the dashboard net worth and the portfolio trend chart reflect
-it (in both English and Czech).
+it (in English and in at least one other language).

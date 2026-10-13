@@ -3,7 +3,8 @@
 Moony is a local-first app: **there is no account, no cloud and no sync.** Your financial
 records stay on your computer, in an encrypted database. The app talks to the internet only
 for the few things listed below, and none of them involves your amounts, balances, names or
-documents.
+documents (an AI client that you connect yourself is the exception, see below). Links you click
+in the app open in your default browser, which makes its own requests.
 
 This page is written to be checked against the code. If you find a statement here that does
 not match what the app does, please open a GitHub issue — that is a bug.
@@ -13,7 +14,8 @@ not match what the app does, please open a GitHub issue — that is a bug.
 Everything you enter or import — bank accounts and transactions, investments, crypto, bonds,
 loans, insurance, real estate, budgets, categories and rules, your profile, settings and the
 access token of the optional MCP server — is stored in one SQLite database encrypted with
-**SQLCipher (AES-256)**.
+**SQLCipher (AES-256)**. A few device-level settings and your first name are kept outside it;
+see the next section.
 
 How the encryption key is handled:
 
@@ -29,11 +31,11 @@ Be aware of these, because the "encrypted database" claim does not cover them:
 
 | What | Where | Notes |
 | --- | --- | --- |
-| Photos and documents you attach (real-estate photos and documents, insurance documents) | `real_estate_photos/`, `real_estate_documents/`, `insurance_documents/` in the data folder | Stored as ordinary files. Encrypting attachments is on the roadmap. Anyone who can read your user profile can open them. |
+| Photos and documents you attach (real-estate photos and documents, insurance documents) | `real_estate_photos/`, `real_estate_documents/`, `insurance_documents/` in the data folder | Stored as ordinary files. Encrypting attachments is listed in the [roadmap](./ROADMAP.md). Anyone who can read your user profile can open them. |
 | Backups you create | The `.zip` you choose in Settings → Data and backups | The database inside is still encrypted and the key files need your password or recovery key, but **the attachments inside the archive are plain files**. |
 | "Export all data (JSON)" | The file you choose | A plain-text JSON dump of your data (API keys and the MCP token are left out). Handle it like a bank statement. |
-| UI preferences | The operating system's WebView profile (`localStorage`) | Theme and device-level settings such as auto-lock. No financial data. |
-| Application logs | The log folder (About → Open logs) | Meant for troubleshooting. They can contain technical details such as ticker symbols and file paths. Read them before attaching them to a public bug report. |
+| Device settings | The operating system's WebView profile (`localStorage`) | The interface language, auto-lock minutes, the update-check switch, which sidebar groups are open, dismissed tips, the period, split and custom date range chosen in the stocks analysis, which cashflow-planning rows are expanded, the time the app was last locked, and your **first name** (it is shown in the greeting on the lock screen, which is displayed before the database is unlocked). No balances, amounts or account data. Delete Account clears them. |
+| Application logs | The log folder (account menu at the bottom of the sidebar → About → Open logs) | Meant for troubleshooting. They can contain technical details such as ticker symbols and file paths. Read them before attaching them to a public bug report. |
 
 Full-disk encryption (FileVault, BitLocker, LUKS) is the right complement to all of the above.
 
@@ -42,13 +44,19 @@ Full-disk encryption (FileVault, BitLocker, LUKS) is the right complement to all
 Moony makes network requests only in these situations. Every request also reveals your IP
 address to the service that receives it, as any internet request does.
 
+The requests to the ECB, Frankfurter and CoinGecko identify the app as `Moony/<version>` (for
+example `Moony/0.10.0`) in the `User-Agent` header, so those services can see which version is
+asking. Yahoo Finance requests carry the fixed, browser-style user agent that the price library
+sets (the same string on every operating system), not Moony's name. The update check uses the
+updater plugin's own user agent, described in the GitHub row.
+
 | Service | What is sent | When | Can you avoid it? |
 | --- | --- | --- | --- |
-| **Yahoo Finance** (`query1/query2.finance.yahoo.com`) | The ticker symbols of your stock positions and of the stocks you follow in Stock Monitor, search text you type, the symbols and ISINs of the securities in a stock CSV file you import (to find their Yahoo tickers), and the date ranges needed for price history (which can reveal roughly when you started investing). | After unlocking, when you add or import stock transactions (the review step of a stock CSV import looks the file's securities up as it opens), when you open Stock Monitor or a stock position's detail (company data such as sector and P/E, at most once a day per ticker once Yahoo has answered), and when you refresh stale prices. | Yes — Moony works offline; prices can be set manually per position. Without refreshes the prices simply go stale. |
+| **Yahoo Finance** (`query1.finance.yahoo.com`, `query2.finance.yahoo.com` and `fc.yahoo.com`) | The ticker symbols of your stock positions and of the stocks you follow in Stock Monitor, search text you type, the symbols and ISINs of the securities in a stock CSV file you import (to find their Yahoo tickers), and the date ranges needed for price history (which can reveal roughly when you started investing). Before company data is requested, the price library also fetches a session cookie from `fc.yahoo.com` and a one-time token ("crumb") from `query1.finance.yahoo.com`, and sends both back with that request. They are held in memory only while the refresh runs; Moony does not store them. | After unlocking, when you add or import stock transactions (the review step of a stock CSV import looks the file's securities up as it opens), when you open Stock Monitor or a stock position's detail (company data such as sector and P/E, at most once a day per ticker once Yahoo has answered; this is the only request that needs the cookie and token), and when you refresh stale prices. | Yes — Moony works offline; prices can be set manually per position. Without refreshes the prices simply go stale. |
 | **CoinGecko** (`api.coingecko.com`) | The CoinGecko IDs of your crypto holdings (that is, the composition of your crypto portfolio), search text, and date ranges for history. If you enter your own optional CoinGecko API key in Settings → Integrations, it is sent as a request header. | After unlocking, when you add a holding, when history is back-filled. | Yes — same as above. |
-| **European Central Bank** (`www.ecb.europa.eu`) | Nothing about you; it is a download of the public daily reference rates. | When exchange rates are stale. | Yes — rates then simply go stale. Currencies the ECB does not publish never get an automatic rate (Settings → General → Currency explains this). |
-| **Frankfurter** (`api.frankfurter.dev`, serves ECB historical rates) | The date range from your oldest transaction to today and the list of currencies used in your transactions. | When you enter or import transactions in a currency whose history is missing, and on rate refresh. Best effort: failures are ignored. | Yes — without it historical conversions fall back to current rates. |
-| **GitHub** (`github.com`, `objects.githubusercontent.com`) | A plain request for `latest.json` of the latest release; the updater adds its user agent (app name and version, operating system, CPU architecture). If you accept an update, the installer is downloaded from GitHub and its signature is verified against the public key built into the app. | Once per app start, after you unlock. | Yes — Settings has a switch for the automatic check. |
+| **European Central Bank** (`www.ecb.europa.eu`) | Nothing from your data; it is a download of the public daily reference rates. The ECB sees your IP address and the `Moony/<version>` user agent. | When exchange rates are stale. | Yes — rates then simply go stale. Currencies the ECB does not publish never get an automatic rate (Settings → General → Currency explains this). |
+| **Frankfurter** (`api.frankfurter.dev`, serves ECB historical rates) | The ISO codes of the currencies found in your data (accounts, transactions, stock and crypto positions and their quotes, properties, loans, bonds, insurance, budgets, your profile; the euro itself and currencies without a rate source are left out) and the date range still missing, which can reach back to your earliest dated record (a transaction, a purchase date, a loan start) minus ten days. | When you enter or import transactions in a currency whose history is missing, and on rate refresh. Best effort: failures are ignored. | Yes — without it historical conversions fall back to current rates. |
+| **GitHub** (`github.com` and `release-assets.githubusercontent.com`) | A plain request for `latest.json` of the latest release (`github.com/fiiles/Moony/releases/latest/download/latest.json`), which GitHub redirects to its release-asset host. The request carries the user agent of the updater plugin, `tauri-plugin-updater/<plugin version>` (`tauri-plugin-updater/2.13.3` in Moony 0.10.0), and `Accept: application/json`. Moony's own version, your operating system and your CPU architecture are not part of the request. If you accept an update, the installer for your platform is downloaded from the same release with the same user agent (so GitHub can tell which platform's file you fetched), and its signature is verified against the public key built into the app. GitHub decides which host serves release files and can change it, so a firewall rule may need to allow `*.githubusercontent.com`. | Once per app start, after you unlock, and whenever you press the manual check. | Yes — Settings → Security → Updates has a switch for the automatic check. |
 | **Your AI client** (MCP, optional) | Whatever the client asks for and the tools return — potentially your full financial data. | Only while the MCP server is enabled, the app is unlocked and a client connected with your token. | Off by default; see below. |
 
 Notes:
@@ -74,8 +82,14 @@ trust, and regenerate the token when you stop using one.
 
 - No account, login or registration, and no server operated by the project.
 - No telemetry: no crash reporting, no analytics, no tracking SDKs.
-- No advertising, no cookies, no third-party fonts, images or logos.
-- No remote configuration, no remote code and no way for anyone to read your data remotely.
+- No advertising, no tracking cookies and no third-party fonts, images or logos. The interface
+  sets no cookies; the only cookie is the Yahoo Finance session cookie described above, which the
+  price library keeps in memory for its requests.
+- No remote configuration and no code that is loaded while the app runs: the only code that
+  arrives from outside is a signed update that you choose to install.
+- No server and no sync, so nothing for anyone to read remotely. The optional MCP server is off
+  by default and listens on `127.0.0.1` only; whoever holds its token on your computer can read
+  and change your data (see above).
 
 ## Where your data lives
 
@@ -112,7 +126,8 @@ You are the only holder of your data, so you are responsible for keeping copies:
   cloud storage). Restoring never deletes your current data; it is moved to a `pre-restore-…`
   folder first.
 - **Save your recovery key** when it is shown (the first-run wizard asks you to verify it). It
-  is 24 characters long and is the only way to reset a forgotten password. It works **only
+  is 24 characters long (shown in groups of four) and is the only way to reset a forgotten
+  password. It works **only
   together with the key files** (`salt`, `recovery.enc`) in the data folder, so a backup of the
   whole folder or a Moony backup archive is part of the recovery plan.
 - **There is no backdoor.** If you lose both your password and your recovery key, nobody —
@@ -122,10 +137,30 @@ You are the only holder of your data, so you are responsible for keeping copies:
 
 ## Deleting your data
 
-*Settings → Account → Delete Account* (you must type `DELETE`) removes the database, the key
-files and all attachments from the data folder. It does not touch backups or exports you
-created yourself — delete those separately. There is nothing to delete on any server because
-Moony has none.
+*Settings → Account → Delete data…* (the Delete Account action; you must type `DELETE`) removes
+from the data folder:
+
+- `moony.db`, `salt`, `key.enc` and `recovery.enc`;
+- the three attachment folders `real_estate_photos/`, `real_estate_documents/` and
+  `insurance_documents/`.
+
+It also clears the device settings described above. It **does not remove** these, which stay in
+the data folder:
+
+- `moony.db.bak-<timestamp>` (and, if present, matching `-wal`, `-shm` or `-journal` copies):
+  the copies of the database that Moony makes before applying a database migration, up to
+  three. They are encrypted like the database. Delete Account removes the key files, so these
+  copies cannot be opened from this folder alone any more, but they are still your old data on
+  disk.
+- `pre-restore-<timestamp>/`: created when you restore a backup. It holds the profile you had
+  before the restore: the database, the key files and your attachments, and **the attachments
+  in it are plain files**.
+
+Delete Account also does not touch backups or exports you created yourself, or the log folder
+(*About → Open logs*). To remove everything, open the data folder afterwards (the paths are in
+[Where your data lives](#where-your-data-lives)) and delete the `moony.db.bak-*` files and the
+`pre-restore-*` folders by hand, or the whole data folder. There is nothing to delete on any
+server because Moony has none.
 
 ## Questions and changes
 

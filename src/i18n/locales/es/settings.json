@@ -116,12 +116,12 @@
     "description": "Estas acciones no se pueden deshacer.",
     "deleteAccount": "Eliminar cuenta",
     "confirmTitle": "¿Estás completamente seguro?",
-    "confirmDescription": "Esta acción no se puede deshacer. Se eliminará de forma permanente tu cuenta y todos tus datos de este dispositivo. Como Moony es una app solo local, no hay datos en nuestros servidores que eliminar.",
+    "confirmDescription": "Esta acción no se puede deshacer. Elimina de forma permanente la base de datos, los archivos de claves y los adjuntos de este dispositivo. Las copias que Moony guarda junto a la base de datos (moony.db.bak-…, pre-restore-…) permanecen en la carpeta de datos; Ajustes → Datos y copias de seguridad → Abrir carpeta lleva hasta ella. Como Moony es una app solo local, no hay datos en nuestros servidores que eliminar.",
     "deleting": "Eliminando...",
     "backupFirst": "Consejo: haz antes una copia de seguridad (Ajustes → Datos y copias de seguridad); es la única forma de recuperar estos datos.",
     "confirmLabel": "Escribe {{word}} para confirmar",
     "deleteAll": "Eliminar todos los datos",
-    "deleteAllHint": "Elimina el perfil y toda la base de datos de este ordenador. Las copias de seguridad guardadas fuera de la app se conservan.",
+    "deleteAllHint": "Elimina la base de datos, los archivos de claves y los adjuntos de este ordenador. Las copias junto a la base de datos (moony.db.bak-…, pre-restore-…) permanecen en la carpeta de datos (Datos y copias de seguridad → Abrir carpeta), igual que las copias de seguridad guardadas fuera de la app.",
     "deleteButton": "Eliminar datos…"
   },
   "toast": {

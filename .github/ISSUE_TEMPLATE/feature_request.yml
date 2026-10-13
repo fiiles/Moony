@@ -9,8 +9,8 @@ body:
         Thanks for the idea. Moony is a small, privacy-focused, local-only project, so please
         describe the problem first — it makes it easier to find a solution that fits.
 
-        Check the existing issues and discussions before opening a new one. Larger features are
-        discussed here before any code is written.
+        Check the existing issues and discussions, and ROADMAP.md (what is planned and what is not),
+        before opening a new one. Larger features are discussed here before any code is written.
   - type: textarea
     id: problem
     attributes:

@@ -116,12 +116,12 @@
     "description": "Diese Aktionen lassen sich nicht rückgängig machen.",
     "deleteAccount": "Konto löschen",
     "confirmTitle": "Sind Sie sich ganz sicher?",
-    "confirmDescription": "Diese Aktion lässt sich nicht rückgängig machen. Sie löscht Ihr Konto dauerhaft und entfernt alle Ihre Daten von diesem Gerät. Da Moony eine rein lokale App ist, gibt es auf unseren Servern keine Daten, die gelöscht werden könnten.",
+    "confirmDescription": "Diese Aktion lässt sich nicht rückgängig machen. Sie löscht die Datenbank, die Schlüsseldateien und die Anhänge dauerhaft von diesem Gerät. Kopien, die Moony neben der Datenbank ablegt (moony.db.bak-…, pre-restore-…), bleiben im Datenordner; Einstellungen → Daten und Sicherungen → Ordner öffnen führt dorthin. Da Moony eine rein lokale App ist, gibt es auf unseren Servern keine Daten, die gelöscht werden könnten.",
     "deleting": "Wird gelöscht...",
     "backupFirst": "Tipp: Erstellen Sie zuerst eine Sicherung (Einstellungen → Daten und Sicherungen) — nur so erhalten Sie diese Daten zurück.",
     "confirmLabel": "Geben Sie zur Bestätigung {{word}} ein",
     "deleteAll": "Alle Daten löschen",
-    "deleteAllHint": "Entfernt das Profil und die gesamte Datenbank auf diesem Computer. Außerhalb der App gespeicherte Sicherungen bleiben erhalten.",
+    "deleteAllHint": "Entfernt die Datenbank, die Schlüsseldateien und die Anhänge auf diesem Computer. Kopien neben der Datenbank (moony.db.bak-…, pre-restore-…) bleiben im Datenordner (Daten und Sicherungen → Ordner öffnen), ebenso außerhalb der App gespeicherte Sicherungen.",
     "deleteButton": "Daten löschen…"
   },
   "toast": {

@@ -116,12 +116,12 @@
     "description": "These actions cannot be undone.",
     "deleteAccount": "Delete Account",
     "confirmTitle": "Are you absolutely sure?",
-    "confirmDescription": "This action cannot be undone. This will permanently delete your account and remove all your data from this device. Since Moony is a local-only app, there is no data on our servers to delete.",
+    "confirmDescription": "This action cannot be undone. It permanently deletes your database, the key files and the attachments from this device. Copies that Moony keeps next to the database (moony.db.bak-…, pre-restore-…) stay in the data folder; Settings → Data and backups → Open folder leads there. Since Moony is a local-only app, there is no data on our servers to delete.",
     "deleting": "Deleting...",
     "backupFirst": "Tip: make a backup first (Settings → Data and backups) — it is the only way to get this data back.",
     "confirmLabel": "Type {{word}} to confirm",
     "deleteAll": "Delete all data",
-    "deleteAllHint": "Removes the profile and the whole database on this computer. Backups saved outside the app stay.",
+    "deleteAllHint": "Removes the database, the key files and the attachments on this computer. Copies next to the database (moony.db.bak-…, pre-restore-…) stay in the data folder (Data and backups → Open folder), and so do backups saved outside the app.",
     "deleteButton": "Delete data…"
   },
   "toast": {

@@ -4,6 +4,9 @@
 //! - Time component stripping (e.g., "2024-01-15 14:30:00" → "2024-01-15")
 //! - Multiple format support with fallback chain
 //! - Smart format detection to distinguish DD-MM-YYYY from MM-DD-YYYY
+//! - Dates with month names ("5 Jan 2024", "Jan 5, 2024", "5. Januar 2024", month names of twelve
+//!   languages) and with CJK or Korean unit characters ("2024年1月5日", "2024년 1월 5일"), read by a
+//!   small token parser because chrono knows English month names only
 
 use chrono::{Datelike, NaiveDate};
 use unicode_normalization::char::is_combining_mark;
@@ -28,24 +31,19 @@ pub enum DateFormatFamily {
 /// - "2024-01-15T14:30:00Z"
 /// - "2024-01-15T14:30:00+01:00"
 /// - "15.01.2024 10:00"
+/// - "Jan 5, 2024 2:30 PM", "14. 1. 2026 10:00", "2024년 1월 5일 오후 2:30"
 fn strip_time_component(date_str: &str) -> &str {
     let trimmed = date_str.trim();
 
-    // Find the position where time component starts
-    // Common separators: space, 'T' (ISO 8601)
-    if let Some(space_pos) = trimmed.find(' ') {
-        // Check if what follows looks like a time (starts with digit AND contains ':')
-        // This prevents "14. 1. 2026" (Czech date with spaces) from being misidentified
-        // as a date+time string where " 1. 2026" is treated as the time component.
-        let after_space = &trimmed[space_pos + 1..];
-        let starts_with_digit = after_space
-            .chars()
-            .next()
-            .map(|c| c.is_ascii_digit())
-            .unwrap_or(false);
-        let contains_colon = after_space.contains(':');
-        if starts_with_digit && contains_colon {
-            return &trimmed[..space_pos];
+    // The time starts at the last space before the first ':' when the word there is the hour (only
+    // digits). Looking at the hour rather than the first space keeps "14. 1. 2026" and "Jan 5, 2024"
+    // whole and cuts "Jan 5, 2024 14:30" and "14. 1. 2026 10:00" in the right place.
+    if let Some(colon) = trimmed.find(':') {
+        if let Some(space) = trimmed[..colon].rfind(' ') {
+            let hour = &trimmed[space + 1..colon];
+            if !hour.is_empty() && hour.chars().all(|c| c.is_ascii_digit()) {
+                return trimmed[..space].trim_end_matches(|c: char| c == ',' || c.is_whitespace());
+            }
         }
     }
 
@@ -624,175 +622,20 @@ const UNIT_CHARS: &str = "年月日년월일";
 /// form dates use). A word of three or more letters names a month when it begins one of these names
 /// and no other month begins with it: `mar` is March everywhere, `jui` could be June or July in
 /// French and is refused.
+#[rustfmt::skip]
 const MONTH_NAMES: [[&str; 12]; 12] = [
-    [
-        "january",
-        "february",
-        "march",
-        "april",
-        "may",
-        "june",
-        "july",
-        "august",
-        "september",
-        "october",
-        "november",
-        "december",
-    ],
-    [
-        "januar",
-        "februar",
-        "marz",
-        "april",
-        "mai",
-        "juni",
-        "juli",
-        "august",
-        "september",
-        "oktober",
-        "november",
-        "dezember",
-    ],
-    [
-        "janvier",
-        "fevrier",
-        "mars",
-        "avril",
-        "mai",
-        "juin",
-        "juillet",
-        "aout",
-        "septembre",
-        "octobre",
-        "novembre",
-        "decembre",
-    ],
-    [
-        "enero",
-        "febrero",
-        "marzo",
-        "abril",
-        "mayo",
-        "junio",
-        "julio",
-        "agosto",
-        "septiembre",
-        "octubre",
-        "noviembre",
-        "diciembre",
-    ],
-    [
-        "gennaio",
-        "febbraio",
-        "marzo",
-        "aprile",
-        "maggio",
-        "giugno",
-        "luglio",
-        "agosto",
-        "settembre",
-        "ottobre",
-        "novembre",
-        "dicembre",
-    ],
-    [
-        "januari",
-        "februari",
-        "maart",
-        "april",
-        "mei",
-        "juni",
-        "juli",
-        "augustus",
-        "september",
-        "oktober",
-        "november",
-        "december",
-    ],
-    [
-        "janeiro",
-        "fevereiro",
-        "marco",
-        "abril",
-        "maio",
-        "junho",
-        "julho",
-        "agosto",
-        "setembro",
-        "outubro",
-        "novembro",
-        "dezembro",
-    ],
-    [
-        "januari",
-        "februari",
-        "mars",
-        "april",
-        "maj",
-        "juni",
-        "juli",
-        "augusti",
-        "september",
-        "oktober",
-        "november",
-        "december",
-    ],
-    [
-        "januar",
-        "februar",
-        "mars",
-        "april",
-        "mai",
-        "juni",
-        "juli",
-        "august",
-        "september",
-        "oktober",
-        "november",
-        "desember",
-    ],
-    [
-        "januar",
-        "februar",
-        "marts",
-        "april",
-        "maj",
-        "juni",
-        "juli",
-        "august",
-        "september",
-        "oktober",
-        "november",
-        "december",
-    ],
-    [
-        "stycznia",
-        "lutego",
-        "marca",
-        "kwietnia",
-        "maja",
-        "czerwca",
-        "lipca",
-        "sierpnia",
-        "wrzesnia",
-        "pazdziernika",
-        "listopada",
-        "grudnia",
-    ],
-    [
-        "ledna",
-        "unora",
-        "brezna",
-        "dubna",
-        "kvetna",
-        "cervna",
-        "cervence",
-        "srpna",
-        "zari",
-        "rijna",
-        "listopadu",
-        "prosince",
-    ],
+    ["january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december"],
+    ["januar", "februar", "marz", "april", "mai", "juni", "juli", "august", "september", "oktober", "november", "dezember"],
+    ["janvier", "fevrier", "mars", "avril", "mai", "juin", "juillet", "aout", "septembre", "octobre", "novembre", "decembre"],
+    ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"],
+    ["gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto", "settembre", "ottobre", "novembre", "dicembre"],
+    ["januari", "februari", "maart", "april", "mei", "juni", "juli", "augustus", "september", "oktober", "november", "december"],
+    ["janeiro", "fevereiro", "marco", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"],
+    ["januari", "februari", "mars", "april", "maj", "juni", "juli", "augusti", "september", "oktober", "november", "december"],
+    ["januar", "februar", "mars", "april", "mai", "juni", "juli", "august", "september", "oktober", "november", "desember"],
+    ["januar", "februar", "marts", "april", "maj", "juni", "juli", "august", "september", "oktober", "november", "december"],
+    ["stycznia", "lutego", "marca", "kwietnia", "maja", "czerwca", "lipca", "sierpnia", "wrzesnia", "pazdziernika", "listopada", "grudnia"],
+    ["ledna", "unora", "brezna", "dubna", "kvetna", "cervna", "cervence", "srpna", "zari", "rijna", "listopadu", "prosince"],
 ];
 
 /// Abbreviations and spellings that no full name above begins with.
@@ -892,7 +735,12 @@ fn format_fields(format: &str) -> Vec<Field> {
         if c != '%' {
             continue;
         }
-        match chars.next() {
+        // chrono's padding modifiers (`%-d`, `%_d`, `%0d`) change how a number is written, not what it is.
+        let mut directive = chars.next();
+        if matches!(directive, Some('-' | '_' | '0')) {
+            directive = chars.next();
+        }
+        match directive {
             Some('Y') => fields.push(Field::Year4),
             Some('y') => fields.push(Field::Year2),
             Some('m') => fields.push(Field::Month),
@@ -1022,11 +870,23 @@ fn text_layout(value: &str) -> Option<String> {
 }
 
 /// The common layout of the text dates among `samples` (None when none of them is one);
-/// `ambiguous` when they do not all use the same.
+/// `ambiguous` when they do not all use the same, or when numeric dates are mixed in (`05.01.2024`
+/// beside `5 Jan 2024`): one format cannot read both, so the user is asked to look. Samples that are
+/// no date at all are ignored, as in the numeric detection.
 fn detect_text_date_format(samples: &[&str]) -> Option<DetectedDateFormat> {
-    let layouts: Vec<String> = samples.iter().filter_map(|s| text_layout(s)).collect();
+    let mut layouts = Vec::new();
+    let mut mixed = false;
+    for sample in samples {
+        match text_layout(sample) {
+            Some(layout) => layouts.push(layout),
+            None => {
+                mixed |= sample_parts(sample).is_some()
+                    || parse_compact_date(strip_time_component(sample)).is_some();
+            }
+        }
+    }
     let first = layouts.first()?.clone();
-    let ambiguous = layouts.iter().any(|layout| *layout != first);
+    let ambiguous = mixed || layouts.iter().any(|layout| *layout != first);
     Some(DetectedDateFormat {
         format: first,
         ambiguous,
@@ -1580,6 +1440,8 @@ mod tests {
             (vec!["2024 Jan 05"], "%Y %b %d"),
             (vec!["2024年1月5日", "2024年2月17日"], "%Y年%m月%d日"),
             (vec!["2024년 1월 5일"], "%Y년 %m월 %d일"),
+            (vec!["Jan 5, 2024 14:30:00"], "%b %d, %Y"),
+            (vec!["2024년 1월 5일 14:30"], "%Y년 %m월 %d일"),
         ] {
             let detected = detect_date_format(&samples);
             assert_eq!(detected.format, format, "{samples:?}");
@@ -1600,5 +1462,94 @@ mod tests {
         assert_eq!(detect_date_format(&["15.01.2024 10:00"]).format, "%d.%m.%Y");
         // Mixed layouts are flagged for the user.
         assert!(detect_date_format(&["05 Jan 2024", "Jan 5, 2024"]).ambiguous);
+    }
+
+    #[test]
+    fn a_time_after_a_text_date_is_cut_off() {
+        for (text, format, expected) in [
+            ("Jan 5, 2024 14:30:00", "%b %d, %Y", date(2024, 1, 5)),
+            ("Jan 5, 2024 2:30 PM", "%b %d, %Y", date(2024, 1, 5)),
+            ("Tue, 5 Jan 2024 14:30", "%d %b %Y", date(2024, 1, 5)),
+            ("Tue, 5 Jan 2024, 14:30", "%d %b %Y", date(2024, 1, 5)),
+            ("2024년 1월 5일 14:30", "%Y년 %m월 %d일", date(2024, 1, 5)),
+            (
+                "2024년 1월 5일 오후 2:30",
+                "%Y년 %m월 %d일",
+                date(2024, 1, 5),
+            ),
+            ("14. 1. 2026 10:00", "%d. %m. %Y", date(2026, 1, 14)),
+            ("2024-01-15  14:30", "%Y-%m-%d", date(2024, 1, 15)),
+        ] {
+            assert_eq!(
+                parse_date_strict(text, format),
+                Some(expected),
+                "{text} with {format}"
+            );
+        }
+        // The lenient parser reads them without a format.
+        assert_eq!(
+            parse_date("Jan 5, 2024 14:30:00", None),
+            Some(date(2024, 1, 5))
+        );
+        assert_eq!(
+            parse_date("14. 1. 2026 10:00", None),
+            Some(date(2026, 1, 14))
+        );
+    }
+
+    #[test]
+    fn numeric_dates_with_a_time_still_lose_the_time() {
+        assert_eq!(strip_time_component("15.01.2024 10:00"), "15.01.2024");
+        assert_eq!(strip_time_component("2024-01-15 14:30"), "2024-01-15");
+        assert_eq!(strip_time_component("2024-01-15T14:30:00"), "2024-01-15");
+        assert_eq!(
+            strip_time_component("2024-01-15 14:30:00+01:00"),
+            "2024-01-15"
+        );
+        assert_eq!(strip_time_component("Jan 5, 2024 14:30:00"), "Jan 5, 2024");
+        // No time: nothing is cut.
+        assert_eq!(strip_time_component("14. 1. 2026"), "14. 1. 2026");
+        assert_eq!(strip_time_component("Jan 5, 2024"), "Jan 5, 2024");
+        assert_eq!(
+            parse_date_strict("15.01.2024 10:00", "%d.%m.%Y"),
+            Some(date(2024, 1, 15))
+        );
+        assert_eq!(
+            parse_date_strict("2024-01-15T14:30:00", "%Y-%m-%d"),
+            Some(date(2024, 1, 15))
+        );
+    }
+
+    #[test]
+    fn chrono_padding_modifiers_keep_their_field_on_the_token_path() {
+        for (text, format) in [
+            ("Jan 5, 2024", "%b %-d, %Y"),
+            ("Jan 5, 2024", "%b %_d, %Y"),
+            ("Jan 5, 2024", "%b %e, %Y"),
+            ("Jan 05, 2024", "%b %0d, %Y"),
+            ("2024年1月5日", "%Y年%-m月%-d日"),
+        ] {
+            assert_eq!(
+                parse_date_strict(text, format),
+                Some(date(2024, 1, 5)),
+                "{text} with {format}"
+            );
+        }
+    }
+
+    #[test]
+    fn a_column_mixing_text_and_numeric_dates_is_not_a_confident_text_format() {
+        for samples in [
+            vec!["05.01.2024", "5 Jan 2024"],
+            vec!["5 Jan 2024", "05.01.2024"],
+            vec!["2024-01-05", "Jan 5, 2024"],
+        ] {
+            let detected = detect_date_format(&samples);
+            assert!(detected.ambiguous, "{samples:?} -> {detected:?}");
+        }
+        // A sample that is no date at all does not make a text column ambiguous.
+        let detected = detect_date_format(&["05 Jan 2024", "", "n/a", "17 Feb 2024"]);
+        assert_eq!(detected.format, "%d %b %Y");
+        assert!(!detected.ambiguous);
     }
 }

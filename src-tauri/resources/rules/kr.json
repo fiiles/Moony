@@ -11,6 +11,7 @@
     { "id": "kr/seven-eleven", "name": "7-Eleven / 세븐일레븐", "ruleType": "contains", "pattern": "세븐일레븐", "categoryId": "cat_groceries", "priority": 50 },
     { "id": "kr/gs25", "name": "GS25", "ruleType": "word", "pattern": "gs25", "categoryId": "cat_groceries", "priority": 50 },
     { "id": "kr/emart24", "name": "emart24", "ruleType": "contains", "pattern": "emart24", "categoryId": "cat_groceries", "priority": 50 },
+    { "id": "kr/himart", "name": "Hi-Mart / 하이마트 (outranks 이마트)", "ruleType": "contains", "pattern": "하이마트", "categoryId": "cat_shopping", "priority": 51 },
     { "id": "kr/baemin-full", "name": "Baedal Minjok / 배달의민족", "ruleType": "contains", "pattern": "배달의민족", "categoryId": "cat_dining", "priority": 50 },
     { "id": "kr/baemin-short", "name": "배민 (Baemin)", "ruleType": "contains", "pattern": "배민", "categoryId": "cat_dining", "priority": 50 },
     { "id": "kr/coupang-eats", "name": "Coupang Eats / 쿠팡이츠", "ruleType": "contains", "pattern": "쿠팡이츠", "categoryId": "cat_dining", "priority": 55 },
@@ -77,6 +78,20 @@
     { "id": "kr/xfer-term-deposit-in", "name": "정기예금 입금", "ruleType": "contains", "pattern": "정기예금 입금", "categoryId": "cat_internal_transfers", "priority": 44 },
     { "id": "kr/loan-interest", "name": "대출이자 (loan interest)", "ruleType": "contains", "pattern": "대출이자", "categoryId": "cat_loan_payments", "priority": 45 },
     { "id": "kr/loan-interest-spaced", "name": "대출 이자 (loan interest)", "ruleType": "contains", "pattern": "대출 이자", "categoryId": "cat_loan_payments", "priority": 45 },
-    { "id": "kr/interest", "name": "이자 (interest)", "ruleType": "contains", "pattern": "이자", "categoryId": "cat_investment_income", "priority": 45 }
+    { "id": "kr/overdue-interest", "name": "연체이자", "ruleType": "contains", "pattern": "연체이자", "categoryId": "cat_loan_payments", "priority": 45 },
+    { "id": "kr/card-loan-interest", "name": "카드론이자", "ruleType": "contains", "pattern": "카드론이자", "categoryId": "cat_loan_payments", "priority": 45 },
+    { "id": "kr/overdraft-interest", "name": "마이너스통장이자", "ruleType": "contains", "pattern": "마이너스통장이자", "categoryId": "cat_loan_payments", "priority": 45 },
+    { "id": "kr/loan-principal-interest", "name": "대출금이자", "ruleType": "contains", "pattern": "대출금이자", "categoryId": "cat_loan_payments", "priority": 45 },
+    { "id": "kr/interest-payment-short", "name": "이자납", "ruleType": "contains", "pattern": "이자납", "categoryId": "cat_loan_payments", "priority": 45 },
+    { "id": "kr/interest-withdrawal", "name": "이자출금", "ruleType": "contains", "pattern": "이자출금", "categoryId": "cat_loan_payments", "priority": 45 },
+    { "id": "kr/interest-autodebit", "name": "이자 자동이체", "ruleType": "contains", "pattern": "이자 자동이체", "categoryId": "cat_loan_payments", "priority": 45 },
+    { "id": "kr/deposit-interest", "name": "예금이자", "ruleType": "contains", "pattern": "예금이자", "categoryId": "cat_investment_income", "priority": 45 },
+    { "id": "kr/deposit-interest-spaced", "name": "예금 이자", "ruleType": "contains", "pattern": "예금 이자", "categoryId": "cat_investment_income", "priority": 45 },
+    { "id": "kr/savings-interest", "name": "적금이자", "ruleType": "contains", "pattern": "적금이자", "categoryId": "cat_investment_income", "priority": 45 },
+    { "id": "kr/settlement-interest", "name": "결산이자", "ruleType": "contains", "pattern": "결산이자", "categoryId": "cat_investment_income", "priority": 45 },
+    { "id": "kr/interest-credit", "name": "이자입금", "ruleType": "contains", "pattern": "이자입금", "categoryId": "cat_investment_income", "priority": 45 },
+    { "id": "kr/interest-credit-spaced", "name": "이자 입금", "ruleType": "contains", "pattern": "이자 입금", "categoryId": "cat_investment_income", "priority": 45 },
+    { "id": "kr/interest-payout", "name": "이자지급", "ruleType": "contains", "pattern": "이자지급", "categoryId": "cat_investment_income", "priority": 45 },
+    { "id": "kr/interest-income", "name": "이자수익", "ruleType": "contains", "pattern": "이자수익", "categoryId": "cat_investment_income", "priority": 45 }
   ]
 }

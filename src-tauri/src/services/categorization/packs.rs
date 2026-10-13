@@ -729,23 +729,86 @@ mod tests {
                 "{pack}: {text}"
             );
         }
-        // Korean has an interest rule, so these are categorized rather than left blank; a loan's
-        // interest stays a loan payment.
+        // Korean has interest phrases, so these are categorized rather than left blank. Interest
+        // received is income; interest paid is a loan payment, also when a line says both.
         let kr = pack_engine(&["global", "kr"]);
-        for text in ["적금이자", "정기예금이자", "예금 이자 입금"] {
+        for text in [
+            "적금이자",
+            "정기예금이자",
+            "예금 이자 입금",
+            "예금이자",
+            "예금 이자",
+            "결산이자",
+            "이자입금",
+            "이자 입금",
+            "이자지급",
+            "이자수익",
+        ] {
             assert_eq!(
                 category_of(&kr, text).as_deref(),
                 Some("cat_investment_income"),
                 "{text}"
             );
         }
-        for text in ["대출이자", "대출 이자 납부"] {
+        for text in [
+            "대출이자",
+            "대출 이자 납부",
+            "연체이자",
+            "카드론이자",
+            "마이너스통장이자",
+            "대출금이자",
+            "이자납입",
+            "이자납",
+            "이자출금",
+            "이자 자동이체",
+            "마이너스통장이자 입금",
+            "대출금이자 입금",
+        ] {
             assert_eq!(
                 category_of(&kr, text).as_deref(),
                 Some("cat_loan_payments"),
                 "{text}"
             );
         }
+    }
+
+    #[test]
+    fn korean_interest_phrases_do_not_fire_inside_unrelated_words() {
+        // Hangul rules are folded `contains` rules, so a bare "이자" would match izakaya
+        // restaurants, interest-free instalments and every "...페이 자동..." pay line.
+        let kr = pack_engine(&["global", "kr"]);
+        for text in [
+            "홍대 이자카야",
+            "이자카야 도쿄",
+            "무이자할부",
+            "카카오페이자동충전",
+            "네이버페이자동충전",
+            "토스페이자동결제",
+            "페이자동이체",
+            "아이자동차",
+        ] {
+            let category = category_of(&kr, text);
+            assert_ne!(category.as_deref(), Some("cat_investment_income"), "{text}");
+            assert_ne!(category.as_deref(), Some("cat_loan_payments"), "{text}");
+            assert_ne!(category.as_deref(), Some(TRANSFER), "{text}");
+        }
+    }
+
+    #[test]
+    fn himart_is_shopping_and_emart_stays_groceries() {
+        // "이마트" is inside "하이마트": the electronics retailer needs its own, higher rule.
+        let kr = pack_engine(&["kr"]);
+        for text in ["롯데하이마트 강남", "하이마트"] {
+            assert_eq!(
+                category_of(&kr, text).as_deref(),
+                Some("cat_shopping"),
+                "{text}"
+            );
+        }
+        assert_eq!(
+            category_of(&kr, "이마트 성수점").as_deref(),
+            Some("cat_groceries")
+        );
     }
 
     #[test]

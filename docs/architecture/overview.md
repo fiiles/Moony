@@ -114,7 +114,7 @@ financing and adjustment roles into transfer).
 Own transfers without an identifier are recognised by rule-pack wording (`global` for English
 own-account and credit-card wording, country packs for dialect and issuer brands; all
 `cat_internal_transfers`). Pack priorities form tiers, highest first: 60 brokers, 50 and up
-merchants, 45 mortgage, interest and card-issuer-charge guards (`gb/cc-fees`, `kr/interest`),
+merchants, 45 mortgage, interest and card-issuer-charge guards (`gb/cc-fees`, `kr/deposit-interest`),
 44 own-transfer wording, 40 ATM, 30/31 generic `kw-*` keywords. So "Transfer to Vanguard" stays
 an investment and "BARCLAYCARD ANNUAL FEE" is a fee, not a repayment (the UK issuer brands are
 the one bare-brand exception, and exactly why their guards exist). Other wording must name an
@@ -122,8 +122,10 @@ action (transfer, deposit, repay), never a bare product word that also appears o
 fee or earnings lines; "card payment", direct debit, standing order, faster payment, Zelle and
 Venmo are deliberately not own transfers. Matching runs on folded text (`fold_text` decomposes
 Hangul and kana) while a `regex` pattern is compiled as written, so Hangul rules must be
-`contains` (both sides are folded) and a regex may only contain characters that fold to
-themselves (no diacritics, Hangul or voiced kana marks).
+`contains` (both sides are folded, so a short Hangul rule matches inside longer words: interest
+is matched as phrases such as `예금이자`, never as the bare `이자`, which is in "이자카야" and
+"...페이자동...") and a regex may only contain characters that fold to themselves (no
+diacritics, Hangul or voiced kana marks).
 
 ## Bootstrap & Auth
 

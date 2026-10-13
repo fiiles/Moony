@@ -853,4 +853,115 @@ mod tests {
             );
         }
     }
+
+    // ==================== Everyday words of the brands-only packs ====================
+
+    /// (pack, description, category): rent, insurance, loans, interest, utilities, pharmacy and
+    /// salary lines in the language of each pack. The `no`/`dk` salary and `strøm` lines need the
+    /// rule folding of `ø`.
+    const EVERYDAY_WORDS: &[(&str, &str, &str)] = &[
+        ("se", "Hyra oktober", "cat_housing"),
+        ("se", "Hemförsäkring Trygg-Hansa", "cat_insurance"),
+        ("se", "Amortering bolån", "cat_loan_payments"),
+        ("se", "Elräkning Vattenfall", "cat_utilities"),
+        ("se", "Ränta på sparkonto", "cat_investment_income"),
+        ("se", "Räntekostnad lån", "cat_loan_payments"),
+        ("se", "Lön september", "cat_income"),
+        ("se", "Apotek Hjärtat", "cat_health"),
+        ("no", "Husleie oktober", "cat_housing"),
+        ("no", "Lønn september", "cat_income"),
+        ("no", "Strømregning", "cat_utilities"),
+        ("no", "Innskuddsrente", "cat_investment_income"),
+        ("no", "Forsikring bil", "cat_insurance"),
+        ("no", "Boliglån termin", "cat_loan_payments"),
+        ("no", "Rentekostnad", "cat_loan_payments"),
+        ("dk", "Husleje", "cat_housing"),
+        ("dk", "Løn", "cat_income"),
+        ("dk", "LOEN", "cat_income"),
+        ("dk", "Fjernvarme", "cat_utilities"),
+        ("dk", "Forsikring", "cat_insurance"),
+        ("dk", "Rente", "cat_investment_income"),
+        ("dk", "Boliglån", "cat_loan_payments"),
+        ("fi", "Vuokra lokakuu", "cat_housing"),
+        ("fi", "Palkka", "cat_income"),
+        ("fi", "Sähkölasku", "cat_utilities"),
+        ("fi", "Korko", "cat_investment_income"),
+        ("fi", "Vakuutusmaksu", "cat_insurance"),
+        ("fi", "Asuntolaina", "cat_loan_payments"),
+        ("fi", "Korkokulu", "cat_loan_payments"),
+        ("pt", "Renda outubro", "cat_housing"),
+        ("pt", "Vencimento", "cat_income"),
+        ("pt", "Prestação casa", "cat_loan_payments"),
+        ("pt", "Juros", "cat_investment_income"),
+        ("pt", "Eletricidade", "cat_utilities"),
+        ("pt", "Seguro automóvel", "cat_insurance"),
+        ("pt", "Juros devedores", "cat_loan_payments"),
+        ("pt", "Salário", "cat_income"),
+        ("jp", "家賃 10月", "cat_housing"),
+        ("jp", "給与", "cat_income"),
+        ("jp", "住宅ローン", "cat_loan_payments"),
+        ("jp", "電気料金", "cat_utilities"),
+        ("jp", "利息", "cat_investment_income"),
+        ("jp", "支払利息", "cat_loan_payments"),
+        ("jp", "ボーナス", "cat_income"),
+        ("jp", "薬局", "cat_health"),
+        ("cn", "房租", "cat_housing"),
+        ("cn", "租金", "cat_housing"),
+        ("cn", "保险费", "cat_insurance"),
+        ("cn", "月供", "cat_loan_payments"),
+        ("cn", "利息", "cat_investment_income"),
+        ("cn", "代发工资", "cat_income"),
+        ("cn", "药店", "cat_health"),
+        ("cn", "电费", "cat_utilities"),
+        // Interest paid on a loan outranks the bare interest word (31 against 30), and the
+        // credit-side wording of each language stays income.
+        ("jp", "ローン利息", "cat_loan_payments"),
+        ("jp", "受取利息", "cat_investment_income"),
+        ("cn", "结息", "cat_investment_income"),
+        ("cn", "信用卡利息", "cat_loan_payments"),
+    ];
+
+    #[test]
+    fn brands_only_packs_categorize_everyday_words_in_their_language() {
+        for &(pack, text, expected) in EVERYDAY_WORDS {
+            let engine = pack_engine(&["global", pack]);
+            assert_eq!(
+                category_of(&engine, text).as_deref(),
+                Some(expected),
+                "{pack}: {text}"
+            );
+        }
+    }
+
+    #[test]
+    fn interest_free_is_not_interest_income() {
+        // "無利息" = interest-free (a promotion line, a 0 % instalment); it must not become income.
+        let engine = pack_engine(&["global", "jp"]);
+        assert_ne!(
+            category_of(&engine, "無利息分割 手数料").as_deref(),
+            Some("cat_investment_income")
+        );
+    }
+
+    #[test]
+    fn every_brands_only_pack_has_a_keyword_group_below_the_merchants() {
+        for pack in ["se", "no", "dk", "fi", "pt", "jp", "cn"] {
+            let rules = &available_packs()
+                .iter()
+                .find(|p| p.pack_id == pack)
+                .expect("pack")
+                .rules;
+            let prefix = format!("{pack}/kw-");
+            let keywords: Vec<_> = rules.iter().filter(|r| r.id.starts_with(&prefix)).collect();
+            assert!(
+                keywords.len() >= 6,
+                "{pack} has {} keyword rules",
+                keywords.len()
+            );
+            assert!(
+                keywords.iter().all(|r| r.priority < 40),
+                "{pack}: keyword rules rank below every merchant rule"
+            );
+        }
+    }
 }

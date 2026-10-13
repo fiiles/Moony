@@ -63,6 +63,14 @@
     { "id": "dk/alm-brand", "name": "Alm. Brand", "ruleType": "regex", "pattern": "alm\\.? ?brand", "categoryId": "cat_insurance", "priority": 50 },
     { "id": "dk/totalkredit", "name": "Totalkredit (mortgage)", "ruleType": "contains", "pattern": "totalkredit", "categoryId": "cat_loan_payments", "priority": 50 },
     { "id": "dk/realkredit", "name": "Realkredit (mortgage)", "ruleType": "contains", "pattern": "realkredit", "categoryId": "cat_loan_payments", "priority": 50 },
-    { "id": "dk/bauhaus", "name": "Bauhaus", "ruleType": "contains", "pattern": "bauhaus", "categoryId": "cat_housing", "priority": 50 }
+    { "id": "dk/bauhaus", "name": "Bauhaus", "ruleType": "contains", "pattern": "bauhaus", "categoryId": "cat_housing", "priority": 50 },
+    { "id": "dk/kw-forsikring", "name": "Keyword: forsikring", "ruleType": "contains", "pattern": "forsikring", "categoryId": "cat_insurance", "priority": 30 },
+    { "id": "dk/kw-lan", "name": "Keyword: lån / afdrag", "ruleType": "regex", "pattern": "\\b(?:lan|boliglan|billan|afdrag)\\b", "categoryId": "cat_loan_payments", "priority": 30 },
+    { "id": "dk/kw-husleje", "name": "Keyword: husleje", "ruleType": "contains", "pattern": "husleje", "categoryId": "cat_housing", "priority": 30 },
+    { "id": "dk/kw-el-vand", "name": "Keyword: elregning / varme / vand", "ruleType": "regex", "pattern": "\\b(?:strom|elregning|elselskab|fjernvarme|vandafgift|vandregning|varmeregning)\\b", "categoryId": "cat_utilities", "priority": 30 },
+    { "id": "dk/kw-rente", "name": "Keyword: rente", "ruleType": "regex", "pattern": "\\b(?:rente|renter|indlansrente)\\b", "categoryId": "cat_investment_income", "priority": 30 },
+    { "id": "dk/kw-rente-betaling", "name": "Keyword: rentebetaling", "ruleType": "regex", "pattern": "rentebetaling|debetrente|renter af lan|rente af lan", "categoryId": "cat_loan_payments", "priority": 31 },
+    { "id": "dk/kw-apotek", "name": "Keyword: apotek", "ruleType": "contains", "pattern": "apotek", "categoryId": "cat_health", "priority": 30 },
+    { "id": "dk/kw-loen", "name": "Keyword: løn (ASCII)", "ruleType": "word", "pattern": "loen", "categoryId": "cat_income", "priority": 30 }
   ]
 }

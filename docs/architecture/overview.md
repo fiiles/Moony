@@ -120,12 +120,14 @@ an investment and "BARCLAYCARD ANNUAL FEE" is a fee, not a repayment (the UK iss
 the one bare-brand exception, and exactly why their guards exist). Other wording must name an
 action (transfer, deposit, repay), never a bare product word that also appears on interest,
 fee or earnings lines; "card payment", direct debit, standing order, faster payment, Zelle and
-Venmo are deliberately not own transfers. Matching runs on folded text (`fold_text` decomposes
-Hangul and kana) while a `regex` pattern is compiled as written, so Hangul rules must be
-`contains` (both sides are folded, so a short Hangul rule matches inside longer words: interest
-is matched as phrases such as `예금이자`, never as the bare `이자`, which is in "이자카야" and
-"...페이자동...") and a regex may only contain characters that fold to themselves (no
-diacritics, Hangul or voiced kana marks).
+Venmo are deliberately not own transfers. Matching runs on folded text (`fold_for_rules`:
+`fold_text`, which decomposes Hangul and kana, plus `ø æ ł đ ß œ` written as `o ae l d ss oe`, so
+packs spell `lonn` and `haevning` in ASCII) while a `regex` pattern is compiled as written apart
+from those letters, so Hangul rules must be `contains` (both sides are folded, so a short Hangul
+rule matches inside longer words: interest is matched as phrases such as `예금이자`, never as the
+bare `이자`, which is in "이자카야" and "...페이자동...") and a regex may only contain characters
+that fold to themselves (no diacritics, Hangul or voiced kana marks). Learned-payee keys keep
+plain `fold_text`.
 
 ## Bootstrap & Auth
 

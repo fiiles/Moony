@@ -63,6 +63,13 @@
     { "id": "se/if-skadeforsakring", "name": "If Skadeförsäkring", "ruleType": "contains", "pattern": "if skadeforsakring", "categoryId": "cat_insurance", "priority": 50 },
     { "id": "se/csn", "name": "CSN (student loans)", "ruleType": "word", "pattern": "csn", "categoryId": "cat_loan_payments", "priority": 50 },
     { "id": "se/byggmax", "name": "Byggmax", "ruleType": "contains", "pattern": "byggmax", "categoryId": "cat_housing", "priority": 50 },
-    { "id": "se/bauhaus", "name": "Bauhaus", "ruleType": "contains", "pattern": "bauhaus", "categoryId": "cat_housing", "priority": 50 }
+    { "id": "se/bauhaus", "name": "Bauhaus", "ruleType": "contains", "pattern": "bauhaus", "categoryId": "cat_housing", "priority": 50 },
+    { "id": "se/kw-forsakring", "name": "Keyword: försäkring", "ruleType": "contains", "pattern": "forsakring", "categoryId": "cat_insurance", "priority": 30 },
+    { "id": "se/kw-lan", "name": "Keyword: lån / amortering", "ruleType": "regex", "pattern": "\\b(?:lan|bolan|billan|privatlan|amortering)\\b", "categoryId": "cat_loan_payments", "priority": 30 },
+    { "id": "se/kw-hyra", "name": "Keyword: hyra", "ruleType": "word", "pattern": "hyra", "categoryId": "cat_housing", "priority": 30 },
+    { "id": "se/kw-el-vatten", "name": "Keyword: elräkning / fjärrvärme / vatten", "ruleType": "regex", "pattern": "elrakning|elnat|elhandel|elavtal|fjarrvarme|vattenavgift", "categoryId": "cat_utilities", "priority": 30 },
+    { "id": "se/kw-ranta", "name": "Keyword: ränta", "ruleType": "regex", "pattern": "\\b(?:ranta|rantor|sparranta|inlaningsranta)\\b", "categoryId": "cat_investment_income", "priority": 30 },
+    { "id": "se/kw-ranta-kostnad", "name": "Keyword: räntekostnad", "ruleType": "regex", "pattern": "rantekostnad|debiterad ranta|ranta pa lan|kreditranta", "categoryId": "cat_loan_payments", "priority": 31 },
+    { "id": "se/kw-apotek", "name": "Keyword: apotek", "ruleType": "contains", "pattern": "apotek", "categoryId": "cat_health", "priority": 30 }
   ]
 }

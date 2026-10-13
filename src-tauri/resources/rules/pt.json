@@ -47,6 +47,13 @@
     { "id": "pt/credito-habitacao", "name": "Crédito Habitação (mortgage)", "ruleType": "contains", "pattern": "credito habitacao", "categoryId": "cat_loan_payments", "priority": 50 },
     { "id": "pt/leroy-merlin", "name": "Leroy Merlin", "ruleType": "contains", "pattern": "leroy merlin", "categoryId": "cat_housing", "priority": 50 },
     { "id": "pt/aki", "name": "AKI", "ruleType": "word", "pattern": "aki", "categoryId": "cat_housing", "priority": 50 },
-    { "id": "pt/maxmat", "name": "Maxmat", "ruleType": "contains", "pattern": "maxmat", "categoryId": "cat_housing", "priority": 50 }
+    { "id": "pt/maxmat", "name": "Maxmat", "ruleType": "contains", "pattern": "maxmat", "categoryId": "cat_housing", "priority": 50 },
+    { "id": "pt/kw-apolice", "name": "Keyword: apólice / seguradora", "ruleType": "regex", "pattern": "\\bapolice\\b|seguradora", "categoryId": "cat_insurance", "priority": 30 },
+    { "id": "pt/kw-emprestimo", "name": "Keyword: empréstimo / prestação", "ruleType": "regex", "pattern": "\\b(?:emprestimo|credito habitacao|credito pessoal|credito automovel|prestacao|amortizacao)\\b", "categoryId": "cat_loan_payments", "priority": 30 },
+    { "id": "pt/kw-renda", "name": "Keyword: renda / arrendamento", "ruleType": "regex", "pattern": "\\b(?:renda|arrendamento|aluguer|aluguel)\\b", "categoryId": "cat_housing", "priority": 30 },
+    { "id": "pt/kw-eletricidade", "name": "Keyword: eletricidade / água", "ruleType": "regex", "pattern": "eletricidade|electricidade|saneamento|fatura (?:da )?(?:luz|agua|gas)", "categoryId": "cat_utilities", "priority": 30 },
+    { "id": "pt/kw-juros", "name": "Keyword: juros", "ruleType": "word", "pattern": "juros", "categoryId": "cat_investment_income", "priority": 30 },
+    { "id": "pt/kw-juros-devedores", "name": "Keyword: juros devedores", "ruleType": "regex", "pattern": "juros (?:debitados|devedores)|juros do (?:credito|emprestimo)|juros de mora", "categoryId": "cat_loan_payments", "priority": 31 },
+    { "id": "pt/kw-salario", "name": "Keyword: salário", "ruleType": "word", "pattern": "salario", "categoryId": "cat_income", "priority": 30 }
   ]
 }

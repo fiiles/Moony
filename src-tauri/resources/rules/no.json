@@ -62,6 +62,13 @@
     { "id": "no/if-skadeforsikring", "name": "If Skadeforsikring", "ruleType": "contains", "pattern": "if skadeforsikring", "categoryId": "cat_insurance", "priority": 50 },
     { "id": "no/storebrand", "name": "Storebrand", "ruleType": "contains", "pattern": "storebrand", "categoryId": "cat_insurance", "priority": 50 },
     { "id": "no/lanekassen", "name": "Lånekassen (student loans)", "ruleType": "contains", "pattern": "lanekassen", "categoryId": "cat_loan_payments", "priority": 50 },
-    { "id": "no/bauhaus", "name": "Bauhaus", "ruleType": "contains", "pattern": "bauhaus", "categoryId": "cat_housing", "priority": 50 }
+    { "id": "no/bauhaus", "name": "Bauhaus", "ruleType": "contains", "pattern": "bauhaus", "categoryId": "cat_housing", "priority": 50 },
+    { "id": "no/kw-forsikring", "name": "Keyword: forsikring", "ruleType": "contains", "pattern": "forsikring", "categoryId": "cat_insurance", "priority": 30 },
+    { "id": "no/kw-lan", "name": "Keyword: lån / avdrag", "ruleType": "regex", "pattern": "\\b(?:lan|boliglan|billan|studielan|avdrag)\\b", "categoryId": "cat_loan_payments", "priority": 30 },
+    { "id": "no/kw-husleie", "name": "Keyword: husleie", "ruleType": "contains", "pattern": "husleie", "categoryId": "cat_housing", "priority": 30 },
+    { "id": "no/kw-strom", "name": "Keyword: strøm / nettleie", "ruleType": "regex", "pattern": "\\b(?:strom|stromregning|nettleie|fjernvarme|vannavgift)\\b", "categoryId": "cat_utilities", "priority": 30 },
+    { "id": "no/kw-rente", "name": "Keyword: rente", "ruleType": "regex", "pattern": "\\b(?:rente|renter|innskuddsrente)\\b", "categoryId": "cat_investment_income", "priority": 30 },
+    { "id": "no/kw-rente-kostnad", "name": "Keyword: rentekostnad", "ruleType": "regex", "pattern": "rentekostnad|debetrente|renter pa lan|rente pa lan", "categoryId": "cat_loan_payments", "priority": 31 },
+    { "id": "no/kw-apotek", "name": "Keyword: apotek", "ruleType": "contains", "pattern": "apotek", "categoryId": "cat_health", "priority": 30 }
   ]
 }

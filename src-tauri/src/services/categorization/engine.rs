@@ -604,15 +604,12 @@ mod tests {
             .iter()
             .flat_map(|pack| pack.rules.iter())
             .collect::<Vec<_>>();
-        let generic: Vec<_> = rules
-            .iter()
-            .filter(|r| r.id.starts_with("global/kw-"))
-            .collect();
+        let generic: Vec<_> = rules.iter().filter(|r| r.id.contains("/kw-")).collect();
         assert!(generic.len() >= 70, "expected the generic keyword set");
         let highest_generic = generic.iter().map(|r| r.priority).max().unwrap();
         let lowest_merchant = rules
             .iter()
-            .filter(|r| !r.id.starts_with("global/kw-"))
+            .filter(|r| !r.id.contains("/kw-"))
             .map(|r| r.priority)
             .min()
             .unwrap();

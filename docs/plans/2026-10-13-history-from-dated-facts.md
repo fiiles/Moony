@@ -26,7 +26,7 @@ npm run lint && npm run typecheck && npm test
 | 1. Loan ledger maths (Rust + TS mirror + fixture) | done | 65da31d |
 | 2. Loan data: migration 019, services, MCP, milestone, wire contract | done | f20c62b |
 | 3. Loans UI and copy (10 locales) | done | b55c215 |
-| 4. History derivation (`history_days.rs`, `rebuild_days`) | todo | |
+| 4. History derivation (`history_days.rs`, `rebuild_days`) | done | ebd7b27 |
 | 5. Queue, triggers, MCP domains, startup, one-time rebuild, dead-code removal | todo | |
 | 6. Docs: ADR 0016, database.md, overview.md, DEPRECATED.md | todo | |
 | 7. Verification: all gates, live demo check, review | todo | |

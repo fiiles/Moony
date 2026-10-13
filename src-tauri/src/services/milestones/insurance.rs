@@ -46,6 +46,7 @@ pub(crate) fn profile_notice_days(conn: &Connection) -> Result<Option<i64>> {
         .optional()?;
     Ok(row.and_then(|(country, stored)| effective_notice_days(country.as_deref(), stored)))
 }
+
 /// Remind four weeks before the notice deadline (about ten weeks before the anniversary).
 const ANNIVERSARY_LEAD_DAYS: i64 = 28;
 const END_LEAD_DAYS: i64 = 60;

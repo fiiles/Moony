@@ -210,11 +210,14 @@ pub fn set_milestone_state(conn: &Connection, key: &str, state: &str, today: i64
     } else {
         SNOOZE_DAYS
     };
-    let notice = insurance::profile_notice_days(conn)?;
-    let until = (state == MILESTONE_STATE_SNOOZED).then(|| {
+    // The notice caps a snooze only; done and dismissed states do not need the profile.
+    let until = if state == MILESTONE_STATE_SNOOZED {
+        let notice = insurance::profile_notice_days(conn)?;
         let until = today + days * DAY;
-        last_shown_day(key, today, notice).map_or(until, |last| until.min(last))
-    });
+        Some(last_shown_day(key, today, notice).map_or(until, |last| until.min(last)))
+    } else {
+        None
+    };
     conn.execute(
         "INSERT INTO milestone_states (key, state, until_day, updated_at)
          VALUES (?1, ?2, ?3, unixepoch())
@@ -698,8 +701,15 @@ mod tests {
         let conn = setup_without_profile();
         profile(&conn, Some("US"), None);
         let today = day(2026, 10, 5);
-        let key = format!("insurance_anniversary:p1:{}", today + 3 * DAY);
-        set_milestone_state(&conn, &key, MILESTONE_STATE_SNOOZED, today).unwrap();
-        assert_eq!(snoozed_until(&conn, &key), today + 3 * DAY);
+        let snooze = |due: i64| {
+            let key = format!("insurance_anniversary:p1:{due}");
+            set_milestone_state(&conn, &key, MILESTONE_STATE_SNOOZED, today).unwrap();
+            snoozed_until(&conn, &key)
+        };
+        // The anniversary three days away is the last day that is shown.
+        assert_eq!(snooze(today + 3 * DAY), today + 3 * DAY);
+        // 45 days away: there is no notice deadline to cap the snooze (a 43-day one would be
+        // two days ahead and cut it short), so it keeps the full week.
+        assert_eq!(snooze(today + 45 * DAY), today + 7 * DAY);
     }
 }

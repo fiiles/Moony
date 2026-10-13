@@ -8,7 +8,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { useMilestoneMutedKinds } from '@/hooks/use-milestones';
 import { useMilestoneActions } from '@/hooks/use-milestone-mutations';
 import { useSettingsMutations } from '@/hooks/use-settings-mutations';
-import { MAX_NOTICE_DAYS, parseNoticeDays } from '@/utils/insurance-notice';
+import { parseNoticeDays } from '@/utils/insurance-notice';
 import { MILESTONE_GROUP_IDS, kindsOf } from '@/utils/milestones';
 
 /** Settings → General → Overview reminders: one switch per reminder group, then the insurance notice. */
@@ -69,11 +69,10 @@ export function MilestoneSettingsCard() {
         <Input
           id="insurance-notice-days"
           className="w-24"
-          type="number"
+          // Plain text, not type="number": WebKit reports '' for a partial entry such as "-" or
+          // "1e", which would read as "no reminder"; the parser must see what was typed.
+          type="text"
           inputMode="numeric"
-          min={0}
-          max={MAX_NOTICE_DAYS}
-          step={1}
           value={shown}
           disabled={!user || updateProfile.isPending}
           onChange={(e) => setTyped(e.target.value)}

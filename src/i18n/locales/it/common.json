@@ -272,7 +272,8 @@
     "coingeckoIdForNewCoin": "{{ticker}}: una nuova moneta richiede il suo ID CoinGecko (ad esempio bitcoin) per recuperare i prezzi.",
     "stockImportLine": "Riga {{line}}: {{reason}}",
     "stockImportRowFailed": "non è stato possibile salvare la riga.",
-    "onboardingFlagUnknown": "Passaggio della configurazione iniziale sconosciuto."
+    "onboardingFlagUnknown": "Passaggio della configurazione iniziale sconosciuto.",
+    "insuranceNoticeInvalid": "Inserisci un numero intero di giorni da 0 a 365."
   },
   "auth": {
     "wrongPassword": "La password inserita non è corretta. Riprova.",

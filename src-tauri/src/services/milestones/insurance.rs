@@ -4,17 +4,48 @@
 //! insurance page, the first anniversary is never the start day itself.
 
 use chrono::{DateTime, Datelike};
-use rusqlite::Connection;
+use rusqlite::{Connection, OptionalExtension};
 
 use super::{dated, DAY, TONE_INFO};
 use crate::error::Result;
 use crate::models::{Milestone, PaymentFrequency};
 use crate::services::loan_amortization::{day_floor, due_day};
 
-/// A policy can be cancelled to the end of its insurance period with at least six weeks'
-/// notice; the period ends the day before the anniversary, so the last safe delivery day is
-/// the anniversary minus 43 days (the earlier date is the safe one).
-pub(super) const NOTICE_DAYS: i64 = 43;
+/// Countries whose insurance contracts end "to the end of the insurance period" with a notice of
+/// six weeks (Czech and Slovak civil code); the period ends the day before the anniversary, so
+/// the last safe delivery day is the anniversary minus 43 days (the earlier date is the safe one).
+/// Elsewhere the rule differs (any time with a pro-rata refund, a renewal notice, three months, …),
+/// so the profile sets its own period or gets no anniversary reminder.
+const DEFAULT_NOTICE_COUNTRIES: [&str; 2] = ["CZ", "SK"];
+const DEFAULT_NOTICE_DAYS: i64 = 43;
+
+/// The notice period of the profile in days, None for "no anniversary reminder": the stored value
+/// (`0` = none) wins, otherwise 43 for Czechia and Slovakia and nothing for any other country.
+pub fn effective_notice_days(country: Option<&str>, stored: Option<i64>) -> Option<i64> {
+    match stored {
+        Some(0) => None,
+        Some(days) if days > 0 => Some(days),
+        _ => country
+            .filter(|c| {
+                DEFAULT_NOTICE_COUNTRIES
+                    .iter()
+                    .any(|default| default.eq_ignore_ascii_case(c.trim()))
+            })
+            .map(|_| DEFAULT_NOTICE_DAYS),
+    }
+}
+
+/// [`effective_notice_days`] of the stored profile; None without a profile row.
+pub(crate) fn profile_notice_days(conn: &Connection) -> Result<Option<i64>> {
+    let row: Option<(Option<String>, Option<i64>)> = conn
+        .query_row(
+            "SELECT country, insurance_notice_days FROM user_profile ORDER BY id LIMIT 1",
+            [],
+            |r| Ok((r.get(0)?, r.get(1)?)),
+        )
+        .optional()?;
+    Ok(row.and_then(|(country, stored)| effective_notice_days(country.as_deref(), stored)))
+}
 /// Remind four weeks before the notice deadline (about ten weeks before the anniversary).
 const ANNIVERSARY_LEAD_DAYS: i64 = 28;
 const END_LEAD_DAYS: i64 = 60;
@@ -105,17 +136,19 @@ pub(super) fn build(conn: &Connection, today: i64) -> Result<Vec<Milestone>> {
         })?
         .collect::<std::result::Result<Vec<_>, _>>()?;
 
+    let notice = profile_notice_days(conn)?;
     let mut out = Vec::new();
     for p in policies {
         let end = p.end.map(day_floor);
         if end.is_some_and(|e| e < today) {
             continue;
         }
-        // The notice-to-period-end rule applies to regular premiums, not one-time policies.
+        // The notice-to-period-end rule applies to regular premiums, not one-time policies, and
+        // only where the profile has a notice period.
         let one_time = PaymentFrequency::parse(&p.frequency) == Some(PaymentFrequency::OneTime);
         let anniversary = next_anniversary(p.start, end, today).filter(|_| !one_time);
-        if let Some(anniversary) = anniversary {
-            let action_day = anniversary - NOTICE_DAYS * DAY;
+        if let (Some(anniversary), Some(notice)) = (anniversary, notice) {
+            let action_day = anniversary - notice * DAY;
             let remind_from = action_day - ANNIVERSARY_LEAD_DAYS * DAY;
             if let Some(mut m) = dated(
                 "insurance_anniversary",

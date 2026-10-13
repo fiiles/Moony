@@ -55,7 +55,7 @@
     "balances_stale": "Salda kont"
   },
   "sub": {
-    "insurance_anniversary": "Ostatni dzień na wypowiedzenie · rocznica {{date}}",
+    "insurance_anniversary": "Termin wypowiedzenia · rocznica {{date}}",
     "insurance_anniversary_passed": "Rocznica umowy · okres wypowiedzenia minął",
     "insurance_end": "Umowa kończy się",
     "insurance_payment": "Płatność {{amount}}",
@@ -90,7 +90,7 @@
   "groups": {
     "insuranceDates": {
       "label": "Rocznice i końce ubezpieczeń",
-      "hint": "W przeglądzie do 3 miesięcy naprzód; rocznice z ostatnim dniem na wypowiedzenie.",
+      "hint": "W przeglądzie do 3 miesięcy naprzód; rocznice z terminem wypowiedzenia.",
       "mute": "Nie przypominaj o rocznicach i końcu ubezpieczeń"
     },
     "insurancePayments": {
@@ -141,6 +141,8 @@
   },
   "settings": {
     "title": "Przypomnienia w przeglądzie",
-    "description": "O czym przypomina karta „Co cię czeka” i górny pasek. Wyłączone rodzaje nie pokazują się nigdzie."
+    "description": "O czym przypomina karta „Co cię czeka” i górny pasek. Wyłączone rodzaje nie pokazują się nigdzie.",
+    "insuranceNotice": "Okres wypowiedzenia ubezpieczenia (dni)",
+    "insuranceNoticeHint": "Na ile dni przed coroczną rocznicą wypowiedzenie musi dotrzeć do ubezpieczyciela. 0 wyłącza przypomnienie o rocznicy. Wartość 43 dni jest ustawiona domyślnie tylko dla Czech i Słowacji."
   }
 }

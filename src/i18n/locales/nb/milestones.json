@@ -47,7 +47,7 @@
     "balances_stale": "Kontosaldoer"
   },
   "sub": {
-    "insurance_anniversary": "Siste dag for oppsigelse · årsdag {{date}}",
+    "insurance_anniversary": "Frist for oppsigelse · årsdag {{date}}",
     "insurance_anniversary_passed": "Avtalens årsdag · oppsigelsesfristen er utløpt",
     "insurance_end": "Avtalen utløper",
     "insurance_payment": "Betaling {{amount}}",
@@ -78,7 +78,7 @@
   "groups": {
     "insuranceDates": {
       "label": "Årsdager og utløp for forsikringer",
-      "hint": "På oversikten opptil 3 måneder i forveien; årsdager med siste dag for oppsigelse.",
+      "hint": "På oversikten opptil 3 måneder i forveien; årsdager med fristen for oppsigelse.",
       "mute": "Ikke påminn meg om forsikringsårsdager og utløp"
     },
     "insurancePayments": {
@@ -129,6 +129,8 @@
   },
   "settings": {
     "title": "Påminnelser på oversikten",
-    "description": "Hva kortet «Det som kommer» og topplinjen minner deg om. Slåtte av typer vises ingen steder."
+    "description": "Hva kortet «Det som kommer» og topplinjen minner deg om. Slåtte av typer vises ingen steder.",
+    "insuranceNotice": "Oppsigelsesfrist for forsikring (dager)",
+    "insuranceNoticeHint": "Hvor mange dager før årsdagen en oppsigelse må være hos forsikringsselskapet. 0 slår av påminnelsen om årsdagen. Forhåndsinnstilt til 43 dager bare for Tsjekkia og Slovakia."
   }
 }

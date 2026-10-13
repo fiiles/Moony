@@ -47,7 +47,7 @@
     "balances_stale": "Kontostände"
   },
   "sub": {
-    "insurance_anniversary": "Letzter Kündigungstag · Jahrestag {{date}}",
+    "insurance_anniversary": "Frist für die Kündigung · Jahrestag {{date}}",
     "insurance_anniversary_passed": "Jahrestag des Vertrags · die Kündigungsfrist ist abgelaufen",
     "insurance_end": "Vertrag endet",
     "insurance_payment": "Zahlung {{amount}}",
@@ -78,7 +78,7 @@
   "groups": {
     "insuranceDates": {
       "label": "Versicherungs-Jahrestage und -Enden",
-      "hint": "In der Übersicht bis zu 3 Monate im Voraus; Jahrestage mit dem letzten Kündigungstag.",
+      "hint": "In der Übersicht bis zu 3 Monate im Voraus; Jahrestage mit der Frist für die Kündigung.",
       "mute": "Nicht an Versicherungs-Jahrestage und -Enden erinnern"
     },
     "insurancePayments": {
@@ -129,6 +129,8 @@
   },
   "settings": {
     "title": "Erinnerungen der Übersicht",
-    "description": "Woran die Karte „Was ansteht“ und die obere Leiste Sie erinnern. Ausgeschaltete Arten werden nirgends angezeigt."
+    "description": "Woran die Karte „Was ansteht“ und die obere Leiste Sie erinnern. Ausgeschaltete Arten werden nirgends angezeigt.",
+    "insuranceNotice": "Kündigungsfrist der Versicherung (Tage)",
+    "insuranceNoticeHint": "Wie viele Tage vor dem Jahrestag eine Kündigung beim Versicherer eingehen muss. 0 schaltet die Erinnerung an den Jahrestag aus. Nur für Tschechien und die Slowakei mit 43 Tagen voreingestellt."
   }
 }

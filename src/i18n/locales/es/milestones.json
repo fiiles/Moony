@@ -51,7 +51,7 @@
     "balances_stale": "Saldos de las cuentas"
   },
   "sub": {
-    "insurance_anniversary": "Último día para cancelar · aniversario {{date}}",
+    "insurance_anniversary": "Fecha límite del preaviso de cancelación · aniversario {{date}}",
     "insurance_anniversary_passed": "Aniversario del contrato · el plazo de preaviso ha pasado",
     "insurance_end": "El contrato termina",
     "insurance_payment": "Pago {{amount}}",
@@ -84,7 +84,7 @@
   "groups": {
     "insuranceDates": {
       "label": "Aniversarios y fines de seguros",
-      "hint": "En el resumen con hasta 3 meses de antelación; los aniversarios, con el último día para cancelar.",
+      "hint": "En el resumen con hasta 3 meses de antelación; los aniversarios, con la fecha límite del preaviso.",
       "mute": "No recordarme aniversarios ni fines de seguros"
     },
     "insurancePayments": {
@@ -135,6 +135,8 @@
   },
   "settings": {
     "title": "Recordatorios del resumen",
-    "description": "De qué te avisan la tarjeta «Próximas fechas» y la barra superior. Los tipos desactivados no se muestran en ningún sitio."
+    "description": "De qué te avisan la tarjeta «Próximas fechas» y la barra superior. Los tipos desactivados no se muestran en ningún sitio.",
+    "insuranceNotice": "Preaviso de cancelación del seguro (días)",
+    "insuranceNoticeHint": "Cuántos días antes del aniversario anual debe llegar la cancelación a la aseguradora. 0 desactiva el recordatorio del aniversario. Solo Chequia y Eslovaquia vienen preajustadas a 43 días."
   }
 }

@@ -47,7 +47,7 @@
     "balances_stale": "Account balances"
   },
   "sub": {
-    "insurance_anniversary": "Last day to cancel · anniversary {{date}}",
+    "insurance_anniversary": "Cancellation notice deadline · anniversary {{date}}",
     "insurance_anniversary_passed": "Contract anniversary · the notice period has passed",
     "insurance_end": "Contract ends",
     "insurance_payment": "Payment {{amount}}",
@@ -78,7 +78,7 @@
   "groups": {
     "insuranceDates": {
       "label": "Insurance anniversaries and ends",
-      "hint": "On the overview up to 3 months ahead; anniversaries with the last day to cancel.",
+      "hint": "On the overview up to 3 months ahead; anniversaries with the cancellation notice deadline.",
       "mute": "Don't remind me about insurance anniversaries and ends"
     },
     "insurancePayments": {
@@ -129,6 +129,8 @@
   },
   "settings": {
     "title": "Overview reminders",
-    "description": "What the “What's coming up” card and the top bar remind you of. Turned-off kinds show nowhere."
+    "description": "What the “What's coming up” card and the top bar remind you of. Turned-off kinds show nowhere.",
+    "insuranceNotice": "Insurance cancellation notice (days)",
+    "insuranceNoticeHint": "How many days before the yearly anniversary a cancellation must reach the insurer. 0 turns the anniversary reminder off. Preset to 43 days for Czechia and Slovakia only."
   }
 }

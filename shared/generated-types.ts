@@ -437,7 +437,7 @@ matchHeaders: string[];
 delimiter: string; 
 /**
  * Encoding label (`UTF-8`, `Windows-1250`, …). Only consulted when the
- * file is not valid UTF-8 — see `decode_csv_content`.
+ * file is not valid UTF-8 — see `decode_csv_content_for_country`.
  */
 encoding: string; dateColumn: string; 
 /**
@@ -2096,7 +2096,11 @@ export type UpdateUserProfile = { name: string | null; surname: string | null; e
 /**
  * `Some("")` clears the country; otherwise two ASCII letters (stored upper case).
  */
-country: string | null }
+country: string | null; 
+/**
+ * `0` turns the anniversary reminder off; 1..=365 sets the notice period.
+ */
+insuranceNoticeDays: number | null }
 
 /**
  * User profile stored in database
@@ -2105,7 +2109,12 @@ export type UserProfile = { id: number; name: string; surname: string; email: st
 /**
  * ISO 3166-1 alpha-2 country of the profile (`CZ`), None until set.
  */
-country: string | null; createdAt: number }
+country: string | null; 
+/**
+ * The cancellation notice of insurance policies in days that the milestones use: the stored
+ * value, else 43 for Czechia and Slovakia, else None (no anniversary reminder).
+ */
+insuranceNoticeDays: number | null; createdAt: number }
 
 /**
  * A followed stock (row in watched_stocks)

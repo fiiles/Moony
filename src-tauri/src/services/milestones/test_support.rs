@@ -20,7 +20,9 @@ pub(crate) fn setup() -> Connection {
         CREATE TABLE user_profile (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL DEFAULT '',
-            created_at INTEGER NOT NULL DEFAULT (unixepoch())
+            created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+            country TEXT,
+            insurance_notice_days INTEGER
         );
         CREATE TABLE insurance_policies (
             id TEXT PRIMARY KEY,

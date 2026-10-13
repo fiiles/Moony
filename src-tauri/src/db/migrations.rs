@@ -82,6 +82,7 @@ fn all_migrations() -> Vec<(&'static str, &'static str)> {
         ("015_one_tag_per_group", MIGRATION_015),
         ("016_mcp_pending_refresh", MIGRATION_016),
         ("017_profile_country", MIGRATION_017),
+        ("018_insurance_notice_days", MIGRATION_018),
     ]
 }
 
@@ -2652,6 +2653,13 @@ END
 WHERE country IS NULL;
 "#;
 
+/// 018: the cancellation notice of insurance policies is a profile setting. NULL = the country
+/// default (43 days for CZ and SK, none elsewhere), 0 = no anniversary reminder, otherwise the
+/// days. No backfill: a Czech or Slovak profile keeps today's 43 days through the default.
+pub(crate) const MIGRATION_018: &str = r#"
+ALTER TABLE user_profile ADD COLUMN insurance_notice_days INTEGER;
+"#;
+
 #[cfg(test)]
 mod migration_012 {
     use super::*;
@@ -3013,5 +3021,41 @@ mod migration_017 {
             )
             .expect("column");
         assert_eq!(declared, "TEXT");
+    }
+}
+
+#[cfg(test)]
+mod migration_018 {
+    use super::*;
+
+    #[test]
+    fn the_column_is_added_nullable_and_existing_profiles_keep_the_default() {
+        let conn = Connection::open_in_memory().expect("in-memory db");
+        let earlier: Vec<(&str, &str)> = all_migrations()
+            .into_iter()
+            .filter(|(name, _)| *name < "018_insurance_notice_days")
+            .collect();
+        run_chain(&conn, &earlier).expect("earlier migrations");
+        conn.execute(
+            "INSERT INTO user_profile (name, surname, email, currency, language)
+             VALUES ('A', 'B', 'a@b.c', 'CZK', 'cs')",
+            [],
+        )
+        .expect("profile");
+        run_migrations(&conn).expect("migrate to the current chain");
+        let stored: Option<i64> = conn
+            .query_row("SELECT insurance_notice_days FROM user_profile", [], |r| {
+                r.get(0)
+            })
+            .expect("column");
+        assert_eq!(stored, None);
+        let declared: String = conn
+            .query_row(
+                "SELECT type FROM pragma_table_info('user_profile') WHERE name = 'insurance_notice_days'",
+                [],
+                |r| r.get(0),
+            )
+            .expect("declared type");
+        assert_eq!(declared, "INTEGER");
     }
 }

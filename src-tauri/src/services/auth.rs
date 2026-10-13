@@ -419,7 +419,7 @@ pub fn get_user_profile(db: &Database) -> Result<Option<UserProfile>> {
         let mut stmt = conn.prepare(
             "SELECT id, name, surname, email, menu_preferences, currency,
                     language, exclude_personal_real_estate, coingecko_modal_dismissed,
-                    mcp_server_enabled, created_at, country
+                    mcp_server_enabled, created_at, country, insurance_notice_days
              FROM user_profile LIMIT 1",
         )?;
 
@@ -427,6 +427,8 @@ pub fn get_user_profile(db: &Database) -> Result<Option<UserProfile>> {
             let menu_prefs_json: String = row.get(4)?;
             let menu_prefs: MenuPreferences =
                 serde_json::from_str(&menu_prefs_json).unwrap_or_default();
+            let country: Option<String> = row.get(11)?;
+            let stored_notice: Option<i64> = row.get(12)?;
 
             Ok(UserProfile {
                 id: row.get(0)?,
@@ -440,7 +442,11 @@ pub fn get_user_profile(db: &Database) -> Result<Option<UserProfile>> {
                 coingecko_modal_dismissed: row.get::<_, i32>(8)? != 0,
                 mcp_server_enabled: row.get::<_, i32>(9)? != 0,
                 created_at: row.get(10)?,
-                country: row.get(11)?,
+                insurance_notice_days: crate::services::milestones::effective_insurance_notice_days(
+                    country.as_deref(),
+                    stored_notice,
+                ),
+                country,
             })
         });
 
@@ -513,6 +519,11 @@ fn apply_profile_update(conn: &rusqlite::Connection, updates: &UpdateUserProfile
     if let Some(ref country) = updates.country {
         set_clauses.push("country = ?".to_string());
         params.push(Box::new(normalize_country(country)?));
+    }
+
+    if let Some(days) = updates.insurance_notice_days {
+        set_clauses.push("insurance_notice_days = ?".to_string());
+        params.push(Box::new(days));
     }
 
     if set_clauses.is_empty() {
@@ -969,7 +980,8 @@ mod tests {
                 language TEXT NOT NULL DEFAULT 'en',
                 coingecko_modal_dismissed INTEGER NOT NULL DEFAULT 0,
                 mcp_server_enabled INTEGER NOT NULL DEFAULT 0,
-                country TEXT
+                country TEXT,
+                insurance_notice_days INTEGER
             );
             INSERT INTO user_profile (id, currency) VALUES (1, 'CZK');
             "#,
@@ -991,6 +1003,7 @@ mod tests {
             coingecko_modal_dismissed: None,
             mcp_server_enabled: None,
             country: None,
+            insurance_notice_days: None,
         }
     }
 
@@ -1031,6 +1044,33 @@ mod tests {
         let conn = profile_conn();
         apply_profile_update(&conn, &currency_update("aed")).unwrap();
         assert_eq!(stored_currency(&conn), "AED");
+    }
+
+    #[test]
+    fn the_insurance_notice_is_stored_and_a_zero_is_kept() {
+        let conn = profile_conn();
+        let set = |days: i64| UpdateUserProfile {
+            insurance_notice_days: Some(days),
+            ..empty_update()
+        };
+        let stored = |conn: &rusqlite::Connection| -> Option<i64> {
+            conn.query_row(
+                "SELECT insurance_notice_days FROM user_profile WHERE id = 1",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap()
+        };
+        apply_profile_update(&conn, &set(60)).unwrap();
+        assert_eq!(stored(&conn), Some(60));
+        apply_profile_update(&conn, &set(0)).unwrap();
+        assert_eq!(
+            stored(&conn),
+            Some(0),
+            "0 means no reminder and is stored as such"
+        );
+        assert!(apply_profile_update(&conn, &set(400)).is_err());
+        assert_eq!(stored(&conn), Some(0));
     }
 
     #[test]
@@ -1092,6 +1132,58 @@ mod tests {
         );
         assert_eq!(country_of(set("")), None);
         assert_eq!(get_user_profile(&db).unwrap().unwrap().country, None);
+    }
+
+    /// The profile reports the notice the milestones use: the country default until the user sets
+    /// one, then the stored value, `0` meaning no reminder (a real, fully migrated database).
+    #[test]
+    fn the_profile_reports_the_effective_insurance_notice() {
+        let dir = tempdir().expect("tempdir");
+        let db = Database::new();
+        let key = crypto::master_key_to_hex(&[7u8; 32]);
+        db.create_with_key(dir.path().join("moony.db"), &key)
+            .expect("create db");
+        db.with_conn(|conn| {
+            conn.execute(
+                "INSERT INTO user_profile (name, surname, email) VALUES ('A', 'B', 'a@b.c')",
+                [],
+            )?;
+            Ok(())
+        })
+        .expect("profile row");
+        let notice = || {
+            get_user_profile(&db)
+                .unwrap()
+                .unwrap()
+                .insurance_notice_days
+        };
+        let update =
+            |updates: UpdateUserProfile| update_user_profile(&db, updates).expect("update");
+        let country = |code: &str| UpdateUserProfile {
+            country: Some(code.to_string()),
+            ..empty_update()
+        };
+        let days = |days: i64| UpdateUserProfile {
+            insurance_notice_days: Some(days),
+            ..empty_update()
+        };
+
+        // No country: no notice. Czechia and Slovakia default to 43, other countries to nothing.
+        assert_eq!(notice(), None);
+        assert_eq!(update(country("cz")).insurance_notice_days, Some(43));
+        assert_eq!(update(country("SK")).insurance_notice_days, Some(43));
+        assert_eq!(update(country("us")).insurance_notice_days, None);
+        // A stored value wins over the country; 0 switches the reminder off.
+        assert_eq!(update(days(30)).insurance_notice_days, Some(30));
+        assert_eq!(update(country("cz")).insurance_notice_days, Some(30));
+        assert_eq!(update(days(0)).insurance_notice_days, None);
+        // An update that does not mention the notice keeps it.
+        let renamed = UpdateUserProfile {
+            name: Some("C".into()),
+            ..empty_update()
+        };
+        assert_eq!(update(renamed).insurance_notice_days, None);
+        assert_eq!(notice(), None);
     }
 
     #[test]

@@ -312,6 +312,7 @@ pub async fn set_mcp_server_enabled(
         coingecko_modal_dismissed: None,
         mcp_server_enabled: Some(enabled),
         country: None,
+        insurance_notice_days: None,
     };
     auth::update_user_profile(&db, updates)
 }

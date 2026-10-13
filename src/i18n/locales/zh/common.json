@@ -272,7 +272,8 @@
     "coingeckoIdForNewCoin": "{{ticker}}：新币种需要 CoinGecko ID（例如 bitcoin）才能获取价格。",
     "stockImportLine": "第 {{line}} 行：{{reason}}",
     "stockImportRowFailed": "无法保存该行。",
-    "onboardingFlagUnknown": "未知的初始设置步骤。"
+    "onboardingFlagUnknown": "未知的初始设置步骤。",
+    "insuranceNoticeInvalid": "请输入 0 到 365 之间的整数天数。"
   },
   "auth": {
     "wrongPassword": "您输入的密码不正确，请重试。",

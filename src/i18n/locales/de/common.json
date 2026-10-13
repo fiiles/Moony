@@ -272,7 +272,8 @@
     "coingeckoIdForNewCoin": "{{ticker}}: Für eine neue Kryptowährung wird die CoinGecko-ID (zum Beispiel bitcoin) benötigt, um Kurse abzurufen.",
     "stockImportLine": "Zeile {{line}}: {{reason}}",
     "stockImportRowFailed": "die Zeile konnte nicht gespeichert werden.",
-    "onboardingFlagUnknown": "Unbekannter Einrichtungsschritt."
+    "onboardingFlagUnknown": "Unbekannter Einrichtungsschritt.",
+    "insuranceNoticeInvalid": "Geben Sie eine ganze Zahl von 0 bis 365 Tagen ein."
   },
   "auth": {
     "wrongPassword": "Das eingegebene Passwort ist falsch. Bitte versuchen Sie es erneut.",

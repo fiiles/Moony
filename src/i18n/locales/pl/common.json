@@ -272,7 +272,8 @@
     "coingeckoIdForNewCoin": "{{ticker}}: nowa kryptowaluta wymaga identyfikatora CoinGecko (na przykład bitcoin), aby pobierać ceny.",
     "stockImportLine": "Wiersz {{line}}: {{reason}}",
     "stockImportRowFailed": "nie udało się zapisać wiersza.",
-    "onboardingFlagUnknown": "Nieznany krok konfiguracji początkowej."
+    "onboardingFlagUnknown": "Nieznany krok konfiguracji początkowej.",
+    "insuranceNoticeInvalid": "Wpisz liczbę całkowitą dni od 0 do 365."
   },
   "auth": {
     "wrongPassword": "Wpisane hasło jest nieprawidłowe. Spróbuj ponownie.",

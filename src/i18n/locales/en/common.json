@@ -272,7 +272,8 @@
     "coingeckoIdForNewCoin": "{{ticker}}: a new coin needs its CoinGecko ID (for example bitcoin) to fetch prices.",
     "stockImportLine": "Line {{line}}: {{reason}}",
     "stockImportRowFailed": "the row could not be saved.",
-    "onboardingFlagUnknown": "Unknown onboarding step."
+    "onboardingFlagUnknown": "Unknown onboarding step.",
+    "insuranceNoticeInvalid": "Enter a whole number of days from 0 to 365."
   },
   "auth": {
     "wrongPassword": "The password you entered is incorrect. Please try again.",

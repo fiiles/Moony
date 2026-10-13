@@ -57,6 +57,10 @@ pub struct UserProfile {
     pub mcp_server_enabled: bool,
     /// ISO 3166-1 alpha-2 country of the profile (`CZ`), None until set.
     pub country: Option<String>,
+    /// The cancellation notice of insurance policies in days that the milestones use: the stored
+    /// value, else 43 for Czechia and Slovakia, else None (no anniversary reminder).
+    #[serde(rename = "insuranceNoticeDays")]
+    pub insurance_notice_days: Option<i64>,
     #[serde(rename = "createdAt")]
     pub created_at: i64,
 }
@@ -122,6 +126,13 @@ impl UpdateUserProfile {
         if let Some(country) = &self.country {
             normalize_country(country)?;
         }
+        if let Some(days) = self.insurance_notice_days {
+            if !(0..=365).contains(&days) {
+                return Err(AppError::Validation(
+                    "validation.insuranceNoticeInvalid".into(),
+                ));
+            }
+        }
         Ok(())
     }
 }
@@ -144,6 +155,9 @@ pub struct UpdateUserProfile {
     pub mcp_server_enabled: Option<bool>,
     /// `Some("")` clears the country; otherwise two ASCII letters (stored upper case).
     pub country: Option<String>,
+    /// `0` turns the anniversary reminder off; 1..=365 sets the notice period.
+    #[serde(rename = "insuranceNoticeDays")]
+    pub insurance_notice_days: Option<i64>,
 }
 
 #[cfg(test)]
@@ -182,6 +196,26 @@ mod tests {
                 Err(AppError::Validation(key)) => assert_eq!(key, "validation.countryInvalid"),
                 other => panic!("{bad}: {other:?}"),
             }
+        }
+    }
+
+    #[test]
+    fn the_insurance_notice_is_0_to_365_days() {
+        let update = |days: i64| -> UpdateUserProfile {
+            serde_json::from_value(serde_json::json!({ "insuranceNoticeDays": days }))
+                .expect("update")
+        };
+        for ok in [0, 1, 43, 365] {
+            assert!(update(ok).validate().is_ok(), "{ok}");
+        }
+        for bad in [-1, 366, 10_000] {
+            assert!(
+                matches!(
+                    update(bad).validate(),
+                    Err(AppError::Validation(key)) if key == "validation.insuranceNoticeInvalid"
+                ),
+                "{bad}"
+            );
         }
     }
 }

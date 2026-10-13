@@ -51,7 +51,7 @@
     "balances_stale": "Saldi dei conti"
   },
   "sub": {
-    "insurance_anniversary": "Ultimo giorno per disdire · ricorrenza {{date}}",
+    "insurance_anniversary": "Termine del preavviso di disdetta · ricorrenza {{date}}",
     "insurance_anniversary_passed": "Ricorrenza del contratto · il termine di preavviso è scaduto",
     "insurance_end": "Il contratto termina",
     "insurance_payment": "Pagamento {{amount}}",
@@ -84,7 +84,7 @@
   "groups": {
     "insuranceDates": {
       "label": "Ricorrenze e scadenze delle assicurazioni",
-      "hint": "Nella panoramica fino a 3 mesi prima; le ricorrenze con l'ultimo giorno per disdire.",
+      "hint": "Nella panoramica fino a 3 mesi prima; le ricorrenze con il termine del preavviso di disdetta.",
       "mute": "Non ricordarmi ricorrenze e scadenze delle assicurazioni"
     },
     "insurancePayments": {
@@ -135,6 +135,8 @@
   },
   "settings": {
     "title": "Promemoria della panoramica",
-    "description": "Ciò di cui ti avvisano la scheda «Cosa ti aspetta» e la barra superiore. I tipi disattivati non compaiono da nessuna parte."
+    "description": "Ciò di cui ti avvisano la scheda «Cosa ti aspetta» e la barra superiore. I tipi disattivati non compaiono da nessuna parte.",
+    "insuranceNotice": "Preavviso di disdetta dell'assicurazione (giorni)",
+    "insuranceNoticeHint": "Quanti giorni prima della ricorrenza annuale la disdetta deve arrivare all'assicuratore. 0 disattiva il promemoria della ricorrenza. Preimpostato a 43 giorni solo per Cechia e Slovacchia."
   }
 }

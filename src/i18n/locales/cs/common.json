@@ -272,7 +272,8 @@
     "coingeckoIdForNewCoin": "{{ticker}}: nová kryptoměna potřebuje pro načítání cen své CoinGecko ID (například bitcoin).",
     "stockImportLine": "Řádek {{line}}: {{reason}}",
     "stockImportRowFailed": "řádek se nepodařilo uložit.",
-    "onboardingFlagUnknown": "Neznámý krok úvodního nastavení."
+    "onboardingFlagUnknown": "Neznámý krok úvodního nastavení.",
+    "insuranceNoticeInvalid": "Zadejte celé číslo dnů od 0 do 365."
   },
   "auth": {
     "wrongPassword": "Zadané heslo je nesprávné. Zkuste to prosím znovu.",

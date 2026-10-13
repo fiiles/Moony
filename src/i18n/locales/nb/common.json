@@ -272,7 +272,8 @@
     "coingeckoIdForNewCoin": "{{ticker}}: en ny kryptovaluta trenger CoinGecko-ID-en sin (for eksempel bitcoin) for å hente kurser.",
     "stockImportLine": "Linje {{line}}: {{reason}}",
     "stockImportRowFailed": "raden kunne ikke lagres.",
-    "onboardingFlagUnknown": "Ukjent trinn i førstegangsoppsettet."
+    "onboardingFlagUnknown": "Ukjent trinn i førstegangsoppsettet.",
+    "insuranceNoticeInvalid": "Skriv inn et helt antall dager fra 0 til 365."
   },
   "auth": {
     "wrongPassword": "Passordet du skrev inn er feil. Prøv igjen.",

@@ -51,7 +51,7 @@
     "balances_stale": "Zůstatky účtů"
   },
   "sub": {
-    "insurance_anniversary": "Poslední den výpovědi · výročí {{date}}",
+    "insurance_anniversary": "Termín pro doručení výpovědi · výročí {{date}}",
     "insurance_anniversary_passed": "Výročí smlouvy · lhůta pro výpověď uplynula",
     "insurance_end": "Smlouva končí",
     "insurance_payment": "Platba {{amount}}",
@@ -84,7 +84,7 @@
   "groups": {
     "insuranceDates": {
       "label": "Výročí a konce pojistek",
-      "hint": "Na přehledu až 3 měsíce předem, u výročí s posledním dnem výpovědi.",
+      "hint": "Na přehledu až 3 měsíce předem, u výročí s termínem pro doručení výpovědi.",
       "mute": "Nepřipomínat výročí a konce pojistek"
     },
     "insurancePayments": {
@@ -135,6 +135,8 @@
   },
   "settings": {
     "title": "Připomínky na přehledu",
-    "description": "Co připomíná karta „Co vás čeká“ na přehledu a horní lišta. Vypnuté druhy se nezobrazí nikde."
+    "description": "Co připomíná karta „Co vás čeká“ na přehledu a horní lišta. Vypnuté druhy se nezobrazí nikde.",
+    "insuranceNotice": "Výpovědní lhůta pojištění (dny)",
+    "insuranceNoticeHint": "Kolik dní před ročním výročím musí výpověď dorazit pojišťovně. 0 vypne připomínku výročí. Předvoleno 43 dnů jen pro Česko a Slovensko."
   }
 }

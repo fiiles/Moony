@@ -59,12 +59,16 @@ All notable changes to Moony are documented in this file. The format follows
 
 ### Changed
 
+- **The app identifier is `com.moonyfinance.desktop`** (was `com.filipkral.moony`). The data
+  folder moves to the new name automatically on the first start; see PRIVACY.md → Where your data
+  lives. Interface preferences kept by the web view (lock-screen language, auto-lock) reset once.
+  On Windows, an install in a custom folder gets a fresh copy in the default folder on this
+  update; remove the old one in Settings → Apps.
 - PRIVACY.md lists every outbound host and describes what Delete Account leaves behind.
 - **Delete Account says what stays.** The confirmation dialog and the hint next to the button, in
   all ten languages, no longer promise that all data is removed: the database, the key files and
   the attachments go, while the copies Moony keeps next to the database (`moony.db.bak-…`,
   `pre-restore-…`) stay in the data folder, which *Data and backups → Open folder* opens.
-
 - **Insurance anniversary reminders need a notice period.** The reminder with its deadline used to
   assume the Czech six-week rule everywhere. It now counts back from the notice period of your
   profile (43 days for Czechia and Slovakia unless you change it, none elsewhere) and is labelled

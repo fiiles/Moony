@@ -244,7 +244,7 @@ against the demo profile means redirecting that folder:
   after the app identifier and point the variable at its parent:
 
   ```bash
-  (cd src-tauri && cargo run --bin seed_demo -- --out ../demo-data/com.filipkral.moony)
+  (cd src-tauri && cargo run --bin seed_demo -- --out ../demo-data/com.moonyfinance.desktop)
   XDG_DATA_HOME=$(pwd)/demo-data npm run tauri dev
   ```
 
@@ -253,9 +253,9 @@ against the demo profile means redirecting that folder:
   generate the demo data into that identifier's folder:
 
   ```powershell
-  '{"identifier":"com.filipkral.moony.demo"}' | Set-Content -Encoding ascii demo-config.json
+  '{"identifier":"com.moonyfinance.desktop.demo"}' | Set-Content -Encoding ascii demo-config.json
   cd src-tauri
-  cargo run --bin seed_demo -- --out "$env:APPDATA\com.filipkral.moony.demo"
+  cargo run --bin seed_demo -- --out "$env:APPDATA\com.moonyfinance.desktop.demo"
   cd ..
   npm run tauri dev -- --config demo-config.json
   ```

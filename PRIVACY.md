@@ -94,13 +94,13 @@ trust, and regenerate the token when you stop using one.
 ## Where your data lives
 
 Moony stores its files in the application data folder, whose name comes from the app
-identifier `com.filipkral.moony`:
+identifier `com.moonyfinance.desktop`:
 
 | OS | Data folder |
 | --- | --- |
-| macOS | `~/Library/Application Support/com.filipkral.moony/` |
-| Windows | `%APPDATA%\com.filipkral.moony\` (usually `C:\Users\<you>\AppData\Roaming\…`) |
-| Linux | `~/.local/share/com.filipkral.moony/` (or `$XDG_DATA_HOME/com.filipkral.moony/`) |
+| macOS | `~/Library/Application Support/com.moonyfinance.desktop/` |
+| Windows | `%APPDATA%\com.moonyfinance.desktop\` (usually `C:\Users\<you>\AppData\Roaming\…`) |
+| Linux | `~/.local/share/com.moonyfinance.desktop/` (or `$XDG_DATA_HOME/com.moonyfinance.desktop/`) |
 
 Inside it:
 
@@ -113,8 +113,14 @@ Inside it:
 | `pre-restore-<timestamp>/` | The data you had before a restore from backup, kept so a restore can never destroy anything |
 
 **Settings → Data and backups** shows the exact path on your machine and has an "Open folder"
-button. Moony never moves this folder on its own, and uninstalling the app does not delete it
-by default.
+button. Apart from the one-time move below, Moony never moves this folder on its own, and
+uninstalling the app does not delete it by default.
+
+**Upgrading from 0.10.0 or earlier:** those versions kept the folder under the old identifier
+`com.filipkral.moony`. The first start of 0.10.1 moves that folder to the new name (same volume:
+a rename; otherwise a copy, in which case the old folder stays until you delete it). Interface
+preferences stored by the web view (language on the lock screen, auto-lock) start from their
+defaults once; your data and settings inside the database are unchanged.
 
 ## Backups and the recovery key
 

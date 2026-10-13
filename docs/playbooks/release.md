@@ -29,9 +29,11 @@ notarization](#code-signing-and-notarization-not-set-up-yet)); the **updater sig
    this URL, so keep the repository where it is; if it ever has to move, change the endpoint
    (and the repository URLs in `README.md`, `.github/ISSUE_TEMPLATE/config.yml` and the release
    body in `release.yml`) in the same commit and expect users of older builds to update by hand.
-4. **Never change the app identifier** (`identifier` in `tauri.conf.json`,
-   `com.filipkral.moony`). The user's data folder is derived from it; changing it makes every
-   existing installation look for its data in a new, empty place.
+4. **Never change the app identifier again** (`identifier` in `tauri.conf.json`,
+   `com.moonyfinance.desktop`). The user's data folder is derived from it; changing it makes every
+   existing installation look for its data in a new, empty place. It changed once, with an
+   automatic move of the folder (`services/data_dir.rs`, ADR 0015); a second change would make
+   users migrate twice.
 
 ## Pre-flight (every release)
 

@@ -181,6 +181,70 @@ pub fn delete_manual_balances(conn: &Connection, loan_id: &str, now: i64) -> Res
     refresh_anchor_mirror(conn, loan_id, now)
 }
 
+/// A legacy anchor and the estimate must agree within this (currency units) to count as the
+/// same balance: rounding, not a value the user set.
+const LEGACY_ANCHOR_TOLERANCE: f64 = 1.0;
+
+/// Does the balance a pre-019 anchor held on `day` differ from what the ledger estimates there,
+/// events as they are? A loan that is gone, or an amount that is not a number, decides nothing.
+fn legacy_anchor_overrides_estimate(
+    conn: &Connection,
+    loan_id: &str,
+    amount: &str,
+    day: i64,
+) -> Result<bool> {
+    let Ok(legacy) = amount.trim().parse::<f64>() else {
+        return Ok(false);
+    };
+    let entry = match loans::load_ledger(conn, loan_id) {
+        Ok(entry) => entry,
+        Err(AppError::NotFound(_)) => return Ok(false),
+        Err(e) => return Err(e),
+    };
+    let estimate = loan_balance_at(&entry.ledger, day).balance;
+    Ok((estimate - legacy).abs() > LEGACY_ANCHOR_TOLERANCE)
+}
+
+/// Follow up migration 019 once the database is open. Before 019 an extra payment or a rate
+/// change re-anchored the loan, overwriting a balance the user had entered by hand; the
+/// migration cannot tell the two apart in SQL, so it keeps every anchor that sits on such an
+/// event day in `loan_legacy_anchors` (and the ledger now replays the event from the principal).
+/// Each kept anchor is compared with the ledger's estimate at its day: when they differ by more
+/// than a currency unit the user had overridden the estimate, and a manual record of the legacy
+/// amount is added on that day (a manual value holds, P2); when they agree it was only the
+/// estimate and nothing is added. The processed row is deleted, so a later run finds nothing.
+/// Returns the number of records added. The caller logs a failure and never blocks on it: the
+/// unprocessed rows are retried at the next open.
+pub fn reconcile_legacy_anchors(conn: &Connection, now: i64) -> Result<usize> {
+    let rows: Vec<(String, String, i64)> = conn
+        .prepare("SELECT loan_id, amount, day FROM loan_legacy_anchors ORDER BY loan_id")?
+        .query_map([], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)))?
+        .collect::<rusqlite::Result<_>>()?;
+    let mut restored = 0;
+    for (loan_id, amount, day) in rows {
+        let day = day_floor(day);
+        let tx = conn.unchecked_transaction()?;
+        if legacy_anchor_overrides_estimate(&tx, &loan_id, &amount, day)? {
+            // The anchor was the balance after the day's events: the record must apply after
+            // them, whatever the clock says.
+            let newest: Option<i64> = tx.query_row(
+                "SELECT MAX(created_at) FROM loan_events WHERE loan_id = ?1 AND event_day = ?2",
+                rusqlite::params![loan_id, day],
+                |row| row.get(0),
+            )?;
+            let created_at = newest.map_or(now, |newest| now.max(newest + 1));
+            add_manual_balance(&tx, &loan_id, day, &amount, None, created_at)?;
+            restored += 1;
+        }
+        tx.execute(
+            "DELETE FROM loan_legacy_anchors WHERE loan_id = ?1",
+            [&loan_id],
+        )?;
+        tx.commit()?;
+    }
+    Ok(restored)
+}
+
 /// Move the loan's current rate and / or payment to what the ledger holds after
 /// its last event, for the fields an event just added or removed carries. A
 /// backdated event therefore leaves the current terms of a later one alone.
@@ -418,6 +482,9 @@ mod tests {
                 created_at INTEGER NOT NULL DEFAULT (unixepoch()), updated_at INTEGER NOT NULL DEFAULT (unixepoch())
             );
             CREATE TABLE real_estate_loans (real_estate_id TEXT NOT NULL, loan_id TEXT NOT NULL, PRIMARY KEY (real_estate_id, loan_id));
+            CREATE TABLE loan_legacy_anchors (
+                loan_id TEXT PRIMARY KEY, amount TEXT NOT NULL, day INTEGER NOT NULL
+            );
             CREATE TABLE loan_events (
                 id TEXT PRIMARY KEY,
                 loan_id TEXT NOT NULL REFERENCES loans(id) ON DELETE CASCADE,
@@ -828,5 +895,114 @@ mod tests {
             .collect();
         assert_eq!(kinds, vec!["extra_payment"]);
         assert_eq!(anchor(&conn), (None, None));
+    }
+    // --- the legacy anchors migration 019 kept ----------------------------------------------
+
+    fn legacy_anchor(conn: &Connection, loan_id: &str, amount: &str, day: i64) {
+        conn.execute(
+            "INSERT INTO loan_legacy_anchors (loan_id, amount, day) VALUES (?1, ?2, ?3)",
+            rusqlite::params![loan_id, amount, day],
+        )
+        .unwrap();
+    }
+
+    fn legacy_rows(conn: &Connection) -> i64 {
+        conn.query_row("SELECT COUNT(*) FROM loan_legacy_anchors", [], |r| r.get(0))
+            .unwrap()
+    }
+
+    /// The balance 100 000 below the estimate holds as a manual record: the extra payment of
+    /// the day had re-anchored a balance the user had set by hand.
+    #[test]
+    fn a_legacy_anchor_that_differs_from_the_estimate_becomes_a_manual_record() {
+        let conn = setup_test_db();
+        // 880 000 on YEAR_ON (twelve payments), 780 000 after the extra payment of the day.
+        add_event(&conn, &extra(YEAR_ON, "100000"), YEAR_ON).unwrap();
+        legacy_anchor(&conn, "l1", "700000.00", YEAR_ON);
+
+        assert_eq!(reconcile_legacy_anchors(&conn, YEAR_ON + 5).unwrap(), 1);
+
+        let events = list_events(&conn, "l1").unwrap();
+        let kinds: Vec<&str> = events.iter().map(|e| e.kind.as_str()).collect();
+        assert_eq!(kinds, vec!["extra_payment", "balance_check"]);
+        assert_eq!(events[1].event_day, YEAR_ON);
+        assert_eq!(events[1].amount.as_deref(), Some("700000.00"));
+        assert_eq!(anchor(&conn), (Some("700000.00".into()), Some(YEAR_ON)));
+        assert_eq!(
+            balance_on(&conn, YEAR_ON),
+            ("700000.00".into(), LedgerMode::Manual),
+            "the record applies after the day's extra payment"
+        );
+        assert_eq!(
+            balance_on(&conn, YEAR_ON + 60 * DAY),
+            ("700000.00".into(), LedgerMode::Manual),
+            "and holds"
+        );
+        assert_eq!(legacy_rows(&conn), 0, "the processed row is gone");
+    }
+
+    #[test]
+    fn a_legacy_anchor_that_matches_the_estimate_adds_no_record() {
+        let conn = setup_test_db();
+        add_event(&conn, &extra(YEAR_ON, "100000"), YEAR_ON).unwrap();
+        // a pure estimate with the extra payment: 780 000
+        legacy_anchor(&conn, "l1", "780000.00", YEAR_ON);
+
+        assert_eq!(reconcile_legacy_anchors(&conn, YEAR_ON + 5).unwrap(), 0);
+
+        let events = list_events(&conn, "l1").unwrap();
+        assert_eq!(events.len(), 1, "only the extra payment");
+        assert_eq!(anchor(&conn), (None, None), "the mirror is left alone");
+        assert_eq!(
+            balance_on(&conn, YEAR_ON + 30 * DAY),
+            ("780000.00".into(), LedgerMode::Estimated)
+        );
+        assert_eq!(legacy_rows(&conn), 0);
+    }
+
+    #[test]
+    fn a_legacy_anchor_within_a_currency_unit_of_the_estimate_is_the_estimate() {
+        let conn = setup_test_db();
+        add_event(&conn, &extra(YEAR_ON, "100000"), YEAR_ON).unwrap();
+        legacy_anchor(&conn, "l1", "780000.99", YEAR_ON);
+        assert_eq!(reconcile_legacy_anchors(&conn, YEAR_ON + 5).unwrap(), 0);
+
+        // …and one unit and a bit away is an override
+        let conn = setup_test_db();
+        add_event(&conn, &extra(YEAR_ON, "100000"), YEAR_ON).unwrap();
+        legacy_anchor(&conn, "l1", "780001.01", YEAR_ON);
+        assert_eq!(reconcile_legacy_anchors(&conn, YEAR_ON + 5).unwrap(), 1);
+    }
+
+    #[test]
+    fn the_reconciliation_runs_once_and_a_second_run_changes_nothing() {
+        let conn = setup_test_db();
+        add_event(&conn, &extra(YEAR_ON, "100000"), YEAR_ON).unwrap();
+        legacy_anchor(&conn, "l1", "700000.00", YEAR_ON);
+        assert_eq!(reconcile_legacy_anchors(&conn, YEAR_ON + 5).unwrap(), 1);
+        let ids = |conn: &Connection| -> Vec<String> {
+            list_events(conn, "l1")
+                .unwrap()
+                .into_iter()
+                .map(|event| event.id)
+                .collect()
+        };
+        let after_first = ids(&conn);
+
+        assert_eq!(reconcile_legacy_anchors(&conn, YEAR_ON + 99).unwrap(), 0);
+        assert_eq!(ids(&conn), after_first);
+        assert_eq!(anchor(&conn), (Some("700000.00".into()), Some(YEAR_ON)));
+    }
+
+    #[test]
+    fn a_legacy_anchor_of_a_deleted_loan_or_an_unreadable_amount_is_dropped() {
+        let conn = setup_test_db();
+        legacy_anchor(&conn, "gone", "1000", YEAR_ON);
+        legacy_anchor(&conn, "l1", "n/a", YEAR_ON);
+
+        assert_eq!(reconcile_legacy_anchors(&conn, YEAR_ON).unwrap(), 0);
+
+        assert_eq!(legacy_rows(&conn), 0);
+        assert!(list_events(&conn, "l1").unwrap().is_empty());
     }
 }

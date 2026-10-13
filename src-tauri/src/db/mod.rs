@@ -100,6 +100,19 @@ impl Database {
             );
         }
 
+        // Follow-up of migration 019: an anchor an extra payment or a rate change re-anchored
+        // may hide a balance the user had entered by hand. Idempotent (a processed row is
+        // deleted, a later open finds none); never blocks DB open on failure.
+        if let Err(e) = crate::services::loan_events::reconcile_legacy_anchors(
+            &conn,
+            chrono::Utc::now().timestamp(),
+        ) {
+            log::warn!(
+                "[DB] Warning: Failed to reconcile legacy loan anchors: {}",
+                e
+            );
+        }
+
         // Store connection and path
         let mut guard = self
             .conn
@@ -432,6 +445,59 @@ mod tests {
         run_migrations_with_backup(&conn, &path).expect("second run");
 
         assert_eq!(backup_copies(dir.path()), 0);
+    }
+
+    #[test]
+    fn opening_the_database_reconciles_the_legacy_loan_anchors_once() {
+        const DAY: i64 = 86_400;
+        let dir = tempfile::tempdir().expect("tempdir");
+        let path = dir.path().join("moony.db");
+        let key = crate::services::crypto::master_key_to_hex(&[9; 32]);
+        let db = Database::new();
+        db.create_with_key(path.clone(), &key).expect("create");
+        let start = 1_700_000_000 / DAY * DAY;
+        let day = start + 366 * DAY;
+        db.with_conn(|conn| {
+            // zero interest, 10 000 a month: 780 000 on `day` after the extra payment, and the
+            // user's own 700 000 that migration 019 kept
+            conn.execute(
+                "INSERT INTO loans (id, name, principal, interest_rate, monthly_payment, start_date)
+                 VALUES ('l', 'Mortgage', '1000000', '0', '10000', ?1)",
+                [start],
+            )?;
+            conn.execute(
+                "INSERT INTO loan_events (id, loan_id, kind, event_day, amount, created_at)
+                 VALUES ('e', 'l', 'extra_payment', ?1, '100000', 10)",
+                [day],
+            )?;
+            conn.execute(
+                "INSERT INTO loan_legacy_anchors (loan_id, amount, day) VALUES ('l', '700000', ?1)",
+                [day],
+            )?;
+            Ok(())
+        })
+        .expect("seed");
+        db.close();
+
+        db.open_with_key(path.clone(), &key).expect("first open");
+        let counts = |db: &Database| -> (i64, i64) {
+            db.with_conn(|conn| {
+                Ok((
+                    conn.query_row(
+                        "SELECT COUNT(*) FROM loan_events WHERE kind = 'balance_check'",
+                        [],
+                        |r| r.get(0),
+                    )?,
+                    conn.query_row("SELECT COUNT(*) FROM loan_legacy_anchors", [], |r| r.get(0))?,
+                ))
+            })
+            .expect("counts")
+        };
+        assert_eq!(counts(&db), (1, 0), "the override became a record");
+
+        db.close();
+        db.open_with_key(path, &key).expect("second open");
+        assert_eq!(counts(&db), (1, 0), "a later open changes nothing");
     }
 
     #[test]

@@ -452,6 +452,13 @@ CREATE TABLE loan_events (
     created_at INTEGER NOT NULL DEFAULT (unixepoch())
 , previous_rate TEXT, previous_monthly_payment TEXT)
 
+== table loan_legacy_anchors ==
+CREATE TABLE loan_legacy_anchors (
+    loan_id TEXT PRIMARY KEY,
+    amount TEXT NOT NULL,
+    day INTEGER NOT NULL
+)
+
 == table loans ==
 CREATE TABLE loans (
     id TEXT PRIMARY KEY,

@@ -47,9 +47,16 @@ grouping below follows the domain map in `docs/architecture/overview.md`.
   `loan_events.previous_rate` / `previous_monthly_payment` (the terms in force before an event that
   changes them; legacy rows keep NULL). A form-entered anchor with no event on its day becomes a
   `balance_check` record (the manual balance record); an anchor that an extra payment or a rate
-  change re-anchored does not (the ledger replays those events). `loans.balance_anchor_*` then
-  mirror the newest record, NULL without one. A loan with a manual balance stops amortizing after
-  it, so its outstanding balance, today's included, can be higher than before (ADR 0016).
+  change re-anchored does not become one directly (the ledger replays those events), but it may
+  hide a balance the user had entered by hand before the event overwrote it, so it is copied to
+  `loan_legacy_anchors` first. `loans.balance_anchor_*` then mirror the newest record, NULL without
+  one. At every database open `services::loan_events::reconcile_legacy_anchors` compares each
+  copied anchor with the ledger's estimate at its day: when they differ by more than one currency
+  unit the user had overridden the estimate and a manual record of the legacy amount is added (a
+  manual value holds); when they agree nothing is added. The processed row is deleted, so the
+  reconciliation runs once per row and is idempotent; a failure is logged and never blocks unlock.
+  A loan with a manual balance stops amortizing after it, so its outstanding balance, today's
+  included, can be higher than before (ADR 0016).
 - To add one: define `const MIGRATION_0NN: &str = r#"..."#;` (next free
   number) and append a `("0NN_short_name", MIGRATION_0NN)` entry to the `Vec`
   returned by `all_migrations()`. Numbers are zero-padded, sequential, never
@@ -207,6 +214,7 @@ Grouped by owning domain (see the domain map in `overview.md`).
 |---|---|---|
 | `loans` | Loans/mortgages | `principal` (the original amount, never reduced), `monthly_payment`, `interest_rate` + `interest_rate_validity_date`, `start_date`/`end_date`; `balance_anchor_amount` TEXT + `balance_anchor_date` INTEGER (UTC day) are a **mirror of the newest manual balance record** (a `balance_check` row of `loan_events`; both NULL without one), written only by `services/loan_events.rs` (`refresh_anchor_mirror`). The outstanding balance is computed on read from the loan's events (`loan_balance_at` in `services/loan_amortization.rs`), never stored; a loan with a manual balance stops amortizing after it. `portfolio_metrics_history.loans_by_currency` holds the outstanding balances per currency, derived per day from the same ledger |
 | `loan_events` | Extra payments, rate changes and manual balance records of a loan; the facts of the loan ledger | FK `loan_id` ON DELETE CASCADE; `kind` CHECK (`extra_payment`/`rate_change`/`balance_check`; `balance_check` is the manual balance record: it holds exactly from its day, one per day, the same day replaces), `event_day` INTEGER (UTC day), `amount`/`rate`/`monthly_payment` TEXT, `previous_rate`/`previous_monthly_payment` TEXT (terms in force before the event, migration 019; NULL on legacy rows); index `(loan_id, event_day)` |
+| `loan_legacy_anchors` | Pre-019 anchors that sat on an extra-payment or rate-change day, kept for the one-time reconciliation after migration 019 | `loan_id` TEXT PK (no foreign key: a row of a deleted loan is just dropped), `amount` TEXT, `day` INTEGER (UTC day). Written only by migration 019 and emptied by `reconcile_legacy_anchors` at database open; empty on every database after its first open of this version |
 
 ### Real estate
 

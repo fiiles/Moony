@@ -2683,12 +2683,32 @@ ALTER TABLE user_profile ADD COLUMN insurance_notice_days INTEGER;
 /// (services::loan_events::refresh_anchor_mirror), like `bank_accounts.balance` mirrors the
 /// newest `bank_balance_records` row. An anchor entered in the loan form (no event on its day)
 /// becomes a record; an anchor that an extra payment or a rate change re-anchored is not one (the
-/// event already explains it and the ledger replays it). `previous_rate` and
+/// event already explains it and the ledger replays it); such an anchor may still hide a balance
+/// the user had entered by hand before the event re-anchored over it, so it is first copied to
+/// `loan_legacy_anchors` and `services::loan_events::reconcile_legacy_anchors` decides, once
+/// after the migrations at database open, whether it was an override (a record) or only the
+/// estimate (nothing). `previous_rate` and
 /// `previous_monthly_payment` hold the terms in force before an event that changes them; legacy
 /// rows keep NULL. The ids are lowercase UUID v4 built in SQL (same recipe as migration 014).
 pub(crate) const MIGRATION_019: &str = r#"
 ALTER TABLE loan_events ADD COLUMN previous_rate TEXT;
 ALTER TABLE loan_events ADD COLUMN previous_monthly_payment TEXT;
+
+CREATE TABLE loan_legacy_anchors (
+    loan_id TEXT PRIMARY KEY,
+    amount TEXT NOT NULL,
+    day INTEGER NOT NULL
+);
+
+INSERT INTO loan_legacy_anchors (loan_id, amount, day)
+SELECT l.id, l.balance_anchor_amount, l.balance_anchor_date
+FROM loans l
+WHERE l.balance_anchor_amount IS NOT NULL AND l.balance_anchor_date IS NOT NULL
+  AND EXISTS (
+      SELECT 1 FROM loan_events e
+      WHERE e.loan_id = l.id AND e.event_day = l.balance_anchor_date
+        AND e.kind IN ('extra_payment', 'rate_change')
+  );
 
 INSERT INTO loan_events (id, loan_id, kind, event_day, amount, created_at)
 SELECT lower(hex(randomblob(4)) || '-' || hex(randomblob(2)) || '-4' || substr(hex(randomblob(2)), 2) || '-' || substr('89ab', 1 + (random() & 3), 1) || substr(hex(randomblob(2)), 2) || '-' || hex(randomblob(6))),
@@ -3312,6 +3332,117 @@ mod migration_019 {
         );
         assert!(records(&conn, "plain").is_empty());
         assert_eq!(mirror(&conn, "plain"), (None, None));
+    }
+
+    /// `(loan_id, amount, day)` of every row of the reconciliation table.
+    fn legacy_anchors(conn: &Connection) -> Vec<(String, String, i64)> {
+        conn.prepare("SELECT loan_id, amount, day FROM loan_legacy_anchors ORDER BY loan_id")
+            .expect("select")
+            .query_map([], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))
+            .expect("rows")
+            .collect::<std::result::Result<Vec<_>, _>>()
+            .expect("rows")
+    }
+
+    #[test]
+    fn an_anchor_an_event_re_anchored_is_kept_for_the_reconciliation() {
+        let conn = database_before_019();
+        let day = 1_750_000_000 / DAY * DAY;
+        // The anchors an extra payment or a rate change wrote may hide a form anchor that the
+        // event's re-anchoring overwrote: kept before the mirror is cleared.
+        loan(&conn, "extra", Some(("700000", day)));
+        event(&conn, "e1", "extra", "extra_payment", day, "100000", 10);
+        loan(&conn, "rate", Some(("650000.50", day + DAY)));
+        event(&conn, "r1", "rate", "rate_change", day + DAY, "0", 10);
+        // Not kept: a form anchor with no event on its day (it became a record), an anchor on a
+        // statement check's day, a loan without an anchor.
+        loan(&conn, "form", Some(("800000", day)));
+        loan(&conn, "check", Some(("900000", day)));
+        event(&conn, "c1", "check", "balance_check", day, "900000", 10);
+        loan(&conn, "plain", None);
+        run_migrations(&conn).expect("migrate to the current chain");
+
+        assert_eq!(
+            legacy_anchors(&conn),
+            vec![
+                ("extra".to_string(), "700000".to_string(), day),
+                ("rate".to_string(), "650000.50".to_string(), day + DAY),
+            ]
+        );
+        // the mirror is still cleared for them (the ledger explains the day)
+        assert_eq!(mirror(&conn, "extra"), (None, None));
+        assert!(records(&conn, "extra").is_empty());
+    }
+
+    #[test]
+    fn the_legacy_anchor_table_has_the_documented_columns() {
+        let conn = database_before_019();
+        run_migrations(&conn).expect("migrate to the current chain");
+        let columns: Vec<(String, String, bool, i64)> = conn
+            .prepare("SELECT name, type, \"notnull\", pk FROM pragma_table_info('loan_legacy_anchors') ORDER BY cid")
+            .expect("columns")
+            .query_map([], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)))
+            .expect("rows")
+            .collect::<std::result::Result<Vec<_>, _>>()
+            .expect("rows");
+        assert_eq!(
+            columns,
+            vec![
+                ("loan_id".to_string(), "TEXT".to_string(), false, 1),
+                ("amount".to_string(), "TEXT".to_string(), true, 0),
+                ("day".to_string(), "INTEGER".to_string(), true, 0),
+            ]
+        );
+    }
+
+    /// A loan whose form anchor an extra payment later overwrote (the user had set 700 000
+    /// where the estimate says 780 000): the reconciliation after the migration turns it into
+    /// a manual record, and a pure estimate stays an estimate.
+    #[test]
+    fn the_reconciliation_after_the_migration_restores_an_overridden_balance_only() {
+        let conn = database_before_019();
+        let start = 1_700_000_000 / DAY * DAY;
+        let day = start + 366 * DAY;
+        for (id, anchor) in [("overridden", "700000.00"), ("estimate", "780000.00")] {
+            // zero interest, 10 000 a month from the start: 880 000 at `day`, 780 000 after
+            // the extra payment of 100 000
+            conn.execute(
+                "INSERT INTO loans (id, name, principal, interest_rate, monthly_payment,
+                                    start_date, balance_anchor_amount, balance_anchor_date,
+                                    updated_at)
+                 VALUES (?1, ?1, '1000000', '0', '10000', ?2, ?3, ?4, 1767400000)",
+                rusqlite::params![id, start, anchor, day],
+            )
+            .expect("loan");
+            event(
+                &conn,
+                &format!("x-{id}"),
+                id,
+                "extra_payment",
+                day,
+                "100000",
+                10,
+            );
+        }
+        run_migrations(&conn).expect("migrate to the current chain");
+        assert_eq!(legacy_anchors(&conn).len(), 2);
+
+        let restored = crate::services::loan_events::reconcile_legacy_anchors(&conn, 1_800_000_000)
+            .expect("reconcile");
+        assert_eq!(restored, 1);
+
+        assert_eq!(
+            records(&conn, "overridden"),
+            vec![("700000.00".to_string(), day)],
+            "the user had overridden the estimate: a manual record holds it"
+        );
+        assert_eq!(
+            mirror(&conn, "overridden"),
+            (Some("700000.00".into()), Some(day))
+        );
+        assert!(records(&conn, "estimate").is_empty());
+        assert_eq!(mirror(&conn, "estimate"), (None, None));
+        assert!(legacy_anchors(&conn).is_empty(), "every row is processed");
     }
 
     #[test]

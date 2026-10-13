@@ -63,6 +63,8 @@
     { "id": "gb/cash-withdrawal", "name": "Cash Withdrawal", "ruleType": "contains", "pattern": "cash withdrawal", "categoryId": "cat_internal_transfers", "priority": 40 },
     { "id": "gb/nsandi", "name": "NS&I", "ruleType": "contains", "pattern": "nsandi", "categoryId": "cat_savings", "priority": 50 },
     { "id": "gb/premium-bonds", "name": "Premium Bonds", "ruleType": "contains", "pattern": "premium bonds", "categoryId": "cat_savings", "priority": 50 },
-    { "id": "gb/mortgage", "name": "Mortgage Payment", "ruleType": "word", "pattern": "mortgage", "categoryId": "cat_loan_payments", "priority": 50 }
+    { "id": "gb/mortgage", "name": "Mortgage Payment", "ruleType": "word", "pattern": "mortgage", "categoryId": "cat_loan_payments", "priority": 50 },
+    { "id": "gb/xfer-own", "name": "Savings pot and own-account transfers", "ruleType": "regex", "pattern": "savings? pot|\\bround ?ups?\\b|flexible saver|regular saver|\\b(?:tfr|trf|transfer)\\b[^a-z0-9]{0,4}(?:to|from)\\b[^a-z0-9]{0,4}(?:own|my) (?:account|acc|a/c)\\b", "categoryId": "cat_internal_transfers", "priority": 44 },
+    { "id": "gb/cc-repayment", "name": "Credit card repayment (UK issuers)", "ruleType": "regex", "pattern": "barclaycard|\\bmbna\\b|vanquis|\\bamex\\b|american express", "categoryId": "cat_internal_transfers", "priority": 44 }
   ]
 }

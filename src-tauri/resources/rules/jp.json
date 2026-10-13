@@ -73,6 +73,9 @@
     { "id": "jp/cash-withdrawal-native", "name": "現金引出", "ruleType": "contains", "pattern": "現金引出", "categoryId": "cat_internal_transfers", "priority": 40 },
     { "id": "jp/insurance-native", "name": "保険 (insurance)", "ruleType": "contains", "pattern": "保険", "categoryId": "cat_insurance", "priority": 50 },
     { "id": "jp/sompo-japan-native", "name": "損保ジャパン", "ruleType": "contains", "pattern": "損保ジャパン", "categoryId": "cat_insurance", "priority": 50 },
-    { "id": "jp/tokio-marine-native", "name": "東京海上", "ruleType": "contains", "pattern": "東京海上", "categoryId": "cat_insurance", "priority": 50 }
+    { "id": "jp/tokio-marine-native", "name": "東京海上", "ruleType": "contains", "pattern": "東京海上", "categoryId": "cat_insurance", "priority": 50 },
+    { "id": "jp/xfer-own-kanji", "name": "口座間・定期預金", "ruleType": "regex", "pattern": "口座間|自己口座|本人口座|定期預金|積立定期", "categoryId": "cat_internal_transfers", "priority": 44 },
+    { "id": "jp/card-bill", "name": "カード代金", "ruleType": "contains", "pattern": "カード代金", "categoryId": "cat_internal_transfers", "priority": 44 },
+    { "id": "jp/card-repay", "name": "カード返済", "ruleType": "contains", "pattern": "カード返済", "categoryId": "cat_internal_transfers", "priority": 44 }
   ]
 }

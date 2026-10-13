@@ -2145,3 +2145,46 @@ fn stored_value_date_does_not_hide_a_duplicate() {
     assert_eq!((p.ok_count, p.duplicate_count), (0, 1));
     assert_eq!(import(&mut conn, csv, &basic_config()).imported_count, 0);
 }
+
+#[test]
+fn a_us_statement_without_ibans_imports_its_own_account_transfers_as_internal_transfers() {
+    use crate::services::categorization::packs::rules_for;
+    use std::collections::HashSet;
+
+    let conn = setup_import_db();
+    conn.execute(
+        "INSERT INTO transaction_categories (id, name) VALUES ('cat_internal_transfers', 'Internal Transfers')",
+        [],
+    )
+    .unwrap();
+    let engine = CategorizationEngine::new(rules_for(
+        &["global".to_string(), "us".to_string()],
+        &HashSet::new(),
+    ));
+    let content = "Date,Description,Amount\n\
+                   10/12/2026,Online Transfer to Savings,-500.00\n\
+                   10/13/2026,Zelle payment to John Smith,-40.00\n\
+                   10/14/2026,Payment Thank You - Web,-250.00\n";
+    let config = CsvImportConfig {
+        delimiter: ",".into(),
+        date_column: "Date".into(),
+        date_format: "%m/%d/%Y".into(),
+        amount_column: Some("Amount".into()),
+        description_columns: Some(vec!["Description".into()]),
+        ..Default::default()
+    };
+    let preview = preview_import(&conn, "acc-1", content, &config, Some(&engine)).unwrap();
+    let categories: Vec<Option<&str>> = preview
+        .rows
+        .iter()
+        .map(|row| row.category_id.as_deref())
+        .collect();
+    assert_eq!(
+        categories,
+        vec![
+            Some("cat_internal_transfers"),
+            None,
+            Some("cat_internal_transfers")
+        ]
+    );
+}

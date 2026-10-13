@@ -50,6 +50,8 @@
     { "id": "hk/withdrawal-zh", "name": "提款 Withdrawal", "ruleType": "contains", "pattern": "提款", "categoryId": "cat_internal_transfers", "priority": 40 },
     { "id": "hk/salary", "name": "Salary", "ruleType": "contains", "pattern": "salary", "categoryId": "cat_income", "priority": 60 },
     { "id": "hk/payroll", "name": "Payroll", "ruleType": "contains", "pattern": "payroll", "categoryId": "cat_income", "priority": 60 },
-    { "id": "hk/mortgage", "name": "Mortgage Payment", "ruleType": "word", "pattern": "mortgage", "categoryId": "cat_loan_payments", "priority": 45 }
+    { "id": "hk/mortgage", "name": "Mortgage Payment", "ruleType": "word", "pattern": "mortgage", "categoryId": "cat_loan_payments", "priority": 45 },
+    { "id": "hk/xfer-own-zh", "name": "自己戶口・信用卡還款", "ruleType": "regex", "pattern": "自己(?:戶口|賬戶|帳戶)|本人(?:戶口|賬戶|帳戶)|同名(?:戶口|賬戶)|信用[卡咭](?:還款|付款)", "categoryId": "cat_internal_transfers", "priority": 44 },
+    { "id": "hk/xfer-own", "name": "Own-account transfer (HK)", "ruleType": "regex", "pattern": "\\b(?:transfer|trf|tfr)\\b[^a-z0-9]{0,4}(?:to|from)\\b[^a-z0-9]{0,4}(?:[a-z0-9]+\\s+){0,2}?(?:savings?|time deposit|fixed deposit)\\b", "categoryId": "cat_internal_transfers", "priority": 44 }
   ]
 }

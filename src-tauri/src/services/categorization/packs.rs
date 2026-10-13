@@ -453,4 +453,166 @@ mod tests {
         let (_, disabled) = read_config(&conn).unwrap();
         assert!(disabled.is_empty());
     }
+
+    // ==================== Own-account transfers without IBANs ====================
+
+    use super::super::engine::CategorizationEngine;
+    use super::super::types::TransactionInput;
+
+    const TRANSFER: &str = "cat_internal_transfers";
+
+    fn pack_engine(ids: &[&str]) -> CategorizationEngine {
+        let enabled: Vec<String> = ids.iter().map(|id| id.to_string()).collect();
+        CategorizationEngine::new(rules_for(&enabled, &HashSet::new()))
+    }
+
+    fn category_of(engine: &CategorizationEngine, text: &str) -> Option<String> {
+        engine
+            .categorize(&TransactionInput::new(
+                "t".into(),
+                Some(text.into()),
+                None,
+                -50.0,
+            ))
+            .category_id()
+            .map(String::from)
+    }
+
+    /// (country pack, description): each one a real statement line of that market.
+    const OWN_ACCOUNT_SAMPLES: &[(&str, &str)] = &[
+        ("us", "Online Transfer to Savings"),
+        (
+            "us",
+            "ONLINE TRANSFER FROM CHK ...5678 transaction#: 123456",
+        ),
+        ("us", "Online Transfer to SAV ...1234 transaction#: 98765"),
+        ("us", "CAPITAL ONE MOBILE PYMT. AUTHORIZED ON 10/12"),
+        ("us", "CHASE CREDIT CRD AUTOPAY 241012"),
+        ("us", "AMEX EPAYMENT ACH PMT"),
+        ("us", "Payment Thank You - Web"),
+        ("gb", "TRANSFER TO SAVINGS POT"),
+        ("gb", "BARCLAYCARD"),
+        ("gb", "MBNA LIMITED"),
+        ("gb", "ROUND UP"),
+        ("gb", "TFR TO OWN A/C"),
+        ("ca", "TFR-FR SAV 1234"),
+        ("ca", "Transfer to chequing"),
+        ("ca", "VISA PYMT"),
+        ("ca", "PAYMENT - THANK YOU"),
+        ("au", "Transfer to Savings"),
+        ("au", "BPAY TO CREDIT CARD"),
+        ("nz", "Transfer to Serious Saver"),
+        ("nz", "TRANSFER FROM CALL ACCOUNT"),
+        ("ie", "TFR TO DEMAND DEPOSIT"),
+        ("sg", "Transfer to Multiplier"),
+        ("hk", "轉賬 自己戶口"),
+        ("hk", "Transfer to Time Deposit"),
+        ("jp", "口座間振替"),
+        ("jp", "普通預金から定期預金へ"),
+        ("jp", "ＶＩＳＡカード代金"),
+        ("cn", "转入余额宝"),
+        ("cn", "银证转账"),
+        ("kr", "본인계좌이체"),
+        ("kr", "적금 납입"),
+        ("kr", "카드대금"),
+    ];
+
+    #[test]
+    fn own_account_wording_is_an_internal_transfer_in_each_market() {
+        for &(pack, text) in OWN_ACCOUNT_SAMPLES {
+            let engine = pack_engine(&["global", pack]);
+            assert_eq!(
+                category_of(&engine, text).as_deref(),
+                Some(TRANSFER),
+                "{pack}: {text}"
+            );
+        }
+    }
+
+    #[test]
+    fn the_global_pack_alone_covers_english_statements_of_any_country() {
+        let engine = pack_engine(&["global"]);
+        for text in [
+            "Online Transfer to Savings",
+            "Internal transfer",
+            "Transfer between accounts",
+            "Payment to own account",
+            "Credit Card Payment",
+            "Payment to Chase credit card ending 1234",
+            "AUTOPAY PAYMENT - THANK YOU",
+        ] {
+            assert_eq!(
+                category_of(&engine, text).as_deref(),
+                Some(TRANSFER),
+                "{text}"
+            );
+        }
+    }
+
+    #[test]
+    fn no_country_pack_outranks_the_english_own_account_wording() {
+        // The wizard always enables `global`; a merchant rule of any pack must not win on these lines.
+        for pack in available_packs().iter().filter(|p| p.pack_id != "global") {
+            let engine = pack_engine(&["global", &pack.pack_id]);
+            for text in [
+                "Online Transfer to Savings",
+                "Internal transfer",
+                "Payment to own account",
+                "Credit Card Payment",
+                "TRANSFER BETWEEN ACCOUNTS",
+                "AUTOPAY PAYMENT - THANK YOU",
+            ] {
+                assert_eq!(
+                    category_of(&engine, text).as_deref(),
+                    Some(TRANSFER),
+                    "{}: {text}",
+                    pack.pack_id
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn payments_to_people_card_purchases_and_bills_are_not_own_account_transfers() {
+        let engine = pack_engine(&["global", "us", "gb"]);
+        for text in [
+            "Zelle payment to John Smith",
+            "VENMO PAYMENT 1234",
+            "CARD PAYMENT TO TESCO STORES 4444",
+            "DIRECT DEBIT NETFLIX.COM",
+            "STANDING ORDER J SMITH RENT",
+            "FASTER PAYMENT FROM J SMITH",
+            "Salary transfer from ACME Ltd",
+            "Transfer to Current Energy Ltd",
+            "Debit card payment IKEA",
+        ] {
+            assert_ne!(
+                category_of(&engine, text).as_deref(),
+                Some(TRANSFER),
+                "{text}"
+            );
+        }
+        // Interest on a savings account is income, not a move between accounts.
+        assert_eq!(
+            category_of(&engine, "Savings interest credited").as_deref(),
+            Some("cat_investment_income")
+        );
+    }
+
+    #[test]
+    fn brokers_outrank_the_own_account_wording() {
+        // Own-account rules sit at 44, below the broker brands (60): a transfer to an investment
+        // platform is an investment even when the line also names a savings or brokerage account.
+        let engine = pack_engine(&["global", "us"]);
+        for text in [
+            "Online Transfer to Schwab Savings",
+            "Transfer to Fidelity Brokerage",
+        ] {
+            assert_eq!(
+                category_of(&engine, text).as_deref(),
+                Some("cat_investments"),
+                "{text}"
+            );
+        }
+    }
 }

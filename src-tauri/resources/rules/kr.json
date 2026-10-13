@@ -63,6 +63,11 @@
     { "id": "kr/cash-withdrawal", "name": "현금인출 (cash withdrawal)", "ruleType": "contains", "pattern": "현금인출", "categoryId": "cat_internal_transfers", "priority": 40 },
     { "id": "kr/atm", "name": "ATM", "ruleType": "word", "pattern": "atm", "categoryId": "cat_internal_transfers", "priority": 40 },
     { "id": "kr/salary-wolgeup", "name": "월급 (salary)", "ruleType": "contains", "pattern": "월급", "categoryId": "cat_income", "priority": 60 },
-    { "id": "kr/salary-geubyeo", "name": "급여 (salary)", "ruleType": "contains", "pattern": "급여", "categoryId": "cat_income", "priority": 60 }
+    { "id": "kr/salary-geubyeo", "name": "급여 (salary)", "ruleType": "contains", "pattern": "급여", "categoryId": "cat_income", "priority": 60 },
+    { "id": "kr/xfer-own-account", "name": "본인계좌", "ruleType": "contains", "pattern": "본인계좌", "categoryId": "cat_internal_transfers", "priority": 44 },
+    { "id": "kr/xfer-my-account", "name": "내계좌", "ruleType": "contains", "pattern": "내계좌", "categoryId": "cat_internal_transfers", "priority": 44 },
+    { "id": "kr/xfer-savings", "name": "적금", "ruleType": "contains", "pattern": "적금", "categoryId": "cat_internal_transfers", "priority": 44 },
+    { "id": "kr/xfer-term-deposit", "name": "정기예금", "ruleType": "contains", "pattern": "정기예금", "categoryId": "cat_internal_transfers", "priority": 44 },
+    { "id": "kr/card-bill", "name": "카드대금", "ruleType": "contains", "pattern": "카드대금", "categoryId": "cat_internal_transfers", "priority": 44 }
   ]
 }

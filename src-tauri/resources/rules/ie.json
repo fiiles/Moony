@@ -61,6 +61,7 @@
     { "id": "ie/revenue-commissioners", "name": "Revenue Commissioners", "ruleType": "contains", "pattern": "revenue commissioners", "categoryId": "cat_taxes", "priority": 70 },
     { "id": "ie/atm-withdrawal", "name": "ATM Withdrawal", "ruleType": "contains", "pattern": "atm withdrawal", "categoryId": "cat_internal_transfers", "priority": 40 },
     { "id": "ie/cash-withdrawal", "name": "Cash Withdrawal", "ruleType": "contains", "pattern": "cash withdrawal", "categoryId": "cat_internal_transfers", "priority": 40 },
-    { "id": "ie/mortgage", "name": "Mortgage Payment", "ruleType": "word", "pattern": "mortgage", "categoryId": "cat_loan_payments", "priority": 50 }
+    { "id": "ie/mortgage", "name": "Mortgage Payment", "ruleType": "word", "pattern": "mortgage", "categoryId": "cat_loan_payments", "priority": 50 },
+    { "id": "ie/xfer-own", "name": "Own-account transfer (IE)", "ruleType": "regex", "pattern": "\\b(?:transfer|trf|tfr)\\b[^a-z0-9]{0,4}(?:to|from)\\b[^a-z0-9]{0,4}(?:[a-z0-9]+\\s+){0,2}?(?:savings?|deposit account|demand deposit)\\b", "categoryId": "cat_internal_transfers", "priority": 44 }
   ]
 }

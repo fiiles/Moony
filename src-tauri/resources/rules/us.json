@@ -63,6 +63,8 @@
     { "id": "us/state-farm", "name": "State Farm", "ruleType": "contains", "pattern": "state farm", "categoryId": "cat_insurance", "priority": 50 },
     { "id": "us/progressive", "name": "Progressive Insurance", "ruleType": "contains", "pattern": "progressive ins", "categoryId": "cat_insurance", "priority": 50 },
     { "id": "us/allstate", "name": "Allstate", "ruleType": "contains", "pattern": "allstate", "categoryId": "cat_insurance", "priority": 50 },
-    { "id": "us/mortgage", "name": "Mortgage Payment", "ruleType": "contains", "pattern": "mortgage", "categoryId": "cat_loan_payments", "priority": 45 }
+    { "id": "us/mortgage", "name": "Mortgage Payment", "ruleType": "contains", "pattern": "mortgage", "categoryId": "cat_loan_payments", "priority": 45 },
+    { "id": "us/xfer-account-mask", "name": "Transfer to own account (account mask)", "ruleType": "regex", "pattern": "\\b(?:chk|sav|mma|checking|savings)\\b[\\s.*x#-]{0,6}\\d{3,4}\\b", "categoryId": "cat_internal_transfers", "priority": 44 },
+    { "id": "us/cc-autopay", "name": "Credit card autopay (US issuers)", "ruleType": "regex", "pattern": "capital one (?:mobile|online) pymt|chase credit crd|amex e-?payment|discover e-?payment|citi autopay|wf credit card auto ?pay|gsbank payment|synchrony (?:bank )?payment", "categoryId": "cat_internal_transfers", "priority": 44 }
   ]
 }

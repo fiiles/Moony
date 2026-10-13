@@ -46,6 +46,7 @@
     { "id": "sg/cash-withdrawal", "name": "Cash Withdrawal", "ruleType": "contains", "pattern": "cash withdrawal", "categoryId": "cat_internal_transfers", "priority": 40 },
     { "id": "sg/salary", "name": "Salary", "ruleType": "contains", "pattern": "salary", "categoryId": "cat_income", "priority": 60 },
     { "id": "sg/payroll", "name": "Payroll", "ruleType": "contains", "pattern": "payroll", "categoryId": "cat_income", "priority": 60 },
-    { "id": "sg/mortgage", "name": "Mortgage Payment", "ruleType": "word", "pattern": "mortgage", "categoryId": "cat_loan_payments", "priority": 45 }
+    { "id": "sg/mortgage", "name": "Mortgage Payment", "ruleType": "word", "pattern": "mortgage", "categoryId": "cat_loan_payments", "priority": 45 },
+    { "id": "sg/xfer-own", "name": "Own-account transfer (SG)", "ruleType": "regex", "pattern": "\\b(?:transfer|trf|tfr)\\b[^a-z0-9]{0,4}(?:to|from)\\b[^a-z0-9]{0,4}(?:[a-z0-9]+\\s+){0,2}?(?:savings?|multiplier|fixed deposit|time deposit)\\b", "categoryId": "cat_internal_transfers", "priority": 44 }
   ]
 }

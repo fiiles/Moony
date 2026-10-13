@@ -69,7 +69,7 @@
     { "id": "fi/kw-vuokra", "name": "Keyword: vuokra", "ruleType": "regex", "pattern": "\\bvuokra", "categoryId": "cat_housing", "priority": 30 },
     { "id": "fi/kw-sahko-vesi", "name": "Keyword: sähkölasku / kaukolämpö / vesi", "ruleType": "regex", "pattern": "sahkolasku|sahkonsiirto|sahkoyhtio|kaukolampo|vesilasku|vesimaksu|jatemaksu", "categoryId": "cat_utilities", "priority": 30 },
     { "id": "fi/kw-korko", "name": "Keyword: korko", "ruleType": "regex", "pattern": "\\b(?:korko|korot|talletuskorko)\\b", "categoryId": "cat_investment_income", "priority": 30 },
-    { "id": "fi/kw-korko-kulu", "name": "Keyword: korkokulu", "ruleType": "regex", "pattern": "korkokulu|veloituskorko|lainan korko|luottokorko", "categoryId": "cat_loan_payments", "priority": 31 },
+    { "id": "fi/kw-korko-kulu", "name": "Keyword: korkokulu", "ruleType": "regex", "pattern": "korkokulu|veloituskorko|lainan korko|luoton korko|luottokorko", "categoryId": "cat_loan_payments", "priority": 31 },
     { "id": "fi/kw-apteekki", "name": "Keyword: apteekki", "ruleType": "regex", "pattern": "\\bapteek", "categoryId": "cat_health", "priority": 30 }
   ]
 }

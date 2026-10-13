@@ -919,6 +919,20 @@ mod tests {
         ("jp", "受取利息", "cat_investment_income"),
         ("cn", "结息", "cat_investment_income"),
         ("cn", "信用卡利息", "cat_loan_payments"),
+        // Card and financing interest is a cost, not income.
+        ("pt", "Juros cartão de crédito", "cat_loan_payments"),
+        ("pt", "Juros e encargos", "cat_loan_payments"),
+        ("pt", "Juros de financiamento", "cat_loan_payments"),
+        ("pt", "Juros rotativos", "cat_loan_payments"),
+        ("pt", "Imposto de selo s/ juros", "cat_loan_payments"),
+        ("fi", "Luoton korko", "cat_loan_payments"),
+        // Interest and repayment on one line: the guard rules sit at the same priority as the
+        // loan words, so these are loan payments by rule order (loan words come first in each
+        // pack file); the rows pin that order.
+        ("no", "Termin renter og avdrag", "cat_loan_payments"),
+        ("dk", "Renter og afdrag", "cat_loan_payments"),
+        ("se", "Ränta och amortering", "cat_loan_payments"),
+        ("fi", "Korko ja lyhennys", "cat_loan_payments"),
     ];
 
     #[test]
@@ -931,6 +945,33 @@ mod tests {
                 "{pack}: {text}"
             );
         }
+    }
+
+    #[test]
+    fn portuguese_insurance_word_works_without_the_global_pack() {
+        // The generic `global/kw-seguro` also catches this line when `global` is on; the pt pack
+        // carries its own word so a pt-only profile categorizes it too.
+        let engine = pack_engine(&["pt"]);
+        for text in [
+            "Seguro automóvel",
+            "Seguros Fidelidade Vida",
+            "Seguro de saúde",
+        ] {
+            assert_eq!(
+                category_of(&engine, text).as_deref(),
+                Some("cat_insurance"),
+                "{text}"
+            );
+        }
+        assert_eq!(
+            rule_of(&engine, "Seguro automóvel").as_deref(),
+            Some("pt/kw-apolice")
+        );
+        // "Segurança Social" is a state contribution, not an insurance policy.
+        assert_ne!(
+            category_of(&engine, "Segurança Social").as_deref(),
+            Some("cat_insurance")
+        );
     }
 
     #[test]

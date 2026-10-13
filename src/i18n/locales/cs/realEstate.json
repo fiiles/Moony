@@ -375,7 +375,12 @@
     "downloadPhoto": "Stáhnout fotografii",
     "invalidFiles": "Byly zjištěny neplatné soubory",
     "selectSaveFolder": "Vyberte složku pro uložení fotografií",
-    "supportedFormats": "Podporované formáty: JPG, PNG, GIF, WebP. Soubory HEIC se automaticky převedou na JPG."
+    "supportedFormats": "Podporované formáty: JPG, PNG, GIF, WebP. Soubory HEIC se automaticky převedou na JPG.",
+    "errors": {
+      "convertFailed": "Soubor „{{name}}“ se nepodařilo převést. Převeďte ho ručně na JPG.",
+      "unsupportedFormat": "Soubor „{{name}}“ má nepodporovaný formát. Použijte JPG, PNG, GIF, WebP nebo HEIC.",
+      "noValidFiles": "Není co nahrát: žádný soubor není platný."
+    }
   },
   "documents": {
     "title": "Dokumenty",

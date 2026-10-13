@@ -105,7 +105,7 @@ export function PhotoTimelineGallery({ realEstateId }: PhotoTimelineGalleryProps
           processed.push(convertedFile);
         } catch (e) {
           console.error('HEIC conversion failed:', e);
-          errors.push(`Failed to convert "${file.name}". Please convert manually.`);
+          errors.push(t('gallery.errors.convertFailed', { name: file.name }));
         }
         continue;
       }
@@ -114,7 +114,7 @@ export function PhotoTimelineGallery({ realEstateId }: PhotoTimelineGalleryProps
       if (SUPPORTED_MIME_TYPES.includes(file.type) || file.type.startsWith('image/')) {
         processed.push(file);
       } else {
-        errors.push(`"${file.name}" has unsupported format. Use JPG, PNG, GIF, WebP, or HEIC.`);
+        errors.push(t('gallery.errors.unsupportedFormat', { name: file.name }));
       }
     }
 
@@ -162,7 +162,7 @@ export function PhotoTimelineGallery({ realEstateId }: PhotoTimelineGalleryProps
       }
 
       if (processed.length === 0) {
-        throw new Error('No valid files to upload');
+        throw new Error(t('gallery.errors.noValidFiles'));
       }
 
       // Save files to temp
@@ -199,7 +199,7 @@ export function PhotoTimelineGallery({ realEstateId }: PhotoTimelineGalleryProps
       }
 
       if (processed.length === 0) {
-        throw new Error('No valid files to upload');
+        throw new Error(t('gallery.errors.noValidFiles'));
       }
 
       const filePaths = await saveFilesToTemp(processed);

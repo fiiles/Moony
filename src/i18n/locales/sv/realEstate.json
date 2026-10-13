@@ -370,7 +370,12 @@
     "downloadPhoto": "Ladda ner foto",
     "invalidFiles": "Ogiltiga filer upptäcktes",
     "selectSaveFolder": "Välj mapp att spara fotona i",
-    "supportedFormats": "Format som stöds: JPG, PNG, GIF, WebP. HEIC-filer konverteras automatiskt till JPG."
+    "supportedFormats": "Format som stöds: JPG, PNG, GIF, WebP. HEIC-filer konverteras automatiskt till JPG.",
+    "errors": {
+      "convertFailed": "Det gick inte att konvertera ”{{name}}”. Konvertera den till JPG manuellt.",
+      "unsupportedFormat": "”{{name}}” har ett format som inte stöds. Använd JPG, PNG, GIF, WebP eller HEIC.",
+      "noValidFiles": "Inga giltiga filer att ladda upp."
+    }
   },
   "documents": {
     "title": "Dokument",

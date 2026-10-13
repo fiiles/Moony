@@ -370,7 +370,12 @@
     "downloadPhoto": "Foto herunterladen",
     "invalidFiles": "Ungültige Dateien erkannt",
     "selectSaveFolder": "Ordner zum Speichern der Fotos auswählen",
-    "supportedFormats": "Unterstützte Formate: JPG, PNG, GIF, WebP. HEIC-Dateien werden automatisch in JPG umgewandelt."
+    "supportedFormats": "Unterstützte Formate: JPG, PNG, GIF, WebP. HEIC-Dateien werden automatisch in JPG umgewandelt.",
+    "errors": {
+      "convertFailed": "„{{name}}“ konnte nicht konvertiert werden. Bitte wandeln Sie die Datei manuell in JPG um.",
+      "unsupportedFormat": "„{{name}}“ hat ein nicht unterstütztes Format. Verwenden Sie JPG, PNG, GIF, WebP oder HEIC.",
+      "noValidFiles": "Keine gültigen Dateien zum Hochladen."
+    }
   },
   "documents": {
     "title": "Dokumente",

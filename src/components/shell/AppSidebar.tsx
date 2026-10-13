@@ -56,7 +56,8 @@ function NavRow({
       )}
     >
       <item.icon strokeWidth={1.75} aria-hidden />
-      <span className="truncate">{label}</span>
+      {/* text-nav has line-height 1; truncate's overflow:hidden would clip descenders (g, p, y). */}
+      <span className="truncate leading-snug">{label}</span>
       {count !== undefined && (
         <span
           className={cn(

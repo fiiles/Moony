@@ -56,7 +56,7 @@
     "watch_target_below": "価格 {{price}} が目標 {{target}} まで下がりました",
     "watch_target_above": "価格 {{price}} が目標 {{target}} に到達しました",
     "loan_fixation_expired": "固定金利は {{date}} に終了 · 新しい金利を入力してください",
-    "loan_balance_check": "{{date}} から残高を確認していません · 明細と照合してください",
+    "loan_balance_check": "{{date}} から残高が入力されていません · 現在の残高を入力してください",
     "valuation_stale": "{{date}} 以降、評価の更新がありません · 再評価してください",
     "backup_stale": "最後のバックアップ {{date}}",
     "backup_never": "バックアップはまだありません",
@@ -66,7 +66,7 @@
     "backup_stale": "データをバックアップ",
     "balances_stale_other": "{{count}}件の残高を更新",
     "valuation_stale": "{{title}}を再評価",
-    "loan_balance_check": "{{title}}の残高を確認",
+    "loan_balance_check": "{{title}}の現在の残高を入力",
     "loan_fixation_expired": "{{title}}の新しい金利を入力"
   },
   "groups": {
@@ -116,9 +116,9 @@
       "mute": "不動産の評価を通知しない"
     },
     "loanChecks": {
-      "label": "ローンの確認",
-      "hint": "年1回の残高確認と、固定金利終了後の新しい金利について通知します。",
-      "mute": "ローンの確認を通知しない"
+      "label": "ローンの残高と金利",
+      "hint": "年1回の現在残高の入力と、固定金利終了後の新しい金利について通知します。",
+      "mute": "ローンの残高と金利を通知しない"
     }
   },
   "settings": {

@@ -128,12 +128,17 @@
     "endDate": "Data zakończenia",
     "balance": {
       "title": "Saldo do spłaty",
-      "help": "Moony zmniejsza saldo z każdą miesięczną ratą. Jeśli znasz rzeczywiste saldo, na przykład z wyciągu bankowego, wpisz je wraz z datą, a obliczenia będą kontynuowane od tego punktu.",
+      "help": "Moony szacuje saldo na podstawie rat. Gdy wpiszesz rzeczywiste saldo na dany dzień, obowiązuje ono dokładnie, dopóki go nie zmienisz — nic się od niego nie szacuje.",
       "setManual": "Ustaw saldo na dzień",
       "amount": "Kwota do spłaty",
       "date": "Na dzień",
       "estimate": "Szacowane saldo dziś: {{amount}}",
-      "noPayment": "Bez miesięcznej raty saldo się nie zmniejsza."
+      "manualToday": "Saldo dziś: {{amount}} (obowiązuje wpisane przez ciebie saldo)",
+      "noPayment": "Bez miesięcznej raty saldo się nie zmniejsza.",
+      "deleteWarning_one": "Usunie {{count}} saldo ręczne, kredyt będzie znów szacowany.",
+      "deleteWarning_few": "Usunie {{count}} salda ręczne, kredyt będzie znów szacowany.",
+      "deleteWarning_many": "Usunie {{count}} sald ręcznych, kredyt będzie znów szacowany.",
+      "deleteWarning_other": "Usunie {{count}} salda ręcznego, kredyt będzie znów szacowany."
     }
   },
   "actions": {
@@ -141,7 +146,7 @@
     "delete": "Usuń kredyt",
     "open": "Otwórz",
     "extraPayment": "Nadpłata",
-    "balanceCheck": "Zweryfikuj saldo wg wyciągu",
+    "balanceCheck": "Wpisz saldo na dzień",
     "rateChange": "Zapisz zmianę oprocentowania"
   },
   "confirmDelete": {
@@ -165,7 +170,7 @@
   },
   "valuation": {
     "automatic": "Amortyzowane od {{date}} ({{amount}}) przy {{rate}} z ratą {{payment}} miesięcznie.",
-    "manual": "Od twojego salda {{amount}} z dnia {{date}}, amortyzowane przy {{rate}} z ratą {{payment}} miesięcznie.",
+    "manual": "Ręcznie wpisane saldo {{amount}} na dzień {{date}} — obowiązuje, dopóki go nie zmienisz.",
     "static": "Nie ustawiono miesięcznej raty, więc saldo się nie zmniejsza: {{amount}} na dzień {{date}}.",
     "belowInterest": "Rata nie pokrywa odsetek, więc saldo nie spada."
   },
@@ -179,7 +184,7 @@
     "withFixation": " stałe do {{month, lower}}",
     "status": {
       "automatic": "Saldo wg harmonogramu",
-      "manual": "Saldo wg harmonogramu · od twojego salda z dnia {{date}}",
+      "manual": "Saldo ręczne na dzień {{date}} · obowiązuje, dopóki go nie zmienisz",
       "static": "Brak miesięcznej raty · saldo nie spada"
     },
     "hero": {
@@ -218,7 +223,7 @@
         "extraPayment": "Nadpłata {{amount}}",
         "rateChange": "Oprocentowanie zmienione na {{rate}}",
         "newPayment": "rata {{amount}}",
-        "balanceCheck": "Saldo zweryfikowane wg wyciągu",
+        "balanceCheck": "Saldo ręczne {{amount}}",
         "fixationEnd": "Koniec stałej stopy",
         "half": "Połowa kapitału spłacona",
         "payoff": "Kredyt spłacony",
@@ -294,14 +299,15 @@
       "newPayment": "nowa rata {{amount}}",
       "rateChange": "Oprocentowanie zmienione na {{rate}}",
       "rateChangeNote": "harmonogram jest kontynuowany od salda z tego dnia",
-      "balanceCheck": "Saldo zweryfikowane wg wyciągu",
-      "balanceCheckNote": "harmonogram startuje od nowa od tej daty",
+      "balanceCheck": "Saldo ręczne {{amount}}",
+      "balanceCheckNote": "obowiązuje, dopóki go nie zmienisz",
       "drawdown": "Uruchomienie {{amount}}",
       "drawdownNote": "początek kredytu",
       "delete": "Usuń zdarzenie",
       "confirmDelete": {
         "title": "Usuń zdarzenie",
-        "description": "Wpis zniknie z wykresu i listy. Saldo ustawione przez zdarzenie nadal obowiązuje."
+        "description": "Wpis zniknie z wykresu i listy, a saldo zostanie przeliczone bez niego.",
+        "descriptionManual": "Saldo ręczne zniknie z wykresu i listy. Znów obowiązuje poprzednie saldo ręczne albo, jeśli go nie ma, szacunek."
       }
     },
     "warnings": {
@@ -326,6 +332,8 @@
       "alertPayment": "Nowa rata {{payment}} miesięcznie, okres zostaje do {{month, lower}}.",
       "alertTooMuch": "Kwota przekracza saldo {{amount}}.",
       "alertEmpty": "Wpisz kwotę, aby zobaczyć efekt.",
+      "alertManual": "Saldo ręczne spada do {{amount}}",
+      "alertManualNote": "Harmonogram jest kontynuowany od tego salda.",
       "submit": "Zapisz nadpłatę"
     },
     "rateChange": {
@@ -338,15 +346,17 @@
       "alertTitle": "Odsetki miesięczne {{from}} → {{to}}",
       "alertNote": "Przy racie {{payment}} kredyt zostanie spłacony {{month, lower}}.",
       "alertNoPayoff": "Rata {{payment}} nie pokrywa odsetek; saldo by nie spadało.",
+      "manualNote": "Saldo ręczne zostaje; zmienia się tylko harmonogram na przyszłość.",
       "submit": "Zapisz zmianę"
     },
     "balanceCheck": {
-      "title": "Zweryfikuj saldo wg wyciągu",
-      "description": "Wpisz saldo z wyciągu; harmonogram startuje od nowa od tego dnia.",
-      "amount": "Saldo wg wyciągu",
+      "title": "Wpisz saldo na dzień",
+      "description": "Wpisz saldo, które znasz, na przykład z wyciągu. Obowiązuje dokładnie, dopóki go nie zmienisz.",
+      "amount": "Saldo",
       "date": "Na dzień",
-      "alertTitle": "Harmonogram zakładał {{amount}}",
-      "alertNote": "Różnica {{delta}} · od {{date}} harmonogram używa twojego salda.",
+      "alertTitle": "Szacunek zakładał {{amount}}",
+      "alertTitleManual": "Poprzednie saldo ręczne {{amount}}",
+      "alertNote": "Różnica {{delta}} · od {{date}} obowiązuje twoje saldo, dopóki go nie zmienisz.",
       "submit": "Zapisz saldo"
     }
   }

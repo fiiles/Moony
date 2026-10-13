@@ -60,7 +60,7 @@
     "watch_target_below": "Price {{price}} fell to the target {{target}}",
     "watch_target_above": "Price {{price}} reached the target {{target}}",
     "loan_fixation_expired": "Fixed rate ended {{date}} · enter the new rate",
-    "loan_balance_check": "Balance not checked since {{date}} · compare with a statement",
+    "loan_balance_check": "No balance entered since {{date}} · enter the current balance",
     "valuation_stale": "No new valuation since {{date}} · revalue it",
     "backup_stale": "Last backup {{date}}",
     "backup_never": "No backup yet",
@@ -72,7 +72,7 @@
     "balances_stale_one": "update {{count}} balance",
     "balances_stale_other": "update {{count}} balances",
     "valuation_stale": "revalue {{title}}",
-    "loan_balance_check": "check the balance of {{title}}",
+    "loan_balance_check": "enter the current balance of {{title}}",
     "loan_fixation_expired": "enter the new rate of {{title}}"
   },
   "groups": {
@@ -122,9 +122,9 @@
       "mute": "Don't remind me about property valuations"
     },
     "loanChecks": {
-      "label": "Loan checks",
-      "hint": "A yearly balance check and the new rate after a fixed rate ends.",
-      "mute": "Don't remind me about loan checks"
+      "label": "Loan balances and rates",
+      "hint": "Entering the current balance once a year, and the new rate after a fixed rate ends.",
+      "mute": "Don't remind me about loan balances and rates"
     }
   },
   "settings": {

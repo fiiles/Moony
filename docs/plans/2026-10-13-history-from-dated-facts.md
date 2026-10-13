@@ -96,6 +96,12 @@ Find how the existing fixture is loaded in both test suites and extend it the sa
 
 ## Task 3 — Loans UI and copy (B6)
 
+- **Step 0 (maths fix, decided by the lead):** the loan form edits the loan's current rate and
+  payment, so the LAST terms segment of the ledger walk (after the last event that carries a rate
+  or payment, or from the start when none does) runs on the loan's current columns; earlier
+  segments keep the values their events carry. Rust `loan_balance_at` and TS `loanBalanceAt`, two
+  new fixture cases, and `event_terms_at` (the walk without that rule) for
+  `loan_events::sync_current_terms`, which reads the event chain back to move the columns.
 - **Components:** `LoanEventDialog`, `LoanEventsCard`, `LoanFormDialog`, `LoanValuationNote`
   (and the `use-loan-valuation` hook), `DebtTrajectoryCard`, `LoanScheduleTable`, `LoanWhatIfCard`.
 - **Utils:** `src/utils/loans.ts` and `src/utils/loan-trajectory.ts` use `loanBalanceAt` /

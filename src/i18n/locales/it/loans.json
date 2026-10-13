@@ -122,12 +122,16 @@
     "endDate": "Data di fine",
     "balance": {
       "title": "Debito residuo",
-      "help": "Moony riduce il saldo a ogni rata mensile. Se conosci il saldo reale, per esempio da un estratto conto, inseriscilo con la sua data e il calcolo prosegue da lì.",
+      "help": "Moony stima il saldo in base alle rate. Quando inserisci il saldo reale a una data, vale esattamente finché non lo cambi: da quel saldo non si stima più nulla.",
       "setManual": "Imposta il saldo a una data",
       "amount": "Debito residuo",
       "date": "Alla data",
       "estimate": "Saldo stimato oggi: {{amount}}",
-      "noPayment": "Senza una rata mensile il saldo non si riduce."
+      "manualToday": "Saldo oggi: {{amount}} (vale il saldo che hai inserito)",
+      "noPayment": "Senza una rata mensile il saldo non si riduce.",
+      "deleteWarning_one": "Elimina {{count}} saldo manuale, il prestito verrà stimato di nuovo.",
+      "deleteWarning_many": "Elimina {{count}} saldi manuali, il prestito verrà stimato di nuovo.",
+      "deleteWarning_other": "Elimina {{count}} saldi manuali, il prestito verrà stimato di nuovo."
     }
   },
   "actions": {
@@ -135,7 +139,7 @@
     "delete": "Elimina prestito",
     "open": "Apri",
     "extraPayment": "Versamento extra",
-    "balanceCheck": "Verifica il saldo con l'estratto conto",
+    "balanceCheck": "Inserisci il saldo a una data",
     "rateChange": "Registra una variazione di tasso"
   },
   "confirmDelete": {
@@ -159,7 +163,7 @@
   },
   "valuation": {
     "automatic": "Ammortizzato dal {{date}} ({{amount}}) al {{rate}} con {{payment}} al mese.",
-    "manual": "Dal tuo saldo di {{amount}} del {{date}}, ammortizzato al {{rate}} con {{payment}} al mese.",
+    "manual": "Saldo inserito a mano di {{amount}} al {{date}} — vale finché non lo cambi.",
     "static": "Non è impostata alcuna rata mensile, quindi il saldo non si riduce: {{amount}} al {{date}}.",
     "belowInterest": "La rata non copre gli interessi, quindi il saldo non scende."
   },
@@ -173,7 +177,7 @@
     "withFixation": " fisso fino a {{month, lower}}",
     "status": {
       "automatic": "Saldo da piano",
-      "manual": "Saldo da piano · dal tuo saldo del {{date}}",
+      "manual": "Saldo manuale al {{date}} · vale finché non lo cambi",
       "static": "Nessuna rata mensile · il saldo non scende"
     },
     "hero": {
@@ -212,7 +216,7 @@
         "extraPayment": "Versamento extra {{amount}}",
         "rateChange": "Tasso cambiato a {{rate}}",
         "newPayment": "rata {{amount}}",
-        "balanceCheck": "Saldo verificato con l'estratto conto",
+        "balanceCheck": "Saldo manuale {{amount}}",
         "fixationEnd": "Fine del tasso fisso",
         "half": "Metà del capitale rimborsata",
         "payoff": "Prestito estinto",
@@ -287,14 +291,15 @@
       "newPayment": "nuova rata {{amount}}",
       "rateChange": "Tasso cambiato a {{rate}}",
       "rateChangeNote": "il piano prosegue dal saldo di questo giorno",
-      "balanceCheck": "Saldo verificato con l'estratto conto",
-      "balanceCheckNote": "il piano riparte da questa data",
+      "balanceCheck": "Saldo manuale {{amount}}",
+      "balanceCheckNote": "vale finché non lo cambi",
       "drawdown": "Erogazione {{amount}}",
       "drawdownNote": "inizio del prestito",
       "delete": "Rimuovi evento",
       "confirmDelete": {
         "title": "Rimuovi evento",
-        "description": "La voce scompare dal grafico e dall'elenco. Il saldo impostato dall'evento resta in vigore."
+        "description": "La voce scompare dal grafico e dall'elenco, e il saldo viene ricalcolato senza di essa.",
+        "descriptionManual": "Il saldo manuale scompare dal grafico e dall'elenco. Torna a valere il saldo manuale precedente o, se non ce n'è, la stima."
       }
     },
     "warnings": {
@@ -319,6 +324,8 @@
       "alertPayment": "Nuova rata {{payment}} al mese, la durata resta fino a {{month, lower}}.",
       "alertTooMuch": "L'importo supera il saldo di {{amount}}.",
       "alertEmpty": "Inserisci un importo per vedere l'effetto.",
+      "alertManual": "Il saldo manuale scende a {{amount}}",
+      "alertManualNote": "Il piano prosegue da questo saldo.",
       "submit": "Registra versamento"
     },
     "rateChange": {
@@ -331,15 +338,17 @@
       "alertTitle": "Interessi mensili {{from}} → {{to}}",
       "alertNote": "Con una rata di {{payment}} il prestito si estingue a {{month, lower}}.",
       "alertNoPayoff": "Una rata di {{payment}} non copre gli interessi; il saldo non scenderebbe.",
+      "manualNote": "Il saldo manuale resta; cambia solo il piano futuro.",
       "submit": "Registra variazione"
     },
     "balanceCheck": {
-      "title": "Verifica il saldo con l'estratto conto",
-      "description": "Inserisci il saldo dal tuo estratto conto; il piano riparte da quel giorno.",
-      "amount": "Saldo da estratto conto",
+      "title": "Inserisci il saldo a una data",
+      "description": "Inserisci un saldo che conosci, per esempio da un estratto conto. Vale esattamente finché non lo cambi.",
+      "amount": "Saldo",
       "date": "Alla data",
-      "alertTitle": "Il piano prevedeva {{amount}}",
-      "alertNote": "Differenza {{delta}} · dal {{date}} il piano usa il tuo saldo.",
+      "alertTitle": "La stima prevedeva {{amount}}",
+      "alertTitleManual": "Saldo manuale precedente {{amount}}",
+      "alertNote": "Differenza {{delta}} · dal {{date}} vale il tuo saldo finché non lo cambi.",
       "submit": "Salva saldo"
     }
   }

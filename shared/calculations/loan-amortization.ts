@@ -323,7 +323,27 @@ function estimatedBalanceThrough(state: LedgerState, toDay: number): number {
   ).balance;
 }
 
-function applyEvent(state: LedgerState, event: LedgerEvent): void {
+/**
+ * True when the event sets a rate or a regular payment: every rate change, and an extra payment
+ * that gives a new payment.
+ */
+function carriesTerms(event: LedgerEvent): boolean {
+  return (
+    event.kind === 'rate_change' ||
+    (event.monthlyPayment !== null && event.monthlyPayment !== undefined)
+  );
+}
+
+/**
+ * `termsEvent` is true for the LAST event that carries a rate or payment: the segment after it
+ * runs on the loan's current columns, so an edit in the loan form is never ignored.
+ */
+function applyEvent(
+  state: LedgerState,
+  event: LedgerEvent,
+  termsEvent: boolean,
+  current: LoanTerms
+): void {
   const estimated = state.mode === 'estimated';
   if (event.kind === 'balance_check') {
     state.balance = Math.max(0, event.amount ?? 0);
@@ -338,6 +358,10 @@ function applyEvent(state: LedgerState, event: LedgerEvent): void {
     if (event.monthlyPayment !== null && event.monthlyPayment !== undefined) {
       state.monthlyPayment = event.monthlyPayment;
     }
+  }
+  if (termsEvent) {
+    state.annualRatePct = current.annualRatePct;
+    state.monthlyPayment = current.monthlyPayment;
   }
   if (estimated && event.kind !== 'balance_check') {
     // The event day starts a new estimated segment.
@@ -359,11 +383,19 @@ function applyEvent(state: LedgerState, event: LedgerEvent): void {
  *   event day becomes the segment anchor; manual: stays manual;
  * - a rate change swaps the terms; estimated: the event day becomes the segment anchor;
  *   manual: the balance is unchanged.
+ *
+ * Earlier segments keep the rate and payment their events carry; the LAST terms segment (after
+ * the last event that carries a rate or payment, or from the start when none does) runs on the
+ * loan's current columns, so the loan form's edit of the rate or payment is never ignored.
  */
 export function loanBalanceAt(ledger: LoanLedger, day: number): LedgerState {
   const target = dayFloor(day);
   const start = dayFloor(ledger.terms.startDay);
   const events = orderedEvents(ledger);
+  let lastTermsEvent = -1;
+  events.forEach((event, index) => {
+    if (carriesTerms(event)) lastTermsEvent = index;
+  });
   const principal = Math.max(0, ledger.terms.principal);
   const state: LedgerState = {
     balance: principal,
@@ -376,12 +408,12 @@ export function loanBalanceAt(ledger: LoanLedger, day: number): LedgerState {
     state.balance = 0;
     return state;
   }
-  for (const event of events) {
+  for (const [index, event] of events.entries()) {
     if (dayFloor(event.day) > target) break;
     if (state.mode === 'estimated') {
       state.balance = estimatedBalanceThrough(state, dayFloor(event.day));
     }
-    applyEvent(state, event);
+    applyEvent(state, event, index === lastTermsEvent, ledger.terms);
   }
   if (state.mode === 'estimated') state.balance = estimatedBalanceThrough(state, target);
   state.balance = Math.max(0, state.balance);
@@ -448,4 +480,61 @@ export function loanTermsFromWire(loan: LoanWireTerms): LoanTerms {
     anchorDay: hasAnchor ? dayFloor(loan.balanceAnchorDate as number) : null,
     endDay: loan.endDate === null ? null : dayFloor(loan.endDate),
   };
+}
+
+/** A loan event as it comes over the wire (money as text, days as UTC unix seconds). */
+export interface LoanWireEvent {
+  kind: LedgerEventKind;
+  eventDay: number;
+  createdAt: number;
+  amount: string | null;
+  rate: string | null;
+  monthlyPayment: string | null;
+  previousRate: string | null;
+  previousMonthlyPayment: string | null;
+}
+
+/** A wire loan with its events (oldest first). */
+export interface LoanWireLedger extends LoanWireTerms {
+  events: readonly LoanWireEvent[];
+}
+
+/** Empty or unparseable text is "not given", unlike a blank amount, which counts as 0. */
+function parseOptional(text: string | null | undefined): number | null {
+  if (text === null || text === undefined || text.trim() === '') return null;
+  const value = Number(text);
+  return Number.isFinite(value) ? value : null;
+}
+
+/** One wire event as the ledger walk reads it (the same parse as the backend's `ledger_event`). */
+export function ledgerEventFromWire(event: LoanWireEvent): LedgerEvent {
+  return {
+    day: dayFloor(event.eventDay),
+    createdAt: event.createdAt,
+    kind: event.kind,
+    amount: parseOptional(event.amount),
+    rate: parseOptional(event.rate),
+    monthlyPayment: parseOptional(event.monthlyPayment),
+    previousRate: parseOptional(event.previousRate),
+    previousMonthlyPayment: parseOptional(event.previousMonthlyPayment),
+  };
+}
+
+/**
+ * The ledger of a wire loan: its current terms and its events. The mirrored
+ * `balanceAnchor*` fields are ignored; the events are the source of every manual balance.
+ */
+export function loanLedgerFromWire(loan: LoanWireLedger): LoanLedger {
+  const terms = { ...loanTermsFromWire(loan), anchorAmount: null, anchorDay: null };
+  return { terms, events: loan.events.map(ledgerEventFromWire) };
+}
+
+/**
+ * How the balance of the walk's state is valued: a manual balance holds whatever the payment
+ * (`manual`), else no regular payment means the balance never falls (`static`), else it is
+ * amortized (`automatic`).
+ */
+export function ledgerValuationMode(state: LedgerState): LoanValuationMode {
+  if (state.mode === 'manual') return 'manual';
+  return state.monthlyPayment <= 0 ? 'static' : 'automatic';
 }

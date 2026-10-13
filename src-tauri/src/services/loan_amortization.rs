@@ -421,7 +421,20 @@ fn estimated_balance_through(state: &LedgerState, to_day: i64) -> f64 {
     elapsed_to(&segment, to_day).balance
 }
 
-fn apply_event(state: &mut LedgerState, event: &LedgerEvent) {
+/// True when the event sets a rate or a regular payment: every rate change, and an
+/// extra payment that gives a new payment.
+fn carries_terms(event: &LedgerEvent) -> bool {
+    event.kind == LedgerEventKind::RateChange || event.monthly_payment.is_some()
+}
+
+/// `terms_event` is true for the LAST event that carries a rate or payment: the segment
+/// after it runs on the loan's current columns, so an edit in the loan form is never ignored.
+fn apply_event(
+    state: &mut LedgerState,
+    event: &LedgerEvent,
+    terms_event: bool,
+    current: &LoanTerms,
+) {
     let estimated = state.mode == LedgerMode::Estimated;
     match event.kind {
         LedgerEventKind::BalanceCheck => {
@@ -440,6 +453,10 @@ fn apply_event(state: &mut LedgerState, event: &LedgerEvent) {
                 state.monthly_payment = payment;
             }
         }
+    }
+    if terms_event {
+        state.annual_rate_pct = current.annual_rate_pct;
+        state.monthly_payment = current.monthly_payment;
     }
     if estimated && event.kind != LedgerEventKind::BalanceCheck {
         // The event day starts a new estimated segment.
@@ -462,11 +479,35 @@ fn apply_event(state: &mut LedgerState, event: &LedgerEvent) {
 ///   estimated: the event day becomes the segment anchor; manual: stays manual;
 /// - a rate change swaps the terms; estimated: the event day becomes the
 ///   segment anchor; manual: the balance is unchanged.
+///
+/// Earlier segments keep the rate and payment their events carry; the LAST terms
+/// segment (after the last event that carries a rate or payment, or from the start
+/// when none does) runs on the loan's current columns, so the loan form's edit of
+/// the rate or payment is never ignored.
 pub fn loan_balance_at(ledger: &LoanLedger, day: i64) -> LedgerState {
+    walk(ledger, day, true)
+}
+
+/// Rate and payment the events alone leave in force on `day`: the walk without the
+/// "last terms segment runs on the loan's current columns" rule, so the chain of
+/// events can be read back even when the columns do not hold it yet. The service
+/// that records a rate change or an extra payment uses it to move the columns to
+/// what the chain says (a backdated event leaves a later one's terms alone).
+pub fn event_terms_at(ledger: &LoanLedger, day: i64) -> (f64, f64) {
+    let state = walk(ledger, day, false);
+    (state.annual_rate_pct, state.monthly_payment)
+}
+
+/// The walk behind [`loan_balance_at`]; `current_terms_last` applies the loan's
+/// current columns to the last terms segment.
+fn walk(ledger: &LoanLedger, day: i64, current_terms_last: bool) -> LedgerState {
     let day = day_floor(day);
     let start = day_floor(ledger.terms.start_day);
     let events = ordered_events(ledger);
     let (annual_rate_pct, monthly_payment) = initial_terms(&ledger.terms, &events);
+    let last_terms_event = current_terms_last
+        .then(|| events.iter().rposition(|event| carries_terms(event)))
+        .flatten();
     let principal = ledger.terms.principal.max(0.0);
     let mut state = LedgerState {
         balance: principal,
@@ -480,14 +521,20 @@ pub fn loan_balance_at(ledger: &LoanLedger, day: i64) -> LedgerState {
         state.balance = 0.0;
         return state;
     }
-    for event in events
+    for (index, event) in events
         .into_iter()
-        .take_while(|event| day_floor(event.day) <= day)
+        .enumerate()
+        .take_while(|(_, event)| day_floor(event.day) <= day)
     {
         if state.mode == LedgerMode::Estimated {
             state.balance = estimated_balance_through(&state, day_floor(event.day));
         }
-        apply_event(&mut state, event);
+        apply_event(
+            &mut state,
+            event,
+            last_terms_event == Some(index),
+            &ledger.terms,
+        );
     }
     if state.mode == LedgerMode::Estimated {
         state.balance = estimated_balance_through(&state, day);
@@ -1066,6 +1113,36 @@ mod tests {
             loan_balance_at(&l, day("2024-03-20")).monthly_payment,
             1_500.0
         );
+    }
+
+    #[test]
+    fn the_last_terms_segment_runs_on_the_loan_columns_the_chain_stays_readable() {
+        let mut change = event("2024-06-10", 1, LedgerEventKind::RateChange);
+        change.rate = Some(4.5);
+        change.monthly_payment = Some(1_900.0);
+        change.previous_rate = Some(6.0);
+        change.previous_monthly_payment = Some(2_000.0);
+        let mut lower = event("2024-09-05", 2, LedgerEventKind::ExtraPayment);
+        lower.amount = Some(1_000.0);
+        lower.monthly_payment = Some(1_700.0);
+        lower.previous_monthly_payment = Some(1_900.0);
+        // The loan form edited the rate and the payment after both events.
+        let mut l = ledger("2023-01-15", vec![change, lower]);
+        l.terms.annual_rate_pct = 5.5;
+        l.terms.monthly_payment = 1_950.0;
+        let terms_on = |iso: &str| {
+            let state = loan_balance_at(&l, day(iso));
+            (state.annual_rate_pct, state.monthly_payment)
+        };
+        // Before the last carrier the events' own terms apply, then the loan's columns.
+        assert_eq!(terms_on("2024-06-09"), (6.0, 2_000.0));
+        assert_eq!(terms_on("2024-07-01"), (4.5, 1_900.0));
+        assert_eq!(terms_on("2024-09-05"), (5.5, 1_950.0));
+        assert_eq!(terms_on("2026-01-01"), (5.5, 1_950.0));
+        // The chain alone says what the events leave behind, whatever the columns hold.
+        assert_eq!(event_terms_at(&l, day("2024-07-01")), (4.5, 1_900.0));
+        assert_eq!(event_terms_at(&l, day("2024-09-05")), (4.5, 1_700.0));
+        assert_eq!(event_terms_at(&l, day("2026-01-01")), (4.5, 1_700.0));
     }
 
     #[test]

@@ -64,7 +64,7 @@
     "watch_target_below": "Cena {{price}} klesla na cíl {{target}}",
     "watch_target_above": "Cena {{price}} dosáhla cíle {{target}}",
     "loan_fixation_expired": "Fixace skončila {{date}} · doplňte novou sazbu",
-    "loan_balance_check": "Zůstatek neověřen od {{date}} · porovnejte s výpisem",
+    "loan_balance_check": "Zůstatek nezadán od {{date}} · zadejte aktuální zůstatek",
     "valuation_stale": "Bez nového odhadu od {{date}} · přeceňte",
     "backup_stale": "Poslední záloha {{date}}",
     "backup_never": "Zatím žádná záloha",
@@ -78,7 +78,7 @@
     "balances_stale_few": "aktualizovat {{count}} zůstatky",
     "balances_stale_other": "aktualizovat {{count}} zůstatků",
     "valuation_stale": "{{title}} přecenit",
-    "loan_balance_check": "{{title}} ověřit zůstatek",
+    "loan_balance_check": "{{title}} zadat aktuální zůstatek",
     "loan_fixation_expired": "{{title}} doplnit sazbu"
   },
   "groups": {
@@ -128,9 +128,9 @@
       "mute": "Nepřipomínat ocenění nemovitostí"
     },
     "loanChecks": {
-      "label": "Kontroly úvěrů",
-      "hint": "Ověření zůstatku jednou ročně a nová sazba po konci fixace.",
-      "mute": "Nepřipomínat kontroly úvěrů"
+      "label": "Zůstatky a sazby úvěrů",
+      "hint": "Zadání aktuálního zůstatku jednou ročně a nová sazba po konci fixace.",
+      "mute": "Nepřipomínat zůstatky a sazby úvěrů"
     }
   },
   "settings": {

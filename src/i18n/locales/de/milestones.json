@@ -60,7 +60,7 @@
     "watch_target_below": "Kurs {{price}} ist auf das Ziel {{target}} gefallen",
     "watch_target_above": "Kurs {{price}} hat das Ziel {{target}} erreicht",
     "loan_fixation_expired": "Zinsbindung endete am {{date}} · neuen Zinssatz eintragen",
-    "loan_balance_check": "Saldo seit {{date}} nicht geprüft · mit einem Kontoauszug abgleichen",
+    "loan_balance_check": "Keine Restschuld eingegeben seit {{date}} · aktuelle Restschuld eingeben",
     "valuation_stale": "Keine neue Bewertung seit {{date}} · neu bewerten",
     "backup_stale": "Letzte Sicherung {{date}}",
     "backup_never": "Noch keine Sicherung",
@@ -72,7 +72,7 @@
     "balances_stale_one": "{{count}} Kontostand aktualisieren",
     "balances_stale_other": "{{count}} Kontostände aktualisieren",
     "valuation_stale": "{{title}} neu bewerten",
-    "loan_balance_check": "Saldo von {{title}} prüfen",
+    "loan_balance_check": "aktuelle Restschuld von {{title}} eingeben",
     "loan_fixation_expired": "neuen Zinssatz von {{title}} eintragen"
   },
   "groups": {
@@ -122,9 +122,9 @@
       "mute": "Nicht an Immobilienbewertungen erinnern"
     },
     "loanChecks": {
-      "label": "Kreditprüfungen",
-      "hint": "Eine jährliche Saldoprüfung und der neue Zinssatz nach Ende der Zinsbindung.",
-      "mute": "Nicht an Kreditprüfungen erinnern"
+      "label": "Restschuld und Zinssatz von Krediten",
+      "hint": "Einmal im Jahr die aktuelle Restschuld eingeben und nach Ende der Zinsbindung den neuen Zinssatz.",
+      "mute": "Nicht an Restschuld und Zinssatz von Krediten erinnern"
     }
   },
   "settings": {

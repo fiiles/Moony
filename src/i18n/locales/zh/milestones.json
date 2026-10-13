@@ -56,7 +56,7 @@
     "watch_target_below": "价格 {{price}} 已跌至目标价 {{target}}",
     "watch_target_above": "价格 {{price}} 已达到目标价 {{target}}",
     "loan_fixation_expired": "固定利率已于 {{date}} 结束 · 请输入新利率",
-    "loan_balance_check": "自 {{date}} 起未核对余额 · 请与账单对照",
+    "loan_balance_check": "自 {{date}} 起未输入余额 · 请输入当前余额",
     "valuation_stale": "自 {{date}} 起没有新的估值 · 请重新估值",
     "backup_stale": "上次备份 {{date}}",
     "backup_never": "还没有备份",
@@ -66,7 +66,7 @@
     "backup_stale": "备份您的数据",
     "balances_stale_other": "更新 {{count}} 个余额",
     "valuation_stale": "重新估值 {{title}}",
-    "loan_balance_check": "核对{{title}}的余额",
+    "loan_balance_check": "输入{{title}}的当前余额",
     "loan_fixation_expired": "输入{{title}}的新利率"
   },
   "groups": {
@@ -116,9 +116,9 @@
       "mute": "不再提醒房产估值"
     },
     "loanChecks": {
-      "label": "贷款核对",
-      "hint": "每年核对一次余额，以及固定利率结束后输入新利率。",
-      "mute": "不再提醒贷款核对"
+      "label": "贷款余额与利率",
+      "hint": "每年输入一次当前余额，以及固定利率结束后输入新利率。",
+      "mute": "不再提醒贷款余额与利率"
     }
   },
   "settings": {

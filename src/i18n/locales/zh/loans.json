@@ -110,12 +110,14 @@
     "endDate": "结束日期",
     "balance": {
       "title": "未偿余额",
-      "help": "Moony 会随每月还款减少余额。如果您知道实际余额（例如来自银行账单），请连同日期一并输入，计算将从该日起继续。",
+      "help": "Moony 根据还款估算余额。当您输入某一日期的实际余额时，它会原样有效，直到您更改——不会再据此估算任何内容。",
       "setManual": "设置某一日期的余额",
       "amount": "未偿金额",
       "date": "截至日期",
       "estimate": "今日估算余额：{{amount}}",
-      "noPayment": "没有月供时，余额不会减少。"
+      "manualToday": "今日余额：{{amount}}（您输入的余额有效）",
+      "noPayment": "没有月供时，余额不会减少。",
+      "deleteWarning_other": "将删除 {{count}} 条手动余额，贷款将重新估算。"
     }
   },
   "actions": {
@@ -123,7 +125,7 @@
     "delete": "删除贷款",
     "open": "打开",
     "extraPayment": "额外还款",
-    "balanceCheck": "按账单核对余额",
+    "balanceCheck": "输入某日期的余额",
     "rateChange": "记录利率变更"
   },
   "confirmDelete": {
@@ -147,7 +149,7 @@
   },
   "valuation": {
     "automatic": "自 {{date}} 起摊销（{{amount}}），利率 {{rate}}，每月还款 {{payment}}。",
-    "manual": "以您 {{date}} 的余额 {{amount}} 为起点，利率 {{rate}}，每月还款 {{payment}} 摊销。",
+    "manual": "您手动输入的 {{date}} 余额 {{amount}} — 在您更改前一直有效。",
     "static": "未设置月供，因此余额不会减少：截至 {{date}} 为 {{amount}}。",
     "belowInterest": "还款额不足以支付利息，因此余额不会下降。"
   },
@@ -161,7 +163,7 @@
     "withFixation": "，固定至 {{month}}",
     "status": {
       "automatic": "余额按计划计算",
-      "manual": "余额按计划计算 · 以您 {{date}} 的余额为起点",
+      "manual": "{{date}} 的手动余额 · 在您更改前一直有效",
       "static": "无月供 · 余额不会下降"
     },
     "hero": {
@@ -200,7 +202,7 @@
         "extraPayment": "额外还款 {{amount}}",
         "rateChange": "利率变更为 {{rate}}",
         "newPayment": "还款额 {{amount}}",
-        "balanceCheck": "余额已按账单核对",
+        "balanceCheck": "手动余额 {{amount}}",
         "fixationEnd": "固定利率期结束",
         "half": "已还一半本金",
         "payoff": "贷款已还清",
@@ -273,14 +275,15 @@
       "newPayment": "新还款额 {{amount}}",
       "rateChange": "利率变更为 {{rate}}",
       "rateChangeNote": "还款计划从当日余额继续",
-      "balanceCheck": "余额已按账单核对",
-      "balanceCheckNote": "还款计划从该日期重新开始",
+      "balanceCheck": "手动余额 {{amount}}",
+      "balanceCheckNote": "在您更改前一直有效",
       "drawdown": "放款 {{amount}}",
       "drawdownNote": "贷款开始",
       "delete": "移除事件",
       "confirmDelete": {
         "title": "移除事件",
-        "description": "该记录将从图表和列表中消失。该事件设定的余额仍然有效。"
+        "description": "该记录将从图表和列表中消失，余额将在没有它的情况下重新计算。",
+        "descriptionManual": "手动余额将从图表和列表中消失。之前的手动余额重新生效；如果没有，则使用估算值。"
       }
     },
     "warnings": {
@@ -305,6 +308,8 @@
       "alertPayment": "新的月供为 {{payment}}，期限仍至 {{month}}。",
       "alertTooMuch": "金额超过了余额 {{amount}}。",
       "alertEmpty": "输入金额以查看影响。",
+      "alertManual": "手动余额降至 {{amount}}",
+      "alertManualNote": "还款计划从该余额继续。",
       "submit": "记录还款"
     },
     "rateChange": {
@@ -317,15 +322,17 @@
       "alertTitle": "每月利息 {{from}} → {{to}}",
       "alertNote": "按 {{payment}} 的还款额，贷款将于{{month}}还清。",
       "alertNoPayoff": "{{payment}} 的还款额不足以支付利息，余额不会下降。",
+      "manualNote": "手动余额保持不变，只有之后的还款计划会改变。",
       "submit": "记录变更"
     },
     "balanceCheck": {
-      "title": "按账单核对余额",
-      "description": "输入账单上的余额；还款计划将从当日重新开始。",
-      "amount": "账单余额",
+      "title": "输入某日期的余额",
+      "description": "输入您已知的余额，例如来自账单。它会原样有效，直到您更改。",
+      "amount": "余额",
       "date": "截至",
-      "alertTitle": "还款计划原先假设为 {{amount}}",
-      "alertNote": "差额 {{delta}} · 自 {{date}} 起，还款计划将采用您的余额。",
+      "alertTitle": "估算原先假设为 {{amount}}",
+      "alertTitleManual": "之前的手动余额 {{amount}}",
+      "alertNote": "差额 {{delta}} · 自 {{date}} 起，在您更改前一直采用您的余额。",
       "submit": "保存余额"
     }
   }

@@ -16,7 +16,8 @@ import { Label } from '@/components/ui/label';
 import { Segmented } from '@/components/ui/segmented';
 
 interface LoanWhatIfCardProps {
-  terms: LoanTerms;
+  /** The plan ahead of today (`planFrom`): the payment in force and the schedule it continues. */
+  plan: LoanTerms;
   today: number;
   currency: string;
   balanceToday: number;
@@ -27,10 +28,11 @@ interface LoanWhatIfCardProps {
 /**
  * Extra-payment what-if (prototype loan-detail.html): the amount, the two
  * things a bank offers (shorter term or lower payment) and the result in one
- * sentence — months saved and interest saved, or the new payment.
+ * sentence — months saved and interest saved, or the new payment. It works on
+ * the plan ahead, which is an estimate even while a manual balance holds.
  */
 export function LoanWhatIfCard({
-  terms,
+  plan,
   today,
   currency,
   balanceToday,
@@ -43,7 +45,7 @@ export function LoanWhatIfCard({
   const [mode, setMode] = useState<ExtraPaymentMode>('term');
 
   const amount = Number(amountText.replace(/\s/g, '').replace(',', '.')) || 0;
-  const result = amount > 0 ? extraPaymentWhatIf(terms, today, amount, mode) : null;
+  const result = amount > 0 ? extraPaymentWhatIf(plan, balanceToday, today, amount, mode) : null;
   const money = (v: number) => fmt.money(v, currency, { decimals: 0 });
 
   return (
@@ -88,14 +90,14 @@ export function LoanWhatIfCard({
                       duration: text.months(result.monthsBefore - result.monthsAfter),
                     })
                   : t('detail.whatIf.paymentResult', {
-                      amount: money(terms.monthlyPayment - result.payment),
+                      amount: money(plan.monthlyPayment - result.payment),
                     })}
               </b>
               <span className="mt-1 block text-caption text-ink-3">
                 {mode === 'term'
                   ? t('detail.whatIf.termNote', {
                       interest: money(result.interestBefore - result.interestAfter),
-                      payment: money(terms.monthlyPayment),
+                      payment: money(plan.monthlyPayment),
                       month: result.payoffDay !== null ? text.monthYear(result.payoffDay) : '—',
                     })
                   : t('detail.whatIf.paymentNote', {
@@ -107,7 +109,7 @@ export function LoanWhatIfCard({
             </>
           ) : (
             <span className="block text-caption text-ink-3">
-              {terms.monthlyPayment <= 0
+              {plan.monthlyPayment <= 0
                 ? t('detail.whatIf.noPayment')
                 : t('detail.whatIf.noEffect', { amount: money(balanceToday) })}
             </span>

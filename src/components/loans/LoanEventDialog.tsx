@@ -5,10 +5,14 @@ import { z } from 'zod';
 import { useTranslation } from 'react-i18next';
 import { Info } from 'lucide-react';
 import type { Loan, LoanEventKind } from '@shared/schema';
-import { outstandingBalanceAt, type LoanTerms } from '@shared/calculations/loan-amortization';
+import {
+  loanBalanceAt,
+  type LoanLedger,
+  type LoanTerms,
+} from '@shared/calculations/loan-amortization';
 import { recordCurrency } from '@shared/currencies';
 import { isoDateFromUtcTimestamp } from '@/utils/period';
-import { extraPaymentWhatIf, loanTrajectory, type ExtraPaymentMode } from '@/utils/loan-trajectory';
+import { extraPaymentWhatIf, planPayoffDay, type ExtraPaymentMode } from '@/utils/loan-trajectory';
 import { useFormat } from '@/lib/use-format';
 import { useLoanText } from '@/hooks/use-loan-text';
 import { useLoanEventMutations } from '@/hooks/use-loan-events';
@@ -48,7 +52,10 @@ export interface LoanEventDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   loan: Loan;
-  terms: LoanTerms;
+  /** The loan's terms and events: every balance on a day is walked from it. */
+  ledger: LoanLedger;
+  /** The plan ahead of today (`planFrom`): the payment in force and the base of the previews. */
+  plan: LoanTerms;
   today: number;
   kind: LoanEventKind;
   /** Prefill from the what-if card. */
@@ -63,14 +70,17 @@ const num = (text: string | undefined) => Number((text ?? '').replace(',', '.'))
 
 /**
  * One dialog for the three loan events (prototype loan-detail.html): an extra
- * payment with the bank's use of it, a new rate from a day, or the balance from
- * a statement. The alert previews the effect before anything is written.
+ * payment with the bank's use of it, a new rate from a day, or a manual balance as
+ * of a date. The alert previews the effect before anything is written. While a manual
+ * balance applies on the chosen day, an extra payment lowers it (no term or payment
+ * maths) and a rate change leaves it: only the plan ahead changes.
  */
 export function LoanEventDialog({
   open,
   onOpenChange,
   loan,
-  terms,
+  ledger,
+  plan,
   today,
   kind,
   initial,
@@ -122,19 +132,24 @@ export function LoanEventDialog({
   const dateIso = form.watch('date');
   const eventDay = dateIso ? isoToUtcDaySec(dateIso) : today;
 
+  // The walk on the chosen day: a manual balance that holds then, or the estimate
+  const onDay = loanBalanceAt(ledger, eventDay);
+  const manual = onDay.mode === 'manual';
+
   // ---- preview ----
   const whatIf =
-    kind === 'extra_payment' && amount > 0 && amount <= balanceToday
-      ? extraPaymentWhatIf(terms, today, amount, mode)
+    kind === 'extra_payment' && !manual && amount > 0 && amount <= onDay.balance
+      ? extraPaymentWhatIf(plan, balanceToday, today, amount, mode)
       : null;
   const rateChange = (() => {
     if (kind !== 'rate_change') return null;
     const from = (balanceToday * (Number(loan.interestRate) || 0)) / 100 / 12;
     const to = (balanceToday * rate) / 100 / 12;
-    const newPayment = payment > 0 ? payment : terms.monthlyPayment;
-    const after = loanTrajectory(
+    const newPayment = payment > 0 ? payment : plan.monthlyPayment;
+    // The plan ahead from today's balance at the new terms (the balance itself is not touched)
+    const payoffDay = planPayoffDay(
       {
-        ...terms,
+        ...plan,
         annualRatePct: rate,
         monthlyPayment: newPayment,
         anchorAmount: balanceToday,
@@ -143,17 +158,12 @@ export function LoanEventDialog({
       },
       today
     );
-    return { from, to, newPayment, payoffDay: after.payoffDay };
+    return { from, to, newPayment, payoffDay };
   })();
   const balanceCheck =
-    kind === 'balance_check'
-      ? {
-          computed: outstandingBalanceAt(terms, eventDay),
-          delta: amount - outstandingBalanceAt(terms, eventDay),
-        }
-      : null;
+    kind === 'balance_check' ? { before: onDay.balance, delta: amount - onDay.balance } : null;
 
-  const tooMuch = kind === 'extra_payment' && amount > balanceToday;
+  const tooMuch = kind === 'extra_payment' && amount > onDay.balance;
   const canSubmit =
     kind === 'extra_payment'
       ? amount > 0 && !tooMuch
@@ -187,7 +197,7 @@ export function LoanEventDialog({
       : kind === 'rate_change'
         ? 'rateChange'
         : 'balanceCheck';
-  const minIso = isoDateFromUtcTimestamp(terms.startDay);
+  const minIso = isoDateFromUtcTimestamp(ledger.terms.startDay);
   const maxIso = isoDateFromUtcTimestamp(today);
 
   return (
@@ -248,7 +258,7 @@ export function LoanEventDialog({
               />
             </div>
 
-            {kind === 'extra_payment' && (
+            {kind === 'extra_payment' && !manual && (
               <FormField
                 control={form.control}
                 name="mode"
@@ -286,7 +296,7 @@ export function LoanEventDialog({
                     </InputWrap>
                     <FormDescription>
                       {t('eventDialog.rateChange.paymentHint', {
-                        amount: money(terms.monthlyPayment),
+                        amount: money(plan.monthlyPayment),
                       })}
                     </FormDescription>
                     <FormMessage />
@@ -317,8 +327,19 @@ export function LoanEventDialog({
               {kind === 'extra_payment' &&
                 (tooMuch ? (
                   <AlertTitle>
-                    {t('eventDialog.extraPayment.alertTooMuch', { amount: money(balanceToday) })}
+                    {t('eventDialog.extraPayment.alertTooMuch', { amount: money(onDay.balance) })}
                   </AlertTitle>
+                ) : manual && amount > 0 ? (
+                  <>
+                    <AlertTitle>
+                      {t('eventDialog.extraPayment.alertManual', {
+                        amount: money(onDay.balance - amount),
+                      })}
+                    </AlertTitle>
+                    <AlertDescription>
+                      {t('eventDialog.extraPayment.alertManualNote')}
+                    </AlertDescription>
+                  </>
                 ) : whatIf ? (
                   <>
                     <AlertTitle>
@@ -351,6 +372,7 @@ export function LoanEventDialog({
                     })}
                   </AlertTitle>
                   <AlertDescription>
+                    {manual && `${t('eventDialog.rateChange.manualNote')} `}
                     {rateChange.payoffDay !== null
                       ? t('eventDialog.rateChange.alertNote', {
                           payment: money(rateChange.newPayment),
@@ -365,9 +387,12 @@ export function LoanEventDialog({
               {kind === 'balance_check' && balanceCheck && (
                 <>
                   <AlertTitle>
-                    {t('eventDialog.balanceCheck.alertTitle', {
-                      amount: money(balanceCheck.computed),
-                    })}
+                    {t(
+                      manual
+                        ? 'eventDialog.balanceCheck.alertTitleManual'
+                        : 'eventDialog.balanceCheck.alertTitle',
+                      { amount: money(balanceCheck.before) }
+                    )}
                   </AlertTitle>
                   <AlertDescription>
                     {t('eventDialog.balanceCheck.alertNote', {

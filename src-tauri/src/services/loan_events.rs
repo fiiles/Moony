@@ -19,7 +19,7 @@
 
 use crate::error::{AppError, Result};
 use crate::models::{InsertLoanEvent, LoanEvent};
-use crate::services::loan_amortization::{day_floor, loan_balance_at};
+use crate::services::loan_amortization::{day_floor, event_terms_at, loan_balance_at};
 use crate::services::loans;
 use rusqlite::{Connection, OptionalExtension, Row};
 use uuid::Uuid;
@@ -199,18 +199,19 @@ fn sync_current_terms(
         return Ok(());
     };
     let terms = &entry.ledger.terms;
-    // An event dated before the start is still applied (the walk starts at the start).
-    let state = loan_balance_at(&entry.ledger, last_day.max(terms.start_day));
-    if rate && state.annual_rate_pct != terms.annual_rate_pct {
+    // The chain of events alone: the walk itself runs its last segment on the very columns
+    // this function is about to move. An event dated before the start is still applied.
+    let (event_rate, event_payment) = event_terms_at(&entry.ledger, last_day.max(terms.start_day));
+    if rate && event_rate != terms.annual_rate_pct {
         conn.execute(
             "UPDATE loans SET interest_rate = ?1, updated_at = ?2 WHERE id = ?3",
-            rusqlite::params![number_text(state.annual_rate_pct), now, loan_id],
+            rusqlite::params![number_text(event_rate), now, loan_id],
         )?;
     }
-    if payment && state.monthly_payment != terms.monthly_payment {
+    if payment && event_payment != terms.monthly_payment {
         conn.execute(
             "UPDATE loans SET monthly_payment = ?1, updated_at = ?2 WHERE id = ?3",
-            rusqlite::params![number_text(state.monthly_payment), now, loan_id],
+            rusqlite::params![number_text(event_payment), now, loan_id],
         )?;
     }
     Ok(())

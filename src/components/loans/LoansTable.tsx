@@ -245,7 +245,8 @@ export function LoansTable({ rows, today, onEdit, onDelete }: LoansTableProps) {
           ) : (
             visible.map((r) => {
               const loan = r.loan;
-              const needsNote = r.mode === 'static' || r.belowInterest;
+              // A held manual balance, a missing payment or a payment below the interest each get the rule
+              const needsNote = r.mode !== 'automatic' || r.belowInterest;
               return (
                 <TableRow
                   key={loan.id}

@@ -14,6 +14,8 @@ import {
   paymentsDueThrough,
   planFrom,
   elapsedTo,
+  ledgerValuationMode,
+  loanLedgerFromWire,
   type LedgerEvent,
   type LoanLedger,
   type LoanTerms,
@@ -503,5 +505,66 @@ describe('loanBalanceAt / planFrom rules', () => {
     const plan = planFrom(l, day('2024-01-01'));
     expect(plan.startDay).toBe(day('2023-01-15'));
     expect(plan.endDay).toBe(day('2030-01-15'));
+  });
+});
+
+describe('loan ledger from the wire', () => {
+  const wireLoan = {
+    principal: '100000',
+    interestRate: '6',
+    monthlyPayment: '2000',
+    startDate: day('2023-01-15'),
+    endDate: null,
+    balanceAnchorAmount: '80000',
+    balanceAnchorDate: day('2024-02-01'),
+    events: [
+      {
+        kind: 'balance_check' as const,
+        eventDay: day('2024-02-01'),
+        createdAt: 7,
+        amount: '80000',
+        rate: null,
+        monthlyPayment: null,
+        previousRate: null,
+        previousMonthlyPayment: null,
+      },
+      {
+        kind: 'rate_change' as const,
+        eventDay: day('2024-05-10'),
+        createdAt: 9,
+        amount: null,
+        rate: '4.5',
+        monthlyPayment: ' ',
+        previousRate: '6',
+        previousMonthlyPayment: '2000',
+      },
+    ],
+  };
+
+  it('parses the events and leaves the mirrored anchor out of the terms', () => {
+    const ledger = loanLedgerFromWire(wireLoan);
+    expect(ledger.terms.anchorAmount).toBeNull();
+    expect(ledger.terms.anchorDay).toBeNull();
+    expect(ledger.terms.principal).toBe(100_000);
+    expect(ledger.events[0]).toMatchObject({ kind: 'balance_check', amount: 80_000, createdAt: 7 });
+    // Blank text is "not given", not 0
+    expect(ledger.events[1]).toMatchObject({
+      rate: 4.5,
+      monthlyPayment: null,
+      previousRate: 6,
+      previousMonthlyPayment: 2_000,
+    });
+    const state = loanBalanceAt(ledger, day('2024-06-01'));
+    expect(state.mode).toBe('manual');
+    expect(state.balance).toBe(80_000);
+  });
+
+  it('values a manual balance as manual whatever the payment, else by the payment', () => {
+    const record = wireLoan.events.slice(0, 1);
+    const held = loanLedgerFromWire({ ...wireLoan, monthlyPayment: '0', events: record });
+    expect(ledgerValuationMode(loanBalanceAt(held, day('2024-06-01')))).toBe('manual');
+    expect(ledgerValuationMode(loanBalanceAt(held, day('2024-01-01')))).toBe('static');
+    const estimated = loanLedgerFromWire({ ...wireLoan, events: [] });
+    expect(ledgerValuationMode(loanBalanceAt(estimated, day('2024-01-01')))).toBe('automatic');
   });
 });

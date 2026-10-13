@@ -4,9 +4,12 @@ import {
   dayFloor,
   dueDay,
   loanAnchor,
+  loanBalanceAt,
+  planFrom,
   type AmortizationSchedule,
   type AmortizationScheduleEnd,
   type AmortizationScheduleRow,
+  type LoanLedger,
   type LoanTerms,
 } from '@shared/calculations/loan-amortization';
 
@@ -17,23 +20,24 @@ export interface TrajectoryPoint {
 }
 
 const DAY = 86_400;
-/** The past path never walks more than a century of payments. */
+/** The past path never walks more than a century of payments in one segment. */
 const MAX_PAST_MONTHS = 1_200;
 /** Combined debt series are thinned to about this many points for the chart. */
 const MAX_SERIES_POINTS = 480;
 
 export interface LoanTrajectory {
-  /** Balance at the start, after every payment up to `today`, and today. */
+  /** Balance at the start, after every payment up to `today`, at every step, and today. */
   past: TrajectoryPoint[];
   /** Balance after every scheduled payment due after `today`. */
   future: TrajectoryPoint[];
-  /** The schedule from the anchor (shared maths, same as the backend). */
+  /** The plan ahead: the schedule from the walk's plan terms (shared maths, same as the backend). */
   schedule: AmortizationSchedule;
   /** Rows of the schedule due after `today`. */
   upcoming: AmortizationScheduleRow[];
   end: AmortizationScheduleEnd;
+  /** The balance on `today` from the ledger walk; 0 for a loan that has not started. */
   balanceToday: number;
-  /** Interest in the payments made so far (estimated along the past path). */
+  /** Interest in the payments made so far (estimated segments of the past path). */
   interestPaid: number;
   /** First day the balance reaches 0 (past or future); null when it never does. */
   payoffDay: number | null;
@@ -41,76 +45,105 @@ export interface LoanTrajectory {
   halfDay: number | null;
 }
 
-function monthlyRate(terms: LoanTerms): number {
-  return terms.annualRatePct / 100 / 12;
+/** The schedule ahead of `day` for plan terms: every row, those after `day`, and their balances. */
+function planAhead(plan: LoanTerms, day: number) {
+  const schedule = amortizationSchedule(plan);
+  const upcoming = schedule.rows.filter((row) => row.dueDay > day);
+  const future = upcoming.map((row) => ({ t: row.dueDay, value: row.balanceAfter }));
+  return { schedule, upcoming, future };
 }
 
 /**
- * The balance path of one loan: solid past from the anchor (with the theoretical
- * path from the principal before a manual anchor, so an extra payment or a
- * statement check shows as a step on its day), dashed future from the schedule.
+ * Day a plan pays the loan off: the anchor day for an empty anchor, else the first scheduled
+ * payment that clears the balance; null when it never does.
  */
-export function loanTrajectory(terms: LoanTerms, today: number): LoanTrajectory {
-  const day = dayFloor(today);
-  const anchor = loanAnchor(terms);
-  const rate = monthlyRate(terms);
-  const past: TrajectoryPoint[] = [];
+export function planPayoffDay(plan: LoanTerms, today: number): number | null {
+  const anchor = loanAnchor(plan);
+  if (anchor.amount <= 0) return anchor.day;
+  return planAhead(plan, dayFloor(today)).future.find((p) => p.value <= 0)?.t ?? null;
+}
+
+/**
+ * The balance path up to `today` from the ledger walk (spec B2, D5). It follows the estimated
+ * path (one reading per payment due) until the first step, and every event that moves the
+ * balance (a manual record, an extra payment) is a vertical step on its day, with a reading
+ * the day before so it is not drawn as a ramp from the previous payment. After a manual record
+ * nothing is amortized, so the line holds flat until the next event. A loan that starts after
+ * `today` has its start reading only.
+ */
+function pastPath(
+  ledger: LoanLedger,
+  today: number
+): { points: TrajectoryPoint[]; interestPaid: number } {
+  const start = dayFloor(ledger.terms.startDay);
+  const principal = Math.max(0, ledger.terms.principal);
+  const points: TrajectoryPoint[] = [{ t: start, value: principal }];
+  if (start > today) return { points, interestPaid: 0 };
+
+  const push = (t: number, value: number) => {
+    const last = points[points.length - 1];
+    if (last.t === t) last.value = value;
+    else points.push({ t, value });
+  };
+
+  // The days the walk changes course on: the start and every event day up to today.
+  const bounds = [
+    start,
+    ...[...new Set(ledger.events.map((event) => dayFloor(event.day)))]
+      .filter((d) => d > start && d <= today)
+      .sort((a, b) => a - b),
+  ];
+
   let interestPaid = 0;
-
-  // Before a manual anchor the stored path is unknown: amortize the principal with the
-  // current terms up to the anchor, then step to the balance the user (or an event) set.
-  const startDay = dayFloor(terms.startDay);
-  if (anchor.isManual && anchor.day > startDay) {
-    let balance = Math.max(0, terms.principal);
-    past.push({ t: startDay, value: balance });
-    if (terms.monthlyPayment > 0) {
-      for (let k = 1; balance > 0 && k <= MAX_PAST_MONTHS; k++) {
-        const due = dueDay(startDay, k);
-        if (due >= anchor.day || due > day) break;
-        const step = amortizationStep(balance, rate, terms.monthlyPayment);
-        interestPaid += step.interest;
-        balance = step.balanceAfter;
-        past.push({ t: due, value: balance });
+  for (let i = 0; i < bounds.length; i++) {
+    const from = bounds[i];
+    const next = bounds[i + 1];
+    const state = loanBalanceAt(ledger, from);
+    if (i === 0) {
+      push(from, state.balance);
+    } else {
+      const before = loanBalanceAt(ledger, from - DAY).balance;
+      if (Math.abs(state.balance - before) > 1e-9) {
+        // A step: hold the old balance until the day before, then jump
+        if (from - DAY > points[points.length - 1].t) push(from - DAY, before);
+        push(from, state.balance);
       }
     }
-    if (anchor.day <= day) {
-      if (anchor.day - DAY > past[past.length - 1].t) {
-        past.push({ t: anchor.day - DAY, value: balance });
-      }
+    if (state.mode !== 'estimated' || state.monthlyPayment <= 0) continue;
+    // Payments due after this day up to the next boundary (the boundary day's own payment
+    // belongs to this segment, but its reading is the boundary's, after the event)
+    const rate = state.annualRatePct / 100 / 12;
+    let balance = state.balance;
+    for (let k = 1; balance > 0 && k <= MAX_PAST_MONTHS; k++) {
+      const due = dueDay(state.segmentAnchorDay, k);
+      if (due <= from) continue;
+      if (due > (next ?? today)) break;
+      const step = amortizationStep(balance, rate, state.monthlyPayment);
+      interestPaid += step.interest;
+      balance = step.balanceAfter;
+      if (next === undefined || due < next) push(due, balance);
     }
   }
+  const last = points[points.length - 1];
+  if (last.t < today) push(today, loanBalanceAt(ledger, today).balance);
+  return { points, interestPaid };
+}
 
-  let balance = anchor.amount;
-  if (anchor.day <= day) {
-    past.push({ t: anchor.day, value: balance });
-    if (terms.monthlyPayment > 0) {
-      for (let k = 1; balance > 0 && k <= MAX_PAST_MONTHS; k++) {
-        const due = dueDay(anchor.day, k);
-        if (due > day) break;
-        const step = amortizationStep(balance, rate, terms.monthlyPayment);
-        interestPaid += step.interest;
-        balance = step.balanceAfter;
-        past.push({ t: due, value: balance });
-      }
-    }
-  } else if (past.length === 0) {
-    // Anchor dated in the future: nothing is known yet, hold the principal until then.
-    past.push({ t: startDay, value: Math.max(0, terms.principal) });
-    balance = Math.max(0, terms.principal);
-  } else {
-    balance = past[past.length - 1].value;
-  }
-  if (past[past.length - 1].t < day) past.push({ t: day, value: balance });
-
-  const schedule = amortizationSchedule(terms);
-  const upcoming = schedule.rows.filter((row) => row.dueDay > day);
-  const future = upcoming.map((row) => ({ t: row.dueDay, value: row.balanceAfter }));
+/**
+ * The balance path of one loan: solid past from the ledger walk (the estimated path before the
+ * first manual balance, every manual record a step on its day), dashed future from the plan
+ * ahead (`planFrom`).
+ */
+export function loanTrajectory(ledger: LoanLedger, today: number): LoanTrajectory {
+  const day = dayFloor(today);
+  const { points: past, interestPaid } = pastPath(ledger, day);
+  const { schedule, upcoming, future } = planAhead(planFrom(ledger, day), day);
 
   const all = [...past, ...future];
   const payoffDay = all.find((p) => p.value <= 0)?.t ?? null;
-  const half = Math.max(0, terms.principal) / 2;
-  const halfPoint = all.find((p, i) => i > 0 && p.value <= half);
-  const halfDay = terms.principal > 0 && halfPoint ? halfPoint.t : null;
+  const principal = Math.max(0, ledger.terms.principal);
+  const halfPoint = all.find((p, i) => i > 0 && p.value <= principal / 2);
+  const halfDay = principal > 0 && halfPoint ? halfPoint.t : null;
 
   return {
     past,
@@ -118,7 +151,7 @@ export function loanTrajectory(terms: LoanTerms, today: number): LoanTrajectory 
     schedule,
     upcoming,
     end: schedule.end,
-    balanceToday: balance,
+    balanceToday: loanBalanceAt(ledger, day).balance,
     interestPaid,
     payoffDay,
     halfDay,
@@ -243,40 +276,40 @@ export interface ExtraPaymentWhatIf {
 }
 
 /**
- * What one extra payment made today would do: shorten the term at the same
- * payment, or keep the payoff day and lower the payment (annuity on the reduced
- * balance over the remaining payments).
+ * What one extra payment made today would do to the plan ahead: shorten the term at the same
+ * payment, or keep the payoff day and lower the payment (annuity on the reduced balance over
+ * the remaining payments). `plan` is `planFrom(ledger, today)` and `balanceToday` the walk's
+ * balance; the future is an estimate in either mode, only the balance of a manual loan holds.
  */
 export function extraPaymentWhatIf(
-  terms: LoanTerms,
+  plan: LoanTerms,
+  balanceToday: number,
   today: number,
   amount: number,
   mode: ExtraPaymentMode
 ): ExtraPaymentWhatIf | null {
   const day = dayFloor(today);
-  const base = loanTrajectory(terms, day);
-  if (terms.monthlyPayment <= 0 || base.balanceToday <= 0) return null;
-  const extra = Math.min(Math.max(0, amount), base.balanceToday);
-  const balanceAfter = base.balanceToday - extra;
+  if (plan.monthlyPayment <= 0 || balanceToday <= 0) return null;
+  const base = planAhead(plan, day);
+  const extra = Math.min(Math.max(0, amount), balanceToday);
+  const balanceAfter = balanceToday - extra;
   const monthsBefore = base.upcoming.length;
   const interestBefore = base.upcoming.reduce((s, r) => s + r.interest, 0);
   // Rounded up to the cent so the last scheduled payment really clears the balance.
   const payment =
     mode === 'payment' && monthsBefore > 0
-      ? Math.ceil(annuityPayment(balanceAfter, terms.annualRatePct, monthsBefore) * 100) / 100
-      : terms.monthlyPayment;
+      ? Math.ceil(annuityPayment(balanceAfter, plan.annualRatePct, monthsBefore) * 100) / 100
+      : plan.monthlyPayment;
   // Re-anchoring today moves the due days, so the contractual end would cut the last payment
   // off: run the new schedule until it is paid and report its real payoff day.
-  const after = loanTrajectory(
-    {
-      ...terms,
-      monthlyPayment: payment,
-      anchorAmount: balanceAfter,
-      anchorDay: day,
-      endDay: null,
-    },
-    day
-  );
+  const afterPlan: LoanTerms = {
+    ...plan,
+    monthlyPayment: payment,
+    anchorAmount: balanceAfter,
+    anchorDay: day,
+    endDay: null,
+  };
+  const after = planAhead(afterPlan, day);
   return {
     mode,
     balanceAfter,
@@ -285,7 +318,7 @@ export function extraPaymentWhatIf(
     interestBefore,
     interestAfter: after.upcoming.reduce((s, r) => s + r.interest, 0),
     payment,
-    payoffDay: after.payoffDay,
+    payoffDay: planPayoffDay(afterPlan, day),
   };
 }
 

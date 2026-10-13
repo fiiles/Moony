@@ -393,10 +393,10 @@ export const loansApi = {
 
   getAvailable: () => tauriInvoke<Loan[]>('get_available_loans'),
 
-  /** Extra payments, rate changes and balance checks, oldest first (loan detail time trace). */
+  /** Extra payments, rate changes and manual balances, oldest first (loan detail time trace). */
   getEvents: (loanId: string) => tauriInvoke<LoanEvent[]>('get_loan_events', { loanId }),
 
-  /** Records an event and re-anchors the amortization on its day. */
+  /** Records an event (extra payment, rate change, or a manual balance as `balance_check`); the balance is walked again. */
   addEvent: (data: InsertLoanEvent) => tauriInvoke<LoanEvent>('add_loan_event', { data }),
 
   deleteEvent: (eventId: string) => tauriInvoke<void>('delete_loan_event', { eventId }),

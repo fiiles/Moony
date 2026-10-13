@@ -68,7 +68,7 @@
     "watch_target_below": "Cena {{price}} spadła do celu {{target}}",
     "watch_target_above": "Cena {{price}} osiągnęła cel {{target}}",
     "loan_fixation_expired": "Stałe oprocentowanie skończyło się {{date}} · wpisz nową stopę",
-    "loan_balance_check": "Saldo niesprawdzane od {{date}} · porównaj z wyciągiem",
+    "loan_balance_check": "Brak wpisanego salda od {{date}} · wpisz aktualne saldo",
     "valuation_stale": "Brak nowej wyceny od {{date}} · przeszacuj",
     "backup_stale": "Ostatnia kopia zapasowa {{date}}",
     "backup_never": "Brak kopii zapasowej",
@@ -84,7 +84,7 @@
     "balances_stale_many": "zaktualizuj {{count}} sald",
     "balances_stale_other": "zaktualizuj {{count}} salda",
     "valuation_stale": "przeszacuj: {{title}}",
-    "loan_balance_check": "sprawdź saldo: {{title}}",
+    "loan_balance_check": "wpisz aktualne saldo: {{title}}",
     "loan_fixation_expired": "wpisz nową stopę: {{title}}"
   },
   "groups": {
@@ -134,9 +134,9 @@
       "mute": "Nie przypominaj o wycenach nieruchomości"
     },
     "loanChecks": {
-      "label": "Kontrole kredytów",
-      "hint": "Coroczna kontrola salda i nowa stopa po końcu stałego oprocentowania.",
-      "mute": "Nie przypominaj o kontrolach kredytów"
+      "label": "Saldo i oprocentowanie kredytów",
+      "hint": "Coroczne wpisanie aktualnego salda i nowa stopa po końcu stałego oprocentowania.",
+      "mute": "Nie przypominaj o saldzie i oprocentowaniu kredytów"
     }
   },
   "settings": {

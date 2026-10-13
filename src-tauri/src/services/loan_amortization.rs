@@ -12,6 +12,12 @@
 //! - The anchor is the (amount, day) amortization runs from: the manual
 //!   balance when both are set, else (principal, start day).
 //! - No monthly payment: the balance stays at the anchor.
+//!
+//! Ledger (`loan_balance_at`, `plan_from`): the balance on a day is a walk over
+//! the loan's events. A manual balance record holds exactly until the user
+//! changes it (nothing is estimated over it); estimated segments amortize
+//! monthly from their anchor day. See
+//! `docs/specs/2026-10-13-history-from-dated-facts-design.md`, B2 and B3.
 
 const SECONDS_PER_DAY: i64 = 86_400;
 
@@ -299,6 +305,226 @@ pub fn schedule(terms: &LoanTerms, max_rows: usize) -> Schedule {
     }
 }
 
+// ---------------------------------------------------------------------------
+// Ledger walk (spec B2, B3)
+// ---------------------------------------------------------------------------
+
+/// The stored kind of a loan event. `BalanceCheck` is the manual balance
+/// record (`balance_check` in the database).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LedgerEventKind {
+    ExtraPayment,
+    RateChange,
+    BalanceCheck,
+}
+
+/// One loan event, already parsed. Money is in the loan currency.
+#[derive(Debug, Clone, PartialEq)]
+pub struct LedgerEvent {
+    /// UTC day of the event.
+    pub day: i64,
+    /// Orders events that share a day (unix seconds).
+    pub created_at: i64,
+    pub kind: LedgerEventKind,
+    /// Extra payment: the amount paid. Manual record: the balance.
+    pub amount: Option<f64>,
+    /// Rate change: the new annual rate in percent (`None` reads as 0, like an
+    /// empty rate on the loan).
+    pub rate: Option<f64>,
+    /// Extra payment / rate change: the new regular payment when given.
+    pub monthly_payment: Option<f64>,
+    /// Rate change: the rate in force before it (`None` on legacy rows).
+    pub previous_rate: Option<f64>,
+    /// Rate change: the payment in force before it (`None` on legacy rows).
+    pub previous_monthly_payment: Option<f64>,
+}
+
+/// A loan and its events. `terms` holds the loan's *current* rate and payment,
+/// the principal, the start day and the end day; its anchor fields are
+/// ignored (the events are the source of every manual balance).
+#[derive(Debug, Clone, PartialEq)]
+pub struct LoanLedger {
+    pub terms: LoanTerms,
+    pub events: Vec<LedgerEvent>,
+}
+
+/// How the balance of a day came about.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LedgerMode {
+    /// Amortized monthly from the segment anchor.
+    Estimated,
+    /// Entered by the user; holds, nothing is amortized over it.
+    Manual,
+}
+
+/// The walk's state on a day.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct LedgerState {
+    /// Balance on the day, `>= 0`; 0 before the start day.
+    pub balance: f64,
+    pub mode: LedgerMode,
+    /// Day whose day-of-month the monthly payments fall on: the start day, or
+    /// the day of the last estimated extra payment / rate change. A manual
+    /// record leaves it unchanged.
+    pub segment_anchor_day: i64,
+    /// Balance on `segment_anchor_day` (the amount the estimated segment
+    /// amortizes from); equals `balance` in `Manual` mode.
+    pub segment_anchor_amount: f64,
+    /// Annual rate in force on the day, percent.
+    pub annual_rate_pct: f64,
+    /// Regular payment in force on the day.
+    pub monthly_payment: f64,
+}
+
+impl LedgerState {
+    pub fn monthly_rate(&self) -> f64 {
+        self.annual_rate_pct / 100.0 / 12.0
+    }
+}
+
+/// Events by (day, created_at), the order the walk applies them in.
+fn ordered_events(ledger: &LoanLedger) -> Vec<&LedgerEvent> {
+    let mut events: Vec<&LedgerEvent> = ledger.events.iter().collect();
+    events.sort_by_key(|event| (day_floor(event.day), event.created_at));
+    events
+}
+
+/// Rate and payment before any event: the first rate change's previous terms
+/// when it recorded them, else the loan's current terms (legacy rows).
+fn initial_terms(terms: &LoanTerms, events: &[&LedgerEvent]) -> (f64, f64) {
+    let first_rate_change = events
+        .iter()
+        .find(|event| event.kind == LedgerEventKind::RateChange);
+    match first_rate_change {
+        Some(change) => (
+            change.previous_rate.unwrap_or(terms.annual_rate_pct),
+            change
+                .previous_monthly_payment
+                .unwrap_or(terms.monthly_payment),
+        ),
+        None => (terms.annual_rate_pct, terms.monthly_payment),
+    }
+}
+
+/// Balance of the current estimated segment after every payment due on or
+/// before `to_day`.
+fn estimated_balance_through(state: &LedgerState, to_day: i64) -> f64 {
+    let segment = LoanTerms {
+        principal: state.segment_anchor_amount,
+        annual_rate_pct: state.annual_rate_pct,
+        monthly_payment: state.monthly_payment,
+        start_day: state.segment_anchor_day,
+        anchor_amount: None,
+        anchor_day: None,
+        end_day: None,
+    };
+    elapsed_to(&segment, to_day).balance
+}
+
+fn apply_event(state: &mut LedgerState, event: &LedgerEvent) {
+    let estimated = state.mode == LedgerMode::Estimated;
+    match event.kind {
+        LedgerEventKind::BalanceCheck => {
+            state.balance = event.amount.unwrap_or(0.0).max(0.0);
+            state.mode = LedgerMode::Manual;
+        }
+        LedgerEventKind::ExtraPayment => {
+            state.balance = (state.balance - event.amount.unwrap_or(0.0)).max(0.0);
+            if let Some(payment) = event.monthly_payment {
+                state.monthly_payment = payment;
+            }
+        }
+        LedgerEventKind::RateChange => {
+            state.annual_rate_pct = event.rate.unwrap_or(0.0);
+            if let Some(payment) = event.monthly_payment {
+                state.monthly_payment = payment;
+            }
+        }
+    }
+    if estimated && event.kind != LedgerEventKind::BalanceCheck {
+        // The event day starts a new estimated segment.
+        state.segment_anchor_day = day_floor(event.day);
+    }
+    state.segment_anchor_amount = state.balance;
+}
+
+/// Balance of a loan on `day`: the ledger walk (spec B2).
+///
+/// Before the start day the balance is 0. Otherwise the walk starts as
+/// `Estimated` from (principal, start day) and applies the events dated on or
+/// before `day` in (day, created_at) order:
+/// - estimated segments amortize monthly between events, on the segment
+///   anchor's day of month;
+/// - a manual record (`BalanceCheck`) sets the balance and switches to
+///   `Manual`: nothing is amortized after it;
+/// - an extra payment subtracts its amount (a new payment applies when given);
+///   estimated: the event day becomes the segment anchor; manual: stays manual;
+/// - a rate change swaps the terms; estimated: the event day becomes the
+///   segment anchor; manual: the balance is unchanged.
+pub fn loan_balance_at(ledger: &LoanLedger, day: i64) -> LedgerState {
+    let day = day_floor(day);
+    let start = day_floor(ledger.terms.start_day);
+    let events = ordered_events(ledger);
+    let (annual_rate_pct, monthly_payment) = initial_terms(&ledger.terms, &events);
+    let principal = ledger.terms.principal.max(0.0);
+    let mut state = LedgerState {
+        balance: principal,
+        mode: LedgerMode::Estimated,
+        segment_anchor_day: start,
+        segment_anchor_amount: principal,
+        annual_rate_pct,
+        monthly_payment,
+    };
+    if day < start {
+        state.balance = 0.0;
+        return state;
+    }
+    for event in events
+        .into_iter()
+        .take_while(|event| day_floor(event.day) <= day)
+    {
+        if state.mode == LedgerMode::Estimated {
+            state.balance = estimated_balance_through(&state, day_floor(event.day));
+        }
+        apply_event(&mut state, event);
+    }
+    if state.mode == LedgerMode::Estimated {
+        state.balance = estimated_balance_through(&state, day);
+    }
+    state.balance = state.balance.max(0.0);
+    state
+}
+
+/// Terms whose `anchor()` starts the schedule ahead, so `schedule` and
+/// `elapsed_to` run on them unchanged (spec B3). The terms are the ones in
+/// force on `today`:
+/// - `Estimated`: the schedule continues from the segment anchor, as before;
+/// - `Manual`: it starts from today's balance. Payments stay on the segment
+///   anchor's day of month, so the anchor day is the last payment day on or
+///   before `today` of that cycle, and the first planned payment is the next
+///   cycle day strictly after `today` (the balance already includes today's).
+///   A cycle day above 28 that the anchor month clamps (e.g. the 31st in a
+///   30-day month) moves the later due days to the clamped day.
+pub fn plan_from(ledger: &LoanLedger, today: i64) -> LoanTerms {
+    let state = loan_balance_at(ledger, today);
+    let (anchor_amount, anchor_day) = match state.mode {
+        LedgerMode::Estimated => (state.segment_anchor_amount, state.segment_anchor_day),
+        LedgerMode::Manual => {
+            let paid = payments_due_through(state.segment_anchor_day, today);
+            (state.balance, due_day(state.segment_anchor_day, paid))
+        }
+    };
+    LoanTerms {
+        principal: ledger.terms.principal,
+        annual_rate_pct: state.annual_rate_pct,
+        monthly_payment: state.monthly_payment,
+        start_day: ledger.terms.start_day,
+        anchor_amount: Some(anchor_amount),
+        anchor_day: Some(anchor_day),
+        end_day: ledger.terms.end_day,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -547,6 +773,71 @@ mod tests {
         assert_eq!(outstanding_balance_at(&t, day("2030-01-01")), 0.0);
     }
 
+    /// Asserts a schedule against a fixture `schedule` block (shared by the plain
+    /// and the ledger cases).
+    fn assert_schedule_matches(name: &str, t: &LoanTerms, sched: &Value) {
+        let max_rows = sched["maxRows"].as_u64().unwrap() as usize;
+        let s = schedule(t, max_rows);
+        let end = match s.end {
+            ScheduleEnd::Paid => "paid",
+            ScheduleEnd::EndDate => "endDate",
+            ScheduleEnd::Capped => "capped",
+            ScheduleEnd::NoPayment => "noPayment",
+        };
+        assert_eq!(end, sched["end"].as_str().unwrap(), "{name}: end");
+        assert_eq!(
+            s.rows.len() as u64,
+            sched["rowCount"].as_u64().unwrap(),
+            "{name}: rows"
+        );
+        match sched["lastBalance"].as_f64() {
+            Some(expected) => {
+                let last = s.rows.last().expect("rows");
+                assert_eq!(
+                    cents(last.balance_after),
+                    cents(expected),
+                    "{name}: last balance"
+                );
+            }
+            None => assert!(s.rows.is_empty(), "{name}: expected no rows"),
+        }
+        let check_row = |row: &ScheduleRow, expected: &Value| {
+            assert_eq!(
+                row.due_day,
+                day(expected["dueDay"].as_str().unwrap()),
+                "{name}: due"
+            );
+            assert_eq!(
+                cents(row.payment),
+                cents(expected["payment"].as_f64().unwrap()),
+                "{name}: payment"
+            );
+            assert_eq!(
+                cents(row.interest),
+                cents(expected["interest"].as_f64().unwrap()),
+                "{name}: interest"
+            );
+            assert_eq!(
+                cents(row.principal_part),
+                cents(expected["principalPart"].as_f64().unwrap()),
+                "{name}: principal"
+            );
+            assert_eq!(
+                cents(row.balance_after),
+                cents(expected["balanceAfter"].as_f64().unwrap()),
+                "{name}: balance after"
+            );
+        };
+        if let Some(first) = sched.get("firstRows").and_then(Value::as_array) {
+            for (row, expected) in s.rows.iter().zip(first) {
+                check_row(row, expected);
+            }
+        }
+        if let Some(last) = sched.get("lastRow") {
+            check_row(s.rows.last().unwrap(), last);
+        }
+    }
+
     #[test]
     fn fixture_balances_and_schedules_match_to_the_cent() {
         let fixture: Value = serde_json::from_str(FIXTURE).unwrap();
@@ -566,68 +857,218 @@ mod tests {
                 );
             }
             if let Some(sched) = case.get("schedule") {
-                let max_rows = sched["maxRows"].as_u64().unwrap() as usize;
-                let s = schedule(&t, max_rows);
-                let end = match s.end {
-                    ScheduleEnd::Paid => "paid",
-                    ScheduleEnd::EndDate => "endDate",
-                    ScheduleEnd::Capped => "capped",
-                    ScheduleEnd::NoPayment => "noPayment",
-                };
-                assert_eq!(end, sched["end"].as_str().unwrap(), "{name}: end");
-                assert_eq!(
-                    s.rows.len() as u64,
-                    sched["rowCount"].as_u64().unwrap(),
-                    "{name}: rows"
-                );
-                match sched["lastBalance"].as_f64() {
-                    Some(expected) => {
-                        let last = s.rows.last().expect("rows");
-                        assert_eq!(
-                            cents(last.balance_after),
-                            cents(expected),
-                            "{name}: last balance"
-                        );
-                    }
-                    None => assert!(s.rows.is_empty(), "{name}: expected no rows"),
-                }
-                let check_row = |row: &ScheduleRow, expected: &Value| {
-                    assert_eq!(
-                        row.due_day,
-                        day(expected["dueDay"].as_str().unwrap()),
-                        "{name}: due"
-                    );
-                    assert_eq!(
-                        cents(row.payment),
-                        cents(expected["payment"].as_f64().unwrap()),
-                        "{name}: payment"
-                    );
-                    assert_eq!(
-                        cents(row.interest),
-                        cents(expected["interest"].as_f64().unwrap()),
-                        "{name}: interest"
-                    );
-                    assert_eq!(
-                        cents(row.principal_part),
-                        cents(expected["principalPart"].as_f64().unwrap()),
-                        "{name}: principal"
-                    );
-                    assert_eq!(
-                        cents(row.balance_after),
-                        cents(expected["balanceAfter"].as_f64().unwrap()),
-                        "{name}: balance after"
-                    );
-                };
-                if let Some(first) = sched.get("firstRows").and_then(Value::as_array) {
-                    for (row, expected) in s.rows.iter().zip(first) {
-                        check_row(row, expected);
-                    }
-                }
-                if let Some(last) = sched.get("lastRow") {
-                    check_row(s.rows.last().unwrap(), last);
-                }
+                assert_schedule_matches(name, &t, sched);
             }
         }
+    }
+
+    fn ledger_event_from_fixture(e: &Value) -> LedgerEvent {
+        LedgerEvent {
+            day: day(e["day"].as_str().unwrap()),
+            created_at: e["createdAt"].as_i64().unwrap(),
+            kind: match e["kind"].as_str().unwrap() {
+                "extra_payment" => LedgerEventKind::ExtraPayment,
+                "rate_change" => LedgerEventKind::RateChange,
+                "balance_check" => LedgerEventKind::BalanceCheck,
+                other => panic!("unknown event kind {other}"),
+            },
+            amount: e["amount"].as_f64(),
+            rate: e["rate"].as_f64(),
+            monthly_payment: e["monthlyPayment"].as_f64(),
+            previous_rate: e["previousRate"].as_f64(),
+            previous_monthly_payment: e["previousMonthlyPayment"].as_f64(),
+        }
+    }
+
+    fn ledger_from_fixture(l: &Value) -> LoanLedger {
+        let t = &l["terms"];
+        LoanLedger {
+            terms: LoanTerms {
+                principal: t["principal"].as_f64().unwrap(),
+                annual_rate_pct: t["annualRatePct"].as_f64().unwrap(),
+                monthly_payment: t["monthlyPayment"].as_f64().unwrap(),
+                start_day: day(t["startDay"].as_str().unwrap()),
+                anchor_amount: None,
+                anchor_day: None,
+                end_day: t["endDay"].as_str().map(day),
+            },
+            events: l["events"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(ledger_event_from_fixture)
+                .collect(),
+        }
+    }
+
+    fn mode_name(mode: LedgerMode) -> &'static str {
+        match mode {
+            LedgerMode::Estimated => "estimated",
+            LedgerMode::Manual => "manual",
+        }
+    }
+
+    #[test]
+    fn fixture_ledger_balances_and_plans_match_to_the_cent() {
+        let fixture: Value = serde_json::from_str(FIXTURE).unwrap();
+        let cases = fixture["ledgerCases"].as_array().unwrap();
+        assert!(cases.len() >= 12);
+        for case in cases {
+            let name = case["name"].as_str().unwrap();
+            let ledger = ledger_from_fixture(&case["ledger"]);
+            for b in case["balances"].as_array().unwrap() {
+                let on = b["on"].as_str().unwrap();
+                let state = loan_balance_at(&ledger, day(on));
+                assert_eq!(
+                    cents(state.balance),
+                    cents(b["balance"].as_f64().unwrap()),
+                    "{name} balance on {on}: got {}",
+                    state.balance
+                );
+                assert_eq!(
+                    mode_name(state.mode),
+                    b["mode"].as_str().unwrap(),
+                    "{name} mode on {on}"
+                );
+                assert_eq!(
+                    state.segment_anchor_day,
+                    day(b["segmentAnchorDay"].as_str().unwrap()),
+                    "{name} segment anchor on {on}"
+                );
+            }
+            if let Some(plan) = case.get("plan") {
+                let today = day(plan["today"].as_str().unwrap());
+                assert_eq!(
+                    mode_name(loan_balance_at(&ledger, today).mode),
+                    plan["mode"].as_str().unwrap(),
+                    "{name}: plan mode"
+                );
+                let terms = plan_from(&ledger, today);
+                let (amount, anchor_day) = terms.anchor();
+                assert_eq!(
+                    cents(amount),
+                    cents(plan["anchorAmount"].as_f64().unwrap()),
+                    "{name}: plan anchor amount"
+                );
+                assert_eq!(
+                    anchor_day,
+                    day(plan["anchorDay"].as_str().unwrap()),
+                    "{name}: plan anchor day"
+                );
+                assert!(
+                    (terms.annual_rate_pct - plan["annualRatePct"].as_f64().unwrap()).abs() < 1e-9,
+                    "{name}: plan rate"
+                );
+                assert!(
+                    (terms.monthly_payment - plan["monthlyPayment"].as_f64().unwrap()).abs() < 1e-9,
+                    "{name}: plan payment"
+                );
+                assert_schedule_matches(name, &terms, &plan["schedule"]);
+            }
+        }
+    }
+
+    fn event(day_iso: &str, created_at: i64, kind: LedgerEventKind) -> LedgerEvent {
+        LedgerEvent {
+            day: day(day_iso),
+            created_at,
+            kind,
+            amount: None,
+            rate: None,
+            monthly_payment: None,
+            previous_rate: None,
+            previous_monthly_payment: None,
+        }
+    }
+
+    fn ledger(start: &str, events: Vec<LedgerEvent>) -> LoanLedger {
+        LoanLedger {
+            terms: terms(start),
+            events,
+        }
+    }
+
+    #[test]
+    fn a_ledger_without_events_is_the_legacy_annuity() {
+        let l = ledger("2023-01-15", Vec::new());
+        for iso in ["2023-02-14", "2023-02-15", "2024-01-15", "2031-05-20"] {
+            assert_eq!(
+                cents(loan_balance_at(&l, day(iso)).balance),
+                cents(outstanding_balance_at(&l.terms, day(iso))),
+                "{iso}"
+            );
+        }
+    }
+
+    #[test]
+    fn the_ledger_ignores_the_terms_anchor_fields() {
+        let mut l = ledger("2023-01-15", Vec::new());
+        l.terms.anchor_amount = Some(1.0);
+        l.terms.anchor_day = Some(day("2023-06-01"));
+        assert_eq!(loan_balance_at(&l, day("2023-02-14")).balance, 100_000.0);
+    }
+
+    #[test]
+    fn event_order_is_day_then_created_at_whatever_the_slice_order() {
+        let mut record = event("2024-05-10", 10, LedgerEventKind::BalanceCheck);
+        record.amount = Some(80_000.0);
+        let mut extra = event("2024-05-10", 20, LedgerEventKind::ExtraPayment);
+        extra.amount = Some(5_000.0);
+        let forward = ledger("2023-01-15", vec![record.clone(), extra.clone()]);
+        let reversed = ledger("2023-01-15", vec![extra.clone(), record.clone()]);
+        assert_eq!(
+            loan_balance_at(&forward, day("2024-06-01")).balance,
+            75_000.0
+        );
+        assert_eq!(
+            loan_balance_at(&reversed, day("2024-06-01")).balance,
+            75_000.0
+        );
+        // created in the other order: the payment first, then the record wins.
+        extra.created_at = 5;
+        let payment_first = ledger("2023-01-15", vec![record, extra]);
+        assert_eq!(
+            loan_balance_at(&payment_first, day("2024-06-01")).balance,
+            80_000.0
+        );
+    }
+
+    #[test]
+    fn the_first_rate_changes_previous_terms_are_the_initial_terms() {
+        let mut change = event("2024-06-10", 1, LedgerEventKind::RateChange);
+        change.rate = Some(4.5);
+        change.monthly_payment = Some(1_900.0);
+        change.previous_rate = Some(6.0);
+        change.previous_monthly_payment = Some(2_000.0);
+        let mut l = ledger("2023-01-15", vec![change]);
+        l.terms.annual_rate_pct = 4.5;
+        l.terms.monthly_payment = 1_900.0;
+        // One payment at 6 % / 2 000, not at the loan's current 4.5 % / 1 900.
+        assert_eq!(
+            cents(loan_balance_at(&l, day("2023-02-15")).balance),
+            cents(98_500.0)
+        );
+    }
+
+    #[test]
+    fn a_manual_balance_survives_a_zero_balance_and_a_missing_payment() {
+        let mut record = event("2024-01-10", 1, LedgerEventKind::BalanceCheck);
+        record.amount = Some(0.0);
+        let l = ledger("2023-01-15", vec![record]);
+        let state = loan_balance_at(&l, day("2026-01-01"));
+        assert_eq!(state.balance, 0.0);
+        assert_eq!(state.mode, LedgerMode::Manual);
+        let plan = plan_from(&l, day("2026-01-01"));
+        assert_eq!(schedule(&plan, MAX_SCHEDULE_ROWS).end, ScheduleEnd::Paid);
+    }
+
+    #[test]
+    fn plan_from_keeps_the_start_and_end_day() {
+        let mut l = ledger("2023-01-15", Vec::new());
+        l.terms.end_day = Some(day("2030-01-15"));
+        let plan = plan_from(&l, day("2024-01-01"));
+        assert_eq!(plan.start_day, day("2023-01-15"));
+        assert_eq!(plan.end_day, Some(day("2030-01-15")));
     }
 
     #[test]

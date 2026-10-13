@@ -23,7 +23,7 @@ npm run lint && npm run typecheck && npm test
 | Task | Status | Commit |
 |---|---|---|
 | 0. Interim: stock/crypto rebuilds create missing days, CoinGecko key rebuilds crypto | done | 9e9a90e |
-| 1. Loan ledger maths (Rust + TS mirror + fixture) | todo | |
+| 1. Loan ledger maths (Rust + TS mirror + fixture) | done | see git log |
 | 2. Loan data: migration 019, services, MCP, milestone, wire contract | todo | |
 | 3. Loans UI and copy (10 locales) | todo | |
 | 4. History derivation (`history_days.rs`, `rebuild_days`) | todo | |

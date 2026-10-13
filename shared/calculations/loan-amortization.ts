@@ -13,6 +13,11 @@
  * - The anchor is the (amount, day) amortization runs from: the manual balance when
  *   both are set, else (principal, start day).
  * - No monthly payment: the balance stays at the anchor.
+ *
+ * Ledger (`loanBalanceAt`, `planFrom`): the balance on a day is a walk over the loan's
+ * events. A manual balance record holds exactly until the user changes it (nothing is
+ * estimated over it); estimated segments amortize monthly from their anchor day. See
+ * `docs/specs/2026-10-13-history-from-dated-facts-design.md`, B2 and B3.
  */
 
 export const SECONDS_PER_DAY = 86_400;
@@ -219,6 +224,187 @@ export function amortizationSchedule(
     });
     if (balance <= 0) return { rows, end: 'paid' };
   }
+}
+
+/** The stored kind of a loan event; `balance_check` is the manual balance record. */
+export type LedgerEventKind = 'extra_payment' | 'rate_change' | 'balance_check';
+
+/** One loan event, already parsed. Money is in the loan currency. */
+export interface LedgerEvent {
+  /** UTC day of the event. */
+  day: number;
+  /** Orders events that share a day (unix seconds). */
+  createdAt: number;
+  kind: LedgerEventKind;
+  /** Extra payment: the amount paid. Manual record: the balance. */
+  amount?: number | null;
+  /** Rate change: the new annual rate in percent (null reads as 0, like an empty rate). */
+  rate?: number | null;
+  /** Extra payment / rate change: the new regular payment when given. */
+  monthlyPayment?: number | null;
+  /** Rate change: the rate in force before it (null on legacy rows). */
+  previousRate?: number | null;
+  /** Rate change: the payment in force before it (null on legacy rows). */
+  previousMonthlyPayment?: number | null;
+}
+
+/**
+ * A loan and its events. `terms` holds the loan's current rate and payment, the principal,
+ * the start day and the end day; its anchor fields are ignored (the events are the source
+ * of every manual balance).
+ */
+export interface LoanLedger {
+  terms: LoanTerms;
+  events: LedgerEvent[];
+}
+
+/** How the balance of a day came about. */
+export type LedgerMode = 'estimated' | 'manual';
+
+/** The walk's state on a day. */
+export interface LedgerState {
+  /** Balance on the day, `>= 0`; 0 before the start day. */
+  balance: number;
+  mode: LedgerMode;
+  /**
+   * Day whose day-of-month the monthly payments fall on: the start day, or the day of the
+   * last estimated extra payment / rate change. A manual record leaves it unchanged.
+   */
+  segmentAnchorDay: number;
+  /** Balance on `segmentAnchorDay`; equals `balance` in `manual` mode. */
+  segmentAnchorAmount: number;
+  /** Annual rate in force on the day, percent. */
+  annualRatePct: number;
+  /** Regular payment in force on the day. */
+  monthlyPayment: number;
+}
+
+/** Events by (day, created time), the order the walk applies them in. */
+function orderedEvents(ledger: LoanLedger): LedgerEvent[] {
+  return [...ledger.events].sort(
+    (a, b) => dayFloor(a.day) - dayFloor(b.day) || a.createdAt - b.createdAt
+  );
+}
+
+/**
+ * Rate and payment before any event: the first rate change's previous terms when it
+ * recorded them, else the loan's current terms (legacy rows).
+ */
+function initialTerms(
+  terms: LoanTerms,
+  events: LedgerEvent[]
+): { annualRatePct: number; monthlyPayment: number } {
+  const change = events.find((event) => event.kind === 'rate_change');
+  return {
+    annualRatePct: change?.previousRate ?? terms.annualRatePct,
+    monthlyPayment: change?.previousMonthlyPayment ?? terms.monthlyPayment,
+  };
+}
+
+/** Balance of the current estimated segment after every payment due on or before `toDay`. */
+function estimatedBalanceThrough(state: LedgerState, toDay: number): number {
+  return elapsedTo(
+    {
+      principal: state.segmentAnchorAmount,
+      annualRatePct: state.annualRatePct,
+      monthlyPayment: state.monthlyPayment,
+      startDay: state.segmentAnchorDay,
+    },
+    toDay
+  ).balance;
+}
+
+function applyEvent(state: LedgerState, event: LedgerEvent): void {
+  const estimated = state.mode === 'estimated';
+  if (event.kind === 'balance_check') {
+    state.balance = Math.max(0, event.amount ?? 0);
+    state.mode = 'manual';
+  } else if (event.kind === 'extra_payment') {
+    state.balance = Math.max(0, state.balance - (event.amount ?? 0));
+    if (event.monthlyPayment !== null && event.monthlyPayment !== undefined) {
+      state.monthlyPayment = event.monthlyPayment;
+    }
+  } else {
+    state.annualRatePct = event.rate ?? 0;
+    if (event.monthlyPayment !== null && event.monthlyPayment !== undefined) {
+      state.monthlyPayment = event.monthlyPayment;
+    }
+  }
+  if (estimated && event.kind !== 'balance_check') {
+    // The event day starts a new estimated segment.
+    state.segmentAnchorDay = dayFloor(event.day);
+  }
+  state.segmentAnchorAmount = state.balance;
+}
+
+/**
+ * Balance of a loan on `day`: the ledger walk (spec B2).
+ *
+ * Before the start day the balance is 0. Otherwise the walk starts as `estimated` from
+ * (principal, start day) and applies the events dated on or before `day` in
+ * (day, created time) order:
+ * - estimated segments amortize monthly between events, on the segment anchor's day of month;
+ * - a manual record (`balance_check`) sets the balance and switches to `manual`: nothing is
+ *   amortized after it;
+ * - an extra payment subtracts its amount (a new payment applies when given); estimated: the
+ *   event day becomes the segment anchor; manual: stays manual;
+ * - a rate change swaps the terms; estimated: the event day becomes the segment anchor;
+ *   manual: the balance is unchanged.
+ */
+export function loanBalanceAt(ledger: LoanLedger, day: number): LedgerState {
+  const target = dayFloor(day);
+  const start = dayFloor(ledger.terms.startDay);
+  const events = orderedEvents(ledger);
+  const principal = Math.max(0, ledger.terms.principal);
+  const state: LedgerState = {
+    balance: principal,
+    mode: 'estimated',
+    segmentAnchorDay: start,
+    segmentAnchorAmount: principal,
+    ...initialTerms(ledger.terms, events),
+  };
+  if (target < start) {
+    state.balance = 0;
+    return state;
+  }
+  for (const event of events) {
+    if (dayFloor(event.day) > target) break;
+    if (state.mode === 'estimated') {
+      state.balance = estimatedBalanceThrough(state, dayFloor(event.day));
+    }
+    applyEvent(state, event);
+  }
+  if (state.mode === 'estimated') state.balance = estimatedBalanceThrough(state, target);
+  state.balance = Math.max(0, state.balance);
+  return state;
+}
+
+/**
+ * Terms whose anchor starts the schedule ahead, so `amortizationSchedule` and `elapsedTo`
+ * run on them unchanged (spec B3). The terms are the ones in force on `today`:
+ * - `estimated`: the schedule continues from the segment anchor, as before;
+ * - `manual`: it starts from today's balance. Payments stay on the segment anchor's day of
+ *   month, so the anchor day is the last payment day on or before `today` of that cycle, and
+ *   the first planned payment is the next cycle day strictly after `today` (the balance
+ *   already includes today's). A cycle day above 28 that the anchor month clamps (e.g. the
+ *   31st in a 30-day month) moves the later due days to the clamped day.
+ */
+export function planFrom(ledger: LoanLedger, today: number): LoanTerms {
+  const state = loanBalanceAt(ledger, today);
+  const anchorAmount = state.mode === 'estimated' ? state.segmentAnchorAmount : state.balance;
+  const anchorDay =
+    state.mode === 'estimated'
+      ? state.segmentAnchorDay
+      : dueDay(state.segmentAnchorDay, paymentsDueThrough(state.segmentAnchorDay, today));
+  return {
+    principal: ledger.terms.principal,
+    annualRatePct: state.annualRatePct,
+    monthlyPayment: state.monthlyPayment,
+    startDay: ledger.terms.startDay,
+    anchorAmount,
+    anchorDay,
+    endDay: ledger.terms.endDay ?? null,
+  };
 }
 
 /** The loan fields the maths needs, as they come over the wire. */

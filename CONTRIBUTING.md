@@ -163,8 +163,8 @@ npm run tauri dev
 # Run frontend only (for UI development)
 npm run dev
 
-# Build for production
-npm run tauri build
+# Build for production without the project's updater signing key
+npm run tauri build -- --no-sign
 
 # Quality gates (run before committing)
 npm run lint && npm run typecheck && npm test
@@ -175,7 +175,13 @@ npm run licenses                                      # regenerate THIRD_PARTY_L
 cargo audit --file src-tauri/Cargo.lock --deny warnings   # from the repo root, as CI does it
 ```
 
-Builds from source are identical to the official releases: Moony sends no telemetry.
+**Why `--no-sign`.** `src-tauri/tauri.conf.json` turns on `createUpdaterArtifacts`, so a plain
+`npm run tauri build` fails at the end with "A public key has been found, but no private key"
+unless the environment variable `TAURI_SIGNING_PRIVATE_KEY` holds the project's updater key,
+which only the maintainer has. With `--no-sign` the installers are built and the updater
+signature is skipped (the build prints a warning). Add `--no-bundle` to build only the binary
+(`src-tauri/target/release/`). What you build is not an official release and is not signed with
+the project's key. Moony contains no telemetry, in official builds and in builds from source.
 
 ### Recommended editor setup
 

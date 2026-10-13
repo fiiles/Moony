@@ -31,9 +31,9 @@ notarization](#code-signing-and-notarization-not-set-up-yet)); the **updater sig
    body in `release.yml`) in the same commit and expect users of older builds to update by hand.
 4. **Never change the app identifier again** (`identifier` in `tauri.conf.json`,
    `com.moonyfinance.desktop`). The user's data folder is derived from it; changing it makes every
-   existing installation look for its data in a new, empty place. It changed once, with an
-   automatic move of the folder (`services/data_dir.rs`, ADR 0015); a second change would make
-   users migrate twice.
+   existing installation look for its data in a new, empty place. It changed once, in 0.10.1,
+   without an automatic move (ADR 0015); a second change would make every user rename the data
+   folder by hand again.
 
 ## Pre-flight (every release)
 

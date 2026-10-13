@@ -113,15 +113,22 @@ Inside it:
 | `pre-restore-<timestamp>/` | The data you had before a restore from backup, kept so a restore can never destroy anything |
 
 **Settings → Data and backups** shows the exact path on your machine and has an "Open folder"
-button. Apart from the one-time move below, Moony never moves this folder on its own, and
-uninstalling the app does not delete it by default.
+button. Moony never moves this folder on its own, and uninstalling the app does not delete it
+by default.
 
 **Upgrading from 0.10.0 or earlier:** those versions kept the folder under the old identifier
-`com.filipkral.moony`. The first start of 0.10.1 moves that folder to the new name (same volume:
-a rename; otherwise a copy, in which case the old folder stays until you delete it; an
-attachment that cannot be moved stays there and Moony still finds it). Interface preferences
-stored by the web view (language on the lock screen, auto-lock) start from their defaults once;
-your data and settings inside the database are unchanged.
+`com.filipkral.moony`, in the same place as in the table above. 0.10.1 looks in the folder named
+`com.moonyfinance.desktop` and does not move anything itself. To keep your data, quit Moony and
+rename the old folder to the new name before the first start of 0.10.1. If 0.10.1 has already
+started and created the new folder, quit it, delete the new folder (it holds only what 0.10.1
+created there; back it up first if you already entered data in it), then rename the old one. The
+old folder is never deleted for you.
+
+Preferences that the web view keeps on your computer may start from their defaults once: the
+language of the lock screen, auto-lock and the automatic update check, which is on by default. If
+you had turned the update check off, turn it off again under **Settings → Security → Updates**
+("Check for updates automatically"). Your data and the settings inside the database are
+unchanged.
 
 ## Backups and the recovery key
 

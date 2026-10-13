@@ -1,9 +1,9 @@
 //! Locating and opening attached document files.
 //!
 //! The DB stores the absolute path the file had when it was attached. That path goes stale when
-//! the app data directory changes (the 0.9.0 identifier change copied the folder but not the
-//! rows, 0.10.1 moves the folder to a new identifier), so the file is looked up under the
-//! current app data dir first and the stored path is only the fallback.
+//! the app data directory gets a new name (the 0.9.0 and 0.10.1 identifier changes did that; a
+//! folder copied or renamed by hand leaves the rows pointing at the old place), so the file is
+//! looked up under the current app data dir first and the stored path is only the fallback.
 
 use crate::error::{AppError, Result};
 use std::path::{Path, PathBuf};
@@ -11,10 +11,10 @@ use std::path::{Path, PathBuf};
 /// Resolve a stored document path to an existing file.
 ///
 /// Files live at `<app_data_dir>/<subdir>/<owner id>/<file>`. The stored path is re-rooted under
-/// `app_data_dir` using its last two components and that file is preferred: after a data folder
-/// move that fell back to copying, the old folder still holds a stale copy at the stored path,
-/// and the live one is in the current folder. The stored path itself is the fallback, for a file
-/// that did not move and so still sits where the database says.
+/// `app_data_dir` using its last two components and that file is preferred: when the data folder
+/// was copied to its new name, the old folder still holds a stale copy at the stored path, and
+/// the live one is in the current folder. The stored path itself is the fallback, for a file
+/// that is not under the current folder and still sits where the database says.
 pub fn resolve_document_path(app_data_dir: &Path, subdir: &str, stored: &str) -> Result<PathBuf> {
     let stored_path = Path::new(stored);
 
@@ -102,7 +102,7 @@ mod tests {
 
     #[test]
     fn the_rerooted_path_wins_when_the_stored_path_also_exists() {
-        // After a copy-style move of the data folder the old folder still holds the file the
+        // After the data folder was copied to a new name the old folder still holds the file the
         // database points at; the copy in the current data folder is the live one.
         let current = temp_dir("both-current");
         let old = temp_dir("both-old");
@@ -126,7 +126,8 @@ mod tests {
 
     #[test]
     fn the_stored_path_is_the_fallback_when_nothing_sits_under_the_current_folder() {
-        // A file that failed to move stays in the old folder; the stored path still finds it.
+        // A file that is not under the current data folder (it was never copied over) is found
+        // through the stored path.
         let current = temp_dir("fallback-current");
         let old = temp_dir("fallback-old");
         let stale = old.join("insurance_documents").join("pol-1");

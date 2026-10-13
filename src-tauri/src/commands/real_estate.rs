@@ -775,8 +775,8 @@ pub async fn delete_real_estate_document(
         Ok(())
     })?;
 
-    // The stored path can be stale (the data folder was renamed by hand), so resolve it the way
-    // `open_real_estate_document` does. A missing file is not an error.
+    // The stored path can be stale (the data folder got a new name after an identifier change),
+    // so resolve it the way `open_real_estate_document` does. A missing file is not an error.
     let target = app
         .path()
         .app_data_dir()

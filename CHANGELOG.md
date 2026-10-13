@@ -59,11 +59,12 @@ All notable changes to Moony are documented in this file. The format follows
 
 ### Changed
 
-- **The app identifier is `com.moonyfinance.desktop`** (was `com.filipkral.moony`). The data
-  folder moves to the new name automatically on the first start; see PRIVACY.md → Where your data
-  lives. Interface preferences kept by the web view (lock-screen language, auto-lock) reset once.
-  On Windows, an install in a custom folder gets a fresh copy in the default folder on this
-  update; remove the old one in Settings → Apps.
+- **New app identifier.** The app identifier is `com.moonyfinance.desktop` (was
+  `com.filipkral.moony`), so the data folder has a new name. Moony does not move it: to keep your
+  data, rename the old folder before the first start (PRIVACY.md → Where your data lives).
+  Preferences kept by the web view (lock-screen language, auto-lock, the automatic update check)
+  may start from their defaults. On Windows, an install in a custom folder gets a fresh copy in
+  the default folder; remove the old one in Settings → Apps.
 - PRIVACY.md lists every outbound host and describes what Delete Account leaves behind.
 - **Delete Account says what stays.** The confirmation dialog and the hint next to the button, in
   all ten languages, no longer promise that all data is removed: the database, the key files and
@@ -97,6 +98,10 @@ All notable changes to Moony are documented in this file. The format follows
 - **Months in the middle of a sentence.** The status line of Budgets and Cashflow read
   "Septiembre 2026" in Spanish and likewise in Italian, Norwegian, Polish and Swedish; each language
   now uses its own casing ("septiembre de 2026").
+- **Deleting a document attached before 0.9.0 left its file behind.** The database keeps the
+  absolute path a document had when it was attached, and for old documents that path points into a
+  folder that no longer exists; deleting now looks the file up under the current data folder, as
+  opening already did, and removes it.
 
 ## [0.10.0] - 2026-10-12
 

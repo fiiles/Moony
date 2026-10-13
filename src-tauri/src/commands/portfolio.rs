@@ -449,13 +449,21 @@ fn queued_result(plan: &history_plan::StartupPlan, today: i64, what: &str) -> Ba
     }
 }
 
-/// Stores the rebuild version once the one-time rebuild's batch finished cleanly, so a failure
-/// is retried at the next start.
+/// Stores the rebuild version once the one-time rebuild's days were re-derived, so a failed
+/// days rebuild is retried at the next start. Tickers the provider could not serve are
+/// logged here (the queue reported them `failed`) and are retried by a later write or the
+/// startup gap fill; they do not keep the whole rebuild running at every start.
 fn store_version_when_done(db: Database) -> Completion {
-    Box::new(move |ok| {
-        if !ok {
-            log::warn!("[RECALC] The one-time history rebuild did not finish cleanly; it runs again at the next start");
+    Box::new(move |outcome| {
+        if !history_plan::rebuild_version_earned(outcome) {
+            log::warn!("[RECALC] The one-time history rebuild did not re-derive the days; it runs again at the next start");
             return;
+        }
+        if !outcome.failed_tickers.is_empty() {
+            log::warn!(
+                "[RECALC] The one-time history rebuild is done, but {} ticker(s) could not be rebuilt and are retried by later writes",
+                outcome.failed_tickers.len()
+            );
         }
         match db.with_conn(history_plan::store_rebuild_version) {
             Ok(()) => log::info!(

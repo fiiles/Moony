@@ -20,7 +20,9 @@ use rusqlite::{params, Connection, OptionalExtension};
 use crate::error::Result;
 use crate::models::{BankAccount, RealEstate};
 use crate::services::history_days::earliest_fact_day;
-use crate::services::history_recalc::{all_ticker_jobs, crypto_rebuild_jobs, rebuild_jobs, Job};
+use crate::services::history_recalc::{
+    all_ticker_jobs, crypto_rebuild_jobs, rebuild_jobs, BatchOutcome, Job,
+};
 use crate::services::portfolio_history::SECONDS_PER_DAY;
 
 const DAY: i64 = SECONDS_PER_DAY;
@@ -44,6 +46,14 @@ pub fn stored_rebuild_version(conn: &Connection) -> Result<i64> {
     Ok(stored
         .and_then(|value| value.trim().parse::<i64>().ok())
         .unwrap_or(0))
+}
+
+/// Does the finished batch of the one-time rebuild earn the version flag? The rebuild is the
+/// days re-derived from the dated facts; a ticker the provider cannot serve (a delisted symbol,
+/// a CoinGecko rate limit) is reported `failed` and logged, and a later write of that ticker or
+/// the startup gap fill retries it, but it must not run the whole rebuild again at every start.
+pub fn rebuild_version_earned(outcome: &BatchOutcome) -> bool {
+    outcome.days_ok
 }
 
 /// Record that the rebuild of [`REBUILD_VERSION`] finished.
@@ -802,5 +812,27 @@ mod tests {
         assert_eq!(other_asset_deleted(Some(d(-30))), Job::Days(d(-30)));
         assert_eq!(other_asset_deleted(None), Job::Days(0));
         assert_eq!(bond_changed(), Job::Days(0));
+    }
+
+    fn outcome(days_ok: bool, failed: &[&str]) -> BatchOutcome {
+        BatchOutcome {
+            days_ok,
+            failed_tickers: failed.iter().map(|t| t.to_string()).collect(),
+        }
+    }
+
+    #[test]
+    fn the_rebuild_flag_is_earned_when_the_days_were_rebuilt_whatever_the_tickers_did() {
+        assert!(rebuild_version_earned(&outcome(true, &[])));
+        assert!(
+            rebuild_version_earned(&outcome(true, &["DELISTED", "BTC"])),
+            "a ticker the provider keeps rejecting must not rerun the rebuild at every start"
+        );
+        assert!(
+            !rebuild_version_earned(&outcome(false, &[])),
+            "the days are the rebuild: without them it runs again at the next start"
+        );
+        assert!(!rebuild_version_earned(&outcome(false, &["AAPL"])));
+        assert!(rebuild_version_earned(&BatchOutcome::nothing_to_do()));
     }
 }

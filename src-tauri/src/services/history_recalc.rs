@@ -23,9 +23,14 @@
 //!   `running`, `done` or `failed` (see [`HistoryRecalcEvent`]); the header badge listens
 //!   to it. Once a batch has finished the established `recalculation-complete` event also
 //!   fires so the trend charts refetch.
-//! * **Completion.** A caller that needs to know the batch really finished (the one-time
-//!   rebuild stores its version flag then) passes a [`Completion`]. Such a batch fetches
-//!   quotes strictly: a provider failure fails the batch instead of passing as "no data".
+//! * **Completion.** A caller that needs to know how the batch ended (the one-time rebuild
+//!   stores its version flag then) passes a [`Completion`] and gets a [`BatchOutcome`]: whether
+//!   the portfolio days were re-derived, and which tickers failed. A ticker the provider keeps
+//!   rejecting is reported `failed` and logged but does not fail the batch; the caller decides
+//!   what a failure costs (the one-time rebuild only needs the days, see
+//!   `history_plan::rebuild_version_earned`). Such a batch fetches quotes strictly: a provider
+//!   failure leaves the ticker's rows alone and reports it `failed`, instead of passing as "no
+//!   data" (for a crypto ticker that would write the last known price over the whole range).
 //!
 //! The pure parts (queue, chunking) are unit-tested; the quote fetches are the only network
 //! steps and sit behind [`rebuild_stock_ticker`] and [`rebuild_crypto_ticker`].
@@ -92,8 +97,33 @@ pub type Notifier = Arc<dyn Fn(Notice) + Send + Sync>;
 /// function implements).
 pub type PriceRule = fn(&[HistoricalPrice], i64) -> Option<&HistoricalPrice>;
 
-/// Called once with `true` when the batch that carried it finished without an error.
-pub type Completion = Box<dyn FnOnce(bool) + Send>;
+/// How a batch ended, as the completion of its jobs sees it.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct BatchOutcome {
+    /// The portfolio days were re-derived (a failed days rebuild fails every ticker too).
+    pub days_ok: bool,
+    /// Tickers whose quotes could not be rebuilt: logged and reported as `failed`, retried
+    /// by a later write or the startup gap fill.
+    pub failed_tickers: Vec<String>,
+}
+
+impl BatchOutcome {
+    /// The outcome of a completion that has nothing historical to wait for.
+    pub fn nothing_to_do() -> Self {
+        Self {
+            days_ok: true,
+            failed_tickers: Vec::new(),
+        }
+    }
+
+    /// The days were re-derived and no ticker failed.
+    pub fn is_clean(&self) -> bool {
+        self.days_ok && self.failed_tickers.is_empty()
+    }
+}
+
+/// Called once with the outcome of the batch that carried it.
+pub type Completion = Box<dyn FnOnce(&BatchOutcome) + Send>;
 
 /// One piece of history work. Every date is the earliest affected day (unix seconds);
 /// the worker floors it to the day.
@@ -269,7 +299,7 @@ fn today_start() -> i64 {
 /// Queue the jobs for a background rebuild and make sure a worker is running. Jobs dated
 /// today or later are dropped: today's row belongs to the live snapshot, there is no
 /// history to repair. `completion`, when given, runs with the outcome of the batch that
-/// carries it — at once with `true` when nothing historical is left to do.
+/// carries it — at once, clean, when nothing historical is left to do.
 pub fn schedule(
     state: &HistoryRecalc,
     db: &Database,
@@ -285,7 +315,7 @@ pub fn schedule(
         .collect();
     if historical.is_empty() {
         if let Some(completion) = completion {
-            completion(true);
+            completion(&BatchOutcome::nothing_to_do());
         }
         return;
     }
@@ -302,7 +332,7 @@ pub fn schedule(
                 // first so the rows and the cost basis are valued at real rates.
                 crate::services::fx_backfill::ensure_fx_coverage_best_effort(&db).await;
             }
-            let ok = run_batch(
+            let outcome = run_batch(
                 &state,
                 &db,
                 &notify,
@@ -312,7 +342,7 @@ pub fn schedule(
             )
             .await;
             for completion in completions {
-                completion(ok);
+                completion(&outcome);
             }
         }
     });
@@ -320,8 +350,9 @@ pub fn schedule(
 
 /// One batch (A5): stock tickers, crypto tickers, then the portfolio days from the
 /// batch's earliest date. Every failure is logged; a failed ticker reports `failed`, and
-/// a failed days rebuild fails every ticker of the batch. Returns whether nothing failed.
-/// `strict` makes a provider failure an error instead of "no quotes".
+/// a failed days rebuild fails every ticker of the batch. Returns how the batch ended: a
+/// failed ticker does not stop the days rebuild. `strict` makes a provider failure an error
+/// (the ticker keeps its rows and reports `failed`) instead of "no quotes".
 async fn run_batch(
     state: &HistoryRecalc,
     db: &Database,
@@ -329,7 +360,7 @@ async fn run_batch(
     price_rule: PriceRule,
     batch: &Batch,
     strict: bool,
-) -> bool {
+) -> BatchOutcome {
     let until = today_start();
     let earliest = batch.earliest().unwrap_or(until);
     log::debug!(
@@ -404,7 +435,10 @@ async fn run_batch(
         }));
     }
     notify(Notice::BatchComplete);
-    days.is_ok() && failed.is_empty()
+    BatchOutcome {
+        days_ok: days.is_ok(),
+        failed_tickers: failed.into_iter().collect(),
+    }
 }
 
 /// Held tickers (outside `queued`) without any history row in `range` would be missing from
@@ -966,19 +1000,28 @@ mod tests {
     #[test]
     fn a_completion_waits_for_the_batch_that_carries_its_jobs() {
         let queue = HistoryRecalc::new();
-        let outcomes: Arc<Mutex<Vec<bool>>> = Arc::default();
+        let outcomes: Arc<Mutex<Vec<BatchOutcome>>> = Arc::default();
         let sink = outcomes.clone();
-        let completion: Completion = Box::new(move |ok| sink.lock().expect("lock").push(ok));
+        let completion: Completion =
+            Box::new(move |outcome| sink.lock().expect("lock").push(outcome.clone()));
 
         assert!(queue.enqueue([stock("AAPL", DAY)], Some(completion)));
         let (batch, completions) = queue.take_batch().expect("batch");
         assert_eq!(batch.stocks.len(), 1);
         assert_eq!(completions.len(), 1);
         assert!(outcomes.lock().expect("lock").is_empty(), "not called yet");
+        let failed_ticker = BatchOutcome {
+            days_ok: true,
+            failed_tickers: vec!["AAPL".to_string()],
+        };
         for completion in completions {
-            completion(true);
+            completion(&failed_ticker);
         }
-        assert_eq!(*outcomes.lock().expect("lock"), vec![true]);
+        assert_eq!(
+            *outcomes.lock().expect("lock"),
+            vec![failed_ticker],
+            "the completion learns which tickers failed"
+        );
 
         // A job without a completion leaves the next batch without one.
         assert!(!queue.enqueue([Job::Days(DAY)], None));
@@ -989,9 +1032,10 @@ mod tests {
     #[test]
     fn jobs_dated_today_or_later_are_dropped_and_a_completion_runs_at_once() {
         let queue = HistoryRecalc::new();
-        let outcomes: Arc<Mutex<Vec<bool>>> = Arc::default();
+        let outcomes: Arc<Mutex<Vec<BatchOutcome>>> = Arc::default();
         let sink = outcomes.clone();
-        let completion: Completion = Box::new(move |ok| sink.lock().expect("lock").push(ok));
+        let completion: Completion =
+            Box::new(move |outcome| sink.lock().expect("lock").push(outcome.clone()));
         let notify: Notifier = Arc::new(|_| {});
         let db = Database::new();
 
@@ -1004,7 +1048,10 @@ mod tests {
             Some(completion),
         );
 
-        assert_eq!(*outcomes.lock().expect("lock"), vec![true]);
+        assert_eq!(
+            *outcomes.lock().expect("lock"),
+            vec![BatchOutcome::nothing_to_do()]
+        );
         assert!(queue.take_batch().is_none(), "nothing was queued");
     }
 
@@ -1342,7 +1389,9 @@ mod tests {
             ..Batch::default()
         };
 
-        assert!(run_batch(&state, &db, &notify, no_quote, &batch, false).await);
+        assert!(run_batch(&state, &db, &notify, no_quote, &batch, false)
+            .await
+            .is_clean());
 
         assert_eq!(
             *notices.lock().expect("lock"),
@@ -1405,7 +1454,9 @@ mod tests {
             ..Batch::default()
         };
         assert!(
-            run_batch(&HistoryRecalc::new(), &db, &notify, no_quote, &batch, true).await,
+            run_batch(&HistoryRecalc::new(), &db, &notify, no_quote, &batch, true)
+                .await
+                .is_clean(),
             "a holding without an id or transactions needs no provider, strict or not"
         );
 
@@ -1441,7 +1492,11 @@ mod tests {
             days: Some(year_ago),
             ..Batch::default()
         };
-        assert!(run_batch(&HistoryRecalc::new(), &db, &notify, no_quote, &batch, false).await);
+        assert!(
+            run_batch(&HistoryRecalc::new(), &db, &notify, no_quote, &batch, false)
+                .await
+                .is_clean()
+        );
         assert_eq!(
             *notices.lock().expect("lock"),
             vec![Notice::BatchComplete],

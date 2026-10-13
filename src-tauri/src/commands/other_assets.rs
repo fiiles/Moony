@@ -9,6 +9,7 @@ use crate::models::{
 use crate::services::history_plan;
 use crate::services::history_recalc::{HistoryRecalc, Job};
 use crate::services::other_assets as service;
+use rusqlite::OptionalExtension;
 use tauri::{AppHandle, State};
 
 /// Get all other assets
@@ -64,7 +65,9 @@ pub async fn create_other_asset(
 /// Update other asset
 #[tauri::command]
 pub async fn update_other_asset(
+    app: AppHandle,
     db: State<'_, Database>,
+    recalc: State<'_, HistoryRecalc>,
     id: String,
     data: InsertOtherAsset,
 ) -> Result<OtherAsset> {
@@ -73,7 +76,14 @@ pub async fn update_other_asset(
 
     let now = chrono::Utc::now().timestamp();
 
-    db.with_conn(|conn| {
+    let (updated, old_currency) = db.with_conn(|conn| {
+        let old_currency: Option<String> = conn
+            .query_row(
+                "SELECT currency FROM other_assets WHERE id = ?1",
+                [&id],
+                |row| row.get(0),
+            )
+            .optional()?;
         conn.execute(
             "UPDATE other_assets SET name = ?1,
              quantity = COALESCE(?2, quantity), market_price = COALESCE(?3, market_price),
@@ -102,7 +112,7 @@ pub async fn update_other_asset(
             )?;
         }
 
-        conn.query_row(
+        let updated = conn.query_row(
             "SELECT id, name, quantity, market_price, currency, average_purchase_price,
                     yield_type, yield_value, created_at, updated_at
              FROM other_assets WHERE id = ?1",
@@ -119,8 +129,17 @@ pub async fn update_other_asset(
                 created_at: row.get(8)?,
                 updated_at: row.get(9)?,
             }),
-        ).map_err(|_| AppError::NotFound("Other asset not found".into()))
-    })
+        ).map_err(|_| AppError::NotFound("Other asset not found".into()))?;
+        Ok((updated, old_currency))
+    })?;
+
+    // A new currency relabels the asset on every day; a price edit is dated today
+    if let Some(job) = old_currency
+        .and_then(|old| history_plan::other_asset_updated(&old, data.currency.as_deref()))
+    {
+        schedule_history_rebuild(&app, &db, &recalc, vec![job]);
+    }
+    Ok(updated)
 }
 
 /// Delete other asset

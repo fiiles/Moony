@@ -302,6 +302,15 @@ pub fn property_deleted() -> Job {
     Job::Days(0)
 }
 
+/// An edited other asset. A currency change relabels the asset in every day's other-assets
+/// breakdown: from the first fact. `new_currency` is `None` when the edit carries none (the
+/// stored one stays). A price edit is a valuation dated today (no history to repair), and
+/// quantities and costs come from transactions, so nothing else is part of the history.
+pub fn other_asset_updated(old_currency: &str, new_currency: Option<&str>) -> Option<Job> {
+    let new_currency = new_currency?.trim();
+    (!old_currency.trim().eq_ignore_ascii_case(new_currency)).then_some(Job::Days(0))
+}
+
 /// A deleted other asset: from its first transaction (it was counted from there), else the
 /// first fact.
 pub fn other_asset_deleted(first_transaction: Option<i64>) -> Job {
@@ -812,6 +821,26 @@ mod tests {
         assert_eq!(other_asset_deleted(Some(d(-30))), Job::Days(d(-30)));
         assert_eq!(other_asset_deleted(None), Job::Days(0));
         assert_eq!(bond_changed(), Job::Days(0));
+    }
+
+    #[test]
+    fn an_other_asset_edit_queues_the_first_fact_only_for_a_currency_change() {
+        assert_eq!(
+            other_asset_updated("CZK", Some("EUR")),
+            Some(Job::Days(0)),
+            "every day's other-assets breakdown is in another currency"
+        );
+        assert_eq!(
+            other_asset_updated("CZK", Some("czk")),
+            None,
+            "case is no change"
+        );
+        assert_eq!(other_asset_updated("CZK", Some(" CZK ")), None);
+        assert_eq!(
+            other_asset_updated("CZK", None),
+            None,
+            "no currency in the edit keeps the stored one"
+        );
     }
 
     fn outcome(days_ok: bool, failed: &[&str]) -> BatchOutcome {

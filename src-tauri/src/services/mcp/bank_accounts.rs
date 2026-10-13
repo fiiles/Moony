@@ -202,7 +202,7 @@ pub fn bank_transactions_create(
         if let Err(e) = row_to_insert(&args.account_id, row).validate() {
             errors.push(RowError {
                 index: i,
-                message: e.to_string(),
+                message: super::error_text::render(&e),
             });
         }
         if let Some(ref cat) = row.category_id {
@@ -1312,6 +1312,9 @@ mod tests {
         assert!(report.skipped_duplicates.is_empty());
         assert_eq!(report.errors.len(), 2);
         assert_eq!(report.errors[0].index, 0);
+        let message = &report.errors[0].message;
+        assert!(!message.contains("validation."), "{message}");
+        assert!(message.starts_with("Validation error: "), "{message}");
         assert_eq!(report.errors[1].index, 2);
         assert!(report.errors[1].message.contains("ghost-cat"));
         assert_eq!(tx_count(&conn), 0, "good row must not be inserted either");

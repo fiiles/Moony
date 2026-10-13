@@ -283,7 +283,7 @@ node scripts/screenshots.mjs --lang cs --out /tmp/shots --set all               
 | `--out` | `docs/screenshots` | Output folder |
 | `--lang` | `en` | UI language of the shots (`en`, `cs`, or any shipped code) |
 | `--suffix` | empty for `en`, `-<lang>` otherwise | Appended to the file names: `dashboard.png`, `dashboard-cs.png` |
-| `--set` | `readme` | `readme`: `dashboard`, `bank-accounts`, `stocks`, `settings`, `account-detail` and, with `--fixture`, `import`. `site` (website, LinkedIn): `dashboard`, `account-detail`, `cashflow`, `planning`, `stocks`, `stocks-analysis`, `crypto`, `real-estate`, `settings`. `all`: both |
+| `--set` | `readme` | `readme`: `dashboard`, `cashflow`, `account-detail`, `stocks-analysis`, `settings` and, with `--fixture`, `import`. `site` (website, LinkedIn): `dashboard`, `account-detail`, `cashflow`, `planning`, `stocks`, `stocks-analysis`, `crypto`, `real-estate`, `settings`. `all`: both |
 | `--account` | first account with a balance history, else the first account | Bank account for `account-detail` and `import` |
 | `--fixture` | none | CSV for the `import` shot (e.g. `src-tauri/tests/fixtures/csv/revolut.csv`); English only, skipped with a note for other languages. Pass the `--account` of a matching bank to get its preset detected |
 | `--width` / `--height` / `--port` | `1440` / `900` / `9333` | Viewport (captured at 2×) and Chrome's debugging port |

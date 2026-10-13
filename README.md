@@ -21,7 +21,7 @@ plain files, see [Privacy and security](#privacy-and-security-at-a-glance)). The
 internet only for market data and update checks, all listed in [PRIVACY.md](./PRIVACY.md).
 
 <p align="center"><img src="docs/screenshots/dashboard.png" alt="Overview page with the net worth and its history over time" width="800"></p>
-<p align="center"><img src="docs/screenshots/bank-accounts.png" alt="Bank accounts list with the balance of each account in its own currency" width="260"> <img src="docs/screenshots/account-detail.png" alt="Bank account detail page with the balance history and transactions" width="260"> <img src="docs/screenshots/stocks.png" alt="Stocks page with the portfolio and its performance" width="260"></p>
+<p align="center"><img src="docs/screenshots/cashflow.png" alt="Cashflow report with income and expenses by month and by category" width="260"> <img src="docs/screenshots/account-detail.png" alt="Bank account detail page with the monthly flows and the ledger" width="260"> <img src="docs/screenshots/stocks-analysis.png" alt="Stock analysis with time-weighted and money-weighted return and the positions split by tag" width="260"></p>
 <p align="center"><img src="docs/screenshots/import.png" alt="Dialog for importing a bank statement from a CSV file" width="395"> <img src="docs/screenshots/settings.png" alt="Settings page with language, currency and other preferences" width="395"></p>
 
 The screenshots show a sample profile (synthetic data).

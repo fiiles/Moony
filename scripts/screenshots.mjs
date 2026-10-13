@@ -15,7 +15,7 @@
  *              and puts the original back when it finishes (also on Ctrl-C or an error).
  *   --suffix   Appended to every file name; default empty for `en` and `-<lang>` otherwise
  *              (`dashboard.png`, `dashboard-cs.png`).
- *   --set      `readme` (default): dashboard, bank-accounts, stocks, settings, account-detail
+ *   --set      `readme` (default): dashboard, cashflow, account-detail, stocks-analysis, settings
  *              and, with --fixture, import. `site`: dashboard, account-detail, cashflow,
  *              planning, stocks, stocks-analysis, crypto, real-estate, settings. `all`: both.
  *   --account  Bank account for account-detail and import; default: the first account with a
@@ -180,7 +180,7 @@ const PAGES = {
   },
 };
 const SET_PAGES = {
-  readme: ['dashboard', 'bank-accounts', 'stocks', 'settings', 'account-detail', 'import'],
+  readme: ['dashboard', 'cashflow', 'account-detail', 'stocks-analysis', 'settings', 'import'],
   site: [
     'dashboard',
     'account-detail',

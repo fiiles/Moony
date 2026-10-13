@@ -3,7 +3,8 @@
 Moony is a local-first app: **there is no account, no cloud and no sync.** Your financial
 records stay on your computer, in an encrypted database. The app talks to the internet only
 for the few things listed below, and none of them involves your amounts, balances, names or
-documents.
+documents (an AI client that you connect yourself is the exception, see below). Links you click
+in the app open in your default browser, which makes its own requests.
 
 This page is written to be checked against the code. If you find a statement here that does
 not match what the app does, please open a GitHub issue — that is a bug.
@@ -54,7 +55,7 @@ updater plugin's own user agent, described in the GitHub row.
 | **Yahoo Finance** (`query1.finance.yahoo.com`, `query2.finance.yahoo.com` and `fc.yahoo.com`) | The ticker symbols of your stock positions and of the stocks you follow in Stock Monitor, search text you type, the symbols and ISINs of the securities in a stock CSV file you import (to find their Yahoo tickers), and the date ranges needed for price history (which can reveal roughly when you started investing). Before company data is requested, the price library also fetches a session cookie from `fc.yahoo.com` and a one-time token ("crumb") from `query1.finance.yahoo.com`, and sends both back with that request. They are held in memory only while the refresh runs; Moony does not store them. | After unlocking, when you add or import stock transactions (the review step of a stock CSV import looks the file's securities up as it opens), when you open Stock Monitor or a stock position's detail (company data such as sector and P/E, at most once a day per ticker once Yahoo has answered; this is the only request that needs the cookie and token), and when you refresh stale prices. | Yes — Moony works offline; prices can be set manually per position. Without refreshes the prices simply go stale. |
 | **CoinGecko** (`api.coingecko.com`) | The CoinGecko IDs of your crypto holdings (that is, the composition of your crypto portfolio), search text, and date ranges for history. If you enter your own optional CoinGecko API key in Settings → Integrations, it is sent as a request header. | After unlocking, when you add a holding, when history is back-filled. | Yes — same as above. |
 | **European Central Bank** (`www.ecb.europa.eu`) | Nothing from your data; it is a download of the public daily reference rates. The ECB sees your IP address and the `Moony/<version>` user agent. | When exchange rates are stale. | Yes — rates then simply go stale. Currencies the ECB does not publish never get an automatic rate (Settings → General → Currency explains this). |
-| **Frankfurter** (`api.frankfurter.dev`, serves ECB historical rates) | The date range from your oldest transaction to today and the list of currencies used in your transactions. | When you enter or import transactions in a currency whose history is missing, and on rate refresh. Best effort: failures are ignored. | Yes — without it historical conversions fall back to current rates. |
+| **Frankfurter** (`api.frankfurter.dev`, serves ECB historical rates) | The ISO codes of the currencies found in your data (accounts, transactions, stock and crypto positions and their quotes, properties, loans, bonds, insurance, budgets, your profile; the euro itself and currencies without a rate source are left out) and the date range still missing, which can reach back to your earliest dated record (a transaction, a purchase date, a loan start) minus ten days. | When you enter or import transactions in a currency whose history is missing, and on rate refresh. Best effort: failures are ignored. | Yes — without it historical conversions fall back to current rates. |
 | **GitHub** (`github.com` and `release-assets.githubusercontent.com`) | A plain request for `latest.json` of the latest release (`github.com/fiiles/Moony/releases/latest/download/latest.json`), which GitHub redirects to its release-asset host. The request carries the user agent of the updater plugin, `tauri-plugin-updater/<plugin version>` (`tauri-plugin-updater/2.13.3` in Moony 0.10.0), and `Accept: application/json`. Moony's own version, your operating system and your CPU architecture are not part of the request. If you accept an update, the installer for your platform is downloaded from the same release with the same user agent (so GitHub can tell which platform's file you fetched), and its signature is verified against the public key built into the app. GitHub decides which host serves release files and can change it, so a firewall rule may need to allow `*.githubusercontent.com`. | Once per app start, after you unlock, and whenever you press the manual check. | Yes — Settings → Security → Updates has a switch for the automatic check. |
 | **Your AI client** (MCP, optional) | Whatever the client asks for and the tools return — potentially your full financial data. | Only while the MCP server is enabled, the app is unlocked and a client connected with your token. | Off by default; see below. |
 
@@ -81,8 +82,14 @@ trust, and regenerate the token when you stop using one.
 
 - No account, login or registration, and no server operated by the project.
 - No telemetry: no crash reporting, no analytics, no tracking SDKs.
-- No advertising, no cookies, no third-party fonts, images or logos.
-- No remote configuration, no remote code and no way for anyone to read your data remotely.
+- No advertising, no tracking cookies and no third-party fonts, images or logos. The interface
+  sets no cookies; the only cookie is the Yahoo Finance session cookie described above, which the
+  price library keeps in memory for its requests.
+- No remote configuration and no code that is loaded while the app runs: the only code that
+  arrives from outside is a signed update that you choose to install.
+- No server and no sync, so nothing for anyone to read remotely. The optional MCP server is off
+  by default and listens on `127.0.0.1` only; whoever holds its token on your computer can read
+  and change your data (see above).
 
 ## Where your data lives
 
@@ -119,7 +126,8 @@ You are the only holder of your data, so you are responsible for keeping copies:
   cloud storage). Restoring never deletes your current data; it is moved to a `pre-restore-…`
   folder first.
 - **Save your recovery key** when it is shown (the first-run wizard asks you to verify it). It
-  is 24 characters long and is the only way to reset a forgotten password. It works **only
+  is 24 characters long (shown in groups of four) and is the only way to reset a forgotten
+  password. It works **only
   together with the key files** (`salt`, `recovery.enc`) in the data folder, so a backup of the
   whole folder or a Moony backup archive is part of the recovery plan.
 - **There is no backdoor.** If you lose both your password and your recovery key, nobody —

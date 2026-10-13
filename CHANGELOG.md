@@ -76,9 +76,9 @@ All notable changes to Moony are documented in this file. The format follows
   "Cancellation notice deadline"; without a notice period there is no anniversary reminder.
   Contract ends and payments are unchanged.
 - **Errors from the backend are translated.** "Currency mismatch", "Cannot sell - no existing
-  position found", the tiered-interest and budget form messages, the crypto and stock import
-  errors (with the file line) and similar sentences appeared in English in every language; they
-  are now translated like the rest of the interface.
+  position found", the tiered-interest and budget form messages, the stock import errors (with
+  the file line) and similar sentences appeared in English in every language; they are now
+  translated like the rest of the interface.
 - **"Fixed rate" instead of "fixation" in English.** The loan pages say "Fixed rate ends" and
   "fixed-rate period" (the other languages already used their own term).
 - **Wizard hint about the country.** It says the country picks the categorization rules and lists

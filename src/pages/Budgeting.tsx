@@ -323,7 +323,7 @@ export default function Budgeting() {
         onClose={() => setTxTarget(null)}
         start={range.start}
         end={range.end}
-        periodLabel={periodInSentence}
+        periodLabel={period.label}
       />
       <ConfirmDeleteDialog
         open={!!pendingDelete}

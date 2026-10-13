@@ -703,6 +703,7 @@ describe('encoding override', () => {
     expect(ENCODING_CHOICES.map((choice) => choice.value)).toEqual([
       'UTF-8',
       'windows-1250',
+      'windows-1251',
       'windows-1252',
       'windows-1253',
       'windows-1254',
@@ -713,7 +714,6 @@ describe('encoding override', () => {
       'GBK',
       'Big5',
       'EUC-KR',
-      'windows-1251',
     ]);
   });
 

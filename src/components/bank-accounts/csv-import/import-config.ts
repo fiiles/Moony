@@ -60,6 +60,7 @@ export const DATE_FORMATS: ReadonlyArray<{ value: string; label: string }> = [
 export const ENCODING_CHOICES: ReadonlyArray<{ value: string; label: string }> = [
   { value: 'UTF-8', label: 'UTF-8' },
   { value: 'windows-1250', label: 'Windows-1250' },
+  { value: 'windows-1251', label: 'Windows-1251' },
   { value: 'windows-1252', label: 'Windows-1252' },
   { value: 'windows-1253', label: 'Windows-1253' },
   { value: 'windows-1254', label: 'Windows-1254' },
@@ -70,7 +71,6 @@ export const ENCODING_CHOICES: ReadonlyArray<{ value: string; label: string }> =
   { value: 'GBK', label: 'GBK' },
   { value: 'Big5', label: 'Big5' },
   { value: 'EUC-KR', label: 'EUC-KR' },
-  { value: 'windows-1251', label: 'Windows-1251' },
 ];
 
 /** The `encoding` argument of `parseCsvFile` for a select value: nothing for Auto. */

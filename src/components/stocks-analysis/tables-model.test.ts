@@ -68,8 +68,10 @@ describe('tagRows', () => {
   it('keeps the unrealized gain and the dividend as of today', () => {
     const [growthRow, valueRow] = tagRows(input);
     // 40 gained on a cost of 360
+    expect(growthRow.gain).toBeCloseTo(40);
     expect(growthRow.gainPercent).toBeCloseTo((40 / 360) * 100);
     expect(growthRow.dividend).toBe(4);
+    expect(valueRow.gain).toBeCloseTo(-20);
     expect(valueRow.gainPercent).toBeCloseTo((-20 / 120) * 100);
     expect(valueRow.dividend).toBe(0);
   });

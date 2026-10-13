@@ -185,6 +185,33 @@ pub(crate) fn spawn_fx_backfill(app: AppHandle, db: Database) {
     });
 }
 
+/// Rebuild every crypto holding's history from its first transaction in the
+/// background (best-effort, per coin), then poke `recalculation-complete`.
+pub(crate) fn spawn_crypto_history_rebuild(app: AppHandle, db: Database) {
+    tauri::async_runtime::spawn(async move {
+        let jobs = match db.with_conn(crate::services::history_recalc::crypto_rebuild_jobs) {
+            Ok(jobs) => jobs,
+            Err(e) => {
+                log::warn!("[RECALC] Could not list crypto holdings to rebuild: {e}");
+                return;
+            }
+        };
+        for (ticker, coingecko_id, from) in jobs {
+            if let Err(e) = trigger_historical_recalculation_for_crypto_ticker(
+                &db,
+                from,
+                &ticker,
+                &coingecko_id,
+            )
+            .await
+            {
+                log::warn!("[RECALC] Crypto history rebuild of {ticker} failed: {e}");
+            }
+        }
+        app.emit("recalculation-complete", ()).ok();
+    });
+}
+
 // ============================================================================
 // Price Status (for stale indicator)
 // ============================================================================
@@ -1954,7 +1981,7 @@ pub async fn update_portfolio_crypto_from_ticker_table(
     // Aggregate crypto_value_history into the snapshot rows up to (not
     // including) today — see the stocks variant above.
     db.with_conn(|conn| {
-        crate::services::portfolio_history::aggregate_ticker_history(
+        crate::services::portfolio_history::rebuild_ticker_class(
             conn,
             crate::services::portfolio_history::AssetClassKind::Crypto,
             from_day,

@@ -1423,6 +1423,20 @@ pub fn get_api_keys(db: &Database) -> Result<ApiKeys> {
     })
 }
 
+/// A CoinGecko key was entered or replaced (not merely saved again or left empty): crypto history
+/// fetched without it, or with an older one, may be incomplete and is worth rebuilding.
+pub fn coingecko_key_changed(before: &ApiKeys, after: &ApiKeys) -> bool {
+    let key = |keys: &ApiKeys| {
+        keys.coingecko
+            .as_deref()
+            .map(str::trim)
+            .unwrap_or("")
+            .to_string()
+    };
+    let new_key = key(after);
+    !new_key.is_empty() && new_key != key(before)
+}
+
 /// Save API keys to app_config table
 pub fn set_api_keys(db: &Database, keys: &ApiKeys) -> Result<()> {
     db.with_conn(|conn| {
@@ -1765,6 +1779,24 @@ pub async fn get_stock_price_range(ticker: &str, period: &str) -> Result<Vec<Sto
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn coingecko_key_changed_only_for_a_new_non_empty_key() {
+        let keys = |k: Option<&str>| ApiKeys {
+            coingecko: k.map(str::to_string),
+        };
+        assert!(coingecko_key_changed(&keys(None), &keys(Some("CG-1"))));
+        assert!(coingecko_key_changed(
+            &keys(Some("CG-1")),
+            &keys(Some("CG-2"))
+        ));
+        assert!(!coingecko_key_changed(
+            &keys(Some("CG-1")),
+            &keys(Some(" CG-1 "))
+        ));
+        assert!(!coingecko_key_changed(&keys(Some("CG-1")), &keys(None)));
+        assert!(!coingecko_key_changed(&keys(None), &keys(Some("  "))));
+    }
 
     #[test]
     fn ticker_suffixes_of_the_main_exchanges_name_their_currency() {

@@ -296,17 +296,7 @@ pub fn aggregate_ticker_history(
     from_day: i64,
     until_day_exclusive: i64,
 ) -> Result<()> {
-    let (history_table, tx_table) = match kind {
-        AssetClassKind::Investments => ("stock_value_history", "investment_transactions"),
-        AssetClassKind::Crypto => ("crypto_value_history", "crypto_transactions"),
-        AssetClassKind::Savings | AssetClassKind::OtherAssets => {
-            return Err(crate::error::AppError::Internal(
-                "aggregate_ticker_history supports stocks and crypto only".into(),
-            ))
-        }
-    };
     let from_day = (from_day / SECONDS_PER_DAY) * SECONDS_PER_DAY;
-
     let days: Vec<i64> = {
         let mut stmt = conn.prepare(
             "SELECT DISTINCT (recorded_at / 86400) * 86400 AS day FROM portfolio_metrics_history
@@ -316,18 +306,97 @@ pub fn aggregate_ticker_history(
         let rows = stmt.query_map([from_day, until_day_exclusive], |row| row.get(0))?;
         rows.filter_map(|r| r.ok()).collect()
     };
-    if days.is_empty() {
-        return Ok(());
+    aggregate_days(conn, kind, &days)
+}
+
+/// [`aggregate_ticker_history`] for the snapshot days in
+/// `[from_day, until_day_exclusive)`, after creating the days the range has
+/// no row for. Ticker-history writes only ever updated existing days, so on
+/// a profile whose history starts today an import of older trades filled
+/// `stock_value_history` but left the chart with a single point. A created
+/// day carries its statics from the nearest live row (like the full
+/// recalculation) and gets the other ticker class derived too, so it never
+/// shows a hole where crypto (or stocks) was held.
+pub fn rebuild_ticker_class(
+    conn: &Connection,
+    kind: AssetClassKind,
+    from_day: i64,
+    until_day_exclusive: i64,
+) -> Result<()> {
+    let other = match kind {
+        AssetClassKind::Investments => AssetClassKind::Crypto,
+        AssetClassKind::Crypto => AssetClassKind::Investments,
+        AssetClassKind::Savings | AssetClassKind::OtherAssets => {
+            return Err(crate::error::AppError::Internal(
+                "rebuild_ticker_class supports stocks and crypto only".into(),
+            ))
+        }
+    };
+    let created = create_missing_days(conn, from_day, until_day_exclusive)?;
+    aggregate_ticker_history(conn, kind, from_day, until_day_exclusive)?;
+    aggregate_days(conn, other, &created)
+}
+
+/// Insert a backfill row for every day in `[from_day, until_day_exclusive)`
+/// that has none; returns the created days, oldest first.
+fn create_missing_days(
+    conn: &Connection,
+    from_day: i64,
+    until_day_exclusive: i64,
+) -> Result<Vec<i64>> {
+    let from_day = (from_day / SECONDS_PER_DAY) * SECONDS_PER_DAY;
+    let existing: std::collections::HashSet<i64> = {
+        let mut stmt = conn.prepare(
+            "SELECT DISTINCT (recorded_at / 86400) * 86400 FROM portfolio_metrics_history
+             WHERE recorded_at >= ?1 AND recorded_at < ?2",
+        )?;
+        let rows = stmt.query_map([from_day, until_day_exclusive], |row| row.get(0))?;
+        rows.filter_map(|r| r.ok()).collect()
+    };
+    let mut created = Vec::new();
+    let mut day = from_day;
+    while day < until_day_exclusive {
+        if !existing.contains(&day) {
+            let statics = carried_statics_from_nearest_live(conn, day)?.unwrap_or_default();
+            let breakdowns = ClassBreakdowns {
+                savings: statics.savings,
+                bonds: statics.bonds,
+                loans: statics.loans,
+                other_assets: statics.other_assets,
+                real_estate_personal: statics.real_estate_personal,
+                real_estate_investment: statics.real_estate_investment,
+                ..ClassBreakdowns::default()
+            };
+            upsert_snapshot(conn, day, SnapshotSource::Backfill, &breakdowns)?;
+            created.push(day);
+        }
+        day += SECONDS_PER_DAY;
     }
+    Ok(created)
+}
+
+/// Re-derive the `kind` breakdown of the given snapshot days (ascending).
+fn aggregate_days(conn: &Connection, kind: AssetClassKind, days: &[i64]) -> Result<()> {
+    let (history_table, tx_table) = match kind {
+        AssetClassKind::Investments => ("stock_value_history", "investment_transactions"),
+        AssetClassKind::Crypto => ("crypto_value_history", "crypto_transactions"),
+        AssetClassKind::Savings | AssetClassKind::OtherAssets => {
+            return Err(crate::error::AppError::Internal(
+                "aggregate_ticker_history supports stocks and crypto only".into(),
+            ))
+        }
+    };
+    let Some(&last_day) = days.last() else {
+        return Ok(());
+    };
 
     // One pass instead of one aggregate query per day: every ticker's
     // history rows and position changes are read once, then each day moves the
     // two per-ticker cursors forward. The old per-day query re-scanned every
     // history row before the day, 600 times over.
-    let last_day = days.last().copied().unwrap_or(from_day);
     let mut series = load_ticker_series(conn, history_table, tx_table, last_day + SECONDS_PER_DAY)?;
 
-    for day in days {
+    for &day in days {
         let next_day = day + SECONDS_PER_DAY;
         // Native value per currency: latest row per ticker before `next_day`,
         // restricted to tickers still held on that day per the transactions.
@@ -934,6 +1003,102 @@ mod tests {
             column(&conn, d2, "crypto_by_currency"),
             map(&[("CZK", 999.0)]),
             "excluded day keeps its live value"
+        );
+    }
+
+    /// A fresh profile has only today's live row: importing older trades must
+    /// still give the chart a day for every date since the first trade, with
+    /// the statics carried from the live row and the other ticker class
+    /// derived too (no hole where crypto was held).
+    #[test]
+    fn rebuild_ticker_class_creates_the_missing_days() {
+        let conn = setup_ticker_history_db();
+        const D1: i64 = 1_700_006_400;
+        let day = |n: i64| D1 + (n - 1) * SECONDS_PER_DAY;
+        // today's live row (day 5) holds savings
+        conn.execute(
+            "INSERT INTO portfolio_metrics_history (id, recorded_at, savings_by_currency,
+                investments_by_currency, source)
+             VALUES ('live', ?1, '{\"CZK\":70}', '{\"CZK\":999}', 'live')",
+            [day(5) + 3600],
+        )
+        .expect("live row");
+        for n in 1..=4 {
+            insert_ticker_row(
+                &conn,
+                "stock_value_history",
+                "MSFT",
+                day(n),
+                1.0,
+                500.0,
+                "CZK",
+            );
+        }
+        insert_ticker_row(
+            &conn,
+            "crypto_value_history",
+            "BTC",
+            day(1),
+            1.0,
+            10.0,
+            "CZK",
+        );
+        conn.execute_batch(&format!(
+            "INSERT INTO investment_transactions (id, ticker, type, quantity, transaction_date)
+                VALUES ('t1', 'MSFT', 'buy', '1', {d});
+             INSERT INTO crypto_transactions (id, ticker, type, quantity, transaction_date)
+                VALUES ('c1', 'BTC', 'buy', '1', {d});",
+            d = day(1)
+        ))
+        .expect("transactions");
+
+        rebuild_ticker_class(&conn, AssetClassKind::Investments, day(1), day(5)).expect("rebuild");
+
+        for n in 1..=4 {
+            assert_eq!(
+                column(&conn, day(n), "investments_by_currency"),
+                map(&[("CZK", 500.0)])
+            );
+            assert_eq!(
+                column(&conn, day(n), "crypto_by_currency"),
+                map(&[("CZK", 10.0)])
+            );
+            assert_eq!(
+                column(&conn, day(n), "savings_by_currency"),
+                map(&[("CZK", 70.0)])
+            );
+        }
+        assert_eq!(
+            column(&conn, day(5), "investments_by_currency"),
+            map(&[("CZK", 999.0)]),
+            "today's live row is untouched"
+        );
+    }
+
+    /// Days that already exist keep their other class: only created days get it derived.
+    #[test]
+    fn rebuild_ticker_class_leaves_the_other_class_of_existing_days() {
+        let conn = setup_ticker_history_db();
+        const D1: i64 = 1_700_006_400;
+        insert_history_day(&conn, D1);
+        insert_ticker_row(&conn, "stock_value_history", "MSFT", D1, 1.0, 500.0, "CZK");
+        conn.execute(
+            "INSERT INTO investment_transactions (id, ticker, type, quantity, transaction_date)
+                VALUES ('t1', 'MSFT', 'buy', '1', ?1)",
+            [D1],
+        )
+        .expect("tx");
+
+        rebuild_ticker_class(&conn, AssetClassKind::Investments, D1, D1 + SECONDS_PER_DAY)
+            .expect("rebuild");
+
+        assert_eq!(
+            column(&conn, D1, "investments_by_currency"),
+            map(&[("CZK", 500.0)])
+        );
+        assert_eq!(
+            column(&conn, D1, "crypto_by_currency"),
+            map(&[("CZK", 999.0)])
         );
     }
 

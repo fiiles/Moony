@@ -31,9 +31,7 @@ use specta::Type;
 
 use crate::db::Database;
 use crate::error::Result;
-use crate::services::portfolio_history::{
-    aggregate_ticker_history, AssetClassKind, SECONDS_PER_DAY,
-};
+use crate::services::portfolio_history::{rebuild_ticker_class, AssetClassKind, SECONDS_PER_DAY};
 use crate::services::price_api::{self, HistoricalPrice};
 use crate::services::ticker_history::{
     apply_stock_ticker_plan, plan_stock_ticker_history, RebuildStats,
@@ -252,6 +250,20 @@ pub fn rebuild_jobs(conn: &rusqlite::Connection, tickers: &[String]) -> Result<V
     Ok(jobs)
 }
 
+/// Every crypto holding with transactions as `(ticker, coingecko_id, earliest transaction date)`,
+/// by ticker: what a crypto history rebuild (e.g. after a CoinGecko key was entered) walks.
+pub fn crypto_rebuild_jobs(conn: &rusqlite::Connection) -> Result<Vec<(String, String, i64)>> {
+    let mut stmt = conn.prepare(
+        "SELECT ci.ticker, ci.coingecko_id, MIN(ct.transaction_date)
+         FROM crypto_investments ci JOIN crypto_transactions ct ON ct.ticker = ci.ticker
+         GROUP BY ci.ticker, ci.coingecko_id ORDER BY ci.ticker",
+    )?;
+    let jobs = stmt
+        .query_map([], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)))?
+        .collect::<rusqlite::Result<Vec<_>>>()?;
+    Ok(jobs)
+}
+
 /// Held tickers (outside `batch`) that have no history row in `from..=until`.
 fn tickers_without_history(
     db: &Database,
@@ -374,10 +386,11 @@ fn chunk_ranges(from_day: i64, until_day: i64, step: i64) -> Vec<(i64, i64)> {
 }
 
 /// Re-derive the investments class of the snapshot rows in `[start, end)`
-/// from the per-ticker history, in one transaction.
+/// from the per-ticker history, creating the days the range lacks, in one
+/// transaction.
 pub fn aggregate_stock_chunk(conn: &rusqlite::Connection, start: i64, end: i64) -> Result<()> {
     let tx = conn.unchecked_transaction()?;
-    aggregate_ticker_history(&tx, AssetClassKind::Investments, start, end)?;
+    rebuild_ticker_class(&tx, AssetClassKind::Investments, start, end)?;
     tx.commit()?;
     Ok(())
 }
@@ -499,6 +512,27 @@ mod tests {
                 ("BARC.L".to_string(), 200 * DAY)
             ],
             "AAPL was not asked for"
+        );
+    }
+
+    #[test]
+    fn crypto_rebuild_jobs_start_at_each_coins_first_transaction() {
+        let conn = rusqlite::Connection::open_in_memory().expect("db");
+        conn.execute_batch(
+            "CREATE TABLE crypto_investments (id TEXT, ticker TEXT, coingecko_id TEXT);
+             CREATE TABLE crypto_transactions (id TEXT, ticker TEXT, transaction_date INTEGER);
+             INSERT INTO crypto_investments VALUES ('1', 'BTC', 'bitcoin'), ('2', 'ETH', 'ethereum'),
+                 ('3', 'SOL', 'solana');
+             INSERT INTO crypto_transactions VALUES ('a', 'BTC', 500), ('b', 'BTC', 200),
+                 ('c', 'ETH', 900);",
+        )
+        .expect("schema");
+        assert_eq!(
+            crypto_rebuild_jobs(&conn).expect("jobs"),
+            vec![
+                ("BTC".to_string(), "bitcoin".to_string(), 200),
+                ("ETH".to_string(), "ethereum".to_string(), 900),
+            ]
         );
     }
 

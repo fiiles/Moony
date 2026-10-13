@@ -150,7 +150,7 @@ async fn refresh_derived_data(db: &Database, job: &mcp_refresh::PendingRefresh) 
                 }
                 if from < today {
                     db.with_conn(|conn| {
-                        crate::services::portfolio_history::aggregate_ticker_history(
+                        crate::services::portfolio_history::rebuild_ticker_class(
                             conn,
                             crate::services::portfolio_history::AssetClassKind::Crypto,
                             from,

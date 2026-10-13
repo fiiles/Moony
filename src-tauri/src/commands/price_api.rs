@@ -40,10 +40,16 @@ pub async fn get_api_keys(db: State<'_, Database>) -> Result<ApiKeys> {
     price_api::get_api_keys(&db)
 }
 
-/// Set API keys
+/// Set API keys. A new CoinGecko key rebuilds the crypto history in the background: what was
+/// fetched without it (rate limits, failed requests) may have holes.
 #[tauri::command]
-pub async fn set_api_keys(db: State<'_, Database>, keys: ApiKeys) -> Result<()> {
-    price_api::set_api_keys(&db, &keys)
+pub async fn set_api_keys(app: AppHandle, db: State<'_, Database>, keys: ApiKeys) -> Result<()> {
+    let before = price_api::get_api_keys(&db)?;
+    price_api::set_api_keys(&db, &keys)?;
+    if price_api::coingecko_key_changed(&before, &keys) {
+        portfolio::spawn_crypto_history_rebuild(app, db.inner().clone());
+    }
+    Ok(())
 }
 
 /// Refresh stock prices from Yahoo Finance

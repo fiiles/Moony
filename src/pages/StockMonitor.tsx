@@ -39,6 +39,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Stat, StatSkeleton, Stats } from '@/components/common/Stat';
 import { EmptyState } from '@/components/common/EmptyState';
+import { McpTip } from '@/components/common/McpTip';
 import { AssetLogo } from '@/components/common/AssetLogo';
 import { ConfirmDeleteDialog } from '@/components/common/ConfirmDeleteDialog';
 import { StockSearchCombobox } from '@/components/stock-monitor/StockSearchCombobox';
@@ -252,15 +253,18 @@ export default function StockMonitor() {
           title={t('empty.title')}
           description={t('empty.description')}
           action={
-            portfolioCandidates.length > 0 ? (
-              <Button
-                onClick={() => followPortfolioMutation.mutate()}
-                loading={followPortfolioMutation.isPending}
-              >
-                <Plus />
-                {t('actions.followPortfolio', { count: portfolioCandidates.length })}
-              </Button>
-            ) : undefined
+            <div className="flex flex-col items-center gap-4">
+              {portfolioCandidates.length > 0 && (
+                <Button
+                  onClick={() => followPortfolioMutation.mutate()}
+                  loading={followPortfolioMutation.isPending}
+                >
+                  <Plus />
+                  {t('actions.followPortfolio', { count: portfolioCandidates.length })}
+                </Button>
+              )}
+              <McpTip domain="watchlist" />
+            </div>
           }
         />
         {dialogs}

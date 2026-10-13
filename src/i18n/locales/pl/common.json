@@ -472,6 +472,18 @@
     "showLess": "Pokaż mniej",
     "dismiss": "Zamknij wskazówkę"
   },
+  "mcpTip": {
+    "bankAccounts": "Nie chce Ci się wszystkiego przepisywać? Asystent AI może założyć konta i zaimportować transakcje z wyciągu.",
+    "stocks": "Nie chce Ci się wszystkiego przepisywać? Asystent AI może zaimportować transakcje z raportu brokera.",
+    "crypto": "Nie chce Ci się wszystkiego przepisywać? Asystent AI może zaimportować transakcje z eksportu giełdy.",
+    "bonds": "Nie chce Ci się wszystkiego przepisywać? Asystent AI może dodać obligacje z potwierdzenia zakupu.",
+    "loans": "Nie chce Ci się wszystkiego przepisywać? Asystent AI może dodać kredyt z umowy.",
+    "realEstate": "Nie chce Ci się wszystkiego przepisywać? Asystent AI może dodać nieruchomość z jej dokumentów.",
+    "otherAssets": "Nie chce Ci się wszystkiego przepisywać? Asystent AI może dodać aktywa z faktury lub listy.",
+    "watchlist": "Asystent AI może obserwować akcje za Ciebie — wystarczy mu powiedzieć, które.",
+    "body": "Uruchom serwer MCP, przekaż Claude dokument lub opisz, co masz, i poproś, by dodał to za Ciebie. Pokaże, co odczytał, i niczego nie zapisze, dopóki nie potwierdzisz.",
+    "setupLink": "Skonfiguruj serwer MCP"
+  },
   "a11y": {
     "viewDetailsOf": "Pokaż szczegóły: {{name}}",
     "actionsFor": "Akcje dla: {{name}}",

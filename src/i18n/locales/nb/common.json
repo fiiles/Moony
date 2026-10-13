@@ -466,6 +466,18 @@
     "showLess": "Vis mindre",
     "dismiss": "Lukk tipset"
   },
+  "mcpTip": {
+    "bankAccounts": "Orker du ikke å taste inn alt? KI-assistenten kan opprette kontoer og importere transaksjoner fra et kontoutskrift.",
+    "stocks": "Orker du ikke å taste inn alt? KI-assistenten kan importere handler fra en meglerrapport.",
+    "crypto": "Orker du ikke å taste inn alt? KI-assistenten kan importere handler fra en børseksport.",
+    "bonds": "Orker du ikke å taste inn alt? KI-assistenten kan legge til obligasjoner fra en kjøpsbekreftelse.",
+    "loans": "Orker du ikke å taste inn alt? KI-assistenten kan legge til et lån fra kontrakten.",
+    "realEstate": "Orker du ikke å taste inn alt? KI-assistenten kan legge til en eiendom fra dokumentene.",
+    "otherAssets": "Orker du ikke å taste inn alt? KI-assistenten kan legge til eiendeler fra en faktura eller en liste.",
+    "watchlist": "KI-assistenten kan følge aksjer for deg — bare si hvilke.",
+    "body": "Start MCP-serveren, gi Claude dokumentet eller beskriv hva du har, og be den legge det til for deg. Den viser hva den har lest, og lagrer ingenting før du bekrefter.",
+    "setupLink": "Sett opp MCP-server"
+  },
   "a11y": {
     "viewDetailsOf": "Vis detaljer for {{name}}",
     "actionsFor": "Handlinger for {{name}}",

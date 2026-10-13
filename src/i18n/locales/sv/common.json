@@ -466,6 +466,18 @@
     "showLess": "Visa mindre",
     "dismiss": "Avfärda tipset"
   },
+  "mcpTip": {
+    "bankAccounts": "Orkar du inte skriva in allt? AI-assistenten kan skapa konton och importera transaktioner från ett kontoutdrag.",
+    "stocks": "Orkar du inte skriva in allt? AI-assistenten kan importera affärer från en mäklarrapport.",
+    "crypto": "Orkar du inte skriva in allt? AI-assistenten kan importera affärer från en börsexport.",
+    "bonds": "Orkar du inte skriva in allt? AI-assistenten kan lägga till obligationer från en köpbekräftelse.",
+    "loans": "Orkar du inte skriva in allt? AI-assistenten kan lägga till ett lån från avtalet.",
+    "realEstate": "Orkar du inte skriva in allt? AI-assistenten kan lägga till en fastighet från dess dokument.",
+    "otherAssets": "Orkar du inte skriva in allt? AI-assistenten kan lägga till tillgångar från en faktura eller en lista.",
+    "watchlist": "AI-assistenten kan bevaka aktier åt dig — säg bara vilka.",
+    "body": "Starta MCP-servern, ge Claude dokumentet eller beskriv vad du har och be den lägga till det åt dig. Den visar vad den har läst och sparar inget förrän du bekräftar.",
+    "setupLink": "Konfigurera MCP-server"
+  },
   "a11y": {
     "viewDetailsOf": "Visa detaljer för {{name}}",
     "actionsFor": "Åtgärder för {{name}}",

@@ -16,6 +16,23 @@ export const MCP_CATEGORIZE_TIP_KEY = 'moony-tip-mcp-categorize';
 /** "Add policies via an AI assistant" tip in the insurance empty state. */
 export const MCP_INSURANCE_TIP_KEY = 'moony-tip-mcp-insurance';
 
+/** Empty pages whose records the MCP server can create, each with its own "use an AI assistant" tip. */
+export type McpTipDomain =
+  | 'insurance'
+  | 'bankAccounts'
+  | 'stocks'
+  | 'crypto'
+  | 'bonds'
+  | 'loans'
+  | 'realEstate'
+  | 'otherAssets'
+  | 'watchlist';
+
+/** Dismissal key of a domain's MCP tip; insurance keeps its original key. */
+export function mcpTipKey(domain: McpTipDomain): string {
+  return domain === 'insurance' ? MCP_INSURANCE_TIP_KEY : `moony-tip-mcp-${domain}`;
+}
+
 /** Keys of the banners these tips replaced: a user who dismissed one never sees the tip. */
 export const MCP_CATEGORIZE_TIP_LEGACY_KEY = 'moony_categorization_mcp_hint_dismissed';
 export const MCP_INSURANCE_TIP_LEGACY_KEY = 'moony_insurance_mcp_hint_dismissed';

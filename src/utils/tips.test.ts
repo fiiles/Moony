@@ -8,6 +8,7 @@ import {
   dismissTip,
   hasCategorizedManually,
   isTipDismissed,
+  mcpTipKey,
   markCategorizedManually,
 } from './tips';
 
@@ -62,6 +63,14 @@ describe('dismissible tips', () => {
     expect(isTipDismissed(MCP_CATEGORIZE_TIP_KEY, undefined, broken)).toBe(false);
     expect(() => dismissTip(MCP_CATEGORIZE_TIP_KEY, broken)).not.toThrow();
     expect(isTipDismissed(MCP_CATEGORIZE_TIP_KEY, undefined, undefined)).toBe(false);
+  });
+});
+
+describe('mcpTipKey', () => {
+  it('keeps the original insurance key and derives one per other page', () => {
+    expect(mcpTipKey('insurance')).toBe(MCP_INSURANCE_TIP_KEY);
+    expect(mcpTipKey('stocks')).toBe('moony-tip-mcp-stocks');
+    expect(mcpTipKey('watchlist')).toBe('moony-tip-mcp-watchlist');
   });
 });
 

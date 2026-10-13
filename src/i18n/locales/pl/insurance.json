@@ -327,7 +327,6 @@
   },
   "mcp": {
     "tipSummary": "Nie chce ci się wszystkiego wpisywać? Asystent AI może dodać polisy na podstawie umowy.",
-    "bannerBody": "Uruchom serwer MCP, prześlij Claude umowę, ofertę lub podsumowanie polisy i poproś, by dodał polisę za ciebie.",
-    "setupLink": "Skonfiguruj serwer MCP"
+    "bannerBody": "Uruchom serwer MCP, prześlij Claude umowę, ofertę lub podsumowanie polisy i poproś, by dodał polisę za ciebie."
   }
 }

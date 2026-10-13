@@ -50,6 +50,7 @@ import {
 } from '@/components/ui/table';
 import { AssetLogo } from '@/components/common/AssetLogo';
 import { EmptyState } from '@/components/common/EmptyState';
+import { McpTip } from '@/components/common/McpTip';
 import { ExportButton } from '@/components/common/ExportButton';
 import { ConfirmDeleteDialog } from '@/components/common/ConfirmDeleteDialog';
 import { Stat, StatSkeleton, Stats } from '@/components/common/Stat';
@@ -312,14 +313,17 @@ export default function RealEstatePage() {
           title={t('empty.title')}
           description={t('empty.description')}
           action={
-            <AddRealEstateModal
-              trigger={
-                <Button>
-                  <Plus />
-                  {t('addProperty')}
-                </Button>
-              }
-            />
+            <div className="flex flex-col items-center gap-4">
+              <AddRealEstateModal
+                trigger={
+                  <Button>
+                    <Plus />
+                    {t('addProperty')}
+                  </Button>
+                }
+              />
+              <McpTip domain="realEstate" />
+            </div>
           }
         />
       ) : (

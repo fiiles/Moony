@@ -466,6 +466,18 @@
     "showLess": "Weniger anzeigen",
     "dismiss": "Tipp ausblenden"
   },
+  "mcpTip": {
+    "bankAccounts": "Keine Lust, alles abzutippen? Der KI-Assistent kann Konten anlegen und Umsätze aus einem Kontoauszug importieren.",
+    "stocks": "Keine Lust, alles abzutippen? Der KI-Assistent kann Trades aus einer Broker-Abrechnung importieren.",
+    "crypto": "Keine Lust, alles abzutippen? Der KI-Assistent kann Trades aus einem Börsenexport importieren.",
+    "bonds": "Keine Lust, alles abzutippen? Der KI-Assistent kann Anleihen aus einer Kaufbestätigung hinzufügen.",
+    "loans": "Keine Lust, alles abzutippen? Der KI-Assistent kann einen Kredit aus dem Vertrag hinzufügen.",
+    "realEstate": "Keine Lust, alles abzutippen? Der KI-Assistent kann eine Immobilie aus ihren Unterlagen hinzufügen.",
+    "otherAssets": "Keine Lust, alles abzutippen? Der KI-Assistent kann Vermögenswerte aus einer Rechnung oder Liste hinzufügen.",
+    "watchlist": "Der KI-Assistent kann Aktien für Sie beobachten — sagen Sie ihm einfach, welche.",
+    "body": "Starten Sie den MCP-Server, geben Sie Claude das Dokument oder beschreiben Sie, was Sie haben, und bitten Sie ihn, es hinzuzufügen. Er zeigt Ihnen, was er gelesen hat, und schreibt nichts, bevor Sie bestätigen.",
+    "setupLink": "MCP-Server einrichten"
+  },
   "a11y": {
     "viewDetailsOf": "Details zu {{name}} anzeigen",
     "actionsFor": "Aktionen für {{name}}",

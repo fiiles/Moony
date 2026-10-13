@@ -469,6 +469,18 @@
     "showLess": "Mostra meno",
     "dismiss": "Chiudi il suggerimento"
   },
+  "mcpTip": {
+    "bankAccounts": "Non ti va di digitare tutto? L'assistente IA può creare conti e importare movimenti da un estratto conto.",
+    "stocks": "Non ti va di digitare tutto? L'assistente IA può importare le operazioni da un rendiconto del broker.",
+    "crypto": "Non ti va di digitare tutto? L'assistente IA può importare le operazioni da un export dell'exchange.",
+    "bonds": "Non ti va di digitare tutto? L'assistente IA può aggiungere obbligazioni dalla conferma d'acquisto.",
+    "loans": "Non ti va di digitare tutto? L'assistente IA può aggiungere un prestito dal contratto.",
+    "realEstate": "Non ti va di digitare tutto? L'assistente IA può aggiungere un immobile dai suoi documenti.",
+    "otherAssets": "Non ti va di digitare tutto? L'assistente IA può aggiungere beni da una fattura o da un elenco.",
+    "watchlist": "L'assistente IA può seguire le azioni per te: digli solo quali.",
+    "body": "Avvia il server MCP, dai a Claude il documento o descrivi cosa hai e chiedigli di aggiungerlo per te. Ti mostra cosa ha letto e non salva nulla finché non confermi.",
+    "setupLink": "Configura server MCP"
+  },
   "a11y": {
     "viewDetailsOf": "Vedi dettagli di {{name}}",
     "actionsFor": "Azioni per {{name}}",

@@ -313,7 +313,6 @@
   },
   "mcp": {
     "tipSummary": "Keine Lust, alles einzutippen? Der KI-Assistent kann Policen aus einem Vertrag hinzufügen.",
-    "bannerBody": "Starten Sie den MCP-Server, laden Sie den Vertrag, das Angebot oder die Policenübersicht zu Claude hoch und bitten Sie ihn, die Police für Sie anzulegen.",
-    "setupLink": "MCP-Server einrichten"
+    "bannerBody": "Starten Sie den MCP-Server, laden Sie den Vertrag, das Angebot oder die Policenübersicht zu Claude hoch und bitten Sie ihn, die Police für Sie anzulegen."
   }
 }

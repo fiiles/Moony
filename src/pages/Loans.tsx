@@ -10,6 +10,7 @@ import { useShellPage } from '@/components/shell/shell-context';
 import { PageHead } from '@/components/shell/PageHead';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/common/EmptyState';
+import { McpTip } from '@/components/common/McpTip';
 import { ExportButton } from '@/components/common/ExportButton';
 import { ConfirmDeleteDialog } from '@/components/common/ConfirmDeleteDialog';
 import { StatSkeleton, Stats } from '@/components/common/Stat';
@@ -93,10 +94,13 @@ export default function Loans() {
           title={t('empty.title')}
           description={t('empty.description')}
           action={
-            <Button onClick={() => setModal('add')}>
-              <Plus />
-              {t('addLoan')}
-            </Button>
+            <div className="flex flex-col items-center gap-4">
+              <Button onClick={() => setModal('add')}>
+                <Plus />
+                {t('addLoan')}
+              </Button>
+              <McpTip domain="loans" />
+            </div>
           }
         />
       ) : (

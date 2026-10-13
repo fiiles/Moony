@@ -36,6 +36,7 @@ import { PageHead } from '@/components/shell/PageHead';
 import { Stat, StatSkeleton, Stats } from '@/components/common/Stat';
 import PortfolioTrendCard from '@/components/common/PortfolioTrendCard';
 import { EmptyState } from '@/components/common/EmptyState';
+import { McpTip } from '@/components/common/McpTip';
 import { ConfirmDeleteDialog } from '@/components/common/ConfirmDeleteDialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -293,10 +294,13 @@ export default function BankAccounts() {
           title={t('empty.title')}
           description={t('empty.description')}
           action={
-            <Button onClick={() => setAddDialogOpen(true)}>
-              <Plus />
-              {t('addAccount')}
-            </Button>
+            <div className="flex flex-col items-center gap-4">
+              <Button onClick={() => setAddDialogOpen(true)}>
+                <Plus />
+                {t('addAccount')}
+              </Button>
+              <McpTip domain="bankAccounts" />
+            </div>
           }
         />
       ) : (

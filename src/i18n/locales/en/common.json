@@ -466,6 +466,18 @@
     "showLess": "Show less",
     "dismiss": "Dismiss tip"
   },
+  "mcpTip": {
+    "bankAccounts": "Don't feel like typing it all in? The AI assistant can create accounts and import transactions from a statement.",
+    "stocks": "Don't feel like typing it all in? The AI assistant can import trades from a broker statement.",
+    "crypto": "Don't feel like typing it all in? The AI assistant can import trades from an exchange export.",
+    "bonds": "Don't feel like typing it all in? The AI assistant can add bonds from a purchase confirmation.",
+    "loans": "Don't feel like typing it all in? The AI assistant can add a loan from the contract.",
+    "realEstate": "Don't feel like typing it all in? The AI assistant can add a property from its documents.",
+    "otherAssets": "Don't feel like typing it all in? The AI assistant can add assets from an invoice or a list.",
+    "watchlist": "The AI assistant can follow stocks for you — just tell it which ones.",
+    "body": "Start the MCP server, give Claude the document or describe what you have, and ask it to add it for you. It shows you what it read and writes nothing until you confirm.",
+    "setupLink": "Set up MCP server"
+  },
   "a11y": {
     "viewDetailsOf": "View details of {{name}}",
     "actionsFor": "Actions for {{name}}",

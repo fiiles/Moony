@@ -320,7 +320,6 @@
   },
   "mcp": {
     "tipSummary": "Non hai voglia di inserire tutto a mano? L'assistente AI può aggiungere le polizze da un contratto.",
-    "bannerBody": "Avvia il server MCP, carica il contratto, l'offerta o il riepilogo della polizza su Claude e chiedigli di aggiungere la polizza per te.",
-    "setupLink": "Configura il server MCP"
+    "bannerBody": "Avvia il server MCP, carica il contratto, l'offerta o il riepilogo della polizza su Claude e chiedigli di aggiungere la polizza per te."
   }
 }

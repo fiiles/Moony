@@ -313,7 +313,6 @@
   },
   "mcp": {
     "tipSummary": "Don't feel like typing it all in? The AI assistant can add policies from a contract.",
-    "bannerBody": "Start the MCP server, upload the contract, offer or policy summary to Claude and ask it to add the policy for you.",
-    "setupLink": "Set up MCP server"
+    "bannerBody": "Start the MCP server, upload the contract, offer or policy summary to Claude and ask it to add the policy for you."
   }
 }

@@ -320,7 +320,6 @@
   },
   "mcp": {
     "tipSummary": "¿No te apetece escribirlo todo? El asistente de IA puede añadir pólizas a partir de un contrato.",
-    "bannerBody": "Inicia el servidor MCP, sube a Claude el contrato, la oferta o el resumen de la póliza y pídele que añada la póliza por ti.",
-    "setupLink": "Configurar el servidor MCP"
+    "bannerBody": "Inicia el servidor MCP, sube a Claude el contrato, la oferta o el resumen de la póliza y pídele que añada la póliza por ti."
   }
 }

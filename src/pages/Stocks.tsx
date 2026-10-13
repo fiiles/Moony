@@ -23,6 +23,7 @@ import {
 import { PageHead } from '@/components/shell/PageHead';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/common/EmptyState';
+import { McpTip } from '@/components/common/McpTip';
 import { ExportButton } from '@/components/common/ExportButton';
 import { ConfirmDeleteDialog } from '@/components/common/ConfirmDeleteDialog';
 import { StatSkeleton, Stats } from '@/components/common/Stat';
@@ -239,15 +240,18 @@ export default function Stocks() {
           title={t('empty.title')}
           description={t('empty.description')}
           action={
-            <div className="flex flex-wrap items-center justify-center gap-2">
-              <Button onClick={() => setAddOpen(true)}>
-                <Plus />
-                {t('addInvestment')}
-              </Button>
-              <Button variant="outline" onClick={() => setImportOpen(true)}>
-                <Upload />
-                {t('importCSV')}
-              </Button>
+            <div className="flex flex-col items-center gap-4">
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                <Button onClick={() => setAddOpen(true)}>
+                  <Plus />
+                  {t('addInvestment')}
+                </Button>
+                <Button variant="outline" onClick={() => setImportOpen(true)}>
+                  <Upload />
+                  {t('importCSV')}
+                </Button>
+              </div>
+              <McpTip domain="stocks" />
             </div>
           }
         />

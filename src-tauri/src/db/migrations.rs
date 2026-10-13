@@ -2638,15 +2638,32 @@ CREATE TABLE mcp_pending_refresh (
 
 /// 017: the profile remembers its country (ISO 3166-1 alpha-2, upper case). Until now only the
 /// enabled rule packs hinted at it. CSV encoding, the insurance notice default and the order of
-/// the bank presets read it. Profiles that predate the column get CZ or SK from what they already
-/// say (an enabled `cz`/`sk` pack, the Czech UI, CZK as main currency); everyone else stays NULL
-/// and can pick a country in Settings.
+/// the bank presets read it. Profiles that predate the column take the country from what they
+/// already say, in this order: an enabled `cz` pack, an enabled `sk` pack, the one enabled pack
+/// other than `global` (pack ids are ISO alpha-2 codes, which the 0.10.0 wizard enabled for the
+/// chosen country), the Czech UI or CZK as main currency. Everyone else stays NULL and can pick a
+/// country in Settings. `rule_packs_enabled` holds a JSON array of pack ids; a value that is not
+/// one is ignored, as the app ignores it.
 pub(crate) const MIGRATION_017: &str = r#"
 ALTER TABLE user_profile ADD COLUMN country TEXT;
 
+WITH enabled_packs(id) AS (
+    SELECT DISTINCT pack.value
+    FROM app_config
+    JOIN json_each(
+        CASE WHEN NOT json_valid(app_config.value) THEN '[]'
+             WHEN json_type(app_config.value) <> 'array' THEN '[]'
+             ELSE app_config.value END
+    ) AS pack
+    WHERE app_config.key = 'rule_packs_enabled' AND pack.type = 'text'
+)
 UPDATE user_profile SET country = CASE
-    WHEN EXISTS (SELECT 1 FROM app_config WHERE key = 'rule_packs_enabled' AND value LIKE '%"cz"%') THEN 'CZ'
-    WHEN EXISTS (SELECT 1 FROM app_config WHERE key = 'rule_packs_enabled' AND value LIKE '%"sk"%') THEN 'SK'
+    WHEN EXISTS (SELECT 1 FROM enabled_packs WHERE id = 'cz') THEN 'CZ'
+    WHEN EXISTS (SELECT 1 FROM enabled_packs WHERE id = 'sk') THEN 'SK'
+    WHEN (SELECT COUNT(*) FROM enabled_packs WHERE id <> 'global') = 1
+         AND EXISTS (SELECT 1 FROM enabled_packs
+                     WHERE id <> 'global' AND LENGTH(id) = 2 AND id NOT GLOB '*[^A-Za-z]*')
+        THEN (SELECT UPPER(id) FROM enabled_packs WHERE id <> 'global')
     WHEN language = 'cs' OR currency = 'CZK' THEN 'CZ'
     ELSE NULL
 END
@@ -2996,16 +3013,86 @@ mod migration_017 {
     }
 
     #[test]
-    fn a_slovak_pack_gives_sk_and_every_other_profile_stays_unset() {
+    fn a_slovak_pack_gives_sk_and_a_profile_with_no_hint_stays_unset() {
         assert_eq!(
             country_after_migrating("en", "EUR", Some(r#"["global","sk"]"#)).as_deref(),
             Some("SK")
         );
+        assert_eq!(country_after_migrating("en", "USD", None), None);
         assert_eq!(
-            country_after_migrating("en", "EUR", Some(r#"["global","de"]"#)),
+            country_after_migrating("en", "USD", Some(r#"["global"]"#)),
             None
         );
-        assert_eq!(country_after_migrating("en", "USD", None), None);
+    }
+
+    #[test]
+    fn a_single_enabled_country_pack_names_the_country() {
+        let country = |packs| country_after_migrating("en", "EUR", Some(packs));
+        assert_eq!(country(r#"["global","pl"]"#).as_deref(), Some("PL"));
+        assert_eq!(country(r#"["pl"]"#).as_deref(), Some("PL"));
+        assert_eq!(country(r#"["global","hu","hu"]"#).as_deref(), Some("HU"));
+    }
+
+    #[test]
+    fn the_pack_wins_over_the_currency_and_the_interface_language() {
+        assert_eq!(
+            country_after_migrating("en", "CZK", Some(r#"["global","de"]"#)).as_deref(),
+            Some("DE")
+        );
+        assert_eq!(
+            country_after_migrating("cs", "CZK", Some(r#"["global","pl"]"#)).as_deref(),
+            Some("PL")
+        );
+    }
+
+    #[test]
+    fn the_czech_and_slovak_packs_win_over_other_enabled_packs() {
+        let country = |packs| country_after_migrating("en", "EUR", Some(packs));
+        assert_eq!(country(r#"["global","pl","cz"]"#).as_deref(), Some("CZ"));
+        assert_eq!(country(r#"["global","de","sk"]"#).as_deref(), Some("SK"));
+        assert_eq!(country(r#"["global","sk","cz"]"#).as_deref(), Some("CZ"));
+    }
+
+    #[test]
+    fn several_country_packs_are_ambiguous_and_fall_back_to_language_and_currency() {
+        assert_eq!(
+            country_after_migrating("en", "EUR", Some(r#"["global","pl","de"]"#)),
+            None
+        );
+        assert_eq!(
+            country_after_migrating("cs", "EUR", Some(r#"["global","pl","de"]"#)).as_deref(),
+            Some("CZ")
+        );
+    }
+
+    #[test]
+    fn the_czech_interface_or_currency_still_counts_when_no_country_pack_is_enabled() {
+        assert_eq!(
+            country_after_migrating("cs", "EUR", Some(r#"["global"]"#)).as_deref(),
+            Some("CZ")
+        );
+        assert_eq!(
+            country_after_migrating("en", "CZK", Some("[]")).as_deref(),
+            Some("CZ")
+        );
+    }
+
+    #[test]
+    fn a_stored_value_that_is_not_a_pack_list_is_ignored() {
+        let country = |language, packs| country_after_migrating(language, "EUR", Some(packs));
+        assert_eq!(country("cs", "not json").as_deref(), Some("CZ"));
+        assert_eq!(country("en", "not json"), None);
+        assert_eq!(country("en", r#""pl""#), None);
+        assert_eq!(country("en", r#"{"pl":true}"#), None);
+        assert_eq!(country("en", r#"["global",7]"#), None);
+    }
+
+    #[test]
+    fn a_pack_id_that_is_not_two_ascii_letters_names_no_country() {
+        let country = |packs| country_after_migrating("en", "EUR", Some(packs));
+        assert_eq!(country(r#"["global","eu-bank"]"#), None);
+        assert_eq!(country(r#"["global","p1"]"#), None);
+        assert_eq!(country(r#"["global","pol"]"#), None);
     }
 
     #[test]

@@ -12,9 +12,9 @@ All notable changes to Moony are documented in this file. The format follows
   field; the first-run wizard already asked for it and now saves it with the profile. The country
   puts your bank's statement formats first in the CSV import, chooses the text encoding of files
   that are not UTF-8 and sets country defaults such as the insurance notice period. A profile
-  that predates the field becomes Czechia or Slovakia when it has the Czech or Slovak rule pack,
-  the Czech interface or CZK as main currency; everyone else picks a country in Settings
-  (migration 017).
+  that predates the field takes the country of its single enabled country rule pack, or Czechia
+  when it has the Czech interface or CZK as main currency; everyone else picks a country in
+  Settings (migration 017).
 - **Own-account transfers without IBANs.** "Online Transfer to Savings", "Transfer from CHK
   ...5678", "Credit Card Payment", "Payment Thank You", "TFR-FR SAV", UK savings pots and card
   repayments (Barclaycard, MBNA, Amex) and the Japanese, Chinese and Korean wording for your own

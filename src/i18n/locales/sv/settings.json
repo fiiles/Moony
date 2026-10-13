@@ -116,12 +116,12 @@
     "description": "De här åtgärderna går inte att ångra.",
     "deleteAccount": "Ta bort konto",
     "confirmTitle": "Är du helt säker?",
-    "confirmDescription": "Det går inte att ångra. Ditt konto tas bort permanent och alla dina data raderas från den här enheten. Eftersom Moony är en helt lokal app finns det inga data på våra servrar att ta bort.",
+    "confirmDescription": "Det går inte att ångra. Databasen, nyckelfilerna och bilagorna raderas permanent från den här enheten. Kopior som Moony sparar bredvid databasen (moony.db.bak-…, pre-restore-…) blir kvar i datamappen; Inställningar → Data och säkerhetskopior → Öppna mappen leder dit. Eftersom Moony är en helt lokal app finns det inga data på våra servrar att ta bort.",
     "deleting": "Tar bort...",
     "backupFirst": "Tips: gör en säkerhetskopia först (Inställningar → Data och säkerhetskopior) — det är det enda sättet att få tillbaka de här uppgifterna.",
     "confirmLabel": "Skriv {{word}} för att bekräfta",
     "deleteAll": "Radera alla data",
-    "deleteAllHint": "Tar bort profilen och hela databasen på den här datorn. Säkerhetskopior som sparats utanför appen finns kvar.",
+    "deleteAllHint": "Tar bort databasen, nyckelfilerna och bilagorna på den här datorn. Kopior bredvid databasen (moony.db.bak-…, pre-restore-…) finns kvar i datamappen (Data och säkerhetskopior → Öppna mappen), liksom säkerhetskopior som sparats utanför appen.",
     "deleteButton": "Radera data…"
   },
   "toast": {

@@ -116,12 +116,12 @@
     "description": "Tyto akce nelze vrátit zpět.",
     "deleteAccount": "Smazat účet",
     "confirmTitle": "Jste si naprosto jisti?",
-    "confirmDescription": "Tuto akci nelze vrátit zpět. Tím trvale smažete svůj účet a odstraníte všechna data z tohoto zařízení. Jelikož je Moony lokální aplikace, na našich serverech nejsou žádná vaše data ke smazání.",
+    "confirmDescription": "Tuto akci nelze vrátit zpět. Trvale smaže databázi, soubory s klíči a přílohy z tohoto zařízení. Kopie, které Moony ukládá vedle databáze (moony.db.bak-…, pre-restore-…), zůstanou v datové složce; vede do ní Nastavení → Data a zálohy → Otevřít složku. Jelikož je Moony lokální aplikace, na našich serverech nejsou žádná vaše data ke smazání.",
     "deleting": "Mažu...",
     "backupFirst": "Tip: nejdřív si udělejte zálohu (Nastavení → Data a zálohy) — je to jediná cesta, jak se k datům vrátit.",
     "confirmLabel": "Pro potvrzení napište {{word}}",
     "deleteAll": "Smazat všechna data",
-    "deleteAllHint": "Odstraní profil i celou databázi na tomto počítači. Zálohy uložené mimo aplikaci zůstanou.",
+    "deleteAllHint": "Odstraní databázi, soubory s klíči a přílohy na tomto počítači. Kopie vedle databáze (moony.db.bak-…, pre-restore-…) zůstanou v datové složce (Data a zálohy → Otevřít složku), stejně jako zálohy uložené mimo aplikaci.",
     "deleteButton": "Smazat data…"
   },
   "toast": {

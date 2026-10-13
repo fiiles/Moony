@@ -9,6 +9,10 @@ All notable changes to Moony are documented in this file. The format follows
 ### Changed
 
 - PRIVACY.md lists every outbound host and describes what Delete Account leaves behind.
+- **Delete Account says what stays.** The confirmation dialog and the hint next to the button, in
+  all ten languages, no longer promise that all data is removed: the database, the key files and
+  the attachments go, while the copies Moony keeps next to the database (`moony.db.bak-…`,
+  `pre-restore-…`) stay in the data folder, which *Data and backups → Open folder* opens.
 
 ## [0.10.0] - 2026-10-12
 

@@ -116,12 +116,12 @@
     "description": "Tych operacji nie można cofnąć.",
     "deleteAccount": "Usuń konto",
     "confirmTitle": "Czy na pewno?",
-    "confirmDescription": "Tej operacji nie można cofnąć. Trwale usunie twoje konto i wszystkie dane z tego urządzenia. Moony działa wyłącznie lokalnie, więc na naszych serwerach nie ma żadnych danych do usunięcia.",
+    "confirmDescription": "Tej operacji nie można cofnąć. Trwale usuwa bazę danych, pliki kluczy i załączniki z tego urządzenia. Kopie, które Moony trzyma obok bazy (moony.db.bak-…, pre-restore-…), zostają w folderze danych; prowadzi do niego Ustawienia → Dane i kopie zapasowe → Otwórz folder. Moony działa wyłącznie lokalnie, więc na naszych serwerach nie ma żadnych danych do usunięcia.",
     "deleting": "Usuwanie...",
     "backupFirst": "Wskazówka: najpierw zrób kopię zapasową (Ustawienia → Dane i kopie zapasowe) — to jedyny sposób, by odzyskać te dane.",
     "confirmLabel": "Wpisz {{word}}, aby potwierdzić",
     "deleteAll": "Usuń wszystkie dane",
-    "deleteAllHint": "Usuwa profil i całą bazę danych na tym komputerze. Kopie zapasowe zapisane poza aplikacją zostają.",
+    "deleteAllHint": "Usuwa bazę danych, pliki kluczy i załączniki na tym komputerze. Kopie obok bazy (moony.db.bak-…, pre-restore-…) zostają w folderze danych (Dane i kopie zapasowe → Otwórz folder), tak samo jak kopie zapasowe zapisane poza aplikacją.",
     "deleteButton": "Usuń dane…"
   },
   "toast": {

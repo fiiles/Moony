@@ -116,12 +116,12 @@
     "description": "Disse handlingene kan ikke angres.",
     "deleteAccount": "Slett konto",
     "confirmTitle": "Er du helt sikker?",
-    "confirmDescription": "Denne handlingen kan ikke angres. Den sletter kontoen din permanent og fjerner alle dataene dine fra denne enheten. Siden Moony er en rent lokal app, finnes det ingen data på våre servere som kan slettes.",
+    "confirmDescription": "Denne handlingen kan ikke angres. Den sletter databasen, nøkkelfilene og vedleggene permanent fra denne enheten. Kopier som Moony lagrer ved siden av databasen (moony.db.bak-…, pre-restore-…) blir værende i datamappen; Innstillinger → Data og sikkerhetskopier → Åpne mappe fører dit. Siden Moony er en rent lokal app, finnes det ingen data på våre servere som kan slettes.",
     "deleting": "Sletter...",
     "backupFirst": "Tips: ta en sikkerhetskopi først (Innstillinger → Data og sikkerhetskopier) — det er den eneste måten å få disse dataene tilbake på.",
     "confirmLabel": "Skriv {{word}} for å bekrefte",
     "deleteAll": "Slett alle data",
-    "deleteAllHint": "Fjerner profilen og hele databasen på denne datamaskinen. Sikkerhetskopier lagret utenfor appen blir værende.",
+    "deleteAllHint": "Fjerner databasen, nøkkelfilene og vedleggene på denne datamaskinen. Kopier ved siden av databasen (moony.db.bak-…, pre-restore-…) blir værende i datamappen (Data og sikkerhetskopier → Åpne mappe), det samme gjør sikkerhetskopier lagret utenfor appen.",
     "deleteButton": "Slett data…"
   },
   "toast": {

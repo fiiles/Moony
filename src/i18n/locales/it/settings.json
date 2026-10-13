@@ -116,12 +116,12 @@
     "description": "Queste azioni non si possono annullare.",
     "deleteAccount": "Elimina account",
     "confirmTitle": "Sei davvero sicuro?",
-    "confirmDescription": "Questa azione non si può annullare. Eliminerà definitivamente il tuo account e rimuoverà tutti i tuoi dati da questo dispositivo. Poiché Moony funziona solo in locale, sui nostri server non c'è alcun dato da eliminare.",
+    "confirmDescription": "Questa azione non si può annullare. Elimina definitivamente il database, i file delle chiavi e gli allegati da questo dispositivo. Le copie che Moony conserva accanto al database (moony.db.bak-…, pre-restore-…) restano nella cartella dei dati; Impostazioni → Dati e backup → Apri cartella porta fin lì. Poiché Moony funziona solo in locale, sui nostri server non c'è alcun dato da eliminare.",
     "deleting": "Eliminazione...",
     "backupFirst": "Suggerimento: fai prima un backup (Impostazioni → Dati e backup) — è l'unico modo per riavere questi dati.",
     "confirmLabel": "Digita {{word}} per confermare",
     "deleteAll": "Elimina tutti i dati",
-    "deleteAllHint": "Rimuove il profilo e l'intero database su questo computer. I backup salvati fuori dall'app restano.",
+    "deleteAllHint": "Rimuove il database, i file delle chiavi e gli allegati su questo computer. Le copie accanto al database (moony.db.bak-…, pre-restore-…) restano nella cartella dei dati (Dati e backup → Apri cartella), come i backup salvati fuori dall'app.",
     "deleteButton": "Elimina i dati…"
   },
   "toast": {

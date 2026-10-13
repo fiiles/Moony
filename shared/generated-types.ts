@@ -437,7 +437,7 @@ matchHeaders: string[];
 delimiter: string; 
 /**
  * Encoding label (`UTF-8`, `Windows-1250`, …). Only consulted when the
- * file is not valid UTF-8 — see `decode_csv_content`.
+ * file is not valid UTF-8 — see `decode_csv_content_for_country`.
  */
 encoding: string; dateColumn: string; 
 /**
@@ -2092,12 +2092,29 @@ export type UpdateTransactionCategory = { kind?: FlowKind | null; name: string |
 /**
  * Data for updating user profile (partial updates)
  */
-export type UpdateUserProfile = { name: string | null; surname: string | null; email: string | null; menuPreferences: MenuPreferences | null; currency: string | null; language: string | null; excludePersonalRealEstate: boolean | null; coingeckoModalDismissed: boolean | null; mcpServerEnabled: boolean | null }
+export type UpdateUserProfile = { name: string | null; surname: string | null; email: string | null; menuPreferences: MenuPreferences | null; currency: string | null; language: string | null; excludePersonalRealEstate: boolean | null; coingeckoModalDismissed: boolean | null; mcpServerEnabled: boolean | null; 
+/**
+ * `Some("")` clears the country; otherwise two ASCII letters (stored upper case).
+ */
+country: string | null; 
+/**
+ * `0` turns the anniversary reminder off; 1..=365 sets the notice period.
+ */
+insuranceNoticeDays: number | null }
 
 /**
  * User profile stored in database
  */
-export type UserProfile = { id: number; name: string; surname: string; email: string; menuPreferences: MenuPreferences; currency: string; language: string; excludePersonalRealEstate: boolean; coingeckoModalDismissed?: boolean; mcpServerEnabled?: boolean; createdAt: number }
+export type UserProfile = { id: number; name: string; surname: string; email: string; menuPreferences: MenuPreferences; currency: string; language: string; excludePersonalRealEstate: boolean; coingeckoModalDismissed?: boolean; mcpServerEnabled?: boolean; 
+/**
+ * ISO 3166-1 alpha-2 country of the profile (`CZ`), None until set.
+ */
+country: string | null; 
+/**
+ * The cancellation notice of insurance policies in days that the milestones use: the stored
+ * value, else 43 for Czechia and Slovakia, else None (no anniversary reminder).
+ */
+insuranceNoticeDays: number | null; createdAt: number }
 
 /**
  * A followed stock (row in watched_stocks)

@@ -20,6 +20,7 @@ import { RawDataPreview } from './RawDataPreview';
 import {
   AUTO_PRESET,
   AUTO_VALUE,
+  ENCODING_CHOICES,
   dateFormatChoices,
   dateFormatLabel,
   fileNameFromPath,
@@ -99,8 +100,12 @@ interface MappingStepProps {
   /** The preset was recognised from the headers. */
   presetDetected: boolean;
   onPresetChange: (value: string) => void;
-  /** The file is being read again (preset or layout changed). */
+  /** The file is being read again (preset, layout or encoding changed). */
   isInspecting: boolean;
+  /** `AUTO_VALUE` or an encoding name from `ENCODING_CHOICES`. */
+  encodingChoice: string;
+  /** Read the file again with this encoding (or detect it again for Auto). */
+  onEncodingChange: (value: string) => void;
 }
 
 /**
@@ -123,6 +128,8 @@ export function MappingStep({
   presetDetected,
   onPresetChange,
   isInspecting,
+  encodingChoice,
+  onEncodingChange,
 }: MappingStepProps) {
   const { t } = useTranslation('bank_accounts');
   const headers = useMemo(() => uniqueHeaders(inspection.headers), [inspection.headers]);
@@ -304,6 +311,28 @@ export function MappingStep({
                   </SelectContent>
                 </Select>
               </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="csv-encoding">{t('csvImport.encoding')}</Label>
+                <Select
+                  value={encodingChoice}
+                  onValueChange={onEncodingChange}
+                  disabled={isInspecting}
+                >
+                  <SelectTrigger id="csv-encoding">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={AUTO_VALUE}>
+                      {t('csvImport.encodingAuto', { encoding: inspection.encoding })}
+                    </SelectItem>
+                    {ENCODING_CHOICES.map((choice) => (
+                      <SelectItem key={choice.value} value={choice.value}>
+                        {choice.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <NumberField
                 key={`header-${inspectRevision}`}
                 id="csv-header-row"
@@ -341,6 +370,7 @@ export function MappingStep({
               </p>
             )}
             <p className="mt-3 text-micro font-500 text-ink-4">{t('csvImport.layoutHelp')}</p>
+            <p className="mt-3 text-micro font-500 text-ink-4">{t('csvImport.encodingHint')}</p>
           </div>
         </div>
 

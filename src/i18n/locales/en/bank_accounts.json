@@ -371,7 +371,10 @@
     },
     "columnNone": "— not used —",
     "pendingPromoted": "Pending transaction will be booked",
-    "editColumns": "Edit columns"
+    "editColumns": "Edit columns",
+    "encoding": "Text encoding",
+    "encodingAuto": "Auto-detect ({{encoding}})",
+    "encodingHint": "Change it when accents or non-Latin letters look wrong in the preview."
   },
   "importHistory": {
     "title": "Import history",

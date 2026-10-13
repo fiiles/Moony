@@ -12,6 +12,8 @@ export interface PeriodSelection {
   range: UtcPeriodRange;
   /** "Říjen 2026", "Q4 2026" or "2026". */
   label: string;
+  /** The same period inside a sentence: "septiembre de 2026", "září 2026", "Q4 2026", "2026". */
+  labelInSentence: string;
 }
 
 /**
@@ -30,6 +32,10 @@ export function usePeriodSelection(initial: PeriodTimeframe): PeriodSelection {
     }
     return String(range.startDate.getUTCFullYear());
   }, [timeframe, range, fmt]);
+  const labelInSentence = useMemo(
+    () => (timeframe === 'monthly' ? fmt.monthInSentence(range.startDate) : label),
+    [timeframe, range, fmt, label]
+  );
   return {
     timeframe,
     setTimeframe: (next) => {
@@ -40,5 +46,6 @@ export function usePeriodSelection(initial: PeriodTimeframe): PeriodSelection {
     setOffset: (update) => setOffsetState((current) => Math.min(0, update(current))),
     range,
     label,
+    labelInSentence,
   };
 }

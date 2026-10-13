@@ -29,9 +29,11 @@ notarization](#code-signing-and-notarization-not-set-up-yet)); the **updater sig
    this URL, so keep the repository where it is; if it ever has to move, change the endpoint
    (and the repository URLs in `README.md`, `.github/ISSUE_TEMPLATE/config.yml` and the release
    body in `release.yml`) in the same commit and expect users of older builds to update by hand.
-4. **Never change the app identifier** (`identifier` in `tauri.conf.json`,
-   `com.filipkral.moony`). The user's data folder is derived from it; changing it makes every
-   existing installation look for its data in a new, empty place.
+4. **Never change the app identifier again** (`identifier` in `tauri.conf.json`,
+   `com.moonyfinance.desktop`). The user's data folder is derived from it; changing it makes every
+   existing installation look for its data in a new, empty place. It changed once, in 0.10.1,
+   without an automatic move (ADR 0015); a second change would make every user rename the data
+   folder by hand again.
 
 ## Pre-flight (every release)
 
@@ -65,6 +67,10 @@ Then, by hand:
       Artifacts land in `src-tauri/target/release/bundle/`.
 - [ ] Migrations added since the last release were tried against a copy of a database written
       by that release (`docs/playbooks/add-db-migration.md`).
+- [ ] The "Upgrading from 0.10.0" paragraph at the top of `releaseBody` in
+      `.github/workflows/release.yml` is for 0.10.x only (the update dialog of an installed 0.10.0
+      shows these notes and Moony does not move the data folder); remove it after the first 0.11
+      release.
 
 ## Version bump
 

@@ -453,4 +453,556 @@ mod tests {
         let (_, disabled) = read_config(&conn).unwrap();
         assert!(disabled.is_empty());
     }
+
+    // ==================== Own-account transfers without IBANs ====================
+
+    use super::super::engine::CategorizationEngine;
+    use super::super::types::TransactionInput;
+
+    const TRANSFER: &str = "cat_internal_transfers";
+
+    fn pack_engine(ids: &[&str]) -> CategorizationEngine {
+        let enabled: Vec<String> = ids.iter().map(|id| id.to_string()).collect();
+        CategorizationEngine::new(rules_for(&enabled, &HashSet::new()))
+    }
+
+    fn category_of(engine: &CategorizationEngine, text: &str) -> Option<String> {
+        engine
+            .categorize(&TransactionInput::new(
+                "t".into(),
+                Some(text.into()),
+                None,
+                -50.0,
+            ))
+            .category_id()
+            .map(String::from)
+    }
+
+    /// The id of the rule that decided, when a rule did.
+    fn rule_of(engine: &CategorizationEngine, text: &str) -> Option<String> {
+        use super::super::types::{CategorizationResult, CategorizationSource};
+        match engine.categorize(&TransactionInput::new(
+            "t".into(),
+            Some(text.into()),
+            None,
+            -50.0,
+        )) {
+            CategorizationResult::Match {
+                source: CategorizationSource::Rule { rule_id, .. },
+                ..
+            } => Some(rule_id),
+            _ => None,
+        }
+    }
+
+    /// (country pack, description): each one a real statement line of that market.
+    const OWN_ACCOUNT_SAMPLES: &[(&str, &str)] = &[
+        ("us", "Online Transfer to Savings"),
+        (
+            "us",
+            "ONLINE TRANSFER FROM CHK ...5678 transaction#: 123456",
+        ),
+        ("us", "Online Transfer to SAV ...1234 transaction#: 98765"),
+        ("us", "CAPITAL ONE MOBILE PYMT. AUTHORIZED ON 10/12"),
+        ("us", "CHASE CREDIT CRD AUTOPAY 241012"),
+        ("us", "AMEX EPAYMENT ACH PMT"),
+        ("us", "Payment Thank You - Web"),
+        ("gb", "TRANSFER TO SAVINGS POT"),
+        ("gb", "BARCLAYCARD"),
+        ("gb", "MBNA LIMITED"),
+        ("gb", "ROUND UP"),
+        ("gb", "TFR TO OWN A/C"),
+        ("gb", "AMEX PAYMENT"),
+        ("gb", "AMERICAN EXPRESS DD"),
+        ("ca", "TFR-FR SAV 1234"),
+        ("ca", "Transfer to chequing"),
+        ("ca", "VISA PYMT"),
+        ("ca", "PAYMENT - THANK YOU"),
+        ("au", "Transfer to Savings"),
+        ("au", "BPAY TO CREDIT CARD"),
+        ("nz", "Transfer to Serious Saver"),
+        ("nz", "TRANSFER FROM CALL ACCOUNT"),
+        ("ie", "TFR TO DEMAND DEPOSIT"),
+        ("sg", "Transfer to Multiplier"),
+        ("hk", "轉賬 自己戶口"),
+        ("hk", "信用卡還款"),
+        ("hk", "Transfer to Time Deposit"),
+        ("jp", "口座間振替"),
+        ("jp", "普通預金から定期預金へ"),
+        ("jp", "積立定期預金へ"),
+        ("jp", "ＶＩＳＡカード代金"),
+        ("cn", "转入余额宝"),
+        ("cn", "余额宝-自动转入"),
+        ("cn", "零钱通转出"),
+        ("cn", "转入零钱通"),
+        ("cn", "银证转账"),
+        ("kr", "본인계좌이체"),
+        ("kr", "본인 계좌로 이체"),
+        ("kr", "내 계좌로"),
+        ("kr", "적금 납입"),
+        ("kr", "적금이체"),
+        ("kr", "정기예금 가입"),
+        ("kr", "카드대금"),
+    ];
+
+    #[test]
+    fn own_account_wording_is_an_internal_transfer_in_each_market() {
+        for &(pack, text) in OWN_ACCOUNT_SAMPLES {
+            let engine = pack_engine(&["global", pack]);
+            assert_eq!(
+                category_of(&engine, text).as_deref(),
+                Some(TRANSFER),
+                "{pack}: {text}"
+            );
+        }
+    }
+
+    #[test]
+    fn the_global_pack_alone_covers_english_statements_of_any_country() {
+        let engine = pack_engine(&["global"]);
+        for text in [
+            "Online Transfer to Savings",
+            "Internal transfer",
+            "Transfer between accounts",
+            "Payment to own account",
+            "Credit Card Payment",
+            "Payment to Chase credit card ending 1234",
+            "AUTOPAY PAYMENT - THANK YOU",
+        ] {
+            assert_eq!(
+                category_of(&engine, text).as_deref(),
+                Some(TRANSFER),
+                "{text}"
+            );
+        }
+    }
+
+    #[test]
+    fn no_country_pack_outranks_the_english_own_account_wording() {
+        // The wizard always enables `global`; a merchant rule of any pack must not win on these lines.
+        for pack in available_packs().iter().filter(|p| p.pack_id != "global") {
+            let engine = pack_engine(&["global", &pack.pack_id]);
+            for text in [
+                "Online Transfer to Savings",
+                "Internal transfer",
+                "Payment to own account",
+                "Credit Card Payment",
+                "TRANSFER BETWEEN ACCOUNTS",
+                "AUTOPAY PAYMENT - THANK YOU",
+            ] {
+                assert_eq!(
+                    category_of(&engine, text).as_deref(),
+                    Some(TRANSFER),
+                    "{}: {text}",
+                    pack.pack_id
+                );
+            }
+        }
+    }
+
+    /// Every market pack that carries own-transfer rules, English-speaking first.
+    const ENGLISH_MARKETS: &[&str] = &["global", "us", "gb", "ca", "au", "nz", "ie", "sg", "hk"];
+
+    #[test]
+    fn payments_to_people_card_purchases_and_bills_are_not_own_account_transfers() {
+        // Unknown payees only: a merchant rule of a pack must not be what keeps a line out.
+        let engine = pack_engine(ENGLISH_MARKETS);
+        for text in [
+            "Zelle payment to John Smith",
+            "VENMO PAYMENT 1234",
+            "CARD PAYMENT TO ACME WIDGETS 4444",
+            "DIRECT DEBIT ACME WIDGETS",
+            "STANDING ORDER J SMITH RENT",
+            "FASTER PAYMENT FROM J SMITH",
+            "Salary transfer from ACME Ltd",
+            "Transfer to Current Energy Ltd",
+            "DEBIT CARD PAYMENT XYZ LTD",
+        ] {
+            assert_ne!(
+                category_of(&engine, text).as_deref(),
+                Some(TRANSFER),
+                "{text}"
+            );
+        }
+        // Interest on a savings account is income, not a move between accounts.
+        assert_eq!(
+            category_of(&engine, "Savings interest credited").as_deref(),
+            Some("cat_investment_income")
+        );
+    }
+
+    #[test]
+    fn cheque_numbers_are_not_account_masks_but_masked_accounts_are() {
+        let engine = pack_engine(&["global", "us"]);
+        for text in ["CHK 1234", "CHK #1234 RENT", "CHECKING 1234 FEE"] {
+            assert_ne!(
+                category_of(&engine, text).as_deref(),
+                Some(TRANSFER),
+                "{text}"
+            );
+        }
+        for text in [
+            "ONLINE TRANSFER FROM CHK ...5678",
+            "Transfer to SAV XXXX1234",
+            "Transfer to SAV ***1234",
+        ] {
+            assert_eq!(
+                category_of(&engine, text).as_deref(),
+                Some(TRANSFER),
+                "{text}"
+            );
+        }
+    }
+
+    #[test]
+    fn card_networks_processors_and_bookkeeping_are_not_own_account_transfers() {
+        let engine = pack_engine(ENGLISH_MARKETS);
+        for text in [
+            // debit-card purchases and network fees, not a card bill
+            "Visa Debit Purchase Payment",
+            "MASTERCARD PAYMENT SERVICES",
+            // BPAY to a government agency that happens to say VISA
+            "BPAY DEPT HOME AFFAIRS VISA",
+            // merchant-acquiring and card-interest lines
+            "Square credit card processing payment",
+            "STRIPE credit card payment received",
+            "credit card interest payment",
+            // "own account" without a transfer
+            "Own account bookkeeping services",
+            // Hong Kong: paying with a credit card is a purchase, repaying it is not
+            "信用卡付款",
+        ] {
+            assert_ne!(
+                category_of(&engine, text).as_deref(),
+                Some(TRANSFER),
+                "{text}"
+            );
+        }
+    }
+
+    #[test]
+    fn card_issuer_fees_interest_and_cashback_are_not_repayments() {
+        let engine = pack_engine(&["global", "gb"]);
+        for (text, category) in [
+            ("BARCLAYCARD ANNUAL FEE", "cat_other"),
+            ("AMEX MEMBERSHIP FEE", "cat_other"),
+            ("AMERICAN EXPRESS MERCHANT SERVICES", "cat_other"),
+            ("MBNA INTEREST", "cat_loan_payments"),
+            ("BARCLAYCARD INTEREST CHARGED", "cat_loan_payments"),
+            ("AMEX CASHBACK", "cat_other_income"),
+        ] {
+            assert_eq!(
+                category_of(&engine, text).as_deref(),
+                Some(category),
+                "{text}"
+            );
+        }
+        // The repayment lines of the same issuers stay transfers; a bare "amex" purchase is not one.
+        for text in ["BARCLAYCARD", "MBNA LIMITED", "AMEX PAYMENT", "AMEX DD"] {
+            assert_eq!(
+                category_of(&engine, text).as_deref(),
+                Some(TRANSFER),
+                "{text}"
+            );
+        }
+        assert_ne!(
+            category_of(&engine, "AMEX TRAVEL LONDON").as_deref(),
+            Some(TRANSFER)
+        );
+    }
+
+    #[test]
+    fn interest_and_earnings_lines_in_native_scripts_are_not_own_account_transfers() {
+        for (pack, text) in [
+            ("kr", "적금이자"),
+            ("kr", "정기예금이자"),
+            ("jp", "定期預金利息"),
+            ("jp", "積立定期預金利息"),
+            ("cn", "余额宝收益"),
+            ("cn", "余额宝-收益发放"),
+            ("cn", "零钱通收益"),
+        ] {
+            let engine = pack_engine(&["global", pack]);
+            assert_ne!(
+                category_of(&engine, text).as_deref(),
+                Some(TRANSFER),
+                "{pack}: {text}"
+            );
+        }
+        // Korean has interest phrases, so these are categorized rather than left blank. Interest
+        // received is income; interest paid is a loan payment, also when a line says both.
+        let kr = pack_engine(&["global", "kr"]);
+        for text in [
+            "적금이자",
+            "정기예금이자",
+            "예금 이자 입금",
+            "예금이자",
+            "예금 이자",
+            "결산이자",
+            "이자입금",
+            "이자 입금",
+            "이자지급",
+            "이자수익",
+        ] {
+            assert_eq!(
+                category_of(&kr, text).as_deref(),
+                Some("cat_investment_income"),
+                "{text}"
+            );
+        }
+        for text in [
+            "대출이자",
+            "대출 이자 납부",
+            "연체이자",
+            "카드론이자",
+            "마이너스통장이자",
+            "대출금이자",
+            "이자납입",
+            "이자납",
+            "이자출금",
+            "이자 자동이체",
+            "마이너스통장이자 입금",
+            "대출금이자 입금",
+        ] {
+            assert_eq!(
+                category_of(&kr, text).as_deref(),
+                Some("cat_loan_payments"),
+                "{text}"
+            );
+        }
+    }
+
+    #[test]
+    fn korean_interest_phrases_do_not_fire_inside_unrelated_words() {
+        // Hangul rules are folded `contains` rules, so a bare "이자" would match izakaya
+        // restaurants, interest-free instalments and every "...페이 자동..." pay line.
+        let kr = pack_engine(&["global", "kr"]);
+        for text in [
+            "홍대 이자카야",
+            "이자카야 도쿄",
+            "무이자할부",
+            "카카오페이자동충전",
+            "네이버페이자동충전",
+            "토스페이자동결제",
+            "페이자동이체",
+            "아이자동차",
+        ] {
+            let category = category_of(&kr, text);
+            assert_ne!(category.as_deref(), Some("cat_investment_income"), "{text}");
+            assert_ne!(category.as_deref(), Some("cat_loan_payments"), "{text}");
+            assert_ne!(category.as_deref(), Some(TRANSFER), "{text}");
+        }
+    }
+
+    #[test]
+    fn himart_is_shopping_and_emart_stays_groceries() {
+        // "이마트" is inside "하이마트": the electronics retailer needs its own, higher rule.
+        let kr = pack_engine(&["kr"]);
+        for text in ["롯데하이마트 강남", "하이마트"] {
+            assert_eq!(
+                category_of(&kr, text).as_deref(),
+                Some("cat_shopping"),
+                "{text}"
+            );
+        }
+        assert_eq!(
+            category_of(&kr, "이마트 성수점").as_deref(),
+            Some("cat_groceries")
+        );
+    }
+
+    #[test]
+    fn country_pack_rules_work_without_the_global_pack() {
+        // (pack, line, the rule that must decide it): the pack is enabled alone, so nothing in
+        // `global` can be what makes these lines transfers.
+        for (pack, text, rule) in [
+            ("ca", "TFR-FR SAV 1234", "ca/xfer-tfr"),
+            ("jp", "カード返済 10/12", "jp/card-repay"),
+            ("kr", "내계좌로 이체", "kr/xfer-my-account"),
+            ("kr", "정기예금 가입", "kr/xfer-term-deposit"),
+            (
+                "us",
+                "ONLINE TRANSFER FROM CHK ...5678",
+                "us/xfer-account-mask",
+            ),
+            ("us", "Transfer to SAV XXXX1234", "us/xfer-account-mask"),
+        ] {
+            let engine = pack_engine(&[pack]);
+            assert_eq!(
+                category_of(&engine, text).as_deref(),
+                Some(TRANSFER),
+                "{pack}: {text}"
+            );
+            assert_eq!(rule_of(&engine, text).as_deref(), Some(rule), "{text}");
+        }
+    }
+
+    #[test]
+    fn brokers_outrank_the_own_account_wording() {
+        // Own-account rules sit at 44, below the broker brands (60): a transfer to an investment
+        // platform is an investment even when the line also names a savings or brokerage account.
+        let engine = pack_engine(&["global", "us"]);
+        for text in [
+            "Online Transfer to Schwab Savings",
+            "Transfer to Fidelity Brokerage",
+        ] {
+            assert_eq!(
+                category_of(&engine, text).as_deref(),
+                Some("cat_investments"),
+                "{text}"
+            );
+        }
+    }
+
+    // ==================== Everyday words of the brands-only packs ====================
+
+    /// (pack, description, category): rent, insurance, loans, interest, utilities, pharmacy and
+    /// salary lines in the language of each pack. The `no`/`dk` salary and `strøm` lines need the
+    /// rule folding of `ø`.
+    const EVERYDAY_WORDS: &[(&str, &str, &str)] = &[
+        ("se", "Hyra oktober", "cat_housing"),
+        ("se", "Hemförsäkring Trygg-Hansa", "cat_insurance"),
+        ("se", "Amortering bolån", "cat_loan_payments"),
+        ("se", "Elräkning Vattenfall", "cat_utilities"),
+        ("se", "Ränta på sparkonto", "cat_investment_income"),
+        ("se", "Räntekostnad lån", "cat_loan_payments"),
+        ("se", "Lön september", "cat_income"),
+        ("se", "Apotek Hjärtat", "cat_health"),
+        ("no", "Husleie oktober", "cat_housing"),
+        ("no", "Lønn september", "cat_income"),
+        ("no", "Strømregning", "cat_utilities"),
+        ("no", "Innskuddsrente", "cat_investment_income"),
+        ("no", "Forsikring bil", "cat_insurance"),
+        ("no", "Boliglån termin", "cat_loan_payments"),
+        ("no", "Rentekostnad", "cat_loan_payments"),
+        ("dk", "Husleje", "cat_housing"),
+        ("dk", "Løn", "cat_income"),
+        ("dk", "LOEN", "cat_income"),
+        ("dk", "Fjernvarme", "cat_utilities"),
+        ("dk", "Forsikring", "cat_insurance"),
+        ("dk", "Rente", "cat_investment_income"),
+        ("dk", "Boliglån", "cat_loan_payments"),
+        ("fi", "Vuokra lokakuu", "cat_housing"),
+        ("fi", "Palkka", "cat_income"),
+        ("fi", "Sähkölasku", "cat_utilities"),
+        ("fi", "Korko", "cat_investment_income"),
+        ("fi", "Vakuutusmaksu", "cat_insurance"),
+        ("fi", "Asuntolaina", "cat_loan_payments"),
+        ("fi", "Korkokulu", "cat_loan_payments"),
+        ("pt", "Renda outubro", "cat_housing"),
+        ("pt", "Vencimento", "cat_income"),
+        ("pt", "Prestação casa", "cat_loan_payments"),
+        ("pt", "Juros", "cat_investment_income"),
+        ("pt", "Eletricidade", "cat_utilities"),
+        ("pt", "Seguro automóvel", "cat_insurance"),
+        ("pt", "Juros devedores", "cat_loan_payments"),
+        ("pt", "Salário", "cat_income"),
+        ("jp", "家賃 10月", "cat_housing"),
+        ("jp", "給与", "cat_income"),
+        ("jp", "住宅ローン", "cat_loan_payments"),
+        ("jp", "電気料金", "cat_utilities"),
+        ("jp", "利息", "cat_investment_income"),
+        ("jp", "支払利息", "cat_loan_payments"),
+        ("jp", "ボーナス", "cat_income"),
+        ("jp", "薬局", "cat_health"),
+        ("cn", "房租", "cat_housing"),
+        ("cn", "租金", "cat_housing"),
+        ("cn", "保险费", "cat_insurance"),
+        ("cn", "月供", "cat_loan_payments"),
+        ("cn", "利息", "cat_investment_income"),
+        ("cn", "代发工资", "cat_income"),
+        ("cn", "药店", "cat_health"),
+        ("cn", "电费", "cat_utilities"),
+        // Interest paid on a loan outranks the bare interest word (31 against 30), and the
+        // credit-side wording of each language stays income.
+        ("jp", "ローン利息", "cat_loan_payments"),
+        ("jp", "受取利息", "cat_investment_income"),
+        ("cn", "结息", "cat_investment_income"),
+        ("cn", "信用卡利息", "cat_loan_payments"),
+        // Card and financing interest is a cost, not income.
+        ("pt", "Juros cartão de crédito", "cat_loan_payments"),
+        ("pt", "Juros e encargos", "cat_loan_payments"),
+        ("pt", "Juros de financiamento", "cat_loan_payments"),
+        ("pt", "Juros rotativos", "cat_loan_payments"),
+        ("pt", "Imposto de selo s/ juros", "cat_loan_payments"),
+        ("fi", "Luoton korko", "cat_loan_payments"),
+        // Interest and repayment on one line: the guard rules sit at the same priority as the
+        // loan words, so these are loan payments by rule order (loan words come first in each
+        // pack file); the rows pin that order.
+        ("no", "Termin renter og avdrag", "cat_loan_payments"),
+        ("dk", "Renter og afdrag", "cat_loan_payments"),
+        ("se", "Ränta och amortering", "cat_loan_payments"),
+        ("fi", "Korko ja lyhennys", "cat_loan_payments"),
+    ];
+
+    #[test]
+    fn brands_only_packs_categorize_everyday_words_in_their_language() {
+        for &(pack, text, expected) in EVERYDAY_WORDS {
+            let engine = pack_engine(&["global", pack]);
+            assert_eq!(
+                category_of(&engine, text).as_deref(),
+                Some(expected),
+                "{pack}: {text}"
+            );
+        }
+    }
+
+    #[test]
+    fn portuguese_insurance_word_works_without_the_global_pack() {
+        // The generic `global/kw-seguro` also catches this line when `global` is on; the pt pack
+        // carries its own word so a pt-only profile categorizes it too.
+        let engine = pack_engine(&["pt"]);
+        for text in [
+            "Seguro automóvel",
+            "Seguros Fidelidade Vida",
+            "Seguro de saúde",
+        ] {
+            assert_eq!(
+                category_of(&engine, text).as_deref(),
+                Some("cat_insurance"),
+                "{text}"
+            );
+        }
+        assert_eq!(
+            rule_of(&engine, "Seguro automóvel").as_deref(),
+            Some("pt/kw-apolice")
+        );
+        // "Segurança Social" is a state contribution, not an insurance policy.
+        assert_ne!(
+            category_of(&engine, "Segurança Social").as_deref(),
+            Some("cat_insurance")
+        );
+    }
+
+    #[test]
+    fn interest_free_is_not_interest_income() {
+        // "無利息" = interest-free (a promotion line, a 0 % instalment); it must not become income.
+        let engine = pack_engine(&["global", "jp"]);
+        assert_ne!(
+            category_of(&engine, "無利息分割 手数料").as_deref(),
+            Some("cat_investment_income")
+        );
+    }
+
+    #[test]
+    fn every_brands_only_pack_has_a_keyword_group_below_the_merchants() {
+        for pack in ["se", "no", "dk", "fi", "pt", "jp", "cn"] {
+            let rules = &available_packs()
+                .iter()
+                .find(|p| p.pack_id == pack)
+                .expect("pack")
+                .rules;
+            let prefix = format!("{pack}/kw-");
+            let keywords: Vec<_> = rules.iter().filter(|r| r.id.starts_with(&prefix)).collect();
+            assert!(
+                keywords.len() >= 6,
+                "{pack} has {} keyword rules",
+                keywords.len()
+            );
+            assert!(
+                keywords.iter().all(|r| r.priority < 40),
+                "{pack}: keyword rules rank below every merchant rule"
+            );
+        }
+    }
 }

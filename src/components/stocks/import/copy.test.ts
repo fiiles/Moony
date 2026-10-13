@@ -94,7 +94,6 @@ describe('stocks.importWizard copy', () => {
       'currencyInvalid',
       'priceMissing',
       'cannotParse',
-      'writeFailed',
       'sellExceedsHoldings',
       'sellExceedsHoldingsHeld',
       'currencyMismatch',

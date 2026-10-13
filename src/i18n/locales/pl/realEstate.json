@@ -380,7 +380,16 @@
     "downloadPhoto": "Pobierz zdjęcie",
     "invalidFiles": "Wykryto nieprawidłowe pliki",
     "selectSaveFolder": "Wybierz folder do zapisania zdjęć",
-    "supportedFormats": "Obsługiwane formaty: JPG, PNG, GIF, WebP. Pliki HEIC są automatycznie konwertowane do JPG."
+    "supportedFormats": "Obsługiwane formaty: JPG, PNG, GIF, WebP. Pliki HEIC są automatycznie konwertowane do JPG.",
+    "errors": {
+      "convertFailed": "Nie udało się przekonwertować pliku „{{name}}”. Przekonwertuj go ręcznie na JPG.",
+      "unsupportedFormat": "Plik „{{name}}” ma nieobsługiwany format. Użyj JPG, PNG, GIF, WebP lub HEIC.",
+      "noValidFiles": "Brak prawidłowych plików do przesłania."
+    },
+    "photosSaved_one": "Zapisano {{count}} zdjęcie",
+    "photosSaved_few": "Zapisano {{count}} zdjęcia",
+    "photosSaved_many": "Zapisano {{count}} zdjęć",
+    "photosSaved_other": "Zapisano {{count}} zdjęcia"
   },
   "documents": {
     "title": "Dokumenty",

@@ -151,3 +151,41 @@ describe('resolveTickerCurrency', () => {
     expect(resolveTickerCurrency(undefined)).toEqual({ currency: 'USD', price: undefined });
   });
 });
+
+describe('exchanges outside the first list', () => {
+  it.each([
+    ['WSE', 'Warsaw', 'PLN'],
+    ['BUD', 'Budapest', 'HUF'],
+    ['LIS', 'Lisbon', 'EUR'],
+    ['ISE', 'Dublin', 'EUR'],
+    ['ATH', 'Athens', 'EUR'],
+    ['IST', 'Istanbul', 'TRY'],
+    ['TLV', 'Tel Aviv', 'ILS'],
+    ['JNB', 'Johannesburg', 'ZAR'],
+    ['SES', 'Singapore', 'SGD'],
+    ['KSC', 'Korea (KOSPI)', 'KRW'],
+    ['KOE', 'Korea (KOSDAQ)', 'KRW'],
+    ['TAI', 'Taiwan', 'TWD'],
+    ['TWO', 'Taiwan (OTC)', 'TWD'],
+    ['VAN', 'TSX Venture', 'CAD'],
+    ['NZE', 'New Zealand', 'NZD'],
+    ['SHH', 'Shanghai', 'CNY'],
+    ['SHZ', 'Shenzhen', 'CNY'],
+    ['SET', 'Bangkok', 'THB'],
+    ['JKT', 'Jakarta', 'IDR'],
+    ['KLS', 'Kuala Lumpur', 'MYR'],
+    ['SAO', 'São Paulo', 'BRL'],
+    ['MEX', 'Mexico', 'MXN'],
+    ['SGO', 'Santiago', 'CLP'],
+    ['BUE', 'Buenos Aires', 'ARS'],
+  ])('%s is %s and trades in %s', (code, name, currency) => {
+    expect(exchangeName(code)).toBe(name);
+    expect(currencyForExchange(code)).toBe(currency);
+  });
+
+  it('names every exchange that has a currency', () => {
+    for (const code of Object.keys(EXCHANGE_CURRENCIES)) {
+      expect(EXCHANGE_NAMES[code], code).toBeDefined();
+    }
+  });
+});

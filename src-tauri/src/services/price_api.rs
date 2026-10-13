@@ -274,7 +274,7 @@ pub struct StockPriceRefreshResult {
     pub remaining_tickers: Vec<String>,
     pub rate_limit_hit: bool,
     /// Tickers whose quote unit differs from the one their stored history was written in (earlier
-    /// versions guessed it from the ticker suffix; see `quote_unit::unit_changed`). The command
+    /// versions guessed it from a shorter list of ticker suffixes; see `quote_unit::unit_changed`). The command
     /// that ran the refresh queues a history rebuild for them. Not part of the wire contract.
     #[serde(skip)]
     pub unit_changed: Vec<String>,
@@ -435,8 +435,15 @@ pub async fn refresh_stock_prices_yahoo_with_ttl(
     })
 }
 
-/// Get currency from ticker suffix
-pub(crate) fn get_currency_from_ticker(ticker: &str) -> &'static str {
+/// The ticker-suffix mapping of 0.9.0 to 0.10.0, frozen: only the suffixes it knew, USD for
+/// every other one.
+///
+/// Do not extend it. Those versions stored a quote and its history in this guess, so a holding
+/// that has not been refreshed since (`stock_data.quote_currency IS NULL`) still has rows labelled
+/// with it: `.WA` and `.KS` history is in `USD` although the prices are zloty and won. It is the
+/// "stored" side of `quote_unit::unit_changed`; [`get_currency_from_ticker`] grows with the
+/// markets we know and is the fallback for a new quote.
+pub(crate) fn legacy_currency_from_ticker(ticker: &str) -> &'static str {
     if let Some(suffix) = ticker.split('.').nth(1) {
         match suffix.to_uppercase().as_str() {
             "L" | "LON" => "GBP",          // London
@@ -454,6 +461,56 @@ pub(crate) fn get_currency_from_ticker(ticker: &str) -> &'static str {
             "HK" => "HKD",                 // Hong Kong
             "SS" | "SZ" => "CNY",          // Shanghai/Shenzhen
             "AM" => "EUR",                 // Amsterdam
+            _ => "USD",
+        }
+    } else {
+        "USD" // Default for US tickers without suffix
+    }
+}
+
+/// Get currency from ticker suffix: the fallback for a quote that names no currency, and the
+/// pre-fill for an imported instrument. For what an older version stored see
+/// [`legacy_currency_from_ticker`].
+pub(crate) fn get_currency_from_ticker(ticker: &str) -> &'static str {
+    if let Some(suffix) = ticker.split('.').nth(1) {
+        match suffix.to_uppercase().as_str() {
+            "L" | "LON" => "GBP",               // London
+            "PA" => "EUR",                      // Paris
+            "AS" => "EUR",                      // Amsterdam
+            "BR" => "EUR",                      // Brussels
+            "DE" | "F" | "XETRA" => "EUR",      // Germany
+            "SW" => "CHF",                      // Swiss
+            "ST" => "SEK",                      // Stockholm
+            "HE" => "EUR",                      // Helsinki
+            "MI" => "EUR",                      // Milan
+            "VI" => "EUR",                      // Vienna
+            "PR" => "CZK",                      // Prague
+            "T" | "TYO" => "JPY",               // Tokyo
+            "HK" => "HKD",                      // Hong Kong
+            "SS" | "SZ" => "CNY",               // Shanghai/Shenzhen
+            "AM" => "EUR",                      // Amsterdam
+            "WA" => "PLN",                      // Warsaw
+            "MC" | "LS" | "IR" | "AT" => "EUR", // Madrid, Lisbon, Dublin, Athens
+            "CO" => "DKK",                      // Copenhagen
+            "OL" => "NOK",                      // Oslo
+            "TO" | "V" | "NE" | "CN" => "CAD",  // Toronto, TSX Venture, NEO, CSE
+            "AX" => "AUD",                      // ASX
+            "NS" | "BO" => "INR",               // NSE, BSE
+            "SI" => "SGD",                      // Singapore
+            "KS" | "KQ" => "KRW",               // KOSPI, KOSDAQ
+            "TW" | "TWO" => "TWD",              // Taiwan, Taiwan OTC
+            "BD" => "HUF",                      // Budapest
+            "SA" => "BRL",                      // São Paulo
+            "MX" => "MXN",                      // Mexico
+            "TA" => "ILS",                      // Tel Aviv
+            "JO" => "ZAR",                      // Johannesburg
+            "IS" => "TRY",                      // Istanbul
+            "NZ" => "NZD",                      // New Zealand
+            "BK" => "THB",                      // Bangkok
+            "JK" => "IDR",                      // Jakarta
+            "KL" => "MYR",                      // Kuala Lumpur
+            "SN" => "CLP",                      // Santiago
+            "BA" => "ARS",                      // Buenos Aires
             _ => "USD",
         }
     } else {
@@ -1710,6 +1767,74 @@ mod tests {
     use super::*;
 
     #[test]
+    fn ticker_suffixes_of_the_main_exchanges_name_their_currency() {
+        for (ticker, currency) in [
+            ("CDR.WA", "PLN"),
+            ("SAN.MC", "EUR"),
+            ("NOVO-B.CO", "DKK"),
+            ("EQNR.OL", "NOK"),
+            ("SHOP.TO", "CAD"),
+            ("ABC.V", "CAD"),
+            ("BHP.AX", "AUD"),
+            ("RELIANCE.NS", "INR"),
+            ("500325.BO", "INR"),
+            ("D05.SI", "SGD"),
+            ("005930.KS", "KRW"),
+            ("247540.KQ", "KRW"),
+            ("2330.TW", "TWD"),
+            ("6488.TWO", "TWD"),
+            ("EDP.LS", "EUR"),
+            ("RYA.IR", "EUR"),
+            ("OTP.BD", "HUF"),
+            ("PETR4.SA", "BRL"),
+            ("WALMEX.MX", "MXN"),
+            ("TEVA.TA", "ILS"),
+            ("NPN.JO", "ZAR"),
+            ("THYAO.IS", "TRY"),
+            ("OPAP.AT", "EUR"),
+            ("FPH.NZ", "NZD"),
+            ("PTT.BK", "THB"),
+            ("BBCA.JK", "IDR"),
+            ("1155.KL", "MYR"),
+            ("COPEC.SN", "CLP"),
+            ("GGAL.BA", "ARS"),
+            // already there
+            ("VOD.L", "GBP"),
+            ("SAP.DE", "EUR"),
+            ("7203.T", "JPY"),
+            ("0700.HK", "HKD"),
+            ("600519.SS", "CNY"),
+        ] {
+            assert_eq!(get_currency_from_ticker(ticker), currency, "{ticker}");
+        }
+        // No suffix, or a share-class suffix: USD.
+        for ticker in ["AAPL", "BRK.B", "BF.B", "BF.A", "MOG.A"] {
+            assert_eq!(get_currency_from_ticker(ticker), "USD", "{ticker}");
+        }
+    }
+
+    #[test]
+    fn the_legacy_suffix_mapping_stays_what_0_9_stored() {
+        // Frozen: history of a holding that was never refreshed since is labelled with these.
+        for (ticker, currency) in [
+            ("VOD.L", "GBP"),
+            ("SAP.DE", "EUR"),
+            ("CEZ.PR", "CZK"),
+            ("7203.T", "JPY"),
+            ("0700.HK", "HKD"),
+            ("600519.SS", "CNY"),
+            // Suffixes added to `get_currency_from_ticker` since: USD here.
+            ("CDR.WA", "USD"),
+            ("005930.KS", "USD"),
+            ("SHOP.TO", "USD"),
+            ("BHP.AX", "USD"),
+            ("AAPL", "USD"),
+        ] {
+            assert_eq!(legacy_currency_from_ticker(ticker), currency, "{ticker}");
+        }
+    }
+
+    #[test]
     fn crypto_price_keeps_sub_cent_precision() {
         assert_eq!(price_text(0.00001234), "0.00001234");
         assert_eq!(price_text(0.00000001), "0.00000001");
@@ -2232,6 +2357,19 @@ mod tests {
         assert_eq!((stored.price, stored.currency.as_str()), (832.99, "GBP"));
         assert!(!stored.unit_changed, "nothing learned, nothing to repair");
         assert_eq!(row(&conn, "CSPX.L").3, None, "no code is made up");
+    }
+
+    #[test]
+    fn a_holding_on_a_suffix_added_since_0_9_is_flagged_for_repair_once() {
+        let conn = quotes_db();
+        // 0.9.0 stored a Warsaw listing as USD; the first refresh learns it is zloty.
+        let first = store(&conn, "CDR.WA", &quote(112.4, None, Some("PLN")));
+        assert_eq!((first.price, first.currency.as_str()), (112.4, "PLN"));
+        assert!(first.unit_changed, "its history is labelled USD");
+        assert_eq!(row(&conn, "CDR.WA").3.as_deref(), Some("PLN"));
+
+        let second = store(&conn, "CDR.WA", &quote(113.0, None, Some("PLN")));
+        assert!(!second.unit_changed, "the code is recorded now");
     }
 
     fn seed_old_unit_data(conn: &rusqlite::Connection) {

@@ -30,6 +30,31 @@ pub fn fold_text(text: &str) -> String {
         .collect()
 }
 
+/// Letters Unicode does not decompose, folded to the Latin spelling the packs are written in:
+/// `ø` → `o`, `æ` → `ae`, `ł` → `l`, `đ` → `d`, `ß` → `ss`, `œ` → `oe`. Expects lower case.
+pub fn fold_special_letters(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    for c in text.chars() {
+        match c {
+            'ø' => out.push('o'),
+            'æ' => out.push_str("ae"),
+            'ł' => out.push('l'),
+            'đ' => out.push('d'),
+            'ß' => out.push_str("ss"),
+            'œ' => out.push_str("oe"),
+            other => out.push(other),
+        }
+    }
+    out
+}
+
+/// Text and patterns as the rule engine compares them: [`fold_text`] plus
+/// [`fold_special_letters`]. Learned-payee keys keep using [`fold_text`] alone: stored keys such as
+/// `łukasz` must stay valid.
+pub fn fold_for_rules(text: &str) -> String {
+    fold_special_letters(&fold_text(text))
+}
+
 /// Simple tokenization without stopword removal (for exact matching).
 ///
 /// Built on [`fold_text`], keeping letters and digits of any script (a
@@ -343,5 +368,29 @@ mod tests {
     fn test_normalize_payee_case_insensitive() {
         let result = normalize_payee("ALBERT HYPERMARKET S.R.O.");
         assert_eq!(result, "albert hypermarket");
+    }
+
+    #[test]
+    fn rule_folding_maps_the_letters_unicode_does_not_decompose() {
+        for (text, folded) in [
+            ("Lønn", "lonn"),
+            ("FØTEX", "fotex"),
+            ("Hævning", "haevning"),
+            ("Storebælt", "storebaelt"),
+            ("Spłata kredytu", "splata kredytu"),
+            ("Đuro", "duro"),
+            ("Straße", "strasse"),
+            ("Œuvre", "oeuvre"),
+            ("Košík", "kosik"),
+            ("Lön", "lon"),
+        ] {
+            assert_eq!(fold_for_rules(text), folded, "{text}");
+        }
+    }
+
+    #[test]
+    fn payee_keys_keep_their_letters_so_stored_learned_rules_stay_valid() {
+        assert_eq!(normalize_payee_key("FØTEX 123"), "føtex");
+        assert_eq!(fold_text("Łukasz"), "łukasz");
     }
 }

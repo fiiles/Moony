@@ -158,7 +158,7 @@ The checkable version is **[PRIVACY.md](./PRIVACY.md)**; vulnerabilities go thro
 
 ## Data and backups
 
-Your data lives in one folder per user, named after the app identifier `com.filipkral.moony`
+Your data lives in one folder per user, named after the app identifier `com.moonyfinance.desktop`
 (`~/Library/Application Support/` on macOS, `%APPDATA%\` on Windows, `~/.local/share/` on Linux).
 It holds the database (`moony.db`), the key files (`salt`, `key.enc`, `recovery.enc`) and your
 attachments. **Settings → Data and backups** shows the exact path and offers:

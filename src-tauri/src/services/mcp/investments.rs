@@ -330,7 +330,7 @@ pub fn stock_transactions_create(
             .into_iter()
             .map(|row| RowError {
                 index: row.index,
-                message: row.message,
+                message: super::error_text::render_message(&row.message),
             })
             .collect(),
     })
@@ -679,7 +679,12 @@ mod bulk_tests {
         let report = stock_transactions_create(&mut conn, &args).unwrap();
         assert_eq!(report.created, 0);
         assert_eq!(report.errors.len(), 1);
-        assert!(report.errors[0].message.contains("Currency mismatch"));
+        let message = &report.errors[0].message;
+        assert!(
+            message.contains("held in USD, but the transaction is in EUR"),
+            "{message}"
+        );
+        assert!(!message.contains("validation."), "{message}");
         assert_eq!(holding_quantity(&conn, "AAPL"), Some("5".to_string()));
     }
 

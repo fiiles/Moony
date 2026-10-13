@@ -217,7 +217,7 @@ pub fn crypto_transactions_create(
         if let Err(e) = validate_crypto_row(row) {
             errors.push(RowError {
                 index: i,
-                message: e.to_string(),
+                message: super::error_text::render(&e),
             });
         }
     }
@@ -350,7 +350,7 @@ pub fn crypto_transactions_create(
                     skipped_duplicates: vec![],
                     errors: vec![RowError {
                         index: i,
-                        message: e.to_string(),
+                        message: super::error_text::render(&e),
                     }],
                 });
             }
@@ -391,7 +391,7 @@ pub fn crypto_transactions_create(
                 skipped_duplicates: vec![],
                 errors: vec![RowError {
                     index,
-                    message: error.to_string(),
+                    message: super::error_text::render(&error),
                 }],
             });
         }
@@ -668,7 +668,9 @@ mod bulk_tests {
         assert_eq!(report.created, 0);
         assert_eq!(report.errors.len(), 1);
         assert_eq!(report.errors[0].index, 1);
-        assert!(report.errors[0].message.contains("coingeckoId"));
+        let message = &report.errors[0].message;
+        assert!(message.contains("needs its CoinGecko ID"), "{message}");
+        assert!(!message.contains("validation."), "{message}");
         assert_eq!(holding_count(&conn), 0, "BTC buy must be rolled back too");
         assert_eq!(tx_count(&conn), 0);
     }

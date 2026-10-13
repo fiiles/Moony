@@ -5,7 +5,8 @@
 //! re-read whenever the accounts table changes — loading them only at unlock
 //! left every account created afterwards invisible: "Salary September"
 //! paid to a fresh account's own IBAN stayed uncategorized. Normalization uses the shared financial semantics utility on both sides,
-//! including Czech domestic/IBAN equivalence. The legacy function names remain
+//! including Czech domestic/IBAN equivalence. Domestic numbers of 11 or more digits (a UK sort
+//! code and account, a US routing number and account) match too. The legacy function names remain
 //! compatible with unlock/account refresh callers.
 
 use rusqlite::Connection;
@@ -144,5 +145,27 @@ mod tests {
         )
         .unwrap();
         assert!(load_own_ibans(&conn).unwrap().is_empty());
+    }
+
+    #[test]
+    fn a_uk_account_number_counterparty_is_recognised_as_an_own_account() {
+        let conn = setup_test_db();
+        conn.execute(
+            "INSERT INTO bank_accounts(id, name, bban) VALUES ('uk', 'Current', '12-34-56 12345678')",
+            [],
+        )
+        .unwrap();
+        let engine = CategorizationEngine::new_empty();
+        assert_eq!(refresh_own_ibans(&conn, &engine).unwrap(), 1);
+
+        let mut tx = salary_to("12345678");
+        tx.counterparty_bank_code = Some("123456".into());
+        assert_eq!(
+            engine.categorize(&tx).category_id(),
+            Some("cat_internal_transfers")
+        );
+        // Another account at the same bank is a stranger.
+        tx.counterparty_iban = Some("87654321".into());
+        assert!(!engine.categorize(&tx).has_category());
     }
 }

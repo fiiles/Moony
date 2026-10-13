@@ -20,6 +20,10 @@ export interface UserProfile {
   excludePersonalRealEstate: boolean;
   coingeckoModalDismissed?: boolean;
   mcpServerEnabled?: boolean;
+  /** ISO 3166-1 alpha-2 (`"CZ"`), null until chosen (wizard, Settings). */
+  country: string | null;
+  /** Days of cancellation notice the insurance reminders use (the stored value, else 43 for CZ and SK); null = no anniversary reminder. */
+  insuranceNoticeDays: number | null;
   createdAt: number;
 }
 

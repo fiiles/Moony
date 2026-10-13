@@ -58,7 +58,7 @@ pub struct CsvPreset {
     /// One character: `,` `;` or a tab (`"\t"`).
     pub delimiter: String,
     /// Encoding label (`UTF-8`, `Windows-1250`, …). Only consulted when the
-    /// file is not valid UTF-8 — see `decode_csv_content`.
+    /// file is not valid UTF-8 — see `decode_csv_content_for_country`.
     pub encoding: String,
     #[serde(rename = "dateColumn")]
     pub date_column: String,

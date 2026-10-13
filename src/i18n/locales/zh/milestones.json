@@ -43,7 +43,7 @@
     "balances_stale": "账户余额"
   },
   "sub": {
-    "insurance_anniversary": "最后退保日 · 周年日 {{date}}",
+    "insurance_anniversary": "解约通知截止日 · 周年日 {{date}}",
     "insurance_anniversary_passed": "合同周年日 · 通知期已过",
     "insurance_end": "合同到期",
     "insurance_payment": "付款 {{amount}}",
@@ -72,7 +72,7 @@
   "groups": {
     "insuranceDates": {
       "label": "保险周年日和到期日",
-      "hint": "在概览中最多提前 3 个月显示；周年日会附带最后退保日。",
+      "hint": "在概览中最多提前 3 个月显示；周年日会附带解约通知截止日。",
       "mute": "不再提醒保险周年日和到期日"
     },
     "insurancePayments": {
@@ -123,6 +123,8 @@
   },
   "settings": {
     "title": "概览提醒",
-    "description": "“即将到来”卡片和顶部栏会提醒您的内容。已关闭的类型不会在任何位置显示。"
+    "description": "“即将到来”卡片和顶部栏会提醒您的内容。已关闭的类型不会在任何位置显示。",
+    "insuranceNotice": "保险解约通知期（天）",
+    "insuranceNoticeHint": "解约通知须在年度周年日前多少天送达保险公司。设为 0 将关闭周年日提醒。仅捷克和斯洛伐克预设为 43 天。"
   }
 }

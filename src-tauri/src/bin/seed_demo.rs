@@ -17,14 +17,14 @@
 //!
 //! | OS      | Default data directory                                           |
 //! |---------|------------------------------------------------------------------|
-//! | macOS   | `demo-home/Library/Application Support/com.filipkral.moony` |
-//! | Linux   | `demo-home/.local/share/com.filipkral.moony`               |
-//! | Windows | `demo-home\AppData\Roaming\com.filipkral.moony`           |
+//! | macOS   | `demo-home/Library/Application Support/com.moonyfinance.desktop` |
+//! | Linux   | `demo-home/.local/share/com.moonyfinance.desktop`                |
+//! | Windows | `demo-home\AppData\Roaming\com.moonyfinance.desktop`             |
 //!
 //! On macOS and Linux run the app on it by redirecting `HOME` (the final path and
 //! the exact command are printed). Windows resolves the data folder through the
 //! shell, not the environment: copy the generated folder to
-//! `%APPDATA%\com.filipkral.moony` on a throwaway Windows user.
+//! `%APPDATA%\com.moonyfinance.desktop` on a throwaway Windows user.
 //!
 //! `--out <dir>` is the data directory itself (it will hold `moony.db`, `salt`,
 //! `key.enc`, `recovery.enc`). A non-empty `<dir>` is only cleared when an
@@ -65,7 +65,7 @@ impl Rng {
 }
 
 /// Tauri bundle identifier; the app stores its data in a folder with this name.
-const APP_IDENTIFIER: &str = "com.filipkral.moony";
+const APP_IDENTIFIER: &str = "com.moonyfinance.desktop";
 /// Written into a directory this tool created, so a re-run may clear it again.
 const MARKER_FILE: &str = ".seed_demo";
 const OUT_ENV: &str = "MOONY_SEED_OUT";
@@ -844,15 +844,15 @@ mod tests {
     fn default_layout_matches_each_platforms_app_data_dir() {
         assert_eq!(
             app_data_subpath("macos"),
-            Path::new("Library/Application Support/com.filipkral.moony")
+            Path::new("Library/Application Support/com.moonyfinance.desktop")
         );
         assert_eq!(
             app_data_subpath("linux"),
-            Path::new(".local/share/com.filipkral.moony")
+            Path::new(".local/share/com.moonyfinance.desktop")
         );
         assert_eq!(
             app_data_subpath("windows"),
-            Path::new("AppData/Roaming/com.filipkral.moony")
+            Path::new("AppData/Roaming/com.moonyfinance.desktop")
         );
     }
 

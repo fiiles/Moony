@@ -371,7 +371,10 @@
     },
     "columnNone": "— nicht verwendet —",
     "pendingPromoted": "Vorgemerkte Transaktion wird gebucht",
-    "editColumns": "Spalten bearbeiten"
+    "editColumns": "Spalten bearbeiten",
+    "encoding": "Zeichenkodierung",
+    "encodingAuto": "Automatisch erkennen ({{encoding}})",
+    "encodingHint": "Ändern Sie es, wenn Umlaute oder nicht lateinische Zeichen in der Vorschau falsch aussehen."
   },
   "importHistory": {
     "title": "Importverlauf",

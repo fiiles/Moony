@@ -55,6 +55,12 @@ pub struct UserProfile {
     pub coingecko_modal_dismissed: bool,
     #[serde(rename = "mcpServerEnabled", default)]
     pub mcp_server_enabled: bool,
+    /// ISO 3166-1 alpha-2 country of the profile (`CZ`), None until set.
+    pub country: Option<String>,
+    /// The cancellation notice of insurance policies in days that the milestones use: the stored
+    /// value, else 43 for Czechia and Slovakia, else None (no anniversary reminder).
+    #[serde(rename = "insuranceNoticeDays")]
+    pub insurance_notice_days: Option<i64>,
     #[serde(rename = "createdAt")]
     pub created_at: i64,
 }
@@ -89,6 +95,18 @@ pub fn validate_main_currency(code: &str) -> Result<String> {
     }
 }
 
+/// Normalise a profile country: an empty string clears it, otherwise two ASCII letters in upper case.
+pub fn normalize_country(code: &str) -> Result<Option<String>> {
+    let trimmed = code.trim();
+    if trimmed.is_empty() {
+        return Ok(None);
+    }
+    if trimmed.len() == 2 && trimmed.chars().all(|c| c.is_ascii_alphabetic()) {
+        return Ok(Some(trimmed.to_ascii_uppercase()));
+    }
+    Err(AppError::Validation("validation.countryInvalid".into()))
+}
+
 impl InsertUserProfile {
     /// Validate input data at the trust boundary
     pub fn validate(&self) -> Result<()> {
@@ -104,6 +122,16 @@ impl UpdateUserProfile {
     pub fn validate(&self) -> Result<()> {
         if let Some(currency) = &self.currency {
             validate_main_currency(currency)?;
+        }
+        if let Some(country) = &self.country {
+            normalize_country(country)?;
+        }
+        if let Some(days) = self.insurance_notice_days {
+            if !(0..=365).contains(&days) {
+                return Err(AppError::Validation(
+                    "validation.insuranceNoticeInvalid".into(),
+                ));
+            }
         }
         Ok(())
     }
@@ -125,6 +153,11 @@ pub struct UpdateUserProfile {
     pub coingecko_modal_dismissed: Option<bool>,
     #[serde(rename = "mcpServerEnabled")]
     pub mcp_server_enabled: Option<bool>,
+    /// `Some("")` clears the country; otherwise two ASCII letters (stored upper case).
+    pub country: Option<String>,
+    /// `0` turns the anniversary reminder off; 1..=365 sets the notice period.
+    #[serde(rename = "insuranceNoticeDays")]
+    pub insurance_notice_days: Option<i64>,
 }
 
 #[cfg(test)]
@@ -151,5 +184,38 @@ mod tests {
         let prefs: MenuPreferences = serde_json::from_str(stored).expect("parses");
         assert!(prefs.crypto);
         assert!(prefs.other_assets);
+    }
+
+    #[test]
+    fn a_country_is_two_letters_in_upper_case_and_an_empty_one_clears_it() {
+        assert_eq!(normalize_country(" gb ").unwrap(), Some("GB".to_string()));
+        assert_eq!(normalize_country("").unwrap(), None);
+        assert_eq!(normalize_country("   ").unwrap(), None);
+        for bad in ["G", "GBR", "G1", "České"] {
+            match normalize_country(bad) {
+                Err(AppError::Validation(key)) => assert_eq!(key, "validation.countryInvalid"),
+                other => panic!("{bad}: {other:?}"),
+            }
+        }
+    }
+
+    #[test]
+    fn the_insurance_notice_is_0_to_365_days() {
+        let update = |days: i64| -> UpdateUserProfile {
+            serde_json::from_value(serde_json::json!({ "insuranceNoticeDays": days }))
+                .expect("update")
+        };
+        for ok in [0, 1, 43, 365] {
+            assert!(update(ok).validate().is_ok(), "{ok}");
+        }
+        for bad in [-1, 366, 10_000] {
+            assert!(
+                matches!(
+                    update(bad).validate(),
+                    Err(AppError::Validation(key)) if key == "validation.insuranceNoticeInvalid"
+                ),
+                "{bad}"
+            );
+        }
     }
 }

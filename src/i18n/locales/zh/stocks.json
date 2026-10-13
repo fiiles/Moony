@@ -717,8 +717,7 @@
       "duplicate": "Moony 中已有同样的交易",
       "duplicateById": "Moony 中已有券商 ID 相同的交易",
       "duplicateSimilar": "Moony 中已有类似的交易：同一天、数量相同，价格相差在 0.5 % 以内",
-      "cannotParse": "无法读取该行",
-      "writeFailed": "无法写入该交易"
+      "cannotParse": "无法读取该行"
     },
     "mcpSource": "MCP"
   },

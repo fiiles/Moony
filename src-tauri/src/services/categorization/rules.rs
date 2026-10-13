@@ -6,13 +6,14 @@
 //! - Word: Whole-word matching (for short, collision-prone patterns)
 //! - StartsWith/EndsWith: Position-based matching
 //!
-//! All text matching runs against `fold_text` output: lowercased with
-//! combining marks stripped (Košík → kosik), non-Latin scripts preserved —
-//! so locale packs can carry native-script patterns.
+//! All text matching runs against `fold_for_rules` output: lowercased, combining marks
+//! stripped (Košík → kosik) and `ø æ ł đ ß œ` written as `o ae l d ss oe` (Lønn → lonn),
+//! non-Latin scripts preserved — so locale packs can carry native-script patterns and
+//! write the Nordic and Polish letters in plain ASCII.
 
 use regex::Regex;
 
-use super::tokenizer::{fold_text, normalize_iban};
+use super::tokenizer::{fold_for_rules, fold_special_letters, normalize_iban};
 use super::types::{
     CategorizationResult, CategorizationRule, CategorizationSource, RuleType, TransactionInput,
 };
@@ -42,16 +43,17 @@ impl RuleEngine {
             .into_iter()
             .map(|rule| {
                 let compiled_regex = match rule.rule_type {
-                    RuleType::Regex => Regex::new(&rule.pattern).ok(),
+                    // Regex sources are written in the same ASCII spelling as the folded text.
+                    RuleType::Regex => Regex::new(&fold_special_letters(&rule.pattern)).ok(),
                     // Word compiles to \b<escaped>\b over the folded text.
                     RuleType::Word => Regex::new(&format!(
                         r"\b{}\b",
-                        regex::escape(&fold_text(&rule.pattern))
+                        regex::escape(&fold_for_rules(&rule.pattern))
                     ))
                     .ok(),
                     _ => None,
                 };
-                let lowercase_pattern = fold_text(&rule.pattern);
+                let lowercase_pattern = fold_for_rules(&rule.pattern);
 
                 CompiledRule {
                     rule,
@@ -76,7 +78,7 @@ impl RuleEngine {
     /// Returns `Some((result, stop_processing))` if a rule matches,
     /// where `stop_processing` indicates if the waterfall should stop.
     pub fn apply(&self, tx: &TransactionInput) -> Option<(CategorizationResult, bool)> {
-        let search_text = fold_text(&tx.combined_text());
+        let search_text = fold_for_rules(&tx.combined_text());
 
         for compiled in &self.rules {
             if !compiled.rule.is_active {
@@ -532,5 +534,62 @@ mod tests {
         // Wrong IBAN must not match.
         let tx_wrong_iban = make_tx_full("Platba", Some("CZ9901000000000000999999"));
         assert!(engine.apply(&tx_wrong_iban).is_none(), "Wrong IBAN matched");
+    }
+
+    #[test]
+    fn rules_match_text_with_o_slash_ash_and_stroked_l() {
+        let engine = RuleEngine::new(vec![
+            make_rule(
+                "r1",
+                "Lønn",
+                RuleType::Word,
+                "lonn",
+                "cat_income",
+                60,
+                false,
+            ),
+            make_rule(
+                "r2",
+                "Føtex",
+                RuleType::Contains,
+                "føtex",
+                "cat_groceries",
+                50,
+                false,
+            ),
+            make_rule(
+                "r3",
+                "Hævning",
+                RuleType::Contains,
+                "haevning",
+                "cat_internal_transfers",
+                40,
+                false,
+            ),
+            make_rule(
+                "r4",
+                "Spłata",
+                RuleType::Regex,
+                r"spłata\s+kredytu",
+                "cat_loan_payments",
+                30,
+                false,
+            ),
+        ]);
+        let category = |text: &str| match engine.apply(&make_tx(text, None)) {
+            Some((CategorizationResult::Match { category_id, .. }, _)) => Some(category_id),
+            _ => None,
+        };
+        assert_eq!(category("Lønn september").as_deref(), Some("cat_income"));
+        assert_eq!(category("FØTEX Oslo").as_deref(), Some("cat_groceries"));
+        assert_eq!(
+            category("Hævning i bankautomat").as_deref(),
+            Some("cat_internal_transfers")
+        );
+        assert_eq!(
+            category("Spłata kredytu 3/12").as_deref(),
+            Some("cat_loan_payments")
+        );
+        assert_eq!(category("Lon september"), None);
     }
 }

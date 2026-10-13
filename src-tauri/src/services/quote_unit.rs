@@ -14,7 +14,7 @@
 //! through it; the ticker suffix (`price_api::get_currency_from_ticker`) is only the fallback for
 //! a response that names no currency.
 
-use crate::services::price_api::get_currency_from_ticker;
+use crate::services::price_api::{get_currency_from_ticker, legacy_currency_from_ticker};
 
 /// Ten decimals: far finer than any quote.
 const DECIMALS_FACTOR: f64 = 1e10;
@@ -110,10 +110,18 @@ pub fn pence_to_pounds(pence: f64) -> f64 {
 ///
 /// `stored` is the code Yahoo reported at the previous refresh. Without one (a ticker that has
 /// not been refreshed since the unit was recorded) the old assumption stands: the suffix guess
-/// at 1.0, which is what every earlier version stored. Two codes of one unit (`GBp`, `GBX`) are
-/// no change.
+/// of 0.9.0 to 0.10.0 at 1.0 ([`legacy_currency_from_ticker`], which is frozen), which is what
+/// those versions stored, USD for every suffix they did not know. Two codes of one unit (`GBp`,
+/// `GBX`) are no change.
 pub fn unit_changed(stored: Option<&str>, new: &QuoteUnit, ticker: &str) -> bool {
-    quote_unit(stored, ticker) != *new
+    let recorded = match stored.map(str::trim).filter(|code| !code.is_empty()) {
+        Some(_) => quote_unit(stored, ticker),
+        None => QuoteUnit {
+            currency: legacy_currency_from_ticker(ticker).to_string(),
+            scale: 1.0,
+        },
+    };
+    recorded != *new
 }
 
 #[cfg(test)]
@@ -299,8 +307,21 @@ mod tests {
         assert!(!changed(None, Some("EUR"), "SXR8.DE"));
         assert!(!changed(None, Some("CZK"), "CEZ.PR"));
         assert!(!changed(None, Some("USD"), "AAPL"));
-        // A response without a currency keeps the old assumption, so it cannot change anything.
+        // A response without a currency keeps the old assumption (for a suffix the old mapping
+        // knew), so it cannot change anything.
         assert!(!changed(None, None, "CSPX.L"));
+    }
+
+    #[test]
+    fn a_ticker_on_a_suffix_added_after_0_9_is_compared_with_the_usd_it_was_stored_as() {
+        // 0.9.0 stored these as USD because it knew no suffix for them: history to repair.
+        assert!(changed(None, Some("PLN"), "CDR.WA"));
+        assert!(changed(None, Some("KRW"), "005930.KS"));
+        // A listing that really is in dollars was stored right.
+        assert!(!changed(None, Some("USD"), "SHOP-U.TO"));
+        // A response without a currency falls back to the new suffix guess, which is no longer
+        // what the rows were stored as.
+        assert!(changed(None, None, "CDR.WA"));
     }
 
     #[test]

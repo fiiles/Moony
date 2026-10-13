@@ -94,13 +94,13 @@ trust, and regenerate the token when you stop using one.
 ## Where your data lives
 
 Moony stores its files in the application data folder, whose name comes from the app
-identifier `com.filipkral.moony`:
+identifier `com.moonyfinance.desktop`:
 
 | OS | Data folder |
 | --- | --- |
-| macOS | `~/Library/Application Support/com.filipkral.moony/` |
-| Windows | `%APPDATA%\com.filipkral.moony\` (usually `C:\Users\<you>\AppData\Roaming\…`) |
-| Linux | `~/.local/share/com.filipkral.moony/` (or `$XDG_DATA_HOME/com.filipkral.moony/`) |
+| macOS | `~/Library/Application Support/com.moonyfinance.desktop/` |
+| Windows | `%APPDATA%\com.moonyfinance.desktop\` (usually `C:\Users\<you>\AppData\Roaming\…`) |
+| Linux | `~/.local/share/com.moonyfinance.desktop/` (or `$XDG_DATA_HOME/com.moonyfinance.desktop/`) |
 
 Inside it:
 
@@ -115,6 +115,20 @@ Inside it:
 **Settings → Data and backups** shows the exact path on your machine and has an "Open folder"
 button. Moony never moves this folder on its own, and uninstalling the app does not delete it
 by default.
+
+**Upgrading from 0.10.0 or earlier:** those versions kept the folder under the old identifier
+`com.filipkral.moony`, in the same place as in the table above. 0.10.1 looks in the folder named
+`com.moonyfinance.desktop` and does not move anything itself. To keep your data, quit Moony and
+rename the old folder to the new name before the first start of 0.10.1. If 0.10.1 has already
+started and created the new folder, quit it, delete the new folder (it holds only what 0.10.1
+created there; back it up first if you already entered data in it), then rename the old one. The
+old folder is never deleted for you.
+
+Preferences that the web view keeps on your computer may start from their defaults once: the
+language of the lock screen, auto-lock and the automatic update check, which is on by default. If
+you had turned the update check off, turn it off again under **Settings → Security → Updates**
+("Check for updates automatically"). Your data and the settings inside the database are
+unchanged.
 
 ## Backups and the recovery key
 

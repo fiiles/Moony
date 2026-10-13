@@ -1354,3 +1354,22 @@ describe('EMPTY_MAPPING', () => {
     expect(isMappingComplete(EMPTY_MAPPING)).toBe(false);
   });
 });
+
+describe('date formats with month names and CJK units', () => {
+  it('are offered with notation labels', () => {
+    expect(dateFormatLabel('%d %b %Y')).toBe('DD MMM YYYY');
+    expect(dateFormatLabel('%b %d, %Y')).toBe('MMM DD, YYYY');
+    expect(dateFormatLabel('%d. %B %Y')).toBe('DD. MMMM YYYY');
+    expect(dateFormatLabel('%Y年%m月%d日')).toBe('YYYY年M月D日');
+    expect(dateFormatLabel('%Y년 %m월 %d일')).toBe('YYYY년 M월 D일');
+    expect(dateFormatChoices()).toEqual(
+      expect.arrayContaining([
+        '%d %b %Y',
+        '%b %d, %Y',
+        '%d. %B %Y',
+        '%Y年%m月%d日',
+        '%Y년 %m월 %d일',
+      ])
+    );
+  });
+});

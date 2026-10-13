@@ -375,7 +375,15 @@
     "downloadPhoto": "Descargar foto",
     "invalidFiles": "Se han detectado archivos no válidos",
     "selectSaveFolder": "Elige la carpeta donde guardar las fotos",
-    "supportedFormats": "Formatos admitidos: JPG, PNG, GIF, WebP. Los archivos HEIC se convierten automáticamente a JPG."
+    "supportedFormats": "Formatos admitidos: JPG, PNG, GIF, WebP. Los archivos HEIC se convierten automáticamente a JPG.",
+    "errors": {
+      "convertFailed": "No se pudo convertir «{{name}}». Conviértelo a JPG manualmente.",
+      "unsupportedFormat": "«{{name}}» tiene un formato no compatible. Usa JPG, PNG, GIF, WebP o HEIC.",
+      "noValidFiles": "No hay archivos válidos para subir."
+    },
+    "photosSaved_one": "{{count}} foto guardada",
+    "photosSaved_many": "{{count}} fotos guardadas",
+    "photosSaved_other": "{{count}} fotos guardadas"
   },
   "documents": {
     "title": "Documentos",

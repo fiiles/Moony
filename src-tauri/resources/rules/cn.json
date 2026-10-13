@@ -83,6 +83,15 @@
     { "id": "cn/huabei-repayment", "name": "花呗还款 Huabei repayment", "ruleType": "contains", "pattern": "花呗还款", "categoryId": "cat_loan_payments", "priority": 50 },
     { "id": "cn/pingan-insurance", "name": "平安保险 Ping An Insurance", "ruleType": "contains", "pattern": "平安保险", "categoryId": "cat_insurance", "priority": 50 },
     { "id": "cn/china-pingan", "name": "中国平安 Ping An of China", "ruleType": "contains", "pattern": "中国平安", "categoryId": "cat_insurance", "priority": 50 },
-    { "id": "cn/picc", "name": "中国人保 PICC", "ruleType": "contains", "pattern": "中国人保", "categoryId": "cat_insurance", "priority": 50 }
+    { "id": "cn/picc", "name": "中国人保 PICC", "ruleType": "contains", "pattern": "中国人保", "categoryId": "cat_insurance", "priority": 50 },
+    { "id": "cn/xfer-own-zh", "name": "本人账户・余额宝转入转出", "ruleType": "regex", "pattern": "本人(?:账户|账号|帐户|帐号)|自己(?:账户|账号|帐户)|同名(?:账户|账号)|银证转账|银期转账|余额宝[\\s\\p{p}]{0,2}(?:自动|单次)?(?:转入|转出)|(?:转入|转出|转到|转至)[\\s\\p{p}]{0,2}余额宝|零钱通[\\s\\p{p}]{0,2}(?:自动|单次)?(?:转入|转出)|(?:转入|转出|转到|转至)[\\s\\p{p}]{0,2}零钱通|活期转定期|定期转活期", "categoryId": "cat_internal_transfers", "priority": 44 },
+    { "id": "cn/kw-insurance", "name": "Keyword: 保险 / 保费", "ruleType": "regex", "pattern": "保险|保费", "categoryId": "cat_insurance", "priority": 30 },
+    { "id": "cn/kw-loan", "name": "Keyword: 按揭 / 月供 / 还贷", "ruleType": "regex", "pattern": "按揭|月供|还贷|贷款", "categoryId": "cat_loan_payments", "priority": 30 },
+    { "id": "cn/kw-rent", "name": "Keyword: 租金", "ruleType": "contains", "pattern": "租金", "categoryId": "cat_housing", "priority": 30 },
+    { "id": "cn/kw-utilities", "name": "Keyword: 暖气 / 宽带 / 话费", "ruleType": "regex", "pattern": "暖气费|供暖费|宽带费|话费|煤气费", "categoryId": "cat_utilities", "priority": 30 },
+    { "id": "cn/kw-interest", "name": "Keyword: 利息 / 结息", "ruleType": "regex", "pattern": "利息|结息", "categoryId": "cat_investment_income", "priority": 30 },
+    { "id": "cn/kw-interest-paid", "name": "Keyword: 利息支出", "ruleType": "regex", "pattern": "利息支出|贷款利息|信用卡利息|透支利息", "categoryId": "cat_loan_payments", "priority": 31 },
+    { "id": "cn/kw-pharmacy", "name": "Keyword: 药店 / 药房", "ruleType": "regex", "pattern": "药店|药房", "categoryId": "cat_health", "priority": 30 },
+    { "id": "cn/kw-salary", "name": "Keyword: 薪资 / 奖金", "ruleType": "regex", "pattern": "薪资|薪水|代发工资|奖金|年终奖", "categoryId": "cat_income", "priority": 30 }
   ]
 }

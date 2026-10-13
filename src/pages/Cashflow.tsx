@@ -82,11 +82,7 @@ export default function Cashflow() {
   });
   const { money, signedMoney } = useReportMoney(data?.reportCurrency);
 
-  // Czech month names are lower-case inside a sentence; "Q4 2026" and "2026" keep their spelling.
-  const periodInSentence =
-    timeframe === 'monthly' && fmt.locale.startsWith('cs')
-      ? period.label.toLocaleLowerCase(fmt.locale)
-      : period.label;
+  const periodInSentence = period.labelInSentence;
 
   useShellPage({
     status: data

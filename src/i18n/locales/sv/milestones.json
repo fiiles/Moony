@@ -47,7 +47,7 @@
     "balances_stale": "Kontosaldon"
   },
   "sub": {
-    "insurance_anniversary": "Sista dag att säga upp · förnyelse {{date}}",
+    "insurance_anniversary": "Sista dag för uppsägning · förnyelse {{date}}",
     "insurance_anniversary_passed": "Avtalets förnyelse · uppsägningstiden har passerat",
     "insurance_end": "Avtalet upphör",
     "insurance_payment": "Betalning {{amount}}",
@@ -78,7 +78,7 @@
   "groups": {
     "insuranceDates": {
       "label": "Försäkringsförnyelser och slutdatum",
-      "hint": "I översikten upp till 3 månader i förväg; förnyelser med sista dag att säga upp.",
+      "hint": "I översikten upp till 3 månader i förväg; förnyelser med sista dag för uppsägning.",
       "mute": "Påminn mig inte om försäkringsförnyelser och slutdatum"
     },
     "insurancePayments": {
@@ -129,6 +129,8 @@
   },
   "settings": {
     "title": "Påminnelser i översikten",
-    "description": "Vad kortet ”Vad som väntar” och översta fältet påminner dig om. Avstängda typer visas ingenstans."
+    "description": "Vad kortet ”Vad som väntar” och översta fältet påminner dig om. Avstängda typer visas ingenstans.",
+    "insuranceNotice": "Uppsägningstid för försäkring (dagar)",
+    "insuranceNoticeHint": "Hur många dagar före den årliga förnyelsen en uppsägning måste ha kommit fram till försäkringsbolaget. 0 stänger av påminnelsen om förnyelsen. Förinställt på 43 dagar endast för Tjeckien och Slovakien."
   }
 }

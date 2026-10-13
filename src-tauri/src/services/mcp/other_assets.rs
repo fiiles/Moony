@@ -178,7 +178,7 @@ pub fn other_asset_transactions_create(
         if let Err(e) = row_to_insert(row).validate() {
             errors.push(RowError {
                 index: i,
-                message: e.to_string(),
+                message: super::error_text::render(&e),
             });
         }
     }
@@ -228,7 +228,7 @@ pub fn other_asset_transactions_create(
                 skipped_duplicates: vec![],
                 errors: vec![RowError {
                     index: i,
-                    message: error.to_string(),
+                    message: super::error_text::render(&error),
                 }],
             });
         }
@@ -263,7 +263,7 @@ pub fn other_asset_transactions_create(
                 skipped_duplicates: vec![],
                 errors: vec![RowError {
                     index,
-                    message: error.to_string(),
+                    message: super::error_text::render(&error),
                 }],
             });
         }
@@ -758,7 +758,9 @@ mod tests {
         assert_eq!(report.created, 0);
         assert_eq!(report.errors.len(), 1);
         assert_eq!(report.errors[0].index, 1);
-        assert!(report.errors[0].message.contains("exchangeRateUnavailable"));
+        let message = &report.errors[0].message;
+        assert!(message.contains("exchange rates for its date"), "{message}");
+        assert!(!message.contains("validation."), "{message}");
         assert_eq!(tx_count(&conn, &id), 0);
         assert_eq!(asset_totals(&conn, &id), ("0".into(), "0".into()));
     }

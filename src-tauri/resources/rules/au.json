@@ -61,6 +61,7 @@
     { "id": "au/cash-withdrawal", "name": "Cash Withdrawal", "ruleType": "contains", "pattern": "cash withdrawal", "categoryId": "cat_internal_transfers", "priority": 40 },
     { "id": "au/salary", "name": "Salary", "ruleType": "contains", "pattern": "salary", "categoryId": "cat_income", "priority": 60 },
     { "id": "au/payroll", "name": "Payroll", "ruleType": "contains", "pattern": "payroll", "categoryId": "cat_income", "priority": 60 },
-    { "id": "au/mortgage", "name": "Mortgage Payment", "ruleType": "word", "pattern": "mortgage", "categoryId": "cat_loan_payments", "priority": 45 }
+    { "id": "au/mortgage", "name": "Mortgage Payment", "ruleType": "word", "pattern": "mortgage", "categoryId": "cat_loan_payments", "priority": 45 },
+    { "id": "au/xfer-own", "name": "Own-account transfer and BPAY to a credit card", "ruleType": "regex", "pattern": "\\b(?:transfer|trf|tfr)\\b[^a-z0-9]{0,4}(?:to|from)\\b[^a-z0-9]{0,4}(?:[a-z0-9]+\\s+){0,2}?(?:savings?|saver|offset)\\b|\\bbpay\\b[^a-z0-9]{0,4}(?:[a-z0-9]+\\s+){0,3}?credit card\\b", "categoryId": "cat_internal_transfers", "priority": 44 }
   ]
 }

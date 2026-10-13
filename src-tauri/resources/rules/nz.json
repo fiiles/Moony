@@ -46,6 +46,7 @@
     { "id": "nz/cash-withdrawal", "name": "Cash Withdrawal", "ruleType": "contains", "pattern": "cash withdrawal", "categoryId": "cat_internal_transfers", "priority": 40 },
     { "id": "nz/salary", "name": "Salary", "ruleType": "contains", "pattern": "salary", "categoryId": "cat_income", "priority": 60 },
     { "id": "nz/payroll", "name": "Payroll", "ruleType": "contains", "pattern": "payroll", "categoryId": "cat_income", "priority": 60 },
-    { "id": "nz/mortgage", "name": "Mortgage Payment", "ruleType": "word", "pattern": "mortgage", "categoryId": "cat_loan_payments", "priority": 45 }
+    { "id": "nz/mortgage", "name": "Mortgage Payment", "ruleType": "word", "pattern": "mortgage", "categoryId": "cat_loan_payments", "priority": 45 },
+    { "id": "nz/xfer-own", "name": "Own-account transfer (NZ)", "ruleType": "regex", "pattern": "\\b(?:transfer|trf|tfr)\\b[^a-z0-9]{0,4}(?:to|from)\\b[^a-z0-9]{0,4}(?:[a-z0-9]+\\s+){0,2}?(?:savings?|cheque|call account|call acct|serious saver)\\b", "categoryId": "cat_internal_transfers", "priority": 44 }
   ]
 }

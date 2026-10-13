@@ -3,8 +3,9 @@
  *
  * The Rust `AppError` (`src-tauri/src/error.rs`) is serialized as its display string:
  * `"<Variant prefix>: <detail>"`. The detail is one of
- *   - an i18n key (`validation.*`, `auth.*`) -> translated through `common.json`,
- *   - curated English text (88 `Validation` messages, a few `Auth` ones),
+ *   - an i18n key (`validation.*`, `auth.*`), optionally followed by `|` and a JSON object of
+ *     interpolation values -> translated through `common.json`,
+ *   - curated English text (a few legacy `Validation` and `Auth` messages; MCP-only sites),
  *   - technical text (rusqlite, IO, HTTP bodies, file paths) that must never reach the UI.
  *
  * `normalizeApiError` is pure so it can be unit-tested; `tauriInvoke` throws an `ApiError` built
@@ -44,8 +45,34 @@ const PREFIXES: ReadonlyArray<readonly [string, ApiErrorKind]> = [
   ['Internal error:', 'internal'],
 ];
 
-/** Only these key families are produced by the backend and live in `common.json`. */
-const I18N_KEY = /^(validation|auth)\.[A-Za-z0-9_]+$/;
+/**
+ * Only these key families are produced by the backend and live in `common.json`. A key may carry
+ * interpolation values as a JSON object after a bar: `validation.currencyMismatch|{"expected":"USD"}`.
+ */
+const KEYED = /^((?:validation|auth)\.[A-Za-z0-9_]+)(?:\|(\{[\s\S]*\}))?$/;
+
+export interface KeyedMessage {
+  key: string;
+  params: Record<string, unknown>;
+}
+
+/** Splits `key` or `key|{json}`; null for anything else. Unreadable values are dropped, the key stays. */
+export function parseKeyed(text: string): KeyedMessage | null {
+  const match = KEYED.exec(text.trim());
+  if (!match) return null;
+  let params: Record<string, unknown> = {};
+  if (match[2]) {
+    try {
+      const parsed: unknown = JSON.parse(match[2]);
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        params = parsed as Record<string, unknown>;
+      }
+    } catch {
+      // the key without its values is still better than the English fallback
+    }
+  }
+  return { key: match[1], params };
+}
 
 /** Used when `errors.<kind>` is missing from the locale files (should never happen). */
 const BUILT_IN_FALLBACK: Record<ApiErrorKind, string> = {
@@ -62,6 +89,17 @@ const BUILT_IN_FALLBACK: Record<ApiErrorKind, string> = {
 function translateOrEmpty(t: ApiErrorTranslate, key: string): string {
   const translated = t(key, { defaultValue: '' });
   return translated && translated !== key ? translated : '';
+}
+
+/** The translated text of a keyed message; a value that is itself a key (stock import `reason`) is translated first. */
+function translateKeyed(keyed: KeyedMessage, t: ApiErrorTranslate): string {
+  const params: Record<string, unknown> = {};
+  for (const [name, value] of Object.entries(keyed.params)) {
+    const nested = typeof value === 'string' ? parseKeyed(value) : null;
+    params[name] = nested ? translateKeyed(nested, t) || value : value;
+  }
+  const translated = t(keyed.key, { ...params, defaultValue: '' });
+  return translated && translated !== keyed.key ? translated : '';
 }
 
 function genericMessage(kind: ApiErrorKind, t: ApiErrorTranslate): string {
@@ -87,14 +125,14 @@ export function normalizeApiError(raw: string, t: ApiErrorTranslate): Normalized
     }
   }
 
-  if (I18N_KEY.test(detail)) {
+  const keyed = parseKeyed(detail);
+  if (keyed) {
     // Bare keys (no prefix) still tell us the kind.
-    if (kind === 'unknown') kind = detail.startsWith('auth.') ? 'auth' : 'validation';
-    const translated = translateOrEmpty(t, detail);
+    if (kind === 'unknown') kind = keyed.key.startsWith('auth.') ? 'auth' : 'validation';
     return {
       kind,
-      key: detail,
-      message: translated || genericMessage(kind, t),
+      key: keyed.key,
+      message: translateKeyed(keyed, t) || genericMessage(kind, t),
       raw,
     };
   }

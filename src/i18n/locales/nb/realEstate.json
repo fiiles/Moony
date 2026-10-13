@@ -370,7 +370,14 @@
     "downloadPhoto": "Last ned bilde",
     "invalidFiles": "Ugyldige filer oppdaget",
     "selectSaveFolder": "Velg mappe for lagring av bilder",
-    "supportedFormats": "Støttede formater: JPG, PNG, GIF, WebP. HEIC-filer konverteres automatisk til JPG."
+    "supportedFormats": "Støttede formater: JPG, PNG, GIF, WebP. HEIC-filer konverteres automatisk til JPG.",
+    "errors": {
+      "convertFailed": "Kunne ikke konvertere «{{name}}». Konverter den til JPG manuelt.",
+      "unsupportedFormat": "«{{name}}» har et format som ikke støttes. Bruk JPG, PNG, GIF, WebP eller HEIC.",
+      "noValidFiles": "Ingen gyldige filer å laste opp."
+    },
+    "photosSaved_one": "{{count}} bilde lagret",
+    "photosSaved_other": "{{count}} bilder lagret"
   },
   "documents": {
     "title": "Dokumenter",

@@ -20,9 +20,9 @@
     "paymentsYear": "{{amount}} a year",
     "rate": "Avg. interest rate",
     "rateNote": "weighted by balance · interest over the next 12 months {{interest}}",
-    "fixation": "Fixation ends",
+    "fixation": "Fixed rate ends",
     "fixationNote": "in {{duration}} · {{name}} {{rate}}",
-    "fixationExpired": "{{name}}'s fixation ended {{month}} – enter the new rate",
+    "fixationExpired": "{{name}}'s fixed-rate period ended {{month}} – enter the new rate",
     "noFixation": "no rate has an end of validity"
   },
   "chart": {
@@ -47,7 +47,7 @@
       "paidOff": "{{name}} paid off",
       "paidOffPayments": "payments drop by {{amount}} a month",
       "debtFree": "debt-free",
-      "fixationEnd": "Fixation ends · {{name}}",
+      "fixationEnd": "Fixed rate ends · {{name}}",
       "half": "Half repaid · {{name}}",
       "balance": "balance {{amount}}",
       "newLoan": "New loan · {{name}}",
@@ -75,7 +75,7 @@
     "repaid": "{{percent}} repaid",
     "matured": "paid off",
     "fixedUntil": "fixed until {{month}}",
-    "fixationEnded": "fixation ended {{month}}",
+    "fixationEnded": "fixed-rate period ended {{month}}",
     "fixedRate": "fixed rate",
     "monthly": "monthly",
     "noPayment": "no payment",
@@ -147,8 +147,8 @@
     "addDescription": "Principal, rate and payment are enough; the balance follows the schedule.",
     "editDescription": "Change the loan terms; the balance is recalculated.",
     "endDateHelp": "When the loan is contractually due",
-    "rateValidity": "Rate validity (fixation end)",
-    "rateValidityHelp": "When the current rate's fixation ends",
+    "rateValidity": "Rate valid until (end of the fixed-rate period)",
+    "rateValidityHelp": "When the current rate's fixed-rate period ends",
     "startDateHelp": "The balance is amortized from this date; payments fall on the same day of each month"
   },
   "valuation": {
@@ -192,13 +192,13 @@
         "schedule": "By schedule",
         "drawdown": "Drawdown",
         "extraPayment": "Extra payment",
-        "milestones": "Fixation and milestones"
+        "milestones": "Fixed rate and milestones"
       },
       "tipBalance": "balance",
       "tipSchedule": "by schedule",
       "notePast": "Since {{date}}: {{principal}} of principal repaid and {{interest}} paid in interest",
       "note5": "Balance in 5 years {{amount}}",
-      "note5Fixation": "Balance in 5 years {{amount}} · fixation ends {{month}}",
+      "note5Fixation": "Balance in 5 years {{amount}} · fixed rate ends {{month}}",
       "noteAll": "Until paid off you still pay {{total}}, of which {{interest}} is interest",
       "noteNoPayoff": "At the current payment the loan is never paid off",
       "events": {
@@ -207,7 +207,7 @@
         "rateChange": "Rate changed to {{rate}}",
         "newPayment": "payment {{amount}}",
         "balanceCheck": "Balance verified by statement",
-        "fixationEnd": "Fixation ends",
+        "fixationEnd": "Fixed rate ends",
         "half": "Half of the principal repaid",
         "payoff": "Loan paid off",
         "balance": "balance {{amount}}"
@@ -223,7 +223,7 @@
       "remainingNote": "{{duration}} · {{interest}} of interest still to pay",
       "remainingNone": "never at the current payment",
       "paidOff": "the loan is paid off",
-      "fixation": "Fixation ends",
+      "fixation": "Fixed rate ends",
       "fixationNote": "in {{duration}} · at {{up}} the payment is {{upPayment}}, at {{down}} {{downPayment}}",
       "nextPayment": "Next payment",
       "nextPaymentNote": "interest {{interest}} · principal {{principal}}",

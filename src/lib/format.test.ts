@@ -153,6 +153,29 @@ describe('month', () => {
   });
 });
 
+describe('monthInSentence', () => {
+  const september = new Date(Date.UTC(2026, 8, 1));
+
+  it.each([
+    ['en-US', 'September 2026'],
+    ['cs-CZ', 'září 2026'],
+    ['de-DE', 'September 2026'],
+    ['es-ES', 'septiembre de 2026'],
+    ['it-IT', 'settembre 2026'],
+    ['nb-NO', 'september 2026'],
+    ['pl-PL', 'wrzesień 2026'],
+    ['sv-SE', 'september 2026'],
+    ['ja-JP', '2026年9月'],
+    ['zh-CN', '2026年9月'],
+  ])('%s keeps the casing Intl uses inside a sentence', (locale, expected) => {
+    expect(createFormatters(locale, undefined).monthInSentence(september)).toBe(expected);
+  });
+
+  it('leaves the line-start form capitalised', () => {
+    expect(createFormatters('es-ES', undefined).month(september)).toBe('Septiembre de 2026');
+  });
+});
+
 describe('getFormatters', () => {
   it('memoizes per locale', () => {
     expect(getFormatters('en-US', undefined)).toBe(getFormatters('en-US', undefined));

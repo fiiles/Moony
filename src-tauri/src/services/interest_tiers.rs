@@ -29,22 +29,23 @@ impl InterestTier {
     /// "no limit" encoding the UI also understands). Unparseable numbers are an
     /// error, never a silent zero (ADR 0001).
     pub fn parse(from_amount: &str, to_amount: Option<&str>, interest_rate: &str) -> Result<Self> {
-        let number = |label: &str, value: &str| -> Result<f64> {
-            value.trim().parse::<f64>().map_err(|_| {
-                AppError::Validation(format!("Invalid interest tier {label} '{value}'"))
-            })
+        let number = |value: &str| -> Result<f64> {
+            value
+                .trim()
+                .parse::<f64>()
+                .map_err(|_| AppError::Validation("validation.invalidAmount".into()))
         };
         let to = match to_amount.map(str::trim) {
             None | Some("") => None,
-            Some(value) => match number("upper bound", value)? {
+            Some(value) => match number(value)? {
                 0.0 => None,
                 to => Some(to),
             },
         };
         Ok(Self {
-            from: number("lower bound", from_amount)?,
+            from: number(from_amount)?,
             to,
-            rate: number("rate", interest_rate)?,
+            rate: number(interest_rate)?,
         })
     }
 }
@@ -272,5 +273,16 @@ mod tests {
             account_yearly_interest(&conn, "a", 150_000.0, 2.0, false).unwrap(),
             3_000.0
         );
+    }
+
+    #[test]
+    fn an_unreadable_tier_number_is_the_invalid_amount_key() {
+        for (from, to, rate) in [("abc", None, "1"), ("0", Some("x"), "1"), ("0", None, "")] {
+            let err = InterestTier::parse(from, to, rate).unwrap_err();
+            assert!(
+                matches!(&err, AppError::Validation(key) if key == "validation.invalidAmount"),
+                "{from} {to:?} {rate}: {err}"
+            );
+        }
     }
 }

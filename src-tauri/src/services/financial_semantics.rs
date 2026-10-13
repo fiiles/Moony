@@ -12,34 +12,104 @@ pub struct FlowResolution {
     pub source: FlowSource,
 }
 
+/// A domestic account number (sort code + account, routing + account, BSB + account) needs at
+/// least this many digits to count as an identity: a bare 8-digit UK or 9-digit US account exists
+/// at many banks, the composite does not collide in practice.
+pub const MIN_NUMBER_DIGITS: usize = 11;
+const MAX_NUMBER_DIGITS: usize = 34;
+
 #[derive(Debug, Clone, Default)]
-pub struct AccountIdentities(HashSet<String>);
+pub struct AccountIdentities {
+    /// Canonical valid IBANs: authoritative.
+    ibans: HashSet<String>,
+    /// Digits-only keys of stored domestic numbers, see [`account_number_key`].
+    numbers: HashSet<String>,
+}
 impl AccountIdentities {
     pub fn from_identifiers(identifiers: impl IntoIterator<Item = String>) -> Self {
-        Self(
-            identifiers
-                .into_iter()
-                .filter(|s| !s.trim().is_empty())
-                .map(|s| canonical_account_identifier(&s, None))
-                // Bare domestic numbers and opaque foreign routing values are
-                // preserved by the canonicalizer, but cannot prove own identity.
-                .filter(|s| valid_iban(s))
-                .collect(),
-        )
+        let mut own = Self::default();
+        for raw in identifiers.into_iter().filter(|s| !s.trim().is_empty()) {
+            let canonical = canonical_account_identifier(&raw, None);
+            if valid_iban(&canonical) {
+                own.ibans.insert(canonical);
+            } else if let Some(key) = account_number_key(&raw) {
+                // Short, Czech-shaped and lettered identifiers are preserved by the
+                // canonicalizer but still cannot prove own identity.
+                own.numbers.insert(key);
+            }
+        }
+        own
     }
     pub fn load(conn: &Connection) -> Result<Self> {
         Ok(Self::from_identifiers(load_account_identifiers(conn)?))
     }
     pub fn contains(&self, identifier: Option<&str>, bank_code: Option<&str>) -> bool {
         identifier.is_some_and(|id| {
-            self.0
+            self.ibans
                 .contains(&canonical_account_identifier(id, bank_code))
         })
     }
+    /// The counterparty written as a domestic number (whole, or account plus a bank/sort-code/routing
+    /// column) is one of the stored numbers. An IBAN, or anything that converts to one, is judged by
+    /// the IBAN set alone.
+    pub fn contains_number(&self, identifier: Option<&str>, bank_code: Option<&str>) -> bool {
+        if self.numbers.is_empty() {
+            return false;
+        }
+        let Some(identifier) = identifier else {
+            return false;
+        };
+        if valid_iban(&canonical_account_identifier(identifier, bank_code)) {
+            return false;
+        }
+        let account = identifier.rsplit(':').next().unwrap_or(identifier);
+        if account.chars().any(char::is_alphabetic) {
+            return false;
+        }
+        let digits: String = account.chars().filter(char::is_ascii_digit).collect();
+        let bank: String = bank_code
+            .unwrap_or_default()
+            .chars()
+            .filter(char::is_ascii_digit)
+            .collect();
+        self.numbers.contains(&digits) || self.numbers.contains(&format!("{bank}{digits}"))
+    }
 }
 
-/// Preserve each account row's pairing. A reliable IBAN is authoritative;
-/// otherwise only safely interpretable domestic/routing metadata can prove own.
+/// A Czech `[prefix-]account[/bank]`: without its bank code (or with one that failed the checksum
+/// and so never became an IBAN) it is not an identity.
+fn is_czech_domestic_shape(text: &str) -> bool {
+    let all_digits = |part: &str| !part.is_empty() && part.bytes().all(|b| b.is_ascii_digit());
+    let text = text.trim();
+    let text = match text.rsplit_once('/') {
+        Some((account, code)) if code.len() == 4 && all_digits(code) => account,
+        _ => text,
+    };
+    match text.split_once('-') {
+        Some((prefix, account)) => {
+            prefix.len() <= 6 && all_digits(prefix) && all_digits(account) && account.len() <= 10
+        }
+        None => all_digits(text) && text.len() <= 10,
+    }
+}
+
+/// Digits-only key of a domestic account number written in any layout (`12-34-56 12345678`,
+/// `021000021/123456789`): `None` for letters (an IBAN, a name), a Czech `prefix-account`, fewer
+/// than [`MIN_NUMBER_DIGITS`] or more than 34 digits. The `foreign:CC:bank:` marker that
+/// [`canonical_structured_identifier`] adds for an institution country is ignored.
+pub fn account_number_key(identifier: &str) -> Option<String> {
+    let body = identifier.rsplit(':').next().unwrap_or(identifier);
+    if body.chars().any(char::is_alphabetic) || is_czech_domestic_shape(body) {
+        return None;
+    }
+    let digits: String = body.chars().filter(char::is_ascii_digit).collect();
+    (MIN_NUMBER_DIGITS..=MAX_NUMBER_DIGITS)
+        .contains(&digits.len())
+        .then_some(digits)
+}
+
+/// Preserve each account row's pairing. A reliable IBAN is authoritative; otherwise only a
+/// domestic number of at least 11 digits (sort code, routing or BSB plus account) can prove own.
 pub(crate) fn load_account_identifiers(conn: &Connection) -> Result<Vec<String>> {
     let mut stmt=conn.prepare("SELECT ba.iban,ba.bban,i.country FROM bank_accounts ba LEFT JOIN institutions i ON i.id=ba.institution_id")?;
     let rows = stmt.query_map([], |r| {
@@ -109,6 +179,14 @@ pub fn resolve_structured_flow(
     is_credit: bool,
     own: &AccountIdentities,
 ) -> FlowResolution {
+    // A domestic number (sort code, routing, BSB + account) proves an own account like an IBAN
+    // does, but an explicit override still wins.
+    if explicit.is_none() && own.contains_number(identifier, bank_code) {
+        return FlowResolution {
+            kind: FlowKind::Transfer,
+            source: FlowSource::OwnAccount,
+        };
+    }
     let canonical = identifier.map(|s| canonical_structured_identifier(s, bank_code, country));
     resolve_flow(
         explicit,
@@ -565,5 +643,126 @@ mod tests {
             resolve_flow(None, None, None, None, true, &own).kind,
             FlowKind::Income
         );
+    }
+
+    #[test]
+    fn a_uk_sort_code_and_account_number_prove_an_own_transfer() {
+        let own = AccountIdentities::from_identifiers(vec!["12-34-56 12345678".into()]);
+        let resolve = |id: &str, bank: Option<&str>| {
+            resolve_structured_flow(None, Some(id), bank, Some("GB"), None, false, &own)
+        };
+        // Written whole, or split into the account column and the sort-code column.
+        for (id, bank) in [
+            ("12-34-56 12345678", None),
+            ("12345612345678", None),
+            ("12345678", Some("123456")),
+            ("12345678", Some("12-34-56")),
+        ] {
+            let flow = resolve(id, bank);
+            assert_eq!(flow.kind, FlowKind::Transfer, "{id} {bank:?}");
+            assert_eq!(flow.source, FlowSource::OwnAccount);
+        }
+        // Another account at the same bank, the same number at another bank, the bare number.
+        assert_eq!(resolve("87654321", Some("123456")).kind, FlowKind::Expense);
+        assert_eq!(resolve("12345678", Some("654321")).kind, FlowKind::Expense);
+        assert_eq!(resolve("12345678", None).kind, FlowKind::Expense);
+    }
+
+    #[test]
+    fn a_us_routing_and_account_number_prove_an_own_transfer() {
+        let own = AccountIdentities::from_identifiers(vec!["021000021 123456789012".into()]);
+        let flow = resolve_structured_flow(
+            None,
+            Some("123456789012"),
+            Some("021000021"),
+            Some("US"),
+            None,
+            true,
+            &own,
+        );
+        assert_eq!(
+            (flow.kind, flow.source),
+            (FlowKind::Transfer, FlowSource::OwnAccount)
+        );
+    }
+
+    #[test]
+    fn short_czech_shaped_and_alphabetic_numbers_never_prove_an_own_transfer() {
+        let own = AccountIdentities::from_identifiers(vec![
+            "12345678".into(),               // a bare UK account exists at many banks
+            "19-2000145399".into(),          // Czech prefix-account without its bank code
+            "GB-ACCOUNT 12345678901".into(), // letters: not a number at all
+            "19-2000145398/0800".into(),     // Czech with a bank code but a bad checksum: no IBAN
+        ]);
+        for (id, bank) in [
+            ("12345678", None),
+            ("12345678", Some("123456")),
+            ("19-2000145399", None),
+            ("19-2000145399", Some("0800")),
+            ("12345678901", None),
+            ("19-2000145398/0800", None),
+        ] {
+            let flow = resolve_structured_flow(None, Some(id), bank, None, None, false, &own);
+            assert_eq!(flow.kind, FlowKind::Expense, "{id} {bank:?}");
+        }
+    }
+
+    #[test]
+    fn an_explicit_flow_and_the_iban_path_are_not_overruled_by_a_number_match() {
+        let own = AccountIdentities::from_identifiers(vec![
+            "12-34-56 12345678".into(),
+            "DE89370400440532013000".into(),
+        ]);
+        let explicit = resolve_structured_flow(
+            Some(FlowKind::Income),
+            Some("12-34-56 12345678"),
+            None,
+            None,
+            None,
+            true,
+            &own,
+        );
+        assert_eq!(
+            (explicit.kind, explicit.source),
+            (FlowKind::Income, FlowSource::Explicit)
+        );
+        // An IBAN is judged by the IBAN set alone.
+        let stranger = resolve_structured_flow(
+            None,
+            Some("DE89370400440532013001"),
+            None,
+            None,
+            None,
+            false,
+            &own,
+        );
+        assert_eq!(stranger.kind, FlowKind::Expense);
+        let mine = resolve_structured_flow(
+            None,
+            Some("DE89 3704 0044 0532 0130 00"),
+            None,
+            None,
+            None,
+            false,
+            &own,
+        );
+        assert_eq!(mine.source, FlowSource::OwnAccount);
+    }
+
+    #[test]
+    fn stored_domestic_numbers_load_with_and_without_an_institution_country() {
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch(
+            "CREATE TABLE institutions(id TEXT,country TEXT);
+             CREATE TABLE bank_accounts(iban TEXT,bban TEXT,institution_id TEXT);
+             INSERT INTO institutions VALUES ('gb','GB');
+             INSERT INTO bank_accounts VALUES (NULL,'12-34-56 12345678',NULL);
+             INSERT INTO bank_accounts VALUES (NULL,'040004 87654321','gb');",
+        )
+        .unwrap();
+        let own = AccountIdentities::load(&conn).unwrap();
+        assert!(own.contains_number(Some("12345678"), Some("123456")));
+        assert!(own.contains_number(Some("87654321"), Some("040004")));
+        assert!(!own.contains_number(Some("87654321"), Some("123456")));
     }
 }

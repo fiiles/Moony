@@ -24,7 +24,10 @@
     "surname": "Nachname",
     "email": "E-Mail",
     "save": "Änderungen speichern",
-    "saving": "Wird gespeichert..."
+    "saving": "Wird gespeichert...",
+    "country": "Land",
+    "countryNone": "Anderes / nicht aufgeführt",
+    "countryHint": "Damit erscheinen die Kontoauszugsformate Ihrer Bank zuerst, wird die Dateikodierung gewählt und werden Länderstandards wie die Kündigungsfrist von Versicherungen gesetzt."
   },
   "password": {
     "title": "Passwort ändern",

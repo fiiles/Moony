@@ -38,8 +38,13 @@ export interface Formatters {
    * cannot shift in western time zones. Invalid input gives "".
    */
   date: (date: Date | string, opts?: Intl.DateTimeFormatOptions) => string;
-  /** "September 2026" / "září 2026" for a UTC date (period labels). */
+  /** "September 2026" / "Září 2026" for a UTC date (period labels that start a line). */
   month: (date: Date, opts?: Intl.DateTimeFormatOptions) => string;
+  /**
+   * `month` as Intl writes it inside a sentence: lower case where the language does it
+   * ("septiembre de 2026", "září 2026"), capitalised where it does not ("October 2026").
+   */
+  monthInSentence: (date: Date, opts?: Intl.DateTimeFormatOptions) => string;
 }
 
 /** `-0` and NaN never reach the user. */
@@ -194,18 +199,21 @@ export function createFormatters(locale: string, mainCurrency: string | undefine
     return dateFormat(locale, base).format(d);
   };
 
-  const month: Formatters['month'] = (value, opts = {}) => {
-    const text = dateFormat(locale, {
+  const monthInSentence: Formatters['monthInSentence'] = (value, opts = {}) =>
+    dateFormat(locale, {
       month: 'long',
       year: 'numeric',
       ...opts,
       timeZone: 'UTC',
     }).format(value);
-    // Czech month names are lower-case; period labels start a line.
+
+  const month: Formatters['month'] = (value, opts = {}) => {
+    const text = monthInSentence(value, opts);
+    // Period labels start a line, so every language capitalises.
     return text.charAt(0).toUpperCase() + text.slice(1);
   };
 
-  return { locale, money, number, percent, day, dateTime, time, date, month };
+  return { locale, money, number, percent, day, dateTime, time, date, month, monthInSentence };
 }
 
 const formatterCache = new Map<string, Formatters>();

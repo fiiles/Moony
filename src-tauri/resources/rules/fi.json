@@ -63,6 +63,13 @@
     { "id": "fi/if-vahinkovakuutus", "name": "If Vahinkovakuutus", "ruleType": "contains", "pattern": "if vahinkovakuutus", "categoryId": "cat_insurance", "priority": 50 },
     { "id": "fi/pohjola-vakuutus", "name": "Pohjola Vakuutus", "ruleType": "contains", "pattern": "pohjola vakuutus", "categoryId": "cat_insurance", "priority": 50 },
     { "id": "fi/k-rauta", "name": "K-Rauta", "ruleType": "contains", "pattern": "k-rauta", "categoryId": "cat_housing", "priority": 50 },
-    { "id": "fi/bauhaus", "name": "Bauhaus", "ruleType": "contains", "pattern": "bauhaus", "categoryId": "cat_housing", "priority": 50 }
+    { "id": "fi/bauhaus", "name": "Bauhaus", "ruleType": "contains", "pattern": "bauhaus", "categoryId": "cat_housing", "priority": 50 },
+    { "id": "fi/kw-vakuutus", "name": "Keyword: vakuutus", "ruleType": "contains", "pattern": "vakuutus", "categoryId": "cat_insurance", "priority": 30 },
+    { "id": "fi/kw-laina", "name": "Keyword: laina / lyhennys", "ruleType": "regex", "pattern": "\\b(?:laina|lainan|asuntolaina|opintolaina|lyhennys)\\b", "categoryId": "cat_loan_payments", "priority": 30 },
+    { "id": "fi/kw-vuokra", "name": "Keyword: vuokra", "ruleType": "regex", "pattern": "\\bvuokra", "categoryId": "cat_housing", "priority": 30 },
+    { "id": "fi/kw-sahko-vesi", "name": "Keyword: sähkölasku / kaukolämpö / vesi", "ruleType": "regex", "pattern": "sahkolasku|sahkonsiirto|sahkoyhtio|kaukolampo|vesilasku|vesimaksu|jatemaksu", "categoryId": "cat_utilities", "priority": 30 },
+    { "id": "fi/kw-korko", "name": "Keyword: korko", "ruleType": "regex", "pattern": "\\b(?:korko|korot|talletuskorko)\\b", "categoryId": "cat_investment_income", "priority": 30 },
+    { "id": "fi/kw-korko-kulu", "name": "Keyword: korkokulu", "ruleType": "regex", "pattern": "korkokulu|veloituskorko|lainan korko|luoton korko|luottokorko", "categoryId": "cat_loan_payments", "priority": 31 },
+    { "id": "fi/kw-apteekki", "name": "Keyword: apteekki", "ruleType": "regex", "pattern": "\\bapteek", "categoryId": "cat_health", "priority": 30 }
   ]
 }

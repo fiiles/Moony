@@ -260,7 +260,20 @@
     "exchangeRateUnavailable": "The transaction cannot be saved until exchange rates for its date are available",
     "dateInvalid": "Invalid calendar date",
     "valueDateInvalid": "Invalid value date",
-    "maturityDateInvalid": "Invalid maturity date"
+    "maturityDateInvalid": "Invalid maturity date",
+    "countryInvalid": "Choose a country from the list.",
+    "bankAccountRequired": "Choose a bank account.",
+    "tierToAboveFrom": "The upper limit must be above the lower limit.",
+    "interestRateInvalid": "Enter a valid interest rate.",
+    "timeframeInvalid": "Choose monthly, quarterly or yearly.",
+    "currencyMismatch": "This position is held in {{expected}}, but the transaction is in {{actual}}. All transactions of a position must use the same currency.",
+    "sellWithoutPosition": "{{ticker}}: there is no open position to sell.",
+    "coingeckoIdConflict": "{{ticker}}: the CoinGecko ID differs from the one stored for this coin.",
+    "coingeckoIdForNewCoin": "{{ticker}}: a new coin needs its CoinGecko ID (for example bitcoin) to fetch prices.",
+    "stockImportLine": "Line {{line}}: {{reason}}",
+    "stockImportRowFailed": "the row could not be saved.",
+    "onboardingFlagUnknown": "Unknown onboarding step.",
+    "insuranceNoticeInvalid": "Enter a whole number of days from 0 to 365."
   },
   "auth": {
     "wrongPassword": "The password you entered is incorrect. Please try again.",

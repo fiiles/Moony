@@ -6,12 +6,16 @@ import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { useAuth } from '@/hooks/use-auth';
+import { useLanguage } from '@/i18n/I18nProvider';
 import type { CsvPreset } from '@shared/schema';
-import { AUTO_PRESET, presetLabel, sortPresets } from './import-config';
+import { AUTO_PRESET, groupPresetsByCountry, presetLabel } from './import-config';
 
 interface PresetPickerProps {
   presets: readonly CsvPreset[];
@@ -35,8 +39,13 @@ export function PresetPicker({
   withHint = false,
 }: PresetPickerProps) {
   const { t } = useTranslation('bank_accounts');
-  const sorted = useMemo(() => sortPresets(presets), [presets]);
-  const selected = sorted.find((p) => p.id === value);
+  const { user } = useAuth();
+  const { getLocale } = useLanguage();
+  const groups = useMemo(
+    () => groupPresetsByCountry(presets, user?.country, getLocale()),
+    [presets, user?.country, getLocale]
+  );
+  const selected = presets.find((p) => p.id === value);
   const helpUrl = selected?.exportHelpUrl;
 
   const openHelp = async () => {
@@ -58,10 +67,15 @@ export function PresetPicker({
         </SelectTrigger>
         <SelectContent>
           <SelectItem value={AUTO_PRESET}>{t('csvImport.presetAuto')}</SelectItem>
-          {sorted.map((preset) => (
-            <SelectItem key={preset.id} value={preset.id}>
-              {presetLabel(preset)}
-            </SelectItem>
+          {groups.map((group) => (
+            <SelectGroup key={group.country}>
+              <SelectLabel>{group.name}</SelectLabel>
+              {group.presets.map((preset) => (
+                <SelectItem key={preset.id} value={preset.id}>
+                  {presetLabel(preset)}
+                </SelectItem>
+              ))}
+            </SelectGroup>
           ))}
         </SelectContent>
       </Select>

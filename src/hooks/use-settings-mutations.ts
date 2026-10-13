@@ -9,7 +9,14 @@ import { translateApiError } from '@/lib/translate-api-error';
 export type ProfileUpdate = Partial<
   Pick<
     UserProfile,
-    'name' | 'surname' | 'email' | 'currency' | 'language' | 'excludePersonalRealEstate'
+    | 'name'
+    | 'surname'
+    | 'email'
+    | 'currency'
+    | 'language'
+    | 'excludePersonalRealEstate'
+    | 'country'
+    | 'insuranceNoticeDays'
   > & { menuPreferences: MenuPreferences }
 >;
 
@@ -33,14 +40,30 @@ export function useSettingsMutations() {
       // Write the saved fields into the cache first: I18nProvider syncs the UI
       // language from `user.language`, and until the refetch lands it would
       // see the old value and flip the UI back to the old language.
+      // An empty country clears it on the backend; the cache holds null for "not set". The cached
+      // insurance notice is the effective one (null = no reminder), so a 0 becomes null.
+      const { country, insuranceNoticeDays, ...saved } = variables;
       queryClient.setQueryData<UserProfile | null>(['user-profile'], (old) =>
-        old ? { ...old, ...variables } : old
+        old
+          ? {
+              ...old,
+              ...saved,
+              ...(country === undefined ? {} : { country: country || null }),
+              ...(insuranceNoticeDays === undefined
+                ? {}
+                : { insuranceNoticeDays: insuranceNoticeDays || null }),
+            }
+          : old
       );
       queryClient.invalidateQueries({ queryKey: ['user-profile'] });
       // Invalidate portfolio metrics if excludePersonalRealEstate changed
       if (variables && 'excludePersonalRealEstate' in variables) {
         queryClient.invalidateQueries({ queryKey: ['portfolio-metrics'] });
         queryClient.invalidateQueries({ queryKey: ['portfolio-history'] });
+      }
+      // The insurance notice (and its default, which follows the country) feeds the reminders.
+      if (variables && ('country' in variables || 'insuranceNoticeDays' in variables)) {
+        queryClient.invalidateQueries({ queryKey: ['milestones'] });
       }
       if (variables?.language) {
         toast(i18n.getFixedT(variables.language, 'settings')('toast.languageChanged'));

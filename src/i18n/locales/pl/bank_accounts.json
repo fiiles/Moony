@@ -391,7 +391,10 @@
     },
     "columnNone": "— nieużywana —",
     "pendingPromoted": "Oczekująca transakcja zostanie zaksięgowana",
-    "editColumns": "Edytuj kolumny"
+    "editColumns": "Edytuj kolumny",
+    "encoding": "Kodowanie tekstu",
+    "encodingAuto": "Wykryj automatycznie ({{encoding}})",
+    "encodingHint": "Zmień, jeśli w podglądzie źle wyglądają znaki diakrytyczne lub litery spoza alfabetu łacińskiego."
   },
   "importHistory": {
     "title": "Historia importów",

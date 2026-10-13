@@ -1,21 +1,22 @@
 //! Locating and opening attached document files.
 //!
-//! The DB stores the absolute path the file had when it was attached. That path dies when the
-//! app data directory moves (the 0.9.0 identifier change copied the folder but not the rows), so
-//! the file is looked up under the current app data dir first.
+//! The DB stores the absolute path the file had when it was attached. That path goes stale when
+//! the app data directory gets a new name (the 0.9.0 and 0.10.1 identifier changes did that; a
+//! folder copied or renamed by hand leaves the rows pointing at the old place), so the file is
+//! looked up under the current app data dir first and the stored path is only the fallback.
 
 use crate::error::{AppError, Result};
 use std::path::{Path, PathBuf};
 
 /// Resolve a stored document path to an existing file.
 ///
-/// Files live at `<app_data_dir>/<subdir>/<owner id>/<file>`; the stored path is tried as-is
-/// first, then re-rooted under `app_data_dir` using its last two components.
+/// Files live at `<app_data_dir>/<subdir>/<owner id>/<file>`. The stored path is re-rooted under
+/// `app_data_dir` using its last two components and that file is preferred: when the data folder
+/// was copied to its new name, the old folder still holds a stale copy at the stored path, and
+/// the live one is in the current folder. The stored path itself is the fallback, for a file
+/// that is not under the current folder and still sits where the database says.
 pub fn resolve_document_path(app_data_dir: &Path, subdir: &str, stored: &str) -> Result<PathBuf> {
     let stored_path = Path::new(stored);
-    if stored_path.is_file() {
-        return Ok(stored_path.to_path_buf());
-    }
 
     let file_name = stored_path.file_name();
     let owner_dir = stored_path.parent().and_then(|p| p.file_name());
@@ -24,6 +25,10 @@ pub fn resolve_document_path(app_data_dir: &Path, subdir: &str, stored: &str) ->
         if rerooted.is_file() {
             return Ok(rerooted);
         }
+    }
+
+    if stored_path.is_file() {
+        return Ok(stored_path.to_path_buf());
     }
 
     Err(AppError::NotFound(format!(
@@ -93,6 +98,51 @@ mod tests {
         let stale = "/old/com.filipkral.moony-tauri/insurance_documents/pol-1/doc_x.pdf";
         let got = resolve_document_path(&dir, "insurance_documents", stale).expect("resolves");
         assert_eq!(got, owner.join("doc_x.pdf"));
+    }
+
+    #[test]
+    fn the_rerooted_path_wins_when_the_stored_path_also_exists() {
+        // After the data folder was copied to a new name the old folder still holds the file the
+        // database points at; the copy in the current data folder is the live one.
+        let current = temp_dir("both-current");
+        let old = temp_dir("both-old");
+        let live = current.join("insurance_documents").join("pol-1");
+        let stale = old.join("insurance_documents").join("pol-1");
+        fs::create_dir_all(&live).expect("mkdir live");
+        fs::create_dir_all(&stale).expect("mkdir stale");
+        fs::write(live.join("doc_x.pdf"), b"live").expect("write live");
+        fs::write(stale.join("doc_x.pdf"), b"stale").expect("write stale");
+        let stored = stale.join("doc_x.pdf");
+
+        let got = resolve_document_path(
+            &current,
+            "insurance_documents",
+            stored.to_str().expect("utf8"),
+        )
+        .expect("resolves");
+
+        assert_eq!(got, live.join("doc_x.pdf"));
+    }
+
+    #[test]
+    fn the_stored_path_is_the_fallback_when_nothing_sits_under_the_current_folder() {
+        // A file that is not under the current data folder (it was never copied over) is found
+        // through the stored path.
+        let current = temp_dir("fallback-current");
+        let old = temp_dir("fallback-old");
+        let stale = old.join("insurance_documents").join("pol-1");
+        fs::create_dir_all(&stale).expect("mkdir stale");
+        fs::write(stale.join("doc_x.pdf"), b"stale").expect("write stale");
+        let stored = stale.join("doc_x.pdf");
+
+        let got = resolve_document_path(
+            &current,
+            "insurance_documents",
+            stored.to_str().expect("utf8"),
+        )
+        .expect("resolves");
+
+        assert_eq!(got, stored);
     }
 
     #[test]

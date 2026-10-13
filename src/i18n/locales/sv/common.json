@@ -260,7 +260,20 @@
     "exchangeRateUnavailable": "Transaktionen kan inte sparas förrän valutakurser för dess datum är tillgängliga",
     "dateInvalid": "Ogiltigt datum",
     "valueDateInvalid": "Ogiltigt valutadatum",
-    "maturityDateInvalid": "Ogiltigt förfallodatum"
+    "maturityDateInvalid": "Ogiltigt förfallodatum",
+    "countryInvalid": "Välj ett land i listan.",
+    "bankAccountRequired": "Välj ett bankkonto.",
+    "tierToAboveFrom": "Den övre gränsen måste vara högre än den nedre.",
+    "interestRateInvalid": "Ange en giltig ränta.",
+    "timeframeInvalid": "Välj månadsvis, kvartalsvis eller årsvis.",
+    "currencyMismatch": "Den här positionen förs i {{expected}}, men transaktionen är i {{actual}}. Alla transaktioner i en position måste ha samma valuta.",
+    "sellWithoutPosition": "{{ticker}}: det finns ingen öppen position att sälja.",
+    "coingeckoIdConflict": "{{ticker}}: CoinGecko-ID:t skiljer sig från det som sparats för den här kryptovalutan.",
+    "coingeckoIdForNewCoin": "{{ticker}}: en ny kryptovaluta behöver sitt CoinGecko-ID (till exempel bitcoin) för att hämta kurser.",
+    "stockImportLine": "Rad {{line}}: {{reason}}",
+    "stockImportRowFailed": "raden kunde inte sparas.",
+    "onboardingFlagUnknown": "Okänt steg i den inledande konfigurationen.",
+    "insuranceNoticeInvalid": "Ange ett helt antal dagar från 0 till 365."
   },
   "auth": {
     "wrongPassword": "Lösenordet du angav är fel. Försök igen.",

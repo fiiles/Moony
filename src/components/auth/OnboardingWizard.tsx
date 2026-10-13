@@ -197,7 +197,10 @@ export function OnboardingWizard({ language, onFinished }: OnboardingWizardProps
         loans: areas.liabilities,
         insurance: areas.liabilities,
       };
-      const profile = await authApi.updateProfile({ menuPreferences });
+      const profile = await authApi.updateProfile({
+        menuPreferences,
+        ...(country !== NONE ? { country: country.toUpperCase() } : {}),
+      });
       queryClient.setQueryData(['user-profile'], profile);
 
       if (country !== NONE) {

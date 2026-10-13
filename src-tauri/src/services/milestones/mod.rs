@@ -20,6 +20,8 @@ use rusqlite::{params, Connection, OptionalExtension};
 use crate::error::{AppError, Result};
 use crate::models::{Milestone, MILESTONE_KINDS, MILESTONE_STATE_DONE, MILESTONE_STATE_SNOOZED};
 
+pub use insurance::effective_notice_days as effective_insurance_notice_days;
+
 pub(crate) const DAY: i64 = 86_400;
 /// `soon` covers events up to this many days ahead.
 const SOON_HORIZON_DAYS: i64 = 90;
@@ -173,15 +175,20 @@ fn load_states(conn: &Connection) -> Result<HashMap<String, (String, Option<i64>
 /// Last day an occurrence is still worth showing, read from its key
 /// (`<kind>:<source_id>:<due_day>`): the notice deadline of an insurance anniversary while it
 /// can be met, otherwise the due day. None for upkeep (its key carries the date of its data)
-/// and for keys without a day (`watch_target:…:below`).
-fn last_shown_day(key: &str, today: i64) -> Option<i64> {
+/// and for keys without a day (`watch_target:…:below`). `insurance_notice` is the profile's
+/// effective notice period (None = no notice, so the anniversary itself is the last day).
+fn last_shown_day(key: &str, today: i64, insurance_notice: Option<i64>) -> Option<i64> {
     let kind = key.split(':').next().unwrap_or_default();
     if UPKEEP_KINDS.contains(&kind) {
         return None;
     }
     let due: i64 = key.rsplit(':').next()?.parse().ok()?;
     if kind == "insurance_anniversary" {
-        let notice_deadline = due - insurance::NOTICE_DAYS * DAY;
+        // Without a notice period the anniversary itself is the last day that is shown.
+        let Some(notice) = insurance_notice else {
+            return Some(due);
+        };
+        let notice_deadline = due - notice * DAY;
         // Past the notice deadline the anniversary is information until its own day.
         return Some(if notice_deadline >= today {
             notice_deadline
@@ -203,10 +210,14 @@ pub fn set_milestone_state(conn: &Connection, key: &str, state: &str, today: i64
     } else {
         SNOOZE_DAYS
     };
-    let until = (state == MILESTONE_STATE_SNOOZED).then(|| {
+    // The notice caps a snooze only; done and dismissed states do not need the profile.
+    let until = if state == MILESTONE_STATE_SNOOZED {
+        let notice = insurance::profile_notice_days(conn)?;
         let until = today + days * DAY;
-        last_shown_day(key, today).map_or(until, |last| until.min(last))
-    });
+        Some(last_shown_day(key, today, notice).map_or(until, |last| until.min(last)))
+    } else {
+        None
+    };
     conn.execute(
         "INSERT INTO milestone_states (key, state, until_day, updated_at)
          VALUES (?1, ?2, ?3, unixepoch())
@@ -266,8 +277,27 @@ pub fn set_muted_kinds(conn: &Connection, kinds: &[String]) -> Result<Vec<String
 
 #[cfg(test)]
 mod tests {
-    use super::test_support::{day, setup};
+    use super::test_support::{day, setup as setup_without_profile};
     use super::*;
+
+    /// The one profile row (replacing any other): country and the stored notice (`None` = the
+    /// country default). Created in 2100 so that no data-upkeep reminder (backup) appears.
+    fn profile(conn: &Connection, country: Option<&str>, notice: Option<i64>) {
+        conn.execute("DELETE FROM user_profile", []).unwrap();
+        conn.execute(
+            "INSERT INTO user_profile (name, created_at, country, insurance_notice_days)
+             VALUES ('F', ?1, ?2, ?3)",
+            params![day(2100, 1, 1), country, notice],
+        )
+        .unwrap();
+    }
+
+    /// The database most tests use: a Czech profile, whose notice defaults to 43 days.
+    fn setup() -> Connection {
+        let conn = setup_without_profile();
+        profile(&conn, Some("CZ"), None);
+        conn
+    }
 
     fn policy(
         conn: &Connection,
@@ -612,5 +642,74 @@ mod tests {
         )
         .unwrap();
         assert!(muted_kinds(&conn).unwrap().is_empty());
+    }
+
+    #[test]
+    fn the_effective_notice_follows_the_stored_value_then_the_country() {
+        assert_eq!(effective_insurance_notice_days(Some("CZ"), None), Some(43));
+        assert_eq!(effective_insurance_notice_days(Some("sk"), None), Some(43));
+        assert_eq!(effective_insurance_notice_days(Some("US"), None), None);
+        assert_eq!(effective_insurance_notice_days(None, None), None);
+        assert_eq!(effective_insurance_notice_days(Some("CZ"), Some(0)), None);
+        assert_eq!(
+            effective_insurance_notice_days(Some("US"), Some(60)),
+            Some(60)
+        );
+        assert_eq!(
+            effective_insurance_notice_days(Some("CZ"), Some(60)),
+            Some(60)
+        );
+    }
+
+    #[test]
+    fn a_czech_profile_gets_the_anniversary_with_the_43_day_notice() {
+        let conn = setup();
+        policy(&conn, "p1", day(2020, 12, 24), None, "monthly", "300");
+        let list = list_milestones(&conn, day(2026, 10, 20)).unwrap();
+        assert_eq!(kinds(&list), vec!["insurance_anniversary"]);
+        assert_eq!(list[0].action_day, Some(day(2026, 12, 24) - 43 * DAY));
+    }
+
+    #[test]
+    fn a_us_profile_has_no_anniversary_reminder_until_it_sets_a_notice() {
+        let conn = setup_without_profile();
+        policy(&conn, "p1", day(2020, 12, 24), None, "monthly", "300");
+        let today = day(2026, 10, 20);
+        let anniversaries = |conn: &Connection| {
+            list_milestones(conn, today)
+                .unwrap()
+                .into_iter()
+                .filter(|m| m.kind == "insurance_anniversary")
+                .collect::<Vec<_>>()
+        };
+        // No profile row yet, then a US profile: nothing to remind about.
+        assert!(anniversaries(&conn).is_empty());
+        profile(&conn, Some("US"), None);
+        assert!(anniversaries(&conn).is_empty());
+        // Its own notice period switches the reminder on.
+        profile(&conn, Some("US"), Some(30));
+        let list = anniversaries(&conn);
+        assert_eq!(list.len(), 1);
+        assert_eq!(list[0].action_day, Some(day(2026, 12, 24) - 30 * DAY));
+        // 0 turns it off again, even for a Czech profile.
+        profile(&conn, Some("CZ"), Some(0));
+        assert!(anniversaries(&conn).is_empty());
+    }
+
+    #[test]
+    fn without_a_notice_period_an_anniversary_snooze_is_capped_by_the_anniversary_itself() {
+        let conn = setup_without_profile();
+        profile(&conn, Some("US"), None);
+        let today = day(2026, 10, 5);
+        let snooze = |due: i64| {
+            let key = format!("insurance_anniversary:p1:{due}");
+            set_milestone_state(&conn, &key, MILESTONE_STATE_SNOOZED, today).unwrap();
+            snoozed_until(&conn, &key)
+        };
+        // The anniversary three days away is the last day that is shown.
+        assert_eq!(snooze(today + 3 * DAY), today + 3 * DAY);
+        // 45 days away: there is no notice deadline to cap the snooze (a 43-day one would be
+        // two days ahead and cut it short), so it keeps the full week.
+        assert_eq!(snooze(today + 45 * DAY), today + 7 * DAY);
     }
 }

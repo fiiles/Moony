@@ -62,29 +62,24 @@ impl InsertBudgetGoal {
         // Validate timeframe
         let valid_timeframes = ["monthly", "quarterly", "yearly"];
         if !valid_timeframes.contains(&self.timeframe.as_str()) {
-            return Err(AppError::Validation(format!(
-                "Invalid timeframe '{}'. Must be one of: monthly, quarterly, yearly",
-                self.timeframe
-            )));
+            return Err(AppError::Validation("validation.timeframeInvalid".into()));
         }
 
         // Validate amount is a positive number
         let amount: f64 = self
             .amount
             .parse()
-            .map_err(|_| AppError::Validation("Invalid amount format".into()))?;
+            .map_err(|_| AppError::Validation("validation.invalidAmount".into()))?;
         if !amount.is_finite() {
             return Err(AppError::Validation("validation.invalidAmount".into()));
         }
         if amount <= 0.0 {
-            return Err(AppError::Validation(
-                "Budget amount must be positive".into(),
-            ));
+            return Err(AppError::Validation("validation.amountPositive".into()));
         }
 
         // Validate category_id is not empty
         if self.category_id.is_empty() {
-            return Err(AppError::Validation("Category ID is required".into()));
+            return Err(AppError::Validation("validation.categoryIdRequired".into()));
         }
 
         Ok(())
@@ -175,5 +170,37 @@ mod tests {
             };
             assert!(goal.validate().is_err(), "accepted {amount}");
         }
+    }
+
+    #[test]
+    fn goal_validation_reports_keys_not_sentences() {
+        use crate::error::AppError;
+        let goal = |category: &str, timeframe: &str, amount: &str| InsertBudgetGoal {
+            category_id: category.into(),
+            timeframe: timeframe.into(),
+            amount: amount.into(),
+            currency: None,
+            effective_month: None,
+        };
+        let key = |goal: InsertBudgetGoal| match goal.validate() {
+            Err(AppError::Validation(key)) => key,
+            other => panic!("{other:?}"),
+        };
+        assert_eq!(
+            key(goal("cat_other", "weekly", "10")),
+            "validation.timeframeInvalid"
+        );
+        assert_eq!(
+            key(goal("cat_other", "monthly", "ten")),
+            "validation.invalidAmount"
+        );
+        assert_eq!(
+            key(goal("cat_other", "monthly", "0")),
+            "validation.amountPositive"
+        );
+        assert_eq!(
+            key(goal("", "monthly", "10")),
+            "validation.categoryIdRequired"
+        );
     }
 }

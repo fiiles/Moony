@@ -260,7 +260,20 @@
     "exchangeRateUnavailable": "Transakcji nie można zapisać, dopóki kursy walut z jej daty nie będą dostępne",
     "dateInvalid": "Nieprawidłowa data",
     "valueDateInvalid": "Nieprawidłowa data waluty",
-    "maturityDateInvalid": "Nieprawidłowa data zapadalności"
+    "maturityDateInvalid": "Nieprawidłowa data zapadalności",
+    "countryInvalid": "Wybierz kraj z listy.",
+    "bankAccountRequired": "Wybierz konto bankowe.",
+    "tierToAboveFrom": "Górna granica musi być wyższa niż dolna.",
+    "interestRateInvalid": "Wpisz prawidłowe oprocentowanie.",
+    "timeframeInvalid": "Wybierz miesięcznie, kwartalnie lub rocznie.",
+    "currencyMismatch": "Ta pozycja jest prowadzona w {{expected}}, a transakcja jest w {{actual}}. Wszystkie transakcje jednej pozycji muszą mieć tę samą walutę.",
+    "sellWithoutPosition": "{{ticker}}: nie ma otwartej pozycji do sprzedaży.",
+    "coingeckoIdConflict": "{{ticker}}: identyfikator CoinGecko różni się od zapisanego dla tej kryptowaluty.",
+    "coingeckoIdForNewCoin": "{{ticker}}: nowa kryptowaluta wymaga identyfikatora CoinGecko (na przykład bitcoin), aby pobierać ceny.",
+    "stockImportLine": "Wiersz {{line}}: {{reason}}",
+    "stockImportRowFailed": "nie udało się zapisać wiersza.",
+    "onboardingFlagUnknown": "Nieznany krok konfiguracji początkowej.",
+    "insuranceNoticeInvalid": "Wpisz liczbę całkowitą dni od 0 do 365."
   },
   "auth": {
     "wrongPassword": "Wpisane hasło jest nieprawidłowe. Spróbuj ponownie.",

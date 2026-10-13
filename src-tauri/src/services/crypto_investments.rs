@@ -131,9 +131,10 @@ pub fn get_or_create_crypto(
                 .filter(|id| !id.is_empty())
                 .is_some_and(|id| id != stored_coingecko_id)
             {
-                return Err(crate::error::AppError::Validation(format!(
-                    "{ticker_upper}: coingeckoId conflicts with stored holding"
-                )));
+                return Err(crate::error::AppError::validation_with(
+                    "validation.coingeckoIdConflict",
+                    serde_json::json!({ "ticker": ticker_upper }),
+                ));
             }
             Ok(id)
         }
@@ -375,10 +376,9 @@ fn import_crypto_row(
     let tx_type_lower = tx_type.to_lowercase();
 
     if tx_type_lower != "buy" && tx_type_lower != "sell" {
-        return Err(AppError::Validation(format!(
-            "Invalid type '{}' (must be 'buy' or 'sell')",
-            tx_type
-        )));
+        return Err(AppError::Validation(
+            "validation.transactionTypeInvalid".into(),
+        ));
     }
 
     let existing: Option<(String, String)> = conn
@@ -390,10 +390,10 @@ fn import_crypto_row(
         .optional()?;
 
     if tx_type_lower == "sell" && existing.is_none() {
-        return Err(AppError::Validation(format!(
-            "{}: Cannot sell - no existing position found",
-            ticker_upper
-        )));
+        return Err(AppError::validation_with(
+            "validation.sellWithoutPosition",
+            serde_json::json!({ "ticker": ticker_upper }),
+        ));
     }
 
     let investment_id = match existing {
@@ -403,9 +403,10 @@ fn import_crypto_row(
                 .filter(|id| !id.is_empty())
                 .is_some_and(|id| id != stored_coingecko_id)
             {
-                return Err(AppError::Validation(format!(
-                    "{ticker_upper}: coingeckoId conflicts with stored holding"
-                )));
+                return Err(AppError::validation_with(
+                    "validation.coingeckoIdConflict",
+                    serde_json::json!({ "ticker": ticker_upper }),
+                ));
             }
             id
         }
@@ -414,10 +415,10 @@ fn import_crypto_row(
                 .map(str::trim)
                 .filter(|s| !s.is_empty())
                 .ok_or_else(|| {
-                    AppError::Validation(format!(
-                        "{}: new coin requires a coingeckoId (e.g. \"bitcoin\") for price fetching",
-                        ticker_upper
-                    ))
+                    AppError::validation_with(
+                        "validation.coingeckoIdForNewCoin",
+                        serde_json::json!({ "ticker": ticker_upper }),
+                    )
                 })?;
             get_or_create_crypto(conn, &ticker_upper, Some(cg), name)?
         }
@@ -561,7 +562,10 @@ mod tests {
             &conn, "XYZ", "Mystery", None, "buy", "1", "10", "CZK", 1700000000,
         )
         .unwrap_err();
-        assert!(err.to_string().contains("coingeckoId"), "err was: {err}");
+        assert!(
+            err.to_string().contains("validation.coingeckoIdForNewCoin"),
+            "err was: {err}"
+        );
     }
 
     #[test]
@@ -750,5 +754,72 @@ mod tests {
             delete_transaction(&conn, "missing"),
             Err(AppError::NotFound(_))
         ));
+    }
+
+    #[test]
+    fn crypto_rule_failures_carry_keys_and_their_values() {
+        let conn = setup_test_db();
+        let key_of = |err: AppError| err.keyed().expect("keyed validation error");
+        let err = import_single_crypto_transaction(
+            &conn, "XYZ", "Mystery", None, "buy", "1", "10", "CZK", 1700000000,
+        )
+        .unwrap_err();
+        assert_eq!(
+            key_of(err),
+            (
+                "validation.coingeckoIdForNewCoin".to_string(),
+                serde_json::json!({ "ticker": "XYZ" })
+            )
+        );
+        let err = import_single_crypto_transaction(
+            &conn,
+            "ETH",
+            "Ethereum",
+            Some("ethereum"),
+            "sell",
+            "1",
+            "10",
+            "CZK",
+            1700000000,
+        )
+        .unwrap_err();
+        assert_eq!(
+            key_of(err),
+            (
+                "validation.sellWithoutPosition".to_string(),
+                serde_json::json!({ "ticker": "ETH" })
+            )
+        );
+        import_single_crypto_transaction(
+            &conn,
+            "BTC",
+            "Bitcoin",
+            Some("bitcoin"),
+            "buy",
+            "1",
+            "900000",
+            "CZK",
+            1700000000,
+        )
+        .unwrap();
+        let err = import_single_crypto_transaction(
+            &conn,
+            "BTC",
+            "Bitcoin",
+            Some("wrapped-bitcoin"),
+            "buy",
+            "1",
+            "900000",
+            "CZK",
+            1700000001,
+        )
+        .unwrap_err();
+        assert_eq!(
+            key_of(err),
+            (
+                "validation.coingeckoIdConflict".to_string(),
+                serde_json::json!({ "ticker": "BTC" })
+            )
+        );
     }
 }

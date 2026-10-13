@@ -5,7 +5,7 @@
 
 use crate::db::Database;
 use crate::error::{AppError, Result};
-use crate::models::user::{validate_main_currency, DEFAULT_MAIN_CURRENCY};
+use crate::models::user::{normalize_country, validate_main_currency, DEFAULT_MAIN_CURRENCY};
 use crate::models::{InsertUserProfile, MenuPreferences, UpdateUserProfile, UserProfile};
 use crate::services::crypto;
 use std::fs;
@@ -419,7 +419,7 @@ pub fn get_user_profile(db: &Database) -> Result<Option<UserProfile>> {
         let mut stmt = conn.prepare(
             "SELECT id, name, surname, email, menu_preferences, currency,
                     language, exclude_personal_real_estate, coingecko_modal_dismissed,
-                    mcp_server_enabled, created_at
+                    mcp_server_enabled, created_at, country, insurance_notice_days
              FROM user_profile LIMIT 1",
         )?;
 
@@ -427,6 +427,8 @@ pub fn get_user_profile(db: &Database) -> Result<Option<UserProfile>> {
             let menu_prefs_json: String = row.get(4)?;
             let menu_prefs: MenuPreferences =
                 serde_json::from_str(&menu_prefs_json).unwrap_or_default();
+            let country: Option<String> = row.get(11)?;
+            let stored_notice: Option<i64> = row.get(12)?;
 
             Ok(UserProfile {
                 id: row.get(0)?,
@@ -440,6 +442,11 @@ pub fn get_user_profile(db: &Database) -> Result<Option<UserProfile>> {
                 coingecko_modal_dismissed: row.get::<_, i32>(8)? != 0,
                 mcp_server_enabled: row.get::<_, i32>(9)? != 0,
                 created_at: row.get(10)?,
+                insurance_notice_days: crate::services::milestones::effective_insurance_notice_days(
+                    country.as_deref(),
+                    stored_notice,
+                ),
+                country,
             })
         });
 
@@ -507,6 +514,16 @@ fn apply_profile_update(conn: &rusqlite::Connection, updates: &UpdateUserProfile
     if let Some(enabled) = updates.mcp_server_enabled {
         set_clauses.push("mcp_server_enabled = ?".to_string());
         params.push(Box::new(enabled as i32));
+    }
+
+    if let Some(ref country) = updates.country {
+        set_clauses.push("country = ?".to_string());
+        params.push(Box::new(normalize_country(country)?));
+    }
+
+    if let Some(days) = updates.insurance_notice_days {
+        set_clauses.push("insurance_notice_days = ?".to_string());
+        params.push(Box::new(days));
     }
 
     if set_clauses.is_empty() {
@@ -962,7 +979,9 @@ mod tests {
                 exclude_personal_real_estate INTEGER NOT NULL DEFAULT 0,
                 language TEXT NOT NULL DEFAULT 'en',
                 coingecko_modal_dismissed INTEGER NOT NULL DEFAULT 0,
-                mcp_server_enabled INTEGER NOT NULL DEFAULT 0
+                mcp_server_enabled INTEGER NOT NULL DEFAULT 0,
+                country TEXT,
+                insurance_notice_days INTEGER
             );
             INSERT INTO user_profile (id, currency) VALUES (1, 'CZK');
             "#,
@@ -971,18 +990,35 @@ mod tests {
         conn
     }
 
-    fn currency_update(code: &str) -> UpdateUserProfile {
+    /// An update that changes nothing; tests set the one field they care about.
+    fn empty_update() -> UpdateUserProfile {
         UpdateUserProfile {
             name: None,
             surname: None,
             email: None,
             menu_preferences: None,
-            currency: Some(code.to_string()),
+            currency: None,
             language: None,
             exclude_personal_real_estate: None,
             coingecko_modal_dismissed: None,
             mcp_server_enabled: None,
+            country: None,
+            insurance_notice_days: None,
         }
+    }
+
+    fn currency_update(code: &str) -> UpdateUserProfile {
+        UpdateUserProfile {
+            currency: Some(code.to_string()),
+            ..empty_update()
+        }
+    }
+
+    fn stored_country(conn: &rusqlite::Connection) -> Option<String> {
+        conn.query_row("SELECT country FROM user_profile WHERE id = 1", [], |r| {
+            r.get(0)
+        })
+        .expect("country")
     }
 
     fn stored_currency(conn: &rusqlite::Connection) -> String {
@@ -1008,6 +1044,146 @@ mod tests {
         let conn = profile_conn();
         apply_profile_update(&conn, &currency_update("aed")).unwrap();
         assert_eq!(stored_currency(&conn), "AED");
+    }
+
+    #[test]
+    fn the_insurance_notice_is_stored_and_a_zero_is_kept() {
+        let conn = profile_conn();
+        let set = |days: i64| UpdateUserProfile {
+            insurance_notice_days: Some(days),
+            ..empty_update()
+        };
+        let stored = |conn: &rusqlite::Connection| -> Option<i64> {
+            conn.query_row(
+                "SELECT insurance_notice_days FROM user_profile WHERE id = 1",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap()
+        };
+        apply_profile_update(&conn, &set(60)).unwrap();
+        assert_eq!(stored(&conn), Some(60));
+        apply_profile_update(&conn, &set(0)).unwrap();
+        assert_eq!(
+            stored(&conn),
+            Some(0),
+            "0 means no reminder and is stored as such"
+        );
+        assert!(apply_profile_update(&conn, &set(400)).is_err());
+        assert_eq!(stored(&conn), Some(0));
+    }
+
+    #[test]
+    fn the_country_is_stored_upper_case_and_cleared_by_an_empty_string() {
+        let conn = profile_conn();
+        let set = |code: &str| UpdateUserProfile {
+            country: Some(code.to_string()),
+            ..empty_update()
+        };
+        apply_profile_update(&conn, &set("cz")).unwrap();
+        assert_eq!(stored_country(&conn).as_deref(), Some("CZ"));
+        apply_profile_update(&conn, &set("")).unwrap();
+        assert_eq!(stored_country(&conn), None);
+        let err = apply_profile_update(&conn, &set("Narnia")).unwrap_err();
+        assert!(matches!(err, AppError::Validation(key) if key == "validation.countryInvalid"));
+        // A failed update changed nothing.
+        assert_eq!(stored_country(&conn), None);
+    }
+
+    /// The wizard and Settings write the country through `update_user_profile` and the app reads it
+    /// back through `get_user_profile`: on a real (SQLCipher, fully migrated) database, so the
+    /// hand-written SELECT and its column index are exercised too.
+    #[test]
+    fn the_saved_country_comes_back_with_the_profile_and_clearing_it_gives_null() {
+        let dir = tempdir().expect("tempdir");
+        let db = Database::new();
+        let key = crypto::master_key_to_hex(&[7u8; 32]);
+        db.create_with_key(dir.path().join("moony.db"), &key)
+            .expect("create db");
+        db.with_conn(|conn| {
+            conn.execute(
+                "INSERT INTO user_profile (name, surname, email) VALUES ('A', 'B', 'a@b.c')",
+                [],
+            )?;
+            Ok(())
+        })
+        .expect("profile row");
+        let country_of =
+            |updates: UpdateUserProfile| update_user_profile(&db, updates).expect("update").country;
+        let set = |code: &str| UpdateUserProfile {
+            country: Some(code.to_string()),
+            ..empty_update()
+        };
+
+        assert_eq!(get_user_profile(&db).unwrap().unwrap().country, None);
+        assert_eq!(country_of(set("gb")).as_deref(), Some("GB"));
+        assert_eq!(
+            get_user_profile(&db).unwrap().unwrap().country.as_deref(),
+            Some("GB")
+        );
+        // An update that does not mention the country keeps it.
+        assert_eq!(
+            country_of(UpdateUserProfile {
+                name: Some("C".into()),
+                ..empty_update()
+            })
+            .as_deref(),
+            Some("GB")
+        );
+        assert_eq!(country_of(set("")), None);
+        assert_eq!(get_user_profile(&db).unwrap().unwrap().country, None);
+    }
+
+    /// The profile reports the notice the milestones use: the country default until the user sets
+    /// one, then the stored value, `0` meaning no reminder (a real, fully migrated database).
+    #[test]
+    fn the_profile_reports_the_effective_insurance_notice() {
+        let dir = tempdir().expect("tempdir");
+        let db = Database::new();
+        let key = crypto::master_key_to_hex(&[7u8; 32]);
+        db.create_with_key(dir.path().join("moony.db"), &key)
+            .expect("create db");
+        db.with_conn(|conn| {
+            conn.execute(
+                "INSERT INTO user_profile (name, surname, email) VALUES ('A', 'B', 'a@b.c')",
+                [],
+            )?;
+            Ok(())
+        })
+        .expect("profile row");
+        let notice = || {
+            get_user_profile(&db)
+                .unwrap()
+                .unwrap()
+                .insurance_notice_days
+        };
+        let update =
+            |updates: UpdateUserProfile| update_user_profile(&db, updates).expect("update");
+        let country = |code: &str| UpdateUserProfile {
+            country: Some(code.to_string()),
+            ..empty_update()
+        };
+        let days = |days: i64| UpdateUserProfile {
+            insurance_notice_days: Some(days),
+            ..empty_update()
+        };
+
+        // No country: no notice. Czechia and Slovakia default to 43, other countries to nothing.
+        assert_eq!(notice(), None);
+        assert_eq!(update(country("cz")).insurance_notice_days, Some(43));
+        assert_eq!(update(country("SK")).insurance_notice_days, Some(43));
+        assert_eq!(update(country("us")).insurance_notice_days, None);
+        // A stored value wins over the country; 0 switches the reminder off.
+        assert_eq!(update(days(30)).insurance_notice_days, Some(30));
+        assert_eq!(update(country("cz")).insurance_notice_days, Some(30));
+        assert_eq!(update(days(0)).insurance_notice_days, None);
+        // An update that does not mention the notice keeps it.
+        let renamed = UpdateUserProfile {
+            name: Some("C".into()),
+            ..empty_update()
+        };
+        assert_eq!(update(renamed).insurance_notice_days, None);
+        assert_eq!(notice(), None);
     }
 
     #[test]

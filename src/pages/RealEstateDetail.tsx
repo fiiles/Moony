@@ -801,7 +801,7 @@ export default function RealEstateDetail() {
                                           amount: fmt.money(principal, loan.currency, {
                                             decimals: 0,
                                           }),
-                                          date: fmt.month(new Date(loan.endDate * 1000)),
+                                          date: fmt.monthInSentence(new Date(loan.endDate * 1000)),
                                         })
                                       : t('detail.loans.principalOnly', {
                                           amount: fmt.money(principal, loan.currency, {
@@ -826,7 +826,9 @@ export default function RealEstateDetail() {
                               {loan.interestRateValidityDate &&
                                 sub(
                                   t('detail.loans.fixedUntil', {
-                                    date: fmt.month(new Date(loan.interestRateValidityDate * 1000)),
+                                    date: fmt.monthInSentence(
+                                      new Date(loan.interestRateValidityDate * 1000)
+                                    ),
                                   })
                                 )}
                             </TableCell>

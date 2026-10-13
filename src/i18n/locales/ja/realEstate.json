@@ -365,7 +365,13 @@
     "downloadPhoto": "写真をダウンロード",
     "invalidFiles": "無効なファイルが検出されました",
     "selectSaveFolder": "写真の保存先フォルダを選択",
-    "supportedFormats": "対応形式：JPG、PNG、GIF、WebP。HEIC ファイルは自動的に JPG に変換されます。"
+    "supportedFormats": "対応形式：JPG、PNG、GIF、WebP。HEIC ファイルは自動的に JPG に変換されます。",
+    "errors": {
+      "convertFailed": "「{{name}}」を変換できませんでした。手動でJPGに変換してください。",
+      "unsupportedFormat": "「{{name}}」は未対応の形式です。JPG、PNG、GIF、WebP、HEICのいずれかを使ってください。",
+      "noValidFiles": "アップロードできる有効なファイルがありません。"
+    },
+    "photosSaved_other": "{{count}}枚の写真を保存しました"
   },
   "documents": {
     "title": "書類",

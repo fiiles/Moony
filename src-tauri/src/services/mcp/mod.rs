@@ -6,6 +6,7 @@
 //! ported 1:1 from the retired moony-mcp Node server.
 
 pub mod config;
+mod error_text;
 
 pub mod analytics;
 pub mod bank_accounts;
@@ -90,7 +91,8 @@ pub(crate) fn ticker_value_history(
 
 /// Uniform result mapping, matching the Node server's behavior: success is the
 /// JSON pretty-printed into one text block; an AppError becomes an isError
-/// tool result carrying the error message (never a protocol-level error).
+/// tool result carrying the error message (never a protocol-level error); a keyed
+/// validation error is rendered to English first (`error_text`).
 fn to_result(r: crate::error::Result<Value>) -> Result<CallToolResult, McpError> {
     match r {
         Ok(v) => Ok(CallToolResult::success(vec![ContentBlock::text(
@@ -98,7 +100,7 @@ fn to_result(r: crate::error::Result<Value>) -> Result<CallToolResult, McpError>
                 .unwrap_or_else(|e| format!("serialization error: {e}")),
         )])),
         Err(e) => Ok(CallToolResult::error(vec![ContentBlock::text(
-            e.to_string(),
+            error_text::render(&e),
         )])),
     }
 }
@@ -953,5 +955,28 @@ mod bulk_schema_tests {
         let schema =
             schema_for_input::<super::other_assets::OtherAssetTransactionsCreateArgs>().unwrap();
         assert_eq!(max_items_of(&schema, "transactions"), MAX_BULK_ROWS as u64);
+    }
+}
+
+/// What an AI client reads when a tool fails: a sentence, never an i18n key.
+#[cfg(test)]
+mod to_result_tests {
+    use super::to_result;
+    use crate::error::AppError;
+    use serde_json::json;
+
+    #[test]
+    fn a_keyed_validation_error_reaches_the_client_as_english() {
+        let error = AppError::validation_with(
+            "validation.sellWithoutPosition",
+            json!({ "ticker": "MSFT" }),
+        );
+        let result = to_result(Err(error)).expect("never a protocol-level error");
+        let value = serde_json::to_value(&result).unwrap();
+        assert_eq!(value["isError"], json!(true), "{value}");
+        let text = value["content"][0]["text"].as_str().unwrap();
+        assert!(text.starts_with("Validation error: "), "{text}");
+        assert!(text.contains("MSFT"), "{text}");
+        assert!(!text.contains("validation."), "{text}");
     }
 }

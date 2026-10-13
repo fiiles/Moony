@@ -43,7 +43,7 @@
     "balances_stale": "口座残高"
   },
   "sub": {
-    "insurance_anniversary": "解約期限の最終日 · 更新日 {{date}}",
+    "insurance_anniversary": "解約通知の期限 · 更新日 {{date}}",
     "insurance_anniversary_passed": "契約の更新日 · 通知期間は過ぎました",
     "insurance_end": "契約終了",
     "insurance_payment": "支払い {{amount}}",
@@ -72,7 +72,7 @@
   "groups": {
     "insuranceDates": {
       "label": "保険の更新日と終了日",
-      "hint": "概要には最大3か月先まで表示します。更新日には解約期限の最終日も表示します。",
+      "hint": "概要には最大3か月先まで表示します。更新日には解約通知の期限も表示します。",
       "mute": "保険の更新日と終了日を通知しない"
     },
     "insurancePayments": {
@@ -123,6 +123,8 @@
   },
   "settings": {
     "title": "概要のリマインダー",
-    "description": "「今後の予定」カードとトップバーで通知する内容です。オフにした種類はどこにも表示されません。"
+    "description": "「今後の予定」カードとトップバーで通知する内容です。オフにした種類はどこにも表示されません。",
+    "insuranceNotice": "保険の解約通知期間（日数）",
+    "insuranceNoticeHint": "年次の更新日の何日前までに解約の通知を保険会社へ届ける必要があるかを指定します。0にすると更新日のリマインダーをオフにします。43日の初期値はチェコとスロバキアのみです。"
   }
 }

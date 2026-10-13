@@ -200,6 +200,14 @@ static SPECS: &[RoleSpec] = &[
             "id de la transaccion",
             "id transazione",
             "transactie id",
+            // SV / NB / DA / FI / PT / JA / ZH
+            "verifikationsnummer",
+            "arkistointitunnus",
+            "取引番号",
+            "交易流水号",
+            "流水号",
+            "交易号",
+            "交易编号",
         ],
         // A bare "id" or "reference" is deliberately NOT here: a row counter
         // would make every re-import look like a duplicate of the last file.
@@ -226,6 +234,15 @@ static SPECS: &[RoleSpec] = &[
             "valutadatum",
             "data waluty",
             "data waluty operacji",
+            // SV / NB / DA / FI / PT / JA / ZH
+            "valutadag",
+            "rentedato",
+            "valuteringsdato",
+            "valordato",
+            "arvopaiva",
+            "data valor",
+            "起算日",
+            "起息日",
         ],
         loose: &[],
         weak: &[],
@@ -259,6 +276,25 @@ static SPECS: &[RoleSpec] = &[
             "vydaje",
             "odchozi",
             "odchozi platby",
+            // SV / NB / DA / FI / PT / JA / ZH
+            "ut",
+            "ut fra konto",
+            "uttak",
+            "出金",
+            "出金額",
+            "出金金額",
+            "お引出し",
+            "お引き出し",
+            "お支払い",
+            "お支払金額",
+            "お支払い金額",
+            "支払い金額",
+            "支払金額",
+            "支出",
+            "支出金额",
+            "借方",
+            "借方金额",
+            "付款金额",
         ],
         loose: &[],
         weak: &[],
@@ -292,6 +328,24 @@ static SPECS: &[RoleSpec] = &[
             "prijmy",
             "prichozi",
             "prichozi platby",
+            // SV / NB / DA / FI / PT / JA / ZH
+            "inn",
+            "inn pa konto",
+            "innskudd",
+            "入金",
+            "入金額",
+            "入金金額",
+            "お預入れ",
+            "お預け入れ",
+            "お預り金額",
+            "お預かり金額",
+            "預かり金額",
+            "預り金額",
+            "收入",
+            "收入金额",
+            "贷方",
+            "贷方金额",
+            "收款金额",
         ],
         loose: &[],
         weak: &[],
@@ -318,6 +372,17 @@ static SPECS: &[RoleSpec] = &[
             "saldo contabile",
             "saldo po transakcji",
             "saldo po operacji",
+            // SV / NB / DA / FI / PT / JA / ZH
+            "bokfort saldo",
+            "saldo contabilistico",
+            "残高",
+            "差引残高",
+            "取引後残高",
+            "口座残高",
+            "余额",
+            "账户余额",
+            "交易后余额",
+            "当前余额",
         ],
         loose: &[
             "(?:balance|saldo|zustatek|kontostand|solde) .*",
@@ -378,6 +443,38 @@ static SPECS: &[RoleSpec] = &[
             "datum boeking",
             "transactiedatum",
             "datum transactie",
+            // SV / NB / DA / FI / PT / JA / ZH
+            "bokforingsdatum",
+            "bokforingsdag",
+            "transaktionsdag",
+            "transaktionsdatum",
+            "reskontradatum",
+            "dato",
+            "bokforingsdato",
+            "transaksjonsdato",
+            "bogforingsdato",
+            "bogfort",
+            "posteringsdato",
+            "kirjauspaiva",
+            "maksupaiva",
+            "tapahtumapaiva",
+            "data mov",
+            "data operacao",
+            "data lancamento",
+            "data contabilistica",
+            "日付",
+            "取引日",
+            "お取引日",
+            "年月日",
+            "利用日",
+            "取引年月日",
+            "日期",
+            "交易日期",
+            "记账日期",
+            "入账日期",
+            "交易日",
+            "记账日",
+            "账务日期",
         ],
         loose: &[
             "started date",
@@ -420,6 +517,28 @@ static SPECS: &[RoleSpec] = &[
             "kwota operacji",
             "kwota w walucie rachunku",
             "wartosc",
+            // SV / NB / DA / FI / PT / JA / ZH
+            "belopp",
+            "transaktionsbelopp",
+            "belop",
+            "belob",
+            "transaksjonsbelop",
+            "maara",
+            "summa",
+            "maara euroa",
+            "montante",
+            "valor",
+            "valor do movimento",
+            "金額",
+            "取引金額",
+            "お取引金額",
+            "利用金額",
+            "入出金",
+            "入出金額",
+            "金额",
+            "交易金额",
+            "发生额",
+            "交易额",
         ],
         loose: &["(?:amount|betrag|castka|importe|montant|importo|bedrag|kwota) .*"],
         weak: &[],
@@ -440,6 +559,14 @@ static SPECS: &[RoleSpec] = &[
             "devise",
             "munt",
             "waluta",
+            // SV / NB / DA / FI / PT / JA / ZH
+            "通貨",
+            "通貨単位",
+            "币种",
+            "货币",
+            "交易币种",
+            "valuutta",
+            "moeda",
         ],
         loose: &[],
         weak: &[],
@@ -472,6 +599,13 @@ static SPECS: &[RoleSpec] = &[
             "tegenrekening",
             "iban kontrahenta",
             "rachunek kontrahenta",
+            // SV / NB / DA / FI / PT / JA / ZH
+            "saajan tilinumero",
+            "saajan iban",
+            "对方账号",
+            "对方账户",
+            "对方卡号",
+            "收款账号",
         ],
         loose: &[
             "account number",
@@ -540,6 +674,32 @@ static SPECS: &[RoleSpec] = &[
             "dane kontrahenta",
             "kontrahent",
             "nazwa kontrahenta",
+            // SV / NB / DA / FI / PT / JA / ZH
+            "mottagare",
+            "avsandare",
+            "motpart",
+            "mottaker",
+            "avsender",
+            "betalingsmottaker",
+            "modtager",
+            "afsender",
+            "saaja",
+            "maksaja",
+            "saaja maksaja",
+            "maksunsaaja",
+            "saajan nimi",
+            "maksajan nimi",
+            "取引先",
+            "相手先",
+            "振込先",
+            "お取引先",
+            "对方户名",
+            "交易对手",
+            "对方名称",
+            "对手户名",
+            "收款人",
+            "付款人",
+            "商户名称",
         ],
         loose: &[
             "payer",
@@ -599,6 +759,34 @@ static SPECS: &[RoleSpec] = &[
             "opis",
             "opis operacji",
             "tresc",
+            // SV / NB / DA / FI / PT / JA / ZH
+            "beskrivning",
+            "meddelande",
+            "rubrik",
+            "beskrivelse",
+            "forklaring",
+            "melding",
+            "tittel",
+            "tekst",
+            "meddelelse",
+            "selitys",
+            "viesti",
+            "otsikko",
+            "descricao",
+            "descritivo",
+            "摘要",
+            "摘要内容",
+            "内容",
+            "取引内容",
+            "お取り扱い内容",
+            "お取扱内容",
+            "入出金内容",
+            "メモ",
+            "交易摘要",
+            "备注",
+            "附言",
+            "用途",
+            "交易说明",
         ],
         loose: &[
             "buchungstext",
@@ -966,6 +1154,129 @@ mod tests {
             mapped(&m, "balance").as_deref(),
             Some("Saldo po transakcji")
         );
+    }
+
+    #[test]
+    fn nordic_finnish_and_portuguese_headers() {
+        // Swedish (SEB)
+        let m = suggest_column_mappings(&headers(&[
+            "Bokföringsdatum",
+            "Valutadatum",
+            "Verifikationsnummer",
+            "Text",
+            "Belopp",
+            "Saldo",
+        ]));
+        assert_eq!(mapped(&m, "date").as_deref(), Some("Bokföringsdatum"));
+        assert_eq!(mapped(&m, "valueDate").as_deref(), Some("Valutadatum"));
+        assert_eq!(
+            mapped(&m, "transactionId").as_deref(),
+            Some("Verifikationsnummer")
+        );
+        assert_eq!(mapped(&m, "description").as_deref(), Some("Text"));
+        assert_eq!(mapped(&m, "amount").as_deref(), Some("Belopp"));
+        assert_eq!(mapped(&m, "balance").as_deref(), Some("Saldo"));
+
+        // Norwegian (DNB): separate in and out columns
+        let m = suggest_column_mappings(&headers(&[
+            "Dato",
+            "Forklaring",
+            "Rentedato",
+            "Ut fra konto",
+            "Inn på konto",
+        ]));
+        assert_eq!(mapped(&m, "date").as_deref(), Some("Dato"));
+        assert_eq!(mapped(&m, "description").as_deref(), Some("Forklaring"));
+        assert_eq!(mapped(&m, "valueDate").as_deref(), Some("Rentedato"));
+        assert_eq!(mapped(&m, "debit").as_deref(), Some("Ut fra konto"));
+        assert_eq!(mapped(&m, "credit").as_deref(), Some("Inn på konto"));
+
+        // Danish
+        let m = suggest_column_mappings(&headers(&["Dato", "Tekst", "Beløb", "Saldo"]));
+        assert_eq!(mapped(&m, "date").as_deref(), Some("Dato"));
+        assert_eq!(mapped(&m, "description").as_deref(), Some("Tekst"));
+        assert_eq!(mapped(&m, "amount").as_deref(), Some("Beløb"));
+        assert_eq!(mapped(&m, "balance").as_deref(), Some("Saldo"));
+
+        // Finnish (OP)
+        let m = suggest_column_mappings(&headers(&[
+            "Kirjauspäivä",
+            "Arvopäivä",
+            "Määrä EUROA",
+            "Laji",
+            "Selitys",
+            "Saaja/Maksaja",
+            "Saajan tilinumero",
+            "Viesti",
+            "Arkistointitunnus",
+        ]));
+        assert_eq!(mapped(&m, "date").as_deref(), Some("Kirjauspäivä"));
+        assert_eq!(mapped(&m, "valueDate").as_deref(), Some("Arvopäivä"));
+        assert_eq!(mapped(&m, "amount").as_deref(), Some("Määrä EUROA"));
+        assert_eq!(mapped(&m, "description").as_deref(), Some("Selitys"));
+        assert_eq!(mapped(&m, "counterparty").as_deref(), Some("Saaja/Maksaja"));
+        assert_eq!(
+            mapped(&m, "counterparty_iban").as_deref(),
+            Some("Saajan tilinumero")
+        );
+        assert_eq!(
+            mapped(&m, "transactionId").as_deref(),
+            Some("Arkistointitunnus")
+        );
+
+        // Portuguese
+        let m = suggest_column_mappings(&headers(&[
+            "Data Mov.",
+            "Data Valor",
+            "Descrição",
+            "Montante",
+            "Saldo",
+            "Moeda",
+        ]));
+        assert_eq!(mapped(&m, "date").as_deref(), Some("Data Mov."));
+        assert_eq!(mapped(&m, "valueDate").as_deref(), Some("Data Valor"));
+        assert_eq!(mapped(&m, "description").as_deref(), Some("Descrição"));
+        assert_eq!(mapped(&m, "amount").as_deref(), Some("Montante"));
+        assert_eq!(mapped(&m, "balance").as_deref(), Some("Saldo"));
+        assert_eq!(mapped(&m, "currency").as_deref(), Some("Moeda"));
+    }
+
+    #[test]
+    fn japanese_and_chinese_headers() {
+        let m =
+            suggest_column_mappings(&headers(&["日付", "摘要", "出金金額", "入金金額", "残高"]));
+        assert_eq!(mapped(&m, "date").as_deref(), Some("日付"));
+        assert_eq!(mapped(&m, "description").as_deref(), Some("摘要"));
+        assert_eq!(mapped(&m, "debit").as_deref(), Some("出金金額"));
+        assert_eq!(mapped(&m, "credit").as_deref(), Some("入金金額"));
+        assert_eq!(mapped(&m, "balance").as_deref(), Some("残高"));
+
+        // A signed amount column with the unit in brackets (Rakuten style).
+        let m = suggest_column_mappings(&headers(&[
+            "取引日",
+            "入出金(円)",
+            "取引後残高",
+            "入出金内容",
+        ]));
+        assert_eq!(mapped(&m, "date").as_deref(), Some("取引日"));
+        assert_eq!(mapped(&m, "amount").as_deref(), Some("入出金(円)"));
+        assert_eq!(mapped(&m, "balance").as_deref(), Some("取引後残高"));
+        assert_eq!(mapped(&m, "description").as_deref(), Some("入出金内容"));
+
+        let m = suggest_column_mappings(&headers(&[
+            "交易日期",
+            "摘要",
+            "交易金额",
+            "余额",
+            "币种",
+            "对方户名",
+        ]));
+        assert_eq!(mapped(&m, "date").as_deref(), Some("交易日期"));
+        assert_eq!(mapped(&m, "description").as_deref(), Some("摘要"));
+        assert_eq!(mapped(&m, "amount").as_deref(), Some("交易金额"));
+        assert_eq!(mapped(&m, "balance").as_deref(), Some("余额"));
+        assert_eq!(mapped(&m, "currency").as_deref(), Some("币种"));
+        assert_eq!(mapped(&m, "counterparty").as_deref(), Some("对方户名"));
     }
 
     #[test]

@@ -517,7 +517,7 @@ pub async fn update_photo_batch(
         }
 
         if updates.is_empty() {
-            return Err(AppError::Validation("No fields to update".into()));
+            return Err(AppError::Validation("validation.noFieldsToUpdate".into()));
         }
 
         let sql = format!(
@@ -749,6 +749,7 @@ pub async fn add_real_estate_document(
 /// Delete a real estate document
 #[tauri::command]
 pub async fn delete_real_estate_document(
+    app: tauri::AppHandle,
     db: State<'_, Database>,
     document_id: String,
 ) -> Result<()> {
@@ -774,8 +775,22 @@ pub async fn delete_real_estate_document(
         Ok(())
     })?;
 
-    // Delete file (ignore errors if file doesn't exist)
-    let _ = fs::remove_file(&file_path);
+    // The stored path can be stale (the data folder got a new name after an identifier change),
+    // so resolve it the way `open_real_estate_document` does. A missing file is not an error.
+    let target = app
+        .path()
+        .app_data_dir()
+        .ok()
+        .and_then(|dir| {
+            crate::services::document_files::resolve_document_path(
+                &dir,
+                "real_estate_documents",
+                &file_path,
+            )
+            .ok()
+        })
+        .unwrap_or_else(|| PathBuf::from(&file_path));
+    let _ = fs::remove_file(target);
 
     Ok(())
 }

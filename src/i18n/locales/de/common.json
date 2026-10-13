@@ -260,7 +260,20 @@
     "exchangeRateUnavailable": "Die Transaktion kann erst gespeichert werden, wenn Wechselkurse für ihr Datum verfügbar sind",
     "dateInvalid": "Ungültiges Datum",
     "valueDateInvalid": "Ungültiges Wertstellungsdatum",
-    "maturityDateInvalid": "Ungültiges Fälligkeitsdatum"
+    "maturityDateInvalid": "Ungültiges Fälligkeitsdatum",
+    "countryInvalid": "Wählen Sie ein Land aus der Liste.",
+    "bankAccountRequired": "Wählen Sie ein Konto.",
+    "tierToAboveFrom": "Die Obergrenze muss über der Untergrenze liegen.",
+    "interestRateInvalid": "Geben Sie einen gültigen Zinssatz ein.",
+    "timeframeInvalid": "Wählen Sie monatlich, vierteljährlich oder jährlich.",
+    "currencyMismatch": "Diese Position wird in {{expected}} geführt, die Transaktion ist aber in {{actual}}. Alle Transaktionen einer Position müssen dieselbe Währung haben.",
+    "sellWithoutPosition": "{{ticker}}: Es gibt keine offene Position zum Verkaufen.",
+    "coingeckoIdConflict": "{{ticker}}: Die CoinGecko-ID weicht von der für diese Kryptowährung gespeicherten ab.",
+    "coingeckoIdForNewCoin": "{{ticker}}: Für eine neue Kryptowährung wird die CoinGecko-ID (zum Beispiel bitcoin) benötigt, um Kurse abzurufen.",
+    "stockImportLine": "Zeile {{line}}: {{reason}}",
+    "stockImportRowFailed": "die Zeile konnte nicht gespeichert werden.",
+    "onboardingFlagUnknown": "Unbekannter Einrichtungsschritt.",
+    "insuranceNoticeInvalid": "Geben Sie eine ganze Zahl von 0 bis 365 Tagen ein."
   },
   "auth": {
     "wrongPassword": "Das eingegebene Passwort ist falsch. Bitte versuchen Sie es erneut.",

@@ -13,6 +13,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { WizardSteps } from '@/components/common/WizardSteps';
+import { useAuth } from '@/hooks/use-auth';
 import { useBankAccount } from '@/hooks/use-bank-accounts';
 import { useCategories } from '@/hooks/use-categories';
 import { useLanguage } from '@/i18n/I18nProvider';
@@ -25,9 +26,11 @@ import { MappingStep } from './csv-import/MappingStep';
 import { PreviewStep } from './csv-import/PreviewStep';
 import {
   AUTO_PRESET,
+  AUTO_VALUE,
   EMPTY_MAPPING,
   SUPPORTED_EXTENSIONS,
   buildImportConfig,
+  encodingArgument,
   fileNameFromPath,
   isMappingComplete,
   mappingFromInspection,
@@ -81,6 +84,7 @@ export function CsvImportDialog({
   const { t } = useTranslation('bank_accounts');
   const { t: tc } = useTranslation('common');
   const { getLocale } = useLanguage();
+  const { user } = useAuth();
   const { account } = useBankAccount(accountId || undefined);
   const { categories } = useCategories();
 
@@ -98,6 +102,8 @@ export function CsvImportDialog({
   // The user's (or the detection's) preset; null = nothing chosen yet.
   const [presetOverride, setPresetOverride] = useState<string | null>(null);
   const [presetDetected, setPresetDetected] = useState(false);
+  // `AUTO_VALUE` or the encoding the user picked for the file that is open.
+  const [encodingChoice, setEncodingChoice] = useState<string>(AUTO_VALUE);
   const [isInspecting, setIsInspecting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [result, setResult] = useState<CsvImportResult | null>(null);
@@ -134,7 +140,7 @@ export function CsvImportDialog({
    */
   const inspectFile = async (
     path: string,
-    options: { presetId?: string; headerRow?: number; skipRows?: number } = {}
+    options: { presetId?: string; headerRow?: number; skipRows?: number; encoding?: string } = {}
   ) => {
     const requestId = ++inspectRequest.current;
     setIsInspecting(true);
@@ -144,7 +150,9 @@ export function CsvImportDialog({
         undefined, // always detect the delimiter; bank formats change
         options.skipRows,
         options.headerRow,
-        options.presetId
+        options.presetId,
+        options.encoding,
+        user?.country ?? undefined
       );
       if (requestId !== inspectRequest.current) return;
 
@@ -182,6 +190,8 @@ export function CsvImportDialog({
   };
 
   const handleFilePicked = (path: string) => {
+    // The last choice was made for another file.
+    setEncodingChoice(AUTO_VALUE);
     void inspectFile(path, { presetId: explicitPresetId });
   };
 
@@ -219,12 +229,26 @@ export function CsvImportDialog({
     setPresetDetected(false);
     // Once a file is open, another preset means reading it again with that preset.
     if (step !== 'file' && filePath) {
-      void inspectFile(filePath, { presetId: value === AUTO_PRESET ? undefined : value });
+      void inspectFile(filePath, {
+        presetId: value === AUTO_PRESET ? undefined : value,
+        encoding: encodingArgument(encodingChoice),
+      });
     }
   };
 
   const handleLayoutChange = (layout: { headerRow: number; skipRows: number }) => {
-    void inspectFile(filePath, { presetId: explicitPresetId, ...layout });
+    void inspectFile(filePath, {
+      presetId: explicitPresetId,
+      encoding: encodingArgument(encodingChoice),
+      ...layout,
+    });
+  };
+
+  const handleEncodingChange = (value: string) => {
+    setEncodingChoice(value);
+    if (filePath) {
+      void inspectFile(filePath, { presetId: explicitPresetId, encoding: encodingArgument(value) });
+    }
   };
 
   const toggleImportAnyway = (line: number, checked: boolean) => {
@@ -277,6 +301,7 @@ export function CsvImportDialog({
     setOverrides([]);
     setPresetOverride(null);
     setPresetDetected(false);
+    setEncodingChoice(AUTO_VALUE);
     setIsInspecting(false);
     setIsImporting(false);
     setResult(null);
@@ -395,6 +420,8 @@ export function CsvImportDialog({
               presetDetected={presetDetected}
               onPresetChange={handlePresetChange}
               isInspecting={isInspecting}
+              encodingChoice={encodingChoice}
+              onEncodingChange={handleEncodingChange}
             />
           )}
 

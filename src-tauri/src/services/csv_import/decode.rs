@@ -17,25 +17,44 @@ pub struct DecodedCsv {
     pub encoding: &'static str,
 }
 
-/// Legacy encodings tried, in order, when the bytes are not valid UTF-8.
-/// Windows-1250 first: it is what Czech/Slovak banks write. (It never reports
-/// errors, so the later entries only matter if that ever changes; a bank that
-/// really uses Windows-1252 or ISO-8859-2 should pin it in its preset.)
-const LEGACY_FALLBACKS: [&encoding_rs::Encoding; 3] = [
-    encoding_rs::WINDOWS_1250,
-    encoding_rs::WINDOWS_1252,
-    encoding_rs::ISO_8859_2,
-];
+/// The legacy encoding files of a country are usually written in when they are not UTF-8.
+/// A single-byte code page accepts every byte sequence, so the one chosen here is the answer; the
+/// multi-byte ones (Shift_JIS, GBK, EUC-KR, Big5) report errors on a file of another encoding and
+/// the search then falls through to Windows-1252. Unknown or missing countries get Windows-1252.
+pub fn fallback_encoding_for_country(country: Option<&str>) -> &'static encoding_rs::Encoding {
+    match country.map(|c| c.trim().to_ascii_uppercase()).as_deref() {
+        Some("CZ" | "SK" | "PL" | "HU" | "HR" | "SI" | "RO") => encoding_rs::WINDOWS_1250,
+        Some("RU" | "UA" | "BG" | "BY") => encoding_rs::WINDOWS_1251,
+        Some("GR" | "CY") => encoding_rs::WINDOWS_1253,
+        Some("TR") => encoding_rs::WINDOWS_1254,
+        Some("LT" | "LV" | "EE") => encoding_rs::WINDOWS_1257,
+        Some("JP") => encoding_rs::SHIFT_JIS,
+        Some("CN") => encoding_rs::GBK,
+        Some("KR") => encoding_rs::EUC_KR,
+        Some("TW" | "HK") => encoding_rs::BIG5,
+        _ => encoding_rs::WINDOWS_1252,
+    }
+}
 
-/// Decode CSV bytes. Order: UTF-16 (only with a BOM) → UTF-8 (BOM stripped) →
-/// `preferred_encoding` (a preset's legacy encoding) → Windows-1250 →
-/// Windows-1252 → ISO-8859-2.
-///
-/// A valid-UTF-8 file always wins, even when `preferred_encoding` says
-/// otherwise: a bank that moved from Windows-1250 to UTF-8 must not have its
-/// new exports mangled by an out-of-date preset. Never fails; the last resort
-/// is a lossy Windows-1252 decode.
+/// Decode CSV bytes for a caller that does not know the user's country (the stock import): the
+/// historical order, Windows-1250 first, as before. Bank imports use
+/// [`decode_csv_content_for_country`].
 pub fn decode_csv_content(bytes: &[u8], preferred_encoding: Option<&str>) -> DecodedCsv {
+    decode_csv_content_for_country(bytes, preferred_encoding, Some("CZ"))
+}
+
+/// Decode CSV bytes. Order: UTF-16 (only with a BOM) → UTF-8 (BOM stripped) → `preferred_encoding`
+/// (a preset's legacy encoding) → the encoding usual in `country`
+/// ([`fallback_encoding_for_country`]) → Windows-1252.
+///
+/// A valid-UTF-8 file always wins, even when `preferred_encoding` says otherwise: a bank that
+/// moved from Windows-1250 to UTF-8 must not have its new exports mangled by an out-of-date
+/// preset. Never fails; the last resort is a lossy Windows-1252 decode.
+pub fn decode_csv_content_for_country(
+    bytes: &[u8],
+    preferred_encoding: Option<&str>,
+    country: Option<&str>,
+) -> DecodedCsv {
     if bytes.starts_with(&[0xFF, 0xFE]) || bytes.starts_with(&[0xFE, 0xFF]) {
         // decode() sniffs the BOM and picks LE or BE.
         let (text, encoding, _) = encoding_rs::UTF_16LE.decode(bytes);
@@ -57,7 +76,11 @@ pub fn decode_csv_content(bytes: &[u8], preferred_encoding: Option<&str>) -> Dec
     let preferred = preferred_encoding
         .and_then(|label| encoding_rs::Encoding::for_label(label.trim().as_bytes()))
         .filter(|enc| *enc != encoding_rs::UTF_8);
-    for encoding in preferred.into_iter().chain(LEGACY_FALLBACKS) {
+    let by_country = fallback_encoding_for_country(country);
+    for encoding in preferred
+        .into_iter()
+        .chain([by_country, encoding_rs::WINDOWS_1252])
+    {
         let (text, had_errors) = encoding.decode_without_bom_handling(bytes);
         if !had_errors {
             return DecodedCsv {
@@ -71,6 +94,16 @@ pub fn decode_csv_content(bytes: &[u8], preferred_encoding: Option<&str>) -> Dec
     DecodedCsv {
         text: text.into_owned(),
         encoding: encoding_rs::WINDOWS_1252.name(),
+    }
+}
+
+/// Decode with exactly this encoding (the user picked it): no sniffing, a BOM of the encoding
+/// itself is removed, invalid sequences become U+FFFD.
+pub fn decode_forced(bytes: &[u8], encoding: &'static encoding_rs::Encoding) -> DecodedCsv {
+    let (text, _had_errors) = encoding.decode_with_bom_removal(bytes);
+    DecodedCsv {
+        text: text.into_owned(),
+        encoding: encoding.name(),
     }
 }
 
@@ -271,6 +304,100 @@ mod tests {
         assert_eq!(decoded.encoding, "windows-1252");
         // An unknown label is ignored, not an error.
         assert_eq!(decode_csv_content(&bytes, Some("klingon")).text, "Kře");
+    }
+
+    fn bytes_in(encoding: &'static encoding_rs::Encoding, text: &str) -> Vec<u8> {
+        let (bytes, _, unmappable) = encoding.encode(text);
+        assert!(
+            !unmappable,
+            "{text:?} must be representable in {}",
+            encoding.name()
+        );
+        bytes.into_owned()
+    }
+
+    #[test]
+    fn a_windows_1252_file_keeps_pound_and_o_slash_for_british_nordic_and_unknown_profiles() {
+        let text = "Beskrivelse;Beløp\nKøbenhavn £5";
+        let bytes = bytes_in(encoding_rs::WINDOWS_1252, text);
+        for country in [Some("GB"), Some("NO"), None] {
+            let decoded = decode_csv_content_for_country(&bytes, None, country);
+            assert_eq!(decoded.text, text, "{country:?}");
+            assert_eq!(decoded.encoding, "windows-1252");
+        }
+        // The Central European guess reads the same bytes wrongly: ø becomes ř, £ becomes Ł.
+        let czech = decode_csv_content_for_country(&bytes, None, Some("CZ"));
+        assert!(
+            czech.text.contains('ř') && czech.text.contains('Ł'),
+            "{}",
+            czech.text
+        );
+    }
+
+    #[test]
+    fn central_european_cyrillic_and_cjk_countries_get_their_own_code_page() {
+        let cases: [(&'static encoding_rs::Encoding, &str, &str); 7] = [
+            (encoding_rs::WINDOWS_1250, "Částka;Příjemce", "CZ"),
+            (encoding_rs::WINDOWS_1250, "Kwota;Wypłata", "PL"),
+            (encoding_rs::WINDOWS_1251, "Дата;Сумма", "RU"),
+            (encoding_rs::SHIFT_JIS, "日付,摘要,金額", "JP"),
+            (encoding_rs::GBK, "日期,摘要,金额", "CN"),
+            (encoding_rs::EUC_KR, "거래일자,적요,금액", "KR"),
+            (encoding_rs::BIG5, "日期,摘要,金額", "TW"),
+        ];
+        for (encoding, text, country) in cases {
+            let bytes = bytes_in(encoding, text);
+            let decoded = decode_csv_content_for_country(&bytes, None, Some(country));
+            assert_eq!(decoded.text, text, "{country}");
+            assert_eq!(decoded.encoding, encoding.name(), "{country}");
+        }
+    }
+
+    #[test]
+    fn a_baltic_file_is_read_as_windows_1257_for_lithuania() {
+        let text = "Suma;Gavėjas";
+        let bytes = bytes_in(encoding_rs::WINDOWS_1257, text);
+        let decoded = decode_csv_content_for_country(&bytes, None, Some("LT"));
+        assert_eq!(decoded.text, text);
+        assert_eq!(decoded.encoding, "windows-1257");
+    }
+
+    #[test]
+    fn utf8_still_wins_over_the_country_and_a_failing_multibyte_guess_falls_back() {
+        let utf8 = decode_csv_content_for_country("Částka".as_bytes(), None, Some("JP"));
+        assert_eq!((utf8.text.as_str(), utf8.encoding), ("Částka", "UTF-8"));
+        // 0x81 0x20 is not a Shift_JIS pair: the guess for a Japanese profile is rejected.
+        let decoded = decode_csv_content_for_country(&[0x41, 0x81, 0x20, 0x42], None, Some("JP"));
+        assert_eq!(decoded.encoding, "windows-1252");
+    }
+
+    #[test]
+    fn the_fallback_table_is_case_and_space_insensitive() {
+        use encoding_rs::{
+            BIG5, WINDOWS_1250, WINDOWS_1251, WINDOWS_1252, WINDOWS_1253, WINDOWS_1254,
+            WINDOWS_1257,
+        };
+        for (country, expected) in [
+            (Some("cz"), WINDOWS_1250),
+            (Some(" SK "), WINDOWS_1250),
+            (Some("HU"), WINDOWS_1250),
+            (Some("UA"), WINDOWS_1251),
+            (Some("GR"), WINDOWS_1253),
+            (Some("TR"), WINDOWS_1254),
+            (Some("LT"), WINDOWS_1257),
+            (Some("lv"), WINDOWS_1257),
+            (Some("EE"), WINDOWS_1257),
+            (Some("HK"), BIG5),
+            (Some("DE"), WINDOWS_1252),
+            (Some(""), WINDOWS_1252),
+            (None, WINDOWS_1252),
+        ] {
+            assert_eq!(
+                fallback_encoding_for_country(country),
+                expected,
+                "{country:?}"
+            );
+        }
     }
 
     #[test]

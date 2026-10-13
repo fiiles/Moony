@@ -148,8 +148,10 @@ export const i18nReady = i18n
     },
   });
 
-// `{{value, lower}}`: lower-cases a label used mid-sentence ("za říjen 2026" — `fmt.month`
-// capitalises because period labels usually start a line).
+// `{{value, lower}}`: lower-cases a label used mid-sentence ("za říjen 2026"). Month names inside a
+// sentence come from `fmt.monthInSentence` (Intl's own casing per language), not `fmt.month`, which
+// capitalises because period labels start a line; a locale string may still use `{{x, lower}}`,
+// which leaves text that is already lower case alone.
 i18n.services.formatter?.add('lower', (value, lng) => String(value).toLocaleLowerCase(lng));
 
 export default i18n;

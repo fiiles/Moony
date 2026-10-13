@@ -89,7 +89,7 @@ export default function Budgeting() {
   const categoryName = useCategoryName();
 
   const period = usePeriodSelection('monthly');
-  const { timeframe, range, label: periodLabel } = period;
+  const { timeframe, range } = period;
   const [sort, setSort] = useState<SortKey>('usage');
   const [goalDialog, setGoalDialog] = useState<{
     open: boolean;
@@ -234,11 +234,7 @@ export default function Budgeting() {
 
   const status = summarizeBudgetStatus(rows, report?.totalExpenses ?? '0');
 
-  // Czech month names are lower-case inside a sentence; English keeps the capital.
-  const inSentence = (text: string) =>
-    fmt.locale.startsWith('cs') ? text.toLocaleLowerCase(fmt.locale) : text;
-  // "Q4 2026" and "2026" keep their spelling everywhere
-  const periodInSentence = timeframe === 'monthly' ? inSentence(periodLabel) : periodLabel;
+  const periodInSentence = period.labelInSentence;
 
   useShellPage({
     status: report
@@ -327,7 +323,7 @@ export default function Budgeting() {
         onClose={() => setTxTarget(null)}
         start={range.start}
         end={range.end}
-        periodLabel={periodInSentence}
+        periodLabel={period.label}
       />
       <ConfirmDeleteDialog
         open={!!pendingDelete}
@@ -595,7 +591,7 @@ export default function Budgeting() {
                     (() => {
                       const next = scheduledVersions(row.goal.versions, currentMonthStart())[0];
                       if (!next) return null;
-                      const month = fmt.month(new Date(next.effectiveMonth * 1000));
+                      const month = fmt.monthInSentence(new Date(next.effectiveMonth * 1000));
                       return (
                         <small className="mt-0.5 block text-micro font-500 text-ink-4">
                           {next.amount == null

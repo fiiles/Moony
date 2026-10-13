@@ -81,6 +81,8 @@ fn all_migrations() -> Vec<(&'static str, &'static str)> {
         ("014_balance_records", MIGRATION_014),
         ("015_one_tag_per_group", MIGRATION_015),
         ("016_mcp_pending_refresh", MIGRATION_016),
+        ("017_profile_country", MIGRATION_017),
+        ("018_insurance_notice_days", MIGRATION_018),
     ]
 }
 
@@ -2634,6 +2636,47 @@ CREATE TABLE mcp_pending_refresh (
 );
 "#;
 
+/// 017: the profile remembers its country (ISO 3166-1 alpha-2, upper case). Until now only the
+/// enabled rule packs hinted at it. CSV encoding, the insurance notice default and the order of
+/// the bank presets read it. Profiles that predate the column take the country from what they
+/// already say, in this order: an enabled `cz` pack, an enabled `sk` pack, the one enabled pack
+/// other than `global` (pack ids are ISO alpha-2 codes, which the 0.10.0 wizard enabled for the
+/// chosen country), the Czech UI or CZK as main currency. Everyone else stays NULL and can pick a
+/// country in Settings. `rule_packs_enabled` holds a JSON array of pack ids; a value that is not
+/// one is ignored, as the app ignores it.
+pub(crate) const MIGRATION_017: &str = r#"
+ALTER TABLE user_profile ADD COLUMN country TEXT;
+
+WITH enabled_packs(id) AS (
+    SELECT DISTINCT pack.value
+    FROM app_config
+    JOIN json_each(
+        CASE WHEN NOT json_valid(app_config.value) THEN '[]'
+             WHEN json_type(app_config.value) <> 'array' THEN '[]'
+             ELSE app_config.value END
+    ) AS pack
+    WHERE app_config.key = 'rule_packs_enabled' AND pack.type = 'text'
+)
+UPDATE user_profile SET country = CASE
+    WHEN EXISTS (SELECT 1 FROM enabled_packs WHERE id = 'cz') THEN 'CZ'
+    WHEN EXISTS (SELECT 1 FROM enabled_packs WHERE id = 'sk') THEN 'SK'
+    WHEN (SELECT COUNT(*) FROM enabled_packs WHERE id <> 'global') = 1
+         AND EXISTS (SELECT 1 FROM enabled_packs
+                     WHERE id <> 'global' AND LENGTH(id) = 2 AND id NOT GLOB '*[^A-Za-z]*')
+        THEN (SELECT UPPER(id) FROM enabled_packs WHERE id <> 'global')
+    WHEN language = 'cs' OR currency = 'CZK' THEN 'CZ'
+    ELSE NULL
+END
+WHERE country IS NULL;
+"#;
+
+/// 018: the cancellation notice of insurance policies is a profile setting. NULL = the country
+/// default (43 days for CZ and SK, none elsewhere), 0 = no anniversary reminder, otherwise the
+/// days. No backfill: a Czech or Slovak profile keeps today's 43 days through the default.
+pub(crate) const MIGRATION_018: &str = r#"
+ALTER TABLE user_profile ADD COLUMN insurance_notice_days INTEGER;
+"#;
+
 #[cfg(test)]
 mod migration_012 {
     use super::*;
@@ -2915,5 +2958,191 @@ mod migration_012 {
             (quantity.as_str(), price.as_str(), currency.as_str()),
             ("10", "10", "USD")
         );
+    }
+}
+
+#[cfg(test)]
+mod migration_017 {
+    use super::*;
+
+    /// A database as it was before `017`: every migration that comes earlier in the chain.
+    fn database_before_017() -> Connection {
+        let conn = Connection::open_in_memory().expect("in-memory db");
+        let earlier: Vec<(&str, &str)> = all_migrations()
+            .into_iter()
+            .filter(|(name, _)| *name < "017_profile_country")
+            .collect();
+        run_chain(&conn, &earlier).expect("earlier migrations");
+        conn
+    }
+
+    /// The country a profile gets when the chain runs over a database that already had it.
+    fn country_after_migrating(
+        language: &str,
+        currency: &str,
+        packs: Option<&str>,
+    ) -> Option<String> {
+        let conn = database_before_017();
+        conn.execute(
+            "INSERT INTO user_profile (name, surname, email, currency, language)
+             VALUES ('A', 'B', 'a@b.c', ?1, ?2)",
+            [currency, language],
+        )
+        .expect("profile");
+        if let Some(packs) = packs {
+            conn.execute(
+                "INSERT INTO app_config (key, value) VALUES ('rule_packs_enabled', ?1)",
+                [packs],
+            )
+            .expect("packs");
+        }
+        run_migrations(&conn).expect("migrate to the current chain");
+        conn.query_row("SELECT country FROM user_profile", [], |r| r.get(0))
+            .expect("country")
+    }
+
+    #[test]
+    fn czech_profiles_are_recognised_by_pack_language_or_currency() {
+        let cz = |language, currency, packs| country_after_migrating(language, currency, packs);
+        assert_eq!(
+            cz("en", "EUR", Some(r#"["global","cz"]"#)).as_deref(),
+            Some("CZ")
+        );
+        assert_eq!(cz("cs", "EUR", None).as_deref(), Some("CZ"));
+        assert_eq!(cz("en", "CZK", None).as_deref(), Some("CZ"));
+    }
+
+    #[test]
+    fn a_slovak_pack_gives_sk_and_a_profile_with_no_hint_stays_unset() {
+        assert_eq!(
+            country_after_migrating("en", "EUR", Some(r#"["global","sk"]"#)).as_deref(),
+            Some("SK")
+        );
+        assert_eq!(country_after_migrating("en", "USD", None), None);
+        assert_eq!(
+            country_after_migrating("en", "USD", Some(r#"["global"]"#)),
+            None
+        );
+    }
+
+    #[test]
+    fn a_single_enabled_country_pack_names_the_country() {
+        let country = |packs| country_after_migrating("en", "EUR", Some(packs));
+        assert_eq!(country(r#"["global","pl"]"#).as_deref(), Some("PL"));
+        assert_eq!(country(r#"["pl"]"#).as_deref(), Some("PL"));
+        assert_eq!(country(r#"["global","hu","hu"]"#).as_deref(), Some("HU"));
+    }
+
+    #[test]
+    fn the_pack_wins_over_the_currency_and_the_interface_language() {
+        assert_eq!(
+            country_after_migrating("en", "CZK", Some(r#"["global","de"]"#)).as_deref(),
+            Some("DE")
+        );
+        assert_eq!(
+            country_after_migrating("cs", "CZK", Some(r#"["global","pl"]"#)).as_deref(),
+            Some("PL")
+        );
+    }
+
+    #[test]
+    fn the_czech_and_slovak_packs_win_over_other_enabled_packs() {
+        let country = |packs| country_after_migrating("en", "EUR", Some(packs));
+        assert_eq!(country(r#"["global","pl","cz"]"#).as_deref(), Some("CZ"));
+        assert_eq!(country(r#"["global","de","sk"]"#).as_deref(), Some("SK"));
+        assert_eq!(country(r#"["global","sk","cz"]"#).as_deref(), Some("CZ"));
+    }
+
+    #[test]
+    fn several_country_packs_are_ambiguous_and_fall_back_to_language_and_currency() {
+        assert_eq!(
+            country_after_migrating("en", "EUR", Some(r#"["global","pl","de"]"#)),
+            None
+        );
+        assert_eq!(
+            country_after_migrating("cs", "EUR", Some(r#"["global","pl","de"]"#)).as_deref(),
+            Some("CZ")
+        );
+    }
+
+    #[test]
+    fn the_czech_interface_or_currency_still_counts_when_no_country_pack_is_enabled() {
+        assert_eq!(
+            country_after_migrating("cs", "EUR", Some(r#"["global"]"#)).as_deref(),
+            Some("CZ")
+        );
+        assert_eq!(
+            country_after_migrating("en", "CZK", Some("[]")).as_deref(),
+            Some("CZ")
+        );
+    }
+
+    #[test]
+    fn a_stored_value_that_is_not_a_pack_list_is_ignored() {
+        let country = |language, packs| country_after_migrating(language, "EUR", Some(packs));
+        assert_eq!(country("cs", "not json").as_deref(), Some("CZ"));
+        assert_eq!(country("en", "not json"), None);
+        assert_eq!(country("en", r#""pl""#), None);
+        assert_eq!(country("en", r#"{"pl":true}"#), None);
+        assert_eq!(country("en", r#"["global",7]"#), None);
+    }
+
+    #[test]
+    fn a_pack_id_that_is_not_two_ascii_letters_names_no_country() {
+        let country = |packs| country_after_migrating("en", "EUR", Some(packs));
+        assert_eq!(country(r#"["global","eu-bank"]"#), None);
+        assert_eq!(country(r#"["global","p1"]"#), None);
+        assert_eq!(country(r#"["global","pol"]"#), None);
+    }
+
+    #[test]
+    fn the_column_is_nullable_text_and_a_second_run_changes_nothing() {
+        let conn = database_before_017();
+        run_migrations(&conn).expect("first run");
+        run_migrations(&conn).expect("second run");
+        let declared: String = conn
+            .query_row(
+                "SELECT type FROM pragma_table_info('user_profile') WHERE name = 'country'",
+                [],
+                |r| r.get(0),
+            )
+            .expect("column");
+        assert_eq!(declared, "TEXT");
+    }
+}
+
+#[cfg(test)]
+mod migration_018 {
+    use super::*;
+
+    #[test]
+    fn the_column_is_added_nullable_and_existing_profiles_keep_the_default() {
+        let conn = Connection::open_in_memory().expect("in-memory db");
+        let earlier: Vec<(&str, &str)> = all_migrations()
+            .into_iter()
+            .filter(|(name, _)| *name < "018_insurance_notice_days")
+            .collect();
+        run_chain(&conn, &earlier).expect("earlier migrations");
+        conn.execute(
+            "INSERT INTO user_profile (name, surname, email, currency, language)
+             VALUES ('A', 'B', 'a@b.c', 'CZK', 'cs')",
+            [],
+        )
+        .expect("profile");
+        run_migrations(&conn).expect("migrate to the current chain");
+        let stored: Option<i64> = conn
+            .query_row("SELECT insurance_notice_days FROM user_profile", [], |r| {
+                r.get(0)
+            })
+            .expect("column");
+        assert_eq!(stored, None);
+        let declared: String = conn
+            .query_row(
+                "SELECT type FROM pragma_table_info('user_profile') WHERE name = 'insurance_notice_days'",
+                [],
+                |r| r.get(0),
+            )
+            .expect("declared type");
+        assert_eq!(declared, "INTEGER");
     }
 }

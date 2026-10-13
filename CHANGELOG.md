@@ -6,13 +6,102 @@ All notable changes to Moony are documented in this file. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **Banking country in the profile.** Settings → General has a "Country" select under the e-mail
+  field; the first-run wizard already asked for it and now saves it with the profile. The country
+  puts your bank's statement formats first in the CSV import, chooses the text encoding of files
+  that are not UTF-8 and sets country defaults such as the insurance notice period. A profile
+  that predates the field takes the country of its single enabled country rule pack, or Czechia
+  when it has the Czech interface or CZK as main currency; everyone else picks a country in
+  Settings (migration 017).
+- **Own-account transfers without IBANs.** "Online Transfer to Savings", "Transfer from CHK
+  ...5678", "Credit Card Payment", "Payment Thank You", "TFR-FR SAV", UK savings pots and card
+  repayments (Barclaycard, MBNA, Amex) and the Japanese, Chinese and Korean wording for your own
+  account, a time deposit or a card bill are categorized as Internal Transfers in every country
+  (the global pack carries the English wording, the US, UK, Canadian, Australian, New Zealand,
+  Irish, Singapore, Hong Kong, Japanese, Chinese and Korean packs the local one). A counterparty
+  written as sort code + account, routing + account or BSB + account (11 digits or more) is
+  recognised as one of your own accounts the way an IBAN is. Payments to people (Zelle, Venmo,
+  Faster Payment), card purchases, direct debits and standing orders are left alone on purpose.
+- **Text encoding of a CSV file.** The import dialog has a "Text encoding" select next to the date
+  and decimal formats (Auto, UTF-8, Windows-1250, 1251, 1252, 1253, 1254, 1257, ISO-8859-1,
+  ISO-8859-2, Shift_JIS, GBK, Big5, EUC-KR). A file that is not UTF-8 is read with the encoding
+  usual in your country instead of always Windows-1250: Central Europe 1250, Cyrillic 1251, Greek
+  1253, Turkish 1254, Baltic 1257, Japan Shift_JIS, China GBK, Korea EUC-KR, Taiwan and Hong Kong
+  Big5, everything else 1252, so `£` and `ø` of a UK or Nordic export no longer turn into `Ł` and
+  `ř`.
+- **Insurance cancellation notice in Settings.** "Insurance cancellation notice (days)" sets how
+  many days before the yearly anniversary a cancellation must reach the insurer (migration 018).
+  It is preset to 43 days for Czechia and Slovakia only; anywhere else the anniversary reminder
+  appears once you set a notice, and 0 turns it off.
+- **Bank formats grouped by country.** The preset list of the CSV import shows the banks under
+  their country name, your country first.
+- **More stock exchanges.** Warsaw, Budapest, Lisbon, Dublin, Athens, Istanbul, Tel Aviv,
+  Johannesburg, Singapore, Korea, Taiwan, New Zealand, Shanghai, Shenzhen, Bangkok, Jakarta, Kuala
+  Lumpur, São Paulo, Mexico, Santiago, Buenos Aires and TSX Venture prefill their own currency
+  instead of USD, and the ticker suffix fallback (`.WA`, `.MC`, `.TO`, `.AX`, `.NS`, `.SI`, `.KS`,
+  `.TW`, `.SA`, ...) knows the same currencies.
+- **Dates with month names and CJK dates in imports.** `05 Jan 2024`, `Jan 5, 2024`,
+  `5. Januar 2024`, `5 de enero de 2024`, `2024年1月5日` and `2024년 1월 5일` are detected and read in
+  bank and stock CSV imports, also when the cell carries a time (`Jan 5, 2024 14:30`). Month names
+  are understood in English, German, French, Spanish, Italian, Dutch, Portuguese, Swedish,
+  Norwegian, Danish, Polish and Czech (`5. ledna 2026`). A date column that mixes numeric and
+  written-out dates asks you to confirm the format instead of guessing.
+- **Column detection for more languages.** Statement headers in Swedish, Norwegian, Danish,
+  Finnish, Portuguese, Japanese and Chinese (date, amount, in and out, balance, description,
+  counterparty, currency) are mapped automatically.
+- **Everyday words for Swedish, Norwegian, Danish, Finnish, Portuguese, Japanese and Chinese.**
+  Rent, insurance, loan repayments, interest, electricity and water, pharmacies and salary
+  lines are categorized in those languages without a brand rule. Japanese and Chinese interest
+  lines tell interest earned from loan and card interest paid; an interest-free (無利息) line is
+  not counted as income.
+
 ### Changed
 
+- **New app identifier.** The app identifier is `com.moonyfinance.desktop` (was
+  `com.filipkral.moony`), so the data folder has a new name. Moony does not move it: to keep your
+  data, rename the old folder before the first start (PRIVACY.md → Where your data lives).
+  Preferences kept by the web view (lock-screen language, auto-lock, the automatic update check)
+  may start from their defaults. On Windows, an install in a custom folder gets a fresh copy in
+  the default folder; remove the old one in Settings → Apps.
 - PRIVACY.md lists every outbound host and describes what Delete Account leaves behind.
 - **Delete Account says what stays.** The confirmation dialog and the hint next to the button, in
   all ten languages, no longer promise that all data is removed: the database, the key files and
   the attachments go, while the copies Moony keeps next to the database (`moony.db.bak-…`,
   `pre-restore-…`) stay in the data folder, which *Data and backups → Open folder* opens.
+- **Insurance anniversary reminders need a notice period.** The reminder with its deadline used to
+  assume the Czech six-week rule everywhere. It now counts back from the notice period of your
+  profile (43 days for Czechia and Slovakia unless you change it, none elsewhere) and is labelled
+  "Cancellation notice deadline"; without a notice period there is no anniversary reminder.
+  Contract ends and payments are unchanged.
+- **Errors from the backend are translated.** "Currency mismatch", "Cannot sell - no existing
+  position found", the tiered-interest and budget form messages, the stock import errors (with
+  the file line) and similar sentences appeared in English in every language; they are now
+  translated like the rest of the interface.
+- **"Fixed rate" instead of "fixation" in English.** The loan pages say "Fixed rate ends" and
+  "fixed-rate period" (the other languages already used their own term).
+- **Wizard hint about the country.** It says the country picks the categorization rules and lists
+  its banks first when importing a statement, which is what it does; it used to claim that the
+  country filters statement formats.
+
+### Fixed
+
+- **Dates with a time in the Czech spaced format.** `14. 1. 2026 10:00` was cut to `14.` before
+  parsing, so every row of such a file failed; the time is now removed correctly.
+- **Rules with ø, æ, ł, ß or đ never matched.** `Lønn`, `Løn`, `Føtex`, `Elkjøp`, `Hævning`,
+  `Storebælt` and `Spłata kredytu` stayed uncategorized because the built-in rules are written
+  without those letters and the matcher did not fold them. Norwegian, Danish and Polish payments
+  that contain them are now categorized by the rules that were already there.
+- **Photo upload errors were English-only.** The messages for a file that cannot be converted, an
+  unsupported format and an empty selection are translated.
+- **Months in the middle of a sentence.** The status line of Budgets and Cashflow read
+  "Septiembre 2026" in Spanish and likewise in Italian, Norwegian, Polish and Swedish; each language
+  now uses its own casing ("septiembre de 2026").
+- **Deleting a document attached before 0.9.0 left its file behind.** The database keeps the
+  absolute path a document had when it was attached, and for old documents that path points into a
+  folder that no longer exists; deleting now looks the file up under the current data folder, as
+  opening already did, and removes it.
 
 ## [0.10.0] - 2026-10-12
 

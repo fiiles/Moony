@@ -43,7 +43,40 @@ export const DATE_FORMATS: ReadonlyArray<{ value: string; label: string }> = [
   { value: '%d/%m/%y', label: 'DD/MM/YY' },
   { value: '%m/%d/%y', label: 'MM/DD/YY' },
   { value: '%y-%m-%d', label: 'YY-MM-DD' },
+  // Month names are read in many languages, whatever the notation says; the CJK and Korean
+  // notations have unit characters instead of separators.
+  { value: '%d %b %Y', label: 'DD MMM YYYY' },
+  { value: '%b %d, %Y', label: 'MMM DD, YYYY' },
+  { value: '%d. %B %Y', label: 'DD. MMMM YYYY' },
+  { value: '%Y年%m月%d日', label: 'YYYY年M月D日' },
+  { value: '%Y년 %m월 %d일', label: 'YYYY년 M월 D일' },
 ];
+
+/**
+ * Text encodings offered next to "Auto". The names are what the backend resolves through
+ * `encoding_rs`, so they are notation and not translated; `ISO-8859-1` is read as Windows-1252,
+ * its superset.
+ */
+export const ENCODING_CHOICES: ReadonlyArray<{ value: string; label: string }> = [
+  { value: 'UTF-8', label: 'UTF-8' },
+  { value: 'windows-1250', label: 'Windows-1250' },
+  { value: 'windows-1251', label: 'Windows-1251' },
+  { value: 'windows-1252', label: 'Windows-1252' },
+  { value: 'windows-1253', label: 'Windows-1253' },
+  { value: 'windows-1254', label: 'Windows-1254' },
+  { value: 'windows-1257', label: 'Windows-1257' },
+  { value: 'ISO-8859-1', label: 'ISO-8859-1' },
+  { value: 'ISO-8859-2', label: 'ISO-8859-2' },
+  { value: 'Shift_JIS', label: 'Shift_JIS' },
+  { value: 'GBK', label: 'GBK' },
+  { value: 'Big5', label: 'Big5' },
+  { value: 'EUC-KR', label: 'EUC-KR' },
+];
+
+/** The `encoding` argument of `parseCsvFile` for a select value: nothing for Auto. */
+export function encodingArgument(choice: string): string | undefined {
+  return choice === AUTO_VALUE ? undefined : choice;
+}
 
 export type DecimalSetting = typeof AUTO_VALUE | ',' | '.';
 
@@ -404,6 +437,38 @@ export function sortPresets(presets: readonly CsvPreset[]): CsvPreset[] {
 
 export function presetLabel(preset: Pick<CsvPreset, 'bankName' | 'country'>): string {
   return `${preset.bankName} (${preset.country})`;
+}
+
+export interface PresetGroup {
+  /** ISO 3166-1 alpha-2, upper case. */
+  country: string;
+  /** Localized country name. */
+  name: string;
+  presets: CsvPreset[];
+}
+
+/**
+ * Presets grouped by the country of their bank: the profile's country first, the other groups by
+ * their localized country name; the banks inside a group are sorted like `sortPresets`.
+ */
+export function groupPresetsByCountry(
+  presets: readonly CsvPreset[],
+  userCountry: string | null | undefined,
+  locale: string
+): PresetGroup[] {
+  const own = userCountry?.trim().toUpperCase();
+  const byCountry = new Map<string, CsvPreset[]>();
+  for (const preset of sortPresets(presets)) {
+    const code = preset.country.toUpperCase();
+    byCountry.set(code, [...(byCountry.get(code) ?? []), preset]);
+  }
+  return [...byCountry]
+    .map(([country, list]) => ({ country, name: regionName(country, locale), presets: list }))
+    .sort((a, b) => {
+      if (a.country === own) return -1;
+      if (b.country === own) return 1;
+      return a.name.localeCompare(b.name, locale);
+    });
 }
 
 /** The preset seeded for an institution, used to pre-select the bank on step 1. */

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { TFunction } from 'i18next';
 import type { StockRowMessage } from '@shared/schema';
-import { ApiError } from '@/lib/api-error';
+import { ApiError, toApiError } from '@/lib/api-error';
 import {
   importErrorText,
   rowMessageLine,
@@ -34,7 +34,6 @@ const context = (locale = 'en-US'): RowMessageContext => ({
     'importWizard.row.currencyMismatchPosition': 'Currency differs from the position ({{detail}})',
     'importWizard.row.duplicate': 'The same trade is already in Moony',
     'importWizard.row.duplicateById': 'The same broker ID is already in Moony',
-    'importWizard.row.writeFailed': 'The trade could not be written',
     'importWizard.result.line': 'Line {{line}}: {{message}}',
   }),
   tc: translator({ 'validation.somethingElse': 'Common sentence' }),
@@ -168,28 +167,22 @@ describe('importErrorText', () => {
     expect(importErrorText(error, context())).toBe('Already translated');
   });
 
-  it('names the row of a write that found a rule broken', () => {
-    const error = normalized(
-      'Validation error: line 12: importWizard.row.sellExceedsHoldings',
-      'line 12: importWizard.row.sellExceedsHoldings'
-    );
-    expect(importErrorText(error, context())).toBe('Line 12: Sale exceeds the holding');
-  });
-
-  it('translates the validation key a write failed with', () => {
-    const error = normalized(
-      'Validation error: line 7: validation.somethingElse',
-      'line 7: validation.somethingElse'
+  it('names the row of a write that found a rule broken, as the backend sends it', () => {
+    // What tauriInvoke does with the keyed error: the ApiError already carries "Line 7: …".
+    const common: Record<string, string> = {
+      'validation.stockImportLine': 'Line {{line}}: {{reason}}',
+      'validation.somethingElse': 'Common sentence',
+    };
+    const translate = (key: string, options: Record<string, unknown> = {}) => {
+      const template = common[key];
+      if (template === undefined) return '';
+      return template.replace(/\{\{(\w+)\}\}/g, (_, name: string) => String(options[name] ?? ''));
+    };
+    const error = toApiError(
+      'Validation error: validation.stockImportLine|{"line":7,"reason":"validation.somethingElse"}',
+      translate
     );
     expect(importErrorText(error, context())).toBe('Line 7: Common sentence');
-  });
-
-  it('does not show a reason that is not a key, only the row', () => {
-    const error = normalized(
-      'Validation error: line 7: Database error: UNIQUE constraint failed: x.y',
-      'line 7: Database error: UNIQUE constraint failed: x.y'
-    );
-    expect(importErrorText(error, context())).toBe('Line 7: The trade could not be written');
   });
 
   it('translates a bare validation key of a plain error', () => {

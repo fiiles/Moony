@@ -76,4 +76,4 @@ body:
     id: extra
     attributes:
       label: Anything else?
-      description: Language (English/Czech), display currency, whether it happens every time, workarounds.
+      description: Interface language, main currency, whether it happens every time, workarounds.

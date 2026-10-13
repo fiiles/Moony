@@ -16,7 +16,7 @@ docs/standards/workflow.md.
 
 - [ ] **Gates are green locally**: `npm run lint && npm run typecheck && npm test`, and in `src-tauri/`: `cargo fmt --check && cargo clippy -- -D warnings && cargo test`
 - [ ] **Tests** cover the change (regression test for a bug fix; pure functions in `src/utils/` and `shared/`; Rust services in `src-tauri/src/services/`) — see `docs/standards/testing.md`
-- [ ] **Both locales**: every new or changed user-facing string is in `en/` **and** `cs/` (`docs/standards/i18n.md`)
+- [ ] **All ten languages**: every new or changed user-facing string is in every folder under `src/i18n/locales/` (`en`, `cs`, `de`, `es`, `it`, `nb`, `pl`, `sv`, `ja`, `zh`); `src/i18n/locales.test.ts` checks it (`docs/standards/i18n.md`)
 - [ ] **Types**: if `shared/schema.ts` or a Rust wire type changed, `shared/generated-types.ts` is regenerated (`cd src-tauri && cargo test generate_bindings -- --ignored`)
 - [ ] **Migrations** (if the database changed): appended as the next number in `src-tauri/src/db/migrations.rs` (never edit the baseline or an applied migration), `docs/architecture/database.md` updated — see `docs/playbooks/add-db-migration.md`
 - [ ] **Docs** updated when behavior changed (README for features, an ADR for architecture decisions); `CHANGELOG.md` has an entry under *Unreleased* for user-visible changes

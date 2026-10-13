@@ -13,7 +13,7 @@ A privacy-focused personal finance app for your desktop, built with Tauri, React
 </div>
 
 Moony tracks your bank accounts, investments, crypto, bonds, real estate, loans and insurance
-in one net-worth view, in English or Czech, in 45 currencies. There is no account, no
+in one net-worth view, in ten languages and 45 currencies. There is no account, no
 cloud and no sync: everything lives in an AES-256 encrypted database on your computer.
 
 ## Screenshots
@@ -160,7 +160,7 @@ You can switch the automatic check off in Settings; see [PRIVACY.md](./PRIVACY.m
 
 ### ⚙️ Settings & Customization
 
-- **Language** - Full English and Czech interface; numbers, money and dates follow the language
+- **Language** - Ten interface languages (English, Czech, German, Spanish, Italian, Norwegian bokmål, Polish, Swedish, Japanese and Simplified Chinese; the ones other than English and Czech are machine-translated and corrections are welcome); numbers, money and dates follow the language
 - **Menu Customization** - Show/hide menu items based on your needs
 - **Data and backups** - backup, restore, full export and a data-folder shortcut (below)
 - **Security** - change your password, optional auto-lock when you are away
@@ -265,7 +265,7 @@ macOS, Linux and Windows is described in [CONTRIBUTING.md](./CONTRIBUTING.md#dem
 - **wouter** for routing
 - **react-hook-form** + **zod** for form validation
 - **Framer Motion** for animations
-- **i18next** for English and Czech
+- **i18next** for the ten interface languages
 
 ### Backend
 - **[Tauri 2](https://v2.tauri.app/)** - Cross-platform desktop app framework

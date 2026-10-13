@@ -39,12 +39,12 @@ personal project:
 - 🐛 **Bug reports** — the most valuable contribution (see below)
 - ✨ **Feature ideas** — open an issue for discussion before writing code
 - 📝 **Documentation fixes**
-- 🌍 **Translations and i18n improvements**
+- 🌍 **Translations and i18n improvements** — see [Translations](#translations)
 
 If you want to submit code, open an issue first to align on the approach, then
 open a pull request against `main`. The pull-request template asks what changed,
 why and how you tested it, and has a checklist that mirrors the gates above
-(lint/typecheck/tests/clippy, English **and** Czech strings, migration rules,
+(lint/typecheck/tests/clippy, strings in all ten languages, migration rules,
 regenerated types). Add an entry under *Unreleased* in
 [`CHANGELOG.md`](./CHANGELOG.md) for user-visible changes, and update
 [`PRIVACY.md`](./PRIVACY.md) if a change adds a network request or stores new
@@ -308,15 +308,30 @@ in [`docs/specs/2026-10-04-stock-csv-import-wizard-design.md`](./docs/specs/2026
    - `SOURCE_IDS`, the `BrokerId` union and `SOURCE_HELP_URLS` in
      `src/components/stocks/import/import-config.ts` (the help link opens the broker's own page
      about exporting a history; the test next to it checks every broker has one);
-   - `stocks.importWizard.sources.<id>` in **both** `src/i18n/locales/cs/stocks.json` and
-     `en/stocks.json`: `name`, `guideTitle`, `guide` (where to click, which report, which period,
+   - `stocks.importWizard.sources.<id>` in **every** `src/i18n/locales/<lang>/stocks.json` (ten
+     languages; `src/i18n/locales.test.ts` fails otherwise): `name`, `guideTitle`, `guide` (where to click, which report, which period,
      which format, in one or two sentences) and an optional `note` for the broker's caveats (a
      file with deposits and dividends in it, a limit on the period). The note is shown again on
      the mapping step.
 6. Run `cd src-tauri && cargo test stock_import` and `npm test`.
 
 Row messages (`importWizard.row.*`) are i18n keys, never English prose: a new kind of skipped
-row or error needs its key in both locale files and a case in the parser.
+row or error needs its key in every locale file and a case in the parser.
+
+## Translations
+
+The app ships in ten languages: English, Czech, German, Spanish, Italian, Norwegian (bokmål),
+Polish, Swedish, Japanese and Simplified Chinese. English is the source and Czech is the
+maintainer's own copy. **The other eight are machine-translated**, so awkward wording is likely
+and corrections are welcome.
+
+To fix a translation, edit the string in `src/i18n/locales/<lang>/<namespace>.json` and open a
+pull request. An issue that names the screen, the language and the better wording works too.
+Keep the keys and the `{{variables}}` unchanged and follow the terminology in
+[`docs/standards/i18n-glossary.md`](./docs/standards/i18n-glossary.md). `npm test` runs
+`src/i18n/locales.test.ts`, which checks that every language has the same keys, plural forms
+and variables as English. A new string must be added to all ten languages in the same change
+([`docs/standards/i18n.md`](./docs/standards/i18n.md)).
 
 ## Code Style
 
@@ -324,7 +339,7 @@ Follow the standards in [`docs/standards/`](./docs/standards/). Highlights:
 
 - **TypeScript/React** — typed components, TanStack Query for data fetching,
   shadcn/ui components, react-hook-form + zod for forms, all user-facing
-  strings translated in both locales (`docs/standards/i18n.md`)
+  strings translated in all ten languages (`docs/standards/i18n.md`)
 - **Rust** — commands in `commands/`, business logic in `services/`, proper
   `Result` error handling, tests per `docs/standards/testing.md`
 - **CSS** — Tailwind utilities on the design-system tokens (`docs/design-system/`); light theme only

@@ -232,7 +232,7 @@ than ~24 events fall in view, cluster neighbors into one mark with a count ("3 n
 - Uppercase only in eyebrows and table heads. Sentence case everywhere else. No exclamation marks.
 - Buttons are verbs that name the outcome, identical to the modal title ("Přidat účet" → toast "Účet
   přidán"). Never "OK", "Odeslat", "Submit".
-- Every string in both `cs/` and `en/` locale files (`docs/standards/i18n.md`).
+- Every string in every locale folder — all ten languages (`docs/standards/i18n.md`).
 
 ## 11. Decisions
 

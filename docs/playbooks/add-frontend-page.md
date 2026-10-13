@@ -38,6 +38,6 @@ Checklist for a new routed page. Conventions and rationale are owned by
 npm run lint && npm run typecheck && npm test
 ```
 
-Plus a visual check: `npm run tauri dev` → open the page from the sidebar, in both
-English and Czech (Czech must not fall back to English — see
-`docs/standards/i18n.md` rule 1).
+Plus a visual check: `npm run tauri dev` → open the page from the sidebar, in English
+and in at least one other language (a missing key falls back to English without any warning —
+see `docs/standards/i18n.md` rule 1).

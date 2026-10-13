@@ -10,7 +10,7 @@ System map for Moony: stack, data flow, canonical examples, and the domain map.
 - **wouter** — routing (not React Router).
 - **TanStack React Query** — all server state; no Redux/Zustand.
 - **shadcn/ui** (new-york) + **Tailwind** — UI components and styling.
-- **react-i18next** — en/cs locales, one namespace per domain.
+- **react-i18next** — ten locales (en, cs, de, es, it, nb, pl, sv, ja, zh), one namespace per domain.
 - **sonner** — toasts.
 
 ## The Sacred Data Flow

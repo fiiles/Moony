@@ -1,7 +1,7 @@
 //! Locating and opening attached document files.
 //!
 //! The DB stores the absolute path the file had when it was attached. That path goes stale when
-//! the app data directory gets a new name (the 0.9.0 and 0.10.1 identifier changes did that; a
+//! the app data directory gets a new name (the 0.9.0 and 0.11.0 identifier changes did that; a
 //! folder copied or renamed by hand leaves the rows pointing at the old place), so the file is
 //! looked up under the current app data dir first and the stored path is only the fallback.
 

@@ -117,10 +117,10 @@ button. Moony never moves this folder on its own, and uninstalling the app does 
 by default.
 
 **Upgrading from 0.10.0 or earlier:** those versions kept the folder under the old identifier
-`com.filipkral.moony`, in the same place as in the table above. 0.10.1 looks in the folder named
+`com.filipkral.moony`, in the same place as in the table above. 0.11.0 looks in the folder named
 `com.moonyfinance.desktop` and does not move anything itself. To keep your data, quit Moony and
-rename the old folder to the new name before the first start of 0.10.1. If 0.10.1 has already
-started and created the new folder, quit it, delete the new folder (it holds only what 0.10.1
+rename the old folder to the new name before the first start of 0.11.0. If 0.11.0 has already
+started and created the new folder, quit it, delete the new folder (it holds only what 0.11.0
 created there; back it up first if you already entered data in it), then rename the old one. The
 old folder is never deleted for you.
 

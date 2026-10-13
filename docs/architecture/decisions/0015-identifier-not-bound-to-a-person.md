@@ -21,7 +21,7 @@ A startup move was designed, implemented and reviewed. It touches every existing
 encrypted data folder at the one moment a mistake is expensive, and the review found a path that
 loses the key files (a failed move left them stranded and the first-run wizard then overwrote
 them) and several ways to strand part of a profile. There are almost no installations, and the
-releases before 0.10.1 are withdrawn, so the move would be code that runs once for almost nobody
+releases before 0.11.0 are withdrawn, so the move would be code that runs once for almost nobody
 and stays in the code base for good.
 
 ## Decision
@@ -30,7 +30,7 @@ and stays in the code base for good.
   line keeps the author's name.
 - **Moony does not move the old data folder.** `PRIVACY.md` (Where your data lives) tells anyone
   who ran 0.10.0 or earlier to quit Moony and rename the old folder to the new name before the
-  first start of 0.10.1, and what to do if 0.10.1 has already created a new folder.
+  first start of 0.11.0, and what to do if 0.11.0 has already created a new folder.
 - **There is no further identifier change, ever.** The name is final; a later change would make
   every user rename the folder again.
 
@@ -45,7 +45,7 @@ and stays in the code base for good.
   look under the current data folder first and fall back to the stored path
   (`services::document_files`); photos are stored relative and need nothing.
 - On Windows the NSIS installer keeps its install folder under `Software\<publisher>\Moony`. With
-  the publisher changing, the first 0.10.1 installer cannot find a custom install folder: an
+  the publisher changing, the first 0.11.0 installer cannot find a custom install folder: an
   install in a custom folder gets a second copy in the default folder, and running the new
   `setup.exe` by hand with "uninstall before installing" can report that the old version cannot
   be uninstalled ("Don't uninstall" works). Auto-updates into the default folder are unaffected.

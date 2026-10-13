@@ -31,7 +31,7 @@ notarization](#code-signing-and-notarization-not-set-up-yet)); the **updater sig
    body in `release.yml`) in the same commit and expect users of older builds to update by hand.
 4. **Never change the app identifier again** (`identifier` in `tauri.conf.json`,
    `com.moonyfinance.desktop`). The user's data folder is derived from it; changing it makes every
-   existing installation look for its data in a new, empty place. It changed once, in 0.10.1,
+   existing installation look for its data in a new, empty place. It changed once, in 0.11.0,
    without an automatic move (ADR 0015); a second change would make every user rename the data
    folder by hand again.
 
@@ -68,8 +68,8 @@ Then, by hand:
 - [ ] Migrations added since the last release were tried against a copy of a database written
       by that release (`docs/playbooks/add-db-migration.md`).
 - [ ] The "Upgrading from 0.10.0" paragraph at the top of `releaseBody` in
-      `.github/workflows/release.yml` is for 0.10.x only (the update dialog of an installed 0.10.0
-      shows these notes and Moony does not move the data folder); remove it after the first 0.11
+      `.github/workflows/release.yml` is for 0.11.x only (the update dialog of an installed 0.10.0
+      shows these notes and Moony does not move the data folder); remove it after the first 0.12
       release.
 
 ## Version bump

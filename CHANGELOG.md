@@ -6,14 +6,14 @@ All notable changes to Moony are documented in this file. The format follows
 
 ## [Unreleased]
 
-## [0.10.1] - 2026-10-13
+## [0.11.0] - 2026-10-13
 
 ### Added
 
 - **Banking country in the profile.** Settings → General has a "Country" select under the e-mail
   field; the first-run wizard already asked for it and now saves it with the profile. The country
   puts your bank's statement formats first in the CSV import, chooses the text encoding of files
-  that are not UTF-8 and sets country defaults such as the insurance notice period. A profile
+  that are not UTF-8. A profile
   that predates the field takes the country of its single enabled country rule pack, or Czechia
   when it has the Czech interface or CZK as main currency; everyone else picks a country in
   Settings (migration 017).
@@ -35,8 +35,7 @@ All notable changes to Moony are documented in this file. The format follows
   `ř`.
 - **Insurance cancellation notice in Settings.** "Insurance cancellation notice (days)" sets how
   many days before the yearly anniversary a cancellation must reach the insurer (migration 018).
-  It is preset to 43 days for Czechia and Slovakia only; anywhere else the anniversary reminder
-  appears once you set a notice, and 0 turns it off.
+  It is preset to 50 days for every profile; 0 turns the anniversary reminder off.
 - **Bank formats grouped by country.** The preset list of the CSV import shows the banks under
   their country name, your country first.
 - **More stock exchanges.** Warsaw, Budapest, Lisbon, Dublin, Athens, Istanbul, Tel Aviv,
@@ -72,11 +71,10 @@ All notable changes to Moony are documented in this file. The format follows
   all ten languages, no longer promise that all data is removed: the database, the key files and
   the attachments go, while the copies Moony keeps next to the database (`moony.db.bak-…`,
   `pre-restore-…`) stay in the data folder, which *Data and backups → Open folder* opens.
-- **Insurance anniversary reminders need a notice period.** The reminder with its deadline used to
-  assume the Czech six-week rule everywhere. It now counts back from the notice period of your
-  profile (43 days for Czechia and Slovakia unless you change it, none elsewhere) and is labelled
-  "Cancellation notice deadline"; without a notice period there is no anniversary reminder.
-  Contract ends and payments are unchanged.
+- **Insurance anniversary reminders follow your notice period.** The reminder with its deadline
+  used to count back the Czech six weeks (43 days) for everyone. It now counts back from the notice
+  period in Settings, 50 days unless you change it, and is labelled "Cancellation notice deadline";
+  with 0 there is no anniversary reminder. Contract ends and payments are unchanged.
 - **Errors from the backend are translated.** "Currency mismatch", "Cannot sell - no existing
   position found", the tiered-interest and budget form messages, the stock import errors (with
   the file line) and similar sentences appeared in English in every language; they are now
@@ -470,8 +468,8 @@ local tool). Everything below is new to the public.
 - The updater only offers versions higher than the installed one, so a machine running an
   older 1.x build from the previous private repository must install 0.9.0 by hand.
 
-[Unreleased]: https://github.com/fiiles/Moony/compare/v0.10.1...HEAD
-[0.10.1]: https://github.com/fiiles/Moony/releases/tag/v0.10.1
+[Unreleased]: https://github.com/fiiles/Moony/compare/v0.11.0...HEAD
+[0.11.0]: https://github.com/fiiles/Moony/releases/tag/v0.11.0
 [0.10.0]: https://github.com/fiiles/Moony/compare/v0.9.1...v0.10.0
 [0.9.1]: https://github.com/fiiles/Moony/compare/v0.9.0...v0.9.1
 [0.9.0]: https://github.com/fiiles/Moony/releases/tag/v0.9.0

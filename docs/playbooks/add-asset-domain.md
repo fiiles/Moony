@@ -62,7 +62,10 @@ canonical examples from `docs/architecture/overview.md`, and check
       `net_worth::ClassTotals` so `metrics_report` and `history_report` convert it into the
       report currency (an unconvertible amount stays out of the totals and is named in
       `fxQuality`; never 1:1);
-    - extend the history **backfill** so existing snapshot rows gain the new class;
+    - give the class a rule in `history_days::Facts::day_values` (its dated facts, loaded once,
+      and its `known` flag in `ClassSet`) and queue a `Days` job from every write that changes
+      its past (`portfolio::schedule_history_rebuild`; for MCP writes, a domain in
+      `commands/mcp_refresh.rs`), so past days derive from the facts (ADR 0016);
     - if the class holds a currency the user may type freely, make sure `fx_backfill` covers its
       currency columns so historical conversion has rates (`held_currencies`).
 14. **README.** Add the new asset class to the feature list in `README.md`

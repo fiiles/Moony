@@ -286,8 +286,10 @@ Delete the dead code and list it in `docs/DEPRECATED.md`.
 returns at once:
 
 1. If `app_config.history_rebuild_version < 1`: queue every stock and crypto ticker from its first
-   transaction, plus `Days(E)`. Store version `1` after that batch finishes without error, so a
-   failure retries at the next start.
+   transaction, plus `Days(E)`. Store version `1` once the days rebuild of that batch succeeded,
+   so a failed days rebuild retries at the next start. A ticker the provider keeps rejecting (a
+   delisted symbol, a rate limit) is reported `failed`, logged and retried by later writes and the
+   gap fill; it does not block the flag.
 2. Otherwise, take the first missing day G in `[E, yesterday]`: queue the held tickers from G and
    `Days(G)`.
 

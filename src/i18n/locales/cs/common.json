@@ -261,7 +261,17 @@
     "dateInvalid": "Neplatné datum",
     "valueDateInvalid": "Neplatné datum valuty",
     "maturityDateInvalid": "Neplatné datum splatnosti",
-    "countryInvalid": "Vyberte zemi ze seznamu."
+    "countryInvalid": "Vyberte zemi ze seznamu.",
+    "bankAccountRequired": "Vyberte bankovní účet.",
+    "tierToAboveFrom": "Horní hranice musí být vyšší než dolní.",
+    "interestRateInvalid": "Zadejte platnou úrokovou sazbu.",
+    "timeframeInvalid": "Vyberte měsíčně, čtvrtletně nebo ročně.",
+    "currencyMismatch": "Tato pozice je vedena v {{expected}}, ale transakce je v {{actual}}. Všechny transakce jedné pozice musí být ve stejné měně.",
+    "sellWithoutPosition": "{{ticker}}: neexistuje žádná otevřená pozice k prodeji.",
+    "coingeckoIdConflict": "{{ticker}}: CoinGecko ID se liší od uloženého u této kryptoměny.",
+    "coingeckoIdForNewCoin": "{{ticker}}: nová kryptoměna potřebuje pro načítání cen své CoinGecko ID (například bitcoin).",
+    "stockImportLine": "Řádek {{line}}: {{reason}}",
+    "stockImportRowFailed": "řádek se nepodařilo uložit."
   },
   "auth": {
     "wrongPassword": "Zadané heslo je nesprávné. Zkuste to prosím znovu.",

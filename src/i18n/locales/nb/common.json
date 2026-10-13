@@ -261,7 +261,17 @@
     "dateInvalid": "Ugyldig dato",
     "valueDateInvalid": "Ugyldig valuteringsdato",
     "maturityDateInvalid": "Ugyldig forfallsdato",
-    "countryInvalid": "Velg et land fra listen."
+    "countryInvalid": "Velg et land fra listen.",
+    "bankAccountRequired": "Velg en bankkonto.",
+    "tierToAboveFrom": "Øvre grense må være høyere enn nedre grense.",
+    "interestRateInvalid": "Skriv inn en gyldig rente.",
+    "timeframeInvalid": "Velg månedlig, kvartalsvis eller årlig.",
+    "currencyMismatch": "Denne posisjonen føres i {{expected}}, men transaksjonen er i {{actual}}. Alle transaksjoner i en posisjon må ha samme valuta.",
+    "sellWithoutPosition": "{{ticker}}: det finnes ingen åpen posisjon å selge.",
+    "coingeckoIdConflict": "{{ticker}}: CoinGecko-ID-en er ikke den samme som den som er lagret for denne kryptovalutaen.",
+    "coingeckoIdForNewCoin": "{{ticker}}: en ny kryptovaluta trenger CoinGecko-ID-en sin (for eksempel bitcoin) for å hente kurser.",
+    "stockImportLine": "Linje {{line}}: {{reason}}",
+    "stockImportRowFailed": "raden kunne ikke lagres."
   },
   "auth": {
     "wrongPassword": "Passordet du skrev inn er feil. Prøv igjen.",

@@ -308,51 +308,47 @@ impl InsertSavingsAccountZone {
         // Bank account ID validation
         if self.savings_account_id.is_empty() {
             return Err(AppError::Validation(
-                "Bank account ID cannot be empty".into(),
+                "validation.bankAccountRequired".into(),
             ));
         }
 
         // From amount validation
-        let from: f64 = self.from_amount.parse().map_err(|_| {
-            AppError::Validation(format!("Invalid from amount '{}'", self.from_amount))
-        })?;
+        let from: f64 = self
+            .from_amount
+            .parse()
+            .map_err(|_| AppError::Validation("validation.invalidAmount".into()))?;
         if !from.is_finite() {
             return Err(AppError::Validation("validation.invalidAmount".into()));
         }
         if from < 0.0 {
-            return Err(AppError::Validation(
-                "From amount cannot be negative".into(),
-            ));
+            return Err(AppError::Validation("validation.amountNonNegative".into()));
         }
 
         // To amount validation (if provided)
         if let Some(ref to_amount) = self.to_amount {
             if !to_amount.is_empty() {
-                let to: f64 = to_amount.parse().map_err(|_| {
-                    AppError::Validation(format!("Invalid to amount '{}'", to_amount))
-                })?;
+                let to: f64 = to_amount
+                    .parse()
+                    .map_err(|_| AppError::Validation("validation.invalidAmount".into()))?;
                 if !to.is_finite() {
                     return Err(AppError::Validation("validation.invalidAmount".into()));
                 }
                 if to <= from {
-                    return Err(AppError::Validation(
-                        "To amount must be greater than from amount".into(),
-                    ));
+                    return Err(AppError::Validation("validation.tierToAboveFrom".into()));
                 }
             }
         }
 
         // Interest rate validation
-        let rate: f64 = self.interest_rate.parse().map_err(|_| {
-            AppError::Validation(format!("Invalid interest rate '{}'", self.interest_rate))
-        })?;
+        let rate: f64 = self
+            .interest_rate
+            .parse()
+            .map_err(|_| AppError::Validation("validation.interestRateInvalid".into()))?;
         if !rate.is_finite() {
             return Err(AppError::Validation("validation.invalidAmount".into()));
         }
         if !(0.0..=100.0).contains(&rate) {
-            return Err(AppError::Validation(
-                "Interest rate must be between 0 and 100".into(),
-            ));
+            return Err(AppError::Validation("validation.interestRateRange".into()));
         }
 
         Ok(())
@@ -461,5 +457,34 @@ mod tests {
                 "accepted {amount} {currency} {as_of}"
             );
         }
+    }
+
+    #[test]
+    fn savings_zone_validation_reports_keys() {
+        let zone = |from: &str, to: Option<&str>, rate: &str| InsertSavingsAccountZone {
+            savings_account_id: "acc".into(),
+            from_amount: from.into(),
+            to_amount: to.map(String::from),
+            interest_rate: rate.into(),
+        };
+        let key = |zone: InsertSavingsAccountZone| match zone.validate() {
+            Err(AppError::Validation(key)) => key,
+            other => panic!("{other:?}"),
+        };
+        assert_eq!(key(zone("abc", None, "1")), "validation.invalidAmount");
+        assert_eq!(key(zone("-1", None, "1")), "validation.amountNonNegative");
+        assert_eq!(key(zone("10", Some("x"), "1")), "validation.invalidAmount");
+        assert_eq!(
+            key(zone("10", Some("5"), "1")),
+            "validation.tierToAboveFrom"
+        );
+        assert_eq!(
+            key(zone("0", None, "abc")),
+            "validation.interestRateInvalid"
+        );
+        assert_eq!(key(zone("0", None, "150")), "validation.interestRateRange");
+        let mut nameless = zone("0", None, "1");
+        nameless.savings_account_id.clear();
+        assert_eq!(key(nameless), "validation.bankAccountRequired");
     }
 }

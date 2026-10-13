@@ -261,7 +261,17 @@
     "dateInvalid": "無効な日付です",
     "valueDateInvalid": "無効な起算日です",
     "maturityDateInvalid": "無効な満期日です",
-    "countryInvalid": "一覧から国を選んでください。"
+    "countryInvalid": "一覧から国を選んでください。",
+    "bankAccountRequired": "銀行口座を選んでください。",
+    "tierToAboveFrom": "上限は下限より大きくしてください。",
+    "interestRateInvalid": "有効な金利を入力してください。",
+    "timeframeInvalid": "月次、四半期、年次のいずれかを選んでください。",
+    "currencyMismatch": "このポジションは{{expected}}建てですが、取引は{{actual}}です。1つのポジションの取引はすべて同じ通貨にしてください。",
+    "sellWithoutPosition": "{{ticker}}：売却できる保有ポジションがありません。",
+    "coingeckoIdConflict": "{{ticker}}：CoinGecko ID がこの暗号資産に保存されているものと異なります。",
+    "coingeckoIdForNewCoin": "{{ticker}}：新しい暗号資産の価格を取得するには、CoinGecko ID（例：bitcoin）が必要です。",
+    "stockImportLine": "{{line}} 行目：{{reason}}",
+    "stockImportRowFailed": "この行を保存できませんでした。"
   },
   "auth": {
     "wrongPassword": "入力したパスワードが正しくありません。もう一度お試しください。",

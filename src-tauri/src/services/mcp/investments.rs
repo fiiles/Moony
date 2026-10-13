@@ -679,7 +679,9 @@ mod bulk_tests {
         let report = stock_transactions_create(&mut conn, &args).unwrap();
         assert_eq!(report.created, 0);
         assert_eq!(report.errors.len(), 1);
-        assert!(report.errors[0].message.contains("Currency mismatch"));
+        assert!(report.errors[0]
+            .message
+            .contains("validation.currencyMismatch"));
         assert_eq!(holding_quantity(&conn, "AAPL"), Some("5".to_string()));
     }
 

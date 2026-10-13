@@ -95,11 +95,17 @@ pub fn import(
     let report = bulk_create_stock_transactions(conn, &rows, Some(&batch))?;
     if let Some(issue) = report.errors.first() {
         let line = accepted.get(issue.index).map_or(0, |(trade, _)| trade.line);
+        // The technical text stays in the log; the person sees a key.
+        log::debug!("[STOCK IMPORT] line {line}: {}", issue.message);
         let reason = issue
             .message
             .strip_prefix("Validation error: ")
-            .unwrap_or(&issue.message);
-        return Err(AppError::Validation(format!("line {line}: {reason}")));
+            .filter(|message| message.starts_with("validation."))
+            .unwrap_or("validation.stockImportRowFailed");
+        return Err(AppError::validation_with(
+            "validation.stockImportLine",
+            serde_json::json!({ "line": line, "reason": reason }),
+        ));
     }
 
     result.batch_id = report.batch_id;
@@ -520,8 +526,16 @@ mod tests {
         let err = import(&mut conn, &f, &config("custom"), "f.csv").unwrap_err();
 
         let text = err.to_string();
-        assert!(text.contains("line 3"), "names the file line: {text}");
-        assert!(text.contains("refused"), "{text}");
+        assert!(
+            text.starts_with("Validation error: validation.stockImportLine|"),
+            "{text}"
+        );
+        assert!(text.contains(r#""line":3"#), "names the file line: {text}");
+        assert!(text.contains("validation.stockImportRowFailed"), "{text}");
+        assert!(
+            !text.contains("refused"),
+            "technical text stays out of the message: {text}"
+        );
         assert_eq!(count(&conn, "stock_investments"), 0);
         assert_eq!(count(&conn, "investment_transactions"), 0);
         assert_eq!(count(&conn, "stock_import_batches"), 0);

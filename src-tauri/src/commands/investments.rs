@@ -169,7 +169,9 @@ pub async fn update_investment_name(
 ) -> Result<StockPosition> {
     // Validate name
     if company_name.trim().is_empty() {
-        return Err(AppError::Validation("Company name cannot be empty".into()));
+        return Err(AppError::Validation(
+            "validation.companyNameRequired".into(),
+        ));
     }
 
     db.with_conn(|conn| {

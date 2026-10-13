@@ -261,7 +261,17 @@
     "dateInvalid": "无效的日期",
     "valueDateInvalid": "无效的起息日",
     "maturityDateInvalid": "无效的到期日",
-    "countryInvalid": "请从列表中选择一个国家/地区。"
+    "countryInvalid": "请从列表中选择一个国家/地区。",
+    "bankAccountRequired": "请选择一个银行账户。",
+    "tierToAboveFrom": "上限必须大于下限。",
+    "interestRateInvalid": "请输入有效的利率。",
+    "timeframeInvalid": "请选择按月、按季度或按年。",
+    "currencyMismatch": "该持仓以 {{expected}} 计价，但这笔交易使用 {{actual}}。同一持仓的所有交易必须使用相同货币。",
+    "sellWithoutPosition": "{{ticker}}：没有可卖出的持仓。",
+    "coingeckoIdConflict": "{{ticker}}：CoinGecko ID 与该币种已保存的 ID 不一致。",
+    "coingeckoIdForNewCoin": "{{ticker}}：新币种需要 CoinGecko ID（例如 bitcoin）才能获取价格。",
+    "stockImportLine": "第 {{line}} 行：{{reason}}",
+    "stockImportRowFailed": "无法保存该行。"
   },
   "auth": {
     "wrongPassword": "您输入的密码不正确，请重试。",

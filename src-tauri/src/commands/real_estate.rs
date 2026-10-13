@@ -517,7 +517,7 @@ pub async fn update_photo_batch(
         }
 
         if updates.is_empty() {
-            return Err(AppError::Validation("No fields to update".into()));
+            return Err(AppError::Validation("validation.noFieldsToUpdate".into()));
         }
 
         let sql = format!(

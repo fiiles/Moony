@@ -261,7 +261,17 @@
     "dateInvalid": "Nieprawidłowa data",
     "valueDateInvalid": "Nieprawidłowa data waluty",
     "maturityDateInvalid": "Nieprawidłowa data zapadalności",
-    "countryInvalid": "Wybierz kraj z listy."
+    "countryInvalid": "Wybierz kraj z listy.",
+    "bankAccountRequired": "Wybierz konto bankowe.",
+    "tierToAboveFrom": "Górna granica musi być wyższa niż dolna.",
+    "interestRateInvalid": "Wpisz prawidłowe oprocentowanie.",
+    "timeframeInvalid": "Wybierz miesięcznie, kwartalnie lub rocznie.",
+    "currencyMismatch": "Ta pozycja jest prowadzona w {{expected}}, a transakcja jest w {{actual}}. Wszystkie transakcje jednej pozycji muszą mieć tę samą walutę.",
+    "sellWithoutPosition": "{{ticker}}: nie ma otwartej pozycji do sprzedaży.",
+    "coingeckoIdConflict": "{{ticker}}: identyfikator CoinGecko różni się od zapisanego dla tej kryptowaluty.",
+    "coingeckoIdForNewCoin": "{{ticker}}: nowa kryptowaluta wymaga identyfikatora CoinGecko (na przykład bitcoin), aby pobierać ceny.",
+    "stockImportLine": "Wiersz {{line}}: {{reason}}",
+    "stockImportRowFailed": "nie udało się zapisać wiersza."
   },
   "auth": {
     "wrongPassword": "Wpisane hasło jest nieprawidłowe. Spróbuj ponownie.",

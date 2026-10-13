@@ -164,10 +164,10 @@ pub fn update_transaction(
         |r| r.get(0),
     )?;
     if !currency.eq_ignore_ascii_case(&data.currency) {
-        return Err(AppError::Validation(format!(
-            "Currency mismatch: investment uses {currency} but transaction is in {}",
-            data.currency
-        )));
+        return Err(AppError::validation_with(
+            "validation.currencyMismatch",
+            serde_json::json!({ "expected": currency, "actual": data.currency }),
+        ));
     }
     let date = crate::models::validation::utc_day(data.transaction_date, "validation.dateInvalid")?;
     conn.execute("UPDATE investment_transactions SET type=?2,quantity=?3,price_per_unit=?4,currency=?5,transaction_date=?6 WHERE id=?1",
@@ -437,10 +437,9 @@ fn import_stock_row(
 
     // Validate transaction type
     if tx_type_lower != "buy" && tx_type_lower != "sell" {
-        return Err(AppError::Validation(format!(
-            "Invalid type '{}' (must be 'buy' or 'sell')",
-            tx_type
-        )));
+        return Err(AppError::Validation(
+            "validation.transactionTypeInvalid".into(),
+        ));
     }
 
     // Check if investment exists
@@ -454,10 +453,10 @@ fn import_stock_row(
 
     // For sell transactions, require existing investment
     if tx_type_lower == "sell" && existing.is_none() {
-        return Err(AppError::Validation(format!(
-            "{}: Cannot sell - no existing position found",
-            ticker_upper
-        )));
+        return Err(AppError::validation_with(
+            "validation.sellWithoutPosition",
+            serde_json::json!({ "ticker": ticker_upper }),
+        ));
     }
 
     // Get or create investment
@@ -472,10 +471,10 @@ fn import_stock_row(
             )?;
 
             if inv_currency.to_uppercase() != currency.to_uppercase() {
-                return Err(AppError::Validation(format!(
-                    "{}: Currency mismatch - investment uses {} but transaction is in {}",
-                    ticker_upper, inv_currency, currency
-                )));
+                return Err(AppError::validation_with(
+                    "validation.currencyMismatch",
+                    serde_json::json!({ "expected": inv_currency, "actual": currency }),
+                ));
             }
             id
         }
@@ -694,10 +693,15 @@ pub fn bulk_create_stock_transactions(
             if !existing_currency.eq_ignore_ascii_case(&row.currency) {
                 drop(tx);
                 return Ok(BulkWriteReport {
-                    errors: vec![BulkRowIssue { possible_duplicate: false, index: i, message: format!(
-                        "Currency mismatch: {ticker_upper} uses {existing_currency} but transaction is in {}",
-                        row.currency
-                    ) }],
+                    errors: vec![BulkRowIssue {
+                        possible_duplicate: false,
+                        index: i,
+                        message: AppError::validation_with(
+                            "validation.currencyMismatch",
+                            serde_json::json!({ "expected": existing_currency, "actual": row.currency }),
+                        )
+                        .to_string(),
+                    }],
                     ..BulkWriteReport::default()
                 });
             }
@@ -928,10 +932,10 @@ pub fn add_transaction_to_investment(
 
     // Validate currency matches
     if inv_currency.to_uppercase() != data.currency.to_uppercase() {
-        return Err(AppError::Validation(format!(
-            "Currency mismatch: {} uses {} but transaction is in {}. All transactions for a stock must use the same currency.",
-            ticker, inv_currency, data.currency
-        )));
+        return Err(AppError::validation_with(
+            "validation.currencyMismatch",
+            serde_json::json!({ "expected": inv_currency, "actual": data.currency }),
+        ));
     }
 
     ensure_sell_within_holdings(
@@ -1253,6 +1257,69 @@ mod tests {
             (held_quantity_at(&conn, "investment_transactions", &id, 1_700_000_000).expect("held"))
                 .abs()
                 < 1e-9
+        );
+    }
+
+    #[test]
+    fn stock_rule_failures_carry_keys_and_their_values() {
+        let conn = setup_test_db();
+        // A sell without a position names the ticker.
+        let err = import_single_transaction(
+            &conn,
+            "msft",
+            "Microsoft",
+            "sell",
+            "1",
+            "300",
+            "USD",
+            1_700_000_000,
+        )
+        .unwrap_err();
+        assert_eq!(
+            err.keyed(),
+            Some((
+                "validation.sellWithoutPosition".to_string(),
+                serde_json::json!({ "ticker": "MSFT" })
+            ))
+        );
+        // A second currency for one position names both.
+        import_single_transaction(
+            &conn,
+            "aapl",
+            "Apple",
+            "buy",
+            "1",
+            "100",
+            "USD",
+            1_700_000_000,
+        )
+        .unwrap();
+        let err = import_single_transaction(
+            &conn,
+            "aapl",
+            "Apple",
+            "buy",
+            "1",
+            "100",
+            "EUR",
+            1_700_086_400,
+        )
+        .unwrap_err();
+        assert_eq!(
+            err.keyed(),
+            Some((
+                "validation.currencyMismatch".to_string(),
+                serde_json::json!({ "expected": "USD", "actual": "EUR" })
+            ))
+        );
+        // The same on the edit-a-position path.
+        let id = get_or_create_investment(&conn, "AAPL", "Apple Inc.", "USD").unwrap();
+        let mut eur = tx(&id, "buy", "1", 1_700_172_800);
+        eur.currency = "EUR".into();
+        let err = add_transaction_to_investment(&conn, &id, &eur).unwrap_err();
+        assert_eq!(
+            err.keyed().map(|(key, _)| key),
+            Some("validation.currencyMismatch".to_string())
         );
     }
 
@@ -2018,7 +2085,9 @@ mod bulk_writer_tests {
         assert_eq!(report.errors.len(), 1);
         assert_eq!(report.errors[0].index, 1);
         assert!(
-            report.errors[0].message.contains("Cannot sell"),
+            report.errors[0]
+                .message
+                .contains("validation.sellWithoutPosition"),
             "{:?}",
             report.errors
         );

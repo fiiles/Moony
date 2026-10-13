@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { ApiError, isAuthApiError, normalizeApiError, toApiError } from './api-error';
+import { ApiError, isAuthApiError, normalizeApiError, parseKeyed, toApiError } from './api-error';
 
 // Stand-in for the i18next `t` bound to the `common` namespace. Like the real one called with
 // `{ defaultValue: '' }`, it returns '' for unknown keys.
@@ -185,5 +185,58 @@ describe('isAuthApiError', () => {
     );
     expect(isAuthApiError(new Error('Authentication error: auth.wrongPassword'))).toBe(false);
     expect(isAuthApiError(null)).toBe(false);
+  });
+});
+
+describe('keyed validation errors with values', () => {
+  const translations: Record<string, string> = {
+    'validation.currencyMismatch': 'held in {{expected}}, transaction in {{actual}}',
+    'validation.stockImportLine': 'Line {{line}}: {{reason}}',
+    'validation.stockImportRowFailed': 'the row could not be saved.',
+    'errors.validation': 'The entered data is not valid.',
+  };
+  // Like i18next: interpolates {{name}} from the options, '' for an unknown key.
+  const tv = (key: string, options?: Record<string, unknown>) => {
+    const template = translations[key];
+    if (!template) return '';
+    return template.replace(/\{\{(\w+)\}\}/g, (_match, name: string) =>
+      String(options?.[name] ?? '')
+    );
+  };
+
+  it('splits a key from the JSON values after the bar', () => {
+    expect(parseKeyed('validation.currencyMismatch|{"expected":"USD","actual":"EUR"}')).toEqual({
+      key: 'validation.currencyMismatch',
+      params: { expected: 'USD', actual: 'EUR' },
+    });
+    expect(parseKeyed('validation.required')).toEqual({ key: 'validation.required', params: {} });
+    expect(parseKeyed('validation.x|{oops}')).toEqual({ key: 'validation.x', params: {} });
+    expect(parseKeyed('Invalid interest rate')).toBeNull();
+    expect(parseKeyed('validation.x|[1]')).toBeNull();
+  });
+
+  it('passes the values to the translator', () => {
+    const raw = 'Validation error: validation.currencyMismatch|{"actual":"EUR","expected":"USD"}';
+    const result = normalizeApiError(raw, tv);
+    expect(result.key).toBe('validation.currencyMismatch');
+    expect(result.message).toBe('held in USD, transaction in EUR');
+  });
+
+  it('translates a key carried inside a value', () => {
+    const raw =
+      'Validation error: validation.stockImportLine|{"line":3,"reason":"validation.stockImportRowFailed"}';
+    expect(normalizeApiError(raw, tv).message).toBe('Line 3: the row could not be saved.');
+  });
+
+  it('translates a keyed value that carries values of its own', () => {
+    const raw =
+      'Validation error: validation.stockImportLine|{"line":7,"reason":"validation.currencyMismatch|{\\"actual\\":\\"EUR\\",\\"expected\\":\\"USD\\"}"}';
+    expect(normalizeApiError(raw, tv).message).toBe('Line 7: held in USD, transaction in EUR');
+  });
+
+  it('falls back to the generic message for a key without a translation', () => {
+    const result = normalizeApiError('Validation error: validation.newKey|{"a":1}', tv);
+    expect(result.key).toBe('validation.newKey');
+    expect(result.message).toBe('The entered data is not valid.');
   });
 });

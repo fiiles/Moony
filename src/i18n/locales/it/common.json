@@ -261,7 +261,17 @@
     "dateInvalid": "Data non valida",
     "valueDateInvalid": "Data valuta non valida",
     "maturityDateInvalid": "Data di scadenza non valida",
-    "countryInvalid": "Scegli un paese dall'elenco."
+    "countryInvalid": "Scegli un paese dall'elenco.",
+    "bankAccountRequired": "Scegli un conto bancario.",
+    "tierToAboveFrom": "Il limite superiore deve essere maggiore di quello inferiore.",
+    "interestRateInvalid": "Inserisci un tasso di interesse valido.",
+    "timeframeInvalid": "Scegli mensile, trimestrale o annuale.",
+    "currencyMismatch": "Questa posizione è in {{expected}}, ma l'operazione è in {{actual}}. Tutte le operazioni di una posizione devono usare la stessa valuta.",
+    "sellWithoutPosition": "{{ticker}}: non c'è nessuna posizione aperta da vendere.",
+    "coingeckoIdConflict": "{{ticker}}: l'ID CoinGecko è diverso da quello salvato per questa moneta.",
+    "coingeckoIdForNewCoin": "{{ticker}}: una nuova moneta richiede il suo ID CoinGecko (ad esempio bitcoin) per recuperare i prezzi.",
+    "stockImportLine": "Riga {{line}}: {{reason}}",
+    "stockImportRowFailed": "non è stato possibile salvare la riga."
   },
   "auth": {
     "wrongPassword": "La password inserita non è corretta. Riprova.",

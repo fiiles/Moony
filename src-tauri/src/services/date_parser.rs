@@ -6,6 +6,8 @@
 //! - Smart format detection to distinguish DD-MM-YYYY from MM-DD-YYYY
 
 use chrono::{Datelike, NaiveDate};
+use unicode_normalization::char::is_combining_mark;
+use unicode_normalization::UnicodeNormalization;
 
 /// Detected date format family
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -47,8 +49,11 @@ fn strip_time_component(date_str: &str) -> &str {
         }
     }
 
-    if let Some(t_pos) = trimmed.find('T') {
-        // ISO 8601 format with 'T' separator
+    // ISO 8601 "T" separator: only between two digits, so "05 OCT 2024" and "Tue, 5 Jan" survive.
+    let bytes = trimmed.as_bytes();
+    if let Some(t_pos) = (1..bytes.len().saturating_sub(1)).find(|&i| {
+        bytes[i] == b'T' && bytes[i - 1].is_ascii_digit() && bytes[i + 1].is_ascii_digit()
+    }) {
         return &trimmed[..t_pos];
     }
 
@@ -164,6 +169,9 @@ pub fn detect_date_format_from_samples(samples: &[&str]) -> DateFormatFamily {
 /// Parse a date string with a specific chrono format string.
 /// Handles time components by stripping them first.
 pub fn parse_date_with_format(date_str: &str, format: &str) -> Option<NaiveDate> {
+    if uses_token_fields(format) {
+        return parse_with_token_format(date_str, format);
+    }
     let stripped = strip_time_component(date_str);
 
     // First try the exact format
@@ -296,6 +304,12 @@ pub fn parse_date(date_str: &str, preferred_format: Option<&str>) -> Option<Naiv
         if let Some(date) = parse_date_with_format(stripped, format) {
             return Some(date);
         }
+    }
+
+    // Month names and CJK units: the layout is read from the text itself.
+    if let Some(layout) = text_layout(stripped) {
+        return parse_with_token_format(stripped, &layout)
+            .filter(|date| (1900..=2100).contains(&date.year()));
     }
 
     // Try common chrono formats
@@ -493,6 +507,9 @@ fn sample_parts(sample: &str) -> Option<SampleParts> {
 /// none left the result is `%Y-%m-%d` flagged ambiguous. A column of
 /// separator-less `yyyyMMdd` dates (and nothing separated) is `%Y%m%d`.
 pub fn detect_date_format(samples: &[&str]) -> DetectedDateFormat {
+    if let Some(detected) = detect_text_date_format(samples) {
+        return detected;
+    }
     let parts: Vec<SampleParts> = samples.iter().filter_map(|s| sample_parts(s)).collect();
     if parts.is_empty() {
         // Separator-less dates have no parts to split; their order is fixed.
@@ -590,6 +607,430 @@ pub fn detect_date_format(samples: &[&str]) -> DetectedDateFormat {
         format,
         ambiguous: year_last && !decisive,
     }
+}
+
+// ---------------------------------------------------------------------------
+// Dates written with month names ("05 Jan 2024", "Jan 5, 2024", "5. Januar 2024") or with unit
+// characters ("2024年1月5日", "2024년 1월 5일"). chrono reads English month names only, so a format
+// that names a month (`%b`, `%B`, `%h`) or contains unit characters is read here instead: the
+// format gives the order of the numbers, the month word is looked up in many languages.
+// ---------------------------------------------------------------------------
+
+/// Characters that only label a number in CJK and Korean dates.
+const UNIT_CHARS: &str = "年月日년월일";
+
+/// Month names, folded (lower case, no diacritics): English, German, French, Spanish, Italian,
+/// Dutch, Portuguese, Swedish, Norwegian, Danish, Polish and Czech (the last two in the genitive
+/// form dates use). A word of three or more letters names a month when it begins one of these names
+/// and no other month begins with it: `mar` is March everywhere, `jui` could be June or July in
+/// French and is refused.
+const MONTH_NAMES: [[&str; 12]; 12] = [
+    [
+        "january",
+        "february",
+        "march",
+        "april",
+        "may",
+        "june",
+        "july",
+        "august",
+        "september",
+        "october",
+        "november",
+        "december",
+    ],
+    [
+        "januar",
+        "februar",
+        "marz",
+        "april",
+        "mai",
+        "juni",
+        "juli",
+        "august",
+        "september",
+        "oktober",
+        "november",
+        "dezember",
+    ],
+    [
+        "janvier",
+        "fevrier",
+        "mars",
+        "avril",
+        "mai",
+        "juin",
+        "juillet",
+        "aout",
+        "septembre",
+        "octobre",
+        "novembre",
+        "decembre",
+    ],
+    [
+        "enero",
+        "febrero",
+        "marzo",
+        "abril",
+        "mayo",
+        "junio",
+        "julio",
+        "agosto",
+        "septiembre",
+        "octubre",
+        "noviembre",
+        "diciembre",
+    ],
+    [
+        "gennaio",
+        "febbraio",
+        "marzo",
+        "aprile",
+        "maggio",
+        "giugno",
+        "luglio",
+        "agosto",
+        "settembre",
+        "ottobre",
+        "novembre",
+        "dicembre",
+    ],
+    [
+        "januari",
+        "februari",
+        "maart",
+        "april",
+        "mei",
+        "juni",
+        "juli",
+        "augustus",
+        "september",
+        "oktober",
+        "november",
+        "december",
+    ],
+    [
+        "janeiro",
+        "fevereiro",
+        "marco",
+        "abril",
+        "maio",
+        "junho",
+        "julho",
+        "agosto",
+        "setembro",
+        "outubro",
+        "novembro",
+        "dezembro",
+    ],
+    [
+        "januari",
+        "februari",
+        "mars",
+        "april",
+        "maj",
+        "juni",
+        "juli",
+        "augusti",
+        "september",
+        "oktober",
+        "november",
+        "december",
+    ],
+    [
+        "januar",
+        "februar",
+        "mars",
+        "april",
+        "mai",
+        "juni",
+        "juli",
+        "august",
+        "september",
+        "oktober",
+        "november",
+        "desember",
+    ],
+    [
+        "januar",
+        "februar",
+        "marts",
+        "april",
+        "maj",
+        "juni",
+        "juli",
+        "august",
+        "september",
+        "oktober",
+        "november",
+        "december",
+    ],
+    [
+        "stycznia",
+        "lutego",
+        "marca",
+        "kwietnia",
+        "maja",
+        "czerwca",
+        "lipca",
+        "sierpnia",
+        "wrzesnia",
+        "pazdziernika",
+        "listopada",
+        "grudnia",
+    ],
+    [
+        "ledna",
+        "unora",
+        "brezna",
+        "dubna",
+        "kvetna",
+        "cervna",
+        "cervence",
+        "srpna",
+        "zari",
+        "rijna",
+        "listopadu",
+        "prosince",
+    ],
+];
+
+/// Abbreviations and spellings that no full name above begins with.
+const MONTH_SPELLINGS: [(&str, u32); 3] = [("mrt", 3), ("mrz", 3), ("setiembre", 9)];
+
+/// The month a word names (`Jan`, `janv.`, `Januar`, `stycznia`), None when it names none or
+/// more than one.
+fn month_from_word(word: &str) -> Option<u32> {
+    let folded: String = word
+        .to_lowercase()
+        .nfd()
+        .filter(|c| !is_combining_mark(*c))
+        .collect();
+    if folded.chars().count() < 3 {
+        return None;
+    }
+    if let Some((_, month)) = MONTH_SPELLINGS.iter().find(|(name, _)| *name == folded) {
+        return Some(*month);
+    }
+    let mut found = None;
+    for names in &MONTH_NAMES {
+        for (index, name) in names.iter().enumerate() {
+            if name.starts_with(folded.as_str()) {
+                let month = index as u32 + 1;
+                match found {
+                    None => found = Some(month),
+                    Some(previous) if previous != month => return None,
+                    Some(_) => {}
+                }
+            }
+        }
+    }
+    found
+}
+
+/// A digit run or a letter run of a date text.
+#[derive(Debug, PartialEq)]
+enum Piece {
+    Number(String),
+    Word(String),
+}
+
+/// `value` without a time part (everything from the last space before the first `:`).
+fn cut_time(value: &str) -> &str {
+    match value.find(':') {
+        Some(colon) => value[..colon]
+            .rfind(char::is_whitespace)
+            .map_or("", |space| &value[..space]),
+        None => value,
+    }
+}
+
+/// The digit runs and letter runs of `value` in order; the time, punctuation and the CJK unit
+/// characters are dropped ("1st" is the number 1 and the word "st").
+fn pieces(value: &str) -> Vec<Piece> {
+    let mut out = Vec::new();
+    let mut run = String::new();
+    let mut numeric = false;
+    for c in cut_time(value).chars().chain(std::iter::once(' ')) {
+        let kind = if c.is_ascii_digit() {
+            Some(true)
+        } else if c.is_alphabetic() && !UNIT_CHARS.contains(c) {
+            Some(false)
+        } else {
+            None
+        };
+        if kind != Some(numeric) && !run.is_empty() {
+            let text = std::mem::take(&mut run);
+            out.push(if numeric {
+                Piece::Number(text)
+            } else {
+                Piece::Word(text)
+            });
+        }
+        if let Some(is_number) = kind {
+            numeric = is_number;
+            run.push(c);
+        }
+    }
+    out
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Field {
+    Year4,
+    Year2,
+    Month,
+    Day,
+    MonthName,
+}
+
+/// The date fields of a chrono format in the order they appear (`%d. %B %Y` is day, month name, year).
+fn format_fields(format: &str) -> Vec<Field> {
+    let mut fields = Vec::new();
+    let mut chars = format.chars();
+    while let Some(c) = chars.next() {
+        if c != '%' {
+            continue;
+        }
+        match chars.next() {
+            Some('Y') => fields.push(Field::Year4),
+            Some('y') => fields.push(Field::Year2),
+            Some('m') => fields.push(Field::Month),
+            Some('d' | 'e') => fields.push(Field::Day),
+            Some('b' | 'B' | 'h') => fields.push(Field::MonthName),
+            _ => {}
+        }
+    }
+    fields
+}
+
+/// Whether `format` needs the token parser: it names a month or contains unit characters.
+fn uses_token_fields(format: &str) -> bool {
+    format.contains("%b")
+        || format.contains("%B")
+        || format.contains("%h")
+        || format.chars().any(|c| UNIT_CHARS.contains(c))
+}
+
+/// Read `value` with a format that [`uses_token_fields`]: the numbers in the order of the format's
+/// numeric fields, the month from the one word that names a month (other words, such as a weekday,
+/// "de" or "th", are ignored). None when the pieces do not fit the format.
+fn parse_with_token_format(value: &str, format: &str) -> Option<NaiveDate> {
+    let fields = format_fields(format);
+    let parts = pieces(value);
+    let numbers: Vec<&str> = parts
+        .iter()
+        .filter_map(|p| match p {
+            Piece::Number(n) => Some(n.as_str()),
+            Piece::Word(_) => None,
+        })
+        .collect();
+    let named_month = if fields.contains(&Field::MonthName) {
+        let mut months = parts.iter().filter_map(|p| match p {
+            Piece::Word(w) => month_from_word(w),
+            Piece::Number(_) => None,
+        });
+        let first = months.next()?;
+        if months.next().is_some() {
+            return None;
+        }
+        Some(first)
+    } else {
+        None
+    };
+    let numeric: Vec<Field> = fields
+        .iter()
+        .copied()
+        .filter(|f| *f != Field::MonthName)
+        .collect();
+    if numbers.len() != numeric.len() {
+        return None;
+    }
+    let (mut year, mut month, mut day) = (None, named_month, None);
+    for (field, digits) in numeric.iter().zip(numbers) {
+        let n: u32 = digits.parse().ok()?;
+        match field {
+            Field::Year4 if digits.len() == 4 => year = Some(n as i32),
+            Field::Year2 if digits.len() == 2 => year = Some(expand_two_digit_year(n)),
+            Field::Month => month = Some(n),
+            Field::Day => day = Some(n),
+            _ => return None,
+        }
+    }
+    NaiveDate::from_ymd_opt(year?, month?, day?)
+}
+
+const FORMAT_CJK: &str = "%Y年%m月%d日";
+const FORMAT_KOREAN: &str = "%Y년 %m월 %d일";
+
+/// The format a date text with a month name or unit characters is written in, read from the text
+/// itself: day, month name, year (`5 Jan 2024`, `5. Januar 2024`), month name, day, year
+/// (`Jan 5, 2024`), year, month name, day, or the CJK and Korean notations. None for anything else.
+fn text_layout(value: &str) -> Option<String> {
+    if value.contains('年') {
+        return Some(FORMAT_CJK.to_string());
+    }
+    if value.contains('년') {
+        return Some(FORMAT_KOREAN.to_string());
+    }
+    let parts = pieces(value);
+    let mut months = parts
+        .iter()
+        .enumerate()
+        .filter(|(_, p)| matches!(p, Piece::Word(w) if month_from_word(w).is_some()))
+        .map(|(index, _)| index);
+    let month_at = months.next()?;
+    if months.next().is_some() {
+        return None;
+    }
+    let numbers: Vec<(usize, &str)> = parts
+        .iter()
+        .enumerate()
+        .filter_map(|(index, p)| match p {
+            Piece::Number(n) => Some((index, n.as_str())),
+            Piece::Word(_) => None,
+        })
+        .collect();
+    let (first_at, first, second_at, second) = match numbers.as_slice() {
+        [(a, x), (b, y)] => (*a, *x, *b, *y),
+        _ => return None,
+    };
+    let year_directive = |digits: &str| match digits.len() {
+        4 => Some("%Y"),
+        2 => Some("%y"),
+        _ => None,
+    };
+    if first_at < month_at && month_at < second_at {
+        if first.len() == 4 {
+            return Some("%Y %b %d".to_string());
+        }
+        let year = year_directive(second)?;
+        let dotted = value
+            .trim_start()
+            .trim_start_matches(|c: char| c.is_ascii_digit())
+            .starts_with('.');
+        return Some(if dotted {
+            format!("%d. %B {year}")
+        } else {
+            format!("%d %b {year}")
+        });
+    }
+    if month_at < first_at {
+        return Some(format!("%b %d, {}", year_directive(second)?));
+    }
+    None
+}
+
+/// The common layout of the text dates among `samples` (None when none of them is one);
+/// `ambiguous` when they do not all use the same.
+fn detect_text_date_format(samples: &[&str]) -> Option<DetectedDateFormat> {
+    let layouts: Vec<String> = samples.iter().filter_map(|s| text_layout(s)).collect();
+    let first = layouts.first()?.clone();
+    let ambiguous = layouts.iter().any(|layout| *layout != first);
+    Some(DetectedDateFormat {
+        format: first,
+        ambiguous,
+    })
 }
 
 #[cfg(test)]
@@ -1052,5 +1493,112 @@ mod tests {
                 );
             }
         }
+    }
+
+    fn date(y: i32, m: u32, d: u32) -> NaiveDate {
+        NaiveDate::from_ymd_opt(y, m, d).unwrap()
+    }
+
+    #[test]
+    fn upper_case_months_and_weekdays_survive_the_time_stripping() {
+        assert_eq!(strip_time_component("05 OCT 2024"), "05 OCT 2024");
+        assert_eq!(strip_time_component("Tue, 5 Jan 2024"), "Tue, 5 Jan 2024");
+        // The ISO separator still cuts.
+        assert_eq!(strip_time_component("2024-01-15T14:30:00"), "2024-01-15");
+    }
+
+    #[test]
+    fn month_names_parse_with_their_own_format_in_many_languages() {
+        for (text, format, expected) in [
+            ("05 Jan 2024", "%d %b %Y", date(2024, 1, 5)),
+            ("5 January 2024", "%d %B %Y", date(2024, 1, 5)),
+            ("Jan 5, 2024", "%b %d, %Y", date(2024, 1, 5)),
+            ("January 5th, 2024", "%B %d, %Y", date(2024, 1, 5)),
+            ("5. Januar 2024", "%d. %B %Y", date(2024, 1, 5)),
+            ("05 OCT 2024", "%d %b %Y", date(2024, 10, 5)),
+            ("5 de enero de 2024", "%d %B %Y", date(2024, 1, 5)),
+            ("15 mars 2024", "%d %B %Y", date(2024, 3, 15)),
+            ("5 janv. 2024", "%d %b %Y", date(2024, 1, 5)),
+            ("5 stycznia 2024", "%d %B %Y", date(2024, 1, 5)),
+            ("5. ledna 2024", "%d. %B %Y", date(2024, 1, 5)),
+            ("3 mrt 2024", "%d %b %Y", date(2024, 3, 3)),
+            ("Tue, 5 Mar 2024", "%d %b %Y", date(2024, 3, 5)),
+            ("5 Jan 24", "%d %b %y", date(2024, 1, 5)),
+            ("5 Jan 2024 14:30:00", "%d %b %Y", date(2024, 1, 5)),
+            ("2024 Jan 05", "%Y %b %d", date(2024, 1, 5)),
+            ("2024年1月5日", "%Y年%m月%d日", date(2024, 1, 5)),
+            ("2024年01月05日 14:30", "%Y年%m月%d日", date(2024, 1, 5)),
+            ("2024년 1월 5일", "%Y년 %m월 %d일", date(2024, 1, 5)),
+        ] {
+            assert_eq!(
+                parse_date_strict(text, format),
+                Some(expected),
+                "{text} with {format}"
+            );
+        }
+    }
+
+    #[test]
+    fn a_text_date_that_does_not_fit_its_format_is_refused() {
+        assert_eq!(parse_date_strict("5 Foo 2024", "%d %b %Y"), None);
+        // Two month words, a missing day, a stray number, a day that does not exist.
+        assert_eq!(parse_date_strict("5 Jan Feb 2024", "%d %b %Y"), None);
+        assert_eq!(parse_date_strict("Jan 2024", "%b %d, %Y"), None);
+        assert_eq!(parse_date_strict("5 Jan 2024 8", "%d %b %Y"), None);
+        assert_eq!(parse_date_strict("31 Feb 2024", "%d %b %Y"), None);
+        // "jui" could be June or July in French.
+        assert_eq!(parse_date_strict("5 jui 2024", "%d %b %Y"), None);
+        // A numeric format is not influenced.
+        assert_eq!(
+            parse_date_strict("05.01.2024", "%d.%m.%Y"),
+            Some(date(2024, 1, 5))
+        );
+    }
+
+    #[test]
+    fn the_lenient_parser_reads_month_names_without_a_format() {
+        for text in [
+            "05 Jan 2024",
+            "Jan 5, 2024",
+            "5. Januar 2024",
+            "2024年1月5日",
+            "5 de enero de 2024",
+            "5 jan 2024 08:30:00",
+        ] {
+            assert_eq!(parse_date(text, None), Some(date(2024, 1, 5)), "{text}");
+        }
+        assert_eq!(parse_date("5 Foo 2024", None), None);
+    }
+
+    #[test]
+    fn detection_recognises_month_name_and_cjk_columns() {
+        for (samples, format) in [
+            (vec!["05 Jan 2024", "17 Feb 2024"], "%d %b %Y"),
+            (vec!["Jan 5, 2024", "Feb 17, 2024"], "%b %d, %Y"),
+            (vec!["5. Januar 2024", "17. Februar 2024"], "%d. %B %Y"),
+            (vec!["5 Jan 24", "17 Feb 24"], "%d %b %y"),
+            (vec!["2024 Jan 05"], "%Y %b %d"),
+            (vec!["2024年1月5日", "2024年2月17日"], "%Y年%m月%d日"),
+            (vec!["2024년 1월 5일"], "%Y년 %m월 %d일"),
+        ] {
+            let detected = detect_date_format(&samples);
+            assert_eq!(detected.format, format, "{samples:?}");
+            assert!(!detected.ambiguous, "{samples:?}");
+            // What was detected reads every sample.
+            for sample in &samples {
+                assert!(
+                    parse_date_strict(sample, &detected.format).is_some(),
+                    "{sample}"
+                );
+            }
+        }
+        // Numeric columns are untouched.
+        assert_eq!(
+            detect_date_format(&["2024-01-15T14:30:00"]).format,
+            "%Y-%m-%d"
+        );
+        assert_eq!(detect_date_format(&["15.01.2024 10:00"]).format, "%d.%m.%Y");
+        // Mixed layouts are flagged for the user.
+        assert!(detect_date_format(&["05 Jan 2024", "Jan 5, 2024"]).ambiguous);
     }
 }

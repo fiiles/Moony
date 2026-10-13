@@ -713,6 +713,13 @@ export const DATE_FORMATS: ReadonlyArray<{ value: string; label: string }> = [
   { value: '%d/%m/%y', label: 'DD/MM/YY' },
   { value: '%m/%d/%y', label: 'MM/DD/YY' },
   { value: '%y-%m-%d', label: 'YY-MM-DD' },
+  // Month names are read in many languages, whatever the notation says; the CJK and Korean
+  // notations have unit characters instead of separators.
+  { value: '%d %b %Y', label: 'DD MMM YYYY' },
+  { value: '%b %d, %Y', label: 'MMM DD, YYYY' },
+  { value: '%d. %B %Y', label: 'DD. MMMM YYYY' },
+  { value: '%Y年%m月%d日', label: 'YYYY年M月D日' },
+  { value: '%Y년 %m월 %d일', label: 'YYYY년 M월 D일' },
 ];
 
 /** The known formats, then the current/detected ones if they are none of them. */

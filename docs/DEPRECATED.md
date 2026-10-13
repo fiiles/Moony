@@ -102,6 +102,23 @@ tag chip, so a position carrying two tags of one group showed three different va
 | `get_tag_metrics` (command), `stockTagsApi.getTagMetrics`, the `['tag-metrics']` query key and its invalidations, the `TagMetrics` / `TagMetricsReport` interfaces in `shared/schema.ts` | The page reads its per-tag figures from the performance response; nothing in the UI called the command after the rebuild. The Rust service `position_reports::tag_metrics` (with `tag_metrics_from`) and the `TagMetrics` / `TagMetricsReport` Rust types, their `bindings.rs` registration and `generated-types.ts` entries went with it (the MCP tool `tag_metrics` has its own `mcp::analytics::tag_metrics` on `positions::tag_totals`) | `get_stock_performance` (`useStockPerformance`) for return and contribution per part; `get_stocks_analysis` for positions with their tags |
 | `src/components/stocks/TagShareBars.tsx`, `src/utils/tag-share.ts` (`buildTagShareRows`) and the keys `stocksAnalysis.metricsChart` / `stocksAnalysis.metricsChartDescription` | The "share of portfolio by tag" bars were not rendered anywhere after the redesign (0 importers); a position could carry several tags, so their shares could add up past 100 % | The value share column of the performance board and the contribution card |
 
+## Removed with history from dated facts (do not re-add)
+
+History days are derived from dated facts and rebuilt through one queue
+(`docs/specs/2026-10-13-history-from-dated-facts-design.md`). The old paths UPDATEd only rows that
+already existed, copied savings, loans, real estate and bonds from the nearest live row, valued
+past days with today's holdings, and ran synchronously with their errors swallowed by `.ok()`.
+
+| Removed | Why it was removed | Use instead |
+|---|---|---|
+| `portfolio_history::{rebuild_ticker_class, create_missing_days, aggregate_ticker_history, aggregate_days}`, `history_recalc::{aggregate_stocks, aggregate_stock_chunk}` | Derived one ticker class from per-ticker rows (the interim fix created days with statics carried from a live row) | `history_days::rebuild_days` (`plan_rebuild`, `prune_before_first_fact`, `rebuild_chunk`) |
+| `portfolio_history::{carried_statics_from_nearest_live, StaticBreakdowns, update_classes, AssetClassKind}` | Statics were copied, never derived; a manual balance or valuation changed nothing in the past | `history_days::Facts::day_values` (ADR 0016); `portfolio_history::{update_class_set, ClassSet}` |
+| `commands/portfolio.rs`: `recalculate_history_from_date`, `recalculate_asset_history_from_date`, `write_recalculated_day`, `historical_transaction_breakdowns`, `calculate_asset_breakdown_for_day`, `AssetType`, `current_static_breakdowns` | Synchronous full recalculations that aborted on a network error even for other-asset-only changes and wrote nothing on interior gaps | `portfolio::schedule_history_rebuild` with a `Job` (`services/history_recalc.rs`) |
+| `trigger_historical_recalculation`, `trigger_historical_recalculation_for_{asset,stock_ticker,crypto_ticker}`, `update_portfolio_{stocks,crypto,history}_from_ticker_table(s)`, `schedule_stock_history_rebuild` | Per-class triggers the UI commands awaited and `.ok()`-swallowed; most writes (balances, valuations, loans, bonds) had no trigger at all | `portfolio::schedule_history_rebuild` (single entry point; the table of triggers is A6 of the spec) |
+| `recalculate_crypto_ticker_history{,_strict}`, `spawn_crypto_history_rebuild`, the triple-returning `crypto_rebuild_jobs` | The crypto rebuild ran synchronously inside the command or as an untracked task | `history_recalc::{rebuild_crypto_ticker, rebuild_crypto_ticker_strict, crypto_ticker_jobs}` and `Job::CryptoTicker` (the worker reads the CoinGecko id from `crypto_investments`) |
+| `backfill_missing_snapshots`, `breakdowns_for_backfill_day`, `backfill::{plan_backfill, value_positions_on_day, BACKFILL_MAX_DAYS_PER_RUN, PRICE_LEAD_IN_DAYS}` | Filled gaps after the oldest row only (never extended history backwards) and valued past days with today's holdings | `history_plan::plan_startup` (the one-time rebuild at version 1, then the repair of missing days) |
+| `mcp_refresh::earliest_other_asset_date` | Fallback that rebuilt from the first other-asset transaction when a write gave no date | Every MCP write tool emits its domain and earliest day (`bank-accounts`, `real-estate`, `loans`, `bonds`, `other-assets`, …) |
+
 ## Deprecated type sources
 
 | Path | Why deprecated | Use instead |

@@ -6,9 +6,13 @@
 //! when a dated fact exists.
 //!
 //! * [`Facts`] reads every fact once (accounts and their balance records, properties and
-//!   their valuations, loan ledgers, other assets, bonds, the ticker series). Its
-//!   [`Facts::day_values`] then walks the days with per-item cursors, so a rebuild costs
-//!   no query per day.
+//!   their valuations, loan ledgers, other assets, bonds, the ticker series, and what the
+//!   stored live rows hold beyond the facts). Its [`Facts::day_values`] then walks the days
+//!   with per-item cursors, so a rebuild costs no query per day.
+//! * What the facts do not date (an account without balance records, bonds, an other asset
+//!   with a quantity and no transactions) is not copied from today: a backfill day takes it
+//!   from the nearest live row as the remainder of that row over the facts derived for its
+//!   day ([`LiveRemainder`], A3), so a class does not jump between rebuilt days and live ones.
 //! * [`earliest_fact_day`] is the first day any fact is dated (A2): history starts there.
 //! * [`rebuild_days`] writes one row for every day of a range (A3, A4), in chunks of
 //!   [`CHUNK_DAYS`] days, one transaction each. [`plan_rebuild`], [`prune_before_first_fact`]
@@ -18,18 +22,20 @@
 //! Every write goes through `services/portfolio_history.rs`, the single writer of
 //! `portfolio_metrics_history`.
 
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use rusqlite::Connection;
 
 use crate::error::Result;
+use crate::services::currency::breakdown_from_json;
 use crate::services::history_recalc::{chunk_ranges, CHUNK_DAYS};
 use crate::services::loan_amortization::{day_floor, loan_balance_at, LedgerEventKind, LoanLedger};
 use crate::services::loans;
 use crate::services::parsing::parse_money;
 use crate::services::portfolio_history::{
-    day_sources, delete_backfill_before, load_ticker_series, update_class_set, upsert_snapshot,
-    ClassBreakdowns, ClassSet, SnapshotSource, TickerSeries, SECONDS_PER_DAY,
+    day_sources, delete_backfill_before, investment_real_estate, load_ticker_series,
+    update_class_set, upsert_snapshot, ClassBreakdowns, ClassSet, SnapshotSource, TickerSeries,
+    SECONDS_PER_DAY,
 };
 use crate::services::ticker_history::RebuildStats;
 
@@ -56,8 +62,9 @@ fn without_zeros(mut breakdown: Breakdown) -> Breakdown {
 /// One day of every class, with the classes the facts cover completely.
 #[derive(Debug, Clone, Default)]
 pub struct DayValues {
-    /// All eight breakdowns. A class' items the facts do not cover are carried when they
-    /// are undated accounts and bonds, and left out otherwise (A3).
+    /// All eight breakdowns. What the facts do not cover of a class is the remainder of the
+    /// nearest live row (A3), else the undated items at their current value; an item that is
+    /// not counted (an account before its first record) adds nothing of its own.
     pub breakdowns: ClassBreakdowns,
     /// The classes whose every item the facts cover on the day (A1, "known"). A live row
     /// is rewritten for these only (D1). Stocks and crypto are always known; bonds never.
@@ -83,6 +90,11 @@ impl<T> Steps<T> {
             self.taken += 1;
         }
         &self.rows[before..self.taken]
+    }
+
+    /// Put the cursor back before the first row.
+    fn rewind(&mut self) {
+        self.taken = 0;
     }
 
     /// The newest row passed so far (the last of its day, in the order the rows came in).
@@ -149,130 +161,232 @@ struct OtherAsset {
     valuations: Steps<Amount>,
 }
 
-/// Every fact the history of a profile is derived from, read once.
-pub struct Facts {
+/// One class on one day, split by where its amounts come from.
+#[derive(Debug, Clone, Default)]
+struct ClassDay {
+    /// What the dated facts give: the items they cover, plus the estimate of a loan whose
+    /// manual balances only start later (dated by the loan's start; a live row pins it, see
+    /// [`LiveRemainder`]).
+    derived: Breakdown,
+    /// Items counted on the day that have no date at all: the current balance of an account
+    /// without records, an other asset with a quantity and no transactions, the bonds.
+    carried: Breakdown,
+    /// Every item of the class is covered by the facts (A1, "known"); `carried` is empty then.
+    covered: bool,
+}
+
+/// Real estate of one day, split by the property's current type. No item of it is carried:
+/// a property is either counted from a fact or not counted.
+#[derive(Debug, Clone, Default)]
+struct RealEstateDay {
+    personal: Breakdown,
+    investment: Breakdown,
+    covered: bool,
+}
+
+/// Every class that has no ticker series, on one day.
+struct StaticDay {
+    savings: ClassDay,
+    loans: ClassDay,
+    real_estate: RealEstateDay,
+    other_assets: ClassDay,
+    bonds: ClassDay,
+}
+
+/// What a live row holds beyond what the facts derive for its day: the "unknown remainder" R
+/// of A3, per class and per currency, `recorded - derived`. A backfill day takes it from the
+/// nearest live row, so the part of a class the facts do not date follows what was recorded
+/// instead of jumping between today's undated values and the recorded ones.
+///
+/// Empty for a class the facts cover completely on the live day: such a live row is rewritten
+/// to the derived values (D1), so nothing of it is unexplained. Reading the remainder from the
+/// derived values rather than from the stored row also keeps a rebuild idempotent: the
+/// rewrite does not change what the next one reads.
+///
+/// A negative remainder (the facts derive more than was recorded) is kept for savings only,
+/// where an overdraft is a legitimate negative amount; the other classes cannot be negative,
+/// so a negative figure there is a stale record and counts as 0. A remainder below half a
+/// cent is float residue and is dropped, a zero entry with it.
+#[derive(Debug, Clone, Default)]
+struct LiveRemainder {
+    day: i64,
+    savings: Breakdown,
+    loans: Breakdown,
+    bonds: Breakdown,
+    personal: Breakdown,
+    investment: Breakdown,
+    other_assets: Breakdown,
+}
+
+/// Below this a remainder is float residue, not money.
+const REMAINDER_EPSILON: f64 = 0.005;
+
+/// `recorded - derived` per currency, see [`LiveRemainder`].
+fn remainder(recorded: &Breakdown, derived: &Breakdown, allow_negative: bool) -> Breakdown {
+    let currencies: BTreeSet<&String> = recorded.keys().chain(derived.keys()).collect();
+    let mut rest = Breakdown::new();
+    for currency in currencies {
+        let amount = recorded.get(currency).copied().unwrap_or(0.0)
+            - derived.get(currency).copied().unwrap_or(0.0);
+        if amount.abs() < REMAINDER_EPSILON || (amount < 0.0 && !allow_negative) {
+            continue;
+        }
+        rest.insert(currency.clone(), amount);
+    }
+    rest
+}
+
+/// The remainder of a class on a live day: none when the facts cover the class there.
+fn class_remainder(day: &ClassDay, recorded: &Breakdown, allow_negative: bool) -> Breakdown {
+    if day.covered {
+        Breakdown::new()
+    } else {
+        remainder(recorded, &day.derived, allow_negative)
+    }
+}
+
+/// The live row a backfill day takes its remainder from: the nearest one dated on or before
+/// the day, else the earliest later one (today's row counts like any other, so it serves only
+/// when it is the profile's only live row). `live` is sorted by day.
+fn nearest_live(live: &[LiveRemainder], day: i64) -> Option<&LiveRemainder> {
+    let later = live.partition_point(|row| row.day <= day);
+    later
+        .checked_sub(1)
+        .and_then(|index| live.get(index))
+        .or_else(|| live.first())
+}
+
+/// A class on a day: what the facts derive, plus what they do not cover. An uncovered class
+/// takes the remainder of the nearest live row (`remainder`), or, with no live row at all,
+/// the undated items at their current value (`carried`). A covered class is the derived
+/// amounts alone.
+fn completed(
+    derived: &Breakdown,
+    carried: &Breakdown,
+    uncovered: bool,
+    remainder: Option<&Breakdown>,
+) -> Breakdown {
+    let mut value = derived.clone();
+    let rest = match remainder {
+        Some(rest) if uncovered => rest,
+        _ => carried,
+    };
+    for (currency, amount) in rest {
+        add(&mut value, currency, *amount);
+    }
+    without_zeros(value)
+}
+
+/// The facts of every class that has no ticker series, with their forward cursors.
+struct Statics {
     accounts: Vec<Account>,
     properties: Vec<Property>,
     loans: Vec<Loan>,
     assets: Vec<OtherAsset>,
-    /// Today's bonds: no purchase date, so they carry on every day (D3).
+    /// Today's bonds: no purchase date, so no fact dates them (D3).
     bonds: Breakdown,
-    stocks: BTreeMap<String, TickerSeries>,
-    crypto: BTreeMap<String, TickerSeries>,
-    /// The last day valued: the cursors only move forward.
-    last_day: Option<i64>,
 }
 
-impl Facts {
-    /// Read the facts of every class. `until_exclusive` bounds the ticker series: the days
-    /// to value are before it (a rebuild passes today's start).
-    pub fn load(conn: &Connection, until_exclusive: i64) -> Result<Self> {
+impl Statics {
+    fn load(conn: &Connection) -> Result<Self> {
         Ok(Self {
             accounts: load_accounts(conn)?,
             properties: load_properties(conn)?,
             loans: load_loans(conn)?,
             assets: load_other_assets(conn)?,
             bonds: load_bonds(conn)?,
-            stocks: load_ticker_series(
-                conn,
-                "stock_value_history",
-                "investment_transactions",
-                until_exclusive,
-            )?,
-            crypto: load_ticker_series(
-                conn,
-                "crypto_value_history",
-                "crypto_transactions",
-                until_exclusive,
-            )?,
-            last_day: None,
         })
     }
 
-    /// The value of every class on `day` (spec A1). The cursors only move forward, so the
-    /// days of one `Facts` must not decrease.
-    pub fn day_values(&mut self, day: i64) -> DayValues {
-        debug_assert!(
-            self.last_day.is_none_or(|last| day >= last),
-            "history days must be valued in ascending order"
-        );
-        self.last_day = Some(day);
+    /// Put every cursor back before the first day, to walk the days again from the start.
+    fn rewind(&mut self) {
+        for account in &mut self.accounts {
+            account.records.rewind();
+        }
+        for property in &mut self.properties {
+            property.valuations.rewind();
+        }
+        for asset in &mut self.assets {
+            asset.changes.rewind();
+            asset.valuations.rewind();
+            asset.quantity = 0.0;
+        }
+    }
 
-        let (savings, savings_known) = self.savings_on(day);
-        let (loans, loans_known) = self.loans_on(day);
-        let (personal, investment, real_estate_known) = self.real_estate_on(day);
-        let (other_assets, other_assets_known) = self.other_assets_on(day);
-        DayValues {
-            breakdowns: ClassBreakdowns {
-                savings: without_zeros(savings),
-                investments: without_zeros(ticker_value(&mut self.stocks, day)),
-                crypto: without_zeros(ticker_value(&mut self.crypto, day)),
-                bonds: without_zeros(self.bonds.clone()),
-                real_estate_personal: without_zeros(personal),
-                real_estate_investment: without_zeros(investment),
-                loans: without_zeros(loans),
-                other_assets: without_zeros(other_assets),
-            },
-            known: ClassSet {
-                savings: savings_known,
-                investments: true,
-                crypto: true,
-                bonds: false,
-                real_estate: real_estate_known,
-                loans: loans_known,
-                other_assets: other_assets_known,
+    /// Every static class on `day` (spec A1). The cursors only move forward, so the days of
+    /// one walk must not decrease.
+    fn on(&mut self, day: i64) -> StaticDay {
+        StaticDay {
+            savings: self.savings_on(day),
+            loans: self.loans_on(day),
+            real_estate: self.real_estate_on(day),
+            other_assets: self.other_assets_on(day),
+            bonds: ClassDay {
+                derived: Breakdown::new(),
+                carried: self.bonds.clone(),
+                covered: false,
             },
         }
     }
 
     /// Savings: the newest balance record on or before the day, in its own currency. An
     /// account is not counted before its first record (D4); an account without any record
-    /// carries its current balance. Both are unknown. Accounts excluded from the balance
+    /// carries its current balance. Both are uncovered. Accounts excluded from the balance
     /// are never loaded.
-    fn savings_on(&mut self, day: i64) -> (Breakdown, bool) {
-        let mut breakdown = Breakdown::new();
-        let mut known = true;
+    fn savings_on(&mut self, day: i64) -> ClassDay {
+        let mut savings = ClassDay {
+            covered: true,
+            ..ClassDay::default()
+        };
         for account in &mut self.accounts {
             account.records.advance(day);
             match account.records.latest() {
-                Some(record) => add(&mut breakdown, &record.currency, record.value),
+                Some(record) => add(&mut savings.derived, &record.currency, record.value),
                 None if account.records.first().is_none() => {
-                    add(&mut breakdown, &account.currency, account.current_balance);
-                    known = false;
+                    add(
+                        &mut savings.carried,
+                        &account.currency,
+                        account.current_balance,
+                    );
+                    savings.covered = false;
                 }
-                None => known = false,
+                None => savings.covered = false,
             }
         }
-        (breakdown, known)
+        savings
     }
 
     /// Loans: the ledger walk of the day (0 before the start). The estimated past of a loan
-    /// with manual balances, before the first one, is not a fact (D5).
-    fn loans_on(&mut self, day: i64) -> (Breakdown, bool) {
-        let mut breakdown = Breakdown::new();
-        let mut known = true;
+    /// with manual balances, before the first one, is not a fact (D5): it is a dated estimate,
+    /// so it stays derived and is uncovered.
+    fn loans_on(&mut self, day: i64) -> ClassDay {
+        let mut loans = ClassDay {
+            covered: true,
+            ..ClassDay::default()
+        };
         for loan in &self.loans {
             add(
-                &mut breakdown,
+                &mut loans.derived,
                 &loan.currency,
                 loan_balance_at(&loan.ledger, day).balance,
             );
             if loan.first_manual_day.is_some_and(|first| day < first) {
-                known = false;
+                loans.covered = false;
             }
         }
-        (breakdown, known)
+        loans
     }
 
-    /// Real estate, split by the property's current type: `(personal, investment, known)`.
-    /// A property without any valuation is not counted on any day. Before the purchase date
-    /// a property is worth 0. Otherwise the newest valuation on or before the day applies
-    /// (of one day, the last entered), else the purchase price. A property without a
-    /// purchase date counts nothing before its first valuation, and that day is unknown.
-    fn real_estate_on(&mut self, day: i64) -> (Breakdown, Breakdown, bool) {
-        let mut personal = Breakdown::new();
-        let mut investment = Breakdown::new();
-        let mut known = true;
+    /// Real estate, split by the property's current type. A property without any valuation is
+    /// not counted on any day. Before the purchase date a property is worth 0. Otherwise the
+    /// newest valuation on or before the day applies (of one day, the last entered), else the
+    /// purchase price. A property without a purchase date counts nothing before its first
+    /// valuation, and that day is uncovered.
+    fn real_estate_on(&mut self, day: i64) -> RealEstateDay {
+        let mut real_estate = RealEstateDay {
+            covered: true,
+            ..RealEstateDay::default()
+        };
         for property in &mut self.properties {
             property.valuations.advance(day);
             // No estimate at all, no value line (`valuationTrace`; today's market price is 0
@@ -283,19 +397,19 @@ impl Facts {
                 continue;
             }
             let target = if property.personal {
-                &mut personal
+                &mut real_estate.personal
             } else {
-                &mut investment
+                &mut real_estate.investment
             };
             match (property.valuations.latest(), property.purchase_date) {
                 (Some(valuation), _) => add(target, &valuation.currency, valuation.value),
                 (None, Some(_)) => {
                     add(target, &property.purchase_currency, property.purchase_price)
                 }
-                (None, None) => known = false,
+                (None, None) => real_estate.covered = false,
             }
         }
-        (personal, investment, known)
+        real_estate
     }
 
     /// Other assets: the quantity the transactions leave on the day times the valuation of
@@ -304,18 +418,20 @@ impl Facts {
     /// transactions but a stored quantity (an MCP-created one) has nothing dated: like an
     /// undated account it carries today's quantity times today's price in its own currency
     /// (`net_worth::compute_breakdowns`) and is not a fact.
-    fn other_assets_on(&mut self, day: i64) -> (Breakdown, bool) {
-        let mut breakdown = Breakdown::new();
-        let mut known = true;
+    fn other_assets_on(&mut self, day: i64) -> ClassDay {
+        let mut assets = ClassDay {
+            covered: true,
+            ..ClassDay::default()
+        };
         for asset in &mut self.assets {
             if asset.changes.is_empty() {
                 if asset.stored_quantity > QUANTITY_EPSILON {
                     add(
-                        &mut breakdown,
+                        &mut assets.carried,
                         &asset.currency,
                         asset.stored_quantity * asset.market_price,
                     );
-                    known = false;
+                    assets.covered = false;
                 }
                 continue;
             }
@@ -333,19 +449,205 @@ impl Facts {
             {
                 Some(valuation) => {
                     add(
-                        &mut breakdown,
+                        &mut assets.derived,
                         &valuation.currency,
                         asset.quantity * valuation.value,
                     );
                 }
                 None => add(
-                    &mut breakdown,
+                    &mut assets.derived,
                     &asset.currency,
                     asset.quantity * asset.market_price,
                 ),
             }
         }
-        (breakdown, known)
+        assets
+    }
+}
+
+/// One stored live row, its classes as native breakdowns.
+struct LiveRow {
+    day: i64,
+    savings: Breakdown,
+    bonds: Breakdown,
+    /// Personal and investment property together, as stored (I2).
+    real_estate: Breakdown,
+    real_estate_personal: Breakdown,
+    loans: Breakdown,
+    other_assets: Breakdown,
+}
+
+/// The stored live rows, one per day (of several the newest), oldest first.
+fn load_live_rows(conn: &Connection) -> Result<Vec<LiveRow>> {
+    let mut stmt = conn.prepare(
+        "SELECT recorded_at, savings_by_currency, bonds_by_currency, real_estate_by_currency,
+                real_estate_personal_by_currency, loans_by_currency, other_assets_by_currency
+         FROM portfolio_metrics_history WHERE source = 'live' ORDER BY recorded_at",
+    )?;
+    let rows = stmt
+        .query_map([], |row| {
+            Ok(LiveRow {
+                day: day_floor(row.get::<_, i64>(0)?),
+                savings: breakdown_from_json(&row.get::<_, String>(1)?),
+                bonds: breakdown_from_json(&row.get::<_, String>(2)?),
+                real_estate: breakdown_from_json(&row.get::<_, String>(3)?),
+                real_estate_personal: breakdown_from_json(&row.get::<_, String>(4)?),
+                loans: breakdown_from_json(&row.get::<_, String>(5)?),
+                other_assets: breakdown_from_json(&row.get::<_, String>(6)?),
+            })
+        })?
+        .collect::<rusqlite::Result<Vec<_>>>()?;
+    let mut live: Vec<LiveRow> = Vec::with_capacity(rows.len());
+    for row in rows {
+        if live.last().is_some_and(|last| last.day == row.day) {
+            live.pop();
+        }
+        live.push(row);
+    }
+    Ok(live)
+}
+
+/// The remainder of every live row (A3): what the row holds beyond the facts dated on or
+/// before its day, found with a walk of the static facts over the live days.
+fn load_live_remainders(conn: &Connection, statics: &mut Statics) -> Result<Vec<LiveRemainder>> {
+    let rows = load_live_rows(conn)?;
+    let mut remainders = Vec::with_capacity(rows.len());
+    for row in rows {
+        let day = statics.on(row.day);
+        let real_estate = &day.real_estate;
+        let (personal, investment) = if real_estate.covered {
+            (Breakdown::new(), Breakdown::new())
+        } else {
+            let recorded_investment =
+                investment_real_estate(&row.real_estate, &row.real_estate_personal);
+            (
+                remainder(&row.real_estate_personal, &real_estate.personal, false),
+                remainder(&recorded_investment, &real_estate.investment, false),
+            )
+        };
+        remainders.push(LiveRemainder {
+            day: row.day,
+            savings: class_remainder(&day.savings, &row.savings, true),
+            loans: class_remainder(&day.loans, &row.loans, false),
+            bonds: class_remainder(&day.bonds, &row.bonds, false),
+            personal,
+            investment,
+            other_assets: class_remainder(&day.other_assets, &row.other_assets, false),
+        });
+    }
+    Ok(remainders)
+}
+
+/// Every fact the history of a profile is derived from, read once.
+pub struct Facts {
+    statics: Statics,
+    stocks: BTreeMap<String, TickerSeries>,
+    crypto: BTreeMap<String, TickerSeries>,
+    /// What the stored live rows hold beyond the facts, oldest first (see [`LiveRemainder`]).
+    live: Vec<LiveRemainder>,
+    /// The last day valued: the cursors only move forward.
+    last_day: Option<i64>,
+}
+
+impl Facts {
+    /// Read the facts of every class. `until_exclusive` bounds the ticker series: the days
+    /// to value are before it (a rebuild passes today's start).
+    pub fn load(conn: &Connection, until_exclusive: i64) -> Result<Self> {
+        let mut statics = Statics::load(conn)?;
+        // A second walk of the static facts, over the live days, before the days to value
+        let live = load_live_remainders(conn, &mut statics)?;
+        statics.rewind();
+        Ok(Self {
+            statics,
+            stocks: load_ticker_series(
+                conn,
+                "stock_value_history",
+                "investment_transactions",
+                until_exclusive,
+            )?,
+            crypto: load_ticker_series(
+                conn,
+                "crypto_value_history",
+                "crypto_transactions",
+                until_exclusive,
+            )?,
+            live,
+            last_day: None,
+        })
+    }
+
+    /// The value of every class on `day` (spec A1, A3). The cursors only move forward, so the
+    /// days of one `Facts` must not decrease.
+    ///
+    /// A class the facts cover completely is what they derive. Otherwise the part the facts
+    /// do not date is the remainder of the nearest live row (the nearest one on or before the
+    /// day, else the earliest later one), and the current value of the undated items when
+    /// there is no live row at all. Live rows themselves are rewritten for the covered classes
+    /// only (D1), which the remainder never touches.
+    pub fn day_values(&mut self, day: i64) -> DayValues {
+        debug_assert!(
+            self.last_day.is_none_or(|last| day >= last),
+            "history days must be valued in ascending order"
+        );
+        self.last_day = Some(day);
+
+        let statics = self.statics.on(day);
+        let live = nearest_live(&self.live, day);
+        let rest = |class: fn(&LiveRemainder) -> &Breakdown| live.map(class);
+        let real_estate = &statics.real_estate;
+        // Bonds are never a fact; they only fall short of the facts when there are some.
+        let bonds_uncovered = !statics.bonds.carried.is_empty();
+        DayValues {
+            breakdowns: ClassBreakdowns {
+                savings: completed(
+                    &statics.savings.derived,
+                    &statics.savings.carried,
+                    !statics.savings.covered,
+                    rest(|row| &row.savings),
+                ),
+                investments: without_zeros(ticker_value(&mut self.stocks, day)),
+                crypto: without_zeros(ticker_value(&mut self.crypto, day)),
+                bonds: completed(
+                    &statics.bonds.derived,
+                    &statics.bonds.carried,
+                    bonds_uncovered,
+                    rest(|row| &row.bonds),
+                ),
+                real_estate_personal: completed(
+                    &real_estate.personal,
+                    &Breakdown::new(),
+                    !real_estate.covered,
+                    rest(|row| &row.personal),
+                ),
+                real_estate_investment: completed(
+                    &real_estate.investment,
+                    &Breakdown::new(),
+                    !real_estate.covered,
+                    rest(|row| &row.investment),
+                ),
+                loans: completed(
+                    &statics.loans.derived,
+                    &statics.loans.carried,
+                    !statics.loans.covered,
+                    rest(|row| &row.loans),
+                ),
+                other_assets: completed(
+                    &statics.other_assets.derived,
+                    &statics.other_assets.carried,
+                    !statics.other_assets.covered,
+                    rest(|row| &row.other_assets),
+                ),
+            },
+            known: ClassSet {
+                savings: statics.savings.covered,
+                investments: true,
+                crypto: true,
+                bonds: false,
+                real_estate: real_estate.covered,
+                loans: statics.loans.covered,
+                other_assets: statics.other_assets.covered,
+            },
+        }
     }
 }
 
@@ -1657,6 +1959,36 @@ mod tests {
         .expect("live row");
     }
 
+    /// A live row of `day` with only the given columns set to JSON breakdowns; the others are
+    /// empty. It replaces any row the day already has (a rebuilt one).
+    fn live_with(conn: &Connection, day: i64, columns: &[(&str, &str)]) {
+        conn.execute(
+            "DELETE FROM portfolio_metrics_history WHERE recorded_at >= ?1 AND recorded_at < ?2",
+            [day, day + DAY],
+        )
+        .expect("clear the day");
+        let names = columns
+            .iter()
+            .map(|(name, _)| *name)
+            .collect::<Vec<_>>()
+            .join(", ");
+        let marks = (0..columns.len())
+            .map(|index| format!("?{}", index + 3))
+            .collect::<Vec<_>>()
+            .join(", ");
+        let mut values: Vec<rusqlite::types::Value> =
+            vec![format!("live-{day}").into(), (day + 3_600).into()];
+        values.extend(columns.iter().map(|(_, json)| (*json).to_string().into()));
+        conn.execute(
+            &format!(
+                "INSERT INTO portfolio_metrics_history (id, recorded_at, source, {names})
+                 VALUES (?1, ?2, 'live', {marks})"
+            ),
+            rusqlite::params_from_iter(values),
+        )
+        .expect("live row");
+    }
+
     #[test]
     fn a_fresh_profile_gets_every_day_since_its_first_balance_record() {
         let conn = setup_test_db();
@@ -1804,11 +2136,312 @@ mod tests {
             map(&[("CZK", 888.0)]),
             "the recorded value stays on the live row"
         );
+        for day in [0, 9, 11, 29] {
+            assert_eq!(
+                column(&conn, d(day), "other_assets_by_currency"),
+                map(&[("CZK", 888.0)]),
+                "a new row takes the undated asset from the nearest live row, day {day}"
+            );
+        }
+    }
+
+    #[test]
+    fn a_new_row_takes_what_the_facts_do_not_date_from_the_nearest_live_row() {
+        let conn = setup_test_db();
+        let today = d(60);
+        account(&conn, "a", "CZK", "300", false);
+        record(&conn, "a", d(0), "100", "CZK");
+        record(&conn, "a", d(20), "300", "CZK");
+        // two accounts without any record: today's balance, which was not always theirs
+        account(&conn, "u1", "CZK", "700", false);
+        account(&conn, "u2", "EUR", "40", false);
+        let live = |day: i64, savings: &str| {
+            live_with(&conn, d(day), &[("savings_by_currency", savings)]);
+        };
+        live(10, r#"{"CZK":800,"EUR":40}"#);
+        live(30, r#"{"CZK":950,"EUR":35}"#);
+        live(50, r#"{"CZK":1000,"EUR":40}"#);
+
+        rebuild_days(&conn, d(0), today).expect("rebuild");
+
+        let savings = |day: i64| column(&conn, d(day), "savings_by_currency");
+        // before the first live row: its remainder (800 - the dated 100 = 700 CZK, 40 EUR)
+        // next to the dated account's own record
+        assert_eq!(savings(0), map(&[("CZK", 800.0), ("EUR", 40.0)]));
+        assert_eq!(savings(9), map(&[("CZK", 800.0), ("EUR", 40.0)]));
+        // after a live row: the nearest earlier one, not the nearer later one, until the
+        // next live row takes over. The day after live row 10 continues it without a jump
+        assert_eq!(savings(11), savings(10), "no jump off the live row");
+        assert_eq!(savings(11), map(&[("CZK", 800.0), ("EUR", 40.0)]));
+        // the dated account's record of day 20 moves the dated part only
+        assert_eq!(savings(25), map(&[("CZK", 1000.0), ("EUR", 40.0)]));
+        assert_eq!(savings(29), map(&[("CZK", 1000.0), ("EUR", 40.0)]));
+        // live row 30: 950 - the dated 300 = 650 CZK, 35 EUR
+        assert_eq!(savings(31), map(&[("CZK", 950.0), ("EUR", 35.0)]));
+        assert_eq!(savings(49), map(&[("CZK", 950.0), ("EUR", 35.0)]));
+        assert_eq!(savings(51), map(&[("CZK", 1000.0), ("EUR", 40.0)]));
+        assert_eq!(savings(59), map(&[("CZK", 1000.0), ("EUR", 40.0)]));
+        // the live rows keep what was recorded: undated accounts are not a fact (D1)
         assert_eq!(
-            column(&conn, d(11), "other_assets_by_currency"),
-            map(&[("CZK", 300.0)]),
-            "a new row carries today's quantity times its price"
+            savings(30),
+            map(&[("CZK", 950.0), ("EUR", 35.0)]),
+            "the live row"
         );
+
+        // a second rebuild changes nothing
+        let rows = dump(&conn);
+        rebuild_days(&conn, d(0), today).expect("again");
+        assert_eq!(dump(&conn), rows);
+    }
+
+    #[test]
+    fn with_only_todays_live_row_the_remainder_comes_from_it_and_with_none_from_the_items() {
+        let conn = setup_test_db();
+        let today = d(40);
+        account(&conn, "a", "CZK", "300", false);
+        record(&conn, "a", d(0), "100", "CZK");
+        record(&conn, "a", d(20), "300", "CZK");
+        account(&conn, "u", "CZK", "700", false);
+
+        // no live row at all: the undated account at its current balance
+        rebuild_days(&conn, d(0), today).expect("no live row");
+        let savings = |day: i64| column(&conn, d(day), "savings_by_currency");
+        assert_eq!(savings(5), map(&[("CZK", 800.0)]));
+        assert_eq!(savings(25), map(&[("CZK", 1000.0)]));
+
+        // today's row is the only live row: it serves every past day (999 - the dated 300)
+        live_with(&conn, today, &[("savings_by_currency", r#"{"CZK":999}"#)]);
+        rebuild_days(&conn, d(0), today).expect("only today's row");
+        assert_eq!(savings(5), map(&[("CZK", 100.0 + 699.0)]));
+        assert_eq!(savings(25), map(&[("CZK", 300.0 + 699.0)]));
+        assert_eq!(
+            column(&conn, today, "savings_by_currency"),
+            map(&[("CZK", 999.0)]),
+            "today's row stays the live snapshot's"
+        );
+
+        // a live row before today wins over today's row for the days after it
+        live_with(&conn, d(10), &[("savings_by_currency", r#"{"CZK":850}"#)]);
+        rebuild_days(&conn, d(0), today).expect("a live row and today's");
+        assert_eq!(savings(5), map(&[("CZK", 100.0 + 750.0)]));
+        assert_eq!(savings(25), map(&[("CZK", 300.0 + 750.0)]));
+    }
+
+    #[test]
+    fn a_class_the_facts_cover_completely_ignores_the_live_rows() {
+        let conn = setup_test_db();
+        let today = d(30);
+        account(&conn, "a", "CZK", "300", false);
+        record(&conn, "a", d(0), "100", "CZK");
+        record(&conn, "a", d(20), "300", "CZK");
+        // a recorded value that disagrees with the facts, on a day they cover
+        live_with(&conn, d(10), &[("savings_by_currency", r#"{"CZK":999}"#)]);
+
+        rebuild_days(&conn, d(0), today).expect("rebuild");
+
+        let savings = |day: i64| column(&conn, d(day), "savings_by_currency");
+        for (day, expected) in [
+            (0, 100.0),
+            (9, 100.0),
+            (10, 100.0),
+            (11, 100.0),
+            (25, 300.0),
+        ] {
+            assert_eq!(savings(day), map(&[("CZK", expected)]), "day {day}");
+        }
+        // ... and the second rebuild reads the rewritten live row: the same rows
+        let rows = dump(&conn);
+        rebuild_days(&conn, d(0), today).expect("again");
+        assert_eq!(dump(&conn), rows);
+    }
+
+    #[test]
+    fn bonds_on_a_new_row_equal_the_nearest_live_rows_and_today_s_without_one() {
+        let conn = setup_test_db();
+        let today = d(40);
+        account(&conn, "a", "CZK", "1", false);
+        record(&conn, "a", d(0), "1", "CZK");
+        bond(&conn, "b", "1000", "1", "CZK");
+
+        rebuild_days(&conn, d(0), today).expect("no live row");
+        let bonds = |day: i64| column(&conn, d(day), "bonds_by_currency");
+        assert_eq!(bonds(0), map(&[("CZK", 1000.0)]), "today's value");
+        assert_eq!(bonds(39), map(&[("CZK", 1000.0)]));
+
+        live_with(&conn, d(10), &[("bonds_by_currency", r#"{"CZK":900}"#)]);
+        live_with(
+            &conn,
+            d(30),
+            &[("bonds_by_currency", r#"{"CZK":950,"EUR":10}"#)],
+        );
+        rebuild_days(&conn, d(0), today).expect("live rows");
+        assert_eq!(
+            bonds(0),
+            map(&[("CZK", 900.0)]),
+            "the earliest later live row"
+        );
+        assert_eq!(bonds(9), map(&[("CZK", 900.0)]));
+        assert_eq!(bonds(11), map(&[("CZK", 900.0)]), "the nearest earlier");
+        assert_eq!(bonds(29), map(&[("CZK", 900.0)]));
+        assert_eq!(bonds(31), map(&[("CZK", 950.0), ("EUR", 10.0)]));
+        assert_eq!(bonds(39), map(&[("CZK", 950.0), ("EUR", 10.0)]));
+        // the live rows themselves keep what was recorded (bonds are never a fact)
+        assert_eq!(bonds(10), map(&[("CZK", 900.0)]));
+        assert_eq!(bonds(30), map(&[("CZK", 950.0), ("EUR", 10.0)]));
+    }
+
+    #[test]
+    fn without_bonds_nothing_is_carried_from_a_live_row() {
+        let conn = setup_test_db();
+        let today = d(20);
+        account(&conn, "a", "CZK", "1", false);
+        record(&conn, "a", d(0), "1", "CZK");
+        // a bond that was sold or deleted since: no unknown item is left in the class
+        live_with(&conn, d(10), &[("bonds_by_currency", r#"{"CZK":900}"#)]);
+
+        rebuild_days(&conn, d(0), today).expect("rebuild");
+
+        for day in [0, 5, 9, 11, 19] {
+            assert!(
+                column(&conn, d(day), "bonds_by_currency").is_empty(),
+                "day {day}"
+            );
+        }
+        assert_eq!(
+            column(&conn, d(10), "bonds_by_currency"),
+            map(&[("CZK", 900.0)]),
+            "the live row keeps its record"
+        );
+    }
+
+    #[test]
+    fn other_assets_without_transactions_follow_the_live_rows_and_a_stale_record_adds_nothing() {
+        let conn = setup_test_db();
+        let today = d(30);
+        account(&conn, "a", "CZK", "100", false);
+        record(&conn, "a", d(0), "100", "CZK");
+        // an MCP-created asset (a quantity, no transactions) and a dated one
+        asset(&conn, "mcp", "CZK", "3", "100");
+        asset(&conn, "gold", "CZK", "1", "20");
+        asset_tx(&conn, "gold", "buy", "1", d(5));
+        asset_valuation(&conn, "gold", d(5), "20", "CZK", 1);
+        live_with(
+            &conn,
+            d(10),
+            &[("other_assets_by_currency", r#"{"CZK":520}"#)],
+        );
+
+        rebuild_days(&conn, d(0), today).expect("rebuild");
+
+        let assets = |day: i64| column(&conn, d(day), "other_assets_by_currency");
+        // the remainder of live row 10 is 520 - 20 (the dated asset) = 500, whatever today's
+        // 300 says; days before the dated asset's purchase carry it alone
+        assert_eq!(assets(0), map(&[("CZK", 500.0)]));
+        assert_eq!(assets(4), map(&[("CZK", 500.0)]));
+        assert_eq!(assets(5), map(&[("CZK", 520.0)]));
+        assert_eq!(assets(11), map(&[("CZK", 520.0)]));
+        assert_eq!(assets(29), map(&[("CZK", 520.0)]));
+
+        // a record below what the facts derive is stale: it adds nothing, and does not
+        // subtract (an other asset cannot be negative)
+        conn.execute("DELETE FROM portfolio_metrics_history", [])
+            .expect("clear");
+        live_with(
+            &conn,
+            d(10),
+            &[("other_assets_by_currency", r#"{"CZK":5}"#)],
+        );
+        rebuild_days(&conn, d(0), today).expect("stale");
+        assert_eq!(assets(4), Breakdown::new());
+        assert_eq!(assets(11), map(&[("CZK", 20.0)]));
+    }
+
+    #[test]
+    fn a_negative_savings_remainder_is_kept_for_an_overdraft_account() {
+        let conn = setup_test_db();
+        let today = d(20);
+        account(&conn, "a", "CZK", "100", false);
+        record(&conn, "a", d(0), "100", "CZK");
+        account(&conn, "overdraft", "CZK", "-200", false);
+        // 100 on the dated account, -200 on the overdraft one, as recorded then
+        live_with(&conn, d(10), &[("savings_by_currency", r#"{"CZK":-100}"#)]);
+
+        rebuild_days(&conn, d(0), today).expect("rebuild");
+
+        let savings = |day: i64| column(&conn, d(day), "savings_by_currency");
+        assert_eq!(savings(0), map(&[("CZK", -100.0)]));
+        assert_eq!(savings(15), map(&[("CZK", -100.0)]));
+    }
+
+    #[test]
+    fn an_uncovered_property_follows_the_live_row_until_its_first_valuation() {
+        let conn = setup_test_db();
+        let today = d(60);
+        account(&conn, "a", "CZK", "1", false);
+        record(&conn, "a", d(0), "1", "CZK");
+        // no purchase date: not counted before its first valuation (day 30)
+        property(&conn, "p", "personal", None, ("700", "CZK"));
+        property_valuation(&conn, "p", d(30), "700", "CZK", 1);
+        live_with(
+            &conn,
+            d(10),
+            &[
+                ("real_estate_by_currency", r#"{"CZK":500}"#),
+                ("real_estate_personal_by_currency", r#"{"CZK":500}"#),
+            ],
+        );
+        live_with(
+            &conn,
+            d(40),
+            &[
+                ("real_estate_by_currency", r#"{"CZK":999}"#),
+                ("real_estate_personal_by_currency", r#"{"CZK":999}"#),
+            ],
+        );
+
+        rebuild_days(&conn, d(0), today).expect("rebuild");
+
+        let personal = |day: i64| column(&conn, d(day), "real_estate_personal_by_currency");
+        let combined = |day: i64| column(&conn, d(day), "real_estate_by_currency");
+        for day in [0, 5, 11, 29] {
+            assert_eq!(personal(day), map(&[("CZK", 500.0)]), "day {day}");
+            assert_eq!(combined(day), map(&[("CZK", 500.0)]), "day {day}");
+        }
+        // the live row before the first valuation keeps its record; from the valuation on
+        // the facts cover the class, every day and the live row 40 included
+        assert_eq!(personal(10), map(&[("CZK", 500.0)]));
+        for day in [30, 35, 40, 41, 59] {
+            assert_eq!(personal(day), map(&[("CZK", 700.0)]), "day {day}");
+        }
+    }
+
+    #[test]
+    fn the_estimated_past_of_an_overridden_loan_is_pinned_to_the_live_row() {
+        let conn = setup_test_db();
+        let today = iso("2025-01-10");
+        yearly_loan(&conn);
+        loan_event(&conn, "l", "balance_check", iso("2024-06-20"), "4000", 1);
+        // the estimate of 2024-03-15 is 10 000; the row recorded 10 500
+        live_with(
+            &conn,
+            iso("2024-03-15"),
+            &[("loans_by_currency", r#"{"CZK":10500}"#)],
+        );
+
+        rebuild_days(&conn, iso("2024-01-01"), today).expect("rebuild");
+
+        let loans = |date: &str| column(&conn, iso(date), "loans_by_currency");
+        // the estimate keeps its shape, moved by the 500 the live row holds beyond it
+        assert_eq!(loans("2024-01-10"), map(&[("CZK", 12_500.0)]));
+        assert_eq!(loans("2024-02-20"), map(&[("CZK", 11_500.0)]));
+        assert_eq!(loans("2024-03-16"), map(&[("CZK", 10_500.0)]), "no jump");
+        assert_eq!(loans("2024-04-12"), map(&[("CZK", 9_500.0)]));
+        // from the manual balance on the facts cover the class: nothing is added
+        assert_eq!(loans("2024-06-19"), map(&[("CZK", 7_500.0)]));
+        assert_eq!(loans("2024-06-20"), map(&[("CZK", 4_000.0)]));
+        assert_eq!(loans("2024-12-31"), map(&[("CZK", 4_000.0)]));
+        // the live row stays as recorded: the class is not covered on its day
+        assert_eq!(loans("2024-03-15"), map(&[("CZK", 10_500.0)]));
     }
 
     #[test]
@@ -1885,6 +2518,15 @@ mod tests {
         bond(conn, "b", "1000", "1", "CZK");
         live_row(conn, today);
         live_row(conn, today - 50 * DAY);
+        // what the undated account and the bond were worth on a live day far back
+        live_with(
+            conn,
+            today - 150 * DAY,
+            &[
+                ("savings_by_currency", r#"{"CZK":130,"EUR":18}"#),
+                ("bonds_by_currency", r#"{"CZK":777}"#),
+            ],
+        );
     }
 
     #[test]

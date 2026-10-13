@@ -56,7 +56,7 @@ Root causes (verified in code and by an audit):
 |---|---|
 | D1 | Facts win over past **live** rows too, with a guard: on a live row a class is rewritten only when the facts cover every item of that class on that day (§A3). |
 | D2 | The first start of the new version rebuilds the whole history once, from the earliest dated fact. Ticker histories are rebuilt from each ticker's first transaction. |
-| D3 | Bonds have no purchase date: they keep today's value on every past day, as now. |
+| D3 | Bonds have no purchase date, so no fact dates them. Their past days are the undated remainder of A3: the nearest live row's recorded bonds, today's value only when no live row exists. |
 | D4 | An account counts nothing on days before its first dated balance (same as `valueAt` in `src/utils/balance-records.ts`). |
 | D5 | A loan before its first manual balance follows the estimated path, which is the rule of the loans chart (`src/utils/loan-trajectory.ts`). |
 | D6 | A manual loan balance holds its value: no amortization after it, until the user enters another one or removes it. |
@@ -201,14 +201,25 @@ Load the facts once per rebuild, then walk the days with per-item cursors (the p
 
 | Class | Rule on day D | `known` |
 |---|---|---|
-| Savings | Accounts with `exclude_from_balance = 0`. The newest `bank_balance_records.as_of <= D` gives its amount and currency. Before the first record the account is not counted (D4). An account with **no** records (undated balance) carries its current balance. | yes with a record `<= D`; no before the first record; no for undated |
+| Savings | Accounts with `exclude_from_balance = 0`. The newest `bank_balance_records.as_of <= D` gives its amount and currency. Before the first record the account is not counted (D4). An account with **no** records (undated balance) has no dated value: it is *undated* (below). | yes with a record `<= D`; no before the first record; no for undated |
 | Loans | `loan_balance_at` (B2) in the loan currency; 0 before the start. | yes, unless the loan has manual records and D is before the first one (the estimated past of an overridden loan, D5) |
 | Real estate | Personal or investment by the current `type`. `purchase_date` set and D before it → 0. Otherwise the newest valuation with `valued_at <= D` gives the value; of several on one day the last created wins, as in `dailyValuations`. Without a valuation yet and D on or after `purchase_date`, the purchase price in its currency applies (the `valuationTrace` rule). Without a purchase date and D before the first valuation → not counted. | yes, except "not counted" |
-| Other assets | Quantity from `other_asset_transactions` dated `<= D` (buy +, sell −) × `valuations::value_at_day`, falling back to `market_price`. Currency: the valuation's, else the asset's. | yes |
-| Bonds | Today's `coupon_value × quantity`, carried (D3). | no |
+| Other assets | Quantity from `other_asset_transactions` dated `<= D` (buy +, sell −) × `valuations::value_at_day`, falling back to `market_price`. Currency: the valuation's, else the asset's. An asset with a quantity and **no** transactions (created through MCP) is *undated* (below): today's quantity × `market_price` in its own currency. | yes; no for an undated asset |
+| Bonds | Undated (D3): today's `coupon_value × quantity`. | no |
 | Stocks, crypto | `stock_value_history` / `crypto_value_history` through `load_ticker_series` / `value_before` (unchanged). | yes |
 
 A class is `known` on D when every item in it is.
+
+**Derived and undated.** The value of a class on D has two parts, per currency:
+
+- **derived(D)**: the items the facts date (a record, a valuation, a transaction, a ledger walk).
+  The estimated past of a loan whose manual balances start later is a dated estimate, so it is
+  derived too, although the class is not `known` there (D5).
+- **undated(D)**: items that are counted but have no date at all: an account without records, an
+  other asset with a quantity and no transactions, the bonds. Their current value is all the
+  facts say, and a past day takes it from a live row (A3). An item that is *not counted* on D (an
+  account before its first record, a property without a purchase date before its first valuation)
+  adds nothing of its own.
 
 ### A2. Coverage
 
@@ -221,10 +232,31 @@ A class is `known` on D when every item in it is.
 
 ### A3. Write rule for a day D < today
 
-- **Backfill or new row:** write all eight breakdowns from A1. For items that are not known,
-  undated accounts and bonds carry their current values, and the rest are not counted.
+- **Backfill or new row:** write all eight breakdowns from A1. A class that is `known` on D is
+  what A1 derives. A class that is not takes the part the facts do not date from the nearest live
+  row, so it does not jump between rebuilt days and live ones (a live row that recorded 1.3M of
+  savings, with an undated account in it, is not followed by a rebuilt day at today's 0.4M):
+  - `value(D) = derived(D) + R`, per class and per currency (real estate: personal and
+    investment each).
+  - **The live row L** is the nearest one dated on or before D, else the earliest later one.
+    Today's live row is a live row like any other, so it serves only when it is the profile's only
+    one.
+  - **The unknown remainder** `R = recorded(L) − derived(L)`, per currency. `recorded(L)` is the
+    stored value of the live row and `derived(L)` is what A1 derives for L, an item not counted on
+    L adding nothing (so it stays in R). A class that is `known` on L has `R = 0`: that row is
+    rewritten to the derived values (below), and reading the derived values keeps a rebuild
+    idempotent.
+  - A class with no uncovered item on D has `R = 0` (it is `known`; for bonds, there are none).
+  - **Without a live row** R is the undated part itself (undated accounts and assets at their
+    current value, the bonds): today's behaviour.
+  - **Sign.** A negative R is kept for savings only, where an overdraft is a legitimate negative
+    amount. For the other classes, which cannot be negative, a negative R is a stale record and
+    counts as 0. An |R| below 0.005 is float residue and is dropped with its zero entry.
+  - The remainder is computed from the live rows' stored values and the facts alone, so chunked
+    and one-pass rebuilds give the same rows, and so does a second rebuild.
 - **Live row:** rewrite only the classes whose `known` flag is true (D1). Stocks and crypto are
-  always rewritten, as today. The others keep their recorded values.
+  always rewritten, as today. The others keep their recorded values, which is what the remainder
+  above reads.
 - **Today's row** is never touched by a rebuild; `update_todays_snapshot` owns it.
 
 All writes go through `services/portfolio_history.rs` (the single writer): `upsert_snapshot` for
@@ -329,6 +361,10 @@ equal `compute_breakdowns`.
 - **Rust, `rebuild_days` scenarios:**
   - a fresh profile (today's live row only) plus a balance record a year back: past rows hold it;
   - the live-row guard: an account without a record on a live day keeps the recorded savings;
+  - the unknown remainder (A3): two undated accounts and one dated one with live rows recorded in
+    between: the gap days equal the dated part plus the remainder of the nearest live row, with no
+    jump; bonds follow the nearest live row's; without a live row, today's values; a fully known
+    class ignores the live rows; negative savings remainder kept, other classes' dropped;
   - deleting the earliest fact deletes the earlier backfill rows;
   - idempotence;
   - chunked output equals one pass;

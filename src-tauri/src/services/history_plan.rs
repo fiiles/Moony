@@ -36,8 +36,10 @@ const DAY: i64 = SECONDS_PER_DAY;
 /// live row and valued past days with today's holdings. Version 2 repeats it: a version 1
 /// profile may hold days that a date-precise trigger left on an old remainder (a date added to
 /// a property after the rebuild), and crypto days older than CoinGecko's year now come from
-/// Yahoo instead of one stale price.
-pub const REBUILD_VERSION: i64 = 2;
+/// Yahoo instead of one stale price. Version 3 repeats it once more: loans are always the
+/// ledger walk now, so a profile that ran version 2 may hold days (backfill and live) that still
+/// carry a phantom loan remainder taken from a live row recorded by the old valuation model.
+pub const REBUILD_VERSION: i64 = 3;
 
 const VERSION_KEY: &str = "history_rebuild_version";
 
@@ -492,16 +494,17 @@ mod tests {
     }
 
     #[test]
-    fn the_rebuild_version_is_two() {
-        // Version 2 repeats the one-time rebuild for profiles that ran version 1: the static
-        // triggers of version 1 were date-precise and could leave days on an old remainder, and
-        // crypto days older than CoinGecko's year had one stale price. Raise this number (and
-        // the docs that name it) only for a rebuild that must run again.
-        assert_eq!(REBUILD_VERSION, 2);
+    fn the_rebuild_version_is_three() {
+        // Version 2 repeated the one-time rebuild for profiles that ran version 1 (date-precise
+        // static triggers could leave days on an old remainder; crypto days older than
+        // CoinGecko's year had one stale price). Version 3 repeats it for loans: they are always
+        // derived from their ledger, so a loan remainder taken from a live row is gone. Raise
+        // this number (and the docs that name it) only for a rebuild that must run again.
+        assert_eq!(REBUILD_VERSION, 3);
     }
 
     #[test]
-    fn a_profile_that_ran_version_one_rebuilds_once_more() {
+    fn a_profile_that_ran_version_two_rebuilds_once_more() {
         let conn = setup_test_db();
         balance_record(&conn, d(-30));
         trade(&conn, "investment_transactions", "AAPL", "buy", "2", d(-20));
@@ -509,13 +512,13 @@ mod tests {
         for offset in -30..0 {
             history_row(&conn, d(offset));
         }
-        // a version 1 profile: complete history, the old flag
+        // a version 2 profile: complete history, the old flag
         conn.execute(
-            "INSERT INTO app_config (key, value) VALUES ('history_rebuild_version', '1')",
+            "INSERT INTO app_config (key, value) VALUES ('history_rebuild_version', '2')",
             [],
         )
         .expect("old flag");
-        assert_eq!(stored_rebuild_version(&conn).expect("stored"), 1);
+        assert_eq!(stored_rebuild_version(&conn).expect("stored"), 2);
 
         let plan = plan_startup(&conn, d(0)).expect("plan");
         assert!(plan.one_time, "the flag is below the current version");
@@ -532,10 +535,10 @@ mod tests {
 
         // the flag is stored only once the days rebuild succeeded (`rebuild_version_earned`)
         assert!(!rebuild_version_earned(&outcome(false, &[])));
-        assert_eq!(stored_rebuild_version(&conn).expect("unchanged"), 1);
+        assert_eq!(stored_rebuild_version(&conn).expect("unchanged"), 2);
         assert!(rebuild_version_earned(&outcome(true, &["BTC"])));
         store_rebuild_version(&conn).expect("store");
-        assert_eq!(stored_rebuild_version(&conn).expect("stored"), 2);
+        assert_eq!(stored_rebuild_version(&conn).expect("stored"), 3);
 
         let again = plan_startup(&conn, d(0)).expect("plan");
         assert!(!again.one_time, "it runs once");

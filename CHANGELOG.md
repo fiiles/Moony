@@ -6,6 +6,44 @@ All notable changes to Moony are documented in this file. The format follows
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-10-14
+
+### Added
+
+- **Net-worth history from dated facts.** Every past day of the history is now derived from what
+  you entered with a date: transactions, balance records, valuations, purchase dates and loan
+  balances. Importing stocks into a new profile, or entering a bank balance dated a year back,
+  now fills the whole history instead of a single point. Any dated change (a new valuation, an
+  edited purchase date, a changed currency) rebuilds the history from that day on; on the first
+  start of this version Moony fills and rebuilds the history once.
+- **Loan balances you enter hold.** "Enter balance as of a date" on a loan records the real
+  balance; it holds exactly until you change it, and Moony no longer estimates amortization over
+  it (migration 019).
+- **Bond purchase date.** A bond can carry an optional purchase date; the history counts it from
+  that day. A bond without one is counted across the whole history as before (migration 020).
+- **Real estate valuation history.** The create form asks for the date of the market price, and
+  "Valuation history" lists every revaluation of a property.
+- The tags table of the stock analysis shows the unrealized gain as an amount next to its percent.
+- Budgets open on the month of your newest transaction.
+- Every page the MCP assistant can fill offers its tip while it is empty.
+
+### Changed
+
+- The balance chart of a bank account holds each recorded balance until the next record (a step
+  line) instead of sloping between records.
+
+### Fixed
+
+- Other assets value today's price in the currency of their newest valuation, not in the asset's
+  purchase currency.
+- A property without any valuation is no longer counted on any day of the history.
+- Stock and crypto history is created for days a fresh profile does not have yet, and quotes are
+  fetched only for tickers held in the window.
+- Exchange rates are extended before each history batch, so older days no longer miss a rate.
+- The startup market-data sync waits for the unlock.
+- The password hint of the first-run wizard rates a password "weak" only below the minimum length.
+- Navigation labels in the sidebar no longer clip descenders.
+
 ## [0.11.0] - 2026-10-13
 
 ### Added

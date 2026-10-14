@@ -13,6 +13,63 @@ export function budgetVersionPeriods(versions: readonly BudgetGoalVersion[]) {
   }));
 }
 
+export type BudgetOverviewStatus = 'active' | 'scheduled' | 'ended';
+
+export interface BudgetLimitPeriod {
+  version: BudgetGoalVersion;
+  /** Last second of the interval, or null while it runs on. */
+  end: number | null;
+}
+
+export interface BudgetOverviewRow {
+  goal: BudgetGoal;
+  status: BudgetOverviewStatus;
+  /** The interval that represents the goal: in effect now, the first scheduled, or the last one. */
+  main: BudgetLimitPeriod;
+  /** Changes after `main` starts (a null amount ends the limit); empty for an ended goal. */
+  upcoming: BudgetGoalVersion[];
+  /** Earlier intervals with a limit, newest first. Gaps without a limit are left out. */
+  history: BudgetLimitPeriod[];
+}
+
+/**
+ * One row per goal for managing budgets: the limit in effect now (or the
+ * first scheduled one, or the last one of an ended goal) with the earlier
+ * limits behind it. Goals that never had a limit are skipped.
+ */
+export function budgetOverview(
+  goals: readonly BudgetGoal[],
+  nowMonth: number
+): BudgetOverviewRow[] {
+  const rows: BudgetOverviewRow[] = [];
+  for (const goal of goals) {
+    const limited = budgetVersionPeriods(goal.versions).filter((p) => p.version.amount != null);
+    if (limited.length === 0) continue;
+    const currentIndex = limited.findIndex(
+      (p) => p.version.effectiveMonth <= nowMonth && (p.end == null || p.end >= nowMonth)
+    );
+    const scheduledIndex = limited.findIndex((p) => p.version.effectiveMonth > nowMonth);
+    const status: BudgetOverviewStatus =
+      currentIndex >= 0 ? 'active' : scheduledIndex >= 0 ? 'scheduled' : 'ended';
+    const mainIndex =
+      status === 'active'
+        ? currentIndex
+        : status === 'scheduled'
+          ? scheduledIndex
+          : limited.length - 1;
+    const main = limited[mainIndex];
+    rows.push({
+      goal,
+      status,
+      main,
+      upcoming:
+        status === 'ended' ? [] : scheduledVersions(goal.versions, main.version.effectiveMonth),
+      history: limited.slice(0, mainIndex).reverse(),
+    });
+  }
+  return rows;
+}
+
 /** The version that sets the limit for `month`, or null (none yet / removed). */
 export function versionInEffect(
   versions: readonly BudgetGoalVersion[],

@@ -80,11 +80,6 @@
     "count_one": "{{count}} transaction",
     "count_other": "{{count}} transactions"
   },
-  "deleteConfirm": {
-    "title": "Delete budget?",
-    "description": "The limit for {{category}} ends from the current month and scheduled changes are cancelled. Earlier limits and transactions remain in historical reports.",
-    "deleted": "Budget deleted"
-  },
   "noBudgets": {
     "title": "No budgets yet",
     "description": "Set a monthly limit for a category you want to keep an eye on. It is compared with spending across all accounts."
@@ -196,22 +191,30 @@
     "noChange": "The limit is unchanged; nothing was saved."
   },
   "settings": {
-    "title": "Configured budgets",
-    "spendingView": "Spending",
-    "description": "All configured limits, including past and scheduled changes. Independent of the selected spending period and account filter.",
-    "recurrence": "Repeats",
-    "validity": "Valid in months (inclusive)",
     "from": "From {{month}} onwards",
     "between": "{{start}} – {{end}}",
     "historical": "Historical limit · ended",
     "noPeriodLimits": "No limits for this period",
-    "noPeriodLimitsHelp": "Choose another period or manage the effective dates in Configured budgets.",
-    "evaluationNote": "Limits evaluated for {{period}}",
-    "deleteSelected": "Delete selected ({{count}})",
-    "selectAll": "Select all limit intervals",
-    "selectInterval": "Select {{category}} from {{month}}",
-    "deleteTitle": "Delete selected intervals?",
-    "deleteDescription": "Intervals to delete: {{count}}. Limits will be removed exactly for these periods, including any selected past periods. Other intervals and transactions remain unchanged.",
-    "deleted": "Selected intervals deleted"
+    "noPeriodLimitsHelp": "Choose another period or adjust the limits in Manage budgets.",
+    "evaluationNote": "Limits evaluated for {{period}}"
+  },
+  "manage": {
+    "title": "Manage budgets",
+    "description": "Monthly limits apply to spending from all accounts and don't depend on the selected period.",
+    "limit": "Limit",
+    "validity": "Valid",
+    "scheduled": "Scheduled",
+    "showHistory": "Show earlier limits: {{category}}",
+    "earlierLimit": "Earlier limit",
+    "endedBudgets": "Ended budgets ({{count}})",
+    "end": "End budget",
+    "endTitle": "End budget?",
+    "endedToast": "Budget ended",
+    "restore": "Restore limit",
+    "deleteInterval": "Delete limit",
+    "deleteIntervalTitle": "Delete earlier limit?",
+    "deleteIntervalDescription": "The {{amount}} limit for {{category}} ({{period}}) is removed from historical spending reports too. Transactions and other limits stay unchanged.",
+    "intervalDeleted": "Limit deleted",
+    "endDescription": "The limit for {{category}} ends from the current month and scheduled changes are cancelled. Earlier limits and transactions stay in historical reports."
   }
 }

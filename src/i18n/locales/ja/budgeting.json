@@ -72,11 +72,6 @@
     "noDescription": "説明なし",
     "count_other": "{{count}}件の取引"
   },
-  "deleteConfirm": {
-    "title": "予算を削除しますか？",
-    "description": "{{category}}の上限は今月から終了し、予定された変更は取り消されます。過去の上限と取引は履歴レポートに残ります。",
-    "deleted": "予算を削除しました"
-  },
   "noBudgets": {
     "title": "予算はまだありません",
     "description": "気になるカテゴリに月間上限を設定してください。すべての口座の支出と比較されます。"
@@ -188,22 +183,30 @@
     "noChange": "上限は変わっていないため、保存されませんでした。"
   },
   "settings": {
-    "title": "設定済み予算",
-    "spendingView": "利用状況",
-    "description": "過去と予定の変更を含む、設定済みのすべての上限です。選択した支出期間や口座フィルターには依存しません。",
-    "recurrence": "繰り返し",
-    "validity": "有効な月（両端を含む）",
     "from": "{{month}}以降",
     "between": "{{start}} ～ {{end}}",
     "historical": "過去の上限・終了済み",
     "noPeriodLimits": "この期間の上限はありません",
-    "noPeriodLimitsHelp": "別の期間を選択するか、設定済み予算で有効期間を変更してください。",
-    "evaluationNote": "{{period}}の上限評価",
-    "deleteSelected": "選択した期間を削除（{{count}}）",
-    "selectAll": "上限のある期間をすべて選択",
-    "selectInterval": "{{month}}からの{{category}}を選択",
-    "deleteTitle": "選択した期間を削除しますか？",
-    "deleteDescription": "削除する期間数：{{count}}。選択した過去の期間も含め、これらの期間の上限だけが削除されます。他の期間と取引は変更されません。",
-    "deleted": "選択した期間を削除しました"
+    "noPeriodLimitsHelp": "別の期間を選択するか、「予算を管理」で上限を調整してください。",
+    "evaluationNote": "{{period}}の上限評価"
+  },
+  "manage": {
+    "title": "予算を管理",
+    "description": "月間上限はすべての口座の支出に適用され、選択した期間には左右されません。",
+    "limit": "上限",
+    "validity": "有効期間",
+    "scheduled": "予定",
+    "showHistory": "過去の上限を表示：{{category}}",
+    "earlierLimit": "過去の上限",
+    "endedBudgets": "終了した予算（{{count}}）",
+    "end": "予算を終了",
+    "endTitle": "予算を終了しますか？",
+    "endedToast": "予算を終了しました",
+    "restore": "上限を再設定",
+    "deleteInterval": "上限を削除",
+    "deleteIntervalTitle": "過去の上限を削除しますか？",
+    "deleteIntervalDescription": "{{category}}の{{amount}}の上限（{{period}}）は過去の支出レポートからも削除されます。取引とほかの上限は変わりません。",
+    "intervalDeleted": "上限を削除しました",
+    "endDescription": "{{category}}の上限は今月から終了し、予定された変更は取り消されます。過去の上限と取引は履歴レポートに残ります。"
   }
 }

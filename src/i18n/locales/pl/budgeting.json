@@ -96,11 +96,6 @@
     "count_many": "{{count}} transakcji",
     "count_other": "{{count}} transakcji"
   },
-  "deleteConfirm": {
-    "title": "Usunąć budżet?",
-    "description": "Limit dla {{category}} kończy się od bieżącego miesiąca, a zaplanowane zmiany zostają anulowane. Wcześniejsze limity i transakcje pozostają w raportach historycznych.",
-    "deleted": "Budżet usunięty"
-  },
   "noBudgets": {
     "title": "Brak budżetów",
     "description": "Ustaw miesięczny limit dla kategorii, której chcesz pilnować. Jest porównywany z wydatkami na wszystkich kontach."
@@ -212,22 +207,30 @@
     "noChange": "Limit bez zmian; nic nie zapisano."
   },
   "settings": {
-    "title": "Ustawione budżety",
-    "spendingView": "Wykorzystanie",
-    "description": "Wszystkie ustawione limity, w tym wcześniejsze i zaplanowane zmiany. Niezależnie od wybranego okresu wydatków i filtra kont.",
-    "recurrence": "Powtarzanie",
-    "validity": "Miesiące obowiązywania (włącznie)",
     "from": "Od {{month}}",
     "between": "{{start}} – {{end}}",
     "historical": "Limit historyczny · zakończony",
     "noPeriodLimits": "Brak limitów na ten okres",
-    "noPeriodLimitsHelp": "Wybierz inny okres lub zmień daty obowiązywania w widoku Ustawione budżety.",
-    "evaluationNote": "Limity ocenione za {{period}}",
-    "deleteSelected": "Usuń wybrane ({{count}})",
-    "selectAll": "Wybierz wszystkie okresy z limitem",
-    "selectInterval": "Wybierz {{category}} od {{month}}",
-    "deleteTitle": "Usunąć wybrane okresy?",
-    "deleteDescription": "Liczba okresów do usunięcia: {{count}}. Limity zostaną usunięte dokładnie dla tych okresów, również wybranych okresów przeszłych. Pozostałe okresy i transakcje nie zmienią się.",
-    "deleted": "Wybrane okresy usunięte"
+    "noPeriodLimitsHelp": "Wybierz inny okres lub dostosuj limity w Zarządzaj budżetami.",
+    "evaluationNote": "Limity ocenione za {{period}}"
+  },
+  "manage": {
+    "title": "Zarządzaj budżetami",
+    "description": "Miesięczne limity dotyczą wydatków ze wszystkich kont i nie zależą od wybranego okresu.",
+    "limit": "Limit",
+    "validity": "Obowiązywanie",
+    "scheduled": "Zaplanowany",
+    "showHistory": "Pokaż wcześniejsze limity: {{category}}",
+    "earlierLimit": "Wcześniejszy limit",
+    "endedBudgets": "Zakończone budżety ({{count}})",
+    "end": "Zakończ budżet",
+    "endTitle": "Zakończyć budżet?",
+    "endedToast": "Budżet zakończony",
+    "restore": "Przywróć limit",
+    "deleteInterval": "Usuń limit",
+    "deleteIntervalTitle": "Usunąć wcześniejszy limit?",
+    "deleteIntervalDescription": "Limit {{amount}} dla {{category}} ({{period}}) zostanie usunięty także z historycznych raportów wydatków. Transakcje i inne limity pozostaną bez zmian.",
+    "intervalDeleted": "Limit usunięty",
+    "endDescription": "Limit dla {{category}} kończy się od bieżącego miesiąca, a zaplanowane zmiany zostają anulowane. Wcześniejsze limity i transakcje pozostają w raportach historycznych."
   }
 }

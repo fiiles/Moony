@@ -72,11 +72,6 @@
     "noDescription": "无说明",
     "count_other": "{{count}} 笔交易"
   },
-  "deleteConfirm": {
-    "title": "删除预算？",
-    "description": "{{category}}的限额从本月起结束，计划的变更将被取消。以前的限额和交易将保留在历史报表中。",
-    "deleted": "预算已删除"
-  },
   "noBudgets": {
     "title": "还没有预算",
     "description": "为您想关注的类别设置月度限额，它会与所有账户的支出进行比较。"
@@ -188,22 +183,30 @@
     "noChange": "限额未变化，未保存任何内容。"
   },
   "settings": {
-    "title": "已设置预算",
-    "spendingView": "使用情况",
-    "description": "所有已设置的限额，包括过去和计划的变更。不受所选支出期间和账户筛选影响。",
-    "recurrence": "重复周期",
-    "validity": "有效月份（含首尾）",
     "from": "自{{month}}起",
     "between": "{{start}} – {{end}}",
     "historical": "历史限额 · 已结束",
     "noPeriodLimits": "此期间没有限额",
-    "noPeriodLimitsHelp": "请选择其他期间，或在已设置预算中修改有效日期。",
-    "evaluationNote": "{{period}}的限额评估",
-    "deleteSelected": "删除所选（{{count}}）",
-    "selectAll": "选择所有有限额的期间",
-    "selectInterval": "选择自{{month}}起的{{category}}",
-    "deleteTitle": "删除所选期间？",
-    "deleteDescription": "待删除期间数：{{count}}。仅删除这些期间的限额，包括选中的过去期间。其他期间和交易保持不变。",
-    "deleted": "已删除所选期间"
+    "noPeriodLimitsHelp": "请选择其他期间，或在“管理预算”中调整限额。",
+    "evaluationNote": "{{period}}的限额评估"
+  },
+  "manage": {
+    "title": "管理预算",
+    "description": "月度限额适用于所有账户的支出，与所选期间无关。",
+    "limit": "限额",
+    "validity": "有效期",
+    "scheduled": "已计划",
+    "showHistory": "显示以前的限额：{{category}}",
+    "earlierLimit": "以前的限额",
+    "endedBudgets": "已结束的预算（{{count}}）",
+    "end": "结束预算",
+    "endTitle": "结束预算？",
+    "endedToast": "预算已结束",
+    "restore": "恢复限额",
+    "deleteInterval": "删除限额",
+    "deleteIntervalTitle": "删除以前的限额？",
+    "deleteIntervalDescription": "{{category}}的{{amount}}限额（{{period}}）也将从历史支出报表中删除。交易和其他限额保持不变。",
+    "intervalDeleted": "限额已删除",
+    "endDescription": "{{category}}的限额从本月起结束，计划的变更将被取消。以前的限额和交易将保留在历史报表中。"
   }
 }

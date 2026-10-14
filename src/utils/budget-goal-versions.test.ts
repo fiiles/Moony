@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { BudgetGoal, BudgetGoalVersion } from '@shared/schema';
 import {
+  budgetOverview,
   defaultEditMonth,
   budgetVersionPeriods,
   budgetEditSource,
@@ -139,5 +140,61 @@ describe('month input helpers', () => {
     for (const value of ['2026-00', '2026-13', '0000-01', '', '2026-02-01']) {
       expect(monthStartFromInput(value)).toBeNull();
     }
+  });
+});
+
+describe('budgetOverview', () => {
+  const MAR = Date.UTC(2026, 2, 1) / 1000;
+  const NOV = Date.UTC(2026, 10, 1) / 1000;
+  const goal = (categoryId: string, versions: BudgetGoalVersion[]): BudgetGoal => ({
+    id: categoryId,
+    categoryId,
+    timeframe: 'monthly',
+    amount: '0',
+    currency: 'CZK',
+    createdAt: JAN,
+    updatedAt: JAN,
+    effectiveMonth: null,
+    versions,
+  });
+
+  it('shows the limit in effect with its upcoming changes and earlier limits newest first', () => {
+    const [row] = budgetOverview(
+      [goal('a', [v(JAN, '700'), v(MAR, '800'), v(JUN, null), v(SEP, '900'), v(NOV, '950')])],
+      OCT
+    );
+    expect(row.status).toBe('active');
+    expect(row.main).toEqual({ version: v(SEP, '900'), end: NOV - 1 });
+    expect(row.upcoming).toEqual([v(NOV, '950')]);
+    expect(row.history).toEqual([
+      { version: v(MAR, '800'), end: JUN - 1 },
+      { version: v(JAN, '700'), end: MAR - 1 },
+    ]);
+  });
+
+  it('lists a scheduled removal as an upcoming change', () => {
+    const [row] = budgetOverview([goal('a', [v(JAN, '700'), v(DEC, null)])], OCT);
+    expect(row.status).toBe('active');
+    expect(row.upcoming).toEqual([v(DEC, null)]);
+  });
+
+  it('shows a goal that only starts later by its first scheduled limit', () => {
+    const [row] = budgetOverview([goal('a', [v(JAN, '500'), v(MAR, null), v(NOV, '600')])], OCT);
+    expect(row.status).toBe('scheduled');
+    expect(row.main).toEqual({ version: v(NOV, '600'), end: null });
+    expect(row.upcoming).toEqual([]);
+    expect(row.history).toEqual([{ version: v(JAN, '500'), end: MAR - 1 }]);
+  });
+
+  it('shows an ended goal by its last limit and skips goals without any limit', () => {
+    const rows = budgetOverview(
+      [goal('a', [v(JAN, '500'), v(MAR, '550'), v(JUN, null)]), goal('b', [v(JAN, null)])],
+      OCT
+    );
+    expect(rows).toHaveLength(1);
+    expect(rows[0].status).toBe('ended');
+    expect(rows[0].main).toEqual({ version: v(MAR, '550'), end: JUN - 1 });
+    expect(rows[0].upcoming).toEqual([]);
+    expect(rows[0].history).toEqual([{ version: v(JAN, '500'), end: MAR - 1 }]);
   });
 });

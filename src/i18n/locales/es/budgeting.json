@@ -88,11 +88,6 @@
     "count_many": "{{count}} movimientos",
     "count_other": "{{count}} movimientos"
   },
-  "deleteConfirm": {
-    "title": "¿Eliminar el presupuesto?",
-    "description": "El límite de {{category}} termina a partir del mes actual y se cancelan los cambios programados. Los límites anteriores y las transacciones permanecen en los informes históricos.",
-    "deleted": "Presupuesto eliminado"
-  },
   "noBudgets": {
     "title": "Aún no hay presupuestos",
     "description": "Fija un límite mensual para una categoría que quieras vigilar. Se compara con el gasto de todas las cuentas."
@@ -204,22 +199,30 @@
     "noChange": "El límite no ha cambiado; no se ha guardado nada."
   },
   "settings": {
-    "title": "Presupuestos configurados",
-    "spendingView": "Consumo",
-    "description": "Todos los límites configurados, incluidos los cambios pasados y programados. Independiente del período de gastos y del filtro de cuentas seleccionados.",
-    "recurrence": "Repetición",
-    "validity": "Meses de validez (inclusive)",
     "from": "Desde {{month}} en adelante",
     "between": "{{start}} – {{end}}",
     "historical": "Límite histórico · finalizado",
     "noPeriodLimits": "No hay límites para este período",
-    "noPeriodLimitsHelp": "Elige otro período o modifica la vigencia en Presupuestos configurados.",
-    "evaluationNote": "Límites evaluados para {{period}}",
-    "deleteSelected": "Eliminar selección ({{count}})",
-    "selectAll": "Seleccionar todos los intervalos con límite",
-    "selectInterval": "Seleccionar {{category}} desde {{month}}",
-    "deleteTitle": "¿Eliminar los intervalos seleccionados?",
-    "deleteDescription": "Intervalos a eliminar: {{count}}. Se eliminarán los límites exactamente para estos períodos, incluidos los períodos pasados seleccionados. Los demás intervalos y las transacciones no cambiarán.",
-    "deleted": "Intervalos seleccionados eliminados"
+    "noPeriodLimitsHelp": "Elige otro período o ajusta los límites en Gestionar presupuestos.",
+    "evaluationNote": "Límites evaluados para {{period}}"
+  },
+  "manage": {
+    "title": "Gestionar presupuestos",
+    "description": "Los límites mensuales se aplican al gasto de todas las cuentas y no dependen del período seleccionado.",
+    "limit": "Límite",
+    "validity": "Vigencia",
+    "scheduled": "Programado",
+    "showHistory": "Mostrar límites anteriores: {{category}}",
+    "earlierLimit": "Límite anterior",
+    "endedBudgets": "Presupuestos finalizados ({{count}})",
+    "end": "Finalizar presupuesto",
+    "endTitle": "¿Finalizar el presupuesto?",
+    "endedToast": "Presupuesto finalizado",
+    "restore": "Restaurar límite",
+    "deleteInterval": "Eliminar límite",
+    "deleteIntervalTitle": "¿Eliminar el límite anterior?",
+    "deleteIntervalDescription": "El límite de {{amount}} para {{category}} ({{period}}) también se elimina de los informes históricos de gasto. Las transacciones y los demás límites no cambian.",
+    "intervalDeleted": "Límite eliminado",
+    "endDescription": "El límite de {{category}} termina a partir del mes actual y se cancelan los cambios programados. Los límites anteriores y las transacciones permanecen en los informes históricos."
   }
 }

@@ -80,11 +80,6 @@
     "count_one": "{{count}} transaktion",
     "count_other": "{{count}} transaktioner"
   },
-  "deleteConfirm": {
-    "title": "Ta bort budgeten?",
-    "description": "Gränsen för {{category}} avslutas från innevarande månad och planerade ändringar avbryts. Tidigare gränser och transaktioner finns kvar i historiska rapporter.",
-    "deleted": "Budgeten har tagits bort"
-  },
   "noBudgets": {
     "title": "Inga budgetar ännu",
     "description": "Sätt en månadsgräns för en kategori du vill hålla koll på. Den jämförs med utgifterna på alla konton."
@@ -196,22 +191,30 @@
     "noChange": "Gränsen är oförändrad; ingenting sparades."
   },
   "settings": {
-    "title": "Inställda budgetar",
-    "spendingView": "Förbrukning",
-    "description": "Alla inställda gränser, inklusive tidigare och planerade ändringar. Oberoende av vald utgiftsperiod och kontofilter.",
-    "recurrence": "Upprepning",
-    "validity": "Giltiga månader (inklusive)",
     "from": "Från {{month}} och framåt",
     "between": "{{start}} – {{end}}",
     "historical": "Historisk gräns · avslutad",
     "noPeriodLimits": "Inga gränser för denna period",
-    "noPeriodLimitsHelp": "Välj en annan period eller ändra giltigheten under Inställda budgetar.",
-    "evaluationNote": "Gränser utvärderade för {{period}}",
-    "deleteSelected": "Radera valda ({{count}})",
-    "selectAll": "Välj alla intervall med gräns",
-    "selectInterval": "Välj {{category}} från {{month}}",
-    "deleteTitle": "Radera valda intervall?",
-    "deleteDescription": "Intervall att radera: {{count}}. Gränserna tas bort exakt för dessa perioder, inklusive valda tidigare perioder. Andra intervall och transaktioner förblir oförändrade.",
-    "deleted": "Valda intervall raderade"
+    "noPeriodLimitsHelp": "Välj en annan period eller justera gränserna under Hantera budgetar.",
+    "evaluationNote": "Gränser utvärderade för {{period}}"
+  },
+  "manage": {
+    "title": "Hantera budgetar",
+    "description": "Månatliga gränser gäller utgifter från alla konton och beror inte på vald period.",
+    "limit": "Gräns",
+    "validity": "Giltighet",
+    "scheduled": "Schemalagd",
+    "showHistory": "Visa tidigare gränser: {{category}}",
+    "earlierLimit": "Tidigare gräns",
+    "endedBudgets": "Avslutade budgetar ({{count}})",
+    "end": "Avsluta budget",
+    "endTitle": "Avsluta budgeten?",
+    "endedToast": "Budgeten har avslutats",
+    "restore": "Återställ gräns",
+    "deleteInterval": "Ta bort gräns",
+    "deleteIntervalTitle": "Ta bort tidigare gräns?",
+    "deleteIntervalDescription": "Gränsen på {{amount}} för {{category}} ({{period}}) tas även bort från historiska utgiftsrapporter. Transaktioner och andra gränser förblir oförändrade.",
+    "intervalDeleted": "Gränsen har tagits bort",
+    "endDescription": "Gränsen för {{category}} avslutas från innevarande månad och planerade ändringar avbryts. Tidigare gränser och transaktioner finns kvar i historiska rapporter."
   }
 }

@@ -88,11 +88,6 @@
     "count_few": "{{count}} transakce",
     "count_other": "{{count}} transakcí"
   },
-  "deleteConfirm": {
-    "title": "Smazat rozpočet?",
-    "description": "Limit pro kategorii {{category}} skončí od aktuálního měsíce a naplánované změny se zruší. Dřívější limity i transakce zůstanou v historických přehledech.",
-    "deleted": "Rozpočet smazán"
-  },
   "noBudgets": {
     "title": "Zatím žádný rozpočet",
     "description": "Nastavte měsíční limit pro kategorii, kde chcete výdaje hlídat. Porovnává se s výdaji ze všech účtů."
@@ -204,22 +199,30 @@
     "noChange": "Limit se nezměnil, nic se neuložilo."
   },
   "settings": {
-    "title": "Nastavené rozpočty",
-    "spendingView": "Čerpání",
-    "description": "Všechny nastavené limity včetně minulých a naplánovaných změn. Nezávisí na vybraném období čerpání ani filtru účtů.",
-    "recurrence": "Opakování",
-    "validity": "Platnost v měsících (včetně)",
     "from": "Platí od: {{month}}",
     "between": "{{start}} – {{end}}",
     "historical": "Historický limit · ukončen",
     "noPeriodLimits": "Pro toto období nejsou nastavené limity",
-    "noPeriodLimitsHelp": "Vyberte jiné období nebo upravte platnost v pohledu Nastavené rozpočty.",
-    "evaluationNote": "Limity vyhodnocené za {{period}}",
-    "deleteSelected": "Smazat vybrané ({{count}})",
-    "selectAll": "Vybrat všechny intervaly s limitem",
-    "selectInterval": "Vybrat {{category}} · {{month}}",
-    "deleteTitle": "Smazat vybrané intervaly?",
-    "deleteDescription": "Počet intervalů k odstranění: {{count}}. Limity se odstraní přesně pro tato období, včetně případných vybraných minulých období. Ostatní intervaly i transakce zůstanou beze změny.",
-    "deleted": "Vybrané intervaly smazány"
+    "noPeriodLimitsHelp": "Vyberte jiné období nebo upravte limity přes Spravovat rozpočty.",
+    "evaluationNote": "Limity vyhodnocené za {{period}}"
+  },
+  "manage": {
+    "title": "Spravovat rozpočty",
+    "description": "Měsíční limity platí pro výdaje ze všech účtů a nezávisí na vybraném období.",
+    "limit": "Limit",
+    "validity": "Platnost",
+    "scheduled": "Naplánováno",
+    "showHistory": "Zobrazit dřívější limity: {{category}}",
+    "earlierLimit": "Dřívější limit",
+    "endedBudgets": "Ukončené rozpočty ({{count}})",
+    "end": "Ukončit rozpočet",
+    "endTitle": "Ukončit rozpočet?",
+    "endedToast": "Rozpočet ukončen",
+    "restore": "Obnovit limit",
+    "deleteInterval": "Smazat limit",
+    "deleteIntervalTitle": "Smazat dřívější limit?",
+    "deleteIntervalDescription": "Limit {{amount}} pro kategorii {{category}} ({{period}}) se odstraní i z historických přehledů čerpání. Transakce ani ostatní limity se nezmění.",
+    "intervalDeleted": "Limit smazán",
+    "endDescription": "Limit pro kategorii {{category}} skončí od aktuálního měsíce a naplánované změny se zruší. Dřívější limity i transakce zůstanou v historických přehledech."
   }
 }

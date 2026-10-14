@@ -88,11 +88,6 @@
     "count_many": "{{count}} movimenti",
     "count_other": "{{count}} movimenti"
   },
-  "deleteConfirm": {
-    "title": "Eliminare il budget?",
-    "description": "Il limite per {{category}} termina dal mese corrente e le modifiche pianificate vengono annullate. I limiti precedenti e le transazioni restano nei resoconti storici.",
-    "deleted": "Budget eliminato"
-  },
   "noBudgets": {
     "title": "Ancora nessun budget",
     "description": "Imposta un limite mensile per una categoria che vuoi tenere d'occhio. Viene confrontato con le spese su tutti i conti."
@@ -204,22 +199,30 @@
     "noChange": "Il limite non è cambiato; non è stato salvato nulla."
   },
   "settings": {
-    "title": "Budget configurati",
-    "spendingView": "Utilizzo",
-    "description": "Tutti i limiti configurati, comprese le modifiche passate e pianificate. Indipendente dal periodo di spesa e dal filtro dei conti selezionati.",
-    "recurrence": "Ripetizione",
-    "validity": "Mesi di validità (inclusi)",
     "from": "Da {{month}} in poi",
     "between": "{{start}} – {{end}}",
     "historical": "Limite storico · terminato",
     "noPeriodLimits": "Nessun limite per questo periodo",
-    "noPeriodLimitsHelp": "Scegli un altro periodo o modifica la validità in Budget configurati.",
-    "evaluationNote": "Limiti valutati per {{period}}",
-    "deleteSelected": "Elimina selezionati ({{count}})",
-    "selectAll": "Seleziona tutti gli intervalli con limite",
-    "selectInterval": "Seleziona {{category}} da {{month}}",
-    "deleteTitle": "Eliminare gli intervalli selezionati?",
-    "deleteDescription": "Intervalli da eliminare: {{count}}. I limiti verranno rimossi esattamente per questi periodi, compresi eventuali periodi passati selezionati. Gli altri intervalli e le transazioni resteranno invariati.",
-    "deleted": "Intervalli selezionati eliminati"
+    "noPeriodLimitsHelp": "Scegli un altro periodo o modifica i limiti in Gestisci budget.",
+    "evaluationNote": "Limiti valutati per {{period}}"
+  },
+  "manage": {
+    "title": "Gestisci budget",
+    "description": "I limiti mensili valgono per le spese di tutti i conti e non dipendono dal periodo selezionato.",
+    "limit": "Limite",
+    "validity": "Validità",
+    "scheduled": "Pianificato",
+    "showHistory": "Mostra limiti precedenti: {{category}}",
+    "earlierLimit": "Limite precedente",
+    "endedBudgets": "Budget terminati ({{count}})",
+    "end": "Termina budget",
+    "endTitle": "Terminare il budget?",
+    "endedToast": "Budget terminato",
+    "restore": "Ripristina limite",
+    "deleteInterval": "Elimina limite",
+    "deleteIntervalTitle": "Eliminare il limite precedente?",
+    "deleteIntervalDescription": "Il limite di {{amount}} per {{category}} ({{period}}) viene rimosso anche dai resoconti storici delle spese. Transazioni e altri limiti restano invariati.",
+    "intervalDeleted": "Limite eliminato",
+    "endDescription": "Il limite per {{category}} termina dal mese corrente e le modifiche pianificate vengono annullate. I limiti precedenti e le transazioni restano nei resoconti storici."
   }
 }

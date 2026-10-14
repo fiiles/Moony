@@ -30,8 +30,24 @@ export function useDeleteBudgetIntervals(onDeleted: () => void) {
       budgetingApi.deleteBudgetGoalIntervals(intervals),
     onSuccess: async () => {
       await refreshMoneyFlows(client);
-      toast.success(t('settings.deleted'));
+      toast.success(t('manage.intervalDeleted'));
       onDeleted();
+    },
+    onError: (error: Error) => toast.error(translateApiError(error, tc)),
+  });
+}
+
+/** End a goal from the current month: earlier limits stay in the reports, scheduled changes go. */
+export function useEndBudgetGoal(onEnded: () => void) {
+  const client = useQueryClient();
+  const { t } = useTranslation('budgeting');
+  const { t: tc } = useTranslation('common');
+  return useMutation({
+    mutationFn: (id: string) => budgetingApi.deleteBudgetGoal(id),
+    onSuccess: async () => {
+      await refreshMoneyFlows(client);
+      toast.success(t('manage.endedToast'));
+      onEnded();
     },
     onError: (error: Error) => toast.error(translateApiError(error, tc)),
   });

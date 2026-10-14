@@ -200,6 +200,30 @@ pub fn get_goals_by_timeframe(conn: &Connection, timeframe: &str) -> Result<Vec<
         .collect())
 }
 
+/// Drop every version that repeats the limit before it (a removal with no
+/// limit before it included), so equal neighbours read as one interval.
+fn merge_equal_neighbours(conn: &Connection, category_id: &str, timeframe: &str) -> Result<()> {
+    let mut before: Option<(f64, String)> = None;
+    for version in goal_versions(conn, category_id, timeframe)? {
+        let limit = match &version.amount {
+            Some(amount) => Some((
+                crate::services::reporting::parse_money(amount)?,
+                version.currency.clone(),
+            )),
+            None => None,
+        };
+        if limit == before {
+            conn.execute(
+                "DELETE FROM budget_goal_versions WHERE category_id=?1 AND timeframe=?2 AND effective_month=?3",
+                params![category_id, timeframe, version.effective_month],
+            )?;
+        } else {
+            before = limit;
+        }
+    }
+    Ok(())
+}
+
 /// Upsert (create or update) a budget goal
 pub fn upsert_goal(conn: &Connection, data: InsertBudgetGoal) -> Result<BudgetGoal> {
     upsert_goal_at(conn, data, chrono::Utc::now().timestamp())
@@ -303,6 +327,8 @@ pub fn upsert_goal_at(
                 ])?;
         }
     }
+
+    merge_equal_neighbours(conn, &data.category_id, &data.timeframe)?;
 
     // Mirror the version in effect now (or the first scheduled one).
     let base = conn.query_row(
@@ -954,6 +980,51 @@ mod tests {
     }
 
     #[test]
+    fn moving_an_open_limit_earlier_leaves_one_interval() {
+        let conn = setup_test_db();
+        upsert_goal_at(&conn, goal_input("8000", OCT), NOW).unwrap();
+        upsert_goal_at(&conn, goal_input("8000.00", JAN), NOW).unwrap();
+        // The equal amount keeps the stored spelling of the limit.
+        assert_eq!(stored_versions(&conn), vec![(JAN, Some("8000".into()))]);
+    }
+
+    #[test]
+    fn equal_neighbours_merge_but_different_limits_and_currencies_stay() {
+        let conn = setup_test_db();
+        upsert_goal_at(&conn, goal_input("100", JAN), NOW).unwrap();
+        upsert_goal_at(&conn, goal_input("200", JUN), NOW).unwrap();
+        let mut eur = goal_input("200", OCT);
+        eur.currency = Some("EUR".into());
+        upsert_goal_at(&conn, eur, NOW).unwrap();
+        // A range equal to what surrounds it adds nothing.
+        upsert_goal_at(&conn, range_input("100", MAR, MAR), NOW).unwrap();
+        assert_eq!(
+            stored_versions(&conn),
+            vec![
+                (JAN, Some("100".into())),
+                (JUN, Some("200".into())),
+                (OCT, Some("200".into())),
+            ]
+        );
+    }
+
+    #[test]
+    fn a_range_after_a_gap_keeps_its_closing_removal() {
+        let conn = setup_test_db();
+        upsert_goal_at(&conn, range_input("50", MAR, MAR), NOW).unwrap();
+        upsert_goal_at(&conn, range_input("50", JUN, JUN), NOW).unwrap();
+        assert_eq!(
+            stored_versions(&conn),
+            vec![
+                (MAR, Some("50".into())),
+                (month(2026, 4), None),
+                (JUN, Some("50".into())),
+                (month(2026, 7), None),
+            ]
+        );
+    }
+
+    #[test]
     fn a_range_ending_before_its_start_is_rejected() {
         let conn = setup_test_db();
         let error = upsert_goal_at(&conn, range_input("200", JUN, MAR), NOW).unwrap_err();
@@ -979,7 +1050,8 @@ mod tests {
         assert_eq!(category.budget_limit_native.as_deref(), Some("100.00"));
         assert_eq!(category.budget_spent.as_deref(), Some("0.00"));
         assert_eq!(category.budget_percentage, Some(0.0));
-        assert_eq!(get_all_goals_at(&conn, NOW).unwrap()[0].versions.len(), 2);
+        // June repeated January's limit, so the two read as one interval.
+        assert_eq!(stored_versions(&conn), vec![(JAN, Some("100".into()))]);
     }
 
     fn interval(category: &str, month: i64) -> BudgetGoalInterval {
@@ -1441,15 +1513,11 @@ mod tests {
         upsert_goal_at(&conn, goal_input("1000.123", JAN), NOW).unwrap();
         upsert_goal_at(&conn, goal_input("2000", DEC), NOW).unwrap();
         // Same value as January's, spelled differently: keep the stored text.
-        upsert_goal_at(&conn, goal_input("1000.1230", MAR), NOW).unwrap();
-        let mar: String = conn
-            .query_row(
-                "SELECT amount FROM budget_goal_versions WHERE effective_month=?1",
-                [MAR],
-                |r| r.get(0),
-            )
-            .unwrap();
-        assert_eq!(mar, "1000.123");
+        upsert_goal_at(&conn, goal_input("1000.1230", JAN), NOW).unwrap();
+        assert_eq!(
+            stored_versions(&conn),
+            vec![(JAN, Some("1000.123".into())), (DEC, Some("2000".into()))]
+        );
     }
 
     #[test]

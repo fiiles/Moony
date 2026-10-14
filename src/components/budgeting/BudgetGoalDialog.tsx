@@ -22,6 +22,7 @@ import {
   monthInputValue,
   monthStartFromInput,
   scheduledVersions,
+  upcomingAfterSave,
   versionInEffect,
 } from '@/utils/budget-goal-versions';
 import { useFormat } from '@/lib/use-format';
@@ -165,7 +166,11 @@ export function BudgetGoalDialog({
   const editSource = goal ? budgetEditSource(goal, initialEffectiveMonth, nowMonth) : null;
   const editorCurrency = editSource?.currency ?? currencyCode;
   // Changes inside the range are replaced; only the ones after it stay.
-  const scheduled = scheduledVersions(versions, editedUntil ?? editedMonth ?? nowMonth);
+  const enteredAmount = Number(form.watch('amount'));
+  const scheduled =
+    editedUntil == null && Number.isFinite(enteredAmount) && enteredAmount > 0
+      ? upcomingAfterSave(versions, editedMonth ?? nowMonth, enteredAmount, editorCurrency)
+      : scheduledVersions(versions, editedUntil ?? editedMonth ?? nowMonth);
 
   // Average monthly spending in the limit editor's own currency.
   const averageRange = useMemo(() => {

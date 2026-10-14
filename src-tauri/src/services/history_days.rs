@@ -15,6 +15,8 @@
 //!   from the nearest live row that counts the same items, as the remainder of that row over the
 //!   facts derived for its day ([`LiveRemainder`], [`nearest_live`], A3), so a class does not
 //!   jump between rebuilt days and live ones.
+//! * Loans are the exception: they are computed values, so the ledger walk is their value on
+//!   every day, a live row's recorded loans included, and they take no remainder.
 //! * [`earliest_fact_day`] is the first day any fact is dated (A2): history starts there.
 //! * [`rebuild_days`] writes one row for every day of a range (A3, A4), in chunks of
 //!   [`CHUNK_DAYS`] days, one transaction each. [`plan_rebuild`], [`prune_before_first_fact`]
@@ -31,7 +33,7 @@ use rusqlite::Connection;
 use crate::error::Result;
 use crate::services::currency::breakdown_from_json;
 use crate::services::history_recalc::{chunk_ranges, CHUNK_DAYS};
-use crate::services::loan_amortization::{day_floor, loan_balance_at, LedgerEventKind, LoanLedger};
+use crate::services::loan_amortization::{day_floor, loan_balance_at, LoanLedger};
 use crate::services::loans;
 use crate::services::parsing::parse_money;
 use crate::services::portfolio_history::{
@@ -70,8 +72,8 @@ pub struct DayValues {
     /// not counted (an account before its first record) adds nothing of its own.
     pub breakdowns: ClassBreakdowns,
     /// The classes whose every item the facts cover on the day (A1, "known"). A live row
-    /// is rewritten for these only (D1). Stocks and crypto are always known; bonds are once
-    /// every bond has a purchase date.
+    /// is rewritten for these only (D1). Stocks, crypto and loans are always known (a loan is
+    /// the ledger walk on every day); bonds are once every bond has a purchase date.
     pub known: ClassSet,
 }
 
@@ -194,11 +196,12 @@ impl Property {
     }
 }
 
+/// A loan: its ledger walk is its value on every day (0 before the start, the estimate until
+/// the first manual balance record, then the manual records hold). Computed, never a user fact
+/// of its own: no live row pins it and no remainder is added to it.
 struct Loan {
     currency: String,
     ledger: LoanLedger,
-    /// The day of the first manual balance: before it the loan is estimated (D5).
-    first_manual_day: Option<i64>,
 }
 
 /// A bond: its face value (`coupon_value × quantity`) counts from the day it was bought.
@@ -229,9 +232,7 @@ struct OtherAsset {
 /// One class on one day, split by where its amounts come from.
 #[derive(Debug, Clone, Default)]
 struct ClassDay {
-    /// What the dated facts give: the items they cover, plus the estimate of a loan whose
-    /// manual balances only start later (dated by the loan's start; a live row pins it, see
-    /// [`LiveRemainder`]).
+    /// What the dated facts give: the items they cover.
     derived: Breakdown,
     /// Items counted on the day that have no date at all: the current balance of an account
     /// without records, an other asset with a quantity and no transactions, a bond without a
@@ -258,7 +259,8 @@ struct RealEstateDay {
 /// Every class that has no ticker series, on one day.
 struct StaticDay {
     savings: ClassDay,
-    loans: ClassDay,
+    /// Always the ledger walk alone: loans are never carried and take no remainder.
+    loans: Breakdown,
     real_estate: RealEstateDay,
     other_assets: ClassDay,
     bonds: ClassDay,
@@ -274,6 +276,9 @@ struct StaticDay {
 /// derived values rather than from the stored row also keeps a rebuild idempotent: the
 /// rewrite does not change what the next one reads.
 ///
+/// Loans have no remainder: the ledger walk is their value on every day, a live row's
+/// recorded loan total included (it came from an older valuation model and is no user fact).
+///
 /// A negative remainder (the facts derive more than was recorded) is kept for savings only,
 /// where an overdraft is a legitimate negative amount; the other classes cannot be negative,
 /// so a negative figure there is a stale record and counts as 0. A remainder below half a
@@ -282,7 +287,6 @@ struct StaticDay {
 struct LiveRemainder {
     day: i64,
     savings: Breakdown,
-    loans: Breakdown,
     bonds: Breakdown,
     personal: Breakdown,
     investment: Breakdown,
@@ -471,23 +475,17 @@ impl Statics {
         savings
     }
 
-    /// Loans: the ledger walk of the day (0 before the start). The estimated past of a loan
-    /// with manual balances, before the first one, is not a fact (D5): it is a dated estimate,
-    /// so it stays derived and is uncovered.
-    fn loans_on(&mut self, day: i64) -> ClassDay {
-        let mut loans = ClassDay {
-            covered: true,
-            ..ClassDay::default()
-        };
+    /// Loans: the ledger walk of the day (0 before the start; the estimate until the first
+    /// manual balance record, which then holds). Every day is derived from the ledger, a past
+    /// live day included: only a manual balance is a user fact and it is in the ledger already.
+    fn loans_on(&self, day: i64) -> Breakdown {
+        let mut loans = Breakdown::new();
         for loan in &self.loans {
             add(
-                &mut loans.derived,
+                &mut loans,
                 &loan.currency,
                 loan_balance_at(&loan.ledger, day).balance,
             );
-            if loan.first_manual_day.is_some_and(|first| day < first) {
-                loans.covered = false;
-            }
         }
         loans
     }
@@ -590,7 +588,6 @@ struct LiveRow {
     /// Personal and investment property together, as stored (I2).
     real_estate: Breakdown,
     real_estate_personal: Breakdown,
-    loans: Breakdown,
     other_assets: Breakdown,
 }
 
@@ -598,7 +595,7 @@ struct LiveRow {
 fn load_live_rows(conn: &Connection) -> Result<Vec<LiveRow>> {
     let mut stmt = conn.prepare(
         "SELECT recorded_at, savings_by_currency, bonds_by_currency, real_estate_by_currency,
-                real_estate_personal_by_currency, loans_by_currency, other_assets_by_currency
+                real_estate_personal_by_currency, other_assets_by_currency
          FROM portfolio_metrics_history WHERE source = 'live' ORDER BY recorded_at",
     )?;
     let rows = stmt
@@ -609,8 +606,7 @@ fn load_live_rows(conn: &Connection) -> Result<Vec<LiveRow>> {
                 bonds: breakdown_from_json(&row.get::<_, String>(2)?),
                 real_estate: breakdown_from_json(&row.get::<_, String>(3)?),
                 real_estate_personal: breakdown_from_json(&row.get::<_, String>(4)?),
-                loans: breakdown_from_json(&row.get::<_, String>(5)?),
-                other_assets: breakdown_from_json(&row.get::<_, String>(6)?),
+                other_assets: breakdown_from_json(&row.get::<_, String>(5)?),
             })
         })?
         .collect::<rusqlite::Result<Vec<_>>>()?;
@@ -625,7 +621,8 @@ fn load_live_rows(conn: &Connection) -> Result<Vec<LiveRow>> {
 }
 
 /// The remainder of every live row (A3): what the row holds beyond the facts dated on or
-/// before its day, found with a walk of the static facts over the live days.
+/// before its day, found with a walk of the static facts over the live days. Loans are no
+/// part of it (always derived).
 fn load_live_remainders(conn: &Connection, statics: &mut Statics) -> Result<Vec<LiveRemainder>> {
     let rows = load_live_rows(conn)?;
     let mut remainders = Vec::with_capacity(rows.len());
@@ -645,7 +642,6 @@ fn load_live_remainders(conn: &Connection, statics: &mut Statics) -> Result<Vec<
         remainders.push(LiveRemainder {
             day: row.day,
             savings: class_remainder(&day.savings, &row.savings, true),
-            loans: class_remainder(&day.loans, &row.loans, false),
             bonds: class_remainder(&day.bonds, &row.bonds, false),
             personal,
             investment,
@@ -743,12 +739,7 @@ impl Facts {
                     !real_estate.covered,
                     rest(real_estate.counted_since, |row| &row.investment),
                 ),
-                loans: completed(
-                    &statics.loans.derived,
-                    &statics.loans.carried,
-                    !statics.loans.covered,
-                    rest(statics.loans.counted_since, |row| &row.loans),
-                ),
+                loans: without_zeros(statics.loans),
                 other_assets: completed(
                     &statics.other_assets.derived,
                     &statics.other_assets.carried,
@@ -762,7 +753,7 @@ impl Facts {
                 crypto: true,
                 bonds: statics.bonds.covered,
                 real_estate: real_estate.covered,
-                loans: statics.loans.covered,
+                loans: true,
                 other_assets: statics.other_assets.covered,
             },
         }
@@ -917,13 +908,6 @@ fn load_loans(conn: &Connection) -> Result<Vec<Loan>> {
     Ok(loans::load_ledgers(conn)?
         .into_iter()
         .map(|entry| Loan {
-            first_manual_day: entry
-                .ledger
-                .events
-                .iter()
-                .filter(|event| event.kind == LedgerEventKind::BalanceCheck)
-                .map(|event| day_floor(event.day))
-                .min(),
             currency: entry.currency,
             ledger: entry.ledger,
         })
@@ -1671,15 +1655,16 @@ mod tests {
     }
 
     #[test]
-    fn a_manual_balance_holds_and_the_estimated_past_before_it_is_unknown() {
+    fn a_manual_balance_holds_and_the_estimated_past_before_it_is_derived_too() {
         let conn = setup_test_db();
         yearly_loan(&conn);
         loan_event(&conn, "l", "balance_check", iso("2024-06-20"), "4000", 1);
 
-        // before the first manual record the loan follows the estimate (D5), unknown
+        // before the first manual record the loan follows the estimate (D5): a computed
+        // value, re-derived from the ledger like every loan day, so the class is known
         let before = values_on(&conn, iso("2024-05-10"));
         assert_eq!(before.breakdowns.loans, map(&[("CZK", 8_000.0)]));
-        assert!(!before.known.loans);
+        assert!(before.known.loans);
 
         // from the record on it holds: no amortization after it (D6)
         for date in ["2024-06-20", "2024-09-10", "2025-12-31"] {
@@ -2471,7 +2456,7 @@ mod tests {
         assert_eq!(at(15, "savings_by_currency"), map(&[("CZK", 999.0)]));
         // both accounts are dated on day 25
         assert_eq!(at(25, "savings_by_currency"), map(&[("CZK", 150.0)]));
-        // loans are fully dated: every live day is rewritten
+        // loans are always derived from their ledger: every live day is rewritten
         for day in [5, 15, 25] {
             assert_eq!(
                 at(day, "loans_by_currency"),
@@ -3112,12 +3097,12 @@ mod tests {
     }
 
     #[test]
-    fn the_estimated_past_of_an_overridden_loan_is_pinned_to_the_live_row() {
+    fn the_estimated_past_of_an_overridden_loan_is_rewritten_on_live_rows_too() {
         let conn = setup_test_db();
         let today = iso("2025-01-10");
         yearly_loan(&conn);
         loan_event(&conn, "l", "balance_check", iso("2024-06-20"), "4000", 1);
-        // the estimate of 2024-03-15 is 10 000; the row recorded 10 500
+        // the estimate of 2024-03-15 is 10 000; the row recorded 10 500 (an old valuation model)
         live_with(
             &conn,
             iso("2024-03-15"),
@@ -3127,17 +3112,85 @@ mod tests {
         rebuild_days(&conn, iso("2024-01-01"), today).expect("rebuild");
 
         let loans = |date: &str| column(&conn, iso(date), "loans_by_currency");
-        // the estimate keeps its shape, moved by the 500 the live row holds beyond it
-        assert_eq!(loans("2024-01-10"), map(&[("CZK", 12_500.0)]));
-        assert_eq!(loans("2024-02-20"), map(&[("CZK", 11_500.0)]));
-        assert_eq!(loans("2024-03-16"), map(&[("CZK", 10_500.0)]), "no jump");
-        assert_eq!(loans("2024-04-12"), map(&[("CZK", 9_500.0)]));
-        // from the manual balance on the facts cover the class: nothing is added
-        assert_eq!(loans("2024-06-19"), map(&[("CZK", 7_500.0)]));
+        // the ledger walk alone: no remainder of the live row moves the estimated past
+        assert_eq!(loans("2024-01-10"), map(&[("CZK", 12_000.0)]));
+        assert_eq!(loans("2024-02-20"), map(&[("CZK", 11_000.0)]));
+        assert_eq!(loans("2024-03-16"), map(&[("CZK", 10_000.0)]));
+        assert_eq!(loans("2024-04-12"), map(&[("CZK", 9_000.0)]));
+        assert_eq!(loans("2024-06-19"), map(&[("CZK", 7_000.0)]));
         assert_eq!(loans("2024-06-20"), map(&[("CZK", 4_000.0)]));
         assert_eq!(loans("2024-12-31"), map(&[("CZK", 4_000.0)]));
-        // the live row stays as recorded: the class is not covered on its day
-        assert_eq!(loans("2024-03-15"), map(&[("CZK", 10_500.0)]));
+        // the live row is rewritten as well: the recorded loan value was computed, not a fact
+        assert_eq!(loans("2024-03-15"), map(&[("CZK", 10_000.0)]));
+    }
+
+    #[test]
+    fn a_live_row_whose_recorded_loans_differ_from_the_ledger_takes_the_ledger_value() {
+        let conn = setup_test_db();
+        let today = iso("2024-08-01");
+        yearly_loan(&conn);
+        loan_event(&conn, "l", "balance_check", iso("2024-06-20"), "4000", 1);
+        // two live rows recorded loan totals of the old valuation model; both lie before the
+        // first manual balance, so each is the estimate of its day
+        for (date, recorded) in [
+            ("2024-03-15", r#"{"CZK":2000000}"#),
+            ("2024-05-20", r#"{"CZK":3}"#),
+        ] {
+            live_with(&conn, iso(date), &[("loans_by_currency", recorded)]);
+        }
+
+        rebuild_days(&conn, iso("2024-01-01"), today).expect("rebuild");
+
+        let loans = |date: &str| column(&conn, iso(date), "loans_by_currency");
+        assert_eq!(loans("2024-03-15"), map(&[("CZK", 10_000.0)]));
+        assert_eq!(loans("2024-05-20"), map(&[("CZK", 8_000.0)]));
+        // the live rows stay live
+        assert!(dump(&conn)
+            .iter()
+            .any(|(at, source, _)| *at == iso("2024-03-15") + 3_600 && source == "live"));
+    }
+
+    #[test]
+    fn days_before_a_loan_started_have_no_loans_whatever_a_live_row_recorded() {
+        let conn = setup_test_db();
+        let today = iso("2024-04-01");
+        // an older fact starts the history; the loan only starts on 2024-01-10
+        account(&conn, "a", "CZK", "100", false);
+        record(&conn, "a", iso("2023-11-01"), "100", "CZK");
+        yearly_loan(&conn);
+        loan_event(&conn, "l", "balance_check", iso("2024-03-01"), "9500", 1);
+        // a live row after the start, before the first manual balance, recorded a loan total
+        // that the ledger does not hold
+        live_with(
+            &conn,
+            iso("2024-02-15"),
+            &[("loans_by_currency", r#"{"CZK":2011416}"#)],
+        );
+
+        rebuild_days(&conn, iso("2023-01-01"), today).expect("rebuild");
+
+        for date in ["2023-11-01", "2023-12-31", "2024-01-09"] {
+            assert!(
+                column(&conn, iso(date), "loans_by_currency").is_empty(),
+                "{date}: no loan exists yet"
+            );
+        }
+        let loans = |date: &str| column(&conn, iso(date), "loans_by_currency");
+        assert_eq!(loans("2024-01-10"), map(&[("CZK", 12_000.0)]));
+        assert_eq!(
+            loans("2024-02-15"),
+            map(&[("CZK", 11_000.0)]),
+            "the live row"
+        );
+        assert_eq!(
+            loans("2024-03-20"),
+            map(&[("CZK", 9_500.0)]),
+            "the manual balance"
+        );
+        // the rebuild is idempotent: a second one changes nothing
+        let first = dump(&conn);
+        rebuild_days(&conn, iso("2023-01-01"), today).expect("again");
+        assert_eq!(dump(&conn), first);
     }
 
     #[test]

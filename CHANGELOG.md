@@ -6,6 +6,34 @@ All notable changes to Moony are documented in this file. The format follows
 
 ## [Unreleased]
 
+## [0.12.1] - 2026-10-14
+
+### Added
+
+- **Milestones on the net-worth chart.** A big day-over-day jump gets a marker that explains it:
+  the classes that moved and that day's events (a property bought, a loan drawn, a manual loan
+  balance, an extra payment, a balance record, trades, a bond bought). A move of stocks or crypto
+  alone, without a trade that day, is marked only from 10 % as a market move.
+- The real-estate chart marks every purchase and revaluation.
+
+### Changed
+
+- A property's value runs straight between its purchase price and its valuations (in the history
+  and on the property detail) instead of jumping on the day a valuation was entered.
+- Loans in the history always follow their schedule and your manual balances, also on days the
+  app recorded while open.
+
+### Fixed
+
+- Entering a purchase date, valuation, balance record or any other change to accounts, real
+  estate, loans, bonds or other assets rebuilds the whole history, so days before a newly entered
+  purchase date no longer keep a stale value.
+- Loan totals recorded by the previous valuation model no longer add a phantom debt to the
+  history.
+- Crypto days older than the year CoinGecko serves use daily prices from Yahoo Finance instead of
+  one flat price.
+- On the first start of this version Moony rebuilds the history once more.
+
 ## [0.12.0] - 2026-10-14
 
 ### Added

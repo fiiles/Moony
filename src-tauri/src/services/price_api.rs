@@ -8,7 +8,7 @@ use crate::error::{AppError, Result};
 use crate::models::stock_monitor::StockPricePoint;
 use crate::services::quote_unit::{quote_unit, unit_changed as quote_unit_changed, QuoteUnit};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use yahoo_finance_api::{YResponse, YahooError};
 
 /// Get current Unix timestamp. Uses expect() because system clock
@@ -1253,6 +1253,77 @@ pub async fn get_historical_crypto_price_coingecko(
 /// window would fail on every retry; earlier days fall back to the last known price.
 pub fn coingecko_history_start(from_day: i64, today_start: i64) -> i64 {
     from_day.max(today_start - 365 * 86_400)
+}
+
+/// The Yahoo Finance symbol of a crypto ticker's USD price: `BTC` is `BTC-USD`.
+pub fn yahoo_crypto_symbol(ticker: &str) -> String {
+    format!("{}-USD", ticker.trim().to_ascii_uppercase())
+}
+
+/// Daily USD closes of a crypto ticker from Yahoo Finance (`{TICKER}-USD`) over
+/// `from_day..=until_day`: the days older than CoinGecko's year, which its free tiers do not
+/// serve. One request. Best effort: an unknown symbol, a response in another currency or a
+/// network failure gives no prices (the caller keeps the last known price for those days).
+pub async fn get_historical_crypto_prices_yahoo(
+    ticker: &str,
+    from_day: i64,
+    until_day: i64,
+) -> Vec<HistoricalPrice> {
+    let symbol = yahoo_crypto_symbol(ticker);
+    match get_historical_stock_prices_yahoo(std::slice::from_ref(&symbol), from_day, until_day)
+        .await
+    {
+        Ok(mut fetched) => fetched
+            .remove(&symbol)
+            .unwrap_or_default()
+            .into_iter()
+            .filter(|quote| quote.currency.eq_ignore_ascii_case("USD"))
+            .collect(),
+        Err(error) => {
+            log::warn!("[YAHOO HISTORICAL] No crypto history for a ticker: {error}");
+            Vec::new()
+        }
+    }
+}
+
+/// One daily price series of a crypto ticker from its two sources: `pre_window` (Yahoo Finance
+/// closes) for the days before `window_start`, the first day CoinGecko serves
+/// ([`coingecko_history_start`]), and `in_window` (CoinGecko) from that day on. Each source owns
+/// its side: a Yahoo quote dated on or after `window_start` and a CoinGecko quote before it are
+/// dropped, so the boundary day is priced once, by CoinGecko. A day appears at most once (the
+/// latest quote of a day wins), at the start of the day, and quotes without a positive finite
+/// price are skipped. The series is sorted by day; a day without a quote takes the previous one
+/// through the usual price rule (`backfill::price_at_or_before`), across the boundary too.
+pub fn merge_crypto_price_series(
+    pre_window: Vec<HistoricalPrice>,
+    in_window: Vec<HistoricalPrice>,
+    window_start: i64,
+) -> Vec<HistoricalPrice> {
+    const DAY: i64 = 86_400;
+    let boundary = window_start.div_euclid(DAY) * DAY;
+    let mut by_day: BTreeMap<i64, HistoricalPrice> = BTreeMap::new();
+    let sources = [(pre_window, false), (in_window, true)];
+    for (quotes, from_boundary) in sources {
+        let mut quotes: Vec<HistoricalPrice> = quotes
+            .into_iter()
+            .filter(|quote| quote.price.is_finite() && quote.price > 0.0)
+            .collect();
+        // The latest quote of a day replaces earlier ones of it.
+        quotes.sort_by_key(|quote| quote.timestamp);
+        for quote in quotes {
+            let day = quote.timestamp.div_euclid(DAY) * DAY;
+            if (day >= boundary) == from_boundary {
+                by_day.insert(
+                    day,
+                    HistoricalPrice {
+                        timestamp: day,
+                        ..quote
+                    },
+                );
+            }
+        }
+    }
+    by_day.into_values().collect()
 }
 
 /// Get historical crypto prices for multiple coins over a date range
@@ -2658,6 +2729,171 @@ mod tests {
         assert_eq!(
             coingecko_history_start(today - 5 * 365 * 86_400, today),
             today - 365 * 86_400
+        );
+    }
+
+    fn usd(timestamp: i64, price: f64) -> HistoricalPrice {
+        HistoricalPrice {
+            timestamp,
+            price,
+            currency: "USD".into(),
+        }
+    }
+
+    /// The price the usual rule gives each of `days`, as `(day, price)`.
+    fn priced(series: &[HistoricalPrice], days: &[i64]) -> Vec<(i64, Option<f64>)> {
+        days.iter()
+            .map(|day| {
+                (
+                    *day,
+                    crate::services::backfill::price_at_or_before(series, *day)
+                        .map(|quote| quote.price),
+                )
+            })
+            .collect()
+    }
+
+    #[test]
+    fn a_crypto_ticker_is_quoted_by_yahoo_in_dollars() {
+        assert_eq!(yahoo_crypto_symbol("BTC"), "BTC-USD");
+        assert_eq!(yahoo_crypto_symbol(" eth "), "ETH-USD");
+    }
+
+    #[test]
+    fn the_crypto_series_takes_yahoo_before_the_window_and_coingecko_from_it() {
+        const D: i64 = 86_400;
+        let window = 400 * D;
+        let merged = merge_crypto_price_series(
+            vec![
+                usd(397 * D, 90.0),
+                usd(398 * D, 91.0),
+                usd(399 * D, 92.0),
+                // Yahoo quotes the window too: CoinGecko owns it
+                usd(400 * D, 555.0),
+                usd(401 * D, 556.0),
+            ],
+            vec![
+                // a CoinGecko quote before its window cannot be: it is dropped all the same
+                usd(399 * D, 777.0),
+                usd(400 * D, 100.0),
+                usd(401 * D, 101.0),
+            ],
+            window,
+        );
+        let days: Vec<(i64, f64)> = merged
+            .iter()
+            .map(|quote| (quote.timestamp, quote.price))
+            .collect();
+        assert_eq!(
+            days,
+            vec![
+                (397 * D, 90.0),
+                (398 * D, 91.0),
+                (399 * D, 92.0),
+                (400 * D, 100.0),
+                (401 * D, 101.0)
+            ],
+            "the boundary day once, from CoinGecko; Yahoo before it, CoinGecko from it"
+        );
+        assert!(merged.iter().all(|quote| quote.currency == "USD"));
+    }
+
+    #[test]
+    fn the_crypto_boundary_day_is_priced_once_whichever_time_of_day_a_quote_has() {
+        const D: i64 = 86_400;
+        let window = 400 * D + 5 * 3_600; // not a day start
+        let merged = merge_crypto_price_series(
+            vec![usd(399 * D + 23 * 3_600, 92.0), usd(400 * D + 600, 555.0)],
+            vec![usd(400 * D + 7_200, 100.0)],
+            window,
+        );
+        assert_eq!(merged.len(), 2);
+        assert_eq!((merged[0].timestamp, merged[0].price), (399 * D, 92.0));
+        assert_eq!((merged[1].timestamp, merged[1].price), (400 * D, 100.0));
+    }
+
+    #[test]
+    fn a_gap_in_the_crypto_series_carries_the_previous_price_across_the_boundary() {
+        const D: i64 = 86_400;
+        let window = 400 * D;
+        // Yahoo has no quote for 398; CoinGecko none for 400 (the boundary) and 402
+        let merged = merge_crypto_price_series(
+            vec![usd(397 * D, 90.0), usd(399 * D, 92.0)],
+            vec![usd(401 * D, 101.0), usd(403 * D, 103.0)],
+            window,
+        );
+        assert_eq!(
+            priced(
+                &merged,
+                &[
+                    396 * D,
+                    397 * D,
+                    398 * D,
+                    399 * D,
+                    400 * D,
+                    401 * D,
+                    402 * D,
+                    403 * D
+                ]
+            ),
+            vec![
+                (396 * D, None),
+                (397 * D, Some(90.0)),
+                (398 * D, Some(90.0)),
+                (399 * D, Some(92.0)),
+                (400 * D, Some(92.0)),
+                (401 * D, Some(101.0)),
+                (402 * D, Some(101.0)),
+                (403 * D, Some(103.0)),
+            ],
+            "no price before the first quote; every gap keeps the last one, across the boundary"
+        );
+    }
+
+    #[test]
+    fn the_crypto_series_keeps_the_latest_quote_of_a_day_and_skips_bad_prices() {
+        const D: i64 = 86_400;
+        let merged = merge_crypto_price_series(
+            vec![
+                usd(10 * D + 3_600, 1.0),
+                usd(10 * D + 7_200, 2.0),
+                usd(10 * D + 60, 0.5),
+                usd(11 * D, f64::NAN),
+                usd(12 * D, 0.0),
+                usd(13 * D, -4.0),
+                usd(9 * D, 3.0),
+            ],
+            vec![],
+            100 * D,
+        );
+        let days: Vec<(i64, f64)> = merged
+            .iter()
+            .map(|quote| (quote.timestamp, quote.price))
+            .collect();
+        assert_eq!(
+            days,
+            vec![(9 * D, 3.0), (10 * D, 2.0)],
+            "sorted, one per day"
+        );
+    }
+
+    #[test]
+    fn a_crypto_series_without_yahoo_or_without_coingecko_is_the_other_one() {
+        const D: i64 = 86_400;
+        let window = 400 * D;
+        assert!(merge_crypto_price_series(vec![], vec![], window).is_empty());
+        let only_coingecko = merge_crypto_price_series(vec![], vec![usd(401 * D, 101.0)], window);
+        assert_eq!(only_coingecko.len(), 1);
+        assert_eq!(only_coingecko[0].price, 101.0);
+        let only_yahoo = merge_crypto_price_series(vec![usd(300 * D, 50.0)], vec![], window);
+        assert_eq!(
+            priced(&only_yahoo, &[299 * D, 300 * D, 450 * D]),
+            vec![
+                (299 * D, None),
+                (300 * D, Some(50.0)),
+                (450 * D, Some(50.0))
+            ],
+            "with CoinGecko silent the last Yahoo close keeps carrying: today's old behaviour"
         );
     }
 

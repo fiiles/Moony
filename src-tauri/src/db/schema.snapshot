@@ -209,7 +209,7 @@ CREATE TABLE bonds (
     quantity TEXT NOT NULL DEFAULT '1',
     created_at INTEGER NOT NULL DEFAULT (unixepoch()),
     updated_at INTEGER NOT NULL DEFAULT (unixepoch())
-)
+, purchase_date INTEGER)
 
 == table budget_goal_versions ==
 CREATE TABLE budget_goal_versions (

@@ -326,7 +326,7 @@ impl MoonyMcp {
 #[tool_router]
 impl MoonyMcp {
     #[tool(
-        description = "List all bond holdings with name, ISIN, coupon value, quantity, currency, interest rate, and maturity date."
+        description = "List all bond holdings with name, ISIN, coupon value, quantity, currency, interest rate, maturity date, and purchase date (purchaseDate, the UTC day as Unix seconds; null when unknown, then history counts the bond across its whole length)."
     )]
     fn bonds_list(&self) -> Result<CallToolResult, McpError> {
         to_result(self.db.with_conn(bonds::bonds_list))
@@ -729,14 +729,17 @@ impl MoonyMcp {
     }
 
     #[tool(
-        description = "Create a bond holding in Moony.\n\nCall this only after presenting the parsed data to the user and receiving their confirmation.\nAmounts are numeric strings; currency is a 3-letter ISO code (defaults to the user's main currency); maturityDate is a Unix timestamp (seconds); ISIN, when provided, must be 12 characters."
+        description = "Create a bond holding in Moony.\n\nCall this only after presenting the parsed data to the user and receiving their confirmation.\nAmounts are numeric strings; currency is a 3-letter ISO code (defaults to the user's main currency); maturityDate is a Unix timestamp (seconds); ISIN, when provided, must be 12 characters. purchaseDate (optional) is the day the bond was bought, a Unix timestamp in seconds (the UTC day is kept; not in the future): net worth history counts the bond from that day on, and without it across the whole history, so pass it when known."
     )]
     fn bond_create(
         &self,
         Parameters(args): Parameters<crate::models::InsertBond>,
     ) -> Result<CallToolResult, McpError> {
-        // Bonds have no purchase date: no date, the history is rebuilt from its first fact.
-        let result = self.write_conn("bonds", None, |conn| bonds::bond_create(conn, &args));
+        // A dated bond counts from its purchase day; without one it is carried on every day, so
+        // there is no date and the history is rebuilt from its first fact.
+        let result = self.write_conn("bonds", bonds::earliest_date(&args), |conn| {
+            bonds::bond_create(conn, &args)
+        });
         self.create_tool_result("bonds", result)
     }
 

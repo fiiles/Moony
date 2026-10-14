@@ -430,6 +430,6 @@
   },
   "chart": {
     "title": "Fastighetens värde",
-    "subtitle": "Värdet ändras vid omvärdering – varje steg är din nya uppskattning."
+    "subtitle": "Värdet går i rak linje från en uppskattning till nästa."
   }
 }

@@ -106,6 +106,16 @@ impl<T> Steps<T> {
         self.taken.checked_sub(1).map(|index| &self.rows[index].1)
     }
 
+    /// The newest row passed so far with its day.
+    fn latest_row(&self) -> Option<&(i64, T)> {
+        self.taken.checked_sub(1).map(|index| &self.rows[index])
+    }
+
+    /// The first row the cursor has not passed: dated after the day it was advanced to.
+    fn next(&self) -> Option<&(i64, T)> {
+        self.rows.get(self.taken)
+    }
+
     fn first(&self) -> Option<&(i64, T)> {
         self.rows.first()
     }
@@ -146,7 +156,42 @@ struct Property {
     purchase_date: Option<i64>,
     purchase_price: f64,
     purchase_currency: String,
+    /// One valuation per day: of several on one day, the last created.
     valuations: Steps<Amount>,
+}
+
+impl Property {
+    /// The value on `day` (which is on or after the purchase date), in the currency of the
+    /// point it comes from; `None` while the property is not counted: before its first
+    /// valuation, without a purchase date to open the line.
+    ///
+    /// The line has the purchase (when it precedes the first valuation: on that day the
+    /// valuation replaces it) and every valuation as points, and runs straight between two
+    /// consecutive points of one currency. Two currencies cannot be drawn between: the earlier
+    /// value holds until the next point. After the last point its value holds. The cursor of
+    /// `valuations` has passed the points on or before `day`.
+    fn value_on(&self, day: i64) -> Option<(f64, &str)> {
+        let first_day = self.valuations.first()?.0;
+        let opening = self
+            .purchase_date
+            .filter(|bought| *bought < first_day)
+            .map(|bought| (bought, self.purchase_price, self.purchase_currency.as_str()));
+        let (from_day, from_value, currency) = match self.valuations.latest_row() {
+            Some((valued_at, valuation)) => {
+                (*valued_at, valuation.value, valuation.currency.as_str())
+            }
+            None => opening?,
+        };
+        let value = match self.valuations.next() {
+            Some((to_day, next)) if next.currency == currency && *to_day > from_day => {
+                from_value
+                    + (next.value - from_value) * (day - from_day) as f64
+                        / (*to_day - from_day) as f64
+            }
+            _ => from_value,
+        };
+        Some((value, currency))
+    }
 }
 
 struct Loan {
@@ -448,10 +493,11 @@ impl Statics {
     }
 
     /// Real estate, split by the property's current type. A property without any valuation is
-    /// not counted on any day. Before the purchase date a property is worth 0. Otherwise the
-    /// newest valuation on or before the day applies (of one day, the last entered), else the
-    /// purchase price. A property without a purchase date counts nothing before its first
-    /// valuation, and that day is uncovered.
+    /// not counted on any day. Before the purchase date a property is worth 0. From there its
+    /// value is the line through the purchase (when it precedes the first valuation) and the
+    /// valuations, straight between two points of one currency ([`Property::value_on`]); of
+    /// several valuations on one day the last entered counts. A property without a purchase date
+    /// counts nothing before its first valuation, and that day is uncovered.
     fn real_estate_on(&mut self, day: i64) -> RealEstateDay {
         let mut real_estate = RealEstateDay {
             covered: true,
@@ -466,21 +512,16 @@ impl Statics {
             {
                 continue;
             }
+            let Some((value, currency)) = property.value_on(day) else {
+                real_estate.covered = false;
+                continue;
+            };
             let target = if property.personal {
                 &mut real_estate.personal
             } else {
                 &mut real_estate.investment
             };
-            match (property.valuations.latest(), property.purchase_date) {
-                (Some(valuation), _) => add(target, &valuation.currency, valuation.value),
-                (None, Some(_)) => {
-                    add(target, &property.purchase_currency, property.purchase_price)
-                }
-                (None, None) => {
-                    real_estate.covered = false;
-                    continue;
-                }
-            }
+            add(target, currency, value);
             real_estate.counted_since =
                 latest_first_day(real_estate.counted_since, property.counted_from);
         }
@@ -819,6 +860,19 @@ fn load_valuations(
     ))
 }
 
+/// `rows` (oldest first, a day's rows in the order they were entered) with one row per day:
+/// the last of it.
+fn last_of_each_day<T>(rows: Vec<(i64, T)>) -> Vec<(i64, T)> {
+    let mut days: Vec<(i64, T)> = Vec::with_capacity(rows.len());
+    for row in rows {
+        match days.last_mut() {
+            Some(last) if last.0 == row.0 => *last = row,
+            _ => days.push(row),
+        }
+    }
+    days
+}
+
 fn load_properties(conn: &Connection) -> Result<Vec<Property>> {
     let mut valuations = load_valuations(conn, "real_estate_valuations", "real_estate_id")?;
     let mut stmt = conn.prepare(
@@ -840,7 +894,8 @@ fn load_properties(conn: &Connection) -> Result<Vec<Property>> {
         .into_iter()
         .map(
             |(id, kind, purchase_price, purchase_currency, purchase_date)| {
-                let valuations = Steps::new(valuations.remove(&id).unwrap_or_default());
+                let valuations =
+                    Steps::new(last_of_each_day(valuations.remove(&id).unwrap_or_default()));
                 let purchase_date = purchase_date.map(day_floor);
                 Property {
                     personal: kind == "personal",
@@ -1654,7 +1709,9 @@ mod tests {
     }
 
     #[test]
-    fn the_purchase_price_applies_until_the_first_valuation() {
+    fn a_purchase_price_in_another_currency_holds_until_the_first_valuation() {
+        // Two currencies cannot be drawn between: the purchase price holds, in its own
+        // currency, until the valuation replaces it
         let conn = setup_test_db();
         property(
             &conn,
@@ -1706,20 +1763,138 @@ mod tests {
         }
     }
 
+    /// The real estate value (investment) of `day`, as `(currency, amount)` pairs.
+    fn invested_on(conn: &Connection, day: i64) -> Breakdown {
+        values_on(conn, day).breakdowns.real_estate_investment
+    }
+
     #[test]
-    fn the_newest_valuation_applies_and_of_one_day_the_last_created() {
+    fn the_value_runs_in_a_straight_line_from_the_purchase_to_the_first_valuation() {
+        let conn = setup_test_db();
+        property(
+            &conn,
+            "p",
+            "investment",
+            Some((d(10), "3000", "CZK")),
+            ("4000", "CZK"),
+        );
+        property_valuation(&conn, "p", d(20), "4000", "CZK", 1);
+
+        assert!(invested_on(&conn, d(9)).is_empty(), "not owned yet");
+        approx(&invested_on(&conn, d(10)), &map(&[("CZK", 3000.0)]));
+        approx(&invested_on(&conn, d(15)), &map(&[("CZK", 3500.0)]));
+        approx(&invested_on(&conn, d(19)), &map(&[("CZK", 3900.0)]));
+        approx(&invested_on(&conn, d(20)), &map(&[("CZK", 4000.0)]));
+        approx(&invested_on(&conn, d(90)), &map(&[("CZK", 4000.0)]));
+        assert!(values_on(&conn, d(15)).known.real_estate);
+    }
+
+    #[test]
+    fn the_value_runs_in_a_straight_line_between_two_valuations_and_holds_after_the_last() {
+        let conn = setup_test_db();
+        property(&conn, "p", "investment", None, ("300", "CZK"));
+        property_valuation(&conn, "p", d(10), "100", "CZK", 1);
+        property_valuation(&conn, "p", d(30), "300", "CZK", 2);
+        property_valuation(&conn, "p", d(40), "250", "CZK", 3);
+
+        approx(&invested_on(&conn, d(10)), &map(&[("CZK", 100.0)]));
+        approx(&invested_on(&conn, d(20)), &map(&[("CZK", 200.0)]));
+        approx(&invested_on(&conn, d(29)), &map(&[("CZK", 290.0)]));
+        approx(&invested_on(&conn, d(30)), &map(&[("CZK", 300.0)]));
+        approx(&invested_on(&conn, d(35)), &map(&[("CZK", 275.0)]));
+        approx(&invested_on(&conn, d(40)), &map(&[("CZK", 250.0)]));
+        approx(&invested_on(&conn, d(90)), &map(&[("CZK", 250.0)]));
+    }
+
+    #[test]
+    fn two_valuations_in_different_currencies_are_a_step_not_a_slope() {
+        let conn = setup_test_db();
+        property(&conn, "p", "investment", None, ("300", "EUR"));
+        property_valuation(&conn, "p", d(10), "100", "CZK", 1);
+        property_valuation(&conn, "p", d(30), "300", "EUR", 2);
+
+        approx(&invested_on(&conn, d(10)), &map(&[("CZK", 100.0)]));
+        approx(&invested_on(&conn, d(20)), &map(&[("CZK", 100.0)]));
+        approx(&invested_on(&conn, d(29)), &map(&[("CZK", 100.0)]));
+        approx(&invested_on(&conn, d(30)), &map(&[("EUR", 300.0)]));
+        approx(&invested_on(&conn, d(60)), &map(&[("EUR", 300.0)]));
+    }
+
+    #[test]
+    fn a_purchase_after_the_first_valuation_is_no_point_of_the_line() {
+        let conn = setup_test_db();
+        // valued on day 10, but only owned from day 15: the purchase price (90) is ignored
+        // as a point, the valuations draw the line, and nothing counts before the purchase
+        property(
+            &conn,
+            "p",
+            "investment",
+            Some((d(15), "90", "CZK")),
+            ("200", "CZK"),
+        );
+        property_valuation(&conn, "p", d(10), "100", "CZK", 1);
+        property_valuation(&conn, "p", d(20), "200", "CZK", 2);
+
+        assert!(invested_on(&conn, d(12)).is_empty());
+        assert!(invested_on(&conn, d(14)).is_empty());
+        approx(&invested_on(&conn, d(15)), &map(&[("CZK", 150.0)]));
+        approx(&invested_on(&conn, d(18)), &map(&[("CZK", 180.0)]));
+        approx(&invested_on(&conn, d(20)), &map(&[("CZK", 200.0)]));
+    }
+
+    #[test]
+    fn a_purchase_on_the_day_of_the_first_valuation_is_replaced_by_it() {
+        let conn = setup_test_db();
+        property(
+            &conn,
+            "p",
+            "investment",
+            Some((d(10), "3000", "CZK")),
+            ("4500", "CZK"),
+        );
+        property_valuation(&conn, "p", d(10), "3500", "CZK", 1);
+        property_valuation(&conn, "p", d(20), "4500", "CZK", 2);
+
+        assert!(invested_on(&conn, d(9)).is_empty());
+        approx(&invested_on(&conn, d(10)), &map(&[("CZK", 3500.0)]));
+        approx(&invested_on(&conn, d(15)), &map(&[("CZK", 4000.0)]));
+    }
+
+    #[test]
+    fn of_several_valuations_on_one_day_the_last_created_draws_the_line() {
         let conn = setup_test_db();
         property(&conn, "p", "investment", None, ("0", "CZK"));
         property_valuation(&conn, "p", d(10), "100", "CZK", 1);
         property_valuation(&conn, "p", d(30), "300", "CZK", 5);
         property_valuation(&conn, "p", d(30), "350", "CZK", 9);
         property_valuation(&conn, "p", d(30), "320", "CZK", 7);
+        property_valuation(&conn, "p", d(10), "150", "CZK", 2);
 
-        let value = |day: i64| values_on(&conn, d(day)).breakdowns.real_estate_investment;
-        assert_eq!(value(10), map(&[("CZK", 100.0)]));
-        assert_eq!(value(29), map(&[("CZK", 100.0)]));
-        assert_eq!(value(30), map(&[("CZK", 350.0)]), "entered last");
-        assert_eq!(value(90), map(&[("CZK", 350.0)]));
+        // day 10 was last entered at 150, day 30 at 350
+        approx(&invested_on(&conn, d(10)), &map(&[("CZK", 150.0)]));
+        approx(&invested_on(&conn, d(20)), &map(&[("CZK", 250.0)]));
+        approx(&invested_on(&conn, d(30)), &map(&[("CZK", 350.0)]));
+        approx(&invested_on(&conn, d(90)), &map(&[("CZK", 350.0)]));
+    }
+
+    #[test]
+    fn a_rebuild_walks_the_line_across_its_chunks() {
+        let conn = setup_test_db();
+        account(&conn, "a", "CZK", "1", false);
+        record(&conn, "a", d(0), "1", "CZK");
+        property(&conn, "p", "investment", None, ("1900", "CZK"));
+        property_valuation(&conn, "p", d(0), "1000", "CZK", 1);
+        property_valuation(&conn, "p", d(90), "1900", "CZK", 2);
+        // 150 days: three chunks of 60, the second valuation inside the second one
+        rebuild_days(&conn, d(0), d(150)).expect("rebuild");
+
+        let value = |day: i64| column(&conn, d(day), "real_estate_by_currency");
+        approx(&value(0), &map(&[("CZK", 1000.0)]));
+        approx(&value(59), &map(&[("CZK", 1590.0)]));
+        approx(&value(60), &map(&[("CZK", 1600.0)]));
+        approx(&value(89), &map(&[("CZK", 1890.0)]));
+        approx(&value(90), &map(&[("CZK", 1900.0)]));
+        approx(&value(149), &map(&[("CZK", 1900.0)]));
     }
 
     #[test]

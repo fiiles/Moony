@@ -430,6 +430,6 @@
   },
   "chart": {
     "title": "Immobilienwert",
-    "subtitle": "Der Wert ändert sich bei einer Neubewertung – jeder Schritt ist Ihre neue Schätzung."
+    "subtitle": "Der Wert verläuft geradlinig von einer Schätzung zur nächsten."
   }
 }

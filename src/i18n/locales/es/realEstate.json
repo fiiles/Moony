@@ -436,6 +436,6 @@
   },
   "chart": {
     "title": "Valor del inmueble",
-    "subtitle": "El valor cambia al revalorizar: cada escalón es tu nueva estimación."
+    "subtitle": "El valor avanza en línea recta de una estimación a la siguiente."
   }
 }

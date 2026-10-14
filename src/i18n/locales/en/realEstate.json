@@ -430,6 +430,6 @@
   },
   "chart": {
     "title": "Property value",
-    "subtitle": "The value moves on revaluation – every step is your new estimate."
+    "subtitle": "The value runs in a straight line from one estimate to the next."
   }
 }

@@ -436,6 +436,6 @@
   },
   "chart": {
     "title": "Hodnota nemovitostí",
-    "subtitle": "Hodnota se mění přeceněním – každý schod je váš nový odhad."
+    "subtitle": "Hodnota vede rovnou čarou od jednoho odhadu k dalšímu."
   }
 }

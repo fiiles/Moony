@@ -361,11 +361,10 @@ pub fn schedule(
     tauri::async_runtime::spawn(async move {
         let mut guard = WorkerGuard::new(&state);
         while let Some((batch, completions)) = state.take_batch() {
-            if !batch.crypto.is_empty() {
-                // A historical crypto transaction may predate the FX timeseries: extend it
-                // first so the rows and the cost basis are valued at real rates.
-                crate::services::fx_backfill::ensure_fx_coverage_best_effort(&db).await;
-            }
+            // Any dated write (a stock import, a backdated balance in a foreign currency, …)
+            // may predate the FX timeseries: extend it first so history, positions and cost
+            // basis convert at real rates. Without missing ranges this makes no request.
+            crate::services::fx_backfill::ensure_fx_coverage_best_effort(&db).await;
             let outcome = run_batch(
                 &state,
                 &db,

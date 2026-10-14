@@ -274,7 +274,8 @@
     "stockImportLine": "Řádek {{line}}: {{reason}}",
     "stockImportRowFailed": "řádek se nepodařilo uložit.",
     "onboardingFlagUnknown": "Neznámý krok úvodního nastavení.",
-    "insuranceNoticeInvalid": "Zadejte celé číslo dnů od 0 do 365."
+    "insuranceNoticeInvalid": "Zadejte celé číslo dnů od 0 do 365.",
+    "budgetIntervalsRequired": "Vyberte alespoň jeden interval rozpočtu."
   },
   "auth": {
     "wrongPassword": "Zadané heslo je nesprávné. Zkuste to prosím znovu.",

@@ -274,7 +274,8 @@
     "stockImportLine": "Rad {{line}}: {{reason}}",
     "stockImportRowFailed": "raden kunde inte sparas.",
     "onboardingFlagUnknown": "Okänt steg i den inledande konfigurationen.",
-    "insuranceNoticeInvalid": "Ange ett helt antal dagar från 0 till 365."
+    "insuranceNoticeInvalid": "Ange ett helt antal dagar från 0 till 365.",
+    "budgetIntervalsRequired": "Välj minst ett budgetintervall."
   },
   "auth": {
     "wrongPassword": "Lösenordet du angav är fel. Försök igen.",

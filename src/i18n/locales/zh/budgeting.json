@@ -54,7 +54,7 @@
     "addTitle": "添加预算",
     "editTitle": "编辑限额",
     "addDescription": "限额每月重复，并与该类别在所有账户中的支出进行比较。",
-    "editDescription": "{{category}}的月度限额。",
+    "editDescription": "{{category}}的限额。",
     "category": "类别",
     "selectCategory": "选择类别",
     "monthlyLimit": "月度限额",
@@ -74,7 +74,7 @@
   },
   "deleteConfirm": {
     "title": "删除预算？",
-    "description": "{{category}}的限额将被移除，交易保持不变。",
+    "description": "{{category}}的限额从本月起结束，计划的变更将被取消。以前的限额和交易将保留在历史报表中。",
     "deleted": "预算已删除"
   },
   "noBudgets": {
@@ -181,10 +181,29 @@
     "usageUnavailable": "预算使用情况不可用",
     "absoluteShare": "占各组绝对金额的比例",
     "signedUnbudgetedTotal": "未设预算的净支出：{{amount}}",
-    "effectiveMonthPrefill": "金额显示的是 {{month}} 生效的限额。保存后，限额将从该月起变更；更早的月份保持原限额。",
+    "effectiveMonthPrefill": "保存后，输入的金额将从{{month}}起生效。之后计划的变更将保留。",
     "scheduledHeading": "已预约的变更",
     "scheduledLimit": "自 {{month}} 起：{{amount}}",
     "scheduledRemoval": "自 {{month}} 起：无限额",
     "noChange": "限额未变化，未保存任何内容。"
+  },
+  "settings": {
+    "title": "已设置预算",
+    "spendingView": "使用情况",
+    "description": "所有已设置的限额，包括过去和计划的变更。不受所选支出期间和账户筛选影响。",
+    "recurrence": "重复周期",
+    "validity": "有效月份（含首尾）",
+    "from": "自{{month}}起",
+    "between": "{{start}} – {{end}}",
+    "historical": "历史限额 · 已结束",
+    "noPeriodLimits": "此期间没有限额",
+    "noPeriodLimitsHelp": "请选择其他期间，或在已设置预算中修改有效日期。",
+    "evaluationNote": "{{period}}的限额评估",
+    "deleteSelected": "删除所选（{{count}}）",
+    "selectAll": "选择所有有限额的期间",
+    "selectInterval": "选择自{{month}}起的{{category}}",
+    "deleteTitle": "删除所选期间？",
+    "deleteDescription": "待删除期间数：{{count}}。仅删除这些期间的限额，包括选中的过去期间。其他期间和交易保持不变。",
+    "deleted": "已删除所选期间"
   }
 }

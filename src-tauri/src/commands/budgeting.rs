@@ -5,7 +5,7 @@
 use crate::db::Database;
 use crate::error::Result;
 use crate::models::budgeting::{
-    BudgetGoal, BudgetingReport, BudgetingTransaction, InsertBudgetGoal,
+    BudgetGoal, BudgetGoalInterval, BudgetingReport, BudgetingTransaction, InsertBudgetGoal,
 };
 use crate::services;
 use tauri::State;
@@ -68,6 +68,22 @@ pub async fn get_latest_transaction_date(db: State<'_, Database>) -> Result<Opti
 #[tauri::command]
 pub async fn get_budget_goals(db: State<'_, Database>) -> Result<Vec<BudgetGoal>> {
     services::budgeting::get_budget_goals(&db).await
+}
+
+#[tauri::command]
+pub async fn get_budget_goal_history(db: State<'_, Database>) -> Result<Vec<BudgetGoal>> {
+    db.with_conn(services::budgeting::get_goal_history)
+}
+
+#[tauri::command]
+pub async fn delete_budget_goal_intervals(
+    db: State<'_, Database>,
+    intervals: Vec<BudgetGoalInterval>,
+) -> Result<()> {
+    for interval in &intervals {
+        interval.validate()?;
+    }
+    db.with_conn(|conn| services::budgeting::delete_goal_intervals(conn, &intervals))
 }
 
 /// Create or update a budget goal

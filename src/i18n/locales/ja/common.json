@@ -274,7 +274,8 @@
     "stockImportLine": "{{line}} 行目：{{reason}}",
     "stockImportRowFailed": "この行を保存できませんでした。",
     "onboardingFlagUnknown": "不明な初期設定のステップです。",
-    "insuranceNoticeInvalid": "0〜365の整数で日数を入力してください。"
+    "insuranceNoticeInvalid": "0〜365の整数で日数を入力してください。",
+    "budgetIntervalsRequired": "予算の期間を少なくとも1つ選択してください。"
   },
   "auth": {
     "wrongPassword": "入力したパスワードが正しくありません。もう一度お試しください。",

@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import type { BudgetGoalVersion } from '@shared/schema';
+import type { BudgetGoal, BudgetGoalVersion } from '@shared/schema';
 import {
   defaultEditMonth,
+  budgetVersionPeriods,
+  budgetEditSource,
   isUnchangedGoalEdit,
   monthInputValue,
   monthStartFromInput,
@@ -44,6 +46,20 @@ describe('scheduledVersions', () => {
   });
 });
 
+describe('budgetVersionPeriods', () => {
+  it('ends each version immediately before the next and keeps the final interval open', () => {
+    expect(budgetVersionPeriods([v(JAN, '1000'), v(JUN, null), v(DEC, '2000', 'EUR')])).toEqual([
+      { version: v(JAN, '1000'), end: JUN - 1 },
+      { version: v(JUN, null), end: DEC - 1 },
+      { version: v(DEC, '2000', 'EUR'), end: null },
+    ]);
+  });
+
+  it('has no intervals when no versions are configured', () => {
+    expect(budgetVersionPeriods([])).toEqual([]);
+  });
+});
+
 describe('defaultEditMonth', () => {
   it('edits the current month while a limit is in effect', () => {
     expect(defaultEditMonth([v(JAN, '1000'), v(DEC, '2000')], OCT)).toBe(OCT);
@@ -56,6 +72,44 @@ describe('defaultEditMonth', () => {
 
   it('falls back to the current month without versions', () => {
     expect(defaultEditMonth([], OCT)).toBe(OCT);
+  });
+});
+
+describe('budgetEditSource', () => {
+  const goal: BudgetGoal = {
+    id: 'groceries',
+    categoryId: 'cat_groceries',
+    timeframe: 'monthly',
+    amount: '200',
+    currency: 'CZK',
+    createdAt: JUN,
+    updatedAt: OCT,
+    effectiveMonth: OCT,
+    versions: [v(JUN, '100.123', 'EUR'), v(OCT, '200', 'CZK')],
+  };
+
+  it('takes the selected historical interval amount and currency instead of the current limit', () => {
+    expect(budgetEditSource(goal, JUN, OCT)).toEqual({
+      month: JUN,
+      amount: '100.123',
+      currency: 'EUR',
+    });
+  });
+
+  it('defaults to the current version and preserves native text', () => {
+    expect(budgetEditSource(goal, undefined, OCT)).toEqual({
+      month: OCT,
+      amount: '200',
+      currency: 'CZK',
+    });
+  });
+
+  it('keeps the requested month before the first version and uses the displayed limit as its starting value', () => {
+    expect(budgetEditSource(goal, JAN, OCT)).toEqual({
+      month: JAN,
+      amount: '200',
+      currency: 'CZK',
+    });
   });
 });
 
@@ -79,5 +133,11 @@ describe('month input helpers', () => {
     expect(monthInputValue(OCT)).toBe('2026-10');
     expect(monthStartFromInput('2026-10')).toBe(OCT);
     expect(monthStartFromInput('2026-1')).toBeNull();
+  });
+
+  it('rejects out-of-range months rather than returning NaN or a normalized date', () => {
+    for (const value of ['2026-00', '2026-13', '0000-01', '', '2026-02-01']) {
+      expect(monthStartFromInput(value)).toBeNull();
+    }
   });
 });

@@ -75,7 +75,7 @@
     "addTitle": "Dodaj budżet",
     "editTitle": "Edytuj limit",
     "addDescription": "Limit powtarza się co miesiąc i jest porównywany z wydatkami w kategorii na wszystkich kontach.",
-    "editDescription": "Miesięczny limit dla kategorii {{category}}.",
+    "editDescription": "Limit dla {{category}}.",
     "category": "Kategoria",
     "selectCategory": "Wybierz kategorię",
     "monthlyLimit": "Limit miesięczny",
@@ -98,7 +98,7 @@
   },
   "deleteConfirm": {
     "title": "Usunąć budżet?",
-    "description": "Limit dla kategorii {{category}} zostanie usunięty. Transakcje pozostaną bez zmian.",
+    "description": "Limit dla {{category}} kończy się od bieżącego miesiąca, a zaplanowane zmiany zostają anulowane. Wcześniejsze limity i transakcje pozostają w raportach historycznych.",
     "deleted": "Budżet usunięty"
   },
   "noBudgets": {
@@ -205,10 +205,29 @@
     "usageUnavailable": "Wykorzystanie budżetu niedostępne",
     "absoluteShare": "Udział w bezwzględnych kwotach grup",
     "signedUnbudgetedTotal": "Wydatki netto bez limitu: {{amount}}",
-    "effectiveMonthPrefill": "Kwota pokazuje limit obowiązujący w miesiącu: {{month, lower}}. Zapisanie zmienia limit od tego miesiąca; wcześniejsze miesiące zachowują swój.",
+    "effectiveMonthPrefill": "Zapisanie ustawi wpisaną kwotę od {{month}}. Późniejsze zaplanowane zmiany zostaną zachowane.",
     "scheduledHeading": "Zaplanowane zmiany",
     "scheduledLimit": "Od {{month, lower}}: {{amount}}",
     "scheduledRemoval": "Od {{month, lower}}: bez limitu",
     "noChange": "Limit bez zmian; nic nie zapisano."
+  },
+  "settings": {
+    "title": "Ustawione budżety",
+    "spendingView": "Wykorzystanie",
+    "description": "Wszystkie ustawione limity, w tym wcześniejsze i zaplanowane zmiany. Niezależnie od wybranego okresu wydatków i filtra kont.",
+    "recurrence": "Powtarzanie",
+    "validity": "Miesiące obowiązywania (włącznie)",
+    "from": "Od {{month}}",
+    "between": "{{start}} – {{end}}",
+    "historical": "Limit historyczny · zakończony",
+    "noPeriodLimits": "Brak limitów na ten okres",
+    "noPeriodLimitsHelp": "Wybierz inny okres lub zmień daty obowiązywania w widoku Ustawione budżety.",
+    "evaluationNote": "Limity ocenione za {{period}}",
+    "deleteSelected": "Usuń wybrane ({{count}})",
+    "selectAll": "Wybierz wszystkie okresy z limitem",
+    "selectInterval": "Wybierz {{category}} od {{month}}",
+    "deleteTitle": "Usunąć wybrane okresy?",
+    "deleteDescription": "Liczba okresów do usunięcia: {{count}}. Limity zostaną usunięte dokładnie dla tych okresów, również wybranych okresów przeszłych. Pozostałe okresy i transakcje nie zmienią się.",
+    "deleted": "Wybrane okresy usunięte"
   }
 }

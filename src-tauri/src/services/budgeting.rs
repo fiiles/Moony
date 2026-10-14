@@ -8,8 +8,8 @@
 use crate::db::Database;
 use crate::error::{AppError, Result};
 use crate::models::budgeting::{
-    BudgetGoal, BudgetGoalVersion, BudgetingReport, BudgetingTransaction, CategorySpendingSummary,
-    InsertBudgetGoal,
+    BudgetGoal, BudgetGoalInterval, BudgetGoalVersion, BudgetingReport, BudgetingTransaction,
+    CategorySpendingSummary, InsertBudgetGoal,
 };
 use rusqlite::{params, Connection, OptionalExtension};
 use std::collections::HashMap;
@@ -105,6 +105,91 @@ pub fn get_all_goals_at(conn: &Connection, now: i64) -> Result<Vec<BudgetGoal>> 
         .into_iter()
         .map(|goal| with_versions(conn, goal, now))
         .collect()
+}
+
+/// Settings include historical limits whose current goal has already ended.
+pub fn get_goal_history(conn: &Connection) -> Result<Vec<BudgetGoal>> {
+    let now = chrono::Utc::now().timestamp();
+    let mut goals = get_all_goals_at(conn, now)?;
+    let mut stmt = conn.prepare(
+        "SELECT id, category_id, timeframe, amount, currency, created_at, created_at
+         FROM budget_goal_versions v WHERE amount IS NOT NULL
+         AND NOT EXISTS (SELECT 1 FROM budget_goals g WHERE g.category_id=v.category_id AND g.timeframe=v.timeframe)
+         ORDER BY effective_month DESC",
+    )?;
+    let archived = stmt
+        .query_map([], goal_row)?
+        .collect::<std::result::Result<Vec<_>, _>>()?;
+    for goal in archived {
+        if !goals
+            .iter()
+            .any(|g| g.category_id == goal.category_id && g.timeframe == goal.timeframe)
+        {
+            goals.push(with_versions(conn, goal, now)?);
+        }
+    }
+    goals.sort_by(|a, b| (&a.category_id, &a.timeframe).cmp(&(&b.category_id, &b.timeframe)));
+    Ok(goals)
+}
+
+/// Cancel exactly the selected intervals atomically. Keep their boundaries as
+/// removals, otherwise deleting a row would extend the previous limit into it.
+pub fn delete_goal_intervals(conn: &Connection, intervals: &[BudgetGoalInterval]) -> Result<()> {
+    if intervals.is_empty() {
+        return Err(AppError::Validation(
+            "validation.budgetIntervalsRequired".into(),
+        ));
+    }
+    for interval in intervals {
+        interval.validate()?;
+    }
+    let now = chrono::Utc::now().timestamp();
+    let now_month = crate::services::reporting::month_start(now)
+        .ok_or_else(|| AppError::Validation("validation.effectiveMonthInvalid".into()))?;
+    let tx = conn.unchecked_transaction()?;
+    let mut selected = std::collections::HashSet::new();
+    let mut affected = std::collections::HashSet::new();
+    for interval in intervals {
+        if !selected.insert((
+            &interval.category_id,
+            &interval.timeframe,
+            interval.effective_month,
+        )) {
+            continue;
+        }
+        let changed = tx.execute(
+            "UPDATE budget_goal_versions SET amount=NULL, created_at=?1
+             WHERE category_id=?2 AND timeframe=?3 AND effective_month=?4 AND amount IS NOT NULL",
+            params![
+                now,
+                interval.category_id,
+                interval.timeframe,
+                interval.effective_month
+            ],
+        )?;
+        if changed == 0 {
+            return Err(AppError::NotFound(
+                "Budget interval no longer exists".into(),
+            ));
+        }
+        affected.insert((&interval.category_id, &interval.timeframe));
+    }
+    for (category, timeframe) in affected {
+        let versions = goal_versions(&tx, category, timeframe)?;
+        if let Some(version) = displayed_version(&versions, now_month) {
+            tx.execute(
+                "UPDATE budget_goals SET amount=?1, currency=?2, updated_at=?3 WHERE category_id=?4 AND timeframe=?5",
+                params![version.amount, version.currency, now, category, timeframe],
+            )?;
+        } else {
+            tx.execute(
+                "DELETE FROM budget_goals WHERE category_id=?1 AND timeframe=?2",
+                params![category, timeframe],
+            )?;
+        }
+    }
+    tx.commit()?;
+    Ok(())
 }
 
 /// Get budget goals for a specific timeframe
@@ -204,6 +289,11 @@ pub fn upsert_goal_at(
 
 /// Delete a budget goal
 pub fn delete_goal(conn: &Connection, id: &str) -> Result<()> {
+    delete_goal_at(conn, id, chrono::Utc::now().timestamp())
+}
+
+/// End the goal at a single clock instant, retaining limits in earlier months.
+fn delete_goal_at(conn: &Connection, id: &str, now: i64) -> Result<()> {
     let tx = conn.unchecked_transaction()?;
     let goal = tx
         .query_row(
@@ -219,9 +309,9 @@ pub fn delete_goal(conn: &Connection, id: &str) -> Result<()> {
         )
         .optional()?
         .ok_or_else(|| AppError::NotFound(format!("Budget goal {id} not found")))?;
-    let month = crate::services::reporting::month_start(chrono::Utc::now().timestamp())
-        .expect("current month");
-    tx.execute("INSERT INTO budget_goal_versions(id,category_id,timeframe,effective_month,amount,currency,created_at) VALUES (?1,?2,?3,?4,NULL,?5,?6) ON CONFLICT(category_id,timeframe,effective_month) DO UPDATE SET amount=NULL",params![Uuid::new_v4().to_string(),goal.0,goal.1,month,goal.2,chrono::Utc::now().timestamp()])?;
+    let month = crate::services::reporting::month_start(now)
+        .ok_or_else(|| AppError::Validation("validation.effectiveMonthInvalid".into()))?;
+    tx.execute("INSERT INTO budget_goal_versions(id,category_id,timeframe,effective_month,amount,currency,created_at) VALUES (?1,?2,?3,?4,NULL,?5,?6) ON CONFLICT(category_id,timeframe,effective_month) DO UPDATE SET amount=NULL",params![Uuid::new_v4().to_string(),goal.0,goal.1,month,goal.2,now])?;
     // Also cancel future limits when deleting a scheduled goal.
     tx.execute("DELETE FROM budget_goal_versions WHERE category_id=?1 AND timeframe=?2 AND effective_month>?3",params![goal.0,goal.1,month])?;
     tx.execute("DELETE FROM budget_goals WHERE id=?1", [id])?;
@@ -735,6 +825,143 @@ mod tests {
             currency: Some("CZK".into()),
             effective_month: Some(month),
         }
+    }
+
+    #[test]
+    fn backdating_first_limit_makes_an_empty_earlier_month_evaluable() {
+        let conn = setup_test_db();
+        upsert_goal_at(&conn, goal_input("100", JUN), NOW).unwrap();
+        let before = get_report_in_currency(&conn, JAN, MAR - 1, "monthly", None, "CZK").unwrap();
+        assert!(before.expense_categories.is_empty());
+        upsert_goal_at(&conn, goal_input("100", JAN), NOW).unwrap();
+        let after = get_report_in_currency(&conn, JAN, MAR - 1, "monthly", None, "CZK").unwrap();
+        let category = &after.expense_categories[0];
+        assert_eq!(category.budget_limit_native.as_deref(), Some("100.00"));
+        assert_eq!(category.budget_spent.as_deref(), Some("0.00"));
+        assert_eq!(category.budget_percentage, Some(0.0));
+        assert_eq!(get_all_goals_at(&conn, NOW).unwrap()[0].versions.len(), 2);
+    }
+
+    fn interval(category: &str, month: i64) -> BudgetGoalInterval {
+        BudgetGoalInterval {
+            category_id: category.into(),
+            timeframe: "monthly".into(),
+            effective_month: month,
+        }
+    }
+
+    #[test]
+    fn cancel_selected_intervals_leaves_gaps_and_preserves_unselected_limits() {
+        let conn = setup_test_db();
+        for (amount, month) in [("100", JAN), ("200", JUN), ("300", OCT), ("400", DEC)] {
+            upsert_goal_at(&conn, goal_input(amount, month), NOW).unwrap();
+        }
+        delete_goal_intervals(
+            &conn,
+            &[
+                interval("cat_groceries", JUN),
+                interval("cat_groceries", DEC),
+            ],
+        )
+        .unwrap();
+        assert_eq!(limit_for(&conn, JAN, MAR), Some("100.00".into()));
+        let gap = get_report_in_currency(&conn, JUN, OCT - 1, "monthly", None, "CZK").unwrap();
+        assert!(gap.expense_categories.is_empty());
+        assert_eq!(limit_for(&conn, OCT, NOV), Some("300.00".into()));
+        let future =
+            get_report_in_currency(&conn, DEC, 1798761600 - 1, "monthly", None, "CZK").unwrap();
+        assert!(future.expense_categories.is_empty());
+    }
+
+    #[test]
+    fn interval_batch_is_atomic_when_any_selection_no_longer_exists() {
+        let conn = setup_test_db();
+        upsert_goal_at(&conn, goal_input("100", JAN), NOW).unwrap();
+        assert!(delete_goal_intervals(
+            &conn,
+            &[interval("cat_groceries", JAN), interval("cat_dining", JUN)]
+        )
+        .is_err());
+        assert_eq!(limit_for(&conn, JAN, MAR), Some("100.00".into()));
+        assert!(delete_goal_intervals(&conn, &[]).is_err());
+        assert!(delete_goal_intervals(&conn, &[interval("cat_groceries", JAN + 1)]).is_err());
+    }
+
+    #[test]
+    fn interval_batch_cancels_multiple_categories_and_deduplicates_selections() {
+        let conn = setup_test_db();
+        upsert_goal_at(&conn, goal_input("100", JAN), NOW).unwrap();
+        let mut dining = goal_input("200", JUN);
+        dining.category_id = "cat_dining".into();
+        upsert_goal_at(&conn, dining, NOW).unwrap();
+        delete_goal_intervals(
+            &conn,
+            &[
+                interval("cat_groceries", JAN),
+                interval("cat_dining", JUN),
+                interval("cat_groceries", JAN),
+            ],
+        )
+        .unwrap();
+        assert!(get_all_goals(&conn).unwrap().is_empty());
+        assert!(get_goal_history(&conn).unwrap().is_empty());
+    }
+
+    #[test]
+    fn cancelling_current_interval_mirrors_the_remaining_scheduled_limit() {
+        let conn = setup_test_db();
+        let now = chrono::Utc::now().timestamp();
+        let month = crate::services::reporting::month_start(now).unwrap();
+        let next = crate::services::reporting::month_start(month + 45 * 86_400).unwrap();
+        upsert_goal_at(&conn, goal_input("100", month), now).unwrap();
+        upsert_goal_at(&conn, goal_input("200", next), now).unwrap();
+        delete_goal_intervals(&conn, &[interval("cat_groceries", month)]).unwrap();
+        assert_eq!(stored_amount(&conn), "200");
+        let goals = get_all_goals_at(&conn, now).unwrap();
+        assert_eq!(goals[0].effective_month, Some(next));
+        delete_goal_intervals(&conn, &[interval("cat_groceries", next)]).unwrap();
+        assert!(get_all_goals_at(&conn, now).unwrap().is_empty());
+    }
+
+    #[test]
+    fn archived_intervals_remain_manageable_until_the_last_limit_is_cancelled() {
+        let conn = setup_test_db();
+        let goal = upsert_goal_at(&conn, goal_input("100", JAN), NOW).unwrap();
+        delete_goal_at(&conn, &goal.id, NOW).unwrap();
+        assert!(get_all_goals_at(&conn, NOW).unwrap().is_empty());
+        let history = get_goal_history(&conn).unwrap();
+        assert_eq!(history.len(), 1);
+        assert_eq!(history[0].versions[0].amount.as_deref(), Some("100"));
+        delete_goal_intervals(&conn, &[interval("cat_groceries", JAN)]).unwrap();
+        assert!(get_goal_history(&conn).unwrap().is_empty());
+        assert!(
+            get_report_in_currency(&conn, JAN, MAR - 1, "monthly", None, "CZK")
+                .unwrap()
+                .expense_categories
+                .is_empty()
+        );
+    }
+
+    #[test]
+    fn deletion_ends_current_and_scheduled_limits_but_retains_past_reports() {
+        let conn = setup_test_db();
+        let goal = upsert_goal_at(&conn, goal_input("100", JAN), NOW).unwrap();
+        upsert_goal_at(&conn, goal_input("200", DEC), NOW).unwrap();
+        delete_goal_at(&conn, &goal.id, NOW).unwrap();
+        assert!(get_all_goals_at(&conn, NOW).unwrap().is_empty());
+        assert_eq!(limit_for(&conn, JAN, MAR), Some("100.00".into()));
+        let quarter =
+            get_report_in_currency(&conn, OCT, 1798761600 - 1, "quarterly", None, "CZK").unwrap();
+        assert!(quarter.expense_categories.is_empty());
+        let versions = goal_versions(&conn, "cat_groceries", "monthly").unwrap();
+        assert_eq!(versions.len(), 2);
+        assert_eq!(versions[1].effective_month, OCT);
+        assert_eq!(versions[1].amount, None);
+        assert!(delete_goal_at(&conn, &goal.id, NOW).is_err());
+
+        upsert_goal_at(&conn, goal_input("300", NOV), NOW).unwrap();
+        assert_eq!(limit_for(&conn, NOV, DEC), Some("300.00".into()));
+        assert_eq!(limit_for(&conn, JAN, MAR), Some("100.00".into()));
     }
 
     fn stored_amount(conn: &Connection) -> String {

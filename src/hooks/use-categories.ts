@@ -6,12 +6,17 @@ import { categoryDisplayName, type NamedCategory } from '@/utils/category-name';
 
 /** All transaction categories (system and custom), in display order. */
 export function useCategories() {
-  const { data: categories = [], isLoading } = useQuery({
+  const {
+    data: categories = [],
+    isLoading,
+    isError,
+    refetch,
+  } = useQuery({
     queryKey: ['transaction-categories'],
     queryFn: () => bankAccountsApi.getCategories(),
   });
 
-  return { categories, isLoading };
+  return { categories, isLoading, isError, refetch };
 }
 
 /** How many rows reference each category (what a delete would have to move). */

@@ -2262,6 +2262,13 @@ export interface BudgetGoalVersion {
   currency: string;
 }
 
+/** Exact configured interval selected for deletion; its boundaries are retained as a gap. */
+export interface BudgetGoalInterval {
+  categoryId: string;
+  timeframe: string;
+  effectiveMonth: number;
+}
+
 // Data for creating/updating a budget goal
 export interface InsertBudgetGoal {
   categoryId: string;

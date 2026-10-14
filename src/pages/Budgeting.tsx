@@ -3,18 +3,17 @@ import { ReportQualityNote, ReportError } from '@/components/reports/ReportQuali
 import { useReportMoney } from '@/lib/use-report-money';
 import { useCurrency } from '@/lib/currency';
 import { summarizeBudgetStatus } from '@/utils/report-currencies';
-import { refreshMoneyFlows } from '@/lib/money-flow-refresh';
-import { translateApiError } from '@/lib/translate-api-error';
 import { useMemo, useState } from 'react';
 import { Link } from 'wouter';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { toast } from 'sonner';
 import { Ellipsis, Landmark, PiggyBank, Plus } from 'lucide-react';
 import { budgetingApi, type BudgetGoal } from '@/lib/tauri-api';
 import { useFormat } from '@/lib/use-format';
 import { useCategories, useCategoryName } from '@/hooks/use-categories';
 import { useBankAccounts } from '@/hooks/use-bank-accounts';
+import { useDeleteBudgetIntervals } from '@/hooks/use-budget-goal-mutations';
+import type { BudgetGoalInterval } from '@shared/schema';
 import { useShellPage } from '@/components/shell/shell-context';
 import { usePeriodSelection } from '@/hooks/use-period-selection';
 import { monthOffsetOf } from '@/utils/period';
@@ -39,13 +38,13 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Stat, StatSkeleton, Stats } from '@/components/common/Stat';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ConfirmDeleteDialog } from '@/components/common/ConfirmDeleteDialog';
 import { BudgetGoalDialog } from '@/components/budgeting/BudgetGoalDialog';
+import { BudgetSettingsTable } from '@/components/budgeting/BudgetSettingsTable';
 import {
   CategoryTransactionsDialog,
   type CategoryTransactionsTarget,
@@ -86,18 +85,24 @@ export default function Budgeting() {
   const { currencyCode, fxRevision } = useCurrency();
   const [accountIds, setAccountIds] = useState<string[] | undefined>(undefined);
   const fmt = useFormat();
-  const queryClient = useQueryClient();
   const categoryName = useCategoryName();
+  const [view, setView] = useState<'spending' | 'settings'>('spending');
 
   const period = usePeriodSelection('monthly');
   const { timeframe, range, setOffset } = period;
   // Open on the month of the newest transaction, not on an empty current month.
-  const { data: latestDay, isFetchedAfterMount: latestFetched } = useQuery({
+  const {
+    data: latestDay,
+    isPending: latestPending,
+    isFetching: latestFetching,
+  } = useQuery({
     queryKey: ['budgeting-latest-transaction'],
     queryFn: () => budgetingApi.getLatestTransactionDate(),
   });
   const [startPicked, setStartPicked] = useState(false);
-  if (latestFetched && !startPicked) {
+  // Cached success is already usable on remount; a failed lookup falls back
+  // to the current month. Waiting for a fetch *after* mount deadlocks fresh cache.
+  if (!latestPending && !latestFetching && !startPicked) {
     setStartPicked(true);
     if (latestDay != null) setOffset(() => monthOffsetOf(latestDay));
   }
@@ -106,8 +111,9 @@ export default function Budgeting() {
     open: boolean;
     goal: BudgetGoal | null;
     categoryId: string | null;
+    effectiveMonth?: number;
   }>({ open: false, goal: null, categoryId: null });
-  const [pendingDelete, setPendingDelete] = useState<BudgetRow | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<BudgetGoalInterval[] | null>(null);
   const [txTarget, setTxTarget] = useState<CategoryTransactionsTarget | null>(null);
 
   const {
@@ -127,7 +133,7 @@ export default function Budgeting() {
     ],
     queryFn: () =>
       budgetingApi.getReport(range.start, range.end, timeframe, accountIds, currencyCode),
-    enabled: startPicked,
+    enabled: startPicked && view === 'spending',
   });
   const { money, nativeMoney } = useReportMoney(report?.reportCurrency);
   const {
@@ -139,18 +145,26 @@ export default function Budgeting() {
     queryKey: ['budget-goals'],
     queryFn: () => budgetingApi.getBudgetGoals(),
   });
-  const { categories, isLoading: categoriesLoading } = useCategories();
+  const {
+    data: goalHistory = [],
+    isLoading: historyLoading,
+    isError: historyError,
+    refetch: refetchHistory,
+    dataUpdatedAt: historyUpdatedAt,
+  } = useQuery({
+    queryKey: ['budget-goal-history'],
+    queryFn: () => budgetingApi.getBudgetGoalHistory(),
+    enabled: view === 'settings',
+  });
+  const {
+    categories,
+    isLoading: categoriesLoading,
+    isError: categoriesError,
+    refetch: refetchCategories,
+  } = useCategories();
   const { accounts } = useBankAccounts();
 
-  const deleteMutation = useMutation({
-    mutationFn: (id: string) => budgetingApi.deleteBudgetGoal(id),
-    onSuccess: async () => {
-      await refreshMoneyFlows(queryClient);
-      toast.success(t('deleteConfirm.deleted'));
-      setPendingDelete(null);
-    },
-    onError: (error: Error) => toast.error(translateApiError(error, tc)),
-  });
+  const deleteMutation = useDeleteBudgetIntervals(() => setPendingDelete(null));
 
   // The server has already resolved explicit overrides, own identity and category roles.
   const spentByCategory = useMemo(() => {
@@ -165,41 +179,41 @@ export default function Budgeting() {
   }, [report]);
 
   const rows = useMemo<BudgetRow[]>(() => {
-    const ids = new Set([
-      ...(report?.expenseCategories ?? []).filter((c) => c.budgetGoal).map((c) => c.categoryId),
-      ...goals.filter((g) => g.timeframe === 'monthly').map((g) => g.categoryId),
-    ]);
-    const list = [...ids].map((categoryId) => {
-      const goal =
-        goals.find((g) => g.categoryId === categoryId && g.timeframe === 'monthly') ?? null;
-      const historical = report?.expenseCategories.find((c) => c.categoryId === categoryId);
-      const category = categories.find((c) => c.id === categoryId);
-      const usage = spentByCategory.get(categoryId);
-      const budgetPercentage = historical?.budgetPercentage ?? null;
-      const state: BudgetState | null =
-        budgetPercentage == null ||
-        !Number.isFinite(budgetPercentage) ||
-        !historical?.budgetCurrency ||
-        historical?.budgetSpent == null ||
-        historical?.budgetLimitNative == null
-          ? null
-          : budgetPercentage > 100
-            ? 'over'
-            : budgetPercentage >= 85
-              ? 'near'
-              : 'ok';
-      return {
-        goal,
-        categoryId,
-        name: category ? categoryName(category) : categoryId,
-        budgetCurrency: historical?.budgetCurrency ?? null,
-        budgetSpent: historical?.budgetSpent ?? null,
-        budgetLimitNative: historical?.budgetLimitNative ?? null,
-        budgetPercentage,
-        count: usage?.count ?? 0,
-        state,
-      };
-    });
+    const list = (report?.expenseCategories ?? [])
+      .filter((c) => c.budgetGoal)
+      .map((historical) => {
+        const categoryId = historical.categoryId;
+        const goal =
+          goals.find(
+            (g) => g.categoryId === categoryId && g.timeframe === historical.budgetGoal?.timeframe
+          ) ?? null;
+        const category = categories.find((c) => c.id === categoryId);
+        const usage = spentByCategory.get(categoryId);
+        const budgetPercentage = historical?.budgetPercentage ?? null;
+        const state: BudgetState | null =
+          budgetPercentage == null ||
+          !Number.isFinite(budgetPercentage) ||
+          !historical?.budgetCurrency ||
+          historical?.budgetSpent == null ||
+          historical?.budgetLimitNative == null
+            ? null
+            : budgetPercentage > 100
+              ? 'over'
+              : budgetPercentage >= 85
+                ? 'near'
+                : 'ok';
+        return {
+          goal,
+          categoryId,
+          name: category ? categoryName(category) : categoryId,
+          budgetCurrency: historical?.budgetCurrency ?? null,
+          budgetSpent: historical?.budgetSpent ?? null,
+          budgetLimitNative: historical?.budgetLimitNative ?? null,
+          budgetPercentage,
+          count: usage?.count ?? 0,
+          state,
+        };
+      });
     return list.sort((a, b) =>
       sort === 'name'
         ? a.name.localeCompare(b.name, fmt.locale)
@@ -240,7 +254,9 @@ export default function Budgeting() {
   }, [rows, spentByCategory, categories, categoryName, report, t]);
 
   const availableCategories = useMemo(() => {
-    const budgeted = new Set(goals.map((g) => g.categoryId));
+    const budgeted = new Set(
+      goals.filter((g) => g.timeframe === 'monthly').map((g) => g.categoryId)
+    );
     return categories.filter((c) => c.kind === 'expense' && !budgeted.has(c.id));
   }, [categories, goals]);
 
@@ -261,9 +277,19 @@ export default function Budgeting() {
   });
 
   const openAdd = (categoryId: string | null = null) =>
-    setGoalDialog({ open: true, goal: null, categoryId });
+    setGoalDialog({
+      open: true,
+      goal: null,
+      categoryId,
+      effectiveMonth: view === 'spending' ? range.start : undefined,
+    });
   const openEdit = (row: BudgetRow) =>
-    setGoalDialog({ open: true, goal: row.goal, categoryId: row.categoryId });
+    setGoalDialog({
+      open: true,
+      goal: row.goal,
+      categoryId: row.categoryId,
+      effectiveMonth: range.start,
+    });
 
   const stateBadge = (row: BudgetRow) => {
     if (
@@ -300,21 +326,47 @@ export default function Budgeting() {
     });
 
   const head = (
-    <PageHead
-      eyebrow={t('eyebrow')}
-      title={t('title')}
-      description={t('subtitle')}
-      actions={
-        <>
-          <PeriodNav selection={period} />
-          <AccountScope value={accountIds} onChange={setAccountIds} />
-          <Button onClick={() => openAdd()} disabled={availableCategories.length === 0}>
-            <Plus />
-            {t('actions.add')}
-          </Button>
-        </>
-      }
-    />
+    <>
+      <PageHead
+        eyebrow={t('eyebrow')}
+        title={t('title')}
+        description={t('subtitle')}
+        actions={
+          <>
+            {view === 'spending' && (
+              <PeriodNav
+                selection={{
+                  ...period,
+                  setTimeframe: (next) => {
+                    setStartPicked(true);
+                    period.setTimeframe(next);
+                  },
+                  setOffset: (update) => {
+                    setStartPicked(true);
+                    setOffset(update);
+                  },
+                }}
+              />
+            )}
+            {view === 'spending' && <AccountScope value={accountIds} onChange={setAccountIds} />}
+            <Button onClick={() => openAdd()} disabled={availableCategories.length === 0}>
+              <Plus />
+              {t('actions.add')}
+            </Button>
+          </>
+        }
+      />
+      <div className="mb-5">
+        <Segmented
+          value={view}
+          onValueChange={setView}
+          options={[
+            { value: 'spending', label: t('settings.spendingView') },
+            { value: 'settings', label: t('settings.title') },
+          ]}
+        />
+      </div>
+    </>
   );
 
   const dialogs = (
@@ -324,6 +376,7 @@ export default function Budgeting() {
         onOpenChange={(open) => setGoalDialog((d) => ({ ...d, open }))}
         goal={goalDialog.goal}
         initialCategoryId={goalDialog.categoryId}
+        initialEffectiveMonth={goalDialog.effectiveMonth}
         availableCategories={availableCategories}
         categories={categories}
       />
@@ -340,16 +393,45 @@ export default function Budgeting() {
       <ConfirmDeleteDialog
         open={!!pendingDelete}
         onOpenChange={(open) => !open && setPendingDelete(null)}
-        title={t('deleteConfirm.title')}
-        description={t('deleteConfirm.description', { category: pendingDelete?.name ?? '' })}
-        confirmLabel={t('actions.delete')}
+        title={t('settings.deleteTitle')}
+        description={t('settings.deleteDescription', { count: pendingDelete?.length ?? 0 })}
+        confirmLabel={tc('buttons.delete')}
         isPending={deleteMutation.isPending}
-        onConfirm={() => pendingDelete && deleteMutation.mutate(pendingDelete.goal!.id)}
+        onConfirm={() => pendingDelete && deleteMutation.mutate(pendingDelete)}
       />
     </>
   );
 
-  if (reportError || goalsError)
+  if (view === 'settings') {
+    return (
+      <>
+        {head}
+        {historyError || categoriesError ? (
+          <ReportError
+            onRetry={() => {
+              void refetchHistory();
+              void refetchCategories();
+            }}
+          />
+        ) : historyLoading || categoriesLoading ? (
+          <StatSkeleton />
+        ) : (
+          <BudgetSettingsTable
+            key={historyUpdatedAt}
+            goals={goalHistory}
+            categories={categories}
+            onEdit={(goal, effectiveMonth) =>
+              setGoalDialog({ open: true, goal, categoryId: goal.categoryId, effectiveMonth })
+            }
+            onDelete={setPendingDelete}
+          />
+        )}
+        {dialogs}
+      </>
+    );
+  }
+
+  if (reportError || goalsError || categoriesError)
     return (
       <>
         {head}
@@ -357,8 +439,10 @@ export default function Budgeting() {
           onRetry={() => {
             void refetchReport();
             void refetchGoals();
+            void refetchCategories();
           }}
         />
+        {dialogs}
       </>
     );
   if (reportLoading || goalsLoading || categoriesLoading || !report) {
@@ -370,6 +454,7 @@ export default function Budgeting() {
           <StatSkeleton />
           <StatSkeleton />
         </Stats>
+        {dialogs}
       </>
     );
   }
@@ -484,10 +569,10 @@ export default function Budgeting() {
         <ReportQualityNote quality={report.quality} />
         <EmptyState
           icon={<PiggyBank />}
-          title={t('noBudgets.title')}
-          description={t('noBudgets.description')}
+          title={t('settings.noPeriodLimits')}
+          description={t('settings.noPeriodLimitsHelp')}
           action={
-            <Button onClick={() => openAdd()}>
+            <Button onClick={() => openAdd()} disabled={availableCategories.length === 0}>
               <Plus />
               {t('actions.add')}
             </Button>
@@ -566,6 +651,11 @@ export default function Budgeting() {
                   <small className="mt-[3px] block text-micro font-500 text-ink-4">
                     {countLine(row.count)}
                   </small>
+                  {!row.goal && (
+                    <small className="mt-1 block text-micro text-ink-4">
+                      {t('settings.historical')}
+                    </small>
+                  )}
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-3 pr-6">
@@ -630,22 +720,16 @@ export default function Budgeting() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem onSelect={() => openEdit(row)}>
-                          {t('actions.editLimit')}
+                        <DropdownMenuItem
+                          onSelect={() => (row.goal ? openEdit(row) : openAdd(row.categoryId))}
+                        >
+                          {t(row.goal ? 'actions.editLimit' : 'actions.setLimit')}
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           disabled={row.count === 0}
                           onSelect={() => openTransactions(row)}
                         >
                           {t('actions.showTransactions')}
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          disabled={!row.goal}
-                          variant="danger"
-                          onSelect={() => setPendingDelete(row)}
-                        >
-                          {t('actions.delete')}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -656,7 +740,7 @@ export default function Budgeting() {
           </TableBody>
         </Table>
         <div className="flex items-center justify-between border-t border-line px-[14px] py-3 text-micro font-500 text-ink-4">
-          <span>{t('table.footer', { count: rows.length })}</span>
+          <span>{t('settings.evaluationNote', { period: period.label })}</span>
           <Link
             href="/reports/cashflow"
             className="text-caption font-650 text-ink-2 underline-offset-[3px] hover:text-ink hover:underline"

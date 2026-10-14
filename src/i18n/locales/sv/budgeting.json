@@ -61,7 +61,7 @@
     "addTitle": "Lägg till budget",
     "editTitle": "Redigera gräns",
     "addDescription": "Gränsen upprepas varje månad och jämförs med kategorins utgifter på alla konton.",
-    "editDescription": "Månadsgräns för {{category}}.",
+    "editDescription": "Gräns för {{category}}.",
     "category": "Kategori",
     "selectCategory": "Välj en kategori",
     "monthlyLimit": "Månadsgräns",
@@ -82,7 +82,7 @@
   },
   "deleteConfirm": {
     "title": "Ta bort budgeten?",
-    "description": "Gränsen för {{category}} tas bort. Transaktionerna förblir oförändrade.",
+    "description": "Gränsen för {{category}} avslutas från innevarande månad och planerade ändringar avbryts. Tidigare gränser och transaktioner finns kvar i historiska rapporter.",
     "deleted": "Budgeten har tagits bort"
   },
   "noBudgets": {
@@ -189,10 +189,29 @@
     "usageUnavailable": "Budgetförbrukning saknas",
     "absoluteShare": "Andel av gruppernas absoluta belopp",
     "signedUnbudgetedTotal": "Nettoutgifter utan budget: {{amount}}",
-    "effectiveMonthPrefill": "Beloppet visar den gräns som gäller i {{month, lower}}. När du sparar ändras gränsen från den månaden; tidigare månader behåller sina.",
+    "effectiveMonthPrefill": "Vid sparande gäller det angivna beloppet från {{month}}. Senare planerade ändringar behålls.",
     "scheduledHeading": "Schemalagda ändringar",
     "scheduledLimit": "Från {{month, lower}}: {{amount}}",
     "scheduledRemoval": "Från {{month, lower}}: ingen gräns",
     "noChange": "Gränsen är oförändrad; ingenting sparades."
+  },
+  "settings": {
+    "title": "Inställda budgetar",
+    "spendingView": "Förbrukning",
+    "description": "Alla inställda gränser, inklusive tidigare och planerade ändringar. Oberoende av vald utgiftsperiod och kontofilter.",
+    "recurrence": "Upprepning",
+    "validity": "Giltiga månader (inklusive)",
+    "from": "Från {{month}} och framåt",
+    "between": "{{start}} – {{end}}",
+    "historical": "Historisk gräns · avslutad",
+    "noPeriodLimits": "Inga gränser för denna period",
+    "noPeriodLimitsHelp": "Välj en annan period eller ändra giltigheten under Inställda budgetar.",
+    "evaluationNote": "Gränser utvärderade för {{period}}",
+    "deleteSelected": "Radera valda ({{count}})",
+    "selectAll": "Välj alla intervall med gräns",
+    "selectInterval": "Välj {{category}} från {{month}}",
+    "deleteTitle": "Radera valda intervall?",
+    "deleteDescription": "Intervall att radera: {{count}}. Gränserna tas bort exakt för dessa perioder, inklusive valda tidigare perioder. Andra intervall och transaktioner förblir oförändrade.",
+    "deleted": "Valda intervall raderade"
   }
 }

@@ -51,7 +51,11 @@ tablet app, or a budget shared by a household (one profile on one computer, no s
   rental income, recurring costs, linked loans and policies, loan schedules and attachments.
 - **Budgets, cashflow and planning:** a cashflow report by month, quarter or year, cashflow
   planning with categories as groups (any row or category can be left out of the plan), a
-  net-worth projection, and annuity and real estate investment calculators.
+  net-worth projection, and annuity and real estate investment calculators. Budgets have
+  separate spending and settings views, with editable limit versions, their currencies
+  and effective month intervals. Select one or more intervals in settings to delete
+  exactly those limits, including historical ones, without extending earlier limits
+  into the resulting gaps.
 - **Ten languages and 45 currencies.** English, Czech, German, Spanish, Italian, Norwegian
   (bokmål), Polish, Swedish, Japanese and Simplified Chinese; the languages other than English
   and Czech are machine-translated and [corrections are welcome](./CONTRIBUTING.md#translations).

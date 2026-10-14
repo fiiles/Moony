@@ -36,6 +36,36 @@ pub struct BudgetGoalVersion {
     pub currency: String,
 }
 
+/// Exact stored interval selected for cancellation (across any number of goals).
+#[derive(Debug, Clone, Deserialize, Type)]
+pub struct BudgetGoalInterval {
+    #[serde(rename = "categoryId")]
+    pub category_id: String,
+    pub timeframe: String,
+    #[serde(rename = "effectiveMonth")]
+    pub effective_month: i64,
+}
+
+impl BudgetGoalInterval {
+    pub fn validate(&self) -> crate::error::Result<()> {
+        use crate::error::AppError;
+        if self.category_id.trim().is_empty() {
+            return Err(AppError::Validation("validation.categoryIdRequired".into()));
+        }
+        if !["monthly", "quarterly", "yearly"].contains(&self.timeframe.as_str()) {
+            return Err(AppError::Validation("validation.timeframeInvalid".into()));
+        }
+        if crate::services::reporting::month_start(self.effective_month)
+            != Some(self.effective_month)
+        {
+            return Err(AppError::Validation(
+                "validation.effectiveMonthInvalid".into(),
+            ));
+        }
+        Ok(())
+    }
+}
+
 /// Data for creating/updating a budget goal
 #[derive(Debug, Clone, Deserialize, Type)]
 pub struct InsertBudgetGoal {

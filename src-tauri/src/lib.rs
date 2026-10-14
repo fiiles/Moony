@@ -234,6 +234,8 @@ pub async fn run() {
             commands::budgeting::get_budgeting_report,
             commands::budgeting::get_category_transactions,
             commands::budgeting::get_budget_goals,
+            commands::budgeting::get_budget_goal_history,
+            commands::budgeting::delete_budget_goal_intervals,
             commands::budgeting::get_latest_transaction_date,
             commands::budgeting::upsert_budget_goal,
             commands::budgeting::delete_budget_goal,

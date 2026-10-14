@@ -131,6 +131,11 @@ effectiveMonth: number | null;
 versions: BudgetGoalVersion[] }
 
 /**
+ * Exact stored interval selected for cancellation (across any number of goals).
+ */
+export type BudgetGoalInterval = { categoryId: string; timeframe: string; effectiveMonth: number }
+
+/**
  * One limit version of a budget goal, effective from a calendar month.
  */
 export type BudgetGoalVersion = { effectiveMonth: number; amount: string | null; currency: string }

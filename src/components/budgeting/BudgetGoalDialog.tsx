@@ -2,22 +2,21 @@ import { ReportError, ReportQualityNote } from '@/components/reports/ReportQuali
 import { currencyDecimals, type CurrencyCode } from '@shared/currencies';
 import { preserveMoneyText } from '@/utils/money-flows';
 import { formatReportMoney } from '@/utils/report-currencies';
-import { refreshMoneyFlows } from '@/lib/money-flow-refresh';
-import { translateApiError } from '@/lib/translate-api-error';
 import { useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import type { TransactionCategory } from '@shared/schema';
-import { budgetingApi, type BudgetGoal, type InsertBudgetGoal } from '@/lib/tauri-api';
+import { budgetingApi, type BudgetGoal } from '@/lib/tauri-api';
+import { useSaveBudgetGoal } from '@/hooks/use-budget-goal-mutations';
 import { requiredNumber } from '@/utils/form-schemas';
 import { getUtcPeriodRange } from '@/utils/period';
 import {
   currentMonthStart,
-  defaultEditMonth,
+  budgetEditSource,
   isUnchangedGoalEdit,
   monthInputValue,
   monthStartFromInput,
@@ -57,7 +56,9 @@ import {
 const AVERAGE_MONTHS = 6;
 
 const formSchema = z.object({
-  effectiveMonth: z.string().regex(/^\d{4}-\d{2}$/, 'validation.dateRequired'),
+  effectiveMonth: z
+    .string()
+    .refine((value) => monthStartFromInput(value) != null, 'validation.dateRequired'),
   categoryId: z.string().min(1, 'validation.categoryIdRequired'),
   amount: requiredNumber('validation.amountRequired').positive('validation.amountPositive'),
 });
@@ -71,6 +72,8 @@ export interface BudgetGoalDialogProps {
   goal?: BudgetGoal | null;
   /** Adding from an unbudgeted row: that category is preselected. */
   initialCategoryId?: string | null;
+  /** Explicit interval selected in settings, or the month shown by the report. */
+  initialEffectiveMonth?: number;
   /** Expense categories that have no limit yet (the add case). */
   availableCategories: TransactionCategory[];
   /** All categories, to name the one being edited. */
@@ -88,15 +91,14 @@ export function BudgetGoalDialog({
   onOpenChange,
   goal,
   initialCategoryId,
+  initialEffectiveMonth,
   availableCategories,
   categories,
 }: BudgetGoalDialogProps) {
   const { t } = useTranslation('budgeting');
   const { t: tc } = useTranslation('common');
   const { currencyCode, fxRevision } = useCurrency();
-  const editorCurrency = goal?.currency ?? currencyCode;
   const categoryName = useCategoryName();
-  const queryClient = useQueryClient();
   const fmt = useFormat();
   const editing = !!goal;
   const versions = useMemo(() => goal?.versions ?? [], [goal]);
@@ -118,33 +120,28 @@ export function BudgetGoalDialog({
     if (!open) return;
     const now = currentMonthStart();
     if (goal) {
-      const month = defaultEditMonth(goal.versions, now);
-      const current = versionInEffect(goal.versions, month);
+      const source = budgetEditSource(goal, initialEffectiveMonth, now);
       form.reset({
         categoryId: goal.categoryId,
-        amount: Number(current?.amount ?? goal.amount),
-        effectiveMonth: monthInputValue(month),
+        amount: Number(source.amount),
+        effectiveMonth: monthInputValue(source.month),
       });
     } else {
       form.reset({
         categoryId: initialCategoryId ?? '',
         amount: undefined,
-        effectiveMonth: monthInputValue(now),
+        effectiveMonth: monthInputValue(initialEffectiveMonth ?? now),
       });
     }
-  }, [open, goal, initialCategoryId, currencyCode, form]);
+  }, [open, goal, initialCategoryId, initialEffectiveMonth, currencyCode, form]);
 
-  // Another month shows the limit in effect then, unless the user already
-  // typed a new amount.
+  // The date can move independently of the selected limit's value.
   const editedMonthValue = form.watch('effectiveMonth');
   const editedMonth = monthStartFromInput(editedMonthValue);
-  const editedVersion = editedMonth == null ? null : versionInEffect(versions, editedMonth);
-  useEffect(() => {
-    if (!open || !goal || editedMonth == null) return;
-    if (form.getFieldState('amount').isDirty) return;
-    const version = versionInEffect(goal.versions, editedMonth);
-    if (version?.amount != null) form.setValue('amount', Number(version.amount));
-  }, [open, goal, editedMonth, form]);
+  // Moving the effective date moves the selected amount/currency. Taking them
+  // from the destination month would silently replace the interval being edited.
+  const editSource = goal ? budgetEditSource(goal, initialEffectiveMonth, nowMonth) : null;
+  const editorCurrency = editSource?.currency ?? currencyCode;
   const scheduled = scheduledVersions(versions, editedMonth ?? nowMonth);
 
   // Average monthly spending in the limit editor's own currency.
@@ -199,20 +196,12 @@ export function BudgetGoalDialog({
   const selectedCategoryId = form.watch('categoryId');
   const average = selectedCategoryId ? (averages.get(selectedCategoryId) ?? 0) : null;
 
-  const mutation = useMutation({
-    mutationFn: (data: InsertBudgetGoal) => budgetingApi.upsertBudgetGoal(data),
-    onSuccess: async () => {
-      await refreshMoneyFlows(queryClient);
-      toast.success(editing ? t('dialog.updated') : t('dialog.added'));
-      onOpenChange(false);
-    },
-    onError: (error: Error) => toast.error(translateApiError(error, tc)),
-  });
+  const mutation = useSaveBudgetGoal(() => onOpenChange(false), editing);
 
   const onSubmit = (values: FormValues) => {
     const month = monthStartFromInput(values.effectiveMonth);
     if (month == null) return;
-    const currency = goal?.currency ?? currencyCode;
+    const currency = editorCurrency;
     // Saving the limit already in effect for that month changes nothing.
     if (goal && isUnchangedGoalEdit(goal.versions, month, values.amount, currency)) {
       toast.info(t('readiness.noChange'));
@@ -224,14 +213,14 @@ export function BudgetGoalDialog({
       categoryId: values.categoryId,
       timeframe: goal?.timeframe ?? 'monthly',
       amount: preserveMoneyText(
-        original?.amount ?? null,
-        original?.currency ?? null,
+        editSource?.amount ?? original?.amount ?? null,
+        editSource?.currency ?? original?.currency ?? null,
         values.amount,
         currency
       ),
       effectiveMonth: month,
-      // Typed in the display currency: store it with that currency.
-      currency: goal?.currency ?? currencyCode,
+      // Keep the selected interval's own currency; new goals use the profile currency.
+      currency,
     });
   };
 
@@ -282,18 +271,19 @@ export function BudgetGoalDialog({
               name="amount"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>{t('dialog.monthlyLimit')}</FormLabel>
+                  <FormLabel>
+                    {t('budgetAmount')} · {t(goal?.timeframe ?? 'monthly')}
+                  </FormLabel>
                   <FormControl>
-                    <InputWrap unit={goal?.currency ?? currencyCode}>
+                    <InputWrap unit={editorCurrency}>
                       <Input
                         type="number"
                         inputMode="decimal"
                         min="0"
                         step={
-                          editedVersion && Number(editedVersion.amount) === Number(field.value)
+                          editSource && Number(editSource.amount) === Number(field.value)
                             ? 'any'
-                            : 10 **
-                              -currencyDecimals((goal?.currency ?? currencyCode) as CurrencyCode)
+                            : 10 ** -currencyDecimals(editorCurrency as CurrencyCode)
                         }
                         placeholder="0"
                         autoFocus={editing}

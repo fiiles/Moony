@@ -53,6 +53,7 @@ import type {
   PortfolioMetrics,
   PriceStatus,
   BudgetGoal,
+  BudgetGoalInterval,
   InsertBudgetGoal,
   BudgetingTransaction,
   BudgetingReport,
@@ -1253,6 +1254,9 @@ export const budgetingApi = {
 
   // Get all budget goals
   getBudgetGoals: () => tauriInvoke<BudgetGoal[]>('get_budget_goals'),
+  getBudgetGoalHistory: () => tauriInvoke<BudgetGoal[]>('get_budget_goal_history'),
+  deleteBudgetGoalIntervals: (intervals: BudgetGoalInterval[]) =>
+    tauriInvoke<void>('delete_budget_goal_intervals', { intervals }),
 
   // Create or update a budget goal
   upsertBudgetGoal: (data: InsertBudgetGoal) =>

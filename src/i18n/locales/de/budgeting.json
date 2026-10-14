@@ -61,7 +61,7 @@
     "addTitle": "Budget hinzufügen",
     "editTitle": "Limit bearbeiten",
     "addDescription": "Das Limit wiederholt sich jeden Monat und wird mit den Ausgaben der Kategorie über alle Konten verglichen.",
-    "editDescription": "Monatslimit für {{category}}.",
+    "editDescription": "Limit für {{category}}.",
     "category": "Kategorie",
     "selectCategory": "Kategorie auswählen",
     "monthlyLimit": "Monatslimit",
@@ -82,7 +82,7 @@
   },
   "deleteConfirm": {
     "title": "Budget löschen?",
-    "description": "Das Limit für {{category}} wird entfernt. Die Transaktionen bleiben unverändert.",
+    "description": "Das Limit für {{category}} endet ab dem aktuellen Monat. Geplante Änderungen werden storniert. Frühere Limits und Transaktionen bleiben in historischen Berichten erhalten.",
     "deleted": "Budget gelöscht"
   },
   "noBudgets": {
@@ -189,10 +189,29 @@
     "usageUnavailable": "Budgetauslastung nicht verfügbar",
     "absoluteShare": "Anteil an den absoluten Gruppenbeträgen",
     "signedUnbudgetedTotal": "Nettoausgaben ohne Budget: {{amount}}",
-    "effectiveMonthPrefill": "Der Betrag zeigt das in {{month}} gültige Limit. Beim Speichern ändert sich das Limit ab diesem Monat; frühere Monate behalten ihres.",
+    "effectiveMonthPrefill": "Beim Speichern gilt der eingegebene Betrag ab {{month}}. Spätere geplante Änderungen bleiben erhalten.",
     "scheduledHeading": "Geplante Änderungen",
     "scheduledLimit": "Ab {{month}}: {{amount}}",
     "scheduledRemoval": "Ab {{month}}: kein Limit",
     "noChange": "Das Limit ist unverändert; es wurde nichts gespeichert."
+  },
+  "settings": {
+    "title": "Eingerichtete Budgets",
+    "spendingView": "Verbrauch",
+    "description": "Alle eingerichteten Limits einschließlich früherer und geplanter Änderungen. Unabhängig vom gewählten Ausgabenzeitraum und Kontofilter.",
+    "recurrence": "Wiederholung",
+    "validity": "Gültige Monate (einschließlich)",
+    "from": "Ab {{month}}",
+    "between": "{{start}} – {{end}}",
+    "historical": "Historisches Limit · beendet",
+    "noPeriodLimits": "Keine Limits für diesen Zeitraum",
+    "noPeriodLimitsHelp": "Wählen Sie einen anderen Zeitraum oder ändern Sie die Gültigkeit unter Eingerichtete Budgets.",
+    "evaluationNote": "Limits ausgewertet für {{period}}",
+    "deleteSelected": "Auswahl löschen ({{count}})",
+    "selectAll": "Alle Intervalle mit Limit auswählen",
+    "selectInterval": "{{category}} ab {{month}} auswählen",
+    "deleteTitle": "Ausgewählte Intervalle löschen?",
+    "deleteDescription": "Zu löschende Intervalle: {{count}}. Die Limits werden genau für diese Zeiträume entfernt, einschließlich ausgewählter vergangener Zeiträume. Andere Intervalle und Transaktionen bleiben unverändert.",
+    "deleted": "Ausgewählte Intervalle gelöscht"
   }
 }

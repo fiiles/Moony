@@ -61,7 +61,7 @@
     "addTitle": "Add budget",
     "editTitle": "Edit limit",
     "addDescription": "The limit repeats every month and is compared with the category's spending across all accounts.",
-    "editDescription": "Monthly limit for {{category}}.",
+    "editDescription": "Limit for {{category}}.",
     "category": "Category",
     "selectCategory": "Select a category",
     "monthlyLimit": "Monthly limit",
@@ -82,7 +82,7 @@
   },
   "deleteConfirm": {
     "title": "Delete budget?",
-    "description": "The limit for {{category}} will be removed. Transactions stay unchanged.",
+    "description": "The limit for {{category}} ends from the current month and scheduled changes are cancelled. Earlier limits and transactions remain in historical reports.",
     "deleted": "Budget deleted"
   },
   "noBudgets": {
@@ -189,10 +189,29 @@
     "usageUnavailable": "Budget usage unavailable",
     "absoluteShare": "Share of absolute group amounts",
     "signedUnbudgetedTotal": "Net unbudgeted spending: {{amount}}",
-    "effectiveMonthPrefill": "The amount shows the limit in effect in {{month}}. Saving it changes the limit from that month on; earlier months keep theirs.",
+    "effectiveMonthPrefill": "Saving sets the entered amount from {{month}}. Later scheduled changes remain in place.",
     "scheduledHeading": "Scheduled changes",
     "scheduledLimit": "From {{month}}: {{amount}}",
     "scheduledRemoval": "From {{month}}: no limit",
     "noChange": "The limit is unchanged; nothing was saved."
+  },
+  "settings": {
+    "title": "Configured budgets",
+    "spendingView": "Spending",
+    "description": "All configured limits, including past and scheduled changes. Independent of the selected spending period and account filter.",
+    "recurrence": "Repeats",
+    "validity": "Valid in months (inclusive)",
+    "from": "From {{month}} onwards",
+    "between": "{{start}} – {{end}}",
+    "historical": "Historical limit · ended",
+    "noPeriodLimits": "No limits for this period",
+    "noPeriodLimitsHelp": "Choose another period or manage the effective dates in Configured budgets.",
+    "evaluationNote": "Limits evaluated for {{period}}",
+    "deleteSelected": "Delete selected ({{count}})",
+    "selectAll": "Select all limit intervals",
+    "selectInterval": "Select {{category}} from {{month}}",
+    "deleteTitle": "Delete selected intervals?",
+    "deleteDescription": "Intervals to delete: {{count}}. Limits will be removed exactly for these periods, including any selected past periods. Other intervals and transactions remain unchanged.",
+    "deleted": "Selected intervals deleted"
   }
 }

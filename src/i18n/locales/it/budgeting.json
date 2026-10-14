@@ -68,7 +68,7 @@
     "addTitle": "Aggiungi budget",
     "editTitle": "Modifica limite",
     "addDescription": "Il limite si ripete ogni mese e viene confrontato con le spese della categoria su tutti i conti.",
-    "editDescription": "Limite mensile per {{category}}.",
+    "editDescription": "Limite per {{category}}.",
     "category": "Categoria",
     "selectCategory": "Seleziona una categoria",
     "monthlyLimit": "Limite mensile",
@@ -90,7 +90,7 @@
   },
   "deleteConfirm": {
     "title": "Eliminare il budget?",
-    "description": "Il limite per {{category}} verrà rimosso. I movimenti restano invariati.",
+    "description": "Il limite per {{category}} termina dal mese corrente e le modifiche pianificate vengono annullate. I limiti precedenti e le transazioni restano nei resoconti storici.",
     "deleted": "Budget eliminato"
   },
   "noBudgets": {
@@ -197,10 +197,29 @@
     "usageUnavailable": "Utilizzo del budget non disponibile",
     "absoluteShare": "Quota degli importi assoluti del gruppo",
     "signedUnbudgetedTotal": "Spese nette senza budget: {{amount}}",
-    "effectiveMonthPrefill": "L'importo mostra il limite in vigore a {{month, lower}}. Salvandolo, il limite cambia da quel mese in poi; i mesi precedenti mantengono il proprio.",
+    "effectiveMonthPrefill": "Salvando, l’importo inserito si applicherà da {{month}}. Le modifiche successive pianificate resteranno in vigore.",
     "scheduledHeading": "Modifiche programmate",
     "scheduledLimit": "Da {{month, lower}}: {{amount}}",
     "scheduledRemoval": "Da {{month, lower}}: nessun limite",
     "noChange": "Il limite non è cambiato; non è stato salvato nulla."
+  },
+  "settings": {
+    "title": "Budget configurati",
+    "spendingView": "Utilizzo",
+    "description": "Tutti i limiti configurati, comprese le modifiche passate e pianificate. Indipendente dal periodo di spesa e dal filtro dei conti selezionati.",
+    "recurrence": "Ripetizione",
+    "validity": "Mesi di validità (inclusi)",
+    "from": "Da {{month}} in poi",
+    "between": "{{start}} – {{end}}",
+    "historical": "Limite storico · terminato",
+    "noPeriodLimits": "Nessun limite per questo periodo",
+    "noPeriodLimitsHelp": "Scegli un altro periodo o modifica la validità in Budget configurati.",
+    "evaluationNote": "Limiti valutati per {{period}}",
+    "deleteSelected": "Elimina selezionati ({{count}})",
+    "selectAll": "Seleziona tutti gli intervalli con limite",
+    "selectInterval": "Seleziona {{category}} da {{month}}",
+    "deleteTitle": "Eliminare gli intervalli selezionati?",
+    "deleteDescription": "Intervalli da eliminare: {{count}}. I limiti verranno rimossi esattamente per questi periodi, compresi eventuali periodi passati selezionati. Gli altri intervalli e le transazioni resteranno invariati.",
+    "deleted": "Intervalli selezionati eliminati"
   }
 }

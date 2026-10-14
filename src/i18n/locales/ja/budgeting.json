@@ -54,7 +54,7 @@
     "addTitle": "予算を追加",
     "editTitle": "上限を編集",
     "addDescription": "上限は毎月繰り返され、すべての口座にわたるカテゴリの支出と比較されます。",
-    "editDescription": "{{category}}の月間上限。",
+    "editDescription": "{{category}}の上限。",
     "category": "カテゴリ",
     "selectCategory": "カテゴリを選択",
     "monthlyLimit": "月間上限",
@@ -74,7 +74,7 @@
   },
   "deleteConfirm": {
     "title": "予算を削除しますか？",
-    "description": "{{category}}の上限を削除します。取引は変更されません。",
+    "description": "{{category}}の上限は今月から終了し、予定された変更は取り消されます。過去の上限と取引は履歴レポートに残ります。",
     "deleted": "予算を削除しました"
   },
   "noBudgets": {
@@ -181,10 +181,29 @@
     "usageUnavailable": "予算の使用率は利用できません",
     "absoluteShare": "グループ金額の絶対値に占める割合",
     "signedUnbudgetedTotal": "上限のない支出の純額：{{amount}}",
-    "effectiveMonthPrefill": "金額は{{month}}に有効な上限を示しています。保存すると、その月以降の上限が変わります。それ以前の月は変わりません。",
+    "effectiveMonthPrefill": "保存すると、入力した金額が{{month}}から適用されます。それ以降に予定された変更は維持されます。",
     "scheduledHeading": "予約済みの変更",
     "scheduledLimit": "{{month}}から：{{amount}}",
     "scheduledRemoval": "{{month}}から：上限なし",
     "noChange": "上限は変わっていないため、保存されませんでした。"
+  },
+  "settings": {
+    "title": "設定済み予算",
+    "spendingView": "利用状況",
+    "description": "過去と予定の変更を含む、設定済みのすべての上限です。選択した支出期間や口座フィルターには依存しません。",
+    "recurrence": "繰り返し",
+    "validity": "有効な月（両端を含む）",
+    "from": "{{month}}以降",
+    "between": "{{start}} ～ {{end}}",
+    "historical": "過去の上限・終了済み",
+    "noPeriodLimits": "この期間の上限はありません",
+    "noPeriodLimitsHelp": "別の期間を選択するか、設定済み予算で有効期間を変更してください。",
+    "evaluationNote": "{{period}}の上限評価",
+    "deleteSelected": "選択した期間を削除（{{count}}）",
+    "selectAll": "上限のある期間をすべて選択",
+    "selectInterval": "{{month}}からの{{category}}を選択",
+    "deleteTitle": "選択した期間を削除しますか？",
+    "deleteDescription": "削除する期間数：{{count}}。選択した過去の期間も含め、これらの期間の上限だけが削除されます。他の期間と取引は変更されません。",
+    "deleted": "選択した期間を削除しました"
   }
 }

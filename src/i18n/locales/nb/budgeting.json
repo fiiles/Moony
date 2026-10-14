@@ -61,7 +61,7 @@
     "addTitle": "Legg til budsjett",
     "editTitle": "Rediger grense",
     "addDescription": "Grensen gjentas hver måned og sammenlignes med kategoriens utgifter på tvers av alle kontoer.",
-    "editDescription": "Månedlig grense for {{category}}.",
+    "editDescription": "Grense for {{category}}.",
     "category": "Kategori",
     "selectCategory": "Velg en kategori",
     "monthlyLimit": "Månedlig grense",
@@ -82,7 +82,7 @@
   },
   "deleteConfirm": {
     "title": "Slette budsjettet?",
-    "description": "Grensen for {{category}} fjernes. Transaksjonene forblir uendret.",
+    "description": "Grensen for {{category}} avsluttes fra inneværende måned, og planlagte endringer avbrytes. Tidligere grenser og transaksjoner beholdes i historiske rapporter.",
     "deleted": "Budsjettet er slettet"
   },
   "noBudgets": {
@@ -189,10 +189,29 @@
     "usageUnavailable": "Budsjettbruk er utilgjengelig",
     "absoluteShare": "Andel av gruppenes absolutte beløp",
     "signedUnbudgetedTotal": "Netto utgifter uten budsjett: {{amount}}",
-    "effectiveMonthPrefill": "Beløpet viser grensen som gjelder i {{month, lower}}. Lagrer du det, endres grensen fra den måneden; tidligere måneder beholder sine.",
+    "effectiveMonthPrefill": "Ved lagring gjelder det angitte beløpet fra {{month}}. Senere planlagte endringer beholdes.",
     "scheduledHeading": "Planlagte endringer",
     "scheduledLimit": "Fra {{month, lower}}: {{amount}}",
     "scheduledRemoval": "Fra {{month, lower}}: ingen grense",
     "noChange": "Grensen er uendret; ingenting ble lagret."
+  },
+  "settings": {
+    "title": "Oppsatte budsjetter",
+    "spendingView": "Forbruk",
+    "description": "Alle oppsatte grenser, inkludert tidligere og planlagte endringer. Uavhengig av valgt forbruksperiode og kontofilter.",
+    "recurrence": "Gjentakelse",
+    "validity": "Gyldige måneder (inkludert)",
+    "from": "Fra {{month}} og videre",
+    "between": "{{start}} – {{end}}",
+    "historical": "Historisk grense · avsluttet",
+    "noPeriodLimits": "Ingen grenser for denne perioden",
+    "noPeriodLimitsHelp": "Velg en annen periode eller endre gyldigheten under Oppsatte budsjetter.",
+    "evaluationNote": "Grenser vurdert for {{period}}",
+    "deleteSelected": "Slett valgte ({{count}})",
+    "selectAll": "Velg alle intervaller med grense",
+    "selectInterval": "Velg {{category}} fra {{month}}",
+    "deleteTitle": "Slette valgte intervaller?",
+    "deleteDescription": "Intervaller som slettes: {{count}}. Grensene fjernes nøyaktig for disse periodene, inkludert eventuelle valgte tidligere perioder. Andre intervaller og transaksjoner forblir uendret.",
+    "deleted": "Valgte intervaller slettet"
   }
 }

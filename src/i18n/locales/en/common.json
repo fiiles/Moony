@@ -274,7 +274,8 @@
     "stockImportLine": "Line {{line}}: {{reason}}",
     "stockImportRowFailed": "the row could not be saved.",
     "onboardingFlagUnknown": "Unknown onboarding step.",
-    "insuranceNoticeInvalid": "Enter a whole number of days from 0 to 365."
+    "insuranceNoticeInvalid": "Enter a whole number of days from 0 to 365.",
+    "budgetIntervalsRequired": "Select at least one budget interval."
   },
   "auth": {
     "wrongPassword": "The password you entered is incorrect. Please try again.",

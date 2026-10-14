@@ -75,14 +75,16 @@ interface OnboardingWizardProps {
   onFinished: () => void;
 }
 
-/** Simple length/variety based strength hint — guidance, not a gate. */
+/**
+ * Simple length/variety based strength hint — guidance, not a gate. 'weak' means
+ * "too short" (its copy says so), so it applies only below the minimum length.
+ */
 function passwordStrength(password: string): 'weak' | 'fair' | 'strong' | null {
   if (!password) return null;
   const variety = [/[a-z]/, /[A-Z]/, /\d/, /[^\w\s]/].filter((re) => re.test(password)).length;
   if (password.length < MIN_PASSWORD_LENGTH) return 'weak';
   if (password.length >= 14 && variety >= 3) return 'strong';
-  if (password.length >= 10 || variety >= 3) return 'fair';
-  return 'weak';
+  return 'fair';
 }
 
 function StepHead({ title, lead }: { title: string; lead: string }) {

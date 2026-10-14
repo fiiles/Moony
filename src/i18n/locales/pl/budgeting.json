@@ -205,8 +205,10 @@
     "noChange": "Limit bez zmian; nic nie zapisano.",
     "effectiveUntil": "Obowiązuje do miesiąca",
     "openEnded": "Bez końca",
-    "rangeOpenHelp": "Bez miesiąca końcowego limit obowiązuje dalej; późniejsze zaplanowane zmiany zostają.",
-    "rangeClosedHelp": "Miesiąc końcowy jest wliczony. Potem wraca limit, który obowiązywał wcześniej."
+    "rangeOpenHelp": "Bez miesiąca końcowego limit obowiązuje bezterminowo i zastępuje też późniejsze zmiany.",
+    "rangeClosedHelp": "Miesiąc końcowy jest wliczony. Potem wraca limit, który obowiązywał wcześniej.",
+    "overwriteTitle": "Zapisanie zastąpi te limity:",
+    "overwriteConfirm": "Zastąp i zapisz"
   },
   "settings": {
     "from": "Od {{month}}",
@@ -224,12 +226,12 @@
     "scheduled": "Zaplanowany",
     "showHistory": "Pokaż wcześniejsze limity: {{category}}",
     "earlierLimit": "Wcześniejszy limit",
-    "deleteInterval": "Usuń limit",
-    "deleteIntervalTitle": "Usunąć wcześniejszy limit?",
+    "deleteInterval": "Usuń przedział",
+    "deleteIntervalTitle": "Usunąć przedział?",
     "deleteIntervalDescription": "Limit {{amount}} dla {{category}} ({{period}}) zostanie usunięty także z historycznych raportów wydatków. Transakcje i inne limity pozostaną bez zmian.",
     "intervalDeleted": "Limit usunięty",
-    "delete": "Usuń budżet",
-    "deleteTitle": "Usunąć budżet?",
+    "delete": "Usuń cały budżet",
+    "deleteTitle": "Usunąć cały budżet?",
     "deleteDescription": "Budżet dla {{category}} zostanie usunięty wraz ze wszystkimi wcześniejszymi limitami, więc także minione miesiące w przeglądzie wydatków stracą limit. Transakcje pozostaną bez zmian.",
     "deletedToast": "Budżet usunięty"
   }

@@ -134,8 +134,8 @@ export function budgetEditSource(
 }
 
 /**
- * Saving `amount` from `month` (through `until`, or open-ended) would leave
- * every month of that range with the limit it already has.
+ * Saving `amount` from `month` through `until` (or, open-ended, for good)
+ * would leave every month of that range with the limit it already has.
  */
 export function isUnchangedGoalEdit(
   versions: readonly BudgetGoalVersion[],
@@ -148,7 +148,34 @@ export function isUnchangedGoalEdit(
   if (current == null || current.currency !== currency || Number(current.amount) !== amount)
     return false;
   const last = intervalLastMonth(versions, month);
-  return until == null || last == null || last >= until;
+  return until == null ? last == null : last == null || last >= until;
+}
+
+/**
+ * Limits that saving `amount` over `from`..`until` (null: for good) replaces,
+ * so the user can confirm first. Equal limits merge instead and are not
+ * listed; nor is anything while the range stays inside the edited interval.
+ */
+export function overwrittenPeriods(
+  versions: readonly BudgetGoalVersion[],
+  from: number,
+  until: number | null,
+  amount: number,
+  currency: string,
+  edited: { start: number; end: number | null } | null
+): BudgetLimitPeriod[] {
+  const insideEdited =
+    edited != null &&
+    from >= edited.start &&
+    (edited.end == null || (until != null && until <= edited.end));
+  if (insideEdited) return [];
+  return budgetVersionPeriods(versions).filter(
+    ({ version, end }) =>
+      version.amount != null &&
+      (version.currency !== currency || Number(version.amount) !== amount) &&
+      (until == null || version.effectiveMonth <= until) &&
+      (end == null || end >= from)
+  );
 }
 
 /** First day of the last month of the interval containing `month`; null while it runs on. */

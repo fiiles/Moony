@@ -189,8 +189,10 @@
     "noChange": "Grensen er uendret; ingenting ble lagret.",
     "effectiveUntil": "Gjelder til måned",
     "openEnded": "Uten slutt",
-    "rangeOpenHelp": "Uten sluttmåned gjelder grensen videre; senere planlagte endringer beholdes.",
-    "rangeClosedHelp": "Sluttmåneden er med. Deretter gjelder grensen som gjaldt før."
+    "rangeOpenHelp": "Uten sluttmåned gjelder grensen for alltid og erstatter også senere endringer.",
+    "rangeClosedHelp": "Sluttmåneden er med. Deretter gjelder grensen som gjaldt før.",
+    "overwriteTitle": "Lagring erstatter disse grensene:",
+    "overwriteConfirm": "Erstatt og lagre"
   },
   "settings": {
     "from": "Fra {{month}} og videre",
@@ -208,12 +210,12 @@
     "scheduled": "Planlagt",
     "showHistory": "Vis tidligere grenser: {{category}}",
     "earlierLimit": "Tidligere grense",
-    "deleteInterval": "Slett grense",
-    "deleteIntervalTitle": "Slette tidligere grense?",
+    "deleteInterval": "Slett intervall",
+    "deleteIntervalTitle": "Slette intervallet?",
     "deleteIntervalDescription": "Grensen på {{amount}} for {{category}} ({{period}}) fjernes også fra historiske utgiftsrapporter. Transaksjoner og andre grenser endres ikke.",
     "intervalDeleted": "Grensen er slettet",
-    "delete": "Slett budsjett",
-    "deleteTitle": "Slette budsjettet?",
+    "delete": "Slett hele budsjettet",
+    "deleteTitle": "Slette hele budsjettet?",
     "deleteDescription": "Budsjettet for {{category}} slettes med alle tidligere grenser, så også tidligere måneder i utgiftsoversikten mister grensen. Transaksjoner endres ikke.",
     "deletedToast": "Budsjettet er slettet"
   }

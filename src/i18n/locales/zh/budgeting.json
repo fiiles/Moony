@@ -181,8 +181,10 @@
     "noChange": "限额未变化，未保存任何内容。",
     "effectiveUntil": "有效至月份",
     "openEnded": "无结束",
-    "rangeOpenHelp": "不设结束月份时限额持续有效，之后计划的变更保留。",
-    "rangeClosedHelp": "结束月份包含在内。之后恢复之前适用的限额。"
+    "rangeOpenHelp": "不设结束月份时限额永久有效，并替换之后的所有变更。",
+    "rangeClosedHelp": "结束月份包含在内。之后恢复之前适用的限额。",
+    "overwriteTitle": "保存将替换以下限额：",
+    "overwriteConfirm": "替换并保存"
   },
   "settings": {
     "from": "自{{month}}起",
@@ -200,12 +202,12 @@
     "scheduled": "已计划",
     "showHistory": "显示以前的限额：{{category}}",
     "earlierLimit": "以前的限额",
-    "deleteInterval": "删除限额",
-    "deleteIntervalTitle": "删除以前的限额？",
+    "deleteInterval": "删除区间",
+    "deleteIntervalTitle": "删除区间？",
     "deleteIntervalDescription": "{{category}}的{{amount}}限额（{{period}}）也将从历史支出报表中删除。交易和其他限额保持不变。",
     "intervalDeleted": "限额已删除",
-    "delete": "删除预算",
-    "deleteTitle": "删除预算？",
+    "delete": "删除整个预算",
+    "deleteTitle": "删除整个预算？",
     "deleteDescription": "{{category}}的预算将连同所有以前的限额一起删除，因此支出概览中过去的月份也将没有限额。交易保持不变。",
     "deletedToast": "预算已删除"
   }

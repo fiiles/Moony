@@ -181,8 +181,10 @@
     "noChange": "上限は変わっていないため、保存されませんでした。",
     "effectiveUntil": "有効期限の月",
     "openEnded": "終了なし",
-    "rangeOpenHelp": "終了月がない場合、上限はそのまま続き、後の予定された変更も残ります。",
-    "rangeClosedHelp": "終了月も含まれます。その後は以前の上限に戻ります。"
+    "rangeOpenHelp": "終了月がない場合、上限は無期限に適用され、後の変更も置き換えます。",
+    "rangeClosedHelp": "終了月も含まれます。その後は以前の上限に戻ります。",
+    "overwriteTitle": "保存すると次の上限が置き換えられます：",
+    "overwriteConfirm": "置き換えて保存"
   },
   "settings": {
     "from": "{{month}}以降",
@@ -200,12 +202,12 @@
     "scheduled": "予定",
     "showHistory": "過去の上限を表示：{{category}}",
     "earlierLimit": "過去の上限",
-    "deleteInterval": "上限を削除",
-    "deleteIntervalTitle": "過去の上限を削除しますか？",
+    "deleteInterval": "期間を削除",
+    "deleteIntervalTitle": "期間を削除しますか？",
     "deleteIntervalDescription": "{{category}}の{{amount}}の上限（{{period}}）は過去の支出レポートからも削除されます。取引とほかの上限は変わりません。",
     "intervalDeleted": "上限を削除しました",
-    "delete": "予算を削除",
-    "deleteTitle": "予算を削除しますか？",
+    "delete": "予算全体を削除",
+    "deleteTitle": "予算全体を削除しますか？",
     "deleteDescription": "{{category}}の予算は過去の上限もすべて含めて削除されるため、支出の概要では過去の月も上限なしになります。取引は変わりません。",
     "deletedToast": "予算を削除しました"
   }

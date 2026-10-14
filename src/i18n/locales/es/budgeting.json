@@ -197,8 +197,10 @@
     "noChange": "El límite no ha cambiado; no se ha guardado nada.",
     "effectiveUntil": "Vigente hasta el mes",
     "openEnded": "Sin fin",
-    "rangeOpenHelp": "Sin mes final, el límite sigue vigente; los cambios programados posteriores se mantienen.",
-    "rangeClosedHelp": "El mes final se incluye. Después vuelve el límite que se aplicaba antes."
+    "rangeOpenHelp": "Sin mes final, el límite rige para siempre y sustituye también los cambios posteriores.",
+    "rangeClosedHelp": "El mes final se incluye. Después vuelve el límite que se aplicaba antes.",
+    "overwriteTitle": "Al guardar se sustituyen estos límites:",
+    "overwriteConfirm": "Sustituir y guardar"
   },
   "settings": {
     "from": "Desde {{month}} en adelante",
@@ -216,12 +218,12 @@
     "scheduled": "Programado",
     "showHistory": "Mostrar límites anteriores: {{category}}",
     "earlierLimit": "Límite anterior",
-    "deleteInterval": "Eliminar límite",
-    "deleteIntervalTitle": "¿Eliminar el límite anterior?",
+    "deleteInterval": "Eliminar intervalo",
+    "deleteIntervalTitle": "¿Eliminar el intervalo?",
     "deleteIntervalDescription": "El límite de {{amount}} para {{category}} ({{period}}) también se elimina de los informes históricos de gasto. Las transacciones y los demás límites no cambian.",
     "intervalDeleted": "Límite eliminado",
-    "delete": "Eliminar presupuesto",
-    "deleteTitle": "¿Eliminar el presupuesto?",
+    "delete": "Eliminar todo el presupuesto",
+    "deleteTitle": "¿Eliminar todo el presupuesto?",
     "deleteDescription": "El presupuesto de {{category}} se elimina con todos sus límites anteriores, así que los meses pasados del resumen de gastos también se quedan sin límite. Las transacciones no cambian.",
     "deletedToast": "Presupuesto eliminado"
   }

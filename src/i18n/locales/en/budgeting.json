@@ -189,8 +189,10 @@
     "noChange": "The limit is unchanged; nothing was saved.",
     "effectiveUntil": "Valid until month",
     "openEnded": "No end",
-    "rangeOpenHelp": "Without an end month the limit runs on; later scheduled changes stay.",
-    "rangeClosedHelp": "The end month is included. Afterwards, the limit that applied before returns."
+    "rangeOpenHelp": "Without an end month the limit runs for good and replaces any later changes.",
+    "rangeClosedHelp": "The end month is included. Afterwards, the limit that applied before returns.",
+    "overwriteTitle": "Saving replaces these limits:",
+    "overwriteConfirm": "Replace and save"
   },
   "settings": {
     "from": "From {{month}} onwards",
@@ -208,12 +210,12 @@
     "scheduled": "Scheduled",
     "showHistory": "Show earlier limits: {{category}}",
     "earlierLimit": "Earlier limit",
-    "deleteInterval": "Delete limit",
-    "deleteIntervalTitle": "Delete earlier limit?",
+    "deleteInterval": "Delete interval",
+    "deleteIntervalTitle": "Delete interval?",
     "deleteIntervalDescription": "The {{amount}} limit for {{category}} ({{period}}) is removed from historical spending reports too. Transactions and other limits stay unchanged.",
     "intervalDeleted": "Limit deleted",
-    "delete": "Delete budget",
-    "deleteTitle": "Delete budget?",
+    "delete": "Delete whole budget",
+    "deleteTitle": "Delete the whole budget?",
     "deleteDescription": "The budget for {{category}} is deleted with all its earlier limits, so past months in the spending overview lose their limit too. Transactions stay unchanged.",
     "deletedToast": "Budget deleted"
   }

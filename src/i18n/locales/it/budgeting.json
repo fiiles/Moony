@@ -197,8 +197,10 @@
     "noChange": "Il limite non è cambiato; non è stato salvato nulla.",
     "effectiveUntil": "Valido fino al mese",
     "openEnded": "Senza fine",
-    "rangeOpenHelp": "Senza mese finale il limite resta valido; le modifiche pianificate successive restano.",
-    "rangeClosedHelp": "Il mese finale è incluso. Poi torna il limite che valeva prima."
+    "rangeOpenHelp": "Senza mese finale il limite vale per sempre e sostituisce anche le modifiche successive.",
+    "rangeClosedHelp": "Il mese finale è incluso. Poi torna il limite che valeva prima.",
+    "overwriteTitle": "Il salvataggio sostituisce questi limiti:",
+    "overwriteConfirm": "Sostituisci e salva"
   },
   "settings": {
     "from": "Da {{month}} in poi",
@@ -216,12 +218,12 @@
     "scheduled": "Pianificato",
     "showHistory": "Mostra limiti precedenti: {{category}}",
     "earlierLimit": "Limite precedente",
-    "deleteInterval": "Elimina limite",
-    "deleteIntervalTitle": "Eliminare il limite precedente?",
+    "deleteInterval": "Elimina intervallo",
+    "deleteIntervalTitle": "Eliminare l'intervallo?",
     "deleteIntervalDescription": "Il limite di {{amount}} per {{category}} ({{period}}) viene rimosso anche dai resoconti storici delle spese. Transazioni e altri limiti restano invariati.",
     "intervalDeleted": "Limite eliminato",
-    "delete": "Elimina budget",
-    "deleteTitle": "Eliminare il budget?",
+    "delete": "Elimina l'intero budget",
+    "deleteTitle": "Eliminare l'intero budget?",
     "deleteDescription": "Il budget per {{category}} viene eliminato con tutti i limiti precedenti, quindi anche i mesi passati nella panoramica delle spese restano senza limite. Le transazioni restano invariate.",
     "deletedToast": "Budget eliminato"
   }

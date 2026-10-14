@@ -2,7 +2,7 @@ import { ReportError, ReportQualityNote } from '@/components/reports/ReportQuali
 import { currencyDecimals, type CurrencyCode } from '@shared/currencies';
 import { preserveMoneyText } from '@/utils/money-flows';
 import { formatReportMoney } from '@/utils/report-currencies';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -19,6 +19,7 @@ import {
   budgetEditSource,
   intervalLastMonth,
   isUnchangedGoalEdit,
+  overwrittenPeriods,
   monthInputValue,
   monthStartFromInput,
   scheduledVersions,
@@ -118,7 +119,6 @@ export function BudgetGoalDialog({
   const categoryName = useCategoryName();
   const fmt = useFormat();
   const editing = !!goal;
-  const versions = useMemo(() => goal?.versions ?? [], [goal]);
   const nowMonth = currentMonthStart();
   const monthLabel = (month: number) => fmt.monthInSentence(new Date(month * 1000));
 
@@ -131,6 +131,35 @@ export function BudgetGoalDialog({
       effectiveUntil: '',
     },
   });
+
+  // Every stored limit of the category, so a save can say what it replaces
+  // (a new budget may still collide with limits that have run out).
+  const { data: history = [] } = useQuery({
+    queryKey: ['budget-goal-history'],
+    queryFn: () => budgetingApi.getBudgetGoalHistory(),
+    enabled: open,
+  });
+  const selectedCategoryId = form.watch('categoryId');
+  const timeframe = goal?.timeframe ?? 'monthly';
+  const versions = useMemo(
+    () =>
+      history.find(
+        (g) =>
+          g.categoryId === (goal?.categoryId ?? selectedCategoryId) && g.timeframe === timeframe
+      )?.versions ??
+      goal?.versions ??
+      [],
+    [history, goal, selectedCategoryId, timeframe]
+  );
+  // The first click on save lists what the save replaces; the second saves.
+  const [confirming, setConfirming] = useState(false);
+  useEffect(() => {
+    const subscription = form.watch(() => setConfirming(false));
+    return () => subscription.unsubscribe();
+  }, [form]);
+  useEffect(() => {
+    if (open) setConfirming(false);
+  }, [open]);
 
   // Reset for each opening: the limit in effect in the edited month (its
   // stored currency), or the preselected category with an empty amount.
@@ -171,6 +200,31 @@ export function BudgetGoalDialog({
     editedUntil == null && Number.isFinite(enteredAmount) && enteredAmount > 0
       ? upcomingAfterSave(versions, editedMonth ?? nowMonth, enteredAmount, editorCurrency)
       : scheduledVersions(versions, editedUntil ?? editedMonth ?? nowMonth);
+
+  const editedInterval = useMemo(() => {
+    if (!editSource) return null;
+    const inEffect = versionInEffect(versions, editSource.month);
+    return inEffect
+      ? { start: inEffect.effectiveMonth, end: intervalLastMonth(versions, editSource.month) }
+      : null;
+  }, [editSource, versions]);
+  const collisions =
+    editedMonth != null && Number.isFinite(enteredAmount) && enteredAmount > 0
+      ? overwrittenPeriods(
+          versions,
+          editedMonth,
+          editedUntil,
+          enteredAmount,
+          editorCurrency,
+          editedInterval
+        )
+      : [];
+  const periodLabel = (start: number, end: number | null) => {
+    if (end == null) return t('settings.from', { month: monthLabel(start) });
+    const first = monthLabel(start);
+    const last = monthLabel(end);
+    return first === last ? first : t('settings.between', { start: first, end: last });
+  };
 
   // Average monthly spending in the limit editor's own currency.
   const averageRange = useMemo(() => {
@@ -221,7 +275,6 @@ export function BudgetGoalDialog({
     return map;
   }, [averageReport]);
 
-  const selectedCategoryId = form.watch('categoryId');
   const average = selectedCategoryId ? (averages.get(selectedCategoryId) ?? 0) : null;
 
   const mutation = useSaveBudgetGoal(() => onOpenChange(false), editing);
@@ -232,15 +285,19 @@ export function BudgetGoalDialog({
     const until = monthStartFromInput(values.effectiveUntil);
     const currency = editorCurrency;
     // Saving the limit already in effect for that month changes nothing.
-    if (goal && isUnchangedGoalEdit(goal.versions, month, values.amount, currency, until)) {
+    if (goal && isUnchangedGoalEdit(versions, month, values.amount, currency, until)) {
       toast.info(t('readiness.noChange'));
       onOpenChange(false);
       return;
     }
-    const original = goal ? versionInEffect(goal.versions, month) : null;
+    if (collisions.length > 0 && !confirming) {
+      setConfirming(true);
+      return;
+    }
+    const original = goal ? versionInEffect(versions, month) : null;
     mutation.mutate({
       categoryId: values.categoryId,
-      timeframe: goal?.timeframe ?? 'monthly',
+      timeframe,
       amount: preserveMoneyText(
         editSource?.amount ?? original?.amount ?? null,
         editSource?.currency ?? original?.currency ?? null,
@@ -410,12 +467,36 @@ export function BudgetGoalDialog({
             ) : (
               averageReport && <ReportQualityNote quality={averageReport.quality} />
             )}
+            {confirming && collisions.length > 0 && (
+              <div
+                role="alert"
+                className="rounded-r2 border border-loss-line bg-loss-soft px-3 py-2.5 text-micro text-loss"
+              >
+                <p className="mb-1 font-650">{t('readiness.overwriteTitle')}</p>
+                <ul className="space-y-0.5">
+                  {collisions.map(({ version, end }) => (
+                    <li key={version.effectiveMonth}>
+                      {periodLabel(
+                        version.effectiveMonth,
+                        end == null ? null : intervalLastMonth(versions, version.effectiveMonth)
+                      )}
+                      {': '}
+                      {formatReportMoney(fmt, Number(version.amount), version.currency)}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
             <DialogFooter>
               <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
                 {tc('buttons.cancel')}
               </Button>
               <Button type="submit" loading={mutation.isPending}>
-                {editing ? t('dialog.saveLimit') : t('dialog.addTitle')}
+                {confirming && collisions.length > 0
+                  ? t('readiness.overwriteConfirm')
+                  : editing
+                    ? t('dialog.saveLimit')
+                    : t('dialog.addTitle')}
               </Button>
             </DialogFooter>
           </form>

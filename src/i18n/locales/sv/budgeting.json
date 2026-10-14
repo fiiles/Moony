@@ -189,8 +189,10 @@
     "noChange": "Gränsen är oförändrad; ingenting sparades.",
     "effectiveUntil": "Gäller till månad",
     "openEnded": "Utan slut",
-    "rangeOpenHelp": "Utan slutmånad fortsätter gränsen att gälla; senare schemalagda ändringar finns kvar.",
-    "rangeClosedHelp": "Slutmånaden räknas med. Därefter gäller gränsen som gällde innan."
+    "rangeOpenHelp": "Utan slutmånad gäller gränsen för alltid och ersätter även senare ändringar.",
+    "rangeClosedHelp": "Slutmånaden räknas med. Därefter gäller gränsen som gällde innan.",
+    "overwriteTitle": "Att spara ersätter dessa gränser:",
+    "overwriteConfirm": "Ersätt och spara"
   },
   "settings": {
     "from": "Från {{month}} och framåt",
@@ -208,12 +210,12 @@
     "scheduled": "Schemalagd",
     "showHistory": "Visa tidigare gränser: {{category}}",
     "earlierLimit": "Tidigare gräns",
-    "deleteInterval": "Ta bort gräns",
-    "deleteIntervalTitle": "Ta bort tidigare gräns?",
+    "deleteInterval": "Ta bort intervall",
+    "deleteIntervalTitle": "Ta bort intervallet?",
     "deleteIntervalDescription": "Gränsen på {{amount}} för {{category}} ({{period}}) tas även bort från historiska utgiftsrapporter. Transaktioner och andra gränser förblir oförändrade.",
     "intervalDeleted": "Gränsen har tagits bort",
-    "delete": "Ta bort budget",
-    "deleteTitle": "Ta bort budgeten?",
+    "delete": "Ta bort hela budgeten",
+    "deleteTitle": "Ta bort hela budgeten?",
     "deleteDescription": "Budgeten för {{category}} tas bort med alla tidigare gränser, så även tidigare månader i utgiftsöversikten förlorar sin gräns. Transaktioner förblir oförändrade.",
     "deletedToast": "Budgeten har tagits bort"
   }

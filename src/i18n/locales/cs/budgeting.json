@@ -197,8 +197,10 @@
     "noChange": "Limit se nezměnil, nic se neuložilo.",
     "effectiveUntil": "Platí do měsíce",
     "openEnded": "Bez konce",
-    "rangeOpenHelp": "Bez měsíce „do“ platí limit dál; pozdější naplánované změny zůstanou.",
-    "rangeClosedHelp": "Měsíc „do“ se do platnosti počítá. Potom se vrátí limit, který platil předtím."
+    "rangeOpenHelp": "Bez měsíce „do“ platí limit napořád a nahradí i pozdější změny.",
+    "rangeClosedHelp": "Měsíc „do“ se do platnosti počítá. Potom se vrátí limit, který platil předtím.",
+    "overwriteTitle": "Uložení přepíše tyto limity:",
+    "overwriteConfirm": "Přepsat a uložit"
   },
   "settings": {
     "from": "Platí od: {{month}}",
@@ -216,12 +218,12 @@
     "scheduled": "Naplánováno",
     "showHistory": "Zobrazit dřívější limity: {{category}}",
     "earlierLimit": "Dřívější limit",
-    "deleteInterval": "Smazat limit",
-    "deleteIntervalTitle": "Smazat dřívější limit?",
+    "deleteInterval": "Smazat interval",
+    "deleteIntervalTitle": "Smazat interval?",
     "deleteIntervalDescription": "Limit {{amount}} pro kategorii {{category}} ({{period}}) se odstraní i z historických přehledů čerpání. Transakce ani ostatní limity se nezmění.",
     "intervalDeleted": "Limit smazán",
-    "delete": "Smazat rozpočet",
-    "deleteTitle": "Smazat rozpočet?",
+    "delete": "Smazat celý rozpočet",
+    "deleteTitle": "Smazat celý rozpočet?",
     "deleteDescription": "Rozpočet pro kategorii {{category}} se smaže i se všemi dřívějšími limity, takže minulé měsíce v přehledu čerpání budou bez limitu. Transakce zůstanou beze změny.",
     "deletedToast": "Rozpočet smazán"
   }

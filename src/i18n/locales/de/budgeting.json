@@ -189,8 +189,10 @@
     "noChange": "Das Limit ist unverändert; es wurde nichts gespeichert.",
     "effectiveUntil": "Gültig bis Monat",
     "openEnded": "Ohne Ende",
-    "rangeOpenHelp": "Ohne Endmonat gilt das Limit weiter; spätere geplante Änderungen bleiben erhalten.",
-    "rangeClosedHelp": "Der Endmonat zählt mit. Danach gilt wieder das Limit, das vorher galt."
+    "rangeOpenHelp": "Ohne Endmonat gilt das Limit dauerhaft und ersetzt auch spätere Änderungen.",
+    "rangeClosedHelp": "Der Endmonat zählt mit. Danach gilt wieder das Limit, das vorher galt.",
+    "overwriteTitle": "Das Speichern ersetzt diese Limits:",
+    "overwriteConfirm": "Ersetzen und speichern"
   },
   "settings": {
     "from": "Ab {{month}}",
@@ -208,12 +210,12 @@
     "scheduled": "Geplant",
     "showHistory": "Frühere Limits anzeigen: {{category}}",
     "earlierLimit": "Früheres Limit",
-    "deleteInterval": "Limit löschen",
-    "deleteIntervalTitle": "Früheres Limit löschen?",
+    "deleteInterval": "Intervall löschen",
+    "deleteIntervalTitle": "Intervall löschen?",
     "deleteIntervalDescription": "Das Limit von {{amount}} für {{category}} ({{period}}) wird auch aus historischen Ausgabenberichten entfernt. Transaktionen und andere Limits bleiben unverändert.",
     "intervalDeleted": "Limit gelöscht",
-    "delete": "Budget löschen",
-    "deleteTitle": "Budget löschen?",
+    "delete": "Ganzes Budget löschen",
+    "deleteTitle": "Ganzes Budget löschen?",
     "deleteDescription": "Das Budget für {{category}} wird mit allen früheren Limits gelöscht, sodass auch vergangene Monate in der Ausgabenübersicht kein Limit mehr haben. Transaktionen bleiben unverändert.",
     "deletedToast": "Budget gelöscht"
   }

@@ -175,6 +175,7 @@ pub fn delete_goal_intervals(conn: &Connection, intervals: &[BudgetGoalInterval]
         affected.insert((&interval.category_id, &interval.timeframe));
     }
     for (category, timeframe) in affected {
+        merge_equal_neighbours(&tx, category, timeframe)?;
         let versions = goal_versions(&tx, category, timeframe)?;
         if let Some(version) = displayed_version(&versions, now_month) {
             tx.execute(
@@ -229,10 +230,10 @@ pub fn upsert_goal(conn: &Connection, data: InsertBudgetGoal) -> Result<BudgetGo
     upsert_goal_at(conn, data, chrono::Utc::now().timestamp())
 }
 
-/// Save a limit version effective from `data.effective_month` (default: the
-/// month of `now`). Only the versions decide the limit of a month; the
-/// `budget_goals` row mirrors the version in effect at `now`, so a scheduled
-/// or back-dated change never replaces the current limit.
+/// Save a limit from `data.effective_month` (default: the month of `now`)
+/// through `data.effective_until`, or open-ended, replacing every change it
+/// covers. Only the versions decide the limit of a month; the `budget_goals`
+/// row mirrors the version in effect at `now`.
 pub fn upsert_goal_at(
     conn: &Connection,
     mut data: InsertBudgetGoal,
@@ -326,6 +327,12 @@ pub fn upsert_goal_at(
                     now
                 ])?;
         }
+    } else {
+        // Without an end the limit runs on: every later change is replaced.
+        conn.execute(
+            "DELETE FROM budget_goal_versions WHERE category_id=?1 AND timeframe=?2 AND effective_month>?3",
+            params![data.category_id, data.timeframe, effective],
+        )?;
     }
 
     merge_equal_neighbours(conn, &data.category_id, &data.timeframe)?;
@@ -1025,6 +1032,57 @@ mod tests {
     }
 
     #[test]
+    fn an_open_limit_replaces_every_later_change() {
+        let conn = setup_test_db();
+        upsert_goal_at(&conn, range_input("5000", JAN, DEC), NOW).unwrap();
+        upsert_goal_at(&conn, goal_input("7000", month(2025, 7)), NOW).unwrap();
+        assert_eq!(
+            stored_versions(&conn),
+            vec![(month(2025, 7), Some("7000".into()))]
+        );
+    }
+
+    #[test]
+    fn a_range_inside_a_longer_limit_shortens_it_around_the_range() {
+        let conn = setup_test_db();
+        upsert_goal_at(&conn, range_input("5000", JAN, DEC), NOW).unwrap();
+        upsert_goal_at(&conn, range_input("7000", MAR, month(2026, 5)), NOW).unwrap();
+        assert_eq!(
+            stored_versions(&conn),
+            vec![
+                (JAN, Some("5000".into())),
+                (MAR, Some("7000".into())),
+                (JUN, Some("5000".into())),
+                (month(2027, 1), None),
+            ]
+        );
+        // Overlapping its end cuts the earlier limit short.
+        upsert_goal_at(&conn, range_input("8000", NOV, month(2027, 3)), NOW).unwrap();
+        assert_eq!(
+            stored_versions(&conn),
+            vec![
+                (JAN, Some("5000".into())),
+                (MAR, Some("7000".into())),
+                (JUN, Some("5000".into())),
+                (NOV, Some("8000".into())),
+                (month(2027, 4), None),
+            ]
+        );
+    }
+
+    #[test]
+    fn deleting_the_current_interval_leaves_a_single_gap() {
+        let conn = setup_test_db();
+        upsert_goal_at(&conn, range_input("100", JAN, month(2026, 2)), NOW).unwrap();
+        upsert_goal_at(&conn, goal_input("200", JUN), NOW).unwrap();
+        delete_goal_intervals(&conn, &[interval("cat_groceries", JUN)]).unwrap();
+        assert_eq!(
+            stored_versions(&conn),
+            vec![(JAN, Some("100".into())), (MAR, None)]
+        );
+    }
+
+    #[test]
     fn a_range_ending_before_its_start_is_rejected() {
         let conn = setup_test_db();
         let error = upsert_goal_at(&conn, range_input("200", JUN, MAR), NOW).unwrap_err();
@@ -1470,9 +1528,9 @@ mod tests {
             vec![(OCT, Some("1000".into())), (DEC, Some("2000".into()))]
         );
 
-        // Reopening the dialog prefills the October version; saving it
-        // unchanged for October keeps October at 1 000 and December at 2 000.
-        upsert_goal_at(&conn, goal_input("1000", OCT), NOW).unwrap();
+        // Reopening the dialog prefills the October interval (through November);
+        // saving it unchanged keeps October at 1 000 and December at 2 000.
+        upsert_goal_at(&conn, range_input("1000", OCT, NOV), NOW).unwrap();
         assert_eq!(limit_for(&conn, OCT, NOV).as_deref(), Some("1000.00"));
         assert_eq!(
             limit_for(&conn, DEC, DEC + 31 * 86400).as_deref(),
@@ -1486,7 +1544,8 @@ mod tests {
         let conn = setup_test_db();
         upsert_goal_at(&conn, goal_input("1000", JAN), NOW).unwrap();
         upsert_goal_at(&conn, goal_input("1500", JUN), NOW).unwrap();
-        let saved = upsert_goal_at(&conn, goal_input("1200", MAR), NOW).unwrap();
+        // Editing the January interval from March prefills its end (May).
+        let saved = upsert_goal_at(&conn, range_input("1200", MAR, month(2026, 5)), NOW).unwrap();
 
         assert_eq!(saved.amount, "1500");
         assert_eq!(saved.effective_month, Some(JUN));
@@ -1513,7 +1572,7 @@ mod tests {
         upsert_goal_at(&conn, goal_input("1000.123", JAN), NOW).unwrap();
         upsert_goal_at(&conn, goal_input("2000", DEC), NOW).unwrap();
         // Same value as January's, spelled differently: keep the stored text.
-        upsert_goal_at(&conn, goal_input("1000.1230", JAN), NOW).unwrap();
+        upsert_goal_at(&conn, range_input("1000.1230", JAN, NOV), NOW).unwrap();
         assert_eq!(
             stored_versions(&conn),
             vec![(JAN, Some("1000.123".into())), (DEC, Some("2000".into()))]

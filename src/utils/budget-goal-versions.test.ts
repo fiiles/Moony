@@ -7,6 +7,7 @@ import {
   budgetEditSource,
   intervalLastMonth,
   isUnchangedGoalEdit,
+  overwrittenPeriods,
   monthInputValue,
   monthStartFromInput,
   scheduledVersions,
@@ -132,7 +133,8 @@ describe('isUnchangedGoalEdit', () => {
   const versions = [v(JAN, '1000.123'), v(DEC, '2000')];
 
   it('is unchanged when the amount equals the version in effect for that month', () => {
-    expect(isUnchangedGoalEdit(versions, OCT, 1000.123, 'CZK')).toBe(true);
+    // Through November; an open save would also replace December's change.
+    expect(isUnchangedGoalEdit(versions, OCT, 1000.123, 'CZK', OCT)).toBe(true);
     expect(isUnchangedGoalEdit(versions, DEC, 2000, 'CZK')).toBe(true);
   });
 
@@ -154,6 +156,44 @@ describe('isUnchangedGoalEdit with an end month', () => {
 
   it('is a change when the range reaches into a different limit', () => {
     expect(isUnchangedGoalEdit(versions, OCT, 1000, 'CZK', DEC)).toBe(false);
+  });
+});
+
+describe('isUnchangedGoalEdit without an end month', () => {
+  it('is a change when later months differ, e.g. extending an interval back over a gap', () => {
+    const versions = [v(JAN, '5000'), v(JUN, null), v(SEP, '5000')];
+    expect(isUnchangedGoalEdit(versions, JAN, 5000, 'CZK')).toBe(false);
+    expect(isUnchangedGoalEdit([v(JAN, '5000'), v(DEC, '6000')], JAN, 5000, 'CZK')).toBe(false);
+  });
+
+  it('is unchanged only when the limit already runs on', () => {
+    expect(isUnchangedGoalEdit([v(JAN, '5000')], OCT, 5000, 'CZK')).toBe(true);
+  });
+});
+
+describe('overwrittenPeriods', () => {
+  const Y2025_JUL = Date.UTC(2025, 6, 1) / 1000;
+  const Y2027_JAN = Date.UTC(2027, 0, 1) / 1000;
+  const year2026 = [v(JAN, '5000'), v(Y2027_JAN, null)];
+
+  it('lists the limits a wider range replaces, the edited one included', () => {
+    expect(
+      overwrittenPeriods(year2026, Y2025_JUL, null, 7000, 'CZK', { start: JAN, end: DEC })
+    ).toEqual([{ version: v(JAN, '5000'), end: Y2027_JAN - 1 }]);
+  });
+
+  it('stays quiet while the range keeps inside the edited interval', () => {
+    expect(overwrittenPeriods(year2026, OCT, DEC, 7000, 'CZK', { start: JAN, end: DEC })).toEqual(
+      []
+    );
+  });
+
+  it('lists overlapping limits for a new budget but not equal ones or limits outside', () => {
+    const versions = [v(JAN, '100'), v(JUN, '200'), v(OCT, '300')];
+    expect(overwrittenPeriods(versions, JUN, SEP, 100, 'CZK', null)).toEqual([
+      { version: v(JUN, '200'), end: OCT - 1 },
+    ]);
+    expect(overwrittenPeriods(versions, JUN, SEP, 200, 'CZK', null)).toEqual([]);
   });
 });
 

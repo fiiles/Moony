@@ -37,6 +37,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { ConfirmDeleteDialog } from '@/components/common/ConfirmDeleteDialog';
@@ -146,6 +147,21 @@ export function BudgetManageDialog({
     </div>
   );
 
+  const askDeleteInterval = (
+    row: BudgetOverviewRow & { name: string },
+    period: BudgetLimitPeriod
+  ) =>
+    setPendingInterval({
+      interval: {
+        categoryId: row.goal.categoryId,
+        timeframe: row.goal.timeframe,
+        effectiveMonth: period.version.effectiveMonth,
+      },
+      name: row.name,
+      amount: money(period.version.amount, period.version.currency),
+      period: validity(period),
+    });
+
   const renderRow = (
     row: BudgetOverviewRow & { name: string; category: TransactionCategory | null }
   ) => {
@@ -228,6 +244,17 @@ export function BudgetManageDialog({
                   <Pencil />
                   {t('actions.editLimit')}
                 </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                {/* With a single interval, deleting it is deleting the budget. */}
+                {row.history.length + row.upcoming.filter((v) => v.amount != null).length > 0 && (
+                  <DropdownMenuItem
+                    variant="danger"
+                    onSelect={() => askDeleteInterval(row, row.main)}
+                  >
+                    <Trash2 />
+                    {t('manage.deleteInterval')}
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem
                   variant="danger"
                   onSelect={() =>
@@ -267,18 +294,7 @@ export function BudgetManageDialog({
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       variant="danger"
-                      onSelect={() =>
-                        setPendingInterval({
-                          interval: {
-                            categoryId: row.goal.categoryId,
-                            timeframe: row.goal.timeframe,
-                            effectiveMonth: period.version.effectiveMonth,
-                          },
-                          name: row.name,
-                          amount: money(period.version.amount, period.version.currency),
-                          period: validity(period),
-                        })
-                      }
+                      onSelect={() => askDeleteInterval(row, period)}
                     >
                       <Trash2 />
                       {t('manage.deleteInterval')}

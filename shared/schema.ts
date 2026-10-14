@@ -574,6 +574,8 @@ export const insertRealEstateSchema = z.object({
   purchaseDate: z.number().optional().nullable(),
   marketPrice: z.string().optional(),
   marketPriceCurrency: z.string().optional(),
+  /** Day the market price applies to (UTC-midnight unix seconds); dates the first valuation on create */
+  marketPriceDate: z.number().optional().nullable(),
   monthlyRent: z.string().optional().nullable(),
   monthlyRentCurrency: z.string().optional(),
   recurringCosts: z

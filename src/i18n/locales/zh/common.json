@@ -219,6 +219,7 @@
     "assetRequired": "请选择资产",
     "invalidDate": "日期无效",
     "purchaseDateInFuture": "买入日期不能晚于今天",
+    "valuationDateInFuture": "估值日期不能晚于今天",
     "loanRequired": "请选择贷款",
     "loanEventKindInvalid": "未知的贷款事件类型",
     "loanEventBeforeStart": "事件不能早于贷款开始",
@@ -507,5 +508,15 @@
     "submit": "保存估值",
     "saved": "估值已保存",
     "removed": "估值已移除"
+  },
+  "valuationHistory": {
+    "title": "估值历史",
+    "sub_other": "{{count}} 次估值 · 最近 {{date}}",
+    "empty": "尚无估值。",
+    "value": "估值",
+    "change": "变动",
+    "delete": "删除估值",
+    "deleteTitle": "删除此估值?",
+    "deleteDescription": "{{date}} 的估值 {{amount}} 将被永久删除。市场价格将采用剩余的最新估值。"
   }
 }

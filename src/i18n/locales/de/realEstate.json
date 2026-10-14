@@ -148,6 +148,7 @@
     "revalue": "Neu bewerten",
     "menu": {
       "edit": "Details bearbeiten",
+      "valuationHistory": "Bewertungsverlauf",
       "delete": "Immobilie löschen"
     },
     "statusValuation": "Schätzung vom {{date}}",
@@ -299,6 +300,8 @@
       "purchaseDate": "Kaufdatum",
       "purchaseDateHelp": "Der Wertverlauf auf der Seite der Immobilie beginnt an diesem Tag.",
       "marketPrice": "Marktpreis",
+      "marketPriceDate": "Marktpreis zum",
+      "marketPriceDateHelp": "Der Tag, für den der Marktpreis gilt. Mit dieser Bewertung beginnt der Bewertungsverlauf.",
       "monthlyRent": "Monatsmiete",
       "currency": "Währung",
       "addCost": "Kosten hinzufügen",

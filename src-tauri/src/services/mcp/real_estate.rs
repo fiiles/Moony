@@ -134,6 +134,11 @@ pub struct RealEstateCreateArgs {
     pub market_price: Option<String>,
     #[serde(rename = "marketPriceCurrency")]
     pub market_price_currency: Option<String>,
+    #[serde(rename = "marketPriceDate")]
+    #[schemars(
+        description = "Day the market price applies to, as unix seconds (the UTC midnight of that day); optional, never in the future, defaults to today. It dates the property's first valuation"
+    )]
+    pub market_price_date: Option<i64>,
     #[serde(rename = "monthlyRent")]
     pub monthly_rent: Option<String>,
     #[serde(rename = "monthlyRentCurrency")]
@@ -198,6 +203,7 @@ pub fn real_estate_create(conn: &Connection, args: &RealEstateCreateArgs) -> Res
             conn,
             args.market_price_currency.as_deref(),
         )?),
+        market_price_date: args.market_price_date,
         monthly_rent: args.monthly_rent.clone(),
         monthly_rent_currency,
         recurring_costs,
@@ -313,6 +319,7 @@ mod tests {
             purchase_date: None,
             market_price: Some("4500000".into()),
             market_price_currency: None,
+            market_price_date: None,
             monthly_rent: None,
             monthly_rent_currency: None,
             recurring_costs: None,

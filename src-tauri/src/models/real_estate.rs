@@ -67,6 +67,11 @@ pub struct InsertRealEstate {
     pub market_price: Option<String>,
     #[serde(rename = "marketPriceCurrency")]
     pub market_price_currency: Option<String>,
+    /// Unix seconds of the day the market price applies to, never after today.
+    /// Dates the first valuation when a property is created (absent means
+    /// today); an update ignores it, since a later estimate is a revaluation.
+    #[serde(rename = "marketPriceDate")]
+    pub market_price_date: Option<i64>,
     #[serde(rename = "monthlyRent")]
     pub monthly_rent: Option<String>,
     #[serde(rename = "monthlyRentCurrency")]
@@ -260,6 +265,16 @@ impl InsertRealEstate {
             }
         }
 
+        // Day of the market price: the same rule as the purchase date
+        if let Some(price_date) = self.market_price_date {
+            super::validation::utc_day(price_date, "validation.invalidDate")?;
+            if price_date.div_euclid(86_400) > now.div_euclid(86_400) {
+                return Err(AppError::Validation(
+                    "validation.valuationDateInFuture".into(),
+                ));
+            }
+        }
+
         // Currency validations (if provided)
         if let Some(ref currency) = self.purchase_price_currency {
             if currency.len() != 3 {
@@ -375,6 +390,7 @@ mod tests {
             purchase_date: None,
             market_price: None,
             market_price_currency: None,
+            market_price_date: None,
             monthly_rent: None,
             monthly_rent_currency: None,
             recurring_costs: None,
@@ -409,6 +425,24 @@ mod tests {
         assert!(with_purchase_date(Some(-3_000 * DAY))
             .validate_at(NOW)
             .is_ok());
+    }
+
+    #[test]
+    fn a_market_price_date_after_today_is_rejected() {
+        let today = NOW.div_euclid(DAY) * DAY;
+        let dated = |date| InsertRealEstate {
+            market_price_date: Some(date),
+            ..property()
+        };
+        assert!(dated(today - 30 * DAY).validate_at(NOW).is_ok());
+        assert!(dated(NOW + 3_600).validate_at(NOW).is_ok());
+        let err = dated(today + DAY)
+            .validate_at(NOW)
+            .expect_err("a future price date must be rejected");
+        assert!(
+            matches!(&err, AppError::Validation(key) if key == "validation.valuationDateInFuture"),
+            "unexpected error: {err:?}"
+        );
     }
 
     #[test]

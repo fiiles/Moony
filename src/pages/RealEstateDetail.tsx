@@ -3,7 +3,16 @@ import { Link, useLocation, useRoute } from 'wouter';
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { ArrowUp, Calculator, Ellipsis, Link2, Pencil, Trash2, Unlink } from 'lucide-react';
+import {
+  ArrowUp,
+  Calculator,
+  Ellipsis,
+  History,
+  Link2,
+  Pencil,
+  Trash2,
+  Unlink,
+} from 'lucide-react';
 import type {
   AssetValuation,
   InsurancePolicy,
@@ -61,6 +70,7 @@ import { RealEstateDocuments } from '@/components/real-estate/RealEstateDocument
 import { RealEstateNotes } from '@/components/real-estate/RealEstateNotes';
 import { LinkExistingDialog } from '@/components/real-estate/LinkExistingDialog';
 import { RevalueDialog } from '@/components/valuations/RevalueDialog';
+import { ValuationHistoryDialog } from '@/components/valuations/ValuationHistoryDialog';
 import { cn } from '@/lib/utils';
 
 type Period = '12' | '36' | 'all';
@@ -102,6 +112,7 @@ export default function RealEstateDetail() {
   const [period, setPeriod] = useState<Period>('all');
   const [editOpen, setEditOpen] = useState(false);
   const [revalueOpen, setRevalueOpen] = useState(false);
+  const [valuationHistoryOpen, setValuationHistoryOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [pendingDeleteCost, setPendingDeleteCost] = useState<RealEstateOneTimeCost | null>(null);
   const [linkLoanOpen, setLinkLoanOpen] = useState(false);
@@ -541,6 +552,10 @@ export default function RealEstateDetail() {
                 <DropdownMenuItem onSelect={() => setEditOpen(true)}>
                   <Pencil />
                   {t('detail.menu.edit')}
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => setValuationHistoryOpen(true)}>
+                  <History />
+                  {t('detail.menu.valuationHistory')}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem variant="danger" onSelect={() => setDeleteOpen(true)}>
@@ -1225,6 +1240,13 @@ export default function RealEstateDetail() {
           currentValue: Number(realEstate.marketPrice) || 0,
           currency: recordCurrency(realEstate.marketPriceCurrency),
         }}
+      />
+      <ValuationHistoryDialog
+        open={valuationHistoryOpen}
+        onOpenChange={setValuationHistoryOpen}
+        kind="realEstate"
+        assetId={realEstate.id}
+        valuations={valuations}
       />
       <ConfirmDeleteDialog
         open={deleteOpen}

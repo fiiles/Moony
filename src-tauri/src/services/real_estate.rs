@@ -65,7 +65,7 @@ pub fn get_property(conn: &Connection, id: &str) -> Result<Option<RealEstate>> {
 /// (e.g. via `get_property`).
 ///
 /// A priced property also gets the first row of its valuation log, dated at
-/// the creation day, so the first revaluation does not overwrite the only
+/// the day of the market price (the creation day when none is given), so the first revaluation does not overwrite the only
 /// record of the original estimate.
 pub fn create_property(conn: &Connection, data: &InsertRealEstate) -> Result<String> {
     data.validate()?;
@@ -123,7 +123,7 @@ pub fn create_property(conn: &Connection, data: &InsertRealEstate) -> Result<Str
         &id,
         &market_price,
         &market_price_currency,
-        now,
+        data.market_price_date.unwrap_or(now),
     )?;
     tx.commit()?;
 
@@ -359,6 +359,7 @@ mod tests {
             purchase_date: None,
             market_price: None,
             market_price_currency: None,
+            market_price_date: None,
             monthly_rent: None,
             monthly_rent_currency: None,
             recurring_costs: None,
@@ -433,6 +434,27 @@ mod tests {
         assert!(
             rows[0].2 == before || rows[0].2 == after,
             "dated at the UTC day of the creation"
+        );
+    }
+
+    /// The form asks which day the market price is from: the first estimate
+    /// is dated there, so the history does not show the price as new today.
+    #[test]
+    fn create_property_dates_the_first_estimate_at_the_price_day() {
+        let conn = setup_test_db();
+        let mut data = valid_insert();
+        data.market_price = Some("5200000".into());
+        data.market_price_currency = Some("CZK".into());
+        let priced = crate::services::loan_amortization::today_utc_day() - 90 * 86_400;
+        // Any second of the day is stored as the UTC day.
+        data.market_price_date = Some(priced + 7_200);
+
+        let id = create_property(&conn, &data).unwrap();
+
+        let rows = valuation_rows(&conn, &id);
+        assert_eq!(
+            rows,
+            vec![("5200000".to_string(), "CZK".to_string(), priced)]
         );
     }
 

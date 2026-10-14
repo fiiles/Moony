@@ -152,6 +152,7 @@
     "revalue": "Przeszacuj",
     "menu": {
       "edit": "Edytuj szczegóły",
+      "valuationHistory": "Historia wycen",
       "delete": "Usuń nieruchomość"
     },
     "statusValuation": "Szacunek z {{date}}",
@@ -307,6 +308,8 @@
       "purchaseDate": "Data zakupu",
       "purchaseDateHelp": "Wykres wartości na stronie nieruchomości zaczyna się w tym dniu.",
       "marketPrice": "Cena rynkowa",
+      "marketPriceDate": "Cena rynkowa na dzień",
+      "marketPriceDateHelp": "Dzień, którego dotyczy cena rynkowa. Od tej wyceny zaczyna się historia wycen.",
       "monthlyRent": "Czynsz miesięczny",
       "currency": "Waluta",
       "addCost": "Dodaj koszt",

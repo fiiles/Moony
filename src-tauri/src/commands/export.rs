@@ -150,7 +150,8 @@ pub fn export_crypto_transactions(db: State<'_, Database>) -> Result<ExportResul
 pub fn export_bonds(db: State<'_, Database>) -> Result<ExportResult> {
     db.with_conn(|conn| {
         let mut stmt = conn.prepare(
-            "SELECT name, isin, coupon_value, quantity, currency, interest_rate, maturity_date
+            "SELECT name, isin, coupon_value, quantity, currency, interest_rate, maturity_date,
+                    purchase_date
             FROM bonds
             ORDER BY name",
         )?;
@@ -164,24 +165,27 @@ pub fn export_bonds(db: State<'_, Database>) -> Result<ExportResult> {
                 row.get::<_, String>(4)?,
                 row.get::<_, String>(5)?,
                 row.get::<_, Option<i64>>(6)?,
+                row.get::<_, Option<i64>>(7)?,
             ))
         })?;
 
-        let mut csv =
-            String::from("name,isin,coupon_value,quantity,currency,interest_rate,maturity_date\n");
+        let mut csv = String::from(
+            "name,isin,coupon_value,quantity,currency,interest_rate,maturity_date,purchase_date\n",
+        );
         let mut count = 0;
 
         for row in rows {
-            let (name, isin, coupon, qty, currency, rate, maturity) = row?;
+            let (name, isin, coupon, qty, currency, rate, maturity, purchase) = row?;
             csv.push_str(&format!(
-                "\"{}\",{},{},{},{},{},{}\n",
+                "\"{}\",{},{},{},{},{},{},{}\n",
                 escape_csv(&name),
                 isin.unwrap_or_default(),
                 coupon,
                 qty,
                 currency,
                 rate,
-                maturity.map(|d| d.to_string()).unwrap_or_default()
+                maturity.map(|d| d.to_string()).unwrap_or_default(),
+                purchase.map(|d| d.to_string()).unwrap_or_default()
             ));
             count += 1;
         }

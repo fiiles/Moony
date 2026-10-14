@@ -7,6 +7,7 @@ import { Info } from 'lucide-react';
 import type { Bond, InsertBond } from '@shared/schema';
 import { currencyCodeSchema, type CurrencyCode, recordCurrency } from '@shared/currencies';
 import { requiredNumber } from '@/utils/form-schemas';
+import { isoDateFromUtcTimestamp, todayIsoUtc, utcDayStart } from '@/utils/period';
 import { useCurrency } from '@/lib/currency';
 import { useFormat } from '@/lib/use-format';
 import {
@@ -43,6 +44,13 @@ const formSchema = z.object({
     .min(0, 'validation.interestRatePositive')
     .max(100, 'validation.interestRatePositive'),
   maturityDate: z.string().optional(),
+  // ISO day from the date input ('' = unknown). A day after today is refused here with a
+  // visible message (native `max` can block a submit silently in some webviews); the backend
+  // refuses it too.
+  purchaseDate: z
+    .string()
+    .optional()
+    .refine((iso) => !iso || iso <= todayIsoUtc(), 'validation.purchaseDateInFuture'),
 });
 type FormValues = z.infer<typeof formSchema>;
 
@@ -91,6 +99,7 @@ export function BondsFormDialog({
       currency: currencyCode as CurrencyCode,
       interestRate: 0,
       maturityDate: '',
+      purchaseDate: '',
     },
   });
 
@@ -106,6 +115,10 @@ export function BondsFormDialog({
             currency: recordCurrency(bond.currency) as CurrencyCode,
             interestRate: parseFloat(bond.interestRate) || 0,
             maturityDate: bond.maturityDate ? isoDay(bond.maturityDate) : '',
+            purchaseDate:
+              typeof bond.purchaseDate === 'number'
+                ? isoDateFromUtcTimestamp(bond.purchaseDate)
+                : '',
           }
         : {
             name: '',
@@ -115,6 +128,7 @@ export function BondsFormDialog({
             currency: currencyCode as CurrencyCode,
             interestRate: 0,
             maturityDate: '',
+            purchaseDate: '',
           }
     );
   }, [open, bond, currencyCode, form]);
@@ -147,6 +161,8 @@ export function BondsFormDialog({
       currency: values.currency,
       interestRate: String(values.interestRate),
       maturityDate: values.maturityDate ? isoToUtcDaySec(values.maturityDate) : undefined,
+      // null clears the date on an edit: the update replaces the stored one
+      purchaseDate: values.purchaseDate ? utcDayStart(values.purchaseDate) : null,
     } as InsertBond);
   };
 
@@ -251,6 +267,23 @@ export function BondsFormDialog({
                 )}
               />
             </div>
+            <FormField
+              control={form.control}
+              name="purchaseDate"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="flex justify-between">
+                    <span>{t('form.purchaseDate')}</span>
+                    <span className="font-500 text-ink-5">{tc('labels.optional')}</span>
+                  </FormLabel>
+                  <FormControl>
+                    <Input type="date" {...field} value={field.value ?? ''} />
+                  </FormControl>
+                  <FormDescription>{t('form.purchaseDateHint')}</FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             <FormField
               control={form.control}
               name="maturityDate"

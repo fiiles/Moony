@@ -113,6 +113,8 @@ export interface Bond {
   currency: string;
   interestRate: string;
   maturityDate: number | null;
+  /** UTC day (unix seconds) the bond was bought; null while unknown (history then counts it on every day). */
+  purchaseDate: number | null;
   createdAt: number;
   updatedAt: number;
 }
@@ -516,6 +518,8 @@ export const insertBondSchema = z.object({
   quantity: z.string().optional(),
   interestRate: z.string().optional(),
   maturityDate: z.date().or(z.number()).optional(),
+  // The UTC day the bond was bought (not in the future); history counts it from that day on
+  purchaseDate: z.number().optional().nullable(),
 });
 export type InsertBond = z.infer<typeof insertBondSchema>;
 

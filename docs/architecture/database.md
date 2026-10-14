@@ -57,6 +57,9 @@ grouping below follows the domain map in `docs/architecture/overview.md`.
   reconciliation runs once per row and is idempotent; a failure is logged and never blocks unlock.
   A loan with a manual balance stops amortizing after it, so its outstanding balance, today's
   included, can be higher than before (ADR 0016).
+- `020_bond_purchase_date` adds `bonds.purchase_date`, the UTC day a bond was bought (nullable;
+  every existing bond stays NULL). History counts a dated bond from that day on and a bond without
+  a date as an undated item (carried, with the unknown-remainder rule); today's value is unchanged.
 - To add one: define `const MIGRATION_0NN: &str = r#"..."#;` (next free
   number) and append a `("0NN_short_name", MIGRATION_0NN)` entry to the `Vec`
   returned by `all_migrations()`. Numbers are zero-padded, sequential, never
@@ -206,7 +209,7 @@ Grouped by owning domain (see the domain map in `overview.md`).
 
 | Table | Purpose | Notable columns / constraints |
 |---|---|---|
-| `bonds` | Bond holdings | `isin` nullable; `coupon_value`, `interest_rate`, `quantity`, `currency`, `maturity_date` |
+| `bonds` | Bond holdings | `isin` nullable; `coupon_value`, `interest_rate`, `quantity`, `currency`, `maturity_date`; `purchase_date` INTEGER (UTC day, nullable = unknown; migration 020, validated like a property's: a day up to today) from which history counts the bond (0 before it); without one the bond is carried on every day |
 
 ### Loans
 
@@ -248,7 +251,7 @@ Grouped by owning domain (see the domain map in `overview.md`).
 
 | Table | Purpose | Notable columns / constraints |
 |---|---|---|
-| `portfolio_metrics_history` | Daily net-worth snapshots per asset class | Native breakdowns only: seven `*_by_currency` JSON TEXT `DEFAULT '{}'` (`real_estate_by_currency` holds every property) plus `real_estate_personal_by_currency` (the personal subset; investment real estate is the difference per currency). The CZK `total_*` columns were dropped in migration 012 (legacy rows without breakdowns got `{"CZK": total}` once); readers convert each row at its day (`services/net_worth.rs`). `is_stale`; `source` TEXT `'live'`/`'backfill'` provenance — a live row is a snapshot taken on its day (an authentic record); every other past day is derived from dated facts (`services/history_days.rs`, ADR 0016): savings from the newest balance record, loans from the loan ledger, real estate from the purchase date and valuations, other assets from transactions and valuations, stocks and crypto from the ticker histories; what no fact dates (an account without records, an other asset with a quantity and no transactions, bonds) is the remainder over the facts of the nearest live row that counts the same items, today's value only when none does. One row per day from the earliest dated fact. A rebuild rewrites backfill rows whole and a live row only for the classes the facts cover completely, and deletes backfill rows before the earliest fact (live rows never); today's row belongs to the live snapshot. Index on `recorded_at`. `get_portfolio_history` returns `source`; the charts draw every day alike |
+| `portfolio_metrics_history` | Daily net-worth snapshots per asset class | Native breakdowns only: seven `*_by_currency` JSON TEXT `DEFAULT '{}'` (`real_estate_by_currency` holds every property) plus `real_estate_personal_by_currency` (the personal subset; investment real estate is the difference per currency). The CZK `total_*` columns were dropped in migration 012 (legacy rows without breakdowns got `{"CZK": total}` once); readers convert each row at its day (`services/net_worth.rs`). `is_stale`; `source` TEXT `'live'`/`'backfill'` provenance — a live row is a snapshot taken on its day (an authentic record); every other past day is derived from dated facts (`services/history_days.rs`, ADR 0016): savings from the newest balance record, loans from the loan ledger, real estate from the purchase date and valuations, other assets from transactions and valuations, bonds from their purchase date, stocks and crypto from the ticker histories; what no fact dates (an account without records, an other asset with a quantity and no transactions, a bond without a purchase date) is the remainder over the facts of the nearest live row that counts the same items, today's value only when none does. One row per day from the earliest dated fact. A rebuild rewrites backfill rows whole and a live row only for the classes the facts cover completely, and deletes backfill rows before the earliest fact (live rows never); today's row belongs to the live snapshot. Index on `recorded_at`. `get_portfolio_history` returns `source`; the charts draw every day alike |
 
 (`stock_value_history` and `crypto_value_history` above also feed this domain's trend charts.)
 

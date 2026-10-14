@@ -59,6 +59,7 @@
     "withinYear": "1年以内",
     "matured": "償還済み",
     "noMaturity": "満期なし",
+    "boughtOn": "{{date}}に購入",
     "noResults": {
       "title": "見つかりません",
       "description": "別の名称または ISIN をお試しください。",
@@ -87,6 +88,8 @@
     "nominal": "1口の額面",
     "quantity": "数量",
     "rate": "年間クーポン",
+    "purchaseDate": "購入日",
+    "purchaseDateHint": "購入日がない場合、債券は履歴の全期間で計上されます。入力すると、その日以降だけ計上されます。",
     "maturity": "満期日",
     "maturityHint": "満期を過ぎると、銘柄は償還済みに移り、純資産に含まれなくなります。",
     "summaryValue": "評価額 {{value}} · クーポン 年間 {{coupon}}",

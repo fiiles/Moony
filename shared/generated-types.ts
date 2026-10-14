@@ -106,7 +106,12 @@ suggestedCategoryId: string | null; flowKind: FlowKind | null; status: string; d
 /**
  * Bond holding
  */
-export type Bond = { id: string; name: string; isin: string | null; couponValue: string; quantity: string; currency: string; interestRate: string; maturityDate: number | null; createdAt: number; updatedAt: number }
+export type Bond = { id: string; name: string; isin: string | null; couponValue: string; quantity: string; currency: string; interestRate: string; maturityDate: number | null; 
+/**
+ * The UTC day the bond was bought (midnight, unix seconds); `None` while unknown. History
+ * counts a dated bond from this day on, an undated one on every day.
+ */
+purchaseDate: number | null; createdAt: number; updatedAt: number }
 
 /**
  * Budget goal entity - defines spending limits per category per timeframe
@@ -789,7 +794,13 @@ export type InsertBond = { name: string; isin: string | null; couponValue: strin
 /**
  * Calendar date as Unix seconds, years 0001-9999; stored at UTC midnight.
  */
-maturityDate: number | null }
+maturityDate: number | null; 
+/**
+ * The day the bond was bought, as Unix seconds (UTC day, stored at UTC midnight; years
+ * 0001-9999, not after today). Optional: without it the bond is counted across the whole
+ * history; with it, from that day on.
+ */
+purchaseDate: number | null }
 
 /**
  * Data for creating/updating a budget goal

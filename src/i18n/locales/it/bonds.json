@@ -67,6 +67,7 @@
     "withinYear": "entro un anno",
     "matured": "rimborsata",
     "noMaturity": "senza scadenza",
+    "boughtOn": "acquistata il {{date}}",
     "noResults": {
       "title": "Nessun risultato",
       "description": "Prova con un altro nome o ISIN.",
@@ -97,6 +98,8 @@
     "nominal": "Valore nominale di 1 unità",
     "quantity": "Unità",
     "rate": "Cedola annua",
+    "purchaseDate": "Data di acquisto",
+    "purchaseDateHint": "Senza data di acquisto l'obbligazione conta in tutta la cronologia; con la data, solo da quel giorno.",
     "maturity": "Data di scadenza",
     "maturityHint": "Dopo la scadenza l'emissione passa tra le rimborsate e non conta più nel patrimonio netto.",
     "summaryValue": "Valore {{value}} · cedola {{coupon}} all'anno",

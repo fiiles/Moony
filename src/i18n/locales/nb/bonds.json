@@ -63,6 +63,7 @@
     "withinYear": "innen et år",
     "matured": "innfridd",
     "noMaturity": "uten forfall",
+    "boughtOn": "kjøpt {{date}}",
     "noResults": {
       "title": "Ingen treff",
       "description": "Prøv et annet navn eller en annen ISIN.",
@@ -92,6 +93,8 @@
     "nominal": "Pålydende for 1 enhet",
     "quantity": "Antall",
     "rate": "Kupong per år",
+    "purchaseDate": "Kjøpsdato",
+    "purchaseDateHint": "Uten kjøpsdato regnes obligasjonen med i hele historikken; med dato først fra den dagen.",
     "maturity": "Forfallsdato",
     "maturityHint": "Etter forfall flyttes emisjonen til innfridde og teller ikke lenger med i nettoformuen.",
     "summaryValue": "Verdi {{value}} · kupong {{coupon}} i året",

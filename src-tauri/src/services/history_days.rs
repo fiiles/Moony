@@ -9,8 +9,9 @@
 //!   their valuations, loan ledgers, other assets, bonds, the ticker series, and what the
 //!   stored live rows hold beyond the facts). Its [`Facts::day_values`] then walks the days
 //!   with per-item cursors, so a rebuild costs no query per day.
-//! * What the facts do not date (an account without balance records, bonds, an other asset
-//!   with a quantity and no transactions) is not copied from today: a backfill day takes it
+//! * What the facts do not date (an account without balance records, a bond without a purchase
+//!   date, an other asset with a quantity and no transactions) is not copied from today: a
+//!   backfill day takes it
 //!   from the nearest live row that counts the same items, as the remainder of that row over the
 //!   facts derived for its day ([`LiveRemainder`], [`nearest_live`], A3), so a class does not
 //!   jump between rebuilt days and live ones.
@@ -69,7 +70,8 @@ pub struct DayValues {
     /// not counted (an account before its first record) adds nothing of its own.
     pub breakdowns: ClassBreakdowns,
     /// The classes whose every item the facts cover on the day (A1, "known"). A live row
-    /// is rewritten for these only (D1). Stocks and crypto are always known; bonds never.
+    /// is rewritten for these only (D1). Stocks and crypto are always known; bonds are once
+    /// every bond has a purchase date.
     pub known: ClassSet,
 }
 
@@ -154,6 +156,15 @@ struct Loan {
     first_manual_day: Option<i64>,
 }
 
+/// A bond: its face value (`coupon_value × quantity`) counts from the day it was bought.
+struct BondHolding {
+    currency: String,
+    value: f64,
+    /// The UTC day it was bought; `None` for a bond without a purchase date, which is carried
+    /// on every day (undated).
+    purchase_date: Option<i64>,
+}
+
 struct OtherAsset {
     /// Today's price per unit (`valuations::OTHER_ASSET_PRICES`): the newest valuation in its
     /// currency, else the market price in the asset's.
@@ -178,7 +189,8 @@ struct ClassDay {
     /// [`LiveRemainder`]).
     derived: Breakdown,
     /// Items counted on the day that have no date at all: the current balance of an account
-    /// without records, an other asset with a quantity and no transactions, the bonds.
+    /// without records, an other asset with a quantity and no transactions, a bond without a
+    /// purchase date.
     carried: Breakdown,
     /// Every item of the class is covered by the facts (A1, "known"); `carried` is empty then.
     covered: bool,
@@ -316,8 +328,8 @@ struct Statics {
     properties: Vec<Property>,
     loans: Vec<Loan>,
     assets: Vec<OtherAsset>,
-    /// Today's bonds: no purchase date, so no fact dates them (D3).
-    bonds: Breakdown,
+    /// Every bond: a purchase date dates it, without one it is carried at today's value.
+    bonds: Vec<BondHolding>,
 }
 
 impl Statics {
@@ -354,13 +366,33 @@ impl Statics {
             loans: self.loans_on(day),
             real_estate: self.real_estate_on(day),
             other_assets: self.other_assets_on(day),
-            bonds: ClassDay {
-                derived: Breakdown::new(),
-                carried: self.bonds.clone(),
-                covered: false,
-                counted_since: None,
-            },
+            bonds: self.bonds_on(day),
         }
+    }
+
+    /// Bonds: a bond with a purchase date is worth its face value from that day on and nothing
+    /// before it (a fact in both cases). A bond without one is carried at today's value on every
+    /// day and is not a fact, so the class is uncovered while there is one. A dated bond counts
+    /// from its purchase day, which is therefore the "counted since" day of the remainder rule.
+    fn bonds_on(&self, day: i64) -> ClassDay {
+        let mut bonds = ClassDay {
+            covered: true,
+            ..ClassDay::default()
+        };
+        for bond in &self.bonds {
+            match bond.purchase_date {
+                None => {
+                    add(&mut bonds.carried, &bond.currency, bond.value);
+                    bonds.covered = false;
+                }
+                Some(bought) if day >= bought => {
+                    add(&mut bonds.derived, &bond.currency, bond.value);
+                    bonds.counted_since = latest_first_day(bonds.counted_since, Some(bought));
+                }
+                Some(_) => {}
+            }
+        }
+        bonds
     }
 
     /// Savings: the newest balance record on or before the day, in its own currency. An
@@ -642,8 +674,6 @@ impl Facts {
             nearest_live(live, day, since).map(class)
         };
         let real_estate = &statics.real_estate;
-        // Bonds are never a fact; they only fall short of the facts when there are some.
-        let bonds_uncovered = !statics.bonds.carried.is_empty();
         DayValues {
             breakdowns: ClassBreakdowns {
                 savings: completed(
@@ -657,8 +687,8 @@ impl Facts {
                 bonds: completed(
                     &statics.bonds.derived,
                     &statics.bonds.carried,
-                    bonds_uncovered,
-                    rest(None, |row| &row.bonds),
+                    !statics.bonds.covered,
+                    rest(statics.bonds.counted_since, |row| &row.bonds),
                 ),
                 real_estate_personal: completed(
                     &real_estate.personal,
@@ -689,7 +719,7 @@ impl Facts {
                 savings: statics.savings.covered,
                 investments: true,
                 crypto: true,
-                bonds: false,
+                bonds: statics.bonds.covered,
                 real_estate: real_estate.covered,
                 loans: statics.loans.covered,
                 other_assets: statics.other_assets.covered,
@@ -913,33 +943,41 @@ fn first_held_day(changes: &[(i64, f64)]) -> Option<i64> {
     None
 }
 
-fn load_bonds(conn: &Connection) -> Result<Breakdown> {
-    let mut stmt = conn.prepare("SELECT coupon_value, quantity, currency FROM bonds")?;
+fn load_bonds(conn: &Connection) -> Result<Vec<BondHolding>> {
+    let mut stmt =
+        conn.prepare("SELECT coupon_value, quantity, currency, purchase_date FROM bonds")?;
     let rows = stmt
         .query_map([], |row| {
             Ok((
                 row.get::<_, String>(0)?,
                 row.get::<_, String>(1)?,
                 row.get::<_, String>(2)?,
+                row.get::<_, Option<i64>>(3)?,
             ))
         })?
         .collect::<rusqlite::Result<Vec<_>>>()?;
-    let mut bonds = Breakdown::new();
-    for (value, quantity, currency) in rows {
-        let value = parse_money(&value, 0.0, "bonds.coupon_value");
-        let quantity = parse_money(&quantity, 1.0, "bonds.quantity");
-        add(&mut bonds, &currency, value * quantity);
-    }
-    Ok(bonds)
+    Ok(rows
+        .into_iter()
+        .map(|(value, quantity, currency, purchase_date)| {
+            let value = parse_money(&value, 0.0, "bonds.coupon_value");
+            let quantity = parse_money(&quantity, 1.0, "bonds.quantity");
+            BondHolding {
+                currency,
+                value: value * quantity,
+                purchase_date: purchase_date.map(day_floor),
+            }
+        })
+        .collect())
 }
 
 /// The first day any fact is dated (A2), the start of every history: the first transaction
 /// of stocks, crypto and other assets, the first balance record of an account that counts, each
-/// property's purchase date (else its first valuation) and each loan's start. Never before
-/// 2000-01-01. Bonds, accounts without records and other assets without transactions have no
-/// date and do not count. `None` without a dated fact.
+/// property's purchase date (else its first valuation), each loan's start and each bond's
+/// purchase date. Never before 2000-01-01. Bonds without a purchase date, accounts without
+/// records and other assets without transactions have no date and do not count. `None` without
+/// a dated fact.
 pub fn earliest_fact_day(conn: &Connection) -> Result<Option<i64>> {
-    const SOURCES: [&str; 6] = [
+    const SOURCES: [&str; 7] = [
         "SELECT MIN(transaction_date) FROM investment_transactions",
         "SELECT MIN(transaction_date) FROM crypto_transactions",
         "SELECT MIN(transaction_date) FROM other_asset_transactions",
@@ -951,6 +989,7 @@ pub fn earliest_fact_day(conn: &Connection) -> Result<Option<i64>> {
                  WHERE real_estate_id = real_estate.id)))
          FROM real_estate",
         "SELECT MIN(start_date) FROM loans",
+        "SELECT MIN(purchase_date) FROM bonds",
     ];
     let mut earliest: Option<i64> = None;
     for sql in SOURCES {
@@ -1128,7 +1167,8 @@ mod tests {
                 id TEXT PRIMARY KEY,
                 coupon_value TEXT NOT NULL,
                 quantity TEXT NOT NULL DEFAULT '1',
-                currency TEXT NOT NULL DEFAULT 'CZK'
+                currency TEXT NOT NULL DEFAULT 'CZK',
+                purchase_date INTEGER
             );
             CREATE TABLE loans (
                 id TEXT PRIMARY KEY,
@@ -1405,6 +1445,23 @@ mod tests {
             params![id, coupon, quantity, currency],
         )
         .expect("bond");
+    }
+
+    /// A bond bought on `day` (a UTC midnight).
+    fn dated_bond(
+        conn: &Connection,
+        id: &str,
+        coupon: &str,
+        quantity: &str,
+        currency: &str,
+        day: i64,
+    ) {
+        conn.execute(
+            "INSERT INTO bonds (id, coupon_value, quantity, currency, purchase_date)
+             VALUES (?1, ?2, ?3, ?4, ?5)",
+            params![id, coupon, quantity, currency, day],
+        )
+        .expect("dated bond");
     }
 
     /// A stock or crypto ticker's history row and transaction.
@@ -1837,6 +1894,71 @@ mod tests {
     }
 
     #[test]
+    fn a_dated_bond_counts_nothing_before_its_purchase_day_and_its_value_from_it_on() {
+        let conn = setup_test_db();
+        dated_bond(&conn, "b", "1000", "3", "CZK", d(10));
+
+        // before the purchase the bond is not counted, and that is a fact, not a gap
+        for day in [-500, 0, 9] {
+            let values = values_on(&conn, d(day));
+            assert!(values.breakdowns.bonds.is_empty(), "day {day}");
+            assert!(values.known.bonds, "day {day}");
+        }
+        for day in [10, 11, 400] {
+            let values = values_on(&conn, d(day));
+            assert_eq!(
+                values.breakdowns.bonds,
+                map(&[("CZK", 3000.0)]),
+                "day {day}"
+            );
+            assert!(values.known.bonds, "day {day}");
+        }
+    }
+
+    #[test]
+    fn a_bond_bought_at_a_later_hour_counts_from_its_day() {
+        let conn = setup_test_db();
+        dated_bond(&conn, "b", "10", "1", "EUR", d(10) + 13 * 3_600);
+        assert!(values_on(&conn, d(9)).breakdowns.bonds.is_empty());
+        assert_eq!(
+            values_on(&conn, d(10)).breakdowns.bonds,
+            map(&[("EUR", 10.0)])
+        );
+    }
+
+    #[test]
+    fn an_undated_bond_next_to_a_dated_one_keeps_the_class_unknown_and_stays_carried() {
+        let conn = setup_test_db();
+        bond(&conn, "undated", "500", "1", "CZK");
+        dated_bond(&conn, "dated", "1000", "1", "CZK", d(10));
+        dated_bond(&conn, "foreign", "20", "2", "EUR", d(20));
+
+        let early = values_on(&conn, d(5));
+        assert_eq!(early.breakdowns.bonds, map(&[("CZK", 500.0)]));
+        assert!(!early.known.bonds);
+        let mid = values_on(&conn, d(15));
+        assert_eq!(mid.breakdowns.bonds, map(&[("CZK", 1500.0)]));
+        assert!(!mid.known.bonds);
+        let late = values_on(&conn, d(25));
+        assert_eq!(
+            late.breakdowns.bonds,
+            map(&[("CZK", 1500.0), ("EUR", 40.0)])
+        );
+        assert!(!late.known.bonds);
+    }
+
+    #[test]
+    fn a_profile_without_bonds_has_nothing_to_carry_and_the_class_is_known() {
+        let conn = setup_test_db();
+        let values = values_on(&conn, d(5));
+        assert!(values.breakdowns.bonds.is_empty());
+        assert!(
+            values.known.bonds,
+            "no item is left that the facts do not cover"
+        );
+    }
+
+    #[test]
     fn stocks_and_crypto_come_from_the_ticker_series_and_are_always_known() {
         let conn = setup_test_db();
         ticker_tx(&conn, "investment_transactions", "AAA", "buy", d(1));
@@ -1877,6 +1999,18 @@ mod tests {
     }
 
     #[test]
+    fn an_undated_bond_does_not_define_the_start_but_a_dated_one_can() {
+        let conn = setup_test_db();
+        bond(&conn, "undated", "1", "1", "CZK");
+        assert_eq!(earliest_fact_day(&conn).unwrap(), None);
+
+        account(&conn, "a", "CZK", "1", false);
+        record(&conn, "a", d(50), "1", "CZK");
+        dated_bond(&conn, "dated", "1", "1", "CZK", d(20));
+        assert_eq!(earliest_fact_day(&conn).unwrap(), Some(d(20)));
+    }
+
+    #[test]
     fn balance_records_of_an_account_outside_the_balance_are_not_a_fact() {
         // The history never counts such an account, so its records must not start it earlier.
         let conn = setup_test_db();
@@ -1892,7 +2026,7 @@ mod tests {
     #[test]
     fn every_dated_fact_can_be_the_earliest_day() {
         type Seed = fn(&Connection, i64);
-        let sources: [(&str, Seed); 6] = [
+        let sources: [(&str, Seed); 7] = [
             ("stock transaction", |c, day| {
                 ticker_tx(c, "investment_transactions", "A", "buy", day)
             }),
@@ -1912,6 +2046,9 @@ mod tests {
             }),
             ("loan start", |c, day| {
                 loan(c, "l", "CZK", ("1", "0", "0"), day)
+            }),
+            ("bond purchase date", |c, day| {
+                dated_bond(c, "b", "1", "1", "CZK", day)
             }),
         ];
         for (name, seed) in sources {
@@ -2169,7 +2306,7 @@ mod tests {
             // stocks and crypto always are (nothing is held: empty)
             assert!(at(day, "investments_by_currency").is_empty(), "{day}");
             assert!(at(day, "crypto_by_currency").is_empty(), "{day}");
-            // bonds are never a fact: the recorded value stays
+            // an undated bond is not a fact: the recorded value stays
             assert_eq!(
                 at(day, "bonds_by_currency"),
                 map(&[("CZK", 333.0)]),
@@ -2198,6 +2335,64 @@ mod tests {
                 .count(),
             27
         );
+    }
+
+    #[test]
+    fn a_live_row_is_rewritten_for_bonds_once_every_bond_is_dated() {
+        let conn = setup_test_db();
+        let today = d(30);
+        account(&conn, "a", "CZK", "1", false);
+        record(&conn, "a", d(0), "1", "CZK");
+        dated_bond(&conn, "b", "1000", "1", "CZK", d(10));
+        for day in [5, 15, 25] {
+            live_row(&conn, d(day));
+        }
+
+        rebuild_days(&conn, d(0), today).expect("rebuild");
+
+        let bonds = |day: i64| column(&conn, d(day), "bonds_by_currency");
+        // the recorded 333 of a live row is replaced by what the facts say on its day
+        assert!(bonds(5).is_empty(), "before the purchase");
+        assert_eq!(bonds(15), map(&[("CZK", 1000.0)]));
+        assert_eq!(bonds(25), map(&[("CZK", 1000.0)]));
+        // ... and so are the days between
+        assert!(bonds(9).is_empty());
+        assert_eq!(bonds(10), map(&[("CZK", 1000.0)]));
+
+        // one undated bond makes the class unknown again: live rows set back to what they
+        // recorded keep it
+        bond(&conn, "undated", "50", "1", "CZK");
+        for day in [5, 15, 25] {
+            conn.execute(
+                "DELETE FROM portfolio_metrics_history WHERE recorded_at >= ?1 AND recorded_at < ?2",
+                [d(day), d(day) + DAY],
+            )
+            .expect("clear the day");
+            live_row(&conn, d(day));
+        }
+        rebuild_days(&conn, d(0), today).expect("rebuild with an undated bond");
+        for day in [5, 15, 25] {
+            assert_eq!(bonds(day), map(&[("CZK", 333.0)]), "live day {day}");
+        }
+    }
+
+    #[test]
+    fn a_live_row_is_rewritten_when_the_last_bond_is_gone() {
+        // no bond is left that the facts do not cover: a deleted bond leaves the live rows too
+        let conn = setup_test_db();
+        let today = d(20);
+        account(&conn, "a", "CZK", "1", false);
+        record(&conn, "a", d(0), "1", "CZK");
+        live_with(&conn, d(10), &[("bonds_by_currency", r#"{"CZK":900}"#)]);
+
+        rebuild_days(&conn, d(0), today).expect("rebuild");
+
+        for day in [0, 5, 10, 11, 19] {
+            assert!(
+                column(&conn, d(day), "bonds_by_currency").is_empty(),
+                "day {day}"
+            );
+        }
     }
 
     #[test]
@@ -2365,33 +2560,64 @@ mod tests {
         assert_eq!(bonds(29), map(&[("CZK", 900.0)]));
         assert_eq!(bonds(31), map(&[("CZK", 950.0), ("EUR", 10.0)]));
         assert_eq!(bonds(39), map(&[("CZK", 950.0), ("EUR", 10.0)]));
-        // the live rows themselves keep what was recorded (bonds are never a fact)
+        // the live rows themselves keep what was recorded (an undated bond is not a fact)
         assert_eq!(bonds(10), map(&[("CZK", 900.0)]));
         assert_eq!(bonds(30), map(&[("CZK", 950.0), ("EUR", 10.0)]));
     }
 
     #[test]
-    fn without_bonds_nothing_is_carried_from_a_live_row() {
+    fn a_dated_bond_is_counted_from_its_purchase_day_and_the_remainder_holds_only_the_undated_ones()
+    {
         let conn = setup_test_db();
-        let today = d(20);
+        let today = d(40);
         account(&conn, "a", "CZK", "1", false);
         record(&conn, "a", d(0), "1", "CZK");
-        // a bond that was sold or deleted since: no unknown item is left in the class
-        live_with(&conn, d(10), &[("bonds_by_currency", r#"{"CZK":900}"#)]);
+        // an undated bond (today 500) and one bought on day 10 (1000)
+        bond(&conn, "undated", "500", "1", "CZK");
+        dated_bond(&conn, "dated", "1000", "1", "CZK", d(10));
+        // a live row before the purchase (the undated bond was worth 400 then) and one after it
+        // (400 + 1000 + 100 more of the undated one)
+        live_with(&conn, d(8), &[("bonds_by_currency", r#"{"CZK":400}"#)]);
+        live_with(&conn, d(30), &[("bonds_by_currency", r#"{"CZK":1500}"#)]);
 
         rebuild_days(&conn, d(0), today).expect("rebuild");
 
-        for day in [0, 5, 9, 11, 19] {
-            assert!(
-                column(&conn, d(day), "bonds_by_currency").is_empty(),
-                "day {day}"
-            );
-        }
-        assert_eq!(
-            column(&conn, d(10), "bonds_by_currency"),
-            map(&[("CZK", 900.0)]),
-            "the live row keeps its record"
-        );
+        let bonds = |day: i64| column(&conn, d(day), "bonds_by_currency");
+        // before the purchase the nearest live row counts the same items: its 400 are all
+        // undated; on or before day 8 the earliest row is the one to follow
+        assert_eq!(bonds(0), map(&[("CZK", 400.0)]));
+        assert_eq!(bonds(9), map(&[("CZK", 400.0)]));
+        // from the purchase on, the row of day 8 no longer counts the purchased bond, so the
+        // days follow the row of day 30: 1500 - the dated 1000 = 500 undated, plus the bond
+        assert_eq!(bonds(10), map(&[("CZK", 1500.0)]));
+        assert_eq!(bonds(20), map(&[("CZK", 1500.0)]));
+        assert_eq!(bonds(35), map(&[("CZK", 1500.0)]));
+        // the live rows keep what was recorded: an undated bond is not a fact
+        assert_eq!(bonds(8), map(&[("CZK", 400.0)]));
+        assert_eq!(bonds(30), map(&[("CZK", 1500.0)]));
+
+        // a second rebuild changes nothing
+        let rows = dump(&conn);
+        rebuild_days(&conn, d(0), today).expect("again");
+        assert_eq!(dump(&conn), rows);
+    }
+
+    #[test]
+    fn without_a_live_row_the_undated_bonds_keep_today_s_value_next_to_the_dated_ones() {
+        let conn = setup_test_db();
+        let today = d(40);
+        account(&conn, "a", "CZK", "1", false);
+        record(&conn, "a", d(0), "1", "CZK");
+        bond(&conn, "undated", "500", "1", "CZK");
+        dated_bond(&conn, "dated", "1000", "1", "EUR", d(10));
+
+        rebuild_days(&conn, d(0), today).expect("rebuild");
+
+        let bonds = |day: i64| column(&conn, d(day), "bonds_by_currency");
+        assert_eq!(bonds(0), map(&[("CZK", 500.0)]));
+        assert_eq!(bonds(9), map(&[("CZK", 500.0)]));
+        assert_eq!(bonds(10), map(&[("CZK", 500.0), ("EUR", 1000.0)]));
+        assert_eq!(bonds(39), map(&[("CZK", 500.0), ("EUR", 1000.0)]));
     }
 
     #[test]
@@ -2811,6 +3037,8 @@ mod tests {
             );
         }
         bond(conn, "b", "1000", "1", "CZK");
+        // a dated one next to it: counted from the day it was bought
+        dated_bond(conn, "b2", "250", "2", "EUR", today - 120 * DAY);
         live_row(conn, today);
         live_row(conn, today - 50 * DAY);
         // what the undated account and the bond were worth on a live day far back
@@ -2995,6 +3223,12 @@ mod tests {
         );
         approx(&values.breakdowns.other_assets, &live.other_assets);
         approx(&values.breakdowns.bonds, &live.bonds);
+        // a bond bought long ago and one bought today count today like the live snapshot
+        dated_bond(&conn, "old", "300", "2", "EUR", today - 400 * DAY);
+        dated_bond(&conn, "new", "40", "1", "CZK", today);
+        let live = compute_breakdowns(&conn).expect("live breakdowns");
+        approx(&values_on(&conn, today).breakdowns.bonds, &live.bonds);
+        assert_eq!(live.bonds, map(&[("CZK", 2040.0), ("EUR", 600.0)]));
         // the fixture is not vacuous
         assert_eq!(live.savings, map(&[("CZK", 1500.0), ("EUR", 200.0)]));
         assert!(live.loans["CZK"] > 0.0 && live.loans["EUR"] > 0.0);

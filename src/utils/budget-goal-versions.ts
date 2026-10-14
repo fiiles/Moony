@@ -91,24 +91,6 @@ export function scheduledVersions(
 }
 
 /**
- * Changes after `month` that remain once `amount` is saved: the leading ones
- * that repeat the saved limit are merged into it by the backend.
- */
-export function upcomingAfterSave(
-  versions: readonly BudgetGoalVersion[],
-  month: number,
-  amount: number,
-  currency: string
-): BudgetGoalVersion[] {
-  const upcoming = scheduledVersions(versions, month);
-  const firstDifferent = upcoming.findIndex(
-    (version) =>
-      version.amount == null || version.currency !== currency || Number(version.amount) !== amount
-  );
-  return firstDifferent < 0 ? [] : upcoming.slice(firstDifferent);
-}
-
-/**
  * Month the editor starts on: the current month while a limit is in effect,
  * otherwise the first scheduled limit (a goal that only starts later).
  */

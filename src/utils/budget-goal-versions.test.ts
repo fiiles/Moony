@@ -11,7 +11,6 @@ import {
   monthInputValue,
   monthStartFromInput,
   scheduledVersions,
-  upcomingAfterSave,
   versionInEffect,
 } from './budget-goal-versions';
 
@@ -47,18 +46,6 @@ describe('scheduledVersions', () => {
     const versions = [v(JAN, '1000'), v(DEC, '2000')];
     expect(scheduledVersions(versions, OCT)).toEqual([v(DEC, '2000')]);
     expect(scheduledVersions(versions, DEC)).toEqual([]);
-  });
-});
-
-describe('upcomingAfterSave', () => {
-  it('leaves out the changes that repeat the saved limit, as saving merges them', () => {
-    const versions = [v(JUN, '500'), v(OCT, '500'), v(DEC, '700')];
-    expect(upcomingAfterSave(versions, JAN, 500, 'CZK')).toEqual([v(DEC, '700')]);
-  });
-
-  it('keeps a repeated limit after a different change and one in another currency', () => {
-    const versions = [v(JUN, '500', 'EUR'), v(OCT, '700'), v(DEC, '500')];
-    expect(upcomingAfterSave(versions, JAN, 500, 'CZK')).toEqual(versions);
   });
 });
 

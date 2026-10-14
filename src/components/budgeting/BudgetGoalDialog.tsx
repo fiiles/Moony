@@ -23,7 +23,6 @@ import {
   monthInputValue,
   monthStartFromInput,
   scheduledVersions,
-  upcomingAfterSave,
   versionInEffect,
 } from '@/utils/budget-goal-versions';
 import { useFormat } from '@/lib/use-format';
@@ -194,12 +193,9 @@ export function BudgetGoalDialog({
   // from the destination month would silently replace the interval being edited.
   const editSource = goal ? budgetEditSource(goal, initialEffectiveMonth, nowMonth) : null;
   const editorCurrency = editSource?.currency ?? currencyCode;
-  // Changes inside the range are replaced; only the ones after it stay.
   const enteredAmount = Number(form.watch('amount'));
-  const scheduled =
-    editedUntil == null && Number.isFinite(enteredAmount) && enteredAmount > 0
-      ? upcomingAfterSave(versions, editedMonth ?? nowMonth, enteredAmount, editorCurrency)
-      : scheduledVersions(versions, editedUntil ?? editedMonth ?? nowMonth);
+  // The save replaces everything in its range; without an end nothing later stays.
+  const scheduled = editedUntil == null ? [] : scheduledVersions(versions, editedUntil);
 
   const editedInterval = useMemo(() => {
     if (!editSource) return null;

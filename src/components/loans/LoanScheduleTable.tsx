@@ -36,7 +36,8 @@ interface YearRow {
 /**
  * Repayment schedule (prototype loan-detail.html): the next twelve payments
  * with the coming one marked, the same grouped per calendar year, or every
- * payment from the anchor with the ones already due muted.
+ * payment of the plan with the ones already due muted. The schedule comes from the
+ * backend's plan ahead: while a manual balance holds it starts after today.
  */
 export function LoanScheduleTable({ schedule, currency }: LoanScheduleTableProps) {
   const { t } = useTranslation('loans');

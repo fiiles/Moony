@@ -17,6 +17,7 @@ import { useCategories, useCategoryName } from '@/hooks/use-categories';
 import { useBankAccounts } from '@/hooks/use-bank-accounts';
 import { useShellPage } from '@/components/shell/shell-context';
 import { usePeriodSelection } from '@/hooks/use-period-selection';
+import { monthOffsetOf } from '@/utils/period';
 import { PeriodNav } from '@/components/reports/PeriodNav';
 import type { BudgetState } from '@/utils/budget-pace';
 import { currentMonthStart, scheduledVersions } from '@/utils/budget-goal-versions';
@@ -89,7 +90,17 @@ export default function Budgeting() {
   const categoryName = useCategoryName();
 
   const period = usePeriodSelection('monthly');
-  const { timeframe, range } = period;
+  const { timeframe, range, setOffset } = period;
+  // Open on the month of the newest transaction, not on an empty current month.
+  const { data: latestDay, isFetchedAfterMount: latestFetched } = useQuery({
+    queryKey: ['budgeting-latest-transaction'],
+    queryFn: () => budgetingApi.getLatestTransactionDate(),
+  });
+  const [startPicked, setStartPicked] = useState(false);
+  if (latestFetched && !startPicked) {
+    setStartPicked(true);
+    if (latestDay != null) setOffset(() => monthOffsetOf(latestDay));
+  }
   const [sort, setSort] = useState<SortKey>('usage');
   const [goalDialog, setGoalDialog] = useState<{
     open: boolean;
@@ -116,6 +127,7 @@ export default function Budgeting() {
     ],
     queryFn: () =>
       budgetingApi.getReport(range.start, range.end, timeframe, accountIds, currencyCode),
+    enabled: startPicked,
   });
   const { money, nativeMoney } = useReportMoney(report?.reportCurrency);
   const {

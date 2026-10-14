@@ -122,12 +122,16 @@
     "endDate": "Fecha de fin",
     "balance": {
       "title": "Saldo pendiente",
-      "help": "Moony reduce el saldo con cada cuota mensual. Si conoces el saldo real, por ejemplo por un extracto bancario, introdúcelo con su fecha y el cálculo continuará desde ahí.",
+      "help": "Moony estima el saldo a partir de las cuotas. Cuando introduces el saldo real a una fecha, vale exactamente hasta que lo cambies: a partir de él no se estima nada.",
       "setManual": "Fijar el saldo a una fecha",
       "amount": "Importe pendiente",
       "date": "A fecha de",
       "estimate": "Saldo estimado hoy: {{amount}}",
-      "noPayment": "Sin cuota mensual el saldo no se reduce."
+      "manualToday": "Saldo hoy: {{amount}} (vale el saldo que introdujiste)",
+      "noPayment": "Sin cuota mensual el saldo no se reduce.",
+      "deleteWarning_one": "Elimina {{count}} saldo manual, el préstamo se volverá a estimar.",
+      "deleteWarning_many": "Elimina {{count}} saldos manuales, el préstamo se volverá a estimar.",
+      "deleteWarning_other": "Elimina {{count}} saldos manuales, el préstamo se volverá a estimar."
     }
   },
   "actions": {
@@ -135,7 +139,7 @@
     "delete": "Eliminar préstamo",
     "open": "Abrir",
     "extraPayment": "Pago extra",
-    "balanceCheck": "Verificar saldo con el extracto",
+    "balanceCheck": "Introducir el saldo a una fecha",
     "rateChange": "Registrar un cambio de tipo"
   },
   "confirmDelete": {
@@ -159,7 +163,7 @@
   },
   "valuation": {
     "automatic": "Amortizado desde {{date}} ({{amount}}) al {{rate}} con {{payment}} al mes.",
-    "manual": "A partir de tu saldo de {{amount}} del {{date}}, amortizado al {{rate}} con {{payment}} al mes.",
+    "manual": "Saldo introducido a mano de {{amount}} a {{date}} — vale hasta que lo cambies.",
     "static": "No hay cuota mensual, así que el saldo no se reduce: {{amount}} a {{date}}.",
     "belowInterest": "La cuota no cubre los intereses, así que el saldo no baja."
   },
@@ -173,7 +177,7 @@
     "withFixation": " fijo hasta {{month, lower}}",
     "status": {
       "automatic": "Saldo según el cuadro",
-      "manual": "Saldo según el cuadro · a partir de tu saldo a {{date}}",
+      "manual": "Saldo manual a {{date}} · vale hasta que lo cambies",
       "static": "Sin cuota mensual · el saldo no baja"
     },
     "hero": {
@@ -212,7 +216,7 @@
         "extraPayment": "Pago extra {{amount}}",
         "rateChange": "Tipo cambiado a {{rate}}",
         "newPayment": "cuota {{amount}}",
-        "balanceCheck": "Saldo verificado con el extracto",
+        "balanceCheck": "Saldo manual {{amount}}",
         "fixationEnd": "Fin del tipo fijo",
         "half": "Mitad del capital amortizada",
         "payoff": "Préstamo liquidado",
@@ -287,14 +291,15 @@
       "newPayment": "cuota nueva {{amount}}",
       "rateChange": "Tipo cambiado a {{rate}}",
       "rateChangeNote": "el cuadro continúa desde el saldo de este día",
-      "balanceCheck": "Saldo verificado con el extracto",
-      "balanceCheckNote": "el cuadro se reinicia desde esta fecha",
+      "balanceCheck": "Saldo manual {{amount}}",
+      "balanceCheckNote": "vale hasta que lo cambies",
       "drawdown": "Disposición {{amount}}",
       "drawdownNote": "inicio del préstamo",
       "delete": "Quitar evento",
       "confirmDelete": {
         "title": "Quitar evento",
-        "description": "La entrada desaparece del gráfico y de la lista. El saldo que fijó el evento sigue vigente."
+        "description": "La entrada desaparece del gráfico y de la lista, y el saldo se calcula de nuevo sin ella.",
+        "descriptionManual": "El saldo manual desaparece del gráfico y de la lista. Vuelve a valer el saldo manual anterior o, si no hay ninguno, la estimación."
       }
     },
     "warnings": {
@@ -319,6 +324,8 @@
       "alertPayment": "Cuota nueva de {{payment}} al mes; el plazo se mantiene hasta {{month, lower}}.",
       "alertTooMuch": "El importe supera el saldo de {{amount}}.",
       "alertEmpty": "Introduce un importe para ver el efecto.",
+      "alertManual": "El saldo manual baja a {{amount}}",
+      "alertManualNote": "El cuadro continúa desde este saldo.",
       "submit": "Registrar pago"
     },
     "rateChange": {
@@ -331,15 +338,17 @@
       "alertTitle": "Intereses mensuales {{from}} → {{to}}",
       "alertNote": "Con una cuota de {{payment}} el préstamo se liquida en {{month, lower}}.",
       "alertNoPayoff": "Una cuota de {{payment}} no cubre los intereses; el saldo no bajaría.",
+      "manualNote": "El saldo manual se mantiene; solo cambia el cuadro de lo que queda.",
       "submit": "Registrar cambio"
     },
     "balanceCheck": {
-      "title": "Verificar saldo con el extracto",
-      "description": "Introduce el saldo de tu extracto; el cuadro se reinicia desde ese día.",
-      "amount": "Saldo según el extracto",
+      "title": "Introducir el saldo a una fecha",
+      "description": "Introduce un saldo que conozcas, por ejemplo el de un extracto. Vale exactamente hasta que lo cambies.",
+      "amount": "Saldo",
       "date": "A fecha de",
-      "alertTitle": "El cuadro suponía {{amount}}",
-      "alertNote": "Diferencia {{delta}} · desde {{date}} el cuadro usa tu saldo.",
+      "alertTitle": "La estimación suponía {{amount}}",
+      "alertTitleManual": "Saldo manual anterior {{amount}}",
+      "alertNote": "Diferencia {{delta}} · desde {{date}} vale tu saldo hasta que lo cambies.",
       "submit": "Guardar saldo"
     }
   }

@@ -1,14 +1,17 @@
 //! Loan commands. Thin wrappers: the SQL, validation and amortization live in
 //! `services/loans.rs`.
 
+use crate::commands::portfolio::schedule_history_rebuild;
 use crate::db::Database;
 use crate::error::{AppError, Result};
 use crate::models::{InsertLoan, Loan, LoanSchedule, RealEstate};
+use crate::services::history_plan;
+use crate::services::history_recalc::{HistoryRecalc, Job};
 use crate::services::loan_amortization::today_utc_day;
 use crate::services::loans as loans_service;
-use tauri::State;
+use tauri::{AppHandle, State};
 
-/// Get all loans, each with its amortized outstanding balance as of today
+/// Get all loans, each with its events and its ledger balance as of today
 #[tauri::command]
 pub async fn get_all_loans(db: State<'_, Database>) -> Result<Vec<Loan>> {
     db.with_conn(|conn| loans_service::list_loans(conn, today_utc_day()))
@@ -22,28 +25,61 @@ pub async fn get_loan_schedule(db: State<'_, Database>, id: String) -> Result<Lo
 
 /// Create loan
 #[tauri::command]
-pub async fn create_loan(db: State<'_, Database>, data: InsertLoan) -> Result<Loan> {
-    db.with_conn(|conn| loans_service::create_loan(conn, &data))
+pub async fn create_loan(
+    app: AppHandle,
+    db: State<'_, Database>,
+    recalc: State<'_, HistoryRecalc>,
+    data: InsertLoan,
+) -> Result<Loan> {
+    let created = db.with_conn(|conn| loans_service::create_loan(conn, &data))?;
+    // The loan counts from its start day
+    schedule_history_rebuild(&app, &db, &recalc, vec![Job::Days(created.start_date)]);
+    Ok(created)
 }
 
 /// Update loan
 #[tauri::command]
-pub async fn update_loan(db: State<'_, Database>, id: String, data: InsertLoan) -> Result<Loan> {
-    db.with_conn(|conn| loans_service::update_loan(conn, &id, &data))
+pub async fn update_loan(
+    app: AppHandle,
+    db: State<'_, Database>,
+    recalc: State<'_, HistoryRecalc>,
+    id: String,
+    data: InsertLoan,
+) -> Result<Loan> {
+    let (old_start, updated) = db.with_conn(|conn| {
+        let old_start = loans_service::loan_start_date(conn, &id)?;
+        let updated = loans_service::update_loan(conn, &id, &data)?;
+        Ok((old_start, updated))
+    })?;
+    // Terms, manual balances and currency all change the path from the start: from the
+    // earlier of the old and new start day
+    let from = history_plan::earlier(old_start, updated.start_date);
+    schedule_history_rebuild(&app, &db, &recalc, vec![Job::Days(from)]);
+    Ok(updated)
 }
 
 /// Delete loan
 #[tauri::command]
-pub async fn delete_loan(db: State<'_, Database>, id: String) -> Result<()> {
-    db.with_conn(|conn| {
+pub async fn delete_loan(
+    app: AppHandle,
+    db: State<'_, Database>,
+    recalc: State<'_, HistoryRecalc>,
+    id: String,
+) -> Result<()> {
+    let start = db.with_conn(|conn| {
+        let start = loans_service::loan_start_date(conn, &id)?;
         // Remove links first
         conn.execute("DELETE FROM real_estate_loans WHERE loan_id = ?1", [&id])?;
         let changes = conn.execute("DELETE FROM loans WHERE id = ?1", [&id])?;
         if changes == 0 {
             return Err(AppError::NotFound("Loan not found".into()));
         }
-        Ok(())
-    })
+        Ok(start)
+    })?;
+    if let Some(start) = start {
+        schedule_history_rebuild(&app, &db, &recalc, vec![Job::Days(start)]);
+    }
+    Ok(())
 }
 
 // ============================================================================
@@ -109,7 +145,7 @@ pub async fn get_available_loans(db: State<'_, Database>) -> Result<Vec<Loan>> {
 // Loan events (redesign phase 2)
 // ---------------------------------------------------------------------------
 
-/// Extra payments, rate changes and balance checks of a loan, oldest first.
+/// Extra payments, rate changes and manual balance records of a loan, oldest first.
 #[tauri::command]
 pub async fn get_loan_events(
     db: State<'_, Database>,
@@ -118,10 +154,13 @@ pub async fn get_loan_events(
     db.with_conn(|conn| crate::services::loan_events::list_events(conn, &loan_id))
 }
 
-/// Record an event; it re-anchors the amortization on its day (see the service).
+/// Record an event: an extra payment, a rate change or a manual balance record
+/// (`balance_check`; a record of the same day is replaced). See the service.
 #[tauri::command]
 pub async fn add_loan_event(
+    app: AppHandle,
     db: State<'_, Database>,
+    recalc: State<'_, HistoryRecalc>,
     data: crate::models::InsertLoanEvent,
 ) -> Result<crate::models::LoanEvent> {
     let saved = db.with_conn(|conn| {
@@ -134,11 +173,21 @@ pub async fn add_loan_event(
     crate::commands::portfolio::update_todays_snapshot(&db)
         .await
         .ok();
+    // The balance changes from the event's day on
+    schedule_history_rebuild(&app, &db, &recalc, vec![Job::Days(saved.event_day)]);
     Ok(saved)
 }
 
-/// Remove an event from the trace (the anchor it set stays).
+/// Remove an event; nothing of it stays (see the service).
 #[tauri::command]
-pub async fn delete_loan_event(db: State<'_, Database>, event_id: String) -> Result<()> {
-    db.with_conn(|conn| crate::services::loan_events::delete_event(conn, &event_id))
+pub async fn delete_loan_event(
+    app: AppHandle,
+    db: State<'_, Database>,
+    recalc: State<'_, HistoryRecalc>,
+    event_id: String,
+) -> Result<()> {
+    let event_day =
+        db.with_conn(|conn| crate::services::loan_events::delete_event(conn, &event_id))?;
+    schedule_history_rebuild(&app, &db, &recalc, vec![Job::Days(event_day)]);
+    Ok(())
 }

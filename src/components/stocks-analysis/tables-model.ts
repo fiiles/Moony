@@ -26,6 +26,8 @@ export interface TagRow {
   share: number | null;
   /** Return of the tag's positions over the period, percent; `null` without a series. */
   periodReturn: number | null;
+  /** Unrealized gain as of today, in the report currency. */
+  gain: number;
   /** Unrealized gain as of today, percent of cost. */
   gainPercent: number;
   /** Estimated dividend a year, as of today. */
@@ -69,6 +71,7 @@ export function tagRows(input: TagRowsInput): TagRow[] {
             ? value / input.endTotal
             : null,
         periodReturn: members.length > 0 ? input.periodReturnOf(tag.id) : null,
+        gain: totals.gainLoss,
         gainPercent: totals.gainLossPercent,
         dividend: totals.dividend,
       });

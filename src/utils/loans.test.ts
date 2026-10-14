@@ -22,6 +22,8 @@ function loan(partial: Partial<Loan>): Loan {
     balanceAnchorAmount: null,
     balanceAnchorDate: null,
     outstandingBalance: '870000.00',
+    balanceMode: 'estimated',
+    events: [],
     createdAt: 0,
     updatedAt: 0,
     ...partial,
@@ -43,6 +45,54 @@ describe('loanRow', () => {
     expect(row.trajectory.balanceToday).toBe(870_000);
     expect(row.payoffDay).toBe(day(2034, 1, 1));
     expect(row.converted?.interestNext12).toBe(0);
+  });
+
+  it('values a loan with a manual balance from its ledger: it holds, the plan continues from it', () => {
+    const recordDay = day(2026, 6, 1);
+    const row = loanRow(
+      loan({
+        balanceAnchorAmount: '500000',
+        balanceAnchorDate: recordDay,
+        outstandingBalance: '500000.00',
+        balanceMode: 'manual',
+        events: [
+          {
+            id: 'e1',
+            loanId: 'l',
+            kind: 'balance_check',
+            eventDay: recordDay,
+            amount: '500000',
+            rate: null,
+            monthlyPayment: null,
+            previousRate: null,
+            previousMonthlyPayment: null,
+            note: null,
+            createdAt: 1,
+          },
+        ],
+      }),
+      TODAY,
+      convert
+    );
+    expect(row.mode).toBe('manual');
+    expect(row.trajectory.balanceToday).toBe(500_000);
+    // The estimated path ahead of the first record is the old line: 28 payments (Feb 2024 .. May 2026)
+    expect(row.trajectory.past.find((p) => p.t === recordDay - 86_400)?.value).toBe(920_000);
+    // 50 payments of 10 000 from the 1st after today: Nov 2026 .. Dec 2030
+    expect(row.payoffDay).toBe(day(2030, 12, 1));
+    expect(row.plan.anchorAmount).toBe(500_000);
+    expect(row.matured).toBe(false);
+  });
+
+  it('does not call a loan that has not started paid off', () => {
+    const row = loanRow(
+      loan({ startDate: day(2026, 12, 1), outstandingBalance: '0.00' }),
+      TODAY,
+      convert
+    );
+    expect(row.matured).toBe(false);
+    expect(row.repaidShare).toBe(0);
+    expect(row.trajectory.balanceToday).toBe(0);
   });
 
   it('marks paid-off and ended loans as matured and converts foreign currency', () => {

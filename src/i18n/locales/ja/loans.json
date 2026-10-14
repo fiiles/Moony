@@ -110,12 +110,14 @@
     "endDate": "終了日",
     "balance": {
       "title": "残高",
-      "help": "Moony は毎月の返済ごとに残高を減らします。銀行の明細などで実際の残高が分かる場合は、日付とあわせて入力すると、そこから計算が続きます。",
+      "help": "Moony は返済をもとに残高を推定します。日付を指定して実際の残高を入力すると、変更するまでその残高がそのまま有効になり、そこからは何も推定しません。",
       "setManual": "日付を指定して残高を設定",
       "amount": "残高",
       "date": "基準日",
       "estimate": "現在の推定残高：{{amount}}",
-      "noPayment": "月々の返済額がないと、残高は減りません。"
+      "manualToday": "現在の残高：{{amount}}（入力した残高が有効）",
+      "noPayment": "月々の返済額がないと、残高は減りません。",
+      "deleteWarning_other": "手動の残高{{count}}件を削除し、ローンは再び推定されます。"
     }
   },
   "actions": {
@@ -123,7 +125,7 @@
     "delete": "ローンを削除",
     "open": "開く",
     "extraPayment": "追加返済",
-    "balanceCheck": "明細で残高を確認",
+    "balanceCheck": "日付を指定して残高を入力",
     "rateChange": "金利の変更を記録"
   },
   "confirmDelete": {
@@ -147,7 +149,7 @@
   },
   "valuation": {
     "automatic": "{{date}}（{{amount}}）から、金利{{rate}}、月々{{payment}}の返済で償却。",
-    "manual": "{{date}}時点の残高 {{amount}} から、金利{{rate}}、月々{{payment}}の返済で償却。",
+    "manual": "手動で入力した{{date}}時点の残高 {{amount}} — 変更するまで有効です。",
     "static": "月々の返済額が設定されていないため、残高は減りません：{{date}}時点で{{amount}}。",
     "belowInterest": "返済額が利息に満たないため、残高は減りません。"
   },
@@ -161,7 +163,7 @@
     "withFixation": "（{{month}}まで固定）",
     "status": {
       "automatic": "スケジュールに基づく残高",
-      "manual": "スケジュールに基づく残高 · {{date}}時点のあなたの残高から",
+      "manual": "{{date}}時点の手動残高 · 変更するまで有効",
       "static": "月々の返済なし · 残高は減りません"
     },
     "hero": {
@@ -200,7 +202,7 @@
         "extraPayment": "追加返済 {{amount}}",
         "rateChange": "金利を{{rate}}に変更",
         "newPayment": "返済額 {{amount}}",
-        "balanceCheck": "明細で残高を確認",
+        "balanceCheck": "手動の残高 {{amount}}",
         "fixationEnd": "固定期間の終了",
         "half": "元金の半分を返済",
         "payoff": "ローンを完済",
@@ -273,14 +275,15 @@
       "newPayment": "新しい返済額 {{amount}}",
       "rateChange": "金利を{{rate}}に変更",
       "rateChangeNote": "スケジュールはこの日の残高から続きます",
-      "balanceCheck": "明細で残高を確認",
-      "balanceCheckNote": "スケジュールはこの日から再計算されます",
+      "balanceCheck": "手動の残高 {{amount}}",
+      "balanceCheckNote": "変更するまで有効",
       "drawdown": "実行 {{amount}}",
       "drawdownNote": "ローンの開始",
       "delete": "イベントを削除",
       "confirmDelete": {
         "title": "イベントを削除",
-        "description": "この項目はグラフと一覧から消えます。イベントで設定された残高はそのまま有効です。"
+        "description": "この項目はグラフと一覧から消え、残高はそれを除いて再計算されます。",
+        "descriptionManual": "手動の残高はグラフと一覧から消えます。前の手動の残高が再び有効になり、ない場合は推定値が使われます。"
       }
     },
     "warnings": {
@@ -305,6 +308,8 @@
       "alertPayment": "新しい返済額は月々{{payment}}、期間は{{month}}のままです。",
       "alertTooMuch": "金額が残高 {{amount}} を超えています。",
       "alertEmpty": "金額を入力すると効果が表示されます。",
+      "alertManual": "手動の残高は{{amount}}に減ります",
+      "alertManualNote": "スケジュールはこの残高から続きます。",
       "submit": "返済を記録"
     },
     "rateChange": {
@@ -317,15 +322,17 @@
       "alertTitle": "月間の利息 {{from}} → {{to}}",
       "alertNote": "返済額が{{payment}}の場合、{{month}}に完済します。",
       "alertNoPayoff": "返済額{{payment}}では利息を賄えないため、残高は減りません。",
+      "manualNote": "手動の残高はそのままで、これからのスケジュールだけが変わります。",
       "submit": "変更を記録"
     },
     "balanceCheck": {
-      "title": "明細で残高を確認",
-      "description": "明細の残高を入力してください。スケジュールはその日から再計算されます。",
-      "amount": "明細上の残高",
+      "title": "日付を指定して残高を入力",
+      "description": "明細などで分かっている残高を入力してください。変更するまでそのまま有効です。",
+      "amount": "残高",
       "date": "基準日",
-      "alertTitle": "スケジュール上の残高は{{amount}}でした",
-      "alertNote": "差額 {{delta}} · {{date}}以降、スケジュールはあなたの残高を使用します。",
+      "alertTitle": "推定では{{amount}}でした",
+      "alertTitleManual": "前の手動残高 {{amount}}",
+      "alertNote": "差額 {{delta}} · {{date}}以降は、変更するまであなたの残高が有効です。",
       "submit": "残高を保存"
     }
   }

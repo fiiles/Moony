@@ -1089,42 +1089,15 @@ pub fn set_plan_inclusion(
 }
 
 fn active_loan_ids(conn: &rusqlite::Connection, day: i64) -> Result<HashSet<String>> {
-    use crate::services::loan_amortization::{outstanding_balance_at, LoanTerms};
-    use crate::services::reporting::parse_money;
-    let mut stmt=conn.prepare("SELECT id,principal,interest_rate,monthly_payment,start_date,end_date,balance_anchor_amount,balance_anchor_date FROM loans")?;
-    let rows = stmt.query_map([], |r| {
-        Ok((
-            r.get::<_, String>(0)?,
-            r.get::<_, String>(1)?,
-            r.get::<_, String>(2)?,
-            r.get::<_, String>(3)?,
-            r.get::<_, i64>(4)?,
-            r.get::<_, Option<i64>>(5)?,
-            r.get::<_, Option<String>>(6)?,
-            r.get::<_, Option<i64>>(7)?,
-        ))
-    })?;
+    use crate::services::loan_amortization::loan_balance_at;
     let mut active = HashSet::new();
-    for row in rows {
-        let (id, principal, rate, payment, start, end, anchor, anchor_day) = row?;
-        let terms = LoanTerms {
-            principal: parse_money(&principal)?,
-            annual_rate_pct: if rate.is_empty() {
-                0.0
-            } else {
-                parse_money(&rate)?
-            },
-            monthly_payment: parse_money(&payment)?,
-            start_day: start,
-            end_day: end,
-            anchor_amount: anchor.as_deref().map(parse_money).transpose()?,
-            anchor_day,
-        };
-        if start <= day
-            && end.is_none_or(|end| end >= day)
-            && outstanding_balance_at(&terms, day) > 0.005
+    for entry in crate::services::loans::load_ledgers(conn)? {
+        let terms = &entry.ledger.terms;
+        if terms.start_day <= day
+            && terms.end_day.is_none_or(|end| end >= day)
+            && loan_balance_at(&entry.ledger, day).balance > 0.005
         {
-            active.insert(id);
+            active.insert(entry.id);
         }
     }
     Ok(active)
@@ -1490,6 +1463,7 @@ mod tests {
     fn planning_db() -> rusqlite::Connection {
         let conn = rusqlite::Connection::open_in_memory().unwrap();
         conn.execute_batch("CREATE TABLE loans(id TEXT,name TEXT,principal TEXT,currency TEXT,interest_rate TEXT,monthly_payment TEXT,start_date INTEGER,end_date INTEGER,balance_anchor_amount TEXT,balance_anchor_date INTEGER);
+ CREATE TABLE loan_events(id TEXT PRIMARY KEY,loan_id TEXT,kind TEXT,event_day INTEGER,amount TEXT,rate TEXT,monthly_payment TEXT,previous_rate TEXT,previous_monthly_payment TEXT,note TEXT,created_at INTEGER);
  CREATE TABLE cashflow_items(id TEXT PRIMARY KEY,name TEXT,amount TEXT,currency TEXT,frequency TEXT,item_type TEXT,category TEXT,created_at INTEGER,updated_at INTEGER,replacement_source_id TEXT UNIQUE);
  CREATE TABLE real_estate(id TEXT,name TEXT,type TEXT,recurring_costs TEXT,monthly_rent TEXT,monthly_rent_currency TEXT);
  CREATE TABLE real_estate_loans(real_estate_id TEXT,loan_id TEXT);
@@ -2068,8 +2042,9 @@ mod tests {
     #[test]
     fn automatic_loan_sources_omit_repaid_and_expired_loans() {
         let conn = rusqlite::Connection::open_in_memory().unwrap();
-        conn.execute_batch("CREATE TABLE loans(id TEXT,principal TEXT,interest_rate TEXT,monthly_payment TEXT,start_date INTEGER,end_date INTEGER,balance_anchor_amount TEXT,balance_anchor_date INTEGER);
-   INSERT INTO loans VALUES ('paid','1000','0','100',1704067200,NULL,NULL,NULL),('expired','100000','0','100',1704067200,1706745600,NULL,NULL),('active','100000','0','100',1704067200,NULL,NULL,NULL);").unwrap();
+        conn.execute_batch("CREATE TABLE loans(id TEXT,principal TEXT,currency TEXT,interest_rate TEXT,monthly_payment TEXT,start_date INTEGER,end_date INTEGER,balance_anchor_amount TEXT,balance_anchor_date INTEGER);
+   CREATE TABLE loan_events(id TEXT PRIMARY KEY,loan_id TEXT,kind TEXT,event_day INTEGER,amount TEXT,rate TEXT,monthly_payment TEXT,previous_rate TEXT,previous_monthly_payment TEXT,note TEXT,created_at INTEGER);
+   INSERT INTO loans VALUES ('paid','1000','CZK','0','100',1704067200,NULL,NULL,NULL),('expired','100000','CZK','0','100',1704067200,1706745600,NULL,NULL),('active','100000','CZK','0','100',1704067200,NULL,NULL,NULL);").unwrap();
         let active = active_loan_ids(&conn, 1735689600).unwrap();
         assert_eq!(active, HashSet::from(["active".into()]));
     }

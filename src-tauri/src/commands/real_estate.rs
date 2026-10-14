@@ -1,5 +1,6 @@
 //! Real estate commands
 
+use crate::commands::portfolio::schedule_history_rebuild;
 use crate::db::Database;
 use crate::error::{AppError, Result};
 use crate::models::{
@@ -7,10 +8,13 @@ use crate::models::{
     InsurancePolicy, Loan, RealEstate, RealEstateDocument, RealEstateOneTimeCost, RealEstatePhoto,
     RealEstatePhotoBatch, UpdatePhotoBatch,
 };
+use crate::services::history_plan::{self, PropertyFacts};
+use crate::services::history_recalc::HistoryRecalc;
 use crate::services::real_estate as real_estate_service;
+use crate::services::valuations::ValuationKind;
 use std::fs;
 use std::path::PathBuf;
-use tauri::{Manager, State};
+use tauri::{AppHandle, Manager, State};
 use uuid::Uuid;
 
 /// Get all real estate
@@ -28,33 +32,75 @@ pub async fn get_real_estate(db: State<'_, Database>, id: String) -> Result<Opti
 /// Create real estate
 #[tauri::command]
 pub async fn create_real_estate(
+    app: AppHandle,
     db: State<'_, Database>,
+    recalc: State<'_, HistoryRecalc>,
     data: InsertRealEstate,
 ) -> Result<RealEstate> {
-    db.with_conn(|conn| {
+    let (created, first_valuation) = db.with_conn(|conn| {
         let id = real_estate_service::create_property(conn, &data)?;
-        real_estate_service::get_property(conn, &id)?
-            .ok_or_else(|| AppError::Internal("Failed to retrieve created property".into()))
-    })
+        let created = real_estate_service::get_property(conn, &id)?
+            .ok_or_else(|| AppError::Internal("Failed to retrieve created property".into()))?;
+        let first_valuation = crate::services::valuations::list_valuations(
+            conn,
+            crate::services::valuations::ValuationKind::RealEstate,
+            &id,
+        )?
+        .first()
+        .map(|valuation| valuation.valued_at);
+        Ok((created, first_valuation))
+    })?;
+    // The value line starts at the purchase date, else at the first estimate
+    if let Some(job) = history_plan::property_created(created.purchase_date, first_valuation) {
+        schedule_history_rebuild(&app, &db, &recalc, vec![job]);
+    }
+    Ok(created)
 }
 
 /// Update real estate (replaces the whole record, see the service)
 #[tauri::command]
 pub async fn update_real_estate(
+    app: AppHandle,
     db: State<'_, Database>,
+    recalc: State<'_, HistoryRecalc>,
     id: String,
     data: InsertRealEstate,
 ) -> Result<RealEstate> {
-    db.with_conn(|conn| {
+    let (before, updated, valuations) = db.with_conn(|conn| {
+        let before = real_estate_service::get_property(conn, &id)?;
+        let earliest_before =
+            history_plan::earliest_valuation_day(conn, ValuationKind::RealEstate, &id)?;
         real_estate_service::update_property(conn, &id, &data, chrono::Utc::now().timestamp())?;
-        real_estate_service::get_property(conn, &id)?
-            .ok_or_else(|| AppError::NotFound("Real estate not found".into()))
-    })
+        let updated = real_estate_service::get_property(conn, &id)?
+            .ok_or_else(|| AppError::NotFound("Real estate not found".into()))?;
+        let earliest_after =
+            history_plan::earliest_valuation_day(conn, ValuationKind::RealEstate, &id)?;
+        Ok((before, updated, (earliest_before, earliest_after)))
+    })?;
+    // From the earliest of the old and new purchase date and the first valuation; a price change
+    // that wrote the property's first estimate counts from the purchase date; a type or currency
+    // change moves the property on every day it is counted
+    if let Some(before) = before {
+        let job = history_plan::property_updated(
+            &PropertyFacts::from(&before),
+            &PropertyFacts::from(&updated),
+            valuations,
+        );
+        if let Some(job) = job {
+            schedule_history_rebuild(&app, &db, &recalc, vec![job]);
+        }
+    }
+    Ok(updated)
 }
 
 /// Delete real estate
 #[tauri::command]
-pub async fn delete_real_estate(db: State<'_, Database>, id: String) -> Result<()> {
+pub async fn delete_real_estate(
+    app: AppHandle,
+    db: State<'_, Database>,
+    recalc: State<'_, HistoryRecalc>,
+    id: String,
+) -> Result<()> {
     db.with_conn(|conn| {
         // Delete documents first
         conn.execute(
@@ -66,7 +112,9 @@ pub async fn delete_real_estate(db: State<'_, Database>, id: String) -> Result<(
             return Err(AppError::NotFound("Real estate not found".into()));
         }
         Ok(())
-    })
+    })?;
+    schedule_history_rebuild(&app, &db, &recalc, vec![history_plan::property_deleted()]);
+    Ok(())
 }
 
 /// Get one-time costs for real estate
@@ -845,37 +893,45 @@ pub async fn get_real_estate_valuations(
 /// Record an estimate ("Přecenit"); the newest one becomes the market price.
 #[tauri::command]
 pub async fn add_real_estate_valuation(
+    app: AppHandle,
     db: State<'_, Database>,
+    recalc: State<'_, HistoryRecalc>,
     data: crate::models::InsertAssetValuation,
 ) -> Result<crate::models::AssetValuation> {
-    let saved = db.with_conn(|conn| {
-        crate::services::valuations::add_valuation(
-            conn,
-            crate::services::valuations::ValuationKind::RealEstate,
-            &data,
-        )
+    let (saved, job) = db.with_conn(|conn| {
+        let saved =
+            crate::services::valuations::add_valuation(conn, ValuationKind::RealEstate, &data)?;
+        let job = history_plan::property_valuation_changed(conn, &saved.asset_id, saved.valued_at)?;
+        Ok((saved, job))
     })?;
     crate::commands::portfolio::update_todays_snapshot(&db)
         .await
         .ok();
+    // An estimate changes the days it applies to; the first one also opens the days back to
+    // the purchase date
+    schedule_history_rebuild(&app, &db, &recalc, vec![job]);
     Ok(saved)
 }
 
 /// Remove an estimate; the market price follows the newest remaining one.
 #[tauri::command]
 pub async fn delete_real_estate_valuation(
+    app: AppHandle,
     db: State<'_, Database>,
+    recalc: State<'_, HistoryRecalc>,
     valuation_id: String,
 ) -> Result<()> {
-    db.with_conn(|conn| {
-        crate::services::valuations::delete_valuation(
+    let job = db.with_conn(|conn| {
+        let removed = crate::services::valuations::delete_valuation(
             conn,
-            crate::services::valuations::ValuationKind::RealEstate,
+            ValuationKind::RealEstate,
             &valuation_id,
-        )
+        )?;
+        history_plan::property_valuation_changed(conn, &removed.asset_id, removed.valued_at)
     })?;
     crate::commands::portfolio::update_todays_snapshot(&db)
         .await
         .ok();
+    schedule_history_rebuild(&app, &db, &recalc, vec![job]);
     Ok(())
 }

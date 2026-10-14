@@ -116,12 +116,15 @@
     "endDate": "Sluttdato",
     "balance": {
       "title": "Restgjeld",
-      "help": "Moony reduserer saldoen med hver månedlige termin. Hvis du kjenner den faktiske saldoen, for eksempel fra en kontoutskrift, legger du den inn med dato, og beregningen fortsetter derfra.",
+      "help": "Moony estimerer saldoen ut fra terminene. Når du legger inn den faktiske saldoen per en dato, gjelder den nøyaktig til du endrer den — ingenting estimeres ut fra den.",
       "setManual": "Sett saldoen per en dato",
       "amount": "Restgjeld",
       "date": "Per dato",
       "estimate": "Estimert saldo i dag: {{amount}}",
-      "noPayment": "Uten en månedlig termin reduseres ikke saldoen."
+      "manualToday": "Saldo i dag: {{amount}} (saldoen du la inn gjelder)",
+      "noPayment": "Uten en månedlig termin reduseres ikke saldoen.",
+      "deleteWarning_one": "Sletter {{count}} manuell saldo, lånet estimeres på nytt.",
+      "deleteWarning_other": "Sletter {{count}} manuelle saldoer, lånet estimeres på nytt."
     }
   },
   "actions": {
@@ -129,7 +132,7 @@
     "delete": "Slett lån",
     "open": "Åpne",
     "extraPayment": "Ekstra avdrag",
-    "balanceCheck": "Bekreft saldo fra kontoutskrift",
+    "balanceCheck": "Legg inn saldo per en dato",
     "rateChange": "Registrer en renteendring"
   },
   "confirmDelete": {
@@ -153,7 +156,7 @@
   },
   "valuation": {
     "automatic": "Nedbetalt fra {{date}} ({{amount}}) med {{rate}} rente og {{payment}} per måned.",
-    "manual": "Fra saldoen din på {{amount}} den {{date}}, nedbetalt med {{rate}} rente og {{payment}} per måned.",
+    "manual": "Manuelt lagt inn saldo {{amount}} per {{date}} — den gjelder til du endrer den.",
     "static": "Ingen månedlig termin er satt, så saldoen reduseres ikke: {{amount}} per {{date}}.",
     "belowInterest": "Terminen dekker ikke rentene, så saldoen faller ikke."
   },
@@ -167,7 +170,7 @@
     "withFixation": " bundet til {{month, lower}}",
     "status": {
       "automatic": "Saldo etter plan",
-      "manual": "Saldo etter plan · fra saldoen din per {{date}}",
+      "manual": "Manuell saldo per {{date}} · gjelder til du endrer den",
       "static": "Ingen månedlig termin · saldoen faller ikke"
     },
     "hero": {
@@ -206,7 +209,7 @@
         "extraPayment": "Ekstra avdrag {{amount}}",
         "rateChange": "Renten endret til {{rate}}",
         "newPayment": "termin {{amount}}",
-        "balanceCheck": "Saldo bekreftet fra kontoutskrift",
+        "balanceCheck": "Manuell saldo {{amount}}",
         "fixationEnd": "Bindingstiden utløper",
         "half": "Halvparten av hovedstolen nedbetalt",
         "payoff": "Lånet er nedbetalt",
@@ -280,14 +283,15 @@
       "newPayment": "ny termin {{amount}}",
       "rateChange": "Renten endret til {{rate}}",
       "rateChangeNote": "planen fortsetter fra saldoen denne dagen",
-      "balanceCheck": "Saldo bekreftet fra kontoutskrift",
-      "balanceCheckNote": "planen starter på nytt fra denne datoen",
+      "balanceCheck": "Manuell saldo {{amount}}",
+      "balanceCheckNote": "gjelder til du endrer den",
       "drawdown": "Utbetaling {{amount}}",
       "drawdownNote": "start på lånet",
       "delete": "Fjern hendelse",
       "confirmDelete": {
         "title": "Fjern hendelse",
-        "description": "Oppføringen forsvinner fra diagrammet og listen. Saldoen hendelsen satte, forblir gjeldende."
+        "description": "Oppføringen forsvinner fra diagrammet og listen, og saldoen beregnes på nytt uten den.",
+        "descriptionManual": "Den manuelle saldoen forsvinner fra diagrammet og listen. Den forrige manuelle saldoen gjelder igjen, eller estimatet hvis det ikke finnes noen."
       }
     },
     "warnings": {
@@ -312,6 +316,8 @@
       "alertPayment": "Ny termin {{payment}} i måneden, løpetiden forblir til {{month, lower}}.",
       "alertTooMuch": "Beløpet overstiger saldoen på {{amount}}.",
       "alertEmpty": "Skriv inn et beløp for å se effekten.",
+      "alertManual": "Den manuelle saldoen synker til {{amount}}",
+      "alertManualNote": "Planen fortsetter fra denne saldoen.",
       "submit": "Registrer innbetaling"
     },
     "rateChange": {
@@ -324,15 +330,17 @@
       "alertTitle": "Månedlige renter {{from}} → {{to}}",
       "alertNote": "Med en termin på {{payment}} er lånet nedbetalt {{month, lower}}.",
       "alertNoPayoff": "En termin på {{payment}} dekker ikke rentene; saldoen ville ikke falt.",
+      "manualNote": "Den manuelle saldoen står; bare planen fremover endres.",
       "submit": "Registrer endring"
     },
     "balanceCheck": {
-      "title": "Bekreft saldo fra kontoutskrift",
-      "description": "Skriv inn saldoen fra kontoutskriften din; planen starter på nytt fra den dagen.",
-      "amount": "Saldo ifølge kontoutskrift",
+      "title": "Legg inn saldo per en dato",
+      "description": "Legg inn en saldo du kjenner, for eksempel fra en kontoutskrift. Den gjelder nøyaktig til du endrer den.",
+      "amount": "Saldo",
       "date": "Per",
-      "alertTitle": "Planen forutsatte {{amount}}",
-      "alertNote": "Differanse {{delta}} · fra {{date}} bruker planen saldoen din.",
+      "alertTitle": "Estimatet forutsatte {{amount}}",
+      "alertTitleManual": "Forrige manuelle saldo {{amount}}",
+      "alertNote": "Differanse {{delta}} · fra {{date}} gjelder saldoen din til du endrer den.",
       "submit": "Lagre saldo"
     }
   }

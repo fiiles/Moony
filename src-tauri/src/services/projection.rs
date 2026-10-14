@@ -394,15 +394,15 @@ fn current_values(
 
     // Loans: the amortized balance as of today, the payments and the weighted rate
     let today = crate::services::loan_amortization::today_utc_day();
-    let loans_data: Vec<(f64, f64, f64)> = crate::services::loans::loan_terms_with_currency(conn)?
+    let loans_data: Vec<(f64, f64, f64)> = crate::services::loans::load_ledgers(conn)?
         .iter()
-        .filter_map(|(loan_currency, terms)| {
+        .filter_map(|entry| {
             let outstanding = convert(
-                crate::services::loan_amortization::outstanding_balance_at(terms, today),
-                loan_currency,
+                crate::services::loan_amortization::loan_balance_at(&entry.ledger, today).balance,
+                &entry.currency,
             )?;
-            let payment = convert(terms.monthly_payment, loan_currency)?;
-            Some((outstanding, terms.annual_rate_pct, payment))
+            let payment = convert(entry.ledger.terms.monthly_payment, &entry.currency)?;
+            Some((outstanding, entry.ledger.terms.annual_rate_pct, payment))
         })
         .collect();
     let total_liabilities = classes.loans.unwrap_or(0.0);
@@ -1507,9 +1507,10 @@ mod tests {
         conn.execute_batch(
             "CREATE TABLE bank_accounts (balance TEXT, currency TEXT, interest_rate TEXT, exclude_from_balance INTEGER);
              CREATE TABLE bonds (coupon_value TEXT, quantity TEXT, currency TEXT, interest_rate TEXT);
-             CREATE TABLE loans (currency TEXT, principal TEXT, interest_rate TEXT, monthly_payment TEXT,
+             CREATE TABLE loans (id TEXT, currency TEXT, principal TEXT, interest_rate TEXT, monthly_payment TEXT,
                                  start_date INTEGER, end_date INTEGER,
                                  balance_anchor_amount TEXT, balance_anchor_date INTEGER);
+             CREATE TABLE loan_events(id TEXT PRIMARY KEY,loan_id TEXT,kind TEXT,event_day INTEGER,amount TEXT,rate TEXT,monthly_payment TEXT,previous_rate TEXT,previous_monthly_payment TEXT,note TEXT,created_at INTEGER);
              CREATE TABLE real_estate (type TEXT, market_price TEXT, market_price_currency TEXT);
              CREATE TABLE other_assets (quantity TEXT, market_price TEXT, currency TEXT);
              CREATE TABLE stock_investments (id TEXT, ticker TEXT, quantity TEXT, currency TEXT);

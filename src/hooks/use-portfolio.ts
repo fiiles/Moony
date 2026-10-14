@@ -1,4 +1,6 @@
-import { useQuery } from '@tanstack/react-query';
+import { useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { listen } from '@tauri-apps/api/event';
 import type { PortfolioHistoryResponse, PortfolioMetrics } from '@shared/schema';
 import { portfolioApi } from '@/lib/tauri-api';
 import { useAuth } from '@/hooks/use-auth';
@@ -24,10 +26,23 @@ export function usePortfolioMetrics() {
 /**
  * Recorded portfolio days from `start` (unix seconds, open for everything) until now, in the
  * profile currency, every day at its own rates. Keep `start` a whole UTC day so the key holds
- * still; mutations invalidate the `['portfolio-history']` prefix.
+ * still; mutations invalidate the `['portfolio-history']` prefix. The backend re-derives the
+ * days in the background after a write (a balance record, a valuation, a transaction, …) and
+ * fires `recalculation-complete` when a batch is done, so the history refetches then.
  */
 export function usePortfolioHistory(start: number | undefined) {
   const { currencyCode, fxRevision } = useCurrency();
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    const unlisten = listen('recalculation-complete', () => {
+      queryClient.invalidateQueries({ queryKey: ['portfolio-history'] });
+    });
+    return () => {
+      unlisten.then((f) => f());
+    };
+  }, [queryClient]);
+
   return useQuery<PortfolioHistoryResponse>({
     queryKey: ['portfolio-history', currencyCode, fxRevision, start ?? 'all'],
     queryFn: () => portfolioApi.getHistory(currencyCode, start, Math.floor(Date.now() / 1000)),

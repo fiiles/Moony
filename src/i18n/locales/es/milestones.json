@@ -64,7 +64,7 @@
     "watch_target_below": "El precio {{price}} ha bajado hasta el objetivo {{target}}",
     "watch_target_above": "El precio {{price}} ha alcanzado el objetivo {{target}}",
     "loan_fixation_expired": "El tipo fijo terminó el {{date}} · introduce el tipo nuevo",
-    "loan_balance_check": "Saldo sin revisar desde el {{date}} · compáralo con un extracto",
+    "loan_balance_check": "Sin saldo introducido desde el {{date}} · introduce el saldo actual",
     "valuation_stale": "Sin tasación nueva desde el {{date}} · vuelve a valorarlo",
     "backup_stale": "Última copia de seguridad el {{date}}",
     "backup_never": "Aún no hay copia de seguridad",
@@ -78,7 +78,7 @@
     "balances_stale_many": "actualiza {{count}} saldos",
     "balances_stale_other": "actualiza {{count}} saldos",
     "valuation_stale": "vuelve a valorar {{title}}",
-    "loan_balance_check": "revisa el saldo de {{title}}",
+    "loan_balance_check": "introduce el saldo actual de {{title}}",
     "loan_fixation_expired": "introduce el tipo nuevo de {{title}}"
   },
   "groups": {
@@ -128,9 +128,9 @@
       "mute": "No recordarme tasaciones de inmuebles"
     },
     "loanChecks": {
-      "label": "Revisiones de préstamos",
-      "hint": "Una revisión anual del saldo y el tipo nuevo cuando termina un tipo fijo.",
-      "mute": "No recordarme revisiones de préstamos"
+      "label": "Saldo y tipo de los préstamos",
+      "hint": "Introducir el saldo actual una vez al año y el tipo nuevo cuando termina un tipo fijo.",
+      "mute": "No recordarme el saldo y el tipo de los préstamos"
     }
   },
   "settings": {

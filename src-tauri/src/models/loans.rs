@@ -4,6 +4,8 @@ use rmcp::schemars;
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
+use super::loan_events::LoanEvent;
+
 /// Loan
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct Loan {
@@ -21,17 +23,25 @@ pub struct Loan {
     pub start_date: i64,
     #[serde(rename = "endDate")]
     pub end_date: Option<i64>,
-    /// Real outstanding balance entered by the user (e.g. from a statement);
-    /// set together with `balance_anchor_date`, amortization continues from it.
+    /// Read-only mirror of the newest manual balance record (a `balance_check`
+    /// event): its amount, `None` without one. Written only by the manual-record
+    /// service, never by the loan form directly.
     #[serde(rename = "balanceAnchorAmount")]
     pub balance_anchor_amount: Option<String>,
-    /// UTC day the manual balance applies to.
+    /// UTC day of the newest manual balance record (see `balance_anchor_amount`).
     #[serde(rename = "balanceAnchorDate")]
     pub balance_anchor_date: Option<i64>,
-    /// Read-only: amortized balance as of today's UTC day, in the loan's own
-    /// currency with 2 decimals (computed on every read, never stored).
+    /// Read-only: balance as of today's UTC day from the loan ledger, in the
+    /// loan's own currency with 2 decimals (computed on every read, never stored).
     #[serde(rename = "outstandingBalance")]
     pub outstanding_balance: String,
+    /// Read-only: `estimated` (amortized from the payments) or `manual` (a manual
+    /// balance record holds today's balance). Computed with `outstanding_balance`.
+    #[serde(rename = "balanceMode")]
+    pub balance_mode: String,
+    /// Read-only: the loan's events, oldest first (day, then creation time), so
+    /// the client can walk the ledger of every loan on the list page.
+    pub events: Vec<LoanEvent>,
     #[serde(rename = "createdAt")]
     pub created_at: i64,
     #[serde(rename = "updatedAt")]
@@ -111,8 +121,10 @@ pub struct InsertLoan {
     /// Calendar date as Unix seconds, years 0001-9999; stored at UTC midnight.
     #[serde(rename = "endDate")]
     pub end_date: Option<i64>,
-    /// Manual outstanding balance; must come with `balance_anchor_date`.
-    /// Both absent means "amortize from the principal at the start date".
+    /// Manual balance as of `balance_anchor_date`; must come with it. It becomes a
+    /// manual balance record that holds exactly until the user changes it (nothing
+    /// is amortized after it). Both absent: the balance is estimated from the
+    /// payments, and on an update every manual balance record of the loan is deleted.
     #[serde(rename = "balanceAnchorAmount")]
     pub balance_anchor_amount: Option<String>,
     /// Calendar date as Unix seconds, years 0001-9999; stored at UTC midnight.

@@ -67,6 +67,8 @@ function loan(overrides: Partial<Loan>): Loan {
     balanceAnchorAmount: null,
     balanceAnchorDate: null,
     outstandingBalance: '2600000',
+    balanceMode: 'estimated',
+    events: [],
     createdAt: 0,
     updatedAt: 0,
     ...overrides,

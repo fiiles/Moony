@@ -266,20 +266,35 @@ pub fn add_valuation(
     })
 }
 
+/// A valuation that was deleted: its parent and the day it applied to (the first day the
+/// parent's history changes).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RemovedValuation {
+    pub asset_id: String,
+    pub valued_at: i64,
+}
+
 /// Delete a valuation; the parent's price follows the newest remaining row.
-pub fn delete_valuation(conn: &Connection, kind: ValuationKind, id: &str) -> Result<()> {
+pub fn delete_valuation(
+    conn: &Connection,
+    kind: ValuationKind,
+    id: &str,
+) -> Result<RemovedValuation> {
     let sql = format!(
-        "SELECT {fk} FROM {table} WHERE id = ?1",
+        "SELECT {fk}, valued_at FROM {table} WHERE id = ?1",
         fk = kind.fk(),
         table = kind.table()
     );
-    let asset_id: String = conn
-        .query_row(&sql, [id], |row| row.get(0))
+    let (asset_id, valued_at): (String, i64) = conn
+        .query_row(&sql, [id], |row| Ok((row.get(0)?, row.get(1)?)))
         .optional()?
         .ok_or_else(|| AppError::NotFound("Valuation not found".into()))?;
     conn.execute(&format!("DELETE FROM {} WHERE id = ?1", kind.table()), [id])?;
     sync_parent_price(conn, kind, &asset_id)?;
-    Ok(())
+    Ok(RemovedValuation {
+        asset_id,
+        valued_at,
+    })
 }
 
 /// The parent's market price was edited directly: keep the log complete by

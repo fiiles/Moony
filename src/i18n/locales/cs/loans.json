@@ -123,12 +123,16 @@
     "endDate": "Datum ukončení",
     "balance": {
       "title": "Nesplacený zůstatek",
-      "help": "Moony snižuje zůstatek každou měsíční splátkou. Pokud znáte skutečný zůstatek, například z výpisu z banky, zadejte ho i s datem a výpočet bude pokračovat od něj.",
+      "help": "Moony odhaduje zůstatek podle splátek. Když zadáte skutečný zůstatek k datu, platí přesně, dokud ho nezměníte — nic se od něj neodhaduje.",
       "setManual": "Zadat zůstatek k datu",
       "amount": "Nesplacená částka",
       "date": "K datu",
       "estimate": "Odhadovaný zůstatek dnes: {{amount}}",
-      "noPayment": "Bez měsíční splátky se zůstatek nesnižuje."
+      "manualToday": "Zůstatek dnes: {{amount}} (platí váš zůstatek)",
+      "noPayment": "Bez měsíční splátky se zůstatek nesnižuje.",
+      "deleteWarning_one": "Smaže {{count}} ruční zůstatek, úvěr se bude znovu odhadovat.",
+      "deleteWarning_few": "Smaže {{count}} ruční zůstatky, úvěr se bude znovu odhadovat.",
+      "deleteWarning_other": "Smaže {{count}} ručních zůstatků, úvěr se bude znovu odhadovat."
     }
   },
   "actions": {
@@ -136,7 +140,7 @@
     "delete": "Smazat úvěr",
     "open": "Otevřít",
     "extraPayment": "Mimořádná splátka",
-    "balanceCheck": "Ověřit zůstatek výpisem",
+    "balanceCheck": "Zadat zůstatek k datu",
     "rateChange": "Zapsat změnu sazby"
   },
   "confirmDelete": {
@@ -160,7 +164,7 @@
   },
   "valuation": {
     "automatic": "Umořováno od {{date}} ({{amount}}) při úroku {{rate}} a splátce {{payment}} měsíčně.",
-    "manual": "Vychází ze zadaného zůstatku {{amount}} k {{date}}, umořováno při úroku {{rate}} a splátce {{payment}} měsíčně.",
+    "manual": "Ručně zadaný zůstatek {{amount}} k {{date}} — platí, dokud ho nezměníte.",
     "static": "Není zadaná měsíční splátka, zůstatek se proto nesnižuje: {{amount}} k {{date}}.",
     "belowInterest": "Splátka nepokrývá úrok, zůstatek proto neklesá."
   },
@@ -174,7 +178,7 @@
     "withFixation": " s fixací do {{month}}",
     "status": {
       "automatic": "Zůstatek podle kalendáře",
-      "manual": "Zůstatek podle kalendáře · od {{date}} z vašeho zůstatku",
+      "manual": "Ruční zůstatek k {{date}} · platí, dokud ho nezměníte",
       "static": "Bez měsíční splátky · zůstatek se nesnižuje"
     },
     "hero": {
@@ -213,7 +217,7 @@
         "extraPayment": "Mimořádná splátka {{amount}}",
         "rateChange": "Změna sazby na {{rate}}",
         "newPayment": "splátka {{amount}}",
-        "balanceCheck": "Zůstatek ověřen výpisem",
+        "balanceCheck": "Ruční zůstatek {{amount}}",
         "fixationEnd": "Konec fixace",
         "half": "Polovina jistiny splacena",
         "payoff": "Úvěr splacen",
@@ -288,14 +292,15 @@
       "newPayment": "nová splátka {{amount}}",
       "rateChange": "Změna sazby na {{rate}}",
       "rateChangeNote": "kalendář pokračuje ze zůstatku k tomuto dni",
-      "balanceCheck": "Zůstatek ověřen výpisem",
-      "balanceCheckNote": "kalendář se od tohoto data počítá znovu",
+      "balanceCheck": "Ruční zůstatek {{amount}}",
+      "balanceCheckNote": "platí, dokud ho nezměníte",
       "drawdown": "Čerpání {{amount}}",
       "drawdownNote": "začátek úvěru",
       "delete": "Odstranit událost",
       "confirmDelete": {
         "title": "Odstranit událost",
-        "description": "Záznam zmizí z grafu i ze seznamu. Zůstatek, který událost nastavila, zůstane v platnosti."
+        "description": "Záznam zmizí z grafu i ze seznamu a zůstatek se spočítá znovu bez něj.",
+        "descriptionManual": "Ruční zůstatek zmizí z grafu i ze seznamu. Znovu platí předchozí ruční zůstatek, případně odhad, pokud žádný není."
       }
     },
     "warnings": {
@@ -320,6 +325,8 @@
       "alertPayment": "Nová splátka {{payment}} měsíčně, doba zůstane do {{month}}.",
       "alertTooMuch": "Částka je vyšší než zůstatek {{amount}}.",
       "alertEmpty": "Zadejte částku a uvidíte dopad.",
+      "alertManual": "Ruční zůstatek klesne na {{amount}}",
+      "alertManualNote": "Kalendář pokračuje z tohoto zůstatku.",
       "submit": "Zapsat splátku"
     },
     "rateChange": {
@@ -332,15 +339,17 @@
       "alertTitle": "Měsíční úrok {{from}} → {{to}}",
       "alertNote": "Při splátce {{payment}} bude úvěr splacen {{month}}.",
       "alertNoPayoff": "Splátka {{payment}} nepokryje úrok, zůstatek by neklesal.",
+      "manualNote": "Ruční zůstatek zůstává, mění se jen kalendář do budoucna.",
       "submit": "Zapsat změnu"
     },
     "balanceCheck": {
-      "title": "Ověřit zůstatek výpisem",
-      "description": "Zadejte zůstatek z výpisu; kalendář se od toho dne počítá znovu.",
-      "amount": "Zůstatek podle výpisu",
+      "title": "Zadat zůstatek k datu",
+      "description": "Zadejte zůstatek, který znáte, například z výpisu. Platí přesně, dokud ho nezměníte.",
+      "amount": "Zůstatek",
       "date": "K datu",
-      "alertTitle": "Kalendář počítal s {{amount}}",
-      "alertNote": "Rozdíl {{delta}} · od {{date}} se kalendář počítá z vašeho zůstatku.",
+      "alertTitle": "Odhad počítal s {{amount}}",
+      "alertTitleManual": "Předchozí ruční zůstatek {{amount}}",
+      "alertNote": "Rozdíl {{delta}} · od {{date}} platí váš zůstatek, dokud ho nezměníte.",
       "submit": "Uložit zůstatek"
     }
   }

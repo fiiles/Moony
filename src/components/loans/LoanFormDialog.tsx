@@ -3,12 +3,14 @@ import { useForm, useWatch, type DefaultValues } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useTranslation } from 'react-i18next';
+import { TriangleAlert } from 'lucide-react';
 import { insertLoanSchema, type InsertLoan, type Loan } from '@shared/schema';
 import {
   dayFloor,
-  loanValuationMode,
-  outstandingBalanceAt,
+  ledgerEventFromWire,
+  loanBalanceAt,
   todayUtcDay,
+  type LedgerEvent,
   type LoanTerms,
 } from '@shared/calculations/loan-amortization';
 import { recordCurrency } from '@shared/currencies';
@@ -33,6 +35,7 @@ import { Input, InputWrap } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { FormSection } from '@/components/ui/form-section';
 import { useCurrency } from '@/lib/currency';
 import { useFormat } from '@/lib/use-format';
@@ -97,7 +100,9 @@ function emptyDefaults(currency: string): DefaultValues<LoanFormValues> {
 /**
  * Loan form (design system §6 Modal): principal and currency, rate with its
  * fixation end, payment, start and end, and the balance section with the live
- * estimate and the "balance as of a date" switch.
+ * balance and the "balance as of a date" switch. A balance entered here is a manual
+ * record of the loan: it holds until the user changes it, and switching it off deletes
+ * every manual record of the loan, so the loan is estimated again.
  */
 export function LoanFormDialog({
   open,
@@ -147,25 +152,48 @@ export function LoanFormDialog({
     }
   }, [loan, form, open, userCurrency]);
 
-  // Live estimate of today's balance from what is typed (same maths as the backend)
+  // The loan's manual balance records as stored (the form can replace or delete them)
+  const storedManualCount = loan?.events.filter((e) => e.kind === 'balance_check').length ?? 0;
+
+  // Today's balance from what is typed: the ledger walk over the loan's events as they will be
+  // once saved (same maths as the backend)
   const estimate = (() => {
     const principal = Number(watched.principal);
     const startSeconds = toSeconds(watched.startDate);
     if (!(principal > 0) || startSeconds === undefined) return null;
     const anchorAmount = (watched.balanceAnchorAmount ?? '').trim();
     const anchorSeconds = toSeconds(watched.balanceAnchorDate);
-    const useAnchor = manualBalance && anchorAmount !== '' && anchorSeconds !== undefined;
+    const typed =
+      manualBalance && anchorAmount !== '' && anchorSeconds !== undefined
+        ? { day: dayFloor(anchorSeconds), amount: Number(anchorAmount) || 0 }
+        : null;
     const terms: LoanTerms = {
       principal,
       annualRatePct: Number(watched.interestRate) || 0,
       monthlyPayment: Number(watched.monthlyPayment) || 0,
       startDay: dayFloor(startSeconds),
-      anchorAmount: useAnchor ? Number(anchorAmount) || 0 : null,
-      anchorDay: useAnchor ? dayFloor(anchorSeconds) : null,
     };
+    const stored = (loan?.events ?? []).map(ledgerEventFromWire);
+    // Switch off: every manual record goes. Switch on: the record of the typed day is replaced.
+    const kept = stored.filter(
+      (e) => e.kind !== 'balance_check' || (manualBalance && e.day !== typed?.day)
+    );
+    const events: LedgerEvent[] = typed
+      ? [
+          ...kept,
+          {
+            day: typed.day,
+            createdAt: Number.MAX_SAFE_INTEGER,
+            kind: 'balance_check',
+            amount: typed.amount,
+          },
+        ]
+      : kept;
+    const state = loanBalanceAt({ terms, events }, todayUtcDay());
     return {
-      value: outstandingBalanceAt(terms, todayUtcDay()),
-      withoutPayment: loanValuationMode(terms) === 'static',
+      value: state.balance,
+      manual: state.mode === 'manual',
+      withoutPayment: state.mode === 'estimated' && terms.monthlyPayment <= 0,
     };
   })();
 
@@ -362,7 +390,7 @@ export function LoanFormDialog({
               {estimate && (
                 <div className="rounded-r3 bg-well px-4 py-3 text-table">
                   <p className="font-600 text-ink num" data-testid="loan-balance-estimate">
-                    {t('form.balance.estimate', {
+                    {t(estimate.manual ? 'form.balance.manualToday' : 'form.balance.estimate', {
                       amount: fmt.money(estimate.value, currency),
                     })}
                   </p>
@@ -379,6 +407,14 @@ export function LoanFormDialog({
                   onCheckedChange={handleManualBalanceChange}
                 />
               </div>
+              {!manualBalance && storedManualCount > 0 && (
+                <Alert>
+                  <TriangleAlert aria-hidden />
+                  <AlertDescription>
+                    {t('form.balance.deleteWarning', { count: storedManualCount })}
+                  </AlertDescription>
+                </Alert>
+              )}
               {manualBalance && (
                 <div className="grid grid-cols-2 gap-3">
                   <FormField

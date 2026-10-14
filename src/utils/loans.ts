@@ -3,9 +3,12 @@ import { MissingTracker, type ConvertFn } from '@shared/fx';
 import {
   dayFloor,
   dueDay,
-  loanTermsFromWire,
-  loanValuationMode,
+  ledgerValuationMode,
+  loanBalanceAt,
+  loanLedgerFromWire,
   paymentBelowInterest,
+  planFrom,
+  type LoanLedger,
   type LoanTerms,
   type LoanValuationMode,
 } from '@shared/calculations/loan-amortization';
@@ -26,8 +29,14 @@ export interface LoanConverted {
 /** Derived numbers of one loan for the list page (native figures, main-currency totals). */
 export interface LoanRow {
   loan: Loan;
+  /** The loan's current terms: principal, rate, payment, start and end day. */
   terms: LoanTerms;
+  /** The terms and the events: the ledger every balance of the loan is walked from. */
+  ledger: LoanLedger;
+  /** The plan ahead of today (the terms whose schedule continues the balance). */
+  plan: LoanTerms;
   trajectory: LoanTrajectory;
+  /** How today's balance came about: a held manual balance, a missing payment, or amortized. */
   mode: LoanValuationMode;
   /** The payment does not cover the interest: the balance does not fall. */
   belowInterest: boolean;
@@ -52,8 +61,10 @@ export interface LoanRow {
 
 export function loanRow(loan: Loan, today: number, convert: ConvertFn): LoanRow {
   const day = dayFloor(today);
-  const terms = loanTermsFromWire(loan);
-  const trajectory = loanTrajectory(terms, day);
+  const ledger = loanLedgerFromWire(loan);
+  const plan = planFrom(ledger, day);
+  const trajectory = loanTrajectory(ledger, day);
+  const started = ledger.terms.startDay <= day;
   const currency = recordCurrency(loan.currency);
   // One factor per loan: every amount of the row converts at the same current quote
   const rate = convert(1, currency);
@@ -64,13 +75,17 @@ export function loanRow(loan: Loan, today: number, convert: ConvertFn): LoanRow 
   const interestNext12 = trajectory.upcoming
     .filter((r) => r.dueDay <= horizon)
     .reduce((s, r) => s + r.interest, 0);
-  const matured = outstanding <= 0 || (loan.endDate !== null && dayFloor(loan.endDate) < day);
+  // A loan that has not started owes nothing yet, but it is not paid off
+  const matured =
+    (started && outstanding <= 0) || (loan.endDate !== null && dayFloor(loan.endDate) < day);
   return {
     loan,
-    terms,
+    terms: ledger.terms,
+    ledger,
+    plan,
     trajectory,
-    mode: loanValuationMode(terms),
-    belowInterest: paymentBelowInterest(terms),
+    mode: ledgerValuationMode(loanBalanceAt(ledger, day)),
+    belowInterest: paymentBelowInterest(plan),
     currency,
     outstanding,
     principal,
@@ -85,7 +100,8 @@ export function loanRow(loan: Loan, today: number, convert: ConvertFn): LoanRow 
             payment: payment * rate,
             interestNext12: interestNext12 * rate,
           },
-    repaidShare: principal > 0 ? Math.min(1, Math.max(0, 1 - outstanding / principal)) : 0,
+    repaidShare:
+      started && principal > 0 ? Math.min(1, Math.max(0, 1 - outstanding / principal)) : 0,
     matured,
     payoffDay: trajectory.payoffDay,
     fixationEnd:

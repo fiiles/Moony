@@ -1,11 +1,8 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useMemo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { listen } from '@tauri-apps/api/event';
 import type { PortfolioHistoryPoint } from '@shared/schema';
 import { useCurrency } from '@/lib/currency';
 import { useFormat } from '@/lib/use-format';
-import { useSyncStatus } from '@/hooks/sync-context';
 import { usePortfolioHistory } from '@/hooks/use-portfolio';
 import { utcDayFloor } from '@/utils/chart-axis';
 import { amountOf } from '@/utils/positions';
@@ -95,26 +92,9 @@ export default function PortfolioTrendCard<E extends ChartEvent = ChartEvent>({
   const { namespace, group } = TEXTS[type];
   const { t } = useTranslation(namespace);
   const fmt = useFormat();
-  const queryClient = useQueryClient();
-  const { lastResult } = useSyncStatus();
   const [period, setPeriod] = useState<ChartPeriod>('1Y');
 
-  // Backfill or recalculation finished: the history changed under us
-  useEffect(() => {
-    if (lastResult && lastResult.days_processed > 0) {
-      queryClient.invalidateQueries({ queryKey: ['portfolio-history'] });
-    }
-  }, [lastResult, queryClient]);
-
-  useEffect(() => {
-    const unlisten = listen('recalculation-complete', () => {
-      queryClient.invalidateQueries({ queryKey: ['portfolio-history'] });
-    });
-    return () => {
-      unlisten.then((f) => f());
-    };
-  }, [queryClient]);
-
+  // The history refetches when a backend rebuild finishes: `usePortfolioHistory` listens.
   // A whole UTC day, so the query key holds still for the day however often
   // this renders (a start rebuilt from `new Date()` per render never settled)
   const start = chartPeriodStart(period, Date.now() / 1000, earliest);

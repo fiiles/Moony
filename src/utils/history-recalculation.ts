@@ -1,6 +1,6 @@
 import type { HistoryRecalculationEvent } from '@shared/schema';
 
-/** Name of the Tauri event the backend emits while it rebuilds a stock ticker's history. */
+/** Name of the Tauri event the backend emits while it rebuilds a stock or crypto ticker's history. */
 export const HISTORY_RECALCULATION_EVENT = 'history-recalculation';
 
 /**

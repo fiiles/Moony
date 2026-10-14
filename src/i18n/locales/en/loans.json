@@ -116,12 +116,15 @@
     "endDate": "End date",
     "balance": {
       "title": "Outstanding balance",
-      "help": "Moony reduces the balance with every monthly payment. If you know the real balance, for example from a bank statement, enter it with its date and the calculation continues from there.",
+      "help": "Moony estimates the balance from the payments. When you enter the real balance as of a date, it holds exactly until you change it — nothing is estimated from it.",
       "setManual": "Set the balance as of a date",
       "amount": "Outstanding amount",
       "date": "As of date",
       "estimate": "Estimated balance today: {{amount}}",
-      "noPayment": "Without a monthly payment the balance is not reduced."
+      "manualToday": "Balance today: {{amount}} (your balance holds)",
+      "noPayment": "Without a monthly payment the balance is not reduced.",
+      "deleteWarning_one": "Deletes {{count}} manual balance, the loan will be estimated again.",
+      "deleteWarning_other": "Deletes {{count}} manual balances, the loan will be estimated again."
     }
   },
   "actions": {
@@ -129,7 +132,7 @@
     "delete": "Delete loan",
     "open": "Open",
     "extraPayment": "Extra payment",
-    "balanceCheck": "Verify balance by statement",
+    "balanceCheck": "Enter balance as of a date",
     "rateChange": "Record a rate change"
   },
   "confirmDelete": {
@@ -153,7 +156,7 @@
   },
   "valuation": {
     "automatic": "Amortized from {{date}} ({{amount}}) at {{rate}} with {{payment}} per month.",
-    "manual": "From your balance of {{amount}} on {{date}}, amortized at {{rate}} with {{payment}} per month.",
+    "manual": "Manually entered balance {{amount}} as of {{date}} — it holds until you change it.",
     "static": "No monthly payment is set, so the balance is not reduced: {{amount}} as of {{date}}.",
     "belowInterest": "The payment does not cover the interest, so the balance does not fall."
   },
@@ -167,7 +170,7 @@
     "withFixation": " fixed until {{month}}",
     "status": {
       "automatic": "Balance by schedule",
-      "manual": "Balance by schedule · from your balance as of {{date}}",
+      "manual": "Manual balance as of {{date}} · holds until you change it",
       "static": "No monthly payment · the balance does not fall"
     },
     "hero": {
@@ -206,7 +209,7 @@
         "extraPayment": "Extra payment {{amount}}",
         "rateChange": "Rate changed to {{rate}}",
         "newPayment": "payment {{amount}}",
-        "balanceCheck": "Balance verified by statement",
+        "balanceCheck": "Manual balance {{amount}}",
         "fixationEnd": "Fixed rate ends",
         "half": "Half of the principal repaid",
         "payoff": "Loan paid off",
@@ -280,14 +283,15 @@
       "newPayment": "new payment {{amount}}",
       "rateChange": "Rate changed to {{rate}}",
       "rateChangeNote": "the schedule continues from the balance on this day",
-      "balanceCheck": "Balance verified by statement",
-      "balanceCheckNote": "the schedule restarts from this date",
+      "balanceCheck": "Manual balance {{amount}}",
+      "balanceCheckNote": "holds until you change it",
       "drawdown": "Drawdown {{amount}}",
       "drawdownNote": "start of the loan",
       "delete": "Remove event",
       "confirmDelete": {
         "title": "Remove event",
-        "description": "The entry disappears from the chart and the list. The balance the event set stays in effect."
+        "description": "The entry disappears from the chart and the list, and the balance is worked out again without it.",
+        "descriptionManual": "The manual balance disappears from the chart and the list. The previous manual balance applies again, or the estimate when there is none."
       }
     },
     "warnings": {
@@ -312,6 +316,8 @@
       "alertPayment": "New payment {{payment}} a month, the term stays until {{month}}.",
       "alertTooMuch": "The amount exceeds the balance of {{amount}}.",
       "alertEmpty": "Enter an amount to see the effect.",
+      "alertManual": "The manual balance drops to {{amount}}",
+      "alertManualNote": "The schedule continues from this balance.",
       "submit": "Record payment"
     },
     "rateChange": {
@@ -324,15 +330,17 @@
       "alertTitle": "Monthly interest {{from}} → {{to}}",
       "alertNote": "At a payment of {{payment}} the loan is paid off {{month}}.",
       "alertNoPayoff": "A payment of {{payment}} does not cover the interest; the balance would not fall.",
+      "manualNote": "The manual balance stays; only the schedule ahead changes.",
       "submit": "Record change"
     },
     "balanceCheck": {
-      "title": "Verify balance by statement",
-      "description": "Enter the balance from your statement; the schedule restarts from that day.",
-      "amount": "Balance per statement",
+      "title": "Enter balance as of a date",
+      "description": "Enter a balance you know, for example from a statement. It holds exactly until you change it.",
+      "amount": "Balance",
       "date": "As of",
-      "alertTitle": "The schedule assumed {{amount}}",
-      "alertNote": "Difference {{delta}} · from {{date}} the schedule uses your balance.",
+      "alertTitle": "The estimate assumed {{amount}}",
+      "alertTitleManual": "Previous manual balance {{amount}}",
+      "alertNote": "Difference {{delta}} · from {{date}} your balance holds until you change it.",
       "submit": "Save balance"
     }
   }

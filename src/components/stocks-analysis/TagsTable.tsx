@@ -179,7 +179,22 @@ export function TagsTable({
                       : dash}
                   </TableCell>
                   <TableCell className="text-right num">
-                    {has ? <ChangeBadge ratio={row.gainPercent / 100} /> : '—'}
+                    {has ? (
+                      <span className="inline-flex items-center justify-end gap-2 whitespace-nowrap">
+                        <span
+                          className={cn(
+                            'font-650',
+                            toneOf(row.gain) === 'gain' && 'text-gain',
+                            toneOf(row.gain) === 'loss' && 'text-loss'
+                          )}
+                        >
+                          {fmt.money(row.gain, currency, { decimals: 0, signed: true })}
+                        </span>
+                        <ChangeBadge ratio={row.gainPercent / 100} />
+                      </span>
+                    ) : (
+                      '—'
+                    )}
                   </TableCell>
                   <TableCell className="text-right num">
                     {row.dividend > 0 ? money(row.dividend) : dash}

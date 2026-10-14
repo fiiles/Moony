@@ -6,7 +6,7 @@ import { loansApi } from '@/lib/tauri-api';
 import { translateApiError } from '@/lib/translate-api-error';
 import { useLoanRefresh } from '@/hooks/use-loan-mutations';
 
-/** Extra payments, rate changes and balance checks of one loan, oldest first (migration 014). */
+/** Extra payments, rate changes and manual balances of one loan, oldest first (migrations 014, 019). */
 export function useLoanEvents(loanId: string | undefined) {
   return useQuery<LoanEvent[]>({
     queryKey: ['loan-events', loanId],
@@ -16,8 +16,9 @@ export function useLoanEvents(loanId: string | undefined) {
 }
 
 /**
- * Record or remove a loan event. Adding one re-anchors the amortization on its
- * day (the backend applies the side effect), so the whole loan refresh runs.
+ * Record or remove a loan event (a manual balance is the `balance_check` kind; the same day
+ * replaces it). The backend walks the balance again, so the whole loan refresh runs: loan keys,
+ * `["portfolio-metrics"]`, `["cashflow-report"]`, then a snapshot and `["portfolio-history"]`.
  */
 export function useLoanEventMutations(loanId: string | undefined) {
   const refresh = useLoanRefresh();

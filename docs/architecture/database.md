@@ -43,6 +43,20 @@ grouping below follows the domain map in `docs/architecture/overview.md`.
 - `018_insurance_notice_days` adds `user_profile.insurance_notice_days`, the notice the insurance
   anniversary milestone counts back from. NULL follows the profile country (43 days for CZ and SK,
   no reminder elsewhere), 0 switches the reminder off.
+- `019_loan_manual_records` makes manual loan balances records that hold. It adds
+  `loan_events.previous_rate` / `previous_monthly_payment` (the terms in force before an event that
+  changes them; legacy rows keep NULL). A form-entered anchor with no event on its day becomes a
+  `balance_check` record (the manual balance record); an anchor that an extra payment or a rate
+  change re-anchored does not become one directly (the ledger replays those events), but it may
+  hide a balance the user had entered by hand before the event overwrote it, so it is copied to
+  `loan_legacy_anchors` first. `loans.balance_anchor_*` then mirror the newest record, NULL without
+  one. At every database open `services::loan_events::reconcile_legacy_anchors` compares each
+  copied anchor with the ledger's estimate at its day: when they differ by more than one currency
+  unit the user had overridden the estimate and a manual record of the legacy amount is added (a
+  manual value holds); when they agree nothing is added. The processed row is deleted, so the
+  reconciliation runs once per row and is idempotent; a failure is logged and never blocks unlock.
+  A loan with a manual balance stops amortizing after it, so its outstanding balance, today's
+  included, can be higher than before (ADR 0016).
 - To add one: define `const MIGRATION_0NN: &str = r#"..."#;` (next free
   number) and append a `("0NN_short_name", MIGRATION_0NN)` entry to the `Vec`
   returned by `all_migrations()`. Numbers are zero-padded, sequential, never
@@ -133,7 +147,7 @@ Grouped by owning domain (see the domain map in `overview.md`).
 
 | Table | Purpose | Notable columns / constraints |
 |---|---|---|
-| `app_config` | Key-value app settings incl. recovery-key hash | `key TEXT PRIMARY KEY`, `value TEXT`; the CoinGecko API key (`api_key_coingecko`) is the only API key still read; `stock_import_formats` holds the custom stock CSV mappings (JSON array, newest first, at most 20; `services/stock_import/formats.rs`); `milestones.mutedKinds` holds the milestone kinds the user turned off (JSON array of kind names; `services/milestones/`); `fx_reference` records the currency stored rates are quoted against (`EUR` since migration 011) |
+| `app_config` | Key-value app settings incl. recovery-key hash | `key TEXT PRIMARY KEY`, `value TEXT`; the CoinGecko API key (`api_key_coingecko`) is the only API key still read; `stock_import_formats` holds the custom stock CSV mappings (JSON array, newest first, at most 20; `services/stock_import/formats.rs`); `milestones.mutedKinds` holds the milestone kinds the user turned off (JSON array of kind names; `services/milestones/`); `fx_reference` records the currency stored rates are quoted against (`EUR` since migration 011); `history_rebuild_version` is the version of the one-time history rebuild the profile has completed (absent means never): the first start of a version rebuilds every history day from dated facts and stores it once the days rebuild succeeded (`services/history_plan.rs`, ADR 0016) |
 | `user_profile` | Single-row user profile and preferences | `INTEGER AUTOINCREMENT` PK (convention exception); `currency DEFAULT 'CZK'` (the main currency; creation and update accept only the 36 codes with an exchange-rate source, `validation.currencyUnsupported`; an older unsupported value is kept as is), `language`, `menu_preferences` JSON, `coingecko_modal_dismissed`, `mcp_server_enabled` gates the local API server, `mcp_server_token` TEXT (NULL until the server is first enabled), `mcp_server_port` INTEGER (NULL = default 41414), `country` TEXT (ISO 3166-1 alpha-2 of the profile, NULL until set in the wizard or Settings; migration 017), `insurance_notice_days` INTEGER (NULL = the 50-day default; 0 = no insurance-anniversary reminder; else days; migration 018) |
 
 ### Bank accounts
@@ -198,8 +212,9 @@ Grouped by owning domain (see the domain map in `overview.md`).
 
 | Table | Purpose | Notable columns / constraints |
 |---|---|---|
-| `loans` | Loans/mortgages | `principal` (the original amount, never reduced), `monthly_payment`, `interest_rate` + `interest_rate_validity_date`, `start_date`/`end_date`; `balance_anchor_amount` TEXT + `balance_anchor_date` INTEGER (UTC day): both NULL = amortize from `principal` at `start_date`, both set = the user's real balance as of that day, amortization continues from it. The outstanding balance is computed on read (`services/loan_amortization.rs`), never stored; `portfolio_metrics_history.total_loans_principal` and `loans_by_currency` hold the outstanding totals |
-| `loan_events` | Extra payments, rate changes and balance checks of a loan | FK `loan_id` ON DELETE CASCADE; `kind` CHECK (`extra_payment`/`rate_change`/`balance_check`), `event_day` INTEGER (UTC day), `amount`/`rate`/`monthly_payment` TEXT; index `(loan_id, event_day)`. Adding an event re-anchors the loan (`services/loan_events.rs`) |
+| `loans` | Loans/mortgages | `principal` (the original amount, never reduced), `monthly_payment`, `interest_rate` + `interest_rate_validity_date`, `start_date`/`end_date`; `balance_anchor_amount` TEXT + `balance_anchor_date` INTEGER (UTC day) are a **mirror of the newest manual balance record** (a `balance_check` row of `loan_events`; both NULL without one), written only by `services/loan_events.rs` (`refresh_anchor_mirror`). The outstanding balance is computed on read from the loan's events (`loan_balance_at` in `services/loan_amortization.rs`), never stored; a loan with a manual balance stops amortizing after it. `portfolio_metrics_history.loans_by_currency` holds the outstanding balances per currency, derived per day from the same ledger |
+| `loan_events` | Extra payments, rate changes and manual balance records of a loan; the facts of the loan ledger | FK `loan_id` ON DELETE CASCADE; `kind` CHECK (`extra_payment`/`rate_change`/`balance_check`; `balance_check` is the manual balance record: it holds exactly from its day, one per day, the same day replaces), `event_day` INTEGER (UTC day), `amount`/`rate`/`monthly_payment` TEXT, `previous_rate`/`previous_monthly_payment` TEXT (terms in force before the event, migration 019; NULL on legacy rows); index `(loan_id, event_day)` |
+| `loan_legacy_anchors` | Pre-019 anchors that sat on an extra-payment or rate-change day, kept for the one-time reconciliation after migration 019 | `loan_id` TEXT PK (no foreign key: a row of a deleted loan is just dropped), `amount` TEXT, `day` INTEGER (UTC day). Written only by migration 019 and emptied by `reconcile_legacy_anchors` at database open; empty on every database after its first open of this version |
 
 ### Real estate
 
@@ -233,7 +248,7 @@ Grouped by owning domain (see the domain map in `overview.md`).
 
 | Table | Purpose | Notable columns / constraints |
 |---|---|---|
-| `portfolio_metrics_history` | Daily net-worth snapshots per asset class | Native breakdowns only: seven `*_by_currency` JSON TEXT `DEFAULT '{}'` (`real_estate_by_currency` holds every property) plus `real_estate_personal_by_currency` (the personal subset; investment real estate is the difference per currency). The CZK `total_*` columns were dropped in migration 012 (legacy rows without breakdowns got `{"CZK": total}` once); readers convert each row at its day (`services/net_worth.rs`). `is_stale`; `source` TEXT `'live'`/`'backfill'` provenance — live rows are authentic records, backfill rows may be rebuilt. Index on `recorded_at`. `get_portfolio_history` returns `source`; the dashboard draws backfilled days dashed because their static classes (accounts, bonds, real estate, loans) are carried from the nearest live row |
+| `portfolio_metrics_history` | Daily net-worth snapshots per asset class | Native breakdowns only: seven `*_by_currency` JSON TEXT `DEFAULT '{}'` (`real_estate_by_currency` holds every property) plus `real_estate_personal_by_currency` (the personal subset; investment real estate is the difference per currency). The CZK `total_*` columns were dropped in migration 012 (legacy rows without breakdowns got `{"CZK": total}` once); readers convert each row at its day (`services/net_worth.rs`). `is_stale`; `source` TEXT `'live'`/`'backfill'` provenance — a live row is a snapshot taken on its day (an authentic record); every other past day is derived from dated facts (`services/history_days.rs`, ADR 0016): savings from the newest balance record, loans from the loan ledger, real estate from the purchase date and valuations, other assets from transactions and valuations, stocks and crypto from the ticker histories; what no fact dates (an account without records, an other asset with a quantity and no transactions, bonds) is the remainder over the facts of the nearest live row that counts the same items, today's value only when none does. One row per day from the earliest dated fact. A rebuild rewrites backfill rows whole and a live row only for the classes the facts cover completely, and deletes backfill rows before the earliest fact (live rows never); today's row belongs to the live snapshot. Index on `recorded_at`. `get_portfolio_history` returns `source`; the charts draw every day alike |
 
 (`stock_value_history` and `crypto_value_history` above also feed this domain's trend charts.)
 

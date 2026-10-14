@@ -840,8 +840,10 @@ startDate: number | null;
  */
 endDate: number | null; 
 /**
- * Manual outstanding balance; must come with `balance_anchor_date`.
- * Both absent means "amortize from the principal at the start date".
+ * Manual balance as of `balance_anchor_date`; must come with it. It becomes a
+ * manual balance record that holds exactly until the user changes it (nothing
+ * is amortized after it). Both absent: the balance is estimated from the
+ * payments, and on an update every manual balance record of the loan is deleted.
  */
 balanceAnchorAmount: string | null; 
 /**
@@ -954,19 +956,30 @@ export type LearnedPayeeEntry = { id: string; ruleType: string; normalizedPayee:
  */
 export type Loan = { id: string; name: string; principal: string; currency: string; interestRate: string; interestRateValidityDate: number | null; monthlyPayment: string; startDate: number; endDate: number | null; 
 /**
- * Real outstanding balance entered by the user (e.g. from a statement);
- * set together with `balance_anchor_date`, amortization continues from it.
+ * Read-only mirror of the newest manual balance record (a `balance_check`
+ * event): its amount, `None` without one. Written only by the manual-record
+ * service, never by the loan form directly.
  */
 balanceAnchorAmount: string | null; 
 /**
- * UTC day the manual balance applies to.
+ * UTC day of the newest manual balance record (see `balance_anchor_amount`).
  */
 balanceAnchorDate: number | null; 
 /**
- * Read-only: amortized balance as of today's UTC day, in the loan's own
- * currency with 2 decimals (computed on every read, never stored).
+ * Read-only: balance as of today's UTC day from the loan ledger, in the
+ * loan's own currency with 2 decimals (computed on every read, never stored).
  */
-outstandingBalance: string; createdAt: number; updatedAt: number }
+outstandingBalance: string; 
+/**
+ * Read-only: `estimated` (amortized from the payments) or `manual` (a manual
+ * balance record holds today's balance). Computed with `outstanding_balance`.
+ */
+balanceMode: string; 
+/**
+ * Read-only: the loan's events, oldest first (day, then creation time), so
+ * the client can walk the ledger of every loan on the list page.
+ */
+events: LoanEvent[]; createdAt: number; updatedAt: number }
 
 /**
  * One event in a loan's life. Money and rates are TEXT like everywhere else.
@@ -981,7 +994,7 @@ kind: string;
  */
 eventDay: number; 
 /**
- * Extra payment amount, or the balance confirmed by a statement.
+ * Extra payment amount, or the manual balance of a `balance_check` record.
  */
 amount: string | null; 
 /**
@@ -991,7 +1004,17 @@ rate: string | null;
 /**
  * New regular payment (`rate_change`, or an `extra_payment` the bank used to lower it).
  */
-monthlyPayment: string | null; note: string | null; createdAt: number }
+monthlyPayment: string | null; 
+/**
+ * Annual rate in force before a `rate_change`; `None` on rows written before
+ * migration 019 and on other kinds.
+ */
+previousRate: string | null; 
+/**
+ * Regular payment in force before an event that sets a new one (`rate_change`,
+ * `extra_payment` with a new payment); `None` on legacy rows and other kinds.
+ */
+previousMonthlyPayment: string | null; note: string | null; createdAt: number }
 
 /**
  * Repayment schedule and totals of one loan as of today (loan detail page).

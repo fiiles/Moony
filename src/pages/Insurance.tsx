@@ -1,19 +1,18 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useLocation } from 'wouter';
 import { Plus, Shield } from 'lucide-react';
 import { exportApi } from '@/lib/tauri-api';
 import { useCurrency } from '@/lib/currency';
 import { useFormat } from '@/lib/use-format';
 import { useInsurance, useInsuranceMutations } from '@/hooks/use-insurance';
 import type { InsuranceRow } from '@/utils/insurance';
-import { MCP_INSURANCE_TIP_KEY, MCP_INSURANCE_TIP_LEGACY_KEY } from '@/utils/tips';
+import { MCP_INSURANCE_TIP_LEGACY_KEY } from '@/utils/tips';
 import { useShellPage } from '@/components/shell/shell-context';
 import { PageHead } from '@/components/shell/PageHead';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ExportButton } from '@/components/common/ExportButton';
-import { TipBanner } from '@/components/common/TipBanner';
+import { McpTip } from '@/components/common/McpTip';
 import { ConfirmDeleteDialog } from '@/components/common/ConfirmDeleteDialog';
 import { StatSkeleton, Stats } from '@/components/common/Stat';
 import { InsuranceFormDialog } from '@/components/insurance/InsuranceFormDialog';
@@ -32,7 +31,6 @@ type Modal = 'add' | 'edit' | 'end' | 'delete' | null;
  */
 export default function Insurance() {
   const { t } = useTranslation('insurance');
-  const [, navigate] = useLocation();
   const { currencyCode, fxReady } = useCurrency();
   const fmt = useFormat();
   const { rows, metrics, isLoading, today } = useInsurance();
@@ -106,23 +104,11 @@ export default function Insurance() {
                 {t('addPolicy')}
               </Button>
               {/* the AI route is a quiet secondary line here, not a banner above the list */}
-              <TipBanner
-                className="w-full max-w-md text-left"
-                storageKey={MCP_INSURANCE_TIP_KEY}
+              <McpTip
+                domain="insurance"
                 legacyStorageKey={MCP_INSURANCE_TIP_LEGACY_KEY}
                 summary={t('mcp.tipSummary')}
-                details={
-                  <>
-                    <p>{t('mcp.bannerBody')}</p>
-                    <button
-                      type="button"
-                      onClick={() => navigate('/settings/integrations#mcp')}
-                      className="underline underline-offset-[3px] text-ink hover:text-ink-2"
-                    >
-                      {t('mcp.setupLink')}
-                    </button>
-                  </>
-                }
+                body={t('mcp.bannerBody')}
               />
             </div>
           }

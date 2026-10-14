@@ -11,6 +11,9 @@ pub struct PendingRefresh {
 
 /// Persist before calling the domain writer: a crash between its commit and notification
 /// cannot lose bookkeeping. Failed writes may leave a harmless refresh of unchanged data.
+///
+/// A domain coalesces to its earliest day. No date means "from the first fact", the earliest
+/// day there is, so it wins over any dated write queued before or after it.
 pub fn enqueue(conn: &Connection, domain: &str, earliest: Option<i64>) -> Result<()> {
     if domain == "stock-monitor" {
         return Ok(());
@@ -21,8 +24,7 @@ pub fn enqueue(conn: &Connection, domain: &str, earliest: Option<i64>) -> Result
     conn.execute(
         "INSERT INTO mcp_pending_refresh (id, domain, earliest_date, generation) VALUES (?4, ?1, ?2, ?3)
          ON CONFLICT(domain) DO UPDATE SET
-           earliest_date = CASE WHEN excluded.earliest_date IS NULL THEN earliest_date
-             WHEN earliest_date IS NULL THEN excluded.earliest_date
+           earliest_date = CASE WHEN excluded.earliest_date IS NULL OR earliest_date IS NULL THEN NULL
              ELSE MIN(earliest_date, excluded.earliest_date) END,
            generation = excluded.generation",
         params![domain, earliest, uuid::Uuid::new_v4().to_string(), uuid::Uuid::new_v4().to_string()],
@@ -93,14 +95,6 @@ pub fn crypto_identities(conn: &Connection) -> Result<Vec<(String, String)>> {
     Ok(rows)
 }
 
-pub fn earliest_other_asset_date(conn: &Connection) -> Result<Option<i64>> {
-    Ok(conn.query_row(
-        "SELECT MIN(transaction_date) FROM other_asset_transactions",
-        [],
-        |r| r.get(0),
-    )?)
-}
-
 /// A failed partial API response must not mark durable work complete. A manually overridden
 /// price is already authoritative and does not depend on a quote provider being available.
 pub fn require_current_stock_prices(conn: &Connection, tickers: &[String], now: i64) -> Result<()> {
@@ -139,6 +133,26 @@ mod tests {
         assert_eq!(jobs.len(), 1);
         assert_eq!(jobs[0].earliest_date, Some(86400));
     }
+    #[test]
+    fn a_pending_refresh_from_the_first_fact_wins_over_a_dated_one_in_both_orders() {
+        // No date means "from the first fact": the earliest day there is, so a dated write
+        // queued next to it must not narrow it.
+        let conn = db();
+        enqueue(&conn, "bank-accounts", None).expect("undated first");
+        enqueue(&conn, "bank-accounts", Some(86400)).expect("dated after");
+        enqueue(&conn, "loans", Some(86400)).expect("dated first");
+        enqueue(&conn, "loans", None).expect("undated after");
+        enqueue(&conn, "real-estate", Some(172800)).expect("dated");
+        enqueue(&conn, "real-estate", None).expect("undated");
+        enqueue(&conn, "real-estate", Some(86400)).expect("dated again");
+
+        let jobs = pending(&conn).expect("jobs");
+        assert_eq!(jobs.len(), 3);
+        for job in jobs {
+            assert_eq!(job.earliest_date, None, "{}", job.domain);
+        }
+    }
+
     #[test]
     fn failed_financial_write_retains_its_refresh_intent() {
         let mut conn = db();

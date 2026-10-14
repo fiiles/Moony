@@ -320,7 +320,6 @@
   },
   "mcp": {
     "tipSummary": "Nechce se vám vše přepisovat? AI asistent umí pojistky přidat ze smlouvy.",
-    "bannerBody": "Spusť MCP server, nahraj smlouvu, nabídku nebo shrnutí pojistky do Claude a požádej ho, ať pojistku přidá za tebe.",
-    "setupLink": "Nastavit MCP server"
+    "bannerBody": "Spusť MCP server, nahraj smlouvu, nabídku nebo shrnutí pojistky do Claude a požádej ho, ať pojistku přidá za tebe."
   }
 }

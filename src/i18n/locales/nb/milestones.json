@@ -60,7 +60,7 @@
     "watch_target_below": "Kursen {{price}} falt til målet {{target}}",
     "watch_target_above": "Kursen {{price}} nådde målet {{target}}",
     "loan_fixation_expired": "Bindingstiden for renten utløp {{date}} · legg inn den nye renten",
-    "loan_balance_check": "Saldoen er ikke kontrollert siden {{date}} · sammenlign med en kontoutskrift",
+    "loan_balance_check": "Ingen saldo lagt inn siden {{date}} · legg inn gjeldende saldo",
     "valuation_stale": "Ingen ny verdivurdering siden {{date}} · vurder den på nytt",
     "backup_stale": "Siste sikkerhetskopi {{date}}",
     "backup_never": "Ingen sikkerhetskopi ennå",
@@ -72,7 +72,7 @@
     "balances_stale_one": "oppdater {{count}} saldo",
     "balances_stale_other": "oppdater {{count}} saldoer",
     "valuation_stale": "vurder {{title}} på nytt",
-    "loan_balance_check": "kontroller saldoen for {{title}}",
+    "loan_balance_check": "legg inn gjeldende saldo for {{title}}",
     "loan_fixation_expired": "legg inn ny rente for {{title}}"
   },
   "groups": {
@@ -122,9 +122,9 @@
       "mute": "Ikke påminn meg om verdivurderinger av eiendom"
     },
     "loanChecks": {
-      "label": "Lånekontroller",
-      "hint": "En årlig saldokontroll og den nye renten når en bindingstid utløper.",
-      "mute": "Ikke påminn meg om lånekontroller"
+      "label": "Saldo og rente på lån",
+      "hint": "Å legge inn gjeldende saldo hvert år og den nye renten når en bindingstid utløper.",
+      "mute": "Ikke påminn meg om saldo og rente på lån"
     }
   },
   "settings": {

@@ -51,7 +51,7 @@ interface LoanChartEvent extends ChartEvent {
 
 /**
  * Loan detail (design system §7 Detail, prototype loan-detail.html): the
- * balance trace with refixations, extra payments, statement checks and the
+ * balance trace with refixations, extra payments, manual balances and the
  * milestones ahead, four stats, the schedule in three views, the extra-payment
  * what-if and the events list.
  */
@@ -203,7 +203,8 @@ export default function LoanDetail() {
             if (!next) setEventKind(null);
           }}
           loan={loan}
-          terms={row.terms}
+          ledger={row.ledger}
+          plan={row.plan}
           today={today}
           kind={eventKind}
           initial={eventInitial}
@@ -231,7 +232,11 @@ export default function LoanDetail() {
           if (!next) setPendingDeleteEvent(null);
         }}
         title={t('detail.events.confirmDelete.title')}
-        description={t('detail.events.confirmDelete.description')}
+        description={
+          pendingDeleteEvent?.kind === 'balance_check'
+            ? t('detail.events.confirmDelete.descriptionManual')
+            : t('detail.events.confirmDelete.description')
+        }
         onConfirm={() =>
           pendingDeleteEvent &&
           removeEvent.mutate(pendingDeleteEvent.id, {
@@ -271,7 +276,7 @@ function LoanDetailBody({
   const { t } = useTranslation('loans');
   const fmt = useFormat();
   const text = useLoanText();
-  const { loan, terms, trajectory } = row;
+  const { loan, plan, trajectory } = row;
   const currency = recordCurrency(loan.currency);
   const money = (v: number | string) => fmt.money(Number(v), currency, { decimals: 0 });
   const rate = Number(loan.interestRate) || 0;
@@ -341,8 +346,8 @@ function LoanDetailBody({
           id: e.id,
           t: e.eventDay,
           type: 'mark',
-          title: t('detail.chart.events.balanceCheck'),
-          lines: [`${fmt.day(e.eventDay)} · ${money(e.amount ?? 0)}`, e.note ?? ''].filter(Boolean),
+          title: t('detail.chart.events.balanceCheck', { amount: money(e.amount ?? 0) }),
+          lines: [fmt.day(e.eventDay), e.note ?? ''].filter(Boolean),
         });
       }
     }
@@ -397,7 +402,7 @@ function LoanDetailBody({
   const extraPaid = events
     .filter((e) => e.kind === 'extra_payment')
     .reduce((s, e) => s + (Number(e.amount) || 0), 0);
-  // Since the drawdown (an event re-anchors the backend's "since anchor" totals to 0)
+  // Since the drawdown: the interest of the estimated payments along the past path
   const interestPaid = trajectory.interestPaid;
   const principalRepaid = Math.max(0, principal - balance);
   const paidTotal = interestPaid + principalRepaid;
@@ -652,7 +657,7 @@ function LoanDetailBody({
         <LoanScheduleTable schedule={schedule} currency={currency} />
         <aside className="grid gap-[14px]">
           <LoanWhatIfCard
-            terms={terms}
+            plan={plan}
             today={today}
             currency={currency}
             balanceToday={balance}

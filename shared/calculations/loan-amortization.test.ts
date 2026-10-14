@@ -5,12 +5,19 @@ import {
   amortizationSchedule,
   amortizationStep,
   dueDay,
+  loanAnchor,
+  loanBalanceAt,
   loanTermsFromWire,
   loanValuationMode,
   outstandingBalanceAt,
   paymentBelowInterest,
   paymentsDueThrough,
+  planFrom,
   elapsedTo,
+  ledgerValuationMode,
+  loanLedgerFromWire,
+  type LedgerEvent,
+  type LoanLedger,
   type LoanTerms,
 } from './loan-amortization';
 
@@ -220,6 +227,38 @@ describe('loanTermsFromWire', () => {
   });
 });
 
+interface FixtureSchedule {
+  maxRows: number;
+  end: string;
+  rowCount: number;
+  lastBalance: number | null;
+  firstRows?: Record<string, number | string>[];
+  lastRow?: Record<string, number | string>;
+}
+
+/** Asserts a schedule against a fixture `schedule` block (plain and ledger cases share it). */
+function expectScheduleMatches(
+  s: ReturnType<typeof amortizationSchedule>,
+  expected: FixtureSchedule
+): void {
+  expect(s.end).toBe(expected.end);
+  expect(s.rows).toHaveLength(expected.rowCount);
+  if (expected.lastBalance === null) {
+    expect(s.rows).toHaveLength(0);
+  } else {
+    expect(cents(s.rows[s.rows.length - 1].balanceAfter)).toBe(cents(expected.lastBalance));
+  }
+  const check = (row: (typeof s.rows)[number], want: Record<string, number | string>) => {
+    expect(row.dueDay).toBe(day(want.dueDay as string));
+    expect(cents(row.payment)).toBe(cents(want.payment as number));
+    expect(cents(row.interest)).toBe(cents(want.interest as number));
+    expect(cents(row.principalPart)).toBe(cents(want.principalPart as number));
+    expect(cents(row.balanceAfter)).toBe(cents(want.balanceAfter as number));
+  };
+  (expected.firstRows ?? []).forEach((want, i) => check(s.rows[i], want));
+  if (expected.lastRow) check(s.rows[s.rows.length - 1], expected.lastRow);
+}
+
 describe('Rust / TypeScript cross-check (shared fixture, to the cent)', () => {
   interface FixtureCase {
     name: string;
@@ -233,14 +272,7 @@ describe('Rust / TypeScript cross-check (shared fixture, to the cent)', () => {
       endDay: string | null;
     };
     balances: { on: string; balance: number }[];
-    schedule?: {
-      maxRows: number;
-      end: string;
-      rowCount: number;
-      lastBalance: number | null;
-      firstRows?: Record<string, number | string>[];
-      lastRow?: Record<string, number | string>;
-    };
+    schedule?: FixtureSchedule;
   }
   const cases = fixture.cases as FixtureCase[];
 
@@ -273,24 +305,266 @@ describe('Rust / TypeScript cross-check (shared fixture, to the cent)', () => {
     if (c.schedule) {
       const expected = c.schedule;
       it(`${c.name}: schedule`, () => {
-        const s = amortizationSchedule(fixtureTerms(c), expected.maxRows);
-        expect(s.end).toBe(expected.end);
-        expect(s.rows).toHaveLength(expected.rowCount);
-        if (expected.lastBalance === null) {
-          expect(s.rows).toHaveLength(0);
-        } else {
-          expect(cents(s.rows[s.rows.length - 1].balanceAfter)).toBe(cents(expected.lastBalance));
-        }
-        const check = (row: (typeof s.rows)[number], want: Record<string, number | string>) => {
-          expect(row.dueDay).toBe(day(want.dueDay as string));
-          expect(cents(row.payment)).toBe(cents(want.payment as number));
-          expect(cents(row.interest)).toBe(cents(want.interest as number));
-          expect(cents(row.principalPart)).toBe(cents(want.principalPart as number));
-          expect(cents(row.balanceAfter)).toBe(cents(want.balanceAfter as number));
-        };
-        (expected.firstRows ?? []).forEach((want, i) => check(s.rows[i], want));
-        if (expected.lastRow) check(s.rows[s.rows.length - 1], expected.lastRow);
+        expectScheduleMatches(amortizationSchedule(fixtureTerms(c), expected.maxRows), expected);
       });
     }
   }
+});
+
+describe('loan ledger walk (shared fixture, to the cent)', () => {
+  interface FixtureLedgerEvent {
+    day: string;
+    createdAt: number;
+    kind: LedgerEvent['kind'];
+    amount: number | null;
+    rate: number | null;
+    monthlyPayment: number | null;
+    previousRate: number | null;
+    previousMonthlyPayment: number | null;
+  }
+  interface FixtureLedgerCase {
+    name: string;
+    ledger: {
+      terms: {
+        principal: number;
+        annualRatePct: number;
+        monthlyPayment: number;
+        startDay: string;
+        endDay: string | null;
+      };
+      events: FixtureLedgerEvent[];
+    };
+    balances: { on: string; balance: number; mode: string; segmentAnchorDay: string }[];
+    plan?: {
+      today: string;
+      mode: string;
+      anchorAmount: number;
+      anchorDay: string;
+      annualRatePct: number;
+      monthlyPayment: number;
+      schedule: FixtureSchedule;
+    };
+  }
+  const ledgerCases = (fixture as unknown as { ledgerCases: FixtureLedgerCase[] }).ledgerCases;
+
+  function fixtureLedger(c: FixtureLedgerCase): LoanLedger {
+    const t = c.ledger.terms;
+    return {
+      terms: {
+        principal: t.principal,
+        annualRatePct: t.annualRatePct,
+        monthlyPayment: t.monthlyPayment,
+        startDay: day(t.startDay),
+        endDay: t.endDay ? day(t.endDay) : null,
+      },
+      events: c.ledger.events.map((e) => ({
+        day: day(e.day),
+        createdAt: e.createdAt,
+        kind: e.kind,
+        amount: e.amount,
+        rate: e.rate,
+        monthlyPayment: e.monthlyPayment,
+        previousRate: e.previousRate,
+        previousMonthlyPayment: e.previousMonthlyPayment,
+      })),
+    };
+  }
+
+  it('has the documented scenarios', () => {
+    expect(ledgerCases.length).toBeGreaterThanOrEqual(12);
+  });
+
+  for (const c of ledgerCases) {
+    it(`${c.name}: balances`, () => {
+      const ledger = fixtureLedger(c);
+      for (const b of c.balances) {
+        const state = loanBalanceAt(ledger, day(b.on));
+        expect(cents(state.balance), `${c.name} on ${b.on}`).toBe(cents(b.balance));
+        expect(state.mode, `${c.name} mode on ${b.on}`).toBe(b.mode);
+        expect(state.segmentAnchorDay, `${c.name} anchor on ${b.on}`).toBe(day(b.segmentAnchorDay));
+      }
+    });
+
+    if (c.plan) {
+      const expected = c.plan;
+      it(`${c.name}: plan ahead`, () => {
+        const ledger = fixtureLedger(c);
+        const today = day(expected.today);
+        expect(loanBalanceAt(ledger, today).mode).toBe(expected.mode);
+        const plan = planFrom(ledger, today);
+        const anchor = loanAnchor(plan);
+        expect(cents(anchor.amount)).toBe(cents(expected.anchorAmount));
+        expect(anchor.day).toBe(day(expected.anchorDay));
+        expect(plan.annualRatePct).toBeCloseTo(expected.annualRatePct, 9);
+        expect(plan.monthlyPayment).toBeCloseTo(expected.monthlyPayment, 9);
+        expectScheduleMatches(
+          amortizationSchedule(plan, expected.schedule.maxRows),
+          expected.schedule
+        );
+      });
+    }
+  }
+});
+
+describe('loanBalanceAt / planFrom rules', () => {
+  const ledgerOf = (startIso: string, events: LedgerEvent[], t: Partial<LoanTerms> = {}) =>
+    ({ terms: terms(startIso, t), events }) satisfies LoanLedger;
+  const event = (
+    dayIso: string,
+    createdAt: number,
+    kind: LedgerEvent['kind'],
+    fields: Partial<LedgerEvent> = {}
+  ): LedgerEvent => ({ day: day(dayIso), createdAt, kind, ...fields });
+
+  it('is the legacy annuity without events', () => {
+    const l = ledgerOf('2023-01-15', []);
+    for (const iso of ['2023-02-14', '2023-02-15', '2024-01-15', '2031-05-20']) {
+      expect(cents(loanBalanceAt(l, day(iso)).balance)).toBe(
+        cents(outstandingBalanceAt(l.terms, day(iso)))
+      );
+    }
+  });
+
+  it('ignores the anchor fields of the ledger terms', () => {
+    const l = ledgerOf('2023-01-15', [], { anchorAmount: 1, anchorDay: day('2023-06-01') });
+    expect(loanBalanceAt(l, day('2023-02-14')).balance).toBe(100_000);
+  });
+
+  it('orders events by day, then created time, whatever the array order', () => {
+    const record = event('2024-05-10', 10, 'balance_check', { amount: 80_000 });
+    const extra = event('2024-05-10', 20, 'extra_payment', { amount: 5_000 });
+    expect(loanBalanceAt(ledgerOf('2023-01-15', [record, extra]), day('2024-06-01')).balance).toBe(
+      75_000
+    );
+    expect(loanBalanceAt(ledgerOf('2023-01-15', [extra, record]), day('2024-06-01')).balance).toBe(
+      75_000
+    );
+    const paymentFirst = { ...extra, createdAt: 5 };
+    expect(
+      loanBalanceAt(ledgerOf('2023-01-15', [record, paymentFirst]), day('2024-06-01')).balance
+    ).toBe(80_000);
+  });
+
+  it("starts from the first rate change's previous terms", () => {
+    const change = event('2024-06-10', 1, 'rate_change', {
+      rate: 4.5,
+      monthlyPayment: 1_900,
+      previousRate: 6,
+      previousMonthlyPayment: 2_000,
+    });
+    const l = ledgerOf('2023-01-15', [change], { annualRatePct: 4.5, monthlyPayment: 1_900 });
+    expect(cents(loanBalanceAt(l, day('2023-02-15')).balance)).toBe(cents(98_500));
+  });
+
+  it('starts from the payment an extra payment replaced', () => {
+    const extra = event('2024-03-20', 1, 'extra_payment', {
+      amount: 10_000,
+      monthlyPayment: 1_500,
+      previousMonthlyPayment: 2_000,
+    });
+    const l = ledgerOf('2023-01-15', [extra], { monthlyPayment: 1_500 });
+    // One payment at the replaced 2 000, not at the loan's current 1 500.
+    expect(cents(loanBalanceAt(l, day('2023-02-15')).balance)).toBe(cents(98_500));
+    expect(loanBalanceAt(l, day('2024-03-20')).monthlyPayment).toBe(1_500);
+  });
+
+  it('takes each initial term from the earliest event that carries it', () => {
+    const extra = event('2023-09-05', 1, 'extra_payment', {
+      amount: 5_000,
+      monthlyPayment: 1_700,
+      previousMonthlyPayment: 2_000,
+    });
+    const change = event('2024-06-10', 2, 'rate_change', {
+      rate: 4.5,
+      previousRate: 6,
+      previousMonthlyPayment: 1_700,
+    });
+    const l = ledgerOf('2023-01-15', [change, extra], {
+      annualRatePct: 4.5,
+      monthlyPayment: 1_700,
+    });
+    const first = loanBalanceAt(l, day('2023-02-15'));
+    expect(first.annualRatePct).toBe(6);
+    expect(first.monthlyPayment).toBe(2_000);
+    expect(cents(first.balance)).toBe(cents(98_500));
+  });
+
+  it('plans an empty schedule from a zero manual balance', () => {
+    const l = ledgerOf('2023-01-15', [event('2024-01-10', 1, 'balance_check', { amount: 0 })]);
+    const state = loanBalanceAt(l, day('2026-01-01'));
+    expect(state.balance).toBe(0);
+    expect(state.mode).toBe('manual');
+    expect(amortizationSchedule(planFrom(l, day('2026-01-01')))).toEqual({
+      rows: [],
+      end: 'paid',
+    });
+  });
+
+  it('keeps the start and end day in the plan', () => {
+    const l = ledgerOf('2023-01-15', [], { endDay: day('2030-01-15') });
+    const plan = planFrom(l, day('2024-01-01'));
+    expect(plan.startDay).toBe(day('2023-01-15'));
+    expect(plan.endDay).toBe(day('2030-01-15'));
+  });
+});
+
+describe('loan ledger from the wire', () => {
+  const wireLoan = {
+    principal: '100000',
+    interestRate: '6',
+    monthlyPayment: '2000',
+    startDate: day('2023-01-15'),
+    endDate: null,
+    balanceAnchorAmount: '80000',
+    balanceAnchorDate: day('2024-02-01'),
+    events: [
+      {
+        kind: 'balance_check' as const,
+        eventDay: day('2024-02-01'),
+        createdAt: 7,
+        amount: '80000',
+        rate: null,
+        monthlyPayment: null,
+        previousRate: null,
+        previousMonthlyPayment: null,
+      },
+      {
+        kind: 'rate_change' as const,
+        eventDay: day('2024-05-10'),
+        createdAt: 9,
+        amount: null,
+        rate: '4.5',
+        monthlyPayment: ' ',
+        previousRate: '6',
+        previousMonthlyPayment: '2000',
+      },
+    ],
+  };
+
+  it('parses the events and leaves the mirrored anchor out of the terms', () => {
+    const ledger = loanLedgerFromWire(wireLoan);
+    expect(ledger.terms.anchorAmount).toBeNull();
+    expect(ledger.terms.anchorDay).toBeNull();
+    expect(ledger.terms.principal).toBe(100_000);
+    expect(ledger.events[0]).toMatchObject({ kind: 'balance_check', amount: 80_000, createdAt: 7 });
+    // Blank text is "not given", not 0
+    expect(ledger.events[1]).toMatchObject({
+      rate: 4.5,
+      monthlyPayment: null,
+      previousRate: 6,
+      previousMonthlyPayment: 2_000,
+    });
+    const state = loanBalanceAt(ledger, day('2024-06-01'));
+    expect(state.mode).toBe('manual');
+    expect(state.balance).toBe(80_000);
+  });
+
+  it('values a manual balance as manual whatever the payment, else by the payment', () => {
+    const record = wireLoan.events.slice(0, 1);
+    const held = loanLedgerFromWire({ ...wireLoan, monthlyPayment: '0', events: record });
+    expect(ledgerValuationMode(loanBalanceAt(held, day('2024-06-01')))).toBe('manual');
+    expect(ledgerValuationMode(loanBalanceAt(held, day('2024-01-01')))).toBe('static');
+    const estimated = loanLedgerFromWire({ ...wireLoan, events: [] });
+    expect(ledgerValuationMode(loanBalanceAt(estimated, day('2024-01-01')))).toBe('automatic');
+  });
 });

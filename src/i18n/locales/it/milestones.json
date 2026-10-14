@@ -64,7 +64,7 @@
     "watch_target_below": "Il prezzo {{price}} è sceso all'obiettivo {{target}}",
     "watch_target_above": "Il prezzo {{price}} ha raggiunto l'obiettivo {{target}}",
     "loan_fixation_expired": "Il tasso fisso è terminato il {{date}} · inserisci il nuovo tasso",
-    "loan_balance_check": "Saldo non verificato dal {{date}} · confrontalo con un estratto conto",
+    "loan_balance_check": "Nessun saldo inserito dal {{date}} · inserisci il saldo attuale",
     "valuation_stale": "Nessuna nuova valutazione dal {{date}} · rivalutalo",
     "backup_stale": "Ultimo backup {{date}}",
     "backup_never": "Ancora nessun backup",
@@ -78,7 +78,7 @@
     "balances_stale_many": "aggiorna {{count}} saldi",
     "balances_stale_other": "aggiorna {{count}} saldi",
     "valuation_stale": "rivaluta {{title}}",
-    "loan_balance_check": "verifica il saldo di {{title}}",
+    "loan_balance_check": "inserisci il saldo attuale di {{title}}",
     "loan_fixation_expired": "inserisci il nuovo tasso di {{title}}"
   },
   "groups": {
@@ -128,9 +128,9 @@
       "mute": "Non ricordarmi le valutazioni degli immobili"
     },
     "loanChecks": {
-      "label": "Verifiche dei prestiti",
-      "hint": "Una verifica annuale del saldo e il nuovo tasso dopo la fine di un tasso fisso.",
-      "mute": "Non ricordarmi le verifiche dei prestiti"
+      "label": "Saldo e tasso dei prestiti",
+      "hint": "Inserire il saldo attuale una volta l'anno e il nuovo tasso dopo la fine di un tasso fisso.",
+      "mute": "Non ricordarmi saldo e tasso dei prestiti"
     }
   },
   "settings": {

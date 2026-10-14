@@ -9,7 +9,7 @@ use crate::models::{
     StockPerformanceRequest, StockPosition, StockPositions, StockPriceOverride, StockTag,
 };
 use crate::services::fx;
-use crate::services::history_recalc::HistoryRecalc;
+use crate::services::history_recalc::{HistoryRecalc, Job};
 use crate::services::investments as investment_service;
 use crate::services::position_reports;
 use crate::services::price_api;
@@ -146,11 +146,11 @@ pub async fn create_investment(
     // 4. Queue the ticker's historical rebuild (runs in the background) if there
     //    was an initial transaction
     if let Some(tx_date) = initial_tx_date {
-        portfolio::schedule_stock_history_rebuild(
+        portfolio::schedule_history_rebuild(
             &app,
             &db,
             &recalc,
-            vec![(ticker_for_recalc, tx_date)],
+            vec![Job::StockTicker(ticker_for_recalc, tx_date)],
         );
 
         app.emit("recalculation-complete", ()).ok();
@@ -253,7 +253,12 @@ pub async fn delete_investment(
     // Re-derive the aggregate portfolio history without the deleted ticker (in
     // the background; the ticker has no transactions left, so nothing is fetched)
     if let (Some((tx_date, _)), Some(ticker)) = (tx_info, ticker) {
-        portfolio::schedule_stock_history_rebuild(&app, &db, &recalc, vec![(ticker, tx_date)]);
+        portfolio::schedule_history_rebuild(
+            &app,
+            &db,
+            &recalc,
+            vec![Job::StockTicker(ticker, tx_date)],
+        );
     }
 
     app.emit("recalculation-complete", ()).ok();
@@ -353,11 +358,14 @@ pub async fn create_investment_transaction(
     portfolio::update_todays_snapshot(&db).await.ok();
 
     // 4. Queue the ticker's historical rebuild (runs in the background)
-    portfolio::schedule_stock_history_rebuild(
+    portfolio::schedule_history_rebuild(
         &app,
         &db,
         &recalc,
-        vec![(result.ticker.clone(), result.transaction_date)],
+        vec![Job::StockTicker(
+            result.ticker.clone(),
+            result.transaction_date,
+        )],
     );
 
     app.emit("recalculation-complete", ()).ok();
@@ -402,7 +410,7 @@ async fn delete_transactions_and_rebuild(
 
     // Queue the tickers' historical rebuilds (run in the background)
     if !jobs.is_empty() {
-        portfolio::schedule_stock_history_rebuild(app, db, recalc, jobs);
+        portfolio::schedule_history_rebuild(app, db, recalc, Job::stocks(jobs));
 
         app.emit("recalculation-complete", ()).ok();
     }
@@ -431,11 +439,14 @@ pub async fn update_investment_transaction(
     // Queue the ticker's historical rebuild (runs in the background).
     // Rebuild history from the earlier of the two dates: moving a buy later must
     // also clear the days it no longer covers.
-    portfolio::schedule_stock_history_rebuild(
+    portfolio::schedule_history_rebuild(
         &app,
         &db,
         &recalc,
-        vec![(result.ticker.clone(), old_date.min(result.transaction_date))],
+        vec![Job::StockTicker(
+            result.ticker.clone(),
+            old_date.min(result.transaction_date),
+        )],
     );
 
     app.emit("recalculation-complete", ()).ok();

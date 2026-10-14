@@ -58,6 +58,12 @@ pub async fn get_category_transactions(
     })
 }
 
+/// Booking day of the newest booked bank transaction (None without transactions)
+#[tauri::command]
+pub async fn get_latest_transaction_date(db: State<'_, Database>) -> Result<Option<i64>> {
+    db.with_conn(services::budgeting::latest_booking_date)
+}
+
 /// Get all budget goals
 #[tauri::command]
 pub async fn get_budget_goals(db: State<'_, Database>) -> Result<Vec<BudgetGoal>> {

@@ -313,7 +313,6 @@
   },
   "mcp": {
     "tipSummary": "Har du ikke lyst til å skrive alt inn? AI-assistenten kan legge til forsikringer fra en avtale.",
-    "bannerBody": "Start MCP-serveren, last opp avtalen, tilbudet eller forsikringsoppsummeringen til Claude, og be den legge til forsikringen for deg.",
-    "setupLink": "Sett opp MCP-server"
+    "bannerBody": "Start MCP-serveren, last opp avtalen, tilbudet eller forsikringsoppsummeringen til Claude, og be den legge til forsikringen for deg."
   }
 }

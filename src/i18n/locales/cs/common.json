@@ -469,6 +469,18 @@
     "showLess": "Zobrazit méně",
     "dismiss": "Skrýt tip"
   },
+  "mcpTip": {
+    "bankAccounts": "Nechce se vám vše přepisovat? AI asistent umí založit účty a naimportovat transakce z výpisu.",
+    "stocks": "Nechce se vám vše přepisovat? AI asistent umí naimportovat obchody z výpisu od brokera.",
+    "crypto": "Nechce se vám vše přepisovat? AI asistent umí naimportovat obchody z exportu burzy.",
+    "bonds": "Nechce se vám vše přepisovat? AI asistent umí přidat dluhopisy z potvrzení o nákupu.",
+    "loans": "Nechce se vám vše přepisovat? AI asistent umí přidat úvěr ze smlouvy.",
+    "realEstate": "Nechce se vám vše přepisovat? AI asistent umí přidat nemovitost z jejích dokumentů.",
+    "otherAssets": "Nechce se vám vše přepisovat? AI asistent umí přidat majetek z faktury nebo seznamu.",
+    "watchlist": "AI asistent umí akcie sledovat za vás — stačí mu říct které.",
+    "body": "Spusťte MCP server, dejte Claudovi dokument nebo popište, co máte, a požádejte ho, ať to přidá za vás. Ukáže vám, co přečetl, a nic nezapíše, dokud to nepotvrdíte.",
+    "setupLink": "Nastavit MCP server"
+  },
   "a11y": {
     "viewDetailsOf": "Zobrazit detail: {{name}}",
     "actionsFor": "Akce pro {{name}}",

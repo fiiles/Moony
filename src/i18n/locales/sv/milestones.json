@@ -60,7 +60,7 @@
     "watch_target_below": "Kursen {{price}} föll till målet {{target}}",
     "watch_target_above": "Kursen {{price}} nådde målet {{target}}",
     "loan_fixation_expired": "Räntebindningen upphörde {{date}} · ange den nya räntan",
-    "loan_balance_check": "Saldot inte kontrollerat sedan {{date}} · jämför med ett kontoutdrag",
+    "loan_balance_check": "Inget saldo angivet sedan {{date}} · ange aktuellt saldo",
     "valuation_stale": "Ingen ny värdering sedan {{date}} · omvärdera",
     "backup_stale": "Senaste säkerhetskopia {{date}}",
     "backup_never": "Ingen säkerhetskopia ännu",
@@ -72,7 +72,7 @@
     "balances_stale_one": "uppdatera {{count}} saldo",
     "balances_stale_other": "uppdatera {{count}} saldon",
     "valuation_stale": "omvärdera {{title}}",
-    "loan_balance_check": "kontrollera saldot för {{title}}",
+    "loan_balance_check": "ange aktuellt saldo för {{title}}",
     "loan_fixation_expired": "ange den nya räntan för {{title}}"
   },
   "groups": {
@@ -122,9 +122,9 @@
       "mute": "Påminn mig inte om fastighetsvärderingar"
     },
     "loanChecks": {
-      "label": "Lånekontroller",
-      "hint": "En årlig saldokontroll och den nya räntan när en räntebindning upphör.",
-      "mute": "Påminn mig inte om lånekontroller"
+      "label": "Lånesaldon och räntor",
+      "hint": "Att ange aktuellt saldo en gång om året och den nya räntan när en räntebindning upphör.",
+      "mute": "Påminn mig inte om lånesaldon och räntor"
     }
   },
   "settings": {

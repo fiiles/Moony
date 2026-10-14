@@ -8,6 +8,7 @@ use crate::models::{
 };
 use crate::services::crypto_investments as crypto_service;
 use crate::services::fx;
+use crate::services::history_recalc::{HistoryRecalc, Job};
 use crate::services::position_reports;
 use crate::services::pricing::AssetKind;
 use crate::services::ticker_history;
@@ -27,6 +28,7 @@ pub async fn get_all_crypto(
 #[tauri::command]
 pub async fn create_crypto(
     db: State<'_, Database>,
+    recalc: State<'_, HistoryRecalc>,
     app: AppHandle,
     data: InsertCryptoInvestment,
     initial_transaction: Option<InsertCryptoTransaction>,
@@ -38,7 +40,6 @@ pub async fn create_crypto(
     }
 
     let ticker = data.ticker.to_uppercase();
-    let coingecko_id = data.coingecko_id.clone();
     let initial_tx_date = initial_transaction.as_ref().map(|t| t.transaction_date);
 
     // 2. Delegate to service layer
@@ -57,16 +58,15 @@ pub async fn create_crypto(
         .await
         .ok();
 
-    // 4. Trigger per-ticker historical recalculation if there was an initial transaction
+    // 4. Queue the ticker's historical rebuild (runs in the background) if there was an
+    //    initial transaction
     if let Some(date) = initial_tx_date {
-        crate::commands::portfolio::trigger_historical_recalculation_for_crypto_ticker(
+        crate::commands::portfolio::schedule_history_rebuild(
+            &app,
             &db,
-            date,
-            &ticker,
-            &coingecko_id,
-        )
-        .await
-        .ok();
+            &recalc,
+            vec![Job::CryptoTicker(ticker, date)],
+        );
 
         app.emit("recalculation-complete", ()).ok();
     }
@@ -76,19 +76,23 @@ pub async fn create_crypto(
 
 /// Delete crypto investment
 #[tauri::command]
-pub async fn delete_crypto(db: State<'_, Database>, app: AppHandle, id: String) -> Result<()> {
-    // Get earliest transaction date and crypto info before deleting (for historical recalc)
-    let crypto_info: Option<(i64, String, String)> = db.with_conn(|conn| {
-        // Get ticker and coingecko_id from the investment
-        let info: Option<(String, String)> = conn
+pub async fn delete_crypto(
+    db: State<'_, Database>,
+    recalc: State<'_, HistoryRecalc>,
+    app: AppHandle,
+    id: String,
+) -> Result<()> {
+    // Get earliest transaction date and ticker before deleting (for historical recalc)
+    let crypto_info: Option<(i64, String)> = db.with_conn(|conn| {
+        let info: Option<String> = conn
             .query_row(
-                "SELECT ticker, coingecko_id FROM crypto_investments WHERE id = ?1",
+                "SELECT ticker FROM crypto_investments WHERE id = ?1",
                 [&id],
-                |row| Ok((row.get(0)?, row.get::<_, Option<String>>(1)?.unwrap_or_default())),
+                |row| row.get(0),
             )
             .ok();
 
-        if let Some((ticker, coingecko_id)) = info {
+        if let Some(ticker) = info {
             // Get earliest transaction date
             let earliest: Option<i64> = conn
                 .query_row(
@@ -100,7 +104,7 @@ pub async fn delete_crypto(db: State<'_, Database>, app: AppHandle, id: String) 
                 .flatten();
 
             if let Some(date) = earliest {
-                return Ok(Some((date, ticker, coingecko_id)));
+                return Ok(Some((date, ticker)));
             }
         }
         Ok(None)
@@ -125,18 +129,15 @@ pub async fn delete_crypto(db: State<'_, Database>, app: AppHandle, id: String) 
         .await
         .ok();
 
-    // Trigger per-ticker historical recalculation if there were transactions
-    if let Some((tx_date, ticker, coingecko_id)) = crypto_info {
-        if !coingecko_id.is_empty() {
-            crate::commands::portfolio::trigger_historical_recalculation_for_crypto_ticker(
-                &db,
-                tx_date,
-                &ticker,
-                &coingecko_id,
-            )
-            .await
-            .ok();
-        }
+    // Queue the ticker's rebuild if there were transactions: with the holding gone the worker
+    // only removes its history rows and re-derives the portfolio days without it
+    if let Some((tx_date, ticker)) = crypto_info {
+        crate::commands::portfolio::schedule_history_rebuild(
+            &app,
+            &db,
+            &recalc,
+            vec![Job::CryptoTicker(ticker, tx_date)],
+        );
 
         app.emit("recalculation-complete", ()).ok();
     }
@@ -219,24 +220,13 @@ pub async fn get_all_crypto_transactions(
 #[tauri::command]
 pub async fn create_crypto_transaction(
     db: State<'_, Database>,
+    recalc: State<'_, HistoryRecalc>,
     app: AppHandle,
     investment_id: String,
     data: InsertCryptoTransaction,
 ) -> Result<CryptoTransaction> {
     // 1. Validate inputs at the trust boundary
     data.validate()?;
-
-    // Get coingecko_id for per-ticker recalculation
-    let coingecko_id: Option<String> = db.with_conn(|conn| {
-        Ok(conn
-            .query_row(
-                "SELECT coingecko_id FROM crypto_investments WHERE id = ?1",
-                [&investment_id],
-                |row| row.get(0),
-            )
-            .ok()
-            .flatten())
-    })?;
 
     // 2. Delegate to service layer
     let result = db
@@ -247,17 +237,16 @@ pub async fn create_crypto_transaction(
         .await
         .ok();
 
-    // 4. Trigger per-ticker historical recalculation if transaction is retrospective
-    if let Some(cg_id) = coingecko_id {
-        crate::commands::portfolio::trigger_historical_recalculation_for_crypto_ticker(
-            &db,
+    // 4. Queue the ticker's historical rebuild (runs in the background)
+    crate::commands::portfolio::schedule_history_rebuild(
+        &app,
+        &db,
+        &recalc,
+        vec![Job::CryptoTicker(
+            result.ticker.clone(),
             result.transaction_date,
-            &result.ticker,
-            &cg_id,
-        )
-        .await
-        .ok();
-    }
+        )],
+    );
 
     app.emit("recalculation-complete", ()).ok();
 
@@ -268,10 +257,11 @@ pub async fn create_crypto_transaction(
 #[tauri::command]
 pub async fn delete_crypto_transaction(
     db: State<'_, Database>,
+    recalc: State<'_, HistoryRecalc>,
     app: AppHandle,
     tx_id: String,
 ) -> Result<()> {
-    let (date, ticker, coingecko_id) =
+    let (date, ticker, _coingecko_id) =
         db.with_conn(|conn| crypto_service::delete_transaction(conn, &tx_id))?;
 
     // Update portfolio snapshot
@@ -279,17 +269,13 @@ pub async fn delete_crypto_transaction(
         .await
         .ok();
 
-    // Use the persisted price identity captured in the deletion transaction.
-    if !coingecko_id.is_empty() {
-        crate::commands::portfolio::trigger_historical_recalculation_for_crypto_ticker(
-            &db,
-            date,
-            &ticker,
-            &coingecko_id,
-        )
-        .await
-        .ok();
-    }
+    // Queue the ticker's rebuild (the worker reads the price identity from the holding)
+    crate::commands::portfolio::schedule_history_rebuild(
+        &app,
+        &db,
+        &recalc,
+        vec![Job::CryptoTicker(ticker, date)],
+    );
     app.emit("recalculation-complete", ()).ok();
 
     Ok(())

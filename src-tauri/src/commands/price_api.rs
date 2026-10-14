@@ -3,7 +3,7 @@
 use crate::commands::portfolio;
 use crate::db::Database;
 use crate::error::Result;
-use crate::services::history_recalc::{self, HistoryRecalc};
+use crate::services::history_recalc::{self, HistoryRecalc, Job};
 use crate::services::price_api::{
     self, ApiKeys, CoinGeckoSearchResult, CryptoPriceResult, DividendResult,
     StockPriceRefreshResult, StockSearchResult,
@@ -29,7 +29,7 @@ pub fn rebuild_history_for_unit_changes(
         return;
     }
     match db.with_conn(|conn| history_recalc::rebuild_jobs(conn, &result.unit_changed)) {
-        Ok(jobs) => portfolio::schedule_stock_history_rebuild(app, db, recalc, jobs),
+        Ok(jobs) => portfolio::schedule_history_rebuild(app, db, recalc, Job::stocks(jobs)),
         Err(e) => log::warn!("[RECALC] Could not queue the rebuild after a quote unit change: {e}"),
     }
 }
@@ -40,10 +40,26 @@ pub async fn get_api_keys(db: State<'_, Database>) -> Result<ApiKeys> {
     price_api::get_api_keys(&db)
 }
 
-/// Set API keys
+/// Set API keys. A new CoinGecko key queues a rebuild of every crypto ticker from its first
+/// transaction: what was fetched without it (rate limits, failed requests) may have holes.
 #[tauri::command]
-pub async fn set_api_keys(db: State<'_, Database>, keys: ApiKeys) -> Result<()> {
-    price_api::set_api_keys(&db, &keys)
+pub async fn set_api_keys(
+    app: AppHandle,
+    db: State<'_, Database>,
+    recalc: State<'_, HistoryRecalc>,
+    keys: ApiKeys,
+) -> Result<()> {
+    let before = price_api::get_api_keys(&db)?;
+    price_api::set_api_keys(&db, &keys)?;
+    if price_api::coingecko_key_changed(&before, &keys) {
+        match db.with_conn(history_recalc::crypto_ticker_jobs) {
+            Ok(jobs) => portfolio::schedule_history_rebuild(&app, &db, &recalc, jobs),
+            Err(e) => {
+                log::warn!("[RECALC] Could not queue the crypto rebuild after a key change: {e}")
+            }
+        }
+    }
+    Ok(())
 }
 
 /// Refresh stock prices from Yahoo Finance

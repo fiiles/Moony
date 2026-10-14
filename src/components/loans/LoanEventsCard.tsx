@@ -13,8 +13,9 @@ interface LoanEventsCardProps {
 
 /**
  * Events list (prototype loan-detail.html): extra payments, rate changes and
- * balance checks newest first, the drawdown at the bottom. Removing an entry
- * keeps the balance it set — the confirm dialog says so.
+ * manual balances newest first, the drawdown at the bottom. Removing an entry
+ * works the balance out again without it (a removed manual balance brings back
+ * the previous one, or the estimate) — the confirm dialog says so.
  */
 export function LoanEventsCard({ loan, events, onDelete }: LoanEventsCardProps) {
   const { t } = useTranslation('loans');
@@ -46,8 +47,8 @@ export function LoanEventsCard({ loan, events, onDelete }: LoanEventsCardProps) 
         };
       default:
         return {
-          title: t('detail.events.balanceCheck'),
-          note: `${money(event.amount)} · ${event.note ?? t('detail.events.balanceCheckNote')}`,
+          title: t('detail.events.balanceCheck', { amount: money(event.amount) }),
+          note: event.note ?? t('detail.events.balanceCheckNote'),
         };
     }
   };

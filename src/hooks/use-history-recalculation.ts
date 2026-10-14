@@ -8,7 +8,7 @@ import {
 } from '@/utils/history-recalculation';
 
 /**
- * Tickers whose value history the backend is rebuilding in the background: a stock
+ * Tickers whose value history the backend is rebuilding in the background: a stock or crypto
  * transaction write returns at once and the rebuild follows. When a rebuild finishes, the charts
  * and analyses derived from the ticker history are refetched.
  */

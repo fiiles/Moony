@@ -23,6 +23,7 @@ and what it costs. ADRs are dated point-in-time records — facts in them
 | [0013](0013-tag-groups-partition-the-portfolio.md) | Tag groups partition the portfolio | 2026-10-11 | Accepted |
 | [0014](0014-durable-mcp-bookkeeping.md) | Durable MCP bookkeeping | 2026-10-12 | Accepted |
 | [0015](0015-identifier-not-bound-to-a-person.md) | App identifier not bound to a person | 2026-10-13 | Accepted; amends the identifier rule of 0010 |
+| [0016](0016-history-from-dated-facts.md) | History days derive from dated facts; manual values hold | 2026-10-13 | Accepted |
 
 ## Rules
 
@@ -30,7 +31,7 @@ and what it costs. ADRs are dated point-in-time records — facts in them
   different. To change a decision, write a **new ADR** with the next number
   that links back to the one it supersedes. The only edit ever made to an old
   ADR is flipping its `## Status` to `Superseded by [NNNN](NNNN-....md)`.
-- Numbering is sequential and zero-padded; the next free number is `0016`.
+- Numbering is sequential and zero-padded; the next free number is `0017`.
 - Filename: `NNNN-short-kebab-title.md`. Add every new ADR to the index table
   above.
 - Keep each ADR to one page or less.

@@ -1,4 +1,4 @@
-//! Rebuilds of a stock ticker's `stock_value_history` rows.
+//! Rebuilds of a ticker's `stock_value_history` / `crypto_value_history` rows.
 //!
 //! A historical transaction (add, edit, delete, import) changes the position
 //! on every day after it, so the ticker's daily value rows are recomputed from
@@ -9,11 +9,11 @@
 //!
 //! It is now planned in a single pass and written in a single transaction:
 //!
-//! 1. [`plan_stock_ticker_history`] reads the ticker's transactions once and
-//!    walks the days with a running position, and prices each day through the
-//!    caller's `price_at` closure. It only reads; the result is a list of
+//! 1. [`plan_ticker_history`] (stocks: [`plan_stock_ticker_history`]) reads the ticker's
+//!    transactions once and walks the days with a running position, and prices each day
+//!    through the caller's `price_at` closure. It only reads; the result is a list of
 //!    [`DayPlan`]s.
-//! 2. [`apply_stock_ticker_plan`] writes a slice of the plan through prepared
+//! 2. [`apply_ticker_plan`] (stocks: [`apply_stock_ticker_plan`]) writes a slice of the plan through prepared
 //!    statements inside one transaction, so a long rebuild can be applied in
 //!    short chunks that each hold the lock briefly (see
 //!    `services/history_recalc.rs`).
@@ -72,17 +72,30 @@ fn floor_day(ts: i64) -> i64 {
     (ts / SECONDS_PER_DAY) * SECONDS_PER_DAY
 }
 
+/// `(value history table, transaction table)` of a ticker class.
+fn tables(kind: AssetKind) -> (&'static str, &'static str) {
+    match kind {
+        AssetKind::Stock => ("stock_value_history", "investment_transactions"),
+        AssetKind::Crypto => ("crypto_value_history", "crypto_transactions"),
+    }
+}
+
 /// Signed quantity changes of a ticker's transactions, oldest first.
 /// `CAST(.. AS REAL)` keeps SQLite's leniency about malformed quantity text.
-fn load_position_changes(conn: &Connection, ticker: &str) -> Result<Vec<(i64, f64)>> {
-    let mut stmt = conn.prepare(
+fn load_position_changes(
+    conn: &Connection,
+    kind: AssetKind,
+    ticker: &str,
+) -> Result<Vec<(i64, f64)>> {
+    let (_, tx_table) = tables(kind);
+    let mut stmt = conn.prepare(&format!(
         "SELECT transaction_date,
                 CASE WHEN type = 'buy' THEN CAST(quantity AS REAL)
                      ELSE -CAST(quantity AS REAL) END
-         FROM investment_transactions
+         FROM {tx_table}
          WHERE ticker = ?1
-         ORDER BY transaction_date",
-    )?;
+         ORDER BY transaction_date"
+    ))?;
     let rows = stmt.query_map([ticker], |row| Ok((row.get(0)?, row.get(1)?)))?;
     let mut changes = Vec::new();
     for row in rows {
@@ -91,11 +104,7 @@ fn load_position_changes(conn: &Connection, ticker: &str) -> Result<Vec<(i64, f6
     Ok(changes)
 }
 
-/// Plan the rows of `ticker`'s history for every day in `from_day..=until_day`.
-///
-/// `price_at(day)` returns the price (and its currency) to value the day at,
-/// or `None` when no price is known; it is the caller's choice how a day maps
-/// to a quote. Read-only: nothing is written until the plan is applied.
+/// Plan the rows of a stock `ticker`'s history, see [`plan_ticker_history`].
 pub fn plan_stock_ticker_history<F>(
     conn: &Connection,
     ticker: &str,
@@ -104,7 +113,35 @@ pub fn plan_stock_ticker_history<F>(
     price_at: F,
 ) -> Result<Vec<DayPlan>>
 where
-    F: Fn(i64) -> Option<(f64, String)>,
+    F: FnMut(i64) -> Option<(f64, String)>,
+{
+    plan_ticker_history(
+        conn,
+        AssetKind::Stock,
+        ticker,
+        from_day,
+        until_day,
+        price_at,
+    )
+}
+
+/// Plan the rows of `ticker`'s history for every day in `from_day..=until_day`.
+///
+/// `price_at(day)` returns the price (and its currency) to value the day at,
+/// or `None` when no price is known; it is the caller's choice how a day maps
+/// to a quote. The days are priced oldest first, so a closure may carry the last
+/// price it saw forward (crypto does). Read-only: nothing is written until the plan
+/// is applied.
+pub fn plan_ticker_history<F>(
+    conn: &Connection,
+    kind: AssetKind,
+    ticker: &str,
+    from_day: i64,
+    until_day: i64,
+    mut price_at: F,
+) -> Result<Vec<DayPlan>>
+where
+    F: FnMut(i64) -> Option<(f64, String)>,
 {
     let from_day = floor_day(from_day);
     let until_day = floor_day(until_day);
@@ -112,7 +149,7 @@ where
         return Ok(Vec::new());
     }
 
-    let changes = load_position_changes(conn, ticker)?;
+    let changes = load_position_changes(conn, kind, ticker)?;
 
     let mut plan = Vec::new();
     let mut position = 0.0_f64;
@@ -145,9 +182,19 @@ where
     Ok(plan)
 }
 
-/// Write `plan` for `ticker` in one transaction through prepared statements.
+/// Write `plan` for a stock `ticker`, see [`apply_ticker_plan`].
 pub fn apply_stock_ticker_plan(
     conn: &Connection,
+    ticker: &str,
+    plan: &[DayPlan],
+) -> Result<RebuildStats> {
+    apply_ticker_plan(conn, AssetKind::Stock, ticker, plan)
+}
+
+/// Write `plan` for `ticker` in one transaction through prepared statements.
+pub fn apply_ticker_plan(
+    conn: &Connection,
+    kind: AssetKind,
     ticker: &str,
     plan: &[DayPlan],
 ) -> Result<RebuildStats> {
@@ -156,19 +203,20 @@ pub fn apply_stock_ticker_plan(
         return Ok(stats);
     }
 
+    let (table, _) = tables(kind);
     let tx = conn.unchecked_transaction()?;
     {
-        let mut upsert = tx.prepare_cached(
-            "INSERT INTO stock_value_history (id, ticker, recorded_at, quantity, price, currency)
+        let mut upsert = tx.prepare_cached(&format!(
+            "INSERT INTO {table} (id, ticker, recorded_at, quantity, price, currency)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6)
              ON CONFLICT(ticker, recorded_at) DO UPDATE SET
                  quantity = excluded.quantity,
                  price = excluded.price,
-                 currency = excluded.currency",
-        )?;
-        let mut delete = tx.prepare_cached(
-            "DELETE FROM stock_value_history WHERE ticker = ?1 AND recorded_at = ?2",
-        )?;
+                 currency = excluded.currency"
+        ))?;
+        let mut delete = tx.prepare_cached(&format!(
+            "DELETE FROM {table} WHERE ticker = ?1 AND recorded_at = ?2"
+        ))?;
         for day_plan in plan {
             match &day_plan.action {
                 DayAction::Upsert {
@@ -206,7 +254,7 @@ pub fn rebuild_stock_ticker_history<F>(
     price_at: F,
 ) -> Result<RebuildStats>
 where
-    F: Fn(i64) -> Option<(f64, String)>,
+    F: FnMut(i64) -> Option<(f64, String)>,
 {
     let plan = plan_stock_ticker_history(conn, ticker, from_day, until_day, price_at)?;
     apply_stock_ticker_plan(conn, ticker, &plan)
@@ -783,9 +831,6 @@ mod tests {
 mod golden {
     use super::*;
     use crate::db::Database;
-    use crate::services::portfolio_history::{
-        aggregate_ticker_history, update_classes, AssetClassKind,
-    };
     use std::time::Instant;
 
     const DAY: i64 = SECONDS_PER_DAY;
@@ -856,58 +901,6 @@ mod golden {
                 ],
             )
             .expect("legacy upsert");
-        }
-    }
-
-    /// Verbatim logic of the previous `aggregate_ticker_history` for stocks
-    /// (services/portfolio_history.rs): one aggregate query and one
-    /// autocommit `update_classes` per day.
-    fn legacy_aggregate(conn: &Connection, from_day: i64, until_day_exclusive: i64) {
-        let from_day = (from_day / DAY) * DAY;
-        let days: Vec<i64> = {
-            let mut stmt = conn
-                .prepare(
-                    "SELECT DISTINCT (recorded_at / 86400) * 86400 AS day FROM portfolio_metrics_history
-                     WHERE (recorded_at / 86400) * 86400 >= ?1 AND (recorded_at / 86400) * 86400 < ?2
-                     ORDER BY day",
-                )
-                .expect("prepare days");
-            let rows = stmt
-                .query_map([from_day, until_day_exclusive], |row| row.get(0))
-                .expect("days");
-            rows.filter_map(|r| r.ok()).collect()
-        };
-        let mut stmt = conn
-            .prepare(
-                "SELECT s.currency, SUM(CAST(s.quantity AS REAL) * CAST(s.price AS REAL))
-                 FROM stock_value_history s
-                 JOIN (
-                     SELECT ticker, MAX(recorded_at) AS max_ts
-                     FROM stock_value_history
-                     WHERE recorded_at < ?1
-                     GROUP BY ticker
-                 ) latest ON s.ticker = latest.ticker AND s.recorded_at = latest.max_ts
-                 WHERE s.ticker IN (
-                     SELECT ticker FROM investment_transactions
-                     WHERE transaction_date < ?1
-                     GROUP BY ticker
-                     HAVING SUM(CASE WHEN type = 'buy' THEN CAST(quantity AS REAL)
-                                     ELSE -CAST(quantity AS REAL) END) > 0.000001
-                 )
-                 GROUP BY s.currency",
-            )
-            .expect("prepare aggregate");
-        for day in days {
-            let breakdown: HashMap<String, f64> = stmt
-                .query_map([day + DAY], |row| {
-                    Ok((row.get::<_, String>(0)?, row.get::<_, f64>(1)?))
-                })
-                .expect("aggregate")
-                .filter_map(|r| r.ok())
-                .filter(|(_, v)| *v != 0.0)
-                .collect();
-            update_classes(conn, day, &[(AssetClassKind::Investments, breakdown)])
-                .expect("legacy update_classes");
         }
     }
 
@@ -1095,86 +1088,6 @@ mod golden {
         assert_rows_match(&legacy_rows, &rows_of(&new_db, "AAPL"));
     }
 
-    /// `(day, investments_by_currency)` per snapshot row.
-    fn investments_of(conn: &Connection) -> Vec<(i64, HashMap<String, f64>)> {
-        let mut stmt = conn
-            .prepare(
-                "SELECT recorded_at, investments_by_currency
-                 FROM portfolio_metrics_history ORDER BY recorded_at",
-            )
-            .expect("prepare");
-        stmt.query_map([], |r| {
-            let json: String = r.get(1)?;
-            Ok((r.get(0)?, json))
-        })
-        .expect("query")
-        .map(|r| {
-            let (day, json) = r.expect("row");
-            (day, crate::services::currency::breakdown_from_json(&json))
-        })
-        .collect()
-    }
-
-    #[test]
-    fn aggregate_matches_the_previous_per_day_query() {
-        let first_day = TODAY - 400 * DAY;
-        let usd = weekday_quotes(first_day - 3 * DAY, TODAY, "USD", 3);
-        let eur = weekday_quotes(first_day - 3 * DAY, TODAY, "EUR", 8);
-
-        let legacy_db = Connection::open_in_memory().expect("db");
-        let new_db = Connection::open_in_memory().expect("db");
-        for conn in [&legacy_db, &new_db] {
-            minimal_schema(conn);
-            // Holiday-like gaps in the snapshot days
-            seed_snapshot_days(conn, first_day, 9);
-            seed_main_ticker(conn, "AAPL", first_day - 100 * DAY);
-            seed_fractional_ticker(conn, "MSFT", "USD", first_day - 100 * DAY);
-            seed_fractional_ticker(conn, "SAP", "EUR", first_day - 50 * DAY);
-            // Transactions but no history rows, and history rows but no transactions
-            add_txs(conn, "NOHIST", "USD", &[("buy", "5", first_day)]);
-            conn.execute(
-                "INSERT INTO stock_value_history (id, ticker, recorded_at, quantity, price, currency)
-                 VALUES ('ghost', 'GHOST', ?1, '1', '1', 'USD')",
-                [first_day + 5 * DAY],
-            )
-            .expect("ghost row");
-            for (ticker, quotes) in [("AAPL", &usd), ("MSFT", &usd), ("SAP", &eur)] {
-                rebuild_stock_ticker_history(conn, ticker, first_day - 100 * DAY, TODAY, |d| {
-                    closest_quote(quotes, d)
-                })
-                .expect("history");
-            }
-        }
-
-        legacy_aggregate(&legacy_db, first_day, TODAY);
-        aggregate_ticker_history(&new_db, AssetClassKind::Investments, first_day, TODAY)
-            .expect("aggregate");
-
-        let legacy = investments_of(&legacy_db);
-        let new = investments_of(&new_db);
-        assert_eq!(legacy.len(), new.len());
-        assert!(
-            legacy.iter().any(|(_, by_currency)| by_currency.len() == 2),
-            "the fixture mixes two currencies on some days"
-        );
-        assert!(
-            legacy.iter().any(|(_, by_currency)| by_currency.is_empty()),
-            "and has days where nothing is held"
-        );
-        for (a, b) in legacy.iter().zip(&new) {
-            assert_eq!(a.0, b.0);
-            assert_eq!(a.1.len(), b.1.len(), "same currencies on day {}", a.0);
-            for (currency, x) in &a.1 {
-                let y = b.1.get(currency).expect("currency present");
-                assert!(
-                    close(*x, *y),
-                    "{currency} differs on day {}: {x} vs {y}",
-                    a.0
-                );
-            }
-        }
-    }
-
     // ---- benchmark -------------------------------------------------------
 
     fn open_disk_db(dir: &std::path::Path) -> Database {
@@ -1254,8 +1167,7 @@ mod golden {
 
     /// One recalculation of the ticker under test, end to end on a real
     /// database: previous pipeline (per-day SUM + rate lookup + autocommit
-    /// writes, per-day aggregate query + autocommit writes, no
-    /// `portfolio_metrics_history.recorded_at` index) against the new one.
+    /// writes) against the new one.
     ///
     /// `cargo test --lib ticker_history::golden::benchmark -- --ignored --nocapture`
     #[test]
@@ -1294,15 +1206,6 @@ mod golden {
             .expect("legacy history");
         let legacy_history = t.elapsed();
         let t = Instant::now();
-        db_old
-            .with_conn(|conn| {
-                legacy_aggregate(conn, first_day, TODAY);
-                Ok(())
-            })
-            .expect("legacy aggregate");
-        let legacy_aggregate_time = t.elapsed();
-
-        let t = Instant::now();
         let mut plan_time = std::time::Duration::ZERO;
         db_new
             .with_conn(|conn| {
@@ -1315,25 +1218,8 @@ mod golden {
             })
             .expect("new history");
         let new_history = t.elapsed();
-        let t = Instant::now();
-        db_new
-            .with_conn(|conn| {
-                let tx = conn.unchecked_transaction()?;
-                aggregate_ticker_history(&tx, AssetClassKind::Investments, first_day, TODAY)?;
-                tx.commit()?;
-                Ok(())
-            })
-            .expect("new aggregate");
-        let new_aggregate = t.elapsed();
-
         println!("--- 630 days x 1 ticker (+20 other tickers), SQLCipher on disk, debug build ---");
         println!("ticker history   previous: {legacy_history:?}   new: {new_history:?} (plan {plan_time:?})");
-        println!("aggregate step   previous: {legacy_aggregate_time:?}   new: {new_aggregate:?}");
-        println!(
-            "total            previous: {:?}   new: {:?}",
-            legacy_history + legacy_aggregate_time,
-            new_history + new_aggregate
-        );
 
         let a = db_old.with_conn(|c| Ok(rows_of(c, "AAPL"))).expect("rows");
         let b = db_new.with_conn(|c| Ok(rows_of(c, "AAPL"))).expect("rows");

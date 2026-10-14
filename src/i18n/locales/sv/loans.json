@@ -116,12 +116,15 @@
     "endDate": "Slutdatum",
     "balance": {
       "title": "Utestående saldo",
-      "help": "Moony minskar saldot med varje månadsbetalning. Om du känner till det verkliga saldot, till exempel från ett kontoutdrag, ange det med datum så fortsätter beräkningen därifrån.",
+      "help": "Moony beräknar saldot utifrån betalningarna. När du anger det verkliga saldot per ett datum gäller det exakt tills du ändrar det — inget beräknas utifrån det.",
       "setManual": "Ange saldot per ett datum",
       "amount": "Utestående belopp",
       "date": "Per datum",
       "estimate": "Beräknat saldo i dag: {{amount}}",
-      "noPayment": "Utan månadsbetalning minskar inte saldot."
+      "manualToday": "Saldo i dag: {{amount}} (ditt angivna saldo gäller)",
+      "noPayment": "Utan månadsbetalning minskar inte saldot.",
+      "deleteWarning_one": "Tar bort {{count}} manuellt saldo, lånet beräknas på nytt.",
+      "deleteWarning_other": "Tar bort {{count}} manuella saldon, lånet beräknas på nytt."
     }
   },
   "actions": {
@@ -129,7 +132,7 @@
     "delete": "Ta bort lån",
     "open": "Öppna",
     "extraPayment": "Extra betalning",
-    "balanceCheck": "Kontrollera saldot mot kontoutdrag",
+    "balanceCheck": "Ange saldot per ett datum",
     "rateChange": "Registrera en ränteändring"
   },
   "confirmDelete": {
@@ -153,7 +156,7 @@
   },
   "valuation": {
     "automatic": "Amorterat från {{date}} ({{amount}}) med {{rate}} och {{payment}} per månad.",
-    "manual": "Från ditt saldo på {{amount}} den {{date}}, amorterat med {{rate}} och {{payment}} per månad.",
+    "manual": "Manuellt angivet saldo {{amount}} per {{date}} — det gäller tills du ändrar det.",
     "static": "Ingen månadsbetalning är angiven, så saldot minskar inte: {{amount}} per {{date}}.",
     "belowInterest": "Betalningen täcker inte räntan, så saldot minskar inte."
   },
@@ -167,7 +170,7 @@
     "withFixation": " bunden till {{month, lower}}",
     "status": {
       "automatic": "Saldo enligt plan",
-      "manual": "Saldo enligt plan · från ditt saldo per {{date}}",
+      "manual": "Manuellt saldo per {{date}} · gäller tills du ändrar det",
       "static": "Ingen månadsbetalning · saldot minskar inte"
     },
     "hero": {
@@ -206,7 +209,7 @@
         "extraPayment": "Extra betalning {{amount}}",
         "rateChange": "Räntan ändrades till {{rate}}",
         "newPayment": "betalning {{amount}}",
-        "balanceCheck": "Saldot kontrollerat mot kontoutdrag",
+        "balanceCheck": "Manuellt saldo {{amount}}",
         "fixationEnd": "Räntebindningen upphör",
         "half": "Hälften av lånebeloppet återbetalt",
         "payoff": "Lånet betalt",
@@ -280,14 +283,15 @@
       "newPayment": "ny betalning {{amount}}",
       "rateChange": "Räntan ändrades till {{rate}}",
       "rateChangeNote": "planen fortsätter från saldot den här dagen",
-      "balanceCheck": "Saldot kontrollerat mot kontoutdrag",
-      "balanceCheckNote": "planen startar om från det här datumet",
+      "balanceCheck": "Manuellt saldo {{amount}}",
+      "balanceCheckNote": "gäller tills du ändrar det",
       "drawdown": "Utbetalning {{amount}}",
       "drawdownNote": "lånets start",
       "delete": "Ta bort händelse",
       "confirmDelete": {
         "title": "Ta bort händelse",
-        "description": "Posten försvinner från diagrammet och listan. Det saldo som händelsen angav gäller fortfarande."
+        "description": "Posten försvinner från diagrammet och listan, och saldot räknas om utan den.",
+        "descriptionManual": "Det manuella saldot försvinner från diagrammet och listan. Det föregående manuella saldot gäller igen, eller beräkningen om det inte finns något."
       }
     },
     "warnings": {
@@ -312,6 +316,8 @@
       "alertPayment": "Ny betalning {{payment}} per månad, löptiden består till {{month, lower}}.",
       "alertTooMuch": "Beloppet överstiger saldot på {{amount}}.",
       "alertEmpty": "Ange ett belopp för att se effekten.",
+      "alertManual": "Det manuella saldot sjunker till {{amount}}",
+      "alertManualNote": "Planen fortsätter från det här saldot.",
       "submit": "Registrera betalning"
     },
     "rateChange": {
@@ -324,15 +330,17 @@
       "alertTitle": "Månadsränta {{from}} → {{to}}",
       "alertNote": "Med en betalning på {{payment}} är lånet betalt {{month, lower}}.",
       "alertNoPayoff": "En betalning på {{payment}} täcker inte räntan; saldot skulle inte minska.",
+      "manualNote": "Det manuella saldot ligger kvar; bara planen framåt ändras.",
       "submit": "Registrera ändring"
     },
     "balanceCheck": {
-      "title": "Kontrollera saldot mot kontoutdrag",
-      "description": "Ange saldot från ditt kontoutdrag; planen startar om från den dagen.",
-      "amount": "Saldo enligt kontoutdrag",
+      "title": "Ange saldot per ett datum",
+      "description": "Ange ett saldo du känner till, till exempel från ett kontoutdrag. Det gäller exakt tills du ändrar det.",
+      "amount": "Saldo",
       "date": "Per",
-      "alertTitle": "Planen förutsatte {{amount}}",
-      "alertNote": "Skillnad {{delta}} · från {{date}} använder planen ditt saldo.",
+      "alertTitle": "Beräkningen förutsatte {{amount}}",
+      "alertTitleManual": "Föregående manuella saldo {{amount}}",
+      "alertNote": "Skillnad {{delta}} · från {{date}} gäller ditt saldo tills du ändrar det.",
       "submit": "Spara saldo"
     }
   }

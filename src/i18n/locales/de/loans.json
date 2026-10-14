@@ -116,12 +116,15 @@
     "endDate": "Enddatum",
     "balance": {
       "title": "Restschuld",
-      "help": "Moony verringert die Restschuld mit jeder monatlichen Rate. Wenn Sie die tatsächliche Restschuld kennen, zum Beispiel aus einem Kontoauszug, geben Sie sie mit Datum ein, und die Berechnung läuft von dort weiter.",
+      "help": "Moony schätzt die Restschuld anhand der Raten. Wenn Sie die tatsächliche Restschuld zu einem Datum eingeben, gilt sie genau so, bis Sie sie ändern — daraus wird nichts geschätzt.",
       "setManual": "Restschuld zu einem Datum festlegen",
       "amount": "Offener Betrag",
       "date": "Stand vom",
       "estimate": "Geschätzte Restschuld heute: {{amount}}",
-      "noPayment": "Ohne monatliche Rate wird die Restschuld nicht verringert."
+      "manualToday": "Restschuld heute: {{amount}} (Ihre Restschuld gilt)",
+      "noPayment": "Ohne monatliche Rate wird die Restschuld nicht verringert.",
+      "deleteWarning_one": "Löscht {{count}} manuelle Restschuld, der Kredit wird wieder geschätzt.",
+      "deleteWarning_other": "Löscht {{count}} manuelle Restschulden, der Kredit wird wieder geschätzt."
     }
   },
   "actions": {
@@ -129,7 +132,7 @@
     "delete": "Kredit löschen",
     "open": "Öffnen",
     "extraPayment": "Sonderzahlung",
-    "balanceCheck": "Restschuld mit Kontoauszug abgleichen",
+    "balanceCheck": "Restschuld zu einem Datum eingeben",
     "rateChange": "Zinsänderung erfassen"
   },
   "confirmDelete": {
@@ -153,7 +156,7 @@
   },
   "valuation": {
     "automatic": "Getilgt ab {{date}} ({{amount}}) bei {{rate}} mit {{payment}} pro Monat.",
-    "manual": "Ausgehend von Ihrer Restschuld von {{amount}} am {{date}}, getilgt bei {{rate}} mit {{payment}} pro Monat.",
+    "manual": "Manuell eingegebene Restschuld {{amount}} am {{date}} — sie gilt, bis Sie sie ändern.",
     "static": "Es ist keine monatliche Rate festgelegt, daher wird die Restschuld nicht verringert: {{amount}} am {{date}}.",
     "belowInterest": "Die Rate deckt die Zinsen nicht, daher sinkt die Restschuld nicht."
   },
@@ -167,7 +170,7 @@
     "withFixation": " fest bis {{month}}",
     "status": {
       "automatic": "Restschuld nach Plan",
-      "manual": "Restschuld nach Plan · ausgehend von Ihrer Restschuld vom {{date}}",
+      "manual": "Manuelle Restschuld vom {{date}} · gilt, bis Sie sie ändern",
       "static": "Keine monatliche Rate · die Restschuld sinkt nicht"
     },
     "hero": {
@@ -206,7 +209,7 @@
         "extraPayment": "Sonderzahlung {{amount}}",
         "rateChange": "Zinssatz geändert auf {{rate}}",
         "newPayment": "Rate {{amount}}",
-        "balanceCheck": "Restschuld per Kontoauszug bestätigt",
+        "balanceCheck": "Manuelle Restschuld {{amount}}",
         "fixationEnd": "Zinsbindung endet",
         "half": "Hälfte der Kreditsumme getilgt",
         "payoff": "Kredit getilgt",
@@ -280,14 +283,15 @@
       "newPayment": "neue Rate {{amount}}",
       "rateChange": "Zinssatz geändert auf {{rate}}",
       "rateChangeNote": "der Plan läuft ab der Restschuld an diesem Tag weiter",
-      "balanceCheck": "Restschuld per Kontoauszug bestätigt",
-      "balanceCheckNote": "der Plan beginnt ab diesem Datum neu",
+      "balanceCheck": "Manuelle Restschuld {{amount}}",
+      "balanceCheckNote": "gilt, bis Sie sie ändern",
       "drawdown": "Auszahlung {{amount}}",
       "drawdownNote": "Beginn des Kredits",
       "delete": "Ereignis entfernen",
       "confirmDelete": {
         "title": "Ereignis entfernen",
-        "description": "Der Eintrag verschwindet aus Diagramm und Liste. Die durch das Ereignis festgelegte Restschuld bleibt bestehen."
+        "description": "Der Eintrag verschwindet aus Diagramm und Liste, und die Restschuld wird ohne ihn neu berechnet.",
+        "descriptionManual": "Die manuelle Restschuld verschwindet aus Diagramm und Liste. Es gilt wieder die vorherige manuelle Restschuld oder, falls es keine gibt, die Schätzung."
       }
     },
     "warnings": {
@@ -312,6 +316,8 @@
       "alertPayment": "Neue Rate {{payment}} pro Monat, die Laufzeit bleibt bis {{month}}.",
       "alertTooMuch": "Der Betrag übersteigt die Restschuld von {{amount}}.",
       "alertEmpty": "Geben Sie einen Betrag ein, um die Wirkung zu sehen.",
+      "alertManual": "Die manuelle Restschuld sinkt auf {{amount}}",
+      "alertManualNote": "Der Plan läuft ab dieser Restschuld weiter.",
       "submit": "Zahlung erfassen"
     },
     "rateChange": {
@@ -324,15 +330,17 @@
       "alertTitle": "Monatliche Zinsen {{from}} → {{to}}",
       "alertNote": "Bei einer Rate von {{payment}} ist der Kredit bis {{month}} getilgt.",
       "alertNoPayoff": "Eine Rate von {{payment}} deckt die Zinsen nicht; die Restschuld würde nicht sinken.",
+      "manualNote": "Die manuelle Restschuld bleibt; nur der Plan für die Zukunft ändert sich.",
       "submit": "Änderung erfassen"
     },
     "balanceCheck": {
-      "title": "Restschuld mit Kontoauszug abgleichen",
-      "description": "Geben Sie die Restschuld aus Ihrem Kontoauszug ein; der Plan beginnt ab diesem Tag neu.",
-      "amount": "Restschuld laut Kontoauszug",
+      "title": "Restschuld zu einem Datum eingeben",
+      "description": "Geben Sie eine Restschuld ein, die Sie kennen, zum Beispiel aus einem Kontoauszug. Sie gilt genau so, bis Sie sie ändern.",
+      "amount": "Restschuld",
       "date": "Stand vom",
-      "alertTitle": "Der Plan ging von {{amount}} aus",
-      "alertNote": "Differenz {{delta}} · ab {{date}} verwendet der Plan Ihre Restschuld.",
+      "alertTitle": "Die Schätzung ging von {{amount}} aus",
+      "alertTitleManual": "Vorherige manuelle Restschuld {{amount}}",
+      "alertNote": "Differenz {{delta}} · ab {{date}} gilt Ihre Restschuld, bis Sie sie ändern.",
       "submit": "Restschuld speichern"
     }
   }

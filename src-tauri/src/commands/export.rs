@@ -405,11 +405,14 @@ pub fn export_loans(db: State<'_, Database>) -> Result<ExportResult> {
 #[tauri::command]
 pub fn export_other_assets(db: State<'_, Database>) -> Result<ExportResult> {
     db.with_conn(|conn| {
-        let mut stmt = conn.prepare(
-            "SELECT name, quantity, market_price, currency, average_purchase_price, yield_type, yield_value
-            FROM other_assets
-            ORDER BY name"
-        )?;
+        // Today's price in its own currency (the newest valuation's); `currency` is the asset's
+        let mut stmt = conn.prepare(&format!(
+            "SELECT a.name, a.quantity, p.price, p.currency, a.currency, a.average_purchase_price,
+                    a.yield_type, a.yield_value
+            FROM other_assets a JOIN ({prices}) p ON p.asset_id = a.id
+            ORDER BY a.name",
+            prices = crate::services::valuations::OTHER_ASSET_PRICES
+        ))?;
 
         let rows = stmt.query_map([], |row| {
             Ok((
@@ -419,18 +422,19 @@ pub fn export_other_assets(db: State<'_, Database>) -> Result<ExportResult> {
                 row.get::<_, String>(3)?,
                 row.get::<_, String>(4)?,
                 row.get::<_, String>(5)?,
-                row.get::<_, Option<String>>(6)?,
+                row.get::<_, String>(6)?,
+                row.get::<_, Option<String>>(7)?,
             ))
         })?;
 
-        let mut csv = String::from("name,quantity,market_price,currency,average_purchase_price,yield_type,yield_value\n");
+        let mut csv = String::from("name,quantity,market_price,market_price_currency,currency,average_purchase_price,yield_type,yield_value\n");
         let mut count = 0;
 
         for row in rows {
-            let (name, qty, price, currency, avg_price, ytype, yvalue) = row?;
+            let (name, qty, price, price_currency, currency, avg_price, ytype, yvalue) = row?;
             csv.push_str(&format!(
-                "\"{}\",{},{},{},{},{},{}\n",
-                escape_csv(&name), qty, price, currency, avg_price, ytype,
+                "\"{}\",{},{},{},{},{},{},{}\n",
+                escape_csv(&name), qty, price, price_currency, currency, avg_price, ytype,
                 yvalue.unwrap_or_default()
             ));
             count += 1;

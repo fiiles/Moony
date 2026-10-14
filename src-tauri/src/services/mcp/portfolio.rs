@@ -223,6 +223,14 @@ mod tests {
                 market_price TEXT NOT NULL,
                 currency TEXT NOT NULL
             );
+            CREATE TABLE other_asset_valuations (
+                id TEXT PRIMARY KEY,
+                asset_id TEXT NOT NULL,
+                value TEXT NOT NULL,
+                currency TEXT NOT NULL,
+                valued_at INTEGER NOT NULL,
+                created_at INTEGER NOT NULL
+            );
 
             INSERT INTO exchange_rates (currency, rate, fetched_at) VALUES
                 ('CZK', 25.0, 0), ('USD', 1.25, 0);

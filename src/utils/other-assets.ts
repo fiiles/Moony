@@ -18,17 +18,24 @@ export interface OtherAssetBuy {
  */
 export interface OtherAssetRow {
   asset: OtherAsset;
-  /** The asset's currency (legacy rows without one are CZK). */
+  /** The asset's currency, the purchase average's (legacy rows without one are CZK). */
   currency: string;
+  /** The latest estimate's currency: its valuation's, which can differ from the asset's. */
+  priceCurrency: string;
+  /** The yield's currency: the price's for a yield on the market value, else the asset's. */
+  yieldCurrency: string;
   quantity: number;
-  /** Latest estimate per unit, native currency. */
+  /** Latest estimate per unit, in `priceCurrency`. */
   price: number;
-  /** Purchase average per unit, native currency. */
+  /** Purchase average per unit, in `currency`. */
   avgPurchase: number;
-  /** quantity × price, quantity × purchase average and the yearly yield, native. */
+  /** quantity × price (`priceCurrency`), quantity × purchase average (`currency`) and the
+   * yearly yield (`yieldCurrency`), native. */
   valueNative: number;
   costNative: number;
   yieldNative: number;
+  /** valueNative − costNative; null when they are in different currencies. */
+  gainNative: number | null;
   /** Today's value at the current quotes. */
   value: number | null;
   /** What the held quantity cost, every buy converted at its own day. */
@@ -77,6 +84,8 @@ export function otherAssetRow(
   const price = parseFloat(asset.marketPrice) || 0;
   const avgPurchase = parseFloat(asset.averagePurchasePrice) || 0;
   const currency = recordCurrency(asset.currency);
+  const priceCurrency = recordCurrency(asset.marketPriceCurrency);
+  const yieldCurrency = asset.yieldType === 'percent_market' ? priceCurrency : currency;
   const valueNative = quantity * price;
   const costNative = quantity * avgPurchase;
   const yieldNative = calculateAnnualYield({
@@ -86,24 +95,27 @@ export function otherAssetRow(
     averagePurchasePrice: avgPurchase,
     marketPrice: price,
   });
-  const toMain = (amount: number) => (amount === 0 ? 0 : convert(amount, currency));
-  const value = toMain(valueNative);
+  const toMain = (amount: number, from: string) => (amount === 0 ? 0 : convert(amount, from));
+  const value = toMain(valueNative, priceCurrency);
   const cost = heldCost(asset, quantity, costNative, currency, convertAt, buys);
   const gain = value !== null && cost !== null ? value - cost : null;
   return {
     asset,
     currency,
+    priceCurrency,
+    yieldCurrency,
     quantity,
     price,
     avgPurchase,
     valueNative,
     costNative,
     yieldNative,
+    gainNative: priceCurrency === currency ? valueNative - costNative : null,
     value,
     cost,
     gain,
     gainPct: gain === null ? null : cost !== null && cost > 0 ? gain / cost : 0,
-    yield: toMain(yieldNative),
+    yield: toMain(yieldNative, yieldCurrency),
   };
 }
 
@@ -129,8 +141,8 @@ export function otherAssetsSummary(rows: readonly OtherAssetRow[]): OtherAssetsS
   const missingCost = new MissingTracker();
   const totals = { value: 0, cost: 0, gain: 0, gainCost: 0, yield: 0, yielding: 0 };
   for (const r of rows) {
-    totals.value += missing.track(r.currency, r.value) ?? 0;
-    totals.yield += missing.track(r.currency, r.yield) ?? 0;
+    totals.value += missing.track(r.priceCurrency, r.value) ?? 0;
+    totals.yield += missing.track(r.yieldCurrency, r.yield) ?? 0;
     totals.cost += missingCost.track(r.currency, r.cost) ?? 0;
     if (r.gain !== null) {
       totals.gain += r.gain;

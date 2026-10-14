@@ -10,7 +10,7 @@ use crate::error::{AppError, Result};
 use crate::services::{dedup, other_assets as other_assets_service};
 
 use super::money::currency_or_main;
-use super::{sql_to_json, BulkWriteReport, RowError, SkippedRow, MAX_BULK_ROWS};
+use super::{BulkWriteReport, RowError, SkippedRow, MAX_BULK_ROWS};
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct OtherAssetsTransactionsArgs {
@@ -19,25 +19,11 @@ pub struct OtherAssetsTransactionsArgs {
     pub asset_id: String,
 }
 
+/// Every asset by name, priced like today's net worth (`other_assets::list_assets`):
+/// `marketPrice` is in `marketPriceCurrency`, the purchase average in `currency`.
 pub fn other_assets_list(conn: &Connection) -> Result<Value> {
-    let mut stmt = conn.prepare(
-        "SELECT id, name, quantity, market_price, currency,
-                average_purchase_price, yield_type, yield_value, created_at, updated_at
-         FROM other_assets ORDER BY name",
-    )?;
-    let rows: Vec<Value> = stmt.query_map([], |row| Ok(serde_json::json!({
-        "id": row.get::<_, String>(0)?,
-        "name": row.get::<_, String>(1)?,
-        "quantity": row.get::<_, String>(2)?,
-        "marketPrice": row.get::<_, String>(3)?,
-        "currency": row.get::<_, String>(4)?,
-        "averagePurchasePrice": sql_to_json(row.get::<_, rusqlite::types::Value>(5).unwrap_or(rusqlite::types::Value::Null)),
-        "yieldType": sql_to_json(row.get::<_, rusqlite::types::Value>(6).unwrap_or(rusqlite::types::Value::Null)),
-        "yieldValue": sql_to_json(row.get::<_, rusqlite::types::Value>(7).unwrap_or(rusqlite::types::Value::Null)),
-        "createdAt": row.get::<_, i64>(8)?,
-        "updatedAt": row.get::<_, i64>(9)?,
-    })))?.filter_map(|r| r.ok()).collect();
-    Ok(Value::Array(rows))
+    let assets = other_assets_service::list_assets(conn)?;
+    Ok(serde_json::to_value(assets)?)
 }
 
 pub fn other_assets_transactions(conn: &Connection, asset_id: &str) -> Result<Value> {
@@ -328,10 +314,48 @@ mod tests {
                 transaction_date INTEGER NOT NULL,
                 created_at INTEGER NOT NULL DEFAULT (unixepoch())
             );
+
+            CREATE TABLE other_asset_valuations (
+                id TEXT PRIMARY KEY,
+                asset_id TEXT NOT NULL REFERENCES other_assets(id) ON DELETE CASCADE,
+                value TEXT NOT NULL,
+                currency TEXT NOT NULL DEFAULT 'CZK',
+                valued_at INTEGER NOT NULL,
+                note TEXT,
+                created_at INTEGER NOT NULL DEFAULT (unixepoch())
+            );
             "#,
         )
         .expect("schema");
         conn
+    }
+
+    /// The list prices an asset like today's net worth: the newest valuation in its own
+    /// currency, else the market price in the asset's currency.
+    #[test]
+    fn list_prices_an_asset_in_the_currency_of_its_newest_valuation() {
+        let conn = setup_test_db();
+        conn.execute_batch(
+            "INSERT INTO other_assets (id, name, quantity, market_price, currency)
+             VALUES ('gold', 'Gold', '2', '2500', 'CZK'), ('car', 'Car', '1', '4000', 'EUR');
+             INSERT INTO other_asset_valuations (id, asset_id, value, currency, valued_at, created_at)
+             VALUES ('v1', 'gold', '62000', 'CZK', 1700006400, 1),
+                    ('v2', 'gold', '2500', 'USD', 1700092800, 2);",
+        )
+        .unwrap();
+
+        let listed = other_assets_list(&conn).unwrap();
+        let listed = listed.as_array().unwrap();
+        assert_eq!(listed[0]["name"], "Car");
+        assert_eq!(listed[0]["marketPrice"], "4000");
+        assert_eq!(listed[0]["marketPriceCurrency"], "EUR");
+        assert_eq!(listed[1]["name"], "Gold");
+        assert_eq!(listed[1]["marketPrice"], "2500");
+        assert_eq!(listed[1]["marketPriceCurrency"], "USD");
+        assert_eq!(
+            listed[1]["currency"], "CZK",
+            "the purchase average's currency"
+        );
     }
 
     fn valid_asset(name: &str) -> InsertOtherAsset {

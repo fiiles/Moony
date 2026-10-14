@@ -23,6 +23,7 @@ use crate::services::parsing::parse_money;
 use crate::services::portfolio_history::{investment_real_estate, ClassBreakdowns};
 use crate::services::positions::{native_value_breakdown, AssetKind};
 use crate::services::reporting::{money_in_currency, normalize_currency};
+use crate::services::valuations::OTHER_ASSET_PRICES;
 
 /// Every asset class and the loans in the report currency; `None` when nothing in the class
 /// could be converted.
@@ -133,7 +134,11 @@ pub fn compute_breakdowns(conn: &Connection) -> Result<ClassBreakdowns> {
     breakdowns.investments = native_value_breakdown(conn, AssetKind::Stock)?;
     breakdowns.crypto = native_value_breakdown(conn, AssetKind::Crypto)?;
 
-    let mut stmt = conn.prepare("SELECT quantity, market_price, currency FROM other_assets")?;
+    // Today's price in its own currency: the newest valuation's, not the asset's
+    let mut stmt = conn.prepare(&format!(
+        "SELECT a.quantity, p.price, p.currency
+         FROM other_assets a JOIN ({OTHER_ASSET_PRICES}) p ON p.asset_id = a.id"
+    ))?;
     let rows = stmt.query_map([], |row| {
         Ok((
             row.get::<_, String>(0)?,

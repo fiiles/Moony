@@ -16,33 +16,7 @@ use tauri::{AppHandle, State};
 /// Get all other assets
 #[tauri::command]
 pub async fn get_all_other_assets(db: State<'_, Database>) -> Result<Vec<OtherAsset>> {
-    db.with_conn(|conn| {
-        let mut stmt = conn.prepare(
-            "SELECT id, name, quantity, market_price, currency, average_purchase_price,
-                    yield_type, yield_value, created_at, updated_at
-             FROM other_assets ORDER BY name",
-        )?;
-
-        let assets = stmt
-            .query_map([], |row| {
-                Ok(OtherAsset {
-                    id: row.get(0)?,
-                    name: row.get(1)?,
-                    quantity: row.get(2)?,
-                    market_price: row.get(3)?,
-                    currency: row.get(4)?,
-                    average_purchase_price: row.get(5)?,
-                    yield_type: row.get(6)?,
-                    yield_value: row.get(7)?,
-                    created_at: row.get(8)?,
-                    updated_at: row.get(9)?,
-                })
-            })?
-            .filter_map(|r| r.ok())
-            .collect();
-
-        Ok(assets)
-    })
+    db.with_conn(service::list_assets)
 }
 
 /// Create other asset
@@ -121,24 +95,7 @@ pub async fn update_other_asset(
             }
         }
 
-        let updated = conn.query_row(
-            "SELECT id, name, quantity, market_price, currency, average_purchase_price,
-                    yield_type, yield_value, created_at, updated_at
-             FROM other_assets WHERE id = ?1",
-            [&id],
-            |row| Ok(OtherAsset {
-                id: row.get(0)?,
-                name: row.get(1)?,
-                quantity: row.get(2)?,
-                market_price: row.get(3)?,
-                currency: row.get(4)?,
-                average_purchase_price: row.get(5)?,
-                yield_type: row.get(6)?,
-                yield_value: row.get(7)?,
-                created_at: row.get(8)?,
-                updated_at: row.get(9)?,
-            }),
-        ).map_err(|_| AppError::NotFound("Other asset not found".into()))?;
+        let updated = service::get_asset(conn, &id)?;
         let first_transaction = history_plan::first_asset_transaction_day(conn, &id)?;
         Ok((updated, before, first_transaction, logged_earliest))
     })?;

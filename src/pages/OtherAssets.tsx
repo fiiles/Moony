@@ -270,7 +270,8 @@ export default function OtherAssets() {
                 id: selected.id,
                 name: selected.name,
                 currentValue: Number(selected.marketPrice) || 0,
-                currency: recordCurrency(selected.currency),
+                // The estimate continues in the newest valuation's currency
+                currency: recordCurrency(selected.marketPriceCurrency),
                 unit: t('table.unit'),
                 quantity: Number(selected.quantity) || 0,
               }

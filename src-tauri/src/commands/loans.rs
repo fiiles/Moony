@@ -6,7 +6,7 @@ use crate::db::Database;
 use crate::error::{AppError, Result};
 use crate::models::{InsertLoan, Loan, LoanSchedule, RealEstate};
 use crate::services::history_plan;
-use crate::services::history_recalc::{HistoryRecalc, Job};
+use crate::services::history_recalc::HistoryRecalc;
 use crate::services::loan_amortization::today_utc_day;
 use crate::services::loans as loans_service;
 use tauri::{AppHandle, State};
@@ -32,8 +32,8 @@ pub async fn create_loan(
     data: InsertLoan,
 ) -> Result<Loan> {
     let created = db.with_conn(|conn| loans_service::create_loan(conn, &data))?;
-    // The loan counts from its start day
-    schedule_history_rebuild(&app, &db, &recalc, vec![Job::Days(created.start_date)]);
+    // A loan changes its own days and, through the remainder of a live row, the days before it
+    schedule_history_rebuild(&app, &db, &recalc, vec![history_plan::all_days()]);
     Ok(created)
 }
 
@@ -46,15 +46,9 @@ pub async fn update_loan(
     id: String,
     data: InsertLoan,
 ) -> Result<Loan> {
-    let (old_start, updated) = db.with_conn(|conn| {
-        let old_start = loans_service::loan_start_date(conn, &id)?;
-        let updated = loans_service::update_loan(conn, &id, &data)?;
-        Ok((old_start, updated))
-    })?;
-    // Terms, manual balances and currency all change the path from the start: from the
-    // earlier of the old and new start day
-    let from = history_plan::earlier(old_start, updated.start_date);
-    schedule_history_rebuild(&app, &db, &recalc, vec![Job::Days(from)]);
+    let updated = db.with_conn(|conn| loans_service::update_loan(conn, &id, &data))?;
+    // Terms, manual balances, the start day and the currency all change the path
+    schedule_history_rebuild(&app, &db, &recalc, vec![history_plan::all_days()]);
     Ok(updated)
 }
 
@@ -66,19 +60,16 @@ pub async fn delete_loan(
     recalc: State<'_, HistoryRecalc>,
     id: String,
 ) -> Result<()> {
-    let start = db.with_conn(|conn| {
-        let start = loans_service::loan_start_date(conn, &id)?;
+    db.with_conn(|conn| {
         // Remove links first
         conn.execute("DELETE FROM real_estate_loans WHERE loan_id = ?1", [&id])?;
         let changes = conn.execute("DELETE FROM loans WHERE id = ?1", [&id])?;
         if changes == 0 {
             return Err(AppError::NotFound("Loan not found".into()));
         }
-        Ok(start)
+        Ok(())
     })?;
-    if let Some(start) = start {
-        schedule_history_rebuild(&app, &db, &recalc, vec![Job::Days(start)]);
-    }
+    schedule_history_rebuild(&app, &db, &recalc, vec![history_plan::all_days()]);
     Ok(())
 }
 
@@ -173,8 +164,8 @@ pub async fn add_loan_event(
     crate::commands::portfolio::update_todays_snapshot(&db)
         .await
         .ok();
-    // The balance changes from the event's day on
-    schedule_history_rebuild(&app, &db, &recalc, vec![Job::Days(saved.event_day)]);
+    // The balance changes from the event's day on, and a manual one ends the estimate before it
+    schedule_history_rebuild(&app, &db, &recalc, vec![history_plan::all_days()]);
     Ok(saved)
 }
 
@@ -186,8 +177,7 @@ pub async fn delete_loan_event(
     recalc: State<'_, HistoryRecalc>,
     event_id: String,
 ) -> Result<()> {
-    let event_day =
-        db.with_conn(|conn| crate::services::loan_events::delete_event(conn, &event_id))?;
-    schedule_history_rebuild(&app, &db, &recalc, vec![Job::Days(event_day)]);
+    db.with_conn(|conn| crate::services::loan_events::delete_event(conn, &event_id))?;
+    schedule_history_rebuild(&app, &db, &recalc, vec![history_plan::all_days()]);
     Ok(())
 }

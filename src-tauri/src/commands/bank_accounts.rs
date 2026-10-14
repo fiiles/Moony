@@ -22,7 +22,7 @@ use crate::services::categorization::own_accounts;
 use crate::services::csv_import;
 use crate::services::csv_presets;
 use crate::services::history_plan;
-use crate::services::history_recalc::{HistoryRecalc, Job};
+use crate::services::history_recalc::HistoryRecalc;
 
 /// Keep the categorization engine's own-account IBANs in step with the
 /// accounts table: they used to be read only at unlock, so an account
@@ -195,10 +195,8 @@ pub async fn create_bank_account(
     // 2. Handle side effects (portfolio updates)
     portfolio::update_todays_snapshot(&db).await.ok();
 
-    // 3. The opening record's day (an undated balance counts on every day)
-    if let Some(job) = history_plan::account_created(&result) {
-        portfolio::schedule_history_rebuild(&app, &db, &recalc, vec![job]);
-    }
+    // 3. A new account can change every day (its opening record, or a balance carried on all)
+    portfolio::schedule_history_rebuild(&app, &db, &recalc, vec![history_plan::all_days()]);
 
     Ok(result)
 }
@@ -252,7 +250,7 @@ pub async fn delete_bank_account(
     portfolio::update_todays_snapshot(&db).await.ok();
 
     // 3. The account leaves the savings of every day it was counted on
-    portfolio::schedule_history_rebuild(&app, &db, &recalc, vec![history_plan::account_deleted()]);
+    portfolio::schedule_history_rebuild(&app, &db, &recalc, vec![history_plan::all_days()]);
 
     Ok(())
 }
@@ -602,18 +600,10 @@ pub async fn record_bank_account_balance(
     data: crate::models::bank_accounts::InsertBalanceRecord,
 ) -> Result<BankAccount> {
     data.validate()?;
-    let (before, account) = db.with_conn(|conn| {
-        let before = bank_service::get_account_by_id(conn, &account_id)?;
-        let account = bank_service::record_balance(conn, &account_id, &data)?;
-        Ok((before, account))
-    })?;
-    // The record holds from its day on (a statement balance from a CSV import comes this way)
-    portfolio::schedule_history_rebuild(
-        &app,
-        &db,
-        &recalc,
-        vec![history_plan::balance_recorded(&before, data.as_of)],
-    );
+    let account = db.with_conn(|conn| bank_service::record_balance(conn, &account_id, &data))?;
+    // The record holds from its day on, and it ends a balance carried on every earlier day (a
+    // statement balance from a CSV import comes this way): every day is derived again
+    portfolio::schedule_history_rebuild(&app, &db, &recalc, vec![history_plan::all_days()]);
     Ok(account)
 }
 
@@ -625,11 +615,7 @@ pub async fn delete_balance_record(
     recalc: State<'_, HistoryRecalc>,
     record_id: String,
 ) -> Result<BankAccount> {
-    let (account, as_of) = db.with_conn(|conn| {
-        let as_of = bank_service::balance_record_day(conn, &record_id)?;
-        let account = bank_service::delete_balance_record(conn, &record_id)?;
-        Ok((account, as_of))
-    })?;
-    portfolio::schedule_history_rebuild(&app, &db, &recalc, vec![Job::Days(as_of)]);
+    let account = db.with_conn(|conn| bank_service::delete_balance_record(conn, &record_id))?;
+    portfolio::schedule_history_rebuild(&app, &db, &recalc, vec![history_plan::all_days()]);
     Ok(account)
 }

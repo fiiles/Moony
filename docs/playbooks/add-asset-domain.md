@@ -63,9 +63,11 @@ canonical examples from `docs/architecture/overview.md`, and check
       report currency (an unconvertible amount stays out of the totals and is named in
       `fxQuality`; never 1:1);
     - give the class a rule in `history_days::Facts::day_values` (its dated facts, loaded once,
-      and its `known` flag in `ClassSet`) and queue a `Days` job from every write that changes
-      its past (`portfolio::schedule_history_rebuild`; for MCP writes, a domain in
-      `commands/mcp_refresh.rs`), so past days derive from the facts (ADR 0016);
+      and its `known` flag in `ClassSet`) and queue `history_plan::all_days()` (`Days(0)`) from every
+      write that changes it, because a change to one item can change every earlier day
+      (`portfolio::schedule_history_rebuild`; for MCP writes, a domain in
+      `commands/mcp_refresh.rs` that rebuilds from the first fact), so past days derive from the
+      facts (ADR 0016);
     - if the class holds a currency the user may type freely, make sure `fx_backfill` covers its
       currency columns so historical conversion has rates (`held_currencies`).
 14. **README.** Add the new asset class to the feature list in `README.md`

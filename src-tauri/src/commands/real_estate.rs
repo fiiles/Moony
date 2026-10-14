@@ -880,6 +880,19 @@ pub async fn get_real_estate_valuations(
     })
 }
 
+/// Dated valuations of every property, oldest first (the list page marks them on its chart).
+#[tauri::command]
+pub async fn get_all_real_estate_valuations(
+    db: State<'_, Database>,
+) -> Result<Vec<crate::models::AssetValuation>> {
+    db.with_conn(|conn| {
+        crate::services::valuations::list_all_valuations(
+            conn,
+            crate::services::valuations::ValuationKind::RealEstate,
+        )
+    })
+}
+
 /// Record an estimate ("Přecenit"); the newest one becomes the market price.
 #[tauri::command]
 pub async fn add_real_estate_valuation(

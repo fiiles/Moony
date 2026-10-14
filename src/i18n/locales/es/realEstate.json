@@ -436,6 +436,20 @@
   },
   "chart": {
     "title": "Valor del inmueble",
-    "subtitle": "El valor avanza en línea recta de una estimación a la siguiente."
+    "subtitle": "El valor avanza en línea recta de una estimación a la siguiente.",
+    "legend": {
+      "value": "Valor de mercado",
+      "purchase": "Compra",
+      "revaluation": "Revalorización"
+    },
+    "events": {
+      "purchase": "Compra de {{name}}",
+      "first": "Primera estimación de {{name}}",
+      "revaluation": "Revalorización de {{name}}",
+      "change": "{{percent}} desde la estimación anterior",
+      "cluster_one": "{{count}} evento",
+      "cluster_many": "{{count}} eventos",
+      "cluster_other": "{{count}} eventos"
+    }
   }
 }

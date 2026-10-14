@@ -139,6 +139,7 @@ pub async fn run() {
             commands::real_estate::delete_real_estate_cost,
             commands::real_estate::update_real_estate_cost,
             commands::real_estate::get_real_estate_valuations,
+            commands::real_estate::get_all_real_estate_valuations,
             commands::real_estate::add_real_estate_valuation,
             commands::real_estate::delete_real_estate_valuation,
             commands::real_estate::link_loan_to_real_estate,

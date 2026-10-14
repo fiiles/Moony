@@ -22,8 +22,18 @@ import { useCurrency } from '@/lib/currency';
 import { useFormat } from '@/lib/use-format';
 import { useAuth } from '@/hooks/use-auth';
 import { useDatedMainConvert, useMainConvert } from '@/hooks/use-fx';
+import {
+  ALL_REAL_ESTATE_VALUATIONS_KEY,
+  useAllRealEstateValuations,
+} from '@/hooks/use-real-estate';
 import { propertiesSummary, propertyRow, type PropertyRow } from '@/utils/real-estate';
 import { compareConverted } from '@/utils/fx-totals';
+import type { EventCluster } from '@/utils/chart-scale';
+import {
+  firstRealEstateDay,
+  realEstateEvents,
+  type RealEstateEvent,
+} from '@/utils/real-estate-events';
 import { ConvertedMoney } from '@/components/common/ConvertedMoney';
 import { ConversionQualityNote } from '@/components/reports/ReportQualityNote';
 import { translateApiError } from '@/lib/translate-api-error';
@@ -55,6 +65,7 @@ import { ExportButton } from '@/components/common/ExportButton';
 import { ConfirmDeleteDialog } from '@/components/common/ConfirmDeleteDialog';
 import { Stat, StatSkeleton, Stats } from '@/components/common/Stat';
 import PortfolioTrendCard from '@/components/common/PortfolioTrendCard';
+import { ChartLegend } from '@/components/charts/ChartLegend';
 import { AddRealEstateModal } from '@/components/real-estate/AddRealEstateModal';
 import { RevalueDialog } from '@/components/valuations/RevalueDialog';
 import { cn } from '@/lib/utils';
@@ -101,12 +112,17 @@ export default function RealEstatePage() {
     })),
   });
 
-  // Today's amounts at the current quotes, each purchase price at its own day
+  // Every property's estimates: the revaluation marks of the trend card
+  const { data: valuations } = useAllRealEstateValuations();
+
+  // Today's amounts at the current quotes, each purchase price (and each purchase and
+  // estimate mark of the trend) at its own day
   const convert = useMainConvert();
-  const firstPurchase = properties.length
-    ? Math.min(...properties.map((p) => p.purchaseDate ?? p.createdAt))
-    : undefined;
-  const dated = useDatedMainConvert(firstPurchase);
+  const firstDay = useMemo(
+    () => firstRealEstateDay(properties, valuations ?? []),
+    [properties, valuations]
+  );
+  const dated = useDatedMainConvert(firstDay);
 
   const rows = useMemo(
     (): PropertyRow[] =>
@@ -138,6 +154,38 @@ export default function RealEstatePage() {
   const trendMissing = [
     ...new Set(rows.filter((r) => r.value === null).map((r) => r.valueNative.currency)),
   ];
+  // Purchases and revaluations as events on the trend, in the report currency at the rates of
+  // their own day (like the trade marks of the stocks list)
+  const trendEvents = useMemo(
+    () => realEstateEvents(properties, valuations ?? [], dated.convertAt),
+    [properties, valuations, dated.convertAt]
+  );
+  const trendEventTip = (cluster: EventCluster<RealEstateEvent>) => {
+    if (cluster.events.length > 1) {
+      const first = cluster.events[0].t;
+      const last = cluster.events[cluster.events.length - 1].t;
+      return {
+        title: t('chart.events.cluster', { count: cluster.events.length }),
+        lines: [`${fmt.day(first)} – ${fmt.day(last)}`],
+      };
+    }
+    const event = cluster.events[0];
+    // The amount at the day's rate; native while that day has no rate
+    const amount =
+      event.value !== null
+        ? money(event.value)
+        : fmt.money(event.native.amount, event.native.currency, { decimals: 0 });
+    const lines = [`${fmt.day(event.t)} · ${amount}`];
+    if (event.change !== null) {
+      lines.push(
+        t('chart.events.change', { percent: fmt.percent(event.change, 1, { signed: true }) })
+      );
+    }
+    return {
+      title: t(`chart.events.${event.kind}`, { name: event.name }),
+      lines,
+    };
+  };
   const latest = properties.reduce<RealEstate | null>(
     (max, p) => (max === null || p.updatedAt > max.updatedAt ? p : max),
     null
@@ -156,6 +204,7 @@ export default function RealEstatePage() {
     mutationFn: (id: string) => realEstateApi.delete(id),
     onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ['real-estate'] });
+      queryClient.invalidateQueries({ queryKey: ALL_REAL_ESTATE_VALUATIONS_KEY });
       queryClient.invalidateQueries({ queryKey: ['portfolio-metrics'] });
       queryClient.invalidateQueries({ queryKey: ['cashflow-report'] });
       try {
@@ -389,10 +438,24 @@ export default function RealEstatePage() {
             />
           </Stats>
 
-          <PortfolioTrendCard
+          <PortfolioTrendCard<RealEstateEvent>
             type="realEstate"
             currentValue={trendValue}
             missingCurrencies={trendMissing}
+            events={trendEvents}
+            renderEventTip={trendEventTip}
+            legend={
+              <ChartLegend
+                items={[
+                  { label: t('chart.legend.value'), swatch: { kind: 'line' } },
+                  { label: t('chart.legend.purchase'), swatch: { kind: 'event', type: 'buy' } },
+                  {
+                    label: t('chart.legend.revaluation'),
+                    swatch: { kind: 'event', type: 'mark' },
+                  },
+                ]}
+              />
+            }
           />
 
           <Card variant="table">

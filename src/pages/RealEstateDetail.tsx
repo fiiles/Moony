@@ -32,6 +32,7 @@ import type { ChartEvent, EventCluster } from '@/utils/chart-scale';
 import { convertValuations, dailyValuations, valuationTrace } from '@/utils/valuation-trace';
 import { propertyRow, yearlyBalance, yearlyFactor } from '@/utils/real-estate';
 import { useDatedMainConvert, useMainConvert } from '@/hooks/use-fx';
+import { ALL_REAL_ESTATE_VALUATIONS_KEY } from '@/hooks/use-real-estate';
 import { ConvertedMoney } from '@/components/common/ConvertedMoney';
 import { ConversionQualityNote } from '@/components/reports/ReportQualityNote';
 import { useShellPage } from '@/components/shell/shell-context';
@@ -156,6 +157,7 @@ export default function RealEstateDetail() {
   const invalidateProperty = async () => {
     queryClient.invalidateQueries({ queryKey: ['real-estate'] });
     queryClient.invalidateQueries({ queryKey: ['real-estate', id] });
+    queryClient.invalidateQueries({ queryKey: ALL_REAL_ESTATE_VALUATIONS_KEY });
     queryClient.invalidateQueries({ queryKey: ['portfolio-metrics'] });
     queryClient.invalidateQueries({ queryKey: ['cashflow-report'] });
     try {

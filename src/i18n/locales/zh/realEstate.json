@@ -424,6 +424,18 @@
   },
   "chart": {
     "title": "房产价值",
-    "subtitle": "价值从一次估值到下一次估值呈直线变化。"
+    "subtitle": "价值从一次估值到下一次估值呈直线变化。",
+    "legend": {
+      "value": "市场价值",
+      "purchase": "购入",
+      "revaluation": "重新估值"
+    },
+    "events": {
+      "purchase": "购入{{name}}",
+      "first": "{{name}}首次估值",
+      "revaluation": "重新估值{{name}}",
+      "change": "较上次估值{{percent}}",
+      "cluster_other": "{{count}} 个事件"
+    }
   }
 }

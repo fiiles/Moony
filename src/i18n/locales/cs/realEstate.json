@@ -436,6 +436,21 @@
   },
   "chart": {
     "title": "Hodnota nemovitostí",
-    "subtitle": "Hodnota vede rovnou čarou od jednoho odhadu k dalšímu."
+    "subtitle": "Hodnota vede rovnou čarou od jednoho odhadu k dalšímu.",
+    "legend": {
+      "value": "Tržní hodnota",
+      "purchase": "Koupě",
+      "revaluation": "Přecenění"
+    },
+    "events": {
+      "purchase": "Nákup {{name}}",
+      "first": "První odhad {{name}}",
+      "revaluation": "Přecenění {{name}}",
+      "change": "{{percent}} oproti předchozímu odhadu",
+      "cluster_one": "{{count}} událost",
+      "cluster_few": "{{count}} události",
+      "cluster_many": "{{count}} události",
+      "cluster_other": "{{count}} událostí"
+    }
   }
 }

@@ -436,6 +436,20 @@
   },
   "chart": {
     "title": "Valore dell'immobile",
-    "subtitle": "Il valore procede in linea retta da una stima alla successiva."
+    "subtitle": "Il valore procede in linea retta da una stima alla successiva.",
+    "legend": {
+      "value": "Valore di mercato",
+      "purchase": "Acquisto",
+      "revaluation": "Rivalutazione"
+    },
+    "events": {
+      "purchase": "Acquisto di {{name}}",
+      "first": "Prima stima di {{name}}",
+      "revaluation": "Rivalutazione di {{name}}",
+      "change": "{{percent}} rispetto alla stima precedente",
+      "cluster_one": "{{count}} evento",
+      "cluster_many": "{{count}} eventi",
+      "cluster_other": "{{count}} eventi"
+    }
   }
 }

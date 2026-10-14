@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import type { InsertAssetValuation } from '@shared/schema';
 import { otherAssetsApi, portfolioApi, realEstateApi } from '@/lib/tauri-api';
 import { translateApiError } from '@/lib/translate-api-error';
+import { ALL_REAL_ESTATE_VALUATIONS_KEY } from '@/hooks/use-real-estate';
 
 export type ValuationKind = 'realEstate' | 'otherAsset';
 
@@ -27,6 +28,8 @@ export function useValuationMutations(kind: ValuationKind, assetId: string | und
     if (assetId) queryClient.invalidateQueries({ queryKey: valuationsKey(kind, assetId) });
     if (kind === 'realEstate') {
       queryClient.invalidateQueries({ queryKey: ['real-estate'] });
+      // The list's chart marks every property's estimates
+      queryClient.invalidateQueries({ queryKey: ALL_REAL_ESTATE_VALUATIONS_KEY });
     } else {
       queryClient.invalidateQueries({ queryKey: ['other-assets'] });
     }

@@ -354,7 +354,11 @@ export interface OtherAsset {
   id: string;
   name: string;
   quantity: string;
+  /** Today's price per unit: the newest valuation, else the stored market price. */
   marketPrice: string;
+  /** The currency of `marketPrice`: the newest valuation's, else the asset's own. */
+  marketPriceCurrency: string;
+  /** The asset's own currency: the purchase average's (and the fallback price's). */
   currency: string;
   averagePurchasePrice: string;
   yieldType: string;

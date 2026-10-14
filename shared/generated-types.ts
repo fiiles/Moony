@@ -1158,7 +1158,19 @@ export type OnboardingProgress = { hasAccount: boolean; hasTransactions: boolean
 /**
  * Other asset (commodities, collectibles, etc.)
  */
-export type OtherAsset = { id: string; name: string; quantity: string; marketPrice: string; currency: string; averagePurchasePrice: string; yieldType: string; yieldValue: string | null; createdAt: number; updatedAt: number }
+export type OtherAsset = { id: string; name: string; quantity: string; 
+/**
+ * Today's price per unit: the newest valuation, else the stored market price.
+ */
+marketPrice: string; 
+/**
+ * The currency of `market_price`: the newest valuation's, else the asset's own.
+ */
+marketPriceCurrency: string; 
+/**
+ * The asset's own currency: the purchase average's (and the fallback price's).
+ */
+currency: string; averagePurchasePrice: string; yieldType: string; yieldValue: string | null; createdAt: number; updatedAt: number }
 
 /**
  * Transaction for other asset

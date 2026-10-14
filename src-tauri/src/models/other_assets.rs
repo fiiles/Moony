@@ -10,8 +10,13 @@ pub struct OtherAsset {
     pub id: String,
     pub name: String,
     pub quantity: String,
+    /// Today's price per unit: the newest valuation, else the stored market price.
     #[serde(rename = "marketPrice")]
     pub market_price: String,
+    /// The currency of `market_price`: the newest valuation's, else the asset's own.
+    #[serde(rename = "marketPriceCurrency")]
+    pub market_price_currency: String,
+    /// The asset's own currency: the purchase average's (and the fallback price's).
     pub currency: String,
     #[serde(rename = "averagePurchasePrice")]
     pub average_purchase_price: String,

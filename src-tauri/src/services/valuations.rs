@@ -2,7 +2,8 @@
 //!
 //! Each estimate is a dated row; the newest row is mirrored into the parent's
 //! `market_price` so every existing reader (net worth, snapshots, lists) keeps
-//! working unchanged. Creating a priced asset writes its first row
+//! working unchanged (an other asset's price currency is read through
+//! `OTHER_ASSET_PRICES`, its own currency stays). Creating a priced asset writes its first row
 //! (`record_initial_valuation`) and editing the market price through the
 //! parent's update command writes a row dated today (`record_price_change`), so
 //! the log is complete whichever path the user takes and a revaluation never
@@ -193,9 +194,25 @@ pub fn value_at_day(
     Ok(value.and_then(|v| v.trim().parse::<f64>().ok()))
 }
 
+/// Today's price per unit of every other asset, as `(asset_id, price, currency)` rows to join
+/// on `other_assets.id`: the newest valuation in its own currency (by day, then by creation,
+/// the order the history picks in), else the stored market price in the asset's currency.
+/// `sync_parent_price` mirrors only the value, so every reader of today's price goes through
+/// this instead of `market_price` and `currency`.
+pub const OTHER_ASSET_PRICES: &str = "SELECT a.id AS asset_id,
+            COALESCE(v.value, a.market_price) AS price,
+            COALESCE(v.currency, a.currency) AS currency
+     FROM other_assets a
+     LEFT JOIN (SELECT asset_id, value, currency,
+                       ROW_NUMBER() OVER (PARTITION BY asset_id
+                           ORDER BY valued_at DESC, created_at DESC, rowid DESC) AS age
+                FROM other_asset_valuations) v
+       ON v.asset_id = a.id AND v.age = 1";
+
 /// Mirror the newest valuation into the parent's market price. For other
 /// assets only the price moves: their single currency column also prices the
-/// purchase average, so a valuation in another currency does not change it.
+/// purchase average, so a valuation in another currency does not change it
+/// (`OTHER_ASSET_PRICES` pairs the price with the valuation's currency).
 fn sync_parent_price(conn: &Connection, kind: ValuationKind, asset_id: &str) -> Result<()> {
     let Some(latest) = latest_valuation(conn, kind, asset_id)? else {
         return Ok(());
@@ -728,6 +745,71 @@ mod tests {
         assert_eq!(rows.len(), 1);
         assert_eq!(rows[0].value, "62000");
         assert_eq!(rows[0].asset_id, "oa1");
+    }
+
+    fn other_asset_prices(conn: &Connection) -> Vec<(String, String, String)> {
+        let sql =
+            format!("SELECT asset_id, price, currency FROM ({OTHER_ASSET_PRICES}) ORDER BY 1");
+        let mut stmt = conn.prepare(&sql).unwrap();
+        let rows = stmt
+            .query_map([], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))
+            .unwrap();
+        rows.map(|r| r.unwrap()).collect()
+    }
+
+    fn row(id: &str, price: &str, currency: &str) -> (String, String, String) {
+        (id.into(), price.into(), currency.into())
+    }
+
+    /// The parent keeps its own currency (it also prices the purchase average), so a
+    /// valuation in another currency must not be read as the asset's currency.
+    #[test]
+    fn other_asset_price_is_the_newest_valuation_in_its_own_currency() {
+        let conn = setup_test_db();
+        let mut usd = insert("oa1", "2500", 20_000 * DAY);
+        usd.currency = Some("usd".into());
+        add_valuation(&conn, ValuationKind::OtherAsset, &usd).unwrap();
+        assert_eq!(market_price(&conn, "other_assets", "oa1"), "2500");
+        assert_eq!(other_asset_prices(&conn), [row("oa1", "2500", "USD")]);
+
+        // A backdated estimate in a third currency does not override the newest one
+        let mut eur = insert("oa1", "90", 19_000 * DAY);
+        eur.currency = Some("EUR".into());
+        add_valuation(&conn, ValuationKind::OtherAsset, &eur).unwrap();
+        assert_eq!(other_asset_prices(&conn), [row("oa1", "2500", "USD")]);
+
+        // Two estimates of one day: the one created last
+        conn.execute(
+            "INSERT INTO other_asset_valuations (id, asset_id, value, currency, valued_at, created_at)
+             VALUES ('late', 'oa1', '2600', 'GBP', ?1, ?2)",
+            [20_000 * DAY, i64::MAX],
+        )
+        .unwrap();
+        assert_eq!(other_asset_prices(&conn), [row("oa1", "2600", "GBP")]);
+    }
+
+    #[test]
+    fn other_asset_price_without_valuations_is_the_market_price_in_the_asset_currency() {
+        let conn = setup_test_db();
+        conn.execute(
+            "INSERT INTO other_assets (id, name, quantity, market_price, currency)
+             VALUES ('oa2', 'Car', '1', '4000', 'EUR')",
+            [],
+        )
+        .unwrap();
+        record_initial_valuation(
+            &conn,
+            ValuationKind::OtherAsset,
+            "oa1",
+            "62000",
+            "CZK",
+            20_000 * DAY,
+        )
+        .unwrap();
+        assert_eq!(
+            other_asset_prices(&conn),
+            [row("oa1", "62000", "CZK"), row("oa2", "4000", "EUR")]
+        );
     }
 
     #[test]

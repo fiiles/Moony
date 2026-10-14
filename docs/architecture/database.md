@@ -245,7 +245,7 @@ Grouped by owning domain (see the domain map in `overview.md`).
 |---|---|---|
 | `other_assets` | Miscellaneous assets (gold, art, …) | `quantity`, `market_price`, `average_purchase_price` TEXT; `yield_type DEFAULT 'none'` + `yield_value` |
 | `other_asset_transactions` | Buy/sell transactions per other asset | FK `asset_id` ON DELETE CASCADE; index on `asset_id` (for MCP import dedup) |
-| `other_asset_valuations` | Dated price-per-unit estimates per other asset | FK `asset_id` ON DELETE CASCADE; `value` TEXT, `currency`, `valued_at` INTEGER (UTC day), `note`; index `(asset_id, valued_at)`. The newest row is mirrored into `other_assets.market_price`. A priced asset has a log from day one: `create_asset` writes the first row and migration 002 seeded the older ones |
+| `other_asset_valuations` | Dated price-per-unit estimates per other asset | FK `asset_id` ON DELETE CASCADE; `value` TEXT, `currency`, `valued_at` INTEGER (UTC day), `note`; index `(asset_id, valued_at)`. The newest row's value is mirrored into `other_assets.market_price` (not its currency: `other_assets.currency` also prices the purchase average), so readers of today's price join `valuations::OTHER_ASSET_PRICES` (newest valuation's value and currency, else `market_price` in the asset's currency). A priced asset has a log from day one: `create_asset` writes the first row and migration 002 seeded the older ones |
 
 ### Portfolio / net worth
 

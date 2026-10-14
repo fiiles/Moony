@@ -238,7 +238,7 @@ export function OtherAssetsTable({
                     {fmt.number(r.quantity, { maximumFractionDigits: 4 })}
                   </TableCell>
                   <TableCell className="text-right num">
-                    {fmt.money(r.price, currency, { decimals: 0 })}
+                    {fmt.money(r.price, r.priceCurrency, { decimals: 0 })}
                   </TableCell>
                   <TableCell className="text-right num">
                     {r.avgPurchase > 0 ? (
@@ -248,17 +248,24 @@ export function OtherAssetsTable({
                     )}
                   </TableCell>
                   <TableCell className="text-right font-650 text-ink num">
-                    <ConvertedMoney value={r.value} amount={r.valueNative} currency={currency} />
+                    <ConvertedMoney
+                      value={r.value}
+                      amount={r.valueNative}
+                      currency={r.priceCurrency}
+                    />
                   </TableCell>
                   <TableCell className="text-right num text-ink-4">
                     {r.costNative === 0 || r.gain === 0 ? (
                       t('table.noChange')
+                    ) : r.gain === null && r.gainNative === null ? (
+                      // Price and purchase average in different currencies: no native gain
+                      '—'
                     ) : r.gain === null ? (
                       // Native gain until the purchase days convert (or with the missing marker)
                       <ConvertedMoney
                         className="font-650"
                         value={null}
-                        amount={r.valueNative - r.costNative}
+                        amount={r.gainNative ?? 0}
                         currency={currency}
                         options={signed}
                         pending={costPending}
@@ -277,7 +284,7 @@ export function OtherAssetsTable({
                           className="font-650 text-gain"
                           value={r.yield}
                           amount={r.yieldNative}
-                          currency={currency}
+                          currency={r.yieldCurrency}
                           options={signed}
                         />
                         {sub(yieldLabel(a))}

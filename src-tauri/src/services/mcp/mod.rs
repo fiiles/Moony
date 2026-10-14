@@ -508,7 +508,7 @@ impl MoonyMcp {
     }
 
     #[tool(
-        description = "List all other assets such as precious metals, art, collectibles, etc. with quantity, market price, average purchase price, and yield info."
+        description = "List all other assets such as precious metals, art, collectibles, etc. with quantity, market price per unit (in marketPriceCurrency, the newest valuation's currency), average purchase price (in currency, the asset's own), and yield info."
     )]
     fn other_assets_list(&self) -> Result<CallToolResult, McpError> {
         to_result(self.db.with_conn(other_assets::other_assets_list))

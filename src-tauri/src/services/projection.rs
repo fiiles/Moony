@@ -1512,7 +1512,9 @@ mod tests {
                                  balance_anchor_amount TEXT, balance_anchor_date INTEGER);
              CREATE TABLE loan_events(id TEXT PRIMARY KEY,loan_id TEXT,kind TEXT,event_day INTEGER,amount TEXT,rate TEXT,monthly_payment TEXT,previous_rate TEXT,previous_monthly_payment TEXT,note TEXT,created_at INTEGER);
              CREATE TABLE real_estate (type TEXT, market_price TEXT, market_price_currency TEXT);
-             CREATE TABLE other_assets (quantity TEXT, market_price TEXT, currency TEXT);
+             CREATE TABLE other_assets (id TEXT, quantity TEXT, market_price TEXT, currency TEXT);
+             CREATE TABLE other_asset_valuations (id TEXT, asset_id TEXT, value TEXT, currency TEXT,
+                                                  valued_at INTEGER, created_at INTEGER);
              CREATE TABLE stock_investments (id TEXT, ticker TEXT, quantity TEXT, currency TEXT);
              CREATE TABLE investment_transactions (investment_id TEXT, type TEXT, quantity TEXT, price_per_unit TEXT,
                                                    currency TEXT, transaction_date INTEGER, created_at INTEGER);

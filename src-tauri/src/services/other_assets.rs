@@ -176,27 +176,54 @@ pub fn create_asset(
     }
     db_tx.commit()?;
 
-    conn.query_row(
-        "SELECT id, name, quantity, market_price, currency, average_purchase_price,
-                yield_type, yield_value, created_at, updated_at
-         FROM other_assets WHERE id = ?1",
-        [&id],
-        |row| {
-            Ok(OtherAsset {
-                id: row.get(0)?,
-                name: row.get(1)?,
-                quantity: row.get(2)?,
-                market_price: row.get(3)?,
-                currency: row.get(4)?,
-                average_purchase_price: row.get(5)?,
-                yield_type: row.get(6)?,
-                yield_value: row.get(7)?,
-                created_at: row.get(8)?,
-                updated_at: row.get(9)?,
-            })
-        },
+    get_asset(conn, &id)
+}
+
+/// The columns `read_asset` reads, today's price in its own currency
+/// (`valuations::OTHER_ASSET_PRICES`) instead of the stored one.
+fn asset_select() -> String {
+    format!(
+        "SELECT a.id, a.name, a.quantity, p.price, p.currency, a.currency,
+                a.average_purchase_price, a.yield_type, a.yield_value, a.created_at, a.updated_at
+         FROM other_assets a JOIN ({prices}) p ON p.asset_id = a.id",
+        prices = valuations::OTHER_ASSET_PRICES
     )
-    .map_err(|e| e.into())
+}
+
+fn read_asset(row: &rusqlite::Row) -> rusqlite::Result<OtherAsset> {
+    Ok(OtherAsset {
+        id: row.get(0)?,
+        name: row.get(1)?,
+        quantity: row.get(2)?,
+        market_price: row.get(3)?,
+        market_price_currency: row.get(4)?,
+        currency: row.get(5)?,
+        average_purchase_price: row.get(6)?,
+        yield_type: row.get(7)?,
+        yield_value: row.get(8)?,
+        created_at: row.get(9)?,
+        updated_at: row.get(10)?,
+    })
+}
+
+/// Every other asset by name.
+pub fn list_assets(conn: &rusqlite::Connection) -> Result<Vec<OtherAsset>> {
+    let mut stmt = conn.prepare(&format!("{} ORDER BY a.name", asset_select()))?;
+    let assets = stmt
+        .query_map([], read_asset)?
+        .collect::<rusqlite::Result<Vec<_>>>()?;
+    Ok(assets)
+}
+
+/// One other asset.
+pub fn get_asset(conn: &rusqlite::Connection, id: &str) -> Result<OtherAsset> {
+    conn.query_row(
+        &format!("{} WHERE a.id = ?1", asset_select()),
+        [id],
+        read_asset,
+    )
+    .optional()?
+    .ok_or_else(|| AppError::NotFound("Other asset not found".into()))
 }
 
 /// Create a transaction against an existing other asset and recalculate its
@@ -418,6 +445,68 @@ mod tests {
             rows[0].2 == before || rows[0].2 == after,
             "dated at the UTC day of the creation"
         );
+    }
+
+    /// A valuation in another currency than the asset's: the listed price is the newest
+    /// valuation in its own currency, while the asset's currency still prices the average.
+    #[test]
+    fn listed_price_is_the_newest_valuation_in_its_currency() {
+        let conn = setup_test_db();
+        let mut data = valid_asset();
+        data.market_price = Some("62000".into());
+        data.currency = Some("CZK".into());
+        let gold = create_asset(&conn, &data, None).unwrap();
+        assert_eq!(gold.market_price, "62000");
+        assert_eq!(gold.market_price_currency, "CZK");
+        valuations::add_valuation(
+            &conn,
+            ValuationKind::OtherAsset,
+            &crate::models::InsertAssetValuation {
+                asset_id: gold.id.clone(),
+                value: "2500".into(),
+                currency: Some("USD".into()),
+                valued_at: gold.created_at + 86_400,
+                note: None,
+            },
+        )
+        .unwrap();
+        data.name = "Unpriced".into();
+        data.market_price = None;
+        data.currency = Some("EUR".into());
+        let unpriced = create_asset(&conn, &data, None).unwrap();
+
+        let listed = list_assets(&conn).unwrap();
+        let prices: Vec<(&str, &str, &str, &str)> = listed
+            .iter()
+            .map(|a| {
+                (
+                    a.name.as_str(),
+                    a.market_price.as_str(),
+                    a.market_price_currency.as_str(),
+                    a.currency.as_str(),
+                )
+            })
+            .collect();
+        assert_eq!(
+            prices,
+            [
+                ("Gold coins", "2500", "USD", "CZK"),
+                ("Unpriced", "0", "EUR", "EUR")
+            ]
+        );
+        let fetched = get_asset(&conn, &gold.id).unwrap();
+        assert_eq!(
+            (
+                fetched.market_price.as_str(),
+                fetched.market_price_currency.as_str()
+            ),
+            ("2500", "USD")
+        );
+        assert_eq!(get_asset(&conn, &unpriced.id).unwrap().market_price, "0");
+        assert!(matches!(
+            get_asset(&conn, "missing"),
+            Err(AppError::NotFound(_))
+        ));
     }
 
     #[test]

@@ -40,6 +40,7 @@ use crate::services::portfolio_history::{
     SECONDS_PER_DAY,
 };
 use crate::services::ticker_history::RebuildStats;
+use crate::services::valuations::OTHER_ASSET_PRICES;
 
 const DAY: i64 = SECONDS_PER_DAY;
 
@@ -165,8 +166,9 @@ struct BondHolding {
 }
 
 struct OtherAsset {
-    currency: String,
-    market_price: f64,
+    /// Today's price per unit (`valuations::OTHER_ASSET_PRICES`): the newest valuation in its
+    /// currency, else the market price in the asset's.
+    price: Amount,
     /// The stored quantity: what an asset without transactions carries.
     stored_quantity: f64,
     /// Signed quantity changes of the transactions.
@@ -489,8 +491,8 @@ impl Statics {
     /// the day (`valuations::value_at_day`: the newest valuation on or before it, else the
     /// earliest, else the market price), in the valuation's currency. An asset with no
     /// transactions but a stored quantity (an MCP-created one) has nothing dated: like an
-    /// undated account it carries today's quantity times today's price in its own currency
-    /// (`net_worth::compute_breakdowns`) and is not a fact.
+    /// undated account it carries today's quantity times today's price in that price's
+    /// currency (`net_worth::compute_breakdowns`) and is not a fact.
     fn other_assets_on(&mut self, day: i64) -> ClassDay {
         let mut assets = ClassDay {
             covered: true,
@@ -501,8 +503,8 @@ impl Statics {
                 if asset.stored_quantity > QUANTITY_EPSILON {
                     add(
                         &mut assets.carried,
-                        &asset.currency,
-                        asset.stored_quantity * asset.market_price,
+                        &asset.price.currency,
+                        asset.stored_quantity * asset.price.value,
                     );
                     assets.covered = false;
                 }
@@ -529,8 +531,8 @@ impl Statics {
                 }
                 None => add(
                     &mut assets.derived,
-                    &asset.currency,
-                    asset.quantity * asset.market_price,
+                    &asset.price.currency,
+                    asset.quantity * asset.price.value,
                 ),
             }
             assets.counted_since = latest_first_day(assets.counted_since, asset.counted_from);
@@ -893,8 +895,11 @@ fn load_other_assets(conn: &Connection) -> Result<Vec<OtherAsset>> {
         .collect::<rusqlite::Result<Vec<_>>>()?;
     let mut changes = grouped(rows);
 
-    let mut stmt =
-        conn.prepare("SELECT id, currency, market_price, quantity FROM other_assets ORDER BY id")?;
+    let mut stmt = conn.prepare(&format!(
+        "SELECT a.id, p.currency, p.price, a.quantity
+         FROM other_assets a JOIN ({OTHER_ASSET_PRICES}) p ON p.asset_id = a.id
+         ORDER BY a.id"
+    ))?;
     let assets = stmt
         .query_map([], |row| {
             Ok((
@@ -907,11 +912,13 @@ fn load_other_assets(conn: &Connection) -> Result<Vec<OtherAsset>> {
         .collect::<rusqlite::Result<Vec<_>>>()?;
     Ok(assets
         .into_iter()
-        .map(|(id, currency, market_price, quantity)| {
+        .map(|(id, currency, price, quantity)| {
             let changes = changes.remove(&id).unwrap_or_default();
             OtherAsset {
-                currency,
-                market_price: parse_money(&market_price, 0.0, "other_assets.market_price"),
+                price: Amount {
+                    value: parse_money(&price, 0.0, "other_assets.market_price"),
+                    currency,
+                },
                 stored_quantity: parse_money(&quantity, 0.0, "other_assets.quantity"),
                 counted_from: first_held_day(&changes),
                 changes: Steps::new(changes),
@@ -1805,16 +1812,18 @@ mod tests {
         // An MCP-created asset: a quantity and a price, no dated transaction. Like an undated
         // account it carries today's quantity times today's price on every day.
         let conn = setup_test_db();
-        asset(&conn, "mcp", "CZK", "3", "100");
+        asset(&conn, "mcp", "CZK", "3", "80");
         asset(&conn, "empty", "CZK", "0", "50");
+        asset(&conn, "unvalued", "CZK", "1", "100");
         asset_valuation(&conn, "mcp", d(5), "80", "EUR", 1);
 
         for day in [-1000, 0, 7] {
             let values = values_on(&conn, d(day));
             assert_eq!(
                 values.breakdowns.other_assets,
-                map(&[("CZK", 300.0)]),
-                "the asset's own quantity, price and currency, like today's breakdown: {day}"
+                map(&[("EUR", 240.0), ("CZK", 100.0)]),
+                "today's quantity times today's price (the newest valuation in its currency, \
+                 else the market price in the asset's), like today's breakdown: {day}"
             );
             assert!(!values.known.other_assets, "{day}");
         }
@@ -3224,5 +3233,28 @@ mod tests {
         assert_eq!(live.savings, map(&[("CZK", 1500.0), ("EUR", 200.0)]));
         assert!(live.loans["CZK"] > 0.0 && live.loans["EUR"] > 0.0);
         assert_eq!(live.other_assets, map(&[("CZK", 140.0)]));
+    }
+
+    /// The parent keeps its own currency while the price mirrors the newest valuation: today's
+    /// breakdown and the day values both count the asset in that valuation's currency.
+    #[test]
+    fn todays_other_assets_are_in_the_currency_of_the_newest_valuation() {
+        let conn = setup_test_db();
+        let today = today_utc_day();
+        // dated: bought 2, re-estimated in USD
+        asset(&conn, "gold", "CZK", "2", "3");
+        asset_tx(&conn, "gold", "buy", "2", today - 100 * DAY);
+        asset_valuation(&conn, "gold", today - 100 * DAY, "70", "CZK", 1);
+        asset_valuation(&conn, "gold", today - 10 * DAY, "3", "USD", 2);
+        // carried: a quantity without transactions, estimated in EUR
+        asset(&conn, "mcp", "CZK", "4", "80");
+        asset_valuation(&conn, "mcp", today - 5 * DAY, "80", "EUR", 1);
+
+        let live = compute_breakdowns(&conn).expect("live breakdowns");
+        assert_eq!(live.other_assets, map(&[("USD", 6.0), ("EUR", 320.0)]));
+        approx(
+            &values_on(&conn, today).breakdowns.other_assets,
+            &live.other_assets,
+        );
     }
 }

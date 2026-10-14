@@ -6,6 +6,32 @@ All notable changes to Moony are documented in this file. The format follows
 
 ## [Unreleased]
 
+## [0.12.2] - 2026-10-14
+
+### Added
+
+- **Manage budgets in one dialog.** The Budgets page always shows spending; "Manage budgets"
+  opens one row per category with the limit in effect, its validity and upcoming changes, and the
+  earlier limits behind a chevron.
+- A limit can run from one month to another ("From" / "Until"). After the last month the limit
+  that applied before comes back; without an end month the limit runs for good.
+- Category icons on the Budgets page and in the manage dialog.
+
+### Changed
+
+- The newest limit wins: saving replaces every limit it overlaps and shortens one it overlaps
+  only in part. The form first lists the limits it would replace and saves on a second click.
+  Equal neighbouring limits merge into one interval.
+- "Delete whole budget" removes every limit of a category, past months included; "Delete
+  interval" removes a single one. The separate view of configured budgets and its multi-select
+  delete are gone.
+
+### Fixed
+
+- A category whose limit has run out can get a new budget again.
+- Extending a limit to an earlier month no longer reports that nothing changed.
+- rustls 0.23.46 fixes RUSTSEC-2026-0346, -0347, -0348 and -0349.
+
 ## [0.12.1] - 2026-10-14
 
 ### Added
@@ -534,7 +560,10 @@ local tool). Everything below is new to the public.
 - The updater only offers versions higher than the installed one, so a machine running an
   older 1.x build from the previous private repository must install 0.9.0 by hand.
 
-[Unreleased]: https://github.com/fiiles/Moony/compare/v0.11.0...HEAD
+[Unreleased]: https://github.com/fiiles/Moony/compare/v0.12.2...HEAD
+[0.12.2]: https://github.com/fiiles/Moony/compare/v0.12.1...v0.12.2
+[0.12.1]: https://github.com/fiiles/Moony/compare/v0.12.0...v0.12.1
+[0.12.0]: https://github.com/fiiles/Moony/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/fiiles/Moony/releases/tag/v0.11.0
 [0.10.0]: https://github.com/fiiles/Moony/compare/v0.9.1...v0.10.0
 [0.9.1]: https://github.com/fiiles/Moony/compare/v0.9.0...v0.9.1

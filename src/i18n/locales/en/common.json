@@ -219,6 +219,7 @@
     "assetRequired": "Choose an asset",
     "invalidDate": "Invalid date",
     "purchaseDateInFuture": "The purchase date cannot be in the future",
+    "valuationDateInFuture": "The valuation date cannot be in the future",
     "loanRequired": "Choose a loan",
     "loanEventKindInvalid": "Unknown loan event kind",
     "loanEventBeforeStart": "The event cannot be before the loan starts",
@@ -510,5 +511,16 @@
     "submit": "Save estimate",
     "saved": "Estimate saved",
     "removed": "Estimate removed"
+  },
+  "valuationHistory": {
+    "title": "Valuation history",
+    "sub_one": "{{count}} valuation · latest {{date}}",
+    "sub_other": "{{count}} valuations · latest {{date}}",
+    "empty": "No valuation yet.",
+    "value": "Value",
+    "change": "Change",
+    "delete": "Delete valuation",
+    "deleteTitle": "Delete this valuation?",
+    "deleteDescription": "The valuation of {{amount}} from {{date}} will be permanently removed. The market price follows the newest remaining valuation."
   }
 }

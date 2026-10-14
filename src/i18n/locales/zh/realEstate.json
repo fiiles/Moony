@@ -146,6 +146,7 @@
     "revalue": "重新估值",
     "menu": {
       "edit": "编辑详情",
+      "valuationHistory": "估值历史",
       "delete": "删除房产"
     },
     "statusValuation": "{{date}} 的估值",
@@ -295,6 +296,8 @@
       "purchaseDate": "购入日期",
       "purchaseDateHelp": "房产页面上的价值曲线从这一天开始。",
       "marketPrice": "市场价",
+      "marketPriceDate": "市场价格日期",
+      "marketPriceDateHelp": "市场价格对应的日期。估值历史从这次估值开始。",
       "monthlyRent": "月租金",
       "currency": "货币",
       "addCost": "添加费用",

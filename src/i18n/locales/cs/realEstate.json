@@ -150,6 +150,7 @@
     "revalue": "Přecenit",
     "menu": {
       "edit": "Upravit údaje",
+      "valuationHistory": "Historie přecenění",
       "delete": "Smazat nemovitost"
     },
     "statusValuation": "Odhad hodnoty z {{date}}",
@@ -303,6 +304,8 @@
       "purchaseDate": "Datum koupě",
       "purchaseDateHelp": "Od tohoto dne začíná graf hodnoty na detailu nemovitosti.",
       "marketPrice": "Tržní cena",
+      "marketPriceDate": "Tržní cena k datu",
+      "marketPriceDateHelp": "Ke kterému dni tržní cena platí. Tímto oceněním začíná historie přecenění.",
       "monthlyRent": "Měsíční nájemné",
       "currency": "Měna",
       "addCost": "Přidat náklad",

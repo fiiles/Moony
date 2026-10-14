@@ -150,6 +150,7 @@
     "revalue": "Rivaluta",
     "menu": {
       "edit": "Modifica dettagli",
+      "valuationHistory": "Storico delle valutazioni",
       "delete": "Elimina immobile"
     },
     "statusValuation": "Stima del {{date}}",
@@ -303,6 +304,8 @@
       "purchaseDate": "Data di acquisto",
       "purchaseDateHelp": "La traccia del valore nella pagina dell'immobile parte da questo giorno.",
       "marketPrice": "Prezzo di mercato",
+      "marketPriceDate": "Prezzo di mercato al",
+      "marketPriceDateHelp": "Il giorno a cui si riferisce il prezzo di mercato. Lo storico delle valutazioni parte da qui.",
       "monthlyRent": "Affitto mensile",
       "currency": "Valuta",
       "addCost": "Aggiungi costo",

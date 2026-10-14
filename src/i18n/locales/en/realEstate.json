@@ -148,6 +148,7 @@
     "revalue": "Revalue",
     "menu": {
       "edit": "Edit details",
+      "valuationHistory": "Valuation history",
       "delete": "Delete property"
     },
     "statusValuation": "Estimate from {{date}}",
@@ -299,6 +300,8 @@
       "purchaseDate": "Purchase date",
       "purchaseDateHelp": "The value trace on the property page starts on this day.",
       "marketPrice": "Market Price",
+      "marketPriceDate": "Market price as of",
+      "marketPriceDateHelp": "The day the market price applies to. The valuation history starts with it.",
       "monthlyRent": "Monthly Rent",
       "currency": "Currency",
       "addCost": "Add Cost",

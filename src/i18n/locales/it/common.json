@@ -219,6 +219,7 @@
     "assetRequired": "Scegli un bene",
     "invalidDate": "Data non valida",
     "purchaseDateInFuture": "La data di acquisto non può essere nel futuro",
+    "valuationDateInFuture": "La data della valutazione non può essere nel futuro",
     "loanRequired": "Scegli un prestito",
     "loanEventKindInvalid": "Tipo di evento del prestito sconosciuto",
     "loanEventBeforeStart": "L'evento non può precedere l'inizio del prestito",
@@ -513,5 +514,17 @@
     "submit": "Salva stima",
     "saved": "Stima salvata",
     "removed": "Stima rimossa"
+  },
+  "valuationHistory": {
+    "title": "Storico delle valutazioni",
+    "sub_one": "{{count}} valutazione · ultima {{date}}",
+    "sub_many": "{{count}} valutazioni · ultima {{date}}",
+    "sub_other": "{{count}} valutazioni · ultima {{date}}",
+    "empty": "Nessuna valutazione per ora.",
+    "value": "Valore",
+    "change": "Variazione",
+    "delete": "Elimina valutazione",
+    "deleteTitle": "Eliminare questa valutazione?",
+    "deleteDescription": "La valutazione di {{amount}} del {{date}} verrà rimossa definitivamente. Il prezzo di mercato seguirà la valutazione più recente rimasta."
   }
 }

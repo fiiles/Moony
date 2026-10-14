@@ -150,6 +150,7 @@
     "revalue": "Revalorizar",
     "menu": {
       "edit": "Editar datos",
+      "valuationHistory": "Historial de valoraciones",
       "delete": "Eliminar inmueble"
     },
     "statusValuation": "Estimación del {{date}}",
@@ -303,6 +304,8 @@
       "purchaseDate": "Fecha de compra",
       "purchaseDateHelp": "La evolución del valor en la página del inmueble empieza ese día.",
       "marketPrice": "Precio de mercado",
+      "marketPriceDate": "Precio de mercado a fecha de",
+      "marketPriceDateHelp": "El día al que corresponde el precio de mercado. Con esta valoración empieza el historial.",
       "monthlyRent": "Alquiler mensual",
       "currency": "Moneda",
       "addCost": "Añadir gasto",

@@ -219,6 +219,7 @@
     "assetRequired": "Vyberte aktivum",
     "invalidDate": "Neplatné datum",
     "purchaseDateInFuture": "Datum koupě nemůže být v budoucnosti",
+    "valuationDateInFuture": "Datum ocenění nemůže být v budoucnosti",
     "loanRequired": "Vyberte úvěr",
     "loanEventKindInvalid": "Neznámý typ události úvěru",
     "loanEventBeforeStart": "Událost nemůže být před začátkem úvěru",
@@ -513,5 +514,17 @@
     "submit": "Uložit přecenění",
     "saved": "Přecenění uloženo",
     "removed": "Přecenění odebráno"
+  },
+  "valuationHistory": {
+    "title": "Historie přecenění",
+    "sub_one": "{{count}} ocenění · poslední {{date}}",
+    "sub_few": "{{count}} ocenění · poslední {{date}}",
+    "sub_other": "{{count}} ocenění · poslední {{date}}",
+    "empty": "Zatím žádné ocenění.",
+    "value": "Hodnota",
+    "change": "Změna",
+    "delete": "Smazat ocenění",
+    "deleteTitle": "Smazat ocenění?",
+    "deleteDescription": "Ocenění {{amount}} ze dne {{date}} bude trvale odstraněno. Tržní cena se převezme z nejnovějšího zbývajícího ocenění."
   }
 }

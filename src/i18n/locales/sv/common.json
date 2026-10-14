@@ -219,6 +219,7 @@
     "assetRequired": "Välj en tillgång",
     "invalidDate": "Ogiltigt datum",
     "purchaseDateInFuture": "Köpdatumet får inte vara i framtiden",
+    "valuationDateInFuture": "Värderingsdatumet kan inte ligga i framtiden",
     "loanRequired": "Välj ett lån",
     "loanEventKindInvalid": "Okänd typ av lånehändelse",
     "loanEventBeforeStart": "Händelsen kan inte ligga före lånets start",
@@ -510,5 +511,16 @@
     "submit": "Spara uppskattning",
     "saved": "Uppskattningen har sparats",
     "removed": "Uppskattningen har tagits bort"
+  },
+  "valuationHistory": {
+    "title": "Värderingshistorik",
+    "sub_one": "{{count}} värdering · senast {{date}}",
+    "sub_other": "{{count}} värderingar · senast {{date}}",
+    "empty": "Ingen värdering ännu.",
+    "value": "Värde",
+    "change": "Förändring",
+    "delete": "Ta bort värdering",
+    "deleteTitle": "Ta bort den här värderingen?",
+    "deleteDescription": "Värderingen på {{amount}} från {{date}} tas bort permanent. Marknadspriset följer den senaste kvarvarande värderingen."
   }
 }

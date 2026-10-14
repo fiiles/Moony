@@ -219,6 +219,7 @@
     "assetRequired": "Wybierz aktywo",
     "invalidDate": "Nieprawidłowa data",
     "purchaseDateInFuture": "Data zakupu nie może być w przyszłości",
+    "valuationDateInFuture": "Data wyceny nie może być w przyszłości",
     "loanRequired": "Wybierz kredyt",
     "loanEventKindInvalid": "Nieznany rodzaj zdarzenia kredytu",
     "loanEventBeforeStart": "Zdarzenie nie może być przed początkiem kredytu",
@@ -516,5 +517,18 @@
     "submit": "Zapisz szacunek",
     "saved": "Szacunek zapisany",
     "removed": "Szacunek usunięty"
+  },
+  "valuationHistory": {
+    "title": "Historia wycen",
+    "sub_one": "{{count}} wycena · ostatnia {{date}}",
+    "sub_few": "{{count}} wyceny · ostatnia {{date}}",
+    "sub_many": "{{count}} wycen · ostatnia {{date}}",
+    "sub_other": "{{count}} wyceny · ostatnia {{date}}",
+    "empty": "Brak wycen.",
+    "value": "Wartość",
+    "change": "Zmiana",
+    "delete": "Usuń wycenę",
+    "deleteTitle": "Usunąć tę wycenę?",
+    "deleteDescription": "Wycena {{amount}} z dnia {{date}} zostanie trwale usunięta. Cena rynkowa przejmie wartość z najnowszej pozostałej wyceny."
   }
 }

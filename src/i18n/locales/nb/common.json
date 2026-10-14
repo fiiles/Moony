@@ -219,6 +219,7 @@
     "assetRequired": "Velg en eiendel",
     "invalidDate": "Ugyldig dato",
     "purchaseDateInFuture": "Kjøpsdatoen kan ikke være i fremtiden",
+    "valuationDateInFuture": "Datoen for verdivurderingen kan ikke være i fremtiden",
     "loanRequired": "Velg et lån",
     "loanEventKindInvalid": "Ukjent type lånehendelse",
     "loanEventBeforeStart": "Hendelsen kan ikke være før lånet starter",
@@ -510,5 +511,16 @@
     "submit": "Lagre anslag",
     "saved": "Anslaget er lagret",
     "removed": "Anslaget er fjernet"
+  },
+  "valuationHistory": {
+    "title": "Verdivurderingshistorikk",
+    "sub_one": "{{count}} verdivurdering · siste {{date}}",
+    "sub_other": "{{count}} verdivurderinger · siste {{date}}",
+    "empty": "Ingen verdivurdering ennå.",
+    "value": "Verdi",
+    "change": "Endring",
+    "delete": "Slett verdivurdering",
+    "deleteTitle": "Slette denne verdivurderingen?",
+    "deleteDescription": "Verdivurderingen på {{amount}} fra {{date}} blir slettet permanent. Markedsprisen følger den nyeste gjenværende verdivurderingen."
   }
 }

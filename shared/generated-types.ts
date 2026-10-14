@@ -886,7 +886,13 @@ export type InsertRealEstate = { name: string; address: string; type: string; pu
  * Stored as the UTC midnight of that day; absent clears a stored date
  * (an update replaces the whole record).
  */
-purchaseDate: number | null; marketPrice: string | null; marketPriceCurrency: string | null; monthlyRent: string | null; monthlyRentCurrency: string | null; recurringCosts: RecurringCost[] | null; photos: string[] | null; notes: string | null }
+purchaseDate: number | null; marketPrice: string | null; marketPriceCurrency: string | null; 
+/**
+ * Unix seconds of the day the market price applies to, never after today.
+ * Dates the first valuation when a property is created (absent means
+ * today); an update ignores it, since a later estimate is a revaluation.
+ */
+marketPriceDate: number | null; monthlyRent: string | null; monthlyRentCurrency: string | null; recurringCosts: RecurringCost[] | null; photos: string[] | null; notes: string | null }
 
 /**
  * Explicit opt-in: one own account, movement direction and reliable account/payee identity.

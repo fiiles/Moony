@@ -148,6 +148,7 @@
     "revalue": "Omvurder",
     "menu": {
       "edit": "Rediger detaljer",
+      "valuationHistory": "Verdivurderingshistorikk",
       "delete": "Slett eiendom"
     },
     "statusValuation": "Anslag fra {{date}}",
@@ -299,6 +300,8 @@
       "purchaseDate": "Kjøpsdato",
       "purchaseDateHelp": "Verdisporingen på eiendomssiden starter denne dagen.",
       "marketPrice": "Markedspris",
+      "marketPriceDate": "Markedspris per",
+      "marketPriceDateHelp": "Dagen markedsprisen gjelder for. Historikken starter med denne verdivurderingen.",
       "monthlyRent": "Månedlig leie",
       "currency": "Valuta",
       "addCost": "Legg til kostnad",

@@ -219,6 +219,7 @@
     "assetRequired": "資産を選択してください",
     "invalidDate": "日付が正しくありません",
     "purchaseDateInFuture": "購入日を未来の日付にすることはできません",
+    "valuationDateInFuture": "評価日を未来の日付にすることはできません",
     "loanRequired": "ローンを選択してください",
     "loanEventKindInvalid": "不明なローンイベントの種類です",
     "loanEventBeforeStart": "イベントをローンの開始前にすることはできません",
@@ -507,5 +508,15 @@
     "submit": "推定値を保存",
     "saved": "推定値を保存しました",
     "removed": "推定値を削除しました"
+  },
+  "valuationHistory": {
+    "title": "評価額の履歴",
+    "sub_other": "{{count}} 件の評価 · 最新 {{date}}",
+    "empty": "まだ評価はありません。",
+    "value": "評価額",
+    "change": "変動",
+    "delete": "評価を削除",
+    "deleteTitle": "この評価を削除しますか?",
+    "deleteDescription": "{{date}} の評価額 {{amount}} は完全に削除されます。市場価格は残っている最新の評価に従います。"
   }
 }

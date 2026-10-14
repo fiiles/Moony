@@ -51,8 +51,9 @@ import { isoDateFromUtcTimestamp, todayIsoUtc, utcDayStart } from '@/utils/perio
 import { useTranslation } from 'react-i18next';
 
 /**
- * The shared schema, with the purchase day as the ISO string an `<input type="date">` holds
- * ('' = unknown): it becomes the UTC-midnight epoch on submit (ADR 0008). A day after today is
+ * The shared schema, with the purchase day and the day of the market price as the ISO strings an
+ * `<input type="date">` holds ('' = unknown / today): they become UTC-midnight epochs on submit
+ * (ADR 0008). A day after today is
  * refused here with a visible message, because native `max` validation can block a submit
  * silently in some webviews; the backend refuses it too.
  */
@@ -61,6 +62,10 @@ const realEstateFormSchema = insertRealEstateSchema.extend({
     .string()
     .optional()
     .refine((iso) => !iso || iso <= todayIsoUtc(), 'validation.purchaseDateInFuture'),
+  marketPriceDate: z
+    .string()
+    .optional()
+    .refine((iso) => !iso || iso <= todayIsoUtc(), 'validation.valuationDateInFuture'),
 });
 type RealEstateFormValues = z.infer<typeof realEstateFormSchema>;
 
@@ -106,6 +111,7 @@ export function AddRealEstateModal({
       purchasePriceCurrency: realEstate?.purchasePriceCurrency || userCurrency,
       purchaseDate: purchaseDateInput(realEstate),
       marketPrice: realEstate?.marketPrice?.toString() || '0',
+      marketPriceDate: todayIsoUtc(),
       marketPriceCurrency: realEstate?.marketPriceCurrency || userCurrency,
       monthlyRent: realEstate?.monthlyRent?.toString() || '0',
       monthlyRentCurrency: realEstate?.monthlyRentCurrency || userCurrency,
@@ -150,6 +156,7 @@ export function AddRealEstateModal({
         purchasePriceCurrency: userCurrency,
         purchaseDate: '',
         marketPrice: '0',
+        marketPriceDate: todayIsoUtc(),
         marketPriceCurrency: userCurrency,
         monthlyRent: '0',
         monthlyRentCurrency: userCurrency,
@@ -321,6 +328,9 @@ export function AddRealEstateModal({
       purchasePrice: (data.purchasePrice || '0').toString(),
       purchaseDate: data.purchaseDate ? utcDayStart(data.purchaseDate) : null,
       marketPrice: (data.marketPrice || '0').toString(),
+      // Only a new property's first estimate takes the day; later ones are revaluations
+      marketPriceDate:
+        !realEstate && data.marketPriceDate ? utcDayStart(data.marketPriceDate) : null,
       monthlyRent: data.monthlyRent?.toString() || null,
     };
     mutation.mutate(formattedData);
@@ -488,6 +498,25 @@ export function AddRealEstateModal({
                     )}
                   />
                 </div>
+
+                {!realEstate && (
+                  <div className="grid grid-cols-3 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="marketPriceDate"
+                      render={({ field }) => (
+                        <FormItem className="col-span-2">
+                          <FormLabel>{t('modal.add.marketPriceDate')}</FormLabel>
+                          <FormControl>
+                            <Input type="date" {...field} value={field.value ?? ''} />
+                          </FormControl>
+                          <FormDescription>{t('modal.add.marketPriceDateHelp')}</FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                )}
 
                 {watchType === 'investment' && (
                   <div className="grid grid-cols-3 gap-4">

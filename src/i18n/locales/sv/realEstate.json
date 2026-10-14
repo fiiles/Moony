@@ -148,6 +148,7 @@
     "revalue": "Omvärdera",
     "menu": {
       "edit": "Redigera uppgifter",
+      "valuationHistory": "Värderingshistorik",
       "delete": "Ta bort fastighet"
     },
     "statusValuation": "Uppskattning från {{date}}",
@@ -299,6 +300,8 @@
       "purchaseDate": "Köpdatum",
       "purchaseDateHelp": "Värdespåret på fastighetssidan börjar den här dagen.",
       "marketPrice": "Marknadspris",
+      "marketPriceDate": "Marknadspris per",
+      "marketPriceDateHelp": "Dagen marknadspriset gäller. Värderingshistoriken börjar med den här värderingen.",
       "monthlyRent": "Månadshyra",
       "currency": "Valuta",
       "addCost": "Lägg till kostnad",

@@ -219,6 +219,7 @@
     "assetRequired": "Wählen Sie einen Vermögenswert",
     "invalidDate": "Ungültiges Datum",
     "purchaseDateInFuture": "Das Kaufdatum darf nicht in der Zukunft liegen",
+    "valuationDateInFuture": "Das Bewertungsdatum darf nicht in der Zukunft liegen",
     "loanRequired": "Wählen Sie einen Kredit",
     "loanEventKindInvalid": "Unbekannte Art des Kreditereignisses",
     "loanEventBeforeStart": "Das Ereignis darf nicht vor dem Kreditbeginn liegen",
@@ -510,5 +511,16 @@
     "submit": "Schätzung speichern",
     "saved": "Schätzung gespeichert",
     "removed": "Schätzung entfernt"
+  },
+  "valuationHistory": {
+    "title": "Bewertungsverlauf",
+    "sub_one": "{{count}} Bewertung · zuletzt {{date}}",
+    "sub_other": "{{count}} Bewertungen · zuletzt {{date}}",
+    "empty": "Noch keine Bewertung.",
+    "value": "Wert",
+    "change": "Änderung",
+    "delete": "Bewertung löschen",
+    "deleteTitle": "Bewertung löschen?",
+    "deleteDescription": "Die Bewertung von {{amount}} vom {{date}} wird dauerhaft entfernt. Der Marktpreis folgt der neuesten verbleibenden Bewertung."
   }
 }

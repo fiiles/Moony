@@ -146,6 +146,7 @@
     "revalue": "再評価",
     "menu": {
       "edit": "詳細を編集",
+      "valuationHistory": "評価額の履歴",
       "delete": "物件を削除"
     },
     "statusValuation": "{{date}}時点の推定値",
@@ -295,6 +296,8 @@
       "purchaseDate": "購入日",
       "purchaseDateHelp": "物件ページの価値の推移は、この日から始まります。",
       "marketPrice": "市場価格",
+      "marketPriceDate": "市場価格の基準日",
+      "marketPriceDateHelp": "市場価格が適用される日です。評価額の履歴はこの評価から始まります。",
       "monthlyRent": "月額家賃",
       "currency": "通貨",
       "addCost": "費用を追加",

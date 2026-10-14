@@ -194,14 +194,13 @@ async fn refresh_derived_data(db: &Database, job: &mcp_refresh::PendingRefresh) 
                 history_recalc::rebuild_days_async(db, from, today).await?;
             }
         }
-        // The portfolio days follow from the dated facts: an other asset's transactions (the
-        // import and the create tool give the earliest day), and accounts, real estate, loans and
-        // bonds. A job without a date comes from a write whose date is not known up front (an
-        // undated account balance, a bond, an other asset with a quantity and no transaction,
-        // which is carried on every day) or that wins over every dated write queued next to it:
-        // from the first fact (`rebuild_days` clamps day 0).
+        // The portfolio days follow from the dated facts of accounts, real estate, loans, bonds
+        // and other assets. A change to any of them can change every earlier day (a day the facts
+        // do not cover takes the remainder of a live row, which moves with every item), so the
+        // job's day does not bound the rebuild: from the first fact (`rebuild_days` clamps day 0),
+        // like the UI commands (`history_plan::all_days`).
         "other-assets" | "bank-accounts" | "real-estate" | "loans" | "bonds" => {
-            rebuild_days_from(db, job.earliest_date.unwrap_or(0), today).await?;
+            rebuild_days_from(db, 0, today).await?;
         }
         _ => {}
     }

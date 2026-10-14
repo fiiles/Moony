@@ -721,7 +721,8 @@ pub async fn recalculate_stock_ticker_history(
 }
 
 /// Queue the history rebuild an MCP bulk import (or any external caller) asks for: the
-/// tickers of `asset_type` from `earliest_date`, or the portfolio days for anything else.
+/// tickers of `asset_type` from `earliest_date`, or every portfolio day for anything else (the
+/// static classes can change every day, `history_plan::all_days`).
 /// Caller identifiers (`coingeckoId`) are hints, never the authority for persisted history:
 /// the worker reads them from `crypto_investments`. Emits `recalculation-complete` right away,
 /// mirroring the UI import flows, so the trend charts do not wait for a remount.
@@ -743,7 +744,7 @@ pub async fn trigger_import_recalculation(
             .into_iter()
             .map(|(ticker, _)| Job::CryptoTicker(ticker, earliest_date))
             .collect(),
-        _ => vec![Job::Days(earliest_date)],
+        _ => vec![history_plan::all_days()],
     };
     schedule_history_rebuild(&app, &db, &recalc, jobs);
     app.emit("recalculation-complete", ()).ok();

@@ -436,6 +436,6 @@
   },
   "chart": {
     "title": "Valore dell'immobile",
-    "subtitle": "Il valore cambia a ogni rivalutazione – ogni gradino è la tua nuova stima."
+    "subtitle": "Il valore procede in linea retta da una stima alla successiva."
   }
 }

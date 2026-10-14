@@ -9,8 +9,6 @@
 
 import type { ConvertAtFn } from '@shared/fx';
 
-const DAY = 86_400;
-
 export interface TraceValuation {
   id: string;
   /** UTC day the estimate applies to. */
@@ -58,12 +56,16 @@ export function dailyValuations<V extends { t: number; createdAt: number }>(
 }
 
 /**
- * Points of the value line. The purchase opens the line when its day precedes
- * the first estimate; a value holds until the day before it changes, so every
- * revaluation is a step, not a slope across the gap; the last value runs on up
- * to `now`. With `start`, everything before it is replaced by one anchor
- * carrying the value that applied then. A property without an estimate has no
- * trace. The days are strictly increasing.
+ * Points of the value line: the purchase (when its day precedes the first estimate), every
+ * estimate and `now`. The value runs in a straight line from one point to the next, so a
+ * revaluation is a slope across the gap, not a step; the last estimate runs on to `now` (at
+ * `nowValue` when given). With `start`, everything before it is replaced by one anchor on the
+ * line at `start`. A property without an estimate has no trace. The days are strictly
+ * increasing.
+ *
+ * The values are in one currency (the caller converts them first), so every segment is a straight
+ * one. The backend draws the stored history the same way (`history_days::Property::value_on`),
+ * except that it holds the earlier value between two points in different currencies.
  */
 export function valuationTrace({
   valuations,
@@ -82,23 +84,21 @@ export function valuationTrace({
     if (last === undefined || t > last.t) points.push({ t, value });
   };
 
-  let previous: number | undefined;
-  if (purchase && purchase.t < days[0].t) {
-    push(purchase.t, purchase.value);
-    previous = purchase.value;
-  }
-  for (const day of days) {
-    if (previous !== undefined) push(day.t - DAY, previous);
-    push(day.t, day.value);
-    previous = day.value;
-  }
+  if (purchase && purchase.t < days[0].t) push(purchase.t, purchase.value);
+  for (const day of days) push(day.t, day.value);
   push(now, nowValue ?? days[days.length - 1].value);
 
   if (start === undefined) return points;
   const before = points.filter((p) => p.t < start);
   const inside = points.filter((p) => p.t >= start);
   if (before.length === 0 || inside[0]?.t === start) return inside;
-  return [{ t: start, value: before[before.length - 1].value }, ...inside];
+  const from = before[before.length - 1];
+  const to = inside[0];
+  const value =
+    to === undefined
+      ? from.value
+      : from.value + ((to.value - from.value) * (start - from.t)) / (to.t - from.t);
+  return [{ t: start, value }, ...inside];
 }
 
 /** A stored estimate in its own currency. */

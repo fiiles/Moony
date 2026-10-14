@@ -442,6 +442,6 @@
   },
   "chart": {
     "title": "Wartość nieruchomości",
-    "subtitle": "Wartość zmienia się przy przeszacowaniu – każdy krok to twój nowy szacunek."
+    "subtitle": "Wartość biegnie prostą linią od jednego szacunku do następnego."
   }
 }

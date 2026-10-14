@@ -7,7 +7,7 @@ use crate::models::{
     InsertOtherAsset, InsertOtherAssetTransaction, OtherAsset, OtherAssetTransaction,
 };
 use crate::services::history_plan::{self, OtherAssetEdit};
-use crate::services::history_recalc::{HistoryRecalc, Job};
+use crate::services::history_recalc::HistoryRecalc;
 use crate::services::other_assets as service;
 use crate::services::valuations::ValuationKind;
 use rusqlite::OptionalExtension;
@@ -30,12 +30,9 @@ pub async fn create_other_asset(
 ) -> Result<OtherAsset> {
     let created =
         db.with_conn(|conn| service::create_asset(conn, &data, initial_transaction.as_ref()))?;
-    // An initial transaction dates the first quantity of the asset: history from its day. An
-    // asset with a quantity and no transaction is carried on every day
-    let first_transaction = initial_transaction.as_ref().map(|tx| tx.transaction_date);
-    if let Some(job) = history_plan::other_asset_created(first_transaction, &created.quantity) {
-        schedule_history_rebuild(&app, &db, &recalc, vec![job]);
-    }
+    // An initial transaction dates the first quantity of the asset; one with a quantity and no
+    // transaction is carried on every day
+    schedule_history_rebuild(&app, &db, &recalc, vec![history_plan::all_days()]);
     Ok(created)
 }
 
@@ -54,7 +51,7 @@ pub async fn update_other_asset(
     let now = chrono::Utc::now().timestamp();
     let today = crate::services::loan_amortization::today_utc_day();
 
-    let (updated, before, first_transaction, logged_earliest) = db.with_conn(|conn| {
+    let (updated, before, has_transactions, logged_earliest) = db.with_conn(|conn| {
         let before: Option<(String, String)> = conn
             .query_row(
                 "SELECT currency, quantity FROM other_assets WHERE id = ?1",
@@ -96,8 +93,8 @@ pub async fn update_other_asset(
         }
 
         let updated = service::get_asset(conn, &id)?;
-        let first_transaction = history_plan::first_asset_transaction_day(conn, &id)?;
-        Ok((updated, before, first_transaction, logged_earliest))
+        let has_transactions = history_plan::has_asset_transactions(conn, &id)?;
+        Ok((updated, before, has_transactions, logged_earliest))
     })?;
 
     // A new currency relabels the asset on every day; a price edit is a valuation dated today
@@ -109,7 +106,7 @@ pub async fn update_other_asset(
         let job = history_plan::other_asset_updated(&OtherAssetEdit {
             old_currency: &old_currency,
             new_currency: data.currency.as_deref(),
-            first_transaction,
+            has_transactions,
             quantity_changed,
             logged_earliest,
             today,
@@ -129,18 +126,6 @@ pub async fn delete_other_asset(
     recalc: State<'_, HistoryRecalc>,
     id: String,
 ) -> Result<()> {
-    // Get earliest transaction date before deleting (for historical recalc)
-    let earliest_tx_date: Option<i64> = db.with_conn(|conn| {
-        Ok(conn
-            .query_row(
-                "SELECT MIN(transaction_date) FROM other_asset_transactions WHERE asset_id = ?1",
-                [&id],
-                |row| row.get(0),
-            )
-            .ok()
-            .flatten())
-    })?;
-
     db.with_conn(|conn| {
         // Delete transactions first (due to foreign key)
         conn.execute(
@@ -158,13 +143,8 @@ pub async fn delete_other_asset(
     // Update portfolio snapshot
     update_todays_snapshot(&db).await.ok();
 
-    // From its first transaction day, else from the first fact
-    schedule_history_rebuild(
-        &app,
-        &db,
-        &recalc,
-        vec![history_plan::other_asset_deleted(earliest_tx_date)],
-    );
+    // The asset leaves every day it was counted on
+    schedule_history_rebuild(&app, &db, &recalc, vec![history_plan::all_days()]);
 
     Ok(())
 }
@@ -207,15 +187,14 @@ pub async fn create_other_asset_transaction(
     asset_id: String,
     data: InsertOtherAssetTransaction,
 ) -> Result<OtherAssetTransaction> {
-    let transaction_date = data.transaction_date;
-
     let result = db.with_conn(|conn| service::create_asset_transaction(conn, &asset_id, &data))?;
 
     // Update portfolio snapshot
     update_todays_snapshot(&db).await.ok();
 
-    // The quantity changes from the transaction's day on
-    schedule_history_rebuild(&app, &db, &recalc, vec![Job::Days(transaction_date)]);
+    // The quantity changes from the transaction's day on, and a first transaction dates an asset
+    // that was carried on every day
+    schedule_history_rebuild(&app, &db, &recalc, vec![history_plan::all_days()]);
 
     Ok(result)
 }
@@ -228,17 +207,6 @@ pub async fn delete_other_asset_transaction(
     recalc: State<'_, HistoryRecalc>,
     tx_id: String,
 ) -> Result<()> {
-    // Get transaction date before deleting (for historical recalc)
-    let tx_date: Option<i64> = db.with_conn(|conn| {
-        Ok(conn
-            .query_row(
-                "SELECT transaction_date FROM other_asset_transactions WHERE id = ?1",
-                [&tx_id],
-                |row| row.get(0),
-            )
-            .ok())
-    })?;
-
     db.with_conn(|conn| {
         // 1. Get asset_id before deleting
         let asset_id: String = conn.query_row(
@@ -262,9 +230,7 @@ pub async fn delete_other_asset_transaction(
     // Update portfolio snapshot
     update_todays_snapshot(&db).await.ok();
 
-    if let Some(date) = tx_date {
-        schedule_history_rebuild(&app, &db, &recalc, vec![Job::Days(date)]);
-    }
+    schedule_history_rebuild(&app, &db, &recalc, vec![history_plan::all_days()]);
 
     Ok(())
 }
@@ -296,19 +262,16 @@ pub async fn add_other_asset_valuation(
     recalc: State<'_, HistoryRecalc>,
     data: crate::models::InsertAssetValuation,
 ) -> Result<crate::models::AssetValuation> {
-    let (saved, job) = db.with_conn(|conn| {
-        let saved = crate::services::valuations::add_valuation(
+    let saved = db.with_conn(|conn| {
+        crate::services::valuations::add_valuation(
             conn,
             crate::services::valuations::ValuationKind::OtherAsset,
             &data,
-        )?;
-        let job =
-            history_plan::other_asset_valuation_changed(conn, &saved.asset_id, saved.valued_at)?;
-        Ok((saved, job))
+        )
     })?;
     update_todays_snapshot(&db).await.ok();
     // An estimate changes the days it applies to, and the first one also the days before it
-    schedule_history_rebuild(&app, &db, &recalc, vec![job]);
+    schedule_history_rebuild(&app, &db, &recalc, vec![history_plan::all_days()]);
     Ok(saved)
 }
 
@@ -320,15 +283,14 @@ pub async fn delete_other_asset_valuation(
     recalc: State<'_, HistoryRecalc>,
     valuation_id: String,
 ) -> Result<()> {
-    let job = db.with_conn(|conn| {
-        let removed = crate::services::valuations::delete_valuation(
+    db.with_conn(|conn| {
+        crate::services::valuations::delete_valuation(
             conn,
             crate::services::valuations::ValuationKind::OtherAsset,
             &valuation_id,
-        )?;
-        history_plan::other_asset_valuation_changed(conn, &removed.asset_id, removed.valued_at)
+        )
     })?;
     update_todays_snapshot(&db).await.ok();
-    schedule_history_rebuild(&app, &db, &recalc, vec![job]);
+    schedule_history_rebuild(&app, &db, &recalc, vec![history_plan::all_days()]);
     Ok(())
 }

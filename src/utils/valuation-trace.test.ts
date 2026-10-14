@@ -36,6 +36,15 @@ describe('dailyValuations', () => {
   });
 });
 
+/** The trace's points with the values compared to the cent (the line is interpolated). */
+function expectTrace(
+  actual: { t: number; value: number }[],
+  expected: { t: number; value: number }[]
+) {
+  expect(actual.map((p) => p.t)).toEqual(expected.map((p) => p.t));
+  actual.forEach((p, i) => expect(p.value).toBeCloseTo(expected[i].value, 6));
+}
+
 describe('valuationTrace', () => {
   it('has nothing to trace without an estimate', () => {
     expect(valuationTrace({ valuations: [], now: day(100) })).toEqual([]);
@@ -51,15 +60,15 @@ describe('valuationTrace', () => {
     ]);
   });
 
-  it('steps up the day before every change instead of sloping across the gap', () => {
+  it('runs a straight line from one estimate to the next', () => {
     const trace = valuationTrace({
       valuations: [est('a', 10, 100), est('b', 20, 130)],
       now: day(40),
     });
-    expect(trace).toEqual([pt(10, 100), pt(19, 100), pt(20, 130), pt(40, 130)]);
+    expect(trace).toEqual([pt(10, 100), pt(20, 130), pt(40, 130)]);
   });
 
-  it('adds no step point when the next estimate comes the day after', () => {
+  it('adds no extra point between estimates of consecutive days', () => {
     const trace = valuationTrace({
       valuations: [est('a', 10, 100), est('b', 11, 130)],
       now: day(40),
@@ -67,16 +76,16 @@ describe('valuationTrace', () => {
     expect(trace).toEqual([pt(10, 100), pt(11, 130), pt(40, 130)]);
   });
 
-  it('starts at the purchase when it precedes the first estimate', () => {
+  it('starts at the purchase when it precedes the first estimate, and slopes to it', () => {
     const trace = valuationTrace({
       valuations: [est('a', 10, 100)],
       purchase: { t: day(2), value: 90 },
       now: day(30),
     });
-    expect(trace).toEqual([pt(2, 90), pt(9, 90), pt(10, 100), pt(30, 100)]);
+    expect(trace).toEqual([pt(2, 90), pt(10, 100), pt(30, 100)]);
   });
 
-  it('needs no step between a purchase the day before the first estimate and that estimate', () => {
+  it('needs nothing between a purchase the day before the first estimate and that estimate', () => {
     const trace = valuationTrace({
       valuations: [est('a', 10, 100)],
       purchase: { t: day(9), value: 90 },
@@ -92,13 +101,13 @@ describe('valuationTrace', () => {
         purchase: { t: day(purchaseDay), value: 90 },
         now: day(40),
       });
-      expect(trace).toEqual([pt(10, 100), pt(19, 100), pt(20, 130), pt(40, 130)]);
+      expect(trace).toEqual([pt(10, 100), pt(20, 130), pt(40, 130)]);
     }
   });
 
   it('collapses estimates of one day to the last one created, whatever the input order', () => {
     const rows = [est('a', 10, 100, 1000), est('b', 10, 120, 2000), est('c', 20, 130)];
-    const expected = [pt(10, 120), pt(19, 120), pt(20, 130), pt(40, 130)];
+    const expected = [pt(10, 120), pt(20, 130), pt(40, 130)];
     expect(valuationTrace({ valuations: rows, now: day(40) })).toEqual(expected);
     expect(valuationTrace({ valuations: [...rows].reverse(), now: day(40) })).toEqual(expected);
   });
@@ -108,7 +117,7 @@ describe('valuationTrace', () => {
       valuations: [est('b', 20, 130), est('a', 10, 100)],
       now: day(40),
     });
-    expect(trace).toEqual([pt(10, 100), pt(19, 100), pt(20, 130), pt(40, 130)]);
+    expect(trace).toEqual([pt(10, 100), pt(20, 130), pt(40, 130)]);
   });
 
   it('adds the closing point only when now is after the last estimate', () => {
@@ -123,12 +132,16 @@ describe('valuationTrace', () => {
 
   describe('with a start', () => {
     const rows = [est('a', 10, 100), est('b', 20, 130)];
-    const full = [pt(10, 100), pt(19, 100), pt(20, 130), pt(40, 130)];
+    const full = [pt(10, 100), pt(20, 130), pt(40, 130)];
 
-    it('replaces everything before it with one anchor carrying the value that applied', () => {
-      expect(valuationTrace({ valuations: rows, now: day(40), start: day(15) })).toEqual([
-        pt(15, 100),
-        pt(19, 100),
+    it('replaces everything before it with one anchor interpolated at the start', () => {
+      expectTrace(valuationTrace({ valuations: rows, now: day(40), start: day(15) }), [
+        pt(15, 115),
+        pt(20, 130),
+        pt(40, 130),
+      ]);
+      expectTrace(valuationTrace({ valuations: rows, now: day(40), start: day(19) }), [
+        pt(19, 127),
         pt(20, 130),
         pt(40, 130),
       ]);
@@ -139,11 +152,9 @@ describe('valuationTrace', () => {
     });
 
     it('does not repeat a point it lands on', () => {
-      expect(valuationTrace({ valuations: rows, now: day(40), start: day(19) })).toEqual(
-        full.slice(1)
-      );
+      expect(valuationTrace({ valuations: rows, now: day(40), start: day(10) })).toEqual(full);
       expect(valuationTrace({ valuations: rows, now: day(40), start: day(20) })).toEqual(
-        full.slice(2)
+        full.slice(1)
       );
     });
 
@@ -154,14 +165,27 @@ describe('valuationTrace', () => {
       ]);
     });
 
-    it('anchors on the purchase value when the window opens between purchase and first estimate', () => {
+    it("follows the line to today's value when it falls between the last estimate and now", () => {
+      expectTrace(
+        valuationTrace({ valuations: rows, now: day(40), nowValue: 150, start: day(30) }),
+        [pt(30, 140), pt(40, 150)]
+      );
+    });
+
+    it('anchors on the line from the purchase when the window opens between purchase and first estimate', () => {
       const trace = valuationTrace({
         valuations: [est('a', 10, 100)],
         purchase: { t: day(2), value: 90 },
         now: day(30),
-        start: day(5),
+        start: day(6),
       });
-      expect(trace).toEqual([pt(5, 90), pt(9, 90), pt(10, 100), pt(30, 100)]);
+      expectTrace(trace, [pt(6, 95), pt(10, 100), pt(30, 100)]);
+    });
+
+    it('holds the last value when it follows now', () => {
+      expect(valuationTrace({ valuations: rows, now: day(40), start: day(50) })).toEqual([
+        pt(50, 130),
+      ]);
     });
   });
 

@@ -37,23 +37,14 @@ pub async fn create_real_estate(
     recalc: State<'_, HistoryRecalc>,
     data: InsertRealEstate,
 ) -> Result<RealEstate> {
-    let (created, first_valuation) = db.with_conn(|conn| {
+    let created = db.with_conn(|conn| {
         let id = real_estate_service::create_property(conn, &data)?;
-        let created = real_estate_service::get_property(conn, &id)?
-            .ok_or_else(|| AppError::Internal("Failed to retrieve created property".into()))?;
-        let first_valuation = crate::services::valuations::list_valuations(
-            conn,
-            crate::services::valuations::ValuationKind::RealEstate,
-            &id,
-        )?
-        .first()
-        .map(|valuation| valuation.valued_at);
-        Ok((created, first_valuation))
+        real_estate_service::get_property(conn, &id)?
+            .ok_or_else(|| AppError::Internal("Failed to retrieve created property".into()))
     })?;
-    // The value line starts at the purchase date, else at the first estimate
-    if let Some(job) = history_plan::property_created(created.purchase_date, first_valuation) {
-        schedule_history_rebuild(&app, &db, &recalc, vec![job]);
-    }
+    // The value line starts at the purchase date, else at the first estimate, and the days
+    // before it change with the remainder of a live row
+    schedule_history_rebuild(&app, &db, &recalc, vec![history_plan::all_days()]);
     Ok(created)
 }
 
@@ -77,9 +68,8 @@ pub async fn update_real_estate(
             history_plan::earliest_valuation_day(conn, ValuationKind::RealEstate, &id)?;
         Ok((before, updated, (earliest_before, earliest_after)))
     })?;
-    // From the earliest of the old and new purchase date and the first valuation; a price change
-    // that wrote the property's first estimate counts from the purchase date; a type or currency
-    // change moves the property on every day it is counted
+    // Every day, when the edit changed a fact the history reads (the purchase date or price, the
+    // type, a currency) or wrote the property's first estimate (a price change)
     if let Some(before) = before {
         let job = history_plan::property_updated(
             &PropertyFacts::from(&before),
@@ -113,7 +103,7 @@ pub async fn delete_real_estate(
         }
         Ok(())
     })?;
-    schedule_history_rebuild(&app, &db, &recalc, vec![history_plan::property_deleted()]);
+    schedule_history_rebuild(&app, &db, &recalc, vec![history_plan::all_days()]);
     Ok(())
 }
 
@@ -898,18 +888,15 @@ pub async fn add_real_estate_valuation(
     recalc: State<'_, HistoryRecalc>,
     data: crate::models::InsertAssetValuation,
 ) -> Result<crate::models::AssetValuation> {
-    let (saved, job) = db.with_conn(|conn| {
-        let saved =
-            crate::services::valuations::add_valuation(conn, ValuationKind::RealEstate, &data)?;
-        let job = history_plan::property_valuation_changed(conn, &saved.asset_id, saved.valued_at)?;
-        Ok((saved, job))
+    let saved = db.with_conn(|conn| {
+        crate::services::valuations::add_valuation(conn, ValuationKind::RealEstate, &data)
     })?;
     crate::commands::portfolio::update_todays_snapshot(&db)
         .await
         .ok();
     // An estimate changes the days it applies to; the first one also opens the days back to
     // the purchase date
-    schedule_history_rebuild(&app, &db, &recalc, vec![job]);
+    schedule_history_rebuild(&app, &db, &recalc, vec![history_plan::all_days()]);
     Ok(saved)
 }
 
@@ -921,17 +908,16 @@ pub async fn delete_real_estate_valuation(
     recalc: State<'_, HistoryRecalc>,
     valuation_id: String,
 ) -> Result<()> {
-    let job = db.with_conn(|conn| {
-        let removed = crate::services::valuations::delete_valuation(
+    db.with_conn(|conn| {
+        crate::services::valuations::delete_valuation(
             conn,
             ValuationKind::RealEstate,
             &valuation_id,
-        )?;
-        history_plan::property_valuation_changed(conn, &removed.asset_id, removed.valued_at)
+        )
     })?;
     crate::commands::portfolio::update_todays_snapshot(&db)
         .await
         .ok();
-    schedule_history_rebuild(&app, &db, &recalc, vec![job]);
+    schedule_history_rebuild(&app, &db, &recalc, vec![history_plan::all_days()]);
     Ok(())
 }

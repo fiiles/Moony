@@ -768,8 +768,9 @@ async fn rebuild_stock_ticker_with_policy(
 /// [`rebuild_stock_ticker`]. The CoinGecko id is read from `crypto_investments`. A ticker
 /// without transactions skips the fetch (a deleted holding only loses its rows); a holding
 /// with transactions but no id is left alone. CoinGecko's free tiers serve 365 days back,
-/// so older days keep the last known price (the price before the range, else today's
-/// quote), else no row.
+/// so the days before that window are priced from Yahoo Finance's daily `{TICKER}-USD` closes
+/// (one request, [`price_api::merge_crypto_price_series`]); a day neither source quotes keeps
+/// the last known price (the price before the range, else today's quote), else no row.
 pub async fn rebuild_crypto_ticker(
     db: &Database,
     ticker: &str,
@@ -849,7 +850,19 @@ async fn rebuild_crypto_ticker_with_policy(
                 )
                 .await?
             };
-            fetched.get(ticker).cloned().unwrap_or_default()
+            // CoinGecko serves no day older than its window: Yahoo Finance quotes the coin
+            // further back. It is best effort even for a strict rebuild: with no quote from it
+            // (an unknown symbol, offline) those days keep the last known price, as before.
+            let older = if from_day < fetch_from {
+                price_api::get_historical_crypto_prices_yahoo(ticker, from_day, fetch_from).await
+            } else {
+                Vec::new()
+            };
+            price_api::merge_crypto_price_series(
+                older,
+                fetched.get(ticker).cloned().unwrap_or_default(),
+                fetch_from,
+            )
         }
         _ => Vec::new(),
     };

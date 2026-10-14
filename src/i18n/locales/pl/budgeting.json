@@ -195,16 +195,18 @@
   },
   "readiness": {
     "effectiveMonth": "Miesiąc obowiązywania",
-    "effectiveMonthHelp": "Domyślnie bieżący miesiąc. Wybierz późniejszy miesiąc, aby zaplanować zmianę; limity z wcześniejszych miesięcy zostają w raportach.",
     "observedAverage": "Zaobserwowana średnia miesięczna: {{amount}} z {{count}} zakończonych miesięcy. Kompletność wyciągów nie jest potwierdzona.",
     "usageUnavailable": "Wykorzystanie budżetu niedostępne",
     "absoluteShare": "Udział w bezwzględnych kwotach grup",
     "signedUnbudgetedTotal": "Wydatki netto bez limitu: {{amount}}",
-    "effectiveMonthPrefill": "Zapisanie ustawi wpisaną kwotę od {{month}}. Późniejsze zaplanowane zmiany zostaną zachowane.",
     "scheduledHeading": "Zaplanowane zmiany",
     "scheduledLimit": "Od {{month, lower}}: {{amount}}",
     "scheduledRemoval": "Od {{month, lower}}: bez limitu",
-    "noChange": "Limit bez zmian; nic nie zapisano."
+    "noChange": "Limit bez zmian; nic nie zapisano.",
+    "effectiveUntil": "Obowiązuje do miesiąca",
+    "openEnded": "Bez końca",
+    "rangeOpenHelp": "Bez miesiąca końcowego limit obowiązuje dalej; późniejsze zaplanowane zmiany zostają.",
+    "rangeClosedHelp": "Miesiąc końcowy jest wliczony. Potem wraca limit, który obowiązywał wcześniej."
   },
   "settings": {
     "from": "Od {{month}}",

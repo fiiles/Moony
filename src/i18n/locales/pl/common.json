@@ -275,7 +275,8 @@
     "stockImportRowFailed": "nie udało się zapisać wiersza.",
     "onboardingFlagUnknown": "Nieznany krok konfiguracji początkowej.",
     "insuranceNoticeInvalid": "Wpisz liczbę całkowitą dni od 0 do 365.",
-    "budgetIntervalsRequired": "Wybierz co najmniej jeden okres budżetu."
+    "budgetIntervalsRequired": "Wybierz co najmniej jeden okres budżetu.",
+    "effectiveUntilBeforeStart": "Miesiąc końcowy nie może być wcześniejszy niż miesiąc początkowy."
   },
   "auth": {
     "wrongPassword": "Wpisane hasło jest nieprawidłowe. Spróbuj ponownie.",

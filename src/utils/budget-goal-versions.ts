@@ -115,15 +115,33 @@ export function budgetEditSource(
   };
 }
 
-/** Saving `amount` from `month` would leave that month's limit as it is. */
+/**
+ * Saving `amount` from `month` (through `until`, or open-ended) would leave
+ * every month of that range with the limit it already has.
+ */
 export function isUnchangedGoalEdit(
   versions: readonly BudgetGoalVersion[],
   month: number,
   amount: number,
-  currency: string
+  currency: string,
+  until: number | null = null
 ): boolean {
   const current = versionInEffect(versions, month);
-  return current != null && current.currency === currency && Number(current.amount) === amount;
+  if (current == null || current.currency !== currency || Number(current.amount) !== amount)
+    return false;
+  const last = intervalLastMonth(versions, month);
+  return until == null || last == null || last >= until;
+}
+
+/** First day of the last month of the interval containing `month`; null while it runs on. */
+export function intervalLastMonth(
+  versions: readonly BudgetGoalVersion[],
+  month: number
+): number | null {
+  const next = versions.find((version) => version.effectiveMonth > month);
+  if (!next) return null;
+  const date = new Date(next.effectiveMonth * 1000);
+  return Date.UTC(date.getUTCFullYear(), date.getUTCMonth() - 1, 1) / 1000;
 }
 
 /** `YYYY-MM` for an `<input type="month">`, in UTC like the stored months. */

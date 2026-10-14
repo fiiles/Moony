@@ -179,16 +179,18 @@
   },
   "readiness": {
     "effectiveMonth": "Gäller från månad",
-    "effectiveMonthHelp": "Standard är den här månaden. Välj en senare månad för att schemalägga en ändring; gränser för tidigare månader finns kvar i rapporterna.",
     "observedAverage": "Observerat månadsgenomsnitt: {{amount}} från {{count}} avslutade månader. Att kontoutdragen är kompletta är inte bekräftat.",
     "usageUnavailable": "Budgetförbrukning saknas",
     "absoluteShare": "Andel av gruppernas absoluta belopp",
     "signedUnbudgetedTotal": "Nettoutgifter utan budget: {{amount}}",
-    "effectiveMonthPrefill": "Vid sparande gäller det angivna beloppet från {{month}}. Senare planerade ändringar behålls.",
     "scheduledHeading": "Schemalagda ändringar",
     "scheduledLimit": "Från {{month, lower}}: {{amount}}",
     "scheduledRemoval": "Från {{month, lower}}: ingen gräns",
-    "noChange": "Gränsen är oförändrad; ingenting sparades."
+    "noChange": "Gränsen är oförändrad; ingenting sparades.",
+    "effectiveUntil": "Gäller till månad",
+    "openEnded": "Utan slut",
+    "rangeOpenHelp": "Utan slutmånad fortsätter gränsen att gälla; senare schemalagda ändringar finns kvar.",
+    "rangeClosedHelp": "Slutmånaden räknas med. Därefter gäller gränsen som gällde innan."
   },
   "settings": {
     "from": "Från {{month}} och framåt",

@@ -275,7 +275,8 @@
     "stockImportRowFailed": "raden kunne ikke lagres.",
     "onboardingFlagUnknown": "Ukjent trinn i førstegangsoppsettet.",
     "insuranceNoticeInvalid": "Skriv inn et helt antall dager fra 0 til 365.",
-    "budgetIntervalsRequired": "Velg minst ett budsjettintervall."
+    "budgetIntervalsRequired": "Velg minst ett budsjettintervall.",
+    "effectiveUntilBeforeStart": "Sluttmåneden kan ikke være før startmåneden."
   },
   "auth": {
     "wrongPassword": "Passordet du skrev inn er feil. Prøv igjen.",

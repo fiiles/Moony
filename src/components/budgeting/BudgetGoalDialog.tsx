@@ -17,6 +17,7 @@ import { getUtcPeriodRange } from '@/utils/period';
 import {
   currentMonthStart,
   budgetEditSource,
+  intervalLastMonth,
   isUnchangedGoalEdit,
   monthInputValue,
   monthStartFromInput,
@@ -55,13 +56,28 @@ import {
 
 const AVERAGE_MONTHS = 6;
 
-const formSchema = z.object({
-  effectiveMonth: z
-    .string()
-    .refine((value) => monthStartFromInput(value) != null, 'validation.dateRequired'),
-  categoryId: z.string().min(1, 'validation.categoryIdRequired'),
-  amount: requiredNumber('validation.amountRequired').positive('validation.amountPositive'),
-});
+const formSchema = z
+  .object({
+    effectiveMonth: z
+      .string()
+      .refine((value) => monthStartFromInput(value) != null, 'validation.dateRequired'),
+    // Empty: the limit runs on.
+    effectiveUntil: z
+      .string()
+      .refine(
+        (value) => value === '' || monthStartFromInput(value) != null,
+        'validation.dateRequired'
+      ),
+    categoryId: z.string().min(1, 'validation.categoryIdRequired'),
+    amount: requiredNumber('validation.amountRequired').positive('validation.amountPositive'),
+  })
+  .refine(
+    (values) =>
+      values.effectiveUntil === '' ||
+      (monthStartFromInput(values.effectiveUntil) ?? 0) >=
+        (monthStartFromInput(values.effectiveMonth) ?? 0),
+    { message: 'validation.effectiveUntilBeforeStart', path: ['effectiveUntil'] }
+  );
 
 type FormValues = z.infer<typeof formSchema>;
 
@@ -111,6 +127,7 @@ export function BudgetGoalDialog({
       categoryId: '',
       amount: 0,
       effectiveMonth: monthInputValue(currentMonthStart()),
+      effectiveUntil: '',
     },
   });
 
@@ -121,16 +138,20 @@ export function BudgetGoalDialog({
     const now = currentMonthStart();
     if (goal) {
       const source = budgetEditSource(goal, initialEffectiveMonth, now);
+      // The edited interval keeps its own end unless the user changes it.
+      const last = intervalLastMonth(goal.versions, source.month);
       form.reset({
         categoryId: goal.categoryId,
         amount: Number(source.amount),
         effectiveMonth: monthInputValue(source.month),
+        effectiveUntil: last == null ? '' : monthInputValue(last),
       });
     } else {
       form.reset({
         categoryId: initialCategoryId ?? '',
         amount: undefined,
         effectiveMonth: monthInputValue(initialEffectiveMonth ?? now),
+        effectiveUntil: '',
       });
     }
   }, [open, goal, initialCategoryId, initialEffectiveMonth, currencyCode, form]);
@@ -138,11 +159,13 @@ export function BudgetGoalDialog({
   // The date can move independently of the selected limit's value.
   const editedMonthValue = form.watch('effectiveMonth');
   const editedMonth = monthStartFromInput(editedMonthValue);
+  const editedUntil = monthStartFromInput(form.watch('effectiveUntil'));
   // Moving the effective date moves the selected amount/currency. Taking them
   // from the destination month would silently replace the interval being edited.
   const editSource = goal ? budgetEditSource(goal, initialEffectiveMonth, nowMonth) : null;
   const editorCurrency = editSource?.currency ?? currencyCode;
-  const scheduled = scheduledVersions(versions, editedMonth ?? nowMonth);
+  // Changes inside the range are replaced; only the ones after it stay.
+  const scheduled = scheduledVersions(versions, editedUntil ?? editedMonth ?? nowMonth);
 
   // Average monthly spending in the limit editor's own currency.
   const averageRange = useMemo(() => {
@@ -201,9 +224,10 @@ export function BudgetGoalDialog({
   const onSubmit = (values: FormValues) => {
     const month = monthStartFromInput(values.effectiveMonth);
     if (month == null) return;
+    const until = monthStartFromInput(values.effectiveUntil);
     const currency = editorCurrency;
     // Saving the limit already in effect for that month changes nothing.
-    if (goal && isUnchangedGoalEdit(goal.versions, month, values.amount, currency)) {
+    if (goal && isUnchangedGoalEdit(goal.versions, month, values.amount, currency, until)) {
       toast.info(t('readiness.noChange'));
       onOpenChange(false);
       return;
@@ -219,6 +243,7 @@ export function BudgetGoalDialog({
         currency
       ),
       effectiveMonth: month,
+      effectiveUntil: until ?? undefined,
       // Keep the selected interval's own currency; new goals use the profile currency.
       currency,
     });
@@ -310,28 +335,48 @@ export function BudgetGoalDialog({
                 </FormItem>
               )}
             />
-            <FormField
-              control={form.control}
-              name="effectiveMonth"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{t('readiness.effectiveMonth')}</FormLabel>
-                  <FormControl>
-                    <Input type="month" {...field} />
-                  </FormControl>
-                  <FormDescription>
-                    {t('readiness.effectiveMonthHelp')}
-                    {editing && editedMonth != null && (
-                      <>
-                        {' '}
-                        {t('readiness.effectiveMonthPrefill', { month: monthLabel(editedMonth) })}
-                      </>
-                    )}
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <div className="grid grid-cols-2 gap-3">
+              <FormField
+                control={form.control}
+                name="effectiveMonth"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('readiness.effectiveMonth')}</FormLabel>
+                    <FormControl>
+                      <Input type="month" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="effectiveUntil"
+                render={({ field }) => (
+                  <FormItem>
+                    <div className="flex items-baseline justify-between gap-2">
+                      <FormLabel>{t('readiness.effectiveUntil')}</FormLabel>
+                      {field.value !== '' && (
+                        <button
+                          type="button"
+                          onClick={() => field.onChange('')}
+                          className="text-micro font-650 text-ink-3 underline-offset-[3px] hover:text-ink hover:underline focus-visible:outline-none focus-visible:underline"
+                        >
+                          {t('readiness.openEnded')}
+                        </button>
+                      )}
+                    </div>
+                    <FormControl>
+                      <Input type="month" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            <p className="-mt-2 text-micro text-ink-3">
+              {t(editedUntil == null ? 'readiness.rangeOpenHelp' : 'readiness.rangeClosedHelp')}
+            </p>
             {scheduled.length > 0 && (
               <div className="rounded-r2 border border-line bg-well px-3 py-2.5 text-micro text-ink-3">
                 <p className="mb-1 font-650 text-ink-2">{t('readiness.scheduledHeading')}</p>

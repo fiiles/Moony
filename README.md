@@ -53,7 +53,8 @@ tablet app, or a budget shared by a household (one profile on one computer, no s
   planning with categories as groups (any row or category can be left out of the plan), a
   net-worth projection, and annuity and real estate investment calculators. Budgets show
   spending against the limits; one "Manage budgets" dialog lists each category's limit in
-  effect with its scheduled changes and earlier limits. Deleting a budget removes all its
+  effect with its scheduled changes and earlier limits. A limit can run from one month to
+  another, after which the earlier limit returns. Deleting a budget removes all its
   limits, past months included; deleting one earlier limit removes exactly that interval
   without extending earlier limits into the gap.
 - **Ten languages and 45 currencies.** English, Czech, German, Spanish, Italian, Norwegian

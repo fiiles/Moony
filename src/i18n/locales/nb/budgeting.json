@@ -179,16 +179,18 @@
   },
   "readiness": {
     "effectiveMonth": "Gjelder fra måned",
-    "effectiveMonthHelp": "Settes som standard til denne måneden. Velg en senere måned for å planlegge en endring; grensene for tidligere måneder beholdes i rapportene.",
     "observedAverage": "Observert månedlig gjennomsnitt: {{amount}} fra {{count}} fullførte måneder. Kontoutskriftenes fullstendighet er ikke bekreftet.",
     "usageUnavailable": "Budsjettbruk er utilgjengelig",
     "absoluteShare": "Andel av gruppenes absolutte beløp",
     "signedUnbudgetedTotal": "Netto utgifter uten budsjett: {{amount}}",
-    "effectiveMonthPrefill": "Ved lagring gjelder det angitte beløpet fra {{month}}. Senere planlagte endringer beholdes.",
     "scheduledHeading": "Planlagte endringer",
     "scheduledLimit": "Fra {{month, lower}}: {{amount}}",
     "scheduledRemoval": "Fra {{month, lower}}: ingen grense",
-    "noChange": "Grensen er uendret; ingenting ble lagret."
+    "noChange": "Grensen er uendret; ingenting ble lagret.",
+    "effectiveUntil": "Gjelder til måned",
+    "openEnded": "Uten slutt",
+    "rangeOpenHelp": "Uten sluttmåned gjelder grensen videre; senere planlagte endringer beholdes.",
+    "rangeClosedHelp": "Sluttmåneden er med. Deretter gjelder grensen som gjaldt før."
   },
   "settings": {
     "from": "Fra {{month}} og videre",

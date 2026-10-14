@@ -850,7 +850,12 @@ purchaseDate: number | null }
 /**
  * Data for creating/updating a budget goal
  */
-export type InsertBudgetGoal = { categoryId: string; timeframe: string; amount: string; currency: string | null; effectiveMonth: number | null }
+export type InsertBudgetGoal = { categoryId: string; timeframe: string; amount: string; currency: string | null; effectiveMonth: number | null; 
+/**
+ * Last month of the limit (inclusive); afterwards the limit that applied
+ * before the save returns. None keeps the limit open-ended.
+ */
+effectiveUntil?: number | null }
 
 /**
  * Data for creating/updating cashflow item

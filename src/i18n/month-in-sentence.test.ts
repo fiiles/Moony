@@ -15,7 +15,6 @@ const SENTENCES = [
   ['insurance', 'calendar.peakNote', 'month'],
   ['budgeting', 'readiness.scheduledLimit', 'month'],
   ['budgeting', 'readiness.scheduledRemoval', 'month'],
-  ['budgeting', 'readiness.effectiveMonthPrefill', 'month'],
   ['bank_accounts', 'flows.netIn', 'month'],
 ] as const;
 

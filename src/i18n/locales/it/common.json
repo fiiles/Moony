@@ -275,7 +275,8 @@
     "stockImportRowFailed": "non è stato possibile salvare la riga.",
     "onboardingFlagUnknown": "Passaggio della configurazione iniziale sconosciuto.",
     "insuranceNoticeInvalid": "Inserisci un numero intero di giorni da 0 a 365.",
-    "budgetIntervalsRequired": "Seleziona almeno un intervallo di budget."
+    "budgetIntervalsRequired": "Seleziona almeno un intervallo di budget.",
+    "effectiveUntilBeforeStart": "Il mese finale non può precedere il mese iniziale."
   },
   "auth": {
     "wrongPassword": "La password inserita non è corretta. Riprova.",

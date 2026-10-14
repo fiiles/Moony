@@ -2276,6 +2276,8 @@ export interface InsertBudgetGoal {
   amount: string;
   currency?: string;
   effectiveMonth?: number;
+  /** Last month of the limit (inclusive); afterwards the earlier limit returns. Omitted: open-ended. */
+  effectiveUntil?: number;
 }
 
 // Category spending summary

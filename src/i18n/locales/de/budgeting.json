@@ -179,16 +179,18 @@
   },
   "readiness": {
     "effectiveMonth": "Gültig ab Monat",
-    "effectiveMonthHelp": "Standardmäßig dieser Monat. Wählen Sie einen späteren Monat, um eine Änderung vorzumerken; Limits früherer Monate bleiben in den Berichten erhalten.",
     "observedAverage": "Beobachteter Monatsdurchschnitt: {{amount}} aus {{count}} abgeschlossenen Monaten. Die Vollständigkeit der Kontoauszüge ist nicht nachgewiesen.",
     "usageUnavailable": "Budgetauslastung nicht verfügbar",
     "absoluteShare": "Anteil an den absoluten Gruppenbeträgen",
     "signedUnbudgetedTotal": "Nettoausgaben ohne Budget: {{amount}}",
-    "effectiveMonthPrefill": "Beim Speichern gilt der eingegebene Betrag ab {{month}}. Spätere geplante Änderungen bleiben erhalten.",
     "scheduledHeading": "Geplante Änderungen",
     "scheduledLimit": "Ab {{month}}: {{amount}}",
     "scheduledRemoval": "Ab {{month}}: kein Limit",
-    "noChange": "Das Limit ist unverändert; es wurde nichts gespeichert."
+    "noChange": "Das Limit ist unverändert; es wurde nichts gespeichert.",
+    "effectiveUntil": "Gültig bis Monat",
+    "openEnded": "Ohne Ende",
+    "rangeOpenHelp": "Ohne Endmonat gilt das Limit weiter; spätere geplante Änderungen bleiben erhalten.",
+    "rangeClosedHelp": "Der Endmonat zählt mit. Danach gilt wieder das Limit, das vorher galt."
   },
   "settings": {
     "from": "Ab {{month}}",

@@ -721,6 +721,7 @@ CREATE TABLE bonds(id TEXT,name TEXT,coupon_value TEXT,quantity TEXT,interest_ra
             amount: amount.into(),
             currency: Some("CZK".into()),
             effective_month: Some(month),
+            effective_until: None,
         };
         upsert_goal_at(conn, goal("1000", SEP), SEP).expect("september limit");
         upsert_goal_at(conn, goal("2000", OCT), SEP).expect("october limit");
@@ -747,6 +748,7 @@ CREATE TABLE bonds(id TEXT,name TEXT,coupon_value TEXT,quantity TEXT,interest_ra
                     amount: "100.00".into(),
                     currency: Some(target.into()),
                     effective_month: Some(SEP),
+                    effective_until: None,
                 },
                 SEP,
             )

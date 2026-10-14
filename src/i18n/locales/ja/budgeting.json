@@ -171,16 +171,18 @@
   },
   "readiness": {
     "effectiveMonth": "適用開始月",
-    "effectiveMonthHelp": "既定は今月です。後の月を選ぶと変更を予約できます。それ以前の月の上限はレポートにそのまま残ります。",
     "observedAverage": "実績の月平均：{{amount}}（完了した{{count}}か月分）。明細が網羅されている保証はありません。",
     "usageUnavailable": "予算の使用率は利用できません",
     "absoluteShare": "グループ金額の絶対値に占める割合",
     "signedUnbudgetedTotal": "上限のない支出の純額：{{amount}}",
-    "effectiveMonthPrefill": "保存すると、入力した金額が{{month}}から適用されます。それ以降に予定された変更は維持されます。",
     "scheduledHeading": "予約済みの変更",
     "scheduledLimit": "{{month}}から：{{amount}}",
     "scheduledRemoval": "{{month}}から：上限なし",
-    "noChange": "上限は変わっていないため、保存されませんでした。"
+    "noChange": "上限は変わっていないため、保存されませんでした。",
+    "effectiveUntil": "有効期限の月",
+    "openEnded": "終了なし",
+    "rangeOpenHelp": "終了月がない場合、上限はそのまま続き、後の予定された変更も残ります。",
+    "rangeClosedHelp": "終了月も含まれます。その後は以前の上限に戻ります。"
   },
   "settings": {
     "from": "{{month}}以降",

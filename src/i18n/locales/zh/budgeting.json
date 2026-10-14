@@ -171,16 +171,18 @@
   },
   "readiness": {
     "effectiveMonth": "生效月份",
-    "effectiveMonthHelp": "默认为本月。选择之后的月份可预约变更；更早月份的限额仍保留在报表中。",
     "observedAverage": "观察到的月均值：{{amount}}，基于 {{count}} 个已完成的月份。无法确认账单是否完整。",
     "usageUnavailable": "预算使用情况不可用",
     "absoluteShare": "占各组绝对金额的比例",
     "signedUnbudgetedTotal": "未设预算的净支出：{{amount}}",
-    "effectiveMonthPrefill": "保存后，输入的金额将从{{month}}起生效。之后计划的变更将保留。",
     "scheduledHeading": "已预约的变更",
     "scheduledLimit": "自 {{month}} 起：{{amount}}",
     "scheduledRemoval": "自 {{month}} 起：无限额",
-    "noChange": "限额未变化，未保存任何内容。"
+    "noChange": "限额未变化，未保存任何内容。",
+    "effectiveUntil": "有效至月份",
+    "openEnded": "无结束",
+    "rangeOpenHelp": "不设结束月份时限额持续有效，之后计划的变更保留。",
+    "rangeClosedHelp": "结束月份包含在内。之后恢复之前适用的限额。"
   },
   "settings": {
     "from": "自{{month}}起",

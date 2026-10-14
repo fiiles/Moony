@@ -76,6 +76,10 @@ pub struct InsertBudgetGoal {
     pub currency: Option<String>,
     #[serde(rename = "effectiveMonth")]
     pub effective_month: Option<i64>,
+    /// Last month of the limit (inclusive); afterwards the limit that applied
+    /// before the save returns. None keeps the limit open-ended.
+    #[serde(rename = "effectiveUntil", default)]
+    pub effective_until: Option<i64>,
 }
 
 impl InsertBudgetGoal {
@@ -86,6 +90,18 @@ impl InsertBudgetGoal {
             if crate::services::reporting::month_start(month) != Some(month) {
                 return Err(AppError::Validation(
                     "validation.effectiveMonthInvalid".into(),
+                ));
+            }
+        }
+        if let Some(until) = self.effective_until {
+            if crate::services::reporting::month_start(until) != Some(until) {
+                return Err(AppError::Validation(
+                    "validation.effectiveMonthInvalid".into(),
+                ));
+            }
+            if self.effective_month.is_some_and(|month| until < month) {
+                return Err(AppError::Validation(
+                    "validation.effectiveUntilBeforeStart".into(),
                 ));
             }
         }
@@ -197,6 +213,7 @@ mod tests {
                 amount: amount.into(),
                 currency: None,
                 effective_month: None,
+                effective_until: None,
             };
             assert!(goal.validate().is_err(), "accepted {amount}");
         }
@@ -211,6 +228,7 @@ mod tests {
             amount: amount.into(),
             currency: None,
             effective_month: None,
+            effective_until: None,
         };
         let key = |goal: InsertBudgetGoal| match goal.validate() {
             Err(AppError::Validation(key)) => key,
@@ -232,5 +250,34 @@ mod tests {
             key(goal("", "monthly", "10")),
             "validation.categoryIdRequired"
         );
+    }
+
+    #[test]
+    fn goal_validation_checks_the_range_end() {
+        use crate::error::AppError;
+        const JUN: i64 = 1780272000;
+        const MAR: i64 = 1772323200;
+        let goal = |month: Option<i64>, until: i64| InsertBudgetGoal {
+            category_id: "cat_other".into(),
+            timeframe: "monthly".into(),
+            amount: "10".into(),
+            currency: None,
+            effective_month: month,
+            effective_until: Some(until),
+        };
+        let key = |goal: InsertBudgetGoal| match goal.validate() {
+            Err(AppError::Validation(key)) => key,
+            other => panic!("{other:?}"),
+        };
+        assert_eq!(
+            key(goal(Some(JUN), JUN + 86_400)),
+            "validation.effectiveMonthInvalid"
+        );
+        assert_eq!(
+            key(goal(Some(JUN), MAR)),
+            "validation.effectiveUntilBeforeStart"
+        );
+        assert!(goal(Some(JUN), JUN).validate().is_ok());
+        assert!(goal(None, MAR).validate().is_ok());
     }
 }

@@ -275,7 +275,8 @@
     "stockImportRowFailed": "raden kunde inte sparas.",
     "onboardingFlagUnknown": "Okänt steg i den inledande konfigurationen.",
     "insuranceNoticeInvalid": "Ange ett helt antal dagar från 0 till 365.",
-    "budgetIntervalsRequired": "Välj minst ett budgetintervall."
+    "budgetIntervalsRequired": "Välj minst ett budgetintervall.",
+    "effectiveUntilBeforeStart": "Slutmånaden kan inte vara före startmånaden."
   },
   "auth": {
     "wrongPassword": "Lösenordet du angav är fel. Försök igen.",

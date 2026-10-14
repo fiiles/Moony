@@ -224,6 +224,20 @@ pub fn upsert_goal_at(
         .effective_month
         .or_else(|| crate::services::reporting::month_start(now))
         .ok_or_else(|| AppError::Validation("validation.effectiveMonthInvalid".into()))?;
+    // A closed range ends after `until`; the month after it is where the
+    // limit that applied before the save comes back.
+    let after_range = match data.effective_until {
+        Some(until) if until < effective => {
+            return Err(AppError::Validation(
+                "validation.effectiveUntilBeforeStart".into(),
+            ))
+        }
+        Some(until) => Some(
+            crate::services::reporting::month_start(until + 32 * 86_400)
+                .ok_or_else(|| AppError::Validation("validation.effectiveMonthInvalid".into()))?,
+        ),
+        None => None,
+    };
     let tx = conn.unchecked_transaction()?;
     let conn = &tx;
 
@@ -266,6 +280,29 @@ pub fn upsert_goal_at(
 
     conn.execute("INSERT INTO budget_goal_versions(id,category_id,timeframe,effective_month,amount,currency,created_at) VALUES (?1,?2,?3,?4,?5,?6,?7) ON CONFLICT(category_id,timeframe,effective_month) DO UPDATE SET amount=excluded.amount,currency=excluded.currency,created_at=excluded.created_at",
         params![Uuid::new_v4().to_string(),data.category_id,data.timeframe,effective,data.amount,currency,now])?;
+
+    if let Some(after) = after_range {
+        // The range replaces every change inside it. Unless a change is already
+        // set for the month after it, the limit of that month before this save
+        // (possibly none) is restored there.
+        conn.execute(
+            "DELETE FROM budget_goal_versions WHERE category_id=?1 AND timeframe=?2 AND effective_month>?3 AND effective_month<?4",
+            params![data.category_id, data.timeframe, effective, after],
+        )?;
+        if !versions.iter().any(|v| v.effective_month == after) {
+            let before = versions.iter().rev().find(|v| v.effective_month <= after);
+            conn.execute("INSERT INTO budget_goal_versions(id,category_id,timeframe,effective_month,amount,currency,created_at) VALUES (?1,?2,?3,?4,?5,?6,?7)",
+                params![
+                    Uuid::new_v4().to_string(),
+                    data.category_id,
+                    data.timeframe,
+                    after,
+                    before.and_then(|v| v.amount.clone()),
+                    before.map_or(currency.as_str(), |v| v.currency.as_str()),
+                    now
+                ])?;
+        }
+    }
 
     // Mirror the version in effect now (or the first scheduled one).
     let base = conn.query_row(
@@ -823,7 +860,111 @@ mod tests {
             amount: amount.into(),
             currency: Some("CZK".into()),
             effective_month: Some(month),
+            effective_until: None,
         }
+    }
+
+    fn month(year: i32, month: u32) -> i64 {
+        chrono::NaiveDate::from_ymd_opt(year, month, 1)
+            .unwrap()
+            .and_hms_opt(0, 0, 0)
+            .unwrap()
+            .and_utc()
+            .timestamp()
+    }
+
+    fn range_input(amount: &str, from: i64, until: i64) -> InsertBudgetGoal {
+        InsertBudgetGoal {
+            effective_until: Some(until),
+            ..goal_input(amount, from)
+        }
+    }
+
+    /// (month, amount) of every stored groceries version, oldest first.
+    fn stored_versions(conn: &Connection) -> Vec<(i64, Option<String>)> {
+        goal_versions(conn, "cat_groceries", "monthly")
+            .unwrap()
+            .into_iter()
+            .map(|v| (v.effective_month, v.amount))
+            .collect()
+    }
+
+    #[test]
+    fn a_closed_range_restores_the_limit_that_applied_before() {
+        let conn = setup_test_db();
+        upsert_goal_at(&conn, goal_input("100", JAN), NOW).unwrap();
+        upsert_goal_at(&conn, range_input("200", DEC, DEC), NOW).unwrap();
+        assert_eq!(
+            stored_versions(&conn),
+            vec![
+                (JAN, Some("100".into())),
+                (DEC, Some("200".into())),
+                (month(2027, 1), Some("100".into())),
+            ]
+        );
+    }
+
+    #[test]
+    fn a_closed_range_on_a_new_budget_ends_without_a_limit() {
+        let conn = setup_test_db();
+        upsert_goal_at(&conn, range_input("50", JUN, month(2026, 8)), NOW).unwrap();
+        assert_eq!(
+            stored_versions(&conn),
+            vec![(JUN, Some("50".into())), (month(2026, 9), None)]
+        );
+    }
+
+    #[test]
+    fn a_closed_range_replaces_changes_inside_it_and_keeps_later_ones() {
+        let conn = setup_test_db();
+        for (amount, start) in [
+            ("100", JAN),
+            ("150", MAR),
+            ("175", month(2026, 5)),
+            ("300", OCT),
+        ] {
+            upsert_goal_at(&conn, goal_input(amount, start), NOW).unwrap();
+        }
+        upsert_goal_at(&conn, range_input("200", month(2026, 2), JUN), NOW).unwrap();
+        assert_eq!(
+            stored_versions(&conn),
+            vec![
+                (JAN, Some("100".into())),
+                (month(2026, 2), Some("200".into())),
+                (month(2026, 7), Some("175".into())),
+                (OCT, Some("300".into())),
+            ]
+        );
+    }
+
+    #[test]
+    fn a_closed_range_keeps_an_explicit_change_right_after_it() {
+        let conn = setup_test_db();
+        upsert_goal_at(&conn, goal_input("100", JAN), NOW).unwrap();
+        upsert_goal_at(&conn, goal_input("150", month(2026, 7)), NOW).unwrap();
+        upsert_goal_at(&conn, range_input("200", MAR, JUN), NOW).unwrap();
+        assert_eq!(
+            stored_versions(&conn),
+            vec![
+                (JAN, Some("100".into())),
+                (MAR, Some("200".into())),
+                (month(2026, 7), Some("150".into())),
+            ]
+        );
+    }
+
+    #[test]
+    fn a_range_ending_before_its_start_is_rejected() {
+        let conn = setup_test_db();
+        let error = upsert_goal_at(&conn, range_input("200", JUN, MAR), NOW).unwrap_err();
+        assert!(
+            matches!(error, AppError::Validation(key) if key == "validation.effectiveUntilBeforeStart")
+        );
+        // Without an explicit start the current month is the start.
+        let mut input = range_input("200", JUN, MAR);
+        input.effective_month = None;
+        assert!(upsert_goal_at(&conn, input, NOW).is_err());
+        assert!(stored_versions(&conn).is_empty());
     }
 
     #[test]
@@ -1324,6 +1465,7 @@ mod tests {
                 amount: "1000.123".into(),
                 currency: Some("CZK".into()),
                 effective_month: Some(jan),
+                effective_until: None,
             },
         )
         .unwrap();
@@ -1335,6 +1477,7 @@ mod tests {
                 amount: "2000".into(),
                 currency: Some("CZK".into()),
                 effective_month: Some(feb),
+                effective_until: None,
             },
         )
         .unwrap();
@@ -1418,6 +1561,7 @@ mod tests {
                     amount: amount.into(),
                     currency: Some(currency.into()),
                     effective_month: Some(month),
+                    effective_until: None,
                 },
             )
             .unwrap();
@@ -1459,6 +1603,7 @@ mod tests {
                 amount: "5000".to_string(),
                 currency: Some("CZK".to_string()),
                 effective_month: None,
+                effective_until: None,
             },
         )
         .expect("Failed to create goal");
@@ -1476,6 +1621,7 @@ mod tests {
                 amount: "6000".to_string(),
                 currency: Some("CZK".to_string()),
                 effective_month: None,
+                effective_until: None,
             },
         )
         .expect("Failed to update goal");
@@ -1539,6 +1685,7 @@ mod tests {
             amount: "5000".to_string(),
             currency: None,
             effective_month: None,
+            effective_until: None,
         };
         assert!(valid.validate().is_ok());
 
@@ -1549,6 +1696,7 @@ mod tests {
             amount: "5000".to_string(),
             currency: None,
             effective_month: None,
+            effective_until: None,
         };
         assert!(invalid_timeframe.validate().is_err());
 
@@ -1559,6 +1707,7 @@ mod tests {
             amount: "-100".to_string(),
             currency: None,
             effective_month: None,
+            effective_until: None,
         };
         assert!(invalid_amount.validate().is_err());
     }
@@ -1575,6 +1724,7 @@ mod tests {
                 amount: "3000".to_string(),
                 currency: Some("CZK".to_string()),
                 effective_month: None,
+                effective_until: None,
             },
         )
         .unwrap();
@@ -1587,6 +1737,7 @@ mod tests {
                 amount: "1500".to_string(),
                 currency: Some("CZK".to_string()),
                 effective_month: None,
+                effective_until: None,
             },
         )
         .unwrap();
@@ -1603,6 +1754,7 @@ mod tests {
             amount: "0".to_string(),
             currency: None,
             effective_month: None,
+            effective_until: None,
         };
         assert!(invalid.validate().is_err());
     }
@@ -1673,6 +1825,7 @@ mod tests {
                 amount: "100".to_string(), // 100 XTS = 1 000 CZK
                 currency: Some("XTS".to_string()),
                 effective_month: Some(1704067200),
+                effective_until: None,
             },
         )
         .expect("goal");

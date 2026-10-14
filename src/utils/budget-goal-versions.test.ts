@@ -5,6 +5,7 @@ import {
   defaultEditMonth,
   budgetVersionPeriods,
   budgetEditSource,
+  intervalLastMonth,
   isUnchangedGoalEdit,
   monthInputValue,
   monthStartFromInput,
@@ -126,6 +127,38 @@ describe('isUnchangedGoalEdit', () => {
     expect(isUnchangedGoalEdit(versions, OCT, 2000, 'CZK')).toBe(false);
     expect(isUnchangedGoalEdit(versions, OCT, 1000.123, 'EUR')).toBe(false);
     expect(isUnchangedGoalEdit(versions, JAN - 1, 1000.123, 'CZK')).toBe(false);
+  });
+});
+
+describe('isUnchangedGoalEdit with an end month', () => {
+  const versions = [v(JAN, '1000'), v(DEC, '2000')];
+  const NOV = Date.UTC(2026, 10, 1) / 1000;
+
+  it('is unchanged when the whole range already has that limit', () => {
+    expect(isUnchangedGoalEdit(versions, OCT, 1000, 'CZK', NOV)).toBe(true);
+    expect(isUnchangedGoalEdit(versions, OCT, 1000, 'CZK', OCT)).toBe(true);
+  });
+
+  it('is a change when the range reaches into a different limit', () => {
+    expect(isUnchangedGoalEdit(versions, OCT, 1000, 'CZK', DEC)).toBe(false);
+  });
+});
+
+describe('intervalLastMonth', () => {
+  const NOV = Date.UTC(2026, 10, 1) / 1000;
+
+  it('is the month before the next change, whatever that change is', () => {
+    expect(intervalLastMonth([v(JAN, '1000'), v(DEC, '2000')], OCT)).toBe(NOV);
+    expect(intervalLastMonth([v(JAN, '1000'), v(NOV, null)], JAN)).toBe(OCT);
+  });
+
+  it('is null for an open-ended interval', () => {
+    expect(intervalLastMonth([v(JAN, '1000'), v(JUN, '1500')], OCT)).toBeNull();
+    expect(intervalLastMonth([], OCT)).toBeNull();
+  });
+
+  it('crosses a year boundary', () => {
+    expect(intervalLastMonth([v(OCT, '1'), v(JAN + 365 * 86_400, '2')], OCT)).toBe(DEC);
   });
 });
 

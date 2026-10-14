@@ -179,16 +179,18 @@
   },
   "readiness": {
     "effectiveMonth": "Effective month",
-    "effectiveMonthHelp": "Defaults to this month. Choose a later month to schedule a change; limits of earlier months stay in the reports.",
     "observedAverage": "Observed monthly average: {{amount}} from {{count}} completed months. Statement completeness is not proven.",
     "usageUnavailable": "Budget usage unavailable",
     "absoluteShare": "Share of absolute group amounts",
     "signedUnbudgetedTotal": "Net unbudgeted spending: {{amount}}",
-    "effectiveMonthPrefill": "Saving sets the entered amount from {{month}}. Later scheduled changes remain in place.",
     "scheduledHeading": "Scheduled changes",
     "scheduledLimit": "From {{month}}: {{amount}}",
     "scheduledRemoval": "From {{month}}: no limit",
-    "noChange": "The limit is unchanged; nothing was saved."
+    "noChange": "The limit is unchanged; nothing was saved.",
+    "effectiveUntil": "Valid until month",
+    "openEnded": "No end",
+    "rangeOpenHelp": "Without an end month the limit runs on; later scheduled changes stay.",
+    "rangeClosedHelp": "The end month is included. Afterwards, the limit that applied before returns."
   },
   "settings": {
     "from": "From {{month}} onwards",

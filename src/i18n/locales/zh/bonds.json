@@ -59,6 +59,7 @@
     "withinYear": "一年内",
     "matured": "已兑付",
     "noMaturity": "无到期日",
+    "boughtOn": "{{date}} 购入",
     "noResults": {
       "title": "未找到结果",
       "description": "请尝试其他名称或 ISIN。",
@@ -87,6 +88,8 @@
     "nominal": "每单位面值",
     "quantity": "数量",
     "rate": "年票息",
+    "purchaseDate": "购入日期",
+    "purchaseDateHint": "未填写购入日期时，该债券会计入全部历史；填写后，仅从该日起计入。",
     "maturity": "到期日",
     "maturityHint": "到期后，该债券将转为已兑付，不再计入净资产。",
     "summaryValue": "价值 {{value}} · 每年票息 {{coupon}}",

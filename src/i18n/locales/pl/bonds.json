@@ -71,6 +71,7 @@
     "withinYear": "w ciągu roku",
     "matured": "wykupiona",
     "noMaturity": "bez terminu wykupu",
+    "boughtOn": "kupiona {{date}}",
     "noResults": {
       "title": "Nic nie znaleziono",
       "description": "Spróbuj innej nazwy lub ISIN.",
@@ -102,6 +103,8 @@
     "nominal": "Wartość nominalna 1 sztuki",
     "quantity": "Sztuki",
     "rate": "Kupon rocznie",
+    "purchaseDate": "Data zakupu",
+    "purchaseDateHint": "Bez daty zakupu obligacja jest liczona w całej historii; z datą dopiero od tego dnia.",
     "maturity": "Termin wykupu",
     "maturityHint": "Po terminie wykupu emisja przechodzi do wykupionych i nie wlicza się już do majątku netto.",
     "summaryValue": "Wartość {{value}} · kupon {{coupon}} rocznie",

@@ -67,6 +67,7 @@
     "withinYear": "do roka",
     "matured": "splaceno",
     "noMaturity": "bez splatnosti",
+    "boughtOn": "koupeno {{date}}",
     "noResults": {
       "title": "Nic nenalezeno",
       "description": "Zkuste jiný název nebo ISIN.",
@@ -97,6 +98,8 @@
     "nominal": "Nominální hodnota 1 ks",
     "quantity": "Počet kusů",
     "rate": "Kupón ročně",
+    "purchaseDate": "Datum nákupu",
+    "purchaseDateHint": "Bez data nákupu se dluhopis počítá v celé historii; s ním až od tohoto dne.",
     "maturity": "Datum splatnosti",
     "maturityHint": "Po splatnosti se emise přesune mezi splacené a přestane se počítat do jmění.",
     "summaryValue": "Hodnota {{value}} · kupón {{coupon}} ročně",

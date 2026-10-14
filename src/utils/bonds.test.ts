@@ -24,6 +24,7 @@ function bond(partial: Partial<Bond> & { couponValue: string }): Bond {
     currency: 'CZK',
     interestRate: '0',
     maturityDate: null,
+    purchaseDate: null,
     createdAt: 0,
     updatedAt: 0,
     ...partial,

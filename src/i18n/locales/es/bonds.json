@@ -67,6 +67,7 @@
     "withinYear": "en menos de un año",
     "matured": "amortizado",
     "noMaturity": "sin vencimiento",
+    "boughtOn": "comprado el {{date}}",
     "noResults": {
       "title": "Sin resultados",
       "description": "Prueba con otro nombre o ISIN.",
@@ -97,6 +98,8 @@
     "nominal": "Valor nominal de 1 título",
     "quantity": "Títulos",
     "rate": "Cupón anual",
+    "purchaseDate": "Fecha de compra",
+    "purchaseDateHint": "Sin fecha de compra, el bono se cuenta en todo el historial; con ella, solo desde ese día.",
     "maturity": "Fecha de vencimiento",
     "maturityHint": "Tras el vencimiento la emisión pasa a amortizada y deja de contar en el patrimonio neto.",
     "summaryValue": "Valor {{value}} · cupón {{coupon}} al año",

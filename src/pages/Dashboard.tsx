@@ -6,10 +6,17 @@ import { useAuth } from '@/hooks/use-auth';
 import { useCurrency } from '@/lib/currency';
 import { useFormat } from '@/lib/use-format';
 import { useLanguage } from '@/i18n/I18nProvider';
-import { usePortfolioHistory, usePortfolioMetrics } from '@/hooks/use-portfolio';
+import { useDatedFacts, usePortfolioHistory, usePortfolioMetrics } from '@/hooks/use-portfolio';
+import { useNetWorthJumpTip } from '@/hooks/use-net-worth-jump-tip';
 import { useRecentMoves } from '@/hooks/use-recent-moves';
 import { amountOf } from '@/utils/positions';
 import { bridgeUnknownClasses } from '@/utils/history-gaps';
+import {
+  detectNetWorthJumps,
+  jumpEvents,
+  type JumpDay,
+  type JumpEvent,
+} from '@/utils/net-worth-jumps';
 import { mergeConversionQuality } from '@/utils/conversion-quality';
 import { utcDayFloor } from '@/utils/chart-axis';
 import { CHART_PERIODS, chartPeriodStart } from '@/utils/period';
@@ -18,6 +25,7 @@ import TimePeriodSelector, { type Period } from '@/components/cashflow/TimePerio
 import { PageHead, SectionHead } from '@/components/shell/PageHead';
 import { HeroCard, HeroValue } from '@/components/common/HeroCard';
 import { MoonyLineChart } from '@/components/charts/MoonyLineChart';
+import { ChartLegend } from '@/components/charts/ChartLegend';
 import { SeriesDot, Stat, StatSkeleton, Stats } from '@/components/common/Stat';
 import { EmptyState } from '@/components/common/EmptyState';
 import { Button } from '@/components/ui/button';
@@ -82,6 +90,7 @@ export default function Dashboard() {
   const periodStartSeconds = chartPeriodStart(selectedPeriod, Date.now() / 1000);
 
   const { data: history } = usePortfolioHistory(periodStartSeconds);
+  const { data: datedFacts } = useDatedFacts(periodStartSeconds);
   const {
     data: portfolioMetrics,
     isLoading: metricsLoading,
@@ -232,17 +241,49 @@ export default function Dashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [oldest, hasHistory, netWorthPct, t, portfolioMetrics, unknown.netWorth]);
 
-  // Hero chart: history plus the live value for today (UTC days, ADR 0008)
-  const points = useMemo(() => {
+  // Hero chart: history plus the live value for today (UTC days, ADR 0008). Every plotted day
+  // carries what each class contributes, so a big step can be traced to the classes behind it.
+  const plotted = useMemo<JumpDay[]>(() => {
     const todayStart = utcDayFloor(Date.now() / 1000);
-    const pts = convertedHistory.map((h) => ({ t: h.recordedAt, value: h.netWorth }));
+    const dayOf = (
+      t: number,
+      netWorth: number,
+      c: Record<AssetClass | 'liabilities', number>
+    ): JumpDay => ({
+      t,
+      netWorth,
+      classes: {
+        savings: c.savings,
+        investments: c.investments,
+        crypto: c.crypto,
+        bonds: c.bonds,
+        realEstate: c.realEstate,
+        loans: -c.liabilities,
+        otherAssets: c.otherAssets,
+      },
+    });
+    const days = convertedHistory.map((h) => dayOf(h.recordedAt, h.netWorth, h));
     // An unknown net worth today is left out, not plotted as a drop to 0
-    if (unknown.netWorth) return pts.filter((p) => utcDayFloor(p.t) !== todayStart);
-    const last = pts[pts.length - 1];
-    if (last && utcDayFloor(last.t) === todayStart) last.value = display.netWorth;
-    else pts.push({ t: Math.floor(Date.now() / 1000), value: display.netWorth });
-    return pts;
-  }, [convertedHistory, display.netWorth, unknown.netWorth]);
+    if (unknown.netWorth) return days.filter((d) => utcDayFloor(d.t) !== todayStart);
+    const last = days[days.length - 1];
+    if (last && utcDayFloor(last.t) === todayStart) {
+      days[days.length - 1] = dayOf(last.t, display.netWorth, display);
+    } else {
+      days.push(dayOf(Math.floor(Date.now() / 1000), display.netWorth, display));
+    }
+    return days;
+    // display is rebuilt every render; its input is the metrics response
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [convertedHistory, portfolioMetrics, unknown.netWorth]);
+  const points = useMemo(() => plotted.map((d) => ({ t: d.t, value: d.netWorth })), [plotted]);
+
+  // Big steps of the plotted line, explained by the dated facts of their day. Until the facts
+  // are in, nothing is marked: without them a purchase day would read as an unexplained step.
+  const jumps = useMemo(
+    () => (datedFacts === undefined ? [] : jumpEvents(detectNetWorthJumps(plotted, datedFacts))),
+    [plotted, datedFacts]
+  );
+  const jumpTip = useNetWorthJumpTip(reportCurrency);
 
   const allocation = ASSET_CLASSES.map((cls) => ({
     key: cls,
@@ -340,14 +381,23 @@ export default function Dashboard() {
           </p>
         }
         chart={
-          <MoonyLineChart
-            points={points}
-            zeroBaseline={selectedPeriod === 'All'}
-            height={220}
-            className="mt-[18px] -mx-1"
-            formatValue={money}
-            renderTip={(p) => ({ title: money(p.value), lines: [fmt.day(p.t)] })}
-          />
+          <>
+            <MoonyLineChart<JumpEvent>
+              points={points}
+              zeroBaseline={selectedPeriod === 'All'}
+              height={220}
+              className="mt-[18px] -mx-1"
+              formatValue={money}
+              renderTip={(p) => ({ title: money(p.value), lines: [fmt.day(p.t)] })}
+              events={jumps}
+              renderEventTip={jumpTip}
+            />
+            {jumps.length > 0 && (
+              <ChartLegend
+                items={[{ label: t('jumps.legend'), swatch: { kind: 'event', type: 'mark' } }]}
+              />
+            )}
+          </>
         }
       >
         <HeroValue

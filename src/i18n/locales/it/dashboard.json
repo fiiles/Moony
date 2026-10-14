@@ -109,5 +109,35 @@
     "totalAssets": "Attività totali",
     "totalLiabilities": "Passività totali"
   },
-  "changeSince": "rispetto al {{date}}"
+  "changeSince": "rispetto al {{date}}",
+  "jumps": {
+    "title": "Grande variazione {{amount}}",
+    "marketTitle": "Movimento di mercato {{amount}}",
+    "legend": "Grande variazione o movimento di mercato",
+    "classes": {
+      "savings": "Conti",
+      "investments": "Azioni",
+      "crypto": "Cripto",
+      "bonds": "Obbligazioni",
+      "realEstate": "Immobili",
+      "loans": "Prestiti",
+      "otherAssets": "Altri beni"
+    },
+    "positions_one": "{{count}} posizione",
+    "positions_many": "{{count}} posizioni",
+    "positions_other": "{{count}} posizioni",
+    "fact": {
+      "buy": "acquisto di {{name}}",
+      "buyMany": "acquisto di {{positions}} ({{names}})",
+      "sell": "vendita di {{name}}",
+      "sellMany": "vendita di {{positions}} ({{names}})",
+      "start": "inizio di {{name}}",
+      "balance": "saldo di {{name}}",
+      "loanBalance": "saldo manuale di {{name}} {{from}} → {{to}}",
+      "loanBalanceTo": "saldo manuale di {{name}} {{amount}}",
+      "extraPayment": "rimborso anticipato di {{name}}",
+      "valuation": "rivalutazione di {{name}}",
+      "firstValuation": "prima stima di {{name}}"
+    }
+  }
 }

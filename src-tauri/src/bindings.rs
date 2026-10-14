@@ -197,6 +197,7 @@ pub fn collect_types() -> TypeCollection {
     types.register::<crate::models::PortfolioMetrics>();
     types.register::<crate::models::PortfolioHistoryPoint>();
     types.register::<crate::models::PortfolioHistoryResponse>();
+    types.register::<crate::models::DatedFact>();
     types.register::<crate::commands::portfolio::PriceStatus>();
 
     // Projection models

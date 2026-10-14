@@ -603,6 +603,46 @@ export type DataLocation = { dataDir: string; dbPath: string; totalBytes: number
 export type DataSource = "manual" | "csv_import" | "api_sync"
 
 /**
+ * One dated fact that can explain a step of the net-worth line: a purchase, a revaluation, a new
+ * loan, a manual balance, a day of trades. Read by the dashboard to say what stands behind a big
+ * jump; it carries no value of its own.
+ */
+export type DatedFact = { 
+/**
+ * UTC day the fact is dated.
+ */
+day: number; 
+/**
+ * `buy` (a purchase, or a day of purchases), `sell`, `start` (a loan), `balance` (a balance
+ * record), `extraPayment`, `valuation` or `firstValuation` (the first estimate of a property).
+ */
+kind: string; 
+/**
+ * The history class it moves: `savings`, `investments`, `crypto`, `bonds`, `realEstate`,
+ * `loans` or `otherAssets`.
+ */
+class: string; 
+/**
+ * The account, property, loan, bond or asset; for a day of trades up to three tickers or asset
+ * names, comma separated.
+ */
+name: string; 
+/**
+ * The amount as entered, in `currency` (decimal TEXT). `None` for a day of trades, whose
+ * legs are not summed, and for an amount that was not entered.
+ */
+amount: string | null; currency: string | null; 
+/**
+ * For a manual loan balance: what the loan's ledger held the day before, in `currency`.
+ * `None` for every other fact and for a loan that had not started yet.
+ */
+previousAmount: string | null; 
+/**
+ * Distinct tickers or assets traded that day; `None` for every other fact.
+ */
+count: number | null }
+
+/**
  * How the direction of a trade is read.
  */
 export type DirectionMode = 

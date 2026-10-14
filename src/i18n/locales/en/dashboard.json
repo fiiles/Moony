@@ -109,5 +109,34 @@
     "totalAssets": "Total Assets",
     "totalLiabilities": "Total Liabilities"
   },
-  "changeSince": "vs {{date}}"
+  "changeSince": "vs {{date}}",
+  "jumps": {
+    "title": "Big change {{amount}}",
+    "marketTitle": "Market move {{amount}}",
+    "legend": "Big change or market move",
+    "classes": {
+      "savings": "Accounts",
+      "investments": "Stocks",
+      "crypto": "Crypto",
+      "bonds": "Bonds",
+      "realEstate": "Real estate",
+      "loans": "Loans",
+      "otherAssets": "Other assets"
+    },
+    "positions_one": "{{count}} position",
+    "positions_other": "{{count}} positions",
+    "fact": {
+      "buy": "purchase of {{name}}",
+      "buyMany": "purchase of {{positions}} ({{names}})",
+      "sell": "sale of {{name}}",
+      "sellMany": "sale of {{positions}} ({{names}})",
+      "start": "start of {{name}}",
+      "balance": "balance of {{name}}",
+      "loanBalance": "manual balance of {{name}} {{from}} → {{to}}",
+      "loanBalanceTo": "manual balance of {{name}} {{amount}}",
+      "extraPayment": "extra payment on {{name}}",
+      "valuation": "revaluation of {{name}}",
+      "firstValuation": "first estimate of {{name}}"
+    }
+  }
 }

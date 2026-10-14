@@ -221,7 +221,7 @@ the history table highlights its mark (`is-hot`, scale 1.35); clicking a mark sc
 events inside the selected period are drawn. Aggregate charts (net worth, cashflow) never draw events; the
 exceptions are the stocks and crypto list trends (one mark per trade day and direction, explaining the
 jumps a buy or a sell causes), the real estate list trend (every purchase and every revaluation, the
-initial estimate that repeats the purchase left out) and the loans trajectory (new loans and milestones). Bank account charts draw no movement events; dated balance records are drawn as marks (○) on the balance line. If more
+initial estimate that repeats the purchase left out), the loans trajectory (new loans and milestones) and the net-worth line of the overview: a neutral ○ only on a big day-over-day step (at least 5 % of the period's largest net worth, at most 12 per period; a step only stocks or crypto made without a trade that day needs 10 % and reads "Pohyb trhu"). Its tooltip names the classes that moved and the dated facts behind each ("Nemovitosti +3,12 mil. · nákup Chlumec", "Úvěry −1,97 mil. · začátek Chlumec - byt"); a class without a fact shows its change alone. Bank account charts draw no movement events; dated balance records are drawn as marks (○) on the balance line. If more
 than ~24 events fall in view, cluster neighbors into one mark with a count ("3 nákupy").
 
 ## 10. Copy and formatting
@@ -240,7 +240,7 @@ than ~24 events fall in view, cluster neighbors into one mark with a count ("3 n
 1. **Dark theme is not part of v1.** The app ships light only; there is no theme switch and no `.dark`
    token block. It can be revisited after launch.
 2. **Time trace on every single-entity detail page**, as specified in §9. Aggregate charts stay free of
-   events.
+   events, except the ones §9 lists (the net-worth line marks only its big steps).
 3. **Inter Variable is bundled** via `@fontsource-variable/inter`. No network fonts and no system-font
    fallback design.
 4. **Cashflow is two pages.** *Cashflow* (`/reports/cashflow`) shows actual flows from bank transactions

@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { listen } from '@tauri-apps/api/event';
-import type { PortfolioHistoryResponse, PortfolioMetrics } from '@shared/schema';
+import type { DatedFact, PortfolioHistoryResponse, PortfolioMetrics } from '@shared/schema';
 import { portfolioApi } from '@/lib/tauri-api';
 import { useAuth } from '@/hooks/use-auth';
 import { useCurrency } from '@/lib/currency';
@@ -46,6 +46,23 @@ export function usePortfolioHistory(start: number | undefined) {
   return useQuery<PortfolioHistoryResponse>({
     queryKey: ['portfolio-history', currencyCode, fxRevision, start ?? 'all'],
     queryFn: () => portfolioApi.getHistory(currencyCode, start, Math.floor(Date.now() / 1000)),
+    staleTime: 0,
+    refetchOnMount: 'always',
+  });
+}
+
+/**
+ * Dated facts (purchases, estimates, new loans, manual balances, days of trades) from `start`
+ * (unix seconds, open for everything) until now: what the dashboard names behind a big step of
+ * net worth. The facts are native and need no rates, so the key holds no currency. It sits under
+ * the `['portfolio-history']` prefix on purpose: every write that re-derives the history (a
+ * mutation, a price refresh, a finished `recalculation-complete`, the MCP data events) invalidates
+ * that prefix, and the facts those writes add or move are refetched with it.
+ */
+export function useDatedFacts(start: number | undefined) {
+  return useQuery<DatedFact[]>({
+    queryKey: ['portfolio-history', 'dated-facts', start ?? 'all'],
+    queryFn: () => portfolioApi.getDatedFacts(start, Math.floor(Date.now() / 1000)),
     staleTime: 0,
     refetchOnMount: 'always',
   });

@@ -109,5 +109,33 @@
     "totalAssets": "総資産",
     "totalLiabilities": "負債合計"
   },
-  "changeSince": "{{date}}比"
+  "changeSince": "{{date}}比",
+  "jumps": {
+    "title": "大きな変動 {{amount}}",
+    "marketTitle": "市場の動き {{amount}}",
+    "legend": "大きな変動または市場の動き",
+    "classes": {
+      "savings": "口座",
+      "investments": "株式",
+      "crypto": "暗号資産",
+      "bonds": "債券",
+      "realEstate": "不動産",
+      "loans": "ローン",
+      "otherAssets": "その他の資産"
+    },
+    "positions_other": "{{count}}銘柄",
+    "fact": {
+      "buy": "{{name}}の購入",
+      "buyMany": "{{positions}}の購入（{{names}}）",
+      "sell": "{{name}}の売却",
+      "sellMany": "{{positions}}の売却（{{names}}）",
+      "start": "{{name}}の開始",
+      "balance": "{{name}}の残高",
+      "loanBalance": "{{name}}の手入力残高 {{from}} → {{to}}",
+      "loanBalanceTo": "{{name}}の手入力残高 {{amount}}",
+      "extraPayment": "{{name}}の繰上返済",
+      "valuation": "{{name}}の再評価",
+      "firstValuation": "{{name}}の初回評価額"
+    }
+  }
 }

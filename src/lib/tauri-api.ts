@@ -48,6 +48,7 @@ import type {
   InsertOtherAsset,
   OtherAssetTransaction,
   InsertOtherAssetTransaction,
+  DatedFact,
   PortfolioHistoryResponse,
   PortfolioMetrics,
   PriceStatus,
@@ -595,6 +596,10 @@ export const portfolioApi = {
       startDate,
       endDate,
     }),
+
+  /** Purchases, estimates, new loans, manual balances and days of trades in `[startDate, endDate]`. */
+  getDatedFacts: (startDate?: number, endDate?: number) =>
+    tauriInvoke<DatedFact[]>('get_dated_facts', { startDate, endDate }),
 
   recordSnapshot: () => tauriInvoke<void>('record_portfolio_snapshot'),
 

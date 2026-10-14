@@ -198,15 +198,13 @@
     "scheduled": "予定",
     "showHistory": "過去の上限を表示：{{category}}",
     "earlierLimit": "過去の上限",
-    "endedBudgets": "終了した予算（{{count}}）",
-    "end": "予算を終了",
-    "endTitle": "予算を終了しますか？",
-    "endedToast": "予算を終了しました",
-    "restore": "上限を再設定",
     "deleteInterval": "上限を削除",
     "deleteIntervalTitle": "過去の上限を削除しますか？",
     "deleteIntervalDescription": "{{category}}の{{amount}}の上限（{{period}}）は過去の支出レポートからも削除されます。取引とほかの上限は変わりません。",
     "intervalDeleted": "上限を削除しました",
-    "endDescription": "{{category}}の上限は今月から終了し、予定された変更は取り消されます。過去の上限と取引は履歴レポートに残ります。"
+    "delete": "予算を削除",
+    "deleteTitle": "予算を削除しますか？",
+    "deleteDescription": "{{category}}の予算は過去の上限もすべて含めて削除されるため、支出の概要では過去の月も上限なしになります。取引は変わりません。",
+    "deletedToast": "予算を削除しました"
   }
 }

@@ -214,15 +214,13 @@
     "scheduled": "Pianificato",
     "showHistory": "Mostra limiti precedenti: {{category}}",
     "earlierLimit": "Limite precedente",
-    "endedBudgets": "Budget terminati ({{count}})",
-    "end": "Termina budget",
-    "endTitle": "Terminare il budget?",
-    "endedToast": "Budget terminato",
-    "restore": "Ripristina limite",
     "deleteInterval": "Elimina limite",
     "deleteIntervalTitle": "Eliminare il limite precedente?",
     "deleteIntervalDescription": "Il limite di {{amount}} per {{category}} ({{period}}) viene rimosso anche dai resoconti storici delle spese. Transazioni e altri limiti restano invariati.",
     "intervalDeleted": "Limite eliminato",
-    "endDescription": "Il limite per {{category}} termina dal mese corrente e le modifiche pianificate vengono annullate. I limiti precedenti e le transazioni restano nei resoconti storici."
+    "delete": "Elimina budget",
+    "deleteTitle": "Eliminare il budget?",
+    "deleteDescription": "Il budget per {{category}} viene eliminato con tutti i limiti precedenti, quindi anche i mesi passati nella panoramica delle spese restano senza limite. Le transazioni restano invariate.",
+    "deletedToast": "Budget eliminato"
   }
 }

@@ -206,15 +206,13 @@
     "scheduled": "Geplant",
     "showHistory": "Frühere Limits anzeigen: {{category}}",
     "earlierLimit": "Früheres Limit",
-    "endedBudgets": "Beendete Budgets ({{count}})",
-    "end": "Budget beenden",
-    "endTitle": "Budget beenden?",
-    "endedToast": "Budget beendet",
-    "restore": "Limit wiederherstellen",
     "deleteInterval": "Limit löschen",
     "deleteIntervalTitle": "Früheres Limit löschen?",
     "deleteIntervalDescription": "Das Limit von {{amount}} für {{category}} ({{period}}) wird auch aus historischen Ausgabenberichten entfernt. Transaktionen und andere Limits bleiben unverändert.",
     "intervalDeleted": "Limit gelöscht",
-    "endDescription": "Das Limit für {{category}} endet ab dem aktuellen Monat. Geplante Änderungen werden storniert. Frühere Limits und Transaktionen bleiben in historischen Berichten erhalten."
+    "delete": "Budget löschen",
+    "deleteTitle": "Budget löschen?",
+    "deleteDescription": "Das Budget für {{category}} wird mit allen früheren Limits gelöscht, sodass auch vergangene Monate in der Ausgabenübersicht kein Limit mehr haben. Transaktionen bleiben unverändert.",
+    "deletedToast": "Budget gelöscht"
   }
 }

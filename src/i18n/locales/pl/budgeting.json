@@ -222,15 +222,13 @@
     "scheduled": "Zaplanowany",
     "showHistory": "Pokaż wcześniejsze limity: {{category}}",
     "earlierLimit": "Wcześniejszy limit",
-    "endedBudgets": "Zakończone budżety ({{count}})",
-    "end": "Zakończ budżet",
-    "endTitle": "Zakończyć budżet?",
-    "endedToast": "Budżet zakończony",
-    "restore": "Przywróć limit",
     "deleteInterval": "Usuń limit",
     "deleteIntervalTitle": "Usunąć wcześniejszy limit?",
     "deleteIntervalDescription": "Limit {{amount}} dla {{category}} ({{period}}) zostanie usunięty także z historycznych raportów wydatków. Transakcje i inne limity pozostaną bez zmian.",
     "intervalDeleted": "Limit usunięty",
-    "endDescription": "Limit dla {{category}} kończy się od bieżącego miesiąca, a zaplanowane zmiany zostają anulowane. Wcześniejsze limity i transakcje pozostają w raportach historycznych."
+    "delete": "Usuń budżet",
+    "deleteTitle": "Usunąć budżet?",
+    "deleteDescription": "Budżet dla {{category}} zostanie usunięty wraz ze wszystkimi wcześniejszymi limitami, więc także minione miesiące w przeglądzie wydatków stracą limit. Transakcje pozostaną bez zmian.",
+    "deletedToast": "Budżet usunięty"
   }
 }

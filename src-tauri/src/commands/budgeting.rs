@@ -98,8 +98,12 @@ pub async fn upsert_budget_goal(
     services::budgeting::upsert_budget_goal(&db, data).await
 }
 
-/// Delete a budget goal
+/// Delete a category's budget with every limit, past ones included
 #[tauri::command]
-pub async fn delete_budget_goal(db: State<'_, Database>, id: String) -> Result<()> {
-    services::budgeting::delete_budget_goal(&db, id).await
+pub async fn delete_budget_goal(
+    db: State<'_, Database>,
+    category_id: String,
+    timeframe: String,
+) -> Result<()> {
+    services::budgeting::delete_budget_goal(&db, category_id, timeframe).await
 }

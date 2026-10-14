@@ -214,15 +214,13 @@
     "scheduled": "Naplánováno",
     "showHistory": "Zobrazit dřívější limity: {{category}}",
     "earlierLimit": "Dřívější limit",
-    "endedBudgets": "Ukončené rozpočty ({{count}})",
-    "end": "Ukončit rozpočet",
-    "endTitle": "Ukončit rozpočet?",
-    "endedToast": "Rozpočet ukončen",
-    "restore": "Obnovit limit",
     "deleteInterval": "Smazat limit",
     "deleteIntervalTitle": "Smazat dřívější limit?",
     "deleteIntervalDescription": "Limit {{amount}} pro kategorii {{category}} ({{period}}) se odstraní i z historických přehledů čerpání. Transakce ani ostatní limity se nezmění.",
     "intervalDeleted": "Limit smazán",
-    "endDescription": "Limit pro kategorii {{category}} skončí od aktuálního měsíce a naplánované změny se zruší. Dřívější limity i transakce zůstanou v historických přehledech."
+    "delete": "Smazat rozpočet",
+    "deleteTitle": "Smazat rozpočet?",
+    "deleteDescription": "Rozpočet pro kategorii {{category}} se smaže i se všemi dřívějšími limity, takže minulé měsíce v přehledu čerpání budou bez limitu. Transakce zůstanou beze změny.",
+    "deletedToast": "Rozpočet smazán"
   }
 }

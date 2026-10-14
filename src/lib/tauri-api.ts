@@ -1262,8 +1262,9 @@ export const budgetingApi = {
   upsertBudgetGoal: (data: InsertBudgetGoal) =>
     tauriInvoke<BudgetGoal>('upsert_budget_goal', { data }),
 
-  // Delete a budget goal
-  deleteBudgetGoal: (id: string) => tauriInvoke<void>('delete_budget_goal', { id }),
+  // Delete a category's budget with every limit, past ones included
+  deleteBudgetGoal: (categoryId: string, timeframe: string) =>
+    tauriInvoke<void>('delete_budget_goal', { categoryId, timeframe }),
 };
 
 // ============================================================================

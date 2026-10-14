@@ -206,15 +206,13 @@
     "scheduled": "Schemalagd",
     "showHistory": "Visa tidigare gränser: {{category}}",
     "earlierLimit": "Tidigare gräns",
-    "endedBudgets": "Avslutade budgetar ({{count}})",
-    "end": "Avsluta budget",
-    "endTitle": "Avsluta budgeten?",
-    "endedToast": "Budgeten har avslutats",
-    "restore": "Återställ gräns",
     "deleteInterval": "Ta bort gräns",
     "deleteIntervalTitle": "Ta bort tidigare gräns?",
     "deleteIntervalDescription": "Gränsen på {{amount}} för {{category}} ({{period}}) tas även bort från historiska utgiftsrapporter. Transaktioner och andra gränser förblir oförändrade.",
     "intervalDeleted": "Gränsen har tagits bort",
-    "endDescription": "Gränsen för {{category}} avslutas från innevarande månad och planerade ändringar avbryts. Tidigare gränser och transaktioner finns kvar i historiska rapporter."
+    "delete": "Ta bort budget",
+    "deleteTitle": "Ta bort budgeten?",
+    "deleteDescription": "Budgeten för {{category}} tas bort med alla tidigare gränser, så även tidigare månader i utgiftsöversikten förlorar sin gräns. Transaktioner förblir oförändrade.",
+    "deletedToast": "Budgeten har tagits bort"
   }
 }

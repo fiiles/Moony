@@ -206,15 +206,13 @@
     "scheduled": "Planlagt",
     "showHistory": "Vis tidligere grenser: {{category}}",
     "earlierLimit": "Tidligere grense",
-    "endedBudgets": "Avsluttede budsjetter ({{count}})",
-    "end": "Avslutt budsjett",
-    "endTitle": "Avslutte budsjettet?",
-    "endedToast": "Budsjettet er avsluttet",
-    "restore": "Gjenopprett grense",
     "deleteInterval": "Slett grense",
     "deleteIntervalTitle": "Slette tidligere grense?",
     "deleteIntervalDescription": "Grensen på {{amount}} for {{category}} ({{period}}) fjernes også fra historiske utgiftsrapporter. Transaksjoner og andre grenser endres ikke.",
     "intervalDeleted": "Grensen er slettet",
-    "endDescription": "Grensen for {{category}} avsluttes fra inneværende måned, og planlagte endringer avbrytes. Tidligere grenser og transaksjoner beholdes i historiske rapporter."
+    "delete": "Slett budsjett",
+    "deleteTitle": "Slette budsjettet?",
+    "deleteDescription": "Budsjettet for {{category}} slettes med alle tidligere grenser, så også tidligere måneder i utgiftsoversikten mister grensen. Transaksjoner endres ikke.",
+    "deletedToast": "Budsjettet er slettet"
   }
 }

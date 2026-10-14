@@ -17,7 +17,7 @@ import { usePeriodSelection } from '@/hooks/use-period-selection';
 import { monthOffsetOf } from '@/utils/period';
 import { PeriodNav } from '@/components/reports/PeriodNav';
 import type { BudgetState } from '@/utils/budget-pace';
-import { currentMonthStart, scheduledVersions } from '@/utils/budget-goal-versions';
+import { budgetOverview, currentMonthStart, scheduledVersions } from '@/utils/budget-goal-versions';
 import { PageHead } from '@/components/shell/PageHead';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -236,9 +236,16 @@ export default function Budgeting() {
     return list.sort((a, b) => b.spent - a.spent);
   }, [rows, spentByCategory, categories, categoryName, report, t]);
 
+  // A category is budgeted while a limit is in effect or scheduled. A stored
+  // goal row alone is not enough: it outlives a limit that has run out.
   const availableCategories = useMemo(() => {
     const budgeted = new Set(
-      goals.filter((g) => g.timeframe === 'monthly').map((g) => g.categoryId)
+      budgetOverview(
+        goals.filter((g) => g.timeframe === 'monthly'),
+        currentMonthStart()
+      )
+        .filter((row) => row.status !== 'ended')
+        .map((row) => row.goal.categoryId)
     );
     return categories.filter((c) => c.kind === 'expense' && !budgeted.has(c.id));
   }, [categories, goals]);
@@ -360,10 +367,9 @@ export default function Budgeting() {
       <BudgetManageDialog
         open={manageOpen}
         onOpenChange={setManageOpen}
-        activeGoals={goals}
         categories={categories}
         canAdd={availableCategories.length > 0}
-        onAdd={(categoryId) => openAdd(categoryId ?? null)}
+        onAdd={() => openAdd()}
         onEdit={(goal, effectiveMonth) =>
           setGoalDialog({ open: true, goal, categoryId: goal.categoryId, effectiveMonth })
         }

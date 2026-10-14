@@ -1,12 +1,12 @@
 import { Fragment, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { ChevronRight, Ellipsis, Pencil, Plus, RotateCcw, Trash2 } from 'lucide-react';
+import { ChevronRight, Ellipsis, Pencil, Plus, Trash2 } from 'lucide-react';
 import type { BudgetGoal, BudgetGoalInterval, TransactionCategory } from '@shared/schema';
 import { budgetingApi } from '@/lib/tauri-api';
 import { useFormat } from '@/lib/use-format';
 import { useCategoryName } from '@/hooks/use-categories';
-import { useDeleteBudgetIntervals, useEndBudgetGoal } from '@/hooks/use-budget-goal-mutations';
+import { useDeleteBudget, useDeleteBudgetIntervals } from '@/hooks/use-budget-goal-mutations';
 import { formatReportMoney } from '@/utils/report-currencies';
 import {
   budgetOverview,
@@ -46,13 +46,11 @@ import { StatSkeleton } from '@/components/common/Stat';
 interface BudgetManageDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** Goals with a stored goal row (the ids `delete_budget_goal` accepts). */
-  activeGoals: readonly BudgetGoal[];
   categories: readonly TransactionCategory[];
   /** Some expense category has no limit yet. */
   canAdd: boolean;
-  /** Add a limit, optionally for a preselected category. */
-  onAdd: (categoryId?: string) => void;
+  /** Add a limit for a category without one. */
+  onAdd: () => void;
   /** Edit a goal from `effectiveMonth`, or from the month the editor picks itself. */
   onEdit: (goal: BudgetGoal, effectiveMonth?: number) => void;
 }
@@ -60,13 +58,13 @@ interface BudgetManageDialogProps {
 /**
  * "Spravovat rozpočty" (design system §6 Modal, §7 Planning): one row per
  * category with the limit in effect (or the first scheduled one), its
- * upcoming changes, earlier limits behind a chevron and ended budgets folded
- * at the bottom. Gaps without a limit are never rows of their own.
+ * upcoming changes and earlier limits behind a chevron. A budget whose limit
+ * has run out is an ordinary row with its date range, listed last. Gaps
+ * without a limit are never rows of their own.
  */
 export function BudgetManageDialog({
   open,
   onOpenChange,
-  activeGoals,
   categories,
   canAdd,
   onAdd,
@@ -77,8 +75,11 @@ export function BudgetManageDialog({
   const fmt = useFormat();
   const categoryName = useCategoryName();
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
-  const [showEnded, setShowEnded] = useState(false);
-  const [pendingEnd, setPendingEnd] = useState<{ id: string; name: string } | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<{
+    categoryId: string;
+    timeframe: string;
+    name: string;
+  } | null>(null);
   const [pendingInterval, setPendingInterval] = useState<{
     interval: BudgetGoalInterval;
     name: string;
@@ -97,7 +98,7 @@ export function BudgetManageDialog({
     enabled: open,
   });
 
-  const endMutation = useEndBudgetGoal(() => setPendingEnd(null));
+  const budgetDelete = useDeleteBudget(() => setPendingDelete(null));
   const deleteMutation = useDeleteBudgetIntervals(() => setPendingInterval(null));
 
   const rows = useMemo(() => {
@@ -107,8 +108,10 @@ export function BudgetManageDialog({
     });
     return list.sort((a, b) => a.name.localeCompare(b.name, fmt.locale));
   }, [history, categories, categoryName, fmt.locale]);
-  const live = rows.filter((row) => row.status !== 'ended');
-  const ended = rows.filter((row) => row.status === 'ended');
+  const ordered = [
+    ...rows.filter((row) => row.status !== 'ended'),
+    ...rows.filter((row) => row.status === 'ended'),
+  ];
 
   const monthLabel = (value: number) => fmt.monthInSentence(new Date(value * 1000));
   const money = (amount: string | null, currency: string) =>
@@ -121,9 +124,6 @@ export function BudgetManageDialog({
     return start === last ? start : t('settings.between', { start, end: last });
   };
   const rowKey = (goal: BudgetGoal) => `${goal.categoryId}:${goal.timeframe}`;
-  const goalId = (goal: BudgetGoal) =>
-    activeGoals.find((g) => g.categoryId === goal.categoryId && g.timeframe === goal.timeframe)
-      ?.id ?? null;
   const toggle = (key: string) =>
     setExpanded((previous) => {
       const next = new Set(previous);
@@ -148,7 +148,6 @@ export function BudgetManageDialog({
   const renderRow = (row: BudgetOverviewRow & { name: string }) => {
     const key = rowKey(row.goal);
     const isOpen = expanded.has(key);
-    const id = goalId(row.goal);
     return (
       <Fragment key={key}>
         <TableRow className={cn('h-[52px]', row.status === 'ended' && 'text-ink-3')}>
@@ -217,28 +216,25 @@ export function BudgetManageDialog({
           </TableCell>
           <TableCell className="pr-3 text-right">
             {rowMenu(
-              row.status === 'ended' ? (
-                <DropdownMenuItem onSelect={() => onAdd(row.goal.categoryId)}>
-                  <RotateCcw />
-                  {t('manage.restore')}
+              <>
+                <DropdownMenuItem onSelect={() => onEdit(row.goal)}>
+                  <Pencil />
+                  {t('actions.editLimit')}
                 </DropdownMenuItem>
-              ) : (
-                <>
-                  <DropdownMenuItem onSelect={() => onEdit(row.goal)}>
-                    <Pencil />
-                    {t('actions.editLimit')}
-                  </DropdownMenuItem>
-                  {id && (
-                    <DropdownMenuItem
-                      variant="danger"
-                      onSelect={() => setPendingEnd({ id, name: row.name })}
-                    >
-                      <Trash2 />
-                      {t('manage.end')}
-                    </DropdownMenuItem>
-                  )}
-                </>
-              )
+                <DropdownMenuItem
+                  variant="danger"
+                  onSelect={() =>
+                    setPendingDelete({
+                      categoryId: row.goal.categoryId,
+                      timeframe: row.goal.timeframe,
+                      name: row.name,
+                    })
+                  }
+                >
+                  <Trash2 />
+                  {t('manage.delete')}
+                </DropdownMenuItem>
+              </>
             )}
           </TableCell>
         </TableRow>
@@ -319,30 +315,7 @@ export function BudgetManageDialog({
                     </TableHead>
                   </TableRow>
                 </TableHeader>
-                <TableBody>
-                  {live.map(renderRow)}
-                  {ended.length > 0 && (
-                    <TableRow className="h-[44px] hover:bg-transparent">
-                      <TableCell colSpan={4}>
-                        <button
-                          type="button"
-                          aria-expanded={showEnded}
-                          onClick={() => setShowEnded((v) => !v)}
-                          className="flex items-center gap-1.5 text-caption font-650 text-ink-3 hover:text-ink focus-visible:outline-none focus-visible:underline"
-                        >
-                          <ChevronRight
-                            className={cn(
-                              'size-[14px] transition-transform',
-                              showEnded && 'rotate-90'
-                            )}
-                          />
-                          {t('manage.endedBudgets', { count: ended.length })}
-                        </button>
-                      </TableCell>
-                    </TableRow>
-                  )}
-                  {showEnded && ended.map(renderRow)}
-                </TableBody>
+                <TableBody>{ordered.map(renderRow)}</TableBody>
               </Table>
             </div>
           )}
@@ -358,13 +331,13 @@ export function BudgetManageDialog({
         </DialogContent>
       </Dialog>
       <ConfirmDeleteDialog
-        open={!!pendingEnd}
-        onOpenChange={(o) => !o && setPendingEnd(null)}
-        title={t('manage.endTitle')}
-        description={t('manage.endDescription', { category: pendingEnd?.name ?? '' })}
-        confirmLabel={t('manage.end')}
-        isPending={endMutation.isPending}
-        onConfirm={() => pendingEnd && endMutation.mutate(pendingEnd.id)}
+        open={!!pendingDelete}
+        onOpenChange={(o) => !o && setPendingDelete(null)}
+        title={t('manage.deleteTitle')}
+        description={t('manage.deleteDescription', { category: pendingDelete?.name ?? '' })}
+        confirmLabel={t('manage.delete')}
+        isPending={budgetDelete.isPending}
+        onConfirm={() => pendingDelete && budgetDelete.mutate(pendingDelete)}
       />
       <ConfirmDeleteDialog
         open={!!pendingInterval}

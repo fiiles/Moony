@@ -287,34 +287,29 @@ pub fn upsert_goal_at(
     Ok(result)
 }
 
-/// Delete a budget goal
-pub fn delete_goal(conn: &Connection, id: &str) -> Result<()> {
-    delete_goal_at(conn, id, chrono::Utc::now().timestamp())
-}
-
-/// End the goal at a single clock instant, retaining limits in earlier months.
-fn delete_goal_at(conn: &Connection, id: &str, now: i64) -> Result<()> {
+/// Delete a category's budget completely: every limit version, past ones
+/// included, and its goal row. Past reports lose the limit too.
+pub fn delete_budget(conn: &Connection, category_id: &str, timeframe: &str) -> Result<()> {
+    if category_id.trim().is_empty() {
+        return Err(AppError::Validation("validation.categoryIdRequired".into()));
+    }
+    if !["monthly", "quarterly", "yearly"].contains(&timeframe) {
+        return Err(AppError::Validation("validation.timeframeInvalid".into()));
+    }
     let tx = conn.unchecked_transaction()?;
-    let goal = tx
-        .query_row(
-            "SELECT category_id,timeframe,currency FROM budget_goals WHERE id=?1",
-            [id],
-            |r| {
-                Ok((
-                    r.get::<_, String>(0)?,
-                    r.get::<_, String>(1)?,
-                    r.get::<_, String>(2)?,
-                ))
-            },
-        )
-        .optional()?
-        .ok_or_else(|| AppError::NotFound(format!("Budget goal {id} not found")))?;
-    let month = crate::services::reporting::month_start(now)
-        .ok_or_else(|| AppError::Validation("validation.effectiveMonthInvalid".into()))?;
-    tx.execute("INSERT INTO budget_goal_versions(id,category_id,timeframe,effective_month,amount,currency,created_at) VALUES (?1,?2,?3,?4,NULL,?5,?6) ON CONFLICT(category_id,timeframe,effective_month) DO UPDATE SET amount=NULL",params![Uuid::new_v4().to_string(),goal.0,goal.1,month,goal.2,now])?;
-    // Also cancel future limits when deleting a scheduled goal.
-    tx.execute("DELETE FROM budget_goal_versions WHERE category_id=?1 AND timeframe=?2 AND effective_month>?3",params![goal.0,goal.1,month])?;
-    tx.execute("DELETE FROM budget_goals WHERE id=?1", [id])?;
+    let versions = tx.execute(
+        "DELETE FROM budget_goal_versions WHERE category_id=?1 AND timeframe=?2",
+        params![category_id, timeframe],
+    )?;
+    let goals = tx.execute(
+        "DELETE FROM budget_goals WHERE category_id=?1 AND timeframe=?2",
+        params![category_id, timeframe],
+    )?;
+    if versions + goals == 0 {
+        return Err(AppError::NotFound(format!(
+            "Budget for {category_id} ({timeframe}) not found"
+        )));
+    }
     tx.commit()?;
     Ok(())
 }
@@ -717,9 +712,13 @@ pub async fn upsert_budget_goal(db: &Database, data: InsertBudgetGoal) -> Result
     db.with_conn(|conn| upsert_goal(conn, data))
 }
 
-/// Delete budget goal (async wrapper)
-pub async fn delete_budget_goal(db: &Database, id: String) -> Result<()> {
-    db.with_conn(|conn| delete_goal(conn, &id))
+/// Delete a budget completely (async wrapper)
+pub async fn delete_budget_goal(
+    db: &Database,
+    category_id: String,
+    timeframe: String,
+) -> Result<()> {
+    db.with_conn(|conn| delete_budget(conn, &category_id, &timeframe))
 }
 
 #[cfg(test)]
@@ -926,8 +925,8 @@ mod tests {
     #[test]
     fn archived_intervals_remain_manageable_until_the_last_limit_is_cancelled() {
         let conn = setup_test_db();
-        let goal = upsert_goal_at(&conn, goal_input("100", JAN), NOW).unwrap();
-        delete_goal_at(&conn, &goal.id, NOW).unwrap();
+        upsert_goal_at(&conn, goal_input("100", JAN), NOW).unwrap();
+        end_like_legacy(&conn, "cat_groceries", OCT);
         assert!(get_all_goals_at(&conn, NOW).unwrap().is_empty());
         let history = get_goal_history(&conn).unwrap();
         assert_eq!(history.len(), 1);
@@ -942,26 +941,67 @@ mod tests {
         );
     }
 
-    #[test]
-    fn deletion_ends_current_and_scheduled_limits_but_retains_past_reports() {
-        let conn = setup_test_db();
-        let goal = upsert_goal_at(&conn, goal_input("100", JAN), NOW).unwrap();
-        upsert_goal_at(&conn, goal_input("200", DEC), NOW).unwrap();
-        delete_goal_at(&conn, &goal.id, NOW).unwrap();
-        assert!(get_all_goals_at(&conn, NOW).unwrap().is_empty());
-        assert_eq!(limit_for(&conn, JAN, MAR), Some("100.00".into()));
-        let quarter =
-            get_report_in_currency(&conn, OCT, 1798761600 - 1, "quarterly", None, "CZK").unwrap();
-        assert!(quarter.expense_categories.is_empty());
-        let versions = goal_versions(&conn, "cat_groceries", "monthly").unwrap();
-        assert_eq!(versions.len(), 2);
-        assert_eq!(versions[1].effective_month, OCT);
-        assert_eq!(versions[1].amount, None);
-        assert!(delete_goal_at(&conn, &goal.id, NOW).is_err());
+    /// Pre-redesign "end from this month": a removal version and no goal row.
+    fn end_like_legacy(conn: &Connection, category: &str, month: i64) {
+        conn.execute(
+            "INSERT INTO budget_goal_versions(id,category_id,timeframe,effective_month,amount,currency,created_at) VALUES ('legacy',?1,'monthly',?2,NULL,'CZK',0)",
+            params![category, month],
+        )
+        .unwrap();
+        conn.execute("DELETE FROM budget_goals WHERE category_id=?1", [category])
+            .unwrap();
+    }
 
+    #[test]
+    fn deleting_a_budget_removes_every_limit_including_past_reports() {
+        let conn = setup_test_db();
+        upsert_goal_at(&conn, goal_input("100", JAN), NOW).unwrap();
+        upsert_goal_at(&conn, goal_input("200", DEC), NOW).unwrap();
+        let mut dining = goal_input("50", JAN);
+        dining.category_id = "cat_dining".into();
+        upsert_goal_at(&conn, dining, NOW).unwrap();
+        delete_budget(&conn, "cat_groceries", "monthly").unwrap();
+        assert!(goal_versions(&conn, "cat_groceries", "monthly")
+            .unwrap()
+            .is_empty());
+        assert_eq!(groceries_limit(&conn, JAN, MAR), None);
+        let goals = get_goal_history(&conn).unwrap();
+        assert_eq!(goals.len(), 1);
+        assert_eq!(goals[0].category_id, "cat_dining");
+
+        // A new limit starts clean: no leftover removal cuts it short.
         upsert_goal_at(&conn, goal_input("300", NOV), NOW).unwrap();
-        assert_eq!(limit_for(&conn, NOV, DEC), Some("300.00".into()));
-        assert_eq!(limit_for(&conn, JAN, MAR), Some("100.00".into()));
+        assert_eq!(
+            groceries_limit(&conn, DEC, DEC + 86_400),
+            Some("300.00".into())
+        );
+    }
+
+    #[test]
+    fn deleting_an_ended_budget_without_a_goal_row_removes_its_history() {
+        let conn = setup_test_db();
+        upsert_goal_at(&conn, goal_input("100", JAN), NOW).unwrap();
+        end_like_legacy(&conn, "cat_groceries", OCT);
+        delete_budget(&conn, "cat_groceries", "monthly").unwrap();
+        assert!(get_goal_history(&conn).unwrap().is_empty());
+        assert_eq!(groceries_limit(&conn, JAN, MAR), None);
+    }
+
+    #[test]
+    fn deleting_a_missing_or_invalid_budget_fails() {
+        let conn = setup_test_db();
+        assert!(matches!(
+            delete_budget(&conn, "cat_groceries", "monthly"),
+            Err(AppError::NotFound(_))
+        ));
+        assert!(matches!(
+            delete_budget(&conn, " ", "monthly"),
+            Err(AppError::Validation(_))
+        ));
+        assert!(matches!(
+            delete_budget(&conn, "cat_groceries", "weekly"),
+            Err(AppError::Validation(_))
+        ));
     }
 
     fn stored_amount(conn: &Connection) -> String {
@@ -971,6 +1011,16 @@ mod tests {
             |r| r.get(0),
         )
         .unwrap()
+    }
+
+    /// The groceries limit of a month, or None when the report has no such row.
+    fn groceries_limit(conn: &Connection, month: i64, next: i64) -> Option<String> {
+        get_report_in_currency(conn, month, next - 1, "monthly", None, "CZK")
+            .unwrap()
+            .expense_categories
+            .into_iter()
+            .find(|c| c.category_id == "cat_groceries")
+            .and_then(|c| c.budget_limit)
     }
 
     fn limit_for(conn: &Connection, month: i64, next: i64) -> Option<String> {
@@ -1298,12 +1348,12 @@ mod tests {
             report.expense_categories[0].budget_limit.as_deref(),
             Some("1000.12")
         );
-        delete_goal(&conn, &goal.id).unwrap();
+        delete_budget(&conn, &goal.category_id, &goal.timeframe).unwrap();
         let report = get_report_in_currency(&conn, jan, feb - 1, "monthly", None, "CZK").unwrap();
-        assert_eq!(
-            report.expense_categories[0].budget_limit.as_deref(),
-            Some("1000.12")
-        );
+        assert!(report
+            .expense_categories
+            .iter()
+            .all(|c| c.budget_limit.is_none()));
     }
 
     #[test]
@@ -1388,12 +1438,12 @@ mod tests {
             get_report_in_currency(&conn, 1672531200, 1675209599, "monthly", None, "CZK").unwrap();
         assert!(before.expense_categories.is_empty());
         let future_goal = get_all_goals(&conn).unwrap().remove(0);
-        delete_goal(&conn, &future_goal.id).unwrap();
+        delete_budget(&conn, &future_goal.category_id, &future_goal.timeframe).unwrap();
         let old = get_report_in_currency(&conn, jan, feb - 1, "monthly", None, "CZK").unwrap();
-        assert_eq!(
-            old.expense_categories[0].budget_limit.as_deref(),
-            Some("1000.12")
-        );
+        assert!(old
+            .expense_categories
+            .iter()
+            .all(|c| c.budget_limit.is_none()));
     }
 
     #[test]
@@ -1434,7 +1484,7 @@ mod tests {
         assert_eq!(updated.amount, "6000");
 
         // Delete the goal
-        delete_goal(&conn, &goal.id).expect("Failed to delete goal");
+        delete_budget(&conn, "cat_groceries", "monthly").expect("Failed to delete goal");
 
         let goals = get_all_goals(&conn).expect("Failed to get goals");
         assert!(goals.is_empty());

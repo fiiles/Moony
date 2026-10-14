@@ -198,15 +198,13 @@
     "scheduled": "已计划",
     "showHistory": "显示以前的限额：{{category}}",
     "earlierLimit": "以前的限额",
-    "endedBudgets": "已结束的预算（{{count}}）",
-    "end": "结束预算",
-    "endTitle": "结束预算？",
-    "endedToast": "预算已结束",
-    "restore": "恢复限额",
     "deleteInterval": "删除限额",
     "deleteIntervalTitle": "删除以前的限额？",
     "deleteIntervalDescription": "{{category}}的{{amount}}限额（{{period}}）也将从历史支出报表中删除。交易和其他限额保持不变。",
     "intervalDeleted": "限额已删除",
-    "endDescription": "{{category}}的限额从本月起结束，计划的变更将被取消。以前的限额和交易将保留在历史报表中。"
+    "delete": "删除预算",
+    "deleteTitle": "删除预算？",
+    "deleteDescription": "{{category}}的预算将连同所有以前的限额一起删除，因此支出概览中过去的月份也将没有限额。交易保持不变。",
+    "deletedToast": "预算已删除"
   }
 }

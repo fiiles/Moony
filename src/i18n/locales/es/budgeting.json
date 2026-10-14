@@ -214,15 +214,13 @@
     "scheduled": "Programado",
     "showHistory": "Mostrar límites anteriores: {{category}}",
     "earlierLimit": "Límite anterior",
-    "endedBudgets": "Presupuestos finalizados ({{count}})",
-    "end": "Finalizar presupuesto",
-    "endTitle": "¿Finalizar el presupuesto?",
-    "endedToast": "Presupuesto finalizado",
-    "restore": "Restaurar límite",
     "deleteInterval": "Eliminar límite",
     "deleteIntervalTitle": "¿Eliminar el límite anterior?",
     "deleteIntervalDescription": "El límite de {{amount}} para {{category}} ({{period}}) también se elimina de los informes históricos de gasto. Las transacciones y los demás límites no cambian.",
     "intervalDeleted": "Límite eliminado",
-    "endDescription": "El límite de {{category}} termina a partir del mes actual y se cancelan los cambios programados. Los límites anteriores y las transacciones permanecen en los informes históricos."
+    "delete": "Eliminar presupuesto",
+    "deleteTitle": "¿Eliminar el presupuesto?",
+    "deleteDescription": "El presupuesto de {{category}} se elimina con todos sus límites anteriores, así que los meses pasados del resumen de gastos también se quedan sin límite. Las transacciones no cambian.",
+    "deletedToast": "Presupuesto eliminado"
   }
 }

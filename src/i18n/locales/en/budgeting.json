@@ -206,15 +206,13 @@
     "scheduled": "Scheduled",
     "showHistory": "Show earlier limits: {{category}}",
     "earlierLimit": "Earlier limit",
-    "endedBudgets": "Ended budgets ({{count}})",
-    "end": "End budget",
-    "endTitle": "End budget?",
-    "endedToast": "Budget ended",
-    "restore": "Restore limit",
     "deleteInterval": "Delete limit",
     "deleteIntervalTitle": "Delete earlier limit?",
     "deleteIntervalDescription": "The {{amount}} limit for {{category}} ({{period}}) is removed from historical spending reports too. Transactions and other limits stay unchanged.",
     "intervalDeleted": "Limit deleted",
-    "endDescription": "The limit for {{category}} ends from the current month and scheduled changes are cancelled. Earlier limits and transactions stay in historical reports."
+    "delete": "Delete budget",
+    "deleteTitle": "Delete budget?",
+    "deleteDescription": "The budget for {{category}} is deleted with all its earlier limits, so past months in the spending overview lose their limit too. Transactions stay unchanged.",
+    "deletedToast": "Budget deleted"
   }
 }

@@ -40,6 +40,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { ConfirmDeleteDialog } from '@/components/common/ConfirmDeleteDialog';
+import { CategoryIconChip } from '@/components/common/CategoryIcon';
 import { ReportError } from '@/components/reports/ReportQualityNote';
 import { StatSkeleton } from '@/components/common/Stat';
 
@@ -103,8 +104,8 @@ export function BudgetManageDialog({
 
   const rows = useMemo(() => {
     const list = budgetOverview(history, currentMonthStart()).map((row) => {
-      const category = categories.find((c) => c.id === row.goal.categoryId);
-      return { ...row, name: category ? categoryName(category) : row.goal.categoryId };
+      const category = categories.find((c) => c.id === row.goal.categoryId) ?? null;
+      return { ...row, category, name: category ? categoryName(category) : row.goal.categoryId };
     });
     return list.sort((a, b) => a.name.localeCompare(b.name, fmt.locale));
   }, [history, categories, categoryName, fmt.locale]);
@@ -145,14 +146,16 @@ export function BudgetManageDialog({
     </div>
   );
 
-  const renderRow = (row: BudgetOverviewRow & { name: string }) => {
+  const renderRow = (
+    row: BudgetOverviewRow & { name: string; category: TransactionCategory | null }
+  ) => {
     const key = rowKey(row.goal);
     const isOpen = expanded.has(key);
     return (
       <Fragment key={key}>
         <TableRow className={cn('h-[52px]', row.status === 'ended' && 'text-ink-3')}>
           <TableCell>
-            <div className="flex items-start gap-1.5">
+            <div className="flex items-center gap-2">
               {row.history.length > 0 ? (
                 <button
                   type="button"
@@ -168,6 +171,10 @@ export function BudgetManageDialog({
               ) : (
                 <span className="size-5 shrink-0" />
               )}
+              <CategoryIconChip
+                category={row.category}
+                className={cn(row.status === 'ended' && 'opacity-60')}
+              />
               <div className="min-w-0">
                 <span
                   className={cn(
@@ -244,7 +251,7 @@ export function BudgetManageDialog({
               key={`${key}:${period.version.effectiveMonth}`}
               className="h-[40px] bg-well text-ink-3"
             >
-              <TableCell className="pl-[42px] text-micro">{t('manage.earlierLimit')}</TableCell>
+              <TableCell className="pl-[78px] text-micro">{t('manage.earlierLimit')}</TableCell>
               <TableCell className="text-right num">
                 {money(period.version.amount, period.version.currency)}
               </TableCell>

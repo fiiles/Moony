@@ -9,6 +9,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { Ellipsis, Landmark, PiggyBank, SlidersHorizontal } from 'lucide-react';
 import { budgetingApi, type BudgetGoal } from '@/lib/tauri-api';
+import type { TransactionCategory } from '@shared/schema';
 import { useFormat } from '@/lib/use-format';
 import { useCategories, useCategoryName } from '@/hooks/use-categories';
 import { useBankAccounts } from '@/hooks/use-bank-accounts';
@@ -40,6 +41,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Stat, StatSkeleton, Stats } from '@/components/common/Stat';
 import { EmptyState } from '@/components/common/EmptyState';
+import { CategoryIconChip } from '@/components/common/CategoryIcon';
 import { BudgetGoalDialog } from '@/components/budgeting/BudgetGoalDialog';
 import { BudgetManageDialog } from '@/components/budgeting/BudgetManageDialog';
 import {
@@ -50,6 +52,7 @@ import {
 type SortKey = 'usage' | 'name';
 
 interface BudgetRow {
+  category: TransactionCategory | null;
   goal: BudgetGoal | null;
   categoryId: string;
   name: string;
@@ -62,6 +65,7 @@ interface BudgetRow {
 }
 
 interface UnbudgetedRow {
+  category: TransactionCategory | null;
   categoryId: string;
   name: string;
   spent: number;
@@ -187,6 +191,7 @@ export default function Budgeting() {
                 : 'ok';
         return {
           goal,
+          category: category ?? null,
           categoryId,
           name: category ? categoryName(category) : categoryId,
           budgetCurrency: historical?.budgetCurrency ?? null,
@@ -211,6 +216,7 @@ export default function Budgeting() {
       if (budgeted.has(categoryId) || (usage.spent === 0 && usage.count === 0)) continue;
       const category = categories.find((c) => c.id === categoryId);
       list.push({
+        category: category ?? null,
         categoryId,
         name: category ? categoryName(category) : categoryId,
         spent: usage.spent,
@@ -223,6 +229,7 @@ export default function Budgeting() {
     const uncategorizedCount = report?.uncategorizedExpenseTransactionCount ?? 0;
     if (uncategorized !== 0 || uncategorizedCount > 0) {
       list.push({
+        category: null,
         categoryId: 'uncategorized',
         name: t('unbudgeted.uncategorized'),
         spent: uncategorized,
@@ -459,15 +466,20 @@ export default function Budgeting() {
               onClick={() => setTxTarget({ categoryId: row.categoryId, name: row.name })}
             >
               <TableCell>
-                <button
-                  type="button"
-                  className="block text-left font-650 text-ink underline-offset-[3px] hover:underline focus-visible:outline-none focus-visible:underline"
-                >
-                  {row.name}
-                </button>
-                <small className="mt-[3px] block text-micro font-500 text-ink-4">
-                  {countLine(row.count)}
-                </small>
+                <div className="flex items-center gap-3">
+                  <CategoryIconChip category={row.category} />
+                  <div className="min-w-0">
+                    <button
+                      type="button"
+                      className="block text-left font-650 text-ink underline-offset-[3px] hover:underline focus-visible:outline-none focus-visible:underline"
+                    >
+                      {row.name}
+                    </button>
+                    <small className="mt-[3px] block text-micro font-500 text-ink-4">
+                      {countLine(row.count)}
+                    </small>
+                  </div>
+                </div>
               </TableCell>
               <TableCell>
                 <div className="flex items-center gap-[10px] pr-6">
@@ -588,20 +600,25 @@ export default function Budgeting() {
                 onClick={() => openTransactions(row)}
               >
                 <TableCell>
-                  <button
-                    type="button"
-                    className="block text-left font-650 text-ink underline-offset-[3px] hover:underline focus-visible:outline-none focus-visible:underline"
-                  >
-                    {row.name}
-                  </button>
-                  <small className="mt-[3px] block text-micro font-500 text-ink-4">
-                    {countLine(row.count)}
-                  </small>
-                  {!row.goal && (
-                    <small className="mt-1 block text-micro text-ink-4">
-                      {t('settings.historical')}
-                    </small>
-                  )}
+                  <div className="flex items-center gap-3">
+                    <CategoryIconChip category={row.category} />
+                    <div className="min-w-0">
+                      <button
+                        type="button"
+                        className="block text-left font-650 text-ink underline-offset-[3px] hover:underline focus-visible:outline-none focus-visible:underline"
+                      >
+                        {row.name}
+                      </button>
+                      <small className="mt-[3px] block text-micro font-500 text-ink-4">
+                        {countLine(row.count)}
+                      </small>
+                      {!row.goal && (
+                        <small className="mt-1 block text-micro text-ink-4">
+                          {t('settings.historical')}
+                        </small>
+                      )}
+                    </div>
+                  </div>
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-3 pr-6">

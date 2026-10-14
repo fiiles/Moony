@@ -21,7 +21,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { CategoryIcon } from '@/components/common/CategoryIcon';
+import { CategoryIconChip } from '@/components/common/CategoryIcon';
 import { CategoryFormDialog } from '@/components/categories/CategoryFormDialog';
 import { SettingsCard } from '@/components/settings/SettingsCard';
 import { useCategories, useCategoryName, useCategoryUsage } from '@/hooks/use-categories';
@@ -105,19 +105,13 @@ export function CategoriesCard() {
       <div className="-mr-2 max-h-[440px] overflow-y-auto pr-2">
         {categories.map((category) => {
           const u = usageOf(category.id);
-          const color = category.color || '#9E9E9E';
           return (
             <div
               key={category.id}
               className="group/cat flex items-center justify-between gap-3 border-b border-line-soft py-2 last:border-b-0"
             >
               <div className="flex min-w-0 items-center gap-3">
-                <span
-                  className="grid size-7 shrink-0 place-items-center rounded-full [&_svg]:size-[15px]"
-                  style={{ backgroundColor: `${color}26`, color }}
-                >
-                  <CategoryIcon iconName={category.icon || 'tag'} />
-                </span>
+                <CategoryIconChip category={category} />
                 <span className="truncate text-body font-600 text-ink">
                   {categoryName(category)}
                 </span>

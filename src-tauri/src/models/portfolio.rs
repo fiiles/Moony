@@ -101,3 +101,38 @@ pub struct PortfolioHistoryResponse {
     #[serde(rename = "points")]
     pub points: Vec<PortfolioHistoryPoint>,
 }
+
+/// One dated fact that can explain a step of the net-worth line: a purchase, a revaluation, a new
+/// loan, a manual balance, a day of trades. Read by the dashboard to say what stands behind a big
+/// jump; it carries no value of its own.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
+pub struct DatedFact {
+    /// UTC day the fact is dated.
+    #[serde(rename = "day")]
+    pub day: i64,
+    /// `buy` (a purchase, or a day of purchases), `sell`, `start` (a loan), `balance` (a balance
+    /// record), `extraPayment`, `valuation` or `firstValuation` (the first estimate of a property).
+    #[serde(rename = "kind")]
+    pub kind: String,
+    /// The history class it moves: `savings`, `investments`, `crypto`, `bonds`, `realEstate`,
+    /// `loans` or `otherAssets`.
+    #[serde(rename = "class")]
+    pub class: String,
+    /// The account, property, loan, bond or asset; for a day of trades up to three tickers or asset
+    /// names, comma separated.
+    #[serde(rename = "name")]
+    pub name: String,
+    /// The amount as entered, in `currency` (decimal TEXT). `None` for a day of trades, whose
+    /// legs are not summed, and for an amount that was not entered.
+    #[serde(rename = "amount")]
+    pub amount: Option<String>,
+    #[serde(rename = "currency")]
+    pub currency: Option<String>,
+    /// For a manual loan balance: what the loan's ledger held the day before, in `currency`.
+    /// `None` for every other fact and for a loan that had not started yet.
+    #[serde(rename = "previousAmount")]
+    pub previous_amount: Option<String>,
+    /// Distinct tickers or assets traded that day; `None` for every other fact.
+    #[serde(rename = "count")]
+    pub count: Option<i32>,
+}

@@ -461,6 +461,38 @@ export interface PortfolioHistoryResponse {
   points: PortfolioHistoryPoint[];
 }
 
+/**
+ * One dated fact that can explain a step of the net-worth line: a purchase, a revaluation, a
+ * new loan, a manual balance, a day of trades. It carries no value of its own; amounts are
+ * native, as entered.
+ */
+export interface DatedFact {
+  /** UTC day the fact is dated. */
+  day: number;
+  /**
+   * `buy` (a purchase, or a day of purchases), `sell`, `start` (a loan), `balance` (a balance
+   * record), `extraPayment`, `valuation` or `firstValuation` (the first estimate of a property).
+   */
+  kind: string;
+  /**
+   * The history class it moves: `savings`, `investments`, `crypto`, `bonds`, `realEstate`,
+   * `loans` or `otherAssets`.
+   */
+  class: string;
+  /**
+   * The account, property, loan, bond or asset; for a day of trades up to three tickers or
+   * asset names, comma separated.
+   */
+  name: string;
+  /** As entered, in `currency` (decimal TEXT); `null` for a day of trades or an amount not entered. */
+  amount: string | null;
+  currency: string | null;
+  /** For a manual loan balance: what the ledger held the day before, in `currency`. */
+  previousAmount: string | null;
+  /** Distinct tickers or assets traded that day; `null` for every other fact. */
+  count: number | null;
+}
+
 // Zod Schemas for form validation
 
 /**

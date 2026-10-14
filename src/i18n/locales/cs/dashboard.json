@@ -109,5 +109,35 @@
     "totalAssets": "Celková aktiva",
     "totalLiabilities": "Celkové závazky"
   },
-  "changeSince": "od {{date}}"
+  "changeSince": "od {{date}}",
+  "jumps": {
+    "title": "Velká změna {{amount}}",
+    "marketTitle": "Pohyb trhu {{amount}}",
+    "legend": "Velká změna nebo pohyb trhu",
+    "classes": {
+      "savings": "Účty",
+      "investments": "Akcie",
+      "crypto": "Krypto",
+      "bonds": "Dluhopisy",
+      "realEstate": "Nemovitosti",
+      "loans": "Úvěry",
+      "otherAssets": "Ostatní aktiva"
+    },
+    "positions_one": "{{count}} pozice",
+    "positions_few": "{{count}} pozice",
+    "positions_other": "{{count}} pozic",
+    "fact": {
+      "buy": "nákup {{name}}",
+      "buyMany": "nákup {{positions}} ({{names}})",
+      "sell": "prodej {{name}}",
+      "sellMany": "prodej {{positions}} ({{names}})",
+      "start": "začátek {{name}}",
+      "balance": "zůstatek {{name}}",
+      "loanBalance": "ruční zůstatek {{name}} {{from}} → {{to}}",
+      "loanBalanceTo": "ruční zůstatek {{name}} {{amount}}",
+      "extraPayment": "mimořádná splátka {{name}}",
+      "valuation": "přecenění {{name}}",
+      "firstValuation": "první odhad {{name}}"
+    }
+  }
 }

@@ -109,5 +109,36 @@
     "totalAssets": "Aktywa łącznie",
     "totalLiabilities": "Zobowiązania łącznie"
   },
-  "changeSince": "vs {{date}}"
+  "changeSince": "vs {{date}}",
+  "jumps": {
+    "title": "Duża zmiana {{amount}}",
+    "marketTitle": "Ruch rynku {{amount}}",
+    "legend": "Duża zmiana lub ruch rynku",
+    "classes": {
+      "savings": "Konta",
+      "investments": "Akcje",
+      "crypto": "Kryptowaluty",
+      "bonds": "Obligacje",
+      "realEstate": "Nieruchomości",
+      "loans": "Kredyty",
+      "otherAssets": "Inne aktywa"
+    },
+    "positions_one": "{{count}} pozycja",
+    "positions_few": "{{count}} pozycje",
+    "positions_many": "{{count}} pozycji",
+    "positions_other": "{{count}} pozycji",
+    "fact": {
+      "buy": "zakup {{name}}",
+      "buyMany": "zakup {{positions}} ({{names}})",
+      "sell": "sprzedaż {{name}}",
+      "sellMany": "sprzedaż {{positions}} ({{names}})",
+      "start": "uruchomienie {{name}}",
+      "balance": "saldo {{name}}",
+      "loanBalance": "ręczne saldo {{name}} {{from}} → {{to}}",
+      "loanBalanceTo": "ręczne saldo {{name}} {{amount}}",
+      "extraPayment": "nadpłata {{name}}",
+      "valuation": "aktualizacja wyceny {{name}}",
+      "firstValuation": "pierwsza wycena {{name}}"
+    }
+  }
 }

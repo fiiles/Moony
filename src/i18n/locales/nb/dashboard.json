@@ -109,5 +109,34 @@
     "totalAssets": "Sum eiendeler",
     "totalLiabilities": "Sum gjeld"
   },
-  "changeSince": "mot {{date}}"
+  "changeSince": "mot {{date}}",
+  "jumps": {
+    "title": "Stor endring {{amount}}",
+    "marketTitle": "Markedsbevegelse {{amount}}",
+    "legend": "Stor endring eller markedsbevegelse",
+    "classes": {
+      "savings": "Kontoer",
+      "investments": "Aksjer",
+      "crypto": "Krypto",
+      "bonds": "Obligasjoner",
+      "realEstate": "Eiendom",
+      "loans": "Lån",
+      "otherAssets": "Andre eiendeler"
+    },
+    "positions_one": "{{count}} beholdning",
+    "positions_other": "{{count}} beholdninger",
+    "fact": {
+      "buy": "kjøp av {{name}}",
+      "buyMany": "kjøp av {{positions}} ({{names}})",
+      "sell": "salg av {{name}}",
+      "sellMany": "salg av {{positions}} ({{names}})",
+      "start": "start på {{name}}",
+      "balance": "saldo {{name}}",
+      "loanBalance": "manuell saldo {{name}} {{from}} → {{to}}",
+      "loanBalanceTo": "manuell saldo {{name}} {{amount}}",
+      "extraPayment": "ekstra avdrag på {{name}}",
+      "valuation": "omvurdering av {{name}}",
+      "firstValuation": "første verdivurdering av {{name}}"
+    }
+  }
 }

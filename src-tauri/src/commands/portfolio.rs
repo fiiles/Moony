@@ -2,7 +2,8 @@
 
 use crate::db::Database;
 use crate::error::Result;
-use crate::models::{PortfolioHistoryResponse, PortfolioMetrics};
+use crate::models::{DatedFact, PortfolioHistoryResponse, PortfolioMetrics};
+use crate::services::dated_facts;
 use crate::services::loan_amortization::today_utc_day;
 use crate::services::net_worth;
 use crate::services::portfolio_history::{self, SnapshotSource};
@@ -33,6 +34,18 @@ pub async fn get_portfolio_history(
     report_currency: String,
 ) -> Result<PortfolioHistoryResponse> {
     db.with_conn(|conn| net_worth::history_report(conn, &report_currency, start_date, end_date))
+}
+
+/// Dated facts (purchases, estimates, new loans, manual balances, days of trades) in the UTC days
+/// `[start_date, end_date]`: what the dashboard names behind a big step of net worth. Amounts are
+/// native, as entered.
+#[tauri::command]
+pub async fn get_dated_facts(
+    db: State<'_, Database>,
+    start_date: Option<i64>,
+    end_date: Option<i64>,
+) -> Result<Vec<DatedFact>> {
+    db.with_conn(|conn| dated_facts::dated_facts(conn, start_date, end_date))
 }
 
 /// Record today's per-ticker values to stock_value_history and crypto_value_history tables

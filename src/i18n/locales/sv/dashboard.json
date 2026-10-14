@@ -109,5 +109,34 @@
     "totalAssets": "Totala tillgångar",
     "totalLiabilities": "Totala skulder"
   },
-  "changeSince": "jfr {{date}}"
+  "changeSince": "jfr {{date}}",
+  "jumps": {
+    "title": "Stor förändring {{amount}}",
+    "marketTitle": "Marknadsrörelse {{amount}}",
+    "legend": "Stor förändring eller marknadsrörelse",
+    "classes": {
+      "savings": "Konton",
+      "investments": "Aktier",
+      "crypto": "Krypto",
+      "bonds": "Obligationer",
+      "realEstate": "Fastigheter",
+      "loans": "Lån",
+      "otherAssets": "Övriga tillgångar"
+    },
+    "positions_one": "{{count}} innehav",
+    "positions_other": "{{count}} innehav",
+    "fact": {
+      "buy": "köp av {{name}}",
+      "buyMany": "köp av {{positions}} ({{names}})",
+      "sell": "försäljning av {{name}}",
+      "sellMany": "försäljning av {{positions}} ({{names}})",
+      "start": "start av {{name}}",
+      "balance": "saldo {{name}}",
+      "loanBalance": "manuellt saldo {{name}} {{from}} → {{to}}",
+      "loanBalanceTo": "manuellt saldo {{name}} {{amount}}",
+      "extraPayment": "extra amortering på {{name}}",
+      "valuation": "omvärdering av {{name}}",
+      "firstValuation": "första värdering av {{name}}"
+    }
+  }
 }

@@ -188,6 +188,7 @@ pub async fn run() {
             // Portfolio commands
             commands::portfolio::get_portfolio_metrics,
             commands::portfolio::get_portfolio_history,
+            commands::portfolio::get_dated_facts,
             commands::portfolio::record_portfolio_snapshot,
             commands::portfolio::refresh_exchange_rates,
             commands::portfolio::get_price_status,

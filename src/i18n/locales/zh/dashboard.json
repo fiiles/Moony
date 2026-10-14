@@ -109,5 +109,33 @@
     "totalAssets": "总资产",
     "totalLiabilities": "总负债"
   },
-  "changeSince": "对比 {{date}}"
+  "changeSince": "对比 {{date}}",
+  "jumps": {
+    "title": "大幅变动 {{amount}}",
+    "marketTitle": "市场波动 {{amount}}",
+    "legend": "大幅变动或市场波动",
+    "classes": {
+      "savings": "账户",
+      "investments": "股票",
+      "crypto": "加密货币",
+      "bonds": "债券",
+      "realEstate": "房产",
+      "loans": "贷款",
+      "otherAssets": "其他资产"
+    },
+    "positions_other": "{{count}}个持仓",
+    "fact": {
+      "buy": "购买{{name}}",
+      "buyMany": "购买{{positions}}（{{names}}）",
+      "sell": "出售{{name}}",
+      "sellMany": "出售{{positions}}（{{names}}）",
+      "start": "{{name}}开始",
+      "balance": "{{name}}余额",
+      "loanBalance": "{{name}}手动余额 {{from}} → {{to}}",
+      "loanBalanceTo": "{{name}}手动余额 {{amount}}",
+      "extraPayment": "{{name}}提前还款",
+      "valuation": "{{name}}重新估值",
+      "firstValuation": "{{name}}首次估值"
+    }
+  }
 }

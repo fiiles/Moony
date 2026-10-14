@@ -183,7 +183,7 @@ reads, usually in its provider's cloud, and tool names may change before 1.0
 
 ## Data sources and attribution
 
-- **Yahoo Finance** supplies stock prices, history, dividends, ticker search and company data
+- **Yahoo Finance** supplies stock prices, history, dividends, ticker search and company data, and crypto price history older than a year
   through an unofficial, undocumented interface used by a community library
   ([`yahoo_finance_api`](https://crates.io/crates/yahoo_finance_api)). It can change, break or be
   rate-limited without notice, and Moony is not affiliated with Yahoo. A price can always be set

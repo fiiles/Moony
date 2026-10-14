@@ -1,5 +1,3 @@
-**Upgrading from 0.10.0 or earlier? Read this first.** This version has a new app identifier, `com.moonyfinance.desktop` (was `com.filipkral.moony`), and Moony does not move your data folder. To keep your data, quit Moony and rename the old folder to `com.moonyfinance.desktop` before the first start — macOS: `~/Library/Application Support/com.filipkral.moony`, Windows: `%APPDATA%\com.filipkral.moony`, Linux: `~/.local/share/com.filipkral.moony`. If the new version already shows the first-run setup, quit it, delete the new `com.moonyfinance.desktop` folder, then rename the old one. Details in [PRIVACY.md](https://github.com/fiiles/Moony/blob/main/PRIVACY.md#where-your-data-lives).
-
 Moony is a private personal finance app: your records stay on your computer, in an encrypted database. What changed in this version is in the [changelog](https://github.com/fiiles/Moony/blob/main/CHANGELOG.md).
 
 ## Download

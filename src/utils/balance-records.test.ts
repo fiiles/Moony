@@ -42,10 +42,8 @@ describe('balanceSeries', () => {
     const records = [r('2025-08-01', 300000), r('2025-12-01', 340000), r('2026-10-03', 450000)];
     const series = balanceSeries(records, TODAY);
     const start = day('2026-10-03') - 365 * DAY; // 2025-10-03, between the first two records
-    expect(series[0]).toEqual({ t: start, value: expect.any(Number), record: false });
-    // Linear interpolation between 2025-08-01 (300000) and 2025-12-01 (340000)
-    const t = (start - day('2025-08-01')) / (day('2025-12-01') - day('2025-08-01'));
-    expect(series[0].value).toBe(Math.round(300000 + 40000 * t));
+    // The balance holds until the next record: the window starts at 2025-08-01's 300000
+    expect(series[0]).toEqual({ t: start, value: 300000, record: false });
     expect(series.slice(1)).toEqual([
       { t: day('2025-12-01'), value: 340000, record: true },
       { t: day('2026-10-03'), value: 450000, record: true },

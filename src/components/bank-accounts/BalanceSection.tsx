@@ -102,6 +102,7 @@ export function BalanceSection({
                   ],
                 })}
                 axisEnd={today}
+                step
               />
               <ChartLegend
                 items={[

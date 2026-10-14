@@ -72,6 +72,11 @@ export interface MoonyLineChartProps<E extends ChartEvent = ChartEvent> {
    * line that stops at the newest record while the axis still ends with "Dnes".
    */
   axisEnd?: number;
+  /**
+   * Draw the value as a step line: it holds until the next point and jumps there (a
+   * bank balance known only from records), instead of sloping between points.
+   */
+  step?: boolean;
   className?: string;
 }
 
@@ -105,6 +110,16 @@ function splitRows(points: LinePoint[], projectedFrom: number | undefined): Row[
   }));
 }
 
+/** Value of the last point on or before `t` (the first point's before it): a step line's height. */
+function heldValueAt(points: readonly { t: number; value: number }[], t: number): number {
+  let value = points[0]?.value ?? 0;
+  for (const p of points) {
+    if (p.t > t) break;
+    value = p.value;
+  }
+  return value;
+}
+
 /**
  * Value line over time (design system §8): one right-hand value axis with
  * nice ticks, light grid, 2.25 px line in `chart-line` with an area fade,
@@ -127,6 +142,7 @@ export function MoonyLineChart<E extends ChartEvent = ChartEvent>({
   hideAxis = false,
   projectedFrom,
   axisEnd,
+  step = false,
   className,
 }: MoonyLineChartProps<E>) {
   const fmt = useFormat();
@@ -143,6 +159,7 @@ export function MoonyLineChart<E extends ChartEvent = ChartEvent>({
   const t1 = axisEnd !== undefined && axisEnd > lastT ? axisEnd : lastT;
   const hasCost = data.some((p) => p.cost !== undefined);
   const hasProjected = data.some((p) => p.projected !== undefined);
+  const curve = step ? 'stepAfter' : 'linear';
 
   const domain = useMemo(() => {
     const values = data.flatMap((p) => (p.cost !== undefined ? [p.value, p.cost] : [p.value]));
@@ -156,8 +173,13 @@ export function MoonyLineChart<E extends ChartEvent = ChartEvent>({
     [events, t0, t1]
   );
   const markers = useMemo(
-    () => clusters.map((c) => ({ t: c.t, y: valueAt(data, c.t), cluster: c })),
-    [clusters, data]
+    () =>
+      clusters.map((c) => ({
+        t: c.t,
+        y: step ? heldValueAt(data, c.t) : valueAt(data, c.t),
+        cluster: c,
+      })),
+    [clusters, data, step]
   );
 
   const tickFormatter =
@@ -234,7 +256,7 @@ export function MoonyLineChart<E extends ChartEvent = ChartEvent>({
               }}
             />
             <Area
-              type="linear"
+              type={curve}
               dataKey="actual"
               stroke="none"
               fill={`url(#${gradientId})`}
@@ -256,7 +278,7 @@ export function MoonyLineChart<E extends ChartEvent = ChartEvent>({
               />
             )}
             <Line
-              type="linear"
+              type={curve}
               dataKey="actual"
               stroke={tk.line}
               strokeWidth={2.25}
@@ -268,7 +290,7 @@ export function MoonyLineChart<E extends ChartEvent = ChartEvent>({
             />
             {hasProjected && (
               <Line
-                type="linear"
+                type={curve}
                 dataKey="projected"
                 stroke={tk.line}
                 strokeWidth={2}

@@ -113,13 +113,13 @@ export function BudgetManageDialog({
   const monthLabel = (value: number) => fmt.monthInSentence(new Date(value * 1000));
   const money = (amount: string | null, currency: string) =>
     amount == null ? t('noBudget') : formatReportMoney(fmt, Number(amount), currency);
-  const validity = ({ version, end }: BudgetLimitPeriod) =>
-    end == null
-      ? t('settings.from', { month: monthLabel(version.effectiveMonth) })
-      : t('settings.between', {
-          start: monthLabel(version.effectiveMonth),
-          end: monthLabel(end),
-        });
+  // An open row says only where it starts: what follows is in its sub-line.
+  const validity = ({ version, end }: BudgetLimitPeriod, open = false) => {
+    const start = monthLabel(version.effectiveMonth);
+    if (end == null || open) return t('settings.from', { month: start });
+    const last = monthLabel(end);
+    return start === last ? start : t('settings.between', { start, end: last });
+  };
   const rowKey = (goal: BudgetGoal) => `${goal.categoryId}:${goal.timeframe}`;
   const goalId = (goal: BudgetGoal) =>
     activeGoals.find((g) => g.categoryId === goal.categoryId && g.timeframe === goal.timeframe)
@@ -170,7 +170,14 @@ export function BudgetManageDialog({
                 <span className="size-5 shrink-0" />
               )}
               <div className="min-w-0">
-                <span className="block truncate font-650 text-ink">{row.name}</span>
+                <span
+                  className={cn(
+                    'block truncate font-650',
+                    row.status === 'ended' ? 'text-ink-3' : 'text-ink'
+                  )}
+                >
+                  {row.name}
+                </span>
                 {row.upcoming.map((version) => (
                   <small
                     key={version.effectiveMonth}
@@ -189,7 +196,12 @@ export function BudgetManageDialog({
               </div>
             </div>
           </TableCell>
-          <TableCell className="text-right font-650 text-ink num">
+          <TableCell
+            className={cn(
+              'text-right font-650 num',
+              row.status === 'ended' ? 'text-ink-3' : 'text-ink'
+            )}
+          >
             {money(row.main.version.amount, row.main.version.currency)}
             {row.goal.timeframe !== 'monthly' && (
               <small className="mt-0.5 block text-micro font-500 text-ink-4">
@@ -199,7 +211,7 @@ export function BudgetManageDialog({
           </TableCell>
           <TableCell>
             <span className="flex flex-wrap items-center gap-2">
-              {validity(row.main)}
+              {validity(row.main, row.status !== 'ended')}
               {row.status === 'scheduled' && <Badge>{t('manage.scheduled')}</Badge>}
             </span>
           </TableCell>

@@ -145,6 +145,20 @@ pub fn list_valuations(
     Ok(out)
 }
 
+/// Every valuation of every asset of `kind`, oldest first (a day's rows by creation). Each row
+/// carries its asset's id, so a list page can mark the revaluations of all its rows from one
+/// read instead of one request per asset.
+pub fn list_all_valuations(conn: &Connection, kind: ValuationKind) -> Result<Vec<AssetValuation>> {
+    let sql = format!(
+        "SELECT {cols} FROM {table} ORDER BY valued_at ASC, created_at ASC, id ASC",
+        cols = columns(kind),
+        table = kind.table()
+    );
+    let mut stmt = conn.prepare(&sql)?;
+    let rows = stmt.query_map([], read_row)?;
+    Ok(rows.collect::<rusqlite::Result<Vec<_>>>()?)
+}
+
 /// The newest valuation of an asset, if any.
 pub fn latest_valuation(
     conn: &Connection,
@@ -487,6 +501,69 @@ mod tests {
         assert_eq!(rows.len(), 2);
         assert_eq!(rows[0].value, "3150000"); // oldest first
         assert_eq!(rows[1].valued_at, 20_000 * DAY);
+    }
+
+    #[test]
+    fn list_all_valuations_spans_the_assets_of_a_kind_oldest_first() {
+        let conn = setup_test_db();
+        conn.execute(
+            "INSERT INTO real_estate (id, name, address, type) VALUES ('re2', 'House', 'Praha', 'personal')",
+            [],
+        )
+        .unwrap();
+        add_valuation(
+            &conn,
+            ValuationKind::RealEstate,
+            &insert("re1", "3650000", 20_000 * DAY),
+        )
+        .unwrap();
+        add_valuation(
+            &conn,
+            ValuationKind::RealEstate,
+            &insert("re2", "7000000", 19_000 * DAY),
+        )
+        .unwrap();
+        add_valuation(
+            &conn,
+            ValuationKind::RealEstate,
+            &insert("re1", "3150000", 19_500 * DAY),
+        )
+        .unwrap();
+        // Another kind's log never shows up
+        add_valuation(
+            &conn,
+            ValuationKind::OtherAsset,
+            &insert("oa1", "68500", 19_800 * DAY),
+        )
+        .unwrap();
+
+        let rows = list_all_valuations(&conn, ValuationKind::RealEstate).unwrap();
+        let listed: Vec<(&str, i64)> = rows
+            .iter()
+            .map(|r| (r.asset_id.as_str(), r.valued_at))
+            .collect();
+        assert_eq!(
+            listed,
+            vec![
+                ("re2", 19_000 * DAY),
+                ("re1", 19_500 * DAY),
+                ("re1", 20_000 * DAY)
+            ]
+        );
+        assert_eq!(
+            list_all_valuations(&conn, ValuationKind::OtherAsset)
+                .unwrap()
+                .len(),
+            1
+        );
+    }
+
+    #[test]
+    fn list_all_valuations_is_empty_without_a_log() {
+        let conn = setup_test_db();
+        assert!(list_all_valuations(&conn, ValuationKind::RealEstate)
+            .unwrap()
+            .is_empty());
     }
 
     #[test]

@@ -424,6 +424,18 @@
   },
   "chart": {
     "title": "物件の価値",
-    "subtitle": "価値は、ひとつの推定値から次の推定値へ直線的に推移します。"
+    "subtitle": "価値は、ひとつの推定値から次の推定値へ直線的に推移します。",
+    "legend": {
+      "value": "市場価値",
+      "purchase": "購入",
+      "revaluation": "再評価"
+    },
+    "events": {
+      "purchase": "{{name}}を購入",
+      "first": "{{name}}の最初の推定",
+      "revaluation": "{{name}}を再評価",
+      "change": "前回の推定から{{percent}}",
+      "cluster_other": "{{count}}件のイベント"
+    }
   }
 }

@@ -430,6 +430,19 @@
   },
   "chart": {
     "title": "Fastighetens värde",
-    "subtitle": "Värdet går i rak linje från en uppskattning till nästa."
+    "subtitle": "Värdet går i rak linje från en uppskattning till nästa.",
+    "legend": {
+      "value": "Marknadsvärde",
+      "purchase": "Köp",
+      "revaluation": "Omvärdering"
+    },
+    "events": {
+      "purchase": "Köp av {{name}}",
+      "first": "Första uppskattningen av {{name}}",
+      "revaluation": "Omvärdering av {{name}}",
+      "change": "{{percent}} sedan föregående uppskattning",
+      "cluster_one": "{{count}} händelse",
+      "cluster_other": "{{count}} händelser"
+    }
   }
 }

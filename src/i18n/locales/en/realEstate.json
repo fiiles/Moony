@@ -430,6 +430,19 @@
   },
   "chart": {
     "title": "Property value",
-    "subtitle": "The value runs in a straight line from one estimate to the next."
+    "subtitle": "The value runs in a straight line from one estimate to the next.",
+    "legend": {
+      "value": "Market value",
+      "purchase": "Purchase",
+      "revaluation": "Revaluation"
+    },
+    "events": {
+      "purchase": "Bought {{name}}",
+      "first": "First estimate of {{name}}",
+      "revaluation": "Revalued {{name}}",
+      "change": "{{percent}} since the previous estimate",
+      "cluster_one": "{{count}} event",
+      "cluster_other": "{{count}} events"
+    }
   }
 }

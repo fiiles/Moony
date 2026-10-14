@@ -47,6 +47,7 @@ import { useCurrency } from '@/lib/currency';
 import { CurrencyCombobox } from '@/components/common/CurrencyCombobox';
 import { useFormat } from '@/lib/use-format';
 import { realEstateApi, loansApi, insuranceApi, portfolioApi } from '@/lib/tauri-api';
+import { ALL_REAL_ESTATE_VALUATIONS_KEY } from '@/hooks/use-real-estate';
 import { isoDateFromUtcTimestamp, todayIsoUtc, utcDayStart } from '@/utils/period';
 import { useTranslation } from 'react-i18next';
 
@@ -293,6 +294,7 @@ export function AddRealEstateModal({
       queryClient.invalidateQueries({ queryKey: ['cashflow-report'] });
       // A changed market price writes an estimate: the value trace must show it.
       queryClient.invalidateQueries({ queryKey: ['real-estate-valuations', saved.id] });
+      queryClient.invalidateQueries({ queryKey: ALL_REAL_ESTATE_VALUATIONS_KEY });
       if (realEstate) {
         queryClient.invalidateQueries({ queryKey: ['real-estate', realEstate.id] });
         queryClient.invalidateQueries({ queryKey: ['real-estate-loans', realEstate.id] });

@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { portfolioApi, realEstateApi } from '@/lib/tauri-api';
 import { translateApiError } from '@/lib/translate-api-error';
+import { ALL_REAL_ESTATE_VALUATIONS_KEY } from '@/hooks/use-real-estate';
 import type { RealEstate, RecurringCost } from '@shared/schema';
 import { realEstateUpdatePayload } from '@/utils/real-estate-payload';
 
@@ -34,6 +35,7 @@ export function useRealEstateMutations() {
       queryClient.invalidateQueries({ queryKey: ['real-estate'] });
       queryClient.invalidateQueries({ queryKey: ['real-estate', realEstate.id] });
       queryClient.invalidateQueries({ queryKey: ['real-estate-valuations', realEstate.id] });
+      queryClient.invalidateQueries({ queryKey: ALL_REAL_ESTATE_VALUATIONS_KEY });
       queryClient.invalidateQueries({ queryKey: ['portfolio-metrics'] });
       queryClient.invalidateQueries({ queryKey: ['cashflow-report'] });
       // The update already succeeded; a failed snapshot must not turn it into an error.
@@ -61,6 +63,7 @@ export function useRealEstateMutations() {
       queryClient.invalidateQueries({ queryKey: ['real-estate'] });
       queryClient.invalidateQueries({ queryKey: ['real-estate', realEstate.id] });
       queryClient.invalidateQueries({ queryKey: ['real-estate-valuations', realEstate.id] });
+      queryClient.invalidateQueries({ queryKey: ALL_REAL_ESTATE_VALUATIONS_KEY });
       toast(tc('status.success'), { description: t('toast.notesSaved') });
     },
     onError: (error: Error) => {

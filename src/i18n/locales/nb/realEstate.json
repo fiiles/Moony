@@ -430,6 +430,19 @@
   },
   "chart": {
     "title": "Eiendomsverdi",
-    "subtitle": "Verdien går i rett linje fra ett anslag til det neste."
+    "subtitle": "Verdien går i rett linje fra ett anslag til det neste.",
+    "legend": {
+      "value": "Markedsverdi",
+      "purchase": "Kjøp",
+      "revaluation": "Omvurdering"
+    },
+    "events": {
+      "purchase": "Kjøp av {{name}}",
+      "first": "Første anslag for {{name}}",
+      "revaluation": "Omvurdering av {{name}}",
+      "change": "{{percent}} siden forrige anslag",
+      "cluster_one": "{{count}} hendelse",
+      "cluster_other": "{{count}} hendelser"
+    }
   }
 }

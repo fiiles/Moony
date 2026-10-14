@@ -425,6 +425,9 @@ export const realEstateApi = {
   getValuations: (realEstateId: string) =>
     tauriInvoke<AssetValuation[]>('get_real_estate_valuations', { realEstateId }),
 
+  /** Dated valuations of every property, oldest first (each row names its property). */
+  getAllValuations: () => tauriInvoke<AssetValuation[]>('get_all_real_estate_valuations'),
+
   addValuation: (data: InsertAssetValuation) =>
     tauriInvoke<AssetValuation>('add_real_estate_valuation', { data }),
 

@@ -442,6 +442,21 @@
   },
   "chart": {
     "title": "Wartość nieruchomości",
-    "subtitle": "Wartość biegnie prostą linią od jednego szacunku do następnego."
+    "subtitle": "Wartość biegnie prostą linią od jednego szacunku do następnego.",
+    "legend": {
+      "value": "Wartość rynkowa",
+      "purchase": "Zakup",
+      "revaluation": "Przeszacowanie"
+    },
+    "events": {
+      "purchase": "Zakup: {{name}}",
+      "first": "Pierwszy szacunek: {{name}}",
+      "revaluation": "Przeszacowanie: {{name}}",
+      "change": "{{percent}} względem poprzedniego szacunku",
+      "cluster_one": "{{count}} zdarzenie",
+      "cluster_few": "{{count}} zdarzenia",
+      "cluster_many": "{{count}} zdarzeń",
+      "cluster_other": "{{count}} zdarzenia"
+    }
   }
 }

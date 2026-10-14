@@ -84,6 +84,7 @@ fn all_migrations() -> Vec<(&'static str, &'static str)> {
         ("017_profile_country", MIGRATION_017),
         ("018_insurance_notice_days", MIGRATION_018),
         ("019_loan_manual_records", MIGRATION_019),
+        ("020_bond_purchase_date", MIGRATION_020),
     ]
 }
 
@@ -2730,6 +2731,13 @@ UPDATE loans SET
         ORDER BY e.event_day DESC, e.created_at DESC, e.rowid DESC LIMIT 1);
 "#;
 
+/// 020: a bond remembers the day it was bought, the UTC midnight of that day (same convention
+/// as `real_estate.purchase_date`, migration 002). History counts a dated bond from that day
+/// on; a bond without one (every existing bond: NULL) keeps being carried as an undated item.
+pub(crate) const MIGRATION_020: &str = r#"
+ALTER TABLE bonds ADD COLUMN purchase_date INTEGER;
+"#;
+
 #[cfg(test)]
 mod migration_012 {
     use super::*;
@@ -3492,5 +3500,58 @@ mod migration_019 {
             })
             .expect("count");
         assert_eq!(distinct, 2);
+    }
+}
+
+#[cfg(test)]
+mod migration_020 {
+    use super::*;
+
+    #[test]
+    fn the_column_is_added_nullable_and_existing_bonds_stay_undated() {
+        let conn = Connection::open_in_memory().expect("in-memory db");
+        let earlier: Vec<(&str, &str)> = all_migrations()
+            .into_iter()
+            .filter(|(name, _)| *name < "020_bond_purchase_date")
+            .collect();
+        run_chain(&conn, &earlier).expect("earlier migrations");
+        conn.execute(
+            "INSERT INTO bonds (id, name, coupon_value) VALUES ('b', 'Old bond', '1000')",
+            [],
+        )
+        .expect("bond");
+        run_migrations(&conn).expect("migrate to the current chain");
+
+        let stored: Option<i64> = conn
+            .query_row("SELECT purchase_date FROM bonds WHERE id = 'b'", [], |r| {
+                r.get(0)
+            })
+            .expect("column");
+        assert_eq!(stored, None, "an existing bond has no purchase date");
+        let (declared, not_null): (String, bool) = conn
+            .query_row(
+                "SELECT type, \"notnull\" FROM pragma_table_info('bonds') WHERE name = 'purchase_date'",
+                [],
+                |r| Ok((r.get(0)?, r.get(1)?)),
+            )
+            .expect("declared type");
+        assert_eq!(declared, "INTEGER");
+        assert!(!not_null, "the purchase date is optional");
+    }
+
+    #[test]
+    fn a_bond_can_be_stored_with_a_purchase_day() {
+        let conn = Connection::open_in_memory().expect("in-memory db");
+        run_migrations(&conn).expect("migrate");
+        conn.execute(
+            "INSERT INTO bonds (id, name, coupon_value, purchase_date)
+             VALUES ('b', 'New bond', '1000', 1767225600)",
+            [],
+        )
+        .expect("bond");
+        let stored: Option<i64> = conn
+            .query_row("SELECT purchase_date FROM bonds", [], |r| r.get(0))
+            .expect("column");
+        assert_eq!(stored, Some(1_767_225_600));
     }
 }

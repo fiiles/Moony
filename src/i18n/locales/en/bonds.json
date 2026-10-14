@@ -63,6 +63,7 @@
     "withinYear": "within a year",
     "matured": "repaid",
     "noMaturity": "no maturity",
+    "boughtOn": "bought {{date}}",
     "noResults": {
       "title": "Nothing found",
       "description": "Try another name or ISIN.",
@@ -92,6 +93,8 @@
     "nominal": "Face value of 1 unit",
     "quantity": "Units",
     "rate": "Coupon per year",
+    "purchaseDate": "Purchase date",
+    "purchaseDateHint": "Without a purchase date the bond is counted across the whole history; with one, from that day on.",
     "maturity": "Maturity date",
     "maturityHint": "After maturity the issue moves to repaid and stops counting towards net worth.",
     "summaryValue": "Value {{value}} · coupon {{coupon}} a year",

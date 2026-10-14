@@ -18,7 +18,7 @@ use std::collections::HashSet;
 use rusqlite::{params, Connection, OptionalExtension};
 
 use crate::error::Result;
-use crate::models::{BankAccount, RealEstate};
+use crate::models::{BankAccount, Bond, RealEstate};
 use crate::services::history_days::earliest_fact_day;
 use crate::services::history_recalc::{
     all_ticker_jobs, crypto_rebuild_jobs, rebuild_jobs, BatchOutcome, Job,
@@ -467,10 +467,46 @@ pub fn other_asset_deleted(first_transaction: Option<i64>) -> Job {
     Job::Days(first_transaction.unwrap_or(0))
 }
 
-/// Bonds have no purchase date: they are carried on every day (D3), so any change to a bond
-/// rebuilds from the first fact.
-pub fn bond_changed() -> Job {
-    Job::Days(0)
+/// A new bond: a dated one counts from its purchase day on (0 before it), so the history changes
+/// from that day; an undated one is carried on every day (an unknown remainder, A3), so it
+/// changes all of them: from the first fact.
+pub fn bond_created(purchase_date: Option<i64>) -> Job {
+    Job::Days(purchase_date.unwrap_or(0))
+}
+
+/// A deleted bond leaves the days it was counted on: from its purchase day, else the first fact.
+pub fn bond_deleted(purchase_date: Option<i64>) -> Job {
+    Job::Days(purchase_date.unwrap_or(0))
+}
+
+/// The value of a bond in its own currency: `coupon_value × quantity`; `None` when a number does
+/// not parse (a legacy row).
+fn bond_value(bond: &Bond) -> Option<f64> {
+    let coupon = bond.coupon_value.trim().parse::<f64>().ok()?;
+    let quantity = bond.quantity.trim().parse::<f64>().ok()?;
+    Some(coupon * quantity)
+}
+
+/// An edited bond. Only its purchase date, its value (`coupon_value × quantity`) and its
+/// currency are part of the history; a name, a rate, an ISIN or a maturity moves no day.
+/// Between two dated bonds the days change from the earlier of the old and new purchase day
+/// (the bond is counted from the day it was bought, in the old and in the new state). A bond
+/// that is undated on either side is carried on every day (A3) or stops being, so the history
+/// is rebuilt from the first fact.
+pub fn bond_updated(old: &Bond, new: &Bond) -> Option<Job> {
+    let unchanged = old.purchase_date == new.purchase_date
+        && bond_value(old) == bond_value(new)
+        && old
+            .currency
+            .trim()
+            .eq_ignore_ascii_case(new.currency.trim());
+    if unchanged {
+        return None;
+    }
+    Some(match (old.purchase_date, new.purchase_date) {
+        (Some(old), Some(new)) => Job::Days(old.min(new)),
+        _ => Job::Days(0),
+    })
 }
 
 #[cfg(test)]
@@ -514,7 +550,8 @@ mod tests {
                 currency TEXT NOT NULL, as_of INTEGER NOT NULL
             );
             CREATE TABLE bonds (id TEXT PRIMARY KEY, coupon_value TEXT NOT NULL,
-                quantity TEXT NOT NULL DEFAULT '1', currency TEXT NOT NULL DEFAULT 'CZK');
+                quantity TEXT NOT NULL DEFAULT '1', currency TEXT NOT NULL DEFAULT 'CZK',
+                purchase_date INTEGER);
             CREATE TABLE loans (
                 id TEXT PRIMARY KEY, name TEXT NOT NULL, principal TEXT NOT NULL,
                 currency TEXT NOT NULL DEFAULT 'CZK', interest_rate TEXT NOT NULL DEFAULT '0',
@@ -1126,7 +1163,124 @@ mod tests {
     fn deleting_an_other_asset_queues_from_its_first_transaction_else_the_first_fact() {
         assert_eq!(other_asset_deleted(Some(d(-30))), Job::Days(d(-30)));
         assert_eq!(other_asset_deleted(None), Job::Days(0));
-        assert_eq!(bond_changed(), Job::Days(0));
+    }
+
+    fn bond(purchase_date: Option<i64>, coupon: &str, quantity: &str, currency: &str) -> Bond {
+        Bond {
+            id: "b".into(),
+            name: "Bond".into(),
+            isin: None,
+            coupon_value: coupon.into(),
+            quantity: quantity.into(),
+            currency: currency.into(),
+            interest_rate: "3".into(),
+            maturity_date: None,
+            purchase_date,
+            created_at: 0,
+            updated_at: 0,
+        }
+    }
+
+    #[test]
+    fn a_new_or_deleted_bond_queues_its_purchase_day_else_the_first_fact() {
+        // a dated bond counts from its purchase day; an undated one is carried on every day
+        assert_eq!(bond_created(Some(d(-30))), Job::Days(d(-30)));
+        assert_eq!(bond_created(None), Job::Days(0));
+        assert_eq!(bond_deleted(Some(d(-30))), Job::Days(d(-30)));
+        assert_eq!(bond_deleted(None), Job::Days(0));
+    }
+
+    #[test]
+    fn a_bond_edit_queues_from_the_earlier_of_the_old_and_new_purchase_day() {
+        let old = bond(Some(d(-50)), "1000", "2", "CZK");
+        // the date moved later or earlier: both ends of the move change
+        let later = bond(Some(d(-10)), "1000", "2", "CZK");
+        assert_eq!(bond_updated(&old, &later), Some(Job::Days(d(-50))));
+        assert_eq!(bond_updated(&later, &old), Some(Job::Days(d(-50))));
+        // the value or currency changed on the same day: the bond counts from that day
+        for new in [
+            bond(Some(d(-50)), "1500", "2", "CZK"),
+            bond(Some(d(-50)), "1000", "3", "CZK"),
+            bond(Some(d(-50)), "1000", "2", "EUR"),
+        ] {
+            assert_eq!(bond_updated(&old, &new), Some(Job::Days(d(-50))));
+        }
+    }
+
+    #[test]
+    fn dating_or_undating_a_bond_queues_the_first_fact() {
+        let dated = bond(Some(d(-50)), "1000", "1", "CZK");
+        let undated = bond(None, "1000", "1", "CZK");
+        // an undated bond is carried on every day, so either side changes all of them
+        assert_eq!(bond_updated(&undated, &dated), Some(Job::Days(0)));
+        assert_eq!(bond_updated(&dated, &undated), Some(Job::Days(0)));
+    }
+
+    #[test]
+    fn an_undated_bond_edit_queues_the_first_fact_only_for_its_value_or_currency() {
+        let old = bond(None, "1000", "2", "CZK");
+        for new in [
+            bond(None, "1500", "2", "CZK"),
+            bond(None, "1000", "3", "CZK"),
+            bond(None, "1000", "2", "EUR"),
+        ] {
+            assert_eq!(bond_updated(&old, &new), Some(Job::Days(0)));
+        }
+        // 2000 either way: the same value
+        assert_eq!(
+            bond_updated(&old, &bond(None, "2000", "1", "czk")),
+            None,
+            "the same value in the same currency changes no day"
+        );
+    }
+
+    #[test]
+    fn a_bond_edit_that_changes_no_fact_of_the_history_queues_nothing() {
+        let mut old = bond(Some(d(-50)), "1000", "2", "CZK");
+        let mut new = old.clone();
+        new.name = "Renamed".into();
+        new.interest_rate = "5".into();
+        new.maturity_date = Some(d(400));
+        assert_eq!(bond_updated(&old, &new), None);
+        old.purchase_date = None;
+        new.purchase_date = None;
+        assert_eq!(bond_updated(&old, &new), None);
+    }
+
+    #[test]
+    fn dating_a_bond_changes_the_days_before_its_purchase_end_to_end() {
+        let conn = setup_test_db();
+        // history starts at the account record; an undated bond is carried on every day
+        balance_record(&conn, d(0));
+        conn.execute(
+            "INSERT INTO bonds (id, coupon_value, quantity, currency) VALUES ('b', '1000', '1', 'CZK')",
+            [],
+        )
+        .expect("bond");
+        rebuild_days(&conn, d(0), d(10)).expect("first rebuild");
+        let bonds = |day: i64| -> String {
+            conn.query_row(
+                "SELECT bonds_by_currency FROM portfolio_metrics_history WHERE recorded_at = ?1",
+                [day],
+                |row| row.get(0),
+            )
+            .expect("row")
+        };
+        assert_eq!(bonds(d(2)), r#"{"CZK":1000.0}"#);
+
+        // dating it at day 5 queues the first fact: the days before it lose the bond
+        let before = bond(None, "1000", "1", "CZK");
+        let after = bond(Some(d(5)), "1000", "1", "CZK");
+        conn.execute("UPDATE bonds SET purchase_date = ?1", [d(5)])
+            .expect("date");
+        let Some(Job::Days(from)) = bond_updated(&before, &after) else {
+            panic!("a dated bond edit queues days");
+        };
+        rebuild_days(&conn, from, d(10)).expect("rebuild from the queued day");
+        assert_eq!(bonds(d(2)), "{}");
+        assert_eq!(bonds(d(4)), "{}");
+        assert_eq!(bonds(d(5)), r#"{"CZK":1000.0}"#);
+        assert_eq!(bonds(d(9)), r#"{"CZK":1000.0}"#);
     }
 
     fn edit(new_currency: Option<&str>) -> OtherAssetEdit<'_> {

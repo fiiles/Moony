@@ -63,6 +63,7 @@
     "withinYear": "inom ett år",
     "matured": "återbetald",
     "noMaturity": "inget förfall",
+    "boughtOn": "köpt {{date}}",
     "noResults": {
       "title": "Inga träffar",
       "description": "Prova ett annat namn eller ISIN.",
@@ -92,6 +93,8 @@
     "nominal": "Nominellt värde för 1 enhet",
     "quantity": "Antal",
     "rate": "Kupong per år",
+    "purchaseDate": "Köpdatum",
+    "purchaseDateHint": "Utan köpdatum räknas obligationen med i hela historiken; med datum först från den dagen.",
     "maturity": "Förfallodatum",
     "maturityHint": "Efter förfall flyttas emissionen till återbetalda och räknas inte längre in i nettoförmögenheten.",
     "summaryValue": "Värde {{value}} · kupong {{coupon}} per år",

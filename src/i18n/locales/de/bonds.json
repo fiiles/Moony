@@ -63,6 +63,7 @@
     "withinYear": "innerhalb eines Jahres",
     "matured": "getilgt",
     "noMaturity": "ohne Fälligkeit",
+    "boughtOn": "gekauft am {{date}}",
     "noResults": {
       "title": "Nichts gefunden",
       "description": "Versuchen Sie einen anderen Namen oder eine andere ISIN.",
@@ -92,6 +93,8 @@
     "nominal": "Nennwert von 1 Stück",
     "quantity": "Stück",
     "rate": "Kupon pro Jahr",
+    "purchaseDate": "Kaufdatum",
+    "purchaseDateHint": "Ohne Kaufdatum wird die Anleihe über die gesamte Historie gezählt; mit Datum erst ab diesem Tag.",
     "maturity": "Fälligkeitsdatum",
     "maturityHint": "Nach der Fälligkeit wechselt die Emission zu „getilgt“ und zählt nicht mehr zum Nettovermögen.",
     "summaryValue": "Wert {{value}} · Kupon {{coupon}} pro Jahr",

@@ -4,6 +4,7 @@ use crate::commands::portfolio::schedule_history_rebuild;
 use crate::db::Database;
 use crate::error::{AppError, Result};
 use crate::models::{Bond, InsertBond};
+use crate::services::bonds as bond_service;
 use crate::services::history_plan;
 use crate::services::history_recalc::HistoryRecalc;
 use tauri::{AppHandle, State};
@@ -11,29 +12,7 @@ use tauri::{AppHandle, State};
 /// Get all bonds
 #[tauri::command]
 pub async fn get_all_bonds(db: State<'_, Database>) -> Result<Vec<Bond>> {
-    db.with_conn(|conn| {
-        let mut stmt = conn.prepare(
-            "SELECT id, name, isin, coupon_value, quantity, currency, interest_rate, maturity_date, created_at, updated_at
-             FROM bonds ORDER BY name"
-        )?;
-
-        let bonds = stmt.query_map([], |row| {
-            Ok(Bond {
-                id: row.get(0)?,
-                name: row.get(1)?,
-                isin: row.get(2)?,
-                coupon_value: row.get(3)?,
-                quantity: row.get(4)?,
-                currency: row.get(5)?,
-                interest_rate: row.get(6)?,
-                maturity_date: row.get(7)?,
-                created_at: row.get(8)?,
-                updated_at: row.get(9)?,
-            })
-        })?.filter_map(|r| r.ok()).collect();
-
-        Ok(bonds)
-    })
+    db.with_conn(bond_service::list_bonds)
 }
 
 /// Create bond
@@ -44,9 +23,14 @@ pub async fn create_bond(
     recalc: State<'_, HistoryRecalc>,
     data: InsertBond,
 ) -> Result<Bond> {
-    let created = db.with_conn(|conn| crate::services::bonds::create_bond(conn, &data))?;
-    // Bonds have no purchase date: they carry their current value on every day
-    schedule_history_rebuild(&app, &db, &recalc, vec![history_plan::bond_changed()]);
+    let created = db.with_conn(|conn| bond_service::create_bond(conn, &data))?;
+    // A dated bond counts from its purchase day, an undated one on every day
+    schedule_history_rebuild(
+        &app,
+        &db,
+        &recalc,
+        vec![history_plan::bond_created(created.purchase_date)],
+    );
     Ok(created)
 }
 
@@ -59,8 +43,16 @@ pub async fn update_bond(
     id: String,
     data: InsertBond,
 ) -> Result<Bond> {
-    let updated = db.with_conn(|conn| crate::services::bonds::update_bond(conn, &id, &data))?;
-    schedule_history_rebuild(&app, &db, &recalc, vec![history_plan::bond_changed()]);
+    let (before, updated) = db.with_conn(|conn| {
+        let before = bond_service::get_bond(conn, &id)?;
+        let updated = bond_service::update_bond(conn, &id, &data)?;
+        Ok((before, updated))
+    })?;
+    // From the earlier of the old and new purchase day; every day for an undated bond whose
+    // value or currency changed; nothing for an edit the history does not read (a name)
+    if let Some(job) = before.and_then(|before| history_plan::bond_updated(&before, &updated)) {
+        schedule_history_rebuild(&app, &db, &recalc, vec![job]);
+    }
     Ok(updated)
 }
 
@@ -72,13 +64,17 @@ pub async fn delete_bond(
     recalc: State<'_, HistoryRecalc>,
     id: String,
 ) -> Result<()> {
-    db.with_conn(|conn| {
-        let changes = conn.execute("DELETE FROM bonds WHERE id = ?1", [&id])?;
-        if changes == 0 {
-            return Err(AppError::NotFound("Bond not found".into()));
-        }
-        Ok(())
+    let purchase_date = db.with_conn(|conn| {
+        let bond = bond_service::get_bond(conn, &id)?
+            .ok_or_else(|| AppError::NotFound("Bond not found".into()))?;
+        bond_service::delete_bond(conn, &id)?;
+        Ok(bond.purchase_date)
     })?;
-    schedule_history_rebuild(&app, &db, &recalc, vec![history_plan::bond_changed()]);
+    schedule_history_rebuild(
+        &app,
+        &db,
+        &recalc,
+        vec![history_plan::bond_deleted(purchase_date)],
+    );
     Ok(())
 }

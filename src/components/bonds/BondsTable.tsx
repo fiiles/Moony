@@ -233,8 +233,10 @@ export function BondsTable({ bonds, today, convert, onEdit, onDelete }: BondsTab
                         >
                           {bond.name}
                         </b>
-                        <small className="mt-[3px] block text-micro font-500 text-ink-4">
+                        <small className="mt-[3px] block truncate text-micro font-500 text-ink-4">
                           {bond.isin || '—'} · {currency}
+                          {bond.purchaseDate !== null &&
+                            ` · ${t('table.boughtOn', { date: fmt.day(bond.purchaseDate) })}`}
                         </small>
                       </div>
                     </div>

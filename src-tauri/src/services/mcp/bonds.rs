@@ -11,7 +11,7 @@ use super::sql_to_json;
 pub fn bonds_list(conn: &Connection) -> Result<Value> {
     let mut stmt = conn.prepare(
         "SELECT id, name, isin, coupon_value, quantity, currency,
-                interest_rate, maturity_date, created_at, updated_at
+                interest_rate, maturity_date, created_at, updated_at, purchase_date
          FROM bonds ORDER BY name",
     )?;
     let rows: Vec<Value> = stmt
@@ -27,6 +27,7 @@ pub fn bonds_list(conn: &Connection) -> Result<Value> {
                 "maturityDate": sql_to_json(row.get::<_, rusqlite::types::Value>(7).unwrap_or(rusqlite::types::Value::Null)),
                 "createdAt": row.get::<_, i64>(8)?,
                 "updatedAt": row.get::<_, i64>(9)?,
+                "purchaseDate": sql_to_json(row.get::<_, rusqlite::types::Value>(10).unwrap_or(rusqlite::types::Value::Null)),
             }))
         })?
         .filter_map(|r| r.ok())
@@ -60,6 +61,14 @@ pub fn bond_create(conn: &Connection, data: &crate::models::InsertBond) -> Resul
     Ok(serde_json::to_value(bond)?)
 }
 
+/// The day the history changes from for a new bond (the MCP follow-up's earliest day): its
+/// purchase day, `None` for an undated bond, which is carried on every day, so the history is
+/// rebuilt from the first fact (a follow-up without a day).
+pub fn earliest_date(data: &crate::models::InsertBond) -> Option<i64> {
+    data.purchase_date
+        .and_then(|day| crate::models::validation::utc_day(day, "validation.invalidDate").ok())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -83,7 +92,8 @@ mod tests {
                 currency TEXT NOT NULL DEFAULT 'CZK',
                 quantity TEXT NOT NULL DEFAULT '1',
                 created_at INTEGER NOT NULL DEFAULT (unixepoch()),
-                updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+                updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
+                purchase_date INTEGER
             );
             "#,
         )
@@ -100,6 +110,7 @@ mod tests {
             currency: None,
             interest_rate: None,
             maturity_date: None,
+            purchase_date: None,
         }
     }
 
@@ -149,5 +160,81 @@ mod tests {
         let value = bond_create(&conn, &bond).unwrap();
 
         assert_eq!(value["currency"], "USD");
+    }
+
+    #[test]
+    fn create_stores_the_purchase_day_and_list_exposes_it() {
+        let conn = setup_test_db();
+        let day = 1_767_225_600; // 2026-01-01
+        let mut dated = valid_bond("Dated bond");
+        // the tool takes a Unix timestamp; the bond keeps the UTC day
+        dated.purchase_date = Some(day + 3_600);
+        let created = bond_create(&conn, &dated).unwrap();
+        assert_eq!(created["purchaseDate"], day);
+        bond_create(&conn, &valid_bond("Undated bond")).unwrap();
+
+        let listed = bonds_list(&conn).unwrap();
+        let by_name = |name: &str| {
+            listed
+                .as_array()
+                .unwrap()
+                .iter()
+                .find(|bond| bond["name"] == name)
+                .unwrap()
+                .clone()
+        };
+        assert_eq!(by_name("Dated bond")["purchaseDate"], day);
+        assert!(by_name("Undated bond")["purchaseDate"].is_null());
+    }
+
+    #[test]
+    fn create_refuses_a_purchase_day_in_the_future_and_writes_nothing() {
+        let conn = setup_test_db();
+        let mut bond = valid_bond("Future bond");
+        bond.purchase_date = Some(chrono::Utc::now().timestamp() + 3 * 86_400);
+        let err = bond_create(&conn, &bond).unwrap_err();
+        assert!(
+            matches!(&err, AppError::Validation(key) if key == "validation.purchaseDateInFuture"),
+            "{err:?}"
+        );
+        assert_eq!(bonds_list(&conn).unwrap().as_array().unwrap().len(), 0);
+    }
+
+    #[test]
+    fn the_history_follow_up_starts_at_the_purchase_day_or_the_first_fact() {
+        let mut bond = valid_bond("Bond");
+        assert_eq!(earliest_date(&bond), None, "undated: from the first fact");
+        bond.purchase_date = Some(1_767_225_600 + 3_600);
+        assert_eq!(earliest_date(&bond), Some(1_767_225_600));
+    }
+
+    #[test]
+    fn the_tool_advertises_an_optional_purchase_date_documented_for_the_client() {
+        use rmcp::handler::server::tool::schema_for_input;
+        let schema = schema_for_input::<InsertBond>().unwrap();
+        let property = &schema["properties"]["purchaseDate"];
+        assert!(property.is_object(), "purchaseDate is part of the input");
+        assert!(
+            property["description"]
+                .as_str()
+                .is_some_and(|text| text.contains("bought")),
+            "the client reads what the day means: {property}"
+        );
+        let required = schema
+            .get("required")
+            .and_then(|required| required.as_array())
+            .cloned()
+            .unwrap_or_default();
+        assert!(!required.iter().any(|name| name == "purchaseDate"));
+
+        // and the tool takes it by that name, the day as Unix seconds
+        let args: InsertBond = serde_json::from_value(serde_json::json!({
+            "name": "B", "couponValue": "1", "purchaseDate": 1_767_225_600
+        }))
+        .unwrap();
+        assert_eq!(args.purchase_date, Some(1_767_225_600));
+        let args: InsertBond =
+            serde_json::from_value(serde_json::json!({"name": "B", "couponValue": "1"})).unwrap();
+        assert_eq!(args.purchase_date, None);
     }
 }

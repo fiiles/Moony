@@ -86,6 +86,9 @@ const DATED_CURRENCY_FACTS: &[(&str, &str, &str)] = &[
     ("real_estate", "purchase_price_currency", "purchase_date"),
     ("real_estate_one_time_costs", "currency", "date"),
     ("loans", "currency", "start_date"),
+    // A bond counts from its purchase day in its own currency; one without a purchase date is
+    // carried instead (`CARRIED_CURRENCY_SOURCES`)
+    ("bonds", "currency", "purchase_date"),
     (
         "insurance_policies",
         "regular_payment_currency",
@@ -113,15 +116,16 @@ const DERIVED_DATED_FACTS: &[(&str, &str, &str, (&str, &str))] = &[(
 )];
 
 /// SQL selecting the currency of every item the history carries back to the first fact day
-/// (`history_days`): an account that counts and has no balance record, a bond, and an other
-/// asset with a quantity and no transactions. They have no date of their own, yet every past
-/// day from the first fact on converts them, so their currencies need rates back to that day.
+/// (`history_days`): an account that counts and has no balance record, a bond without a purchase
+/// date, and an other asset with a quantity and no transactions. They have no date of their own,
+/// yet every past day from the first fact on converts them, so their currencies need rates back
+/// to that day.
 const CARRIED_CURRENCY_SOURCES: &[&str] = &[
     "SELECT currency FROM bank_accounts
      WHERE exclude_from_balance = 0
        AND NOT EXISTS (SELECT 1 FROM bank_balance_records r
                        WHERE r.bank_account_id = bank_accounts.id)",
-    "SELECT currency FROM bonds",
+    "SELECT currency FROM bonds WHERE purchase_date IS NULL",
     "SELECT currency FROM other_assets
      WHERE CAST(quantity AS REAL) > 0
        AND NOT EXISTS (SELECT 1 FROM other_asset_transactions t
@@ -394,8 +398,8 @@ fn needed_start(earliest_tx: i64) -> i64 {
 /// without any recorded rate is not fetched again and again; it stays
 /// reported as missing. A currency without any dated fact (a bare balance
 /// or quote) needs no prefix, only the tail, unless history carries an item in it back to the
-/// first fact day (an undated account, a bond, an asset without transactions): then it needs
-/// rates from that day.
+/// first fact day (an undated account, a bond without a purchase date, an asset without
+/// transactions): then it needs rates from that day.
 pub fn missing_fx_ranges(conn: &Connection, today: i64) -> Result<Vec<(i64, i64)>> {
     let symbols = held_currencies(conn)?;
     if symbols.is_empty() {
@@ -608,7 +612,11 @@ mod tests {
                 currency TEXT NOT NULL,
                 as_of INTEGER NOT NULL
             );
-            CREATE TABLE bonds (id TEXT PRIMARY KEY, currency TEXT NOT NULL);
+            CREATE TABLE bonds (
+                id TEXT PRIMARY KEY,
+                currency TEXT NOT NULL,
+                purchase_date INTEGER
+            );
             CREATE TABLE other_assets (
                 id TEXT PRIMARY KEY,
                 currency TEXT NOT NULL,
@@ -875,6 +883,65 @@ mod tests {
         assert_eq!(
             missing_fx_ranges(&conn, TODAY).expect("ranges"),
             vec![(TODAY - 410 * D, TODAY - 20 * D)]
+        );
+    }
+
+    #[test]
+    fn a_bond_with_a_purchase_date_needs_rates_from_that_day_not_the_first_fact() {
+        // History starts at the USD buy. The CHF bond was bought later, so it counts from its
+        // purchase day only: its currency needs rates from there, not from the first fact.
+        let conn = setup_db();
+        add_stock_tx(&conn, "t1", "USD", TODAY - 400 * D);
+        conn.execute(
+            "INSERT INTO bonds (id, currency, purchase_date) VALUES ('b', 'CHF', ?1)",
+            [TODAY - 100 * D],
+        )
+        .expect("bond");
+        add_rate(&conn, TODAY - 410 * D, "USD");
+        add_rate(&conn, TODAY, "USD");
+        add_rate(&conn, TODAY - 20 * D, "CHF");
+        add_rate(&conn, TODAY, "CHF");
+
+        assert_eq!(
+            missing_fx_ranges(&conn, TODAY).expect("ranges"),
+            vec![(TODAY - 110 * D, TODAY - 20 * D)]
+        );
+    }
+
+    #[test]
+    fn an_undated_bond_is_still_carried_back_to_the_first_fact() {
+        let conn = setup_db();
+        add_stock_tx(&conn, "t1", "USD", TODAY - 400 * D);
+        // a dated CHF bond in the same currency does not end the carrying of the undated one
+        conn.execute_batch(&format!(
+            "INSERT INTO bonds (id, currency) VALUES ('b', 'CHF');
+             INSERT INTO bonds (id, currency, purchase_date) VALUES ('d', 'CHF', {});",
+            TODAY - 100 * D
+        ))
+        .expect("bonds");
+        add_rate(&conn, TODAY - 410 * D, "USD");
+        add_rate(&conn, TODAY, "USD");
+        add_rate(&conn, TODAY - 20 * D, "CHF");
+        add_rate(&conn, TODAY, "CHF");
+
+        assert_eq!(
+            missing_fx_ranges(&conn, TODAY).expect("ranges"),
+            vec![(TODAY - 410 * D, TODAY - 20 * D)]
+        );
+    }
+
+    #[test]
+    fn a_dated_bond_alone_is_not_carried_so_its_currency_needs_only_its_own_history() {
+        let conn = setup_db();
+        conn.execute(
+            "INSERT INTO bonds (id, currency, purchase_date) VALUES ('b', 'CHF', ?1)",
+            [TODAY - 300 * D],
+        )
+        .expect("bond");
+
+        assert_eq!(
+            missing_fx_ranges(&conn, TODAY).expect("ranges"),
+            vec![(TODAY - 310 * D, TODAY)]
         );
     }
 

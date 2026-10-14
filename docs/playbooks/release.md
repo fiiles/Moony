@@ -28,7 +28,7 @@ notarization](#code-signing-and-notarization-not-set-up-yet)); the **updater sig
    `https://github.com/fiiles/Moony/releases/latest/download/latest.json`. Installed apps carry
    this URL, so keep the repository where it is; if it ever has to move, change the endpoint
    (and the repository URLs in `README.md`, `.github/ISSUE_TEMPLATE/config.yml` and the release
-   body in `release.yml`) in the same commit and expect users of older builds to update by hand.
+   body in `.github/release-body.md`) in the same commit and expect users of older builds to update by hand.
 4. **Never change the app identifier again** (`identifier` in `tauri.conf.json`,
    `com.moonyfinance.desktop`). The user's data folder is derived from it; changing it makes every
    existing installation look for its data in a new, empty place. It changed once, in 0.11.0,
@@ -67,10 +67,9 @@ Then, by hand:
       Artifacts land in `src-tauri/target/release/bundle/`.
 - [ ] Migrations added since the last release were tried against a copy of a database written
       by that release (`docs/playbooks/add-db-migration.md`).
-- [ ] The "Upgrading from 0.10.0" paragraph at the top of `releaseBody` in
-      `.github/workflows/release.yml` is for 0.11.x only (the update dialog of an installed 0.10.0
-      shows these notes and Moony does not move the data folder); remove it after the first 0.12
-      release.
+- [ ] The "Upgrading from 0.10.0" paragraph at the top of `.github/release-body.md` is for
+      0.11.x and 0.12.0 (the update dialog of an installed 0.10.0 shows these notes and Moony does
+      not move the data folder); remove it after the first 0.12 release.
 
 ## Version bump
 
@@ -120,7 +119,7 @@ The tag name decides how the release is published:
   (`prerelease: contains(github.ref_name, '-')` in `release.yml`). GitHub's "latest" skips
   pre-releases, so the updater never offers one.
 
-`.github/workflows/release.yml` runs two stages:
+`.github/workflows/release.yml` runs three stages:
 
 1. **`check-version`** reads the version from `package.json`, `src-tauri/tauri.conf.json` and
    the first `version = "…"` line of `src-tauri/Cargo.toml` and fails unless all three equal the
@@ -128,7 +127,11 @@ The tag name decides how the release is published:
    `1.0.0` in the manifests). Nothing is built and no release is created on a mismatch. To
    recover, delete the tag (`git push origin --delete v0.9.1 && git tag -d v0.9.1`), fix the
    version, and tag again.
-2. **`build`** runs four legs in parallel (15–30 minutes):
+2. **`create-release`** creates the **draft** release `Moony v<version>` once, with the body
+   from `.github/release-body.md` (`@VERSION@` replaced), and hands its id to the build. A re-run
+   reuses the draft that already carries the tag. (Before 0.12.0 every build leg created its own
+   draft, and v0.11.0 ended up split across two releases.)
+3. **`build`** runs four legs in parallel (15–30 minutes):
 
    | Runner | Target | Artifacts |
    |---|---|---|
@@ -140,8 +143,7 @@ The tag name decides how the release is published:
    Each leg installs Node 22 and stable Rust (Linux: the WebKitGTK build dependencies; Windows:
    a static OpenSSL from vcpkg), runs `npm ci`, and calls `tauri-apps/tauri-action`, which
    builds the bundles listed under `bundle.targets` in `tauri.conf.json`, signs each update
-   archive with the updater key, uploads everything to a **draft** GitHub release named
-   `Moony v<version>` and generates `latest.json` (version, notes, per-platform URL and
+   archive with the updater key, uploads everything to that draft (`releaseId`) and generates `latest.json` (version, notes, per-platform URL and
    signature). There is no `.msi`.
 
 ### A test build without a public release
@@ -163,7 +165,7 @@ delete the draft under *Releases*, then the tag
 1. Open *Releases* and edit the draft.
 2. Check the attached files: one installer per platform, the update archives with their
    `.sig` files, and `latest.json`.
-3. Check the body. `release.yml` writes a link to `CHANGELOG.md`, a download table with the
+3. Check the body. `.github/release-body.md` holds a link to `CHANGELOG.md`, a download table with the
    exact file names, and first-launch steps for unsigned builds on macOS (`xattr`), Windows
    (browser warning and SmartScreen) and Linux; keep those sections and add a short
    highlights paragraph on top if the release deserves one. A tag with a hyphen must show as
@@ -265,7 +267,7 @@ npm run tauri signer generate -- -w ~/.tauri/moony-updater.key
 
 - Add the `APPLE_*` variables (and the Windows ones) to the `env:` block of the `tauri-action`
   step in `release.yml`; do not touch the build matrix.
-- Remove the "Unsigned builds" section from the release body in `release.yml`, and update the
+- Remove the "Unsigned builds" section from the release body (`.github/release-body.md`), and update the
   unsigned-build paragraphs in `README.md` ("Install"), `SECURITY.md` (scope) and this
   playbook.
 - Re-test the whole first-run path from a downloaded installer on a clean macOS and Windows
@@ -300,7 +302,8 @@ confirming on a real update before promising it in release notes.
 
 | File | Purpose |
 |---|---|
-| `.github/workflows/release.yml` | Version check, build matrix and draft-release creation |
+| `.github/workflows/release.yml` | Version check, draft-release creation and build matrix |
+| `.github/release-body.md` | Release page and updater notes (`@VERSION@` placeholder) |
 | `.github/workflows/ci.yml` | Gates run on every push and pull request |
 | `.github/dependabot.yml` | Dependency update pull requests |
 | `src-tauri/tauri.conf.json` | Version, identifier, bundle targets, updater public key and endpoint |

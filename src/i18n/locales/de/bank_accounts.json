@@ -277,6 +277,8 @@
       "skipped": "{{count}} übersprungen"
     },
     "dateRange": "Daten: {{from}} – {{to}}",
+    "overlapHint_one": "1 neue Zahlung fällt in einen Zeitraum, den {{file}} bereits abdeckt. Wenn Sie dieselben Zahlungen in einem anderen Format importiert haben, werden sie möglicherweise nicht als Duplikate erkannt.",
+    "overlapHint_other": "{{count}} neue Zahlungen fallen in einen Zeitraum, den {{file}} bereits abdeckt. Wenn Sie dieselben Zahlungen in einem anderen Format importiert haben, werden sie möglicherweise nicht als Duplikate erkannt.",
     "importButtonIdle": "Importieren",
     "resultDateRange": "Die importierten Transaktionen liegen zwischen {{from}} und {{to}}.",
     "next": {

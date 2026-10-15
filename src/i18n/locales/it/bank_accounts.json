@@ -282,6 +282,9 @@
       "skipped": "{{count}} saltati"
     },
     "dateRange": "Date: {{from}} – {{to}}",
+    "overlapHint_one": "1 nuovo pagamento rientra in un periodo che {{file}} copre già. Se hai importato gli stessi pagamenti in un altro formato, potrebbero non essere riconosciuti come duplicati.",
+    "overlapHint_many": "{{count}} nuovi pagamenti rientrano in un periodo che {{file}} copre già. Se hai importato gli stessi pagamenti in un altro formato, potrebbero non essere riconosciuti come duplicati.",
+    "overlapHint_other": "{{count}} nuovi pagamenti rientrano in un periodo che {{file}} copre già. Se hai importato gli stessi pagamenti in un altro formato, potrebbero non essere riconosciuti come duplicati.",
     "importButtonIdle": "Importa",
     "resultDateRange": "I movimenti importati sono datati {{from}} – {{to}}.",
     "next": {

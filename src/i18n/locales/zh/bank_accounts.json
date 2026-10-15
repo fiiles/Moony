@@ -272,6 +272,7 @@
       "skipped": "已跳过 {{count}} 笔"
     },
     "dateRange": "日期：{{from}} – {{to}}",
+    "overlapHint_other": "{{count}} 笔新付款落在 {{file}} 已涵盖的时间段内。如果您曾以其他格式导入过相同的付款，它们可能不会被识别为重复项。",
     "importButtonIdle": "导入",
     "resultDateRange": "导入的交易日期为 {{from}} – {{to}}。",
     "next": {

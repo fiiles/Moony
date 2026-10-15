@@ -128,6 +128,8 @@ pub fn collect_types() -> TypeCollection {
     types.register::<crate::services::csv_import::CsvRowMessage>();
     types.register::<crate::services::csv_import::CsvRowStatus>();
     types.register::<crate::services::csv_import::CsvDateRange>();
+    types.register::<crate::services::csv_import::ImportOverlap>();
+    types.register::<crate::services::csv_import::ImportOverlapBatch>();
     types.register::<crate::services::csv_import::DeclaredBalance>();
     types.register::<crate::services::csv_import::SourceCategoryMapping>();
 

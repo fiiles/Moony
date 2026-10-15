@@ -272,6 +272,7 @@
       "skipped": "{{count}}件をスキップ"
     },
     "dateRange": "日付：{{from}} – {{to}}",
+    "overlapHint_other": "新しい支払い {{count}}件が、{{file}} ですでにカバーされている期間に含まれています。同じ支払いを別の形式でインポートしていた場合、重複として認識されないことがあります。",
     "importButtonIdle": "インポート",
     "resultDateRange": "インポートした取引の日付は{{from}} – {{to}}です。",
     "next": {

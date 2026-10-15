@@ -285,6 +285,10 @@
       "errors_other": "{{count}} chyb"
     },
     "dateRange": "Období: {{from}} – {{to}}",
+    "overlapHint_one": "1 nová platba spadá do období, které už pokrývá {{file}}. Pokud jste tytéž platby importovali v jiném formátu, nemusí je Moony poznat jako duplicity.",
+    "overlapHint_few": "{{count}} nové platby spadají do období, které už pokrývá {{file}}. Pokud jste tytéž platby importovali v jiném formátu, nemusí je Moony poznat jako duplicity.",
+    "overlapHint_many": "{{count}} nových plateb spadá do období, které už pokrývá {{file}}. Pokud jste tytéž platby importovali v jiném formátu, nemusí je Moony poznat jako duplicity.",
+    "overlapHint_other": "{{count}} nových plateb spadá do období, které už pokrývá {{file}}. Pokud jste tytéž platby importovali v jiném formátu, nemusí je Moony poznat jako duplicity.",
     "importButtonIdle": "Importovat",
     "resultDateRange": "Importované transakce jsou z období {{from}} – {{to}}.",
     "next": {

@@ -41,7 +41,7 @@ pub use rows::{parse_rows, ParsedImport, ParsedRow, RowState};
 pub use types::{
     CsvCategoryOverride, CsvDateRange, CsvImportConfig, CsvImportPreview, CsvImportResult,
     CsvPreviewResult, CsvPreviewRow, CsvRowMessage, CsvRowStatus, DeclaredBalance, ImportOptions,
-    SourceCategoryMapping,
+    ImportOverlap, ImportOverlapBatch, SourceCategoryMapping,
 };
 
 /// Rows listed by a preview; counts always cover the whole file.
@@ -151,6 +151,9 @@ pub fn preview_rows(
     let mut forced_duplicate_count = 0usize;
     let mut promoted_count = 0usize;
     let mut date_range: Option<CsvDateRange> = None;
+    // Booking days of every row that would be written as new (whole file, not
+    // only the listed page), for the overlap hint.
+    let mut ok_days: Vec<i64> = Vec::new();
 
     for (row_index, row) in parsed.rows.iter().enumerate() {
         let mut category: Option<(String, Option<String>)> = None;
@@ -165,6 +168,7 @@ pub fn preview_rows(
                             categorized_count += 1;
                         }
                         extend_range(&mut date_range, insert.booking_date);
+                        ok_days.push(insert.booking_date);
                         (CsvRowStatus::Ok, None)
                     }
                     Some(dedup::BankOccurrence::Promote(id)) => {
@@ -257,9 +261,52 @@ pub fn preview_rows(
         categorized_count,
         forced_duplicate_count,
         promoted_count,
+        overlap: import_overlap(conn, account_id, &ok_days)?,
         offset: options.preview_offset,
         limit: options.preview_limit,
     })
+}
+
+/// D12: `ok` rows dated inside an earlier batch of the account, last day excluded (rows
+/// booked later on the day of the previous export are new, not overlap). Up to three
+/// batches, newest first.
+fn import_overlap(
+    conn: &Connection,
+    account_id: &str,
+    ok_days: &[i64],
+) -> Result<Option<ImportOverlap>> {
+    if ok_days.is_empty() {
+        return Ok(None);
+    }
+    let mut stmt = conn.prepare(
+        "SELECT file_name, date_from, date_to FROM csv_import_batches
+         WHERE bank_account_id = ?1 AND date_from IS NOT NULL AND date_to IS NOT NULL
+         ORDER BY imported_at DESC, id",
+    )?;
+    let batches: Vec<(String, i64, i64)> = stmt
+        .query_map([account_id], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))?
+        .collect::<std::result::Result<_, _>>()?;
+    let covers = |day: i64, from: i64, to: i64| day >= from && day < to;
+    let count = ok_days
+        .iter()
+        .filter(|&&d| batches.iter().any(|&(_, f, t)| covers(d, f, t)))
+        .count();
+    if count == 0 {
+        return Ok(None);
+    }
+    let hit: Vec<ImportOverlapBatch> = batches
+        .into_iter()
+        .filter(|&(_, f, t)| ok_days.iter().any(|&d| covers(d, f, t)))
+        .take(3)
+        .map(|(file_name, from, to)| ImportOverlapBatch {
+            file_name,
+            date_range: CsvDateRange { from, to },
+        })
+        .collect();
+    Ok(Some(ImportOverlap {
+        new_rows_in_covered_range: count,
+        batches: hit,
+    }))
 }
 
 /// `categorization_source` of a category the user picked in the preview.

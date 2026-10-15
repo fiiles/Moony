@@ -419,7 +419,11 @@ dateRange: CsvDateRange | null;
 /**
  * Rows that would be written with a category (rules or overrides).
  */
-categorizedCount: number; forcedDuplicateCount: number; promotedCount: number; offset: number; limit: number }
+categorizedCount: number; forcedDuplicateCount: number; promotedCount: number; 
+/**
+ * Set when new rows fall inside the period of an earlier import (D12).
+ */
+overlap: ImportOverlap | null; offset: number; limit: number }
 
 /**
  * Result of an import (TS `CsvImportResult`).
@@ -857,6 +861,27 @@ export type GoverningRule = { id: string; name: string; categoryId: string }
  * Payload of the `history-recalculation` event.
  */
 export type HistoryRecalcEvent = { ticker: string; status: RecalcStatus }
+
+/**
+ * Rows that would be written inside the period of an earlier import of the
+ * account (TS `ImportOverlap`). Payments imported earlier in another format
+ * carry other bank ids, so the duplicate check may not recognize them (D12).
+ */
+export type ImportOverlap = { 
+/**
+ * New rows dated inside an earlier batch's period, its last day excluded.
+ */
+newRowsInCoveredRange: number; 
+/**
+ * The earlier batches that contain such rows, newest first, at most three.
+ */
+batches: ImportOverlapBatch[] }
+
+/**
+ * An earlier import of the same account whose period contains new rows of this
+ * file (TS `ImportOverlapBatch`).
+ */
+export type ImportOverlapBatch = { fileName: string; dateRange: CsvDateRange }
 
 /**
  * Data for recording a valuation.

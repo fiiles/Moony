@@ -287,6 +287,10 @@
       "skipped": "Pominięto: {{count}}"
     },
     "dateRange": "Daty: {{from}} – {{to}}",
+    "overlapHint_one": "1 nowa płatność przypada na okres, który {{file}} już obejmuje. Jeśli te same płatności zostały zaimportowane w innym formacie, mogą nie zostać rozpoznane jako duplikaty.",
+    "overlapHint_few": "{{count}} nowe płatności przypadają na okres, który {{file}} już obejmuje. Jeśli te same płatności zostały zaimportowane w innym formacie, mogą nie zostać rozpoznane jako duplikaty.",
+    "overlapHint_many": "{{count}} nowych płatności przypada na okres, który {{file}} już obejmuje. Jeśli te same płatności zostały zaimportowane w innym formacie, mogą nie zostać rozpoznane jako duplikaty.",
+    "overlapHint_other": "{{count}} nowej płatności przypada na okres, który {{file}} już obejmuje. Jeśli te same płatności zostały zaimportowane w innym formacie, mogą nie zostać rozpoznane jako duplikaty.",
     "importButtonIdle": "Importuj",
     "resultDateRange": "Zaimportowane transakcje mają daty {{from}} – {{to}}.",
     "next": {

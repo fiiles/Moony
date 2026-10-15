@@ -277,6 +277,8 @@
       "skipped": "{{count}} hoppet over"
     },
     "dateRange": "Datoer: {{from}} – {{to}}",
+    "overlapHint_one": "1 ny betaling faller i en periode som {{file}} allerede dekker. Hvis du har importert de samme betalingene i et annet format, kan det hende de ikke gjenkjennes som duplikater.",
+    "overlapHint_other": "{{count}} nye betalinger faller i en periode som {{file}} allerede dekker. Hvis du har importert de samme betalingene i et annet format, kan det hende de ikke gjenkjennes som duplikater.",
     "importButtonIdle": "Importer",
     "resultDateRange": "De importerte transaksjonene har datoer {{from}} – {{to}}.",
     "next": {

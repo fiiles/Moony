@@ -388,6 +388,28 @@ pub struct CsvPreviewRow {
     pub source_category: Option<String>,
 }
 
+/// An earlier import of the same account whose period contains new rows of this
+/// file (TS `ImportOverlapBatch`).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
+pub struct ImportOverlapBatch {
+    #[serde(rename = "fileName")]
+    pub file_name: String,
+    #[serde(rename = "dateRange")]
+    pub date_range: CsvDateRange,
+}
+
+/// Rows that would be written inside the period of an earlier import of the
+/// account (TS `ImportOverlap`). Payments imported earlier in another format
+/// carry other bank ids, so the duplicate check may not recognize them (D12).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
+pub struct ImportOverlap {
+    /// New rows dated inside an earlier batch's period, its last day excluded.
+    #[serde(rename = "newRowsInCoveredRange")]
+    pub new_rows_in_covered_range: usize,
+    /// The earlier batches that contain such rows, newest first, at most three.
+    pub batches: Vec<ImportOverlapBatch>,
+}
+
 /// Dry run of an import (TS `CsvImportPreview`).
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct CsvImportPreview {
@@ -414,6 +436,8 @@ pub struct CsvImportPreview {
     pub forced_duplicate_count: usize,
     #[serde(rename = "promotedCount")]
     pub promoted_count: usize,
+    /// Set when new rows fall inside the period of an earlier import (D12).
+    pub overlap: Option<ImportOverlap>,
     pub offset: usize,
     pub limit: usize,
 }

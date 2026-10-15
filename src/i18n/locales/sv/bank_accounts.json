@@ -277,6 +277,8 @@
       "skipped": "{{count}} överhoppade"
     },
     "dateRange": "Datum: {{from}} – {{to}}",
+    "overlapHint_one": "1 ny betalning faller inom en period som {{file}} redan täcker. Om du har importerat samma betalningar i ett annat format kanske de inte känns igen som dubbletter.",
+    "overlapHint_other": "{{count}} nya betalningar faller inom en period som {{file}} redan täcker. Om du har importerat samma betalningar i ett annat format kanske de inte känns igen som dubbletter.",
     "importButtonIdle": "Importera",
     "resultDateRange": "De importerade transaktionerna är daterade {{from}} – {{to}}.",
     "next": {

@@ -323,6 +323,7 @@ describe('summarizePreview', () => {
     skippedCount: 1,
     dateRange: null,
     categorizedCount: 0,
+    overlap: null,
     ...overrides,
   });
 
@@ -628,6 +629,7 @@ it('uses full-file forced counts while previewing another page', () => {
     categorizedCount: 1,
     promotedCount: 0,
     forcedDuplicateCount: 2,
+    overlap: null,
     offset: 200,
     limit: 200,
   };

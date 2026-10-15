@@ -229,6 +229,15 @@ export function PreviewStep({
         </span>
       </div>
 
+      {preview.overlap && (
+        <p className="mb-3 rounded-r3 border border-line bg-well px-3.5 py-2.5 text-table text-ink-2">
+          {t('csvImport.overlapHint', {
+            count: preview.overlap.newRowsInCoveredRange,
+            file: preview.overlap.batches[0]?.fileName ?? '',
+          })}
+        </p>
+      )}
+
       <div className="flex items-center justify-between gap-6 border border-line mb-3 rounded-r3 px-3.5 py-2.5 text-micro font-500 text-ink-4">
         <span>
           {t('readiness.pageCount', {

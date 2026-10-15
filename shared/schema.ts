@@ -1594,6 +1594,20 @@ export interface CsvPreviewRow {
   sourceCategory: string | null;
 }
 
+/** An earlier import of the account whose period contains new rows of this file. */
+export interface ImportOverlapBatch {
+  fileName: string;
+  dateRange: CsvDateRange;
+}
+
+/** New rows that fall inside the period of an earlier import (their other-format twins may not be recognized as duplicates). */
+export interface ImportOverlap {
+  /** New rows dated inside an earlier batch's period, its last day excluded. */
+  newRowsInCoveredRange: number;
+  /** The earlier batches holding such rows, newest first, at most three. */
+  batches: ImportOverlapBatch[];
+}
+
 export interface CsvImportPreview {
   /** First 200 rows in file order. */
   rows: CsvPreviewRow[];
@@ -1609,6 +1623,8 @@ export interface CsvImportPreview {
   categorizedCount: number;
   promotedCount: number;
   forcedDuplicateCount: number;
+  /** Set when new rows fall inside the period of an earlier import. */
+  overlap: ImportOverlap | null;
   offset: number;
   limit: number;
 }

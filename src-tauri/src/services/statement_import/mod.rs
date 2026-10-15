@@ -4,6 +4,7 @@
 //! import core already consumes (preview, duplicate check, write path).
 
 pub mod account_match;
+pub mod camt;
 pub mod decimal;
 pub(crate) mod decode;
 pub(crate) mod detect;
@@ -12,6 +13,7 @@ pub mod model;
 #[cfg(test)]
 pub(crate) mod test_support;
 pub mod to_rows;
+pub mod xml_tree;
 
 pub use crate::services::csv_import::{DeclaredBalance, SourceCategoryMapping};
 pub use account_match::{match_account, AccountMatch};

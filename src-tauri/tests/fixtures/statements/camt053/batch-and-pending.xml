@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Document xmlns="urn:iso:std:iso:20022:tech:xsd:camt.053.001.08">
+ <BkToCstmrStmt>
+  <GrpHdr><MsgId>M2</MsgId><CreDtTm>2026-10-01T06:00:00</CreDtTm></GrpHdr>
+  <Stmt>
+   <Id>S2</Id>
+   <Acct><Id><IBAN>CZ6508000000192000145399</IBAN></Id><Ccy>CZK</Ccy></Acct>
+   <Bal><Tp><CdOrPrtry><Cd>PRCD</Cd></CdOrPrtry></Tp><Amt Ccy="CZK">0.00</Amt><CdtDbtInd>CRDT</CdtDbtInd><Dt><Dt>2026-08-31</Dt></Dt></Bal>
+   <Bal><Tp><CdOrPrtry><Cd>CLBD</Cd></CdOrPrtry></Tp><Amt Ccy="CZK">70.00</Amt><CdtDbtInd>CRDT</CdtDbtInd><Dt><Dt>2026-09-30</Dt></Dt></Bal>
+   <Ntry>
+    <Amt Ccy="CZK">100.00</Amt><CdtDbtInd>CRDT</CdtDbtInd><Sts><Cd>BOOK</Cd></Sts>
+    <BookgDt><Dt>2026-09-10</Dt></BookgDt><AcctSvcrRef>B-1</AcctSvcrRef>
+    <NtryDtls>
+     <TxDtls><Refs><AcctSvcrRef>B-1-a</AcctSvcrRef></Refs><AmtDtls><TxAmt><Amt Ccy="CZK">60.00</Amt></TxAmt></AmtDtls>
+      <RltdPties><Dbtr><Pty><Nm>Jan Novák</Nm></Pty></Dbtr></RltdPties></TxDtls>
+     <TxDtls><AmtDtls><TxAmt><Amt Ccy="CZK">40.00</Amt></TxAmt></AmtDtls>
+      <RltdPties><Dbtr><Pty><Nm>Eva Malá</Nm></Pty></Dbtr></RltdPties></TxDtls>
+    </NtryDtls>
+   </Ntry>
+   <Ntry>
+    <Amt Ccy="CZK">30.00</Amt><CdtDbtInd>DBIT</CdtDbtInd><Sts><Cd>PDNG</Cd></Sts>
+    <BookgDt><Dt>2026-09-28</Dt></BookgDt><AcctSvcrRef>P-1</AcctSvcrRef>
+   </Ntry>
+   <Ntry>
+    <Amt Ccy="CZK">5.00</Amt><CdtDbtInd>CRDT</CdtDbtInd><Sts><Cd>INFO</Cd></Sts>
+    <BookgDt><Dt>2026-09-29</Dt></BookgDt>
+   </Ntry>
+   <Ntry>
+    <NtryRef>N-4</NtryRef><Amt Ccy="CZK">30.00</Amt><CdtDbtInd>DBIT</CdtDbtInd><Sts><Cd>BOOK</Cd></Sts>
+    <BookgDt><Dt>2026-09-29</Dt></BookgDt><AddtlNtryInf>Card 1234</AddtlNtryInf>
+    <NtryDtls><TxDtls><RltdPties><Cdtr><Pty><Nm>Shop</Nm></Pty></Cdtr></RltdPties></TxDtls></NtryDtls>
+   </Ntry>
+  </Stmt>
+ </BkToCstmrStmt>
+</Document>

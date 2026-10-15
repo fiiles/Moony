@@ -53,9 +53,9 @@ jobs:
 
       - name: Create the draft once, before any build leg
         id: create
-        # Body: .github/release-body.md with @VERSION@ replaced. The "Upgrading from 0.10.0"
-        # paragraph there is for 0.11.x and 0.12.0; remove it after the first 0.12 release.
-        # A re-run reuses the draft that already carries this tag.
+        # Body: .github/release-body.md with @VERSION@ replaced and @CHANGES@ replaced by this
+        # version's CHANGELOG.md section (the update dialog links here for "What's new"); a
+        # version without a section fails. A re-run reuses the draft that already carries this tag.
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -63,7 +63,25 @@ jobs:
           v="${v%%-*}"
           id="$(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" --jq ".[] | select(.tag_name == \"$GITHUB_REF_NAME\") | .id" | head -n1)"
           if [ -z "$id" ]; then
-            sed "s/@VERSION@/$v/g" .github/release-body.md > "$RUNNER_TEMP/body.md"
+            # The lines between "## [<version>]" and the next "## [" heading, outer blank lines trimmed.
+            awk -v head="## [$v]" '
+              index($0, head) == 1 { on = 1; next }
+              on && /^## \[/ { exit }
+              on { lines[++n] = $0 }
+              END {
+                first = 1; while (first <= n && lines[first] ~ /^[[:space:]]*$/) first++
+                last = n; while (last >= first && lines[last] ~ /^[[:space:]]*$/) last--
+                for (i = first; i <= last; i++) print lines[i]
+              }
+            ' CHANGELOG.md > "$RUNNER_TEMP/changes.md"
+            if [ ! -s "$RUNNER_TEMP/changes.md" ]; then
+              echo "::error::CHANGELOG.md has no section '## [$v]'. Move the Unreleased entries under it before tagging (docs/playbooks/release.md)."
+              exit 1
+            fi
+            awk -v v="$v" -v changes="$RUNNER_TEMP/changes.md" '
+              $0 == "@CHANGES@" { while ((getline line < changes) > 0) print line; next }
+              { gsub(/@VERSION@/, v); print }
+            ' .github/release-body.md > "$RUNNER_TEMP/body.md"
             prerelease=false
             case "$GITHUB_REF_NAME" in *-*) prerelease=true ;; esac
             id="$(gh api "repos/$GITHUB_REPOSITORY/releases" \
@@ -131,17 +149,15 @@ jobs:
           echo "OPENSSL_DIR=$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static-md" >> $env:GITHUB_ENV
           echo "OPENSSL_STATIC=1" >> $env:GITHUB_ENV
 
-      - name: Release notes
+      - name: Updater notes
         id: body
-        # v1.0.0-rc.1 -> 1.0.0: the file names carry the plain version from the manifests
+        # One plain line for latest.json, not the release page: the update dialog of 0.12.2 and
+        # older prints the notes verbatim, newer builds ignore them and link to the release page.
+        # v1.0.0-rc.1 -> 1.0.0: the manifests carry the plain version.
         shell: bash
         run: |
           v="${GITHUB_REF_NAME#v}"
-          {
-            echo 'text<<RELEASE_BODY_EOF'
-            sed "s/@VERSION@/${v%%-*}/g" .github/release-body.md
-            echo 'RELEASE_BODY_EOF'
-          } >> "$GITHUB_OUTPUT"
+          echo "text=What's new in Moony ${v%%-*}: https://github.com/$GITHUB_REPOSITORY/releases/tag/$GITHUB_REF_NAME" >> "$GITHUB_OUTPUT"
 
       - name: Install frontend dependencies
         run: npm ci
@@ -156,6 +172,7 @@ jobs:
           # Uploads into the one draft that create-release made. Without releaseId every leg
           # created its own draft (v0.11.0 ended up split across two releases).
           releaseId: ${{ needs.create-release.outputs.release-id }}
-          # Notes for the updater's latest.json: the same text as the release page.
+          # Notes for the updater's latest.json (with releaseId, tauri-action leaves the release
+          # page body alone).
           releaseBody: ${{ steps.body.outputs.text }}
           args: ${{ matrix.args }}

@@ -1,4 +1,8 @@
-Moony is a private personal finance app: your records stay on your computer, in an encrypted database. What changed in this version is in the [changelog](https://github.com/fiiles/Moony/blob/main/CHANGELOG.md).
+Moony is a private personal finance app: your records stay on your computer, in an encrypted database. Earlier versions are in the [changelog](https://github.com/fiiles/Moony/blob/main/CHANGELOG.md).
+
+## What's new in @VERSION@
+
+@CHANGES@
 
 ## Download
 

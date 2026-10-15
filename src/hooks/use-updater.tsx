@@ -37,8 +37,9 @@ export interface UpdateProgress {
 
 export interface UpdateInfo {
   version: string;
+  /** The version running now, as the updater compared it. */
+  currentVersion: string;
   date: string | null;
-  body: string | null;
 }
 
 export type UpdaterStatus =
@@ -104,8 +105,8 @@ export function UpdaterProvider({ children }: { children: ReactNode }) {
         handleRef.current = result;
         setUpdate({
           version: result.version,
+          currentVersion: result.currentVersion,
           date: result.date ?? null,
-          body: result.body ?? null,
         });
         setStatus('available');
         if (promptWhenFound) setPromptOpen(true);

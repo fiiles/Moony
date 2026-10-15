@@ -6,6 +6,12 @@ All notable changes to Moony are documented in this file. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- **A shorter update dialog.** It names the new and the current version, says what the update
+  does (download, restart, unlock again) and links "What's new" to the release page, which now
+  starts with that version's changelog. The raw release text with download instructions is gone.
+
 ## [0.12.2] - 2026-10-14
 
 ### Added

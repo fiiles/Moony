@@ -5,3 +5,5 @@ export const DOCS_URL = `${REPO_URL}#readme`;
 /** Opens GitHub's issue chooser (bug report template when the repository has one). */
 export const REPORT_BUG_URL = `${REPO_URL}/issues/new/choose`;
 export const LICENSE_URL = `${REPO_URL}/blob/main/LICENSE`;
+/** The GitHub release page of a version: its changelog section first, then the downloads. */
+export const releaseUrl = (version: string) => `${REPO_URL}/releases/tag/v${version}`;

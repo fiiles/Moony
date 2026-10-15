@@ -59,7 +59,9 @@ npm run licenses
 Then, by hand:
 
 - [ ] `CHANGELOG.md`: move the *Unreleased* entries under the new version heading with today's
-      date and leave a fresh, empty *Unreleased* section above it.
+      date and leave a fresh, empty *Unreleased* section above it. The release page shows that
+      section under "What's new" (and the update dialog links there), so write it for users; the
+      release run fails when the version has no section.
 - [ ] `PRIVACY.md` and the README privacy section still match the code (new network request,
       new stored data?).
 - [ ] `npm run tauri build` works locally and the installer starts, unlocks the demo profile
@@ -67,9 +69,6 @@ Then, by hand:
       Artifacts land in `src-tauri/target/release/bundle/`.
 - [ ] Migrations added since the last release were tried against a copy of a database written
       by that release (`docs/playbooks/add-db-migration.md`).
-- [ ] The "Upgrading from 0.10.0" paragraph at the top of `.github/release-body.md` is for
-      0.11.x and 0.12.0 (the update dialog of an installed 0.10.0 shows these notes and Moony does
-      not move the data folder); remove it after the first 0.12 release.
 
 ## Version bump
 
@@ -128,7 +127,8 @@ The tag name decides how the release is published:
    recover, delete the tag (`git push origin --delete v0.9.1 && git tag -d v0.9.1`), fix the
    version, and tag again.
 2. **`create-release`** creates the **draft** release `Moony v<version>` once, with the body
-   from `.github/release-body.md` (`@VERSION@` replaced), and hands its id to the build. A re-run
+   from `.github/release-body.md` (`@VERSION@` replaced, `@CHANGES@` replaced by the version's
+   `CHANGELOG.md` section; no section fails the run), and hands its id to the build. A re-run
    reuses the draft that already carries the tag. (Before 0.12.0 every build leg created its own
    draft, and v0.11.0 ended up split across two releases.)
 3. **`build`** runs four legs in parallel (15–30 minutes):
@@ -144,7 +144,9 @@ The tag name decides how the release is published:
    a static OpenSSL from vcpkg), runs `npm ci`, and calls `tauri-apps/tauri-action`, which
    builds the bundles listed under `bundle.targets` in `tauri.conf.json`, signs each update
    archive with the updater key, uploads everything to that draft (`releaseId`) and generates `latest.json` (version, notes, per-platform URL and
-   signature). There is no `.msi`.
+   signature). The notes are one plain line linking the release page: the update dialog of
+   0.12.2 and older prints them verbatim, newer builds show no notes and link to the release
+   page under "What's new". There is no `.msi`.
 
 ### A test build without a public release
 
@@ -165,7 +167,8 @@ delete the draft under *Releases*, then the tag
 1. Open *Releases* and edit the draft.
 2. Check the attached files: one installer per platform, the update archives with their
    `.sig` files, and `latest.json`.
-3. Check the body. `.github/release-body.md` holds a link to `CHANGELOG.md`, a download table with the
+3. Check the body. It opens with the version's "What's new" section from `CHANGELOG.md`, then
+   `.github/release-body.md` continues with a download table with the
    exact file names, and first-launch steps for unsigned builds on macOS (`xattr`), Windows
    (browser warning and SmartScreen) and Linux; keep those sections and add a short
    highlights paragraph on top if the release deserves one. A tag with a hyphen must show as
@@ -303,7 +306,7 @@ confirming on a real update before promising it in release notes.
 | File | Purpose |
 |---|---|
 | `.github/workflows/release.yml` | Version check, draft-release creation and build matrix |
-| `.github/release-body.md` | Release page and updater notes (`@VERSION@` placeholder) |
+| `.github/release-body.md` | Release page body (`@VERSION@` and `@CHANGES@` placeholders) |
 | `.github/workflows/ci.yml` | Gates run on every push and pull request |
 | `.github/dependabot.yml` | Dependency update pull requests |
 | `src-tauri/tauri.conf.json` | Version, identifier, bundle targets, updater public key and endpoint |

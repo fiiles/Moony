@@ -1,5 +1,7 @@
+import { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AlertCircle, Check, Download, RefreshCw, X } from 'lucide-react';
+import { openUrl } from '@tauri-apps/plugin-opener';
+import { ExternalLink, RefreshCw } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -11,6 +13,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { useUpdater } from '@/hooks/use-updater';
+import { releaseUrl } from '@/lib/app-links';
 import { useFormat } from '@/lib/use-format';
 
 const BYTE_UNITS = ['B', 'kB', 'MB', 'GB'];
@@ -19,11 +22,18 @@ const BYTE_UNITS = ['B', 'kB', 'MB', 'GB'];
  * The one "update available" dialog: opens by itself when the automatic check
  * finds an update, and from the header badge. It is also where install
  * progress shows, whichever button started the install.
+ *
+ * It carries no release notes: the updater's notes are English and meant for
+ * old clients only. "What's new" opens the version's GitHub release page,
+ * whose body starts with that version's CHANGELOG section.
  */
 export function UpdateNotification() {
   const { t } = useTranslation('common');
   const fmt = useFormat();
   const { status, update, progress, installFailed, promptOpen, install, dismiss } = useUpdater();
+
+  // Focus the primary action on open, not the "What's new" link, which would show a focus box.
+  const primaryRef = useRef<HTMLButtonElement>(null);
 
   const installing = status === 'installing';
   const open = promptOpen && update !== null && (status === 'available' || installing);
@@ -38,6 +48,16 @@ export function UpdateNotification() {
     return `${fmt.number(value, { maximumFractionDigits: unit === 0 ? 0 : 1 })} ${BYTE_UNITS[unit]}`;
   };
 
+  const openWhatsNew = async (version: string) => {
+    const url = releaseUrl(version);
+    try {
+      await openUrl(url);
+    } catch (error) {
+      console.error('Failed to open link, using fallback:', error);
+      window.open(url, '_blank');
+    }
+  };
+
   return (
     <Dialog
       open={open}
@@ -46,53 +66,59 @@ export function UpdateNotification() {
         if (!next && !installing) dismiss();
       }}
     >
-      <DialogContent className="sm:max-w-md" hideCloseButton={installing}>
+      <DialogContent
+        className="max-w-[440px]"
+        hideCloseButton={installing}
+        onOpenAutoFocus={(event) => {
+          event.preventDefault();
+          primaryRef.current?.focus();
+        }}
+      >
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            {installFailed ? (
-              <>
-                <AlertCircle className="h-5 w-5 text-loss" />
-                {t('update.errorTitle')}
-              </>
-            ) : (
-              <>
-                <Download className="h-5 w-5 text-ink" />
-                {t('update.available')}
-              </>
-            )}
+          <DialogTitle>
+            {installFailed
+              ? t('update.errorTitle')
+              : t('update.dialogTitle', { version: update?.version ?? '' })}
           </DialogTitle>
           <DialogDescription>
             {installFailed
               ? t('update.installFailed')
-              : t('update.newVersion', { version: update?.version ?? '' })}
+              : t('update.currentVersion', { version: update?.currentVersion ?? '' })}
           </DialogDescription>
         </DialogHeader>
 
-        {update?.body && !installing && (
-          <div className="max-h-48 overflow-y-auto rounded-r1 border bg-well p-3">
-            <h4 className="mb-2 text-sm font-semibold">{t('update.releaseNotes')}</h4>
-            <div className="prose prose-sm">
-              <pre className="whitespace-pre-wrap text-xs">{update.body}</pre>
+        {installing ? (
+          progress && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <span>{t('update.downloading')}</span>
+                <span>{progress.percentage}%</span>
+              </div>
+              <Progress value={progress.percentage} className="h-2" />
+              {progress.contentLength && (
+                <p className="text-xs text-ink-3">
+                  {formatBytes(progress.downloaded)} / {formatBytes(progress.contentLength)}
+                </p>
+              )}
             </div>
-          </div>
-        )}
-
-        {installing && progress && (
+          )
+        ) : (
           <div className="space-y-2">
-            <div className="flex items-center justify-between text-sm">
-              <span>{t('update.downloading')}</span>
-              <span>{progress.percentage}%</span>
-            </div>
-            <Progress value={progress.percentage} className="h-2" />
-            {progress.contentLength && (
-              <p className="text-xs text-ink-3">
-                {formatBytes(progress.downloaded)} / {formatBytes(progress.contentLength)}
-              </p>
+            <p className="m-0 text-table text-ink-2">{t('update.whatHappens')}</p>
+            {update && (
+              <Button
+                variant="link"
+                className="h-auto px-0 text-table"
+                onClick={() => void openWhatsNew(update.version)}
+              >
+                {t('update.whatsNew')}
+                <ExternalLink />
+              </Button>
             )}
           </div>
         )}
 
-        <DialogFooter className="flex-col gap-2 sm:flex-row">
+        <DialogFooter>
           {installing ? (
             <div className="flex w-full items-center justify-center gap-2 text-sm text-ink-3">
               <RefreshCw className="h-4 w-4 animate-spin" />
@@ -100,13 +126,11 @@ export function UpdateNotification() {
             </div>
           ) : (
             <>
-              <Button onClick={dismiss} variant="outline" className="flex-1">
-                <X className="mr-2 h-4 w-4" />
+              <Button onClick={dismiss} variant="ghost">
                 {t('update.later')}
               </Button>
-              <Button onClick={() => void install()} className="flex-1">
-                <Check className="mr-2 h-4 w-4" />
-                {t('update.updateNow')}
+              <Button ref={primaryRef} onClick={() => void install()}>
+                {t('update.updateAndRestart')}
               </Button>
             </>
           )}

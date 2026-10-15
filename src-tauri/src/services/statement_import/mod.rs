@@ -13,6 +13,7 @@ pub(crate) mod decode;
 pub(crate) mod detect;
 pub mod merge;
 pub mod model;
+pub mod mt940;
 #[cfg(test)]
 mod service_tests;
 #[cfg(test)]

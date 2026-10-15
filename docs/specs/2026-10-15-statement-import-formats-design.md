@@ -1,10 +1,9 @@
 # Statement import formats (CAMT.053, MT940, OFX/QFX, QIF) — design
 
-Date: 2026-10-15. Status: **draft for owner review**. The owner chose these in chat on
-2026-10-15: variant 1 (own parsers feeding the shared import pipeline), QIF categories
-mapped by name (D13), account mismatch warns and offers to switch (D9), one spec delivered in
-four phases (D15), ABO/GPC later (D1). Every other decision below is the author's proposal,
-pending the owner's review of this document. The plan will be
+Date: 2026-10-15. Status: **approved** by the owner in chat on 2026-10-15. The owner chose
+in chat: variant 1 (own parsers feeding the shared import pipeline), QIF categories mapped by
+name (D13), account mismatch warns and offers to switch (D9), one spec delivered in four
+phases (D15), ABO/GPC later (D1); the rest of the document was then approved as written. The plan will be
 `docs/plans/2026-10-15-statement-import-formats.md`. This spec is also the hand-off brief: an
 implementer should not need the chat.
 

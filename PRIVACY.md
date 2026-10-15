@@ -95,6 +95,10 @@ trust, and regenerate the token when you stop using one.
   by default and listens on `127.0.0.1` only; whoever holds its token on your computer can read
   and change your data (see above).
 
+If an online feature is ever added, for example sync between your own devices, it will be
+optional and off until you turn it on, and this page will describe what it sends before the
+release that adds it.
+
 ## Where your data lives
 
 Moony stores its files in the application data folder, whose name comes from the app

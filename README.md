@@ -29,8 +29,8 @@ The screenshots show a sample profile (synthetic data).
 ## Who it is for
 
 Moony is for people with several accounts, investments, loans and insurance policies who want
-one net-worth number and do not want to hand their statements to a service. It is not for you
-if you need automatic bank sync (you import bank statements or enter data yourself), a phone or
+one net-worth number and do not want to hand their statements to a service. It is not the
+right tool today if you need automatic bank sync (you import bank statements or enter data yourself), a phone or
 tablet app, or a budget shared by a household (one profile on one computer, no sync).
 
 ## What it does

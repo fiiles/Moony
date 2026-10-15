@@ -529,5 +529,21 @@
     "delete": "Slett verdivurdering",
     "deleteTitle": "Slette denne verdivurderingen?",
     "deleteDescription": "Verdivurderingen på {{amount}} fra {{date}} blir slettet permanent. Markedsprisen følger den nyeste gjenværende verdivurderingen."
+  },
+  "attachments": {
+    "viewer": {
+      "description": "Forhåndsvisning av det vedlagte dokumentet",
+      "loading": "Laster forhåndsvisningen…",
+      "failed": "Forhåndsvisningen kunne ikke vises. Du kan lagre dokumentet eller åpne det i en annen app.",
+      "saveCopy": "Lagre en kopi…",
+      "openElsewhere": "Åpne i en annen app",
+      "saved": "Kopien er lagret"
+    },
+    "openElsewhere": {
+      "title": "Åpne utenfor Moony?",
+      "body": "Moony lager en midlertidig ukryptert kopi av filen slik at en annen app kan åpne den. Moony sletter kopien når du låser eller avslutter, men kan ikke slette det den andre appen lagrer selv.",
+      "dontAsk": "Ikke spør igjen",
+      "confirm": "Åpne"
+    }
   }
 }

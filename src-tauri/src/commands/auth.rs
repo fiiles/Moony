@@ -207,9 +207,15 @@ pub async fn confirm_recover(
 
 /// Lock account (logout)
 #[tauri::command]
-pub async fn logout(db: State<'_, Database>, local_api: State<'_, LocalApiServer>) -> Result<()> {
+pub async fn logout(
+    app: tauri::AppHandle,
+    db: State<'_, Database>,
+    local_api: State<'_, LocalApiServer>,
+) -> Result<()> {
     local_api.stop().await;
     auth::logout(&db);
+    // Decrypted copies opened in other apps go with the session (D3).
+    crate::commands::attachments::wipe_open_copies(&app);
     Ok(())
 }
 

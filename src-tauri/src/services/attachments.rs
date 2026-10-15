@@ -295,6 +295,156 @@ pub fn export_photo_batch(
 }
 
 // ============================================================================
+// Opening in another app
+// ============================================================================
+
+/// Folder under the app cache dir that holds decrypted copies opened in another app.
+pub const OPEN_COPIES_DIR: &str = "open";
+
+/// A file name that is safe on every platform: no separators, control or reserved characters, no
+/// trailing dots or spaces, not a reserved Windows device name, at most 120 characters with the
+/// extension kept.
+pub fn sanitize_file_name(name: &str) -> String {
+    const RESERVED: [&str; 22] = [
+        "CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8",
+        "COM9", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9",
+    ];
+    let cleaned: String = name
+        .chars()
+        .map(|c| match c {
+            '/' | '\\' | ':' | '*' | '?' | '"' | '<' | '>' | '|' => '_',
+            c if c.is_control() => '_',
+            c => c,
+        })
+        .collect();
+    let trimmed = cleaned.trim_matches(|c: char| c == ' ' || c == '.');
+    let mut out = if trimmed.is_empty() {
+        "document".to_string()
+    } else {
+        trimmed.to_string()
+    };
+    let stem = out
+        .split('.')
+        .next()
+        .unwrap_or_default()
+        .to_ascii_uppercase();
+    if RESERVED.contains(&stem.as_str()) {
+        out.insert(0, '_');
+    }
+    const MAX_CHARS: usize = 120;
+    if out.chars().count() > MAX_CHARS {
+        let ext = extension_of(&out)
+            .map(|e| format!(".{e}"))
+            .unwrap_or_default();
+        let keep = MAX_CHARS - ext.chars().count();
+        let stem: String = out.chars().take(keep).collect();
+        out = format!("{}{ext}", stem.trim_end_matches(['.', ' ']));
+    }
+    out
+}
+
+/// The usual extension of a MIME type, for a copy whose original name is unknown.
+fn extension_for_mime(mime: &str) -> Option<&'static str> {
+    Some(match mime {
+        "application/pdf" => "pdf",
+        "image/jpeg" => "jpg",
+        "image/png" => "png",
+        "image/gif" => "gif",
+        "image/webp" => "webp",
+        "image/heic" => "heic",
+        "text/plain" => "txt",
+        "text/csv" => "csv",
+        "application/msword" => "doc",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document" => "docx",
+        "application/vnd.ms-excel" => "xls",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" => "xlsx",
+        "application/vnd.oasis.opendocument.text" => "odt",
+        "application/vnd.oasis.opendocument.spreadsheet" => "ods",
+        "application/zip" => "zip",
+        _ => return None,
+    })
+}
+
+/// The name a document's copy gets: its original file name, or its display name with the
+/// extension its type implies.
+fn copy_file_name(
+    conn: &Connection,
+    kind: AttachmentKind,
+    id: &str,
+    resolved: &Resolved,
+) -> Result<String> {
+    if let Some(original) = &resolved.file_name {
+        return Ok(sanitize_file_name(original));
+    }
+    let display: String = match document_table(kind) {
+        Some((table, _)) => conn
+            .query_row(
+                &format!("SELECT name FROM {table} WHERE id = ?1"),
+                [id],
+                |r| r.get(0),
+            )
+            .optional()?
+            .unwrap_or_else(|| "document".into()),
+        None => format!("photo_{}", id.chars().take(8).collect::<String>()),
+    };
+    let ext = match &resolved.source {
+        Source::Legacy(path) => path.to_str().and_then(extension_of),
+        Source::Blob(_) => None,
+    }
+    .or_else(|| extension_for_mime(&resolved.mime).map(str::to_string));
+    Ok(sanitize_file_name(&match ext {
+        Some(ext) => format!("{display}.{ext}"),
+        None => display,
+    }))
+}
+
+/// Write a decrypted copy of a document for another app to open: a fresh private folder under
+/// `<cache dir>/open/`, readable by the user only. [`wipe_open_copies`] removes it again on lock,
+/// on exit and at the next start (D3).
+pub fn open_elsewhere(
+    conn: &Connection,
+    data_dir: &Path,
+    cache_dir: &Path,
+    kind: AttachmentKind,
+    id: &str,
+) -> Result<PathBuf> {
+    let resolved = resolve(conn, data_dir, kind, id, Variant::Full)?
+        .ok_or_else(|| AppError::NotFound("Attachment not found".into()))?;
+    let dir = cache_dir
+        .join(OPEN_COPIES_DIR)
+        .join(Uuid::new_v4().to_string());
+    fs::create_dir_all(&dir)
+        .map_err(|e| AppError::Internal(format!("Failed to create a folder for the copy: {e}")))?;
+    restrict_permissions(&dir, 0o700);
+    let path = dir.join(copy_file_name(conn, kind, id, &resolved)?);
+    write_to(conn, &resolved, &path)?;
+    restrict_permissions(&path, 0o600);
+    Ok(path)
+}
+
+#[cfg(unix)]
+fn restrict_permissions(path: &Path, mode: u32) {
+    use std::os::unix::fs::PermissionsExt;
+    if let Err(e) = fs::set_permissions(path, fs::Permissions::from_mode(mode)) {
+        log::warn!("[ATTACHMENTS] Could not restrict a temporary copy's permissions: {e}");
+    }
+}
+
+#[cfg(not(unix))]
+fn restrict_permissions(_path: &Path, _mode: u32) {}
+
+/// Delete every decrypted copy opened in another app. A file another app still holds (Windows)
+/// stays until the next wipe.
+pub fn wipe_open_copies(cache_dir: &Path) {
+    let dir = cache_dir.join(OPEN_COPIES_DIR);
+    if dir.exists() {
+        if let Err(e) = fs::remove_dir_all(&dir) {
+            log::warn!("[ATTACHMENTS] Some temporary copies could not be deleted yet: {e}");
+        }
+    }
+}
+
+// ============================================================================
 // Adding documents
 // ============================================================================
 
@@ -1155,5 +1305,89 @@ mod tests {
             delete_photo(&conn, data_dir.path(), "p1"),
             Err(AppError::NotFound(_))
         ));
+    }
+
+    #[test]
+    fn file_names_are_made_safe_everywhere() {
+        assert_eq!(sanitize_file_name("Kupní smlouva.pdf"), "Kupní smlouva.pdf");
+        assert_eq!(sanitize_file_name("../../etc/passwd"), "_.._etc_passwd");
+        assert_eq!(
+            sanitize_file_name("a:b*c?d\"e<f>g|h.pdf"),
+            "a_b_c_d_e_f_g_h.pdf"
+        );
+        assert_eq!(sanitize_file_name("tab\there.txt"), "tab_here.txt");
+        assert_eq!(sanitize_file_name("  ..trailing.. "), "trailing");
+        assert_eq!(sanitize_file_name(""), "document");
+        assert_eq!(sanitize_file_name("..."), "document");
+        assert_eq!(sanitize_file_name("CON.txt"), "_CON.txt");
+        assert_eq!(sanitize_file_name("nul"), "_nul");
+        let long = format!("{}.pdf", "x".repeat(300));
+        let cut = sanitize_file_name(&long);
+        assert_eq!(cut.chars().count(), 120);
+        assert!(cut.ends_with(".pdf"));
+    }
+
+    #[test]
+    fn a_document_opens_elsewhere_as_a_private_copy_that_the_wipe_removes() {
+        let conn = setup_test_db();
+        let data_dir = tempfile::tempdir().expect("data dir");
+        let cache_dir = tempfile::tempdir().expect("cache dir");
+        let picked = tempfile::tempdir().expect("picked");
+        let source = picked.path().join("Rozpis nákladů.xlsx");
+        fs::write(&source, b"PK\x03\x04 sheet").expect("source");
+        let doc = add_real_estate_document(&conn, "re", &source, &DOC, 0).expect("add");
+        // A legacy document whose name on disk is just `<uuid>.pdf`: the copy takes its display name.
+        let legacy_dir = data_dir.path().join(REAL_ESTATE_DOCUMENTS_DIR).join("re");
+        fs::create_dir_all(&legacy_dir).expect("mkdir");
+        let legacy_file = legacy_dir.join(format!("{UUID}.pdf"));
+        fs::write(&legacy_file, b"%PDF-1.4").expect("legacy");
+        conn.execute(
+            "INSERT INTO real_estate_documents (id, real_estate_id, name, file_path) VALUES ('old', 're', 'List vlastnictví', ?1)",
+            [legacy_file.to_str().expect("utf8")],
+        )
+        .expect("legacy row");
+
+        let copy = open_elsewhere(
+            &conn,
+            data_dir.path(),
+            cache_dir.path(),
+            AttachmentKind::RealEstateDocument,
+            &doc.id,
+        )
+        .expect("open");
+        assert_eq!(
+            copy.file_name().and_then(|n| n.to_str()),
+            Some("Rozpis nákladů.xlsx")
+        );
+        assert!(copy.starts_with(cache_dir.path().join(OPEN_COPIES_DIR)));
+        assert_eq!(fs::read(&copy).expect("copy"), b"PK\x03\x04 sheet".to_vec());
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mode = |p: &Path| fs::metadata(p).expect("meta").permissions().mode() & 0o777;
+            assert_eq!(mode(&copy), 0o600);
+            assert_eq!(mode(copy.parent().expect("dir")), 0o700);
+        }
+
+        let old = open_elsewhere(
+            &conn,
+            data_dir.path(),
+            cache_dir.path(),
+            AttachmentKind::RealEstateDocument,
+            "old",
+        )
+        .expect("open legacy");
+        assert_eq!(
+            old.file_name().and_then(|n| n.to_str()),
+            Some("List vlastnictví.pdf")
+        );
+
+        wipe_open_copies(cache_dir.path());
+        assert!(!cache_dir.path().join(OPEN_COPIES_DIR).exists());
+        assert!(
+            legacy_file.exists(),
+            "the wipe never touches the data folder"
+        );
+        wipe_open_copies(cache_dir.path());
     }
 }

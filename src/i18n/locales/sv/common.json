@@ -529,5 +529,21 @@
     "delete": "Ta bort värdering",
     "deleteTitle": "Ta bort den här värderingen?",
     "deleteDescription": "Värderingen på {{amount}} från {{date}} tas bort permanent. Marknadspriset följer den senaste kvarvarande värderingen."
+  },
+  "attachments": {
+    "viewer": {
+      "description": "Förhandsvisning av det bifogade dokumentet",
+      "loading": "Läser in förhandsvisningen…",
+      "failed": "Förhandsvisningen kunde inte visas. Du kan spara dokumentet eller öppna det i en annan app.",
+      "saveCopy": "Spara en kopia…",
+      "openElsewhere": "Öppna i en annan app",
+      "saved": "Kopian har sparats"
+    },
+    "openElsewhere": {
+      "title": "Öppna utanför Moony?",
+      "body": "Moony skapar en tillfällig okrypterad kopia av filen så att en annan app kan öppna den. Moony raderar kopian när du låser eller avslutar, men kan inte radera det som den andra appen sparar själv.",
+      "dontAsk": "Fråga inte igen",
+      "confirm": "Öppna"
+    }
   }
 }

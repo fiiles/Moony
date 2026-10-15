@@ -533,5 +533,21 @@
     "delete": "Eliminar valoración",
     "deleteTitle": "¿Eliminar esta valoración?",
     "deleteDescription": "La valoración de {{amount}} del {{date}} se eliminará de forma permanente. El precio de mercado pasará a ser el de la valoración más reciente que quede."
+  },
+  "attachments": {
+    "viewer": {
+      "description": "Vista previa del documento adjunto",
+      "loading": "Cargando la vista previa…",
+      "failed": "No se pudo mostrar la vista previa. Puede guardar el documento o abrirlo en otra aplicación.",
+      "saveCopy": "Guardar una copia…",
+      "openElsewhere": "Abrir en otra aplicación",
+      "saved": "Copia guardada"
+    },
+    "openElsewhere": {
+      "title": "¿Abrir fuera de Moony?",
+      "body": "Moony crea una copia temporal sin cifrar del archivo para que otra aplicación pueda abrirlo. Moony elimina la copia al bloquearse o cerrarse, pero no puede eliminar lo que la otra aplicación guarde por su cuenta.",
+      "dontAsk": "No volver a preguntar",
+      "confirm": "Abrir"
+    }
   }
 }

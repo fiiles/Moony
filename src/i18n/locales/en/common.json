@@ -529,5 +529,21 @@
     "delete": "Delete valuation",
     "deleteTitle": "Delete this valuation?",
     "deleteDescription": "The valuation of {{amount}} from {{date}} will be permanently removed. The market price follows the newest remaining valuation."
+  },
+  "attachments": {
+    "viewer": {
+      "description": "Preview of the attached document",
+      "loading": "Loading the preview…",
+      "failed": "The preview could not be shown. You can save the document or open it in another app.",
+      "saveCopy": "Save a copy…",
+      "openElsewhere": "Open in another app",
+      "saved": "Copy saved"
+    },
+    "openElsewhere": {
+      "title": "Open outside Moony?",
+      "body": "Moony creates a temporary unencrypted copy of the file so another app can open it. Moony deletes the copy when you lock or quit it, but it can't delete what the other app saves on its own.",
+      "dontAsk": "Don't ask again",
+      "confirm": "Open"
+    }
   }
 }

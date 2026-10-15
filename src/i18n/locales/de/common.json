@@ -529,5 +529,21 @@
     "delete": "Bewertung löschen",
     "deleteTitle": "Bewertung löschen?",
     "deleteDescription": "Die Bewertung von {{amount}} vom {{date}} wird dauerhaft entfernt. Der Marktpreis folgt der neuesten verbleibenden Bewertung."
+  },
+  "attachments": {
+    "viewer": {
+      "description": "Vorschau des angehängten Dokuments",
+      "loading": "Vorschau wird geladen…",
+      "failed": "Die Vorschau konnte nicht angezeigt werden. Sie können das Dokument speichern oder in einer anderen App öffnen.",
+      "saveCopy": "Kopie speichern…",
+      "openElsewhere": "In anderer App öffnen",
+      "saved": "Kopie gespeichert"
+    },
+    "openElsewhere": {
+      "title": "Außerhalb von Moony öffnen?",
+      "body": "Moony erstellt eine vorübergehende unverschlüsselte Kopie der Datei, damit eine andere App sie öffnen kann. Moony löscht die Kopie beim Sperren oder Beenden, kann aber nicht löschen, was die andere App selbst speichert.",
+      "dontAsk": "Nicht mehr fragen",
+      "confirm": "Öffnen"
+    }
   }
 }

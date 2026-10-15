@@ -56,6 +56,11 @@ pub async fn run() {
         .setup(|app| {
             logging::log_startup_banner();
             spawn_legacy_temp_cleanup(app.handle().clone());
+            // Decrypted copies opened in other apps never outlive a run (D3).
+            let handle = app.handle().clone();
+            tauri::async_runtime::spawn_blocking(move || {
+                commands::attachments::wipe_open_copies(&handle)
+            });
             Ok(())
         })
         .plugin(tauri_plugin_opener::init())
@@ -406,6 +411,11 @@ pub async fn run() {
             commands::categorization::update_custom_rule,
             commands::categorization::delete_custom_rule,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|app, event| {
+            if let tauri::RunEvent::Exit = event {
+                commands::attachments::wipe_open_copies(app);
+            }
+        });
 }

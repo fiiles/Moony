@@ -19,6 +19,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { ConfirmDeleteDialog } from '@/components/common/ConfirmDeleteDialog';
+import { useDocumentOpener } from '@/components/attachments/use-document-opener';
 
 interface InsuranceDocumentsProps {
   insuranceId: string;
@@ -66,13 +67,7 @@ export function InsuranceDocuments({ insuranceId, onAdd }: InsuranceDocumentsPro
     },
   });
 
-  const openDocument = async (documentId: string) => {
-    try {
-      await insuranceApi.openDocument(documentId);
-    } catch (error) {
-      toast.error(tc('status.error'), { description: String(error) });
-    }
-  };
+  const { openDocument, dialogs: documentDialogs } = useDocumentOpener('insurance-document');
 
   return (
     <>
@@ -140,7 +135,7 @@ export function InsuranceDocuments({ insuranceId, onAdd }: InsuranceDocumentsPro
                         size="icon-sm"
                         aria-label={t('documents.open')}
                         title={t('documents.open')}
-                        onClick={() => openDocument(doc.id)}
+                        onClick={() => openDocument(doc)}
                       >
                         <ExternalLink />
                       </Button>
@@ -172,6 +167,7 @@ export function InsuranceDocuments({ insuranceId, onAdd }: InsuranceDocumentsPro
         isPending={deleteMutation.isPending}
         confirmLabel={t('documents.delete')}
       />
+      {documentDialogs}
     </>
   );
 }

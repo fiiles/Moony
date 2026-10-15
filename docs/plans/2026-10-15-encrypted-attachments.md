@@ -30,8 +30,8 @@ npm run lint && npm run typecheck && npm test
 | 0. Spike: pdf.js and a custom scheme under the app CSP | done — works without widening the CSP; see "Task 0 outcome" | spike branch `spike/pdfjs-csp` 999635de (not merged) |
 | 1. Store: `attachments.db`, `files` schema, store service | done — demo unlock created an encrypted `attachments.db` (store version 1) | 1c2f191a |
 | 2. Migration 021, wire contract, `moony-file:` scheme serving legacy files, frontend switch | done — see note | 0154c748 |
-| 3. New photos and documents go into the store; deletes remove blobs | done — live demo: a raw-body photo and a PDF/.docx landed as blobs (no new files, no plaintext bytes in `attachments.db`); deleting a document and a legacy and a new batch answered 404 and removed the legacy files and their emptied folders | this commit |
-| 4. Viewer, save a copy, open elsewhere, temp copy wiping | pending | — |
+| 3. New photos and documents go into the store; deletes remove blobs | done — live demo: a raw-body photo and a PDF/.docx landed as blobs (no new files, no plaintext bytes in `attachments.db`); deleting a document and a legacy and a new batch answered 404 and removed the legacy files and their emptied folders | c7ae7aa7 |
+| 4. Viewer, save a copy, open elsewhere, temp copy wiping | done — live demo (dev bridge): a text PDF and a JPEG 2000 PDF rendered in the viewer (JPX centre pixel exact), a .docx showed the D3 dialog, `logout` removed `<cache>/open` with a planted leftover; `npm run build` emits the 200 pdf.js assets (3.9 MB) under `dist/pdfjs/`. Not yet seen in a production WKWebView window (the spike covered pdf.js, CORS and CSP there): Task 8 | this commit |
 | 5. Conversion of plain files, status and leftovers in Settings → Data | pending | — |
 | 6. Backup format 2, restore, integrity, delete account | pending | — |
 | 7. Tooling, recovery-key copy, living docs, ADR 0017 accepted | pending | — |

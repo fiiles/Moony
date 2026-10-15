@@ -210,32 +210,20 @@ pub async fn delete_insurance_document(
     })
 }
 
-/// Open an insurance document with the system default application
+/// Open an insurance document in the system default application, through a temporary decrypted
+/// copy (D3)
 #[tauri::command]
 pub async fn open_insurance_document(
     app: tauri::AppHandle,
     db: State<'_, Database>,
     document_id: String,
 ) -> Result<()> {
-    let file_path: String = db.with_conn(|conn| {
-        conn.query_row(
-            "SELECT file_path FROM insurance_documents WHERE id = ?1",
-            [&document_id],
-            |row| row.get(0),
-        )
-        .map_err(|_| AppError::NotFound("Document not found".into()))
-    })?;
-
-    let app_data_dir = app
-        .path()
-        .app_data_dir()
-        .map_err(|e| AppError::Internal(format!("Failed to get app data dir: {}", e)))?;
-    let resolved = crate::services::document_files::resolve_document_path(
-        &app_data_dir,
-        "insurance_documents",
-        &file_path,
-    )?;
-    crate::services::document_files::open_with_system(&resolved)
+    crate::commands::attachments::open_elsewhere(
+        &app,
+        &db,
+        crate::models::AttachmentKind::InsuranceDocument,
+        &document_id,
+    )
 }
 
 // ============================================================================

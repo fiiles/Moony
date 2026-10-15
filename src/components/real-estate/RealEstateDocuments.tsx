@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 import { Plus, FileText, File, ExternalLink, Trash2, FileCheck, Home } from 'lucide-react';
 import { ConfirmDeleteDialog } from '@/components/common/ConfirmDeleteDialog';
+import { useDocumentOpener } from '@/components/attachments/use-document-opener';
 import { AddRealEstateDocumentModal } from './AddRealEstateDocumentModal';
 import { useFormat } from '@/lib/use-format';
 
@@ -60,13 +61,7 @@ export function RealEstateDocuments({ realEstateId }: RealEstateDocumentsProps) 
     },
   });
 
-  const openDocument = async (documentId: string) => {
-    try {
-      await realEstateApi.openDocument(documentId);
-    } catch (error) {
-      toast.error(tc('status.error'), { description: String(error) });
-    }
-  };
+  const { openDocument, dialogs: documentDialogs } = useDocumentOpener('real-estate-document');
 
   return (
     <>
@@ -118,7 +113,7 @@ export function RealEstateDocuments({ realEstateId }: RealEstateDocumentsProps) 
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => openDocument(doc.id)}
+                      onClick={() => openDocument(doc)}
                       title={t('documents.open')}
                     >
                       <ExternalLink className="h-4 w-4" />
@@ -167,6 +162,7 @@ export function RealEstateDocuments({ realEstateId }: RealEstateDocumentsProps) 
         onConfirm={() => deletingDocument && deleteMutation.mutate(deletingDocument.id)}
         isPending={deleteMutation.isPending}
       />
+      {documentDialogs}
     </>
   );
 }

@@ -537,5 +537,21 @@
     "delete": "Usuń wycenę",
     "deleteTitle": "Usunąć tę wycenę?",
     "deleteDescription": "Wycena {{amount}} z dnia {{date}} zostanie trwale usunięta. Cena rynkowa przejmie wartość z najnowszej pozostałej wyceny."
+  },
+  "attachments": {
+    "viewer": {
+      "description": "Podgląd załączonego dokumentu",
+      "loading": "Wczytywanie podglądu…",
+      "failed": "Nie udało się wyświetlić podglądu. Możesz zapisać dokument lub otworzyć go w innej aplikacji.",
+      "saveCopy": "Zapisz kopię…",
+      "openElsewhere": "Otwórz w innej aplikacji",
+      "saved": "Kopia zapisana"
+    },
+    "openElsewhere": {
+      "title": "Otworzyć poza Moony?",
+      "body": "Moony tworzy tymczasową niezaszyfrowaną kopię pliku, aby inna aplikacja mogła go otworzyć. Moony usuwa kopię przy zablokowaniu lub zamknięciu, ale nie może usunąć tego, co inna aplikacja zapisze sama.",
+      "dontAsk": "Nie pytaj ponownie",
+      "confirm": "Otwórz"
+    }
   }
 }

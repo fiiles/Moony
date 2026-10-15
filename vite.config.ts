@@ -2,6 +2,7 @@ import { defineConfig, type Plugin, type WebSocketClient } from 'vite';
 import { configDefaults } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import path from 'path';
+import { readdirSync, readFileSync, statSync } from 'fs';
 
 // @ts-expect-error process is a nodejs global
 const host = process.env.TAURI_DEV_HOST;
@@ -124,9 +125,51 @@ function moonyBrowserBridge(): Plugin {
   };
 }
 
+// pdf.js loads its wasm decoders (and their JS fallbacks), standard fonts, CMaps and ICC profiles
+// by URL at runtime. They are served and bundled from node_modules under /pdfjs/, so the viewer
+// stays on 'self' under the app CSP (plan Task 0 outcome).
+function pdfjsAssets(): Plugin {
+  const root = path.resolve(import.meta.dirname, 'node_modules/pdfjs-dist');
+  const dirs = ['wasm', 'standard_fonts', 'cmaps', 'iccs'];
+  const files = () =>
+    dirs.flatMap((dir) =>
+      readdirSync(path.join(root, dir))
+        .map((name) => `${dir}/${name}`)
+        .filter((rel) => statSync(path.join(root, rel)).isFile())
+    );
+  const contentType = (rel: string) =>
+    rel.endsWith('.wasm')
+      ? 'application/wasm'
+      : /\.m?js$/.test(rel)
+        ? 'text/javascript'
+        : 'application/octet-stream';
+
+  return {
+    name: 'moony-pdfjs-assets',
+    configureServer(server) {
+      server.middlewares.use('/pdfjs', (req, res, next) => {
+        const url = (req as { url?: string }).url ?? '/';
+        const rel = decodeURIComponent(url.split('?')[0]).replace(/^\/+/, '');
+        if (!files().includes(rel)) return next();
+        res.setHeader('Content-Type', contentType(rel));
+        res.end(readFileSync(path.join(root, rel)));
+      });
+    },
+    generateBundle() {
+      for (const rel of files()) {
+        this.emitFile({
+          type: 'asset',
+          fileName: `pdfjs/${rel}`,
+          source: readFileSync(path.join(root, rel)),
+        });
+      }
+    },
+  };
+}
+
 // https://vite.dev/config/
 export default defineConfig(async ({ mode }) => ({
-  plugins: [react(), ...(mode === 'test' ? [] : [moonyBrowserBridge()])],
+  plugins: [react(), ...(mode === 'test' ? [] : [moonyBrowserBridge(), pdfjsAssets()])],
 
   resolve: {
     alias: {

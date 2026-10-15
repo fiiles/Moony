@@ -1,4 +1,5 @@
-//! Attachment export commands (thin wrappers over `services::attachments`).
+//! Attachment commands: exports, opening in another app, and wiping the temporary copies (thin
+//! wrappers over `services::attachments`).
 
 use std::path::PathBuf;
 
@@ -7,7 +8,7 @@ use tauri::{AppHandle, Manager, State};
 use crate::db::Database;
 use crate::error::{AppError, Result};
 use crate::models::AttachmentKind;
-use crate::services::attachments;
+use crate::services::{attachments, document_files};
 
 fn data_dir(app: &AppHandle) -> Result<PathBuf> {
     app.path()
@@ -40,4 +41,32 @@ pub async fn export_photo_batch(
     db.with_conn(|conn| {
         attachments::export_photo_batch(conn, &dir, &batch_id, &PathBuf::from(&dest_dir))
     })
+}
+
+fn cache_dir(app: &AppHandle) -> Result<PathBuf> {
+    app.path()
+        .app_cache_dir()
+        .map_err(|e| AppError::Internal(format!("Failed to get app cache dir: {e}")))
+}
+
+/// Write a decrypted copy of a document into the app cache folder and open it in the system app
+/// (D3). The copy is wiped on lock, on exit and at the next start.
+pub(crate) fn open_elsewhere(
+    app: &AppHandle,
+    db: &Database,
+    kind: AttachmentKind,
+    id: &str,
+) -> Result<()> {
+    let data = data_dir(app)?;
+    let cache = cache_dir(app)?;
+    let path = db.with_conn(|conn| attachments::open_elsewhere(conn, &data, &cache, kind, id))?;
+    document_files::open_with_system(&path)
+}
+
+/// Delete the decrypted copies opened in other apps.
+pub fn wipe_open_copies(app: &AppHandle) {
+    match app.path().app_cache_dir() {
+        Ok(cache) => attachments::wipe_open_copies(&cache),
+        Err(e) => log::warn!("[ATTACHMENTS] Temporary copies not wiped: {e}"),
+    }
 }

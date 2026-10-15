@@ -608,32 +608,20 @@ pub async fn delete_real_estate_document(
     })
 }
 
-/// Open a real estate document with the system default application
+/// Open a real estate document in the system default application, through a temporary decrypted
+/// copy (D3)
 #[tauri::command]
 pub async fn open_real_estate_document(
     app: tauri::AppHandle,
     db: State<'_, Database>,
     document_id: String,
 ) -> Result<()> {
-    let file_path: String = db.with_conn(|conn| {
-        conn.query_row(
-            "SELECT file_path FROM real_estate_documents WHERE id = ?1",
-            [&document_id],
-            |row| row.get(0),
-        )
-        .map_err(|_| AppError::NotFound("Document not found".into()))
-    })?;
-
-    let app_data_dir = app
-        .path()
-        .app_data_dir()
-        .map_err(|e| AppError::Internal(format!("Failed to get app data dir: {}", e)))?;
-    let resolved = crate::services::document_files::resolve_document_path(
-        &app_data_dir,
-        "real_estate_documents",
-        &file_path,
-    )?;
-    crate::services::document_files::open_with_system(&resolved)
+    crate::commands::attachments::open_elsewhere(
+        &app,
+        &db,
+        AttachmentKind::RealEstateDocument,
+        &document_id,
+    )
 }
 
 // ---------------------------------------------------------------------------

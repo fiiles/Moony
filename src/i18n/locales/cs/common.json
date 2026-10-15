@@ -533,5 +533,21 @@
     "delete": "Smazat ocenění",
     "deleteTitle": "Smazat ocenění?",
     "deleteDescription": "Ocenění {{amount}} ze dne {{date}} bude trvale odstraněno. Tržní cena se převezme z nejnovějšího zbývajícího ocenění."
+  },
+  "attachments": {
+    "viewer": {
+      "description": "Náhled přiloženého dokumentu",
+      "loading": "Načítám náhled…",
+      "failed": "Náhled se nepodařilo zobrazit. Dokument můžete uložit, nebo otevřít v jiné aplikaci.",
+      "saveCopy": "Uložit kopii…",
+      "openElsewhere": "Otevřít v jiné aplikaci",
+      "saved": "Kopie uložena"
+    },
+    "openElsewhere": {
+      "title": "Otevřít mimo Moony?",
+      "body": "Moony vytvoří dočasnou nešifrovanou kopii souboru, aby ji mohla otevřít jiná aplikace. Kopii smaže při zamčení nebo zavření Moony. Co si ta aplikace uloží sama, smazat neumí.",
+      "dontAsk": "Příště se neptat",
+      "confirm": "Otevřít"
+    }
   }
 }

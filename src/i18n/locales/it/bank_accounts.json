@@ -422,6 +422,8 @@
     "rowMessage": "Pagamento {{line}}: {{message}}",
     "rowMessageDetail": "Pagamento {{line}}: {{message}} ({{detail}})",
     "notBooked": "Non ancora contabilizzato (solo informativo)",
+    "correctionSkipped": "Correzione di un pagamento precedente; non applicata",
+    "investmentIgnored": "Il file contiene anche operazioni di investimento. Non vengono importate; usa per queste l'importazione del broker.",
     "back": "Scegli un altro file",
     "openAccount": "Apri {{account}}"
   },

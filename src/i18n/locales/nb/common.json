@@ -284,6 +284,7 @@
     "statementUnsupportedVariant": "Moony kan ikke importere {{variant}}-filer. Eksporter heller en kontoutskrift i formatet CAMT.053, MT940, OFX eller QIF.",
     "statementNotRecognized": "Denne filen er ikke en kontoutskrift som Moony kan lese.",
     "statementNoStatements": "Filen inneholder ingen kontoutskrift.",
+    "statementInvestmentOnly": "Denne filen inneholder bare investeringstransaksjoner. Bruk meglerimporten for dem.",
     "statementMalformed": "Kontoutskriftsfilen er skadet eller ufullstendig ({{detail}}).",
     "statementIndexInvalid": "Velg en av kontoutskriftene i filen.",
     "statementDateOrderInvalid": "Datorekkefølgen kan bare velges for QIF-filer.",

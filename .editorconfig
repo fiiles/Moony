@@ -23,3 +23,8 @@ indent_style = tab
 [src-tauri/tests/fixtures/statements/mt940/*.sta]
 end_of_line = unset
 trim_trailing_whitespace = false
+
+# OFX fixtures keep the CRLF line endings and trailing spaces of the export they imitate.
+[src-tauri/tests/fixtures/statements/ofx/*.ofx]
+end_of_line = unset
+trim_trailing_whitespace = false

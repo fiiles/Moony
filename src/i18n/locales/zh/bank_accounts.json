@@ -396,6 +396,8 @@
     "rowMessage": "第 {{line}} 笔付款：{{message}}",
     "rowMessageDetail": "第 {{line}} 笔付款：{{message}}（{{detail}}）",
     "notBooked": "尚未入账（仅供参考）",
+    "correctionSkipped": "对之前一笔付款的更正；不予应用",
+    "investmentIgnored": "该文件还包含投资交易。这些交易不会被导入；请使用券商导入功能来导入它们。",
     "back": "选择其他文件",
     "openAccount": "打开 {{account}}"
   },

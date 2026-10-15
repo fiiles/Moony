@@ -284,6 +284,7 @@
     "statementUnsupportedVariant": "Moony 无法导入 {{variant}} 文件。请改为导出 CAMT.053、MT940、OFX 或 QIF 格式的账单。",
     "statementNotRecognized": "此文件不是 Moony 可以读取的账单。",
     "statementNoStatements": "文件中不包含任何账户账单。",
+    "statementInvestmentOnly": "该文件仅包含投资交易。请使用券商导入功能来导入。",
     "statementMalformed": "账单文件已损坏或不完整（{{detail}}）。",
     "statementIndexInvalid": "请选择文件中的一份账单。",
     "statementDateOrderInvalid": "只有 QIF 文件才能选择日期顺序。",

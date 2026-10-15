@@ -25,6 +25,7 @@ All notable changes to Moony are documented in this file. The format follows
   import already covers (CSV too). The dialog and the buttons that open it are now called "Import
   statement" instead of "Import CSV". CSV files import as before.
 - **MT940 statements**, including the common German, Dutch and free-text payment details.
+- **OFX and QFX statements** (bank and credit card), from banks and from other finance apps.
 
 ### Changed
 

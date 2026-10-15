@@ -34,8 +34,9 @@ migration for a label nothing branches on).
   does everything else: duplicate check, categorization, the batch record and the writes.
   `preview_import` and `import_transactions` are `parse_rows` plus that core, and the CSV tests
   pass unchanged.
-- **Own parsers.** The only new dependency is `quick-xml` (CAMT, later OFX 2.x). The parsers are
-  pure functions from text to statements: no database access and no I/O.
+- **Own parsers.** The only new dependency is `quick-xml` (CAMT). OFX has a tag scanner of its
+  own, because 1.x is SGML whose leaf elements are not closed, and reads 2.x with it too. The
+  parsers are pure functions from text to statements: no database access and no I/O.
 - **The format comes from the content.** `detect` reads the first 4 KB and decides on what is
   there, never on the extension. A file that is none of the four formats goes to the CSV path
   unchanged. Variants Moony recognizes and does not read are refused with their own message
@@ -52,9 +53,10 @@ migration for a label nothing branches on).
 - **No migration.** `data_source` stays `csv_import`, which now means "imported from a file". The
   batch's `file_name` shows what was imported, and `csv_import_batches` keeps its name.
 
-Phase 1 shipped the pipeline and CAMT.053, phase 2 adds MT940 (its `:86:` text in the German
-subfield, Dutch slash and free-text dialects). OFX/QFX and QIF follow in later phases on the same
-pipeline and are answered with `validation.statementFormatNotYetSupported` until then.
+Phase 1 shipped the pipeline and CAMT.053, phase 2 added MT940 (its `:86:` text in the German
+subfield, Dutch slash and free-text dialects), phase 3 adds OFX/QFX (bank and credit card
+statements; investment statements are refused or warned about). QIF follows in a later phase on
+the same pipeline and is answered with `validation.statementFormatNotYetSupported` until then.
 
 ## Consequences
 

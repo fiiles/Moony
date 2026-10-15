@@ -409,6 +409,8 @@
     "rowMessage": "Zahlung {{line}}: {{message}}",
     "rowMessageDetail": "Zahlung {{line}}: {{message}} ({{detail}})",
     "notBooked": "Noch nicht gebucht (nur zur Information)",
+    "correctionSkipped": "Korrektur einer früheren Zahlung; wird nicht angewendet",
+    "investmentIgnored": "Die Datei enthält auch Wertpapiertransaktionen. Diese werden nicht importiert; nutzen Sie dafür den Broker-Import.",
     "back": "Andere Datei wählen",
     "openAccount": "{{account}} öffnen"
   },

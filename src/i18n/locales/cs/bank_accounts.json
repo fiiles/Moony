@@ -428,6 +428,8 @@
     "rowMessage": "Pohyb {{line}}: {{message}}",
     "rowMessageDetail": "Pohyb {{line}}: {{message}} ({{detail}})",
     "notBooked": "Zatím nezaúčtováno (jen informativně)",
+    "correctionSkipped": "Oprava dřívějšího pohybu; neprovádí se",
+    "investmentIgnored": "Soubor obsahuje i investiční transakce. Ty se neimportují; použijte pro ně import od brokera.",
     "back": "Vybrat jiný soubor",
     "openAccount": "Otevřít účet {{account}}"
   },

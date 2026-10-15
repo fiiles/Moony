@@ -10,11 +10,11 @@ use super::model::malformed;
 
 /// Real statements nest about a dozen levels; a deeper document is refused instead of
 /// building a tree whose recursive drop could overflow the stack.
-const MAX_DEPTH: usize = 128;
+pub(super) const MAX_DEPTH: usize = 128;
 
 /// A statement file is at most 50 MB, so a tree of this many elements is far beyond any real
 /// statement and would only be built to exhaust memory (`<a/>` is four bytes).
-const MAX_NODES: usize = 2_000_000;
+pub(super) const MAX_NODES: usize = 2_000_000;
 
 /// One element: local name (no prefix), decoded attributes, its own text and children.
 #[derive(Debug, Clone, Default)]
@@ -122,7 +122,7 @@ fn parse_xml_with_limits(text: &str, max_depth: usize, max_nodes: usize) -> Resu
 }
 
 /// Counts one more element and refuses the document past `max_nodes`.
-fn count_node(nodes: &mut usize, max_nodes: usize) -> Result<()> {
+pub(super) fn count_node(nodes: &mut usize, max_nodes: usize) -> Result<()> {
     *nodes += 1;
     if *nodes > max_nodes {
         return Err(malformed(&format!(

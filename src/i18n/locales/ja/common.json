@@ -284,6 +284,7 @@
     "statementUnsupportedVariant": "Moonyは{{variant}}ファイルをインポートできません。代わりにCAMT.053、MT940、OFX、またはQIF形式の明細をエクスポートしてください。",
     "statementNotRecognized": "このファイルはMoonyが読み取れる明細ではありません。",
     "statementNoStatements": "ファイルに口座明細が含まれていません。",
+    "statementInvestmentOnly": "このファイルには投資取引のみが含まれています。投資取引には証券会社用のインポートをご利用ください。",
     "statementMalformed": "明細ファイルが破損しているか、不完全です（{{detail}}）。",
     "statementIndexInvalid": "ファイル内の明細を1つ選択してください。",
     "statementDateOrderInvalid": "日付の順序を選択できるのはQIFファイルのみです。",

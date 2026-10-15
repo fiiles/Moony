@@ -396,6 +396,8 @@
     "rowMessage": "支払い {{line}}：{{message}}",
     "rowMessageDetail": "支払い {{line}}：{{message}}（{{detail}}）",
     "notBooked": "未記帳（参考情報のみ）",
+    "correctionSkipped": "以前の支払いの訂正です。適用されません",
+    "investmentIgnored": "このファイルには投資取引も含まれています。それらはインポートされません。投資取引には証券会社用のインポートをご利用ください。",
     "back": "別のファイルを選ぶ",
     "openAccount": "{{account}} を開く"
   },

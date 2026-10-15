@@ -145,6 +145,122 @@ fn mt940_imports_through_the_same_pipeline() {
     );
 }
 
+fn us_db() -> rusqlite::Connection {
+    let conn = db();
+    conn.execute_batch(
+        "INSERT INTO bank_accounts (id, name, currency, bban) VALUES
+           ('us', 'Checking', 'USD', '021000021123456789');",
+    )
+    .unwrap();
+    conn
+}
+
+#[test]
+fn inspect_ofx_matches_a_us_account_by_routing_and_account_number() {
+    let conn = us_db();
+    let insp = inspect(&conn, "us", &fixture("ofx/checking-sgml.ofx"), None)
+        .unwrap()
+        .unwrap();
+    assert_eq!(insp.format, StatementFormat::Ofx);
+    assert!(insp.warnings.is_empty());
+    assert_eq!(insp.statements.len(), 1);
+    let s = &insp.statements[0];
+    // the correction is shown, not imported
+    assert_eq!(
+        (
+            s.entry_count,
+            s.skipped_count,
+            s.balance_check,
+            s.account_match
+        ),
+        (2, 1, BalanceCheck::Unavailable, AccountMatch::Selected)
+    );
+    assert_eq!(s.currency.as_deref(), Some("USD"));
+    let other = inspect(&conn, "acc", &fixture("ofx/checking-sgml.ofx"), None)
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        (
+            other.statements[0].account_match,
+            other.statements[0].matched_account_id.as_deref()
+        ),
+        (AccountMatch::Other, Some("us"))
+    );
+}
+
+#[test]
+fn ofx_imports_through_the_same_pipeline() {
+    let mut conn = us_db();
+    let bytes = fixture("ofx/checking-sgml.ofx");
+    let first = import(
+        &mut conn,
+        "us",
+        "checking.ofx",
+        &bytes,
+        None,
+        &options(),
+        None,
+    )
+    .unwrap();
+    assert_eq!((first.imported_count, first.skipped_filtered), (2, 1));
+    assert_eq!(first.statement_balance.unwrap().amount, "1250.5");
+    let again = import(
+        &mut conn,
+        "us",
+        "checking.ofx",
+        &bytes,
+        None,
+        &options(),
+        None,
+    )
+    .unwrap();
+    assert_eq!(
+        (again.imported_count, again.skipped_duplicates.len()),
+        (0, 2)
+    );
+}
+
+#[test]
+fn inspect_qfx_credit_card_is_a_statement_of_another_account() {
+    let conn = db();
+    let insp = inspect(&conn, "acc", &fixture("ofx/card-xml.qfx"), None)
+        .unwrap()
+        .unwrap();
+    assert_eq!(insp.format, StatementFormat::Ofx);
+    let s = &insp.statements[0];
+    assert_eq!(
+        s.account_identifier.as_deref(),
+        Some("DE89370400440532013000")
+    );
+    assert_eq!(
+        (s.entry_count, s.account_match, s.currency.as_deref()),
+        (1, AccountMatch::NoMatch, Some("EUR"))
+    );
+    assert_eq!(
+        s.closing_balance.as_ref().map(|b| b.amount.as_str()),
+        Some("-12.3")
+    );
+}
+
+#[test]
+fn ofx_investment_transactions_warn_or_refuse() {
+    let conn = us_db();
+    let mixed = String::from_utf8(fixture("ofx/checking-sgml.ofx"))
+        .unwrap()
+        .replace(
+            "</OFX>",
+            "<INVSTMTMSGSRSV1><INVSTMTTRNRS><INVSTMTRS></INVSTMTRS></INVSTMTTRNRS></INVSTMTMSGSRSV1></OFX>",
+        );
+    let insp = inspect(&conn, "us", mixed.as_bytes(), None)
+        .unwrap()
+        .unwrap();
+    assert_eq!(insp.warnings.len(), 1);
+    assert_eq!(insp.warnings[0].key, "statementImport.investmentIgnored");
+    assert_eq!(insp.statements.len(), 1);
+    let err = inspect(&conn, "us", &fixture("ofx/investment-only.ofx"), None).unwrap_err();
+    assert_eq!(err.keyed().unwrap().0, "validation.statementInvestmentOnly");
+}
+
 #[test]
 fn pending_is_promoted_by_its_booked_successor() {
     let mut conn = db();

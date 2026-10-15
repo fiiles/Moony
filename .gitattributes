@@ -1,2 +1,4 @@
 # MT940 fixtures keep the line endings and trailing spaces of the bank export they imitate.
 src-tauri/tests/fixtures/statements/mt940/*.sta -text
+# OFX fixtures keep the CRLF line endings and trailing spaces of the export they imitate.
+src-tauri/tests/fixtures/statements/ofx/*.ofx -text

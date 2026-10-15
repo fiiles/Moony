@@ -409,6 +409,8 @@
     "rowMessage": "Betalning {{line}}: {{message}}",
     "rowMessageDetail": "Betalning {{line}}: {{message}} ({{detail}})",
     "notBooked": "Inte bokförd än (endast information)",
+    "correctionSkipped": "En rättelse av en tidigare betalning; tillämpas inte",
+    "investmentIgnored": "Filen innehåller även investeringstransaktioner. De importeras inte; använd mäklarimporten för dem.",
     "back": "Välj en annan fil",
     "openAccount": "Öppna {{account}}"
   },

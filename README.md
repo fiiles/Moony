@@ -39,9 +39,9 @@ tablet app, or a budget shared by a household (one profile on one computer, no s
   insurance and other assets. A *What's coming up* agenda lists insurance notice deadlines,
   fixed-rate ends, maturities, larger payments and watchlist targets that were reached.
 - **Bank accounts** with statement import (CSV with 16 bank presets and column detection for other
-  files, and CAMT.053 and MT940 statements; a preview, duplicate skipping, one-click undo) and an
-  account page built around dated balance records. Categorization uses your own rules, rules
-  learned from your choices and rule packs for many countries.
+  files, and CAMT.053, MT940 and OFX/QFX statements; a preview, duplicate skipping, one-click
+  undo) and an account page built around dated balance records. Categorization uses your own
+  rules, rules learned from your choices and rule packs for many countries.
 - **Stocks** with prices from Yahoo Finance (or set by hand), dividends and a watchlist that
   never counts toward net worth. Broker CSV import reads XTB, Trading 212, Degiro and
   Interactive Brokers exports and your own table. The analysis shows time-weighted and

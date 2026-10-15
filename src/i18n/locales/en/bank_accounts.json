@@ -409,6 +409,8 @@
     "rowMessage": "Payment {{line}}: {{message}}",
     "rowMessageDetail": "Payment {{line}}: {{message}} ({{detail}})",
     "notBooked": "Not booked yet (information only)",
+    "correctionSkipped": "A correction of an earlier payment; not applied",
+    "investmentIgnored": "The file also contains investment transactions. They are not imported; use the broker import for those.",
     "back": "Choose another file",
     "openAccount": "Open {{account}}"
   },

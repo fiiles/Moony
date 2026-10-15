@@ -284,6 +284,7 @@
     "statementUnsupportedVariant": "Moony nie importuje plików {{variant}}. Wyeksportuj wyciąg w formacie CAMT.053, MT940, OFX lub QIF.",
     "statementNotRecognized": "Ten plik nie jest wyciągiem, który Moony potrafi odczytać.",
     "statementNoStatements": "Plik nie zawiera żadnego wyciągu z konta.",
+    "statementInvestmentOnly": "Ten plik zawiera wyłącznie transakcje inwestycyjne. Użyj do nich importu od brokera.",
     "statementMalformed": "Plik wyciągu jest uszkodzony lub niekompletny ({{detail}}).",
     "statementIndexInvalid": "Wybierz jeden z wyciągów w pliku.",
     "statementDateOrderInvalid": "Kolejność daty można wybrać tylko dla plików QIF.",

@@ -14,6 +14,7 @@ pub(crate) mod detect;
 pub mod merge;
 pub mod model;
 pub mod mt940;
+pub mod ofx;
 #[cfg(test)]
 mod service_tests;
 #[cfg(test)]
@@ -83,7 +84,15 @@ pub fn load(
             statements: mt940::parse(&decoded.text)?,
             ..Parsed::default()
         },
-        StatementFormat::Ofx | StatementFormat::Qif => {
+        StatementFormat::Ofx => {
+            let ofx = ofx::parse(&decoded.text)?;
+            Parsed {
+                statements: ofx.statements,
+                warnings: ofx.warnings,
+                ..Parsed::default()
+            }
+        }
+        StatementFormat::Qif => {
             return Err(AppError::validation_with(
                 "validation.statementFormatNotYetSupported",
                 json!({ "format": format.label() }),

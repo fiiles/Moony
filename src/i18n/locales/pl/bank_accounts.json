@@ -435,6 +435,8 @@
     "rowMessage": "Płatność {{line}}: {{message}}",
     "rowMessageDetail": "Płatność {{line}}: {{message}} ({{detail}})",
     "notBooked": "Jeszcze niezaksięgowana (tylko informacyjnie)",
+    "correctionSkipped": "Korekta wcześniejszej płatności; nie jest stosowana",
+    "investmentIgnored": "Plik zawiera także transakcje inwestycyjne. Nie są one importowane; użyj do nich importu od brokera.",
     "back": "Wybierz inny plik",
     "openAccount": "Otwórz konto {{account}}"
   },

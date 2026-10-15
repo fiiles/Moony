@@ -2,6 +2,7 @@
 //!
 //! Handles SQLCipher encrypted database connections and migrations
 
+pub mod files_schema;
 mod migrations;
 
 pub use migrations::{applied_migration_names, known_migration_names};
@@ -85,6 +86,8 @@ impl Database {
         //: a failed upgrade must never leave the only copy half-migrated.
         run_migrations_with_backup(&conn, &path)?;
 
+        attach_attachments_store(&conn, &path);
+
         // Load exchange rates from database for offline use
         if let Err(e) = crate::services::currency::load_rates_from_db(&conn) {
             log::warn!("[DB] Warning: Failed to load exchange rates: {}", e);
@@ -149,6 +152,8 @@ impl Database {
 
         // Run migrations to create schema
         migrations::run_migrations(&conn)?;
+
+        attach_attachments_store(&conn, &path);
 
         // Note: No exchange rates to load on fresh database
 
@@ -259,6 +264,15 @@ impl Database {
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner)
             .clone()
+    }
+}
+
+/// Attach `attachments.db` next to the main file (ADR 0017). A store that cannot be opened (damaged,
+/// or from another profile) must not lock the user out of their finances: the profile opens
+/// without it, the file is left as it is, and every attachment call reports the store unavailable.
+fn attach_attachments_store(conn: &Connection, db_path: &std::path::Path) {
+    if let Err(e) = files_schema::attach(conn, &files_schema::attachments_path(db_path)) {
+        log::warn!("[ATTACHMENTS] The attachments store is unavailable: {e}");
     }
 }
 

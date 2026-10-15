@@ -2,6 +2,7 @@
 //!
 //! Services contain the core business logic and external API integrations
 
+pub mod attachment_store;
 pub mod auth;
 pub mod backfill;
 pub mod backup;

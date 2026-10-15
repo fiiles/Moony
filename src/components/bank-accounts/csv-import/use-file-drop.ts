@@ -5,7 +5,7 @@ import { pickDroppedFile } from './import-config';
 interface UseFileDropOptions {
   /** Listen only while the drop zone is on screen. */
   enabled: boolean;
-  /** Called with the first .csv/.txt path of a drop. */
+  /** Called with the first importable path of a drop (CSV or a statement file). */
   onFile: (path: string) => void;
   /** Called when something was dropped but no path was importable. */
   onRejected?: () => void;

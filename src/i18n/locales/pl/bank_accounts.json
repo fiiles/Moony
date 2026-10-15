@@ -178,8 +178,7 @@
     "descriptionNoName": "Transakcja z {{date}} ({{amount}}) zostanie usunięta na stałe. Tej operacji nie można cofnąć."
   },
   "csvImport": {
-    "button": "Importuj CSV",
-    "title": "Importuj transakcje z CSV",
+    "title": "Import wyciągu",
     "selectFile": "Wybierz plik CSV wyeksportowany z banku",
     "mapColumns": "Przypisz kolumny CSV do pól transakcji",
     "importing": "Importowanie transakcji...",
@@ -216,7 +215,7 @@
     "dropActive": "Upuść plik, aby go otworzyć",
     "dropHint": "lub wybierz plik z komputera",
     "chooseFile": "Wybierz plik",
-    "unsupportedFile": "Można importować tylko pliki .csv i .txt.",
+    "unsupportedFile": "Tego typu pliku nie można zaimportować.",
     "bankPreset": "Bank",
     "presetAuto": "Wykryj automatycznie",
     "detected": "Wykryto",
@@ -305,15 +304,14 @@
       "setBalanceHint": "Import nigdy nie zmienia salda konta; ta opcja stosuje saldo końcowe z wyciągu.",
       "done": "Gotowe"
     },
-    "importCsv": "Importuj CSV",
     "steps": {
       "file": "Plik",
       "columns": "Kolumny",
       "preview": "Podgląd i kategorie",
       "done": "Gotowe"
     },
-    "titleFor": "Import wyciągu · {{account}}",
-    "lead": "Plik CSV z bankowości internetowej. Duplikaty są rozpoznawane, a kategorie przypisywane według reguł – wszystko sprawdzasz, zanim cokolwiek zostanie zapisane.",
+    "titleFor": "Import wyciągu na konto {{account}}",
+    "lead": "Wyciąg z bankowości internetowej. Duplikaty są rozpoznawane, a kategorie przypisywane według reguł – wszystko sprawdzasz, zanim cokolwiek zostanie zapisane.",
     "file": {
       "bank": "Bank",
       "bankHint": "Wstępnie wypełnia przypisanie kolumn i format daty.",
@@ -323,8 +321,7 @@
       "dropTitle": "Upuść tutaj wyciąg",
       "dropActive": "Zwolnij plik, aby go otworzyć",
       "or": "lub",
-      "choose": "Wybierz plik…",
-      "dropNote": ".csv lub .txt · nagłówki kolumn są rozpoznawane automatycznie"
+      "choose": "Wybierz plik…"
     },
     "filebar": {
       "rows_one": "{{count}} wiersz",
@@ -399,6 +396,49 @@
     "encoding": "Kodowanie tekstu",
     "encodingAuto": "Wykryj automatycznie ({{encoding}})",
     "encodingHint": "Zmień, jeśli w podglądzie źle wyglądają znaki diakrytyczne lub litery spoza alfabetu łacińskiego."
+  },
+  "statementImport": {
+    "button": "Importuj wyciąg",
+    "fileFilter": "Wyciągi bankowe",
+    "supportedFormats": "CSV, CAMT.053 (XML), MT940, OFX/QFX i QIF",
+    "format": {
+      "camt053": "CAMT.053",
+      "mt940": "MT940",
+      "ofx": "OFX",
+      "qif": "QIF"
+    },
+    "pickStatement": "Plik zawiera kilka wyciągów. Wybierz jeden:",
+    "period": "{{from}} – {{to}}",
+    "opening": "Saldo początkowe",
+    "closing": "Saldo końcowe",
+    "entries_one": "{{count}} płatność",
+    "entries_few": "{{count}} płatności",
+    "entries_many": "{{count}} płatności",
+    "entries_other": "{{count}} płatności",
+    "skipped_one": "{{count}} niezaksięgowana",
+    "skipped_few": "{{count}} niezaksięgowane",
+    "skipped_many": "{{count}} niezaksięgowanych",
+    "skipped_other": "{{count}} niezaksięgowanej",
+    "check": {
+      "ok": "Wyciąg się zgadza: saldo początkowe plus płatności daje saldo końcowe.",
+      "mismatch": "Płatności nie dają salda końcowego (różnica {{difference}}). Plik może być niekompletny.",
+      "unavailable": "Plik nie podaje obu sald, więc nie można sprawdzić, czy jest kompletny."
+    },
+    "match": {
+      "selected": "Wyciąg należy do tego konta.",
+      "other": "Ten wyciąg należy do konta {{account}}.",
+      "switch": "Importuj na konto {{account}}",
+      "none": "Ten wyciąg należy do konta {{identifier}}, a nie do tego.",
+      "unknown": "Konto w pliku: {{identifier}}",
+      "confirm": "Mimo to importuj na to konto"
+    },
+    "currencyDiffers": "Wyciąg jest w {{statement}}, konto w {{account}}. Płatności zachowają swoją walutę; salda z wyciągu nie będzie można przejąć.",
+    "entry": "#",
+    "rowMessage": "Płatność {{line}}: {{message}}",
+    "rowMessageDetail": "Płatność {{line}}: {{message}} ({{detail}})",
+    "notBooked": "Jeszcze niezaksięgowana (tylko informacyjnie)",
+    "back": "Wybierz inny plik",
+    "openAccount": "Otwórz konto {{account}}"
   },
   "importHistory": {
     "title": "Historia importów",
@@ -582,8 +622,7 @@
     "noData": "Brak danych"
   },
   "actions": {
-    "recordBalance": "Zapisz saldo",
-    "importStatement": "Importuj wyciąg"
+    "recordBalance": "Zapisz saldo"
   },
   "menu": {
     "showDetail": "Pokaż szczegóły",

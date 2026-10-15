@@ -174,8 +174,7 @@
     "descriptionNoName": "Dette sletter transaksjonen fra {{date}} ({{amount}}) permanent. Dette kan ikke angres."
   },
   "csvImport": {
-    "button": "Importer CSV",
-    "title": "Importer transaksjoner fra CSV",
+    "title": "Importer kontoutskrift",
     "selectFile": "Velg en CSV-fil eksportert fra banken din",
     "mapColumns": "Tilordne CSV-kolonner til transaksjonsfelt",
     "importing": "Importerer transaksjoner...",
@@ -212,7 +211,7 @@
     "dropActive": "Slipp filen for å åpne den",
     "dropHint": "eller velg en fil fra datamaskinen din",
     "chooseFile": "Velg fil",
-    "unsupportedFile": "Bare .csv- og .txt-filer kan importeres.",
+    "unsupportedFile": "Denne filtypen kan ikke importeres.",
     "bankPreset": "Bank",
     "presetAuto": "Gjenkjenn automatisk",
     "detected": "Gjenkjent",
@@ -293,15 +292,14 @@
       "setBalanceHint": "Import endrer aldri kontosaldoen; dette bruker sluttsaldoen fra kontoutskriften.",
       "done": "Ferdig"
     },
-    "importCsv": "Importer CSV",
     "steps": {
       "file": "Fil",
       "columns": "Kolonner",
       "preview": "Forhåndsvisning og kategorier",
       "done": "Ferdig"
     },
-    "titleFor": "Importer kontoutskrift · {{account}}",
-    "lead": "En CSV-fil fra nettbanken din. Duplikater gjenkjennes og kategorier tildeles av reglene – du kontrollerer dem før noe skrives.",
+    "titleFor": "Importer kontoutskrift til {{account}}",
+    "lead": "En kontoutskrift fra nettbanken din. Duplikater gjenkjennes og kategorier tildeles av reglene – du kontrollerer dem før noe skrives.",
     "file": {
       "bank": "Bank",
       "bankHint": "Forhåndsutfyller kolonnetilordningen og datoformatet.",
@@ -311,8 +309,7 @@
       "dropTitle": "Slipp kontoutskriften her",
       "dropActive": "Slipp filen for å åpne den",
       "or": "eller",
-      "choose": "Velg fil…",
-      "dropNote": ".csv eller .txt · kolonneoverskrifter gjenkjennes automatisk"
+      "choose": "Velg fil…"
     },
     "filebar": {
       "rows_one": "{{count}} rad",
@@ -377,6 +374,45 @@
     "encoding": "Tegnkoding",
     "encodingAuto": "Gjenkjenn automatisk ({{encoding}})",
     "encodingHint": "Endre den hvis aksenter eller ikke-latinske tegn ser feil ut i forhåndsvisningen."
+  },
+  "statementImport": {
+    "button": "Importer kontoutskrift",
+    "fileFilter": "Kontoutskrifter",
+    "supportedFormats": "CSV, CAMT.053 (XML), MT940, OFX/QFX og QIF",
+    "format": {
+      "camt053": "CAMT.053",
+      "mt940": "MT940",
+      "ofx": "OFX",
+      "qif": "QIF"
+    },
+    "pickStatement": "Filen inneholder flere kontoutskrifter. Velg én:",
+    "period": "{{from}} – {{to}}",
+    "opening": "Inngående saldo",
+    "closing": "Utgående saldo",
+    "entries_one": "{{count}} betaling",
+    "entries_other": "{{count}} betalinger",
+    "skipped_one": "{{count}} ikke bokført",
+    "skipped_other": "{{count}} ikke bokført",
+    "check": {
+      "ok": "Kontoutskriften går opp: inngående saldo pluss betalingene gir utgående saldo.",
+      "mismatch": "Betalingene gir ikke utgående saldo (differanse {{difference}}). Filen kan være ufullstendig.",
+      "unavailable": "Filen oppgir ikke begge saldoene, så det kan ikke kontrolleres om den er fullstendig."
+    },
+    "match": {
+      "selected": "Kontoutskriften tilhører denne kontoen.",
+      "other": "Denne kontoutskriften tilhører {{account}}.",
+      "switch": "Importer til {{account}}",
+      "none": "Denne kontoutskriften tilhører {{identifier}}, som ikke er denne kontoen.",
+      "unknown": "Konto i filen: {{identifier}}",
+      "confirm": "Importer til denne kontoen likevel"
+    },
+    "currencyDiffers": "Kontoutskriften er i {{statement}}, kontoen i {{account}}. Betalingene beholder valutaen sin; saldoen fra kontoutskriften kan ikke overtas.",
+    "entry": "#",
+    "rowMessage": "Betaling {{line}}: {{message}}",
+    "rowMessageDetail": "Betaling {{line}}: {{message}} ({{detail}})",
+    "notBooked": "Ikke bokført ennå (kun til informasjon)",
+    "back": "Velg en annen fil",
+    "openAccount": "Åpne {{account}}"
   },
   "importHistory": {
     "title": "Importhistorikk",
@@ -546,8 +582,7 @@
     "noData": "Ingen data ennå"
   },
   "actions": {
-    "recordBalance": "Registrer saldo",
-    "importStatement": "Importer kontoutskrift"
+    "recordBalance": "Registrer saldo"
   },
   "menu": {
     "showDetail": "Vis detaljer",

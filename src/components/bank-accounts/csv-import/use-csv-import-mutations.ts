@@ -1,7 +1,7 @@
 import { refreshMoneyFlows } from '@/lib/money-flow-refresh';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { bankAccountsApi, categorizationApi } from '@/lib/tauri-api';
-import type { CsvImportConfigInput } from '@shared/schema';
+import type { CsvImportConfigInput, StatementImportOptionsInput } from '@shared/schema';
 
 /**
  * Writes a CSV statement. The import changes transactions, never the account
@@ -18,6 +18,34 @@ export function useCsvImportMutation(accountId: string) {
     onSuccess: async () => {
       await refreshMoneyFlows(queryClient);
       queryClient.removeQueries({ queryKey: ['csv-import-preview'] });
+    },
+  });
+}
+
+/**
+ * Writes one statement of a statement file (CAMT.053, MT940, OFX, QIF). It refreshes exactly what
+ * the CSV import refreshes, and drops the statement previews too. The account is part of the
+ * variables: the dialog can switch its target to the account the statement belongs to (D9).
+ */
+export function useStatementImportMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      accountId,
+      filePath,
+      options,
+      country,
+    }: {
+      accountId: string;
+      filePath: string;
+      options: StatementImportOptionsInput;
+      country?: string;
+    }) => bankAccountsApi.importStatementFile(accountId, filePath, options, country),
+    onSuccess: async () => {
+      await refreshMoneyFlows(queryClient);
+      queryClient.removeQueries({ queryKey: ['csv-import-preview'] });
+      queryClient.removeQueries({ queryKey: ['statement-import-preview'] });
     },
   });
 }

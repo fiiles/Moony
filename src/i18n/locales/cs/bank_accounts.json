@@ -176,8 +176,7 @@
     "descriptionNoName": "Tím trvale smažete transakci ze dne {{date}} ({{amount}}). Tuto akci nelze vrátit zpět."
   },
   "csvImport": {
-    "button": "Import CSV",
-    "title": "Import transakcí z CSV",
+    "title": "Import výpisu",
     "selectFile": "Vyberte CSV soubor exportovaný z vaší banky",
     "mapColumns": "Namapujte sloupce CSV na pole transakcí",
     "importing": "Importuji transakce...",
@@ -214,7 +213,7 @@
     "dropActive": "Pusťte soubor a otevře se",
     "dropHint": "nebo vyberte soubor z počítače",
     "chooseFile": "Vybrat soubor",
-    "unsupportedFile": "Importovat lze jen soubory .csv a .txt.",
+    "unsupportedFile": "Tento typ souboru nejde importovat.",
     "bankPreset": "Banka",
     "presetAuto": "Rozpoznat automaticky",
     "detected": "Rozpoznáno",
@@ -303,15 +302,14 @@
       "setBalanceHint": "Import zůstatek účtu nemění; tímto použijete konečný zůstatek z výpisu.",
       "done": "Hotovo"
     },
-    "importCsv": "Importovat CSV",
     "steps": {
       "file": "Soubor",
       "columns": "Sloupce",
       "preview": "Náhled a kategorie",
       "done": "Hotovo"
     },
-    "titleFor": "Import výpisu · {{account}}",
-    "lead": "CSV z internetového bankovnictví. Duplicity poznáme, kategorie přiřadíme podle pravidel – zkontrolujete je před zápisem.",
+    "titleFor": "Import výpisu do účtu {{account}}",
+    "lead": "Výpis z internetového bankovnictví. Duplicity poznáme, kategorie přiřadíme podle pravidel – zkontrolujete je před zápisem.",
     "file": {
       "bank": "Banka",
       "bankHint": "Předvyplní mapování sloupců a formát dat.",
@@ -321,8 +319,7 @@
       "dropTitle": "Přetáhněte sem výpis",
       "dropActive": "Pusťte soubor a otevře se",
       "or": "nebo",
-      "choose": "Vybrat soubor…",
-      "dropNote": ".csv nebo .txt · záhlaví sloupců rozpoznáme automaticky"
+      "choose": "Vybrat soubor…"
     },
     "filebar": {
       "rows_one": "{{count}} řádek",
@@ -392,6 +389,49 @@
     "encoding": "Kódování textu",
     "encodingAuto": "Automaticky ({{encoding}})",
     "encodingHint": "Změňte, pokud jsou v náhledu špatně vidět diakritika nebo jiná písma."
+  },
+  "statementImport": {
+    "button": "Importovat výpis",
+    "fileFilter": "Bankovní výpisy",
+    "supportedFormats": "CSV, CAMT.053 (XML), MT940, OFX/QFX a QIF",
+    "format": {
+      "camt053": "CAMT.053",
+      "mt940": "MT940",
+      "ofx": "OFX",
+      "qif": "QIF"
+    },
+    "pickStatement": "Soubor obsahuje více výpisů. Vyberte jeden:",
+    "period": "{{from}} – {{to}}",
+    "opening": "Počáteční zůstatek",
+    "closing": "Konečný zůstatek",
+    "entries_one": "{{count}} pohyb",
+    "entries_few": "{{count}} pohyby",
+    "entries_many": "{{count}} pohybů",
+    "entries_other": "{{count}} pohybů",
+    "skipped_one": "{{count}} nezaúčtovaný",
+    "skipped_few": "{{count}} nezaúčtované",
+    "skipped_many": "{{count}} nezaúčtovaných",
+    "skipped_other": "{{count}} nezaúčtovaných",
+    "check": {
+      "ok": "Výpis sedí: počáteční zůstatek plus pohyby dává konečný zůstatek.",
+      "mismatch": "Pohyby nedávají konečný zůstatek (rozdíl {{difference}}). Soubor může být neúplný.",
+      "unavailable": "Soubor neuvádí oba zůstatky, úplnost proto nejde ověřit."
+    },
+    "match": {
+      "selected": "Výpis patří k tomuto účtu.",
+      "other": "Tento výpis patří k účtu {{account}}.",
+      "switch": "Importovat do účtu {{account}}",
+      "none": "Tento výpis patří k účtu {{identifier}}, ne k tomuto.",
+      "unknown": "Účet v souboru: {{identifier}}",
+      "confirm": "Přesto importovat do tohoto účtu"
+    },
+    "currencyDiffers": "Výpis je v {{statement}}, účet v {{account}}. Pohyby si ponechají svou měnu; zůstatek z výpisu nepůjde převzít.",
+    "entry": "#",
+    "rowMessage": "Pohyb {{line}}: {{message}}",
+    "rowMessageDetail": "Pohyb {{line}}: {{message}} ({{detail}})",
+    "notBooked": "Zatím nezaúčtováno (jen informativně)",
+    "back": "Vybrat jiný soubor",
+    "openAccount": "Otevřít účet {{account}}"
   },
   "importHistory": {
     "title": "Historie importů",
@@ -570,8 +610,7 @@
     "noData": "Zatím bez dat"
   },
   "actions": {
-    "recordBalance": "Zaznamenat zůstatek",
-    "importStatement": "Importovat výpis"
+    "recordBalance": "Zaznamenat zůstatek"
   },
   "menu": {
     "showDetail": "Zobrazit detail",

@@ -176,8 +176,7 @@
     "descriptionNoName": "Verrà eliminato definitivamente il movimento del {{date}} ({{amount}}). L'operazione non si può annullare."
   },
   "csvImport": {
-    "button": "Importa CSV",
-    "title": "Importa movimenti da CSV",
+    "title": "Importa estratto conto",
     "selectFile": "Seleziona un file CSV esportato dalla tua banca",
     "mapColumns": "Associa le colonne del CSV ai campi del movimento",
     "importing": "Importazione dei movimenti...",
@@ -214,7 +213,7 @@
     "dropActive": "Rilascia il file per aprirlo",
     "dropHint": "oppure scegli un file dal tuo computer",
     "chooseFile": "Scegli file",
-    "unsupportedFile": "Si possono importare solo file .csv e .txt.",
+    "unsupportedFile": "Questo tipo di file non può essere importato.",
     "bankPreset": "Banca",
     "presetAuto": "Rilevamento automatico",
     "detected": "Rilevato",
@@ -299,15 +298,14 @@
       "setBalanceHint": "L'import non modifica mai il saldo del conto; questo applica il saldo finale dell'estratto conto.",
       "done": "Fatto"
     },
-    "importCsv": "Importa CSV",
     "steps": {
       "file": "File",
       "columns": "Colonne",
       "preview": "Anteprima e categorie",
       "done": "Fatto"
     },
-    "titleFor": "Importa estratto conto · {{account}}",
-    "lead": "Un CSV dal tuo home banking. I duplicati vengono riconosciuti e le categorie assegnate dalle regole – le controlli tu prima che venga scritto qualcosa.",
+    "titleFor": "Importa estratto conto in {{account}}",
+    "lead": "Un estratto conto dal tuo home banking. I duplicati vengono riconosciuti e le categorie assegnate dalle regole – le controlli tu prima che venga scritto qualcosa.",
     "file": {
       "bank": "Banca",
       "bankHint": "Precompila l'associazione delle colonne e il formato della data.",
@@ -317,8 +315,7 @@
       "dropTitle": "Trascina qui l'estratto conto",
       "dropActive": "Rilascia il file per aprirlo",
       "or": "oppure",
-      "choose": "Scegli file…",
-      "dropNote": ".csv o .txt · le intestazioni delle colonne vengono riconosciute automaticamente"
+      "choose": "Scegli file…"
     },
     "filebar": {
       "rows_one": "{{count}} riga",
@@ -388,6 +385,47 @@
     "encoding": "Codifica del testo",
     "encodingAuto": "Rilevamento automatico ({{encoding}})",
     "encodingHint": "Cambiala se gli accenti o le lettere non latine appaiono errati nell'anteprima."
+  },
+  "statementImport": {
+    "button": "Importa estratto conto",
+    "fileFilter": "Estratti conto",
+    "supportedFormats": "CSV, CAMT.053 (XML), MT940, OFX/QFX e QIF",
+    "format": {
+      "camt053": "CAMT.053",
+      "mt940": "MT940",
+      "ofx": "OFX",
+      "qif": "QIF"
+    },
+    "pickStatement": "Il file contiene più estratti conto. Scegline uno:",
+    "period": "{{from}} – {{to}}",
+    "opening": "Saldo iniziale",
+    "closing": "Saldo finale",
+    "entries_one": "{{count}} pagamento",
+    "entries_many": "{{count}} pagamenti",
+    "entries_other": "{{count}} pagamenti",
+    "skipped_one": "{{count}} non contabilizzato",
+    "skipped_many": "{{count}} non contabilizzati",
+    "skipped_other": "{{count}} non contabilizzati",
+    "check": {
+      "ok": "L'estratto conto quadra: il saldo iniziale più i pagamenti dà il saldo finale.",
+      "mismatch": "I pagamenti non danno il saldo finale (differenza {{difference}}). Il file potrebbe essere incompleto.",
+      "unavailable": "Il file non indica entrambi i saldi, quindi non è possibile verificarne la completezza."
+    },
+    "match": {
+      "selected": "L'estratto conto appartiene a questo conto.",
+      "other": "Questo estratto conto appartiene a {{account}}.",
+      "switch": "Importa in {{account}}",
+      "none": "Questo estratto conto appartiene a {{identifier}}, che non è questo conto.",
+      "unknown": "Conto nel file: {{identifier}}",
+      "confirm": "Importa comunque in questo conto"
+    },
+    "currencyDiffers": "L'estratto conto è in {{statement}}, il conto in {{account}}. I pagamenti mantengono la loro valuta; il saldo dell'estratto conto non potrà essere ripreso.",
+    "entry": "#",
+    "rowMessage": "Pagamento {{line}}: {{message}}",
+    "rowMessageDetail": "Pagamento {{line}}: {{message}} ({{detail}})",
+    "notBooked": "Non ancora contabilizzato (solo informativo)",
+    "back": "Scegli un altro file",
+    "openAccount": "Apri {{account}}"
   },
   "importHistory": {
     "title": "Storico degli import",
@@ -564,8 +602,7 @@
     "noData": "Ancora nessun dato"
   },
   "actions": {
-    "recordBalance": "Registra saldo",
-    "importStatement": "Importa estratto conto"
+    "recordBalance": "Registra saldo"
   },
   "menu": {
     "showDetail": "Mostra dettaglio",

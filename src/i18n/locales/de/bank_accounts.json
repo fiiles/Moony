@@ -174,8 +174,7 @@
     "descriptionNoName": "Damit wird die Transaktion vom {{date}} ({{amount}}) dauerhaft gelöscht. Das lässt sich nicht rückgängig machen."
   },
   "csvImport": {
-    "button": "CSV importieren",
-    "title": "Transaktionen aus CSV importieren",
+    "title": "Kontoauszug importieren",
     "selectFile": "Wählen Sie eine CSV-Datei, die Sie aus Ihrer Bank exportiert haben",
     "mapColumns": "CSV-Spalten den Transaktionsfeldern zuordnen",
     "importing": "Transaktionen werden importiert...",
@@ -212,7 +211,7 @@
     "dropActive": "Datei loslassen, um sie zu öffnen",
     "dropHint": "oder eine Datei von Ihrem Computer auswählen",
     "chooseFile": "Datei wählen",
-    "unsupportedFile": "Es können nur .csv- und .txt-Dateien importiert werden.",
+    "unsupportedFile": "Dieser Dateityp kann nicht importiert werden.",
     "bankPreset": "Bank",
     "presetAuto": "Automatisch erkennen",
     "detected": "Erkannt",
@@ -293,15 +292,14 @@
       "setBalanceHint": "Ein Import ändert den Kontostand nie; dies übernimmt den Schlusssaldo aus dem Kontoauszug.",
       "done": "Fertig"
     },
-    "importCsv": "CSV importieren",
     "steps": {
       "file": "Datei",
       "columns": "Spalten",
       "preview": "Vorschau und Kategorien",
       "done": "Fertig"
     },
-    "titleFor": "Kontoauszug importieren · {{account}}",
-    "lead": "Eine CSV aus Ihrem Online-Banking. Duplikate werden erkannt und Kategorien nach den Regeln zugewiesen – Sie prüfen alles, bevor etwas geschrieben wird.",
+    "titleFor": "Kontoauszug in {{account}} importieren",
+    "lead": "Ein Kontoauszug aus Ihrem Online-Banking. Duplikate werden erkannt und Kategorien nach den Regeln zugewiesen – Sie prüfen alles, bevor etwas geschrieben wird.",
     "file": {
       "bank": "Bank",
       "bankHint": "Füllt die Spaltenzuordnung und das Datumsformat vor.",
@@ -311,8 +309,7 @@
       "dropTitle": "Kontoauszug hier ablegen",
       "dropActive": "Datei loslassen, um sie zu öffnen",
       "or": "oder",
-      "choose": "Datei wählen…",
-      "dropNote": ".csv oder .txt · Spaltenüberschriften werden automatisch erkannt"
+      "choose": "Datei wählen…"
     },
     "filebar": {
       "rows_one": "{{count}} Zeile",
@@ -377,6 +374,45 @@
     "encoding": "Zeichenkodierung",
     "encodingAuto": "Automatisch erkennen ({{encoding}})",
     "encodingHint": "Ändern Sie es, wenn Umlaute oder nicht lateinische Zeichen in der Vorschau falsch aussehen."
+  },
+  "statementImport": {
+    "button": "Kontoauszug importieren",
+    "fileFilter": "Kontoauszüge",
+    "supportedFormats": "CSV, CAMT.053 (XML), MT940, OFX/QFX und QIF",
+    "format": {
+      "camt053": "CAMT.053",
+      "mt940": "MT940",
+      "ofx": "OFX",
+      "qif": "QIF"
+    },
+    "pickStatement": "Die Datei enthält mehrere Kontoauszüge. Wählen Sie einen aus:",
+    "period": "{{from}} – {{to}}",
+    "opening": "Anfangssaldo",
+    "closing": "Endsaldo",
+    "entries_one": "{{count}} Zahlung",
+    "entries_other": "{{count}} Zahlungen",
+    "skipped_one": "{{count}} nicht gebucht",
+    "skipped_other": "{{count}} nicht gebucht",
+    "check": {
+      "ok": "Der Kontoauszug geht auf: Anfangssaldo plus Zahlungen ergibt den Endsaldo.",
+      "mismatch": "Die Zahlungen ergeben nicht den Endsaldo (Differenz {{difference}}). Die Datei ist möglicherweise unvollständig.",
+      "unavailable": "Die Datei nennt nicht beide Salden, daher lässt sich ihre Vollständigkeit nicht prüfen."
+    },
+    "match": {
+      "selected": "Der Kontoauszug gehört zu diesem Konto.",
+      "other": "Dieser Kontoauszug gehört zu {{account}}.",
+      "switch": "In {{account}} importieren",
+      "none": "Dieser Kontoauszug gehört zu {{identifier}}, nicht zu diesem Konto.",
+      "unknown": "Konto in der Datei: {{identifier}}",
+      "confirm": "Trotzdem in dieses Konto importieren"
+    },
+    "currencyDiffers": "Der Kontoauszug lautet auf {{statement}}, das Konto auf {{account}}. Die Zahlungen behalten ihre Währung; der Saldo aus dem Kontoauszug kann nicht übernommen werden.",
+    "entry": "#",
+    "rowMessage": "Zahlung {{line}}: {{message}}",
+    "rowMessageDetail": "Zahlung {{line}}: {{message}} ({{detail}})",
+    "notBooked": "Noch nicht gebucht (nur zur Information)",
+    "back": "Andere Datei wählen",
+    "openAccount": "{{account}} öffnen"
   },
   "importHistory": {
     "title": "Importverlauf",
@@ -546,8 +582,7 @@
     "noData": "Noch keine Daten"
   },
   "actions": {
-    "recordBalance": "Saldo erfassen",
-    "importStatement": "Kontoauszug importieren"
+    "recordBalance": "Saldo erfassen"
   },
   "menu": {
     "showDetail": "Detail anzeigen",

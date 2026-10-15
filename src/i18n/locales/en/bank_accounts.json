@@ -174,8 +174,7 @@
     "descriptionNoName": "This will permanently delete the transaction from {{date}} ({{amount}}). This action cannot be undone."
   },
   "csvImport": {
-    "button": "Import CSV",
-    "title": "Import Transactions from CSV",
+    "title": "Import statement",
     "selectFile": "Select a CSV file exported from your bank",
     "mapColumns": "Map CSV columns to transaction fields",
     "importing": "Importing transactions...",
@@ -212,7 +211,7 @@
     "dropActive": "Drop the file to open it",
     "dropHint": "or choose a file from your computer",
     "chooseFile": "Choose file",
-    "unsupportedFile": "Only .csv and .txt files can be imported.",
+    "unsupportedFile": "This file type cannot be imported.",
     "bankPreset": "Bank",
     "presetAuto": "Auto-detect",
     "detected": "Detected",
@@ -293,15 +292,14 @@
       "setBalanceHint": "Importing never changes the account balance; this applies the closing balance from the statement.",
       "done": "Done"
     },
-    "importCsv": "Import CSV",
     "steps": {
       "file": "File",
       "columns": "Columns",
       "preview": "Preview and categories",
       "done": "Done"
     },
-    "titleFor": "Import statement · {{account}}",
-    "lead": "A CSV from your online banking. Duplicates are recognized and categories assigned by the rules – you check them before anything is written.",
+    "titleFor": "Import statement into {{account}}",
+    "lead": "A statement from your online banking. Duplicates are recognized and categories assigned by the rules – you check them before anything is written.",
     "file": {
       "bank": "Bank",
       "bankHint": "Pre-fills the column mapping and the date format.",
@@ -311,8 +309,7 @@
       "dropTitle": "Drop the statement here",
       "dropActive": "Release the file to open it",
       "or": "or",
-      "choose": "Choose file…",
-      "dropNote": ".csv or .txt · column headers are recognized automatically"
+      "choose": "Choose file…"
     },
     "filebar": {
       "rows_one": "{{count}} row",
@@ -377,6 +374,45 @@
     "encoding": "Text encoding",
     "encodingAuto": "Auto-detect ({{encoding}})",
     "encodingHint": "Change it when accents or non-Latin letters look wrong in the preview."
+  },
+  "statementImport": {
+    "button": "Import statement",
+    "fileFilter": "Bank statements",
+    "supportedFormats": "CSV, CAMT.053 (XML), MT940, OFX/QFX and QIF",
+    "format": {
+      "camt053": "CAMT.053",
+      "mt940": "MT940",
+      "ofx": "OFX",
+      "qif": "QIF"
+    },
+    "pickStatement": "The file contains several statements. Choose one:",
+    "period": "{{from}} – {{to}}",
+    "opening": "Opening balance",
+    "closing": "Closing balance",
+    "entries_one": "{{count}} payment",
+    "entries_other": "{{count}} payments",
+    "skipped_one": "{{count}} not booked",
+    "skipped_other": "{{count}} not booked",
+    "check": {
+      "ok": "The statement adds up: opening balance plus payments equals the closing balance.",
+      "mismatch": "The payments do not add up to the closing balance (difference {{difference}}). The file may be incomplete.",
+      "unavailable": "The file does not state both balances, so it cannot be checked for completeness."
+    },
+    "match": {
+      "selected": "The statement belongs to this account.",
+      "other": "This statement belongs to {{account}}.",
+      "switch": "Import into {{account}}",
+      "none": "This statement belongs to {{identifier}}, which is not this account.",
+      "unknown": "Account in the file: {{identifier}}",
+      "confirm": "Import into this account anyway"
+    },
+    "currencyDiffers": "The statement is in {{statement}}, the account in {{account}}. Payments keep their currency; the balance from the statement cannot be taken over.",
+    "entry": "#",
+    "rowMessage": "Payment {{line}}: {{message}}",
+    "rowMessageDetail": "Payment {{line}}: {{message}} ({{detail}})",
+    "notBooked": "Not booked yet (information only)",
+    "back": "Choose another file",
+    "openAccount": "Open {{account}}"
   },
   "importHistory": {
     "title": "Import history",
@@ -546,8 +582,7 @@
     "noData": "No data yet"
   },
   "actions": {
-    "recordBalance": "Record balance",
-    "importStatement": "Import statement"
+    "recordBalance": "Record balance"
   },
   "menu": {
     "showDetail": "Show detail",

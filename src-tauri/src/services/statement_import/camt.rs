@@ -313,8 +313,11 @@ fn description(tx: &Node) -> Option<String> {
     join_description(unstructured.chain(structured).chain(additional))
 }
 
-/// A non-negative amount in canonical form, exact.
+/// A non-negative amount, exact. `None` unless the text is a plain decimal: for blank,
+/// sign-only or digit-less text `canonical_amount` answers "0", which must not pass.
 fn amount(text: &str) -> Option<Dec> {
+    let text = text.trim();
+    Dec::parse(text)?;
     let canonical = canonical_amount(text);
     if canonical.starts_with('-') {
         return None;
@@ -585,6 +588,44 @@ mod tests {
             "</Amt><CdtDbtInd>XXXX</CdtDbtInd><Sts>",
         );
         assert_eq!(malformed_detail(&no_direction), "Ntry 1");
+    }
+
+    /// What `canonical_amount` alone would read as 0, plus a digit-less exponent.
+    const NOT_AMOUNTS: [&str; 6] = ["", "  ", "-", "+", ".", "e5"];
+
+    fn amt(text: &str) -> String {
+        if text.is_empty() {
+            "<Amt Ccy=\"CZK\"/>".to_string()
+        } else {
+            format!("<Amt Ccy=\"CZK\">{text}</Amt>")
+        }
+    }
+
+    #[test]
+    fn blank_or_sign_only_entry_amounts_are_malformed_not_zero() {
+        let basic = fixture("basic.xml");
+        for text in NOT_AMOUNTS {
+            let first = basic.replace("<Amt Ccy=\"CZK\">500.50</Amt>", &amt(text));
+            assert_eq!(malformed_detail(&first), "Ntry 1", "{text:?}");
+            let second = basic.replace("<Amt Ccy=\"CZK\">250.00</Amt>", &amt(text));
+            assert_eq!(malformed_detail(&second), "Ntry 2", "{text:?}");
+        }
+    }
+
+    #[test]
+    fn blank_or_sign_only_balance_amounts_are_no_balance() {
+        let basic = fixture("basic.xml");
+        for text in NOT_AMOUNTS {
+            let opening = basic.replace("<Amt Ccy=\"CZK\">1000.00</Amt>", &amt(text));
+            let s = &parse(&opening).unwrap()[0];
+            assert_eq!(s.opening, None, "{text:?}");
+            assert!(s.closing.is_some(), "{text:?}");
+            let closing = basic.replace("<Amt Ccy=\"CZK\">1250.50</Amt>", &amt(text));
+            let s = &parse(&closing).unwrap()[0];
+            assert_eq!(s.closing, None, "{text:?}");
+            assert_eq!(s.currency.as_deref(), Some("CZK"), "{text:?}");
+            assert!(s.opening.is_some(), "{text:?}");
+        }
     }
 
     #[test]

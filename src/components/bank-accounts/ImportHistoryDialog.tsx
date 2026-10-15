@@ -28,7 +28,7 @@ interface ImportHistoryDialogProps {
   onUndo: (batch: CsvImportBatch) => void;
 }
 
-/** Every CSV import of the account (date, file, counts) with the undo action; wide like the import wizard. */
+/** Every CSV import of the account (date, file, counts) with the undo action; wide enough for the longest undo label. */
 export function ImportHistoryDialog({
   open,
   onOpenChange,
@@ -44,7 +44,7 @@ export function ImportHistoryDialog({
   );
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[840px]">
+      <DialogContent className="w-[calc(100vw-48px)] max-w-[1120px]">
         <DialogHeader>
           <DialogTitle>{t('importHistory.title')}</DialogTitle>
           <DialogDescription>
@@ -67,7 +67,7 @@ export function ImportHistoryDialog({
                     {t('importHistory.duplicates')}
                   </TableHead>
                   <TableHead className="text-right">{t('importHistory.errors')}</TableHead>
-                  <TableHead className="w-44">
+                  <TableHead>
                     <span className="sr-only">{tc('labels.actions')}</span>
                   </TableHead>
                 </TableRow>
@@ -92,7 +92,7 @@ export function ImportHistoryDialog({
                     <TableCell className="text-right num">{batch.importedCount}</TableCell>
                     <TableCell className="text-right num">{batch.duplicateCount}</TableCell>
                     <TableCell className="text-right num">{batch.errorCount}</TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="whitespace-nowrap text-right">
                       <div data-row-actions>
                         <Button variant="danger" size="sm" onClick={() => onUndo(batch)}>
                           <Undo2 />

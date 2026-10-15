@@ -52,8 +52,9 @@ migration for a label nothing branches on).
 - **No migration.** `data_source` stays `csv_import`, which now means "imported from a file". The
   batch's `file_name` shows what was imported, and `csv_import_batches` keeps its name.
 
-Phase 1 ships the pipeline and CAMT.053. MT940, OFX/QFX and QIF follow in later phases on the
-same pipeline.
+Phase 1 shipped the pipeline and CAMT.053, phase 2 adds MT940 (its `:86:` text in the German
+subfield, Dutch slash and free-text dialects). OFX/QFX and QIF follow in later phases on the same
+pipeline and are answered with `validation.statementFormatNotYetSupported` until then.
 
 ## Consequences
 

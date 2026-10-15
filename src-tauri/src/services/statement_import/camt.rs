@@ -10,9 +10,9 @@ use crate::services::dedup::canonical_amount;
 use crate::services::financial_semantics::valid_iban;
 
 use super::decimal::Dec;
-use super::model::{join_description, utc_day, AccountRef, Entry, Statement};
+use super::model::{join_description, malformed, utc_day, AccountRef, Entry, Statement};
 use super::reject_doctype;
-use super::xml_tree::{malformed, parse_xml, Node};
+use super::xml_tree::{parse_xml, Node};
 
 /// Row message key of an entry that is neither booked nor pending (`INFO`, `FUTR`, ...).
 const NOT_BOOKED: &str = "statementImport.notBooked";

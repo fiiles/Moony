@@ -98,6 +98,54 @@ fn import_then_reimport_is_idempotent() {
 }
 
 #[test]
+fn inspect_mt940_summary() {
+    let conn = db();
+    let insp = inspect(&conn, "acc", &fixture("mt940/basic.sta"), None)
+        .unwrap()
+        .unwrap();
+    assert_eq!(insp.format, StatementFormat::Mt940);
+    // the two pages of the file are chained into one statement
+    assert_eq!(insp.statements.len(), 1);
+    let s = &insp.statements[0];
+    assert_eq!(
+        (s.entry_count, s.balance_check, s.account_match),
+        (3, BalanceCheck::AddsUp, AccountMatch::Selected)
+    );
+}
+
+#[test]
+fn mt940_imports_through_the_same_pipeline() {
+    let mut conn = db();
+    let first = import(
+        &mut conn,
+        "acc",
+        "basic.sta",
+        &fixture("mt940/basic.sta"),
+        None,
+        &options(),
+        None,
+    )
+    .unwrap();
+    assert_eq!(first.imported_count, 3);
+    let balance = first.statement_balance.unwrap();
+    assert_eq!(balance.amount, "1260.5");
+    let again = import(
+        &mut conn,
+        "acc",
+        "basic.sta",
+        &fixture("mt940/basic.sta"),
+        None,
+        &options(),
+        None,
+    )
+    .unwrap();
+    assert_eq!(
+        (again.imported_count, again.skipped_duplicates.len()),
+        (0, 3)
+    );
+}
+
+#[test]
 fn pending_is_promoted_by_its_booked_successor() {
     let mut conn = db();
     let text = String::from_utf8(fixture("camt053/batch-and-pending.xml")).unwrap();

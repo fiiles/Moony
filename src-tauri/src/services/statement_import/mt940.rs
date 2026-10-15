@@ -2,6 +2,7 @@
 //! This file reads the structure (envelopes, fields, `:61:` lines, balances, years, the
 //! German BLZ/Konto account); the `:86:` text goes through [`apply_details`].
 
+use std::ops::RangeInclusive;
 use std::sync::LazyLock;
 
 use chrono::{Datelike, NaiveDate};
@@ -13,8 +14,7 @@ use crate::services::dedup::canonical_amount;
 use crate::services::financial_semantics::valid_iban;
 
 use super::decimal::Dec;
-use super::model::{utc_day, AccountRef, Entry, Statement};
-use super::xml_tree::malformed;
+use super::model::{join_description, malformed, utc_day, AccountRef, Entry, Statement};
 
 /// SWIFT blocks 1, 2, 3 and 5 (one line each; block 3 and 5 hold one level of nested
 /// `{…}`, e.g. `{3:{108:MT940}}`).
@@ -53,6 +53,17 @@ static ENTRY_LINE: LazyLock<Regex> = LazyLock::new(|| {
 static GERMAN_ACCOUNT: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^(\d{8})/(\d{5,10})$").expect("static pattern is valid"));
 
+/// The start of an `:86:` in the subfield dialect: a three digit code, a separator character
+/// (usually `?`, sometimes `>`) and the two digits of the first subfield.
+static SUBFIELD_START: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^[0-9]{3}(\S)[0-9]{2}").expect("static pattern is valid"));
+
+/// The tags of the slash dialect, as `/TAG/`.
+static SLASH_TAG: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"/(?:EREF|ORDP|BENM|NAME|IBAN|BIC|ACCW|REMI|CNTP|TRTP|MARF|CSID|PURP|RTRN|ULTD|ULTC|ADDR|ISDT)/")
+        .expect("static pattern is valid")
+});
+
 /// What the lines of a message are made of.
 enum Item {
     /// A tag and its text; continuation lines follow after `\n`.
@@ -66,7 +77,8 @@ enum Item {
 struct Builder {
     statement: Statement,
     has_20: bool,
-    /// The last `:61:`, kept open until the next field that is not its `:86:`.
+    /// The last `:61:`, kept open while its `:86:` (and `:NS:` lines) may still follow. Every
+    /// other field closes it, so a statement-level `:86:` after e.g. `:64:` is not its text.
     open: Option<OpenEntry>,
 }
 
@@ -91,16 +103,26 @@ impl Builder {
         }
     }
 
-    fn finish(mut self) -> Statement {
+    /// The statement, or `None` for a builder that read nothing of one: a stray or ignored
+    /// field after a `-` line is no statement.
+    fn finish(mut self) -> Option<Statement> {
         self.flush();
         let statement = &mut self.statement;
+        if !self.has_20
+            && statement.account.identifier.is_none()
+            && statement.opening.is_none()
+            && statement.closing.is_none()
+            && statement.entries.is_empty()
+        {
+            return None;
+        }
         statement.currency = statement
             .opening
             .iter()
             .chain(&statement.closing)
             .map(|balance| balance.currency.clone())
             .next();
-        self.statement
+        Some(self.statement)
     }
 }
 
@@ -114,27 +136,26 @@ pub fn parse(text: &str) -> Result<Vec<Statement>> {
     for item in items(&strip_envelopes(&normalize(text))) {
         let (tag, value) = match item {
             Item::End => {
-                statements.extend(current.take().map(Builder::finish));
+                statements.extend(current.take().and_then(Builder::finish));
                 continue;
             }
             Item::Field { tag, value } => (tag, value),
         };
         if tag == "20" && current.as_ref().is_some_and(|builder| builder.has_20) {
-            statements.extend(current.take().map(Builder::finish));
+            statements.extend(current.take().and_then(Builder::finish));
         }
         let builder = current.get_or_insert_with(Builder::default);
+        if !matches!(tag.as_str(), "86" | "NS") {
+            builder.flush();
+        }
         match tag.as_str() {
             "20" => builder.has_20 = true,
             "25" => builder.statement.account = account_ref(&value),
             "28C" => builder.statement.sequence = non_blank(first_line(&value)),
             "60F" | "60M" => builder.statement.opening = balance(&value),
-            "62F" | "62M" => {
-                builder.flush();
-                builder.statement.closing = balance(&value);
-            }
+            "62F" | "62M" => builder.statement.closing = balance(&value),
             "61" => {
                 entries_seen += 1;
-                builder.flush();
                 builder.open = Some(
                     open_entry(&value).ok_or_else(|| malformed(&format!(":61: {entries_seen}")))?,
                 );
@@ -147,7 +168,7 @@ pub fn parse(text: &str) -> Result<Vec<Statement>> {
             _ => {}
         }
     }
-    statements.extend(current.take().map(Builder::finish));
+    statements.extend(current.take().and_then(Builder::finish));
     Ok(statements)
 }
 
@@ -171,22 +192,32 @@ fn strip_envelopes(text: &str) -> String {
 /// the previous one (lines before the first field, or after an end, are dropped).
 fn items(text: &str) -> Vec<Item> {
     let mut items: Vec<Item> = Vec::new();
-    for line in text.lines().map(str::trim_end) {
+    for line in text.lines() {
         if let Some(start) = FIELD_START.captures(line) {
-            items.push(Item::Field {
-                tag: start[1].to_string(),
-                value: start[2].to_string(),
-            });
-        } else if line == "-" {
+            let tag = start[1].to_string();
+            let value = kept(&tag, &start[2]).to_string();
+            items.push(Item::Field { tag, value });
+        } else if line.trim_end() == "-" {
             items.push(Item::End);
-        } else if !line.is_empty() {
-            if let Some(Item::Field { value, .. }) = items.last_mut() {
+        } else if !line.trim().is_empty() {
+            if let Some(Item::Field { tag, value }) = items.last_mut() {
                 value.push('\n');
-                value.push_str(line);
+                value.push_str(kept(tag, line));
             }
         }
     }
     items
+}
+
+/// What a field keeps of a line: its trailing whitespace goes, except for an `:86:`. Where
+/// its text is cut at the end of a line the space belongs to it, and the subfield dialect
+/// counts the characters of a segment.
+fn kept<'a>(tag: &str, line: &'a str) -> &'a str {
+    if tag == "86" {
+        line
+    } else {
+        line.trim_end()
+    }
 }
 
 fn first_line(value: &str) -> &str {
@@ -305,19 +336,236 @@ fn open_entry(value: &str) -> Option<OpenEntry> {
     })
 }
 
-/// Reads the `:86:` text of an entry. Not yet read in dialects: the text, with its line
-/// breaks as spaces, is the description. Leaves the entry alone when the text is blank (the
-/// `:61:` supplementary details then become the description).
-fn apply_details(entry: &mut Entry, details: &str) {
-    let text = details
-        .lines()
-        .map(str::trim)
-        .filter(|line| !line.is_empty())
-        .collect::<Vec<_>>()
-        .join(" ");
-    if !text.is_empty() {
-        entry.description = Some(text);
+/// The longest a subfield segment of the German dialect is; a segment of exactly this length
+/// was cut by the field width, so the next one continues it.
+const SEGMENT_WIDTH: usize = 27;
+
+/// What an `:86:` text says about its entry.
+#[derive(Default)]
+struct Details {
+    description: Option<String>,
+    counterparty_name: Option<String>,
+    counterparty_account: Option<String>,
+    counterparty_bank_code: Option<String>,
+}
+
+impl Details {
+    fn is_empty(&self) -> bool {
+        self.description.is_none()
+            && self.counterparty_name.is_none()
+            && self.counterparty_account.is_none()
+            && self.counterparty_bank_code.is_none()
     }
+}
+
+/// Reads the `:86:` text of an entry (spec §6.2). The dialect is chosen from the shape of the
+/// text: subfields (`166?20…?32…`), `/TAG/value` pairs, else free text. What the text does not
+/// say stays as it is, so an entry without `:86:` text keeps its `:61:` supplementary details
+/// as the description.
+fn apply_details(entry: &mut Entry, details: &str) {
+    let text = details.trim_start();
+    let read = subfield_details(text)
+        .or_else(|| slash_details(text))
+        .unwrap_or_else(|| free_text_details(text));
+    entry.description = read.description.or_else(|| entry.description.take());
+    entry.counterparty_name = read
+        .counterparty_name
+        .or_else(|| entry.counterparty_name.take());
+    entry.counterparty_account = read
+        .counterparty_account
+        .or_else(|| entry.counterparty_account.take());
+    entry.counterparty_bank_code = read
+        .counterparty_bank_code
+        .or_else(|| entry.counterparty_bank_code.take());
+}
+
+/// The subfield dialect (DE/AT and some CZ banks): a three digit code, then segments that each
+/// start with a separator and two digits. `None` when the text is not of that shape, or says
+/// none of what this dialect knows (a number like `100.50 EUR` is no code).
+fn subfield_details(text: &str) -> Option<Details> {
+    let separator = SUBFIELD_START
+        .captures(text)?
+        .get(1)?
+        .as_str()
+        .chars()
+        .next()
+        .filter(|c| !c.is_alphanumeric())?;
+    let segments = split_subfields(text, separator);
+    let in_codes = |codes: RangeInclusive<u8>| {
+        segments
+            .iter()
+            .filter(move |(code, _)| codes.contains(code))
+            .map(|(_, segment)| segment.as_str())
+    };
+    // ?20-?29 (purpose), then ?60-?63 (its continuation), behind the posting text ?00
+    let body = join_segments(in_codes(20..=29).chain(in_codes(60..=63)));
+    let posting_text = collapse(in_codes(0..=0).next().unwrap_or_default());
+    let first = |code: u8| {
+        in_codes(code..=code)
+            .map(compact)
+            .find(|value| !value.is_empty())
+    };
+    let details = Details {
+        description: join_description([posting_text.as_str(), body.as_str()]),
+        counterparty_name: non_blank(&join_segments(in_codes(32..=33))),
+        counterparty_account: first(31),
+        counterparty_bank_code: first(30),
+    };
+    (!details.is_empty()).then_some(details)
+}
+
+/// The text split at every separator followed by two digits: the number of the subfield and
+/// its text with the line breaks removed (the lines are cut by their width, not by words).
+fn split_subfields(text: &str, separator: char) -> Vec<(u8, String)> {
+    let marks: Vec<(usize, usize, u8)> = text
+        .char_indices()
+        .filter(|&(_, c)| c == separator)
+        .filter_map(|(at, c)| {
+            let from = at + c.len_utf8();
+            let digits = text.get(from..from + 2)?;
+            let code = digits
+                .bytes()
+                .all(|b| b.is_ascii_digit())
+                .then(|| digits.parse().ok())??;
+            Some((at, from + 2, code))
+        })
+        .collect();
+    marks
+        .iter()
+        .enumerate()
+        .map(|(n, &(_, from, code))| {
+            let to = marks.get(n + 1).map_or(text.len(), |next| next.0);
+            (code, text[from..to].replace('\n', ""))
+        })
+        .collect()
+}
+
+/// Joins subfield segments into one text. A segment of exactly [`SEGMENT_WIDTH`] characters was
+/// cut by the field width, so the next one continues it; after a shorter one a space separates
+/// the words. Whitespace is collapsed.
+fn join_segments<'a>(segments: impl Iterator<Item = &'a str>) -> String {
+    let mut joined = String::new();
+    let mut previous_width = None;
+    for segment in segments.filter(|segment| !segment.trim().is_empty()) {
+        if previous_width.is_some_and(|width| width != SEGMENT_WIDTH) {
+            joined.push(' ');
+        }
+        joined.push_str(segment);
+        previous_width = Some(segment.chars().count());
+    }
+    collapse(&joined)
+}
+
+/// The slash dialect (NL/BE and others): `/TAG/value` pairs, as soon as a known tag shows up.
+/// `None` for text that does not start with a slash or names no known tag.
+fn slash_details(text: &str) -> Option<Details> {
+    if !text.starts_with('/') {
+        return None;
+    }
+    // The line breaks cut values and even tags (`/N` + `AME/`): put the text back together.
+    let flat = text.replace('\n', "");
+    let marks: Vec<regex::Match> = SLASH_TAG.find_iter(&flat).collect();
+    if marks.is_empty() {
+        return None;
+    }
+    // Every value runs up to the next known tag (the slashes of the tags are ASCII).
+    let fields: Vec<(&str, &str)> = marks
+        .iter()
+        .enumerate()
+        .map(|(n, mark)| {
+            let to = marks.get(n + 1).map_or(flat.len(), |next| next.start());
+            (
+                &flat[mark.start() + 1..mark.end() - 1],
+                flat[mark.end()..to].trim(),
+            )
+        })
+        .collect();
+    let first = |tag: &str| {
+        fields
+            .iter()
+            .filter(|(name, _)| *name == tag)
+            .map(|(_, value)| slash_value(value))
+            .find(|value| !value.is_empty())
+    };
+    // /CNTP/ is account/BIC/name/city; the tags of their own win over it
+    let cntp: Vec<&str> = first("CNTP")
+        .map(|value| value.split('/').map(str::trim).collect())
+        .unwrap_or_default();
+    let part = |index: usize| cntp.get(index).copied().filter(|part| !part.is_empty());
+    let remittance = fields
+        .iter()
+        .filter(|(name, _)| *name == "REMI")
+        .map(|(_, value)| {
+            let unstructured = value.strip_prefix("USTD//");
+            let structured = value.strip_prefix("STRD/CUR/");
+            collapse(slash_value(unstructured.or(structured).unwrap_or(value)))
+        })
+        .find(|text| !text.is_empty());
+    Some(Details {
+        description: remittance,
+        counterparty_name: first("NAME").or(part(2)).map(collapse),
+        counterparty_account: first("IBAN").or(first("ACCW")).or(part(0)).map(compact),
+        counterparty_bank_code: first("BIC").or(part(1)).map(compact),
+    })
+}
+
+/// A slash dialect value without the `/` that closes it.
+fn slash_value(value: &str) -> &str {
+    value.trim().trim_end_matches('/').trim()
+}
+
+/// Free text: the whole `:86:` as one line, and its IBAN when it names exactly one.
+fn free_text_details(text: &str) -> Details {
+    let description = collapse(text);
+    if description.is_empty() {
+        return Details::default();
+    }
+    Details {
+        counterparty_account: single_iban(&description),
+        description: Some(description),
+        ..Details::default()
+    }
+}
+
+/// The one IBAN a text names. An IBAN is written in groups, so a token that starts like one
+/// (two letters, two digits) is tried alone and joined with up to eight tokens after it; the
+/// words after an IBAN are never part of it because only checksum-valid joins count. `None`
+/// when the text has no IBAN, or several different ones.
+fn single_iban(text: &str) -> Option<String> {
+    let tokens: Vec<&str> = text
+        .split_whitespace()
+        .map(|token| token.trim_matches(|c: char| !c.is_alphanumeric()))
+        .filter(|token| !token.is_empty())
+        .collect();
+    let mut found: Vec<String> = Vec::new();
+    for (start, token) in tokens.iter().enumerate() {
+        let bytes = token.as_bytes();
+        let starts_like_iban = bytes.len() >= 4
+            && bytes[..2].iter().all(u8::is_ascii_alphabetic)
+            && bytes[2..4].iter().all(u8::is_ascii_digit);
+        if !starts_like_iban {
+            continue;
+        }
+        let mut candidate = String::new();
+        for next in &tokens[start..tokens.len().min(start + 9)] {
+            candidate.push_str(next);
+            let upper = candidate.to_ascii_uppercase();
+            if valid_iban(&upper) && !found.contains(&upper) {
+                found.push(upper);
+            }
+        }
+    }
+    (found.len() == 1).then(|| found.remove(0))
+}
+
+/// Whitespace runs (and line breaks) as single spaces, no whitespace at either end.
+fn collapse(text: &str) -> String {
+    text.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+/// The text without any whitespace (IBANs, BICs and account numbers have none).
+fn compact(text: &str) -> String {
+    text.split_whitespace().collect()
 }
 
 #[cfg(test)]
@@ -333,12 +581,15 @@ mod tests {
     fn day(y: i32, m: u32, d: u32) -> i64 {
         utc_day(NaiveDate::from_ymd_opt(y, m, d).unwrap())
     }
-    fn fixture() -> String {
+    fn fixture_text(name: &str) -> String {
         std::fs::read_to_string(format!(
-            "{}/tests/fixtures/statements/mt940/basic.sta",
+            "{}/tests/fixtures/statements/mt940/{name}",
             env!("CARGO_MANIFEST_DIR")
         ))
         .unwrap()
+    }
+    fn fixture() -> String {
+        fixture_text("basic.sta")
     }
 
     #[test]
@@ -650,5 +901,390 @@ mod tests {
             parse(&s).unwrap()[0].entries[0].booking_date,
             day(2028, 2, 29)
         );
+    }
+
+    #[test]
+    fn german_subfields() {
+        let mut e = Entry::default();
+        // ?20 and ?32 are full 27-character lines cut mid-word
+        apply_details(&mut e, "166?00GUTSCHRIFT?100599?20Rechnung 2026-17 Vielen Dan?21k fuer die Zahlung?30COBADEFFXXX?31DE89370400440532013000?32Maximilian Mustermann-Schmi?33dt");
+        assert_eq!(
+            e.description.as_deref(),
+            Some("GUTSCHRIFT | Rechnung 2026-17 Vielen Dank fuer die Zahlung")
+        );
+        assert_eq!(
+            e.counterparty_name.as_deref(),
+            Some("Maximilian Mustermann-Schmidt")
+        );
+        assert_eq!(
+            e.counterparty_account.as_deref(),
+            Some("DE89370400440532013000")
+        );
+        assert_eq!(e.counterparty_bank_code.as_deref(), Some("COBADEFFXXX"));
+    }
+
+    #[test]
+    fn german_subfields_short_segments_get_a_space() {
+        let mut e = Entry::default();
+        apply_details(&mut e, "166?20Miete?21Oktober");
+        assert_eq!(e.description.as_deref(), Some("Miete Oktober"));
+    }
+
+    #[test]
+    fn subfield_separator_other_than_question_mark() {
+        let mut e = Entry::default();
+        apply_details(&mut e, "166>20Miete>32Vermieter GmbH");
+        assert_eq!(
+            (e.description.as_deref(), e.counterparty_name.as_deref()),
+            (Some("Miete"), Some("Vermieter GmbH"))
+        );
+    }
+
+    #[test]
+    fn subfield_lines_are_joined_in_the_order_of_the_codes_groups() {
+        let mut e = Entry::default();
+        // ?60-?63 follow ?20-?29 whatever their place in the text; ?00 is only a prefix
+        apply_details(
+            &mut e,
+            "166?60Zeile sechs?20Zeile eins?00BUCHUNG?22Zeile drei",
+        );
+        assert_eq!(
+            e.description.as_deref(),
+            Some("BUCHUNG | Zeile eins Zeile drei Zeile sechs")
+        );
+    }
+
+    #[test]
+    fn a_wrapped_subfield_keeps_the_space_before_the_break() {
+        // ruling 1: a segment that continues on the next line keeps the trailing space
+        let s = format!(
+            "{ACCOUNT}:61:2609050905D1,NTRFX\n:86:105?20Miete Oktober \nWohnung 5?21Strasse 1\n"
+        );
+        let e = &parse(&s).unwrap()[0].entries[0];
+        assert_eq!(
+            e.description.as_deref(),
+            Some("Miete Oktober Wohnung 5 Strasse 1")
+        );
+        // a full 27-character segment cut inside, from the file's lines
+        let s = format!(
+            "{ACCOUNT}:61:2609050905D1,NTRFX\n:86:166?20Rechnung 2026-17 Vielen \nDan?21k fuer die Zahlung\n"
+        );
+        assert_eq!(
+            parse(&s).unwrap()[0].entries[0].description.as_deref(),
+            Some("Rechnung 2026-17 Vielen Dank fuer die Zahlung")
+        );
+        // the other fields are still trimmed
+        let s = format!("{ACCOUNT}:61:2609050905D1,NTRFX   \n:86:one \ntwo \n");
+        assert_eq!(
+            parse(&s).unwrap()[0].entries[0].description.as_deref(),
+            Some("one two")
+        );
+    }
+
+    #[test]
+    fn a_segment_cut_by_the_line_width_keeps_its_27_characters() {
+        // ?20 is "Rechnung 2026-17 Vielen Dan", 27 characters, with the break after the space
+        // inside it: trimmed it would be 26 and ?21 would not continue "Dan" into "Dank".
+        let mut e = Entry::default();
+        apply_details(
+            &mut e,
+            "166?20Rechnung 2026-17 Vielen \nDan?21k fuer die Zahlung",
+        );
+        assert_eq!(
+            e.description.as_deref(),
+            Some("Rechnung 2026-17 Vielen Dank fuer die Zahlung")
+        );
+    }
+
+    #[test]
+    fn text_that_only_looks_like_a_subfield_code_stays_free_text() {
+        let mut e = Entry::default();
+        apply_details(&mut e, "100.50 EUR Rechnung 2026");
+        assert_eq!(e.description.as_deref(), Some("100.50 EUR Rechnung 2026"));
+        // a code with subfields of no known kind is no subfield text either
+        apply_details(&mut e, "166?100599?50Something");
+        assert_eq!(e.description.as_deref(), Some("166?100599?50Something"));
+    }
+
+    #[test]
+    fn dutch_slash_tags() {
+        let mut e = Entry::default();
+        apply_details(&mut e, "/TRTP/SEPA OVERBOEKING/IBAN/NL91ABNA0417164300/BIC/ABNANL2A/NAME/J. Jansen/REMI/USTD//Huur oktober/EREF/NOTPROVIDED");
+        assert_eq!(e.counterparty_name.as_deref(), Some("J. Jansen"));
+        assert_eq!(
+            e.counterparty_account.as_deref(),
+            Some("NL91ABNA0417164300")
+        );
+        assert_eq!(e.counterparty_bank_code.as_deref(), Some("ABNANL2A"));
+        assert_eq!(e.description.as_deref(), Some("Huur oktober"));
+    }
+
+    #[test]
+    fn dutch_cntp() {
+        let mut e = Entry::default();
+        apply_details(
+            &mut e,
+            "/CNTP/NL91ABNA0417164300/ABNANL2A/J. Jansen/Amsterdam/REMI/USTD//Huur/",
+        );
+        assert_eq!(
+            (
+                e.counterparty_account.as_deref(),
+                e.counterparty_bank_code.as_deref(),
+                e.counterparty_name.as_deref()
+            ),
+            (
+                Some("NL91ABNA0417164300"),
+                Some("ABNANL2A"),
+                Some("J. Jansen")
+            )
+        );
+        assert_eq!(e.description.as_deref(), Some("Huur"));
+    }
+
+    #[test]
+    fn slash_tags_beat_cntp_and_accw_is_an_account_fallback() {
+        let mut e = Entry::default();
+        apply_details(
+            &mut e,
+            "/CNTP/NL02ABNA0123456789/ABNANL2A/Other/Rotterdam/NAME/J. Jansen/IBAN/NL91ABNA0417164300/BIC/INGBNL2A",
+        );
+        assert_eq!(
+            (
+                e.counterparty_account.as_deref(),
+                e.counterparty_bank_code.as_deref(),
+                e.counterparty_name.as_deref()
+            ),
+            (
+                Some("NL91ABNA0417164300"),
+                Some("INGBNL2A"),
+                Some("J. Jansen")
+            )
+        );
+        let mut accw = Entry::default();
+        apply_details(&mut accw, "/ACCW/NL02ABNA0123456789/NAME/Shop");
+        assert_eq!(
+            accw.counterparty_account.as_deref(),
+            Some("NL02ABNA0123456789")
+        );
+    }
+
+    #[test]
+    fn slash_remittance_prefixes_and_empty_values() {
+        let remi = |text: &str| {
+            let mut e = Entry::default();
+            apply_details(&mut e, text);
+            e.description
+        };
+        assert_eq!(
+            remi("/REMI/STRD/CUR/1234567890/EREF/X").as_deref(),
+            Some("1234567890")
+        );
+        assert_eq!(remi("/REMI/Plain text/").as_deref(), Some("Plain text"));
+        assert_eq!(remi("/REMI/USTD///EREF/X"), None);
+        // known tags without a remittance leave the description to the :61: supplement
+        assert_eq!(remi("/TRTP/SEPA/EREF/NOTPROVIDED"), None);
+    }
+
+    #[test]
+    fn slash_dialect_needs_a_known_tag() {
+        let mut e = Entry::default();
+        apply_details(&mut e, "/payment/for rent");
+        assert_eq!(e.description.as_deref(), Some("/payment/for rent"));
+    }
+
+    #[test]
+    fn slash_line_breaks_cut_values_and_tags() {
+        let mut e = Entry::default();
+        apply_details(
+            &mut e,
+            "/TRTP/SEPA/N\nAME/J. Jan\nsen/REMI/USTD//Huur okt\nober/EREF/X",
+        );
+        assert_eq!(e.counterparty_name.as_deref(), Some("J. Jansen"));
+        assert_eq!(e.description.as_deref(), Some("Huur oktober"));
+    }
+
+    #[test]
+    fn free_text_takes_a_single_valid_iban() {
+        let mut e = Entry::default();
+        apply_details(
+            &mut e,
+            "PLATBA NA UCET CZ55 0800 0000 0012 3456 7899\nNAJEM RIJEN",
+        );
+        assert_eq!(
+            e.description.as_deref(),
+            Some("PLATBA NA UCET CZ55 0800 0000 0012 3456 7899 NAJEM RIJEN")
+        );
+        assert_eq!(
+            e.counterparty_account.as_deref(),
+            Some("CZ5508000000001234567899")
+        );
+        let mut two = Entry::default();
+        apply_details(
+            &mut two,
+            "CZ5508000000001234567899 a CZ6508000000192000145399",
+        );
+        assert_eq!(two.counterparty_account, None);
+    }
+
+    #[test]
+    fn free_text_iban_edge_cases() {
+        let account = |text: &str| {
+            let mut e = Entry::default();
+            apply_details(&mut e, text);
+            e.counterparty_account
+        };
+        // the same IBAN twice is one IBAN; punctuation around it does not hide it
+        assert_eq!(
+            account("na CZ55 0800 0000 0012 3456 7899, viz CZ5508000000001234567899.").as_deref(),
+            Some("CZ5508000000001234567899")
+        );
+        // words after the IBAN are not swallowed, a bad checksum is no IBAN
+        assert_eq!(
+            account("CZ5508000000001234567899 JAN NOVAK").as_deref(),
+            Some("CZ5508000000001234567899")
+        );
+        assert_eq!(account("CZ5508000000001234567890 JAN NOVAK"), None);
+        assert_eq!(account("Platba bez uctu CZ12"), None);
+    }
+
+    #[test]
+    fn blank_details_leave_the_entry_alone() {
+        let mut e = Entry {
+            description: Some("Supp".into()),
+            ..Entry::default()
+        };
+        apply_details(&mut e, " \n  ");
+        assert_eq!(e.description.as_deref(), Some("Supp"));
+    }
+
+    #[test]
+    fn a_statement_level_86_after_another_field_does_not_overwrite_the_last_entry() {
+        // ruling 2: every field tag but :86: and :NS: closes the open entry
+        let s = format!("{ACCOUNT}:61:2609050905C1,NTRFX\n:86:Platba\n:64:C260905CZK1,\n:86:statement level info\n");
+        let st = &parse(&s).unwrap()[0];
+        assert_eq!(st.entries[0].description.as_deref(), Some("Platba"));
+        // :NS: lines between the :61: and its :86: do not close it
+        let s = format!("{ACCOUNT}:61:2609050905C1,NTRFX\n:NS:22Some note\n:86:Platba\n");
+        assert_eq!(
+            parse(&s).unwrap()[0].entries[0].description.as_deref(),
+            Some("Platba")
+        );
+    }
+
+    #[test]
+    fn a_stray_field_after_the_end_of_a_statement_is_no_statement() {
+        // ruling 3
+        let s = format!("{ACCOUNT}:61:2609050905C1,NTRFX\n-\n:64:C260905CZK1,\n:86:stray\n-\n");
+        assert_eq!(parse(&s).unwrap().len(), 1);
+        assert!(parse(":64:C260905CZK1,\n:NS:22note\n").unwrap().is_empty());
+        // a statement that has only a balance or an account is still one
+        assert_eq!(parse(":60F:C260905CZK1,\n").unwrap().len(), 1);
+        assert_eq!(parse(":25:CZ6508000000192000145399\n").unwrap().len(), 1);
+        assert_eq!(parse(":20:ONLY\n").unwrap().len(), 1);
+    }
+
+    #[test]
+    fn german_fixture() {
+        let text = fixture_text("de-subfields.sta");
+        assert!(text.contains("\r\n"), "fixture must keep CRLF");
+        assert!(
+            text.contains("Oktober \r\n"),
+            "fixture must keep the trailing space of a wrapped segment"
+        );
+        let statements = parse(&text).unwrap();
+        let st = &statements[0];
+        assert_eq!(
+            st.account.identifier.as_deref(),
+            Some("DE02120300000000202051")
+        );
+        let e = &st.entries[0];
+        assert_eq!(
+            (
+                e.counterparty_name.as_deref(),
+                e.counterparty_account.as_deref(),
+                e.counterparty_bank_code.as_deref(),
+                e.description.as_deref()
+            ),
+            (
+                Some("Maximilian Mustermann-Schmidt"),
+                Some("DE89370400440532013000"),
+                Some("COBADEFFXXX"),
+                Some("GUTSCHRIFT | Rechnung 2026-17 Vielen Dank fuer die Zahlung")
+            )
+        );
+        let second = &st.entries[1];
+        assert_eq!(
+            (
+                second.counterparty_name.as_deref(),
+                second.counterparty_account.as_deref(),
+                second.description.as_deref(),
+                second.is_credit
+            ),
+            (
+                Some("Vermieter Beispiel GmbH"),
+                Some("DE75512108001245126199"),
+                Some("LASTSCHRIFT | Miete Oktober Wohnung 5 Mustergasse 12"),
+                false
+            )
+        );
+        assert_eq!(merge(statements)[0].balance_check, BalanceCheck::AddsUp);
+    }
+
+    #[test]
+    fn dutch_fixture() {
+        let statements = parse(&fixture_text("nl-slash.sta")).unwrap();
+        let e = &statements[0].entries[0];
+        assert_eq!(
+            (
+                e.counterparty_name.as_deref(),
+                e.counterparty_account.as_deref(),
+                e.counterparty_bank_code.as_deref(),
+                e.description.as_deref()
+            ),
+            (
+                Some("J. Jansen"),
+                Some("NL86INGB0002445588"),
+                Some("INGBNL2A"),
+                Some("Huur oktober")
+            )
+        );
+        // the second entry has a tag and a word cut by the 65-character lines
+        let second = &statements[0].entries[1];
+        assert_eq!(
+            (
+                second.counterparty_name.as_deref(),
+                second.counterparty_account.as_deref(),
+                second.description.as_deref()
+            ),
+            (
+                Some("Energie Voorbeeld B.V."),
+                Some("NL02ABNA0123456789"),
+                Some("Termijn oktober")
+            )
+        );
+        assert_eq!(merge(statements)[0].balance_check, BalanceCheck::AddsUp);
+    }
+
+    #[test]
+    fn czech_free_text_fixture() {
+        let statements = parse(&fixture_text("cz-free-text.sta")).unwrap();
+        let e = &statements[0].entries[0];
+        assert_eq!(
+            (
+                e.counterparty_name.as_deref(),
+                e.counterparty_account.as_deref(),
+                e.description.as_deref()
+            ),
+            (
+                None,
+                Some("CZ5508000000001234567899"),
+                Some("PLATBA NA UCET CZ55 0800 0000 0012 3456 7899 NAJEM RIJEN")
+            )
+        );
+        assert_eq!(
+            statements[0].entries[1].description.as_deref(),
+            Some("Mzda za září 2026 Acme s.r.o.")
+        );
+        assert_eq!(merge(statements)[0].balance_check, BalanceCheck::AddsUp);
     }
 }

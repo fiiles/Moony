@@ -1,9 +1,11 @@
-//! The neutral statement model every format parser fills in, and two helpers the
+//! The neutral statement model every format parser fills in, and the helpers the
 //! parsers share.
 
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use specta::Type;
 
+use crate::error::AppError;
 use crate::services::csv_import::DeclaredBalance;
 
 /// The statement formats Moony reads (wire value in the lowercase rename).
@@ -84,6 +86,17 @@ pub fn utc_day(date: chrono::NaiveDate) -> i64 {
     date.and_time(chrono::NaiveTime::MIN).and_utc().timestamp()
 }
 
+/// Longest `detail` of a malformed-statement error, in characters. Element names, entity
+/// names and the like come from the file and can be megabytes long.
+const MAX_DETAIL_CHARS: usize = 64;
+
+/// `validation.statementMalformed` with `detail` (the element, field or entry that cannot be
+/// read), cut to [`MAX_DETAIL_CHARS`] characters.
+pub(crate) fn malformed(detail: &str) -> AppError {
+    let detail: String = detail.chars().take(MAX_DETAIL_CHARS).collect();
+    AppError::validation_with("validation.statementMalformed", json!({ "detail": detail }))
+}
+
 /// Joins the non-empty parts with " | " (the CSV multi-column separator); None when all are empty.
 pub fn join_description<'a>(parts: impl IntoIterator<Item = &'a str>) -> Option<String> {
     let parts: Vec<&str> = parts
@@ -124,6 +137,16 @@ mod tests {
         assert_eq!(utc_day(day), 19_787 * 86_400);
         let epoch = chrono::NaiveDate::from_ymd_opt(1970, 1, 1).unwrap();
         assert_eq!(utc_day(epoch), 0);
+    }
+
+    #[test]
+    fn malformed_names_its_detail_and_cuts_a_long_one() {
+        let (key, params) = malformed("Ntry 3").keyed().unwrap();
+        assert_eq!(key, "validation.statementMalformed");
+        assert_eq!(params, serde_json::json!({ "detail": "Ntry 3" }));
+        // names and details come from the file: cut to 64 characters, on a character boundary
+        let (_, params) = malformed(&"é".repeat(10_000)).keyed().unwrap();
+        assert_eq!(params["detail"], "é".repeat(64));
     }
 
     #[test]

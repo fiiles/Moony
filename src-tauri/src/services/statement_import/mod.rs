@@ -79,7 +79,11 @@ pub fn load(
             statements: camt::parse(&decoded.text)?,
             ..Parsed::default()
         },
-        StatementFormat::Mt940 | StatementFormat::Ofx | StatementFormat::Qif => {
+        StatementFormat::Mt940 => Parsed {
+            statements: mt940::parse(&decoded.text)?,
+            ..Parsed::default()
+        },
+        StatementFormat::Ofx | StatementFormat::Qif => {
             return Err(AppError::validation_with(
                 "validation.statementFormatNotYetSupported",
                 json!({ "format": format.label() }),

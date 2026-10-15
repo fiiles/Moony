@@ -3,9 +3,10 @@
 use quick_xml::escape::resolve_predefined_entity;
 use quick_xml::events::{BytesStart, Event};
 use quick_xml::{Reader, XmlVersion};
-use serde_json::json;
 
 use crate::error::{AppError, Result};
+
+use super::model::malformed;
 
 /// Real statements nest about a dozen levels; a deeper document is refused instead of
 /// building a tree whose recursive drop could overflow the stack.
@@ -54,7 +55,7 @@ impl Node {
 
 /// Parses a whole document into its root element. Any XML error, a document nested deeper
 /// than [`MAX_DEPTH`] or with more than [`MAX_NODES`] elements is `validation.statementMalformed`
-/// (detail: the open element, else `xml`, cut to [`MAX_DETAIL_CHARS`] characters); a document
+/// (detail: the open element, else `xml`, cut to 64 characters); a document
 /// type declaration is `validation.statementDoctype`.
 pub fn parse_xml(text: &str) -> Result<Node> {
     parse_xml_with_limits(text, MAX_DEPTH, MAX_NODES)
@@ -118,15 +119,6 @@ fn parse_xml_with_limits(text: &str, max_depth: usize, max_nodes: usize) -> Resu
         return Err(malformed(open_name(&open)));
     }
     root.ok_or_else(|| malformed("xml"))
-}
-
-/// Longest `detail` of a malformed-statement error, in characters. Element and entity names
-/// come from the file and can be megabytes long.
-const MAX_DETAIL_CHARS: usize = 64;
-
-pub(super) fn malformed(detail: &str) -> AppError {
-    let detail: String = detail.chars().take(MAX_DETAIL_CHARS).collect();
-    AppError::validation_with("validation.statementMalformed", json!({ "detail": detail }))
 }
 
 /// Counts one more element and refuses the document past `max_nodes`.

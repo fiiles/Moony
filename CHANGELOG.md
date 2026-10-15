@@ -24,6 +24,7 @@ All notable changes to Moony are documented in this file. The format follows
   imports pending payments as pending, and warns when new payments fall in a period an earlier
   import already covers (CSV too). The dialog and the buttons that open it are now called "Import
   statement" instead of "Import CSV". CSV files import as before.
+- **MT940 statements**, including the common German, Dutch and free-text payment details.
 
 ### Changed
 

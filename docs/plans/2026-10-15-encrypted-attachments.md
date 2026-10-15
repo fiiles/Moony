@@ -27,7 +27,7 @@ npm run lint && npm run typecheck && npm test
 
 | Task | Status | Commit |
 |---|---|---|
-| 0. Spike: pdf.js and a custom scheme under the app CSP | pending | — |
+| 0. Spike: pdf.js and a custom scheme under the app CSP | done — works without widening the CSP; see "Task 0 outcome" | spike branch `spike/pdfjs-csp` 999635de (not merged) |
 | 1. Store: `attachments.db`, `files` schema, store service | pending | — |
 | 2. Migration 021, wire contract, `moony-file:` scheme serving legacy files, frontend switch | pending | — |
 | 3. New photos and documents go into the store; deletes remove blobs | pending | — |
@@ -36,6 +36,47 @@ npm run lint && npm run typecheck && npm test
 | 6. Backup format 2, restore, integrity, delete account | pending | — |
 | 7. Tooling, recovery-key copy, living docs, ADR 0017 accepted | pending | — |
 | 8. Verification and review | pending | — |
+
+## Task 0 outcome (2026-10-15)
+
+Setup: a `tauri build --debug --no-bundle` of the spike branch (`VITE_SPIKE=1`), run in the
+native macOS webview (WKWebView, origin `tauri://localhost`) with `HOME` pointing at an empty
+scratch folder. The page reported to stdout. Canaries proved the CSP was enforced: a fetch to
+`https://example.com` and `new Function` were both blocked.
+
+Results:
+- **pdf.js renders under the CSP as planned.** `pdfjs-dist` **6.4.299** (modern build; the
+  legacy build is not needed) rendered a text PDF with a non-embedded Helvetica and a PDF with a
+  JPEG 2000 image. The JPX centre pixel came out exactly at the source colour, and pdf.js caused
+  no CSP violation.
+- **No `'wasm-unsafe-eval'`.** WebAssembly is blocked in the document but allowed in a worker
+  (Tauri sends the CSP header with HTML only), and pdf.js runs its wasm decoders in its worker.
+  pdf.js also ships JS fallbacks (`*_nowasm_fallback.js`) in case a platform blocks wasm in
+  workers too.
+- **`isEvalSupported` no longer exists in pdf.js 6** (there is no eval path), so §4.7's mention of
+  it is moot.
+- **`getTextContent` needs a polyfill on this WebKit**: `ReadableStream.prototype[Symbol.asyncIterator]`
+  is missing. The canvas viewer does not need text; if a text layer or search is ever added,
+  install the small polyfill from the spike page first.
+- **pdf.js needs `wasmUrl` and `standardFontDataUrl` served from `'self'`.** Copy
+  `node_modules/pdfjs-dist/{wasm,standard_fonts,cmaps,iccs}` into the build (about 4 MB) with a
+  small Vite plugin or a script; never commit them. On `tauri://localhost` pdf.js fetches them
+  on the main thread (its worker fetch needs http(s)); on Windows (`http://tauri.localhost`) the
+  worker fetches them. Both paths are covered by `connect-src 'self'`.
+- **`moony-file:` works for `<img>`.** A page `fetch` of a `moony-file:` URL needs
+  `Access-Control-Allow-Origin`, because the page origin is `tauri://localhost`. **Amends §4.6
+  for Task 2:** answer with `Access-Control-Allow-Origin` set to the request's `Origin` only
+  when it is the app origin (`tauri://localhost`, `http://tauri.localhost`, or
+  `https://tauri.localhost`), and never `*`.
+- **The CSP must allow Tauri's IPC protocol. Amends §4.6 for Task 2:** add
+  `ipc: http://ipc.localhost` to `connect-src`. Without it, every invoke falls back to
+  postMessage: a raw `Uint8Array` body arrives as `InvokeBody::Json`, and a
+  `tauri::ipc::Response` arrives in JS as a plain Array. That breaks the raw-body photo upload
+  from `d25506eb` in built apps (`tauri dev` applies no CSP, so it hides the problem). Handed to
+  the session that made that change, to fix on `main`; this branch picks the fix up by merging
+  `main`.
+- `pdfjs-dist` declares an optional dependency, `@napi-rs/canvas`, for Node only. It is not
+  bundled into the app; keep it out of any runtime code path.
 
 ## Task 0 — Spike (§4.6, §4.7, D3)
 

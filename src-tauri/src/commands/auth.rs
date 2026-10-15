@@ -169,6 +169,8 @@ pub async fn unlock(
             log::error!("[local-api] MCP server failed to start on unlock: {}", e);
         }
     }
+    // Plain attachment files from earlier versions move into the encrypted store (D4).
+    crate::commands::attachments::spawn_conversion(&app);
     crate::commands::mcp_refresh::resume(app, (*db).clone());
     Ok(profile)
 }
@@ -201,6 +203,8 @@ pub async fn confirm_recover(
         &data.new_password,
         &data.new_recovery_key,
     )?;
+    // Plain attachment files from earlier versions move into the encrypted store (D4).
+    crate::commands::attachments::spawn_conversion(&app);
     crate::commands::mcp_refresh::resume(app, (*db).clone());
     Ok(profile)
 }

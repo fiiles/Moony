@@ -83,6 +83,7 @@ pub fn collect_types() -> TypeCollection {
 
     // Attachment models
     types.register::<crate::models::AttachmentKind>();
+    types.register::<crate::models::AttachmentStatus>();
 
     // Other assets models
     types.register::<crate::models::OtherAsset>();

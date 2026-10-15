@@ -164,7 +164,7 @@ fn resolve_photo(
 }
 
 /// A legacy photo path is relative to the data dir and stays inside the photos folder.
-fn legacy_photo_path(data_dir: &Path, rel: &str) -> Result<PathBuf> {
+pub fn legacy_photo_path(data_dir: &Path, rel: &str) -> Result<PathBuf> {
     let rel_path = Path::new(rel);
     let inside = rel_path
         .components()

@@ -186,7 +186,20 @@
     "exportHint": "Todas las tablas en un solo archivo JSON.",
     "exportButton": "Exportar JSON",
     "verifyRow": "Comprobación de la base de datos",
-    "verifyHint": "Comprueba la integridad de la base de datos cifrada."
+    "verifyHint": "Comprueba la integridad de la base de datos cifrada.",
+    "attachments": {
+      "label": "Adjuntos",
+      "stored": "Adjuntos guardados cifrados: {{n}}",
+      "none": "Aún no hay adjuntos. Las fotos y los documentos se guardan cifrados.",
+      "converting": "Cifrando los adjuntos de una versión anterior… {{done}} de {{total}}",
+      "pending": "Adjuntos de una versión anterior pendientes de cifrar: {{n}}",
+      "missing": "Adjuntos cuyo archivo falta en el disco: {{n}}",
+      "failed": "Adjuntos que no se pudieron cifrar: {{n}}. Moony lo intentará de nuevo en el próximo desbloqueo.",
+      "unavailable": "Ahora no se pueden abrir los adjuntos: attachments.db está dañado o pertenece a otro perfil. Restaure una copia de seguridad o contacte con el soporte.",
+      "leftoversTitle": "Copias sin cifrar fuera de Moony",
+      "leftoversBody": "Moony las encontró al cifrar. Nunca borra nada fuera de su propia carpeta; revíselas y bórrelas usted.",
+      "reveal": "Mostrar"
+    }
   },
   "autoLock": {
     "title": "Bloqueo automático",

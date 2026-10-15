@@ -358,6 +358,28 @@ export interface InsuranceDocument {
 /** Which attachment table a row id belongs to. */
 export type AttachmentKind = 'photo' | 'real-estate-document' | 'insurance-document';
 
+/** The encrypted store, the conversion of plain files from earlier versions, and leftovers. */
+export interface AttachmentStatus {
+  /** `attachments.db` is attached and usable. */
+  storeAvailable: boolean;
+  /** Attachments stored encrypted. */
+  stored: number;
+  /** Attachments still in plain files that are waiting for the conversion. */
+  legacyPending: number;
+  /** Attachments whose plain file is missing on disk. */
+  missing: number;
+  /** Attachments the last conversion run could not convert (retried at the next unlock). */
+  failed: number;
+  /** A conversion run is in progress. */
+  converting: boolean;
+  /** Items of the current or last run converted so far. */
+  done: number;
+  /** Items of the current or last run. */
+  total: number;
+  /** Plain originals the app found and does not delete: files and old data folders. */
+  leftovers: string[];
+}
+
 // Other Assets
 export interface OtherAsset {
   id: string;

@@ -10,7 +10,13 @@
 //! cargo run --bin seed_demo                  # writes <repo>/demo-home/…  (per-OS layout, see below)
 //! cargo run --bin seed_demo -- --out <dir>   # writes the data directory to exactly <dir>
 //! MOONY_SEED_OUT=<dir> cargo run --bin seed_demo
+//! cargo run --bin seed_demo -- --legacy-attachments   # attachments as plain files, like 0.12
 //! ```
+//!
+//! The investment flat gets a photo batch (two photos) and a PDF lease. By default they go into the
+//! encrypted attachments store (`attachments.db`). `--legacy-attachments` writes them as plain
+//! files with legacy rows, the way versions up to 0.12 did, so the conversion that runs after
+//! unlock can be exercised.
 //!
 //! Without `--out` the data lands in `<repo>/demo-home/`, laid out like the home
 //! directory the app would use, so it never touches your real profile:
@@ -70,17 +76,21 @@ const APP_IDENTIFIER: &str = "com.moonyfinance.desktop";
 const MARKER_FILE: &str = ".seed_demo";
 const OUT_ENV: &str = "MOONY_SEED_OUT";
 
-const USAGE: &str = "Usage: seed_demo [--out <dir>]
+const USAGE: &str = "Usage: seed_demo [--out <dir>] [--legacy-attachments]
 
-  --out <dir>   write the data directory to exactly <dir> (also: env MOONY_SEED_OUT)
-  -h, --help    show this help
+  --out <dir>             write the data directory to exactly <dir> (also: env MOONY_SEED_OUT)
+  --legacy-attachments    store the demo attachments as plain files, like versions up to 0.12
+  -h, --help              show this help
 
 Without --out the demo data goes to <repo>/demo-home/<per-OS app data path>.";
 
 #[derive(Debug, PartialEq)]
 enum Cli {
     Help,
-    Run { out: Option<PathBuf> },
+    Run {
+        out: Option<PathBuf>,
+        legacy_attachments: bool,
+    },
 }
 
 /// `--out <dir>` / `--out=<dir>` / `-h`, with `MOONY_SEED_OUT` as the fallback
@@ -90,10 +100,12 @@ where
     I: IntoIterator<Item = String>,
 {
     let mut out: Option<PathBuf> = None;
+    let mut legacy_attachments = false;
     let mut args = args.into_iter();
     while let Some(arg) = args.next() {
         match arg.as_str() {
             "-h" | "--help" => return Ok(Cli::Help),
+            "--legacy-attachments" => legacy_attachments = true,
             "--out" => {
                 let value = args.next().ok_or("--out needs a directory")?;
                 out = Some(PathBuf::from(value));
@@ -108,7 +120,10 @@ where
         return Err("--out needs a non-empty directory".into());
     }
     let out = out.or_else(|| env_out.filter(|v| !v.is_empty()).map(PathBuf::from));
-    Ok(Cli::Run { out })
+    Ok(Cli::Run {
+        out,
+        legacy_attachments,
+    })
 }
 
 /// Where Tauri's `app_data_dir` lands under a home directory, per OS.
@@ -157,12 +172,15 @@ fn main() {
             std::process::exit(2);
         }
     };
-    let out = match cli {
+    let (out, legacy_attachments) = match cli {
         Cli::Help => {
             println!("{USAGE}");
             return;
         }
-        Cli::Run { out } => out,
+        Cli::Run {
+            out,
+            legacy_attachments,
+        } => (out, legacy_attachments),
     };
 
     // CARGO_MANIFEST_DIR is src-tauri, so this works from any working directory.
@@ -206,6 +224,7 @@ fn main() {
     seed_stocks(&db, now);
     seed_crypto(&db, now);
     seed_static_assets(&db, now);
+    seed_attachments(&db, &data_dir, now, legacy_attachments);
     seed_rate_history(&db, now, &mut rng);
     seed_portfolio_history(&db, now, &mut rng);
 
@@ -658,6 +677,133 @@ fn seed_static_assets(db: &Database, now: i64) {
     .expect("seed static assets");
 }
 
+/// A gradient JPEG with a coloured band, standing in for a photo of the flat.
+fn demo_jpeg(top: [u8; 3], bottom: [u8; 3]) -> Vec<u8> {
+    let (w, h) = (1600u32, 1000u32);
+    let img = image::RgbImage::from_fn(w, h, |_, y| {
+        let t = y as f32 / h as f32;
+        let mix = |a: u8, b: u8| (a as f32 + (b as f32 - a as f32) * t) as u8;
+        image::Rgb([
+            mix(top[0], bottom[0]),
+            mix(top[1], bottom[1]),
+            mix(top[2], bottom[2]),
+        ])
+    });
+    let mut out = std::io::Cursor::new(Vec::new());
+    image::DynamicImage::ImageRgb8(img)
+        .write_to(&mut out, image::ImageFormat::Jpeg)
+        .expect("encode demo photo");
+    out.into_inner()
+}
+
+/// A one-page PDF with a heading line, standing in for a scanned contract.
+fn demo_pdf(title: &str) -> Vec<u8> {
+    let content = format!("BT /F1 28 Tf 72 720 Td ({title}) Tj ET\n");
+    let objects = [
+        "<< /Type /Catalog /Pages 2 0 R >>".to_string(),
+        "<< /Type /Pages /Kids [3 0 R] /Count 1 >>".to_string(),
+        "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>".to_string(),
+        format!("<< /Length {} >>\nstream\n{content}endstream", content.len()),
+        "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>".to_string(),
+    ];
+    let mut pdf = b"%PDF-1.7\n".to_vec();
+    let mut offsets = Vec::new();
+    for (i, body) in objects.iter().enumerate() {
+        offsets.push(pdf.len());
+        pdf.extend_from_slice(format!("{} 0 obj\n{body}\nendobj\n", i + 1).as_bytes());
+    }
+    let xref = pdf.len();
+    pdf.extend_from_slice(
+        format!("xref\n0 {}\n0000000000 65535 f \n", objects.len() + 1).as_bytes(),
+    );
+    for offset in offsets {
+        pdf.extend_from_slice(format!("{offset:010} 00000 n \n").as_bytes());
+    }
+    pdf.extend_from_slice(
+        format!(
+            "trailer\n<< /Size {} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n",
+            objects.len() + 1
+        )
+        .as_bytes(),
+    );
+    pdf
+}
+
+/// Two photos and a PDF lease on the investment flat: in the encrypted store, or (with
+/// `--legacy-attachments`) as plain files and legacy rows, the way versions up to 0.12 kept them.
+fn seed_attachments(db: &Database, data_dir: &Path, now: i64, legacy: bool) {
+    use moony_lib::services::{attachments, real_estate_photos};
+
+    let photos = [
+        demo_jpeg([62, 125, 160], [236, 201, 152]),
+        demo_jpeg([88, 120, 84], [214, 222, 196]),
+    ];
+    let lease = demo_pdf("Najemni smlouva - Veveri 14");
+    db.with_conn(|conn| {
+        let property: String = conn.query_row(
+            "SELECT id FROM real_estate WHERE name = 'Investiční byt 2+kk'",
+            [],
+            |r| r.get(0),
+        )?;
+        let batch = Uuid::new_v4().to_string();
+        conn.execute(
+            "INSERT INTO real_estate_photo_batches (id, real_estate_id, photo_date, description, created_at)
+             VALUES (?1, ?2, ?3, 'Předání bytu nájemníkovi', ?3)",
+            params![batch, property, now - 30 * DAY],
+        )?;
+
+        if legacy {
+            let photo_dir = data_dir.join(real_estate_photos::PHOTOS_DIR).join(&property).join(&batch);
+            std::fs::create_dir_all(&photo_dir).expect("photo dir");
+            for bytes in &photos {
+                let id = Uuid::new_v4().to_string();
+                let thumb = image::load_from_memory(bytes).expect("decode").thumbnail(400, 400);
+                let mut thumb_bytes = std::io::Cursor::new(Vec::new());
+                thumb
+                    .write_to(&mut thumb_bytes, image::ImageFormat::Jpeg)
+                    .expect("encode thumb");
+                std::fs::write(photo_dir.join(format!("{id}.jpg")), bytes).expect("photo");
+                std::fs::write(photo_dir.join(format!("{id}_thumb.jpg")), thumb_bytes.into_inner())
+                    .expect("thumb");
+                let rel = format!("{}/{property}/{batch}", real_estate_photos::PHOTOS_DIR);
+                conn.execute(
+                    "INSERT INTO real_estate_photos (id, batch_id, file_path, thumbnail_path, created_at)
+                     VALUES (?1, ?2, ?3, ?4, ?5)",
+                    params![id, batch, format!("{rel}/{id}.jpg"), format!("{rel}/{id}_thumb.jpg"), now],
+                )?;
+            }
+            let doc_dir = data_dir.join(attachments::REAL_ESTATE_DOCUMENTS_DIR).join(&property);
+            std::fs::create_dir_all(&doc_dir).expect("document dir");
+            let id = Uuid::new_v4().to_string();
+            let path = doc_dir.join(format!("{id}_Nájemní smlouva.pdf"));
+            std::fs::write(&path, &lease).expect("lease");
+            conn.execute(
+                "INSERT INTO real_estate_documents (id, real_estate_id, name, description, file_path, file_type, file_size, uploaded_at)
+                 VALUES (?1, ?2, 'Nájemní smlouva', 'Na dobu neurčitou', ?3, 'contract', ?4, ?5)",
+                params![id, property, path.to_string_lossy(), lease.len() as i64, now],
+            )?;
+        } else {
+            for bytes in &photos {
+                let prepared = real_estate_photos::prepare_photo(bytes)?;
+                real_estate_photos::record_photo(conn, &batch, &prepared, now)?;
+            }
+            let picked = std::env::temp_dir().join(format!("seed-demo-{}", Uuid::new_v4()));
+            std::fs::create_dir_all(&picked).expect("temp dir");
+            let source = picked.join("Nájemní smlouva.pdf");
+            std::fs::write(&source, &lease).expect("lease");
+            let doc = attachments::NewDocument {
+                name: "Nájemní smlouva",
+                description: Some("Na dobu neurčitou"),
+                file_type: "contract",
+            };
+            attachments::add_real_estate_document(conn, &property, &source, &doc, now)?;
+            let _ = std::fs::remove_dir_all(&picked);
+        }
+        Ok(())
+    })
+    .expect("seed attachments");
+}
+
 fn seed_rate_history(db: &Database, now: i64, rng: &mut Rng) {
     db.with_conn(|conn| {
         for day in 0..180 {
@@ -751,6 +897,8 @@ fn verify(db: &Database) {
             "crypto_investments",
             "crypto_transactions",
             "real_estate",
+            "real_estate_photos",
+            "real_estate_documents",
             "loans",
             "bonds",
             "budget_goals",
@@ -790,13 +938,31 @@ mod tests {
 
     #[test]
     fn no_arguments_use_the_default_location() {
-        assert_eq!(parse_args(args(&[]), None), Ok(Cli::Run { out: None }));
+        assert_eq!(
+            parse_args(args(&[]), None),
+            Ok(Cli::Run {
+                out: None,
+                legacy_attachments: false
+            })
+        );
+    }
+
+    #[test]
+    fn the_legacy_attachments_flag_combines_with_out() {
+        assert_eq!(
+            parse_args(args(&["--legacy-attachments", "--out", "/tmp/demo"]), None),
+            Ok(Cli::Run {
+                out: Some(PathBuf::from("/tmp/demo")),
+                legacy_attachments: true,
+            })
+        );
     }
 
     #[test]
     fn out_flag_takes_a_directory_in_both_spellings() {
         let expected = Ok(Cli::Run {
             out: Some(PathBuf::from("/tmp/demo")),
+            legacy_attachments: false,
         });
         assert_eq!(parse_args(args(&["--out", "/tmp/demo"]), None), expected);
         assert_eq!(parse_args(args(&["--out=/tmp/demo"]), None), expected);
@@ -807,19 +973,24 @@ mod tests {
         assert_eq!(
             parse_args(args(&[]), Some("/env/dir".into())),
             Ok(Cli::Run {
-                out: Some(PathBuf::from("/env/dir"))
+                out: Some(PathBuf::from("/env/dir")),
+                legacy_attachments: false,
             })
         );
         assert_eq!(
             parse_args(args(&["--out", "/flag/dir"]), Some("/env/dir".into())),
             Ok(Cli::Run {
-                out: Some(PathBuf::from("/flag/dir"))
+                out: Some(PathBuf::from("/flag/dir")),
+                legacy_attachments: false,
             })
         );
         // An empty variable counts as unset.
         assert_eq!(
             parse_args(args(&[]), Some(String::new())),
-            Ok(Cli::Run { out: None })
+            Ok(Cli::Run {
+                out: None,
+                legacy_attachments: false
+            })
         );
     }
 

@@ -33,6 +33,48 @@ valuedAt: number; note: string | null; createdAt: number }
 export type AttachmentKind = "photo" | "real-estate-document" | "insurance-document"
 
 /**
+ * What the Data settings page shows about attachments: the encrypted store, the conversion of
+ * plain files from earlier versions, and plain originals the app will not delete (ADR 0017).
+ */
+export type AttachmentStatus = { 
+/**
+ * `attachments.db` is attached and usable.
+ */
+storeAvailable: boolean; 
+/**
+ * Attachments stored encrypted.
+ */
+stored: number; 
+/**
+ * Attachments still in plain files that are waiting for the conversion.
+ */
+legacyPending: number; 
+/**
+ * Attachments whose plain file is missing on disk.
+ */
+missing: number; 
+/**
+ * Attachments the last conversion run could not convert (retried at the next unlock).
+ */
+failed: number; 
+/**
+ * A conversion run is in progress.
+ */
+converting: boolean; 
+/**
+ * Items of the current or last run converted so far.
+ */
+done: number; 
+/**
+ * Items of the current or last run.
+ */
+total: number; 
+/**
+ * Plain originals the app found and does not delete: files and old data folders.
+ */
+leftovers: string[] }
+
+/**
  * One file inside a backup archive.
  */
 export type BackupFileEntry = { path: string; bytes: number }

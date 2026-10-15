@@ -182,7 +182,20 @@
     "exportHint": "所有表合并为一个 JSON 文件。",
     "exportButton": "导出 JSON",
     "verifyRow": "数据库检查",
-    "verifyHint": "检查加密数据库的完整性。"
+    "verifyHint": "检查加密数据库的完整性。",
+    "attachments": {
+      "label": "附件",
+      "stored": "已加密保存的附件：{{n}}",
+      "none": "还没有附件。照片和文档会加密保存。",
+      "converting": "正在加密旧版本的附件… {{done}} / {{total}}",
+      "pending": "等待加密的旧版本附件：{{n}}",
+      "missing": "磁盘上缺少文件的附件：{{n}}",
+      "failed": "无法加密的附件：{{n}}。Moony 会在下次解锁时重试。",
+      "unavailable": "目前无法打开附件：attachments.db 已损坏或属于其他配置文件。请恢复备份或联系支持。",
+      "leftoversTitle": "Moony 之外的未加密副本",
+      "leftoversBody": "Moony 在加密时发现了这些文件。它从不删除自己文件夹之外的任何内容；请检查后自行删除。",
+      "reveal": "显示"
+    }
   },
   "autoLock": {
     "title": "自动锁定",

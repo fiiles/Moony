@@ -73,6 +73,7 @@ pub async fn run() {
         .manage(services::history_recalc::HistoryRecalc::new())
         .manage(CategorizationState(categorization_engine))
         .manage(LocalApiServer::new())
+        .manage(commands::attachments::AttachmentConversion::default())
         // Attachment bytes reach the webview only through this scheme (ADR 0017).
         .register_asynchronous_uri_scheme_protocol(
             services::attachment_protocol::SCHEME,
@@ -105,6 +106,8 @@ pub async fn run() {
             // Attachments (services::attachments)
             commands::attachments::export_attachment,
             commands::attachments::export_photo_batch,
+            commands::attachments::get_attachment_status,
+            commands::attachments::reveal_attachment_leftover,
             // Onboarding (services::onboarding)
             commands::onboarding::get_onboarding_progress,
             commands::onboarding::set_onboarding_flag,

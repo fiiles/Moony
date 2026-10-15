@@ -188,7 +188,20 @@
     "exportHint": "Każda tabela w jednym pliku JSON.",
     "exportButton": "Eksportuj JSON",
     "verifyRow": "Kontrola bazy danych",
-    "verifyHint": "Sprawdza integralność zaszyfrowanej bazy danych."
+    "verifyHint": "Sprawdza integralność zaszyfrowanej bazy danych.",
+    "attachments": {
+      "label": "Załączniki",
+      "stored": "Załączniki zapisane w postaci zaszyfrowanej: {{n}}",
+      "none": "Brak załączników. Zdjęcia i dokumenty są zapisywane w postaci zaszyfrowanej.",
+      "converting": "Szyfrowanie załączników z wcześniejszej wersji… {{done}} z {{total}}",
+      "pending": "Załączniki z wcześniejszej wersji czekające na zaszyfrowanie: {{n}}",
+      "missing": "Załączniki, których pliku brakuje na dysku: {{n}}",
+      "failed": "Załączniki, których nie udało się zaszyfrować: {{n}}. Moony spróbuje ponownie przy następnym odblokowaniu.",
+      "unavailable": "Nie można teraz otworzyć załączników: plik attachments.db jest uszkodzony lub należy do innego profilu. Przywróć kopię zapasową lub skontaktuj się z pomocą techniczną.",
+      "leftoversTitle": "Niezaszyfrowane kopie poza Moony",
+      "leftoversBody": "Moony znalazła je podczas szyfrowania. Nigdy nie usuwa niczego poza własnym folderem; sprawdź je i usuń samodzielnie.",
+      "reveal": "Pokaż"
+    }
   },
   "autoLock": {
     "title": "Automatyczna blokada",

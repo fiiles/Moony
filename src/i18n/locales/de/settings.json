@@ -184,7 +184,20 @@
     "exportHint": "Jede Tabelle in einer JSON-Datei.",
     "exportButton": "JSON exportieren",
     "verifyRow": "Datenbankprüfung",
-    "verifyHint": "Prüft die Integrität der verschlüsselten Datenbank."
+    "verifyHint": "Prüft die Integrität der verschlüsselten Datenbank.",
+    "attachments": {
+      "label": "Anhänge",
+      "stored": "Verschlüsselt gespeicherte Anhänge: {{n}}",
+      "none": "Noch keine Anhänge. Fotos und Dokumente werden verschlüsselt gespeichert.",
+      "converting": "Anhänge aus einer früheren Version werden verschlüsselt… {{done}} von {{total}}",
+      "pending": "Anhänge aus einer früheren Version, die noch verschlüsselt werden: {{n}}",
+      "missing": "Anhänge, deren Datei auf der Festplatte fehlt: {{n}}",
+      "failed": "Anhänge, die nicht verschlüsselt werden konnten: {{n}}. Moony versucht es beim nächsten Entsperren erneut.",
+      "unavailable": "Anhänge können gerade nicht geöffnet werden: attachments.db ist beschädigt oder gehört zu einem anderen Profil. Stellen Sie eine Sicherung wieder her oder wenden Sie sich an den Support.",
+      "leftoversTitle": "Unverschlüsselte Kopien außerhalb von Moony",
+      "leftoversBody": "Moony hat sie beim Verschlüsseln gefunden. Außerhalb des eigenen Ordners löscht Moony nichts; prüfen und löschen Sie sie selbst.",
+      "reveal": "Anzeigen"
+    }
   },
   "autoLock": {
     "title": "Automatische Sperre",

@@ -184,7 +184,20 @@
     "exportHint": "Varje tabell i en JSON-fil.",
     "exportButton": "Exportera JSON",
     "verifyRow": "Databaskontroll",
-    "verifyHint": "Kontrollerar den krypterade databasens integritet."
+    "verifyHint": "Kontrollerar den krypterade databasens integritet.",
+    "attachments": {
+      "label": "Bilagor",
+      "stored": "Bilagor sparade krypterat: {{n}}",
+      "none": "Inga bilagor ännu. Foton och dokument sparas krypterat.",
+      "converting": "Krypterar bilagor från en tidigare version … {{done}} av {{total}}",
+      "pending": "Bilagor från en tidigare version som väntar på kryptering: {{n}}",
+      "missing": "Bilagor vars fil saknas på disken: {{n}}",
+      "failed": "Bilagor som inte kunde krypteras: {{n}}. Moony försöker igen nästa gång du låser upp.",
+      "unavailable": "Bilagorna kan inte öppnas just nu: attachments.db är skadad eller hör till en annan profil. Återställ en säkerhetskopia eller kontakta support.",
+      "leftoversTitle": "Okrypterade kopior utanför Moony",
+      "leftoversBody": "Moony hittade dem under krypteringen. Den raderar aldrig något utanför sin egen mapp; kontrollera dem och radera dem själv.",
+      "reveal": "Visa"
+    }
   },
   "autoLock": {
     "title": "Autolås",

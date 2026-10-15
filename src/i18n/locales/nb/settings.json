@@ -184,7 +184,20 @@
     "exportHint": "Alle tabeller i én JSON-fil.",
     "exportButton": "Eksporter JSON",
     "verifyRow": "Databasekontroll",
-    "verifyHint": "Kontrollerer integriteten til den krypterte databasen."
+    "verifyHint": "Kontrollerer integriteten til den krypterte databasen.",
+    "attachments": {
+      "label": "Vedlegg",
+      "stored": "Vedlegg lagret kryptert: {{n}}",
+      "none": "Ingen vedlegg ennå. Bilder og dokumenter lagres kryptert.",
+      "converting": "Krypterer vedlegg fra en tidligere versjon … {{done}} av {{total}}",
+      "pending": "Vedlegg fra en tidligere versjon som venter på kryptering: {{n}}",
+      "missing": "Vedlegg der filen mangler på disken: {{n}}",
+      "failed": "Vedlegg som ikke kunne krypteres: {{n}}. Moony prøver igjen neste gang du låser opp.",
+      "unavailable": "Vedleggene kan ikke åpnes nå: attachments.db er skadet eller tilhører en annen profil. Gjenopprett en sikkerhetskopi, eller kontakt brukerstøtte.",
+      "leftoversTitle": "Ukrypterte kopier utenfor Moony",
+      "leftoversBody": "Moony fant disse under krypteringen. Den sletter aldri noe utenfor sin egen mappe; sjekk dem og slett dem selv.",
+      "reveal": "Vis"
+    }
   },
   "autoLock": {
     "title": "Automatisk låsing",

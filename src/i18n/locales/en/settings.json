@@ -184,7 +184,20 @@
     "exportHint": "Every table in one JSON file.",
     "exportButton": "Export JSON",
     "verifyRow": "Database check",
-    "verifyHint": "Checks the integrity of the encrypted database."
+    "verifyHint": "Checks the integrity of the encrypted database.",
+    "attachments": {
+      "label": "Attachments",
+      "stored": "Attachments stored encrypted: {{n}}",
+      "none": "No attachments yet. Photos and documents are stored encrypted.",
+      "converting": "Encrypting attachments from an earlier version… {{done}} of {{total}}",
+      "pending": "Attachments from an earlier version waiting to be encrypted: {{n}}",
+      "missing": "Attachments whose file is missing on disk: {{n}}",
+      "failed": "Attachments that could not be encrypted: {{n}}. Moony tries again at the next unlock.",
+      "unavailable": "Attachments can't be opened right now: attachments.db is damaged or belongs to another profile. Restore a backup, or contact support.",
+      "leftoversTitle": "Unencrypted copies outside Moony",
+      "leftoversBody": "Moony found these while encrypting. It never deletes anything outside its own folder; check them and delete them yourself.",
+      "reveal": "Show"
+    }
   },
   "autoLock": {
     "title": "Auto-lock",

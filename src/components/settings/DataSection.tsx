@@ -15,6 +15,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { SettingsCard, SettingsRow } from '@/components/settings/SettingsCard';
+import { AttachmentsStatusRow } from '@/components/settings/AttachmentsStatusRow';
 import { queryClient } from '@/lib/queryClient';
 import { dataApi } from '@/lib/tauri-api';
 import { translateApiError } from '@/lib/translate-api-error';
@@ -179,6 +180,8 @@ export function DataSection() {
           {t('data.openFolder')}
         </Button>
       </SettingsRow>
+
+      <AttachmentsStatusRow />
 
       <SettingsRow label={t('data.backupRow')} hint={t('data.hint')}>
         <Button

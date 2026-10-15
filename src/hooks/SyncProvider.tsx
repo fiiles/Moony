@@ -100,6 +100,24 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     }
   }, [queryClient]);
 
+  // The background conversion of plain attachment files (ADR 0017) moves rows from their plain
+  // file to the encrypted store: refresh its status and the attachment lists when it ends.
+  useEffect(() => {
+    const unlisten = listen('attachments-conversion-finished', () => {
+      for (const key of [
+        'attachment-status',
+        'real-estate-photo-batches',
+        'real-estate-documents',
+        'insurance-documents',
+      ]) {
+        queryClient.invalidateQueries({ queryKey: [key] });
+      }
+    });
+    return () => {
+      unlisten.then((f) => f());
+    };
+  }, [queryClient]);
+
   // The FX backfill (after a rate refresh or a statement import) can add
   // historical rates: rows previously reported as missing FX now convert, and
   // costs estimated at today's rate get their day's rate. The rate refresh

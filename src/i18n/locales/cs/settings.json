@@ -186,7 +186,20 @@
     "exportHint": "Všechny tabulky v jednom souboru JSON.",
     "exportButton": "Exportovat JSON",
     "verifyRow": "Kontrola databáze",
-    "verifyHint": "Ověří integritu šifrované databáze."
+    "verifyHint": "Ověří integritu šifrované databáze.",
+    "attachments": {
+      "label": "Přílohy",
+      "stored": "Šifrovaně uložené přílohy: {{n}}",
+      "none": "Zatím žádné přílohy. Fotky a dokumenty se ukládají šifrovaně.",
+      "converting": "Šifruji přílohy z dřívější verze… {{done}} z {{total}}",
+      "pending": "Přílohy z dřívější verze, které čekají na zašifrování: {{n}}",
+      "missing": "Přílohy, jejichž soubor chybí na disku: {{n}}",
+      "failed": "Přílohy, které se nepodařilo zašifrovat: {{n}}. Zkusím to znovu při dalším odemčení.",
+      "unavailable": "Přílohy teď nejde otevřít: soubor attachments.db je poškozený nebo nepatří k tomuto profilu. Obnovte zálohu, nebo kontaktujte podporu.",
+      "leftoversTitle": "Nešifrované kopie mimo Moony",
+      "leftoversBody": "Moony je při šifrování našla. Mimo svou složku nic nemaže; zkontrolujte je a smažte ručně.",
+      "reveal": "Zobrazit"
+    }
   },
   "autoLock": {
     "title": "Automatické zamykání",

@@ -2,6 +2,7 @@
 //!
 //! Services contain the core business logic and external API integrations
 
+pub mod attachment_conversion;
 pub mod attachment_protocol;
 pub mod attachment_store;
 pub mod attachments;

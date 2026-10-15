@@ -45,6 +45,7 @@ import type {
   InsertInsurancePolicy,
   InsuranceDocument,
   AttachmentKind,
+  AttachmentStatus,
   OtherAsset,
   InsertOtherAsset,
   OtherAssetTransaction,
@@ -513,6 +514,12 @@ export const attachmentsApi = {
   /** Save every photo of a batch into a folder the user chose; resolves to how many. */
   exportPhotoBatch: (batchId: string, destDir: string) =>
     tauriInvoke<number>('export_photo_batch', { batchId, destDir }),
+
+  /** The encrypted store, the conversion of earlier versions' plain files, and leftovers. */
+  status: () => tauriInvoke<AttachmentStatus>('get_attachment_status'),
+
+  /** Show a leftover plain original (one the status reports) in the file manager. */
+  revealLeftover: (path: string) => tauriInvoke<void>('reveal_attachment_leftover', { path }),
 };
 
 // ============================================================================

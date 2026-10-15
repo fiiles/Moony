@@ -144,6 +144,78 @@ pub(crate) fn load_account_identifiers(conn: &Connection) -> Result<Vec<String>>
     Ok(out)
 }
 
+/// The accounts a statement's account identifier points at.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum IdentifierMatch {
+    /// The identifier is a valid IBAN; ids of the accounts whose stored iban or bban is that IBAN.
+    Iban(Vec<String>),
+    /// A domestic number of at least [`MIN_NUMBER_DIGITS`] digits; ids of the accounts storing it.
+    Number(Vec<String>),
+    /// Neither: a short number, a Czech `prefix-account`, a name or free text.
+    Unrecognized,
+}
+
+/// Bank account ids whose stored iban/bban names the same account as `identifier`.
+pub fn accounts_matching_identifier(
+    conn: &Connection,
+    identifier: &str,
+    bank_code: Option<&str>,
+) -> Result<IdentifierMatch> {
+    let wanted = canonical_structured_identifier(identifier, bank_code, None);
+    let by_iban = valid_iban(&wanted);
+    // A routing number plus a 9-digit account is only a key in its joined form.
+    let mut keys: Vec<String> = Vec::new();
+    if !by_iban {
+        let joined = bank_code.map(|code| format!("{}{identifier}", code.trim()));
+        for key in [Some(identifier.to_string()), joined]
+            .into_iter()
+            .flatten()
+            .filter_map(|text| account_number_key(&text))
+        {
+            if !keys.contains(&key) {
+                keys.push(key);
+            }
+        }
+        if keys.is_empty() {
+            return Ok(IdentifierMatch::Unrecognized);
+        }
+    }
+    let mut stmt = conn.prepare(
+        "SELECT ba.id, ba.iban, ba.bban, i.country FROM bank_accounts ba \
+         LEFT JOIN institutions i ON i.id = ba.institution_id ORDER BY ba.id",
+    )?;
+    let rows = stmt.query_map([], |r| {
+        Ok((
+            r.get::<_, String>(0)?,
+            r.get::<_, Option<String>>(1)?,
+            r.get::<_, Option<String>>(2)?,
+            r.get::<_, Option<String>>(3)?,
+        ))
+    })?;
+    let mut ids = Vec::new();
+    for row in rows {
+        let (id, iban, bban, country) = row?;
+        let stored = [iban, bban].into_iter().flatten();
+        let hit = if by_iban {
+            stored.into_iter().any(|raw| {
+                canonical_structured_identifier(&raw, None, country.as_deref()) == wanted
+            })
+        } else {
+            stored
+                .into_iter()
+                .any(|raw| account_number_key(&raw).is_some_and(|key| keys.contains(&key)))
+        };
+        if hit {
+            ids.push(id);
+        }
+    }
+    Ok(if by_iban {
+        IdentifierMatch::Iban(ids)
+    } else {
+        IdentifierMatch::Number(ids)
+    })
+}
+
 /// A valid IBAN is authoritative; known foreign domestic/routing metadata
 /// cannot be interpreted as Czech, even when its digits happen to match.
 pub fn canonical_structured_identifier(
@@ -427,6 +499,61 @@ pub fn signed_flow_amount(kind: FlowKind, is_credit: bool, amount: f64) -> f64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn matching_identifier_finds_the_account_of_an_iban_through_a_czech_bban() {
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch(
+            "CREATE TABLE institutions(id TEXT, country TEXT);
+             CREATE TABLE bank_accounts(id TEXT, iban TEXT, bban TEXT, institution_id TEXT);
+             INSERT INTO institutions VALUES ('de', 'DE');
+             INSERT INTO bank_accounts VALUES
+               ('a-iban', 'cz65 0800 0000 1920 0014 5399', NULL, NULL),
+               ('b-bban', NULL, '19-2000145399/0800', NULL),
+               ('c-foreign', NULL, '19-2000145399/0800', 'de'),
+               ('d-other', 'CZ5508000000001234567899', NULL, NULL),
+               ('e-bare', NULL, NULL, NULL);",
+        )
+        .unwrap();
+        assert_eq!(
+            accounts_matching_identifier(&conn, "CZ65 0800 0000 1920 0014 5399", None).unwrap(),
+            IdentifierMatch::Iban(vec!["a-iban".into(), "b-bban".into()])
+        );
+        assert_eq!(
+            accounts_matching_identifier(&conn, "DE89370400440532013000", None).unwrap(),
+            IdentifierMatch::Iban(vec![])
+        );
+    }
+
+    #[test]
+    fn matching_identifier_joins_a_routing_number_with_the_account() {
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch(
+            "CREATE TABLE institutions(id TEXT, country TEXT);
+             CREATE TABLE bank_accounts(id TEXT, iban TEXT, bban TEXT, institution_id TEXT);
+             INSERT INTO bank_accounts VALUES
+               ('us', NULL, '021000021123456789', NULL),
+               ('other', NULL, '021000021999999999', NULL);",
+        )
+        .unwrap();
+        assert_eq!(
+            accounts_matching_identifier(&conn, "123456789", Some("021000021")).unwrap(),
+            IdentifierMatch::Number(vec!["us".into()])
+        );
+        assert_eq!(
+            accounts_matching_identifier(&conn, "021000021123456789", None).unwrap(),
+            IdentifierMatch::Number(vec!["us".into()])
+        );
+        // nine digits alone are no identity
+        assert_eq!(
+            accounts_matching_identifier(&conn, "123456789", None).unwrap(),
+            IdentifierMatch::Unrecognized
+        );
+        assert_eq!(
+            accounts_matching_identifier(&conn, "ACC-77", None).unwrap(),
+            IdentifierMatch::Unrecognized
+        );
+    }
     #[test]
     fn integrity_own_foreign_institution_country_blocks_czech_domestic_shape() {
         let conn = Connection::open_in_memory().unwrap();

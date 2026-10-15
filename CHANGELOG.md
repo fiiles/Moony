@@ -27,7 +27,8 @@ All notable changes to Moony are documented in this file. The format follows
   made by this version.
 - Losing both the password and the recovery key now also means losing your attached photos and
   documents. The recovery-key screen says so.
-- After the update, going back to an earlier version shows the converted attachments as missing.
+- After the update an earlier version cannot open the profile any more (as after every update that
+  changes the database). To go back, restore a backup made with the earlier version.
 - Delete Account also removes the pre-migration copies of the databases.
 - **A shorter update dialog.** It names the new and the current version, says what the update
   does (download, restart, unlock again) and links "What's new" to the release page, which now

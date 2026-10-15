@@ -58,6 +58,7 @@ pub mod projection_math;
 pub mod quote_unit;
 pub mod real_estate;
 pub mod real_estate_photos;
+pub mod statement_import;
 pub mod stock_import;
 pub mod stock_monitor;
 pub mod stock_performance;

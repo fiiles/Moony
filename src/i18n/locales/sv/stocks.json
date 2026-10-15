@@ -745,5 +745,22 @@
     "mcpSource": "MCP"
   },
   "eyebrow": "Portfölj",
-  "export": "Exportera"
+  "export": "Exportera",
+  "importHistory": {
+    "title": "Importhistorik",
+    "description": "Importer från CSV-filer och via MCP. Tar du bort en import tas även affärerna den lade till bort.",
+    "empty": "Inga importer ännu.",
+    "file": "Fil",
+    "source": "Källa",
+    "trades": "Affärer",
+    "remainingOf": "{{remaining}} av {{total}}",
+    "deleteImported": "Ta bort importerade affärer…",
+    "deleteRecord": "Ta bort importposten",
+    "deleteTitle": "Ta bort den här importen?",
+    "deleteConfirm": "Ta bort affärer",
+    "recordDescription": "Importen ”{{file}}” har inga affärer kvar. Bara dess post tas bort.",
+    "recordDeleted": "Importposten borttagen",
+    "deleted_one": "{{count}} importerad affär borttagen",
+    "deleted_other": "{{count}} importerade affärer borttagna"
+  }
 }

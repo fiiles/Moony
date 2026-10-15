@@ -745,5 +745,22 @@
     "mcpSource": "MCP"
   },
   "eyebrow": "Portefølje",
-  "export": "Eksporter"
+  "export": "Eksporter",
+  "importHistory": {
+    "title": "Importhistorikk",
+    "description": "Importer fra CSV-filer og via MCP. Sletter du en import, slettes også handlene den la inn.",
+    "empty": "Ingen importer ennå.",
+    "file": "Fil",
+    "source": "Kilde",
+    "trades": "Handler",
+    "remainingOf": "{{remaining}} av {{total}}",
+    "deleteImported": "Slett importerte handler…",
+    "deleteRecord": "Slett importoppføring",
+    "deleteTitle": "Slette denne importen?",
+    "deleteConfirm": "Slett handler",
+    "recordDescription": "Importen «{{file}}» har ingen handler igjen. Bare oppføringen slettes.",
+    "recordDeleted": "Importoppføring slettet",
+    "deleted_one": "Slettet {{count}} importert handel",
+    "deleted_other": "Slettet {{count}} importerte handler"
+  }
 }

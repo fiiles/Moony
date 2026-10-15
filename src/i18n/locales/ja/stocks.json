@@ -722,5 +722,21 @@
     "mcpSource": "MCP"
   },
   "eyebrow": "ポートフォリオ",
-  "export": "エクスポート"
+  "export": "エクスポート",
+  "importHistory": {
+    "title": "インポート履歴",
+    "description": "CSVファイルとMCPによるインポートです。インポートを削除すると、取り込んだ取引も削除されます。",
+    "empty": "まだインポートはありません。",
+    "file": "ファイル",
+    "source": "ソース",
+    "trades": "取引",
+    "remainingOf": "{{total}}件中{{remaining}}件",
+    "deleteImported": "インポートした取引を削除…",
+    "deleteRecord": "インポート記録を削除",
+    "deleteTitle": "このインポートを削除しますか？",
+    "deleteConfirm": "取引を削除",
+    "recordDescription": "インポート「{{file}}」には取引が残っていません。記録のみ削除されます。",
+    "recordDeleted": "インポート記録を削除しました",
+    "deleted_other": "インポートした取引を{{count}}件削除しました"
+  }
 }

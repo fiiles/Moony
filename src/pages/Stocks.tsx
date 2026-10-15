@@ -4,8 +4,8 @@ import { useLocation } from 'wouter';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { Plus, RefreshCw, TrendingUp, Upload } from 'lucide-react';
-import type { InvestmentTransaction, StockPositions } from '@shared/schema';
+import { History, Plus, RefreshCw, TrendingUp, Upload } from 'lucide-react';
+import type { InvestmentTransaction, StockImportBatch, StockPositions } from '@shared/schema';
 import { exportApi, investmentsApi, priceApi } from '@/lib/tauri-api';
 import { useCurrency } from '@/lib/currency';
 import { useFormat } from '@/lib/use-format';
@@ -34,6 +34,9 @@ import { BuyInvestmentModal } from '@/components/stocks/BuyInvestmentModal';
 import { SellInvestmentModal } from '@/components/stocks/SellInvestmentModal';
 import { ManualPriceModal } from '@/components/stocks/ManualPriceModal';
 import { StockImportDialog } from '@/components/stocks/import/StockImportDialog';
+import { StockImportHistoryDialog } from '@/components/stocks/StockImportHistoryDialog';
+import { useStockImportBatches } from '@/components/stocks/import/use-stock-import-data';
+import { useStockImportMutations } from '@/hooks/use-stock-import-mutations';
 import { InvestmentsSummary } from '@/components/stocks/InvestmentsSummary';
 import { InvestmentsTable } from '@/components/stocks/InvestmentsTable';
 import { ConversionQualityNote } from '@/components/reports/ReportQualityNote';
@@ -50,6 +53,8 @@ export default function Stocks() {
   const fmt = useFormat();
   const [addOpen, setAddOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [importsOpen, setImportsOpen] = useState(false);
+  const [pendingBatch, setPendingBatch] = useState<StockImportBatch | null>(null);
   const [rowModal, setRowModal] = useState<RowModal>(null);
   const [selected, setSelected] = useState<HoldingData | null>(null);
 
@@ -133,6 +138,8 @@ export default function Stocks() {
       queryClient.invalidateQueries({ queryKey: ['investments'] });
       queryClient.invalidateQueries({ queryKey: ['portfolio-metrics'] });
       queryClient.invalidateQueries({ queryKey: ['all-stock-transactions'] });
+      // The position's imported trades are gone: the history's counts change.
+      queryClient.invalidateQueries({ queryKey: ['stock-import-batches'] });
       toast(t('toast.deleted'));
       setRowModal(null);
       setSelected(null);
@@ -141,6 +148,24 @@ export default function Stocks() {
       toast.error(tc('status.error'), { description: String(error) });
     },
   });
+
+  // Recorded imports (CSV and MCP) for "Historie importů"; the button shows once there is one.
+  const { data: importBatches = [] } = useStockImportBatches(true);
+  const { undoBatch } = useStockImportMutations();
+  const confirmDeleteBatch = async () => {
+    if (!pendingBatch) return;
+    try {
+      const outcome = await undoBatch.mutateAsync(pendingBatch.id);
+      toast(
+        pendingBatch.remainingCount > 0
+          ? t('importHistory.deleted', { count: outcome.removed })
+          : t('importHistory.recordDeleted')
+      );
+      setPendingBatch(null);
+    } catch (error) {
+      toast.error(t('importWizard.toast.undoFailed'), { description: String(error) });
+    }
+  };
 
   // Positions as the backend values them in the report currency (ADR 0011)
   const reportCurrency = positions?.currency ?? currencyCode;
@@ -201,7 +226,7 @@ export default function Stocks() {
         actions={
           !isEmpty && (
             <>
-              {/* Four actions: below 1280 px refresh and export show only their icons */}
+              {/* Up to five actions: below 1280 px refresh, export and history show only their icons */}
               <Button
                 variant="outline"
                 onClick={() => refreshPricesMutation.mutate()}
@@ -214,6 +239,17 @@ export default function Stocks() {
                 <span className="max-xl:sr-only">{t('refreshPrices')}</span>
               </Button>
               <ExportButton exportFn={exportApi.stockTransactions} label={t('export')} compact />
+              {importBatches.length > 0 && (
+                <Button
+                  variant="outline"
+                  onClick={() => setImportsOpen(true)}
+                  title={t('importHistory.title')}
+                  className="max-xl:px-[11px]"
+                >
+                  <History />
+                  <span className="max-xl:sr-only">{t('importHistory.title')}</span>
+                </Button>
+              )}
               <Button variant="outline" onClick={() => setImportOpen(true)}>
                 <Upload />
                 {t('importCSV')}
@@ -305,6 +341,37 @@ export default function Stocks() {
       {/* One instance for both layouts: after the import the table replaces the empty
           state, and the result screen must survive that switch */}
       <StockImportDialog open={importOpen} onOpenChange={setImportOpen} />
+      <StockImportHistoryDialog
+        open={importsOpen}
+        onOpenChange={setImportsOpen}
+        batches={importBatches}
+        onDelete={(batch) => {
+          setImportsOpen(false);
+          setPendingBatch(batch);
+        }}
+      />
+      <ConfirmDeleteDialog
+        open={pendingBatch != null}
+        onOpenChange={(next) => {
+          if (!next) setPendingBatch(null);
+        }}
+        title={t('importHistory.deleteTitle')}
+        description={
+          pendingBatch && pendingBatch.remainingCount > 0
+            ? `${t('importWizard.undo.description', {
+                count: pendingBatch.remainingCount,
+                file: pendingBatch.fileName,
+              })} ${t('importWizard.undo.consequences')}`
+            : t('importHistory.recordDescription', { file: pendingBatch?.fileName ?? '' })
+        }
+        confirmLabel={t(
+          pendingBatch && pendingBatch.remainingCount > 0
+            ? 'importHistory.deleteConfirm'
+            : 'importHistory.deleteRecord'
+        )}
+        isPending={undoBatch.isPending}
+        onConfirm={() => void confirmDeleteBatch()}
+      />
       <BuyInvestmentModal
         investment={selected}
         open={rowModal === 'buy'}

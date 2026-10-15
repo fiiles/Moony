@@ -745,5 +745,22 @@
     "mcpSource": "MCP"
   },
   "eyebrow": "Portfolio",
-  "export": "Exportieren"
+  "export": "Exportieren",
+  "importHistory": {
+    "title": "Importverlauf",
+    "description": "Importe aus CSV-Dateien und über MCP. Wenn Sie einen Import löschen, werden auch seine Trades gelöscht.",
+    "empty": "Noch keine Importe.",
+    "file": "Datei",
+    "source": "Quelle",
+    "trades": "Trades",
+    "remainingOf": "{{remaining}} von {{total}}",
+    "deleteImported": "Importierte Trades löschen…",
+    "deleteRecord": "Importeintrag löschen",
+    "deleteTitle": "Diesen Import löschen?",
+    "deleteConfirm": "Trades löschen",
+    "recordDescription": "Der Import „{{file}}“ hat keine Trades mehr. Nur sein Eintrag wird gelöscht.",
+    "recordDeleted": "Importeintrag gelöscht",
+    "deleted_one": "{{count}} importierter Trade gelöscht",
+    "deleted_other": "{{count}} importierte Trades gelöscht"
+  }
 }

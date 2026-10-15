@@ -768,5 +768,23 @@
     "mcpSource": "MCP"
   },
   "eyebrow": "Cartera",
-  "export": "Exportar"
+  "export": "Exportar",
+  "importHistory": {
+    "title": "Historial de importaciones",
+    "description": "Importaciones desde archivos CSV y mediante MCP. Al eliminar una importación se eliminan también sus operaciones.",
+    "empty": "Aún no hay importaciones.",
+    "file": "Archivo",
+    "source": "Origen",
+    "trades": "Operaciones",
+    "remainingOf": "{{remaining}} de {{total}}",
+    "deleteImported": "Eliminar operaciones importadas…",
+    "deleteRecord": "Eliminar registro de importación",
+    "deleteTitle": "¿Eliminar esta importación?",
+    "deleteConfirm": "Eliminar operaciones",
+    "recordDescription": "La importación «{{file}}» ya no tiene operaciones. Solo se eliminará su registro.",
+    "recordDeleted": "Registro de importación eliminado",
+    "deleted_one": "Se eliminó {{count}} operación importada",
+    "deleted_many": "Se eliminaron {{count}} operaciones importadas",
+    "deleted_other": "Se eliminaron {{count}} operaciones importadas"
+  }
 }

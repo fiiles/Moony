@@ -791,5 +791,24 @@
     "mcpSource": "MCP"
   },
   "eyebrow": "Portfel",
-  "export": "Eksport"
+  "export": "Eksport",
+  "importHistory": {
+    "title": "Historia importów",
+    "description": "Importy z plików CSV i przez MCP. Usunięcie importu usuwa też transakcje, które wprowadził.",
+    "empty": "Brak importów.",
+    "file": "Plik",
+    "source": "Źródło",
+    "trades": "Transakcje",
+    "remainingOf": "{{remaining}} z {{total}}",
+    "deleteImported": "Usuń zaimportowane transakcje…",
+    "deleteRecord": "Usuń wpis importu",
+    "deleteTitle": "Usunąć ten import?",
+    "deleteConfirm": "Usuń transakcje",
+    "recordDescription": "Import „{{file}}” nie ma już żadnych transakcji. Zostanie usunięty tylko jego wpis.",
+    "recordDeleted": "Wpis importu usunięty",
+    "deleted_one": "Usunięto {{count}} zaimportowaną transakcję",
+    "deleted_few": "Usunięto {{count}} zaimportowane transakcje",
+    "deleted_many": "Usunięto {{count}} zaimportowanych transakcji",
+    "deleted_other": "Usunięto {{count}} zaimportowanych transakcji"
+  }
 }

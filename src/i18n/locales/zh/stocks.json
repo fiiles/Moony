@@ -722,5 +722,21 @@
     "mcpSource": "MCP"
   },
   "eyebrow": "投资组合",
-  "export": "导出"
+  "export": "导出",
+  "importHistory": {
+    "title": "导入历史",
+    "description": "来自 CSV 文件和 MCP 的导入。删除导入会同时删除它带入的交易。",
+    "empty": "暂无导入。",
+    "file": "文件",
+    "source": "来源",
+    "trades": "交易",
+    "remainingOf": "{{total}} 笔中的 {{remaining}} 笔",
+    "deleteImported": "删除导入的交易…",
+    "deleteRecord": "删除导入记录",
+    "deleteTitle": "删除此次导入？",
+    "deleteConfirm": "删除交易",
+    "recordDescription": "导入“{{file}}”已没有任何交易，只会删除它的记录。",
+    "recordDeleted": "导入记录已删除",
+    "deleted_other": "已删除 {{count}} 笔导入的交易"
+  }
 }

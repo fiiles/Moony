@@ -745,5 +745,22 @@
     "mcpSource": "MCP"
   },
   "eyebrow": "Portfolio",
-  "export": "Export"
+  "export": "Export",
+  "importHistory": {
+    "title": "Import history",
+    "description": "Imports from CSV files and through MCP. Deleting an import deletes the trades it brought in.",
+    "empty": "No imports yet.",
+    "file": "File",
+    "source": "Source",
+    "trades": "Trades",
+    "remainingOf": "{{remaining}} of {{total}}",
+    "deleteImported": "Delete imported trades…",
+    "deleteRecord": "Delete import record",
+    "deleteTitle": "Delete this import?",
+    "deleteConfirm": "Delete trades",
+    "recordDescription": "The import \"{{file}}\" has no trades left. Only its record will be deleted.",
+    "recordDeleted": "Import record deleted",
+    "deleted_one": "Deleted {{count}} imported trade",
+    "deleted_other": "Deleted {{count}} imported trades"
+  }
 }

@@ -768,5 +768,23 @@
     "mcpSource": "MCP"
   },
   "eyebrow": "Portafoglio",
-  "export": "Esporta"
+  "export": "Esporta",
+  "importHistory": {
+    "title": "Cronologia import",
+    "description": "Import da file CSV e tramite MCP. Eliminando un import si eliminano anche le sue operazioni.",
+    "empty": "Ancora nessun import.",
+    "file": "File",
+    "source": "Origine",
+    "trades": "Operazioni",
+    "remainingOf": "{{remaining}} su {{total}}",
+    "deleteImported": "Elimina operazioni importate…",
+    "deleteRecord": "Elimina record dell'import",
+    "deleteTitle": "Eliminare questo import?",
+    "deleteConfirm": "Elimina operazioni",
+    "recordDescription": "L'import «{{file}}» non ha più operazioni. Verrà eliminato solo il suo record.",
+    "recordDeleted": "Record dell'import eliminato",
+    "deleted_one": "Eliminata {{count}} operazione importata",
+    "deleted_many": "Eliminate {{count}} operazioni importate",
+    "deleted_other": "Eliminate {{count}} operazioni importate"
+  }
 }

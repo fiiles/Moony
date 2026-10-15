@@ -769,5 +769,23 @@
     "mcpSource": "MCP"
   },
   "eyebrow": "Portfolio",
-  "export": "Export"
+  "export": "Export",
+  "importHistory": {
+    "title": "Historie importů",
+    "description": "Importy ze souborů CSV i přes MCP. Smazáním importu smažete i obchody, které přinesl.",
+    "empty": "Zatím žádné importy.",
+    "file": "Soubor",
+    "source": "Zdroj",
+    "trades": "Obchody",
+    "remainingOf": "{{remaining}} z {{total}}",
+    "deleteImported": "Smazat importované obchody…",
+    "deleteRecord": "Smazat záznam importu",
+    "deleteTitle": "Smazat tento import?",
+    "deleteConfirm": "Smazat obchody",
+    "recordDescription": "Import „{{file}}“ už nemá žádné obchody. Smaže se jen jeho záznam.",
+    "recordDeleted": "Záznam importu smazán",
+    "deleted_one": "Smazán {{count}} importovaný obchod",
+    "deleted_few": "Smazány {{count}} importované obchody",
+    "deleted_other": "Smazáno {{count}} importovaných obchodů"
+  }
 }

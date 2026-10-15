@@ -281,7 +281,13 @@
     "effectiveUntilBeforeStart": "结束月份不能早于开始月份。",
     "statementTooLarge": "此账单文件超过 {{limitMb}} MB。",
     "statementDoctype": "此 XML 文件包含文档类型声明，出于安全考虑，Moony 不会读取。",
-    "statementUnsupportedVariant": "Moony 无法导入 {{variant}} 文件。请改为导出 CAMT.053、MT940、OFX 或 QIF 格式的账单。"
+    "statementUnsupportedVariant": "Moony 无法导入 {{variant}} 文件。请改为导出 CAMT.053、MT940、OFX 或 QIF 格式的账单。",
+    "statementNotRecognized": "此文件不是 Moony 可以读取的账单。",
+    "statementNoStatements": "文件中不包含任何账户账单。",
+    "statementMalformed": "账单文件已损坏或不完整（{{detail}}）。",
+    "statementIndexInvalid": "请选择文件中的一份账单。",
+    "statementDateOrderInvalid": "只有 QIF 文件才能选择日期顺序。",
+    "statementFormatNotYetSupported": "Moony 暂时无法导入 {{format}} 账单。"
   },
   "auth": {
     "wrongPassword": "您输入的密码不正确，请重试。",

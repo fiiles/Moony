@@ -281,7 +281,13 @@
     "effectiveUntilBeforeStart": "Der Endmonat darf nicht vor dem Startmonat liegen.",
     "statementTooLarge": "Diese Kontoauszugsdatei ist größer als {{limitMb}} MB.",
     "statementDoctype": "Diese XML-Datei enthält eine Dokumenttypdeklaration, die Moony aus Sicherheitsgründen nicht liest.",
-    "statementUnsupportedVariant": "Moony kann {{variant}}-Dateien nicht importieren. Exportieren Sie stattdessen einen Kontoauszug im Format CAMT.053, MT940, OFX oder QIF."
+    "statementUnsupportedVariant": "Moony kann {{variant}}-Dateien nicht importieren. Exportieren Sie stattdessen einen Kontoauszug im Format CAMT.053, MT940, OFX oder QIF.",
+    "statementNotRecognized": "Diese Datei ist kein Kontoauszug, den Moony lesen kann.",
+    "statementNoStatements": "Die Datei enthält keinen Kontoauszug.",
+    "statementMalformed": "Die Kontoauszugsdatei ist beschädigt oder unvollständig ({{detail}}).",
+    "statementIndexInvalid": "Wählen Sie einen der Kontoauszüge in der Datei.",
+    "statementDateOrderInvalid": "Eine Datumsreihenfolge kann nur für QIF-Dateien gewählt werden.",
+    "statementFormatNotYetSupported": "Moony kann {{format}}-Kontoauszüge noch nicht importieren."
   },
   "auth": {
     "wrongPassword": "Das eingegebene Passwort ist falsch. Bitte versuchen Sie es erneut.",

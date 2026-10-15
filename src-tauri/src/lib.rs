@@ -353,6 +353,10 @@ pub async fn run() {
             commands::bank_accounts::get_balance_records,
             commands::bank_accounts::record_bank_account_balance,
             commands::bank_accounts::delete_balance_record,
+            // Statement import commands (services::statement_import)
+            commands::statement_import::inspect_statement_file,
+            commands::statement_import::preview_statement_import,
+            commands::statement_import::import_statement_file,
             // Stock CSV import commands (services::stock_import)
             commands::stock_import::inspect_stock_csv,
             commands::stock_import::resolve_stock_instruments,

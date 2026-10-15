@@ -133,6 +133,17 @@ pub fn collect_types() -> TypeCollection {
     types.register::<crate::services::csv_import::DeclaredBalance>();
     types.register::<crate::services::csv_import::SourceCategoryMapping>();
 
+    // Statement import (CAMT.053, MT940, OFX, QIF)
+    types.register::<crate::services::statement_import::StatementFormat>();
+    types.register::<crate::services::statement_import::BalanceCheck>();
+    types.register::<crate::services::statement_import::AccountMatch>();
+    types.register::<crate::services::statement_import::DateOrder>();
+    types.register::<crate::services::statement_import::SourceCategoryCount>();
+    types.register::<crate::services::statement_import::StatementWarning>();
+    types.register::<crate::services::statement_import::StatementSummary>();
+    types.register::<crate::services::statement_import::StatementInspection>();
+    types.register::<crate::services::statement_import::StatementImportOptions>();
+
     // Stock CSV import
     types.register::<crate::services::stock_import::StockImportConfig>();
     types.register::<crate::services::stock_import::StockImportTransforms>();

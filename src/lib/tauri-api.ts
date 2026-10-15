@@ -89,6 +89,8 @@ import type {
   CsvImportResult,
   CsvImportConfigInput,
   CsvImportBatch,
+  StatementInspection,
+  StatementImportOptionsInput,
   InsertBalanceRecord,
   BankBalanceRecord,
   // Stock tags types
@@ -1002,6 +1004,38 @@ export const bankAccountsApi = {
     tauriInvoke<CsvImportPreview>('preview_csv_import', { accountId, filePath, config }),
   importCsvTransactions: (accountId: string, filePath: string, config: CsvImportConfigInput) =>
     tauriInvoke<CsvImportResult>('import_csv_transactions', { accountId, filePath, config }),
+  /** Which statement format a file is and what its statements hold; null = not a statement (use the CSV path). */
+  inspectStatementFile: (accountId: string, filePath: string, country?: string) =>
+    tauriInvoke<StatementInspection | null>('inspect_statement_file', {
+      accountId,
+      filePath,
+      country,
+    }),
+  /** Dry run of one statement of the file; writes nothing. */
+  previewStatementImport: (
+    accountId: string,
+    filePath: string,
+    options: StatementImportOptionsInput,
+    country?: string
+  ) =>
+    tauriInvoke<CsvImportPreview>('preview_statement_import', {
+      accountId,
+      filePath,
+      country,
+      options,
+    }),
+  importStatementFile: (
+    accountId: string,
+    filePath: string,
+    options: StatementImportOptionsInput,
+    country?: string
+  ) =>
+    tauriInvoke<CsvImportResult>('import_statement_file', {
+      accountId,
+      filePath,
+      country,
+      options,
+    }),
   getImportBatches: (accountId: string) =>
     tauriInvoke<CsvImportBatch[]>('get_import_batches', { accountId }),
   deleteImportBatch: (batchId: string) => tauriInvoke<number>('delete_import_batch', { batchId }),

@@ -281,7 +281,13 @@
     "effectiveUntilBeforeStart": "Il mese finale non può precedere il mese iniziale.",
     "statementTooLarge": "Questo file dell'estratto conto supera i {{limitMb}} MB.",
     "statementDoctype": "Questo file XML contiene una dichiarazione del tipo di documento, che Moony non legge per motivi di sicurezza.",
-    "statementUnsupportedVariant": "Moony non può importare file {{variant}}. Esporta invece un estratto conto in formato CAMT.053, MT940, OFX o QIF."
+    "statementUnsupportedVariant": "Moony non può importare file {{variant}}. Esporta invece un estratto conto in formato CAMT.053, MT940, OFX o QIF.",
+    "statementNotRecognized": "Questo file non è un estratto conto che Moony possa leggere.",
+    "statementNoStatements": "Il file non contiene alcun estratto conto.",
+    "statementMalformed": "Il file dell'estratto conto è danneggiato o incompleto ({{detail}}).",
+    "statementIndexInvalid": "Scegli uno degli estratti conto presenti nel file.",
+    "statementDateOrderInvalid": "L'ordine della data può essere scelto solo per i file QIF.",
+    "statementFormatNotYetSupported": "Moony non può ancora importare estratti conto {{format}}."
   },
   "auth": {
     "wrongPassword": "La password inserita non è corretta. Riprova.",

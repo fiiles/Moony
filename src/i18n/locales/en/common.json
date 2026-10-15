@@ -281,7 +281,13 @@
     "effectiveUntilBeforeStart": "The end month can't be before the start month.",
     "statementTooLarge": "This statement file is larger than {{limitMb}} MB.",
     "statementDoctype": "This XML file contains a document type declaration, which Moony does not read for safety.",
-    "statementUnsupportedVariant": "Moony cannot import {{variant}} files. Export a CAMT.053, MT940, OFX or QIF statement instead."
+    "statementUnsupportedVariant": "Moony cannot import {{variant}} files. Export a CAMT.053, MT940, OFX or QIF statement instead.",
+    "statementNotRecognized": "This file is not a statement Moony can read.",
+    "statementNoStatements": "The file contains no account statement.",
+    "statementMalformed": "The statement file is damaged or incomplete ({{detail}}).",
+    "statementIndexInvalid": "Choose one of the statements in the file.",
+    "statementDateOrderInvalid": "A date order can only be chosen for QIF files.",
+    "statementFormatNotYetSupported": "Moony cannot import {{format}} statements yet."
   },
   "auth": {
     "wrongPassword": "The password you entered is incorrect. Please try again.",

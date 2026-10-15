@@ -39,11 +39,11 @@ pub struct CsvDateRange {
     pub to: i64,
 }
 
-fn default_preview_limit() -> usize {
+pub(crate) fn default_preview_limit() -> usize {
     200
 }
 
-fn default_true() -> bool {
+pub(crate) fn default_true() -> bool {
     true
 }
 

@@ -281,7 +281,13 @@
     "effectiveUntilBeforeStart": "Měsíc „do“ nemůže být před měsícem „od“.",
     "statementTooLarge": "Soubor výpisu je větší než {{limitMb}} MB.",
     "statementDoctype": "Tento XML soubor obsahuje deklaraci typu dokumentu, kterou Moony z bezpečnostních důvodů nečte.",
-    "statementUnsupportedVariant": "Soubory {{variant}} Moony importovat neumí. Exportujte výpis ve formátu CAMT.053, MT940, OFX nebo QIF."
+    "statementUnsupportedVariant": "Soubory {{variant}} Moony importovat neumí. Exportujte výpis ve formátu CAMT.053, MT940, OFX nebo QIF.",
+    "statementNotRecognized": "Tento soubor není výpis, který Moony umí přečíst.",
+    "statementNoStatements": "Soubor neobsahuje žádný výpis z účtu.",
+    "statementMalformed": "Soubor výpisu je poškozený nebo neúplný ({{detail}}).",
+    "statementIndexInvalid": "Vyberte jeden z výpisů v souboru.",
+    "statementDateOrderInvalid": "Pořadí data lze zvolit jen u souborů QIF.",
+    "statementFormatNotYetSupported": "Výpisy {{format}} zatím Moony importovat neumí."
   },
   "auth": {
     "wrongPassword": "Zadané heslo je nesprávné. Zkuste to prosím znovu.",

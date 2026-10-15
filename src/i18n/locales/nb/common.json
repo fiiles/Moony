@@ -281,7 +281,13 @@
     "effectiveUntilBeforeStart": "Sluttmåneden kan ikke være før startmåneden.",
     "statementTooLarge": "Denne kontoutskriftsfilen er større enn {{limitMb}} MB.",
     "statementDoctype": "Denne XML-filen inneholder en dokumenttypedeklarasjon, som Moony ikke leser av sikkerhetshensyn.",
-    "statementUnsupportedVariant": "Moony kan ikke importere {{variant}}-filer. Eksporter heller en kontoutskrift i formatet CAMT.053, MT940, OFX eller QIF."
+    "statementUnsupportedVariant": "Moony kan ikke importere {{variant}}-filer. Eksporter heller en kontoutskrift i formatet CAMT.053, MT940, OFX eller QIF.",
+    "statementNotRecognized": "Denne filen er ikke en kontoutskrift som Moony kan lese.",
+    "statementNoStatements": "Filen inneholder ingen kontoutskrift.",
+    "statementMalformed": "Kontoutskriftsfilen er skadet eller ufullstendig ({{detail}}).",
+    "statementIndexInvalid": "Velg en av kontoutskriftene i filen.",
+    "statementDateOrderInvalid": "Datorekkefølgen kan bare velges for QIF-filer.",
+    "statementFormatNotYetSupported": "Moony kan ikke importere {{format}}-kontoutskrifter ennå."
   },
   "auth": {
     "wrongPassword": "Passordet du skrev inn er feil. Prøv igjen.",

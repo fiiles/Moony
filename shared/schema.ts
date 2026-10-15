@@ -1642,6 +1642,86 @@ export interface CsvImportBatch {
   dateRange: CsvDateRange | null;
 }
 
+// ----------------------------------------------------------------------------
+// Statement import (CAMT.053, MT940, OFX/QFX, QIF)
+// ----------------------------------------------------------------------------
+
+export type StatementFormat = 'camt053' | 'mt940' | 'ofx' | 'qif';
+
+/** Order of the day, month and year parts of a QIF date. */
+export type DateOrder = 'dmy' | 'mdy' | 'ymd';
+
+/** Whether the declared balances agree with the entries. */
+export type BalanceCheck = 'ok' | 'mismatch' | 'unavailable';
+
+/** How the account the file names relates to the selected account. */
+export type AccountMatch = 'selected' | 'other' | 'none' | 'unknown';
+
+/** How many entries of a statement carry one source category (QIF `L` line). */
+export interface SourceCategoryCount {
+  name: string;
+  count: number;
+}
+
+/** A note about a file that does not stop the import: `key` is a `statementImport.*` i18n key. */
+export interface StatementWarning {
+  key: string;
+  detail: string | null;
+}
+
+export interface StatementSummary {
+  /** Position among the file's statements; the `statementIndex` of the options. */
+  index: number;
+  accountIdentifier: string | null;
+  accountName: string | null;
+  currency: string | null;
+  period: CsvDateRange | null;
+  openingBalance: DeclaredBalance | null;
+  closingBalance: DeclaredBalance | null;
+  /** Entries that would be imported. */
+  entryCount: number;
+  /** Entries shown but never imported (not booked, corrections). */
+  skippedCount: number;
+  balanceCheck: BalanceCheck;
+  /** Declared minus computed, in the statement's currency; set on a mismatch. */
+  balanceDifference: string | null;
+  accountMatch: AccountMatch;
+  matchedAccountId: string | null;
+  /** Source categories of the importable entries, most frequent first. */
+  sourceCategories: SourceCategoryCount[];
+}
+
+/** What `inspect_statement_file` learned about a statement file. */
+export interface StatementInspection {
+  format: StatementFormat;
+  /** Encoding the file was decoded with. */
+  encoding: string;
+  statements: StatementSummary[];
+  /** The first statement of the selected account, else the first. */
+  defaultStatementIndex: number;
+  /** QIF: the date order cannot be told from the dates. */
+  dateOrderAmbiguous: boolean;
+  detectedDateOrder: DateOrder | null;
+  warnings: StatementWarning[];
+}
+
+/** Options of one statement preview or import. */
+export interface StatementImportOptionsInput {
+  statementIndex: number;
+  /** QIF only: how to read the dates; omit for the detected order. */
+  dateOrder?: DateOrder | null;
+  /** Skip possible composite matches (default true); certain bank IDs always skip. */
+  skipDuplicates?: boolean;
+  /** Entry ordinals of possible composite duplicates to import anyway. */
+  importAnywayLines?: number[];
+  /** Categories picked in the preview, by entry ordinal; applied before the rules on import. */
+  categoryOverrides?: CsvCategoryOverride[];
+  /** Categories chosen for the source categories of the file. */
+  sourceCategoryMap?: SourceCategoryMapping[];
+  previewOffset?: number;
+  previewLimit?: number;
+}
+
 // ============================================================================
 // Stock Tags Types
 // ============================================================================

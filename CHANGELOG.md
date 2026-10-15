@@ -19,6 +19,15 @@ All notable changes to Moony are documented in this file. The format follows
   property or a policy was deleted. Originals outside the data folder (from before an identifier
   change) are never deleted: Settings → Data and backups lists them so you can remove them
   yourself, and shows how many attachments are stored encrypted.
+- **CAMT.053 statements.** The bank import reads ISO 20022 CAMT.053 XML statements: it recognizes
+  the account, checks that the payments add up to the closing balance, offers that balance,
+  imports pending payments as pending, and warns when new payments fall in a period an earlier
+  import already covers (CSV too). The dialog and the buttons that open it are now called "Import
+  statement" instead of "Import CSV". CSV files import as before.
+- **MT940 statements**, including the common German, Dutch and free-text payment details.
+- **OFX and QFX statements** (bank and credit card), from banks and from other finance apps.
+- **QIF files** from Quicken, GnuCash and other apps: categories are matched to yours by name in
+  the preview, and the opening balance record is recognized.
 
 ### Changed
 

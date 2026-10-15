@@ -278,7 +278,16 @@
     "onboardingFlagUnknown": "Unknown onboarding step.",
     "insuranceNoticeInvalid": "Enter a whole number of days from 0 to 365.",
     "budgetIntervalsRequired": "Select at least one budget interval.",
-    "effectiveUntilBeforeStart": "The end month can't be before the start month."
+    "effectiveUntilBeforeStart": "The end month can't be before the start month.",
+    "statementTooLarge": "This statement file is larger than {{limitMb}} MB.",
+    "statementDoctype": "This XML file contains a document type declaration, which Moony does not read for safety.",
+    "statementUnsupportedVariant": "Moony cannot import {{variant}} files. Export a CAMT.053, MT940, OFX or QIF statement instead.",
+    "statementNotRecognized": "This file is not a statement Moony can read.",
+    "statementNoStatements": "The file contains no account statement.",
+    "statementInvestmentOnly": "This file contains only investment transactions. Use the broker import for those.",
+    "statementMalformed": "The statement file is damaged or incomplete ({{detail}}).",
+    "statementIndexInvalid": "Choose one of the statements in the file.",
+    "statementDateOrderInvalid": "A date order can only be chosen for QIF files."
   },
   "auth": {
     "wrongPassword": "The password you entered is incorrect. Please try again.",

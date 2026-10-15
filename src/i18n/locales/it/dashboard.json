@@ -82,7 +82,7 @@
     "title": "Primi passi",
     "subtitle": "Quattro passaggi che rendono Moony davvero utile. Questa scheda scompare quando hai finito.",
     "importStatement": "Importa un estratto conto",
-    "importStatementHint": "Aggiungi un conto e importa un CSV dalla tua banca.",
+    "importStatementHint": "Aggiungi un conto e importa un estratto conto della tua banca.",
     "addInvestment": "Aggiungi un investimento",
     "addInvestmentHint": "Azioni, ETF o cripto con prezzi in tempo reale.",
     "setBudget": "Imposta un budget",

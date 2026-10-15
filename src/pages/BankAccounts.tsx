@@ -258,7 +258,7 @@ export default function BankAccounts() {
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" disabled={accounts.length === 0}>
                     <Upload />
-                    {t('csvImport.importCsv')}
+                    {t('statementImport.button')}
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
@@ -546,7 +546,7 @@ export default function BankAccounts() {
                                   }
                                 >
                                   <Upload />
-                                  {t('csvImport.importCsv')}
+                                  {t('statementImport.button')}
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem

@@ -176,9 +176,7 @@
     "descriptionNoName": "Tím trvale smažete transakci ze dne {{date}} ({{amount}}). Tuto akci nelze vrátit zpět."
   },
   "csvImport": {
-    "button": "Import CSV",
-    "title": "Import transakcí z CSV",
-    "selectFile": "Vyberte CSV soubor exportovaný z vaší banky",
+    "title": "Import výpisu",
     "mapColumns": "Namapujte sloupce CSV na pole transakcí",
     "importing": "Importuji transakce...",
     "complete": "Import dokončen!",
@@ -210,11 +208,10 @@
     "filteredOut": "Přeskočeno: nejde o dokončenou transakci",
     "duplicate": "Stejná transakce již existuje",
     "duplicateById": "Transakce se stejným ID banky již existuje; další kopii nelze importovat",
-    "dropTitle": "Přetáhněte sem soubor CSV",
     "dropActive": "Pusťte soubor a otevře se",
     "dropHint": "nebo vyberte soubor z počítače",
     "chooseFile": "Vybrat soubor",
-    "unsupportedFile": "Importovat lze jen soubory .csv a .txt.",
+    "unsupportedFile": "Tento typ souboru nejde importovat.",
     "bankPreset": "Banka",
     "presetAuto": "Rozpoznat automaticky",
     "detected": "Rozpoznáno",
@@ -285,6 +282,10 @@
       "errors_other": "{{count}} chyb"
     },
     "dateRange": "Období: {{from}} – {{to}}",
+    "overlapHint_one": "1 nová platba spadá do období, které už pokrývá {{file}}. Pokud jste tytéž platby importovali v jiném formátu, nemusí je Moony poznat jako duplicity.",
+    "overlapHint_few": "{{count}} nové platby spadají do období, které už pokrývá {{file}}. Pokud jste tytéž platby importovali v jiném formátu, nemusí je Moony poznat jako duplicity.",
+    "overlapHint_many": "{{count}} nových plateb spadá do období, které už pokrývá {{file}}. Pokud jste tytéž platby importovali v jiném formátu, nemusí je Moony poznat jako duplicity.",
+    "overlapHint_other": "{{count}} nových plateb spadá do období, které už pokrývá {{file}}. Pokud jste tytéž platby importovali v jiném formátu, nemusí je Moony poznat jako duplicity.",
     "importButtonIdle": "Importovat",
     "resultDateRange": "Importované transakce jsou z období {{from}} – {{to}}.",
     "next": {
@@ -299,15 +300,14 @@
       "setBalanceHint": "Import zůstatek účtu nemění; tímto použijete konečný zůstatek z výpisu.",
       "done": "Hotovo"
     },
-    "importCsv": "Importovat CSV",
     "steps": {
       "file": "Soubor",
       "columns": "Sloupce",
       "preview": "Náhled a kategorie",
       "done": "Hotovo"
     },
-    "titleFor": "Import výpisu · {{account}}",
-    "lead": "CSV z internetového bankovnictví. Duplicity poznáme, kategorie přiřadíme podle pravidel – zkontrolujete je před zápisem.",
+    "titleFor": "Import výpisu do účtu {{account}}",
+    "lead": "Výpis z internetového bankovnictví. Duplicity poznáme, kategorie přiřadíme podle pravidel – zkontrolujete je před zápisem.",
     "file": {
       "bank": "Banka",
       "bankHint": "Předvyplní mapování sloupců a formát dat.",
@@ -317,8 +317,7 @@
       "dropTitle": "Přetáhněte sem výpis",
       "dropActive": "Pusťte soubor a otevře se",
       "or": "nebo",
-      "choose": "Vybrat soubor…",
-      "dropNote": ".csv nebo .txt · záhlaví sloupců rozpoznáme automaticky"
+      "choose": "Vybrat soubor…"
     },
     "filebar": {
       "rows_one": "{{count}} řádek",
@@ -389,13 +388,74 @@
     "encodingAuto": "Automaticky ({{encoding}})",
     "encodingHint": "Změňte, pokud jsou v náhledu špatně vidět diakritika nebo jiná písma."
   },
+  "statementImport": {
+    "button": "Importovat výpis",
+    "fileFilter": "Bankovní výpisy",
+    "supportedFormats": "CSV, CAMT.053 (XML), MT940, OFX/QFX a QIF",
+    "format": {
+      "camt053": "CAMT.053",
+      "mt940": "MT940",
+      "ofx": "OFX",
+      "qif": "QIF"
+    },
+    "pickStatement": "Soubor obsahuje více výpisů. Vyberte jeden:",
+    "period": "{{from}} – {{to}}",
+    "opening": "Počáteční zůstatek",
+    "closing": "Konečný zůstatek",
+    "entries_one": "{{count}} pohyb",
+    "entries_few": "{{count}} pohyby",
+    "entries_many": "{{count}} pohybů",
+    "entries_other": "{{count}} pohybů",
+    "skipped_one": "{{count}} přeskočený",
+    "skipped_few": "{{count}} přeskočené",
+    "skipped_many": "{{count}} přeskočených",
+    "skipped_other": "{{count}} přeskočených",
+    "check": {
+      "ok": "Výpis sedí: počáteční zůstatek plus pohyby dává konečný zůstatek.",
+      "mismatch": "Pohyby nedávají konečný zůstatek (rozdíl {{difference}}). Soubor může být neúplný.",
+      "unavailable": "Soubor neuvádí oba zůstatky, úplnost proto nejde ověřit."
+    },
+    "match": {
+      "selected": "Výpis patří k tomuto účtu.",
+      "other": "Tento výpis patří k účtu {{account}}.",
+      "switch": "Importovat do účtu {{account}}",
+      "none": "Tento výpis patří k účtu {{identifier}}, ne k tomuto.",
+      "unknown": "Účet v souboru: {{identifier}}",
+      "confirm": "Přesto importovat do tohoto účtu"
+    },
+    "currencyDiffers": "Výpis je v {{statement}}, účet v {{account}}. Pohyby si ponechají svou měnu; zůstatek z výpisu nepůjde převzít.",
+    "entry": "#",
+    "rowMessage": "Pohyb {{line}}: {{message}}",
+    "rowMessageDetail": "Pohyb {{line}}: {{message}} ({{detail}})",
+    "notBooked": "Zatím nezaúčtováno (jen informativně)",
+    "correctionSkipped": "Oprava dřívějšího pohybu; neprovádí se",
+    "investmentIgnored": "Soubor obsahuje i investiční transakce. Ty se neimportují; použijte pro ně import od brokera.",
+    "back": "Vybrat jiný soubor",
+    "openAccount": "Otevřít účet {{account}}",
+    "dateOrder": {
+      "label": "Data jsou v souboru zapsaná jako",
+      "dmy": "den.měsíc.rok",
+      "mdy": "měsíc/den/rok",
+      "ymd": "rok-měsíc-den",
+      "hint": "Každé datum v souboru jde přečíst oběma způsoby. Ověřte to na platbě, kterou znáte."
+    },
+    "categories": {
+      "title": "Kategorie ze souboru",
+      "hint": "Spárováno podle názvu. Kteroukoli můžete změnit; pohyby bez kategorie projdou vašimi pravidly.",
+      "rules": "Nechat na pravidlech",
+      "count_one": "{{count}} pohyb",
+      "count_few": "{{count}} pohyby",
+      "count_many": "{{count}} pohybů",
+      "count_other": "{{count}} pohybů"
+    }
+  },
   "importHistory": {
     "title": "Historie importů",
     "fileName": "Název souboru",
     "period": "Období",
     "imported": "Importováno",
     "errors": "Chyby",
-    "empty": "Zatím žádné importy. Importujte svůj první CSV soubor.",
+    "empty": "Zatím žádné importy. Importujte svůj první výpis.",
     "duplicates": "Duplicity",
     "duplicatesHelp": "Řádky přeskočené, protože transakce už existovala",
     "undoImport_one": "Vrátit import (odstraní {{count}} transakci)",
@@ -566,8 +626,7 @@
     "noData": "Zatím bez dat"
   },
   "actions": {
-    "recordBalance": "Zaznamenat zůstatek",
-    "importStatement": "Importovat výpis"
+    "recordBalance": "Zaznamenat zůstatek"
   },
   "menu": {
     "showDetail": "Zobrazit detail",

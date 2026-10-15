@@ -5,7 +5,9 @@ import { pickDroppedFile } from './import-config';
 interface UseFileDropOptions {
   /** Listen only while the drop zone is on screen. */
   enabled: boolean;
-  /** Called with the first .csv/.txt path of a drop. */
+  /** Which paths the dialog imports (`isSupportedCsvPath`, `isSupportedImportPath`). */
+  accepts: (path: string) => boolean;
+  /** Called with the first path of a drop that `accepts` takes. */
   onFile: (path: string) => void;
   /** Called when something was dropped but no path was importable. */
   onRejected?: () => void;
@@ -20,14 +22,14 @@ interface UseFileDropOptions {
  * browser preview) there is no webview to listen to; the zone then simply never
  * lights up and the "Choose file" button remains.
  */
-export function useFileDrop({ enabled, onFile, onRejected }: UseFileDropOptions): boolean {
+export function useFileDrop({ enabled, accepts, onFile, onRejected }: UseFileDropOptions): boolean {
   const [isDragging, setIsDragging] = useState(false);
 
   // The listener is registered once per `enabled` flip; it reads the latest
   // callbacks from here instead of re-subscribing on every render.
-  const handlers = useRef({ onFile, onRejected });
+  const handlers = useRef({ accepts, onFile, onRejected });
   useEffect(() => {
-    handlers.current = { onFile, onRejected };
+    handlers.current = { accepts, onFile, onRejected };
   });
 
   useEffect(() => {
@@ -50,7 +52,7 @@ export function useFileDrop({ enabled, onFile, onRejected }: UseFileDropOptions)
               break;
             case 'drop': {
               setIsDragging(false);
-              const path = pickDroppedFile(payload.paths);
+              const path = pickDroppedFile(payload.paths, handlers.current.accepts);
               if (path) handlers.current.onFile(path);
               else handlers.current.onRejected?.();
               break;

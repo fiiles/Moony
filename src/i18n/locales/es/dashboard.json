@@ -82,7 +82,7 @@
     "title": "Primeros pasos",
     "subtitle": "Cuatro pasos para sacarle partido a Moony. Esta tarjeta desaparece cuando termines.",
     "importStatement": "Importar un extracto bancario",
-    "importStatementHint": "Añade una cuenta e importa un CSV de tu banco.",
+    "importStatementHint": "Añade una cuenta e importa un extracto de tu banco.",
     "addInvestment": "Añadir una inversión",
     "addInvestmentHint": "Acciones, ETF o criptomonedas con precios en vivo.",
     "setBudget": "Definir un presupuesto",

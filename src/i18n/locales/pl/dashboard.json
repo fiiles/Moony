@@ -82,7 +82,7 @@
     "title": "Pierwsze kroki",
     "subtitle": "Cztery kroki, dzięki którym Moony stanie się naprawdę przydatne. Ta karta zniknie, gdy skończysz.",
     "importStatement": "Zaimportuj wyciąg bankowy",
-    "importStatementHint": "Dodaj konto i zaimportuj plik CSV z banku.",
+    "importStatementHint": "Dodaj konto i zaimportuj wyciąg z banku.",
     "addInvestment": "Dodaj inwestycję",
     "addInvestmentHint": "Akcje, ETF-y lub kryptowaluty z cenami na żywo.",
     "setBudget": "Ustaw budżet",

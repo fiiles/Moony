@@ -110,7 +110,7 @@ import { BalanceRecordDialog } from '@/components/bank-accounts/BalanceRecordDia
 import { BalanceHistoryDialog } from '@/components/bank-accounts/BalanceHistoryDialog';
 import { ImportHistoryDialog } from '@/components/bank-accounts/ImportHistoryDialog';
 import { InterestDialog } from '@/components/bank-accounts/InterestDialog';
-import { CsvImportDialog } from '@/components/bank-accounts/CsvImportDialog';
+import { StatementImportDialog } from '@/components/bank-accounts/StatementImportDialog';
 import { CategorySelector } from '@/components/bank-accounts/CategorySelector';
 import { newRuleHref } from '@/utils/rules-link';
 
@@ -771,7 +771,7 @@ function BankAccountDetailPage() {
             </Button>
             <Button onClick={() => setCsvImportOpen(true)}>
               <Upload />
-              {t('actions.importStatement')}
+              {t('statementImport.button')}
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -1400,7 +1400,7 @@ function BankAccountDetailPage() {
         }))}
       />
 
-      <CsvImportDialog
+      <StatementImportDialog
         open={csvImportOpen}
         onOpenChange={setCsvImportOpen}
         accountId={accountId || ''}

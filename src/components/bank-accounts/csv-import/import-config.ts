@@ -13,6 +13,9 @@ import type {
   CsvPreset,
   CsvPreviewResult,
   CsvRowStatus,
+  DateOrder,
+  StatementInspection,
+  StatementSummary,
 } from '@shared/schema';
 
 /** Radix `Select` cannot hold an empty value, so "no column" is a sentinel. */
@@ -401,15 +404,95 @@ export const PREVIEW_COLLAPSED_ROWS = 12;
 
 // ── Files ───────────────────────────────────────────────────────────────────
 
-export const SUPPORTED_EXTENSIONS = ['csv', 'txt'] as const;
+/** What the stock import dialog accepts: CSV exports only. */
+export const CSV_EXTENSIONS = ['csv', 'txt'] as const;
 
 export function isSupportedCsvPath(path: string): boolean {
   return /\.(csv|txt)$/i.test(path.trim());
 }
 
-/** First importable path of a drop (a drop may carry several files and folders). */
-export function pickDroppedFile(paths: readonly string[]): string | null {
-  return paths.find(isSupportedCsvPath) ?? null;
+/**
+ * What the bank statement dialog accepts: CSV plus the statement formats (CAMT.053 `.xml`, MT940
+ * `.sta`/`.mt940`/`.940`/`.mta`/`.swi`, OFX/QFX, QIF). The format itself is told from the content, never from
+ * the extension (D4); this only keeps unrelated files out of the dialog and the drop zone.
+ */
+export const SUPPORTED_EXTENSIONS = [
+  'csv',
+  'txt',
+  'xml',
+  'sta',
+  'mt940',
+  '940',
+  'mta',
+  'swi',
+  'ofx',
+  'qfx',
+  'qif',
+] as const;
+
+export function isSupportedImportPath(path: string): boolean {
+  const extension = /\.([^./\\]+)$/.exec(path.trim())?.[1].toLowerCase();
+  return extension != null && (SUPPORTED_EXTENSIONS as readonly string[]).includes(extension);
+}
+
+/**
+ * First path of a drop that `accepts` takes (a drop may carry several files and folders); each
+ * dialog passes its own predicate.
+ */
+export function pickDroppedFile(
+  paths: readonly string[],
+  accepts: (path: string) => boolean
+): string | null {
+  return paths.find(accepts) ?? null;
+}
+
+// ── Statement files ─────────────────────────────────────────────────────────
+
+/** What the open file is: a CSV that needs its columns mapped, or a statement that does not. */
+export type ImportKind = 'csv' | 'statement';
+
+export type ImportStep = 'file' | 'mapping' | 'preview' | 'done';
+
+/** The wizard's steps: a statement names its fields itself, so it skips the column mapping. */
+export function importSteps(kind: ImportKind): ImportStep[] {
+  return kind === 'statement'
+    ? ['file', 'preview', 'done']
+    : ['file', 'mapping', 'preview', 'done'];
+}
+
+/**
+ * Whether the account check stops the import (D9). A statement of an account that matches no
+ * Moony account, or of another Moony account while the dialog still targets the selected one,
+ * is imported only after the user confirms it; nothing is imported before the summary is known.
+ * `targetIsSelected`: the import still goes to the account the summary was computed for (false
+ * once the user switched to the statement's own account).
+ */
+export function statementImportBlocked(
+  summary: StatementSummary | undefined,
+  confirmed: boolean,
+  targetIsSelected: boolean
+): boolean {
+  if (!summary) return true;
+  const contradicts =
+    summary.accountMatch === 'none' || (summary.accountMatch === 'other' && targetIsSelected);
+  return contradicts ? !confirmed : false;
+}
+
+/**
+ * The date order of a statement's preview and import (spec §6.4). Only a file whose dates read
+ * both ways (QIF) gets one: the user's pick, else the detected default (the European order).
+ * Its import waits until the user picked or confirmed an order, as the CSV mapping waits for an
+ * ambiguous date format; every other file sends none.
+ */
+export function statementDateOrder(
+  inspection: Pick<StatementInspection, 'dateOrderAmbiguous' | 'detectedDateOrder'>,
+  picked: DateOrder | null
+): { dateOrder: DateOrder | null; confirmed: boolean } {
+  if (!inspection.dateOrderAmbiguous) return { dateOrder: null, confirmed: true };
+  return {
+    dateOrder: picked ?? inspection.detectedDateOrder ?? 'dmy',
+    confirmed: picked != null,
+  };
 }
 
 /** Last path segment, for both `/` and `\` separators. */

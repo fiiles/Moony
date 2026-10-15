@@ -26,9 +26,11 @@ import {
 } from '@/components/ui/table';
 import { CategoryPick } from '@/components/common/CategoryPick';
 import { cn } from '@/lib/utils';
-import { formatPreviewAmount, summarizePreview } from './import-config';
+import { formatPreviewAmount, summarizePreview, type ImportKind } from './import-config';
 
 interface PreviewStepProps {
+  /** A statement numbers its payments (`#`); a CSV shows file lines. */
+  kind: ImportKind;
   page: number;
   onPageChange: (page: number) => void;
   /** Mapping is complete, so there is something to preview. */
@@ -57,6 +59,7 @@ interface PreviewStepProps {
  * imported anyway. The first twelve rows, "Zobrazit vše" for the rest.
  */
 export function PreviewStep({
+  kind,
   page,
   onPageChange,
   ready,
@@ -229,6 +232,15 @@ export function PreviewStep({
         </span>
       </div>
 
+      {preview.overlap && (
+        <p className="mb-3 rounded-r3 border border-line bg-well px-3.5 py-2.5 text-table text-ink-2">
+          {t('csvImport.overlapHint', {
+            count: preview.overlap.newRowsInCoveredRange,
+            file: preview.overlap.batches[0]?.fileName ?? '',
+          })}
+        </p>
+      )}
+
       <div className="flex items-center justify-between gap-6 border border-line mb-3 rounded-r3 px-3.5 py-2.5 text-micro font-500 text-ink-4">
         <span>
           {t('readiness.pageCount', {
@@ -264,7 +276,11 @@ export function PreviewStep({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-9">{t('csvImport.preview.colLine')}</TableHead>
+                <TableHead className="w-9">
+                  {kind === 'statement'
+                    ? t('statementImport.entry')
+                    : t('csvImport.preview.colLine')}
+                </TableHead>
                 <TableHead className="w-[92px]">{t('csvImport.preview.colDate')}</TableHead>
                 <TableHead className="w-[110px] text-right">
                   {t('csvImport.preview.colAmount')}
@@ -333,6 +349,14 @@ export function PreviewStep({
                       <span className="block truncate" title={details || undefined}>
                         {details || '—'}
                       </span>
+                      {row.sourceCategory && (
+                        <small
+                          className="block truncate text-micro font-500 text-ink-4"
+                          title={row.sourceCategory}
+                        >
+                          {row.sourceCategory}
+                        </small>
+                      )}
                     </TableCell>
                     <TableCell>{categoryCell(row)}</TableCell>
                     <TableCell>{statusCell(row)}</TableCell>

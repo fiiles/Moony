@@ -19,6 +19,9 @@ const t = fakeT({
   'csvImport.dateUnparseable': 'The date could not be read',
   'csvImport.zeroAmount': 'Zero amount, skipped',
   'csvImport.duplicate': 'An identical transaction already exists',
+  'statementImport.rowMessage': 'Payment {{line}}: {{message}}',
+  'statementImport.rowMessageDetail': 'Payment {{line}}: {{message}} ({{detail}})',
+  'statementImport.notBooked': 'Not booked yet (information only)',
   // A bank_accounts key that happens to exist must never answer for validation.*
   'validation.amountRequired': 'WRONG NAMESPACE',
 });
@@ -86,5 +89,19 @@ describe('formatRowMessage', () => {
   it('ignores a blank or missing detail', () => {
     expect(formatRowMessage(message({ detail: '   ' }), t, tc)).toBe('Row 5: Zero amount, skipped');
     expect(formatRowMessage(message({ detail: null }), t, tc)).toBe('Row 5: Zero amount, skipped');
+  });
+
+  it('counts payments, not file lines, for statements', () => {
+    const notBooked = message({ line: 3, key: 'statementImport.notBooked', detail: null });
+    expect(formatRowMessage(notBooked, t, tc, 'statement')).toBe(
+      'Payment 3: Not booked yet (information only)'
+    );
+    expect(formatRowMessage(notBooked, t, tc)).toBe('Row 3: Not booked yet (information only)');
+    expect(formatRowMessage({ ...notBooked, detail: 'PDNG' }, t, tc, 'statement')).toBe(
+      'Payment 3: Not booked yet (information only) (PDNG)'
+    );
+    expect(formatRowMessage(notBooked, t, tc, 'csv')).toBe(
+      'Row 3: Not booked yet (information only)'
+    );
   });
 });

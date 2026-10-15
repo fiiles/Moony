@@ -1,0 +1,30 @@
+!Account
+NChecking
+TBank
+^
+!Type:Bank
+D08/31'26
+T1,000.00
+POpening Balance
+L[Checking]
+^
+D9/5'26
+T500.50
+PAcme
+MInvoice 17
+LIncome:Salary/Work
+^
+D9/20'26
+T-250.00
+PGrocery
+LFood:Groceries
+SFood:Groceries
+$-200.00
+SHousehold
+$-50.00
+^
+D9/21'26
+T-30.00
+PTransfer to savings
+L[Savings]
+^

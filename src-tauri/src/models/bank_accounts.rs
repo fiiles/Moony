@@ -44,6 +44,7 @@ impl std::str::FromStr for AccountType {
 pub enum DataSource {
     #[default]
     Manual,
+    /// Imported from a file (CSV or a statement format).
     CsvImport,
     ApiSync,
 }

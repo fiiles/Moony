@@ -30,7 +30,7 @@ The screenshots show a sample profile (synthetic data).
 
 Moony is for people with several accounts, investments, loans and insurance policies who want
 one net-worth number and do not want to hand their statements to a service. It is not the
-right tool today if you need automatic bank sync (you import CSV statements or enter data yourself), a phone or
+right tool today if you need automatic bank sync (you import bank statements or enter data yourself), a phone or
 tablet app, or a budget shared by a household (one profile on one computer, no sync).
 
 ## What it does
@@ -38,10 +38,10 @@ tablet app, or a budget shared by a household (one profile on one computer, no s
 - **Net worth and its history** across bank accounts, stocks, crypto, bonds, real estate, loans,
   insurance and other assets. A *What's coming up* agenda lists insurance notice deadlines,
   fixed-rate ends, maturities, larger payments and watchlist targets that were reached.
-- **Bank accounts** with CSV import (16 bank presets, other files through column detection with
-  a preview, duplicate skipping, one-click undo) and an account page built around dated balance
-  records. Categorization uses your own rules, rules learned from your choices and rule packs
-  for many countries.
+- **Bank accounts** with statement import (CSV with 16 bank presets and column detection for other
+  files, and CAMT.053, MT940, OFX/QFX and QIF statements; a preview, duplicate skipping, one-click
+  undo) and an account page built around dated balance records. Categorization uses your own
+  rules, rules learned from your choices and rule packs for many countries.
 - **Stocks** with prices from Yahoo Finance (or set by hand), dividends and a watchlist that
   never counts toward net worth. Broker CSV import reads XTB, Trading 212, Degiro and
   Interactive Brokers exports and your own table. The analysis shows time-weighted and

@@ -25,7 +25,8 @@ interface FileSelectStepProps {
 
 /**
  * Step 1 (prototype csv-import.html): the bank preset with its export help on
- * the left, the drop zone on the right, the sample file as a quiet link.
+ * the left, the drop zone with the supported formats under it on the right, the
+ * sample file as a quiet link.
  */
 export function FileSelectStep({
   accountCurrency,
@@ -78,22 +79,26 @@ export function FileSelectStep({
           {t('csvImport.file.sample')}
         </button>
       </div>
-      <div
-        className={cn(
-          'grid place-items-center gap-2 rounded-r3 border-[1.5px] border-dashed border-line-strong bg-well px-5 py-[34px] text-center text-table text-ink-3 transition-colors duration-fast',
-          isDragging && 'border-dark bg-paper',
-          isLoading && 'opacity-60'
-        )}
-      >
-        <Upload className="size-[26px] text-ink-4" aria-hidden />
-        <b className="text-body font-650 text-ink">
-          {isDragging ? t('csvImport.file.dropActive') : t('csvImport.file.dropTitle')}
-        </b>
-        <span>{t('csvImport.file.or')}</span>
-        <Button type="button" variant="outline" onClick={onChooseFile} loading={isLoading}>
-          {t('csvImport.file.choose')}
-        </Button>
-        <span className="text-micro font-500 text-ink-4">{t('csvImport.file.dropNote')}</span>
+      <div>
+        <div
+          className={cn(
+            'grid place-items-center gap-2 rounded-r3 border-[1.5px] border-dashed border-line-strong bg-well px-5 py-[34px] text-center text-table text-ink-3 transition-colors duration-fast',
+            isDragging && 'border-dark bg-paper',
+            isLoading && 'opacity-60'
+          )}
+        >
+          <Upload className="size-[26px] text-ink-4" aria-hidden />
+          <b className="text-body font-650 text-ink">
+            {isDragging ? t('csvImport.file.dropActive') : t('csvImport.file.dropTitle')}
+          </b>
+          <span>{t('csvImport.file.or')}</span>
+          <Button type="button" variant="outline" onClick={onChooseFile} loading={isLoading}>
+            {t('csvImport.file.choose')}
+          </Button>
+        </div>
+        <p className="mb-0 mt-2 text-center text-micro font-500 text-ink-4">
+          {t('statementImport.supportedFormats')}
+        </p>
       </div>
     </div>
   );

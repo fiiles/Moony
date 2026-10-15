@@ -178,9 +178,7 @@
     "descriptionNoName": "Transakcja z {{date}} ({{amount}}) zostanie usunięta na stałe. Tej operacji nie można cofnąć."
   },
   "csvImport": {
-    "button": "Importuj CSV",
-    "title": "Importuj transakcje z CSV",
-    "selectFile": "Wybierz plik CSV wyeksportowany z banku",
+    "title": "Import wyciągu",
     "mapColumns": "Przypisz kolumny CSV do pól transakcji",
     "importing": "Importowanie transakcji...",
     "complete": "Import zakończony",
@@ -212,11 +210,10 @@
     "filteredOut": "Pominięto: to nie jest zrealizowana transakcja",
     "duplicate": "Identyczna transakcja już istnieje",
     "duplicateById": "Identyfikator transakcji bankowej już istnieje; nie można zaimportować kolejnej kopii",
-    "dropTitle": "Upuść tutaj plik CSV",
     "dropActive": "Upuść plik, aby go otworzyć",
     "dropHint": "lub wybierz plik z komputera",
     "chooseFile": "Wybierz plik",
-    "unsupportedFile": "Można importować tylko pliki .csv i .txt.",
+    "unsupportedFile": "Tego typu pliku nie można zaimportować.",
     "bankPreset": "Bank",
     "presetAuto": "Wykryj automatycznie",
     "detected": "Wykryto",
@@ -287,6 +284,10 @@
       "skipped": "Pominięto: {{count}}"
     },
     "dateRange": "Daty: {{from}} – {{to}}",
+    "overlapHint_one": "1 nowa płatność przypada na okres, który {{file}} już obejmuje. Jeśli te same płatności zostały zaimportowane w innym formacie, mogą nie zostać rozpoznane jako duplikaty.",
+    "overlapHint_few": "{{count}} nowe płatności przypadają na okres, który {{file}} już obejmuje. Jeśli te same płatności zostały zaimportowane w innym formacie, mogą nie zostać rozpoznane jako duplikaty.",
+    "overlapHint_many": "{{count}} nowych płatności przypada na okres, który {{file}} już obejmuje. Jeśli te same płatności zostały zaimportowane w innym formacie, mogą nie zostać rozpoznane jako duplikaty.",
+    "overlapHint_other": "{{count}} nowej płatności przypada na okres, który {{file}} już obejmuje. Jeśli te same płatności zostały zaimportowane w innym formacie, mogą nie zostać rozpoznane jako duplikaty.",
     "importButtonIdle": "Importuj",
     "resultDateRange": "Zaimportowane transakcje mają daty {{from}} – {{to}}.",
     "next": {
@@ -301,15 +302,14 @@
       "setBalanceHint": "Import nigdy nie zmienia salda konta; ta opcja stosuje saldo końcowe z wyciągu.",
       "done": "Gotowe"
     },
-    "importCsv": "Importuj CSV",
     "steps": {
       "file": "Plik",
       "columns": "Kolumny",
       "preview": "Podgląd i kategorie",
       "done": "Gotowe"
     },
-    "titleFor": "Import wyciągu · {{account}}",
-    "lead": "Plik CSV z bankowości internetowej. Duplikaty są rozpoznawane, a kategorie przypisywane według reguł – wszystko sprawdzasz, zanim cokolwiek zostanie zapisane.",
+    "titleFor": "Import wyciągu na konto {{account}}",
+    "lead": "Wyciąg z bankowości internetowej. Duplikaty są rozpoznawane, a kategorie przypisywane według reguł – wszystko sprawdzasz, zanim cokolwiek zostanie zapisane.",
     "file": {
       "bank": "Bank",
       "bankHint": "Wstępnie wypełnia przypisanie kolumn i format daty.",
@@ -319,8 +319,7 @@
       "dropTitle": "Upuść tutaj wyciąg",
       "dropActive": "Zwolnij plik, aby go otworzyć",
       "or": "lub",
-      "choose": "Wybierz plik…",
-      "dropNote": ".csv lub .txt · nagłówki kolumn są rozpoznawane automatycznie"
+      "choose": "Wybierz plik…"
     },
     "filebar": {
       "rows_one": "{{count}} wiersz",
@@ -396,13 +395,74 @@
     "encodingAuto": "Wykryj automatycznie ({{encoding}})",
     "encodingHint": "Zmień, jeśli w podglądzie źle wyglądają znaki diakrytyczne lub litery spoza alfabetu łacińskiego."
   },
+  "statementImport": {
+    "button": "Importuj wyciąg",
+    "fileFilter": "Wyciągi bankowe",
+    "supportedFormats": "CSV, CAMT.053 (XML), MT940, OFX/QFX i QIF",
+    "format": {
+      "camt053": "CAMT.053",
+      "mt940": "MT940",
+      "ofx": "OFX",
+      "qif": "QIF"
+    },
+    "pickStatement": "Plik zawiera kilka wyciągów. Wybierz jeden:",
+    "period": "{{from}} – {{to}}",
+    "opening": "Saldo początkowe",
+    "closing": "Saldo końcowe",
+    "entries_one": "{{count}} płatność",
+    "entries_few": "{{count}} płatności",
+    "entries_many": "{{count}} płatności",
+    "entries_other": "{{count}} płatności",
+    "skipped_one": "{{count}} pominięta",
+    "skipped_few": "{{count}} pominięte",
+    "skipped_many": "{{count}} pominiętych",
+    "skipped_other": "{{count}} pominiętej",
+    "check": {
+      "ok": "Wyciąg się zgadza: saldo początkowe plus płatności daje saldo końcowe.",
+      "mismatch": "Płatności nie dają salda końcowego (różnica {{difference}}). Plik może być niekompletny.",
+      "unavailable": "Plik nie podaje obu sald, więc nie można sprawdzić, czy jest kompletny."
+    },
+    "match": {
+      "selected": "Wyciąg należy do tego konta.",
+      "other": "Ten wyciąg należy do konta {{account}}.",
+      "switch": "Importuj na konto {{account}}",
+      "none": "Ten wyciąg należy do konta {{identifier}}, a nie do tego.",
+      "unknown": "Konto w pliku: {{identifier}}",
+      "confirm": "Mimo to importuj na to konto"
+    },
+    "currencyDiffers": "Wyciąg jest w {{statement}}, konto w {{account}}. Płatności zachowają swoją walutę; salda z wyciągu nie będzie można przejąć.",
+    "entry": "#",
+    "rowMessage": "Płatność {{line}}: {{message}}",
+    "rowMessageDetail": "Płatność {{line}}: {{message}} ({{detail}})",
+    "notBooked": "Jeszcze niezaksięgowana (tylko informacyjnie)",
+    "correctionSkipped": "Korekta wcześniejszej płatności; nie jest stosowana",
+    "investmentIgnored": "Plik zawiera także transakcje inwestycyjne. Nie są one importowane; użyj do nich importu od brokera.",
+    "back": "Wybierz inny plik",
+    "openAccount": "Otwórz konto {{account}}",
+    "dateOrder": {
+      "label": "Daty w tym pliku są zapisane jako",
+      "dmy": "dzień.miesiąc.rok",
+      "mdy": "miesiąc/dzień/rok",
+      "ymd": "rok-miesiąc-dzień",
+      "hint": "Każdą datę w pliku można odczytać na oba sposoby. Sprawdź to na płatności, którą znasz."
+    },
+    "categories": {
+      "title": "Kategorie z pliku",
+      "hint": "Dopasowane po nazwie. Możesz zmienić dowolną; płatności bez kategorii przejdą przez twoje reguły.",
+      "rules": "Zostaw regułom",
+      "count_one": "{{count}} płatność",
+      "count_few": "{{count}} płatności",
+      "count_many": "{{count}} płatności",
+      "count_other": "{{count}} płatności"
+    }
+  },
   "importHistory": {
     "title": "Historia importów",
     "fileName": "Nazwa pliku",
     "period": "Okres",
     "imported": "Zaimportowano",
     "errors": "Błędy",
-    "empty": "Brak importów. Zaimportuj pierwszy plik CSV.",
+    "empty": "Brak importów. Zaimportuj pierwszy wyciąg.",
     "duplicates": "Duplikaty",
     "duplicatesHelp": "Wiersze pominięte, bo transakcja już istniała",
     "undoImport_one": "Cofnij import (usuwa {{count}} transakcję)",
@@ -578,8 +638,7 @@
     "noData": "Brak danych"
   },
   "actions": {
-    "recordBalance": "Zapisz saldo",
-    "importStatement": "Importuj wyciąg"
+    "recordBalance": "Zapisz saldo"
   },
   "menu": {
     "showDetail": "Pokaż szczegóły",

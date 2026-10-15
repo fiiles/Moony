@@ -26,7 +26,8 @@ use crate::services::csv_presets::CsvRowFilter;
 ///   `validation.amountRequired` for empty cells.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
 pub struct CsvRowMessage {
-    /// 1-based line of the file where the row starts (the header line counts).
+    /// 1-based. File line for CSV (the line where the row starts, the header line counts),
+    /// entry ordinal for statement formats.
     pub line: usize,
     pub key: String,
     pub detail: Option<String>,
@@ -39,11 +40,11 @@ pub struct CsvDateRange {
     pub to: i64,
 }
 
-fn default_preview_limit() -> usize {
+pub(crate) fn default_preview_limit() -> usize {
     200
 }
 
-fn default_true() -> bool {
+pub(crate) fn default_true() -> bool {
     true
 }
 
@@ -106,15 +107,17 @@ pub struct CsvImportConfig {
     /// reports them in `duplicates`; certain bank IDs are always skipped.
     #[serde(rename = "skipDuplicates", default = "default_true")]
     pub skip_duplicates: bool,
-    /// File lines of possible composite duplicates to import anyway.
+    /// Row `line`s (file line for CSV, entry ordinal for statement formats) of possible
+    /// composite duplicates to import anyway.
     #[serde(rename = "importAnywayLines", default)]
     pub import_anyway_lines: Vec<usize>,
     /// Force a text encoding (`Windows-1250`); `None` = detect.
     #[serde(default)]
     pub encoding: Option<String>,
     /// Categories the user picked in the preview for rows the rules left
-    /// uncategorized (or wanted differently), by file line. Applied on import
-    /// before the rules run, so they win; a missing category is ignored.
+    /// uncategorized (or wanted differently), by row `line` (file line for CSV, entry
+    /// ordinal for statement formats). Applied on import before the rules run, so they
+    /// win; a missing category is ignored.
     #[serde(rename = "categoryOverrides", default)]
     pub category_overrides: Vec<CsvCategoryOverride>,
     #[serde(rename = "previewOffset", default)]
@@ -126,7 +129,7 @@ pub struct CsvImportConfig {
 /// One row's category chosen in the preview (TS `CsvCategoryOverride`).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 pub struct CsvCategoryOverride {
-    /// 1-based file line of the row.
+    /// 1-based. File line for CSV, entry ordinal for statement formats.
     pub line: usize,
     #[serde(rename = "categoryId")]
     pub category_id: String,
@@ -167,17 +170,20 @@ fn is_blank(value: &Option<String>) -> bool {
     value.as_deref().is_none_or(|s| s.trim().is_empty())
 }
 
+/// The preview window must list 1–200 rows from a representable offset.
+fn validate_preview_range(offset: usize, limit: usize) -> Result<()> {
+    if limit == 0 || limit > 200 || offset > i64::MAX as usize {
+        return Err(AppError::Validation(
+            "validation.csvPreviewRangeInvalid".into(),
+        ));
+    }
+    Ok(())
+}
+
 impl CsvImportConfig {
     /// Validate at the trust boundary. Keys are `validation.*` i18n keys.
     pub fn validate(&self) -> Result<()> {
-        if self.preview_limit == 0
-            || self.preview_limit > 200
-            || self.preview_offset > i64::MAX as usize
-        {
-            return Err(AppError::Validation(
-                "validation.csvPreviewRangeInvalid".into(),
-            ));
-        }
+        validate_preview_range(self.preview_offset, self.preview_limit)?;
         if self.date_column.trim().is_empty() {
             return Err(AppError::Validation("validation.dateColumnRequired".into()));
         }
@@ -195,6 +201,75 @@ impl CsvImportConfig {
     /// The single-character delimiter, if one was configured.
     pub fn delimiter_char(&self) -> Option<char> {
         self.delimiter.chars().next()
+    }
+
+    /// The part of this config the shared import core needs once the rows are
+    /// parsed (duplicates, categories, preview window).
+    pub fn import_options(&self) -> ImportOptions {
+        ImportOptions {
+            skip_duplicates: self.skip_duplicates,
+            import_anyway_lines: self.import_anyway_lines.clone(),
+            category_overrides: self.category_overrides.clone(),
+            source_category_map: Vec::new(),
+            preview_offset: self.preview_offset,
+            preview_limit: self.preview_limit,
+        }
+    }
+}
+
+/// A closing balance the source declares (CAMT `CLBD`, MT940 `:62F:`, OFX
+/// `LEDGERBAL`), in the statement's own currency. `asOf` is the calendar day as
+/// written in the file, stored as UTC midnight.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub struct DeclaredBalance {
+    pub amount: String,
+    pub currency: String,
+    #[serde(rename = "asOf")]
+    pub as_of: i64,
+}
+
+/// The category the user chose for one source category of a statement (QIF
+/// `L` lines): rows carrying `source` are written with `categoryId`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub struct SourceCategoryMapping {
+    pub source: String,
+    #[serde(rename = "categoryId")]
+    pub category_id: String,
+}
+
+/// What the shared import core needs besides the parsed rows. CSV derives it
+/// from [`CsvImportConfig`]; statement formats build it from their own options.
+#[derive(Debug, Clone)]
+pub struct ImportOptions {
+    /// Skip possible composite duplicates (default); certain bank IDs always skip.
+    pub skip_duplicates: bool,
+    /// Source lines of possible composite duplicates to import anyway.
+    pub import_anyway_lines: Vec<usize>,
+    /// Categories picked in the preview, by source line.
+    pub category_overrides: Vec<CsvCategoryOverride>,
+    /// Categories chosen for the source categories of the file.
+    pub source_category_map: Vec<SourceCategoryMapping>,
+    pub preview_offset: usize,
+    pub preview_limit: usize,
+}
+
+impl Default for ImportOptions {
+    fn default() -> Self {
+        ImportOptions {
+            skip_duplicates: true,
+            import_anyway_lines: Vec::new(),
+            category_overrides: Vec::new(),
+            source_category_map: Vec::new(),
+            preview_offset: 0,
+            preview_limit: 200,
+        }
+    }
+}
+
+impl ImportOptions {
+    /// Same preview bounds as [`CsvImportConfig::validate`].
+    pub fn validate(&self) -> Result<()> {
+        validate_preview_range(self.preview_offset, self.preview_limit)
     }
 }
 
@@ -310,6 +385,32 @@ pub struct CsvPreviewRow {
     /// `own_account`).
     #[serde(rename = "categorySource")]
     pub category_source: Option<String>,
+    /// The category the file itself names for the row (QIF `L` line); `None`
+    /// for formats without one.
+    #[serde(rename = "sourceCategory")]
+    pub source_category: Option<String>,
+}
+
+/// An earlier import of the same account whose period contains new rows of this
+/// file (TS `ImportOverlapBatch`).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
+pub struct ImportOverlapBatch {
+    #[serde(rename = "fileName")]
+    pub file_name: String,
+    #[serde(rename = "dateRange")]
+    pub date_range: CsvDateRange,
+}
+
+/// Rows that would be written inside the period of an earlier import of the
+/// account (TS `ImportOverlap`). Payments imported earlier in another format
+/// carry other bank ids, so the duplicate check may not recognize them (D12).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
+pub struct ImportOverlap {
+    /// New rows dated inside an earlier batch's period, its last day excluded.
+    #[serde(rename = "newRowsInCoveredRange")]
+    pub new_rows_in_covered_range: usize,
+    /// The earlier batches that contain such rows, newest first, at most three.
+    pub batches: Vec<ImportOverlapBatch>,
 }
 
 /// Dry run of an import (TS `CsvImportPreview`).
@@ -338,6 +439,8 @@ pub struct CsvImportPreview {
     pub forced_duplicate_count: usize,
     #[serde(rename = "promotedCount")]
     pub promoted_count: usize,
+    /// Set when new rows fall inside the period of an earlier import (D12).
+    pub overlap: Option<ImportOverlap>,
     pub offset: usize,
     pub limit: usize,
 }

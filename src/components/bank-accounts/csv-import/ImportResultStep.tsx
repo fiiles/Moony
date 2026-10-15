@@ -1,12 +1,14 @@
 import { useMemo, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
+import { useLocation } from 'wouter';
 import { Check, ChevronDown } from 'lucide-react';
 import { useFormat } from '@/lib/use-format';
 import { useCurrency } from '@/lib/currency';
 import { formatRowMessage } from '@/utils/csv-import-messages';
 import type { BankAccount, CsvImportResult } from '@shared/schema';
 import { cn } from '@/lib/utils';
-import { formatBalance } from './import-config';
+import { Button } from '@/components/ui/button';
+import { formatBalance, type ImportKind } from './import-config';
 import { NextSteps } from './NextSteps';
 
 function Tile({ value, label, tone }: { value: number; label: string; tone?: 'loss' }) {
@@ -66,8 +68,16 @@ function MessageList({
 }
 
 interface ImportResultStepProps {
+  kind: ImportKind;
+  /** The account the dialog was opened for (the page behind it). */
   accountId: string;
+  /**
+   * The account the import wrote to; `NextSteps` acts on it. Another account than `accountId`
+   * when the user switched the target to the statement's own account (D9).
+   */
+  importedAccountId: string;
   result: CsvImportResult;
+  /** The account the import wrote to. */
   account: BankAccount | null | undefined;
   locale: string;
   fileName: string;
@@ -76,6 +86,8 @@ interface ImportResultStepProps {
   onShowImported?: () => void;
   onReviewUncategorized?: () => void;
   onAutoCategorize?: () => void | Promise<void>;
+  /** Closes the dialog (after "Open {account}" navigated away). */
+  onClose: () => void;
 }
 
 /**
@@ -84,7 +96,9 @@ interface ImportResultStepProps {
  * right.
  */
 export function ImportResultStep({
+  kind,
   accountId,
+  importedAccountId,
   result,
   account,
   locale,
@@ -93,19 +107,23 @@ export function ImportResultStep({
   onShowImported,
   onReviewUncategorized,
   onAutoCategorize,
+  onClose,
 }: ImportResultStepProps) {
   const { t } = useTranslation('bank_accounts');
   const { t: tc } = useTranslation('common');
+  const [, setLocation] = useLocation();
   const fmt = useFormat();
   const { currencyCode } = useCurrency();
+  // The page behind the dialog shows another account than the one imported into.
+  const otherAccount = importedAccountId !== accountId;
 
   const skippedDuplicates = useMemo(
-    () => result.skippedDuplicates.map((message) => formatRowMessage(message, t, tc)),
-    [result.skippedDuplicates, t, tc]
+    () => result.skippedDuplicates.map((message) => formatRowMessage(message, t, tc, kind)),
+    [result.skippedDuplicates, t, tc, kind]
   );
   const errors = useMemo(
-    () => result.errors.map((message) => formatRowMessage(message, t, tc)),
-    [result.errors, t, tc]
+    () => result.errors.map((message) => formatRowMessage(message, t, tc, kind)),
+    [result.errors, t, tc, kind]
   );
   const categorized = result.importedCount - result.uncategorizedCount;
 
@@ -143,6 +161,20 @@ export function ImportResultStep({
             />
           )}
         </p>
+        {otherAccount && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="mt-3"
+            onClick={() => {
+              setLocation(`/bank-accounts/${importedAccountId}`);
+              onClose();
+            }}
+          >
+            {t('statementImport.openAccount', { account: account?.name ?? '' })}
+          </Button>
+        )}
         <div className="my-4 grid grid-cols-4 gap-2.5">
           <Tile value={result.promotedCount} label={t('readiness.promoted')} />
           <Tile value={result.importedCount} label={t('csvImport.done.imported')} />
@@ -183,14 +215,15 @@ export function ImportResultStep({
         )}
       </div>
       <NextSteps
-        accountId={accountId}
+        accountId={importedAccountId}
         result={result}
         account={account}
         locale={locale}
         fileName={fileName}
-        onShowImported={onShowImported}
-        onReviewUncategorized={onReviewUncategorized}
-        onAutoCategorize={onAutoCategorize}
+        // The page's callbacks act on the page's account: "Open {account}" replaces them.
+        onShowImported={otherAccount ? undefined : onShowImported}
+        onReviewUncategorized={otherAccount ? undefined : onReviewUncategorized}
+        onAutoCategorize={otherAccount ? undefined : onAutoCategorize}
       />
     </div>
   );

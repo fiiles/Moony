@@ -24,6 +24,9 @@ import { FileSelectStep } from './csv-import/FileSelectStep';
 import { ImportResultStep } from './csv-import/ImportResultStep';
 import { MappingStep } from './csv-import/MappingStep';
 import { PreviewStep } from './csv-import/PreviewStep';
+import { SourceCategoryPanel } from './csv-import/SourceCategoryPanel';
+import { manualChoiceCount } from './csv-import/source-categories';
+import { StatementSummaryCard } from './csv-import/StatementSummaryCard';
 import {
   AUTO_PRESET,
   AUTO_VALUE,
@@ -32,17 +35,25 @@ import {
   buildImportConfig,
   encodingArgument,
   fileNameFromPath,
+  importSteps,
   isMappingComplete,
+  isSupportedImportPath,
   mappingFromInspection,
   presetIdForInstitution,
   summarizePreview,
+  type ImportStep,
   type MappingState,
 } from './csv-import/import-config';
-import { useCsvImportMutation } from './csv-import/use-csv-import-mutations';
+import {
+  useCsvImportMutation,
+  useStatementImportMutation,
+} from './csv-import/use-csv-import-mutations';
 import { useCsvPreview } from './csv-import/use-csv-preview';
 import { useFileDrop } from './csv-import/use-file-drop';
+import { useStatementPreview } from './csv-import/use-statement-preview';
+import { useStatementSession } from './csv-import/use-statement-session';
 
-interface CsvImportDialogProps {
+interface StatementImportDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   accountId: string;
@@ -52,7 +63,7 @@ interface CsvImportDialogProps {
    * Show what was imported (the page sets its filter to `result.dateRange`).
    * Called as soon as an import finishes, so the list behind the dialog is
    * already right even if it is simply closed, and again by "Show imported
-   * transactions".
+   * transactions". Not called when the import went to another account (D9).
    */
   onImported?: (result: CsvImportResult) => void;
   /** Filter the page to uncategorized transactions ("Review N uncategorized"). */
@@ -61,18 +72,18 @@ interface CsvImportDialogProps {
   onAutoCategorize?: () => void | Promise<void>;
 }
 
-type Step = 'file' | 'mapping' | 'preview' | 'done';
-const STEP_IDS: Step[] = ['file', 'mapping', 'preview', 'done'];
-
 /** Dev bridge only: a path in localStorage replaces the native file dialog */
 const DEV_PATH_KEY = 'moony-dev-csv-path';
 
 /**
- * CSV import wizard (design system prototype csv-import.html): file and bank,
- * columns, the preview with duplicates and the category every row would get
- * (fixable inline before the write), then the result with the next steps.
+ * Statement import wizard (design system prototype csv-import.html): file and
+ * bank, columns, the preview with duplicates and the category every row would
+ * get (fixable inline before the write), then the result with the next steps.
+ * A statement file (CAMT.053, MT940, OFX, QIF) names its fields itself: it skips
+ * the columns and its preview opens with the statement summary (account check,
+ * balances, the statement picker).
  */
-export function CsvImportDialog({
+export function StatementImportDialog({
   open,
   onOpenChange,
   accountId,
@@ -80,15 +91,16 @@ export function CsvImportDialog({
   onImported,
   onReviewUncategorized,
   onAutoCategorize,
-}: CsvImportDialogProps) {
+}: StatementImportDialogProps) {
   const { t } = useTranslation('bank_accounts');
   const { t: tc } = useTranslation('common');
   const { getLocale } = useLanguage();
   const { user } = useAuth();
-  const { account } = useBankAccount(accountId || undefined);
+  // Inspect, preview and import decode a legacy-encoded file the same way.
+  const country = user?.country ?? undefined;
   const { categories } = useCategories();
 
-  const [step, setStep] = useState<Step>('file');
+  const [step, setStep] = useState<ImportStep>('file');
   const [filePath, setFilePath] = useState('');
   const [inspection, setInspection] = useState<CsvPreviewResult | null>(null);
   const [mapping, setMapping] = useState<MappingState>(EMPTY_MAPPING);
@@ -107,13 +119,14 @@ export function CsvImportDialog({
   const [isInspecting, setIsInspecting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [result, setResult] = useState<CsvImportResult | null>(null);
+  // The account `result` was written to, fixed when the write started.
+  const [importedAccountId, setImportedAccountId] = useState<string | null>(null);
+  const { account: importedAccount } = useBankAccount(importedAccountId ?? undefined);
   const [previewPage, setPreviewPage] = useState(0);
   const [dateConfirmed, setDateConfirmed] = useState(false);
   const [manualCount, setManualCount] = useState(0);
   // Bumped per file read; a response that is no longer the latest is dropped.
   const inspectRequest = useRef(0);
-
-  const importMutation = useCsvImportMutation(accountId);
 
   const { data: presets = [] } = useQuery({
     queryKey: ['csv-presets'],
@@ -134,6 +147,36 @@ export function CsvImportDialog({
   const explicitPresetId =
     presetDetected || presetChoice === AUTO_PRESET ? undefined : presetChoice;
 
+  const session = useStatementSession({
+    accountId,
+    country,
+    filePath,
+    importAnywayLines,
+    overrides,
+    categories,
+    inspectRequest,
+    setIsInspecting,
+    clearPicks: (scope) => {
+      setImportAnywayLines([]);
+      if (scope === 'all') {
+        setOverrides([]);
+        setPreviewPage(0);
+      }
+    },
+    onStatementOpened: (path) => {
+      setFilePath(path);
+      // A CSV read before must not preview this file with its columns.
+      setInspection(null);
+      setStep('preview');
+    },
+    onCsvFile: (path) => void inspectFile(path, { presetId: explicitPresetId }),
+  });
+  const { kind, targetAccountId } = session;
+  const { account } = useBankAccount(targetAccountId || undefined);
+
+  const importMutation = useCsvImportMutation(targetAccountId);
+  const statementMutation = useStatementImportMutation();
+
   /**
    * Reads the file and (re)starts step 2 from what was found: columns, formats,
    * preset. `options` are the manual overrides the backend accepts.
@@ -152,7 +195,7 @@ export function CsvImportDialog({
         options.headerRow,
         options.presetId,
         options.encoding,
-        user?.country ?? undefined
+        country
       );
       if (requestId !== inspectRequest.current) return;
 
@@ -192,7 +235,7 @@ export function CsvImportDialog({
   const handleFilePicked = (path: string) => {
     // The last choice was made for another file.
     setEncodingChoice(AUTO_VALUE);
-    void inspectFile(path, { presetId: explicitPresetId });
+    void session.open(path);
   };
 
   const handleChooseFile = async () => {
@@ -210,7 +253,7 @@ export function CsvImportDialog({
     try {
       const selected = await openFileDialog({
         multiple: false,
-        filters: [{ name: 'CSV', extensions: [...SUPPORTED_EXTENSIONS] }],
+        filters: [{ name: t('statementImport.fileFilter'), extensions: [...SUPPORTED_EXTENSIONS] }],
       });
       if (selected) handleFilePicked(selected);
     } catch (e) {
@@ -220,8 +263,12 @@ export function CsvImportDialog({
 
   const isDragging = useFileDrop({
     enabled: open && step === 'file' && !isInspecting,
+    accepts: isSupportedImportPath,
     onFile: handleFilePicked,
-    onRejected: () => toast.error(t('csvImport.unsupportedFile')),
+    onRejected: () =>
+      toast.error(t('csvImport.unsupportedFile'), {
+        description: t('statementImport.supportedFormats'),
+      }),
   });
 
   const handlePresetChange = (value: string) => {
@@ -277,22 +324,41 @@ export function CsvImportDialog({
     [config, previewPage]
   );
   // The preview runs from step 2 on, so step 3 opens with the table already there.
+  const csvPreview = useCsvPreview({
+    accountId: targetAccountId,
+    filePath,
+    config: kind === 'csv' ? previewConfig : null,
+    enabled: open && kind === 'csv' && (step === 'mapping' || step === 'preview'),
+  });
+
+  const statementOptions = session.options;
+  const statementPreviewOptions = useMemo(
+    () =>
+      statementOptions
+        ? { ...statementOptions, previewOffset: previewPage * 100, previewLimit: 100 }
+        : null,
+    [statementOptions, previewPage]
+  );
+  const statementPreview = useStatementPreview({
+    accountId: targetAccountId,
+    filePath,
+    options: statementPreviewOptions,
+    country,
+    enabled: open && kind === 'statement' && step === 'preview',
+  });
+
   const {
     preview,
     error: previewError,
     isUpdating,
     isLoadingFirst,
-  } = useCsvPreview({
-    accountId,
-    filePath,
-    config: previewConfig,
-    enabled: open && (step === 'mapping' || step === 'preview'),
-  });
+  } = kind === 'statement' ? statementPreview : csvPreview;
   const summary = preview ? summarizePreview(preview, importAnywayLines) : null;
 
   const reset = () => {
     inspectRequest.current++;
     setStep('file');
+    session.reset();
     setFilePath('');
     setInspection(null);
     setMapping(EMPTY_MAPPING);
@@ -305,10 +371,20 @@ export function CsvImportDialog({
     setIsInspecting(false);
     setIsImporting(false);
     setResult(null);
+    setImportedAccountId(null);
     setManualCount(0);
   };
 
   const handleBack = () => {
+    // A statement has no columns to edit: back means another file, which starts over
+    // as a file of unknown kind for the page's account (the switch was for this one).
+    if (step === 'preview' && kind === 'statement') {
+      inspectRequest.current++; // a switch's read still in flight no longer applies
+      setIsInspecting(false);
+      session.reset();
+      setStep('file');
+      return;
+    }
     if (step === 'preview') {
       setStep('mapping');
       return;
@@ -322,14 +398,37 @@ export function CsvImportDialog({
   };
 
   const handleImport = async () => {
-    if (!config || !preview) return;
+    if (!preview) return;
+    // The account this write goes to; the result step and its next steps act on it.
+    const writeAccountId = targetAccountId;
+    // Preview and import get the same options, so what the user saw is what is written.
+    const write =
+      kind === 'statement'
+        ? statementOptions &&
+          (() =>
+            statementMutation.mutateAsync({
+              accountId: writeAccountId,
+              filePath,
+              options: statementOptions,
+              country,
+            }))
+        : config && (() => importMutation.mutateAsync({ filePath, config }));
+    if (!write) return;
     setIsImporting(true);
     try {
-      const imported = await importMutation.mutateAsync({ filePath, config });
-      setManualCount(overrides.length);
+      const imported = await write();
+      setManualCount(
+        manualChoiceCount(
+          overrides,
+          statementOptions?.sourceCategoryMap ?? [],
+          session.summary?.sourceCategories ?? []
+        )
+      );
       setResult(imported);
+      setImportedAccountId(writeAccountId);
       setStep('done');
-      onImported?.(imported);
+      // The page behind shows its own account; another account's rows are not there.
+      if (writeAccountId === accountId) onImported?.(imported);
     } catch (e: unknown) {
       toast.error(tc('status.error'), { description: translateApiError(e as Error, tc) });
     } finally {
@@ -356,14 +455,14 @@ export function CsvImportDialog({
 
   const canPreview = config != null && !isInspecting;
   const canImport =
-    config != null &&
+    (kind === 'statement' ? statementOptions != null && !session.blocked : config != null) &&
     !isInspecting &&
     !isUpdating &&
     !previewError &&
     summary != null &&
     (summary.willImport > 0 || summary.willPromote > 0);
 
-  const steps = STEP_IDS.map((id) => ({
+  const steps = importSteps(kind ?? 'csv').map((id) => ({
     id,
     label: t(`csvImport.steps.${id === 'mapping' ? 'columns' : id}`),
   }));
@@ -425,11 +524,41 @@ export function CsvImportDialog({
             />
           )}
 
+          {step === 'preview' && kind === 'statement' && session.inspection && session.summary && (
+            <>
+              <StatementSummaryCard
+                inspection={session.inspection}
+                summary={session.summary}
+                onStatementChange={session.changeStatement}
+                fileName={fileNameFromPath(filePath)}
+                accountCurrency={account?.currency}
+                confirmRequired={session.confirmRequired}
+                accountConfirmed={session.accountConfirmed}
+                onAccountConfirmedChange={session.setAccountConfirmed}
+                onSwitchAccount={(id) => void session.switchAccount(id)}
+                dateOrder={session.dateOrder}
+                dateOrderConfirmed={session.dateOrderConfirmed}
+                onDateOrderChange={session.pickDateOrder}
+                busy={isInspecting || isImporting}
+                locale={getLocale()}
+              />
+              {session.summary.sourceCategories.length > 0 && (
+                <SourceCategoryPanel
+                  sources={session.summary.sourceCategories}
+                  chosen={session.sourceCategories}
+                  onPick={session.pickSourceCategory}
+                  categories={categories}
+                />
+              )}
+            </>
+          )}
+
           {step === 'preview' && (
             <PreviewStep
+              kind={kind ?? 'csv'}
               page={previewPage}
               onPageChange={setPreviewPage}
-              ready={config != null}
+              ready={kind === 'statement' ? statementOptions != null : config != null}
               preview={preview}
               error={previewError}
               isUpdating={isUpdating}
@@ -444,17 +573,20 @@ export function CsvImportDialog({
             />
           )}
 
-          {step === 'done' && result && (
+          {step === 'done' && result && importedAccountId != null && (
             <ImportResultStep
+              kind={kind ?? 'csv'}
               accountId={accountId}
+              importedAccountId={importedAccountId}
               result={result}
-              account={account}
+              account={importedAccount}
               locale={getLocale()}
               fileName={fileNameFromPath(filePath)}
               manualCount={manualCount}
               onShowImported={onImported ? handleShowImported : undefined}
               onReviewUncategorized={onReviewUncategorized ? handleReviewUncategorized : undefined}
               onAutoCategorize={onAutoCategorize}
+              onClose={handleClose}
             />
           )}
         </div>
@@ -482,7 +614,7 @@ export function CsvImportDialog({
           {step === 'preview' && (
             <>
               <Button variant="ghost" onClick={handleBack} disabled={isImporting}>
-                {t('csvImport.editColumns')}
+                {kind === 'statement' ? t('statementImport.back') : t('csvImport.editColumns')}
               </Button>
               <Button
                 onClick={() => void handleImport()}

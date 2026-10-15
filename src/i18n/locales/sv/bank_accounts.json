@@ -174,9 +174,7 @@
     "descriptionNoName": "Transaktionen från {{date}} ({{amount}}) tas bort permanent. Det går inte att ångra."
   },
   "csvImport": {
-    "button": "Importera CSV",
-    "title": "Importera transaktioner från CSV",
-    "selectFile": "Välj en CSV-fil exporterad från din bank",
+    "title": "Importera kontoutdrag",
     "mapColumns": "Koppla CSV-kolumner till transaktionsfält",
     "importing": "Importerar transaktioner...",
     "complete": "Importen är klar!",
@@ -208,11 +206,10 @@
     "filteredOut": "Överhoppad: inte en slutförd transaktion",
     "duplicate": "En identisk transaktion finns redan",
     "duplicateById": "Bankens transaktions-ID finns redan; ytterligare en kopia kan inte importeras",
-    "dropTitle": "Släpp en CSV-fil här",
     "dropActive": "Släpp filen för att öppna den",
     "dropHint": "eller välj en fil från din dator",
     "chooseFile": "Välj fil",
-    "unsupportedFile": "Bara .csv- och .txt-filer kan importeras.",
+    "unsupportedFile": "Den här filtypen kan inte importeras.",
     "bankPreset": "Bank",
     "presetAuto": "Identifiera automatiskt",
     "detected": "Identifierad",
@@ -277,6 +274,8 @@
       "skipped": "{{count}} överhoppade"
     },
     "dateRange": "Datum: {{from}} – {{to}}",
+    "overlapHint_one": "1 ny betalning faller inom en period som {{file}} redan täcker. Om du har importerat samma betalningar i ett annat format kanske de inte känns igen som dubbletter.",
+    "overlapHint_other": "{{count}} nya betalningar faller inom en period som {{file}} redan täcker. Om du har importerat samma betalningar i ett annat format kanske de inte känns igen som dubbletter.",
     "importButtonIdle": "Importera",
     "resultDateRange": "De importerade transaktionerna är daterade {{from}} – {{to}}.",
     "next": {
@@ -291,15 +290,14 @@
       "setBalanceHint": "Importen ändrar aldrig kontosaldot; det här tillämpar utgående saldo från kontoutdraget.",
       "done": "Klart"
     },
-    "importCsv": "Importera CSV",
     "steps": {
       "file": "Fil",
       "columns": "Kolumner",
       "preview": "Förhandsgranskning och kategorier",
       "done": "Klart"
     },
-    "titleFor": "Importera kontoutdrag · {{account}}",
-    "lead": "En CSV från din internetbank. Dubbletter identifieras och kategorier tilldelas av reglerna – du granskar dem innan något skrivs.",
+    "titleFor": "Importera kontoutdrag till {{account}}",
+    "lead": "Ett kontoutdrag från din internetbank. Dubbletter identifieras och kategorier tilldelas av reglerna – du granskar dem innan något skrivs.",
     "file": {
       "bank": "Bank",
       "bankHint": "Förifyller kolumnkopplingen och datumformatet.",
@@ -309,8 +307,7 @@
       "dropTitle": "Släpp kontoutdraget här",
       "dropActive": "Släpp filen för att öppna den",
       "or": "eller",
-      "choose": "Välj fil…",
-      "dropNote": ".csv eller .txt · kolumnrubriker identifieras automatiskt"
+      "choose": "Välj fil…"
     },
     "filebar": {
       "rows_one": "{{count}} rad",
@@ -376,13 +373,68 @@
     "encodingAuto": "Identifiera automatiskt ({{encoding}})",
     "encodingHint": "Ändra om accenter eller icke-latinska tecken ser fel ut i förhandsgranskningen."
   },
+  "statementImport": {
+    "button": "Importera kontoutdrag",
+    "fileFilter": "Kontoutdrag",
+    "supportedFormats": "CSV, CAMT.053 (XML), MT940, OFX/QFX och QIF",
+    "format": {
+      "camt053": "CAMT.053",
+      "mt940": "MT940",
+      "ofx": "OFX",
+      "qif": "QIF"
+    },
+    "pickStatement": "Filen innehåller flera kontoutdrag. Välj ett:",
+    "period": "{{from}} – {{to}}",
+    "opening": "Ingående saldo",
+    "closing": "Utgående saldo",
+    "entries_one": "{{count}} betalning",
+    "entries_other": "{{count}} betalningar",
+    "skipped_one": "{{count}} överhoppad",
+    "skipped_other": "{{count}} överhoppade",
+    "check": {
+      "ok": "Kontoutdraget går ihop: ingående saldo plus betalningarna ger utgående saldo.",
+      "mismatch": "Betalningarna ger inte utgående saldo (differens {{difference}}). Filen kan vara ofullständig.",
+      "unavailable": "Filen anger inte båda saldona, så det går inte att kontrollera om den är fullständig."
+    },
+    "match": {
+      "selected": "Kontoutdraget hör till det här kontot.",
+      "other": "Det här kontoutdraget hör till {{account}}.",
+      "switch": "Importera till {{account}}",
+      "none": "Det här kontoutdraget hör till {{identifier}}, som inte är det här kontot.",
+      "unknown": "Konto i filen: {{identifier}}",
+      "confirm": "Importera till det här kontot ändå"
+    },
+    "currencyDiffers": "Kontoutdraget är i {{statement}}, kontot i {{account}}. Betalningarna behåller sin valuta; saldot från kontoutdraget kan inte tas över.",
+    "entry": "#",
+    "rowMessage": "Betalning {{line}}: {{message}}",
+    "rowMessageDetail": "Betalning {{line}}: {{message}} ({{detail}})",
+    "notBooked": "Inte bokförd än (endast information)",
+    "correctionSkipped": "En rättelse av en tidigare betalning; tillämpas inte",
+    "investmentIgnored": "Filen innehåller även investeringstransaktioner. De importeras inte; använd mäklarimporten för dem.",
+    "back": "Välj en annan fil",
+    "openAccount": "Öppna {{account}}",
+    "dateOrder": {
+      "label": "Datumen i filen är skrivna som",
+      "dmy": "dag.månad.år",
+      "mdy": "månad/dag/år",
+      "ymd": "år-månad-dag",
+      "hint": "Varje datum i filen kan läsas på båda sätten. Kontrollera med en betalning du känner till."
+    },
+    "categories": {
+      "title": "Kategorier från filen",
+      "hint": "Matchade efter namn. Du kan ändra vilken som helst; betalningar utan kategori går igenom dina regler.",
+      "rules": "Låt reglerna avgöra",
+      "count_one": "{{count}} betalning",
+      "count_other": "{{count}} betalningar"
+    }
+  },
   "importHistory": {
     "title": "Importhistorik",
     "fileName": "Filnamn",
     "period": "Period",
     "imported": "Importerade",
     "errors": "Fel",
-    "empty": "Inga importer ännu. Importera din första CSV-fil.",
+    "empty": "Inga importer ännu. Importera ditt första kontoutdrag.",
     "duplicates": "Dubbletter",
     "duplicatesHelp": "Rader som hoppades över eftersom transaktionen redan fanns",
     "undoImport_one": "Ångra importen (tar bort {{count}} transaktion)",
@@ -544,8 +596,7 @@
     "noData": "Inga data ännu"
   },
   "actions": {
-    "recordBalance": "Registrera saldo",
-    "importStatement": "Importera kontoutdrag"
+    "recordBalance": "Registrera saldo"
   },
   "menu": {
     "showDetail": "Visa detaljer",

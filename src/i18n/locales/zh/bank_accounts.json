@@ -172,9 +172,7 @@
     "descriptionNoName": "这将永久删除 {{date}} 的交易（{{amount}}）。此操作无法撤销。"
   },
   "csvImport": {
-    "button": "导入 CSV",
-    "title": "从 CSV 导入交易",
-    "selectFile": "选择从您的银行导出的 CSV 文件",
+    "title": "导入账单",
     "mapColumns": "将 CSV 列映射到交易字段",
     "importing": "正在导入交易…",
     "complete": "导入完成！",
@@ -206,11 +204,10 @@
     "filteredOut": "已跳过：不是已完成的交易",
     "duplicate": "已存在完全相同的交易",
     "duplicateById": "该银行交易 ID 已存在；无法再导入另一份副本",
-    "dropTitle": "将 CSV 文件拖到这里",
     "dropActive": "松开即可打开文件",
     "dropHint": "或从您的电脑中选择文件",
     "chooseFile": "选择文件",
-    "unsupportedFile": "只能导入 .csv 和 .txt 文件。",
+    "unsupportedFile": "无法导入此类型的文件。",
     "bankPreset": "银行",
     "presetAuto": "自动识别",
     "detected": "已识别",
@@ -272,6 +269,7 @@
       "skipped": "已跳过 {{count}} 笔"
     },
     "dateRange": "日期：{{from}} – {{to}}",
+    "overlapHint_other": "{{count}} 笔新付款落在 {{file}} 已涵盖的时间段内。如果您曾以其他格式导入过相同的付款，它们可能不会被识别为重复项。",
     "importButtonIdle": "导入",
     "resultDateRange": "导入的交易日期为 {{from}} – {{to}}。",
     "next": {
@@ -286,15 +284,14 @@
       "setBalanceHint": "导入不会更改账户余额；此操作会采用账单中的期末余额。",
       "done": "完成"
     },
-    "importCsv": "导入 CSV",
     "steps": {
       "file": "文件",
       "columns": "列",
       "preview": "预览与类别",
       "done": "完成"
     },
-    "titleFor": "导入账单 · {{account}}",
-    "lead": "来自网上银行的 CSV 文件。系统会识别重复项，并按规则分配类别——在写入任何内容之前，您可以先检查。",
+    "titleFor": "将账单导入 {{account}}",
+    "lead": "来自网上银行的账单文件。系统会识别重复项，并按规则分配类别——在写入任何内容之前，您可以先检查。",
     "file": {
       "bank": "银行",
       "bankHint": "预填列映射和日期格式。",
@@ -304,8 +301,7 @@
       "dropTitle": "将账单拖到这里",
       "dropActive": "松开即可打开文件",
       "or": "或",
-      "choose": "选择文件…",
-      "dropNote": ".csv 或 .txt · 列标题会被自动识别"
+      "choose": "选择文件…"
     },
     "filebar": {
       "rows_other": "{{count}} 行",
@@ -366,13 +362,65 @@
     "encodingAuto": "自动识别（{{encoding}}）",
     "encodingHint": "如果预览中重音字母或非拉丁字符显示不正确，请更改此项。"
   },
+  "statementImport": {
+    "button": "导入账单",
+    "fileFilter": "银行账单",
+    "supportedFormats": "CSV、CAMT.053 (XML)、MT940、OFX/QFX 和 QIF",
+    "format": {
+      "camt053": "CAMT.053",
+      "mt940": "MT940",
+      "ofx": "OFX",
+      "qif": "QIF"
+    },
+    "pickStatement": "该文件包含多份账单。请选择一份：",
+    "period": "{{from}} – {{to}}",
+    "opening": "期初余额",
+    "closing": "期末余额",
+    "entries_other": "{{count}} 笔付款",
+    "skipped_other": "已跳过 {{count}} 笔",
+    "check": {
+      "ok": "账单核对一致：期初余额加上各笔付款等于期末余额。",
+      "mismatch": "各笔付款与期末余额不符（差额 {{difference}}）。文件可能不完整。",
+      "unavailable": "文件未同时注明两项余额，因此无法核对是否完整。"
+    },
+    "match": {
+      "selected": "该账单属于此账户。",
+      "other": "该账单属于 {{account}}。",
+      "switch": "导入到 {{account}}",
+      "none": "该账单属于 {{identifier}}，而不是此账户。",
+      "unknown": "文件中的账户：{{identifier}}",
+      "confirm": "仍然导入到此账户"
+    },
+    "currencyDiffers": "账单币种为 {{statement}}，账户币种为 {{account}}。各笔付款保留原币种；账单中的余额无法沿用。",
+    "entry": "#",
+    "rowMessage": "第 {{line}} 笔付款：{{message}}",
+    "rowMessageDetail": "第 {{line}} 笔付款：{{message}}（{{detail}}）",
+    "notBooked": "尚未入账（仅供参考）",
+    "correctionSkipped": "对之前一笔付款的更正；不予应用",
+    "investmentIgnored": "该文件还包含投资交易。这些交易不会被导入；请使用券商导入功能来导入它们。",
+    "back": "选择其他文件",
+    "openAccount": "打开 {{account}}",
+    "dateOrder": {
+      "label": "此文件中的日期写法为",
+      "dmy": "日.月.年",
+      "mdy": "月/日/年",
+      "ymd": "年-月-日",
+      "hint": "文件中的每个日期都可以按两种方式解读。请用一笔您熟悉的付款核对。"
+    },
+    "categories": {
+      "title": "文件中的类别",
+      "hint": "已按名称匹配。您可以更改任意一项；没有类别的付款将按您的规则分类。",
+      "rules": "交给规则",
+      "count_other": "{{count}} 笔付款"
+    }
+  },
   "importHistory": {
     "title": "导入历史",
     "fileName": "文件名",
     "period": "期间",
     "imported": "已导入",
     "errors": "错误",
-    "empty": "还没有导入记录。请导入您的第一个 CSV 文件。",
+    "empty": "还没有导入记录。请导入您的第一份账单。",
     "duplicates": "重复",
     "duplicatesHelp": "因交易已存在而被跳过的行",
     "undoImport_other": "撤销导入（将移除 {{count}} 笔交易）",
@@ -527,8 +575,7 @@
     "noData": "暂无数据"
   },
   "actions": {
-    "recordBalance": "记录余额",
-    "importStatement": "导入账单"
+    "recordBalance": "记录余额"
   },
   "menu": {
     "showDetail": "查看详情",

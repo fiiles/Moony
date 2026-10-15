@@ -6,9 +6,11 @@
 //! - [`amounts`] — decimal separator consensus and the amount cell parser;
 //! - [`rows`] — phase 1: typed rows, no database (`parse_rows`);
 //! - [`inspect`] — what `parse_csv_file` reports about a file;
-//! - this module — duplicate classification, [`preview_import`] (no writes) and
-//!   [`import_transactions`] (one SQL transaction through the shared write path,
-//!   ADR 0007).
+//! - this module — duplicate classification, [`preview_rows`] (no writes) and
+//!   [`import_rows`] (one SQL transaction through the shared write path,
+//!   ADR 0007). Both take [`ParsedImport`] rows, so any format that parses to
+//!   rows (CSV, bank statements) shares them; [`preview_import`] and
+//!   [`import_transactions`] are their CSV entry points.
 //!
 //! Bank-specific formats live as data in `services/csv_presets.rs`.
 
@@ -35,10 +37,11 @@ pub use decode::{
     decode_csv_content, decode_csv_content_for_country, detect_csv_delimiter, detect_header_row,
 };
 pub use inspect::{decode_for_import, decode_for_import_in, inspect_csv, InspectOptions};
-pub use rows::{parse_rows, ParsedCsv, ParsedRow, RowState};
+pub use rows::{parse_rows, ParsedImport, ParsedRow, RowState};
 pub use types::{
     CsvCategoryOverride, CsvDateRange, CsvImportConfig, CsvImportPreview, CsvImportResult,
-    CsvPreviewResult, CsvPreviewRow, CsvRowMessage, CsvRowStatus,
+    CsvPreviewResult, CsvPreviewRow, CsvRowMessage, CsvRowStatus, DeclaredBalance, ImportOptions,
+    ImportOverlap, ImportOverlapBatch, SourceCategoryMapping,
 };
 
 /// Rows listed by a preview; counts always cover the whole file.
@@ -122,6 +125,20 @@ pub fn preview_import(
     ensure_account_exists(conn, account_id)?;
     config.validate()?;
     let parsed = parse_rows(content, account_id, config)?;
+    preview_rows(conn, account_id, &parsed, &config.import_options(), engine)
+}
+
+/// The dry run of any parsed import (see [`preview_import`] for the statuses):
+/// the duplicate check and categorization the write would apply, nothing written.
+pub fn preview_rows(
+    conn: &Connection,
+    account_id: &str,
+    parsed: &ParsedImport,
+    options: &ImportOptions,
+    engine: Option<&CategorizationEngine>,
+) -> Result<CsvImportPreview> {
+    ensure_account_exists(conn, account_id)?;
+    options.validate()?;
 
     let mut checker = dedup::BankOccurrenceChecker::load(conn, account_id)?;
     checker.reserve_batch_ids(parsed.rows.iter().map(|row| match &row.state {
@@ -134,12 +151,15 @@ pub fn preview_import(
     let mut forced_duplicate_count = 0usize;
     let mut promoted_count = 0usize;
     let mut date_range: Option<CsvDateRange> = None;
+    // Booking days of every row that would be written as new (whole file, not
+    // only the listed page), for the overlap hint.
+    let mut ok_days: Vec<i64> = Vec::new();
 
     for (row_index, row) in parsed.rows.iter().enumerate() {
         let mut category: Option<(String, Option<String>)> = None;
         let (status, message) = match &row.state {
             RowState::Candidate(insert) => {
-                category = resolve_row_category(conn, config, row.line, insert, engine)?
+                category = resolve_row_category(conn, options, row, insert, engine)?
                     .map(|(id, source)| (id, Some(source.to_string())));
                 match checker.check(insert) {
                     None => {
@@ -148,6 +168,7 @@ pub fn preview_import(
                             categorized_count += 1;
                         }
                         extend_range(&mut date_range, insert.booking_date);
+                        ok_days.push(insert.booking_date);
                         (CsvRowStatus::Ok, None)
                     }
                     Some(dedup::BankOccurrence::Promote(id)) => {
@@ -172,8 +193,8 @@ pub fn preview_import(
                         };
                         duplicate_count += 1;
                         if kind == DuplicateKind::Composite
-                            && (!config.skip_duplicates
-                                || config.import_anyway_lines.contains(&row.line))
+                            && (!options.skip_duplicates
+                                || options.import_anyway_lines.contains(&row.line))
                         {
                             forced_duplicate_count += 1;
                             if category.is_some() {
@@ -197,7 +218,7 @@ pub fn preview_import(
                 (CsvRowStatus::Skipped, Some(m.clone()))
             }
         };
-        if rows.len() < config.preview_limit && row_index >= config.preview_offset {
+        if rows.len() < options.preview_limit && row_index >= options.preview_offset {
             let candidate = match &row.state {
                 RowState::Candidate(t) => Some(t.as_ref()),
                 _ => None,
@@ -224,6 +245,7 @@ pub fn preview_import(
                 message,
                 category_id: category.as_ref().map(|(id, _)| id.clone()),
                 category_source: category.and_then(|(_, source)| source),
+                source_category: row.source_category.clone(),
             });
         }
     }
@@ -239,28 +261,97 @@ pub fn preview_import(
         categorized_count,
         forced_duplicate_count,
         promoted_count,
-        offset: config.preview_offset,
-        limit: config.preview_limit,
+        overlap: import_overlap(conn, account_id, &ok_days)?,
+        offset: options.preview_offset,
+        limit: options.preview_limit,
     })
+}
+
+/// D12: `ok` rows dated inside an earlier batch of the account, last day excluded (rows
+/// booked later on the day of the previous export are new, not overlap). Up to three
+/// batches, newest first.
+fn import_overlap(
+    conn: &Connection,
+    account_id: &str,
+    ok_days: &[i64],
+) -> Result<Option<ImportOverlap>> {
+    if ok_days.is_empty() {
+        return Ok(None);
+    }
+    let mut stmt = conn.prepare(
+        "SELECT file_name, date_from, date_to FROM csv_import_batches
+         WHERE bank_account_id = ?1 AND date_from IS NOT NULL AND date_to IS NOT NULL
+         ORDER BY imported_at DESC, id",
+    )?;
+    let batches: Vec<(String, i64, i64)> = stmt
+        .query_map([account_id], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))?
+        .collect::<std::result::Result<_, _>>()?;
+    let covers = |day: i64, from: i64, to: i64| day >= from && day < to;
+    let count = ok_days
+        .iter()
+        .filter(|&&d| batches.iter().any(|&(_, f, t)| covers(d, f, t)))
+        .count();
+    if count == 0 {
+        return Ok(None);
+    }
+    let hit: Vec<ImportOverlapBatch> = batches
+        .into_iter()
+        .filter(|&(_, f, t)| ok_days.iter().any(|&d| covers(d, f, t)))
+        .take(3)
+        .map(|(file_name, from, to)| ImportOverlapBatch {
+            file_name,
+            date_range: CsvDateRange { from, to },
+        })
+        .collect();
+    Ok(Some(ImportOverlap {
+        new_rows_in_covered_range: count,
+        batches: hit,
+    }))
 }
 
 /// `categorization_source` of a category the user picked in the preview.
 pub const SOURCE_MANUAL: &str = "manual";
 
-/// The category one row would be written with: the preview override for its
-/// line when that category still exists, else the deterministic rules (the
-/// same resolver the import applies). `None` keeps the row uncategorized.
+/// The category the user chose for a row: its own pick in the preview, else the
+/// mapping of its source category (QIF). Both count as manual; a since-deleted
+/// category is ignored.
+fn explicit_category(
+    conn: &Connection,
+    options: &ImportOptions,
+    row: &ParsedRow,
+) -> Result<Option<String>> {
+    let picked = options
+        .category_overrides
+        .iter()
+        .find(|o| o.line == row.line)
+        .map(|o| &o.category_id);
+    let mapped = row.source_category.as_ref().and_then(|source| {
+        options
+            .source_category_map
+            .iter()
+            .find(|m| &m.source == source)
+            .map(|m| &m.category_id)
+    });
+    for id in [picked, mapped].into_iter().flatten() {
+        if super::bank_accounts::category_exists(conn, id)? {
+            return Ok(Some(id.clone()));
+        }
+    }
+    Ok(None)
+}
+
+/// The category one row would be written with: the user's explicit choice when
+/// that category still exists, else the deterministic rules (the same resolver
+/// the import applies). `None` keeps the row uncategorized.
 fn resolve_row_category(
     conn: &Connection,
-    config: &CsvImportConfig,
-    line: usize,
+    options: &ImportOptions,
+    row: &ParsedRow,
     insert: &InsertBankTransaction,
     engine: Option<&CategorizationEngine>,
 ) -> Result<Option<(String, &'static str)>> {
-    if let Some(over) = config.category_overrides.iter().find(|o| o.line == line) {
-        if super::bank_accounts::category_exists(conn, &over.category_id)? {
-            return Ok(Some((over.category_id.clone(), SOURCE_MANUAL)));
-        }
+    if let Some(id) = explicit_category(conn, options, row)? {
+        return Ok(Some((id, SOURCE_MANUAL)));
     }
     let Some(engine) = engine else {
         return Ok(None);
@@ -409,6 +500,30 @@ pub fn import_transactions(
     ensure_account_exists(conn, account_id)?;
     config.validate()?;
     let parsed = parse_rows(content, account_id, config)?;
+    import_rows(
+        conn,
+        account_id,
+        file_name,
+        &parsed,
+        &config.import_options(),
+        engine,
+    )
+}
+
+/// The write of any parsed import: duplicate check, categorization and the
+/// shared write path inside one SQL transaction (see [`import_transactions`]
+/// for the rules). A declared period or closing balance in `parsed` wins over
+/// what the rows imply.
+pub fn import_rows(
+    conn: &mut Connection,
+    account_id: &str,
+    file_name: &str,
+    parsed: &ParsedImport,
+    options: &ImportOptions,
+    engine: Option<&CategorizationEngine>,
+) -> Result<CsvImportResult> {
+    ensure_account_exists(conn, account_id)?;
+    options.validate()?;
 
     let batch_id = Uuid::new_v4().to_string();
     let mut checker = dedup::BankOccurrenceChecker::load(conn, account_id)?;
@@ -440,7 +555,10 @@ pub fn import_transactions(
         &batch_id,
         account_id,
         file_name,
-        statement_range.map(|r| (r.from, r.to)),
+        parsed
+            .period
+            .map(|p| (p.from, p.to))
+            .or(statement_range.map(|r| (r.from, r.to))),
         None,
     )?;
 
@@ -474,7 +592,7 @@ pub fn import_transactions(
                 DuplicateKind::Composite
             };
             let forced = kind == DuplicateKind::Composite
-                && (!config.skip_duplicates || config.import_anyway_lines.contains(&row.line));
+                && (!options.skip_duplicates || options.import_anyway_lines.contains(&row.line));
             if !forced {
                 skipped_duplicates.push(duplicate_message(row.line, kind));
                 continue;
@@ -482,18 +600,13 @@ pub fn import_transactions(
             duplicates.push(duplicate_message(row.line, kind));
         }
 
-        // A category picked in the preview wins over the rules (the user was
-        // explicit); a since-deleted category falls through to the rules.
+        // A category the user chose (picked in the preview or mapped from the
+        // source category) wins over the rules; a since-deleted category falls
+        // through to the rules.
         let mut categorization_source: Option<&'static str> = None;
-        if let Some(over) = config
-            .category_overrides
-            .iter()
-            .find(|o| o.line == row.line)
-        {
-            if super::bank_accounts::category_exists(&tx, &over.category_id)? {
-                insert.category_id = Some(over.category_id.clone());
-                categorization_source = Some(SOURCE_MANUAL);
-            }
+        if let Some(id) = explicit_category(&tx, options, row)? {
+            insert.category_id = Some(id);
+            categorization_source = Some(SOURCE_MANUAL);
         }
         // Rules-first: pre-write enrichment, so the write path itself stays a
         // plain `&Connection` service call (spec D2).
@@ -540,7 +653,7 @@ pub fn import_transactions(
     Ok(CsvImportResult {
         imported_count,
         promoted_count,
-        statement_balance: statement_balance(&parsed.rows, checker.currency(), &batch_id),
+        statement_balance: statement_balance(parsed, checker.currency(), &batch_id),
         duplicate_count: duplicates.len(),
         error_count: errors.len(),
         errors,
@@ -550,22 +663,39 @@ pub fn import_transactions(
         skipped_filtered,
         date_range,
         uncategorized_count,
-        last_balance: last_balance(&parsed.rows),
+        last_balance: parsed
+            .declared_balance
+            .as_ref()
+            .map(|b| b.amount.clone())
+            .or_else(|| last_balance(&parsed.rows)),
         suggested_rule_pack: suggest_rule_pack(conn, &imported_ibans),
     })
 }
 
 #[cfg(test)]
+mod core_tests;
+#[cfg(test)]
 pub(crate) mod test_support;
 #[cfg(test)]
 mod tests;
 
+/// The balance the result reports: the one the source declares, else the one
+/// derived from the row balances.
 fn statement_balance(
-    rows: &[ParsedRow],
+    parsed: &ParsedImport,
     account_currency: &str,
     batch_id: &str,
 ) -> Option<types::StatementBalance> {
-    let row = statement_balance_row(rows)?;
+    if let Some(declared) = &parsed.declared_balance {
+        return Some(types::StatementBalance {
+            amount: declared.amount.clone(),
+            currency: declared.currency.clone(),
+            as_of: declared.as_of,
+            line: parsed.rows.last().map_or(0, |r| r.line),
+            batch_id: batch_id.into(),
+        });
+    }
+    let row = statement_balance_row(&parsed.rows)?;
     Some(types::StatementBalance {
         amount: row.balance?.to_string(),
         currency: row

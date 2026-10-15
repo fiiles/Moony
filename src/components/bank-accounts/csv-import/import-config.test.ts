@@ -5,9 +5,11 @@ import type {
   CsvPreset,
   CsvPreviewResult,
   CsvPreviewRow,
+  StatementSummary,
 } from '@shared/schema';
 import {
   AUTO_VALUE,
+  CSV_EXTENSIONS,
   EMPTY_MAPPING,
   ENCODING_CHOICES,
   SAMPLE_CSV,
@@ -22,7 +24,9 @@ import {
   groupPresetsByCountry,
   isDateFormatGuess,
   isMappingComplete,
+  importSteps,
   isSupportedCsvPath,
+  isSupportedImportPath,
   mappingFromInspection,
   nextStepsFor,
   pickDroppedFile,
@@ -31,6 +35,8 @@ import {
   regionName,
   rowStatusPresentation,
   sortPresets,
+  statementDateOrder,
+  statementImportBlocked,
   suggestionConfidence,
   uniqueHeaders,
   summarizePreview,
@@ -302,6 +308,7 @@ describe('summarizePreview', () => {
     message: null,
     categoryId: null,
     categorySource: null,
+    sourceCategory: null,
   });
   const preview = (overrides: Partial<CsvImportPreview> = {}): CsvImportPreview => ({
     rows: [
@@ -322,6 +329,7 @@ describe('summarizePreview', () => {
     skippedCount: 1,
     dateRange: null,
     categorizedCount: 0,
+    overlap: null,
     ...overrides,
   });
 
@@ -417,18 +425,37 @@ describe('rowStatusPresentation', () => {
 
 describe('file helpers', () => {
   it('accepts .csv and .txt files, any case', () => {
+    expect(isSupportedImportPath('/Users/me/statement.csv')).toBe(true);
+    expect(isSupportedImportPath('C:\\Users\\me\\STATEMENT.CSV')).toBe(true);
+    expect(isSupportedImportPath('/tmp/export.txt')).toBe(true);
+    expect(isSupportedImportPath('/tmp/statement.pdf')).toBe(false);
+    expect(isSupportedImportPath('/tmp/csv')).toBe(false);
+    expect(isSupportedImportPath('/tmp/folder.csv.bak')).toBe(false);
+  });
+
+  it('keeps the CSV-only predicate of the stock import to .csv and .txt', () => {
+    expect(CSV_EXTENSIONS).toEqual(['csv', 'txt']);
     expect(isSupportedCsvPath('/Users/me/statement.csv')).toBe(true);
     expect(isSupportedCsvPath('C:\\Users\\me\\STATEMENT.CSV')).toBe(true);
     expect(isSupportedCsvPath('/tmp/export.txt')).toBe(true);
-    expect(isSupportedCsvPath('/tmp/statement.pdf')).toBe(false);
+    for (const path of ['/a/s.xml', '/a/s.sta', '/a/s.940', '/a/s.ofx', '/a/s.qif', '/a/s.pdf']) {
+      expect(isSupportedCsvPath(path)).toBe(false);
+    }
     expect(isSupportedCsvPath('/tmp/csv')).toBe(false);
     expect(isSupportedCsvPath('/tmp/folder.csv.bak')).toBe(false);
   });
 
-  it('picks the first importable file of a drop', () => {
-    expect(pickDroppedFile(['/a/photo.png', '/a/b.csv', '/a/c.csv'])).toBe('/a/b.csv');
-    expect(pickDroppedFile(['/a/photo.png'])).toBeNull();
-    expect(pickDroppedFile([])).toBeNull();
+  it('picks the first file of a drop the dialog accepts', () => {
+    expect(pickDroppedFile(['/a/photo.png', '/a/b.csv', '/a/c.csv'], isSupportedImportPath)).toBe(
+      '/a/b.csv'
+    );
+    expect(pickDroppedFile(['/a/photo.png', '/a/statement.xml'], isSupportedImportPath)).toBe(
+      '/a/statement.xml'
+    );
+    expect(pickDroppedFile(['/a/statement.xml', '/a/b.csv'], isSupportedCsvPath)).toBe('/a/b.csv');
+    expect(pickDroppedFile(['/a/statement.xml'], isSupportedCsvPath)).toBeNull();
+    expect(pickDroppedFile(['/a/photo.png'], isSupportedImportPath)).toBeNull();
+    expect(pickDroppedFile([], isSupportedImportPath)).toBeNull();
   });
 
   it('takes the file name from both kinds of path', () => {
@@ -442,6 +469,56 @@ describe('file helpers', () => {
     expect(lines[0]).toBe('Date,Description,Amount,Currency,Counterparty');
     expect(lines).toHaveLength(4);
     expect(lines.slice(1).every((line) => line.split(',').length === 5)).toBe(true);
+  });
+});
+
+describe('statement import helpers', () => {
+  it('accepts statement extensions', () => {
+    for (const path of [
+      '/a/s.xml',
+      'C:\\x\\S.STA',
+      '/a/s.940',
+      '/a/s.mt940',
+      '/a/s.mta',
+      'C:\\x\\S.SWI',
+      '/a/s.ofx',
+      '/a/s.QFX',
+      '/a/s.qif',
+      '/a/s.csv',
+    ]) {
+      expect(isSupportedImportPath(path)).toBe(true);
+    }
+    expect(isSupportedImportPath('/a/s.pdf')).toBe(false);
+  });
+
+  it('statements skip the mapping step', () => {
+    expect(importSteps('csv')).toEqual(['file', 'mapping', 'preview', 'done']);
+    expect(importSteps('statement')).toEqual(['file', 'preview', 'done']);
+  });
+
+  it('blocks import until a contradicting account is confirmed', () => {
+    const base = { accountMatch: 'selected' } as StatementSummary;
+    expect(statementImportBlocked(base, false, true)).toBe(false);
+    expect(statementImportBlocked({ ...base, accountMatch: 'none' }, false, true)).toBe(true);
+    expect(statementImportBlocked({ ...base, accountMatch: 'none' }, true, true)).toBe(false);
+    // 'other' and the user stays on the selected account: needs the confirmation too
+    expect(statementImportBlocked({ ...base, accountMatch: 'other' }, false, true)).toBe(true);
+    // 'other' and the user switched to the matching account: fine
+    expect(statementImportBlocked({ ...base, accountMatch: 'other' }, false, false)).toBe(false);
+    expect(statementImportBlocked(undefined, false, true)).toBe(true);
+  });
+
+  it('sends a date order only for dates that read both ways, and waits for the pick', () => {
+    const decided = { dateOrderAmbiguous: false, detectedDateOrder: 'mdy' } as const;
+    expect(statementDateOrder(decided, null)).toEqual({ dateOrder: null, confirmed: true });
+    const ambiguous = { dateOrderAmbiguous: true, detectedDateOrder: 'dmy' } as const;
+    // The detected (European) order is previewed, but the import waits for the user.
+    expect(statementDateOrder(ambiguous, null)).toEqual({ dateOrder: 'dmy', confirmed: false });
+    expect(statementDateOrder(ambiguous, 'mdy')).toEqual({ dateOrder: 'mdy', confirmed: true });
+    expect(statementDateOrder(ambiguous, 'dmy')).toEqual({ dateOrder: 'dmy', confirmed: true });
+    expect(statementDateOrder({ dateOrderAmbiguous: true, detectedDateOrder: null }, null)).toEqual(
+      { dateOrder: 'dmy', confirmed: false }
+    );
   });
 });
 
@@ -627,6 +704,7 @@ it('uses full-file forced counts while previewing another page', () => {
     categorizedCount: 1,
     promotedCount: 0,
     forcedDuplicateCount: 2,
+    overlap: null,
     offset: 200,
     limit: 200,
   };

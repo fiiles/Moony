@@ -278,7 +278,16 @@
     "onboardingFlagUnknown": "不明な初期設定のステップです。",
     "insuranceNoticeInvalid": "0〜365の整数で日数を入力してください。",
     "budgetIntervalsRequired": "予算の期間を少なくとも1つ選択してください。",
-    "effectiveUntilBeforeStart": "終了月は開始月より前にできません。"
+    "effectiveUntilBeforeStart": "終了月は開始月より前にできません。",
+    "statementTooLarge": "この明細ファイルは{{limitMb}} MBを超えています。",
+    "statementDoctype": "このXMLファイルには文書型宣言が含まれています。安全のため、Moonyはこれを読み込みません。",
+    "statementUnsupportedVariant": "Moonyは{{variant}}ファイルをインポートできません。代わりにCAMT.053、MT940、OFX、またはQIF形式の明細をエクスポートしてください。",
+    "statementNotRecognized": "このファイルはMoonyが読み取れる明細ではありません。",
+    "statementNoStatements": "ファイルに口座明細が含まれていません。",
+    "statementInvestmentOnly": "このファイルには投資取引のみが含まれています。投資取引には証券会社用のインポートをご利用ください。",
+    "statementMalformed": "明細ファイルが破損しているか、不完全です（{{detail}}）。",
+    "statementIndexInvalid": "ファイル内の明細を1つ選択してください。",
+    "statementDateOrderInvalid": "日付の順序を選択できるのはQIFファイルのみです。"
   },
   "auth": {
     "wrongPassword": "入力したパスワードが正しくありません。もう一度お試しください。",

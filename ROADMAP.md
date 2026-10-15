@@ -15,8 +15,8 @@ already shipped is in [CHANGELOG.md](./CHANGELOG.md). 0.10 is the beta for 1.0; 
 2. **A downloadable demo profile**, so you can try Moony without building anything. Today you
    generate one with `cargo run --bin seed_demo`, see
    [CONTRIBUTING.md](./CONTRIBUTING.md#demo-data).
-3. **More importers.** Standard bank statement formats (OFX, CAMT.053), more brokers and more
-   crypto exchanges, and confirmation of the best-effort bank presets listed in the README.
+3. **More importers.** More brokers and more crypto exchanges, and confirmation of the
+   best-effort bank presets listed in the README.
 4. **MCP scopes and an audit log.** Limits on what a connected AI assistant may read or change,
    and a record of what it did.
 5. **A fallback price provider.** Stock prices come from an unofficial Yahoo Finance interface

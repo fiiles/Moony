@@ -1429,7 +1429,10 @@ export interface CsvPreset {
  * filteredOut, duplicate, duplicateById.
  */
 export interface CsvRowMessage {
-  /** 1-based file line (the header line counts). */
+  /**
+   * 1-based. File line for CSV (the line where the row starts, the header line counts),
+   * entry ordinal for statement formats.
+   */
   line: number;
   key: string;
   detail: string | null;
@@ -1531,20 +1534,39 @@ export interface CsvImportConfigInput {
   rowFilter?: CsvRowFilter | null;
   /** Skip possible composite matches (default true); certain bank IDs always skip. */
   skipDuplicates?: boolean;
-  /** File lines of possible composite duplicates to import anyway. */
+  /**
+   * Row `line`s (file line for CSV, entry ordinal for statement formats) of possible
+   * composite duplicates to import anyway.
+   */
   importAnywayLines?: number[];
   /** Force a text encoding (`Windows-1250`); omit to detect. */
   encoding?: string | null;
-  /** Categories picked in the preview, by file line; applied before the rules on import. */
+  /**
+   * Categories picked in the preview, by row `line` (file line for CSV, entry ordinal for
+   * statement formats); applied before the rules on import.
+   */
   categoryOverrides?: CsvCategoryOverride[];
   previewOffset?: number;
   previewLimit?: number;
 }
 
-/** One row's category chosen in the preview (file line → category). */
+/** One row's category chosen in the preview (row `line` → category). */
 export interface CsvCategoryOverride {
-  /** 1-based file line of the row. */
+  /** 1-based. File line for CSV, entry ordinal for statement formats. */
   line: number;
+  categoryId: string;
+}
+
+/** A closing balance the source declares, in its own currency; `asOf` is a calendar day (UTC midnight). */
+export interface DeclaredBalance {
+  amount: string;
+  currency: string;
+  asOf: number;
+}
+
+/** The category chosen for one source category of a statement (QIF `L` lines). */
+export interface SourceCategoryMapping {
+  source: string;
   categoryId: string;
 }
 
@@ -1577,6 +1599,22 @@ export interface CsvPreviewRow {
   categoryId: string | null;
   /** `manual` for an override, else `rule` | `exact_match` | `own_account`. */
   categorySource: string | null;
+  /** The category the file itself names for the row (QIF `L` line); null for other formats. */
+  sourceCategory: string | null;
+}
+
+/** An earlier import of the account whose period contains new rows of this file. */
+export interface ImportOverlapBatch {
+  fileName: string;
+  dateRange: CsvDateRange;
+}
+
+/** New rows that fall inside the period of an earlier import (their other-format twins may not be recognized as duplicates). */
+export interface ImportOverlap {
+  /** New rows dated inside an earlier batch's period, its last day excluded. */
+  newRowsInCoveredRange: number;
+  /** The earlier batches holding such rows, newest first, at most three. */
+  batches: ImportOverlapBatch[];
 }
 
 export interface CsvImportPreview {
@@ -1594,6 +1632,8 @@ export interface CsvImportPreview {
   categorizedCount: number;
   promotedCount: number;
   forcedDuplicateCount: number;
+  /** Set when new rows fall inside the period of an earlier import. */
+  overlap: ImportOverlap | null;
   offset: number;
   limit: number;
 }
@@ -1609,6 +1649,86 @@ export interface CsvImportBatch {
   linkedCount: number;
   promotedCount: number;
   dateRange: CsvDateRange | null;
+}
+
+// ----------------------------------------------------------------------------
+// Statement import (CAMT.053, MT940, OFX/QFX, QIF)
+// ----------------------------------------------------------------------------
+
+export type StatementFormat = 'camt053' | 'mt940' | 'ofx' | 'qif';
+
+/** Order of the day, month and year parts of a QIF date. */
+export type DateOrder = 'dmy' | 'mdy' | 'ymd';
+
+/** Whether the declared balances agree with the entries. */
+export type BalanceCheck = 'ok' | 'mismatch' | 'unavailable';
+
+/** How the account the file names relates to the selected account. */
+export type AccountMatch = 'selected' | 'other' | 'none' | 'unknown';
+
+/** How many entries of a statement carry one source category (QIF `L` line). */
+export interface SourceCategoryCount {
+  name: string;
+  count: number;
+}
+
+/** A note about a file that does not stop the import: `key` is a `statementImport.*` i18n key. */
+export interface StatementWarning {
+  key: string;
+  detail: string | null;
+}
+
+export interface StatementSummary {
+  /** Position among the file's statements; the `statementIndex` of the options. */
+  index: number;
+  accountIdentifier: string | null;
+  accountName: string | null;
+  currency: string | null;
+  period: CsvDateRange | null;
+  openingBalance: DeclaredBalance | null;
+  closingBalance: DeclaredBalance | null;
+  /** Entries that would be imported. */
+  entryCount: number;
+  /** Entries shown but never imported (not booked, corrections). */
+  skippedCount: number;
+  balanceCheck: BalanceCheck;
+  /** Declared minus computed, in the statement's currency; set on a mismatch. */
+  balanceDifference: string | null;
+  accountMatch: AccountMatch;
+  matchedAccountId: string | null;
+  /** Source categories of the importable entries, most frequent first. */
+  sourceCategories: SourceCategoryCount[];
+}
+
+/** What `inspect_statement_file` learned about a statement file. */
+export interface StatementInspection {
+  format: StatementFormat;
+  /** Encoding the file was decoded with. */
+  encoding: string;
+  statements: StatementSummary[];
+  /** The first statement of the selected account, else the first. */
+  defaultStatementIndex: number;
+  /** QIF: the date order cannot be told from the dates. */
+  dateOrderAmbiguous: boolean;
+  detectedDateOrder: DateOrder | null;
+  warnings: StatementWarning[];
+}
+
+/** Options of one statement preview or import. */
+export interface StatementImportOptionsInput {
+  statementIndex: number;
+  /** QIF only: how to read the dates; omit for the detected order. */
+  dateOrder?: DateOrder | null;
+  /** Skip possible composite matches (default true); certain bank IDs always skip. */
+  skipDuplicates?: boolean;
+  /** Entry ordinals of possible composite duplicates to import anyway. */
+  importAnywayLines?: number[];
+  /** Categories picked in the preview, by entry ordinal; applied before the rules on import. */
+  categoryOverrides?: CsvCategoryOverride[];
+  /** Categories chosen for the source categories of the file. */
+  sourceCategoryMap?: SourceCategoryMapping[];
+  previewOffset?: number;
+  previewLimit?: number;
 }
 
 // ============================================================================

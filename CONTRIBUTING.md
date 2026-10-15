@@ -391,6 +391,39 @@ needs no manual column mapping.
 Column names the generic detector does not know yet (a new language) are added to
 `src-tauri/src/services/csv_import/columns.rs`, with a test next to them.
 
+### Adding a statement fixture
+
+Statement files (CAMT.053, MT940, OFX/QFX and QIF) are read by one parser per format, a module
+under [`src-tauri/src/services/statement_import/`](./src-tauri/src/services/statement_import/). A
+bank whose export a parser reads wrongly, or a variant nobody has tried yet, is covered by a fixture
+and a test, never by a special case keyed on the bank's name. Everything after the parser
+(preview, duplicates, categories, import, undo) is the CSV import's. The design is in
+[`docs/specs/2026-10-15-statement-import-formats-design.md`](./docs/specs/2026-10-15-statement-import-formats-design.md)
+and [ADR 0019](./docs/architecture/decisions/0019-statement-files-share-the-import-pipeline.md).
+
+1. Save the file as `src-tauri/tests/fixtures/statements/<format>/<name>.<ext>` (`camt053`,
+   `mt940`, `ofx`, `qif`). The data is synthetic: write or edit the file by hand with invented
+   names, account numbers and amounts. A real export never enters the repository, not even with
+   the names replaced. Keep what makes the variant what it is: the namespace version, the element
+   placement, the encoding and the line endings the bank really writes. The `mt940/*.sta`,
+   `ofx/*.ofx` and `qif/*.qif` fixtures are marked `-text` in `.gitattributes` so that their CRLF
+   line endings and trailing spaces survive a checkout; add the same line for a new format whose
+   fixtures depend on either.
+2. Add one test per fixture in the parser's test module (`camt.rs`, `mt940.rs`, `ofx.rs`,
+   `qif.rs`) that parses the file and asserts the parsed entries: how many there are and, for each
+   one that matters, its direction, amount, booking and value date, bank ID, counterparty and
+   description. Assert the statement's account, period and balances too. A test that only checks
+   that parsing succeeds does not count.
+3. When the variant needs a parser change, write the failing test first. The parser must accept
+   the new variant and still pass every existing fixture test.
+4. Add a service test in `service_tests.rs` only when the fixture exercises a rule of the
+   pipeline (a pending entry promoted by its booked successor, a repeated bank ID, an account
+   match).
+5. A new `:86:` layout needs a fixture and a test, never a bank-specific branch. The MT940
+   reader chooses its dialect (subfields `?20`, `/TAG/` pairs, free text) from the shape of the
+   text, so a bank whose layout fits none of the three is a new shape to recognize.
+6. Run `cd src-tauri && cargo test statement_import`.
+
 ### Adding a broker format
 
 Stock exports are read by one adapter per source (XTB, Trading 212, Degiro, Interactive

@@ -60,7 +60,7 @@ import {
   recoveryKeyGroups,
   verifyGroups,
 } from '@/utils/recovery-key-check';
-import { CsvImportDialog } from '@/components/bank-accounts/CsvImportDialog';
+import { StatementImportDialog } from '@/components/bank-accounts/StatementImportDialog';
 import { PasswordInput } from '@/components/auth/PasswordInput';
 import { RecoveryKeyBox } from '@/components/auth/RecoveryKeyBox';
 import { OnboardingPreview, type PreviewAreas } from '@/components/auth/OnboardingPreview';
@@ -739,7 +739,7 @@ export function OnboardingWizard({ language, onFinished }: OnboardingWizardProps
               )}
 
               {importOpen && createdAccountId && (
-                <CsvImportDialog
+                <StatementImportDialog
                   open
                   onOpenChange={(open) => {
                     setImportOpen(open);

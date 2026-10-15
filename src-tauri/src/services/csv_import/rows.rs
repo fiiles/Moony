@@ -21,7 +21,9 @@ use super::columns::find_column;
 use super::decode::{
     csv_reader, detect_csv_delimiter, detect_header_row, read_headers, slice_from_line, LineIndex,
 };
-use super::types::{parse_decimal_separator, CsvImportConfig, CsvRowMessage};
+use super::types::{
+    parse_decimal_separator, CsvDateRange, CsvImportConfig, CsvRowMessage, DeclaredBalance,
+};
 
 /// How many data rows are looked at to settle the decimal separator and the
 /// date format of "auto" settings.
@@ -53,15 +55,23 @@ pub struct ParsedRow {
     pub counterparty: Option<String>,
     /// Parsed balance cell (rows that are not errors/filtered only).
     pub balance: Option<f64>,
+    /// The category the file itself names for the row (QIF `L` line); `None`
+    /// for CSV.
+    pub source_category: Option<String>,
     pub state: RowState,
 }
 
-/// All data rows of a file in file order.
+/// All rows of a file (or statement) in file order: the input of the shared
+/// import core, whatever the source format.
 #[derive(Debug, Clone)]
-pub struct ParsedCsv {
+pub struct ParsedImport {
     pub rows: Vec<ParsedRow>,
     /// Non-blank data rows (what the user would call "rows in the file").
     pub total_rows: usize,
+    /// Declared statement period; `None` = the range of the rows (CSV).
+    pub period: Option<CsvDateRange>,
+    /// Declared closing balance; `None` = derived from the row balances (CSV).
+    pub declared_balance: Option<DeclaredBalance>,
 }
 
 /// Column indexes resolved against the header row.
@@ -284,7 +294,11 @@ fn settle(
 }
 
 /// Parse a decoded CSV into typed rows. No database access.
-pub fn parse_rows(content: &str, account_id: &str, config: &CsvImportConfig) -> Result<ParsedCsv> {
+pub fn parse_rows(
+    content: &str,
+    account_id: &str,
+    config: &CsvImportConfig,
+) -> Result<ParsedImport> {
     let delimiter = config
         .delimiter_char()
         .unwrap_or_else(|| detect_csv_delimiter(content));
@@ -334,7 +348,12 @@ pub fn parse_rows(content: &str, account_id: &str, config: &CsvImportConfig) -> 
         ));
     }
 
-    Ok(ParsedCsv { rows, total_rows })
+    Ok(ParsedImport {
+        rows,
+        total_rows,
+        period: None,
+        declared_balance: None,
+    })
 }
 
 /// A row about which nothing beyond its fate is known.
@@ -347,6 +366,7 @@ fn bare_row(line: usize, state: RowState) -> ParsedRow {
         description: None,
         counterparty: None,
         balance: None,
+        source_category: None,
         state,
     }
 }
@@ -398,6 +418,7 @@ fn parse_row(
         description: description.clone(),
         counterparty: counterparty.clone(),
         balance,
+        source_category: None,
         state,
     };
     let error = |key: &str, detail: Option<&str>| RowState::Error(message(line, key, detail));

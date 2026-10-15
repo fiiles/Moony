@@ -172,9 +172,7 @@
     "descriptionNoName": "{{date}}の取引（{{amount}}）を完全に削除します。この操作は元に戻せません。"
   },
   "csvImport": {
-    "button": "CSV をインポート",
-    "title": "CSV から取引をインポート",
-    "selectFile": "銀行からエクスポートした CSV ファイルを選択してください",
+    "title": "明細のインポート",
     "mapColumns": "CSV の列を取引の項目に割り当てます",
     "importing": "取引をインポートしています...",
     "complete": "インポートが完了しました",
@@ -206,11 +204,10 @@
     "filteredOut": "スキップ：完了した取引ではありません",
     "duplicate": "同じ取引がすでに存在します",
     "duplicateById": "この銀行の取引 ID はすでに存在するため、別のコピーはインポートできません",
-    "dropTitle": "CSV ファイルをここにドロップ",
     "dropActive": "ファイルをドロップして開く",
     "dropHint": "またはコンピュータからファイルを選択",
     "chooseFile": "ファイルを選択",
-    "unsupportedFile": "インポートできるのは .csv と .txt ファイルのみです。",
+    "unsupportedFile": "この種類のファイルはインポートできません。",
     "bankPreset": "銀行",
     "presetAuto": "自動検出",
     "detected": "検出済み",
@@ -272,6 +269,7 @@
       "skipped": "{{count}}件をスキップ"
     },
     "dateRange": "日付：{{from}} – {{to}}",
+    "overlapHint_other": "新しい支払い {{count}}件が、{{file}} ですでにカバーされている期間に含まれています。同じ支払いを別の形式でインポートしていた場合、重複として認識されないことがあります。",
     "importButtonIdle": "インポート",
     "resultDateRange": "インポートした取引の日付は{{from}} – {{to}}です。",
     "next": {
@@ -286,15 +284,14 @@
       "setBalanceHint": "インポートで口座残高が変わることはありません。ここでは明細の期末残高を適用します。",
       "done": "完了"
     },
-    "importCsv": "CSV をインポート",
     "steps": {
       "file": "ファイル",
       "columns": "列",
       "preview": "プレビューとカテゴリ",
       "done": "完了"
     },
-    "titleFor": "明細のインポート · {{account}}",
-    "lead": "ネットバンキングの CSV を使います。重複は自動で認識され、カテゴリはルールで割り当てられます。何かが書き込まれる前に、内容を確認できます。",
+    "titleFor": "{{account}} への明細のインポート",
+    "lead": "ネットバンキングの明細を使います。重複は自動で認識され、カテゴリはルールで割り当てられます。何かが書き込まれる前に、内容を確認できます。",
     "file": {
       "bank": "銀行",
       "bankHint": "列の割り当てと日付の形式があらかじめ入力されます。",
@@ -304,8 +301,7 @@
       "dropTitle": "明細をここにドロップ",
       "dropActive": "ファイルを放して開く",
       "or": "または",
-      "choose": "ファイルを選択…",
-      "dropNote": ".csv または .txt · 列の見出しは自動で認識されます"
+      "choose": "ファイルを選択…"
     },
     "filebar": {
       "rows_other": "{{count}}行",
@@ -366,13 +362,65 @@
     "encodingAuto": "自動検出（{{encoding}}）",
     "encodingHint": "プレビューでアクセント付き文字やラテン文字以外が正しく表示されないときに変更してください。"
   },
+  "statementImport": {
+    "button": "明細をインポート",
+    "fileFilter": "銀行明細",
+    "supportedFormats": "CSV、CAMT.053 (XML)、MT940、OFX/QFX、QIF",
+    "format": {
+      "camt053": "CAMT.053",
+      "mt940": "MT940",
+      "ofx": "OFX",
+      "qif": "QIF"
+    },
+    "pickStatement": "このファイルには複数の明細が含まれています。1 つ選んでください：",
+    "period": "{{from}} – {{to}}",
+    "opening": "期首残高",
+    "closing": "期末残高",
+    "entries_other": "支払い {{count}}件",
+    "skipped_other": "スキップ {{count}}件",
+    "check": {
+      "ok": "明細の計算が合っています。期首残高に支払いを加えると期末残高になります。",
+      "mismatch": "支払いの合計が期末残高と一致しません（差額 {{difference}}）。ファイルが不完全な可能性があります。",
+      "unavailable": "ファイルに両方の残高が記載されていないため、完全かどうかを確認できません。"
+    },
+    "match": {
+      "selected": "この明細はこの口座のものです。",
+      "other": "この明細は {{account}} のものです。",
+      "switch": "{{account}} にインポート",
+      "none": "この明細は {{identifier}} のもので、この口座のものではありません。",
+      "unknown": "ファイル内の口座：{{identifier}}",
+      "confirm": "それでもこの口座にインポートする"
+    },
+    "currencyDiffers": "明細は {{statement}}、口座は {{account}} です。支払いは元の通貨のままです。明細の残高は引き継げません。",
+    "entry": "#",
+    "rowMessage": "支払い {{line}}：{{message}}",
+    "rowMessageDetail": "支払い {{line}}：{{message}}（{{detail}}）",
+    "notBooked": "未記帳（参考情報のみ）",
+    "correctionSkipped": "以前の支払いの訂正です。適用されません",
+    "investmentIgnored": "このファイルには投資取引も含まれています。それらはインポートされません。投資取引には証券会社用のインポートをご利用ください。",
+    "back": "別のファイルを選ぶ",
+    "openAccount": "{{account}} を開く",
+    "dateOrder": {
+      "label": "このファイルの日付の書き方",
+      "dmy": "日.月.年",
+      "mdy": "月/日/年",
+      "ymd": "年-月-日",
+      "hint": "ファイル内のどの日付も、どちらの順序でも読めます。覚えのある支払いで確認してください。"
+    },
+    "categories": {
+      "title": "ファイル内のカテゴリ",
+      "hint": "名前で照合しました。どれでも変更できます。カテゴリのない支払いはルールで分類されます。",
+      "rules": "ルールに任せる",
+      "count_other": "支払い {{count}}件"
+    }
+  },
   "importHistory": {
     "title": "インポート履歴",
     "fileName": "ファイル名",
     "period": "期間",
     "imported": "インポート済み",
     "errors": "エラー",
-    "empty": "インポートはまだありません。最初の CSV ファイルをインポートしてください。",
+    "empty": "インポートはまだありません。最初の明細をインポートしてください。",
     "duplicates": "重複",
     "duplicatesHelp": "取引がすでに存在していたためスキップした行",
     "undoImport_other": "インポートを取り消す（{{count}}件の取引を削除）",
@@ -527,8 +575,7 @@
     "noData": "データなし"
   },
   "actions": {
-    "recordBalance": "残高を記録",
-    "importStatement": "明細をインポート"
+    "recordBalance": "残高を記録"
   },
   "menu": {
     "showDetail": "詳細を表示",

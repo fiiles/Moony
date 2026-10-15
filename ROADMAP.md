@@ -23,11 +23,18 @@ already shipped is in [CHANGELOG.md](./CHANGELOG.md). 0.10 is the beta for 1.0; 
    that can break; a second source would keep prices available.
 6. **In-app documentation.** Today the README is the user documentation.
 
-## Not planned
+## Not before 1.0
 
-- **Bank API sync.** Moony does not connect to your bank; you import statements or enter data.
-- **Cloud sync** or any server run by the project.
-- **A mobile app.**
+These come up often. None of them is planned for 1.0 and none is ruled out for later. If one
+of them ever ships, it will be optional, and [PRIVACY.md](./PRIVACY.md) will say exactly what it
+sends before the release that adds it.
+
+- **Connecting to your bank** instead of importing statements.
+- **A phone app** and **sync between your own devices**.
+- **A profile shared by a household.**
+
+## Never
+
 - **Telemetry** of any kind: no analytics, no usage statistics, no crash reports.
 
 ## Suggesting something else

@@ -55,10 +55,13 @@ pub fn parse(text: &str, date_order: Option<DateOrder>) -> Result<QifParse> {
     if !dates.is_empty() && dates.iter().all(|date| split_date(date).is_none()) {
         return Err(malformed("D"));
     }
-    let normalized: Vec<String> = dates.iter().map(|date| normalize_date(date)).collect();
-    let samples: Vec<&str> = normalized.iter().map(String::as_str).collect();
-    let detected = detect_date_format(&samples);
-    let detected_order = order_of(&detected.format);
+    let (detected_order, date_order_ambiguous) =
+        two_digit_year_order(&dates).unwrap_or_else(|| {
+            let normalized: Vec<String> = dates.iter().map(|date| normalize_date(date)).collect();
+            let samples: Vec<&str> = normalized.iter().map(String::as_str).collect();
+            let detected = detect_date_format(&samples);
+            (order_of(&detected.format), detected.ambiguous)
+        });
 
     let amounts: Vec<&str> = records().filter_map(Record::amount).collect();
     let reader = Reader {
@@ -83,7 +86,7 @@ pub fn parse(text: &str, date_order: Option<DateOrder>) -> Result<QifParse> {
     Ok(QifParse {
         statements,
         warnings,
-        date_order_ambiguous: detected.ambiguous,
+        date_order_ambiguous,
         detected_date_order: Some(detected_order),
     })
 }
@@ -389,6 +392,35 @@ fn order_of(format: &str) -> DateOrder {
     }
 }
 
+/// The order of dates that all end in a two-digit year (`15.10.26`, `1/5'26`), and whether it
+/// is ambiguous; `None` when some readable date does not, or no order fits them all (then
+/// `detect_date_format` decides). `detect_date_format` also keeps `YY.MM.DD` possible for such
+/// dates, but QIF never writes the year first, so only day-first and month-first are compared
+/// here: `15.10.26` is day-first, `03.04.26` reads both ways (day-first is the default).
+fn two_digit_year_order(dates: &[&str]) -> Option<(DateOrder, bool)> {
+    let parts: Vec<DateParts> = dates.iter().filter_map(|date| split_date(date)).collect();
+    if parts.is_empty()
+        || !parts
+            .iter()
+            .all(|date| date.digits[0] <= 2 && date.digits[2] == 2)
+    {
+        return None;
+    }
+    let day = |n: u32| (1..=31).contains(&n);
+    let month = |n: u32| (1..=12).contains(&n);
+    let day_first = parts
+        .iter()
+        .all(|date| day(date.numbers[0]) && month(date.numbers[1]));
+    let month_first = parts
+        .iter()
+        .all(|date| month(date.numbers[0]) && day(date.numbers[1]));
+    match (day_first, month_first) {
+        (true, month_first) => Some((DateOrder::Dmy, month_first)),
+        (false, true) => Some((DateOrder::Mdy, false)),
+        (false, false) => None,
+    }
+}
+
 /// A date taken apart: the three numbers, their digit counts and the two separators.
 struct DateParts {
     numbers: [u32; 3],
@@ -653,6 +685,26 @@ mod tests {
         let chosen = parse(text, Some(DateOrder::Mdy)).unwrap();
         assert!(chosen.date_order_ambiguous);
         assert_eq!(chosen.detected_date_order, Some(DateOrder::Dmy));
+    }
+
+    #[test]
+    fn a_two_digit_year_is_last_so_a_day_above_twelve_decides() {
+        // YY.MM.DD would read 15.10.26 as 2015-10-26 too; QIF never writes the year first.
+        let p = parse("!Type:Bank\nD15.10.26\nT1\n^\nD03.10.26\nT1\n^\n", None).unwrap();
+        assert!(!p.date_order_ambiguous);
+        assert_eq!(p.detected_date_order, Some(DateOrder::Dmy));
+        assert_eq!(p.statements[0].entries[0].booking_date, day(2026, 10, 15));
+        // Quicken's apostrophe and padding spaces are the same two-digit year.
+        let us = parse("!Type:Bank\nD 1/ 5'26\nT1\n^\nD12/31'25\nT1\n^\n", None).unwrap();
+        assert!(!us.date_order_ambiguous);
+        assert_eq!(us.detected_date_order, Some(DateOrder::Mdy));
+    }
+
+    #[test]
+    fn two_digit_years_with_every_day_up_to_twelve_stay_ambiguous() {
+        let p = parse("!Type:Bank\nD03.04.26\nT1\n^\nD05.06.26\nT1\n^\n", None).unwrap();
+        assert!(p.date_order_ambiguous);
+        assert_eq!(p.detected_date_order, Some(DateOrder::Dmy));
     }
 
     #[test]

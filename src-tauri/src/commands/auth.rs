@@ -278,6 +278,7 @@ pub async fn confirm_change_password(
 #[tauri::command]
 pub async fn delete_account(app: AppHandle, db: State<'_, Database>) -> Result<()> {
     let db_path = get_db_path(&app)?;
+    crate::commands::attachments::wipe_open_copies(&app);
     auth::delete_account(&db, &db_path)
 }
 

@@ -95,7 +95,12 @@ export type BackupManifest = { format: number; appVersion: string; createdAt: nu
 /**
  * Names of the migrations applied to the database inside the archive.
  */
-migrations: string[]; files: BackupFileEntry[] }
+migrations: string[]; files: BackupFileEntry[]; 
+/**
+ * Attachment rows in the archive (format 2: the encrypted store cannot be counted without
+ * the key). Absent in format 1 manifests.
+ */
+attachmentCount?: number | null }
 
 /**
  * Bank account entity

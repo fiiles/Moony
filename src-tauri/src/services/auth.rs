@@ -576,7 +576,8 @@ fn apply_profile_update(conn: &rusqlite::Connection, updates: &UpdateUserProfile
     Ok(())
 }
 
-/// Delete entire account (database and key files)
+/// Delete entire account: the database, the attachments store, the key files and every other file
+/// of the account in its data folder
 pub fn delete_account(db: &Database, db_path: &Path) -> Result<()> {
     set_authenticated(false);
     db.close();
@@ -587,34 +588,9 @@ pub fn delete_account(db: &Database, db_path: &Path) -> Result<()> {
             .map_err(|e| AppError::Database(format!("Failed to delete database: {}", e)))?;
     }
 
-    // Delete key files and resource directories
     if let Some(data_dir) = db_path.parent() {
-        let (salt_path, key_path, recovery_path) = get_key_paths(data_dir);
-
-        // Delete key files and resource directories, reporting what could not
-        // be removed instead of silently leaving it behind.
-        let mut failures: Vec<String> = Vec::new();
-        for path in [salt_path, key_path, recovery_path] {
-            if path.exists() {
-                if let Err(e) = fs::remove_file(&path) {
-                    failures.push(format!("{}: {e}", path.display()));
-                }
-            }
-        }
-
-        let resource_dirs = [
-            data_dir.join("real_estate_photos"),
-            data_dir.join("real_estate_documents"),
-            data_dir.join("insurance_documents"),
-        ];
-        for dir in resource_dirs {
-            if dir.exists() {
-                if let Err(e) = fs::remove_dir_all(&dir) {
-                    failures.push(format!("{}: {e}", dir.display()));
-                }
-            }
-        }
-
+        // Report what could not be removed instead of silently leaving it behind.
+        let failures = remove_account_files(data_dir);
         if !failures.is_empty() {
             return Err(AppError::Database(format!(
                 "The account was deleted but some files could not be removed: {}",
@@ -624,6 +600,51 @@ pub fn delete_account(db: &Database, db_path: &Path) -> Result<()> {
     }
 
     Ok(())
+}
+
+/// Remove the files of an account from its data folder: both databases with their side files and
+/// pre-migration copies, the key files, the plain attachment folders of earlier versions and the
+/// conversion's quarantine. Anything else in the folder is left alone. Returns what could not be
+/// removed.
+pub fn remove_account_files(data_dir: &Path) -> Vec<String> {
+    let mut failures: Vec<String> = Vec::new();
+    let mut remove = |path: PathBuf| {
+        let result = if path.is_dir() {
+            fs::remove_dir_all(&path)
+        } else if path.exists() {
+            fs::remove_file(&path)
+        } else {
+            return;
+        };
+        if let Err(e) = result {
+            failures.push(format!("{}: {e}", path.display()));
+        }
+    };
+
+    let (salt_path, key_path, recovery_path) = get_key_paths(data_dir);
+    for path in [salt_path, key_path, recovery_path] {
+        remove(path);
+    }
+    let databases = [
+        crate::services::backup::DB_FILE_NAME,
+        crate::db::files_schema::FILE_NAME,
+    ];
+    if let Ok(entries) = fs::read_dir(data_dir) {
+        for entry in entries.flatten() {
+            let name = entry.file_name().to_string_lossy().into_owned();
+            // The database files, their -wal/-shm/-journal side files and `.bak-<ts>` copies.
+            if databases.iter().any(|db| name.starts_with(db)) {
+                remove(entry.path());
+            }
+        }
+    }
+    for dir in crate::services::backup::ATTACHMENT_DIRS
+        .into_iter()
+        .chain([crate::services::attachment_conversion::QUARANTINE_DIR])
+    {
+        remove(data_dir.join(dir));
+    }
+    failures
 }
 
 #[cfg(test)]
@@ -1281,5 +1302,43 @@ mod tests {
             setup_account(&Database::new(), db_path, data, "long-enough-password").unwrap_err();
         assert!(matches!(err, AppError::Validation(_)));
         assert!(dir_is_empty(dir.path()), "no key files may be written");
+    }
+
+    #[test]
+    fn removing_an_account_takes_every_account_file_and_nothing_else() {
+        let dir = tempdir().expect("tempdir");
+        let d = dir.path();
+        for name in [
+            "moony.db",
+            "moony.db-journal",
+            "moony.db.bak-1791652876",
+            "attachments.db",
+            "attachments.db-journal",
+            "attachments.db.bak-1792064756",
+            "salt",
+            "key.enc",
+            "recovery.enc",
+            "unrelated.txt",
+        ] {
+            fs::write(d.join(name), b"x").expect("file");
+        }
+        for dir in [
+            "real_estate_photos/re/b",
+            "insurance_documents/pol",
+            "attachments-converted/real_estate_documents/re",
+            "Backup/insurance_documents",
+        ] {
+            fs::create_dir_all(d.join(dir)).expect("dir");
+            fs::write(d.join(dir).join("f.pdf"), b"x").expect("file");
+        }
+
+        assert!(remove_account_files(d).is_empty());
+
+        let mut left: Vec<String> = fs::read_dir(d)
+            .expect("dir")
+            .map(|e| e.expect("entry").file_name().to_string_lossy().into_owned())
+            .collect();
+        left.sort();
+        assert_eq!(left, vec!["Backup", "unrelated.txt"]);
     }
 }

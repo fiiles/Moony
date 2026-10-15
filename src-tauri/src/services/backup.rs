@@ -1,10 +1,13 @@
 //! Backup, restore, full export, integrity check and data location.
 //!
-//! Archive layout (flat, whitelisted): `manifest.json`, `moony.db` (a
-//! `VACUUM INTO` snapshot, still SQLCipher-encrypted), `salt`, `key.enc`,
-//! `recovery.enc` and the attachment directories. Restore never deletes the
-//! current data: it is moved into `pre-restore-<ts>/` first and moved back
-//! if anything goes wrong.
+//! Archive layout (flat, whitelisted): `manifest.json`, `moony.db` and
+//! `attachments.db` (`VACUUM INTO` snapshots, still SQLCipher-encrypted), `salt`,
+//! `key.enc`, `recovery.enc`, and the legacy attachment directories only while
+//! some plain files of earlier versions are not converted yet (format 2,
+//! ADR 0017). Format 1 archives (plain attachment directories, no store) stay
+//! restorable; the conversion after unlock moves their files into the store.
+//! Restore never deletes the current data: it is moved into
+//! `pre-restore-<ts>/` first and moved back if anything goes wrong.
 
 use std::collections::BTreeMap;
 use std::fs::{self, File};
@@ -21,12 +24,14 @@ use crate::models::{
     BackupFileEntry, BackupInspection, BackupManifest, DataLocation, ExportSummary, IntegrityReport,
 };
 
-pub const BACKUP_FORMAT: u32 = 1;
+pub const BACKUP_FORMAT: u32 = 2;
 pub const MANIFEST_NAME: &str = "manifest.json";
 pub const DB_FILE_NAME: &str = "moony.db";
+/// The encrypted attachments store next to the database.
+pub const STORE_FILE_NAME: &str = crate::db::files_schema::FILE_NAME;
 /// Files at the root of the data directory that make up an account.
 pub const KEY_FILES: [&str; 4] = [DB_FILE_NAME, "salt", "key.enc", "recovery.enc"];
-/// Directories with plain-file attachments.
+/// Directories with the plain-file attachments of earlier versions.
 pub const ATTACHMENT_DIRS: [&str; 3] = [
     "real_estate_photos",
     "real_estate_documents",
@@ -65,22 +70,69 @@ pub fn create_backup(
         }
     }
 
-    let snapshot = std::env::temp_dir().join(format!("moony-backup-{}.db", uuid::Uuid::new_v4()));
-    let snapshot_str = snapshot
+    let snapshot = vacuum_into_temp(conn, "main", "Failed to snapshot the database")?;
+    // The store: an encrypted snapshot when attached; when it is not (D11) the file is copied as it
+    // is, so a damaged store is never lost by a backup.
+    let store_snapshot = if crate::db::files_schema::is_attached(conn)? {
+        match vacuum_into_temp(conn, "files", "Failed to snapshot the attachments store") {
+            Ok(path) => Some(path),
+            Err(e) => {
+                let _ = fs::remove_file(&snapshot);
+                return Err(e);
+            }
+        }
+    } else {
+        None
+    };
+    let store_source = store_snapshot.clone().or_else(|| {
+        let raw = data_dir.join(STORE_FILE_NAME);
+        raw.is_file().then_some(raw)
+    });
+
+    let result = write_archive(
+        conn,
+        data_dir,
+        &snapshot,
+        store_source.as_deref(),
+        dest,
+        app_version,
+    );
+    let _ = fs::remove_file(&snapshot);
+    if let Some(path) = store_snapshot {
+        let _ = fs::remove_file(path);
+    }
+    result
+}
+
+/// `VACUUM <schema> INTO` a fresh temp file (still encrypted with the main key).
+fn vacuum_into_temp(conn: &Connection, schema: &str, context: &str) -> Result<PathBuf> {
+    let path = std::env::temp_dir().join(format!("moony-backup-{}.db", uuid::Uuid::new_v4()));
+    let path_str = path
         .to_str()
         .ok_or_else(|| AppError::Internal("Temp path is not valid UTF-8".into()))?;
-    conn.execute("VACUUM INTO ?1", [snapshot_str])
-        .map_err(|e| io_err("Failed to snapshot the database", e))?;
+    conn.execute(&format!("VACUUM {schema} INTO ?1"), [path_str])
+        .map_err(|e| io_err(context, e))?;
+    Ok(path)
+}
 
-    let result = write_archive(conn, data_dir, &snapshot, dest, app_version);
-    let _ = fs::remove_file(&snapshot);
-    result
+/// Attachment rows (documents and photos) in the database, when its schema has them.
+fn attachment_row_count(conn: &Connection) -> Option<u32> {
+    conn.query_row(
+        "SELECT (SELECT count(*) FROM insurance_documents)
+              + (SELECT count(*) FROM real_estate_documents)
+              + (SELECT count(*) FROM real_estate_photos)",
+        [],
+        |r| r.get::<_, i64>(0),
+    )
+    .ok()
+    .map(|n| n as u32)
 }
 
 fn write_archive(
     conn: &Connection,
     data_dir: &Path,
     snapshot: &Path,
+    store: Option<&Path>,
     dest: &Path,
     app_version: &str,
 ) -> Result<BackupManifest> {
@@ -92,6 +144,10 @@ fn write_archive(
     // Database snapshot (named like the live file so restore is a plain extract).
     files.push(add_file(&mut writer, options, snapshot, DB_FILE_NAME)?);
 
+    if let Some(store) = store {
+        files.push(add_file(&mut writer, options, store, STORE_FILE_NAME)?);
+    }
+
     // Key files
     for name in KEY_FILES.iter().skip(1) {
         let path = data_dir.join(name);
@@ -100,7 +156,7 @@ fn write_archive(
         }
     }
 
-    // Attachment directories (recursive)
+    // Plain attachment files of earlier versions that are not converted yet (recursive)
     for dir_name in ATTACHMENT_DIRS {
         let dir = data_dir.join(dir_name);
         if dir.is_dir() {
@@ -127,6 +183,7 @@ fn write_archive(
         created_at: chrono::Utc::now().timestamp(),
         migrations: crate::db::applied_migration_names(conn)?,
         files,
+        attachment_count: attachment_row_count(conn),
     };
     let manifest_json = serde_json::to_vec_pretty(&manifest)
         .map_err(|e| AppError::Internal(format!("Failed to serialize manifest: {e}")))?;
@@ -191,6 +248,7 @@ pub fn inspect_backup(archive_path: &Path, known_migrations: &[&str]) -> Result<
     let mut manifest: Option<BackupManifest> = None;
     let mut attachment_count = 0u32;
     let mut has_db = false;
+    let mut names: Vec<String> = Vec::new();
 
     for i in 0..archive.len() {
         let mut entry = archive
@@ -201,6 +259,14 @@ pub fn inspect_backup(archive_path: &Path, known_migrations: &[&str]) -> Result<
                 "validation.backupInvalidArchive".into(),
             ));
         };
+        if !entry.is_dir() {
+            names.push(
+                safe.components()
+                    .map(|c| c.as_os_str().to_string_lossy().into_owned())
+                    .collect::<Vec<_>>()
+                    .join("/"),
+            );
+        }
         match classify(&safe) {
             EntryKind::Manifest => {
                 let mut json = String::new();
@@ -213,7 +279,7 @@ pub fn inspect_backup(archive_path: &Path, known_migrations: &[&str]) -> Result<
                     })?);
             }
             EntryKind::Database => has_db = true,
-            EntryKind::KeyFile => {}
+            EntryKind::KeyFile | EntryKind::Store => {}
             EntryKind::Attachment => {
                 if !entry.is_dir() {
                     attachment_count += 1;
@@ -235,6 +301,14 @@ pub fn inspect_backup(archive_path: &Path, known_migrations: &[&str]) -> Result<
             ))
         }
     };
+    // Format 2 lists every file it carries: a missing one (the store, typically) means a
+    // truncated or tampered archive.
+    if manifest.format >= 2 && manifest.files.iter().any(|f| !names.contains(&f.path)) {
+        return Err(AppError::Validation(
+            "validation.backupInvalidArchive".into(),
+        ));
+    }
+    let attachment_count = manifest.attachment_count.unwrap_or(attachment_count);
     let newer_than_app = manifest
         .migrations
         .iter()
@@ -252,6 +326,7 @@ pub fn inspect_backup(archive_path: &Path, known_migrations: &[&str]) -> Result<
 enum EntryKind {
     Manifest,
     Database,
+    Store,
     KeyFile,
     Attachment,
     Unknown,
@@ -270,6 +345,9 @@ fn classify(path: &Path) -> EntryKind {
         }
         if first == DB_FILE_NAME {
             return EntryKind::Database;
+        }
+        if first == STORE_FILE_NAME {
+            return EntryKind::Store;
         }
         if KEY_FILES.contains(&first.as_ref()) {
             return EntryKind::KeyFile;
@@ -319,10 +397,18 @@ pub fn restore_backup(
     Ok(pre_restore)
 }
 
-/// Everything restore replaces: the key files, DB side files and attachments.
+/// Everything restore replaces: the key files, both databases with their side files, the
+/// legacy attachment folders and the conversion's quarantine.
 fn managed_names() -> Vec<&'static str> {
     let mut names: Vec<&'static str> = KEY_FILES.to_vec();
     names.extend(["moony.db-wal", "moony.db-shm", "moony.db-journal"]);
+    names.extend([
+        STORE_FILE_NAME,
+        "attachments.db-wal",
+        "attachments.db-shm",
+        "attachments.db-journal",
+        crate::services::attachment_conversion::QUARANTINE_DIR,
+    ]);
     names.extend(ATTACHMENT_DIRS);
     names
 }
@@ -342,7 +428,8 @@ fn extract_archive(data_dir: &Path, archive_path: &Path) -> Result<()> {
         };
         match classify(&safe) {
             EntryKind::Manifest | EntryKind::Unknown => continue,
-            EntryKind::Database | EntryKind::KeyFile | EntryKind::Attachment => {}
+            EntryKind::Database | EntryKind::Store | EntryKind::KeyFile | EntryKind::Attachment => {
+            }
         }
         let target = data_dir.join(&safe);
         if entry.is_dir() {
@@ -460,6 +547,24 @@ pub fn verify_database(conn: &Connection) -> Result<IntegrityReport> {
         if let Ok(rows) = stmt.query_map([], |row| row.get::<_, String>(0)) {
             for row in rows.filter_map(|r| r.ok()) {
                 messages.push(row);
+            }
+        }
+    }
+
+    // The attachments store, when attached (an unavailable store shows in the attachments row).
+    if crate::db::files_schema::is_attached(conn)? {
+        let mut stmt = conn.prepare("PRAGMA files.quick_check")?;
+        let rows = stmt.query_map([], |row| row.get::<_, String>(0))?;
+        for row in rows.filter_map(|r| r.ok()) {
+            if row != "ok" {
+                messages.push(format!("attachments: {row}"));
+            }
+        }
+        if let Ok(mut stmt) = conn.prepare("PRAGMA files.cipher_integrity_check") {
+            if let Ok(rows) = stmt.query_map([], |row| row.get::<_, String>(0)) {
+                for row in rows.filter_map(|r| r.ok()) {
+                    messages.push(format!("attachments: {row}"));
+                }
             }
         }
     }
@@ -650,6 +755,7 @@ mod tests {
             created_at: 0,
             migrations: migrations.iter().map(|m| m.to_string()).collect(),
             files: vec![],
+            attachment_count: None,
         })
         .expect("json")
     }
@@ -771,5 +877,206 @@ mod tests {
         let location = data_location(dir.path(), &dir.path().join(DB_FILE_NAME)).expect("loc");
         assert!(location.total_bytes >= 16 + 3 + 8 + 4);
         assert!(location.db_path.ends_with(DB_FILE_NAME));
+    }
+
+    /// `seed_account` plus an attached store holding one converted document, and one legacy
+    /// photo that is not converted yet.
+    fn seed_account_with_store(dir: &Path) -> (Connection, String) {
+        let conn = seed_account(dir);
+        let store = dir.join(STORE_FILE_NAME);
+        crate::db::files_schema::attach(&conn, &store).expect("attach");
+        conn.execute_batch(
+            r#"
+            CREATE TABLE insurance_documents (id TEXT PRIMARY KEY, blob_id TEXT, file_path TEXT);
+            CREATE TABLE real_estate_documents (id TEXT PRIMARY KEY, blob_id TEXT, file_path TEXT);
+            CREATE TABLE real_estate_photos (id TEXT PRIMARY KEY, blob_id TEXT, thumb_blob_id TEXT,
+                file_path TEXT, thumbnail_path TEXT);
+            INSERT INTO real_estate_photos (id, file_path, thumbnail_path)
+                VALUES ('legacy', 'real_estate_photos/batch1/a.jpg', 'real_estate_photos/batch1/a.jpg');
+            "#,
+        )
+        .expect("attachment tables");
+        let blob = crate::services::attachment_store::put_bytes(&conn, b"%PDF encrypted")
+            .expect("blob")
+            .id;
+        conn.execute(
+            "INSERT INTO insurance_documents (id, blob_id) VALUES ('doc', ?1)",
+            [&blob],
+        )
+        .expect("doc row");
+        (conn, blob)
+    }
+
+    fn archive_names(archive: &Path) -> Vec<String> {
+        let mut zip = ZipArchive::new(File::open(archive).expect("open")).expect("zip");
+        (0..zip.len())
+            .map(|i| {
+                zip.by_index(i)
+                    .expect("entry")
+                    .enclosed_name()
+                    .expect("safe name")
+                    .to_string_lossy()
+                    .into_owned()
+            })
+            .collect()
+    }
+
+    #[test]
+    fn a_format_2_backup_carries_the_store_and_restores_it() {
+        let src = tempfile::tempdir().expect("src");
+        let (conn, blob) = seed_account_with_store(src.path());
+        // A converted original waiting in the quarantine is not part of the backup.
+        let quarantined = src
+            .path()
+            .join(crate::services::attachment_conversion::QUARANTINE_DIR)
+            .join("insurance_documents/pol/old.pdf");
+        fs::create_dir_all(quarantined.parent().expect("parent")).expect("mkdir");
+        fs::write(&quarantined, b"plain original").expect("quarantined");
+        let archive = src.path().join("out.zip");
+
+        let manifest = create_backup(&conn, src.path(), &archive, "9.9.9").expect("backup");
+        assert_eq!(manifest.format, 2);
+        assert_eq!(manifest.attachment_count, Some(2));
+        let names = archive_names(&archive);
+        assert!(names.contains(&STORE_FILE_NAME.to_string()));
+        assert!(
+            names.contains(&"real_estate_photos/batch1/a.jpg".to_string()),
+            "an unconverted legacy file is still backed up"
+        );
+        assert!(
+            !names.iter().any(|n| n.contains("attachments-converted")),
+            "the quarantine is not backed up"
+        );
+
+        let inspection = inspect_backup(&archive, &KNOWN).expect("inspect");
+        assert_eq!(inspection.attachment_count, 2);
+
+        let dst = tempfile::tempdir().expect("dst");
+        restore_backup(dst.path(), &archive, &KNOWN).expect("restore");
+        let restored = Connection::open(dst.path().join(STORE_FILE_NAME)).expect("store");
+        let data: Vec<u8> = restored
+            .query_row("SELECT data FROM blobs WHERE id = ?1", [&blob], |r| {
+                r.get(0)
+            })
+            .expect("blob survives VACUUM files INTO");
+        assert_eq!(data, b"%PDF encrypted".to_vec());
+    }
+
+    #[test]
+    fn restore_moves_the_current_store_and_quarantine_aside() {
+        let src = tempfile::tempdir().expect("src");
+        let conn = seed_account(src.path());
+        let archive = src.path().join("out.zip");
+        create_backup(&conn, src.path(), &archive, "1.0.0").expect("backup");
+
+        let dst = tempfile::tempdir().expect("dst");
+        fs::write(dst.path().join(STORE_FILE_NAME), b"current store").expect("store");
+        let q = dst
+            .path()
+            .join(crate::services::attachment_conversion::QUARANTINE_DIR);
+        fs::create_dir_all(&q).expect("quarantine");
+        fs::write(q.join("x.pdf"), b"q").expect("quarantined");
+
+        let pre = restore_backup(dst.path(), &archive, &KNOWN).expect("restore");
+        assert!(!dst.path().join(STORE_FILE_NAME).exists());
+        assert!(!q.exists());
+        assert_eq!(
+            fs::read(pre.join(STORE_FILE_NAME)).expect("saved store"),
+            b"current store"
+        );
+        assert!(pre
+            .join(crate::services::attachment_conversion::QUARANTINE_DIR)
+            .join("x.pdf")
+            .exists());
+    }
+
+    #[test]
+    fn a_detached_store_is_copied_as_it_is() {
+        let src = tempfile::tempdir().expect("src");
+        let conn = seed_account(src.path());
+        fs::write(src.path().join(STORE_FILE_NAME), b"damaged store bytes").expect("store");
+        let archive = src.path().join("out.zip");
+        create_backup(&conn, src.path(), &archive, "1.0.0").expect("backup");
+        let mut zip = ZipArchive::new(File::open(&archive).expect("open")).expect("zip");
+        let mut copied = Vec::new();
+        zip.by_name(STORE_FILE_NAME)
+            .expect("store entry")
+            .read_to_end(&mut copied)
+            .expect("read");
+        assert_eq!(copied, b"damaged store bytes".to_vec());
+    }
+
+    #[test]
+    fn a_format_2_archive_missing_a_listed_file_is_invalid() {
+        let dir = tempfile::tempdir().expect("dir");
+        let archive = dir.path().join("truncated.zip");
+        let manifest = serde_json::to_vec(&BackupManifest {
+            format: 2,
+            app_version: "1.0.0".into(),
+            created_at: 0,
+            migrations: KNOWN.iter().map(|m| m.to_string()).collect(),
+            files: vec![
+                BackupFileEntry {
+                    path: DB_FILE_NAME.into(),
+                    bytes: 2,
+                },
+                BackupFileEntry {
+                    path: STORE_FILE_NAME.into(),
+                    bytes: 5,
+                },
+            ],
+            attachment_count: Some(1),
+        })
+        .expect("json");
+        write_zip(
+            &archive,
+            &[(MANIFEST_NAME, &manifest), (DB_FILE_NAME, b"db")],
+        );
+        assert!(matches!(
+            inspect_backup(&archive, &KNOWN),
+            Err(AppError::Validation(k)) if k == "validation.backupInvalidArchive"
+        ));
+    }
+
+    #[test]
+    fn a_format_1_archive_still_restores_its_plain_attachments() {
+        let dir = tempfile::tempdir().expect("dir");
+        let archive = dir.path().join("v1.zip");
+        let manifest = serde_json::to_vec(&serde_json::json!({
+            "format": 1,
+            "appVersion": "0.12.2",
+            "createdAt": 0,
+            "migrations": KNOWN,
+            "files": [{ "path": "moony.db", "bytes": 2 }]
+        }))
+        .expect("json");
+        write_zip(
+            &archive,
+            &[
+                (MANIFEST_NAME, &manifest),
+                (DB_FILE_NAME, b"db"),
+                ("salt", b"saltsaltsaltsalt"),
+                ("insurance_documents/pol/x_Smlouva.pdf", b"%PDF plain"),
+            ],
+        );
+        let inspection = inspect_backup(&archive, &KNOWN).expect("inspect");
+        assert_eq!(inspection.manifest.format, 1);
+        assert_eq!(inspection.attachment_count, 1);
+
+        let dst = tempfile::tempdir().expect("dst");
+        restore_backup(dst.path(), &archive, &KNOWN).expect("restore");
+        assert_eq!(
+            fs::read(dst.path().join("insurance_documents/pol/x_Smlouva.pdf")).expect("doc"),
+            b"%PDF plain"
+        );
+        assert!(!dst.path().join(STORE_FILE_NAME).exists());
+    }
+
+    #[test]
+    fn verify_database_checks_the_attached_store_too() {
+        let dir = tempfile::tempdir().expect("dir");
+        let (conn, _) = seed_account_with_store(dir.path());
+        let report = verify_database(&conn).expect("verify");
+        assert!(report.ok, "{:?}", report.messages);
     }
 }

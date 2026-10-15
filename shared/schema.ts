@@ -1921,6 +1921,8 @@ export interface BackupManifest {
   createdAt: number;
   migrations: string[];
   files: BackupFileEntry[];
+  /** Attachment rows in the archive (format 2); absent in format 1 manifests. */
+  attachmentCount?: number;
 }
 
 export interface BackupInspection {

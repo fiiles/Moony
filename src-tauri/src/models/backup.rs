@@ -21,6 +21,14 @@ pub struct BackupManifest {
     /// Names of the migrations applied to the database inside the archive.
     pub migrations: Vec<String>,
     pub files: Vec<BackupFileEntry>,
+    /// Attachment rows in the archive (format 2: the encrypted store cannot be counted without
+    /// the key). Absent in format 1 manifests.
+    #[serde(
+        rename = "attachmentCount",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub attachment_count: Option<u32>,
 }
 
 /// What the UI shows before asking the user to confirm a restore.

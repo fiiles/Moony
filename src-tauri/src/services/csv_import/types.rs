@@ -167,17 +167,20 @@ fn is_blank(value: &Option<String>) -> bool {
     value.as_deref().is_none_or(|s| s.trim().is_empty())
 }
 
+/// The preview window must list 1–200 rows from a representable offset.
+fn validate_preview_range(offset: usize, limit: usize) -> Result<()> {
+    if limit == 0 || limit > 200 || offset > i64::MAX as usize {
+        return Err(AppError::Validation(
+            "validation.csvPreviewRangeInvalid".into(),
+        ));
+    }
+    Ok(())
+}
+
 impl CsvImportConfig {
     /// Validate at the trust boundary. Keys are `validation.*` i18n keys.
     pub fn validate(&self) -> Result<()> {
-        if self.preview_limit == 0
-            || self.preview_limit > 200
-            || self.preview_offset > i64::MAX as usize
-        {
-            return Err(AppError::Validation(
-                "validation.csvPreviewRangeInvalid".into(),
-            ));
-        }
+        validate_preview_range(self.preview_offset, self.preview_limit)?;
         if self.date_column.trim().is_empty() {
             return Err(AppError::Validation("validation.dateColumnRequired".into()));
         }
@@ -195,6 +198,75 @@ impl CsvImportConfig {
     /// The single-character delimiter, if one was configured.
     pub fn delimiter_char(&self) -> Option<char> {
         self.delimiter.chars().next()
+    }
+
+    /// The part of this config the shared import core needs once the rows are
+    /// parsed (duplicates, categories, preview window).
+    pub fn import_options(&self) -> ImportOptions {
+        ImportOptions {
+            skip_duplicates: self.skip_duplicates,
+            import_anyway_lines: self.import_anyway_lines.clone(),
+            category_overrides: self.category_overrides.clone(),
+            source_category_map: Vec::new(),
+            preview_offset: self.preview_offset,
+            preview_limit: self.preview_limit,
+        }
+    }
+}
+
+/// A closing balance the source declares (CAMT `CLBD`, MT940 `:62F:`, OFX
+/// `LEDGERBAL`), in the statement's own currency. `asOf` is the calendar day as
+/// written in the file, stored as UTC midnight.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub struct DeclaredBalance {
+    pub amount: String,
+    pub currency: String,
+    #[serde(rename = "asOf")]
+    pub as_of: i64,
+}
+
+/// The category the user chose for one source category of a statement (QIF
+/// `L` lines): rows carrying `source` are written with `categoryId`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub struct SourceCategoryMapping {
+    pub source: String,
+    #[serde(rename = "categoryId")]
+    pub category_id: String,
+}
+
+/// What the shared import core needs besides the parsed rows. CSV derives it
+/// from [`CsvImportConfig`]; statement formats build it from their own options.
+#[derive(Debug, Clone)]
+pub struct ImportOptions {
+    /// Skip possible composite duplicates (default); certain bank IDs always skip.
+    pub skip_duplicates: bool,
+    /// Source lines of possible composite duplicates to import anyway.
+    pub import_anyway_lines: Vec<usize>,
+    /// Categories picked in the preview, by source line.
+    pub category_overrides: Vec<CsvCategoryOverride>,
+    /// Categories chosen for the source categories of the file.
+    pub source_category_map: Vec<SourceCategoryMapping>,
+    pub preview_offset: usize,
+    pub preview_limit: usize,
+}
+
+impl Default for ImportOptions {
+    fn default() -> Self {
+        ImportOptions {
+            skip_duplicates: true,
+            import_anyway_lines: Vec::new(),
+            category_overrides: Vec::new(),
+            source_category_map: Vec::new(),
+            preview_offset: 0,
+            preview_limit: 200,
+        }
+    }
+}
+
+impl ImportOptions {
+    /// Same preview bounds as [`CsvImportConfig::validate`].
+    pub fn validate(&self) -> Result<()> {
+        validate_preview_range(self.preview_offset, self.preview_limit)
     }
 }
 
@@ -310,6 +382,10 @@ pub struct CsvPreviewRow {
     /// `own_account`).
     #[serde(rename = "categorySource")]
     pub category_source: Option<String>,
+    /// The category the file itself names for the row (QIF `L` line); `None`
+    /// for formats without one.
+    #[serde(rename = "sourceCategory")]
+    pub source_category: Option<String>,
 }
 
 /// Dry run of an import (TS `CsvImportPreview`).

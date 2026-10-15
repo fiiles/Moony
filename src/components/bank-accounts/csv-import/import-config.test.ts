@@ -302,6 +302,7 @@ describe('summarizePreview', () => {
     message: null,
     categoryId: null,
     categorySource: null,
+    sourceCategory: null,
   });
   const preview = (overrides: Partial<CsvImportPreview> = {}): CsvImportPreview => ({
     rows: [

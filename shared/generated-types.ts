@@ -585,7 +585,12 @@ categoryId: string | null;
  * `manual` for an override, else the rule layer (`rule`, `exact_match`,
  * `own_account`).
  */
-categorySource: string | null }
+categorySource: string | null; 
+/**
+ * The category the file itself names for the row (QIF `L` line); `None`
+ * for formats without one.
+ */
+sourceCategory: string | null }
 
 /**
  * Keep only rows whose `column` equals `equals` (case- and whitespace-
@@ -698,6 +703,13 @@ previousAmount: string | null;
  * Distinct tickers or assets traded that day; `None` for every other fact.
  */
 count: number | null }
+
+/**
+ * A closing balance the source declares (CAMT `CLBD`, MT940 `:62F:`, OFX
+ * `LEDGERBAL`), in the statement's own currency. `asOf` is the calendar day as
+ * written in the file, stored as UTC midnight.
+ */
+export type DeclaredBalance = { amount: string; currency: string; asOf: number }
 
 /**
  * How the direction of a trade is read.
@@ -1628,6 +1640,12 @@ export type SetCashflowPlanInclusion = {
  * `category:<categoryKey>`, an automatic source id, or `item:<manual item id>`.
  */
 key: string; included: boolean }
+
+/**
+ * The category the user chose for one source category of a statement (QIF
+ * `L` lines): rows carrying `source` are written with `categoryId`.
+ */
+export type SourceCategoryMapping = { source: string; categoryId: string }
 
 export type SourceCount = { 
 /**

@@ -1548,6 +1548,19 @@ export interface CsvCategoryOverride {
   categoryId: string;
 }
 
+/** A closing balance the source declares, in its own currency; `asOf` is a calendar day (UTC midnight). */
+export interface DeclaredBalance {
+  amount: string;
+  currency: string;
+  asOf: number;
+}
+
+/** The category chosen for one source category of a statement (QIF `L` lines). */
+export interface SourceCategoryMapping {
+  source: string;
+  categoryId: string;
+}
+
 /**
  * ok: will be imported. error: cannot be imported (see `message`). duplicate: matches an
  * stored occurrence or bank ID; only possible composites allow `importAnywayLines`.
@@ -1577,6 +1590,8 @@ export interface CsvPreviewRow {
   categoryId: string | null;
   /** `manual` for an override, else `rule` | `exact_match` | `own_account`. */
   categorySource: string | null;
+  /** The category the file itself names for the row (QIF `L` line); null for other formats. */
+  sourceCategory: string | null;
 }
 
 export interface CsvImportPreview {

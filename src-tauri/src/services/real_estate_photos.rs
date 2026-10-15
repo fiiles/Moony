@@ -16,7 +16,9 @@ use crate::services::attachment_store;
 use image::imageops::FilterType;
 use image::{DynamicImage, ImageFormat};
 use rusqlite::{Connection, OptionalExtension};
+use std::borrow::Cow;
 use std::io::Cursor;
+use tauri::ipc::InvokeBody;
 use uuid::Uuid;
 
 /// Folder under the app data dir that holds the photos of earlier versions.
@@ -30,6 +32,27 @@ const THUMB_EDGE: u32 = 400;
 pub struct PreparedPhoto {
     full: Vec<u8>,
     thumb: Vec<u8>,
+}
+
+/// The image bytes of an upload request. The webview sends them as a raw body; when the custom
+/// protocol IPC is unavailable (blocked by the CSP, or a platform without it) Tauri falls back to
+/// postMessage and the same bytes arrive as a JSON array of numbers.
+pub fn photo_bytes(body: &InvokeBody) -> Result<Cow<'_, [u8]>> {
+    let not_bytes =
+        || AppError::Internal("add_photo_to_batch expects the image bytes as the body".into());
+    match body {
+        InvokeBody::Raw(bytes) => Ok(Cow::Borrowed(bytes)),
+        InvokeBody::Json(serde_json::Value::Array(items)) => items
+            .iter()
+            .map(|v| {
+                v.as_u64()
+                    .and_then(|n| u8::try_from(n).ok())
+                    .ok_or_else(not_bytes)
+            })
+            .collect::<Result<Vec<u8>>>()
+            .map(Cow::Owned),
+        InvokeBody::Json(_) => Err(not_bytes()),
+    }
 }
 
 /// The property a photo batch belongs to.
@@ -152,6 +175,31 @@ mod tests {
     fn blob_count(conn: &Connection) -> i64 {
         conn.query_row("SELECT count(*) FROM files.blobs", [], |r| r.get(0))
             .expect("count")
+    }
+
+    #[test]
+    fn photo_bytes_takes_a_raw_body_as_is() {
+        let body = InvokeBody::Raw(vec![1, 2, 255]);
+        assert_eq!(photo_bytes(&body).expect("bytes").as_ref(), &[1, 2, 255]);
+    }
+
+    #[test]
+    fn photo_bytes_reads_the_json_array_of_the_postmessage_fallback() {
+        let body = InvokeBody::Json(serde_json::json!([1, 2, 255]));
+        assert_eq!(photo_bytes(&body).expect("bytes").as_ref(), &[1, 2, 255]);
+    }
+
+    #[test]
+    fn photo_bytes_rejects_anything_but_bytes() {
+        for value in [
+            serde_json::json!({ "batchId": "b" }),
+            serde_json::json!([1, 256]),
+            serde_json::json!([1, -1]),
+            serde_json::json!([1, "2"]),
+        ] {
+            let err = photo_bytes(&InvokeBody::Json(value)).expect_err("not bytes");
+            assert!(matches!(err, AppError::Internal(_)));
+        }
     }
 
     #[test]

@@ -402,26 +402,22 @@ pub async fn create_photo_batch(
     })
 }
 
-/// Add one photo to a batch. The webview sends the image bytes as the raw IPC body, so no copy of
-/// the photo is written to the temp dir, and the batch id in the `batch-id` header. The photo goes
-/// into the encrypted attachments store.
+/// Add one photo to a batch. The webview sends the image bytes as the IPC body, so no copy of the
+/// photo is written to the temp dir, and the batch id in the `batch-id` header. The photo goes into
+/// the encrypted attachments store.
 #[tauri::command]
 pub async fn add_photo_to_batch(
     db: State<'_, Database>,
     request: tauri::ipc::Request<'_>,
 ) -> Result<RealEstatePhoto> {
-    let tauri::ipc::InvokeBody::Raw(bytes) = request.body() else {
-        return Err(AppError::Internal(
-            "add_photo_to_batch expects the image as a raw body".into(),
-        ));
-    };
+    let bytes = photos_service::photo_bytes(request.body())?;
     let batch_id = request
         .headers()
         .get("batch-id")
         .and_then(|v| v.to_str().ok())
         .ok_or_else(|| AppError::Internal("add_photo_to_batch expects a batch-id header".into()))?;
 
-    let prepared = photos_service::prepare_photo(bytes)?;
+    let prepared = photos_service::prepare_photo(&bytes)?;
     let now = chrono::Utc::now().timestamp();
     db.with_conn(|conn| photos_service::record_photo(conn, batch_id, &prepared, now))
 }

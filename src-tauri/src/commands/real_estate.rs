@@ -408,19 +408,15 @@ pub async fn create_photo_batch(
     })
 }
 
-/// Add one photo to a batch. The webview sends the image bytes as the raw IPC body, so no copy of
-/// the photo is written to the temp dir, and the batch id in the `batch-id` header.
+/// Add one photo to a batch. The webview sends the image bytes as the IPC body, so no copy of the
+/// photo is written to the temp dir, and the batch id in the `batch-id` header.
 #[tauri::command]
 pub async fn add_photo_to_batch(
     app_handle: tauri::AppHandle,
     db: State<'_, Database>,
     request: tauri::ipc::Request<'_>,
 ) -> Result<RealEstatePhoto> {
-    let tauri::ipc::InvokeBody::Raw(bytes) = request.body() else {
-        return Err(AppError::Internal(
-            "add_photo_to_batch expects the image as a raw body".into(),
-        ));
-    };
+    let bytes = photos_service::photo_bytes(request.body())?;
     let batch_id = request
         .headers()
         .get("batch-id")
@@ -432,7 +428,7 @@ pub async fn add_photo_to_batch(
         .map_err(|e| AppError::Internal(format!("Failed to get app data dir: {}", e)))?;
 
     let real_estate_id = db.with_conn(|conn| photos_service::batch_property(conn, batch_id))?;
-    let stored = photos_service::store_photo(&app_data_dir, &real_estate_id, batch_id, bytes)?;
+    let stored = photos_service::store_photo(&app_data_dir, &real_estate_id, batch_id, &bytes)?;
     db.with_conn(|conn| photos_service::record_photo(conn, stored))
 }
 

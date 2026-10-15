@@ -47,9 +47,11 @@ static ENTRY_LINE: LazyLock<Regex> = LazyLock::new(|| {
         .expect("static pattern is valid")
 });
 
-/// A German bank code (8 digits) and account number (up to 10 digits) as `:25:` writes them.
+/// A German bank code (8 digits) and a five to ten digit account number as `:25:` writes
+/// them. A shorter number is not taken: `NNNNNNNN/BBBB` is a Czech account and its four digit
+/// bank code.
 static GERMAN_ACCOUNT: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"^(\d{8})/(\d{1,10})$").expect("static pattern is valid"));
+    LazyLock::new(|| Regex::new(r"^(\d{8})/(\d{5,10})$").expect("static pattern is valid"));
 
 /// What the lines of a message are made of.
 enum Item {
@@ -441,10 +443,10 @@ mod tests {
         );
         // the account number is padded to ten digits
         assert_eq!(
-            german_iban("10010010/1234").as_deref(),
-            german_iban("10010010/0000001234").as_deref()
+            german_iban("10010010/12345").as_deref(),
+            german_iban("10010010/0000012345").as_deref()
         );
-        assert!(german_iban("10010010/1234").unwrap().starts_with("DE"));
+        assert!(german_iban("10010010/12345").unwrap().starts_with("DE"));
         for other in [
             "19-2000145399/0800",
             "CZ6508000000192000145399",
@@ -455,6 +457,31 @@ mod tests {
         ] {
             assert_eq!(german_iban(other), None, "{other}");
         }
+    }
+
+    #[test]
+    fn czech_account_and_bank_code_is_not_a_german_account() {
+        // Czech bank codes are always four digits: NNNNNNNN/BBBB is account/bank, kept whole
+        for account in [
+            "12345678/0800",
+            "37040044/1234",
+            "12345678/1",
+            "12345678/123",
+        ] {
+            assert_eq!(german_iban(account), None, "{account}");
+            let s = format!(":20:X\n:25:{account}\n:60F:C260901CZK0,\n:62F:C260901CZK0,\n");
+            assert_eq!(
+                parse(&s).unwrap()[0].account.identifier.as_deref(),
+                Some(account)
+            );
+        }
+        // five to ten digit Kontonummern still convert
+        assert_eq!(
+            german_iban("37040044/532013000").as_deref(),
+            Some("DE89370400440532013000")
+        );
+        assert!(german_iban("12345678/12345").is_some());
+        assert!(german_iban("12345678/1234567890").is_some());
     }
 
     #[test]

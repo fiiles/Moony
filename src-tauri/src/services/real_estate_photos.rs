@@ -28,6 +28,8 @@ const THUMB_EDGE: u32 = 400;
 pub struct StoredPhoto {
     photo: RealEstatePhoto,
     files: [PathBuf; 2],
+    /// The photo's and the thumbnail's paths relative to the app data dir, as the row stores them.
+    rel_paths: [String; 2],
 }
 
 impl StoredPhoto {
@@ -73,11 +75,13 @@ pub fn store_photo(
 
     let stored = StoredPhoto {
         files: [dir.join(&file_name), dir.join(&thumb_name)],
+        rel_paths: [
+            format!("{}/{}", rel_dir, file_name),
+            format!("{}/{}", rel_dir, thumb_name),
+        ],
         photo: RealEstatePhoto {
             id,
             batch_id: batch_id.to_string(),
-            file_path: format!("{}/{}", rel_dir, file_name),
-            thumbnail_path: format!("{}/{}", rel_dir, thumb_name),
             created_at: chrono::Utc::now().timestamp(),
         },
     };
@@ -111,8 +115,8 @@ pub fn record_photo(conn: &Connection, stored: StoredPhoto) -> Result<RealEstate
         rusqlite::params![
             photo.id,
             photo.batch_id,
-            photo.file_path,
-            photo.thumbnail_path,
+            stored.rel_paths[0],
+            stored.rel_paths[1],
             photo.created_at
         ],
     );
@@ -203,32 +207,26 @@ mod tests {
         let stored = store_photo(&dir, "prop-1", "batch-1", &png(3000, 1500)).expect("stored");
         let photo = record_photo(&conn, stored).expect("recorded");
 
-        let rel = format!("{}/prop-1/batch-1/", PHOTOS_DIR);
-        assert_eq!(photo.file_path, format!("{}{}.jpg", rel, photo.id));
-        assert_eq!(
-            photo.thumbnail_path,
-            format!("{}{}_thumb.jpg", rel, photo.id)
-        );
-        assert_eq!(photo.batch_id, "batch-1");
-
-        let full = image::open(dir.join(&photo.file_path)).expect("full");
-        assert_eq!((full.width(), full.height()), (2560, 1280));
-        let thumb = image::open(dir.join(&photo.thumbnail_path)).expect("thumb");
-        assert_eq!((thumb.width(), thumb.height()), (400, 200));
-        assert_eq!(
-            image::guess_format(&fs::read(dir.join(&photo.file_path)).expect("read"))
-                .expect("format"),
-            ImageFormat::Jpeg
-        );
-
-        let row: (String, String) = conn
+        let (file_path, thumbnail_path): (String, String) = conn
             .query_row(
                 "SELECT file_path, thumbnail_path FROM real_estate_photos WHERE id = ?1",
                 [&photo.id],
                 |r| Ok((r.get(0)?, r.get(1)?)),
             )
             .expect("row");
-        assert_eq!(row, (photo.file_path, photo.thumbnail_path));
+        let rel = format!("{}/prop-1/batch-1/", PHOTOS_DIR);
+        assert_eq!(file_path, format!("{}{}.jpg", rel, photo.id));
+        assert_eq!(thumbnail_path, format!("{}{}_thumb.jpg", rel, photo.id));
+        assert_eq!(photo.batch_id, "batch-1");
+
+        let full = image::open(dir.join(&file_path)).expect("full");
+        assert_eq!((full.width(), full.height()), (2560, 1280));
+        let thumb = image::open(dir.join(&thumbnail_path)).expect("thumb");
+        assert_eq!((thumb.width(), thumb.height()), (400, 200));
+        assert_eq!(
+            image::guess_format(&fs::read(dir.join(&file_path)).expect("read")).expect("format"),
+            ImageFormat::Jpeg
+        );
     }
 
     #[test]

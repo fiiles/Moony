@@ -127,6 +127,13 @@ CREATE TABLE app_config (
     value TEXT NOT NULL
 )
 
+== table attachment_leftovers ==
+CREATE TABLE attachment_leftovers (
+    id TEXT PRIMARY KEY,
+    path TEXT NOT NULL UNIQUE,
+    found_at INTEGER NOT NULL DEFAULT (unixepoch())
+)
+
 == table bank_account_zones ==
 CREATE TABLE bank_account_zones (
     id TEXT PRIMARY KEY,
@@ -381,15 +388,19 @@ CREATE TABLE institutions (
 )
 
 == table insurance_documents ==
-CREATE TABLE insurance_documents (
+CREATE TABLE "insurance_documents" (
     id TEXT PRIMARY KEY,
     insurance_id TEXT NOT NULL REFERENCES insurance_policies(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
     description TEXT,
-    file_path TEXT NOT NULL,
+    file_path TEXT,
+    blob_id TEXT,
+    mime_type TEXT,
+    original_name TEXT,
     file_type TEXT NOT NULL DEFAULT 'other',
     file_size INTEGER,
-    uploaded_at INTEGER NOT NULL DEFAULT (unixepoch())
+    uploaded_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    CHECK (file_path IS NOT NULL OR blob_id IS NOT NULL)
 )
 
 == table insurance_policies ==
@@ -576,15 +587,19 @@ CREATE TABLE real_estate (
 , purchase_date INTEGER)
 
 == table real_estate_documents ==
-CREATE TABLE real_estate_documents (
+CREATE TABLE "real_estate_documents" (
     id TEXT PRIMARY KEY,
     real_estate_id TEXT NOT NULL REFERENCES real_estate(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
     description TEXT,
-    file_path TEXT NOT NULL,
+    file_path TEXT,
+    blob_id TEXT,
+    mime_type TEXT,
+    original_name TEXT,
     file_type TEXT NOT NULL DEFAULT 'other',
     file_size INTEGER,
-    uploaded_at INTEGER NOT NULL DEFAULT (unixepoch())
+    uploaded_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    CHECK (file_path IS NOT NULL OR blob_id IS NOT NULL)
 )
 
 == table real_estate_insurances ==
@@ -623,12 +638,16 @@ CREATE TABLE real_estate_photo_batches (
 )
 
 == table real_estate_photos ==
-CREATE TABLE real_estate_photos (
+CREATE TABLE "real_estate_photos" (
     id TEXT PRIMARY KEY,
     batch_id TEXT NOT NULL REFERENCES real_estate_photo_batches(id) ON DELETE CASCADE,
-    file_path TEXT NOT NULL,
-    thumbnail_path TEXT NOT NULL,
-    created_at INTEGER NOT NULL DEFAULT (unixepoch())
+    file_path TEXT,
+    thumbnail_path TEXT,
+    blob_id TEXT,
+    thumb_blob_id TEXT,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    CHECK ((file_path IS NOT NULL AND thumbnail_path IS NOT NULL)
+        OR (blob_id IS NOT NULL AND thumb_blob_id IS NOT NULL))
 )
 
 == table real_estate_valuations ==

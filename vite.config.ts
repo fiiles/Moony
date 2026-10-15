@@ -6,6 +6,13 @@ import path from 'path';
 // @ts-expect-error process is a nodejs global
 const host = process.env.TAURI_DEV_HOST;
 
+interface FileResult {
+  id: string;
+  status: number;
+  mime: string | null;
+  bytes: number[];
+}
+
 // Dev-only relay for src/dev/browser-bridge.ts: a browser tab sends commands
 // over the HMR websocket, the Tauri window executes them with the real
 // backend, and the result is routed back to the tab that asked.
@@ -66,6 +73,39 @@ function moonyBrowserBridge(): Plugin {
       server.ws.on('moony:result', (res: { id: string }) => {
         origin.get(res.id)?.send('moony:result', res);
         origin.delete(res.id);
+      });
+
+      // Attachment bytes (`moony-file` URLs) are not reachable from a browser: the tab loads
+      // /__moony-file/<path>, and the Tauri window fetches the real URL and sends the bytes back.
+      let nextFileId = 0;
+      const pendingFiles = new Map<string, (result: FileResult) => void>();
+      server.middlewares.use('/__moony-file', (req, res) => {
+        if (!executor || !executorAlive()) {
+          res.statusCode = 503;
+          res.end();
+          return;
+        }
+        const id = String(++nextFileId);
+        const timer = setTimeout(() => {
+          pendingFiles.delete(id);
+          res.statusCode = 504;
+          res.end();
+        }, 15_000);
+        pendingFiles.set(id, (result) => {
+          clearTimeout(timer);
+          res.statusCode = result.status;
+          res.setHeader('Cache-Control', 'no-store');
+          if (result.mime) res.setHeader('Content-Type', result.mime);
+          res.end(new Uint8Array(result.bytes));
+        });
+        executor.send('moony:file', {
+          id,
+          path: decodeURIComponent(((req as { url?: string }).url ?? '/').slice(1)),
+        });
+      });
+      server.ws.on('moony:file-result', (result: FileResult) => {
+        pendingFiles.get(result.id)?.(result);
+        pendingFiles.delete(result.id);
       });
 
       server.ws.on('moony:subscribe', (data) => executor?.send('moony:subscribe', data));

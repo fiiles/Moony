@@ -83,8 +83,11 @@ pub struct InsuranceDocument {
     pub insurance_id: String,
     pub name: String,
     pub description: Option<String>,
-    #[serde(rename = "filePath")]
-    pub file_path: String,
+    /// Stored MIME type, or the one the legacy file's extension implies.
+    #[serde(rename = "mimeType")]
+    pub mime_type: String,
+    /// Lowercased extension of the original file name, for the file tile.
+    pub extension: Option<String>,
     #[serde(rename = "fileType")]
     pub file_type: String,
     #[serde(rename = "fileSize")]

@@ -33,15 +33,14 @@ const formatFileSize = (bytes: number | null) => {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 };
 
-const extensionOf = (path: string) => {
-  const match = /\.([a-z0-9]{1,4})$/i.exec(path);
-  return match ? match[1].toUpperCase() : 'DOC';
-};
+/** The file tile's label: the original extension, at most four characters. */
+const extensionLabel = (extension: string | null) =>
+  extension && extension.length <= 4 ? extension.toUpperCase() : 'DOC';
 
 /**
  * Documents of a policy (prototype insurance-detail.html): a table with the
  * file tile, type badge, upload day and open / delete actions, stored in the
- * app's encrypted folder.
+ * app's encrypted attachments store.
  */
 export function InsuranceDocuments({ insuranceId, onAdd }: InsuranceDocumentsProps) {
   const { t } = useTranslation('insurance');
@@ -114,7 +113,7 @@ export function InsuranceDocuments({ insuranceId, onAdd }: InsuranceDocumentsPro
                   <TableCell>
                     <div className="flex min-w-0 items-center gap-[10px]">
                       <span className="inline-grid size-8 shrink-0 place-items-center rounded-r2 bg-well-2 text-[9px] font-700 tracking-[0.02em] text-ink-3">
-                        {extensionOf(doc.filePath)}
+                        {extensionLabel(doc.extension)}
                       </span>
                       <div className="min-w-0">
                         <b className="block truncate text-table font-650 text-ink">{doc.name}</b>

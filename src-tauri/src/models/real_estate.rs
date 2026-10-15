@@ -123,16 +123,13 @@ pub struct RealEstatePhotoBatch {
     pub created_at: i64,
 }
 
-/// Individual photo within a batch
+/// Individual photo within a batch. The webview loads its bytes through the `moony-file` scheme by
+/// id; storage paths never reach it.
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct RealEstatePhoto {
     pub id: String,
     #[serde(rename = "batchId")]
     pub batch_id: String,
-    #[serde(rename = "filePath")]
-    pub file_path: String,
-    #[serde(rename = "thumbnailPath")]
-    pub thumbnail_path: String,
     #[serde(rename = "createdAt")]
     pub created_at: i64,
 }
@@ -161,8 +158,11 @@ pub struct RealEstateDocument {
     pub real_estate_id: String,
     pub name: String,
     pub description: Option<String>,
-    #[serde(rename = "filePath")]
-    pub file_path: String,
+    /// Stored MIME type, or the one the legacy file's extension implies.
+    #[serde(rename = "mimeType")]
+    pub mime_type: String,
+    /// Lowercased extension of the original file name, for the file tile.
+    pub extension: Option<String>,
     #[serde(rename = "fileType")]
     pub file_type: String,
     #[serde(rename = "fileSize")]

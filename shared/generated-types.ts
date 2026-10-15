@@ -28,6 +28,11 @@ value: string; currency: string;
 valuedAt: number; note: string | null; createdAt: number }
 
 /**
+ * Which attachment table a row id belongs to.
+ */
+export type AttachmentKind = "photo" | "real-estate-document" | "insurance-document"
+
+/**
  * One file inside a backup archive.
  */
 export type BackupFileEntry = { path: string; bytes: number }
@@ -989,7 +994,15 @@ export type Institution = { id: string; name: string; bic: string | null; countr
 /**
  * Insurance document (attached contracts, certificates, etc.)
  */
-export type InsuranceDocument = { id: string; insuranceId: string; name: string; description: string | null; filePath: string; fileType: string; fileSize: number | null; uploadedAt: number }
+export type InsuranceDocument = { id: string; insuranceId: string; name: string; description: string | null; 
+/**
+ * Stored MIME type, or the one the legacy file's extension implies.
+ */
+mimeType: string; 
+/**
+ * Lowercased extension of the original file name, for the file tile.
+ */
+extension: string | null; fileType: string; fileSize: number | null; uploadedAt: number }
 
 /**
  * Insurance limit
@@ -1440,7 +1453,15 @@ purchaseDate: number | null; marketPrice: string; marketPriceCurrency: string; m
 /**
  * Real estate document (attached contracts, deeds, etc.)
  */
-export type RealEstateDocument = { id: string; realEstateId: string; name: string; description: string | null; filePath: string; fileType: string; fileSize: number | null; uploadedAt: number }
+export type RealEstateDocument = { id: string; realEstateId: string; name: string; description: string | null; 
+/**
+ * Stored MIME type, or the one the legacy file's extension implies.
+ */
+mimeType: string; 
+/**
+ * Lowercased extension of the original file name, for the file tile.
+ */
+extension: string | null; fileType: string; fileSize: number | null; uploadedAt: number }
 
 /**
  * One-time cost for real estate
@@ -1448,9 +1469,10 @@ export type RealEstateDocument = { id: string; realEstateId: string; name: strin
 export type RealEstateOneTimeCost = { id: string; realEstateId: string; name: string; description: string | null; amount: string; currency: string; date: number; createdAt: number }
 
 /**
- * Individual photo within a batch
+ * Individual photo within a batch. The webview loads its bytes through the `moony-file` scheme by
+ * id; storage paths never reach it.
  */
-export type RealEstatePhoto = { id: string; batchId: string; filePath: string; thumbnailPath: string; createdAt: number }
+export type RealEstatePhoto = { id: string; batchId: string; createdAt: number }
 
 /**
  * Photo batch (groups photos by date and description)

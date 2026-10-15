@@ -342,7 +342,7 @@ pub async fn get_real_estate_photo_batches(
 
         // Get photos for each batch
         let mut photo_stmt = conn.prepare(
-            "SELECT id, batch_id, file_path, thumbnail_path, created_at
+            "SELECT id, batch_id, created_at
              FROM real_estate_photos WHERE batch_id = ?1 ORDER BY created_at",
         )?;
 
@@ -355,9 +355,7 @@ pub async fn get_real_estate_photo_batches(
                             Ok(RealEstatePhoto {
                                 id: row.get(0)?,
                                 batch_id: row.get(1)?,
-                                file_path: row.get(2)?,
-                                thumbnail_path: row.get(3)?,
-                                created_at: row.get(4)?,
+                                created_at: row.get(2)?,
                             })
                         })
                         .ok()
@@ -487,7 +485,7 @@ pub async fn update_photo_batch(
         )?;
 
         let mut photo_stmt = conn.prepare(
-            "SELECT id, batch_id, file_path, thumbnail_path, created_at
+            "SELECT id, batch_id, created_at
              FROM real_estate_photos WHERE batch_id = ?1",
         )?;
         let photos: Vec<RealEstatePhoto> = photo_stmt
@@ -495,9 +493,7 @@ pub async fn update_photo_batch(
                 Ok(RealEstatePhoto {
                     id: row.get(0)?,
                     batch_id: row.get(1)?,
-                    file_path: row.get(2)?,
-                    thumbnail_path: row.get(3)?,
-                    created_at: row.get(4)?,
+                    created_at: row.get(2)?,
                 })
             })?
             .filter_map(|r| r.ok())
@@ -602,17 +598,27 @@ pub async fn get_real_estate_documents(
 ) -> Result<Vec<RealEstateDocument>> {
     db.with_conn(|conn| {
         let mut stmt = conn.prepare(
-            "SELECT id, real_estate_id, name, description, file_path, file_type, file_size, uploaded_at
+            "SELECT id, real_estate_id, name, description, file_path, file_type, file_size, uploaded_at,
+                    mime_type, original_name
              FROM real_estate_documents WHERE real_estate_id = ?1 ORDER BY uploaded_at DESC"
         )?;
 
         let documents = stmt.query_map([&real_estate_id], |row| {
+            let file_path: Option<String> = row.get(4)?;
+            let mime_type: Option<String> = row.get(8)?;
+            let original_name: Option<String> = row.get(9)?;
+            let (mime_type, extension) = crate::services::attachments::document_meta(
+                file_path.as_deref(),
+                mime_type.as_deref(),
+                original_name.as_deref(),
+            );
             Ok(RealEstateDocument {
                 id: row.get(0)?,
                 real_estate_id: row.get(1)?,
                 name: row.get(2)?,
                 description: row.get(3)?,
-                file_path: row.get(4)?,
+                mime_type,
+                extension,
                 file_type: row.get(5)?,
                 file_size: row.get(6)?,
                 uploaded_at: row.get(7)?,
@@ -671,12 +677,15 @@ pub async fn add_real_estate_document(
             rusqlite::params![id, real_estate_id, data.name, data.description, dest_path_str, file_type, file_size, now],
         )?;
 
+        let (mime_type, extension) =
+            crate::services::attachments::document_meta(Some(&dest_path_str), None, None);
         Ok(RealEstateDocument {
             id,
             real_estate_id,
             name: data.name,
             description: data.description,
-            file_path: dest_path_str,
+            mime_type,
+            extension,
             file_type,
             file_size,
             uploaded_at: now,

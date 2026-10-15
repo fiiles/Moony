@@ -290,11 +290,10 @@ export interface RealEstatePhotoBatch {
   createdAt: number;
 }
 
+/** A photo's bytes load through the `moony-file` scheme by id (`src/utils/attachment-url.ts`). */
 export interface RealEstatePhoto {
   id: string;
   batchId: string;
-  filePath: string;
-  thumbnailPath: string;
   createdAt: number;
 }
 
@@ -304,7 +303,10 @@ export interface RealEstateDocument {
   realEstateId: string;
   name: string;
   description: string | null;
-  filePath: string;
+  /** Stored MIME type, or the one the legacy file's extension implies. */
+  mimeType: string;
+  /** Lowercased extension of the original file name, for the file tile. */
+  extension: string | null;
   fileType: string; // 'deed' | 'contract' | 'appraisal' | 'other'
   fileSize: number | null;
   uploadedAt: number;
@@ -343,11 +345,18 @@ export interface InsuranceDocument {
   insuranceId: string;
   name: string;
   description: string | null;
-  filePath: string;
+  /** Stored MIME type, or the one the legacy file's extension implies. */
+  mimeType: string;
+  /** Lowercased extension of the original file name, for the file tile. */
+  extension: string | null;
   fileType: string; // 'contract' | 'certificate' | 'claim' | 'other'
   fileSize: number | null;
   uploadedAt: number;
 }
+
+// Attachments (ADR 0017)
+/** Which attachment table a row id belongs to. */
+export type AttachmentKind = 'photo' | 'real-estate-document' | 'insurance-document';
 
 // Other Assets
 export interface OtherAsset {

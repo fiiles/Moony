@@ -28,8 +28,8 @@ npm run lint && npm run typecheck && npm test
 | Task | Status | Commit |
 |---|---|---|
 | 0. Spike: pdf.js and a custom scheme under the app CSP | done — works without widening the CSP; see "Task 0 outcome" | spike branch `spike/pdfjs-csp` 999635de (not merged) |
-| 1. Store: `attachments.db`, `files` schema, store service | pending | — |
-| 2. Migration 021, wire contract, `moony-file:` scheme serving legacy files, frontend switch | pending | — |
+| 1. Store: `attachments.db`, `files` schema, store service | done — demo unlock created an encrypted `attachments.db` (store version 1) | 1c2f191a |
+| 2. Migration 021, wire contract, `moony-file:` scheme serving legacy files, frontend switch | done — see note | this commit |
 | 3. New photos and documents go into the store; deletes remove blobs | pending | — |
 | 4. Viewer, save a copy, open elsewhere, temp copy wiping | pending | — |
 | 5. Conversion of plain files, status and leftovers in Settings → Data | pending | — |
@@ -77,6 +77,23 @@ Results:
   `main`.
 - `pdfjs-dist` declares an optional dependency, `@napi-rs/canvas`, for Node only. It is not
   bundled into the app; keep it out of any runtime code path.
+
+## Task 2 notes (2026-10-15)
+
+- Documents carry `mimeType: string` (the stored type, or the type the legacy file's extension
+  implies, so it is never null) and `extension: string | null` for the file tile, instead of §4.10's
+  `mimeType: string | null`. The tile no longer needs a path.
+- The protocol serves `image/svg+xml` as `application/octet-stream` too: SVG can carry scripts.
+- CORS: the app origin in every platform form, plus `http://localhost:*` in debug builds only,
+  because `tauri dev` serves the page from the dev server.
+- `fs:allow-copy-file` is gone. A global `fs:scope` deny list now covers the databases, the store,
+  the quarantine, the key files and restore copies for every fs command.
+- Dev bridge: a browser tab loads `/__moony-file/<path>`, and the Tauri window fetches the real URL.
+- Live demo, from the worktree on port 1422 with a `demo-home` copy:
+  - an uploaded JPEG showed its 400×267 thumbnail and its 1200×800 photo through the scheme;
+  - `export_attachment` and `export_photo_batch` wrote byte-identical copies;
+  - `../` and unknown ids answered 404;
+  - after `logout` the scheme answered 403 with no body.
 
 ## Task 0 — Spike (§4.6, §4.7, D3)
 

@@ -27,6 +27,7 @@ interface ExecRequest {
 
 type Internals = {
   invoke: (cmd: string, args?: Json, options?: { headers: HeadersInit }) => Promise<Json>;
+  convertFileSrc: (path: string, protocol?: string) => string;
 };
 
 interface ExecResult {
@@ -77,6 +78,22 @@ function startExecutor(internals: Internals) {
       result = { id: req.id, ok: false, value: toWire(error) };
     }
     hot.send('moony:result', result);
+  });
+
+  // Attachment bytes for a browser tab: fetch the real `moony-file` URL here (see vite.config.ts).
+  hot.on('moony:file', async ({ id, path }: { id: string; path: string }) => {
+    try {
+      const res = await fetch(internals.convertFileSrc(path, 'moony-file'));
+      const bytes = res.ok ? Array.from(new Uint8Array(await res.arrayBuffer())) : [];
+      hot.send('moony:file-result', {
+        id,
+        status: res.status,
+        mime: res.headers.get('Content-Type'),
+        bytes,
+      });
+    } catch {
+      hot.send('moony:file-result', { id, status: 502, mime: null, bytes: [] });
+    }
   });
 
   // Forward backend events the browser subscribed to.
@@ -159,9 +176,11 @@ function installBrowserPolyfill() {
       return id;
     },
     unregisterCallback: (id: number) => callbacks.delete(id),
-    // Asset protocol isn't reachable from a browser; images from disk won't load.
+    // `moony-file` (attachments) is relayed through the dev server; other schemes don't load.
     convertFileSrc: (path: string, protocol = 'asset') =>
-      `http://${protocol}.localhost/${encodeURIComponent(path)}`,
+      protocol === 'moony-file'
+        ? `/__moony-file/${encodeURIComponent(path)}`
+        : `http://${protocol}.localhost/${encodeURIComponent(path)}`,
     metadata: {
       currentWindow: { label: 'main' },
       currentWebview: { windowLabel: 'main', label: 'main' },

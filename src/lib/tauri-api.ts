@@ -44,6 +44,7 @@ import type {
   InsurancePolicy,
   InsertInsurancePolicy,
   InsuranceDocument,
+  AttachmentKind,
   OtherAsset,
   InsertOtherAsset,
   OtherAssetTransaction,
@@ -498,6 +499,20 @@ export const realEstateApi = {
 
   openDocument: (documentId: string) =>
     tauriInvoke<void>('open_real_estate_document', { documentId }),
+};
+
+// ============================================================================
+// Attachments API (bytes load through the `moony-file` scheme, see src/utils/attachment-url.ts)
+// ============================================================================
+
+export const attachmentsApi = {
+  /** Save a decrypted copy of an attachment to a path the user chose in a save dialog. */
+  export: (kind: AttachmentKind, id: string, destPath: string) =>
+    tauriInvoke<void>('export_attachment', { kind, id, destPath }),
+
+  /** Save every photo of a batch into a folder the user chose; resolves to how many. */
+  exportPhotoBatch: (batchId: string, destDir: string) =>
+    tauriInvoke<number>('export_photo_batch', { batchId, destDir }),
 };
 
 // ============================================================================

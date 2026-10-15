@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -25,13 +25,12 @@ import {
   Upload,
   Download,
 } from 'lucide-react';
-import { realEstateApi } from '@/lib/tauri-api';
+import { attachmentsApi, realEstateApi } from '@/lib/tauri-api';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 import { useFormat } from '@/lib/use-format';
 import type { RealEstatePhotoBatch, RealEstatePhoto } from '@shared/schema';
-import { convertFileSrc } from '@tauri-apps/api/core';
-import { appDataDir } from '@tauri-apps/api/path';
+import { attachmentUrl } from '@/utils/attachment-url';
 import { ConfirmDeleteDialog } from '@/components/common/ConfirmDeleteDialog';
 
 interface PhotoTimelineGalleryProps {
@@ -63,18 +62,12 @@ export function PhotoTimelineGallery({ realEstateId }: PhotoTimelineGalleryProps
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deletingBatchId, setDeletingBatchId] = useState<string | null>(null);
-  const [appDataPath, setAppDataPath] = useState<string>('');
   const [isConverting, setIsConverting] = useState(false);
 
   // Upload form state
   const [uploadDate, setUploadDate] = useState(new Date().toISOString().split('T')[0]);
   const [uploadDescription, setUploadDescription] = useState('');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-
-  // Get app data path for resolving file URLs
-  useEffect(() => {
-    appDataDir().then(setAppDataPath);
-  }, []);
 
   const { data: batches = [], isLoading } = useQuery<RealEstatePhotoBatch[]>({
     queryKey: ['real-estate-photo-batches', realEstateId],
@@ -268,21 +261,15 @@ export function PhotoTimelineGallery({ realEstateId }: PhotoTimelineGalleryProps
   };
 
   const handleDownloadPhoto = async (photo: RealEstatePhoto) => {
-    if (!appDataPath) return;
     try {
       const { save } = await import('@tauri-apps/plugin-dialog');
-      const { copyFile } = await import('@tauri-apps/plugin-fs');
-      const { join } = await import('@tauri-apps/api/path');
-
-      const sourcePath = await join(appDataPath, photo.filePath);
-
       const filePath = await save({
         defaultPath: `photo_${photo.id.slice(0, 8)}.jpg`,
         filters: [{ name: 'Image', extensions: ['jpg'] }],
       });
 
       if (filePath) {
-        await copyFile(sourcePath, filePath);
+        await attachmentsApi.export('photo', photo.id, filePath);
         toast(tc('status.success'));
       }
     } catch (error) {
@@ -292,12 +279,8 @@ export function PhotoTimelineGallery({ realEstateId }: PhotoTimelineGalleryProps
   };
 
   const handleDownloadBatch = async (batch: RealEstatePhotoBatch) => {
-    if (!appDataPath) return;
     try {
       const { open } = await import('@tauri-apps/plugin-dialog');
-      const { copyFile } = await import('@tauri-apps/plugin-fs');
-      const { join } = await import('@tauri-apps/api/path');
-
       const selected = await open({
         directory: true,
         multiple: false,
@@ -306,16 +289,7 @@ export function PhotoTimelineGallery({ realEstateId }: PhotoTimelineGalleryProps
 
       if (selected) {
         const targetDir = Array.isArray(selected) ? selected[0] : selected;
-        const batchDate = new Date(batch.photoDate * 1000).toISOString().split('T')[0];
-
-        let count = 0;
-        for (const photo of batch.photos) {
-          const sourcePath = await join(appDataPath, photo.filePath);
-          const fileName = `batch_${batchDate}_${photo.id.slice(0, 8)}.jpg`;
-          const destPath = await join(targetDir, fileName);
-          await copyFile(sourcePath, destPath);
-          count++;
-        }
+        const count = await attachmentsApi.exportPhotoBatch(batch.id, targetDir);
         toast(tc('status.success'), { description: t('gallery.photosSaved', { count }) });
       }
     } catch (error) {
@@ -334,23 +308,9 @@ export function PhotoTimelineGallery({ realEstateId }: PhotoTimelineGalleryProps
     });
   };
 
-  const getPhotoUrl = (photo: RealEstatePhoto) => {
-    if (appDataPath) {
-      const fullPath = `${appDataPath}/${photo.thumbnailPath}`;
-      // Use Tauri's convertFileSrc with 'asset' protocol
-      const url = convertFileSrc(fullPath, 'asset');
-      return url;
-    }
-    return '';
-  };
+  const getPhotoUrl = (photo: RealEstatePhoto) => attachmentUrl('photo-thumb', photo.id);
 
-  const getFullPhotoUrl = (photo: RealEstatePhoto) => {
-    if (appDataPath) {
-      const fullPath = `${appDataPath}/${photo.filePath}`;
-      return convertFileSrc(fullPath, 'asset');
-    }
-    return '';
-  };
+  const getFullPhotoUrl = (photo: RealEstatePhoto) => attachmentUrl('photo', photo.id);
 
   const openLightbox = (batch: RealEstatePhotoBatch, photoIndex: number) => {
     setLightboxPhotos(batch.photos);

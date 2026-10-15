@@ -81,6 +81,9 @@ pub fn collect_types() -> TypeCollection {
     types.register::<crate::models::InsuranceLimit>();
     types.register::<crate::models::InsuranceDocument>();
 
+    // Attachment models
+    types.register::<crate::models::AttachmentKind>();
+
     // Other assets models
     types.register::<crate::models::OtherAsset>();
     types.register::<crate::models::InsertOtherAsset>();

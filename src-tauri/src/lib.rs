@@ -68,7 +68,38 @@ pub async fn run() {
         .manage(services::history_recalc::HistoryRecalc::new())
         .manage(CategorizationState(categorization_engine))
         .manage(LocalApiServer::new())
+        // Attachment bytes reach the webview only through this scheme (ADR 0017).
+        .register_asynchronous_uri_scheme_protocol(
+            services::attachment_protocol::SCHEME,
+            |ctx, request, responder| {
+                let app = ctx.app_handle().clone();
+                tauri::async_runtime::spawn_blocking(move || {
+                    let origin = request
+                        .headers()
+                        .get("Origin")
+                        .and_then(|v| v.to_str().ok())
+                        .map(str::to_owned);
+                    let response = match app.path().app_data_dir() {
+                        Ok(data_dir) => services::attachment_protocol::respond(
+                            &app.state::<Database>(),
+                            &data_dir,
+                            request.method().as_str(),
+                            request.uri().path(),
+                            origin.as_deref(),
+                        ),
+                        Err(e) => services::attachment_protocol::response_for(
+                            Err(error::AppError::Internal(e.to_string())),
+                            origin.as_deref(),
+                        ),
+                    };
+                    responder.respond(response);
+                });
+            },
+        )
         .invoke_handler(tauri::generate_handler![
+            // Attachments (services::attachments)
+            commands::attachments::export_attachment,
+            commands::attachments::export_photo_batch,
             // Onboarding (services::onboarding)
             commands::onboarding::get_onboarding_progress,
             commands::onboarding::set_onboarding_flag,

@@ -85,6 +85,7 @@ fn all_migrations() -> Vec<(&'static str, &'static str)> {
         ("018_insurance_notice_days", MIGRATION_018),
         ("019_loan_manual_records", MIGRATION_019),
         ("020_bond_purchase_date", MIGRATION_020),
+        ("021_encrypted_attachments", MIGRATION_021),
     ]
 }
 
@@ -2738,6 +2739,80 @@ pub(crate) const MIGRATION_020: &str = r#"
 ALTER TABLE bonds ADD COLUMN purchase_date INTEGER;
 "#;
 
+/// Attachment content moves into the encrypted store `attachments.db` (ADR 0017). The three
+/// attachment tables are rebuilt so a row can reference a blob instead of a plain file:
+/// `file_path` (and a photo's `thumbnail_path`) become nullable and stay set only on rows whose
+/// content has not been converted yet. `attachment_leftovers` remembers plain originals the
+/// conversion found outside the data folder and does not delete.
+pub(crate) const MIGRATION_021: &str = r#"
+CREATE TABLE insurance_documents_new (
+    id TEXT PRIMARY KEY,
+    insurance_id TEXT NOT NULL REFERENCES insurance_policies(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    description TEXT,
+    file_path TEXT,
+    blob_id TEXT,
+    mime_type TEXT,
+    original_name TEXT,
+    file_type TEXT NOT NULL DEFAULT 'other',
+    file_size INTEGER,
+    uploaded_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    CHECK (file_path IS NOT NULL OR blob_id IS NOT NULL)
+);
+INSERT INTO insurance_documents_new
+    (id, insurance_id, name, description, file_path, file_type, file_size, uploaded_at)
+SELECT id, insurance_id, name, description, file_path, file_type, file_size, uploaded_at
+FROM insurance_documents;
+DROP TABLE insurance_documents;
+ALTER TABLE insurance_documents_new RENAME TO insurance_documents;
+CREATE INDEX idx_insurance_documents ON insurance_documents(insurance_id);
+
+CREATE TABLE real_estate_documents_new (
+    id TEXT PRIMARY KEY,
+    real_estate_id TEXT NOT NULL REFERENCES real_estate(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    description TEXT,
+    file_path TEXT,
+    blob_id TEXT,
+    mime_type TEXT,
+    original_name TEXT,
+    file_type TEXT NOT NULL DEFAULT 'other',
+    file_size INTEGER,
+    uploaded_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    CHECK (file_path IS NOT NULL OR blob_id IS NOT NULL)
+);
+INSERT INTO real_estate_documents_new
+    (id, real_estate_id, name, description, file_path, file_type, file_size, uploaded_at)
+SELECT id, real_estate_id, name, description, file_path, file_type, file_size, uploaded_at
+FROM real_estate_documents;
+DROP TABLE real_estate_documents;
+ALTER TABLE real_estate_documents_new RENAME TO real_estate_documents;
+CREATE INDEX idx_real_estate_documents ON real_estate_documents(real_estate_id);
+
+CREATE TABLE real_estate_photos_new (
+    id TEXT PRIMARY KEY,
+    batch_id TEXT NOT NULL REFERENCES real_estate_photo_batches(id) ON DELETE CASCADE,
+    file_path TEXT,
+    thumbnail_path TEXT,
+    blob_id TEXT,
+    thumb_blob_id TEXT,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    CHECK ((file_path IS NOT NULL AND thumbnail_path IS NOT NULL)
+        OR (blob_id IS NOT NULL AND thumb_blob_id IS NOT NULL))
+);
+INSERT INTO real_estate_photos_new (id, batch_id, file_path, thumbnail_path, created_at)
+SELECT id, batch_id, file_path, thumbnail_path, created_at FROM real_estate_photos;
+DROP TABLE real_estate_photos;
+ALTER TABLE real_estate_photos_new RENAME TO real_estate_photos;
+CREATE INDEX idx_photos_batch ON real_estate_photos(batch_id);
+
+CREATE TABLE attachment_leftovers (
+    id TEXT PRIMARY KEY,
+    path TEXT NOT NULL UNIQUE,
+    found_at INTEGER NOT NULL DEFAULT (unixepoch())
+);
+"#;
+
 #[cfg(test)]
 mod migration_012 {
     use super::*;
@@ -3553,5 +3628,174 @@ mod migration_020 {
             .query_row("SELECT purchase_date FROM bonds", [], |r| r.get(0))
             .expect("column");
         assert_eq!(stored, Some(1_767_225_600));
+    }
+}
+
+#[cfg(test)]
+mod migration_021 {
+    use super::*;
+
+    fn database_before_021() -> Connection {
+        let conn = Connection::open_in_memory().expect("in-memory db");
+        conn.execute_batch("PRAGMA foreign_keys = ON;")
+            .expect("foreign keys");
+        let earlier: Vec<(&str, &str)> = all_migrations()
+            .into_iter()
+            .filter(|(name, _)| *name < "021_encrypted_attachments")
+            .collect();
+        run_chain(&conn, &earlier).expect("earlier migrations");
+        conn.execute_batch(
+            r#"
+            INSERT INTO insurance_policies (id, type, provider, policy_name, policy_number, start_date, payment_frequency)
+                VALUES ('pol', 'life', 'Insurer', 'Policy', 'P-1', 1700000000, 'monthly');
+            INSERT INTO insurance_documents (id, insurance_id, name, description, file_path, file_type, file_size, uploaded_at)
+                VALUES ('idoc', 'pol', 'Smlouva', 'popis', '/data/insurance_documents/pol/x.pdf', 'contract', 1234, 1700000001);
+            INSERT INTO real_estate (id, name, address, type, purchase_price, market_price)
+                VALUES ('re', 'Byt', 'Adresa', 'personal', '100', '100');
+            INSERT INTO real_estate_documents (id, real_estate_id, name, file_path, file_type, uploaded_at)
+                VALUES ('rdoc', 're', 'List', '/data/real_estate_documents/re/y.pdf', 'deed', 1700000002);
+            INSERT INTO real_estate_photo_batches (id, real_estate_id, photo_date)
+                VALUES ('batch', 're', 1700000000);
+            INSERT INTO real_estate_photos (id, batch_id, file_path, thumbnail_path, created_at)
+                VALUES ('photo', 'batch', 'real_estate_photos/re/batch/p.jpg', 'real_estate_photos/re/batch/p_thumb.jpg', 1700000003);
+            "#,
+        )
+        .expect("legacy rows");
+        conn
+    }
+
+    #[test]
+    fn legacy_rows_survive_with_their_values_and_no_blob() {
+        let conn = database_before_021();
+        run_migrations(&conn).expect("migrate");
+
+        let doc: (
+            String,
+            Option<String>,
+            Option<String>,
+            String,
+            Option<i64>,
+            i64,
+        ) = conn
+            .query_row(
+                "SELECT name, file_path, blob_id, file_type, file_size, uploaded_at
+                 FROM insurance_documents WHERE id = 'idoc'",
+                [],
+                |r| {
+                    Ok((
+                        r.get(0)?,
+                        r.get(1)?,
+                        r.get(2)?,
+                        r.get(3)?,
+                        r.get(4)?,
+                        r.get(5)?,
+                    ))
+                },
+            )
+            .expect("insurance document");
+        assert_eq!(
+            doc,
+            (
+                "Smlouva".into(),
+                Some("/data/insurance_documents/pol/x.pdf".into()),
+                None,
+                "contract".into(),
+                Some(1234),
+                1_700_000_001
+            )
+        );
+        let re_doc: (Option<String>, Option<String>) = conn
+            .query_row(
+                "SELECT file_path, mime_type FROM real_estate_documents WHERE id = 'rdoc'",
+                [],
+                |r| Ok((r.get(0)?, r.get(1)?)),
+            )
+            .expect("real estate document");
+        assert_eq!(
+            re_doc,
+            (Some("/data/real_estate_documents/re/y.pdf".into()), None)
+        );
+        let photo: (Option<String>, Option<String>, Option<String>) = conn
+            .query_row(
+                "SELECT file_path, thumbnail_path, blob_id FROM real_estate_photos WHERE id = 'photo'",
+                [],
+                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+            )
+            .expect("photo");
+        assert_eq!(
+            photo,
+            (
+                Some("real_estate_photos/re/batch/p.jpg".into()),
+                Some("real_estate_photos/re/batch/p_thumb.jpg".into()),
+                None
+            )
+        );
+    }
+
+    #[test]
+    fn a_row_needs_a_file_or_a_blob() {
+        let conn = database_before_021();
+        run_migrations(&conn).expect("migrate");
+        assert!(conn
+            .execute(
+                "INSERT INTO insurance_documents (id, insurance_id, name) VALUES ('none', 'pol', 'x')",
+                [],
+            )
+            .is_err());
+        conn.execute(
+            "INSERT INTO insurance_documents (id, insurance_id, name, blob_id, mime_type)
+             VALUES ('enc', 'pol', 'x', 'blob-1', 'application/pdf')",
+            [],
+        )
+        .expect("a document with a blob");
+        assert!(conn
+            .execute(
+                "INSERT INTO real_estate_photos (id, batch_id, blob_id) VALUES ('half', 'batch', 'b')",
+                [],
+            )
+            .is_err());
+        conn.execute(
+            "INSERT INTO real_estate_photos (id, batch_id, blob_id, thumb_blob_id)
+             VALUES ('enc', 'batch', 'b', 't')",
+            [],
+        )
+        .expect("a photo with both blobs");
+    }
+
+    #[test]
+    fn deleting_the_owner_still_cascades_to_the_rebuilt_tables() {
+        let conn = database_before_021();
+        run_migrations(&conn).expect("migrate");
+        conn.execute("DELETE FROM real_estate WHERE id = 're'", [])
+            .expect("delete property");
+        conn.execute("DELETE FROM insurance_policies WHERE id = 'pol'", [])
+            .expect("delete policy");
+        for table in [
+            "insurance_documents",
+            "real_estate_documents",
+            "real_estate_photos",
+        ] {
+            let n: i64 = conn
+                .query_row(&format!("SELECT count(*) FROM {table}"), [], |r| r.get(0))
+                .expect("count");
+            assert_eq!(n, 0, "{table} rows cascade with their owner");
+        }
+    }
+
+    #[test]
+    fn leftover_paths_are_unique() {
+        let conn = database_before_021();
+        run_migrations(&conn).expect("migrate");
+        conn.execute(
+            "INSERT INTO attachment_leftovers (id, path) VALUES ('a', '/old/x.pdf')",
+            [],
+        )
+        .expect("leftover");
+        assert!(conn
+            .execute(
+                "INSERT INTO attachment_leftovers (id, path) VALUES ('b', '/old/x.pdf')",
+                [],
+            )
+            .is_err());
     }
 }

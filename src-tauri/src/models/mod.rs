@@ -4,6 +4,7 @@
 
 #![allow(dead_code)]
 
+pub mod attachments;
 pub mod backup;
 pub mod bank_accounts;
 pub mod bank_transactions;
@@ -36,6 +37,7 @@ pub mod validation;
 pub mod valuations;
 
 // Re-export commonly used types
+pub use attachments::*;
 pub use backup::*;
 pub use bank_accounts::*;
 pub use bank_transactions::*;

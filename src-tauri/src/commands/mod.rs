@@ -2,6 +2,7 @@
 //!
 //! All commands are registered in lib.rs and called via invoke() from frontend
 
+pub mod attachments;
 pub mod auth;
 pub mod backup;
 pub mod bank_accounts;

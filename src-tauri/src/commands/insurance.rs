@@ -137,17 +137,27 @@ pub async fn get_insurance_documents(
 ) -> Result<Vec<InsuranceDocument>> {
     db.with_conn(|conn| {
         let mut stmt = conn.prepare(
-            "SELECT id, insurance_id, name, description, file_path, file_type, file_size, uploaded_at
+            "SELECT id, insurance_id, name, description, file_path, file_type, file_size, uploaded_at,
+                    mime_type, original_name
              FROM insurance_documents WHERE insurance_id = ?1 ORDER BY uploaded_at DESC"
         )?;
 
         let documents = stmt.query_map([&insurance_id], |row| {
+            let file_path: Option<String> = row.get(4)?;
+            let mime_type: Option<String> = row.get(8)?;
+            let original_name: Option<String> = row.get(9)?;
+            let (mime_type, extension) = crate::services::attachments::document_meta(
+                file_path.as_deref(),
+                mime_type.as_deref(),
+                original_name.as_deref(),
+            );
             Ok(InsuranceDocument {
                 id: row.get(0)?,
                 insurance_id: row.get(1)?,
                 name: row.get(2)?,
                 description: row.get(3)?,
-                file_path: row.get(4)?,
+                mime_type,
+                extension,
                 file_type: row.get(5)?,
                 file_size: row.get(6)?,
                 uploaded_at: row.get(7)?,
@@ -208,12 +218,15 @@ pub async fn add_insurance_document(
             rusqlite::params![id, insurance_id, data.name, data.description, dest_path_str, file_type, file_size, now],
         )?;
 
+        let (mime_type, extension) =
+            crate::services::attachments::document_meta(Some(&dest_path_str), None, None);
         Ok(InsuranceDocument {
             id,
             insurance_id,
             name: data.name,
             description: data.description,
-            file_path: dest_path_str,
+            mime_type,
+            extension,
             file_type,
             file_size,
             uploaded_at: now,

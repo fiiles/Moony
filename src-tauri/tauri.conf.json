@@ -20,13 +20,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: asset:; connect-src 'self'",
-      "assetProtocol": {
-        "enable": true,
-        "scope": [
-          "$APPDATA/real_estate_photos/**"
-        ]
-      }
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: moony-file: http://moony-file.localhost; connect-src 'self' ipc: http://ipc.localhost moony-file: http://moony-file.localhost"
     }
   },
   "bundle": {

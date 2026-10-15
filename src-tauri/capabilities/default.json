@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Capability for the main window. The webview gets no blanket access to the app data dir: the database and key files are denied explicitly; it may copy photos out of real_estate_photos and write text to paths the user picks in a native dialog (the dialog plugin adds those to the scope at runtime). Nothing is written to $TEMP: photos reach the backend as raw IPC bytes.",
+  "description": "Capability for the main window. The webview gets no file access to the app data dir: attachments reach it only through the moony-file scheme, and the database, the attachments store, the key files and restore copies are denied for every fs command. It may write text to paths the user picks in a native dialog (the dialog plugin adds those to the scope at runtime). Nothing is written to $TEMP: photos reach the backend as raw IPC bytes.",
   "windows": ["main"],
   "permissions": [
     "core:default",
@@ -11,37 +11,20 @@
     "fs:deny-default",
     "fs:allow-write-text-file",
     {
-      "identifier": "fs:allow-copy-file",
-      "allow": [
-        {
-          "path": "$APPDATA/real_estate_photos"
-        },
-        {
-          "path": "$APPDATA/real_estate_photos/**"
-        }
-      ],
+      "identifier": "fs:scope",
       "deny": [
-        {
-          "path": "$APPDATA/moony.db"
-        },
-        {
-          "path": "$APPDATA/moony.db-*"
-        },
-        {
-          "path": "$APPDATA/moony.db.bak-*"
-        },
-        {
-          "path": "$APPDATA/salt"
-        },
-        {
-          "path": "$APPDATA/*.enc"
-        },
-        {
-          "path": "$APPDATA/pre-restore-*"
-        },
-        {
-          "path": "$APPDATA/pre-restore-*/**"
-        }
+        { "path": "$APPDATA/moony.db" },
+        { "path": "$APPDATA/moony.db-*" },
+        { "path": "$APPDATA/moony.db.bak-*" },
+        { "path": "$APPDATA/attachments.db" },
+        { "path": "$APPDATA/attachments.db-*" },
+        { "path": "$APPDATA/attachments.db.bak-*" },
+        { "path": "$APPDATA/attachments-converted" },
+        { "path": "$APPDATA/attachments-converted/**" },
+        { "path": "$APPDATA/salt" },
+        { "path": "$APPDATA/*.enc" },
+        { "path": "$APPDATA/pre-restore-*" },
+        { "path": "$APPDATA/pre-restore-*/**" }
       ]
     },
     "updater:default",

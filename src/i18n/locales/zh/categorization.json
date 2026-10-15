@@ -141,9 +141,9 @@
   "status": "{{days}} 天内 {{percent}} 的交易已自动分类",
   "flow": {
     "label": "评估顺序：",
-    "custom": "1 · 按优先级的自定义规则",
-    "learned": "2 · 从您的修正中学习",
-    "ownAccounts": "3 · 您自己账户之间的转账",
+    "custom": "2 · 按优先级的自定义规则",
+    "learned": "3 · 从您的修正中学习",
+    "ownAccounts": "1 · 您自己账户之间的转账",
     "pack": "4 · 规则包 {{country}}",
     "packs": "4 · 规则包 {{countries}}",
     "none": "→ 无类别"

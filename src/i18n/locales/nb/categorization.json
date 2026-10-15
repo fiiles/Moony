@@ -143,9 +143,9 @@
   "status": "{{percent}} av transaksjonene kategorisert automatisk de siste {{days}} dagene",
   "flow": {
     "label": "Rekkefølge:",
-    "custom": "1 · dine regler etter prioritet",
-    "learned": "2 · lært fra rettelsene dine",
-    "ownAccounts": "3 · overføringer mellom egne kontoer",
+    "custom": "2 · dine regler etter prioritet",
+    "learned": "3 · lært fra rettelsene dine",
+    "ownAccounts": "1 · overføringer mellom egne kontoer",
     "pack": "4 · pakke {{country}}",
     "packs": "4 · pakker {{countries}}",
     "none": "→ ingen kategori"

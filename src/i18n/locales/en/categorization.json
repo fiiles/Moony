@@ -143,9 +143,9 @@
   "status": "{{percent}} of transactions categorized automatically over {{days}} days",
   "flow": {
     "label": "Evaluation order:",
-    "custom": "1 · your rules by priority",
-    "learned": "2 · learned from your corrections",
-    "ownAccounts": "3 · transfers between your own accounts",
+    "custom": "2 · your rules by priority",
+    "learned": "3 · learned from your corrections",
+    "ownAccounts": "1 · transfers between your own accounts",
     "pack": "4 · pack {{country}}",
     "packs": "4 · packs {{countries}}",
     "none": "→ no category"

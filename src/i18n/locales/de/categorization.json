@@ -143,9 +143,9 @@
   "status": "{{percent}} der Transaktionen in {{days}} Tagen automatisch kategorisiert",
   "flow": {
     "label": "Auswertungsreihenfolge:",
-    "custom": "1 · Ihre Regeln nach Priorität",
-    "learned": "2 · aus Ihren Korrekturen gelernt",
-    "ownAccounts": "3 · Umbuchungen zwischen Ihren eigenen Konten",
+    "custom": "2 · Ihre Regeln nach Priorität",
+    "learned": "3 · aus Ihren Korrekturen gelernt",
+    "ownAccounts": "1 · Umbuchungen zwischen Ihren eigenen Konten",
     "pack": "4 · Paket {{country}}",
     "packs": "4 · Pakete {{countries}}",
     "none": "→ keine Kategorie"

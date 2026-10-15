@@ -143,9 +143,9 @@
   "status": "{{percent}} av transaktionerna kategoriserades automatiskt under {{days}} dagar",
   "flow": {
     "label": "Utvärderingsordning:",
-    "custom": "1 · dina regler efter prioritet",
-    "learned": "2 · inlärt från dina korrigeringar",
-    "ownAccounts": "3 · överföringar mellan dina egna konton",
+    "custom": "2 · dina regler efter prioritet",
+    "learned": "3 · inlärt från dina korrigeringar",
+    "ownAccounts": "1 · överföringar mellan dina egna konton",
     "pack": "4 · paket {{country}}",
     "packs": "4 · paket {{countries}}",
     "none": "→ ingen kategori"

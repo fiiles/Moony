@@ -145,9 +145,9 @@
   "status": "Automaticky zařazeno {{percent}} transakcí za {{days}} dní",
   "flow": {
     "label": "Pořadí vyhodnocení:",
-    "custom": "1 · vlastní podle priority",
-    "learned": "2 · naučená z vašich oprav",
-    "ownAccounts": "3 · převody mezi vlastními účty",
+    "custom": "2 · vlastní podle priority",
+    "learned": "3 · naučená z vašich oprav",
+    "ownAccounts": "1 · převody mezi vlastními účty",
     "pack": "4 · balíček {{country}}",
     "packs": "4 · balíčky {{countries}}",
     "none": "→ bez kategorie"

@@ -141,9 +141,9 @@
   "status": "{{days}}日間で取引の{{percent}}を自動分類",
   "flow": {
     "label": "評価の順序：",
-    "custom": "1 · 優先度順のカスタムルール",
-    "learned": "2 · 修正から学習したルール",
-    "ownAccounts": "3 · 自分の口座間の振替",
+    "custom": "2 · 優先度順のカスタムルール",
+    "learned": "3 · 修正から学習したルール",
+    "ownAccounts": "1 · 自分の口座間の振替",
     "pack": "4 · パック {{country}}",
     "packs": "4 · パック {{countries}}",
     "none": "→ カテゴリなし"

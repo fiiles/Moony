@@ -145,9 +145,9 @@
   "status": "{{percent}} dei movimenti categorizzato automaticamente in {{days}} giorni",
   "flow": {
     "label": "Ordine di valutazione:",
-    "custom": "1 · le tue regole per priorità",
-    "learned": "2 · apprese dalle tue correzioni",
-    "ownAccounts": "3 · giroconti tra i tuoi conti",
+    "custom": "2 · le tue regole per priorità",
+    "learned": "3 · apprese dalle tue correzioni",
+    "ownAccounts": "1 · giroconti tra i tuoi conti",
     "pack": "4 · pacchetto {{country}}",
     "packs": "4 · pacchetti {{countries}}",
     "none": "→ nessuna categoria"

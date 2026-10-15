@@ -211,9 +211,8 @@ export default function CategorizationRules() {
     pack.packId === 'global' ? t('packTab.globalName') : countryOf(pack);
   const packLabel = (pack: { packId: string; country: string }) =>
     pack.packId === 'global' ? t('tabs.packGlobal') : t('tabs.pack', { country: countryOf(pack) });
-  // The flow names the country packs; with only the global pack enabled it names that one.
-  const countryPacks = enabledPacks.filter((p) => p.packId !== 'global');
-  const flowPackNames = (countryPacks.length > 0 ? countryPacks : enabledPacks).map(packName);
+  // The flow names every enabled pack: they are one layer, ordered by rule priority.
+  const flowPackNames = enabledPacks.map(packName);
   const activePackName = activePack ? packName(activePack) : '';
 
   useShellPage({
@@ -492,15 +491,15 @@ export default function CategorizationRules() {
 
       <div className="-mt-2 mb-6 flex flex-wrap items-center gap-2 text-caption text-ink-3">
         <span>{t('flow.label')}</span>
+        <Badge variant="outline" className="h-6 text-caption">
+          {t('flow.ownAccounts')}
+        </Badge>
+        <span className="text-ink-5">→</span>
         <Badge variant="dark" className="h-6 text-caption">
           {t('flow.custom')}
         </Badge>
         <span className="text-ink-5">→</span>
         <Badge className="h-6 text-caption">{t('flow.learned')}</Badge>
-        <span className="text-ink-5">→</span>
-        <Badge variant="outline" className="h-6 text-caption">
-          {t('flow.ownAccounts')}
-        </Badge>
         <span className="text-ink-5">→</span>
         <Badge variant="outline" className="h-6 text-caption">
           {flowPackNames.length === 1

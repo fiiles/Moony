@@ -147,9 +147,9 @@
   "status": "{{percent}} transakcji zakategoryzowano automatycznie w ciągu {{days}} dni",
   "flow": {
     "label": "Kolejność oceny:",
-    "custom": "1 · twoje reguły wg priorytetu",
-    "learned": "2 · wyuczone z twoich poprawek",
-    "ownAccounts": "3 · przelewy między twoimi kontami",
+    "custom": "2 · twoje reguły wg priorytetu",
+    "learned": "3 · wyuczone z twoich poprawek",
+    "ownAccounts": "1 · przelewy między twoimi kontami",
     "pack": "4 · pakiet {{country}}",
     "packs": "4 · pakiety {{countries}}",
     "none": "→ bez kategorii"

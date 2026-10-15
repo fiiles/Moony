@@ -145,9 +145,9 @@
   "status": "{{percent}} de los movimientos categorizados automáticamente en {{days}} días",
   "flow": {
     "label": "Orden de evaluación:",
-    "custom": "1 · tus reglas por prioridad",
-    "learned": "2 · aprendidas de tus correcciones",
-    "ownAccounts": "3 · traspasos entre tus cuentas",
+    "custom": "2 · tus reglas por prioridad",
+    "learned": "3 · aprendidas de tus correcciones",
+    "ownAccounts": "1 · traspasos entre tus cuentas",
     "pack": "4 · paquete {{country}}",
     "packs": "4 · paquetes {{countries}}",
     "none": "→ sin categoría"

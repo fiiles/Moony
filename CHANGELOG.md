@@ -6,11 +6,35 @@ All notable changes to Moony are documented in this file. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **Encrypted attachments.** Photos and documents you attach are stored in a second encrypted
+  database, `attachments.db`, under the same key as your records; nothing readable is written to
+  the data folder any more. Images and PDFs open in an in-app viewer. Any other type opens in its
+  own app through a temporary copy that Moony deletes when you lock or quit it, after a one-time
+  warning. "Save a copy…" writes a readable file where you choose.
+- On the first unlock after the update, attachments from earlier versions move into the
+  encrypted store in the background. The originals are deleted at the next unlock, once the
+  encrypted copies check out. Originals outside the data folder (from before an identifier
+  change) are never deleted: Settings → Data and backups lists them so you can remove them
+  yourself, and shows how many attachments are stored encrypted.
+
 ### Changed
 
+- **Backups are fully encrypted.** A backup holds encrypted snapshots of both databases and the
+  key files; backups of earlier versions still restore. An older Moony cannot restore a backup
+  made by this version.
+- Losing both the password and the recovery key now also means losing your attached photos and
+  documents. The recovery-key screen says so.
+- After the update, going back to an earlier version shows the converted attachments as missing.
+- Delete Account also removes the pre-migration copies of the databases.
 - **A shorter update dialog.** It names the new and the current version, says what the update
   does (download, restart, unlock again) and links "What's new" to the release page, which now
   starts with that version's changelog. The raw release text with download instructions is gone.
+
+### Fixed
+
+- Deleting a property or an insurance policy left its photos and documents on disk.
 
 ## [0.12.2] - 2026-10-14
 

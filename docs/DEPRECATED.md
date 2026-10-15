@@ -121,6 +121,22 @@ past days with today's holdings, and ran synchronously with their errors swallow
 | `backfill_missing_snapshots`, `breakdowns_for_backfill_day`, `backfill::{plan_backfill, value_positions_on_day, BACKFILL_MAX_DAYS_PER_RUN, PRICE_LEAD_IN_DAYS}` | Filled gaps after the oldest row only (never extended history backwards) and valued past days with today's holdings | `history_plan::plan_startup` (the one-time rebuild at version 1, then the repair of missing days) |
 | `mcp_refresh::earliest_other_asset_date` | Fallback that rebuilt from the first other-asset transaction when a write gave no date | Every MCP write tool emits its domain and earliest day (`bank-accounts`, `real-estate`, `loans`, `bonds`, `other-assets`, …) |
 
+## Removed with encrypted attachments (do not re-add)
+
+Attachment content moved into the encrypted store `attachments.db` (ADR 0017,
+`docs/specs/2026-10-15-encrypted-attachments-design.md`).
+
+| Removed | Why it was removed | Use instead |
+|---|---|---|
+| The `asset:` protocol (`assetProtocol` in `tauri.conf.json`, the `protocol-asset` feature) and `convertFileSrc(path, 'asset')` for photos | The webview read plain attachment files from disk | `attachmentUrl(route, id)` (`src/utils/attachment-url.ts`) over the `moony-file` scheme |
+| `fs:allow-copy-file` on `$APPDATA/real_estate_photos` and `copyFile`/`appDataDir` in the photo gallery | Downloads copied plain files out of the data folder from the webview | `attachmentsApi.export` / `exportPhotoBatch` (the backend writes a decrypted copy where the user chose) |
+| `RealEstatePhoto.filePath` / `thumbnailPath`, `*Document.filePath` on the wire | Storage paths reached the webview | Row ids; documents carry `mimeType` and `extension` |
+| Writing new attachments as files (`store_photo`, `fs::copy` into `insurance_documents/`, `real_estate_documents/`) | Plain files on disk | `real_estate_photos::{prepare_photo, record_photo}`, `attachments::add_*_document` |
+| Opening a document from its stored path (`resolve_document_path` + `open_with_system` in the open commands) | Handed the plain file itself to another app | `attachments::open_elsewhere` (a wiped temporary copy) or the in-app viewer |
+
+`file_path` / `thumbnail_path` columns and `document_files::resolve_document_path` remain only
+for legacy rows that the conversion has not reached yet; never write new paths into them.
+
 ## Deprecated type sources
 
 | Path | Why deprecated | Use instead |

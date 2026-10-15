@@ -47,8 +47,11 @@ by name or handle unless you prefer to stay anonymous.
 In scope — anything that lets an attacker who does **not** know the user's password or
 recovery key get at, or tamper with, Moony data, or run code through Moony:
 
-- **Local encryption**: the SQLCipher database, key derivation and wrapping, the key files
-  (`salt`, `key.enc`, `recovery.enc`), recovery-key handling, how keys are held in memory.
+- **Local encryption**: the SQLCipher databases (`moony.db` and the attachments store
+  `attachments.db`), key derivation and wrapping, the key files (`salt`, `key.enc`,
+  `recovery.enc`), recovery-key handling, how keys are held in memory, and any path by which
+  attachment content reaches the disk or the web view in readable form (the `moony-file` scheme,
+  temporary copies opened in another app, the conversion of 0.12-era plain files).
 - **The MCP / local API**: the HTTP server on `127.0.0.1`, its bearer-token authentication, and
   the write tools reachable through it.
 - **The updater**: update discovery, signature verification, the endpoint and the public key
@@ -64,9 +67,10 @@ Out of scope:
 - An attacker who already controls an **unlocked** Moony session, or the user's account or
   device (malware, a keylogger, someone using the computer while the app is unlocked).
   Lock the app, use full-disk encryption and a strong password.
-- **Attachments are stored unencrypted** (photos and documents in the data folder). This is
-  documented in [PRIVACY.md](./PRIVACY.md) and listed in the [roadmap](./ROADMAP.md), so it is
-  not a new finding.
+- The readable copies listed in [PRIVACY.md](./PRIVACY.md) under *What is not encrypted*
+  (copies you save or open in another app, exports, 0.12-era plain files until their
+  conversion, operating-system backups and snapshots). They are documented, so they are not
+  new findings.
 - Weak or reused passwords chosen by the user, and loss of both password and recovery key
   (there is deliberately no backdoor).
 - Releases being **unsigned** by Apple and Microsoft for now (see the install notes in

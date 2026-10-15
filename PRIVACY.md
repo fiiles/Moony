@@ -14,16 +14,19 @@ not match what the app does, please open a GitHub issue — that is a bug.
 Everything you enter or import — bank accounts and transactions, investments, crypto, bonds,
 loans, insurance, real estate, budgets, categories and rules, your profile, settings and the
 access token of the optional MCP server — is stored in one SQLite database encrypted with
-**SQLCipher (AES-256)**. A few device-level settings and your first name are kept outside it;
-see the next section.
+**SQLCipher (AES-256)**. The photos and documents you attach are stored in a second SQLCipher
+database next to it, `attachments.db`, encrypted with the same key. A few device-level settings
+and your first name are kept outside them; see the next section.
 
 How the encryption key is handled:
 
-- A random 256-bit master key encrypts the database. The key is never stored in plain text.
+- A random 256-bit master key encrypts both databases. The key is never stored in plain text.
 - The master key is stored twice, wrapped by a key derived from **your password** (`key.enc`) and by a
   key derived from your **recovery key** (`recovery.enc`), both with scrypt and a shared
   `salt` file. Moony itself cannot read your data without one of the two.
-- While the app is unlocked the key lives in memory only. Locking the app closes the database.
+- While the app is unlocked the key lives in memory only. Locking the app closes the databases.
+- The app shows attachments only while it is unlocked; it reads them from `attachments.db` and
+  never writes them to disk in readable form, except in the cases listed in the next section.
 
 ## What is *not* encrypted
 
@@ -31,9 +34,10 @@ Be aware of these, because the "encrypted database" claim does not cover them:
 
 | What | Where | Notes |
 | --- | --- | --- |
-| Photos and documents you attach (real-estate photos and documents, insurance documents) | `real_estate_photos/`, `real_estate_documents/`, `insurance_documents/` in the data folder | Stored as ordinary files. Encrypting attachments is listed in the [roadmap](./ROADMAP.md). Anyone who can read your user profile can open them. |
-| Backups you create | The `.zip` you choose in Settings → Data and backups | The database inside is still encrypted and the key files need your password or recovery key, but **the attachments inside the archive are plain files**. |
-| "Export all data (JSON)" | The file you choose | A plain-text JSON dump of your data (API keys and the MCP token are left out). Handle it like a bank statement. |
+| A document you open in another app | A private folder in the app's cache folder (`open/`) | Images and PDFs open inside Moony. Any other type (a spreadsheet, a Word file…) needs its own app, so Moony writes a temporary readable copy there (readable by your user only) and asks you first. Moony deletes the copies when you lock or quit it and at the next start. Whatever the other app keeps on its own (recent files, previews, autosaves) is beyond Moony's reach. |
+| Copies you save | Where you choose ("Save a copy…", "Download" in the photo gallery) | A readable copy, like any export. |
+| "Export all data (JSON)" | The file you choose | A plain-text JSON dump of your data (API keys and the MCP token are left out). Attachments are not part of it. Handle it like a bank statement. |
+| Attachments from 0.12 or earlier, briefly | `real_estate_photos/`, `real_estate_documents/`, `insurance_documents/` and then `attachments-converted/` in the data folder | Earlier versions kept attachments as plain files. The first unlock of a newer version moves them into `attachments.db` in the background; the originals wait in `attachments-converted/` until the next unlock checks the encrypted copies and deletes them. Copies the operating system kept (Time Machine, file-system snapshots) are not affected. Originals that sit outside the data folder (from before an identifier change) are encrypted but never deleted: Settings → Data and backups lists them so you can delete them yourself. |
 | Device settings | The operating system's WebView profile (`localStorage`) | The interface language, auto-lock minutes, the update-check switch, which sidebar groups are open, dismissed tips, the period, split and custom date range chosen in the stocks analysis, which cashflow-planning rows are expanded, the time the app was last locked, and your **first name** (it is shown in the greeting on the lock screen, which is displayed before the database is unlocked). No balances, amounts or account data. Delete Account clears them. |
 | Application logs | The log folder (account menu at the bottom of the sidebar → About → Open logs) | Meant for troubleshooting. They can contain technical details such as ticker symbols and file paths. Read them before attaching them to a public bug report. |
 
@@ -107,9 +111,10 @@ Inside it:
 | Entry | What it is |
 | --- | --- |
 | `moony.db` | The encrypted database |
+| `attachments.db` | Your photos and documents, encrypted with the same key |
 | `salt`, `key.enc`, `recovery.enc` | Key material. Useless without your password or recovery key — and your data is unreadable without them |
-| `real_estate_photos/`, `real_estate_documents/`, `insurance_documents/` | Your attachments (**not encrypted**) |
-| `moony.db.bak-<timestamp>` | A copy of the database that Moony makes just before applying a database migration after an update (a few of the newest copies are kept) |
+| `real_estate_photos/`, `real_estate_documents/`, `insurance_documents/`, `attachments-converted/` | Only after an update from 0.12 or earlier, until the conversion described above is done (**not encrypted**) |
+| `moony.db.bak-<timestamp>`, `attachments.db.bak-<timestamp>` | Copies of a database that Moony makes just before applying a database migration after an update (a few of the newest copies are kept). Encrypted like the databases |
 | `pre-restore-<timestamp>/` | The data you had before a restore from backup, kept so a restore can never destroy anything |
 
 **Settings → Data and backups** shows the exact path on your machine and has an "Open folder"
@@ -135,8 +140,9 @@ unchanged.
 You are the only holder of your data, so you are responsible for keeping copies:
 
 - **Back up regularly** with *Settings → Data and backups → Back up now*. The archive contains
-  the encrypted database, the key files and your attachments, and can be restored on another
-  computer with *Restore from backup*. Store it somewhere safe (an external drive, your own
+  the encrypted database, the encrypted attachments and the key files, and can be restored on
+  another computer with *Restore from backup*. (Attachments of 0.12 or earlier that are not
+  converted yet are included as the plain files they still are.) Store it somewhere safe (an external drive, your own
   cloud storage). Restoring never deletes your current data; it is moved to a `pre-restore-…`
   folder first.
 - **Save your recovery key** when it is shown (the first-run wizard asks you to verify it). It
@@ -145,7 +151,7 @@ You are the only holder of your data, so you are responsible for keeping copies:
   together with the key files** (`salt`, `recovery.enc`) in the data folder, so a backup of the
   whole folder or a Moony backup archive is part of the recovery plan.
 - **There is no backdoor.** If you lose both your password and your recovery key, nobody —
-  including the author — can decrypt your database.
+  including the author — can decrypt your database **or your attached photos and documents**.
 - **Leave the identifier alone** if you build Moony yourself: the data folder is derived from it,
   and changing it makes the app look for your data somewhere else.
 
@@ -154,26 +160,24 @@ You are the only holder of your data, so you are responsible for keeping copies:
 *Settings → Account → Delete data…* (the Delete Account action; you must type `DELETE`) removes
 from the data folder:
 
-- `moony.db`, `salt`, `key.enc` and `recovery.enc`;
-- the three attachment folders `real_estate_photos/`, `real_estate_documents/` and
-  `insurance_documents/`.
+- `moony.db` and `attachments.db` with their side files and their pre-migration copies
+  (`*.bak-<timestamp>`);
+- `salt`, `key.enc` and `recovery.enc`;
+- the folders of 0.12-era plain attachments (`real_estate_photos/`, `real_estate_documents/`,
+  `insurance_documents/`) and `attachments-converted/`, if they are still there;
+- the temporary copies of documents opened in another app.
 
 It also clears the device settings described above. It **does not remove** these, which stay in
 the data folder:
 
-- `moony.db.bak-<timestamp>` (and, if present, matching `-wal`, `-shm` or `-journal` copies):
-  the copies of the database that Moony makes before applying a database migration, up to
-  three. They are encrypted like the database. Delete Account removes the key files, so these
-  copies cannot be opened from this folder alone any more, but they are still your old data on
-  disk.
 - `pre-restore-<timestamp>/`: created when you restore a backup. It holds the profile you had
-  before the restore: the database, the key files and your attachments, and **the attachments
-  in it are plain files**.
+  before the restore: the databases, the key files, and (if that profile came from 0.12 or
+  earlier and was not converted yet) attachments as **plain files**.
 
 Delete Account also does not touch backups or exports you created yourself, or the log folder
 (*About → Open logs*). To remove everything, open the data folder afterwards (the paths are in
-[Where your data lives](#where-your-data-lives)) and delete the `moony.db.bak-*` files and the
-`pre-restore-*` folders by hand, or the whole data folder. There is nothing to delete on any
+[Where your data lives](#where-your-data-lives)) and delete the `pre-restore-*` folders by hand,
+or the whole data folder. There is nothing to delete on any
 server because Moony has none.
 
 ## Questions and changes

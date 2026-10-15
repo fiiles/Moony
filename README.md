@@ -16,8 +16,8 @@ Beta (0.10, on the way to 1.0) · macOS · Windows · Linux · ten languages
 
 Moony tracks your bank accounts, stocks, crypto, bonds, real estate, loans and insurance in one
 net-worth view, in ten languages and 45 currencies. There is no account, no cloud and no sync:
-your records live in an AES-256 encrypted database on your computer (attachments and exports are
-plain files, see [Privacy and security](#privacy-and-security-at-a-glance)). The app contacts the
+your records, photos and documents live AES-256 encrypted on your computer (exports and copies
+you open in other apps are readable, see [Privacy and security](#privacy-and-security-at-a-glance)). The app contacts the
 internet only for market data and update checks, all listed in [PRIVACY.md](./PRIVACY.md).
 
 <p align="center"><img src="docs/screenshots/dashboard.png" alt="Overview page with the net worth and its history over time" width="800"></p>
@@ -151,33 +151,38 @@ public key; switch the check off in *Settings → Security → Updates*.
 
 The checkable version is **[PRIVACY.md](./PRIVACY.md)**; vulnerabilities go through **[SECURITY.md](./SECURITY.md)**.
 
-- **Local only.** An AES-256 encrypted SQLite database (SQLCipher) in your user profile. No
-  account, no cloud, no sync, and no telemetry: no analytics, no usage statistics, no crash reports.
+- **Local only.** AES-256 encrypted SQLite databases (SQLCipher) in your user profile: one for
+  your records, one for the photos and documents you attach. No account, no cloud, no sync, and no
+  telemetry: no analytics, no usage statistics, no crash reports.
 - **What leaves your computer.** Ticker symbols, ISINs, crypto IDs, search text, currencies and
   date ranges go to Yahoo Finance, CoinGecko and Frankfurter for prices and rates; the ECB's daily
   rates are downloaded, and the update check goes to GitHub. Balances, amounts, names and
   documents are not sent (an AI client you connect through MCP is the exception).
-- **Not encrypted.** Attached documents and photos are plain files in the data folder, so are
-  the attachments inside a backup ZIP, and the JSON export is plain text. Use full-disk encryption.
+- **Not encrypted.** The JSON export, copies you save, and the temporary copy of a document you
+  open in another app (Moony deletes it when you lock or quit). Images and PDFs open inside Moony.
+  Use full-disk encryption as well.
 - **Password and recovery key.** Your password and, as a fallback, a 24-character recovery key
-  protect the database key. There is no backdoor: without both, nobody can open your data.
+  protect the database key. There is no backdoor: without both, nobody can open your data,
+  attachments included.
 
 ## Data and backups
 
 Your data lives in one folder per user, named after the app identifier `com.moonyfinance.desktop`
 (`~/Library/Application Support/` on macOS, `%APPDATA%\` on Windows, `~/.local/share/` on Linux).
-It holds the database (`moony.db`), the key files (`salt`, `key.enc`, `recovery.enc`) and your
-attachments. **Settings → Data and backups** shows the exact path and offers:
+It holds the database (`moony.db`), the encrypted attachments (`attachments.db`) and the key files
+(`salt`, `key.enc`, `recovery.enc`). **Settings → Data and backups** shows the exact path, the state
+of your attachments, and offers:
 
-- **Back up now:** one ZIP with a consistent snapshot of the database, key files and attachments.
+- **Back up now:** one ZIP with consistent, still encrypted snapshots of both databases and the
+  key files.
 - **Restore from backup:** replaces your data; the current data is moved to a `pre-restore-…`
   folder first, never deleted. Unlock with the password that belongs to the backup.
 - **Export all data (JSON):** a plain-text dump of your records, without attachment files, API
   keys and the MCP token. **Verify database:** an integrity check.
 
 Moony never uploads your records or backups, so keep your own copies; the recovery key works
-only together with the key files. *Settings → Account → Delete data…* does not remove `moony.db.bak-*` and
-`pre-restore-*` entries, see [PRIVACY.md](./PRIVACY.md#deleting-your-data).
+only together with the key files. *Settings → Account → Delete data…* does not remove
+`pre-restore-*` folders, see [PRIVACY.md](./PRIVACY.md#deleting-your-data).
 
 ## AI assistant (MCP), optional
 

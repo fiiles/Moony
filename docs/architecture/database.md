@@ -145,6 +145,7 @@ Grouped by owning domain (see the domain map in `overview.md`).
 | Table | Purpose | Notable columns / constraints |
 |---|---|---|
 | `_migrations` | Tracks applied migrations by name | `name TEXT UNIQUE`, `applied_at`; created directly in `run_migrations()`, not in a migration const |
+| `attachment_leftovers` | Plain originals the attachment conversion found outside the data folder and does not delete | `path` UNIQUE; rows whose file is gone are dropped when the status is read (migration 021, `services/attachment_conversion.rs`) |
 
 ### Auth / profile
 
@@ -229,15 +230,15 @@ Grouped by owning domain (see the domain map in `overview.md`).
 | `real_estate_loans` | Property ↔ loan join | Composite PK `(real_estate_id, loan_id)`; both FKs ON DELETE CASCADE |
 | `real_estate_insurances` | Property ↔ insurance policy join | Composite PK `(real_estate_id, insurance_id)`; both FKs ON DELETE CASCADE |
 | `real_estate_photo_batches` | Photo uploads grouped by date + description | FK `real_estate_id` ON DELETE CASCADE; indexed |
-| `real_estate_photos` | Individual photos in a batch | FK `batch_id` ON DELETE CASCADE; `file_path` + `thumbnail_path` |
-| `real_estate_documents` | Documents (deeds, contracts) per property | FK `real_estate_id` ON DELETE CASCADE; `file_path`, `file_type`, `file_size` |
+| `real_estate_photos` | Individual photos in a batch | FK `batch_id` ON DELETE CASCADE; `blob_id` + `thumb_blob_id` reference the encrypted store (see "The attachments store"); `file_path` + `thumbnail_path` (data-dir-relative) only on rows from earlier versions not converted yet; CHECK: both blobs or both paths (migration 021) |
+| `real_estate_documents` | Documents (deeds, contracts) per property | FK `real_estate_id` ON DELETE CASCADE; `blob_id`, `mime_type`, `original_name`; `file_path` only on unconverted legacy rows; CHECK: a blob or a path (migration 021); `file_type` (the category), `file_size` |
 
 ### Insurance
 
 | Table | Purpose | Notable columns / constraints |
 |---|---|---|
 | `insurance_policies` | Insurance policies | `type`, `provider`, `payment_frequency` (canonical `monthly`/`quarterly`/`semi_annually`/`annually`/`one_time`, see `models/frequency.rs`), one-time + regular payment each with currency column, `limits` JSON `'[]'`, `status DEFAULT 'active'` |
-| `insurance_documents` | Documents per policy | FK `insurance_id` ON DELETE CASCADE; `file_path`, `file_type`, `file_size` |
+| `insurance_documents` | Documents per policy | FK `insurance_id` ON DELETE CASCADE; same columns and CHECK as `real_estate_documents` (migration 021) |
 
 ### Other assets
 
@@ -276,14 +277,45 @@ Grouped by owning domain (see the domain map in `overview.md`).
 |---|---|---|
 | `milestone_states` | Hidden (`done`) or snoozed state of milestone occurrences, keyed by occurrence key | `key TEXT PRIMARY KEY` (e.g. `insurance_anniversary:<policy id>:<day>`, so the next year's occurrence is a new key; upkeep keys carry the date of their data, e.g. `backup_stale:<last backup day or never>`, so a hidden upkeep item returns once the data changes); `state` CHECK (`done`/`snoozed`); `until_day` INTEGER (UTC day a snooze ends, NULL for `done`; 7 days, upkeep snoozes 30 days); `updated_at` (migration 005) |
 
+## The attachments store (`attachments.db`)
+
+Attachment content lives in a second SQLCipher file next to `moony.db`, attached to the main
+connection as the schema `files` without a `KEY` clause, so it is encrypted with the main key
+(ADR 0017, `db/files_schema.rs`). It holds content only:
+
+| Table | Purpose | Notable columns / constraints |
+|---|---|---|
+| `files.blobs` | One photo, thumbnail or document | `id` TEXT UUID, `data` BLOB, `size`, `sha256` (hex), `created_at`; `auto_vacuum = INCREMENTAL`, `secure_delete = ON` |
+
+- Owners, names and MIME types stay in the main schema; a row references its blob by `blob_id`.
+  Foreign keys cannot cross schemas, so a blob is written and deleted in the same transaction as
+  its row, and the unlock run sweeps unreferenced blobs (`attachment_store::delete_unreferenced`;
+  its reference list must name every column that holds a blob id).
+- `files` has its own append-only version list keyed by `PRAGMA files.user_version`
+  (`files_schema.rs`), the one exception to "every schema change is a numbered migration in
+  `migrations.rs`". A pending version first copies `attachments.db` like the main migrations
+  copy `moony.db`. Never edit an applied version; append one.
+- A store that cannot be attached (damaged, from another profile, newer than the build) is left
+  untouched and the profile opens without it; attachment calls then report
+  `attachments.storeUnavailable`.
+- The webview reads attachments only through the `moony-file` scheme
+  (`services/attachment_protocol.rs`).
+
 ## Data folder artefacts
 
-Next to `moony.db` the app may create: `moony.db.bak-<unix ts>` — a copy
-taken before the first pending migration runs on an existing database (newest
-three kept, see `db/mod.rs`; a brand-new database has nothing to copy);
-`pre-restore-<unix ts>/` — the previous account after a restore from backup
-(never deleted automatically). Backups themselves are zip archives written
-wherever the user chooses (`services/backup.rs`).
+Next to `moony.db` the app may create: `moony.db.bak-<unix ts>` and
+`attachments.db.bak-<unix ts>` — copies taken before the first pending migration
+of that database runs (newest three kept, see `db/mod.rs`; a brand-new database
+has nothing to copy); `attachments-converted/` — plain originals of earlier
+versions that the conversion has encrypted, deleted at the next unlock once the
+store checks out; the legacy folders `real_estate_photos/`,
+`real_estate_documents/`, `insurance_documents/` while plain files of earlier
+versions are not converted yet; `pre-restore-<unix ts>/` — the previous account
+after a restore from backup (never deleted automatically). Decrypted copies of
+documents opened in another app live in the app *cache* folder under `open/`
+and are wiped on lock, exit and start. Backups themselves are zip archives
+written wherever the user chooses (`services/backup.rs`, format 2: both database
+snapshots and the key files).
 
 ### Report history (007_report_history)
 

@@ -34,8 +34,8 @@ npm run lint && npm run typecheck && npm test
 | 4. Viewer, save a copy, open elsewhere, temp copy wiping | done — live demo (dev bridge): a text PDF and a JPEG 2000 PDF rendered in the viewer (JPX centre pixel exact), a .docx showed the D3 dialog, `logout` removed `<cache>/open` with a planted leftover; `npm run build` emits the 200 pdf.js assets (3.9 MB) under `dist/pdfjs/`. Not yet seen in a production WKWebView window (the spike covered pdf.js, CORS and CSP there): Task 8 | 45c89379 |
 | 5. Conversion of plain files, status and leftovers in Settings → Data | done — live demo on a `seed_demo --legacy-attachments` profile: unlock converted 3 items (2 photos, 1 PDF), originals went to `attachments-converted/`, the legacy folders were pruned, `attachments.db` held no plaintext PDF/JPEG bytes, Settings → Data showed "stored encrypted: 3" and a planted former-identifier folder as a leftover; the next unlock deleted the quarantine, leaving only the encrypted files. The seeder part of Task 7 (`--legacy-attachments`, demo attachments) landed here | 19bb4e89 |
 | 6. Backup format 2, restore, integrity, delete account | done — live demo: the backup zip held exactly `moony.db`, `attachments.db`, `salt`, `key.enc`, `recovery.enc`, `manifest.json` (no plaintext PDF/JPEG bytes in either database), `verify_database` was ok, and restoring it then unlocking served the photos from the restored store. Deviations: a format 2 archive must contain every file its manifest lists (rather than "`attachments.db` is required"), and a store that is not attached is copied as it is | 784a4a86 |
-| 7. Tooling, recovery-key copy, living docs, ADR 0017 accepted | done — seeder in 19bb4e89; D10 note under the recovery key; PRIVACY, SECURITY, README, ROADMAP, CHANGELOG (Unreleased: the release-notes text), database.md, overview.md, DEPRECATED.md. `local_anonymize_profile` (git-ignored, also in `Moony-launch/tools/`) opened its copy with `Database::open_with_key`, which now attaches an empty store under the OLD key before the rekey; both copies now drop it before the final open (uncommitted local edits, outside this repo's history) | this commit |
-| 8. Verification and review | pending | — |
+| 7. Tooling, recovery-key copy, living docs, ADR 0017 accepted | done — seeder in 19bb4e89; D10 note under the recovery key; PRIVACY, SECURITY, README, ROADMAP, CHANGELOG (Unreleased: the release-notes text), database.md, overview.md, DEPRECATED.md. `local_anonymize_profile` (git-ignored, also in `Moony-launch/tools/`) opened its copy with `Database::open_with_key`, which now attaches an empty store under the OLD key before the rekey; both copies now drop it before the final open (uncommitted local edits, outside this repo's history) | 03357f03, be116d4e |
+| 8. Verification and review | done — see "Task 8 notes" | 519ac3fa |
 
 ## Task 0 outcome (2026-10-15)
 
@@ -77,6 +77,39 @@ Results:
   `main`.
 - `pdfjs-dist` declares an optional dependency, `@napi-rs/canvas`, for Node only. It is not
   bundled into the app; keep it out of any runtime code path.
+
+## Task 8 notes (2026-10-15)
+
+- Gates: cargo fmt/clippy/test (2154), npm lint/typecheck/test (1704), prettier, generated-types
+  drift check, `cargo audit` (only the three allowed warnings), `npm audit --omit=dev` (0).
+- Code review (a separate reviewer on the whole branch): no Critical findings. Fixed in 519ac3fa:
+  - I1: plain files that no row points at are swept into the quarantine;
+  - I2: missing or truncated content is reported in the status and in "Verify database";
+  - I3: the PDF viewer renders pages lazily;
+  - I4: the quarantine is deleted only at the recorded blob size, and a failure to delete it no
+    longer stops the run;
+  - M1–M10: path checks by component, an exact MIME allow-list, no saving into the data folder, no
+    partial open copies, bidi characters stripped, deletes without the store, a panic-safe and
+    re-running runner, a bounded vacuum, stored ZIP entries, and tests.
+- Kept as is:
+  - `run_conversion` stays in `commands/attachments.rs`, because it orchestrates `Database` locks
+    per item, which services (taking `&Connection`) cannot.
+  - Documents stream into the store under the connection lock (up to 100 MB).
+  - The save dialog proposes the display name plus extension, because `original_name` is not on
+    the wire.
+- Live re-check (dev bridge, worktree demo profile):
+  - a 60-page PDF kept at most 2 canvases alive while scrolling;
+  - with `attachments.db` set aside, the status showed 4 missing and 0 stored, and Verify
+    reported it; a planted orphan file went into the quarantine;
+  - with the store back, the status showed 4 stored, Verify was ok, and the next unlock deleted
+    the quarantine;
+  - `find` over the data folder finds no `.jpg` or `.pdf`.
+- Still open, before a release:
+  - the owner's dry run on a copy of the real profile (conversion of real 0.12 files and their
+    orphans);
+  - a look at the viewer in a production WKWebView window (the spike covered pdf.js, CORS and
+    CSP there, and the component was only seen through the dev bridge);
+  - the Windows/Linux checklist of spec §6 in the release pre-flight.
 
 ## Task 2 notes (2026-10-15)
 

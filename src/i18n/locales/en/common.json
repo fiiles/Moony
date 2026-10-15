@@ -278,7 +278,10 @@
     "onboardingFlagUnknown": "Unknown onboarding step.",
     "insuranceNoticeInvalid": "Enter a whole number of days from 0 to 365.",
     "budgetIntervalsRequired": "Select at least one budget interval.",
-    "effectiveUntilBeforeStart": "The end month can't be before the start month."
+    "effectiveUntilBeforeStart": "The end month can't be before the start month.",
+    "statementTooLarge": "This statement file is larger than {{limitMb}} MB.",
+    "statementDoctype": "This XML file contains a document type declaration, which Moony does not read for safety.",
+    "statementUnsupportedVariant": "Moony cannot import {{variant}} files. Export a CAMT.053, MT940, OFX or QIF statement instead."
   },
   "auth": {
     "wrongPassword": "The password you entered is incorrect. Please try again.",

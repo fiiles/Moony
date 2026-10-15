@@ -278,7 +278,10 @@
     "onboardingFlagUnknown": "Okänt steg i den inledande konfigurationen.",
     "insuranceNoticeInvalid": "Ange ett helt antal dagar från 0 till 365.",
     "budgetIntervalsRequired": "Välj minst ett budgetintervall.",
-    "effectiveUntilBeforeStart": "Slutmånaden kan inte vara före startmånaden."
+    "effectiveUntilBeforeStart": "Slutmånaden kan inte vara före startmånaden.",
+    "statementTooLarge": "Den här kontoutdragsfilen är större än {{limitMb}} MB.",
+    "statementDoctype": "Den här XML-filen innehåller en dokumenttypsdeklaration, som Moony av säkerhetsskäl inte läser.",
+    "statementUnsupportedVariant": "Moony kan inte importera {{variant}}-filer. Exportera i stället ett kontoutdrag i formatet CAMT.053, MT940, OFX eller QIF."
   },
   "auth": {
     "wrongPassword": "Lösenordet du angav är fel. Försök igen.",

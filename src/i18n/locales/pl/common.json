@@ -278,7 +278,10 @@
     "onboardingFlagUnknown": "Nieznany krok konfiguracji początkowej.",
     "insuranceNoticeInvalid": "Wpisz liczbę całkowitą dni od 0 do 365.",
     "budgetIntervalsRequired": "Wybierz co najmniej jeden okres budżetu.",
-    "effectiveUntilBeforeStart": "Miesiąc końcowy nie może być wcześniejszy niż miesiąc początkowy."
+    "effectiveUntilBeforeStart": "Miesiąc końcowy nie może być wcześniejszy niż miesiąc początkowy.",
+    "statementTooLarge": "Ten plik wyciągu jest większy niż {{limitMb}} MB.",
+    "statementDoctype": "Ten plik XML zawiera deklarację typu dokumentu, której Moony ze względów bezpieczeństwa nie odczytuje.",
+    "statementUnsupportedVariant": "Moony nie importuje plików {{variant}}. Wyeksportuj wyciąg w formacie CAMT.053, MT940, OFX lub QIF."
   },
   "auth": {
     "wrongPassword": "Wpisane hasło jest nieprawidłowe. Spróbuj ponownie.",

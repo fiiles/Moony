@@ -278,7 +278,10 @@
     "onboardingFlagUnknown": "Neznámý krok úvodního nastavení.",
     "insuranceNoticeInvalid": "Zadejte celé číslo dnů od 0 do 365.",
     "budgetIntervalsRequired": "Vyberte alespoň jeden interval rozpočtu.",
-    "effectiveUntilBeforeStart": "Měsíc „do“ nemůže být před měsícem „od“."
+    "effectiveUntilBeforeStart": "Měsíc „do“ nemůže být před měsícem „od“.",
+    "statementTooLarge": "Soubor výpisu je větší než {{limitMb}} MB.",
+    "statementDoctype": "Tento XML soubor obsahuje deklaraci typu dokumentu, kterou Moony z bezpečnostních důvodů nečte.",
+    "statementUnsupportedVariant": "Soubory {{variant}} Moony importovat neumí. Exportujte výpis ve formátu CAMT.053, MT940, OFX nebo QIF."
   },
   "auth": {
     "wrongPassword": "Zadané heslo je nesprávné. Zkuste to prosím znovu.",

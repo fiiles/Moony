@@ -4,8 +4,12 @@
 //! import core already consumes (preview, duplicate check, write path).
 
 pub mod decimal;
+pub(crate) mod decode;
+pub(crate) mod detect;
 pub mod model;
 pub mod to_rows;
 
 pub use crate::services::csv_import::{DeclaredBalance, SourceCategoryMapping};
+pub use decode::decode;
+pub use detect::{check_size, detect, reject_doctype, DETECT_BYTES, MAX_FILE_BYTES};
 pub use model::{join_description, utc_day, AccountRef, Entry, Statement, StatementFormat};

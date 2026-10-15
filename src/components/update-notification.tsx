@@ -1,7 +1,7 @@
 import { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { openUrl } from '@tauri-apps/plugin-opener';
-import { ExternalLink, RefreshCw } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -106,14 +106,18 @@ export function UpdateNotification() {
           <div className="space-y-2">
             <p className="m-0 text-table text-ink-2">{t('update.whatHappens')}</p>
             {update && (
-              <Button
-                variant="link"
-                className="h-auto px-0 text-table"
-                onClick={() => void openWhatsNew(update.version)}
-              >
-                {t('update.whatsNew')}
-                <ExternalLink />
-              </Button>
+              <p className="m-0">
+                <a
+                  href={releaseUrl(update.version)}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    void openWhatsNew(update.version);
+                  }}
+                  className="text-table font-650 text-ink-2 underline-offset-[3px] hover:text-ink hover:underline focus-visible:outline-none focus-visible:shadow-focus"
+                >
+                  {t('update.whatsNew')} ↗
+                </a>
+              </p>
             )}
           </div>
         )}

@@ -9,6 +9,7 @@ import type {
 } from '@shared/schema';
 import {
   AUTO_VALUE,
+  CSV_EXTENSIONS,
   EMPTY_MAPPING,
   ENCODING_CHOICES,
   SAMPLE_CSV,
@@ -24,6 +25,7 @@ import {
   isDateFormatGuess,
   isMappingComplete,
   importSteps,
+  isSupportedCsvPath,
   isSupportedImportPath,
   mappingFromInspection,
   nextStepsFor,
@@ -430,11 +432,29 @@ describe('file helpers', () => {
     expect(isSupportedImportPath('/tmp/folder.csv.bak')).toBe(false);
   });
 
-  it('picks the first importable file of a drop', () => {
-    expect(pickDroppedFile(['/a/photo.png', '/a/b.csv', '/a/c.csv'])).toBe('/a/b.csv');
-    expect(pickDroppedFile(['/a/photo.png', '/a/statement.xml'])).toBe('/a/statement.xml');
-    expect(pickDroppedFile(['/a/photo.png'])).toBeNull();
-    expect(pickDroppedFile([])).toBeNull();
+  it('keeps the CSV-only predicate of the stock import to .csv and .txt', () => {
+    expect(CSV_EXTENSIONS).toEqual(['csv', 'txt']);
+    expect(isSupportedCsvPath('/Users/me/statement.csv')).toBe(true);
+    expect(isSupportedCsvPath('C:\\Users\\me\\STATEMENT.CSV')).toBe(true);
+    expect(isSupportedCsvPath('/tmp/export.txt')).toBe(true);
+    for (const path of ['/a/s.xml', '/a/s.sta', '/a/s.940', '/a/s.ofx', '/a/s.qif', '/a/s.pdf']) {
+      expect(isSupportedCsvPath(path)).toBe(false);
+    }
+    expect(isSupportedCsvPath('/tmp/csv')).toBe(false);
+    expect(isSupportedCsvPath('/tmp/folder.csv.bak')).toBe(false);
+  });
+
+  it('picks the first file of a drop the dialog accepts', () => {
+    expect(pickDroppedFile(['/a/photo.png', '/a/b.csv', '/a/c.csv'], isSupportedImportPath)).toBe(
+      '/a/b.csv'
+    );
+    expect(pickDroppedFile(['/a/photo.png', '/a/statement.xml'], isSupportedImportPath)).toBe(
+      '/a/statement.xml'
+    );
+    expect(pickDroppedFile(['/a/statement.xml', '/a/b.csv'], isSupportedCsvPath)).toBe('/a/b.csv');
+    expect(pickDroppedFile(['/a/statement.xml'], isSupportedCsvPath)).toBeNull();
+    expect(pickDroppedFile(['/a/photo.png'], isSupportedImportPath)).toBeNull();
+    expect(pickDroppedFile([], isSupportedImportPath)).toBeNull();
   });
 
   it('takes the file name from both kinds of path', () => {

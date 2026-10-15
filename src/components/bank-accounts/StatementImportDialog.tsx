@@ -41,6 +41,7 @@ import {
   fileNameFromPath,
   importSteps,
   isMappingComplete,
+  isSupportedImportPath,
   mappingFromInspection,
   presetIdForInstitution,
   statementImportBlocked,
@@ -136,6 +137,9 @@ export function StatementImportDialog({
   const [isInspecting, setIsInspecting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [result, setResult] = useState<CsvImportResult | null>(null);
+  // The account `result` was written to, fixed when the write started.
+  const [importedAccountId, setImportedAccountId] = useState<string | null>(null);
+  const { account: importedAccount } = useBankAccount(importedAccountId ?? undefined);
   const [previewPage, setPreviewPage] = useState(0);
   const [dateConfirmed, setDateConfirmed] = useState(false);
   const [manualCount, setManualCount] = useState(0);
@@ -279,7 +283,13 @@ export function StatementImportDialog({
         filePath,
         country
       );
-      if (requestId !== inspectRequest.current || statement == null) return;
+      if (requestId !== inspectRequest.current) return;
+      if (statement == null) {
+        // The file no longer reads as a statement: nothing was checked for the new target.
+        setTargetAccountId(previousTarget);
+        toast.error(tc('status.error'), { description: tc('validation.statementNotRecognized') });
+        return;
+      }
       setStatementInspection(statement);
       setInspectedAccountId(matchedAccountId);
       if (!statement.statements.some((s) => s.index === statementIndex)) {
@@ -329,6 +339,7 @@ export function StatementImportDialog({
 
   const isDragging = useFileDrop({
     enabled: open && step === 'file' && !isInspecting,
+    accepts: isSupportedImportPath,
     onFile: handleFilePicked,
     onRejected: () =>
       toast.error(t('csvImport.unsupportedFile'), {
@@ -455,12 +466,21 @@ export function StatementImportDialog({
     setIsInspecting(false);
     setIsImporting(false);
     setResult(null);
+    setImportedAccountId(null);
     setManualCount(0);
   };
 
   const handleBack = () => {
-    // A statement has no columns to edit: back means another file.
+    // A statement has no columns to edit: back means another file, which starts over
+    // as a file of unknown kind for the page's account (the switch was for this one).
     if (step === 'preview' && kind === 'statement') {
+      inspectRequest.current++; // a switch's read still in flight no longer applies
+      setIsInspecting(false);
+      setKind(null);
+      setStatementInspection(null);
+      setInspectedAccountId(null);
+      setAccountConfirmed(false);
+      setTargetAccountId(null);
       setStep('file');
       return;
     }
@@ -478,13 +498,15 @@ export function StatementImportDialog({
 
   const handleImport = async () => {
     if (!preview) return;
+    // The account this write goes to; the result step and its next steps act on it.
+    const writeAccountId = targetAccountId;
     // Preview and import get the same options, so what the user saw is what is written.
     const write =
       kind === 'statement'
         ? statementOptions &&
           (() =>
             statementMutation.mutateAsync({
-              accountId: targetAccountId,
+              accountId: writeAccountId,
               filePath,
               options: statementOptions,
               country,
@@ -496,9 +518,10 @@ export function StatementImportDialog({
       const imported = await write();
       setManualCount(overrides.length);
       setResult(imported);
+      setImportedAccountId(writeAccountId);
       setStep('done');
       // The page behind shows its own account; another account's rows are not there.
-      if (targetAccountId === accountId) onImported?.(imported);
+      if (writeAccountId === accountId) onImported?.(imported);
     } catch (e: unknown) {
       toast.error(tc('status.error'), { description: translateApiError(e as Error, tc) });
     } finally {
@@ -619,7 +642,7 @@ export function StatementImportDialog({
                 accountConfirmed={accountConfirmed}
                 onAccountConfirmedChange={setAccountConfirmed}
                 onSwitchAccount={(id) => void handleSwitchAccount(id)}
-                isInspecting={isInspecting}
+                busy={isInspecting || isImporting}
                 locale={getLocale()}
               />
             )}
@@ -644,13 +667,13 @@ export function StatementImportDialog({
             />
           )}
 
-          {step === 'done' && result && (
+          {step === 'done' && result && importedAccountId != null && (
             <ImportResultStep
               kind={kind ?? 'csv'}
               accountId={accountId}
-              importedAccountId={targetAccountId}
+              importedAccountId={importedAccountId}
               result={result}
-              account={account}
+              account={importedAccount}
               locale={getLocale()}
               fileName={fileNameFromPath(filePath)}
               manualCount={manualCount}

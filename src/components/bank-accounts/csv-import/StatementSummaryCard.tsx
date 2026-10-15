@@ -26,8 +26,8 @@ interface StatementSummaryCardProps {
   onAccountConfirmedChange: (confirmed: boolean) => void;
   /** Make the account the statement belongs to the import's target. */
   onSwitchAccount: (accountId: string) => void;
-  /** The file is being read again (after a switch); the controls wait for it. */
-  isInspecting: boolean;
+  /** The file is being read again (after a switch) or imported; the controls wait for it. */
+  busy: boolean;
   /** Locale for amount formatting, e.g. `cs-CZ`. */
   locale: string;
 }
@@ -75,7 +75,7 @@ export function StatementSummaryCard({
   accountConfirmed,
   onAccountConfirmedChange,
   onSwitchAccount,
-  isInspecting,
+  busy,
   locale,
 }: StatementSummaryCardProps) {
   const { t } = useTranslation('bank_accounts');
@@ -98,7 +98,7 @@ export function StatementSummaryCard({
     <label className="flex cursor-pointer items-center gap-2 text-caption font-600 text-ink-2">
       <Checkbox
         checked={accountConfirmed}
-        disabled={isInspecting}
+        disabled={busy}
         onCheckedChange={(checked) => onAccountConfirmedChange(checked === true)}
       />
       {t('statementImport.match.confirm')}
@@ -119,7 +119,7 @@ export function StatementSummaryCard({
                     type="button"
                     variant="outline"
                     size="sm"
-                    disabled={isInspecting}
+                    disabled={busy}
                     onClick={() => onSwitchAccount(matchedAccountId)}
                   >
                     {t('statementImport.match.switch', { account: matchedName })}
@@ -158,7 +158,7 @@ export function StatementSummaryCard({
           <RadioGroup
             value={String(summary.index)}
             onValueChange={(value) => onStatementChange(Number(value))}
-            disabled={isInspecting}
+            disabled={busy}
             className="gap-1.5"
           >
             {inspection.statements.map((statement) => (

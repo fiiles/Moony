@@ -402,8 +402,15 @@ export const PREVIEW_COLLAPSED_ROWS = 12;
 
 // ── Files ───────────────────────────────────────────────────────────────────
 
+/** What the stock import dialog accepts: CSV exports only. */
+export const CSV_EXTENSIONS = ['csv', 'txt'] as const;
+
+export function isSupportedCsvPath(path: string): boolean {
+  return /\.(csv|txt)$/i.test(path.trim());
+}
+
 /**
- * Extensions the file dialog offers: CSV plus the statement formats (CAMT.053 `.xml`, MT940
+ * What the bank statement dialog accepts: CSV plus the statement formats (CAMT.053 `.xml`, MT940
  * `.sta`/`.mt940`/`.940`, OFX/QFX, QIF). The format itself is told from the content, never from
  * the extension (D4); this only keeps unrelated files out of the dialog and the drop zone.
  */
@@ -424,9 +431,15 @@ export function isSupportedImportPath(path: string): boolean {
   return extension != null && (SUPPORTED_EXTENSIONS as readonly string[]).includes(extension);
 }
 
-/** First importable path of a drop (a drop may carry several files and folders). */
-export function pickDroppedFile(paths: readonly string[]): string | null {
-  return paths.find(isSupportedImportPath) ?? null;
+/**
+ * First path of a drop that `accepts` takes (a drop may carry several files and folders); each
+ * dialog passes its own predicate.
+ */
+export function pickDroppedFile(
+  paths: readonly string[],
+  accepts: (path: string) => boolean
+): string | null {
+  return paths.find(accepts) ?? null;
 }
 
 // ── Statement files ─────────────────────────────────────────────────────────

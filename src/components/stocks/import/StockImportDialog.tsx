@@ -16,8 +16,9 @@ import { WizardSteps } from '@/components/common/WizardSteps';
 import { ConfirmDeleteDialog } from '@/components/common/ConfirmDeleteDialog';
 import { useFileDrop } from '@/components/bank-accounts/csv-import/use-file-drop';
 import {
-  SUPPORTED_EXTENSIONS,
+  CSV_EXTENSIONS,
   fileNameFromPath,
+  isSupportedCsvPath,
 } from '@/components/bank-accounts/csv-import/import-config';
 import { useHistoryRecalculation } from '@/hooks/use-history-recalculation';
 import { useStockImportMutations } from '@/hooks/use-stock-import-mutations';
@@ -250,7 +251,7 @@ export function StockImportDialog({ open, onOpenChange }: StockImportDialogProps
     try {
       const selected = await openFileDialog({
         multiple: false,
-        filters: [{ name: 'CSV', extensions: [...SUPPORTED_EXTENSIONS] }],
+        filters: [{ name: 'CSV', extensions: [...CSV_EXTENSIONS] }],
       });
       if (selected) handleFilePicked(selected);
     } catch (e) {
@@ -260,6 +261,7 @@ export function StockImportDialog({ open, onOpenChange }: StockImportDialogProps
 
   const isDragging = useFileDrop({
     enabled: open && step === 'file' && !isInspecting,
+    accepts: isSupportedCsvPath,
     onFile: handleFilePicked,
     onRejected: () => toast.error(t('importWizard.unsupportedFile')),
   });

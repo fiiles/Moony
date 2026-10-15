@@ -14,7 +14,8 @@ interface RecoveryKeyBoxProps {
 
 /**
  * The recovery key as the dark key box with "Zkopírovat" and "Uložit do
- * souboru…" (prototypes onboarding.html and lock.html).
+ * souboru…" (prototypes onboarding.html and lock.html), and the note that
+ * attachments need the password or this key too.
  */
 export function RecoveryKeyBox({ recoveryKey, onSavedToFile }: RecoveryKeyBoxProps) {
   const { t } = useTranslation('auth');
@@ -70,6 +71,13 @@ export function RecoveryKeyBox({ recoveryKey, onSavedToFile }: RecoveryKeyBoxPro
           {t('recoveryKey.saveToFile')}
         </Button>
       </div>
+      {/* D10 of the encrypted-attachments spec: attachments are encrypted with the same key. */}
+      <p
+        className="mt-3 text-micro font-500 text-ink-3"
+        data-testid="recovery-key-attachments-note"
+      >
+        {t('recoveryKey.attachmentsNote')}
+      </p>
     </div>
   );
 }

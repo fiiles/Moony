@@ -629,7 +629,8 @@ export type CsvRowFilter = { column: string; equals: string }
  */
 export type CsvRowMessage = { 
 /**
- * 1-based line of the file where the row starts (the header line counts).
+ * 1-based. File line for CSV (the line where the row starts, the header line counts),
+ * entry ordinal for statement formats.
  */
 line: number; key: string; detail: string | null }
 
@@ -676,7 +677,11 @@ export type DataLocation = { dataDir: string; dbPath: string; totalBytes: number
 /**
  * Data source for accounts and transactions
  */
-export type DataSource = "manual" | "csv_import" | "api_sync"
+export type DataSource = "manual" | 
+/**
+ * Imported from a file (CSV or a statement format).
+ */
+"csv_import" | "api_sync"
 
 /**
  * The order of the day, month and year parts of a QIF date.

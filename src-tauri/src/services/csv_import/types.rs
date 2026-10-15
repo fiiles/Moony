@@ -26,7 +26,8 @@ use crate::services::csv_presets::CsvRowFilter;
 ///   `validation.amountRequired` for empty cells.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
 pub struct CsvRowMessage {
-    /// 1-based line of the file where the row starts (the header line counts).
+    /// 1-based. File line for CSV (the line where the row starts, the header line counts),
+    /// entry ordinal for statement formats.
     pub line: usize,
     pub key: String,
     pub detail: Option<String>,

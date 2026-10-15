@@ -82,7 +82,7 @@
     "title": "快速上手",
     "subtitle": "四个步骤让 Moony 真正派上用场。完成后此卡片会消失。",
     "importStatement": "导入银行账单",
-    "importStatementHint": "添加账户并导入银行的 CSV 文件。",
+    "importStatementHint": "添加账户并导入银行的账单。",
     "addInvestment": "添加投资",
     "addInvestmentHint": "股票、ETF 或加密货币，价格实时更新。",
     "setBudget": "设置预算",

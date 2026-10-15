@@ -82,7 +82,7 @@
     "title": "Kom igång",
     "subtitle": "Fyra steg som gör Moony användbart. Det här kortet försvinner när du är klar.",
     "importStatement": "Importera ett kontoutdrag",
-    "importStatementHint": "Lägg till ett konto och importera en CSV från din bank.",
+    "importStatementHint": "Lägg till ett konto och importera ett kontoutdrag från din bank.",
     "addInvestment": "Lägg till en investering",
     "addInvestmentHint": "Aktier, ETF:er eller krypto med livekurser.",
     "setBudget": "Sätt en budget",

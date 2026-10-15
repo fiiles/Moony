@@ -82,7 +82,7 @@
     "title": "はじめに",
     "subtitle": "Moony を活用するための4つのステップです。完了するとこのカードは消えます。",
     "importStatement": "銀行明細をインポート",
-    "importStatementHint": "口座を追加して、銀行の CSV をインポートします。",
+    "importStatementHint": "口座を追加して、銀行の明細をインポートします。",
     "addInvestment": "投資を追加",
     "addInvestmentHint": "株式、ETF、暗号資産をリアルタイム価格付きで。",
     "setBudget": "予算を設定",

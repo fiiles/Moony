@@ -82,7 +82,7 @@
     "title": "Getting started",
     "subtitle": "Four steps that make Moony useful. This card disappears when you are done.",
     "importStatement": "Import a bank statement",
-    "importStatementHint": "Add an account and import a CSV from your bank.",
+    "importStatementHint": "Add an account and import a statement from your bank.",
     "addInvestment": "Add an investment",
     "addInvestmentHint": "Stocks, ETFs or crypto with live prices.",
     "setBudget": "Set a budget",

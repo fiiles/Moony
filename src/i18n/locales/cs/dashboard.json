@@ -82,7 +82,7 @@
     "title": "Začínáme",
     "subtitle": "Čtyři kroky, po kterých Moony začne dávat smysl. Karta zmizí, až budete hotovi.",
     "importStatement": "Importovat bankovní výpis",
-    "importStatementHint": "Přidejte účet a importujte CSV ze své banky.",
+    "importStatementHint": "Přidejte účet a importujte výpis ze své banky.",
     "addInvestment": "Přidat investici",
     "addInvestmentHint": "Akcie, ETF nebo krypto s aktuálními cenami.",
     "setBudget": "Nastavit rozpočet",

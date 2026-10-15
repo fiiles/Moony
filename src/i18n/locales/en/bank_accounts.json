@@ -389,8 +389,8 @@
     "closing": "Closing balance",
     "entries_one": "{{count}} payment",
     "entries_other": "{{count}} payments",
-    "skipped_one": "{{count}} not booked",
-    "skipped_other": "{{count}} not booked",
+    "skipped_one": "{{count}} skipped",
+    "skipped_other": "{{count}} skipped",
     "check": {
       "ok": "The statement adds up: opening balance plus payments equals the closing balance.",
       "mismatch": "The payments do not add up to the closing balance (difference {{difference}}). The file may be incomplete.",

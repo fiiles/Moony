@@ -73,8 +73,8 @@ travel as source categories). All four formats now import.
   the 1-based ordinal of the entry in the statement, not a line of the file. Minified XML has one
   line, so file lines would collide.
 - The CSV wire types keep their names (`CsvImportPreview`, `CsvPreviewRow`, `CsvImportResult`)
-  and gain optional fields only. The code and the table keep "csv" in their names for a source
-  that is no longer only CSV.
+  and gain nullable fields only (`overlap: ImportOverlap | null`, `sourceCategory: string | null`).
+  The code and the table keep "csv" in their names for a source that is no longer only CSV.
 - A file's account and declared balances are used where the format has them: the preview checks
   that the payments add up to the closing balance, the closing balance is offered as a balance
   record, and a statement that belongs to another Moony account is flagged.

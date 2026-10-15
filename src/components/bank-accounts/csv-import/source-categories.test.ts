@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   foldName,
+  manualChoiceCount,
   matchSourceCategories,
   sourceCategoryMapping,
   type MatchableCategory,
@@ -72,5 +73,31 @@ describe('sourceCategoryMapping', () => {
 
   it('leaves out sources of other statements and sources without a choice', () => {
     expect(sourceCategoryMapping(['Kino', 'Auto'], { Dárky: 'u2' })).toEqual([]);
+  });
+});
+
+describe('manualChoiceCount', () => {
+  const sources = [
+    { name: 'Food:Groceries', count: 4 },
+    { name: 'Kino', count: 2 },
+    { name: 'Auto', count: 7 },
+  ];
+
+  it('counts the rows picked one by one', () => {
+    expect(manualChoiceCount([{ line: 1, categoryId: 'u1' }], [], sources)).toBe(1);
+  });
+
+  it('counts the rows of every mapped source category too (the backend writes both as manual)', () => {
+    const mapping = [
+      { source: 'Food:Groceries', categoryId: 'cat_groceries' },
+      { source: 'Kino', categoryId: 'u1' },
+    ];
+    expect(manualChoiceCount([], mapping, sources)).toBe(6);
+    expect(manualChoiceCount([{ line: 3, categoryId: 'u2' }], mapping, sources)).toBe(7);
+  });
+
+  it('ignores a mapping whose source is not in the statement, and has nothing to count without choices', () => {
+    expect(manualChoiceCount([], [{ source: 'Dárky', categoryId: 'u2' }], sources)).toBe(0);
+    expect(manualChoiceCount([], [], sources)).toBe(0);
   });
 });

@@ -401,9 +401,9 @@
     "entries_one": "{{count}} pagamento",
     "entries_many": "{{count}} pagamenti",
     "entries_other": "{{count}} pagamenti",
-    "skipped_one": "{{count}} non contabilizzato",
-    "skipped_many": "{{count}} non contabilizzati",
-    "skipped_other": "{{count}} non contabilizzati",
+    "skipped_one": "{{count}} saltato",
+    "skipped_many": "{{count}} saltati",
+    "skipped_other": "{{count}} saltati",
     "check": {
       "ok": "L'estratto conto quadra: il saldo iniziale più i pagamenti dà il saldo finale.",
       "mismatch": "I pagamenti non danno il saldo finale (differenza {{difference}}). Il file potrebbe essere incompleto.",

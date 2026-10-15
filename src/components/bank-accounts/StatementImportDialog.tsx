@@ -25,6 +25,7 @@ import { ImportResultStep } from './csv-import/ImportResultStep';
 import { MappingStep } from './csv-import/MappingStep';
 import { PreviewStep } from './csv-import/PreviewStep';
 import { SourceCategoryPanel } from './csv-import/SourceCategoryPanel';
+import { manualChoiceCount } from './csv-import/source-categories';
 import { StatementSummaryCard } from './csv-import/StatementSummaryCard';
 import {
   AUTO_PRESET,
@@ -416,7 +417,13 @@ export function StatementImportDialog({
     setIsImporting(true);
     try {
       const imported = await write();
-      setManualCount(overrides.length);
+      setManualCount(
+        manualChoiceCount(
+          overrides,
+          statementOptions?.sourceCategoryMap ?? [],
+          session.summary?.sourceCategories ?? []
+        )
+      );
       setResult(imported);
       setImportedAccountId(writeAccountId);
       setStep('done');

@@ -35,9 +35,9 @@ static FIELD_START: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^:(\d{2}[A-Z]?|NS):(.*)$").expect("static pattern is valid"));
 
 /// `:60F:` / `:62F:` and the `M` variants: mark, `YYMMDD`, currency, amount with a decimal
-/// comma. Only upper-case letters, as the standard writes them.
+/// comma. The currency is read in capitals, whatever case it is written in.
 static BALANCE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"^([CD])(\d{6})([A-Z]{3})([\d,]+)$").expect("static pattern is valid")
+    Regex::new(r"^([CD])(\d{6})([A-Za-z]{3})([\d,]+)$").expect("static pattern is valid")
 });
 
 /// The first line of `:61:`: value date, optional entry date, mark, optional funds code,
@@ -128,11 +128,15 @@ impl Builder {
 
 /// Parses MT940 text (a bare tag stream or SWIFT envelopes) into its statements, in file
 /// order. A `:61:` that cannot be read is `validation.statementMalformed` (detail `:61: <n>`,
-/// the 1-based position of the line in the file); an unreadable balance is no declared balance.
+/// the 1-based position of the line in the file), and so is a balance line (detail `:60F: <n>`,
+/// `:62M: <n>`, ... with the position among the opening or the closing balances of the file):
+/// without it the statement's currency would be lost and nothing could warn about it.
 pub fn parse(text: &str) -> Result<Vec<Statement>> {
     let mut statements = Vec::new();
     let mut current: Option<Builder> = None;
     let mut entries_seen = 0usize;
+    let mut openings_seen = 0usize;
+    let mut closings_seen = 0usize;
     for item in items(&strip_envelopes(&normalize(text))) {
         let (tag, value) = match item {
             Item::End => {
@@ -152,8 +156,14 @@ pub fn parse(text: &str) -> Result<Vec<Statement>> {
             "20" => builder.has_20 = true,
             "25" => builder.statement.account = account_ref(&value),
             "28C" => builder.statement.sequence = non_blank(first_line(&value)),
-            "60F" | "60M" => builder.statement.opening = balance(&value),
-            "62F" | "62M" => builder.statement.closing = balance(&value),
+            "60F" | "60M" => {
+                openings_seen += 1;
+                builder.statement.opening = Some(balance(&tag, &value, openings_seen)?);
+            }
+            "62F" | "62M" => {
+                closings_seen += 1;
+                builder.statement.closing = Some(balance(&tag, &value, closings_seen)?);
+            }
             "61" => {
                 entries_seen += 1;
                 builder.open = Some(
@@ -228,13 +238,28 @@ fn non_blank(text: &str) -> Option<String> {
     (!text.is_empty()).then(|| text.to_string())
 }
 
-/// `:25:` whole, except a German BLZ/Konto, which is written as its IBAN (R4).
+/// `:25:` whole, except a German BLZ/Konto, which is written as its IBAN (R4), and an IBAN
+/// followed by its currency, which is the IBAN.
 fn account_ref(value: &str) -> AccountRef {
     let account = first_line(value);
     AccountRef {
-        identifier: german_iban(account).or_else(|| non_blank(account)),
+        identifier: german_iban(account)
+            .or_else(|| iban_before_currency(account))
+            .or_else(|| non_blank(account)),
         ..AccountRef::default()
     }
+}
+
+/// Rabobank writes `:25:` as the IBAN and the ISO currency (`NL91ABNA0417164300EUR`): the
+/// IBAN when the text is none by itself (a Seychelles IBAN ends in a currency of its own) and
+/// is one before its last three letters.
+fn iban_before_currency(account: &str) -> Option<String> {
+    if valid_iban(account) {
+        return None;
+    }
+    let (iban, currency) = account.split_at_checked(account.len().checked_sub(3)?)?;
+    (currency.bytes().all(|byte| byte.is_ascii_uppercase()) && valid_iban(iban))
+        .then(|| iban.to_string())
 }
 
 /// R4: a German BLZ/Konto as an IBAN; None for anything else.
@@ -285,8 +310,13 @@ fn amount_text(raw: &str) -> Option<String> {
     Some(canonical_amount(&dotted))
 }
 
-/// `:60F:` and friends; `D` makes the amount negative. `None` when the field cannot be read.
-fn balance(value: &str) -> Option<DeclaredBalance> {
+/// `:60F:` and friends (`tag` is `60F`, ..., the `n`-th of its kind in the file); `D` makes
+/// the amount negative. `validation.statementMalformed` (`:60F: <n>`) when it cannot be read.
+fn balance(tag: &str, value: &str, n: usize) -> Result<DeclaredBalance> {
+    read_balance(value).ok_or_else(|| malformed(&format!(":{tag}: {n}")))
+}
+
+fn read_balance(value: &str) -> Option<DeclaredBalance> {
     let parts = BALANCE.captures(first_line(value))?;
     let amount = amount_text(&parts[4])?;
     Some(DeclaredBalance {
@@ -295,7 +325,7 @@ fn balance(value: &str) -> Option<DeclaredBalance> {
         } else {
             amount
         },
-        currency: parts[3].to_string(),
+        currency: parts[3].to_ascii_uppercase(),
         as_of: utc_day(yymmdd(&parts[2])?),
     })
 }
@@ -720,6 +750,43 @@ mod tests {
     }
 
     #[test]
+    fn an_iban_followed_by_its_currency_is_the_iban() {
+        // Rabobank writes `:25:` as the IBAN and the ISO currency
+        let identifier = |account: &str| {
+            let s = format!(":20:X\n:25:{account}\n:60F:C260901EUR0,\n:62F:C260901EUR0,\n");
+            parse(&s).unwrap()[0].account.identifier.clone()
+        };
+        assert_eq!(
+            identifier("NL91ABNA0417164300EUR").as_deref(),
+            Some("NL91ABNA0417164300")
+        );
+        assert_eq!(
+            identifier("DE89370400440532013000USD").as_deref(),
+            Some("DE89370400440532013000")
+        );
+        // an IBAN alone, one that ends in letters of its own (Seychelles), and anything that
+        // is no IBAN before the letters stay as written
+        assert_eq!(
+            identifier("NL91ABNA0417164300").as_deref(),
+            Some("NL91ABNA0417164300")
+        );
+        assert_eq!(
+            identifier("SC18SSCB11010000000000001497USD").as_deref(),
+            Some("SC18SSCB11010000000000001497USD")
+        );
+        assert_eq!(
+            identifier("NL92ABNA0417164300EUR").as_deref(),
+            Some("NL92ABNA0417164300EUR"),
+            "bad check digits"
+        );
+        assert_eq!(
+            identifier("NL91ABNA0417164300eur").as_deref(),
+            Some("NL91ABNA0417164300eur")
+        );
+        assert_eq!(identifier("123456789EUR").as_deref(), Some("123456789EUR"));
+    }
+
+    #[test]
     fn czech_account_and_bank_code_is_not_a_german_account() {
         // Czech bank codes are always four digits: NNNNNNNN/BBBB is account/bank, kept whole
         for account in [
@@ -746,11 +813,6 @@ mod tests {
 
     #[test]
     fn balances_are_signed_and_dated_as_written() {
-        let s = format!("{ACCOUNT}:60F:D800101EUR1.250,5\n:62F:D791231eur0,\n");
-        // a thousands separator is no decimal: the balance is unreadable, not 1.2505
-        let st = &parse(&s).unwrap()[0];
-        assert_eq!((&st.opening, &st.closing), (&None, &None));
-
         let s = format!("{ACCOUNT}:60F:D800101EUR1250,50\n:62F:D791231CZK0,\n");
         let st = &parse(&s).unwrap()[0];
         let opening = st.opening.as_ref().unwrap();
@@ -768,6 +830,48 @@ mod tests {
             ("0", day(2079, 12, 31))
         );
         assert_eq!(st.currency.as_deref(), Some("EUR"));
+    }
+
+    #[test]
+    fn a_lowercase_currency_is_read_in_capitals() {
+        let s = format!("{ACCOUNT}:60F:D800101eur1250,50\n:62F:D791231Czk0,\n");
+        let st = &parse(&s).unwrap()[0];
+        assert_eq!(st.opening.as_ref().unwrap().currency, "EUR");
+        assert_eq!(st.closing.as_ref().unwrap().currency, "CZK");
+        assert_eq!(st.currency.as_deref(), Some("EUR"));
+    }
+
+    #[test]
+    fn an_unreadable_balance_is_malformed_not_a_missing_one() {
+        // a lost statement currency would silence the currency warning (D10)
+        let balance = |lines: &str| {
+            let (key, params) = parse(&format!("{ACCOUNT}{lines}"))
+                .unwrap_err()
+                .keyed()
+                .unwrap();
+            assert_eq!(key, "validation.statementMalformed", "{lines}");
+            params["detail"].as_str().unwrap().to_string()
+        };
+        // a thousands separator is no decimal: the balance is unreadable, not 1.2505
+        assert_eq!(balance(":60F:D800101EUR1.250,5\n"), ":60F: 1");
+        // a dot decimal, as `:61:` refuses it
+        assert_eq!(balance(":62F:C260901CZK1250.50\n"), ":62F: 1");
+        assert_eq!(balance(":60M:C260901CZK1.5\n"), ":60M: 1");
+        assert_eq!(balance(":62M:C260901CZK\n"), ":62M: 1");
+        // garbage, a currency that is not three letters, an impossible day, an empty field
+        assert_eq!(balance(":60F:garbage\n"), ":60F: 1");
+        assert_eq!(balance(":62F:C260901CZ1,\n"), ":62F: 1");
+        assert_eq!(balance(":60F:C261301CZK1,\n"), ":60F: 1");
+        assert_eq!(balance(":60F:\n"), ":60F: 1");
+        // the position counts the balances of the file: the second closing balance is broken
+        assert_eq!(
+            balance(":62F:C260901CZK1,\n-\n:20:Y\n:62F:C260901CZK1.5\n"),
+            ":62F: 2"
+        );
+        assert_eq!(
+            balance(":60F:C260901CZK1,\n:62F:C260901CZK2,\n-\n:20:Y\n:60F:oops\n"),
+            ":60F: 2"
+        );
     }
 
     #[test]

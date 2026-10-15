@@ -479,6 +479,8 @@ describe('statement import helpers', () => {
       'C:\\x\\S.STA',
       '/a/s.940',
       '/a/s.mt940',
+      '/a/s.mta',
+      'C:\\x\\S.SWI',
       '/a/s.ofx',
       '/a/s.QFX',
       '/a/s.qif',

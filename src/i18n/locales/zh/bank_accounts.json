@@ -377,7 +377,7 @@
     "opening": "期初余额",
     "closing": "期末余额",
     "entries_other": "{{count}} 笔付款",
-    "skipped_other": "{{count}} 笔未入账",
+    "skipped_other": "已跳过 {{count}} 笔",
     "check": {
       "ok": "账单核对一致：期初余额加上各笔付款等于期末余额。",
       "mismatch": "各笔付款与期末余额不符（差额 {{difference}}）。文件可能不完整。",

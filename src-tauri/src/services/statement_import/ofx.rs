@@ -69,6 +69,15 @@ const LEAVES: &[&str] = &[
     "DTSERVER",
     "LANGUAGE",
     "TRNUID",
+    "EXTDNAME",
+    "INV401KSOURCE",
+    "MKTGINFO",
+    "MESSAGE",
+    "CLTCOOKIE",
+    "DTPROFUP",
+    "DTACCTUP",
+    "ORG",
+    "FID",
 ];
 
 /// The statements of one OFX/QFX file and what was left out of them.
@@ -357,8 +366,11 @@ impl Tree {
         Ok(rest)
     }
 
+    /// Opens an element. No OFX aggregate contains itself, so an element whose name is already
+    /// open closes that one (and what is unclosed above it) first: `<STMTTRN>` after an unclosed
+    /// `<STMTTRN>` is its next sibling, not its child.
     fn open(&mut self, name: String) -> Result<()> {
-        self.close_leaf();
+        self.close(&name);
         // The root is no element.
         if self.stack.len() > self.max_depth {
             return Err(malformed(&name));
@@ -796,6 +808,68 @@ mod tests {
     }
 
     #[test]
+    fn an_unclosed_aggregate_is_closed_by_the_next_one_of_its_name() {
+        // no OFX aggregate contains itself: three transactions without `</STMTTRN>` are three
+        let three = parse(&bank_file(
+            "<STMTTRN><DTPOSTED>20260105<TRNAMT>1<FITID>A\
+             <STMTTRN><DTPOSTED>20260106<TRNAMT>2<FITID>B\
+             <STMTTRN><DTPOSTED>20260107<TRNAMT>3<FITID>C",
+        ))
+        .unwrap()
+        .statements
+        .remove(0)
+        .entries;
+        assert_eq!(
+            three
+                .iter()
+                .map(|e| (e.amount.as_str(), e.bank_id.as_deref()))
+                .collect::<Vec<_>>(),
+            vec![("1", Some("A")), ("2", Some("B")), ("3", Some("C"))]
+        );
+
+        // one unclosed one followed by a closed one
+        let two = parse(&bank_file(
+            "<STMTTRN><DTPOSTED>20260105<TRNAMT>1<FITID>A\
+             <STMTTRN><DTPOSTED>20260106<TRNAMT>2<FITID>B</STMTTRN>",
+        ))
+        .unwrap()
+        .statements
+        .remove(0)
+        .entries;
+        assert_eq!(two.len(), 2);
+        assert_eq!(two[1].bank_id.as_deref(), Some("B"));
+
+        // the same through the tree, with an open leaf between them
+        let root = parse_tree("<OFX><L><T><M>a<T><M>b<T><M>c</L></OFX>").unwrap();
+        let list = root.child("L").unwrap();
+        assert_eq!(list.children("T").count(), 3);
+        assert!(root.at(&["L", "T", "T"]).is_none());
+    }
+
+    #[test]
+    fn an_empty_extension_leaf_does_not_swallow_the_correction() {
+        // reviewer probe: an empty `<EXTDNAME>` before the `<FITID>` and the `<CORRECTACTION>`
+        let e = entry("<DTPOSTED>20260106<TRNAMT>-1<EXTDNAME><FITID>B<CORRECTACTION>DELETE");
+        assert_eq!(e.bank_id.as_deref(), Some("B"));
+        assert_eq!(e.skip_reason, Some("statementImport.correctionSkipped"));
+        // every added leaf closes empty
+        for leaf in [
+            "EXTDNAME",
+            "INV401KSOURCE",
+            "MKTGINFO",
+            "MESSAGE",
+            "CLTCOOKIE",
+            "DTPROFUP",
+            "DTACCTUP",
+            "ORG",
+            "FID",
+        ] {
+            let root = parse_tree(&format!("<OFX><A><{leaf}><ACCTID>1</A></OFX>")).unwrap();
+            assert_eq!(root.text_at(&["A", "ACCTID"]), Some("1"), "{leaf}");
+        }
+    }
+
+    #[test]
     fn a_less_than_sign_that_starts_no_tag_is_text() {
         let e = entry("<DTPOSTED>20260105<TRNAMT>1<NAME>A < B<MEMO>x");
         assert_eq!(
@@ -853,8 +927,12 @@ mod tests {
         // the deep text must be over the cap, whatever the XML tree's caps become
         const LEVELS: usize = 10_000;
         const _: () = assert!(MAX_DEPTH < LEVELS);
-        let deep = format!("<OFX>{}", "<a>".repeat(LEVELS));
-        assert_eq!(detail(&parse_tree(&deep).unwrap_err()), "A");
+        // distinct names: an element opened inside one of its own name closes it instead
+        let deep: String = std::iter::once("<OFX>".to_string())
+            .chain((0..LEVELS).map(|level| format!("<a{level}>")))
+            .collect();
+        let name = detail(&parse_tree(&deep).unwrap_err());
+        assert!(name.starts_with('A') && name.len() > 1, "{name}");
         let tree = "<OFX><a><b><c>y</c></b></a><d/></OFX>"; // OFX a b c d: 5 elements, 4 deep
         assert!(parse_tree_with_limits(tree, 4, 5).is_ok());
         assert_eq!(

@@ -413,7 +413,7 @@ export function isSupportedCsvPath(path: string): boolean {
 
 /**
  * What the bank statement dialog accepts: CSV plus the statement formats (CAMT.053 `.xml`, MT940
- * `.sta`/`.mt940`/`.940`, OFX/QFX, QIF). The format itself is told from the content, never from
+ * `.sta`/`.mt940`/`.940`/`.mta`/`.swi`, OFX/QFX, QIF). The format itself is told from the content, never from
  * the extension (D4); this only keeps unrelated files out of the dialog and the drop zone.
  */
 export const SUPPORTED_EXTENSIONS = [
@@ -423,6 +423,8 @@ export const SUPPORTED_EXTENSIONS = [
   'sta',
   'mt940',
   '940',
+  'mta',
+  'swi',
   'ofx',
   'qfx',
   'qif',

@@ -389,8 +389,8 @@
     "closing": "Utgående saldo",
     "entries_one": "{{count}} betaling",
     "entries_other": "{{count}} betalinger",
-    "skipped_one": "{{count}} ikke bokført",
-    "skipped_other": "{{count}} ikke bokført",
+    "skipped_one": "{{count}} hoppet over",
+    "skipped_other": "{{count}} hoppet over",
     "check": {
       "ok": "Kontoutskriften går opp: inngående saldo pluss betalingene gir utgående saldo.",
       "mismatch": "Betalingene gir ikke utgående saldo (differanse {{difference}}). Filen kan være ufullstendig.",

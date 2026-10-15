@@ -389,8 +389,8 @@
     "closing": "Endsaldo",
     "entries_one": "{{count}} Zahlung",
     "entries_other": "{{count}} Zahlungen",
-    "skipped_one": "{{count}} nicht gebucht",
-    "skipped_other": "{{count}} nicht gebucht",
+    "skipped_one": "{{count}} übersprungen",
+    "skipped_other": "{{count}} übersprungen",
     "check": {
       "ok": "Der Kontoauszug geht auf: Anfangssaldo plus Zahlungen ergibt den Endsaldo.",
       "mismatch": "Die Zahlungen ergeben nicht den Endsaldo (Differenz {{difference}}). Die Datei ist möglicherweise unvollständig.",

@@ -377,7 +377,7 @@
     "opening": "期首残高",
     "closing": "期末残高",
     "entries_other": "支払い {{count}}件",
-    "skipped_other": "未記帳 {{count}}件",
+    "skipped_other": "スキップ {{count}}件",
     "check": {
       "ok": "明細の計算が合っています。期首残高に支払いを加えると期末残高になります。",
       "mismatch": "支払いの合計が期末残高と一致しません（差額 {{difference}}）。ファイルが不完全な可能性があります。",

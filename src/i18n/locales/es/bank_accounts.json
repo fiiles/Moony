@@ -401,9 +401,9 @@
     "entries_one": "{{count}} pago",
     "entries_many": "{{count}} pagos",
     "entries_other": "{{count}} pagos",
-    "skipped_one": "{{count}} sin contabilizar",
-    "skipped_many": "{{count}} sin contabilizar",
-    "skipped_other": "{{count}} sin contabilizar",
+    "skipped_one": "{{count}} omitido",
+    "skipped_many": "{{count}} omitidos",
+    "skipped_other": "{{count}} omitidos",
     "check": {
       "ok": "El extracto cuadra: el saldo inicial más los pagos da el saldo final.",
       "mismatch": "Los pagos no dan el saldo final (diferencia {{difference}}). Puede que el archivo esté incompleto.",

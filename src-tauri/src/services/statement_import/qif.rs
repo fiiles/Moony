@@ -293,16 +293,21 @@ impl Reader {
 }
 
 fn statement(account: &Account, reader: &Reader) -> Result<Statement> {
+    let opening_balance = opening_balance(account);
     let mut statement = Statement {
         account: AccountRef {
-            name: account.name.clone(),
+            // an unnamed account is named by the transfer its opening balance is
+            name: account
+                .name
+                .clone()
+                .or_else(|| opening_balance.map(|(_, name)| name.to_string())),
             ..AccountRef::default()
         },
         ..Statement::default()
     };
     for (position, record) in account.records.iter().enumerate() {
         let movement = reader.movement(record)?;
-        if position == 0 && is_opening_balance(record, account.name.as_deref()) {
+        if opening_balance.is_some_and(|(at, _)| at == position) {
             // QIF names no currency; the statement's is the account's.
             statement.opening = Some(DeclaredBalance {
                 amount: signed(&movement),
@@ -317,14 +322,36 @@ fn statement(account: &Account, reader: &Reader) -> Result<Statement> {
 }
 
 /// Quicken starts an account with a record that is a transfer to the account itself: its
-/// amount is the balance the account had then.
-fn is_opening_balance(record: &Record, account_name: Option<&str>) -> bool {
-    match (record.first('L'), account_name) {
-        (Some(category), Some(name)) => {
-            category.to_lowercase() == format!("[{name}]").to_lowercase()
-        }
-        _ => false,
+/// amount is the balance the account had then. Returns the position of that record and the
+/// name of the account it transfers to. A named account (`!Account`) has it first, as a
+/// transfer to that name. A single-account export has no `!Account` header, so no name to
+/// match: its first record that transfers to a bracketed account and is paid to "Opening
+/// Balance" is the one (GnuCash), and the brackets name the account.
+fn opening_balance(account: &Account) -> Option<(usize, &str)> {
+    match account.name.as_deref() {
+        Some(name) => account
+            .records
+            .first()
+            .filter(|record| {
+                record.first('L').is_some_and(|category| {
+                    category.to_lowercase() == format!("[{name}]").to_lowercase()
+                })
+            })
+            .map(|_| (0, name)),
+        None => account.records.iter().enumerate().find_map(|(at, record)| {
+            let is_opening = record
+                .first('P')
+                .is_some_and(|payee| payee.trim().eq_ignore_ascii_case("Opening Balance"));
+            let name = bracketed(record.first('L')?)?;
+            is_opening.then_some((at, name))
+        }),
     }
+}
+
+/// The account a transfer category (`[Checking]`) names; `None` for any other category.
+fn bracketed(category: &str) -> Option<&str> {
+    let name = category.strip_prefix('[')?.strip_suffix(']')?.trim();
+    (!name.is_empty()).then_some(name)
 }
 
 fn signed(movement: &Movement) -> String {
@@ -641,10 +668,55 @@ mod tests {
         );
         assert_eq!(statement.entries.len(), 1, "only the first record counts");
         assert_eq!(statement.entries[0].source_category, None);
-        // an unnamed account has no name to match
+        // an unnamed account has no name to match: a transfer alone is a payment
         let unnamed = parse("!Type:Bank\nD1/31/2026\nT1\nL[Checking]\n^\n", None).unwrap();
         assert_eq!(unnamed.statements[0].opening, None);
         assert_eq!(unnamed.statements[0].entries.len(), 1);
+    }
+
+    #[test]
+    fn a_single_account_export_has_its_opening_balance_without_an_account_header() {
+        // Quicken and GnuCash: no `!Account` block, the first record is "Opening Balance"
+        // as a transfer to the account itself, which names it
+        let text = "!Type:Bank\nD8/31/2026\nT1000.00\nPOpening Balance\nL[Checking]\n^\n\
+                    D9/5/2026\nT500.50\nPInvoice 17\nLIncome:Salary\n^\n";
+        let statement = parse(text, None).unwrap().statements.remove(0);
+        let opening = statement.opening.unwrap();
+        assert_eq!(
+            (opening.amount.as_str(), opening.as_of),
+            ("1000", day(2026, 8, 31))
+        );
+        assert_eq!(statement.account.name.as_deref(), Some("Checking"));
+        assert_eq!(statement.entries.len(), 1, "the balance is not a payment");
+        assert_eq!(statement.entries[0].amount, "500.5");
+
+        // the payee is read in any letter case and without padding
+        let text = "!Type:Bank\nD8/31/2026\nT-3\nP  opening BALANCE \nL[ Savings ]\n^\n";
+        let statement = parse(text, None).unwrap().statements.remove(0);
+        assert_eq!(statement.opening.unwrap().amount, "-3");
+        assert_eq!(statement.account.name.as_deref(), Some("Savings"));
+        assert!(statement.entries.is_empty());
+
+        // only the first such record is the balance; the second is a payment
+        let text = "!Type:Bank\nD8/31/2026\nT1\nPOpening Balance\nL[Checking]\n^\n\
+                    D9/1/2026\nT2\nPOpening Balance\nL[Checking]\n^\n";
+        let statement = parse(text, None).unwrap().statements.remove(0);
+        assert_eq!(statement.opening.unwrap().amount, "1");
+        assert_eq!(statement.entries.len(), 1);
+        assert_eq!(statement.entries[0].amount, "2");
+
+        // without brackets (a category), or with another payee, it is a payment
+        for record in [
+            "POpening Balance\nLIncome",
+            "POpening Balance",
+            "PAcme\nL[Checking]",
+        ] {
+            let text = format!("!Type:Bank\nD8/31/2026\nT1\n{record}\n^\n");
+            let statement = parse(&text, None).unwrap().statements.remove(0);
+            assert_eq!(statement.opening, None, "{record}");
+            assert_eq!(statement.account.name, None, "{record}");
+            assert_eq!(statement.entries.len(), 1, "{record}");
+        }
     }
 
     #[test]

@@ -1,4 +1,8 @@
-import type { SourceCategoryMapping } from '@shared/schema';
+import type {
+  CsvCategoryOverride,
+  SourceCategoryCount,
+  SourceCategoryMapping,
+} from '@shared/schema';
 
 /** What `matchSourceCategories` needs of a Moony category (a `TransactionCategory` fits). */
 export interface MatchableCategory {
@@ -72,4 +76,20 @@ export function sourceCategoryMapping(
     const categoryId = chosen[source];
     return categoryId ? [{ source, categoryId }] : [];
   });
+}
+
+/**
+ * How many rows a write categorizes by the user's choice: the backend stores a row picked in
+ * the preview and a row of a mapped source category alike as `manual`. A row that has both
+ * is counted twice; the result step only needs to tell none from some.
+ */
+export function manualChoiceCount(
+  overrides: readonly CsvCategoryOverride[],
+  mapping: readonly SourceCategoryMapping[],
+  sources: readonly SourceCategoryCount[]
+): number {
+  const mapped = new Set(mapping.map((choice) => choice.source));
+  return sources
+    .filter((source) => mapped.has(source.name))
+    .reduce((total, source) => total + source.count, overrides.length);
 }

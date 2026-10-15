@@ -1429,7 +1429,10 @@ export interface CsvPreset {
  * filteredOut, duplicate, duplicateById.
  */
 export interface CsvRowMessage {
-  /** 1-based file line (the header line counts). */
+  /**
+   * 1-based. File line for CSV (the line where the row starts, the header line counts),
+   * entry ordinal for statement formats.
+   */
   line: number;
   key: string;
   detail: string | null;
@@ -1531,19 +1534,25 @@ export interface CsvImportConfigInput {
   rowFilter?: CsvRowFilter | null;
   /** Skip possible composite matches (default true); certain bank IDs always skip. */
   skipDuplicates?: boolean;
-  /** File lines of possible composite duplicates to import anyway. */
+  /**
+   * Row `line`s (file line for CSV, entry ordinal for statement formats) of possible
+   * composite duplicates to import anyway.
+   */
   importAnywayLines?: number[];
   /** Force a text encoding (`Windows-1250`); omit to detect. */
   encoding?: string | null;
-  /** Categories picked in the preview, by file line; applied before the rules on import. */
+  /**
+   * Categories picked in the preview, by row `line` (file line for CSV, entry ordinal for
+   * statement formats); applied before the rules on import.
+   */
   categoryOverrides?: CsvCategoryOverride[];
   previewOffset?: number;
   previewLimit?: number;
 }
 
-/** One row's category chosen in the preview (file line → category). */
+/** One row's category chosen in the preview (row `line` → category). */
 export interface CsvCategoryOverride {
-  /** 1-based file line of the row. */
+  /** 1-based. File line for CSV, entry ordinal for statement formats. */
   line: number;
   categoryId: string;
 }

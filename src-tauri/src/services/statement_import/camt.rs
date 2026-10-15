@@ -39,7 +39,7 @@ fn statement(stmt: &Node) -> Result<Statement> {
     let closing = balance(stmt, &["CLBD"]);
     let currency = stmt
         .text_at(&["Acct", "Ccy"])
-        .map(str::to_string)
+        .map(str::to_uppercase)
         .or_else(|| closing.as_ref().map(|b| b.currency.clone()));
     let period = stmt
         .text_at(&["FrToDt", "FrDtTm"])
@@ -85,7 +85,8 @@ fn account_ref(stmt: &Node) -> AccountRef {
 }
 
 /// The first `Bal` whose type code is one of `codes` (earlier codes win), with a
-/// readable amount, currency and day. `DBIT` makes the amount negative.
+/// readable amount, currency, day and direction. `DBIT` makes the amount negative; a
+/// balance whose `CdtDbtInd` is not `CRDT` or `DBIT` is not read (no declared balance).
 fn balance(stmt: &Node, codes: &[&str]) -> Option<DeclaredBalance> {
     codes.iter().find_map(|code| {
         stmt.children("Bal")
@@ -100,17 +101,20 @@ fn balance(stmt: &Node, codes: &[&str]) -> Option<DeclaredBalance> {
 fn declared_balance(stmt: &Node, bal: &Node) -> Option<DeclaredBalance> {
     let amt = bal.child("Amt")?;
     let value = amount(&amt.text)?;
-    let signed = if bal.text_at(&["CdtDbtInd"]) == Some("DBIT") {
+    let direction = bal.text_at(&["CdtDbtInd"])?;
+    let signed = if direction.eq_ignore_ascii_case("DBIT") {
         value.neg()
-    } else {
+    } else if direction.eq_ignore_ascii_case("CRDT") {
         value
+    } else {
+        return None;
     };
     Some(DeclaredBalance {
         amount: signed.to_text(),
         currency: amt
             .attr("Ccy")
             .or_else(|| stmt.text_at(&["Acct", "Ccy"]))?
-            .to_string(),
+            .to_uppercase(),
         as_of: date_at(bal, "Dt")?,
     })
 }
@@ -626,6 +630,81 @@ mod tests {
             assert_eq!(s.currency.as_deref(), Some("CZK"), "{text:?}");
             assert!(s.opening.is_some(), "{text:?}");
         }
+    }
+
+    #[test]
+    fn a_balance_without_a_readable_direction_is_no_balance() {
+        let basic = fixture("basic.xml");
+        let opening = "<Amt Ccy=\"CZK\">1000.00</Amt><CdtDbtInd>CRDT</CdtDbtInd>";
+        let closing = "<Amt Ccy=\"CZK\">1250.50</Amt><CdtDbtInd>CRDT</CdtDbtInd>";
+        assert!(basic.contains(opening) && basic.contains(closing));
+        for indicator in [
+            "",
+            "<CdtDbtInd/>",
+            "<CdtDbtInd>XXXX</CdtDbtInd>",
+            "<CdtDbtInd>CR</CdtDbtInd>",
+        ] {
+            let text = basic.replace(
+                closing,
+                &closing.replace("<CdtDbtInd>CRDT</CdtDbtInd>", indicator),
+            );
+            let s = &parse(&text).unwrap()[0];
+            assert_eq!(s.closing, None, "closing with {indicator:?}");
+            assert!(s.opening.is_some(), "opening with {indicator:?}");
+            assert_eq!(s.currency.as_deref(), Some("CZK"));
+
+            let text = basic.replace(
+                opening,
+                &opening.replace("<CdtDbtInd>CRDT</CdtDbtInd>", indicator),
+            );
+            let s = &parse(&text).unwrap()[0];
+            assert_eq!(s.opening, None, "opening with {indicator:?}");
+            assert!(s.closing.is_some(), "closing with {indicator:?}");
+        }
+    }
+
+    #[test]
+    fn the_direction_of_a_balance_is_trimmed_and_case_insensitive() {
+        let basic = fixture("basic.xml");
+        let text = basic
+            .replacen(
+                "<CdtDbtInd>CRDT</CdtDbtInd><Dt><Dt>2026-08-31",
+                "<CdtDbtInd> dbit </CdtDbtInd><Dt><Dt>2026-08-31",
+                1,
+            )
+            .replacen(
+                "<CdtDbtInd>CRDT</CdtDbtInd><Dt><Dt>2026-09-30",
+                "<CdtDbtInd>crdt</CdtDbtInd><Dt><Dt>2026-09-30",
+                1,
+            );
+        let s = &parse(&text).unwrap()[0];
+        assert_eq!(s.opening.as_ref().unwrap().amount, "-1000");
+        assert_eq!(s.closing.as_ref().unwrap().amount, "1250.5");
+    }
+
+    #[test]
+    fn currencies_of_the_statement_and_its_balances_are_upper_case() {
+        let text = fixture("basic.xml").replace("Ccy=\"CZK\"", "Ccy=\"czk\"");
+        let text = text.replace("<Ccy>CZK</Ccy>", "<Ccy>czk</Ccy>");
+        let s = &parse(&text).unwrap()[0];
+        assert_eq!(s.currency.as_deref(), Some("CZK"));
+        assert_eq!(s.opening.as_ref().unwrap().currency, "CZK");
+        assert_eq!(s.closing.as_ref().unwrap().currency, "CZK");
+
+        // Without `Acct/Ccy` the statement takes the closing balance's currency.
+        let no_acct = fixture("basic.xml")
+            .replace("<Ccy>CZK</Ccy>", "")
+            .replace("Ccy=\"CZK\"", "Ccy=\"czk\"");
+        let s = &parse(&no_acct).unwrap()[0];
+        assert_eq!(s.currency.as_deref(), Some("CZK"));
+        assert_eq!(s.closing.as_ref().unwrap().currency, "CZK");
+
+        // A balance without its own currency takes the (upper-cased) account currency.
+        let inherited = fixture("basic.xml")
+            .replace("<Ccy>CZK</Ccy>", "<Ccy>czk</Ccy>")
+            .replace("<Amt Ccy=\"CZK\">1000.00</Amt>", "<Amt>1000.00</Amt>");
+        let s = &parse(&inherited).unwrap()[0];
+        assert_eq!(s.opening.as_ref().unwrap().currency, "CZK");
     }
 
     #[test]

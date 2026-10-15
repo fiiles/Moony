@@ -3,7 +3,7 @@
 
 use std::sync::LazyLock;
 
-use encoding_rs::{Encoding, UTF_8};
+use encoding_rs::{Encoding, UTF_16BE, UTF_16LE, UTF_8};
 use regex::Regex;
 
 use crate::services::csv_import::decode::DecodedCsv;
@@ -34,12 +34,15 @@ pub fn decode(bytes: &[u8], format: StatementFormat, country: Option<&str>) -> D
     }
 }
 
-/// XML: the declaration's `encoding` (UTF-8 when absent or unknown); a BOM wins.
+/// XML: the declaration's `encoding` (UTF-8 when absent or unknown); a BOM wins. A declaration
+/// of UTF-16 is ignored: it was found by reading the bytes as ASCII, so they are not UTF-16
+/// (real UTF-16 opens with a BOM, which `decode_with` honours).
 fn decode_xml(bytes: &[u8]) -> DecodedCsv {
     let head = String::from_utf8_lossy(&bytes[..bytes.len().min(XML_DECLARATION_BYTES)]);
     let encoding = XML_ENCODING
         .captures(&head)
         .and_then(|declared| Encoding::for_label(declared[1].as_bytes()))
+        .filter(|&declared| declared != UTF_16LE && declared != UTF_16BE)
         .unwrap_or(UTF_8);
     decode_with(encoding, bytes)
 }
@@ -169,6 +172,41 @@ mod tests {
             decode(&with_bom, StatementFormat::Camt053, None).text,
             "<Nm>Kůň</Nm>"
         );
+    }
+
+    #[test]
+    fn a_utf16_declaration_on_bytes_without_a_utf16_bom_is_read_as_utf8() {
+        // The declaration was readable as ASCII, so the bytes cannot be UTF-16.
+        for label in ["UTF-16", "utf-16", "UTF-16LE", "utf-16be", "Utf-16Le"] {
+            let text = format!("<?xml version=\"1.0\" encoding=\"{label}\"?><Nm>Kůň</Nm>");
+            let decoded = decode(text.as_bytes(), StatementFormat::Camt053, None);
+            assert_eq!(decoded.encoding, "UTF-8", "{label}");
+            assert!(decoded.text.ends_with("<Nm>Kůň</Nm>"), "{label}");
+        }
+        // With a UTF-8 BOM in front the declaration is ignored the same way.
+        let mut bom = vec![0xEF, 0xBB, 0xBF];
+        bom.extend_from_slice("<?xml version=\"1.0\" encoding=\"UTF-16\"?><Nm>Kůň</Nm>".as_bytes());
+        assert!(decode(&bom, StatementFormat::Camt053, None)
+            .text
+            .ends_with("<Nm>Kůň</Nm>"));
+    }
+
+    #[test]
+    fn a_utf16_bom_still_decodes_as_utf16_whatever_the_declaration_says() {
+        let body = "<?xml version=\"1.0\" encoding=\"UTF-16\"?><Nm>Kůň</Nm>";
+        let mut little = vec![0xFF, 0xFE];
+        little.extend(body.encode_utf16().flat_map(u16::to_le_bytes));
+        let mut big = vec![0xFE, 0xFF];
+        big.extend(body.encode_utf16().flat_map(u16::to_be_bytes));
+        for bytes in [little, big] {
+            let decoded = decode(&bytes, StatementFormat::Camt053, None);
+            assert!(decoded.text.ends_with("<Nm>Kůň</Nm>"));
+            assert!(
+                decoded.encoding.starts_with("UTF-16"),
+                "{}",
+                decoded.encoding
+            );
+        }
     }
 
     #[test]

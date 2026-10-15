@@ -68,8 +68,10 @@ fn detect_xml(text: &str) -> Result<Option<StatementFormat>> {
     Ok(None)
 }
 
-/// MT940: lines `:20:` and `:25:` plus a `:61:`/`:60F:`/`:60M:` line, the block optionally
-/// opened by `{4:` (on its own line or in front of `:20:`).
+/// SWIFT text, the block optionally opened by `{4:` (on its own line or in front of `:20:`).
+/// Lines `:20:` and `:25:` with a `:34F:` line are an MT942 (refused). Lines `:20:` and `:25:`
+/// with a `:61:`/`:60F:`/`:60M:` line are an MT940, unless header block 2 says `I950`/`O950`:
+/// then it is an MT950 (refused).
 fn detect_swift(text: &str) -> Result<Option<StatementFormat>> {
     let (mut reference, mut account, mut movement, mut interim) = (false, false, false, false);
     for line in text.lines() {
@@ -82,11 +84,12 @@ fn detect_swift(text: &str) -> Result<Option<StatementFormat>> {
             interim |= line.starts_with(":34f:");
         }
     }
+    // An interim report (MT942) is refused on its `:34F:` line, with or without movements.
+    if reference && account && interim {
+        return Err(unsupported_variant("MT942"));
+    }
     if !(reference && account && movement) {
         return Ok(None);
-    }
-    if interim {
-        return Err(unsupported_variant("MT942"));
     }
     if text.contains("{2:i950") || text.contains("{2:o950") {
         return Err(unsupported_variant("MT950"));
@@ -209,6 +212,40 @@ mod tests {
             variant("{1:F01BANKXXXX}{2:I950BANKYYYY}{4:\n:20:X\n:25:Y\n:60F:C260831CZK1,00\n-}"),
             "MT950"
         );
+    }
+
+    #[test]
+    fn an_interim_report_is_refused_even_without_movement_lines() {
+        // `:34F:` with `:20:` and `:25:` is an MT942 whether or not it lists `:61:`.
+        assert_eq!(variant(":20:X\n:25:Y\n:34F:CZK0,\n:28C:1\n"), "MT942");
+        assert_eq!(variant(":20:X\r\n:25:Y\r\n:34F:CZK0,\r\n"), "MT942");
+        assert_eq!(
+            variant("{1:F01BANKXXXX}{2:O942BANKYYYY}{4::20:X\n:25:Y\n:34F:CZK0,\n-}"),
+            "MT942"
+        );
+        // Without the reference or the account line it is not a statement at all.
+        assert_eq!(det(":20:X\n:34F:CZK0,\n"), None);
+        assert_eq!(det(":25:Y\n:34F:CZK0,\n"), None);
+        assert_eq!(det(":34F:CZK0,\n"), None);
+        // A `:34F:` that does not open a line does not count.
+        assert_eq!(
+            det(":20:X\n:25:Y\n:28C:1\n:86:see :34F:CZK0, here\n:60F:C260831CZK1,00\n"),
+            Some(StatementFormat::Mt940)
+        );
+    }
+
+    #[test]
+    fn an_mt950_is_refused_by_either_direction_of_its_header_block() {
+        for header in [
+            "{2:I950BANKYYYYN}",
+            "{2:O9501200260831BANKYYYYXXXX00000000002608311200N}",
+        ] {
+            let text =
+                format!("{{1:F01BANKXXXX}}{header}{{4:\n:20:X\n:25:Y\n:60F:C260831CZK1,00\n-}}");
+            assert_eq!(variant(&text), "MT950", "{header}");
+        }
+        let mt940 = "{1:F01BANKXXXX}{2:O940BANKYYYY}{4:\n:20:X\n:25:Y\n:60F:C260831CZK1,00\n-}";
+        assert_eq!(det(mt940), Some(StatementFormat::Mt940));
     }
 
     #[test]

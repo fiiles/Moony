@@ -107,15 +107,17 @@ pub struct CsvImportConfig {
     /// reports them in `duplicates`; certain bank IDs are always skipped.
     #[serde(rename = "skipDuplicates", default = "default_true")]
     pub skip_duplicates: bool,
-    /// File lines of possible composite duplicates to import anyway.
+    /// Row `line`s (file line for CSV, entry ordinal for statement formats) of possible
+    /// composite duplicates to import anyway.
     #[serde(rename = "importAnywayLines", default)]
     pub import_anyway_lines: Vec<usize>,
     /// Force a text encoding (`Windows-1250`); `None` = detect.
     #[serde(default)]
     pub encoding: Option<String>,
     /// Categories the user picked in the preview for rows the rules left
-    /// uncategorized (or wanted differently), by file line. Applied on import
-    /// before the rules run, so they win; a missing category is ignored.
+    /// uncategorized (or wanted differently), by row `line` (file line for CSV, entry
+    /// ordinal for statement formats). Applied on import before the rules run, so they
+    /// win; a missing category is ignored.
     #[serde(rename = "categoryOverrides", default)]
     pub category_overrides: Vec<CsvCategoryOverride>,
     #[serde(rename = "previewOffset", default)]
@@ -127,7 +129,7 @@ pub struct CsvImportConfig {
 /// One row's category chosen in the preview (TS `CsvCategoryOverride`).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 pub struct CsvCategoryOverride {
-    /// 1-based file line of the row.
+    /// 1-based. File line for CSV, entry ordinal for statement formats.
     pub line: usize,
     #[serde(rename = "categoryId")]
     pub category_id: String,

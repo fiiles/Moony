@@ -331,7 +331,7 @@ export type CryptoTransaction = { id: string; investmentId: string; type: string
  */
 export type CsvCategoryOverride = { 
 /**
- * 1-based file line of the row.
+ * 1-based. File line for CSV, entry ordinal for statement formats.
  */
 line: number; categoryId: string }
 
@@ -396,7 +396,8 @@ decimalSeparator?: string | null; rowFilter?: CsvRowFilter | null;
  */
 skipDuplicates?: boolean; 
 /**
- * File lines of possible composite duplicates to import anyway.
+ * Row `line`s (file line for CSV, entry ordinal for statement formats) of possible
+ * composite duplicates to import anyway.
  */
 importAnywayLines?: number[]; 
 /**
@@ -405,8 +406,9 @@ importAnywayLines?: number[];
 encoding?: string | null; 
 /**
  * Categories the user picked in the preview for rows the rules left
- * uncategorized (or wanted differently), by file line. Applied on import
- * before the rules run, so they win; a missing category is ignored.
+ * uncategorized (or wanted differently), by row `line` (file line for CSV, entry
+ * ordinal for statement formats). Applied on import before the rules run, so they
+ * win; a missing category is ignored.
  */
 categoryOverrides?: CsvCategoryOverride[]; previewOffset?: number; previewLimit?: number }
 

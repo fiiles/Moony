@@ -11,6 +11,10 @@ use crate::error::{AppError, Result};
 /// building a tree whose recursive drop could overflow the stack.
 const MAX_DEPTH: usize = 128;
 
+/// A statement file is at most 50 MB, so a tree of this many elements is far beyond any real
+/// statement and would only be built to exhaust memory (`<a/>` is four bytes).
+const MAX_NODES: usize = 2_000_000;
+
 /// One element: local name (no prefix), decoded attributes, its own text and children.
 #[derive(Debug, Clone, Default)]
 pub struct Node {
@@ -48,25 +52,35 @@ impl Node {
     }
 }
 
-/// Parses a whole document into its root element. Any XML error is
-/// `validation.statementMalformed` (detail: the open element, else `xml`); a document
+/// Parses a whole document into its root element. Any XML error, a document nested deeper
+/// than [`MAX_DEPTH`] or with more than [`MAX_NODES`] elements is `validation.statementMalformed`
+/// (detail: the open element, else `xml`, cut to [`MAX_DETAIL_CHARS`] characters); a document
 /// type declaration is `validation.statementDoctype`.
 pub fn parse_xml(text: &str) -> Result<Node> {
+    parse_xml_with_limits(text, MAX_DEPTH, MAX_NODES)
+}
+
+fn parse_xml_with_limits(text: &str, max_depth: usize, max_nodes: usize) -> Result<Node> {
     let mut reader = Reader::from_str(text);
     let mut open: Vec<Node> = Vec::new();
     let mut root: Option<Node> = None;
+    let mut nodes = 0usize;
     loop {
         let event = reader
             .read_event()
             .map_err(|_| malformed(open_name(&open)))?;
         match event {
             Event::Start(start) => {
-                if (open.is_empty() && root.is_some()) || open.len() >= MAX_DEPTH {
+                if (open.is_empty() && root.is_some()) || open.len() >= max_depth {
                     return Err(malformed(&start_name(&start)));
                 }
+                count_node(&mut nodes, max_nodes)?;
                 open.push(node_from(&start)?);
             }
-            Event::Empty(start) => attach(&mut open, &mut root, node_from(&start)?)?,
+            Event::Empty(start) => {
+                count_node(&mut nodes, max_nodes)?;
+                attach(&mut open, &mut root, node_from(&start)?)?;
+            }
             Event::End(_) => {
                 let node = open.pop().ok_or_else(|| malformed("xml"))?;
                 attach(&mut open, &mut root, node)?;
@@ -106,8 +120,24 @@ pub fn parse_xml(text: &str) -> Result<Node> {
     root.ok_or_else(|| malformed("xml"))
 }
 
+/// Longest `detail` of a malformed-statement error, in characters. Element and entity names
+/// come from the file and can be megabytes long.
+const MAX_DETAIL_CHARS: usize = 64;
+
 pub(super) fn malformed(detail: &str) -> AppError {
+    let detail: String = detail.chars().take(MAX_DETAIL_CHARS).collect();
     AppError::validation_with("validation.statementMalformed", json!({ "detail": detail }))
+}
+
+/// Counts one more element and refuses the document past `max_nodes`.
+fn count_node(nodes: &mut usize, max_nodes: usize) -> Result<()> {
+    *nodes += 1;
+    if *nodes > max_nodes {
+        return Err(malformed(&format!(
+            "too many elements (more than {max_nodes})"
+        )));
+    }
+    Ok(())
 }
 
 fn open_name(open: &[Node]) -> &str {
@@ -217,5 +247,46 @@ mod tests {
     fn absurd_nesting_is_refused_instead_of_overflowing_the_stack() {
         let deep = "<a>".repeat(10_000) + &"</a>".repeat(10_000);
         assert_eq!(detail(&parse_xml(&deep).unwrap_err()), "a");
+    }
+
+    #[test]
+    fn a_document_with_too_many_elements_is_refused() {
+        // Start tags and empty elements both count; the root is one element.
+        let nested = "<r><a>x</a><b/><c><d/></c></r>"; // r a b c d = 5 elements
+        assert!(parse_xml_with_limits(nested, MAX_DEPTH, 5).is_ok());
+        let error = parse_xml_with_limits(nested, MAX_DEPTH, 4).unwrap_err();
+        assert!(
+            detail(&error).contains("too many elements"),
+            "{}",
+            detail(&error)
+        );
+        assert!(detail(&error).contains('4'), "the detail names the cap");
+
+        let empties = format!("<r>{}</r>", "<e/>".repeat(100));
+        assert!(parse_xml_with_limits(&empties, MAX_DEPTH, 101).is_ok());
+        assert!(parse_xml_with_limits(&empties, MAX_DEPTH, 100).is_err());
+        assert_eq!(MAX_NODES, 2_000_000);
+        assert!(parse_xml(&empties).is_ok());
+    }
+
+    #[test]
+    fn file_controlled_names_are_cut_in_an_error_detail() {
+        let long = "a".repeat(10_000);
+        // A mismatched end tag reports the open element.
+        let open = detail(&parse_xml(&format!("<{long}></b>")).unwrap_err());
+        assert_eq!(open, "a".repeat(64));
+        // An unknown entity reports its name.
+        let entity = detail(&parse_xml(&format!("<A>&{long};</A>")).unwrap_err());
+        assert!(entity.starts_with("entity aaaa"));
+        assert_eq!(entity.chars().count(), 64);
+        // A bad attribute reports the element.
+        let attribute = detail(&parse_xml(&format!("<{long} x=1/>")).unwrap_err());
+        assert_eq!(attribute, "a".repeat(64));
+        // The cut is on a character boundary.
+        let wide = "é".repeat(10_000);
+        let cut = detail(&parse_xml(&format!("<{wide}></b>")).unwrap_err());
+        assert_eq!(cut, "é".repeat(64));
+        // A short detail is untouched.
+        assert_eq!(detail(&parse_xml("<A></B>").unwrap_err()), "A");
     }
 }

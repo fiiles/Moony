@@ -38,8 +38,12 @@ migration for a label nothing branches on).
   pure functions from text to statements: no database access and no I/O.
 - **The format comes from the content.** `detect` reads the first 4 KB and decides on what is
   there, never on the extension. A file that is none of the four formats goes to the CSV path
-  unchanged. Variants Moony recognizes and does not read (camt.052 and 054, MT942, MT950) are
-  refused with their own message instead of being parsed as CSV.
+  unchanged. Variants Moony recognizes and does not read are refused with their own message
+  instead of being parsed as CSV: camt.052 and camt.054 (by the namespace of the XML), MT942
+  (SWIFT text with lines starting `:20:` and `:25:` and a line starting `:34F:`, whether or not
+  it has `:61:` movements) and MT950 (text that reads as an MT940, that is `:20:` and `:25:`
+  plus a `:61:`, `:60F:` or `:60M:` line, whose header block 2 is `{2:I950` or `{2:O950`).
+  Anything else that is SWIFT-like but lacks `:20:` or `:25:` is not recognized and goes to CSV.
 - **Bank IDs are unique or absent.** Each format names one field as the bank-side ID (for CAMT
   the account servicer reference). An ID that occurs more than once in one import is dropped from
   every entry that carries it, and those entries are matched by the composite key only. The

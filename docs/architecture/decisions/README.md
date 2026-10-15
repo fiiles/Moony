@@ -16,7 +16,7 @@ and what it costs. ADRs are dated point-in-time records — facts in them
 | [0006](0006-embedded-mcp-server.md) | Embedded MCP server over Streamable HTTP | 2026-08-12 | Accepted |
 | [0007](0007-one-write-path-ui-and-mcp.md) | One write path for UI and MCP | 2026-08-12 | Accepted; renderer refresh superseded by 0014 |
 | [0008](0008-utc-calendar-days.md) | Calendar days are UTC-midnight epochs; periods bounded in UTC | 2026-10-02 | Accepted |
-| [0009](0009-key-derivation-parameters.md) | Versioned scrypt parameters for the password key file | 2026-10-02 | Accepted |
+| [0009](0009-key-derivation-parameters.md) | Versioned scrypt parameters for the password key file | 2026-10-02 | Accepted; re-wrap follow-up taken up by 0018 |
 | [0010](0010-new-identifier-and-single-schema-baseline.md) | New app identifier and a single schema baseline | 2026-10-04 | Accepted; identifier rule amended by 0015 |
 | [0011](0011-native-money-and-report-currencies.md) | Native money and explicit report currencies | 2026-10-08 | Accepted; CZK cache clause superseded by 0012 |
 | [0012](0012-explicit-currencies-and-eur-rate-reference.md) | Explicit currencies and the EUR rate reference | 2026-10-09 | Accepted |
@@ -25,6 +25,7 @@ and what it costs. ADRs are dated point-in-time records — facts in them
 | [0015](0015-identifier-not-bound-to-a-person.md) | App identifier not bound to a person | 2026-10-13 | Accepted; amends the identifier rule of 0010 |
 | [0016](0016-history-from-dated-facts.md) | History days derive from dated facts; manual values hold | 2026-10-13 | Accepted |
 | [0017](0017-encrypted-attachments-store.md) | Attachments live in a second SQLCipher database | 2026-10-15 | Accepted |
+| [0018](0018-rewrap-key-file-after-unlock.md) | Re-wrap the password key file at the current cost after unlock | 2026-10-15 | Accepted; amends 0009 |
 
 ## Rules
 
@@ -32,7 +33,7 @@ and what it costs. ADRs are dated point-in-time records — facts in them
   different. To change a decision, write a **new ADR** with the next number
   that links back to the one it supersedes. The only edit ever made to an old
   ADR is flipping its `## Status` to `Superseded by [NNNN](NNNN-....md)`.
-- Numbering is sequential and zero-padded; the next free number is `0018`.
+- Numbering is sequential and zero-padded; the next free number is `0019`.
 - Filename: `NNNN-short-kebab-title.md`. Add every new ADR to the index table
   above.
 - Keep each ADR to one page or less.

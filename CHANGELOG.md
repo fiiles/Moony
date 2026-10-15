@@ -37,6 +37,15 @@ All notable changes to Moony are documented in this file. The format follows
 
 - Deleting a property or an insurance policy left its photos and documents on disk.
 
+### Security
+
+- **Stronger password protection for older profiles.** A profile whose password was set before
+  0.9.0 still had its key file protected with the old, weaker key derivation (scrypt N = 2¹⁴)
+  until the password was changed. The first unlock after the update now re-protects it at the
+  current cost (N = 2¹⁷) under the same password, so it takes a moment longer once. Backups made
+  afterwards carry the stronger key file. The key files are now replaced atomically: a crash or
+  a power cut while one is being rewritten leaves the old or the new file, never a damaged one.
+
 ## [0.12.2] - 2026-10-14
 
 ### Added

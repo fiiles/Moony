@@ -12,7 +12,9 @@
 //! `key.enc` carries the scrypt cost it was derived with in
 //! an 8-byte header in front of those 60 bytes (see [`KdfParams`]); files without
 //! the header (every profile created earlier, and every `recovery.enc`) use
-//! [`KdfParams::LEGACY`]. See ADR 0009.
+//! [`KdfParams::LEGACY`]. See ADR 0009. A weaker `key.enc` is re-wrapped at
+//! [`KdfParams::CURRENT`] after a successful unlock, and key files are always
+//! replaced atomically. See ADR 0018.
 
 use aes_gcm::{
     aead::{Aead, KeyInit},
@@ -21,7 +23,8 @@ use aes_gcm::{
 use rand::Rng;
 use scrypt::{scrypt, Params};
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use std::sync::{Mutex, PoisonError};
 
 use crate::error::{AppError, Result};
 
@@ -135,6 +138,26 @@ impl KdfParams {
             && (1..=Self::MAX_R).contains(&params.r)
             && (1..=Self::MAX_P).contains(&params.p);
         in_range.then_some(params)
+    }
+
+    /// Memory one derivation needs, in units of 128 bytes (scrypt uses 128 * r * N bytes).
+    fn memory_cost(self) -> u64 {
+        u64::from(self.r) << self.log_n
+    }
+
+    /// Work one derivation takes, in the same units (p sequential passes over that memory).
+    fn work_cost(self) -> u64 {
+        self.memory_cost() * u64::from(self.p)
+    }
+
+    /// Whether one password guess against `other` needs at least as much memory and work as
+    /// against these parameters, and more of one. A `key.enc` weaker than
+    /// [`KdfParams::CURRENT`] is re-wrapped after unlock; one that is stronger, or stronger on
+    /// either axis, is left alone so re-wrapping never cuts an attacker's cost (ADR 0018).
+    pub fn is_weaker_than(self, other: KdfParams) -> bool {
+        let (memory, work) = (self.memory_cost(), self.work_cost());
+        let (other_memory, other_work) = (other.memory_cost(), other.work_cost());
+        memory <= other_memory && work <= other_work && (memory, work) != (other_memory, other_work)
     }
 }
 
@@ -326,31 +349,96 @@ pub fn read_salt(path: &Path) -> Result<[u8; SALT_LENGTH]> {
 /// master key, recovery-wrapped master key).
 pub const SECRET_FILE_NAMES: [&str; 3] = ["salt", "key.enc", "recovery.enc"];
 
-/// Write a secret file readable and writable by its owner only.
+/// Create (or truncate) a secret file readable and writable by its owner only.
 ///
 /// On Unix the file is created with mode 0o600 so it is never visible to other
 /// local users, not even briefly. `mode` only applies when the file is created,
 /// so a pre-existing, more permissive file is tightened explicitly before the
 /// new content goes in. On Windows the file inherits the per-user ACL of the
 /// app data directory, which is already private to the user.
-fn write_secret_file(path: &Path, data: &[u8]) -> std::io::Result<()> {
+fn create_secret_file(path: &Path) -> std::io::Result<fs::File> {
     #[cfg(unix)]
     {
-        use std::io::Write;
         use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
 
-        let mut file = fs::OpenOptions::new()
+        let file = fs::OpenOptions::new()
             .write(true)
             .create(true)
             .truncate(true)
             .mode(0o600)
             .open(path)?;
         file.set_permissions(fs::Permissions::from_mode(0o600))?;
-        file.write_all(data)
+        Ok(file)
     }
     #[cfg(not(unix))]
     {
-        fs::write(path, data)
+        fs::File::create(path)
+    }
+}
+
+/// Write a secret file readable and writable by its owner only (see [`create_secret_file`]).
+fn write_secret_file(path: &Path, data: &[u8]) -> std::io::Result<()> {
+    use std::io::Write;
+    create_secret_file(path)?.write_all(data)
+}
+
+/// Where [`replace_secret_file`] stages the new content of `path`: `<name>.tmp` in the same
+/// folder, so the rename never crosses file systems. A crash can leave it behind; the next write
+/// of the same file overwrites it and deleting the account removes it.
+pub fn staging_path(path: &Path) -> PathBuf {
+    let mut name = path.file_name().unwrap_or_default().to_os_string();
+    name.push(".tmp");
+    path.with_file_name(name)
+}
+
+/// Serialises [`replace_secret_file`]: two writes of one file share its staging path, and one
+/// would otherwise truncate the other's staged content or rename it away.
+static SECRET_FILE_WRITES: Mutex<()> = Mutex::new(());
+
+/// Replace a secret file atomically (ADR 0018): the new content goes to [`staging_path`]
+/// (owner-only), is flushed to disk and renamed over `path`, then the folder is flushed so the
+/// rename survives a power cut. A crash at any point leaves either the old or the new file, never
+/// a truncated one. On an error `path` is untouched and the staging file is removed.
+fn replace_secret_file(path: &Path, data: &[u8]) -> std::io::Result<()> {
+    use std::io::Write;
+
+    // A panic while holding the lock leaves no state behind worth refusing to write over.
+    let _writing = SECRET_FILE_WRITES
+        .lock()
+        .unwrap_or_else(PoisonError::into_inner);
+    let staging = staging_path(path);
+    let staged = create_secret_file(&staging)
+        .and_then(|mut file| {
+            file.write_all(data)?;
+            file.sync_all()
+        })
+        .and_then(|()| fs::rename(&staging, path));
+    if let Err(e) = staged {
+        let _ = fs::remove_file(&staging);
+        return Err(e);
+    }
+    // The new file is in place from here on, so a caller must not see an error (a password
+    // change would then report failure with the new password already active).
+    if let Err(e) = sync_parent_dir(path) {
+        log::warn!("[AUTH] Could not flush the data folder after replacing a key file: {e}");
+    }
+    Ok(())
+}
+
+/// Flush a folder's entries (the rename that just happened in it) to disk. `std` offers no
+/// directory handle on Windows, where the rename replaces the target in one step.
+fn sync_parent_dir(path: &Path) -> std::io::Result<()> {
+    #[cfg(unix)]
+    {
+        match path.parent() {
+            Some(dir) if !dir.as_os_str().is_empty() => fs::File::open(dir)?.sync_all(),
+            _ => Ok(()),
+        }
+    }
+    #[cfg(not(unix))]
+    {
+        let _ = path;
+        Ok(())
     }
 }
 
@@ -399,9 +487,9 @@ pub fn read_encrypted_key(path: &Path) -> Result<Vec<u8>> {
     fs::read(path).map_err(|e| AppError::Encryption(format!("Failed to read encrypted key: {}", e)))
 }
 
-/// Write encrypted key to file
+/// Write encrypted key to file, replacing an existing one atomically
 pub fn write_encrypted_key(path: &Path, encrypted_key: &[u8]) -> Result<()> {
-    write_secret_file(path, encrypted_key)
+    replace_secret_file(path, encrypted_key)
         .map_err(|e| AppError::Encryption(format!("Failed to write encrypted key: {}", e)))
 }
 
@@ -420,6 +508,28 @@ pub fn store_password_encrypted_key(
     file.extend_from_slice(&cost.to_header());
     file.extend_from_slice(&encrypted);
     write_encrypted_key(key_file_path, &file)
+}
+
+/// Re-wrap `key.enc` with [`KdfParams::CURRENT`] when it was written with weaker parameters (a
+/// headerless legacy file, or a weaker header). `master_key` must be what the file was just
+/// unlocked to with `password`. Returns whether the file was rewritten; a file at the current
+/// cost or a stronger one is left alone. The rewrite is atomic, so an error leaves the old file,
+/// which still opens the profile. ADR 0018.
+pub fn upgrade_password_key_file(
+    master_key: &[u8; KEY_LENGTH],
+    password: &str,
+    salt: &[u8],
+    key_file_path: &Path,
+) -> Result<bool> {
+    let file = read_encrypted_key(key_file_path)?;
+    let Some((cost, _)) = split_key_file(&file) else {
+        return Err(AppError::Auth(AUTH_KEY_FILES_CORRUPTED.into()));
+    };
+    if !cost.is_weaker_than(KdfParams::CURRENT) {
+        return Ok(false);
+    }
+    store_password_encrypted_key(master_key, password, salt, key_file_path)?;
+    Ok(true)
 }
 
 /// Store master key encrypted with recovery key. Stays in the headerless
@@ -913,6 +1023,162 @@ mod tests {
     }
 
     // ------------------------------------------------------------------
+    // Re-wrapping key.enc at the current cost after unlock (ADR 0018)
+    // ------------------------------------------------------------------
+
+    fn legacy_key_file(dir: &Path) -> PathBuf {
+        let path = dir.join("key.enc");
+        fs::write(&path, hex::decode(LEGACY_KEY_FILE_HEX).unwrap()).unwrap();
+        path
+    }
+
+    #[test]
+    fn only_parameters_current_beats_on_memory_and_work_are_weaker() {
+        let current = KdfParams::CURRENT;
+        assert!(KdfParams::LEGACY.is_weaker_than(current));
+        assert!(!current.is_weaker_than(current));
+        let p = |log_n, r, p| KdfParams { log_n, r, p };
+        assert!(!p(18, 8, 1).is_weaker_than(current), "stronger");
+        assert!(
+            !p(16, 16, 1).is_weaker_than(current),
+            "same memory and work"
+        );
+        assert!(
+            p(17, 4, 2).is_weaker_than(current),
+            "half the memory, same work"
+        );
+        assert!(p(17, 8, 1).is_weaker_than(p(17, 8, 2)), "less work");
+        // Less memory but more work: re-wrapping would cut the work per guess.
+        assert!(!p(16, 8, 4).is_weaker_than(current), "mixed");
+        assert!(!p(14, 8, 16).is_weaker_than(current), "mixed");
+    }
+
+    #[test]
+    fn upgrading_a_legacy_key_file_moves_it_to_the_current_cost_under_the_same_password() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = legacy_key_file(dir.path());
+        let salt = [1u8; 32];
+        let master = decrypt_master_key_with_password("legacy-pass-123", &salt, &path).unwrap();
+
+        assert!(upgrade_password_key_file(&master, "legacy-pass-123", &salt, &path).unwrap());
+
+        let file = fs::read(&path).unwrap();
+        assert_eq!(file.len(), KDF_HEADER_LENGTH + ENCRYPTED_KEY_LENGTH);
+        assert_eq!(
+            KdfParams::from_header(&file[..KDF_HEADER_LENGTH]),
+            Some(KdfParams::CURRENT)
+        );
+        let again = decrypt_master_key_with_password("legacy-pass-123", &salt, &path).unwrap();
+        assert_eq!(again, [9u8; 32]);
+        let err = decrypt_master_key_with_password("wrong-pass-123", &salt, &path).unwrap_err();
+        assert_auth_error(err, "auth.wrongPassword");
+        assert!(!staging_path(&path).exists(), "no staging file is left");
+    }
+
+    #[test]
+    fn a_key_file_at_the_current_cost_is_not_rewritten() {
+        let dir = tempfile::tempdir().unwrap();
+        let (master, salt) = write_key_files(dir.path(), "pw-12345", CANONICAL_KEY);
+        let path = dir.path().join("key.enc");
+        let before = fs::read(&path).unwrap();
+
+        assert!(!upgrade_password_key_file(&master, "pw-12345", &salt, &path).unwrap());
+
+        // A rewrite would use a fresh IV, so equal bytes mean untouched.
+        assert_eq!(fs::read(&path).unwrap(), before);
+    }
+
+    #[test]
+    fn a_key_file_stronger_than_current_is_not_downgraded() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("key.enc");
+        let stronger = KdfParams {
+            log_n: 18,
+            r: 8,
+            p: 1,
+        };
+        let mut file = stronger.to_header().to_vec();
+        file.extend_from_slice(&[7u8; ENCRYPTED_KEY_LENGTH]);
+        fs::write(&path, &file).unwrap();
+
+        assert!(!upgrade_password_key_file(&[9u8; 32], "pw-12345", &[1u8; 32], &path).unwrap());
+        assert_eq!(fs::read(&path).unwrap(), file);
+    }
+
+    #[test]
+    fn a_failed_upgrade_leaves_the_legacy_key_file_intact() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = legacy_key_file(dir.path());
+        let before = fs::read(&path).unwrap();
+        // A directory where the staging file goes makes the write fail.
+        fs::create_dir(staging_path(&path)).unwrap();
+
+        let result = upgrade_password_key_file(&[9u8; 32], "legacy-pass-123", &[1u8; 32], &path);
+
+        assert!(result.is_err());
+        assert_eq!(fs::read(&path).unwrap(), before);
+        let master = decrypt_master_key_with_password("legacy-pass-123", &[1u8; 32], &path);
+        assert_eq!(master.unwrap(), [9u8; 32]);
+    }
+
+    #[test]
+    fn a_staging_file_left_by_an_interrupted_write_does_not_block_the_upgrade() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = legacy_key_file(dir.path());
+        fs::write(staging_path(&path), b"half-written").unwrap();
+
+        assert!(
+            upgrade_password_key_file(&[9u8; 32], "legacy-pass-123", &[1u8; 32], &path).unwrap()
+        );
+
+        assert_eq!(
+            fs::read(&path).unwrap().len(),
+            KDF_HEADER_LENGTH + ENCRYPTED_KEY_LENGTH
+        );
+        assert!(!staging_path(&path).exists());
+    }
+
+    /// Two writes of one key file (a double-submitted unlock, say) share its staging path; they
+    /// must not truncate each other's staged content or rename it away.
+    #[test]
+    fn concurrent_writes_of_one_key_file_all_succeed_and_leave_a_whole_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("key.enc");
+        let writers: Vec<_> = (1..=4u8)
+            .map(|n| {
+                let path = path.clone();
+                std::thread::spawn(move || {
+                    (0..20)
+                        .map(|_| write_encrypted_key(&path, &[n; ENCRYPTED_KEY_LENGTH]))
+                        .collect::<Vec<_>>()
+                })
+            })
+            .collect();
+        for writer in writers {
+            for result in writer.join().unwrap() {
+                result.unwrap();
+            }
+        }
+
+        let file = fs::read(&path).unwrap();
+        assert_eq!(file.len(), ENCRYPTED_KEY_LENGTH);
+        assert!(file.iter().all(|&b| b == file[0]), "one write, not a mix");
+        assert!(!staging_path(&path).exists());
+    }
+
+    #[test]
+    fn upgrading_a_damaged_key_file_is_refused_and_leaves_it_alone() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("key.enc");
+        fs::write(&path, b"too short").unwrap();
+
+        let err = upgrade_password_key_file(&[9u8; 32], "pw-12345", &[1u8; 32], &path).unwrap_err();
+
+        assert_auth_error(err, "auth.keyFilesCorrupted");
+        assert_eq!(fs::read(&path).unwrap(), b"too short");
+    }
+
+    // ------------------------------------------------------------------
     // Owner-only permissions for secret files
     // ------------------------------------------------------------------
 
@@ -945,6 +1211,20 @@ mod tests {
 
             assert_eq!(mode(&path), 0o600);
             assert_eq!(fs::read(&path).unwrap(), vec![7u8; ENCRYPTED_KEY_LENGTH]);
+        }
+
+        #[test]
+        fn an_upgraded_key_file_is_owner_only() {
+            let dir = tempfile::tempdir().unwrap();
+            let path = legacy_key_file(dir.path());
+            fs::set_permissions(&path, fs::Permissions::from_mode(0o644)).unwrap();
+
+            assert!(
+                upgrade_password_key_file(&[9u8; 32], "legacy-pass-123", &[1u8; 32], &path)
+                    .unwrap()
+            );
+
+            assert_eq!(mode(&path), 0o600);
         }
 
         #[test]

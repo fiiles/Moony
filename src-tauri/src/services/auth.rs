@@ -151,6 +151,25 @@ pub fn setup_account(
 
 /// Unlock existing database with password
 pub fn unlock(db: &Database, db_path: PathBuf, password: &str) -> Result<UserProfile> {
+    let profile = unlock_with(&db_path, password, |master_key_hex| {
+        // Open database with master key, then get the user profile
+        db.open_with_key(db_path.clone(), master_key_hex)?;
+        get_user_profile(db)?.ok_or_else(|| AppError::Auth("No user profile found".into()))
+    })?;
+
+    set_authenticated(true);
+
+    Ok(profile)
+}
+
+/// The key-file side of [`unlock`]: unwrap the master key with the password, hand it to `open`
+/// (which opens the database), and only once that succeeds move a weaker `key.enc` to the current
+/// cost.
+fn unlock_with<T>(
+    db_path: &Path,
+    password: &str,
+    open: impl FnOnce(&str) -> Result<T>,
+) -> Result<T> {
     let data_dir = db_path
         .parent()
         .ok_or_else(|| AppError::Internal("Invalid database path".into()))?;
@@ -166,17 +185,25 @@ pub fn unlock(db: &Database, db_path: PathBuf, password: &str) -> Result<UserPro
     // Decrypt master key using password
     let master_key = crypto::decrypt_master_key_with_password(password, &salt, &key_path)?;
 
-    // Open database with master key
-    let master_key_hex = crypto::master_key_to_hex(&master_key);
-    db.open_with_key(db_path, &master_key_hex)?;
+    let opened = open(&crypto::master_key_to_hex(&master_key))?;
 
-    // Get user profile
-    let profile =
-        get_user_profile(db)?.ok_or_else(|| AppError::Auth("No user profile found".into()))?;
+    // A key.enc from before ADR 0009 (N=2^14) moves to the current cost now, once.
+    upgrade_key_file_cost(&master_key, password, &salt, &key_path);
 
-    set_authenticated(true);
+    Ok(opened)
+}
 
-    Ok(profile)
+/// Move `key.enc` to the current scrypt cost after a successful unlock (ADR 0018). Best effort:
+/// a failure is logged without paths or secrets and the unlock goes on, because the old file
+/// still opens the profile.
+fn upgrade_key_file_cost(master_key: &[u8; 32], password: &str, salt: &[u8], key_path: &Path) {
+    match crypto::upgrade_password_key_file(master_key, password, salt, key_path) {
+        Ok(true) => log::info!("[AUTH] Re-wrapped key.enc with the current key derivation cost"),
+        Ok(false) => {}
+        Err(e) => {
+            log::warn!("[AUTH] Could not re-wrap key.enc with the current key derivation cost: {e}")
+        }
+    }
 }
 
 /// Prepared setup data - returned by prepare_setup, passed to confirm_setup
@@ -622,7 +649,15 @@ pub fn remove_account_files(data_dir: &Path) -> Vec<String> {
     };
 
     let (salt_path, key_path, recovery_path) = get_key_paths(data_dir);
-    for path in [salt_path, key_path, recovery_path] {
+    // The key files, and the staging copies an interrupted key-file write leaves behind.
+    let staging = [
+        crypto::staging_path(&key_path),
+        crypto::staging_path(&recovery_path),
+    ];
+    for path in [salt_path, key_path, recovery_path]
+        .into_iter()
+        .chain(staging)
+    {
         remove(path);
     }
     let databases = [
@@ -939,17 +974,8 @@ mod tests {
     #[test]
     fn change_password_upgrades_a_legacy_key_file_to_the_current_kdf_cost() {
         let dir = tempdir().expect("tempdir");
-        let db_path = write_key_files(dir.path(), "old-password");
-        let salt = crypto::read_salt(&dir.path().join("salt")).unwrap();
-        let key_path = dir.path().join("key.enc");
-
-        // Rebuild key.enc in the pre-header format (60 bytes, scrypt N = 2^14).
-        let master =
-            crypto::decrypt_master_key_with_password("old-password", &salt, &key_path).unwrap();
-        let legacy_key = crypto::derive_key("old-password", &salt).unwrap();
-        let legacy_file = crypto::encrypt_with_key(&master, &legacy_key).unwrap();
-        fs::write(&key_path, &legacy_file).unwrap();
-        assert_eq!(fs::read(&key_path).unwrap().len(), 60);
+        let (salt, key_path, master) = write_legacy_key_files(dir.path(), "old-password");
+        let db_path = dir.path().join("moony.db");
 
         // It still unlocks...
         prepare_change_password(&db_path, "old-password").unwrap();
@@ -965,6 +991,85 @@ mod tests {
         let again =
             crypto::decrypt_master_key_with_password("new-password", &salt, &key_path).unwrap();
         assert_eq!(again, master);
+    }
+
+    /// Rebuilds `key.enc` in the pre-header format (60 bytes, scrypt N = 2^14) and returns the
+    /// salt, the key path and the master key.
+    fn write_legacy_key_files(dir: &Path, password: &str) -> ([u8; 32], PathBuf, [u8; 32]) {
+        write_key_files(dir, password);
+        let salt = crypto::read_salt(&dir.join("salt")).unwrap();
+        let key_path = dir.join("key.enc");
+        let master = crypto::decrypt_master_key_with_password(password, &salt, &key_path).unwrap();
+        let legacy_key = crypto::derive_key(password, &salt).unwrap();
+        fs::write(
+            &key_path,
+            crypto::encrypt_with_key(&master, &legacy_key).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(fs::read(&key_path).unwrap().len(), 60);
+        (salt, key_path, master)
+    }
+
+    /// The database step of `unlock`, minus SQLCipher: checks it got the right key.
+    fn open_with(master: [u8; 32]) -> impl FnOnce(&str) -> Result<()> {
+        move |hex| {
+            assert_eq!(hex, crypto::master_key_to_hex(&master));
+            Ok(())
+        }
+    }
+
+    /// ADR 0018: a successful unlock re-wraps a legacy key.enc, the same password opens it
+    /// again, and the next unlock leaves it alone.
+    #[test]
+    fn unlocking_upgrades_a_legacy_key_file_and_the_same_password_still_opens_it() {
+        let dir = tempdir().expect("tempdir");
+        let (_, key_path, master) = write_legacy_key_files(dir.path(), "old-password");
+        let db_path = dir.path().join("moony.db");
+
+        unlock_with(&db_path, "old-password", open_with(master)).unwrap();
+
+        let upgraded = fs::read(&key_path).unwrap();
+        assert_eq!(upgraded.len(), 68);
+        unlock_with(&db_path, "old-password", open_with(master)).unwrap();
+        assert_eq!(
+            fs::read(&key_path).unwrap(),
+            upgraded,
+            "not rewritten again"
+        );
+        // recovery.enc is left as ADR 0009 decided: headerless, legacy cost.
+        assert_eq!(fs::read(dir.path().join("recovery.enc")).unwrap().len(), 60);
+    }
+
+    /// A failing re-wrap must not fail the unlock; the old file stays and still opens.
+    #[test]
+    fn a_failing_key_file_upgrade_does_not_fail_unlock_and_keeps_the_old_file() {
+        let dir = tempdir().expect("tempdir");
+        let (_, key_path, master) = write_legacy_key_files(dir.path(), "old-password");
+        let db_path = dir.path().join("moony.db");
+        let before = fs::read(&key_path).unwrap();
+        fs::create_dir(dir.path().join("key.enc.tmp")).unwrap();
+
+        unlock_with(&db_path, "old-password", open_with(master)).unwrap();
+
+        assert_eq!(fs::read(&key_path).unwrap(), before);
+        unlock_with(&db_path, "old-password", open_with(master)).unwrap();
+    }
+
+    /// Nothing is written unless the whole unlock succeeds.
+    #[test]
+    fn an_unlock_that_fails_to_open_the_database_leaves_a_legacy_key_file_alone() {
+        let dir = tempdir().expect("tempdir");
+        let (_, key_path, _) = write_legacy_key_files(dir.path(), "old-password");
+        let db_path = dir.path().join("moony.db");
+        let before = fs::read(&key_path).unwrap();
+
+        let err = unlock_with(&db_path, "old-password", |_| -> Result<()> {
+            Err(AppError::Database("file is not a database".into()))
+        })
+        .unwrap_err();
+
+        assert!(matches!(err, AppError::Database(_)));
+        assert_eq!(fs::read(&key_path).unwrap(), before);
     }
 
     // ------------------------------------------------------------------
@@ -1318,6 +1423,9 @@ mod tests {
             "salt",
             "key.enc",
             "recovery.enc",
+            // Staging files an interrupted key-file write leaves behind (ADR 0018).
+            "key.enc.tmp",
+            "recovery.enc.tmp",
             "unrelated.txt",
         ] {
             fs::write(d.join(name), b"x").expect("file");

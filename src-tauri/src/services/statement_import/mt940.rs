@@ -379,9 +379,15 @@ fn apply_details(entry: &mut Entry, details: &str) {
         .or_else(|| entry.counterparty_bank_code.take());
 }
 
+/// Characters that punctuate amounts, dates and references (`100.25`, `150,30`, `123/20`,
+/// `250-21`) and are never the separator of a subfield text.
+const NOT_A_SEPARATOR: &str = ".,/-:;+'()%";
+
 /// The subfield dialect (DE/AT and some CZ banks): a three digit code, then segments that each
-/// start with a separator and two digits. `None` when the text is not of that shape, or says
-/// none of what this dialect knows (a number like `100.50 EUR` is no code).
+/// start with a separator and two digits. The text is of that dialect only when the separator
+/// is not number or reference punctuation and at least two segments follow the code; any
+/// other text starting with digits, a symbol and two digits is an amount or a reference. `None`
+/// when the text is not of that shape, or says none of what this dialect knows.
 fn subfield_details(text: &str) -> Option<Details> {
     let separator = SUBFIELD_START
         .captures(text)?
@@ -389,8 +395,11 @@ fn subfield_details(text: &str) -> Option<Details> {
         .as_str()
         .chars()
         .next()
-        .filter(|c| !c.is_alphanumeric())?;
+        .filter(|c| !c.is_alphanumeric() && !NOT_A_SEPARATOR.contains(*c))?;
     let segments = split_subfields(text, separator);
+    if segments.len() < 2 {
+        return None;
+    }
     let in_codes = |codes: RangeInclusive<u8>| {
         segments
             .iter()
@@ -1004,6 +1013,46 @@ mod tests {
         // a code with subfields of no known kind is no subfield text either
         apply_details(&mut e, "166?100599?50Something");
         assert_eq!(e.description.as_deref(), Some("166?100599?50Something"));
+    }
+
+    #[test]
+    fn an_amount_or_reference_at_the_start_is_free_text() {
+        // NNN + punctuation + two digits is a number, a date or a reference, not a subfield code
+        for text in [
+            "100.00 EUR Rechnung 2026",
+            "100.25 EUR Rechnung 2026",
+            "150,30 EUR Miete",
+            "123/20 payment",
+            "250-21 Faktura",
+            "250:21 Faktura",
+            "250;21 Faktura",
+            "250+21 Faktura",
+            "250'21 Faktura",
+            "250(21) Faktura",
+            "250)21 Faktura",
+            "250%21 Faktura",
+            // even with a second look-alike mark
+            "100.25 EUR Rechnung 1.20 und 3.30",
+            "123/20 payment 456/30 refund",
+        ] {
+            let mut e = Entry::default();
+            apply_details(&mut e, text);
+            assert_eq!(e.description.as_deref(), Some(text), "{text}");
+            assert_eq!(e.counterparty_bank_code, None, "{text}");
+            assert_eq!(e.counterparty_account, None, "{text}");
+            assert_eq!(e.counterparty_name, None, "{text}");
+        }
+    }
+
+    #[test]
+    fn one_subfield_mark_is_not_a_subfield_text() {
+        let mut e = Entry::default();
+        apply_details(&mut e, "166?20Miete");
+        assert_eq!(e.description.as_deref(), Some("166?20Miete"));
+        // two marks are
+        let mut two = Entry::default();
+        apply_details(&mut two, "166?20Miete?21Oktober");
+        assert_eq!(two.description.as_deref(), Some("Miete Oktober"));
     }
 
     #[test]

@@ -233,6 +233,73 @@ mod tests {
     }
 
     #[test]
+    fn chain_gap_is_reported_even_when_the_total_equation_holds() {
+        // 1000 + 100 = 1100 = the last closing, so the equation alone adds up;
+        // only the page-to-page walk sees 1100 - 1050.
+        let merged = merge(vec![
+            st(A, "1", "1000", "1050", vec![e("100", true, 1)]),
+            st(A, "2", "1100", "1100", vec![]),
+        ]);
+        assert_eq!(
+            (
+                merged[0].balance_check,
+                merged[0].balance_difference.as_deref()
+            ),
+            (BalanceCheck::Mismatch, Some("50"))
+        );
+    }
+
+    #[test]
+    fn the_first_chain_break_is_the_one_reported() {
+        let merged = merge(vec![
+            st(A, "1", "1000", "1100", vec![]),
+            st(A, "2", "1130", "1200", vec![]),
+            st(A, "3", "1300", "1300", vec![]),
+        ]);
+        assert_eq!(
+            (
+                merged[0].balance_check,
+                merged[0].balance_difference.as_deref()
+            ),
+            (BalanceCheck::Mismatch, Some("30"))
+        );
+    }
+
+    #[test]
+    fn a_page_without_a_closing_balance_is_skipped_by_the_chain_walk() {
+        let page_without_closing = || {
+            let mut page = st(A, "2", "1100", "0", vec![e("50", true, 2)]);
+            page.closing = None;
+            page
+        };
+        // The pair (page 2, page 3) has nothing to compare, so the equation decides.
+        let adds_up = merge(vec![
+            st(A, "1", "1000", "1100", vec![e("100", true, 1)]),
+            page_without_closing(),
+            st(A, "3", "1150", "1150", vec![]),
+        ]);
+        assert_eq!(
+            (
+                adds_up[0].balance_check,
+                adds_up[0].balance_difference.as_deref()
+            ),
+            (BalanceCheck::AddsUp, None)
+        );
+        let off_by_ten = merge(vec![
+            st(A, "1", "1000", "1100", vec![e("100", true, 1)]),
+            page_without_closing(),
+            st(A, "3", "1150", "1160", vec![]),
+        ]);
+        assert_eq!(
+            (
+                off_by_ten[0].balance_check,
+                off_by_ten[0].balance_difference.as_deref()
+            ),
+            (BalanceCheck::Mismatch, Some("10"))
+        );
+    }
+
+    #[test]
     fn sum_mismatch_pending_and_skipped_excluded() {
         let mut pending = e("999", false, 1);
         pending.pending = true;

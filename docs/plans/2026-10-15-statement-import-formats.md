@@ -126,8 +126,39 @@ Each line below is pinned by a test in the task named in brackets:
 
 ## Status
 
-| Phase | Task | Status | Commit |
+Executed on 2026-10-15/16 with subagent-driven development (one implementer and one reviewer per
+task, a phase-1 review, a final whole-branch review). The branch was merged into local `main`
+once, after phase 4 and the final review, instead of after every phase: the owner prefers one
+local merge at the end, and `main` then never offered formats it could not read yet.
+
+| Phase | Task | Status | Commits |
 |---|---|---|---|
+| 1 | 1. Shared core takes rows | done | 767a556d |
+| 1 | 2. Overlap hint for every import (D12) | done | 63fbeca9 |
+| 1 | 3. Statement model, exact decimals, `to_rows` with the ID guard | done | 9c55ce1e |
+| 1 | 4. Format detection, size and DOCTYPE guards, decoding | done | d6986b14 |
+| 1 | 5. Merging statements and the balance check | done | 1089e9a2, 3709e358 |
+| 1 | 6. Account match | done | faf39af9 |
+| 1 | 7. CAMT.053 parser | done | 3ca9621c, 38e839ce |
+| 1 | 8. Statement service, wire types, commands | done | fcf241f7 |
+| 1 | 9. Import dialog for statements | done — live check on a demo copy (CAMT import, balance, duplicates, account switch, CSV mapping) | ff5a65fc, 8e8f33d6 |
+| 1 | 10. Phase 1 docs, ADR 0019 | done; phase-1 review fixes (CAMT hardening) | 671e2408, b3bfd101 |
+| 2 | 11. MT940 structure | done | a178dfaf, 905957af |
+| 2 | 12. MT940 `:86:` dialects, enable MT940, docs | done — live check (MT940 preview, overlap hint against the CAMT import) | 7f55bb91, c970f770 |
+| 3 | 13. OFX/QFX parser, enable OFX, docs | done — live check (OFX preview, currency and account warnings) | e0dfc62d, d96a4361 |
+| 4 | 14. QIF parser and date order | done | dfdf97ce |
+| 4 | 15. QIF in the dialog (date order, category panel), docs | done — live check (Quicken and windows-1250 QIF, category prefill) | 4d2a13b3, 7893947f |
+| — | 16. Whole-branch review and release checks | done — final review fixes; `npm run tauri build -- --debug --no-bundle` builds; the debug binary was not driven (native file dialogs cannot be driven) | 1bc82700 |
+
+Release checklist for the owner (not run by the implementers):
+- Dry run on a copy of the real profile with your own CAMT.053, MT940 and OFX exports; compare
+  the closing balances with the bank.
+- Re-import one file and confirm 0 new rows.
+- Check that your banks' bank IDs (CAMT `AcctSvcrRef`/`NtryRef`, MT940 `//` reference) are not
+  numbered per statement: such IDs would mark a real payment of a later statement as a duplicate.
+- Open the import once in a built app (not `tauri dev`) through the native file dialog.
+
+---|---|---|---|
 | 1 | 1. Shared core takes rows (`ParsedImport`, `ImportOptions`, source category map, declared balance) | pending | |
 | 1 | 2. Overlap hint for every import (D12) | pending | |
 | 1 | 3. Statement model, exact decimals, `to_rows` with the ID guard | pending | |

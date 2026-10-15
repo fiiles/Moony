@@ -4,8 +4,8 @@ Date: 2026-10-15
 
 ## Status
 
-Proposed (becomes Accepted when the owner approves the decisions in
-`docs/specs/2026-10-15-encrypted-attachments-design.md`)
+Accepted (the owner approved decisions D1–D13 of
+`docs/specs/2026-10-15-encrypted-attachments-design.md` on 2026-10-15)
 
 ## Context
 

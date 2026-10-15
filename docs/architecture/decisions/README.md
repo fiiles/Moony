@@ -24,7 +24,7 @@ and what it costs. ADRs are dated point-in-time records — facts in them
 | [0014](0014-durable-mcp-bookkeeping.md) | Durable MCP bookkeeping | 2026-10-12 | Accepted |
 | [0015](0015-identifier-not-bound-to-a-person.md) | App identifier not bound to a person | 2026-10-13 | Accepted; amends the identifier rule of 0010 |
 | [0016](0016-history-from-dated-facts.md) | History days derive from dated facts; manual values hold | 2026-10-13 | Accepted |
-| [0017](0017-encrypted-attachments-store.md) | Attachments live in a second SQLCipher database | 2026-10-15 | Proposed |
+| [0017](0017-encrypted-attachments-store.md) | Attachments live in a second SQLCipher database | 2026-10-15 | Accepted |
 
 ## Rules
 

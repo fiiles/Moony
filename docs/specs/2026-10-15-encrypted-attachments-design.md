@@ -1,8 +1,8 @@
 # Encrypted attachments — design
 
-Date: 2026-10-15. Status: **draft**. Decisions D1–D13 below are proposals that wait for the
-owner's approval; ADR 0017 (`docs/architecture/decisions/0017-encrypted-attachments-store.md`)
-records the storage decision and becomes Accepted with them. The owner chose variant C (a
+Date: 2026-10-15. Status: **approved** by the owner in chat on 2026-10-15 (decisions D1–D13
+below). ADR 0017 (`docs/architecture/decisions/0017-encrypted-attachments-store.md`) records the
+storage decision and is Accepted. The owner chose variant C (a
 second SQLCipher database) in chat on 2026-10-15, after an analysis of the plaintext data on
 disk. This spec is also the hand-off brief for whoever implements it: every rule an implementer
 needs is stated here. The plan is `docs/plans/2026-10-15-encrypted-attachments.md`.
@@ -59,7 +59,7 @@ that older versions left in the temp dir.
   matters more once backups are fully encrypted, but it is a separate change (§7).
 - Deduplication, video, and attachments for other domains.
 
-## 3. Decisions (proposed, awaiting the owner)
+## 3. Owner decisions (approved 2026-10-15)
 
 | # | Decision |
 |---|---|

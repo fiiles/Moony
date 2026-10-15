@@ -1,8 +1,8 @@
 # Encrypted attachments — plan
 
 Spec: `docs/specs/2026-10-15-encrypted-attachments-design.md`. Section ids (§4.1–§4.13) and
-decisions (D1–D13) below refer to it; ADR 0017 records the storage decision. **Do not start
-before the owner has approved D1–D13.**
+decisions (D1–D13) below refer to it; ADR 0017 records the storage decision. The owner approved
+D1–D13 and accepted ADR 0017 on 2026-10-15.
 
 Work happens in a sibling worktree, for example `../Moony-tauri-attachments` on the branch
 `feat/encrypted-attachments`. Other sessions switch branches in the shared checkout
@@ -265,7 +265,7 @@ unlock removes `attachments-converted/`. Commit
 - `RecoveryKeyBox.tsx` / onboarding: the D10 sentence in all ten locales.
 - Living docs per §4.13: PRIVACY.md, SECURITY.md, README, ROADMAP,
   `docs/architecture/database.md`, `docs/architecture/overview.md`, `docs/DEPRECATED.md`.
-  Flip ADR 0017 to Accepted (Status line and index row).
+  (ADR 0017 was already accepted at approval.)
 - Draft the release-notes paragraph (D10, D12, "first unlock converts your attachments in the
   background") in the plan's Status notes for the owner.
 

@@ -21,18 +21,6 @@ pub enum StatementFormat {
     Qif,
 }
 
-impl StatementFormat {
-    /// The name a person knows the format by.
-    pub fn label(self) -> &'static str {
-        match self {
-            StatementFormat::Camt053 => "CAMT.053",
-            StatementFormat::Mt940 => "MT940",
-            StatementFormat::Ofx => "OFX",
-            StatementFormat::Qif => "QIF",
-        }
-    }
-}
-
 /// How a statement names the account it belongs to.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct AccountRef {
@@ -110,14 +98,6 @@ pub fn join_description<'a>(parts: impl IntoIterator<Item = &'a str>) -> Option<
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn labels_are_the_names_people_know() {
-        assert_eq!(StatementFormat::Camt053.label(), "CAMT.053");
-        assert_eq!(StatementFormat::Mt940.label(), "MT940");
-        assert_eq!(StatementFormat::Ofx.label(), "OFX");
-        assert_eq!(StatementFormat::Qif.label(), "QIF");
-    }
 
     #[test]
     fn format_wire_values_are_lowercase() {

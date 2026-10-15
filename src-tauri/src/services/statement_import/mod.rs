@@ -15,6 +15,7 @@ pub mod merge;
 pub mod model;
 pub mod mt940;
 pub mod ofx;
+pub mod qif;
 #[cfg(test)]
 mod service_tests;
 #[cfg(test)]
@@ -26,7 +27,6 @@ pub mod xml_tree;
 use std::collections::HashMap;
 
 use rusqlite::Connection;
-use serde_json::json;
 
 use crate::error::{AppError, Result};
 use crate::services::categorization::CategorizationEngine;
@@ -64,11 +64,12 @@ struct Parsed {
 
 /// Detects, decodes, parses and merges a statement file. `Ok(None)` = the bytes are not a
 /// statement (the CSV path takes them). `country` (the profile's) picks the legacy 8-bit
-/// encoding of the text formats. Only QIF reads `date_order`.
+/// encoding of the text formats. Only QIF reads `date_order` (the user's choice; `None` =
+/// the order its dates point to).
 pub fn load(
     bytes: &[u8],
     country: Option<&str>,
-    _date_order: Option<DateOrder>,
+    date_order: Option<DateOrder>,
 ) -> Result<Option<Loaded>> {
     let Some(format) = detect(&bytes[..bytes.len().min(DETECT_BYTES)])? else {
         return Ok(None);
@@ -93,10 +94,13 @@ pub fn load(
             }
         }
         StatementFormat::Qif => {
-            return Err(AppError::validation_with(
-                "validation.statementFormatNotYetSupported",
-                json!({ "format": format.label() }),
-            ));
+            let qif = qif::parse(&decoded.text, date_order)?;
+            Parsed {
+                statements: qif.statements,
+                warnings: qif.warnings,
+                date_order_ambiguous: qif.date_order_ambiguous,
+                detected_date_order: qif.detected_date_order,
+            }
         }
     };
     if parsed.statements.is_empty() {

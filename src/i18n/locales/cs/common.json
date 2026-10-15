@@ -287,8 +287,7 @@
     "statementInvestmentOnly": "Tento soubor obsahuje jen investiční transakce. Použijte pro ně import od brokera.",
     "statementMalformed": "Soubor výpisu je poškozený nebo neúplný ({{detail}}).",
     "statementIndexInvalid": "Vyberte jeden z výpisů v souboru.",
-    "statementDateOrderInvalid": "Pořadí data lze zvolit jen u souborů QIF.",
-    "statementFormatNotYetSupported": "Výpisy {{format}} zatím Moony importovat neumí."
+    "statementDateOrderInvalid": "Pořadí data lze zvolit jen u souborů QIF."
   },
   "auth": {
     "wrongPassword": "Zadané heslo je nesprávné. Zkuste to prosím znovu.",

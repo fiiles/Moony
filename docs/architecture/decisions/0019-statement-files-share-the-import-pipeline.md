@@ -54,9 +54,10 @@ migration for a label nothing branches on).
   batch's `file_name` shows what was imported, and `csv_import_batches` keeps its name.
 
 Phase 1 shipped the pipeline and CAMT.053, phase 2 added MT940 (its `:86:` text in the German
-subfield, Dutch slash and free-text dialects), phase 3 adds OFX/QFX (bank and credit card
-statements; investment statements are refused or warned about). QIF follows in a later phase on
-the same pipeline and is answered with `validation.statementFormatNotYetSupported` until then.
+subfield, Dutch slash and free-text dialects), phase 3 added OFX/QFX (bank and credit card
+statements; investment statements are refused or warned about), and phase 4 added QIF on the same
+pipeline (its date order is detected over the whole file and can be overridden; its `L` categories
+travel as source categories). All four formats now import.
 
 ## Consequences
 

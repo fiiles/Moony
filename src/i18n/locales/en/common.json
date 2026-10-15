@@ -287,8 +287,7 @@
     "statementInvestmentOnly": "This file contains only investment transactions. Use the broker import for those.",
     "statementMalformed": "The statement file is damaged or incomplete ({{detail}}).",
     "statementIndexInvalid": "Choose one of the statements in the file.",
-    "statementDateOrderInvalid": "A date order can only be chosen for QIF files.",
-    "statementFormatNotYetSupported": "Moony cannot import {{format}} statements yet."
+    "statementDateOrderInvalid": "A date order can only be chosen for QIF files."
   },
   "auth": {
     "wrongPassword": "The password you entered is incorrect. Please try again.",

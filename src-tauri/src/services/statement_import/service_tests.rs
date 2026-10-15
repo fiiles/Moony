@@ -347,12 +347,169 @@ fn options_are_validated() {
 }
 
 #[test]
-fn not_yet_supported_formats_say_so() {
+fn inspect_qif_summary() {
     let conn = db();
-    let err = inspect(&conn, "acc", b"!Type:Bank\nD1/2/26\nT5\n^\n", None)
-        .unwrap_err()
-        .to_string();
-    assert!(err.contains("validation.statementFormatNotYetSupported"));
+    let insp = inspect(&conn, "acc", &fixture("qif/quicken-us.qif"), None)
+        .unwrap()
+        .unwrap();
+    assert_eq!(insp.format, StatementFormat::Qif);
+    assert!(insp.warnings.is_empty());
+    assert!(!insp.date_order_ambiguous);
+    assert_eq!(insp.detected_date_order, Some(DateOrder::Mdy));
+    assert_eq!(insp.statements.len(), 1);
+    let s = &insp.statements[0];
+    // QIF names no account number: the match is unknown, and no closing balance is declared
+    assert_eq!(
+        (s.entry_count, s.balance_check, s.account_match),
+        (3, BalanceCheck::Unavailable, AccountMatch::Unknown)
+    );
+    assert_eq!(s.account_name.as_deref(), Some("Checking"));
+    assert_eq!(
+        (
+            s.opening_balance.as_ref().map(|b| b.amount.as_str()),
+            s.closing_balance.as_ref()
+        ),
+        (Some("1000"), None)
+    );
+    // the split transaction and the transfer name no category
+    let categories: Vec<(&str, usize)> = s
+        .source_categories
+        .iter()
+        .map(|c| (c.name.as_str(), c.count))
+        .collect();
+    assert_eq!(categories, vec![("Income:Salary", 1)]);
+}
+
+#[test]
+fn qif_imports_through_the_same_pipeline_without_a_balance() {
+    let mut conn = db();
+    let bytes = fixture("qif/quicken-us.qif");
+    let preview = preview(&conn, "acc", &bytes, None, &options(), None).unwrap();
+    assert_eq!((preview.total_rows, preview.ok_count), (3, 3));
+    let categories: Vec<Option<&str>> = preview
+        .rows
+        .iter()
+        .map(|row| row.source_category.as_deref())
+        .collect();
+    assert_eq!(categories, vec![Some("Income:Salary"), None, None]);
+    let first = import(
+        &mut conn,
+        "acc",
+        "quicken.qif",
+        &bytes,
+        None,
+        &options(),
+        None,
+    )
+    .unwrap();
+    assert_eq!(first.imported_count, 3);
+    assert!(
+        first.statement_balance.is_none(),
+        "only a declared balance becomes a balance record"
+    );
+    // QIF rows have no bank id: the repeat is caught by the composite key
+    let again = import(
+        &mut conn,
+        "acc",
+        "quicken.qif",
+        &bytes,
+        None,
+        &options(),
+        None,
+    )
+    .unwrap();
+    assert_eq!(
+        (again.imported_count, again.skipped_duplicates.len()),
+        (0, 3)
+    );
+}
+
+#[test]
+fn an_ambiguous_qif_asks_for_the_date_order_and_accepts_one() {
+    let conn = db();
+    let bytes = b"!Type:Bank\nD03/04/2026\nT5\n^\nD05/06/2026\nT6\n^\n";
+    let insp = inspect(&conn, "acc", bytes, None).unwrap().unwrap();
+    assert!(insp.date_order_ambiguous);
+    assert_eq!(insp.detected_date_order, Some(DateOrder::Dmy));
+    let range = |order: Option<DateOrder>| {
+        let chosen = StatementImportOptions {
+            date_order: order,
+            ..options()
+        };
+        let preview = preview(&conn, "acc", bytes, None, &chosen, None).unwrap();
+        assert_eq!(preview.total_rows, 2);
+        preview.date_range.map(|r| (r.from, r.to))
+    };
+    let day = |m: u32, d: u32| model::utc_day(chrono::NaiveDate::from_ymd_opt(2026, m, d).unwrap());
+    assert_eq!(range(Some(DateOrder::Dmy)), Some((day(4, 3), day(6, 5))));
+    assert_eq!(range(Some(DateOrder::Mdy)), Some((day(3, 4), day(5, 6))));
+    assert_eq!(
+        range(None),
+        range(Some(DateOrder::Dmy)),
+        "the detected order"
+    );
+}
+
+#[test]
+fn qif_statement_index_is_stable_across_date_order_overrides() {
+    let conn = db();
+    let bytes = b"!Account\nNChecking\n^\n!Type:Bank\nD03/04/2026\nT-5\nPShop\n^\n\
+                  !Account\nNSavings\n^\n!Type:Bank\nD05/06/2026\nT9\nPInterest\n^\n";
+    let insp = inspect(&conn, "acc", bytes, None).unwrap().unwrap();
+    assert!(insp.date_order_ambiguous);
+    let names: Vec<_> = insp
+        .statements
+        .iter()
+        .map(|s| s.account_name.as_deref())
+        .collect();
+    assert_eq!(names, vec![Some("Checking"), Some("Savings")]);
+    for order in [DateOrder::Dmy, DateOrder::Mdy] {
+        let with = |statement_index: usize| StatementImportOptions {
+            statement_index,
+            date_order: Some(order),
+            ..options()
+        };
+        for (index, payee) in [(0, "Shop"), (1, "Interest")] {
+            let preview = preview(&conn, "acc", bytes, None, &with(index), None).unwrap();
+            assert_eq!(
+                preview.rows[0].counterparty.as_deref(),
+                Some(payee),
+                "statement {index} under {order:?}"
+            );
+        }
+        let beyond = preview(&conn, "acc", bytes, None, &with(2), None).unwrap_err();
+        assert_eq!(
+            beyond.keyed().unwrap().0,
+            "validation.statementIndexInvalid"
+        );
+    }
+}
+
+#[test]
+fn inspect_qif_with_two_accounts_and_investments() {
+    let conn = db();
+    let insp = inspect(&conn, "acc", &fixture("qif/two-accounts.qif"), None)
+        .unwrap()
+        .unwrap();
+    assert_eq!(insp.statements.len(), 2);
+    assert_eq!(
+        insp.statements
+            .iter()
+            .map(|s| s.account_name.as_deref())
+            .collect::<Vec<_>>(),
+        vec![Some("Checking"), Some("Savings")]
+    );
+    assert_eq!(insp.warnings.len(), 1);
+    assert_eq!(insp.warnings[0].key, "statementImport.investmentIgnored");
+    assert_eq!(insp.warnings[0].detail.as_deref(), Some("2"));
+    assert!(!insp.date_order_ambiguous, "the 15th settles month-first");
+}
+
+#[test]
+fn qif_with_only_investments_is_refused() {
+    let conn = db();
+    let err = inspect(&conn, "acc", b"!Type:Invst\nD1/2/2026\nNBuy\nT5\n^\n", None).unwrap_err();
+    assert_eq!(err.keyed().unwrap().0, "validation.statementInvestmentOnly");
 }
 
 #[test]

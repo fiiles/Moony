@@ -287,8 +287,7 @@
     "statementInvestmentOnly": "Denne filen inneholder bare investeringstransaksjoner. Bruk meglerimporten for dem.",
     "statementMalformed": "Kontoutskriftsfilen er skadet eller ufullstendig ({{detail}}).",
     "statementIndexInvalid": "Velg en av kontoutskriftene i filen.",
-    "statementDateOrderInvalid": "Datorekkefølgen kan bare velges for QIF-filer.",
-    "statementFormatNotYetSupported": "Moony kan ikke importere {{format}}-kontoutskrifter ennå."
+    "statementDateOrderInvalid": "Datorekkefølgen kan bare velges for QIF-filer."
   },
   "auth": {
     "wrongPassword": "Passordet du skrev inn er feil. Prøv igjen.",

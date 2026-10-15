@@ -141,7 +141,7 @@ CSV steps unchanged.
 file bytes ──► statement_import::detect ──► None ──────────────────► CSV path: parse_rows
                        │ Some(format)
                        ▼
-        decode ──► parser (camt.rs, mt940.rs, ofx.rs) ──► Vec<Statement>
+        decode ──► parser (camt.rs, mt940.rs, ofx.rs, qif.rs) ──► Vec<Statement>
                        ▼
         merge (same account and currency) + account match + balance check
                        ▼
@@ -159,6 +159,10 @@ read in one of three dialects chosen from its shape: subfields, `/TAG/` pairs or
 `ofx` (a tag scanner of its own for OFX 1.x SGML and 2.x XML, whose elements are not always
 closed, building the same `xml_tree::Node` tree as CAMT; bank and credit card statements are
 imported, investment statements are refused or warned about),
+`qif` (a two-pass scan: the records are sorted into their accounts first, then the whole file's
+dates and amounts decide the date order and the decimal separator once; the order is detected
+with `date_parser::detect_date_format` and `StatementImportOptions.date_order` overrides it, and
+`StatementInspection.date_order_ambiguous` tells the dialog to ask),
 `decimal` (exact decimal arithmetic for the balance check, never `f64`), `merge`,
 `account_match`, `to_rows` and `types` (wire types). `mod.rs` is the service
 the three commands call (`inspect_statement_file`, `preview_statement_import`,
@@ -166,12 +170,10 @@ the three commands call (`inspect_statement_file`, `preview_statement_import`,
 learns which format a row came from, so duplicate checks, categorization, the batch record and
 undo are the CSV ones, and the write path is `create_transaction_with_origin` (ADR 0007).
 
-For statement files `line` is the 1-based ordinal of the entry in the selected statement. A
-detected format whose parser is not shipped yet (QIF) is refused with
-`validation.statementFormatNotYetSupported`. Fixtures are synthetic files under
-`src-tauri/tests/fixtures/statements/<format>/` (see "Adding a statement fixture" in
-`CONTRIBUTING.md`). The dialog is `StatementImportDialog.tsx` in `components/bank-accounts/`, the
-CSV steps live in `csv-import/`.
+For statement files `line` is the 1-based ordinal of the entry in the selected statement. Fixtures
+are synthetic files under `src-tauri/tests/fixtures/statements/<format>/` (see "Adding a statement
+fixture" in `CONTRIBUTING.md`). The dialog is `StatementImportDialog.tsx` in
+`components/bank-accounts/`, the CSV steps live in `csv-import/`.
 
 ## Bootstrap & Auth
 

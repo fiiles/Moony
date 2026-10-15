@@ -287,8 +287,7 @@
     "statementInvestmentOnly": "Den här filen innehåller bara investeringstransaktioner. Använd mäklarimporten för dem.",
     "statementMalformed": "Kontoutdragsfilen är skadad eller ofullständig ({{detail}}).",
     "statementIndexInvalid": "Välj ett av kontoutdragen i filen.",
-    "statementDateOrderInvalid": "Datumordningen kan bara väljas för QIF-filer.",
-    "statementFormatNotYetSupported": "Moony kan inte importera {{format}}-kontoutdrag än."
+    "statementDateOrderInvalid": "Datumordningen kan bara väljas för QIF-filer."
   },
   "auth": {
     "wrongPassword": "Lösenordet du angav är fel. Försök igen.",

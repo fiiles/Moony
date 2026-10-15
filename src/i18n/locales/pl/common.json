@@ -287,8 +287,7 @@
     "statementInvestmentOnly": "Ten plik zawiera wyłącznie transakcje inwestycyjne. Użyj do nich importu od brokera.",
     "statementMalformed": "Plik wyciągu jest uszkodzony lub niekompletny ({{detail}}).",
     "statementIndexInvalid": "Wybierz jeden z wyciągów w pliku.",
-    "statementDateOrderInvalid": "Kolejność daty można wybrać tylko dla plików QIF.",
-    "statementFormatNotYetSupported": "Moony nie potrafi jeszcze importować wyciągów {{format}}."
+    "statementDateOrderInvalid": "Kolejność daty można wybrać tylko dla plików QIF."
   },
   "auth": {
     "wrongPassword": "Wpisane hasło jest nieprawidłowe. Spróbuj ponownie.",

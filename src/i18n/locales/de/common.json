@@ -287,8 +287,7 @@
     "statementInvestmentOnly": "Diese Datei enthält nur Wertpapiertransaktionen. Nutzen Sie dafür den Broker-Import.",
     "statementMalformed": "Die Kontoauszugsdatei ist beschädigt oder unvollständig ({{detail}}).",
     "statementIndexInvalid": "Wählen Sie einen der Kontoauszüge in der Datei.",
-    "statementDateOrderInvalid": "Eine Datumsreihenfolge kann nur für QIF-Dateien gewählt werden.",
-    "statementFormatNotYetSupported": "Moony kann {{format}}-Kontoauszüge noch nicht importieren."
+    "statementDateOrderInvalid": "Eine Datumsreihenfolge kann nur für QIF-Dateien gewählt werden."
   },
   "auth": {
     "wrongPassword": "Das eingegebene Passwort ist falsch. Bitte versuchen Sie es erneut.",

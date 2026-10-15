@@ -281,7 +281,8 @@
   "auth": {
     "wrongPassword": "Wpisane hasło jest nieprawidłowe. Spróbuj ponownie.",
     "invalidRecoveryKey": "Nieprawidłowy klucz odzyskiwania. Sprawdź, czy wpisano wszystkie 24 znaki – wielkość liter, spacje i myślniki nie mają znaczenia.",
-    "keyFilesCorrupted": "Pliki kluczy Moony lub baza danych są uszkodzone albo do siebie nie pasują. Przywróć folder danych z kopii zapasowej."
+    "keyFilesCorrupted": "Pliki kluczy Moony lub baza danych są uszkodzone albo do siebie nie pasują. Przywróć folder danych z kopii zapasowej.",
+    "setupNotPrepared": "Zakładanie konta zostało przerwane. Wróć i utwórz konto ponownie."
   },
   "time": {
     "today": "Dziś",

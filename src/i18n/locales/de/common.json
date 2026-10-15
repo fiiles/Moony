@@ -281,7 +281,8 @@
   "auth": {
     "wrongPassword": "Das eingegebene Passwort ist falsch. Bitte versuchen Sie es erneut.",
     "invalidRecoveryKey": "Ungültiger Wiederherstellungsschlüssel. Prüfen Sie, ob Sie alle 24 Zeichen eingegeben haben – Groß-/Kleinschreibung, Leerzeichen und Bindestriche spielen keine Rolle.",
-    "keyFilesCorrupted": "Die Schlüsseldateien oder die Datenbank von Moony sind beschädigt oder gehören nicht zusammen. Stellen Sie den Datenordner aus einer Sicherung wieder her."
+    "keyFilesCorrupted": "Die Schlüsseldateien oder die Datenbank von Moony sind beschädigt oder gehören nicht zusammen. Stellen Sie den Datenordner aus einer Sicherung wieder her.",
+    "setupNotPrepared": "Die Kontoeinrichtung wurde unterbrochen. Gehen Sie zurück und legen Sie Ihr Konto erneut an."
   },
   "time": {
     "today": "Heute",

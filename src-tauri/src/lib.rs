@@ -39,6 +39,7 @@ pub async fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
         .manage(Database::new())
+        .manage(services::auth::PendingSetup::default())
         .manage(services::history_recalc::HistoryRecalc::new())
         .manage(CategorizationState(categorization_engine))
         .manage(LocalApiServer::new())
@@ -152,7 +153,7 @@ pub async fn run() {
             // Real estate photo commands
             commands::real_estate::get_real_estate_photo_batches,
             commands::real_estate::create_photo_batch,
-            commands::real_estate::add_photos_to_batch,
+            commands::real_estate::add_photo_to_batch,
             commands::real_estate::update_photo_batch,
             commands::real_estate::delete_photo_batch,
             commands::real_estate::delete_real_estate_photo,

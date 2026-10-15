@@ -281,7 +281,8 @@
   "auth": {
     "wrongPassword": "Zadané heslo je nesprávné. Zkuste to prosím znovu.",
     "invalidRecoveryKey": "Neplatný obnovovací klíč. Zkontrolujte, že jste zadali všech 24 znaků – na velikosti písmen, mezerách ani pomlčkách nezáleží.",
-    "keyFilesCorrupted": "Klíčové soubory nebo databáze Moony jsou poškozené nebo k sobě nepatří. Obnovte složku s daty ze zálohy."
+    "keyFilesCorrupted": "Klíčové soubory nebo databáze Moony jsou poškozené nebo k sobě nepatří. Obnovte složku s daty ze zálohy.",
+    "setupNotPrepared": "Zakládání účtu bylo přerušeno. Vraťte se zpět a založte účet znovu."
   },
   "time": {
     "today": "Dnes",

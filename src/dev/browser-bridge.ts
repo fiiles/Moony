@@ -21,7 +21,13 @@ interface ExecRequest {
   id: string;
   cmd: string;
   args?: Json;
+  /** IPC headers (a raw-body command reads its metadata there), as a plain object. */
+  headers?: Record<string, string>;
 }
+
+type Internals = {
+  invoke: (cmd: string, args?: Json, options?: { headers: HeadersInit }) => Promise<Json>;
+};
 
 interface ExecResult {
   id: string;
@@ -50,7 +56,7 @@ function toWire(value: Json): Json {
   return out;
 }
 
-function startExecutor(internals: { invoke: (cmd: string, args?: Json) => Promise<Json> }) {
+function startExecutor(internals: Internals) {
   if (!hot) return;
   const hello = () => hot.send('moony:executor-hello', {});
   hello();
@@ -61,7 +67,12 @@ function startExecutor(internals: { invoke: (cmd: string, args?: Json) => Promis
   hot.on('moony:exec', async (req: ExecRequest) => {
     let result: ExecResult;
     try {
-      result = { id: req.id, ok: true, value: toWire(await internals.invoke(req.cmd, req.args)) };
+      // A raw body (`invoke(cmd, bytes, { headers })`) crossed the socket as number[]; turn it back
+      // into bytes, or the IPC's fetch would send the array as text.
+      const args = Array.isArray(req.args) ? new Uint8Array(req.args as number[]) : req.args;
+      const options = req.headers ? { headers: req.headers } : undefined;
+      const value = await internals.invoke(req.cmd, args, options);
+      result = { id: req.id, ok: true, value: toWire(value) };
     } catch (error) {
       result = { id: req.id, ok: false, value: toWire(error) };
     }
@@ -102,14 +113,21 @@ function installBrowserPolyfill() {
     }
   });
 
-  const relay = (cmd: string, args?: Json) =>
+  const relay = (cmd: string, args?: Json, options?: { headers?: HeadersInit }) =>
     new Promise<Json>((resolve, reject) => {
       const id = crypto.randomUUID();
       pending.set(id, { resolve, reject });
-      hot.send('moony:invoke', { id, cmd, args: toWire(args ?? {}) });
+      const headers = options?.headers
+        ? Object.fromEntries(new Headers(options.headers).entries())
+        : undefined;
+      hot.send('moony:invoke', { id, cmd, args: toWire(args ?? {}), headers });
     });
 
-  const invoke = async (cmd: string, args?: Record<string, unknown>) => {
+  const invoke = async (
+    cmd: string,
+    args?: Record<string, unknown>,
+    options?: { headers?: HeadersInit }
+  ) => {
     if (BLOCKED_PREFIXES.some((p) => cmd.startsWith(p))) {
       throw new Error(`[browser-bridge] ${cmd} is disabled in the browser`);
     }
@@ -126,7 +144,7 @@ function installBrowserPolyfill() {
       listeners.get(String(args?.event))?.delete(Number(args?.eventId));
       return null;
     }
-    return relay(cmd, args);
+    return relay(cmd, args, options);
   };
 
   const w = window as unknown as Record<string, unknown>;
@@ -158,10 +176,6 @@ function installBrowserPolyfill() {
   );
 }
 
-const existing = (
-  window as unknown as {
-    __TAURI_INTERNALS__?: { invoke: (cmd: string, args?: Json) => Promise<Json> };
-  }
-).__TAURI_INTERNALS__;
+const existing = (window as unknown as { __TAURI_INTERNALS__?: Internals }).__TAURI_INTERNALS__;
 if (existing) startExecutor(existing);
 else installBrowserPolyfill();

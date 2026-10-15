@@ -26,9 +26,6 @@ interface PendingSetup {
   surname: string;
   email: string;
   password: string;
-  masterKeyHex: string;
-  recoveryKey: string;
-  salt: number[];
   language?: string;
   currency?: string;
 }
@@ -46,7 +43,7 @@ type AuthContextType = {
   isLoading: boolean;
   error: Error | null;
   setupMutation: UseMutationResult<
-    PendingSetup,
+    PendingSetup & { recoveryKey: string },
     Error,
     {
       name: string;
@@ -154,12 +151,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       language?: string;
       currency?: string;
     }) => {
-      // Call prepare_setup to get keys
-      const prepared = await authApi.prepareSetup();
+      // The backend keeps the generated keys; only the recovery key comes back, to show the user
+      const { recoveryKey } = await authApi.prepareSetup();
       return {
         ...data,
         email: data.email || '',
-        ...prepared,
+        recoveryKey,
       };
     },
     onSuccess: (result) => {
@@ -169,9 +166,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         surname: result.surname,
         email: result.email,
         password: result.password,
-        masterKeyHex: result.masterKeyHex,
-        recoveryKey: result.recoveryKey,
-        salt: result.salt,
         language: result.language,
         currency: result.currency,
       });

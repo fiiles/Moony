@@ -3,7 +3,7 @@
 use crate::db::Database;
 use crate::error::{AppError, Result};
 use crate::models::{InsertUserProfile, UpdateUserProfile, UserProfile};
-use crate::services::auth;
+use crate::services::auth::{self, PendingSetup};
 use crate::services::local_api::LocalApiServer;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
@@ -13,14 +13,12 @@ use tauri::{AppHandle, Manager, State};
 // 2-Phase Setup Commands
 // ============================================================================
 
-/// Response for prepare_setup - contains generated keys to show user
+/// Response for prepare_setup - the recovery key to show the user. The master key and the salt
+/// stay in Rust (`auth::PendingSetup`) until confirm_setup.
 #[derive(Serialize)]
 pub struct PrepareSetupResponse {
     #[serde(rename = "recoveryKey")]
     pub recovery_key: String,
-    #[serde(rename = "masterKeyHex")]
-    pub master_key_hex: String,
-    pub salt: Vec<u8>,
 }
 
 /// Data for confirm_setup
@@ -30,11 +28,6 @@ pub struct ConfirmSetupData {
     pub surname: String,
     pub email: String,
     pub password: String,
-    #[serde(rename = "masterKeyHex")]
-    pub master_key_hex: String,
-    #[serde(rename = "recoveryKey")]
-    pub recovery_key: String,
-    pub salt: Vec<u8>,
     pub language: Option<String>,
     /// Display currency chosen in the first-run wizard (defaults to CZK in the service)
     #[serde(default)]
@@ -128,12 +121,9 @@ pub async fn check_setup(app: AppHandle) -> Result<bool> {
 /// Phase 1: Prepare setup - generates keys but doesn't persist
 /// Returns recovery key so user can save it before we create the account
 #[tauri::command]
-pub async fn prepare_setup() -> Result<PrepareSetupResponse> {
-    let prepared = auth::prepare_setup()?;
+pub async fn prepare_setup(pending: State<'_, PendingSetup>) -> Result<PrepareSetupResponse> {
     Ok(PrepareSetupResponse {
-        recovery_key: prepared.recovery_key,
-        master_key_hex: prepared.master_key_hex,
-        salt: prepared.salt,
+        recovery_key: pending.prepare()?,
     })
 }
 
@@ -143,6 +133,7 @@ pub async fn prepare_setup() -> Result<PrepareSetupResponse> {
 pub async fn confirm_setup(
     app: AppHandle,
     db: State<'_, Database>,
+    pending: State<'_, PendingSetup>,
     data: ConfirmSetupData,
 ) -> Result<UserProfile> {
     let db_path = get_db_path(&app)?;
@@ -157,13 +148,9 @@ pub async fn confirm_setup(
         exclude_personal_real_estate: None,
     };
 
-    let prepared = auth::PreparedSetup {
-        master_key_hex: data.master_key_hex,
-        recovery_key: data.recovery_key,
-        salt: data.salt,
-    };
-
-    auth::confirm_setup(&db, db_path, profile_data, &data.password, &prepared)
+    pending.confirm(|prepared| {
+        auth::confirm_setup(&db, db_path, profile_data, &data.password, prepared)
+    })
 }
 
 /// Unlock existing account

@@ -8,6 +8,23 @@
 use crate::error::{AppError, Result};
 use std::path::{Path, PathBuf};
 
+/// File name an attached document is stored under: the row's id plus the original extension in
+/// lower case, so the system app still opens it. The original name stays off the disk because it
+/// can carry a person's name ("Kupní smlouva Novák.pdf"); an "extension" that is not a few ASCII
+/// letters or digits ("Smlouva p. Novák") is dropped for the same reason.
+pub fn stored_file_name(id: &str, original: &Path) -> String {
+    match original.extension().and_then(|e| e.to_str()) {
+        Some(ext)
+            if ext.len() <= 10
+                && !ext.is_empty()
+                && ext.chars().all(|c| c.is_ascii_alphanumeric()) =>
+        {
+            format!("{}.{}", id, ext.to_ascii_lowercase())
+        }
+        _ => id.to_string(),
+    }
+}
+
 /// Resolve a stored document path to an existing file.
 ///
 /// Files live at `<app_data_dir>/<subdir>/<owner id>/<file>`. The stored path is re-rooted under
@@ -77,6 +94,36 @@ mod tests {
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).expect("temp dir");
         dir
+    }
+
+    #[test]
+    fn stored_file_name_keeps_only_the_lowercased_extension() {
+        let name = stored_file_name("id-1", Path::new("/Users/x/Kupní smlouva Novák.PDF"));
+        assert_eq!(name, "id-1.pdf");
+        assert_eq!(
+            stored_file_name("id-1", Path::new("scan.tar.gz")),
+            "id-1.gz"
+        );
+        assert_eq!(
+            stored_file_name("id-1", Path::new("foto.JPEG")),
+            "id-1.jpeg"
+        );
+    }
+
+    #[test]
+    fn stored_file_name_drops_a_missing_or_name_like_extension() {
+        assert_eq!(stored_file_name("id-1", Path::new("scan")), "id-1");
+        assert_eq!(stored_file_name("id-1", Path::new(".hidden")), "id-1");
+        assert_eq!(
+            stored_file_name("id-1", Path::new("Smlouva p. Novák")),
+            "id-1"
+        );
+        assert_eq!(stored_file_name("id-1", Path::new("Smlouva.Novák")), "id-1");
+        assert_eq!(
+            stored_file_name("id-1", Path::new("x.verylongextension")),
+            "id-1"
+        );
+        assert_eq!(stored_file_name("id-1", Path::new("trailing.")), "id-1");
     }
 
     #[test]

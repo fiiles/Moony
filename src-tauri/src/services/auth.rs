@@ -11,6 +11,7 @@ use crate::services::crypto;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Mutex, MutexGuard};
 
 /// Global session state
 static IS_AUTHENTICATED: AtomicBool = AtomicBool::new(false);
@@ -184,6 +185,41 @@ pub struct PreparedSetup {
     pub master_key_hex: String,
     pub recovery_key: String,
     pub salt: Vec<u8>,
+}
+
+/// The keys generated for a first-run setup, held in Rust between the two phases so the master
+/// key and the salt never reach the webview: only the recovery key goes out, for the user to write
+/// down. Every prepare replaces the keys; a confirm that succeeds clears them.
+#[derive(Default)]
+pub struct PendingSetup(Mutex<Option<PreparedSetup>>);
+
+impl PendingSetup {
+    /// Generate and keep fresh keys; returns the recovery key to show the user.
+    pub fn prepare(&self) -> Result<String> {
+        let prepared = prepare_setup()?;
+        let recovery_key = prepared.recovery_key.clone();
+        *self.lock() = Some(prepared);
+        Ok(recovery_key)
+    }
+
+    /// Run `confirm` with the kept keys. They are cleared once it succeeds and kept when it fails,
+    /// so the user can fix the form and confirm again with the recovery key already written down.
+    /// The lock is held throughout, so a prepare cannot swap the keys mid-confirm.
+    pub fn confirm<T>(&self, confirm: impl FnOnce(&PreparedSetup) -> Result<T>) -> Result<T> {
+        let mut slot = self.lock();
+        let prepared = slot
+            .as_ref()
+            .ok_or_else(|| AppError::Auth("auth.setupNotPrepared".into()))?;
+        let out = confirm(prepared)?;
+        *slot = None;
+        Ok(out)
+    }
+
+    fn lock(&self) -> MutexGuard<'_, Option<PreparedSetup>> {
+        self.0
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+    }
 }
 
 /// Phase 1: Prepare setup - generates keys but doesn't persist anything
@@ -736,6 +772,57 @@ mod tests {
             confirm_setup(&Database::new(), db_path, profile_data(), "", &prepared).unwrap_err();
         assert_password_too_short(err);
         assert!(dir_is_empty(dir.path()), "no key files may be written");
+    }
+
+    #[test]
+    fn pending_setup_hands_out_only_the_recovery_key_and_confirms_with_the_kept_keys() {
+        let pending = PendingSetup::default();
+        let recovery_key = pending.prepare().unwrap();
+        pending
+            .confirm(|prepared| {
+                assert_eq!(prepared.recovery_key, recovery_key);
+                assert_eq!(prepared.salt.len(), 32);
+                crypto::hex_to_master_key(&prepared.master_key_hex).map(|_| ())
+            })
+            .unwrap();
+    }
+
+    #[test]
+    fn pending_setup_cannot_confirm_before_prepare() {
+        let err = PendingSetup::default().confirm(|_| Ok(())).unwrap_err();
+        assert!(matches!(err, AppError::Auth(ref key) if key == "auth.setupNotPrepared"));
+    }
+
+    #[test]
+    fn pending_setup_is_cleared_by_a_successful_confirm() {
+        let pending = PendingSetup::default();
+        pending.prepare().unwrap();
+        pending.confirm(|_| Ok(())).unwrap();
+        assert!(pending.confirm(|_| Ok(())).is_err());
+    }
+
+    #[test]
+    fn pending_setup_keeps_the_keys_when_confirm_fails() {
+        let pending = PendingSetup::default();
+        let recovery_key = pending.prepare().unwrap();
+        let err = pending
+            .confirm(|_| -> Result<()> {
+                Err(AppError::Validation("validation.passwordMinLength".into()))
+            })
+            .unwrap_err();
+        assert!(matches!(err, AppError::Validation(_)));
+        let kept = pending.confirm(|p| Ok(p.recovery_key.clone())).unwrap();
+        assert_eq!(kept, recovery_key);
+    }
+
+    #[test]
+    fn pending_setup_is_replaced_by_every_prepare() {
+        let pending = PendingSetup::default();
+        let first = pending.prepare().unwrap();
+        let second = pending.prepare().unwrap();
+        assert_ne!(first, second);
+        let kept = pending.confirm(|p| Ok(p.recovery_key.clone())).unwrap();
+        assert_eq!(kept, second);
     }
 
     #[test]

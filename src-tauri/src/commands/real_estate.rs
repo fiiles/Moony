@@ -11,6 +11,7 @@ use crate::models::{
 use crate::services::history_plan::{self, PropertyFacts};
 use crate::services::history_recalc::HistoryRecalc;
 use crate::services::real_estate as real_estate_service;
+use crate::services::real_estate_photos as photos_service;
 use crate::services::valuations::ValuationKind;
 use std::fs;
 use std::path::PathBuf;
@@ -313,24 +314,6 @@ pub async fn get_real_estate_insurances(
 // Photo Batch Commands
 // ============================================================================
 
-/// Get photos directory for a real estate property
-fn get_photos_dir(
-    app_handle: &tauri::AppHandle,
-    real_estate_id: &str,
-    batch_id: &str,
-) -> Result<PathBuf> {
-    let app_data = app_handle
-        .path()
-        .app_data_dir()
-        .map_err(|e| AppError::Internal(format!("Failed to get app data dir: {}", e)))?;
-    let dir = app_data
-        .join("real_estate_photos")
-        .join(real_estate_id)
-        .join(batch_id);
-    fs::create_dir_all(&dir)?;
-    Ok(dir)
-}
-
 /// Get all photo batches for a real estate property
 #[tauri::command]
 pub async fn get_real_estate_photo_batches(
@@ -425,112 +408,32 @@ pub async fn create_photo_batch(
     })
 }
 
-/// Add photos to existing batch
+/// Add one photo to a batch. The webview sends the image bytes as the raw IPC body, so no copy of
+/// the photo is written to the temp dir, and the batch id in the `batch-id` header.
 #[tauri::command]
-pub async fn add_photos_to_batch(
+pub async fn add_photo_to_batch(
     app_handle: tauri::AppHandle,
     db: State<'_, Database>,
-    batch_id: String,
-    file_paths: Vec<String>,
-) -> Result<Vec<RealEstatePhoto>> {
-    // Get real_estate_id for directory
-    let real_estate_id: String = db.with_conn(|conn| {
-        conn.query_row(
-            "SELECT real_estate_id FROM real_estate_photo_batches WHERE id = ?1",
-            [&batch_id],
-            |row| row.get(0),
-        )
-        .map_err(|_| AppError::NotFound("Batch not found".into()))
-    })?;
+    request: tauri::ipc::Request<'_>,
+) -> Result<RealEstatePhoto> {
+    let tauri::ipc::InvokeBody::Raw(bytes) = request.body() else {
+        return Err(AppError::Internal(
+            "add_photo_to_batch expects the image as a raw body".into(),
+        ));
+    };
+    let batch_id = request
+        .headers()
+        .get("batch-id")
+        .and_then(|v| v.to_str().ok())
+        .ok_or_else(|| AppError::Internal("add_photo_to_batch expects a batch-id header".into()))?;
+    let app_data_dir = app_handle
+        .path()
+        .app_data_dir()
+        .map_err(|e| AppError::Internal(format!("Failed to get app data dir: {}", e)))?;
 
-    let photos_dir = get_photos_dir(&app_handle, &real_estate_id, &batch_id)?;
-    let now = chrono::Utc::now().timestamp();
-    let mut created_photos = Vec::new();
-    let mut errors: Vec<String> = Vec::new();
-
-    for source_path in &file_paths {
-        let source = PathBuf::from(source_path);
-
-        // Check if file exists
-        if !source.exists() {
-            errors.push(format!("File not found: {}", source_path));
-            continue;
-        }
-
-        let photo_id = Uuid::new_v4().to_string();
-        // Always save as jpg for consistency
-        let file_name = format!("{}.jpg", photo_id);
-        let thumb_name = format!("{}_thumb.jpg", photo_id);
-        let dest_path = photos_dir.join(&file_name);
-        let thumb_path = photos_dir.join(&thumb_name);
-
-        // Load and optionally resize original image
-        match image::open(&source) {
-            Ok(img) => {
-                // Resize if larger than 2560px on longest edge
-                let resized = if img.width() > 2560 || img.height() > 2560 {
-                    img.resize(2560, 2560, image::imageops::FilterType::Lanczos3)
-                } else {
-                    img.clone()
-                };
-
-                // Save resized original
-                if let Err(e) = resized.save(&dest_path) {
-                    errors.push(format!("Failed to save image: {}", e));
-                    continue;
-                }
-
-                // Create thumbnail (400px width)
-                let thumb = img.thumbnail(400, 400);
-                if let Err(e) = thumb.save(&thumb_path) {
-                    // Clean up original if thumbnail fails
-                    let _ = fs::remove_file(&dest_path);
-                    errors.push(format!("Failed to save thumbnail: {}", e));
-                    continue;
-                }
-
-                // Store relative paths in DB
-                let rel_file = format!(
-                    "real_estate_photos/{}/{}/{}",
-                    real_estate_id, batch_id, file_name
-                );
-                let rel_thumb = format!(
-                    "real_estate_photos/{}/{}/{}",
-                    real_estate_id, batch_id, thumb_name
-                );
-
-                db.with_conn(|conn| {
-                    conn.execute(
-                        "INSERT INTO real_estate_photos (id, batch_id, file_path, thumbnail_path, created_at)
-                         VALUES (?1, ?2, ?3, ?4, ?5)",
-                        rusqlite::params![photo_id, batch_id, rel_file, rel_thumb, now],
-                    )?;
-                    Ok(())
-                })?;
-
-                created_photos.push(RealEstatePhoto {
-                    id: photo_id,
-                    batch_id: batch_id.clone(),
-                    file_path: rel_file,
-                    thumbnail_path: rel_thumb,
-                    created_at: now,
-                });
-            }
-            Err(e) => {
-                errors.push(format!("Failed to open image {}: {}", source_path, e));
-            }
-        }
-    }
-
-    // If we had files but none were processed, return an error with details
-    if !file_paths.is_empty() && created_photos.is_empty() {
-        return Err(AppError::Internal(format!(
-            "No photos could be processed. Errors: {}",
-            errors.join("; ")
-        )));
-    }
-
-    Ok(created_photos)
+    let real_estate_id = db.with_conn(|conn| photos_service::batch_property(conn, batch_id))?;
+    let stored = photos_service::store_photo(&app_data_dir, &real_estate_id, batch_id, bytes)?;
+    db.with_conn(|conn| photos_service::record_photo(conn, stored))
 }
 
 /// Update photo batch metadata
@@ -747,17 +650,14 @@ pub async fn add_real_estate_document(
     fs::create_dir_all(&documents_dir)
         .map_err(|e| AppError::Internal(format!("Failed to create documents dir: {}", e)))?;
 
-    // Get file info
     let source_path = Path::new(&file_path);
-    let file_name = source_path
-        .file_name()
-        .and_then(|n| n.to_str())
-        .unwrap_or("document");
-
     let file_size = fs::metadata(source_path).map(|m| m.len() as i64).ok();
 
-    // Copy file to app data directory
-    let dest_path = documents_dir.join(format!("{}_{}", id, file_name));
+    // Copy file to app data directory, named by the id so the original name stays off the disk
+    let dest_path = documents_dir.join(crate::services::document_files::stored_file_name(
+        &id,
+        source_path,
+    ));
     fs::copy(source_path, &dest_path)
         .map_err(|e| AppError::Internal(format!("Failed to copy file: {}", e)))?;
 

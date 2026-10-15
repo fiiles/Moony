@@ -281,7 +281,8 @@
   "auth": {
     "wrongPassword": "Passordet du skrev inn er feil. Prøv igjen.",
     "invalidRecoveryKey": "Ugyldig gjenopprettingsnøkkel. Sjekk at du har skrevet inn alle 24 tegnene - store og små bokstaver, mellomrom og bindestreker spiller ingen rolle.",
-    "keyFilesCorrupted": "Moonys nøkkelfiler eller database er skadet eller hører ikke sammen. Gjenopprett datamappen fra en sikkerhetskopi."
+    "keyFilesCorrupted": "Moonys nøkkelfiler eller database er skadet eller hører ikke sammen. Gjenopprett datamappen fra en sikkerhetskopi.",
+    "setupNotPrepared": "Opprettelsen av kontoen ble avbrutt. Gå tilbake og opprett kontoen på nytt."
   },
   "time": {
     "today": "I dag",

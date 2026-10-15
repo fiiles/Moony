@@ -5,7 +5,7 @@
  * Replaces the HTTP-based API client from the Express.js version.
  */
 
-import { invoke } from '@tauri-apps/api/core';
+import { invoke, type InvokeArgs, type InvokeOptions } from '@tauri-apps/api/core';
 import i18n from '@/i18n';
 import { toApiError } from '@/lib/api-error';
 import type {
@@ -147,9 +147,13 @@ const translateCommon = (key: string, options?: Record<string, unknown>): string
 // Generic invoke wrapper with error handling. Every failure is thrown as an `ApiError` whose
 // `message` is already localized (see `src/lib/api-error.ts`); the raw backend text stays in
 // `error.raw` and in the console.
-async function tauriInvoke<T>(command: string, args?: Record<string, unknown>): Promise<T> {
+async function tauriInvoke<T>(
+  command: string,
+  args?: InvokeArgs,
+  options?: InvokeOptions
+): Promise<T> {
   try {
-    return await invoke<T>(command, args);
+    return await invoke<T>(command, args, options);
   } catch (error) {
     console.error(`Tauri command ${command} failed:`, error);
     throw toApiError(error, translateCommon);
@@ -163,18 +167,15 @@ async function tauriInvoke<T>(command: string, args?: Record<string, unknown>): 
 export const authApi = {
   checkSetup: () => tauriInvoke<boolean>('check_setup'),
 
-  // 2-Phase Setup
-  prepareSetup: () =>
-    tauriInvoke<{ recoveryKey: string; masterKeyHex: string; salt: number[] }>('prepare_setup'),
+  // 2-Phase Setup. The master key and the salt stay in the backend between the two calls; only
+  // the recovery key comes out, for the user to write down.
+  prepareSetup: () => tauriInvoke<{ recoveryKey: string }>('prepare_setup'),
 
   confirmSetup: (data: {
     name: string;
     surname: string;
     email: string;
     password: string;
-    masterKeyHex: string;
-    recoveryKey: string;
-    salt: number[];
     language?: string;
     currency?: string;
   }) => tauriInvoke<UserProfile>('confirm_setup', { data }),
@@ -470,8 +471,9 @@ export const realEstateApi = {
   createPhotoBatch: (realEstateId: string, data: { photoDate: number; description?: string }) =>
     tauriInvoke<RealEstatePhotoBatch>('create_photo_batch', { realEstateId, data }),
 
-  addPhotosToBatch: (batchId: string, filePaths: string[]) =>
-    tauriInvoke<RealEstatePhoto[]>('add_photos_to_batch', { batchId, filePaths }),
+  // The image bytes are the raw IPC body, so no copy of the photo is written to the temp dir.
+  addPhotoToBatch: (batchId: string, bytes: Uint8Array) =>
+    tauriInvoke<RealEstatePhoto>('add_photo_to_batch', bytes, { headers: { 'batch-id': batchId } }),
 
   updatePhotoBatch: (batchId: string, data: { photoDate?: number; description?: string }) =>
     tauriInvoke<RealEstatePhotoBatch>('update_photo_batch', { batchId, data }),

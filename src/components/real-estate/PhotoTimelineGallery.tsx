@@ -121,27 +121,22 @@ export function PhotoTimelineGallery({ realEstateId }: PhotoTimelineGalleryProps
     return { processed, errors };
   };
 
-  // Save files to temp directory and get paths
-  const saveFilesToTemp = async (files: File[]): Promise<string[]> => {
-    const paths: string[] = [];
-    const { writeFile, BaseDirectory } = await import('@tauri-apps/plugin-fs');
-    const { join, tempDir } = await import('@tauri-apps/api/path');
-    const tempDirPath = await tempDir();
-
+  // Send each photo's bytes straight to the backend, so no copy of it lands in the temp dir.
+  // A photo that fails is skipped; the upload fails only when none of them was saved.
+  const uploadPhotos = async (batchId: string, files: File[]): Promise<RealEstatePhoto[]> => {
+    const saved: RealEstatePhoto[] = [];
+    let firstError: unknown = null;
     for (const file of files) {
-      const arrayBuffer = await file.arrayBuffer();
-      const uint8Array = new Uint8Array(arrayBuffer);
-
-      // Generate unique filename with proper extension
-      const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
-      const tempFileName = `photo_${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
-
-      await writeFile(tempFileName, uint8Array, { baseDir: BaseDirectory.Temp });
-      const fullPath = await join(tempDirPath, tempFileName);
-      paths.push(fullPath);
+      try {
+        const bytes = new Uint8Array(await file.arrayBuffer());
+        saved.push(await realEstateApi.addPhotoToBatch(batchId, bytes));
+      } catch (error) {
+        console.error(`Photo ${file.name} could not be saved:`, error);
+        firstError ??= error;
+      }
     }
-
-    return paths;
+    if (saved.length === 0 && firstError) throw firstError;
+    return saved;
   };
 
   const createBatchMutation = useMutation({
@@ -165,9 +160,6 @@ export function PhotoTimelineGallery({ realEstateId }: PhotoTimelineGalleryProps
         throw new Error(t('gallery.errors.noValidFiles'));
       }
 
-      // Save files to temp
-      const filePaths = await saveFilesToTemp(processed);
-
       // Create batch
       const batch = await realEstateApi.createPhotoBatch(realEstateId, {
         photoDate: date,
@@ -175,7 +167,7 @@ export function PhotoTimelineGallery({ realEstateId }: PhotoTimelineGalleryProps
       });
 
       // Add photos
-      await realEstateApi.addPhotosToBatch(batch.id, filePaths);
+      await uploadPhotos(batch.id, processed);
       return batch;
     },
     onSuccess: () => {
@@ -202,8 +194,7 @@ export function PhotoTimelineGallery({ realEstateId }: PhotoTimelineGalleryProps
         throw new Error(t('gallery.errors.noValidFiles'));
       }
 
-      const filePaths = await saveFilesToTemp(processed);
-      return realEstateApi.addPhotosToBatch(batchId, filePaths);
+      return uploadPhotos(batchId, processed);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['real-estate-photo-batches', realEstateId] });

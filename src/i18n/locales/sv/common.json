@@ -281,7 +281,8 @@
   "auth": {
     "wrongPassword": "Lösenordet du angav är fel. Försök igen.",
     "invalidRecoveryKey": "Ogiltig återställningsnyckel. Kontrollera att du angav alla 24 tecken – versaler, mellanslag och bindestreck spelar ingen roll.",
-    "keyFilesCorrupted": "Moonys nyckelfiler eller databas är skadade eller hör inte ihop. Återställ datamappen från en säkerhetskopia."
+    "keyFilesCorrupted": "Moonys nyckelfiler eller databas är skadade eller hör inte ihop. Återställ datamappen från en säkerhetskopia.",
+    "setupNotPrepared": "Kontoskapandet avbröts. Gå tillbaka och skapa kontot igen."
   },
   "time": {
     "today": "I dag",

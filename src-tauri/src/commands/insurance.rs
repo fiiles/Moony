@@ -187,17 +187,14 @@ pub async fn add_insurance_document(
     fs::create_dir_all(&documents_dir)
         .map_err(|e| AppError::Internal(format!("Failed to create documents dir: {}", e)))?;
 
-    // Get file info
     let source_path = Path::new(&file_path);
-    let file_name = source_path
-        .file_name()
-        .and_then(|n| n.to_str())
-        .unwrap_or("document");
-
     let file_size = fs::metadata(source_path).map(|m| m.len() as i64).ok();
 
-    // Copy file to app data directory
-    let dest_path = documents_dir.join(format!("{}_{}", id, file_name));
+    // Copy file to app data directory, named by the id so the original name stays off the disk
+    let dest_path = documents_dir.join(crate::services::document_files::stored_file_name(
+        &id,
+        source_path,
+    ));
     fs::copy(source_path, &dest_path)
         .map_err(|e| AppError::Internal(format!("Failed to copy file: {}", e)))?;
 
